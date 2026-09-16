@@ -604,15 +604,11 @@ export interface InstanceAiExecutionService {
 	): Promise<ResolvedNodeParametersResult>;
 }
 
-export interface ExecuteNodeOutputItem {
-	json: Record<string, unknown>;
-	binary?: Record<string, { fileName?: string; mimeType?: string; fileSize?: string }>;
-}
-
 export type ExecuteNodeResult =
 	| {
 			status: 'success';
-			output: ExecuteNodeOutputItem[][];
+			/** Serialized output items, wrapped in the untrusted-data boundary tag. */
+			output: string;
 			truncated?: { totalItems: number; shownItems: number; message: string };
 			outputSuppressed?: string;
 	  }

@@ -634,7 +634,6 @@ export type {
 	InstanceAiExecutionService,
 	InstanceAiExecuteNodeService,
 	ExecuteNodeResult,
-	ExecuteNodeOutputItem,
 	InstanceAiCredentialService,
 	InstanceAiNodeService,
 	InstanceAiDataTableService,

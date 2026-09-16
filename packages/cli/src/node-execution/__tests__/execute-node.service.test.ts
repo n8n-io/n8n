@@ -283,6 +283,21 @@ describe('ExecuteNodeService', () => {
 			});
 		});
 
+		it('maps an error recorded on the node run itself to an error result', async () => {
+			executionPersistence.findSingleExecution.mockResolvedValue(
+				successExecution([
+					{ error: { message: 'node failed', name: 'NodeApiError' }, data: undefined },
+				]) as never,
+			);
+
+			const result = await service.run(user, baseRequest());
+
+			expect(result).toEqual({
+				status: 'error',
+				error: { message: 'node failed', nodeErrorType: 'NodeApiError' },
+			});
+		});
+
 		it('returns an error result when the execution entered a wait state', async () => {
 			executionPersistence.findSingleExecution.mockResolvedValue({
 				status: 'waiting',

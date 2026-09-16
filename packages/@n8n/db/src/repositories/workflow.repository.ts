@@ -256,7 +256,14 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		await this.managerFor(ctx).update(WorkflowEntity, id, content);
 	}
 
-	/** Creates the workflow together with its `workflow:owner` share in one transaction. */
+	/**
+	 * Creates the workflow together with its `workflow:owner` share in one transaction.
+	 *
+	 * Deliberately outside the `workflowSave` clearance the other writes here assert: the only
+	 * caller is standalone node execution, whose row is archived, single-node and deleted after
+	 * the run. The content is still policed where it matters — `PolicyLifecycleHandler` enforces
+	 * `workflowStart` on `workflowExecuteBefore`, which every execution path reaches.
+	 */
 	async createWorkflowWithOwner(
 		workflow: WorkflowEntity,
 		projectId: string,

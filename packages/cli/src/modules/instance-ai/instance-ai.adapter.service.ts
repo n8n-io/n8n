@@ -4334,7 +4334,7 @@ export function redactExecuteNodeResult(
 	if (!allowSendingParameterValues) {
 		return {
 			status: 'success',
-			output: [],
+			output: '',
 			outputSuppressed:
 				'The node executed successfully, but its output items are suppressed by the instance AI privacy setting.',
 		};
@@ -4342,12 +4342,15 @@ export function redactExecuteNodeResult(
 
 	let totalItems = 0;
 	let shownItems = 0;
-	const output = result.output.map((branch) => {
+	const kept = result.output.map((branch) => {
 		totalItems += branch.length;
-		const kept = capItemsBySerializedSize(branch, MAX_NODE_OUTPUT_BYTES);
-		shownItems += kept.length;
-		return kept;
+		const keptBranch = capItemsBySerializedSize(branch, MAX_NODE_OUTPUT_BYTES);
+		shownItems += keptBranch.length;
+		return keptBranch;
 	});
+	// The items come from whatever service the node called, so they carry the same
+	// boundary tag the workflow-execution path puts on node output.
+	const output = wrapUntrustedData(JSON.stringify(kept, null, 2), 'execution-output');
 	if (shownItems === totalItems) return { status: 'success', output };
 
 	return {

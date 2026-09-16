@@ -616,6 +616,12 @@ describe('node execution session grant keys', () => {
 		).toBe('nodes:execute:n8n-nodes-base.set:manual');
 	});
 
+	it('refuses a key a fallback parameter would push past the column width', () => {
+		expect(
+			buildExecuteNodeSessionGrantKey('n8n-nodes-base.graphql', { query: 'q'.repeat(600) }),
+		).toBeNull();
+	});
+
 	it('keeps the key at the node type when nothing scopes the call', () => {
 		expect(buildExecuteNodeSessionGrantKey('n8n-nodes-base.filter', { conditions: {} })).toBe(
 			'nodes:execute:n8n-nodes-base.filter',

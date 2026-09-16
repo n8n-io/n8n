@@ -10,7 +10,8 @@ description: >-
   create-tasks first. Load planning only when multiple coordinated workflows
   or shared cross-task data tables require a dependency-aware task graph.
   Don't use this skill for explicit one-off tasks that can be done by a single
-  node execution, instead execute the node operation directly.
+  node execution: load one-off-operations and run the node with
+  nodes(action="execute").
 recommended_tools:
   - read_file
   - write_file

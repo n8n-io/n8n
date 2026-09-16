@@ -586,7 +586,9 @@ async function handleExecute(
 	const requireApproval = context.requireRunWorkflowApproval === true;
 	const allowedByScope = !requireApproval && context.permissions?.runWorkflow === 'always_allow';
 	const allowedBySessionGrant =
-		!requireApproval && context.sessionApprovedToolKeys?.has(grantKey) === true;
+		!requireApproval &&
+		grantKey !== null &&
+		context.sessionApprovedToolKeys?.has(grantKey) === true;
 	const needsApproval = !allowedByScope && !allowedBySessionGrant;
 
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
@@ -601,7 +603,7 @@ async function handleExecute(
 		return { status: 'error' as const, denied: true, reason: 'User denied the action' };
 	}
 
-	if (resumeData?.approved && resumeData.scope === 'session') {
+	if (resumeData?.approved && resumeData.scope === 'session' && grantKey !== null) {
 		await context.grantSessionToolApproval?.(grantKey);
 	}
 

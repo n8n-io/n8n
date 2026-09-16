@@ -869,11 +869,16 @@ policy applies (`blocked` denies; `always_allow` skips the prompt — a
 standalone node request is always agent-authored, the analog of an AI-created
 workflow). Under the default `require_approval`, the tool suspends with
 severity `warning`; "Always allow" persists a session grant scoped by node
-type + resource + operation (`nodes:execute:<type>:<resource>:<operation>`,
-discriminator slots empty when the node has none) — the same split the generated
-node TS types use, so a future per-operation destructiveness policy plugs in
-without changing the key format. Later executions of the same operation skip
-the prompt for the session.
+type + resource + operation (`nodes:execute:<type>:<resource>:<operation>`) —
+the same split the generated node TS types use, so a future per-operation
+destructiveness policy plugs in without changing the key format. Later
+executions of the same operation skip the prompt for the session.
+
+A node that declares neither discriminator (HTTP Request, Set, Merge, Filter, …)
+is scoped by the first of `mode`, `url`, `query`, `command` or `action` it
+declares, and by node type alone when it declares none. "Always allow" is not
+offered when that value is long enough to push the key past the grant column
+width — one approved URL must not stand for every URL sharing its prefix.
 
 The request envelope mirrors a workflow-sdk node (`{ type, version, config }`),
 so the agent can pass a node it is building verbatim:
@@ -887,10 +892,14 @@ so the agent can pass a node it is building verbatim:
 | `input` | array | no | Input items `{ json }` (defaults to one empty item) |
 | `timeoutMs` | number | no | Max execution time, capped at 60s |
 
-**Returns**: `{ status: 'success', output: items[][] }` or
-`{ status: 'error', error: { message, description?, nodeErrorType? } }`.
-Binary output is reduced to metadata (`fileName`, `mimeType`, `fileSize`).
-Output is size-capped (a `truncated` field reports shown vs total items).
+**Returns**: `{ status: 'success', output }` or
+`{ status: 'error', error: { message, description?, nodeErrorType? } }`. The
+output is the serialized items inside an `<untrusted_data
+source="execution-output">` boundary, the same envelope the workflow-execution
+path puts on node output — the items come from whatever service the node
+called. Binary output is reduced to metadata (`fileName`, `mimeType`,
+`fileSize`). Output is size-capped (a `truncated` field reports shown vs total
+items).
 When `N8N_AI_ALLOW_SENDING_PARAMETER_VALUES` is disabled, output items and
 upstream error details are suppressed, mirroring `executions(action="run")`.
 Wait states are not supported — a node that starts waiting (e.g. Wait,

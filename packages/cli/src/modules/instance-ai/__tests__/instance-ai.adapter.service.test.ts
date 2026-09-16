@@ -655,10 +655,14 @@ describe('redactExecuteNodeResult', () => {
 	const successResult = (items: Array<{ json: Record<string, unknown> }>) =>
 		({ status: 'success', output: [items] }) as Parameters<typeof redactExecuteNodeResult>[0];
 
-	it('passes small output through unchanged when sending values is allowed', () => {
+	it('returns the items inside the untrusted-data boundary when sending values is allowed', () => {
 		const result = redactExecuteNodeResult(successResult([{ json: { id: 1 } }]), true);
 
-		expect(result).toEqual({ status: 'success', output: [[{ json: { id: 1 } }]] });
+		expect(result.status).toBe('success');
+		if (result.status !== 'success') return;
+		expect(result.output).toContain('<untrusted_data source="execution-output">');
+		expect(result.output).toContain('"id": 1');
+		expect(result.output.trimEnd().endsWith('</untrusted_data>')).toBe(true);
 	});
 
 	it('caps oversized output and reports shown vs total items', () => {
@@ -673,8 +677,9 @@ describe('redactExecuteNodeResult', () => {
 		expect(result.truncated).toEqual(
 			expect.objectContaining({ totalItems: 100, shownItems: expect.any(Number) }),
 		);
-		expect(result.output[0].length).toBe(result.truncated?.shownItems);
-		expect(result.output[0].length).toBeLessThan(100);
+		const shown = result.truncated?.shownItems ?? 0;
+		expect(shown).toBeLessThan(100);
+		expect(result.output.match(/"payload"/g)).toHaveLength(shown);
 	});
 
 	it('suppresses output items when sending values is disabled', () => {
@@ -682,7 +687,7 @@ describe('redactExecuteNodeResult', () => {
 
 		expect(result).toEqual({
 			status: 'success',
-			output: [],
+			output: '',
 			outputSuppressed: expect.stringContaining('privacy setting'),
 		});
 	});
