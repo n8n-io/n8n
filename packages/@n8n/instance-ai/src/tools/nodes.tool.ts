@@ -15,6 +15,7 @@ import {
 	buildExecuteNodeSessionGrantKey,
 	instanceAiApprovalResumeSchema,
 	instanceAiConfirmationSeveritySchema,
+	NODE_RESOURCE_GRANT_FALLBACK_KEYS,
 } from '@n8n/api-types';
 import { validateNodeConfig } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
@@ -476,13 +477,6 @@ function isShownForResource(
 	return resource !== undefined && shownFor.includes(resource);
 }
 
-/**
- * Parameters that name what the call does on the 81 executable node types that declare no
- * `resource`/`operation` — `mode` covers 28 of them (Set, Merge, Switch, the vector stores),
- * `url` covers HTTP Request. Order is the order they are tried.
- */
-const EXECUTE_HEADLINE_PARAMETERS = ['mode', 'url', 'query', 'command', 'action'];
-
 /** Description for the 45 node types that carry no parameter worth naming (If, Filter, Sort, ...). */
 const EXECUTE_DESCRIPTION_FALLBACK = 'Single run';
 
@@ -525,7 +519,7 @@ async function buildExecuteNodeLabels(
 	const resource = resolveParameter('resource');
 	const operation = resolveParameter('operation', resource?.value);
 	let label = [resource?.label, operation?.label].filter(Boolean).join(' > ');
-	for (const name of EXECUTE_HEADLINE_PARAMETERS) {
+	for (const name of NODE_RESOURCE_GRANT_FALLBACK_KEYS) {
 		if (label) break;
 		label = resolveParameter(name)?.label ?? '';
 	}

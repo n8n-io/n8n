@@ -946,7 +946,7 @@ describe('nodes tool', () => {
 			const tool = createNodesTool(
 				createMockContext({
 					executeNodeService,
-					sessionApprovedToolKeys: new Set(['nodes:execute:n8n-nodes-base.set::']),
+					sessionApprovedToolKeys: new Set(['nodes:execute:n8n-nodes-base.set:manual']),
 				}),
 				'full',
 			);
@@ -988,7 +988,7 @@ describe('nodes tool', () => {
 			expect(executeNodeService.execute).toHaveBeenCalled();
 		});
 
-		it('should persist a plain per-type grant for nodes without resource/operation', async () => {
+		it('should persist a grant scoped by the fallback parameter without resource/operation', async () => {
 			const executeNodeService = { execute: vi.fn().mockResolvedValue({ status: 'success' }) };
 			const grantSessionToolApproval = vi.fn();
 			const tool = createNodesTool(
@@ -1004,7 +1004,31 @@ describe('nodes tool', () => {
 				} as never,
 			);
 
-			expect(grantSessionToolApproval).toHaveBeenCalledWith('nodes:execute:n8n-nodes-base.set::');
+			expect(grantSessionToolApproval).toHaveBeenCalledWith(
+				'nodes:execute:n8n-nodes-base.set:manual',
+			);
+		});
+
+		it('should persist a per-type grant for a node with no scoping parameter at all', async () => {
+			const executeNodeService = { execute: vi.fn().mockResolvedValue({ status: 'success' }) };
+			const grantSessionToolApproval = vi.fn();
+			const tool = createNodesTool(
+				createMockContext({ executeNodeService, grantSessionToolApproval }),
+				'full',
+			);
+
+			await executeTool(
+				tool,
+				{
+					action: 'execute',
+					type: 'n8n-nodes-base.filter',
+					version: 2.2,
+					config: { parameters: { conditions: {} } },
+				} as never,
+				{ resumeData: { approved: true, scope: 'session' } } as never,
+			);
+
+			expect(grantSessionToolApproval).toHaveBeenCalledWith('nodes:execute:n8n-nodes-base.filter');
 		});
 
 		it('should return a denied result without executing when the user denies', async () => {

@@ -54,6 +54,9 @@ export function buildRunWorkflowSessionGrantKey(workflowId: string): string {
 	return `executions:run:${workflowId}`;
 }
 
+/** Used to determine resource for nodes that have no resource and operation, like http request node*/
+export const NODE_RESOURCE_GRANT_FALLBACK_KEYS = ['mode', 'url', 'query', 'command', 'action'];
+
 /**
  * Builds the thread-level grant key for `nodes(action="execute")`. Scoped per
  * node type + resource + operation (the split the generated node TS types use).
@@ -64,9 +67,20 @@ export function buildExecuteNodeSessionGrantKey(
 	nodeType: string,
 	parameters?: Record<string, unknown>,
 ): string {
-	const resource = typeof parameters?.resource === 'string' ? parameters.resource : '';
-	const operation = typeof parameters?.operation === 'string' ? parameters.operation : '';
-	return `nodes:execute:${nodeType}:${resource}:${operation}`;
+	const resourceParts = [
+		nodeType,
+		typeof parameters?.resource === 'string' ? parameters.resource : '',
+		typeof parameters?.operation === 'string' ? parameters.operation : '',
+	].filter(Boolean);
+	if (resourceParts.length === 1) {
+		for (const name of NODE_RESOURCE_GRANT_FALLBACK_KEYS) {
+			if (typeof parameters?.[name] === 'string' && parameters?.[name]) {
+				resourceParts.push(parameters?.[name]);
+				break;
+			}
+		}
+	}
+	return `nodes:execute:${resourceParts.join(':')}`;
 }
 
 /**
