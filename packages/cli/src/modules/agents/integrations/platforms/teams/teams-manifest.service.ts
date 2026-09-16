@@ -70,7 +70,6 @@ const READ_PERMISSIONS = [
 	},
 ] as const;
 
-/** The one sentence both the manifest and the setup defaults fall back to. */
 function describeApp(appName: string): string {
 	return `Chat with ${appName}, an agent powered by n8n.`;
 }
@@ -136,7 +135,6 @@ export class TeamsManifestService {
 			readFile(join(__dirname, 'assets', 'outline.png')),
 		]);
 
-		// Keys carry no path separator, so the archive has no directory entries.
 		return Buffer.from(
 			zipSync({
 				'manifest.json': Buffer.from(JSON.stringify(manifest, null, 2), 'utf8'),

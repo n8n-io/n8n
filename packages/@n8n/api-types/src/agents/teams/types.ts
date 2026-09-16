@@ -52,7 +52,6 @@ export interface TeamsAgentAppManifest {
 	};
 }
 
-/** Everything the setup stepper needs to render, in one round trip. */
 export interface TeamsAgentSetupState {
 	/** The URL Azure Bot Service posts activities to. */
 	messagingEndpointUrl: string;

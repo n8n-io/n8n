@@ -24,9 +24,8 @@ const props = withDefaults(defineProps<{ startCollapsed?: boolean }>(), {
 
 const i18n = useI18n();
 
-// Local, because `startCollapsed` is only where the panels begin. Binding it
-// straight to the panel made them emit an open state that nothing applied, so
-// they never opened.
+// Local, because `startCollapsed` is only where the panels begin: bound
+// straight to the panel, the open state it emits has nothing to apply it.
 const whereOpen = ref(!props.startCollapsed);
 const readingOpen = ref(!props.startCollapsed);
 

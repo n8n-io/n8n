@@ -1,11 +1,4 @@
 <script setup lang="ts">
-/**
- * The "your own Microsoft app" setup.
- *
- * The order follows Azure rather than n8n: the bot has to exist before it has
- * an identity, so the credential is derived in step two instead of being asked
- * for up front. That inverts Discord's stepper, where connecting comes last.
- */
 import { computed, ref, watch } from 'vue';
 import { saveAs } from 'file-saver';
 import { N8nButton, N8nCopyInput, N8nInput, N8nStepper, N8nText } from '@n8n/design-system';
@@ -86,9 +79,6 @@ const description = ref(props.savedSettings?.description ?? '');
  * Shown as placeholders rather than written into the fields. Filling them in
  * would save them as overrides on the first connect, and the Teams app would
  * then keep the agent's old name after a rename.
- *
- * They come from the server because that is where the manifest derives them,
- * and a second derivation here would drift from it.
  */
 const defaultDisplayName = computed(() => setupState.value?.defaultDisplayName ?? '');
 const defaultDescription = computed(() => setupState.value?.defaultDescription ?? '');
@@ -181,15 +171,12 @@ async function loadSetupState() {
 			credentialId.value || undefined,
 		);
 	} catch {
-		// Leave the fallback endpoint URL in place; the rest of the step still works.
 		setupState.value = null;
 	}
 }
 
 watch(() => props.connected, loadSetupState);
 
-// The deployment and the package are both built from the picked credential, so
-// they have to be rebuilt whenever it changes.
 watch(
 	credentialId,
 	async () => {
@@ -244,7 +231,6 @@ defineExpose({ credentialId, validationError: null, currentSettings });
 		<N8nStepper v-if="mode === 'setup'" :steps="steps">
 			<template #default="{ step }">
 				<div :class="$style.stepContent">
-					<!-- 1. Register the app and add the credential -->
 					<div v-if="step.id === 'create-credential'" :class="$style.stepStack">
 						<AgentIntegrationCredentialConnection
 							v-if="!connected"
@@ -276,11 +262,6 @@ defineExpose({ credentialId, validationError: null, currentSettings });
 							}}
 						</N8nText>
 
-						<!--
-							A link, not a button: the credential is the action on this step. It
-							stays because the credential's own fields say where to copy each
-							value from, never that the registration has to exist first.
-						-->
 						<N8nText :class="$style.hint" size="small" data-testid="teams-create-bot-prerequisites">
 							{{ i18n.baseText('agents.channels.teams.setup.createCredential.prerequisites') }}
 							<a
@@ -294,7 +275,6 @@ defineExpose({ credentialId, validationError: null, currentSettings });
 						</N8nText>
 					</div>
 
-					<!-- 2. Deploy the Azure Bot -->
 					<div v-else-if="step.id === 'create-bot'" :class="$style.stepStack">
 						<N8nButton
 							v-if="setupState?.deployToAzureUrl"
@@ -318,11 +298,8 @@ defineExpose({ credentialId, validationError: null, currentSettings });
 							{{ i18n.baseText('agents.channels.teams.setup.createBot.hint') }}
 						</N8nText>
 
-						<!--
-							The endpoint is only needed by someone wiring up a bot they already
-							have. The deployment sets it, so showing it by default puts a long
-							opaque URL in front of everyone who does not need it.
-						-->
+						<!-- The deployment sets the endpoint, so only someone wiring up an
+							existing bot needs to see it. -->
 						<N8nButton
 							v-if="!showEndpoint"
 							variant="ghost"
@@ -352,12 +329,10 @@ defineExpose({ credentialId, validationError: null, currentSettings });
 						</div>
 					</div>
 
-					<!-- 3. Choose where it's available -->
 					<div v-else-if="step.id === 'availability'" :class="$style.stepStack">
 						<AgentChannelTeamsAvailability v-model="availability" />
 					</div>
 
-					<!-- 4. Install -->
 					<div v-else-if="step.id === 'install'" :class="$style.stepStack">
 						<N8nButton
 							v-if="canDownloadPackage"
@@ -387,11 +362,8 @@ defineExpose({ credentialId, validationError: null, currentSettings });
 							{{ i18n.baseText('agents.channels.teams.setup.install.hint') }}
 						</N8nText>
 
-						<!--
-							Connecting is the last thing that happens, because the modal closes
-							on it. Offered here so the package is already downloaded by then,
-							and gated on a credential that has actually reached Microsoft.
-						-->
+						<!-- Last, because the modal closes on it: the package has to be
+							downloaded by then. -->
 						<template v-if="!connected">
 							<N8nText
 								v-if="checking"

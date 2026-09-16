@@ -3,9 +3,8 @@ import { Service } from '@n8n/di';
 import { CredentialsService } from '@/credentials/credentials.service';
 
 /**
- * Resolves a credential the way an agent's channel resolves it: through the
- * agent's project rather than through a signed-in user, because the routes that
- * need it run without one.
+ * Resolves a credential through the agent's project rather than a signed-in
+ * user, because the routes that need it run without one.
  *
  * Shared so that a setup step and the check that gates it cannot disagree about
  * which credentials a project may read. They did: a globally shared credential
