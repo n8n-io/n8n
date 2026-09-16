@@ -1,18 +1,17 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue';
-import {
-	N8nDialog,
-	N8nIcon,
-	N8nInput,
-	N8nRecycleScroller,
-	N8nTabs,
-	N8nText,
-} from '@n8n/design-system';
-import type { DialogSize, TabOptions } from '@n8n/design-system';
+import { N8nDialog } from '../N8nDialog';
+import N8nIcon from '../N8nIcon';
+import N8nInput from '../N8nInput';
+import N8nRecycleScroller from '../N8nRecycleScroller';
+import N8nTabs from '../N8nTabs';
+import N8nText from '../N8nText';
+import N8nIconButton from '../N8nIconButton';
+
+import type { TabOptions } from '../N8nTabs';
 import { type BaseTextKey, useI18n } from '@n8n/i18n';
 import { useDebounceFn } from '@vueuse/core';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
-import { DEBOUNCE_TIME } from '@/app/constants/durations';
 
 import ToolRow from './ToolRow.vue';
 import ToolDetailView from './ToolDetailView.vue';
@@ -37,8 +36,6 @@ const props = withDefaults(
 		detailItem?: ToolConnectionItem | null;
 		detailMode?: 'detail' | 'settings';
 		hideBackButton?: boolean;
-		/** Dialog width. Consumers with more tabs (e.g. the n8n Connect section) can widen it. */
-		size?: DialogSize;
 		allowWorkflowCreation?: boolean;
 		workflowCreationLoading?: boolean;
 	}>(),
@@ -46,7 +43,6 @@ const props = withDefaults(
 		open: false,
 		detailItem: null,
 		detailMode: 'detail',
-		size: 'xlarge',
 		allowWorkflowCreation: false,
 		workflowCreationLoading: false,
 	},
@@ -74,13 +70,14 @@ const searchPlaceholder = computed(
 );
 
 const ITEM_HEIGHT = 58;
+const SEARCH_DEBOUNCE_TIME = 300;
 
 const searchQuery = ref('');
 const debouncedSearchQuery = ref('');
 const setDebouncedSearch = useDebounceFn((value: string) => {
 	debouncedSearchQuery.value = value;
 	emit('update:searchQuery', value);
-}, getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH));
+}, getDebounceTime(SEARCH_DEBOUNCE_TIME));
 watch(searchQuery, (value) => {
 	void setDebouncedSearch(value);
 });
@@ -259,6 +256,12 @@ watch(visibleCategories, (categories) => {
 	}
 });
 
+const fixedProps = {
+	/** We want a custom position for close button as it breaks horizontal alignment */
+	showCloseButton: false,
+	header: undefined,
+};
+
 const isListEmpty = computed(() => toolRows.value.length === 0);
 const emptyMessage = computed(() => {
 	if (hasActiveSearch.value) {
@@ -288,12 +291,12 @@ function handleOpenChange(value: boolean) {
 
 <template>
 	<N8nDialog
+		v-bind="fixedProps"
+		size="xlarge"
 		:open="open"
-		:size="size"
-		:header="detailItem ? '' : modalTitle"
-		:show-close-button="!detailItem"
 		:aria-label="modalTitle"
 		data-test-id="tools-connection-modal"
+		:class="$style.modal"
 		@update:open="handleOpenChange"
 	>
 		<div :class="$style.body">
@@ -335,18 +338,21 @@ function handleOpenChange(value: boolean) {
 				</template>
 			</ToolDetailView>
 			<template v-else>
-				<N8nInput
-					ref="searchInputRef"
-					v-model="searchQuery"
-					:placeholder="searchPlaceholder"
-					clearable
-					data-test-id="tools-connection-search"
-					:class="$style.searchInput"
-				>
-					<template #prefix>
-						<N8nIcon icon="search" />
-					</template>
-				</N8nInput>
+				<div :class="$style.header">
+					<N8nInput
+						ref="searchInputRef"
+						v-model="searchQuery"
+						:placeholder="searchPlaceholder"
+						clearable
+						data-test-id="tools-connection-search"
+						:class="$style.searchInput"
+					>
+						<template #prefix>
+							<N8nIcon icon="search" />
+						</template>
+					</N8nInput>
+					<N8nIconButton size="large" variant="ghost" icon="x" @click="handleOpenChange(false)" />
+				</div>
 
 				<N8nTabs
 					v-if="tabsVisible"
@@ -429,18 +435,33 @@ function handleOpenChange(value: boolean) {
 </template>
 
 <style lang="scss" module>
+.modal {
+	--n8n-dialog-content--padding: 0;
+}
+
 .body {
 	display: flex;
 	flex-direction: column;
 	height: 70vh;
 	max-height: 640px;
 	min-height: 0;
+	padding: 0;
+}
+
+.header {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	padding: var(--spacing--md);
+
+	button {
+		flex-shrink: 0;
+		margin-inline-end: calc(var(--spacing--2xs) * -1);
+	}
 }
 
 .searchInput {
-	width: 100%;
-	flex-shrink: 0;
-	margin-block: var(--spacing--sm);
+	flex: 1;
 }
 
 // N8nTabs owns the tab styling, and the justified strip gives every tab an equal
@@ -449,6 +470,7 @@ function handleOpenChange(value: boolean) {
 .tabs {
 	border-bottom: 1px solid var(--border-color);
 	flex-shrink: 0;
+	overflow: hidden;
 }
 
 .createWorkflowRow {
@@ -503,7 +525,8 @@ function handleOpenChange(value: boolean) {
 	flex: 1 1 0;
 	min-height: 0;
 	overflow: hidden;
-	margin-bottom: calc(-1 * var(--spacing--lg));
+	padding-inline: var(--spacing--xs);
+	padding-block-start: var(--spacing--2xs);
 }
 
 .scroller {

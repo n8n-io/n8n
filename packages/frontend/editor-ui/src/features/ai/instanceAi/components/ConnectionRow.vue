@@ -1,9 +1,11 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
-import { N8nText } from '@n8n/design-system';
-import type { IconName } from '@n8n/design-system';
-import ToolIcon from '@/features/shared/toolsConnection/ToolIcon.vue';
-import type { ToolIconSource } from '@/features/shared/toolsConnection/types';
+import {
+	N8nText,
+	type IconName,
+	N8nToolConnectionIcon as ToolIcon,
+	type ToolIconSource,
+} from '@n8n/design-system';
 
 export type ConnectionRowIcon = IconName | ToolIconSource;
 

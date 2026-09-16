@@ -5,7 +5,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { createComponentRenderer } from '@/__tests__/render';
 import { INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY } from '../../constants';
-import type { ToolConnectionCredentialAdapter } from '@/features/shared/toolsConnection/types';
+import type { ToolConnectionCredentialAdapter } from '@n8n/design-system';
 import InstanceAiMcpConnectCard from '../InstanceAiMcpConnectCard.vue';
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({

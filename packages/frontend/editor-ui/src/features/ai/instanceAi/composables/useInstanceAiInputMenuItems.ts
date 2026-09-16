@@ -1,8 +1,12 @@
 import { computed, watch } from 'vue';
-import type { DropdownMenuItemProps, IconName } from '@n8n/design-system';
+import {
+	type DropdownMenuItemProps,
+	type IconName,
+	type ToolConnectionStatus,
+	type ToolIconSource,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useUIStore } from '@/app/stores/ui.store';
-import type { ToolConnectionStatus, ToolIconSource } from '@/features/shared/toolsConnection/types';
 import {
 	INSTANCE_AI_COMPUTER_USE_SETUP_MODAL_KEY,
 	INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY,

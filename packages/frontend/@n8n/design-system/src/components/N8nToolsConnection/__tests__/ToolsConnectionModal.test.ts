@@ -1,6 +1,6 @@
 import { beforeEach, describe, it, expect, vi } from 'vitest';
-import { fireEvent, waitFor } from '@testing-library/vue';
-import { createComponentRenderer, renderComponent } from '@/__tests__/render';
+import { fireEvent, render, waitFor } from '@testing-library/vue';
+import { createComponentRenderer } from '../../../__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 
 const scrollToKeyMock = vi.hoisted(() => vi.fn());
@@ -8,12 +8,9 @@ const scrollToMock = vi.hoisted(() => vi.fn());
 // Lets a test hand the modal a non-zero offset to read off the scroller stub.
 const scrollTopValue = vi.hoisted(() => ({ current: 0 }));
 
-// N8nDialog teleports out of the tree (Reka UI's DialogPortal) and
-// N8nRecycleScroller virtualises by offsetHeight which is 0 in jsdom. Replace
-// both with render-all pass-throughs so rows are inspectable inline.
-vi.mock('@n8n/design-system', async () => {
-	const actual = await vi.importActual<typeof import('@n8n/design-system')>('@n8n/design-system');
-	const N8nDialog = {
+/** Replace teleported dialog content with inline content. */
+vi.mock('../../N8nDialog', () => ({
+	N8nDialog: {
 		name: 'N8nDialog',
 		props: ['open', 'size', 'header'],
 		emits: ['update:open'],
@@ -23,12 +20,14 @@ vi.mock('@n8n/design-system', async () => {
 				<slot />
 			</div>
 		`,
-	};
-	const N8nRecycleScroller = {
+	},
+}));
+
+/** Render all virtual rows so tests can inspect them in jsdom. */
+vi.mock('../../N8nRecycleScroller', () => ({
+	default: {
 		name: 'N8nRecycleScroller',
 		props: ['items', 'itemSize', 'itemKey'],
-		// A computed would cache the first read; `scrollTopValue` is not
-		// reactive, so it would never re-evaluate afterwards.
 		created() {
 			Object.defineProperty(this, 'scrollTop', {
 				get: () => scrollTopValue.current,
@@ -45,12 +44,12 @@ vi.mock('@n8n/design-system', async () => {
 				</div>
 			</div>
 		`,
-	};
-	// N8nTabs hangs its `tab-<value>` test id on a wrapper around the clickable
-	// element, so a click on it would never reach the handler. Stub it down to
-	// plain buttons: these tests are about which categories, labels and counts
-	// the modal hands over, not about the tabs component's internals.
-	const N8nTabs = {
+	},
+}));
+
+/** Use clickable tab buttons without the design-system wrapper. */
+vi.mock('../../N8nTabs', () => ({
+	default: {
 		name: 'N8nTabs',
 		props: ['modelValue', 'options', 'size', 'variant'],
 		emits: ['update:modelValue'],
@@ -66,9 +65,8 @@ vi.mock('@n8n/design-system', async () => {
 				>{{ option.label }}</button>
 			</div>
 		`,
-	};
-	return { ...actual, N8nDialog, N8nRecycleScroller, N8nTabs };
-});
+	},
+}));
 
 import ToolsConnectionModal from '../ToolsConnectionModal.vue';
 import McpToolSettingsContent from '../McpToolSettingsContent.vue';
@@ -133,7 +131,7 @@ function renderWithMcpSettingsSlot(detailItem: ToolConnectionItem) {
 			</ToolsConnectionModal>
 		`,
 	};
-	return renderComponent(Host, {
+	return render(Host, {
 		props: { detailItem },
 		pinia: createTestingPinia(),
 	});

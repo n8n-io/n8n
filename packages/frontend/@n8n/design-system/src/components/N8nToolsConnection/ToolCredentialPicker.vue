@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import { computed, inject, nextTick, ref, watch } from 'vue';
-import { N8nButton, N8nIcon, N8nInput, N8nPopover, N8nSpinner, N8nText } from '@n8n/design-system';
+import N8nButton from '../N8nButton';
+import N8nIcon from '../N8nIcon';
+import N8nInput from '../N8nInput';
+import N8nPopover from '../N8nPopover';
+import N8nSpinner from '../N8nSpinner';
+import N8nText from '../N8nText';
 import { useI18n } from '@n8n/i18n';
 import {
 	hasToolConnection,

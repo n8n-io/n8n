@@ -7,6 +7,10 @@ import N8nDialogHeader from './DialogHeader.vue';
 import N8nDialogOverlay from './DialogOverlay.vue';
 import N8nDialogTitle from './DialogTitle.vue';
 
+defineOptions({
+	inheritAttrs: false,
+});
+
 export type DialogSize =
 	| 'small'
 	| 'medium'
@@ -114,6 +118,7 @@ const handleOpenChange = (value: boolean) => {
 		<DialogPortal>
 			<N8nDialogOverlay :stacked="stacked" />
 			<N8nDialogContent
+				v-bind="$attrs"
 				:size="size"
 				:force-mount="forceMount"
 				:trap-focus="trapFocus"
