@@ -201,6 +201,7 @@ import {
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { pinDataForStepRun, planStepRun, toExecutionItems } from './instance-ai-step-run';
 import { InstanceContextService } from './instance-context.service';
+import type { InstanceContextScope } from './instance-context.service';
 import { InstanceAiMcpRegistryService } from './mcp';
 import { listNodeDiscriminators } from './node-definition-resolver';
 import { fetchAndExtract, maybeSummarize, LRUCache } from './web-research';
@@ -633,22 +634,22 @@ export class InstanceAiAdapterService {
 		const instanceContext = this.instanceContext;
 		if (!instanceContext) throw new UnexpectedError('Instance context service is not available');
 
+		const scope: InstanceContextScope = {
+			surface: 'conversation',
+			...(projectId !== undefined ? { projectId } : {}),
+		};
+
 		return {
 			list: async (input) =>
 				await instanceContext.list({
 					user,
-					...(projectId !== undefined ? { projectId } : {}),
+					scope,
 					limit: input.limit,
 					...(input.category !== undefined ? { category: input.category } : {}),
 					...(input.resourceId !== undefined ? { resourceId: input.resourceId } : {}),
 					...(input.beforeId !== undefined ? { beforeId: input.beforeId } : {}),
 				}),
-			expand: async (id) =>
-				await instanceContext.expand({
-					id,
-					user,
-					...(projectId !== undefined ? { projectId } : {}),
-				}),
+			expand: async (id) => await instanceContext.expand({ id, user, scope }),
 		};
 	}
 
