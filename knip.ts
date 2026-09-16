@@ -15,7 +15,8 @@ const sourceEntry = [
 // package override has to restate the shared defaults.
 const pkg = (overrides: Workspace = {}): Workspace => ({
 	entry: sourceEntry,
-	// Build output is not source, and a stale dist can name a dependency the source no longer uses.
+	// Manifest `types` and `exports` fields make a local dist an entry. `ignore` only mutes
+	// findings in these files; a stale dist reports imports the source no longer has.
 	ignore: ['dist/**'],
 	// The default only reads tsconfig.json; build tsconfigs extend shared configs too.
 	typescript: { config: ['tsconfig.json', 'tsconfig.*.json'] },
