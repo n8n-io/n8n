@@ -167,7 +167,16 @@ export class KeyManagerService implements IEncryptionKeyProvider {
 			return recovered;
 		}
 
-		// Already GCM-wrapped or an unknown format: leave untouched.
+		// A value that already unwraps is current-format and needs no repair. Warn
+		// about anything else. A silent skip leaves every no-prefix read failing
+		// with a message that blames the instance key.
+		try {
+			this.cipher.decryptDEKWithInstanceKey(value);
+		} catch {
+			this.logger.warn(
+				`DEK ${keyInfo.id} is in an unrecognized format. n8n cannot re-wrap it with this instance key, so reads of data without a key-id prefix will fail.`,
+			);
+		}
 		return null;
 	}
 

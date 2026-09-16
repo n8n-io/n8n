@@ -709,13 +709,14 @@ describe('KeyManagerService', () => {
 		const makeRepairService = (encryptionKey = randomBytes(24).toString('base64')) => {
 			const repo = mock<DeploymentKeyRepository>();
 			const cipher = realCipher(encryptionKey);
+			const logger = mock<Logger>();
 			const service = new KeyManagerService(
 				repo,
 				cipher,
 				mock<InstanceSettings>({ encryptionKey }),
-				mock<Logger>(),
+				logger,
 			);
-			return { service, repo, cipher };
+			return { service, repo, cipher, logger };
 		};
 
 		// A real, freshly generated DEK — never a hand-built constant.
@@ -765,6 +766,30 @@ describe('KeyManagerService', () => {
 			await service.repairLegacyDataEncryptionKeys();
 
 			expect(repo.rewrapLegacyDataEncryptionValue).not.toHaveBeenCalled();
+		});
+
+		it('warns about an unrecognized value it cannot re-wrap', async () => {
+			const { service, repo, logger } = makeRepairService();
+			repo.findDataEncryptionKeys.mockResolvedValue([
+				makeKey({ id: 'k', value: randomBytes(48).toString('base64') }),
+			]);
+
+			await service.repairLegacyDataEncryptionKeys();
+
+			expect(repo.rewrapLegacyDataEncryptionValue).not.toHaveBeenCalled();
+			expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('unrecognized format'));
+		});
+
+		it('does not warn about an already GCM-wrapped value', async () => {
+			const { service, repo, cipher, logger } = makeRepairService();
+			repo.findDataEncryptionKeys.mockResolvedValue([
+				makeKey({ id: 'k', value: cipher.encryptDEKWithInstanceKey(rawKey) }),
+			]);
+
+			await service.repairLegacyDataEncryptionKeys();
+
+			expect(repo.rewrapLegacyDataEncryptionValue).not.toHaveBeenCalled();
+			expect(logger.warn).not.toHaveBeenCalled();
 		});
 
 		it('is a no-op when there are no data-encryption keys', async () => {
