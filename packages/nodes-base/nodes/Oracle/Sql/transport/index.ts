@@ -17,7 +17,9 @@ function toOptionalNumber(value: unknown) {
 	return value === undefined || value === null || value === '' ? undefined : Number(value);
 }
 
-export const getOracleDBConfig = (credentials: OracleDBNodeCredentials): oracledb.PoolAttributes => {
+export const getOracleDBConfig = (
+	credentials: OracleDBNodeCredentials,
+): oracledb.PoolAttributes => {
 	const { useThickMode, useSSL, ...dbConfig } = {
 		...credentials,
 		privilege: credentials.privilege || undefined,
