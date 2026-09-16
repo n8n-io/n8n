@@ -37,6 +37,10 @@ export class AgentApiHelper {
 		}
 
 		const result = await response.json();
-		return result.data ?? result;
+		// The REST layer wraps responses as { data: ... }, including
+		// { data: null } when no lock is held. Unwrap based on whether
+		// the `data` property exists so a wrapped null stays null —
+		// `result.data ?? result` would return { data: null } instead.
+		return result && 'data' in result ? result.data : result;
 	}
 }
