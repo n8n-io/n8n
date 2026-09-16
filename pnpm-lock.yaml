@@ -133,8 +133,8 @@ catalogs:
       specifier: ^3.1.0
       version: 3.1.0
     vm2:
-      specifier: 3.11.6
-      version: 3.11.6
+      specifier: 3.12.2
+      version: 3.12.2
     xml2js:
       specifier: 0.6.2
       version: 0.6.2
@@ -1394,7 +1394,7 @@ importers:
         version: 7.29.0
       vm2:
         specifier: 'catalog:'
-        version: 3.11.6
+        version: 3.12.2
       weaviate-client:
         specifier: 3.6.2
         version: 3.6.2(encoding@0.1.13)
@@ -3240,10 +3240,14 @@ importers:
         version: 11.1.1
       vm2:
         specifier: 'catalog:'
+<<<<<<< HEAD
         version: 3.11.6
       xlsx:
         specifier: https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz
         version: https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz
+=======
+        version: 3.12.2
+>>>>>>> 74ab9c2b (fix(core): Update vm2 to 3.12.2 (#38823))
       xml2js:
         specifier: 'catalog:'
         version: 0.6.2
@@ -17772,11 +17776,16 @@ packages:
       jsdom:
         optional: true
 
+<<<<<<< HEAD
   vm-browserify@1.1.2:
     resolution: {integrity: sha512-2ham8XPWTONajOR0ohOKOHXkm3+gaBmGut3SRuu75xLd/RRaY6vqgh8NBYYk7+RW3u5AtzPQZG8F10LHkl0lAQ==}
 
   vm2@3.11.6:
     resolution: {integrity: sha512-35hVTcKieg7jJMntHhgWT5c2a1J2vmpXm66Xs1Z8ayHOJTj8rzIlXKzba3nO1Om/sonmnkjlAOMt9p8lYJXsWw==}
+=======
+  vm2@3.12.2:
+    resolution: {integrity: sha512-LRHt4xU6eXshlZEcSZVrTehLGxRDjHvjmFPGwEp4xGpZX61QzH6Xm9wK2nU7XAp36V1w2xILAL1LwxVkgD1Ipw==}
+>>>>>>> 74ab9c2b (fix(core): Update vm2 to 3.12.2 (#38823))
     engines: {node: '>=6.0'}
     hasBin: true
 
@@ -36738,7 +36747,7 @@ snapshots:
 
   vm-browserify@1.1.2: {}
 
-  vm2@3.11.6:
+  vm2@3.12.2:
     dependencies:
       acorn: 8.15.0
       acorn-walk: 8.3.4
