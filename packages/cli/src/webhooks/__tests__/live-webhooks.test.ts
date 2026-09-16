@@ -222,7 +222,7 @@ describe('LiveWebhooks', () => {
 			expect(webhookService.getWebhookMethods).toHaveBeenCalledWith(WEBHOOK_PATH);
 		});
 
-		it('should pass workflowData with activeVersion nodes/connections to executeWebhook', async () => {
+		it('should pass the active content and revision to executeWebhook', async () => {
 			const httpMethod: IHttpRequestMethods = 'POST';
 
 			const createWebhookNode = (id: string, name: string): INode => ({
@@ -282,6 +282,7 @@ describe('LiveWebhooks', () => {
 				activeVersionId: 'v1',
 				nodes: draftNodes,
 				connections: draftConnections,
+				versionId: 'v-draft',
 				staticData: {},
 				activeVersion,
 				shared: [{ role: 'workflow:owner', project: { id: 'project-1', projectRelations: [] } }],
@@ -303,6 +304,8 @@ describe('LiveWebhooks', () => {
 			expect(capturedWorkflowData!.nodes[0].id).toBe('webhook-node-active');
 			expect(capturedWorkflowData!.nodes[1].id).toBe('set-node-active');
 			expect(capturedWorkflowData!.connections).toEqual(activeConnections);
+			expect(capturedWorkflowData!.versionId).toBe(activeVersion.versionId);
+			expect(workflowEntity.versionId).toBe('v-draft');
 
 			// Verify it does NOT have draft nodes
 			expect(capturedWorkflowData!.nodes[0].id).not.toBe('webhook-node-draft');
@@ -357,7 +360,7 @@ describe('LiveWebhooks', () => {
 			Object.assign(workflowsConfig, { useWorkflowPublicationService: false });
 		});
 
-		it('should use published version nodes when executing webhook', async () => {
+		it('should use the published content and revision when executing webhook', async () => {
 			const activeNodes: INode[] = [
 				{
 					id: 'webhook-node-active',
@@ -375,6 +378,7 @@ describe('LiveWebhooks', () => {
 				active: true,
 				activeVersionId: 'v1',
 				isArchived: false,
+				versionId: 'v-draft',
 				staticData: {},
 				shared: [{ role: 'workflow:owner', project: { id: 'project-1', projectRelations: [] } }],
 			});
@@ -391,15 +395,19 @@ describe('LiveWebhooks', () => {
 			});
 
 			let capturedNodes: INode[] = [];
+			let capturedVersionId: string | undefined;
 			const request = setupExecuteWebhookMocks(workflowEntity, {
-				onExecuteWebhook: ({ workflow }) => {
+				onExecuteWebhook: ({ workflow, workflowData }) => {
 					capturedNodes = Object.values(workflow.nodes);
+					capturedVersionId = workflowData.versionId;
 				},
 			});
 
 			await liveWebhooks.executeWebhook(request, mock<Response>());
 
 			expect(capturedNodes[0].id).toBe('webhook-node-active');
+			expect(capturedVersionId).toBe(publishedVersion.versionId);
+			expect(workflowEntity.versionId).toBe('v-draft');
 		});
 	});
 
