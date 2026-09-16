@@ -172,12 +172,12 @@ describe('DELETE /tags/:id', () => {
 
 		expect(response.statusCode).toBe(200);
 
-		const { id, name, createdAt, updatedAt } = response.body;
-
-		expect(id).toEqual(tag.id);
-		expect(name).toEqual(tag.name);
-		expect(createdAt).toEqual(tag.createdAt.toISOString());
-		expect(updatedAt).toEqual(tag.updatedAt.toISOString());
+		expect(response.body).toStrictEqual({
+			id: tag.id,
+			name: tag.name,
+			createdAt: tag.createdAt.toISOString(),
+			updatedAt: tag.updatedAt.toISOString(),
+		});
 
 		// make sure the tag actually deleted from the db
 		const deletedTag = await Container.get(TagRepository).findOneBy({
@@ -185,15 +185,6 @@ describe('DELETE /tags/:id', () => {
 		});
 
 		expect(deletedTag).toBeNull();
-	});
-
-	test('should return only the public tag fields', async () => {
-		const tag = await createTag({});
-
-		const response = await authOwnerAgent.delete(`/tags/${tag.id}`);
-
-		expect(response.statusCode).toBe(200);
-		expect(Object.keys(response.body).sort()).toEqual(['createdAt', 'id', 'name', 'updatedAt']);
 	});
 
 	test('non-owner should not delete tag', async () => {
