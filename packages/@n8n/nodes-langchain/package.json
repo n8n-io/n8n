@@ -326,7 +326,7 @@
     "sanitize-html": "catalog:",
     "sqlite3": "5.1.7",
     "temp": "0.9.4",
-    "tmp-promise": "3.0.3",
+    "tmp-promise": "catalog:",
     "uuid": "catalog:",
     "vm2": "catalog:",
     "weaviate-client": "3.9.0",
