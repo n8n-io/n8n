@@ -1515,6 +1515,64 @@ export type InstanceAiThreadSourcePersisted =
 	| InstanceAiThreadSource
 	| typeof INSTANCE_AI_THREAD_SOURCE_FALLBACK;
 
+/**
+ * Pre-fill taxonomy for Instance AI messages. A pre-fill is message text n8n
+ * wrote, not text the user typed: the opener a failed execution, a credential
+ * modal, a template card or a suggestion chip puts in the composer. Analytics
+ * used to recover the type by string-matching the message body, which broke
+ * silently every time a catalog was reworded, so the client states it instead.
+ *
+ * Every new pre-fill surface must register a value here. The editor's send
+ * boundary requires an authorship and its catalogs must declare a type, so a
+ * surface that skips this fails typecheck rather than reporting untagged
+ * messages. Reported on `User sent builder message` as `prefill_type`.
+ *
+ * - `handoff_execution_error` — "Ask AI" on a failed execution or node error
+ * - `handoff_credential_setup` — credential help from the editor, credentials
+ *   list, or the workflow artifact in a live thread
+ * - `handoff_fix_with_ai` — the in-thread fix-with-AI offer after a failed run
+ * - `handoff_setup_panel_execute` — the setup panel's Execute button; lands
+ *   mid-thread rather than as a first message
+ * - `handoff_agent_change_request` — agent builder hand-off: a fix request or a
+ *   change request, dropped into the composer
+ * - `template_adjustment` — "start from this template and help me adapt it",
+ *   from the in-app template preview or an n8n.io deep link
+ * - `template_example` — a featured example card on the empty state
+ * - `suggestion_catalog` — a suggestion chip from any catalog; the entry id
+ *   travels separately and is already catalog-prefixed
+ * - `v1_opener` — the original empty-state openers ("I want to build a new
+ *   workflow…")
+ * - `workflow_attachment_opener` — a workflow opened in the assistant, which
+ *   sends an empty message and lets the editor context greet
+ * - `contextual_followup` — the follow-up the composer offers as a placeholder
+ *   after a build, accepted with Tab; lands mid-thread
+ */
+export const INSTANCE_AI_PREFILL_TYPES = [
+	'handoff_execution_error',
+	'handoff_credential_setup',
+	'handoff_fix_with_ai',
+	'handoff_setup_panel_execute',
+	'handoff_agent_change_request',
+	'template_adjustment',
+	'template_example',
+	'suggestion_catalog',
+	'v1_opener',
+	'workflow_attachment_opener',
+	'contextual_followup',
+] as const;
+export type InstanceAiPrefillType = (typeof INSTANCE_AI_PREFILL_TYPES)[number];
+
+/**
+ * Read-path fallback, mirroring `INSTANCE_AI_THREAD_SOURCE_FALLBACK`. Only
+ * reachable for a pre-fill a previous deploy stashed in the browser, which
+ * carries no type. Deliberately outside `INSTANCE_AI_PREFILL_TYPES` so a new
+ * surface cannot declare it.
+ */
+export const INSTANCE_AI_PREFILL_TYPE_FALLBACK = 'unknown';
+export type InstanceAiPrefillTypeReported =
+	| InstanceAiPrefillType
+	| typeof INSTANCE_AI_PREFILL_TYPE_FALLBACK;
+
 export const INSTANCE_AI_THREAD_ORIGINS = ['internal', 'external'] as const;
 export type InstanceAiThreadOrigin = (typeof INSTANCE_AI_THREAD_ORIGINS)[number];
 

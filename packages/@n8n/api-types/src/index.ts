@@ -490,6 +490,8 @@ export {
 	deriveInstanceAiSetupState,
 	INSTANCE_AI_THREAD_SOURCES,
 	INSTANCE_AI_THREAD_SOURCE_FALLBACK,
+	INSTANCE_AI_PREFILL_TYPES,
+	INSTANCE_AI_PREFILL_TYPE_FALLBACK,
 	instanceAiBuildModeSchema,
 	instanceAiPromptConfigurationSchema,
 	INSTANCE_AI_RUN_LIMIT_REASONS,
@@ -498,6 +500,8 @@ export {
 export type {
 	InstanceAiBuildMode,
 	InstanceAiPromptConfiguration,
+	InstanceAiPrefillType,
+	InstanceAiPrefillTypeReported,
 	InstanceAiThreadSource,
 	InstanceAiThreadSourcePersisted,
 	InstanceAiThreadOrigin,

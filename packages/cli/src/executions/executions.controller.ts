@@ -23,10 +23,10 @@ import { validateExecutionUpdatePayload } from './validation';
 export class ExecutionsController {
 	constructor(
 		private readonly executionService: ExecutionService,
-		private readonly executionListService: ExecutionListService,
 		private readonly enterpriseExecutionService: EnterpriseExecutionsService,
 		private readonly workflowSharingService: WorkflowSharingService,
 		private readonly license: License,
+		private readonly executionListService: ExecutionListService,
 	) {}
 
 	private async getAccessibleWorkflowIds(user: User, scope: Scope) {
@@ -35,7 +35,7 @@ export class ExecutionsController {
 
 	@Get('/', { middlewares: [parseRangeQuery] })
 	async getMany(req: ExecutionRequest.GetMany) {
-		const { rangeQuery: query } = req;
+		const { rangeQuery: query, cursor } = req;
 
 		query.user = req.user;
 		query.sharingOptions = await this.executionListService.buildSharingOptions('workflow:read');
@@ -46,7 +46,7 @@ export class ExecutionsController {
 		}
 
 		const [executions, concurrentExecutionsCount] = await Promise.all([
-			this.executionListService.listExecutionsForUI(query),
+			this.executionListService.listExecutionsForUI(query, cursor),
 			this.executionService.getConcurrentExecutionsCount(),
 		]);
 		await this.executionListService.addScopes(

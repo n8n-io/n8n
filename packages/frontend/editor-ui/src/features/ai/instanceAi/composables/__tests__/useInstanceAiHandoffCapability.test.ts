@@ -73,6 +73,7 @@ function expectCredentialThread(projectId: string) {
 	expect(mocks.startThread).toHaveBeenCalledWith(
 		projectId,
 		'credential question',
+		{ kind: 'prefill', prefillType: 'handoff_credential_setup' },
 		{ source: 'credential_edit', origin: 'internal' },
 		undefined,
 		undefined,

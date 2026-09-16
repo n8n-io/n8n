@@ -18,6 +18,12 @@ import { INSTANCE_AI_EMPTY_STATE_SUGGESTIONS_VERSION } from '../emptyStateSugges
 import { useInstanceAiPromptSuggestionsTelemetry } from '../instanceAiPromptSuggestions.telemetry';
 import type { ContextChip } from '../instanceAi.contextChip';
 import { useInstanceAiStore } from '../instanceAi.store';
+import {
+	USER_TYPED_MESSAGE,
+	type InstanceAiMessageAuthorship,
+	type InstanceAiPrefillType,
+	type InstanceAiPrefillTypeReported,
+} from '../prefills';
 import { mergeNodeSets } from '../utils/buildNodesAttachment';
 
 type AmendContext = { agentId: string; role: string } | null;
@@ -35,6 +41,8 @@ type SuggestionSelectionPayload = SuggestionPromptPayload & {
 	suggestionKind: 'prompt' | 'quick_example';
 	position: number;
 	telemetryPayload?: ITelemetryTrackProperties;
+	/** Required so a new catalog cannot emit suggestions that report as user-typed. */
+	prefillType: InstanceAiPrefillType;
 };
 type SelectedSuggestionDraft = SuggestionSelectionPayload & {
 	originalPrompt: string;
@@ -46,6 +54,12 @@ type SuggestionsCyclePayload = {
 	telemetryPayload?: ITelemetryTrackProperties;
 };
 type SuggestionPreviewPayload = BaseTextKey | { prompt: string } | null;
+type ActivePrefill = {
+	/** The text as the pre-fill wrote it, so an edit can be detected. */
+	text: string;
+	prefillType: InstanceAiPrefillTypeReported;
+	prefillId?: string;
+};
 const SUGGESTIONS_TRANSITION_DURATION = { enter: 450, leave: 320 };
 const DEFAULT_AUTOSIZE_ROWS = 3;
 const DEFAULT_MAX_AUTOSIZE_ROWS = 6;
@@ -96,8 +110,14 @@ const props = withDefaults(
 const emit = defineEmits<{
 	// `restoreDraft` puts the cleared draft back when the send fails. It returns
 	// false when the user has already typed something newer, so the caller can
-	// tell whether the draft was recovered.
-	submit: [message: string, attachments?: InstanceAiAttachment[], restoreDraft?: () => boolean];
+	// tell whether the draft was recovered. It also restores the pre-fill the
+	// draft came from, so a retry stays attributed to the surface that wrote it.
+	submit: [
+		message: string,
+		attachments: InstanceAiAttachment[] | undefined,
+		restoreDraft: () => boolean,
+		authorship: InstanceAiMessageAuthorship,
+	];
 	stop: [];
 	'dismiss-context-chip': [];
 	'workflow-preview': [workflowFile: string | null];
@@ -118,6 +138,12 @@ const chatInputRef = ref<InstanceType<typeof ChatInputBase> | null>(null);
 // Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
 const previewPrompt = ref<string | null>(null);
 const selectedSuggestionDraft = ref<SelectedSuggestionDraft | null>(null);
+/**
+ * What pre-filled the composer, so the submit can report who wrote the text.
+ * Separate from `selectedSuggestionDraft`, which is scoped to the suggestion
+ * experiment; this also covers template examples and hand-off drafts.
+ */
+const activePrefill = ref<ActivePrefill | null>(null);
 
 // Experiment cleanup: remove with instanceAiSplitEmptyState.
 const typedPreview = ref('');
@@ -171,6 +197,20 @@ function setTextIfEmpty(text: string) {
 	if (!inputText.value.trim()) inputText.value = text;
 }
 
+/**
+ * Put n8n-authored text in the composer. Pre-fills must come through here
+ * rather than `setText` so the submit can attribute them; `setText` and
+ * friends stay for restoring a draft the user wrote.
+ */
+function setPrefill(prefill: {
+	text: string;
+	prefillType: InstanceAiPrefillTypeReported;
+	prefillId?: string;
+}) {
+	inputText.value = prefill.text;
+	activePrefill.value = { ...prefill };
+}
+
 function clearTextIfMatches(text: string) {
 	if (inputText.value === text) inputText.value = '';
 }
@@ -183,6 +223,7 @@ defineExpose({
 	focus,
 	appendText,
 	setText,
+	setPrefill,
 	setTextIfEmpty,
 	clearTextIfMatches,
 	isDirty,
@@ -288,6 +329,7 @@ watch(
 watch(inputText, (text) => {
 	if (text.length === 0) {
 		selectedSuggestionDraft.value = null;
+		activePrefill.value = null;
 	}
 });
 
@@ -295,9 +337,27 @@ function emitSubmittedMessage(
 	message: string,
 	attachments: InstanceAiAttachment[] | undefined,
 	restoreDraft: () => boolean,
+	authorship: InstanceAiMessageAuthorship,
 ) {
 	previewPrompt.value = null;
-	emit('submit', message, attachments, restoreDraft);
+	emit('submit', message, attachments, restoreDraft, authorship);
+}
+
+/**
+ * The composer is the only place that knows whether the text came from a
+ * pre-fill, so it resolves authorship for every send that leaves it.
+ */
+function resolveAuthorship(
+	message: string,
+	prefill: ActivePrefill | null,
+): InstanceAiMessageAuthorship {
+	if (!prefill) return USER_TYPED_MESSAGE;
+	return {
+		kind: 'prefill',
+		prefillType: prefill.prefillType,
+		...(prefill.prefillId ? { prefillId: prefill.prefillId } : {}),
+		promptModified: message !== prefill.text.trim(),
+	};
 }
 
 function resetDraftComposer({ keepAttachments = false } = {}) {
@@ -326,19 +386,48 @@ function restorePlanFeedbackDraft(message: string) {
 	return true;
 }
 
+/**
+ * Puts a submitted draft back after a refused send. Returns false when the user
+ * has already typed something newer, so the caller knows the draft is gone.
+ *
+ * The pre-fill snapshot is restored with the text -- always after it, since an
+ * empty assignment clears the pre-fill -- so retrying stays attributed to the
+ * surface that wrote the draft rather than reporting as user-typed.
+ */
 function restoreSubmittedDraft(
 	message: string,
 	files: File[],
 	resources: InstanceAiResourceAttachment[],
+	prefill: ActivePrefill | null,
 ) {
-	if (isDirty()) return false;
+	const restorePrefill = () => {
+		activePrefill.value = prefill ? { ...prefill } : null;
+	};
+	if (isDirty()) {
+		// Dirty only because something was attached after the send: the text slot is
+		// still free, so give the draft back and leave the new attachments alone.
+		if (inputText.value.trim()) return false;
+		inputText.value = message;
+		restorePrefill();
+		return true;
+	}
 	inputText.value = message;
+	restorePrefill();
 	attachedFiles.value = [...files];
 	attachedResources.value = [...resources];
 	return true;
 }
 
-function submitComposerMessage(message: string, attachments?: InstanceAiAttachment[]) {
+/**
+ * `prefill` is the snapshot its caller took when it read the message, not live
+ * state: `handleSubmit` awaits file conversion in between, and the composer can
+ * be edited during that await.
+ */
+function submitComposerMessage(
+	message: string,
+	attachments: InstanceAiAttachment[] | undefined,
+	prefill: ActivePrefill | null,
+) {
 	if (!canSubmitMessage(message, attachments?.length ?? 0)) {
 		return;
 	}
@@ -348,7 +437,15 @@ function submitComposerMessage(message: string, attachments?: InstanceAiAttachme
 	// instead of being dropped on a send that could never carry it. A suggestion
 	// draft can reach here, but feedback on a plan is not a suggestion submission.
 	if (props.isAwaitingPlanReview) {
-		emitSubmittedMessage(message, undefined, () => restorePlanFeedbackDraft(message));
+		// Feedback on a plan is the user's own answer, so it reports as typed even
+		// when a pre-filled draft is what reached here -- the same reason this path
+		// skips the suggestion-submitted event below.
+		emitSubmittedMessage(
+			message,
+			undefined,
+			() => restorePlanFeedbackDraft(message),
+			USER_TYPED_MESSAGE,
+		);
 		resetDraftComposer({ keepAttachments: true });
 		return;
 	}
@@ -357,8 +454,11 @@ function submitComposerMessage(message: string, attachments?: InstanceAiAttachme
 
 	const submittedFiles = [...attachedFiles.value];
 	const submittedResources = [...attachedResources.value];
-	emitSubmittedMessage(message, attachments, () =>
-		restoreSubmittedDraft(message, submittedFiles, submittedResources),
+	emitSubmittedMessage(
+		message,
+		attachments,
+		() => restoreSubmittedDraft(message, submittedFiles, submittedResources, prefill),
+		resolveAuthorship(message, prefill),
 	);
 	resetDraftComposer();
 }
@@ -369,18 +469,28 @@ function submitComposerMessage(message: string, attachments?: InstanceAiAttachme
 function submitSuggestion(payload: SuggestionSelectionPayload) {
 	const prompt = getSuggestionPrompt(payload);
 	selectedSuggestionDraft.value = { ...payload, originalPrompt: prompt };
-	submitComposerMessage(prompt);
+	// Passed by argument, not staged in `activePrefill`: the composer is already
+	// empty on this path, so `resetDraftComposer` leaves `inputText` unchanged and
+	// the watcher never clears it -- a later typed message would inherit it.
+	submitComposerMessage(prompt, undefined, {
+		text: prompt,
+		prefillType: payload.prefillType,
+		prefillId: payload.suggestionId,
+	});
 }
 
 async function handleSubmit() {
 	const text = inputText.value.trim();
+	// Read with the text: the file conversion below awaits, and an edit during it
+	// would otherwise pair this message with the next pre-fill's authorship.
+	const prefill = activePrefill.value;
 	if (!canSubmitMessage(text, attachedFiles.value.length + attachedResources.value.length)) {
 		return;
 	}
 
 	// Plan feedback carries no attachments, so skip encoding the staged files.
 	if (props.isAwaitingPlanReview) {
-		submitComposerMessage(text);
+		submitComposerMessage(text, undefined, null);
 		return;
 	}
 
@@ -394,7 +504,7 @@ async function handleSubmit() {
 		: [];
 	const attachments = [...fileAttachments, ...attachedResources.value];
 
-	submitComposerMessage(text, attachments.length ? attachments : undefined);
+	submitComposerMessage(text, attachments.length ? attachments : undefined, prefill);
 }
 
 function removeResource(index: number) {
@@ -430,7 +540,8 @@ function handleStop() {
 
 function handleTabAutocomplete() {
 	if (!inputText.value && props.contextualSuggestion) {
-		inputText.value = props.contextualSuggestion;
+		// n8n wrote this follow-up, so accepting it is a pre-fill like any other.
+		setPrefill({ text: props.contextualSuggestion, prefillType: 'contextual_followup' });
 	}
 }
 
@@ -526,6 +637,11 @@ async function handleSuggestionInsert(payload: SuggestionSelectionPayload) {
 	selectedSuggestionDraft.value = {
 		...payload,
 		originalPrompt: prompt,
+	};
+	activePrefill.value = {
+		text: prompt,
+		prefillType: payload.prefillType,
+		prefillId: payload.suggestionId,
 	};
 	inputText.value = prompt;
 
