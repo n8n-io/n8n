@@ -4628,6 +4628,9 @@ importers:
       '@n8n/backend-test-utils':
         specifier: workspace:*
         version: link:../@n8n/backend-test-utils
+      '@n8n/oxlint-config':
+        specifier: workspace:*
+        version: link:../@n8n/oxlint-config
       '@n8n/playwright-janitor':
         specifier: workspace:*
         version: link:../testing/janitor
@@ -4760,6 +4763,12 @@ importers:
       openai:
         specifier: 'catalog:'
         version: 6.46.0(@aws-sdk/credential-provider-node@3.972.80)(@smithy/signature-v4@5.7.2)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76)
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
       supertest:
         specifier: ^7.1.1
         version: 7.1.1(supports-color@8.1.1)
