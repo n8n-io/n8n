@@ -121,9 +121,15 @@ export class SystemTaskRunner {
 		}
 	}
 
+	/**
+	 * Start the in-memory timers of this instance. Does nothing before
+	 * {@link init}, which starts them itself when this instance already leads.
+	 * An earlier takeover has no routed task to start, and marking the timers
+	 * started would skip the real start.
+	 */
 	@OnLeaderTakeover()
 	startTimers(): void {
-		if (!this.isShuttingDown && !this.timersStarted) {
+		if (this.initialized && !this.isShuttingDown && !this.timersStarted) {
 			this.timersStarted = true;
 			this.timerGeneration++;
 			this.inMemoryRunsController = new AbortController();

@@ -41,6 +41,7 @@ describe('SystemTaskRunner', () => {
 		jobs.findPayloadsByOwnerIds.mockResolvedValue([]);
 		const systemTaskOwner = new SystemTaskScheduledJobOwner(jobs);
 		const eventService = mock<EventService>();
+		const instanceSettings = mock<InstanceSettings>({ isLeader, instanceRole });
 		const runner = new SystemTaskRunner(
 			mock<Logger>({ scoped: vi.fn().mockReturnValue(logger) }),
 			metadata,
@@ -51,7 +52,7 @@ describe('SystemTaskRunner', () => {
 				generic: { timezone: 'UTC' },
 				scheduler: { enabledForSystemTasks },
 			}),
-			mock<InstanceSettings>({ isLeader, instanceRole }),
+			instanceSettings,
 			errorReporter,
 			eventService,
 		);
@@ -66,6 +67,7 @@ describe('SystemTaskRunner', () => {
 			errorReporter,
 			logger,
 			eventService,
+			instanceSettings,
 		};
 	}
 
@@ -992,6 +994,45 @@ describe('SystemTaskRunner', () => {
 
 			await runner.stopTimers();
 			expect(eventService.emit).toHaveBeenCalledWith('system-task-timers-stopped', {});
+		});
+
+		it('emits the one start on init when a takeover arrived before it', async () => {
+			const { runner, metadata, eventService } = setup();
+			metadata.register(DummySystemTask);
+
+			// A leader check can win leadership before the runner owns the registry,
+			// while the metrics collector is not listening yet.
+			runner.startTimers();
+			expect(emitted(eventService, 'system-task-timers-started')).toHaveLength(0);
+
+			await runner.init();
+
+			expect(emitted(eventService, 'system-task-timers-started')).toHaveLength(1);
+			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS);
+			expect(dummy.runCount).toBe(1);
+		});
+
+		it('stays stopped when an early takeover is followed by stepdown before init', async () => {
+			const { runner, metadata, eventService, instanceSettings } = setup();
+			dummy.runOnTakeover = true;
+			metadata.register(DummySystemTask);
+
+			runner.startTimers();
+			Object.assign(instanceSettings, { isLeader: false, instanceRole: 'follower' });
+			await runner.stopTimers();
+			await runner.init();
+			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS);
+
+			expect(emitted(eventService, 'system-task-timers-started')).toHaveLength(0);
+			expect(dummy.runCount).toBe(0);
+
+			Object.assign(instanceSettings, { isLeader: true, instanceRole: 'leader' });
+			runner.startTimers();
+
+			expect(emitted(eventService, 'system-task-timers-started')).toHaveLength(1);
+			expect(dummy.runCount).toBe(1);
+			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS);
+			expect(dummy.runCount).toBe(2);
 		});
 
 		it('emits no stop for a stepdown that a takeover outran', async () => {
