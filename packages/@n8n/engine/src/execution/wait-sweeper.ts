@@ -40,7 +40,7 @@ export class WaitSweeper {
 
 	async stop(): Promise<void> {
 		this.stopped = true;
-		if (this.timer) clearTimeout(this.timer);
+		clearTimeout(this.timer);
 		this.timer = undefined;
 		// A sweep mid-flight has already resumed rows; let it announce them.
 		await this.sweeping;
