@@ -7,6 +7,7 @@ import {
 	EVAL_COLLECTIONS_FLAG,
 	INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
 	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
+	INSTANCE_ACTIVITY_CONTEXT_FLAG,
 	INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
 	INSTANCE_AI_MCP_CONNECTIONS_FLAG,
 } from '@n8n/api-types';
@@ -27,6 +28,18 @@ import { N8N_VERSION } from '@/constants';
 const POSTHOG_GROUP_TYPE_INSTANCE = 'company';
 
 const FLAGS_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+
+/**
+ * How long an evaluation that answered nothing is held. Short, because it is not an answer — but
+ * not zero, or a per-event caller re-requests on every event while PostHog is unreachable.
+ */
+const EMPTY_FLAGS_CACHE_TTL_MS = 30 * 1000; // 30 seconds
+
+/**
+ * Slots the flag cache keeps. Expiry alone does not bound it: an expired entry is replaced only
+ * when that user is evaluated again, so an outage would leave one slot per user for good.
+ */
+export const FLAGS_CACHE_MAX_ENTRIES = 5_000;
 
 const SESSION_ID_MAX_LENGTH = 1000;
 
@@ -166,26 +179,50 @@ export class PostHogClient {
 		const { instanceId } = this.instanceSettings;
 		const fullId = [instanceId, user.id].join('#');
 
-		const cached = this.flagsCache.get(fullId);
+		// Keyed on every input the evaluation reads, not just the id. A slot holds the whole
+		// flag map, so two evaluations of one user that disagree about their signup date must
+		// not share one — the loser would be answered for a different person across every
+		// flag, not only the one the caller came for.
+		const cacheKey = [fullId, user.createdAt.getTime()].join('#');
+
+		const cached = this.flagsCache.get(cacheKey);
 		if (cached && cached.expiresAt > Date.now()) {
 			return cached;
 		}
 
-		const evaluatedFlags = await this.postHog.evaluateFlags(fullId, {
-			personProperties: {
-				created_at_timestamp: user.createdAt.getTime().toString(),
-				instance_id: instanceId,
-				version_cli: N8N_VERSION,
-			},
-			...(instanceId && { groups: { [POSTHOG_GROUP_TYPE_INSTANCE]: instanceId } }),
-		});
-		const data = this.resolveFeatureFlagData(evaluatedFlags);
-
-		if (Object.keys(data.featureFlags).length > 0) {
-			this.flagsCache.set(fullId, { ...data, expiresAt: Date.now() + FLAGS_CACHE_TTL_MS });
+		// Cached like an empty one rather than propagating uncached, or a per-event caller sends
+		// one request per event for as long as PostHog is unreachable.
+		let data: FeatureFlagData;
+		try {
+			const evaluatedFlags = await this.postHog.evaluateFlags(fullId, {
+				personProperties: {
+					created_at_timestamp: user.createdAt.getTime().toString(),
+					instance_id: instanceId,
+					version_cli: N8N_VERSION,
+				},
+				...(instanceId && { groups: { [POSTHOG_GROUP_TYPE_INSTANCE]: instanceId } }),
+			});
+			data = this.resolveFeatureFlagData(evaluatedFlags);
+		} catch {
+			data = { featureFlags: {}, featureFlagPayloads: {} };
 		}
 
+		// An answer is held for the full window; nothing-at-all only briefly, so a transient
+		// failure is not remembered as though PostHog had said "no flags".
+		const ttl =
+			Object.keys(data.featureFlags).length > 0 ? FLAGS_CACHE_TTL_MS : EMPTY_FLAGS_CACHE_TTL_MS;
+		this.rememberFlags(cacheKey, { ...data, expiresAt: Date.now() + ttl });
+
 		return data;
+	}
+
+	/** Stores a slot, dropping the oldest insertion once the cache is full. */
+	private rememberFlags(cacheKey: string, entry: CachedFlags): void {
+		if (!this.flagsCache.has(cacheKey) && this.flagsCache.size >= FLAGS_CACHE_MAX_ENTRIES) {
+			const oldest = this.flagsCache.keys().next();
+			if (!oldest.done) this.flagsCache.delete(oldest.value);
+		}
+		this.flagsCache.set(cacheKey, entry);
 	}
 
 	private resolveFeatureFlagData(evaluatedFlags: FeatureFlagEvaluations): FeatureFlagData {
@@ -221,6 +258,10 @@ export class PostHogClient {
 	 * 2. Per-feature booleans (`N8N_CONFIG_EVALS_ENABLED`, …) — force-enable
 	 *    only; `false` defers to PostHog. Applied last so the generic map
 	 *    cannot undo a feature an operator enabled explicitly.
+	 *
+	 * One deliberate exception: `N8N_ACTIVITY_LOG_ENABLED` yields to the generic
+	 * map, which is the only way to stop the read while the record accrues. Do
+	 * not copy that shape for a flag with no such kill switch.
 	 */
 	private applyEnvOverrides(data: FeatureFlagData): FeatureFlagData {
 		const overrides = { ...this.globalConfig.featureFlags.override };
@@ -254,6 +295,16 @@ export class PostHogClient {
 		if (this.globalConfig.instanceAi.folderExplorationEnabled) {
 			overrides[INSTANCE_AI_FOLDER_EXPLORATION_FLAG] =
 				INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT;
+		}
+
+		// One flag over both sides of instance-activity context, so the env var that turns the
+		// record on is also the one that turns reading it back on.
+		//
+		// Yields to an explicit override. Without the guard, setting this flag to `false`
+		// through `N8N_FEATURE_FLAG_OVERRIDES` would be silently ignored on any instance with
+		// the record on, which takes away the operator's only way to stop the read.
+		if (this.globalConfig.activityLog.enabled && !(INSTANCE_ACTIVITY_CONTEXT_FLAG in overrides)) {
+			overrides[INSTANCE_ACTIVITY_CONTEXT_FLAG] = true;
 		}
 
 		if (Object.keys(overrides).length === 0) {
