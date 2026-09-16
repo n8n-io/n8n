@@ -439,11 +439,28 @@ export function declaredToolArguments(node: INode): string[] {
 }
 
 /**
+ * Parameters that hold a tool's name on the versions that take it from the
+ * node's configuration instead of its name: `name` on Code Tool <= 1.1, Vector
+ * Store Tool <= 1 and Workflow Tool <= 2.1, `toolName` on a vector store in
+ * retrieve-as-tool mode < 1.3.
+ */
+const TOOL_NAME_PARAMETERS = ['name', 'toolName'];
+
+/**
  * The agent request that gives a tool its arguments.
  *
  * `rewireGraph` copies this onto the virtual Tool Executor, which looks the
- * arguments up by the tool's own name — `nodeNameToToolName` of the node,
- * because every tool node names its tool that way.
+ * arguments up by the tool's *runtime* name. That name is
+ * `nodeNameToToolName(node)` on current tool versions, but older ones read it
+ * from a parameter and Think 1 hardcodes `thinking_tool`. Guessing it would
+ * need every node's version rule, and those rules live in the nodes package.
+ *
+ * So the request names no tool. The Tool Executor runs the only tool the
+ * rewired graph connects to it when the request leaves the name empty, which
+ * takes the runtime name out of the decision to run at all. The arguments are
+ * keyed under every name the tool can have, so the lookup finds them whichever
+ * one it uses. A name this cannot know (Think 1) costs the arguments, not the
+ * run.
  *
  * A bare string is a valid argument set: a tool with one free-text input
  * (Wikipedia, Code Tool, a vector store used as a tool) takes the query
@@ -453,10 +470,18 @@ export function buildToolAgentRequest(args: {
 	target: INode;
 	toolArguments?: Record<string, unknown> | string;
 }): AiAgentRequest {
-	const name = nodeNameToToolName(args.target.name);
+	const { target } = args;
+	const toolArguments = args.toolArguments ?? {};
+
+	const names = new Set<string>([nodeNameToToolName(target.name), target.name]);
+	for (const parameter of TOOL_NAME_PARAMETERS) {
+		const configured = target.parameters?.[parameter];
+		if (typeof configured === 'string' && configured !== '') names.add(configured);
+	}
+
 	return {
-		query: { [name]: args.toolArguments ?? {} },
-		tool: { name },
+		query: Object.fromEntries([...names].map((name) => [name, toolArguments])),
+		tool: { name: '' },
 	};
 }
 

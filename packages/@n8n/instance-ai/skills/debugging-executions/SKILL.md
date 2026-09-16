@@ -159,10 +159,15 @@ The tool's own arguments come from `toolArguments` — the values the agent woul
 normally decide:
 
 ```
-executions(action="run-step", workflowId, nodeName="Create Ticket Tool",
+executions(action="run-step", workflowId, nodeName="Search Tickets Tool",
            reuseExecutionId=<the failed execution>,
-           toolArguments={"title": "Login fails", "priority": "high"})
+           toolArguments={"query": "login fails", "status": "open"})
 ```
+
+The example targets a **read** tool on purpose. The write rule above holds here
+too, and a tool hides the write behind a friendly name: a step run on a "Create
+Ticket" tool creates the ticket again, and `toolArguments` does not change that.
+Only run one when the user has accepted a second write.
 
 Use the argument names from the node's `$fromAI` calls, which
 `workflows(action="get-as-code")` shows. Pass a plain string instead for a tool

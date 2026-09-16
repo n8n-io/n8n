@@ -530,30 +530,56 @@ describe('tool arguments', () => {
 	});
 
 	describe('buildToolAgentRequest', () => {
-		it('keys the arguments by the tool name the Tool Executor looks up', () => {
-			// Every tool node names its tool with `nodeNameToToolName`, which is what
-			// the Tool Executor matches against, so a space becomes an underscore.
+		it('names no tool, so the runtime name cannot stop the tool from running', () => {
+			// An empty name makes the Tool Executor run the only tool the rewired
+			// graph connects to it. Naming one risks a miss: older tool versions read
+			// the runtime name from a parameter, and Think 1 hardcodes its own.
+			expect(buildToolAgentRequest({ target: node('Calculator') }).tool).toEqual({ name: '' });
+		});
+
+		it('keys the arguments by every name the tool can have', () => {
 			expect(
 				buildToolAgentRequest({
 					target: node('Create Ticket'),
 					toolArguments: { title: 'Broken login' },
-				}),
+				}).query,
 			).toEqual({
-				query: { Create_Ticket: { title: 'Broken login' } },
-				tool: { name: 'Create_Ticket' },
+				// `nodeNameToToolName` of the node, which current versions use...
+				Create_Ticket: { title: 'Broken login' },
+				// ...and the node name itself, which the lookup falls back to.
+				'Create Ticket': { title: 'Broken login' },
 			});
+		});
+
+		it("adds a legacy version's configured name", () => {
+			// Code Tool <= 1.1, Vector Store Tool <= 1 and Workflow Tool <= 2.1 read
+			// the tool name from `name`.
+			const target = node('Search Tickets');
+			target.parameters = { name: 'search_tickets' };
+
+			expect(buildToolAgentRequest({ target, toolArguments: { q: 'login' } }).query).toEqual({
+				Search_Tickets: { q: 'login' },
+				'Search Tickets': { q: 'login' },
+				search_tickets: { q: 'login' },
+			});
+		});
+
+		it("adds a retrieve-as-tool vector store's configured name", () => {
+			const target = node('Docs');
+			target.parameters = { toolName: 'company_docs' };
+
+			expect(buildToolAgentRequest({ target }).query).toEqual({ Docs: {}, company_docs: {} });
 		});
 
 		it('passes a bare string through for a tool with one free-text input', () => {
 			expect(
-				buildToolAgentRequest({ target: node('Wikipedia'), toolArguments: 'Napoleon' }),
-			).toEqual({ query: { Wikipedia: 'Napoleon' }, tool: { name: 'Wikipedia' } });
+				buildToolAgentRequest({ target: node('Wikipedia'), toolArguments: 'Napoleon' }).query,
+			).toEqual({ Wikipedia: 'Napoleon' });
 		});
 
 		it('sends an empty argument set when the caller supplies none', () => {
-			expect(buildToolAgentRequest({ target: node('Calculator') })).toEqual({
-				query: { Calculator: {} },
-				tool: { name: 'Calculator' },
+			expect(buildToolAgentRequest({ target: node('Calculator') }).query).toEqual({
+				Calculator: {},
 			});
 		});
 	});

@@ -5776,11 +5776,12 @@ describe('createExecutionAdapter runStep()', () => {
 				toolArguments: { input: '2 + 2' },
 			});
 
-			// `rewireGraph` copies this onto the virtual Tool Executor, which looks
-			// the arguments up by the tool's name.
+			// `rewireGraph` copies this onto the virtual Tool Executor, which runs the
+			// only connected tool when the request names none, and looks the arguments
+			// up by the tool's runtime name.
 			expect(runData.agentRequest).toEqual({
 				query: { Calculator: { input: '2 + 2' } },
-				tool: { name: 'Calculator' },
+				tool: { name: '' },
 			});
 		});
 
@@ -5789,7 +5790,7 @@ describe('createExecutionAdapter runStep()', () => {
 
 			expect(runData.agentRequest).toEqual({
 				query: { Calculator: {} },
-				tool: { name: 'Calculator' },
+				tool: { name: '' },
 			});
 		});
 
@@ -5888,7 +5889,7 @@ describe('createExecutionAdapter runStep()', () => {
 				// worker rebuilds the run from `execution.data`.
 				expect(runData.executionData.manualData.agentRequest).toEqual({
 					query: { Calculator: { input: '2 + 2' } },
-					tool: { name: 'Calculator' },
+					tool: { name: '' },
 				});
 			} finally {
 				process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = previous;
