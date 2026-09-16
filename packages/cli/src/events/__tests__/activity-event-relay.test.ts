@@ -57,8 +57,12 @@ describe('ActivityEventRelay', () => {
 		{
 			rolloutFlag = false,
 			diagnostics = true,
-			flagOverride = false,
-		}: { rolloutFlag?: boolean; diagnostics?: boolean; flagOverride?: boolean } = {},
+			flagOverride,
+		}: {
+			rolloutFlag?: boolean;
+			diagnostics?: boolean;
+			flagOverride?: boolean | { value: boolean };
+		} = {},
 	) => {
 		postHogClient.getFeatureFlags.mockResolvedValue(
 			rolloutFlag ? { '114_instance_activity_context': true } : {},
@@ -74,7 +78,8 @@ describe('ActivityEventRelay', () => {
 			mock<GlobalConfig>({
 				diagnostics: { enabled: diagnostics },
 				featureFlags: {
-					override: flagOverride ? { '114_instance_activity_context': true } : {},
+					override:
+						flagOverride === undefined ? {} : { '114_instance_activity_context': flagOverride },
 				},
 			}),
 			postHogClient,
@@ -232,6 +237,24 @@ describe('ActivityEventRelay', () => {
 			await emitDeletion();
 
 			expect(activityEventRepository.record).not.toHaveBeenCalled();
+		});
+
+		/** The value decides, not the key: an override that turns the flag off rules it out too. */
+		it('registers no listeners when the flag is overridden off', async () => {
+			const onSpy = vi.spyOn(eventService, 'on');
+
+			relayWith(false, { diagnostics: false, flagOverride: false });
+
+			expect(onSpy).not.toHaveBeenCalled();
+		});
+
+		/** An override can carry a payload beside its value, so the value can sit a level down. */
+		it('registers listeners for an override that holds its value in an object', async () => {
+			const onSpy = vi.spyOn(eventService, 'on');
+
+			relayWith(false, { diagnostics: false, flagOverride: { value: true } });
+
+			expect(onSpy).toHaveBeenCalled();
 		});
 	});
 

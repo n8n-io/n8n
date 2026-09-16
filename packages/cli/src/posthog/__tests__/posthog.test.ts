@@ -258,6 +258,40 @@ describe('PostHog', () => {
 			}
 		});
 
+		/**
+		 * Two callers racing a cold key used to open an evaluation each, and a failure landing
+		 * second replaced the other's answer with a short-lived empty entry.
+		 */
+		it('makes one request for two callers racing the same key', async () => {
+			const requests: Array<{
+				resolve: (value: unknown) => void;
+				reject: (reason: Error) => void;
+			}> = [];
+			(PostHog.prototype.evaluateFlags as Mock).mockImplementation(
+				async () =>
+					await new Promise((resolve, reject) => {
+						requests.push({ resolve, reject });
+					}),
+			);
+
+			const flags = { 'test-flag': true };
+			const ph = new PostHogClient(instanceSettings, globalConfig);
+			await ph.init();
+
+			const first = ph.getFeatureFlags({ id: userId, createdAt });
+			const second = ph.getFeatureFlags({ id: userId, createdAt });
+			await vi.waitFor(() => expect(requests).not.toHaveLength(0));
+
+			requests[0].resolve(mockEvaluatedFlags(flags));
+			// Anything else that raced answers after the success, and must not replace it.
+			requests[1]?.reject(new Error('posthog is down'));
+
+			expect(await first).toEqual(flags);
+			expect(await second).toEqual(flags);
+			expect(await ph.getFeatureFlags({ id: userId, createdAt })).toEqual(flags);
+			expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledTimes(1);
+		});
+
 		/** A throw is nothing-at-all too, so it must not cost a request per call either. */
 		it('holds a failed evaluation the same way', async () => {
 			(PostHog.prototype.evaluateFlags as Mock).mockRejectedValue(new Error('posthog is down'));
