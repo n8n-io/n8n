@@ -30,3 +30,13 @@ export type AddressFixedCollection = {
 		addressFields: object;
 	};
 };
+
+export type FreshserviceValidationError = {
+	field?: string;
+	message?: string;
+};
+
+export type FreshserviceErrorResponse = {
+	description?: string;
+	errors?: FreshserviceValidationError[];
+};

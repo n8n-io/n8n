@@ -13,10 +13,24 @@ import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 import type {
 	AddressFixedCollection,
 	FreshserviceCredentials,
+	FreshserviceErrorResponse,
 	LoadedResource,
 	LoadedUser,
 	RolesParameter,
 } from './types';
+
+/**
+ * Read the Freshservice error payload. The API does not always send one, and a
+ * transport-level failure (DNS, TLS, timeout) has no payload at all.
+ */
+function getFreshserviceError(error: unknown): FreshserviceErrorResponse | undefined {
+	if (typeof error !== 'object' || error === null) return undefined;
+
+	const body = (error as { error?: unknown }).error;
+	if (typeof body !== 'object' || body === null) return undefined;
+
+	return body as FreshserviceErrorResponse;
+}
 
 export async function freshserviceApiRequest(
 	this: IExecuteFunctions | IHookFunctions | ILoadOptionsFunctions,
@@ -50,12 +64,15 @@ export async function freshserviceApiRequest(
 	try {
 		return await this.helpers.request(options);
 	} catch (error) {
-		if (error.error.description === 'Validation failed') {
-			const numberOfErrors = error.error.errors.length;
+		const freshserviceError = getFreshserviceError(error);
+		const validationErrors = freshserviceError?.errors;
+
+		if (freshserviceError?.description === 'Validation failed' && Array.isArray(validationErrors)) {
+			const numberOfErrors = validationErrors.length;
 			const message = 'Please check your parameters';
 
 			if (numberOfErrors === 1) {
-				const [validationError] = error.error.errors;
+				const [validationError] = validationErrors;
 				throw new NodeApiError(this.getNode(), error as JsonObject, {
 					message,
 					description: `For ${validationError.field}: ${validationError.message}`,
