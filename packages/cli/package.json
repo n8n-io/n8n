@@ -65,7 +65,9 @@
     "dist"
   ],
   "janitor": {
-    "ignoreDepsForScoping": ["n8n-editor-ui"]
+    "ignoreDepsForScoping": [
+      "n8n-editor-ui"
+    ]
   },
   "devDependencies": {
     "@faker-js/faker": "^8.0.2",
