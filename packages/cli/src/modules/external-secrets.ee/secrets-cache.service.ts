@@ -6,7 +6,7 @@ import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { ExternalSecretsConfig } from './external-secrets.config';
 import { ExternalSecretsProviderRegistry } from './provider-registry.service';
 import type { SecretsProvider } from './types';
-import { withTimeout } from './with-timeout';
+import { TimeoutError, withTimeout } from './with-timeout';
 
 /**
  * Manages secrets caching and refresh from providers
@@ -50,6 +50,12 @@ export class ExternalSecretsSecretsCache {
 		try {
 			await this.updateProvider(name, provider);
 		} catch (error) {
+			if (error instanceof TimeoutError) {
+				this.logger.warn(`Secrets refresh for provider ${name} is still running`, {
+					error,
+				});
+				return;
+			}
 			this.logger.error(`Error refreshing secrets from provider ${name}`, {
 				error: ensureError(error),
 			});

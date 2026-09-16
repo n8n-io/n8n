@@ -1492,6 +1492,41 @@ describe('ExternalSecretsManager', () => {
 					}
 				});
 
+				it('should not retry a slow but healthy first pull', async () => {
+					const refreshTimeoutMs = Container.get(ExternalSecretsConfig).refreshTimeout * 1000;
+
+					class SlowPullProvider extends DummyProvider {
+						updates = 0;
+
+						override async update(): Promise<void> {
+							this.updates++;
+							await new Promise<void>((r) => setTimeout(r, refreshTimeoutMs + 1000));
+							await super.update();
+						}
+					}
+
+					const { manager, providerRegistry } = createProviderReloadTestManager({
+						providerClass: SlowPullProvider,
+						connections: connectionsFor('my-vault'),
+					});
+
+					const initPromise = manager.init();
+					await vi.advanceTimersByTimeAsync(refreshTimeoutMs);
+					await initPromise;
+
+					try {
+						const provider = providerRegistry.get('my-vault') as SlowPullProvider;
+						expect(manager.getSecret('my-vault', 'test1')).toBeUndefined();
+
+						await vi.advanceTimersByTimeAsync(1000 + EXTERNAL_SECRETS_INITIAL_BACKOFF);
+
+						expect(provider.updates).toBe(1);
+						expect(manager.getSecret('my-vault', 'test1')).toBe('value1');
+					} finally {
+						manager.shutdown();
+					}
+				});
+
 				it('should retry a failed hydration without reconnecting', async () => {
 					class FirstUpdateFailsProvider extends DummyProvider {
 						connects = 0;

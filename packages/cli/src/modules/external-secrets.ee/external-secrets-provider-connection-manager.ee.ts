@@ -11,6 +11,7 @@ import { ExternalSecretsProviderRegistry } from './provider-registry.service';
 import { ExternalSecretsRetryManager } from './retry-manager.service';
 import { ExternalSecretsSecretsCache } from './secrets-cache.service';
 import type { SecretsProvider, SecretsProviderSettings } from './types';
+import { TimeoutError } from './with-timeout';
 
 export interface ProviderConnectionInput {
 	providerKey: string;
@@ -179,6 +180,12 @@ export class ExternalSecretsProviderConnectionManager {
 			await this.secretsCache.updateProvider(providerKey, provider);
 			return { success: true };
 		} catch (error) {
+			// A slow pull is not a failed one: it keeps running and fills the cache when it lands.
+			// Only a pull that rejects earns a retry.
+			if (error instanceof TimeoutError) {
+				this.logger.debug(`Hydration of provider ${providerKey} continues in the background`);
+				return { success: true };
+			}
 			return { success: false, error: ensureError(error) };
 		}
 	}

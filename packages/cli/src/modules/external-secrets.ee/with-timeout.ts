@@ -1,5 +1,8 @@
 import { OperationalError } from 'n8n-workflow';
 
+/** The work outlived the wait. It is still running, only nobody waits for it anymore. */
+export class TimeoutError extends OperationalError {}
+
 /**
  * Rejects with `message` if `work` has not settled after `ms`.
  *
@@ -9,7 +12,7 @@ import { OperationalError } from 'n8n-workflow';
 export async function withTimeout<T>(work: Promise<T>, ms: number, message: string): Promise<T> {
 	let timeoutId: NodeJS.Timeout | undefined;
 	const timeout = new Promise<never>((_, reject) => {
-		timeoutId = setTimeout(() => reject(new OperationalError(message)), ms);
+		timeoutId = setTimeout(() => reject(new TimeoutError(message)), ms);
 	});
 
 	try {
