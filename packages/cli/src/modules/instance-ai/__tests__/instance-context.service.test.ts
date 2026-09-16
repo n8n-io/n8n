@@ -85,6 +85,8 @@ describe('InstanceContextService', () => {
 		workflowRepository = mock<WorkflowRepository>();
 
 		activityEventRepository.findFeed.mockResolvedValue([]);
+		// An id space that never regressed, which is every case but the one that tests it.
+		activityEventRepository.findNewestEntry.mockResolvedValue(null);
 		executionRepository.summariseRunsForProjects.mockResolvedValue([]);
 		workflowRepository.findRecentForProjects.mockResolvedValue({ total: 0, workflows: [] });
 
@@ -182,8 +184,13 @@ describe('InstanceContextService', () => {
 				activitySeen: [500],
 				runsThrough: new Date(NOW.getTime() - 60_000).toISOString(),
 			};
-			// A credential row below the old floor: readable now, and never shown before.
-			activityEventRepository.findFeed.mockResolvedValue([
+			// Arrivals first, and empty: `afterId: 500` cannot return a row below the mark, so
+			// answering both reads from one page would let the arrival leg supply the entry and
+			// the assertion below would hold even if the reopened band read nothing.
+			activityEventRepository.findFeed.mockResolvedValueOnce([]);
+			// A credential row below the old floor: readable now, and never shown before. Only
+			// the reopened band can reach it.
+			activityEventRepository.findFeed.mockResolvedValueOnce([
 				entry({
 					id: 320,
 					category: 'credential',
@@ -202,6 +209,8 @@ describe('InstanceContextService', () => {
 			});
 
 			expect(blockOf(built)).toContain('Slack account');
+			// Once. The two reads cover disjoint id ranges, so a row cannot arrive down both.
+			expect(blockOf(built).match(/^\[320\]/gm)).toHaveLength(1);
 
 			// Still a delta: the inventory and the run window are untouched, because a scope
 			// change says nothing about what exists or what has run.
@@ -529,16 +538,255 @@ describe('InstanceContextService', () => {
 					expect.objectContaining({ afterId: 500 }),
 				);
 				// Floored on what an earlier turn cut and closed at the mark, so the span holds only
-				// what could still legitimately appear.
+				// what could still legitimately appear. Read to the de-duplication budget rather
+				// than to the window's own fetch limit: the band is newest-first, and turns that
+				// cut nothing leave the floor put while the mark runs on, so a smaller limit would
+				// drop the oldest end of the span — where a late commit's low id sits.
 				expect(activityEventRepository.findFeed).toHaveBeenNthCalledWith(
 					2,
-					expect.objectContaining({ afterId: 400, beforeId: 500, limit: 160 }),
+					expect.objectContaining({ afterId: 400, beforeId: 500, limit: 200 }),
 				);
 				expect(blockOf(built)).toContain('[498]');
 				// The band deliberately re-reads what the mark already covered, so de-duplicating
 				// against the seen ids is what stops an entry appearing in two blocks.
 				expect(blockOf(built)).not.toContain('[499]');
 				expect(blockOf(built)).not.toContain('Shown already');
+			});
+
+			/**
+			 * Reopening the window must not reopen what was already shown. A turn that cuts
+			 * re-floors, and the shown ids the floor used to exclude have to survive that, because
+			 * the next scope change lowers the floor back under them.
+			 *
+			 * Three real turns, chained on the cursor each one returns: "shown, then forgotten" is
+			 * the output of a prior cut, so a hand-written cursor cannot express it and a test
+			 * built on one passes with the bug present.
+			 */
+			it('does not re-show entries a re-floored turn stopped remembering', async () => {
+				const service = serviceWith();
+				let table = [3, 2, 1];
+				activityEventRepository.findFeed.mockImplementation(async (query) => {
+					const ids = table
+						.filter((id) => (query.afterId === undefined ? true : id > query.afterId))
+						.filter((id) => (query.beforeId === undefined ? true : id < query.beforeId))
+						.slice(0, query.limit);
+					return ids.map((id) => entry({ id, resourceId: `wf-${id}` }));
+				});
+				const idsIn = (block: string) => block.match(/^\[\d+\]/gm) ?? [];
+
+				// The first two turns cannot read credentials, which is what advances a floor past
+				// rows the thread was never allowed to see.
+				userHasScopes.mockImplementation(async (...args: unknown[]) => {
+					const scopes = args[1];
+					return !(Array.isArray(scopes) && scopes.includes('credential:read'));
+				});
+
+				const first = await service.buildBlock({
+					user: USER,
+					projectId: PROJECT_ID,
+					cursor: null,
+					now: NOW,
+					enabled: true,
+				});
+				expect(idsIn(blockOf(first))).toEqual(['[3]', '[2]', '[1]']);
+
+				// More than a window arrives, so this turn cuts and re-floors above 3, 2 and 1.
+				table = [...Array.from({ length: 41 }, (_, index) => 44 - index), 3, 2, 1];
+				const second = await service.buildBlock({
+					user: USER,
+					projectId: PROJECT_ID,
+					cursor: cursorOf(first),
+					now: NOW,
+					enabled: true,
+				});
+				expect(cursorOf(second).activityFloor).toBe(4);
+
+				// Credential access restored, so the floor drops back below the rows shown first.
+				userHasScopes.mockResolvedValue(true);
+				const third = await service.buildBlock({
+					user: USER,
+					projectId: PROJECT_ID,
+					cursor: cursorOf(second),
+					now: NOW,
+					enabled: true,
+				});
+
+				// Id 4 alone: cut by the second turn and never shown, so it is genuinely owed.
+				expect(idsIn(blockOf(third))).toEqual(['[4]']);
+			});
+
+			/**
+			 * A floor only moves when a turn cuts, so turns that each fit their window leave it at
+			 * 0 while the mark runs on — and the band then spans far more ids than one window. The
+			 * band is newest-first, so a limit below that span silently drops its oldest end, which
+			 * is exactly where a late commit's low id sits. Reads through a fake that honours the
+			 * bounds and the limit, because a canned page cannot show a row being cut off.
+			 */
+			it('reaches the oldest end of a band that outgrew one window', async () => {
+				const service = serviceWith();
+				// Five 40-row turns that never cut: every id 1..200 was shown, and the floor is
+				// still 0. Id 10 is the straggler, committed only now.
+				const shownIds = Array.from({ length: 200 }, (_, index) => 200 - index).filter(
+					(id) => id !== 10,
+				);
+				const table = [...shownIds, 10].sort((a, b) => b - a);
+				activityEventRepository.findFeed.mockImplementation(async (query) => {
+					const ids = table
+						.filter((id) => (query.afterId === undefined ? true : id > query.afterId))
+						.filter((id) => (query.beforeId === undefined ? true : id < query.beforeId))
+						.slice(0, query.limit);
+					return ids.map((id) => entry({ id, resourceId: `wf-${id}` }));
+				});
+
+				const built = await service.buildBlock({
+					user: USER,
+					projectId: PROJECT_ID,
+					cursor: {
+						activityMark: 200,
+						activityFloor: 0,
+						activityCategories: ['workflow', 'credential'],
+						activitySeen: shownIds,
+						runsThrough: new Date(NOW.getTime() - 60_000).toISOString(),
+					},
+					now: NOW,
+					enabled: true,
+				});
+
+				expect(blockOf(built)).toContain('[10]');
+				// The straggler alone: everything else in the span is already in `activitySeen`.
+				expect(blockOf(built).match(/^\[\d+\]/gm)).toHaveLength(1);
+			});
+
+			/**
+			 * `id` is a rowid alias on SQLite, so emptying the table restarts it and every new row
+			 * lands below a stored mark. The floor would then hide them for good, because the ids
+			 * never climb back to where the mark is.
+			 */
+			it('starts the entry read over when the ids fell below the stored mark', async () => {
+				const service = serviceWith();
+				// The feed was emptied and refilled: ids 1..3 are all that exist now.
+				const table = [3, 2, 1];
+				activityEventRepository.findNewestEntry.mockResolvedValue({
+					id: 3,
+					// Written since the last block, which is what tells a renumbered feed from a
+					// quiet one: by id alone both look like nothing happened.
+					createdAt: new Date(NOW.getTime() - 30_000),
+				});
+				activityEventRepository.findFeed.mockImplementation(async (query) => {
+					const ids = table
+						.filter((id) => (query.afterId === undefined ? true : id > query.afterId))
+						.filter((id) => (query.beforeId === undefined ? true : id < query.beforeId))
+						.slice(0, query.limit);
+					return ids.map((id) => entry({ id, resourceId: `wf-${id}` }));
+				});
+
+				const built = await service.buildBlock({
+					user: USER,
+					projectId: PROJECT_ID,
+					cursor: {
+						activityMark: 5_000,
+						// High enough that the floor alone would hide every surviving row.
+						activityFloor: 4_900,
+						activityCategories: ['workflow', 'credential'],
+						activitySeen: [5_000, 4_999],
+						runsThrough: new Date(NOW.getTime() - 60_000).toISOString(),
+					},
+					now: NOW,
+					enabled: true,
+				});
+
+				expect(blockOf(built)).toContain('[3]');
+				expect(blockOf(built)).toContain('[1]');
+				// The mark comes back down to the surviving id space instead of staying stranded.
+				expect(cursorOf(built).activityMark).toBe(3);
+				expect(cursorOf(built).activitySeen).toEqual([3, 2, 1]);
+				// Still a delta: a renumbering says nothing about the estate or what has run.
+				expect(workflowRepository.findRecentForProjects).not.toHaveBeenCalled();
+			});
+
+			/** A mark below the newest id is the normal case and must not restart anything. */
+			it('leaves a healthy cursor alone when nothing new arrived', async () => {
+				const service = serviceWith();
+				activityEventRepository.findNewestEntry.mockResolvedValue({
+					id: 500,
+					createdAt: new Date(NOW.getTime() - 10 * 60_000),
+				});
+
+				await service.buildBlock({
+					user: USER,
+					projectId: PROJECT_ID,
+					cursor,
+					now: NOW,
+					enabled: true,
+				});
+
+				// Two reads, not three: no cold re-read, and the band kept its floor.
+				expect(activityEventRepository.findFeed).toHaveBeenCalledTimes(2);
+				expect(activityEventRepository.findFeed).toHaveBeenNthCalledWith(
+					2,
+					expect.objectContaining({ afterId: 400, beforeId: 500 }),
+				);
+			});
+
+			/**
+			 * A narrowed scope reads like a renumbering to anything that only compares ids: the
+			 * mark was set by a row this turn may no longer see, so the highest id left to it is
+			 * legitimately lower. Restarting on that would re-offer rows an earlier block already
+			 * carried, and walk the mark backwards.
+			 *
+			 * Two real turns, because the cursor has to be the output of the wider one to carry
+			 * categories the narrower turn cannot read.
+			 */
+			it('does not restart the read when the scope narrowed rather than the ids resetting', async () => {
+				const service = serviceWith();
+				const rows = [
+					{ id: 20, category: 'credential' as const },
+					{ id: 10, category: 'workflow' as const },
+				];
+				// Honours the category scope, which is the whole point: both reads are narrowed.
+				const visible = (query: {
+					categories?: string[];
+					afterId?: number;
+					beforeId?: number;
+				}) =>
+					rows
+						.filter((row) => (query.categories ?? []).includes(row.category))
+						.filter((row) => (query.afterId === undefined ? true : row.id > query.afterId))
+						.filter((row) => (query.beforeId === undefined ? true : row.id < query.beforeId));
+				activityEventRepository.findFeed.mockImplementation(async (query) =>
+					visible(query).map((row) =>
+						entry({ id: row.id, category: row.category, resourceType: row.category }),
+					),
+				);
+
+				const wide = await service.buildBlock({
+					user: USER,
+					projectId: PROJECT_ID,
+					cursor: null,
+					now: NOW,
+					enabled: true,
+				});
+				expect(blockOf(wide).match(/^\[\d+\]/gm)).toEqual(['[20]', '[10]']);
+
+				// Credential access revoked, and nothing written since.
+				userHasScopes.mockImplementation(async (...args: unknown[]) => {
+					const scopes = args[1];
+					return !(Array.isArray(scopes) && scopes.includes('credential:read'));
+				});
+				const narrowed = await service.buildBlock({
+					user: USER,
+					projectId: PROJECT_ID,
+					cursor: cursorOf(wide),
+					now: NOW,
+					enabled: true,
+				});
+
+				// Nothing new is readable, so there is nothing to say — and in particular id 10,
+				// already shown above, is not offered again.
+				expect(narrowed).toMatchObject({ state: 'absent', reason: 'empty' });
+				// The band still reaches id 10, so the recovery is never even considered: a
+				// narrowing leaves the reader's own older rows in view, and a renumbering does not.
+				expect(activityEventRepository.findNewestEntry).not.toHaveBeenCalled();
 			});
 
 			/**

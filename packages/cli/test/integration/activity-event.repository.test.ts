@@ -87,6 +87,100 @@ describe('ActivityEventRepository', () => {
 		expect(entry.data).toEqual({ truncated: true });
 	});
 
+	/**
+	 * Read against a real database on purpose. What a reader needs from this is whether a stored
+	 * id is still plausible, and that depends on how the driver allocates ids after the table is
+	 * emptied — which a mocked entity manager cannot tell anyone.
+	 */
+	describe('findNewestEntry', () => {
+		let otherProject: Project;
+
+		beforeAll(async () => (otherProject = await createTeamProject()));
+
+		async function record(projectId: string, category: 'workflow' | 'credential' = 'workflow') {
+			await repository.record({ category, action: 'saved', projectId });
+		}
+
+		it('returns nothing for a scope that holds no entries', async () => {
+			await record(project.id);
+
+			expect(
+				await repository.findNewestEntry({
+					projectIds: [otherProject.id],
+					categories: ['workflow', 'credential'],
+				}),
+			).toBeNull();
+		});
+
+		it('returns the newest id in scope, ignoring entries outside it', async () => {
+			await record(project.id);
+			await record(otherProject.id);
+			await record(project.id, 'credential');
+
+			const [newest] = await repository.findFeed({
+				projectIds: [project.id],
+				categories: ['workflow', 'credential'],
+				limit: 1,
+			});
+			const highest = await repository.findNewestEntry({
+				projectIds: [project.id],
+				categories: ['workflow', 'credential'],
+			});
+			expect(highest?.id).toBe(newest.id);
+
+			// A category out of scope is out of the answer too, or a reader would compare its mark
+			// against an id it was never allowed to be shown.
+			const workflowOnly = await repository.findNewestEntry({
+				projectIds: [project.id],
+				categories: ['workflow'],
+			});
+			expect(workflowOnly?.id).toBeLessThan(newest.id);
+		});
+
+		/**
+		 * The case a stored mark cannot survive. Retention by age empties the table on an instance
+		 * quiet for longer than its window, and the id a reader remembers is then no longer a
+		 * bound anything new sits above — so the reader has to be able to notice.
+		 */
+		it('reports the refilled id space after the table is emptied', async () => {
+			await record(project.id);
+			await record(project.id);
+			const before = await repository.findNewestEntry({
+				projectIds: [project.id],
+				categories: ['workflow', 'credential'],
+			});
+			expect(before).not.toBeNull();
+
+			await testDb.truncate(['ActivityEvent']);
+			expect(
+				await repository.findNewestEntry({
+					projectIds: [project.id],
+					categories: ['workflow', 'credential'],
+				}),
+			).toBeNull();
+
+			await record(project.id);
+			const after = await repository.findNewestEntry({
+				projectIds: [project.id],
+				categories: ['workflow', 'credential'],
+			});
+
+			// Whether `after` restarted below `before` is the driver's business, not this
+			// repository's. What has to hold either way is that the newest entry is reported as it
+			// now stands, so a reader comparing a stored mark against it sees the truth — and that
+			// it carries when it was written, which is what separates a renumbered feed from a
+			// quiet one when the ids alone cannot.
+			expect(after).not.toBeNull();
+			expect(after?.createdAt).toBeInstanceOf(Date);
+			const [newest] = await repository.findFeed({
+				projectIds: [project.id],
+				categories: ['workflow', 'credential'],
+				limit: 1,
+			});
+			expect(after?.id).toBe(newest.id);
+		});
+	});
+
 	describe('reading one entry and one resource', () => {
 		let otherProject: Project;
 
