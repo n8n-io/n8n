@@ -10,7 +10,14 @@ import {
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { MANUAL_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import { useSettingsStore } from '@n8n/stores/settings.store';
-import { AIView, HitlToolView, isNodeViewItem, isNodeViewSection, RegularView } from './viewsData';
+import {
+	AIView,
+	HitlToolView,
+	isNodeViewItem,
+	isNodeViewSection,
+	RegularView,
+	TriggerView,
+} from './viewsData';
 import { mockNodeTypeDescription } from '@/__tests__/mocks';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import type { SimplifiedNodeType } from '@/Interface';
@@ -256,6 +263,24 @@ describe('viewsData', () => {
 				icon: 'group',
 				description: 'Add an organisational container to your workflow',
 			});
+		});
+	});
+
+	describe('TriggerView', () => {
+		it('offers the group command for an empty workflow', () => {
+			const result = TriggerView([], true);
+			const groupItem = result.items.at(-1);
+
+			expect(groupItem?.key).toBe(ADD_EMPTY_GROUP_NODE_CREATOR_ITEM);
+			expect(groupItem?.type).toBe('command');
+		});
+
+		it('does not offer the group command for a non-empty workflow', () => {
+			const result = TriggerView([]);
+
+			expect(result.items.some((item) => item.key === ADD_EMPTY_GROUP_NODE_CREATOR_ITEM)).toBe(
+				false,
+			);
 		});
 	});
 });
