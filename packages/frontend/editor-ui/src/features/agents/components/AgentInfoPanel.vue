@@ -474,9 +474,6 @@ function onInstructionsInput(value: string) {
 					:model-value="instructions"
 					:disabled="props.disabled"
 					:placeholder="i18n.baseText('agents.builder.agent.instructions.placeholder')"
-					is-collapsible
-					show-toolbar="floating"
-					variant="ghost"
 					data-testid="agent-instructions-document"
 					@update:model-value="onInstructionsInput"
 				/>
@@ -502,7 +499,6 @@ function onInstructionsInput(value: string) {
 .instructionsDocument {
 	display: block;
 	width: 100%;
-	margin-inline: calc(var(--spacing--xs) * -1);
 }
 
 .instructionsDocument:disabled {
@@ -543,9 +539,5 @@ function onInstructionsInput(value: string) {
 	height: 1px;
 	background-color: var(--border-color--subtle);
 	margin-inline: calc(var(--spacing--sm) * -1);
-}
-
-.containerClass {
-	padding-bottom: 0;
 }
 </style>
