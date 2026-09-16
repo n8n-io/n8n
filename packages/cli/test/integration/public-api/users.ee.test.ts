@@ -1,9 +1,4 @@
-import {
-	createTeamProject,
-	linkUserToProject,
-	testDb,
-	mockInstance,
-} from '@n8n/backend-test-utils';
+import { createTeamProject, linkUserToProject, testDb } from '@n8n/backend-test-utils';
 import { GLOBAL_MEMBER_ROLE, type User } from '@n8n/db';
 import { v4 as uuid } from 'uuid';
 import validator from 'validator';
@@ -291,7 +286,7 @@ describe('With license without quota:users', () => {
 	let authOwnerAgent: SuperAgentTest;
 
 	beforeEach(async () => {
-		mockInstance(License, { getUsersLimit: vi.fn().mockReturnValue(null) });
+		testServer.license.setQuota('quota:users', 0);
 
 		const owner = await createOwnerWithApiKey();
 		authOwnerAgent = testServer.publicApiAgentFor(owner);
