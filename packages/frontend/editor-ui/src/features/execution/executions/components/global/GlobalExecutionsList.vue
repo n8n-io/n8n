@@ -13,7 +13,7 @@ import type { PermissionsRecord } from '@n8n/permissions';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useIntersectionObserver } from '@vueuse/core';
 import type { ExecutionSummary } from 'n8n-workflow';
-import { computed, ref, useTemplateRef, watch, type ComponentPublicInstance } from 'vue';
+import { computed, onMounted, ref, useTemplateRef, watch, type ComponentPublicInstance } from 'vue';
 import { useExecutionsStore } from '../../executions.store';
 import { useSelfHealingStore } from '@/features/self-healing/selfHealing.store';
 import type { ExecutionFilterType, ExecutionSummaryWithScopes } from '../../executions.types';
@@ -55,6 +55,9 @@ const selfHealingStore = useSelfHealingStore();
 const selfHealingCoachmarkExecutionId = computed(
 	() => props.executions.find((execution) => selfHealingStore.shouldShowCoachmark(execution))?.id,
 );
+
+// Prototype: a dismissal lasts for one visit, so every visit with a failure shows the nudge.
+onMounted(() => selfHealingStore.resetCoachmark());
 const pageRedirectionHelper = usePageRedirectionHelper();
 
 const autoRefresh = computed({

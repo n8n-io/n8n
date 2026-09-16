@@ -12,11 +12,10 @@ import type { IWorkflowDb } from '@/Interface';
 import { useSelfHealingStore } from '../selfHealing.store';
 
 /**
- * One-time nudge anchored to a failed execution in the executions list.
- * The slot is the anchor and renders unchanged when the coachmark is not
- * showing. The store decides when to show it and remembers a dismissal in
- * local storage, so the coachmark never comes back after the user has seen
- * the feature once.
+ * Nudge anchored to a failed execution in the executions list. The slot is
+ * the anchor and renders unchanged when the coachmark is not showing. In
+ * this prototype a dismissal lasts for the current visit only; the list
+ * resets it on mount so the nudge appears on every visit with a failure.
  */
 const props = defineProps<{
 	execution: ExecutionSummary;
@@ -59,7 +58,7 @@ async function loadWorkflow(): Promise<IWorkflowDb | undefined> {
 }
 
 async function onTryNow() {
-	store.dismissCoachmark('forever');
+	store.dismissCoachmark();
 	const fullWorkflow = await loadWorkflow();
 	void store.startFix(props.execution, {
 		workflowName: fullWorkflow?.name ?? props.execution.workflowName ?? '',
@@ -74,12 +73,8 @@ async function onTryNow() {
 	});
 }
 
-function onNotNow() {
-	store.dismissCoachmark('later');
-}
-
-function onClose() {
-	store.dismissCoachmark('forever');
+function onDismiss() {
+	store.dismissCoachmark();
 }
 </script>
 
@@ -111,7 +106,7 @@ function onClose() {
 					:class="$style.close"
 					:title="i18n.baseText('selfHealing.coachmark.dismiss')"
 					data-test-id="self-healing-coachmark-close"
-					@click="onClose"
+					@click="onDismiss"
 				/>
 			</div>
 			<N8nText size="small" :class="$style.body">{{ body }}</N8nText>
@@ -122,7 +117,7 @@ function onClose() {
 					:label="i18n.baseText('selfHealing.coachmark.notNow')"
 					:class="$style.notNow"
 					data-test-id="self-healing-coachmark-not-now"
-					@click="onNotNow"
+					@click="onDismiss"
 				/>
 				<N8nButton
 					size="small"

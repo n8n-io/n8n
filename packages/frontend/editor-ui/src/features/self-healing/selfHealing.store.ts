@@ -8,14 +8,12 @@ import type {
 	WorkflowReviewRequestDetail,
 	WorkflowReviewRequestState,
 } from '@n8n/api-types';
-import { useStorage } from '@n8n/composables/useStorage';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { sleep } from '@n8n/utils/sleep';
 import type { ExecutionSummary, IConnections, INode } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 
-import { LOCAL_STORAGE_SELF_HEALING_COACHMARK } from '@/app/constants/localStorage';
 import { SELF_HEALING_WORKFLOWS_EXPERIMENT } from '@/app/constants/experiments';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -66,8 +64,6 @@ export interface StartFixContext {
 }
 
 const SEED_PROJECT_ID = 'self-healing-demo-project';
-/** "Not now" on the coachmark hides it for this long. */
-const COACHMARK_SNOOZE_MS = 7 * 24 * 60 * 60 * 1000;
 
 /**
  * Frontend-only state for the self-healing prototype. Nothing here talks to a
@@ -257,27 +253,21 @@ export const useSelfHealingStore = defineStore('selfHealing', () => {
 
 	// -- Coachmark ------------------------------------------------------------
 
-	// 'forever', or an ISO date until which the coachmark stays hidden.
-	const coachmarkDismissal = useStorage(LOCAL_STORAGE_SELF_HEALING_COACHMARK);
+	// Hidden for the current visit only. The executions list resets it when it
+	// mounts, so the prototype shows the nudge on every visit with a failure.
+	const isCoachmarkDismissed = ref(false);
 
-	const isCoachmarkDismissed = computed(() => {
-		const value = coachmarkDismissal.value;
-		if (!value) return false;
-		if (value === 'forever') return true;
-		const until = Date.parse(value);
-		return !Number.isNaN(until) && Date.now() < until;
-	});
-
-	function dismissCoachmark(kind: 'later' | 'forever') {
-		coachmarkDismissal.value =
-			kind === 'forever' ? 'forever' : new Date(Date.now() + COACHMARK_SNOOZE_MS).toISOString();
+	function dismissCoachmark() {
+		isCoachmarkDismissed.value = true;
 	}
 
-	/** A first-run nudge: a failed execution nobody has asked the assistant to fix yet. */
+	function resetCoachmark() {
+		isCoachmarkDismissed.value = false;
+	}
+
 	function shouldShowCoachmark(execution: ExecutionSummary): boolean {
 		if (!isEnabled.value || isCoachmarkDismissed.value) return false;
-		if (execution.status !== 'error' && execution.status !== 'crashed') return false;
-		return fixJobs.value[execution.id] === undefined;
+		return execution.status === 'error' || execution.status === 'crashed';
 	}
 
 	// -- Fix jobs -------------------------------------------------------------
@@ -531,7 +521,7 @@ export const useSelfHealingStore = defineStore('selfHealing', () => {
 	}
 
 	function reset() {
-		coachmarkDismissal.value = null;
+		isCoachmarkDismissed.value = false;
 		configsByProject.value = {};
 		reviews.value = [];
 		fixJobs.value = {};
@@ -555,6 +545,7 @@ export const useSelfHealingStore = defineStore('selfHealing', () => {
 		getWorkflowStatus,
 		isCoachmarkDismissed,
 		dismissCoachmark,
+		resetCoachmark,
 		shouldShowCoachmark,
 		getFixJob,
 		startFix,
