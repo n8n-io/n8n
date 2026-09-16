@@ -10,7 +10,7 @@ import N8nText from '../N8nText/Text.vue';
 
 defineOptions({ name: 'N8nContextMenuItemContent' });
 
-defineProps<{
+const props = defineProps<{
 	item: ContextMenuLeaf<T>;
 	textColor?: TextColor;
 	iconColor: IconColor | (string & {});
@@ -24,6 +24,14 @@ const $style = useCssModule();
 const leadingProps = computed(() => ({ class: $style.itemLeading }));
 const labelProps = computed(() => ({ class: $style.itemLabel }));
 const trailingProps = computed(() => ({ class: $style.itemTrailing }));
+
+const leadingIconColor = computed(() => {
+	const icon = props.item.icon;
+	if (icon?.type === 'icon' && icon.color) {
+		return icon.color;
+	}
+	return props.iconColor;
+});
 </script>
 
 <template>
@@ -33,7 +41,7 @@ const trailingProps = computed(() => ({ class: $style.itemTrailing }));
 				v-if="item.icon?.type === 'icon'"
 				:icon="item.icon.value"
 				:class="$style.itemLeading"
-				:color="iconColor"
+				:color="leadingIconColor"
 				size="large"
 			/>
 			<span v-else-if="item.icon?.type === 'emoji'" :class="[$style.itemLeading, $style.emoji]">

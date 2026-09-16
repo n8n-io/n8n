@@ -325,6 +325,60 @@ describe('N8nContextMenu', () => {
 			);
 		});
 
+		it('should apply an explicit icon color when the item supplies one', async () => {
+			const items: Array<ContextMenuNode<string>> = [
+				{
+					type: 'item',
+					id: 'folder',
+					label: 'Folder',
+					icon: { type: 'icon', value: 'folder', color: '--node--icon--color--blue' },
+				},
+			];
+
+			await renderOpen({ items });
+
+			expect(document.querySelector('[data-icon="folder"]')).toHaveStyle({
+				color: 'var(--node--icon--color--blue)',
+			});
+		});
+
+		it('should use the tone-derived icon color when the item has no icon color', async () => {
+			const items: Array<ContextMenuNode<string>> = [
+				{
+					type: 'item',
+					id: 'open',
+					label: 'Open',
+					icon: { type: 'icon', value: 'external-link' },
+				},
+				{
+					type: 'item',
+					id: 'locked',
+					label: 'Locked',
+					disabled: true,
+					icon: { type: 'icon', value: 'lock' },
+				},
+				{
+					type: 'item',
+					id: 'delete',
+					label: 'Delete',
+					variant: 'destructive',
+					icon: { type: 'icon', value: 'trash' },
+				},
+			];
+
+			await renderOpen({ items });
+
+			expect(document.querySelector('[data-icon="external-link"]')).toHaveStyle({
+				color: 'var(--icon-color)',
+			});
+			expect(document.querySelector('[data-icon="lock"]')).toHaveStyle({
+				color: 'var(--icon-color--subtle)',
+			});
+			expect(document.querySelector('[data-icon="trash"]')).toHaveStyle({
+				color: 'var(--icon-color--danger)',
+			});
+		});
+
 		it('should render disabled items', async () => {
 			const items: Array<ContextMenuNode<string>> = [
 				{ type: 'item', id: '1', label: 'Enabled', disabled: false },
