@@ -8010,6 +8010,7 @@
 	"agents.builder.memory.episodicMemory.hint": "Remembers useful details about each user across sessions, such as their preferences, decisions, and previous work.",
 	"agents.builder.memory.episodicMemory.credential.label": "OpenAI credential",
 	"agents.builder.memory.episodicMemory.credential.hint": "Used to create embeddings for cross-session memory.",
+	"agents.builder.memory.episodicMemory.changeCredential": "Change credential",
 	"agents.builder.memory.episodicMemory.credentialDialog.title": "Select an OpenAI credential",
 	"agents.builder.knowledge.advanced.title": "Advanced",
 	"agents.builder.files.title": "Knowledge base",

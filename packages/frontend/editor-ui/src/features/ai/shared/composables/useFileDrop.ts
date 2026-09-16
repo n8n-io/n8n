@@ -47,7 +47,7 @@ export function useFileDrop(
 	}
 
 	function handleDragOver(e: DragEvent) {
-		if (!toValue(canAcceptFiles)) {
+		if (!toValue(canAcceptFiles) || !e.dataTransfer?.types.includes('Files')) {
 			return;
 		}
 
@@ -56,6 +56,10 @@ export function useFileDrop(
 	}
 
 	function handleDrop(e: DragEvent) {
+		if (!e.dataTransfer?.types.includes('Files')) {
+			return;
+		}
+
 		e.preventDefault();
 		e.stopPropagation();
 		isDragging.value = false;
@@ -65,7 +69,7 @@ export function useFileDrop(
 			return;
 		}
 
-		const files = e.dataTransfer?.files;
+		const files = e.dataTransfer.files;
 		if (!files || files.length === 0) {
 			return;
 		}

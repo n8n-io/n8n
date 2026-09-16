@@ -52,4 +52,38 @@ describe('useFileDrop', () => {
 		expect(preventDefault).toHaveBeenCalledOnce();
 		expect(onFilesDropped).toHaveBeenCalledWith([file]);
 	});
+
+	it('keeps the native drag-over behavior for text', () => {
+		const preventDefault = vi.fn();
+		const stopPropagation = vi.fn();
+		const { handleDragOver } = useFileDrop(ref(true), vi.fn());
+		const event = {
+			dataTransfer: { types: ['text/plain'] },
+			preventDefault,
+			stopPropagation,
+		} as unknown as DragEvent;
+
+		handleDragOver(event);
+
+		expect(preventDefault).not.toHaveBeenCalled();
+		expect(stopPropagation).not.toHaveBeenCalled();
+	});
+
+	it('keeps the native drop behavior for text', () => {
+		const onFilesDropped = vi.fn();
+		const preventDefault = vi.fn();
+		const stopPropagation = vi.fn();
+		const { handleDrop } = useFileDrop(ref(true), onFilesDropped);
+		const event = {
+			dataTransfer: { types: ['text/plain'] },
+			preventDefault,
+			stopPropagation,
+		} as unknown as DragEvent;
+
+		handleDrop(event);
+
+		expect(preventDefault).not.toHaveBeenCalled();
+		expect(stopPropagation).not.toHaveBeenCalled();
+		expect(onFilesDropped).not.toHaveBeenCalled();
+	});
 });

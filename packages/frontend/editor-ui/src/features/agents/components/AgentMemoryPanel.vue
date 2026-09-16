@@ -1,6 +1,13 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { N8nDialog, N8nDialogHeader, N8nDialogTitle, N8nText, N8nSwitch } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nDialog,
+	N8nDialogHeader,
+	N8nDialogTitle,
+	N8nText,
+	N8nSwitch,
+} from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { MANAGED_CREDENTIAL_TOKEN } from '@n8n/api-types';
 import { useSettingsStore } from '@n8n/stores/settings.store';
@@ -104,6 +111,19 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 				<N8nText step="sm" color="text-light">
 					{{ i18n.baseText('agents.builder.memory.episodicMemory.hint') }}
 				</N8nText>
+				<N8nButton
+					v-if="episodicMemoryEnabled && !isAiAssistantProxyEnabled"
+					variant="ghost"
+					size="small"
+					:disabled="props.disabled"
+					:class="$style.changeCredentialButton"
+					data-testid="agent-episodic-memory-change-credential"
+					@click="credentialDialogOpen = true"
+				>
+					{{
+						i18n.baseText('agents.builder.memory.episodicMemory.changeCredential' as BaseTextKey)
+					}}
+				</N8nButton>
 			</div>
 			<N8nSwitch
 				:model-value="episodicMemoryEnabled"
@@ -224,6 +244,10 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 
 .switch {
 	flex-shrink: 0;
+}
+
+.changeCredentialButton {
+	align-self: flex-start;
 }
 
 .credentialPicker {

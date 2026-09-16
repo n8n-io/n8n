@@ -16,6 +16,12 @@ vi.mock('@n8n/i18n', () => ({
 }));
 
 vi.mock('@n8n/design-system', () => ({
+	N8nButton: {
+		template:
+			'<button :data-testid="$attrs[\'data-testid\']" :disabled="disabled" @click="$emit(\'click\')"><slot /></button>',
+		props: ['disabled'],
+		emits: ['click'],
+	},
 	N8nDialog: {
 		template: '<div v-if="open"><slot /></div>',
 		props: ['open'],
@@ -190,5 +196,52 @@ describe('AgentMemoryPanel', () => {
 		const picker = wrapper.findComponent({ name: 'CredentialPicker' });
 		expect(picker.props('selectedCredentialId')).toBeNull();
 		expect(wrapper.emitted('update:config')).toHaveLength(1);
+	});
+
+	it('changes the credential without resetting the episodic memory settings', async () => {
+		const config = baseConfig();
+		config.memory = {
+			enabled: true,
+			storage: 'n8n',
+			episodicMemory: {
+				enabled: true,
+				credential: 'existing-credential',
+				reflectorModel: {
+					model: 'openai/gpt-4.1-mini',
+					credential: 'reflector-credential',
+				},
+				topK: 8,
+				maxEntriesPerRun: 4,
+			},
+		};
+		const wrapper = mountPanel({ proxyEnabled: false, config });
+
+		await wrapper.find('[data-testid="agent-episodic-memory-change-credential"]').trigger('click');
+
+		const picker = wrapper.findComponent({ name: 'CredentialPicker' });
+		expect(picker.props('selectedCredentialId')).toBeNull();
+		picker.vm.$emit('credential-selected', 'replacement-credential');
+		await wrapper.vm.$nextTick();
+
+		expect(wrapper.emitted('update:config')).toEqual([
+			[
+				{
+					memory: {
+						enabled: true,
+						storage: 'n8n',
+						episodicMemory: {
+							enabled: true,
+							credential: 'replacement-credential',
+							reflectorModel: {
+								model: 'openai/gpt-4.1-mini',
+								credential: 'reflector-credential',
+							},
+							topK: 8,
+							maxEntriesPerRun: 4,
+						},
+					},
+				},
+			],
+		]);
 	});
 });
