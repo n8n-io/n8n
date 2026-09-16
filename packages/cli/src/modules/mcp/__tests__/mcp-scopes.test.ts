@@ -289,6 +289,41 @@ describe('McpService scope enforcement', () => {
 		expect(registered).toContain('get_node_usage');
 	});
 
+	/**
+	 * The outer half of the credential gate, observed through `getServer` rather than restated:
+	 * a copy of `allowedToolNames?.has('list_credentials') ?? true` in a test would still pass if
+	 * the service stopped deriving it, read the wrong tool name, or hard-coded the value.
+	 */
+	it('derives the credential grant from the token, not from a hard-coded value', async () => {
+		const instanceContext = mockInstance(InstanceContextService);
+		mockInstance(WorkflowDependencyQueryService);
+		instanceContext.listPage.mockResolvedValue({ entries: [], hasMore: false });
+
+		const grantedScopeOf = async (grantedScopes: string[]) => {
+			const server = await buildService({ instanceAiActive: true }).getServer(
+				user,
+				mcpFeatureFlags({ instanceContextEnabled: true }),
+				undefined,
+				{ grantedScopes },
+			);
+			const tool = (
+				server as unknown as {
+					_registeredTools: Record<
+						string,
+						{ handler: (args: unknown, extra: unknown) => Promise<unknown> }
+					>;
+				}
+			)._registeredTools.get_instance_activity;
+
+			await tool.handler({}, {});
+			const call = instanceContext.listPage.mock.calls.at(-1)?.[0];
+			return (call?.scope as { credentialGranted: boolean }).credentialGranted;
+		};
+
+		expect(await grantedScopeOf(['workflow:read', 'credential:read'])).toBe(true);
+		expect(await grantedScopeOf(['workflow:read'])).toBe(false);
+	});
+
 	it('BUILDER_TOOLS matches the tools gated behind the builder flag (drift guard)', async () => {
 		const withBuilder = getRegisteredToolNames(
 			await buildService().getServer(user, mcpFeatureFlags()),

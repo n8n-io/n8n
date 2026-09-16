@@ -565,8 +565,14 @@ export class InstanceContextService {
 				return { surface: 'conversation', projectIds: [projectId] };
 			}
 
+			// The personal project is credential-readable by its owner without a project role, so
+			// naming it explicitly must not lose its credential entries.
 			const credentialProjectIds = scope.credentialGranted
-				? await this.credentialReadableProjectIds(user, [projectId], undefined)
+				? await this.credentialReadableProjectIds(
+						user,
+						[projectId],
+						(await this.projectRepository.getPersonalProjectForUser(user.id))?.id,
+					)
 				: [];
 			return { surface: 'mcp', projectIds: [projectId], credentialProjectIds };
 		}

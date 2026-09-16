@@ -144,6 +144,16 @@ export const BUILDER_TOOLS: ReadonlySet<string> = new Set([
  * module is active. Same role as BUILDER_TOOLS and AGENT_TOOLS: it lets the
  * scope-map drift guard tell "not mapped" from "not registered here".
  */
+/**
+ * Of those, the ones that read the activity log itself, so they also need
+ * `N8N_ACTIVITY_LOG_ENABLED`. The others draw on the workflow and execution tables and work
+ * whether or not anything is writing the log.
+ */
+export const ACTIVITY_LOG_TOOLS: ReadonlySet<string> = new Set([
+	'get_instance_activity',
+	'expand_instance_activity',
+]);
+
 export const INSTANCE_CONTEXT_TOOLS: ReadonlySet<string> = new Set([
 	'get_instance_activity',
 	'expand_instance_activity',
