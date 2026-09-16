@@ -1,8 +1,8 @@
 import type { CycleContext } from './harness';
 import { fail, metric, ok, step } from './harness';
 
-export const OWNER_EMAIL = 'owner@example.com';
-export const OWNER_PASSWORD = 'SuperSecret123';
+const OWNER_EMAIL = 'owner@example.com';
+const OWNER_PASSWORD = 'SuperSecret123';
 
 interface RestResponse {
 	code: number;
@@ -14,7 +14,7 @@ interface RestResponse {
 /**
  * Minimal REST client against one running instance. Keeps its own cookie so a
  * login survives only as long as the instance it came from — every boot logs
- * in again, exactly like the previous bash harness.
+ * in again.
  */
 export class RestClient {
 	private cookie = '';
@@ -59,8 +59,7 @@ export class RestClient {
 			lastName: 'Owner',
 			password: OWNER_PASSWORD,
 		});
-		if (res.code !== 200)
-			fail(this.ctx, 'owner setup failed', `${res.code}: ${res.text.slice(0, 300)}`);
+		if (res.code !== 200) fail('owner setup failed', `${res.code}: ${res.text.slice(0, 300)}`);
 		ok(this.ctx, 'owner created');
 	}
 
@@ -78,7 +77,7 @@ export class RestClient {
 				password: OWNER_PASSWORD,
 			});
 		}
-		if (res.code !== 200) fail(this.ctx, 'login failed', `${res.code}: ${res.text.slice(0, 300)}`);
+		if (res.code !== 200) fail('login failed', `${res.code}: ${res.text.slice(0, 300)}`);
 		ok(this.ctx, 'logged in');
 	}
 
@@ -89,11 +88,7 @@ export class RestClient {
 			data: { name: secret, value: 'spec-header-password' },
 		});
 		if (res.code !== 200) {
-			fail(
-				this.ctx,
-				`create credential "${name}" failed`,
-				`${res.code}: ${res.text.slice(0, 300)}`,
-			);
+			fail(`create credential "${name}" failed`, `${res.code}: ${res.text.slice(0, 300)}`);
 		}
 		return String(this.dataOf(res).id);
 	}
@@ -107,17 +102,12 @@ export class RestClient {
 		step(this.ctx, `checking decrypt of credential ${credId} (${label})`);
 		const res = await this.request('GET', `/rest/credentials/${credId}?includeData=true`);
 		if (res.code !== 200) {
-			fail(
-				this.ctx,
-				`${label}: GET credential ${credId} returned ${res.code}`,
-				res.text.slice(0, 300),
-			);
+			fail(`${label}: GET credential ${credId} returned ${res.code}`, res.text.slice(0, 300));
 		}
 		const data = this.dataOf(res).data as Record<string, unknown> | undefined;
 		const got = data?.name;
 		if (got !== expected) {
 			fail(
-				this.ctx,
 				`${label}: credential ${credId} did not decrypt to the seeded secret`,
 				`expected: ${expected}\nactual:   ${String(got)}`,
 			);
@@ -133,12 +123,12 @@ export class RestClient {
 	async rotateKey(oldKeyId: string): Promise<string> {
 		const res = await this.request('POST', '/rest/encryption/keys', { type: 'data_encryption' });
 		if (res.code !== 200)
-			fail(this.ctx, 'key rotation via API failed', `${res.code}: ${res.text.slice(0, 300)}`);
+			fail('key rotation via API failed', `${res.code}: ${res.text.slice(0, 300)}`);
 		metric(this.ctx, 'rotate_ms', this.ctx.phase, Math.round(res.ms * 10) / 10);
 		const rawId = this.dataOf(res).id;
 		const newId = typeof rawId === 'string' ? rawId : '';
 		if (!newId || newId === oldKeyId) {
-			fail(this.ctx, 'rotation did not produce a new key id', `old: ${oldKeyId}, new: ${newId}`);
+			fail('rotation did not produce a new key id', `old: ${oldKeyId}, new: ${newId}`);
 		}
 		return newId;
 	}
@@ -147,8 +137,7 @@ export class RestClient {
 		payload: Record<string, unknown>,
 	): Promise<{ id: string; versionId: string }> {
 		const res = await this.request('POST', '/rest/workflows', payload);
-		if (res.code !== 200)
-			fail(this.ctx, 'create workflow failed', `${res.code}: ${res.text.slice(0, 300)}`);
+		if (res.code !== 200) fail('create workflow failed', `${res.code}: ${res.text.slice(0, 300)}`);
 		const data = this.dataOf(res);
 		return { id: String(data.id), versionId: String(data.versionId) };
 	}
@@ -160,14 +149,14 @@ export class RestClient {
 			res = await this.request('PATCH', `/rest/workflows/${id}`, { active: true, versionId });
 		}
 		if (res.code !== 200) {
-			fail(this.ctx, `activate workflow ${id} failed`, `${res.code}: ${res.text.slice(0, 300)}`);
+			fail(`activate workflow ${id} failed`, `${res.code}: ${res.text.slice(0, 300)}`);
 		}
 	}
 
 	async getWorkflowActive(id: string): Promise<boolean> {
 		const res = await this.request('GET', `/rest/workflows/${id}`);
 		if (res.code !== 200)
-			fail(this.ctx, `GET workflow ${id} failed`, `${res.code}: ${res.text.slice(0, 300)}`);
+			fail(`GET workflow ${id} failed`, `${res.code}: ${res.text.slice(0, 300)}`);
 		return Boolean(this.dataOf(res).active);
 	}
 }

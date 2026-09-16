@@ -115,7 +115,8 @@ unavailable).
 runs the upgrade cycle on a twice-daily cron and notifies Slack when a
 scheduled run fails. A manual `workflow_dispatch` run has a `test` select
 (`upgrade` | `rotation`) plus `db` and `from-image` inputs. A PR that touches
-the tests or the stack pieces they lean on runs **both** modes as parallel
-jobs, with the workflow file taken from the PR branch. The run summary
-carries the result and the metrics; the run log and per-backend
-`metrics.csv`/`n8n.log` are uploaded as an artifact per mode.
+the tests or the stack pieces they lean on runs the full matrix — both modes
+x both databases, four parallel jobs — with the workflow file taken from the
+PR branch. The run summary
+carries the result and the metrics; the run log plus `metrics.csv` and
+`n8n.log` are uploaded as an artifact per job (mode x database).

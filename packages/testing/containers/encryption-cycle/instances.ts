@@ -84,7 +84,7 @@ export async function finishCycle(ctx: CycleContext): Promise<void> {
 }
 
 function requireStack(ctx: CycleContext) {
-	if (!ctx.stack) return fail(ctx, 'the stack is not running');
+	if (!ctx.stack) return fail('the stack is not running');
 	return ctx.stack;
 }
 
@@ -96,7 +96,7 @@ function bootFailure(ctx: CycleContext, label: string, error: unknown): never {
 			appendFileSync(ctx.logFile, logs);
 		}
 		const readiness = Object.values(error.diagnostics.readinessPayloads).at(-1);
-		fail(ctx, `${label} did not become ready`, `last readiness payload: ${readiness ?? '(none)'}`);
+		fail(`${label} did not become ready`, `last readiness payload: ${readiness ?? '(none)'}`);
 	}
 	throw error;
 }

@@ -7,8 +7,6 @@ import type { N8NStack } from '../stack';
 export interface CycleContext {
 	mode: 'upgrade' | 'rotation';
 	backend: 'sqlite' | 'postgres';
-	workRoot: string;
-	backendDir: string;
 	homeDir: string;
 	logFile: string;
 	metricsFile: string;
@@ -27,8 +25,6 @@ export function createCycleContext(
 	const ctx: CycleContext = {
 		mode,
 		backend,
-		workRoot,
-		backendDir,
 		homeDir: join(backendDir, 'home'),
 		logFile: join(backendDir, 'n8n.log'),
 		metricsFile: join(backendDir, 'metrics.csv'),
@@ -67,7 +63,6 @@ export function ok(ctx: CycleContext, msg: string): void {
 export class CycleFailure extends Error {
 	constructor(
 		message: string,
-		readonly ctx: CycleContext,
 		readonly details?: string,
 	) {
 		super(message);
@@ -75,11 +70,11 @@ export class CycleFailure extends Error {
 	}
 }
 
-export function fail(ctx: CycleContext, msg: string, details?: string): never {
-	throw new CycleFailure(msg, ctx, details);
+export function fail(msg: string, details?: string): never {
+	throw new CycleFailure(msg, details);
 }
 
-/** Prints the same per-backend metrics block the bash harness printed. */
+/** Prints the per-backend metrics block the CI summary parses. */
 export function summary(ctx: CycleContext): void {
 	metric(ctx, 'phase_s', ctx.phase, Math.round((Date.now() - ctx.phaseStartedMs) / 1000));
 

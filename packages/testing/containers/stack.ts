@@ -62,9 +62,11 @@ export interface N8NStack {
 	stopContainer: (namePattern: string | RegExp) => Promise<StoppedTestContainer | null>;
 	/**
 	 * Stops the current n8n main and boots a replacement with the requested
-	 * image, keeping the service containers, network, database, user folder,
-	 * host port, and readiness/logging/cleanup behavior. Single-main stacks
-	 * only — the substrate of the upgrade/downgrade cycles.
+	 * image, keeping the service containers, network, host port, and
+	 * readiness/logging/cleanup behavior. Data survives the swap when it lives
+	 * outside the replaced container: in the postgres service, or in a
+	 * `userHomeHostDir` mount (the sqlite file and user folder). Single-main
+	 * stacks only — the substrate of the upgrade/downgrade cycles.
 	 */
 	replaceN8N: (options: ReplaceN8NOptions) => Promise<void>;
 	/** Direct URLs to each main instance (bypasses load balancer). Index 0 = main-1, etc. */
@@ -510,11 +512,6 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			async replaceN8N(options: ReplaceN8NOptions): Promise<void> {
 				if (mains > 1 || needsLoadBalancer) {
 					throw new Error('replaceN8N supports single-main stacks only');
-				}
-				// A reused container survives stop() and its name would collide with
-				// the replacement.
-				if (process.env.TESTCONTAINERS_REUSE_ENABLE === 'true') {
-					throw new Error('replaceN8N requires TESTCONTAINERS_REUSE_ENABLE to be off');
 				}
 				const current = containers.find((c) => c.getName().endsWith('-n8n'));
 				if (current) {

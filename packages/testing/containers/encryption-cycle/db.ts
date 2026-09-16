@@ -13,7 +13,7 @@ import { fail } from './harness';
 export async function dbQuery(ctx: CycleContext, sql: string): Promise<string> {
 	if (ctx.backend === 'postgres') {
 		const pg = ctx.stack?.serviceResults.postgres?.container;
-		if (!pg) return fail(ctx, 'postgres container is not running');
+		if (!pg) return fail('postgres container is not running');
 		const result = await pg.exec([
 			'psql',
 			'-U',
@@ -26,7 +26,7 @@ export async function dbQuery(ctx: CycleContext, sql: string): Promise<string> {
 			sql,
 		]);
 		if (result.exitCode !== 0) {
-			return fail(ctx, `psql failed: ${sql}`, result.output);
+			return fail(`psql failed: ${sql}`, result.output);
 		}
 		return result.output.trim();
 	}
@@ -49,5 +49,5 @@ export async function dbQuery(ctx: CycleContext, sql: string): Promise<string> {
 			db?.close();
 		}
 	}
-	return fail(ctx, `sqlite query failed after retries: ${sql}`, String(lastError));
+	return fail(`sqlite query failed after retries: ${sql}`, String(lastError));
 }

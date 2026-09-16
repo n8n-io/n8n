@@ -96,7 +96,7 @@ export async function runUpgradeCycle(ctx: CycleContext, images: CycleImages): P
 	await api.assertDecrypts(credB, SECRET_B, 'mixed: legacy written on TO');
 	step(ctx, 'reading the active data-encryption key id');
 	const activeKeyId = await getActiveKeyId(ctx);
-	if (!activeKeyId) fail(ctx, 'no active aes-256-gcm deployment_key row');
+	if (!activeKeyId) fail('no active aes-256-gcm deployment_key row');
 	ok(ctx, `active key id: ${activeKeyId}`);
 	step(ctx, 'creating credential C (must be keyId-prefixed)');
 	const credC = await api.createCredential('encryption-cycle cred C (flag on)', SECRET_C);
@@ -149,7 +149,7 @@ export async function runRotationCycle(ctx: CycleContext, images: CycleImages): 
 	step(ctx, 'checking the key store got seeded (exactly 2 deployment_key rows)');
 	await assertKeyRowCount(ctx, 2);
 	const key1 = await getActiveKeyId(ctx);
-	if (!key1) fail(ctx, 'no active aes-256-gcm deployment_key row');
+	if (!key1) fail('no active aes-256-gcm deployment_key row');
 	ok(ctx, `active key id: ${key1}`);
 	step(ctx, 'creating credential A (must be keyId-prefixed)');
 	const credA = await api.createCredential('rotation-cycle cred A (initial key)', SECRET_A);
@@ -177,7 +177,7 @@ export async function runRotationCycle(ctx: CycleContext, images: CycleImages): 
 	await assertKeyRowCount(ctx, 4);
 	const activeRows = await getActiveKeyId(ctx);
 	if (!activeRows || activeRows.includes('\n')) {
-		fail(ctx, 'expected exactly 1 active key', `active rows:\n${activeRows}`);
+		fail('expected exactly 1 active key', `active rows:\n${activeRows}`);
 	}
 	ok(ctx, '4 key rows kept, exactly 1 active');
 

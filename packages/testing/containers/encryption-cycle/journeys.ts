@@ -8,9 +8,9 @@ export interface SeededJourneys {
 	workflowId: string;
 }
 
-export const LEGACY_PREFIX = 'U2FsdGVkX1';
+const LEGACY_PREFIX = 'U2FsdGVkX1';
 
-export async function rawCredentialValue(ctx: CycleContext, credId: string): Promise<string> {
+async function rawCredentialValue(ctx: CycleContext, credId: string): Promise<string> {
 	return await dbQuery(ctx, `SELECT data FROM credentials_entity WHERE id='${credId}';`);
 }
 
@@ -31,7 +31,6 @@ export async function assertPrefixed(
 	const raw = await rawCredentialValue(ctx, credId);
 	if (!raw.startsWith(`${keyId}:`)) {
 		fail(
-			ctx,
 			`${label}: value is not prefixed with the expected key id`,
 			`expected prefix: ${keyId}:\nraw (first 60): ${raw.slice(0, 60)}`,
 		);
@@ -46,7 +45,7 @@ export async function assertLegacyFormat(
 ): Promise<void> {
 	const raw = await rawCredentialValue(ctx, credId);
 	if (!raw.startsWith(LEGACY_PREFIX)) {
-		fail(ctx, `${label}: new write is not legacy-format`, `raw (first 60): ${raw.slice(0, 60)}`);
+		fail(`${label}: new write is not legacy-format`, `raw (first 60): ${raw.slice(0, 60)}`);
 	}
 	ok(ctx, `${label}: stored in legacy format (${LEGACY_PREFIX}...)`);
 }
@@ -57,7 +56,7 @@ export async function assertKeyRowCount(ctx: CycleContext, expected: number): Pr
 		"SELECT COUNT(*) AS c FROM deployment_key WHERE type='data_encryption';",
 	);
 	if (count !== String(expected)) {
-		fail(ctx, `expected exactly ${expected} deployment_key rows, got ${count}`);
+		fail(`expected exactly ${expected} deployment_key rows, got ${count}`);
 	}
 	ok(ctx, `deployment_key has exactly ${expected} rows`);
 }
@@ -132,7 +131,7 @@ export async function assertJourneys(
 ): Promise<void> {
 	step(ctx, `checking the scheduled workflow is active and executes (${label})`);
 	const active = await api.getWorkflowActive(seeded.workflowId);
-	if (!active) fail(ctx, `${label}: seeded workflow is no longer active`);
+	if (!active) fail(`${label}: seeded workflow is no longer active`);
 
 	const countSql = `SELECT COUNT(*) AS c FROM execution_entity WHERE "workflowId"='${seeded.workflowId}' AND status='success';`;
 	const baseline = Number(await dbQuery(ctx, countSql));
@@ -149,7 +148,6 @@ export async function assertJourneys(
 			`SELECT status FROM execution_entity WHERE "workflowId"='${seeded.workflowId}' ORDER BY id DESC LIMIT 1;`,
 		);
 		fail(
-			ctx,
 			`${label}: no new successful execution within 30s`,
 			`successful executions: ${baseline} (unchanged), last status: ${lastStatus || '(none)'}`,
 		);
