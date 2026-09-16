@@ -6,7 +6,8 @@
  * an identity, so the credential is derived in step two instead of being asked
  * for up front. That inverts Discord's stepper, where connecting comes last.
  */
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
+import { saveAs } from 'file-saver';
 import { N8nButton, N8nCopyInput, N8nInput, N8nStepper, N8nText } from '@n8n/design-system';
 import { TEAMS_DESCRIPTION_MAX, TEAMS_DISPLAY_NAME_MAX } from '@n8n/api-types';
 import type {
@@ -94,7 +95,8 @@ function applyDefaults(state: TeamsAgentSetupState) {
 
 const messagingEndpointUrl = computed(() => {
 	if (setupState.value) return setupState.value.messagingEndpointUrl;
-	// The same shape the backend builds, so the URL shows before the first load.
+	// The same shape the backend builds, so the URL still shows when the setup
+	// request fails -- which is when someone most needs to paste it by hand.
 	const base = rootStore.urlBaseWebhook.replace(/\/$/, '');
 	return `${base}/rest/projects/${props.projectId}/agents/v2/${props.agentId}/webhooks/teams`;
 });
@@ -120,7 +122,9 @@ const credentialProblem = computed(() =>
 
 async function runCredentialCheck() {
 	const id = credentialId.value;
-	if (!id) {
+	// Only the setup step reads the result, and the check costs a token request
+	// to Microsoft, so the settings view does not pay for it.
+	if (props.mode !== 'setup' || !id) {
 		credentialCheck.value = null;
 		return;
 	}
@@ -149,18 +153,7 @@ async function downloadPackage() {
 			props.agentId,
 			credentialId.value || undefined,
 		);
-		const url = URL.createObjectURL(blob);
-		const link = document.createElement('a');
-		link.href = url;
-		link.download = 'n8n-agent-teams-app.zip';
-		link.style.display = 'none';
-		document.body.appendChild(link);
-		try {
-			link.click();
-		} finally {
-			link.remove();
-			URL.revokeObjectURL(url);
-		}
+		saveAs(blob, 'n8n-agent-teams-app.zip');
 	} catch {
 		downloadError.value = i18n.baseText('agents.channels.teams.setup.install.downloadFailed');
 	} finally {
@@ -184,7 +177,6 @@ async function loadSetupState() {
 	}
 }
 
-onMounted(loadSetupState);
 watch(() => props.connected, loadSetupState);
 
 // The deployment and the package are both built from the picked credential, so
@@ -309,7 +301,7 @@ defineExpose({
 						>
 							{{ i18n.baseText('agents.channels.teams.setup.createBot.existingBot') }}
 						</N8nButton>
-						<div v-else :class="$style.urlField" data-testid="teams-endpoint-field">
+						<div v-else :class="$style.field" data-testid="teams-endpoint-field">
 							<label for="teams-messaging-endpoint-url">
 								<N8nText size="small" bold>
 									{{ i18n.baseText('agents.channels.teams.messagingEndpointUrl.label') }}
@@ -531,22 +523,7 @@ defineExpose({
 	width: 100%;
 }
 
-.buttonRow {
-	display: flex;
-	flex-wrap: wrap;
-	gap: var(--spacing--2xs);
-}
-
-/* One left edge for every row and note, matching the header's own padding. */
-
 .field {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--3xs);
-	width: 100%;
-}
-
-.urlField {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--3xs);

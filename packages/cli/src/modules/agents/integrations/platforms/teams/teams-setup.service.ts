@@ -1,7 +1,6 @@
 import type { AgentTeamsIntegrationSettings, TeamsAgentSetupState } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 
-import { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { UrlService } from '@/services/url.service';
@@ -10,6 +9,7 @@ import { TeamsArmTemplateService } from './teams-arm-template.service';
 import { TeamsManifestService } from './teams-manifest.service';
 import type { Agent } from '../../../entities/agent.entity';
 import { AgentRepository } from '../../../repositories/agent.repository';
+import { AgentCredentialLookupService } from '../../agent-credential-lookup.service';
 import { stringProperty } from '../../integration-helpers';
 
 const TEAMS_CREDENTIAL_TYPE = 'microsoftEntraServicePrincipalApi';
@@ -28,7 +28,7 @@ interface BotIdentity {
 export class TeamsSetupService {
 	constructor(
 		private readonly agentRepository: AgentRepository,
-		private readonly credentialsService: CredentialsService,
+		private readonly credentialLookup: AgentCredentialLookupService,
 		private readonly manifestService: TeamsManifestService,
 		private readonly armTemplateService: TeamsArmTemplateService,
 		private readonly urlService: UrlService,
@@ -48,10 +48,8 @@ export class TeamsSetupService {
 		selectedCredentialId?: string,
 	): Promise<TeamsAgentSetupState> {
 		const agent = await this.getAgent(scope);
-		const identity = selectedCredentialId
-			? await this.readIdentity(agent.projectId, selectedCredentialId)
-			: await this.findBotIdentity(agent);
 		const credentialId = selectedCredentialId ?? this.connectedCredentialId(agent);
+		const identity = credentialId ? await this.readIdentity(agent.projectId, credentialId) : null;
 
 		return {
 			messagingEndpointUrl: this.messagingEndpointUrl(scope),
@@ -59,7 +57,6 @@ export class TeamsSetupService {
 			deployToAzureUrl: credentialId
 				? this.armTemplateService.buildDeployUrl(scope.projectId, scope.agentId, credentialId)
 				: null,
-			suggestedBotName: this.armTemplateService.suggestedBotName(agent.name, agent.id),
 			...this.defaultIdentity(agent.name),
 		};
 	}
@@ -71,9 +68,8 @@ export class TeamsSetupService {
 	 */
 	async buildPackage(scope: AgentScope, selectedCredentialId?: string): Promise<Buffer> {
 		const agent = await this.getAgent(scope);
-		const identity = selectedCredentialId
-			? await this.readIdentity(agent.projectId, selectedCredentialId)
-			: await this.findBotIdentity(agent);
+		const credentialId = selectedCredentialId ?? this.connectedCredentialId(agent);
+		const identity = credentialId ? await this.readIdentity(agent.projectId, credentialId) : null;
 		const botId = identity?.clientId;
 		if (!botId) {
 			throw new BadRequestError('Add the credential before downloading the app package.');
@@ -84,8 +80,7 @@ export class TeamsSetupService {
 			agentId: agent.id,
 			botId,
 			agentUpdatedAt: agent.updatedAt,
-			availability: this.teamsSettingsOf(agent),
-			identity: this.teamsSettingsOf(agent),
+			settings: this.teamsSettingsOf(agent),
 		});
 	}
 
@@ -151,21 +146,12 @@ export class TeamsSetupService {
 		return agent.integrations?.find((item) => item.type === 'teams')?.credentialId;
 	}
 
-	private async findBotIdentity(agent: Agent): Promise<BotIdentity | null> {
-		const credentialId = this.connectedCredentialId(agent);
-		return credentialId ? await this.readIdentity(agent.projectId, credentialId) : null;
-	}
-
 	private async readIdentity(projectId: string, credentialId: string): Promise<BotIdentity | null> {
-		const projectCredentials =
-			await this.credentialsService.findAllCredentialIdsForProject(projectId);
-		const globalCredentials = await this.credentialsService.findAllGlobalCredentialIds(true);
-		const credential =
-			projectCredentials.find((item) => item.id === credentialId) ??
-			globalCredentials.find((item) => item.id === credentialId);
-		if (!credential || credential.type !== TEAMS_CREDENTIAL_TYPE) return null;
-
-		const data = await this.credentialsService.decrypt(credential, true);
+		const data = await this.credentialLookup.decryptForProject(
+			projectId,
+			credentialId,
+			TEAMS_CREDENTIAL_TYPE,
+		);
 		const clientId = stringProperty(data, 'clientId');
 		const tenantId = stringProperty(data, 'tenantId');
 		return clientId && tenantId ? { clientId, tenantId } : null;

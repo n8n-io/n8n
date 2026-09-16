@@ -2,10 +2,7 @@ import type { TeamsCredentialCheck } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import { Service } from '@n8n/di';
-import { isRecord } from '@n8n/utils/is-record';
-
-import { CredentialsService } from '@/credentials/credentials.service';
-
+import { AgentCredentialLookupService } from '../../agent-credential-lookup.service';
 import { stringProperty } from '../../integration-helpers';
 
 const TEAMS_CREDENTIAL_TYPE = 'microsoftEntraServicePrincipalApi';
@@ -16,7 +13,7 @@ const BOT_FRAMEWORK_SCOPE = 'https://api.botframework.com/.default';
 @Service()
 export class TeamsCredentialCheckService {
 	constructor(
-		private readonly credentialsService: CredentialsService,
+		private readonly credentialLookup: AgentCredentialLookupService,
 		private readonly outboundHttp: OutboundHttp,
 		private readonly logger: Logger,
 	) {}
@@ -27,13 +24,13 @@ export class TeamsCredentialCheckService {
 	 * ID. Anything short of a real token is not evidence the channel will work.
 	 */
 	async check(projectId: string, credentialId: string): Promise<TeamsCredentialCheck> {
-		const credentials = await this.credentialsService.findAllCredentialIdsForProject(projectId);
-		const credential = credentials.find((item) => item.id === credentialId);
-		if (!credential || credential.type !== TEAMS_CREDENTIAL_TYPE) {
-			return { status: 'failed', reason: 'incomplete' };
-		}
+		const data = await this.credentialLookup.decryptForProject(
+			projectId,
+			credentialId,
+			TEAMS_CREDENTIAL_TYPE,
+		);
+		if (!data) return { status: 'failed', reason: 'incomplete' };
 
-		const data = await this.credentialsService.decrypt(credential, true);
 		// The channel rejects certificate mode outright: it stores no client
 		// secret, so there is nothing to mint a token with.
 		if (stringProperty(data, 'authentication') === 'certificate') {
@@ -66,8 +63,8 @@ export class TeamsCredentialCheckService {
 				});
 
 			const body: unknown = response.body;
-			const token = isRecord(body) ? stringProperty(body, 'access_token') : undefined;
-			if (response.statusCode === 200 && token) return { status: 'ok', clientId };
+			const token = stringProperty(body, 'access_token');
+			if (response.statusCode === 200 && token) return { status: 'ok' };
 
 			this.logger.debug('[TeamsCredentialCheck] Microsoft refused the credential', {
 				statusCode: response.statusCode,

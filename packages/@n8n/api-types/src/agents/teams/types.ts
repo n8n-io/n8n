@@ -61,12 +61,6 @@ export interface TeamsAgentSetupState {
 	/** Null until a credential is connected, because the template needs the client ID. */
 	deployToAzureUrl: string | null;
 	/**
-	 * The name the deployment gives the bot. Shown so the user can pick it out of
-	 * their Bot Services list — we cannot deep-link to the resource itself,
-	 * because its subscription and resource group are chosen at deploy time.
-	 */
-	suggestedBotName: string;
-	/**
 	 * What the manifest uses when the settings override neither. Computed here so
 	 * the fields show the values Teams will actually display, rather than the
 	 * frontend guessing at the same derivation.
@@ -81,5 +75,5 @@ export interface TeamsAgentSetupState {
  * first message fails.
  */
 export type TeamsCredentialCheck =
-	| { status: 'ok'; clientId: string }
+	| { status: 'ok' }
 	| { status: 'failed'; reason: 'certificate' | 'incomplete' | 'rejected' | 'unreachable' };

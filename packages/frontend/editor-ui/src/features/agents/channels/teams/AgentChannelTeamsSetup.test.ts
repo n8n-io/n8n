@@ -15,6 +15,10 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 	}),
 }));
 
+vi.mock('file-saver', () => ({
+	saveAs: vi.fn(),
+}));
+
 vi.mock('./api', () => ({
 	checkTeamsCredential: vi.fn(),
 	getTeamsSetupState: vi.fn(),
@@ -61,12 +65,11 @@ describe('AgentChannelTeamsSetup', () => {
 			messagingEndpointUrl: ENDPOINT,
 			botId: null,
 			deployToAzureUrl: DEPLOY_URL,
-			suggestedBotName: 'support-bot-abc12345',
 			defaultDisplayName: DEFAULT_NAME,
 			defaultDescription: DEFAULT_DESCRIPTION,
 		});
 		vi.mocked(fetchTeamsAppPackage).mockResolvedValue(new Blob(['zip']));
-		vi.mocked(checkTeamsCredential).mockResolvedValue({ status: 'ok', clientId: CLIENT_ID });
+		vi.mocked(checkTeamsCredential).mockResolvedValue({ status: 'ok' });
 	});
 
 	afterEach(() => vi.useRealTimers());
@@ -119,7 +122,6 @@ describe('AgentChannelTeamsSetup', () => {
 				messagingEndpointUrl: ENDPOINT,
 				botId: null,
 				deployToAzureUrl: null,
-				suggestedBotName: 'support-bot-abc12345',
 				defaultDisplayName: DEFAULT_NAME,
 				defaultDescription: DEFAULT_DESCRIPTION,
 			});
@@ -244,7 +246,6 @@ describe('AgentChannelTeamsSetup', () => {
 				messagingEndpointUrl: ENDPOINT,
 				botId: CLIENT_ID,
 				deployToAzureUrl: DEPLOY_URL,
-				suggestedBotName: 'support-bot-abc12345',
 				defaultDisplayName: DEFAULT_NAME,
 				defaultDescription: DEFAULT_DESCRIPTION,
 			});
@@ -264,7 +265,6 @@ describe('AgentChannelTeamsSetup', () => {
 				messagingEndpointUrl: ENDPOINT,
 				botId: CLIENT_ID,
 				deployToAzureUrl: DEPLOY_URL,
-				suggestedBotName: 'support-bot-abc12345',
 				defaultDisplayName: DEFAULT_NAME,
 				defaultDescription: DEFAULT_DESCRIPTION,
 			});
@@ -409,7 +409,6 @@ describe('AgentChannelTeamsSetup', () => {
 				messagingEndpointUrl: ENDPOINT,
 				botId: CLIENT_ID,
 				deployToAzureUrl: DEPLOY_URL,
-				suggestedBotName: 'support-bot-abc12345',
 				defaultDisplayName: DEFAULT_NAME,
 				defaultDescription: DEFAULT_DESCRIPTION,
 			});
@@ -432,12 +431,26 @@ describe('AgentChannelTeamsSetup', () => {
 			);
 		});
 
+		it('does not spend a Microsoft token request on a check nothing here reads', async () => {
+			renderComponent({ props: settingsProps() });
+
+			await waitFor(() => expect(getTeamsSetupState).toHaveBeenCalled());
+			expect(checkTeamsCredential).not.toHaveBeenCalled();
+		});
+
 		it('shows nothing from the setup steps', async () => {
 			const { queryByTestId } = renderComponent({ props: settingsProps() });
 
 			await waitFor(() => expect(queryByTestId('teams-deploy-to-azure')).toBeNull());
 			expect(queryByTestId('teams-entra-register-link')).toBeNull();
 		});
+	});
+
+	it('asks for the setup state once on open, not once per trigger that wants it', async () => {
+		renderComponent({ props: props() });
+
+		await waitFor(() => expect(getTeamsSetupState).toHaveBeenCalled());
+		expect(getTeamsSetupState).toHaveBeenCalledTimes(1);
 	});
 
 	it('still shows the endpoint URL when the setup state cannot be loaded', async () => {

@@ -1,10 +1,14 @@
 import { mock } from 'vitest-mock-extended';
+import type { GlobalConfig } from '@n8n/config';
 import type { InstanceSettings } from 'n8n-core';
+
+import { JwtService } from '@/services/jwt.service';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { UrlService } from '@/services/url.service';
 
 import type { Agent } from '../../../../entities/agent.entity';
+import { AgentCredentialLookupService } from '../../../agent-credential-lookup.service';
 import type { AgentRepository } from '../../../../repositories/agent.repository';
 import { TeamsArmTemplateService } from '../teams-arm-template.service';
 import { TeamsManifestService } from '../teams-manifest.service';
@@ -16,7 +20,10 @@ const CREDENTIAL_ID = 'cred-1';
 const CLIENT_ID = '11111111-2222-3333-4444-555555555555';
 const TENANT_ID = '99999999-8888-7777-6666-555555555555';
 
-const instanceSettings = mock<InstanceSettings>({ encryptionKey: 'test-encryption-key' });
+const jwtService = new JwtService(
+	mock<InstanceSettings>({ encryptionKey: 'test-encryption-key' }),
+	mock<GlobalConfig>({ userManagement: { jwtSecret: 'test-jwt-secret' } }),
+);
 
 describe('TeamsSetupService', () => {
 	let agentRepository: ReturnType<typeof mock<AgentRepository>>;
@@ -64,10 +71,10 @@ describe('TeamsSetupService', () => {
 		credentialsService.findAllGlobalCredentialIds.mockResolvedValue([]);
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agentWith([]));
 
-		armTemplateService = new TeamsArmTemplateService(instanceSettings, urlService);
+		armTemplateService = new TeamsArmTemplateService(jwtService, urlService);
 		service = new TeamsSetupService(
 			agentRepository,
-			credentialsService,
+			new AgentCredentialLookupService(credentialsService),
 			new TeamsManifestService(),
 			armTemplateService,
 			urlService,
