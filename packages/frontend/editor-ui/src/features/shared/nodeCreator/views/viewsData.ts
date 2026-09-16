@@ -67,7 +67,12 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { NodeIconSource } from '@/app/utils/nodeIcon';
 import { useEvaluationStore } from '@/features/ai/evaluation.ee/evaluation.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
-import type { SectionCreateElement, SimplifiedNodeType, ViewCreateElement } from '@/Interface';
+import type {
+	CommandCreateElement,
+	SectionCreateElement,
+	SimplifiedNodeType,
+	ViewCreateElement,
+} from '@/Interface';
 import type { BaseTextKey } from '@n8n/i18n';
 import { useI18n } from '@n8n/i18n';
 import camelCase from 'lodash/camelCase';
@@ -676,13 +681,13 @@ export function RegularView(nodes: SimplifiedNodeType[]) {
 
 	view.items.push({
 		key: ADD_EMPTY_GROUP_NODE_CREATOR_ITEM,
-		type: 'view',
+		type: 'command',
 		properties: {
 			title: i18n.baseText('nodeCreator.triggerHelperPanel.addGroup'),
 			icon: 'group',
 			description: i18n.baseText('nodeCreator.triggerHelperPanel.addGroupDescription'),
 		},
-	});
+	} satisfies CommandCreateElement);
 
 	return view;
 }
