@@ -1,3 +1,4 @@
+import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -19,8 +20,27 @@ export class AgentCredentialLookupService {
 	constructor(private readonly credentialsService: CredentialsService) {}
 
 	/**
+	 * Returns the decrypted credential, or null when the user may not use it in
+	 * this project, or it is not of the expected type.
+	 *
+	 * The filter is the one connecting a channel uses, so a route that reads a
+	 * credential and the route that connects it agree on who may name it.
+	 */
+	async decryptForUser(user: User, projectId: string, credentialId: string, expectedType: string) {
+		const usable = await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(user, {
+			projectId,
+		});
+		if (!usable.some((item) => item.id === credentialId)) return null;
+		return await this.decryptForProject(projectId, credentialId, expectedType);
+	}
+
+	/**
 	 * Returns the decrypted credential, or null when it is not visible to the
 	 * project or is not of the expected type.
+	 *
+	 * No user is consulted, so this is only for a route that has none and is
+	 * authorised another way. Anything reached by a signed-in caller should use
+	 * `decryptForUser`.
 	 */
 	async decryptForProject(projectId: string, credentialId: string, expectedType: string) {
 		const projectCredentials =

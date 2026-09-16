@@ -1,4 +1,5 @@
 import type { AgentTeamsIntegrationSettings, TeamsAgentSetupState } from '@n8n/api-types';
+import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -42,13 +43,14 @@ export class TeamsSetupService {
 	 * holds no credential until the very last step.
 	 */
 	async getSetupState(
+		user: User,
 		scope: AgentScope,
 		selectedCredentialId?: string,
 	): Promise<TeamsAgentSetupState> {
 		const agent = await this.getAgent(scope);
 		const credentialId = selectedCredentialId ?? this.connectedCredentialId(agent);
 		const [identity, claimedBy] = await Promise.all([
-			credentialId ? this.readIdentity(agent.projectId, credentialId) : null,
+			credentialId ? this.readIdentity(agent.projectId, credentialId, user) : null,
 			credentialId ? this.credentialClaimedBy(agent.id, credentialId) : null,
 		]);
 
@@ -73,13 +75,16 @@ export class TeamsSetupService {
 	 * trip through the edit view.
 	 */
 	async buildPackage(
+		user: User,
 		scope: AgentScope,
 		selectedCredentialId?: string,
 		selectedSettings?: AgentTeamsIntegrationSettings,
 	): Promise<Buffer> {
 		const agent = await this.getAgent(scope);
 		const credentialId = selectedCredentialId ?? this.connectedCredentialId(agent);
-		const identity = credentialId ? await this.readIdentity(agent.projectId, credentialId) : null;
+		const identity = credentialId
+			? await this.readIdentity(agent.projectId, credentialId, user)
+			: null;
 		if (!credentialId || !identity) {
 			throw new BadRequestError('Add the credential before downloading the app package.');
 		}
@@ -192,12 +197,28 @@ export class TeamsSetupService {
 		return agent.integrations?.find((item) => item.type === 'teams')?.credentialId;
 	}
 
-	private async readIdentity(projectId: string, credentialId: string): Promise<BotIdentity | null> {
-		const data = await this.credentialLookup.decryptForProject(
-			projectId,
-			credentialId,
-			TEAMS_CREDENTIAL_TYPE,
-		);
+	/**
+	 * `user` is absent only on the ARM template route, which has no session and
+	 * is authorised by a signed token instead -- and that token is minted only
+	 * after a user-scoped read has already allowed the credential.
+	 */
+	private async readIdentity(
+		projectId: string,
+		credentialId: string,
+		user?: User,
+	): Promise<BotIdentity | null> {
+		const data = user
+			? await this.credentialLookup.decryptForUser(
+					user,
+					projectId,
+					credentialId,
+					TEAMS_CREDENTIAL_TYPE,
+				)
+			: await this.credentialLookup.decryptForProject(
+					projectId,
+					credentialId,
+					TEAMS_CREDENTIAL_TYPE,
+				);
 		const clientId = stringProperty(data, 'clientId');
 		const tenantId = stringProperty(data, 'tenantId');
 		return clientId && tenantId ? { clientId, tenantId } : null;
