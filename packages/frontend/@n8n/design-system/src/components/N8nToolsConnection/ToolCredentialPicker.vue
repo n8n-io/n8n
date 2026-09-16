@@ -18,18 +18,17 @@ const props = withDefaults(
 	defineProps<{
 		item: ToolConnectionItem;
 		credentials: ToolCredentialRef[];
-		connectVariant?: 'solid' | 'outline';
-		teleported?: boolean;
+		connectVariant?: 'solid' | 'subtle';
 	}>(),
 	{
 		connectVariant: 'solid',
-		teleported: false,
 	},
 );
 
 const emit = defineEmits<{
 	'select-credential': [item: ToolConnectionItem, authType: string, credentialId: string];
 	'credential-dropdown-open': [item: ToolConnectionItem];
+	'credential-dropdown-close': [item: ToolConnectionItem];
 	'first-credential-connect': [item: ToolConnectionItem];
 	'new-credential-connect': [item: ToolConnectionItem];
 }>();
@@ -93,7 +92,11 @@ const credentialMenuItems = computed<Array<DropdownMenuItemProps<string, Credent
 );
 
 watch(isOpen, (open) => {
-	if (open) emit('credential-dropdown-open', props.item);
+	if (open) {
+		emit('credential-dropdown-open', props.item);
+	} else {
+		emit('credential-dropdown-close', props.item);
+	}
 });
 
 function pickCredential(itemId: string) {
@@ -161,7 +164,7 @@ function editCredential(credentialId: string) {
 		<template #trigger>
 			<N8nButton
 				v-if="item.status === 'disconnected'"
-				variant="outline"
+				variant="ghost"
 				size="small"
 				data-test-id="tool-credential-picker-trigger-disconnected"
 			>
@@ -177,7 +180,6 @@ function editCredential(credentialId: string) {
 			>
 				<N8nIcon icon="check" :size="14" :class="$style.statusIconConnected" />
 				<span>{{ statusLabel }}</span>
-				<!-- <N8nIcon icon="chevron-down" :size="12" /> -->
 			</N8nButton>
 			<N8nButton
 				v-else
@@ -186,7 +188,6 @@ function editCredential(credentialId: string) {
 				data-test-id="tool-credential-picker-trigger-connect"
 			>
 				<span>{{ i18n.baseText('tools.connection.action.connect') }}</span>
-				<!-- <N8nIcon icon="chevron-down" :size="14" :class="$style.triggerCaret" /> -->
 			</N8nButton>
 		</template>
 

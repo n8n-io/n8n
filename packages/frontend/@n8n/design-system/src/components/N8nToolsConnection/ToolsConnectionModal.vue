@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, useId, useTemplateRef, watch } from 'vue';
 import { N8nDialog } from '../N8nDialog';
 import N8nIcon from '../N8nIcon';
 import N8nInput from '../N8nInput';
@@ -38,6 +38,8 @@ const props = withDefaults(
 		hideBackButton?: boolean;
 		allowWorkflowCreation?: boolean;
 		workflowCreationLoading?: boolean;
+		/** Delay search updates by this number of milliseconds. Search is immediate by default. */
+		debounceSearchValue?: number;
 	}>(),
 	{
 		open: false,
@@ -69,18 +71,31 @@ const searchPlaceholder = computed(
 	() => props.searchPlaceholder ?? i18n.baseText('tools.connection.search.placeholder'),
 );
 
-const ITEM_HEIGHT = 58;
-const SEARCH_DEBOUNCE_TIME = 300;
+const ITEM_HEIGHT = 64;
 
 const searchQuery = ref('');
-const debouncedSearchQuery = ref('');
-const setDebouncedSearch = useDebounceFn((value: string) => {
-	debouncedSearchQuery.value = value;
+const effectiveSearchQuery = ref('');
+
+function applySearch(value: string) {
+	effectiveSearchQuery.value = value;
 	emit('update:searchQuery', value);
-}, getDebounceTime(SEARCH_DEBOUNCE_TIME));
-watch(searchQuery, (value) => {
+}
+
+const setDebouncedSearch = useDebounceFn(
+	applySearch,
+	getDebounceTime(props.debounceSearchValue ?? 0),
+);
+
+function updateSearch(value: string) {
+	if (props.debounceSearchValue === undefined) {
+		applySearch(value);
+		return;
+	}
+
 	void setDebouncedSearch(value);
-});
+}
+
+watch(searchQuery, updateSearch);
 
 const activeCategory = ref<ToolCategoryKey>(props.categories[0] ?? 'connected');
 const isMcpCategory = computed(() => activeCategory.value === 'mcp');
@@ -121,11 +136,11 @@ onMounted(() => {
 	}
 });
 
-const hasActiveSearch = computed(() => debouncedSearchQuery.value.length > 0);
+const hasActiveSearch = computed(() => effectiveSearchQuery.value.length > 0);
 
 function matchesQuery(item: ToolConnectionItem): boolean {
-	if (!debouncedSearchQuery.value) return true;
-	const query = debouncedSearchQuery.value.toLowerCase();
+	if (!effectiveSearchQuery.value) return true;
+	const query = effectiveSearchQuery.value.toLowerCase();
 	return (
 		item.title.toLowerCase().includes(query) ||
 		(item.description ?? '').toLowerCase().includes(query)
@@ -266,7 +281,7 @@ const isListEmpty = computed(() => toolRows.value.length === 0);
 const emptyMessage = computed(() => {
 	if (hasActiveSearch.value) {
 		return i18n.baseText('tools.connection.empty.noResults', {
-			interpolate: { query: debouncedSearchQuery.value },
+			interpolate: { query: effectiveSearchQuery.value },
 		});
 	}
 	return i18n.baseText('tools.connection.empty.title');
@@ -287,6 +302,83 @@ function handleOpenChange(value: boolean) {
 		closeDetail();
 	}
 }
+
+const listIndex = ref(0);
+const toolListId = useId();
+const activeToolRow = computed(() => toolRows.value[listIndex.value]);
+const activeToolRowId = computed(() =>
+	activeToolRow.value ? toolRowId(activeToolRow.value.item.id) : undefined,
+);
+
+function toolRowId(itemId: string): string {
+	return `${toolListId}-row-${itemId}`;
+}
+
+watch(toolRows, (rows) => {
+	listIndex.value = Math.min(listIndex.value, Math.max(rows.length - 1, 0));
+});
+
+function isToolRowSelected(index: number): boolean {
+	return listIndex.value === index;
+}
+
+function handleNavigateListIndex(direction: -1 | 1) {
+	const maxIndex = toolRows.value.length - 1;
+	if (maxIndex < 0) return;
+
+	listIndex.value = Math.min(Math.max(listIndex.value + direction, 0), maxIndex);
+	scrollerRef.value?.scrollToKeyIfNeeded(toolRows.value[listIndex.value].key);
+}
+
+function onNavigationKeyPress(event: KeyboardEvent) {
+	const isDefaultView = !props.detailItem;
+	const target = event.target;
+	const isSearchInputFocused =
+		target instanceof Element &&
+		target.closest('[data-test-id="tools-connection-search"]') !== null;
+
+	switch (event.key) {
+		case 'Backspace':
+			if (isDefaultView) break;
+			event.preventDefault();
+			closeDetail();
+			focusSearchInput();
+			break;
+		case 'Enter':
+			if (!isDefaultView || !activeToolRow.value || !isSearchInputFocused) break;
+			event.preventDefault();
+			openDetail(activeToolRow.value.item);
+			break;
+		case 'ArrowDown':
+		case 'ArrowUp':
+			if (!isDefaultView) break;
+			event.preventDefault();
+			handleNavigateListIndex(event.key === 'ArrowDown' ? 1 : -1);
+			if (!isSearchInputFocused) {
+				focusSearchInput();
+			}
+			break;
+		default:
+	}
+}
+
+let lastPointerPosition: { x: number; y: number } | undefined;
+
+function trackPointerPosition(event: PointerEvent) {
+	lastPointerPosition = { x: event.clientX, y: event.clientY };
+}
+
+function onPointerMoveToolRow(event: PointerEvent, index: number) {
+	const pointerMoved =
+		lastPointerPosition?.x !== event.clientX || lastPointerPosition.y !== event.clientY;
+
+	trackPointerPosition(event);
+	if (pointerMoved) listIndex.value = index;
+}
+
+function toolRowIndex(row: FlattenedRow): number {
+	return toolRows.value.findIndex((toolRow) => toolRow.key === row.key);
+}
 </script>
 
 <template>
@@ -297,6 +389,8 @@ function handleOpenChange(value: boolean) {
 		:aria-label="modalTitle"
 		data-test-id="tools-connection-modal"
 		:class="$style.modal"
+		@keydown="onNavigationKeyPress"
+		@pointermove="trackPointerPosition"
 		@update:open="handleOpenChange"
 	>
 		<div :class="$style.body">
@@ -343,6 +437,8 @@ function handleOpenChange(value: boolean) {
 						ref="searchInputRef"
 						v-model="searchQuery"
 						:placeholder="searchPlaceholder"
+						:aria-activedescendant="activeToolRowId"
+						:aria-controls="toolListId"
 						clearable
 						data-test-id="tools-connection-search"
 						:class="$style.searchInput"
@@ -403,7 +499,9 @@ function handleOpenChange(value: boolean) {
 					</template>
 					<N8nRecycleScroller
 						v-else
+						:id="toolListId"
 						ref="scrollerRef"
+						role="listbox"
 						:items="flattenedRows"
 						:item-size="ITEM_HEIGHT"
 						item-key="key"
@@ -412,7 +510,13 @@ function handleOpenChange(value: boolean) {
 						<template #default="{ item: row }">
 							<ToolRow
 								v-if="'item' in row"
+								:id="toolRowId(row.item.id)"
 								:item="row.item"
+								role="option"
+								:tabindex="-1"
+								:aria-selected="isToolRowSelected(toolRowIndex(row))"
+								:class="{ [$style.selectedToolRow]: isToolRowSelected(toolRowIndex(row)) }"
+								@pointermove="onPointerMoveToolRow($event, toolRowIndex(row))"
 								@open-detail="openDetail($event)"
 								@connect="emit('connect', $event)"
 								@select-credential="
@@ -420,6 +524,7 @@ function handleOpenChange(value: boolean) {
 										emit('select-credential', item, authType, credentialId)
 								"
 								@credential-dropdown-open="emit('credential-dropdown-open', $event)"
+								@credential-dropdown-close="focusSearchInput"
 								@first-credential-connect="emit('first-credential-connect', $event)"
 								@new-credential-connect="emit('new-credential-connect', $event)"
 							/>
@@ -435,6 +540,8 @@ function handleOpenChange(value: boolean) {
 </template>
 
 <style lang="scss" module>
+@use '../../css/mixins/mixins';
+
 .modal {
 	--n8n-dialog-content--padding: 0;
 }
@@ -525,13 +632,22 @@ function handleOpenChange(value: boolean) {
 	flex: 1 1 0;
 	min-height: 0;
 	overflow: hidden;
-	padding-inline: var(--spacing--xs);
 	padding-block-start: var(--spacing--2xs);
 }
 
 .scroller {
 	height: 100%;
 	overflow-y: auto;
+	scrollbar-gutter: stable;
+	@include mixins.scroll-bar;
+
+	:global(.recycle-scroller-items-wrapper) {
+		padding-inline-start: var(--spacing--2xs);
+	}
+}
+
+.selectedToolRow {
+	background: var(--background--hover);
 }
 
 .empty {
