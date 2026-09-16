@@ -7,6 +7,7 @@ import {
 } from 'n8n-workflow';
 
 import { sleep } from '@n8n/utils/sleep';
+import { escapeODataSearchValue } from '@utils/query-escaping';
 import { filterSortSearchListItems } from '../helpers/utils';
 import {
 	buildTeamsPath,
@@ -168,11 +169,12 @@ export async function getUsers(
 	// nextLink requests, so the token branch needs it too or Graph rejects the $search.
 	const headers: IDataObject = { ConsistencyLevel: 'eventual' };
 	const qs: IDataObject = paginationToken ? {} : { $select: 'id,displayName,userPrincipalName' };
-	if (!paginationToken && filter) {
-		// `$search` escaping is NOT `$filter`'s quote-doubling: backslash-escape `\`
-		// first, then `"`, and the OR operator is uppercase and outside the quotes.
-		const escaped = filter.replaceAll('\\', '\\\\').replaceAll('"', '\\"');
-		qs.$search = `"displayName:${escaped}" OR "userPrincipalName:${escaped}"`;
+	if (!paginationToken) {
+		// Graph splits `&` and `#` after decoding. Remove them before escaping the quoted term.
+		const escaped = escapeODataSearchValue((filter ?? '').replace(/[&#]/g, '').trim());
+		if (escaped) {
+			qs.$search = `"displayName:${escaped}" OR "mail:${escaped}" OR "userPrincipalName:${escaped}"`;
+		}
 	}
 	let response: IDataObject;
 	try {

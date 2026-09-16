@@ -2156,6 +2156,21 @@ export class CredentialsService {
 					data: decryptedData,
 				};
 
+		// Find the owning project to prevent leakage of other project data.
+		const owningProject = await this.findCredentialOwningProject(storedCredential.id);
+		if (!owningProject) {
+			mergedCredentials.homeProject = undefined;
+		} else {
+			mergedCredentials.homeProject = {
+				id: owningProject.id,
+				name: owningProject.name,
+				icon: owningProject.icon,
+				type: owningProject.type,
+				createdAt: owningProject.createdAt.toISOString(),
+				updatedAt: owningProject.updatedAt.toISOString(),
+			};
+		}
+
 		if (user && credentialsToTest) {
 			await this.replaceCredentialContentsForSharee(
 				user,

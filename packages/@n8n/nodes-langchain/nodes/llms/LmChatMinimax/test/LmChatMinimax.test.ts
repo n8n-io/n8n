@@ -195,6 +195,7 @@ describe('LmChatMinimax', () => {
 					headersTimeout: undefined,
 					bodyTimeout: undefined,
 				}),
+				ctx.helpers.getSecureEgressFilter(),
 			);
 		});
 
@@ -214,6 +215,7 @@ describe('LmChatMinimax', () => {
 					headersTimeout: 120000,
 					bodyTimeout: 120000,
 				}),
+				ctx.helpers.getSecureEgressFilter(),
 			);
 		});
 	});
