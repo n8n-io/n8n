@@ -249,7 +249,7 @@ async function onRegenerate() {
 	<N8nCard :class="$style.card" data-testid="agent-evals-cases-card">
 		<div :class="$style.header">
 			<div :class="$style.headerRow">
-				<N8nBadge theme="secondary" :show-border="false" :class="$style.tag">
+				<N8nBadge variant="secondary" :class="$style.tag">
 					<N8nIcon icon="sparkles" size="xsmall" />
 					{{ i18n.baseText('agents.builder.agentEvals.cases.tag') }}
 				</N8nBadge>

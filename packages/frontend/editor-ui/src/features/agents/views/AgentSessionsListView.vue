@@ -20,7 +20,7 @@ import {
 	N8nActionDropdown,
 	N8nButton,
 	N8nCheckbox,
-	N8nIcon,
+	N8nBadge,
 	N8nTableBase,
 	N8nText,
 } from '@n8n/design-system';
@@ -311,10 +311,12 @@ async function onFiltersChange(value: AgentSessionFilters) {
 							</button>
 						</td>
 						<td :class="$style.originCell" data-test-id="agent-session-origin">
-							<span :class="$style.originPill" data-test-id="agent-session-origin-pill">
-								<N8nIcon :icon="originPresentation(thread).icon" size="large" />
-								<span>{{ originPresentation(thread).label }}</span>
-							</span>
+							<N8nBadge
+								:leading-icon="originPresentation(thread).icon"
+								data-test-id="agent-session-origin-pill"
+							>
+								{{ originPresentation(thread).label }}
+							</N8nBadge>
 						</td>
 						<td :class="$style.dateCell" data-test-id="agent-session-updated-at">
 							{{ formatDate(thread.updatedAt) }}
