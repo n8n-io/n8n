@@ -1,7 +1,7 @@
 /**
  * Consolidated nodes tool — list, search, describe, type-definition, suggested, explore-resources.
  */
-import { Tool } from '@n8n/agents';
+import { Tool, type ToolContext } from '@n8n/agents';
 import {
 	AI_CONNECTION_TYPES,
 	NodeSearchEngine,
@@ -14,6 +14,7 @@ import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext } from '../types';
+import { needsModelSelection } from './nodes/model-selection';
 import { pickPreferredChatModelNode } from './nodes/preferred-chat-model';
 import { addSetupPreference, type NodeWithSetupPreference } from './nodes/setup-preference';
 import { buildCredentialMap } from './workflows/resolve-credentials';
@@ -323,6 +324,7 @@ async function resolveNodeTypeDefinitions(
 async function handleTypeDefinition(
 	context: InstanceAiContext,
 	input: Extract<FullInput, { action: 'type-definition' }>,
+	loadSkill: ToolContext['loadSkill'],
 ) {
 	// Native tool validation uses the flattened top-level schema (required for
 	// Anthropic's `type: "object"` constraint), which makes every variant field
@@ -339,7 +341,11 @@ async function handleTypeDefinition(
 		};
 	}
 
-	return await resolveNodeTypeDefinitions(context, parsed.data.nodeTypes);
+	const result = await resolveNodeTypeDefinitions(context, parsed.data.nodeTypes);
+	if (loadSkill && (await needsModelSelection(context.nodeService, result.definitions))) {
+		await loadSkill('model-selection');
+	}
+	return result;
 }
 
 async function handleSuggested(
@@ -444,10 +450,10 @@ export function createNodesTool(
 					'`explore-resources` with the real method name and a credential.',
 			)
 			.input(orchestratorInputSchema)
-			.handler(async (input: OrchestratorInput) => {
+			.handler(async (input: OrchestratorInput, ctx) => {
 				switch (input.action) {
 					case 'type-definition':
-						return await handleTypeDefinition(context, input);
+						return await handleTypeDefinition(context, input, ctx.loadSkill);
 					case 'explore-resources':
 						return await handleExploreResources(context, input);
 				}
@@ -460,7 +466,7 @@ export function createNodesTool(
 			'Work with n8n node types. Use `suggested` for known workflow categories, `search` for service-specific discovery, `type-definition` before configuring nodes, and `explore-resources` for live credential-backed lists.',
 		)
 		.input(fullInputSchema)
-		.handler(async (input: FullInput) => {
+		.handler(async (input: FullInput, ctx) => {
 			switch (input.action) {
 				case 'list':
 					return await handleList(context, input);
@@ -469,7 +475,7 @@ export function createNodesTool(
 				case 'describe':
 					return await handleDescribe(context, input);
 				case 'type-definition':
-					return await handleTypeDefinition(context, input);
+					return await handleTypeDefinition(context, input, ctx.loadSkill);
 				case 'suggested':
 					return await handleSuggested(context, input);
 				case 'explore-resources':

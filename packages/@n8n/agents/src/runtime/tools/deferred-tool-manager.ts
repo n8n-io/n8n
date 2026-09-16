@@ -206,7 +206,7 @@ export class DeferredToolManager {
 		};
 	}
 
-	private load(toolName: string): LoadToolOutput {
+	load(toolName: string): LoadToolOutput {
 		const activeTool = this.activeToolsByName.get(toolName);
 		if (activeTool) {
 			return {

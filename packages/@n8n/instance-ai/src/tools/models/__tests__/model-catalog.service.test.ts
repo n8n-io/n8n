@@ -86,6 +86,60 @@ describe('ModelCatalogService', () => {
 		expect(result.hasMore).toBe(false);
 	});
 
+	it('filters IDs and names before ordering and limiting, with hasMore scoped to matches', async () => {
+		fetchCatalog.mockResolvedValue(
+			catalog(
+				[
+					...Array.from({ length: 12 }, (_, index) =>
+						model(`other/model-${index}`, { releaseDate: '2026-09-15' }),
+					),
+					model('anthropic/claude-small', {
+						name: 'Small model',
+						releaseDate: '2026-08-01',
+					}),
+					model('anthropic/assistant', {
+						name: 'Claude Assistant',
+						releaseDate: '2026-09-01',
+					}),
+				],
+				'openrouter',
+			),
+		);
+
+		const limited = await service.search({ provider: 'openrouter', query: ' CLAUDE ', limit: 1 });
+		expect(limited.models.map(({ id }) => id)).toEqual(['anthropic/assistant']);
+		expect(limited.hasMore).toBe(true);
+
+		const all = await service.search({ provider: 'openrouter', query: 'claude', limit: 10 });
+		expect(all.models.map(({ id }) => id)).toEqual([
+			'anthropic/assistant',
+			'anthropic/claude-small',
+		]);
+		expect(all.hasMore).toBe(false);
+
+		const other = await service.search({ provider: 'openrouter', query: 'other/', limit: 10 });
+		expect(other.models).toHaveLength(10);
+		expect(other.hasMore).toBe(true);
+		expect(fetchCatalog).toHaveBeenCalledOnce();
+	});
+
+	it('returns no matches for an unmatched query and treats a blank query as unfiltered', async () => {
+		fetchCatalog.mockResolvedValue(catalog([model('example')]));
+		expect(await service.search({ provider: 'openai', query: 'missing', limit: 10 })).toMatchObject(
+			{
+				status: 'no_matching_models',
+				models: [],
+				hasMore: false,
+			},
+		);
+		const unfiltered = await service.search({ provider: 'openai', limit: 10 });
+		expect(await service.search({ provider: 'openai', query: '  ', limit: 10 })).toEqual(
+			unfiltered,
+		);
+		expect(unfiltered.models.map(({ id }) => id)).toEqual(['example']);
+		expect(fetchCatalog).toHaveBeenCalledOnce();
+	});
+
 	it('normalizes provider aliases while preserving exact model IDs and unknown metadata', async () => {
 		fetchCatalog.mockResolvedValue(
 			catalog(

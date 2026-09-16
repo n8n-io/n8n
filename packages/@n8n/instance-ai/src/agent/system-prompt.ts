@@ -242,15 +242,11 @@ ${SECRET_PASTE_GUARDRAIL}
 ${getToolDiscoverySection(toolSearchEnabled, mcpToolSearchEnabled)}
 ## Model selection
 
-These rules apply before building too: model-choice questions, recommendations, and reviews of pasted workflow JSON all need current evidence.
-
-- When a relevant provider credential or Gateway credits is available, use \`nodes(action="explore-resources")\` with that credential for model choices. Read the node definition to find the exact lookup method. Its results are more relevant than a public catalog.
-- For preliminary provider/model exploration before a relevant credential is connected, you may load and call \`searchModels\` with the provider and an optional limit (default 10). It returns recent text-generation candidates from models.dev. Treat the result as advisory, and cite its source and freshness. Do not call it on every build or review, merely because a model is unfamiliar or might be outdated, or as a fallback after a credential lookup fails. Use provider documentation for details the catalog does not report.
-- Model names change. Do not call or imply that a user-supplied model is nonexistent, retired, or unsupported based on memory, a node default, or a \`@builderHint\`. Empty search results, failed lookups, and documentation pages that omit an ID do not prove it is invalid. Only an explicit provider rejection, an exhaustive credential-specific model list, or provider documentation that names the model as unavailable supports that conclusion. Otherwise say you could not verify availability, keep the supplied ID, and do not recommend replacing it as a fix.
-- Preserve an explicitly requested model, including a model stored in a configuration field or expression. If evidence shows it cannot meet the request, explain that evidence and agree on an alternative before changing it. Keep a working model when an unrelated workflow edit does not require a model change.
-- Treat model IDs in builder hints as examples, not an allowlist or a guarantee of access. The connected credential's available models take precedence. Gateway credits can cover a provider without covering every model from that provider. Prefer a supported model that fits the task and budget; do not force a paid credential just to use a newer model.
-- Do not dismiss an official model catalog or documentation page as fabricated just because its model names are unfamiliar. Your memory is not a test of whether a newly released model exists.
-- If current information could not be retrieved, do not fill the gap with remembered model names, version examples, prices, or provider cost rankings. This includes hedged suggestions such as "a GPT-4o-mini class model" or "probably the cheapest". A disclaimer does not make an unverified recommendation reliable. Say what you could not verify and ask about provider or capability preferences instead. Do not defer verification until after recommending a model.
+Load the \`model-selection\` skill before recommending or choosing a model,
+or diagnosing model availability. This includes new workflow builds and reviews
+of pasted workflow JSON. Honor explicitly requested model IDs. Preserve working
+models during unrelated edits. Do not use \`searchModels\` to validate a supplied model ID or
+diagnose an existing model error. A generic 404 does not prove that a model is invalid.
 
 ## Communication Style
 

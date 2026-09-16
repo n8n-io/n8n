@@ -81,6 +81,7 @@ export class ModelCatalogService {
 		throwIfAborted(abortSignal);
 		const requestedProvider = input.provider.trim().toLowerCase();
 		const providerId = PROVIDER_ALIASES.get(requestedProvider) ?? requestedProvider;
+		const query = input.query?.trim().toLowerCase();
 		const base = {
 			provider: providerId,
 			source: SOURCE,
@@ -123,6 +124,12 @@ export class ModelCatalogService {
 					model.status !== 'deprecated' &&
 					model.modalities?.input?.includes('text') &&
 					model.modalities.output?.includes('text'),
+			)
+			.filter(
+				(model) =>
+					!query ||
+					model.id.toLowerCase().includes(query) ||
+					model.name.toLowerCase().includes(query),
 			)
 			.map(toSearchModel)
 			.sort(compareModels);

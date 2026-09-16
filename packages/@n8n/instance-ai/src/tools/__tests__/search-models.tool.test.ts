@@ -42,6 +42,12 @@ describe('searchModels tool', () => {
 		expect(result.models).toHaveLength(10);
 		expect(result.hasMore).toBe(true);
 		expect(result.credentialAccess).toBe('not_checked');
+
+		const filteredInput = parseToolInput(tool, { provider: 'openai', query: ' Model 11 ' });
+		if (!filteredInput.success) throw new Error('Expected valid query input');
+		const filtered = searchModelsOutputSchema.parse(await executeTool(tool, filteredInput.data));
+		expect(filtered.models.map(({ id }) => id)).toEqual(['model-11']);
+		expect(filtered.hasMore).toBe(false);
 	});
 
 	it.each([
@@ -50,6 +56,8 @@ describe('searchModels tool', () => {
 		{ provider: 'openai', limit: 0 },
 		{ provider: 'openai', limit: 11 },
 		{ provider: 'openai', limit: 1.5 },
+		{ provider: 'openai', query: 123 },
+		{ provider: 'openai', query: 'x'.repeat(101) },
 		{ provider: 'openai', includePreview: true },
 		{ provider: 'openai', requirements: {} },
 	])('rejects invalid or unsupported inputs: %j', (input) => {

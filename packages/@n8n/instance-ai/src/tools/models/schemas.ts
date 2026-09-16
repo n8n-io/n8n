@@ -3,6 +3,14 @@ import { z } from 'zod';
 export const searchModelsInputSchema = z
 	.object({
 		provider: z.string().trim().min(1).max(100).describe('Provider ID, such as openai or google'),
+		query: z
+			.string()
+			.trim()
+			.max(100)
+			.optional()
+			.describe(
+				'Optional case-insensitive substring filter on model IDs and names, applied before the limit. For OpenRouter, use claude or openai to select a model maker. Empty means no filter.',
+			),
 		limit: z.number().int().min(1).max(10).default(10).describe('Maximum results; defaults to 10'),
 	})
 	.strict();

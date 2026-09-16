@@ -852,9 +852,11 @@ discriminator values like spreadsheet IDs, calendar names, etc.
 
 ## `searchModels`
 
-Preliminary models.dev catalog search before a relevant provider credential is
-connected. This tool is deferred: discover it with `search_tools` and load it
-with `load_tool` when needed. If a provider credential or Gateway credits is
+Preliminary models.dev catalog search when choosing a model without a relevant
+credential or a suitable named builder-hint recommendation. The `model-selection`
+skill activates this deferred tool when model-bearing node definitions are
+inspected. It can also be discovered with `search_tools` and loaded with
+`load_tool`. Activation does not call the catalog. If a provider credential or Gateway credits is
 available, use `nodes(action="explore-resources")` with that credential instead.
 Do not use catalog search to validate an unfamiliar model or to recover from a
 failed credential lookup.
@@ -862,7 +864,12 @@ failed credential lookup.
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
 | `provider` | string | yes | Serving provider ID. Case-insensitive. Aliases: `gemini` → `google`, `claude` → `anthropic`, `bedrock` / `amazon-bedrock` → `aws-bedrock`, `azure` / `azure-cognitive-services` → `azure-openai`. |
+| `query` | string | no | Case-insensitive substring match on model IDs or names, applied before sorting and limiting. Trimmed; blank means no filter. Maximum 100 characters. |
 | `limit` | integer | no | Default 10, minimum 1, maximum 10. |
+
+For Claude through OpenRouter, use `provider: "openrouter", query: "claude"`.
+For OpenAI through OpenRouter, use `query: "openai"`. `hasMore` counts only
+matching eligible models.
 
 Returns recent non-deprecated models whose catalog input and output modalities
 both include text. Preview models remain eligible. Results are ordered by a valid ISO release
