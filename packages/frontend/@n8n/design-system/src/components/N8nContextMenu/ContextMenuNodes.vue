@@ -36,7 +36,7 @@ function radioModelValue(group: ContextMenuRadioGroupNode<T>) {
 	return radioGroupValue(group, selectedValues.value);
 }
 
-function onRadioGroupChange(group: ContextMenuRadioGroupNode<T>, value: unknown) {
+function onRadioGroupChange(group: ContextMenuRadioGroupNode<T>, value: string | undefined) {
 	const radio = group.children.find((item) => item.id === value);
 	if (!radio) return;
 	state?.onSelectRadio(group.id, radio.id);
