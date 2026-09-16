@@ -3,6 +3,7 @@ import {
 	InvalidTargetError,
 } from '@modelcontextprotocol/sdk/server/auth/errors.js';
 import { Logger, type LicenseState, type ModuleRegistry } from '@n8n/backend-common';
+import type { UrlService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
@@ -16,7 +17,6 @@ import { McpProtectedResource } from '@/modules/mcp/mcp-protected-resource';
 import type { McpConfig } from '@/modules/mcp/mcp.config';
 import type { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
-import type { UrlService } from '@/services/url.service';
 import { UserManagementMailer } from '@/user-management/email';
 
 import type { AuthorizationCode } from '../database/entities/oauth-authorization-code.entity';

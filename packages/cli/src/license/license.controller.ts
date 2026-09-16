@@ -1,12 +1,11 @@
 import { CommunityRegisteredRequestDto } from '@n8n/api-types';
-import { BadRequestError } from '@n8n/backend-services';
+import { BadRequestError, UrlService } from '@n8n/backend-services';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Get, Post, RestController, GlobalScope, Body } from '@n8n/decorators';
 import type { AxiosError } from 'axios';
 import { InstanceSettings } from 'n8n-core';
 
 import { LicenseRequest } from '@/requests';
-import { UrlService } from '@/services/url.service';
 
 import { LicenseService } from './license.service';
 

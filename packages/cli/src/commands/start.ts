@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
+import { UrlService } from '@n8n/backend-services';
 import { HTML_NONCE_PLACEHOLDER, LICENSE_FEATURES } from '@n8n/constants';
 import {
 	AuthRolesService,
@@ -43,7 +44,6 @@ import { Server } from '@/server';
 import { JwtService } from '@/services/jwt.service';
 import { ExecutionsPruningService } from '@/services/pruning/executions-pruning.service';
 import { WorkflowHistoryCompactionService } from '@/services/pruning/workflow-history-compaction.service';
-import { UrlService } from '@/services/url.service';
 import { WorkflowStatisticsRollupService } from '@/services/workflow-statistics-rollup.service';
 import { WaitTracker } from '@/wait-tracker';
 

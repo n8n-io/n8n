@@ -12,8 +12,8 @@
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "watch": "tsc -p tsconfig.build.json --watch",
-    "test": "vitest run --passWithNoTests",
-    "test:unit": "vitest run --passWithNoTests",
+    "test": "vitest run",
+    "test:unit": "vitest run",
     "test:dev": "vitest --silent=false"
   },
   "main": "dist/index.js",
@@ -24,6 +24,8 @@
   ],
   "dependencies": {
     "@n8n/api-types": "workspace:*",
+    "@n8n/config": "workspace:*",
+    "@n8n/di": "workspace:*",
     "n8n-workflow": "workspace:*"
   },
   "devDependencies": {
@@ -33,7 +35,8 @@
     "@vitest/coverage-v8": "catalog:",
     "eslint": "catalog:",
     "typescript": "catalog:typescript",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "vitest-mock-extended": "catalog:"
   },
   "license": "LicenseRef-n8n-sustainable-use"
 }

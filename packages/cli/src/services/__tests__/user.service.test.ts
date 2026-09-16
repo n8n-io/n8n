@@ -1,5 +1,5 @@
 import { InviteUsersRequestDto } from '@n8n/api-types';
-import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/backend-services';
+import { BadRequestError, ForbiddenError, NotFoundError, UrlService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import {
@@ -24,7 +24,6 @@ import type { EventService } from '@/events/event.service';
 import type { ExternalHooks } from '@/external-hooks';
 import type { License } from '@/license';
 import type { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
-import { UrlService } from '@/services/url.service';
 import { UserService } from '@/services/user.service';
 import * as ssoHelpers from '@/sso.ee/sso-helpers';
 import type { UserManagementMailer } from '@/user-management/email';

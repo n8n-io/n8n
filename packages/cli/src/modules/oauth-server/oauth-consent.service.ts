@@ -1,6 +1,6 @@
 import type { ConsentUiHints } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { ForbiddenError } from '@n8n/backend-services';
+import { ForbiddenError, UrlService } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
@@ -14,7 +14,6 @@ import {
 	ProtectedResourceRegistry,
 	type ProtectedResource,
 } from '@/services/protected-resource.registry';
-import { UrlService } from '@/services/url.service';
 
 type ConsentDetailsResult =
 	| {

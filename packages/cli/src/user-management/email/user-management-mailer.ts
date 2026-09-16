@@ -1,5 +1,5 @@
 import { inTest, Logger } from '@n8n/backend-common';
-import { InternalServerError } from '@n8n/backend-services';
+import { InternalServerError, UrlService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type { ApiKey, User } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
@@ -22,7 +22,6 @@ import { NodeMailer } from './node-mailer';
 
 import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
-import { UrlService } from '@/services/url.service';
 import { toError } from '@/utils';
 
 const REVOKED_AT_FORMATTER = new Intl.DateTimeFormat('en-GB', {

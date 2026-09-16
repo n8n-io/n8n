@@ -1,5 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import { AuthError, ForbiddenError } from '@n8n/backend-services';
+import { AuthError, ForbiddenError, UrlService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type { AuthenticatedRequest, User } from '@n8n/db';
@@ -15,7 +15,6 @@ import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { License } from '@/license';
 import { MfaService } from '@/mfa/mfa.service';
 import { JwtService } from '@/services/jwt.service';
-import { UrlService } from '@/services/url.service';
 
 interface AuthJwtPayload {
 	/** User Id */

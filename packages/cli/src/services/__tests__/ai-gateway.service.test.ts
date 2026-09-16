@@ -1,5 +1,6 @@
 import type { LicenseState } from '@n8n/backend-common';
 import type { HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
+import type { UrlService } from '@n8n/backend-services';
 import { BadRequestError } from '@n8n/backend-services';
 import type { GlobalConfig } from '@n8n/config';
 import type { Project, User, UserRepository } from '@n8n/db';
@@ -13,7 +14,6 @@ import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import type { License } from '@/license';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import type { OwnershipService } from '@/services/ownership.service';
-import type { UrlService } from '@/services/url.service';
 
 const INSTANCE_BASE_URL = 'https://my-n8n.example.com';
 

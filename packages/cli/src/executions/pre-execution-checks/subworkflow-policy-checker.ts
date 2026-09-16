@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { UrlService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type { Project } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -7,7 +8,6 @@ import { type INode, type IWorkflowBase, type WorkflowSettings } from 'n8n-workf
 import { SubworkflowPolicyDenialError } from '@/errors/subworkflow-policy-denial.error';
 import { AccessService } from '@/services/access.service';
 import { OwnershipService } from '@/services/ownership.service';
-import { UrlService } from '@/services/url.service';
 
 type Policy = WorkflowSettings.CallerPolicy;
 type DenialPolicy = Exclude<Policy, 'any'>;

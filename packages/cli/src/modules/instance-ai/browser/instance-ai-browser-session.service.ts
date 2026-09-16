@@ -4,6 +4,7 @@ import type {
 	ToolCategory,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { UrlService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -24,7 +25,6 @@ import { join } from 'node:path';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { Push } from '@/push';
-import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
 
 import { BrowserLocalMcpServer } from './browser-local-mcp-server';

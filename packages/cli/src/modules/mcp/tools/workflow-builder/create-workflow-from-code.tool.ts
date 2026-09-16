@@ -1,3 +1,4 @@
+import type { UrlService } from '@n8n/backend-services';
 import { NotFoundError } from '@n8n/backend-services';
 import {
 	type Folder,
@@ -37,7 +38,6 @@ import type { CredentialsService } from '@/credentials/credentials.service';
 import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service';
 import type { NodeTypes } from '@/node-types';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
-import type { UrlService } from '@/services/url.service';
 import type { Telemetry } from '@/telemetry';
 import {
 	dropInvalidWorkflowGroups,

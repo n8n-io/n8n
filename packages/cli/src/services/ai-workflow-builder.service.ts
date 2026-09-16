@@ -6,6 +6,7 @@ import {
 } from '@n8n/ai-workflow-builder';
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
+import { UrlService } from '@n8n/backend-services';
 import { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
 import { BUILTIN_NODES_PACKAGES } from '@n8n/constants';
 import { Service } from '@n8n/di';
@@ -27,7 +28,6 @@ import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { WorkflowBuilderSessionRepository } from '@/modules/workflow-builder';
 import { Push } from '@/push';
 import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
-import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
 import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 import { getBase } from '@/workflow-execute-additional-data';

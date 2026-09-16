@@ -1,6 +1,6 @@
 import { OidcConfigDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { BadRequestError, ForbiddenError } from '@n8n/backend-services';
+import { BadRequestError, ForbiddenError, UrlService } from '@n8n/backend-services';
 import { GlobalConfig, InstanceSettingsLoaderConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { AuthenticatedRequest } from '@n8n/db';
@@ -16,7 +16,6 @@ import {
 } from '@/modules/provisioning.ee/constants';
 import { SsoAccessDeniedError } from '@/modules/provisioning.ee/errors/sso-access-denied.error';
 import { AuthlessRequest } from '@/requests';
-import { UrlService } from '@/services/url.service';
 import { isOidcCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
 
 import {

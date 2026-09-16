@@ -1,3 +1,4 @@
+import { UrlService } from '@n8n/backend-services';
 import {
 	createWorkflowWithHistory,
 	setActiveVersion,
@@ -18,7 +19,6 @@ import { setupTestServer } from '@test-integration/utils';
 import { OAuthTokenService } from '@/modules/oauth-server/oauth-token.service';
 import { CacheService } from '@/services/cache/cache.service';
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
-import { UrlService } from '@/services/url.service';
 import { TestWebhookRegistrationsService } from '@/webhooks/test-webhook-registrations.service';
 
 const testServer = setupTestServer({ modules: ['oauth-server', 'mcp'], endpointGroups: ['mcp'] });

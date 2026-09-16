@@ -1,3 +1,4 @@
+import { UrlService } from '@n8n/backend-services';
 import { createWorkflowWithHistory, setActiveVersion, testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
@@ -13,7 +14,6 @@ import { MCP_TRIGGER_NODE_TYPE } from '@/constants';
 import { OAuthTokenService } from '@/modules/oauth-server/oauth-token.service';
 import { CacheService } from '@/services/cache/cache.service';
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
-import { UrlService } from '@/services/url.service';
 
 const testServer = setupTestServer({ modules: ['oauth-server', 'mcp'], endpointGroups: ['mcp'] });
 

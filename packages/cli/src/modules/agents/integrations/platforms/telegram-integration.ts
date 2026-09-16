@@ -2,15 +2,13 @@ import { AgentIntegrationConfig } from '@n8n/api-types';
 import type { RichCardComponentType } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
-import { BadRequestError } from '@n8n/backend-services';
+import { BadRequestError, UrlService } from '@n8n/backend-services';
 import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
 import type { Thread, Author } from 'chat';
 import { createHmac } from 'crypto';
 import { InstanceSettings } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
-
-import { UrlService } from '@/services/url.service';
 
 import { AgentRepository } from '../../repositories/agent.repository';
 import {

@@ -1,4 +1,4 @@
-import { BadRequestError, NotFoundError } from '@n8n/backend-services';
+import { BadRequestError, NotFoundError, UrlService } from '@n8n/backend-services';
 import { Time } from '@n8n/constants';
 import { CredentialsEntity, AuthenticatedRequest, isAuthenticatedRequest } from '@n8n/db';
 import { Delete, Get, Options, Param, Post, RestController } from '@n8n/decorators';
@@ -12,7 +12,6 @@ import { CredentialsFinderService } from '@/credentials/credentials-finder.servi
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
 import { EventService } from '@/events/event.service';
 import { CreateCsrfStateData, OauthService } from '@/oauth/oauth.service';
-import { UrlService } from '@/services/url.service';
 
 import { DynamicCredentialResolverRepository } from './database/repositories/credential-resolver.repository';
 import { DynamicCredentialsConfig } from './dynamic-credentials.config';
