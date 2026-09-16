@@ -9023,5 +9023,6 @@
 	"agents.channels.teams.settings.displayName": "Agent name in Teams",
 	"agents.channels.teams.settings.displayNamePlaceholder": "Uses the agent's name",
 	"agents.channels.teams.settings.description": "Description",
-	"agents.channels.teams.settings.descriptionPlaceholder": "What this agent helps with"
+	"agents.channels.teams.settings.descriptionPlaceholder": "What this agent helps with",
+	"agents.channels.teams.settings.descriptionDefault": "Chat with {name}, an agent powered by n8n."
 }
