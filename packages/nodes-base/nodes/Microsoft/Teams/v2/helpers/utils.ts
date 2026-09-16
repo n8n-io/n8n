@@ -41,21 +41,30 @@ function escapeMentionText(text: string): string {
 	return text.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
 }
 
+export type ResolvedUser = { id: string; displayName: string; userPrincipalName: string };
+
+type LookupMessages = UserTargetMessages & { notFound: { message: string; description: string } };
+
 // `row` is the node-generated row number (loop index + 1), never a user-supplied value, so
 // these stay static in the sense that matters: they cannot echo the id back.
-const mentionMessages = (row: number): UserTargetMessages => ({
+const lookupMessages = (noun: 'mention' | 'attendee', row: number): LookupMessages => ({
 	required: {
-		message: `No user selected for mention ${row}`,
+		message: `No user selected for ${noun} ${row}`,
 		description: 'Pick the user from the list, or enter a user ID or email address.',
 	},
 	dotsOnly: {
-		message: `The user for mention ${row} is not valid`,
+		message: `The user for ${noun} ${row} is not valid`,
 		description: 'A user ID cannot consist only of dots.',
 	},
 	invalid: {
-		message: `The user for mention ${row} is not valid`,
+		message: `The user for ${noun} ${row} is not valid`,
 		description:
 			'Enter a plain email address or user ID. Remove any slashes, backslashes, colons, commas, spaces, or encoded characters and try again.',
+	},
+	notFound: {
+		message: `Could not find the user for ${noun} ${row}`,
+		description:
+			'Pick the user from the list, or check that the user ID or email address is correct and that the user exists in this Microsoft 365 tenant.',
 	},
 });
 
@@ -125,11 +134,85 @@ async function findUserByMail(
  * spend a call to learn nothing. A number or a boolean still stringifies, because only an object
  * is guaranteed useless as an ID.
  */
-const rlcValue = (value: unknown): string => {
+export const rlcValue = (value: unknown): string => {
 	const raw = isResourceLocatorValue(value) ? value.value : value;
 	if (typeof raw === 'string') return raw.trim();
 	return typeof raw === 'number' || typeof raw === 'boolean' ? String(raw) : '';
 };
+
+// Same scope and rules as `resolvedPerRun` below, for the user lookup mentions and attendees share.
+const usersPerRun = new WeakMap<IExecuteFunctions, Map<string, ResolvedUser>>();
+
+/**
+ * Looks one user up by object ID or principal name, with a `mail` retry for guests. `value` is
+ * already unwrapped and trimmed by the caller; `noun` and `row` only shape the error copy.
+ */
+export async function resolveUser(
+	this: IExecuteFunctions,
+	value: string,
+	itemIndex: number,
+	noun: 'mention' | 'attendee',
+	row: number,
+): Promise<ResolvedUser> {
+	let cache = usersPerRun.get(this);
+	if (!cache) {
+		cache = new Map<string, ResolvedUser>();
+		usersPerRun.set(this, cache);
+	}
+	const cached = cache.get(value);
+	if (cached) return cached;
+
+	const node = this.getNode();
+	const messages = lookupMessages(noun, row);
+	let user: IDataObject;
+	try {
+		// Validate the shape before encoding (`encodeURIComponent` leaves `..` intact) and encode
+		// the same trimmed string, since the validator is anchored and callers trim.
+		validateUserTargetId(value, node, messages);
+
+		user = (await microsoftApiRequest.call(
+			this,
+			'GET',
+			`/v1.0/users/${encodeURIComponent(value)}`,
+			{},
+			{ $select: 'id,displayName,userPrincipalName' },
+		)) as IDataObject;
+	} catch (error) {
+		if (error instanceof NodeApiError && error.httpCode === '404') {
+			// Only an address can be a `mail` value, so a GUID goes straight to the error.
+			// The fallback runs inside this catch, so its own 403/429/5xx would otherwise
+			// escape without the row index the primary lookup stamps on.
+			const byMail = value.includes('@')
+				? await findUserByMail.call(this, value).catch((mailError) => {
+						throw stampItemIndexOnError(mailError, itemIndex);
+					})
+				: undefined;
+			if (!byMail) {
+				throw new NodeOperationError(node, messages.notFound.message, {
+					itemIndex,
+					description: messages.notFound.description,
+				});
+			}
+			user = byMail;
+		} else {
+			// A validation failure and 403 (missing User.Read.All), 429 or 5xx all keep their
+			// own message; only the item index is added.
+			throw stampItemIndexOnError(error, itemIndex);
+		}
+	}
+
+	// Directory objects with no display name exist (some guests, some service accounts);
+	// without a fallback the mention renders as a blank chip. `||`, so `''` falls through.
+	const displayName =
+		(user.displayName as string) || (user.userPrincipalName as string) || (user.id as string);
+	const resolved: ResolvedUser = {
+		id: user.id as string,
+		displayName,
+		userPrincipalName: (user.userPrincipalName as string) || '',
+	};
+	cache.set(value, resolved);
+	return resolved;
+}
 
 /**
  * Looks a team tag up under the team that owns it. A foreign tag ID 404s under
@@ -207,8 +290,8 @@ async function resolveTagMention(
  * the context object, so the cache is collected with the execution and never crosses runs or
  * tenants. Only successes are stored, so a throttled row is retried on the next item.
  *
- * Keys are namespaced by mention type, and a tag key carries its team: the same ID string means
- * different things in the two arms, and a tag only resolves under the team that owns it.
+ * Tag mentions only (user rows go through `usersPerRun`). A tag key carries its team, because a
+ * tag only resolves under the team that owns it.
  */
 const resolvedPerRun = new WeakMap<IExecuteFunctions, Map<string, Mention>>();
 
@@ -293,67 +376,19 @@ export async function resolveMentions(
 			});
 		}
 
-		// Validate the shape before encoding (`encodeURIComponent` leaves `..` intact) and encode
-		// the same trimmed string, since the validator is anchored and callers trim.
-		const value = rlcValue(row.userId);
-
-		const userKey = `user:${value}`;
-		const cached = cache.get(userKey);
-		if (cached) {
-			// Safe to share by reference: `prepareMessage` spreads rather than mutates.
-			mentions.push(cached);
-			continue;
-		}
-
-		let user: IDataObject;
-		try {
-			validateUserTargetId(value, node, mentionMessages(index + 1));
-
-			user = (await microsoftApiRequest.call(
-				this,
-				'GET',
-				`/v1.0/users/${encodeURIComponent(value)}`,
-				{},
-				{ $select: 'id,displayName,userPrincipalName' },
-			)) as IDataObject;
-		} catch (error) {
-			if (error instanceof NodeApiError && error.httpCode === '404') {
-				// Only an address can be a `mail` value, so a GUID goes straight to the error.
-				// The fallback runs inside this catch, so its own 403/429/5xx would otherwise
-				// escape without the row index the primary lookup stamps on.
-				const byMail = value.includes('@')
-					? await findUserByMail.call(this, value).catch((mailError) => {
-							throw stampItemIndexOnError(mailError, itemIndex);
-						})
-					: undefined;
-				if (!byMail) {
-					throw new NodeOperationError(node, `Could not find the user for mention ${index + 1}`, {
-						itemIndex,
-						description:
-							'Pick the user from the list, or check that the user ID or email address is correct and that the user exists in this Microsoft 365 tenant.',
-					});
-				}
-				user = byMail;
-			} else {
-				// A validation failure and 403 (missing User.Read.All), 429 or 5xx all keep their
-				// own message; only the item index is added.
-				throw stampItemIndexOnError(error, itemIndex);
-			}
-		}
-
-		// Directory objects with no display name exist (some guests, some service accounts);
-		// without a fallback the mention renders as a blank chip. `||`, so `''` falls through.
-		const label =
-			(user.displayName as string) || (user.userPrincipalName as string) || (user.id as string);
-
-		const mention: Mention = {
-			mentionText: label,
+		const user = await resolveUser.call(
+			this,
+			rlcValue(row.userId),
+			itemIndex,
+			'mention',
+			index + 1,
+		);
+		mentions.push({
+			mentionText: user.displayName,
 			mentioned: {
-				user: { id: user.id as string, displayName: label, userIdentityType: 'aadUser' },
+				user: { id: user.id, displayName: user.displayName, userIdentityType: 'aadUser' },
 			},
-		};
-		cache.set(userKey, mention);
-		mentions.push(mention);
+		});
 	}
 
 	return mentions;
