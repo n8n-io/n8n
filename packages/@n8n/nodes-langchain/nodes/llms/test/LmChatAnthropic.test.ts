@@ -426,11 +426,13 @@ describe('LmChatAnthropic', () => {
 			let mockLoadContext: ILoadOptionsFunctions;
 			let mockGetCredentials: Mock;
 			let fetchSpy: Mock;
+			let egressFilter: { createSecureLookup: Mock };
 			const secureLookup = vi.fn();
 
 			beforeEach(() => {
 				mockGetCredentials = vi.fn();
 				fetchSpy = vi.fn();
+				egressFilter = { createSecureLookup: vi.fn().mockReturnValue(secureLookup) };
 				vi.mocked(proxyFetch).mockImplementation(
 					fetchSpy as unknown as typeof import('@n8n/ai-utilities')['proxyFetch'],
 				);
@@ -438,9 +440,7 @@ describe('LmChatAnthropic', () => {
 				mockLoadContext = {
 					getCredentials: mockGetCredentials,
 					helpers: {
-						getSecureEgressFilter: vi.fn().mockReturnValue({
-							createSecureLookup: vi.fn().mockReturnValue(secureLookup),
-						}),
+						getSecureEgressFilter: vi.fn().mockReturnValue(egressFilter),
 					},
 				} as unknown as ILoadOptionsFunctions;
 			});
@@ -495,7 +495,7 @@ describe('LmChatAnthropic', () => {
 								'anthropic-version': '2023-06-01',
 							}),
 						}),
-						lookup: secureLookup,
+						egressFilter,
 					}),
 				);
 

@@ -27,6 +27,8 @@ import { isSetupPanelEnabled } from '../tools/workflows/setup-items';
 import {
 	buildAgentTraceInputs,
 	mergeTraceRunInputs,
+	modelIdTraceMetadata,
+	setTraceModelId,
 	setTracePromptVersion,
 } from '../tracing/langsmith-tracing';
 import type {
@@ -135,10 +137,6 @@ export async function createInstanceAgent(
 			})
 		: createToolRegistry();
 
-	const browserToolNames = new Set(
-		context.localMcpServer?.getToolsByCategory('browser').map((tool) => tool.name) ?? [],
-	);
-
 	const warnSkippedMcpTool = (error: McpToolNameValidationError) => {
 		context.logger.warn('Skipped MCP tool with unsafe name', {
 			toolName: error.toolName,
@@ -207,11 +205,10 @@ export async function createInstanceAgent(
 		{
 			webhookBaseUrl: orchestrationContext?.webhookBaseUrl,
 			formBaseUrl: orchestrationContext?.formBaseUrl,
-			localGateway: context.localGatewayStatus,
+			computerUseState: context.computerUseState,
 			toolSearchEnabled: hasDeferrableTools,
 			mcpToolSearchEnabled: hasDeferredExternalMcpTools,
 			licenseHints: context.licenseHints,
-			browserAvailable: browserToolNames.size > 0,
 			branchReadOnly: context.branchReadOnly,
 			projectId: context.projectId,
 			// Presence of the service IS the experiment gate — the host only wires it
@@ -229,10 +226,12 @@ export async function createInstanceAgent(
 		orchestrationContext?.tracing,
 		orchestrationContext?.promptConfiguration?.version,
 	);
+	setTraceModelId(orchestrationContext?.tracing, modelId);
 	const telemetry = orchestrationContext?.tracing?.getTelemetry?.({
 		agentRole: 'orchestrator',
 		functionId: 'instance-ai.orchestrator',
 		executionMode: 'foreground',
+		metadata: modelIdTraceMetadata(modelId),
 	});
 	const agent = new Agent('n8n-instance-agent')
 		.model(modelId)
