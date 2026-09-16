@@ -41,8 +41,6 @@ const props = withDefaults(
 		errorIsConflict?: boolean;
 		projectId: string;
 		agentId: string;
-		/** Placeholder for the Teams name, which falls back to it server-side. */
-		agentName?: string;
 		forceNewCredential?: boolean;
 		savedSettings?: AgentTeamsIntegrationSettings;
 	}>(),
@@ -53,7 +51,6 @@ const props = withDefaults(
 		isPublished: true,
 		errorMessage: '',
 		errorIsConflict: false,
-		agentName: '',
 		forceNewCredential: false,
 		savedSettings: undefined,
 	},
@@ -82,17 +79,18 @@ const availability = ref<TeamsAvailability>({
 });
 
 /**
- * Pre-filled with what the manifest would use anyway, so the fields show what
- * Teams will actually display rather than leaving the user to guess from a
- * placeholder.
+ * Pre-filled with what the manifest would use, so the fields show what Teams
+ * will actually display. The defaults come from the server rather than being
+ * derived here: the modal has no agent name to derive them from, and deriving
+ * them twice invites the two copies to drift.
  */
-const displayName = ref(props.savedSettings?.displayName ?? props.agentName);
-const description = ref(
-	props.savedSettings?.description ??
-		i18n.baseText('agents.channels.teams.settings.descriptionDefault', {
-			interpolate: { name: props.agentName },
-		}),
-);
+const displayName = ref(props.savedSettings?.displayName ?? '');
+const description = ref(props.savedSettings?.description ?? '');
+
+function applyDefaults(state: TeamsAgentSetupState) {
+	if (!displayName.value) displayName.value = state.defaultDisplayName;
+	if (!description.value) description.value = state.defaultDescription;
+}
 
 const messagingEndpointUrl = computed(() => {
 	if (setupState.value) return setupState.value.messagingEndpointUrl;
@@ -179,6 +177,7 @@ async function loadSetupState() {
 			props.agentId,
 			credentialId.value || undefined,
 		);
+		applyDefaults(setupState.value);
 	} catch {
 		// Leave the fallback endpoint URL in place; the rest of the step still works.
 		setupState.value = null;

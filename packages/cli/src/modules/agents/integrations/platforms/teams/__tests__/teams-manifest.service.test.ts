@@ -258,6 +258,23 @@ describe('TeamsManifestService', () => {
 				expect(manifest.description.short).toBe('Answers questions about orders');
 			});
 
+			it('reports the same defaults the manifest falls back to', () => {
+				const defaults = service.defaultIdentity('Support Bot');
+				const manifest = service.buildManifest(options());
+
+				// The setup shows these before anything is saved, so they have to be
+				// what the manifest would actually use.
+				expect(defaults.displayName).toBe(manifest.name.short);
+				expect(defaults.description).toBe(manifest.description.short);
+			});
+
+			it('sanitises and truncates the defaults too', () => {
+				const defaults = service.defaultIdentity('A'.repeat(200));
+
+				expect(defaults.displayName.length).toBeLessThanOrEqual(30);
+				expect(defaults.description.length).toBeLessThanOrEqual(80);
+			});
+
 			it('still truncates an override to the Teams limits', () => {
 				const manifest = service.buildManifest(
 					options({ identity: { displayName: 'A'.repeat(200) } }),

@@ -66,6 +66,13 @@ export interface TeamsAgentSetupState {
 	 * because its subscription and resource group are chosen at deploy time.
 	 */
 	suggestedBotName: string;
+	/**
+	 * What the manifest uses when the settings override neither. Computed here so
+	 * the fields show the values Teams will actually display, rather than the
+	 * frontend guessing at the same derivation.
+	 */
+	defaultDisplayName: string;
+	defaultDescription: string;
 }
 
 /**

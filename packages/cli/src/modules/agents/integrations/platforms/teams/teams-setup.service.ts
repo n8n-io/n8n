@@ -60,6 +60,7 @@ export class TeamsSetupService {
 				? this.armTemplateService.buildDeployUrl(scope.projectId, scope.agentId, credentialId)
 				: null,
 			suggestedBotName: this.armTemplateService.suggestedBotName(agent.name, agent.id),
+			...this.defaultIdentity(agent.name),
 		};
 	}
 
@@ -127,6 +128,11 @@ export class TeamsSetupService {
 	 */
 	private teamsSettingsOf(agent: Agent): AgentTeamsIntegrationSettings | undefined {
 		return agent.integrations?.find((item) => item.type === 'teams')?.settings;
+	}
+
+	private defaultIdentity(agentName: string) {
+		const { displayName, description } = this.manifestService.defaultIdentity(agentName);
+		return { defaultDisplayName: displayName, defaultDescription: description };
 	}
 
 	private async getAgent(scope: AgentScope): Promise<Agent> {

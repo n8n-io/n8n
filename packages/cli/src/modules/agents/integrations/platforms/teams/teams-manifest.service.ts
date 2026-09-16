@@ -157,6 +157,18 @@ export class TeamsManifestService {
 		};
 	}
 
+	/** What the manifest falls back to, so the setup can show it before saving. */
+	defaultIdentity(agentName: string): { displayName: string; description: string } {
+		const appName = this.sanitiseName(agentName);
+		return {
+			displayName: this.truncate(appName, LIMITS.shortName),
+			description: this.truncate(
+				`Chat with ${appName}, an agent powered by n8n.`,
+				LIMITS.shortDescription,
+			),
+		};
+	}
+
 	/** Stable per agent, so a re-download updates the same Teams app. */
 	buildManifestId(agentId: string): string {
 		return uuidv5(agentId, MANIFEST_ID_NAMESPACE);
