@@ -280,14 +280,37 @@ describe('Dynamic Credentials API', () => {
 			});
 		});
 
-		// These two used to expect 403/404: the endpoints were gated on
-		// `credential:update`, so a user could connect their own account and then not
-		// disconnect or reconnect it. Connect and disconnect are two halves of one
-		// self-service action, and the connect half — the intent link, the OAuth
-		// callback, `/my-connection` — never carried a scope check. The delete is
-		// self-scoped as well: the resolver derives the storage key from the caller's
-		// own identity and the route has no `:userId`, so the worst a caller can do is
-		// clear their own row.
+		describe('when the identity is taken from the session cookie', () => {
+			it('should refuse to authorize against a resolver that does not resolve n8n users', async () => {
+				const response = await testServer
+					.authAgentFor(owner)
+					.post(`/credentials/${savedCredential.id}/authorize`)
+					.query({ resolverId: resolver.id, authSource: 'cookie' })
+					.expect(400);
+
+				expect(response.body.message).toContain('resolves credentials per external user');
+				expect(response.body.data).toBeUndefined();
+			});
+
+			it('should refuse to revoke against a resolver that does not resolve n8n users', async () => {
+				const response = await testServer
+					.authAgentFor(owner)
+					.delete(`/credentials/${savedCredential.id}/revoke`)
+					.query({ resolverId: resolver.id, authSource: 'cookie' })
+					.expect(400);
+
+				expect(response.body.message).toContain('resolves credentials per external user');
+			});
+
+			it('should refuse when no Authorization header is present at all', async () => {
+				await testServer
+					.authAgentFor(owner)
+					.post(`/credentials/${savedCredential.id}/authorize`)
+					.query({ resolverId: resolver.id })
+					.expect(400);
+			});
+		});
+
 		describe('when an authenticated member holds no project role on the credential', () => {
 			it('should return an authorization URL for an end-user credential', async () => {
 				const response = await testServer
