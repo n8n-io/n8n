@@ -19,6 +19,7 @@ import {
 	getHumanInTheLoopCallout,
 	getRootSearchCallouts,
 	getSendAndWaitNodes,
+	getNodeCreatorSearchItems,
 	matchesAliasForConnectBoost,
 	nodeTypesToCreateElements,
 	mapToolSubcategoryIcon,
@@ -26,9 +27,11 @@ import {
 } from './nodeCreator.utils';
 import {
 	mockActionCreateElement,
+	mockCommandCreateElement,
 	mockNodeCreateElement,
 	mockSectionCreateElement,
 	mockSimplifiedNodeType,
+	mockViewCreateElement,
 } from './__tests__/utils';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
@@ -87,6 +90,22 @@ vi.mock('@/app/stores/posthog.store', () => ({
 }));
 
 describe('NodeCreator - utils', () => {
+	describe('getNodeCreatorSearchItems', () => {
+		it('includes nodes and commands but excludes navigation views', () => {
+			const node = mockSimplifiedNodeType({ name: 'node' });
+			const navigationView = mockViewCreateElement({ key: 'navigation' });
+			const command = mockCommandCreateElement({ key: 'command' });
+
+			const result = getNodeCreatorSearchItems([node], [navigationView, command]);
+
+			expect(result.map((item) => item.key)).toEqual(['node', 'command']);
+			expect(result[0]).toMatchObject({
+				type: 'node',
+				properties: node,
+			});
+		});
+	});
+
 	describe('groupItemsInSections', () => {
 		it('should handle multiple sections (with "other" section)', () => {
 			const node1 = mockNodeCreateElement({ key: 'popularNode' });

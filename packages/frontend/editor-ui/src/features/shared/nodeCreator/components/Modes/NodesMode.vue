@@ -30,6 +30,7 @@ import { TriggerView, RegularView, AIView, AINodesView } from '../../views/views
 import {
 	flattenCreateElements,
 	filterAndSearchNodes,
+	getNodeCreatorSearchItems,
 	prepareCommunityNodeDetailsViewStack,
 	transformNodeType,
 	getRootSearchCallouts,
@@ -235,12 +236,14 @@ function onSelected(item: INodeCreateElement) {
 		});
 	}
 
-	if (item.type === 'view') {
+	if (item.type === 'command') {
 		if (item.key === ADD_EMPTY_GROUP_NODE_CREATOR_ITEM) {
 			emit('emptyGroupSelected');
-			return;
 		}
+		return;
+	}
 
+	if (item.type === 'view') {
 		const views = {
 			[TRIGGER_NODE_CREATOR_VIEW]: TriggerView,
 			[REGULAR_NODE_CREATOR_VIEW]: RegularView,
@@ -265,8 +268,8 @@ function onSelected(item: INodeCreateElement) {
 			hasSearch: true,
 			rootView: view.value as NodeFilterType,
 			mode: 'nodes',
-			// Root search should include all nodes
-			searchItems: mergedNodes,
+			// Root search should include all nodes and command items.
+			searchItems: getNodeCreatorSearchItems(mergedNodes, view.items),
 		});
 	}
 
