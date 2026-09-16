@@ -7,15 +7,16 @@ import { useRoute, useRouter } from 'vue-router';
 
 import { VIEWS } from '@/app/constants';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
-import type { IWorkflowDb } from '@/Interface';
 
+import { SELF_HEALING_SETTINGS_HASH } from '../selfHealing.constants';
 import { useSelfHealingStore } from '../selfHealing.store';
 
 /**
  * Nudge anchored to a failed execution in the executions list. The slot is
- * the anchor and renders unchanged when the coachmark is not showing. In
- * this prototype a dismissal lasts for the current visit only; the list
- * resets it on mount so the nudge appears on every visit with a failure.
+ * the anchor and renders unchanged when the coachmark is not showing.
+ * "Try now" opens the project's self-healing settings. In this prototype a
+ * dismissal lasts for the current visit only; the list resets it on mount so
+ * the nudge appears on every visit with a failure.
  */
 const props = defineProps<{
 	execution: ExecutionSummary;
@@ -29,8 +30,6 @@ const router = useRouter();
 const store = useSelfHealingStore();
 const workflowsListStore = useWorkflowsListStore();
 
-const isOpen = computed(() => props.active && store.shouldShowCoachmark(props.execution));
-
 const workflow = computed(() => workflowsListStore.getWorkflowById(props.execution.workflowId));
 
 const projectId = computed(() => {
@@ -38,6 +37,11 @@ const projectId = computed(() => {
 	if (typeof fromRoute === 'string' && fromRoute) return fromRoute;
 	return workflow.value?.homeProject?.id ?? null;
 });
+
+// Without a project there are no settings to open, so stay quiet on the overview.
+const isOpen = computed(
+	() => props.active && projectId.value !== null && store.shouldShowCoachmark(props.execution),
+);
 
 const body = computed(() => {
 	const status = store.getWorkflowStatus(props.execution.workflowId, projectId.value);
@@ -47,29 +51,13 @@ const body = computed(() => {
 	});
 });
 
-/** The list only holds workflow summaries; the mock fix needs the nodes to name a real one. */
-async function loadWorkflow(): Promise<IWorkflowDb | undefined> {
-	if (workflow.value?.nodes?.length) return workflow.value;
-	try {
-		return await workflowsListStore.fetchWorkflow(props.execution.workflowId);
-	} catch {
-		return workflow.value;
-	}
-}
-
 async function onTryNow() {
 	store.dismissCoachmark();
-	const fullWorkflow = await loadWorkflow();
-	void store.startFix(props.execution, {
-		workflowName: fullWorkflow?.name ?? props.execution.workflowName ?? '',
-		projectId: projectId.value,
-		nodes: fullWorkflow?.nodes,
-		connections: fullWorkflow?.connections,
-	});
-	// The fix job lives in the store, so the execution view picks it up mid-flight.
+	if (projectId.value === null) return;
 	await router.push({
-		name: VIEWS.EXECUTION_PREVIEW,
-		params: { workflowId: props.execution.workflowId, executionId: props.execution.id },
+		name: VIEWS.PROJECT_SETTINGS,
+		params: { projectId: projectId.value },
+		hash: SELF_HEALING_SETTINGS_HASH,
 	});
 }
 
