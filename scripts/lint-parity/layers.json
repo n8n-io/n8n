@@ -44,6 +44,7 @@
 		"packages/@n8n/node-cli",
 		"packages/@n8n/node-engine-compatibility",
 		"packages/@n8n/scheduler",
+		"packages/@n8n/backend-services",
 		"packages/@n8n/syslog-client",
 		"packages/@n8n/task-runner",
 		"packages/@n8n/workflow-sdk",
