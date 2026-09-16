@@ -355,6 +355,16 @@ function buildCoverageNote(
 			'treat coverage as the union of those passes. Do not edit, disable, reorder, or copy the ' +
 			'workflow to reach them.'
 		: '';
+	const guidance = success
+		? ' Check branch selection, input items, Agent tool calls, and simulated parents. ' +
+			'A tool can remain uncalled even when its Agent succeeds. ' +
+			'For unreached main-flow nodes on this branch that are not behind a wait gate: ' +
+			'if a lookup or query returned no items, seed matching test data and re-run verification. ' +
+			'If a Code node dropped a collection, inspect `$input.first().json`; use ' +
+			'`$input.all().map(i => i.json)` when it needs all items. ' +
+			'HTTP Request splits a top-level array into separate items. ' +
+			'Do not report unreached nodes as verified.'
+		: '';
 	if (success && reachedHaltedGates.length > 0) {
 		return (
 			`Verification pauses at wait gate(s) ${reachedHaltedGates.join(', ')} — in a live run the ` +
@@ -362,9 +372,9 @@ function buildCoverageNote(
 			`gate is not simulated. ${nodesNotReached.length} planned node(s) were not reached: ` +
 			`${nodesNotReached.join(', ')}. Nodes behind the gate are expected to be unreached — do ` +
 			'not edit the workflow or re-run verification to force coverage there; recommend a live ' +
-			'end-to-end test instead. Other unreached nodes remain unverified. Check the selected ' +
-			'branches, Agent tool calls, and simulated parents before choosing another test.' +
-			triggerScopeNote
+			'end-to-end test instead. Other unreached nodes remain unverified.' +
+			triggerScopeNote +
+			guidance
 		);
 	}
 	if (success && triggerNodeName) {
@@ -372,16 +382,12 @@ function buildCoverageNote(
 			`Partial coverage by design: ${String(nodesNotReached.length)} planned node(s) were not ` +
 			`reached: ${nodesNotReached.join(', ')}.` +
 			triggerScopeNote +
-			' Unreached nodes on this branch remain unverified. Check which tools the Agent called ' +
-			'and which parents were simulated before choosing another test.'
+			guidance
 		);
 	}
 	const ending = result.lastNodeExecuted
 		? `. Execution ended at "${result.lastNodeExecuted}".`
 		: '.';
-	const guidance = success
-		? ' Check branch selection, input items, Agent tool calls, and simulated parents. A tool can remain uncalled even when its Agent succeeds. Do not report unreached nodes as verified.'
-		: '';
 	return (
 		`Partial coverage: ${nodesNotReached.length} node(s) were never reached and remain UNVERIFIED: ` +
 		nodesNotReached.join(', ') +

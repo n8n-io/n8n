@@ -2,6 +2,7 @@ import { toEngineConnections, type WorkflowJSON } from '@n8n/workflow-sdk';
 import {
 	getChildNodes,
 	getParentNodes,
+	isTriggerNodeType,
 	mapConnectionsByDestination,
 	NodeConnectionTypes,
 } from 'n8n-workflow';
@@ -31,12 +32,17 @@ export function createVerificationGraph(workflow: WorkflowJSON) {
 			)
 			.map((node) => [node.name, node]),
 	);
-	const mainNodeNames = new Set<string>();
+	// Triggers such as MCP can have tools without any main connections.
+	const rootNodeNames = new Set(
+		[...nodesByName.values()]
+			.filter((node) => isTriggerNodeType(node.type))
+			.map((node) => node.name),
+	);
 	for (const name of Object.keys(connections)) {
 		const children = getChildNodes(connections, name, NodeConnectionTypes.Main, 1);
 		if (children.length === 0) continue;
 		for (const nodeName of [name, ...children]) {
-			if (nodesByName.has(nodeName)) mainNodeNames.add(nodeName);
+			if (nodesByName.has(nodeName)) rootNodeNames.add(nodeName);
 		}
 	}
 	const toolsFor = (name: string) =>
@@ -54,5 +60,5 @@ export function createVerificationGraph(workflow: WorkflowJSON) {
 		}
 		return names;
 	};
-	return { nodesByName, mainNodeNames, toolsFor, withTools };
+	return { nodesByName, rootNodeNames, toolsFor, withTools };
 }

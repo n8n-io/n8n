@@ -1,4 +1,8 @@
-import { agentToolNode, agentToolWorkflow } from '../../../../__tests__/agent-tool-workflow';
+import {
+	agentToolNode,
+	agentToolWorkflow,
+	mcpToolWorkflow,
+} from '../../../../__tests__/agent-tool-workflow';
 import type { NodeSimulationVerdict } from '../../../../workflow-loop/workflow-loop-state';
 import { checkToolSimulationSupport } from '../tool-simulation-preflight';
 
@@ -45,20 +49,56 @@ describe('tool simulation preflight', () => {
 		},
 	);
 
-	it.each([3, 3.1])('allows main Agent %s to simulate tools', (version) => {
+	it.each([3, 3.1, 4])('allows main Agent %s to simulate tools', (version) => {
 		expect(check(agentToolWorkflow(version))).toBeUndefined();
 		expect(check(agentToolWorkflow(version, 3))).toBeUndefined();
 	});
 
-	it.each([2, 4])('blocks a simulated tool called by Agent %s', (version) => {
+	it.each([3, 3.1, 4])('allows Agent Tool %s to simulate children', (version) => {
+		expect(check(agentToolWorkflow(3.1, version))).toBeUndefined();
+	});
+
+	it.each([2, 2.3])('blocks a simulated tool called by Agent %s', (version) => {
 		expect(check(agentToolWorkflow(version))).toMatchObject({
 			reason: 'unsupported_tool_simulation',
 			guidance: expect.stringContaining('Write (called by Agent)'),
 		});
 	});
 
-	it.each([2, 4])('blocks children of Agent Tool %s', (version) => {
+	it.each([2, 2.2])('blocks children of Agent Tool %s', (version) => {
 		expect(check(agentToolWorkflow(3.1, version))?.guidance).toContain('Write (called by Nested)');
+	});
+
+	it.each([undefined, 'MCP Server'])(
+		'checks MCP tools without main connections with trigger %s',
+		(triggerNodeName) => {
+			const workflow = mcpToolWorkflow();
+			expect(check(workflow, { triggerNodeName })).toMatchObject({
+				reason: 'unsupported_tool_simulation',
+				nodesNotReached: expect.arrayContaining(['MCP Server', 'Write']),
+			});
+			expect(check(workflow, { triggerNodeName, plan: [] })?.reason).toBe(
+				'incomplete_tool_simulation_plan',
+			);
+		},
+	);
+
+	it('checks a shared MCP tool only when its trigger is in scope', () => {
+		const workflow = agentToolWorkflow();
+		workflow.nodes.push(agentToolNode('MCP Server', '@n8n/n8n-nodes-langchain.mcpTrigger'));
+		workflow.connections.Write = {
+			ai_tool: [
+				[
+					{ node: 'Agent', type: 'ai_tool', index: 0 },
+					{ node: 'MCP Server', type: 'ai_tool', index: 0 },
+				],
+			],
+		};
+		expect(check(workflow)?.guidance).toContain('Write (called by MCP Server)');
+		expect(check(workflow, { triggerNodeName: 'Trigger' })).toBeUndefined();
+		expect(check(workflow, { triggerNodeName: 'MCP Server' })?.guidance).toContain(
+			'Write (called by MCP Server)',
+		);
 	});
 
 	it('blocks tools attached to an unknown caller', () => {

@@ -6,7 +6,11 @@ vi.mock('../../../utils/eval-agents', async () => {
 	return { ...actual, createEvalAgent: vi.fn(), extractText: vi.fn() };
 });
 
-import { agentToolNode, agentToolWorkflow } from '../../../__tests__/agent-tool-workflow';
+import {
+	agentToolNode,
+	agentToolWorkflow,
+	mcpToolWorkflow,
+} from '../../../__tests__/agent-tool-workflow';
 import { createEvalAgent, extractText } from '../../../utils/eval-agents';
 import { classifyNodesForSimulation } from '../classify-node-destructiveness.service';
 
@@ -407,11 +411,29 @@ describe('attached tool classification', () => {
 		['n8n-nodes-base.emailSendTool', {}, 'simulate'],
 		['n8n-nodes-base.executeWorkflowTool', {}, 'simulate'],
 		['@n8n/n8n-nodes-langchain.toolWorkflow', {}, 'simulate'],
+		['@n8n/n8n-nodes-langchain.mcpClientTool', {}, 'simulate'],
+		['@n8n/n8n-nodes-langchain.mcpRegistryClientTool', {}, 'simulate'],
 	] as const)('uses the existing rules for %s', async (type, parameters, expected) => {
 		const workflow = agentToolWorkflow();
 		workflow.nodes[2] = agentToolNode('Write', type, { parameters });
 		const plan = await classifyNodesForSimulation({ workflow });
-		expect(verdictOf(plan, 'Write').verdict).toBe(expected);
+		expect(verdictOf(plan, 'Write')).toMatchObject({ verdict: expected, source: 'deterministic' });
+		expect(mockCreateEvalAgent).not.toHaveBeenCalled();
+	});
+
+	it('classifies MCP tools without main connections', async () => {
+		const workflow = mcpToolWorkflow();
+		workflow.nodes.push(
+			agentToolNode('Read', 'n8n-nodes-base.slackTool', { parameters: { operation: 'get' } }),
+		);
+		workflow.connections.Read = { ai_tool: [[{ node: 'MCP Server', type: 'ai_tool', index: 0 }]] };
+
+		const plan = await classifyNodesForSimulation({ workflow });
+
+		expect(plan.map(({ nodeName, verdict }) => ({ nodeName, verdict }))).toEqual([
+			{ nodeName: 'Write', verdict: 'simulate' },
+			{ nodeName: 'Read', verdict: 'execute' },
+		]);
 		expect(mockCreateEvalAgent).not.toHaveBeenCalled();
 	});
 

@@ -97,6 +97,11 @@ const DESTRUCTIVE_NODE_TYPES = new Map<string, string>([
 		'@n8n/n8n-nodes-langchain.toolWorkflow',
 		'Executes another workflow which may have side effects',
 	],
+	['@n8n/n8n-nodes-langchain.mcpClientTool', 'Calls remote MCP tools which may have side effects'],
+	[
+		'@n8n/n8n-nodes-langchain.mcpRegistryClientTool',
+		'Calls remote MCP tools which may have side effects',
+	],
 ]);
 
 const CODE_NODE_TYPES = new Set([
@@ -394,7 +399,7 @@ export async function classifyNodesForSimulation(
 	input: ClassifyNodesForSimulationInput,
 ): Promise<NodeSimulationVerdict[]> {
 	const graph = createVerificationGraph(input.workflow);
-	const candidateNames = graph.withTools(graph.mainNodeNames);
+	const candidateNames = graph.withTools(graph.rootNodeNames);
 	const mockedNodeNames = new Set(input.mockedNodeNames ?? []);
 
 	const candidates = (input.workflow.nodes ?? []).filter(

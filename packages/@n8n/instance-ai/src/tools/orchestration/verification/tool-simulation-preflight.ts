@@ -41,7 +41,7 @@ export function checkToolSimulationSupport(args: {
 		graph = createVerificationGraph(workflow);
 		mainScope = triggerNodeName
 			? getTriggerMainFlowScope(workflow.connections, triggerNodeName)
-			: graph.mainNodeNames;
+			: graph.rootNodeNames;
 		scope = graph.withTools(mainScope);
 	} catch {
 		return GRAPH_UNAVAILABLE;
@@ -73,7 +73,7 @@ export function checkToolSimulationSupport(args: {
 			itemsForNode(prepared.verificationPinData, name) !== undefined ||
 			itemsForNode(workflow.pinData, name) !== undefined;
 		if (caller !== undefined) {
-			// Legacy execution order resumes the Agent before its tool result is ready.
+			// An unset order is also legacy. The engine can resume the Agent before its tool result.
 			const legacyOrder = workflow.settings?.executionOrder !== 'v1';
 			if ((!scheduled || legacyOrder) && (verdict?.verdict === 'simulate' || pinned)) {
 				unsupported.add(
@@ -88,9 +88,8 @@ export function checkToolSimulationSupport(args: {
 		visited.add(state);
 		const supportsTools =
 			scheduled &&
-			(caller === undefined
-				? node.type === AGENT_NODE_TYPE && (node.typeVersion === 3 || node.typeVersion === 3.1)
-				: node.type === AGENT_TOOL_NODE_TYPE && node.typeVersion === 3);
+			node.typeVersion >= 3 &&
+			(caller === undefined ? node.type === AGENT_NODE_TYPE : node.type === AGENT_TOOL_NODE_TYPE);
 		for (const tool of graph.toolsFor(name)) {
 			pending.push({ name: tool, scheduled: supportsTools, caller: name });
 		}

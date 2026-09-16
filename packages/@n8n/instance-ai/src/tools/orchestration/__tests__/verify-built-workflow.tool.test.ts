@@ -1,6 +1,10 @@
 import type { Mock } from 'vitest';
 
-import { agentToolNode, agentToolWorkflow } from '../../../__tests__/agent-tool-workflow';
+import {
+	agentToolNode,
+	agentToolWorkflow,
+	mcpToolWorkflow,
+} from '../../../__tests__/agent-tool-workflow';
 import { executeTool } from '../../../__tests__/tool-test-utils';
 import { successfulVerification } from '../../../__tests__/verification-fixtures';
 import type { WorkflowLoopStorage } from '../../../storage/workflow-loop-storage';
@@ -1488,6 +1492,8 @@ describe('verify-built-workflow tool — node simulation plan', () => {
 		expect(result.coverageNote).toContain('UNVERIFIED');
 		expect(result.coverageNote).toContain('Look Up Order');
 		expect(result.coverageNote).toContain('Agent tool calls');
+		expect(result.coverageNote).toContain('if a lookup or query returned no items');
+		expect(result.coverageNote).toContain('seed matching test data and re-run verification');
 	});
 
 	it('reports incomplete coverage without assuming why a collection stopped', async () => {
@@ -1518,6 +1524,9 @@ describe('verify-built-workflow tool — node simulation plan', () => {
 		expect(result.success).toBe(true);
 		expect(result.nodesNotReached).toEqual(['Post to Slack']);
 		expect(result.coverageNote).toContain('input items');
+		expect(result.coverageNote).toContain('If a Code node dropped a collection');
+		expect(result.coverageNote).toContain('$input.first().json');
+		expect(result.coverageNote).toContain('$input.all().map(i => i.json)');
 		expect(result.coverageNote).toContain('Do not report unreached nodes as verified');
 	});
 
@@ -1955,6 +1964,31 @@ describe('verify-built-workflow tool — attached tools', () => {
 	});
 	const plan = [verdict('Agent'), verdict('Write', true)];
 
+	it('blocks MCP tool simulation before execution without a named trigger', async () => {
+		const { ctx, getOutcome } = makeContext(
+			makeBuildOutcome({ nodeSimulationPlan: [verdict('Write', true)] }),
+			{ status: 'success' },
+		);
+		vi.mocked(ctx.domainContext.workflowService!.getAsWorkflowJSON).mockResolvedValue(
+			mcpToolWorkflow(),
+		);
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(result).toMatchObject({
+			success: false,
+			remediation: { category: 'blocked', reason: 'unsupported_tool_simulation' },
+			nodesNotReached: expect.arrayContaining(['MCP Server', 'Write']),
+		});
+		expect(result.error).toContain('Write (called by MCP Server)');
+		expect(ctx.domainContext.executionService.run).not.toHaveBeenCalled();
+		expect(ctx.workflowTaskService.startVerification).not.toHaveBeenCalled();
+		expect(getOutcome().verification).toMatchObject({
+			success: false,
+			failureSignature: 'unsupported_tool_simulation',
+		});
+	});
+
 	it('records a blocked result when the saved pin summary cannot be loaded', async () => {
 		const { ctx, getOutcome } = makeContext(makeBuildOutcome({ nodeSimulationPlan: plan }), {
 			status: 'success',
@@ -2136,6 +2170,7 @@ describe('verify-built-workflow tool — attached tools', () => {
 		expect(result.success).toBe(true);
 		expect(result.nodesNotReached).toEqual(['Nested', 'Write']);
 		expect(result.simulatedNodes?.some((node) => node.nodeName === 'Write')).not.toBe(true);
+		expect(result.coverageNote).toContain('Agent tool calls, and simulated parents');
 		expect(ctx.domainContext.executionService.run).toHaveBeenCalledTimes(1);
 	});
 
