@@ -271,13 +271,9 @@ test("only update the workflow, don't create or update the owner if `--userId` i
 });
 
 test('`import:workflow --userId ...` should succeed if the workflow already exists and is owned by the same user', async () => {
-	//
-	// ARRANGE
-	//
 	const owner = await createOwner();
 	const ownerProject = await getPersonalProject(owner);
 
-	// Import workflow the first time, assigning it to the owner.
 	await command.run([
 		'--input=./test/integration/commands/import-workflows/combined-with-update/original.json',
 		`--userId=${owner.id}`,
@@ -298,18 +294,56 @@ test('`import:workflow --userId ...` should succeed if the workflow already exis
 		],
 	});
 
-	//
-	// ACT
-	//
-	// Import the same workflow again with updated content, for the same user.
 	await command.run([
 		'--input=./test/integration/commands/import-workflows/combined-with-update/updated.json',
 		`--userId=${owner.id}`,
 	]);
 
-	//
-	// ASSERT
-	//
+	const after = {
+		workflows: await getAllWorkflows(),
+		sharings: await getAllSharedWorkflows(),
+	};
+	expect(after).toMatchObject({
+		workflows: [expect.objectContaining({ id: '998', name: 'active-workflow updated' })],
+		sharings: [
+			expect.objectContaining({
+				workflowId: '998',
+				projectId: ownerProject.id,
+				role: 'workflow:owner',
+			}),
+		],
+	});
+});
+
+test('`import:workflow --projectId ...` should succeed if the workflow already exists and is owned by the same project', async () => {
+	const owner = await createOwner();
+	const ownerProject = await getPersonalProject(owner);
+
+	await command.run([
+		'--input=./test/integration/commands/import-workflows/combined-with-update/original.json',
+		`--projectId=${ownerProject.id}`,
+	]);
+
+	const before = {
+		workflows: await getAllWorkflows(),
+		sharings: await getAllSharedWorkflows(),
+	};
+	expect(before).toMatchObject({
+		workflows: [expect.objectContaining({ id: '998', name: 'active-workflow' })],
+		sharings: [
+			expect.objectContaining({
+				workflowId: '998',
+				projectId: ownerProject.id,
+				role: 'workflow:owner',
+			}),
+		],
+	});
+
+	await command.run([
+		'--input=./test/integration/commands/import-workflows/combined-with-update/updated.json',
+		`--projectId=${ownerProject.id}`,
+	]);
+
 	const after = {
 		workflows: await getAllWorkflows(),
 		sharings: await getAllSharedWorkflows(),
