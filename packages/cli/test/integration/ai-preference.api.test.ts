@@ -627,7 +627,7 @@ describe('the preferences a write produces', () => {
 		const service = Container.get(AiPreferenceService);
 
 		// A thread bound to a team project does not see it; one bound to the personal
-		// project does, and the block names the kind of project rather than its owner.
+		// project does, and the block folds it into the personal group instead of naming its owner.
 		const inTeamProject = await service.getApplicable(member.id, [
 			{ id: project.id, name: project.name, type: 'team' },
 		]);
@@ -639,8 +639,8 @@ describe('the preferences a write produces', () => {
 		expect(inPersonalProject.projects).toEqual([
 			{ id: personal.id, name: personal.name, type: 'personal', items: ['Only here.'] },
 		]);
-		expect(renderAiPreferencesBlock(inPersonalProject)).toContain(
-			'Preferences for your personal project:',
-		);
+		const block = renderAiPreferencesBlock(inPersonalProject);
+		expect(block).toContain('Personal preferences:\n- Only here.');
+		expect(block).not.toContain(personal.name);
 	});
 });
