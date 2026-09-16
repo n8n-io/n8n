@@ -1,7 +1,7 @@
 import { Service } from '@n8n/di';
 import { DataSource, In, LessThan, Repository } from '@n8n/typeorm';
 
-import type { AgentQueueInput } from '../agent-message-queue.types';
+import type { AgentQueueInput, PreviewMessageQueuePayload } from '../agent-message-queue.types';
 import { AgentMessageQueue } from '../entities/agent-message-queue.entity';
 
 @Service()
@@ -31,7 +31,7 @@ export class AgentMessageQueueRepository extends Repository<AgentMessageQueue> {
 	}
 
 	async hasProcessing(threadId: string): Promise<boolean> {
-		return await this.existsBy({ threadId, status: 'processing' });
+		return await this.existsBy({ threadId, status: In(['processing', 'cancelling']) });
 	}
 
 	async hasEntries(threadId: string): Promise<boolean> {
@@ -43,11 +43,49 @@ export class AgentMessageQueueRepository extends Repository<AgentMessageQueue> {
 	}
 
 	async linkExecution(id: string, executionId: string): Promise<void> {
-		await this.update({ id, status: 'processing' }, { executionId });
+		await this.update({ id, status: In(['processing', 'cancelling']) }, { executionId });
+	}
+
+	async findById(id: string): Promise<AgentMessageQueue | null> {
+		return await this.findOneBy({ id });
+	}
+
+	async findPreviewEntries(agentId: string, threadId?: string): Promise<AgentMessageQueue[]> {
+		return await this.find({
+			where: { agentId, source: 'preview', ...(threadId ? { threadId } : {}) },
+			order: { id: 'ASC' },
+		});
+	}
+
+	async editQueuedPreview(id: string, payload: PreviewMessageQueuePayload): Promise<boolean> {
+		return (
+			(await this.update({ id, status: 'queued', source: 'preview', kind: 'message' }, { payload }))
+				.affected === 1
+		);
+	}
+
+	async requestCancellation(id: string): Promise<boolean> {
+		return (
+			(
+				await this.update(
+					{ id, source: 'preview', status: In(['processing', 'cancelling']) },
+					{ status: 'cancelling' },
+				)
+			).affected === 1
+		);
+	}
+
+	async findLiveEntries(ids: string[]): Promise<Array<Pick<AgentMessageQueue, 'id' | 'status'>>> {
+		if (ids.length === 0) return [];
+		return await this.find({ select: ['id', 'status'], where: { id: In(ids) } });
 	}
 
 	async removeEntry(id: string): Promise<void> {
 		await this.delete({ id });
+	}
+
+	async finishProcessing(id: string): Promise<boolean> {
+		return (await this.delete({ id, status: 'processing' })).affected === 1;
 	}
 
 	async cancelQueued(id: string): Promise<boolean> {
@@ -58,22 +96,15 @@ export class AgentMessageQueueRepository extends Repository<AgentMessageQueue> {
 		await this.delete({ threadId, status: 'queued' });
 	}
 
-	async touchLiveEntries(ids: string[]): Promise<string[]> {
-		if (ids.length === 0) return [];
+	async touchLiveEntries(ids: string[]): Promise<void> {
+		if (ids.length === 0) return;
 		await this.update({ id: In(ids) }, { updatedAt: new Date() });
-		return await this.findExistingIds(ids);
-	}
-
-	async findExistingIds(ids: string[]): Promise<string[]> {
-		if (ids.length === 0) return [];
-		const rows = await this.find({ select: ['id'], where: { id: In(ids) } });
-		return rows.map(({ id }) => id);
 	}
 
 	async findStale(threadId: string, cutoff: Date): Promise<AgentMessageQueue[]> {
 		return await this.find({
 			where: [
-				{ threadId, status: 'processing', updatedAt: LessThan(cutoff) },
+				{ threadId, status: In(['processing', 'cancelling']), updatedAt: LessThan(cutoff) },
 				{ threadId, status: 'queued', source: 'preview', updatedAt: LessThan(cutoff) },
 			],
 		});

@@ -1,4 +1,5 @@
 import type { ActionEvent, SerializedMessage, SerializedThread } from 'chat';
+import type { AgentSseEvent } from '@n8n/api-types';
 
 import type { StoredAttachmentRef } from './agent-chat-attachment.service';
 
@@ -7,6 +8,19 @@ export const agentConversationLockKey = (threadId: string) => `agent-conversatio
 export interface QueueExecutionContext {
 	abortSignal: AbortSignal;
 	onExecutionStarted: (executionId: string) => Promise<void>;
+}
+
+export interface PreviewQueueExecutionContext extends QueueExecutionContext {
+	send: (event: AgentSseEvent) => void;
+	onExecutionRecorded: (executionId: string) => void;
+}
+
+export interface PreviewQueueScope {
+	projectId: string;
+	agentId: string;
+	threadId: string;
+	userId: string;
+	resourceId: string;
 }
 
 interface QueuePayloadBase {
@@ -67,4 +81,8 @@ export interface AgentQueueInput {
 	agentId: string;
 	threadId: string;
 	payload: AgentQueuePayload;
+}
+
+export interface AgentPreviewQueueInput extends AgentQueueInput {
+	payload: PreviewQueuePayload;
 }

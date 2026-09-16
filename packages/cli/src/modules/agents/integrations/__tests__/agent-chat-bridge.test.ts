@@ -388,7 +388,8 @@ describe('AgentChatBridge — consumeStream', () => {
 			const checkpointStorage = mock<N8NCheckpointStorage>();
 			checkpointStorage.findSuspendedForThread.mockResolvedValue(
 				suspended
-					? mock<SerializableAgentState>({
+					? mock<SerializableAgentState & { runId: string }>({
+							runId: 'run-1',
 							pendingToolCalls: {
 								call: mock<SerializableAgentState['pendingToolCalls'][string]>({ suspended: true }),
 							},

@@ -4,38 +4,53 @@ import {
 	LockService,
 	Logger,
 } from '@n8n/backend-common';
+import type { AgentChatQueueItem, PushPayload } from '@n8n/api-types';
 import { OnPubSubEvent, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import { createDeferredPromise, type IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
-import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { UserError } from 'n8n-workflow';
+import { UserError, UnexpectedError } from 'n8n-workflow';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
+import { AgentExecutionOrchestratorService } from './agent-execution-orchestrator.service';
+import { AgentExecutionUpdateBroadcaster } from './agent-execution-update-broadcaster';
 import { AgentExecutionService } from './agent-execution.service';
 import {
 	agentConversationLockKey,
 	type AgentQueueInput,
-	type QueueExecutionContext,
+	type AgentPreviewQueueInput,
+	type PreviewQueueExecutionContext,
+	type PreviewQueuePayload,
+	type PreviewQueueScope,
 } from './agent-message-queue.types';
+import type { AgentMessageQueue } from './entities/agent-message-queue.entity';
+import { ExecutionRecorder } from './execution-recorder';
+import type { AgentChatBridge } from './integrations/agent-chat-bridge';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { AgentExecutionRepository } from './repositories/agent-execution.repository';
 import { AgentMessageQueueRepository } from './repositories/agent-message-queue.repository';
 import { AgentRepository } from './repositories/agent.repository';
 
-type PreviewWaiter = {
-	threadId: string;
-	execute: (context: QueueExecutionContext) => Promise<void>;
-	signal: AbortSignal;
-	done: IDeferredPromise<void>;
+type PreviewExecution = {
+	input: AgentPreviewQueueInput;
+	clientRequestId: string;
+	execute: (payload: PreviewQueuePayload, context: PreviewQueueExecutionContext) => Promise<void>;
+	controller: AbortController;
+	started: boolean;
+	errorEmitted: boolean;
+	pendingEvents: Promise<void>;
 };
+
+const hitlAdmissionLockKey = (threadId: string) => `agent-hitl-admission:${threadId}`;
 
 @Service()
 export class AgentMessageQueueService {
 	static readonly LIVENESS_GRACE_MS = 2 * 60_000;
-	private readonly previews = new Map<string, PreviewWaiter>();
+	private readonly previews = new Map<string, PreviewExecution>();
 	private readonly processing = new Set<string>();
 	private readonly drains = new Map<string, Promise<void>>();
 	private readonly requested = new Set<string>();
@@ -53,6 +68,8 @@ export class AgentMessageQueueService {
 		private readonly executionService: AgentExecutionService,
 		private readonly attachments: AgentChatAttachmentService,
 		private readonly publisher: Publisher,
+		private readonly broadcaster: AgentExecutionUpdateBroadcaster,
+		private readonly orchestrator: AgentExecutionOrchestratorService,
 	) {
 		this.logger = this.logger.scoped('agents');
 	}
@@ -75,35 +92,167 @@ export class AgentMessageQueueService {
 	}
 
 	async enqueuePreview(
-		input: AgentQueueInput,
-		execute: PreviewWaiter['execute'],
-		signal: AbortSignal,
-	): Promise<void> {
+		input: AgentPreviewQueueInput,
+		clientRequestId: string,
+		execute: PreviewExecution['execute'],
+	): Promise<AgentChatQueueItem> {
 		this.stopping.signal.throwIfAborted();
-		signal.throwIfAborted();
-		const entry = await this.repository.enqueue(input);
-		const done = createDeferredPromise();
-		this.previews.set(entry.id, { threadId: input.threadId, execute, signal, done });
-		const cancel = () => {
-			void this.cancelPreview(entry.id).catch((error: unknown) => {
-				this.logger.warn('Failed to cancel queued preview', { id: entry.id, error });
-				done.reject(ensureError(error));
-			});
-		};
-		signal.addEventListener('abort', cancel, { once: true });
-		if (signal.aborted || this.stopping.signal.aborted) cancel();
-		else this.notify(input.threadId);
-		try {
-			await done.promise;
-		} finally {
-			signal.removeEventListener('abort', cancel);
-			this.previews.delete(entry.id);
+		const payload = input.payload;
+		const entry =
+			payload.kind === 'hitl'
+				? await this.lockService.withLease(
+						LockNamespace.KNOWN_LOCKS,
+						hitlAdmissionLockKey(input.threadId),
+						async () => {
+							const memory = await this.getResumeScope(
+								input.agentId,
+								payload.runId,
+								payload.resourceId,
+								payload.toolCallId,
+							);
+							const duplicate = (
+								await this.repository.findPreviewEntries(input.agentId, input.threadId)
+							).some(
+								(entry) =>
+									entry.payload.kind === 'hitl' &&
+									entry.payload.runId === payload.runId &&
+									entry.payload.toolCallId === payload.toolCallId,
+							);
+							if (memory.threadId !== input.threadId || duplicate) {
+								throw new UserError('This action has already been handled or has expired');
+							}
+							return await this.repository.enqueue(input);
+						},
+					)
+				: await this.repository.enqueue(input);
+		this.previews.set(entry.id, {
+			input,
+			clientRequestId,
+			execute,
+			controller: new AbortController(),
+			started: false,
+			errorEmitted: false,
+			pendingEvents: Promise.resolve(),
+		});
+		if (this.stopping.signal.aborted) {
+			await this.cancelPreview(entry.id);
+			throw new UserError('Message was cancelled');
 		}
+		this.notify(input.threadId);
+		return this.toItem(entry);
 	}
 
-	async getResumeScope(agentId: string, runId: string, resourceId?: string) {
+	private toItem(entry: AgentMessageQueue): AgentChatQueueItem {
+		const { payload } = entry;
+		if (payload.source !== 'preview') throw new UnexpectedError('Expected a preview queue entry');
+		const base = {
+			id: entry.id,
+			status: entry.status,
+			...(entry.executionId ? { executionId: entry.executionId } : {}),
+		};
+		return payload.kind === 'message'
+			? {
+					...base,
+					kind: 'message',
+					message: payload.message,
+					attachments: payload.attachments ?? [],
+				}
+			: { ...base, kind: 'hitl', runId: payload.runId, toolCallId: payload.toolCallId };
+	}
+
+	private owns(entry: AgentMessageQueue, scope: PreviewQueueScope): boolean {
+		return (
+			entry.agentId === scope.agentId &&
+			entry.threadId === scope.threadId &&
+			entry.payload.source === 'preview' &&
+			entry.payload.projectId === scope.projectId &&
+			entry.payload.userId === scope.userId &&
+			entry.payload.resourceId === scope.resourceId
+		);
+	}
+
+	async listPreview(scope: PreviewQueueScope): Promise<AgentChatQueueItem[]> {
+		const entries = await this.repository.findPreviewEntries(scope.agentId, scope.threadId);
+		return entries.filter((entry) => this.owns(entry, scope)).map((entry) => this.toItem(entry));
+	}
+
+	private async getPreview(scope: PreviewQueueScope, id: string): Promise<AgentMessageQueue> {
+		const entry = await this.repository.findById(id);
+		if (!entry || !this.owns(entry, scope)) throw new NotFoundError('Queued message not found');
+		return entry;
+	}
+
+	async editPreview(
+		scope: PreviewQueueScope,
+		id: string,
+		message: string,
+	): Promise<AgentChatQueueItem> {
+		const entry = await this.getPreview(scope, id);
+		if (entry.payload.source !== 'preview' || entry.payload.kind !== 'message') {
+			throw new BadRequestError('Only waiting messages can be edited');
+		}
+		if (!message.trim() && !entry.payload.attachments?.length) {
+			throw new BadRequestError('Message text or at least one attachment is required');
+		}
+		const payload = { ...entry.payload, message };
+		if (!(await this.repository.editQueuedPreview(id, payload))) {
+			throw new ConflictError('This message is no longer waiting');
+		}
+		entry.payload = payload;
+		return this.toItem(entry);
+	}
+
+	async removePreview(scope: PreviewQueueScope, id: string): Promise<void> {
+		const entry = await this.getPreview(scope, id);
+		if (entry.kind !== 'message' || !(await this.repository.cancelQueued(id))) {
+			throw new ConflictError('This message is no longer waiting');
+		}
+		await this.deleteUnusedAttachments(entry);
+		this.notify(entry.threadId);
+	}
+
+	async stopPreview(scope: PreviewQueueScope, id: string): Promise<boolean> {
+		await this.getPreview(scope, id);
+		const cancelled = await this.repository.requestCancellation(id);
+		if (cancelled) this.notify(scope.threadId);
+		return cancelled;
+	}
+
+	async cancelPreviewResumes(
+		scope: Omit<PreviewQueueScope, 'threadId'>,
+		runId: string,
+	): Promise<boolean> {
+		let cancelled = false;
+		for (const entry of await this.repository.findPreviewEntries(scope.agentId)) {
+			if (
+				!this.owns(entry, { ...scope, threadId: entry.threadId }) ||
+				entry.payload.kind !== 'hitl' ||
+				entry.payload.runId !== runId
+			)
+				continue;
+			cancelled =
+				(await this.repository.cancelQueued(entry.id)) ||
+				(await this.repository.requestCancellation(entry.id)) ||
+				cancelled;
+			this.notify(entry.threadId);
+		}
+		return cancelled;
+	}
+
+	async getResumeScope(agentId: string, runId: string, resourceId?: string, toolCallId?: string) {
 		const status = await this.checkpoints.getStatus(runId, agentId);
-		if (status.status !== 'active' || status.checkpoint.status !== 'suspended') {
+		const pendingToolCall =
+			status.status === 'active' && toolCallId !== undefined
+				? status.checkpoint.pendingToolCalls[toolCallId]
+				: undefined;
+		if (
+			status.status !== 'active' ||
+			status.checkpoint.status !== 'suspended' ||
+			(toolCallId !== undefined &&
+				(!pendingToolCall?.suspended ||
+					pendingToolCall.runId !== runId ||
+					pendingToolCall.toolCallId !== toolCallId))
+		) {
 			throw new UserError('This action has already been handled or has expired');
 		}
 		const memory = status.checkpoint.persistence;
@@ -126,11 +275,43 @@ export class AgentMessageQueueService {
 		return await this.repository.hasEntries(threadId);
 	}
 
+	private async deleteUnusedAttachments(entry: AgentMessageQueue): Promise<void> {
+		if (entry.payload.source === 'preview' && entry.payload.kind === 'message') {
+			await this.attachments.deleteByIds(entry.payload.attachments?.map(({ id }) => id) ?? []);
+		}
+	}
+
 	private async cancelPreview(id: string): Promise<void> {
-		if (!(await this.repository.cancelQueued(id))) return;
-		const preview = this.previews.get(id);
-		preview?.done.reject(new UserError('Message was cancelled'));
-		if (preview) this.notify(preview.threadId);
+		const entry = await this.repository.findById(id);
+		if (entry && (await this.repository.cancelQueued(id)))
+			await this.deleteUnusedAttachments(entry);
+		await this.reconcilePreviews();
+	}
+
+	private sendPreviewEvent(
+		id: string,
+		preview: PreviewExecution,
+		event: PushPayload<'agentChatEvent'>['event'],
+	): void {
+		if (event.type === 'error') preview.errorEmitted = true;
+		const { input, clientRequestId } = preview;
+		preview.pendingEvents = preview.pendingEvents
+			.then(async () => {
+				await this.broadcaster.sendChatEvent(
+					{
+						projectId: input.payload.projectId,
+						agentId: input.agentId,
+						threadId: input.threadId,
+						queueId: id,
+						clientRequestId,
+						event,
+					},
+					input.payload.userId,
+				);
+			})
+			.catch((error: unknown) =>
+				this.logger.warn('Failed to deliver preview event', { id, error }),
+			);
 	}
 
 	@OnPubSubEvent('drain-agent-message-queue', { instanceType: 'main' })
@@ -160,12 +341,13 @@ export class AgentMessageQueueService {
 
 	async drain(threadId: string): Promise<void> {
 		if (this.stopping.signal.aborted) return;
+		// Check cancellation before waiting for the drain that owns the active run.
+		await this.reconcilePreviews(threadId);
 		this.requested.add(threadId);
 		const existing = this.drains.get(threadId);
 		if (existing) return await existing;
 		const drain = this.drainThread(threadId).finally(() => {
 			this.drains.delete(threadId);
-			// An enqueue can arrive after the loop's last check but before this cleanup.
 			if (this.requested.has(threadId)) this.handleDrainRequest({ threadId });
 		});
 		this.drains.set(threadId, drain);
@@ -175,7 +357,6 @@ export class AgentMessageQueueService {
 	private async drainThread(threadId: string): Promise<void> {
 		do {
 			this.requested.delete(threadId);
-			await this.settleRemovedPreviews(threadId);
 			const processed = await this.lockService.withLease(
 				LockNamespace.KNOWN_LOCKS,
 				agentConversationLockKey(threadId),
@@ -189,18 +370,16 @@ export class AgentMessageQueueService {
 		if (this.stopping.signal.aborted || leaseSignal.aborted) return false;
 		if (await this.repository.hasProcessing(threadId)) return false;
 		if (await this.executionRepository.existsRunningByThread(threadId)) return false;
-		const entry = await this.repository.findNext(threadId);
-		if (!entry) return false;
-
-		const payload = entry.payload;
-		const preview = this.previews.get(entry.id);
-		let execute: PreviewWaiter['execute'];
-		if (payload.source === 'preview') {
-			// Only the HTTP owner has the response stream. A peer must keep its place.
+		const selected = await this.repository.findNext(threadId);
+		if (!selected) return false;
+		const preview = this.previews.get(selected.id);
+		let bridge: AgentChatBridge | undefined;
+		if (selected.payload.source === 'preview') {
+			// ponytail: previews stay on their accepting main; owner recovery needs a durable executor.
 			if (!preview) return false;
-			execute = preview.execute;
 		} else {
-			const agent = await this.agents.findById(entry.agentId);
+			const payload = selected.payload;
+			const agent = await this.agents.findById(selected.agentId);
 			if (
 				!agent ||
 				agent.projectId !== payload.projectId ||
@@ -211,68 +390,197 @@ export class AgentMessageQueueService {
 				)
 			) {
 				this.logger.warn('Removed queued message for an unavailable agent connection', {
-					id: entry.id,
+					id: selected.id,
 					threadId,
 				});
-				await this.repository.removeEntry(entry.id);
+				await this.repository.removeEntry(selected.id);
 				return true;
 			}
-			const bridge = this.integrations.getBridge(
-				entry.agentId,
+			bridge = this.integrations.getBridge(
+				selected.agentId,
 				payload.integrationType,
 				payload.credentialId,
 			);
 			if (!bridge) return false;
-			execute = async (context) => await bridge.processQueuedInput(payload, threadId, context);
 		}
 		if (
-			entry.kind === 'message' &&
-			(await this.checkpoints.findSuspendedForThread(entry.agentId, threadId))
+			selected.kind === 'message' &&
+			(await this.checkpoints.findSuspendedForThread(selected.agentId, threadId))
 		)
 			return false;
-		if (!(await this.repository.markProcessing(entry.id))) return true;
+		if (!(await this.repository.markProcessing(selected.id))) return true;
+		// An edit can commit between selection and claim. Execute the claimed payload.
+		const entry = await this.repository.findById(selected.id);
+		if (!entry) return true;
 		this.processing.add(entry.id);
+		if (preview) preview.started = true;
 		const abortSignal = AbortSignal.any([
 			leaseSignal,
 			this.stopping.signal,
-			...(preview ? [preview.signal] : []),
+			...(preview ? [preview.controller.signal] : []),
 		]);
+		if (entry.status === 'cancelling') preview?.controller.abort();
+		let executionId: string | undefined;
+		const onExecutionStarted = async (id: string) => {
+			executionId = id;
+			await this.repository.linkExecution(entry.id, id);
+			if (preview)
+				this.sendPreviewEvent(entry.id, preview, { type: 'execution-started', executionId: id });
+		};
 		try {
-			abortSignal.throwIfAborted();
-			await execute({
-				abortSignal,
-				onExecutionStarted: async (id) => await this.repository.linkExecution(entry.id, id),
-			});
-			preview?.done.resolve();
+			if (preview && entry.payload.source === 'preview') {
+				this.sendPreviewEvent(entry.id, preview, { type: 'processing', item: this.toItem(entry) });
+				abortSignal.throwIfAborted();
+				await preview.execute(entry.payload, {
+					abortSignal,
+					onExecutionStarted,
+					onExecutionRecorded: (id) => {
+						executionId = id;
+					},
+					send: (event) => {
+						if (!abortSignal.aborted) this.sendPreviewEvent(entry.id, preview, event);
+					},
+				});
+			} else if (bridge && entry.payload.source === 'integration') {
+				abortSignal.throwIfAborted();
+				await bridge.processQueuedInput(entry.payload, threadId, {
+					abortSignal,
+					onExecutionStarted,
+				});
+			}
 		} catch (error) {
-			preview?.done.reject(ensureError(error));
+			if (preview) {
+				if (!executionId)
+					executionId = await this.recordFailedPreview(entry, error, abortSignal.aborted);
+				if (!abortSignal.aborted && !preview.errorEmitted) {
+					this.sendPreviewEvent(entry.id, preview, {
+						type: 'error',
+						message: error instanceof Error ? error.message : 'Chat failed',
+					});
+				}
+			}
 			this.logger.warn('Queued agent input ended with an error', { id: entry.id, threadId, error });
 		} finally {
-			this.processing.delete(entry.id);
-			await this.repository.removeEntry(entry.id);
-			this.notifyPeers(threadId);
+			this.previews.delete(entry.id);
+			try {
+				// The conditional delete makes a concurrent Stop win before suspension cleanup.
+				if (
+					preview &&
+					!preview.controller.signal.aborted &&
+					!(await this.repository.finishProcessing(entry.id))
+				) {
+					const remaining = await this.repository.findById(entry.id);
+					if (remaining?.status === 'cancelling') preview.controller.abort();
+				}
+				// Stop can arrive as a run suspends. Clear its checkpoint before releasing the conversation.
+				if (preview?.controller.signal.aborted) {
+					const checkpoint = await this.checkpoints.findSuspendedForThread(entry.agentId, threadId);
+					if (checkpoint?.persistence?.resourceId === entry.payload.resourceId) {
+						await this.orchestrator.cancelChatRun({
+							agentId: entry.agentId,
+							runId: checkpoint.runId,
+							resourceId: entry.payload.resourceId,
+						});
+					}
+				}
+			} finally {
+				this.processing.delete(entry.id);
+				await this.repository.removeEntry(entry.id);
+				if (preview) {
+					if (!executionId) await this.deleteUnusedAttachments(entry);
+					this.sendPreviewEvent(
+						entry.id,
+						preview,
+						abortSignal.aborted
+							? { type: 'cancelled' }
+							: { type: 'done', sessionId: threadId, ...(executionId ? { executionId } : {}) },
+					);
+					await preview.pendingEvents;
+				}
+				if (executionId)
+					this.broadcaster.notify({
+						projectId: entry.payload.projectId,
+						agentId: entry.agentId,
+						threadId,
+						executionId,
+					});
+				this.notifyPeers(threadId);
+			}
 		}
 		return true;
 	}
 
-	private async settleRemovedPreviews(threadId: string): Promise<void> {
-		const ids = [...this.previews]
-			.filter(([, preview]) => preview.threadId === threadId)
-			.map(([id]) => id);
-		const present = new Set(await this.repository.findExistingIds(ids));
-		for (const id of ids) {
-			if (!present.has(id))
-				this.previews.get(id)?.done.reject(new UserError('Message was cancelled'));
+	private async recordFailedPreview(
+		entry: AgentMessageQueue,
+		error: unknown,
+		cancelled: boolean,
+	): Promise<string | undefined> {
+		let executionId: string | undefined;
+		try {
+			const agent = await this.agents.findById(entry.agentId);
+			if (!agent || entry.payload.source !== 'preview') return undefined;
+			const recorder = new ExecutionRecorder();
+			if (!cancelled) recorder.record({ type: 'error', error });
+			recorder.record({ type: 'finish', finishReason: cancelled ? 'stop' : 'error' });
+			const params = {
+				agentId: entry.agentId,
+				agentName: agent.name,
+				projectId: entry.payload.projectId,
+				threadId: entry.threadId,
+				userMessage: entry.payload.kind === 'message' ? entry.payload.message : null,
+				attachments: entry.payload.kind === 'message' ? entry.payload.attachments : undefined,
+				source: 'chat',
+			};
+			executionId = await this.executionService.startExecutionRecording(params, recorder.startedAt);
+			await this.repository.linkExecution(entry.id, executionId);
+			await this.executionService.finalizeExecution(executionId, {
+				...params,
+				record: {
+					...recorder.getMessageRecord(),
+					...(cancelled ? { finishReason: 'cancelled' } : {}),
+				},
+			});
+		} catch (recordError) {
+			this.logger.warn('Failed to record queued preview error', {
+				id: entry.id,
+				error: recordError,
+			});
+		}
+		return executionId;
+	}
+
+	private async reconcilePreviews(threadId?: string): Promise<void> {
+		const previews = [...this.previews].filter(
+			([, preview]) => !threadId || preview.input.threadId === threadId,
+		);
+		const entries = new Map(
+			(await this.repository.findLiveEntries(previews.map(([id]) => id))).map((entry) => [
+				entry.id,
+				entry,
+			]),
+		);
+		for (const [id, preview] of previews) {
+			if (this.previews.get(id) !== preview) continue;
+			const entry = entries.get(id);
+			if (entry?.status === 'cancelling' || (!entry && preview.started)) preview.controller.abort();
+			if (!entry && !preview.started && this.previews.get(id) === preview) {
+				this.previews.delete(id);
+				if (preview.input.payload.kind === 'message') {
+					await this.attachments.deleteByIds(
+						preview.input.payload.attachments?.map(({ id }) => id) ?? [],
+					);
+				}
+				this.sendPreviewEvent(id, preview, { type: 'removed' });
+				await preview.pendingEvents;
+			}
 		}
 	}
 
 	private async heartbeat(): Promise<void> {
-		const ids = [...new Set([...this.processing, ...this.previews.keys()])];
-		const present = new Set(await this.repository.touchLiveEntries(ids));
-		for (const id of ids) {
-			if (!present.has(id))
-				this.previews.get(id)?.done.reject(new UserError('Message was cancelled'));
-		}
+		await this.repository.touchLiveEntries([
+			...new Set([...this.processing, ...this.previews.keys()]),
+		]);
+		await this.reconcilePreviews();
 	}
 
 	async recover(): Promise<void> {
@@ -297,6 +605,20 @@ export class AgentMessageQueueService {
 										))
 									)
 										continue;
+								}
+							}
+							if (entry.status === 'cancelling' && entry.payload.source === 'preview') {
+								const checkpoint = await this.checkpoints.findSuspendedForThread(
+									entry.agentId,
+									threadId,
+								);
+								if (leaseSignal.aborted) return;
+								if (checkpoint?.persistence?.resourceId === entry.payload.resourceId) {
+									await this.orchestrator.cancelChatRun({
+										agentId: entry.agentId,
+										runId: checkpoint.runId,
+										resourceId: entry.payload.resourceId,
+									});
 								}
 							}
 							if (
