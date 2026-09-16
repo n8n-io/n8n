@@ -28,6 +28,15 @@ const contextReturning = (existing: WorkflowJSON) =>
 		workflowService: { getAsWorkflowJSON: vi.fn().mockResolvedValue(existing) },
 	}) as unknown as InstanceAiContext;
 
+const grouped = (
+	json: WorkflowJSON,
+	groups: Array<{ name: string; nodeIds: string[] }>,
+): WorkflowJSON =>
+	({
+		...json,
+		nodeGroups: groups.map((group, index) => ({ id: `group-${index}`, ...group })),
+	}) as WorkflowJSON;
+
 const positionsByName = (json: WorkflowJSON): Record<string, [number, number]> =>
 	Object.fromEntries(json.nodes.map((n) => [n.name ?? '', n.position]));
 
@@ -186,6 +195,58 @@ describe('preserveExistingNodePositions', () => {
 
 			// C lands on the sticky and stays there — stickies sit behind nodes.
 			expect(positionsByName(built).C).toEqual([400, 96]);
+		});
+	});
+
+	describe('regrouped nodes', () => {
+		// The saved canvas holds a staircase; the build returns the same three nodes in a row.
+		const savedStaircase = () =>
+			workflow([node('A', [320, 480]), node('B', [528, 624]), node('C', [736, 768])], {
+				...wire('A', 'B'),
+				...wire('B', 'C'),
+			});
+		const builtRow = () =>
+			workflow([node('A', [0, 0]), node('B', [208, 0]), node('C', [416, 0])], {
+				...wire('A', 'B'),
+				...wire('B', 'C'),
+			});
+
+		it('keeps the fresh layout when the build groups nodes that were ungrouped', async () => {
+			const built = grouped(builtRow(), [{ name: 'Stage', nodeIds: ['b', 'c'] }]);
+
+			await preserveExistingNodePositions(built, 'wf-1', contextReturning(savedStaircase()));
+
+			expect(positionsByName(built)).toEqual({ A: [320, 480], B: [528, 480], C: [736, 480] });
+		});
+
+		it('keeps the fresh layout when the build moves a node into another group', async () => {
+			const saved = grouped(savedStaircase(), [
+				{ name: 'Stage', nodeIds: ['b'] },
+				{ name: 'Other', nodeIds: ['c'] },
+			]);
+			const built = grouped(builtRow(), [{ name: 'Stage', nodeIds: ['b', 'c'] }]);
+
+			await preserveExistingNodePositions(built, 'wf-1', contextReturning(saved));
+
+			expect(positionsByName(built)).toEqual({ A: [320, 480], B: [528, 480], C: [736, 480] });
+		});
+
+		it('restores saved positions when the grouping is unchanged', async () => {
+			const saved = grouped(savedStaircase(), [{ name: 'Stage', nodeIds: ['b', 'c'] }]);
+			const built = grouped(builtRow(), [{ name: 'Stage', nodeIds: ['b', 'c'] }]);
+
+			await preserveExistingNodePositions(built, 'wf-1', contextReturning(saved));
+
+			expect(positionsByName(built)).toEqual(positionsByName(saved));
+		});
+
+		it('restores saved positions when a group is only renamed', async () => {
+			const saved = grouped(savedStaircase(), [{ name: 'Stage', nodeIds: ['b', 'c'] }]);
+			const built = grouped(builtRow(), [{ name: 'Renamed stage', nodeIds: ['b', 'c'] }]);
+
+			await preserveExistingNodePositions(built, 'wf-1', contextReturning(saved));
+
+			expect(positionsByName(built)).toEqual(positionsByName(saved));
 		});
 	});
 
