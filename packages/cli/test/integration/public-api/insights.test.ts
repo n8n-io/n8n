@@ -165,6 +165,26 @@ describe('GET /insights/summary', () => {
 			.expect(400);
 	});
 
+	test('returns 400 for a date-time with an out-of-range offset', async () => {
+		const response = await authScopedAgent
+			.get('/insights/summary')
+			.query({ startDate: '2024-01-01T00:00:00+99:99' })
+			.expect(400);
+
+		expect(response.body.message).toContain('request/query/startDate');
+	});
+
+	test('returns 403 when startDate is older than the licensed history', async () => {
+		const response = await authScopedAgent
+			.get('/insights/summary')
+			.query({ startDate: DateTime.utc().minus({ days: 366 }).toISO() })
+			.expect(403);
+
+		expect(response.body).toEqual({
+			message: 'The selected date range exceeds the maximum history allowed by your license',
+		});
+	});
+
 	test('returns 400 when endDate is before startDate', async () => {
 		const response = await authScopedAgent
 			.get('/insights/summary')

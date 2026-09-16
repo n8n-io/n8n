@@ -22,18 +22,16 @@ export class InsightsSummaryPublicDto extends Z.class({
 	averageRunTime: summaryMetricPublicSchema('millisecond'),
 }) {}
 
+// `{ offset: true }` matches the legacy `format: date-time` check exactly: it accepts `Z` and a
+// numeric offset, and rejects a value with no timezone. The shape check still passes an offset
+// that is out of range, such as `+99:99`, so the refine rejects what `Date` cannot parse.
+const dateTimeQuerySchema = z
+	.string()
+	.datetime({ offset: true })
+	.refine((value) => !Number.isNaN(Date.parse(value)), 'Invalid datetime');
+
 export class InsightsSummaryQueryPublicDto extends Z.class({
-	// `{ offset: true }` matches the legacy `format: date-time` check exactly: it accepts `Z` and a
-	// numeric offset, and rejects a value with no timezone.
-	startDate: z
-		.string()
-		.datetime({ offset: true })
-		.optional()
-		.openapi(insightsSummaryQueryFieldDocs.startDate),
-	endDate: z
-		.string()
-		.datetime({ offset: true })
-		.optional()
-		.openapi(insightsSummaryQueryFieldDocs.endDate),
+	startDate: dateTimeQuerySchema.optional().openapi(insightsSummaryQueryFieldDocs.startDate),
+	endDate: dateTimeQuerySchema.optional().openapi(insightsSummaryQueryFieldDocs.endDate),
 	projectId: z.string().optional().openapi(insightsSummaryQueryFieldDocs.projectId),
 }) {}
