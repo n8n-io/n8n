@@ -35,6 +35,27 @@ export class CollaborationState {
 	constructor(private readonly cache: CacheService) {}
 
 	/**
+	 * Per-resource promise chains that serialize write-lock operations.
+	 * Without this, two concurrent push handlers can both observe an empty
+	 * lock and then both write — or a heartbeat can restore a stale lock
+	 * after a forced takeover. Each chain ensures the check-then-act
+	 * sequence for a given resource runs without interleaving.
+	 */
+	private lockChains = new Map<string, Promise<unknown>>();
+
+	private serializeLockOp<T>(key: string, fn: () => Promise<T>): Promise<T> {
+		const previous = this.lockChains.get(key) ?? Promise.resolve();
+		const next = previous.then(fn, fn);
+		// Keep the chain alive for the next op, but don't reject the chain
+		// if this op throws — the caller still sees the real error.
+		this.lockChains.set(
+			key,
+			next.catch(() => {}),
+		);
+		return next;
+	}
+
+	/**
 	 * Mark client (tab) active for given workflow
 	 */
 	async addCollaborator(workflowId: Workflow['id'], userId: User['id'], clientId: string) {
@@ -163,15 +184,32 @@ export class CollaborationState {
 		await this.cache.set(cacheKey, lockData, this.writeLockTtl);
 	}
 
-	async renewWriteLock(workflowId: Workflow['id'], clientId: string) {
-		const cacheKey = this.formWriteLockCacheKey(workflowId);
-		const currentLock = await this.getWriteLock(workflowId);
+	/**
+	 * Atomically acquire the write lock: set only if absent or already held
+	 * by the same client. Returns true if acquired, false if another client
+	 * holds the lock.
+	 */
+	async acquireWriteLock(
+		workflowId: Workflow['id'],
+		clientId: string,
+		userId: User['id'],
+	): Promise<boolean> {
+		return this.serializeLockOp(this.formWriteLockCacheKey(workflowId), async () => {
+			const current = await this.getWriteLock(workflowId);
+			if (current && current.clientId !== clientId) return false;
+			await this.setWriteLock(workflowId, clientId, userId);
+			return true;
+		});
+	}
 
-		if (currentLock?.clientId === clientId) {
-			// Re-store the same lock data with renewed TTL
-			const lockData = JSON.stringify(currentLock);
-			await this.cache.set(cacheKey, lockData, this.writeLockTtl);
-		}
+	async renewWriteLock(workflowId: Workflow['id'], clientId: string) {
+		return this.serializeLockOp(this.formWriteLockCacheKey(workflowId), async () => {
+			const currentLock = await this.getWriteLock(workflowId);
+			if (currentLock?.clientId === clientId) {
+				const lockData = JSON.stringify(currentLock);
+				await this.cache.set(this.formWriteLockCacheKey(workflowId), lockData, this.writeLockTtl);
+			}
+		});
 	}
 
 	async getWriteLock(
@@ -200,12 +238,28 @@ export class CollaborationState {
 		await this.cache.delete(cacheKey);
 	}
 
+	/**
+	 * Atomically release the write lock only if the caller holds it.
+	 * Prevents a release from deleting a lock that was taken over by
+	 * another tab between the check and the delete.
+	 */
+	async releaseWriteLockIfHolder(workflowId: Workflow['id'], clientId: string): Promise<boolean> {
+		return this.serializeLockOp(this.formWriteLockCacheKey(workflowId), async () => {
+			const current = await this.getWriteLock(workflowId);
+			if (current?.clientId !== clientId) return false;
+			await this.cache.delete(this.formWriteLockCacheKey(workflowId));
+			return true;
+		});
+	}
+
 	private formWriteLockCacheKey(workflowId: Workflow['id']) {
 		return `collaboration:write-lock:${workflowId}`;
 	}
 
 	/**
 	 * Acquire write lock forcefully, stealing from same user's other tab.
+	 * Serialized so a concurrent heartbeat cannot restore the old lock
+	 * between the check and the set.
 	 *
 	 * @returns true if lock was acquired, false if lock is held by different user
 	 */
@@ -214,15 +268,12 @@ export class CollaborationState {
 		clientId: string,
 		userId: User['id'],
 	): Promise<boolean> {
-		const currentLock = await this.getWriteLock(workflowId);
-
-		if (currentLock && currentLock.userId !== userId) {
-			// Different user owns the lock, cannot steal
-			return false;
-		}
-
-		await this.setWriteLock(workflowId, clientId, userId);
-		return true;
+		return this.serializeLockOp(this.formWriteLockCacheKey(workflowId), async () => {
+			const currentLock = await this.getWriteLock(workflowId);
+			if (currentLock && currentLock.userId !== userId) return false;
+			await this.setWriteLock(workflowId, clientId, userId);
+			return true;
+		});
 	}
 
 	// --- Agent-scoped collaboration --------------------------------------
@@ -295,14 +346,31 @@ export class CollaborationState {
 		await this.cache.set(cacheKey, lockData, this.writeLockTtl);
 	}
 
-	async renewAgentWriteLock(agentId: string, clientId: string) {
-		const cacheKey = this.formAgentWriteLockCacheKey(agentId);
-		const currentLock = await this.getAgentWriteLock(agentId);
+	/**
+	 * Atomically acquire the agent write lock: set only if absent or
+	 * already held by the same client. Returns true if acquired.
+	 */
+	async acquireAgentWriteLock(
+		agentId: string,
+		clientId: string,
+		userId: User['id'],
+	): Promise<boolean> {
+		return this.serializeLockOp(this.formAgentWriteLockCacheKey(agentId), async () => {
+			const current = await this.getAgentWriteLock(agentId);
+			if (current && current.clientId !== clientId) return false;
+			await this.setAgentWriteLock(agentId, clientId, userId);
+			return true;
+		});
+	}
 
-		if (currentLock?.clientId === clientId) {
-			const lockData = JSON.stringify(currentLock);
-			await this.cache.set(cacheKey, lockData, this.writeLockTtl);
-		}
+	async renewAgentWriteLock(agentId: string, clientId: string) {
+		return this.serializeLockOp(this.formAgentWriteLockCacheKey(agentId), async () => {
+			const currentLock = await this.getAgentWriteLock(agentId);
+			if (currentLock?.clientId === clientId) {
+				const lockData = JSON.stringify(currentLock);
+				await this.cache.set(this.formAgentWriteLockCacheKey(agentId), lockData, this.writeLockTtl);
+			}
+		});
 	}
 
 	async getAgentWriteLock(agentId: string): Promise<{ clientId: string; userId: string } | null> {
@@ -329,12 +397,25 @@ export class CollaborationState {
 		await this.cache.delete(cacheKey);
 	}
 
+	/**
+	 * Atomically release the agent write lock only if the caller holds it.
+	 */
+	async releaseAgentWriteLockIfHolder(agentId: string, clientId: string): Promise<boolean> {
+		return this.serializeLockOp(this.formAgentWriteLockCacheKey(agentId), async () => {
+			const current = await this.getAgentWriteLock(agentId);
+			if (current?.clientId !== clientId) return false;
+			await this.cache.delete(this.formAgentWriteLockCacheKey(agentId));
+			return true;
+		});
+	}
+
 	private formAgentWriteLockCacheKey(agentId: string) {
 		return `collaboration:write-lock:agent:${agentId}`;
 	}
 
 	/**
 	 * Acquire agent write lock forcefully, stealing from same user's other tab.
+	 * Serialized so a concurrent heartbeat cannot restore the old lock.
 	 *
 	 * @returns true if lock was acquired, false if lock is held by different user
 	 */
@@ -343,14 +424,11 @@ export class CollaborationState {
 		clientId: string,
 		userId: User['id'],
 	): Promise<boolean> {
-		const currentLock = await this.getAgentWriteLock(agentId);
-
-		if (currentLock && currentLock.userId !== userId) {
-			// Different user owns the lock, cannot steal
-			return false;
-		}
-
-		await this.setAgentWriteLock(agentId, clientId, userId);
-		return true;
+		return this.serializeLockOp(this.formAgentWriteLockCacheKey(agentId), async () => {
+			const currentLock = await this.getAgentWriteLock(agentId);
+			if (currentLock && currentLock.userId !== userId) return false;
+			await this.setAgentWriteLock(agentId, clientId, userId);
+			return true;
+		});
 	}
 }

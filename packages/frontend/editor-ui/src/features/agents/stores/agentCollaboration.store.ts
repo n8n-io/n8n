@@ -27,6 +27,10 @@ export const useAgentCollaborationStore = defineStore(STORES.AGENT_COLLABORATION
 
 	const collaborators = ref<Collaborator[]>([]);
 	const currentWriterLock = ref<{ userId: string; clientId: string } | null>(null);
+	// True between requesting the lock and receiving writeAccessAcquired.
+	// Keeps the tab read-only until it actually holds the lock, so a
+	// released/expired lock does not make every tab writable at once.
+	const isRequestingWriteAccess = ref(false);
 
 	const heartbeatTimer = ref<number | null>(null);
 	const writeLockHeartbeatTimer = ref<number | null>(null);
@@ -56,7 +60,9 @@ export const useAgentCollaborationStore = defineStore(STORES.AGENT_COLLABORATION
 
 	const isAnyoneWriting = computed(() => currentWriterLock.value !== null);
 
-	const shouldBeReadOnly = computed(() => isAnyoneWriting.value && !isCurrentTabWriter.value);
+	const shouldBeReadOnly = computed(
+		() => (isAnyoneWriting.value || isRequestingWriteAccess.value) && !isCurrentTabWriter.value,
+	);
 
 	async function fetchWriteLockState(
 		projectId: string,
@@ -142,9 +148,11 @@ export const useAgentCollaborationStore = defineStore(STORES.AGENT_COLLABORATION
 		const writeLock = await fetchWriteLockState(projectId, agentId);
 
 		// If lock is gone on backend but still exists in frontend, clear it
+		// and request the lock so this tab becomes the next writer.
 		if (!writeLock && currentWriterLock.value) {
 			currentWriterLock.value = null;
 			stopLockStatePolling();
+			requestWriteAccess();
 		}
 	};
 
@@ -167,6 +175,8 @@ export const useAgentCollaborationStore = defineStore(STORES.AGENT_COLLABORATION
 		if (!collaboratingAgentId.value) {
 			return false;
 		}
+
+		isRequestingWriteAccess.value = true;
 
 		try {
 			pushStore.send({
@@ -244,6 +254,16 @@ export const useAgentCollaborationStore = defineStore(STORES.AGENT_COLLABORATION
 
 		// Fetch current write-lock state from backend to restore state after page refresh
 		const writeLock = await fetchWriteLockState(projectId, agentId);
+
+		// If terminate() was called while we were fetching (view unmounted or
+		// agent switched), don't continue — the store is no longer bound to
+		// this agent. Without this guard, initialization resumes after the
+		// await, rebinds the singleton, sends agentOpened, acquires the lock,
+		// and keeps renewing it via heartbeat after the tab is gone.
+		if (collaboratingAgentId.value !== agentId) {
+			return;
+		}
+
 		if (writeLock) {
 			currentWriterLock.value = writeLock;
 
@@ -268,6 +288,7 @@ export const useAgentCollaborationStore = defineStore(STORES.AGENT_COLLABORATION
 				event.type === 'writeAccessAcquired' &&
 				event.data.agentId === collaboratingAgentId.value
 			) {
+				isRequestingWriteAccess.value = false;
 				currentWriterLock.value = {
 					clientId: event.data.clientId,
 					userId: event.data.userId,
@@ -289,6 +310,9 @@ export const useAgentCollaborationStore = defineStore(STORES.AGENT_COLLABORATION
 				currentWriterLock.value = null;
 				stopWriteLockHeartbeat();
 				stopLockStatePolling();
+				// The lock is gone — request it immediately so this tab becomes the
+				// next writer instead of leaving every tab writable with no lock.
+				requestWriteAccess();
 				return;
 			}
 		});
@@ -317,6 +341,7 @@ export const useAgentCollaborationStore = defineStore(STORES.AGENT_COLLABORATION
 		pushStore.clearQueue();
 		collaboratingAgentId.value = null;
 		currentWriterLock.value = null;
+		isRequestingWriteAccess.value = false;
 		collaborators.value = [];
 		lockStatePollingSuspended = false;
 	}

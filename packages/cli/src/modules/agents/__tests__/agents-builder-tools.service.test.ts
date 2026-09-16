@@ -2580,6 +2580,20 @@ describe('AgentsBuilderToolsService', () => {
 			expect(agentPublishService.publishAgent).not.toHaveBeenCalled();
 		});
 
+		it('returns a locked failure on publish while a user holds the builder write lock', async () => {
+			const { service, agentPublishService, collaborationService } = makeService();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			collaborationService.ensureAgentEditable.mockRejectedValue(new LockedError('locked'));
+
+			const result = await getPublishTool(service).handler!({}, ctx);
+
+			expect(result).toEqual({
+				ok: false,
+				errors: [expect.objectContaining({ message: expect.stringMatching(/being edited/) })],
+			});
+			expect(agentPublishService.publishAgent).not.toHaveBeenCalled();
+		});
+
 		it('surfaces publish service errors to the model', async () => {
 			const { service, agentPublishService } = makeService();
 			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
@@ -2645,6 +2659,30 @@ describe('AgentsBuilderToolsService', () => {
 				ok: false,
 				errors: [{ message: 'Agent "agent-1" not found' }],
 			});
+		});
+	});
+
+	describe('MCP credential apply path', () => {
+		it('returns { applied: false } when a user holds the builder write lock', async () => {
+			const { service, collaborationService } = makeService();
+			collaborationService.ensureAgentEditable.mockRejectedValue(new LockedError('locked'));
+
+			// applyCredentialToMcpServer is private but called from the
+			// verify_mcp_server tool context; invoke it directly to test the
+			// lock gate without spinning up the full MCP verification flow.
+			const result = await (
+				service as unknown as {
+					applyCredentialToMcpServer: (
+						agentId: string,
+						projectId: string,
+						serverName: string,
+						credentialId: string,
+						user: User,
+					) => Promise<{ applied: boolean }>;
+				}
+			).applyCredentialToMcpServer(agentId, projectId, 'server-1', 'cred-1', user);
+
+			expect(result).toEqual({ applied: false });
 		});
 	});
 });

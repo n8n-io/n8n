@@ -40,6 +40,9 @@ describe('useAgentCollaborationStore', () => {
 	});
 
 	afterEach(() => {
+		// Stop heartbeats, lock timers, and polling from the test's
+		// initialize() so they cannot fire during later tests.
+		useAgentCollaborationStore().terminate();
 		vi.clearAllMocks();
 	});
 
@@ -182,7 +185,7 @@ describe('useAgentCollaborationStore', () => {
 			expect(store.shouldBeReadOnly).toBe(true);
 		});
 
-		test('clears the write lock on writeAccessReleased', async () => {
+		test('stays read-only on writeAccessReleased until this tab acquires the lock', async () => {
 			const store = useAgentCollaborationStore();
 
 			await store.initialize('project-1', 'agent-1');
@@ -199,6 +202,18 @@ describe('useAgentCollaborationStore', () => {
 				data: { agentId: 'agent-1' },
 			});
 
+			// Still read-only: the tab requested the lock but has not received it yet
+			expect(store.shouldBeReadOnly).toBe(true);
+			expect(mockPushStore.send).toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'agentWriteAccessRequested', agentId: 'agent-1' }),
+			);
+
+			// Now this tab acquires the lock
+			handler({
+				type: 'writeAccessAcquired',
+				data: { agentId: 'agent-1', clientId: 'push-1', userId: 'user-1' },
+			});
+
 			expect(store.shouldBeReadOnly).toBe(false);
 		});
 
@@ -207,6 +222,13 @@ describe('useAgentCollaborationStore', () => {
 
 			await store.initialize('project-1', 'agent-1');
 			const handler = mockPushStore.addEventListener.mock.calls[0][0] as PushHandler;
+
+			// This tab acquires the lock first so it starts writable
+			handler({
+				type: 'writeAccessAcquired',
+				data: { agentId: 'agent-1', clientId: 'push-1', userId: 'user-1' },
+			});
+			expect(store.shouldBeReadOnly).toBe(false);
 
 			handler({
 				type: 'writeAccessAcquired',

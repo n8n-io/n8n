@@ -19,6 +19,8 @@ import type { AccessService } from '@/services/access.service';
 import type { Logger } from '@n8n/backend-common';
 import type { ErrorReporter } from 'n8n-core';
 
+import { userHasScopes } from '@/permissions.ee/check-access';
+
 vi.mock('@/permissions.ee/check-access', () => ({
 	userHasScopes: vi.fn().mockResolvedValue(true),
 }));
@@ -69,18 +71,28 @@ describe('CollaborationService — agent messages', () => {
 		expect(state.addAgentCollaborator).toHaveBeenCalledWith('agent-1', userId, 'client-1');
 	});
 
+	it('does not add a collaborator on agentOpened when the user lacks read access', async () => {
+		vi.mocked(userHasScopes).mockResolvedValueOnce(false);
+		const msg: AgentOpenedMessage = { type: 'agentOpened', agentId: 'agent-1' };
+
+		await service.handleUserMessage(userId, 'client-1', msg);
+
+		expect(state.addAgentCollaborator).not.toHaveBeenCalled();
+		expect(state.sendAgentUsersChangedMessage).not.toHaveBeenCalled();
+	});
+
 	it('releases the agent write lock on agentClosed when the client holds it', async () => {
-		state.getAgentWriteLock.mockResolvedValue({ clientId: 'client-1', userId: 'user-1' });
+		state.releaseAgentWriteLockIfHolder.mockResolvedValue(true);
 		const msg: AgentClosedMessage = { type: 'agentClosed', agentId: 'agent-1' };
 
 		await service.handleUserMessage(userId, 'client-1', msg);
 
-		expect(state.releaseAgentWriteLock).toHaveBeenCalledWith('agent-1');
+		expect(state.releaseAgentWriteLockIfHolder).toHaveBeenCalledWith('agent-1', 'client-1');
 		expect(state.removeAgentCollaborator).toHaveBeenCalledWith('agent-1', 'client-1');
 	});
 
 	it('does not release the lock on agentClosed when a different client holds it', async () => {
-		state.getAgentWriteLock.mockResolvedValue({ clientId: 'other-client', userId: 'user-1' });
+		state.releaseAgentWriteLockIfHolder.mockResolvedValue(false);
 		const msg: AgentClosedMessage = { type: 'agentClosed', agentId: 'agent-1' };
 
 		await service.handleUserMessage(userId, 'client-1', msg);
@@ -89,8 +101,18 @@ describe('CollaborationService — agent messages', () => {
 		expect(state.removeAgentCollaborator).toHaveBeenCalledWith('agent-1', 'client-1');
 	});
 
+	it('does not remove a collaborator on agentClosed when the user lacks read access', async () => {
+		vi.mocked(userHasScopes).mockResolvedValueOnce(false);
+		const msg: AgentClosedMessage = { type: 'agentClosed', agentId: 'agent-1' };
+
+		await service.handleUserMessage(userId, 'client-1', msg);
+
+		expect(state.releaseAgentWriteLockIfHolder).not.toHaveBeenCalled();
+		expect(state.removeAgentCollaborator).not.toHaveBeenCalled();
+	});
+
 	it('sets the agent write lock on agentWriteAccessRequested when no lock exists', async () => {
-		state.getAgentWriteLock.mockResolvedValue(null);
+		state.acquireAgentWriteLock.mockResolvedValue(true);
 		const msg: AgentWriteAccessRequestedMessage = {
 			type: 'agentWriteAccessRequested',
 			agentId: 'agent-1',
@@ -99,11 +121,11 @@ describe('CollaborationService — agent messages', () => {
 
 		await service.handleUserMessage(userId, 'client-1', msg);
 
-		expect(state.setAgentWriteLock).toHaveBeenCalledWith('agent-1', 'client-1', userId);
+		expect(state.acquireAgentWriteLock).toHaveBeenCalledWith('agent-1', 'client-1', userId);
 	});
 
 	it('does not set the lock on a non-forced request when another client holds it', async () => {
-		state.getAgentWriteLock.mockResolvedValue({ clientId: 'other-client', userId: 'user-1' });
+		state.acquireAgentWriteLock.mockResolvedValue(false);
 		const msg: AgentWriteAccessRequestedMessage = {
 			type: 'agentWriteAccessRequested',
 			agentId: 'agent-1',
@@ -112,6 +134,21 @@ describe('CollaborationService — agent messages', () => {
 
 		await service.handleUserMessage(userId, 'client-1', msg);
 
+		expect(state.setAgentWriteLock).not.toHaveBeenCalled();
+	});
+
+	it('does not set the lock on agentWriteAccessRequested when the user lacks write access', async () => {
+		vi.mocked(userHasScopes).mockResolvedValueOnce(false);
+		const msg: AgentWriteAccessRequestedMessage = {
+			type: 'agentWriteAccessRequested',
+			agentId: 'agent-1',
+			force: false,
+		};
+
+		await service.handleUserMessage(userId, 'client-1', msg);
+
+		expect(state.acquireAgentWriteLock).not.toHaveBeenCalled();
+		expect(state.acquireAgentWriteLockForce).not.toHaveBeenCalled();
 		expect(state.setAgentWriteLock).not.toHaveBeenCalled();
 	});
 
@@ -130,7 +167,7 @@ describe('CollaborationService — agent messages', () => {
 	});
 
 	it('releases the lock on agentWriteAccessReleaseRequested when the client holds it', async () => {
-		state.getAgentWriteLock.mockResolvedValue({ clientId: 'client-1', userId: 'user-1' });
+		state.releaseAgentWriteLockIfHolder.mockResolvedValue(true);
 		const msg: AgentWriteAccessReleaseRequestedMessage = {
 			type: 'agentWriteAccessReleaseRequested',
 			agentId: 'agent-1',
@@ -138,11 +175,11 @@ describe('CollaborationService — agent messages', () => {
 
 		await service.handleUserMessage(userId, 'client-1', msg);
 
-		expect(state.releaseAgentWriteLock).toHaveBeenCalledWith('agent-1');
+		expect(state.releaseAgentWriteLockIfHolder).toHaveBeenCalledWith('agent-1', 'client-1');
 	});
 
 	it('does not release the lock on agentWriteAccessReleaseRequested when a different client holds it', async () => {
-		state.getAgentWriteLock.mockResolvedValue({ clientId: 'other-client', userId: 'user-1' });
+		state.releaseAgentWriteLockIfHolder.mockResolvedValue(false);
 		const msg: AgentWriteAccessReleaseRequestedMessage = {
 			type: 'agentWriteAccessReleaseRequested',
 			agentId: 'agent-1',
@@ -201,6 +238,14 @@ describe('CollaborationService — agent messages', () => {
 
 			await expect(
 				service.validateAgentWriteLock(userId, 'client-1', 'agent-1', 'update'),
+			).rejects.toThrow(/another user/);
+		});
+
+		it('throws a LockedError when a different user uses the holder clientId (impersonation)', async () => {
+			state.getAgentWriteLock.mockResolvedValue({ clientId: 'client-1', userId: 'user-1' });
+
+			await expect(
+				service.validateAgentWriteLock('other-user', 'client-1', 'agent-1', 'update'),
 			).rejects.toThrow(/another user/);
 		});
 	});

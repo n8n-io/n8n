@@ -82,12 +82,19 @@ export class AgentMcpAccessService {
 
 		// Refuse the whole bulk if any target agent is locked by another client.
 		// A partial update would silently leave some agents in the old state.
-		for (const agent of toUpdate) {
-			await this.collaborationService.validateAgentWriteLock(
-				user.id,
-				pushRef,
-				agent.id,
-				'toggle MCP availability for',
+		// Doing the check in batches for better performance.
+		for (let start = 0; start < toUpdate.length; start += BULK_CHUNK_SIZE) {
+			await Promise.all(
+				toUpdate
+					.slice(start, start + BULK_CHUNK_SIZE)
+					.map((agent) =>
+						this.collaborationService.validateAgentWriteLock(
+							user.id,
+							pushRef,
+							agent.id,
+							'toggle MCP availability for',
+						),
+					),
 			);
 		}
 

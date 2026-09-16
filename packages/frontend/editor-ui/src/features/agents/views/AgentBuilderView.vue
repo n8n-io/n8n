@@ -1808,8 +1808,9 @@ async function initialize({ preserveState = false }: { preserveState?: boolean }
 			warmAgentKnowledgeSandboxForPage();
 			// Acquire the collaboration write lock for the first opener. Only the
 			// standalone builder participates in multi-tab/multi-user locking —
-			// artifact mode is the AI builder, which has its own lock.
-			if (!isArtifactMode.value && !isUnsaved.value) {
+			// artifact mode is the AI builder, which has its own lock, and the
+			// standalone preview has no editing controls.
+			if (!isArtifactMode.value && !isStandalonePreview.value && !isUnsaved.value) {
 				void agentCollaborationStore.initialize(projectId.value, agentId.value);
 			}
 		}
@@ -1842,7 +1843,29 @@ watch(
 	{ immediate: true },
 );
 
-onBeforeUnmount(() => {
+// Builder and preview share the same component, so switching between them
+// does not unmount and release the write lock. Release it when entering
+// preview (no editing controls) and reacquire when returning to the builder.
+watch(isStandalonePreview, (isPreview, wasPreview) => {
+	if (isPreview === wasPreview || isArtifactMode.value) return;
+	if (isPreview) {
+		agentCollaborationStore.terminate();
+	} else if (initialized.value && !isUnsaved.value) {
+		void agentCollaborationStore.initialize(projectId.value, agentId.value);
+	}
+});
+
+// Browser tab close does not run Vue's onBeforeUnmount, so the collaboration
+// lock would linger until its TTL expires. Release it during beforeunload
+// while the WebSocket is still alive to deliver the agentClosed message.
+// terminate() is idempotent, so a double call with onBeforeUnmount is safe.
+useEventListener(window, 'beforeunload', () => {
+	if (!isArtifactMode.value && !isStandalonePreview.value) {
+		agentCollaborationStore.terminate();
+	}
+});
+
+onBeforeUnmount(async () => {
 	disposed = true;
 	latestSessionsFetchRequestId++;
 	agentsEventBus.off('agentUpdated', onExternalAgentUpdated);
@@ -1850,11 +1873,20 @@ onBeforeUnmount(() => {
 	pushConnectionStore.pushDisconnect();
 	clearTimeout(externalRefreshTimer);
 	sessionsStore.stopAutoRefresh();
-	void flushAutosave().catch(() => {});
-	// Release the agent collaboration write lock and stop heartbeats. Only
-	// relevant in non-artifact mode — artifact mode never acquires the lock.
+	// Drain pending saves before releasing the write lock so in-flight
+	// writes land while this tab still holds the lock. Without this,
+	// terminate() releases the lock immediately and the backend accepts
+	// the queued saves after release — a new writer or Instance AI mutation
+	// can then be overwritten by stale config or MCP state.
 	if (!isArtifactMode.value) {
+		try {
+			await flushAutosave();
+		} catch {
+			// best-effort flush; the lock is still released below
+		}
 		agentCollaborationStore.terminate();
+	} else {
+		void flushAutosave().catch(() => {});
 	}
 });
 

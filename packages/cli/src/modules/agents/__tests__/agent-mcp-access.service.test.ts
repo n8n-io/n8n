@@ -2,6 +2,7 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import { User } from '@n8n/db';
 
 import { CollaborationService } from '@/collaboration/collaboration.service';
+import { LockedError } from '@/errors/response-errors/locked.error';
 import { ProjectScopeService } from '@/permissions.ee/project-scope.service';
 
 import { AgentMcpAccessService } from '../agent-mcp-access.service';
@@ -247,6 +248,37 @@ describe('AgentMcpAccessService', () => {
 			expect(agentRepository.findMcpAvailabilityCandidates).toHaveBeenCalledWith({
 				projectIds: ['p1'],
 			});
+		});
+
+		it('aborts the bulk update when a target agent is locked by another user', async () => {
+			projectScopeService.getProjectIds.mockResolvedValue(null);
+			agentRepository.findMcpAvailabilityCandidates.mockResolvedValue([
+				candidate('a1', 'p1', false),
+			]);
+			collaborationService.validateAgentWriteLock.mockRejectedValue(
+				new LockedError(
+					'Cannot toggle MCP availability for agent - another user currently has write access',
+				),
+			);
+
+			await expect(
+				service.bulkSetAvailableInMCP(
+					user,
+					{
+						availableInMCP: true,
+						agentIds: ['a1'],
+					} as never,
+					'push-ref-1',
+				),
+			).rejects.toThrow(LockedError);
+
+			expect(collaborationService.validateAgentWriteLock).toHaveBeenCalledWith(
+				'user-1',
+				'push-ref-1',
+				'a1',
+				'toggle MCP availability for',
+			);
+			expect(agentRepository.setAvailableInMCP).not.toHaveBeenCalled();
 		});
 	});
 });

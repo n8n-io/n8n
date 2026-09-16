@@ -137,9 +137,8 @@ export class CollaborationService {
 		}
 
 		// If the user closing the workflow holds the write lock, release it
-		const currentLock = await this.state.getWriteLock(workflowId);
-		if (currentLock?.clientId === clientId) {
-			await this.state.releaseWriteLock(workflowId);
+		const released = await this.state.releaseWriteLockIfHolder(workflowId, clientId);
+		if (released) {
 			await this.sendWriteAccessReleasedMessage(workflowId);
 		}
 
@@ -187,12 +186,10 @@ export class CollaborationService {
 				return;
 			}
 		} else {
-			const currentLock = await this.state.getWriteLock(workflowId);
-			if (currentLock && currentLock.clientId !== clientId) {
+			const acquired = await this.state.acquireWriteLock(workflowId, clientId, userId);
+			if (!acquired) {
 				return;
 			}
-
-			await this.state.setWriteLock(workflowId, clientId, userId);
 		}
 
 		await this.sendWriteAccessAcquiredMessage(workflowId, userId, clientId);
@@ -205,13 +202,11 @@ export class CollaborationService {
 	) {
 		const { workflowId } = msg;
 
-		const currentLock = await this.state.getWriteLock(workflowId);
-
-		if (currentLock?.clientId !== clientId) {
+		const released = await this.state.releaseWriteLockIfHolder(workflowId, clientId);
+		if (!released) {
 			return;
 		}
 
-		await this.state.releaseWriteLock(workflowId);
 		await this.sendWriteAccessReleasedMessage(workflowId);
 	}
 
@@ -232,11 +227,12 @@ export class CollaborationService {
 		clientId: string,
 	) {
 		const collaborators = await this.state.getCollaborators(workflowId);
-		const userIds = collaborators.map((user) => user.userId);
-
-		if (userIds.length === 0) {
-			return;
-		}
+		const collaboratorUserIds = collaborators.map((user) => user.userId);
+		// Always include the requesting user, even if their workflowOpened
+		// message hasn't been processed yet — push messages are handled
+		// concurrently, so collaborator registration may lag behind lock
+		// acquisition and the requesting tab would never receive this.
+		const userIds = [...new Set([...collaboratorUserIds, userId])];
 
 		const msgData: PushPayload<'writeAccessAcquired'> = {
 			workflowId,
@@ -407,7 +403,11 @@ export class CollaborationService {
 		}
 
 		if (lock.clientId === clientId) {
-			return;
+			if (lock.userId === userId) {
+				return;
+			}
+			// clientId was copied — a different user is impersonating the holder
+			throw new LockedError(`Cannot ${action} workflow - another user currently has write access`);
 		}
 
 		if (lock.userId === userId) {
@@ -470,9 +470,8 @@ export class CollaborationService {
 		}
 
 		// If the user closing the agent holds the write lock, release it
-		const currentLock = await this.state.getAgentWriteLock(agentId);
-		if (currentLock?.clientId === clientId) {
-			await this.state.releaseAgentWriteLock(agentId);
+		const released = await this.state.releaseAgentWriteLockIfHolder(agentId, clientId);
+		if (released) {
 			await this.sendAgentWriteAccessReleasedMessage(agentId);
 		}
 
@@ -518,12 +517,10 @@ export class CollaborationService {
 				return;
 			}
 		} else {
-			const currentLock = await this.state.getAgentWriteLock(agentId);
-			if (currentLock && currentLock.clientId !== clientId) {
+			const acquired = await this.state.acquireAgentWriteLock(agentId, clientId, userId);
+			if (!acquired) {
 				return;
 			}
-
-			await this.state.setAgentWriteLock(agentId, clientId, userId);
 		}
 
 		await this.sendAgentWriteAccessAcquiredMessage(agentId, userId, clientId);
@@ -536,13 +533,11 @@ export class CollaborationService {
 	) {
 		const { agentId } = msg;
 
-		const currentLock = await this.state.getAgentWriteLock(agentId);
-
-		if (currentLock?.clientId !== clientId) {
+		const released = await this.state.releaseAgentWriteLockIfHolder(agentId, clientId);
+		if (!released) {
 			return;
 		}
 
-		await this.state.releaseAgentWriteLock(agentId);
 		await this.sendAgentWriteAccessReleasedMessage(agentId);
 	}
 
@@ -649,7 +644,11 @@ export class CollaborationService {
 		}
 
 		if (lock.clientId === clientId) {
-			return;
+			if (lock.userId === userId) {
+				return;
+			}
+			// clientId was copied — a different user is impersonating the holder
+			throw new LockedError(`Cannot ${action} agent - another user currently has write access`);
 		}
 
 		if (lock.userId === userId) {
