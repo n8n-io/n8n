@@ -375,6 +375,11 @@ export class AiPreferenceService {
 	 * A cap on one scope, applied on the write for every surface. The settings UI and the
 	 * assistant then refuse at the same number, so the assistant cannot save text that the
 	 * settings modal would have rejected.
+	 *
+	 * The count and the insert are not atomic, so two writes racing for the last slot can both
+	 * pass and leave the scope one row over. The cap is a safety net and not a quota, the next
+	 * write refuses, and nothing downstream reads the count, so serializing every write for
+	 * this would cost more than the overshoot.
 	 */
 	private async assertScopeHasRoom(target: PreferenceTarget) {
 		const scope = aiPreferenceTargetOf(target);
@@ -544,6 +549,14 @@ export function flattenAiPreferences(preferences: ApplicableAiPreferences): AiPr
 }
 
 /**
+ * Where the block the model reads came from. A turn either sent it or it did not, and only
+ * the second case has a run to name, so the two cannot be reported together.
+ */
+export type AppliedPreferencesInjection =
+	| { injectedThisTurn: true }
+	| { injectedThisTurn: false; carriedFromRunId?: string };
+
+/**
  * Names the preferences one turn carried, in the shape the turn publishes.
  *
  * Built from the same read that rendered the block, so the report and the prompt cannot
@@ -556,14 +569,11 @@ export function flattenAiPreferences(preferences: ApplicableAiPreferences): AiPr
 export function buildAppliedPreferencesPayload({
 	preferences,
 	renderedLength,
-	injectedThisTurn,
-	carriedFromRunId,
+	...injection
 }: {
 	preferences: ApplicableAiPreferences;
 	renderedLength: number;
-	injectedThisTurn: boolean;
-	carriedFromRunId?: string;
-}): AiPreferencesAppliedPayload {
+} & AppliedPreferencesInjection): AiPreferencesAppliedPayload {
 	const { personal, team } = splitPersonalProject(preferences);
 
 	return {
@@ -583,8 +593,7 @@ export function buildAppliedPreferencesPayload({
 			),
 		],
 		renderedLength,
-		injectedThisTurn,
-		...(carriedFromRunId !== undefined ? { carriedFromRunId } : {}),
+		...injection,
 	};
 }
 
@@ -648,7 +657,6 @@ export function renderAiPreferencesBlock(preferences: ApplicableAiPreferences): 
 function escapeItem({ id, content }: AppliedPreference): AppliedPreference {
 	return { id, content: escapeTags(content) };
 }
-
 
 /**
  * User text must not be able to close the block or open another one. Only the
