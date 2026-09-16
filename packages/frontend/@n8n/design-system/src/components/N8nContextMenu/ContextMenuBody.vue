@@ -8,7 +8,7 @@ import N8nLoading from '../N8nLoading';
 
 defineOptions({ name: 'N8nContextMenuBody' });
 
-const props = withDefaults(
+withDefaults(
 	defineProps<{
 		nodes: Array<ContextMenuNode<T>>;
 		loading?: boolean;

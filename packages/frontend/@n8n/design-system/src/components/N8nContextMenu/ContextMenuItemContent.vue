@@ -13,7 +13,7 @@ defineOptions({ name: 'N8nContextMenuItemContent' });
 const props = defineProps<{
 	item: ContextMenuLeaf<T>;
 	textColor?: TextColor;
-	iconColor: IconColor;
+	iconColor: IconColor | (string & {});
 	title?: string;
 }>();
 
