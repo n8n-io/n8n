@@ -460,7 +460,10 @@ describe('ParameterInput.vue', () => {
 			);
 		});
 
-		test('hides resource options the AI gateway does not support', async () => {
+		test('hides resource options the AI gateway does not support (standalone tool config)', async () => {
+			// The standalone tool-config form renders with an empty path root, so the
+			// top-level resource param arrives as `resource`, not `parameters.resource`.
+			// The gateway filter must still apply.
 			const resourceParameter = {
 				displayName: 'Resource',
 				name: 'resource',
@@ -479,7 +482,7 @@ describe('ParameterInput.vue', () => {
 
 			const { container, baseElement } = renderComponent({
 				props: {
-					path: 'parameters.resource',
+					path: 'resource',
 					parameter: resourceParameter,
 					modelValue: 'record',
 				},
