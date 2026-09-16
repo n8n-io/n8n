@@ -2526,6 +2526,9 @@ function onSwitchAgent(nextAgentId: string) {
 	}
 
 	&.aiPanelOpen {
+		// Keep the content next to the docked assistant instead of centering it.
+		--agent-builder-content-margin-inline: 0;
+
 		padding-left: var(--agent-ai-panel-width);
 		transition: padding-left var(--duration--snappy) var(--easing--ease-out);
 	}
