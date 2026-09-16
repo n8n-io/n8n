@@ -1,0 +1,23 @@
+packages/@n8n/api-types/src/dto/promotions/promotion-binding-preflight.dto.ts
+  s_5f0b8b63fb02ca::t_c5e6918d37bc55 30-50,54
+packages/cli/src/public-api/v1/shared/spec/schemas/applyPackageResultDto.generated.yml
+  s_5f0b8b63fb02ca::t_680965ea3a346c 358-360
+packages/cli/src/public-api/v1/shared/spec/schemas/promotionCredentialExpressionValue.generated.yml
+  s_5f0b8b63fb02ca::t_d66d2d61adab57 1-9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8d9f2d0b6268990a41bcd9c2303b2bdf5bd3b080",
+  "prompts": {},
+  "sessions": {
+    "s_5f0b8b63fb02ca": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0a540-b6f2-7653-aeb8-9213c2e9e6df",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}
