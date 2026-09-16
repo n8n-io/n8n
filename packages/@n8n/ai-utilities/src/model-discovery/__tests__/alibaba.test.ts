@@ -19,6 +19,12 @@ describe('shouldIncludeAlibabaModel', () => {
 		{ id: 'qwen-mt-lite', include: false },
 		{ id: 'qwen-mt-plus', include: false },
 
+		// Excluded: Wan media models (modality token in the id)
+		{ id: 'wan2.6-t2i', include: false },
+		{ id: 'wan2.2-i2i', include: false },
+		{ id: 'wan2.6-t2v', include: false },
+		{ id: 'wan2.6-i2v', include: false },
+
 		// Included: standard chat models
 		{ id: 'qwen-plus', include: true },
 		{ id: 'qwen-turbo', include: true },

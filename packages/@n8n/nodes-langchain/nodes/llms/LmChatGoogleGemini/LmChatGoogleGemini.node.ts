@@ -20,13 +20,18 @@ import {
 } from '@n8n/ai-utilities';
 import { shouldIncludeGoogleModel } from '@n8n/ai-utilities/model-discovery';
 
-/** Drop non-chat models (embedding, image) from the model dropdown. */
+/** Drop non-chat models (embedding, image, TTS, Veo, etc.) from the dropdown. */
 async function filterChatModels(
 	this: IExecuteSingleFunctions,
 	items: INodeExecutionData[],
 ): Promise<INodeExecutionData[]> {
 	return items.filter(
-		(item) => typeof item.json.name === 'string' && shouldIncludeGoogleModel(item.json.name),
+		(item) =>
+			typeof item.json.name === 'string' &&
+			shouldIncludeGoogleModel({
+				name: item.json.name,
+				supportedGenerationMethods: item.json.supportedGenerationMethods,
+			}),
 	);
 }
 

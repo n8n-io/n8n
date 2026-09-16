@@ -2,13 +2,20 @@ import { baseUrl, byName, getJson } from '../request';
 import type { ListModelsFn } from '../types';
 
 /**
- * Keep only chat-capable Gemini models. Google's model list mixes in embedding
- * models (`embedding` in the name) and image models (`imagen-*` and
- * `gemini-*-image`, both matched by the `image` infix), which a chat chain
- * cannot use, so drop any model whose name marks it as one of those.
+ * Keep only chat-capable Gemini models. A chat model reports `generateContent`
+ * in `supportedGenerationMethods`; embedding (`embedContent`), Veo
+ * (`predictLongRunning`), Imagen (`predict`) and AQA (`generateAnswer`) models
+ * do not, so require that method. Image and TTS models report
+ * `generateContent` but return non-text output a chat chain cannot use, so drop
+ * them by name too.
  */
-export function shouldIncludeGoogleModel(name: string): boolean {
-	return !name.includes('embedding') && !name.includes('image');
+export function shouldIncludeGoogleModel(model: {
+	name: string;
+	supportedGenerationMethods?: unknown;
+}): boolean {
+	const methods = model.supportedGenerationMethods;
+	const supportsChat = Array.isArray(methods) && methods.includes('generateContent');
+	return supportsChat && !model.name.includes('image') && !model.name.includes('tts');
 }
 
 /**
@@ -25,12 +32,16 @@ export const listGoogleModels: ListModelsFn = async (options) => {
 		{ 'x-goog-api-key': options.apiKey },
 		options,
 		'google',
-	)) as { models?: Array<{ name?: unknown }> };
+	)) as { models?: Array<{ name?: unknown; supportedGenerationMethods?: unknown }> };
 
 	return (data.models ?? [])
 		.filter(
-			(model): model is { name: string } =>
-				typeof model.name === 'string' && shouldIncludeGoogleModel(model.name),
+			(model): model is { name: string; supportedGenerationMethods?: unknown } =>
+				typeof model.name === 'string' &&
+				shouldIncludeGoogleModel({
+					name: model.name,
+					supportedGenerationMethods: model.supportedGenerationMethods,
+				}),
 		)
 		.map((model) => ({ id: model.name, name: model.name }))
 		.sort(byName);
