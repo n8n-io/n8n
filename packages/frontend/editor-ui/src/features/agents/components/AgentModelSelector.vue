@@ -143,6 +143,7 @@ const selectedCredentialName = computed(() =>
 
 const isCredentialsMissing = computed(
 	() =>
+		credentials !== null &&
 		!isManagedCredential.value &&
 		warnMissingCredentials &&
 		Boolean(selectedModel?.provider) &&
