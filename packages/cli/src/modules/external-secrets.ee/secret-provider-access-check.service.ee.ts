@@ -1,3 +1,4 @@
+import { ForbiddenError, NotFoundError, RoleService } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import {
 	ProjectSecretsProviderAccessRepository,
@@ -9,7 +10,6 @@ import { combineScopes, getAuthPrincipalScopes, hasGlobalScope } from '@n8n/perm
 
 import { ForbiddenError, NotFoundError } from '@n8n/errors';
 import { ProjectService } from '@/services/project.service.ee';
-import { RoleService } from '@/services/role.service';
 
 @Service()
 export class SecretsProviderAccessCheckService {

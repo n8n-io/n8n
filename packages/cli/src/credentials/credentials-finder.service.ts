@@ -1,4 +1,5 @@
-import type { Project, SharedCredentials, User } from '@n8n/db';
+import { RoleService } from '@n8n/backend-services';
+import type { SharedCredentials, User } from '@n8n/db';
 import {
 	CredentialsEntity,
 	CredentialsRepository,
@@ -10,30 +11,6 @@ import { hasGlobalScope } from '@n8n/permissions';
 import type { CredentialSharingRole, ProjectRole, Scope } from '@n8n/permissions';
 import type { EntityManager, FindOptionsWhere } from '@n8n/typeorm';
 import { In } from '@n8n/typeorm';
-
-import { RoleService } from '@/services/role.service';
-
-/**
- * The credential scopes an instance role can hold without being allowed to use a
- * credential — the "View" rung of the instance-role editor's Credentials group.
- */
-const VISIBILITY_SCOPES: ReadonlySet<Scope> = new Set(['credential:read', 'credential:list']);
-
-/**
- * The scopes that answer "may this user use this credential".
- */
-export const CREDENTIAL_USABILITY_SCOPES: Scope[] = ['credential:read'];
-
-/** A credential a user may not use, with enough to name it in an error. */
-export type UnusableCredential = {
-	id: string;
-	/** The stored name, or the id when the credential no longer exists. */
-	name: string;
-	/** False when no credential row has this id any more. */
-	exists: boolean;
-	/** The project that owns it, or `null` when it is gone or has no owner. */
-	ownerProject: Project | null;
-};
 
 @Service()
 export class CredentialsFinderService {

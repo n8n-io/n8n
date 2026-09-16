@@ -4,6 +4,7 @@ import type {
 	DependencyResourceType,
 	ResolvedDependency,
 } from '@n8n/api-types';
+import { RoleService } from '@n8n/backend-services';
 import {
 	CredentialsRepository,
 	ProjectRelationRepository,
@@ -17,7 +18,6 @@ import { In } from '@n8n/typeorm';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
-import { RoleService } from '@/services/role.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { AgentUsageProviderProxy } from './agent-usage-provider-proxy.service';
