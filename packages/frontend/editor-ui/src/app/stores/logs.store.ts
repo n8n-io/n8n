@@ -18,7 +18,7 @@ import { v4 as uuid } from 'uuid';
 export const useLogsStore = defineStore('logs', () => {
 	// Session state. The host that renders the panel restores and persists it:
 	// WorkflowLayout keeps the editor value in localStorage, InstanceAiLayout
-	// starts the artifact panel closed (INS-1192).
+	// keeps the artifact value in memory for the page session (INS-1192).
 	const isOpen = ref(false);
 	const preferPoppedOut = ref(false);
 	const state = computed(() =>
