@@ -1,12 +1,15 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
-import { N8nIcon, N8nIconButton, N8nNodeIcon, N8nText } from '@n8n/design-system';
+import { computed } from 'vue';
+import N8nIcon from '../N8nIcon';
+import N8nIconButton from '../N8nIconButton';
+import N8nNodeIcon from '../N8nNodeIcon';
+import N8nText from '../N8nText';
 import { useI18n } from '@n8n/i18n';
 import DefaultDetailBody from './DefaultDetailBody.vue';
 import McpDetailBody from './McpDetailBody.vue';
 import ToolCredentialPicker from './ToolCredentialPicker.vue';
 import { resolveToolItemIcon } from './toolItemIcon';
-import type { ToolConnectionItem, ToolConnectionSettings } from './types';
+import type { ToolConnectionItem } from './types';
 
 const props = defineProps<{
 	item: ToolConnectionItem;
@@ -16,8 +19,6 @@ const props = defineProps<{
 const emit = defineEmits<{
 	back: [];
 	close: [];
-	disconnect: [item: ToolConnectionItem];
-	save: [item: ToolConnectionItem, settings?: ToolConnectionSettings];
 	'select-credential': [item: ToolConnectionItem, authType: string, credentialId: string];
 	'credential-dropdown-open': [item: ToolConnectionItem];
 	'first-credential-connect': [item: ToolConnectionItem];
@@ -26,34 +27,38 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 
+const placeholderIcon = computed(() => {
+	switch (props.item.kind) {
+		case 'service':
+		case 'mcp-server':
+			return 'plug';
+		case 'workflow':
+			return 'workflow';
+		case 'agent':
+			return 'bot';
+		case 'data-store':
+			return 'database';
+		case 'node':
+		default:
+			return 'toolbox';
+	}
+});
+
 const resolvedIcon = computed(() => resolveToolItemIcon(props.item));
-
-type InternalTab = 'settings' | 'details';
-const activeTab = ref<InternalTab>('settings');
-
-function onSave(settings?: ToolConnectionSettings) {
-	emit('save', props.item, settings);
-}
-function onDisconnect() {
-	emit('disconnect', props.item);
-}
-function onClose() {
-	emit('close');
-}
 </script>
 
 <template>
-	<div :class="$style.container" data-test-id="tools-connection-settings">
+	<div :class="$style.container" data-test-id="tools-connection-detail">
 		<header :class="$style.header">
 			<div :class="$style.headerLeft">
 				<N8nIconButton
 					v-if="!hideBackButton"
 					icon="arrow-left"
 					variant="ghost"
-					size="medium"
+					size="large"
 					:class="$style.backButton"
 					:aria-label="i18n.baseText('tools.connection.detail.back')"
-					data-test-id="tools-connection-settings-back"
+					data-test-id="tools-connection-detail-back"
 					@click="emit('back')"
 				/>
 				<div :class="$style.iconWrapper" aria-hidden="true">
@@ -65,7 +70,7 @@ function onClose() {
 						:color="resolvedIcon.type === 'icon' ? resolvedIcon.color : undefined"
 						:size="20"
 					/>
-					<N8nIcon v-else icon="plug" :size="20" :class="$style.iconFallback" />
+					<N8nIcon v-else :icon="placeholderIcon" :size="20" :class="$style.iconFallback" />
 				</div>
 				<N8nText :class="$style.title" tag="h2" bold>{{ item.title }}</N8nText>
 			</div>
@@ -85,50 +90,19 @@ function onClose() {
 				<N8nIconButton
 					icon="x"
 					variant="ghost"
-					size="medium"
+					size="large"
 					:aria-label="i18n.baseText('tools.connection.action.close')"
-					data-test-id="tools-connection-settings-close"
-					@click="onClose"
+					data-test-id="tools-connection-detail-close"
+					@click="emit('close')"
 				/>
 			</div>
 		</header>
 
-		<div :class="$style.tabs" role="tablist">
-			<button
-				type="button"
-				role="tab"
-				:class="[$style.tab, { [$style.tabActive]: activeTab === 'settings' }]"
-				:aria-selected="activeTab === 'settings'"
-				data-test-id="tools-connection-settings-tab-settings"
-				@click="activeTab = 'settings'"
-			>
-				{{ i18n.baseText('tools.connection.tabs.settings') }}
-			</button>
-			<button
-				type="button"
-				role="tab"
-				:class="[$style.tab, { [$style.tabActive]: activeTab === 'details' }]"
-				:aria-selected="activeTab === 'details'"
-				data-test-id="tools-connection-settings-tab-details"
-				@click="activeTab = 'details'"
-			>
-				{{ i18n.baseText('tools.connection.tabs.details') }}
-			</button>
-		</div>
-
 		<div :class="$style.bodyWrapper">
-			<slot
-				v-if="activeTab === 'settings'"
-				name="body"
-				:item="item"
-				:on-save="onSave"
-				:on-disconnect="onDisconnect"
-				:on-close="onClose"
-			/>
-			<template v-else>
+			<slot name="body" :item="item">
 				<McpDetailBody v-if="item.kind === 'mcp-server'" :item="item" />
 				<DefaultDetailBody v-else :item="item" />
-			</template>
+			</slot>
 		</div>
 	</div>
 </template>
@@ -137,8 +111,10 @@ function onClose() {
 .container {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--2xs);
-	min-height: 100%;
+}
+
+.backButton {
+	margin-inline-start: calc(var(--spacing--2xs) * -1);
 }
 
 .header {
@@ -146,12 +122,18 @@ function onClose() {
 	align-items: center;
 	justify-content: space-between;
 	gap: var(--spacing--sm);
+	padding: var(--spacing--md);
+
+	button:last-child {
+		flex-shrink: 0;
+		margin-inline-end: calc(var(--spacing--2xs) * -1);
+	}
 }
 
 .headerLeft {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--2xs);
+	gap: var(--spacing--xs);
 	min-width: 0;
 	flex: 1 1 auto;
 }
@@ -186,46 +168,13 @@ function onClose() {
 	text-overflow: ellipsis;
 }
 
-.tabs {
-	display: flex;
-	border-bottom: 1px solid var(--color--foreground--shade-1);
-	flex-shrink: 0;
-	margin-bottom: var(--spacing--2xs);
-}
-
-.tab {
-	background: none;
-	border: 0;
-	padding: var(--spacing--xs) var(--spacing--sm);
-	margin-bottom: -1px;
-	font-weight: var(--font-weight--medium);
-	color: var(--color--text--tint-1);
-	cursor: pointer;
-	border-bottom: 2px solid transparent;
-	transition:
-		color 120ms ease,
-		border-color 120ms ease;
-
-	&:hover {
-		color: var(--color--text);
-	}
-
-	&:focus-visible {
-		outline: var(--focus--border-width) solid var(--focus--border-color);
-		outline-offset: 2px;
-	}
-}
-
-.tabActive {
-	color: var(--color--primary);
-	border-bottom-color: var(--color--primary);
-}
-
 .bodyWrapper {
 	flex: 1 1 auto;
 	display: flex;
 	flex-direction: column;
 	min-height: 0;
 	overflow-y: auto;
+	padding-inline: var(--spacing--md);
+	padding-block-end: var(--spacing--md);
 }
 </style>

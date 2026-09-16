@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { fireEvent } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
-import { createComponentRenderer } from '@/__tests__/render';
+import { createComponentRenderer } from '../../../__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 
 import ToolRow from '../ToolRow.vue';
@@ -107,7 +107,7 @@ describe('ToolRow', () => {
 	it('shows the credential picker for a connected item when an adapter is provided', () => {
 		const { getByTestId } = renderWithAdapter(connectedMcp);
 
-		expect(getByTestId('tool-credential-picker')).toBeTruthy();
+		expect(getByTestId('tool-credential-picker-trigger-connected')).toBeTruthy();
 	});
 
 	it('shows a static connected marker when the item does not use credentials', () => {

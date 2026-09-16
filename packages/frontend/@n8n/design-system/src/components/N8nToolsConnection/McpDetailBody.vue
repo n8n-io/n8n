@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { N8nText } from '@n8n/design-system';
+import N8nText from '../N8nText';
 import { useI18n } from '@n8n/i18n';
 import type { McpServerConnectionItem, McpServerTool } from './types';
 
@@ -29,9 +29,9 @@ const hasMetadata = computed(
 
 <template>
 	<div :class="$style.container">
-		<p v-if="item.longDescription" :class="$style.description">
+		<N8nText v-if="item.longDescription" tag="p" step="sm">
 			{{ item.longDescription }}
-		</p>
+		</N8nText>
 
 		<div
 			v-if="hasMetadata"
@@ -39,7 +39,7 @@ const hasMetadata = computed(
 			data-test-id="tools-connection-detail-metadata"
 		>
 			<div v-if="item.publisher" :class="$style.metadataCell">
-				<N8nText :class="$style.metadataLabel" size="small">
+				<N8nText :class="$style.label" color="text-light" bold step="sm">
 					{{ i18n.baseText('tools.connection.detail.publisher') }}
 				</N8nText>
 				<a
@@ -51,16 +51,16 @@ const hasMetadata = computed(
 				>
 					{{ item.publisher.name }}
 				</a>
-				<N8nText v-else size="small" color="text-light">{{ item.publisher.name }}</N8nText>
+				<N8nText v-else color="text-light" step="sm">{{ item.publisher.name }}</N8nText>
 			</div>
 			<div v-if="item.version" :class="$style.metadataCell">
-				<N8nText :class="$style.metadataLabel" size="small">
+				<N8nText :class="$style.label" color="text-light" bold step="xs">
 					{{ i18n.baseText('tools.connection.detail.version') }}
 				</N8nText>
-				<N8nText size="small" color="text-light">{{ item.version }}</N8nText>
+				<N8nText step="sm">{{ item.version }}</N8nText>
 			</div>
 			<div v-if="item.docsUrl" :class="$style.metadataCell">
-				<N8nText :class="$style.metadataLabel" size="small">
+				<N8nText :class="$style.label" color="text-light" bold step="xs">
 					{{ i18n.baseText('tools.connection.detail.moreInfo') }}
 				</N8nText>
 				<a
@@ -78,7 +78,7 @@ const hasMetadata = computed(
 
 		<section v-if="readTools.length > 0" :class="$style.toolsSection">
 			<div :class="$style.toolsHeader">
-				<N8nText :class="$style.toolsLabel" size="small" color="text-light" bold>
+				<N8nText :class="$style.label" color="text-light" bold step="xs">
 					{{ i18n.baseText('tools.connection.detail.readTools') }}
 				</N8nText>
 				<span :class="$style.toolsCount">{{ readTools.length }}</span>
@@ -97,7 +97,7 @@ const hasMetadata = computed(
 
 		<section v-if="writeTools.length > 0" :class="$style.toolsSection">
 			<div :class="$style.toolsHeader">
-				<N8nText :class="$style.toolsLabel" size="small" color="text-light" bold>
+				<N8nText :class="$style.label" color="text-light" bold step="xs">
 					{{ i18n.baseText('tools.connection.detail.writeTools') }}
 				</N8nText>
 				<span :class="$style.toolsCount">{{ writeTools.length }}</span>
@@ -116,7 +116,7 @@ const hasMetadata = computed(
 
 		<section v-if="otherTools.length > 0" :class="$style.toolsSection">
 			<div :class="$style.toolsHeader">
-				<N8nText :class="$style.toolsLabel" size="small" color="text-light" bold>
+				<N8nText :class="$style.label" color="text-light" bold step="xs">
 					{{ i18n.baseText('tools.connection.detail.otherTools') }}
 				</N8nText>
 				<span :class="$style.toolsCount">{{ otherTools.length }}</span>
@@ -142,13 +142,6 @@ const hasMetadata = computed(
 	gap: var(--spacing--sm);
 }
 
-.description {
-	margin: 0;
-	color: var(--text-color--subtler);
-	font-size: var(--font-size--2xs);
-	line-height: var(--line-height--md);
-}
-
 .metadata {
 	display: flex;
 	gap: var(--spacing--xl);
@@ -157,20 +150,19 @@ const hasMetadata = computed(
 .metadataCell {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--4xs);
+	gap: var(--spacing--2xs);
 	min-width: 0;
 }
 
-.metadataLabel {
-	text-transform: uppercase;
-	letter-spacing: 0.06em;
-	font-size: var(--font-size--3xs);
+.label {
+	user-select: none;
 }
 
 .metadataLink {
-	color: var(--text-color--subtler);
+	color: var(--text-color);
 	text-decoration: underline;
-	font-size: var(--font-size--2xs);
+	line-height: var(--line-height--sm);
+	font-size: var(--font-size--sm);
 
 	&:hover {
 		color: var(--color--primary);
@@ -192,12 +184,6 @@ const hasMetadata = computed(
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
-}
-
-.toolsLabel {
-	text-transform: uppercase;
-	letter-spacing: 0.06em;
-	font-size: 11px;
 }
 
 .toolsCount {

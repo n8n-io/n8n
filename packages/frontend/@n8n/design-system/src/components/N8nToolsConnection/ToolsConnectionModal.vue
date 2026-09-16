@@ -1,18 +1,17 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue';
-import {
-	N8nDialog,
-	N8nIcon,
-	N8nInput,
-	N8nRecycleScroller,
-	N8nTabs,
-	N8nText,
-} from '@n8n/design-system';
-import type { DialogSize, TabOptions } from '@n8n/design-system';
+import { N8nDialog, type DialogSize } from '../N8nDialog';
+import N8nIcon from '../N8nIcon';
+import N8nInput from '../N8nInput';
+import N8nRecycleScroller from '../N8nRecycleScroller';
+import N8nTabs from '../N8nTabs';
+import N8nText from '../N8nText';
+import N8nIconButton from '../N8nIconButton';
+
+import type { TabOptions } from '../N8nTabs';
 import { type BaseTextKey, useI18n } from '@n8n/i18n';
 import { useDebounceFn } from '@vueuse/core';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
-import { DEBOUNCE_TIME } from '@/app/constants/durations';
 
 import ToolRow from './ToolRow.vue';
 import ToolDetailView from './ToolDetailView.vue';
@@ -98,8 +97,7 @@ const containerProps = computed(() =>
 		: {
 				open: props.open,
 				size: props.size,
-				header: props.detailItem ? '' : modalTitle.value,
-				showCloseButton: !props.detailItem,
+				...fixedProps,
 				'aria-label': modalTitle.value,
 			},
 );
@@ -108,13 +106,14 @@ const searchPlaceholder = computed(
 );
 
 const ITEM_HEIGHT = 58;
+const SEARCH_DEBOUNCE_TIME = 300;
 
 const searchQuery = ref('');
 const debouncedSearchQuery = ref('');
 const setDebouncedSearch = useDebounceFn((value: string) => {
 	debouncedSearchQuery.value = value;
 	emit('update:searchQuery', value);
-}, getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH));
+}, getDebounceTime(SEARCH_DEBOUNCE_TIME));
 watch(searchQuery, (value) => {
 	void setDebouncedSearch(value);
 });
@@ -294,6 +293,12 @@ watch(visibleCategories, (categories) => {
 	}
 });
 
+const fixedProps = {
+	/** We want a custom position for close button as it breaks horizontal alignment */
+	showCloseButton: false,
+	header: undefined,
+};
+
 const isListEmpty = computed(() => toolRows.value.length === 0);
 const resolvedEmptyMessage = computed(() => {
 	if (hasActiveSearch.value) {
@@ -327,8 +332,8 @@ function handleOpenChange(value: boolean) {
 	<component
 		:is="containerComponent"
 		v-bind="containerProps"
-		:class="props.embedded && $style.embedded"
 		data-test-id="tools-connection-modal"
+		:class="[$style.modal, props.embedded && $style.embedded]"
 		@update:open="handleOpenChange"
 	>
 		<div :class="$style.body">
@@ -370,18 +375,21 @@ function handleOpenChange(value: boolean) {
 				</template>
 			</ToolDetailView>
 			<template v-else>
-				<N8nInput
-					ref="searchInputRef"
-					v-model="searchQuery"
-					:placeholder="searchPlaceholder"
-					clearable
-					data-test-id="tools-connection-search"
-					:class="$style.searchInput"
-				>
-					<template #prefix>
-						<N8nIcon icon="search" />
-					</template>
-				</N8nInput>
+				<div :class="$style.header">
+					<N8nInput
+						ref="searchInputRef"
+						v-model="searchQuery"
+						:placeholder="searchPlaceholder"
+						clearable
+						data-test-id="tools-connection-search"
+						:class="$style.searchInput"
+					>
+						<template #prefix>
+							<N8nIcon icon="search" />
+						</template>
+					</N8nInput>
+					<N8nIconButton v-if="!embedded" size="large" variant="ghost" icon="x" @click="handleOpenChange(false)" />
+				</div>
 
 				<N8nTabs
 					v-if="tabsVisible"
@@ -470,12 +478,29 @@ function handleOpenChange(value: boolean) {
 <style lang="scss" module>
 @use '@n8n/design-system/css/mixins/mixins' as scrollbar-mixins;
 
+.modal {
+	--n8n-dialog-content--padding: 0;
+}
+
 .body {
 	display: flex;
 	flex-direction: column;
 	height: 70vh;
 	max-height: calc(var(--height--5xl) * 6);
 	min-height: 0;
+	padding: 0;
+}
+
+.header {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	padding: var(--spacing--md);
+
+	button {
+		flex-shrink: 0;
+		margin-inline-end: calc(var(--spacing--2xs) * -1);
+	}
 }
 
 .embedded {
@@ -487,6 +512,10 @@ function handleOpenChange(value: boolean) {
 		max-height: 100%;
 	}
 
+	.header {
+		padding: 0;
+	}
+
 	.searchInput {
 		margin-top: 0;
 		margin-bottom: var(--spacing--lg);
@@ -494,9 +523,7 @@ function handleOpenChange(value: boolean) {
 }
 
 .searchInput {
-	width: 100%;
-	flex-shrink: 0;
-	margin-block: var(--spacing--sm);
+	flex: 1;
 }
 
 // N8nTabs owns the tab styling, and the justified strip gives every tab an equal
@@ -505,6 +532,7 @@ function handleOpenChange(value: boolean) {
 .tabs {
 	border-bottom: 1px solid var(--border-color);
 	flex-shrink: 0;
+	overflow: hidden;
 }
 
 .createRow {
@@ -559,7 +587,8 @@ function handleOpenChange(value: boolean) {
 	flex: 1 1 0;
 	min-height: 0;
 	overflow: hidden;
-	margin-bottom: calc(-1 * var(--spacing--lg));
+	padding-inline: var(--spacing--xs);
+	padding-block-start: var(--spacing--2xs);
 }
 
 .scroller {

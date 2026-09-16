@@ -13,7 +13,7 @@ import nodePopularity from 'virtual:node-popularity-data';
 
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
-import type { ToolCategoryKey } from '@/features/shared/toolsConnection/types';
+import type { ToolCategoryKey } from '@n8n/design-system';
 import type { IWorkflowDb } from '@/Interface';
 import { isMcpRelatedNodeType } from './useMcpServerAdapter';
 

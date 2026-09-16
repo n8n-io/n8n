@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { createComponentRenderer } from '@/__tests__/render';
+import { createComponentRenderer } from '../../../__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 
 import DefaultDetailBody from '../DefaultDetailBody.vue';

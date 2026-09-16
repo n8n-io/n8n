@@ -47,8 +47,8 @@ vi.mock('../components/modals/AgentModalMultiStep.vue', async () => ({
 	default: (await import('./utils/AgentModalTestStub')).AgentModalMultiStepTestStub,
 }));
 
-vi.mock('@/features/shared/toolsConnection/ToolsConnectionModal.vue', () => ({
-	default: {
+vi.mock('@n8n/design-system', () => ({
+	N8nToolsConnectionModal: {
 		name: 'ToolsConnectionModal',
 		props: [
 			'items',
@@ -98,9 +98,6 @@ vi.mock('@/features/shared/toolsConnection/ToolsConnectionModal.vue', () => ({
 			</div>
 		`,
 	},
-}));
-
-vi.mock('@n8n/design-system', () => ({
 	N8nEmptyState: {
 		props: ['heading', 'description'],
 		template: '<div v-bind="$attrs">{{ heading }} {{ description }}</div>',

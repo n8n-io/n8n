@@ -39,9 +39,8 @@ import {
 	removePreviewToken,
 } from '@/features/shared/nodeCreator/nodeCreator.utils';
 import type { IWorkflowDb } from '@/Interface';
-import ToolsConnectionModal from '@/features/shared/toolsConnection/ToolsConnectionModal.vue';
-import McpRegistrySuggestionFooter from '@/app/components/McpRegistrySuggestionFooter.vue';
 import {
+	N8nToolsConnectionModal as ToolsConnectionModal,
 	hasToolConnection,
 	TOOL_CONNECTION_CREDITS_LABEL_KEY,
 	type NodeConnectionItem,
@@ -49,7 +48,8 @@ import {
 	type ToolConnectionItem,
 	type ToolCredentialRef,
 	type WorkflowConnectionItem,
-} from '@/features/shared/toolsConnection/types';
+} from '@n8n/design-system';
+import McpRegistrySuggestionFooter from '@/app/components/McpRegistrySuggestionFooter.vue';
 
 import {
 	getExistingToolNames,
