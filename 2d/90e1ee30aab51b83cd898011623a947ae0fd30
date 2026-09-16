@@ -17,6 +17,14 @@ packages/cli/test/migration/1787056876306-create-git-connection-table.test.ts
   "base_commit_sha": "2d90e1ee30aab51b83cd898011623a947ae0fd30",
   "prompts": {},
   "sessions": {
+    "s_0c1dd5f3b25e5b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b03541f7-e178-4c8c-87b4-e2446edecc55",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
     "s_7562978115634d": {
       "agent_id": {
         "tool": "claude",
