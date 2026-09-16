@@ -12,6 +12,7 @@ import { isPositiveInteger } from '@/utils';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
 import { isExecutionIdV2 } from './execution-id';
+import { ExecutionListService } from './execution-list.service';
 import { ExecutionService } from './execution.service';
 import { EnterpriseExecutionsService } from './execution.service.ee';
 import { ExecutionRequest } from './execution.types';
@@ -22,6 +23,7 @@ import { validateExecutionUpdatePayload } from './validation';
 export class ExecutionsController {
 	constructor(
 		private readonly executionService: ExecutionService,
+		private readonly executionListService: ExecutionListService,
 		private readonly enterpriseExecutionService: EnterpriseExecutionsService,
 		private readonly workflowSharingService: WorkflowSharingService,
 		private readonly license: License,
@@ -36,38 +38,18 @@ export class ExecutionsController {
 		const { rangeQuery: query } = req;
 
 		query.user = req.user;
-		query.sharingOptions = await this.executionService.buildSharingOptions('workflow:read');
+		query.sharingOptions = await this.executionListService.buildSharingOptions('workflow:read');
 
 		if (!this.license.isAdvancedExecutionFiltersEnabled()) {
 			delete query.metadata;
 			delete query.annotationTags;
 		}
 
-		const noStatus = !query.status || query.status.length === 0;
-		const noRange = !query.range.beforeId;
-
-		// Without a status filter, every page keeps the current/completed split, so that
-		// "load more" pages only completed rows and the count stays completed-only.
-		if (noStatus && noRange) {
-			const [executions, concurrentExecutionsCount] = await Promise.all([
-				this.executionService.findLatestCurrentAndCompleted(query),
-				this.executionService.getConcurrentExecutionsCount(),
-			]);
-			await this.executionService.addScopes(
-				req.user,
-				executions.results as ExecutionSummaries.ExecutionSummaryWithScopes[],
-			);
-			return {
-				...executions,
-				concurrentExecutionsCount,
-			};
-		}
-
 		const [executions, concurrentExecutionsCount] = await Promise.all([
-			this.executionService.findRangeWithCount(query),
+			this.executionListService.listExecutionsForUI(query),
 			this.executionService.getConcurrentExecutionsCount(),
 		]);
-		await this.executionService.addScopes(
+		await this.executionListService.addScopes(
 			req.user,
 			executions.results as ExecutionSummaries.ExecutionSummaryWithScopes[],
 		);
