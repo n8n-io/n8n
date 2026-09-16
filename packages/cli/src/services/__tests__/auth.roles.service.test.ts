@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
-import type { GlobalConfig } from '@n8n/config';
+import { CANVAS_ONLY_PERSONAL_SPACE_DENIABLE_SCOPES, type GlobalConfig } from '@n8n/config';
 import { AuthRolesService, Role, Scope } from '@n8n/db';
 import type { DbLock, DbLockService } from '@n8n/db';
 import {
@@ -13,7 +13,6 @@ import {
 	PERSONAL_SPACE_PUBLISHING_SETTING,
 	PERSONAL_SPACE_SHARING_SETTING,
 	EXTERNAL_SECRETS_SYSTEM_ROLES_ENABLED_SETTING,
-	CANVAS_ONLY_PERSONAL_SPACE_ROLE_SETTING,
 } from '@n8n/permissions';
 import type { EntityManager, FindManyOptions, Repository } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
@@ -45,7 +44,9 @@ describe('AuthRolesService', () => {
 			await fn(mockEntityManager),
 	);
 
-	const globalConfig = mock<GlobalConfig>({ canvasOnly: false });
+	const globalConfig = mock<GlobalConfig>({
+		canvasOnly: { enabled: false, personalSpaceScopeDenyList: [] },
+	});
 
 	const authRolesService = new AuthRolesService(logger, dbLockService, globalConfig);
 
@@ -122,7 +123,8 @@ describe('AuthRolesService', () => {
 		// Default: no settings rows (backward compat: undefined values => grant scopes)
 		mockEntityManager.findBy.mockResolvedValue([]);
 		mockEntityManager.findOneBy.mockResolvedValue(null);
-		globalConfig.canvasOnly = false;
+		globalConfig.canvasOnly.enabled = false;
+		globalConfig.canvasOnly.personalSpaceScopeDenyList = [];
 		dbLockService.withLock.mockImplementation(
 			async (_lockId: DbLock, fn: (tx: EntityManager) => Promise<unknown>) =>
 				await fn(mockEntityManager),
@@ -629,17 +631,7 @@ describe('AuthRolesService', () => {
 			});
 
 			describe('canvas-only personal space role', () => {
-				const REMOVABLE_SCOPES = CANVAS_ONLY_PERSONAL_SPACE_ROLE_SETTING.scopes;
-
-				function mockCanvasOnlyChoice(value: string | null): void {
-					mockEntityManager.findOneBy.mockImplementation(async (_entity, where) => {
-						const key = (where as { key?: string }).key;
-						if (key === CANVAS_ONLY_PERSONAL_SPACE_ROLE_SETTING.key && value !== null) {
-							return { key, value, loadOnStartup: false } as never;
-						}
-						return null;
-					});
-				}
+				const DENIABLE_SCOPES = [...CANVAS_ONLY_PERSONAL_SPACE_DENIABLE_SCOPES];
 
 				/** The scope slugs the sync gives the personal owner role on a fresh instance. */
 				async function syncedPersonalOwnerScopes(): Promise<string[]> {
@@ -653,17 +645,18 @@ describe('AuthRolesService', () => {
 					return (personalOwnerCall?.[0] as Role).scopes.map((s: Scope) => s.slug);
 				}
 
-				test('should give the personalOwner role every removable scope by default', async () => {
-					globalConfig.canvasOnly = true;
+				test('should give the personalOwner role every deniable scope when the deny list is empty', async () => {
+					globalConfig.canvasOnly.enabled = true;
+					globalConfig.canvasOnly.personalSpaceScopeDenyList = [];
 
 					const scopeSlugs = await syncedPersonalOwnerScopes();
 
-					expect(scopeSlugs).toEqual(expect.arrayContaining(REMOVABLE_SCOPES));
+					expect(scopeSlugs).toEqual(expect.arrayContaining(DENIABLE_SCOPES));
 				});
 
-				test('should remove the stored scopes when canvas-only mode is on', async () => {
-					globalConfig.canvasOnly = true;
-					mockCanvasOnlyChoice(JSON.stringify(['credential:create']));
+				test('should remove the denied scopes when canvas-only mode is on', async () => {
+					globalConfig.canvasOnly.enabled = true;
+					globalConfig.canvasOnly.personalSpaceScopeDenyList = ['credential:create'];
 
 					const scopeSlugs = await syncedPersonalOwnerScopes();
 
@@ -673,48 +666,30 @@ describe('AuthRolesService', () => {
 					expect(scopeSlugs).toContain('workflow:create');
 				});
 
-				test('should remove every removable scope when all are stored', async () => {
-					globalConfig.canvasOnly = true;
-					mockCanvasOnlyChoice(JSON.stringify(REMOVABLE_SCOPES));
+				test('should remove every deniable scope when all are denied', async () => {
+					globalConfig.canvasOnly.enabled = true;
+					globalConfig.canvasOnly.personalSpaceScopeDenyList = DENIABLE_SCOPES;
 
 					const scopeSlugs = await syncedPersonalOwnerScopes();
 
-					for (const scope of REMOVABLE_SCOPES) {
+					for (const scope of DENIABLE_SCOPES) {
 						expect(scopeSlugs).not.toContain(scope);
 					}
 					expect(scopeSlugs).toContain('workflow:create');
 				});
 
-				test('should ignore the stored choice when canvas-only mode is off', async () => {
-					globalConfig.canvasOnly = false;
-					mockCanvasOnlyChoice(JSON.stringify(['credential:create']));
+				test('should ignore the deny list when canvas-only mode is off', async () => {
+					globalConfig.canvasOnly.enabled = false;
+					globalConfig.canvasOnly.personalSpaceScopeDenyList = ['credential:create'];
 
 					const scopeSlugs = await syncedPersonalOwnerScopes();
 
 					expect(scopeSlugs).toContain('credential:create');
 				});
 
-				test('should ignore a malformed stored choice', async () => {
-					globalConfig.canvasOnly = true;
-					mockCanvasOnlyChoice('not json');
-
-					const scopeSlugs = await syncedPersonalOwnerScopes();
-
-					expect(scopeSlugs).toEqual(expect.arrayContaining(REMOVABLE_SCOPES));
-				});
-
-				test('should ignore a stored scope that is not removable', async () => {
-					globalConfig.canvasOnly = true;
-					mockCanvasOnlyChoice(JSON.stringify(['workflow:create']));
-
-					const scopeSlugs = await syncedPersonalOwnerScopes();
-
-					expect(scopeSlugs).toContain('workflow:create');
-				});
-
-				test('should update an existing personalOwner role to remove the stored scopes', async () => {
-					globalConfig.canvasOnly = true;
-					mockCanvasOnlyChoice(JSON.stringify(['credential:create']));
+				test('should update an existing personalOwner role to remove the denied scopes', async () => {
+					globalConfig.canvasOnly.enabled = true;
+					globalConfig.canvasOnly.personalSpaceScopeDenyList = ['credential:create'];
 					const allScopes = createAllScopes();
 					const personalOwnerRoleDef = ALL_ROLES.project.find(
 						(r) => r.slug === PROJECT_OWNER_ROLE_SLUG,

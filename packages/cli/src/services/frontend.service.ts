@@ -433,7 +433,7 @@ export class FrontendService {
 				agentEvalsEnabled: this.globalConfig.evaluation.agentEvalsEnabled,
 			},
 			activeModules: this.moduleRegistry.getActiveModules(),
-			canvasOnly: this.globalConfig.canvasOnly,
+			canvasOnly: this.globalConfig.canvasOnly.enabled,
 			collaboration: {
 				crdt: this.globalConfig.collaboration.crdt,
 			},

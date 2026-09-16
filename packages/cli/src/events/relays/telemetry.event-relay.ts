@@ -2409,7 +2409,7 @@ export class TelemetryEventRelay extends EventRelay {
 	// #region Custom Roles
 
 	private customRoleCreated({ userId, roleSlug, scopes }: RelayEventMap['custom-role-created']) {
-		this.telemetry.track(TELEMETRY_EVENT.ROLES.USER_CREATED_CUSTOM_ROLE, {
+		this.telemetry.track('User created custom role', {
 			user_id: userId,
 			role_slug: roleSlug,
 			scopes,
@@ -2417,7 +2417,7 @@ export class TelemetryEventRelay extends EventRelay {
 	}
 
 	private customRoleUpdated({ userId, roleSlug, scopes }: RelayEventMap['custom-role-updated']) {
-		this.telemetry.track(TELEMETRY_EVENT.ROLES.USER_UPDATED_CUSTOM_ROLE, {
+		this.telemetry.track('User updated custom role', {
 			user_id: userId,
 			role_slug: roleSlug,
 			scopes,
@@ -2425,7 +2425,7 @@ export class TelemetryEventRelay extends EventRelay {
 	}
 
 	private customRoleDeleted({ userId, roleSlug }: RelayEventMap['custom-role-deleted']) {
-		this.telemetry.track(TELEMETRY_EVENT.ROLES.USER_DELETED_CUSTOM_ROLE, {
+		this.telemetry.track('User deleted custom role', {
 			user_id: userId,
 			role_slug: roleSlug,
 		});

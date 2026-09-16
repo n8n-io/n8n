@@ -1200,7 +1200,7 @@ describe('TelemetryEventRelay', () => {
 
 			eventService.emit('custom-role-created', event);
 
-			expect(telemetry.track).toHaveBeenCalledWith(TELEMETRY_EVENT.ROLES.USER_CREATED_CUSTOM_ROLE, {
+			expect(telemetry.track).toHaveBeenCalledWith('User created custom role', {
 				user_id: 'user123',
 				role_slug: 'project:my-role-abc123',
 				scopes: ['workflow:create', 'workflow:read', 'credential:read'],
@@ -1216,7 +1216,7 @@ describe('TelemetryEventRelay', () => {
 
 			eventService.emit('custom-role-updated', event);
 
-			expect(telemetry.track).toHaveBeenCalledWith(TELEMETRY_EVENT.ROLES.USER_UPDATED_CUSTOM_ROLE, {
+			expect(telemetry.track).toHaveBeenCalledWith('User updated custom role', {
 				user_id: 'user123',
 				role_slug: 'project:my-role-abc123',
 				scopes: ['workflow:create', 'workflow:read'],
@@ -1231,7 +1231,7 @@ describe('TelemetryEventRelay', () => {
 
 			eventService.emit('custom-role-deleted', event);
 
-			expect(telemetry.track).toHaveBeenCalledWith(TELEMETRY_EVENT.ROLES.USER_DELETED_CUSTOM_ROLE, {
+			expect(telemetry.track).toHaveBeenCalledWith('User deleted custom role', {
 				user_id: 'user123',
 				role_slug: 'project:my-role-abc123',
 			});

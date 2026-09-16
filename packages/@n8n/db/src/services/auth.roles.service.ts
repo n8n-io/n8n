@@ -10,10 +10,8 @@ import {
 	PROJECT_OWNER_ROLE_SLUG,
 	PERSONAL_SPACE_SHARING_SETTING,
 	EXTERNAL_SECRETS_SYSTEM_ROLES_ENABLED_SETTING,
-	CANVAS_ONLY_PERSONAL_SPACE_ROLE_SETTING,
 	PROJECT_ADMIN_ROLE_SLUG,
 	PROJECT_EDITOR_ROLE_SLUG,
-	parseRemovedPersonalSpaceScopes,
 } from '@n8n/permissions';
 
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
@@ -148,13 +146,20 @@ export class AuthRolesService {
 		return scopes;
 	}
 
-	/** Canvas-only mode lets an admin take some scopes away. The stored choice wins over the defaults. */
-	private async removeCanvasOnlyPersonalOwnerScopes(scopes: string[], tx: EntityManager) {
-		if (!this.globalConfig.canvasOnly) return scopes;
+	/**
+	 * Canvas-only mode lets an operator take some scopes away from the personal
+	 * owner role through `N8N_CANVAS_ONLY_PERSONAL_SPACE_SCOPE_DENY_LIST`.
+	 * The config already limits the list to the scopes that may be removed.
+	 */
+	private removeCanvasOnlyPersonalOwnerScopes(scopes: string[]) {
+		const { enabled, personalSpaceScopeDenyList } = this.globalConfig.canvasOnly;
+		if (!enabled || personalSpaceScopeDenyList.length === 0) return scopes;
 
-		const row = await tx.findOneBy(Settings, { key: CANVAS_ONLY_PERSONAL_SPACE_ROLE_SETTING.key });
-		const removed = parseRemovedPersonalSpaceScopes(row?.value);
-		return scopes.filter((slug) => !removed.includes(slug));
+		this.logger.debug(
+			`Canvas-only mode - removing ${personalSpaceScopeDenyList.join(', ')} scopes from ${PROJECT_OWNER_ROLE_SLUG} role`,
+		);
+		const denied: readonly string[] = personalSpaceScopeDenyList;
+		return scopes.filter((slug) => !denied.includes(slug));
 	}
 
 	private async getExternalSecretsSystemRolesScopes(
@@ -186,7 +191,7 @@ export class AuthRolesService {
 	 * Modifies the expected scopes for a role based on settings.
 	 * Uses a "closed first" approach: certain scopes are not in the base definition
 	 * and are added when the corresponding setting is enabled. Canvas-only mode
-	 * can also remove scopes from the personal owner role.
+	 * can also remove scopes from the personal owner role through config.
 	 */
 	private async updateScopesBasedOnSettings(
 		roleSlug: string,
@@ -197,7 +202,7 @@ export class AuthRolesService {
 		// Special handling for project:personalOwner role
 		if (roleSlug === PROJECT_OWNER_ROLE_SLUG) {
 			scopes.push(...(await this.getPersonalOwnerSettingsScopes(tx)));
-			return await this.removeCanvasOnlyPersonalOwnerScopes(scopes, tx);
+			return this.removeCanvasOnlyPersonalOwnerScopes(scopes);
 		}
 
 		// External secrets system roles scopes

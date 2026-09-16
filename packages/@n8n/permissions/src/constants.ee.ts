@@ -139,14 +139,6 @@ export const PERSONAL_SPACE_SHARING_SETTING = {
 	key: 'security.personalSpaceSharing',
 	scopes: ['workflow:share', 'credential:share'],
 };
-/**
- * Canvas-only mode only. The value is a JSON array of the scopes an admin took
- * away from the personal space role. `scopes` lists the ones that may be removed.
- */
-export const CANVAS_ONLY_PERSONAL_SPACE_ROLE_SETTING = {
-	key: 'canvasOnly.personalSpaceRoleRemovedScopes',
-	scopes: ['credential:create', 'dataTable:create', 'agent:create'],
-};
 
 export const EXTERNAL_SECRETS_SYSTEM_ROLES_ENABLED_SETTING = {
 	key: 'externalSecrets.systemRolesEnabled',
