@@ -11,6 +11,7 @@ import {
 	getActiveCredentialType,
 	getHost,
 	makePermissionErrorLegible,
+	permissionHintFor,
 	sanitizeApiMessage,
 } from '../actions/helpers';
 import type { DatabricksJobRun } from '../actions/interfaces';
@@ -21,11 +22,12 @@ async function listRequest<T>(
 	context: ILoadOptionsFunctions,
 	credentialType: 'databricksApi' | 'databricksOAuth2Api',
 	options: IHttpRequestOptions,
+	permissionHint?: string,
 ): Promise<T> {
 	try {
 		return (await databricksApiRequest(context, credentialType, options)) as T;
 	} catch (error) {
-		makePermissionErrorLegible(error);
+		makePermissionErrorLegible(error, permissionHint);
 		throw error;
 	}
 }
@@ -439,16 +441,22 @@ async function fetchListPage<T>(
 	path: string,
 	limit: number,
 	pageToken?: string,
+	permissionHint?: string,
 ): Promise<T> {
 	const qs: IDataObject = { limit };
 	if (pageToken) qs.page_token = pageToken;
-	return await listRequest<T>(context, credentialType, {
-		method: 'GET',
-		url: `${host}${path}`,
-		qs,
-		headers: { Accept: 'application/json' },
-		json: true,
-	});
+	return await listRequest<T>(
+		context,
+		credentialType,
+		{
+			method: 'GET',
+			url: `${host}${path}`,
+			qs,
+			headers: { Accept: 'application/json' },
+			json: true,
+		},
+		permissionHint,
+	);
 }
 
 export async function getJobs(
@@ -472,6 +480,7 @@ export async function getJobs(
 			'/api/2.2/jobs/list',
 			JOBS_PAGE_SIZE,
 			pageToken,
+			permissionHintFor('job'),
 		);
 
 	if (!filter) {
@@ -496,6 +505,7 @@ export async function getJobs(
 	return { results, paginationToken: pageToken };
 }
 
+/** `runs/list` caps `limit` at 25 */
 const RUNS_PAGE_SIZE = 25;
 const RUNS_SEARCH_MAX_PAGES = 10;
 
@@ -533,6 +543,7 @@ export async function getRuns(
 			'/api/2.2/jobs/runs/list',
 			RUNS_PAGE_SIZE,
 			pageToken,
+			permissionHintFor('job'),
 		);
 
 	if (!filter) {
@@ -540,6 +551,7 @@ export async function getRuns(
 		return { results: (page.runs ?? []).map(toListItem), paginationToken: page.next_page_token };
 	}
 
+	// `runs/list` has no name filter, so search scans pages the same way getJobs does
 	const filterLower = filter.toLowerCase();
 	const results: INodeListSearchResult['results'] = [];
 	let pageToken = paginationToken;

@@ -89,6 +89,21 @@ export function sanitizeApiMessage(message: string): string {
 	return message.replace(/[\x00-\x1f\x7f]+/g, ' ').slice(0, 500);
 }
 
+export const DEFAULT_PERMISSION_HINT =
+	'Grant the named permission to the signed-in user or service principal in Databricks, then retry.';
+
+const grantHint = (grant: string) =>
+	`Grant at least ${grant} to the signed-in user or service principal in Databricks, then retry.`;
+
+const PERMISSION_HINTS = new Map<string, string>([
+	['job', grantHint('Can View on the job')],
+	['job:run', grantHint('Can Manage Run on the job')],
+]);
+
+export function permissionHintFor(resource: string, operation?: string): string | undefined {
+	return PERMISSION_HINTS.get(`${resource}:${operation}`) ?? PERMISSION_HINTS.get(resource);
+}
+
 // Must be called at every request entry point (router catch, listSearch wrapper):
 // databricksApiRequest() only attaches the User-Agent and deliberately does not
 // wrap errors, so callers still own their catch. Keyed on PERMISSION_DENIED only; widen
@@ -96,7 +111,10 @@ export function sanitizeApiMessage(message: string): string {
 // the error_code, not HTTP 403, so expired-token 403s (which core retries via
 // refresh) aren't mislabeled if they leak through. Mutates rather than re-wraps:
 // `new NodeApiError(node, existingNodeApiError)` returns the original untouched.
-export function makePermissionErrorLegible(error: unknown): void {
+export function makePermissionErrorLegible(
+	error: unknown,
+	hint: string = DEFAULT_PERMISSION_HINT,
+): void {
 	if (!(error instanceof NodeApiError)) return;
 
 	// Requests with encoding: 'arraybuffer' (file downloads) receive their 403
@@ -116,8 +134,7 @@ export function makePermissionErrorLegible(error: unknown): void {
 	const apiMessage = body.message;
 	if (typeof apiMessage === 'string' && apiMessage) {
 		error.message = sanitizeApiMessage(apiMessage);
-		error.description =
-			'Grant the named permission to the signed-in user or service principal in Databricks, then retry.';
+		error.description = hint;
 	}
 }
 

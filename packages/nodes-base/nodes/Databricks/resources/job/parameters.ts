@@ -3,7 +3,7 @@ import type { INodeProperties } from 'n8n-workflow';
 import { JOB_RUN_DEFAULT_TIMEOUT_SECONDS } from '../../constants';
 
 const showForRun = { resource: ['job'], operation: ['run'] };
-const showForGetRunOutput = { resource: ['job'], operation: ['getRunOutput'] };
+const showForRunId = { resource: ['job'], operation: ['getRun', 'getRunOutput'] };
 
 export const jobParameters: INodeProperties[] = [
 	{
@@ -12,9 +12,9 @@ export const jobParameters: INodeProperties[] = [
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
 		required: true,
-		description: 'The job run to read the output of',
+		description: 'The job run to read',
 		displayOptions: {
-			show: showForGetRunOutput,
+			show: showForRunId,
 		},
 		modes: [
 			{
