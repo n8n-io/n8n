@@ -10,6 +10,7 @@ import { Body, Get, Param, Post, ProjectScope, RestController } from '@n8n/decor
 import type { Request, Response } from 'express';
 
 import { AgentIntegrationManagementService } from './agent-integration-management.service';
+import { AgentUpdateBroadcaster } from './agent-update-broadcaster';
 import { AgentChannelStatusReporter } from './integrations/agent-channel-status-reporter';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import { buildChannelStatusReport } from './integrations/channel-status-report';
