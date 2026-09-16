@@ -424,10 +424,17 @@ export class AgentMessageQueueService {
 			(await this.checkpoints.findSuspendedForThread(selected.agentId, threadId))
 		)
 			return false;
-		const entry = await this.leases.write(owner, async (ctx) => {
-			if (!(await this.repository.markProcessing(selected.id, ctx))) return null;
-			return await this.repository.findById(selected.id, ctx);
-		});
+		let entry: AgentMessageQueue | null;
+		try {
+			entry = await this.leases.write(owner, async (ctx) => {
+				if (!(await this.repository.markProcessing(selected.id, ctx))) return null;
+				return await this.repository.findById(selected.id, ctx);
+			});
+		} catch (error) {
+			// A failed payload read rolls the claim back with its transaction.
+			if (!owner.signal.aborted) this.requested.add(threadId);
+			throw error;
+		}
 		if (!entry) return true;
 		this.processing.set(entry.id, owner);
 		const abortSignal = AbortSignal.any([
@@ -474,16 +481,15 @@ export class AgentMessageQueueService {
 			}
 			this.logger.warn('Queued agent input ended with an error', { id: entry.id, threadId, error });
 		} finally {
-			this.previews.delete(entry.id);
 			try {
 				// The conditional delete makes a concurrent Stop win before suspension cleanup.
-				if (
-					preview &&
-					!preview.controller.signal.aborted &&
-					!(await this.leases.write(owner, async (ctx) => await this.repository.finishProcessing(entry.id, ctx)))
-				) {
-					const remaining = await this.repository.findById(entry.id);
-					if (remaining?.status === 'cancelling') preview.controller.abort();
+				if (preview && !preview.controller.signal.aborted) {
+					if (await this.leases.write(owner, async (ctx) => await this.repository.finishProcessing(entry.id, ctx))) {
+						this.previews.delete(entry.id);
+					} else {
+						const remaining = await this.repository.findById(entry.id);
+						if (remaining?.status === 'cancelling') preview.controller.abort();
+					}
 				}
 				// Stop can arrive as a run suspends. Clear its checkpoint before releasing the conversation.
 				if (preview?.controller.signal.aborted) {
@@ -496,9 +502,8 @@ export class AgentMessageQueueService {
 						});
 					}
 				}
-			} finally {
-				this.processing.delete(entry.id);
 				await this.leases.write(owner, async (ctx) => await this.repository.removeEntry(entry.id, ctx));
+				this.previews.delete(entry.id);
 				if (preview) {
 					if (!executionId) await this.deleteUnusedAttachments(entry);
 					this.sendPreviewEvent(
@@ -517,6 +522,8 @@ export class AgentMessageQueueService {
 						executionId,
 					});
 				this.notifyPeers(threadId);
+			} finally {
+				this.processing.delete(entry.id);
 			}
 		}
 		return true;
@@ -584,7 +591,11 @@ export class AgentMessageQueueService {
 						preview.input.payload.attachments?.map(({ id }) => id) ?? [],
 					);
 				}
-				this.sendPreviewEvent(id, preview, { type: 'removed' });
+				this.sendPreviewEvent(
+					id,
+					preview,
+					preview.controller.signal.aborted ? { type: 'cancelled' } : { type: 'removed' },
+				);
 			}
 		}
 	}
