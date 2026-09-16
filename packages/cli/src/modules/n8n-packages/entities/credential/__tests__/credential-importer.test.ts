@@ -1,8 +1,8 @@
 import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { ForbiddenError } from '@n8n/services-common';
 import { mock } from 'vitest-mock-extended';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import type { CredentialTypes } from '@/credential-types';
 import type { CredentialsService } from '@/credentials/credentials.service';
 

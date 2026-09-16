@@ -123,6 +123,7 @@ import {
 } from '@n8n/instance-ai';
 import { buildResumeData, toConfirmationData } from '@n8n/instance-ai/confirmation-payload';
 import type { Scope } from '@n8n/permissions';
+import { BadRequestError, ForbiddenError, UrlService } from '@n8n/services-common';
 import { redactTelemetryProperties, redactTelemetryText, TELEMETRY_EVENT } from '@n8n/telemetry';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { lazyImport } from '@n8n/utils/lazy-import';
@@ -132,8 +133,6 @@ import { OperationalError, UnexpectedError, UserError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
 import { N8N_VERSION, WORKFLOW_SDK_VERSION } from '@/constants';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
 import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
 import { modelStreamStallOptions } from '@/modules/agents/model-stream-stall-options';
@@ -145,7 +144,6 @@ import { AiPreferenceService, renderAiPreferencesBlock } from '@/services/ai-pre
 import { AiService } from '@/services/ai.service';
 import { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
-import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
 import { assertNever } from '@/utils';
 

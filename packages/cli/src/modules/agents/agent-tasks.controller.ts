@@ -10,9 +10,8 @@ import {
 	ProjectScope,
 	RestController,
 } from '@n8n/decorators';
+import { NotFoundError } from '@n8n/services-common';
 import type { Response } from 'express';
-
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { AgentTaskService } from './agent-task.service';
 import type { Agent } from './entities/agent.entity';

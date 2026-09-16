@@ -15,6 +15,7 @@ import { createTeamProject, getProjectRoleForUser, testDb } from '@n8n/backend-t
 import { GlobalConfig } from '@n8n/config';
 import { type User, UserRepository, RoleRepository, RoleMappingRuleRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { BadRequestError, ForbiddenError } from '@n8n/services-common';
 import { UserError } from 'n8n-workflow';
 import type * as mocked_oidc_client from 'openid-client';
 // Assigned in beforeAll rather than top-level await (tsconfig module forbids TLA).
@@ -23,8 +24,6 @@ beforeAll(async () => {
 	real_odic_client = await vi.importActual<typeof import('openid-client')>('openid-client');
 });
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { License } from '@/license';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { OIDC_CLIENT_SECRET_REDACTED_VALUE } from '@/modules/sso-oidc/constants';

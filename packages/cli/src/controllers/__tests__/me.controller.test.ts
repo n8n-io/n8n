@@ -4,6 +4,7 @@ import { GlobalConfig } from '@n8n/config';
 import type { AuthenticatedRequest, User, PublicUser, AuthIdentity } from '@n8n/db';
 import { GLOBAL_OWNER_ROLE, InvalidAuthTokenRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { BadRequestError, ForbiddenError } from '@n8n/services-common';
 import type { Response } from 'express';
 import jwt from 'jsonwebtoken';
 import type { Mock } from 'vitest';
@@ -11,8 +12,6 @@ import { mock, anyObject } from 'vitest-mock-extended';
 
 import { AUTH_COOKIE_NAME } from '@/constants';
 import { MeController } from '@/controllers/me.controller';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { InvalidMfaCodeError } from '@/errors/response-errors/invalid-mfa-code.error';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';

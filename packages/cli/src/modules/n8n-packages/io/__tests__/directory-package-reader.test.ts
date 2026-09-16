@@ -1,8 +1,7 @@
+import { BadRequestError } from '@n8n/services-common';
 import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 import { DirectoryPackageReader } from '../directory/directory-package-reader';
 

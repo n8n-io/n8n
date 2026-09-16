@@ -2,10 +2,9 @@ import type { Iso8601DateTimeString } from '@n8n/api-types';
 import { Time } from '@n8n/constants';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { CacheService } from '@n8n/services-common';
 import type { Workflow } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
-
-import { CacheService } from '@/services/cache/cache.service';
 
 // clientId -> "userId|lastSeen"
 type WorkflowCacheHash = Record<string, string>;

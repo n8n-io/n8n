@@ -1,3 +1,4 @@
+import { CacheService } from '@n8n/services-common';
 import type { Mock } from 'vitest';
 import type { StreamChunk } from '@n8n/agents';
 import { MAX_AGENT_CHAT_ATTACHMENT_FILENAME_LENGTH } from '@n8n/api-types';
@@ -6,8 +7,6 @@ import { Container } from '@n8n/di';
 import type { Author } from 'chat';
 import { mock } from 'vitest-mock-extended';
 import { UserError, type Logger } from 'n8n-workflow';
-
-import { CacheService } from '@/services/cache/cache.service';
 
 import type { AgentRepository } from '../../repositories/agent.repository';
 import { AgentChatBridge } from '../agent-chat-bridge';

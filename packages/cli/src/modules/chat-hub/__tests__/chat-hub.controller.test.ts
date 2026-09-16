@@ -1,9 +1,9 @@
 import type { ModuleRegistry } from '@n8n/backend-common';
 import type { ModuleSettings } from '@n8n/decorators';
+import { ForbiddenError } from '@n8n/services-common';
 import type { NextFunction, Request, Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { sendErrorResponse } from '@/response-helper';
 
 import { ChatHubController } from '../chat-hub.controller';

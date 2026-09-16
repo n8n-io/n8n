@@ -17,6 +17,7 @@ import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { CacheService } from '@n8n/services-common';
 import type { DirectoryLoader } from 'n8n-core';
 import { UnrecognizedNodeTypeError } from 'n8n-core';
 import type { INode, INodeType } from 'n8n-workflow';
@@ -26,7 +27,6 @@ import path from 'node:path';
 import { agent as testAgent } from 'supertest';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { CacheService } from '@/services/cache/cache.service';
 import { Telemetry } from '@/telemetry';
 import { TestWebhooks } from '@/webhooks/test-webhooks';
 import { WebhookServer } from '@/webhooks/webhook-server';

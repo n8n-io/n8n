@@ -27,6 +27,7 @@ import {
 import type { PolicyCleared } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { PROJECT_ADMIN_ROLE_SLUG } from '@n8n/permissions';
+import { WorkflowPublishBlockedError } from '@n8n/services-common';
 import { In, type DataSourceOptions, type EntityManager } from '@n8n/typeorm';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { sleep } from '@n8n/utils/sleep';
@@ -46,7 +47,6 @@ import path from 'path';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
-import { WorkflowPublishBlockedError } from '@/errors/response-errors/workflow-publish-blocked.error';
 import type { IWorkflowToImport } from '@/interfaces';
 import { DataTableColumn } from '@/modules/data-table/data-table-column.entity';
 import { DataTableColumnRepository } from '@/modules/data-table/data-table-column.repository';

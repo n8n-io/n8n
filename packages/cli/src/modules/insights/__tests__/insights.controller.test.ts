@@ -2,11 +2,10 @@ import { LicenseState } from '@n8n/backend-common';
 import { mockInstance, testDb } from '@n8n/backend-test-utils';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { BadRequestError, ForbiddenError } from '@n8n/services-common';
 import { DateTime } from 'luxon';
 import { mock } from 'vitest-mock-extended';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
 import { TypeToNumber, type TypeUnitNumber } from '../database/entities/insights-shared';

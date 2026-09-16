@@ -1,14 +1,12 @@
 import type { ChatMessageId, ChatSessionId, ChatAttachment } from '@n8n/api-types';
 import { Service } from '@n8n/di';
+import { BadRequestError, NotFoundError } from '@n8n/services-common';
 import { Not, IsNull } from '@n8n/typeorm';
 import type { EntityManager } from '@n8n/typeorm';
 import { sanitizeFilename } from '@n8n/utils/files/sanitize-filename';
 import { BinaryDataService, FileLocation, TEMP_EXECUTION_ID } from 'n8n-core';
 import { BINARY_ENCODING, type IBinaryData } from 'n8n-workflow';
 import type Stream from 'node:stream';
-
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { ChatHubMessageRepository } from './chat-message.repository';
 

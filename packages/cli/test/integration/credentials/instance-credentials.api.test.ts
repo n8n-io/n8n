@@ -7,11 +7,11 @@ import {
 	SharedCredentialsRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { UnprocessableRequestError } from '@n8n/services-common';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { InstanceCredentialBroker } from '@/credentials/instance-credential-broker';
 import type { InstanceCredentialUse } from '@/credentials/instance-credential-use.registry';
-import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 import { ExternalHooks } from '@/external-hooks';
 
 import {

@@ -3,6 +3,7 @@ import { OutboundHttp, type SsrfProtectionService } from '@n8n/backend-network';
 import { type LocalServer, startServer } from '@n8n/backend-network/testing';
 import type { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
 import type { CredentialsRepository } from '@n8n/db';
+import type { CacheService, UrlService } from '@n8n/services-common';
 import { mock } from 'vitest-mock-extended';
 import type { Cipher } from 'n8n-core';
 import type { IncomingHttpHeaders } from 'node:http';
@@ -16,8 +17,6 @@ import type { ExternalHooks } from '@/external-hooks';
 import type { OAuthBrowserBindingService } from '@/oauth/oauth-browser-binding.service';
 import type { OAuthJweServiceProxy } from '@/oauth/oauth-jwe-service.proxy';
 import { OauthService, type OAuth1CredentialData } from '@/oauth/oauth.service';
-import type { CacheService } from '@/services/cache/cache.service';
-import type { UrlService } from '@/services/url.service';
 
 interface Received {
 	method?: string;

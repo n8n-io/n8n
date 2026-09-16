@@ -18,8 +18,8 @@ import {
 	PROJECT_ADMIN_ROLE_SLUG,
 	hasGlobalScope,
 } from '@n8n/permissions';
+import { NotFoundError } from '@n8n/services-common';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';

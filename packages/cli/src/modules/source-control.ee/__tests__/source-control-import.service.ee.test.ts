@@ -23,6 +23,7 @@ import {
 	type WorkflowRepository,
 	type WorkflowPublishedVersionRepository,
 } from '@n8n/db';
+import { WorkflowPublishBlockedError } from '@n8n/services-common';
 import { In } from '@n8n/typeorm';
 import type { EntityManager } from '@n8n/typeorm';
 import * as fastGlob from 'fast-glob';
@@ -36,7 +37,6 @@ import { mock } from 'vitest-mock-extended';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
-import { WorkflowPublishBlockedError } from '@/errors/response-errors/workflow-publish-blocked.error';
 import type { DataTableColumnRepository } from '@/modules/data-table/data-table-column.repository';
 import type { DataTableDDLService } from '@/modules/data-table/data-table-ddl.service';
 import type { DataTableSizeValidator } from '@/modules/data-table/data-table-size-validator.service';

@@ -5,10 +5,10 @@ import type {
 	TagEntity,
 	AnnotationTagEntity,
 } from '@n8n/db';
+import { BadRequestError } from '@n8n/services-common';
 import { validate } from 'class-validator';
 
 import type { PersonalizationSurveyAnswersV4 } from './controllers/survey-answers.dto';
-import { BadRequestError } from './errors/response-errors/bad-request.error';
 
 export async function validateEntity(
 	entity:

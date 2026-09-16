@@ -7,6 +7,13 @@ import { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type { AuthenticatedRequest, CredentialsEntity, ICredentialsDb, User } from '@n8n/db';
 import { CredentialsRepository } from '@n8n/db';
+import {
+	AuthError,
+	BadRequestError,
+	CacheService,
+	NotFoundError,
+	UrlService,
+} from '@n8n/services-common';
 import type { Request, Response } from 'express';
 import type { Cipher } from 'n8n-core';
 import { Credentials } from 'n8n-core';
@@ -19,9 +26,6 @@ import { AuthService } from '@/auth/auth.service';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
 import { CredentialsHelper } from '@/credentials-helper';
-import { AuthError } from '@/errors/response-errors/auth.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { OAuthBrowserBindingService } from '@/oauth/oauth-browser-binding.service';
@@ -36,8 +40,6 @@ import {
 	type OAuth1CredentialData,
 } from '@/oauth/oauth.service';
 import type { OAuthRequest } from '@/requests';
-import { CacheService } from '@/services/cache/cache.service';
-import { UrlService } from '@/services/url.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 
 vi.mock('@/workflow-execute-additional-data');

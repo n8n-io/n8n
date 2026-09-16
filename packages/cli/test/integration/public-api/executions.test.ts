@@ -9,6 +9,7 @@ import {
 } from '@n8n/backend-test-utils';
 import type { ExecutionEntity, IExecutionResponse, User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { ConflictError } from '@n8n/services-common';
 import { InstanceSettings } from 'n8n-core';
 import { type ExecutionStatus } from 'n8n-workflow';
 import type { MockInstance } from 'vitest';
@@ -17,7 +18,6 @@ import { ActiveExecutions } from '@/active-executions';
 import type { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
 import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ExecutionService } from '@/executions/execution.service';
 import { Telemetry } from '@/telemetry';
 

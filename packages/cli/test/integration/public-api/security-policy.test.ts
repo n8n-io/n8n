@@ -7,10 +7,10 @@ import {
 	PERSONAL_SPACE_PUBLISHING_SETTING,
 	PERSONAL_SPACE_SHARING_SETTING,
 } from '@n8n/permissions';
+import { CacheService } from '@n8n/services-common';
 import { In } from '@n8n/typeorm';
 
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
-import { CacheService } from '@/services/cache/cache.service';
 import { createMemberWithApiKey, createOwnerWithApiKey } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 

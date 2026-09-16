@@ -18,7 +18,7 @@ export class McpModule implements ModuleInterface {
 		// Register the instance MCP server as a protected resource of the shared
 		// OAuth server, so its tokens are minted and verified with the right
 		// audiences and its discovery metadata is served.
-		const { ProtectedResourceRegistry } = await import('@/services/protected-resource.registry.js');
+		const { ProtectedResourceRegistry } = await import('@n8n/services-common');
 		const { McpProtectedResource } = await import('./mcp-protected-resource.js');
 		Container.get(ProtectedResourceRegistry).register(Container.get(McpProtectedResource));
 	}

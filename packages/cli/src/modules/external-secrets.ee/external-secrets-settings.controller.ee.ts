@@ -2,9 +2,9 @@ import { UpdateExternalSecretsSettingsDto } from '@n8n/api-types';
 import { ModuleRegistry, Logger } from '@n8n/backend-common';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Body, GlobalScope, Middleware, Post, RestController } from '@n8n/decorators';
+import { ForbiddenError } from '@n8n/services-common';
 import type { NextFunction, Request, Response } from 'express';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
 import { sendErrorResponse } from '@/response-helper';
 

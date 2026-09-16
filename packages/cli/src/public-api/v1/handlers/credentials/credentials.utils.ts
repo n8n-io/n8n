@@ -1,5 +1,6 @@
 import type { UpdateCredentialPublicDto } from '@n8n/api-types';
 import type { CredentialsEntity } from '@n8n/db';
+import { BadRequestError } from '@n8n/services-common';
 import { validate } from 'jsonschema';
 import {
 	type DisplayCondition,
@@ -9,7 +10,6 @@ import {
 } from 'n8n-workflow';
 
 import type { CredentialsHelper } from '@/credentials-helper';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 import type { IDependency, IJsonSchema } from '../../../types';
 

@@ -25,13 +25,11 @@ import {
 	PROJECT_ADMIN_ROLE_SLUG,
 	isAssignableProjectRoleSlug,
 } from '@n8n/permissions';
+import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/services-common';
 import type { FindOptionsWhere, EntityManager } from '@n8n/typeorm';
 import { In } from '@n8n/typeorm';
 import { UserError } from 'n8n-workflow';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import { UserManagementMailer } from '@/user-management/email';
 

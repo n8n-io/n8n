@@ -2,9 +2,8 @@ import type { SourceControlledFile } from '@n8n/api-types';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { BadRequestError, ForbiddenError } from '@n8n/services-common';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { SourceControlService } from '@/modules/source-control.ee/source-control.service.ee';

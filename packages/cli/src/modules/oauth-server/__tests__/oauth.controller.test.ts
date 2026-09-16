@@ -1,13 +1,12 @@
 import type { OAuthRegisteredClientsStore } from '@modelcontextprotocol/sdk/server/auth/clients.js';
 import { mockInstance } from '@n8n/backend-test-utils';
-import type { Request, Response } from 'express';
-import { mock } from 'vitest-mock-extended';
-
 import type {
 	ProtectedResource,
 	ProtectedResourceRegistry,
-} from '@/services/protected-resource.registry';
-import type { UrlService } from '@/services/url.service';
+	UrlService,
+} from '@n8n/services-common';
+import type { Request, Response } from 'express';
+import { mock } from 'vitest-mock-extended';
 
 import { OAuthServerService } from '../oauth-server.service';
 import type { OAuthController as OAuthControllerClass } from '../oauth.controller';

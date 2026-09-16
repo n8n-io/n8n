@@ -25,6 +25,13 @@ import {
 	PROJECT_VIEWER_ROLE_SLUG,
 	type AssignableGlobalRole,
 } from '@n8n/permissions';
+import {
+	BadRequestError,
+	ForbiddenError,
+	InternalServerError,
+	NotFoundError,
+	UrlService,
+} from '@n8n/services-common';
 import type { IUserSettings } from 'n8n-workflow';
 import { UserError } from 'n8n-workflow';
 import { validate as uuidValidate } from 'uuid';
@@ -36,17 +43,12 @@ import { PublicApiKeyService } from './public-api-key.service';
 import { RoleService } from './role.service';
 
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import type { Invitation } from '@/interfaces';
 import { License } from '@/license';
 import { PostHogClient } from '@/posthog';
 import type { UserRequest } from '@/requests';
-import { UrlService } from '@/services/url.service';
 import { isSsoCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
 import { UserManagementMailer } from '@/user-management/email';
 

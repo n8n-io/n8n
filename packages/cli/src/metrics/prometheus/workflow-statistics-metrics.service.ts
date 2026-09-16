@@ -2,9 +2,8 @@ import { PrometheusMetricsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { LicenseMetricsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { CacheService } from '@n8n/services-common';
 import promClient from 'prom-client';
-
-import { CacheService } from '@/services/cache/cache.service';
 
 import type { PrometheusMetricsCollector } from './base';
 import { CachedMetricQuery } from './cached-metric-query';

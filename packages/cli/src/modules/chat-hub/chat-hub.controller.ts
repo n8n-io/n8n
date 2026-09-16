@@ -39,12 +39,11 @@ import {
 	Middleware,
 } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import { BadRequestError, ForbiddenError } from '@n8n/services-common';
 import { sanitizeFilename } from '@n8n/utils/files/sanitize-filename';
 import type { NextFunction, Request, Response } from 'express';
 import multer from 'multer';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { sendErrorResponse } from '@/response-helper';
 
 import { ChatHubAgentService } from './chat-hub-agent.service';

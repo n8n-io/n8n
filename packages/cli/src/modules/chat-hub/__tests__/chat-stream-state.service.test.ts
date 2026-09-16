@@ -1,10 +1,10 @@
 import type { Logger } from '@n8n/backend-common';
 import type { ChatHubConfig, ExecutionsConfig, GlobalConfig } from '@n8n/config';
+import type { RedisClientService } from '@n8n/services-common';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import { ChatStreamStateService } from '@/modules/chat-hub/chat-stream-state.service';
-import type { RedisClientService } from '@/services/redis-client.service';
 
 describe('ChatStreamStateService', () => {
 	const logger = mock<Logger>();

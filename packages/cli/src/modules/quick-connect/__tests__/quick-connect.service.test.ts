@@ -1,9 +1,8 @@
 import type { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { BadRequestError } from '@n8n/services-common';
 import { mock } from 'vitest-mock-extended';
-
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 import type { IQuickConnectHandler } from '../handlers/handler.interface';
 import { QuickConnectConfig } from '../quick-connect.config';

@@ -7,13 +7,13 @@ import type { AuthProviderSyncHistory, RunningMode, SyncStatus } from '@n8n/db';
 import type { IPasswordAuthHandler } from '@n8n/decorators';
 import { AuthHandler } from '@n8n/decorators';
 import { Constructable, Container } from '@n8n/di';
+import { BadRequestError } from '@n8n/services-common';
 import { lazyImport } from '@n8n/utils/lazy-import';
 import type { Entry as LdapUser, ClientOptions, Client } from 'ldapts';
 import { Cipher } from 'n8n-core';
 import { CREDENTIAL_BLANKING_VALUE, jsonParse, UnexpectedError } from 'n8n-workflow';
 import type { ConnectionOptions } from 'tls';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { EventService } from '@/events/event.service';
 import {
 	assertAuthenticationMethodCanBeEnabled,

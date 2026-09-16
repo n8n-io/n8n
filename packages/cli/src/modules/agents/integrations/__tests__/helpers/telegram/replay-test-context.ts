@@ -2,11 +2,10 @@ import type { StreamChunk } from '@n8n/agents';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 import type { Logger as BackendLogger } from '@n8n/backend-common';
 import type { OutboundHttp } from '@n8n/backend-network';
+import type { UrlService } from '@n8n/services-common';
 import type { InstanceSettings } from 'n8n-core';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
-
-import type { UrlService } from '@/services/url.service';
 
 import type { AgentRepository } from '../../../../repositories/agent.repository';
 import type { ChatInstance } from '../../../chat-integration.service';

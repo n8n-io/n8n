@@ -7,6 +7,7 @@ import {
 import { Logger } from '@n8n/backend-common';
 import { ExecutionRepository, IExecutionResponse, User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { BadRequestError, InternalServerError } from '@n8n/services-common';
 import type { Response } from 'express';
 import { sleep } from '@n8n/utils/sleep';
 import { InstanceSettings } from 'n8n-core';
@@ -28,8 +29,6 @@ import { v4 as uuidv4 } from 'uuid';
 import { ActiveExecutions } from '@/active-executions';
 import { ChatExecutionManager } from '@/chat/chat-execution-manager';
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { ExecutionService } from '@/executions/execution.service';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';

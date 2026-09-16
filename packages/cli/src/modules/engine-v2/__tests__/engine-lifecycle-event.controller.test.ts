@@ -1,9 +1,8 @@
 import type { LifecycleEvent } from '@n8n/engine';
+import { BadRequestError } from '@n8n/services-common';
 import type { Request, Response } from 'express';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
-
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 import type { EngineLifecycleEventPushRelay } from '../engine-lifecycle-event-push-relay';
 import { EngineLifecycleEventController } from '../engine-lifecycle-event.controller';

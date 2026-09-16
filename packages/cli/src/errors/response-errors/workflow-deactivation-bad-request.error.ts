@@ -1,4 +1,4 @@
-import { BadRequestError } from './bad-request.error';
+import { BadRequestError } from '@n8n/services-common';
 
 /**
  * Error thrown when a workflow fails to deactivate, e.g. because a

@@ -12,6 +12,7 @@ import {
 	WorkflowPublishedVersionRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { CacheService, UrlService } from '@n8n/services-common';
 import { Cipher } from 'n8n-core';
 import { FormTrigger } from 'n8n-nodes-base/nodes/Form/FormTrigger.node';
 import type { CredentialConnectionsRequiredResponse, INode } from 'n8n-workflow';
@@ -24,8 +25,6 @@ import { DynamicCredentialUserEntryStorage } from '@/modules/dynamic-credentials
 import { N8nResolverSeeder } from '@/modules/dynamic-credentials.ee/services/n8n-resolver-seeder.service';
 import { OAuthClientRepository } from '@/modules/oauth-server/database/repositories/oauth-client.repository';
 import { OAuthTokenService } from '@/modules/oauth-server/oauth-token.service';
-import { CacheService } from '@/services/cache/cache.service';
-import { UrlService } from '@/services/url.service';
 import { WebhookServer } from '@/webhooks/webhook-server';
 
 import { createCredentials } from '../shared/db/credentials';

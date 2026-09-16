@@ -8,9 +8,9 @@ import type {
 	WorkflowReviewRequestWorkflowDetailRow,
 	WorkflowReviewRequestWorkflowRepository,
 } from '@n8n/db';
+import { ForbiddenError } from '@n8n/services-common';
 import { mock } from 'vitest-mock-extended';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import type { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 

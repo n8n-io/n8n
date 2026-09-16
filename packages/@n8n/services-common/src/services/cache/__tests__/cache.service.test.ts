@@ -3,11 +3,12 @@ import { Container } from '@n8n/di';
 import { sleep } from '@n8n/utils/sleep';
 import random from 'lodash/random';
 
-import config from '@/config';
-import { CacheService } from '@/services/cache/cache.service';
+import { CacheService } from '../cache.service';
 
-vi.mock('ioredis', () => {
-	const Redis = require('ioredis-mock');
+vi.mock('ioredis', async () => {
+	const { default: Redis } = await vi.importActual<{
+		default: new (...args: unknown[]) => unknown;
+	}>('ioredis-mock');
 
 	return {
 		// Must be a function expression (not method shorthand) so it is
@@ -33,7 +34,6 @@ for (const backend of ['memory', 'redis'] as const) {
 
 		afterEach(async () => {
 			await cacheService.reset();
-			config.load(config.default);
 		});
 
 		describe('init', () => {

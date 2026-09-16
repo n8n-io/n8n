@@ -10,6 +10,7 @@ import {
 import { Command, SystemTaskMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { McpServer } from '@n8n/n8n-nodes-langchain/mcp/core';
+import { UrlService } from '@n8n/services-common';
 import { sleep } from '@n8n/utils/sleep';
 import glob from 'fast-glob';
 import { createReadStream, createWriteStream, existsSync } from 'fs';
@@ -43,7 +44,6 @@ import { Server } from '@/server';
 import { JwtService } from '@/services/jwt.service';
 import { ExecutionsPruningService } from '@/services/pruning/executions-pruning.service';
 import { WorkflowHistoryCompactionService } from '@/services/pruning/workflow-history-compaction.service';
-import { UrlService } from '@/services/url.service';
 import { WorkflowStatisticsRollupService } from '@/services/workflow-statistics-rollup.service';
 import { WaitTracker } from '@/wait-tracker';
 

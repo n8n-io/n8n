@@ -1,7 +1,7 @@
 import { Patch, RestController } from '@n8n/decorators';
+import { BadRequestError } from '@n8n/services-common';
 import type { NpsSurveyState } from 'n8n-workflow';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NpsSurveyRequest } from '@/requests';
 import { UserService } from '@/services/user.service';
 

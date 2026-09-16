@@ -3,13 +3,11 @@ import { Logger } from '@n8n/backend-common';
 import { type HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
+import { BadRequestError, ConflictError } from '@n8n/services-common';
 import { isRecord } from '@n8n/utils/is-record';
 import type { Logger as ChatLogger, Message, Thread } from 'chat';
 import escapeRegExp from 'lodash/escapeRegExp';
 import { InstanceSettings } from 'n8n-core';
-
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
 
 import { AgentRepository } from '../../repositories/agent.repository';
 import {

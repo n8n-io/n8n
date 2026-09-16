@@ -1,6 +1,5 @@
 import type { InstanceAiRunLimitMeta } from '@n8n/api-types';
-
-import { TooManyRequestsError } from '@/errors/response-errors/too-many-requests.error';
+import { TooManyRequestsError } from '@n8n/services-common';
 
 /**
  * A new user turn was refused because a concurrency cap was already full.

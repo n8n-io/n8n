@@ -1,13 +1,11 @@
 import type { Logger } from '@n8n/backend-common';
 import { mockLogger } from '@n8n/backend-test-utils';
+import { BadRequestError, ServiceUnavailableError } from '@n8n/services-common';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { mock } from 'vitest-mock-extended';
-
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
 
 import { PromotionsGitService } from '../promotions-git.service';
 

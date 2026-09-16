@@ -1,14 +1,16 @@
 import { mockInstance } from '@n8n/backend-test-utils';
+import {
+	ConflictError,
+	ForbiddenError,
+	InternalServerError,
+	NotFoundError,
+} from '@n8n/services-common';
 import type { Request, Response } from 'express';
 import { ErrorReporter } from 'n8n-core';
 import { UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { LicenseEulaRequiredError } from '@/errors/response-errors/license-eula-required.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
 import { reportError, sendErrorResponse } from '@/response-helper';
 

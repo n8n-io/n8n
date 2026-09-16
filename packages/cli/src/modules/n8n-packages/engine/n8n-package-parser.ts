@@ -1,10 +1,10 @@
 import { Logger } from '@n8n/backend-common';
 import { WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { BadRequestError } from '@n8n/services-common';
 import { jsonParse, UserError } from 'n8n-workflow';
 import { ZodError } from 'zod';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NodeTypes } from '@/node-types';
 import * as WorkflowHelpers from '@/workflow-helpers';
 

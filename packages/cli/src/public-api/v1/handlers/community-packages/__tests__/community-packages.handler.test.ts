@@ -1,12 +1,11 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
+import { BadRequestError, NotFoundError } from '@n8n/services-common';
 import type { Response } from 'express';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { CommunityPackagesLifecycleService } from '@/modules/community-packages/community-packages.lifecycle.service';
 import type { InstalledPackages } from '@/modules/community-packages/installed-packages.entity';
 import * as middlewares from '@/public-api/v1/shared/middlewares/global.middleware';

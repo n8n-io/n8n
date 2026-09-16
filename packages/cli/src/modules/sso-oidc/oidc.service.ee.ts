@@ -13,18 +13,16 @@ import {
 } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
+import { BadRequestError, ForbiddenError, UrlService } from '@n8n/services-common';
 import { randomUUID } from 'crypto';
 import { Cipher, InstanceSettings } from 'n8n-core';
 import { jsonParse, UserError } from 'n8n-workflow';
 import type * as openidClientTypes from 'openid-client';
 import { inspect } from 'util';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { buildOidcClaimsContext } from '@/modules/provisioning.ee/claims-context.builder';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { JwtService } from '@/services/jwt.service';
-import { UrlService } from '@/services/url.service';
 import {
 	assertAuthenticationMethodCanBeEnabled,
 	getCurrentAuthenticationMethod,

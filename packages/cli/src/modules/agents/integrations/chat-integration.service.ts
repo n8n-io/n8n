@@ -3,6 +3,7 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { OnLeaderStepdown, OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
+import { UrlService } from '@n8n/services-common';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { Channel, Chat as ChatSdk, StateAdapter, Thread, UserInfo } from 'chat';
 import { InstanceSettings } from 'n8n-core';
@@ -11,7 +12,6 @@ import { OperationalError, UnexpectedError } from 'n8n-workflow';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
-import { UrlService } from '@/services/url.service';
 
 import { AgentChatBridge } from './agent-chat-bridge';
 import {

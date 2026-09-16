@@ -5,6 +5,7 @@ import { GlobalConfig } from '@n8n/config';
 import type { AgentsConfig, DeploymentConfig, InstanceAiConfig } from '@n8n/config';
 import type { OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { UnprocessableRequestError } from '@n8n/services-common';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 
@@ -13,7 +14,6 @@ import {
 	type InstanceCredentialUse,
 	type ResolvedInstanceCredential,
 } from '@/credentials/instance-credential-broker';
-import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 
 const N8N_SANDBOX_HEADER_NAME = 'x-api-key';
 

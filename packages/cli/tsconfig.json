@@ -43,6 +43,7 @@
 		{ "path": "../@n8n/di/tsconfig.build.json" },
 		{ "path": "../@n8n/nodes-langchain/tsconfig.build.json" },
 		{ "path": "../@n8n/permissions/tsconfig.build.json" },
-		{ "path": "../@n8n/scheduler/tsconfig.build.json" }
+		{ "path": "../@n8n/scheduler/tsconfig.build.json" },
+		{ "path": "../@n8n/services-common/tsconfig.build.json" }
 	]
 }

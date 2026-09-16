@@ -5,10 +5,9 @@ import {
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Body, Delete, Get, Licensed, Patch, Post, Query, RestController } from '@n8n/decorators';
+import { BadRequestError, NotFoundError } from '@n8n/services-common';
 import type { Response } from 'express';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { VariableCountLimitReachedError } from '@/errors/variable-count-limit-reached.error';
 import { VariableValidationError } from '@/errors/variable-validation.error';
 

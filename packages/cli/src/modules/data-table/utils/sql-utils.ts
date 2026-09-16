@@ -7,6 +7,7 @@ import {
 import { GlobalConfig } from '@n8n/config';
 import { DslColumn } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { NotFoundError } from '@n8n/services-common';
 import type { DataSourceOptions } from '@n8n/typeorm';
 import type {
 	DataTableColumnJsType,
@@ -16,8 +17,6 @@ import type {
 	DataTableRowsReturn,
 } from 'n8n-workflow';
 import { DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP, UnexpectedError } from 'n8n-workflow';
-
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import type { DataTableColumn } from '../data-table-column.entity';
 import type { DataTableUserTableName } from '../data-table.types';

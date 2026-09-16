@@ -8,9 +8,8 @@ import {
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Get, RestController, GlobalScope, Query, Post, Param } from '@n8n/decorators';
+import { NotFoundError } from '@n8n/services-common';
 import { Response } from 'express';
-
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { BreakingChangeMigrationService } from './breaking-changes.migration.service';
 import { BreakingChangeService } from './breaking-changes.service';

@@ -2,12 +2,12 @@ import { EmbedLoginBodyDto, EmbedLoginQueryDto } from '@n8n/api-types';
 import { Time } from '@n8n/constants';
 import { Body, Get, Post, Query, RestController } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import { UrlService } from '@n8n/services-common';
 import type { Response } from 'express';
 
 import { AuthService } from '@/auth/auth.service';
 import { EventService } from '@/events/event.service';
 import { AuthlessRequest } from '@/requests';
-import { UrlService } from '@/services/url.service';
 import { validateRedirectUrl } from '@/utils/validate-redirect-url';
 
 import { TokenExchangeService } from '../services/token-exchange.service';

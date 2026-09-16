@@ -13,11 +13,9 @@ import {
 	StaticRouterMetadata,
 } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import type { ProtectedResource } from '@n8n/services-common';
+import { ProtectedResourceRegistry, UrlService } from '@n8n/services-common';
 import type { Response, Request, RequestHandler, Router } from 'express';
-
-import type { ProtectedResource } from '@/services/protected-resource.registry';
-import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
-import { UrlService } from '@/services/url.service';
 
 import { OAuthServerConfig } from './oauth-server.config';
 import { OAuthServerService } from './oauth-server.service';

@@ -1,4 +1,4 @@
-import { ResponseError } from './abstract/response.error';
+import { ResponseError } from '@n8n/services-common';
 
 /**
  * Error thrown when license activation requires EULA acceptance.

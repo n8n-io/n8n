@@ -3,6 +3,7 @@ import { GlobalConfig } from '@n8n/config';
 import { DbConnection } from '@n8n/db';
 import { OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
+import { ServiceUnavailableError } from '@n8n/services-common';
 import compression from 'compression';
 import express from 'express';
 import { readFile } from 'fs/promises';
@@ -12,7 +13,6 @@ import { SLACK_HITL_WEBHOOK_SUFFIX, TELEGRAM_HITL_WEBHOOK_SUFFIX } from 'n8n-cor
 
 import config from '@/config';
 import { N8N_VERSION, TEMPLATES_DIR } from '@/constants';
-import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
 import { ExternalHooks } from '@/external-hooks';
 import { bodyParser, corsMiddleware, rawBodyReader } from '@/middlewares';
 import { sendErrorResponse } from '@/response-helper';

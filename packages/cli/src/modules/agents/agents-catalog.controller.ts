@@ -6,9 +6,8 @@ import {
 } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Get, Param, ProjectScope, Query, RestController } from '@n8n/decorators';
+import { BadRequestError } from '@n8n/services-common';
 import type { Response } from 'express';
-
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 import { AgentIntegrationPersistenceService } from './agent-integration-persistence.service';
 import { AgentModelCatalogService } from './agent-model-catalog.service';

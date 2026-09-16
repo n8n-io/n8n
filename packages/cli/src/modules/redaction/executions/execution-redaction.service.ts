@@ -1,5 +1,6 @@
 import { LicenseState, Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
+import { ForbiddenError, ScopeForbiddenError } from '@n8n/services-common';
 import {
 	channelsToPolicy,
 	runDataUsedDynamicCredentials,
@@ -7,8 +8,6 @@ import {
 	WorkflowSettings,
 } from 'n8n-workflow';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { ScopeForbiddenError } from '@/errors/response-errors/scope-forbidden.error';
 import { EventService } from '@/events/event.service';
 import type {
 	ExecutionRedaction,

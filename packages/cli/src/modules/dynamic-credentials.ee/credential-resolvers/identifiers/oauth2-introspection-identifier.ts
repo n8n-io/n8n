@@ -1,14 +1,13 @@
 import { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
+import { CacheService } from '@n8n/services-common';
 import type { ICredentialContext } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { IdentifierValidationError, ITokenIdentifier } from './identifier-interface';
 import { OAuth2MetadataHttpClient } from './oauth2-metadata-http-client';
 import { assertAudience, OAuth2OptionsSchema, sha256 } from './oauth2-utils';
-
-import { CacheService } from '@/services/cache/cache.service';
 
 // Cap at 5 minutes to ensure periodic revalidation
 const MAX_TOKEN_CACHE_TIMEOUT = 5 * Time.minutes.toMilliseconds;

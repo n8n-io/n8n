@@ -13,6 +13,7 @@ import type {
 	DbLockService,
 } from '@n8n/db';
 import { CredentialsEntity, DbLock, GLOBAL_OWNER_ROLE, GLOBAL_MEMBER_ROLE } from '@n8n/db';
+import { BadRequestError, ForbiddenError } from '@n8n/services-common';
 import type { EntityManager } from '@n8n/typeorm';
 import { CREDENTIAL_ERRORS, CredentialDataError, Credentials, type ErrorReporter } from 'n8n-core';
 import { OAuth2Api } from 'n8n-nodes-base/credentials/OAuth2Api.credentials';
@@ -35,8 +36,6 @@ import type { InstanceCredentialUseRegistry } from '@/credentials/instance-crede
 import * as validation from '@/credentials/validation';
 import type { CredentialsHelper } from '@/credentials-helper';
 import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import type { EventService } from '@/events/event.service';
 import type { ExternalHooks } from '@/external-hooks';
 import type { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';

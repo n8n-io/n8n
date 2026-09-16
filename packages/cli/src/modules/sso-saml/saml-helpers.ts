@@ -3,10 +3,10 @@ import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { AuthIdentity, AuthIdentityRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { AuthError } from '@n8n/services-common';
 import { randomString } from 'n8n-workflow';
 import type { FlowResult } from 'samlify/types/src/flow';
 
-import { AuthError } from '@/errors/response-errors/auth.error';
 import { PasswordUtility } from '@/services/password.utility';
 import {
 	assertAuthenticationMethodCanBeEnabled,

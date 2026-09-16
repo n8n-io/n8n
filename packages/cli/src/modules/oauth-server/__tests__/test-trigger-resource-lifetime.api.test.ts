@@ -2,6 +2,7 @@ import { createWorkflowWithHistory, testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { CacheService, ProtectedResourceRegistry, UrlService } from '@n8n/services-common';
 import { Cipher } from 'n8n-core';
 import type { IHttpRequestMethods, INode, IWebhookData, IWorkflowBase } from 'n8n-workflow';
 import { toCredentialContext, WEBHOOK_NODE_TYPE } from 'n8n-workflow';
@@ -12,9 +13,6 @@ import { setupTestServer } from '@test-integration/utils';
 
 import { OAuthClientRepository } from '@/modules/oauth-server/database/repositories/oauth-client.repository';
 import { OAuthTokenService } from '@/modules/oauth-server/oauth-token.service';
-import { CacheService } from '@/services/cache/cache.service';
-import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
-import { UrlService } from '@/services/url.service';
 import { TestWebhookRegistrationsService } from '@/webhooks/test-webhook-registrations.service';
 
 /**

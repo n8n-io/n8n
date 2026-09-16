@@ -1,4 +1,4 @@
-import { NotFoundError } from './not-found.error';
+import { NotFoundError } from '@n8n/services-common';
 
 export const webhookNotFoundErrorMessage = ({
 	path,

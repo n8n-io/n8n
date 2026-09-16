@@ -7,10 +7,9 @@ import type {
 	TestRunRepository,
 	WorkflowRepository,
 } from '@n8n/db';
+import { PaymentRequiredError } from '@n8n/services-common';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
-
-import { PaymentRequiredError } from '@/errors/response-errors/payment-required.error';
 
 import { EvaluationTestRunService } from '../evaluation-test-run.service';
 

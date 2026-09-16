@@ -6,9 +6,8 @@ import {
 	type SubAgentTaskDifficulty,
 } from '@n8n/agents';
 import type { SubAgentRunPolicy, SubAgentSource } from '@n8n/api-types';
+import { ResponseError } from '@n8n/services-common';
 import { OperationalError, UserError } from 'n8n-workflow';
-
-import { ResponseError } from '@/errors/response-errors/abstract/response.error';
 
 import { decodeAgentSandboxHostMetadata } from '../agent-sandbox-principal';
 import { formatSubAgentToolOutput } from './format-sub-agent-tool-output';

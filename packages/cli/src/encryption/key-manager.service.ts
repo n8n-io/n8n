@@ -7,6 +7,7 @@ import {
 	type DeploymentKeySortField,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { NotFoundError } from '@n8n/services-common';
 import {
 	Cipher,
 	InstanceSettings,
@@ -15,8 +16,6 @@ import {
 	type KeyInfo,
 } from 'n8n-core';
 import { randomBytes } from 'node:crypto';
-
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { isKeyRotationEnabled } from './key-rotation-flag';
 

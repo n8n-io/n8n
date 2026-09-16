@@ -1,13 +1,13 @@
 import { createTeamProject, linkUserToProject, testDb } from '@n8n/backend-test-utils';
 import type { CredentialsEntity, User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { CacheService } from '@n8n/services-common';
 import { response as Response } from 'express';
 import nock from 'nock';
 
 import { CredentialsHelper } from '@/credentials-helper';
 import { OauthService, type OauthFlowState } from '@/oauth/oauth.service';
 import { MAX_CSRF_AGE } from '@/oauth/types';
-import { CacheService } from '@/services/cache/cache.service';
 import {
 	decryptCredentialData,
 	getCredentialById,

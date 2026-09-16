@@ -9,10 +9,10 @@ import {
 import type { Project, User } from '@n8n/db';
 import { VariablesRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import type { ConflictError } from '@n8n/services-common';
+import { ForbiddenError } from '@n8n/services-common';
 
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
-import type { ConflictError } from '@/errors/response-errors/conflict.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { VariableCountLimitReachedError } from '@/errors/variable-count-limit-reached.error';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { createMember, createOwner } from '@test-integration/db/users';

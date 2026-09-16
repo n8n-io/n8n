@@ -1,10 +1,10 @@
 import type { User } from '@n8n/db';
+import { NotFoundError } from '@n8n/services-common';
 import type { INode, INodeTypeDescription, INodeCredentialDescription } from 'n8n-workflow';
 
 import { validateWorkflowCredentialReferences } from '../tools/workflow-builder/credential-validation';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { NodeTypes } from '@/node-types';
 
 const user = { id: 'user-1' } as User;

@@ -7,6 +7,7 @@ import {
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { createMember, createOwner } from '@test-integration/db/users';
+import { CacheService } from '@n8n/services-common';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
@@ -19,7 +20,6 @@ import type {
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CollaborationState } from '@/collaboration/collaboration.state';
 import { Push } from '@/push';
-import { CacheService } from '@/services/cache/cache.service';
 
 describe('CollaborationService', () => {
 	mockInstance(Push, new Push(mock(), mock(), mock(), mock(), mock()));

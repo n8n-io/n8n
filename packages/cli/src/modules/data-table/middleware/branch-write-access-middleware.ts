@@ -1,7 +1,7 @@
 import { Container } from '@n8n/di';
+import { ForbiddenError } from '@n8n/services-common';
 import type { RequestHandler } from 'express';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 
 /**
