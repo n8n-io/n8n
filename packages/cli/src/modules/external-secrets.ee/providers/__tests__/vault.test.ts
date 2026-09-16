@@ -690,14 +690,15 @@ describe('VaultProvider', () => {
 				await provider.connect();
 				expect(vi.getTimerCount()).toBe(1);
 
-				await provider.disconnect();
+				renewable.data.renewable = false;
+				await provider.connect();
 				expect(vi.getTimerCount()).toBe(0);
 
+				renewable.data.renewable = true;
 				await provider.connect();
 				expect(vi.getTimerCount()).toBe(1);
 
-				renewable.data.renewable = false;
-				await provider.connect();
+				await provider.disconnect();
 				expect(vi.getTimerCount()).toBe(0);
 			} finally {
 				vi.useRealTimers();
