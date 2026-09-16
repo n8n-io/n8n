@@ -735,11 +735,12 @@ describe('agent message queue', () => {
 			lease.abort();
 			return entries;
 		});
-		vi.spyOn(locks, 'withLease').mockImplementationOnce(
+		const main = await makeMain();
+		vi.spyOn(main['lockService'], 'withLease').mockImplementationOnce(
 			async (_namespace, _key, run) => await run(lease.signal),
 		);
 
-		await (await makeMain()).recover();
+		await main.recover();
 
 		expect(await repository.existsBy({ id: stale.id })).toBe(true);
 		expect(attachments.deleteByIds).not.toHaveBeenCalled();

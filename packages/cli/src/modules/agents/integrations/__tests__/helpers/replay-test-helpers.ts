@@ -6,6 +6,7 @@ import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { AgentChatBridge } from '../../agent-chat-bridge';
+import type { ResumeForChatConfig } from '../../../agent-execution-orchestrator.service';
 import type { AgentMessageQueueService } from '../../../agent-message-queue.service';
 import type { IntegrationQueuePayload } from '../../../agent-message-queue.types';
 import { ChatIntegrationRegistry, type AgentChatIntegration } from '../../agent-chat-integration';
@@ -219,7 +220,10 @@ export function createReplayContextSetup<TChat extends ChatInstance>(params: {
 	];
 	const agentExecutor = {
 		executeForChatPublished: vi.fn(() => toStream(stream)),
-		resumeForChat: vi.fn(() => toStream(stream)),
+		resumeForChat: vi.fn(async function* (config: ResumeForChatConfig) {
+			await config.onResumeClaimed?.();
+			yield* toStream(stream);
+		}),
 	};
 	const messageContextStore = new MemoryMessageContextStore();
 
