@@ -391,7 +391,19 @@ export function AINodesView(_nodes: SimplifiedNodeType[]): NodeView {
 	};
 }
 
-export function TriggerView() {
+function getAddEmptyGroupCommand(i18n: ReturnType<typeof useI18n>): CommandCreateElement {
+	return {
+		key: ADD_EMPTY_GROUP_NODE_CREATOR_ITEM,
+		type: 'command',
+		properties: {
+			title: i18n.baseText('nodeCreator.triggerHelperPanel.addGroup'),
+			icon: 'group',
+			description: i18n.baseText('nodeCreator.triggerHelperPanel.addGroupDescription'),
+		},
+	};
+}
+
+export function TriggerView(_nodes: SimplifiedNodeType[] = [], showAddGroup = false) {
 	const i18n = useI18n();
 	const evaluationStore = useEvaluationStore();
 	const isEvaluationEnabled = evaluationStore.isEvaluationEnabled;
@@ -511,6 +523,7 @@ export function TriggerView() {
 					icon: 'folder-open',
 				},
 			},
+			...(showAddGroup ? [getAddEmptyGroupCommand(i18n)] : []),
 		],
 	};
 
@@ -679,15 +692,7 @@ export function RegularView(nodes: SimplifiedNodeType[]) {
 		hideHeader: true,
 	});
 
-	view.items.push({
-		key: ADD_EMPTY_GROUP_NODE_CREATOR_ITEM,
-		type: 'command',
-		properties: {
-			title: i18n.baseText('nodeCreator.triggerHelperPanel.addGroup'),
-			icon: 'group',
-			description: i18n.baseText('nodeCreator.triggerHelperPanel.addGroupDescription'),
-		},
-	} satisfies CommandCreateElement);
+	view.items.push(getAddEmptyGroupCommand(i18n));
 
 	return view;
 }
