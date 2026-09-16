@@ -2310,6 +2310,33 @@ describe('AgentBuilderView — three-column shell', () => {
 		}
 	});
 
+	it('dismisses the notice with a close button and shows the next update', async () => {
+		const wrapper = await renderView();
+		for (const listener of pushListeners) {
+			listener({
+				type: 'agentUpdated',
+				data: { projectId: 'p1', agentId: 'a1', source: 'mcp' },
+			});
+		}
+		await nextTick();
+
+		const dismiss = wrapper.get('[data-testid="agent-builder-external-update-dismiss"]');
+		expect(dismiss.attributes('aria-label')).toBe('generic.dismiss');
+		await dismiss.trigger('click');
+		expect(wrapper.find(externalUpdateSelector).exists()).toBe(false);
+
+		for (const listener of pushListeners) {
+			listener({
+				type: 'agentUpdated',
+				data: { projectId: 'p1', agentId: 'a1', source: 'builder' },
+			});
+		}
+		await nextTick();
+		expect(wrapper.get(externalUpdateSelector).text()).toBe(
+			'agents.builder.externalUpdate.builder',
+		);
+	});
+
 	it.each(['agentId', 'projectId'] as const)(
 		'clears the notice when %s changes and on unmount',
 		async (field) => {

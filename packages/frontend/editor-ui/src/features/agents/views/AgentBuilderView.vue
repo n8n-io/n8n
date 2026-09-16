@@ -7,6 +7,7 @@ import {
 	N8nButton,
 	N8nCanvasPill,
 	N8nIcon,
+	N8nIconButton,
 	type ActionDropdownItem,
 } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
@@ -2123,7 +2124,19 @@ function onSwitchAgent(nextAgentId: string) {
 				<template #icon>
 					<N8nIcon icon="info" aria-hidden="true" />
 				</template>
-				<span :class="$style.externalUpdateText">{{ externalUpdateMessage }}</span>
+				<span :class="$style.externalUpdateContent">
+					<span :class="$style.externalUpdateText">{{ externalUpdateMessage }}</span>
+					<N8nIconButton
+						:class="$style.externalUpdateDismiss"
+						icon="x"
+						variant="ghost"
+						size="xsmall"
+						:aria-label="locale.baseText('generic.dismiss')"
+						:title="locale.baseText('generic.dismiss')"
+						data-testid="agent-builder-external-update-dismiss"
+						@click="clearExternalUpdate"
+					/>
+				</span>
 			</N8nCanvasPill>
 		</div>
 		<div
@@ -2347,9 +2360,21 @@ function onSwitchAgent(nextAgentId: string) {
 	color: var(--color--neutral-white);
 }
 
+.externalUpdateContent {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
+
 .externalUpdateText {
 	white-space: normal;
 	overflow-wrap: anywhere;
+}
+
+.externalUpdateDismiss {
+	flex-shrink: 0;
+	color: var(--color--neutral-white);
+	pointer-events: auto;
 }
 
 .aiButtonIcon {
