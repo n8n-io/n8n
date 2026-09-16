@@ -640,10 +640,10 @@ catalogs:
       version: 10.70.0
     '@testing-library/dom':
       specifier: ^10.4.0
-      version: 10.4.0
+      version: 10.4.1
     '@testing-library/jest-dom':
       specifier: ^6.6.3
-      version: 6.6.3
+      version: 6.9.1
     '@testing-library/user-event':
       specifier: ^14.6.1
       version: 14.6.1
@@ -869,7 +869,6 @@ overrides:
   undici@6: ^6.28.0
   undici@7: ^7.29.0
   node-gyp>undici: ^7.29.0
-  eslint-plugin-import-x>@typescript-eslint/utils: 8.35.0
   '@babel/traverse@<7.23.2': ^7.23.2
   '@vitest/browser@<4.1.10': 4.1.10
   immutable: 5.1.8
@@ -1064,13 +1063,13 @@ importers:
         version: 3.0.0(ai@7.0.74(zod@3.25.76))(zod@3.25.76)
       '@opentelemetry/exporter-trace-otlp-http':
         specifier: '>=0.50.0'
-        version: 0.217.0(@opentelemetry/api@1.9.1)
+        version: 0.221.0(@opentelemetry/api@1.9.1)
       '@opentelemetry/sdk-trace-base':
         specifier: 2.7.1
         version: 2.7.1(@opentelemetry/api@1.9.1)
       '@opentelemetry/sdk-trace-node':
         specifier: '>=1.0.0'
-        version: 2.7.1(@opentelemetry/api@1.9.1)
+        version: 2.10.0(@opentelemetry/api@1.9.1)
       ai:
         specifier: 'catalog:'
         version: 7.0.74(zod@3.25.76)
@@ -1101,7 +1100,7 @@ importers:
         version: 1.9.1
       '@opentelemetry/context-async-hooks':
         specifier: ^2.7.1
-        version: 2.7.1(@opentelemetry/api@1.9.1)
+        version: 2.10.0(@opentelemetry/api@1.9.1)
       '@pinecone-database/pinecone':
         specifier: 'catalog:'
         version: 5.1.2
@@ -4079,7 +4078,7 @@ importers:
         version: link:../vitest-config
       '@testing-library/jest-dom':
         specifier: catalog:frontend
-        version: 6.6.3
+        version: 6.9.1
       '@testing-library/user-event':
         specifier: catalog:frontend
         version: 14.6.1(@testing-library/dom@10.4.1)
@@ -4103,7 +4102,7 @@ importers:
         version: link:../typescript-config
       '@testing-library/jest-dom':
         specifier: catalog:frontend
-        version: 6.6.3
+        version: 6.9.1
       '@testing-library/vue':
         specifier: catalog:frontend
         version: 8.1.0(@vue/compiler-sfc@3.5.26)(vue@3.5.26(typescript@7.0.2))
@@ -5137,7 +5136,7 @@ importers:
         version: 10.5.10(esbuild@0.28.1)(rollup@4.52.4)(storybook@10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10))(vite@8.0.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
       '@testing-library/jest-dom':
         specifier: catalog:frontend
-        version: 6.6.3
+        version: 6.9.1
       '@testing-library/vue':
         specifier: catalog:frontend
         version: 8.1.0(@vue/compiler-sfc@3.5.26)(vue@3.5.26(typescript@6.0.2))
@@ -5225,7 +5224,7 @@ importers:
         version: 0.1.6(pinia@2.2.4(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2)))(vue@3.5.26(typescript@6.0.2))
       '@testing-library/jest-dom':
         specifier: catalog:frontend
-        version: 6.6.3
+        version: 6.9.1
       '@testing-library/user-event':
         specifier: catalog:frontend
         version: 14.6.1(@testing-library/dom@10.4.1)
@@ -5397,7 +5396,7 @@ importers:
         version: 10.5.10(esbuild@0.28.1)(rollup@4.52.4)(storybook@10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10))(vite@8.0.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
       '@testing-library/jest-dom':
         specifier: catalog:frontend
-        version: 6.6.3
+        version: 6.9.1
       '@testing-library/user-event':
         specifier: catalog:frontend
         version: 14.6.1(@testing-library/dom@10.4.1)
@@ -5664,7 +5663,7 @@ importers:
         version: link:../../../@n8n/typescript-config
       '@testing-library/jest-dom':
         specifier: catalog:frontend
-        version: 6.6.3
+        version: 6.9.1
       '@types/lodash':
         specifier: 'catalog:'
         version: 4.17.17
@@ -5710,7 +5709,7 @@ importers:
         version: link:../../../@n8n/vitest-config
       '@testing-library/jest-dom':
         specifier: catalog:frontend
-        version: 6.6.3
+        version: 6.9.1
       '@testing-library/vue':
         specifier: catalog:frontend
         version: 8.1.0(@vue/compiler-sfc@3.5.26)(vue@3.5.26(typescript@6.0.2))
@@ -5768,7 +5767,7 @@ importers:
         version: link:../../../@n8n/vitest-config
       '@testing-library/jest-dom':
         specifier: catalog:frontend
-        version: 6.6.3
+        version: 6.9.1
       '@testing-library/user-event':
         specifier: catalog:frontend
         version: 14.6.1(@testing-library/dom@10.4.1)
@@ -5844,7 +5843,7 @@ importers:
         version: link:../../../@n8n/vitest-config
       '@testing-library/jest-dom':
         specifier: catalog:frontend
-        version: 6.6.3
+        version: 6.9.1
       '@testing-library/user-event':
         specifier: catalog:frontend
         version: 14.6.1(@testing-library/dom@10.4.1)
@@ -5917,7 +5916,7 @@ importers:
         version: link:../../../@n8n/vitest-config
       '@testing-library/jest-dom':
         specifier: catalog:frontend
-        version: 6.6.3
+        version: 6.9.1
       '@testing-library/user-event':
         specifier: catalog:frontend
         version: 14.6.1(@testing-library/dom@10.4.1)
@@ -6230,13 +6229,13 @@ importers:
         version: 10.5.10(esbuild@0.28.1)(rollup@4.52.4)(storybook@10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10))(vite@8.0.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
       '@testing-library/dom':
         specifier: catalog:frontend
-        version: 10.4.0
+        version: 10.4.1
       '@testing-library/jest-dom':
         specifier: catalog:frontend
-        version: 6.6.3
+        version: 6.9.1
       '@testing-library/user-event':
         specifier: catalog:frontend
-        version: 14.6.1(@testing-library/dom@10.4.0)
+        version: 14.6.1(@testing-library/dom@10.4.1)
       '@testing-library/vue':
         specifier: catalog:frontend
         version: 8.1.0(@vue/compiler-sfc@3.5.26)(vue@3.5.26(typescript@6.0.2))
@@ -6606,7 +6605,7 @@ importers:
         version: link:../../../@n8n/vitest-config
       '@testing-library/jest-dom':
         specifier: catalog:frontend
-        version: 6.6.3
+        version: 6.9.1
       '@testing-library/vue':
         specifier: catalog:frontend
         version: 8.1.0(@vue/compiler-sfc@3.5.26)(vue@3.5.26(typescript@6.0.2))
@@ -6697,7 +6696,7 @@ importers:
         version: 0.1.6(pinia@2.2.4(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2)))(vue@3.5.26(typescript@6.0.2))
       '@testing-library/jest-dom':
         specifier: catalog:frontend
-        version: 6.6.3
+        version: 6.9.1
       '@testing-library/user-event':
         specifier: catalog:frontend
         version: 14.6.1(@testing-library/dom@10.4.1)
@@ -13627,10 +13626,6 @@ packages:
   '@testcontainers/redis@11.13.0':
     resolution: {integrity: sha512-Wx4oFLpR6/khRTFUUX7Nl8cCcjk85mpIWjwTe/PI39skdEG0QaJMAaeZG2r6fEB1YyXtSQGtiZiBUMafbRfh7w==}
 
-  '@testing-library/dom@10.4.0':
-    resolution: {integrity: sha512-pemlzrSESWbdAloYml3bAJMEfNh1Z7EduzqPKprCH5S341frlpYnUEW0H72dLxa6IsYr+mPno20GiSm+h9dEdQ==}
-    engines: {node: '>=18'}
-
   '@testing-library/dom@10.4.1':
     resolution: {integrity: sha512-o4PXJQidqJl82ckFaXUeoAW+XysPLauYI43Abki5hABd853iMhitooc6znOnczgbTYmEP6U6/y1ZyKAIsvMKGg==}
     engines: {node: '>=18'}
@@ -13638,10 +13633,6 @@ packages:
   '@testing-library/dom@9.3.4':
     resolution: {integrity: sha512-FlS4ZWlp97iiNWig0Muq8p+3rVDjRiYE+YKGbAqXOu9nwJFFOdL00kFpz42M+4huzYi86vAK1sOOfyOG45muIQ==}
     engines: {node: '>=14'}
-
-  '@testing-library/jest-dom@6.6.3':
-    resolution: {integrity: sha512-IteBhl4XqYNkM54f4ejhLRJiZNqcSCoXUOG2CPK7qbD322KjQozM4kHQOfkG2oln9b9HTYqs+Sae8vBATubxxA==}
-    engines: {node: '>=14', npm: '>=6', yarn: '>=1'}
 
   '@testing-library/jest-dom@6.9.1':
     resolution: {integrity: sha512-zIcONa+hVtVSSep9UT3jZ5rizo2BsxgyDYU7WFD5eICBE7no3881HGeb/QkGfsJs6JTkY1aQhT7rIPC7e+0nnA==}
@@ -16051,10 +16042,6 @@ packages:
     resolution: {integrity: sha512-NUPRluOfOiTKBKvWPtSD4PhFvWCqOi0BGStNWs57X9js7XGTprSmFoz5F0tWhR4WPjNeR9jXqdC7/UpSJTnlRg==}
     engines: {node: '>=18'}
 
-  chalk@3.0.0:
-    resolution: {integrity: sha512-4D3B6Wf41KOYRFdszmDqMCGq5VV/uMAB273JILmO+3jAlh8X4qDtdtgCR3fxtbLEMzSx22QdhnDcJvu2u1fVwg==}
-    engines: {node: '>=8'}
-
   chalk@4.1.2:
     resolution: {integrity: sha512-oKnbhFyRIXpUuez8iBMmyEa4nbj4IOQyuhc/wy9kY7/WVPcwIO9VA668Pu8RkO7+0G76SLROeyw9CpQ061i4mA==}
     engines: {node: '>=10'}
@@ -17531,7 +17518,7 @@ packages:
     resolution: {integrity: sha512-J5gx7sN6DTm0LRT//eP3rVVQ2Yi4hrX0B+DbWxa5er8PZ6JjLo9GUBwogIFvEDdwJaSqZplpQT+haK/cXhb7VQ==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
     peerDependencies:
-      '@typescript-eslint/utils': 8.35.0
+      '@typescript-eslint/utils': ^8.0.0
       eslint: ^8.57.0 || ^9.0.0
       eslint-import-resolver-node: '*'
     peerDependenciesMeta:
@@ -33044,17 +33031,6 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@testing-library/dom@10.4.0':
-    dependencies:
-      '@babel/code-frame': 7.29.7
-      '@babel/runtime': 7.29.7
-      '@types/aria-query': 5.0.4
-      aria-query: 5.3.0
-      chalk: 4.1.2
-      dom-accessibility-api: 0.5.16
-      lz-string: 1.5.0
-      pretty-format: 27.5.1
-
   '@testing-library/dom@10.4.1':
     dependencies:
       '@babel/code-frame': 7.29.7
@@ -33077,16 +33053,6 @@ snapshots:
       lz-string: 1.5.0
       pretty-format: 27.5.1
 
-  '@testing-library/jest-dom@6.6.3':
-    dependencies:
-      '@adobe/css-tools': 4.4.0
-      aria-query: 5.3.0
-      chalk: 3.0.0
-      css.escape: 1.5.1
-      dom-accessibility-api: 0.6.3
-      lodash: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
-      redent: 3.0.0
-
   '@testing-library/jest-dom@6.9.1':
     dependencies:
       '@adobe/css-tools': 4.4.0
@@ -33095,10 +33061,6 @@ snapshots:
       dom-accessibility-api: 0.6.3
       picocolors: 1.1.1
       redent: 3.0.0
-
-  '@testing-library/user-event@14.6.1(@testing-library/dom@10.4.0)':
-    dependencies:
-      '@testing-library/dom': 10.4.0
 
   '@testing-library/user-event@14.6.1(@testing-library/dom@10.4.1)':
     dependencies:
@@ -36045,11 +36007,6 @@ snapshots:
       pathval: 2.0.0
 
   chai@6.2.2: {}
-
-  chalk@3.0.0:
-    dependencies:
-      ansi-styles: 4.3.0
-      supports-color: 7.2.0
 
   chalk@4.1.2:
     dependencies:
