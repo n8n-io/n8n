@@ -11,9 +11,9 @@ import {
 import type { User } from '@n8n/db';
 import { ProjectRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { EventService } from '@n8n/services-common';
 import { jsonParse, type INode } from 'n8n-workflow';
 
-import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { createMember, createOwner } from '@test-integration/db/users';
 import { saveCredential } from '@test-integration/db/credentials';

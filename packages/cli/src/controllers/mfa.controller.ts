@@ -7,11 +7,10 @@ import {
 	Post,
 	RestController,
 } from '@n8n/decorators';
-import { BadRequestError, ForbiddenError } from '@n8n/services-common';
+import { BadRequestError, EventService, ForbiddenError } from '@n8n/services-common';
 import { Response } from 'express';
 
 import { AuthService } from '@/auth/auth.service';
-import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { MfaService } from '@/mfa/mfa.service';
 import { MFA } from '@/requests';

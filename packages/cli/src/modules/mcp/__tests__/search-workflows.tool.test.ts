@@ -1,3 +1,4 @@
+import { FolderFinderService } from '@n8n/services-common';
 import type { Mock } from 'vitest';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { User } from '@n8n/db';
@@ -12,7 +13,6 @@ import {
 import { v4 as uuid } from 'uuid';
 
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
-import { FolderFinderService } from '@/services/folder-finder.service';
 import { Telemetry } from '@/telemetry';
 import { WorkflowService } from '@/workflows/workflow.service';
 

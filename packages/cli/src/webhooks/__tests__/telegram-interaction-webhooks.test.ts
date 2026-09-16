@@ -1,10 +1,10 @@
 import type { IExecutionResponse } from '@n8n/db';
+import type { EventService } from '@n8n/services-common';
 import type express from 'express';
 import type { InstanceSettings } from 'n8n-core';
 import { buildHitlCallbackReference } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import type { EventService } from '@/events/event.service';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import { TelegramInteractionWebhooks } from '@/webhooks/telegram-interaction-webhooks';
 import type { WebhookService } from '@/webhooks/webhook.service';

@@ -9,11 +9,11 @@ import { WorkflowsConfig } from '@n8n/config';
 import type { IWorkflowDb } from '@n8n/db';
 import { WorkflowDependencyRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { EventService } from '@n8n/services-common';
 import { ErrorReporter, Tracing } from 'n8n-core';
 import type { INode } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import { EventService } from '@/events/event.service';
 import { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
 import { retryUntil } from '@test-integration/retry-until';
 

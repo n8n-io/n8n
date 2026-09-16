@@ -11,12 +11,11 @@ import {
 import { Logger } from '@n8n/backend-common';
 import { WorkflowRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { ConflictError, NotFoundError } from '@n8n/services-common';
+import { ConflictError, EventService, NotFoundError } from '@n8n/services-common';
 import { isRecord } from '@n8n/utils/is-record';
 import { UserError } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
-import { EventService } from '@/events/event.service';
 
 import {
 	AgentModificationTelemetryService,

@@ -10,8 +10,8 @@ import {
 	WorkflowReviewRequestWorkflowRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { EventService } from '@n8n/services-common';
 
-import { EventService } from '@/events/event.service';
 import type { WorkflowMutationHooks } from '@/workflows/workflow-mutation-hooks-proxy.service';
 
 import { WorkflowReviewStateNotifier } from './workflow-review-state-notifier.service';

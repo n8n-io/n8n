@@ -12,7 +12,7 @@ import type {
 	KeyedRateLimiterConfig,
 } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
-import { NotFoundError, UnauthenticatedError } from '@n8n/services-common';
+import { NotFoundError, UnauthenticatedError, userHasScopes } from '@n8n/services-common';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { Router } from 'express';
 import type { Application, Request, Response, RequestHandler } from 'express';
@@ -22,7 +22,6 @@ import assert from 'node:assert';
 import { AuthService } from '@/auth/auth.service';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { License } from '@/license';
-import { userHasScopes } from '@/permissions.ee/check-access';
 import { reportError, send, sendErrorResponse } from '@/response-helper';
 
 import { AbstractServer } from './abstract-server';

@@ -5,13 +5,16 @@ import { ProjectRepository } from '@n8n/db';
 import { RoleMappingRuleRepository, RoleRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { ALL_ROLES } from '@n8n/permissions';
-import { BadRequestError, NotFoundError } from '@n8n/services-common';
+import {
+	BadRequestError,
+	NotFoundError,
+	RoleDeletionCheckProxy,
+	RoleService,
+} from '@n8n/services-common';
 
 import { License } from '@/license';
 import { ProvisioningRoleDeletionChecker } from '@/modules/provisioning.ee/role-deletion-checker.ee';
 import { ProjectService } from '@/services/project.service.ee';
-import { RoleDeletionCheckProxy } from '@/services/role-deletion-check-proxy.service';
-import { RoleService } from '@/services/role.service';
 
 import {
 	createRole,

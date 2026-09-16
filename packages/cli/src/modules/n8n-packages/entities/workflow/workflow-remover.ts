@@ -1,7 +1,6 @@
 import { Service } from '@n8n/di';
-import { ConflictError } from '@n8n/services-common';
+import { ConflictError, WorkflowFinderService } from '@n8n/services-common';
 
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 import { removesUnpackagedWorkflows } from '../folder/folder-conflict-policy';

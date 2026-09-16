@@ -2,10 +2,9 @@ import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig, WorkflowHistoryCompactionConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type { DbConnection, WorkflowHistoryRepository } from '@n8n/db';
+import type { EventService } from '@n8n/services-common';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
-
-import type { EventService } from '@/events/event.service';
 
 import {
 	getCompactionWindowDeltas,

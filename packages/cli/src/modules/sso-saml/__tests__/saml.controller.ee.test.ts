@@ -2,13 +2,12 @@ import type { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { GLOBAL_OWNER_ROLE, type AuthenticatedRequest, type User } from '@n8n/db';
 import { ControllerRegistryMetadata, type Controller } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import type { UrlService } from '@n8n/services-common';
+import type { EventService, UrlService } from '@n8n/services-common';
 import { type Response } from 'express';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { AuthService } from '@/auth/auth.service';
-import type { EventService } from '@/events/event.service';
 import { SsoAccessDeniedError } from '@/modules/provisioning.ee/errors/sso-access-denied.error';
 import type { AuthlessRequest } from '@/requests';
 import { isSamlLicensedAndEnabled } from '@/sso.ee/sso-helpers';

@@ -2,6 +2,7 @@
 import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import type { Project, WorkflowEntity } from '@n8n/db';
+import type { EventService } from '@n8n/services-common';
 import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { sleep } from '@n8n/utils/sleep';
@@ -32,7 +33,6 @@ import { mock, type MockProxy } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
 import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
-import type { EventService } from '@/events/event.service';
 import { executeErrorWorkflow } from '@/execution-lifecycle/execute-error-workflow';
 import type { ExecutionService } from '@/executions/execution.service';
 import type {

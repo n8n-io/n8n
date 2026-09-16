@@ -1,7 +1,6 @@
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { WorkflowFinderService } from '@n8n/services-common';
 
 import type { WorkflowSubWorkflowRequirement } from './workflow.types';
 import type { ManifestEntry } from '../../spec/manifest.schema';

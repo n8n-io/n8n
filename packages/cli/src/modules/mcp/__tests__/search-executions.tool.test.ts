@@ -1,11 +1,11 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { User } from '@n8n/db';
+import { WorkflowFinderService } from '@n8n/services-common';
 import type { ExecutionSummary } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 
 import { ExecutionService } from '@/executions/execution.service';
 import { Telemetry } from '@/telemetry';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { createSearchExecutionsTool } from '../tools/search-executions.tool';
 

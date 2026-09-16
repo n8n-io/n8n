@@ -15,11 +15,11 @@ import {
 } from '@n8n/db';
 import type { SharedCredentials, SettingsRepository } from '@n8n/db';
 import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
+import type { EventService } from '@n8n/services-common';
 import { BadRequestError, CacheService } from '@n8n/services-common';
 import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
-import type { EventService } from '@/events/event.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { PasswordUtility } from '@/services/password.utility';
 import { mockCredential, mockProject } from '@test/mock-objects';

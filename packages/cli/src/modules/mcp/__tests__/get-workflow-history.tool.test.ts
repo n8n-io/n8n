@@ -1,10 +1,10 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { WorkflowHistory } from '@n8n/db';
 import { User } from '@n8n/db';
+import { WorkflowFinderService } from '@n8n/services-common';
 import type { Mock } from 'vitest';
 
 import { Telemetry } from '@/telemetry';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 
 import { createWorkflow } from './mock.utils';

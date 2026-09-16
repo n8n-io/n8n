@@ -1,11 +1,10 @@
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
-import { ForbiddenError } from '@n8n/services-common';
+import { ForbiddenError, userHasScopes } from '@n8n/services-common';
 import { pickVariableForProject } from 'n8n-workflow';
 
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { VariableCountLimitReachedError } from '@/errors/variable-count-limit-reached.error';
-import { userHasScopes } from '@/permissions.ee/check-access';
 
 import {
 	variableBlockingFailures,

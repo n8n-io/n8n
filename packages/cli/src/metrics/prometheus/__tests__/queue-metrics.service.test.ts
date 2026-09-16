@@ -1,3 +1,4 @@
+import type { EventService } from '@n8n/services-common';
 import type { Mock } from 'vitest';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { ExecutionsConfig, PrometheusMetricsConfig } from '@n8n/config';
@@ -6,8 +7,6 @@ import type { InstanceSettings } from 'n8n-core';
 import promClient from 'prom-client';
 
 import { PrometheusQueueMetricsService } from '../queue-metrics.service';
-
-import type { EventService } from '@/events/event.service';
 
 vi.mock('prom-client');
 

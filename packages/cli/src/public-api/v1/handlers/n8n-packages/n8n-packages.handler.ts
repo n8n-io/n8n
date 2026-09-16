@@ -2,11 +2,10 @@ import { ExportPackageRequestDto, ImportPackageRequestDto } from '@n8n/api-types
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { ApiKeyScope } from '@n8n/permissions';
-import { BadRequestError, ForbiddenError } from '@n8n/services-common';
+import { BadRequestError, EventService, ForbiddenError } from '@n8n/services-common';
 import type { Response } from 'express';
 import { UserError } from 'n8n-workflow';
 
-import { EventService } from '@/events/event.service';
 import {
 	PackageEntityAccessDeniedError,
 	PackageEntityNotFoundError,

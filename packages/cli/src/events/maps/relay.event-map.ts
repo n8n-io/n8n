@@ -1198,27 +1198,6 @@ export type RelayEventMap = {
 
 	// #endregion
 
-	// #region Custom Roles
-
-	'custom-role-created': {
-		userId: string;
-		roleSlug: string;
-		scopes: string[];
-	};
-
-	'custom-role-updated': {
-		userId: string;
-		roleSlug: string;
-		scopes: string[];
-	};
-
-	'custom-role-deleted': {
-		userId: string;
-		roleSlug: string;
-	};
-
-	// #endregion
-
 	// #region Instance AI
 
 	'instance-ai-settings-updated': {

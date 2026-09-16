@@ -11,6 +11,8 @@ import {
 } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
+import type { EventMap } from '@n8n/services-common';
+import { EventService } from '@n8n/services-common';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { snakeCase } from 'change-case';
 import { BinaryDataConfig, InstanceSettings } from 'n8n-core';
@@ -34,7 +36,6 @@ import semver from 'semver';
 import config from '@/config';
 import { N8N_VERSION } from '@/constants';
 import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
-import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { determineFinalExecutionStatus } from '@/execution-lifecycle/shared/shared-hook-functions';
 import type { IExecutionTrackProperties } from '@/interfaces';
@@ -2408,7 +2409,7 @@ export class TelemetryEventRelay extends EventRelay {
 
 	// #region Custom Roles
 
-	private customRoleCreated({ userId, roleSlug, scopes }: RelayEventMap['custom-role-created']) {
+	private customRoleCreated({ userId, roleSlug, scopes }: EventMap['custom-role-created']) {
 		this.telemetry.track('User created custom role', {
 			user_id: userId,
 			role_slug: roleSlug,
@@ -2416,7 +2417,7 @@ export class TelemetryEventRelay extends EventRelay {
 		});
 	}
 
-	private customRoleUpdated({ userId, roleSlug, scopes }: RelayEventMap['custom-role-updated']) {
+	private customRoleUpdated({ userId, roleSlug, scopes }: EventMap['custom-role-updated']) {
 		this.telemetry.track('User updated custom role', {
 			user_id: userId,
 			role_slug: roleSlug,
@@ -2424,7 +2425,7 @@ export class TelemetryEventRelay extends EventRelay {
 		});
 	}
 
-	private customRoleDeleted({ userId, roleSlug }: RelayEventMap['custom-role-deleted']) {
+	private customRoleDeleted({ userId, roleSlug }: EventMap['custom-role-deleted']) {
 		this.telemetry.track('User deleted custom role', {
 			user_id: userId,
 			role_slug: roleSlug,

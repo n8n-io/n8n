@@ -8,6 +8,7 @@ import {
 	WorkflowStatisticsRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { EventService } from '@n8n/services-common';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import {
 	isCompletedExecutionStatus,
@@ -19,7 +20,6 @@ import {
 	type WorkflowExecutionSource,
 } from 'n8n-workflow';
 
-import { EventService } from '@/events/event.service';
 import { UserService } from '@/services/user.service';
 import { isBillableExecution } from '@/utils/is-billable-execution';
 

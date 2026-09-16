@@ -1,6 +1,5 @@
 import { Service } from '@n8n/di';
-
-import { EventService } from '@/events/event.service';
+import { EventService } from '@n8n/services-common';
 
 /**
  * Durable-log instrumentation (RFC: instance-ai durable event log,

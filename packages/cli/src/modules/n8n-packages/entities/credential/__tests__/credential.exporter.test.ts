@@ -1,9 +1,8 @@
 import type { CredentialsEntity, User } from '@n8n/db';
+import type { CredentialsFinderService } from '@n8n/services-common';
 import { CredentialDataError, Credentials } from 'n8n-core';
 import { jsonParse, type ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
-
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 
 import { CapturingWriter } from '../../../io/__tests__/utils/capturing-writer';
 import { CredentialExporter } from '../credential.exporter';

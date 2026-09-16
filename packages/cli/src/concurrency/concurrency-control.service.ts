@@ -2,12 +2,12 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { ExecutionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { EventService } from '@n8n/services-common';
 import type { WorkflowExecuteMode } from 'n8n-workflow';
 
 import { InvalidConcurrencyLimitError } from '@/errors/invalid-concurrency-limit.error';
 import { UnknownExecutionModeError } from '@/errors/unknown-execution-mode.error';
 import { resolveEvaluationConcurrencyLimit } from '@/evaluation.ee/evaluation-concurrency.helper';
-import { EventService } from '@/events/event.service';
 import { License } from '@/license';
 import { Telemetry } from '@/telemetry';
 

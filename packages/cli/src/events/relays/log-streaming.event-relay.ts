@@ -1,11 +1,11 @@
 import { Redactable } from '@n8n/decorators';
 import { Service } from '@n8n/di';
+import { EventService } from '@n8n/services-common';
 import { InstanceSettings } from 'n8n-core';
 import type { IWorkflowBase, JsonValue } from 'n8n-workflow';
 
 import { EventMessageGeneric } from '@/eventbus/event-message-classes/event-message-generic';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
-import { EventService } from '@/events/event.service';
 import type { RelayEventMap, UserLike } from '@/events/maps/relay.event-map';
 import { EventRelay } from '@/events/relays/event-relay';
 import type {

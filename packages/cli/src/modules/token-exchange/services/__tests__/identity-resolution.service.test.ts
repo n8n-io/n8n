@@ -7,10 +7,9 @@ import {
 	type User,
 	type UserRepository,
 } from '@n8n/db';
+import type { EventService, RoleService } from '@n8n/services-common';
 import { mock } from 'vitest-mock-extended';
 
-import type { EventService } from '@/events/event.service';
-import type { RoleService } from '@/services/role.service';
 import type { UserService } from '@/services/user.service';
 
 import type { TokenExchangeConfig } from '../../token-exchange.config';

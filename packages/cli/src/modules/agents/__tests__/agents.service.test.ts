@@ -4,6 +4,7 @@ import { DEFAULT_AGENT_PERSONALISATION } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { ProjectRelationRepository, User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import type { EventService } from '@n8n/services-common';
 import { ConflictError, NotFoundError } from '@n8n/services-common';
 import { QueryFailedError } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
@@ -21,7 +22,6 @@ import { ChatIntegrationService } from '../integrations/chat-integration.service
 import type { AgentTaskRepository } from '../repositories/agent-task.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { SubAgentCleanupService } from '../sub-agents/sub-agent-cleanup.service';
-import type { EventService } from '@/events/event.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
 
 const agentId = 'agent-1';

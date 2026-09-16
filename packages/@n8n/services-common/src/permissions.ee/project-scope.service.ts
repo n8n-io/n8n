@@ -2,7 +2,7 @@ import { ProjectRelationRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
 
-import { RoleService } from '@/services/role.service';
+import { RoleService } from '../services/role.service';
 
 /**
  * Resolves the project roles, or the project IDs, that restrict a scope-aware query.

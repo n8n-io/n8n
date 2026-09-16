@@ -18,6 +18,7 @@ import {
 	Scope as DBScope,
 	ScopeRepository,
 	GLOBAL_ADMIN_ROLE,
+	isUniqueConstraintError,
 } from '@n8n/db';
 import type { EntityManager } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -25,7 +26,6 @@ import type {
 	Scope,
 	Role as RoleDTO,
 	AssignableProjectRole,
-	AssignableGlobalRole,
 	RoleNamespace,
 } from '@n8n/permissions';
 import {
@@ -38,11 +38,11 @@ import {
 	PROJECT_EDITOR_ROLE_SLUG,
 	PROJECT_VIEWER_ROLE_SLUG,
 } from '@n8n/permissions';
-import { BadRequestError, NotFoundError } from '@n8n/services-common';
 import { UnexpectedError, UserError } from 'n8n-workflow';
 
-import { EventService } from '@/events/event.service';
-import { isUniqueConstraintError } from '@/response-helper';
+import { BadRequestError } from '../errors/response-errors/bad-request.error';
+import { NotFoundError } from '../errors/response-errors/not-found.error';
+import { EventService } from '../events/event.service';
 
 import { RoleCacheService } from './role-cache.service';
 import { RoleDeletionCheckProxy } from './role-deletion-check-proxy.service';
@@ -458,7 +458,7 @@ export class RoleService {
 		return await this.roleCacheService.getRolesWithAllScopes(namespace, scopes, trx);
 	}
 
-	isRoleLicensed(role: AssignableProjectRole | AssignableGlobalRole) {
+	isRoleLicensed(role: AssignableProjectRole) {
 		// TODO: move this info into FrontendSettings
 
 		if (!isBuiltInRole(role)) {

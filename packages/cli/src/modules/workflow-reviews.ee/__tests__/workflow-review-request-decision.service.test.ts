@@ -21,6 +21,7 @@ import type {
 	OperationContext,
 } from '@n8n/db';
 import { DbLock } from '@n8n/db';
+import type { EventService, RoleService, WorkflowFinderService } from '@n8n/services-common';
 import {
 	BadRequestError,
 	ConflictError,
@@ -36,11 +37,8 @@ import { WorkflowReviewRequestMutationGuard } from '../workflow-review-request-m
 import { WorkflowReviewStateNotifier } from '../workflow-review-state-notifier.service';
 
 import type { CollaborationService } from '@/collaboration/collaboration.service';
-import type { EventService } from '@/events/event.service';
 import type { ProjectService } from '@/services/project.service.ee';
-import type { RoleService } from '@/services/role.service';
 import type { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
 const memberUser = (id = 'user-1') => mock<User>({ id, role: { slug: 'global:member' } });

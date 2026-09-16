@@ -2,14 +2,13 @@ import type { BuiltTool } from '@n8n/agents';
 import type { Logger } from '@n8n/backend-common';
 import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-network';
 import type { CredentialsEntity, User } from '@n8n/db';
+import type { CredentialsFinderService, EventService } from '@n8n/services-common';
 import { BadRequestError, ConflictError, NotFoundError } from '@n8n/services-common';
 import { QueryFailedError } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { CredentialTypes } from '@/credential-types';
-import type { EventService } from '@/events/event.service';
 import type { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import type { McpRegistryServer } from '@/modules/mcp-registry/registry/mcp-registry.types';
 import type { OauthService } from '@/oauth/oauth.service';

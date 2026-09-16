@@ -1,6 +1,7 @@
 import type { OutboundHttp } from '@n8n/backend-network';
 import type { InstanceSettingsLoaderConfig } from '@n8n/config';
 import type { AuthenticatedRequest, CredentialsEntity, User } from '@n8n/db';
+import type { CredentialsFinderService } from '@n8n/services-common';
 import { BadRequestError, ForbiddenError } from '@n8n/services-common';
 import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 import type {
@@ -9,7 +10,6 @@ import type {
 } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 
 import type { MessageEventBusDestination } from '../destinations/message-event-bus-destination.ee';

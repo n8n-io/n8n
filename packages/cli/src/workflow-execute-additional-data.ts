@@ -7,7 +7,7 @@ import { ExecutionsConfig, GlobalConfig, SsrfProtectionConfig, WorkflowsConfig }
 import { Time } from '@n8n/constants';
 import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { UrlService } from '@n8n/services-common';
+import { EventService, UrlService } from '@n8n/services-common';
 import type { JSONSchema7 } from 'json-schema';
 import { ExternalSecretsProxy, WorkflowExecute } from 'n8n-core';
 import type {
@@ -57,7 +57,6 @@ import { RuntimeCredentialProxyService } from './services/runtime-credential-pro
 import { ActiveExecutions } from '@/active-executions';
 import { CredentialsHelper } from '@/credentials-helper';
 import { PreExecuteBlockedError } from '@/errors/pre-execute-blocked.error';
-import { EventService } from '@/events/event.service';
 import type { AiEventPayload } from '@/events/maps/ai.event-map';
 import { getLifecycleHooksForSubExecutions } from '@/execution-lifecycle/execution-lifecycle-hooks';
 import { ExecutionPersistence } from '@/executions/execution-persistence';

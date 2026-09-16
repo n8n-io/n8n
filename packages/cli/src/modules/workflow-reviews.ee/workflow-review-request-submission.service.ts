@@ -21,11 +21,15 @@ import {
 	type WorkflowReviewRequest,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { BadRequestError, ConflictError, NotFoundError } from '@n8n/services-common';
+import {
+	BadRequestError,
+	ConflictError,
+	EventService,
+	NotFoundError,
+	RoleService,
+	WorkflowFinderService,
+} from '@n8n/services-common';
 
-import { EventService } from '@/events/event.service';
-import { RoleService } from '@/services/role.service';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 
 import { WorkflowReviewFeatureGate } from './workflow-review-feature-gate.service';

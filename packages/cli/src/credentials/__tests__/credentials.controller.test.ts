@@ -1,4 +1,5 @@
-import { BadRequestError, NotFoundError } from '@n8n/services-common';
+import type { CredentialsFinderService } from '@n8n/services-common';
+import { BadRequestError, NotFoundError, userHasScopes } from '@n8n/services-common';
 import type { MockInstance } from 'vitest';
 vi.mock('@/generic-helpers', () => ({
 	validateEntity: vi.fn(),
@@ -18,15 +19,22 @@ import { GLOBAL_OWNER_ROLE, GLOBAL_MEMBER_ROLE } from '@n8n/db';
 import type { Scope } from '@n8n/permissions';
 import { mock } from 'vitest-mock-extended';
 
-import * as checkAccess from '@/permissions.ee/check-access';
 import type { CredentialRequest } from '@/requests';
 
 import { createNewCredentialsPayload, createdCredentialsWithScopes } from './credentials.test-data';
 import type { CredentialDependencyService } from '../credential-dependency.service';
-import type { CredentialsFinderService } from '../credentials-finder.service';
 import { CredentialsController } from '../credentials.controller';
 import { CredentialsService } from '../credentials.service';
 import * as validation from '../validation';
+
+vi.mock('@n8n/services-common', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@n8n/services-common')>();
+	return { ...actual, userHasScopes: vi.fn(actual.userHasScopes) };
+});
+
+beforeEach(() => {
+	vi.mocked(userHasScopes).mockReset();
+});
 
 const originalValidateExternalSecretsPermissions = validation.validateExternalSecretsPermissions;
 
@@ -807,7 +815,7 @@ describe('CredentialsController', () => {
 		});
 
 		it('should throw error when editing external secret expression without permission', async () => {
-			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(false);
+			vi.mocked(userHasScopes).mockResolvedValue(false);
 			const memberReq = {
 				user: { id: 'member-id', role: GLOBAL_MEMBER_ROLE },
 				params: { credentialId },
@@ -840,7 +848,7 @@ describe('CredentialsController', () => {
 		});
 
 		it('should throw error when adding new external secret expression without permission', async () => {
-			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(false);
+			vi.mocked(userHasScopes).mockResolvedValue(false);
 			const memberReq = {
 				user: { id: 'member-id', role: GLOBAL_MEMBER_ROLE },
 				params: { credentialId },

@@ -22,8 +22,12 @@ import { hasGlobalScope } from '@n8n/permissions';
 import {
 	BadRequestError,
 	ConflictError,
+	EventService,
 	ForbiddenError,
 	NotFoundError,
+	RoleService,
+	WorkflowFinderService,
+	userHasScopes,
 } from '@n8n/services-common';
 import type { EntityManager } from '@n8n/typeorm';
 import { In, QueryFailedError } from '@n8n/typeorm';
@@ -39,7 +43,6 @@ import { WorkflowPublicationNotifier } from './publication/workflow-publication-
 import { WorkflowPublicationStatusService } from './publication/workflow-publication-status.service';
 import { getEnabledTriggerNodes } from './triggers/enabled-trigger-nodes';
 import { getErrorDescription, getErrorNodeId, getRequiredRedactionScopes } from './utils';
-import { WorkflowFinderService } from './workflow-finder.service';
 import { WorkflowHistoryService } from './workflow-history/workflow-history.service';
 import { WorkflowMutationHooksProxy } from './workflow-mutation-hooks-proxy.service';
 import { WorkflowPublishGuardProxy } from './workflow-publish-guard-proxy.service';
@@ -52,14 +55,12 @@ import { WorkflowDeactivationBadRequestError } from '@/errors/response-errors/wo
 import { WorkflowPublishForbiddenError } from '@/errors/response-errors/workflow-publish-forbidden.error';
 import { WorkflowValidationError } from '@/errors/response-errors/workflow-validation.error';
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
-import { EventService } from '@/events/event.service';
 import type { WorkflowActionSource } from '@/events/maps/relay.event-map';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { ExternalHooks, toWorkflowLifecycleHookActor } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
 import { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
 import { NodeTypes } from '@/node-types';
-import { userHasScopes } from '@/permissions.ee/check-access';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import type { ListQuery } from '@/requests';
 import { hasSharing } from '@/requests';
@@ -69,7 +70,6 @@ import { ScheduleTriggerJobRegistrar } from '@/scheduling/schedule-trigger-node/
 import { WorkflowScheduledJobOwner } from '@/scheduling/workflow-scheduled-job-owner';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
-import { RoleService } from '@/services/role.service';
 import { TagService } from '@/services/tag.service';
 import { WEBHOOK_CONFLICT_MESSAGE } from '@/webhooks/constants';
 import { WebhookService } from '@/webhooks/webhook.service';

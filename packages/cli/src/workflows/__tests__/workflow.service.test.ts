@@ -13,12 +13,14 @@ import type {
 } from '@n8n/db';
 import { WorkflowEntity, WorkflowHistory } from '@n8n/db';
 import type { Scope } from '@n8n/permissions';
+import type { EventService, RoleService, WorkflowFinderService } from '@n8n/services-common';
 import {
 	BadRequestError,
 	ConflictError,
 	NotFoundError,
 	UnprocessableRequestError,
 	WorkflowPublishBlockedError,
+	userHasScopes,
 } from '@n8n/services-common';
 import type { EntityManager } from '@n8n/typeorm';
 import { QueryFailedError } from '@n8n/typeorm';
@@ -28,15 +30,13 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 
 import type { ActiveWorkflowManager } from '@/active-workflow-manager';
+import type { SharedWorkflowRepository } from '@n8n/db';
 import { WorkflowActivationBadRequestError } from '@/errors/response-errors/workflow-activation-bad-request.error';
 import { WorkflowDeactivationBadRequestError } from '@/errors/response-errors/workflow-deactivation-bad-request.error';
-import type { EventService } from '@/events/event.service';
-import type { SharedWorkflowRepository } from '@n8n/db';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { ExternalHooks, WorkflowLifecycleHookActor } from '@/external-hooks';
 import type { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
 import type { PolicyCleared } from '@n8n/decorators';
-import { userHasScopes } from '@/permissions.ee/check-access';
 import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
 import type { DurableJobProvisioner } from '@/scheduling/durable-job-provisioner';
@@ -44,12 +44,10 @@ import type { PollTriggerJobRegistrar } from '@/scheduling/poll-trigger-node/pol
 import type { ScheduleTriggerJobRegistrar } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
 import type { WorkflowScheduledJobOwner } from '@/scheduling/workflow-scheduled-job-owner';
 import type { OwnershipService } from '@/services/ownership.service';
-import type { RoleService } from '@/services/role.service';
 import type { TagService } from '@/services/tag.service';
 import type { WebhookService } from '@/webhooks/webhook.service';
 import * as WorkflowHelpers from '@/workflow-helpers';
 import type { WorkflowHookContextService } from '@/workflow-hook-context.service';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import type { WorkflowPublicationStatusService } from '@/workflows/publication/workflow-publication-status.service';
 import type { WorkflowMutationHooksProxy } from '@/workflows/workflow-mutation-hooks-proxy.service';
@@ -57,7 +55,10 @@ import type { WorkflowPublishGuardProxy } from '@/workflows/workflow-publish-gua
 import type { WorkflowValidationService } from '@/workflows/workflow-validation.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
-vi.mock('@/permissions.ee/check-access');
+vi.mock('@n8n/services-common', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/services-common')>()),
+	userHasScopes: vi.fn(),
+}));
 vi.mock('@/workflow-helpers');
 vi.mock('@/generic-helpers');
 

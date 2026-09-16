@@ -1,8 +1,8 @@
 import { Logger } from '@n8n/backend-common';
 import { UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { EventService } from '@n8n/services-common';
 
-import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { EventRelay } from '@/events/relays/event-relay';
 import { UserManagementMailer } from '@/user-management/email';

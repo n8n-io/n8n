@@ -3,7 +3,7 @@ import { Logger } from '@n8n/backend-common';
 import { WorkflowRepository, type User, type WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
-import { ForbiddenError } from '@n8n/services-common';
+import { ForbiddenError, userHasScopes } from '@n8n/services-common';
 import { jsonParse } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
@@ -22,7 +22,6 @@ import {
 import type { ManifestEntry, PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
 import type { SerializedWorkflow } from '@/modules/n8n-packages/spec/serialized/workflow.schema';
 import type { PackageRequirements } from '@/modules/n8n-packages/spec/requirements.schema';
-import { userHasScopes } from '@/permissions.ee/check-access';
 
 import { parsePackageFiles, type PackageFile } from './base-branch-files';
 import { PACKAGE_SUBFOLDER } from './constants';

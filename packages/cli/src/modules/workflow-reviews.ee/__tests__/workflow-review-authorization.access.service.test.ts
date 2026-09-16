@@ -10,14 +10,13 @@ import type {
 	WorkflowReviewRequestReviewerRepository,
 	WorkflowReviewRequestWorkflowRepository,
 } from '@n8n/db';
+import type { RoleService, WorkflowFinderService } from '@n8n/services-common';
 import { NotFoundError } from '@n8n/services-common';
 import { mock } from 'vitest-mock-extended';
 
 import { WorkflowReviewAuthorizationService } from '../workflow-review-authorization.service';
 
 import type { ProjectService } from '@/services/project.service.ee';
-import type { RoleService } from '@/services/role.service';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 const requestId = 'req-1';
 const workflowId = 'wf-1';

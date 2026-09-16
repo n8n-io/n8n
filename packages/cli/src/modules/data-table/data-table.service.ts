@@ -14,6 +14,7 @@ import { Logger } from '@n8n/backend-common';
 import { ProjectRelationRepository, ProjectRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
+import { EventService, RoleService } from '@n8n/services-common';
 import { In, type EntityManager } from '@n8n/typeorm';
 import { DateTime } from 'luxon';
 import type {
@@ -46,9 +47,7 @@ import { DataTableNotFoundError } from './errors/data-table-not-found.error';
 import { DataTableValidationError } from './errors/data-table-validation.error';
 import { normalizeRows } from './utils/sql-utils';
 
-import { EventService } from '@/events/event.service';
 import { ProjectNotFoundError, ProjectService } from '@/services/project.service.ee';
-import { RoleService } from '@/services/role.service';
 
 @Service()
 export class DataTableService {

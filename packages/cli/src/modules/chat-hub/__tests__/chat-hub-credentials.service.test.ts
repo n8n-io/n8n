@@ -5,12 +5,12 @@ import type {
 	SharedWorkflowRepository,
 	User,
 } from '@n8n/db';
+import type { CredentialsFinderService } from '@n8n/services-common';
 import { BadRequestError, ForbiddenError } from '@n8n/services-common';
 import type { EntityManager } from '@n8n/typeorm';
 import type { INodeCredentials } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
 
 import { ChatHubCredentialsService } from '../chat-hub-credentials.service';

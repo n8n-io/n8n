@@ -11,9 +11,7 @@ import {
 	type WorkflowReviewRequestForWorkflowRow,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { NotFoundError } from '@n8n/services-common';
-
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { NotFoundError, WorkflowFinderService } from '@n8n/services-common';
 
 import { WorkflowReviewAuthorizationService } from './workflow-review-authorization.service';
 import { WorkflowReviewFeatureGate } from './workflow-review-feature-gate.service';

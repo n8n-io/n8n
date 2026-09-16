@@ -1,11 +1,10 @@
 import type { AuthenticatedRequest, Project } from '@n8n/db';
 import type { Role } from '@n8n/permissions';
+import type { EventService, RoleService } from '@n8n/services-common';
 import { NotFoundError } from '@n8n/services-common';
 import { mock } from 'vitest-mock-extended';
 
-import type { EventService } from '@/events/event.service';
 import type { ProjectService } from '@/services/project.service.ee';
-import type { RoleService } from '@/services/role.service';
 
 import { RoleController } from '../role.controller';
 

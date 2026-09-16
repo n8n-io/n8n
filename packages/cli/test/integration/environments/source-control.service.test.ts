@@ -13,7 +13,7 @@ import {
 	WorkflowEntity,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { BadRequestError, ForbiddenError } from '@n8n/services-common';
+import { BadRequestError, EventService, ForbiddenError } from '@n8n/services-common';
 import * as fastGlob from 'fast-glob';
 import { Cipher } from 'n8n-core';
 import { readFile, writeFile } from 'node:fs/promises';
@@ -21,7 +21,6 @@ import { basename, isAbsolute } from 'node:path';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { EventService } from '@/events/event.service';
 import { DataTable } from '@/modules/data-table/data-table.entity';
 import {
 	SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER,

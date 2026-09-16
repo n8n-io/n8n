@@ -1,6 +1,11 @@
 import { LicenseState, Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import { ForbiddenError, ScopeForbiddenError } from '@n8n/services-common';
+import {
+	EventService,
+	ForbiddenError,
+	ScopeForbiddenError,
+	WorkflowFinderService,
+} from '@n8n/services-common';
 import {
 	channelsToPolicy,
 	runDataUsedDynamicCredentials,
@@ -8,13 +13,11 @@ import {
 	WorkflowSettings,
 } from 'n8n-workflow';
 
-import { EventService } from '@/events/event.service';
 import type {
 	ExecutionRedaction,
 	ExecutionRedactionOptions,
 	RedactableExecution,
 } from '@/executions/execution-redaction';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import type {
 	IExecutionRedactionStrategy,

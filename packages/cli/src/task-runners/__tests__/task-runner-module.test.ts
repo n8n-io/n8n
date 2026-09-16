@@ -1,9 +1,9 @@
 import type { Logger } from '@n8n/backend-common';
 import type { TaskRunnersConfig } from '@n8n/config';
+import type { EventService } from '@n8n/services-common';
 import type { ErrorReporter } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import type { EventService } from '@/events/event.service';
 import type { TaskBrokerServer } from '@/task-runners/task-broker/task-broker-server';
 import type { JsTaskRunnerProcess } from '@/task-runners/task-runner-process-js';
 import type { PyTaskRunnerProcess } from '@/task-runners/task-runner-process-py';

@@ -1,6 +1,6 @@
 import { Service } from '@n8n/di';
+import { EventService } from '@n8n/services-common';
 
-import { EventService } from '@/events/event.service';
 import { EventRelay } from '@/events/relays/event-relay';
 
 import { FavoritesService } from './favorites.service';

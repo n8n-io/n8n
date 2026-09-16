@@ -15,18 +15,17 @@ import {
 	WorkflowReviewRequestWorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { EventService, WorkflowFinderService } from '@n8n/services-common';
 import type { InstanceSettings } from 'n8n-core';
 import { readFile } from 'node:fs/promises';
 import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { EventService } from '@/events/event.service';
 import { SourceControlImportService } from '@/modules/source-control.ee/source-control-import.service.ee';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 import { WorkflowPublicationNotifier } from '@/workflows/publication/workflow-publication-notifier';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowMutationHooksProxy } from '@/workflows/workflow-mutation-hooks-proxy.service';
 import { WorkflowValidationService } from '@/workflows/workflow-validation.service';

@@ -1,11 +1,10 @@
 import { ModuleRegistry } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import { ForbiddenError } from '@n8n/services-common';
+import { ForbiddenError, userHasScopes } from '@n8n/services-common';
 import { UserError } from 'n8n-workflow';
 
 import type { DataTable } from '@/modules/data-table/data-table.entity';
 import { DataTableService } from '@/modules/data-table/data-table.service';
-import { userHasScopes } from '@/permissions.ee/check-access';
 
 import { matchTargetTable } from './data-table-matching-mode';
 import { decideAbsentTable } from './data-table-missing-mode';

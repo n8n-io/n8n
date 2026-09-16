@@ -13,12 +13,10 @@ import {
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
+import { CredentialsFinderService, RoleService, WorkflowFinderService } from '@n8n/services-common';
 import { In } from '@n8n/typeorm';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
-import { RoleService } from '@/services/role.service';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { AgentUsageProviderProxy } from './agent-usage-provider-proxy.service';
 

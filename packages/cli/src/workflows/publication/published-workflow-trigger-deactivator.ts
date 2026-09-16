@@ -3,9 +3,9 @@ import { WorkflowsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { OnLeaderStepdown, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
+import { EventService } from '@n8n/services-common';
 import { ActiveWorkflowTriggers, ErrorReporter, InstanceSettings } from 'n8n-core';
 
-import { EventService } from '@/events/event.service';
 import { WorkflowPublicationLifecycleLock } from '@/workflows/publication/workflow-publication-lifecycle-lock';
 import { WorkflowPublicationOutboxConsumer } from '@/workflows/publication/workflow-publication-outbox-consumer';
 

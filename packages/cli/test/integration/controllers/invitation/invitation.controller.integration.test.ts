@@ -14,9 +14,9 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
+import { EventService } from '@n8n/services-common';
 import { Not } from '@n8n/typeorm';
 
-import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { JwtService } from '@/services/jwt.service';
 import { PasswordUtility } from '@/services/password.utility';

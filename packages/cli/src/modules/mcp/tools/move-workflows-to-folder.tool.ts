@@ -1,13 +1,12 @@
 import { folderIdSchema } from '@n8n/api-types';
 import type { Folder, User } from '@n8n/db';
+import type { FolderFinderService, WorkflowFinderService } from '@n8n/services-common';
 import { PROJECT_ROOT } from 'n8n-workflow';
 import z from 'zod';
 
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
-import type { FolderFinderService } from '@/services/folder-finder.service';
 import type { Telemetry } from '@/telemetry';
 import { createWorkflowEntityFromPayload } from '@/workflows/workflow-entity-mapper';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';

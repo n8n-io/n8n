@@ -19,9 +19,8 @@ import {
 	ConflictError,
 	ForbiddenError,
 	NotFoundError,
+	userHasScopes,
 } from '@n8n/services-common';
-
-import { userHasScopes } from '@/permissions.ee/check-access';
 
 import { DIRECTION_LABELS } from './constants';
 import type { PromotionConfig } from './database/entities/promotion-config.entity';

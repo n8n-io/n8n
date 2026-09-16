@@ -18,11 +18,9 @@ import {
 	PROJECT_ADMIN_ROLE_SLUG,
 	hasGlobalScope,
 } from '@n8n/permissions';
-import { NotFoundError } from '@n8n/services-common';
+import { NotFoundError, RoleService, WorkflowFinderService } from '@n8n/services-common';
 
 import { ProjectService } from '@/services/project.service.ee';
-import { RoleService } from '@/services/role.service';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { resolveDecisionCapability } from './workflow-review-decision-policy';
 

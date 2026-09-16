@@ -3,12 +3,11 @@ import type { User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { threadAuthorizesAgentAdoption } from '@n8n/instance-ai';
 import type { Scope } from '@n8n/permissions';
-import { ForbiddenError, NotFoundError } from '@n8n/services-common';
+import { ForbiddenError, NotFoundError, userHasScopes } from '@n8n/services-common';
 
 import { AgentDefaultModelResolverService } from '@/modules/agents/agent-default-model-resolver.service';
 import { AgentRunnableStateService } from '@/modules/agents/agent-runnable-state.service';
 import { AgentsService } from '@/modules/agents/agents.service';
-import { userHasScopes } from '@/permissions.ee/check-access';
 
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
 

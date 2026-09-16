@@ -34,6 +34,28 @@ and infrastructure services that need the persistence layer or that only
 | `CacheService` | Memory or Redis cache with hash support |
 | `RedisClientService` | Redis client factory with reconnect handling |
 | `ProtectedResourceRegistry` | Registry of OAuth 2.1 protected resources served by the instance |
+| `EventService` and `EventMap` | Typed event bus. See [Events](#events) |
+| `RoleService`, `RoleCacheService`, `RoleDeletionCheckProxy` | Role and scope resolution |
+| `userHasScopes`, `ProjectScopeService` | Scope checks behind `@GlobalScope` and `@ProjectScope` |
+| `ScopedResourceResolverRegistry` | Lets a module report which project owns a resource that `@ProjectScope` checks |
+| `WorkflowFinderService`, `CredentialsFinderService`, `FolderFinderService` | Scope-aware lookups of workflows, credentials and folders |
+
+## Events
+
+`EventService` extends `TypedEmitter<EventMap>`. This package declares only
+the events that its own services emit. Every other owner adds its events to
+the same interface:
+
+```ts
+declare module '@n8n/services-common' {
+	interface EventMap {
+		'my-feature-enabled': { userId: string };
+	}
+}
+```
+
+`cli` does this in `packages/cli/src/events/event-map.ts`. A backend module
+in its own package will do the same for its events.
 
 ## Rules for adding code
 

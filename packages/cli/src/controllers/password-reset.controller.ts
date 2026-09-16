@@ -17,6 +17,7 @@ import {
 import { hasGlobalScope } from '@n8n/permissions';
 import {
 	BadRequestError,
+	EventService,
 	ForbiddenError,
 	InternalServerError,
 	NotFoundError,
@@ -27,7 +28,6 @@ import { ErrorReporter } from 'n8n-core';
 
 import { AuthService } from '@/auth/auth.service';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
-import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { License } from '@/license';
 import { MfaService } from '@/mfa/mfa.service';

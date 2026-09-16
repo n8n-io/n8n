@@ -5,7 +5,7 @@ import {
 	type User,
 	WorkflowEntity,
 } from '@n8n/db';
-import type { UrlService } from '@n8n/services-common';
+import type { UrlService, WorkflowFinderService } from '@n8n/services-common';
 import { NotFoundError } from '@n8n/services-common';
 import z from 'zod';
 
@@ -45,7 +45,6 @@ import {
 	resolveNodeWebhookIds,
 } from '@/workflow-helpers';
 import type { WorkflowCreationService } from '@/workflows/workflow-creation.service';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 const MAX_WORKFLOW_DESCRIPTION_LENGTH = 255;
 

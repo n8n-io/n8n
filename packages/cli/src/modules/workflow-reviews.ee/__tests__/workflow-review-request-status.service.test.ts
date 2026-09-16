@@ -7,11 +7,11 @@ import type {
 	WorkflowReviewRequestForWorkflowRow,
 	WorkflowReviewRequestRepository,
 } from '@n8n/db';
+import type { WorkflowFinderService } from '@n8n/services-common';
 import { ForbiddenError, NotFoundError } from '@n8n/services-common';
 import { mock } from 'vitest-mock-extended';
 
 import type { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import type { WorkflowReviewAuthorizationService } from '../workflow-review-authorization.service';
 import { WorkflowReviewFeatureGate } from '../workflow-review-feature-gate.service';

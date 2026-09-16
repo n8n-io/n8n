@@ -8,7 +8,12 @@ import type { EvaluationConfig, User } from '@n8n/db';
 import { EvaluationConfigRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
-import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/services-common';
+import {
+	BadRequestError,
+	ForbiddenError,
+	NotFoundError,
+	userHasScopes,
+} from '@n8n/services-common';
 import {
 	EVALUATION_TRIGGER_NODE_TYPE,
 	getParentNodes,
@@ -27,7 +32,6 @@ import type {
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { DataTableColumn } from '@/modules/data-table/data-table-column.entity';
 import { DataTableService } from '@/modules/data-table/data-table.service';
-import { userHasScopes } from '@/permissions.ee/check-access';
 import { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 
 /** First-item `json` of a node's last run output, keyed by field name. */
