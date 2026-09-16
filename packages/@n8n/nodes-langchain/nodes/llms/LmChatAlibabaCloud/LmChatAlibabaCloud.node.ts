@@ -247,10 +247,14 @@ export class LmChatAlibabaCloud implements INodeType {
 		const configuration: ClientOptions = {
 			baseURL,
 			fetchOptions: {
-				dispatcher: getProxyAgent(baseURL, {
-					headersTimeout: timeout,
-					bodyTimeout: timeout,
-				}),
+				dispatcher: getProxyAgent(
+					baseURL,
+					{
+						headersTimeout: timeout,
+						bodyTimeout: timeout,
+					},
+					this.helpers.getSecureEgressFilter(),
+				),
 			},
 		};
 

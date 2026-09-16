@@ -6,6 +6,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
+import { escapeODataValue } from '@utils/query-escaping';
 import {
 	stampItemIndexOnError,
 	validateUserTargetId,
@@ -65,8 +66,7 @@ async function findUserByMail(
 	this: IExecuteFunctions,
 	address: string,
 ): Promise<IDataObject | undefined> {
-	// OData string literals escape a single quote by doubling it.
-	const literal = address.replace(/'/g, "''");
+	const literal = escapeODataValue(address);
 	const response = (await microsoftApiRequest.call(
 		this,
 		'GET',

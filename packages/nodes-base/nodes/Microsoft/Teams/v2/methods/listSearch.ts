@@ -7,6 +7,7 @@ import {
 } from 'n8n-workflow';
 
 import { sleep } from '@n8n/utils/sleep';
+import { escapeODataSearchValue } from '@utils/query-escaping';
 import { filterSortSearchListItems } from '../helpers/utils';
 import {
 	buildTeamsPath,
@@ -169,20 +170,8 @@ export async function getUsers(
 	const headers: IDataObject = { ConsistencyLevel: 'eventual' };
 	const qs: IDataObject = paginationToken ? {} : { $select: 'id,displayName,userPrincipalName' };
 	if (!paginationToken) {
-		// Two different problems. `"` and `\` only need escaping inside the quoted term, so
-		// escape them (backslash first, then quote) and keep the term intact. `&` and `#`
-		// cannot be escaped or encoded away: Graph re-splits the query string AFTER
-		// percent-decoding, so they truncate the expression and 400 the whole call (verified on
-		// a live tenant). Those two are dropped, which just widens the match. `mail` is searched
-		// as well, because a guest's mail differs from their principal name and the mail is the
-		// address people actually know.
-		// The emptiness check is on the stripped term, not the raw filter: a filter of only
-		// unusable characters would otherwise send an empty term, which Graph rejects.
-		const escaped = (filter ?? '')
-			.replace(/[&#]/g, '')
-			.replaceAll('\\', '\\\\')
-			.replaceAll('"', '\\"')
-			.trim();
+		// Graph splits `&` and `#` after decoding. Remove them before escaping the quoted term.
+		const escaped = escapeODataSearchValue((filter ?? '').replace(/[&#]/g, '').trim());
 		if (escaped) {
 			qs.$search = `"displayName:${escaped}" OR "mail:${escaped}" OR "userPrincipalName:${escaped}"`;
 		}
