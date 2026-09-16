@@ -56,6 +56,12 @@ const apiErrorFromBody = (status: number, data: unknown) =>
 		}) as unknown as JsonObject,
 	);
 
+const createExecuteContext = () => {
+	const context = mockDeep<IExecuteFunctions>();
+	context.getInputData.mockReturnValue([]);
+	return context;
+};
+
 describe('Databricks', () => {
 	const credentials = {
 		databricksApi: {
@@ -799,7 +805,7 @@ describe('listSearch -> PERMISSION_DENIED surfaces the Databricks message', () =
 
 describe('Databricks SQL -> Execute Query (FAILED/CANCELED statement)', () => {
 	const setupContext = (status: unknown) => {
-		const context = mockDeep<IExecuteFunctions>();
+		const context = createExecuteContext();
 		context.getNode.mockReturnValue(node);
 		context.getNodeParameter.mockImplementation((name) => {
 			if (name === 'warehouseId') return 'warehouse123';
@@ -882,7 +888,7 @@ describe('Databricks SQL -> Execute Query (async polling)', () => {
 	});
 
 	it('should poll until the statement reaches SUCCEEDED and map rows to items', async () => {
-		const context = mockDeep<IExecuteFunctions>();
+		const context = createExecuteContext();
 		context.getNode.mockReturnValue(node);
 		context.getNodeParameter.mockImplementation((name) => {
 			if (name === 'warehouseId') return 'warehouse123';
@@ -962,7 +968,7 @@ describe('Job -> Run (wait for completion)', () => {
 			options: { timeout: 10 },
 			...overrides,
 		};
-		const context = mockDeep<IExecuteFunctions>();
+		const context = createExecuteContext();
 		context.getNode.mockReturnValue(node);
 		context.getExecutionCancelSignal.mockReturnValue(cancelSignal);
 		context.getNodeParameter.mockImplementation((name, index) =>
