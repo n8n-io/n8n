@@ -68,21 +68,6 @@ pnpm benchmark-locally --runDir /tmp/n8n-data --scenarioFilter http-node sqlite
 The cloud environment is a dedicated Azure VM. [`./infra`](./infra/) holds the
 Terraform code that creates it.
 
-Requirements:
-
-- [Terraform](https://developer.hashicorp.com/terraform/install) 1.16.2. The
-  nightly workflow pins this version.
-- The [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli).
-- A signed-in Azure session. Run `az login`.
-- Access to the `n8n-benchmarking` resource group.
-
-Terraform uses the active subscription of your Azure CLI session. Set
-`ARM_SUBSCRIPTION_ID` to use a different subscription:
-
-```sh
-export ARM_SUBSCRIPTION_ID=<subscription-id>
-```
-
 Create the environment, run the benchmarks, then delete the environment:
 
 ```sh
@@ -90,13 +75,6 @@ pnpm provision-cloud-env
 pnpm benchmark-in-cloud
 pnpm destroy-cloud-env
 ```
-
-Always run `pnpm destroy-cloud-env` when you finish. The VM uses a dedicated
-host, which is expensive.
-
-Terraform does not persist its state. `pnpm destroy-cloud-env` therefore falls
-back to the Azure CLI when it finds no state file. It then deletes every
-resource that has the `Id=N8nBenchmark` tag.
 
 ## Running the `n8n-benchmark` cli
 
