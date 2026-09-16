@@ -72,7 +72,12 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['SharedCredentials', 'CredentialsEntity']);
+	await testDb.truncate([
+		'CredentialDependency',
+		'SharedCredentials',
+		'CredentialsEntity',
+		'SecretsProviderConnection',
+	]);
 });
 
 /**
