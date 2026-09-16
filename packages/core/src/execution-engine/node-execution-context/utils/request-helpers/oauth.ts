@@ -316,7 +316,9 @@ function resolveTokenExpiredStatusCode(
 		return oAuth2Options?.tokenExpiredStatusCode ?? 401;
 	}
 
-	return Number(credentialStatusCode);
+	return Array.isArray(credentialStatusCode)
+		? credentialStatusCode.map((statusCode) => Number(statusCode))
+		: Number(credentialStatusCode);
 }
 
 // Some gateways signal an expired token with different codes on different endpoints
