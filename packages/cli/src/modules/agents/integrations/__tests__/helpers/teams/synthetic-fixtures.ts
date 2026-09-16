@@ -66,15 +66,20 @@ export const selfMessage: TeamsActivityFixture = baseActivity({
 /**
  * An Adaptive Card button click. Teams delivers `Action.Submit` as a message
  * activity carrying `value` and no text.
+ *
+ * The click is derived from the activity that produced the card, so the
+ * conversation and its `channelData` cannot drift apart: Teams never sends a
+ * channel conversation with the `channelData` of a direct message.
  */
 export function cardAction(
 	value: Record<string, unknown>,
 	replyToId: string,
-	conversation: TeamsActivityFixture['conversation'] = baseActivity().conversation,
+	from: TeamsActivityFixture = baseActivity(),
 ) {
 	return baseActivity({
 		id: 'activity-action-1',
-		conversation,
+		conversation: from.conversation,
+		channelData: from.channelData,
 		replyToId,
 		value,
 	});
@@ -172,4 +177,38 @@ export const groupChatMention: TeamsActivityFixture = groupChatActivity({
 export const groupChatFollowUp: TeamsActivityFixture = groupChatActivity({
 	id: 'activity-group-2',
 	text: 'follow up',
+});
+
+/**
+ * A group chat whose conversation id does not start with `19:`.
+ *
+ * The adapter reads the conversation id alone as "not a direct message" only
+ * when it starts with `19:`. This shape disagrees with that rule, so the
+ * explicit `conversationType` must carry the classification instead. If it does
+ * not, the chat is read as a direct message, and the adapter then holds the
+ * webhook response open for the whole agent run.
+ */
+export const TEAMS_LEGACY_GROUP_CHAT_CONVERSATION_ID = 'a:group_chat_legacy';
+
+export const legacyGroupChatMention: TeamsActivityFixture = groupChatActivity({
+	id: 'activity-legacy-group-1',
+	text: '<at>n8n Agent</at> hello agent',
+	entities: [mentionEntity],
+	conversation: {
+		id: TEAMS_LEGACY_GROUP_CHAT_CONVERSATION_ID,
+		conversationType: 'groupChat',
+		tenantId: TEAMS_TENANT_ID,
+		isGroup: true,
+	},
+});
+
+export const legacyGroupChatFollowUp: TeamsActivityFixture = groupChatActivity({
+	id: 'activity-legacy-group-2',
+	text: 'follow up',
+	conversation: {
+		id: TEAMS_LEGACY_GROUP_CHAT_CONVERSATION_ID,
+		conversationType: 'groupChat',
+		tenantId: TEAMS_TENANT_ID,
+		isGroup: true,
+	},
 });
