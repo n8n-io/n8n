@@ -376,10 +376,11 @@ export class AiPreferenceService {
 	 * assistant then refuse at the same number, so the assistant cannot save text that the
 	 * settings modal would have rejected.
 	 *
-	 * The count and the insert are not atomic, so two writes racing for the last slot can both
-	 * pass and leave the scope one row over. The cap is a safety net and not a quota, the next
-	 * write refuses, and nothing downstream reads the count, so serializing every write for
-	 * this would cost more than the overshoot.
+	 * The count and the insert are not atomic, so every write in flight when the scope is one
+	 * short can pass, and the scope lands one row over for each of them. The cap is a safety net
+	 * and not a quota, the next write refuses, and nothing downstream reads the count, so
+	 * serializing every write for this would cost more than the overshoot. A hard bound belongs
+	 * in the repository, with the count and the insert in one transaction.
 	 */
 	private async assertScopeHasRoom(target: PreferenceTarget) {
 		const scope = aiPreferenceTargetOf(target);
