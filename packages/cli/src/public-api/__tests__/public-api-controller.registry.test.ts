@@ -1,4 +1,6 @@
 import { Z } from '@n8n/api-types';
+import { LicenseState } from '@n8n/backend-common';
+import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import type { AuthenticatedRequest, User } from '@n8n/db';
 import {
 	ApiKeyScope,
@@ -19,7 +21,6 @@ import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
 
 import type { EventService } from '@/events/event.service';
-import { License } from '@/license';
 import {
 	markPublicApiController,
 	OptionalWidgetBodyDto,
@@ -394,10 +395,10 @@ describe('PublicApiControllerRegistry', () => {
 	});
 
 	describe('@RequiresUserQuota', () => {
-		const license = mock<License>();
+		const licenseState = mock<LicenseState>();
 
 		beforeEach(() => {
-			Container.set(License, license);
+			Container.set(LicenseState, licenseState);
 		});
 
 		function registerGatedRoute() {
@@ -414,7 +415,7 @@ describe('PublicApiControllerRegistry', () => {
 		}
 
 		it('runs the handler when the instance is within its users quota', async () => {
-			license.isWithinUsersLimit.mockReturnValue(true);
+			licenseState.getMaxUsers.mockReturnValue(UNLIMITED_LICENSE_QUOTA);
 			registerGatedRoute();
 
 			const response = await request(activate()).get('/api/v1/widgets').expect(200);
@@ -423,7 +424,7 @@ describe('PublicApiControllerRegistry', () => {
 		});
 
 		it('returns 403 with the legacy license message when over quota, without running the handler', async () => {
-			license.isWithinUsersLimit.mockReturnValue(false);
+			licenseState.getMaxUsers.mockReturnValue(5);
 			const handler = vi.fn(() => ({ ok: true }));
 
 			@Service()
@@ -446,7 +447,7 @@ describe('PublicApiControllerRegistry', () => {
 		});
 
 		it('leaves a route without the decorator unaffected when over quota', async () => {
-			license.isWithinUsersLimit.mockReturnValue(false);
+			licenseState.getMaxUsers.mockReturnValue(5);
 
 			@Service()
 			class WidgetsPublicController {
@@ -464,7 +465,7 @@ describe('PublicApiControllerRegistry', () => {
 		});
 
 		it('returns the scope Forbidden response when both @ApiKeyScope and @RequiresUserQuota fail', async () => {
-			license.isWithinUsersLimit.mockReturnValue(false);
+			licenseState.getMaxUsers.mockReturnValue(5);
 			authStrategyRegistry.authenticate.mockImplementation(async (req: AuthenticatedRequest) => {
 				req.user = authenticatedUser;
 				req.tokenGrant = {

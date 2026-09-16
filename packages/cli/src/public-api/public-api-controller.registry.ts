@@ -1,4 +1,6 @@
+import { LicenseState } from '@n8n/backend-common';
 import type { BooleanLicenseFeature } from '@n8n/constants';
+import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { ControllerRegistryMetadata } from '@n8n/decorators';
 import type { AccessScope, ApiKeyScopeRequirement, Controller } from '@n8n/decorators';
@@ -218,7 +220,7 @@ export class PublicApiControllerRegistry {
 
 	private createUserQuotaMiddleware(): RequestHandler {
 		return (_req, res, next) => {
-			if (!Container.get(License).isWithinUsersLimit()) {
+			if (Container.get(LicenseState).getMaxUsers() !== UNLIMITED_LICENSE_QUOTA) {
 				res.status(403).json({ message: USER_QUOTA_FORBIDDEN_MESSAGE });
 				return;
 			}

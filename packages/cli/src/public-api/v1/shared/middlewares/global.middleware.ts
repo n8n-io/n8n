@@ -1,5 +1,7 @@
 /* eslint-disable @typescript-eslint/no-invalid-void-type */
+import { LicenseState } from '@n8n/backend-common';
 import type { BooleanLicenseFeature } from '@n8n/constants';
+import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import type { AuthenticatedRequest } from '@n8n/db';
 import type { DeprecationInfo } from '@n8n/decorators';
 import { Container } from '@n8n/di';
@@ -15,7 +17,6 @@ import type { PaginatedRequest } from '@/public-api/types';
 
 import { decodeCursor } from '../services/pagination.service';
 
-/** Shared with the `@RequiresUserQuota` gate, so the two enforcement points cannot drift. */
 export const USER_QUOTA_FORBIDDEN_MESSAGE =
 	'/users path can only be used with a valid license. See https://n8n.io/pricing/';
 
@@ -174,8 +175,7 @@ export const validLicenseWithUserQuota = (
 	res: express.Response,
 	next: express.NextFunction,
 ): express.Response | void => {
-	const license = Container.get(License);
-	if (!license.isWithinUsersLimit()) {
+	if (Container.get(LicenseState).getMaxUsers() !== UNLIMITED_LICENSE_QUOTA) {
 		return res.status(403).json({
 			message: USER_QUOTA_FORBIDDEN_MESSAGE,
 		});
