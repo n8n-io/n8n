@@ -16,11 +16,12 @@ import { ExecutionService } from '@/executions/execution.service';
 import { annotateExecution, createAnnotationTags, createExecution } from './shared/db/executions';
 import { createMember, createOwner } from './shared/db/users';
 
-/** A status-less query, narrowed the way the list service narrows it when the two blocks combine. */
+/** A status-less query, narrowed the way the list router narrows it when the two blocks combine. */
 const completedPageQuery = (
 	query: ExecutionSummaries.RangeQuery,
 ): ExecutionSummaries.RangeQuery => ({
 	...query,
+	order: { startedAt: 'DESC' },
 	status: COMPLETED_STATUSES,
 });
 
