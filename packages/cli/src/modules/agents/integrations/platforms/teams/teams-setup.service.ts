@@ -35,13 +35,9 @@ export class TeamsSetupService {
 	) {}
 
 	/**
-	 * Everything downstream needs the Entra IDs, and those only exist once the
-	 * user has registered the app — so the credential comes first and the rest is
-	 * derived from it.
-	 *
 	 * `selectedCredentialId` is the one picked in the setup but not yet connected
-	 * to the agent. Without it the deployment could not be pre-filled, because
-	 * the agent has no credential attached until the very last step.
+	 * to the agent, which is what the deployment is pre-filled from: the agent
+	 * holds no credential until the very last step.
 	 */
 	async getSetupState(
 		scope: AgentScope,
@@ -132,10 +128,6 @@ export class TeamsSetupService {
 	}
 
 	/**
-	 * The app's settings live on the connected integration, because they are what
-	 * the user chose for this agent's Teams app rather than for the agent itself.
-	 */
-	/**
 	 * Looked up across projects, because the clash is at Microsoft rather than in
 	 * n8n. Connecting is still refused only within the project, by the shared
 	 * precondition every channel uses.
@@ -149,6 +141,10 @@ export class TeamsSetupService {
 		return others[0]?.name ?? null;
 	}
 
+	/**
+	 * The app's settings live on the connected integration, because they are what
+	 * the user chose for this agent's Teams app rather than for the agent itself.
+	 */
 	private teamsSettingsOf(agent: Agent): AgentTeamsIntegrationSettings | undefined {
 		return agent.integrations?.find((item) => item.type === 'teams')?.settings;
 	}
@@ -165,10 +161,9 @@ export class TeamsSetupService {
 	}
 
 	/**
-	 * Resolved through the agent's project rather than through a signed-in user,
-	 * the same way the channel resolves it when an activity arrives. The template
-	 * route has no user at all, and the client ID this returns is not a secret:
-	 * it ships inside the manifest the user downloads.
+	 * Resolved through the agent's project rather than a signed-in user, because
+	 * the template route has none. The client ID this returns is not a secret: it
+	 * ships inside the manifest the user downloads.
 	 */
 	private connectedCredentialId(agent: Agent): string | undefined {
 		return agent.integrations?.find((item) => item.type === 'teams')?.credentialId;

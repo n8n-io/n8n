@@ -10,11 +10,7 @@ import { makeRestApiRequest } from '@n8n/rest-api-client';
 const integrationPath = (projectId: string, agentId: string) =>
 	`/projects/${projectId}/agents/v2/${agentId}/integrations/teams`;
 
-/**
- * `credentialId` is the credential picked in the setup but not yet connected to
- * the agent. Everything the setup offers is derived from it, and it is not on
- * the agent until the very last step.
- */
+/** `credentialId` is the one picked in the setup, before it is on the agent. */
 export const getTeamsSetupState = async (
 	context: IRestApiContext,
 	projectId: string,

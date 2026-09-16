@@ -30,11 +30,7 @@ const DEFAULT_BOT_DISPLAY_NAME = 'n8n Agent';
 export interface TeamsArmTemplateOptions {
 	agentName: string;
 	agentId: string;
-	/**
-	 * Application (client) ID of the Entra app backing the bot. Empty before the
-	 * bot exists: the user is creating that app in the portal, and the deployment
-	 * blade is where they paste its ID.
-	 */
+	/** Application (client) ID of the Entra app backing the bot. */
 	msaAppId: string;
 	/** Directory (tenant) ID, so the bot is registered single-tenant. */
 	msaAppTenantId: string;
@@ -49,16 +45,8 @@ export class TeamsArmTemplateService {
 	) {}
 
 	/**
-	 * Every value the user would otherwise copy is a parameter default, because
-	 * the portal pre-fills the blade from defaults and offers no way to pass
-	 * values in the URL.
-	 *
-	 * The two Entra IDs are the exception, and only on a first run: the user is
-	 * creating that app registration in the portal right now, so nothing here
-	 * knows them yet and they arrive blank. Everything that is easy to get wrong
-	 * — the endpoint, the Teams channel, the single-tenant type — is already
-	 * filled in, and the next step reads those IDs back off the first activity
-	 * so they are never typed into n8n.
+	 * Every value is a parameter default, because the portal pre-fills the blade
+	 * from defaults and offers no way to pass values in the URL.
 	 */
 	buildTemplate(options: TeamsArmTemplateOptions): Record<string, unknown> {
 		return {
@@ -70,10 +58,9 @@ export class TeamsArmTemplateService {
 					defaultValue: this.buildBotName(options.agentName, options.agentId),
 					metadata: { description: 'Name of the Azure Bot resource. Must be globally unique.' },
 				},
-				// No `defaultValue` when unknown, deliberately: an empty default looks
-				// filled in, and the deployment then fails validation at the end with
-				// "Microsoft App ID is required". Omitting it makes the portal mark the
-				// field required and refuse to deploy until it is filled.
+				// An empty default looks filled in and fails validation only at the end
+				// of the deployment; omitting it makes the portal mark the field
+				// required up front.
 				msaAppId: {
 					type: 'string',
 					...(options.msaAppId ? { defaultValue: options.msaAppId } : {}),
@@ -146,10 +133,8 @@ export class TeamsArmTemplateService {
 	}
 
 	/**
-	 * The credential is named in the URL and covered by the signature, because
-	 * the deployment happens before the channel is connected: the agent has no
-	 * credential attached yet, so the template has no other way to learn the
-	 * Entra IDs it must pre-fill.
+	 * The credential is named in the URL because the deployment happens before
+	 * the channel is connected, so the agent holds no credential to read it from.
 	 */
 	buildTemplateUrl(projectId: string, agentId: string, credentialId: string): string {
 		const token = this.signToken(projectId, agentId, credentialId);
@@ -159,9 +144,8 @@ export class TeamsArmTemplateService {
 
 	/**
 	 * The portal fetches the template with no n8n session, so the token is the
-	 * only thing standing between this endpoint and the open internet. Every
-	 * value the template is built from is a claim, so a token cannot be reused
-	 * for another agent or another credential.
+	 * whole authorisation. Every value the template is built from is a claim, so
+	 * a token cannot be reused for another agent or another credential.
 	 */
 	verifyToken(projectId: string, agentId: string, credentialId: string, token: string): boolean {
 		try {
@@ -172,7 +156,6 @@ export class TeamsArmTemplateService {
 				claims.credentialId === credentialId
 			);
 		} catch {
-			// Covers a bad signature, a tampered payload and an expired token alike.
 			return false;
 		}
 	}
@@ -185,10 +168,8 @@ export class TeamsArmTemplateService {
 	}
 
 	/**
-	 * Named after the agent so it is recognisable in a subscription full of
-	 * resources, with a short digest appended because an Azure Bot resource name
-	 * is globally unique and the bare name would collide for the second person
-	 * who tried it.
+	 * A digest is appended because an Azure Bot resource name is globally unique,
+	 * so the bare agent name would collide across tenants.
 	 */
 	private buildBotName(agentName: string, agentId: string): string {
 		const suffix = createHmac('sha256', 'teams-bot-name').update(agentId).digest('hex').slice(0, 8);
