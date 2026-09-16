@@ -14,6 +14,7 @@ import {
 	PIPELINE_EVENTS_MAX_PAGE_SIZE,
 	type ListJobRunsParams,
 	type ListPipelineEventsParams,
+	type PipelineEventLevel,
 } from '../transport';
 import { clampPageSize } from '../transport/pagination';
 import { buildPipelineEventsFilter } from '../transport/pipelineEvents';
@@ -201,7 +202,8 @@ describe('buildPipelineEventsFilter', () => {
 	});
 
 	it.each(['DEBUG', 'error'])('rejects the level %s', (level) => {
-		expect(() => buildPipelineEventsFilter({ levels: ['ERROR', level] })).toThrow(UnexpectedError);
+		const levels = ['ERROR', level] as PipelineEventLevel[];
+		expect(() => buildPipelineEventsFilter({ levels })).toThrow(UnexpectedError);
 	});
 });
 

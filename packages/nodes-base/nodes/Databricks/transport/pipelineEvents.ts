@@ -59,7 +59,7 @@ export type PipelineEvent = {
 export interface ListPipelineEventsParams {
 	pipelineId: string;
 	after?: IsoUtcTimestamp;
-	levels?: readonly string[];
+	levels?: readonly PipelineEventLevel[];
 	order?: 'asc' | 'desc';
 	pageSize?: number;
 	pageToken?: string;
@@ -71,7 +71,7 @@ function isPipelineEventsResponse(value: unknown): value is PipelineEventsRespon
 	return isRecord(value) && (value.events === undefined || Array.isArray(value.events));
 }
 
-function isPipelineEventLevel(level: string): level is PipelineEventLevel {
+export function isPipelineEventLevel(level: string): level is PipelineEventLevel {
 	return PIPELINE_EVENT_LEVELS.some((known) => known === level);
 }
 

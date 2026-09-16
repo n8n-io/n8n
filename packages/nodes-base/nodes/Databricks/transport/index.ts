@@ -6,6 +6,7 @@ export {
 } from './jobRuns';
 export { DEFAULT_MAX_PAGES, type Page } from './pagination';
 export {
+	isPipelineEventLevel,
 	listAllPipelineEvents,
 	listPipelineEvents,
 	PIPELINE_EVENT_LEVELS,
