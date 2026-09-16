@@ -30,6 +30,9 @@ import InstanceAiWorkflowPreview from '../components/InstanceAiWorkflowPreview.v
 // disposed execution-state store) so a remembered user run survives the simulated
 // tab-switch dispose, exactly like the real per-thread runtime.
 const rememberedManualExecutions = new Map<string, RememberedManualExecution>();
+let isLogsPanelCollapsedByUser = false;
+
+const { telemetryTrackSpy } = vi.hoisted(() => ({ telemetryTrackSpy: vi.fn() }));
 
 const thread = reactive({
 	messages: [],
@@ -45,10 +48,18 @@ const thread = reactive({
 	) => rememberedManualExecutions.set(workflowId, { executionId, agentExecutionId }),
 	getRememberedManualExecution: (workflowId: string) => rememberedManualExecutions.get(workflowId),
 	forgetManualExecution: (workflowId: string) => rememberedManualExecutions.delete(workflowId),
+	rememberLogsPanelCollapsed: () => {
+		isLogsPanelCollapsedByUser = true;
+	},
+	hasUserCollapsedLogsPanel: () => isLogsPanelCollapsedByUser,
 });
 
 vi.mock('../instanceAi.store', () => ({
 	useThread: () => thread,
+}));
+
+vi.mock('@n8n/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track: telemetryTrackSpy }),
 }));
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
@@ -123,12 +134,19 @@ interface MountPreviewOptions {
 	executionFactory?: (executionId: string) => IExecutionResponse;
 	executionResult?: { executionId: string; status: 'success' | 'error' };
 	initialNodeId?: string;
+	/** Size of the artifact pane. jsdom has no layout, so the logs auto-open size gate reads this. */
+	paneSize?: { width: number; height: number };
 }
 
 async function mountPreview(options: MountPreviewOptions = {}) {
 	const listeners: OnPushMessageHandler[] = [];
 	const pinia = createTestingPinia({ stubActions: false });
 	setActivePinia(pinia);
+
+	const paneSize = options.paneSize ?? { width: 1200, height: 900 };
+	vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({
+		...paneSize,
+	} as DOMRect);
 
 	const pushStore = usePushConnectionStore();
 	vi.spyOn(pushStore, 'addEventListener').mockImplementation((handler) => {
@@ -162,6 +180,36 @@ async function mountPreview(options: MountPreviewOptions = {}) {
 	return { wrapper, listeners, workflowsStore };
 }
 
+function startExecution(
+	listeners: OnPushMessageHandler[],
+	executionId: string,
+	source?: 'instance_ai',
+) {
+	for (const listener of listeners) {
+		listener({
+			type: 'executionStarted',
+			data: {
+				executionId,
+				mode: 'manual',
+				source,
+				startedAt: new Date(),
+				workflowId: 'wf-1',
+				flattedRunData: '[]',
+			},
+		});
+	}
+}
+
+function finishExecution(
+	listeners: OnPushMessageHandler[],
+	executionId: string,
+	status: 'success' | 'error',
+) {
+	for (const listener of listeners) {
+		listener({ type: 'executionFinished', data: { executionId, workflowId: 'wf-1', status } });
+	}
+}
+
 describe('InstanceAiWorkflowPreview', () => {
 	beforeEach(() => {
 		thread.messages = [];
@@ -171,6 +219,8 @@ describe('InstanceAiWorkflowPreview', () => {
 		thread.consumePendingHandoff.mockReset();
 		thread.sendMessage.mockReset();
 		rememberedManualExecutions.clear();
+		isLogsPanelCollapsedByUser = false;
+		telemetryTrackSpy.mockReset();
 	});
 
 	describe('editing lock', () => {
@@ -448,62 +498,103 @@ describe('InstanceAiWorkflowPreview', () => {
 		expect(workflowsStore.fetchExecutionDataById).toHaveBeenLastCalledWith('exec-agent-2');
 	});
 
-	it('opens the logs panel when an execution starts for the previewed workflow', async () => {
-		const { listeners } = await mountPreview();
-		const logsStore = useLogsStore();
-		logsStore.toggleOpen(false);
+	describe('logs panel', () => {
+		const toggleEvents = () =>
+			telemetryTrackSpy.mock.calls
+				.filter(([event]) => event === 'User toggled log view')
+				.map(([, properties]) => properties);
 
-		// User run from the embedded canvas.
-		for (const listener of listeners) {
-			listener({
-				type: 'executionStarted',
-				data: {
-					executionId: 'exec-user-1',
-					mode: 'manual',
-					startedAt: new Date(),
-					workflowId: 'wf-1',
-					flattedRunData: '[]',
-				},
-			});
-		}
-		expect(logsStore.isOpen).toBe(true);
+		it('opens the panel when a run starts and collapses it when the run succeeds', async () => {
+			const { listeners } = await mountPreview();
+			const logsStore = useLogsStore();
+			expect(logsStore.isOpen).toBe(false);
 
-		// Agent run while the artifact is open.
-		logsStore.toggleOpen(false);
-		for (const listener of listeners) {
-			listener({
-				type: 'executionStarted',
-				data: {
-					executionId: 'exec-agent-2',
-					mode: 'manual',
-					source: 'instance_ai',
-					startedAt: new Date(),
-					workflowId: 'wf-1',
-					flattedRunData: '[]',
-				},
-			});
-		}
-		expect(logsStore.isOpen).toBe(true);
-	});
+			// User run from the artifact canvas.
+			startExecution(listeners, 'exec-user-1');
+			expect(logsStore.isOpen).toBe(true);
+			finishExecution(listeners, 'exec-user-1', 'success');
+			expect(logsStore.isOpen).toBe(false);
 
-	it('does not open the logs panel for executions of other workflows', async () => {
-		const { listeners } = await mountPreview();
-		const logsStore = useLogsStore();
-		logsStore.toggleOpen(false);
+			// Agent run while the artifact is open.
+			startExecution(listeners, 'exec-agent-2', 'instance_ai');
+			expect(logsStore.isOpen).toBe(true);
+			finishExecution(listeners, 'exec-agent-2', 'success');
+			expect(logsStore.isOpen).toBe(false);
 
-		for (const listener of listeners) {
-			listener({
-				type: 'executionStarted',
-				data: {
-					executionId: 'exec-other-1',
-					mode: 'manual',
-					startedAt: new Date(),
-					workflowId: 'wf-2',
-					flattedRunData: '[]',
-				},
-			});
-		}
+			expect(toggleEvents()).toEqual([
+				{ new_state: 'attached', source: 'auto', context: 'artifact' },
+				{ new_state: 'collapsed', source: 'auto', context: 'artifact' },
+				{ new_state: 'attached', source: 'auto', context: 'artifact' },
+				{ new_state: 'collapsed', source: 'auto', context: 'artifact' },
+			]);
+		});
 
-		expect(logsStore.isOpen).toBe(false);
+		it('keeps the panel open when the run fails', async () => {
+			const { listeners } = await mountPreview();
+			const logsStore = useLogsStore();
+
+			startExecution(listeners, 'exec-user-1');
+			finishExecution(listeners, 'exec-user-1', 'error');
+
+			expect(logsStore.isOpen).toBe(true);
+		});
+
+		it('stops opening the panel for the thread after the user collapses it', async () => {
+			const { listeners } = await mountPreview();
+			const logsStore = useLogsStore();
+
+			startExecution(listeners, 'exec-user-1');
+			logsStore.toggleOpen(false); // the user collapses the panel
+			finishExecution(listeners, 'exec-user-1', 'success');
+			startExecution(listeners, 'exec-agent-2', 'instance_ai');
+
+			expect(thread.hasUserCollapsedLogsPanel()).toBe(true);
+			expect(logsStore.isOpen).toBe(false);
+			expect(toggleEvents()).toHaveLength(1);
+		});
+
+		it('leaves a panel the user opened open after a successful run', async () => {
+			const { listeners } = await mountPreview();
+			const logsStore = useLogsStore();
+			logsStore.toggleOpen(true); // the user opens the panel
+
+			startExecution(listeners, 'exec-user-1');
+			finishExecution(listeners, 'exec-user-1', 'success');
+
+			expect(logsStore.isOpen).toBe(true);
+			expect(toggleEvents()).toHaveLength(0);
+		});
+
+		it.each([
+			['narrow', { width: 649, height: 900 }],
+			['short', { width: 1200, height: 599 }],
+		])('does not open the panel when the pane is too %s', async (_label, paneSize) => {
+			const { listeners } = await mountPreview({ paneSize });
+			const logsStore = useLogsStore();
+
+			startExecution(listeners, 'exec-user-1');
+
+			expect(logsStore.isOpen).toBe(false);
+		});
+
+		it('does not open the panel for executions of other workflows', async () => {
+			const { listeners } = await mountPreview();
+			const logsStore = useLogsStore();
+
+			for (const listener of listeners) {
+				listener({
+					type: 'executionStarted',
+					data: {
+						executionId: 'exec-other-1',
+						mode: 'manual',
+						startedAt: new Date(),
+						workflowId: 'wf-2',
+						flattedRunData: '[]',
+					},
+				});
+			}
+
+			expect(logsStore.isOpen).toBe(false);
+		});
 	});
 });
