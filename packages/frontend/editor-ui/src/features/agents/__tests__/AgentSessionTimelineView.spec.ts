@@ -18,7 +18,6 @@ const routeParams = reactive({ projectId: 'p1', agentId: 'a1', threadId: 'thread
 const routerPush = vi.fn();
 const routerReplace = vi.fn();
 const sessionThreads = reactive<SessionThread[]>([]);
-const upsertThreadMock = vi.fn();
 const pushListeners = new Set<(event: PushMessage) => void>();
 
 vi.mock('vue-router', () => ({
@@ -54,7 +53,6 @@ vi.mock('@/features/agents/agentSessions.store', () => ({
 	useAgentSessionsStore: () => ({
 		threads: sessionThreads,
 		fetchThreads: vi.fn().mockResolvedValue(undefined),
-		upsertThread: upsertThreadMock,
 	}),
 }));
 
@@ -105,7 +103,6 @@ describe('AgentSessionTimelineView', () => {
 		pushListeners.clear();
 		routerPush.mockClear();
 		routerReplace.mockClear();
-		upsertThreadMock.mockClear();
 	});
 
 	it('replaces the stale thread with an empty state when a new preview session starts', async () => {
@@ -145,19 +142,33 @@ describe('AgentSessionTimelineView', () => {
 		});
 	});
 
-	it('adds the loaded thread to the session list, so the dock can name and act on it', async () => {
+	it('lets the dock name and act on the loaded thread even when the list lacks it', async () => {
 		const wrapper = shallowMount(AgentSessionTimelineView);
 		await flushPromises();
+		// Drop the route's thread from the list, as for a session outside the first page.
+		sessionThreads.splice(0, sessionThreads.length);
+		await nextTick();
 
+		const dock = wrapper.findComponent(AgentPreviewDock);
 		const panel = wrapper.findComponent(AgentSessionTimelinePanel);
-		// The panel emits null at the start of every load — nothing to register yet.
-		await panel.vm.$emit('loaded', null);
-		expect(upsertThreadMock).not.toHaveBeenCalled();
+		expect(dock.props('hasSession')).toBe(false);
 
-		const thread = { id: 'thread-b', updatedAt: '2026-01-02T00:00:00.000Z' };
-		await panel.vm.$emit('loaded', { thread, executions: [] });
+		// A loaded thread that is not the live session must not stand in for it.
+		await panel.vm.$emit('loaded', {
+			thread: { id: 'thread-z', title: 'Other', updatedAt: '2026-01-01T00:00:00.000Z' },
+			executions: [],
+		});
+		await nextTick();
+		expect(dock.props('hasSession')).toBe(false);
+		expect(dock.props('sessionTitle')).not.toBe('Other');
 
-		expect(upsertThreadMock).toHaveBeenCalledWith(thread);
+		await panel.vm.$emit('loaded', {
+			thread: { id: 'thread-a', title: 'Digimon villains', updatedAt: '2026-01-01T00:00:00.000Z' },
+			executions: [],
+		});
+		await nextTick();
+		expect(dock.props('hasSession')).toBe(true);
+		expect(dock.props('sessionTitle')).toBe('Digimon villains');
 	});
 
 	it('keeps the timeline when the preview switches to an existing session', async () => {

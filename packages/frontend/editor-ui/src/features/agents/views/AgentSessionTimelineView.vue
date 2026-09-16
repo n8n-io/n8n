@@ -196,10 +196,26 @@ const hasLoadedThread = computed(() => thread.value?.id === threadId.value);
 const totalCost = computed(() => thread.value?.totalCost ?? 0);
 const durationLabel = computed(() => formatDuration(thread.value?.totalDuration ?? 0));
 
+/**
+ * The dock resolves the live session's title and its trace/export/delete
+ * gates by looking it up in the store's thread list. That list holds only the
+ * first page fetched on load, so it misses a session started since then and any
+ * thread opened by link from outside that page. When the loaded thread is the
+ * live session, it is the authoritative answer, so prefer it over the lookup.
+ */
+const dockShowsLoadedThread = computed(
+	() => thread.value !== null && thread.value.id === effectiveSessionId.value,
+);
+const dockSessionTitle = computed(() =>
+	dockShowsLoadedThread.value ? sessionTitle.value : currentSessionTitle.value,
+);
+const dockHasSession = computed(
+	() => dockShowsLoadedThread.value || currentSessionHasMessages.value,
+);
+
 function onPanelLoaded(detail: ThreadDetail | null) {
 	thread.value = detail?.thread ?? null;
 	executions.value = detail?.executions ?? [];
-	if (detail) sessionsStore.upsertThread(detail.thread);
 }
 
 let previewLoadRequestId = 0;
@@ -362,9 +378,9 @@ function viewPreviewTrace() {
 
 			<AgentPreviewDock
 				:is-open="isPreviewOpen"
-				:session-title="currentSessionTitle"
+				:session-title="dockSessionTitle"
 				:session-options="sessionMenu"
-				:has-session="currentSessionHasMessages"
+				:has-session="dockHasSession"
 				:initialized="previewInitialized"
 				:project-id="projectId"
 				:agent-id="agentId"
