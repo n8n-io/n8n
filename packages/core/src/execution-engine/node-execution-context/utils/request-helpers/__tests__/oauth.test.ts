@@ -631,33 +631,36 @@ describe('requestOAuth2 - tokenExpiredStatusCode', () => {
 		expect(mockThis.helpers.httpRequest).toHaveBeenCalledTimes(2);
 	});
 
-	test('should retry on custom tokenExpiredStatusCode from credentials (isN8nRequest path)', async () => {
-		mockThis.getCredentials.mockResolvedValue(makeCredentialData({ tokenExpiredStatusCode: 403 }));
+	test.each([403, '403'])(
+		'should retry on custom tokenExpiredStatusCode %j from credentials (isN8nRequest path)',
+		async (tokenExpiredStatusCode) => {
+			mockThis.getCredentials.mockResolvedValue(makeCredentialData({ tokenExpiredStatusCode }));
 
-		// Token re-fetch
-		nock(tokenUrl).post('/token').reply(200, {
-			access_token: 'new-token',
-			token_type: 'bearer',
-		});
+			// Token re-fetch
+			nock(tokenUrl).post('/token').reply(200, {
+				access_token: 'new-token',
+				token_type: 'bearer',
+			});
 
-		mockThis.helpers.httpRequest.mockRejectedValueOnce(
-			Object.assign(new Error('403'), { response: { status: 403 } }),
-		);
-		mockThis.helpers.httpRequest.mockResolvedValueOnce({ success: true });
+			mockThis.helpers.httpRequest.mockRejectedValueOnce(
+				Object.assign(new Error('403'), { response: { status: 403 } }),
+			);
+			mockThis.helpers.httpRequest.mockResolvedValueOnce({ success: true });
 
-		const result = await requestOAuth2.call(
-			mockThis,
-			'testOAuth2',
-			{ method: 'GET', url: `${baseUrl}/data` },
-			mockNode,
-			mockAdditionalData,
-			undefined,
-			true,
-		);
+			const result = await requestOAuth2.call(
+				mockThis,
+				'testOAuth2',
+				{ method: 'GET', url: `${baseUrl}/data` },
+				mockNode,
+				mockAdditionalData,
+				undefined,
+				true,
+			);
 
-		expect(result).toEqual({ success: true });
-		expect(mockThis.helpers.httpRequest).toHaveBeenCalledTimes(2);
-	});
+			expect(result).toEqual({ success: true });
+			expect(mockThis.helpers.httpRequest).toHaveBeenCalledTimes(2);
+		},
+	);
 
 	test('should NOT retry on 401 when credential sets tokenExpiredStatusCode to 403 (isN8nRequest path)', async () => {
 		mockThis.getCredentials.mockResolvedValue(makeCredentialData({ tokenExpiredStatusCode: 403 }));
