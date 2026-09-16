@@ -509,6 +509,40 @@ describe('agent message queue', () => {
 		expect(received).toEqual(['preview', 'integration']);
 	});
 
+	it('serializes concurrent preview admission across mains in arrival order', async () => {
+		const firstAdmission = createDeferredPromise();
+		const releaseFirst = createDeferredPromise();
+		const enqueue = repository.enqueue.bind(repository);
+		const enqueueSpy = vi.spyOn(repository, 'enqueue').mockImplementation(async (input) => {
+			if (input.payload.kind === 'message' && input.payload.message === 'first') {
+				firstAdmission.resolve();
+				await releaseFirst.promise;
+			}
+			return await enqueue(input);
+		});
+		checkpoints.findSuspendedForThread.mockResolvedValue(
+			mock<SerializableAgentState & { runId: string }>(),
+		);
+		const mainA = await makeMain();
+		const mainB = await makeMain();
+		const first = mainA.enqueuePreview(preview('first'), 'request-1', vi.fn());
+		await firstAdmission.promise;
+		const second = mainB.enqueuePreview(preview('second'), 'request-2', vi.fn());
+		try {
+			expect(enqueueSpy).toHaveBeenCalledTimes(1);
+			releaseFirst.resolve();
+			await Promise.all([first, second]);
+			expect(
+				(await repository.findPreviewEntries(agentId, 'conversation')).map((entry) =>
+					entry.payload.kind === 'message' ? entry.payload.message : '',
+				),
+			).toEqual(['first', 'second']);
+		} finally {
+			releaseFirst.resolve();
+			await Promise.allSettled([first, second]);
+		}
+	});
+
 	it('admits only one concurrent preview response for a suspended tool call', async () => {
 		const checkpoint: SerializableAgentState = {
 			status: 'suspended',
@@ -791,6 +825,57 @@ describe('agent message queue', () => {
 			push.mock.calls.every(([, userIds]) => userIds.length === 1 && userIds[0] === 'user'),
 		).toBe(true);
 		expect(await repository.count()).toBe(0);
+	});
+
+	it('continues after unused attachment cleanup fails', async () => {
+		const main = await makeMain();
+		const peer = await makeMain();
+		const push = vi.mocked(peer['broadcaster']['push'].sendToUsers);
+		const started = createDeferredPromise();
+		const finish = createDeferredPromise();
+		attachments.deleteByIds.mockRejectedValueOnce(new Error('Storage unavailable'));
+		await main.enqueuePreview(
+			preview('first', 'conversation', [
+				{ id: 'file', fileName: 'notes.txt', mimeType: 'text/plain', sizeBytes: 10 },
+			]),
+			'request-1',
+			async () => {
+				started.resolve();
+				await finish.promise;
+			},
+		);
+		await started.promise;
+		await main.enqueue(message('next'));
+		finish.resolve();
+		await retryUntil(async () => expect(await repository.count()).toBe(0));
+		expect(push).toHaveBeenCalledWith(
+			expect.objectContaining({
+				data: expect.objectContaining({ event: { type: 'done', sessionId: 'conversation' } }),
+			}),
+			['user'],
+		);
+		expect(received).toEqual(['next']);
+	});
+
+	it('scrubs credential values from preview errors before delivery', async () => {
+		const main = await makeMain();
+		const peer = await makeMain();
+		const push = vi.mocked(peer['broadcaster']['push'].sendToUsers);
+		await main.enqueuePreview(preview('failed'), 'request-1', async () => {
+			throw new Error('Request failed with apiKey=super-secret-token');
+		});
+		await main.drain('conversation');
+		await retryUntil(async () =>
+			expect(push).toHaveBeenCalledWith(
+				expect.objectContaining({
+					data: expect.objectContaining({
+						event: { type: 'error', message: 'Request failed with [REDACTED]' },
+					}),
+				}),
+				['user'],
+			),
+		);
+		expect(JSON.stringify(push.mock.calls)).not.toContain('super-secret-token');
 	});
 
 	it('records a failure after admission without a viewer and keeps referenced attachments', async () => {
