@@ -4,7 +4,7 @@ import type {
 	PromotionBindingProject,
 	PromotionVariableScope,
 } from '@n8n/api-types';
-import { CredentialsRepository, ProjectRepository, VariablesRepository, type User } from '@n8n/db';
+import { CredentialsRepository, ProjectRepository, VariablesRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { UnexpectedError } from 'n8n-workflow';
 
@@ -53,7 +53,7 @@ export class PromotionBindingPreflightService {
 	/** The caller must enforce inspection permissions. Project access does not depend on user visibility. */
 	async checkDirectory({
 		sourceDir,
-	}: { sourceDir: string; user: User }): Promise<PromotionBindingPreflightResult> {
+	}: { sourceDir: string }): Promise<PromotionBindingPreflightResult> {
 		const reader = new DirectoryPackageReader(sourceDir, this.packageImportConfig);
 		const inventory = await this.inventoryReader.read(reader);
 		const credentials = collectCredentialReferences(inventory);
