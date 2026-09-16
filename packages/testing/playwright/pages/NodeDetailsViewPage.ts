@@ -298,46 +298,6 @@ export class NodeDetailsViewPage extends BasePage {
 		await this.clickByTestId('execute-previous-node');
 	}
 
-	async clickAskAiTab() {
-		await this.codeNodeEditor.clickAskAiTab();
-	}
-
-	getAskAiTabPanel() {
-		return this.codeNodeEditor.getAskAiTabPanel();
-	}
-
-	getAskAiCtaButton() {
-		return this.codeNodeEditor.getAskAiCtaButton();
-	}
-
-	getAskAiPromptInput() {
-		return this.codeNodeEditor.getAskAiPromptInput();
-	}
-
-	getAskAiPromptCounter() {
-		return this.codeNodeEditor.getAskAiPromptCounter();
-	}
-
-	getAskAiCtaTooltipNoInputData() {
-		return this.codeNodeEditor.getAskAiCtaTooltipNoInputData();
-	}
-
-	getAskAiCtaTooltipNoPrompt() {
-		return this.codeNodeEditor.getAskAiCtaTooltipNoPrompt();
-	}
-
-	getAskAiCtaTooltipPromptTooShort() {
-		return this.codeNodeEditor.getAskAiCtaTooltipPromptTooShort();
-	}
-
-	getCodeTabPanel() {
-		return this.codeNodeEditor.getCodeTabPanel();
-	}
-
-	getCodeTab() {
-		return this.codeNodeEditor.getCodeTab();
-	}
-
 	getCodeEditor() {
 		return this.codeNodeEditor.getCodeEditor();
 	}
@@ -352,18 +312,6 @@ export class NodeDetailsViewPage extends BasePage {
 
 	getPlaceholderText(text: string) {
 		return this.page.getByText(text);
-	}
-
-	getHeyAiText() {
-		return this.codeNodeEditor.getHeyAiText();
-	}
-
-	getCodeGenerationCompletedText() {
-		return this.codeNodeEditor.getCodeGenerationCompletedText();
-	}
-
-	getErrorMessageText(message: string) {
-		return this.codeNodeEditor.getErrorMessageText(message);
 	}
 
 	async setParameterDropdown(parameterName: string, optionText: string): Promise<void> {

@@ -4,6 +4,13 @@ import { Config, Env } from '../decorators';
 
 const expressionEngineSchema = z.enum(['legacy', 'vm', 'quickjs']);
 
+/**
+ * The engines the editor can run in a browser. `vm` is absent on purpose: isolated-vm
+ * is a native module, so the enum rejects it here instead of letting the editor accept
+ * the value and silently keep the legacy evaluator.
+ */
+const frontendExpressionEngineSchema = z.enum(['legacy', 'quickjs']);
+
 @Config
 export class ExpressionEngineConfig {
 	/**
@@ -14,6 +21,15 @@ export class ExpressionEngineConfig {
 	 */
 	@Env('N8N_EXPRESSION_ENGINE', expressionEngineSchema)
 	engine: 'legacy' | 'vm' | 'quickjs' = 'vm';
+
+	/**
+	 * Which expression engine the editor uses in the browser. Independent of `engine`:
+	 * the backend can evaluate with `vm` while the editor evaluates with `quickjs`.
+	 * - `legacy` (default) runs expressions without isolation. Soon to be deprecated.
+	 * - `quickjs` runs expressions in a QuickJS WASM sandbox.
+	 */
+	@Env('N8N_EXPRESSION_ENGINE_FRONTEND', frontendExpressionEngineSchema)
+	frontendEngine: 'legacy' | 'quickjs' = 'legacy';
 
 	/** Number of V8 isolates ready in the pool. */
 	@Env('N8N_EXPRESSION_ENGINE_POOL_SIZE')
@@ -75,4 +91,24 @@ export class ExpressionEngineConfig {
 	 */
 	@Env('N8N_EXPRESSION_ENGINE_ALLOW_WEBHOOK_ISOLATE_SKIP')
 	allowWebhookIsolateSkip: boolean = true;
+
+	/**
+	 * Experimental: lazy isolate acquisition. Acquire calls only open a scope,
+	 * and an isolate is created on the first expression that actually needs the
+	 * engine. Scopes that evaluate no expression never consume an isolate. When
+	 * the pool is exhausted, the isolate is built synchronously on the request
+	 * path (see the `expression.pool.cold_start_sync` metrics).
+	 */
+	@Env('N8N_EXPRESSION_ENGINE_LAZY_ACQUIRE')
+	lazyAcquire: boolean = false;
+
+	/**
+	 * Experimental: reuse the V8 compile cache for the expression runtime
+	 * bundle. The first bundle compile produces V8 cached data, and every
+	 * later isolate build consumes it, skipping re-parsing the bundle. V8
+	 * validates the cached data and silently recompiles when it is stale.
+	 * Only affects the `vm` engine.
+	 */
+	@Env('N8N_EXPRESSION_ENGINE_COMPILE_CACHE')
+	compileCache: boolean = false;
 }

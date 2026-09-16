@@ -1,3 +1,4 @@
+import { isRecord } from '@n8n/utils/is-record';
 import { IANAZone } from 'luxon';
 import type {
 	IConnection,
@@ -186,7 +187,9 @@ export const partialUpdateOperationSchema = z.discriminatedUnion('type', [
 			.int()
 			.nonnegative()
 			.optional()
-			.describe('Source output index. Default 0.'),
+			.describe(
+				'Source output index. Default 0. The false branch of an If node is index 1, and the error output added by onError "continueErrorOutput" comes after the regular outputs (index 1 on a single-output node, index 2 on an If node).',
+			),
 		targetIndex: z
 			.number()
 			.int()
@@ -234,7 +237,7 @@ export const partialUpdateOperationSchema = z.discriminatedUnion('type', [
 					.enum(['stopWorkflow', 'continueRegularOutput', 'continueErrorOutput'])
 					.optional()
 					.describe(
-						'How the node behaves on error. "stopWorkflow" halts the run; "continueRegularOutput" forwards an empty item on the main output; "continueErrorOutput" routes the failure to the node\'s error output. Required for sub-nodes (LLM model, memory, tools) since the canvas UI does not expose this setting for them.',
+						'How the node behaves on error. "stopWorkflow" halts the run; "continueRegularOutput" forwards an empty item on the main output; "continueErrorOutput" routes the failure to the node\'s error output, which is appended after the regular outputs — wire it with addConnection and a matching sourceIndex (1 on a single-output node). Required for sub-nodes (LLM model, memory, tools) since the canvas UI does not expose this setting for them.',
 					),
 				retryOnFail: z.boolean().optional(),
 				maxTries: z
@@ -447,12 +450,9 @@ const cloneWorkflow = (workflow: WorkflowSlice): WorkflowSlice => ({
 	tagNames: workflow.tagNames ? [...workflow.tagNames] : undefined,
 });
 
-const isPlainObject = (value: unknown): value is Record<string, unknown> =>
-	typeof value === 'object' && value !== null && !Array.isArray(value);
-
 const sanitizeUnsafeKeys = (value: unknown): unknown => {
 	if (Array.isArray(value)) return value.map(sanitizeUnsafeKeys);
-	if (!isPlainObject(value)) return value;
+	if (!isRecord(value)) return value;
 	const out: Record<string, unknown> = {};
 	for (const [key, v] of Object.entries(value)) {
 		if (!isSafeObjectProperty(key)) continue;
@@ -582,7 +582,7 @@ const setAtPointer = (
 			const child: Record<string, unknown> = {};
 			writeSegment(cursor, key, child);
 			cursor = child;
-		} else if (isPlainObject(read.value) || Array.isArray(read.value)) {
+		} else if (isRecord(read.value) || Array.isArray(read.value)) {
 			// The intermediate container already exists and is valid (object or array)
 			// it is our cursor now, next iteration will read from it.
 			cursor = read.value;
@@ -619,7 +619,7 @@ const deepMerge = (
 	for (const [key, value] of Object.entries(source)) {
 		if (!isSafeObjectProperty(key)) continue;
 		const existing = Object.prototype.hasOwnProperty.call(result, key) ? result[key] : undefined;
-		if (isPlainObject(existing) && isPlainObject(value)) {
+		if (isRecord(existing) && isRecord(value)) {
 			result[key] = deepMerge(existing, value);
 		} else {
 			result[key] = sanitizeUnsafeKeys(value);
@@ -775,9 +775,7 @@ const handleUpdateNodeParameters: OpHandler<'updateNodeParameters'> = (op, ctx) 
 		return `node '${op.nodeName}' not found`;
 	}
 	const sanitized = sanitizeUnsafeKeys(op.parameters) as Record<string, unknown>;
-	const merged = op.replace
-		? sanitized
-		: deepMerge((node.parameters ?? {}) as Record<string, unknown>, sanitized);
+	const merged = op.replace ? sanitized : deepMerge(node.parameters ?? {}, sanitized);
 	node.parameters = merged as INodeParameters;
 	return null;
 };

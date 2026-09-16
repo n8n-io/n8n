@@ -12,6 +12,7 @@ import {
 	type INode,
 	type INodeExecutionData,
 	type INodePropertyOptions,
+	type McpOAuth2CredentialType,
 	type McpRegistryConnection,
 	NodeConnectionTypes,
 	NodeOperationError,
@@ -48,6 +49,7 @@ export type McpConnectionConfig = {
 	endpointUrl: string;
 	registryCredential?: {
 		connection: McpRegistryConnection;
+		credentialType: McpOAuth2CredentialType;
 		prepareConnection(input: PrepareMcpRegistryConnectionInput): PrepareMcpRegistryConnectionResult;
 	};
 	timeout: number;
@@ -155,6 +157,8 @@ export async function buildMcpToolkit(
 		);
 	}
 
+	const attribution = config.registryCredential?.connection.attribution;
+
 	try {
 		const tools = mcpTools.map((tool) => {
 			const prefixedName = buildMcpToolName(node.name, tool.name);
@@ -174,6 +178,7 @@ export async function buildMcpToolkit(
 						},
 						() => ctx.getExecutionCancelSignal(),
 					),
+					attribution,
 				),
 				ctx,
 			);

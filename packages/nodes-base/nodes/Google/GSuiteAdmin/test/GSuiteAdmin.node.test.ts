@@ -102,9 +102,17 @@ describe('GSuiteAdmin Node - loadOptions', () => {
 
 			const result = await node.methods.loadOptions.getOrgUnits.call(mockThis);
 			expect(result).toEqual([
+				{ name: '/', value: '/' },
 				{ name: 'Engineering', value: '/engineering' },
 				{ name: 'HR', value: '/hr' },
 			]);
+		});
+
+		it('should return only the root unit when the response has no organizational units', async () => {
+			(googleApiRequest as Mock).mockResolvedValue({ kind: 'admin#directory#orgUnits' });
+
+			const result = await node.methods.loadOptions.getOrgUnits.call(mockThis);
+			expect(result).toEqual([{ name: '/', value: '/' }]);
 		});
 	});
 });

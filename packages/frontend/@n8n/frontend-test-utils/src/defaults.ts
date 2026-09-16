@@ -180,6 +180,9 @@ export const defaultSettings: FrontendSettings = {
 	folders: {
 		enabled: false,
 	},
+	workerPools: {
+		enabled: false,
+	},
 	collaboration: {
 		crdt: 'off',
 	},
@@ -192,6 +195,7 @@ export const defaultSettings: FrontendSettings = {
 	activeModules: [],
 	canvasOnly: false,
 	envFeatureFlags: {},
+	expressionEngine: 'legacy',
 	dynamicBanners: {
 		endpoint: 'https://api.n8n.io/api/banners',
 		enabled: true,

@@ -1,5 +1,5 @@
 #!/bin/sh
-# n8n-shadow-shim-version: 1
+# n8n-shadow-shim-version: 2
 #
 # n8n dev metrics — binary shim (template). setup.mjs renders this per shadowed
 # CLI and installs it in place of the real binary (the original is saved next to
@@ -19,9 +19,12 @@ __bindir='__N8N_BINDIR__'
 __tracker='__N8N_TRACKER__' # installed copy of track.mjs, refreshed on each install
 
 # If the baked real binary moved (e.g. corepack/pnpm upgrade), re-resolve it via
-# PATH with our own directory removed — never resolving back to this shim.
+# PATH with our own directory removed — never resolving back to this shim. Also
+# skip pnpm-managed dirs (version store, .tools/pnpm): resolving to one of those
+# can run a different pnpm version than the project pinned.
 if [ ! -x "$__real" ]; then
-	__cp=$(printf '%s' "${PATH:-}" | tr ':' '\n' | grep -vxF "$__bindir" | paste -sd: -)
+	__cp=$(printf '%s' "${PATH:-}" | tr ':' '\n' | grep -vxF "$__bindir" \
+		| grep -v -e '/store/v[0-9]*/links/' -e '/\.tools/pnpm/' | paste -sd: -)
 	__real=$(PATH="$__cp" command -v "$__bin" 2>/dev/null)
 	[ -n "$__real" ] || exec env PATH="$__cp" "$__bin" "$@" # last resort, no loop
 fi

@@ -8,6 +8,7 @@ import type {
 	IExecutionDb,
 	IExecutionResponse,
 	ExecutionRepository,
+	ExecutionSummaries,
 	Project,
 	User,
 	WorkflowHistoryRepository,
@@ -16,7 +17,7 @@ import type { WorkflowHistory } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { QueryFailedError } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
-import type { IRun, IRunData, IRunExecutionData, ITaskData } from 'n8n-workflow';
+import type { ExecutionSummary, IRun, IRunData, IRunExecutionData, ITaskData } from 'n8n-workflow';
 import { ManualExecutionCancelledError, WorkflowOperationError } from 'n8n-workflow';
 
 import type { ActiveExecutions } from '@/active-executions';
@@ -25,6 +26,7 @@ import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.err
 import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { encodeExecutionCursor } from '@/executions/execution-cursor';
 import { MissingExecutionDataError } from '@/executions/execution-data/missing-execution-data.error';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { EngineV2ExecutionReader } from '@/executions/engine-v2-execution-reader.service';
@@ -218,12 +220,14 @@ describe('ExecutionService', () => {
 			executionPersistence.findWithUnflattenedData.mockResolvedValue(
 				mock<IExecutionResponse>({ data: { executionData: undefined } }),
 			);
-			const req = mock<ExecutionRequest.Retry>();
-
 			/**
 			 * Act
 			 */
-			const retry = executionService.retry(req, []);
+			const retry = executionService.retry({
+				executionId: 'original-123',
+				sharedWorkflowIds: [],
+				user: mock<User>(),
+			});
 
 			/**
 			 * Assert
@@ -295,17 +299,15 @@ describe('ExecutionService', () => {
 
 			localExecutionRedactionProxy.processExecution.mockImplementation(async (exec) => exec);
 
-			const req = mock<ExecutionRequest.Retry>({
-				params: { id: 'original-123' },
-				user: mockUser,
-				body: { loadWorkflow: false },
-				query: {},
-			});
-
 			/**
 			 * Act
 			 */
-			await localExecutionService.retry(req, ['workflow-1']);
+			await localExecutionService.retry({
+				executionId: 'original-123',
+				options: { loadWorkflow: false },
+				sharedWorkflowIds: ['workflow-1'],
+				user: mockUser,
+			});
 
 			/**
 			 * Assert
@@ -363,13 +365,12 @@ describe('ExecutionService', () => {
 			return { service, workflowRunner };
 		};
 
-		const buildRetryRequest = () =>
-			mock<ExecutionRequest.Retry>({
-				params: { id: 'original-123' },
-				user: mock<User>({ id: 'user-1' }),
-				body: { loadWorkflow: false },
-				query: {},
-			});
+		const retryArgs = (): Parameters<ExecutionService['retry']>[0] => ({
+			executionId: 'original-123',
+			options: { loadWorkflow: false },
+			sharedWorkflowIds: ['workflow-1'],
+			user: mock<User>({ id: 'user-1' }),
+		});
 
 		/**
 		 * Builds a crashed (status 'error') source execution to retry. The data is a real
@@ -407,7 +408,7 @@ describe('ExecutionService', () => {
 				buildCrashedExecution({ lastNodeExecuted: 'Some Node', runData: undefined }),
 			);
 
-			await expect(service.retry(buildRetryRequest(), ['workflow-1'])).resolves.toBeDefined();
+			await expect(service.retry(retryArgs())).resolves.toBeDefined();
 			expect(workflowRunner.run).toHaveBeenCalledTimes(1);
 		});
 
@@ -421,7 +422,7 @@ describe('ExecutionService', () => {
 				buildCrashedExecution({ lastNodeExecuted: 'Missing Node', runData }),
 			);
 
-			await expect(service.retry(buildRetryRequest(), ['workflow-1'])).resolves.toBeDefined();
+			await expect(service.retry(retryArgs())).resolves.toBeDefined();
 			expect(workflowRunner.run).toHaveBeenCalledTimes(1);
 			// No entry is created for the missing node, and unrelated run data is left intact.
 			expect(runData['Missing Node']).toBeUndefined();
@@ -436,7 +437,7 @@ describe('ExecutionService', () => {
 				buildCrashedExecution({ lastNodeExecuted: 'Crash Node', runData }),
 			);
 
-			await expect(service.retry(buildRetryRequest(), ['workflow-1'])).resolves.toBeDefined();
+			await expect(service.retry(retryArgs())).resolves.toBeDefined();
 			expect(workflowRunner.run).toHaveBeenCalledTimes(1);
 			expect(runData['Crash Node']).toHaveLength(0);
 		});
@@ -449,7 +450,7 @@ describe('ExecutionService', () => {
 				buildCrashedExecution({ lastNodeExecuted: 'Last Node', runData }),
 			);
 
-			await expect(service.retry(buildRetryRequest(), ['workflow-1'])).resolves.toBeDefined();
+			await expect(service.retry(retryArgs())).resolves.toBeDefined();
 			expect(workflowRunner.run).toHaveBeenCalledTimes(1);
 			expect(runData['Last Node']).toHaveLength(1);
 		});
@@ -462,7 +463,7 @@ describe('ExecutionService', () => {
 				buildCrashedExecution({ lastNodeExecuted: 'Empty Node', runData }),
 			);
 
-			await expect(service.retry(buildRetryRequest(), ['workflow-1'])).resolves.toBeDefined();
+			await expect(service.retry(retryArgs())).resolves.toBeDefined();
 			expect(workflowRunner.run).toHaveBeenCalledTimes(1);
 			expect(runData['Empty Node']).toHaveLength(0);
 		});
@@ -975,6 +976,71 @@ describe('ExecutionService', () => {
 				['wf-1'],
 				expect.objectContaining({ startedAfter, startedBefore }),
 			);
+		});
+	});
+
+	describe('nextCursor', () => {
+		beforeEach(() => {
+			executionRepository.getLiveExecutionRowsOnPostgres.mockResolvedValue(-1);
+			executionRepository.fetchCount.mockResolvedValue(0);
+		});
+
+		it('findRangeWithCount returns a cursor for the last row when the page is full', async () => {
+			executionRepository.findManyByRangeQuery.mockResolvedValue([
+				mock<ExecutionSummary>({ id: '2' }),
+				mock<ExecutionSummary>({ id: '1' }),
+			]);
+
+			const { nextCursor } = await executionService.findRangeWithCount(
+				mock({ range: { limit: 2 } }),
+			);
+
+			expect(nextCursor).toBe(encodeExecutionCursor('1'));
+		});
+
+		it('findRangeWithCount returns null when the page is partial', async () => {
+			executionRepository.findManyByRangeQuery.mockResolvedValue([
+				mock<ExecutionSummary>({ id: '1' }),
+			]);
+
+			const { nextCursor } = await executionService.findRangeWithCount(
+				mock({ range: { limit: 20 } }),
+			);
+
+			expect(nextCursor).toBeNull();
+		});
+
+		it('findLatestCurrentAndCompleted derives the cursor from the completed page, not current', async () => {
+			executionRepository.findManyByRangeQuery.mockImplementation(async (query) =>
+				query.status?.includes('running')
+					? [mock<ExecutionSummary>({ id: '20' })]
+					: [mock<ExecutionSummary>({ id: '10' })],
+			);
+
+			const { nextCursor } = await executionService.findLatestCurrentAndCompleted(
+				mock({ range: { limit: 1 } }),
+			);
+
+			expect(nextCursor).toBe(encodeExecutionCursor('10'));
+		});
+
+		it('findLatestCurrentAndCompleted applies the cursor to completed rows only', async () => {
+			executionRepository.findManyByRangeQuery.mockResolvedValue([]);
+
+			await executionService.findLatestCurrentAndCompleted(
+				mock<ExecutionSummaries.RangeQuery>({
+					kind: 'range',
+					status: undefined,
+					range: { limit: 20, beforeId: '10' },
+				}),
+			);
+
+			const queries = executionRepository.findManyByRangeQuery.mock.calls.map(([query]) => query);
+			const current = queries.find((query) => query.status?.includes('running'));
+			const completed = queries.find((query) => !query.status?.includes('running'));
+
+			expect(current?.range).not.toHaveProperty('beforeId');
+			expect(completed?.range.beforeId).toBe('10');
 		});
 	});
 

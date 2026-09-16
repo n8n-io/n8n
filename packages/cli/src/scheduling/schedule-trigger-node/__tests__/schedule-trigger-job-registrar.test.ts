@@ -11,6 +11,7 @@ import { SCHEDULE_TRIGGER_NODE_TYPE, Workflow } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { DurableJobProvisioner } from '../../durable-job-provisioner';
+import type { WorkflowScheduledJobOwner } from '../../workflow-scheduled-job-owner';
 import { ScheduleTriggerJobRegistrar } from '../schedule-trigger-job-registrar';
 import { SCHEDULE_TRIGGER_TASK_TYPE } from '../schedule-trigger-task';
 
@@ -52,19 +53,29 @@ const everyThreeWeeksMonday: Cron = {
 	recurrence: { activated: true, index: 1, intervalSize: 3, typeInterval: 'weeks' },
 };
 
+const ownerOf = (workflowId: string, nodeId: string) => ({
+	ownerType: 'workflow',
+	ownerId: workflowId,
+	ownerMemberId: nodeId,
+});
+const OWNER = ownerOf(WORKFLOW_ID, NODE_ID);
+const OWNER_REF = { ownerType: 'workflow', ownerId: WORKFLOW_ID };
+
 describe('ScheduleTriggerJobRegistrar', () => {
 	const jobProvisioner = mock<DurableJobProvisioner>();
+	const owner = mock<WorkflowScheduledJobOwner>();
 
-	const lastProvisionedGrace = () => {
+	const lastRequest = () => {
 		const lastCall = jobProvisioner.provision.mock.calls.at(-1);
 		if (lastCall === undefined) {
 			throw new Error('expected provision to have been called');
 		}
-		if (lastCall.length !== 7) {
-			throw new Error('provision was called with an unexpected arity; update this helper');
-		}
-		return lastCall[6];
+		return lastCall[0];
 	};
+
+	const lastDesired = () => lastRequest().desired;
+
+	const lastProvisionedGrace = () => lastRequest().misfireGraceSeconds;
 
 	const makeRegistrar = ({
 		schedulerEnabled = true,
@@ -79,12 +90,15 @@ describe('ScheduleTriggerJobRegistrar', () => {
 			}),
 			mock<WorkflowsConfig>({ useWorkflowPublicationService: publicationEnabled }),
 			jobProvisioner,
+			owner,
 		);
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 		vi.useFakeTimers();
 		vi.setSystemTime(NOW);
+		owner.member.mockImplementation(ownerOf);
+		owner.ref.mockReturnValue(OWNER_REF);
 		jobProvisioner.provision.mockResolvedValue({
 			inserted: [],
 			redefined: [],
@@ -158,12 +172,11 @@ describe('ScheduleTriggerJobRegistrar', () => {
 
 			await session.commit(WORKFLOW_ID, NODE_ID);
 
-			expect(jobProvisioner.provision).toHaveBeenCalledWith(
-				WORKFLOW_ID,
-				NODE_ID,
-				SCHEDULE_TRIGGER_TASK_TYPE,
-				{ workflowId: WORKFLOW_ID, nodeId: NODE_ID },
-				[
+			expect(jobProvisioner.provision).toHaveBeenCalledWith({
+				owner: OWNER,
+				taskType: SCHEDULE_TRIGGER_TASK_TYPE,
+				payload: { workflowId: WORKFLOW_ID, nodeId: NODE_ID },
+				desired: [
 					{
 						name: expect.stringMatching(jobNamePattern),
 						schedule: { kind: 'cron', cronExpression: '0 0 9 * * *', timezone: null },
@@ -182,9 +195,9 @@ describe('ScheduleTriggerJobRegistrar', () => {
 						firstRunAt: NEXT_NINE,
 					},
 				],
-				ScheduledJobMisfirePolicy.Skip,
-				undefined,
-			);
+				misfirePolicy: ScheduledJobMisfirePolicy.Skip,
+				misfireGraceSeconds: undefined,
+			});
 		});
 
 		it('provisions a multi-rule node in one call, under the skip policy', async () => {
@@ -200,7 +213,7 @@ describe('ScheduleTriggerJobRegistrar', () => {
 			await session.commit(WORKFLOW_ID, NODE_ID);
 
 			expect(jobProvisioner.provision).toHaveBeenCalledTimes(1);
-			const [, , , , desired, misfirePolicy] = jobProvisioner.provision.mock.calls.at(-1)!;
+			const { desired, misfirePolicy } = lastRequest();
 			expect(desired).toHaveLength(3);
 			expect(misfirePolicy).toBe(ScheduledJobMisfirePolicy.Skip);
 		});
@@ -215,7 +228,7 @@ describe('ScheduleTriggerJobRegistrar', () => {
 
 			await session.commit(WORKFLOW_ID, NODE_ID);
 
-			const desired = jobProvisioner.provision.mock.calls.at(-1)![4];
+			const desired = lastDesired();
 			expect(desired).toHaveLength(1);
 			expect(desired[0].schedule).toEqual({
 				kind: 'cron',
@@ -232,13 +245,13 @@ describe('ScheduleTriggerJobRegistrar', () => {
 			const session = makeRegistrar().createSession();
 			session.createCollector(workflow, scheduleNode).registerCron(dailyAtNine, vi.fn());
 			await session.commit(WORKFLOW_ID, NODE_ID);
-			const firstNames = jobProvisioner.provision.mock.calls.at(-1)![4].map((job) => job.name);
+			const firstNames = lastDesired().map((job) => job.name);
 
 			const reordered = session.createCollector(workflow, scheduleNode);
 			reordered.registerCron(everyThreeWeeksMonday, vi.fn());
 			reordered.registerCron(dailyAtNine, vi.fn());
 			await session.commit(WORKFLOW_ID, NODE_ID);
-			const secondNames = jobProvisioner.provision.mock.calls.at(-1)![4].map((job) => job.name);
+			const secondNames = lastDesired().map((job) => job.name);
 
 			// dailyAtNine moved from index 0 to index 1, but its name is unchanged.
 			expect(secondNames[1]).toBe(firstNames[0]);
@@ -253,7 +266,7 @@ describe('ScheduleTriggerJobRegistrar', () => {
 
 			await session.commit(WORKFLOW_ID, NODE_ID);
 
-			const desired = jobProvisioner.provision.mock.calls.at(-1)![4];
+			const desired = lastDesired();
 			const [first, second] = desired.map((job) => job.name);
 			expect(first).not.toBe(second);
 			// Same definition, so same fingerprint: only the occurrence ordinal differs.
@@ -273,7 +286,7 @@ describe('ScheduleTriggerJobRegistrar', () => {
 
 			await session.commit(WORKFLOW_ID, NODE_ID);
 
-			const desired = jobProvisioner.provision.mock.calls.at(-1)![4];
+			const desired = lastDesired();
 			expect((desired[0].schedule as CronDefinition).timezone).toBe('Europe/Berlin');
 			// 09:00 Berlin (UTC+1 in January).
 			expect(desired[0].firstRunAt).toEqual(new Date('2026-01-05T08:00:00.000Z'));
@@ -290,7 +303,7 @@ describe('ScheduleTriggerJobRegistrar', () => {
 
 			await session.commit(WORKFLOW_ID, NODE_ID);
 
-			const desired = jobProvisioner.provision.mock.calls.at(-1)![4];
+			const desired = lastDesired();
 			expect((desired[0].schedule as CronDefinition).timezone).toBeNull();
 		});
 
@@ -305,6 +318,7 @@ describe('ScheduleTriggerJobRegistrar', () => {
 				}),
 				mock<WorkflowsConfig>({ useWorkflowPublicationService: true }),
 				jobProvisioner,
+				owner,
 			).createSession();
 			const defaulted = { id: WORKFLOW_ID, settings: {} } as unknown as Workflow;
 			const collector = session.createCollector(defaulted, scheduleNode);
@@ -312,7 +326,7 @@ describe('ScheduleTriggerJobRegistrar', () => {
 
 			await session.commit(WORKFLOW_ID, NODE_ID);
 
-			const desired = jobProvisioner.provision.mock.calls.at(-1)![4];
+			const desired = lastDesired();
 			expect((desired[0].schedule as CronDefinition).timezone).toBeNull();
 			// 09:00 Berlin (UTC+1 in January) — would be 09:00 UTC if the default
 			// weren't resolved.
@@ -359,7 +373,7 @@ describe('ScheduleTriggerJobRegistrar', () => {
 
 			await session.commit(WORKFLOW_ID, NODE_ID);
 
-			const desired = jobProvisioner.provision.mock.calls.at(-1)![4];
+			const desired = lastDesired();
 			expect(desired[0].firstRunAt).toBeNull();
 			expect((desired[0].schedule as CronDefinition).kind).toBe('cron');
 		});
@@ -377,7 +391,7 @@ describe('ScheduleTriggerJobRegistrar', () => {
 
 			await session.commit(WORKFLOW_ID, NODE_ID);
 
-			const desired = jobProvisioner.provision.mock.calls.at(-1)![4];
+			const desired = lastDesired();
 			// Legacy fires a negative-stride rule on every candidate tick, so it must
 			// stay a live plain-cron job with a real first run, not a clock-dead row.
 			expect((desired[0].schedule as CronDefinition).kind).toBe('cron');
@@ -396,15 +410,14 @@ describe('ScheduleTriggerJobRegistrar', () => {
 
 			await session.commit(WORKFLOW_ID, NODE_ID);
 
-			expect(jobProvisioner.provision).toHaveBeenCalledWith(
-				WORKFLOW_ID,
-				NODE_ID,
-				SCHEDULE_TRIGGER_TASK_TYPE,
-				{ workflowId: WORKFLOW_ID, nodeId: NODE_ID },
-				[],
-				ScheduledJobMisfirePolicy.Skip,
-				undefined,
-			);
+			expect(jobProvisioner.provision).toHaveBeenCalledWith({
+				owner: OWNER,
+				taskType: SCHEDULE_TRIGGER_TASK_TYPE,
+				payload: { workflowId: WORKFLOW_ID, nodeId: NODE_ID },
+				desired: [],
+				misfirePolicy: ScheduledJobMisfirePolicy.Skip,
+				misfireGraceSeconds: undefined,
+			});
 		});
 
 		it.each<[string, INodeParameters | undefined, ScheduledJobMisfirePolicy]>([
@@ -442,15 +455,14 @@ describe('ScheduleTriggerJobRegistrar', () => {
 
 				await session.commit(WORKFLOW_ID, NODE_ID);
 
-				expect(jobProvisioner.provision).toHaveBeenCalledWith(
-					WORKFLOW_ID,
-					NODE_ID,
-					SCHEDULE_TRIGGER_TASK_TYPE,
-					{ workflowId: WORKFLOW_ID, nodeId: NODE_ID },
-					expect.anything(),
-					expected,
-					undefined,
-				);
+				expect(jobProvisioner.provision).toHaveBeenCalledWith({
+					owner: OWNER,
+					taskType: SCHEDULE_TRIGGER_TASK_TYPE,
+					payload: { workflowId: WORKFLOW_ID, nodeId: NODE_ID },
+					desired: expect.anything(),
+					misfirePolicy: expected,
+					misfireGraceSeconds: undefined,
+				});
 			},
 		);
 
@@ -488,15 +500,14 @@ describe('ScheduleTriggerJobRegistrar', () => {
 
 			await session.commit(WORKFLOW_ID, NODE_ID);
 
-			expect(jobProvisioner.provision).toHaveBeenCalledWith(
-				WORKFLOW_ID,
-				NODE_ID,
-				SCHEDULE_TRIGGER_TASK_TYPE,
-				{ workflowId: WORKFLOW_ID, nodeId: NODE_ID },
-				expect.anything(),
-				ScheduledJobMisfirePolicy.Skip,
-				undefined,
-			);
+			expect(jobProvisioner.provision).toHaveBeenCalledWith({
+				owner: OWNER,
+				taskType: SCHEDULE_TRIGGER_TASK_TYPE,
+				payload: { workflowId: WORKFLOW_ID, nodeId: NODE_ID },
+				desired: expect.anything(),
+				misfirePolicy: ScheduledJobMisfirePolicy.Skip,
+				misfireGraceSeconds: undefined,
+			});
 		});
 
 		it("keeps a typeVersion 1.4 node's coalesce parameter through Workflow normalisation, since the version gate is satisfied", async () => {
@@ -510,15 +521,14 @@ describe('ScheduleTriggerJobRegistrar', () => {
 
 			await session.commit(WORKFLOW_ID, NODE_ID);
 
-			expect(jobProvisioner.provision).toHaveBeenCalledWith(
-				WORKFLOW_ID,
-				NODE_ID,
-				SCHEDULE_TRIGGER_TASK_TYPE,
-				{ workflowId: WORKFLOW_ID, nodeId: NODE_ID },
-				expect.anything(),
-				ScheduledJobMisfirePolicy.Coalesce,
-				undefined,
-			);
+			expect(jobProvisioner.provision).toHaveBeenCalledWith({
+				owner: OWNER,
+				taskType: SCHEDULE_TRIGGER_TASK_TYPE,
+				payload: { workflowId: WORKFLOW_ID, nodeId: NODE_ID },
+				desired: expect.anything(),
+				misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
+				misfireGraceSeconds: undefined,
+			});
 		});
 
 		it('resolves misfirePolicy to skip without throwing when the node has no parameters object at all', async () => {
@@ -533,15 +543,14 @@ describe('ScheduleTriggerJobRegistrar', () => {
 
 			await session.commit(WORKFLOW_ID, NODE_ID);
 
-			expect(jobProvisioner.provision).toHaveBeenCalledWith(
-				WORKFLOW_ID,
-				NODE_ID,
-				SCHEDULE_TRIGGER_TASK_TYPE,
-				{ workflowId: WORKFLOW_ID, nodeId: NODE_ID },
-				expect.anything(),
-				ScheduledJobMisfirePolicy.Skip,
-				undefined,
-			);
+			expect(jobProvisioner.provision).toHaveBeenCalledWith({
+				owner: OWNER,
+				taskType: SCHEDULE_TRIGGER_TASK_TYPE,
+				payload: { workflowId: WORKFLOW_ID, nodeId: NODE_ID },
+				desired: expect.anything(),
+				misfirePolicy: ScheduledJobMisfirePolicy.Skip,
+				misfireGraceSeconds: undefined,
+			});
 		});
 
 		it('provisions a node with no rules left as an empty desired set alongside a coalesce policy', async () => {
@@ -551,15 +560,14 @@ describe('ScheduleTriggerJobRegistrar', () => {
 
 			await session.commit(WORKFLOW_ID, NODE_ID);
 
-			expect(jobProvisioner.provision).toHaveBeenCalledWith(
-				WORKFLOW_ID,
-				NODE_ID,
-				SCHEDULE_TRIGGER_TASK_TYPE,
-				{ workflowId: WORKFLOW_ID, nodeId: NODE_ID },
-				[],
-				ScheduledJobMisfirePolicy.Coalesce,
-				undefined,
-			);
+			expect(jobProvisioner.provision).toHaveBeenCalledWith({
+				owner: OWNER,
+				taskType: SCHEDULE_TRIGGER_TASK_TYPE,
+				payload: { workflowId: WORKFLOW_ID, nodeId: NODE_ID },
+				desired: [],
+				misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
+				misfireGraceSeconds: undefined,
+			});
 		});
 
 		it("a discarded session's policy does not leak into the other session's later commit", async () => {
@@ -577,15 +585,14 @@ describe('ScheduleTriggerJobRegistrar', () => {
 			await attemptB.commit(WORKFLOW_ID, NODE_ID);
 
 			expect(jobProvisioner.provision).toHaveBeenCalledTimes(1);
-			expect(jobProvisioner.provision).toHaveBeenCalledWith(
-				WORKFLOW_ID,
-				NODE_ID,
-				SCHEDULE_TRIGGER_TASK_TYPE,
-				{ workflowId: WORKFLOW_ID, nodeId: NODE_ID },
-				expect.anything(),
-				ScheduledJobMisfirePolicy.Skip,
-				undefined,
-			);
+			expect(jobProvisioner.provision).toHaveBeenCalledWith({
+				owner: OWNER,
+				taskType: SCHEDULE_TRIGGER_TASK_TYPE,
+				payload: { workflowId: WORKFLOW_ID, nodeId: NODE_ID },
+				desired: expect.anything(),
+				misfirePolicy: ScheduledJobMisfirePolicy.Skip,
+				misfireGraceSeconds: undefined,
+			});
 		});
 
 		it('two sessions collecting different policies for the same workflow and node each provision their own resolved policy', async () => {
@@ -602,26 +609,22 @@ describe('ScheduleTriggerJobRegistrar', () => {
 			await attemptB.commit(WORKFLOW_ID, NODE_ID);
 
 			expect(jobProvisioner.provision).toHaveBeenCalledTimes(2);
-			expect(jobProvisioner.provision).toHaveBeenNthCalledWith(
-				1,
-				WORKFLOW_ID,
-				NODE_ID,
-				SCHEDULE_TRIGGER_TASK_TYPE,
-				{ workflowId: WORKFLOW_ID, nodeId: NODE_ID },
-				expect.anything(),
-				ScheduledJobMisfirePolicy.Coalesce,
-				undefined,
-			);
-			expect(jobProvisioner.provision).toHaveBeenNthCalledWith(
-				2,
-				WORKFLOW_ID,
-				NODE_ID,
-				SCHEDULE_TRIGGER_TASK_TYPE,
-				{ workflowId: WORKFLOW_ID, nodeId: NODE_ID },
-				expect.anything(),
-				ScheduledJobMisfirePolicy.Skip,
-				undefined,
-			);
+			expect(jobProvisioner.provision).toHaveBeenNthCalledWith(1, {
+				owner: ownerOf(WORKFLOW_ID, NODE_ID),
+				taskType: SCHEDULE_TRIGGER_TASK_TYPE,
+				payload: { workflowId: WORKFLOW_ID, nodeId: NODE_ID },
+				desired: expect.anything(),
+				misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
+				misfireGraceSeconds: undefined,
+			});
+			expect(jobProvisioner.provision).toHaveBeenNthCalledWith(2, {
+				owner: ownerOf(WORKFLOW_ID, NODE_ID),
+				taskType: SCHEDULE_TRIGGER_TASK_TYPE,
+				payload: { workflowId: WORKFLOW_ID, nodeId: NODE_ID },
+				desired: expect.anything(),
+				misfirePolicy: ScheduledJobMisfirePolicy.Skip,
+				misfireGraceSeconds: undefined,
+			});
 		});
 
 		it('commits each of two nodes collected in one session with its own distinct misfire policy', async () => {
@@ -638,26 +641,22 @@ describe('ScheduleTriggerJobRegistrar', () => {
 			await session.commit(WORKFLOW_ID, 'node-coalesce');
 			await session.commit(WORKFLOW_ID, 'node-skip');
 
-			expect(jobProvisioner.provision).toHaveBeenNthCalledWith(
-				1,
-				WORKFLOW_ID,
-				'node-coalesce',
-				SCHEDULE_TRIGGER_TASK_TYPE,
-				{ workflowId: WORKFLOW_ID, nodeId: 'node-coalesce' },
-				expect.anything(),
-				ScheduledJobMisfirePolicy.Coalesce,
-				undefined,
-			);
-			expect(jobProvisioner.provision).toHaveBeenNthCalledWith(
-				2,
-				WORKFLOW_ID,
-				'node-skip',
-				SCHEDULE_TRIGGER_TASK_TYPE,
-				{ workflowId: WORKFLOW_ID, nodeId: 'node-skip' },
-				expect.anything(),
-				ScheduledJobMisfirePolicy.Skip,
-				undefined,
-			);
+			expect(jobProvisioner.provision).toHaveBeenNthCalledWith(1, {
+				owner: ownerOf(WORKFLOW_ID, 'node-coalesce'),
+				taskType: SCHEDULE_TRIGGER_TASK_TYPE,
+				payload: { workflowId: WORKFLOW_ID, nodeId: 'node-coalesce' },
+				desired: expect.anything(),
+				misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
+				misfireGraceSeconds: undefined,
+			});
+			expect(jobProvisioner.provision).toHaveBeenNthCalledWith(2, {
+				owner: ownerOf(WORKFLOW_ID, 'node-skip'),
+				taskType: SCHEDULE_TRIGGER_TASK_TYPE,
+				payload: { workflowId: WORKFLOW_ID, nodeId: 'node-skip' },
+				desired: expect.anything(),
+				misfirePolicy: ScheduledJobMisfirePolicy.Skip,
+				misfireGraceSeconds: undefined,
+			});
 		});
 
 		it('provisions a positive misfire grace parameter as the grace of the node', async () => {
@@ -755,6 +754,7 @@ describe('ScheduleTriggerJobRegistrar', () => {
 					}),
 					mock<WorkflowsConfig>({ useWorkflowPublicationService: true }),
 					jobProvisioner,
+					owner,
 				);
 				return { registrar, scopedLogger };
 			};
@@ -863,7 +863,7 @@ describe('ScheduleTriggerJobRegistrar', () => {
 
 			await session.commit(WORKFLOW_ID, NODE_ID);
 
-			const desired = jobProvisioner.provision.mock.calls.at(-1)![4];
+			const desired = lastDesired();
 			expect(desired).toHaveLength(1);
 			expect((desired[0].schedule as CronDefinition).cronExpression).toBe('0 0 9 * * 1');
 		});
@@ -879,12 +879,12 @@ describe('ScheduleTriggerJobRegistrar', () => {
 			attemptB.createCollector(workflow, scheduleNode).registerCron(everyThreeWeeksMonday, vi.fn());
 
 			await attemptA.commit(WORKFLOW_ID, NODE_ID);
-			const fromA = jobProvisioner.provision.mock.calls.at(-1)![4];
+			const fromA = lastDesired();
 			expect(fromA).toHaveLength(1);
 			expect((fromA[0].schedule as CronDefinition).cronExpression).toBe('0 0 9 * * *');
 
 			await attemptB.commit(WORKFLOW_ID, NODE_ID);
-			const fromB = jobProvisioner.provision.mock.calls.at(-1)![4];
+			const fromB = lastDesired();
 			expect(fromB).toHaveLength(1);
 			expect((fromB[0].schedule as CronDefinition).cronExpression).toBe('0 0 9 * * 1');
 		});
@@ -894,7 +894,7 @@ describe('ScheduleTriggerJobRegistrar', () => {
 		it('removes the durable jobs of a deactivated node', async () => {
 			await makeRegistrar().remove(WORKFLOW_ID, NODE_ID);
 
-			expect(jobProvisioner.deprovision).toHaveBeenCalledWith(WORKFLOW_ID, NODE_ID);
+			expect(jobProvisioner.deprovisionOwnerMember).toHaveBeenCalledWith(OWNER);
 		});
 
 		it('removes durable jobs left by an earlier activation even while the scheduler is off', async () => {
@@ -902,7 +902,7 @@ describe('ScheduleTriggerJobRegistrar', () => {
 			// on; deactivation must clear them so they cannot re-fire on re-enable.
 			await makeRegistrar({ schedulerEnabled: false }).remove(WORKFLOW_ID, NODE_ID);
 
-			expect(jobProvisioner.deprovision).toHaveBeenCalledWith(WORKFLOW_ID, NODE_ID);
+			expect(jobProvisioner.deprovisionOwnerMember).toHaveBeenCalledWith(OWNER);
 		});
 	});
 
@@ -910,8 +910,8 @@ describe('ScheduleTriggerJobRegistrar', () => {
 		it('removes the durable jobs of all schedule nodes of a deactivated workflow', async () => {
 			await makeRegistrar().removeWorkflow(WORKFLOW_ID);
 
-			expect(jobProvisioner.deprovisionWorkflow).toHaveBeenCalledWith(
-				WORKFLOW_ID,
+			expect(jobProvisioner.deprovisionOwnerTaskType).toHaveBeenCalledWith(
+				OWNER_REF,
 				SCHEDULE_TRIGGER_TASK_TYPE,
 			);
 		});
@@ -919,8 +919,8 @@ describe('ScheduleTriggerJobRegistrar', () => {
 		it('removes durable jobs left by an earlier activation even while the scheduler is off', async () => {
 			await makeRegistrar({ schedulerEnabled: false }).removeWorkflow(WORKFLOW_ID);
 
-			expect(jobProvisioner.deprovisionWorkflow).toHaveBeenCalledWith(
-				WORKFLOW_ID,
+			expect(jobProvisioner.deprovisionOwnerTaskType).toHaveBeenCalledWith(
+				OWNER_REF,
 				SCHEDULE_TRIGGER_TASK_TYPE,
 			);
 		});
@@ -932,9 +932,9 @@ describe('ScheduleTriggerJobRegistrar', () => {
 
 			await makeRegistrar().removeWorkflowInTransaction(manager, WORKFLOW_ID);
 
-			expect(jobProvisioner.deprovisionWorkflowInTransaction).toHaveBeenCalledWith(
+			expect(jobProvisioner.deprovisionOwnerTaskTypeInTransaction).toHaveBeenCalledWith(
 				manager,
-				WORKFLOW_ID,
+				OWNER_REF,
 				SCHEDULE_TRIGGER_TASK_TYPE,
 			);
 		});
@@ -953,6 +953,7 @@ describe('ScheduleTriggerJobRegistrar', () => {
 				}),
 				mock<WorkflowsConfig>({ useWorkflowPublicationService: publicationEnabled }),
 				jobProvisioner,
+				owner,
 			);
 			return scopedLogger;
 		};

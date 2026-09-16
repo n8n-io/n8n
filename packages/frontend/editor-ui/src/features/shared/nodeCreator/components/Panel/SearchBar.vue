@@ -75,6 +75,8 @@ defineExpose({
 </template>
 
 <style lang="scss" module>
+@use '@/app/css/variables' as *;
+
 .searchContainer {
 	display: flex;
 	height: 40px;

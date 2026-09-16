@@ -2,6 +2,7 @@ import {
 	AgentJsonConfigSchema,
 	findVectorStoreToolNameCollisions,
 	formatAgentConfigZodError,
+	McpOAuth2CredentialTypeSchema,
 } from '../agent-json-config.schema';
 
 const minimalConfig = {
@@ -43,6 +44,19 @@ describe('AgentJsonConfigSchema — reasoning', () => {
 		});
 
 		expect(result.success).toBe(false);
+	});
+});
+
+describe('McpOAuth2CredentialTypeSchema', () => {
+	it.each(['oAuth2Api', 'githubOAuth2Api', 'gmailOAuth2'])(
+		'accepts the OAuth2 credential type %s',
+		(credentialType) => {
+			expect(McpOAuth2CredentialTypeSchema.safeParse(credentialType).success).toBe(true);
+		},
+	);
+
+	it('rejects a non-OAuth2 credential type', () => {
+		expect(McpOAuth2CredentialTypeSchema.safeParse('httpBearerAuth').success).toBe(false);
 	});
 });
 

@@ -3,6 +3,7 @@ import { NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
 
 import * as channel from './channel';
 import * as channelMessage from './channelMessage';
+import * as chatMember from './chatMember';
 import * as chatMessage from './chatMessage';
 import * as onlineMeeting from './onlineMeeting';
 import * as task from './task';
@@ -69,13 +70,13 @@ export const versionDescription: INodeTypeDescription = {
 					name: 'Microsoft OAuth2 (Graph)',
 					value: 'microsoftOAuth2Api',
 					description:
-						'Generic Microsoft Graph credential. Add the Teams Graph scopes (e.g. Chat.ReadWrite, ChannelMessage.Read.All, Group.ReadWrite.All, OnlineMeetings.ReadWrite) and grant admin consent on the credential. See the docs for the full scope string.',
+						'Generic Microsoft Graph credential. Add the Teams Graph scopes (e.g. Chat.ReadWrite, ChannelMessage.Read.All, Group.ReadWrite.All, OnlineMeetings.ReadWrite, User.Read.All) and grant admin consent on the credential. See the docs for the full scope string.',
 				},
 				{
 					name: 'Service Principal (App-Only)',
 					value: SERVICE_PRINCIPAL_AUTH,
 					description:
-						'App-only access via a Microsoft Entra app registration. App-only Graph cannot act as a signed-in user, so chat actions, chat triggers, and online meetings are unavailable. Grant the relevant application permissions (e.g. Team.ReadBasic.All, Channel.ReadBasic.All, Tasks.ReadWrite.All) and admin consent on the credential.',
+						'App-only access via a Microsoft Entra app registration. App-only Graph cannot act as a signed-in user, so chat actions and chat triggers are unavailable. Online meetings act on the user chosen under "Organizer". Grant the relevant application permissions (e.g. Team.ReadBasic.All, Channel.ReadBasic.All, Tasks.ReadWrite.All, OnlineMeetings.ReadWrite.All, User.Read.All) and admin consent on the credential.',
 				},
 			],
 			default: 'microsoftTeamsOAuth2Api',
@@ -95,6 +96,10 @@ export const versionDescription: INodeTypeDescription = {
 					value: 'channelMessage',
 				},
 				{
+					name: 'Chat Member',
+					value: 'chatMember',
+				},
+				{
 					name: 'Chat Message',
 					value: 'chatMessage',
 				},
@@ -112,6 +117,7 @@ export const versionDescription: INodeTypeDescription = {
 
 		...channel.description,
 		...channelMessage.description,
+		...chatMember.description,
 		...chatMessage.description,
 		...onlineMeeting.description,
 		...task.description,

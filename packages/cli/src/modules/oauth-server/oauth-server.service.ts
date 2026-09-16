@@ -26,7 +26,10 @@ import type { Response } from 'express';
 import { AuthService } from '@/auth/auth.service';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
-import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
+import {
+	ProtectedResourceRegistry,
+	type ProtectedResource,
+} from '@/services/protected-resource.registry';
 import { UrlService } from '@/services/url.service';
 import { UserManagementMailer } from '@/user-management/email';
 
@@ -271,7 +274,10 @@ export class OAuthServerService implements OAuthServerProvider {
 				id: clientId,
 				name: resource.displayName ?? clientId,
 				redirectUris: [clientId],
-				grantTypes: ['authorization_code'],
+				// `refresh_token` so the column matches what the grant actually supports:
+				// the AS issues a refresh token on every authorization-code exchange, and
+				// long-lived trigger pages rotate it rather than redirect again.
+				grantTypes: ['authorization_code', 'refresh_token'],
 				tokenEndpointAuthMethod: 'none',
 				clientSecret: null,
 				clientSecretExpiresAt: null,
@@ -284,7 +290,7 @@ export class OAuthServerService implements OAuthServerProvider {
 			client_id: clientId,
 			client_name: resource.displayName ?? clientId,
 			redirect_uris: [clientId],
-			grant_types: ['authorization_code'],
+			grant_types: ['authorization_code', 'refresh_token'],
 			token_endpoint_auth_method: 'none',
 			response_types: ['code'],
 			logo_uri: undefined,
@@ -405,6 +411,22 @@ export class OAuthServerService implements OAuthServerProvider {
 			const targetResource = resource
 				? await this.resourceRegistry.getByResourceUrl(resource)
 				: this.resourceRegistry.getDefaultResource();
+
+			// An unavailable resource is hidden from RFC 9728 discovery, but a client
+			// holding a cached resource URL skips discovery — reject it here so the
+			// flow fails before the user is sent through login and consent.
+			if (targetResource && (await this.isResourceUnavailable(targetResource))) {
+				this.logger.warn('OAuth authorization rejected: target resource is unavailable', {
+					clientId: client.client_id,
+					resource: targetResource.getResourceUrl(),
+				});
+				res.status(400).json({
+					error: 'invalid_target',
+					error_description: 'Resource is not available for authorization',
+				});
+				return;
+			}
+
 			const allowedUris = (await targetResource?.getAllowedRedirectUris?.()) ?? [];
 			if (allowedUris.length > 0 && !this.isRedirectUriAllowed(allowedUris, params.redirectUri)) {
 				this.logger.warn(
@@ -608,6 +630,11 @@ export class OAuthServerService implements OAuthServerProvider {
 		}
 
 		return null;
+	}
+
+	// Resources without `isAvailable` are treated as always available.
+	private async isResourceUnavailable(resource: ProtectedResource): Promise<boolean> {
+		return !((await resource.isAvailable?.()) ?? true);
 	}
 
 	// Exact-match against a registered resource, as required by RFC 8707 §2.1.

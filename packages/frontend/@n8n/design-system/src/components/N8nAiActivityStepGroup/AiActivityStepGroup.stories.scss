@@ -1,0 +1,19 @@
+.background-jobs-story {
+	margin: calc(-1 * var(--spacing--2xs)) calc(-1 * var(--spacing--2xs)) 0;
+	border-bottom: var(--border);
+
+	--ai-activity-step--height: auto;
+	--ai-activity-step--min-height: var(--height--xl);
+	--ai-activity-step--padding: var(--spacing--xs) var(--spacing--sm);
+	--ai-activity-step--color: var(--text-color);
+
+	.waiting circle {
+		fill: currentColor;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.job-spinner {
+			animation: none;
+		}
+	}
+}

@@ -7,10 +7,17 @@
 // execution and cleanup.
 // ---------------------------------------------------------------------------
 
-import type { InstanceAiConfirmRequest, InstanceAiWorkflowAttachment } from '@n8n/api-types';
+import type {
+	InstanceAiBuildMode,
+	InstanceAiConfirmRequest,
+	InstanceAiHandoffContext,
+	InstanceAiWorkflowAttachment,
+} from '@n8n/api-types';
+import { truncate } from '@n8n/utils/string/truncate';
 import crypto from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
 
+import { resolveEvalPromptSettings } from './build-mode';
 import {
 	SSE_SETTLE_DELAY_MS,
 	startSseConnection,
@@ -43,12 +50,14 @@ import {
 import { loadProviderFixtures } from './fixture-server';
 import { reconstructSeedFromThread } from './langsmith-seed';
 import type { EvalLogger } from './logger';
+import { executePriorRuns } from './prior-runs';
 import { redactSecretsInTextDeep } from './redact';
 import type { CaseSeed } from './schema';
 import {
 	buildSeededTablesNote,
 	dedupeScenarioSeedTables,
 	evictLeftoverSeedTables,
+	reseedScenarioTables,
 	uniquifyScenarioTableNames,
 } from './seed-tables';
 import type { CheckOutcome } from '../binaryChecks/types';
@@ -104,6 +113,11 @@ interface MultiTurnDriverConfig {
 	threadId: string;
 	conversation: ConversationTurn[];
 	messageBudget?: number;
+	/** Resolved wire value sent with every message (see `resolveEvalBuildMode`). */
+	buildMode?: InstanceAiBuildMode;
+	promptVersion?: string;
+	allowUserExecution?: boolean;
+	beforeUserExecution?: (deadline: number) => Promise<void>;
 	events: CapturedEvent[];
 	approvedRequests: Set<string>;
 	startTime: number;
@@ -135,6 +149,7 @@ interface MultiTurnDriverConfig {
 	/** Resource references sent with the FIRST message only — an attachment is a
 	 *  hand-off, not something a user re-sends every turn. */
 	openingAttachments?: InstanceAiWorkflowAttachment[];
+	openingHandoffContext?: InstanceAiHandoffContext;
 }
 
 /** A conversation is multi-turn if it has more than one turn, or if the only
@@ -160,6 +175,7 @@ async function driveMultiTurnConversation(
 	const proxy = new UserProxyLlm({
 		conversation: proxyConversation,
 		messageBudget: config.messageBudget,
+		allowUserExecution: config.allowUserExecution,
 		logger: config.logger,
 		...(config.allowlistedCredentialIds !== undefined
 			? {
@@ -191,6 +207,9 @@ async function driveMultiTurnConversation(
 		config.threadId,
 		openingMessage + (config.openingMessageSuffix ?? ''),
 		config.openingAttachments,
+		config.buildMode,
+		config.promptVersion,
+		config.openingHandoffContext,
 	);
 
 	await runMultiTurnConversation({
@@ -204,6 +223,10 @@ async function driveMultiTurnConversation(
 		confirmationStrategy,
 		nextMessageDecider,
 		proxyResponses: config.proxyResponses,
+		buildMode: config.buildMode,
+		promptVersion: config.promptVersion,
+		allowUserExecution: config.allowUserExecution,
+		beforeUserExecution: config.beforeUserExecution,
 	});
 
 	return { ...proxy.getDecisionStats() };
@@ -262,6 +285,11 @@ export interface BuildResult {
 	/** Transport-level failure (network error, or the lane unreachable right
 	 *  after failing — e.g. timed out against a dead lane). Routed to `framework_issue`. */
 	transportFailure?: boolean;
+	/** Set when a `seed.priorRuns` staging run produced no execution record, so the
+	 *  history the case grades against does not exist. Unlike the other infra flags this
+	 *  one applies even when the BUILD SUCCEEDED, which is exactly the case that would
+	 *  otherwise be scored as an agent failure. */
+	priorRunFailed?: string;
 	/** Evidence that the MODEL PROVIDER, not the builder, failed this build (a
 	 *  5xx/429 upstream of the n8n instance). Set only after the retry budget is
 	 *  spent. Routed to `framework_issue` with `PROVIDER_OUTAGE_ROOT_CAUSE`, so an
@@ -425,6 +453,10 @@ export interface BuildWorkflowConfig {
 	conversation?: ConversationTurn[];
 	/** Max follow-up messages the proxy will send. Ignored in auto-approve mode. */
 	messageBudget?: number;
+	/** Case-declared build style; resolved via `resolveEvalBuildMode` (absent → default). */
+	buildMode?: WorkflowTestCase['buildMode'];
+	promptVersion?: string;
+	allowUserExecution?: boolean;
 	/** Credentials this build should see (created for real, view pinned to them). */
 	credentials?: TestCaseCredential[];
 	/** Run-level registry the created credential IDs are added to for cleanup. */
@@ -487,6 +519,7 @@ export function workflowExpectedForCase(
  */
 export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildResult> {
 	const { client, logger } = config;
+	const { buildMode, promptVersion } = resolveEvalPromptSettings(config);
 	const threadId = crypto.randomUUID();
 	const startTime = Date.now();
 	const timeoutMs = config.timeoutMs ?? DEFAULT_TIMEOUT_MS;
@@ -518,6 +551,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 	let builtDataTableIds: string[] = [];
 	let seededTranscript: TranscriptTurn[] = [];
 	let seedingFailed = false;
+	let priorRunFailed: string | undefined;
 	// Seed-declared workflow id -> the workflow as actually restored (fresh id and
 	// name). Lets an authored `attach` reference survive the per-run remap.
 	let seedWorkflowsBySeedId = new Map<string, { id: string; name: string }>();
@@ -815,6 +849,39 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 					`Seeding failed: ${error instanceof Error ? error.message : String(error)}`,
 				);
 			}
+			// Run AFTER the seeding try/catch, so a prior-run problem is not reported as
+			// "Seeding failed" — the artifacts did land, it is the pre-turn history that did
+			// not. Before the live turn, so the agent's first look already sees it.
+			if (config.seed?.mode === 'inline' && config.seed.priorRuns?.length) {
+				// A throw here (an id the seed never created) is an authoring/harness fault.
+				// Without the flag the outer catch returns a plain failed build and the case
+				// is recorded as `build_failure` / `builder_issue` — a builder red for
+				// something the builder had no part in.
+				try {
+					const outcomes = await executePriorRuns({
+						client,
+						priorRuns: config.seed.priorRuns,
+						// Already maps authored seed id → the restored workflow, and it is built
+						// from `remapped`, which the server pins its ids to.
+						seedWorkflows: seedWorkflowsBySeedId,
+						logger,
+						laneTag: config.laneTag,
+					});
+					// A staged run that never produced an execution record leaves the case's
+					// premise missing, so the graded turn answers a question the instance cannot
+					// support. Recorded rather than thrown: the build itself is fine, and the
+					// case is routed to infra instead of scored.
+					const missing = outcomes.filter((outcome) => !outcome.ran);
+					if (missing.length > 0) {
+						priorRunFailed = missing
+							.map((outcome) => `${outcome.workflow}: ${outcome.errors.join('; ') || 'unknown'}`)
+							.join(' | ');
+					}
+				} catch (error: unknown) {
+					seedingFailed = true;
+					throw error;
+				}
+			}
 		}
 
 		// TRUST-311 follow-up: create the case's execution-scenario data tables EMPTY
@@ -894,11 +961,19 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 		const openingAttachments: InstanceAiWorkflowAttachment[] | undefined = restoredForAttach
 			? [{ type: 'workflow', id: restoredForAttach.id, name: restoredForAttach.name }]
 			: undefined;
+		const openingHandoffContext: InstanceAiHandoffContext | undefined =
+			conversation[0]?.attach?.source === 'setup-panel-execute' && restoredForAttach
+				? { source: 'setup-panel-execute', workflowId: restoredForAttach.id }
+				: undefined;
 		// Name the out-of-band attachment in the RECORDED turn, or the judge and the
 		// prompt-aware checks read a text-less hand-off as a bare empty message — see
 		// `attachedWorkflowNote`. Mirrors `openingMessageSuffix`, which diverges
 		// sent-vs-recorded the other way.
-		const recordedOpeningMessage = [attachedWorkflowNote(restoredForAttach?.name), openingMessage]
+		const recordedOpeningMessage = [
+			attachedWorkflowNote(restoredForAttach?.name),
+			openingHandoffContext ? '[The user clicked Execute in the setup panel.]' : '',
+			openingMessage,
+		]
 			.filter(Boolean)
 			.join(' ');
 
@@ -909,6 +984,28 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				threadId,
 				conversation,
 				messageBudget: config.messageBudget,
+				buildMode,
+				promptVersion,
+				allowUserExecution: config.allowUserExecution,
+				beforeUserExecution: async (deadline) => {
+					const scenario = config.executionScenarios?.[0];
+					if (scenario) {
+						try {
+							await reseedScenarioTables(
+								client,
+								scenario,
+								threadId,
+								scenarioTableIdsByName,
+								logger,
+								deadline,
+							);
+						} catch (error) {
+							// Keep overall case timeouts separate from input setup failures.
+							seedingFailed = Date.now() < deadline;
+							throw error;
+						}
+					}
+				},
 				events,
 				approvedRequests,
 				startTime,
@@ -931,6 +1028,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				// (and the graded transcript) keeps the clean user prompt.
 				openingMessageSuffix: scenarioSeedTablesNote,
 				openingAttachments,
+				openingHandoffContext,
 				recordedOpeningMessage,
 			});
 		} else {
@@ -939,6 +1037,9 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				threadId,
 				openingMessage + scenarioSeedTablesNote,
 				openingAttachments,
+				buildMode,
+				promptVersion,
+				openingHandoffContext,
 			);
 			await waitForAllActivity({
 				client,
@@ -1007,6 +1108,16 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			toolCalls: eventOutcome.toolCalls,
 			agentActivities: eventOutcome.agentActivities,
 		};
+		const metadataBudget = Math.min(5_000, startTime + timeoutMs - Date.now());
+		if (metadataBudget > 0) {
+			try {
+				buildTrace.promptConfiguration = (
+					await client.getThreadStatus(threadId, metadataBudget)
+				).promptConfiguration;
+			} catch {
+				logger.verbose('Prompt configuration was not available for this build.');
+			}
+		}
 		const outcome = await buildAgentOutcome(
 			client,
 			{ ...eventOutcome, workflowIds: threadWorkflowIds },
@@ -1041,6 +1152,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 					transcript,
 					credentialViewPinned,
 					seedingFailed,
+					...(priorRunFailed ? { priorRunFailed } : {}),
 					credentialSetup: await credentialSetupFacts(),
 				};
 			}
@@ -1061,6 +1173,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				transcript,
 				credentialViewPinned,
 				seedingFailed,
+				...(priorRunFailed ? { priorRunFailed } : {}),
 				credentialSetup: await credentialSetupFacts(),
 			};
 		}
@@ -1086,6 +1199,11 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 		// per-scenario rows are seeded in runScenario via seededScenarioTableIdsByName.
 		return {
 			success: true,
+			// Carried on the SUCCESS path too. A staged run that never landed is the one
+			// infra signal that outlives a healthy build, and that is exactly the case
+			// `case-pipeline` has to catch — the graded turn answered a question the
+			// instance cannot support.
+			...(priorRunFailed ? { priorRunFailed } : {}),
 			workflowId: outcome.workflowsCreated[0].id,
 			workflowJsons: outcome.workflowJsons,
 			buildTrace,
@@ -1121,6 +1239,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			threadId,
 			credentialViewPinned,
 			seedingFailed,
+			...(priorRunFailed ? { priorRunFailed } : {}),
 			laneBootFailed,
 			credentialSetup: await credentialSetupFacts(),
 		};
@@ -1269,11 +1388,6 @@ function formatProxyStatsSuffix(stats: ProxyDecisionStats | undefined): string {
 // ---------------------------------------------------------------------------
 // Utility helpers
 // ---------------------------------------------------------------------------
-
-function truncate(text: string, maxLength: number): string {
-	if (text.length <= maxLength) return text;
-	return text.slice(0, maxLength) + '...';
-}
 
 /**
  * The provider key shape for the leak scan.

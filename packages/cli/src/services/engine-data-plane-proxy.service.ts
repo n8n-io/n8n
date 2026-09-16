@@ -13,8 +13,15 @@ import type { ExecutionIdV2 } from '@/executions/execution-id';
 export interface EngineDataPlaneProvider {
 	startExecution(request: StartExecutionRequest): Promise<StartExecutionResult>;
 
-	/** `undefined` when the data plane holds no execution under that id. */
-	getExecution(id: ExecutionIdV2): Promise<ExecutionSnapshot | undefined>;
+	/**
+	 * `undefined` when the data plane holds no execution under that id.
+	 *
+	 * @param options.includeSteps Also report the steps, on the same round trip.
+	 */
+	getExecution(
+		id: ExecutionIdV2,
+		options?: { includeSteps?: boolean },
+	): Promise<ExecutionSnapshot | undefined>;
 }
 
 /**
@@ -48,9 +55,12 @@ export class EngineDataPlaneProxyService implements EngineDataPlaneProvider {
 	}
 
 	/** No provider means no v2 execution can exist, so this is a miss, not an error. */
-	async getExecution(id: ExecutionIdV2): Promise<ExecutionSnapshot | undefined> {
+	async getExecution(
+		id: ExecutionIdV2,
+		options?: { includeSteps?: boolean },
+	): Promise<ExecutionSnapshot | undefined> {
 		if (!this.provider) return undefined;
 
-		return await this.provider.getExecution(id);
+		return await this.provider.getExecution(id, options);
 	}
 }

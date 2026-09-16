@@ -2,8 +2,16 @@ import { INSTANCE_AI_THREAD_SOURCES, type InstanceAiThreadSource } from '@n8n/ap
 
 export const INSTANCE_AI_VIEW = 'InstanceAi';
 export const INSTANCE_AI_THREAD_VIEW = 'InstanceAiThread';
+export const INSTANCE_AI_THREADS_VIEW = 'InstanceAiThreads';
 export const INSTANCE_AI_SETTINGS_VIEW = 'InstanceAiSettings';
 export const INSTANCE_AI_PROJECT_ID_QUERY = 'projectId';
+/**
+ * Query flag for the new-agent view: `mode=manual` skips the Instance AI flow
+ * and opens the standalone builder directly. A mode switch only — the agent id
+ * still travels exclusively in history state.
+ */
+export const INSTANCE_AI_CREATE_AGENT_MODE_QUERY = 'mode';
+export const INSTANCE_AI_CREATE_AGENT_MODE_MANUAL = 'manual';
 /**
  * History-state key for the agent id minted at the click. Carried to the
  * new-agent view so the "clicked" and "created" events share a join key even
@@ -50,6 +58,7 @@ export function isInstanceAiThreadSource(value: unknown): value is InstanceAiThr
 const INSTANCE_AI_CHAT_ROUTE_NAMES: ReadonlySet<string> = new Set([
 	INSTANCE_AI_VIEW,
 	INSTANCE_AI_THREAD_VIEW,
+	INSTANCE_AI_THREADS_VIEW,
 	INSTANCE_AI_NEW_VIEW,
 ]);
 

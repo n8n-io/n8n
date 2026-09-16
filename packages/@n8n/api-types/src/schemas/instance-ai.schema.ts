@@ -1,9 +1,11 @@
+import { instanceAiApprovalDetailsSchema } from './instance-ai-approval.schema';
 import { z } from 'zod';
 
 import type { McpRegistryServerIconResponse } from './mcp-registry.schema';
 import { TimeZoneSchema } from './timezone.schema';
 import { AgentJsonConfigSchema } from '../agents/agent-json-config.schema';
 import { agentSkillSchema } from '../agents/agent-skill.schema';
+import { clientMintedAgentIdSchema } from '../agents/dto';
 import { Z } from '../zod-class';
 
 // ---------------------------------------------------------------------------
@@ -17,7 +19,7 @@ import { Z } from '../zod-class';
 export const UNLIMITED_CREDITS = -1;
 
 /**
- * The instance's AI Assistant credit standing, as reported by `GET /instance-ai/credits`, by the
+ * The instance's n8n Assistant credit standing, as reported by `GET /instance-ai/credits`, by the
  * `updateInstanceAiCredits` push and by the internal callers that pass it around.
  *
  * `creditsQuota` is {@link UNLIMITED_CREDITS} when credits are not metered — either the proxy is
@@ -292,6 +294,14 @@ export const runStartPayloadSchema = z.object({
 		.describe(
 			'Stable ID for the assistant message group that owns this run. Used to reconnect live activity back to the correct assistant bubble.',
 		),
+	langsmithRunId: z
+		.string()
+		.optional()
+		.describe('LangSmith root-run ID, so user feedback can annotate the trace after a restart.'),
+	langsmithTraceId: z
+		.string()
+		.optional()
+		.describe('LangSmith trace ID paired with langsmithRunId for feedback annotation.'),
 });
 
 export const runFinishPayloadSchema = z.object({
@@ -655,7 +665,15 @@ export const mcpConnectServerSchema = z.object({
 	serverSlug: z.string(),
 	title: z.string(),
 	tagline: z.string().optional(),
-	credentialType: z.string(),
+	usesCredentials: z
+		.array(
+			z.object({
+				credentialType: z.string(),
+				name: z.string(),
+				value: z.string(),
+			}),
+		)
+		.min(1),
 });
 export type InstanceAiMcpConnectServer = z.infer<typeof mcpConnectServerSchema>;
 
@@ -698,6 +716,13 @@ export const confirmationRequestPayloadSchema = z.object({
 	args: z.record(z.unknown()),
 	severity: instanceAiConfirmationSeveritySchema,
 	message: z.string().describe('Human-readable description of the action'),
+	approvalDetails: instanceAiApprovalDetailsSchema.optional(),
+	resourceName: z
+		.string()
+		.optional()
+		.describe(
+			'Display name of the workflow or data table the action applies to, shown in the card title',
+		),
 	targetApproval: instanceAiTargetApprovalSchema
 		.optional()
 		.describe('Target-agent tool approval details rendered instead of the outer tool call'),
@@ -993,7 +1018,9 @@ export const tasksUpdatePayloadSchema = z.object({
  */
 const setupItemBase = {
 	/** Stable identity: `${workflowId}:${kind}:${key}` — key = credentialType
-	 *  for credential items, nodeName for parameter items. */
+	 *  for credential items (`${credentialType}:${nodeName}` for generic auth
+	 *  types, where one credential serves many services so items are per
+	 *  node), nodeName for parameter items. */
 	id: z.string(),
 };
 
@@ -1023,8 +1050,12 @@ export const setupItemsPayloadSchema = z.object({
 	workflowId: z.string().min(1).max(64),
 	/** FULL current list for this workflow. Each event replaces the previous
 	 *  snapshot — removal is implicit (an item absent from the next snapshot is
-	 *  gone). No delta/retraction protocol. */
-	items: z.array(setupItemSchema),
+	 *  gone). No delta/retraction protocol. Items that fail to parse (e.g. a
+	 *  kind added after this client was built) drop individually instead of
+	 *  failing the whole event — deployed clients keep the items they know. */
+	items: z
+		.array(setupItemSchema.nullable().catch(null))
+		.transform((items) => items.filter((item): item is InstanceAiSetupItem => item !== null)),
 });
 
 export const threadTitleUpdatedPayloadSchema = z.object({
@@ -1041,8 +1072,8 @@ const eventBase = {
 	userId: z.string().optional(),
 	/** Anthropic API response ID (msg_01...) — groups events from the same LLM response. */
 	responseId: z.string().optional(),
-	/** Epoch ms stamped once at publish — replays (SSE reconnect, snapshot
-	 *  rebuilds) use it to reconstruct real timing instead of "now". */
+	/** Epoch ms stamped once at publish — replays (SSE reconnect, history
+	 *  folds) use it to reconstruct real timing instead of "now". */
 	ts: z.number().optional(),
 };
 
@@ -1347,11 +1378,51 @@ export type InstanceAiAgentPreviewHandoffContext = z.infer<
 	typeof instanceAiAgentPreviewHandoffContextSchema
 >;
 
+/**
+ * Sent with the setup panel's synthesized "Execute" user message. Signals the
+ * agent to run a test execution of the workflow instead of treating the
+ * message as a build request.
+ */
+export const instanceAiSetupPanelExecuteHandoffContextSchema = z.object({
+	source: z.literal('setup-panel-execute'),
+	workflowId: z.string().min(1).max(64),
+});
+export type InstanceAiSetupPanelExecuteHandoffContext = z.infer<
+	typeof instanceAiSetupPanelExecuteHandoffContextSchema
+>;
+
 export const instanceAiHandoffContextSchema = z.discriminatedUnion('source', [
 	instanceAiCredentialHandoffContextSchema,
 	instanceAiAgentPreviewHandoffContextSchema,
+	instanceAiSetupPanelExecuteHandoffContextSchema,
 ]);
 export type InstanceAiHandoffContext = z.infer<typeof instanceAiHandoffContextSchema>;
+
+/**
+ * Build style for a run. `progressive` makes the agent build a minimal working
+ * slice first, gate increments on real executions, and extend on actual
+ * execution data. `default` uses the standard building policy.
+ */
+export const instanceAiBuildModeSchema = z.enum(['default', 'progressive']);
+export type InstanceAiBuildMode = z.infer<typeof instanceAiBuildModeSchema>;
+
+export const instanceAiPromptConfigurationSchema = z.object({
+	version: z.string(),
+	systemPromptVersion: z.string(),
+	skillVariants: z.array(z.string()),
+	skillsHash: z.string(),
+	fallbackFrom: z.string().optional(),
+});
+export type InstanceAiPromptConfiguration = z.infer<typeof instanceAiPromptConfigurationSchema>;
+
+/**
+ * A Computer Use entry point in the chat input's + menu. The client decides
+ * which entries it renders — its rollout and the device are only visible there
+ * — so it reports them and the backend never advertises an entry it is not told
+ * about.
+ */
+export const computerUseChannelSchema = z.enum(['localComputer', 'browser']);
+export type ComputerUseChannel = z.infer<typeof computerUseChannelSchema>;
 
 export class InstanceAiSendMessageRequest extends Z.class({
 	message: z.string().default(''),
@@ -1359,6 +1430,13 @@ export class InstanceAiSendMessageRequest extends Z.class({
 	context: instanceAiHandoffContextSchema.optional(),
 	timeZone: TimeZoneSchema,
 	pushRef: z.string().optional(),
+	/** Entries the client renders for this user. Omit to advertise none. The
+	 *  backend still applies the admin switches, so this can only narrow. */
+	computerUseChannels: z.array(computerUseChannelSchema).optional(),
+	/** Explicit override for evals. Omit to use the backend experiment assignment. */
+	mode: instanceAiBuildModeSchema.optional(),
+	/** Pin a published prompt profile. Takes precedence over mode. */
+	promptVersion: z.string().trim().min(1).max(128).optional(),
 }) {}
 
 export class InstanceAiCorrectTaskRequest extends Z.class({
@@ -1384,7 +1462,7 @@ export class InstanceAiCorrectTaskRequest extends Z.class({
  * - `playwright` — Playwright E2E helpers that create threads via the REST API
  * Experiment cleanup: remove with openWorkflowInAssistant.
  * - `workflow_list_auto` — treatment redirect: a workflow list card opened in the assistant by default
- * - `workflow_list_button` — deliberate "Edit with AI Assistant" button on a workflow list card
+ * - `workflow_list_button` — deliberate "Edit with n8n Assistant" button on a workflow list card
  */
 export const INSTANCE_AI_THREAD_SOURCES = [
 	'website-template',
@@ -1428,6 +1506,17 @@ export class InstanceAiEnsureThreadRequest extends Z.class({
 	sourceContext: instanceAiSourceContextSchema.optional(),
 }) {}
 
+/**
+ * Persist the pending new-agent artifact a thread has open: creates the agent
+ * under the id the frontend minted, or adopts it when a concurrent writer got
+ * there first, and binds it to the thread in the same request.
+ */
+export class InstanceAiPersistPendingAgentRequest extends Z.class({
+	projectId: z.string().min(1),
+	agentId: clientMintedAgentIdSchema,
+	name: z.string().min(1),
+}) {}
+
 export const instanceAiGatewayKeySchema = z.string().min(1).max(256);
 
 export class InstanceAiGatewayEventsQuery extends Z.class({
@@ -1461,6 +1550,21 @@ export class InstanceAiThreadMessagesQuery extends Z.class({
 export interface InstanceAiSendMessageResponse {
 	runId: string;
 }
+
+/**
+ * Why a run was refused admission, sent as `meta.reason` on the 429 so the editor can
+ * tell the two cases apart. They need different copy and different advice: an instance
+ * limit is transient and not the user's fault, so retrying is right; a user limit means
+ * they already have runs in flight and retrying is exactly wrong.
+ */
+export const INSTANCE_AI_RUN_LIMIT_REASONS = ['user_run_limit', 'instance_run_limit'] as const;
+
+export type InstanceAiRunLimitReason = (typeof INSTANCE_AI_RUN_LIMIT_REASONS)[number];
+
+export type InstanceAiRunLimitMeta = {
+	reason: InstanceAiRunLimitReason;
+	limit: number;
+};
 
 // ---------------------------------------------------------------------------
 // Frontend store types (shared so both sides agree on structure)
@@ -1610,6 +1714,24 @@ export interface InstanceAiThreadListResponse {
 	hasMore: boolean;
 }
 
+export class InstanceAiThreadHistoryQuery extends Z.class({
+	limit: z.coerce.number().int().min(1).max(100).default(30),
+	// Postgres rejects NUL bytes in text parameters, so reject them here as a 400.
+	search: z
+		.string()
+		.trim()
+		.max(500)
+		.refine((value) => !value.includes('\u0000'))
+		.optional(),
+	cursor: z.string().min(1).max(256).optional(),
+}) {}
+
+export interface InstanceAiThreadHistoryResponse {
+	threads: InstanceAiThreadInfo[];
+	nextCursor: string | null;
+	hasMore: boolean;
+}
+
 export interface InstanceAiEnsureThreadResponse {
 	thread: InstanceAiThreadInfo;
 	created: boolean;
@@ -1702,6 +1824,7 @@ export interface InstanceAiMemoryTaskSnapshot {
 }
 
 export interface InstanceAiThreadStatusResponse {
+	promptConfiguration?: InstanceAiPromptConfiguration;
 	hasActiveRun: boolean;
 	isSuspended: boolean;
 	runId?: string;
@@ -1932,7 +2055,7 @@ export interface InstanceAiSetupState {
 }
 
 /**
- * How each AI Assistant setup component is configured, derived from the admin
+ * How each n8n Assistant setup component is configured, derived from the admin
  * settings response. Single source of truth for the setup gate and the setup
  * telemetry snapshot, on both backend and frontend. The response already
  * resolves precedence (credential ids are null when env config wins), so env
@@ -2218,8 +2341,37 @@ export const INSTANCE_AI_MCP_CONNECTIONS_FLAG = '089_instance_ai_mcp_connections
 
 export const INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT = 'variant';
 
-/** Enables adding selected canvas nodes as chat context in the AI Assistant */
+/** Enables adding selected canvas nodes as chat context in the n8n Assistant */
 export const CANVAS_NODE_CONTEXT_FLAG = '104_canvas_aia_node_context';
+
+/** Enables the conversation-history tool and the past-conversations first-turn hint */
+export const INSTANCE_AI_CONVERSATION_HISTORY_FLAG = '109_instance_ai_conversation_history';
+
+export const INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT = 'variant';
+
+export const INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG = '111_instance_ai_progressive_building';
+export const INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT = 'variant';
+
+/** Enables the node-usage context surface for Instance AI: the `node-usage`
+
+ *  action and the `nodeTypes` filter on `workflows(action="list")`. */
+export const INSTANCE_AI_NODE_USAGE_FLAG = '109_instance_ai_node_usage';
+
+/**
+ * Rollout flag for folder exploration in Instance AI: folder attribution on
+ * `workflows(action="list")` rows plus `folderPath` / `folderId` / `recursive`
+ * on that action. Off by default. PostHog owns cohort rollout;
+ * `N8N_INSTANCE_AI_FOLDER_EXPLORATION_ENABLED` force-enables.
+ */
+export const INSTANCE_AI_FOLDER_EXPLORATION_FLAG = '110_instance_ai_folder_exploration';
+
+/**
+ * `110_instance_ai_folder_exploration` is multivariate — the enabled arm is a
+ * variant string, not a boolean. The flag names its on-arm `test` rather than
+ * the `variant` the other Instance AI experiments use, so this constant tracks
+ * the flag's own spelling.
+ */
+export const INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT = 'test';
 
 /**
  * Records a credential field that was rewritten (e.g. routed to the eval wire
@@ -2370,6 +2522,10 @@ const instanceAiEvalSeedWorkflowSchema = z.object({
 	name: z.string().min(1).max(255),
 	nodes: z.array(z.record(z.unknown())).max(500),
 	connections: z.record(z.unknown()),
+	/** Publish the workflow once restored, so a case starts from a live automation.
+	 *  Its node credentials must name credentials the thread's project holds, or
+	 *  activation refuses the workflow and the restore fails. */
+	published: z.boolean().optional(),
 });
 
 export type InstanceAiEvalSeedWorkflow = z.infer<typeof instanceAiEvalSeedWorkflowSchema>;
@@ -2463,7 +2619,8 @@ export class InstanceAiEvalRestoreThreadRequest extends Z.class({
 	messages: z.array(z.record(z.unknown())).max(1000),
 	/** Data tables the workflows reference; recreated first so ids can be rewritten. */
 	dataTables: z.array(instanceAiEvalSeedDataTableSchema).max(20).optional(),
-	/** Workflows the history references; recreated (node credentials stripped). */
+	/** Workflows the history references; recreated. A node credential is kept only
+	 *  when the thread's project holds one of the same type and name. */
 	workflows: z.array(instanceAiEvalSeedWorkflowSchema).max(50).optional(),
 	/** Agents the history references; created at their pinned id, with the thread
 	 *  bound to them so the next turn continues one instead of resolving it again. */

@@ -46,7 +46,7 @@ export function workflowContentSubject(workflow: Pick<PolicedWorkflow, 'nodes'>)
  * present would bind every create to the same `undefined` subject — a token for one create
  * would then clear any other.
  */
-export function workflowSubject(workflow: PolicedWorkflow): PolicySubject {
+export function workflowSubject(workflow: Pick<PolicedWorkflow, 'id' | 'nodes'>): PolicySubject {
 	if (workflow.id) return { type: 'workflow', id: workflow.id };
 
 	return workflowContentSubject(workflow);

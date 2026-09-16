@@ -215,7 +215,7 @@ export const getExpressionCode = (
 					hook(fixed, dataNode);
 				}
 				const parsed = jsVariablePolyfill(fixed, dataNode)?.[0];
-				if (!parsed || parsed.type !== 'ExpressionStatement') {
+				if (parsed?.type !== 'ExpressionStatement') {
 					throw new SyntaxError('Not a expression statement');
 				}
 
@@ -271,7 +271,7 @@ export const getExpressionCode = (
 			hook(fixed, dataNode);
 		}
 		const parsed = jsVariablePolyfill(fixed, dataNode)?.[0];
-		if (!parsed || parsed.type !== 'ExpressionStatement') {
+		if (parsed?.type !== 'ExpressionStatement') {
 			throw new SyntaxError('Not a expression statement');
 		}
 

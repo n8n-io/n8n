@@ -1,4 +1,4 @@
-import type { DeleteExecutionsDto } from '@n8n/api-types';
+import type { DeleteExecutionsDto, SerializedCursor } from '@n8n/api-types';
 import { ExecutionRedactionQueryDtoSchema } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
@@ -27,6 +27,7 @@ import { validate as jsonSchemaValidate } from 'jsonschema';
 import type {
 	ExecutionError,
 	ExecutionStatus,
+	ExecutionSummary,
 	INode,
 	IWorkflowBase,
 	IWorkflowExecutionDataProcess,
@@ -65,6 +66,7 @@ import { getWorkflowProjectDetailsSafe } from '@/workflows/utils';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
 import { EngineV2ExecutionReader } from './engine-v2-execution-reader.service';
+import { encodeCursorForId } from './execution-cursor';
 import { MissingExecutionDataError } from './execution-data/missing-execution-data.error';
 import { isExecutionIdV2 } from './execution-id';
 import { ExecutionPersistence } from './execution-persistence';
@@ -75,16 +77,11 @@ export const schemaGetExecutionsQueryFilter = {
 	$id: '/IGetExecutionsQueryFilter',
 	type: 'object',
 	properties: {
-		id: { type: 'string' },
-		finished: { type: 'boolean' },
 		mode: { type: 'string' },
-		retryOf: { type: 'string' },
-		retrySuccessId: { type: 'string' },
 		status: {
 			type: 'array',
 			items: { type: 'string' },
 		},
-		waitTill: { type: 'boolean' },
 		workflowId: { anyOf: [{ type: 'integer' }, { type: 'string' }] },
 		metadata: { type: 'array', items: { $ref: '#/$defs/metadata' } },
 		startedAfter: { type: 'date-time' },
@@ -115,6 +112,14 @@ export const schemaGetExecutionsQueryFilter = {
 export const allowedExecutionsQueryFilterFields = Object.keys(
 	schemaGetExecutionsQueryFilter.properties,
 );
+
+/** Cursor to continue a page, or `null` when a partial page means there's nothing more. */
+function nextCursorFor(rows: ExecutionSummary[], limit: number): SerializedCursor | null {
+	if (rows.length < limit) return null;
+
+	const lastRow = rows[rows.length - 1];
+	return lastRow ? encodeCursorForId(lastRow.id) : null;
+}
 
 @Service()
 export class ExecutionService {
@@ -257,11 +262,17 @@ export class ExecutionService {
 		return execution;
 	}
 
-	async retry(
-		req: ExecutionRequest.Retry,
-		sharedWorkflowIds: string[],
-	): Promise<Omit<IExecutionResponse, 'createdAt'>> {
-		const { id: executionId } = req.params;
+	async retry({
+		executionId,
+		options = {},
+		sharedWorkflowIds,
+		user,
+	}: {
+		executionId: string;
+		options?: { loadWorkflow?: boolean; redactExecutionData?: boolean };
+		sharedWorkflowIds: string[];
+		user: User;
+	}): Promise<Omit<IExecutionResponse, 'createdAt'>> {
 		const execution = await this.executionPersistence.findWithUnflattenedData(
 			executionId,
 			sharedWorkflowIds,
@@ -271,7 +282,7 @@ export class ExecutionService {
 			this.logger.info(
 				'Attempt to retry an execution was blocked due to insufficient permissions',
 				{
-					userId: req.user.id,
+					userId: user.id,
 					executionId,
 				},
 			);
@@ -295,9 +306,9 @@ export class ExecutionService {
 		const data: IWorkflowExecutionDataProcess = {
 			executionMode,
 			executionData: execution.data,
-			retryOf: req.params.id,
+			retryOf: executionId,
 			workflowData: execution.workflowData,
-			userId: req.user.id,
+			userId: user.id,
 		};
 
 		const { lastNodeExecuted } = data.executionData!.resultData;
@@ -318,7 +329,7 @@ export class ExecutionService {
 			}
 		}
 
-		if (req.body.loadWorkflow) {
+		if (options.loadWorkflow) {
 			// Loads the currently saved workflow to execute instead of the
 			// one saved at the time of the execution.
 			const workflowId = execution.workflowData.id;
@@ -352,7 +363,7 @@ export class ExecutionService {
 				const node = workflowInstance.getNode(stack.node.name);
 				if (node === null) {
 					this.logger.error('Failed to retry an execution because a node could not be found', {
-						userId: req.user.id,
+						userId: user.id,
 						executionId,
 						nodeName: stack.node.name,
 					});
@@ -381,11 +392,11 @@ export class ExecutionService {
 
 		this.eventService.emit('workflow-executed', {
 			user: {
-				id: req.user.id,
-				email: req.user.email,
-				firstName: req.user.firstName,
-				lastName: req.user.lastName,
-				role: req.user.role,
+				id: user.id,
+				email: user.email,
+				firstName: user.firstName,
+				lastName: user.lastName,
+				role: user.role,
 			},
 			workflowId: execution.workflowId,
 			workflowName: execution.workflowData.name,
@@ -411,13 +422,9 @@ export class ExecutionService {
 			storedAt: execution.storedAt,
 		};
 
-		const redactQuery = ExecutionRedactionQueryDtoSchema.safeParse(req.query);
-		const redactExecutionData = redactQuery.success
-			? redactQuery.data.redactExecutionData
-			: undefined;
 		await this.executionRedactionServiceProxy.processExecution(response, {
-			user: req.user,
-			redactExecutionData,
+			user,
+			redactExecutionData: options.redactExecutionData,
 		});
 
 		return response;
@@ -433,7 +440,7 @@ export class ExecutionService {
 					if (!allowedExecutionsQueryFilterFields.includes(key)) delete requestFiltersRaw[key];
 				});
 				if (jsonSchemaValidate(requestFiltersRaw, schemaGetExecutionsQueryFilter).valid) {
-					requestFilters = requestFiltersRaw as IGetExecutionsQueryFilter;
+					requestFilters = requestFiltersRaw;
 				}
 			} catch (error) {
 				throw new InternalServerError('Parameter "filter" contained invalid JSON string.', error);
@@ -507,7 +514,11 @@ export class ExecutionService {
 
 		const executionCount = await this.getExecutionsCountForQuery({ ...countQuery, kind: 'count' });
 
-		return { results, ...executionCount };
+		return {
+			results,
+			nextCursor: nextCursorFor(results, query.range.limit),
+			...executionCount,
+		};
 	}
 
 	/**
@@ -528,12 +539,15 @@ export class ExecutionService {
 		const completedQuery: ExecutionSummaries.RangeQuery = {
 			...query,
 			status: completedStatuses,
-			order: { startedAt: 'DESC' },
 		};
 		const { range: _, ...countQuery } = completedQuery;
 
+		const { beforeId: _cursor, ...currentRange } = query.range;
+
 		const currentQuery: ExecutionSummaries.RangeQuery = {
 			...query,
+			// "current" is refetched in full on every page, so it ignores the cursor.
+			range: currentRange,
 			status: currentStatuses,
 			order: { top: 'running' }, // ensure limit cannot exclude running
 		};
@@ -546,6 +560,8 @@ export class ExecutionService {
 
 		return {
 			results: current.concat(completed),
+			// Only the completed page is paginated; "current" is refetched in full each time.
+			nextCursor: nextCursorFor(completed, query.range.limit),
 			count: completedCount.count, // exclude current from count for pagination
 			estimated: completedCount.estimated,
 		};

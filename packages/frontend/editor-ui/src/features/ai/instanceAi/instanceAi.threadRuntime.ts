@@ -23,8 +23,10 @@ import {
 	type InstanceAiSetupItem,
 	type TaskList,
 	type AgentRunState,
+	type InstanceAiRunLimitReason,
 } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import { redactTelemetryProperties } from '@n8n/telemetry';
 import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
@@ -236,6 +238,10 @@ function findLatestTasksFromMessages(messages: InstanceAiMessage[]): TaskList | 
  * per key). Bounded by the hydrated message page: snapshots older than the
  * page are deliberately not resurrected — at rest the panel derives its state
  * from the saved workflow itself, the event feed only covers live builds.
+ *
+ * Message position is the recency proxy for restored snapshots — if parallel
+ * emitters across message groups ever land, stamp the events with a sequence
+ * instead of trusting position.
  */
 function findLatestSetupItemsFromMessages(
 	messages: InstanceAiMessage[],
@@ -373,6 +379,7 @@ export function createThreadRuntime(
 	initialProjectId?: string,
 ) {
 	const rootStore = useRootStore();
+	const instanceAiSettingsStore = useInstanceAiSettingsStore();
 	const workflowsListStore = useWorkflowsListStore();
 	const toast = useToast();
 	const telemetry = useTelemetry();
@@ -717,6 +724,7 @@ export function createThreadRuntime(
 		if (conf.inputType) return false;
 		if (conf.setupRequests?.length) return false;
 		if (conf.credentialRequests?.length) return false;
+		if (conf.credentialFlow) return false;
 		if (conf.questions?.length) return false;
 		if (conf.channelConfig) return false;
 		return true;
@@ -1218,6 +1226,7 @@ export function createThreadRuntime(
 				handoffContext,
 				Intl.DateTimeFormat().resolvedOptions().timeZone,
 				pushRef,
+				instanceAiSettingsStore.computerUseChannels,
 			);
 
 			if (runId) {
@@ -1230,6 +1239,19 @@ export function createThreadRuntime(
 				toast.showError(
 					new Error('Agent is still working on your previous message'),
 					'Cannot send message',
+				);
+			} else if (status === 429) {
+				// A concurrency cap refused the run. The two reasons need opposite advice, so
+				// key the copy off `meta.reason` rather than the status alone: an instance
+				// limit is transient and worth retrying, a per-user limit is not.
+				const reason =
+					error instanceof ResponseError
+						? (error.meta?.reason as InstanceAiRunLimitReason | undefined)
+						: undefined;
+				const scope = reason === 'user_run_limit' ? 'userLimit' : 'instanceLimit';
+				toast.showError(
+					new Error(i18n.baseText(`instanceAi.send.${scope}.message`)),
+					i18n.baseText(`instanceAi.send.${scope}.title`),
 				);
 			} else if (status === 400) {
 				const serverMessage = error instanceof ResponseError && error.message ? error.message : '';

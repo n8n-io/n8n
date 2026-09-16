@@ -17,6 +17,7 @@ import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import { AgentModificationTelemetryService } from '../agent-modification-telemetry.service';
 import { AgentSetupCompletionService } from '../agent-setup-completion.service';
 import { AgentTaskService } from '../agent-task.service';
+import type { AgentUpdateBroadcaster } from '../agent-update-broadcaster';
 import type { AgentValidationService } from '../agent-validation.service';
 import type { AgentHistory } from '../entities/agent-history.entity';
 import type { AgentTaskSnapshot } from '../entities/agent-task-snapshot.entity';
@@ -116,6 +117,7 @@ function makeService() {
 	const credentialsService = mock<CredentialsService>();
 	const telemetry = mock<Telemetry>();
 	const eventService = mock<EventService>();
+	const agentUpdateBroadcaster = mock<AgentUpdateBroadcaster>();
 	const { trx, taskRepo, transaction } = makeTransaction();
 
 	Object.defineProperty(agentRepository, 'manager', {
@@ -158,10 +160,12 @@ function makeService() {
 		eventService,
 		new AgentSetupCompletionService(agentValidationService, telemetry, agentRepository),
 		new AgentModificationTelemetryService(telemetry),
+		agentUpdateBroadcaster,
 	);
 
 	return {
 		service,
+		agentUpdateBroadcaster,
 		agentRepository,
 		agentHistoryRepository,
 		taskSnapshotRepository,
@@ -217,6 +221,36 @@ describe('AgentPublishService', () => {
 		expect(taskSnapshotRepository.saveForVersion).not.toHaveBeenCalled();
 		expect(trx.save).not.toHaveBeenCalled();
 		expect(runtimeCacheService.clearRuntimes).not.toHaveBeenCalled();
+		expect(agent.activeVersionId).toBeNull();
+	});
+
+	it('names unpublished workflow tools when rejecting the publish', async () => {
+		const { service, agentRepository, agentHistoryRepository, agentValidationService } =
+			makeService();
+		const agent = makeAgent();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		agentValidationService.validateAgentEntityConfiguration.mockResolvedValue({
+			status: 'invalid',
+			issues: [
+				{
+					code: 'incompatible_reference',
+					path: 'tools.0.workflowId',
+					capability: { kind: 'tool', toolType: 'workflow', id: 'Lookup' },
+					reason: 'not_published',
+				},
+				{
+					code: 'incompatible_reference',
+					path: 'tools.1.workflowId',
+					capability: { kind: 'tool', toolType: 'workflow', id: 'Notify' },
+					reason: 'not_published',
+				},
+			],
+		});
+
+		await expect(service.publishAgent(agentId, projectId, user, byUser)).rejects.toThrow(
+			'Cannot publish agent: workflow "Lookup" is not published; workflow "Notify" is not published. Publish these workflows first.',
+		);
+		expect(agentHistoryRepository.saveVersion).not.toHaveBeenCalled();
 		expect(agent.activeVersionId).toBeNull();
 	});
 
@@ -347,6 +381,7 @@ describe('AgentPublishService', () => {
 			agentValidationService,
 			telemetry,
 			eventService,
+			agentUpdateBroadcaster,
 			trx,
 		} = makeService();
 		const configuredTools = { tool: { descriptor: { name: 'tool' } } };
@@ -414,6 +449,7 @@ describe('AgentPublishService', () => {
 		expect(agent.activeVersionId).toBe(versionId);
 		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
 		expect(eventService.emit).toHaveBeenCalledWith('agent-saved', { agentId });
+		expect(agentUpdateBroadcaster.notify).toHaveBeenCalledWith({ projectId, agentId }, undefined);
 		expect(chatIntegrationService.syncToConfig).toHaveBeenCalledWith(agent, [], integrations);
 		expect(telemetry.track).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.AGENTS.BUILDER_PUBLISHED_AGENT,

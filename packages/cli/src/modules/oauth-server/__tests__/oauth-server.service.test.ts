@@ -41,6 +41,7 @@ let service: OAuthServerService;
 let userConsentRepository: Mocked<UserConsentRepository>;
 let mailer: Mocked<UserManagementMailer>;
 let getAllowedRedirectUris: Mock<() => Promise<string[]>>;
+let isResourceAvailable: Mock<() => Promise<boolean>>;
 let eventService: Mocked<EventService>;
 let authService: Mocked<AuthService>;
 let oauthConsentService: Mocked<OAuthConsentService>;
@@ -60,6 +61,7 @@ describe('OAuthServerService', () => {
 		urlServiceMock.getWebhookBaseUrl.mockReturnValue('https://n8n.example.com/');
 		urlServiceMock.getTestWebhookBaseUrl.mockReturnValue('https://n8n.example.com/');
 		getAllowedRedirectUris = vi.fn<(...args: []) => Promise<string[]>>().mockResolvedValue([]);
+		isResourceAvailable = vi.fn<(...args: []) => Promise<boolean>>().mockResolvedValue(true);
 		eventService = mock<EventService>();
 		authService = mockInstance(AuthService);
 		oauthConsentService = mockInstance(OAuthConsentService);
@@ -72,6 +74,7 @@ describe('OAuthServerService', () => {
 			scopes: SUPPORTED_SCOPES,
 			isDefault: true,
 			getAllowedRedirectUris,
+			isAvailable: isResourceAvailable,
 			authorize: async () => true,
 		});
 
@@ -95,6 +98,7 @@ describe('OAuthServerService', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		getAllowedRedirectUris.mockResolvedValue([]);
+		isResourceAvailable.mockResolvedValue(true);
 	});
 
 	describe('clientsStore', () => {
@@ -223,7 +227,9 @@ describe('OAuthServerService', () => {
 						id: FIRST_PARTY_URL,
 						name: 'My Form',
 						redirectUris: [FIRST_PARTY_URL],
-						grantTypes: ['authorization_code'],
+						// `refresh_token` too: the AS issues one on every code exchange, and a
+						// long-lived trigger page rotates it instead of redirecting again.
+						grantTypes: ['authorization_code', 'refresh_token'],
 						tokenEndpointAuthMethod: 'none',
 						clientSecret: null,
 						clientSecretExpiresAt: null,
@@ -235,7 +241,7 @@ describe('OAuthServerService', () => {
 					client_id: FIRST_PARTY_URL,
 					client_name: 'My Form',
 					redirect_uris: [FIRST_PARTY_URL],
-					grant_types: ['authorization_code'],
+					grant_types: ['authorization_code', 'refresh_token'],
 					token_endpoint_auth_method: 'none',
 					response_types: ['code'],
 					logo_uri: undefined,
@@ -253,7 +259,7 @@ describe('OAuthServerService', () => {
 						id: CHAT_FIRST_PARTY_URL,
 						name: 'My Chat',
 						redirectUris: [CHAT_FIRST_PARTY_URL],
-						grantTypes: ['authorization_code'],
+						grantTypes: ['authorization_code', 'refresh_token'],
 						tokenEndpointAuthMethod: 'none',
 						clientSecret: null,
 						clientSecretExpiresAt: null,
@@ -574,6 +580,76 @@ describe('OAuthServerService', () => {
 				resource: 'https://n8n.example.com/mcp-server/http',
 			});
 			expect(res.redirect).toHaveBeenCalledWith('/oauth/consent');
+		});
+
+		it('should reject with invalid_target when the named resource is unavailable', async () => {
+			const client = {
+				client_id: 'client-123',
+				client_name: 'Test Client',
+				redirect_uris: ['https://example.com/callback'],
+				grant_types: ['authorization_code'],
+				token_endpoint_auth_method: 'none',
+				response_types: ['code'],
+				scope: 'read',
+				logo_uri: undefined,
+				tos_uri: undefined,
+			};
+
+			const params = {
+				redirectUri: 'https://example.com/callback',
+				codeChallenge: 'challenge-123',
+				resource: new URL(TEST_RESOURCE_URL),
+			};
+
+			const res = mock<Response>();
+			res.status.mockReturnThis();
+			res.json.mockReturnThis();
+
+			isResourceAvailable.mockResolvedValue(false);
+
+			await service.authorize(client, params, res);
+
+			expect(res.status).toHaveBeenCalledWith(400);
+			expect(res.json).toHaveBeenCalledWith({
+				error: 'invalid_target',
+				error_description: 'Resource is not available for authorization',
+			});
+			expect(oauthSessionService.createSession).not.toHaveBeenCalled();
+			expect(res.redirect).not.toHaveBeenCalled();
+		});
+
+		it('should reject with invalid_target when no resource is named and the default resource is unavailable', async () => {
+			const client = {
+				client_id: 'client-123',
+				client_name: 'Test Client',
+				redirect_uris: ['https://example.com/callback'],
+				grant_types: ['authorization_code'],
+				token_endpoint_auth_method: 'none',
+				response_types: ['code'],
+				scope: 'read',
+				logo_uri: undefined,
+				tos_uri: undefined,
+			};
+
+			const params = {
+				redirectUri: 'https://example.com/callback',
+				codeChallenge: 'challenge-123',
+			};
+
+			const res = mock<Response>();
+			res.status.mockReturnThis();
+			res.json.mockReturnThis();
+
+			isResourceAvailable.mockResolvedValue(false);
+
+			await service.authorize(client, params, res);
+
+			expect(res.status).toHaveBeenCalledWith(400);
+			expect(res.json).toHaveBeenCalledWith({
+				error: 'invalid_target',
+				error_description: 'Resource is not available for authorization',
+			});
+			expect(oauthSessionService.createSession).not.toHaveBeenCalled();
 		});
 
 		describe('reusing a prior consent (auto-approval)', () => {

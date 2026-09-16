@@ -8,14 +8,21 @@ import {
 	createEngineRuntime,
 	SharedSecretIdentityVerifier,
 } from '@n8n/engine';
+import type { AdditionalDataContext } from '@n8n/node-engine-compatibility';
 import { createEngineStepDataLoader, V1StepExecutor } from '@n8n/node-engine-compatibility';
+import type { IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import { UserError } from 'n8n-workflow';
 import assert from 'node:assert';
 import type { Server } from 'node:http';
 
+import { CredentialTypes } from '@/credential-types';
+import { CredentialsHelper } from '@/credentials-helper';
 import { NodeTypes } from '@/node-types';
-import { EngineControlPlaneClient } from './engine-control-plane-client';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
+
+import { EngineControlPlaneClient } from './engine-control-plane-client';
+import { EngineCredentialsClient } from './engine-credentials-client';
+import { RemoteCredentialsHelper } from './remote-credentials-helper';
 
 /**
  * Runs the engine 2.0 data plane inside the n8n process.
@@ -33,11 +40,21 @@ export class EngineV2Runtime {
 
 	private server?: Server;
 
+	/**
+	 * Shared by every credential request. Aborted after the engine has stopped,
+	 * so no request outlives it.
+	 * TODO(CAT-4526): replace with a per-step signal once the engine produces one.
+	 */
+	private stopping?: AbortController;
+
 	constructor(
 		private readonly engineConfig: EngineConfig,
 		private readonly nodeTypes: NodeTypes,
 		private readonly logger: Logger,
 		private readonly controlPlaneClient: EngineControlPlaneClient,
+		private readonly credentialsClient: EngineCredentialsClient,
+		private readonly credentialsHelper: CredentialsHelper,
+		private readonly credentialTypes: CredentialTypes,
 	) {
 		this.logger = this.logger.scoped('engine-v2');
 	}
@@ -78,6 +95,9 @@ export class EngineV2Runtime {
 	private initEngine(): void {
 		assert(this.dataSource, 'Engine 2.0 cannot start without a data source');
 
+		const stopping = new AbortController();
+		this.stopping = stopping;
+
 		const engine = createEngineRuntime({
 			dataSource: this.dataSource,
 			// TODO(CAT-2909): placeholder policy — every execution is admitted and no
@@ -90,17 +110,8 @@ export class EngineV2Runtime {
 					await this.controlPlaneClient.sendLifecycleEvents(events, signal),
 				v1StepExecutor: new V1StepExecutor({
 					nodeTypes: this.nodeTypes,
-					// TODO(CAT-2880): no credential access. A v1 node that needs credentials
-					// fails when it asks for them.
-					additionalDataFactory: async (executionId) => {
-						const additionalData = await WorkflowExecuteAdditionalData.getBase();
-
-						// The task runner keys its tasks by execution id, so it needs the engine's
-						// id to cancel them. `$execution.id` also reads it.
-						additionalData.executionId = executionId;
-
-						return additionalData;
-					},
+					additionalDataFactory: async (context) =>
+						await this.buildAdditionalData(context, stopping),
 					loadStepData: createEngineStepDataLoader(executionStore, stepStore),
 				}),
 			}),
@@ -108,6 +119,37 @@ export class EngineV2Runtime {
 		engine.start();
 
 		this.engine = engine;
+	}
+
+	/**
+	 * The v1 `additionalData` for one step. `getBase` builds it as it does for a
+	 * v1 execution, so `$vars`, `$secrets` and the policy context match the
+	 * workflow. The credentials helper is then swapped for one that asks the
+	 * control plane over HTTP, because the data plane has no credential store.
+	 */
+	private async buildAdditionalData(
+		context: AdditionalDataContext,
+		stopping: AbortController,
+	): Promise<IWorkflowExecuteAdditionalData> {
+		const additionalData = await WorkflowExecuteAdditionalData.getBase({
+			userId: context.userId,
+			workflowId: context.workflowId,
+			projectId: context.projectId,
+		});
+
+		// The task runner keys its tasks by execution id, so it needs the engine's
+		// id to cancel them. `$execution.id` also reads it.
+		additionalData.executionId = context.executionId;
+
+		additionalData.credentialsHelper = new RemoteCredentialsHelper(
+			this.credentialsClient,
+			this.credentialsHelper,
+			this.credentialTypes,
+			context,
+			stopping.signal,
+		);
+
+		return additionalData;
 	}
 
 	private async initServer(): Promise<void> {
@@ -168,6 +210,8 @@ export class EngineV2Runtime {
 
 		await this.engine.stop();
 		this.engine = undefined;
+		this.stopping?.abort();
+		this.stopping = undefined;
 	}
 
 	private async destroyDataSource(): Promise<void> {

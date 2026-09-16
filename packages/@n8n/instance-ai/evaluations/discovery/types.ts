@@ -9,7 +9,7 @@
 // ---------------------------------------------------------------------------
 
 import type { DiscoveryMcpState } from './stub-mcp-registry';
-import type { LocalGatewayStatus } from '../../src/types';
+import type { ComputerUseState } from '../../src/types';
 
 /**
  * Pass condition for tool invocations.
@@ -59,9 +59,10 @@ export interface ExpectedToolInvocations {
  * status (e.g. `disabledGlobally` to test the "explain how to enable" branch).
  */
 export interface DiscoveryInstanceState {
-	localGateway?: LocalGatewayStatus;
-	browserAvailable?: boolean;
+	computerUse?: ComputerUseState;
 	mcp?: DiscoveryMcpState;
+	/** Turn the folder-exploration capability on for the run (default off). */
+	folderExploration?: boolean;
 }
 
 export type ConfirmationDecision = 'approve' | 'deny';

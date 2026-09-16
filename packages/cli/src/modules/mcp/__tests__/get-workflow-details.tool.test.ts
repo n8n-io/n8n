@@ -358,6 +358,55 @@ describe('get-workflow-details MCP tool', () => {
 			expect(getTriggerDetailsMock).toHaveBeenCalledTimes(2);
 		});
 
+		test('normalizes nodes persisted without a parameters key in the draft and published graphs', async () => {
+			// Regression (ADO-5355): drafts can hold skeleton nodes with no
+			// `parameters` key at all; the payload and the trigger-info builders
+			// must see an object instead.
+			getTriggerDetailsMock.mockClear();
+			const credentialsService = mockInstance(CredentialsService, {});
+			const endpoints = { webhook: 'webhook', webhookTest: 'webhook-test' };
+			const skeletonNode = {
+				id: 'node-1',
+				name: 'Webhook',
+				type: 'n8n-nodes-base.webhook',
+				typeVersion: 1,
+				position: [0, 0],
+				webhookId: 'hook-1',
+			} as INode;
+			const workflow = createWorkflow({
+				activeVersionId: uuid(),
+				nodes: [skeletonNode],
+				activeVersion: { nodes: [{ ...skeletonNode }] },
+			} as unknown as Partial<WorkflowEntity>);
+			const workflowFinderService = mockInstance(WorkflowFinderService, {
+				findWorkflowForUser: vi.fn().mockResolvedValue(workflow),
+			});
+
+			const payload = await getWorkflowDetails(
+				user,
+				baseWebhookUrl,
+				workflowFinderService,
+				credentialsService,
+				nodeTypes,
+				endpoints,
+				roleService,
+				projectService,
+				{ workflowId: 'wf-1' },
+			);
+
+			expect(payload.workflow.nodes?.[0].parameters).toEqual({});
+			expect(payload.workflow.activeVersion).toMatchObject({
+				sameAsDraft: false,
+				nodes: [{ parameters: {} }],
+			});
+			// The trigger builder received the normalized node ...
+			const [, supported] = getTriggerDetailsMock.mock.calls[0];
+			expect(supported[0].parameters).toEqual({});
+			// ... and the missing key alone did not read as a trigger divergence.
+			expect(getTriggerDetailsMock).toHaveBeenCalledTimes(1);
+			expect(payload.activeVersionTriggerInfo).toBeUndefined();
+		});
+
 		test('never emits activeVersionTriggerInfo when the published version is the draft', async () => {
 			// activeVersionId === versionId, so there is no divergence to report and
 			// the published triggers are never looked up.

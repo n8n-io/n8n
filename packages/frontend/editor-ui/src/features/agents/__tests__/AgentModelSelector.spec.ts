@@ -69,7 +69,7 @@ const baseText = vi.hoisted(() =>
 				'agents.modelSelector.freeCredits.label': 'Use free OpenAI credits',
 				'agents.modelSelector.freeCredits.badge': 'free credits',
 				'aiGateway.credentialMode.n8nConnect.title': 'Gateway credits',
-				'aiGateway.wallet.balanceRemaining': '{balance} remaining',
+				'aiGateway.wallet.balanceRemaining': '{balance} left',
 				'aiGateway.wallet.noCredits': 'No credits',
 				'agents.modelSelector.freeCredits.description':
 					'Get {credits} free OpenAI API credits. Try it with gpt-5-mini.',
@@ -502,8 +502,8 @@ describe('AgentModelSelector', () => {
 		const wrapper = await mountSelector({ anthropic: null });
 
 		const item = getN8nCreditsItem(wrapper, 'anthropic');
-		// Green "remaining" action pill (N8nActionPill), matching the workflow node.
-		expect(item?.data?.actionPill).toEqual({ text: '$4.99 remaining', type: 'default' });
+		// Green balance action pill (N8nActionPill), matching the workflow node.
+		expect(item?.data?.actionPill).toEqual({ text: '$4.99 left', type: 'default' });
 	});
 
 	it('fetches the wallet balance on mount when the gateway is enabled', async () => {

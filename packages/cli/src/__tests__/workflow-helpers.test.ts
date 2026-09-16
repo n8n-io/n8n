@@ -756,7 +756,7 @@ describe('validateWorkflowNodeGroups', () => {
 						getNodeType,
 					),
 				).toThrow(
-					'Node group "Disconnected" must form a single connected subgraph with a single entry and exit.',
+					'Node group "Disconnected" must form a single connected subgraph with a single entry and exit (no path from "Node n1" to "Node n2").',
 				);
 			});
 		});
@@ -1218,4 +1218,55 @@ describe('updateParentExecutionWithChildResults', () => {
 			expect(executionPersistence.updateExistingExecution).toHaveBeenCalledTimes(2);
 		},
 	);
+
+	describe('when the parent names the children its current wait is parked on', () => {
+		const parentWaitingOn = (childExecutionIds: string[]): IExecutionResponse => {
+			const parent = waitingParent();
+			parent.data.executionData!.nodeExecutionStack[0].metadata = {
+				waitingChildExecutionIds: childExecutionIds,
+			};
+			return parent;
+		};
+
+		const child = () => childRun('success', 'Done', { data: { main: [[{ json: { out: 2 } }]] } });
+
+		it('patches for a child the parent is waiting on', async () => {
+			const executionPersistence = mockInstance(ExecutionPersistence);
+			executionPersistence.findSingleExecution.mockResolvedValue(parentWaitingOn(['child-2']));
+
+			const patched = await updateParentExecutionWithChildResults(PARENT_ID, child(), {
+				executionId: 'child-2',
+				workflowId: 'child-workflow-id',
+			});
+
+			expect(patched).toBe(true);
+			expect(executionPersistence.updateExistingExecution).toHaveBeenCalledTimes(1);
+		});
+
+		it('leaves the parent alone for a child left over from an earlier wait', async () => {
+			const executionPersistence = mockInstance(ExecutionPersistence);
+			executionPersistence.findSingleExecution.mockResolvedValue(parentWaitingOn(['child-2']));
+
+			const patched = await updateParentExecutionWithChildResults(PARENT_ID, child(), {
+				executionId: 'child-1',
+				workflowId: 'child-workflow-id',
+			});
+
+			expect(patched).toBe(false);
+			expect(executionPersistence.updateExistingExecution).not.toHaveBeenCalled();
+		});
+
+		it('patches for any child when the parent names none', async () => {
+			const executionPersistence = mockInstance(ExecutionPersistence);
+			executionPersistence.findSingleExecution.mockResolvedValue(waitingParent());
+
+			const patched = await updateParentExecutionWithChildResults(PARENT_ID, child(), {
+				executionId: 'child-1',
+				workflowId: 'child-workflow-id',
+			});
+
+			expect(patched).toBe(true);
+			expect(executionPersistence.updateExistingExecution).toHaveBeenCalledTimes(1);
+		});
+	});
 });

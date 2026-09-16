@@ -1,4 +1,4 @@
-import { DeleteExecutionsDto } from '@n8n/api-types';
+import { DeleteExecutionsDto, ExecutionRedactionQueryDtoSchema } from '@n8n/api-types';
 import type { AuthenticatedRequest, User, ExecutionSummaries } from '@n8n/db';
 import { Body, Get, Patch, Post, RestController } from '@n8n/decorators';
 import type { Scope } from '@n8n/permissions';
@@ -44,8 +44,10 @@ export class ExecutionsController {
 		}
 
 		const noStatus = !query.status || query.status.length === 0;
-		const noRange = !query.range.lastId || !query.range.firstId;
+		const noRange = !query.range.beforeId;
 
+		// Without a status filter, every page keeps the current/completed split, so that
+		// "load more" pages only completed rows and the count stays completed-only.
 		if (noStatus && noRange) {
 			const [executions, concurrentExecutionsCount] = await Promise.all([
 				this.executionService.findLatestCurrentAndCompleted(query),
@@ -132,7 +134,17 @@ export class ExecutionsController {
 
 		if (workflowIds.length === 0) throw new NotFoundError('Execution not found');
 
-		return await this.executionService.retry(req, workflowIds);
+		const redactQuery = ExecutionRedactionQueryDtoSchema.safeParse(req.query);
+
+		return await this.executionService.retry({
+			executionId: req.params.id,
+			options: {
+				loadWorkflow: req.body.loadWorkflow,
+				redactExecutionData: redactQuery.success ? redactQuery.data.redactExecutionData : undefined,
+			},
+			sharedWorkflowIds: workflowIds,
+			user: req.user,
+		});
 	}
 
 	@Post('/delete')

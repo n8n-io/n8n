@@ -25,7 +25,11 @@ import type {
 	PackageImportSource,
 } from '../n8n-packages.types';
 import { mergeBindings } from '../n8n-packages.types';
-import { assertPackageImportApiKeyScopes, assertTagWritesAllowed } from './import-gates';
+import {
+	assertArchiveTransitionsAllowed,
+	assertPackageImportApiKeyScopes,
+	assertTagWritesAllowed,
+} from './import-gates';
 import { toImportBlockedError } from './import-blocked.error';
 import { needsBundledVariableValues, placeByLayout } from './package-layout';
 import {
@@ -117,6 +121,10 @@ export class ProjectPackageImporter {
 		assertTagWritesAllowed(
 			request.apiKeyScopes,
 			planned.map(({ plan }) => plan.tagPlan),
+		);
+		assertArchiveTransitionsAllowed(
+			request.apiKeyScopes,
+			planned.map(({ plan }) => plan.workflowPlan),
 		);
 		await this.importOrchestrator.assertNotBlocked(
 			planned.map(({ plan }) => plan),
