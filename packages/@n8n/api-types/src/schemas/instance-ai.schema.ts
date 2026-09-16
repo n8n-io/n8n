@@ -1555,8 +1555,9 @@ export type InstanceAiThreadSourcePersisted =
  *   travels separately and is already catalog-prefixed
  * - `v1_opener` — the original empty-state openers ("I want to build a new
  *   workflow…")
- * - `workflow_attachment_opener` — a workflow opened in the assistant, which
- *   sends an empty message and lets the editor context greet
+ * - `workflow_attachment_opener` — legacy: a workflow opened in the assistant
+ *   used to send an empty message so the editor context would greet. New
+ *   hand-offs stash the attachment and wait for the user's first prompt.
  * - `contextual_followup` — the follow-up the composer offers as a placeholder
  *   after a build, accepted with Tab; lands mid-thread
  */

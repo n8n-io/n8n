@@ -6,7 +6,8 @@ import type {
 import type { User } from '@n8n/db';
 import type { Mock } from 'vitest';
 
-import { buildContextResourcesBlock, InstanceAiService } from '../instance-ai.service';
+import { buildThreadArtifactsBlock } from '../internal-messages';
+import { InstanceAiService } from '../instance-ai.service';
 
 function nodesAttachment(
 	overrides: Partial<InstanceAiNodesAttachment> = {},
@@ -19,9 +20,9 @@ function nodesAttachment(
 	};
 }
 
-describe('buildContextResourcesBlock — nodes attachment', () => {
+describe('buildThreadArtifactsBlock — nodes attachment', () => {
 	it('renders a single loose node without chain/neighbor/group wording', () => {
-		const block = buildContextResourcesBlock([nodesAttachment()]);
+		const block = buildThreadArtifactsBlock(undefined, [nodesAttachment()]);
 
 		expect(block).toContain('HTTP Request');
 		expect(block).toContain('wf-1');
@@ -32,7 +33,7 @@ describe('buildContextResourcesBlock — nodes attachment', () => {
 	});
 
 	it('renders a chain with input, output, and canvas group', () => {
-		const block = buildContextResourcesBlock([
+		const block = buildThreadArtifactsBlock(undefined, [
 			nodesAttachment({
 				sets: [
 					{
@@ -59,7 +60,7 @@ describe('buildContextResourcesBlock — nodes attachment', () => {
 	});
 
 	it('renders two sets without leaking fields between them', () => {
-		const block = buildContextResourcesBlock([
+		const block = buildThreadArtifactsBlock(undefined, [
 			nodesAttachment({
 				sets: [
 					{ nodes: [{ id: 'n1', name: 'Loose Node' }] },
@@ -94,7 +95,7 @@ describe('buildContextResourcesBlock — nodes attachment', () => {
 		};
 		const attachments: InstanceAiResourceAttachment[] = [workflowAttachment, nodesAttachment()];
 
-		const block = buildContextResourcesBlock(attachments);
+		const block = buildThreadArtifactsBlock(undefined, attachments);
 
 		expect(block).toContain('My Workflow');
 		expect(block).toContain('HTTP Request');
@@ -148,10 +149,12 @@ describe('InstanceAiService — resolveContextAttachments gating', () => {
 	it('keeps a workflow attachment alongside an enabled nodes attachment', async () => {
 		const service = createService(vi.fn().mockResolvedValue(true));
 		const workflowAttachment: InstanceAiWorkflowAttachment = { type: 'workflow', id: 'wf-1' };
-		const nodes = nodesAttachment();
 
-		const result = await service.resolveContextAttachments([workflowAttachment, nodes], user);
+		const result = await service.resolveContextAttachments(
+			[workflowAttachment, nodesAttachment()],
+			user,
+		);
 
-		expect(result).toEqual([workflowAttachment, nodes]);
+		expect(result).toEqual([workflowAttachment, nodesAttachment()]);
 	});
 });

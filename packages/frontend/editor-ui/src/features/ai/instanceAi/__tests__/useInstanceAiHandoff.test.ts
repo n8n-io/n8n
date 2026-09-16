@@ -37,6 +37,12 @@ vi.mock('../instanceAi.store', () => ({
 		getOrCreateRuntime: mocks.getOrCreateRuntime,
 	}),
 }));
+vi.mock('@/features/collaboration/projects/projects.store', () => ({
+	useProjectsStore: () => ({
+		personalProject: { id: 'personal-1' },
+		getPersonalProject: vi.fn(),
+	}),
+}));
 
 import {
 	buildInstanceAiAgentPreviewHandoffContext,
@@ -46,16 +52,20 @@ import {
 	clearPendingFirstMessage,
 	clearPendingHandoffContext,
 	clearPendingThreadHandoff,
+	clearPendingWorkflowAttachment,
 	consumePendingFirstMessage,
 	getPendingAgentAttachment,
 	getPendingComposerDraft,
 	getPendingHandoffContext,
+	getPendingWorkflowAttachment,
 	provisionContextOnlyThread,
 	provisionSubjectThread,
+	provisionWorkflowThread,
 	stashPendingAgentAttachment,
 	stashPendingComposerDraft,
 	stashPendingFirstMessage,
 	stashPendingHandoffContext,
+	stashPendingWorkflowAttachment,
 	useInstanceAiHandoff,
 } from '../composables/useInstanceAiHandoff';
 import type { PendingFirstMessage } from '../composables/useInstanceAiHandoff';
@@ -243,6 +253,11 @@ describe('useInstanceAiHandoff', () => {
 			id: 'agent-1',
 			projectId: 'project-1',
 		});
+		stashPendingWorkflowAttachment('thread-1', {
+			type: 'workflow',
+			id: 'wf-1',
+			name: 'My Workflow',
+		});
 
 		stashPendingFirstMessage('thread-1', {
 			message: 'Set up the credential',
@@ -254,9 +269,102 @@ describe('useInstanceAiHandoff', () => {
 		expect(getPendingHandoffContext('thread-1')).toBeNull();
 		expect(getPendingComposerDraft('thread-1')).toBeNull();
 		expect(getPendingAgentAttachment('thread-1')).toBeNull();
+		expect(getPendingWorkflowAttachment('thread-1')).toBeNull();
 		// A thread that disappears before its opening message is replayed must not leave the
 		// payload behind: nothing would ever consume it again.
 		expect(consumePendingFirstMessage('thread-1')).toBeNull();
+	});
+
+	it('round-trips a pending workflow attachment', () => {
+		stashPendingWorkflowAttachment('thread-1', {
+			type: 'workflow',
+			id: 'wf-1',
+			name: 'My Workflow',
+			executionId: 'exec-1',
+		});
+
+		expect(getPendingWorkflowAttachment('thread-1')).toEqual({
+			type: 'workflow',
+			id: 'wf-1',
+			name: 'My Workflow',
+			executionId: 'exec-1',
+		});
+
+		clearPendingWorkflowAttachment('thread-1');
+		expect(getPendingWorkflowAttachment('thread-1')).toBeNull();
+	});
+
+	it('provisions a workflow thread without stashing an opening message', async () => {
+		const threadId = await provisionWorkflowThread(
+			'project-1',
+			{ type: 'workflow', id: 'wf-1', name: 'My Workflow' },
+			{ source: 'canvas_action_button', origin: 'internal' },
+		);
+
+		expect(threadId).toBe('thread-1');
+		expect(mocks.syncThread).toHaveBeenCalledWith('thread-1', 'project-1', {
+			source: 'canvas_action_button',
+			origin: 'internal',
+		});
+		expect(getPendingWorkflowAttachment('thread-1')).toEqual({
+			type: 'workflow',
+			id: 'wf-1',
+			name: 'My Workflow',
+		});
+		expect(consumePendingFirstMessage('thread-1')).toBeNull();
+	});
+
+	it('opens a workflow thread without sending a message', async () => {
+		const { openWorkflowThread } = useInstanceAiHandoff();
+		const prepare = vi.fn();
+
+		const opened = await openWorkflowThread(
+			'project-1',
+			{ type: 'workflow', id: 'wf-1', name: 'My Workflow' },
+			{ source: 'canvas_action_button', origin: 'internal' },
+			prepare,
+		);
+
+		expect(opened).toBe(true);
+		expect(prepare).toHaveBeenCalledWith('thread-1');
+		expect(mocks.sendMessage).not.toHaveBeenCalled();
+		expect(mocks.routerPush).toHaveBeenCalledWith({
+			name: 'InstanceAiThread',
+			params: { threadId: 'thread-1' },
+		});
+		expect(getPendingWorkflowAttachment('thread-1')).toEqual({
+			type: 'workflow',
+			id: 'wf-1',
+			name: 'My Workflow',
+		});
+	});
+
+	it('openThreadForDraft stashes the workflow attachment without an opening message', async () => {
+		const { openThreadForDraft } = useInstanceAiHandoff();
+		const setPendingHandoff = vi.fn();
+		mocks.getOrCreateRuntime.mockReturnValue({
+			sendMessage: mocks.sendMessage,
+			setPendingHandoff,
+		});
+
+		const threadId = await openThreadForDraft({
+			id: 'wf-1',
+			name: 'My Workflow',
+			snapshot: { id: 'wf-1', name: 'My Workflow' } as never,
+		});
+
+		expect(threadId).toBe('thread-1');
+		expect(getPendingWorkflowAttachment('thread-1')).toEqual({
+			type: 'workflow',
+			id: 'wf-1',
+			name: 'My Workflow',
+		});
+		expect(consumePendingFirstMessage('thread-1')).toBeNull();
+		expect(setPendingHandoff).toHaveBeenCalledWith({
+			workflowId: 'wf-1',
+			workflow: { id: 'wf-1', name: 'My Workflow' },
+		});
+		expect(mocks.sendMessage).not.toHaveBeenCalled();
 	});
 
 	// A stashed opener is always n8n-authored -- every stash comes from a hand-off.
@@ -549,6 +657,20 @@ describe('useInstanceAiHandoff', () => {
 			const opened = await openAgentArtifactThread(
 				{ type: 'agent', id: 'agent-1', projectId: 'project-1' },
 				{ source: 'agent_preview', origin: 'internal' },
+			);
+
+			expect(opened).toBe(false);
+			expect(mocks.syncThread).not.toHaveBeenCalled();
+			expect(mocks.routerPush).toHaveBeenCalledWith({ name: 'InstanceAi' });
+		});
+
+		it('routes openWorkflowThread to the assistant without minting a thread', async () => {
+			const { openWorkflowThread } = useInstanceAiHandoff();
+
+			const opened = await openWorkflowThread(
+				'project-1',
+				{ type: 'workflow', id: 'wf-1', name: 'My Workflow' },
+				{ source: 'canvas_action_button', origin: 'internal' },
 			);
 
 			expect(opened).toBe(false);

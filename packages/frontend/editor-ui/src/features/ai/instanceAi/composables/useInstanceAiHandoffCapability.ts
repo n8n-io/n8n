@@ -26,7 +26,6 @@ import {
 	buildInstanceAiCredentialQuestion,
 	useInstanceAiHandoff,
 } from './useInstanceAiHandoff';
-import type { InstanceAiMessageAuthorship } from '../prefills';
 
 /**
  * The standalone editor's `InstanceAiEditorCapability` (behavior; visibility is the
@@ -43,7 +42,7 @@ export function useInstanceAiHandoffCapability(): InstanceAiEditorCapability {
 	const route = useRoute();
 	const router = useRouter();
 	const telemetry = useTelemetry();
-	const { startThread } = useInstanceAiHandoff();
+	const { startThread, openWorkflowThread } = useInstanceAiHandoff();
 
 	/**
 	 * The execution currently shown in the editor: the debug route's execution,
@@ -86,7 +85,10 @@ export function useInstanceAiHandoffCapability(): InstanceAiEditorCapability {
 
 	/**
 	 * Hand the editor's (persisted) workflow off to a new thread: attach it (+ the
-	 * shown execution), seed both for the artifact, and send `message` as the opening turn.
+	 * shown execution), seed both for the artifact, and — when there is a real
+	 * ask (failed execution) — send `message` as the opening turn. A plain hand-
+	 * off opens the thread without an LLM greeting; the workflow rides the user's
+	 * first prompt.
 	 */
 	async function handOffWorkflow(
 		message: string,
@@ -101,7 +103,7 @@ export function useInstanceAiHandoffCapability(): InstanceAiEditorCapability {
 			type: 'workflow',
 			id: workflowId,
 			name: doc.name || undefined,
-			executionId,
+			...(executionId ? { executionId } : {}),
 		};
 		// Snapshot now — the editor's stores are disposed on teardown — so the artifact
 		// seeds it without a refetch. Omitted if not loaded, leaving a fetch fallback.
@@ -109,8 +111,7 @@ export function useInstanceAiHandoffCapability(): InstanceAiEditorCapability {
 			? useExecutionDataStore(createExecutionDataId(executionId)).getExecutionSnapshot()
 			: null;
 		// An error hand-off (the node-error view, or a failed run shown on the canvas)
-		// asks the agent to investigate; a plain hand-off keeps the empty message so the
-		// editor-context block has it just greet.
+		// asks the agent to investigate; a plain hand-off opens without an opening turn.
 		const executionFailed =
 			executionSnapshot?.status === 'error' || executionSnapshot?.status === 'crashed';
 		const openingMessage =
@@ -118,11 +119,6 @@ export function useInstanceAiHandoffCapability(): InstanceAiEditorCapability {
 			(executionFailed
 				? 'The execution failed. Look into what went wrong and help me fix it.'
 				: '');
-		// Derived next to the text it describes, so the two cannot drift.
-		const authorship: InstanceAiMessageAuthorship = {
-			kind: 'prefill',
-			prefillType: executionFailed ? 'handoff_execution_error' : 'workflow_attachment_opener',
-		};
 		// Close any open NDV before navigating. Otherwise its children unmount during
 		// the route change — after the workflow document store is gone — and throw via
 		// injectNDVStore(), aborting the navigation and leaving a blank screen. No-op
@@ -132,28 +128,36 @@ export function useInstanceAiHandoffCapability(): InstanceAiEditorCapability {
 			ndvStore.unsetActiveNodeName();
 			await nextTick();
 		}
-		await startThread(
-			projectId,
-			openingMessage,
-			authorship,
-			{
-				source,
-				origin: 'internal',
-				sourceContext: {
-					workflowId,
-					...(executionId ? { executionId } : {}),
-				},
+
+		const prepare = (threadId: string) => {
+			instanceAiStore.getOrCreateRuntime(threadId, projectId).setPendingHandoff({
+				workflowId,
+				workflow: doc.getSnapshot(),
+				execution: executionSnapshot?.workflowId === workflowId ? executionSnapshot : undefined,
+			});
+		};
+		const launch = {
+			source,
+			origin: 'internal' as const,
+			sourceContext: {
+				workflowId,
+				...(executionId ? { executionId } : {}),
 			},
-			[attachment],
-			(threadId) => {
-				instanceAiStore.getOrCreateRuntime(threadId, projectId).setPendingHandoff({
-					workflowId,
-					workflow: doc.getSnapshot(),
-					execution: executionSnapshot?.workflowId === workflowId ? executionSnapshot : undefined,
-				});
-			},
-			{ newTab },
-		);
+		};
+
+		if (openingMessage) {
+			await startThread(
+				projectId,
+				openingMessage,
+				{ kind: 'prefill', prefillType: 'handoff_execution_error' },
+				launch,
+				[attachment],
+				prepare,
+				{ newTab },
+			);
+		} else {
+			await openWorkflowThread(projectId, attachment, launch, prepare);
+		}
 		telemetry.track('Instance AI opened from editor', {
 			source,
 			workflow_id: workflowId,

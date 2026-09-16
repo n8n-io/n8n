@@ -32,12 +32,17 @@ type EditorContextAttachment =
 	| { type: 'agent'; id: string; name?: string; projectId: string; pending?: true }
 	| { type: 'nodes'; workflowId: string; sets: NodeSet[] };
 
-/** Mirrors the marker the service writes in buildContextResourcesBlock. */
+/** Legacy marker still present in older stored messages. */
 function editorContextMarker(
 	attachments: EditorContextAttachment[],
 	prose = 'The user opened this conversation from the workflow editor.',
 ): string {
 	return `<editor-context>\n${JSON.stringify(attachments)}\n\n${prose}\n</editor-context>`;
+}
+
+/** Current durable encoding: JSON line inside thread-artifacts. */
+function threadArtifactsHandoffMarker(attachments: EditorContextAttachment[]): string {
+	return buildThreadArtifactsBlock(undefined, attachments);
 }
 
 function instanceContextMarker(): string {
@@ -253,12 +258,40 @@ describe('cleanStoredUserMessage', () => {
 });
 
 describe('extractEditorContextResourceAttachments', () => {
-	it('reconstructs workflow attachments from the marker', () => {
+	it('reconstructs workflow attachments from a legacy editor-context marker', () => {
 		const stored = editorContextMarker([
 			{ type: 'workflow', id: 'wf-1', name: 'My workflow', executionId: '6669' },
 		]);
 		expect(extractEditorContextResourceAttachments(stored)).toEqual([
 			{ type: 'workflow', id: 'wf-1', name: 'My workflow', executionId: '6669' },
+		]);
+	});
+
+	it('reconstructs workflow attachments from the thread-artifacts JSON line', () => {
+		const stored = [
+			buildThreadContextBlock([
+				threadArtifactsHandoffMarker([
+					{ type: 'workflow', id: 'wf-1', name: 'My workflow', executionId: '6669' },
+				]),
+			]),
+			'test?',
+		].join('\n\n');
+
+		expect(extractEditorContextResourceAttachments(stored)).toEqual([
+			{ type: 'workflow', id: 'wf-1', name: 'My workflow', executionId: '6669' },
+		]);
+	});
+
+	it('prefers thread-artifacts over a legacy editor-context marker', () => {
+		const stored = [
+			editorContextMarker([{ type: 'workflow', id: 'legacy', name: 'Old' }]),
+			buildThreadContextBlock([
+				threadArtifactsHandoffMarker([{ type: 'workflow', id: 'wf-1', name: 'New' }]),
+			]),
+		].join('\n\n');
+
+		expect(extractEditorContextResourceAttachments(stored)).toEqual([
+			{ type: 'workflow', id: 'wf-1', name: 'New' },
 		]);
 	});
 
@@ -550,6 +583,35 @@ describe('buildThreadArtifactsBlock', () => {
 		expect(block).toContain('(id: `wf-1`) [current]');
 		expect(block).toContain('Data table "FAQ" (id: `dt-1`, in project `proj-1`)');
 		expect(block).toContain('Treat “this workflow”');
+		expect(block).not.toMatch(/^<thread-artifacts>\n\[/);
+	});
+
+	it('folds resource attachments into the same block with a durable JSON line', () => {
+		const block = buildThreadArtifactsBlock(
+			{
+				artifacts: [
+					{ type: 'workflow', id: 'wf-1', name: 'WhatsApp FAQ Auto-Responder' },
+					{ type: 'data-table', id: 'dt-1', name: 'FAQ', projectId: 'proj-1' },
+				],
+				activeId: 'wf-1',
+			},
+			[{ type: 'workflow', id: 'wf-1', name: 'WhatsApp FAQ Auto-Responder' }],
+		);
+
+		expect(block.startsWith('<thread-artifacts>\n[{"type":"workflow"')).toBe(true);
+		expect(block).toContain('(id: `wf-1`) [current]');
+		expect(block).toContain('Data table "FAQ"');
+		expect(block).toContain('Treat this purely as context');
+		expect(block.match(/WhatsApp FAQ Auto-Responder/g)?.length).toBe(2); // JSON + prose once
+	});
+
+	it('enriches a preview workflow line with the handed-off execution id', () => {
+		const block = buildThreadArtifactsBlock(
+			{ artifacts: [{ type: 'workflow', id: 'wf-1', name: 'Digest' }], activeId: 'wf-1' },
+			[{ type: 'workflow', id: 'wf-1', name: 'Digest', executionId: 'exec-9' }],
+		);
+
+		expect(block).toContain('currently viewing its execution `exec-9`');
 	});
 
 	it('ignores an activeId that is not in the list', () => {

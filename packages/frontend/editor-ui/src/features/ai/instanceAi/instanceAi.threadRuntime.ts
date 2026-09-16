@@ -23,6 +23,7 @@ import {
 	type InstanceAiSSEConnectionState,
 	type InstanceAiHandoffContext,
 	type InstanceAiSetupItem,
+	type InstanceAiWorkflowAttachment,
 	type TaskList,
 	type AgentRunState,
 	type InstanceAiRunLimitReason,
@@ -461,6 +462,15 @@ export function createThreadRuntime(
 		return { workflow: pending.workflow, execution: pending.execution };
 	}
 
+	/** Workflow stashed by a no-message hand-off; cleared after the first send. */
+	const pendingWorkflowAttachment = ref<InstanceAiWorkflowAttachment | null>(null);
+	function setPendingWorkflowAttachment(value: InstanceAiWorkflowAttachment | null): void {
+		pendingWorkflowAttachment.value = value;
+	}
+	function clearPendingWorkflowAttachment(): void {
+		pendingWorkflowAttachment.value = null;
+	}
+
 	// Latest user-triggered (non-agent) preview run per workflow. Lives on the
 	// thread runtime so it survives the preview canvas unmounting on a tab switch
 	// and is re-seeded on remount; a fresh runtime per thread resets it (INS-611).
@@ -507,6 +517,7 @@ export function createThreadRuntime(
 			const pending = getPendingAgentTargetFromThreadMetadata(hooks.getThreadMetadata?.(threadId));
 			return pending ? { ...pending, name: i18n.baseText('agents.new.defaultName') } : undefined;
 		},
+		() => pendingWorkflowAttachment.value ?? undefined,
 	);
 
 	const { feedbackByResponseId, rateableResponseId, submitFeedback, resetFeedback } =
@@ -1137,6 +1148,8 @@ export function createThreadRuntime(
 		lastEventId.value = undefined;
 		seenEventIds.clear();
 		activeArtifactId.value = undefined;
+		pendingWorkflowAttachment.value = null;
+		pendingHandoff.value = null;
 		disarmGenerationStallWatchdog();
 	}
 
@@ -1597,6 +1610,9 @@ export function createThreadRuntime(
 		// actions
 		setPendingHandoff,
 		consumePendingHandoff,
+		pendingWorkflowAttachment,
+		setPendingWorkflowAttachment,
+		clearPendingWorkflowAttachment,
 		rememberManualExecution,
 		getRememberedManualExecution,
 		forgetManualExecution,

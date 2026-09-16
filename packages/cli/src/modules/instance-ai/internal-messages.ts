@@ -2,6 +2,7 @@ import {
 	instanceAiAgentPreviewHandoffContextSchema,
 	instanceAiResourceAttachmentSchema,
 	type InstanceAiAgentPreviewHandoffContext,
+	type InstanceAiNodesAttachment,
 	type InstanceAiResourceAttachment,
 	type InstanceAiThreadArtifact,
 	type InstanceAiThreadArtifactsContext,
@@ -23,10 +24,9 @@ import { z } from 'zod';
 export const AUTO_FOLLOW_UP_MESSAGE = '(continue)';
 
 /**
- * Wraps the editor hand-off context (a workflow the user opened Instance AI
- * about). LLM-facing prose for the agent plus a leading JSON line carrying the
- * structured attachments, so the parser can rebuild `message.attachments` on
- * reload. Stripped from the visible message by `cleanStoredUserMessage`.
+ * Legacy hand-off wrapper. New turns encode resource attachments as the leading
+ * JSON line inside `<thread-artifacts>` (inside `<thread-context>`). Kept so
+ * `cleanStoredUserMessage` and extract still handle older stored messages.
  */
 export const EDITOR_CONTEXT_OPEN_TAG = '<editor-context>';
 export const EDITOR_CONTEXT_CLOSE_TAG = '</editor-context>';
@@ -88,8 +88,11 @@ export function buildWorkflowTestRequestBlock(workflowId: string): string {
 const TASK_CONTEXT_BLOCK =
 	/^(?:<thread-context>\n[\s\S]*?\n<\/thread-context>|<running-tasks>\n[\s\S]*?\n<\/running-tasks>|<planned-task-follow-up[\s\S]*?\n<\/planned-task-follow-up>|<planning-blueprint>\n[\s\S]*?\n<\/planning-blueprint>|<background-task-completed>\n[\s\S]*?\n<\/background-task-completed>|<workflow-verification-follow-up>\n[\s\S]*?\n<\/workflow-verification-follow-up>|<workflow-setup-required>\n[\s\S]*?\n<\/workflow-setup-required>|<workflow-setup-state>\n[\s\S]*?\n<\/workflow-setup-state>|<workflow-test-request>\n[\s\S]*?\n<\/workflow-test-request>|<editor-context>\n[\s\S]*?\n<\/editor-context>|<credential-context>\n[\s\S]*?\n<\/credential-context>|<agent-preview-context>\n[\s\S]*?\n<\/agent-preview-context>|<instance-context>\n[\s\S]*?\n<\/instance-context>|<thread-artifacts>\n[\s\S]*?\n<\/thread-artifacts>)(?:\n\n|$)/;
 
-/** Captures the leading JSON line inside an editor-context block. */
-const EDITOR_CONTEXT_JSON = /^<editor-context>\n(\[[\s\S]*?\])\n/;
+/** Captures the leading JSON line inside a thread-artifacts block (handoff turns). */
+const THREAD_ARTIFACTS_RESOURCE_JSON = /<thread-artifacts>\n(\[[\s\S]*?\])\n/;
+
+/** Captures the leading JSON line inside a legacy editor-context block. */
+const EDITOR_CONTEXT_JSON = /<editor-context>\n(\[[\s\S]*?\])\n/;
 
 /** Captures the leading JSON line inside an agent-preview-context block. */
 const AGENT_PREVIEW_CONTEXT_JSON = /^<agent-preview-context>\n(\{[\s\S]*?\})\n/;
@@ -230,21 +233,28 @@ export function cleanStoredUserMessage(stored: string): string | null {
 	return text === AUTO_FOLLOW_UP_MESSAGE ? null : text;
 }
 
+function parseResourceAttachmentJson(raw: string): InstanceAiResourceAttachment[] {
+	const parsed = z
+		.array(instanceAiResourceAttachmentSchema)
+		.safeParse(jsonParse(raw, { fallbackValue: undefined }));
+	return parsed.success ? parsed.data : [];
+}
+
 /**
- * Reconstructs the resource attachments (workflows, agents) the editor hand-off
- * encoded in a stored user message, so the UI can re-surface them as artifacts
- * after a reload. Returns an empty array when the message carries no editor
- * context.
+ * Reconstructs resource attachments (workflows, agents, nodes) encoded in a
+ * stored user message so the UI can re-surface them after a reload. Prefers the
+ * JSON line inside `<thread-artifacts>`; falls back to legacy `<editor-context>`.
  */
 export function extractEditorContextResourceAttachments(
 	stored: string,
 ): InstanceAiResourceAttachment[] {
-	const match = EDITOR_CONTEXT_JSON.exec(stored);
-	if (!match) return [];
-	const parsed = z
-		.array(instanceAiResourceAttachmentSchema)
-		.safeParse(jsonParse(match[1], { fallbackValue: undefined }));
-	return parsed.success ? parsed.data : [];
+	const fromThreadArtifacts = THREAD_ARTIFACTS_RESOURCE_JSON.exec(stored);
+	if (fromThreadArtifacts) {
+		return parseResourceAttachmentJson(fromThreadArtifacts[1]);
+	}
+	const fromEditorContext = EDITOR_CONTEXT_JSON.exec(stored);
+	if (!fromEditorContext) return [];
+	return parseResourceAttachmentJson(fromEditorContext[1]);
 }
 
 /**
@@ -292,7 +302,11 @@ function sanitiseThreadArtifactName(value: string): string {
 		.slice(0, THREAD_ARTIFACT_NAME_MAX_LENGTH);
 }
 
-function formatThreadArtifactLine(artifact: InstanceAiThreadArtifact, current: boolean): string {
+function formatThreadArtifactLine(
+	artifact: InstanceAiThreadArtifact,
+	current: boolean,
+	executionId?: string,
+): string {
 	const kind =
 		artifact.type === 'agent' && artifact.pending
 			? 'New unsaved Agent'
@@ -303,37 +317,140 @@ function formatThreadArtifactLine(artifact: InstanceAiThreadArtifact, current: b
 		.filter(Boolean)
 		.join(', ');
 	const flagSuffix = flags ? ` [${flags}]` : '';
-	return `  - ${kind}${name} (id: \`${artifact.id}\`${project})${flagSuffix}`;
+	const execution =
+		artifact.type === 'workflow' && executionId
+			? `, currently viewing its execution \`${executionId}\``
+			: '';
+	return `  - ${kind}${name} (id: \`${artifact.id}\`${project})${flagSuffix}${execution}`;
+}
+
+/** Renders one canvas node-selection attachment as one line per set. */
+function buildNodesAttachmentLine(attachment: InstanceAiNodesAttachment): string {
+	const setLines = attachment.sets.map((set) => {
+		const names = set.nodes.map((node) => node.name ?? node.id);
+
+		const label =
+			names.length === 1
+				? `Node "${names[0]}"`
+				: `A chain of connected nodes: ${names.join(' → ')}`;
+
+		const input = set.inputNode
+			? `, receiving input from "${set.inputNode.name ?? set.inputNode.id}"`
+			: '';
+
+		const output = set.outputNode
+			? `, sending output to "${set.outputNode.name ?? set.outputNode.id}"`
+			: '';
+
+		const group = set.canvasGroupName
+			? `, part of canvas group "${set.canvasGroupName}"`
+			: set.canvasGroupId
+				? `, part of canvas group \`${set.canvasGroupId}\``
+				: '';
+
+		return `    - ${label}${input}${output}${group}.`;
+	});
+
+	const hasBoundary = attachment.sets.some((set) => set.inputNode ?? set.outputNode);
+	const boundaryNote = hasBoundary
+		? '\n  The "receiving input from"/"sending output to" nodes show only where the selection connects; they are not part of the selection. Do not describe, inspect, or make claims about them — scope your answer to the selected nodes.'
+		: '';
+
+	return `  - Selected nodes in workflow \`${attachment.workflowId}\`:\n${setLines.join('\n')}${boundaryNote}`;
+}
+
+function attachmentToThreadArtifact(
+	attachment: Exclude<InstanceAiResourceAttachment, InstanceAiNodesAttachment>,
+): InstanceAiThreadArtifact {
+	return {
+		type: attachment.type,
+		id: attachment.id,
+		...(attachment.name ? { name: attachment.name } : {}),
+		...(attachment.type === 'agent' ? { projectId: attachment.projectId } : {}),
+		...(attachment.type === 'agent' && attachment.pending ? { pending: true as const } : {}),
+	};
 }
 
 /**
- * Index of the artifacts the thread view is showing. Ids and names only.
- * On the turn rather than in the system prompt for prompt-caching reasons.
+ * Preview-tab index plus any editor hand-off resources for this turn. Ids and
+ * names for the ambient list; when resource attachments are present, a leading
+ * JSON line keeps them durable for reload (replacing the old `<editor-context>`
+ * block). Lives inside `<thread-context>` for prompt-caching reasons.
  */
 export function buildThreadArtifactsBlock(
 	context: InstanceAiThreadArtifactsContext | undefined,
+	resourceAttachments: InstanceAiResourceAttachment[] = [],
 ): string {
-	if (!context || context.artifacts.length === 0) return '';
+	const previewArtifacts = context?.artifacts ?? [];
+	if (previewArtifacts.length === 0 && resourceAttachments.length === 0) return '';
+
+	const executionByWorkflowId = new Map<string, string>();
+	const listedIds = new Set(previewArtifacts.map((artifact) => artifact.id));
+	const lines: string[] = [];
+
+	for (const attachment of resourceAttachments) {
+		if (attachment.type === 'workflow' && attachment.executionId) {
+			executionByWorkflowId.set(attachment.id, attachment.executionId);
+		}
+	}
 
 	const activeId =
-		context.activeId && context.artifacts.some((artifact) => artifact.id === context.activeId)
+		context?.activeId && previewArtifacts.some((artifact) => artifact.id === context.activeId)
 			? context.activeId
 			: undefined;
 
-	const lines = context.artifacts.map((artifact) =>
-		formatThreadArtifactLine(artifact, artifact.id === activeId),
-	);
+	for (const artifact of previewArtifacts) {
+		lines.push(
+			formatThreadArtifactLine(
+				artifact,
+				artifact.id === activeId,
+				executionByWorkflowId.get(artifact.id),
+			),
+		);
+	}
+
+	for (const attachment of resourceAttachments) {
+		if (attachment.type === 'nodes') {
+			lines.push(buildNodesAttachmentLine(attachment));
+			continue;
+		}
+		if (listedIds.has(attachment.id)) continue;
+		lines.push(
+			formatThreadArtifactLine(
+				attachmentToThreadArtifact(attachment),
+				false,
+				attachment.type === 'workflow' ? attachment.executionId : undefined,
+			),
+		);
+	}
+
+	const pendingAgentGuidance = resourceAttachments.some(
+		(attachment) => attachment.type === 'agent' && attachment.pending,
+	)
+		? "Treat references such as “the agent” as this pending artifact. It has no persisted agent row yet. When the user asks to build or change it, use `build-agent`'s new-agent path with a name; do not pass its pending id as an existing `agentId`. The thread's pending target will make creation reuse that id."
+		: '';
 
 	const currentGuidance = activeId
 		? 'Treat “this workflow”, “the agent”, “the data table”, or “it” as the item marked current.'
 		: 'When the user refers to an artifact in this conversation, match it against this list.';
 
+	const inspectGuidance =
+		resourceAttachments.length > 0
+			? "Treat this purely as context. Until the user tells you what they need, don't read, inspect, run, or otherwise call tools on these resources, and don't make claims about their contents — just briefly acknowledge what they're working on and ask how you can help."
+			: 'Use these ids when you act. Do not inspect, run, or describe their contents until the user asks.';
+
 	const prose = [
 		'Artifacts the user can see in this conversation’s preview:',
 		...lines,
 		currentGuidance,
-		'Use these ids when you act. Do not inspect, run, or describe their contents until the user asks.',
-	].join('\n');
+		pendingAgentGuidance,
+		inspectGuidance,
+	]
+		.filter(Boolean)
+		.join('\n');
 
-	return `${THREAD_ARTIFACTS_OPEN_TAG}\n${prose}\n${THREAD_ARTIFACTS_CLOSE_TAG}`;
+	const durableJson =
+		resourceAttachments.length > 0 ? `${JSON.stringify(resourceAttachments)}\n\n` : '';
+
+	return `${THREAD_ARTIFACTS_OPEN_TAG}\n${durableJson}${prose}\n${THREAD_ARTIFACTS_CLOSE_TAG}`;
 }
