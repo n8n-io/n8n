@@ -1,5 +1,7 @@
 <script lang="ts" setup>
-import { computed, nextTick, ref, watch } from 'vue';
+import { useResizeObserver } from '@vueuse/core';
+import type { ComponentPublicInstance } from 'vue';
+import { computed, ref } from 'vue';
 
 import type { IMenuItem } from '../../types';
 import N8nActionPill from '../N8nActionPill/ActionPill.vue';
@@ -27,33 +29,17 @@ const emit = defineEmits<{
 }>();
 
 const menuItemTextViewport = ref<HTMLElement | null>(null);
-const isLabelOverflowing = ref(false);
+const menuItemText = ref<ComponentPublicInstance | null>(null);
+const labelOverflows = ref(false);
 
-const updateLabelOverflow = () => {
+// Observing the text too catches label changes, which do not resize the viewport.
+useResizeObserver([menuItemTextViewport, menuItemText], () => {
 	const viewport = menuItemTextViewport.value;
-	isLabelOverflowing.value =
-		Boolean(props.scrollLabelOnOverflow) &&
-		viewport !== null &&
-		viewport.scrollWidth > viewport.clientWidth;
-};
+	labelOverflows.value = viewport !== null && viewport.scrollWidth > viewport.clientWidth;
+});
 
-watch(
-	[menuItemTextViewport, () => props.scrollLabelOnOverflow],
-	([viewport, enabled], _previous, onCleanup) => {
-		updateLabelOverflow();
-
-		if (enabled && viewport && typeof ResizeObserver !== 'undefined') {
-			const observer = new ResizeObserver(updateLabelOverflow);
-			observer.observe(viewport);
-			onCleanup(() => observer.disconnect());
-		}
-	},
-	{ flush: 'post' },
-);
-
-watch(
-	() => [props.item.label, props.scrollLabelOnOverflow],
-	async () => await nextTick(updateLabelOverflow),
+const isLabelOverflowing = computed(
+	() => Boolean(props.scrollLabelOnOverflow) && labelOverflows.value,
 );
 
 const to = computed(() => {
@@ -170,6 +156,7 @@ const tooltipPlacement = computed(() => {
 						]"
 					>
 						<N8nText
+							ref="menuItemText"
 							:class="$style.menuItemText"
 							:color="item.disabled ? 'text-light' : 'text-dark'"
 						>

@@ -18,7 +18,7 @@ import {
 	ComboboxLabel,
 	ComboboxRoot,
 } from 'reka-ui';
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { INSTANCE_AI_VIEW, INSTANCE_AI_THREAD_VIEW, INSTANCE_AI_THREADS_VIEW } from '../constants';
 import { useInstanceAiStore } from '../instanceAi.store';
@@ -50,12 +50,9 @@ const { history, search, listRef, sentinelRef, loadMore } = useInstanceAiThreadH
 const editingThreadId = ref<string | null>(null);
 const editingTitle = ref('');
 const renameInput = ref<HTMLInputElement | null>(null);
-const threadListRef = ref<InstanceType<typeof N8nScrollArea>>();
 const comboboxRef = ref<{
 	highlightFirstItem?: () => void;
 }>();
-const hasOverflowBelow = ref(false);
-let resizeObserver: ResizeObserver | null = null;
 const activeThreadId = computed(() =>
 	typeof route.params.threadId === 'string' ? route.params.threadId : undefined,
 );
@@ -106,22 +103,10 @@ const groupedThreads = computed(() => {
 	});
 });
 
-function updateOverflowCue() {
-	const position = threadListRef.value?.getScrollPosition();
-	const element = threadListRef.value?.$el;
-	if (!position || !(element instanceof HTMLElement)) {
-		hasOverflowBelow.value = false;
-		return;
-	}
-
-	hasOverflowBelow.value = position.top + element.clientHeight < position.height - 1;
-}
-
 watch(
 	() => history.value.threads.length,
 	async (length, previousLength) => {
 		await nextTick();
-		updateOverflowCue();
 		// A search response replaces the rows (the count passes through 0). Highlight the
 		// first match so Enter opens it. Pages that append rows keep the highlight where it is.
 		if (previousLength === 0 && length > 0 && history.value.search) {
@@ -130,19 +115,6 @@ watch(
 	},
 	{ flush: 'post' },
 );
-
-onMounted(() => {
-	void nextTick(() => {
-		updateOverflowCue();
-		const element = threadListRef.value?.$el;
-		if (element instanceof HTMLElement) {
-			resizeObserver = new ResizeObserver(updateOverflowCue);
-			resizeObserver.observe(element);
-		}
-	});
-});
-
-onBeforeUnmount(() => resizeObserver?.disconnect());
 
 async function handleDeleteThread(threadId: string) {
 	const wasActive = threadId === activeThreadId.value;
@@ -249,28 +221,22 @@ function handleThreadAction(action: string, threadId: string) {
 						:placeholder="i18n.baseText('instanceAi.threads.searchPlaceholder')"
 						data-test-id="instance-ai-thread-search"
 					/>
-					<button
+					<N8nIconButton
 						v-if="search"
-						type="button"
+						variant="ghost"
+						size="xsmall"
+						icon="x"
 						:class="$style.clearSearch"
 						:aria-label="i18n.baseText('generic.list.clearSelection')"
 						@mousedown.prevent
 						@click="search = ''"
-					>
-						<N8nIcon icon="x" size="small" />
-					</button>
+					/>
 				</div>
 			</form>
 
 			<ComboboxContent force-mount as-child>
 				<div ref="listRef" :class="$style.comboboxContent">
-					<N8nScrollArea
-						ref="threadListRef"
-						:class="[$style.threadList, { [$style.hasOverflowBelow]: hasOverflowBelow }]"
-						:max-height="props.maxHeight"
-						type="auto"
-						@scroll-capture="updateOverflowCue"
-					>
+					<N8nScrollArea :class="$style.threadList" :max-height="props.maxHeight" type="auto">
 						<ComboboxGroup v-for="group in groupedThreads" :key="group.label" :class="$style.group">
 							<ComboboxLabel :class="$style.groupLabel">
 								<N8nText tag="span" size="small" color="text-light">
@@ -356,6 +322,7 @@ function handleThreadAction(action: string, threadId: string) {
 								}}
 							</N8nText>
 						</div>
+						<div :class="$style.fadeSpacer" />
 					</N8nScrollArea>
 				</div>
 			</ComboboxContent>
@@ -458,24 +425,7 @@ function handleThreadAction(action: string, threadId: string) {
 
 .clearSearch {
 	position: absolute;
-	right: var(--input--padding);
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	padding: 0;
-	color: var(--color--text--tint-1);
-	background: transparent;
-	border: none;
-	border-radius: var(--radius--sm);
-	cursor: pointer;
-
-	&:hover {
-		color: var(--color--text--shade-1);
-	}
-
-	&:focus-visible {
-		@include focus.focus-ring;
-	}
+	right: var(--spacing--4xs);
 }
 
 .comboboxContent {
@@ -490,7 +440,9 @@ function handleThreadAction(action: string, threadId: string) {
 	min-height: 0;
 	padding: var(--spacing--2xs) var(--spacing--2xs) 0;
 
-	&.hasOverflowBelow::after {
+	// Always on. The spacer at the end of the list is as tall as the fade, so once the list
+	// is scrolled to its end the fade covers only empty space and no row is hidden.
+	&::after {
 		content: '';
 		position: absolute;
 		inset: auto 0 0;
@@ -500,11 +452,11 @@ function handleThreadAction(action: string, threadId: string) {
 	}
 }
 
-.group {
-	&:last-child {
-		padding-bottom: var(--spacing--2xs);
-	}
+.fadeSpacer {
+	height: var(--spacing--lg);
+}
 
+.group {
 	&:not(:first-child) {
 		margin-top: var(--spacing--xs);
 	}
