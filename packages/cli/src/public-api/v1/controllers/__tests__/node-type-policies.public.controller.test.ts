@@ -36,7 +36,18 @@ describe('NodeTypePoliciesPublicController route metadata', () => {
 
 	it('registers every route of the internal instance and project controllers', () => {
 		expect(routeCases.map(({ handlerName }) => handlerName).sort()).toEqual(
-			['getInstancePolicy', 'getProjectPolicy', 'putInstancePolicy', 'putProjectPolicy'].sort(),
+			[
+				'createPolicyDocument',
+				'deletePolicyDocument',
+				'getInstancePolicy',
+				'getPolicyDocument',
+				'getProjectPolicy',
+				'listPolicyDocuments',
+				'putInstancePolicy',
+				'putProjectPolicy',
+				'replaceAttachments',
+				'updatePolicyDocument',
+			].sort(),
 		);
 	});
 
@@ -98,6 +109,12 @@ describe('NodeTypePoliciesPublicController with the module disabled', () => {
 	it('answers 503 before touching the service', async () => {
 		await expect(controller.getInstancePolicy()).rejects.toThrow(ServiceUnavailableError);
 		await expect(controller.getProjectPolicy(req, res, 'project-id')).rejects.toThrow(
+			ServiceUnavailableError,
+		);
+		await expect(controller.getPolicyDocument(req, res, 'policy-id')).rejects.toThrow(
+			ServiceUnavailableError,
+		);
+		await expect(controller.deletePolicyDocument(req, res, 'policy-id')).rejects.toThrow(
 			ServiceUnavailableError,
 		);
 

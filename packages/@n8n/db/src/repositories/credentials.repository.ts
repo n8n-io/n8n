@@ -3,7 +3,7 @@ import type { Scope } from '@n8n/permissions';
 import type { FindManyOptions, SelectQueryBuilder } from '@n8n/typeorm';
 import { DataSource, In, Like, Not, QueryFailedError } from '@n8n/typeorm';
 
-import { CredentialsEntity, type User } from '../entities';
+import { CredentialsEntity, SharedCredentials, type User } from '../entities';
 import { BaseRepository } from './base-repository';
 import {
 	addCredentialDependencyExistsFilter,
@@ -14,6 +14,7 @@ import { SharedCredentialsRepository } from './shared-credentials.repository';
 import type { ICredentialsDb, ListQuery } from '../entities/types-db';
 import type { OperationContext } from '../services/transaction';
 import { TransactionRunner } from '../services/transaction';
+import { chunkIds } from '../utils/chunk-ids';
 import { parseListQuerySortBy } from '../utils/list-query-sort';
 
 const SORTABLE_COLUMNS = new Set(['id', 'name', 'createdAt', 'updatedAt']);
@@ -69,6 +70,46 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 		});
 
 		return rows.map((row) => row.id);
+	}
+
+	/** Reads workflow eligibility and access for the package's credential and project IDs. */
+	async findPromotionBindingAccess(
+		ids: string[],
+		projectIds: string[],
+	): Promise<
+		Array<
+			Pick<CredentialsEntity, 'id' | 'type' | 'usageScope' | 'isGlobal'> & { projectIds: string[] }
+		>
+	> {
+		const found = [];
+		for (const batch of chunkIds(ids)) {
+			const credentials = await this.find({
+				where: { id: In(batch) },
+				select: ['id', 'type', 'usageScope', 'isGlobal'],
+			});
+			const projectsByCredential = new Map<string, string[]>();
+			for (const projectBatch of chunkIds(projectIds)) {
+				const relations = await this.manager.find(SharedCredentials, {
+					where: { credentialsId: In(batch), projectId: In(projectBatch) },
+					select: ['credentialsId', 'projectId'],
+				});
+				for (const relation of relations) {
+					const projects = projectsByCredential.get(relation.credentialsId) ?? [];
+					projects.push(relation.projectId);
+					projectsByCredential.set(relation.credentialsId, projects);
+				}
+			}
+			found.push(
+				...credentials.map(({ id, type, usageScope, isGlobal }) => ({
+					id,
+					type,
+					usageScope,
+					isGlobal,
+					projectIds: projectsByCredential.get(id) ?? [],
+				})),
+			);
+		}
+		return found;
 	}
 
 	/** True when any of the given credentials is a private (resolvable) credential. */

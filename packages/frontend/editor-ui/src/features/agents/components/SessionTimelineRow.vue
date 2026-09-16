@@ -8,6 +8,7 @@ import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { VIEWS } from '@/app/constants/navigation';
 import type { TimelineItem } from '../session-timeline.types';
 import {
+	backgroundJobSignalSummary,
 	executionErrorLabel,
 	executionErrorMessage,
 	hitlRequestLabelKey,
@@ -48,6 +49,8 @@ const workflowHref = computed((): string => {
 const infoText = computed((): string => {
 	const it = props.item;
 	switch (it.kind) {
+		case 'background-task-signal':
+			return backgroundJobSignalSummary(it, i18n);
 		case 'user':
 		case 'agent':
 			return truncate(it.content ?? '', 500);
@@ -84,6 +87,8 @@ const attachmentChip = computed((): { label: string; tooltip: string } | null =>
 const label = computed((): string => {
 	if (isSubAgent.value) return i18n.baseText('agentSessions.timeline.subAgent');
 	switch (props.item.kind) {
+		case 'background-task-signal':
+			return i18n.baseText('agents.chat.backgroundTasks.resultsReceived');
 		case 'user':
 			return i18n.baseText('agentSessions.timeline.user');
 		case 'agent':

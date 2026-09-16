@@ -11,6 +11,7 @@ import type { LookupFunction } from 'node:net';
  */
 export const passthroughEgressFilter: NodeEgressFilter = {
 	validateUrl: async () => await Promise.resolve(createResultOk(undefined)),
+	validateConnectionHost: () => createResultOk(undefined),
 	// Same function reference every call, so callers can compare it by identity.
 	createSecureLookup: (): LookupFunction => lookup,
 	// No egress policy configured, so every redirect target is allowed.

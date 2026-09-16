@@ -728,12 +728,13 @@ describe('EvalMockedCredentialsHelper', () => {
 			]);
 		});
 
-		it('still delegates (and surfaces the throw) when an id IS present', async () => {
+		it('forwards trigger credential usage when an id is present', async () => {
 			// A present id whose lookup fails with a non-CredentialNotFoundError must still propagate.
 			const inner = makeInner({
 				getDecrypted: vi.fn().mockRejectedValue(new Error('database is down')),
 			});
 			const helper = new EvalMockedCredentialsHelper(inner, undefined, mockLogger);
+			const options = { credentialUsage: 'trigger' } as const;
 
 			await expect(
 				helper.getDecrypted(
@@ -741,9 +742,22 @@ describe('EvalMockedCredentialsHelper', () => {
 					{ id: 'real-id', name: 'Telegram cred' },
 					'telegramApi',
 					'manual',
+					undefined,
+					undefined,
+					undefined,
+					options,
 				),
 			).rejects.toThrow('database is down');
-			expect(inner.getDecrypted).toHaveBeenCalled();
+			expect(inner.getDecrypted).toHaveBeenCalledWith(
+				fakeAdditionalData,
+				{ id: 'real-id', name: 'Telegram cred' },
+				'telegramApi',
+				'manual',
+				undefined,
+				undefined,
+				undefined,
+				options,
+			);
 		});
 	});
 
