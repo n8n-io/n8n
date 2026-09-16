@@ -107,12 +107,6 @@ vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: vi.fn() }),
 }));
 
-vi.mock('@/features/ai/instanceAi/composables/useInstanceAiAgentPreviewHandoff', () => ({
-	useInstanceAiAgentPreviewHandoff: () => ({
-		canSendPreviewToInstanceAi: ref(true),
-	}),
-}));
-
 vi.mock('@/app/composables/useMessage', () => ({
 	useMessage: () => ({ confirm: vi.fn() }),
 }));
@@ -1025,6 +1019,25 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 			expect(getAgentMock).toHaveBeenCalledWith(expect.anything(), 'p1', 'a1'),
 		);
 		expect(editor.props('agentUnsaved')).toBe(false);
+	});
+
+	it('flushes a queued edit for an already-saved agent on an in-place switch to another agent', async () => {
+		instanceAiAvailableRef.value = false;
+		const wrapper = await renderView();
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+
+		editor.vm.$emit('update:config', { instructions: 'Answer support mail' });
+		await nextTick();
+		expect(routeGuards.update).toBeDefined();
+
+		await routeGuards.update?.({ params: { projectId: 'p1', agentId: 'a2' } });
+
+		expect(updateConfigMock).toHaveBeenCalledWith(
+			'p1',
+			'a1',
+			expect.objectContaining({ instructions: 'Answer support mail' }),
+			'hash-1',
+		);
 	});
 
 	it('loads credentials through the workflow-scoped credentials endpoint for the agent project', async () => {

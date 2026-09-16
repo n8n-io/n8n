@@ -1,6 +1,6 @@
-import { useInstanceAiAvailable } from './useInstanceAiAvailability';
 import type { PendingComposerDraft } from './useInstanceAiHandoff';
 
+/** The builder hands preview sessions to its embedded panel; only the shared params type remains. */
 export interface AgentPreviewHandoffParams {
 	projectId: string;
 	agentId: string;
@@ -10,17 +10,4 @@ export interface AgentPreviewHandoffParams {
 	sessionTitle?: string;
 	executionId?: string;
 	initialDraft?: PendingComposerDraft;
-}
-
-/**
- * `sendPreviewSessionToInstanceAi` (navigate to the full assistant with the
- * agent as an artifact) used to live here. The agent builder now hands the
- * preview session to its own embedded panel instead — see
- * `AgentBuilderView.onSendPreviewToAssistant` — so only the availability gate
- * remains.
- */
-export function useInstanceAiAgentPreviewHandoff() {
-	const canSendPreviewToInstanceAi = useInstanceAiAvailable();
-
-	return { canSendPreviewToInstanceAi };
 }

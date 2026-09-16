@@ -72,10 +72,7 @@ import {
 	removeProjectAgentFromListCache,
 	upsertProjectAgentsListCache,
 } from '../composables/useProjectAgentsList';
-import {
-	useInstanceAiAgentPreviewHandoff,
-	type AgentPreviewHandoffParams,
-} from '@/features/ai/instanceAi/composables/useInstanceAiAgentPreviewHandoff';
+import type { AgentPreviewHandoffParams } from '@/features/ai/instanceAi/composables/useInstanceAiAgentPreviewHandoff';
 import {
 	AGENT_BUILDER_VIEW,
 	AGENT_PREVIEW_VIEW,
@@ -168,7 +165,6 @@ const projectsStore = useProjectsStore();
 const telemetry = useTelemetry();
 const instanceAiAvailable = useInstanceAiAvailable();
 const instanceAiReady = useInstanceAiReady();
-const { canSendPreviewToInstanceAi } = useInstanceAiAgentPreviewHandoff();
 const sessionsStore = useAgentSessionsStore();
 const agentEvalsStore = useAgentEvalsStore();
 const credentialsStore = useCredentialsStore();
@@ -1306,7 +1302,12 @@ onBeforeRouteUpdate(async (to) => {
 		: to.params.projectId;
 	const nextAgentId = Array.isArray(to.params.agentId) ? to.params.agentId[0] : to.params.agentId;
 	if (nextProjectId === projectId.value && nextAgentId === agentId.value) return;
-	await flushPendingRouteDraftBeforeNavigation();
+	if (isRouteAgentPending.value) {
+		await flushPendingRouteDraftBeforeNavigation();
+		return;
+	}
+	// An in-place switch skips the unmount flush, so persist queued edits here.
+	await flushAutosave().catch(() => {});
 });
 
 async function beforePreviewSend() {
@@ -2403,7 +2404,7 @@ function onSwitchAgent(nextAgentId: string) {
 					:local-config="localConfig"
 					:connected-triggers="connectedTriggers"
 					:effective-session-id="effectiveSessionId"
-					:can-send-to-assistant="canSendPreviewToInstanceAi"
+					:can-send-to-assistant="instanceAiAvailable"
 					:before-send="beforePreviewSend"
 					@continue-loaded="onContinueLoaded"
 					@open-build="returnToBuilderFromPreview"
@@ -2486,7 +2487,7 @@ function onSwitchAgent(nextAgentId: string) {
 					:local-config="localConfig"
 					:connected-triggers="connectedTriggers"
 					:effective-session-id="effectiveSessionId"
-					:can-send-to-assistant="canSendPreviewToInstanceAi"
+					:can-send-to-assistant="instanceAiAvailable"
 					:before-send="beforePreviewSend"
 					@view-trace="viewPreviewTrace"
 					@new-session="startNewPreviewSession"
