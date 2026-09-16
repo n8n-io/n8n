@@ -99,6 +99,12 @@ const meetingSettingsProperties: readonly INodeProperties[] = [
 				name: 'Organizer',
 				value: 'organizer',
 			},
+			{
+				name: 'Specific People',
+				value: 'roleIsPresenter',
+				description:
+					'Only the attendees whose Role is Presenter. Add them under Attendees with the role set to Presenter.',
+			},
 		],
 		default: 'everyone',
 		description: 'Who can present in the meeting',
@@ -120,7 +126,7 @@ const meetingSettingsProperties: readonly INodeProperties[] = [
 	},
 ];
 
-const isSet = (value: unknown) => value !== undefined && value !== null && value !== '';
+export const isSet = (value: unknown) => value !== undefined && value !== null && value !== '';
 
 export function applyMeetingSettings(body: IDataObject, settings: IDataObject): void {
 	for (const { name } of meetingSettingsProperties) {
