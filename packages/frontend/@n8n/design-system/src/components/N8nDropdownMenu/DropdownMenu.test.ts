@@ -1,5 +1,7 @@
 import userEvent from '@testing-library/user-event';
 import { fireEvent, render, waitFor } from '@testing-library/vue';
+import { shallowMount } from '@vue/test-utils';
+import { DropdownMenuContent } from 'reka-ui';
 import { ref } from 'vue';
 
 import type { DropdownMenuItemProps, DropdownMenuPlacement } from './DropdownMenu.types';
@@ -495,6 +497,26 @@ describe('N8nDropdownMenu', () => {
 
 			const trigger = container.querySelector('button');
 			expect(trigger).toMatchSnapshot();
+		});
+	});
+
+	describe('content props', function () {
+		it('should use the fixed positioning props', function () {
+			const wrapper = shallowMount(DropdownMenu, {
+				props: {
+					items: createItems(3),
+					modelValue: true,
+					teleported: false,
+				},
+				global: {
+					renderStubDefaultSlot: true,
+				},
+			});
+
+			expect(wrapper.findComponent(DropdownMenuContent).props()).toMatchObject({
+				sideOffset: 4,
+				prioritizePosition: false,
+			});
 		});
 	});
 

@@ -97,6 +97,13 @@ const contentContainerStyle = computed(() => {
 	};
 });
 
+const fixedContentProps = {
+	/** Keep equal space between the trigger and the menu. */
+	sideOffset: 4,
+	/** Let Reka UI move the menu instead of overlapping the trigger. */
+	prioritizePosition: false,
+};
+
 const handleOpenChange = (open: boolean) => {
 	internalOpen.value = open;
 	emit('update:modelValue', open);
@@ -276,16 +283,14 @@ defineExpose({ open, close });
 			v-bind="portalTarget ? { to: portalTarget } : {}"
 		>
 			<DropdownMenuContent
-				v-bind="id ? { id } : {}"
 				ref="contentRef"
+				v-bind="{ ...fixedContentProps, ...(id ? { id } : {}) }"
+				data-menu-content
 				:data-test-id="contentTestId"
 				:class="[$style.content, searchable && $style.searchable, extraPopperClass]"
-				data-menu-content
 				:side="placementParts.side"
 				:align="placementParts.align"
-				:side-offset="5"
 				:style="contentContainerStyle"
-				:prioritize-position="true"
 				@mouseenter="cancelHoverClose"
 				@mouseleave="triggerHoverLeave"
 			>
