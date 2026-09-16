@@ -477,11 +477,20 @@ function isShownForResource(
 }
 
 /**
+ * Parameters that name what the call does on the 81 executable node types that declare no
+ * `resource`/`operation` — `mode` covers 28 of them (Set, Merge, Switch, the vector stores),
+ * `url` covers HTTP Request. Order is the order they are tried.
+ */
+const EXECUTE_HEADLINE_PARAMETERS = ['mode', 'url', 'query', 'command', 'action'];
+
+/** Description for the 45 node types that carry no parameter worth naming (If, Filter, Sort, ...). */
+const EXECUTE_DESCRIPTION_FALLBACK = 'Single run';
+
+/**
  * Human-readable subjects for the execute-node approval card: the node the card names in its
- * title (`Google Sheets node`) and the operation it describes below (`Sheet Within Document >
- * Append Row`). Falls back to the node type ID and the raw parameter values when the node
- * description or its option lists don't resolve; the description is empty for a node without
- * resource/operation discriminators.
+ * title (`Google Sheets node`) and what the call does below it (`Sheet Within Document > Append
+ * Row`). Falls back to the node type ID and the raw parameter values when the node description
+ * or its option lists don't resolve.
  */
 async function buildExecuteNodeLabels(
 	context: InstanceAiContext,
@@ -498,10 +507,10 @@ async function buildExecuteNodeLabels(
 	/**
 	 * A split node declares one `operation` property for each resource, so the same operation
 	 * value can carry a different label under another resource — only the properties shown for
-	 * the resolved resource may name it. An omitted discriminator falls back to the node default
-	 * at runtime, so the prompt resolves it the same way and names the call the user really gets.
+	 * the resolved resource may name it. An omitted parameter falls back to the node default at
+	 * runtime, so the prompt resolves it the same way and names the call the user really gets.
 	 */
-	const resolveDiscriminator = (name: string, resource?: string) => {
+	const resolveParameter = (name: string, resource?: string) => {
 		const declaredBy = properties.filter(
 			(property) => property.name === name && isShownForResource(property, resource),
 		);
@@ -513,12 +522,17 @@ async function buildExecuteNodeLabels(
 		return { value, label: option?.name ?? value };
 	};
 
-	const resource = resolveDiscriminator('resource');
-	const operation = resolveDiscriminator('operation', resource?.value);
+	const resource = resolveParameter('resource');
+	const operation = resolveParameter('operation', resource?.value);
+	let label = [resource?.label, operation?.label].filter(Boolean).join(' > ');
+	for (const name of EXECUTE_HEADLINE_PARAMETERS) {
+		if (label) break;
+		label = resolveParameter(name)?.label ?? '';
+	}
 
 	return {
 		resourceName: `${description?.displayName ?? input.type} node`,
-		message: [resource?.label, operation?.label].filter(Boolean).join(' > '),
+		message: label || EXECUTE_DESCRIPTION_FALLBACK,
 	};
 }
 

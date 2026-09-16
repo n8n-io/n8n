@@ -732,7 +732,7 @@ describe('nodes tool', () => {
 			expect(suspendFn.mock.calls[0][0]).toEqual(
 				expect.objectContaining({
 					requestId: expect.any(String),
-					message: '',
+					message: 'manual',
 					resourceName: 'n8n-nodes-base.set node',
 					severity: 'warning',
 				}),
@@ -821,11 +821,54 @@ describe('nodes tool', () => {
 			});
 		});
 
-		it('should leave the description empty for a node without discriminators', async () => {
-			const flatNode = { name: 'n8n-nodes-base.code', displayName: 'Code', properties: [] };
-			expect(await suspendPayloadFor({}, flatNode)).toMatchObject({
-				resourceName: 'Code node',
-				message: '',
+		it('should name the first headline parameter for a node without resource or operation', async () => {
+			const httpRequest = {
+				name: 'n8n-nodes-base.httpRequest',
+				displayName: 'HTTP Request',
+				properties: [
+					{ name: 'method', displayName: 'Method', type: 'options', default: 'GET' },
+					{ name: 'url', displayName: 'URL', type: 'string', default: '' },
+				],
+			};
+			expect(
+				await suspendPayloadFor(
+					{ method: 'POST', url: 'https://example.com/v4/sheets' },
+					httpRequest,
+				),
+			).toMatchObject({
+				resourceName: 'HTTP Request node',
+				message: 'https://example.com/v4/sheets',
+			});
+		});
+
+		it('should prefer mode over the later headline parameters and label it', async () => {
+			const set = {
+				name: 'n8n-nodes-base.set',
+				displayName: 'Edit Fields (Set)',
+				properties: [
+					{
+						name: 'mode',
+						displayName: 'Mode',
+						type: 'options',
+						default: 'manual',
+						options: [
+							{ name: 'Manual Mapping', value: 'manual' },
+							{ name: 'JSON', value: 'raw' },
+						],
+					},
+					{ name: 'url', displayName: 'URL', type: 'string', default: '' },
+				],
+			};
+			expect(await suspendPayloadFor({ url: 'https://example.com' }, set)).toMatchObject({
+				message: 'Manual Mapping',
+			});
+		});
+
+		it('should fall back to a generic description when no parameter names the call', async () => {
+			const filter = { name: 'n8n-nodes-base.filter', displayName: 'Filter', properties: [] };
+			expect(await suspendPayloadFor({}, filter)).toMatchObject({
+				resourceName: 'Filter node',
+				message: 'Single run',
 			});
 		});
 
