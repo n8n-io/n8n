@@ -5,6 +5,7 @@ import { useInstanceAiAvailable } from './useInstanceAiAvailability';
 import {
 	buildInstanceAiAgentPreviewHandoffContext,
 	useInstanceAiHandoff,
+	type PendingComposerDraft,
 } from './useInstanceAiHandoff';
 
 export interface AgentPreviewHandoffParams {
@@ -15,7 +16,7 @@ export interface AgentPreviewHandoffParams {
 	agentIcon?: string;
 	sessionTitle?: string;
 	executionId?: string;
-	initialDraft?: string;
+	initialDraft?: PendingComposerDraft;
 }
 
 export function useInstanceAiAgentPreviewHandoff() {

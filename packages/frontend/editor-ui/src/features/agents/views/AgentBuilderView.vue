@@ -2,7 +2,14 @@
 import { ref, computed, watch, nextTick, onBeforeUnmount, useTemplateRef } from 'vue';
 import { useEventListener, useStorage } from '@vueuse/core';
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router';
-import { N8nAssistantIcon, N8nButton, N8nIcon, type ActionDropdownItem } from '@n8n/design-system';
+import {
+	N8nAssistantIcon,
+	N8nButton,
+	N8nCanvasPill,
+	N8nIcon,
+	N8nIconButton,
+	type ActionDropdownItem,
+} from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import {
 	MAX_AGENT_FILE_SIZE_BYTES,
@@ -13,6 +20,7 @@ import {
 	addMissingAgentPersonalisation,
 	type AgentFileDto,
 	type PushMessage,
+	type PushPayload,
 } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
@@ -28,6 +36,7 @@ import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { MODAL_CONFIRM } from '@/app/constants';
+import { AGENT_EXTERNAL_UPDATE_NOTICE_DURATION, TIME } from '@/app/constants/durations';
 import { deepCopy } from 'n8n-workflow';
 import {
 	getAgent,
@@ -264,21 +273,29 @@ async function onSendPreviewToAssistant(event?: AgentSendToAssistantEvent) {
 			: 'failures' in event
 				? {
 						executionId: event.executionId,
-						initialDraft: buildAgentFixWithAssistantPrompt(
-							{
-								projectId: projectId.value,
-								agentId: agentId.value,
-								agentName: agentName.value || undefined,
-								threadId,
-								sessionTitle,
-								...(sessionNumber !== undefined ? { sessionNumber } : {}),
-								executionId: event.executionId,
-								failures: event.failures,
-							},
-							locale,
-						),
+						initialDraft: {
+							text: buildAgentFixWithAssistantPrompt(
+								{
+									projectId: projectId.value,
+									agentId: agentId.value,
+									agentName: agentName.value || undefined,
+									threadId,
+									sessionTitle,
+									...(sessionNumber !== undefined ? { sessionNumber } : {}),
+									executionId: event.executionId,
+									failures: event.failures,
+								},
+								locale,
+							),
+							prefillType: 'handoff_agent_change_request',
+						},
 					}
-				: { initialDraft: buildAgentChangeRequestPrompt(event.changeRequest, locale) }),
+				: {
+						initialDraft: {
+							text: buildAgentChangeRequestPrompt(event.changeRequest, locale),
+							prefillType: 'handoff_agent_change_request',
+						},
+					}),
 	};
 
 	if (isArtifactMode.value) {
@@ -1320,6 +1337,51 @@ function handleArtifactRefreshError(error: unknown) {
 }
 
 let externalRefreshTimer: ReturnType<typeof setTimeout> | undefined;
+let externalUpdateTimer: ReturnType<typeof setTimeout> | undefined;
+let externalUpdateAgeTimer: ReturnType<typeof setInterval> | undefined;
+let externalUpdateAt = 0;
+const recentExternalUpdate = ref<PushPayload<'agentUpdated'> | null>(null);
+const externalUpdateAgeMinutes = ref(0);
+const externalUpdateTime = computed(() =>
+	locale.baseText('agents.builder.externalUpdate.time', {
+		adjustToNumber: externalUpdateAgeMinutes.value,
+		interpolate: { count: externalUpdateAgeMinutes.value },
+	}),
+);
+const externalUpdateMessage = computed(() => {
+	let key: BaseTextKey;
+	switch (recentExternalUpdate.value?.source) {
+		case 'mcp':
+			key = 'agents.builder.externalUpdate.mcp';
+			break;
+		case 'builder':
+			key = 'agents.builder.externalUpdate.builder';
+			break;
+		case 'user':
+			key = 'agents.builder.externalUpdate.user';
+			break;
+		default:
+			key = 'agents.builder.externalUpdate.unknown';
+	}
+	return locale.baseText(key, { interpolate: { time: externalUpdateTime.value } });
+});
+
+function clearExternalUpdate() {
+	clearTimeout(externalUpdateTimer);
+	clearInterval(externalUpdateAgeTimer);
+	externalUpdateAt = 0;
+	externalUpdateAgeMinutes.value = 0;
+	recentExternalUpdate.value = null;
+}
+
+function shouldShowExternalUpdate(source: PushPayload<'agentUpdated'>['source']) {
+	if (source === 'builder') return !isArtifactMode.value;
+	if (source === 'user') return isArtifactMode.value;
+	return true;
+}
+
+watch([projectId, agentId], clearExternalUpdate);
+
 const canApplyPushedAgentUpdate = computed(
 	() =>
 		!props.artifactEditingLocked &&
@@ -1367,6 +1429,15 @@ function onAgentPushMessage(event: PushMessage) {
 		event.data.agentId !== agentId.value
 	) {
 		return;
+	}
+	if (shouldShowExternalUpdate(event.data.source)) {
+		clearExternalUpdate();
+		recentExternalUpdate.value = event.data;
+		externalUpdateAt = Date.now();
+		externalUpdateTimer = setTimeout(clearExternalUpdate, AGENT_EXTERNAL_UPDATE_NOTICE_DURATION);
+		externalUpdateAgeTimer = setInterval(() => {
+			externalUpdateAgeMinutes.value = Math.floor((Date.now() - externalUpdateAt) / TIME.MINUTE);
+		}, TIME.MINUTE);
 	}
 	onExternalAgentUpdated({ agentId: event.data.agentId, source: 'push' });
 }
@@ -1833,6 +1904,7 @@ onBeforeUnmount(() => {
 	removeAgentUpdateListener();
 	pushConnectionStore.pushDisconnect();
 	clearTimeout(externalRefreshTimer);
+	clearExternalUpdate();
 	sessionsStore.stopAutoRefresh();
 	void flushAutosave().catch(() => {});
 });
@@ -2072,6 +2144,30 @@ function onSwitchAgent(nextAgentId: string) {
 			@reverted="onReverted"
 			@switch-agent="onSwitchAgent"
 		/>
+		<div :class="$style.externalUpdateNotice" role="status" aria-live="polite" aria-atomic="true">
+			<N8nCanvasPill
+				v-if="recentExternalUpdate"
+				:class="$style.externalUpdatePill"
+				data-testid="agent-builder-external-update"
+			>
+				<template #icon>
+					<N8nIcon icon="info" aria-hidden="true" />
+				</template>
+				<span :class="$style.externalUpdateContent">
+					<span :class="$style.externalUpdateText">{{ externalUpdateMessage }}</span>
+					<N8nIconButton
+						:class="$style.externalUpdateDismiss"
+						icon="x"
+						variant="ghost"
+						size="xsmall"
+						:aria-label="locale.baseText('generic.dismiss')"
+						:title="locale.baseText('generic.dismiss')"
+						data-testid="agent-builder-external-update-dismiss"
+						@click="clearExternalUpdate"
+					/>
+				</span>
+			</N8nCanvasPill>
+		</div>
 		<div
 			ref="builderContainer"
 			:class="[
@@ -2215,6 +2311,7 @@ function onSwitchAgent(nextAgentId: string) {
 
 <style lang="scss" module>
 .root {
+	position: relative;
 	display: flex;
 	flex-direction: column;
 	height: 100%;
@@ -2269,6 +2366,44 @@ function onSwitchAgent(nextAgentId: string) {
 	gap: var(--spacing--2xs);
 	padding: var(--spacing--sm);
 	z-index: 1;
+}
+
+.externalUpdateNotice {
+	position: absolute;
+	top: var(--height--4xl);
+	right: 0;
+	left: 0;
+	z-index: 10;
+	display: flex;
+	justify-content: center;
+	padding-inline: var(--spacing--sm);
+	pointer-events: none;
+}
+
+.externalUpdatePill {
+	max-width: 100%;
+	height: auto;
+	min-height: var(--height--xl);
+	margin-block: var(--spacing--xs);
+	padding-block: var(--spacing--2xs);
+	color: var(--color--neutral-white);
+}
+
+.externalUpdateContent {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
+
+.externalUpdateText {
+	white-space: normal;
+	overflow-wrap: anywhere;
+}
+
+.externalUpdateDismiss {
+	flex-shrink: 0;
+	color: var(--color--neutral-white);
+	pointer-events: auto;
 }
 
 .aiButtonIcon {
