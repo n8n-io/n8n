@@ -1,4 +1,7 @@
-import { ref, reactive, computed, type Ref } from 'vue';
+import { ref, reactive, computed, watch, onScopeDispose, type Ref } from 'vue';
+import { useDocumentVisibility } from '@vueuse/core';
+import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
+import { TIME } from '@/app/constants/durations';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { isRecord } from '@n8n/utils/is-record';
@@ -22,6 +25,8 @@ import {
 	applyOpenSuspensions,
 	convertDbMessages,
 	findOpenInteractive,
+	findTailOpenInteractive,
+	findTailSteerableInteractive,
 	getMessageInteractive,
 	getMessageInteractives,
 	isApprovalSuspendInput,
@@ -34,10 +39,17 @@ import type { ChatMessage, ThinkingSegment, ToolCall } from '@/features/ai/share
 import { CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from '../constants';
 import { summariseToolCall } from '@/features/ai/shared/agentsChat/interactiveSummary';
 import { isFailedDelegateOutput } from '../utils/delegate-tool';
+import { useAgentExecutionUpdates } from './useAgentExecutionUpdates';
 
 export interface FatalAgentError {
 	message: string;
 	missing: string[];
+}
+
+interface AgentChatWarning {
+	message: string;
+	server?: string;
+	code?: string;
 }
 
 export interface UseAgentChatStreamParams {
@@ -70,6 +82,10 @@ function getApprovalDecision(value: unknown): boolean | undefined {
 	return value.approved;
 }
 
+function warningKey(warning: AgentChatWarning): string {
+	return JSON.stringify([warning.code ?? '', warning.server ?? '', warning.message]);
+}
+
 export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	const rootStore = useRootStore();
 	const locale = useI18n();
@@ -82,6 +98,16 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	const streamSettlements = new WeakMap<AbortController, Promise<void>>();
 	const preserveTerminalStateOnAbort = new WeakSet<AbortController>();
 	const historyLoaded = ref(false);
+	const pushStore = usePushConnectionStore();
+	const visibility = useDocumentVisibility();
+	let disposed = false;
+	let historyVersion = 0;
+	let streamVersion = 0;
+	let refreshAfterStream = false;
+	let retryCount = 0;
+	let retryTimer: ReturnType<typeof setTimeout> | undefined;
+	const targetKey = () =>
+		JSON.stringify([params.projectId.value, params.agentId.value, params.continueSessionId?.value]);
 	/**
 	 * Set when the backend rejects the stream because the agent itself is
 	 * misconfigured (missing instructions / model / credential). Cleared on the
@@ -91,9 +117,11 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	/**
 	 * Non-fatal warnings emitted during a run (e.g. an MCP server that failed to
 	 * connect, so its tools were skipped). The run continues; these are shown to
-	 * the user as a warning callout. Cleared on the next send.
+	 * the user as a warning callout. Visible warnings clear on the next send;
+	 * explicitly dismissed warnings stay hidden for this composable instance.
 	 */
-	const warnings = ref<Array<{ message: string; server?: string; code?: string }>>([]);
+	const warnings = ref<AgentChatWarning[]>([]);
+	const dismissedWarningKeys = new Set<string>();
 
 	const messagingState = computed<'idle' | 'waitingFirstChunk' | 'receiving'>(() => {
 		if (!isStreaming.value) return 'idle';
@@ -104,8 +132,18 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 
 	async function refreshHistory({
 		clearOnNotFound = false,
-	}: { clearOnNotFound?: boolean } = {}): Promise<boolean> {
+		silent = false,
+	}: {
+		clearOnNotFound?: boolean;
+		silent?: boolean;
+	} = {}): Promise<boolean> {
+		if (disposed) return false;
 		const continueId = params.continueSessionId?.value;
+		// Reject outdated session, request, and stream snapshots to preserve the current conversation.
+		const target = targetKey();
+		const version = ++historyVersion;
+		const streamAtStart = streamVersion;
+		const isCurrent = () => !disposed && target === targetKey() && version === historyVersion;
 		try {
 			let dbMessages: AgentPersistedMessageDto[];
 			let openSuspensions: AgentBuilderOpenSuspension[] = [];
@@ -127,15 +165,32 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				dbMessages = envelope.messages;
 				openSuspensions = envelope.openSuspensions;
 			}
-			messages.value = applyOpenSuspensions(convertDbMessages(dbMessages), openSuspensions);
+			if (!isCurrent()) return false;
+			retryCount = 0;
+			clearTimeout(retryTimer);
+			if (!isStreaming.value && streamAtStart === streamVersion) {
+				messages.value = applyOpenSuspensions(convertDbMessages(dbMessages), openSuspensions);
+			} else if (isStreaming.value) {
+				refreshAfterStream = true;
+			} else {
+				refreshHistoryFromPush();
+			}
 			return true;
 		} catch (error) {
+			if (!isCurrent()) return false;
 			const status = (error as { httpStatusCode?: number } | null)?.httpStatusCode;
 			if (status === 404) {
-				if (clearOnNotFound) messages.value = [];
+				if (clearOnNotFound && !isStreaming.value && streamAtStart === streamVersion) {
+					messages.value = [];
+				}
 				return clearOnNotFound;
-			} else {
+			} else if (!silent) {
 				showError(error, locale.baseText('agents.chat.loadHistory.error'));
+			}
+			// Keep the current transcript and retry twice before waiting for another update or recovery event.
+			if (retryCount < 2) {
+				clearTimeout(retryTimer);
+				retryTimer = setTimeout(() => refreshHistoryFromPush(), TIME.SECOND * 2 ** retryCount++);
 			}
 			return false;
 		}
@@ -147,6 +202,57 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		historyLoaded.value = true;
 		params.onHistoryLoaded?.(messages.value.length);
 	}
+
+	// A turn can complete with no stream attached — a Wait node finishing wakes the
+	// run server-side, long after this chat's SSE stream closed.
+	const refreshHistoryFromPush = useAgentExecutionUpdates(
+		{
+			projectId: params.projectId,
+			agentId: params.agentId,
+			// A continued session is pinned to one thread; the default test chat has
+			// only one, so any update for this agent is the chat being shown.
+			...(params.continueSessionId ? { threadId: params.continueSessionId } : {}),
+		},
+		async () => {
+			// Defer history refreshes until the local stream ends to preserve streamed text.
+			if (isStreaming.value) {
+				refreshAfterStream = true;
+				return;
+			}
+			await refreshHistory({ silent: true });
+		},
+		() => {
+			historyVersion++;
+			retryCount = 0;
+			clearTimeout(retryTimer);
+		},
+	);
+
+	// Recover missed updates when the preview reopens, reconnects, becomes visible, or changes session.
+	function refresh() {
+		retryCount = 0;
+		clearTimeout(retryTimer);
+		refreshHistoryFromPush();
+	}
+	watch(
+		() => pushStore.isConnected,
+		(connected) => {
+			if (connected) refresh();
+		},
+	);
+	watch(visibility, (value) => {
+		if (value === 'visible') refresh();
+	});
+	watch(targetKey, () => {
+		historyVersion++;
+		streamVersion++;
+		refresh();
+	});
+	// Clear retry timers and ignore late responses when this chat closes.
+	onScopeDispose(() => {
+		disposed = true;
+		clearTimeout(retryTimer);
+	});
 
 	async function clearHistory(): Promise<void> {
 		try {
@@ -251,7 +357,9 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	}
 
 	function findOpenSuspension(): { runId: string; toolCallId: string } | undefined {
-		const interactive = findOpenInteractive(messages.value);
+		// Prefer the current turn's card over one abandoned by an earlier turn.
+		const interactive =
+			findTailOpenInteractive(messages.value) ?? findOpenInteractive(messages.value);
 		if (interactive?.runId) {
 			return { runId: interactive.runId, toolCallId: interactive.toolCallId };
 		}
@@ -574,11 +682,14 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			case 'warning': {
 				// Non-fatal run warning (e.g. an MCP server was unavailable, so its
 				// tools were skipped). The run continues; surfaced as a callout.
-				warnings.value.push({
+				const warning: AgentChatWarning = {
 					message: event.message,
 					...(event.server !== undefined && { server: event.server }),
 					...(event.code !== undefined && { code: event.code }),
-				});
+				};
+				if (!dismissedWarningKeys.has(warningKey(warning))) {
+					warnings.value.push(warning);
+				}
 				break;
 			}
 			case 'error': {
@@ -681,6 +792,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		};
 
 		isStreaming.value = true;
+		streamVersion++;
 		const controller = new AbortController();
 		abortController.value = controller;
 		let settleStream: (() => void) | undefined;
@@ -743,6 +855,11 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			preserveTerminalStateOnAbort.delete(controller);
 			streamSettlements.delete(controller);
 			settleStream?.();
+			streamVersion++;
+			if (refreshAfterStream && !isStreaming.value) {
+				refreshAfterStream = false;
+				refreshHistoryFromPush();
+			}
 		}
 
 		return {
@@ -886,7 +1003,11 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	}
 
 	async function cancelAndSteer(text: string): Promise<void> {
-		const openInteractive = findOpenInteractive(messages.value);
+		// Steering answers the card the user is looking at — the one on the current
+		// turn, and never a waiting card, which only the workflow or a deliberate
+		// click may end. The chat input gates this too, but the rule belongs with
+		// the resume it would send.
+		const openInteractive = findTailSteerableInteractive(messages.value);
 		if (!openInteractive?.runId) return;
 
 		await resume({
@@ -925,7 +1046,11 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	}
 
 	function dismissWarning(index: number): void {
-		warnings.value = warnings.value.filter((_, i) => i !== index);
+		const warning = warnings.value[index];
+		if (!warning) return;
+		const dismissedKey = warningKey(warning);
+		dismissedWarningKeys.add(dismissedKey);
+		warnings.value = warnings.value.filter((item) => warningKey(item) !== dismissedKey);
 	}
 
 	async function stopGenerating(): Promise<void> {
@@ -988,6 +1113,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		fatalError,
 		warnings,
 		loadHistory,
+		refresh,
 		clearHistory,
 		sendMessage,
 		stopGenerating,

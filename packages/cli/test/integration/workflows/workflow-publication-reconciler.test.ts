@@ -20,6 +20,7 @@ import type { INode, INodeTypeData } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { EventService } from '@/events/event.service';
 import { ExecutionService } from '@/executions/execution.service';
 import { ExternalHooks } from '@/external-hooks';
 import { Push } from '@/push';
@@ -328,6 +329,81 @@ describe('WorkflowPublicationReconciler (integration)', () => {
 		expect(await publishedVersionRepository.getPublishedVersionId(workflow.id)).toBe(newVersionId);
 		expect(await outboxRepository.countBy({ workflowId: workflow.id })).toBe(3);
 		expect(await outboxRepository.claimNextPendingRecord()).toBeNull();
+	});
+
+	// A publication failing before the mapping advances (e.g. a policy block) leaves
+	// the skew permanently, so re-enqueueing would loop on every pass.
+	test('leaves a workflow skewed by a terminally failed publication alone', async () => {
+		const owner = await createOwner();
+
+		const trigger = scheduleNode('skew-failed');
+		const workflow = await createWorkflowWithHistory({ active: true, nodes: [trigger] }, owner);
+		await setActiveVersion(workflow.id, workflow.versionId);
+
+		await outboxRepository.enqueue(workflow.id, workflow.versionId, 'publish');
+		await consumer.processRecord((await outboxRepository.claimNextPendingRecord())!, abortSignal);
+
+		// A newer version is made active, but its publication fails before the
+		// mapping advances — so activeVersionId and publishedVersionId diverge.
+		const newVersionId = 'version-2-failed-publish';
+		await createWorkflowHistory(workflow, owner, undefined, {
+			versionId: newVersionId,
+			nodes: [trigger],
+		});
+		await setActiveVersion(workflow.id, newVersionId);
+		await outboxRepository.enqueue(workflow.id, newVersionId, 'publish');
+		const failing = (await outboxRepository.claimNextPendingRecord())!;
+		await outboxRepository.markFailed(failing.id, 'Blocked by policy');
+
+		expect(await publishedVersionRepository.getPublishedVersionId(workflow.id)).toBe(
+			workflow.versionId,
+		);
+
+		await reconciler.reconcile('reconcile');
+
+		// No third record: the skew is real but permanent, so the reconciler must
+		// not keep retrying it.
+		expect(await outboxRepository.countBy({ workflowId: workflow.id })).toBe(2);
+		expect(await outboxRepository.claimNextPendingRecord()).toBeNull();
+	});
+
+	// The failed-record exclusion above is scoped to the active version so it never
+	// reaches an unpublish, where the mapping is all that is left to heal.
+	test('removes a mapping left behind by a failed unpublish, despite the failed record', async () => {
+		const owner = await createOwner();
+
+		const trigger = scheduleNode('unpublish-failed');
+		const workflow = await createWorkflowWithHistory({ active: true, nodes: [trigger] }, owner);
+		await setActiveVersion(workflow.id, workflow.versionId);
+
+		await outboxRepository.enqueue(workflow.id, workflow.versionId, 'publish');
+		await consumer.processRecord((await outboxRepository.claimNextPendingRecord())!, abortSignal);
+
+		// An unpublish another main tore down and reported (triggers gone, status
+		// rows cleared) whose mapping removal never landed, so its record is
+		// terminal `failed`. With no in-memory trigger and no status rows, the
+		// registry detections are blind — only the version comparison can see it.
+		await Container.get(WorkflowRepository).update(workflow.id, { activeVersionId: null });
+		await activeWorkflowTriggers.remove(workflow.id);
+		await triggerStatusRepository.delete({ workflowId: workflow.id });
+		await outboxRepository.enqueue(workflow.id, workflow.versionId, 'publish');
+		const failing = (await outboxRepository.claimNextPendingRecord())!;
+		await outboxRepository.markFailed(failing.id, 'Removing the published version failed');
+
+		expect(await outboxRepository.findVersionSkewedWorkflowIds()).toContain(workflow.id);
+
+		const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+		await reconciler.reconcile('reconcile');
+
+		// Attribution: the skew detector drove the repair, not another pass.
+		expect(emitSpy).toHaveBeenCalledWith(
+			'workflow-publication-reconciliation',
+			expect.objectContaining({ versionSkewCount: 1, deficientCount: 0, surplusCount: 0 }),
+		);
+		expect(await publishedVersionRepository.getPublishedVersionId(workflow.id)).toBeNull();
+		expect(await outboxRepository.claimNextPendingRecord()).toBeNull();
+
+		emitSpy.mockRestore();
 	});
 
 	test('removes a published-version mapping left behind by a missed unpublish', async () => {

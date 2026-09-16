@@ -39,6 +39,10 @@ export class PrometheusSchedulerMetricsService
 	private tasksReclaimed!: promClient.Counter;
 	private tasksDeadLettered!: promClient.Counter;
 	private tasksPruned!: promClient.Counter;
+	private jobsQuarantined!: promClient.Counter;
+	private orphanedJobsDeleted!: promClient.Counter;
+	private jobsRevived!: promClient.Counter;
+	private tasksLeaseLost!: promClient.Counter<'task_type'>;
 	private dispatchLagSeconds!: promClient.Histogram<'task_type'>;
 
 	constructor(
@@ -120,6 +124,27 @@ export class PrometheusSchedulerMetricsService
 			help: 'Total number of finished scheduler tasks deleted by retention.',
 		});
 
+		this.jobsQuarantined = new promClient.Counter({
+			name: `${prefix}scheduler_jobs_quarantined_total`,
+			help: 'Total number of scheduled jobs disabled by owner reconciliation because their owner was reported gone.',
+		});
+
+		this.orphanedJobsDeleted = new promClient.Counter({
+			name: `${prefix}scheduler_orphaned_jobs_deleted_total`,
+			help: 'Total number of quarantined scheduled jobs deleted by owner reconciliation after their owner stayed gone past the quarantine grace.',
+		});
+
+		this.jobsRevived = new promClient.Counter({
+			name: `${prefix}scheduler_jobs_revived_total`,
+			help: 'Total number of quarantined scheduled jobs re-enabled by owner reconciliation because their owner turned out to still exist.',
+		});
+
+		this.tasksLeaseLost = new promClient.Counter({
+			name: `${prefix}scheduler_tasks_lease_lost_total`,
+			help: 'Total number of scheduler tasks whose handler finished after the lease was reclaimed, so another instance may have run the same occurrence concurrently, by task type.',
+			labelNames: ['task_type'],
+		});
+
 		this.dispatchLagSeconds = new promClient.Histogram({
 			name: `${prefix}scheduler_dispatch_lag_seconds`,
 			help: 'Delay in seconds between a task becoming due and being dispatched, by task type.',
@@ -136,6 +161,9 @@ export class PrometheusSchedulerMetricsService
 		this.tasksReclaimed.inc(0);
 		this.tasksDeadLettered.inc(0);
 		this.tasksPruned.inc(0);
+		this.jobsQuarantined.inc(0);
+		this.orphanedJobsDeleted.inc(0);
+		this.jobsRevived.inc(0);
 	}
 
 	private initSnapshotGauges() {
@@ -222,6 +250,12 @@ export class PrometheusSchedulerMetricsService
 		}
 	}
 
+	recordLeaseLost(taskType: string) {
+		if (this.initialized) {
+			this.tasksLeaseLost.inc({ task_type: taskType }, 1);
+		}
+	}
+
 	recordMaterialized(occurrences: number, deferredJobs: number) {
 		if (this.initialized) {
 			this.occurrencesMaterialized.inc(occurrences);
@@ -265,6 +299,14 @@ export class PrometheusSchedulerMetricsService
 	recordPruned(deleted: number) {
 		if (this.initialized) {
 			this.tasksPruned.inc(deleted);
+		}
+	}
+
+	recordReconciled(quarantined: number, deleted: number, revived: number) {
+		if (this.initialized) {
+			this.jobsQuarantined.inc(quarantined);
+			this.orphanedJobsDeleted.inc(deleted);
+			this.jobsRevived.inc(revived);
 		}
 	}
 }

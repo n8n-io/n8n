@@ -7,6 +7,10 @@
 // ---------------------------------------------------------------------------
 
 import type {
+	InstanceAiHandoffContext,
+	InstanceAiSendMessageRequest,
+	AgentConfigResponse,
+	InstanceAiBuildMode,
 	InstanceAiConfirmRequest,
 	InstanceAiRichMessagesResponse,
 	InstanceAiEvalAgentExecutionResult,
@@ -16,12 +20,14 @@ import type {
 	InstanceAiThreadStatusResponse,
 	InstanceAiEvalSeedAgent,
 	InstanceAiEvalSeedDataTable,
+	InstanceAiEvalSeedFolder,
 	InstanceAiEvalSeedWorkflow,
 	InstanceAiWorkflowAttachment,
 	AgentJsonConfig,
 	AgentSkill,
 	EvaluationConfigDto,
 } from '@n8n/api-types';
+import type { ExecutionStatus } from 'n8n-workflow';
 import { Agent, setGlobalDispatcher } from 'undici';
 import { z } from 'zod';
 
@@ -72,6 +78,7 @@ const RestoreThreadEnvelope = z.object({
 		workflowIds: z.array(z.string()),
 		dataTableIds: z.array(z.string()).default([]),
 		agentIds: z.array(z.string()).default([]),
+		folderIds: z.array(z.string()).default([]),
 	}),
 });
 
@@ -149,6 +156,14 @@ export interface WorkflowNodeResponse {
 	credentials?: Record<string, unknown>;
 }
 
+/** A canvas node group as returned by the n8n REST API — members are node *ids*. */
+export interface WorkflowNodeGroupResponse {
+	id: string;
+	name: string;
+	nodeIds: string[];
+	description?: string;
+}
+
 /** A workflow as returned by GET /rest/workflows/:id. */
 export interface WorkflowResponse {
 	id: string;
@@ -158,6 +173,7 @@ export interface WorkflowResponse {
 	description?: string;
 	nodes: WorkflowNodeResponse[];
 	connections: Record<string, unknown>;
+	nodeGroups?: WorkflowNodeGroupResponse[];
 	pinData?: Record<string, unknown>;
 }
 
@@ -166,6 +182,27 @@ interface WorkflowListItem {
 	name: string;
 	active: boolean;
 	nodes: WorkflowNodeResponse[];
+	/** The folder the workflow sits in; absent or null at the project root. */
+	parentFolder?: { id: string } | null;
+}
+
+/** One page of a project's folder list, trimmed to the fields the harness reads. */
+const FolderListEnvelope = z.object({
+	count: z.number(),
+	data: z.array(
+		z.object({
+			id: z.string(),
+			name: z.string(),
+			parentFolder: z.object({ id: z.string() }).nullable().optional(),
+		}),
+	),
+});
+
+export interface FolderPlacement {
+	id: string;
+	name: string;
+	/** `null` at the project root. */
+	parentFolderId: string | null;
 }
 
 interface ExecutionListItem {
@@ -177,7 +214,7 @@ interface ExecutionListItem {
 export interface ExecutionDetail {
 	id: string;
 	workflowId: string;
-	status: string;
+	status: ExecutionStatus;
 	/** Flatted-serialized execution data (contains error details, run data per node) */
 	data: string;
 }
@@ -229,6 +266,13 @@ export class N8nApiError extends Error {
 
 export class N8nClient {
 	private sessionCookie?: string;
+	/** Memoized per login: every cleanup, eviction and snapshot asks for it. */
+	private personalProjectId?: Promise<string>;
+	/** Whether the logged-in user holds `workflow:delete` globally. Read off the
+	 *  login payload, and the reason a 403 can be read as "already gone". See
+	 *  `isWorkflowGone`. False until `login` says otherwise, so a client that
+	 *  never logged in takes the strict path. */
+	private hasGlobalWorkflowDelete = false;
 
 	/** Public: the browser runtime needs to know where n8n ACTUALLY is, which is
 	 *  not always what n8n reports as its own base URL (see `planRelayConnection`). */
@@ -245,10 +289,16 @@ export class N8nClient {
 		const loginEmail = email ?? process.env.N8N_EVAL_EMAIL ?? 'nathan@n8n.io';
 		const loginPassword = password ?? process.env.N8N_EVAL_PASSWORD ?? 'PlaywrightTest123';
 
-		await this.fetch('/rest/login', {
+		const result = (await this.fetch('/rest/login', {
 			method: 'POST',
 			body: { emailOrLdapLoginId: loginEmail, password: loginPassword },
-		});
+		})) as { data?: { globalScopes?: string[]; isOwner?: boolean } };
+
+		// `/rest/login` returns the public user with `withScopes: true`. `isOwner`
+		// is the fallback for a payload that carries no scope list: an owner always
+		// holds the scope, so the two agree wherever both are present.
+		this.hasGlobalWorkflowDelete =
+			result.data?.globalScopes?.includes('workflow:delete') ?? result.data?.isOwner ?? false;
 
 		if (!this.sessionCookie) {
 			throw new Error('Failed to authenticate with n8n — no session cookie received');
@@ -261,7 +311,15 @@ export class N8nClient {
 	 * Ensure a conversation thread exists before sending chat messages.
 	 * POST /rest/instance-ai/threads body: { threadId, projectId, source }
 	 */
-	async ensureThread(threadId: string, projectId?: string): Promise<void> {
+	/** `sourceContext` is persisted on the thread and surfaced on the run's
+	 *  LangSmith trace (prefixed `source_context.`), so pass what a later reader
+	 *  needs to tell one build apart from another — the eval harness sends the
+	 *  case slug and iteration. Capped at 2 KB by the API. */
+	async ensureThread(
+		threadId: string,
+		projectId?: string,
+		sourceContext?: Record<string, string | number | boolean>,
+	): Promise<void> {
 		const resolvedProjectId = projectId ?? (await this.getPersonalProjectId());
 		await this.fetch('/rest/instance-ai/threads', {
 			method: 'POST',
@@ -270,6 +328,7 @@ export class N8nClient {
 				projectId: resolvedProjectId,
 				source: 'evals',
 				origin: 'internal',
+				...(sourceContext ? { sourceContext } : {}),
 			},
 		});
 	}
@@ -286,12 +345,21 @@ export class N8nClient {
 		threadId: string,
 		message: string,
 		attachments?: InstanceAiWorkflowAttachment[],
+		mode: InstanceAiBuildMode = 'default',
+		promptVersion?: string,
+		handoffContext?: InstanceAiHandoffContext,
 	): Promise<{ runId: string }> {
 		const result = await this.fetch(`/rest/instance-ai/chat/${threadId}`, {
 			method: 'POST',
-			body: attachments && attachments.length > 0 ? { message, attachments } : { message },
+			body: {
+				message,
+				...(attachments?.length ? { attachments } : {}),
+				mode,
+				...(promptVersion ? { promptVersion } : {}),
+				...(handoffContext ? { context: handoffContext } : {}),
+			} satisfies InstanceAiSendMessageRequest,
 		});
-		return result as { runId: string };
+		return this.unwrapRestData<{ runId: string }>(result);
 	}
 
 	/**
@@ -320,9 +388,12 @@ export class N8nClient {
 	 * Get the current status of a thread (active run, suspended, background tasks).
 	 * GET /rest/instance-ai/threads/:threadId/status
 	 */
-	async getThreadStatus(threadId: string): Promise<InstanceAiThreadStatusResponse> {
+	async getThreadStatus(
+		threadId: string,
+		timeoutMs?: number,
+	): Promise<InstanceAiThreadStatusResponse> {
 		return this.unwrapRestData<InstanceAiThreadStatusResponse>(
-			await this.fetch(`/rest/instance-ai/threads/${threadId}/status`),
+			await this.fetch(`/rest/instance-ai/threads/${threadId}/status`, { timeoutMs }),
 		);
 	}
 
@@ -501,8 +572,8 @@ export class N8nClient {
 	 * Get a single workflow by ID.
 	 * GET /rest/workflows/:id
 	 */
-	async getWorkflow(id: string): Promise<WorkflowResponse> {
-		const result = (await this.fetch(`/rest/workflows/${id}`)) as {
+	async getWorkflow(id: string, timeoutMs?: number): Promise<WorkflowResponse> {
+		const result = (await this.fetch(`/rest/workflows/${id}`, { timeoutMs })) as {
 			data: WorkflowResponse;
 		};
 		return result.data;
@@ -515,8 +586,8 @@ export class N8nClient {
 	async getAgentConfig(projectId: string, agentId: string): Promise<AgentJsonConfig> {
 		const result = (await this.fetch(
 			`/rest/projects/${projectId}/agents/v2/${agentId}/config`,
-		)) as { data: AgentJsonConfig };
-		return result.data;
+		)) as { data: AgentConfigResponse };
+		return result.data.config;
 	}
 
 	/**
@@ -563,12 +634,14 @@ export class N8nClient {
 	async executeWorkflow(
 		workflowId: string,
 		triggerNodeName?: string,
+		timeoutMs?: number,
 	): Promise<{ executionId: string }> {
 		const body: Record<string, unknown> = {};
 		if (triggerNodeName) {
 			body.triggerToStartFrom = { name: triggerNodeName };
 		}
 		const result = (await this.fetch(`/rest/workflows/${workflowId}/run`, {
+			timeoutMs,
 			method: 'POST',
 			body,
 		})) as { data: { executionId: string } };
@@ -579,11 +652,15 @@ export class N8nClient {
 	 * Get a single execution by ID.
 	 * GET /rest/executions/:id
 	 */
-	async getExecution(executionId: string): Promise<ExecutionDetail> {
-		const result = (await this.fetch(`/rest/executions/${executionId}`)) as {
+	async getExecution(executionId: string, timeoutMs?: number): Promise<ExecutionDetail> {
+		const result = (await this.fetch(`/rest/executions/${executionId}`, { timeoutMs })) as {
 			data: ExecutionDetail;
 		};
 		return result.data;
+	}
+
+	async stopExecution(executionId: string): Promise<void> {
+		await this.fetch(`/rest/executions/${executionId}/stop`, { method: 'POST', timeoutMs: 5_000 });
 	}
 
 	/**
@@ -676,12 +753,49 @@ export class N8nClient {
 	}
 
 	/**
-	 * Delete a workflow by ID. The workflow must be archived first.
+	 * Delete a workflow by ID. The workflow must be archived first. The archive
+	 * step's only 400 is "already archived" (a folder delete archives what the
+	 * folder held), so a 400 there goes straight to the delete, which refuses a
+	 * live workflow on its own. Refusing here left every such leftover
+	 * undeletable by eviction and cleanup alike.
+	 *
+	 * A workflow that is already gone is a success, not a failure. A cleanup
+	 * retry re-runs on the same build, and an eviction deletes what it listed a
+	 * moment earlier, so both meet ids another pass already took. See
+	 * `isWorkflowGone` for which status says so.
 	 * DELETE /rest/workflows/:id
 	 */
 	async deleteWorkflow(id: string): Promise<void> {
-		await this.archiveWorkflow(id);
-		await this.fetch(`/rest/workflows/${id}`, { method: 'DELETE' });
+		try {
+			await this.archiveWorkflow(id);
+		} catch (error: unknown) {
+			if (!(error instanceof N8nApiError)) throw error;
+			if (this.isWorkflowGone(error.status)) return;
+			if (error.status !== 400) throw error;
+		}
+		try {
+			await this.fetch(`/rest/workflows/${id}`, { method: 'DELETE' });
+		} catch (error: unknown) {
+			if (!(error instanceof N8nApiError && this.isWorkflowGone(error.status))) throw error;
+		}
+	}
+
+	/**
+	 * Whether a failed archive or delete means the workflow is already gone.
+	 *
+	 * n8n reports a missing workflow differently per user. A user holding
+	 * `workflow:delete` globally passes the scope middleware on the global check
+	 * alone, so the lookup runs unfiltered and the controller answers the missing
+	 * row with `ForbiddenError`, which is a 403. Everyone else reaches the
+	 * middleware's own `SharedWorkflow` lookup, which throws `NotFoundError`, a 404.
+	 *
+	 * So 403 only means gone for the global user. For anyone else it is a real
+	 * permission failure on a workflow that exists, and swallowing it would
+	 * report a cleanup as clean while leaving the workflow behind.
+	 */
+	private isWorkflowGone(status: number): boolean {
+		if (status === 404) return true;
+		return status === 403 && this.hasGlobalWorkflowDelete;
 	}
 
 	/**
@@ -863,6 +977,9 @@ export class N8nClient {
 	 * EXACT declared names, so a freshly-built workflow's by-name references
 	 * resolve (TRUST-311 scenario seeding). `messages`/`workflows` may be empty to
 	 * seed only data tables.
+	 *
+	 * `options.folders` are created first, in the thread's project, and the
+	 * seed workflows' `parentFolderId` references resolve to them server-side.
 	 * POST /rest/instance-ai/eval/restore-thread
 	 */
 	async restoreThread(
@@ -871,14 +988,23 @@ export class N8nClient {
 		workflows: InstanceAiEvalSeedWorkflow[],
 		dataTables: InstanceAiEvalSeedDataTable[] = [],
 		agents: InstanceAiEvalSeedAgent[] = [],
-		options: { uniquifyNames?: boolean } = {},
+		options: { uniquifyNames?: boolean; folders?: InstanceAiEvalSeedFolder[] } = {},
 	): Promise<{
 		restored: number;
 		workflowIds: string[];
 		dataTableIds: string[];
 		agentIds: string[];
+		folderIds: string[];
 	}> {
-		const body: Record<string, unknown> = { threadId, messages, workflows, dataTables, agents };
+		const folders = options.folders ?? [];
+		const body: Record<string, unknown> = {
+			threadId,
+			messages,
+			workflows,
+			dataTables,
+			agents,
+			folders,
+		};
 		if (options.uniquifyNames !== undefined) body.uniquifyNames = options.uniquifyNames;
 		const result = await this.fetch('/rest/instance-ai/eval/restore-thread', {
 			method: 'POST',
@@ -892,6 +1018,13 @@ export class N8nClient {
 		if (agents.length > 0 && restored.agentIds.length !== agents.length) {
 			throw new Error(
 				`Restore was asked to seed ${String(agents.length)} agent(s) but the response carried ${String(restored.agentIds.length)} — the backend likely predates agent seeding.`,
+			);
+		}
+		// Same guard for folders: a backend that ignores the field would leave the
+		// case grading the agent against a folder that does not exist.
+		if (folders.length > 0 && restored.folderIds.length !== folders.length) {
+			throw new Error(
+				`Restore was asked to seed ${String(folders.length)} folder(s) but the response carried ${String(restored.folderIds.length)} — the backend likely predates folder seeding.`,
 			);
 		}
 		return restored;
@@ -910,8 +1043,10 @@ export class N8nClient {
 		threadId: string,
 		tableId: string,
 		rows: Array<Record<string, string | number | boolean | null>>,
+		timeoutMs?: number,
 	): Promise<void> {
 		await this.fetch('/rest/instance-ai/eval/seed-data-table-rows', {
+			timeoutMs,
 			method: 'POST',
 			body: { threadId, tableId, rows },
 		});
@@ -924,13 +1059,149 @@ export class N8nClient {
 	 * GET /rest/projects/personal
 	 */
 	async getPersonalProjectId(): Promise<string> {
-		const result = (await this.fetch('/rest/projects/personal')) as {
-			data: { id: string };
-		};
-		if (!result.data?.id) {
-			throw new Error('Could not determine personal project ID');
+		this.personalProjectId ??= (async () => {
+			const result = (await this.fetch('/rest/projects/personal')) as {
+				data: { id: string };
+			};
+			if (!result.data?.id) {
+				throw new Error('Could not determine personal project ID');
+			}
+			return result.data.id;
+		})().catch((error: unknown) => {
+			// A failed lookup must not stick: the next caller retries.
+			this.personalProjectId = undefined;
+			throw error;
+		});
+		return await this.personalProjectId;
+	}
+
+	/**
+	 * Create a team project. Used to seed the extra projects a project-scope case
+	 * needs: a second project the eval user can see but whose writes are barred,
+	 * so `isCurrentProject` has something to distinguish the bound project from.
+	 *
+	 * Team projects are licensed AND quota'd (`@Licensed('feat:projectRole:admin')`
+	 * plus `quota:maxTeamProjects`, which defaults to 0), so this fails on an
+	 * unlicensed instance. The error is re-thrown with that hint rather than
+	 * swallowed: a case that silently ran without it would grade the agent
+	 * against a project list it never saw, and pass for the wrong reason.
+	 * POST /rest/projects
+	 */
+	async createTeamProject(name: string): Promise<{ id: string; name: string }> {
+		try {
+			const result = (await this.fetch('/rest/projects', {
+				method: 'POST',
+				body: { name },
+			})) as { data?: { id?: string; name?: string } };
+			const id = result.data?.id;
+			if (!id) {
+				throw new Error(`Project "${name}" was created but the response carried no id`);
+			}
+			return { id, name: result.data?.name ?? name };
+		} catch (error: unknown) {
+			if (error instanceof N8nApiError && (error.status === 403 || error.status === 400)) {
+				throw new Error(
+					`Could not create the seed project "${name}" (${String(error.status)}): team projects are licensed ` +
+						'and quota-limited, and `quota:maxTeamProjects` defaults to 0.\n' +
+						'  - CI/real instance: needs N8N_LICENSE_ACTIVATION_KEY + N8N_LICENSE_CERT.\n' +
+						'  - Local run with E2E_TESTS=true: /rest/e2e/reset stubs the license to ALL-FALSE, so a real ' +
+						'cert in the env is ignored. Re-enable it after seeding the owner:\n' +
+						'      PATCH /rest/e2e/feature {"feature":"feat:projectRole:admin","enabled":true}\n' +
+						'      PATCH /rest/e2e/quota   {"feature":"quota:maxTeamProjects","value":-1}\n' +
+						`  Original error: ${error.message}`,
+				);
+			}
+			throw error;
 		}
-		return result.data.id;
+	}
+
+	/**
+	 * List the team projects the authenticated user can see, so a run can evict a
+	 * crashed predecessor's leftover before recreating it. Personal projects
+	 * are filtered out — they're never seeded and must never be deleted.
+	 * GET /rest/projects
+	 */
+	async listTeamProjects(): Promise<Array<{ id: string; name: string }>> {
+		const result = (await this.fetch('/rest/projects')) as {
+			data?: Array<{ id?: string; name?: string; type?: string }>;
+		};
+		return (result.data ?? []).flatMap(({ id, name, type }) =>
+			type === 'team' && id !== undefined && name !== undefined ? [{ id, name }] : [],
+		);
+	}
+
+	/**
+	 * Delete a project. Used to tear down seeded projects after a run.
+	 * DELETE /rest/projects/:projectId
+	 */
+	async deleteProject(projectId: string): Promise<void> {
+		await this.fetch(`/rest/projects/${projectId}`, { method: 'DELETE' });
+	}
+
+	// -- Folders -------------------------------------------------------------
+
+	/**
+	 * Every folder in a project, flat, with the parent each one sits under. One
+	 * request: the pre-run snapshot, the eviction and the tree delete all derive
+	 * what they need (the root level, a subtree) from this list in memory.
+	 * GET /rest/projects/:projectId/folders
+	 */
+	async listFolders(projectId: string): Promise<FolderPlacement[]> {
+		// Paged to the end: the eviction must see every folder, and a page that
+		// stops short would let a leftover hide behind the cut. No `select`: a custom
+		// select that includes `parentFolder` 500s on the server ("column
+		// distinctAlias.folder_updatedAt does not exist"), so the default select it is.
+		const pageSize = 250;
+		const folders: FolderPlacement[] = [];
+		for (let skip = 0; ; skip += pageSize) {
+			const page = FolderListEnvelope.parse(
+				await this.fetch(
+					`/rest/projects/${projectId}/folders?take=${String(pageSize)}&skip=${String(skip)}`,
+				),
+			);
+			for (const { id, name, parentFolder } of page.data) {
+				folders.push({ id, name, parentFolderId: parentFolder?.id ?? null });
+			}
+			if (page.data.length < pageSize || folders.length >= page.count) break;
+		}
+		return folders;
+	}
+
+	/**
+	 * Delete a folder the run created. n8n archives any workflow still inside
+	 * and moves it to the root, so call it after the run's workflows are gone.
+	 * DELETE /rest/projects/:projectId/folders/:folderId
+	 */
+	async deleteFolder(projectId: string, folderId: string): Promise<void> {
+		await this.fetch(`/rest/projects/${projectId}/folders/${folderId}`, { method: 'DELETE' });
+	}
+
+	/**
+	 * Delete a folder the run did NOT create, with everything in it: every
+	 * workflow anywhere in its subtree (unpublished and deleted through the
+	 * normal path, so no trigger stays registered), then the folder, whose
+	 * delete cascades to the emptied subfolders. Used to evict a crashed run's
+	 * leftover seed folder. Returns how many workflows it deleted.
+	 */
+	async deleteFolderTree(projectId: string, folderId: string): Promise<number> {
+		const folders = await this.listFolders(projectId);
+		// A Set iterates over members added during the loop, so each folder's
+		// children join the walk as it reaches them.
+		const subtree = new Set<string>([folderId]);
+		for (const parentId of subtree) {
+			for (const folder of folders) {
+				if (folder.parentFolderId === parentId) subtree.add(folder.id);
+			}
+		}
+		const inside = (await this.listWorkflows()).filter(
+			(workflow) =>
+				workflow.parentFolder?.id !== undefined && subtree.has(workflow.parentFolder.id),
+		);
+		for (const workflow of inside) {
+			await this.deleteWorkflow(workflow.id);
+		}
+		await this.deleteFolder(projectId, folderId);
+		return inside.length;
 	}
 
 	/**

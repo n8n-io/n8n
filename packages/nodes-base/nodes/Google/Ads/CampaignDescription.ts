@@ -62,7 +62,7 @@ export const campaignOperations: INodeProperties[] = [
 								'metrics.conversions,' +
 								'metrics.cost_per_conversion,' +
 								'metrics.conversions_from_interactions_rate,' +
-								'metrics.video_views,' +
+								'metrics.video_trueview_views,' +
 								'metrics.average_cpm,' +
 								'metrics.ctr ' +
 								'from campaign ' +
@@ -111,7 +111,7 @@ export const campaignOperations: INodeProperties[] = [
 								'metrics.conversions,' +
 								'metrics.cost_per_conversion,' +
 								'metrics.conversions_from_interactions_rate,' +
-								'metrics.video_views,' +
+								'metrics.video_trueview_views,' +
 								'metrics.average_cpm,' +
 								'metrics.ctr ' +
 								'from campaign ' +

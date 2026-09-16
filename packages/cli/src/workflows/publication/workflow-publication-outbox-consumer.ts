@@ -6,7 +6,7 @@ import { OnLeaderTakeover, OnPubSubEvent, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { ErrorReporter, InstanceSettings, SpanStatus, Tracing } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { OperationalError, UnexpectedError } from 'n8n-workflow';
+import { OperationalError, UnexpectedError, UserError } from 'n8n-workflow';
 
 import { EventService } from '@/events/event.service';
 import type {
@@ -17,6 +17,7 @@ import type { PublicationResult } from '@/workflows/publication/publication-resu
 import { PublicationStatusReporter } from '@/workflows/publication/publication-status-reporter';
 import { WorkflowPublicationLifecycleLock } from '@/workflows/publication/workflow-publication-lifecycle-lock';
 import { WorkflowPublicationApplier } from '@/workflows/publication/workflow-publication-applier';
+import { WorkflowPublicationOutboxWorkerPool } from '@/workflows/publication/workflow-publication-outbox-worker-pool';
 import type { TriggerOperationAbort } from '@/workflows/triggers/workflow-trigger-activator';
 
 /**
@@ -42,12 +43,18 @@ const ABANDON_GRACE_LEASE_FRACTION = 0.25;
 
 /**
  * Consumes the workflow publication outbox on the leader instance. It owns the
- * queue mechanics only: the poll loop and claiming the next pending record. For
- * each claimed record it delegates to the applier (which reconciles triggers
- * and returns a result) and then to the reporter (which writes the terminal
- * status and side effects). Any unexpected error from the applier is turned
- * into a failed result so the reporter remains the single writer of terminal
- * outbox statuses.
+ * queue mechanics only: the poll loop and a pool of up to
+ * `workflowPublicationConcurrency` independent workers, each claiming pending
+ * records until none remain. For each claimed record a worker delegates to the
+ * applier (which reconciles triggers and returns a result) and then to the
+ * reporter (which writes the terminal status and side effects). Any unexpected
+ * error from the applier is turned into a failed result so the reporter
+ * remains the single writer of terminal outbox statuses.
+ *
+ * Coordination lives in the database, not in this class: claiming is atomic
+ * and per-workflow serialized, so workers (even across passes) never
+ * double-process a record. A worker stuck on one record therefore only
+ * occupies its own pool slot — the remaining slots keep serving new records.
  */
 @Service()
 export class WorkflowPublicationOutboxConsumer {
@@ -57,7 +64,7 @@ export class WorkflowPublicationOutboxConsumer {
 
 	private isShuttingDown = false;
 
-	private activeDrain: Promise<number> | null = null;
+	private readonly pool: WorkflowPublicationOutboxWorkerPool;
 
 	constructor(
 		private readonly logger: Logger,
@@ -72,6 +79,12 @@ export class WorkflowPublicationOutboxConsumer {
 		private readonly eventService: EventService,
 	) {
 		this.logger = this.logger.scoped('workflow-publication');
+		this.pool = new WorkflowPublicationOutboxWorkerPool({
+			runPass: async () => await this.runWorkerPass(),
+			shouldRun: () => this.shouldKeepPolling(),
+			concurrency: this.workflowsConfig.workflowPublicationConcurrency,
+			onWorkerError: (error) => this.errorReporter.error(error, { shouldBeLogged: true }),
+		});
 	}
 
 	async init() {
@@ -105,8 +118,9 @@ export class WorkflowPublicationOutboxConsumer {
 	async shutdown() {
 		this.isShuttingDown = true;
 		this.stopPolling();
-		// Wait for any in-flight drain to finish so triggers aren't left half-activated.
-		await this.activeDrain;
+		// Wait for in-flight workers to finish their current record so triggers
+		// aren't left half-activated.
+		await this.pool.awaitIdle();
 	}
 
 	/**
@@ -125,94 +139,102 @@ export class WorkflowPublicationOutboxConsumer {
 		if (!this.instanceSettings.isLeader) return;
 
 		this.startPolling();
-		await this.drainPending();
+		try {
+			await this.drainPending();
+		} catch (error) {
+			// The pool already reported the underlying failure, and pubsub dispatch
+			// drops handler rejections (they would surface as unhandled promise
+			// rejections) — so neither rethrow nor re-report, just trace.
+			this.logger.debug('Publication outbox drain triggered by a wake-up failed', {
+				error: ensureError(error).message,
+			});
+		}
 	}
 
 	// The `workflow-publish-wake-up` event drains the outbox promptly (see
 	// `wakeUp`); the poller is kept as a fallback since pubsub delivery is not
-	// ensured.
+	// ensured. Topping up the pool is synchronous, so the next cycle is armed
+	// immediately — a worker stuck on a record never wedges the poll loop.
 	private schedulePollCycle() {
 		clearTimeout(this.pollTimeout);
 		if (!this.shouldKeepPolling()) return;
 
-		this.pollTimeout = setTimeout(async () => {
-			try {
-				await this.pollCycle();
-			} catch (error) {
-				this.errorReporter.error(error, { shouldBeLogged: true });
-			}
-
+		this.pollTimeout = setTimeout(() => {
+			this.pool.topUp();
 			if (this.shouldKeepPolling()) this.schedulePollCycle();
 		}, this.workflowsConfig.publicationOutboxPollIntervalMs);
 	}
 
-	private async pollCycle() {
-		const processed = await this.drainPending();
-
-		// Only log if we processed more than 1 since we log each individual record
-		if (processed > 1) {
-			this.logger.debug(`Processed ${processed} workflow publication outbox records in this cycle`);
+	/**
+	 * Top the worker pool up to the configured concurrency and resolve once the
+	 * pool goes idle. Used by the pubsub wake-up, by leader startup for an
+	 * immediate drain, and by the reconciler after enqueueing records. Workers
+	 * stop claiming if the instance steps down or shuts down mid-pass.
+	 *
+	 * Resolution waits for every active worker, so a worker stuck on a hung
+	 * record delays it (bounded by the abort/abandon deadline) — but not the
+	 * processing of other records, which the remaining slots keep serving.
+	 * Rejects once the pool idles if a worker pass failed, with an error
+	 * wrapping one of the failures. The pool has already reported the underlying
+	 * error (exactly once, at the source); the rejection exists so awaiting
+	 * callers can fail their own operation (e.g. the reconciler's failure
+	 * telemetry) — they report their layer's outcome, never the pool's error.
+	 */
+	async drainPending(): Promise<void> {
+		this.pool.topUp();
+		const error = await this.pool.awaitIdle();
+		if (error) {
+			// `level: 'warning'` makes the wrapper non-reportable (`shouldReport`
+			// false), so an awaiting caller's generic catch passing it to the
+			// ErrorReporter creates no second Sentry event — the pool's source
+			// report of the cause stays the single report of the failure.
+			throw new OperationalError('Workflow publication outbox drain failed', {
+				cause: error,
+				level: 'warning',
+			});
 		}
 	}
 
 	/**
-	 * Claim and process every currently pending record in a single pass, returning
-	 * the number processed. Used both by the scheduled poll cycle and at leader
-	 * startup for an immediate drain. The loop stops if the instance steps down or
-	 * shuts down mid-drain; claiming is atomic, so an extra concurrent drain never
-	 * double-processes a record. Concurrent callers coalesce onto the same in-flight
-	 * pass rather than running an overlapping drain, which also lets shutdown wait
-	 * for the active pass to settle.
+	 * Claim and process pending records until none remain. An idle pass — the
+	 * first claim finds nothing — starts no tracing span, so an idle leader
+	 * doesn't emit one empty span per worker per poll tick.
 	 */
-	async drainPending(): Promise<number> {
-		if (this.activeDrain) return await this.activeDrain;
+	private async runWorkerPass(): Promise<void> {
+		if (!this.shouldKeepPolling()) return;
 
-		const drain = this.runDrain();
-		this.activeDrain = drain;
-		try {
-			return await drain;
-		} finally {
-			this.activeDrain = null;
-		}
-	}
+		const first = await this.outboxRepository.claimNextPendingRecord();
+		if (!first) return;
 
-	private async runDrain(): Promise<number> {
-		const concurrency = this.workflowsConfig.workflowPublicationConcurrency;
-		return await this.tracing.startSpan(
+		await this.tracing.startSpan(
 			{
 				name: 'Publication outbox drain',
 				op: 'publication.outbox.drain',
-				attributes: { 'n8n.publication.consumer_concurrency': concurrency },
+				attributes: {
+					'n8n.publication.consumer_concurrency':
+						this.workflowsConfig.workflowPublicationConcurrency,
+				},
 			},
 			async (span) => {
 				let processed = 0;
-				// Run worker loops in parallel. Each claims and processes records
-				// until none remain (claiming is atomic, so workers never grab the same record).
-				let workerFailed = false;
-				const runWorker = async () => {
-					while (!workerFailed && this.shouldKeepPolling()) {
-						const record = await this.outboxRepository.claimNextPendingRecord();
-						if (!record) break;
+				let record: WorkflowPublicationOutbox | null = first;
+				while (record) {
+					if (await this.processRecordWithAbort(record)) processed++;
 
-						if (await this.processRecordWithAbort(record)) processed++;
-					}
-				};
+					record = this.shouldKeepPolling()
+						? await this.outboxRepository.claimNextPendingRecord()
+						: null;
+				}
 
-				const workerTasks = Array.from({ length: concurrency }, async () => {
-					await runWorker().catch((error) => {
-						workerFailed = true;
-						throw error;
-					});
-				});
-
-				const results = await Promise.allSettled(workerTasks);
-
-				const failure = results.find((r) => r.status === 'rejected');
-				if (failure?.status === 'rejected') throw failure.reason;
+				// Only log if we processed more than 1 since we log each individual record
+				if (processed > 1) {
+					this.logger.debug(
+						`Processed ${processed} workflow publication outbox records in this pass`,
+					);
+				}
 
 				span.setAttribute('n8n.publication.records_processed', processed);
 				span.setStatus({ code: SpanStatus.ok });
-				return processed;
 			},
 		);
 	}
@@ -228,8 +250,7 @@ export class WorkflowPublicationOutboxConsumer {
 	 * Returns whether the record settled in time.
 	 */
 	private async processRecordWithAbort(record: WorkflowPublicationOutbox): Promise<boolean> {
-		const leaseMs =
-			this.workflowsConfig.publicationOutboxLeaseSeconds * Time.seconds.toMilliseconds;
+		const { leaseMs } = this;
 		const abortAfterMs = leaseMs * ABORT_AFTER_LEASE_FRACTION;
 		const abandonGraceMs = Math.min(ABANDON_GRACE_MS, leaseMs * ABANDON_GRACE_LEASE_FRACTION);
 
@@ -299,7 +320,12 @@ export class WorkflowPublicationOutboxConsumer {
 				},
 			},
 			async (span) => {
-				await this.lifecycleLock.runExclusive(record.workflowId, async () => {
+				const startedAt = Date.now();
+				let entered = false;
+
+				const process = async () => {
+					entered = true;
+
 					// A record claimed while leader can reach here after stepdown (e.g. while
 					// waiting on the lock during teardown). Activating triggers now would leave
 					// them running on a demoted instance, so hand the record back to the queue.
@@ -312,48 +338,53 @@ export class WorkflowPublicationOutboxConsumer {
 						return;
 					}
 
-					// The worker may have aborted this record while it queued on the lock;
-					// starting now would apply work long after it was abandoned. The row is
-					// left `in_progress` for lease reclaim rather than returned to pending:
-					// the wait may have outlived the lease, and flipping the row here would
-					// release the claim of whichever worker has since reclaimed it.
-					if (signal.aborted) {
-						this.logger.debug('Skipped applying publication outbox record: aborted', {
-							outboxId: record.id,
-							workflowId: record.workflowId,
-						});
-						return;
-					}
-
-					this.logger.debug('Started processing workflow publication outbox record', {
-						outboxId: record.id,
-						workflowId: record.workflowId,
-						publishedVersionId: record.publishedVersionId,
-					});
-
-					const startedAt = Date.now();
 					let result: PublicationResult;
 
 					// An aborted per-node operation is abandoned, not cancelled; collect
 					// every orphan so the lock outlives whatever may still mutate this
 					// workflow's registrations.
 					const detachedWork: Array<Promise<unknown>> = [];
-					const abort: TriggerOperationAbort = {
-						signal,
-						onDetached: (work) => detachedWork.push(work),
-					};
 
-					try {
-						result = await this.applier.apply(record, abort);
-					} catch (error) {
-						const cause = ensureError(error);
+					if (signal.aborted) {
+						// The deadline fired before applying could start, i.e. while this
+						// record queued on the lock behind an earlier one for the workflow.
+						this.logger.warn('Failing publication outbox record: aborted before applying', {
+							outboxId: record.id,
+							workflowId: record.workflowId,
+						});
 						result = {
 							type: 'failed',
-							// An abort is our own doing, not an unexpected applier failure.
-							error: signal.aborted
-								? cause
-								: new UnexpectedError(`Unexpected: ${cause.message}`, { cause }),
+							error: new OperationalError(
+								'Workflow publication timed out waiting for a previous publication of this workflow to finish',
+								{ cause: ensureError(signal.reason) },
+							),
 						};
+					} else {
+						this.logger.debug('Started processing workflow publication outbox record', {
+							outboxId: record.id,
+							workflowId: record.workflowId,
+							publishedVersionId: record.publishedVersionId,
+						});
+
+						const abort: TriggerOperationAbort = {
+							signal,
+							onDetached: (work) => detachedWork.push(work),
+						};
+
+						try {
+							result = await this.applier.apply(record, abort);
+						} catch (error) {
+							const cause = ensureError(error);
+							result = {
+								type: 'failed',
+								// An abort is our own doing and a UserError is a known cause (e.g.
+								// a missing credential), not an unexpected applier failure.
+								error:
+									signal.aborted || cause instanceof UserError
+										? cause
+										: new UnexpectedError(`Unexpected: ${cause.message}`, { cause }),
+							};
+						}
 					}
 
 					let reporterFailed = false;
@@ -380,18 +411,76 @@ export class WorkflowPublicationOutboxConsumer {
 					// The terminal status is already written; keep the lock until the
 					// abandoned operations settle so the next record for this workflow
 					// can never run concurrently with them.
+					//
+					// The detached work is populated when the abort signal fires while
+					// a promise is still pending; so we know that we've aborted if there
+					// is any detached work.
 					if (detachedWork.length > 0) {
 						this.logger.warn(
 							'Keeping workflow publication lock held until abandoned trigger operations settle',
 							{ outboxId: record.id, workflowId: record.workflowId },
 						);
-						await Promise.allSettled(detachedWork);
+						await this.awaitDetachedWork(record, detachedWork);
 					}
-				});
+				};
+
+				try {
+					await this.lifecycleLock.runExclusive({
+						workflowId: record.workflowId,
+						fn: process,
+						signal,
+					});
+				} catch (error) {
+					// Aborted while still queued on the lock. `process` then only settles the
+					// record (back to the queue, or failed) and applies nothing, so it needs
+					// no lock.
+					if (entered || !signal.aborted) throw error;
+					await process();
+				}
 
 				span.setStatus({ code: SpanStatus.ok });
 			},
 		);
+	}
+
+	/**
+	 * Waits for abandoned trigger operations, but not forever: an operation that
+	 * never settles (node code that hangs) would otherwise hold this workflow's
+	 * lock for the rest of the process's life, failing every later publication
+	 * of the workflow. The bound is one lease: past it the lock is released and
+	 * the orphan reported. An orphan still running after release is the same
+	 * state a crashed leader can leave, which reconciliation already handles.
+	 */
+	private async awaitDetachedWork(
+		record: WorkflowPublicationOutbox,
+		detachedWork: Array<Promise<unknown>>,
+	): Promise<void> {
+		// Note: detachedWork has already been signaled to abort, so we give it the remaining
+		// lease before we release the lock.
+		const settled = await this.raceTimeout(Promise.allSettled(detachedWork), this.leaseMs);
+		if (settled !== TIMED_OUT) return;
+
+		// `level: 'error'`: nothing else reports this hang — the record itself
+		// settled at its deadline — and `OperationalError` defaults to a
+		// warning, which the error reporter filters from Sentry.
+		this.errorReporter.error(
+			new OperationalError(
+				'Released workflow publication lock with abandoned trigger operations still pending',
+				{
+					level: 'error',
+					extra: {
+						outboxId: record.id,
+						workflowId: record.workflowId,
+						pendingOperations: detachedWork.length,
+					},
+				},
+			),
+			{ shouldBeLogged: true },
+		);
+	}
+
+	private get leaseMs(): number {
+		return this.workflowsConfig.publicationOutboxLeaseSeconds * Time.seconds.toMilliseconds;
 	}
 
 	/**

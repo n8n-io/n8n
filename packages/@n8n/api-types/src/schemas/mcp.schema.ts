@@ -34,7 +34,9 @@ export const MCP_INSTANCE_SCOPES = [
 	'dataTable:read',
 	'dataTable:write',
 	'project:read',
+	'project:write',
 	'tag:read',
+	'aiPreference:read',
 ] as const;
 
 export type McpScope = (typeof MCP_INSTANCE_SCOPES)[number];
@@ -66,6 +68,10 @@ export const MCP_CLIENT_BRAND_MATCHERS: ReadonlyArray<{
 
 export function getMcpClientType(clientName: string): McpClientType | null {
 	return MCP_CLIENT_BRAND_MATCHERS.find(({ pattern }) => pattern.test(clientName))?.type ?? null;
+}
+
+export function getMcpClientBrand(clientName: string): McpClientBrandName | null {
+	return MCP_CLIENT_BRAND_MATCHERS.find(({ pattern }) => pattern.test(clientName))?.brand ?? null;
 }
 
 /**

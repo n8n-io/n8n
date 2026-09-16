@@ -19,9 +19,10 @@ import { useI18n } from '@n8n/i18n';
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 
 import { useToast } from '@n8n/composables/useToast';
+import CharacterCount from '@/app/components/CharacterCount.vue';
 import WorkflowVersionForm from '@/app/components/WorkflowVersionForm.vue';
 import { useReviewVersionName } from '@/features/workflow-reviews/composables/useReviewVersionName';
-import { formatUserDisplayName } from '@/features/workflow-reviews/formatUserDisplayName';
+import { formatUserDisplayName } from '@/features/workflow-reviews/workflowReviews.utils';
 import { useReviewRequiredStore } from '@/features/workflow-reviews/reviewRequired.store';
 import { useWorkflowReviewStatusStore } from '@/features/workflow-reviews/reviewStatus.store';
 import {
@@ -100,9 +101,10 @@ const loadEligibleReviewers = async () => {
 		});
 		if (sequence !== loadReviewersSequence) return;
 		eligibleReviewers.value = data;
-	} catch {
+	} catch (error) {
 		if (sequence !== loadReviewersSequence) return;
 		eligibleReviewers.value = [];
+		toast.showError(error, i18n.baseText('workflowReviews.submitForReview.error.loadReviewers'));
 	} finally {
 		if (sequence === loadReviewersSequence) isLoadingReviewers.value = false;
 	}
@@ -111,7 +113,11 @@ const loadEligibleReviewers = async () => {
 watch(
 	() => props.open,
 	(isOpen) => {
-		if (!isOpen) return;
+		if (!isOpen) {
+			// Invalidate any in-flight load so it can't toast after the dialog closes.
+			loadReviewersSequence++;
+			return;
+		}
 
 		step.value = 1;
 		reviewTitle.value = '';
@@ -203,7 +209,12 @@ const submit = async () => {
 
 		// install the response before clearing the local flag so the
 		// publish gate never opens while a refetch is in flight
-		reviewStatusStore.setOpenReview(workflowId, reviewRequest, trimmedDescription || null);
+		reviewStatusStore.setOpenReview(
+			workflowId,
+			reviewRequest,
+			trimmedDescription || null,
+			trimmedVersionName,
+		);
 		reviewRequiredStore.setReviewRequired(workflowId, false);
 		emit('update:open', false);
 		emit('submitted', reviewRequest.id);
@@ -278,6 +289,11 @@ const submit = async () => {
 						:disabled="isSubmitting"
 						data-test-id="workflow-review-title-input"
 					/>
+					<CharacterCount
+						:value="reviewTitle"
+						:max="REVIEW_TITLE_MAX_LENGTH"
+						data-test-id="workflow-review-title-character-count"
+					/>
 				</N8nInputLabel>
 				<N8nInputLabel
 					input-name="workflow-review-description"
@@ -291,6 +307,11 @@ const submit = async () => {
 						:maxlength="REVIEW_DESCRIPTION_MAX_LENGTH"
 						:disabled="isSubmitting"
 						data-test-id="workflow-review-description-input"
+					/>
+					<CharacterCount
+						:value="description"
+						:max="REVIEW_DESCRIPTION_MAX_LENGTH"
+						data-test-id="workflow-review-description-character-count"
 					/>
 				</N8nInputLabel>
 				<N8nInputLabel

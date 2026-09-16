@@ -26,6 +26,7 @@ import { NoRestrictedImportsRule } from './no-restricted-imports.js';
 import { NoRuntimeDependenciesRule } from './no-runtime-dependencies.js';
 import { NoSilentErrorSwallowingRule } from './no-silent-error-swallowing.js';
 import { NoTemplatePlaceholdersRule } from './no-template-placeholders.js';
+import { NoUnsafeConnectionTypeCastRule } from './no-unsafe-connection-type-cast.js';
 import { NodeClassDescriptionIconMissingRule } from './node-class-description-icon-missing.js';
 import { NodeConnectionTypeLiteralRule } from './node-connection-type-literal.js';
 import { NodeRegistrationCompleteRule } from './node-registration-complete.js';
@@ -65,6 +66,7 @@ export const rules = {
 	'no-runtime-dependencies': NoRuntimeDependenciesRule,
 	'no-silent-error-swallowing': NoSilentErrorSwallowingRule,
 	'no-template-placeholders': NoTemplatePlaceholdersRule,
+	'no-unsafe-connection-type-cast': NoUnsafeConnectionTypeCastRule,
 	'icon-validation': IconValidationRule,
 	'icon-prefer-themed-variants': IconPreferThemedVariantsRule,
 	'resource-operation-pattern': ResourceOperationPatternRule,

@@ -1,16 +1,24 @@
 <script lang="ts" setup>
 import { computed, nextTick, onBeforeUnmount, ref, watch, type Component } from 'vue';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import { N8nIcon, N8nTag } from '@n8n/design-system';
+import { N8nIcon, N8nIconButton, N8nTag } from '@n8n/design-system';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
 import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
 import { EXTENDED_PROMPT_MAX_LENGTH } from '@/features/ai/shared/constants';
 import AttachmentPreview from './AttachmentPreview.vue';
 import InstanceAiPromptSuggestions from './InstanceAiPromptSuggestions.vue';
+import InstanceAiInputMenu from './InstanceAiInputMenu.vue';
 import { convertFileToBinaryData } from '@/app/utils/fileUtils';
-import type { InstanceAiAttachment } from '@n8n/api-types';
+import {
+	base64EncodedSize,
+	type InstanceAiAttachment,
+	type InstanceAiResourceAttachment,
+} from '@n8n/api-types';
 import { INSTANCE_AI_EMPTY_STATE_SUGGESTIONS_VERSION } from '../emptyStateSuggestions';
 import { useInstanceAiPromptSuggestionsTelemetry } from '../instanceAiPromptSuggestions.telemetry';
+import type { ContextChip } from '../instanceAi.contextChip';
+import { useInstanceAiStore } from '../instanceAi.store';
+import { mergeNodeSets } from '../utils/buildNodesAttachment';
 
 type AmendContext = { agentId: string; role: string } | null;
 type SuggestionPromptPayload =
@@ -41,14 +49,13 @@ type SuggestionPreviewPayload = BaseTextKey | { prompt: string } | null;
 const SUGGESTIONS_TRANSITION_DURATION = { enter: 450, leave: 320 };
 const DEFAULT_AUTOSIZE_ROWS = 3;
 const DEFAULT_MAX_AUTOSIZE_ROWS = 6;
-type ContextChip = { label: string; icon?: string; testId?: string } | null;
 
 const props = withDefaults(
 	defineProps<{
 		isStreaming?: boolean;
 		isSubmitting?: boolean;
 		isAwaitingConfirmation?: boolean;
-		isPlanEditMode?: boolean;
+		isAwaitingPlanReview?: boolean;
 		currentThreadId?: string;
 		amendContext?: AmendContext;
 		contextualSuggestion?: string | null;
@@ -67,13 +74,13 @@ const props = withDefaults(
 		// Experiment cleanup: remove with instanceAiSplitEmptyState.
 		submitLabel?: string;
 		submitActiveRequiresFocus?: boolean;
-		contextChip?: ContextChip;
+		contextChip?: ContextChip | null;
 	}>(),
 	{
 		isStreaming: false,
 		isSubmitting: false,
 		isAwaitingConfirmation: false,
-		isPlanEditMode: false,
+		isAwaitingPlanReview: false,
 		currentThreadId: '',
 		amendContext: null,
 		contextualSuggestion: null,
@@ -87,9 +94,11 @@ const props = withDefaults(
 );
 
 const emit = defineEmits<{
+	// `restoreDraft` puts the cleared draft back when the send fails. It returns
+	// false when the user has already typed something newer, so the caller can
+	// tell whether the draft was recovered.
 	submit: [message: string, attachments?: InstanceAiAttachment[], restoreDraft?: () => boolean];
 	stop: [];
-	'cancel-plan-edit': [];
 	'dismiss-context-chip': [];
 	'workflow-preview': [workflowFile: string | null];
 	// Experiment cleanup: remove with instanceAiSplitEmptyState.
@@ -101,8 +110,10 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const promptSuggestionsTelemetry = useInstanceAiPromptSuggestionsTelemetry();
+const instanceAiStore = useInstanceAiStore();
 const inputText = ref('');
 const attachedFiles = ref<File[]>([]);
+const attachedResources = ref<InstanceAiResourceAttachment[]>([]);
 const chatInputRef = ref<InstanceType<typeof ChatInputBase> | null>(null);
 // Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
 const previewPrompt = ref<string | null>(null);
@@ -156,18 +167,23 @@ function setText(text: string) {
 	inputText.value = text;
 }
 
+function setTextIfEmpty(text: string) {
+	if (!inputText.value.trim()) inputText.value = text;
+}
+
 function clearTextIfMatches(text: string) {
 	if (inputText.value === text) inputText.value = '';
 }
 
 function isDirty() {
-	return inputText.value.trim().length > 0 || attachedFiles.value.length > 0;
+	return inputText.value.trim().length > 0 || hasAttachments.value;
 }
 
 defineExpose({
 	focus,
 	appendText,
 	setText,
+	setTextIfEmpty,
 	clearTextIfMatches,
 	isDirty,
 	// Experiment cleanup: remove with instanceAiSplitEmptyState.
@@ -175,23 +191,38 @@ defineExpose({
 	submitSuggestion,
 });
 
+// A run suspended on a plan review is parked, not working: the user is meant to
+// type into it. Only a real in-flight submission blocks the composer then.
 const isBusy = computed(() =>
-	props.isPlanEditMode ? props.isSubmitting : props.isStreaming || props.isSubmitting,
+	props.isAwaitingPlanReview ? props.isSubmitting : props.isStreaming || props.isSubmitting,
 );
 const hasNonWhitespaceDraftText = computed(() => inputText.value.trim().length > 0);
 const isInputVisuallyEmpty = computed(() => inputText.value.length === 0);
-const hasAttachments = computed(() => attachedFiles.value.length > 0);
+const hasAttachments = computed(
+	() => attachedFiles.value.length > 0 || attachedResources.value.length > 0,
+);
+// Fed to the composer so its size guard can account for what is already staged.
+// Summed per file after encoding — base64 pads each file individually, so encoding
+// a raw total would undercount and disagree with the backend's per-file measurement.
+const attachedEncodedBytes = computed(() =>
+	attachedFiles.value.reduce((sum, file) => sum + base64EncodedSize(file.size), 0),
+);
 const isComposerDirty = computed(() => hasNonWhitespaceDraftText.value || hasAttachments.value);
 // Experiment cleanup: remove with instanceAiSplitEmptyState.
 watch(isComposerDirty, (hasContent) => emit('content-change', hasContent));
 const isGatedBySetup = computed(
 	() => props.isAwaitingConfirmation || !props.isWorkflowBuilderAvailable,
 );
-const canSubmit = computed(() => isComposerDirty.value && !isBusy.value && !isGatedBySetup.value);
+const canSubmit = computed(() =>
+	canSubmitMessage(
+		inputText.value.trim(),
+		attachedFiles.value.length + attachedResources.value.length,
+	),
+);
 const canShowSuggestions = computed(
 	() =>
 		Boolean(props.suggestions?.length) &&
-		!props.isPlanEditMode &&
+		!props.isAwaitingPlanReview &&
 		!isComposerDirty.value &&
 		!isBusy.value &&
 		!isGatedBySetup.value,
@@ -212,8 +243,8 @@ const placeholder = computed(() => {
 	if (isGatedBySetup.value) {
 		return i18n.baseText('instanceAi.input.suspendedPlaceholder');
 	}
-	if (props.isPlanEditMode) {
-		return i18n.baseText('instanceAi.input.planEditPlaceholder' as BaseTextKey);
+	if (props.isAwaitingPlanReview) {
+		return i18n.baseText('instanceAi.input.planReviewPlaceholder');
 	}
 	// Experiment cleanup: remove with instanceAiSplitEmptyState. Split types the prompt out.
 	if (props.previewPromptKey && isInputVisuallyEmpty.value) {
@@ -229,6 +260,9 @@ const placeholder = computed(() => {
 	}
 	if (props.contextualSuggestion) {
 		return props.contextualSuggestion;
+	}
+	if (props.contextChip?.type === 'agent-artifact' && props.contextChip.isNewAgent) {
+		return i18n.baseText('instanceAi.input.newAgentPlaceholder');
 	}
 	return i18n.baseText(props.placeholderKey ?? 'instanceAi.input.placeholder');
 });
@@ -257,42 +291,50 @@ watch(inputText, (text) => {
 	}
 });
 
-watch(
-	() => props.isPlanEditMode,
-	(isPlanEditMode, wasPlanEditMode) => {
-		if (isPlanEditMode || wasPlanEditMode) {
-			previewPrompt.value = null;
-			resetDraftComposer();
-		}
-	},
-);
-
 function emitSubmittedMessage(
 	message: string,
-	attachments?: InstanceAiAttachment[],
-	restoreDraft?: () => boolean,
+	attachments: InstanceAiAttachment[] | undefined,
+	restoreDraft: () => boolean,
 ) {
 	previewPrompt.value = null;
-	if (restoreDraft) {
-		emit('submit', message, attachments, restoreDraft);
-		return;
-	}
-	emit('submit', message, attachments);
+	emit('submit', message, attachments, restoreDraft);
 }
 
-function resetDraftComposer() {
+function resetDraftComposer({ keepAttachments = false } = {}) {
 	inputText.value = '';
+	if (keepAttachments) return;
 	attachedFiles.value = [];
+	attachedResources.value = [];
 }
 
+/** The single submission gate — `canSubmit` is this predicate over the draft. */
 function canSubmitMessage(message: string, attachmentCount = 0) {
-	return (message.length > 0 || attachmentCount > 0) && !isBusy.value && !isGatedBySetup.value;
+	if (isBusy.value || isGatedBySetup.value) return false;
+	// Plan feedback travels as a plain string, so an attachment cannot carry it.
+	if (props.isAwaitingPlanReview) return message.length > 0;
+	return message.length > 0 || attachmentCount > 0;
 }
 
-function restoreSubmittedDraft(message: string, files: File[]) {
+/**
+ * Put failed plan feedback back. Only the text was submitted, so this cannot use
+ * `isDirty()` as its guard: staged attachments keep that true even when the text
+ * box is empty, which would block every restore.
+ */
+function restorePlanFeedbackDraft(message: string) {
+	if (hasNonWhitespaceDraftText.value) return false;
+	inputText.value = message;
+	return true;
+}
+
+function restoreSubmittedDraft(
+	message: string,
+	files: File[],
+	resources: InstanceAiResourceAttachment[],
+) {
 	if (isDirty()) return false;
 	inputText.value = message;
 	attachedFiles.value = [...files];
+	attachedResources.value = [...resources];
 	return true;
 }
 
@@ -301,12 +343,22 @@ function submitComposerMessage(message: string, attachments?: InstanceAiAttachme
 		return;
 	}
 
+	// Plan feedback is resumed as a plain string. Send the text alone and leave
+	// anything staged in place, so it stays visible for a later real message
+	// instead of being dropped on a send that could never carry it. A suggestion
+	// draft can reach here, but feedback on a plan is not a suggestion submission.
+	if (props.isAwaitingPlanReview) {
+		emitSubmittedMessage(message, undefined, () => restorePlanFeedbackDraft(message));
+		resetDraftComposer({ keepAttachments: true });
+		return;
+	}
+
 	trackSelectedSuggestionSubmitted(message);
+
 	const submittedFiles = [...attachedFiles.value];
-	emitSubmittedMessage(
-		message,
-		attachments,
-		submittedFiles.length > 0 ? () => restoreSubmittedDraft(message, submittedFiles) : undefined,
+	const submittedResources = [...attachedResources.value];
+	emitSubmittedMessage(message, attachments, () =>
+		restoreSubmittedDraft(message, submittedFiles, submittedResources),
 	);
 	resetDraftComposer();
 }
@@ -322,23 +374,55 @@ function submitSuggestion(payload: SuggestionSelectionPayload) {
 
 async function handleSubmit() {
 	const text = inputText.value.trim();
-	if (!canSubmitMessage(text, attachedFiles.value.length)) {
+	if (!canSubmitMessage(text, attachedFiles.value.length + attachedResources.value.length)) {
 		return;
 	}
 
-	let attachments: InstanceAiAttachment[] | undefined;
-	if (attachedFiles.value.length > 0) {
-		const binaryData = await Promise.all(attachedFiles.value.map(convertFileToBinaryData));
-		attachments = binaryData.map((b) => ({
-			type: 'file' as const,
-			data: b.data,
-			mimeType: b.mimeType,
-			fileName: b.fileName ?? 'unnamed',
-		}));
+	// Plan feedback carries no attachments, so skip encoding the staged files.
+	if (props.isAwaitingPlanReview) {
+		submitComposerMessage(text);
+		return;
 	}
 
-	submitComposerMessage(text, attachments);
+	const fileAttachments: InstanceAiAttachment[] = attachedFiles.value.length
+		? (await Promise.all(attachedFiles.value.map(convertFileToBinaryData))).map((b) => ({
+				type: 'file' as const,
+				data: b.data,
+				mimeType: b.mimeType,
+				fileName: b.fileName ?? 'unnamed',
+			}))
+		: [];
+	const attachments = [...fileAttachments, ...attachedResources.value];
+
+	submitComposerMessage(text, attachments.length ? attachments : undefined);
 }
+
+function removeResource(index: number) {
+	attachedResources.value = attachedResources.value.filter((_, i) => i !== index);
+}
+
+watch(
+	() => instanceAiStore.pendingComposerAttachments,
+	(pending) => {
+		if (pending.length === 0) return;
+		const consumed = instanceAiStore.consumePendingAttachments();
+		for (const attachment of consumed) {
+			if (attachment.type === 'file') continue;
+			if (attachment.type === 'nodes') {
+				const existing = attachedResources.value.find(
+					(a): a is Extract<InstanceAiResourceAttachment, { type: 'nodes' }> =>
+						a.type === 'nodes' && a.workflowId === attachment.workflowId,
+				);
+				if (existing) {
+					existing.sets = mergeNodeSets(existing.sets, attachment.sets);
+					continue;
+				}
+			}
+			attachedResources.value = [...attachedResources.value, attachment];
+		}
+	},
+	{ deep: true, immediate: true },
+);
 
 function handleStop() {
 	emit('stop');
@@ -466,9 +550,9 @@ const resizable = computed(() => {
 		<ChatInputBase
 			ref="chatInputRef"
 			v-model="inputText"
-			:class="{ [$style.planEditInput]: props.isPlanEditMode, [$style.inputWrapper]: true }"
+			:class="$style.inputWrapper"
 			:placeholder="placeholder"
-			:is-streaming="props.isPlanEditMode ? false : props.isStreaming"
+			:is-streaming="props.isAwaitingPlanReview ? false : props.isStreaming"
 			:can-submit="canSubmit"
 			:disabled="isGatedBySetup"
 			:autosize="resizable"
@@ -476,7 +560,9 @@ const resizable = computed(() => {
 			:active-requires-focus="props.submitActiveRequiresFocus"
 			:max-length="EXTENDED_PROMPT_MAX_LENGTH"
 			show-voice
-			:show-attach="!props.isPlanEditMode"
+			:show-attach="!props.isAwaitingPlanReview"
+			:show-attach-button="false"
+			:attached-encoded-bytes="attachedEncodedBytes"
 			@submit="handleSubmit"
 			@stop="handleStop"
 			@tab="handleTabAutocomplete"
@@ -484,37 +570,7 @@ const resizable = computed(() => {
 		>
 			<template #attachments>
 				<div
-					v-if="props.isPlanEditMode"
-					:class="$style.contextChip"
-					data-test-id="instance-ai-plan-edit-context"
-				>
-					<N8nTag
-						:text="i18n.baseText('instanceAi.planReview.askForEdits')"
-						:clickable="false"
-						size="lg"
-					>
-						<template #tag>
-							<span :class="$style.contextChipContent">
-								<N8nIcon icon="corner-down-right" size="small" />
-								<span :class="$style.contextChipText">{{
-									i18n.baseText('instanceAi.planReview.askForEdits')
-								}}</span>
-								<button
-									type="button"
-									:class="$style.contextChipClose"
-									:title="i18n.baseText('generic.close')"
-									:aria-label="i18n.baseText('generic.close')"
-									data-test-id="instance-ai-plan-edit-cancel"
-									@click.stop="emit('cancel-plan-edit')"
-								>
-									<N8nIcon icon="x" size="xsmall" />
-								</button>
-							</span>
-						</template>
-					</N8nTag>
-				</div>
-				<div
-					v-else-if="props.contextChip"
+					v-if="props.contextChip"
 					:class="$style.contextChip"
 					:data-test-id="props.contextChip.testId ?? 'instance-ai-handoff-context-chip'"
 				>
@@ -523,25 +579,36 @@ const resizable = computed(() => {
 							<span :class="$style.contextChipContent">
 								<N8nIcon
 									:icon="props.contextChip.icon ?? 'robot'"
-									size="small"
+									size="medium"
+									:class="$style.contextChipIcon"
 									data-test-id="instance-ai-handoff-context-chip-icon"
 								/>
 								<span :class="$style.contextChipText">{{ props.contextChip.label }}</span>
-								<button
-									type="button"
-									:class="$style.contextChipClose"
-									:title="i18n.baseText('generic.close')"
-									:aria-label="i18n.baseText('generic.close')"
-									data-test-id="instance-ai-handoff-context-chip-dismiss"
-									@click.stop="emit('dismiss-context-chip')"
-								>
-									<N8nIcon icon="x" size="xsmall" />
-								</button>
 							</span>
+							<N8nIconButton
+								icon="x"
+								size="xsmall"
+								variant="ghost"
+								:class="$style.contextChipClose"
+								:title="i18n.baseText('generic.close')"
+								:aria-label="i18n.baseText('generic.close')"
+								data-test-id="instance-ai-handoff-context-chip-dismiss"
+								@click.stop="emit('dismiss-context-chip')"
+							/>
 						</template>
 					</N8nTag>
 				</div>
-				<div v-if="!props.isPlanEditMode && attachedFiles.length > 0" :class="$style.attachments">
+				<div v-if="attachedResources.length > 0" :class="$style.attachments">
+					<AttachmentPreview
+						v-for="(attachment, index) in attachedResources"
+						:key="`res-${index}`"
+						:attachment="attachment"
+						:is-removable="true"
+						@remove-resource="removeResource(index)"
+						@update:attachment="attachedResources[index] = $event"
+					/>
+				</div>
+				<div v-if="attachedFiles.length > 0" :class="$style.attachments">
 					<AttachmentPreview
 						v-for="(file, index) in attachedFiles"
 						:key="index"
@@ -550,6 +617,12 @@ const resizable = computed(() => {
 						@remove="handleFileRemove"
 					/>
 				</div>
+			</template>
+			<template v-if="!props.isAwaitingPlanReview" #footer-start>
+				<InstanceAiInputMenu
+					:disabled="isBusy || isGatedBySetup"
+					@attach-files="chatInputRef?.openFilePicker()"
+				/>
 			</template>
 		</ChatInputBase>
 		<slot name="footer"></slot>
@@ -595,6 +668,9 @@ const resizable = computed(() => {
 }
 
 .contextChip {
+	--tag--min-width: 0;
+	--tag--max-width: 80%;
+
 	align-self: flex-start;
 	max-width: 100%;
 }
@@ -602,31 +678,26 @@ const resizable = computed(() => {
 .contextChipContent {
 	display: inline-flex;
 	align-items: center;
-	gap: var(--spacing--4xs);
+	gap: var(--spacing--3xs);
 	line-height: var(--line-height--xs);
+	overflow: hidden;
+}
+
+.contextChipIcon {
+	flex-shrink: 0;
 }
 
 .contextChipText {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
 	white-space: nowrap;
+	line-height: 1.2;
 }
 
 .contextChipClose {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
 	flex: 0 0 auto;
-	width: var(--spacing--xs);
-	height: var(--spacing--xs);
-	padding: 0;
-	color: inherit;
-	cursor: pointer;
-	background: none;
-	border: 0;
-	border-radius: var(--radius--3xs);
-}
-
-.planEditInput {
-	gap: var(--spacing--2xs);
+	margin-right: calc(var(--spacing--2xs) * -1);
 }
 
 :global(.suggestions-fade-enter-active) {

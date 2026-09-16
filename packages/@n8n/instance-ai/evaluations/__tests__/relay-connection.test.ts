@@ -5,7 +5,12 @@
 
 import { describe, it, expect } from 'vitest';
 
-import { fixtureInterceptionArgs, planRelayConnection } from '../harness/browser-runtime';
+import {
+	browserN8nOrigins,
+	browserSessionCookie,
+	fixtureInterceptionArgs,
+	planRelayConnection,
+} from '../harness/browser-runtime';
 
 const EXT = 'chrome-extension://cegmdpndekdfpnafgacidejijecomlhh/connect.html';
 
@@ -190,5 +195,46 @@ describe('fixtureInterceptionArgs', () => {
 		const rules = rulesOf(fixtureInterceptionArgs(FIXTURE_RULES, 'MAP localhost:5680 n8n:5678'));
 		expect(rules).not.toContain('EXCLUDE localhost');
 		expect(rules).toContain('MAP localhost:5680 n8n:5678');
+	});
+});
+
+// The session cookie the launched browser is given. Same subject as the rest of
+// this file: which spelling of n8n the BROWSER ends up using, after the rewrite
+// above. Get it wrong and the credential-setup flow dead-ends on /signin with
+// every provider-console expectation failing as though the agent misbehaved.
+describe('browserN8nOrigins', () => {
+	it('returns the single origin when n8n is already loopback', () => {
+		expect(browserN8nOrigins('http://localhost:5678')).toEqual(['http://localhost:5678']);
+	});
+
+	it('adds the localhost origin the relay MAP rule creates for a non-loopback n8n', () => {
+		// planRelayConnection rewrites a non-loopback n8n to localhost + a MAP rule,
+		// so in the split-container topology the browser knows n8n by THAT origin —
+		// a cookie on `http://n8n:5678` alone would never be sent.
+		expect(browserN8nOrigins('http://n8n:5678')).toEqual([
+			'http://n8n:5678',
+			'http://localhost:5678',
+		]);
+	});
+});
+
+describe('browserSessionCookie', () => {
+	it('turns the client cookie header into a cookie for the browser context', () => {
+		expect(browserSessionCookie('n8n-auth=abc123', 'http://localhost:5678')).toEqual({
+			name: 'n8n-auth',
+			value: 'abc123',
+			url: 'http://localhost:5678',
+		});
+	});
+
+	it('splits on the FIRST = only, so a base64/JWT value survives intact', () => {
+		const value = 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0=';
+		expect(browserSessionCookie(`n8n-auth=${value}`, 'http://n8n:5678')?.value).toBe(value);
+	});
+
+	it('returns undefined for anything that is not a name=value pair', () => {
+		expect(browserSessionCookie('', 'http://localhost:5678')).toBeUndefined();
+		expect(browserSessionCookie('n8n-auth', 'http://localhost:5678')).toBeUndefined();
+		expect(browserSessionCookie('=orphan', 'http://localhost:5678')).toBeUndefined();
 	});
 });

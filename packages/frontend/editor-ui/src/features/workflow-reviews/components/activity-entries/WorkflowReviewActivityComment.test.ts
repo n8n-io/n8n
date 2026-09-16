@@ -75,7 +75,7 @@ describe('WorkflowReviewActivityComment', () => {
 		);
 	});
 
-	it('names a deleted author', () => {
+	it('names a deleted author and shows a person silhouette where their avatar would be', () => {
 		const { getByTestId } = renderComponent({
 			props: { entry: makeEntry([makeMessage({ createdBy: null })]) },
 		});
@@ -83,6 +83,7 @@ describe('WorkflowReviewActivityComment', () => {
 		expect(getByTestId('workflow-review-activity-comment-author')).toHaveTextContent(
 			'Deleted user',
 		);
+		expect(getByTestId('workflow-review-activity-deleted-actor')).toBeInTheDocument();
 	});
 
 	// Keys on `deletedAt`, not on a null body: a null body from any other writer

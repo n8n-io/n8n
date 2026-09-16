@@ -26,36 +26,29 @@ const workflowRunData = computed<IRunData | null>(
 );
 
 const binaryData = computed<IBinaryData | null>(() => {
+	const { index, key, node: nodeName, outputIndex, runIndex } = props.displayData;
 	if (
-		typeof props.displayData.node !== 'string' ||
-		typeof props.displayData.key !== 'string' ||
-		typeof props.displayData.runIndex !== 'number' ||
-		typeof props.displayData.index !== 'number' ||
-		typeof props.displayData.outputIndex !== 'number'
+		typeof nodeName !== 'string' ||
+		typeof key !== 'string' ||
+		typeof runIndex !== 'number' ||
+		typeof index !== 'number' ||
+		typeof outputIndex !== 'number'
 	) {
 		return null;
 	}
 
-	const binaryDataLocal = nodeHelpers.getBinaryData(
-		workflowRunData.value,
-		props.displayData.node,
-		props.displayData.runIndex,
-		props.displayData.outputIndex,
-	);
+	const runDataOfNode = workflowRunData.value?.[nodeName]?.[runIndex]?.data;
+	const binaryDataLocal = nodeHelpers.getBinaryData(runDataOfNode, outputIndex);
 
 	if (binaryDataLocal.length === 0) {
 		return null;
 	}
 
-	if (
-		props.displayData.index >= binaryDataLocal.length ||
-		binaryDataLocal[props.displayData.index][props.displayData.key] === undefined
-	) {
+	if (index >= binaryDataLocal.length || binaryDataLocal[index][key] === undefined) {
 		return null;
 	}
 
-	const binaryDataItem: IBinaryData =
-		binaryDataLocal[props.displayData.index][props.displayData.key];
+	const binaryDataItem: IBinaryData = binaryDataLocal[index][key];
 
 	return binaryDataItem;
 });

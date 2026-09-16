@@ -1,9 +1,22 @@
 import { spawn } from 'child_process';
+import { randomUUID } from 'node:crypto';
 import * as os from 'os';
 
 import type { StackConfig } from './services/types';
 
 export interface StackTelemetryRecord {
+	/** Unique identity for one stack startup attempt. */
+	attemptId: string;
+
+	/** Correlation context shared by CI and Playwright evidence. */
+	correlation: {
+		profile: string | null;
+		shard: string | null;
+		worker: string | null;
+		retry: number | null;
+		restartReason: string | null;
+	};
+
 	/** ISO timestamp when stack creation started */
 	timestamp: string;
 
@@ -46,6 +59,9 @@ export interface StackTelemetryRecord {
 		services: Record<string, number>;
 	};
 
+	/** Stage evidence for this startup attempt, including failed stages. */
+	stages: StartupStageRecord[];
+
 	/** Container counts */
 	containers: {
 		total: number;
@@ -55,6 +71,16 @@ export interface StackTelemetryRecord {
 
 	/** Outcome */
 	success: boolean;
+	failurePhase?: string;
+	errorMessage?: string;
+}
+
+export interface StartupStageRecord {
+	name: string;
+	source: 'local' | 'hosted' | 'unknown';
+	startedAt: string;
+	elapsedMs: number;
+	outcome: 'success' | 'failure' | 'cancelled';
 	errorMessage?: string;
 }
 
@@ -114,7 +140,69 @@ function inferPostgres(config: StackConfig): boolean {
 	return (config.postgres ?? false) || isQueueMode || hasKeycloak;
 }
 
+function safeValue(value: string | undefined): string | null {
+	if (!value || !/^[a-z0-9_.:-]{1,64}$/i.test(value)) return null;
+	return value;
+}
+
+function sanitizeError(message: string): string {
+	return message
+		.replace(/([?&](?:token|key|secret|password|authorization)=)[^&\s]+/gi, '$1[REDACTED]')
+		.replace(/(Bearer\s+|Basic\s+)[^\s]+/gi, '$1[REDACTED]')
+		.replace(/((?:token|key|secret|password|authorization)\s*[:=]\s*)[^\s,;]+/gi, '$1[REDACTED]')
+		.replace(/\bAKIA[0-9A-Z]{16}\b/g, '[REDACTED]')
+		.replace(/\bgh[pousr]_[A-Za-z0-9_]{20,}\b/g, '[REDACTED]')
+		.replace(/\bxox[baprs]-[A-Za-z0-9-]{20,}\b/g, '[REDACTED]')
+		.replace(/\bsk-[A-Za-z0-9_-]{20,}\b/g, '[REDACTED]')
+		.replace(/(https?:\/\/)([^\s/@]+):([^\s/@]+)@/gi, '$1[REDACTED]@');
+}
+
+function getErrorMessage(error: unknown): string | undefined {
+	if (!error) return undefined;
+	if (error instanceof Error) return error.message;
+	if (typeof error === 'string') return error;
+	try {
+		return JSON.stringify(error);
+	} catch {
+		return undefined;
+	}
+}
+
+function getCorrelationContext(config: StackConfig): StackTelemetryRecord['correlation'] {
+	const retry = Number(process.env.GITHUB_RUN_ATTEMPT ?? '');
+	const restartReason = process.env.N8N_TEST_RESTART_REASON;
+	const knownRestartReasons = new Set([
+		'initial-start',
+		'retry',
+		'profile-transition',
+		'intentional-isolation',
+		'unknown',
+	]);
+	const resolvedRestartReason = restartReason
+		? knownRestartReasons.has(restartReason)
+			? restartReason
+			: 'unknown'
+		: null;
+	return {
+		profile: resolveProfile(config),
+		shard: safeValue(process.env.TEST_SHARD ?? process.env.CI_NODE_INDEX),
+		worker: safeValue(process.env.TEST_WORKER_INDEX ?? process.env.PLAYWRIGHT_WORKER_INDEX),
+		retry: Number.isFinite(retry) && retry > 0 ? retry : null,
+		restartReason: resolvedRestartReason,
+	};
+}
+
+function resolveProfile(config: StackConfig): string {
+	const configured = process.env.N8N_TEST_PROFILE ?? process.env.TEST_PROFILE;
+	if (configured && /^[a-z0-9_.:-]{1,64}$/i.test(configured)) return configured;
+	if ((config.mains ?? 1) > 1) return 'multi-main';
+	if ((config.workers ?? 0) > 0 || (config.webhooks ?? 0) > 0) return 'queue';
+	if (config.postgres || config.services?.includes('keycloak')) return 'postgres';
+	return 'sqlite';
+}
+
 export class TelemetryRecorder {
+	private readonly id = randomUUID();
 	private startTimestamp = Date.now();
 	private startPerf = performance.now();
 	private networkTime = 0;
@@ -122,8 +210,24 @@ export class TelemetryRecorder {
 	private serviceTimings: Record<string, number> = {};
 	private serviceCount = 0;
 	private n8nCount = 0;
+	private stages: StartupStageRecord[] = [];
+	private activeStage: {
+		name: string;
+		source: StartupStageRecord['source'];
+		started: number;
+		startedAt: string;
+	} | null = null;
+	private failurePhase: string | undefined;
 
 	constructor(private config: StackConfig) {}
+
+	get attemptId(): string {
+		return this.id;
+	}
+
+	get failurePhaseValue(): string | undefined {
+		return this.failurePhase;
+	}
 
 	recordNetwork(durationMs: number): void {
 		this.networkTime = durationMs;
@@ -139,8 +243,43 @@ export class TelemetryRecorder {
 		this.n8nCount = count;
 	}
 
+	startStage(name: string, source: StartupStageRecord['source'] = 'local'): void {
+		this.activeStage = {
+			name,
+			source,
+			started: performance.now(),
+			startedAt: new Date().toISOString(),
+		};
+	}
+
+	finishStage(outcome: StartupStageRecord['outcome'] = 'success', error?: unknown): void {
+		if (!this.activeStage) return;
+		const { name, source, started, startedAt } = this.activeStage;
+		const message = getErrorMessage(error);
+		const actualOutcome =
+			outcome === 'failure' && error instanceof Error && error.name === 'AbortError'
+				? 'cancelled'
+				: outcome;
+		this.stages.push({
+			name,
+			source,
+			startedAt,
+			elapsedMs: Math.max(0, Math.round(performance.now() - started)),
+			outcome: actualOutcome,
+			...(message ? { errorMessage: sanitizeError(message) } : {}),
+		});
+		if (actualOutcome !== 'success') this.failurePhase = name;
+		this.activeStage = null;
+	}
+
+	setFailurePhase(phase: string): void {
+		this.failurePhase ??= phase;
+	}
+
 	private buildRecord(success: boolean, errorMessage?: string): StackTelemetryRecord {
 		return {
+			attemptId: this.id,
+			correlation: getCorrelationContext(this.config),
 			timestamp: new Date(this.startTimestamp).toISOString(),
 			git: getGitContext(),
 			ci: getCIContext(),
@@ -158,13 +297,15 @@ export class TelemetryRecorder {
 				n8nStartup: this.n8nStartupTime,
 				services: { ...this.serviceTimings },
 			},
+			stages: [...this.stages],
 			containers: {
 				total: this.serviceCount + this.n8nCount,
 				services: this.serviceCount,
 				n8n: this.n8nCount,
 			},
 			success,
-			errorMessage,
+			...(this.failurePhase ? { failurePhase: this.failurePhase } : {}),
+			...(errorMessage ? { errorMessage: sanitizeError(errorMessage) } : {}),
 		};
 	}
 
@@ -216,11 +357,23 @@ export class TelemetryRecorder {
 			unit: string;
 			dimensions: Record<string, string | number>;
 		}> = [
+			...record.stages.map((stage) => ({
+				metric_name: 'stack-startup-stage',
+				value: stage.elapsedMs,
+				unit: 'ms',
+				dimensions: {
+					attempt_id: record.attemptId,
+					stage: stage.name,
+					source: stage.source,
+					outcome: stage.outcome,
+				},
+			})),
 			{
 				metric_name: 'stack-startup-total',
 				value: record.timing.total,
 				unit: 'ms',
 				dimensions: {
+					attempt_id: record.attemptId,
 					stack_type: record.stack.type,
 					mains: record.stack.mains,
 					workers: record.stack.workers,
@@ -269,6 +422,12 @@ export class TelemetryRecorder {
 				workflow: record.ci.workflow ?? null,
 				attempt: record.ci.attempt ?? null,
 			},
+			correlation: record.correlation,
+			success: record.success,
+			error_message: record.errorMessage ?? null,
+			attempt_id: record.attemptId,
+			stages: record.stages,
+			failure_phase: record.failurePhase ?? null,
 			runner: record.runner,
 			metrics,
 		};

@@ -1,51 +1,8 @@
 import type { Agent, ModelConfig } from '@n8n/agents';
 import { PROVIDER_CAPABILITIES } from '@n8n/api-types';
-import { isRecord } from '@n8n/utils/is-record';
 
+import { resolveModelIdString, resolveModelProvider } from './model-config-identity';
 import { resolveCustomModelExperimentDefaultsFromEnv } from '../utils/custom-model-defaults';
-
-function normalizeProvider(provider: string): string {
-	return provider.split('.')[0] ?? provider;
-}
-
-function getStringProperty(value: Record<string, unknown>, key: string): string | undefined {
-	const property = value[key];
-	return typeof property === 'string' ? property : undefined;
-}
-
-function getProviderFromConfig(value: Record<string, unknown>): string | undefined {
-	const config = value.config;
-	return isRecord(config) ? getStringProperty(config, 'provider') : undefined;
-}
-
-function getProviderFromId(id: string): string | undefined {
-	const slashIndex = id.indexOf('/');
-	return slashIndex > 0 ? normalizeProvider(id.slice(0, slashIndex)) : undefined;
-}
-
-function resolveModelProvider(modelId: ModelConfig): string | undefined {
-	if (typeof modelId === 'string') return getProviderFromId(modelId);
-	if (!isRecord(modelId)) return undefined;
-
-	const id = getStringProperty(modelId, 'id');
-	if (id) return getProviderFromId(id);
-
-	const provider = getStringProperty(modelId, 'provider') ?? getProviderFromConfig(modelId);
-	const model = getStringProperty(modelId, 'modelId');
-	return provider && model ? normalizeProvider(provider) : undefined;
-}
-
-function resolveModelIdString(modelId: ModelConfig): string | undefined {
-	if (typeof modelId === 'string') return modelId;
-	if (!isRecord(modelId)) return undefined;
-
-	const id = getStringProperty(modelId, 'id');
-	if (id) return id;
-
-	const provider = getStringProperty(modelId, 'provider') ?? getProviderFromConfig(modelId);
-	const model = getStringProperty(modelId, 'modelId');
-	return provider && model ? `${provider}/${model}` : undefined;
-}
 
 /** Grok 4.5 via xAI (`xai/grok-4.5`). */
 function isGrok45Model(modelId: ModelConfig): boolean {
@@ -65,11 +22,21 @@ export function applyAgentThinking(agent: Agent, modelId: ModelConfig): void {
 	if (!provider || !PROVIDER_CAPABILITIES[provider]?.thinking) return;
 
 	if (provider === 'custom') {
-		// No blanket custom default: env override → known-model map → omit.
+		// No blanket default: env override → known-model map → omit.
 		const resolvedModelId = resolveModelIdString(modelId) ?? '';
 		const { reasoningEffort } = resolveCustomModelExperimentDefaultsFromEnv(resolvedModelId);
 		if (reasoningEffort !== undefined) {
 			agent.thinking('custom', { reasoningEffort });
+		}
+		return;
+	}
+
+	if (provider === 'moonshotai') {
+		const resolvedModelId = resolveModelIdString(modelId) ?? '';
+		const { reasoningEffort } = resolveCustomModelExperimentDefaultsFromEnv(resolvedModelId);
+
+		if (reasoningEffort !== undefined) {
+			agent.thinking('moonshotai', { reasoningEffort });
 		}
 		return;
 	}

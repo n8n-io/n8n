@@ -7,7 +7,11 @@ import { mockedStore } from '@/__tests__/utils';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { fetchThreadMessages, fetchThreadStatus } from '../instanceAi.memory.api';
 import { ensureThread, postMessage, postConfirmation, postCancel } from '../instanceAi.api';
-import { INSTANCE_AI_THREAD_SOURCE_FALLBACK, type InstanceAiTargetApproval } from '@n8n/api-types';
+import {
+	INSTANCE_AI_THREAD_SOURCE_FALLBACK,
+	type InstanceAiCredentialDestination,
+	type InstanceAiTargetApproval,
+} from '@n8n/api-types';
 import {
 	createThreadRuntime,
 	getAgentBuilderTargetFromThreadMetadata,
@@ -311,6 +315,91 @@ describe('createThreadRuntime - SSE and hydration', () => {
 		expect(activeRuntime(registry).messages).toHaveLength(1);
 		expect(activeRuntime(registry).messages[0].runId).toBe('run-1');
 		expect(activeRuntime(registry).activeRunId).toBe('run-1');
+	});
+
+	test('setup-items SSE events fold last-wins per workflowId', () => {
+		capturedOnMessage!(makeSSEEvent(validRunStartEvent('run-1', 'agent-root')));
+		capturedOnMessage!(
+			makeSSEEvent({
+				type: 'setup-items',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				payload: {
+					workflowId: 'wf-1',
+					items: [
+						{
+							id: 'wf-1:credential:slackApi',
+							kind: 'credential',
+							credentialType: 'slackApi',
+						},
+					],
+				},
+			}),
+		);
+		capturedOnMessage!(
+			makeSSEEvent({
+				type: 'setup-items',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				payload: {
+					workflowId: 'wf-1',
+					items: [
+						{
+							id: 'wf-1:credential:notionApi',
+							kind: 'credential',
+							credentialType: 'notionApi',
+						},
+					],
+				},
+			}),
+		);
+
+		const items = activeRuntime(registry).setupItemsByWorkflowId['wf-1'];
+		expect(items).toHaveLength(1);
+		expect(items[0]).toMatchObject({ credentialType: 'notionApi' });
+	});
+
+	test('setup-items snapshots survive thread restore (GET /messages)', async () => {
+		mockFetchThreadMessages.mockResolvedValueOnce({
+			threadId: 'thread-restore',
+			messages: [
+				{
+					id: 'msg-1',
+					runId: 'run-1',
+					role: 'assistant',
+					createdAt: new Date().toISOString(),
+					content: '',
+					reasoning: '',
+					isStreaming: false,
+					agentTree: {
+						agentId: 'agent-root',
+						role: 'orchestrator',
+						status: 'completed',
+						textContent: '',
+						reasoning: '',
+						toolCalls: [],
+						children: [],
+						timeline: [],
+						setupItemsByWorkflowId: {
+							'wf-1': [
+								{
+									id: 'wf-1:credential:slackApi',
+									kind: 'credential',
+									credentialType: 'slackApi',
+								},
+							],
+						},
+					},
+				},
+			],
+			nextEventId: 10,
+		});
+
+		const runtime = registry.getOrCreateRuntime('thread-restore');
+		await runtime.loadHistoricalMessages();
+
+		expect(runtime.setupItemsByWorkflowId['wf-1']).toHaveLength(1);
+		expect(runtime.setupItemsByWorkflowId['wf-1'][0]).toMatchObject({ credentialType: 'slackApi' });
 	});
 
 	test('background-group run-sync does not overwrite activeRunId from orchestrator sync', () => {
@@ -1097,6 +1186,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 			undefined,
 			expect.any(String),
 			'iframe-push-ref-123',
+			expect.any(Array),
 		);
 	});
 
@@ -1105,7 +1195,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 		const context = {
 			source: 'credential-modal' as const,
 			credential: {
-				credentialType: 'gmailOAuth2Api',
+				credentialType: 'gmailOAuth2',
 				displayName: 'Gmail OAuth2 API',
 				documentationUrl:
 					'https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/',
@@ -1128,6 +1218,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 			context,
 			expect.any(String),
 			undefined,
+			expect.any(Array),
 		);
 	});
 
@@ -1144,6 +1235,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 			undefined,
 			expect.any(String),
 			undefined,
+			expect.any(Array),
 		);
 	});
 
@@ -1713,6 +1805,64 @@ describe('createThreadRuntime - inline MCP connect confirmation', () => {
 	});
 });
 
+describe('createThreadRuntime - setup confirmation gating', () => {
+	let registry: RuntimeRegistry;
+
+	beforeEach(() => {
+		setupRuntimePinia();
+		registry = createRuntimeRegistry();
+		activeThreadId = 'thread-setup-panel';
+	});
+
+	function seedConfirmation(confirmation: Record<string, unknown>) {
+		const runtime = activeRuntime(registry);
+		runtime.messages = [
+			{
+				id: 'msg-1',
+				role: 'assistant',
+				runId: 'run-1',
+				content: '',
+				reasoning: '',
+				isStreaming: false,
+				createdAt: '2026-01-01T00:00:00.000Z',
+				agentTree: {
+					agentId: 'agent-root',
+					role: 'orchestrator',
+					status: 'active',
+					textContent: '',
+					reasoning: '',
+					toolCalls: [
+						{
+							toolCallId: 'tc-1',
+							toolName: 'setup-workflow',
+							args: {},
+							isLoading: true,
+							confirmation,
+						},
+					],
+					children: [],
+					timeline: [],
+				},
+			},
+		] as unknown as typeof runtime.messages;
+		return runtime;
+	}
+
+	// The BE suspends the run while a setup confirmation is pending (a send
+	// would 409), so setup kinds must gate the composer like any other kind.
+	it('keeps setup confirmations gating the composer', () => {
+		const runtime = seedConfirmation({
+			requestId: 'req-setup',
+			severity: 'info',
+			message: 'Connect Slack',
+			setupRequests: [{ workflowId: 'wf-1' }],
+		});
+
+		expect(runtime.pendingConfirmations).toHaveLength(1);
+		expect(runtime.isAwaitingConfirmation).toBe(true);
+	});
+});
+
 describe('createThreadRuntime - session always-allow', () => {
 	let registry: RuntimeRegistry;
 
@@ -1736,7 +1886,9 @@ describe('createThreadRuntime - session always-allow', () => {
 			args?: Record<string, unknown>;
 			severity?: 'info' | 'warning' | 'destructive';
 			channelConfig?: { integrationType: string; agentId: string };
+			credentialFlow?: { stage: 'generic' | 'finalize' };
 			targetApproval?: InstanceAiTargetApproval;
+			credentialDestination?: InstanceAiCredentialDestination;
 			workflowId?: string;
 		},
 	): void {
@@ -1767,7 +1919,11 @@ describe('createThreadRuntime - session always-allow', () => {
 							severity: opts.severity ?? 'info',
 							message: 'Approve?',
 							...(opts.channelConfig ? { channelConfig: opts.channelConfig } : {}),
+							...(opts.credentialFlow ? { credentialFlow: opts.credentialFlow } : {}),
 							...(opts.targetApproval ? { targetApproval: opts.targetApproval } : {}),
+							...(opts.credentialDestination
+								? { credentialDestination: opts.credentialDestination }
+								: {}),
 							...(opts.workflowId ? { workflowId: opts.workflowId } : {}),
 						},
 					},
@@ -1794,6 +1950,23 @@ describe('createThreadRuntime - session always-allow', () => {
 			kind: 'approval',
 			approved: true,
 		});
+	});
+
+	it('does not auto-approve credential-flow confirmations even when the key matches', async () => {
+		const runtime = registry.getOrCreateRuntime(activeThreadId);
+		runtime.addAlwaysAllowKey('connect_credential', {});
+
+		pushPendingApproval(runtime, {
+			messageId: 'msg-cred-flow',
+			requestId: 'req-cred-flow',
+			toolName: 'connect_credential',
+			args: {},
+			credentialFlow: { stage: 'generic' },
+		});
+
+		await new Promise((resolve) => setTimeout(resolve, 10));
+		expect(runtime.resolvedConfirmationIds.has('req-cred-flow')).toBe(false);
+		expect(mockPostConfirmation).not.toHaveBeenCalled();
 	});
 
 	it('does not auto-approve channel-setup confirmations even when the key matches', async () => {
@@ -1846,6 +2019,26 @@ describe('createThreadRuntime - session always-allow', () => {
 
 		await new Promise((resolve) => setTimeout(resolve, 10));
 		expect(runtime.resolvedConfirmationIds.has('req-target-approval')).toBe(false);
+		expect(mockPostConfirmation).not.toHaveBeenCalled();
+	});
+
+	it('does not auto-approve credential destinations with a generic setup grant', async () => {
+		const runtime = registry.getOrCreateRuntime(activeThreadId);
+		runtime.addAlwaysAllowKey('workflows', { action: 'setup' });
+
+		pushPendingApproval(runtime, {
+			messageId: 'msg-destination',
+			requestId: 'req-destination',
+			toolName: 'workflows',
+			args: { action: 'setup', workflowId: 'workflow-1' },
+			credentialDestination: {
+				origin: 'https://api.example.com',
+				nodeNames: ['Fetch account'],
+			},
+		});
+
+		await new Promise((resolve) => setTimeout(resolve, 10));
+		expect(runtime.resolvedConfirmationIds.has('req-destination')).toBe(false);
 		expect(mockPostConfirmation).not.toHaveBeenCalled();
 	});
 
@@ -2381,5 +2574,301 @@ describe('getAgentPreviewSessionFromThreadMetadata', () => {
 				instanceAiAgentPreviewSession: { threadId: 'preview-thread-1' },
 			}),
 		).toBeUndefined();
+	});
+});
+
+describe('createThreadRuntime - pending plan review', () => {
+	let registry: RuntimeRegistry;
+
+	beforeEach(() => {
+		setupRuntimePinia();
+		registry = createRuntimeRegistry();
+		activeThreadId = 'thread-plan-review';
+		mockPostConfirmation.mockReset();
+		mockPostConfirmation.mockResolvedValue({ ok: true });
+	});
+
+	/**
+	 * Seed one assistant message whose root agent holds the given create-tasks
+	 * calls, optionally followed by later messages from a newer turn.
+	 */
+	function seedPlanCards(
+		toolCalls: Array<Record<string, unknown>>,
+		laterMessages: Array<Record<string, unknown>> = [],
+	) {
+		const runtime = activeRuntime(registry);
+		runtime.messages = [
+			{
+				id: 'msg-1',
+				role: 'assistant',
+				runId: 'run-1',
+				content: '',
+				reasoning: '',
+				isStreaming: false,
+				createdAt: '2026-01-01T00:00:00.000Z',
+				agentTree: {
+					agentId: 'agent-root',
+					role: 'orchestrator',
+					status: 'active',
+					textContent: '',
+					reasoning: '',
+					toolCalls,
+					children: [],
+					timeline: [],
+				},
+			},
+			...laterMessages,
+		] as unknown as typeof runtime.messages;
+		return runtime;
+	}
+
+	function planCard(overrides: Record<string, unknown> = {}) {
+		const { confirmation, ...rest } = overrides;
+		return {
+			toolCallId: 'tc-plan',
+			toolName: 'create-tasks',
+			args: { tasks: [{ id: 't1', title: 'Ingest orders', kind: '', spec: '', deps: [] }] },
+			isLoading: true,
+			confirmation: {
+				requestId: 'req-plan',
+				severity: 'info',
+				message: 'Review the plan',
+				inputType: 'plan-review',
+				inputThreadId: 'input-thread-1',
+				...(confirmation as Record<string, unknown> | undefined),
+			},
+			...rest,
+		};
+	}
+
+	it('exposes a pending plan review while keeping it out of the confirmation panel', () => {
+		const runtime = seedPlanCards([planCard()]);
+
+		expect(runtime.pendingConfirmations).toHaveLength(0);
+		expect(runtime.isAwaitingConfirmation).toBe(false);
+		expect(runtime.pendingPlanReview).toEqual({
+			requestId: 'req-plan',
+			inputThreadId: 'input-thread-1',
+			taskCount: 1,
+		});
+	});
+
+	// planItems is never populated by the create-tasks suspend payload, so the
+	// count has to come off args.tasks or `num_tasks` telemetry reports zero.
+	it('counts tasks from args.tasks when planItems is absent', () => {
+		const runtime = seedPlanCards([
+			planCard({
+				args: {
+					tasks: [
+						{ id: 't1', title: 'Ingest', kind: '', spec: '', deps: [] },
+						{ id: 't2', title: 'Digest', kind: '', spec: '', deps: [] },
+						{ id: 't3', title: 'Reconcile', kind: '', spec: '', deps: [] },
+					],
+				},
+			}),
+		]);
+
+		expect(runtime.pendingPlanReview?.taskCount).toBe(3);
+	});
+
+	it('ignores an expired plan review so the composer falls back to its streaming state', () => {
+		const runtime = seedPlanCards([planCard({ confirmation: { expired: true } })]);
+
+		expect(runtime.pendingPlanReview).toBeNull();
+	});
+
+	it('ignores a plan review already resolved client-side', () => {
+		const runtime = seedPlanCards([planCard()]);
+		runtime.resolveConfirmation('req-plan', 'changes-requested');
+
+		expect(runtime.pendingPlanReview).toBeNull();
+	});
+
+	it.each(['approved', 'denied'] as const)(
+		'ignores a plan review whose tool call is already %s',
+		(confirmationStatus) => {
+			const runtime = seedPlanCards([planCard({ confirmationStatus })]);
+
+			expect(runtime.pendingPlanReview).toBeNull();
+		},
+	);
+
+	it('ignores a plan review whose tool call has settled', () => {
+		const runtime = seedPlanCards([planCard({ isLoading: false })]);
+
+		expect(runtime.pendingPlanReview).toBeNull();
+	});
+
+	// A revised plan stacks a fresh card on top of the superseded one.
+	it('picks the newest card when two plan reviews are pending', () => {
+		const runtime = seedPlanCards([
+			planCard(),
+			planCard({
+				toolCallId: 'tc-plan-2',
+				confirmation: { requestId: 'req-plan-revised' },
+			}),
+		]);
+
+		expect(runtime.pendingPlanReview?.requestId).toBe('req-plan-revised');
+	});
+
+	// A later turn strands the older card: its run was left behind, so routing
+	// composer feedback into its requestId would resume an abandoned run.
+	it('ignores a plan review stranded by a newer turn', () => {
+		const runtime = seedPlanCards(
+			[planCard()],
+			[
+				{
+					id: 'msg-2',
+					role: 'assistant',
+					runId: 'run-2',
+					content: 'Working on something else',
+					reasoning: '',
+					isStreaming: false,
+					createdAt: '2026-01-01T00:01:00.000Z',
+				},
+			],
+		);
+
+		expect(runtime.pendingPlanReview).toBeNull();
+	});
+
+	it('ignores a plan review once a new turn is optimistically appended', () => {
+		const runtime = seedPlanCards(
+			[planCard()],
+			[
+				{
+					id: 'msg-2',
+					role: 'user',
+					content: 'Actually, do this instead',
+					createdAt: '2026-01-01T00:01:00.000Z',
+				},
+			],
+		);
+
+		expect(runtime.pendingPlanReview).toBeNull();
+	});
+
+	it('still surfaces non-plan confirmations on the same tool call to the panel', () => {
+		const runtime = seedPlanCards([
+			planCard({ confirmation: { requestId: 'req-plain', inputType: undefined } }),
+		]);
+
+		expect(runtime.pendingConfirmations).toHaveLength(1);
+		expect(runtime.pendingPlanReview).toBeNull();
+	});
+
+	// Nothing else retires the marker: request-changes never re-arms the run, so
+	// `isStreaming` stays true across the whole revision and its fallback clear
+	// never fires. The superseded card would shimmer "Updating plan..." forever.
+	it('retires the updating marker of the card a revised plan supersedes', async () => {
+		const runtime = seedPlanCards([planCard()]);
+		await runtime.requestPlanChanges('req-plan', 'Simplify it');
+		expect(runtime.updatingPlanRequestIds.has('req-plan')).toBe(true);
+
+		// The backend settles the suspended call, then suspends a revised card.
+		seedPlanCards([
+			planCard({ isLoading: false }),
+			planCard({ toolCallId: 'tc-plan-2', confirmation: { requestId: 'req-plan-revised' } }),
+		]);
+		await nextTick();
+
+		expect(runtime.updatingPlanRequestIds.has('req-plan')).toBe(false);
+	});
+
+	// The superseded call settles before the revised card suspends, so there is a
+	// gap with no pending plan review at all — and that gap is exactly the wait.
+	it('keeps the updating marker while the revised plan is still being written', async () => {
+		const runtime = seedPlanCards([planCard()]);
+		await runtime.requestPlanChanges('req-plan', 'Simplify it');
+
+		seedPlanCards([planCard({ isLoading: false })]);
+		await nextTick();
+
+		expect(runtime.updatingPlanRequestIds.has('req-plan')).toBe(true);
+	});
+});
+
+describe('createThreadRuntime - requestPlanChanges', () => {
+	let registry: RuntimeRegistry;
+
+	beforeEach(() => {
+		setupRuntimePinia();
+		registry = createRuntimeRegistry();
+		activeThreadId = 'thread-plan-changes';
+		mockPostConfirmation.mockReset();
+		mockPostConfirmation.mockResolvedValue({ ok: true });
+	});
+
+	it('sends the raw feedback as a change request and resolves the card', async () => {
+		const runtime = activeRuntime(registry);
+
+		const ok = await runtime.requestPlanChanges('req-plan', 'Drop the third workflow');
+
+		expect(ok).toBe(true);
+		expect(mockPostConfirmation).toHaveBeenCalledWith(expect.anything(), 'req-plan', {
+			kind: 'approval',
+			approved: false,
+			userInput: 'Drop the third workflow',
+		});
+		expect(runtime.resolvedConfirmationIds.get('req-plan')).toBe('changes-requested');
+	});
+
+	// The revised plan card merges into the assistant message ABOVE the transcript
+	// tail, so a user bubble appended here would read after the revision it caused.
+	it('does not add a message to the transcript', async () => {
+		const runtime = activeRuntime(registry);
+
+		await runtime.requestPlanChanges('req-plan', 'Drop the third workflow');
+
+		expect(runtime.messages).toHaveLength(0);
+	});
+
+	it('marks the plan card as updating while the request is in flight', async () => {
+		const runtime = activeRuntime(registry);
+		let updatingDuringFlight = false;
+		mockPostConfirmation.mockImplementationOnce(async () => {
+			updatingDuringFlight = runtime.updatingPlanRequestIds.has('req-plan');
+			return { ok: true };
+		});
+
+		await runtime.requestPlanChanges('req-plan', 'Simplify it');
+
+		expect(updatingDuringFlight).toBe(true);
+	});
+
+	// A second submit landing mid-flight would POST the same requestId again; the
+	// rejection then wipes the "Updating plan..." state of the revision that was
+	// accepted, so the in-flight request owns the card until it settles.
+	it('ignores a second change request while the first is still in flight', async () => {
+		const runtime = activeRuntime(registry);
+		let releaseFirst: (() => void) | undefined;
+		mockPostConfirmation.mockImplementationOnce(
+			async () =>
+				await new Promise<{ ok: true }>((resolve) => {
+					releaseFirst = () => resolve({ ok: true });
+				}),
+		);
+
+		const first = runtime.requestPlanChanges('req-plan', 'Simplify it');
+		const second = await runtime.requestPlanChanges('req-plan', 'And add logging');
+
+		expect(second).toBe(false);
+		expect(mockPostConfirmation).toHaveBeenCalledTimes(1);
+
+		releaseFirst?.();
+		expect(await first).toBe(true);
+		expect(runtime.resolvedConfirmationIds.get('req-plan')).toBe('changes-requested');
+	});
+
+	it('clears the updating marker and leaves the card unresolved when the request fails', async () => {
+		const runtime = activeRuntime(registry);
+		mockPostConfirmation.mockRejectedValueOnce(new Error('network error'));
+
+		const ok = await runtime.requestPlanChanges('req-plan', 'Drop the third workflow');
+
+		expect(ok).toBe(false);
+		expect(runtime.updatingPlanRequestIds.has('req-plan')).toBe(false);
+		expect(runtime.resolvedConfirmationIds.has('req-plan')).toBe(false);
 	});
 });

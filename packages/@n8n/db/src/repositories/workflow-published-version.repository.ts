@@ -1,8 +1,10 @@
 import { Service } from '@n8n/di';
-import { DataSource, Repository } from '@n8n/typeorm';
+import { DataSource, In } from '@n8n/typeorm';
 import type { IWorkflowBase } from 'n8n-workflow';
 
+import { BaseRepository } from './base-repository';
 import { WorkflowPublishedVersion } from '../entities';
+import { type OperationContext, TransactionRunner } from '../services/transaction';
 
 export type PublishedWorkflowDataForExecution = Pick<
 	IWorkflowBase,
@@ -27,9 +29,9 @@ export type PublishedWorkflowDataForExecution = Pick<
 >;
 
 @Service()
-export class WorkflowPublishedVersionRepository extends Repository<WorkflowPublishedVersion> {
-	constructor(dataSource: DataSource) {
-		super(WorkflowPublishedVersion, dataSource.manager);
+export class WorkflowPublishedVersionRepository extends BaseRepository<WorkflowPublishedVersion> {
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(WorkflowPublishedVersion, dataSource.manager, transactionRunner);
 	}
 
 	async setPublishedVersion(workflowId: string, publishedVersionId: string): Promise<void> {
@@ -40,8 +42,32 @@ export class WorkflowPublishedVersionRepository extends Repository<WorkflowPubli
 		await this.delete({ workflowId });
 	}
 
-	async getPublishedVersionId(workflowId: string): Promise<string | null> {
-		const record = await this.findOne({
+	/**
+	 * Which of these workflows still have a published version.
+	 *
+	 * @returns the subset of `workflowIds` that have one.
+	 */
+	async findPublishedWorkflowIds(workflowIds: string[]): Promise<Set<string>> {
+		if (workflowIds.length === 0) {
+			return new Set();
+		}
+		const rows = await this.find({
+			where: { workflowId: In(workflowIds) },
+			select: ['workflowId'],
+		});
+		return new Set(rows.map((row) => row.workflowId));
+	}
+
+	/**
+	 * @param ctx - Pass the active operation context so the read joins an open
+	 * transaction (e.g. while holding `DbLock.WORKFLOW_REVIEW_MUTATION`).
+	 * Defaults to `{}` for non-transactional callers.
+	 */
+	async getPublishedVersionId(
+		workflowId: string,
+		ctx: OperationContext = {},
+	): Promise<string | null> {
+		const record = await this.managerFor(ctx).findOne(WorkflowPublishedVersion, {
 			where: { workflowId },
 			select: ['publishedVersionId'],
 		});

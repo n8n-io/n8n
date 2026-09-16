@@ -3,17 +3,24 @@ import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import {
 	ExecutionRepository,
-	FolderRepository,
+	GLOBAL_MEMBER_ROLE,
 	ProjectRepository,
 	SharedWorkflowRepository,
 	User,
 } from '@n8n/db';
+import { registerWorkflowPreviewApp } from '@n8n/mcp-apps/server';
 import { InstanceSettings } from 'n8n-core';
+
+import { McpPostSaveMetricsService } from '../mcp-post-save-metrics.service';
+import { AGENT_TOOLS, BUILDER_TOOLS, getAllowedToolNames, TOOLS_BY_SCOPE } from '../mcp-scopes';
+import { McpService } from '../mcp.service';
+import type { McpFeatureFlags } from '../mcp.service';
 
 import { ActiveExecutions } from '@/active-executions';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { EventService } from '@/events/event.service';
+import { ExecutionListService } from '@/executions/execution-list.service';
 import { ExecutionService } from '@/executions/execution.service';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
@@ -21,6 +28,9 @@ import { NodeCatalogService } from '@/node-catalog';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { AiGatewayService } from '@/services/ai-gateway.service';
+import { AiPreferenceService } from '@/services/ai-preference.service';
+import { FolderFinderService } from '@/services/folder-finder.service';
+import { FolderService } from '@/services/folder.service';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
@@ -34,11 +44,6 @@ import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-hi
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
-import { registerWorkflowPreviewApp } from '@n8n/mcp-apps/server';
-
-import { AGENT_TOOLS, BUILDER_TOOLS, getAllowedToolNames, TOOLS_BY_SCOPE } from '../mcp-scopes';
-import { McpService, type McpFeatureFlags } from '../mcp.service';
-
 vi.mock('@n8n/mcp-apps/server', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@n8n/mcp-apps/server')>()),
 	registerWorkflowPreviewApp: vi.fn(),
@@ -49,6 +54,9 @@ const ALL_MAPPED_TOOLS = new Set(Object.values(TOOLS_BY_SCOPE).flat());
 const mcpFeatureFlags = (overrides: Partial<McpFeatureFlags> = {}): McpFeatureFlags => ({
 	mcpApps: { enabled: false, variant: 'unassigned' },
 	canvasGroupsEnabled: false,
+	// On by default so the drift guards below cover `get_user_preferences`. Its own
+	// registration tests set it explicitly either way.
+	aiPreferencesEnabled: true,
 	...overrides,
 });
 
@@ -71,6 +79,10 @@ describe('getAllowedToolNames', () => {
 		);
 	});
 
+	it('resolves the preferences scope to its one tool', () => {
+		expect(getAllowedToolNames(['aiPreference:read'])).toEqual(new Set(['get_user_preferences']));
+	});
+
 	it('ignores unknown scopes', () => {
 		expect(getAllowedToolNames(['tool:listWorkflows', 'openid'])).toEqual(new Set());
 	});
@@ -86,12 +98,18 @@ describe('getAllowedToolNames', () => {
 	it('grants only call_agent with agent:execute', () => {
 		expect(getAllowedToolNames(['agent:execute'])).toEqual(new Set(['call_agent']));
 	});
+
+	it('exposes the renamed list_n8n_gateway_services tool via credential:read', () => {
+		expect(getAllowedToolNames(['credential:read'])).toContain('list_n8n_gateway_services');
+	});
 });
 
 describe('McpService scope enforcement', () => {
-	const user = Object.assign(new User(), { id: 'user-1' });
+	// A real MCP caller always arrives with its role loaded: `get_user_preferences` and
+	// `list_workflow_tags` both read the role to check a scope.
+	const user = Object.assign(new User(), { id: 'user-1', role: GLOBAL_MEMBER_ROLE });
 
-	const buildService = ({ builderEnabled = true } = {}) =>
+	const buildService = ({ builderEnabled = true, foldersLicensed = true } = {}) =>
 		new McpService(
 			mockLogger(),
 			mockInstance(ExecutionsConfig, { mode: 'regular' }),
@@ -119,15 +137,18 @@ describe('McpService scope enforcement', () => {
 			mockInstance(WorkflowCreationService),
 			mockInstance(NodeTypes),
 			mockInstance(ProjectRepository),
-			mockInstance(FolderRepository),
+			mockInstance(FolderFinderService),
 			mockInstance(SharedWorkflowRepository),
 			mockInstance(ExecutionRepository),
 			mockInstance(ExecutionService),
+			mockInstance(ExecutionListService),
 			mockInstance(DataTableProxyService),
 			mockInstance(CollaborationService),
 			mockInstance(NodeResourceExplorerService),
 			mockInstance(TagService),
-			mockInstance(LicenseState),
+			mockInstance(LicenseState, {
+				isFoldersLicensed: vi.fn().mockReturnValue(foldersLicensed),
+			}),
 			mockInstance(PostHogClient),
 			mockInstance(WorkflowHistoryService),
 			mockInstance(WorkflowsConfig),
@@ -136,8 +157,11 @@ describe('McpService scope enforcement', () => {
 			mockInstance(AiGatewayService, {
 				isAvailable: vi.fn().mockResolvedValue({ available: false }),
 			}),
+			mockInstance(McpPostSaveMetricsService),
 			mockInstance(ModuleRegistry),
 			mockInstance(EventService),
+			mockInstance(FolderService),
+			mockInstance(AiPreferenceService),
 		);
 
 	beforeEach(() => {
@@ -176,23 +200,77 @@ describe('McpService scope enforcement', () => {
 		expect(gated).toEqual([...BUILDER_TOOLS].sort());
 	});
 
+	describe('get_user_preferences registration', () => {
+		it('registers the tool when the preferences flag is on', async () => {
+			const server = await buildService().getServer(
+				user,
+				mcpFeatureFlags({ aiPreferencesEnabled: true }),
+			);
+
+			expect(getRegisteredToolNames(server)).toContain('get_user_preferences');
+		});
+
+		it('does not register the tool when the preferences flag is off', async () => {
+			const server = await buildService().getServer(
+				user,
+				mcpFeatureFlags({ aiPreferencesEnabled: false }),
+			);
+
+			expect(getRegisteredToolNames(server)).not.toContain('get_user_preferences');
+		});
+
+		// Preferences cover Agents, data tables and folders too, none of which are
+		// builder-gated, so the tool must not disappear with the builder.
+		it('registers the tool with the builder disabled', async () => {
+			const server = await buildService({ builderEnabled: false }).getServer(
+				user,
+				mcpFeatureFlags({ aiPreferencesEnabled: true }),
+			);
+
+			expect(getRegisteredToolNames(server)).toContain('get_user_preferences');
+		});
+
+		it('is not a builder tool, so it stays out of the builder-gated set', () => {
+			expect(BUILDER_TOOLS.has('get_user_preferences')).toBe(false);
+		});
+
+		it('is out of reach of a grant that does not hold the preferences scope', async () => {
+			const server = await buildService().getServer(user, mcpFeatureFlags(), undefined, {
+				grantedScopes: ['workflow:read', 'workflow:write'],
+			});
+
+			expect(getRegisteredToolNames(server)).not.toContain('get_user_preferences');
+		});
+	});
+
+	it('does not register folder tools when folders are not licensed', async () => {
+		const server = await buildService({ foldersLicensed: false }).getServer(
+			user,
+			mcpFeatureFlags(),
+		);
+		const registered = getRegisteredToolNames(server);
+
+		expect(registered).not.toContain('search_folders');
+		expect(registered).not.toContain('create_folder');
+		expect(registered).not.toContain('update_folder');
+		expect(registered).not.toContain('move_workflows_to_folder');
+		expect(registered).toContain('search_projects');
+	});
+
 	it('registers all tools when no scopes are provided (API keys, legacy tokens)', async () => {
 		const service = buildService();
 		const unscoped = await service.getServer(user, mcpFeatureFlags());
-		const fullyScoped = await service.getServer(
-			user,
-			mcpFeatureFlags(),
-			undefined,
-			Object.keys(TOOLS_BY_SCOPE),
-		);
+		const fullyScoped = await service.getServer(user, mcpFeatureFlags(), undefined, {
+			grantedScopes: Object.keys(TOOLS_BY_SCOPE),
+		});
 
 		expect(getRegisteredToolNames(fullyScoped)).toEqual(getRegisteredToolNames(unscoped));
 	});
 
 	it('registers only the tools covered by the granted scopes', async () => {
-		const server = await buildService().getServer(user, mcpFeatureFlags(), undefined, [
-			'workflow:read',
-		]);
+		const server = await buildService().getServer(user, mcpFeatureFlags(), undefined, {
+			grantedScopes: ['workflow:read'],
+		});
 
 		expect(getRegisteredToolNames(server)).toEqual(new Set(TOOLS_BY_SCOPE['workflow:read']));
 	});
@@ -202,7 +280,7 @@ describe('McpService scope enforcement', () => {
 			user,
 			mcpFeatureFlags(),
 			undefined,
-			['workflow:read'],
+			{ grantedScopes: ['workflow:read'] },
 		);
 
 		expect(getRegisteredToolNames(server)).toEqual(
@@ -211,12 +289,15 @@ describe('McpService scope enforcement', () => {
 				'get_workflow_details',
 				'get_workflow_history',
 				'get_workflow_version',
+				'get_workflow_versions_diff',
 			]),
 		);
 	});
 
 	it('registers no tools for an empty grant', async () => {
-		const server = await buildService().getServer(user, mcpFeatureFlags(), undefined, []);
+		const server = await buildService().getServer(user, mcpFeatureFlags(), undefined, {
+			grantedScopes: [],
+		});
 
 		expect(getRegisteredToolNames(server)).toEqual(new Set());
 	});
@@ -226,7 +307,7 @@ describe('McpService scope enforcement', () => {
 			user,
 			mcpFeatureFlags({ mcpApps: { enabled: true, variant: 'variant' } }),
 			undefined,
-			['workflow:read'],
+			{ grantedScopes: ['workflow:read'] },
 		);
 
 		expect(getRegisteredToolNames(server)).not.toContain('create_workflow_from_code');
@@ -238,7 +319,7 @@ describe('McpService scope enforcement', () => {
 			user,
 			mcpFeatureFlags({ mcpApps: { enabled: true, variant: 'variant' } }),
 			undefined,
-			['workflow:write'],
+			{ grantedScopes: ['workflow:write'] },
 		);
 
 		expect(getRegisteredToolNames(server)).toContain('create_workflow_from_code');

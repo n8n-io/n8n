@@ -42,6 +42,14 @@ export const ResourceLocatorDropdownTeleportedKey: InjectionKey<boolean> = Symbo
 	'ResourceLocatorDropdownTeleported',
 );
 export const ChatHubToolContextKey: InjectionKey<boolean> = Symbol('ChatHubToolContext');
+/** Whether resource mappers may reconcile cached schemas without an explicit user action. */
+export const ResourceMapperSchemaAutoRefreshKey: InjectionKey<boolean> = Symbol(
+	'ResourceMapperSchemaAutoRefresh',
+);
+/** Whether an empty resource mapper may load once its dependencies first become available. */
+export const ResourceMapperRefreshEmptySchemaKey: InjectionKey<boolean> = Symbol(
+	'ResourceMapperRefreshEmptySchema',
+);
 /**
  * Optional callback for hosts that keep a local node draft (e.g. tool-config
  * modals). ParameterInput invokes this when CredentialsSelect picks a

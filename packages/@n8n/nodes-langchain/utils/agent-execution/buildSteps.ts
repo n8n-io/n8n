@@ -147,7 +147,8 @@ function buildMessageContent(
 	const { thinkingContent, thinkingType, thinkingSignature } = providerMetadata;
 
 	// Anthropic thinking mode: build content blocks
-	if (thinkingContent && thinkingType) {
+	// Empty thinking text is valid because the signature carries the reasoning.
+	if (thinkingContent !== undefined && thinkingType) {
 		return buildAnthropicContentBlocks(
 			thinkingContent,
 			thinkingType,

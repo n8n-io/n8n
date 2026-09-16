@@ -11,6 +11,11 @@ import { OIDC_NONCE_COOKIE_NAME, OIDC_STATE_COOKIE_NAME } from '@/constants';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
+import {
+	SSO_ACCESS_DENIED_REDIRECT_PATH,
+	SSO_LOGIN_FAILED_REDIRECT_PATH,
+} from '@/modules/provisioning.ee/constants';
+import { SsoAccessDeniedError } from '@/modules/provisioning.ee/errors/sso-access-denied.error';
 import { AuthlessRequest } from '@/requests';
 import { UrlService } from '@/services/url.service';
 import { isOidcCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
@@ -113,74 +118,98 @@ export class OidcController {
 	async callbackHandler(req: AuthlessRequest, res: Response) {
 		const fullUrl = `${this.urlService.getInstanceBaseUrl()}${req.originalUrl}`;
 		const callbackUrl = new URL(fullUrl);
-		const state = req.cookies[OIDC_STATE_COOKIE_NAME];
 
-		if (typeof state !== 'string') {
-			this.logger.error('State is missing');
-			throw new BadRequestError('Invalid state');
-		}
+		try {
+			const state = req.cookies[OIDC_STATE_COOKIE_NAME];
 
-		const nonce = req.cookies[OIDC_NONCE_COOKIE_NAME];
-
-		if (typeof nonce !== 'string') {
-			this.logger.error('Nonce is missing');
-			throw new BadRequestError('Invalid nonce');
-		}
-
-		const stateInfo = this.oidcService.verifyState(state);
-
-		res.clearCookie(OIDC_STATE_COOKIE_NAME);
-		res.clearCookie(OIDC_NONCE_COOKIE_NAME);
-
-		if (stateInfo.testMode) {
-			try {
-				const result = await this.oidcService.processTestCallback(callbackUrl, state, nonce);
-				return res.send(renderOidcTestSuccess(result));
-			} catch (error) {
-				return res.send(renderOidcTestFailure(error));
+			if (typeof state !== 'string') {
+				this.logger.error('State is missing');
+				throw new BadRequestError('Invalid state');
 			}
-		}
 
-		const { user, idToken } = await this.oidcService.loginUser(callbackUrl, state, nonce);
+			const nonce = req.cookies[OIDC_NONCE_COOKIE_NAME];
 
-		this.authService.issueCookie(res, user, true, req.browserId);
+			if (typeof nonce !== 'string') {
+				this.logger.error('Nonce is missing');
+				throw new BadRequestError('Invalid nonce');
+			}
 
-		// Persist the encrypted ID token so a later sign-out can perform OIDC
-		// RP-Initiated Logout with the required `id_token_hint`. The cookie's
-		// presence also marks this session as OIDC-established, as opposed to
-		// e.g. an email session of the instance owner.
-		//
-		// The user is already authenticated (`issueCookie` above), so any failure
-		// storing the token must not fail the login: it only degrades sign-out to a
-		// local (n8n-only) logout, same as the oversized-token branch below.
-		if (idToken) {
-			try {
-				const encryptedIdToken = await this.oidcService.encryptIdToken(idToken);
-				if (Buffer.byteLength(encryptedIdToken, 'utf8') <= OIDC_ID_TOKEN_COOKIE_MAX_BYTES) {
-					const { samesite, secure } = this.globalConfig.auth.cookie;
-					res.cookie(OIDC_ID_TOKEN_COOKIE_NAME, encryptedIdToken, {
-						maxAge: this.authService.jwtExpiration * Time.seconds.toMilliseconds,
-						httpOnly: true,
-						sameSite: samesite,
-						secure,
-					});
-				} else {
-					this.logger.warn(
-						'The OIDC ID token is too large to be stored in a cookie. Signing out will terminate the n8n session but not the OIDC provider session. Consider reducing the claims included in the ID token.',
-					);
+			const stateInfo = this.oidcService.verifyState(state);
+
+			res.clearCookie(OIDC_STATE_COOKIE_NAME);
+			res.clearCookie(OIDC_NONCE_COOKIE_NAME);
+
+			if (stateInfo.testMode) {
+				try {
+					const result = await this.oidcService.processTestCallback(callbackUrl, state, nonce);
+					return res.send(renderOidcTestSuccess(result, res.locals.cspNonce));
+				} catch (error) {
+					return res.send(renderOidcTestFailure(error, res.locals.cspNonce));
 				}
-			} catch (error) {
-				this.logger.warn('Failed to store the OIDC ID token; sign-out will be local only', {
-					error,
-				});
 			}
-		}
-		this.eventService.emit('user-logged-in', {
-			user,
-			authenticationMethod: 'oidc',
-		});
 
-		return res.redirect('/');
+			const { user, idToken } = await this.oidcService.loginUser(callbackUrl, state, nonce);
+
+			this.oidcService.assertOidcLoginEnabled();
+			this.authService.issueCookie(res, user, true, req.browserId);
+
+			// Persist the encrypted ID token so a later sign-out can perform OIDC
+			// RP-Initiated Logout with the required `id_token_hint`. The cookie's
+			// presence also marks this session as OIDC-established, as opposed to
+			// e.g. an email session of the instance owner.
+			//
+			// The user is already authenticated (`issueCookie` above), so any failure
+			// storing the token must not fail the login: it only degrades sign-out to a
+			// local (n8n-only) logout, same as the oversized-token branch below.
+			if (idToken) {
+				try {
+					const encryptedIdToken = await this.oidcService.encryptIdToken(idToken);
+					if (Buffer.byteLength(encryptedIdToken, 'utf8') <= OIDC_ID_TOKEN_COOKIE_MAX_BYTES) {
+						const { samesite, secure } = this.globalConfig.auth.cookie;
+						res.cookie(OIDC_ID_TOKEN_COOKIE_NAME, encryptedIdToken, {
+							maxAge: this.authService.jwtExpiration * Time.seconds.toMilliseconds,
+							httpOnly: true,
+							sameSite: samesite,
+							secure,
+						});
+					} else {
+						this.logger.warn(
+							'The OIDC ID token is too large to be stored in a cookie. Signing out will terminate the n8n session but not the OIDC provider session. Consider reducing the claims included in the ID token.',
+						);
+					}
+				} catch (error) {
+					this.logger.warn('Failed to store the OIDC ID token; sign-out will be local only', {
+						error,
+					});
+				}
+			}
+			this.eventService.emit('user-logged-in', {
+				user,
+				authenticationMethod: 'oidc',
+			});
+
+			return res.redirect('/');
+		} catch (error) {
+			if (error instanceof SsoAccessDeniedError) {
+				this.eventService.emit('user-login-failed', {
+					userEmail: 'unknown',
+					authenticationMethod: 'oidc',
+				});
+				return res.redirect(this.urlService.getInstanceBaseUrl() + SSO_ACCESS_DENIED_REDIRECT_PATH);
+			}
+			// Any other failure (IdP `error` response, invalid state/nonce, token or
+			// userinfo failure) must not dead-end on a blank error page. Record the
+			// failed attempt and send the user back to sign-in with a generic error.
+			// The raw provider `error_description` is untrusted, so it is never
+			// reflected; only the short `error` code is kept, for the audit reason.
+			this.logger.error('OIDC callback failed', { error });
+			this.eventService.emit('user-login-failed', {
+				userEmail: 'unknown',
+				authenticationMethod: 'oidc',
+				reason: callbackUrl.searchParams.get('error')?.slice(0, 100) ?? 'oidc_callback_failed',
+			});
+			return res.redirect(this.urlService.getInstanceBaseUrl() + SSO_LOGIN_FAILED_REDIRECT_PATH);
+		}
 	}
 
 	/**

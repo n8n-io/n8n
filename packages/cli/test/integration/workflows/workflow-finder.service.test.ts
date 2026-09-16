@@ -1,4 +1,4 @@
-import { createWorkflow, testDb } from '@n8n/backend-test-utils';
+import { createActiveWorkflow, createWorkflow, testDb } from '@n8n/backend-test-utils';
 import { GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
@@ -49,6 +49,27 @@ describe('WorkflowFinderService', () => {
 
 			expect(head?.versionId).toBe(workflow.versionId);
 			expect(head?.updatedAt).toBeInstanceOf(Date);
+		});
+
+		it('should report a null published version while the workflow is unpublished', async () => {
+			const workflow = await createWorkflow({}, member);
+
+			const head = await workflowFinderService.findWorkflowHeadForUser(workflow.id, owner, [
+				'workflow:publish',
+			]);
+
+			expect(head?.activeVersionId).toBeNull();
+		});
+
+		it('should return the published version alongside the draft version', async () => {
+			const workflow = await createActiveWorkflow({}, member);
+
+			const head = await workflowFinderService.findWorkflowHeadForUser(workflow.id, owner, [
+				'workflow:publish',
+			]);
+
+			expect(head?.activeVersionId).toBe(workflow.versionId);
+			expect(head?.versionId).toBe(workflow.versionId);
 		});
 
 		it('should return null for a user without access to the workflow', async () => {

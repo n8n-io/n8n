@@ -5,7 +5,12 @@ import type { ServiceHelpers } from 'n8n-containers/services/types';
 import type { N8NConfig, N8NStack } from 'n8n-containers/stack';
 import { createN8NStack } from 'n8n-containers/stack';
 
-import { CAPABILITIES, type Capability } from './capabilities';
+import { a11yFixtures, type A11yTestFixtures } from './a11y';
+import {
+	CAPABILITIES,
+	shouldSkipContainerRequirement,
+	type CapabilityOption,
+} from './capabilities';
 import { consoleErrorFixtures } from './console-error-monitor';
 import { N8N_AUTH_COOKIE } from '../config/constants';
 import { setupDefaultInterceptors } from '../config/intercepts';
@@ -45,6 +50,7 @@ type TestFixtures = {
 	/** Internal auto fixture: per-spec backend V8 coverage (DEVP-370). No-op
 	 *  unless COVERAGE_ENABLED. */
 	backendCoverage: undefined;
+	containerRequirement: undefined;
 };
 
 type WorkerFixtures = {
@@ -58,7 +64,6 @@ type WorkerFixtures = {
 	capability?: CapabilityOption;
 };
 
-type CapabilityOption = Capability | N8NConfig;
 type ProjectUse = { containerConfig?: N8NConfig };
 
 function parseGlobalTestEnv(): Record<string, string> {
@@ -81,7 +86,11 @@ function logKeepalive(container: N8NStack): void {
 }
 
 export const test = base.extend<
-	TestFixtures & CurrentsFixtures & ObservabilityTestFixtures & QuarantineTestFixtures,
+	TestFixtures &
+		CurrentsFixtures &
+		ObservabilityTestFixtures &
+		QuarantineTestFixtures &
+		A11yTestFixtures,
 	WorkerFixtures & CurrentsWorkerFixtures & QuarantineWorkerFixtures
 >({
 	...currentsFixtures.baseFixtures,
@@ -91,9 +100,22 @@ export const test = base.extend<
 	...observabilityFixtures,
 	...consoleErrorFixtures,
 	...quarantineFixtures,
+	...a11yFixtures,
 
 	// Option for test.use({ capability: 'proxy' }) - transformed into N8NStack by n8nContainer
 	capability: [undefined, { scope: 'worker', option: true }],
+
+	// Service requirements now come from test.use(), so local projects cannot filter them by title.
+	containerRequirement: [
+		async ({ capability }, use, testInfo) => {
+			testInfo.skip(
+				shouldSkipContainerRequirement(capability, !!getBackendUrl()),
+				'This test requires container services',
+			);
+			await use(undefined);
+		},
+		{ auto: true },
+	],
 
 	// Resolves the effective N8NConfig from project.containerConfig (base) +
 	// capability (override) + N8N_TEST_ENV (global). Topology-neutral: it
@@ -349,6 +371,8 @@ export const test = base.extend<
 });
 
 export { expect };
+export { A11Y_BUCKETS, DEFAULT_A11Y_TAGS } from './a11y';
+export type { A11yBucket, A11yCheckOptions, A11yViolation } from './a11y';
 
 /*
 Fixture Dependency Graph:
@@ -356,6 +380,7 @@ Worker: capability + project.containerConfig → n8nStackConfig → n8nContainer
 Test:   frontendUrl + dbSetup → baseURL → n8n (uses backendUrl for API calls)
         backendUrl → api
         n8nContainer → services
+        n8n → a11y
 
 n8nStackConfig: Resolved N8NConfig (topology-neutral, always produced)
 n8nContainer:   Container lifecycle (stop, containers, mainUrls, etc.)

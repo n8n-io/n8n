@@ -15,27 +15,11 @@ export type SecretKeysConfig = {
 	customRegex?: string[];
 };
 
-/**
- * Common key prefixes used in secret keys.
- */
-const COMMON_KEY_PREFIXES = [
-	'key-',
-	'sk-',
-	'sk_',
-	'pk_',
-	'pk-',
-	'ghp_',
-	'AKIA',
-	'xox',
-	'SG.',
-	'hf_',
-	'api-',
-	'apikey-',
-	'token-',
-	'secret-',
-	'SHA:',
-	'Bearer ',
-];
+// Vendor prefixes stay detected even with a file suffix. Generic prefixes
+// remain allowlisted so filenames like api-client.ts are not flagged.
+const VENDOR_KEY_PREFIXES = ['sk-', 'sk_', 'pk_', 'pk-', 'ghp_', 'AKIA', 'xox', 'SG.', 'hf_'];
+const GENERIC_KEY_PREFIXES = ['key-', 'api-', 'apikey-', 'token-', 'secret-', 'SHA:', 'Bearer '];
+const COMMON_KEY_PREFIXES = [...VENDOR_KEY_PREFIXES, ...GENERIC_KEY_PREFIXES];
 
 /**
  * File extensions to ignore when strict_mode is False.
@@ -182,7 +166,13 @@ function containsAllowedPattern(text: string): boolean {
 		`^[^\\s]*(${ALLOWED_EXTENSIONS.map((ext) => ext.replace('.', '\\.')).join('|')})$`,
 		'i',
 	);
-	return extPattern.test(text);
+	if (!extPattern.test(text)) {
+		return false;
+	}
+	if (VENDOR_KEY_PREFIXES.some((prefix) => text.startsWith(prefix))) {
+		return false;
+	}
+	return true;
 }
 
 /**

@@ -74,3 +74,6 @@ export interface ICredentialsState {
 export interface IShareCredentialsPayload {
 	shareWithIds: string[];
 }
+
+/** What the picker's credential list is narrowed to: an open workflow, else a project. */
+export type CredentialFetchScope = { workflowId: string } | { projectId: string };

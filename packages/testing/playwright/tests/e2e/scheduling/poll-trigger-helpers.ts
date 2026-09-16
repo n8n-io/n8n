@@ -27,24 +27,49 @@ export async function programPollResponse(
 	});
 }
 
+export async function programPollErrorResponse(
+	proxy: ProxyServer,
+	path: string,
+	statusCode: number,
+	times?: { remainingTimes: number; unlimited: boolean },
+) {
+	await proxy.createExpectation({
+		httpRequest: { method: 'GET', path },
+		httpResponse: {
+			statusCode,
+			headers: { 'Content-Type': ['application/json'] },
+			body: JSON.stringify({ error: 'mocked poll failure' }),
+		},
+		times,
+	});
+}
+
 // Programs the mock poll response before activation, so the inline seed poll
 // that every fresh activation runs is itself the fire under test.
 export async function expectPollTriggerFires(
 	api: ApiHelpers,
 	proxy: ProxyServer,
 	makeWorkflow: (path: string) => PollTriggerWorkflow,
-	options?: { itemsAfterSeedPoll?: IDataObject[] },
+	options?: {
+		itemsAfterSeedPoll?: IDataObject[];
+		errorAfterSeedPoll?: { statusCode: number };
+	},
 ): Promise<{ workflowId: string; nodeId: string; path: string }> {
 	const path = `/${nanoid()}`;
-	const { itemsAfterSeedPoll } = options ?? {};
+	const { itemsAfterSeedPoll, errorAfterSeedPoll } = options ?? {};
 
 	await programPollResponse(
 		proxy,
 		path,
 		SEED_POLL_ITEMS,
-		itemsAfterSeedPoll && { remainingTimes: 1, unlimited: false },
+		(itemsAfterSeedPoll ?? errorAfterSeedPoll) && { remainingTimes: 1, unlimited: false },
 	);
 	if (itemsAfterSeedPoll) await programPollResponse(proxy, path, itemsAfterSeedPoll);
+	if (errorAfterSeedPoll)
+		await programPollErrorResponse(proxy, path, errorAfterSeedPoll.statusCode, {
+			remainingTimes: 1,
+			unlimited: false,
+		});
 
 	const { workflowId, createdWorkflow } = await api.workflows.createWorkflowFromDefinition(
 		makeWorkflow(path).toJSON() as IWorkflowBase,
@@ -87,8 +112,9 @@ export async function expectNewTriggerExecution(
 	api: ApiHelpers,
 	workflowId: string,
 	known: Set<string>,
-	timeoutMs = 20_000,
+	options?: { timeoutMs?: number; expectedStatus?: 'success' | 'error' },
 ): Promise<void> {
+	const { timeoutMs = 20_000, expectedStatus = 'success' } = options ?? {};
 	let previousCount = -1;
 
 	await expect
@@ -99,7 +125,7 @@ export async function expectNewTriggerExecution(
 				const settled =
 					count > 0 &&
 					count === previousCount &&
-					fresh.every((execution) => execution.status === 'success');
+					fresh.every((execution) => execution.status === expectedStatus);
 				previousCount = count;
 				return settled;
 			},
@@ -110,7 +136,7 @@ export async function expectNewTriggerExecution(
 	const fresh = await fetchNewTriggerExecutions(api, workflowId, known);
 
 	expect(fresh).toHaveLength(1);
-	expect(fresh[0].status).toBe('success');
+	expect(fresh[0].status).toBe(expectedStatus);
 }
 
 export async function expectNoNewTriggerExecution(

@@ -131,10 +131,96 @@ describe('EvalTestCaseSchema', () => {
 		expect(seed.dataTables).toEqual([]);
 	});
 
-	it('rejects an inline seed with no messages', () => {
+	// Emptiness is judged over EVERY slot, not just `messages`: a seed carrying
+	// nothing restores nothing and the case then grades as an unseeded build — green
+	// for the wrong reason.
+	it('rejects an inline seed that carries nothing at all', () => {
 		expect(() =>
 			EvalTestCaseSchema.parse({ ...validFixture(), seed: { mode: 'inline', messages: [] } }),
 		).toThrow();
+	});
+
+	it('accepts a fixture-only inline seed that carries just a project', () => {
+		// The project-scope shape: a seeded project must exist on the instance, but the
+		// conversation under test starts from scratch, so there is no history to seed.
+		const parsed = EvalTestCaseSchema.parse({
+			...validFixture(),
+			seed: { mode: 'inline', projects: [{ name: 'Foobar' }] },
+		});
+		const seed = inlineSeedOf(parsed);
+		expect(seed.projects).toEqual([{ name: 'Foobar' }]);
+		expect(seed.messages).toEqual([]);
+	});
+
+	it('accepts a fixture-only inline seed that carries just a folder', () => {
+		const parsed = EvalTestCaseSchema.parse({
+			...validFixture(),
+			seed: { mode: 'inline', folders: [{ id: 'odwFolder0001', name: 'ODW' }] },
+		});
+		const seed = inlineSeedOf(parsed);
+		expect(seed.folders).toEqual([{ id: 'odwFolder0001', name: 'ODW' }]);
+	});
+
+	// Folder references span two arrays, so only the case can check them. A stale
+	// reference would otherwise be refused mid-run by the restore.
+	it('rejects a workflow placed in a folder the seed does not declare', () => {
+		expect(() =>
+			EvalTestCaseSchema.parse({
+				...validFixture(),
+				seed: {
+					mode: 'inline',
+					folders: [{ id: 'odwFolder0001', name: 'ODW' }],
+					workflows: [
+						{
+							id: 'odwSignal1Wf',
+							name: 'Odds Watch - 1',
+							nodes: [],
+							connections: {},
+							parentFolderId: 'nopeFolder001',
+						},
+					],
+				},
+			}),
+		).toThrow(/nopeFolder001/);
+	});
+
+	it('rejects two folders sharing an id', () => {
+		expect(() =>
+			EvalTestCaseSchema.parse({
+				...validFixture(),
+				seed: {
+					mode: 'inline',
+					folders: [
+						{ id: 'odwFolder0001', name: 'ODW' },
+						{ id: 'odwFolder0001', name: 'Other' },
+					],
+				},
+			}),
+		).toThrow(/Duplicate seed folder id/);
+	});
+
+	it('rejects a folder whose parent is undeclared, and a parent cycle', () => {
+		expect(() =>
+			EvalTestCaseSchema.parse({
+				...validFixture(),
+				seed: {
+					mode: 'inline',
+					folders: [{ id: 'odwArchive001', name: 'Archive', parentFolderId: 'missingFolder1' }],
+				},
+			}),
+		).toThrow(/missingFolder1/);
+		expect(() =>
+			EvalTestCaseSchema.parse({
+				...validFixture(),
+				seed: {
+					mode: 'inline',
+					folders: [
+						{ id: 'folderAaaaaa', name: 'A', parentFolderId: 'folderBbbbbb' },
+						{ id: 'folderBbbbbb', name: 'B', parentFolderId: 'folderAaaaaa' },
+					],
+				},
+			}),
+		).toThrow(/cycle/);
 	});
 
 	it('rejects an unknown seed mode', () => {

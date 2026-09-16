@@ -4,12 +4,14 @@ import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
 
+import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { eventNamesAll } from '@/eventbus/event-message-classes';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { createMessageEventBusDestination } from '@/modules/log-streaming.ee/create-message-event-bus-destination';
+import { assertUserCanUseDestinationCredentials } from '@/modules/log-streaming.ee/destinations/destination-credentials-access';
 import { LogStreamingDestinationService } from '@/modules/log-streaming.ee/log-streaming-destination.service';
 
 import { toInternalDestinationOptions, toPublicDestination } from './log-streaming.mapper';
@@ -84,10 +86,18 @@ const logStreamingHandlers: LogStreamingHandlers = {
 				throw new BadRequestError(parseResult.error.errors[0].message);
 			}
 
+			const options = toInternalDestinationOptions(parseResult.data);
+
+			await assertUserCanUseDestinationCredentials(
+				Container.get(CredentialsFinderService),
+				req.user,
+				options,
+			);
+
 			const destination = createMessageEventBusDestination(
 				Container.get(MessageEventBus),
 				Container.get(OutboundHttp),
-				toInternalDestinationOptions(parseResult.data),
+				options,
 			);
 			const result = await Container.get(LogStreamingDestinationService).addDestination(
 				destination,
@@ -110,10 +120,18 @@ const logStreamingHandlers: LogStreamingHandlers = {
 			}
 
 			// the path id is the update target; addDestination upserts on it
+			const options = { ...toInternalDestinationOptions(parseResult.data), id: req.params.id };
+
+			await assertUserCanUseDestinationCredentials(
+				Container.get(CredentialsFinderService),
+				req.user,
+				options,
+			);
+
 			const destination = createMessageEventBusDestination(
 				Container.get(MessageEventBus),
 				Container.get(OutboundHttp),
-				{ ...toInternalDestinationOptions(parseResult.data), id: req.params.id },
+				options,
 			);
 			const result = await Container.get(LogStreamingDestinationService).addDestination(
 				destination,
@@ -127,7 +145,12 @@ const logStreamingHandlers: LogStreamingHandlers = {
 		isLicensed('feat:logStreaming'),
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'eventBusDestination:test' }),
 		async (req, res) => {
-			await findDestinationOrFail(req.params.id);
+			const destination = await findDestinationOrFail(req.params.id);
+			await assertUserCanUseDestinationCredentials(
+				Container.get(CredentialsFinderService),
+				req.user,
+				destination,
+			);
 			// a delivery failure is a failed test, not a server error → { success: false }
 			let success: boolean;
 			try {

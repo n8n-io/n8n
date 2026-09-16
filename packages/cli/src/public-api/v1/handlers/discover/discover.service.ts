@@ -1,6 +1,5 @@
 import RefParser from '@apidevtools/json-schema-ref-parser';
 import type { ApiKeyScopeRequirement } from '@n8n/decorators';
-import type { ApiKeyScope } from '@n8n/permissions';
 import { isRecord } from '@n8n/utils/is-record';
 import path from 'path';
 
@@ -12,6 +11,7 @@ import {
 	scopesInRequirement,
 	toOpenApiPathTemplate,
 } from '../../../public-api-route-resolver';
+import { buildRequestBodyJsonSchema } from '../../openapi-gen/decorator-routes';
 import { extractScopeFromEovHandlerChain } from '../../shared/public-api-scope-lookup';
 
 import '../../controllers';
@@ -44,7 +44,7 @@ interface FilterInfo {
 }
 
 export interface DiscoverResponse {
-	scopes: ApiKeyScope[];
+	scopes: readonly string[];
 	resources: Record<string, ResourceInfo>;
 	filters: Record<string, FilterInfo>;
 	specUrl: string;
@@ -151,11 +151,12 @@ function buildDecoratorEndpoints(): EndpointInfo[] {
 		operationId: route.handlerName,
 		tag: route.tags?.[0] ?? 'Other',
 		scope: route.apiKeyScope ?? null,
+		requestSchema: buildRequestBodyJsonSchema(route),
 	}));
 }
 
 export async function buildDiscoverResponse(
-	callerScopes: ApiKeyScope[],
+	callerScopes: readonly string[],
 	options?: DiscoverOptions,
 ): Promise<DiscoverResponse> {
 	const allEndpoints = await parseEndpointsFromSpec();

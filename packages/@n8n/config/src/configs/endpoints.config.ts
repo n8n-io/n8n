@@ -68,6 +68,10 @@ export class PrometheusMetricsConfig {
 	@Env('N8N_METRICS_SCHEDULER_INTERVAL')
 	schedulerMetricsInterval: number = 20;
 
+	/** Whether to include poll-trigger metrics (poll duration, errors, overlapping ticks, cursor commits). */
+	@Env('N8N_METRICS_INCLUDE_POLL_TRIGGER_METRICS')
+	includePollTriggerMetrics: boolean = false;
+
 	/** How often (in seconds) to update active workflow metric */
 	@Env('N8N_METRICS_ACTIVE_WORKFLOW_METRIC_INTERVAL')
 	activeWorkflowCountInterval: number = 60;
@@ -96,6 +100,10 @@ export class PrometheusMetricsConfig {
 	@Env('N8N_METRICS_INCLUDE_SSRF_METRICS')
 	includeSsrfMetrics: boolean = false;
 
+	/** Whether to include metrics for decryption and key-lookup latency. */
+	@Env('N8N_METRICS_INCLUDE_ENCRYPTION_METRICS')
+	includeEncryptionMetrics: boolean = false;
+
 	/** Whether to include metrics for the DNS cache (currently only used by SSRF protection). */
 	@Env('N8N_METRICS_INCLUDE_DNS_CACHE_METRICS')
 	includeDnsCacheMetrics: boolean = false;
@@ -123,6 +131,10 @@ export class PrometheusMetricsConfig {
 	/** Whether to include metrics for the workflow publication service (main instances only). */
 	@Env('N8N_METRICS_INCLUDE_WORKFLOW_PUBLICATION_METRICS')
 	includeWorkflowPublicationMetrics: boolean = false;
+
+	/** Whether to include MCP workflow-builder post-save failure metrics. */
+	@Env('N8N_METRICS_INCLUDE_MCP_POST_SAVE_METRICS')
+	includeMcpPostSaveMetrics: boolean = false;
 
 	/** How often (in seconds) to refresh the cached workflow publication outbox gauges. */
 	@Env('N8N_METRICS_WORKFLOW_PUBLICATION_METRIC_INTERVAL')

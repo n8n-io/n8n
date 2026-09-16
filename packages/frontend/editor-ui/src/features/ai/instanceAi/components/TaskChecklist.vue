@@ -1,12 +1,15 @@
 <script lang="ts" setup>
 import type { TaskList } from '@n8n/api-types';
 import { N8nCard, N8nIcon, N8nText, type IconName, type TextColor } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 import ButtonLike from './ButtonLike.vue';
 
 const props = defineProps<{
 	tasks?: TaskList;
 }>();
+
+const i18n = useI18n();
 
 type StatusConfig = {
 	icon: IconName;
@@ -43,6 +46,9 @@ const taskList = computed(() =>
 		return {
 			...task,
 			...config,
+			// Threads saved before descriptions were required can hold a blank one,
+			// which would render a row with an icon and no label.
+			description: task.description.trim() || i18n.baseText('instanceAi.tasks.untitled'),
 		};
 	}),
 );

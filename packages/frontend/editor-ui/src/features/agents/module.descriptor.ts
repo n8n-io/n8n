@@ -1,10 +1,7 @@
-import { i18n } from '@n8n/i18n';
 import { VIEWS } from '@/app/constants';
-import { type FrontendModuleDescription } from '@n8n/frontend-module-sdk';
-import { hasPermission } from '@/app/utils/rbac/permissions';
+import { defineFrontendModule } from '@n8n/frontend-module-sdk';
 import {
 	AGENTS_LIST_VIEW,
-	AGENT_BUILDER_SETTINGS_VIEW,
 	AGENT_BUILDER_VIEW,
 	AGENT_PREVIEW_VIEW,
 	NEW_AGENT_VIEW,
@@ -27,10 +24,8 @@ const AgentSessionsListView = async (): Promise<unknown> =>
 	await import('@/features/agents/views/AgentSessionsListView.vue');
 const AgentSessionTimelineView = async (): Promise<unknown> =>
 	await import('@/features/agents/views/AgentSessionTimelineView.vue');
-const SettingsAgentBuilderView = async (): Promise<unknown> =>
-	await import('@/features/agents/views/SettingsAgentBuilderView.vue');
 
-export const AgentsModule: FrontendModuleDescription = {
+export const AgentsModule = defineFrontendModule({
 	id: 'agents',
 	name: 'Agents',
 	description: 'Build and manage AI agents',
@@ -95,23 +90,6 @@ export const AgentsModule: FrontendModuleDescription = {
 				},
 			],
 		},
-		{
-			name: AGENT_BUILDER_SETTINGS_VIEW,
-			path: 'agent-builder',
-			component: SettingsAgentBuilderView,
-			meta: {
-				layout: 'settings',
-				middleware: ['authenticated', 'rbac'],
-				middlewareOptions: {
-					rbac: {
-						scope: 'agent:manage',
-					},
-				},
-				telemetry: {
-					pageCategory: 'settings',
-				},
-			},
-		},
 	],
 	projectTabs: {
 		overview: [
@@ -144,17 +122,4 @@ export const AgentsModule: FrontendModuleDescription = {
 			displayName: 'Agent',
 		},
 	],
-	settingsPages: [
-		{
-			id: 'settings-agent-builder',
-			icon: 'robot',
-			label: i18n.baseText('settings.agentBuilder.title'),
-			position: 'top',
-			preview: true,
-			route: { to: { name: AGENT_BUILDER_SETTINGS_VIEW } },
-			get available() {
-				return hasPermission(['rbac'], { rbac: { scope: 'agent:manage' } });
-			},
-		},
-	],
-};
+});

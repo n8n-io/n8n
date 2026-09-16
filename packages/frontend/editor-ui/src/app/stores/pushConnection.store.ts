@@ -123,6 +123,9 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 	 */
 	let disconnectTimeout: ReturnType<typeof setTimeout> | null = null;
 
+	/** Number of active pushConnect owners; disconnect only when this reaches zero. */
+	let connectionOwnerCount = 0;
+
 	const pushConnect = () => {
 		recentConnectIntent = true;
 
@@ -141,12 +144,31 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 			disconnectTimeout = null;
 		}
 
+		connectionOwnerCount++;
+		if (connectionOwnerCount !== 1) {
+			return;
+		}
+
 		isConnectionRequested.value = true;
 		isConnecting.value = true;
 		client.value.connect();
 	};
 
 	const pushDisconnect = () => {
+		if (connectionOwnerCount === 0) {
+			return;
+		}
+
+		connectionOwnerCount--;
+
+		if (connectionOwnerCount > 0) {
+			if (disconnectTimeout) {
+				clearTimeout(disconnectTimeout);
+				disconnectTimeout = null;
+			}
+			return;
+		}
+
 		// If connect was called recently, don't disconnect
 		// (handles race condition where new view mounts before old view unmounts)
 		if (recentConnectIntent) {
@@ -160,7 +182,7 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 
 		disconnectTimeout = setTimeout(() => {
 			// Double-check in case connect was called while we were waiting
-			if (recentConnectIntent) {
+			if (recentConnectIntent || connectionOwnerCount > 0) {
 				disconnectTimeout = null;
 				return;
 			}

@@ -23,6 +23,8 @@ import {
 	selectTests,
 	changedRuntimeDepsFromManifests,
 	changedOverrideTargets,
+	isBackendConfig,
+	isTsconfig,
 } from '@n8n/test-impact';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -80,7 +82,7 @@ import {
 } from './core/method-usage-analyzer.js';
 import { createProject } from './core/project-loader.js';
 import { readLockfileImporters, readRuntimeClosure } from './core/read-lockfile-importers.js';
-import { readManifestDiffs, readTsconfigDiffs } from './core/read-manifest-diffs.js';
+import { isManifest, readFileDiffs } from './core/read-manifest-diffs.js';
 import { toJSON, toConsole } from './core/reporter.js';
 import { filterToFailedSpecs } from './core/retry-filter.js';
 import { computeScope, formatScope } from './core/scope-analyzer.js';
@@ -162,7 +164,7 @@ function runInventory(options: CliOptions): void {
 	}
 
 	// File filter - detailed info for single file
-	if (options.files && options.files.length === 1) {
+	if (options.files?.length === 1) {
 		const result = filterByFile(report, options.files[0]);
 		if (result) {
 			console.log(JSON.stringify(result, null, 2));
@@ -558,6 +560,33 @@ async function runDistribute(options: CliOptions): Promise<void> {
 		);
 	}
 
+	if (options.groupsFile) {
+		const groupsPath = path.isAbsolute(options.groupsFile)
+			? options.groupsFile
+			: path.resolve(config.rootDir, options.groupsFile);
+		let groups: unknown;
+		try {
+			groups = JSON.parse(fs.readFileSync(groupsPath, 'utf-8'));
+		} catch (error) {
+			throw new Error(`Cannot parse distribution groups from ${groupsPath}`, { cause: error });
+		}
+		if (typeof groups !== 'object' || groups === null || Array.isArray(groups)) {
+			throw new Error('Distribution groups must be a JSON object');
+		}
+		specs = specs.map((spec) => {
+			const fixturePools: unknown = Reflect.get(groups, spec.path.replaceAll('\\', '/'));
+			if (
+				!Array.isArray(fixturePools) ||
+				fixturePools.length === 0 ||
+				!fixturePools.every((fixture): fixture is string => typeof fixture === 'string')
+			) {
+				throw new Error(`Fixture pools missing for ${spec.path}`);
+			}
+			const sortedPools = [...fixturePools].sort();
+			return { ...spec, fixturePools: sortedPools };
+		});
+	}
+
 	const metrics: Record<string, number> = {};
 	if (config.orchestration.metricsPath) {
 		const metricsPath = path.isAbsolute(config.orchestration.metricsPath)
@@ -718,12 +747,13 @@ function runMergeCoverage(options: CliOptions): void {
  *  around {@link selectTests}, where the fail-open safety contract lives. */
 function runSelect(options: CliOptions): void {
 	const changedFiles = readChangedFiles(options) ?? [];
-	// With a base ref, read each changed package.json before/after so the
-	// devDependency-only classifier can drop a devDep-only lockfile change.
-	// No base (local dev) → omit manifests → conservative (keep lockfile broad).
-	const manifests = options.baseRef ? readManifestDiffs(changedFiles, options.baseRef) : undefined;
-	// Same for tsconfig diffs, feeding the resolution-key classifier.
-	const tsconfigs = options.baseRef ? readTsconfigDiffs(changedFiles, options.baseRef) : undefined;
+	// Content diffs feed the classifiers that need before/after to decide: the
+	// devDependency-only one (manifests), the resolution-key one (tsconfigs) and
+	// the changed-default one (configs). No base ref (local dev) → omit them all,
+	// which each classifier reads as "unproven" and keeps broad.
+	const diffs = (predicate: (file: string) => boolean) =>
+		options.baseRef ? readFileDiffs(changedFiles, options.baseRef, predicate) : undefined;
+	const manifests = diffs(isManifest);
 	// Only parse the (large) lockfile when a RUNTIME dependency actually changed —
 	// the only case the dep-graph selector (389) acts on. A devDep-only manifest
 	// change would parse it for nothing.
@@ -744,7 +774,8 @@ function runSelect(options: CliOptions): void {
 		mapFile: options.mapFile,
 		allSpecsFile: options.allSpecsFile,
 		manifests,
-		tsconfigs,
+		tsconfigs: diffs(isTsconfig),
+		configs: diffs(isBackendConfig),
 		lockfileImporters,
 		runtimeClosure: overridesChanged ? readRuntimeClosure() : undefined,
 	});

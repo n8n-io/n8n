@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
+	instanceAiReady: { value: true },
 	routerPush: vi.fn(),
 	syncThread: vi.fn(),
 	updateThreadMetadata: vi.fn(),
@@ -24,6 +25,9 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError: mocks.showError }),
 }));
+vi.mock('../composables/useInstanceAiAvailability', () => ({
+	useInstanceAiReady: () => mocks.instanceAiReady,
+}));
 vi.mock('../instanceAi.store', () => ({
 	useInstanceAiStore: () => ({
 		syncThread: mocks.syncThread,
@@ -38,22 +42,27 @@ import {
 	buildInstanceAiCredentialHandoffContext,
 	clearPendingAgentAttachment,
 	clearPendingComposerDraft,
+	clearPendingFirstMessage,
 	clearPendingHandoffContext,
 	clearPendingThreadHandoff,
+	consumePendingFirstMessage,
 	getPendingAgentAttachment,
 	getPendingComposerDraft,
 	getPendingHandoffContext,
 	provisionContextOnlyThread,
 	stashPendingAgentAttachment,
 	stashPendingComposerDraft,
+	stashPendingFirstMessage,
 	stashPendingHandoffContext,
 	useInstanceAiHandoff,
 } from '../composables/useInstanceAiHandoff';
+import type { PendingFirstMessage } from '../composables/useInstanceAiHandoff';
 
 describe('useInstanceAiHandoff', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		localStorage.clear();
+		mocks.instanceAiReady.value = true;
 		mocks.syncThread.mockResolvedValue(undefined);
 		mocks.updateThreadMetadata.mockResolvedValue(undefined);
 		mocks.deleteThread.mockResolvedValue(true);
@@ -63,7 +72,7 @@ describe('useInstanceAiHandoff', () => {
 	it('builds credential modal handoff context without empty optional fields', () => {
 		expect(
 			buildInstanceAiCredentialHandoffContext({
-				credentialType: 'gmailOAuth2Api',
+				credentialType: 'gmailOAuth2',
 				displayName: 'Gmail OAuth2 API',
 				nodeName: 'Gmail',
 				nodeType: 'n8n-nodes-base.gmail',
@@ -74,7 +83,7 @@ describe('useInstanceAiHandoff', () => {
 		).toEqual({
 			source: 'credential-modal',
 			credential: {
-				credentialType: 'gmailOAuth2Api',
+				credentialType: 'gmailOAuth2',
 				displayName: 'Gmail OAuth2 API',
 				nodeName: 'Gmail',
 				nodeType: 'n8n-nodes-base.gmail',
@@ -208,11 +217,45 @@ describe('useInstanceAiHandoff', () => {
 			projectId: 'project-1',
 		});
 
+		stashPendingFirstMessage('thread-1', { message: 'Set up the credential' });
+
 		clearPendingThreadHandoff('thread-1');
 
 		expect(getPendingHandoffContext('thread-1')).toBeNull();
 		expect(getPendingComposerDraft('thread-1')).toBeNull();
 		expect(getPendingAgentAttachment('thread-1')).toBeNull();
+		// A thread that disappears before its opening message is replayed must not leave the
+		// payload behind: nothing would ever consume it again.
+		expect(consumePendingFirstMessage('thread-1')).toBeNull();
+	});
+
+	it('drops a stashed opening message without consuming it', () => {
+		stashPendingFirstMessage('thread-1', { message: 'Set up the credential' });
+
+		clearPendingFirstMessage('thread-1');
+
+		expect(consumePendingFirstMessage('thread-1')).toBeNull();
+	});
+
+	it('round-trips an opening message with its attachments so a refused send can requeue it', () => {
+		const payload: PendingFirstMessage = {
+			message: 'Fix this workflow',
+			attachments: [{ type: 'agent', id: 'agent-1', projectId: 'project-1' }],
+			context: buildInstanceAiAgentPreviewHandoffContext({
+				agentId: 'agent-1',
+				threadId: 'preview-thread-1',
+			}),
+		};
+		stashPendingFirstMessage('thread-1', payload);
+
+		// Mirrors the thread view: consume, send, and on refusal put the payload back intact.
+		const consumed = consumePendingFirstMessage('thread-1');
+		expect(consumed).toEqual(payload);
+		expect(consumePendingFirstMessage('thread-1')).toBeNull();
+
+		stashPendingFirstMessage('thread-1', consumed!);
+
+		expect(consumePendingFirstMessage('thread-1')).toEqual(payload);
 	});
 
 	it('opens an agent artifact thread without sending a message', async () => {
@@ -305,5 +348,55 @@ describe('useInstanceAiHandoff', () => {
 		expect(opened).toBe(false);
 		expect(mocks.deleteThread).toHaveBeenCalledWith('thread-1');
 		expect(mocks.routerPush).not.toHaveBeenCalled();
+	});
+
+	describe('before setup is finished', () => {
+		beforeEach(() => {
+			mocks.instanceAiReady.value = false;
+		});
+
+		it('routes startThread to the assistant instead of sending the opening turn', async () => {
+			const { startThread } = useInstanceAiHandoff();
+
+			await startThread('project-1', 'Fix my workflow', {
+				source: 'canvas_action_button',
+				origin: 'internal',
+			});
+
+			expect(mocks.syncThread).not.toHaveBeenCalled();
+			expect(mocks.sendMessage).not.toHaveBeenCalled();
+			expect(mocks.routerPush).toHaveBeenCalledWith({ name: 'InstanceAi' });
+		});
+
+		it('routes openThreadWithContext to the assistant without minting a thread', async () => {
+			const { openThreadWithContext } = useInstanceAiHandoff();
+
+			const opened = await openThreadWithContext(
+				'project-1',
+				buildInstanceAiCredentialHandoffContext({
+					credentialType: 'gmailOAuth2',
+					displayName: 'Gmail OAuth2 API',
+				}),
+				{ source: 'credential_edit', origin: 'internal' },
+				{ newTab: true },
+			);
+
+			expect(opened).toBe(false);
+			expect(mocks.syncThread).not.toHaveBeenCalled();
+			expect(mocks.routerPush).toHaveBeenCalledWith({ name: 'InstanceAi' });
+		});
+
+		it('routes openAgentArtifactThread to the assistant without minting a thread', async () => {
+			const { openAgentArtifactThread } = useInstanceAiHandoff();
+
+			const opened = await openAgentArtifactThread(
+				{ type: 'agent', id: 'agent-1', projectId: 'project-1' },
+				{ source: 'agent_preview', origin: 'internal' },
+			);
+
+			expect(opened).toBe(false);
+			expect(mocks.syncThread).not.toHaveBeenCalled();
+			expect(mocks.routerPush).toHaveBeenCalledWith({ name: 'InstanceAi' });
+		});
 	});
 });

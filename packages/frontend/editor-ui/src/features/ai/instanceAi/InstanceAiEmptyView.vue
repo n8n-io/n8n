@@ -10,10 +10,13 @@ import { useChatInputAutoFocus } from '@n8n/design-system';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@n8n/composables/useToast';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { countAttachedNodes } from './utils/buildNodesAttachment';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { getExperimentTelemetryPayload } from '@/experiments/utils';
 import {
+	INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT,
 	INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_EXPERIMENT,
 	INSTANCE_AI_TEMPLATE_EXAMPLES_EXPERIMENT,
 } from '@/app/constants/experiments';
@@ -50,6 +53,15 @@ import {
 	type PersonalizedPromptSuggestionResolution,
 } from '@/experiments/instanceAiPersonalizedPromptSuggestions';
 import {
+	INSTANCE_AI_TAXONOMY_PROMPT_SUGGESTIONS_VERSION,
+	isPersonalizedPromptSuggestionResolution,
+	isTaxonomyPromptSuggestionResolution,
+	resolveTaxonomyPromptSuggestions,
+	resolveTaxonomySegment,
+	useInstanceAiInspirationFromTaxonomyExperiment,
+	type TaxonomyPromptSuggestionResolution,
+} from '@/experiments/instanceAiInspirationFromTaxonomy';
+import {
 	WorkflowPreviewSuggestions,
 	WorkflowPreviewCanvas,
 	INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS,
@@ -74,6 +86,7 @@ import {
 	TemplateExamplesCatalog,
 	TEMPLATE_PROMPT_SUFFIX,
 } from '@/experiments/instanceAiTemplateExamples';
+import { InstanceAiFreeNudge } from '@/experiments/instanceAiFreeNudge';
 
 // Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
 const INSTANCE_AI_PROMPT_SUGGESTIONS_V2_TITLE_KEY: BaseTextKey =
@@ -95,6 +108,8 @@ const INSTANCE_AI_SPLIT_FIXED_ROWS = 5;
 const PERSONALIZED_PROMPT_METADATA_TIMEOUT_MS = 2000;
 const INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_EXPOSURE_EVENT =
 	'Instance AI personalized prompt suggestions exposed';
+const INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPOSURE_EVENT =
+	'Instance AI inspiration from taxonomy exposed';
 
 const store = useInstanceAiStore();
 const appSettingsStore = useSettingsStore();
@@ -160,12 +175,16 @@ watch(
 const { isVariantEnabled: isSplitVariantEnabled } = useInstanceAiSplitEmptyStateExperiment();
 // Experiment cleanup: remove with instanceAiSplitEmptyState.
 const splitPreviewPromptKey = ref<BaseTextKey | null>(null);
-const splitWriting = ref(false);
+const composerHasContent = ref(false);
 const {
 	currentVariant: personalizedPromptSuggestionsVariant,
 	isTreatmentVariant: isPersonalizedPromptSuggestionsTreatmentVariant,
 	suggestionFormat: personalizedPromptSuggestionsFormat,
 } = useInstanceAiPersonalizedPromptSuggestionsExperiment();
+const {
+	currentVariant: inspirationFromTaxonomyVariant,
+	isTreatmentVariant: isInspirationFromTaxonomyTreatmentVariant,
+} = useInstanceAiInspirationFromTaxonomyExperiment();
 const showProactiveStarter = computed(() => isProactiveAgentExperimentEnabled.value);
 // Experiment cleanup: remove with instanceAiSplitEmptyState. The split layout
 // hosts the view header inside its chat column; the proactive starter (082)
@@ -180,17 +199,51 @@ const shouldTrackPersonalizedPromptSuggestionsExposure = computed(
 		!isSplitLayoutActive.value &&
 		settingsStore.isWorkflowBuilderAvailable,
 );
+const personalizedPromptSuggestionResolution = ref<
+	PersonalizedPromptSuggestionResolution | TaxonomyPromptSuggestionResolution | null
+>(null);
+const shouldShowTaxonomySuggestions = computed(() =>
+	isTaxonomyPromptSuggestionResolution(personalizedPromptSuggestionResolution.value),
+);
+const isTaxonomySegmentResolved = computed(
+	() =>
+		appSettingsStore.isCloudDeployment &&
+		cloudPlanStore.state.initialized &&
+		resolveTaxonomySegment(cloudPlanStore.currentUserCloudInfo?.information ?? null).source ===
+			'taxonomy',
+);
+const shouldTrackInspirationFromTaxonomyExposure = computed(() => {
+	if (showProactiveStarter.value || isSplitLayoutActive.value || showTemplateExamples.value) {
+		return false;
+	}
+
+	if (!settingsStore.isWorkflowBuilderAvailable) {
+		return false;
+	}
+
+	if (
+		inspirationFromTaxonomyVariant.value ===
+		INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT.control
+	) {
+		return isTaxonomySegmentResolved.value;
+	}
+
+	return shouldShowTaxonomySuggestions.value;
+});
 const activeWorkflowPreviewFile = ref<string | null>(null);
 const activeWorkflowPreview = computed(() => {
 	if (!activeWorkflowPreviewFile.value) return null;
 	return getPreviewWorkflow(activeWorkflowPreviewFile.value) ?? null;
 });
-const personalizedPromptSuggestionResolution = ref<PersonalizedPromptSuggestionResolution | null>(
-	null,
-);
 const personalizedPromptProfileOverride = usePersonalizedPromptProfileOverride();
 let personalizedPromptMetadataTimeout: ReturnType<typeof setTimeout> | null = null;
 let hasTrackedPersonalizedPromptSuggestionsExposure = false;
+let hasTrackedInspirationFromTaxonomyExposure = false;
+const isAnyPersonalizedSuggestionsTreatmentActive = computed(
+	() =>
+		isInspirationFromTaxonomyTreatmentVariant.value ||
+		isPersonalizedPromptSuggestionsTreatmentVariant.value,
+);
 
 const personalizedPromptFallbackSuggestions = computed(() =>
 	getTopUsedV2FallbackSuggestions((key) => i18n.baseText(key)),
@@ -206,6 +259,23 @@ function clearPersonalizedPromptMetadataTimeout() {
 }
 
 function setPersonalizedPromptResolution(metadataLoadState: PersonalizedPromptMetadataLoadState) {
+	if (isInspirationFromTaxonomyTreatmentVariant.value) {
+		const taxonomyResolution = resolveTaxonomyPromptSuggestions({
+			metadata: cloudPlanStore.currentUserCloudInfo?.information ?? null,
+			metadataLoadState,
+		});
+
+		if (taxonomyResolution.source === 'taxonomy') {
+			personalizedPromptSuggestionResolution.value = taxonomyResolution;
+			return;
+		}
+
+		if (!isPersonalizedPromptSuggestionsTreatmentVariant.value) {
+			personalizedPromptSuggestionResolution.value = taxonomyResolution;
+			return;
+		}
+	}
+
 	const format = personalizedPromptSuggestionsFormat.value;
 	if (!format) {
 		personalizedPromptSuggestionResolution.value = null;
@@ -227,11 +297,11 @@ function resolvePersonalizedPromptMetadata() {
 	clearPersonalizedPromptMetadataTimeout();
 	personalizedPromptSuggestionResolution.value = null;
 
-	if (!isPersonalizedPromptSuggestionsTreatmentVariant.value) {
+	if (!isAnyPersonalizedSuggestionsTreatmentActive.value) {
 		return;
 	}
 
-	if (personalizedPromptProfileOverride.value) {
+	if (!isInspirationFromTaxonomyTreatmentVariant.value && personalizedPromptProfileOverride.value) {
 		setPersonalizedPromptResolution('loaded');
 		return;
 	}
@@ -254,6 +324,7 @@ function resolvePersonalizedPromptMetadata() {
 
 watch(
 	[
+		isInspirationFromTaxonomyTreatmentVariant,
 		isPersonalizedPromptSuggestionsTreatmentVariant,
 		personalizedPromptSuggestionsFormat,
 		personalizedPromptProfileOverride,
@@ -288,10 +359,31 @@ watch(
 );
 
 watch(
+	shouldTrackInspirationFromTaxonomyExposure,
+	(shouldTrackExposure) => {
+		const variant = inspirationFromTaxonomyVariant.value;
+		if (
+			!shouldTrackExposure ||
+			hasTrackedInspirationFromTaxonomyExposure ||
+			typeof variant !== 'string'
+		) {
+			return;
+		}
+
+		telemetry.track(
+			INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPOSURE_EVENT,
+			getExperimentTelemetryPayload(INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT, variant),
+		);
+		hasTrackedInspirationFromTaxonomyExposure = true;
+	},
+	{ immediate: true },
+);
+
+watch(
 	[() => cloudPlanStore.state.initialized, () => cloudPlanStore.currentUserCloudInfo],
 	([initialized]) => {
 		if (
-			!isPersonalizedPromptSuggestionsTreatmentVariant.value ||
+			!isAnyPersonalizedSuggestionsTreatmentActive.value ||
 			personalizedPromptSuggestionResolution.value !== null ||
 			!initialized
 		) {
@@ -303,6 +395,15 @@ watch(
 	},
 );
 
+const isTaxonomySuggestionsPending = computed(
+	() =>
+		isInspirationFromTaxonomyTreatmentVariant.value &&
+		personalizedPromptSuggestionResolution.value === null,
+);
+const shouldShowPersonalizedPromptSuggestions = computed(() =>
+	isPersonalizedPromptSuggestionResolution(personalizedPromptSuggestionResolution.value),
+);
+
 // Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
 const emptyStatePromptSuggestionProps = computed(() => {
 	if (showProactiveStarter.value) {
@@ -312,9 +413,35 @@ const emptyStatePromptSuggestionProps = computed(() => {
 	if (showTemplateExamples.value) {
 		return {};
 	}
-	if (isPersonalizedPromptSuggestionsTreatmentVariant.value) {
-		const resolution = personalizedPromptSuggestionResolution.value;
 
+	if (isTaxonomySuggestionsPending.value) {
+		return {
+			suggestions: [],
+			placeholderKey: INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_PLACEHOLDER_KEY,
+		};
+	}
+
+	const resolution = personalizedPromptSuggestionResolution.value;
+	if (isTaxonomyPromptSuggestionResolution(resolution)) {
+		return {
+			suggestions: resolution.suggestions,
+			suggestionsComponent: InstanceAiPersonalizedPromptSuggestions,
+			suggestionsComponentProps: {
+				fallbackSuggestions: [],
+				format: 'list',
+				showSeeMore: resolution.showSeeMore,
+			},
+			suggestionCatalogVersion: INSTANCE_AI_TAXONOMY_PROMPT_SUGGESTIONS_VERSION,
+			suggestionTelemetryPayload: getExperimentTelemetryPayload(
+				INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT,
+				inspirationFromTaxonomyVariant.value,
+				resolution.telemetryPayload,
+			),
+			placeholderKey: INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_PLACEHOLDER_KEY,
+		};
+	}
+
+	if (isPersonalizedPromptSuggestionsTreatmentVariant.value) {
 		if (!resolution) {
 			return {
 				suggestions: [],
@@ -322,22 +449,24 @@ const emptyStatePromptSuggestionProps = computed(() => {
 			};
 		}
 
-		return {
-			suggestions: resolution.suggestions,
-			suggestionsComponent: InstanceAiPersonalizedPromptSuggestions,
-			suggestionsComponentProps: {
-				fallbackSuggestions: resolution.fallbackSuggestions,
-				format: personalizedPromptSuggestionsFormat.value,
-				showSeeMore: resolution.showSeeMore,
-			},
-			suggestionCatalogVersion: INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_VERSION,
-			suggestionTelemetryPayload: getExperimentTelemetryPayload(
-				INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_EXPERIMENT,
-				personalizedPromptSuggestionsVariant.value,
-				resolution.telemetryPayload,
-			),
-			placeholderKey: INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_PLACEHOLDER_KEY,
-		};
+		if (isPersonalizedPromptSuggestionResolution(resolution)) {
+			return {
+				suggestions: resolution.suggestions,
+				suggestionsComponent: InstanceAiPersonalizedPromptSuggestions,
+				suggestionsComponentProps: {
+					fallbackSuggestions: resolution.fallbackSuggestions,
+					format: personalizedPromptSuggestionsFormat.value,
+					showSeeMore: resolution.showSeeMore,
+				},
+				suggestionCatalogVersion: INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_VERSION,
+				suggestionTelemetryPayload: getExperimentTelemetryPayload(
+					INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_EXPERIMENT,
+					personalizedPromptSuggestionsVariant.value,
+					resolution.telemetryPayload,
+				),
+				placeholderKey: INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_PLACEHOLDER_KEY,
+			};
+		}
 	}
 
 	if (isPromptSuggestionsV2ExperimentEnabled.value) {
@@ -366,7 +495,13 @@ const emptyStateTitleKey = computed<BaseTextKey>(() => {
 	if (showTemplateExamples.value) {
 		return INSTANCE_AI_TEMPLATE_EXAMPLES_TITLE_KEY;
 	}
-	if (isPersonalizedPromptSuggestionsTreatmentVariant.value) {
+	if (
+		shouldShowTaxonomySuggestions.value ||
+		isTaxonomySuggestionsPending.value ||
+		shouldShowPersonalizedPromptSuggestions.value ||
+		(isPersonalizedPromptSuggestionsTreatmentVariant.value &&
+			personalizedPromptSuggestionResolution.value === null)
+	) {
 		return INSTANCE_AI_PROMPT_SUGGESTIONS_V2_TITLE_KEY;
 	}
 	if (isPromptSuggestionsV2ExperimentEnabled.value) {
@@ -376,6 +511,10 @@ const emptyStateTitleKey = computed<BaseTextKey>(() => {
 });
 
 const chatInputRef = ref<InstanceType<typeof InstanceAiInput> | null>(null);
+// Layout changes mount a new, empty composer.
+watch(chatInputRef, () => {
+	composerHasContent.value = false;
+});
 const isStartingThread = ref(false);
 
 watch(
@@ -458,12 +597,27 @@ onMounted(() => {
 
 onUnmounted(clearPersonalizedPromptMetadataTimeout);
 
-async function handleSubmit(message: string, attachments?: InstanceAiAttachment[]) {
+function restoreDraftAfterFailedSubmit(message: string, restoreDraft?: () => boolean) {
+	void nextTick(() => {
+		// Restore text without replacing new text or attachments.
+		if (!restoreDraft?.()) {
+			chatInputRef.value?.setTextIfEmpty(message);
+		}
+		chatInputRef.value?.focus();
+	});
+}
+
+async function handleSubmit(
+	message: string,
+	attachments?: InstanceAiAttachment[],
+	restoreDraft?: () => boolean,
+) {
 	if (!settingsStore.isWorkflowBuilderAvailable) {
 		return;
 	}
 
 	if (!selectedProject.value) {
+		restoreDraftAfterFailedSubmit(message, restoreDraft);
 		toast.showError(new Error('Please select a project before starting a thread.'), 'Send failed');
 		return;
 	}
@@ -488,16 +642,59 @@ async function handleSubmit(message: string, attachments?: InstanceAiAttachment[
 		});
 	} catch {
 		isStartingThread.value = false;
+		restoreDraftAfterFailedSubmit(message, restoreDraft);
 		toast.showError(new Error('Failed to start a new thread. Try again.'), 'Send failed');
 		return;
 	}
 
 	const thread = store.getOrCreateRuntime(threadId, selectedProject.value);
-	void thread.sendMessage(finalMessage, attachments, rootStore.pushRef);
-	void router.replace({
-		name: INSTANCE_AI_THREAD_VIEW,
-		params: { threadId },
-	});
+	// Await admission before navigating. A refused send (e.g. a concurrency cap) must not
+	// drop the user into a blank thread, and handing the draft to the destination view is
+	// not an option: it reads its composer draft from localStorage once, synchronously, on
+	// mount, which always precedes this response. `sendMessage` has already surfaced the
+	// reason, so restore what was typed and stay put.
+	const sent = await thread.sendMessage(finalMessage, attachments, rootStore.pushRef);
+	if (!sent) {
+		isStartingThread.value = false;
+		restoreDraftAfterFailedSubmit(message, restoreDraft);
+		// `syncThread` already persisted the thread and `sendMessage` already opened its SSE,
+		// so without this every refusal would strand a blank thread in the sidebar and leave
+		// an EventSource open behind it (deleting disposes the runtime, which closes it).
+		// Discarding it also keeps the server's view matching what the user was just told: if
+		// a run did start but its response never arrived, this tears it down rather than
+		// leaving it burning credits on a conversation they believe never began. Runs after
+		// the restore is queued so cleanup can never delay giving the draft back.
+		//
+		// Silent because the refusal was already reported; a second "delete failed" for
+		// cleanup the user never asked for would only confuse. A refused delete returns
+		// early, before the store's own teardown, so dispose the runtime here -- the thread
+		// itself does still exist and rightly stays listed, but its EventSource was opened
+		// for a turn that never started and nothing else would ever close it.
+		if (!(await store.deleteThread(threadId, { silent: true }))) {
+			store.disposeRuntime(threadId);
+		}
+		return;
+	}
+
+	// Track message-with-nodes only after a successful send, so refused sends and
+	// retries don't inflate the node-count metric.
+	const nodeCount = countAttachedNodes(attachments);
+	if (nodeCount > 0) {
+		telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_CHAT_MESSAGE_WITH_NODES, {
+			node_count: nodeCount,
+		});
+	}
+
+	try {
+		await router.replace({
+			name: INSTANCE_AI_THREAD_VIEW,
+			params: { threadId },
+		});
+	} catch (error) {
+		toast.showError(error, i18n.baseText('generic.error'));
+	} finally {
+		isStartingThread.value = false;
+	}
 }
 
 function handleShelfSuggestionSubmit(payload: {
@@ -522,7 +719,10 @@ function handleShelfSuggestionInsert(payload: {
 
 <template>
 	<div :class="$style.chatArea">
-		<InstanceAiViewHeader v-if="!isSplitLayoutActive" />
+		<InstanceAiViewHeader
+			v-if="!isSplitLayoutActive"
+			:show-thread-history-label="!isStartingThread"
+		/>
 
 		<div :class="$style.contentArea">
 			<div v-if="showProactiveStarter" :class="$style.proactiveLayout">
@@ -532,7 +732,6 @@ function handleShelfSuggestionInsert(payload: {
 				<div :class="$style.proactiveInput">
 					<CreditWarningBanner
 						v-if="creditBanner.visible.value"
-						variant="standalone"
 						:credits-remaining="store.creditsRemaining"
 						:credits-quota="store.creditsQuota"
 						:amounts-hidden="quotaLocked"
@@ -545,8 +744,9 @@ function handleShelfSuggestionInsert(payload: {
 						:is-submitting="isStartingThread"
 						:is-workflow-builder-available="settingsStore.isWorkflowBuilderAvailable"
 						@submit="handleSubmit"
+						@content-change="composerHasContent = $event"
 					>
-						<template #footer v-if="projectsStore.myProjects.length > 1">
+						<template v-if="projectsStore.myProjects.length > 1" #footer>
 							<div :class="$style.inputFooter">
 								<ProjectSelect v-model="selectedProject" />
 							</div>
@@ -558,13 +758,13 @@ function handleShelfSuggestionInsert(payload: {
 				v-else-if="isSplitVariantEnabled"
 				:project-id="selectedProject"
 				:disabled="isStartingThread || !settingsStore.isWorkflowBuilderAvailable"
-				:writing="splitWriting"
+				:writing="composerHasContent"
 				@submit-suggestion="handleShelfSuggestionSubmit"
 				@insert-suggestion="handleShelfSuggestionInsert"
 				@example-change="(_i, key) => (splitPreviewPromptKey = key)"
 			>
 				<template #header>
-					<InstanceAiViewHeader />
+					<InstanceAiViewHeader :show-thread-history-label="!isStartingThread" />
 				</template>
 				<template #input>
 					<div :class="$style.centeredInput">
@@ -582,13 +782,13 @@ function handleShelfSuggestionInsert(payload: {
 							:is-submitting="isStartingThread"
 							:is-workflow-builder-available="settingsStore.isWorkflowBuilderAvailable"
 							:placeholder-key="INSTANCE_AI_SPLIT_EMPTY_STATE_PLACEHOLDER_KEY"
-							:preview-prompt-key="splitWriting ? null : splitPreviewPromptKey"
+							:preview-prompt-key="composerHasContent ? null : splitPreviewPromptKey"
 							:fixed-rows="INSTANCE_AI_SPLIT_FIXED_ROWS"
 							:submit-label="i18n.baseText('experiments.instanceAiSplitEmptyState.cta.buildWithAi')"
 							:submit-active-requires-focus="true"
 							:suggestion-catalog-version="INSTANCE_AI_SPLIT_EMPTY_STATE_SUGGESTIONS_VERSION"
 							@submit="handleSubmit"
-							@content-change="splitWriting = $event"
+							@content-change="composerHasContent = $event"
 						>
 							<template v-if="projectsStore.myProjects.length > 1" #footer>
 								<div :class="$style.inputFooter" data-test-id="instance-ai-split-project-select">
@@ -601,10 +801,16 @@ function handleShelfSuggestionInsert(payload: {
 			</InstanceAiSplitEmptyState>
 			<div v-else ref="emptyLayout" :class="$style.emptyLayout">
 				<InstanceAiEmptyState :title-key="emptyStateTitleKey" :show-title-icon="true" />
-				<div ref="centeredInput" :class="[$style.centeredInput, inputPulsing && $style.inputPulse]">
+				<div ref="centeredInput" :class="$style.centeredInput">
+					<InstanceAiFreeNudge
+						:eligible="
+							store.creditsQuota !== undefined &&
+							!creditBanner.visible.value &&
+							settingsStore.isWorkflowBuilderAvailable
+						"
+					/>
 					<CreditWarningBanner
 						v-if="creditBanner.visible.value"
-						variant="standalone"
 						:credits-remaining="store.creditsRemaining"
 						:credits-quota="store.creditsQuota"
 						:amounts-hidden="quotaLocked"
@@ -614,6 +820,7 @@ function handleShelfSuggestionInsert(payload: {
 					<WorkflowBuilderUnavailableNotice v-if="!settingsStore.isWorkflowBuilderAvailable" />
 					<InstanceAiInput
 						ref="chatInputRef"
+						:class="inputPulsing && $style.inputPulse"
 						:is-submitting="isStartingThread"
 						:is-workflow-builder-available="settingsStore.isWorkflowBuilderAvailable"
 						:contextual-suggestion="templatePreviewPrompt"
@@ -624,8 +831,9 @@ function handleShelfSuggestionInsert(payload: {
 						v-bind="emptyStatePromptSuggestionProps"
 						@submit="handleSubmit"
 						@workflow-preview="handleWorkflowPreview"
+						@content-change="composerHasContent = $event"
 					>
-						<template #footer v-if="projectsStore.myProjects.length > 1">
+						<template v-if="projectsStore.myProjects.length > 1" #footer>
 							<div :class="$style.inputFooter">
 								<ProjectSelect v-model="selectedProject" />
 							</div>

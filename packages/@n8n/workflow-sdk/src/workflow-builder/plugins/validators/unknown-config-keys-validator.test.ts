@@ -42,6 +42,18 @@ describe('unknownConfigKeysValidator', () => {
 	});
 
 	describe('validateNode', () => {
+		it('accepts a declared node id as a known config key', () => {
+			const node = createMockNode({ id: 'saved-node-id', parameters: {} }, 'Code');
+
+			const issues = unknownConfigKeysValidator.validateNode(
+				node,
+				createGraphNode(node),
+				createMockPluginContext(),
+			);
+
+			expect(issues).toHaveLength(0);
+		});
+
 		it('returns UNKNOWN_CONFIG_KEY warning when node parameters are at the top level of config', () => {
 			const node = createMockNode(
 				{

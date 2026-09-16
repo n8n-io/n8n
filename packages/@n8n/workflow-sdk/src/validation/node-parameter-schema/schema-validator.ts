@@ -30,6 +30,12 @@ export interface SchemaValidationResult {
 	errors: Array<{
 		path: string;
 		message: string;
+		/**
+		 * The only problem is an omitted `resource`/`operation`/`mode` discriminator.
+		 * n8n falls back to the node default at runtime (the editor strips default
+		 * values on save), so consumers may treat this as non-blocking.
+		 */
+		missingDiscriminator?: boolean;
 	}>;
 }
 
@@ -461,11 +467,19 @@ function collectAllDiscriminatorValues(
 	return [...new Set(values)];
 }
 
+/** Formatted issue with structured metadata alongside the human-readable message. */
+interface FormattedIssue {
+	message: string;
+	missingDiscriminator?: boolean;
+}
+
 /**
  * Extract the most useful error information from union validation failures.
  * Returns a clear, actionable error message summarizing what went wrong.
  */
-function extractUnionErrorSummary(unionErrors: Array<{ issues: ZodIssue[] }>): string | null {
+function extractUnionErrorSummary(
+	unionErrors: Array<{ issues: ZodIssue[] }>,
+): FormattedIssue | null {
 	// Find the best matching variant and collect its issues (handles nested unions)
 	const bestPathIssues = collectIssuesFromBestPath(unionErrors);
 
@@ -504,7 +518,24 @@ function extractUnionErrorSummary(unionErrors: Array<{ issues: ZodIssue[] }>): s
 
 					const expectedStr = expectedValues.map((v) => `"${String(v)}"`).join(', ');
 					if (receivedValue === undefined) {
-						return `Missing discriminator "${path}". Expected one of: ${expectedStr}. When "${field}" is omitted, n8n falls back to the node default at runtime (the editor strips default values on save), so this can be intentional. If you set it, make sure "${field}" is inside "parameters".`;
+						// The downgrade signal only applies when there EXISTS a variant this
+						// config satisfies apart from the omitted discriminator(s). Quantified
+						// over all variants, not the best-path one: best-path selection breaks
+						// score ties by order, so a variant failing only on discriminators
+						// could win while the config satisfies no variant at all.
+						const isOmittedDiscriminator = (iss: ZodIssue) =>
+							iss.code === 'invalid_literal' &&
+							(iss as { received?: unknown }).received === undefined &&
+							discriminatorFields.some((discriminator) =>
+								iss.path.join('.').endsWith(discriminator),
+							);
+						const onlyOmittedDiscriminators = unionErrors.some((unionError) =>
+							unionError.issues.every(isOmittedDiscriminator),
+						);
+						return {
+							message: `Missing discriminator "${path}". Expected one of: ${expectedStr}. When "${field}" is omitted, n8n falls back to the node default at runtime (the editor strips default values on save), so this can be intentional. If you set it, make sure "${field}" is inside "parameters".`,
+							...(onlyOmittedDiscriminators ? { missingDiscriminator: true } : {}),
+						};
 					}
 					let receivedStr: string;
 					if (typeof receivedValue === 'object') {
@@ -513,7 +544,9 @@ function extractUnionErrorSummary(unionErrors: Array<{ issues: ZodIssue[] }>): s
 						// eslint-disable-next-line @typescript-eslint/no-base-to-string -- Object case handled above
 						receivedStr = String(receivedValue);
 					}
-					return `Invalid value for "${path}": got "${receivedStr}", expected one of: ${expectedStr}.`;
+					return {
+						message: `Invalid value for "${path}": got "${receivedStr}", expected one of: ${expectedStr}.`,
+					};
 				}
 			}
 		}
@@ -544,7 +577,7 @@ function extractUnionErrorSummary(unionErrors: Array<{ issues: ZodIssue[] }>): s
 
 		if (uniqueMismatches.size === 1) {
 			const [path, { expected, received }] = [...uniqueMismatches.entries()][0];
-			return `Field "${path}" has wrong type: expected ${expected}, got ${received}.`;
+			return { message: `Field "${path}" has wrong type: expected ${expected}, got ${received}.` };
 		}
 
 		// Multiple type mismatches - summarize
@@ -554,7 +587,7 @@ function extractUnionErrorSummary(unionErrors: Array<{ issues: ZodIssue[] }>): s
 			return `"${p}" (expected ${expected}, got ${received})`;
 		});
 		const more = uniqueMismatches.size > 3 ? ` and ${uniqueMismatches.size - 3} more` : '';
-		return `Type mismatches: ${summaries.join(', ')}${more}.`;
+		return { message: `Type mismatches: ${summaries.join(', ')}${more}.` };
 	}
 
 	// Fallback: show the first few specific issues
@@ -569,7 +602,7 @@ function extractUnionErrorSummary(unionErrors: Array<{ issues: ZodIssue[] }>): s
 			}
 			return `"${path}": ${iss.message}`;
 		});
-		return `Validation failed: ${summaries.join('; ')}.`;
+		return { message: `Validation failed: ${summaries.join('; ')}.` };
 	}
 
 	return null;
@@ -593,9 +626,10 @@ function formatInvalidType(issue: ZodIssue, path: string): string {
 }
 
 /**
- * Format invalid_union issues
+ * Format invalid_union issues. Returns structured metadata so callers can tell
+ * a missing-discriminator finding apart from other union failures.
  */
-function formatInvalidUnion(issue: ZodIssue, path: string): string {
+function formatInvalidUnion(issue: ZodIssue, path: string): FormattedIssue {
 	if ('unionErrors' in issue && Array.isArray(issue.unionErrors)) {
 		// Check if all union errors are about undefined/missing value
 		const allMissing = issue.unionErrors.every((ue) =>
@@ -604,7 +638,7 @@ function formatInvalidUnion(issue: ZodIssue, path: string): string {
 			),
 		);
 		if (allMissing) {
-			return `Required field "${path}" is missing.`;
+			return { message: `Required field "${path}" is missing.` };
 		}
 
 		// Extract the most useful error summary from the union
@@ -613,7 +647,7 @@ function formatInvalidUnion(issue: ZodIssue, path: string): string {
 			return errorSummary;
 		}
 	}
-	return `Field "${path}" has invalid value. None of the expected types matched.`;
+	return { message: `Field "${path}" has invalid value. None of the expected types matched.` };
 }
 
 /**
@@ -680,7 +714,6 @@ function formatUnrecognizedKeys(issue: ZodIssue, path: string): string {
  */
 const ISSUE_FORMATTERS: Partial<Record<string, IssueFormatter>> = {
 	invalid_type: formatInvalidType,
-	invalid_union: formatInvalidUnion,
 	invalid_literal: formatInvalidLiteral,
 	invalid_enum_value: formatInvalidEnum,
 	too_small: formatTooSmall,
@@ -691,26 +724,35 @@ const ISSUE_FORMATTERS: Partial<Record<string, IssueFormatter>> = {
 /**
  * Format a single Zod issue into a clear, actionable error message
  */
-function formatZodIssue(issue: ZodIssue): string {
+function formatZodIssue(issue: ZodIssue): FormattedIssue {
 	const path = issue.path.length > 0 ? issue.path.join('.') : 'config';
-	const formatter = ISSUE_FORMATTERS[issue.code];
 
+	// Union issues carry structured metadata (missing-discriminator detection)
+	if (issue.code === 'invalid_union') {
+		return formatInvalidUnion(issue, path);
+	}
+
+	const formatter = ISSUE_FORMATTERS[issue.code];
 	if (formatter) {
-		return formatter(issue, path);
+		return { message: formatter(issue, path) };
 	}
 
 	// Fallback to Zod's default message with path context
-	return `Field "${path}": ${issue.message}`;
+	return { message: `Field "${path}": ${issue.message}` };
 }
 
 /**
  * Convert Zod issues to our error format with clear, actionable messages
  */
-function formatZodErrors(issues: ZodIssue[]): Array<{ path: string; message: string }> {
-	return issues.map((issue) => ({
-		path: issue.path.join('.'),
-		message: formatZodIssue(issue),
-	}));
+function formatZodErrors(issues: ZodIssue[]): SchemaValidationResult['errors'] {
+	return issues.map((issue) => {
+		const { message, missingDiscriminator } = formatZodIssue(issue);
+		return {
+			path: issue.path.join('.'),
+			message,
+			...(missingDiscriminator ? { missingDiscriminator } : {}),
+		};
+	});
 }
 
 /**

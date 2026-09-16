@@ -12,6 +12,9 @@
                     "content_type": {
                         "type": "string"
                     },
+                    "duration_secs": {
+                        "type": "number"
+                    },
                     "filename": {
                         "type": "string"
                     },
@@ -118,6 +121,9 @@
                     "description": {
                         "type": "string"
                     },
+                    "timestamp": {
+                        "type": "string"
+                    },
                     "title": {
                         "type": "string"
                     },
@@ -205,5 +211,5 @@
             "type": "integer"
         }
     },
-    "version": 2
+    "version": 3
 }

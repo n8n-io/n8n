@@ -1,7 +1,7 @@
 import { testTriggerNode } from '@test/nodes/TriggerHelpers';
 import { mockDeep } from 'vitest-mock-extended';
 import { NodeOperationError } from 'n8n-workflow';
-import type { IRun, ITriggerFunctions } from 'n8n-workflow';
+import type { IDataObject, IRun, ITriggerFunctions } from 'n8n-workflow';
 
 import { AmqpTrigger } from './AmqpTrigger.node';
 
@@ -15,6 +15,7 @@ const mockConnection = {
 	open_receiver: mockOpenReceiver,
 	close: mockClose,
 };
+const mockConnect = vi.fn(() => mockConnection);
 
 vi.mock('rhea', () => ({
 	create_container: vi.fn(() => ({
@@ -24,9 +25,18 @@ vi.mock('rhea', () => ({
 		removeAllListeners: vi.fn((event: string) => {
 			delete eventHandlers[event];
 		}),
-		connect: vi.fn(() => mockConnection),
+		connect: mockConnect,
 	})),
 }));
+
+const detachForced = {
+	receiver: {
+		error: {
+			condition: 'amqp:link:detach-forced',
+			description: 'Idle timeout: 00:10:00',
+		},
+	},
+};
 
 describe('AMQP Trigger Node', () => {
 	beforeEach(() => {
@@ -472,5 +482,220 @@ describe('AMQP Trigger Node', () => {
 		vi.advanceTimersByTime(10);
 		vi.useRealTimers();
 		expect(addCreditSpy).toHaveBeenCalledWith(1);
+	});
+
+	describe('when the broker detaches the receiver link', () => {
+		// every test here leaves a pending reattach timer behind, which would fire
+		// into the shared mocks of a later test
+		let closeTrigger: (() => Promise<void>) | undefined;
+
+		const startTrigger = async (options: IDataObject = {}) => {
+			const started = await testTriggerNode(AmqpTrigger, {
+				mode: 'trigger',
+				node: { parameters: { sink: 'queue://test', options } },
+				credential: { hostname: 'localhost', port: 5672 },
+			});
+			closeTrigger = started.close;
+			return started;
+		};
+
+		const forceDetach = (context: unknown = detachForced) => {
+			expect(eventHandlers['receiver_close'], 'no receiver_close handler registered').toBeTypeOf(
+				'function',
+			);
+			eventHandlers['receiver_close'](context);
+		};
+
+		afterEach(async () => {
+			await closeTrigger?.();
+			closeTrigger = undefined;
+			vi.useRealTimers();
+		});
+
+		it('should reopen the receiver with the original options', async () => {
+			await startTrigger();
+
+			vi.useFakeTimers();
+			forceDetach();
+			await vi.advanceTimersByTimeAsync(100);
+
+			expect(mockOpenReceiver).toHaveBeenCalledTimes(2);
+			expect(mockOpenReceiver).toHaveBeenLastCalledWith(
+				expect.objectContaining({
+					source: expect.objectContaining({ address: 'queue://test' }),
+					credit_window: 0,
+				}),
+			);
+		});
+
+		it('should log the detach with the peer condition and description', async () => {
+			const { logger } = await startTrigger();
+
+			forceDetach();
+
+			expect(logger.info).toHaveBeenCalledWith(
+				expect.stringContaining('detached'),
+				expect.objectContaining({
+					condition: 'amqp:link:detach-forced',
+					description: 'Idle timeout: 00:10:00',
+				}),
+			);
+		});
+
+		it('should reattach after a detach that carries no error', async () => {
+			const { logger } = await startTrigger();
+
+			vi.useFakeTimers();
+			forceDetach({ receiver: {} });
+			await vi.advanceTimersByTimeAsync(100);
+
+			expect(mockOpenReceiver).toHaveBeenCalledTimes(2);
+			expect(logger.info).toHaveBeenCalledWith(expect.stringContaining('detached'), {
+				condition: undefined,
+				description: undefined,
+			});
+		});
+
+		it('should not reopen the receiver when the link reattaches before the timer fires', async () => {
+			await startTrigger();
+
+			vi.useFakeTimers();
+			forceDetach();
+			// a connection-level reconnect can reattach the link while the timer is pending
+			eventHandlers['receiver_open']({ receiver: { add_credit: vi.fn() } });
+			await vi.advanceTimersByTimeAsync(60_000);
+
+			expect(mockOpenReceiver).toHaveBeenCalledTimes(1);
+		});
+
+		it('should leave a connection-level disconnect to rhea, which reattaches links itself', async () => {
+			await startTrigger();
+
+			vi.useFakeTimers();
+			eventHandlers['disconnected']({ reconnecting: true });
+			await vi.advanceTimersByTimeAsync(60_000);
+
+			expect(mockOpenReceiver).toHaveBeenCalledTimes(1);
+		});
+
+		it('should not grant credit to the detached link while it is down', async () => {
+			const addCreditSpy = vi.fn();
+			await startTrigger({ pullMessagesNumber: 3, sleepTime: 500 });
+
+			const receiver = { add_credit: addCreditSpy };
+			eventHandlers['receiver_open']({ receiver });
+
+			vi.useFakeTimers();
+			await Promise.resolve(
+				eventHandlers['message']({ message: { body: 'a', message_id: 1 }, receiver }),
+			);
+			forceDetach();
+			addCreditSpy.mockClear();
+
+			// the execution finishes while the link is detached
+			await vi.advanceTimersByTimeAsync(500);
+
+			expect(addCreditSpy).not.toHaveBeenCalled();
+		});
+
+		it('should grant credit to the reattached receiver, not the detached one', async () => {
+			const detachedAddCredit = vi.fn();
+			const reattachedAddCredit = vi.fn();
+			await startTrigger({ pullMessagesNumber: 3, sleepTime: 500 });
+
+			const detachedReceiver = { add_credit: detachedAddCredit };
+			eventHandlers['receiver_open']({ receiver: detachedReceiver });
+
+			vi.useFakeTimers();
+			await Promise.resolve(
+				eventHandlers['message']({
+					message: { body: 'a', message_id: 1 },
+					receiver: detachedReceiver,
+				}),
+			);
+			forceDetach();
+			await vi.advanceTimersByTimeAsync(100);
+			detachedAddCredit.mockClear();
+
+			// the reattached link starts with the free slots only, the in-flight message still holds one
+			eventHandlers['receiver_open']({ receiver: { add_credit: reattachedAddCredit } });
+			expect(reattachedAddCredit).toHaveBeenLastCalledWith(2);
+
+			await vi.advanceTimersByTimeAsync(500);
+			expect(reattachedAddCredit).toHaveBeenLastCalledWith(1);
+			expect(detachedAddCredit).not.toHaveBeenCalled();
+		});
+
+		it('should back off between reopen attempts and stop at the reconnect limit', async () => {
+			const { emitError } = await startTrigger({ reconnectLimit: 2 });
+
+			vi.useFakeTimers();
+			forceDetach();
+			await vi.advanceTimersByTimeAsync(100);
+			expect(mockOpenReceiver).toHaveBeenCalledTimes(2);
+
+			// the reopened link is detached again before it ever attaches
+			forceDetach();
+			await vi.advanceTimersByTimeAsync(100);
+			expect(mockOpenReceiver).toHaveBeenCalledTimes(2);
+			await vi.advanceTimersByTimeAsync(100);
+			expect(mockOpenReceiver).toHaveBeenCalledTimes(3);
+
+			forceDetach();
+			await vi.advanceTimersByTimeAsync(60_000);
+			expect(mockOpenReceiver).toHaveBeenCalledTimes(3);
+			expect(emitError).toHaveBeenCalledWith(expect.any(NodeOperationError));
+		});
+
+		it('should reset the backoff once the receiver reattaches', async () => {
+			await startTrigger({ reconnectLimit: 1 });
+
+			vi.useFakeTimers();
+			forceDetach();
+			await vi.advanceTimersByTimeAsync(100);
+			eventHandlers['receiver_open']({ receiver: { add_credit: vi.fn() } });
+
+			forceDetach();
+			await vi.advanceTimersByTimeAsync(100);
+
+			expect(mockOpenReceiver).toHaveBeenCalledTimes(3);
+		});
+
+		it('should report an error instead of reopening when reconnect is disabled', async () => {
+			const { emitError, logger } = await startTrigger({ reconnect: false });
+
+			vi.useFakeTimers();
+			forceDetach();
+			await vi.advanceTimersByTimeAsync(60_000);
+
+			expect(mockOpenReceiver).toHaveBeenCalledTimes(1);
+			expect(emitError).toHaveBeenCalledWith(expect.any(NodeOperationError));
+			// the peer's reason is most valuable on the detach that is not recoverable
+			expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('detached'), {
+				condition: 'amqp:link:detach-forced',
+				description: 'Idle timeout: 00:10:00',
+			});
+		});
+
+		it('should not reopen the receiver after the trigger was closed', async () => {
+			const { close } = await startTrigger();
+
+			vi.useFakeTimers();
+			forceDetach();
+			await close();
+			await vi.advanceTimersByTimeAsync(60_000);
+
+			expect(mockOpenReceiver).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	it('should pass the reconnect option through to the connection', async () => {
+		await testTriggerNode(AmqpTrigger, {
+			mode: 'trigger',
+			node: { parameters: { sink: 'queue://test', options: { reconnect: false } } },
+			credential: { hostname: 'localhost', port: 5672 },
+		});
+
+		expect(mockConnect).toHaveBeenCalledWith(expect.objectContaining({ reconnect: false }));
 	});
 });

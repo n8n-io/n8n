@@ -1,3 +1,4 @@
+import type { PublicApiContext } from '@n8n/rest-api-client';
 import { randomString, setGlobalState } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
@@ -129,7 +130,7 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 		pushRef: state.value.pushRef,
 	}));
 
-	const publicApiContext = computed(() => ({
+	const publicApiContext = computed<PublicApiContext>(() => ({
 		baseUrl: `${state.value.baseUrl}${state.value.publicApiPath}`,
 	}));
 

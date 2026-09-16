@@ -13,10 +13,11 @@ import {
 	type INodeInputConfiguration,
 	type INodeOutputConfiguration,
 	type INodeTypeDescription,
+	type INodeTypes,
 	type IWorkflowGroup,
 	type NodeConnectionType,
 } from './interfaces';
-import { isTriggerNode } from './node-helpers';
+import { isTriggerNode, isTriggerNodeType } from './node-helpers';
 
 type NodeIo = NodeConnectionType | INodeInputConfiguration | INodeOutputConfiguration;
 type IODirection = 'inputs' | 'outputs';
@@ -25,12 +26,112 @@ type IODirection = 'inputs' | 'outputs';
 export const GROUP_DESCRIPTION_MAX_LENGTH = 145;
 
 /**
+ * How many boxes a reader should see on the canvas with every group collapsed:
+ * the trigger, each group, and each ungrouped node. Shared by the grouping
+ * guidance and the build-time check so the number cannot drift between them.
+ */
+export const TOP_LEVEL_ITEM_CEILING = 7;
+
+/**
  * Drops non-string values, caps to the max length, and treats empty as "no description".
  */
 export function normalizeGroupDescription(description: unknown): string | undefined {
 	if (typeof description !== 'string') return undefined;
 	const capped = description.slice(0, GROUP_DESCRIPTION_MAX_LENGTH);
 	return capped.length > 0 ? capped : undefined;
+}
+
+/** Issue code shared by every surface that reports the collapsed box count. */
+export const TOP_LEVEL_ITEMS_OVER_CEILING_CODE = 'TOP_LEVEL_ITEMS_OVER_CEILING';
+
+export type TopLevelItemsSummary = {
+	/** Boxes on the canvas with every group collapsed: groups plus ungrouped nodes. */
+	total: number;
+	groupCount: number;
+	ceiling: number;
+	overCeiling: boolean;
+	/** Ungrouped nodes that draw a box, the trigger included. */
+	ungroupedNodeNames: string[];
+	/** Ungrouped nodes a group could still hold; a trigger cannot join one. */
+	groupableNodeNames: string[];
+};
+
+type TopLevelItemsNode = Pick<INode, 'type'> & { id?: string; name?: string };
+
+/**
+ * Names of the nodes that reach their parent over non-main connections only. A
+ * sub-node rides with its parent on the canvas, so it is not a box of its own.
+ */
+export function collectSubNodeNames(
+	connectionsBySourceNode: IConnections | undefined,
+): Set<string> {
+	const subNodeNames = new Set<string>();
+
+	for (const [nodeName, connectionsByType] of Object.entries(connectionsBySourceNode ?? {})) {
+		// An empty slot (`ai_tool: [[]]`) is not a connection, so it must not make a sub-node.
+		const connectedTypes = Object.entries(connectionsByType)
+			.filter(([, outputs]) => outputs.some((targets) => (targets?.length ?? 0) > 0))
+			.map(([type]) => type);
+
+		if (
+			connectedTypes.length > 0 &&
+			connectedTypes.every((type) => type !== NodeConnectionTypes.Main)
+		) {
+			subNodeNames.add(nodeName);
+		}
+	}
+
+	return subNodeNames;
+}
+
+/**
+ * Counts the boxes a reader sees with every group collapsed. Sticky notes and
+ * sub-nodes do not count: a sticky belongs to the user, a sub-node rides with its
+ * parent. Shared by the Instance AI build and the MCP save tools so both report
+ * the same number the grouping guidance states.
+ */
+export function summarizeTopLevelItems(input: {
+	nodes: TopLevelItemsNode[];
+	nodeGroups?: Array<Pick<IWorkflowGroup, 'nodeIds'>>;
+	connectionsBySourceNode?: IConnections;
+}): TopLevelItemsSummary {
+	const groups = input.nodeGroups ?? [];
+	const groupedNodeIds = new Set(groups.flatMap((group) => group.nodeIds));
+	const subNodeNames = collectSubNodeNames(input.connectionsBySourceNode);
+
+	const ungrouped = input.nodes.filter((node) => {
+		const isSticky = node.type === STICKY_NODE_TYPE;
+		const isGrouped = node.id !== undefined && groupedNodeIds.has(node.id);
+		const isSubNode = node.name !== undefined && subNodeNames.has(node.name);
+
+		return !isSticky && !isGrouped && !isSubNode;
+	});
+
+	const labelOf = (node: TopLevelItemsNode) => node.name ?? node.id ?? node.type;
+	const total = groups.length + ungrouped.length;
+
+	return {
+		total,
+		groupCount: groups.length,
+		ceiling: TOP_LEVEL_ITEM_CEILING,
+		overCeiling: total > TOP_LEVEL_ITEM_CEILING,
+		ungroupedNodeNames: ungrouped.map(labelOf),
+		groupableNodeNames: ungrouped.filter((node) => !isTriggerNodeType(node.type)).map(labelOf),
+	};
+}
+
+/** The over-ceiling message, worded once so every surface tells the agent the same thing. */
+export function formatTopLevelItemsMessage(summary: TopLevelItemsSummary): string {
+	const stillUngrouped =
+		summary.groupableNodeNames.length > 0
+			? `. Still ungrouped: ${summary.groupableNodeNames.join(', ')}`
+			: '';
+
+	return (
+		`The canvas top level has ${summary.total} boxes with every group collapsed, over the ${summary.ceiling} you should aim for` +
+		stillUngrouped +
+		'. Group any stage that can form a valid group and build again, or say why each of them cannot join one.'
+	);
 }
 
 export type NodeGroupingValidationInput<TNode extends INode = INode> = {
@@ -84,9 +185,13 @@ export const NODE_GROUPING_RULES = {
 		sdkReference:
 			'**One connected section with a single entry and exit.** The connectable members must ' +
 			'form a single connected section of the graph — reachable from one another, not two ' +
-			'unrelated islands — with at most one incoming and one outgoing main connection crossing ' +
-			'the group boundary. Sticky notes may accompany the selection without participating in ' +
-			'connectivity, and a sticky-only group is valid.',
+			'unrelated islands — where at most one member takes main input from outside the group and ' +
+			'has no predecessor inside, and at most one member sends main output outside it and has no ' +
+			'successor inside (the one exception: a closed loop whose only exit is the loop node) — so ' +
+			'a gate cannot hold only its dead end. The limit is on members facing outward, not on connections: ' +
+			'several connections may reach that one entry member, and several may leave that one exit ' +
+			'member. Sticky notes may accompany the selection ' +
+			'without participating in connectivity, and a sticky-only group is valid.',
 		violation: 'must form a single connected subgraph with a single entry and exit',
 	},
 	nonMainBoundary: {
@@ -191,6 +296,8 @@ export type WorkflowGroupViolation = {
 	message: string;
 };
 
+type WorkflowGroupViolationWithGroup = WorkflowGroupViolation & { group: IWorkflowGroup };
+
 export type WorkflowGroupsValidationInput<TNode extends INode = INode> = {
 	nodes: TNode[];
 	connectionsBySourceNode?: IConnections;
@@ -206,6 +313,23 @@ export type WorkflowGroupsValidationInput<TNode extends INode = INode> = {
 export type WorkflowGroupsValidationResult =
 	| { valid: true }
 	| { valid: false; violations: [WorkflowGroupViolation, ...WorkflowGroupViolation[]] };
+
+export type GetNodeTypeForGrouping = (node: INode) => INodeTypeDescription | null;
+
+/**
+ * Builds the `getNodeType` callback that the grouping validator needs to resolve
+ * a node to its type description. Returns `null` for unknown node types so
+ * validation degrades gracefully rather than throwing.
+ */
+export function makeGetNodeTypeForGrouping(nodeTypes: INodeTypes): GetNodeTypeForGrouping {
+	return (node: INode) => {
+		try {
+			return nodeTypes.getByNameAndVersion(node.type, node.typeVersion).description;
+		} catch {
+			return null;
+		}
+	};
+}
 
 /**
  * Validates a workflow's `nodeGroups` without throwing, collecting all violations.
@@ -237,9 +361,39 @@ export function validateWorkflowGroups<TNode extends INode>({
 	nodeGroups,
 	getNodeType,
 }: WorkflowGroupsValidationInput<TNode>): WorkflowGroupsValidationResult {
+	const result = validateWorkflowGroupsWithGroupIdentity({
+		nodes,
+		connectionsBySourceNode,
+		nodeGroups,
+		getNodeType,
+	});
+
+	if (result.valid) return { valid: true };
+
+	const [firstViolation, ...restViolations] = result.violations;
+	return {
+		valid: false,
+		violations: [
+			stripWorkflowGroupIdentity(firstViolation),
+			...restViolations.map(stripWorkflowGroupIdentity),
+		],
+	};
+}
+
+function validateWorkflowGroupsWithGroupIdentity<TNode extends INode>({
+	nodes,
+	connectionsBySourceNode,
+	nodeGroups,
+	getNodeType,
+}: WorkflowGroupsValidationInput<TNode>):
+	| { valid: true }
+	| {
+			valid: false;
+			violations: [WorkflowGroupViolationWithGroup, ...WorkflowGroupViolationWithGroup[]];
+	  } {
 	if (!nodeGroups || nodeGroups.length === 0) return { valid: true };
 
-	const violations: WorkflowGroupViolation[] = [];
+	const violations: WorkflowGroupViolationWithGroup[] = [];
 	// Tracked by object identity: duplicate IDs/names make `group.id` ambiguous.
 	const groupsWithBasicViolations = new Set<IWorkflowGroup>();
 	const addViolation = (
@@ -247,7 +401,7 @@ export function validateWorkflowGroups<TNode extends INode>({
 		code: WorkflowGroupViolationCode,
 		message: string,
 	) => {
-		violations.push({ groupId: group.id, groupName: group.name, code, message });
+		violations.push({ group, groupId: group.id, groupName: group.name, code, message });
 	};
 
 	const nodeById = new Map(nodes.filter((node) => Boolean(node.id)).map((node) => [node.id, node]));
@@ -328,6 +482,54 @@ export function validateWorkflowGroups<TNode extends INode>({
 	return { valid: false, violations: [firstViolation, ...restViolations] };
 }
 
+function stripWorkflowGroupIdentity({
+	groupId,
+	groupName,
+	code,
+	message,
+}: WorkflowGroupViolationWithGroup): WorkflowGroupViolation {
+	return { groupId, groupName, code, message };
+}
+
+/**
+ * Non-fatal twin of `validateWorkflowGroups`: drops every offending group instead
+ * of throwing, returning every violation for the groups it dropped.
+ * Mutates `nodeGroups`.
+ *
+ * `shouldDrop` filters which violating groups are removed, letting a caller
+ * drop the groups it can blame first and re-check the rest afterwards.
+ */
+export function dropInvalidWorkflowGroups<TNode extends INode>(
+	workflow: { nodes: TNode[]; nodeGroups?: IWorkflowGroup[]; connections?: IConnections },
+	getNodeType: GetNodeTypeForGrouping | null,
+	shouldDrop: (violation: WorkflowGroupViolation) => boolean = () => true,
+): WorkflowGroupViolation[] {
+	if (!workflow.nodeGroups?.length) {
+		return [];
+	}
+
+	const result = validateWorkflowGroupsWithGroupIdentity({
+		nodes: workflow.nodes,
+		connectionsBySourceNode: workflow.connections,
+		nodeGroups: workflow.nodeGroups,
+		getNodeType,
+	});
+
+	if (result.valid) {
+		return [];
+	}
+
+	const dropped = result.violations.filter(shouldDrop);
+	if (dropped.length === 0) {
+		return [];
+	}
+
+	const droppedGroups = new Set(dropped.map((violation) => violation.group));
+	workflow.nodeGroups = workflow.nodeGroups.filter((group) => !droppedGroups.has(group));
+
+	return dropped.map(stripWorkflowGroupIdentity);
+}
+
 /**
  * Maps a failed `validateNodeSelectionForGrouping` result to an actionable message
  * that names the offending group and the rule it broke. These strings are the
@@ -343,7 +545,7 @@ function groupRuleViolationMessage(
 		case 'trigger-selected':
 			return `${label} ${NODE_GROUPING_RULES.triggerSelected.violation}: ${result.triggers.join(', ')}.`;
 		case 'invalid-subgraph':
-			return `${label} ${NODE_GROUPING_RULES.invalidSubgraph.violation}.`;
+			return `${label} ${NODE_GROUPING_RULES.invalidSubgraph.violation}${describeSubgraphError(result.errors[0], nodeLabel)}.`;
 		case 'node-already-grouped':
 			return `${label} ${NODE_GROUPING_RULES.nodeAlreadyGrouped.violation}: ${result.nodeIds.map(nodeLabel).join(', ')}.`;
 		case 'non-main-boundary':
@@ -353,6 +555,30 @@ function groupRuleViolationMessage(
 			return `${label} has multiple input branches at node "${result.node}".`;
 		case 'multiple-output-branches':
 			return `${label} has multiple output branches at node "${result.node}".`;
+	}
+}
+
+/**
+ * Names the node(s) the engine blamed, so the reader can fix the boundary
+ * instead of guessing which member faces outward.
+ */
+function describeSubgraphError(
+	error: ExtractableErrorResult | undefined,
+	nodeLabel: (nodeId: string) => string,
+): string {
+	if (!error) {
+		return '';
+	}
+
+	switch (error.errorCode) {
+		case 'Output Edge From Non-Leaf Node':
+		case 'Input Edge To Non-Root Node':
+			return ` (${error.errorCode.toLowerCase()}: "${nodeLabel(error.node)}")`;
+		case 'Multiple Input Nodes':
+		case 'Multiple Output Nodes':
+			return ` (${error.errorCode.toLowerCase()}: ${[...error.nodes].map((node) => `"${nodeLabel(node)}"`).join(', ')})`;
+		case 'No Continuous Path From Root To Leaf In Selection':
+			return ` (no path from "${nodeLabel(error.start)}" to "${nodeLabel(error.end)}")`;
 	}
 }
 

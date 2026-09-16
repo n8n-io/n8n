@@ -26,7 +26,7 @@ describe('AgentSandboxController', () => {
 		});
 
 		expect(res.status).toHaveBeenCalledWith(202);
-		expect(agentKnowledgeService.warmSandbox).toHaveBeenCalledWith('agent-1', 'project-1');
+		expect(agentKnowledgeService.warmKnowledgeSandbox).toHaveBeenCalledWith('agent-1', 'project-1');
 	});
 
 	it('rejects warmup when the knowledge base is disabled', async () => {
@@ -45,6 +45,6 @@ describe('AgentSandboxController', () => {
 				'agent-1',
 			),
 		).rejects.toThrow('Agent knowledge base is not enabled');
-		expect(agentKnowledgeService.warmSandbox).not.toHaveBeenCalled();
+		expect(agentKnowledgeService.warmKnowledgeSandbox).not.toHaveBeenCalled();
 	});
 });

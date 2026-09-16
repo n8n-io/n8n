@@ -4,11 +4,13 @@ import { ScheduledJobMisfirePolicy } from '@n8n/constants';
 import type { EntityManager } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Schedule } from '@n8n/scheduler';
-import { computeFirstRunAt, scheduleFingerprint, validateSchedule } from '@n8n/scheduler';
+import { computeFirstRunAt, validateSchedule } from '@n8n/scheduler';
 import type { Cron, INode, SchedulingFunctions, Workflow } from 'n8n-workflow';
 import { SCHEDULE_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
+import { nameDesiredJobs } from '../desired-job-name';
 import { DurableJobProvisioner } from '../durable-job-provisioner';
+import { WorkflowScheduledJobOwner } from '../workflow-scheduled-job-owner';
 import type { ScheduleTriggerTaskPayload } from './schedule-trigger-task';
 import { SCHEDULE_TRIGGER_TASK_TYPE } from './schedule-trigger-task';
 
@@ -25,12 +27,9 @@ interface CollectedSchedule {
 	firstRunAt: Date | null;
 }
 
-/**
- * One node's collected rules and the misfire policy read alongside them, so both
- * are written and removed as one entry.
- */
-interface PendingNode {
+interface PendingNodeRegistration {
 	misfirePolicy: ScheduledJobMisfirePolicy;
+	misfireGraceSeconds: number | undefined;
 	rules: CollectedSchedule[];
 }
 
@@ -96,8 +95,9 @@ export interface ScheduleTriggerCollectionSession {
  *
  * Durable jobs track the *published* state of a workflow, not this instance's leadership:
  * rows are written on activation and deleted on deactivation ({@link remove})
- * or by FK cascade when the published version goes away;
- * never on leader stepdown or shutdown, which tear down only in-memory state.
+ * or when the published version goes away; never on leader stepdown or
+ * shutdown, which tear down only in-memory state. Nothing in the database
+ * removes them, so each of those paths deletes them explicitly.
  */
 @Service()
 export class ScheduleTriggerJobRegistrar {
@@ -118,6 +118,7 @@ export class ScheduleTriggerJobRegistrar {
 		globalConfig: GlobalConfig,
 		workflowsConfig: WorkflowsConfig,
 		private readonly jobProvisioner: DurableJobProvisioner,
+		private readonly owner: WorkflowScheduledJobOwner,
 	) {
 		this.intercepting =
 			globalConfig.scheduler.enabled && workflowsConfig.useWorkflowPublicationService;
@@ -162,7 +163,7 @@ export class ScheduleTriggerJobRegistrar {
 		 * {@link pendingKey}. An entry exists only between `createCollector` and
 		 * the `commit`/`discard` that consumes it.
 		 */
-		const pending = new Map<string, PendingNode>();
+		const pending = new Map<string, PendingNodeRegistration>();
 
 		return {
 			createCollector: (workflow: Workflow, node: INode): SchedulingFunctions => {
@@ -170,6 +171,7 @@ export class ScheduleTriggerJobRegistrar {
 				const collected: CollectedSchedule[] = [];
 				pending.set(pendingKey(workflow.id, node.id), {
 					misfirePolicy: resolveMisfirePolicy(node),
+					misfireGraceSeconds: resolveMisfireGraceSeconds(node, workflow.id, this.logger),
 					rules: collected,
 				});
 
@@ -218,7 +220,13 @@ export class ScheduleTriggerJobRegistrar {
 				const entry = pending.get(key);
 				if (entry !== undefined) {
 					pending.delete(key);
-					await this.provisionCollected(workflowId, nodeId, entry.rules, entry.misfirePolicy);
+					await this.provisionCollected(
+						workflowId,
+						nodeId,
+						entry.rules,
+						entry.misfirePolicy,
+						entry.misfireGraceSeconds,
+					);
 				}
 			},
 
@@ -301,28 +309,21 @@ export class ScheduleTriggerJobRegistrar {
 		nodeId: string,
 		collected: CollectedSchedule[],
 		misfirePolicy: ScheduledJobMisfirePolicy,
+		misfireGraceSeconds: number | undefined,
 	): Promise<void> {
-		const seen = new Map<string, number>();
-		const desired = collected.map(({ schedule, firstRunAt }) => {
-			const fingerprint = scheduleFingerprint(schedule, firstRunAt !== null);
-			const occurrence = seen.get(fingerprint) ?? 0;
-			seen.set(fingerprint, occurrence + 1);
-			return {
-				name: `${workflowId}:${nodeId}:${fingerprint}:${occurrence}`,
-				schedule,
-				firstRunAt,
-			};
-		});
+		const desired = nameDesiredJobs(workflowId, nodeId, collected);
 
 		const payload: ScheduleTriggerTaskPayload = { workflowId, nodeId };
-		const summary = await this.jobProvisioner.provision(
-			workflowId,
-			nodeId,
-			SCHEDULE_TRIGGER_TASK_TYPE,
-			{ ...payload },
+		// `skip` matches the legacy engine, which never runs a missed occurrence
+		// late. Running late is a per-node opt-in (see `resolveMisfirePolicy`).
+		const summary = await this.jobProvisioner.provision({
+			owner: this.owner.member(workflowId, nodeId),
+			taskType: SCHEDULE_TRIGGER_TASK_TYPE,
+			payload: { ...payload },
 			desired,
 			misfirePolicy,
-		);
+			misfireGraceSeconds,
+		});
 
 		this.logger.debug('Provisioned durable schedules for trigger node', {
 			workflowId,
@@ -345,7 +346,7 @@ export class ScheduleTriggerJobRegistrar {
 	 * @param nodeId The Schedule Trigger node those jobs belong to.
 	 */
 	async remove(workflowId: string, nodeId: string): Promise<void> {
-		await this.jobProvisioner.deprovision(workflowId, nodeId);
+		await this.jobProvisioner.deprovisionOwnerMember(this.owner.member(workflowId, nodeId));
 	}
 
 	/**
@@ -360,7 +361,10 @@ export class ScheduleTriggerJobRegistrar {
 	 * @param workflowId The deactivating workflow whose durable jobs to delete.
 	 */
 	async removeWorkflow(workflowId: string): Promise<void> {
-		await this.jobProvisioner.deprovisionWorkflow(workflowId, SCHEDULE_TRIGGER_TASK_TYPE);
+		await this.jobProvisioner.deprovisionOwnerTaskType(
+			this.owner.ref(workflowId),
+			SCHEDULE_TRIGGER_TASK_TYPE,
+		);
 	}
 
 	/**
@@ -376,9 +380,9 @@ export class ScheduleTriggerJobRegistrar {
 	 * @param workflowId The deactivating workflow whose durable jobs to delete.
 	 */
 	async removeWorkflowInTransaction(manager: EntityManager, workflowId: string): Promise<void> {
-		await this.jobProvisioner.deprovisionWorkflowInTransaction(
+		await this.jobProvisioner.deprovisionOwnerTaskTypeInTransaction(
 			manager,
-			workflowId,
+			this.owner.ref(workflowId),
 			SCHEDULE_TRIGGER_TASK_TYPE,
 		);
 	}
@@ -415,13 +419,45 @@ function withResolvedTimezone(schedule: Schedule, defaultTimezone: string): Sche
 }
 
 /**
- * Anything other than an explicit `coalesce` resolves to skipping, so an
+ * Any value other than an explicit policy resolves to skipping, so an
  * unrecognised value does not fail the activation. No `typeVersion` check is
  * needed: `Workflow`'s constructor drops a parameter its `displayOptions` hide,
  * so a node older than the option cannot arrive carrying it.
  */
 function resolveMisfirePolicy(node: INode): ScheduledJobMisfirePolicy {
-	return node.parameters?.misfirePolicy === ScheduledJobMisfirePolicy.Coalesce
-		? ScheduledJobMisfirePolicy.Coalesce
-		: ScheduledJobMisfirePolicy.Skip;
+	switch (node.parameters?.misfirePolicy) {
+		case 'coalesce':
+			return ScheduledJobMisfirePolicy.Coalesce;
+		case 'coalesce_owner':
+			return ScheduledJobMisfirePolicy.CoalesceOwner;
+		default:
+			return ScheduledJobMisfirePolicy.Skip;
+	}
+}
+
+function resolveMisfireGraceSeconds(
+	node: INode,
+	workflowId: string,
+	logger: Logger,
+): number | undefined {
+	const requested = node.parameters?.misfireGraceSeconds;
+	const isNumberLike = typeof requested === 'number' || typeof requested === 'string';
+	const numeric = isNumberLike ? Number(requested) : Number.NaN;
+	const stated = Number.isFinite(numeric) && numeric >= 1 ? numeric : undefined;
+
+	const isBlank = typeof requested === 'string' && requested.trim() === '';
+	const inherits =
+		requested === undefined ||
+		requested === null ||
+		requested === false ||
+		(numeric === 0 && !isBlank);
+
+	if (stated === undefined && !inherits) {
+		logger.warn(
+			'Schedule trigger node has an unusable misfire grace period; the instance setting applies',
+			{ workflowId, nodeId: node.id },
+		);
+	}
+
+	return stated;
 }

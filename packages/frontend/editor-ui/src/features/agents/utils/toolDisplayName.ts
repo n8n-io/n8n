@@ -4,11 +4,19 @@ export const WEB_SEARCH_TOOL_NAME_KEY: BaseTextKey = 'agents.chat.toolNames.webS
 export const FIND_FILE_TOOL_NAME_KEY: BaseTextKey = 'agents.chat.toolNames.findFile';
 export const SEARCH_TEXT_TOOL_NAME_KEY: BaseTextKey = 'agents.chat.toolNames.searchText';
 export const READ_FILE_TOOL_NAME_KEY: BaseTextKey = 'agents.chat.toolNames.readFile';
+export const FLAG_MEMORY_TOOL_NAME_KEY: BaseTextKey = 'agents.chat.toolNames.flagMemory';
 
 const WEB_SEARCH_TOOL_NAME_PATTERN = /^(?:web_search|(?:anthropic|openai)\.web_search(?:_\d{8})?)$/;
 const FIND_FILE_TOOL_NAME = 'find_file';
 const SEARCH_TEXT_TOOL_NAME = 'search_text';
 const READ_FILE_TOOL_NAME = 'read_file';
+const FLAG_MEMORY_TOOL_NAME = 'flag_memory';
+
+function isMemoryNotedOutput(output: unknown): boolean {
+	return (
+		typeof output === 'object' && output !== null && 'status' in output && output.status === 'noted'
+	);
+}
 
 const BUILDER_TOOL_TRANSLATION_KEYS: Record<string, BaseTextKey> = {
 	read_config: 'instanceAi.tools.read_config',
@@ -20,6 +28,8 @@ const BUILDER_TOOL_TRANSLATION_KEYS: Record<string, BaseTextKey> = {
 	read_skill: 'instanceAi.tools.read_skill',
 	update_skill: 'instanceAi.tools.update_skill',
 	create_tasks: 'instanceAi.tools.create_tasks',
+	list_tasks: 'instanceAi.tools.list_tasks',
+	update_task: 'instanceAi.tools.update_task',
 	get_resource_locator_options: 'instanceAi.tools.get_resource_locator_options',
 	list_workflows: 'instanceAi.tools.list_workflows',
 	list_integration_types: 'instanceAi.tools.list_integration_types',
@@ -39,13 +49,19 @@ const BUILDER_TOOL_TRANSLATION_KEYS: Record<string, BaseTextKey> = {
 	list_credentials: 'instanceAi.tools.list_credentials',
 };
 
-export function getToolNameTranslationKey(toolName: string | undefined): BaseTextKey | undefined {
+export function getToolNameTranslationKey(
+	toolName: string | undefined,
+	output?: unknown,
+): BaseTextKey | undefined {
 	const trimmed = toolName?.trim();
 	if (!trimmed) return undefined;
 
 	if (trimmed === FIND_FILE_TOOL_NAME) return FIND_FILE_TOOL_NAME_KEY;
 	if (trimmed === SEARCH_TEXT_TOOL_NAME) return SEARCH_TEXT_TOOL_NAME_KEY;
 	if (trimmed === READ_FILE_TOOL_NAME) return READ_FILE_TOOL_NAME_KEY;
+	if (trimmed === FLAG_MEMORY_TOOL_NAME && isMemoryNotedOutput(output)) {
+		return FLAG_MEMORY_TOOL_NAME_KEY;
+	}
 	if (trimmed in BUILDER_TOOL_TRANSLATION_KEYS) {
 		return BUILDER_TOOL_TRANSLATION_KEYS[trimmed];
 	}
@@ -53,11 +69,16 @@ export function getToolNameTranslationKey(toolName: string | undefined): BaseTex
 	return WEB_SEARCH_TOOL_NAME_PATTERN.test(trimmed) ? WEB_SEARCH_TOOL_NAME_KEY : undefined;
 }
 
+export function isCompactToolName(toolName: string | undefined, output?: unknown): boolean {
+	return toolName?.trim() === FLAG_MEMORY_TOOL_NAME && isMemoryNotedOutput(output);
+}
+
 export function resolveToolNameForDisplay(
 	toolName: string | undefined,
 	i18n: Pick<I18nClass, 'baseText'>,
+	output?: unknown,
 ): string {
-	const translationKey = getToolNameTranslationKey(toolName);
+	const translationKey = getToolNameTranslationKey(toolName, output);
 	if (!translationKey) return formatToolNameForDisplay(toolName);
 
 	const translated = i18n.baseText(translationKey);

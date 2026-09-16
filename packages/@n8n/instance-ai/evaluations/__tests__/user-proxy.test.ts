@@ -6,17 +6,32 @@
 // deterministic shortcuts, repeat detection, and budget enforcement.
 // ---------------------------------------------------------------------------
 
+import type { InstanceAiCredentialSetupHint } from '@n8n/api-types';
+
 import type { N8nClient } from '../clients/n8n-client';
+import { createOneCredential } from '../credentials/seeder';
 import type { EvalLogger } from '../harness/logger';
 import type { CapturedEvent } from '../types';
 import { UserProxyLlm } from '../utils/user-proxy';
 import type { UserProxyAgent } from '../utils/user-proxy/agent';
 import {
 	confirmationDecisionSchema,
-	userTurnDecisionSchema,
+	createUserTurnDecisionSchema,
+	userTurnWithoutExecutionSchema,
 	type Decision,
 	type ProxyDecisionMode,
 } from '../utils/user-proxy/tools';
+
+// Spies on the real seeder so existing credential-creation tests (which assert
+// against `client.createCredential`) keep working unchanged, while the new
+// setupHint tests below can assert on what reaches `createOneCredential`
+// itself. The mock wraps the real implementation, so tests execute the full
+// minting path (including the seeder's throw when `httpTemplatedCustomAuth`
+// is reached without a valid hint).
+vi.mock('../credentials/seeder', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('../credentials/seeder')>();
+	return { ...actual, createOneCredential: vi.fn(actual.createOneCredential) };
+});
 
 /** Returns a fresh fake each call — tests assert on individual `vi.fn()` call
  *  counts, so a single shared instance would leak state across tests. */
@@ -61,6 +76,7 @@ function fakeCredentialClient(
 class FakeAgent implements UserProxyAgent {
 	readonly prompts: string[] = [];
 	readonly modes: ProxyDecisionMode[] = [];
+	readonly savedWorkflowIds: string[][] = [];
 	private queue: Array<Decision | undefined | Error> = [];
 
 	enqueue(...decisions: Array<Decision | undefined | Error>): void {
@@ -68,9 +84,14 @@ class FakeAgent implements UserProxyAgent {
 	}
 
 	// eslint-disable-next-line @typescript-eslint/require-await
-	async decide(userPrompt: string, mode: ProxyDecisionMode): Promise<Decision | undefined> {
+	async decide(
+		userPrompt: string,
+		mode: ProxyDecisionMode,
+		savedWorkflowIds: string[] = [],
+	): Promise<Decision | undefined> {
 		this.prompts.push(userPrompt);
 		this.modes.push(mode);
+		this.savedWorkflowIds.push(savedWorkflowIds);
 		const next = this.queue.shift();
 		if (next instanceof Error) throw next;
 		return next;
@@ -1140,6 +1161,88 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		expect(logger.warn).toHaveBeenCalled();
 	});
 
+	it("workflows(action='setup'): threads a valid setupHint through to credential creation for httpTemplatedCustomAuth", async () => {
+		const setupHint: InstanceAiCredentialSetupHint = {
+			template: { headers: { Authorization: '{{apiKey}}' } },
+			placeholders: [{ name: 'apiKey', title: 'API Key', optional: false }],
+		};
+		const agent = new FakeAgent();
+		agent.enqueue({
+			action: 'apply_setup_wizard',
+			nodeParametersJson: '{}',
+			nodeCredentialsJson: JSON.stringify({ 'Call API': { httpTemplatedCustomAuth: 'new' } }),
+		});
+		const { client } = fakeCredentialClient('cred-fresh');
+		const proxy = new UserProxyLlm({
+			conversation: [
+				{ role: 'user', text: 'Call the API every morning.' },
+				{ role: 'user', text: '[Set up the API credential now.]' },
+			],
+			agent,
+			credentialCreation: { client, threadId: 'thread-1', allowlistedCredentialIds: [] },
+		});
+
+		await proxy.respondToConfirmation(
+			setupWizardEvent('req-sw-templated-auth', [
+				{
+					nodeId: 'n1',
+					nodeName: 'Call API',
+					credentialType: 'httpTemplatedCustomAuth',
+					existingCredentials: [],
+					setupHint,
+				},
+			]),
+		);
+
+		expect(createOneCredential).toHaveBeenCalledWith(
+			client,
+			'httpTemplatedCustomAuth',
+			undefined,
+			expect.anything(),
+			expect.objectContaining({ setupHint }),
+		);
+	});
+
+	it("workflows(action='setup'): drops a malformed setupHint instead of forwarding a garbage partial object", async () => {
+		const agent = new FakeAgent();
+		agent.enqueue({
+			action: 'apply_setup_wizard',
+			nodeParametersJson: '{}',
+			nodeCredentialsJson: JSON.stringify({ 'Call API': { httpTemplatedCustomAuth: 'new' } }),
+		});
+		const { client } = fakeCredentialClient('cred-fresh');
+		const proxy = new UserProxyLlm({
+			conversation: [
+				{ role: 'user', text: 'Call the API every morning.' },
+				{ role: 'user', text: '[Set up the API credential now.]' },
+			],
+			agent,
+			credentialCreation: { client, threadId: 'thread-1', allowlistedCredentialIds: [] },
+		});
+
+		const response = await proxy.respondToConfirmation(
+			setupWizardEvent('req-sw-templated-auth-malformed', [
+				{
+					nodeId: 'n1',
+					nodeName: 'Call API',
+					credentialType: 'httpTemplatedCustomAuth',
+					existingCredentials: [],
+					// Missing the required `placeholders` field.
+					setupHint: { template: { headers: { Authorization: '{{apiKey}}' } } },
+				},
+			]),
+		);
+
+		expect(response.kind).toBeDefined();
+		expect(createOneCredential).toHaveBeenCalledWith(
+			client,
+			'httpTemplatedCustomAuth',
+			undefined,
+			expect.anything(),
+			expect.objectContaining({ setupHint: undefined }),
+		);
+	});
+
 	it("credentials(action='setup'): handles credential events deterministically without invoking the agent", async () => {
 		const agent = new FakeAgent();
 		const proxy = new UserProxyLlm({
@@ -1739,6 +1842,37 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 // ---------------------------------------------------------------------------
 
 describe('UserProxyLlm.decideFollowUp', () => {
+	it('shows saved workflow IDs and names for user executions', async () => {
+		const agent = new FakeAgent();
+		agent.enqueue({ action: 'declare_done' });
+		const proxy = new UserProxyLlm({
+			conversation: [{ role: 'user', text: 'Build a contact log' }],
+			allowUserExecution: true,
+			agent,
+		});
+		proxy.ingestEvents([
+			{
+				timestamp: 0,
+				type: 'tool-result',
+				data: {
+					payload: {
+						toolCallId: 'build',
+						toolName: 'build-workflow',
+						result: {
+							success: true,
+							workflowId: 'wf-primary',
+							workflowName: 'Contact log',
+						},
+					},
+				},
+			},
+		]);
+		await proxy.decideFollowUp();
+		expect(agent.prompts[0]).toContain('wf-primary');
+		expect(agent.prompts[0]).toContain('Contact log');
+		expect(agent.savedWorkflowIds[0]).toEqual(['wf-primary']);
+	});
+
 	it('returns done immediately when messageBudget is 0 without invoking the agent', async () => {
 		const agent = new FakeAgent();
 		const proxy = new UserProxyLlm({
@@ -1896,6 +2030,31 @@ describe('UserProxyLlm.decideFollowUp', () => {
 // ---------------------------------------------------------------------------
 
 describe('mode-scoped decision schemas', () => {
+	const userTurnDecisionSchema = createUserTurnDecisionSchema(['workflow']);
+	it('restricts executions to saved IDs and omits the field without candidates', () => {
+		const schema = createUserTurnDecisionSchema(['primary-id', 'helper-id']);
+		const decision = { action: 'send_follow_up_message', message: 'I ran it' };
+		for (const runWorkflowId of ['primary-id', 'helper-id']) {
+			expect(schema.safeParse({ ...decision, runWorkflowId }).success).toBe(true);
+		}
+		for (const runWorkflowId of ['', 'Contact log', 'unknown-id']) {
+			expect(schema.safeParse({ ...decision, runWorkflowId }).success).toBe(false);
+		}
+		const emptySchema = createUserTurnDecisionSchema([]);
+		expect(emptySchema.safeParse({ ...decision, runWorkflowId: 'primary-id' }).success).toBe(false);
+		expect(emptySchema.safeParse(decision).success).toBe(true);
+	});
+
+	it('excludes user executions unless the case enables them', () => {
+		const decision = {
+			action: 'send_follow_up_message',
+			message: 'I ran it',
+			runWorkflowId: 'workflow',
+		};
+		expect(userTurnWithoutExecutionSchema.safeParse(decision).success).toBe(false);
+		expect(userTurnDecisionSchema.safeParse(decision).success).toBe(true);
+	});
+
 	it('user-turn schema does not offer confirmation actions', () => {
 		expect(
 			userTurnDecisionSchema.safeParse({

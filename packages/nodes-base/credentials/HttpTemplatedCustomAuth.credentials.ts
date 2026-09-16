@@ -14,7 +14,7 @@ export class HttpTemplatedCustomAuth implements ICredentialType {
 
 	// No documentationUrl on purpose: the generic HTTP Request docs don't cover
 	// this type, and setting one makes the credential modal render a docs
-	// banner — the guided form and the AI Assistant handle setup help instead.
+	// banner — the guided form and the n8n Assistant handle setup help instead.
 
 	genericAuth = true;
 
@@ -67,7 +67,7 @@ export class HttpTemplatedCustomAuth implements ICredentialType {
 			name: 'docsUrl',
 			type: 'string',
 			description:
-				'Provider page where the user creates/copies the secret (e.g. the API-keys dashboard). The AI Assistant help thread points the user there.',
+				'Provider page where the user creates/copies the secret (e.g. the API-keys dashboard). The n8n Assistant help thread points the user there.',
 			default: '',
 		},
 		{
@@ -80,6 +80,14 @@ export class HttpTemplatedCustomAuth implements ICredentialType {
 			description:
 				'Host of the API this credential authenticates against (e.g. api.pexels.com). Setup surfaces only offer this credential to nodes calling the same host (subdomains match). Set from the recipe when the credential is created; when empty, the credential is never offered automatically.',
 			placeholder: 'api.pexels.com',
+			default: '',
+		},
+		{
+			displayName: 'Service Origin',
+			name: 'serviceOrigin',
+			type: 'string',
+			description:
+				'Exact API origin used for credential verification. Set from the workflow when the credential is created.',
 			default: '',
 		},
 		{

@@ -16,6 +16,16 @@ export const DCR_MANAGED_CREDENTIAL_FIELDS = [
 
 export type DcrManagedCredentialField = (typeof DCR_MANAGED_CREDENTIAL_FIELDS)[number];
 
+/** OAuth endpoint/flow fields the instance owns for a managed credential. */
+export const MANAGED_OAUTH_PINNED_FIELDS = [
+	'authUrl',
+	'accessTokenUrl',
+	'grantType',
+	'authentication', // OAuth2
+	'requestTokenUrl',
+	'signatureMethod', // OAuth1
+] as const;
+
 /** Values negotiated for {@link DCR_MANAGED_CREDENTIAL_FIELDS}; `undefined` clears the field. */
 export type DcrManagedCredentialValues = {
 	[Field in DcrManagedCredentialField]: OAuth2CredentialData[Field] | undefined;

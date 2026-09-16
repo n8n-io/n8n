@@ -3,8 +3,8 @@ import { useConsentStore } from '@/app/stores/consent.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
-import { onMounted, computed, ref, watch } from 'vue';
-import type { ConsentDetails } from '@n8n/rest-api-client/api/consent';
+import { onMounted, onUnmounted, computed, ref, watch } from 'vue';
+import type { ConsentDetailsPicker } from '@n8n/rest-api-client/api/consent';
 import {
 	N8nButton,
 	N8nCallout,
@@ -31,12 +31,21 @@ const telemetry = useTelemetry();
 
 // Success state:
 const waitingForRedirect = ref(false);
+// Set instead of `waitingForRedirect` when the server silently reused a prior consent:
+// the visitor never clicked anything here, so a "success" message would be confusing —
+// this renders the same blank state as the initial fetch, not a message that then flashes.
+const autoApprovedRedirect = ref(false);
+const detailsResolved = ref(false);
 const redirectUriTrusted = ref(false);
 const selectedScopes = ref<string[]>([]);
 
+let isActive = true;
+onUnmounted(() => {
+	isActive = false;
+});
+
 const error = computed(() => consentStore.error);
 const loading = computed(() => consentStore.isLoading);
-const resourceName = computed(() => consentStore.consentDetails?.resourceName);
 
 const errorMessage = computed(() => {
 	if (consentStore.errorCode === 'resource_unavailable') {
@@ -47,7 +56,14 @@ const errorMessage = computed(() => {
 	return consentStore.error;
 });
 
-const clientDetails = computed<ConsentDetails | null>(() => consentStore.consentDetails);
+// Narrows away the auto-approved redirect signal, which carries none of these fields
+// and is handled separately in `onMounted` before this is ever read.
+const clientDetails = computed<ConsentDetailsPicker | null>(() => {
+	const details = consentStore.consentDetails;
+	return details && !details.autoApproved ? details : null;
+});
+const resourceName = computed(() => clientDetails.value?.resourceName);
+const uiHints = computed(() => consentStore.consentDetails?.uiHints);
 // Known clients get their brand mark on the left tile; unknown ones fall back to the MCP glyph.
 const clientBrandIcon = computed(() => getClientBrand(clientDetails.value?.clientName ?? '').icon);
 // Localized noun for first-party copy, driven by the resource's consentType hint.
@@ -139,12 +155,20 @@ const handleClose = () => {
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('oauth.consentView.title'));
 	try {
-		await consentStore.fetchConsentDetails();
+		const details = await consentStore.fetchConsentDetails();
+		if (!isActive) return;
+		detailsResolved.value = true;
+		if (details?.autoApproved && details.redirectUrl) {
+			autoApprovedRedirect.value = true;
+			window.location.href = details.redirectUrl;
+			return;
+		}
 		telemetry.track('User viewed MCP consent screen', {
 			client_name: clientDetails.value?.clientName,
 			available_scopes_count: availableScopes.value.length,
 		});
 	} catch (err) {
+		if (!isActive) return;
 		toast.showError(err, i18n.baseText('oauth.consentView.error.fetchDetails'));
 	}
 });
@@ -155,18 +179,13 @@ onMounted(async () => {
 		<div :class="$style['consent-dialog']">
 			<header :class="$style.header">
 				<div :class="$style.logo">
-					<N8nIcon
-						v-if="clientDetails?.uiHints?.icon"
-						:icon="clientDetails.uiHints.icon"
-						size="large"
-						color="text-dark"
-					/>
+					<N8nIcon v-if="uiHints?.icon" :icon="uiHints.icon" size="large" color="text-dark" />
 					<component
 						:is="clientBrandIcon"
 						v-else-if="clientBrandIcon"
 						:class="$style['brand-icon']"
 					/>
-					<N8nIcon v-else icon="mcp" size="large" color="text-dark" />
+					<N8nIcon v-else-if="detailsResolved || error" icon="mcp" size="large" color="text-dark" />
 				</div>
 				<!-- Pending-connection connector: a dashed SVG line marching toward the n8n tile
 				     with a slow muted spinner badge. Decorative. -->
@@ -213,6 +232,15 @@ onMounted(async () => {
 					:content="errorMessage ?? ''"
 				></N8nNotice>
 			</div>
+			<!-- Nothing resolved yet, or the server just silently reused a prior consent:
+				never guess at generic instance-wide copy, and never announce a "success"
+				the visitor didn't ask for — the header's own connector spinner already
+				signals activity while this redirects. -->
+			<div
+				v-else-if="autoApprovedRedirect || !detailsResolved"
+				:class="$style.content"
+				data-test-id="consent-loading"
+			/>
 			<!-- Default content -->
 			<div v-else :class="$style.content" data-test-id="consent-content">
 				<N8nHeading v-if="clientDetails?.isFirstParty" tag="h2" size="large" :bold="true">
@@ -285,31 +313,38 @@ onMounted(async () => {
 					</ul>
 				</div>
 			</div>
-			<footer v-if="!waitingForRedirect" :class="$style.footer">
-				<!-- Third-party clients: the trust acknowledgment lives inside the warning itself so it
-				     can't be missed: one block that says where access goes, shows the URL, asks for the check.
-				     First-party clients skip this entirely — their redirect URI is the form itself. -->
-				<N8nCallout
-					v-if="!error && !clientDetails?.isFirstParty && clientDetails?.redirectUri"
-					theme="warning"
-					data-test-id="consent-redirect-warning"
-				>
-					<div :class="$style['redirect-warning-content']">
-						<N8nText :bold="true" size="small">
+			<footer
+				v-if="!waitingForRedirect && !autoApprovedRedirect && (error || detailsResolved)"
+				:class="$style.footer"
+			>
+				<!-- Third-party clients: the redirect destination, with the trust acknowledgment
+				     below it in the action row so it reads as a step rather than banner small
+				     print. Both are gated on the same `trustRequired` as the Allow button, so the
+				     screen can never ask for a confirmation it doesn't show. First-party clients
+				     skip both — their redirect URI is the form itself. -->
+				<div v-if="!error && trustRequired" :class="$style.divided">
+					<N8nCallout
+						theme="secondary"
+						:iconless="true"
+						:class="$style['redirect-note']"
+						data-test-id="consent-redirect-warning"
+					>
+						<span :class="$style['redirect-note-title']">
 							{{ i18n.baseText('oauth.consentView.redirectWarning.title') }}
-						</N8nText>
-						<code :class="$style['redirect-warning-url']" data-test-id="consent-redirect-uri">
-							{{ clientDetails.redirectUri }}
+						</span>
+						<code :class="$style['redirect-url']" data-test-id="consent-redirect-uri">
+							{{ clientDetails?.redirectUri }}
 						</code>
-						<N8nCheckbox
-							v-model="redirectUriTrusted"
-							:class="$style['redirect-warning-confirm']"
-							:label="i18n.baseText('oauth.consentView.redirectWarning.confirm')"
-							data-test-id="consent-redirect-confirm"
-						/>
-					</div>
-				</N8nCallout>
-				<div :class="$style['footer-actions']">
+					</N8nCallout>
+				</div>
+				<div :class="[$style['footer-actions'], $style.divided]">
+					<N8nCheckbox
+						v-if="!error && trustRequired"
+						v-model="redirectUriTrusted"
+						:class="$style['trust-confirm']"
+						:label="i18n.baseText('oauth.consentView.redirectWarning.confirm')"
+						data-test-id="consent-redirect-confirm"
+					/>
 					<div :class="$style['button-group']">
 						<N8nButton
 							v-if="error"
@@ -508,6 +543,8 @@ onMounted(async () => {
 	}
 }
 
+/* The gap gives each separator the same breathing room above the line as the
+   `.divided` padding gives below it. */
 .footer {
 	width: 100%;
 	display: flex;
@@ -515,34 +552,60 @@ onMounted(async () => {
 	gap: var(--spacing--sm);
 }
 
-.redirect-warning-content {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--3xs);
+/* Hairline separators keep the redirect note and the action row as distinct steps
+   without adding more nested boxes. */
+.divided {
+	padding-block-start: var(--spacing--sm);
+	border-block-start: var(--border-width, 1px) solid var(--border-color--subtle);
 }
 
-.redirect-warning-url {
-	font-size: var(--font-size--2xs);
-	word-break: break-all;
+/* The `secondary` callout theme is purple; retint it to a neutral grey so the note
+   reads as information rather than as a banner users learn to skip. Retinting the
+   theme's own custom properties rather than the resolved colors keeps this working
+   regardless of whether the callout's CSS is bundled before or after this file. */
+.redirect-note {
+	--callout--border-color--secondary: var(--border-color--subtle);
+	--callout--color--background--secondary: var(--background--subtle);
+	--callout--color--text--secondary: var(--text-color--subtle);
 }
 
-.redirect-warning-confirm {
-	margin-top: var(--spacing--3xs);
-	margin-bottom: 0;
+/* Both lines size themselves rather than restyling the callout's inner N8nText,
+   which is an implementation detail of the component. */
+.redirect-note-title,
+.redirect-url {
+	display: block;
+	font-size: var(--font-size--sm);
+	line-height: var(--line-height--lg);
 }
 
-/* CTAs sit at the right; the trust checkbox anchors the left edge of the row. */
+.redirect-url {
+	margin-block-start: var(--spacing--4xs);
+	font-family: var(--font-family--monospace);
+	overflow-wrap: anywhere;
+}
+
+/* The trust checkbox anchors the left edge of the row and keeps its full label
+   width, so the button group is what drops to a second line when space runs out. */
 .footer-actions {
 	display: flex;
 	flex-direction: row;
 	align-items: center;
-	justify-content: flex-end;
-	gap: var(--spacing--sm);
+	flex-wrap: wrap;
+	gap: var(--spacing--2xs) var(--spacing--sm);
 
+	/* The auto margin is what right-aligns the buttons, on both a shared line and a
+	   wrapped one, and when there is no checkbox at all (first-party, error). */
 	.button-group {
 		display: flex;
-		justify-content: flex-end;
+		align-items: center;
+		margin-inline-start: auto;
 		gap: var(--spacing--2xs);
 	}
+}
+
+/* Tone the label down to match the note it refers to; the checkbox's own default is
+   the darker body color. */
+.trust-confirm label {
+	color: var(--text-color--subtle);
 }
 </style>

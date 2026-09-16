@@ -4,6 +4,7 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import { RoleRepository, ScopeRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
+import { EventService } from '@/events/event.service';
 import { RoleCacheService } from '@/services/role-cache.service';
 import { RoleDeletionCheckProxy } from '@/services/role-deletion-check-proxy.service';
 import { RoleService } from '@/services/role.service';
@@ -15,6 +16,7 @@ describe('RoleService.rolesWithScope', () => {
 	const roleCacheService = mockInstance(RoleCacheService);
 	const logger = mockInstance(Logger);
 	const roleDeletionCheckProxy = mockInstance(RoleDeletionCheckProxy);
+	const eventService = mockInstance(EventService);
 
 	const roleService = new RoleService(
 		licenseState,
@@ -23,6 +25,7 @@ describe('RoleService.rolesWithScope', () => {
 		roleCacheService,
 		logger,
 		roleDeletionCheckProxy,
+		eventService,
 	);
 
 	beforeEach(() => {

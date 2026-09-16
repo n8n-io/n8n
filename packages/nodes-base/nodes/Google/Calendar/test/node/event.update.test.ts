@@ -1,6 +1,6 @@
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
-import type { INode, IExecuteFunctions } from 'n8n-workflow';
+import type { IDataObject, INode, IExecuteFunctions } from 'n8n-workflow';
 
 import * as genericFunctions from '../../GenericFunctions';
 import { GoogleCalendar } from '../../GoogleCalendar.node';
@@ -125,6 +125,73 @@ describe('Google Calendar Node', () => {
 				{ attendees: [{ email: 'email2@mail.com' }, { email: 'email1@mail.com' }] },
 				{},
 			);
+		});
+
+		describe('all-day <-> timed conversion', () => {
+			const setupUpdate = (updateFields: IDataObject) => {
+				mockExecuteFunctions.getInputData.mockReturnValue([{ json: {} }]);
+				mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('event');
+				mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('update');
+				mockExecuteFunctions.getTimezone.mockReturnValueOnce('Europe/Berlin');
+				mockExecuteFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion: 1.2 }));
+				mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('myCalendar');
+				mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('myEvent');
+				mockExecuteFunctions.getNodeParameter.mockReturnValueOnce(true);
+				mockExecuteFunctions.getNodeParameter.mockReturnValueOnce(updateFields);
+			};
+
+			const patchedBody = () =>
+				(genericFunctions.googleApiRequest as Mock).mock.calls[0][2] as IDataObject;
+
+			it('should null out `date` when updating an event to a timed slot', async () => {
+				setupUpdate({
+					start: '2026-08-10T09:00:00',
+					end: '2026-08-10T10:00:00',
+					timezone: 'Europe/Berlin',
+				});
+
+				await googleCalendar.execute.call(mockExecuteFunctions);
+
+				const body = patchedBody();
+				// Without `date: null` the event keeps its all-day date and Google rejects
+				// the start/end for carrying both keys.
+				expect(body.start).toEqual({
+					dateTime: '2026-08-10T07:00:00Z',
+					timeZone: 'Europe/Berlin',
+					date: null,
+				});
+				expect(body.end).toEqual({
+					dateTime: '2026-08-10T08:00:00Z',
+					timeZone: 'Europe/Berlin',
+					date: null,
+				});
+			});
+
+			it('should null out `dateTime` when updating an event to all-day', async () => {
+				setupUpdate({
+					allday: 'yes',
+					start: '2026-08-10T09:00:00',
+					end: '2026-08-11T10:00:00',
+					timezone: 'Europe/Berlin',
+				});
+
+				await googleCalendar.execute.call(mockExecuteFunctions);
+
+				const body = patchedBody();
+				expect(body.start).toEqual({ date: '2026-08-10', dateTime: null });
+				expect(body.end).toEqual({ date: '2026-08-11', dateTime: null });
+			});
+
+			it('should not send start or end when neither is being updated', async () => {
+				setupUpdate({ summary: 'Renamed event' });
+
+				await googleCalendar.execute.call(mockExecuteFunctions);
+
+				const body = patchedBody();
+				expect(body).not.toHaveProperty('start');
+				expect(body).not.toHaveProperty('end');
+				expect(body.summary).toBe('Renamed event');
+			});
 		});
 	});
 });

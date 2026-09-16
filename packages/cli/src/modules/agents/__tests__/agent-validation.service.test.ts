@@ -26,6 +26,15 @@ const runnableConfig: AgentJsonConfig = {
 	skills: [],
 };
 
+const executeWorkflowTriggerNode = {
+	id: 'trigger-node-id',
+	name: 'When Executed by Another Workflow',
+	type: 'n8n-nodes-base.executeWorkflowTrigger',
+	typeVersion: 1.1,
+	position: [0, 0],
+	parameters: { inputSource: 'passthrough' },
+};
+
 function makeAgent(
 	config: AgentJsonConfig | null = runnableConfig,
 	skills = {},
@@ -42,9 +51,13 @@ function makeAgent(
 	} as unknown as Agent;
 }
 
-function makeCredentialProvider(credentials: Array<{ id: string; type: string }> = []) {
+function makeCredentialProvider(
+	credentials: Array<{ id: string; type: string }> = [],
+	resolveImpl?: (id: string) => Record<string, unknown>,
+) {
 	return {
 		list: vi.fn().mockResolvedValue(credentials),
+		resolve: vi.fn().mockImplementation(async (id: string) => resolveImpl?.(id) ?? {}),
 	} as unknown as CredentialProvider;
 }
 
@@ -164,6 +177,145 @@ describe('AgentValidationService — structured issues', () => {
 				expect.objectContaining({ code: 'incompatible_credential', path: 'credential' }),
 			]),
 		);
+	});
+
+	it('accepts Azure OpenAI and AWS Bedrock credentials paired with their own provider models', async () => {
+		const { service, agentRepository } = makeService();
+
+		const azureConfig: AgentJsonConfig = {
+			...runnableConfig,
+			model: 'azure-openai/gpt-4o',
+			credential: 'azure-main',
+			modelDeploymentName: 'my-gpt4o-deployment',
+		};
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent(azureConfig));
+		const azureResult = await service.validateAgentConfiguration(
+			agentId,
+			projectId,
+			makeCredentialProvider([{ id: 'azure-main', type: 'azureOpenAiApi' }]),
+		);
+		expect(azureResult).toEqual({ status: 'valid', issues: [] });
+
+		const azureEntraConfig: AgentJsonConfig = {
+			...runnableConfig,
+			model: 'azure-openai/gpt-4o',
+			credential: 'azure-entra',
+			modelDeploymentName: 'my-gpt4o-deployment',
+		};
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent(azureEntraConfig));
+		const azureEntraResult = await service.validateAgentConfiguration(
+			agentId,
+			projectId,
+			makeCredentialProvider([{ id: 'azure-entra', type: 'azureEntraCognitiveServicesOAuth2Api' }]),
+		);
+		expect(azureEntraResult).toEqual({ status: 'valid', issues: [] });
+
+		const bedrockConfig: AgentJsonConfig = {
+			...runnableConfig,
+			model: 'aws-bedrock/anthropic.claude-3-sonnet',
+			credential: 'bedrock-main',
+		};
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent(bedrockConfig));
+		const bedrockResult = await service.validateAgentConfiguration(
+			agentId,
+			projectId,
+			makeCredentialProvider([{ id: 'bedrock-main', type: 'aws' }]),
+		);
+		expect(bedrockResult).toEqual({ status: 'valid', issues: [] });
+	});
+
+	it('flags a classic Azure OpenAI credential without a deployment name', async () => {
+		const { service, agentRepository } = makeService();
+		const azureConfig: AgentJsonConfig = {
+			...runnableConfig,
+			model: 'azure-openai/gpt-4o',
+			credential: 'azure-main',
+		};
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent(azureConfig));
+
+		const result = await service.validateAgentConfiguration(
+			agentId,
+			projectId,
+			makeCredentialProvider([{ id: 'azure-main', type: 'azureOpenAiApi' }], () => ({
+				endpointType: 'classic',
+			})),
+		);
+
+		expect(result.status).toBe('invalid');
+		expect(result.issues).toContainEqual(
+			expect.objectContaining({
+				code: 'missing_required',
+				path: 'modelDeploymentName',
+				capability: { kind: 'agent' },
+			}),
+		);
+	});
+
+	it('accepts a Foundry Azure OpenAI credential without a deployment name', async () => {
+		const { service, agentRepository } = makeService();
+		const azureConfig: AgentJsonConfig = {
+			...runnableConfig,
+			model: 'azure-openai/gpt-4o',
+			credential: 'azure-foundry',
+		};
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent(azureConfig));
+
+		const result = await service.validateAgentConfiguration(
+			agentId,
+			projectId,
+			makeCredentialProvider([{ id: 'azure-foundry', type: 'azureOpenAiApi' }], () => ({
+				endpointType: 'foundry',
+			})),
+		);
+
+		expect(result).toEqual({ status: 'valid', issues: [] });
+	});
+
+	it('does not require a deployment name when Azure credential resolve fails', async () => {
+		const { service, agentRepository } = makeService();
+		const azureConfig: AgentJsonConfig = {
+			...runnableConfig,
+			model: 'azure-openai/gpt-4o',
+			credential: 'azure-main',
+		};
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent(azureConfig));
+
+		const credentialProvider = makeCredentialProvider(
+			[{ id: 'azure-main', type: 'azureOpenAiApi' }],
+			() => {
+				throw new Error('transient');
+			},
+		);
+
+		const result = await service.validateAgentConfiguration(agentId, projectId, credentialProvider);
+
+		expect(result.issues).not.toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ code: 'missing_required', path: 'modelDeploymentName' }),
+			]),
+		);
+	});
+
+	it('flags a cross-provider mismatch between an Azure OpenAI credential and an OpenAI model', async () => {
+		const { service, agentRepository } = makeService();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({ ...runnableConfig, credential: 'azure-main' }),
+		);
+
+		const result = await service.validateAgentConfiguration(
+			agentId,
+			projectId,
+			makeCredentialProvider([{ id: 'azure-main', type: 'azureOpenAiApi' }]),
+		);
+
+		expect(result.status).toBe('invalid');
+		expect(result.issues).toEqual([
+			expect.objectContaining({
+				code: 'incompatible_credential',
+				path: 'credential',
+				capability: { kind: 'agent' },
+			}),
+		]);
 	});
 
 	it('accepts the n8n Connect managed tag on the main model when the gateway serves the provider, else flags it', async () => {
@@ -878,6 +1030,63 @@ describe('AgentValidationService — structured issues', () => {
 		);
 	});
 
+	it('blocks an HTTP Request URL using $fromAI for publishing but not runtime validation', async () => {
+		const { service, agentRepository, nodeTypes } = makeService();
+		nodeTypes.getByNameAndVersion.mockReturnValue({
+			description: { properties: [] },
+		} as never);
+		const config: AgentJsonConfig = {
+			...runnableConfig,
+			tools: [
+				{
+					type: 'node',
+					name: 'Fetch page',
+					node: {
+						nodeType: 'n8n-nodes-base.httpRequestTool',
+						nodeTypeVersion: 4.5,
+						nodeParameters: { url: "={{ $fromAI('url') }}" },
+					},
+				},
+			],
+		};
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent(config));
+		const credentials = makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]);
+
+		const publishResult = await service.validateAgentConfiguration(
+			agentId,
+			projectId,
+			credentials,
+			'publish',
+		);
+		const runtimeResult = await service.validateAgentIsRunnable(agentId, projectId, credentials);
+		const historyResult = await service.validateAgentHistoryConfiguration(
+			agentId,
+			projectId,
+			{
+				versionId: 'version-1',
+				schema: config,
+				skills: null,
+				tools: null,
+			} as never,
+			[],
+			credentials,
+		);
+
+		const expectedResult = {
+			status: 'invalid',
+			issues: [
+				{
+					code: 'invalid_value',
+					path: 'tools.0.node.nodeParameters.url',
+					capability: { kind: 'tool', id: 'Fetch page', index: 0, toolType: 'node' },
+				},
+			],
+		} as const;
+		expect(publishResult).toEqual(expectedResult);
+		expect(historyResult).toEqual(expectedResult);
+		expect(runtimeResult).toEqual({ missing: [] });
+	});
+
 	it('runtime validation ignores channel and task issues but still reports execution-relevant tool and sub-agent issues', async () => {
 		const { service, agentRepository, agentTaskRepository } = makeService();
 		agentRepository.findByIdAndProjectId.mockResolvedValue(
@@ -937,7 +1146,7 @@ describe('AgentValidationService — structured issues', () => {
 		);
 	});
 
-	it('flags duplicate, missing, and incompatible sub-agent and workflow-tool references in one pass', async () => {
+	it('flags missing and self sub-agent references plus invalid workflow-tool references', async () => {
 		const { service, agentRepository, workflowRepository } = makeService();
 		agentRepository.findByIdAndProjectId.mockResolvedValue(
 			makeAgent({
@@ -957,6 +1166,7 @@ describe('AgentValidationService — structured issues', () => {
 					{ type: 'workflow', workflow: 'Workflow B' },
 					{ type: 'workflow', workflow: 'Workflow C' },
 					{ type: 'workflow', workflowId: 'wf-missing', workflow: 'Workflow A' },
+					{ type: 'workflow', workflowId: 'wf-form', workflow: 'Workflow With Form' },
 				],
 			}),
 		);
@@ -968,18 +1178,31 @@ describe('AgentValidationService — structured issues', () => {
 			{
 				id: 'wf-a',
 				name: 'Workflow A',
+				activeVersionId: 'version-a',
+				nodes: [executeWorkflowTriggerNode],
+			},
+			{ id: 'wf-c', name: 'Workflow C', nodes: [] },
+			{
+				id: 'wf-form',
+				name: 'Workflow With Form',
 				nodes: [
+					executeWorkflowTriggerNode,
 					{
-						id: 'trigger-node-id',
-						name: 'Manual Trigger',
-						type: 'n8n-nodes-base.manualTrigger',
+						id: 'form-1',
+						name: 'Form',
+						type: 'n8n-nodes-base.form',
 						typeVersion: 1,
-						position: [0, 0],
+						position: [200, 0],
 						parameters: {},
 					},
 				],
+				// Form is reachable from the trigger, so it actually runs and is flagged.
+				connections: {
+					[executeWorkflowTriggerNode.name]: {
+						main: [[{ node: 'Form', type: 'main', index: 0 }]],
+					},
+				},
 			},
-			{ id: 'wf-c', name: 'Workflow C', nodes: [] },
 		] as never);
 
 		const result = await service.validateAgentConfiguration(
@@ -1000,11 +1223,6 @@ describe('AgentValidationService — structured issues', () => {
 				capability: { kind: 'subAgent', id: agentId, index: 3 },
 			},
 			{
-				code: 'incompatible_reference',
-				path: 'subAgents.agents.4.agentId',
-				capability: { kind: 'subAgent', id: 'sub-3', index: 4 },
-			},
-			{
 				code: 'missing_reference',
 				path: 'tools.2.workflow',
 				capability: { kind: 'tool', id: 'Workflow B', index: 2, toolType: 'workflow' },
@@ -1013,13 +1231,60 @@ describe('AgentValidationService — structured issues', () => {
 				code: 'incompatible_reference',
 				path: 'tools.3.workflow',
 				capability: { kind: 'tool', id: 'Workflow C', index: 3, toolType: 'workflow' },
+				reason: 'no_supported_trigger',
 			},
 			{
 				code: 'missing_reference',
 				path: 'tools.4.workflowId',
 				capability: { kind: 'tool', id: 'Workflow A', index: 4, toolType: 'workflow' },
 			},
+			{
+				code: 'incompatible_reference',
+				path: 'tools.5.workflowId',
+				capability: { kind: 'tool', id: 'Workflow With Form', index: 5, toolType: 'workflow' },
+				reason: 'incompatible_nodes',
+			},
 		]);
+	});
+
+	it('flags an unpublished workflow tool for publishing but not for runtime', async () => {
+		const { service, agentRepository, workflowRepository } = makeService();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({
+				...runnableConfig,
+				tools: [{ type: 'workflow', workflowId: 'wf-draft', workflow: 'Draft Workflow' }],
+			}),
+		);
+		workflowRepository.findManyByAgentToolReferences.mockResolvedValue([
+			{
+				id: 'wf-draft',
+				name: 'Draft Workflow',
+				activeVersionId: null,
+				nodes: [executeWorkflowTriggerNode],
+			},
+		] as never);
+		const credentials = makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]);
+
+		const publishResult = await service.validateAgentConfiguration(
+			agentId,
+			projectId,
+			credentials,
+			'publish',
+		);
+		const runtimeResult = await service.validateAgentIsRunnable(agentId, projectId, credentials);
+
+		expect(publishResult).toEqual({
+			status: 'invalid',
+			issues: [
+				{
+					code: 'incompatible_reference',
+					path: 'tools.0.workflowId',
+					capability: { kind: 'tool', id: 'Draft Workflow', index: 0, toolType: 'workflow' },
+					reason: 'not_published',
+				},
+			],
+		});
+		expect(runtimeResult).toEqual({ missing: [] });
 	});
 
 	it('loaded-agent full validation loads tasks but does not refetch the agent, flagging missing task bodies regardless of enabled state', async () => {

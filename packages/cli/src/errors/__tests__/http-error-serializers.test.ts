@@ -1,3 +1,4 @@
+import type { SourceControlledFile } from '@n8n/api-types';
 import { UnexpectedError, UserError } from 'n8n-workflow';
 
 import { classifyHttpError } from '@/errors/http-error-classifier';
@@ -5,10 +6,12 @@ import {
 	serializeInternalRestError,
 	serializePublicApiError,
 } from '@/errors/http-error-serializers';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { LicenseEulaRequiredError } from '@/errors/response-errors/license-eula-required.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WorkflowPublishBlockedError } from '@/errors/response-errors/workflow-publish-blocked.error';
 import { toImportBlockedError } from '@/modules/n8n-packages/engine/import-blocked.error';
+import { PolicyViolationError } from '@/policy/policy-violation.error';
 
 describe('http-error-serializers', () => {
 	it('serializePublicApiError: minimal message for ResponseError', () => {
@@ -116,6 +119,75 @@ describe('http-error-serializers', () => {
 		const result = serializePublicApiError(descriptor);
 		expect(result.status).toBe(409);
 		expect(result.body).toEqual({ message: expect.stringContaining('Import blocked'), issues });
+	});
+
+	it('both serializers expose policy violations on a 403', () => {
+		const violations = [
+			{
+				kind: 'node-type-unavailable',
+				checkId: 'node-type-availability',
+				message: 'Slack is not available in this project',
+				subject: 'n8n-nodes-base.slack',
+				subjectType: 'nodeType',
+			},
+		];
+		const descriptor = classifyHttpError(new PolicyViolationError([violations[0]]));
+
+		expect(serializePublicApiError(descriptor)).toEqual({
+			status: 403,
+			body: {
+				message: 'Slack is not available in this project',
+				violations,
+			},
+		});
+		expect(serializeInternalRestError(descriptor)).toEqual({
+			status: 403,
+			body: {
+				code: 403,
+				message: 'Slack is not available in this project',
+				meta: { violations },
+			},
+		});
+	});
+
+	it('both serializers expose source control push conflicts on a 409', () => {
+		const conflicts: SourceControlledFile[] = [
+			{
+				file: 'workflows/wf-1.json',
+				id: 'wf-1',
+				name: 'My workflow',
+				type: 'workflow',
+				status: 'modified',
+				location: 'local',
+				conflict: true,
+				updatedAt: '2024-01-01T00:00:00.000Z',
+			},
+		];
+		const descriptor = classifyHttpError(
+			new ConflictError(
+				'Push blocked by conflicting files. Pass `force: true` to push anyway.',
+				undefined,
+				{
+					conflicts,
+				},
+			),
+		);
+
+		expect(serializePublicApiError(descriptor)).toEqual({
+			status: 409,
+			body: {
+				message: expect.stringContaining('conflicting files'),
+				conflicts,
+			},
+		});
+		expect(serializeInternalRestError(descriptor)).toEqual({
+			status: 409,
+			body: {
+				code: 409,
+				message: expect.stringContaining('conflicting files'),
+				meta: { conflicts },
+			},
+		});
 	});
 
 	it('both serializers map UserError to 400', () => {

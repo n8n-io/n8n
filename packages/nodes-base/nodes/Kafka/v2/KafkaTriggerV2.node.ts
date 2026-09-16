@@ -12,7 +12,7 @@ import { setSchemaRegistry, type KafkaCredentials } from '../utils';
 import { consumeTopic, createDataEmitter, createMessageParser } from './consumer';
 import type { KafkaConsumerHandle } from './consumer';
 import { versionDescription } from './KafkaTriggerV2Description';
-import { createKafkaConsumer } from './transport';
+import { assertTopicExists, createKafkaConsumer } from './transport';
 import { explainManualRunGroupDenial, getSettings } from './TriggerSettings';
 
 export class KafkaTriggerV2 implements INodeType {
@@ -72,6 +72,10 @@ export class KafkaTriggerV2 implements INodeType {
 			void startupFailure.catch(() => {});
 
 			try {
+				// Before the consumer, so a missing topic fails activation instead of
+				// leaving a Published workflow that silently consumes nothing.
+				await assertTopicExists(credentials, settings.topic, this.logger);
+
 				const consumer = await createKafkaConsumer(credentials, settings.consumer, {
 					logger: this.logger,
 					// v1 routes non-restartable consumer crashes to emitError so n8n

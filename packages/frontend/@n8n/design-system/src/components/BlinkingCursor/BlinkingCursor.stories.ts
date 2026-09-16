@@ -17,4 +17,4 @@ const Template: StoryFn = (args, { argTypes }) => ({
 	template: '<blinking-cursor v-bind="args" />',
 });
 
-export const Cursor = Template.bind({});
+export const Default = Template.bind({});

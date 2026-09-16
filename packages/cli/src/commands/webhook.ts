@@ -25,6 +25,8 @@ export class Webhook extends BaseCommand {
 
 	override needsCommunityPackages = true;
 
+	override needsExpressionEngine = true;
+
 	override seedsInstanceIdentity = true;
 
 	/**

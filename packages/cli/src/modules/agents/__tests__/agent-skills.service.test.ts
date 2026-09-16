@@ -8,7 +8,9 @@ import type { Agent } from '../entities/agent.entity';
 import { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import type { AgentModificationTelemetryService } from '../agent-modification-telemetry.service';
 import { AgentSkillsService } from '../agent-skills.service';
+import type { AgentUpdateBroadcaster } from '../agent-update-broadcaster';
 import type { AgentRepository } from '../repositories/agent.repository';
+import { getAgentSkillHash } from '../utils/agent-config-hash';
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
@@ -34,6 +36,7 @@ describe('AgentSkillsService', () => {
 	let agentRepository: Mocked<AgentRepository>;
 	let runtimeCacheService: Mocked<AgentRuntimeCacheService>;
 	let modificationTelemetry: Mocked<AgentModificationTelemetryService>;
+	let agentUpdateBroadcaster: Mocked<AgentUpdateBroadcaster>;
 
 	const skill = {
 		name: 'Summarize Notes',
@@ -48,9 +51,15 @@ describe('AgentSkillsService', () => {
 		agentRepository = mock<AgentRepository>();
 		runtimeCacheService = mock<AgentRuntimeCacheService>();
 		Container.set(AgentRuntimeCacheService, runtimeCacheService);
-		agentRepository.save.mockImplementation(async (a) => a as Agent);
+		agentRepository.saveDraftFenced.mockResolvedValue(true);
 		modificationTelemetry = mock<AgentModificationTelemetryService>();
-		service = new AgentSkillsService(mockLogger(), agentRepository, modificationTelemetry);
+		agentUpdateBroadcaster = mock<AgentUpdateBroadcaster>();
+		service = new AgentSkillsService(
+			mockLogger(),
+			agentRepository,
+			modificationTelemetry,
+			agentUpdateBroadcaster,
+		);
 	});
 
 	it('creates a skill without attaching it to the config', async () => {
@@ -69,9 +78,10 @@ describe('AgentSkillsService', () => {
 		expect(result).toEqual({
 			id: expect.stringMatching(/^skill_[A-Za-z0-9]{16}$/),
 			skill,
+			skillHash: expect.stringMatching(/^[a-f0-9]{64}$/),
 			versionId: agent.versionId,
 		});
-		expect(agentRepository.save.mock.calls[0][0].skills).toEqual({
+		expect(agentRepository.saveDraftFenced.mock.calls[0][0].skills).toEqual({
 			[result.id]: skill,
 		});
 		expect(agent.schema?.skills).toEqual([]);
@@ -109,12 +119,13 @@ describe('AgentSkillsService', () => {
 				content: '# Guide',
 			},
 		]);
-		expect(agentRepository.save).toHaveBeenCalledWith(
+		expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(
 			expect.objectContaining({
 				skills: {
 					[result.id]: expect.objectContaining({ references: result.skill.references }),
 				},
 			}),
+			undefined,
 		);
 	});
 
@@ -150,8 +161,8 @@ describe('AgentSkillsService', () => {
 			expect(results.map((r) => r.versionId)).toEqual([agent.versionId, agent.versionId]);
 
 			expect(agentRepository.findByIdAndProjectId).toHaveBeenCalledTimes(1);
-			expect(agentRepository.save).toHaveBeenCalledTimes(1);
-			expect(agentRepository.save.mock.calls[0][0].skills).toEqual({
+			expect(agentRepository.saveDraftFenced).toHaveBeenCalledTimes(1);
+			expect(agentRepository.saveDraftFenced.mock.calls[0][0].skills).toEqual({
 				[results[0].id]: skill,
 				[results[1].id]: skillTwo,
 			});
@@ -165,7 +176,7 @@ describe('AgentSkillsService', () => {
 			);
 
 			expect(agentRepository.findByIdAndProjectId).not.toHaveBeenCalled();
-			expect(agentRepository.save).not.toHaveBeenCalled();
+			expect(agentRepository.saveDraftFenced).not.toHaveBeenCalled();
 			expect(runtimeCacheService.clearRuntimes).not.toHaveBeenCalled();
 		});
 
@@ -178,7 +189,7 @@ describe('AgentSkillsService', () => {
 				service.createSkills(agentId, projectId, [skillTwo, { ...skill }], telemetryContext),
 			).rejects.toThrow('Agent already has a skill named "Summarize Notes".');
 
-			expect(agentRepository.save).not.toHaveBeenCalled();
+			expect(agentRepository.saveDraftFenced).not.toHaveBeenCalled();
 			expect(runtimeCacheService.clearRuntimes).not.toHaveBeenCalled();
 		});
 
@@ -194,7 +205,7 @@ describe('AgentSkillsService', () => {
 				),
 			).rejects.toThrow('Duplicate skill name in batch: "summarize notes".');
 
-			expect(agentRepository.save).not.toHaveBeenCalled();
+			expect(agentRepository.saveDraftFenced).not.toHaveBeenCalled();
 			expect(runtimeCacheService.clearRuntimes).not.toHaveBeenCalled();
 		});
 
@@ -210,7 +221,7 @@ describe('AgentSkillsService', () => {
 				),
 			).rejects.toThrow('Invalid agent skill');
 
-			expect(agentRepository.save).not.toHaveBeenCalled();
+			expect(agentRepository.saveDraftFenced).not.toHaveBeenCalled();
 			expect(runtimeCacheService.clearRuntimes).not.toHaveBeenCalled();
 		});
 	});
@@ -228,7 +239,7 @@ describe('AgentSkillsService', () => {
 
 		const result = await service.createAndAttachSkill(agentId, projectId, skill, telemetryContext);
 
-		expect(agentRepository.save.mock.calls[0][0].skills).toEqual({
+		expect(agentRepository.saveDraftFenced.mock.calls[0][0].skills).toEqual({
 			[result.id]: skill,
 		});
 		expect(agent.schema?.skills).toEqual([{ type: 'skill', id: result.id }]);
@@ -268,7 +279,8 @@ describe('AgentSkillsService', () => {
 			{
 				description: 'Summarizes support notes',
 			},
-			telemetryContext,
+			{ ...telemetryContext, pushRef: 'writer-push-ref' },
+			getAgentSkillHash(skillWithReferences),
 		);
 
 		expect(result).toEqual({
@@ -283,12 +295,39 @@ describe('AgentSkillsService', () => {
 					},
 				],
 			},
+			skillHash: expect.stringMatching(/^[a-f0-9]{64}$/),
 			versionId: agent.versionId,
 		});
-		expect(agentRepository.save.mock.calls[0][0].skills).toEqual({
+		expect(agentRepository.saveDraftFenced.mock.calls[0][0].skills).toEqual({
 			summarize_notes: result.skill,
 		});
 		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
+		expect(agentUpdateBroadcaster.notify).toHaveBeenCalledWith(
+			{ projectId, agentId },
+			'writer-push-ref',
+		);
+	});
+
+	it('rejects an update based on a stale skill without mutating the agent', async () => {
+		const agent = makeAgent({ skills: { summarize_notes: skill } });
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+		await expect(
+			service.updateSkill(
+				agentId,
+				projectId,
+				'summarize_notes',
+				{ instructions: 'Replace newer work' },
+				telemetryContext,
+				'stale-hash',
+			),
+		).rejects.toThrow('Skill was changed elsewhere; reload to get the latest version');
+
+		expect(agent.skills?.summarize_notes).toBe(skill);
+		expect(agentRepository.saveDraftFenced).not.toHaveBeenCalled();
+		expect(runtimeCacheService.clearRuntimes).not.toHaveBeenCalled();
+		expect(modificationTelemetry.record).not.toHaveBeenCalled();
+		expect(agentUpdateBroadcaster.notify).not.toHaveBeenCalled();
 	});
 
 	it('removes optional list fields when an update clears them', async () => {
@@ -321,12 +360,13 @@ describe('AgentSkillsService', () => {
 
 		expect(result.skill).not.toHaveProperty('allowedTools');
 		expect(result.skill).not.toHaveProperty('references');
-		expect(agentRepository.save).toHaveBeenCalledWith(
+		expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(
 			expect.objectContaining({
 				skills: {
 					summarize_notes: skill,
 				},
 			}),
+			undefined,
 		);
 	});
 
@@ -383,7 +423,7 @@ describe('AgentSkillsService', () => {
 
 		await service.deleteSkill(agentId, projectId, 'summarize_notes', telemetryContext);
 
-		expect(agentRepository.save.mock.calls[0][0].skills).toEqual({});
+		expect(agentRepository.saveDraftFenced.mock.calls[0][0].skills).toEqual({});
 		expect(agent.schema?.tools).toEqual([{ type: 'custom', id: 'custom_tool' }]);
 		expect(agent.schema?.skills).toEqual([]);
 		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
@@ -427,7 +467,7 @@ describe('AgentSkillsService', () => {
 			{ description: 'Updated description' },
 			telemetryContext,
 		);
-		expect(agentRepository.save).not.toHaveBeenCalled();
+		expect(agentRepository.saveDraftFenced).not.toHaveBeenCalled();
 		expect(modificationTelemetry.record).not.toHaveBeenCalled();
 	});
 

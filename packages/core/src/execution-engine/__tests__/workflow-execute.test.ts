@@ -58,6 +58,7 @@ import { DirectedGraph } from '../partial-execution-utils';
 import * as partialExecutionUtils from '../partial-execution-utils';
 import { createNodeData, toITaskData } from '../partial-execution-utils/__tests__/helpers';
 import { WorkflowExecute } from '../workflow-execute';
+import { modifyNode, nodeTypeArguments, passThroughNode, types } from './mock-node-types';
 
 vi.mock('node:fs', async (importActual) => ({
 	...(await importActual()),
@@ -617,6 +618,77 @@ describe('WorkflowExecute', () => {
 			expect(runNodeFilter).toContain(trigger.name);
 			expect(runNodeFilter).toContain(agent.name);
 			expect(runNodeFilter).toContain(tool.name);
+		});
+
+		test('runs the tool nodes of an agent upstream of the destination node', async () => {
+			const agentNodeType = modifyNode(passThroughNode)
+				.return({
+					actions: [
+						{
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'tool',
+							input: { query: 'test input' },
+							type: 'ai_tool',
+							id: 'action_1',
+							metadata: {},
+						},
+					],
+					metadata: {},
+				})
+				.return((response) => [
+					[
+						{
+							json: {
+								toolResult:
+									response?.actionResponses[0]?.data.data?.ai_tool?.[0]?.[0]?.json ?? null,
+							},
+						},
+					],
+				])
+				.done();
+
+			const trigger = createNodeData({ name: 'trigger', type: types.passThrough });
+			const agent = createNodeData({ name: 'agent', type: 'agent' });
+			const merge = createNodeData({ name: 'merge', type: types.passThrough });
+			const tool = createNodeData({ name: 'tool', type: types.passThrough });
+			const customNodeTypes = Helpers.NodeTypes({
+				...nodeTypeArguments,
+				agent: { type: agentNodeType, sourcePath: '' },
+			});
+
+			const workflow = new DirectedGraph()
+				.addNodes(trigger, agent, merge, tool)
+				.addConnections(
+					{ from: trigger, to: agent, type: NodeConnectionTypes.Main },
+					{ from: agent, to: merge, type: NodeConnectionTypes.Main },
+					{ from: tool, to: agent, type: NodeConnectionTypes.AiTool },
+				)
+				.toWorkflow({
+					name: '',
+					active: false,
+					nodeTypes: customNodeTypes,
+					settings: { executionOrder },
+				});
+
+			const workflowExecute = new WorkflowExecute(
+				Helpers.WorkflowExecuteAdditionalData(createDeferredPromise<IRun>()),
+				executionMode,
+			);
+
+			const result = await workflowExecute.run({
+				workflow,
+				startNode: trigger,
+				destinationNode: { nodeName: merge.name, mode: 'inclusive' },
+			});
+
+			const runData = result.data.resultData.runData;
+			expect(runData[tool.name][0].executionStatus).toBe('success');
+
+			const agentRuns = runData[agent.name];
+			expect(agentRuns[agentRuns.length - 1].data?.main?.[0]?.[0]?.json.toolResult).toMatchObject({
+				query: 'test input',
+				toolCallId: 'action_1',
+			});
 		});
 	});
 
@@ -1562,8 +1634,9 @@ describe('WorkflowExecute', () => {
 	describe('runNode', () => {
 		const nodeTypes = mock<INodeTypes>();
 		const triggerNode = mock<INode>();
+		const closeFunctionSpy = vi.fn();
 		const triggerResponse = mock<ITriggerResponse>({
-			closeFunction: vi.fn(),
+			closeFunction: closeFunctionSpy,
 			// This node should never trigger, or return
 			manualTriggerFunction: async () => await new Promise(() => {}),
 		});
@@ -1618,10 +1691,11 @@ describe('WorkflowExecute', () => {
 			});
 			expect(isSettled).toBe(false);
 			expect(abortController.signal.aborted).toBe(false);
-			expect(triggerResponse.closeFunction).not.toHaveBeenCalled();
+			expect(closeFunctionSpy).not.toHaveBeenCalled();
 
 			abortController.abort();
-			expect(triggerResponse.closeFunction).toHaveBeenCalled();
+			await new Promise((resolve) => setImmediate(resolve));
+			expect(closeFunctionSpy).toHaveBeenCalled();
 		});
 	});
 
@@ -2243,6 +2317,62 @@ describe('WorkflowExecute', () => {
 			expect(nodeWaiting[1].main).toHaveLength(2);
 			expect(nodeWaitingSource[0].main).toHaveLength(2);
 			expect(nodeWaitingSource[1].main).toHaveLength(2);
+		});
+	});
+
+	describe('prepareConnectionInputData', () => {
+		// Legacy (v0) order with the first input dead-padded: data delivered
+		// through a loop-back edge is used, data from upstream keeps the drop.
+		const workflow = new Workflow({
+			id: 'test',
+			nodes: [
+				{
+					parameters: {},
+					id: 'uuid-1',
+					name: 'Start',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+				},
+				{
+					parameters: {},
+					id: 'uuid-2',
+					name: 'Loop',
+					type: 'n8n-nodes-base.merge',
+					typeVersion: 2.1,
+					position: [200, 0],
+				},
+			],
+			connections: {
+				Start: { main: [[{ node: 'Loop', type: NodeConnectionTypes.Main, index: 0 }]] },
+				Loop: { main: [[{ node: 'Loop', type: NodeConnectionTypes.Main, index: 1 }]] },
+			},
+			active: false,
+			nodeTypes: Helpers.NodeTypes(),
+			settings: { executionOrder: 'v0' },
+		});
+		const node = workflow.getNode('Loop')!;
+		const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+		const workflowExecute = new WorkflowExecute(mock<IWorkflowExecuteAdditionalData>(), 'manual');
+		const loopBackItems = [{ json: { attempt: 1 } }];
+
+		const prepare = (previousNode: string) =>
+			// @ts-expect-error private method
+			workflowExecute.prepareConnectionInputData(
+				workflow,
+				nodeType,
+				undefined,
+				node,
+				{ main: [[], loopBackItems] },
+				{ main: [null, { previousNode }] },
+			);
+
+		test('should use data a node sent to a later input of itself', () => {
+			expect(prepare('Loop')).toEqual(loopBackItems);
+		});
+
+		test('should skip the run when the data came from an upstream node', () => {
+			expect(prepare('Start')).toBeNull();
 		});
 	});
 

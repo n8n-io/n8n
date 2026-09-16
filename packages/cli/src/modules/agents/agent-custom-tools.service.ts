@@ -17,10 +17,11 @@ import {
 	diffAgentConfigParts,
 } from './agent-modification-telemetry.service';
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
+import { AgentUpdateBroadcaster } from './agent-update-broadcaster';
 import type { Agent } from './entities/agent.entity';
 import { AgentRepository } from './repositories/agent.repository';
 import { isUnconfiguredAgent } from './utils/agent-capabilities';
-import { markAgentDraftDirty } from './utils/agent-draft.utils';
+import { markAgentDraftDirty, saveAgentDraftFenced } from './utils/agent-draft.utils';
 
 type AgentToolEntries = Agent['tools'];
 
@@ -31,6 +32,7 @@ export class AgentCustomToolsService {
 		private readonly agentRepository: AgentRepository,
 		private readonly runtimeCacheService: AgentRuntimeCacheService,
 		private readonly modificationTelemetry: AgentModificationTelemetryService,
+		private readonly agentUpdateBroadcaster: AgentUpdateBroadcaster,
 	) {}
 
 	/**
@@ -72,7 +74,8 @@ export class AgentCustomToolsService {
 
 		markAgentDraftDirty(entity);
 		this.runtimeCacheService.clearRuntimes(agentId);
-		const saved = await this.agentRepository.save(entity);
+		const saved = await saveAgentDraftFenced(this.agentRepository, entity);
+		this.agentUpdateBroadcaster.notify({ projectId, agentId }, context.pushRef);
 		if (options.recordTelemetry !== false) {
 			this.modificationTelemetry.record({
 				agent: saved,
@@ -124,7 +127,8 @@ export class AgentCustomToolsService {
 
 		markAgentDraftDirty(entity);
 		this.runtimeCacheService.clearRuntimes(agentId);
-		const saved = await this.agentRepository.save(entity);
+		const saved = await saveAgentDraftFenced(this.agentRepository, entity);
+		this.agentUpdateBroadcaster.notify({ projectId, agentId }, context.pushRef);
 		this.modificationTelemetry.record({
 			agent: saved,
 			projectId,

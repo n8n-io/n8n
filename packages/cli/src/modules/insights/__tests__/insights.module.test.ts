@@ -8,6 +8,8 @@ import { mock } from 'vitest-mock-extended';
 
 import { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository';
 import { InsightsCollectionService } from '../insights-collection.service';
+import { InsightsCompactionTask } from '../insights-compaction.task';
+import { InsightsPruningTask } from '../insights-pruning.task';
 import { InsightsModule } from '../insights.module';
 import { InsightsService } from '../insights.service';
 
@@ -42,8 +44,6 @@ describe('InsightsModule', () => {
 			InsightsService,
 			new InsightsService(
 				mock(),
-				mock(),
-				mock(),
 				Container.get(LicenseState),
 				mockInstanceSettings,
 				Container.get(Logger),
@@ -52,6 +52,15 @@ describe('InsightsModule', () => {
 		);
 		insightsModule = Container.get(InsightsModule);
 		await createTeamProject();
+	});
+
+	describe('systemTasks()', () => {
+		it('should register the compaction and pruning tasks', async () => {
+			await expect(insightsModule.systemTasks()).resolves.toEqual([
+				InsightsCompactionTask,
+				InsightsPruningTask,
+			]);
+		});
 	});
 
 	describe('Dynamic conditional import of InsightsCollectionService', () => {

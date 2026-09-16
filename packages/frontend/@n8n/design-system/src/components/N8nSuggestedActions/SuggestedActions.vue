@@ -23,6 +23,7 @@ export interface SuggestedActionsProps {
 	actions: SuggestedAction[];
 	open: boolean;
 	popoverAlignment?: 'start' | 'end' | 'center';
+	popoverSideOffset?: number;
 	notice?: string;
 	/** Render an invisible popover anchor instead of the count pill; opening is then fully controlled via `open`. */
 	hideTrigger?: boolean;
@@ -37,6 +38,7 @@ defineOptions({ name: 'N8nSuggestedActions' });
 
 const props = withDefaults(defineProps<SuggestedActionsProps>(), {
 	popoverAlignment: undefined,
+	popoverSideOffset: undefined,
 	notice: undefined,
 });
 
@@ -58,6 +60,7 @@ const handleActionClick = (action: SuggestedAction) => {
 		width="360px"
 		max-height="500px"
 		:align="popoverAlignment"
+		:side-offset="popoverSideOffset"
 		@update:open="$emit('update:open', $event)"
 	>
 		<template #trigger>

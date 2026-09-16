@@ -42,12 +42,13 @@ on:
         required: true
         type: boolean
 
-permissions:
-  contents: write
-  id-token: write
+permissions: {}
 
 jobs:
   create-github-releases:
+    permissions:
+      contents: write
+      id-token: write
     name: Create GitHub releases
     runs-on: ubuntu-slim
     environment: release
@@ -70,7 +71,7 @@ jobs:
         uses: ./.github/actions/setup-nodejs
         with:
           build-command: ''
-          install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
+          install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --lockfile-dir ${{ github.workspace }}/.github/scripts --ignore-workspace
           cache-dependency-path: .github/scripts/pnpm-lock.yaml
 
       - name: Create GitHub releases

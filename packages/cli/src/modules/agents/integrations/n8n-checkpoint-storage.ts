@@ -3,15 +3,16 @@ import {
 	type CheckpointStore,
 	type SerializableAgentState,
 } from '@n8n/agents';
-import { Logger, ModuleRegistry } from '@n8n/backend-common';
+import { Logger } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import { InstanceSettings } from 'n8n-core';
 import { jsonParse, UnexpectedError, UserError } from 'n8n-workflow';
-import { strict } from 'node:assert';
 
+import {
+	decodeAgentSandboxHostMetadata,
+	type AgentSandboxPrincipalHash,
+} from '../agent-sandbox-principal';
 import { AgentCheckpointRepository } from '../repositories/agent-checkpoint.repository';
 
 /** File parts are checkpointed reference-only (a `Uint8Array` would not survive JSON round-tripping). */
@@ -37,23 +38,17 @@ type CheckpointStatus =
 			checkpoint: SerializableAgentState;
 	  };
 
+const MAX_SANDBOX_RECONCILIATION_CHECKPOINTS = 100;
+export const CHECKPOINT_RECONCILIATION_OVERFLOW = Symbol('checkpoint-reconciliation-overflow');
+
 @Service()
 export class N8NCheckpointStorage {
-	private pruneTimeout: NodeJS.Timeout | undefined;
-
-	private isStopping = false;
-
-	private isInitialized = false;
-
 	constructor(
-		private readonly instanceSettings: InstanceSettings,
 		private readonly agentCheckpointRepository: AgentCheckpointRepository,
 		private readonly logger: Logger,
 		private readonly agentsConfig: AgentsConfig,
-		private readonly moduleRegistry: ModuleRegistry,
 	) {
 		this.logger = this.logger.scoped('agents');
-		this.isInitialized = this.moduleRegistry.isActive('agents');
 	}
 
 	getStorage(agentId: string): CheckpointStore {
@@ -66,10 +61,31 @@ export class N8NCheckpointStorage {
 		};
 	}
 
-	init() {
-		strict(this.instanceSettings.instanceRole !== 'unset', 'Instance role is not set');
+	async getActiveRunIdsForSandbox(
+		agentId: string,
+		principalHash: AgentSandboxPrincipalHash,
+	): Promise<Set<string> | typeof CHECKPOINT_RECONCILIATION_OVERFLOW> {
+		const checkpoints = await this.agentCheckpointRepository.findForSandboxReconciliation(agentId);
+		if (checkpoints.length > MAX_SANDBOX_RECONCILIATION_CHECKPOINTS) {
+			return CHECKPOINT_RECONCILIATION_OVERFLOW;
+		}
 
-		if (this.instanceSettings.isLeader) this.startPruning();
+		const runIds = new Set<string>();
+
+		for (const checkpoint of checkpoints) {
+			if (checkpoint.expired || checkpoint.state === null) continue;
+
+			try {
+				const state = jsonParse<SerializableAgentState>(checkpoint.state);
+				if (state.status !== 'running' && state.status !== 'suspended') continue;
+				const scope = decodeAgentSandboxHostMetadata(state.persistence?.hostMetadata);
+				if (scope?.principalHash === principalHash) runIds.add(checkpoint.runId);
+			} catch {
+				// A malformed checkpoint must not block workspace acquisition.
+			}
+		}
+
+		return runIds;
 	}
 
 	async save(key: string, checkpointState: SerializableAgentState, agentId: string): Promise<void> {
@@ -138,6 +154,40 @@ export class N8NCheckpointStorage {
 		);
 	}
 
+	/**
+	 * The agent's open (unexpired, still parked) checkpoint for a thread, or
+	 * null. The authoritative "is this conversation suspended right now?"
+	 * lookup: unlike the `suspended` execution record, a checkpoint stops being
+	 * suspended the moment the run is resumed or cancelled.
+	 */
+	async findSuspendedForThread(
+		agentId: string,
+		threadId: string,
+	): Promise<SerializableAgentState | null> {
+		const rows = await this.agentCheckpointRepository.findActiveForAgent(agentId);
+		for (const row of rows) {
+			const checkpoint = this.parseSuspendedState(row.state, threadId);
+			if (checkpoint) return checkpoint;
+		}
+		return null;
+	}
+
+	private parseSuspendedState(
+		state: string | null,
+		threadId: string,
+	): SerializableAgentState | null {
+		if (!state) return null;
+		let parsed: SerializableAgentState;
+		try {
+			parsed = jsonParse<SerializableAgentState>(state);
+		} catch {
+			return null;
+		}
+		if (parsed.status !== 'suspended' || parsed.persistence?.delegated === true) return null;
+		if (parsed.persistence?.threadId !== threadId) return null;
+		return parsed;
+	}
+
 	async getStatus(key: string, agentId: string): Promise<CheckpointStatus> {
 		const checkpoint = await this.agentCheckpointRepository.findByRunIdAndAgentId(key, agentId);
 		if (!checkpoint) return { status: 'not-found' };
@@ -151,46 +201,16 @@ export class N8NCheckpointStorage {
 		await this.agentCheckpointRepository.expireByRunIdAndAgentId(key, agentId);
 	}
 
-	@OnLeaderTakeover()
-	startPruning() {
-		this.isStopping = false;
-		this.scheduleNextPrune(0);
-	}
-
-	@OnLeaderStepdown()
-	stopPruning() {
-		clearTimeout(this.pruneTimeout);
-		this.pruneTimeout = undefined;
-	}
-
-	@OnShutdown()
-	shutdown() {
-		this.isStopping = true;
-		this.stopPruning();
-	}
-
-	private scheduleNextPrune(delayMs = Time.hours.toMilliseconds) {
-		if (this.isStopping || !this.isInitialized) return;
-		this.pruneTimeout = setTimeout(async () => {
-			await this.pruneStaleSuspensions();
-		}, delayMs);
-	}
-
-	private async pruneStaleSuspensions() {
+	/** Marks checkpoints past their TTL as expired. A failure propagates to the caller. */
+	async pruneStaleSuspensions() {
 		const ttlMs = this.agentsConfig.checkpointTtlSeconds * Time.seconds.toMilliseconds;
 		const cutoffDate = new Date(Date.now() - ttlMs);
 
-		try {
-			const count = await this.agentCheckpointRepository.markExpired(cutoffDate);
-			if (count > 0) {
-				this.logger.info('Marked stale agent checkpoints as expired', { count });
-			} else {
-				this.logger.debug('No stale agent checkpoints to expire');
-			}
-			this.scheduleNextPrune();
-		} catch (error: unknown) {
-			this.logger.warn('Failed to expire stale agent checkpoints', { error });
-			this.scheduleNextPrune(Time.seconds.toMilliseconds * 30);
+		const count = await this.agentCheckpointRepository.markExpired(cutoffDate);
+		if (count > 0) {
+			this.logger.info('Marked stale agent checkpoints as expired', { count });
+		} else {
+			this.logger.debug('No stale agent checkpoints to expire');
 		}
 	}
 }

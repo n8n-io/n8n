@@ -1,10 +1,32 @@
 import { DatabaseConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import { DataSource, EntityManager, IsNull, LessThan, Repository, Not } from '@n8n/typeorm';
+import {
+	DataSource,
+	EntityManager,
+	IsNull,
+	LessThan,
+	LessThanOrEqual,
+	Repository,
+	Not,
+} from '@n8n/typeorm';
 
-import { WorkflowDependency } from '../entities';
+import { SharedWorkflowRepository } from './shared-workflow.repository';
+import type { User } from '../entities';
+import { WorkflowDependency, WorkflowEntity, WORKFLOW_DEPENDENCY_INDEX_VERSION } from '../entities';
 
-const INDEX_VERSION_ID = 1;
+/**
+ * Which workflows an aggregate over the index may span. The roles come from the caller
+ * because they are derived from scopes, which live above this layer; everything else about
+ * readability is decided here by the same subquery the workflow listing uses.
+ */
+export interface NodeUsageScope {
+	/** Project roles carrying `workflow:read`, as `RoleService.rolesWithScope` returns them. */
+	projectRoles: string[];
+	/** Workflow roles carrying `workflow:read`. */
+	workflowRoles: string[];
+	/** Narrow to a single project. Omit to span every project the user can read. */
+	projectId?: string;
+}
 
 /**
  * Helper class to collect workflow dependencies before writing them to the database.
@@ -29,7 +51,7 @@ export class WorkflowDependencies {
 			workflowId: this.workflowId,
 			workflowVersionId: this.workflowVersionId,
 			publishedVersionId: this.publishedVersionId,
-			indexVersionId: INDEX_VERSION_ID,
+			indexVersionId: WORKFLOW_DEPENDENCY_INDEX_VERSION,
 		});
 		this.dependencies.push(dep);
 	}
@@ -40,9 +62,132 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 	constructor(
 		dataSource: DataSource,
 		private readonly databaseConfig: DatabaseConfig,
+		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 	) {
 		super(WorkflowDependency, dataSource.manager);
 	}
+
+	/**
+	 * How many workflows in scope use each node type, most-used first.
+	 *
+	 * Answers "what does this project reach for" from the index instead of by fetching every
+	 * workflow and reading its nodes, which is the only other route: the workflow listing filters
+	 * on name alone.
+	 */
+	async countNodeTypeUsage(
+		user: User,
+		scope: NodeUsageScope,
+		limit: number,
+	): Promise<{
+		workflowsInScope: number;
+		nodeTypes: Array<{ nodeType: string; workflowCount: number }>;
+		truncated: boolean;
+	}> {
+		const rows = await this.buildScopedDependencyQuery(user, scope)
+			.andWhere('dependency.dependencyType = :dependencyType', { dependencyType: 'nodeType' })
+			.select('dependency.dependencyKey', 'nodeType')
+			// DISTINCT because three HTTP Request nodes in one workflow are one user of the type,
+			// and because a workflow shared into several projects matches the scope subquery once
+			// per row it holds there.
+			.addSelect('COUNT(DISTINCT dependency.workflowId)', 'workflowCount')
+			.groupBy('dependency.dependencyKey')
+			.orderBy('COUNT(DISTINCT dependency.workflowId)', 'DESC')
+			.addOrderBy('dependency.dependencyKey', 'ASC')
+			// One over the limit, so a cut list is reported as cut rather than guessed at. The
+			// histogram has to be bounded: an instance-wide read on a large estate would otherwise
+			// return hundreds of rows, which is the cost this surface exists to avoid.
+			.limit(limit + 1)
+			.getRawMany<{ nodeType: string; workflowCount: number | string }>();
+
+		// Two queries, not one transaction: the counts and the denominator can disagree by a
+		// workflow if one is written between them. Reading both here still beats making every
+		// caller pair them up, and the drift is a row, not a wrong shape.
+		const workflowsInScope = await this.countWorkflowsInScope(user, scope);
+
+		return {
+			workflowsInScope,
+			nodeTypes: rows.slice(0, limit).map((row) => ({
+				nodeType: row.nodeType,
+				workflowCount: Number(row.workflowCount),
+			})),
+			truncated: rows.length > limit,
+		};
+	}
+
+	/**
+	 * How many workflows the counts are out of. Every indexed workflow carries at least a
+	 * `workflowIndexed` placeholder row, so counting index rows without a type filter counts
+	 * workflows; one not yet indexed is absent from the numerator and the denominator alike.
+	 */
+	async countWorkflowsInScope(user: User, scope: NodeUsageScope): Promise<number> {
+		const total = await this.buildScopedDependencyQuery(user, scope)
+			.select('COUNT(DISTINCT dependency.workflowId)', 'total')
+			.getRawOne<{ total: number | string }>();
+
+		// Postgres returns COUNT as a bigint string.
+		return Number(total?.total ?? 0);
+	}
+
+	/**
+	 * Which workflows in scope use a given node type, most recently updated first.
+	 *
+	 * The rung below the histogram: once it says a node type is the house choice, this says which
+	 * workflow to read as the current example.
+	 */
+	async findWorkflowsUsingNodeType(
+		user: User,
+		scope: NodeUsageScope,
+		nodeType: string,
+		limit: number,
+	): Promise<Array<{ workflowId: string; name: string; updatedAt: Date }>> {
+		const rows = await this.buildScopedDependencyQuery(user, scope)
+			.andWhere('dependency.dependencyType = :dependencyType', { dependencyType: 'nodeType' })
+			.andWhere('dependency.dependencyKey = :nodeType', { nodeType })
+			.select('dependency.workflowId', 'workflowId')
+			// Grouped because the same workflow can hold several rows for one node type, so the
+			// aggregates pick a single name and timestamp per workflow.
+			.addSelect('MAX(workflow.name)', 'name')
+			.addSelect('MAX(workflow.updatedAt)', 'updatedAt')
+			.groupBy('dependency.workflowId')
+			.orderBy('MAX(workflow.updatedAt)', 'DESC')
+			.limit(limit)
+			.getRawMany<{ workflowId: string; name: string; updatedAt: Date | string }>();
+
+		return rows.map((row) => ({
+			workflowId: row.workflowId,
+			name: row.name,
+			// SQLite hands back the stored string; Postgres hands back a Date.
+			updatedAt: row.updatedAt instanceof Date ? row.updatedAt : new Date(row.updatedAt),
+		}));
+	}
+
+	/**
+	 * Index rows the user may read, scoped by the same subquery the workflow listing is built on
+	 * (`SharedWorkflowRepository.buildSharedWorkflowIdsSubquery`) rather than by a list of ids the
+	 * caller resolved first. Reusing it keeps this on one access path — a second one is the likeliest
+	 * thing here to drift into a leak — and keeps the scope out of the bind parameters, so the query
+	 * does not grow with the estate.
+	 */
+	private buildScopedDependencyQuery(user: User, scope: NodeUsageScope) {
+		const readable = this.sharedWorkflowRepository.buildSharedWorkflowIdsSubquery(user, {
+			projectRoles: scope.projectRoles,
+			workflowRoles: scope.workflowRoles,
+			...(scope.projectId ? { projectId: scope.projectId } : {}),
+		});
+
+		return (
+			this.createQueryBuilder('dependency')
+				.innerJoin(WorkflowEntity, 'workflow', 'workflow.id = dependency.workflowId')
+				// Draft rows describe what a workflow currently contains; what someone is building is a
+				// better statement of preference than what happens to be published.
+				.where('dependency.publishedVersionId IS NULL')
+				// Archived workflows are what a project used to do.
+				.andWhere('workflow.isArchived = :isArchived', { isArchived: false })
+				.andWhere(`dependency.workflowId IN (${readable.getQuery()})`)
+				.setParameters(readable.getParameters())
+		);
+	}
+
 	/**
 	 * Replace the dependencies for a given workflow.
 	 * Uses the workflowVersionId to ensure consistency between the workflow and dependency tables.
@@ -64,17 +209,31 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 		dependencies: WorkflowDependencies,
 		tx: EntityManager,
 	): Promise<boolean> {
-		const deleteResult = await tx.delete(WorkflowDependency, {
+		// NOTE: this relies on the fact that we only want to track the latest published version or draft dependencies.
+		// If we're updating published dependencies, checking for Not Null works because we don't actually
+		// care about the specific previous published version id.
+		const publishedVersionCondition = dependencies.publishedVersionId ? Not(IsNull()) : IsNull();
+
+		// Replace rows from an older workflow version, and rows an older indexer
+		// version wrote for the current workflow version.
+		const outdatedVersionResult = await tx.delete(WorkflowDependency, {
 			workflowId,
 			workflowVersionId: LessThan(dependencies.workflowVersionId),
-			// NOTE: this relies on the fact that we only want to track the latest published version or draft dependencies.
-			// If we're updating published dependencies, checking for Not Null works because we don't actually
-			// care about the specific previous published version id.
-			publishedVersionId: dependencies.publishedVersionId ? Not(IsNull()) : IsNull(),
+			publishedVersionId: publishedVersionCondition,
 		});
+		// The workflow version bound stops a stale request from replacing rows a
+		// newer workflow version wrote before this indexer version deployed.
+		const outdatedIndexResult = await tx.delete(WorkflowDependency, {
+			workflowId,
+			workflowVersionId: LessThanOrEqual(dependencies.workflowVersionId),
+			indexVersionId: LessThan(WORKFLOW_DEPENDENCY_INDEX_VERSION),
+			publishedVersionId: publishedVersionCondition,
+		});
+		const deletedCount =
+			(outdatedVersionResult.affected ?? 0) + (outdatedIndexResult.affected ?? 0);
 
-		// If we deleted something, the incoming version is newer - proceed with insert
-		if (deleteResult.affected && deleteResult.affected > 0) {
+		// If we deleted something, the incoming rows are newer - proceed with insert
+		if (deletedCount > 0) {
 			// NOTE: we cast to any[] because TypeORM doesn't like the JSON column.
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			await tx.insert(WorkflowDependency, dependencies.dependencies as any[]);

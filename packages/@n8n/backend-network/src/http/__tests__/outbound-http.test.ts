@@ -1,9 +1,10 @@
 import type { Logger } from '@n8n/backend-common';
+import type { SsrfProtectionConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { fetch as undiciFetch } from 'undici';
 import { mock } from 'vitest-mock-extended';
 
-import type { SsrfProtectionService } from '../../ssrf';
+import { passthroughEgressFilter, type SsrfProtectionService } from '../../ssrf';
 import { makeLookupFn } from '../../ssrf/__tests__/mock-ssrf-bridge';
 import { OutboundHttp } from '../outbound-http';
 
@@ -26,12 +27,56 @@ function makeFacade(): OutboundHttp {
 	const service = mock<SsrfProtectionService>();
 	vi.mocked(service.createSecureLookup).mockReturnValue(makeLookupFn());
 	vi.mocked(service.validateUrl).mockResolvedValue({ ok: true, result: undefined });
-	return new OutboundHttp(service, mock<Logger>());
+	return new OutboundHttp(service, mock<SsrfProtectionConfig>({ enabled: true }), mock<Logger>());
 }
 
 describe('DI registration', () => {
 	it('should be resolvable from the container', () => {
 		expect(Container.get(OutboundHttp)).toBeInstanceOf(OutboundHttp);
+	});
+});
+
+describe('egressFilter', () => {
+	it('returns the SSRF protection service when the instance enables protection', () => {
+		const service = mock<SsrfProtectionService>();
+		const facade = new OutboundHttp(
+			service,
+			mock<SsrfProtectionConfig>({ enabled: true }),
+			mock<Logger>(),
+		);
+
+		expect(facade.egressFilter()).toBe(service);
+	});
+
+	it('returns the passthrough filter when the instance disables protection', () => {
+		const facade = new OutboundHttp(
+			mock<SsrfProtectionService>(),
+			mock<SsrfProtectionConfig>({ enabled: false }),
+			mock<Logger>(),
+		);
+
+		expect(facade.egressFilter()).toBe(passthroughEgressFilter);
+	});
+
+	it("returns the SSRF protection service for 'enforced' even when the instance disables protection", () => {
+		const service = mock<SsrfProtectionService>();
+		const facade = new OutboundHttp(
+			service,
+			mock<SsrfProtectionConfig>({ enabled: false }),
+			mock<Logger>(),
+		);
+
+		expect(facade.egressFilter('enforced')).toBe(service);
+	});
+
+	it("returns the passthrough filter for 'unsafe' even when the instance enables protection", () => {
+		const facade = new OutboundHttp(
+			mock<SsrfProtectionService>(),
+			mock<SsrfProtectionConfig>({ enabled: true }),
+			mock<Logger>(),
+		);
+
+		expect(facade.egressFilter('unsafe')).toBe(passthroughEgressFilter);
 	});
 });
 
@@ -54,7 +99,7 @@ describe('transport asCustomFetch', () => {
 	});
 
 	it('dispatches through the bare dispatcher returned by getDispatcher() when SSRF is disabled', async () => {
-		const transport = makeFacade().transport({ proxy: false, ssrf: 'disabled' });
+		const transport = makeFacade().transport({ proxy: false, useDefaultSsrfPolicy: 'unsafe' });
 		const fetchFn = transport.asCustomFetch();
 
 		await fetchFn('https://api.example.com/data');

@@ -33,7 +33,7 @@ const backgroundColor = computed(() => {
 </script>
 
 <template>
-	<div :class="$style.diffBadge">
+	<div :class="$style.diffBadge" :data-test-id="`diff-badge-${type}`">
 		{{ label }}
 	</div>
 </template>
