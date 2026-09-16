@@ -4,6 +4,7 @@ import type {
 	WorkflowReviewRequestForWorkflow,
 	WorkflowReviewRequestList,
 } from '@n8n/api-types';
+import { NotFoundError, WorkflowFinderService } from '@n8n/backend-services';
 import {
 	UserRepository,
 	WorkflowReviewRequestRepository,
@@ -11,9 +12,6 @@ import {
 	type WorkflowReviewRequestForWorkflowRow,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-
-import { NotFoundError } from '@n8n/errors';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { WorkflowReviewAuthorizationService } from './workflow-review-authorization.service';
 import { WorkflowReviewFeatureGate } from './workflow-review-feature-gate.service';

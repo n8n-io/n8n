@@ -16,11 +16,15 @@ import type {
 } from '@n8n/api-types';
 import { promotionConnectionTargetSchema } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import {
+	BadRequestError,
+	ConflictError,
+	ForbiddenError,
+	NotFoundError,
+	userHasScopes,
+} from '@n8n/backend-services';
 import { ProjectRepository, TransactionRunner, type OperationContext, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
-
-import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
-import { userHasScopes } from '@/permissions.ee/check-access';
 
 import { DIRECTION_LABELS } from './constants';
 import type { PromotionConfig } from './database/entities/promotion-config.entity';

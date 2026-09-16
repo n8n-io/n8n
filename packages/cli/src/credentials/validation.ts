@@ -1,11 +1,10 @@
-import { credentialDescriptionSchema } from '@n8n/api-types';
+import { BadRequestError, userHasScopes } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import get from 'lodash/get';
 import { type ICredentialDataDecryptedObject } from 'n8n-workflow';
 
 import { BadRequestError } from '@n8n/errors';
 import type { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
-import { userHasScopes } from '@/permissions.ee/check-access';
 
 import {
 	extractProviderKeysFromExpression,

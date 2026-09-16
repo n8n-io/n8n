@@ -7,6 +7,7 @@ import {
 	ForbiddenError,
 	NotFoundError,
 	RoleService,
+	userHasScopes,
 } from '@n8n/backend-services';
 import {
 	Project,
@@ -75,9 +76,6 @@ import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-se
 import { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
 import { DCR_MANAGED_CREDENTIAL_FIELDS } from '@/oauth/dcr-managed-fields';
 import { validateOAuthUrl } from '@/oauth/validate-oauth-url';
-import { userHasScopes } from '@/permissions.ee/check-access';
-import type { PolicyActor } from '@/policy/policy-enforcement-backend';
-import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import type { CredentialRequest, ListQuery } from '@/requests';
 import { CredentialsTester } from '@/services/credentials-tester.service';
 import { OwnershipService } from '@/services/ownership.service';

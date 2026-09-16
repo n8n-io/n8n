@@ -5,6 +5,7 @@ import type {
 	PromotionDirection,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { ForbiddenError, userHasScopes } from '@n8n/backend-services';
 import { WorkflowRepository, type User, type WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
@@ -31,7 +32,6 @@ import {
 	type PackageManifest,
 } from '@/modules/n8n-packages/spec/manifest.schema';
 import type { PackageRequirements } from '@/modules/n8n-packages/spec/requirements.schema';
-import type { SerializedWorkflow } from '@/modules/n8n-packages/spec/serialized/workflow.schema';
 
 import { parsePackageFiles, type PackageFile } from './base-branch-files';
 import { PACKAGE_SUBFOLDER } from './constants';

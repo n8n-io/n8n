@@ -1,5 +1,10 @@
 import { Logger } from '@n8n/backend-common';
-import { BadRequestError, CredentialsFinderService, NotFoundError } from '@n8n/backend-services';
+import {
+	BadRequestError,
+	CredentialsFinderService,
+	NotFoundError,
+	WorkflowFinderService,
+} from '@n8n/backend-services';
 import type {
 	CredentialUsedByWorkflow,
 	User,
@@ -40,7 +45,6 @@ import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 
-import { WorkflowFinderService } from './workflow-finder.service';
 import { WorkflowMutationHooksProxy } from './workflow-mutation-hooks-proxy.service';
 
 @Service()

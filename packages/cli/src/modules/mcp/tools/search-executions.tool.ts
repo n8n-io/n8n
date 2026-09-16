@@ -1,3 +1,4 @@
+import type { WorkflowFinderService } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { ExecutionStatusList, WorkflowExecuteModeList, type ExecutionStatus } from 'n8n-workflow';
 import z from 'zod';
@@ -5,7 +6,6 @@ import z from 'zod';
 import { parseExecutionCursor } from '@/executions/execution-cursor';
 import type { ExecutionListService } from '@/executions/execution-list.service';
 import type { Telemetry } from '@/telemetry';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import { WorkflowAccessError } from '../mcp.errors';

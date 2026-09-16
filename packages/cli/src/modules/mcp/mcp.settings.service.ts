@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { BadRequestError, CacheService, WorkflowFinderService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import {
 	SettingsRepository,
@@ -20,7 +21,6 @@ import { CollaborationService } from '@/collaboration/collaboration.service';
 import { BadRequestError } from '@n8n/errors';
 import { CacheService } from '@n8n/backend-services';
 import { removeDefaultValues } from '@/workflow-helpers';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import type { UpdateWorkflowsAvailabilityDto } from './dto/update-workflows-availability.dto';
 

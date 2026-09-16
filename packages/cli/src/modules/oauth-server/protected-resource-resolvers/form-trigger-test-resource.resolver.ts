@@ -1,4 +1,6 @@
 import { Logger } from '@n8n/backend-common';
+import type { ProtectedResourceResolver } from '@n8n/backend-services';
+import { UrlService, WorkflowFinderService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { FORM_TRIGGER_NODE_TYPE } from 'n8n-workflow';
@@ -6,7 +8,6 @@ import { FORM_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import type { ProtectedResourceResolver } from '@n8n/backend-services';
 import { UrlService } from '@n8n/backend-services';
 import { TestWebhookRegistrationsService } from '@/webhooks/test-webhook-registrations.service';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { triggerResourceGate } from '../resource-gate';
 import {

@@ -1,5 +1,3 @@
-import { ModuleRegistry } from '@n8n/backend-common';
-import { CredentialsFinderService, NotFoundError, RoleService } from '@n8n/backend-services';
 import type { User, EntityManager } from '@n8n/db';
 import {
 	CredentialsEntity,
@@ -14,6 +12,12 @@ import {
 import { Container } from '@n8n/di';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
 import { UnexpectedError } from 'n8n-workflow';
+
+import { CredentialsFinderService } from '../credentials/credentials-finder.service';
+import { NotFoundError } from '../errors/response-errors/not-found.error';
+import { RoleService } from '../services/role.service';
+
+import { ScopedResourceResolverRegistry } from './scoped-resource-resolver.registry';
 
 const INSTANCE_CREDENTIAL_MANAGEMENT_SCOPES = new Set<Scope>([
 	'credential:read',
@@ -155,23 +159,16 @@ export async function userHasScopes(
 	}
 
 	if (dataTableId) {
-		const moduleRegistry = Container.get(ModuleRegistry);
-		if (!moduleRegistry.isActive('data-table')) {
-			throw new NotFoundError(`Data table with ID "${dataTableId}" not found.`);
-		}
+		// The data-table module registers this resolver on init. No resolver means the module is inactive.
+		const resolver = Container.get(ScopedResourceResolverRegistry).get('dataTable');
+		const projectId = await resolver?.findProjectId(dataTableId);
 
-		const { DataTableRepository } = await import('@/modules/data-table/data-table.repository.js');
-		const dataTable = await Container.get(DataTableRepository).findOne({
-			where: { id: dataTableId },
-			relations: ['project'],
-		});
-
-		if (!dataTable) {
+		if (!projectId) {
 			throw new NotFoundError(`Data table with ID "${dataTableId}" not found.`);
 		}
 
 		// Data tables don't have resource-level roles, only project-level access
-		return userProjectIds.includes(dataTable.project.id);
+		return userProjectIds.includes(projectId);
 	}
 
 	if (projectId) return userProjectIds.includes(projectId);

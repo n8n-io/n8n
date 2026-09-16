@@ -12,7 +12,14 @@ import {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp, SsrfBlockedIpError } from '@n8n/backend-network';
-import { EventService } from '@n8n/backend-services';
+import {
+	BadRequestError,
+	EventService,
+	ForbiddenError,
+	NotFoundError,
+	WorkflowFinderService,
+	userHasScopes,
+} from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import {
 	AuthenticatedRequest,
@@ -47,7 +54,6 @@ import { ExecutionService } from '@/executions/execution.service';
 import { IWorkflowResponse } from '@/interfaces';
 import { License } from '@/license';
 import { listQueryMiddleware } from '@/middlewares';
-import { userHasScopes } from '@/permissions.ee/check-access';
 import * as ResponseHelper from '@/response-helper';
 import { NamingService } from '@/services/naming.service';
 import { OwnershipService } from '@/services/ownership.service';
@@ -61,7 +67,6 @@ import { WorkflowPublicationStatusService } from './publication/workflow-publica
 import { WorkflowCreationService } from './workflow-creation.service';
 import { createWorkflowEntityFromPayload } from './workflow-entity-mapper';
 import { WorkflowExecutionService } from './workflow-execution.service';
-import { WorkflowFinderService } from './workflow-finder.service';
 import { WorkflowRequest } from './workflow.request';
 import { WorkflowService } from './workflow.service';
 import { EnterpriseWorkflowService } from './workflow.service.ee';

@@ -8,6 +8,8 @@ import {
 	ForbiddenError,
 	NotFoundError,
 	RoleService,
+	WorkflowFinderService,
+	userHasScopes,
 } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type { User, ListQueryDb, Project, WorkflowFolderUnionFull, WorkflowHistory } from '@n8n/db';
@@ -42,7 +44,6 @@ import { WorkflowPublicationStatusService } from './publication/workflow-publica
 import { NodeGroupRulesFlagGate } from './node-group-rules-flag-gate';
 import { getEnabledTriggerNodes } from './triggers/enabled-trigger-nodes';
 import { getErrorDescription, getErrorNodeId, getRequiredRedactionScopes } from './utils';
-import { WorkflowFinderService } from './workflow-finder.service';
 import { WorkflowHistoryService } from './workflow-history/workflow-history.service';
 import { WorkflowMutationHooksProxy } from './workflow-mutation-hooks-proxy.service';
 import { WorkflowPublishGuardProxy } from './workflow-publish-guard-proxy.service';
@@ -62,8 +63,6 @@ import { ExternalHooks, toWorkflowLifecycleHookActor } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
 import { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
 import { NodeTypes } from '@/node-types';
-import { userHasScopes } from '@/permissions.ee/check-access';
-import { enforceWorkflowPublishPolicy } from '@/policy/enforce-workflow-publish';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import type { ListQuery } from '@/requests';
 import { hasSharing } from '@/requests';

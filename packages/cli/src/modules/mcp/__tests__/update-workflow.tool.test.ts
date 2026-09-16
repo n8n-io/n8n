@@ -1,4 +1,4 @@
-import { Logger } from '@n8n/backend-common';
+import { NotFoundError, UrlService, WorkflowFinderService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { SharedWorkflowRepository, User, WorkflowEntity, type Project } from '@n8n/db';
@@ -26,7 +26,6 @@ import type { AiGatewayService } from '@/services/ai-gateway.service';
 import { TagService } from '@/services/tag.service';
 import { UrlService } from '@n8n/backend-services';
 import { Telemetry } from '@/telemetry';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 

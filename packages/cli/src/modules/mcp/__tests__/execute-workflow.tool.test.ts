@@ -1,3 +1,4 @@
+import { WorkflowFinderService } from '@n8n/backend-services';
 import type { Mock } from 'vitest';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { WorkflowsConfig } from '@n8n/config';
@@ -22,7 +23,6 @@ import { createExecuteWorkflowTool, executeWorkflow } from '../tools/execute-wor
 import { McpService } from '@/modules/mcp/mcp.service';
 import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 
 describe('execute-workflow MCP tool', () => {

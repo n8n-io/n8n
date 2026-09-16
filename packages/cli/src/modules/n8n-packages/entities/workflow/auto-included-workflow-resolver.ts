@@ -1,10 +1,9 @@
-import { FolderFinderService } from '@n8n/backend-services';
+import { FolderFinderService, WorkflowFinderService } from '@n8n/backend-services';
 import type { Folder, Project, User, WorkflowEntity } from '@n8n/db';
 import { SharedWorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 
 import { ProjectService } from '@/services/project.service.ee';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import {
 	PackageExportBlockedError,
