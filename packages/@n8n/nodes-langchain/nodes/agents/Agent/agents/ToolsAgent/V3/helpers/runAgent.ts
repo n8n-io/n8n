@@ -35,6 +35,8 @@ export function appendToolAttributions(
 	steps: ToolCallData[],
 	tools: ItemContext['tools'],
 ): string {
+	// A reply with no text would show as the label alone, which reads as a glitch
+	if (output.trim() === '') return output;
 	const calledTools = new Set(steps.map((step) => step.action.tool));
 	const attributions = new Set<string>();
 	for (const tool of tools) {
