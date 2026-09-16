@@ -81,6 +81,12 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
+function getRealisticItem(itemId: string): ToolConnectionItem {
+	const item = realisticItems.find(({ id }) => id === itemId);
+	if (!item) throw new Error(`Missing realistic tool fixture: ${itemId}`);
+	return item;
+}
+
 /**
  * All stories share the same shell: a primary "Open Tools modal" button toggles
  * `isOpen` so the modal can be opened/closed at will while the props
@@ -331,10 +337,7 @@ export const NoCredentialsHeader: Story = {
  * `availableOpenAi` fixture which carries the full detail-field set.
  */
 export const NodeDetail: Story = {
-	render: renderWithTrigger(
-		realisticItems.find((i) => i.id === 'node-openai') as ToolConnectionItem,
-		'detail',
-	),
+	render: renderWithTrigger(getRealisticItem('node-openai'), 'detail'),
 	args: {
 		items: realisticItems,
 		categories: AGENT_BUILDER_CATEGORIES,
@@ -347,10 +350,7 @@ export const NodeDetail: Story = {
  * that haven't earned a dedicated body component yet.
  */
 export const WorkflowDetail: Story = {
-	render: renderWithTrigger(
-		realisticItems.find((i) => i.id === 'workflow-summariser') as ToolConnectionItem,
-		'detail',
-	),
+	render: renderWithTrigger(getRealisticItem('workflow-summariser'), 'detail'),
 	args: {
 		items: realisticItems,
 		categories: AGENT_BUILDER_CATEGORIES,
@@ -363,10 +363,7 @@ export const WorkflowDetail: Story = {
  * renders inside the modal body.
  */
 export const EmptyDetail: Story = {
-	render: renderWithTrigger(
-		realisticItems.find((i) => i.id === 'workflow-email-parser') as ToolConnectionItem,
-		'detail',
-	),
+	render: renderWithTrigger(getRealisticItem('workflow-email-parser'), 'detail'),
 	args: {
 		items: realisticItems,
 		categories: AGENT_BUILDER_CATEGORIES,
