@@ -294,6 +294,21 @@ describe('VaultProvider', () => {
 			expect(provider.getSecretNames()).toContain('secret.myapp.password');
 		});
 
+		it('should fail the pull when a secret read breaks at the transport', async () => {
+			const { provider } = await initProvider([
+				{
+					method: 'GET',
+					pathname: '/v1/sys/mounts',
+					body: mountsResponse({ 'secret/': { type: 'kv', options: { version: '2' } } }),
+				},
+				{ method: 'GET', pathname: '/v1/secret/metadata/', body: { data: { keys: ['myapp'] } } },
+				{ method: 'GET', pathname: '/v1/secret/data/myapp', networkError: 'ECONNREFUSED' },
+			]);
+
+			await expect(provider.update()).rejects.toThrow();
+			expect(provider.hasSecret('secret')).toBe(false);
+		});
+
 		it('should keep the existing key shape for nested folders', async () => {
 			const { provider } = await initProvider([
 				{
@@ -672,6 +687,12 @@ describe('VaultProvider', () => {
 			vi.useFakeTimers();
 			try {
 				await provider.connect();
+				await provider.connect();
+				expect(vi.getTimerCount()).toBe(1);
+
+				await provider.disconnect();
+				expect(vi.getTimerCount()).toBe(0);
+
 				await provider.connect();
 				expect(vi.getTimerCount()).toBe(1);
 

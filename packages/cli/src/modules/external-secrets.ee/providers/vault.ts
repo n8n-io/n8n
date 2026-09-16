@@ -2,6 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import {
 	type HttpRequestClient,
 	isConnectionRefusedError,
+	isTransportFailure,
 	OutboundHttp,
 } from '@n8n/backend-network';
 import { Time } from '@n8n/constants';
@@ -500,6 +501,9 @@ export class VaultProvider extends SecretsProvider {
 		try {
 			listBody = await this.#http.request<VaultResponse<VaultSecretList>>(listRequest);
 		} catch (error) {
+			// A broken or timed-out request fails the whole pull, so the last complete snapshot
+			// stays. Only a denied or missing path is skipped.
+			if (isTransportFailure(error)) throw error;
 			const errorContext = buildHttpProviderErrorContext(error);
 			this.logger.debug('Vault provider failed to list KV secrets', {
 				providerName: this.name,
@@ -532,6 +536,7 @@ export class VaultProvider extends SecretsProvider {
 								kvVersion === '2' ? (secretBody.data.data as IDataObject) : secretBody.data,
 							];
 						} catch (error) {
+							if (isTransportFailure(error)) throw error;
 							const errorContext = buildHttpProviderErrorContext(error);
 							this.logger.debug('Vault provider failed to read KV secret', {
 								providerName: this.name,
@@ -546,7 +551,11 @@ export class VaultProvider extends SecretsProvider {
 					}),
 				)
 			)
-				.map((i) => (i.status === 'rejected' ? null : i.value))
+				.map((i) => {
+					// Only a transport failure rejects here; every other read error was already skipped.
+					if (i.status === 'rejected') throw i.reason;
+					return i.value;
+				})
 				.filter((v): v is [string, IDataObject] => v !== null),
 		);
 		this.logger.debug(`Vault provider retrieved kv secrets from ${mountPath}${path}`);
