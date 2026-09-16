@@ -13,6 +13,7 @@ import type { TabOptions } from '../N8nTabs';
 import { type BaseTextKey, useI18n } from '@n8n/i18n';
 import { useDebounceFn } from '@vueuse/core';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
+import { isInteractiveElementInFocus } from '../../utils';
 
 import ToolRow from './ToolRow.vue';
 import ToolDetailView from './ToolDetailView.vue';
@@ -334,17 +335,6 @@ function handleNavigateListIndex(direction: -1 | 1) {
 	scrollerRef.value?.scrollToKeyIfNeeded(toolRows.value[listIndex.value].key);
 }
 
-function isTextInputTarget(target: EventTarget | null): boolean {
-	if (!(target instanceof HTMLElement)) return false;
-
-	return (
-		target.isContentEditable ||
-		target instanceof HTMLInputElement ||
-		target instanceof HTMLTextAreaElement ||
-		target instanceof HTMLSelectElement
-	);
-}
-
 function onNavigationKeyPress(event: KeyboardEvent) {
 	const isDefaultView = !props.detailItem;
 	const target = event.target;
@@ -354,7 +344,7 @@ function onNavigationKeyPress(event: KeyboardEvent) {
 
 	switch (event.key) {
 		case 'Backspace':
-			if (isDefaultView || isTextInputTarget(target)) break;
+			if (isDefaultView || isInteractiveElementInFocus()) break;
 			event.preventDefault();
 			closeDetail();
 			focusSearchInput();
