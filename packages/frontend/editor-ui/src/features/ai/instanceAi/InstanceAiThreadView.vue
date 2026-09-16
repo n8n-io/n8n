@@ -78,7 +78,9 @@ import {
 	stashPendingComposerDraft,
 	stashPendingFirstMessage,
 	stashPendingHandoffContext,
+	type PendingComposerDraft,
 } from './composables/useInstanceAiHandoff';
+import type { InstanceAiMessageAuthorship } from './prefills';
 import type { AgentPreviewHandoffParams } from './composables/useInstanceAiAgentPreviewHandoff';
 import { useTransitionGate } from './useTransitionGate';
 import {
@@ -141,7 +143,7 @@ const { isCollapsed: isMainSidebarCollapsed, sidebarWidth: mainSidebarWidth } = 
 const telemetry = useTelemetry();
 const toast = useToast();
 const pendingComposerContext = ref<InstanceAiHandoffContext | null>(null);
-const pendingComposerDraft = ref<string | null>(null);
+const pendingComposerDraft = ref<PendingComposerDraft | null>(null);
 const generatedComposerDraft = ref<string | null>(null);
 const pendingAgentAttachment = ref<InstanceAiAgentAttachment | null>(null);
 const currentAgentAttachment = computed<InstanceAiAgentAttachment | null>(() => {
@@ -762,8 +764,8 @@ watch(
 	[chatInputRef, pendingComposerDraft, () => thread.pendingPlanReview],
 	([input, draft, planReview]) => {
 		if (!input || !draft || planReview) return;
-		input.setText(draft);
-		generatedComposerDraft.value = draft;
+		input.setPrefill({ text: draft.text, prefillType: draft.prefillType });
+		generatedComposerDraft.value = draft.text;
 		pendingComposerDraft.value = null;
 		void nextTick(focusChatInputIfFocusIsIdle);
 	},
@@ -862,7 +864,12 @@ function reconnectThreadAfterHydration(): void {
 		const pending = consumePendingFirstMessage(props.threadId);
 		if (pending) {
 			void thread
-				.sendMessage(pending.message, pending.attachments, rootStore.pushRef, pending.context)
+				.sendMessage(pending.message, {
+					authorship: pending.authorship,
+					attachments: pending.attachments,
+					pushRef: rootStore.pushRef,
+					handoffContext: pending.context,
+				})
 				.then((sent) => {
 					if (sent) return;
 					// Consuming already removed it, so a refused send (e.g. a concurrency cap)
@@ -943,10 +950,14 @@ const workflowPreviewRef =
 
 // --- Message handlers ---
 /** Put a failed submission back in the composer without clobbering newer typing. */
-function restoreFailedSubmission(message: string, restoreDraft?: () => boolean) {
-	if (restoreDraft?.()) return;
-	const input = chatInputRef.value;
-	if (input && !input.isDirty()) input.setText(message);
+/**
+ * Hand a refused submission back to the composer. Its own restore returns the
+ * text, the attachments and the pre-fill provenance together -- so a retry stays
+ * attributed to the surface that wrote the draft -- and declines when the user
+ * has already typed something newer.
+ */
+function restoreFailedSubmission(restoreDraft: () => boolean) {
+	restoreDraft();
 }
 
 /**
@@ -961,8 +972,9 @@ const isPlanChangeInFlight = computed(() => {
 
 function handleSubmit(
 	message: string,
-	attachments?: InstanceAiAttachment[],
-	restoreDraft?: () => boolean,
+	attachments: InstanceAiAttachment[] | undefined,
+	restoreDraft: () => boolean,
+	authorship: InstanceAiMessageAuthorship,
 ) {
 	if (!settingsStore.isWorkflowBuilderAvailable) {
 		return;
@@ -977,7 +989,7 @@ function handleSubmit(
 	if (planReview) {
 		void thread.requestPlanChanges(planReview.requestId, message).then((sent) => {
 			if (!sent) {
-				restoreFailedSubmission(message, restoreDraft);
+				restoreFailedSubmission(restoreDraft);
 				return;
 			}
 			// Only an accepted request revises the plan. Tracking up front would
@@ -1014,10 +1026,15 @@ function handleSubmit(
 	const nodeCount = countAttachedNodes(attachments);
 
 	void thread
-		.sendMessage(message, submittedAttachments, rootStore.pushRef, handoffContext)
+		.sendMessage(message, {
+			authorship,
+			attachments: submittedAttachments,
+			pushRef: rootStore.pushRef,
+			handoffContext,
+		})
 		.then((sent) => {
 			if (!sent) {
-				restoreFailedSubmission(message, restoreDraft);
+				restoreFailedSubmission(restoreDraft);
 				return;
 			}
 			// Track message-with-nodes only after a successful send, so failed
@@ -1060,8 +1077,10 @@ function handleFixWithAiFromOffer() {
 	userScrolledUp.value = false;
 	void thread.sendMessage(
 		buildFixWithAiPrompt({ workflowName: offer.workflowName, errors: offer.errors }),
-		undefined,
-		rootStore.pushRef,
+		{
+			authorship: { kind: 'prefill', prefillType: 'handoff_fix_with_ai' },
+			pushRef: rootStore.pushRef,
+		},
 	);
 }
 
@@ -1159,7 +1178,7 @@ async function persistTestAgentOfferDismissal(agentId: string) {
 }
 
 function clearPendingComposerHandoff() {
-	const draft = generatedComposerDraft.value ?? pendingComposerDraft.value;
+	const draft = generatedComposerDraft.value ?? pendingComposerDraft.value?.text;
 	if (draft) chatInputRef.value?.clearTextIfMatches(draft);
 	pendingComposerDraft.value = null;
 	generatedComposerDraft.value = null;
