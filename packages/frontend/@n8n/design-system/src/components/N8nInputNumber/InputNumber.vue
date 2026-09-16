@@ -34,7 +34,7 @@ const props = withDefaults(defineProps<InputNumberProps>(), {
 	controlsPosition: 'right',
 	step: 1,
 	stepSnapping: false,
-	useGrouping: true,
+	useGrouping: false,
 });
 
 const isControlsRight = computed(() => props.controls && props.controlsPosition === 'right');

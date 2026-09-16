@@ -1256,9 +1256,9 @@ function onJsonPasswordFieldChange(value: string) {
 	onUpdateTextInputDebounced(value);
 }
 
-function onUpdateTextInput(value: string | number) {
+function onUpdateTextInput(value: string) {
 	valueChanged(value);
-	onTextInputChange(typeof value === 'string' ? value : String(value));
+	onTextInputChange(value);
 }
 
 const onUpdateTextInputDebounced = debounce(onUpdateTextInput, { debounceTime: 200 });
@@ -2013,7 +2013,6 @@ onUpdated(async () => {
 				:max="getTypeOption('maxValue')"
 				:min="getTypeOption('minValue')"
 				:precision="getTypeOption('numberPrecision')"
-				:use-grouping="!isForCredential"
 				:disabled="isReadOnly"
 				:class="{ 'ph-no-capture': shouldRedactValue }"
 				:title="displayTitle"
