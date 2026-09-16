@@ -2166,6 +2166,8 @@ describe('AgentBuilderView — configuration validation', () => {
 });
 
 describe('AgentBuilderView — three-column shell', () => {
+	const externalUpdateSelector = '[data-testid="agent-builder-external-update"]';
+
 	beforeEach(() => {
 		resetViewMocks();
 		favoritesStoreMock.toggleFavorite.mockClear();
@@ -2219,12 +2221,128 @@ describe('AgentBuilderView — three-column shell', () => {
 		});
 
 		expect(wrapper.find('[data-testid="agent-builder-instance-ai-btn"]').exists()).toBe(false);
+		for (const listener of pushListeners) {
+			listener({ type: 'agentUpdated', data: { projectId: 'p2', agentId: 'a2' } });
+		}
+		await nextTick();
+		expect(wrapper.find(externalUpdateSelector).exists()).toBe(false);
 	});
 
 	it('hides the floating Instance AI button when Instance AI is unavailable', async () => {
 		instanceAiAvailableRef.value = false;
 		const wrapper = await renderView();
 		expect(wrapper.find('[data-testid="agent-builder-instance-ai-btn"]').exists()).toBe(false);
+	});
+
+	it.each([
+		['mcp', 'mcp'],
+		['builder', 'builder'],
+		['user', 'user'],
+		[undefined, 'unknown'],
+		['future-source', 'unknown'],
+	] as const)('shows recent %s updates in preview without the Assistant', async (source, label) => {
+		instanceAiAvailableRef.value = false;
+		routeQuery[OPEN_PREVIEW_PARAM] = 'true';
+		const wrapper = await renderView();
+		expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props('isOpen')).toBe(true);
+		expect(wrapper.find(externalUpdateSelector).exists()).toBe(false);
+
+		for (const listener of pushListeners) {
+			listener({
+				type: 'agentUpdated',
+				data: { projectId: 'p1', agentId: 'a1', source },
+			} as PushMessage);
+		}
+		await nextTick();
+
+		expect(wrapper.get(externalUpdateSelector).text()).toBe(
+			`agents.builder.externalUpdate.${label}`,
+		);
+		expect(wrapper.get('[role="status"]').attributes('aria-live')).toBe('polite');
+		expect(wrapper.find('[data-testid="agent-builder-instance-ai-btn"]').exists()).toBe(false);
+	});
+
+	it('keeps only the latest notice for five minutes after the last update', async () => {
+		const wrapper = await renderView();
+		vi.useFakeTimers();
+		try {
+			for (const listener of pushListeners) {
+				listener({
+					type: 'agentUpdated',
+					data: { projectId: 'p1', agentId: 'a1', source: 'mcp' },
+				} as PushMessage);
+			}
+			await vi.advanceTimersByTimeAsync(299_000);
+			expect(wrapper.get(externalUpdateSelector).text()).toBe('agents.builder.externalUpdate.mcp');
+
+			for (const listener of pushListeners) {
+				listener({
+					type: 'agentUpdated',
+					data: { projectId: 'p1', agentId: 'a1', source: 'builder' },
+				} as PushMessage);
+			}
+			await vi.advanceTimersByTimeAsync(299_999);
+			expect(wrapper.findAll(externalUpdateSelector)).toHaveLength(1);
+			expect(wrapper.get(externalUpdateSelector).text()).toBe(
+				'agents.builder.externalUpdate.builder',
+			);
+
+			await vi.advanceTimersByTimeAsync(1);
+			expect(wrapper.find(externalUpdateSelector).exists()).toBe(false);
+		} finally {
+			wrapper.unmount();
+			vi.useRealTimers();
+		}
+	});
+
+	it.each(['agentId', 'projectId'] as const)(
+		'clears the notice when %s changes and on unmount',
+		async (field) => {
+			const wrapper = await renderView();
+			vi.useFakeTimers();
+			try {
+				for (const listener of pushListeners) {
+					listener({ type: 'agentUpdated', data: { projectId: 'p1', agentId: 'a1' } });
+				}
+				await vi.advanceTimersByTimeAsync(400);
+				expect(wrapper.find(externalUpdateSelector).exists()).toBe(true);
+
+				routeParams[field] = 'new-target';
+				await flushPromises();
+				expect(wrapper.find(externalUpdateSelector).exists()).toBe(false);
+
+				for (const listener of pushListeners) {
+					listener({ type: 'agentUpdated', data: { ...routeParams } });
+				}
+				await vi.advanceTimersByTimeAsync(400);
+				expect(wrapper.find(externalUpdateSelector).exists()).toBe(true);
+				wrapper.unmount();
+				expect(pushListeners.size).toBe(0);
+				expect(vi.getTimerCount()).toBe(0);
+			} finally {
+				wrapper.unmount();
+				vi.useRealTimers();
+			}
+		},
+	);
+
+	it('ignores other agents, projects, executions, and local saves for activity feedback', async () => {
+		const wrapper = await renderView();
+		const unrelatedUpdates: PushMessage[] = [
+			{ type: 'agentUpdated', data: { projectId: 'p1', agentId: 'a2' } },
+			{ type: 'agentUpdated', data: { projectId: 'p2', agentId: 'a1' } },
+			{
+				type: 'agentExecutionUpdated',
+				data: { projectId: 'p1', agentId: 'a1', threadId: 't1', executionId: 'e1' },
+			},
+		];
+		for (const event of unrelatedUpdates) {
+			for (const listener of pushListeners) listener(event);
+		}
+		agentsEventBus.emit('agentUpdated', { agentId: 'a1', source: 'agent-builder' });
+		await nextTick();
+
+		expect(wrapper.find(externalUpdateSelector).exists()).toBe(false);
 	});
 
 	it('opens the agent artifact without sending an opening message', async () => {
@@ -2582,56 +2700,62 @@ describe('AgentBuilderView — three-column shell', () => {
 		wrapper.unmount();
 	});
 
-	it('reloads an idle agent from push and defers a push received mid-autosave until the save lands', async () => {
-		const wrapper = await renderView({
-			props: {
-				artifactMode: true,
-				artifactProjectId: 'p-push',
-				artifactAgentId: 'a-push',
-			},
-		});
-		const update: PushMessage = {
-			type: 'agentUpdated',
-			data: { projectId: 'p-push', agentId: 'a-push' },
-		};
-		getAgentMock.mockClear();
-		fetchConfigMock.mockClear();
-
-		vi.useFakeTimers();
-		try {
-			for (const listener of pushListeners) listener(update);
-			await vi.advanceTimersByTimeAsync(400);
-			await flushPromises();
-
-			expect(getAgentMock).toHaveBeenCalledTimes(1);
-			expect(fetchConfigMock).toHaveBeenCalledTimes(1);
-
+	it.each([false, true])(
+		'reloads an idle agent from push and defers updates during autosave (artifact: %s)',
+		async (artifactMode) => {
+			routeParams.projectId = 'p-push';
+			routeParams.agentId = 'a-push';
+			const wrapper = await renderView({
+				props: {
+					artifactMode,
+					artifactProjectId: 'p-push',
+					artifactAgentId: 'a-push',
+				},
+			});
+			const update: PushMessage = {
+				type: 'agentUpdated',
+				data: { projectId: 'p-push', agentId: 'a-push' },
+			};
 			getAgentMock.mockClear();
 			fetchConfigMock.mockClear();
-			wrapper
-				.findComponent({ name: 'AgentBuilderEditorColumn' })
-				.vm.$emit('update:config', { instructions: 'Local pending edit' });
-			await nextTick();
 
-			for (const listener of pushListeners) listener(update);
-			await vi.advanceTimersByTimeAsync(400);
-			await flushPromises();
+			vi.useFakeTimers();
+			try {
+				for (const listener of pushListeners) listener(update);
+				await vi.advanceTimersByTimeAsync(400);
+				await flushPromises();
 
-			expect(getAgentMock).not.toHaveBeenCalled();
-			expect(fetchConfigMock).not.toHaveBeenCalled();
+				expect(getAgentMock).toHaveBeenCalledTimes(1);
+				expect(fetchConfigMock).toHaveBeenCalledTimes(1);
 
-			// The remote change is not lost: once the local save lands it is applied.
-			// (The save itself refetches the agent, so the config fetch is the marker.)
-			await (wrapper.vm as unknown as { flushAutosave: () => Promise<void> }).flushAutosave();
-			await nextTick();
-			await flushPromises();
+				getAgentMock.mockClear();
+				fetchConfigMock.mockClear();
+				wrapper
+					.findComponent({ name: 'AgentBuilderEditorColumn' })
+					.vm.$emit('update:config', { instructions: 'Local pending edit' });
+				await nextTick();
 
-			expect(fetchConfigMock).toHaveBeenCalledTimes(1);
-		} finally {
-			vi.useRealTimers();
-			wrapper.unmount();
-		}
-	});
+				for (const listener of pushListeners) listener(update);
+				await vi.advanceTimersByTimeAsync(400);
+				await flushPromises();
+
+				expect(getAgentMock).not.toHaveBeenCalled();
+				expect(fetchConfigMock).not.toHaveBeenCalled();
+				expect(wrapper.find(externalUpdateSelector).exists()).toBe(!artifactMode);
+
+				// The remote change is not lost: once the local save lands it is applied.
+				// (The save itself refetches the agent, so the config fetch is the marker.)
+				await (wrapper.vm as unknown as { flushAutosave: () => Promise<void> }).flushAutosave();
+				await nextTick();
+				await flushPromises();
+
+				expect(fetchConfigMock).toHaveBeenCalledTimes(1);
+			} finally {
+				vi.useRealTimers();
+				wrapper.unmount();
+			}
+		},
+	);
 
 	it('coalesces rapid external agent updates into one refresh cascade', async () => {
 		const wrapper = await renderView({

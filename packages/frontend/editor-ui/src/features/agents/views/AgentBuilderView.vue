@@ -2,7 +2,13 @@
 import { ref, computed, watch, nextTick, onBeforeUnmount, useTemplateRef } from 'vue';
 import { useEventListener, useStorage } from '@vueuse/core';
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router';
-import { N8nAssistantIcon, N8nButton, N8nIcon, type ActionDropdownItem } from '@n8n/design-system';
+import {
+	N8nAssistantIcon,
+	N8nButton,
+	N8nCanvasPill,
+	N8nIcon,
+	type ActionDropdownItem,
+} from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import {
 	MAX_AGENT_FILE_SIZE_BYTES,
@@ -13,6 +19,7 @@ import {
 	addMissingAgentPersonalisation,
 	type AgentFileDto,
 	type PushMessage,
+	type PushPayload,
 } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
@@ -28,6 +35,7 @@ import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { MODAL_CONFIRM } from '@/app/constants';
+import { AGENT_EXTERNAL_UPDATE_NOTICE_DURATION } from '@/app/constants/durations';
 import { deepCopy } from 'n8n-workflow';
 import {
 	getAgent,
@@ -1320,6 +1328,28 @@ function handleArtifactRefreshError(error: unknown) {
 }
 
 let externalRefreshTimer: ReturnType<typeof setTimeout> | undefined;
+let externalUpdateTimer: ReturnType<typeof setTimeout> | undefined;
+const recentExternalUpdate = ref<PushPayload<'agentUpdated'> | null>(null);
+const externalUpdateMessage = computed(() => {
+	switch (recentExternalUpdate.value?.source) {
+		case 'mcp':
+			return locale.baseText('agents.builder.externalUpdate.mcp');
+		case 'builder':
+			return locale.baseText('agents.builder.externalUpdate.builder');
+		case 'user':
+			return locale.baseText('agents.builder.externalUpdate.user');
+		default:
+			return locale.baseText('agents.builder.externalUpdate.unknown');
+	}
+});
+
+function clearExternalUpdate() {
+	clearTimeout(externalUpdateTimer);
+	recentExternalUpdate.value = null;
+}
+
+watch([projectId, agentId], clearExternalUpdate);
+
 const canApplyPushedAgentUpdate = computed(
 	() =>
 		!props.artifactEditingLocked &&
@@ -1367,6 +1397,11 @@ function onAgentPushMessage(event: PushMessage) {
 		event.data.agentId !== agentId.value
 	) {
 		return;
+	}
+	if (!isArtifactMode.value) {
+		recentExternalUpdate.value = event.data;
+		clearTimeout(externalUpdateTimer);
+		externalUpdateTimer = setTimeout(clearExternalUpdate, AGENT_EXTERNAL_UPDATE_NOTICE_DURATION);
 	}
 	onExternalAgentUpdated({ agentId: event.data.agentId, source: 'push' });
 }
@@ -1833,6 +1868,7 @@ onBeforeUnmount(() => {
 	removeAgentUpdateListener();
 	pushConnectionStore.pushDisconnect();
 	clearTimeout(externalRefreshTimer);
+	clearExternalUpdate();
 	sessionsStore.stopAutoRefresh();
 	void flushAutosave().catch(() => {});
 });
@@ -2073,6 +2109,24 @@ function onSwitchAgent(nextAgentId: string) {
 			@switch-agent="onSwitchAgent"
 		/>
 		<div
+			v-if="!isArtifactMode"
+			:class="$style.externalUpdateNotice"
+			role="status"
+			aria-live="polite"
+			aria-atomic="true"
+		>
+			<N8nCanvasPill
+				v-if="recentExternalUpdate"
+				:class="$style.externalUpdatePill"
+				data-testid="agent-builder-external-update"
+			>
+				<template #icon>
+					<N8nIcon icon="info" aria-hidden="true" />
+				</template>
+				<span :class="$style.externalUpdateText">{{ externalUpdateMessage }}</span>
+			</N8nCanvasPill>
+		</div>
+		<div
 			ref="builderContainer"
 			:class="[
 				$style.builder,
@@ -2269,6 +2323,28 @@ function onSwitchAgent(nextAgentId: string) {
 	gap: var(--spacing--2xs);
 	padding: var(--spacing--sm);
 	z-index: 1;
+}
+
+.externalUpdateNotice {
+	display: flex;
+	flex-shrink: 0;
+	justify-content: center;
+	padding-inline: var(--spacing--sm);
+	pointer-events: none;
+}
+
+.externalUpdatePill {
+	max-width: 100%;
+	height: auto;
+	min-height: var(--height--xl);
+	margin-block: var(--spacing--xs);
+	padding-block: var(--spacing--2xs);
+	color: var(--color--neutral-white);
+}
+
+.externalUpdateText {
+	white-space: normal;
+	overflow-wrap: anywhere;
 }
 
 .aiButtonIcon {
