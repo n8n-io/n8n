@@ -151,7 +151,7 @@ export class WorkflowPublicationApplier {
 		const healSkip = await this.healBrokenNodeIds(workflow, newVersion);
 		if (healSkip !== null) return healSkip;
 
-		const unrunnable = await this.publishUnrunnableVersion(
+		const unrunnable = await this.handleUnrunnableVersion(
 			workflow,
 			oldVersion,
 			newVersion,
@@ -323,7 +323,7 @@ export class WorkflowPublicationApplier {
 	 * reconciliation from re-enqueueing the workflow; the unresolvable nodes get
 	 * rows too, so a workflow whose only trigger is unknown is not left row-less.
 	 */
-	private async publishUnrunnableVersion(
+	private async handleUnrunnableVersion(
 		workflow: WorkflowEntity,
 		oldVersion: WorkflowHistory | null,
 		newVersion: WorkflowHistory,
