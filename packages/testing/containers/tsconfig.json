@@ -5,6 +5,12 @@
 		"declaration": false,
 		"types": ["node", "vitest/globals"]
 	},
-	"include": ["*.ts", "services/**/*.ts", "helpers/**/*.ts", "tests/**/*.ts"],
+	"include": [
+		"*.ts",
+		"services/**/*.ts",
+		"helpers/**/*.ts",
+		"tests/**/*.ts",
+		"encryption-cycle/**/*.ts"
+	],
 	"exclude": ["**/node_modules/**", "**/dist/**"]
 }

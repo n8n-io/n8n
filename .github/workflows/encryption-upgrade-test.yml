@@ -29,7 +29,10 @@ on:
   # verify themselves (both modes) before the merge.
   pull_request:
     paths:
-      - 'scripts/encryption-upgrade-test/**'
+      - 'packages/testing/containers/encryption-cycle/**'
+      - 'packages/testing/containers/services/n8n.ts'
+      - 'packages/testing/containers/services/types.ts'
+      - 'packages/testing/containers/stack.ts'
       - '.github/workflows/encryption-upgrade-test.yml'
 
 permissions:
@@ -44,7 +47,7 @@ jobs:
   encryption-cycle:
     name: ${{ matrix.mode }} cycle
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
@@ -60,10 +63,12 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Setup and build
+      # The image under test is the docker build of this checkout
+      # (n8nio/n8n:local) — the same artifact a release ships.
+      - name: Setup and build the image under test
         uses: ./.github/actions/setup-nodejs
         with:
-          build-command: pnpm exec turbo run build --filter=n8n
+          build-command: pnpm build:docker
 
       - name: Run the test cycle
         env:
@@ -73,7 +78,7 @@ jobs:
           mkdir -p "$WORK_ROOT"
           if [ -n "$FROM_IMAGE_INPUT" ]; then export FROM_IMAGE="$FROM_IMAGE_INPUT"; fi
           set -o pipefail
-          ./scripts/encryption-upgrade-test/encryption-cycle.sh 2>&1 | tee "$WORK_ROOT/run.log"
+          pnpm --filter n8n-containers encryption-cycle 2>&1 | tee "$WORK_ROOT/run.log"
 
       - name: Write run summary
         if: always()
@@ -120,3 +125,27 @@ jobs:
             ${{ github.workspace }}/upgrade-test-work/run.log
             ${{ github.workspace }}/upgrade-test-work/*/metrics.csv
             ${{ github.workspace }}/upgrade-test-work/*/n8n.log
+
+  # A scheduled run fails silently otherwise; the job-level gate is required
+  # because a step-level `if: failure()` never fires on a needs-failure.
+  notify-on-failure:
+    name: Notify on scheduled failure
+    runs-on: ubuntu-slim
+    needs: [encryption-cycle]
+    if: ${{ always() && github.event_name == 'schedule' && contains(needs.*.result, 'failure') }}
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/scripts/slack
+
+      - name: Send Slack notification
+        env:
+          SLACK_TOKEN: ${{ secrets.QBOT_SLACK_TOKEN }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          node .github/scripts/slack/notify.mjs \
+            --channel '#alerts-build' \
+            --text "<${RUN_URL}|Scheduled encryption rollout test failed>"

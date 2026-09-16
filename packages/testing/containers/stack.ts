@@ -36,6 +36,13 @@ const SERVICE_REGISTRY: Record<ServiceName, Service> = services;
 
 export type N8NConfig = StackConfig;
 
+export interface ReplaceN8NOptions {
+	/** The image the replacement main boots. */
+	image: string;
+	/** Merged over the stack's original user env (e.g. a feature flag flip). */
+	env?: Record<string, string>;
+}
+
 export interface N8NStack {
 	attemptId: string;
 	baseUrl: string;
@@ -53,6 +60,13 @@ export interface N8NStack {
 	metrics: ServiceHelpers['observability']['metrics'];
 	findContainers: (namePattern: string | RegExp) => StartedTestContainer[];
 	stopContainer: (namePattern: string | RegExp) => Promise<StoppedTestContainer | null>;
+	/**
+	 * Stops the current n8n main and boots a replacement with the requested
+	 * image, keeping the service containers, network, database, user folder,
+	 * host port, and readiness/logging/cleanup behavior. Single-main stacks
+	 * only — the substrate of the upgrade/downgrade cycles.
+	 */
+	replaceN8N: (options: ReplaceN8NOptions) => Promise<void>;
 	/** Direct URLs to each main instance (bypasses load balancer). Index 0 = main-1, etc. */
 	mainUrls: string[];
 	/**
@@ -112,7 +126,15 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		external = false,
 		networkName,
 		coverageHostDir,
+		image,
+		userHomeHostDir,
+		user,
+		startupTimeoutMs,
 	} = config;
+
+	if (userHomeHostDir && (mains > 1 || workers > 0 || webhooks > 0)) {
+		throw new Error('userHomeHostDir supports single-main stacks only (one shared home)');
+	}
 
 	const log = createElapsedLogger('stack');
 
@@ -308,6 +330,10 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 					resources.trackContainer(container);
 					if (!containers.includes(container)) containers.push(container);
 				},
+				image,
+				userHomeHostDir,
+				user,
+				startupTimeoutMs,
 			});
 			telemetry.finishStage();
 		} catch (error) {
@@ -480,6 +506,49 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 				const regex = typeof namePattern === 'string' ? new RegExp(namePattern) : namePattern;
 				const container = containers.find((c) => regex.test(c.getName()));
 				return container ? await container.stop() : null;
+			},
+			async replaceN8N(options: ReplaceN8NOptions): Promise<void> {
+				if (mains > 1 || needsLoadBalancer) {
+					throw new Error('replaceN8N supports single-main stacks only');
+				}
+				// A reused container survives stop() and its name would collide with
+				// the replacement.
+				if (process.env.TESTCONTAINERS_REUSE_ENABLE === 'true') {
+					throw new Error('replaceN8N requires TESTCONTAINERS_REUSE_ENABLE to be off');
+				}
+				const current = containers.find((c) => c.getName().endsWith('-n8n'));
+				if (current) {
+					await current.stop();
+					containers.splice(containers.indexOf(current), 1);
+				}
+				const endAcquisition = resources.beginAcquisition();
+				try {
+					await createN8NInstances({
+						mains: 1,
+						workers: 0,
+						projectName: uniqueProjectName,
+						network,
+						serviceEnvironment: environment,
+						userEnvironment: { ...env, ...options.env },
+						usePostgres,
+						baseUrl,
+						// The same host port keeps `baseUrl` valid across the swap.
+						allocatedPort: allocatedMainPort,
+						resourceQuota,
+						filesToMount,
+						coverageHostDir,
+						registerContainer: (container) => {
+							resources.trackContainer(container);
+							if (!containers.includes(container)) containers.push(container);
+						},
+						image: options.image,
+						userHomeHostDir,
+						user,
+						startupTimeoutMs,
+					});
+				} finally {
+					endAcquisition();
+				}
 			},
 			mainUrls,
 			internalMainUrls,
