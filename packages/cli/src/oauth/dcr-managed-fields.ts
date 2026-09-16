@@ -22,7 +22,8 @@ export const OAUTH_PINNED_FIELDS = [
 	'authUrl',
 	'accessTokenUrl',
 	'grantType',
-	'authentication', // OAuth2
+	'authentication',
+	'usePkce', // OAuth2
 	'requestTokenUrl',
 	'signatureMethod', // OAuth1
 ] as const;

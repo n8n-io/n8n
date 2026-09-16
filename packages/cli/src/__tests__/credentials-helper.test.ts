@@ -659,6 +659,7 @@ describe('CredentialsHelper', () => {
 						type: 'hidden',
 						default: '={{$self["host"].replace(/\\/$/, "")}}/oidc/v1/token',
 					},
+					{ displayName: 'Use PKCE', name: 'usePkce', type: 'hidden', default: true },
 					{
 						displayName: 'Client ID',
 						name: 'clientId',
@@ -687,6 +688,7 @@ describe('CredentialsHelper', () => {
 					clientSecret: 'user-client-secret',
 					useDynamicClientRegistration: true,
 					accessTokenUrl: 'https://other.example.com/token',
+					usePkce: false,
 				},
 				databricksOAuth2Type.name,
 				'internal',
@@ -695,6 +697,7 @@ describe('CredentialsHelper', () => {
 			expect(result).toMatchObject({
 				useDynamicClientRegistration: false,
 				accessTokenUrl: 'https://adb-1.azuredatabricks.net/oidc/v1/token',
+				usePkce: true,
 				// displayOptions were evaluated with the pinned flag, so the client fields survive.
 				clientId: 'user-client-id',
 				clientSecret: 'user-client-secret',
