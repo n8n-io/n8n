@@ -142,7 +142,7 @@ describe('kindColorToken', () => {
 	it('maps each kind to a CSS token', () => {
 		expect(kindColorToken('user')).toBe('var(--color--blue-400)');
 		expect(kindColorToken('agent')).toBe('var(--color--secondary)');
-		expect(kindColorToken('skill')).toBe('var(--color--warning)');
+		expect(kindColorToken('skill')).toBe('var(--color--orange-400)');
 		expect(kindColorToken('tool')).toBe('var(--color--success)');
 		expect(kindColorToken('workflow')).toBe('var(--color--primary)');
 		expect(kindColorToken('suspension')).toBe('var(--color--warning)');
