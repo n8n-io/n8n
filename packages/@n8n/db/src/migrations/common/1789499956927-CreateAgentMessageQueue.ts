@@ -2,8 +2,9 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
 export class CreateAgentMessageQueue1789499956927 implements ReversibleMigration {
 	async up({ isSqlite, schemaBuilder: { createTable, column } }: MigrationContext) {
+		// SQLite needs AUTOINCREMENT so a stale Stop cannot target a reused queue ID.
 		const id = isSqlite
-			? column('id').int.primary.autoGenerate2
+			? column('id').int.primary.autoGenerate
 			: column('id').bigint.primary.autoGenerate2;
 		await createTable('agent_message_queue')
 			.withColumns(
@@ -23,8 +24,8 @@ export class CreateAgentMessageQueue1789499956927 implements ReversibleMigration
 					.comment('Ordinary message or human response to a suspended run.'),
 				column('status')
 					.varchar(16)
-					.notNull.withEnumCheck(['queued', 'processing'])
-					.comment('Waiting input or input whose execution has started.'),
+					.notNull.withEnumCheck(['queued', 'processing', 'cancelling'])
+					.comment('Waiting, active, or cancelling input.'),
 				column('payload').json.notNull.comment(
 					'Typed input and actor, project, and reply routing data.',
 				),

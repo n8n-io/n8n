@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "agent_message_queue" ("id" integer PRIMARY KEY NOT NULL, "agentId" varchar(36) NOT NULL, "threadId" varchar(128) NOT NULL, "source" varchar(16) NOT NULL, "kind" varchar(16) NOT NULL, "status" varchar(16) NOT NULL, "payload" text NOT NULL, "executionId" varchar(36), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_agent_message_queue_source" CHECK ("source" IN ('preview', 'integration')), CONSTRAINT "CHK_agent_message_queue_kind" CHECK ("kind" IN ('message', 'hitl')), CONSTRAINT "CHK_agent_message_queue_status" CHECK ("status" IN ('queued', 'processing')), CONSTRAINT "FK_8a5699c954416a2172688ff39fa" FOREIGN KEY ("agentId") REFERENCES "agents" ("id") ON DELETE CASCADE, CONSTRAINT "FK_2349d84b4f2a660fc264f38fef3" FOREIGN KEY ("executionId") REFERENCES "agent_execution" ("id") ON DELETE SET NULL)
+CREATE TABLE "agent_message_queue" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "agentId" varchar(36) NOT NULL, "threadId" varchar(128) NOT NULL, "source" varchar(16) NOT NULL, "kind" varchar(16) NOT NULL, "status" varchar(16) NOT NULL, "payload" text NOT NULL, "executionId" varchar(36), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_agent_message_queue_source" CHECK ("source" IN ('preview', 'integration')), CONSTRAINT "CHK_agent_message_queue_kind" CHECK ("kind" IN ('message', 'hitl')), CONSTRAINT "CHK_agent_message_queue_status" CHECK ("status" IN ('queued', 'processing', 'cancelling')), CONSTRAINT "FK_8a5699c954416a2172688ff39fa" FOREIGN KEY ("agentId") REFERENCES "agents" ("id") ON DELETE CASCADE, CONSTRAINT "FK_2349d84b4f2a660fc264f38fef3" FOREIGN KEY ("executionId") REFERENCES "agent_execution" ("id") ON DELETE SET NULL)
 ```
 
 </details>
@@ -32,7 +32,7 @@ CREATE TABLE "agent_message_queue" ("id" integer PRIMARY KEY NOT NULL, "agentId"
 | ---- | ---- | ---------- |
 | - | CHECK | CHECK ("source" IN ('preview', 'integration')) |
 | - | CHECK | CHECK ("kind" IN ('message', 'hitl')) |
-| - | CHECK | CHECK ("status" IN ('queued', 'processing')) |
+| - | CHECK | CHECK ("status" IN ('queued', 'processing', 'cancelling')) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (executionId) REFERENCES agent_execution (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE |
 | - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | id | PRIMARY KEY | PRIMARY KEY (id) |

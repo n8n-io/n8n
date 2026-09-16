@@ -29,7 +29,7 @@ describe('CreateAgentMessageQueue migration', () => {
 	});
 	afterAll(async () => await Container.get(DbConnection).close());
 
-	it('generates ordered IDs before a thread exists, cascades agent deletion, and supports rollback', async () => {
+	it('keeps IDs ordered, accepts cancellation, cascades agent deletion, and supports rollback', async () => {
 		await runSingleMigration(MIGRATION);
 		await withContext(async ({ escape, runQuery, queryRunner, tablePrefix }) => {
 			const projectId = randomUUID();
@@ -58,6 +58,17 @@ describe('CreateAgentMessageQueue migration', () => {
 			);
 			expect(rows).toHaveLength(2);
 			expect(BigInt(rows[1].id)).toBeGreaterThan(BigInt(rows[0].id));
+			await runQuery(`DELETE FROM ${table} WHERE "id" = :id`, { id: rows[1].id });
+			await runQuery(
+				`INSERT INTO ${table} ("agentId", "threadId", "source", "kind", "status", "payload")
+				 VALUES (:agentId, 'future-thread', 'preview', 'message', 'cancelling', '{}')`,
+				{ agentId },
+			);
+			const [replacement] = await runQuery<Array<{ id: string | number; status: string }>>(
+				`SELECT "id", "status" FROM ${table} ORDER BY "id" DESC LIMIT 1`,
+			);
+			expect(BigInt(replacement.id)).toBeGreaterThan(BigInt(rows[1].id));
+			expect(replacement.status).toBe('cancelling');
 			const schema = await queryRunner.getTable(`${tablePrefix}agent_message_queue`);
 			// The PostgreSQL driver returns index columns in name order.
 			expect(schema?.indices.map(({ columnNames }) => columnNames.toSorted())).toEqual(

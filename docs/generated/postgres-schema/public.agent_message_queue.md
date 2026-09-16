@@ -11,7 +11,7 @@
 | kind | varchar(16) |  | false |  |  | Ordinary message or human response to a suspended run. |
 | payload | json |  | false |  |  | Typed input and actor, project, and reply routing data. |
 | source | varchar(16) |  | false |  |  | Preview HTTP request or integration chat input. |
-| status | varchar(16) |  | false |  |  | Waiting input or input whose execution has started. |
+| status | varchar(16) |  | false |  |  | Waiting, active, or cancelling input. |
 | threadId | varchar(128) |  | false |  |  | Existing conversation routing ID. |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 
@@ -21,7 +21,7 @@
 | ---- | ---- | ---------- |
 | CHK_agent_message_queue_kind | CHECK | CHECK (((kind)::text = ANY ((ARRAY['message'::character varying, 'hitl'::character varying])::text[]))) |
 | CHK_agent_message_queue_source | CHECK | CHECK (((source)::text = ANY ((ARRAY['preview'::character varying, 'integration'::character varying])::text[]))) |
-| CHK_agent_message_queue_status | CHECK | CHECK (((status)::text = ANY ((ARRAY['queued'::character varying, 'processing'::character varying])::text[]))) |
+| CHK_agent_message_queue_status | CHECK | CHECK (((status)::text = ANY ((ARRAY['queued'::character varying, 'processing'::character varying, 'cancelling'::character varying])::text[]))) |
 | FK_2349d84b4f2a660fc264f38fef3 | FOREIGN KEY | FOREIGN KEY ("executionId") REFERENCES agent_execution(id) ON DELETE SET NULL |
 | FK_8a5699c954416a2172688ff39fa | FOREIGN KEY | FOREIGN KEY ("agentId") REFERENCES agents(id) ON DELETE CASCADE |
 | PK_733d8c959a6057f04f4da5ab721 | PRIMARY KEY | PRIMARY KEY (id) |
