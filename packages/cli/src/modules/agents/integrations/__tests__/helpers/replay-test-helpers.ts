@@ -224,6 +224,7 @@ export function createReplayContextSetup<TChat extends ChatInstance>(params: {
 	const messageContextStore = new MemoryMessageContextStore();
 
 	const queue = mock<AgentMessageQueueService>();
+	let resumeScope: { threadId: string; resourceId: string } | undefined;
 	const bridge = new AgentChatBridge(
 		params.chat as never,
 		queue,
@@ -235,8 +236,13 @@ export function createReplayContextSetup<TChat extends ChatInstance>(params: {
 		params.integration,
 		messageContextStore as unknown as IntegrationMessageContextService,
 	);
+	queue.getResumeScope.mockImplementation(async () => {
+		if (!resumeScope) throw new Error('Expected an integration message before a response');
+		return resumeScope;
+	});
 	queue.enqueue.mockImplementation(async ({ payload, threadId }) => {
 		if (payload.source !== 'integration') throw new Error('Expected an integration input');
+		if (payload.kind === 'message') resumeScope = { threadId, resourceId: payload.resourceId };
 		await bridge.processQueuedInput(
 			jsonParse<IntegrationQueuePayload>(JSON.stringify(payload)),
 			threadId,
