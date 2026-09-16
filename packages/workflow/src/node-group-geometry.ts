@@ -10,8 +10,13 @@ export interface NodeGroupFrameRects {
 	expanded: NodeGroupRect;
 }
 
-export const GROUP_PADDING_X = 56;
-export const GROUP_PADDING_Y_TOP = 40;
+/**
+ * A collapsed chip sits `GROUP_PADDING_X` to the left of its members, and
+ * `GROUP_HEADER_HEIGHT + GROUP_PADDING_Y_TOP` above them. Keep both distances on the
+ * 16px canvas grid, or the chip lands half a cell off every node beside it.
+ */
+export const GROUP_PADDING_X = 64;
+export const GROUP_PADDING_Y_TOP = 48;
 export const GROUP_PADDING_Y_BOTTOM = 88;
 /** Must match the canvas default node height. */
 export const GROUP_HEADER_HEIGHT = 96;
