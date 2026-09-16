@@ -1631,7 +1631,7 @@ describe('Canvas', () => {
 			await fireEvent.keyDown(document, { key: 'Backspace' });
 			await fireEvent.keyUp(document, { key: 'Backspace' });
 
-			expect(emitted()['delete:nodes']?.[0]).toEqual([['a', 'b']]);
+			expect(emitted()['delete:nodes']?.[0]).toEqual([['a', 'b'], true]);
 		});
 	});
 

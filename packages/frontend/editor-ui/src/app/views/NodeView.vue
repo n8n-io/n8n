@@ -528,8 +528,8 @@ function onDeleteNode(id: string) {
 	}
 }
 
-function onDeleteNodes(ids: string[]) {
-	deleteNodes(ids);
+function onDeleteNodes(ids: string[], deleteWholeGroups = false) {
+	deleteNodes(ids, { preserveEmptyGroupAnchor: !deleteWholeGroups });
 }
 
 function onRevertDeleteNode({ node }: { node: INodeUi }) {
