@@ -50,3 +50,5 @@ export {
 export const CONTINUE_SESSION_ID_PARAM = 'continueSessionId';
 export const NEW_SESSION_PARAM = 'newSession';
 export const OPEN_PREVIEW_PARAM = 'openPreview';
+/** Query-string key holding the embedded n8n Assistant panel's active thread id. */
+export const ASSISTANT_THREAD_PARAM = 'assistantThread';

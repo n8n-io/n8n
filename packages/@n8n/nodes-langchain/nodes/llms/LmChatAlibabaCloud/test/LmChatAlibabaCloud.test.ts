@@ -63,7 +63,7 @@ describe('LmChatAlibabaCloud', () => {
 				displayName: 'Qwen Cloud Chat Model',
 				name: 'lmChatAlibabaCloud',
 				group: ['transform'],
-				version: [1],
+				version: [1, 1.1],
 			});
 		});
 
