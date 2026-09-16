@@ -2,6 +2,7 @@ import {
 	AGGREGATE_NODE_TYPE,
 	AI_CATEGORY_AGENTS,
 	AI_CATEGORY_CHAINS,
+	AI_CATEGORY_DECISION_MODELS,
 	AI_CATEGORY_DOCUMENT_LOADERS,
 	AI_CATEGORY_EMBEDDING,
 	AI_CATEGORY_LANGUAGE_MODELS,
@@ -273,6 +274,16 @@ export function AINodesView(_nodes: SimplifiedNodeType[]): NodeView {
 					info: getSubcategoryInfo(AI_CATEGORY_DOCUMENT_LOADERS),
 					icon: 'file-input',
 					...getAISubcategoryProperties(NodeConnectionTypes.AiDocument),
+				},
+			},
+			{
+				key: AI_CATEGORY_DECISION_MODELS,
+				type: 'subcategory',
+				properties: {
+					title: AI_CATEGORY_DECISION_MODELS,
+					info: getSubcategoryInfo(AI_CATEGORY_DECISION_MODELS),
+					icon: 'scale',
+					...getAISubcategoryProperties(NodeConnectionTypes.AiDecisionModel),
 				},
 			},
 			{
