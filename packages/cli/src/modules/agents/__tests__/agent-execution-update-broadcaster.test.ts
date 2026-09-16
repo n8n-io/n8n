@@ -31,6 +31,7 @@ describe('AgentExecutionUpdateBroadcaster', () => {
 		vi.clearAllMocks();
 		logger.scoped.mockReturnValue(logger);
 		projectRelationRepository.findUserIdsByProjectId.mockResolvedValue(['user-1', 'user-2']);
+		publisher.publishCommand.mockResolvedValue();
 		threadRepository.findOneBy.mockResolvedValue(thread);
 		Object.defineProperties(instanceSettings, {
 			isWorker: { value: false, configurable: true },
@@ -84,35 +85,71 @@ describe('AgentExecutionUpdateBroadcaster', () => {
 		expect(publisher.publishCommand).not.toHaveBeenCalled();
 	});
 
-	it('contains preview delivery failures', async () => {
+	it('logs one warning per preview relay outage and resets after any successful relay', async () => {
 		Object.defineProperty(instanceSettings, 'isMultiMain', { value: true, configurable: true });
-		publisher.publishCommand.mockRejectedValueOnce(new Error('Relay unavailable'));
-		await expect(
-			broadcaster.sendChatEvent(
-				{ ...update, queueId: '1', clientRequestId: 'request-1', event: { type: 'done' } },
+		publisher.publishCommand
+			.mockRejectedValueOnce(new Error('Relay unavailable'))
+			.mockRejectedValueOnce(new Error('Relay unavailable'))
+			.mockResolvedValueOnce()
+			.mockRejectedValueOnce(new Error('Relay unavailable'));
+		const send = async (queueId: string) =>
+			await broadcaster.sendChatEvent(
+				{ ...update, queueId, clientRequestId: 'request-1', event: { type: 'done' } },
 				'user-1',
-			),
-		).resolves.toBeUndefined();
+			);
+
+		await send('1');
+		await vi.waitFor(() => expect(logger.warn).toHaveBeenCalledOnce());
+		await send('2');
+		await vi.waitFor(() => expect(publisher.publishCommand).toHaveBeenCalledTimes(2));
 		expect(logger.warn).toHaveBeenCalledOnce();
+		await send('3');
+		await vi.waitFor(() => expect(logger.info).toHaveBeenCalledOnce());
+		await send('4');
+		await vi.waitFor(() => expect(logger.warn).toHaveBeenCalledTimes(2));
 	});
 
-	it('stops waiting for a stalled preview relay', async () => {
+	it('does not wait for stalled preview relays and starts them in order', async () => {
 		vi.useFakeTimers();
 		try {
 			Object.defineProperty(instanceSettings, 'isMultiMain', { value: true, configurable: true });
-			publisher.publishCommand.mockReturnValueOnce(new Promise(() => {}));
+			publisher.publishCommand.mockReturnValue(new Promise(() => {}));
 			let delivered = false;
 
-			void broadcaster
-				.sendChatEvent(
+			void Promise.all([
+				broadcaster.sendChatEvent(
+					{
+						...update,
+						queueId: '1',
+						clientRequestId: 'request-1',
+						event: { type: 'text-delta', id: 'text', delta: 'Hello' },
+					},
+					'user-1',
+				),
+				broadcaster.sendChatEvent(
 					{ ...update, queueId: '1', clientRequestId: 'request-1', event: { type: 'done' } },
 					'user-1',
-				)
-				.then(() => (delivered = true));
-			await vi.advanceTimersByTimeAsync(1_000);
+				),
+			]).then(() => (delivered = true));
+			await vi.advanceTimersByTimeAsync(0);
 
 			expect(delivered).toBe(true);
-			expect(logger.warn).toHaveBeenCalledOnce();
+			expect(publisher.publishCommand).toHaveBeenNthCalledWith(1, {
+				command: 'relay-agent-chat-event',
+				payload: {
+					data: expect.objectContaining({
+						event: { type: 'text-delta', id: 'text', delta: 'Hello' },
+					}),
+					userId: 'user-1',
+				},
+			});
+			expect(publisher.publishCommand).toHaveBeenNthCalledWith(2, {
+				command: 'relay-agent-chat-event',
+				payload: {
+					data: expect.objectContaining({ event: { type: 'done' } }),
+					userId: 'user-1',
+				},
+			});
 		} finally {
 			vi.useRealTimers();
 		}

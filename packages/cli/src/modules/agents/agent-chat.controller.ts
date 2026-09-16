@@ -149,6 +149,7 @@ export class AgentChatController {
 			threadId,
 			resourceId: draftChatMemoryResourceId(user.id),
 		});
+		let attachmentsOwnedByQueue = false;
 		try {
 			const item = await this.messageQueue.enqueuePreview(
 				{
@@ -183,13 +184,17 @@ export class AgentChatController {
 						context.send,
 					);
 				},
+				() => {
+					attachmentsOwnedByQueue = true;
+				},
 			);
 			return { status: 'queued', sessionId: threadId, item };
 		} catch (error) {
-			// After admission, the queue owns attachment cleanup.
-			await this.agentChatAttachmentService.deleteByIds(
-				storedAttachments?.map(({ id }) => id) ?? [],
-			);
+			if (!attachmentsOwnedByQueue) {
+				await this.agentChatAttachmentService.deleteByIds(
+					storedAttachments?.map(({ id }) => id) ?? [],
+				);
+			}
 			throw error;
 		}
 	}
@@ -329,15 +334,21 @@ export class AgentChatController {
 		const agent = await this.agentsService.findById(agentId, projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
 
-		const resumeCancelled = await this.messageQueue.cancelPreviewResumes(
-			{
-				agentId,
-				projectId,
-				userId: req.user.id,
-				resourceId: draftChatMemoryResourceId(req.user.id),
-			},
-			runId,
-		);
+		let resumeCancelled = false;
+		let resumeCancellationError: unknown;
+		try {
+			resumeCancelled = await this.messageQueue.cancelPreviewResumes(
+				{
+					agentId,
+					projectId,
+					userId: req.user.id,
+					resourceId: draftChatMemoryResourceId(req.user.id),
+				},
+				runId,
+			);
+		} catch (error) {
+			resumeCancellationError = error;
+		}
 
 		const cancelled = await this.agentExecutionOrchestratorService.cancelChatRun({
 			agentId,
@@ -345,6 +356,7 @@ export class AgentChatController {
 			resourceId: draftChatMemoryResourceId(req.user.id),
 			onCancelled: (threadId) => this.messageQueue.notify(threadId),
 		});
+		if (resumeCancellationError !== undefined) throw resumeCancellationError;
 		return { cancelled: cancelled || resumeCancelled };
 	}
 
