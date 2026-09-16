@@ -3224,8 +3224,13 @@ importers:
         specifier: 'catalog:'
         version: 3.36.0
       snowflake-sdk:
+<<<<<<< HEAD
         specifier: 2.1.0
         version: 2.1.0(asn1.js@5.4.1)(encoding@0.1.13)
+=======
+        specifier: 3.3.0
+        version: 3.3.0(asn1.js@5.4.1)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)
+>>>>>>> 53344207 (fix(Snowflake Node): Update the Snowflake SDK to 3.3.0 (#38798))
       ssh2-sftp-client:
         specifier: 12.1.0
         version: 12.1.0
@@ -3635,6 +3640,10 @@ packages:
     resolution: {integrity: sha512-0G73S2cDqYwJVvqL08eakj79MZG2QRaB56Ul8/Ps9oQxllr7DMI1IQ/N3j3xjxgpq/U36pkoFZ8aK1n7Sbr3IQ==}
     engines: {node: '>=18.0.0'}
 
+  '@aws-sdk/client-sts@3.1131.0':
+    resolution: {integrity: sha512-k9RyorL46RUbvnOjFF3ogGvrK79i229zP6C5+wGPYqNvohw/eomC0DRSOntIc28nVYcfirlJuubPPGZHh9TGUA==}
+    engines: {node: '>=20.0.0'}
+
   '@aws-sdk/core@3.808.0':
     resolution: {integrity: sha512-+nTmxJVIPtAarGq9Fd/uU2qU/Ngfb9EntT0/kwXdKKMI0wU9fQNWi10xSTVeqOtzWERbQpOJgBAdta+v3W7cng==}
     engines: {node: '>=18.0.0'}
@@ -3647,6 +3656,17 @@ packages:
     resolution: {integrity: sha512-eGJ2ySUMvgtOziHhDRDLCrj473RJoL4J1vPjVM3NrKC/fF3/LoHjkut8AAnKmrW6a2uTzNKubigw8dEnpmpERw==}
     engines: {node: '>=18.0.0'}
 
+<<<<<<< HEAD
+=======
+  '@aws-sdk/core@3.977.8':
+    resolution: {integrity: sha512-7+Kcrkvrk9lM/m7jRhHpT4jCdvzGHsuaSRbF8TdzzkY1mRzp/Ogwf9c7H29k4gGhey0BBWhCWr16+t0J61gwmg==}
+    engines: {node: '>=20.0.0'}
+
+  '@aws-sdk/core@3.978.0':
+    resolution: {integrity: sha512-2yX9LUmxPklVjSGTb8dfnWRJSiFQ3TeH2nn7G1mdKHTfnabzF0+gfrS8rYfLWmZrQ8A3mEcxMJjRc51dL5KWaA==}
+    engines: {node: '>=20.0.0'}
+
+>>>>>>> 53344207 (fix(Snowflake Node): Update the Snowflake SDK to 3.3.0 (#38798))
   '@aws-sdk/credential-provider-cognito-identity@3.808.0':
     resolution: {integrity: sha512-AbsD/qHyQmyZ+CqJNOaGlnwZaXu8HfndfEiLsIJU/dIf9Wbt7ZtsHSAI/x78awxGohDneMZ6c5vuaRGYL7Z04g==}
     engines: {node: '>=18.0.0'}
@@ -3663,6 +3683,17 @@ packages:
     resolution: {integrity: sha512-dKajFuaugEA5i9gCKzOaVy9uTeZcApE+7Z5wdcZ6j40523fY1a56khDAUYkCfwqa7sHci4ccmxBkAo+fW1RChA==}
     engines: {node: '>=18.0.0'}
 
+<<<<<<< HEAD
+=======
+  '@aws-sdk/credential-provider-env@3.972.69':
+    resolution: {integrity: sha512-AreCFzcB4kH2HF9031Ot0jSJr3KXvRg6e8uDeub20JEVdZU3Bv0sTq1plc7VsT3KiqutlzH7l0j50UcCWHUioA==}
+    engines: {node: '>=20.0.0'}
+
+  '@aws-sdk/credential-provider-env@3.972.71':
+    resolution: {integrity: sha512-JN+JHruYZw3GUZB8YGAlDk4wTDPOEAEEdEzj5nS0xodWR4smzHsN7PnK2j6IeOsDIj2aqua5DSbhXl9Gtf90FQ==}
+    engines: {node: '>=20.0.0'}
+
+>>>>>>> 53344207 (fix(Snowflake Node): Update the Snowflake SDK to 3.3.0 (#38798))
   '@aws-sdk/credential-provider-http@3.808.0':
     resolution: {integrity: sha512-gNXjlx3BIUeX7QpVqxbjBxG6zm45lC39QvUIo92WzEJd2OTPcR8TU0OTTsgq/lpn2FrKcISj5qXvhWykd41+CA==}
     engines: {node: '>=18.0.0'}
@@ -3675,6 +3706,17 @@ packages:
     resolution: {integrity: sha512-5FguODLXG1tWx/x8fBxH+GVrk7Hey2LbXV5h9SFzYCx/2h50URBm0+9hndg0Rd23+xzYe14F6SI9HA9c1sPnjg==}
     engines: {node: '>=18.0.0'}
 
+<<<<<<< HEAD
+=======
+  '@aws-sdk/credential-provider-http@3.972.71':
+    resolution: {integrity: sha512-A8ObcqVmDMnk4F9NozZ7JwmUu9Q4xyBJkmyq1C5U+wNM9ht9J7+EuuyabsLWXZnOoTqFaJuYBYTKf5CTipkEjA==}
+    engines: {node: '>=20.0.0'}
+
+  '@aws-sdk/credential-provider-http@3.972.73':
+    resolution: {integrity: sha512-uyYYnJOnlis8uQzaYGPd7N1JoioCoNpXgnkXYixsWJXHXgXyYi8WXJSDfofxJeWfQIGWLe2Nwyq60Uc7MZdVOg==}
+    engines: {node: '>=20.0.0'}
+
+>>>>>>> 53344207 (fix(Snowflake Node): Update the Snowflake SDK to 3.3.0 (#38798))
   '@aws-sdk/credential-provider-ini@3.808.0':
     resolution: {integrity: sha512-Y53CW0pCvFQQEvtVFwExCCMbTg+6NOl8b3YOuZVzPmVmDoW7M1JIn9IScesqoGERXL3VoXny6nYTsZj+vfpp7Q==}
     engines: {node: '>=18.0.0'}
@@ -3687,10 +3729,32 @@ packages:
     resolution: {integrity: sha512-TbUv56ERQQujoHcLMcfL0Q6bVZfYF83gu/TjHkVkdSlHPOIKaG/mhE2XZSQzXv1cud6LlgeBbfzVAxJ+HPpffg==}
     engines: {node: '>=18.0.0'}
 
+<<<<<<< HEAD
+=======
+  '@aws-sdk/credential-provider-ini@3.973.14':
+    resolution: {integrity: sha512-7c+Wti2LsERNWMfm7ySz3/6RPopFW3Nmn7s63Xpcq6R/tRuY5hpvkHA2xVgi5ukJbvok9l0IDtVEvqTtg+X7dw==}
+    engines: {node: '>=20.0.0'}
+
+  '@aws-sdk/credential-provider-ini@3.973.16':
+    resolution: {integrity: sha512-i++ly+0Uxa+u3ebSSyr0S/3CFhFJDxCXT3+Zj+mW2bXenEx5bKGCdTIKFu39SgXBNhWDjex/8cXUx9MUTMCrTw==}
+    engines: {node: '>=20.0.0'}
+
+>>>>>>> 53344207 (fix(Snowflake Node): Update the Snowflake SDK to 3.3.0 (#38798))
   '@aws-sdk/credential-provider-login@3.936.0':
     resolution: {integrity: sha512-8DVrdRqPyUU66gfV7VZNToh56ZuO5D6agWrkLQE/xbLJOm2RbeRgh6buz7CqV8ipRd6m+zCl9mM4F3osQLZn8Q==}
     engines: {node: '>=18.0.0'}
 
+<<<<<<< HEAD
+=======
+  '@aws-sdk/credential-provider-login@3.972.76':
+    resolution: {integrity: sha512-LVixwOnEJfrrfKHeZjBA8pIMTZjNDq8ak8VpcoWUuCJDrSnBNU8POJksULMgvN089P0MXtQYH2Zs627/MK1K0g==}
+    engines: {node: '>=20.0.0'}
+
+  '@aws-sdk/credential-provider-login@3.972.78':
+    resolution: {integrity: sha512-eUtswnXu0+Ii9ieRK+0L7aPFV3Z/dnW2VntJzjBP9xs8s+8p5nBNuymIXtXwZ+5r5+XJP3e32nMkuZ/r0HozEA==}
+    engines: {node: '>=20.0.0'}
+
+>>>>>>> 53344207 (fix(Snowflake Node): Update the Snowflake SDK to 3.3.0 (#38798))
   '@aws-sdk/credential-provider-node@3.808.0':
     resolution: {integrity: sha512-lASHlXJ6U5Cpnt9Gs+mWaaSmWcEibr1AFGhp+5UNvfyd+UU2Oiwgbo7rYXygmaVDGkbfXEiTkgYtoNOBSddnWQ==}
     engines: {node: '>=18.0.0'}
@@ -3703,6 +3767,17 @@ packages:
     resolution: {integrity: sha512-rk/2PCtxX9xDsQW8p5Yjoca3StqmQcSfkmD7nQ61AqAHL1YgpSQWqHE+HjfGGiHDYKG7PvE33Ku2GyA7lEIJAw==}
     engines: {node: '>=18.0.0'}
 
+<<<<<<< HEAD
+=======
+  '@aws-sdk/credential-provider-node@3.972.80':
+    resolution: {integrity: sha512-bE2qh8ww4iClO1jHsBXdOE8FUgzDbdxbyorNjSCoPSkQd51k3jODItuPZfuwcLHZqDXsH+bI4AMHhqtuyR7mSg==}
+    engines: {node: '>=20.0.0'}
+
+  '@aws-sdk/credential-provider-node@3.972.83':
+    resolution: {integrity: sha512-jdso7ejzfRnatxMUZK4S/U6KbaDPCvfIV4XL+IQAPFDBt5rj5Fq595euqlK8Le4lNCMFR9oUpt+1l0aMgaayOQ==}
+    engines: {node: '>=20.0.0'}
+
+>>>>>>> 53344207 (fix(Snowflake Node): Update the Snowflake SDK to 3.3.0 (#38798))
   '@aws-sdk/credential-provider-process@3.808.0':
     resolution: {integrity: sha512-ZLqp+xsQUatoo8pMozcfLwf/pwfXeIk0w3n0Lo/rWBgT3RcdECmmPCRcnkYBqxHQyE66aS9HiJezZUwMYPqh6w==}
     engines: {node: '>=18.0.0'}
@@ -3715,6 +3790,17 @@ packages:
     resolution: {integrity: sha512-GpA4AcHb96KQK2PSPUyvChvrsEKiLhQ5NWjeef2IZ3Jc8JoosiedYqp6yhZR+S8cTysuvx56WyJIJc8y8OTrLA==}
     engines: {node: '>=18.0.0'}
 
+<<<<<<< HEAD
+=======
+  '@aws-sdk/credential-provider-process@3.972.69':
+    resolution: {integrity: sha512-9kpTNdZTrcqXTfhxM7fgl9Z68ek3Fu5oe3Yf+A/pJGibEqpgZxz2tSY7SinmyCIU2PJ+ygY4FPoBBnLpocMtrQ==}
+    engines: {node: '>=20.0.0'}
+
+  '@aws-sdk/credential-provider-process@3.972.71':
+    resolution: {integrity: sha512-lYmXJa4gvq4xN1lrT5NiP5vIYYKcGWAdj8y+8o6dlcateB5eF3Dn8DtmjjHKfMBrTPAMr2pebIiX/UOj8c1/UA==}
+    engines: {node: '>=20.0.0'}
+
+>>>>>>> 53344207 (fix(Snowflake Node): Update the Snowflake SDK to 3.3.0 (#38798))
   '@aws-sdk/credential-provider-sso@3.808.0':
     resolution: {integrity: sha512-gWZByAokHX+aps1+syIW/hbKUBrjE2RpPRd/RGQvrBbVVgwsJzsHKsW0zy1B6mgARPG6IahmSUMjNkBCVsiAgw==}
     engines: {node: '>=18.0.0'}
@@ -3727,6 +3813,17 @@ packages:
     resolution: {integrity: sha512-wHlEAJJvtnSyxTfNhN98JcU4taA1ED2JvuI2eePgawqBwS/Tzi0mhED1lvNIaWOkjfLd+nHALwszGrtJwEq4yQ==}
     engines: {node: '>=18.0.0'}
 
+<<<<<<< HEAD
+=======
+  '@aws-sdk/credential-provider-sso@3.973.13':
+    resolution: {integrity: sha512-Oc81qauMPzUoTnAS2YKpNwY6sY/LUyQTEeaf6yP197WMxkEBQfcKLR1MFpD7+pNTubXnfkH6gwpji+Gc7iyD2Q==}
+    engines: {node: '>=20.0.0'}
+
+  '@aws-sdk/credential-provider-sso@3.973.15':
+    resolution: {integrity: sha512-6Jhcf4v0pSFdjk1EW2kvzuEBKD+UZ2uNcHUIglKKLndD20YhvkL2kdmDOV5/j4mYuWWwe/a1FQ1aomU86/Cg5Q==}
+    engines: {node: '>=20.0.0'}
+
+>>>>>>> 53344207 (fix(Snowflake Node): Update the Snowflake SDK to 3.3.0 (#38798))
   '@aws-sdk/credential-provider-web-identity@3.808.0':
     resolution: {integrity: sha512-SsGa1Gfa05aJM/qYOtHmfg0OKKW6Fl6kyMCcai63jWDVDYy0QSHcesnqRayJolISkdsVK6bqoWoFcPxiopcFcg==}
     engines: {node: '>=18.0.0'}
@@ -3739,9 +3836,24 @@ packages:
     resolution: {integrity: sha512-v3qHAuoODkoRXsAF4RG+ZVO6q2P9yYBT4GMpMEfU9wXVNn7AIfwZgTwzSUfnjNiGva5BKleWVpRpJ9DeuLFbUg==}
     engines: {node: '>=18.0.0'}
 
+<<<<<<< HEAD
+=======
+  '@aws-sdk/credential-provider-web-identity@3.972.75':
+    resolution: {integrity: sha512-YPN6uoGDgjjjeVFZrcOeCJqmB6zpXoeeNgIjqe+DexJaWqdjVfCCe+VAZwli9Z2h8KhFW8oxkO39emQ1tyz/Mw==}
+    engines: {node: '>=20.0.0'}
+
+  '@aws-sdk/credential-provider-web-identity@3.972.77':
+    resolution: {integrity: sha512-uylIQSUWpfLuH2LovxEEfwzJGM/SabLOfLMg6YXu/E8jJEKUdpdILCVCQCdFvHyu/7dLJOHPMfrSwduxO56NkQ==}
+    engines: {node: '>=20.0.0'}
+
+>>>>>>> 53344207 (fix(Snowflake Node): Update the Snowflake SDK to 3.3.0 (#38798))
   '@aws-sdk/credential-providers@3.808.0':
     resolution: {integrity: sha512-JJvY/gcet+tFw7dGifhTMJ2jfLXCJBR2Tu2rY/ePi+HVUrR//TnWmcm8qGvT1nWiCQ7w9NEhMlJgqKEIM/MkVQ==}
     engines: {node: '>=18.0.0'}
+
+  '@aws-sdk/ec2-metadata-service@3.1131.0':
+    resolution: {integrity: sha512-ojNI7nUYJezS4hOOfqqhW7qLppzvODIqf94IH0tUUXFQ82ThlB31nuX9k9NUxSIbxjs7KUpU/tl7HPQMe+5R9w==}
+    engines: {node: '>=20.0.0'}
 
   '@aws-sdk/eventstream-handler-node@3.936.0':
     resolution: {integrity: sha512-4zIbhdRmol2KosIHmU31ATvNP0tkJhDlRj9GuawVJoEnMvJA1pd2U3SRdiOImJU3j8pT46VeS4YMmYxfjGHByg==}
@@ -3844,6 +3956,17 @@ packages:
     resolution: {integrity: sha512-eyj2tz1XmDSLSZQ5xnB7cLTVKkSJnYAEoNDSUNhzWPxrBDYeJzIbatecOKceKCU8NBf8gWWZCK/CSY0mDxMO0A==}
     engines: {node: '>=18.0.0'}
 
+<<<<<<< HEAD
+=======
+  '@aws-sdk/nested-clients@3.997.43':
+    resolution: {integrity: sha512-bit+VpqWNyi3wHxFoTsTliNXimCSL2r2OeDTm7ZrG+YsTZ2D7ofDJ6r/t9PVBn80i6/v0X2h9Tgw6QP2MAKfPw==}
+    engines: {node: '>=20.0.0'}
+
+  '@aws-sdk/nested-clients@3.997.45':
+    resolution: {integrity: sha512-mooq9Q+jLa18VoM7HouczmslZU60iiB0aKc/Ztnq/luIL1ud0z4DnYprLR/ZO1gp331S9tJctM1HZr7u6YKBXQ==}
+    engines: {node: '>=20.0.0'}
+
+>>>>>>> 53344207 (fix(Snowflake Node): Update the Snowflake SDK to 3.3.0 (#38798))
   '@aws-sdk/protocol-http@3.374.0':
     resolution: {integrity: sha512-9WpRUbINdGroV3HiZZIBoJvL2ndoWk39OfwxWs2otxByppJZNN14bg/lvCx5e8ggHUti7IBk5rb0nqQZ4m05pg==}
     engines: {node: '>=14.0.0'}
@@ -3869,11 +3992,26 @@ packages:
     resolution: {integrity: sha512-fuzUMo6xU7e0NBzBA6TQ4FUf1gqNbg4woBSvYfxRRsIfKmSMn9/elXXn4sAE5UKvlwVQmYnb6p7dpVRPyFvnQA==}
     engines: {node: '>=18.0.0'}
 
+  '@aws-sdk/signature-v4-multi-region@3.996.46':
+    resolution: {integrity: sha512-L+2xZTye/2T96f3lwCws0Zw6GG2JHZW9e8FpVgGBeeExSKyeoZ6CWRpBml/7DNiK/O26jrgPM9F+Ay8VkgzUWQ==}
+    engines: {node: '>=20.0.0'}
+
   '@aws-sdk/signature-v4@3.374.0':
     resolution: {integrity: sha512-2xLJvSdzcZZAg0lsDLUAuSQuihzK0dcxIK7WmfuJeF7DGKJFmp9czQmz5f3qiDz6IDQzvgK1M9vtJSVCslJbyQ==}
     engines: {node: '>=14.0.0'}
     deprecated: This package has moved to @smithy/signature-v4
 
+<<<<<<< HEAD
+=======
+  '@aws-sdk/token-providers@3.1111.0':
+    resolution: {integrity: sha512-JfljgoVtl+s3Qy21n9a7Z48uCQaOXcN74KJ3TEQfPoB293GrXFSt6HSQJF1sTZ8c/5QedEvd3NjJQMO4u9qa5A==}
+    engines: {node: '>=20.0.0'}
+
+  '@aws-sdk/token-providers@3.1129.0':
+    resolution: {integrity: sha512-Sbl3rpzQdsG4ZK2zh0JWUYyZPKKorJlVOddA2T0DVbKJFrsW8J6wgnslxxUH04+WaBMr4A1HzJZvZX0xUvkniA==}
+    engines: {node: '>=20.0.0'}
+
+>>>>>>> 53344207 (fix(Snowflake Node): Update the Snowflake SDK to 3.3.0 (#38798))
   '@aws-sdk/token-providers@3.808.0':
     resolution: {integrity: sha512-PsfKanHmnyO7FxowXqxbLQ+QjURCdSGxyhUiSdZbfvlvme/wqaMyIoMV/i4jppndksoSdPbW2kZXjzOqhQF+ew==}
     engines: {node: '>=18.0.0'}
@@ -3898,6 +4036,17 @@ packages:
     resolution: {integrity: sha512-uz0/VlMd2pP5MepdrHizd+T+OKfyK4r3OA9JI+L/lPKg0YFQosdJNCKisr6o70E3dh8iMpFYxF1UN/4uZsyARg==}
     engines: {node: '>=18.0.0'}
 
+<<<<<<< HEAD
+=======
+  '@aws-sdk/types@3.974.4':
+    resolution: {integrity: sha512-dSFDNG00MEz0/xl5gxL62giLd1iYyJsTxZ1I1DOj6lC+bbgLB4TRsYClJg3b62dhXT1uATzsTNXPnC+33EJV3A==}
+    engines: {node: '>=20.0.0'}
+
+  '@aws-sdk/types@3.974.5':
+    resolution: {integrity: sha512-LkwLL2BLbC6wNNm4JaH9mbEqBMdOZCct6VAYqhdN4U1xrWM+fUJQEfbHwQgDypapOWTRtlk25akb5afM0P8CIQ==}
+    engines: {node: '>=20.0.0'}
+
+>>>>>>> 53344207 (fix(Snowflake Node): Update the Snowflake SDK to 3.3.0 (#38798))
   '@aws-sdk/util-arn-parser@3.804.0':
     resolution: {integrity: sha512-wmBJqn1DRXnZu3b4EkE6CWnoWMo1ZMvlfkqU5zPz67xx1GMaXlDCchFvKAXMjk4jn/L1O3tKnoFDNsoLV1kgNQ==}
     engines: {node: '>=18.0.0'}
@@ -3980,6 +4129,10 @@ packages:
   '@aws/lambda-invoke-store@0.0.1':
     resolution: {integrity: sha512-ORHRQ2tmvnBXc8t/X9Z8IcSbBA4xTLKuN873FopzklHMeqBst7YG0d+AX97inkvDX+NChYtSr+qGfcqGFaI8Zw==}
     engines: {node: '>=18.0.0'}
+
+  '@aws-sdk/xml-builder@3.972.40':
+    resolution: {integrity: sha512-wlFmCIGUlwF4zx/kncw+bmxTQh1HeSJq4mYV/V5cZUSJadDP3kXvGW8Rn21cimj/7y9ju+47oYWXi97vF7czaA==}
+    engines: {node: '>=20.0.0'}
 
   '@aws/lambda-invoke-store@0.2.1':
     resolution: {integrity: sha512-sIyFcoPZkTtNu9xFeEoynMef3bPJIAbOfUh+ueYcfhVl6xm2VRtMcMclSxmZCMnHHd4hlYKJeq/aggmBEWynww==}
@@ -7545,6 +7698,10 @@ packages:
     resolution: {integrity: sha512-hA1MQ/WAHly4SYltJKitEsIDVsNmXcQfYBRv2e+q04fnqtAX5qXaybxy/fhUeAMCnQIdAjaGDb04fMHQefWRhw==}
     engines: {node: '>=18.0.0'}
 
+  '@smithy/core@3.34.1':
+    resolution: {integrity: sha512-dLcOUxz8YCv1RZUMKq6GbyUf95pLbrqh34bPvpCZ1+CByFF31BEAFewZjsGCnVsZTKdThNENfGyAgk2TJqVwSw==}
+    engines: {node: '>=18.0.0'}
+
   '@smithy/credential-provider-imds@4.2.5':
     resolution: {integrity: sha512-BZwotjoZWn9+36nimwm/OLIcVe+KYRwzMjfhd4QT7QxPm9WY0HiOV8t/Wlh+HVUif0SBVV7ksq8//hPaBC/okQ==}
     engines: {node: '>=18.0.0'}
@@ -7704,8 +7861,17 @@ packages:
     resolution: {integrity: sha512-VkLoE/z7e2g8pirwisLz8XJWedUSY8my/qrp81VmAdyrhi94T+riBfwP+AOEEFR9rFTSonC/5D2eWNmFabHyGQ==}
     engines: {node: '>=18.0.0'}
 
+<<<<<<< HEAD
   '@smithy/middleware-stack@4.0.2':
     resolution: {integrity: sha512-eSPVcuJJGVYrFYu2hEq8g8WWdJav3sdrI4o2c6z/rjnYDd3xH9j9E7deZQCzFn4QvGPouLngH3dQ+QVTxv5bOQ==}
+=======
+  '@smithy/node-http-handler@4.12.1':
+    resolution: {integrity: sha512-ThMkboGeONWXAelq9FvGsuJC4rOi+qyC4/zhUF58xYpxUg5sQKx2VXZYJmtNjr4dSuBJ1HeJXETQILCz3wOHvw==}
+    engines: {node: '>=18.0.0'}
+
+  '@smithy/node-http-handler@4.5.0':
+    resolution: {integrity: sha512-Rnq9vQWiR1+/I6NZZMNzJHV6pZYyEHt2ZnuV3MG8z2NNenC4i/8Kzttz7CjZiHSmsN5frhXhg17z3Zqjjhmz1A==}
+>>>>>>> 53344207 (fix(Snowflake Node): Update the Snowflake SDK to 3.3.0 (#38798))
     engines: {node: '>=18.0.0'}
 
   '@smithy/middleware-stack@4.2.3':
@@ -7856,8 +8022,17 @@ packages:
     resolution: {integrity: sha512-QpELEHLO8SsQVtqP+MkEgCYTFW0pleGozfs3cZ183ZBj9z3VC1CX1/wtFMK64p+5bhtZo41SeLK1rBRtd25nHQ==}
     engines: {node: '>=18.0.0'}
 
+<<<<<<< HEAD
   '@smithy/types@4.9.0':
     resolution: {integrity: sha512-MvUbdnXDTwykR8cB1WZvNNwqoWVaTRA0RLlLmf/cIFNMM2cKWz01X4Ly6SMC4Kks30r8tT3Cty0jmeWfiuyHTA==}
+=======
+  '@smithy/types@4.18.0':
+    resolution: {integrity: sha512-CgB6HHWer/vrKps24ulRIbpcpb7K4xAU7SkZ7YHzBPlwHsvsrCJFEXK421s+cJzX+ZrqtA/TuU5w1HzI7k9N8A==}
+    engines: {node: '>=18.0.0'}
+
+  '@smithy/url-parser@4.2.12':
+    resolution: {integrity: sha512-wOPKPEpso+doCZGIlr+e1lVI6+9VAKfL4kZWFgzVgGWY2hZxshNKod4l2LXS3PRC9otH/JRSjtEHqQ/7eLciRA==}
+>>>>>>> 53344207 (fix(Snowflake Node): Update the Snowflake SDK to 3.3.0 (#38798))
     engines: {node: '>=18.0.0'}
 
   '@smithy/url-parser@4.0.2':
@@ -9293,10 +9468,6 @@ packages:
     peerDependencies:
       vue: ^3.5.0
 
-  agent-base@5.1.1:
-    resolution: {integrity: sha512-TMeqbNl2fMW0nMjTEPOwe3J/PRFP4vqeoNuQMG0HlMrtm5QxKqdvAkZ1pRBQ/ulIyDD5Yq0nJ7YbdD8ey0TO3g==}
-    engines: {node: '>= 6.0.0'}
-
   agent-base@6.0.2:
     resolution: {integrity: sha512-RZNwNclF7+MS/8bDg70amg32dyeZGZxiDuQmZxKLAlQjr3jGyLx+4Kkk58UO7D2QdgFIQCovuSuZESne6RG6XQ==}
     engines: {node: '>= 6.0.0'}
@@ -9755,9 +9926,6 @@ packages:
     resolution: {integrity: sha512-jDctJ/IVQbZoJykoeHbhXpOlNBqGNcwXJKJog42E5HDPUwQTSdjCHdihjj0DlnheQ7blbT6dHOafNAiS8ooQKA==}
     engines: {node: '>=8'}
 
-  binascii@0.0.2:
-    resolution: {integrity: sha512-rA2CrUl1+6yKrn+XgLs8Hdy18OER1UW146nM+ixzhQXDY+Bd3ySkyIJGwF2a4I45JwbvF1mDL/nWkqBwpOcdBA==}
-
   bindings@1.5.0:
     resolution: {integrity: sha512-p2q/t/mhvuOj/UeLlV6566GD/guowlr0hHxClI0W9m7MWYkL1F0hLo+0Aexs9HSPCtR1SXQ0TD3MMKrXZajbiQ==}
 
@@ -9815,6 +9983,7 @@ packages:
   browser-or-node@2.1.1:
     resolution: {integrity: sha512-8CVjaLJGuSKMVTxJ2DpBl5XnlNDiT4cQFeuCJJrvJmts9YrTZDizTX7PjC2s6W4x+MBGZeEY6dGMrF04/6Hgqg==}
 
+<<<<<<< HEAD
   browser-request@0.3.3:
     resolution: {integrity: sha512-YyNI4qJJ+piQG6MMEuo7J3Bzaqssufx04zpEKYfSrl/1Op59HWali9zMtBpXnkmqMcOuWJPZvudrm9wISmnCbg==}
     engines: {'0': node}
@@ -9841,6 +10010,10 @@ packages:
 
   browserify-zlib@0.2.0:
     resolution: {integrity: sha512-Z942RysHXmJrhqk88FmKBVq/v5tqmSkDz7p54G/MGyjMnCFFnC79XWNbg+Vta8W6Wb2qtSZTSxIGkJrRpCFEiA==}
+=======
+  browser-stdout@1.3.1:
+    resolution: {integrity: sha512-qhAVI1+Av2X7qelOfAIYwXONood6XlZE/fXaBSmW/T5SzLAmCgzi+eiWE7fUvbHaeNBQH13UftjpXxsfLkMpgw==}
+>>>>>>> 53344207 (fix(Snowflake Node): Update the Snowflake SDK to 3.3.0 (#38798))
 
   browserslist-to-esbuild@2.1.1:
     resolution: {integrity: sha512-KN+mty6C3e9AN8Z5dI1xeN15ExcRNeISoC3g7V0Kax/MMF9MSoYA2G7lkTTcVUFntiEjkpI0HNgqJC1NjdyNUw==}
@@ -12334,10 +12507,6 @@ packages:
   https-browserify@1.0.0:
     resolution: {integrity: sha512-J+FkSdyD+0mA0N+81tMotaRMfSL9SGi+xpD3T6YApKsc3bGSXJlfXri3VyFOeYkfLRQisDk1W+jIFFKBeUBbBg==}
 
-  https-proxy-agent@4.0.0:
-    resolution: {integrity: sha512-zoDhWrkR3of1l9QAL8/scJZyLu8j/gBkcwcaQOZh7Gyh/+uJQzGVETdgT30akuwkpL8HTRfssqI3BZuV18teDg==}
-    engines: {node: '>= 6.0.0'}
-
   https-proxy-agent@5.0.1:
     resolution: {integrity: sha512-dFcAjpTQFgoLMzC2VwU+C/CbS7uRL0lWmxDITmqm7C+7F0Odmj6s9l6alZc6AELXhrnggM2CeWSXHGOdX2YtwA==}
     engines: {node: '>= 6'}
@@ -13706,13 +13875,6 @@ packages:
   logform@2.6.1:
     resolution: {integrity: sha512-CdaO738xRapbKIMVn2m4F6KTj4j7ooJ8POVnebSgKo3KBz5axNXRAL7ZdRjIV6NOr2Uf4vjtRkxrFETOioCqSA==}
     engines: {node: '>= 12.0.0'}
-
-  loglevel@1.9.2:
-    resolution: {integrity: sha512-HgMmCqIJSAKqo68l0rS2AanEWfkxaZ5wNiEFb5ggm08lDs9Xl2KxBlX3PTcaD2chBM1gXAYf491/M2Rv8Jwayg==}
-    engines: {node: '>= 0.6.0'}
-
-  long@4.0.0:
-    resolution: {integrity: sha512-XsP+KhQif4bjX1kbuSiySJFNAehNxgLb6hPRGJ9QsUr8ajHkuXGdrHmFUTUUXhDwVX2R5bY4JNZEwbUiMhV+MA==}
 
   long@5.3.2:
     resolution: {integrity: sha512-mNAgZ1GmyNhD7AuqnTG3/VQ26o760+ZYBPKjPvugO8+nLbYfX6TVpJPseBvopbdY+qpZ/lKUnmEc1LeZYS3QAA==}
@@ -15535,6 +15697,7 @@ packages:
   pure-rand@6.1.0:
     resolution: {integrity: sha512-bVWawvoZoBYpp6yIoQtQXHZjmz35RSVHnUOTefl8Vcjr8snTPY1wnpSPMWekcFwbxI6gtmT7rSYPFvz71ldiOA==}
 
+<<<<<<< HEAD
   pyodide@0.28.0:
     resolution: {integrity: sha512-QML/Gh8eu50q5zZKLNpW6rgS0XUdK+94OSL54AUSKV8eJAxgwZrMebqj+CyM0EbF3EUX8JFJU3ryaxBViHammQ==}
     engines: {node: '>=18.0.0'}
@@ -15542,6 +15705,8 @@ packages:
   python-struct@1.1.3:
     resolution: {integrity: sha512-UsI/mNvk25jRpGKYI38Nfbv84z48oiIWwG67DLVvjRhy8B/0aIK+5Ju5WOHgw/o9rnEmbAS00v4rgKFQeC332Q==}
 
+=======
+>>>>>>> 53344207 (fix(Snowflake Node): Update the Snowflake SDK to 3.3.0 (#38798))
   q@2.0.3:
     resolution: {integrity: sha512-gv6vLGcmAOg96/fgo3d9tvA4dJNZL3fMyBqVRrGxQ+Q/o4k9QzbJ3NQF9cOO/71wRodoXhaPgphvMFU68qVAJQ==}
     deprecated: |-
@@ -16327,8 +16492,9 @@ packages:
   snake-case@3.0.4:
     resolution: {integrity: sha512-LAOh4z89bGQvl9pFfNF8V146i7o7/CqFPbqzYgP+yYzDIDeS9HaNFtXABamRW+AQzEVODcvE79ljJ+8a9YSdMg==}
 
-  snowflake-sdk@2.1.0:
-    resolution: {integrity: sha512-daRZRj1y631Y2pK8N85Jm1aBadHVqMU3uIOrqS/6XQ+PYMjV0oDpZsJ0TBRSYdJ0ChFR8Fd+QnUgQ/j2NYkdRQ==}
+  snowflake-sdk@3.3.0:
+    resolution: {integrity: sha512-WJV5BZpYzNuReafTJuHLO5sjYFnrRvqB1T1/xW64UpRDo0GAgLbfKIVZP+S5iBQ0ick8nY9Cqbka2uowQC+JMA==}
+    engines: {node: '>=20'}
     peerDependencies:
       asn1.js: ^5.4.1
 
@@ -17980,11 +18146,6 @@ packages:
     resolution: {integrity: sha512-CO8cdpBB2yqzEf8v895L+GNKYJiEq8eKlHU38af3snQBQ+sdAIUepjMSguOIJC7ICbzm0ZI+Af2If4vIJrtmOg==}
     engines: {node: '>= 12.0.0'}
 
-  wiremock-rest-client@1.11.0:
-    resolution: {integrity: sha512-2EBj80RJdwJNpCnetjUwkdTgnMW4Bq8sFdtR84hmjFZPhW2eE0HmBfhxTztTQ2PtoGOoqIlXh6VK2fvD4pYQ6Q==}
-    engines: {node: ^12.22.0 || ^14.15.0 || >=16.0.0}
-    hasBin: true
-
   with@7.0.2:
     resolution: {integrity: sha512-RNGKj82nUPg3g5ygxkQl0R937xLyho1J24ItRCBTr/m1YnZkzJy1hUiHUJrc/VlsDQzsCnInEGSg3bci0Lmd4w==}
     engines: {node: '>= 10.0.0'}
@@ -18368,6 +18529,17 @@ snapshots:
       '@smithy/util-utf8': 2.3.0
       tslib: 2.8.1
 
+<<<<<<< HEAD
+=======
+  '@aws-sdk/checksums@3.1000.28':
+    dependencies:
+      '@aws-sdk/core': 3.977.8
+      '@aws-sdk/types': 3.974.4
+      '@smithy/core': 3.33.2
+      '@smithy/types': 4.17.2
+      tslib: 2.8.1
+
+>>>>>>> 53344207 (fix(Snowflake Node): Update the Snowflake SDK to 3.3.0 (#38798))
   '@aws-sdk/client-bedrock-agent-runtime@3.808.0':
     dependencies:
       '@aws-crypto/sha256-browser': 5.2.0
@@ -18557,6 +18729,23 @@ snapshots:
     transitivePeerDependencies:
       - aws-crt
 
+<<<<<<< HEAD
+=======
+  '@aws-sdk/client-s3@3.1111.0':
+    dependencies:
+      '@aws-sdk/checksums': 3.1000.28
+      '@aws-sdk/core': 3.977.8
+      '@aws-sdk/credential-provider-node': 3.972.80
+      '@aws-sdk/middleware-sdk-s3': 3.972.74
+      '@aws-sdk/signature-v4-multi-region': 3.996.45
+      '@aws-sdk/types': 3.974.4
+      '@smithy/core': 3.33.2
+      '@smithy/fetch-http-handler': 5.7.2
+      '@smithy/node-http-handler': 4.11.2
+      '@smithy/types': 4.17.2
+      tslib: 2.8.1
+
+>>>>>>> 53344207 (fix(Snowflake Node): Update the Snowflake SDK to 3.3.0 (#38798))
   '@aws-sdk/client-s3@3.808.0':
     dependencies:
       '@aws-crypto/sha1-browser': 5.2.0
@@ -18929,6 +19118,18 @@ snapshots:
     transitivePeerDependencies:
       - aws-crt
 
+  '@aws-sdk/client-sts@3.1131.0':
+    dependencies:
+      '@aws-sdk/core': 3.978.0
+      '@aws-sdk/credential-provider-node': 3.972.83
+      '@aws-sdk/signature-v4-multi-region': 3.996.46
+      '@aws-sdk/types': 3.974.5
+      '@smithy/core': 3.34.1
+      '@smithy/fetch-http-handler': 5.7.2
+      '@smithy/node-http-handler': 4.12.1
+      '@smithy/types': 4.17.2
+      tslib: 2.8.1
+
   '@aws-sdk/core@3.808.0':
     dependencies:
       '@aws-sdk/types': 3.804.0
@@ -18975,6 +19176,31 @@ snapshots:
       '@smithy/util-utf8': 4.2.0
       tslib: 2.8.1
 
+<<<<<<< HEAD
+=======
+  '@aws-sdk/core@3.977.8':
+    dependencies:
+      '@aws-sdk/types': 3.974.4
+      '@aws-sdk/xml-builder': 3.972.39
+      '@aws/lambda-invoke-store': 0.3.0
+      '@smithy/core': 3.33.2
+      '@smithy/signature-v4': 5.7.2
+      '@smithy/types': 4.17.2
+      bowser: 2.11.0
+      tslib: 2.8.1
+
+  '@aws-sdk/core@3.978.0':
+    dependencies:
+      '@aws-sdk/types': 3.974.5
+      '@aws-sdk/xml-builder': 3.972.40
+      '@aws/lambda-invoke-store': 0.3.0
+      '@smithy/core': 3.34.1
+      '@smithy/signature-v4': 5.7.2
+      '@smithy/types': 4.17.2
+      bowser: 2.11.0
+      tslib: 2.8.1
+
+>>>>>>> 53344207 (fix(Snowflake Node): Update the Snowflake SDK to 3.3.0 (#38798))
   '@aws-sdk/credential-provider-cognito-identity@3.808.0':
     dependencies:
       '@aws-sdk/client-cognito-identity': 3.808.0
@@ -19009,6 +19235,25 @@ snapshots:
       '@smithy/types': 4.9.0
       tslib: 2.8.1
 
+<<<<<<< HEAD
+=======
+  '@aws-sdk/credential-provider-env@3.972.69':
+    dependencies:
+      '@aws-sdk/core': 3.977.8
+      '@aws-sdk/types': 3.974.4
+      '@smithy/core': 3.33.2
+      '@smithy/types': 4.17.2
+      tslib: 2.8.1
+
+  '@aws-sdk/credential-provider-env@3.972.71':
+    dependencies:
+      '@aws-sdk/core': 3.978.0
+      '@aws-sdk/types': 3.974.5
+      '@smithy/core': 3.34.1
+      '@smithy/types': 4.17.2
+      tslib: 2.8.1
+
+>>>>>>> 53344207 (fix(Snowflake Node): Update the Snowflake SDK to 3.3.0 (#38798))
   '@aws-sdk/credential-provider-http@3.808.0':
     dependencies:
       '@aws-sdk/core': 3.808.0
@@ -19048,6 +19293,29 @@ snapshots:
       '@smithy/util-stream': 4.5.6
       tslib: 2.8.1
 
+<<<<<<< HEAD
+=======
+  '@aws-sdk/credential-provider-http@3.972.71':
+    dependencies:
+      '@aws-sdk/core': 3.977.8
+      '@aws-sdk/types': 3.974.4
+      '@smithy/core': 3.33.2
+      '@smithy/fetch-http-handler': 5.7.2
+      '@smithy/node-http-handler': 4.11.2
+      '@smithy/types': 4.17.2
+      tslib: 2.8.1
+
+  '@aws-sdk/credential-provider-http@3.972.73':
+    dependencies:
+      '@aws-sdk/core': 3.978.0
+      '@aws-sdk/types': 3.974.5
+      '@smithy/core': 3.34.1
+      '@smithy/fetch-http-handler': 5.7.2
+      '@smithy/node-http-handler': 4.12.1
+      '@smithy/types': 4.17.2
+      tslib: 2.8.1
+
+>>>>>>> 53344207 (fix(Snowflake Node): Update the Snowflake SDK to 3.3.0 (#38798))
   '@aws-sdk/credential-provider-ini@3.808.0':
     dependencies:
       '@aws-sdk/core': 3.808.0
@@ -19103,6 +19371,41 @@ snapshots:
     transitivePeerDependencies:
       - aws-crt
 
+<<<<<<< HEAD
+=======
+  '@aws-sdk/credential-provider-ini@3.973.14':
+    dependencies:
+      '@aws-sdk/core': 3.977.8
+      '@aws-sdk/credential-provider-env': 3.972.69
+      '@aws-sdk/credential-provider-http': 3.972.71
+      '@aws-sdk/credential-provider-login': 3.972.76
+      '@aws-sdk/credential-provider-process': 3.972.69
+      '@aws-sdk/credential-provider-sso': 3.973.13
+      '@aws-sdk/credential-provider-web-identity': 3.972.75
+      '@aws-sdk/nested-clients': 3.997.43
+      '@aws-sdk/types': 3.974.4
+      '@smithy/core': 3.33.2
+      '@smithy/credential-provider-imds': 4.5.2
+      '@smithy/types': 4.17.2
+      tslib: 2.8.1
+
+  '@aws-sdk/credential-provider-ini@3.973.16':
+    dependencies:
+      '@aws-sdk/core': 3.978.0
+      '@aws-sdk/credential-provider-env': 3.972.71
+      '@aws-sdk/credential-provider-http': 3.972.73
+      '@aws-sdk/credential-provider-login': 3.972.78
+      '@aws-sdk/credential-provider-process': 3.972.71
+      '@aws-sdk/credential-provider-sso': 3.973.15
+      '@aws-sdk/credential-provider-web-identity': 3.972.77
+      '@aws-sdk/nested-clients': 3.997.45
+      '@aws-sdk/types': 3.974.5
+      '@smithy/core': 3.34.1
+      '@smithy/credential-provider-imds': 4.5.2
+      '@smithy/types': 4.17.2
+      tslib: 2.8.1
+
+>>>>>>> 53344207 (fix(Snowflake Node): Update the Snowflake SDK to 3.3.0 (#38798))
   '@aws-sdk/credential-provider-login@3.936.0':
     dependencies:
       '@aws-sdk/core': 3.936.0
@@ -19116,6 +19419,27 @@ snapshots:
     transitivePeerDependencies:
       - aws-crt
 
+<<<<<<< HEAD
+=======
+  '@aws-sdk/credential-provider-login@3.972.76':
+    dependencies:
+      '@aws-sdk/core': 3.977.8
+      '@aws-sdk/nested-clients': 3.997.43
+      '@aws-sdk/types': 3.974.4
+      '@smithy/core': 3.33.2
+      '@smithy/types': 4.17.2
+      tslib: 2.8.1
+
+  '@aws-sdk/credential-provider-login@3.972.78':
+    dependencies:
+      '@aws-sdk/core': 3.978.0
+      '@aws-sdk/nested-clients': 3.997.45
+      '@aws-sdk/types': 3.974.5
+      '@smithy/core': 3.34.1
+      '@smithy/types': 4.17.2
+      tslib: 2.8.1
+
+>>>>>>> 53344207 (fix(Snowflake Node): Update the Snowflake SDK to 3.3.0 (#38798))
   '@aws-sdk/credential-provider-node@3.808.0':
     dependencies:
       '@aws-sdk/credential-provider-env': 3.808.0
@@ -19167,6 +19491,37 @@ snapshots:
     transitivePeerDependencies:
       - aws-crt
 
+<<<<<<< HEAD
+=======
+  '@aws-sdk/credential-provider-node@3.972.80':
+    dependencies:
+      '@aws-sdk/credential-provider-env': 3.972.69
+      '@aws-sdk/credential-provider-http': 3.972.71
+      '@aws-sdk/credential-provider-ini': 3.973.14
+      '@aws-sdk/credential-provider-process': 3.972.69
+      '@aws-sdk/credential-provider-sso': 3.973.13
+      '@aws-sdk/credential-provider-web-identity': 3.972.75
+      '@aws-sdk/types': 3.974.4
+      '@smithy/core': 3.33.2
+      '@smithy/credential-provider-imds': 4.5.2
+      '@smithy/types': 4.17.2
+      tslib: 2.8.1
+
+  '@aws-sdk/credential-provider-node@3.972.83':
+    dependencies:
+      '@aws-sdk/credential-provider-env': 3.972.71
+      '@aws-sdk/credential-provider-http': 3.972.73
+      '@aws-sdk/credential-provider-ini': 3.973.16
+      '@aws-sdk/credential-provider-process': 3.972.71
+      '@aws-sdk/credential-provider-sso': 3.973.15
+      '@aws-sdk/credential-provider-web-identity': 3.972.77
+      '@aws-sdk/types': 3.974.5
+      '@smithy/core': 3.34.1
+      '@smithy/credential-provider-imds': 4.5.2
+      '@smithy/types': 4.17.2
+      tslib: 2.8.1
+
+>>>>>>> 53344207 (fix(Snowflake Node): Update the Snowflake SDK to 3.3.0 (#38798))
   '@aws-sdk/credential-provider-process@3.808.0':
     dependencies:
       '@aws-sdk/core': 3.808.0
@@ -19194,6 +19549,25 @@ snapshots:
       '@smithy/types': 4.9.0
       tslib: 2.8.1
 
+<<<<<<< HEAD
+=======
+  '@aws-sdk/credential-provider-process@3.972.69':
+    dependencies:
+      '@aws-sdk/core': 3.977.8
+      '@aws-sdk/types': 3.974.4
+      '@smithy/core': 3.33.2
+      '@smithy/types': 4.17.2
+      tslib: 2.8.1
+
+  '@aws-sdk/credential-provider-process@3.972.71':
+    dependencies:
+      '@aws-sdk/core': 3.978.0
+      '@aws-sdk/types': 3.974.5
+      '@smithy/core': 3.34.1
+      '@smithy/types': 4.17.2
+      tslib: 2.8.1
+
+>>>>>>> 53344207 (fix(Snowflake Node): Update the Snowflake SDK to 3.3.0 (#38798))
   '@aws-sdk/credential-provider-sso@3.808.0':
     dependencies:
       '@aws-sdk/client-sso': 3.808.0
@@ -19233,6 +19607,29 @@ snapshots:
     transitivePeerDependencies:
       - aws-crt
 
+<<<<<<< HEAD
+=======
+  '@aws-sdk/credential-provider-sso@3.973.13':
+    dependencies:
+      '@aws-sdk/core': 3.977.8
+      '@aws-sdk/nested-clients': 3.997.43
+      '@aws-sdk/token-providers': 3.1111.0
+      '@aws-sdk/types': 3.974.4
+      '@smithy/core': 3.33.2
+      '@smithy/types': 4.17.2
+      tslib: 2.8.1
+
+  '@aws-sdk/credential-provider-sso@3.973.15':
+    dependencies:
+      '@aws-sdk/core': 3.978.0
+      '@aws-sdk/nested-clients': 3.997.45
+      '@aws-sdk/token-providers': 3.1129.0
+      '@aws-sdk/types': 3.974.5
+      '@smithy/core': 3.34.1
+      '@smithy/types': 4.17.2
+      tslib: 2.8.1
+
+>>>>>>> 53344207 (fix(Snowflake Node): Update the Snowflake SDK to 3.3.0 (#38798))
   '@aws-sdk/credential-provider-web-identity@3.808.0':
     dependencies:
       '@aws-sdk/core': 3.808.0
@@ -19268,6 +19665,27 @@ snapshots:
     transitivePeerDependencies:
       - aws-crt
 
+<<<<<<< HEAD
+=======
+  '@aws-sdk/credential-provider-web-identity@3.972.75':
+    dependencies:
+      '@aws-sdk/core': 3.977.8
+      '@aws-sdk/nested-clients': 3.997.43
+      '@aws-sdk/types': 3.974.4
+      '@smithy/core': 3.33.2
+      '@smithy/types': 4.17.2
+      tslib: 2.8.1
+
+  '@aws-sdk/credential-provider-web-identity@3.972.77':
+    dependencies:
+      '@aws-sdk/core': 3.978.0
+      '@aws-sdk/nested-clients': 3.997.45
+      '@aws-sdk/types': 3.974.5
+      '@smithy/core': 3.34.1
+      '@smithy/types': 4.17.2
+      tslib: 2.8.1
+
+>>>>>>> 53344207 (fix(Snowflake Node): Update the Snowflake SDK to 3.3.0 (#38798))
   '@aws-sdk/credential-providers@3.808.0':
     dependencies:
       '@aws-sdk/client-cognito-identity': 3.808.0
@@ -19291,6 +19709,14 @@ snapshots:
       tslib: 2.8.1
     transitivePeerDependencies:
       - aws-crt
+
+  '@aws-sdk/ec2-metadata-service@3.1131.0':
+    dependencies:
+      '@aws-sdk/types': 3.974.5
+      '@smithy/core': 3.34.1
+      '@smithy/node-http-handler': 4.12.1
+      '@smithy/types': 4.17.2
+      tslib: 2.8.1
 
   '@aws-sdk/eventstream-handler-node@3.936.0':
     dependencies:
@@ -19619,6 +20045,31 @@ snapshots:
     transitivePeerDependencies:
       - aws-crt
 
+<<<<<<< HEAD
+=======
+  '@aws-sdk/nested-clients@3.997.43':
+    dependencies:
+      '@aws-sdk/core': 3.977.8
+      '@aws-sdk/signature-v4-multi-region': 3.996.45
+      '@aws-sdk/types': 3.974.4
+      '@smithy/core': 3.33.2
+      '@smithy/fetch-http-handler': 5.7.2
+      '@smithy/node-http-handler': 4.11.2
+      '@smithy/types': 4.17.2
+      tslib: 2.8.1
+
+  '@aws-sdk/nested-clients@3.997.45':
+    dependencies:
+      '@aws-sdk/core': 3.978.0
+      '@aws-sdk/signature-v4-multi-region': 3.996.46
+      '@aws-sdk/types': 3.974.5
+      '@smithy/core': 3.34.1
+      '@smithy/fetch-http-handler': 5.7.2
+      '@smithy/node-http-handler': 4.12.1
+      '@smithy/types': 4.17.2
+      tslib: 2.8.1
+
+>>>>>>> 53344207 (fix(Snowflake Node): Update the Snowflake SDK to 3.3.0 (#38798))
   '@aws-sdk/protocol-http@3.374.0':
     dependencies:
       '@smithy/protocol-http': 1.2.0
@@ -19665,12 +20116,43 @@ snapshots:
       '@smithy/signature-v4': 5.3.3
       '@smithy/types': 4.9.0
       tslib: 2.8.1
+<<<<<<< HEAD
+=======
+
+  '@aws-sdk/signature-v4-multi-region@3.996.46':
+    dependencies:
+      '@aws-sdk/types': 3.974.5
+      '@smithy/signature-v4': 5.7.2
+      '@smithy/types': 4.17.2
+      tslib: 2.8.1
+>>>>>>> 53344207 (fix(Snowflake Node): Update the Snowflake SDK to 3.3.0 (#38798))
 
   '@aws-sdk/signature-v4@3.374.0':
     dependencies:
       '@smithy/signature-v4': 1.1.0
       tslib: 2.8.1
 
+<<<<<<< HEAD
+=======
+  '@aws-sdk/token-providers@3.1111.0':
+    dependencies:
+      '@aws-sdk/core': 3.977.8
+      '@aws-sdk/nested-clients': 3.997.43
+      '@aws-sdk/types': 3.974.4
+      '@smithy/core': 3.33.2
+      '@smithy/types': 4.17.2
+      tslib: 2.8.1
+
+  '@aws-sdk/token-providers@3.1129.0':
+    dependencies:
+      '@aws-sdk/core': 3.978.0
+      '@aws-sdk/nested-clients': 3.997.45
+      '@aws-sdk/types': 3.974.5
+      '@smithy/core': 3.34.1
+      '@smithy/types': 4.17.2
+      tslib: 2.8.1
+
+>>>>>>> 53344207 (fix(Snowflake Node): Update the Snowflake SDK to 3.3.0 (#38798))
   '@aws-sdk/token-providers@3.808.0':
     dependencies:
       '@aws-sdk/nested-clients': 3.808.0
@@ -19719,6 +20201,11 @@ snapshots:
   '@aws-sdk/types@3.936.0':
     dependencies:
       '@smithy/types': 4.9.0
+      tslib: 2.8.1
+
+  '@aws-sdk/types@3.974.5':
+    dependencies:
+      '@smithy/types': 4.17.2
       tslib: 2.8.1
 
   '@aws-sdk/util-arn-parser@3.804.0':
@@ -19829,10 +20316,43 @@ snapshots:
       fast-xml-parser: 5.7.2
       tslib: 2.8.1
 
+<<<<<<< HEAD
   '@aws/lambda-invoke-store@0.0.1': {}
 
   '@aws/lambda-invoke-store@0.2.1': {}
 
+=======
+  '@aws-sdk/xml-builder@3.972.39':
+    dependencies:
+      '@smithy/types': 4.17.2
+      tslib: 2.8.1
+
+  '@aws-sdk/xml-builder@3.972.40':
+    dependencies:
+      '@smithy/types': 4.17.2
+      tslib: 2.8.1
+
+  '@aws/lambda-invoke-store@0.2.1': {}
+
+  '@aws/lambda-invoke-store@0.3.0': {}
+
+  '@axe-core/playwright@4.13.0(playwright-core@1.62.1)':
+    dependencies:
+      axe-core: 4.13.0
+      playwright-core: 1.62.1
+
+  '@azure-rest/core-client@2.8.0(supports-color@8.1.1)':
+    dependencies:
+      '@azure/abort-controller': 2.1.2
+      '@azure/core-auth': 1.10.1(supports-color@8.1.1)
+      '@azure/core-rest-pipeline': 1.24.0(supports-color@8.1.1)
+      '@azure/core-tracing': 1.3.1
+      '@typespec/ts-http-runtime': 0.3.6(supports-color@8.1.1)
+      tslib: 2.8.1
+    transitivePeerDependencies:
+      - supports-color
+
+>>>>>>> 53344207 (fix(Snowflake Node): Update the Snowflake SDK to 3.3.0 (#38798))
   '@azure/abort-controller@1.1.0':
     dependencies:
       tslib: 2.8.1
@@ -20034,6 +20554,7 @@ snapshots:
   '@azure/storage-blob@12.26.0':
     dependencies:
       '@azure/abort-controller': 2.1.2
+<<<<<<< HEAD
       '@azure/core-auth': 1.9.0
       '@azure/core-client': 1.9.2
       '@azure/core-http-compat': 2.1.2
@@ -20042,6 +20563,16 @@ snapshots:
       '@azure/core-rest-pipeline': 1.20.0
       '@azure/core-tracing': 1.2.0
       '@azure/core-util': 1.12.0
+=======
+      '@azure/core-auth': 1.10.1(supports-color@8.1.1)
+      '@azure/core-client': 1.10.2(supports-color@8.1.1)
+      '@azure/core-http-compat': 2.4.0(@azure/core-client@1.10.2(supports-color@8.1.1))(@azure/core-rest-pipeline@1.24.0(supports-color@8.1.1))
+      '@azure/core-lro': 2.7.2(supports-color@8.1.1)
+      '@azure/core-paging': 1.6.2
+      '@azure/core-rest-pipeline': 1.24.0(supports-color@8.1.1)
+      '@azure/core-tracing': 1.3.1
+      '@azure/core-util': 1.13.1(supports-color@8.1.1)
+>>>>>>> 53344207 (fix(Snowflake Node): Update the Snowflake SDK to 3.3.0 (#38798))
       '@azure/core-xml': 1.4.5
       '@azure/logger': 1.0.3
       events: 3.3.0
@@ -21371,10 +21902,13 @@ snapshots:
     dependencies:
       arrify: 2.0.1
       extend: 3.0.2
+    optional: true
 
-  '@google-cloud/projectify@4.0.0': {}
+  '@google-cloud/projectify@4.0.0':
+    optional: true
 
-  '@google-cloud/promisify@4.0.0': {}
+  '@google-cloud/promisify@4.0.0':
+    optional: true
 
   '@google-cloud/resource-manager@5.3.0(encoding@0.1.13)':
     dependencies:
@@ -21410,6 +21944,7 @@ snapshots:
     transitivePeerDependencies:
       - encoding
       - supports-color
+    optional: true
 
   '@google/genai@1.19.0(@modelcontextprotocol/sdk@1.26.0(zod@3.25.67))(bufferutil@4.0.9)(utf-8-validate@5.0.10)':
     dependencies:
@@ -23710,6 +24245,11 @@ snapshots:
       '@smithy/url-parser': 4.2.3
       tslib: 2.8.1
 
+  '@smithy/core@3.34.1':
+    dependencies:
+      '@smithy/types': 4.18.0
+      tslib: 2.8.1
+
   '@smithy/credential-provider-imds@4.2.5':
     dependencies:
       '@smithy/node-config-provider': 4.3.5
@@ -23981,8 +24521,27 @@ snapshots:
 
   '@smithy/middleware-serde@4.2.6':
     dependencies:
+<<<<<<< HEAD
       '@smithy/protocol-http': 5.3.5
       '@smithy/types': 4.9.0
+=======
+      '@smithy/core': 3.33.2
+      '@smithy/types': 4.17.2
+      tslib: 2.8.1
+
+  '@smithy/node-http-handler@4.12.1':
+    dependencies:
+      '@smithy/core': 3.34.1
+      '@smithy/types': 4.18.0
+      tslib: 2.8.1
+
+  '@smithy/node-http-handler@4.5.0':
+    dependencies:
+      '@smithy/abort-controller': 4.2.12
+      '@smithy/protocol-http': 5.3.12
+      '@smithy/querystring-builder': 4.2.12
+      '@smithy/types': 4.13.1
+>>>>>>> 53344207 (fix(Snowflake Node): Update the Snowflake SDK to 3.3.0 (#38798))
       tslib: 2.8.1
 
   '@smithy/middleware-stack@4.0.2':
@@ -24226,7 +24785,15 @@ snapshots:
     dependencies:
       tslib: 2.8.1
 
+<<<<<<< HEAD
   '@smithy/types@4.9.0':
+=======
+  '@smithy/types@4.18.0':
+    dependencies:
+      tslib: 2.8.1
+
+  '@smithy/url-parser@4.2.12':
+>>>>>>> 53344207 (fix(Snowflake Node): Update the Snowflake SDK to 3.3.0 (#38798))
     dependencies:
       tslib: 2.8.1
 
@@ -26026,9 +26593,13 @@ snapshots:
       ag-grid-community: 34.1.1
       vue: 3.5.13(typescript@5.9.2)
 
+<<<<<<< HEAD
   agent-base@5.1.1: {}
 
   agent-base@6.0.2:
+=======
+  agent-base@6.0.2(supports-color@5.5.0):
+>>>>>>> 53344207 (fix(Snowflake Node): Update the Snowflake SDK to 3.3.0 (#38798))
     dependencies:
       debug: 4.4.3
     transitivePeerDependencies:
@@ -26276,7 +26847,8 @@ snapshots:
       get-intrinsic: 1.3.0
       is-array-buffer: 3.0.5
 
-  arrify@2.0.1: {}
+  arrify@2.0.1:
+    optional: true
 
   asap@2.0.6: {}
 
@@ -26564,8 +27136,6 @@ snapshots:
 
   binary-extensions@2.2.0: {}
 
-  binascii@0.0.2: {}
-
   bindings@1.5.0:
     dependencies:
       file-uri-to-path: 1.0.0
@@ -26631,9 +27201,15 @@ snapshots:
 
   browser-or-node@2.1.1: {}
 
+<<<<<<< HEAD
   browser-request@0.3.3: {}
 
   browser-resolve@2.0.0:
+=======
+  browser-stdout@1.3.1: {}
+
+  browserslist-to-esbuild@2.1.1(browserslist@4.28.1):
+>>>>>>> 53344207 (fix(Snowflake Node): Update the Snowflake SDK to 3.3.0 (#38798))
     dependencies:
       resolve: 1.22.10
 
@@ -29661,7 +30237,8 @@ snapshots:
     dependencies:
       whatwg-encoding: 3.1.1
 
-  html-entities@2.5.2: {}
+  html-entities@2.5.2:
+    optional: true
 
   html-escaper@2.0.2: {}
 
@@ -29793,6 +30370,7 @@ snapshots:
 
   https-browserify@1.0.0: {}
 
+<<<<<<< HEAD
   https-proxy-agent@4.0.0:
     dependencies:
       agent-base: 5.1.1
@@ -29801,6 +30379,9 @@ snapshots:
       - supports-color
 
   https-proxy-agent@5.0.1:
+=======
+  https-proxy-agent@5.0.1(supports-color@5.5.0):
+>>>>>>> 53344207 (fix(Snowflake Node): Update the Snowflake SDK to 3.3.0 (#38798))
     dependencies:
       agent-base: 6.0.2
       debug: 4.4.3
@@ -31603,10 +32184,6 @@ snapshots:
       safe-stable-stringify: 2.4.0
       triple-beam: 1.3.0
 
-  loglevel@1.9.2: {}
-
-  long@4.0.0: {}
-
   long@5.3.2: {}
 
   loose-envify@1.4.0:
@@ -31865,7 +32442,8 @@ snapshots:
 
   mime@2.6.0: {}
 
-  mime@3.0.0: {}
+  mime@3.0.0:
+    optional: true
 
   mimic-fn@2.1.0: {}
 
@@ -32271,7 +32849,8 @@ snapshots:
     dependencies:
       minimist: 1.2.8
 
-  mkdirp@1.0.4: {}
+  mkdirp@1.0.4:
+    optional: true
 
   mkdirp@2.1.3: {}
 
@@ -33765,9 +34344,42 @@ snapshots:
       - bufferutil
       - utf-8-validate
 
+<<<<<<< HEAD
   python-struct@1.1.3:
     dependencies:
       long: 4.0.0
+=======
+  puppeteer@24.41.0(@typescript/typescript6@6.0.2)(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10):
+    dependencies:
+      '@puppeteer/browsers': 2.13.0(supports-color@8.1.1)
+      chromium-bidi: 14.0.0(devtools-protocol@0.0.1595872)
+      cosmiconfig: 9.0.0(@typescript/typescript6@6.0.2)
+      devtools-protocol: 0.0.1595872
+      puppeteer-core: 24.41.0(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10)
+      typed-query-selector: 2.12.1
+    transitivePeerDependencies:
+      - bufferutil
+      - supports-color
+      - typescript
+      - utf-8-validate
+    optional: true
+
+  puppeteer@24.41.0(bufferutil@4.0.9)(supports-color@8.1.1)(typescript@7.0.2)(utf-8-validate@5.0.10):
+    dependencies:
+      '@puppeteer/browsers': 2.13.0(supports-color@8.1.1)
+      chromium-bidi: 14.0.0(devtools-protocol@0.0.1595872)
+      cosmiconfig: 9.0.0(typescript@7.0.2)
+      devtools-protocol: 0.0.1595872
+      puppeteer-core: 24.41.0(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10)
+      typed-query-selector: 2.12.1
+    transitivePeerDependencies:
+      - bufferutil
+      - supports-color
+      - typescript
+      - utf-8-validate
+
+  pure-rand@6.1.0: {}
+>>>>>>> 53344207 (fix(Snowflake Node): Update the Snowflake SDK to 3.3.0 (#38798))
 
   q@2.0.3:
     dependencies:
@@ -34776,12 +35388,29 @@ snapshots:
       dot-case: 3.0.4
       tslib: 2.8.1
 
+<<<<<<< HEAD
   snowflake-sdk@2.1.0(asn1.js@5.4.1)(encoding@0.1.13):
     dependencies:
       '@aws-sdk/client-s3': 3.808.0
       '@azure/storage-blob': 12.26.0
       '@google-cloud/storage': 7.12.1(encoding@0.1.13)
       '@smithy/node-http-handler': 4.0.4
+=======
+  smol-toml@1.8.0: {}
+
+  snowflake-sdk@3.3.0(asn1.js@5.4.1)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1):
+    dependencies:
+      '@aws-crypto/sha256-js': 5.2.0
+      '@aws-sdk/client-s3': 3.1111.0
+      '@aws-sdk/client-sts': 3.1131.0
+      '@aws-sdk/credential-provider-node': 3.972.80
+      '@aws-sdk/ec2-metadata-service': 3.1131.0
+      '@azure/identity': 4.13.0(supports-color@8.1.1)
+      '@azure/storage-blob': 12.26.0(supports-color@8.1.1)
+      '@smithy/node-http-handler': 4.5.0
+      '@smithy/protocol-http': 5.3.12
+      '@smithy/signature-v4': 5.7.2
+>>>>>>> 53344207 (fix(Snowflake Node): Update the Snowflake SDK to 3.3.0 (#38798))
       '@techteamer/ocsp': 1.0.1
       asn1.js: 5.4.1
       asn1.js-rfc2560: 5.0.1(asn1.js@5.4.1)
@@ -34789,32 +35418,35 @@ snapshots:
       axios: 1.18.0(debug@4.4.1)
       big-integer: 1.6.52
       bignumber.js: 9.1.2
-      binascii: 0.0.2
-      bn.js: 5.2.3
-      browser-request: 0.3.3
       expand-tilde: 2.0.2
       fast-xml-parser: 5.7.2
       fastest-levenshtein: 1.0.16
       generic-pool: 3.9.0
+<<<<<<< HEAD
       glob: 10.5.0
       https-proxy-agent: 7.0.6
       jsonwebtoken: 9.0.2
+=======
+      google-auth-library: 10.9.1(supports-color@8.1.1)
+      https-proxy-agent: 7.0.6(supports-color@8.1.1)
+      jsonwebtoken: 9.0.3
+>>>>>>> 53344207 (fix(Snowflake Node): Update the Snowflake SDK to 3.3.0 (#38798))
       mime-types: 2.1.35
-      mkdirp: 1.0.4
       moment: 2.30.1
       moment-timezone: 0.5.48
       oauth4webapi: 3.5.1
       open: 7.4.2
-      python-struct: 1.1.3
       simple-lru-cache: 0.0.2
       toml: 3.0.0
+<<<<<<< HEAD
       uuid: 11.1.1
       winston: 3.14.2
       wiremock-rest-client: 1.11.0(encoding@0.1.13)
+=======
+      winston: 3.14.2
+>>>>>>> 53344207 (fix(Snowflake Node): Update the Snowflake SDK to 3.3.0 (#38798))
     transitivePeerDependencies:
-      - aws-crt
       - debug
-      - encoding
       - supports-color
 
   socks-proxy-agent@6.2.1:
@@ -36788,6 +37420,7 @@ snapshots:
       triple-beam: 1.3.0
       winston-transport: 4.8.0
 
+<<<<<<< HEAD
   wiremock-rest-client@1.11.0(encoding@0.1.13):
     dependencies:
       commander: 6.2.1
@@ -36800,6 +37433,8 @@ snapshots:
       - encoding
       - supports-color
 
+=======
+>>>>>>> 53344207 (fix(Snowflake Node): Update the Snowflake SDK to 3.3.0 (#38798))
   with@7.0.2:
     dependencies:
       '@babel/parser': 7.28.5
