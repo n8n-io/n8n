@@ -152,20 +152,16 @@ export async function getUsers(
 			qs.$search = `"displayName:${escaped}" OR "mail:${escaped}" OR "userPrincipalName:${escaped}"`;
 		}
 	}
-	let response: IDataObject;
-	try {
-		response = (await microsoftApiRequest.call(
-			this,
-			'GET',
-			paginationToken ? '' : '/v1.0/users',
-			{},
-			qs,
-			paginationToken,
-			headers,
-		)) as IDataObject;
-	} catch (error) {
-		throw error;
-	}
+
+	const response = (await microsoftApiRequest.call(
+		this,
+		'GET',
+		paginationToken ? '' : '/v1.0/users',
+		{},
+		qs,
+		paginationToken,
+		headers,
+	)) as IDataObject;
 
 	// An unexpected shape is not an empty directory: returning the token as well would offer
 	// "load more" into nothing.
