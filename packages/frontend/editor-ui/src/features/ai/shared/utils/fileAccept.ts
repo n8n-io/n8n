@@ -2,6 +2,10 @@
  * Adds the Markdown extension because macOS does not recognize Markdown MIME types reliably.
  */
 export function enrichMimeTypesWithExtensions(mimeTypes: string): string {
+	const tokens = mimeTypes.split(',').map((token) => token.trim());
+	if (tokens.some((token) => token === '*' || token === '*/*')) {
+		return '*/*';
+	}
 	if (mimeTypes && (mimeTypes.includes('text/*') || mimeTypes.includes('text/markdown'))) {
 		return `${mimeTypes},.md`;
 	}
@@ -16,11 +20,12 @@ export function isFileAcceptedByAccept(
 	fileMimeType: string,
 	acceptString: string,
 ): boolean {
-	if (!acceptString || acceptString === '*/*') return true;
+	if (!acceptString) return true;
 	const tokens = acceptString
 		.split(',')
 		.map((token) => token.trim())
 		.filter(Boolean);
+	if (tokens.some((token) => token === '*' || token === '*/*')) return true;
 	const lowerName = fileName.toLowerCase();
 	const lowerType = fileMimeType.toLowerCase();
 
