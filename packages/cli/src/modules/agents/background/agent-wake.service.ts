@@ -34,6 +34,9 @@ import {
 export const WAKE_DEBOUNCE_MS = 5_000;
 export const MAX_CONSECUTIVE_FAILED_WAKES = 3;
 
+import { AgentMessageQueueService } from '../agent-message-queue.service';
+import { agentConversationLockKey } from '../agent-message-queue.types';
+
 const WAKE_LOCK_WAIT_MS = 250;
 const WAKE_LOCK_TTL_MS = 30_000;
 const HINT_TITLE_MAX_CHARS = 80;
@@ -63,6 +66,7 @@ export class AgentWakeService {
 		private readonly agentsConfig: AgentsConfig,
 		private readonly logger: Logger,
 		private readonly backgroundJobService: AgentBackgroundJobService,
+		private readonly messageQueue: AgentMessageQueueService,
 	) {
 		this.logger = this.logger.scoped('agents');
 	}
@@ -141,12 +145,14 @@ export class AgentWakeService {
 		try {
 			await this.lockService.withLease(
 				LockNamespace.KNOWN_LOCKS,
-				`agent-background-wake:${threadId}`,
+				agentConversationLockKey(threadId),
 				async (signal) => await this.deliverInsideLease(threadId, signal),
 				{ waitTimeoutMs: WAKE_LOCK_WAIT_MS, leaseTtlMs: WAKE_LOCK_TTL_MS },
 			);
 		} catch (error) {
 			this.logger.warn('Failed to acquire the background job wake lease', { threadId, error });
+		} finally {
+			this.messageQueue.notify(threadId);
 		}
 	}
 
@@ -171,9 +177,7 @@ export class AgentWakeService {
 		// Check the checkpoint store to determine whether the thread is still suspended.
 		if (
 			(await this.executionRepository.existsRunningByThread(threadId)) ||
-			((await this.executionRepository.hasSuspendedRun(threadId)) &&
-				(await this.checkpointStorage.findSuspendedForThread(first.parentAgentId, threadId)) !==
-					null)
+			(await this.checkpointStorage.findSuspendedForThread(first.parentAgentId, threadId)) !== null
 		) {
 			return;
 		}

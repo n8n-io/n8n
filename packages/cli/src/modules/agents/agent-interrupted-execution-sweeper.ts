@@ -1,15 +1,22 @@
-import { Logger } from '@n8n/backend-common';
+import {
+	LockAcquisitionTimeoutError,
+	LockNamespace,
+	LockService,
+	Logger,
+} from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 
 import { AgentExecutionService } from './agent-execution.service';
+import { AgentMessageQueueService } from './agent-message-queue.service';
+import { agentConversationLockKey } from './agent-message-queue.types';
 import { AgentBackgroundJobService } from './background/agent-background-job.service';
 import { AgentWakeService } from './background/agent-wake.service';
 import { AgentExecutionRepository } from './repositories/agent-execution.repository';
 
 @Service()
 export class AgentInterruptedExecutionSweeper {
-	static readonly LIVENESS_GRACE_MS = 2 * 60 * 1000;
+	static readonly LIVENESS_GRACE_MS = AgentMessageQueueService.LIVENESS_GRACE_MS;
 
 	constructor(
 		private readonly logger: Logger,
@@ -18,6 +25,8 @@ export class AgentInterruptedExecutionSweeper {
 		private readonly backgroundJobService: AgentBackgroundJobService,
 		private readonly agentWakeService: AgentWakeService,
 		private readonly agentsConfig: AgentsConfig,
+		private readonly messageQueue: AgentMessageQueueService,
+		private readonly lockService: LockService,
 	) {
 		this.logger = this.logger.scoped('agents');
 	}
@@ -39,13 +48,28 @@ export class AgentInterruptedExecutionSweeper {
 				) {
 					continue;
 				}
-				if (await this.executionService.finalizeInterruptedExecution(execution)) {
-					this.logger.info('Marked abandoned agent execution as interrupted', {
-						executionId: execution.id,
-						threadId: execution.threadId,
-					});
-				}
+				await this.lockService.withLease(
+					LockNamespace.KNOWN_LOCKS,
+					agentConversationLockKey(execution.threadId),
+					async () => {
+						const current = await this.executionRepository.findRunningById(execution.id);
+						if (
+							!current ||
+							current.updatedAt.getTime() >
+								Date.now() - AgentInterruptedExecutionSweeper.LIVENESS_GRACE_MS
+						)
+							return;
+						if (await this.executionService.finalizeInterruptedExecution(current)) {
+							this.logger.info('Marked abandoned agent execution as interrupted', {
+								executionId: execution.id,
+								threadId: execution.threadId,
+							});
+						}
+					},
+					{ waitTimeoutMs: 250 },
+				);
 			} catch (error) {
+				if (error instanceof LockAcquisitionTimeoutError) continue;
 				this.logger.error('Failed to finalize interrupted agent execution', {
 					executionId: execution.id,
 					threadId: execution.threadId,
@@ -74,5 +98,7 @@ export class AgentInterruptedExecutionSweeper {
 		} catch (error) {
 			this.logger.error('Failed to schedule delivery of pending background job results', { error });
 		}
+
+		await this.messageQueue.recover();
 	}
 }

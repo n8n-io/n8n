@@ -546,6 +546,7 @@ describe('AgentExecutionOrchestratorService', () => {
 		const { service, executionService } = makeService();
 		const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
 		const onExecutionRecorded = vi.fn();
+		const onExecutionStarted = vi.fn().mockResolvedValue(undefined);
 
 		await collect(
 			service.streamChatResponse({
@@ -560,12 +561,48 @@ describe('AgentExecutionOrchestratorService', () => {
 				telemetry: telemetryContext,
 				sandboxPrincipalHash: userPrincipalHash,
 				onExecutionRecorded,
+				onExecutionStarted,
 			}),
 		);
 
 		expect(executionService.finalizeExecution).toHaveBeenCalled();
 		expect(onExecutionRecorded).toHaveBeenCalledWith('execution-1');
+		expect(onExecutionStarted).toHaveBeenCalledWith('execution-1');
+		expect(onExecutionStarted.mock.invocationCallOrder[0]).toBeLessThan(
+			executionService.finalizeExecution.mock.invocationCallOrder[0],
+		);
 	});
+
+	it.each([false, true])(
+		'loads the runtime when processing starts (published: %s)',
+		async (published) => {
+			const { service, runtimeCacheService } = makeService();
+			const oldRuntime = makeRuntime();
+			runtimeCacheService.getRuntime.mockResolvedValue(oldRuntime);
+			const stream = published
+				? service.executeForChatPublished({
+						agentId,
+						projectId,
+						message: 'hello',
+						memory: { threadId: 'thread', resourceId: 'integration:slack:user' },
+						integrationType: 'slack',
+						sandboxPrincipalHash: integrationPrincipalHash,
+					})
+				: service.executeForChat({
+						agentId,
+						projectId,
+						message: 'hello',
+						user,
+						memory: { threadId: 'thread', resourceId: 'draft-chat:user-1' },
+					});
+			expect(runtimeCacheService.getRuntime).not.toHaveBeenCalled();
+			const currentRuntime = makeRuntime();
+			runtimeCacheService.getRuntime.mockResolvedValue(currentRuntime);
+			await collect(stream);
+			expect(currentRuntime.agent.stream).toHaveBeenCalledTimes(1);
+			expect(oldRuntime.agent.stream).not.toHaveBeenCalled();
+		},
+	);
 
 	it('still records the message when onExecutionRecorded is omitted', async () => {
 		const { service, executionService } = makeService();

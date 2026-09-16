@@ -1,4 +1,6 @@
 import { mockLogger } from '@n8n/backend-test-utils';
+import type { LockService } from '@n8n/backend-common';
+import type { AgentMessageQueueService } from '../agent-message-queue.service';
 import type { AgentsConfig } from '@n8n/config';
 import { mock } from 'vitest-mock-extended';
 
@@ -17,6 +19,13 @@ function setup(options: { backgroundTasksEnabled?: boolean } = {}) {
 	const agentsConfig = mock<AgentsConfig>({
 		backgroundTasksEnabled: options.backgroundTasksEnabled ?? false,
 	});
+	const lockService = mock<LockService>();
+	lockService.withLease.mockImplementation(
+		async (_ns, _key, execute) => await execute(new AbortController().signal),
+	);
+	repository.findRunningById.mockImplementation(
+		async (id) => (await repository.findRunning()).find((row) => row.id === id) ?? null,
+	);
 	const sweeper = new AgentInterruptedExecutionSweeper(
 		mockLogger(),
 		repository,
@@ -24,6 +33,8 @@ function setup(options: { backgroundTasksEnabled?: boolean } = {}) {
 		backgroundJobService,
 		agentWakeService,
 		agentsConfig,
+		mock<AgentMessageQueueService>(),
+		lockService,
 	);
 	return { sweeper, repository, executionService, backgroundJobService, agentWakeService };
 }

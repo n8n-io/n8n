@@ -14,6 +14,7 @@ import type { AgentExecutionUpdateBroadcaster } from '@/modules/agents/agent-exe
 import { hashAgentSandboxPrincipal } from '@/modules/agents/agent-sandbox-principal';
 import { AgentBackgroundJobService } from '@/modules/agents/background/agent-background-job.service';
 import { AgentWakeService, WAKE_DEBOUNCE_MS } from '@/modules/agents/background/agent-wake.service';
+import type { AgentMessageQueueService } from '@/modules/agents/agent-message-queue.service';
 import type { AgentBackgroundJob } from '@/modules/agents/entities/agent-background-job.entity';
 import type { Agent } from '@/modules/agents/entities/agent.entity';
 import type { N8NCheckpointStorage } from '@/modules/agents/integrations/n8n-checkpoint-storage';
@@ -257,6 +258,7 @@ describe('AgentBackgroundJobRepository', () => {
 				agentsConfig,
 				logger,
 				jobService,
+				mock<AgentMessageQueueService>(),
 			);
 			Container.set(AgentWakeService, wakeService);
 

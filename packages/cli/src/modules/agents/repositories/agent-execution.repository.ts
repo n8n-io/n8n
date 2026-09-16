@@ -43,6 +43,13 @@ export class AgentExecutionRepository extends Repository<AgentExecution> {
 		return await this.existsBy({ threadId, status: 'running' });
 	}
 
+	async findRunningById(id: string): Promise<RunningAgentExecution | null> {
+		return await this.findOne({
+			select: ['id', 'threadId', 'startedAt', 'updatedAt', 'timeline'],
+			where: { id, status: 'running' },
+		});
+	}
+
 	async touchRunning(executionId: string): Promise<void> {
 		await this.update({ id: executionId, status: 'running' }, { updatedAt: new Date() });
 	}

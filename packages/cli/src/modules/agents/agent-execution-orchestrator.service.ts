@@ -85,10 +85,13 @@ export interface ExecuteForChatConfig {
 	previewChat?: boolean;
 	/** Fired after the turn is persisted; used to attach `executionId` to SSE `done`. */
 	onExecutionRecorded?: (executionId: string) => void;
+	onExecutionStarted?: (executionId: string) => Promise<void>;
 	abortSignal?: AbortSignal;
 }
 
 export interface ExecuteForChatPublishedConfig {
+	onExecutionStarted?: (executionId: string) => Promise<void>;
+	abortSignal?: AbortSignal;
 	agentId: string;
 	projectId: string;
 	/** What the user wrote; recorded in the execution transcript. */
@@ -143,6 +146,7 @@ export interface ResumeForChatConfig {
 	previewChat?: boolean;
 	/** Fired after the resumed turn is persisted; used to attach `executionId` to SSE `done`. */
 	onExecutionRecorded?: (executionId: string) => void;
+	onExecutionStarted?: (executionId: string) => Promise<void>;
 	abortSignal?: AbortSignal;
 }
 
@@ -193,6 +197,7 @@ export interface ExecuteForWakeConfig {
 }
 
 export interface StreamChatResponseConfig {
+	onExecutionStarted?: (executionId: string) => Promise<void>;
 	agentInstance: RuntimeAgent;
 	toolRegistry: ToolRegistry;
 	/** See `AgentRuntime.mcpServerAttributions`. */
@@ -354,6 +359,7 @@ export class AgentExecutionOrchestratorService {
 		agentId: string;
 		runId: string;
 		resourceId: string;
+		onCancelled?: (threadId: string) => void;
 	}): Promise<boolean> {
 		const checkpointStatus = await this.n8nCheckpointStorage.getStatus(
 			params.runId,
@@ -388,6 +394,7 @@ export class AgentExecutionOrchestratorService {
 			),
 		);
 		await this.n8nCheckpointStorage.delete(params.runId, params.agentId);
+		params.onCancelled?.(checkpoint.persistence.threadId);
 		return true;
 	}
 
@@ -541,6 +548,7 @@ export class AgentExecutionOrchestratorService {
 				startedAt,
 				'Failed to start resumed agent execution recording',
 			);
+			if (executionId) await config.onExecutionStarted?.(executionId);
 			const attributionTracker = createAttributionTracker(runtime.mcpServerAttributions);
 			for await (const value of streamAgentChunks(resultStream.stream)) {
 				const chunk = usePublishedVersion ? value : withApprovalToolDetails(value, toolRegistry);
@@ -651,6 +659,7 @@ export class AgentExecutionOrchestratorService {
 				onExecutionRecorded,
 				abortSignal,
 				includeHitlToolDetails: true,
+				onExecutionStarted: config.onExecutionStarted,
 				sandboxPrincipalHash,
 			});
 		} finally {
@@ -715,6 +724,8 @@ export class AgentExecutionOrchestratorService {
 					runType: 'production',
 					configuration: runtime.telemetryConfiguration,
 				},
+				onExecutionStarted: config.onExecutionStarted,
+				abortSignal: config.abortSignal,
 				sandboxPrincipalHash,
 			});
 		} finally {
@@ -992,6 +1003,7 @@ export class AgentExecutionOrchestratorService {
 				startedAt,
 				'Failed to start agent execution recording',
 			);
+			if (executionId) await config.onExecutionStarted?.(executionId);
 			const attributionTracker = createAttributionTracker(mcpServerAttributions);
 			for await (const value of streamAgentChunks(resultStream.stream)) {
 				const chunk = includeHitlToolDetails ? withApprovalToolDetails(value, toolRegistry) : value;

@@ -392,6 +392,7 @@ export class ChatIntegrationService {
 				: memoryState;
 
 			chat = new Chat({
+				concurrency: 'concurrent',
 				userName: `n8n-agent-${agentId}`,
 				// Use the platform type as the adapter key (e.g. 'slack') so that
 				// bot.webhooks.slack maps correctly to the handler.
@@ -402,6 +403,7 @@ export class ChatIntegrationService {
 			if (ingressEnabled) {
 				const componentMapper = new ComponentMapper();
 				const agentExecutionOrchestratorService = await getAgentExecutionOrchestratorService();
+				const { AgentMessageQueueService } = await import('../agent-message-queue.service.js');
 
 				bridge = AgentChatBridge.create(
 					chat,
@@ -411,6 +413,7 @@ export class ChatIntegrationService {
 					this.logger,
 					projectId,
 					integration,
+					Container.get(AgentMessageQueueService),
 				);
 			}
 
@@ -472,6 +475,17 @@ export class ChatIntegrationService {
 		this.logger.info(
 			`[ChatIntegrationService] ${ingressEnabled ? 'Connected' : 'Outbound connected'}: ${key}`,
 		);
+		if (ingressEnabled) {
+			const { AgentMessageQueueService } = await import('../agent-message-queue.service.js');
+			void Container.get(AgentMessageQueueService)
+				.onConnectionReady(agentId)
+				.catch((error: unknown) => {
+					this.logger.warn('Failed to signal queued messages after integration connected', {
+						agentId,
+						error,
+					});
+				});
+		}
 	}
 
 	/**

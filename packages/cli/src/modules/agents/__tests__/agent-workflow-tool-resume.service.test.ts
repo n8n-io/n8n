@@ -1,5 +1,5 @@
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
-import type { Logger } from '@n8n/backend-common';
+import type { LockService, Logger } from '@n8n/backend-common';
 import type { User, UserRepository } from '@n8n/db';
 import type { WorkflowExecuteAfterContext } from '@n8n/decorators';
 import type { InstanceSettings } from 'n8n-core';
@@ -11,6 +11,7 @@ import { mock } from 'vitest-mock-extended';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import type { AgentExecutionUpdateBroadcaster } from '../agent-execution-update-broadcaster';
+import type { AgentMessageQueueService } from '../agent-message-queue.service';
 import type { AgentTestRunService } from '../agent-test-run.service';
 import { AgentWorkflowToolResumeService } from '../agent-workflow-tool-resume.service';
 import type { AgentBackgroundJobService } from '../background/agent-background-job.service';
@@ -53,6 +54,10 @@ function setup() {
 		checkpoint: { status: 'suspended' },
 	} as never);
 	const backgroundJobService = mock<AgentBackgroundJobService>();
+	const lockService = mock<LockService>();
+	lockService.withLease.mockImplementation(
+		async (_ns, _key, execute) => await execute(new AbortController().signal),
+	);
 	const service = new AgentWorkflowToolResumeService(
 		logger,
 		userRepository,
@@ -64,6 +69,8 @@ function setup() {
 		instanceSettings,
 		publisher,
 		backgroundJobService,
+		lockService,
+		mock<AgentMessageQueueService>(),
 	);
 	return {
 		service,
@@ -110,6 +117,7 @@ describe('AgentWorkflowToolResumeService → lifecycle wiring', () => {
 			'run-1',
 			'call-1',
 			{ type: 'workflow_finished', value: 'success' },
+			expect.any(AbortSignal),
 		);
 	});
 
@@ -191,6 +199,7 @@ describe('AgentWorkflowToolResumeService → chat platforms', () => {
 			expect.any(String),
 			expect.any(String),
 			{ type: 'workflow_finished', value: 'error' },
+			expect.any(AbortSignal),
 		);
 	});
 

@@ -145,6 +145,8 @@ export class AgentsModule implements ModuleInterface {
 		// serve the channel either way. Webhook instances do serve the agent webhook
 		// route, so they keep their channels.
 		if (instanceSettings.instanceType !== 'worker') {
+			const { AgentMessageQueueService } = await import('./agent-message-queue.service.js');
+			Container.get(AgentMessageQueueService).start();
 			channelReconciler.init();
 		}
 
@@ -230,6 +232,7 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentExecutionThread } = await import('./entities/agent-execution-thread.entity.js');
 		const { AgentExecution } = await import('./entities/agent-execution.entity.js');
 		const { AgentBackgroundJob } = await import('./entities/agent-background-job.entity.js');
+		const { AgentMessageQueue } = await import('./entities/agent-message-queue.entity.js');
 		const { AgentHistory } = await import('./entities/agent-history.entity.js');
 		const { AgentCredentialDependency } = await import(
 			'./entities/agent-credential-dependency.entity.js'
@@ -271,6 +274,7 @@ export class AgentsModule implements ModuleInterface {
 			AgentExecutionThread,
 			AgentExecution,
 			AgentBackgroundJob,
+			AgentMessageQueue,
 			AgentHistory,
 			AgentCredentialDependency,
 			AgentWorkflowDependency,

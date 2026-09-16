@@ -10,6 +10,7 @@ import type {
 import type { IWorkflowBase, RelatedAgentRun, WorkflowActivateMode } from 'n8n-workflow';
 
 export type PubSubCommandMap = {
+	'drain-agent-message-queue': { threadId: string };
 	// #region Lifecycle
 
 	'reload-license': never;

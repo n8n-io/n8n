@@ -1,5 +1,5 @@
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
-import { Logger } from '@n8n/backend-common';
+import { LockNamespace, LockService, Logger } from '@n8n/backend-common';
 import { UserRepository } from '@n8n/db';
 import { OnLifecycleEvent, OnPubSubEvent, type WorkflowExecuteAfterContext } from '@n8n/decorators';
 import { Service } from '@n8n/di';
@@ -11,6 +11,8 @@ import { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import { AgentExecutionUpdateBroadcaster } from './agent-execution-update-broadcaster';
 import { AgentTestRunService } from './agent-test-run.service';
+import { AgentMessageQueueService } from './agent-message-queue.service';
+import { agentConversationLockKey } from './agent-message-queue.types';
 import {
 	AgentBackgroundJobService,
 	collectResultData,
@@ -40,6 +42,8 @@ export class AgentWorkflowToolResumeService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly publisher: Publisher,
 		private readonly backgroundJobService: AgentBackgroundJobService,
+		private readonly lockService: LockService,
+		private readonly messageQueue: AgentMessageQueueService,
 	) {
 		this.logger = this.logger.scoped('agents');
 	}
@@ -137,10 +141,35 @@ export class AgentWorkflowToolResumeService {
 
 	/** The tool handler re-reads the execution, so this payload only says why it woke. */
 	async resume(agentRun: RelatedAgentRun, status: string): Promise<void> {
+		try {
+			await this.lockService.withLease(
+				LockNamespace.KNOWN_LOCKS,
+				agentConversationLockKey(agentRun.threadId),
+				async (signal) => {
+					const checkpoint = await this.checkpointStorage.getStatus(
+						agentRun.runId,
+						agentRun.agentId,
+					);
+					if (checkpoint.status !== 'active' || checkpoint.checkpoint.status !== 'suspended')
+						return;
+					signal.throwIfAborted();
+					await this.resumeInsideLease(agentRun, status, signal);
+				},
+			);
+		} finally {
+			this.messageQueue.notify(agentRun.threadId);
+		}
+	}
+
+	private async resumeInsideLease(
+		agentRun: RelatedAgentRun,
+		status: string,
+		abortSignal: AbortSignal,
+	): Promise<void> {
 		const resumeData = { type: 'workflow_finished', value: status };
 
 		if (agentRun.integrationType === N8N_CHAT_INTEGRATION_TYPE) {
-			await this.resumeInPreviewChat(agentRun, resumeData);
+			await this.resumeInPreviewChat(agentRun, resumeData, abortSignal);
 			return;
 		}
 
@@ -178,6 +207,7 @@ export class AgentWorkflowToolResumeService {
 			agentRun.runId,
 			agentRun.toolCallId,
 			resumeData,
+			abortSignal,
 		);
 	}
 
@@ -208,7 +238,11 @@ export class AgentWorkflowToolResumeService {
 	 * stream into: draining headlessly is what records the turn, and the push then
 	 * tells an open chat to re-read it.
 	 */
-	private async resumeInPreviewChat(agentRun: RelatedAgentRun, resumeData: unknown): Promise<void> {
+	private async resumeInPreviewChat(
+		agentRun: RelatedAgentRun,
+		resumeData: unknown,
+		abortSignal: AbortSignal,
+	): Promise<void> {
 		// The draft version gates node and workflow tools by the user's access, so
 		// without the user those tools drop and the pending tool call fails to resume.
 		const user = agentRun.userId
@@ -224,6 +258,7 @@ export class AgentWorkflowToolResumeService {
 		}
 
 		const result = await this.agentTestRunService.resumeDraftRun({
+			abortSignal,
 			agentId: agentRun.agentId,
 			projectId: agentRun.projectId,
 			sessionId: agentRun.threadId,

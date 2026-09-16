@@ -8,6 +8,7 @@ import { mock } from 'vitest-mock-extended';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
+import type { AgentMessageQueueService } from '../../agent-message-queue.service';
 import type { AgentExecutionOrchestratorService } from '../../agent-execution-orchestrator.service';
 import { hashAgentSandboxPrincipal } from '../../agent-sandbox-principal';
 import type { AgentBackgroundJob } from '../../entities/agent-background-job.entity';
@@ -102,6 +103,7 @@ function setup(options: { worker?: boolean; enabled?: boolean } = {}) {
 		agentsConfig,
 		logger,
 		backgroundJobService,
+		mock<AgentMessageQueueService>(),
 	);
 
 	return {
@@ -190,7 +192,7 @@ describe('AgentWakeService', () => {
 
 			expect(lockService.withLease).toHaveBeenCalledWith(
 				expect.anything(),
-				'agent-background-wake:thread-1',
+				'agent-conversation:thread-1',
 				expect.any(Function),
 				expect.anything(),
 			);
@@ -391,18 +393,12 @@ describe('AgentWakeService', () => {
 		expect(running.orchestrator.executeForWake).not.toHaveBeenCalled();
 
 		const suspended = setup();
-		suspended.executionRepository.hasSuspendedRun.mockResolvedValue(true);
 		suspended.checkpointStorage.findSuspendedForThread.mockResolvedValue({} as never);
 		await suspended.service.attemptWake('thread-1');
 		expect(suspended.orchestrator.executeForWake).not.toHaveBeenCalled();
 	});
 
-	it('checks checkpoints only for threads with a recorded suspension', async () => {
-		const never = setup();
-		await never.service.attemptWake('thread-1');
-		expect(never.checkpointStorage.findSuspendedForThread).not.toHaveBeenCalled();
-		expect(never.orchestrator.executeForWake).toHaveBeenCalledTimes(1);
-
+	it('permits wakes after the checkpoint has resumed', async () => {
 		// A resumed run keeps its suspended status. Only an active checkpoint blocks the wake.
 		const resumed = setup();
 		resumed.executionRepository.hasSuspendedRun.mockResolvedValue(true);

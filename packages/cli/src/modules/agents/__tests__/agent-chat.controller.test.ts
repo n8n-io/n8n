@@ -10,6 +10,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import { AgentChatController } from '../agent-chat.controller';
 import type { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
+import type { AgentMessageQueueService } from '../agent-message-queue.service';
 import type { AgentExecutionService } from '../agent-execution.service';
 import type { AgentBackgroundJobService } from '../background/agent-background-job.service';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
@@ -32,6 +33,12 @@ function makeController() {
 	const agentChatAttachmentService = mock<AgentChatAttachmentService>();
 	const agentExecutionService = mock<AgentExecutionService>();
 	const backgroundJobService = mock<AgentBackgroundJobService>();
+	const queue = mock<AgentMessageQueueService>();
+	queue.enqueuePreview.mockImplementation(
+		async (_input, execute, abortSignal) =>
+			await execute({ abortSignal, onExecutionStarted: async () => {} }),
+	);
+	queue.getResumeScope.mockResolvedValue({ threadId: 'thread-1', resourceId: 'draft-chat:user-1' });
 	agentTestRunService.prepareDraftRun.mockResolvedValue({
 		status: 'ready',
 		sessionId: 'thread-1',
@@ -56,6 +63,7 @@ function makeController() {
 		agentChatAttachmentService,
 		agentExecutionService,
 		backgroundJobService,
+		queue,
 	);
 
 	return {
@@ -474,6 +482,7 @@ describe('AgentChatController HITL cancellation', () => {
 			agentId: 'agent-1',
 			runId: 'run-1',
 			resourceId: 'draft-chat:user-1',
+			onCancelled: expect.any(Function),
 		});
 	});
 });
