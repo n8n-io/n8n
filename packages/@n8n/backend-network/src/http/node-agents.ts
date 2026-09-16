@@ -37,8 +37,9 @@ export function isSupportedProxyUrl(value: string | null | undefined): value is 
 export type ProxyOption = 'env' | ProxyUrl | false;
 
 /**
- * Controls SSRF protection for an outbound HTTP client.
- * Explicitly passing `'disabled'` makes the opt-out visible in calling code.
+ * Resolved SSRF policy for an outbound HTTP client:
+ * - the bridge to enforce
+ * - or 'disabled' when none applies.
  */
 export type SsrfOption = SsrfBridge | 'disabled';
 

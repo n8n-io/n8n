@@ -385,6 +385,76 @@ describe('CredentialResolverWorkflowService', () => {
 			expect(mockResolverImplementation.getSecret).not.toHaveBeenCalled();
 		});
 
+		it('should return resolver_missing when the resolver cannot be used with an n8n identity', async () => {
+			const mockWorkflow = createMockWorkflow({
+				nodes: [
+					createMockNode({
+						credentials: {
+							oauth2Api: { id: 'cred-1', name: 'OAuth2 API' },
+						},
+					}),
+				],
+				// Workflow-level fallback pointing at a resolver keyed on external subjects.
+				settings: { credentialResolverId: 'resolver-1' },
+			});
+
+			mockWorkflowRepository.get.mockResolvedValue(mockWorkflow);
+			mockCredentialRepository.find.mockResolvedValue([
+				createMockCredential({ id: 'cred-1', name: 'OAuth2 API', resolverId: null }),
+			]);
+			mockResolverRepository.findOneBy.mockResolvedValue(createMockResolver({ id: 'resolver-1' }));
+			mockResolverRegistry.getResolverByTypename.mockReturnValue(mockResolverImplementation);
+			mockCipher.decryptV2.mockResolvedValue('{"prefix":"test"}');
+
+			const result = await service.getWorkflowStatus('workflow-1', {
+				identity: 'n8n-session-jwt',
+				version: 1 as const,
+				metadata: { source: 'cookie-source', method: 'GET', endpoint: 'rest' },
+			});
+
+			expect(result).toEqual([
+				{
+					credentialId: 'cred-1',
+					credentialName: 'OAuth2 API',
+					status: 'resolver_missing',
+					credentialType: 'oauth2Api',
+				},
+			]);
+			expect(mockResolverImplementation.getSecret).not.toHaveBeenCalled();
+		});
+
+		it('should check the resolver when it maps the n8n identity to a user', async () => {
+			const mockWorkflow = createMockWorkflow({
+				nodes: [
+					createMockNode({
+						credentials: {
+							oauth2Api: { id: 'cred-1', name: 'OAuth2 API' },
+						},
+					}),
+				],
+				settings: { credentialResolverId: 'resolver-1' },
+			});
+
+			mockWorkflowRepository.get.mockResolvedValue(mockWorkflow);
+			mockCredentialRepository.find.mockResolvedValue([
+				createMockCredential({ id: 'cred-1', name: 'OAuth2 API', resolverId: null }),
+			]);
+			mockResolverRepository.findOneBy.mockResolvedValue(createMockResolver({ id: 'resolver-1' }));
+			mockResolverRegistry.getResolverByTypename.mockReturnValue({
+				...mockResolverImplementation,
+				resolveOwningUserId: vi.fn().mockResolvedValue('user-1'),
+			});
+			mockCipher.decryptV2.mockResolvedValue('{"prefix":"test"}');
+
+			const result = await service.getWorkflowStatus('workflow-1', {
+				identity: 'n8n-session-jwt',
+				version: 1 as const,
+				metadata: { source: 'cookie-source', method: 'GET', endpoint: 'rest' },
+			});
+
+			expect(result[0].status).toBe('configured');
+		});
+
 		it('should handle multiple credentials in parallel', async () => {
 			const mockWorkflow = createMockWorkflow({
 				nodes: [

@@ -122,6 +122,7 @@ export {
 } from './git-connections/git-connections.dto';
 
 export { CreateCredentialDto } from './credentials/create-credential.dto';
+export { TestCredentialRequestDto } from './credentials/test-credential-request.dto';
 export {
 	CredentialPublicDto,
 	CredentialListPublicDto,

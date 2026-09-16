@@ -37,7 +37,11 @@ import {
 
 import { FULL_ACCESS_NODE_TYPES, WAITING_TOKEN_QUERY_PARAM } from '@/constants';
 import { InstanceSettings } from '@/instance-settings';
-import { generateUrlSignature, prepareUrlForSigning } from '@/utils/signature-helpers';
+import {
+	buildResumeUrlSuffix,
+	generateUrlSignature,
+	prepareUrlForSigning,
+} from '@/utils/signature-helpers';
 
 import { cleanupParameterData } from './utils/cleanup-parameter-data';
 import { createExecutionCustomData } from './utils/custom-data';
@@ -273,7 +277,9 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 			throw new UnexpectedError('Execution id is missing');
 		}
 
-		const baseURL = new URL(`${webhookWaitingBaseUrl}/${executionId}/${this.node.id}`);
+		const baseURL = new URL(
+			`${webhookWaitingBaseUrl}${buildResumeUrlSuffix(executionId, this.node.id)}`,
+		);
 
 		for (const [key, value] of Object.entries(parameters)) {
 			baseURL.searchParams.set(key, value);

@@ -7,6 +7,7 @@ import {
 } from 'n8n-workflow';
 
 import { sleep } from '@n8n/utils/sleep';
+import { escapeODataSearchValue } from '@utils/query-escaping';
 import { filterSortSearchListItems } from '../helpers/utils';
 import {
 	buildTeamsPath,
@@ -100,6 +101,89 @@ export async function getChats(
 		});
 
 	return { results };
+}
+
+export async function getChatMembers(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+): Promise<INodeListSearchResult> {
+	const chatId = this.getCurrentNodeParameter('chatId', { extractValue: true }) as string;
+	// The picker can be opened before a chat is selected; show an empty list instead
+	// of failing on an empty id.
+	if (!chatId) return { results: [] };
+
+	// `GET /chats/{id}/members` supports no OData query parameters, so there is no
+	// server-side search to pass the filter to - it pages via @odata.nextLink only.
+	const value = (await microsoftApiRequestAllItems.call(
+		this,
+		'value',
+		'GET',
+		buildTeamsPath.call(this, ['/v1.0/chats/', { id: chatId }, '/members']),
+	)) as IDataObject[];
+
+	const returnData: INodeListSearchItems[] = value.map((member) => {
+		// A deleted user can stay on the roster with a null displayName; a null name
+		// would throw in the sort and break the picker for the whole chat.
+		const label = (member.displayName ?? member.userId ?? member.id) as string;
+		return {
+			name: member.email ? `${label} (${member.email})` : label,
+			// `id` is the base64 membership id the DELETE path needs, NOT `userId`.
+			value: member.id as string,
+		};
+	});
+
+	const results = filterSortSearchListItems(returnData, filter);
+	return { results };
+}
+
+export async function getUsers(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	// ConsistencyLevel is sent on every call: directory paging drops custom headers on
+	// nextLink requests, so the token branch needs it too or Graph rejects the $search.
+	const headers: IDataObject = { ConsistencyLevel: 'eventual' };
+	const qs: IDataObject = paginationToken ? {} : { $select: 'id,displayName,userPrincipalName' };
+	if (!paginationToken) {
+		// Graph splits `&` and `#` after decoding. Remove them before escaping the quoted term.
+		const escaped = escapeODataSearchValue((filter ?? '').replace(/[&#]/g, '').trim());
+		if (escaped) {
+			qs.$search = `"displayName:${escaped}" OR "mail:${escaped}" OR "userPrincipalName:${escaped}"`;
+		}
+	}
+	let response: IDataObject;
+	try {
+		response = (await microsoftApiRequest.call(
+			this,
+			'GET',
+			paginationToken ? '' : '/v1.0/users',
+			{},
+			qs,
+			paginationToken,
+			headers,
+		)) as IDataObject;
+	} catch (error) {
+		throw error;
+	}
+
+	// An unexpected shape is not an empty directory: returning the token as well would offer
+	// "load more" into nothing.
+	if (!Array.isArray(response.value)) {
+		return { results: [], paginationToken: undefined };
+	}
+
+	const returnData: INodeListSearchItems[] = (response.value as IDataObject[]).map((user) => ({
+		name: `${user.displayName} (${user.userPrincipalName})`,
+		value: user.id as string,
+	}));
+
+	// No filter argument: `$search` already filtered server-side across the whole
+	// collection, so this only applies the sort every sibling picker uses.
+	return {
+		results: filterSortSearchListItems(returnData),
+		paginationToken: response['@odata.nextLink'] as string | undefined,
+	};
 }
 
 export async function getTeams(
