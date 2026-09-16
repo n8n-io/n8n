@@ -42,6 +42,10 @@ export class AgentMessageQueueRepository extends Repository<AgentMessageQueue> {
 		return (await this.update({ id, status: 'queued' }, { status: 'processing' })).affected === 1;
 	}
 
+	async releaseProcessing(id: string): Promise<void> {
+		await this.update({ id, status: 'processing' }, { status: 'queued' });
+	}
+
 	async linkExecution(id: string, executionId: string): Promise<void> {
 		await this.update({ id, status: In(['processing', 'cancelling']) }, { executionId });
 	}
@@ -98,7 +102,10 @@ export class AgentMessageQueueRepository extends Repository<AgentMessageQueue> {
 
 	async touchLiveEntries(ids: string[]): Promise<void> {
 		if (ids.length === 0) return;
-		await this.update({ id: In(ids) }, { updatedAt: new Date() });
+		await this.update(
+			{ id: In(ids), status: In(['queued', 'processing']) },
+			{ updatedAt: new Date() },
+		);
 	}
 
 	async findStale(threadId: string, cutoff: Date): Promise<AgentMessageQueue[]> {

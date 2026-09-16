@@ -412,7 +412,14 @@ export class AgentMessageQueueService {
 			return false;
 		if (!(await this.repository.markProcessing(selected.id))) return true;
 		// An edit can commit between selection and claim. Execute the claimed payload.
-		const entry = await this.repository.findById(selected.id);
+		let entry: AgentMessageQueue | null;
+		try {
+			entry = await this.repository.findById(selected.id);
+		} catch (error) {
+			await this.repository.releaseProcessing(selected.id);
+			this.requested.add(threadId);
+			throw error;
+		}
 		if (!entry) return true;
 		this.processing.add(entry.id);
 		const abortSignal = AbortSignal.any([
@@ -459,16 +466,15 @@ export class AgentMessageQueueService {
 			}
 			this.logger.warn('Queued agent input ended with an error', { id: entry.id, threadId, error });
 		} finally {
-			this.previews.delete(entry.id);
 			try {
 				// The conditional delete makes a concurrent Stop win before suspension cleanup.
-				if (
-					preview &&
-					!preview.controller.signal.aborted &&
-					!(await this.repository.finishProcessing(entry.id))
-				) {
-					const remaining = await this.repository.findById(entry.id);
-					if (remaining?.status === 'cancelling') preview.controller.abort();
+				if (preview && !preview.controller.signal.aborted) {
+					if (await this.repository.finishProcessing(entry.id)) {
+						this.previews.delete(entry.id);
+					} else {
+						const remaining = await this.repository.findById(entry.id);
+						if (remaining?.status === 'cancelling') preview.controller.abort();
+					}
 				}
 				// Stop can arrive as a run suspends. Clear its checkpoint before releasing the conversation.
 				if (preview?.controller.signal.aborted) {
@@ -481,9 +487,8 @@ export class AgentMessageQueueService {
 						});
 					}
 				}
-			} finally {
-				this.processing.delete(entry.id);
 				await this.repository.removeEntry(entry.id);
+				this.previews.delete(entry.id);
 				if (preview) {
 					if (!executionId) await this.deleteUnusedAttachments(entry);
 					this.sendPreviewEvent(
@@ -502,6 +507,8 @@ export class AgentMessageQueueService {
 						executionId,
 					});
 				this.notifyPeers(threadId);
+			} finally {
+				this.processing.delete(entry.id);
 			}
 		}
 		return true;
@@ -568,7 +575,11 @@ export class AgentMessageQueueService {
 						preview.input.payload.attachments?.map(({ id }) => id) ?? [],
 					);
 				}
-				this.sendPreviewEvent(id, preview, { type: 'removed' });
+				this.sendPreviewEvent(
+					id,
+					preview,
+					preview.controller.signal.aborted ? { type: 'cancelled' } : { type: 'removed' },
+				);
 			}
 		}
 	}
