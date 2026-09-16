@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import { computed, onMounted, ref, watch } from 'vue';
 
-import type { ContextMenuLeaf, ContextMenuNode } from './ContextMenu.types';
+import type { ContextMenuLeaf, ContextMenuNode, ContextMenuProps } from './ContextMenu.types';
 import ContextMenu from './ContextMenu.vue';
 import N8nAvatar from '../N8nAvatar/Avatar.vue';
 import N8nBadge from '../N8nBadge/Badge.vue';
@@ -451,7 +451,7 @@ const storyTriggerStyle = `
 	height: 12rem;
 	flex-shrink: 0;
 	padding: var(--spacing--lg);
-	border: 1px dashed var(--border-color);
+	border: var(--border-width--base) dashed var(--border-color);
 	border-radius: var(--radius--lg);
 	color: var(--text-color--subtler);
 	text-align: center;
@@ -552,7 +552,13 @@ const meta = {
 
 export default meta;
 
-type Story = StoryObj<typeof meta>;
+/** Storybook-only X/Y controls. The component takes `position`. */
+type StoryArgs = ContextMenuProps<string> & {
+	positionX?: number;
+	positionY?: number;
+};
+
+type Story = StoryObj<StoryArgs>;
 
 function logSelect(action: string) {
 	console.log('Selected:', action);
@@ -585,13 +591,6 @@ function triggerAwarePosition(x: unknown, y: unknown): [number, number] | undefi
 	if (position[0] === 0 && position[1] === 0) return undefined;
 	return position;
 }
-
-type StoryArgs = Record<string, unknown> & {
-	open?: boolean;
-	defaultOpen?: boolean;
-	positionX?: number;
-	positionY?: number;
-};
 
 /**
  * Bind story args onto the menu. `defaultOpen` wins so reload can reopen
