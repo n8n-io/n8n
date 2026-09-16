@@ -126,11 +126,9 @@ describe('NodeCreation', () => {
 		getByTestId('node-creator-stub-group').click();
 
 		await vi.waitFor(() => expect(emitted('addEmptyGroup')).toHaveLength(1));
-		expect(emitted<[XYPosition]>('addEmptyGroup')[0][0]).toEqual([
-			expect.any(Number),
-			expect.any(Number),
-		]);
-		expect(emitted('addEmptyGroup')![0][1]).toBe(false);
+		const addEmptyGroupEvents = emitted<[XYPosition, boolean]>('addEmptyGroup');
+		expect(addEmptyGroupEvents[0][0]).toEqual([expect.any(Number), expect.any(Number)]);
+		expect(addEmptyGroupEvents[0][1]).toBe(false);
 		expect(emitted('toggleNodeCreator')).toEqual([
 			[{ createNodeActive: false, hasAddedNodes: true }],
 		]);
@@ -144,7 +142,8 @@ describe('NodeCreation', () => {
 		getByTestId('node-creator-stub-group').click();
 
 		await vi.waitFor(() => expect(emitted('addEmptyGroup')).toHaveLength(1));
-		expect(emitted('addEmptyGroup')![0][1]).toBe(true);
+		const addEmptyGroupEvents = emitted<[XYPosition, boolean]>('addEmptyGroup');
+		expect(addEmptyGroupEvents[0][1]).toBe(true);
 	});
 	it('hides the command bar button in canvas-only mode', () => {
 		settingsStore.settings = { ...defaultSettings, canvasOnly: true };
