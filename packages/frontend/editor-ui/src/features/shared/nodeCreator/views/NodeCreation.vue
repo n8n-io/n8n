@@ -19,6 +19,7 @@ import type {
 	XYPosition,
 } from '@/Interface';
 import { useActions } from '../composables/useActions';
+import { useNodeCreatorStore } from '../nodeCreator.store';
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import NodeCreatorShortcutCoachmark from '../components/NodeCreatorShortcutCoachmark.vue';
 import { useNodeCreatorShortcutCoachmark } from '../composables/useNodeCreatorShortcutCoachmark';
@@ -55,7 +56,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
 	addNodes: [value: AddedNodesAndConnections];
-	addEmptyGroup: [position: XYPosition];
+	addEmptyGroup: [position: XYPosition, connectToLastInteractedNode: boolean];
 	toggleNodeCreator: [value: ToggleNodeCreatorOptions];
 	close: [];
 }>();
@@ -69,6 +70,13 @@ const assistantStore = useAssistantStore();
 const chatPanelStore = useChatPanelStore();
 const workflowId = useWorkflowId();
 const settingsStore = useSettingsStore();
+const nodeCreatorStore = useNodeCreatorStore();
+
+const connectionOpenSources = new Set([
+	NODE_CREATOR_OPEN_SOURCES.PLUS_ENDPOINT,
+	NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_ACTION,
+	NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_DROP,
+]);
 
 const { getAddedNodesAndConnections } = useActions();
 const { shouldShowCoachmark, onDismissCoachmark } = useNodeCreatorShortcutCoachmark();
@@ -111,7 +119,7 @@ function addEmptyGroup() {
 	position[0] -= DEFAULT_NODE_SIZE[0] / 2;
 	position[1] -= DEFAULT_NODE_SIZE[1] / 2;
 
-	emit('addEmptyGroup', position);
+	emit('addEmptyGroup', position, connectionOpenSources.has(nodeCreatorStore.openSource));
 }
 
 function closeNodeCreator(hasAddedNodes = false) {

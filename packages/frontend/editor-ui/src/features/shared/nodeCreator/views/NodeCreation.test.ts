@@ -6,6 +6,8 @@ import { defaultSettings } from '@n8n/frontend-test-utils';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import NodeCreation from './NodeCreation.vue';
 import type { AddedNodesAndConnections, XYPosition } from '@/Interface';
+import { NODE_CREATOR_OPEN_SOURCES } from '@/app/constants';
+import { useNodeCreatorStore } from '../nodeCreator.store';
 
 const mockGetAddedNodesAndConnections = vi.fn<() => AddedNodesAndConnections>(() => ({
 	nodes: [],
@@ -128,9 +130,21 @@ describe('NodeCreation', () => {
 			expect.any(Number),
 			expect.any(Number),
 		]);
+		expect(emitted('addEmptyGroup')![0][1]).toBe(false);
 		expect(emitted('toggleNodeCreator')).toEqual([
 			[{ createNodeActive: false, hasAddedNodes: true }],
 		]);
+	});
+
+	it('connects Group when the node creator was opened from a connection', async () => {
+		const nodeCreatorStore = useNodeCreatorStore();
+		nodeCreatorStore.openSource = NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_ACTION;
+		const { getByTestId, emitted } = renderComponent({ pinia });
+
+		getByTestId('node-creator-stub-group').click();
+
+		await vi.waitFor(() => expect(emitted('addEmptyGroup')).toHaveLength(1));
+		expect(emitted('addEmptyGroup')![0][1]).toBe(true);
 	});
 	it('hides the command bar button in canvas-only mode', () => {
 		settingsStore.settings = { ...defaultSettings, canvasOnly: true };
