@@ -87,15 +87,24 @@ export class TeamsIntegration extends AgentChatIntegration {
 	];
 
 	/**
-	 * A channel or group chat card goes out as a Teams targeted message, so only
-	 * the user who asked sees the approval. A 1:1 chat is already private, and
-	 * the adapter posts there normally.
+	 * A channel or group chat card goes out as a Teams targeted message, so the
+	 * approval reaches only the user who asked — and only they can answer it. A
+	 * public card would let any channel member approve on their behalf, which is
+	 * the reason this is on: it is an authorization boundary, not tidiness.
 	 *
-	 * An answered card is deleted rather than settled in place — the base
-	 * default, and what Slack and Linear do. Teams answers an update that would
-	 * turn a targeted card back into a public message with `400 Bad Request`: a
-	 * targeted message can be edited or deleted, but its visibility cannot
-	 * change, and `Adapter.editMessage` has nowhere to carry the recipient.
+	 * The cost today is that an answered card is not cleaned up: it stays visible
+	 * with live-looking buttons. Mutating a targeted activity needs the
+	 * `isTargetedActivity=true` flag that `@microsoft/teams.api` sends from
+	 * `updateTargeted`/`deleteTargeted`, and `@chat-adapter/teams` calls the
+	 * plain `update`/`delete` instead, so Teams answers `400`. Posting works
+	 * because `app.send` does route a recipient-targeted activity to
+	 * `createTargeted`. An upstream adapter fix, not a Teams limitation — a
+	 * public card in the same channel deletes cleanly.
+	 *
+	 * What covers the gap meanwhile: Teams marks the card "Your response was
+	 * sent to the app" itself, and a second click is refused by the resumable
+	 * check in `AgentChatHitlResumeHandler`, which answers the clicker privately
+	 * instead of resuming twice.
 	 */
 	readonly targetSuspensionCardAtActingUser = true;
 
