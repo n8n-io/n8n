@@ -2,6 +2,13 @@ import type {
 	AgentBackgroundJobsResponse,
 	AgentCapabilitySummary,
 	AgentChatMessagesResponse,
+	AgentChatAdmissionResponse,
+	AgentChatMessageDto,
+	AgentChatResumeDto,
+	AgentChatQueueItem,
+	AgentChatQueueRequeueDto,
+	AgentChatQueueResponse,
+	AgentChatSteeringTarget,
 	AgentConfigMutationResponse,
 	AgentConfigResponse,
 	AgentConfigValidationResponse,
@@ -588,6 +595,122 @@ export const cancelAgentChatRun = async (
 		context,
 		'DELETE',
 		`/projects/${projectId}/agents/v2/${agentId}/chat/runs/${runId}`,
+	);
+};
+
+export const sendAgentChatMessage = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	payload: AgentChatMessageDto,
+): Promise<AgentChatAdmissionResponse> => {
+	return await makeRestApiRequest(
+		context,
+		'POST',
+		`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/chat`,
+		payload,
+	);
+};
+
+export const resumeAgentChat = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	payload: AgentChatResumeDto,
+): Promise<AgentChatAdmissionResponse> => {
+	return await makeRestApiRequest(
+		context,
+		'POST',
+		`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/chat/resume`,
+		payload,
+	);
+};
+
+const chatQueuePath = (projectId: string, agentId: string, threadId: string) =>
+	`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/chat/${encodeURIComponent(threadId)}/queue`;
+
+export const getAgentChatQueue = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	threadId: string,
+): Promise<AgentChatQueueResponse> => {
+	return await makeRestApiRequest(context, 'GET', chatQueuePath(projectId, agentId, threadId));
+};
+
+export const editAgentChatQueueMessage = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	threadId: string,
+	queueId: string,
+	message: string,
+): Promise<AgentChatQueueItem> => {
+	return await makeRestApiRequest(
+		context,
+		'PATCH',
+		`${chatQueuePath(projectId, agentId, threadId)}/${encodeURIComponent(queueId)}`,
+		{ message },
+	);
+};
+
+export const sendAgentChatQueueMessageNow = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	threadId: string,
+	queueId: string,
+	target: AgentChatSteeringTarget,
+): Promise<AgentChatQueueItem> => {
+	return await makeRestApiRequest(
+		context,
+		'POST',
+		`${chatQueuePath(projectId, agentId, threadId)}/${encodeURIComponent(queueId)}/send-now`,
+		{ target },
+	);
+};
+
+export const requeueAgentChatQueueMessage = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	threadId: string,
+	queueId: string,
+	payload: AgentChatQueueRequeueDto,
+): Promise<AgentChatAdmissionResponse> => {
+	return await makeRestApiRequest(
+		context,
+		'POST',
+		`${chatQueuePath(projectId, agentId, threadId)}/${encodeURIComponent(queueId)}/requeue`,
+		payload,
+	);
+};
+
+export const removeAgentChatQueueMessage = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	threadId: string,
+	queueId: string,
+): Promise<void> => {
+	await makeRestApiRequest(
+		context,
+		'DELETE',
+		`${chatQueuePath(projectId, agentId, threadId)}/${encodeURIComponent(queueId)}`,
+	);
+};
+
+export const stopAgentChatQueueEntry = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	threadId: string,
+	queueId: string,
+): Promise<{ cancelled: boolean }> => {
+	return await makeRestApiRequest(
+		context,
+		'POST',
+		`${chatQueuePath(projectId, agentId, threadId)}/${encodeURIComponent(queueId)}/stop`,
 	);
 };
 

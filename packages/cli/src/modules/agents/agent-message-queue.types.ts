@@ -1,4 +1,6 @@
 import type { ActionEvent, SerializedMessage, SerializedThread } from 'chat';
+import type { AgentInputBoundary } from '@n8n/agents';
+import type { AgentSseEvent } from '@n8n/api-types';
 
 import type { StoredAttachmentRef } from './agent-chat-attachment.service';
 
@@ -6,7 +8,20 @@ export const agentConversationLockKey = (threadId: string) => `agent-conversatio
 
 export interface QueueExecutionContext {
 	abortSignal: AbortSignal;
-	onExecutionStarted: (executionId: string) => Promise<void>;
+	onExecutionStarted: (executionId: string, runId: string) => Promise<void>;
+}
+
+export interface PreviewQueueExecutionContext extends QueueExecutionContext {
+	send: (event: AgentSseEvent) => void;
+	onInputBoundary: (boundary: AgentInputBoundary) => Promise<boolean>;
+}
+
+export interface PreviewQueueScope {
+	projectId: string;
+	agentId: string;
+	threadId: string;
+	userId: string;
+	resourceId: string;
 }
 
 interface QueuePayloadBase {
@@ -17,7 +32,15 @@ interface QueuePayloadBase {
 interface PreviewQueueBase extends QueuePayloadBase {
 	source: 'preview';
 	userId: string;
+	clientRequestId?: string;
 }
+
+export type PreviewSteeringMetadata = {
+	mode: 'active' | 'new-parent-turn';
+	targetExecutionId: string;
+	failureReason?: string;
+	requeuedAsId?: string;
+};
 
 interface IntegrationQueueBase extends QueuePayloadBase {
 	source: 'integration';
@@ -37,6 +60,7 @@ export interface PreviewMessageQueuePayload extends PreviewQueueBase {
 	kind: 'message';
 	message: string;
 	attachments?: StoredAttachmentRef[];
+	steering?: PreviewSteeringMetadata;
 }
 
 export type PreviewResumeQueuePayload = PreviewQueueBase & QueuedResume;
@@ -67,4 +91,8 @@ export interface AgentQueueInput {
 	agentId: string;
 	threadId: string;
 	payload: AgentQueuePayload;
+}
+
+export interface AgentPreviewQueueInput extends AgentQueueInput {
+	payload: PreviewQueuePayload;
 }

@@ -222,6 +222,8 @@ erDiagram
   json payload
   varchar_16_ source
   varchar_16_ status
+  integer steeringOrder
+  varchar_255_ steeringRunId
   varchar_128_ threadId
   timestamp_3__with_time_zone updatedAt
 }

@@ -187,6 +187,7 @@ export class AgentWakeService {
 		if (failure?.generation === generation && failure.count >= MAX_CONSECUTIVE_FAILED_WAKES) {
 			return;
 		}
+		if (await this.messageQueue.hasParentTurnReservation(threadId)) return;
 
 		// Execution records keep their suspended status after a resume.
 		// Check the checkpoint store to determine whether the thread is still suspended.

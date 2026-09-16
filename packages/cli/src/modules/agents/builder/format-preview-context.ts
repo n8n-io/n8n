@@ -43,6 +43,13 @@ function formatTimelineEvent(event: TimelineEvent): string {
 	if (event.type === 'reasoning') {
 		return `Reasoning: ${truncate(event.content, MAX_TEXT_CHARS)}`;
 	}
+	if (event.type === 'user-input') {
+		const text = event.content
+			.filter((part) => part.type === 'text')
+			.map((part) => part.text ?? '')
+			.join('');
+		return `User: ${truncate(text, MAX_TEXT_CHARS)}`;
+	}
 	if (event.type === 'suspension') {
 		return `[suspended waiting on ${event.toolName}]`;
 	}

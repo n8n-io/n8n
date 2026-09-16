@@ -9,7 +9,9 @@ import type {
 	AgentBuilderOpenSuspension,
 	AgentPersistedMessageDto,
 	AgentSseEvent,
-	CancellationResumeData,
+	AgentChatAdmissionResponse,
+	AgentChatQueueItem,
+	AgentChatSteeringTarget,
 } from '@n8n/api-types';
 import { applyForwardedChildChunk, APPROVAL_TOOL_NAME, emptyChildTrace } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
@@ -19,6 +21,14 @@ import {
 	clearTestChatMessages,
 	getChatMessages,
 	getTestChatMessages,
+	sendAgentChatMessage,
+	resumeAgentChat,
+	getAgentChatQueue,
+	editAgentChatQueueMessage,
+	removeAgentChatQueueMessage,
+	stopAgentChatQueueEntry,
+	sendAgentChatQueueMessageNow,
+	requeueAgentChatQueueMessage,
 } from './useAgentApi';
 
 import {
@@ -26,7 +36,6 @@ import {
 	convertDbMessages,
 	findOpenInteractive,
 	findTailOpenInteractive,
-	findTailSteerableInteractive,
 	getMessageInteractive,
 	getMessageInteractives,
 	isApprovalSuspendInput,
@@ -61,21 +70,14 @@ export interface UseAgentChatStreamParams {
 	 * extend the same session.
 	 */
 	continueSessionId?: Ref<string | undefined>;
-	onHistoryLoaded?: (count: number) => void;
+	onHistoryLoaded?: (count: number, hasQueueEntries: boolean, queueLoadSucceeded: boolean) => void;
 }
 
-type ResumePayload =
-	| {
-			runId: string;
-			toolCallId: string;
-			resumeData: unknown;
-	  }
-	| {
-			runId: string;
-			toolCallId: string;
-			cancelled: true;
-			text: string;
-	  };
+type ResumePayload = {
+	runId: string;
+	toolCallId: string;
+	resumeData: unknown;
+};
 
 function getApprovalDecision(value: unknown): boolean | undefined {
 	if (!isRecord(value) || typeof value.approved !== 'boolean') return undefined;
@@ -92,18 +94,37 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	const { showError } = useToast();
 
 	const messages = ref<ChatMessage[]>([]);
-	const isStreaming = ref(false);
-	const isCancelling = ref(false);
-	const abortController = ref<AbortController | null>(null);
-	const streamSettlements = new WeakMap<AbortController, Promise<void>>();
-	const preserveTerminalStateOnAbort = new WeakSet<AbortController>();
+	const queueItems = ref<AgentChatQueueItem[]>([]);
+	const sendNowTarget = ref<AgentChatSteeringTarget>();
+	const sendNowUnavailableReason = ref<'hitl-pending' | 'no-active-run'>();
+	const queuedMessages = computed(() =>
+		queueItems.value.filter(
+			(item): item is Extract<AgentChatQueueItem, { kind: 'message' }> =>
+				item.kind === 'message' &&
+				(item.status === 'queued' || item.status === 'steering' || item.status === 'undelivered'),
+		),
+	);
+	const activeEntry = computed(() =>
+		queueItems.value.find((item) => item.status === 'processing' || item.status === 'cancelling'),
+	);
+	const hasPendingResponse = computed(() => queueItems.value.some((item) => item.kind === 'hitl'));
+	const isStreaming = computed(() => activeEntry.value !== undefined);
+	const stopping = ref(false);
+	const isCancelling = computed(() => stopping.value || activeEntry.value?.status === 'cancelling');
+	const requests = new Map<string, StreamSession>();
+	const liveRequests = ref(new Set<string>());
+	const hasLiveStream = computed(() => liveRequests.value.size > 0);
+	const detachedQueueIds = new Set<string>();
+	const admittedSessionId = ref<string>();
+	const threadId = computed(() => params.continueSessionId?.value ?? admittedSessionId.value);
+	let queueVersion = 0;
+	let queueRequest = 0;
 	const historyLoaded = ref(false);
 	const pushStore = usePushConnectionStore();
 	const visibility = useDocumentVisibility();
 	let disposed = false;
 	let historyVersion = 0;
 	let streamVersion = 0;
-	let refreshAfterStream = false;
 	let retryCount = 0;
 	let retryTimer: ReturnType<typeof setTimeout> | undefined;
 	const targetKey = () =>
@@ -138,7 +159,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		silent?: boolean;
 	} = {}): Promise<boolean> {
 		if (disposed) return false;
-		const continueId = params.continueSessionId?.value;
+		const continueId = threadId.value;
 		// Reject outdated session, request, and stream snapshots to preserve the current conversation.
 		const target = targetKey();
 		const version = ++historyVersion;
@@ -168,19 +189,21 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			if (!isCurrent()) return false;
 			retryCount = 0;
 			clearTimeout(retryTimer);
-			if (!isStreaming.value && streamAtStart === streamVersion) {
+			if (!hasLiveStream.value && detachedQueueIds.size === 0 && streamAtStart === streamVersion) {
 				messages.value = applyOpenSuspensions(convertDbMessages(dbMessages), openSuspensions);
-			} else if (isStreaming.value) {
-				refreshAfterStream = true;
-			} else {
-				refreshHistoryFromPush();
+				applyPendingResponses();
 			}
 			return true;
 		} catch (error) {
 			if (!isCurrent()) return false;
 			const status = (error as { httpStatusCode?: number } | null)?.httpStatusCode;
 			if (status === 404) {
-				if (clearOnNotFound && !isStreaming.value && streamAtStart === streamVersion) {
+				if (
+					clearOnNotFound &&
+					!hasLiveStream.value &&
+					detachedQueueIds.size === 0 &&
+					streamAtStart === streamVersion
+				) {
 					messages.value = [];
 				}
 				return clearOnNotFound;
@@ -198,25 +221,103 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 
 	async function loadHistory(): Promise<void> {
 		if (historyLoaded.value) return;
+		const target = targetKey();
+		const queueLoadSucceeded = await refreshQueue();
+		if (disposed || target !== targetKey()) return;
 		await refreshHistory({ clearOnNotFound: true });
+		if (disposed || target !== targetKey()) return;
 		historyLoaded.value = true;
-		params.onHistoryLoaded?.(messages.value.length);
+		params.onHistoryLoaded?.(
+			messages.value.length,
+			queueItems.value.length > 0,
+			queueLoadSucceeded,
+		);
 	}
 
-	// A turn can complete with no stream attached — a Wait node finishing wakes the
-	// run server-side, long after this chat's SSE stream closed.
+	function applyPendingResponses(): void {
+		for (const message of messages.value) {
+			for (const interactive of getMessageInteractives(message)) {
+				const pendingResponse =
+					queueItems.value.some(
+						(item) =>
+							item.kind === 'hitl' &&
+							item.runId === interactive.runId &&
+							item.toolCallId === interactive.toolCallId,
+					) ||
+					[...requests.values()].some(
+						({ response }) =>
+							response?.runId === interactive.runId &&
+							response?.toolCallId === interactive.toolCallId,
+					);
+				if (Boolean(interactive.pendingResponse) !== pendingResponse) {
+					upsertMessageInteractive(message, { ...interactive, pendingResponse });
+				}
+			}
+		}
+	}
+
+	function upsertQueueItem(item: AgentChatQueueItem): void {
+		queueVersion++;
+		const index = queueItems.value.findIndex(({ id }) => id === item.id);
+		if (index >= 0) queueItems.value[index] = item;
+		else queueItems.value.push(item);
+		queueItems.value.sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }));
+		applyPendingResponses();
+	}
+
+	function removeQueueItem(id: string): void {
+		queueVersion++;
+		queueItems.value = queueItems.value.filter((item) => item.id !== id);
+		detachedQueueIds.delete(id);
+		applyPendingResponses();
+	}
+
+	async function refreshQueue(): Promise<boolean> {
+		const currentThread = threadId.value;
+		if (disposed || !currentThread) return false;
+		const target = targetKey();
+		const version = queueVersion;
+		const request = ++queueRequest;
+		try {
+			const result = await getAgentChatQueue(
+				rootStore.restApiContext,
+				params.projectId.value,
+				params.agentId.value,
+				currentThread,
+			);
+			if (disposed || target !== targetKey() || request !== queueRequest) return false;
+			if (version !== queueVersion) {
+				refreshHistoryFromPush();
+				return false;
+			}
+			queueItems.value = result.items;
+			sendNowTarget.value = result.sendNowTarget;
+			sendNowUnavailableReason.value = result.sendNowUnavailableReason;
+			for (const [requestId, session] of requests) {
+				if (session.queueId && !result.items.some((item) => item.id === session.queueId)) {
+					session.settled = true;
+					finalizeStream(session);
+					liveRequests.value.delete(requestId);
+					requests.delete(requestId);
+					streamVersion++;
+				}
+			}
+			for (const id of detachedQueueIds) {
+				if (!result.items.some((item) => item.id === id)) detachedQueueIds.delete(id);
+			}
+			applyPendingResponses();
+			return true;
+		} catch {
+			// Keep the last queue until a later action or connection update can refresh it.
+			return false;
+		}
+	}
+
 	const refreshHistoryFromPush = useAgentExecutionUpdates(
-		{
-			projectId: params.projectId,
-			agentId: params.agentId,
-			// A continued session is pinned to one thread; the default test chat has
-			// only one, so any update for this agent is the chat being shown.
-			...(params.continueSessionId ? { threadId: params.continueSessionId } : {}),
-		},
+		{ projectId: params.projectId, agentId: params.agentId, threadId },
 		async () => {
-			// Defer history refreshes until the local stream ends to preserve streamed text.
-			if (isStreaming.value) {
-				refreshAfterStream = true;
+			await refreshQueue();
+			if (hasLiveStream.value || detachedQueueIds.size > 0) {
 				return;
 			}
 			await refreshHistory({ silent: true });
@@ -228,29 +329,48 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		},
 	);
 
-	// Recover missed updates when the preview reopens, reconnects, becomes visible, or changes session.
 	function refresh() {
 		retryCount = 0;
 		clearTimeout(retryTimer);
 		refreshHistoryFromPush();
 	}
+
+	function detachRequests(): void {
+		for (const session of requests.values()) {
+			settleOpenReasoning(session);
+			if (session.started && !session.settled && session.queueId)
+				detachedQueueIds.add(session.queueId);
+		}
+		requests.clear();
+		liveRequests.value.clear();
+		streamVersion++;
+	}
+
 	watch(
 		() => pushStore.isConnected,
 		(connected) => {
 			if (connected) refresh();
+			else detachRequests();
 		},
 	);
 	watch(visibility, (value) => {
 		if (value === 'visible') refresh();
 	});
 	watch(targetKey, () => {
+		detachRequests();
+		detachedQueueIds.clear();
+		admittedSessionId.value = undefined;
+		queueItems.value = [];
+		sendNowTarget.value = undefined;
+		sendNowUnavailableReason.value = undefined;
+		messages.value = [];
+		historyLoaded.value = false;
 		historyVersion++;
-		streamVersion++;
 		refresh();
 	});
-	// Clear retry timers and ignore late responses when this chat closes.
 	onScopeDispose(() => {
 		disposed = true;
+		detachRequests();
 		clearTimeout(retryTimer);
 	});
 
@@ -268,18 +388,16 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	}
 
 	// -------------------------------------------------------------------------
-	// SSE handler — typed AgentSseEvent dispatch
+	// Shared chat event handlers
 	// -------------------------------------------------------------------------
 
 	interface StreamSession {
-		/**
-		 * Set when the stream emitted an `error` event. Callers (notably
-		 * `resume`) inspect this so they can roll back optimistic UI state
-		 * that was applied before the round-trip.
-		 */
-		errorEmitted: boolean;
-		/** Set when the stream reaches a valid terminal event. */
-		terminalEventReceived: boolean;
+		target: string;
+		response?: Pick<ResumePayload, 'runId' | 'toolCallId'>;
+		queueId?: string;
+		executionId?: string;
+		started: boolean;
+		settled: boolean;
 		/**
 		 * Cursor pointing at the ChatMessage currently being filled by
 		 * text/reasoning/tool-input events. `start-step` / `finish-step`
@@ -306,6 +424,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			content: '',
 			toolCalls: [],
 			status: CHAT_MESSAGE_STATUS.STREAMING,
+			executionId: session.executionId,
 		});
 		messages.value.push(msg);
 		session.current = msg;
@@ -357,6 +476,9 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	}
 
 	function findOpenSuspension(): { runId: string; toolCallId: string } | undefined {
+		const pendingResponse = queueItems.value.find((item) => item.kind === 'hitl');
+		if (pendingResponse)
+			return { runId: pendingResponse.runId, toolCallId: pendingResponse.toolCallId };
 		// Prefer the current turn's card over one abandoned by an earlier turn.
 		const interactive =
 			findTailOpenInteractive(messages.value) ?? findOpenInteractive(messages.value);
@@ -417,6 +539,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	function dropOrphanMintedBubbles(session: StreamSession): void {
 		for (const msg of session.minted) {
 			if (
+				msg.role === 'assistant' &&
 				!msg.content &&
 				(msg.toolCalls?.length ?? 0) === 0 &&
 				getMessageThinkingSegments(msg).length === 0
@@ -447,49 +570,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		}
 	}
 
-	function markStreamInterrupted(session: StreamSession): void {
-		settleOpenReasoning(session);
-		dropOrphanMintedBubbles(session);
-		markInFlightStateFailed(session);
-		messages.value.push(
-			reactive<ChatMessage>({
-				id: crypto.randomUUID(),
-				role: 'assistant',
-				content: locale.baseText('agents.chat.streamInterrupted'),
-				toolCalls: [],
-				status: CHAT_MESSAGE_STATUS.ERROR,
-			}),
-		);
-	}
-
-	/**
-	 * Settle tool calls left `pending`/`running` after the stream ended (their
-	 * terminal events never arrived). Used by `stopGenerating` to recover the
-	 * desync where the chat is idle and responsive but tool steps keep pulsing.
-	 * Suspended tools are left untouched — they have a `runId` and are still
-	 * resolvable through the normal resume/cancel flow.
-	 */
-	function settleStaleInFlightToolCalls(): void {
-		for (const message of messages.value) {
-			let changed = false;
-			for (const toolCall of message.toolCalls ?? []) {
-				if (
-					toolCall.state === TOOL_CALL_STATE.PENDING ||
-					toolCall.state === TOOL_CALL_STATE.RUNNING
-				) {
-					toolCall.state = TOOL_CALL_STATE.CANCELLED;
-					toolCall.canceled = true;
-					changed = true;
-				}
-			}
-			if (changed) markMessageSuccessIfSettled(message);
-		}
-	}
-
-	function handleEvent(
-		event: AgentSseEvent,
-		session: StreamSession,
-	): { done?: boolean } | undefined {
+	function handleEvent(event: AgentSseEvent, session: StreamSession): void {
 		switch (event.type) {
 			case 'start-step':
 			case 'finish-step':
@@ -665,7 +746,6 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					upsertMessageInteractive(msg, interactive);
 					msg.status = CHAT_MESSAGE_STATUS.AWAITING_USER;
 				}
-				session.terminalEventReceived = true;
 				break;
 			}
 			case 'subagent-chunk': {
@@ -676,8 +756,34 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				break;
 			}
 			case 'message':
-				// Custom (sub-agent / app-defined) message envelope. Reserved
-				// for future use; nothing renders today.
+				if (event.message.role !== 'user') break;
+				settleOpenReasoning(session);
+				session.current = undefined;
+				const userMessage = reactive<ChatMessage>({
+					id: event.message.id ?? crypto.randomUUID(),
+					role: 'user',
+					content: event.message.content
+						.filter((part) => part.type === 'text')
+						.map((part) => part.text ?? '')
+						.join(''),
+					attachments: event.message.content.flatMap((part) =>
+						part.type === 'file' && part.fileId && part.fileName && part.mimeType
+							? [
+									{
+										fileId: part.fileId,
+										fileName: part.fileName,
+										mimeType: part.mimeType,
+										sizeBytes: part.sizeBytes,
+									},
+								]
+							: [],
+					),
+					status: CHAT_MESSAGE_STATUS.SUCCESS,
+					executionId: session.executionId,
+				});
+				messages.value.push(userMessage);
+				session.minted.add(userMessage);
+				if (event.message.id) removeQueueItem(event.message.id);
 				break;
 			case 'warning': {
 				// Non-fatal run warning (e.g. an MCP server was unavailable, so its
@@ -693,24 +799,23 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				break;
 			}
 			case 'error': {
-				session.errorEmitted = true;
 				settleOpenReasoning(session);
 				dropOrphanMintedBubbles(session);
 				markInFlightStateFailed(session);
 				if (event.errorCode === 'agent_misconfigured') {
 					fatalError.value = { message: event.message, missing: event.missing ?? [] };
 				} else {
-					messages.value.push(
-						reactive<ChatMessage>({
-							id: crypto.randomUUID(),
-							role: 'assistant',
-							content: event.message,
-							toolCalls: [],
-							status: CHAT_MESSAGE_STATUS.ERROR,
-						}),
-					);
+					const message = reactive<ChatMessage>({
+						id: crypto.randomUUID(),
+						role: 'assistant',
+						content: event.message,
+						toolCalls: [],
+						status: CHAT_MESSAGE_STATUS.ERROR,
+						executionId: session.executionId,
+					});
+					messages.value.push(message);
+					session.minted.add(message);
 				}
-				session.terminalEventReceived = true;
 				break;
 			}
 			case 'done':
@@ -720,46 +825,11 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 						msg.executionId = event.executionId;
 					}
 				}
-				session.terminalEventReceived = true;
-				return { done: true };
+				return;
 			default:
 				break;
 		}
 		return undefined;
-	}
-
-	async function consumeStream(response: Response, session: StreamSession): Promise<void> {
-		if (!response.body) return;
-		const reader = response.body.getReader();
-		const decoder = new TextDecoder();
-		let buffer = '';
-
-		try {
-			readerLoop: while (true) {
-				const { done, value } = await reader.read();
-				if (done) break;
-				buffer += decoder.decode(value, { stream: true });
-				const lines = buffer.split('\n');
-				buffer = lines.pop() ?? '';
-
-				for (const line of lines) {
-					if (!line.startsWith('data: ')) continue;
-					const raw = line.slice(6);
-					let event: AgentSseEvent;
-					try {
-						event = JSON.parse(raw) as AgentSseEvent;
-					} catch {
-						continue;
-					}
-					const result = handleEvent(event, session);
-					if (result?.done) {
-						break readerLoop;
-					}
-				}
-			}
-		} finally {
-			reader.releaseLock();
-		}
 	}
 
 	function finalizeStream(session: StreamSession): void {
@@ -779,266 +849,278 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		}
 	}
 
-	async function postAndConsume(
-		url: string,
-		body: Record<string, unknown>,
-	): Promise<{ outcome: 'completed' | 'failed' | 'aborted' }> {
+	const removeChatListener = pushStore.addEventListener((push) => {
+		if (push.type !== 'agentChatEvent' || disposed) return;
+		const data = push.data;
+		const session = requests.get(data.clientRequestId);
+		if (
+			!session ||
+			session.target !== targetKey() ||
+			data.projectId !== params.projectId.value ||
+			data.agentId !== params.agentId.value ||
+			(threadId.value && data.threadId !== threadId.value)
+		)
+			return;
+		admittedSessionId.value = data.threadId;
+		session.queueId = data.queueId;
+		const event = data.event;
+		if (event.type === 'processing') {
+			if (session.started) return;
+			session.started = true;
+			liveRequests.value.add(data.clientRequestId);
+			streamVersion++;
+			upsertQueueItem(event.item);
+			if (event.item.kind === 'message') {
+				const message = reactive<ChatMessage>({
+					id: crypto.randomUUID(),
+					role: 'user',
+					content: event.item.message,
+					status: CHAT_MESSAGE_STATUS.SUCCESS,
+					attachments: event.item.attachments.map(({ id, ...attachment }) => ({
+						...attachment,
+						fileId: id,
+					})),
+				});
+				messages.value.push(message);
+				session.minted.add(message);
+			}
+			return;
+		}
+		if (event.type === 'execution-started') {
+			session.executionId = event.executionId;
+			for (const message of session.minted) message.executionId = event.executionId;
+			return;
+		}
+		if (
+			!session.started &&
+			event.type !== 'done' &&
+			event.type !== 'removed' &&
+			event.type !== 'cancelled'
+		)
+			return;
+		if (event.type === 'cancelled') {
+			const affected = new Set(session.minted);
+			const response = session.response && findToolCallById(session.response.toolCallId);
+			if (response) affected.add(response.msg);
+			for (const message of affected) {
+				for (const toolCall of message.toolCalls ?? []) {
+					if (isToolCallInFlight(toolCall)) {
+						toolCall.state = TOOL_CALL_STATE.CANCELLED;
+						toolCall.canceled = true;
+						const interactive = getMessageInteractive(message, toolCall.toolCallId);
+						if (interactive && interactive.resolvedAt === undefined) {
+							upsertMessageInteractive(message, {
+								...interactive,
+								cancelled: true,
+								resolvedAt: Date.now(),
+							});
+						}
+					}
+				}
+				markMessageSuccessIfSettled(message);
+			}
+		} else if (event.type !== 'removed') handleEvent(event, session);
+		if (event.type === 'done' || event.type === 'removed' || event.type === 'cancelled') {
+			session.settled = true;
+			finalizeStream(session);
+			liveRequests.value.delete(data.clientRequestId);
+			requests.delete(data.clientRequestId);
+			removeQueueItem(data.queueId);
+			streamVersion++;
+			refresh();
+		}
+	});
+	onScopeDispose(removeChatListener);
+
+	async function admit(
+		post: (clientRequestId: string) => Promise<AgentChatAdmissionResponse>,
+		pendingResponse?: Pick<ResumePayload, 'runId' | 'toolCallId'>,
+	): Promise<boolean> {
+		const clientRequestId = crypto.randomUUID();
 		const session: StreamSession = {
-			errorEmitted: false,
-			terminalEventReceived: false,
+			target: targetKey(),
+			response: pendingResponse,
+			started: false,
+			settled: false,
 			minted: new Set(),
 			reasoningStartedAt: new Map(),
 			openReasoning: new Map(),
 		};
-
-		isStreaming.value = true;
-		streamVersion++;
-		const controller = new AbortController();
-		abortController.value = controller;
-		let settleStream: (() => void) | undefined;
-		const streamSettlement = new Promise<void>((resolve) => {
-			settleStream = resolve;
-		});
-		streamSettlements.set(controller, streamSettlement);
-		let transportFailed = false;
-
+		requests.set(clientRequestId, session);
 		try {
-			const browserId = localStorage.getItem('n8n-browserId') ?? '';
-			const response = await fetch(url, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json', 'browser-id': browserId },
-				credentials: 'include',
-				body: JSON.stringify(body),
-				signal: controller.signal,
-			});
-
-			if (!response.ok || !response.body) {
-				transportFailed = true;
-				const errorMsg: ChatMessage = {
-					id: crypto.randomUUID(),
-					role: 'assistant',
-					content: `Error: ${response.statusText || 'Failed to reach agent'}`,
-					status: 'error',
+			const response = await post(clientRequestId);
+			if (disposed || session.target !== targetKey()) return response.status === 'queued';
+			if (response.status === 'agent_misconfigured') {
+				requests.delete(clientRequestId);
+				fatalError.value = {
+					message: locale.baseText('agents.chat.send.error'),
+					missing: response.missing,
 				};
-				messages.value.push(errorMsg);
-				return { outcome: 'failed' };
+				return false;
 			}
-
-			await consumeStream(response, session);
-			if (!session.terminalEventReceived) {
-				transportFailed = true;
-				markStreamInterrupted(session);
-				return { outcome: 'failed' };
-			}
-			finalizeStream(session);
+			admittedSessionId.value = response.sessionId;
+			session.queueId = response.item.id;
+			// Push events can finish the request before its admission response arrives.
+			if (!session.started && !session.settled) upsertQueueItem(response.item);
+			refresh();
+			return true;
 		} catch (error) {
-			if (error instanceof DOMException && error.name === 'AbortError') {
-				dropOrphanMintedBubbles(session);
-				if (preserveTerminalStateOnAbort.has(controller) && session.terminalEventReceived) {
-					finalizeStream(session);
-				} else {
-					markInFlightStateFailed(session);
-				}
-				return { outcome: 'aborted' };
+			if (session.queueId) return true;
+			requests.delete(clientRequestId);
+			if (!disposed && session.target === targetKey()) {
+				showError(error, locale.baseText('agents.chat.send.error'));
+				refresh();
 			}
-			if (session.terminalEventReceived) {
-				finalizeStream(session);
-			} else {
-				transportFailed = true;
-				markStreamInterrupted(session);
-			}
-		} finally {
-			if (abortController.value === controller) {
-				abortController.value = null;
-				isStreaming.value = false;
-			}
-			preserveTerminalStateOnAbort.delete(controller);
-			streamSettlements.delete(controller);
-			settleStream?.();
-			streamVersion++;
-			if (refreshAfterStream && !isStreaming.value) {
-				refreshAfterStream = false;
-				refreshHistoryFromPush();
-			}
-		}
-
-		return {
-			outcome: !transportFailed && !session.errorEmitted ? 'completed' : 'failed',
-		};
-	}
-
-	async function streamChat(message: string, files?: File[]): Promise<void> {
-		const { baseUrl } = rootStore.restApiContext;
-		const url = `${baseUrl}/projects/${params.projectId.value}/agents/v2/${params.agentId.value}/chat`;
-		const body: Record<string, unknown> = { message };
-		if (params.continueSessionId?.value) {
-			body.sessionId = params.continueSessionId.value;
-		}
-		if (files?.length) {
-			body.attachments = await Promise.all(
-				files.map(async (file) => {
-					const encoded = await convertFileToBinaryData(file);
-					// Browsers report an empty type for unrecognized extensions; the
-					// backend requires a non-empty mime type and sniffs the real one.
-					return {
-						fileName: file.name,
-						mimeType: file.type || 'application/octet-stream',
-						data: encoded.data,
-					};
-				}),
-			);
-		}
-		await postAndConsume(url, body);
-	}
-
-	/**
-	 * Resume a suspended interaction via `chat/resume`, re-entering the same
-	 * SSE handler. The `runId` is required — it comes from the original
-	 * `tool-call-suspended` chunk (live) or from the `openSuspensions` sidecar
-	 * applied during history reload.
-	 *
-	 * The UI updates optimistically, then reconciles with persisted history if
-	 * the resume fails, falling back to the previous card state if history is unavailable.
-	 */
-	async function resume(payload: ResumePayload): Promise<void> {
-		if (isCancelling.value) return;
-
-		const isCancellation = 'cancelled' in payload;
-		const text = isCancellation ? payload.text.trim() : '';
-		if (isCancellation && !text) return;
-
-		const found = findToolCallById(payload.toolCallId);
-		const snapshot = found
-			? {
-					tc: found.tc,
-					prevState: found.tc.state,
-					prevOutput: found.tc.output,
-					prevCanceled: found.tc.canceled,
-					prevSummary: found.tc.displaySummary,
-					msg: found.msg,
-					prevStatus: found.msg.status,
-					prevInteractive: found.msg.interactive,
-					prevInteractives: found.msg.interactives ? [...found.msg.interactives] : undefined,
-				}
-			: null;
-		let optimisticUserMessageId: string | undefined;
-
-		if (found) {
-			if (isCancellation) {
-				found.tc.state = TOOL_CALL_STATE.CANCELLED;
-				found.tc.canceled = true;
-				const interactive = getMessageInteractive(found.msg, payload.toolCallId);
-				if (interactive) {
-					upsertMessageInteractive(found.msg, {
-						...interactive,
-						resolvedAt: Date.now(),
-						cancelled: true,
-					});
-				}
-			} else {
-				found.tc.state = TOOL_CALL_STATE.DONE;
-				found.tc.canceled = false;
-				found.tc.output = payload.resumeData;
-				found.tc.displaySummary = summariseToolCall(
-					found.tc.tool,
-					payload.resumeData,
-					found.tc.input,
-				);
-				const updated = rebuildInteractiveFromHistory(found.tc);
-				if (updated?.toolName === APPROVAL_TOOL_NAME) {
-					const approved = getApprovalDecision(payload.resumeData);
-					if (approved !== undefined) updated.resolvedValue = { approved };
-				}
-				if (updated) upsertMessageInteractive(found.msg, updated);
-			}
-			markMessageSuccessIfSettled(found.msg);
-		}
-
-		const resumeData: unknown = isCancellation
-			? ({
-					_type: 'agent.cancellation',
-					message: text,
-				} satisfies CancellationResumeData)
-			: payload.resumeData;
-
-		if (isCancellation) {
-			optimisticUserMessageId = crypto.randomUUID();
-			fatalError.value = null;
-			messages.value.push({
-				id: optimisticUserMessageId,
-				role: 'user',
-				content: text,
-				status: 'success',
-			});
-		}
-
-		const { baseUrl } = rootStore.restApiContext;
-		const url = `${baseUrl}/projects/${params.projectId.value}/agents/v2/${params.agentId.value}/chat/resume`;
-		const { outcome } = await postAndConsume(url, {
-			runId: payload.runId,
-			toolCallId: payload.toolCallId,
-			resumeData,
-		});
-		let reconciled = false;
-		if (outcome === 'failed') {
-			reconciled = await refreshHistory();
-		}
-		if (outcome === 'failed' && !reconciled && snapshot) {
-			snapshot.tc.state = snapshot.prevState;
-			snapshot.tc.output = snapshot.prevOutput;
-			snapshot.tc.canceled = snapshot.prevCanceled;
-			snapshot.tc.displaySummary = snapshot.prevSummary;
-			snapshot.msg.status = snapshot.prevStatus;
-			if (snapshot.prevInteractives) {
-				setMessageInteractives(snapshot.msg, snapshot.prevInteractives);
-			} else if (snapshot.prevInteractive) {
-				setMessageInteractives(snapshot.msg, [snapshot.prevInteractive]);
-			} else {
-				setMessageInteractives(snapshot.msg, []);
-			}
-		}
-		if (outcome === 'failed' && !reconciled && optimisticUserMessageId) {
-			messages.value = messages.value.filter((m) => m.id !== optimisticUserMessageId);
+			return false;
 		}
 	}
 
-	async function cancelAndSteer(text: string): Promise<void> {
-		// Steering answers the card the user is looking at — the one on the current
-		// turn, and never a waiting card, which only the workflow or a deliberate
-		// click may end. The chat input gates this too, but the rule belongs with
-		// the resume it would send.
-		const openInteractive = findTailSteerableInteractive(messages.value);
-		if (!openInteractive?.runId) return;
-
-		await resume({
-			runId: openInteractive.runId,
-			toolCallId: openInteractive.toolCallId,
-			cancelled: true,
-			text,
-		});
-	}
-
-	async function sendMessage(text: string, files?: File[]): Promise<void> {
-		const trimmed = text.trim();
-		if ((!trimmed && !files?.length) || isStreaming.value || isCancelling.value) return;
-		// Any new send invalidates a prior misconfig banner — the user is retrying.
+	async function sendMessage(text: string, files?: File[]): Promise<boolean> {
+		const message = text.trim();
+		if ((!message && !files?.length) || disposed) return false;
+		const target = targetKey();
 		fatalError.value = null;
 		warnings.value = [];
-		messages.value.push({
-			id: crypto.randomUUID(),
-			role: 'user',
-			content: trimmed,
-			status: 'success',
-			...(files?.length && {
-				attachments: files.map((file) => ({
-					fileName: file.name,
-					mimeType: file.type || 'application/octet-stream',
-					sizeBytes: file.size,
-					file,
-				})),
-			}),
-		});
-		await streamChat(trimmed, files);
+		try {
+			const attachments = files?.length
+				? await Promise.all(
+						files.map(async (file) => ({
+							fileName: file.name,
+							mimeType: file.type || 'application/octet-stream',
+							data: (await convertFileToBinaryData(file)).data,
+						})),
+					)
+				: undefined;
+			if (disposed || target !== targetKey()) return false;
+			return await admit(
+				async (clientRequestId) =>
+					await sendAgentChatMessage(
+						rootStore.restApiContext,
+						params.projectId.value,
+						params.agentId.value,
+						{ clientRequestId, message, sessionId: threadId.value, attachments },
+					),
+			);
+		} catch (error) {
+			showError(error, locale.baseText('agents.chat.send.error'));
+			return false;
+		}
+	}
+
+	async function resume(payload: ResumePayload): Promise<void> {
+		const found = findToolCallById(payload.toolCallId);
+		const interactive = found && getMessageInteractive(found.msg, payload.toolCallId);
+		if (interactive?.pendingResponse || interactive?.resolvedAt || isCancelling.value) return;
+		if (found && interactive)
+			upsertMessageInteractive(found.msg, { ...interactive, pendingResponse: true });
+		const target = targetKey();
+		const version = streamVersion;
+		const accepted = await admit(
+			async (clientRequestId) =>
+				await resumeAgentChat(
+					rootStore.restApiContext,
+					params.projectId.value,
+					params.agentId.value,
+					{ ...payload, clientRequestId },
+				),
+			payload,
+		);
+		if (disposed || target !== targetKey()) return;
+		if (!accepted) {
+			if (found && interactive) upsertMessageInteractive(found.msg, interactive);
+			await refreshQueue();
+			await refreshHistory();
+			return;
+		}
+		if (version === streamVersion && found && found.tc.state === TOOL_CALL_STATE.SUSPENDED) {
+			found.tc.state = TOOL_CALL_STATE.DONE;
+			found.tc.canceled = false;
+			found.tc.output = payload.resumeData;
+			found.tc.displaySummary = summariseToolCall(
+				found.tc.tool,
+				payload.resumeData,
+				found.tc.input,
+			);
+			const updated = rebuildInteractiveFromHistory(found.tc);
+			if (updated?.toolName === APPROVAL_TOOL_NAME) {
+				const approved = getApprovalDecision(payload.resumeData);
+				if (approved !== undefined) updated.resolvedValue = { approved };
+			}
+			if (updated) upsertMessageInteractive(found.msg, updated);
+			markMessageSuccessIfSettled(found.msg);
+		}
+	}
+
+	async function editQueuedMessage(queueId: string, message: string): Promise<void> {
+		if (!threadId.value) return;
+		const target = targetKey();
+		const version = queueVersion;
+		try {
+			const item = await editAgentChatQueueMessage(
+				rootStore.restApiContext,
+				params.projectId.value,
+				params.agentId.value,
+				threadId.value,
+				queueId,
+				message,
+			);
+			if (!disposed && target === targetKey() && version === queueVersion) upsertQueueItem(item);
+		} finally {
+			refresh();
+		}
+	}
+
+	async function removeQueuedMessage(queueId: string): Promise<void> {
+		if (!threadId.value) return;
+		const target = targetKey();
+		try {
+			await removeAgentChatQueueMessage(
+				rootStore.restApiContext,
+				params.projectId.value,
+				params.agentId.value,
+				threadId.value,
+				queueId,
+			);
+			if (!disposed && target === targetKey()) removeQueueItem(queueId);
+		} finally {
+			refresh();
+		}
+	}
+
+	async function sendQueuedMessageNow(queueId: string): Promise<void> {
+		const currentThread = threadId.value;
+		const steeringTarget = sendNowTarget.value;
+		if (!currentThread || !steeringTarget) return;
+		const target = targetKey();
+		try {
+			const item = await sendAgentChatQueueMessageNow(
+				rootStore.restApiContext,
+				params.projectId.value,
+				params.agentId.value,
+				currentThread,
+				queueId,
+				steeringTarget,
+			);
+			if (!disposed && target === targetKey()) upsertQueueItem(item);
+		} finally {
+			refresh();
+		}
+	}
+
+	async function requeueUndeliveredMessage(queueId: string): Promise<void> {
+		const currentThread = threadId.value;
+		if (!currentThread) return;
+		await admit(
+			async (clientRequestId) =>
+				await requeueAgentChatQueueMessage(
+					rootStore.restApiContext,
+					params.projectId.value,
+					params.agentId.value,
+					currentThread,
+					queueId,
+					{ clientRequestId },
+				),
+		);
 	}
 
 	function dismissFatalError(): void {
@@ -1055,58 +1137,42 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 
 	async function stopGenerating(): Promise<void> {
 		if (isCancelling.value) return;
-
-		const openSuspension = findOpenSuspension();
-		const activeController = abortController.value;
-		const activeStreamSettlement = activeController
-			? streamSettlements.get(activeController)
-			: undefined;
-		if (!openSuspension) {
-			activeController?.abort();
-			await activeStreamSettlement;
-			// Desync recovery: the stream already ended but tool calls are still
-			// pulsing because their terminal events never arrived. There is no
-			// backend run left to cancel — settle the stale state locally so
-			// the UI stops showing Stop and the shimmer clears.
-			if (!isStreaming.value) {
-				settleStaleInFlightToolCalls();
-			}
-			return;
-		}
-
-		isCancelling.value = true;
-		let preserveTerminalState = false;
+		const active = activeEntry.value;
+		const suspension = findOpenSuspension();
+		const currentThread = threadId.value;
+		if (!active && !suspension) return;
+		stopping.value = true;
 		try {
-			const { cancelled } = await cancelAgentChatRun(
-				rootStore.restApiContext,
-				params.projectId.value,
-				params.agentId.value,
-				openSuspension.runId,
-			);
-			if (cancelled) {
-				markRunCancelled(openSuspension.runId);
-				preserveTerminalState = true;
-				return;
+			if (active && currentThread) {
+				await stopAgentChatQueueEntry(
+					rootStore.restApiContext,
+					params.projectId.value,
+					params.agentId.value,
+					currentThread,
+					active.id,
+				);
+			} else if (suspension) {
+				const { cancelled } = await cancelAgentChatRun(
+					rootStore.restApiContext,
+					params.projectId.value,
+					params.agentId.value,
+					suspension.runId,
+				);
+				if (cancelled) markRunCancelled(suspension.runId);
 			}
-
-			const reconciled = await refreshHistory();
-			preserveTerminalState = !reconciled;
 		} catch (error) {
-			const reconciled = await refreshHistory();
-			preserveTerminalState = !reconciled;
-			showError(error, locale.baseText('agents.chat.stop.error'));
+			if (!isRecord(error) || error.httpStatusCode !== 404)
+				showError(error, locale.baseText('agents.chat.stop.error'));
 		} finally {
-			if (activeController && preserveTerminalState) {
-				preserveTerminalStateOnAbort.add(activeController);
-			}
-			activeController?.abort();
-			await activeStreamSettlement;
-			isCancelling.value = false;
+			await refreshQueue();
+			stopping.value = false;
+			refresh();
 		}
 	}
 
 	return {
 		messages,
+		hasPendingResponse,
 		isStreaming,
 		isCancelling,
 		messagingState,
@@ -1118,7 +1184,13 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		sendMessage,
 		stopGenerating,
 		resume,
-		cancelAndSteer,
+		queuedMessages,
+		sendNowTarget,
+		sendNowUnavailableReason,
+		sendQueuedMessageNow,
+		requeueUndeliveredMessage,
+		editQueuedMessage,
+		removeQueuedMessage,
 		dismissFatalError,
 		dismissWarning,
 	};

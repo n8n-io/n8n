@@ -78,6 +78,10 @@ export class StreamSink implements RunOutputSink<void> {
 		this.rawUsageReader = undefined;
 	}
 
+	async emitMessage(message: AgentMessage): Promise<void> {
+		await this.guard.write({ type: 'message', message });
+	}
+
 	/**
 	 * The just-returned turn's messages are now in the list, so the retained streamed
 	 * text is redundant — drop it. Deferred until here (not `reportUsage`) so a stop

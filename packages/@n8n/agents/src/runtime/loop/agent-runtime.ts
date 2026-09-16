@@ -805,6 +805,43 @@ export class AgentRuntime {
 		const maxIterations = options?.maxIterations ?? MAX_LOOP_ITERATIONS;
 		let iterationCount = options?.iterationCount ?? 0;
 		let reachedStopCondition = false;
+		const applyInputBoundary = async (
+			reason: 'before-model' | 'before-finish',
+			canContinue: boolean,
+			nextIteration: number,
+		): Promise<boolean> => {
+			if (!options?.onInputBoundary) return false;
+			const addedMessages: AgentMessage[] = [];
+			await options.onInputBoundary({
+				runId: this.runId,
+				reason,
+				canContinue,
+				addInput: async (messages) => {
+					if (!canContinue) throw new Error('The agent run cannot accept more input');
+					const knownIds = new Set(list.messages().map(({ id }) => id));
+					const fresh = messages.filter(
+						(message) => !('id' in message) || !message.id || !knownIds.has(message.id),
+					);
+					if (fresh.length === 0) return;
+					list.addInput(fresh);
+					const freshIds = new Set(
+						fresh.flatMap((message) =>
+							'id' in message && typeof message.id === 'string' ? [message.id] : [],
+						),
+					);
+					const added = list
+						.messages()
+						.filter((message) => freshIds.has(message.id) || !knownIds.has(message.id));
+					await hydrateFileParts(added, this.config.fileStore, {
+						threadId: options.persistence?.threadId,
+					});
+					await this.persistStepCheckpoint(list, totalUsage, options, maxIterations, nextIteration);
+					addedMessages.push(...added);
+				},
+			});
+			for (const message of addedMessages) await sink.emitMessage?.(message);
+			return addedMessages.length > 0;
+		};
 
 		const buildToolBatchContext = (toolMap: Map<string, BuiltTool>): ToolBatchContext => ({
 			toolMap,
@@ -886,6 +923,7 @@ export class AgentRuntime {
 
 		for (; iterationCount < maxIterations; iterationCount++) {
 			this.assertNotAborted(abortScope);
+			await applyInputBoundary('before-model', true, iterationCount);
 
 			this.eventBus.emit({ type: AgentEvent.TurnStart });
 
@@ -902,45 +940,43 @@ export class AgentRuntime {
 				options?.executionCounter,
 				list,
 			);
-			const hostVolatileInstructions = await this.resolveVolatileInstructions(options?.persistence);
-			const combinedVolatileInstructions = [volatileInstructions, hostVolatileInstructions]
-				.map((value) => value?.trim())
-				.filter((value): value is string => Boolean(value))
-				.join('\n\n');
-			const { system, messages } = list.forLlm(
-				// Skill content changes only on activation. Keep it cached when memory compacts.
-				[effectiveInstructions, this.activeSkills?.instructions()]
-					.filter(Boolean)
-					.join('\n\n'),
-				instructionProviderOptions,
-				combinedVolatileInstructions || undefined,
-				supportsSplitSystemMessages(this.config.model),
-			);
-			// Runtime breakpoints (conversation history, static tools) are per-call
-			// only — never persisted back to the message list or tool set.
-			const cached = applyRuntimeCacheBreakpoints({
-				system,
-				messages: this.activeSkills?.modelMessages(messages, list) ?? messages,
-				aiTools,
-				promptCaching: this.config.promptCaching,
-				modelId: this.modelIdString,
-				staticToolCacheName,
-			});
-
-			const modelCallContext = {
-				model: staticLoopContext.model,
-				system,
-				messages: cached.messages,
-				abortSignal: abortScope.signal,
-				hasTools,
-				aiTools: cached.aiTools,
-				reasoning: staticLoopContext.reasoning,
-				providerOptions: staticLoopContext.providerOptions,
-				outputSpec: staticLoopContext.outputSpec,
-				maxOutputTokens: staticLoopContext.maxOutputTokens,
-				aiSdkOptions: this.buildAiSdkOptions(toolMap, options),
+			const buildModelCallContext = async () => {
+				const hostVolatileInstructions = await this.resolveVolatileInstructions(
+					options?.persistence,
+				);
+				const combinedVolatileInstructions = [volatileInstructions, hostVolatileInstructions]
+					.map((value) => value?.trim())
+					.filter((value): value is string => Boolean(value))
+					.join('\n\n');
+				const { system, messages } = list.forLlm(
+					[effectiveInstructions, this.activeSkills?.instructions()].filter(Boolean).join('\n\n'),
+					instructionProviderOptions,
+					combinedVolatileInstructions || undefined,
+					supportsSplitSystemMessages(this.config.model),
+				);
+				const cached = applyRuntimeCacheBreakpoints({
+					system,
+					messages: this.activeSkills?.modelMessages(messages, list) ?? messages,
+					aiTools,
+					promptCaching: this.config.promptCaching,
+					modelId: this.modelIdString,
+					staticToolCacheName,
+				});
+				return {
+					model: staticLoopContext.model,
+					system,
+					messages: cached.messages,
+					abortSignal: abortScope.signal,
+					hasTools,
+					aiTools: cached.aiTools,
+					reasoning: staticLoopContext.reasoning,
+					providerOptions: staticLoopContext.providerOptions,
+					outputSpec: staticLoopContext.outputSpec,
+					maxOutputTokens: staticLoopContext.maxOutputTokens,
+					aiSdkOptions: this.buildAiSdkOptions(toolMap, options),
+				};
 			};
-			let turn = await sink.callModel(modelCallContext);
+			let turn = await sink.callModel(await buildModelCallContext());
 
 			// Some providers occasionally return a `stop` turn with no output at
 			// all mid-task, which would silently end the run with work half-done.
@@ -957,7 +993,8 @@ export class AgentRuntime {
 				// and the retry still bills those tokens via getTerminalFinish().
 				sink.reportUsage(totalUsage);
 				this.assertNotAborted(abortScope);
-				turn = await sink.callModel(modelCallContext);
+				await applyInputBoundary('before-model', true, iterationCount);
+				turn = await sink.callModel(await buildModelCallContext());
 			}
 
 			// Fold the just-finished turn's usage in before the abort check so a
@@ -979,8 +1016,17 @@ export class AgentRuntime {
 				// surfaces as an output-less turn instead of an SDK error — throw so
 				// the failure reaches the caller rather than ending the run silently.
 				if (turn.errorReason) throw new Error(turn.errorReason.message);
-				structuredOutput = turn.structuredOutput;
 				this.emitTurnEnd(turn.newMessages, extractSettledToolCalls(turn.newMessages));
+				if (
+					await applyInputBoundary(
+						'before-finish',
+						iterationCount + 1 < maxIterations,
+						iterationCount + 1,
+					)
+				) {
+					continue;
+				}
+				structuredOutput = turn.structuredOutput;
 				reachedStopCondition = true;
 				break;
 			}
@@ -1014,6 +1060,7 @@ export class AgentRuntime {
 
 		if (!reachedStopCondition && iterationCount >= maxIterations) {
 			lastFinishReason = 'max-iterations';
+			await applyInputBoundary('before-finish', false, iterationCount);
 		}
 
 		return await sink.finishComplete({

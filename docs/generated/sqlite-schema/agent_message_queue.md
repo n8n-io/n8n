@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "agent_message_queue" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "agentId" varchar(36) NOT NULL, "threadId" varchar(128) NOT NULL, "source" varchar(16) NOT NULL, "kind" varchar(16) NOT NULL, "status" varchar(16) NOT NULL, "payload" text NOT NULL, "executionId" varchar(36), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_agent_message_queue_source" CHECK ("source" IN ('preview', 'integration')), CONSTRAINT "CHK_agent_message_queue_kind" CHECK ("kind" IN ('message', 'hitl')), CONSTRAINT "CHK_agent_message_queue_status" CHECK ("status" IN ('queued', 'processing', 'cancelling')), CONSTRAINT "FK_8a5699c954416a2172688ff39fa" FOREIGN KEY ("agentId") REFERENCES "agents" ("id") ON DELETE CASCADE, CONSTRAINT "FK_2349d84b4f2a660fc264f38fef3" FOREIGN KEY ("executionId") REFERENCES "agent_execution" ("id") ON DELETE SET NULL)
+CREATE TABLE "agent_message_queue" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "agentId" varchar(36) NOT NULL, "threadId" varchar(128) NOT NULL, "source" varchar(16) NOT NULL, "kind" varchar(16) NOT NULL, "status" varchar(16) NOT NULL, "payload" text NOT NULL, "executionId" varchar(36), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "steeringRunId" varchar(255), "steeringOrder" integer, CONSTRAINT "CHK_agent_message_queue_source" CHECK (("source" IN ('preview', 'integration'))), CONSTRAINT "CHK_agent_message_queue_kind" CHECK (("kind" IN ('message', 'hitl'))), CONSTRAINT "CHK_agent_message_queue_status" CHECK ("status" IN ('queued', 'processing', 'cancelling', 'steering', 'delivered', 'undelivered')), CONSTRAINT "FK_2349d84b4f2a660fc264f38fef3" FOREIGN KEY ("executionId") REFERENCES "agent_execution" ("id") ON DELETE SET NULL ON UPDATE NO ACTION, CONSTRAINT "FK_8a5699c954416a2172688ff39fa" FOREIGN KEY ("agentId") REFERENCES "agents" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)
 ```
 
 </details>
@@ -23,6 +23,8 @@ CREATE TABLE "agent_message_queue" ("id" integer PRIMARY KEY AUTOINCREMENT NOT N
 | payload | TEXT |  | false |  |  |  |
 | source | varchar(16) |  | false |  |  |  |
 | status | varchar(16) |  | false |  |  |  |
+| steeringOrder | INTEGER |  | true |  |  |  |
+| steeringRunId | varchar(255) |  | true |  |  |  |
 | threadId | varchar(128) |  | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 
@@ -30,11 +32,11 @@ CREATE TABLE "agent_message_queue" ("id" integer PRIMARY KEY AUTOINCREMENT NOT N
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| - | CHECK | CHECK ("source" IN ('preview', 'integration')) |
-| - | CHECK | CHECK ("kind" IN ('message', 'hitl')) |
-| - | CHECK | CHECK ("status" IN ('queued', 'processing', 'cancelling')) |
-| - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (executionId) REFERENCES agent_execution (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE |
-| - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| - | CHECK | CHECK (("source" IN ('preview', 'integration'))) |
+| - | CHECK | CHECK (("kind" IN ('message', 'hitl'))) |
+| - | CHECK | CHECK ("status" IN ('queued', 'processing', 'cancelling', 'steering', 'delivered', 'undelivered')) |
+| - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (executionId) REFERENCES agent_execution (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE |
 | id | PRIMARY KEY | PRIMARY KEY (id) |
 
 ## Indexes
@@ -45,6 +47,7 @@ CREATE TABLE "agent_message_queue" ("id" integer PRIMARY KEY AUTOINCREMENT NOT N
 | IDX_2349d84b4f2a660fc264f38fef | CREATE INDEX "IDX_2349d84b4f2a660fc264f38fef" ON "agent_message_queue" ("executionId")  |
 | IDX_832d536d7954194b88e0edb5bd | CREATE INDEX "IDX_832d536d7954194b88e0edb5bd" ON "agent_message_queue" ("status", "updatedAt")  |
 | IDX_8a5699c954416a2172688ff39f | CREATE INDEX "IDX_8a5699c954416a2172688ff39f" ON "agent_message_queue" ("agentId")  |
+| IDX_agent_message_queue_threadId_steeringOrder | CREATE UNIQUE INDEX "IDX_agent_message_queue_threadId_steeringOrder" ON "agent_message_queue" ("threadId", "steeringOrder") WHERE "steeringOrder" IS NOT NULL |
 
 ## Relations
 
@@ -63,6 +66,8 @@ erDiagram
   TEXT payload
   varchar_16_ source
   varchar_16_ status
+  INTEGER steeringOrder
+  varchar_255_ steeringRunId
   varchar_128_ threadId
   datetime_3_ updatedAt
 }
@@ -83,6 +88,7 @@ erDiagram
   varchar_36_ versionId
 }
 "agent_execution" {
+  INTEGER acceptsSteering
   TEXT attachments
   TEXT author
   INTEGER completionTokens
@@ -95,6 +101,7 @@ erDiagram
   varchar_36_ id PK
   varchar_255_ model
   INTEGER promptTokens
+  varchar_255_ runtimeRunId
   varchar_32_ source
   datetime_3_ startedAt
   varchar_16_ status

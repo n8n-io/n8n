@@ -129,6 +129,8 @@ export class AgentExecutionService {
 			this.agentExecutionRepository.create({
 				threadId: params.threadId,
 				status: 'running',
+				runtimeRunId: null,
+				acceptsSteering: false,
 				startedAt,
 				stoppedAt: null,
 				duration: 0,

@@ -344,6 +344,18 @@ function buildEventRun(event: TimelineEvent, execution: AgentExecution, path: st
 				metadata: {},
 				children: [],
 			};
+		case 'user-input':
+			return {
+				path,
+				name: 'User correction',
+				runType: 'chain',
+				startTime: event.timestamp,
+				endTime: event.timestamp,
+				inputs: { content: event.content },
+				outputs: {},
+				metadata: { messageId: event.id },
+				children: [],
+			};
 		case 'suspension':
 			return {
 				path,

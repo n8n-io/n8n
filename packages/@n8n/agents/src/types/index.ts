@@ -48,6 +48,7 @@ export type {
 	ExecutionOptions,
 	SmoothStreamOptions,
 	AgentExecutionCounter,
+	AgentInputBoundary,
 	PersistedExecutionOptions,
 	ResumeOptions,
 	GenerateResult,

@@ -10,9 +10,10 @@ import { isTerminalExecutionStatus } from 'n8n-workflow';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import { AgentExecutionUpdateBroadcaster } from './agent-execution-update-broadcaster';
-import { AgentTestRunService } from './agent-test-run.service';
+import { AgentTestRunService, type AgentTestRunResult } from './agent-test-run.service';
 import { AgentMessageQueueService } from './agent-message-queue.service';
 import { agentConversationLockKey } from './agent-message-queue.types';
+import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
 import {
 	AgentBackgroundJobService,
 	collectResultData,
@@ -257,18 +258,51 @@ export class AgentWorkflowToolResumeService {
 			return;
 		}
 
-		const result = await this.agentTestRunService.resumeDraftRun({
-			abortSignal,
-			agentId: agentRun.agentId,
-			projectId: agentRun.projectId,
-			sessionId: agentRun.threadId,
-			runId: agentRun.runId,
-			toolCallId: agentRun.toolCallId,
-			resumeData,
-			user,
-			previewChat: agentRun.previewChat,
-			response: '',
-		});
+		let executionId: string | undefined;
+		let runtimeRunId: string | undefined;
+		let failed = true;
+		let result: AgentTestRunResult;
+		try {
+			result = await this.agentTestRunService.resumeDraftRun({
+				abortSignal,
+				agentId: agentRun.agentId,
+				projectId: agentRun.projectId,
+				sessionId: agentRun.threadId,
+				runId: agentRun.runId,
+				toolCallId: agentRun.toolCallId,
+				resumeData,
+				user,
+				previewChat: agentRun.previewChat,
+				response: '',
+				onExecutionStarted: async (id, runId) => {
+					executionId = id;
+					runtimeRunId = runId;
+					await this.messageQueue.openSteeringExecution(id, runId);
+				},
+				onInputBoundary: async (boundary) =>
+					await this.messageQueue.acceptSteeringInput(
+						{
+							agentId: agentRun.agentId,
+							projectId: agentRun.projectId,
+							threadId: agentRun.threadId,
+							userId: user.id,
+							resourceId: draftChatMemoryResourceId(user.id),
+						},
+						executionId,
+						boundary,
+					),
+			});
+			failed = false;
+		} finally {
+			if (executionId && runtimeRunId) {
+				await this.messageQueue.closeSteeringExecution(
+					executionId,
+					runtimeRunId,
+					agentRun.threadId,
+					failed ? 'The agent run failed' : undefined,
+				);
+			}
+		}
 
 		// `suspended` is chained HITL — recorded either way; anything else never ran.
 		if (result.status !== 'completed' && result.status !== 'suspended') {

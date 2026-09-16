@@ -218,6 +218,7 @@ export const agentChatAttachmentSchema = z.object({
 export type AgentChatAttachmentPayload = z.infer<typeof agentChatAttachmentSchema>;
 
 const agentChatMessageShape = {
+	clientRequestId: z.string().uuid(),
 	// `message` may be empty when at least one attachment is present
 	// (attachment-only sends) — see the schema-level refinement below.
 	message: z.string(),
@@ -256,6 +257,7 @@ export class AgentChatMessageDto extends Z.class(agentChatMessageShape) {
 }
 
 export class AgentChatResumeDto extends Z.class({
+	clientRequestId: z.string().uuid(),
 	runId: z.string().min(1),
 	toolCallId: z.string().min(1),
 	// Deliberately untyped at this boundary: the possible resume shapes overlap
@@ -265,6 +267,32 @@ export class AgentChatResumeDto extends Z.class({
 	// know about). Each interactive tool validates its own resume payload via
 	// `.resume(schema)`.
 	resumeData: z.unknown(),
+}) {}
+
+export class AgentChatQueueEditDto extends Z.class({ message: z.string() }) {}
+
+const agentChatQueueSendNowTargetSchema = z.discriminatedUnion('mode', [
+	z
+		.object({
+			mode: z.literal('active'),
+			executionId: z.string().uuid(),
+			runId: z.string().min(1),
+		})
+		.strict(),
+	z
+		.object({
+			mode: z.literal('new-parent-turn'),
+			previousExecutionId: z.string().uuid(),
+		})
+		.strict(),
+]);
+
+export class AgentChatQueueSendNowDto extends Z.class({
+	target: agentChatQueueSendNowTargetSchema,
+}) {}
+
+export class AgentChatQueueRequeueDto extends Z.class({
+	clientRequestId: z.string().uuid(),
 }) {}
 
 /**

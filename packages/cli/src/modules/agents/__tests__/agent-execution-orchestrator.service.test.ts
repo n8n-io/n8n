@@ -567,7 +567,7 @@ describe('AgentExecutionOrchestratorService', () => {
 
 		expect(executionService.finalizeExecution).toHaveBeenCalled();
 		expect(onExecutionRecorded).toHaveBeenCalledWith('execution-1');
-		expect(onExecutionStarted).toHaveBeenCalledWith('execution-1');
+		expect(onExecutionStarted).toHaveBeenCalledWith('execution-1', 'runtime-run-1');
 		expect(onExecutionStarted.mock.invocationCallOrder[0]).toBeLessThan(
 			executionService.finalizeExecution.mock.invocationCallOrder[0],
 		);

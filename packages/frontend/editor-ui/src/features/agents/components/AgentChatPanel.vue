@@ -20,8 +20,6 @@ import {
 import { useDocumentVisibility, useIntervalFn } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 import {
-	APPROVAL_TOOL_NAME,
-	WAIT_TOOL_NAME,
 	MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES,
 	MAX_AGENT_CHAT_ATTACHMENT_SIZE_MB,
 	MAX_AGENT_CHAT_ATTACHMENTS_PER_MESSAGE,
@@ -33,6 +31,7 @@ import AttachmentPreview from '@/features/ai/instanceAi/components/AttachmentPre
 import { useAgentChatStream } from '../composables/useAgentChatStream';
 import { findTailOpenInteractive } from '@/features/ai/shared/agentsChat/messageMappers';
 import AgentChatEmptyState from './AgentChatEmptyState.vue';
+import AgentChatQueue from './AgentChatQueue.vue';
 import AgentChatMessageList from './AgentChatMessageList.vue';
 import type {
 	AgentContinueLoadedEvent,
@@ -99,16 +98,28 @@ const {
 	sendMessage,
 	stopGenerating,
 	resume,
-	cancelAndSteer,
+	hasPendingResponse,
+	queuedMessages,
+	sendNowTarget,
+	sendNowUnavailableReason,
+	sendQueuedMessageNow,
+	requeueUndeliveredMessage,
+	editQueuedMessage,
+	removeQueuedMessage,
 	dismissFatalError,
 	dismissWarning,
 } = useAgentChatStream({
 	projectId: toRef(props, 'projectId'),
 	agentId: toRef(props, 'agentId'),
 	continueSessionId: toRef(props, 'continueSessionId'),
-	onHistoryLoaded: (count) => {
+	onHistoryLoaded: (count, hasQueueEntries, queueLoadSucceeded) => {
 		if (props.continueSessionId) {
-			emit('continue-loaded', { sessionId: props.continueSessionId, count });
+			emit('continue-loaded', {
+				sessionId: props.continueSessionId,
+				count,
+				hasQueueEntries,
+				queueLoadSucceeded,
+			});
 		}
 	},
 });
@@ -357,73 +368,20 @@ const missingFields = computed(() => {
 	return fatalError.value.missing.map(humaniseMissingField).join(', ');
 });
 
-/**
- * Only the last turn can hold the input. A parked run is always the tail of the
- * transcript, so anything after it — a resumed answer, a later turn — means that
- * suspension is history. Reading the tail rather than the first open card
- * anywhere keeps one abandoned card from wedging the chat for good, and keeps it
- * from hiding a real question on the current turn.
- */
-const openInteractive = computed(() => findTailOpenInteractive(messages.value));
-const hasOpenInteraction = computed(() => openInteractive.value !== undefined);
-const hasOpenApproval = computed(() => openInteractive.value?.toolName === APPROVAL_TOOL_NAME);
-// A waiting card is an interactive the user can act on, but never a question:
-// its resume arrives from the workflow, so typing must not cancel and steer it.
-const hasOpenWaitCard = computed(() => openInteractive.value?.toolName === WAIT_TOOL_NAME);
-const hasOpenInteractiveQuestion = computed(
-	() => hasOpenInteraction.value && !hasOpenApproval.value && !hasOpenWaitCard.value,
-);
-const hasOpenSuspension = computed(
-	() =>
-		messages.value[messages.value.length - 1]?.toolCalls?.some(
-			(toolCall) => toolCall.state === TOOL_CALL_STATE.SUSPENDED && toolCall.runId,
-		) ?? false,
-);
-/**
- * A parked run owns the conversation: sending now would start a second run
- * whose context has the pending tool call stripped out, so the model would
- * re-invoke the same tool. Only an open question is exempt — answering or
- * steering it resumes the same run. Stop stays available either way.
- */
-const inputBlockedBySuspension = computed(
-	() =>
-		hasOpenApproval.value ||
-		hasOpenWaitCard.value ||
-		(hasOpenSuspension.value && !hasOpenInteractiveQuestion.value),
-);
-// Tools still pending/running after the stream ended (desync): the backend
-// finished but their terminal events never arrived. Surfacing Stop here lets
-// the user clear the stale pulsing state without reloading the chat.
-const hasInFlightToolCalls = computed(() =>
-	messages.value.some((message) =>
-		message.toolCalls?.some(
-			(toolCall) =>
-				toolCall.state === TOOL_CALL_STATE.PENDING || toolCall.state === TOOL_CALL_STATE.RUNNING,
-		),
-	),
-);
-const showSuspensionStopAlongsideSend = computed(
-	() => hasOpenInteractiveQuestion.value && !isStreaming.value && !isCancelling.value,
-);
-const showStopAsPrimaryAction = computed(
+const showStop = computed(
 	() =>
 		isStreaming.value ||
 		isCancelling.value ||
-		inputBlockedBySuspension.value ||
-		(!isStreaming.value && hasInFlightToolCalls.value),
+		hasPendingResponse.value ||
+		findTailOpenInteractive(messages.value) !== undefined ||
+		messages.value.some((message) =>
+			message.toolCalls?.some(
+				(toolCall) => toolCall.state === TOOL_CALL_STATE.SUSPENDED && toolCall.runId,
+			),
+		),
 );
 
 const chatPlaceholder = computed(() => {
-	if (hasOpenApproval.value) {
-		return locale.baseText('agents.chat.approval.inputPlaceholder');
-	}
-	if (inputBlockedBySuspension.value) {
-		return locale.baseText('agents.chat.waiting.inputPlaceholder');
-	}
-	if (hasOpenInteractiveQuestion.value) {
-		return locale.baseText('agents.chat.answerQuestionPlaceholder');
-	}
-
 	const agentName = props.agentConfig?.name?.trim();
 	return agentName
 		? locale.baseText('agents.chat.input.placeholder.withAgent', {
@@ -442,23 +400,9 @@ watch(
 
 async function onSubmit() {
 	const text = inputText.value.trim();
-	const files = attachedFiles.value;
-	if (
-		(!text && files.length === 0) ||
-		isStreaming.value ||
-		isCancelling.value ||
-		isPreparingToSend.value ||
-		inputBlockedBySuspension.value
-	) {
-		return;
-	}
-
-	if (hasOpenInteractiveQuestion.value) {
-		if (!text) return;
-		inputText.value = '';
-		await cancelAndSteer(text);
-		return;
-	}
+	const files = [...attachedFiles.value];
+	if ((!text && files.length === 0) || isPreparingToSend.value) return;
+	const draft = inputText.value;
 
 	isPreparingToSend.value = true;
 	try {
@@ -484,29 +428,21 @@ async function onSubmit() {
 			props.connectedTriggers,
 		);
 		if (!isCurrentTarget()) return;
-		// Keep the draft if a local resume or cancellation started during preparation.
-		if (isStreaming.value || isCancelling.value) return;
-
-		inputText.value = '';
-		attachedFiles.value = [];
 		agentTelemetry.trackSubmittedMessage({
 			agentId: props.agentId,
 			status: props.agentStatus,
 			agentConfig: fingerprint,
 		});
-
-		if (files.length > 0) {
-			await sendMessage(text, files);
-		} else {
-			await sendMessage(text);
-		}
+		const accepted = files.length > 0 ? await sendMessage(text, files) : await sendMessage(text);
+		if (!accepted || !isCurrentTarget()) return;
+		if (inputText.value === draft) inputText.value = '';
+		attachedFiles.value = attachedFiles.value.filter((file) => !files.includes(file));
 	} finally {
 		isPreparingToSend.value = false;
 	}
 }
 
 function sendMessageFromOutside(message: string) {
-	if (inputBlockedBySuspension.value) return;
 	inputText.value = message;
 	void onSubmit();
 }
@@ -529,7 +465,6 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
 	disposed = true;
-	if (isStreaming.value) void stopGenerating();
 });
 </script>
 
@@ -605,30 +540,20 @@ onBeforeUnmount(() => {
 				ref="chatInput"
 				v-model="inputText"
 				:placeholder="chatPlaceholder"
-				:is-streaming="showStopAsPrimaryAction"
+				:is-streaming="false"
 				show-voice
 				:show-attach="showAttach"
 				:accepted-mime-types="acceptedMimeTypes"
 				:can-submit="
-					!inputBlockedBySuspension &&
-					!isStreaming &&
-					!isCancelling &&
-					!isPreparingToSend &&
-					(inputText.trim().length > 0 || attachedFiles.length > 0)
-				"
-				:disabled="
-					inputBlockedBySuspension ||
-					isCancelling ||
-					isPreparingToSend ||
-					(isStreaming && messagingState !== 'receiving')
+					!isPreparingToSend && (inputText.trim().length > 0 || attachedFiles.length > 0)
 				"
 				data-testid="chat-input"
 				@submit="onSubmit"
-				@stop="stopGenerating"
 				@files-selected="handleFilesSelected"
 			>
-				<template v-if="showBackgroundJobs" #header>
+				<template #header>
 					<div
+						v-if="showBackgroundJobs"
 						ref="backgroundJobCard"
 						:class="$style.backgroundJobs"
 						data-testid="agent-background-jobs"
@@ -695,6 +620,17 @@ onBeforeUnmount(() => {
 							</div>
 						</N8nAiActivityStepGroup>
 					</div>
+					<AgentChatQueue
+						:key="continueSessionId"
+						:messages="queuedMessages"
+						:send-now="sendQueuedMessageNow"
+						:send-again="requeueUndeliveredMessage"
+						:can-send-now="!!sendNowTarget"
+						:starts-new-turn="sendNowTarget?.mode === 'new-parent-turn'"
+						:send-now-unavailable-reason="sendNowUnavailableReason"
+						:save-message="editQueuedMessage"
+						:remove-message="removeQueuedMessage"
+					/>
 				</template>
 				<template v-if="attachedFiles.length > 0" #attachments>
 					<div :class="$style.attachmentsStrip">
@@ -710,9 +646,9 @@ onBeforeUnmount(() => {
 				<template #footer-start>
 					<slot name="footer-start" />
 					<N8nSendStopButton
-						v-if="showSuspensionStopAlongsideSend"
+						v-if="showStop"
 						streaming
-						stop-button-test-id="agent-chat-suspended-stop-button"
+						stop-button-test-id="agent-chat-stop-button"
 						@stop="stopGenerating"
 					/>
 				</template>

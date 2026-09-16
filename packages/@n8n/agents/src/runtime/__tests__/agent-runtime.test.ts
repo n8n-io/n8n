@@ -787,6 +787,98 @@ describe('AgentRuntime — empty stop turn retry', () => {
 	});
 });
 
+describe('AgentRuntime — steering input', () => {
+	beforeEach(() => {
+		streamText.mockReset();
+	});
+
+	it('checkpoints and adds input before a terminal response ends the run', async () => {
+		streamText
+			.mockReturnValueOnce(makeStreamSuccess('First answer'))
+			.mockReturnValueOnce(makeStreamSuccess('Revised answer'));
+		const checkpointStore: CheckpointStore = {
+			save: vi.fn().mockResolvedValue(undefined),
+			load: vi.fn().mockResolvedValue(undefined),
+			delete: vi.fn().mockResolvedValue(undefined),
+		};
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			checkpointStorage: checkpointStore,
+		});
+		let correctionAdded = false;
+
+		const result = await runtime.stream('Initial request', {
+			onInputBoundary: async ({ reason, addInput }) => {
+				if (reason !== 'before-finish' || correctionAdded) return false;
+				correctionAdded = true;
+				await addInput([
+					{
+						id: 'queued-message-3',
+						role: 'user',
+						content: [{ type: 'text', text: 'Use the correction' }],
+					},
+				]);
+				return true;
+			},
+		});
+		const chunks = await collectChunks(result.stream);
+
+		expect(streamText).toHaveBeenCalledTimes(2);
+		expect(JSON.stringify(streamText.mock.calls[1]?.[0].messages)).toContain('Use the correction');
+		expect(chunks).toContainEqual(
+			expect.objectContaining({
+				type: 'message',
+				message: expect.objectContaining({ id: 'queued-message-3', role: 'user' }),
+			}),
+		);
+		expect(checkpointStore.save).toHaveBeenCalledWith(
+			result.runId,
+			expect.objectContaining({ status: 'running' }),
+		);
+	});
+
+	it('rebuilds an empty-output retry with newly added input', async () => {
+		streamText
+			.mockReturnValueOnce({
+				...makeStreamSuccess(''),
+				stream: makeChunkStream([]),
+				response: Promise.resolve({ messages: [] }),
+			})
+			.mockReturnValueOnce(makeStreamSuccess('Corrected answer'));
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			checkpointStorage: {
+				save: vi.fn().mockResolvedValue(undefined),
+				load: vi.fn().mockResolvedValue(undefined),
+				delete: vi.fn().mockResolvedValue(undefined),
+			},
+		});
+		let beforeModelCount = 0;
+
+		const result = await runtime.stream('Initial request', {
+			onInputBoundary: async ({ reason, addInput }) => {
+				if (reason !== 'before-model' || ++beforeModelCount !== 2) return false;
+				await addInput([
+					{
+						id: 'queued-message-3',
+						role: 'user',
+						content: [{ type: 'text', text: 'Use the correction' }],
+					},
+				]);
+				return true;
+			},
+		});
+		await collectChunks(result.stream);
+
+		expect(streamText).toHaveBeenCalledTimes(2);
+		expect(JSON.stringify(streamText.mock.calls[1]?.[0].messages)).toContain('Use the correction');
+	});
+});
+
 describe('AgentRuntime — volatile instruction provider', () => {
 	beforeEach(() => {
 		generateText.mockReset();

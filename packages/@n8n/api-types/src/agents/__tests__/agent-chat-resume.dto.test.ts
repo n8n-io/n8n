@@ -2,7 +2,11 @@ import { credentialResumeSchema, questionsResumeSchema } from '../agent-interact
 import { AgentChatResumeDto } from '../dto';
 
 describe('AgentChatResumeDto', () => {
-	const base = { runId: 'run-1', toolCallId: 'tc-1' };
+	const base = {
+		clientRequestId: '724038b9-fc74-4428-bf08-07998f1e3b20',
+		runId: 'run-1',
+		toolCallId: 'tc-1',
+	};
 
 	it('does not strip answers from a questions-card resume', () => {
 		const resumeData = {

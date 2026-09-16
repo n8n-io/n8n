@@ -15,6 +15,8 @@ type AgentExecutionUpdate = PushPayload<'agentExecutionUpdated'>;
 
 @Service()
 export class AgentExecutionUpdateBroadcaster {
+	private isChatEventRelayUnavailable = false;
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly projectRelationRepository: ProjectRelationRepository,
@@ -34,6 +36,37 @@ export class AgentExecutionUpdateBroadcaster {
 				error: error instanceof Error ? error.message : String(error),
 			});
 		});
+	}
+
+	async sendChatEvent(data: PushPayload<'agentChatEvent'>, userId: string): Promise<void> {
+		try {
+			this.push.sendToUsers({ type: 'agentChatEvent', data }, [userId]);
+		} catch (error) {
+			// A viewer connection must not control the execution lifetime.
+			this.logger.warn('Failed to deliver agent chat event', { queueId: data.queueId, error });
+		}
+
+		if (this.instanceSettings.isWorker || this.instanceSettings.isMultiMain) {
+			void this.publisher
+				.publishCommand({ command: 'relay-agent-chat-event', payload: { data, userId } })
+				.then(() => {
+					if (this.isChatEventRelayUnavailable) {
+						this.isChatEventRelayUnavailable = false;
+						this.logger.info('Agent chat event relay recovered', { queueId: data.queueId });
+					}
+				})
+				.catch((error) => {
+					if (this.isChatEventRelayUnavailable) return;
+
+					this.isChatEventRelayUnavailable = true;
+					this.logger.warn('Failed to deliver agent chat event', { queueId: data.queueId, error });
+				});
+		}
+	}
+
+	@OnPubSubEvent('relay-agent-chat-event', { instanceType: 'main' })
+	handleChatEvent({ data, userId }: PubSubCommandMap['relay-agent-chat-event']): void {
+		this.push.sendToUsers({ type: 'agentChatEvent', data }, [userId]);
 	}
 
 	private async broadcast(data: AgentExecutionUpdate): Promise<void> {

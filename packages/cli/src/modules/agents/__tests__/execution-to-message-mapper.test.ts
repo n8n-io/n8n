@@ -94,6 +94,37 @@ describe('execution-to-message-mapper', () => {
 		expect(result[1]?.executionError).toBeUndefined();
 	});
 
+	it('keeps a steering message between assistant segments', () => {
+		const result = executionToMessagesDto(
+			execution({
+				status: 'success',
+				timeline: [
+					{ type: 'text', content: 'I will check.', timestamp: 100 },
+					{
+						type: 'user-input',
+						id: 'queue-2',
+						content: [{ type: 'text', text: 'Use the corrected value.' }],
+						timestamp: 110,
+					},
+					{ type: 'text', content: 'Updated.', timestamp: 120 },
+				],
+			}),
+		);
+
+		expect(result.map(({ id }) => id)).toEqual([
+			'execution-1:user',
+			'execution-1:assistant:0',
+			'queue-2',
+			'execution-1:assistant:1',
+		]);
+		expect(result[2]).toMatchObject({
+			role: 'user',
+			content: [{ type: 'text', text: 'Use the corrected value.' }],
+			executionId: 'execution-1',
+		});
+		expect(result[3]?.executionStatus).toBe('success');
+	});
+
 	it('maps reasoning timeline events with timing into assistant message content', () => {
 		const result = executionToMessagesDto(
 			execution({

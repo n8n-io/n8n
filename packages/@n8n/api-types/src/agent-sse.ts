@@ -43,6 +43,7 @@ export interface ToolSuspendedPayload {
  * payloads use this shape.
  */
 export interface AgentSseMessage {
+	id?: string;
 	role: string;
 	content: AgentPersistedMessageContentPart[];
 }

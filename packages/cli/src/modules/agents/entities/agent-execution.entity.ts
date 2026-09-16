@@ -42,6 +42,21 @@ export class AgentExecution extends WithTimestampsAndStringId {
 	@Column({ type: 'varchar', length: 16 })
 	status: AgentExecutionStatus;
 
+	@Column({
+		type: 'varchar',
+		length: 255,
+		nullable: true,
+		comment: 'SDK run that can receive steering input.',
+	})
+	runtimeRunId: string | null;
+
+	@Column({
+		type: 'boolean',
+		default: false,
+		comment: 'Whether this execution can receive steering input.',
+	})
+	acceptsSteering: boolean;
+
 	@DateTimeColumn({ precision: 3, nullable: true })
 	startedAt: Date | null;
 

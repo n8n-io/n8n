@@ -2,6 +2,7 @@ import {
 	INLINE_SUB_AGENT_ID,
 	parseDelegateSubAgentContinuation,
 	type Agent as RuntimeAgent,
+	type AgentInputBoundary,
 	type SerializableAgentState,
 	type StreamChunk,
 } from '@n8n/agents';
@@ -15,8 +16,10 @@ import { Logger } from '@n8n/backend-common';
 import { AiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { isRecord } from '@n8n/utils/is-record';
-import { OperationalError, UserError } from 'n8n-workflow';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import { OperationalError, UnexpectedError, UserError } from 'n8n-workflow';
 
 import { ExternalHooks } from '@/external-hooks';
 import type { AgentRunTelemetryType, IAgentConfigurationTelemetryProperties } from '@/interfaces';
@@ -85,12 +88,13 @@ export interface ExecuteForChatConfig {
 	previewChat?: boolean;
 	/** Fired after the turn is persisted; used to attach `executionId` to SSE `done`. */
 	onExecutionRecorded?: (executionId: string) => void;
-	onExecutionStarted?: (executionId: string) => Promise<void>;
+	onExecutionStarted?: (executionId: string, runId: string) => Promise<void>;
+	onInputBoundary?: (boundary: AgentInputBoundary) => Promise<boolean>;
 	abortSignal?: AbortSignal;
 }
 
 export interface ExecuteForChatPublishedConfig {
-	onExecutionStarted?: (executionId: string) => Promise<void>;
+	onExecutionStarted?: (executionId: string, runId: string) => Promise<void>;
 	abortSignal?: AbortSignal;
 	agentId: string;
 	projectId: string;
@@ -147,7 +151,8 @@ export interface ResumeForChatConfig {
 	/** Fired after the resumed turn is persisted; used to attach `executionId` to SSE `done`. */
 	onExecutionRecorded?: (executionId: string) => void;
 	onResumeClaimed?: () => void | Promise<void>;
-	onExecutionStarted?: (executionId: string) => Promise<void>;
+	onExecutionStarted?: (executionId: string, runId: string) => Promise<void>;
+	onInputBoundary?: (boundary: AgentInputBoundary) => Promise<boolean>;
 	abortSignal?: AbortSignal;
 }
 
@@ -198,7 +203,8 @@ export interface ExecuteForWakeConfig {
 }
 
 export interface StreamChatResponseConfig {
-	onExecutionStarted?: (executionId: string) => Promise<void>;
+	onExecutionStarted?: (executionId: string, runId: string) => Promise<void>;
+	onInputBoundary?: (boundary: AgentInputBoundary) => Promise<boolean>;
 	agentInstance: RuntimeAgent;
 	toolRegistry: ToolRegistry;
 	/** See `AgentRuntime.mcpServerAttributions`. */
@@ -246,6 +252,26 @@ function withApprovalToolDetails(chunk: StreamChunk, toolRegistry: ToolRegistry)
 		suspendPayload: {
 			...chunk.suspendPayload,
 			details: buildToolCallDetails(toolRegistry, toolName, chunk.suspendPayload.args),
+		},
+	};
+}
+
+function createInputBoundaryGate(onInputBoundary: StreamChatResponseConfig['onInputBoundary']):
+	| {
+			open: () => void;
+			fail: (error: unknown) => void;
+			run: NonNullable<StreamChatResponseConfig['onInputBoundary']>;
+	  }
+	| undefined {
+	if (!onInputBoundary) return undefined;
+	const ready = createDeferredPromise();
+	void ready.promise.catch(() => {});
+	return {
+		open: () => ready.resolve(),
+		fail: (error) => ready.reject(ensureError(error)),
+		run: async (boundary) => {
+			await ready.promise;
+			return await onInputBoundary(boundary);
 		},
 	};
 }
@@ -479,6 +505,7 @@ export class AgentExecutionOrchestratorService {
 		});
 
 		const { agent: agentInstance, toolRegistry } = runtime;
+		const inputBoundaryGate = createInputBoundaryGate(config.onInputBoundary);
 		let executionId: string | undefined;
 		let recorder: ExecutionRecorder;
 		let startedAt: Date;
@@ -530,6 +557,7 @@ export class AgentExecutionOrchestratorService {
 				...(tracing ? { telemetry: tracing } : {}),
 				...(abortSignal ? { abortSignal } : {}),
 				onResumeClaimed: config.onResumeClaimed,
+				onInputBoundary: inputBoundaryGate?.run,
 			});
 			recorder.recordHitlResponse(toolCallId, resumeData);
 			const startParams: StartExecutionParams = {
@@ -550,7 +578,11 @@ export class AgentExecutionOrchestratorService {
 				startedAt,
 				'Failed to start resumed agent execution recording',
 			);
-			if (executionId) await config.onExecutionStarted?.(executionId);
+			if (inputBoundaryGate && !executionId) {
+				throw new UnexpectedError('Failed to bind the execution for steering');
+			}
+			if (executionId) await config.onExecutionStarted?.(executionId, resultStream.runId);
+			inputBoundaryGate?.open();
 			const attributionTracker = createAttributionTracker(runtime.mcpServerAttributions);
 			for await (const value of streamAgentChunks(resultStream.stream)) {
 				const chunk = usePublishedVersion ? value : withApprovalToolDetails(value, toolRegistry);
@@ -562,6 +594,7 @@ export class AgentExecutionOrchestratorService {
 				yield chunk;
 			}
 		} catch (error) {
+			inputBoundaryGate?.fail(error);
 			recorder.record({ type: 'error', error });
 			recorder.record({ type: 'finish', finishReason: 'error' });
 			throw error;
@@ -662,6 +695,7 @@ export class AgentExecutionOrchestratorService {
 				abortSignal,
 				includeHitlToolDetails: true,
 				onExecutionStarted: config.onExecutionStarted,
+				onInputBoundary: config.onInputBoundary,
 				sandboxPrincipalHash,
 			});
 		} finally {
@@ -946,6 +980,7 @@ export class AgentExecutionOrchestratorService {
 			backgroundJobSignal,
 		} = config;
 		const { threadId, resourceId } = memory;
+		const inputBoundaryGate = createInputBoundaryGate(config.onInputBoundary);
 
 		let executionId: string | undefined;
 		const recorder = this.createRecorder(
@@ -983,6 +1018,7 @@ export class AgentExecutionOrchestratorService {
 				...modelStreamStallOptions(this.aiConfig),
 				...(tracing ? { telemetry: tracing } : {}),
 				...(abortSignal ? { abortSignal } : {}),
+				onInputBoundary: inputBoundaryGate?.run,
 			});
 			const startParams: StartExecutionParams = {
 				...(backgroundJobSignal
@@ -1005,7 +1041,11 @@ export class AgentExecutionOrchestratorService {
 				startedAt,
 				'Failed to start agent execution recording',
 			);
-			if (executionId) await config.onExecutionStarted?.(executionId);
+			if (inputBoundaryGate && !executionId) {
+				throw new UnexpectedError('Failed to bind the execution for steering');
+			}
+			if (executionId) await config.onExecutionStarted?.(executionId, resultStream.runId);
+			inputBoundaryGate?.open();
 			const attributionTracker = createAttributionTracker(mcpServerAttributions);
 			for await (const value of streamAgentChunks(resultStream.stream)) {
 				const chunk = includeHitlToolDetails ? withApprovalToolDetails(value, toolRegistry) : value;
@@ -1030,6 +1070,7 @@ export class AgentExecutionOrchestratorService {
 				yield chunk;
 			}
 		} catch (error) {
+			inputBoundaryGate?.fail(error);
 			recorder.record({ type: 'error', error });
 			recorder.record({ type: 'finish', finishReason: 'error' });
 			throw error;

@@ -4,6 +4,7 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| acceptsSteering | boolean | false | false |  |  | Whether this execution can receive steering input. |
 | attachments | json |  | true |  |  | Metadata of files attached to the user turn ({id, fileName, mimeType, sizeBytes}[]); bytes live in BinaryDataService |
 | author | json |  | true |  |  | Chat platform user who wrote the turn as {id, name}; null for runs outside chat integrations |
 | completionTokens | integer |  | true |  |  |  |
@@ -16,6 +17,7 @@
 | id | varchar(36) |  | false | [public.agent_message_queue](public.agent_message_queue.md) |  |  |
 | model | varchar(255) |  | true |  |  |  |
 | promptTokens | integer |  | true |  |  |  |
+| runtimeRunId | varchar(255) |  | true |  |  | SDK run that can receive steering input. |
 | source | varchar(32) |  | true |  |  |  |
 | startedAt | timestamp(3) with time zone |  | true |  |  |  |
 | status | varchar(16) |  | false |  |  |  |
@@ -36,6 +38,7 @@
 | CHK_agent_execution_storedAt | CHECK | CHECK ((("storedAt")::text = ANY ((ARRAY['db'::character varying, 'fs'::character varying, 's3'::character varying, 'az'::character varying])::text[]))) |
 | FK_add2432fb6034cc18b6af299dce | FOREIGN KEY | FOREIGN KEY ("threadId") REFERENCES agent_execution_threads(id) ON DELETE CASCADE |
 | PK_ba438acc8532addc12d1ef17049 | PRIMARY KEY | PRIMARY KEY (id) |
+| agent_execution_acceptsSteering_not_null | n | NOT NULL "acceptsSteering" |
 | agent_execution_createdAt_not_null | n | NOT NULL "createdAt" |
 | agent_execution_duration_not_null | n | NOT NULL duration |
 | agent_execution_id_not_null | n | NOT NULL id |
@@ -61,6 +64,7 @@ erDiagram
 "public.agent_execution" }o--|| "public.agent_execution_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES agent_execution_threads(id) ON DELETE CASCADE"
 
 "public.agent_execution" {
+  boolean acceptsSteering
   json attachments
   json author
   integer completionTokens
@@ -73,6 +77,7 @@ erDiagram
   varchar_36_ id
   varchar_255_ model
   integer promptTokens
+  varchar_255_ runtimeRunId
   varchar_32_ source
   timestamp_3__with_time_zone startedAt
   varchar_16_ status
@@ -93,6 +98,8 @@ erDiagram
   json payload
   varchar_16_ source
   varchar_16_ status
+  integer steeringOrder
+  varchar_255_ steeringRunId
   varchar_128_ threadId
   timestamp_3__with_time_zone updatedAt
 }

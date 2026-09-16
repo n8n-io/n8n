@@ -102,12 +102,12 @@ function timelineToolCallToPart(event: ToolCallTimelineEvent): AgentPersistedMes
 	};
 }
 
-function assistantContentFromExecution(
-	execution: ExecutionTranscript,
+function assistantContentFromTimeline(
+	timeline: TimelineEvent[],
 ): AgentPersistedMessageContentPart[] {
 	const content: AgentPersistedMessageContentPart[] = [];
 
-	for (const event of execution.timeline ?? []) {
+	for (const event of timeline) {
 		if (event.type === 'text') {
 			const part = textPart(event.content);
 			if (!part) continue;
@@ -167,10 +167,10 @@ export function executionToMessagesDto(execution: ExecutionTranscript): AgentPer
 		});
 	}
 
-	const backgroundJobSignal = execution.timeline?.find(
+	const timeline = execution.timeline ?? [];
+	const backgroundJobSignal = timeline.find(
 		(event) => event.type === 'background-task-signal',
 	)?.signal;
-	const assistantContent = assistantContentFromExecution(execution);
 	// The recorded run error travels with the transcript so history renders the
 	// same error bubble the live stream showed — also when the turn failed
 	// before producing any output at all (otherwise the run fails invisibly).
@@ -180,6 +180,57 @@ export function executionToMessagesDto(execution: ExecutionTranscript): AgentPer
 		(execution.status === 'error' || execution.status === 'interrupted') && execution.error
 			? execution.error
 			: undefined;
+	if (timeline.some((event) => event.type === 'user-input')) {
+		let segmentEvents: TimelineEvent[] = [];
+		let assistantIndex = 0;
+		let backgroundSignalPending = backgroundJobSignal;
+		const appendAssistant = () => {
+			const content = assistantContentFromTimeline(segmentEvents);
+			segmentEvents = [];
+			if (content.length === 0 && !backgroundSignalPending) return;
+			messages.push({
+				id: `${execution.id}:assistant:${assistantIndex++}`,
+				role: 'assistant',
+				content,
+				...(backgroundSignalPending ? { backgroundTaskSignal: backgroundSignalPending } : {}),
+				executionId: execution.id,
+			});
+			backgroundSignalPending = undefined;
+		};
+
+		for (const event of timeline) {
+			if (event.type !== 'user-input') {
+				segmentEvents.push(event);
+				continue;
+			}
+			appendAssistant();
+			messages.push({
+				id: event.id,
+				role: 'user',
+				content: event.content,
+				executionId: execution.id,
+			});
+		}
+		appendAssistant();
+
+		let finalAssistant = [...messages].reverse().find((message) => message.role === 'assistant');
+		if (!finalAssistant && executionError !== undefined) {
+			finalAssistant = {
+				id: `${execution.id}:assistant:${assistantIndex}`,
+				role: 'assistant',
+				content: [],
+				executionId: execution.id,
+			};
+			messages.push(finalAssistant);
+		}
+		if (finalAssistant) {
+			finalAssistant.executionStatus = execution.status;
+			if (executionError !== undefined) finalAssistant.executionError = executionError;
+		}
+		return messages;
+	}
+
+	const assistantContent = assistantContentFromTimeline(timeline);
 	if (backgroundJobSignal || assistantContent.length > 0 || executionError !== undefined) {
 		messages.push({
 			id: `${execution.id}:assistant`,
