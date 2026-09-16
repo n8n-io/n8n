@@ -6,12 +6,11 @@ import { i18n } from '@n8n/i18n';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import { useInstanceAiMcpConnectionsExperiment } from '@/experiments/instanceAiMcpConnections';
-import DefaultDetailBody from '@/features/shared/toolsConnection/DefaultDetailBody.vue';
-import McpDetailBody from '@/features/shared/toolsConnection/McpDetailBody.vue';
-import McpToolSettingsContent from '@/features/shared/toolsConnection/McpToolSettingsContent.vue';
-import ToolsConnectionModal from '@/features/shared/toolsConnection/ToolsConnectionModal.vue';
-import McpRegistrySuggestionFooter from '@/app/components/McpRegistrySuggestionFooter.vue';
 import {
+	N8nToolConnectionDefaultDetailBody as DefaultDetailBody,
+	N8nToolConnectionMcpDetailBody as McpDetailBody,
+	N8nToolConnectionMcpSettingsContent as McpToolSettingsContent,
+	N8nToolsConnectionModal as ToolsConnectionModal,
 	TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY,
 	type McpServerConnectionItem,
 	type McpServerTool,
@@ -19,7 +18,8 @@ import {
 	type ServiceConnectionItem,
 	type ToolConnectionItem,
 	type ToolConnectionSettings,
-} from '@/features/shared/toolsConnection/types';
+} from '@n8n/design-system';
+import McpRegistrySuggestionFooter from '@/app/components/McpRegistrySuggestionFooter.vue';
 import { useInstanceAiMcpStore } from '../../instanceAiMcp.store';
 import type { InstanceAiMcpConnection } from '../../instanceAiMcp.store';
 import { useInstanceAiMcpTelemetry } from '../../instanceAiMcp.telemetry';

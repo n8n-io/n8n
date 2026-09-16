@@ -1,13 +1,11 @@
 <script setup lang="ts">
 import { computed, inject } from 'vue';
-import {
-	N8nActionPill,
-	N8nButton,
-	N8nIcon,
-	N8nSpinner,
-	N8nText,
-	N8nTooltip,
-} from '@n8n/design-system';
+import N8nActionPill from '../N8nActionPill/ActionPill.vue';
+import N8nButton from '../N8nButton';
+import N8nIcon from '../N8nIcon';
+import N8nSpinner from '../N8nSpinner';
+import N8nText from '../N8nText';
+import N8nTooltip from '../N8nTooltip';
 import { useI18n } from '@n8n/i18n';
 import ToolCredentialPicker from './ToolCredentialPicker.vue';
 import ToolIcon from './ToolIcon.vue';

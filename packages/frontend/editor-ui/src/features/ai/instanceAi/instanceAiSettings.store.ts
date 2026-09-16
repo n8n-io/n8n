@@ -41,7 +41,7 @@ import type {
 	InstanceAiVerificationResponse,
 } from '@n8n/api-types';
 import { i18n } from '@n8n/i18n';
-import type { ToolConnectionStatus } from '@/features/shared/toolsConnection/types';
+import type { ToolConnectionStatus } from '@n8n/design-system';
 import { deriveInstanceAiConfiguration } from './instanceAiConfiguration';
 import { useInstanceAiBrowserUseExperiment } from '@/experiments/instanceAiBrowserUse';
 import { useInstanceAiComputerUseExperiment } from '@/experiments/instanceAiComputerUse';

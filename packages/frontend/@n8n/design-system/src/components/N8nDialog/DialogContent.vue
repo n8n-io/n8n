@@ -163,7 +163,7 @@ function handleInteractOutside(e: Event) {
 	left: 50%;
 	transform: translate(-50%, -50%);
 	width: 100%;
-	padding: var(--spacing--lg);
+	padding: var(--n8n-dialog-content--padding, var(--spacing--lg));
 	border-radius: var(--radius--lg);
 	background-color: light-dark(var(--color--neutral-white), var(--color--neutral-800));
 	box-shadow:

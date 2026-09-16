@@ -11,7 +11,7 @@ import {
 } from '@/features/credentials/credentials.store';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import { useCredentialOAuth } from '@/features/credentials/composables/useCredentialOAuth';
-import type { ToolConnectionCredentialAdapter } from '@/features/shared/toolsConnection/types';
+import type { ToolConnectionCredentialAdapter } from '@n8n/design-system';
 import { useInstanceAiMcpStore } from '../instanceAiMcp.store';
 
 export interface McpConnectTarget {

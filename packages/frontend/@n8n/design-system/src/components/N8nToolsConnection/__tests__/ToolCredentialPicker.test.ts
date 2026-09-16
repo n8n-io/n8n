@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { fireEvent } from '@testing-library/vue';
-import { createComponentRenderer } from '@/__tests__/render';
+import { createComponentRenderer } from '../../../__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 
 import ToolCredentialPicker from '../ToolCredentialPicker.vue';

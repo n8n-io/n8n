@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { N8nIcon, N8nNodeIcon } from '@n8n/design-system';
-import type { IconName } from '@n8n/design-system';
+import N8nIcon from '../N8nIcon';
+import N8nNodeIcon from '../N8nNodeIcon';
+import type { IconName } from '../N8nIcon';
 import type { ToolIconSource } from './types';
 
 withDefaults(
