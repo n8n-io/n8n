@@ -15,6 +15,7 @@ import {
 	sanitizeApiMessage,
 } from '../actions/helpers';
 import type { DatabricksJobRun } from '../actions/interfaces';
+import { getRunOutcome } from '../actions/job/runState';
 
 // Dropdown requests never pass through the router, so its permission-error hook
 // doesn't cover them — apply it here for every listSearch call site instead
@@ -512,12 +513,11 @@ const RUNS_SEARCH_MAX_PAGES = 10;
 type RunsListPage = { runs?: DatabricksJobRun[]; next_page_token?: string };
 
 function describeRun(run: DatabricksJobRun): string {
-	const state = run.status?.state ?? run.state?.life_cycle_state;
-	const outcome = run.status?.termination_details?.code ?? run.state?.result_state;
+	const { code } = getRunOutcome(run);
 	const startedAt = run.start_time
 		? `${new Date(run.start_time).toISOString().replace('T', ' ').slice(0, 19)} UTC`
 		: undefined;
-	return [run.run_name || `Job ${run.job_id}`, outcome ?? state, startedAt, `Run ${run.run_id}`]
+	return [run.run_name || `Job ${run.job_id}`, code, startedAt, `Run ${run.run_id}`]
 		.filter(Boolean)
 		.join(' · ');
 }
