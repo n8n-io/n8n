@@ -357,7 +357,7 @@ export function sessionBounds(items: TimelineItem[]): { start: number; end: numb
 const COLOR_MAP: Record<EventKind, string> = {
 	user: 'var(--color--blue-400)',
 	agent: 'var(--color--secondary)',
-	skill: 'var(--color--warning)',
+	skill: 'var(--color--orange-600)',
 	tool: 'var(--color--success)',
 	node: 'var(--color--text)',
 	workflow: 'var(--color--primary)',
