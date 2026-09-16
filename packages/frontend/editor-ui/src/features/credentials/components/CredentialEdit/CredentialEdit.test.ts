@@ -1789,6 +1789,38 @@ describe('CredentialEdit', () => {
 			);
 		});
 
+		test('shows the Gateway credits nudge while the new credential slot is empty', async () => {
+			const contextNode: INode = {
+				id: 'node-1',
+				name: 'Test node',
+				type: 'n8n-nodes-base.test',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+				credentials: {
+					otherApi: { id: 'cred-2', name: 'Other API account' },
+				},
+			};
+			const { getByTestId, workflowDocumentStore } = await setupGatewayCredentialError({
+				contextNode,
+			});
+
+			await waitFor(() =>
+				expect(getByTestId('gateway-credits-credential-error-nudge')).toBeVisible(),
+			);
+			await userEvent.click(getByTestId('gateway-credits-credential-error-nudge-action'));
+
+			expect(workflowDocumentStore.updateNodeProperties).toHaveBeenCalledWith({
+				name: contextNode.name,
+				properties: {
+					credentials: {
+						testApi: { id: null, name: '', __aiGatewayManaged: true },
+						otherApi: { id: 'cred-2', name: 'Other API account' },
+					},
+				},
+			});
+		});
+
 		test('does not show the Gateway credits nudge for a different credential slot', async () => {
 			const contextNode: INode = {
 				id: 'node-1',

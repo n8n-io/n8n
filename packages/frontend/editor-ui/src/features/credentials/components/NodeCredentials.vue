@@ -1003,6 +1003,7 @@ function editCredential(credentialType: string): void {
 		...(isToolContext ? { appendToBody: true } : {}),
 		instanceAiCredentialHelp: resolveInstanceAiCredentialHelp(),
 		workflowId: telemetryWorkflowId.value || undefined,
+		contextNode: props.node,
 	});
 
 	telemetry.track('User opened Credential modal', {

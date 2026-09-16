@@ -391,7 +391,8 @@ const showAiGatewayErrorNudge = computed(() => {
 		return false;
 	}
 	if (!nodeType.credentials?.some((credential) => credential.name === type)) return false;
-	if (node.credentials?.[type]?.id !== credentialId.value) return false;
+	const assignedCredentialId = node.credentials?.[type]?.id;
+	if (assignedCredentialId && assignedCredentialId !== credentialId.value) return false;
 	if (node.credentials?.[type]?.__aiGatewayManaged === true) return false;
 
 	const resolvedParameters =
