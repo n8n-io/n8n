@@ -21,12 +21,15 @@ export const useWorkflowReviewsFeature = () => {
 	});
 
 	/**
-	 * Whether the review inbox (route and nav item) is reachable. The
+	 * Whether the review inbox (route and nav item) is reachable. Mirrors the
+	 * module-availability middleware, which the inbox route no longer uses: the
 	 * self-healing prototype serves mocked reviews into the inbox, so it opens
-	 * the inbox even when the backend feature is off.
+	 * the inbox even when the backend module is off.
 	 */
 	const isReviewInboxEnabled = computed(
-		() => isWorkflowReviewsEnabled.value || selfHealingStore.isEnabled,
+		() =>
+			(isWorkflowReviewsEnabled.value && settingsStore.isModuleActive('workflow-reviews')) ||
+			selfHealingStore.isEnabled,
 	);
 
 	return {

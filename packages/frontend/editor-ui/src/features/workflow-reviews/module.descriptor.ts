@@ -27,7 +27,9 @@ export const WorkflowReviewsModule = defineFrontendModule({
 			},
 			meta: {
 				layout: 'default',
-				middleware: ['authenticated', 'custom'],
+				// No 'custom' middleware: it would inject the module-availability check,
+				// which `beforeEnter` performs itself so the self-healing flag can bypass it.
+				middleware: ['authenticated'],
 			},
 		},
 	],
