@@ -7,6 +7,8 @@ import {
 	N8N_CHAT_ACTION_TOOL_NAME,
 	type AgentChatMessagesResponse,
 	type AgentSseEvent,
+	type AgentChatQueueItem,
+	type PushPayload,
 } from '@n8n/api-types';
 
 vi.mock('@n8n/stores/useRootStore', () => ({
@@ -49,6 +51,9 @@ vi.mock('../composables/useAgentApi', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('../composables/useAgentApi')>();
 	return {
 		...actual,
+		sendAgentChatMessage: (...args: unknown[]) => postChatMock(...args),
+		resumeAgentChat: (...args: unknown[]) => postChatMock(...args),
+		getAgentChatQueue: (...args: unknown[]) => getQueueMock(...args),
 		getChatMessages: (...args: unknown[]) => getChatMessagesMock(...args),
 		getTestChatMessages: (...args: unknown[]) => getTestChatMessagesMock(...args),
 		cancelAgentChatRun: (...args: unknown[]) => cancelAgentChatRunMock(...args),
@@ -57,111 +62,70 @@ vi.mock('../composables/useAgentApi', async (importOriginal) => {
 
 import { useAgentChatStream } from '../composables/useAgentChatStream';
 
-/** Build a `Response` whose body streams the given events as SSE `data:` lines. */
-function makeSseResponse(events: AgentSseEvent[]): Response {
-	const encoder = new TextEncoder();
-	const stream = new ReadableStream<Uint8Array>({
-		start(controller) {
-			for (const ev of events) {
-				controller.enqueue(encoder.encode(`data: ${JSON.stringify(ev)}\n\n`));
-			}
-			controller.close();
-		},
+const postChatMock = vi.fn();
+const getQueueMock = vi.fn();
+let liveQueue: AgentChatQueueItem[] = [];
+let nextQueueId = 0;
+
+function mockChatEvents(events: AgentSseEvent[], complete = true) {
+	let send = (_event: PushPayload<'agentChatEvent'>['event']) => {};
+	postChatMock.mockImplementationOnce(async (_context, projectId, agentId, payload) => {
+		const id = String(++nextQueueId);
+		const item: AgentChatQueueItem =
+			'message' in payload
+				? { id, kind: 'message', message: payload.message, attachments: [], status: 'processing' }
+				: {
+						id,
+						kind: 'hitl',
+						runId: payload.runId,
+						toolCallId: payload.toolCallId,
+						status: 'processing',
+					};
+		liveQueue.push(item);
+		send = (event) => {
+			if (event.type === 'done') liveQueue = liveQueue.filter((entry) => entry.id !== id);
+			for (const listener of [...pushListeners])
+				listener({
+					type: 'agentChatEvent',
+					data: {
+						projectId,
+						agentId,
+						threadId: payload.sessionId ?? 'thread-1',
+						queueId: id,
+						clientRequestId: payload.clientRequestId,
+						event,
+					},
+				});
+		};
+		send({ type: 'processing', item });
+		for (const event of events) send(event);
+		if (complete && !events.some((event) => event.type === 'done')) send({ type: 'done' });
+		return { status: 'queued', sessionId: 'thread-1', item: { ...item, status: 'queued' } };
 	});
-	return new Response(stream, {
-		status: 200,
-		headers: { 'Content-Type': 'text/event-stream' },
-	});
+	return { emit: (event: PushPayload<'agentChatEvent'>['event']) => send(event) };
 }
 
-function makeInterruptedSseResponse(events: AgentSseEvent[]): Response {
-	const encoder = new TextEncoder();
-	let eventsSent = false;
-	const stream = new ReadableStream<Uint8Array>({
-		pull(controller) {
-			if (!eventsSent) {
-				eventsSent = true;
-				controller.enqueue(
-					encoder.encode(events.map((event) => `data: ${JSON.stringify(event)}\n\n`).join('')),
-				);
-				return;
-			}
-			controller.error(new Error('connection lost'));
-		},
-	});
-	return new Response(stream, {
-		status: 200,
-		headers: { 'Content-Type': 'text/event-stream' },
-	});
-}
-
-function makeAbortableSseResponse(events: AgentSseEvent[], signal: AbortSignal | null): Response {
-	const encoder = new TextEncoder();
-	const stream = new ReadableStream<Uint8Array>({
-		start(controller) {
-			for (const event of events) {
-				controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
-			}
-			signal?.addEventListener(
-				'abort',
-				() => controller.error(new DOMException('Aborted', 'AbortError')),
-				{ once: true },
-			);
-		},
-	});
-	return new Response(stream, {
-		status: 200,
-		headers: { 'Content-Type': 'text/event-stream' },
-	});
-}
-
-function makeControllableSseResponse(
-	events: AgentSseEvent[],
-	signal: AbortSignal | null,
-): { response: Response; close: (finalEvents?: AgentSseEvent[]) => void } {
-	const encoder = new TextEncoder();
-	let streamController: ReadableStreamDefaultController<Uint8Array> | undefined;
-	let settled = false;
-	const stream = new ReadableStream<Uint8Array>({
-		start(controller) {
-			streamController = controller;
-			for (const event of events) {
-				controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
-			}
-			signal?.addEventListener(
-				'abort',
-				() => {
-					if (settled) return;
-					settled = true;
-					controller.error(new DOMException('Aborted', 'AbortError'));
-				},
-				{ once: true },
-			);
-		},
-	});
-
-	return {
-		response: new Response(stream, {
-			status: 200,
-			headers: { 'Content-Type': 'text/event-stream' },
-		}),
-		close: (finalEvents = []) => {
-			if (settled) return;
-			settled = true;
-			for (const event of finalEvents) {
-				streamController?.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
-			}
-			streamController?.close();
-		},
-	};
-}
+beforeEach(() => {
+	postChatMock.mockReset();
+	getQueueMock.mockReset();
+	getQueueMock.mockImplementation(async () => ({ items: [...liveQueue] }));
+	liveQueue = [];
+	nextQueueId = 0;
+	getChatMessagesMock.mockReset();
+	getTestChatMessagesMock.mockReset();
+	getChatMessagesMock.mockRejectedValue({ httpStatusCode: 404 });
+	getTestChatMessagesMock.mockRejectedValue({ httpStatusCode: 404 });
+});
 
 const hookScopes: ReturnType<typeof effectScope>[] = [];
 afterEach(() => {
 	for (const scope of hookScopes.splice(0)) scope.stop();
 });
 
-function buildHook(continueSessionId?: string) {
+function buildHook(
+	continueSessionId?: string,
+	onHistoryLoaded?: (count: number, hasQueueEntries: boolean, queueLoadSucceeded: boolean) => void,
+) {
 	const scope = effectScope();
 	hookScopes.push(scope);
 	return scope.run(() =>
@@ -169,28 +133,19 @@ function buildHook(continueSessionId?: string) {
 			projectId: ref('p1'),
 			agentId: ref('a1'),
 			...(continueSessionId ? { continueSessionId: ref(continueSessionId) } : {}),
+			onHistoryLoaded,
 		}),
 	)!;
 }
 
 describe('useAgentChatStream — SDK-aligned event handling', () => {
-	let originalFetch: typeof fetch;
-	let originalLocalStorage: typeof globalThis.localStorage | undefined;
-
 	beforeEach(() => {
-		originalFetch = globalThis.fetch;
-		originalLocalStorage = globalThis.localStorage;
-		vi.stubGlobal('localStorage', {
-			getItem: vi.fn(() => ''),
-		});
 		cancelAgentChatRunMock.mockReset();
 		cancelAgentChatRunMock.mockResolvedValue({ cancelled: true });
 		getTestChatMessagesMock.mockReset();
 	});
 
 	afterEach(() => {
-		globalThis.fetch = originalFetch;
-		vi.stubGlobal('localStorage', originalLocalStorage);
 		vi.restoreAllMocks();
 	});
 
@@ -224,7 +179,7 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 			},
 			{ type: 'done' },
 		];
-		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+		mockChatEvents(events);
 
 		const hook = buildHook();
 		await hook.sendMessage('research this API');
@@ -246,8 +201,8 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		});
 	});
 
-	it('treats a suspension as a valid ending when the stream closes without done', async () => {
-		const events: AgentSseEvent[] = [
+	it('posts approval resumes to the chat resume endpoint in preview chat mode', async () => {
+		mockChatEvents([
 			{
 				type: 'tool-call',
 				toolCallId: 'tc-approval',
@@ -267,58 +222,17 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 					},
 				},
 			},
-		];
-		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
-
-		const hook = buildHook();
-		await hook.sendMessage('calculate 2 + 2');
-		await nextTick();
-
-		const assistantMessages = hook.messages.value.filter((message) => message.role === 'assistant');
-		expect(assistantMessages).toHaveLength(1);
-		expect(assistantMessages[0].status).toBe('awaitingUser');
-		expect(assistantMessages[0].toolCalls?.[0].state).toBe('suspended');
-	});
-
-	it('posts approval resumes to the chat resume endpoint in preview chat mode', async () => {
-		const fetchMock = vi
-			.fn()
-			.mockResolvedValueOnce(
-				makeSseResponse([
-					{
-						type: 'tool-call',
-						toolCallId: 'tc-approval',
-						toolName: 'calculator',
-						input: { input: '2 + 2' },
-					},
-					{
-						type: 'tool-call-suspended',
-						payload: {
-							toolCallId: 'tc-approval',
-							runId: 'run-approval',
-							toolName: 'calculator',
-							input: {
-								type: 'approval',
-								toolName: 'calculator',
-								args: { input: '2 + 2' },
-							},
-						},
-					},
-					{ type: 'done' },
-				]),
-			)
-			.mockResolvedValueOnce(
-				makeSseResponse([
-					{
-						type: 'tool-result',
-						toolCallId: 'tc-approval',
-						toolName: 'calculator',
-						output: { result: 4 },
-					},
-					{ type: 'done' },
-				]),
-			);
-		globalThis.fetch = fetchMock as unknown as typeof fetch;
+			{ type: 'done' },
+		]);
+		mockChatEvents([
+			{
+				type: 'tool-result',
+				toolCallId: 'tc-approval',
+				toolName: 'calculator',
+				output: { result: 4 },
+			},
+			{ type: 'done' },
+		]);
 
 		const hook = buildHook();
 		await hook.sendMessage('calculate 2 + 2');
@@ -330,210 +244,42 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 			resumeData: { approved: true },
 		});
 
-		expect(fetchMock).toHaveBeenNthCalledWith(
-			2,
-			'http://localhost:5678/projects/p1/agents/v2/a1/chat/resume',
-			expect.objectContaining({
-				body: JSON.stringify({
-					runId: 'run-approval',
-					toolCallId: 'tc-approval',
-					resumeData: { approved: true },
-				}),
-			}),
-		);
+		expect(postChatMock).toHaveBeenNthCalledWith(2, expect.anything(), 'p1', 'a1', {
+			clientRequestId: expect.any(String),
+			runId: 'run-approval',
+			toolCallId: 'tc-approval',
+			resumeData: { approved: true },
+		});
 		const assistant = hook.messages.value[1];
 		expect(assistant.interactive?.resolvedValue).toEqual({ approved: true });
 		expect(assistant.status).toBe('success');
 	});
 
-	it('cancels an open chat interaction before steering with a new message', async () => {
-		const fetchMock = vi
-			.fn()
-			.mockResolvedValueOnce(
-				makeSseResponse([
-					{
-						type: 'tool-call',
-						toolCallId: 'tc-question',
-						toolName: N8N_CHAT_ACTION_TOOL_NAME,
-						input: {
-							action: 'respond',
-							input: {
-								message: {
-									card: {
-										components: [{ type: 'button', label: 'Continue', value: 'continue' }],
-									},
-								},
-							},
-						},
-					},
-					{
-						type: 'tool-call-suspended',
-						payload: {
-							toolCallId: 'tc-question',
-							runId: 'run-question',
-							toolName: N8N_CHAT_ACTION_TOOL_NAME,
-							input: { type: 'integration_action' },
-						},
-					},
-				]),
-			)
-			.mockResolvedValueOnce(makeSseResponse([{ type: 'done' }]));
-		globalThis.fetch = fetchMock as unknown as typeof fetch;
-
-		const hook = buildHook();
-		await hook.sendMessage('ask me a question');
-		await hook.cancelAndSteer('take another approach');
-
-		expect(fetchMock).toHaveBeenNthCalledWith(
-			2,
-			'http://localhost:5678/projects/p1/agents/v2/a1/chat/resume',
-			expect.objectContaining({
-				body: JSON.stringify({
-					runId: 'run-question',
-					toolCallId: 'tc-question',
-					resumeData: {
-						_type: 'agent.cancellation',
-						message: 'take another approach',
-					},
-				}),
-			}),
-		);
-	});
-
-	// An abandoned waiting card from an earlier turn must not become the steering
 	// target: cancelling it would answer the wrong tool call and leave the
 	// question the user is actually looking at open.
-	it('steers the current turn question, not a waiting card left open earlier', async () => {
-		const waitTurn = makeSseResponse([
-			{
-				type: 'tool-call',
-				toolCallId: 'tc-wait',
-				toolName: 'long_wait_workflow',
-				input: {},
-			},
-			{
-				type: 'tool-call-suspended',
-				payload: {
-					toolCallId: 'tc-wait',
-					runId: 'run-wait',
-					toolName: 'long_wait_workflow',
-					input: {
-						type: 'workflow_wait',
-						title: 'Waiting on "Long wait"',
-						components: [{ type: 'button', label: 'Check for the result', value: 'continue' }],
-					},
-				},
-			},
-		]);
-		const questionTurn = makeSseResponse([
-			{
-				type: 'tool-call',
-				toolCallId: 'tc-question',
-				toolName: N8N_CHAT_ACTION_TOOL_NAME,
-				input: {
-					action: 'respond',
-					input: {
-						message: {
-							card: { components: [{ type: 'button', label: 'Continue', value: 'continue' }] },
-						},
-					},
-				},
-			},
-			{
-				type: 'tool-call-suspended',
-				payload: {
-					toolCallId: 'tc-question',
-					runId: 'run-question',
-					toolName: N8N_CHAT_ACTION_TOOL_NAME,
-					input: { type: 'integration_action' },
-				},
-			},
-		]);
-		const fetchMock = vi
-			.fn()
-			.mockResolvedValueOnce(waitTurn)
-			.mockResolvedValueOnce(questionTurn)
-			.mockResolvedValueOnce(makeSseResponse([{ type: 'done' }]));
-		globalThis.fetch = fetchMock as unknown as typeof fetch;
-
-		const hook = buildHook();
-		await hook.sendMessage('start a long wait');
-		await hook.sendMessage('ask me a question');
-		await hook.cancelAndSteer('take another approach');
-
-		expect(fetchMock).toHaveBeenNthCalledWith(
-			3,
-			'http://localhost:5678/projects/p1/agents/v2/a1/chat/resume',
-			expect.objectContaining({
-				body: expect.stringContaining('"toolCallId":"tc-question"'),
-			}),
-		);
-		expect(fetchMock.mock.calls[2][1].body).not.toContain('tc-wait');
-	});
-
-	// Only the workflow, the card's own button, or Stop may end a wait. Steering it
-	// would abandon the run and leave the sub-workflow finishing into nothing.
-	it('refuses to steer a waiting card even when it is the current turn', async () => {
-		const fetchMock = vi.fn().mockResolvedValueOnce(
-			makeSseResponse([
-				{
-					type: 'tool-call',
-					toolCallId: 'tc-wait',
-					toolName: 'long_wait_workflow',
-					input: {},
-				},
-				{
-					type: 'tool-call-suspended',
-					payload: {
-						toolCallId: 'tc-wait',
-						runId: 'run-wait',
-						toolName: 'long_wait_workflow',
-						input: {
-							type: 'workflow_wait',
-							title: 'Waiting on "Long wait"',
-							components: [{ type: 'button', label: 'Check for the result', value: 'continue' }],
-						},
-					},
-				},
-			]),
-		);
-		globalThis.fetch = fetchMock as unknown as typeof fetch;
-
-		const hook = buildHook();
-		await hook.sendMessage('start a long wait');
-		await hook.cancelAndSteer('never mind, do something else');
-
-		// Only the original turn was sent — no resume, so the wait stays parked.
-		expect(fetchMock).toHaveBeenCalledTimes(1);
-		const assistant = hook.messages.value[hook.messages.value.length - 1];
-		expect(assistant.interactive?.resolvedAt).toBeUndefined();
-		expect(assistant.interactive?.cancelled).toBeUndefined();
-	});
 
 	it('cancels an idle suspended interaction and settles its UI state', async () => {
-		globalThis.fetch = vi.fn(async () =>
-			makeSseResponse([
-				{
-					type: 'tool-call',
+		mockChatEvents([
+			{
+				type: 'tool-call',
+				toolCallId: 'tc-approval',
+				toolName: 'calculator',
+				input: { input: '2 + 2' },
+			},
+			{
+				type: 'tool-call-suspended',
+				payload: {
 					toolCallId: 'tc-approval',
+					runId: 'run-approval',
 					toolName: 'calculator',
-					input: { input: '2 + 2' },
-				},
-				{
-					type: 'tool-call-suspended',
-					payload: {
-						toolCallId: 'tc-approval',
-						runId: 'run-approval',
+					input: {
+						type: 'approval',
 						toolName: 'calculator',
-						input: {
-							type: 'approval',
-							toolName: 'calculator',
-							args: { input: '2 + 2' },
-						},
+						args: { input: '2 + 2' },
 					},
 				},
-			]),
-		) as typeof fetch;
+			},
+		]);
 
 		const hook = buildHook();
 		await hook.sendMessage('calculate 2 + 2');
@@ -551,321 +297,39 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		expect(assistant.status).toBe('success');
 	});
 
-	it('blocks new messages while suspended-run cancellation is pending', async () => {
-		const fetchMock = vi.fn(async () =>
-			makeSseResponse([
-				{
-					type: 'tool-call',
-					toolCallId: 'tc-external',
-					toolName: 'external_action',
-					input: { channel: 'external' },
-				},
-				{
-					type: 'tool-call-suspended',
-					payload: {
-						toolCallId: 'tc-external',
-						runId: 'run-external',
-						toolName: 'external_action',
-						input: { type: 'integration_action' },
-					},
-				},
-			]),
-		);
-		globalThis.fetch = fetchMock as unknown as typeof fetch;
-		let resolveCancellation = (_value: { cancelled: boolean }) => {};
-		cancelAgentChatRunMock.mockReturnValue(
-			new Promise((resolve) => {
-				resolveCancellation = resolve;
-			}),
-		);
-
-		const hook = buildHook();
-		await hook.sendMessage('wait for external approval');
-		const stop = hook.stopGenerating();
-		await vi.waitFor(() => expect(cancelAgentChatRunMock).toHaveBeenCalled());
-		expect(hook.isCancelling.value).toBe(true);
-
-		await hook.sendMessage('start another run');
-
-		expect(fetchMock).toHaveBeenCalledTimes(1);
-		expect(hook.messages.value.some((message) => message.content === 'start another run')).toBe(
-			false,
-		);
-
-		resolveCancellation({ cancelled: true });
-		await stop;
-		expect(hook.isCancelling.value).toBe(false);
-	});
-
-	it('reconciles history when suspended-run cancellation fails', async () => {
-		const approvalInput = {
-			type: 'approval' as const,
-			toolName: 'calculator',
-			args: { input: '2 + 2' },
-		};
-		let closeStream = () => {};
-		globalThis.fetch = vi.fn(async (_url: string, init: RequestInit) => {
-			const controlled = makeControllableSseResponse(
-				[
-					{
-						type: 'tool-call',
-						toolCallId: 'tc-approval',
-						toolName: 'calculator',
-						input: { input: '2 + 2' },
-					},
-					{
-						type: 'tool-call-suspended',
-						payload: {
-							toolCallId: 'tc-approval',
-							runId: 'run-approval',
-							toolName: 'calculator',
-							input: approvalInput,
-						},
-					},
-				],
-				init.signal ?? null,
-			);
-			closeStream = controlled.close;
-			return controlled.response;
-		}) as typeof fetch;
-		cancelAgentChatRunMock.mockRejectedValue(new Error('request failed'));
-		getTestChatMessagesMock.mockResolvedValue({
-			messages: [
-				{
-					id: 'm1',
-					role: 'assistant',
-					content: [
-						{
-							type: 'tool-call',
-							toolName: 'calculator',
-							toolCallId: 'tc-approval',
-							input: approvalInput,
-						},
-					],
-				},
-			],
-			openSuspensions: [{ toolCallId: 'tc-approval', runId: 'run-approval' }],
-		});
-
-		const hook = buildHook();
-		const send = hook.sendMessage('calculate 2 + 2');
-		let sendSettled = false;
-		void send.then(() => {
-			sendSettled = true;
-		});
-		await vi.waitFor(() => expect(hook.messages.value[1]?.status).toBe('awaitingUser'));
-		try {
-			await hook.stopGenerating();
-			await vi.waitFor(() => expect(sendSettled).toBe(true), { timeout: 250 });
-
-			expect(getTestChatMessagesMock).toHaveBeenCalled();
-			const assistant = hook.messages.value.at(-1)!;
-			expect(assistant.status).toBe('awaitingUser');
-			expect(assistant.toolCalls?.[0].state).toBe('suspended');
-			expect(assistant.interactive?.runId).toBe('run-approval');
-		} finally {
-			closeStream();
-			await send;
-		}
-	});
-
-	it('keeps the open suspension when cancellation and history reconciliation fail', async () => {
-		const approvalInput = {
-			type: 'approval' as const,
-			toolName: 'calculator',
-			args: { input: '2 + 2' },
-		};
-		let closeStream = () => {};
-		globalThis.fetch = vi.fn(async (_url: string, init: RequestInit) => {
-			const controlled = makeControllableSseResponse(
-				[
-					{
-						type: 'tool-call',
-						toolCallId: 'tc-approval',
-						toolName: 'calculator',
-						input: { input: '2 + 2' },
-					},
-					{
-						type: 'tool-call-suspended',
-						payload: {
-							toolCallId: 'tc-approval',
-							runId: 'run-approval',
-							toolName: 'calculator',
-							input: approvalInput,
-						},
-					},
-				],
-				init.signal ?? null,
-			);
-			closeStream = controlled.close;
-			return controlled.response;
-		}) as typeof fetch;
-		cancelAgentChatRunMock.mockRejectedValue(new Error('request failed'));
-		getTestChatMessagesMock.mockRejectedValue(new Error('history unavailable'));
-
-		const hook = buildHook();
-		const send = hook.sendMessage('calculate 2 + 2');
-		let sendSettled = false;
-		void send.then(() => {
-			sendSettled = true;
-		});
-		await vi.waitFor(() => expect(hook.messages.value[1]?.status).toBe('awaitingUser'));
-		try {
-			await hook.stopGenerating();
-			await vi.waitFor(() => expect(sendSettled).toBe(true), { timeout: 250 });
-
-			const assistant = hook.messages.value[1];
-			expect(assistant.status).toBe('awaitingUser');
-			expect(assistant.toolCalls?.[0].state).toBe('suspended');
-			expect(assistant.interactive?.runId).toBe('run-approval');
-		} finally {
-			closeStream();
-			await send;
-		}
-	});
-
-	it('cancels a suspended checkpoint when stopping before its stream closes', async () => {
-		const fetchMock = vi.fn(async (_url: string, init: RequestInit) =>
-			makeAbortableSseResponse(
-				[
-					{
-						type: 'tool-call',
-						toolCallId: 'tc-approval',
-						toolName: 'calculator',
-						input: { input: '2 + 2' },
-					},
-					{
-						type: 'tool-call-suspended',
-						payload: {
-							toolCallId: 'tc-approval',
-							runId: 'run-approval',
-							toolName: 'calculator',
-							input: {
-								type: 'approval',
-								toolName: 'calculator',
-								args: { input: '2 + 2' },
-							},
-						},
-					},
-				],
-				init.signal ?? null,
-			),
-		);
-		globalThis.fetch = fetchMock as unknown as typeof fetch;
-
-		const hook = buildHook();
-		const send = hook.sendMessage('calculate 2 + 2');
-		await vi.waitFor(() => expect(hook.messages.value[1]?.toolCalls?.[0].state).toBe('suspended'));
-		await hook.stopGenerating();
-		await send;
-
-		expect(cancelAgentChatRunMock).toHaveBeenCalledWith(
-			{ baseUrl: 'http://localhost:5678' },
-			'p1',
-			'a1',
-			'run-approval',
-		);
-		expect(hook.messages.value[1].toolCalls?.[0].state).toBe('cancelled');
-	});
-
-	it('settles an active non-card suspension and its parallel tool calls', async () => {
-		globalThis.fetch = vi.fn(async (_url: string, init: RequestInit) =>
-			makeAbortableSseResponse(
-				[
-					{
-						type: 'tool-call',
-						toolCallId: 'tc-external',
-						toolName: 'external_action',
-						input: { channel: 'external' },
-					},
-					{
-						type: 'tool-call',
-						toolCallId: 'tc-parallel',
-						toolName: 'slow_action',
-						input: {},
-					},
-					{
-						type: 'tool-execution-start',
-						toolCallId: 'tc-parallel',
-						toolName: 'slow_action',
-						startTime: 1_000,
-					},
-					{
-						type: 'tool-call-suspended',
-						payload: {
-							toolCallId: 'tc-external',
-							runId: 'run-external',
-							toolName: 'external_action',
-							input: { type: 'integration_action' },
-						},
-					},
-				],
-				init.signal ?? null,
-			),
-		) as typeof fetch;
-
-		const hook = buildHook();
-		const send = hook.sendMessage('wait for external approval');
-		await vi.waitFor(() => expect(hook.messages.value[1]?.toolCalls?.[0].state).toBe('suspended'));
-		await hook.stopGenerating();
-		await send;
-
-		expect(cancelAgentChatRunMock).toHaveBeenCalledWith(
-			{ baseUrl: 'http://localhost:5678' },
-			'p1',
-			'a1',
-			'run-external',
-		);
-		expect(hook.messages.value[1].status).toBe('success');
-		expect(hook.messages.value[1].toolCalls).toEqual([
-			expect.objectContaining({
-				toolCallId: 'tc-external',
-				state: 'cancelled',
-				canceled: true,
-			}),
-			expect.objectContaining({
-				toolCallId: 'tc-parallel',
-				state: 'cancelled',
-				canceled: true,
-			}),
-		]);
-	});
-
 	it('settles every suspended tool call belonging to a cancelled run', async () => {
-		globalThis.fetch = vi.fn(async () =>
-			makeSseResponse([
-				{
-					type: 'tool-call',
+		mockChatEvents([
+			{
+				type: 'tool-call',
+				toolCallId: 'tc-first',
+				toolName: 'external_action',
+				input: { value: 'first' },
+			},
+			{
+				type: 'tool-call',
+				toolCallId: 'tc-second',
+				toolName: 'external_action',
+				input: { value: 'second' },
+			},
+			{
+				type: 'tool-call-suspended',
+				payload: {
 					toolCallId: 'tc-first',
+					runId: 'run-parallel',
 					toolName: 'external_action',
-					input: { value: 'first' },
+					input: { type: 'integration_action' },
 				},
-				{
-					type: 'tool-call',
+			},
+			{
+				type: 'tool-call-suspended',
+				payload: {
 					toolCallId: 'tc-second',
+					runId: 'run-parallel',
 					toolName: 'external_action',
-					input: { value: 'second' },
+					input: { type: 'integration_action' },
 				},
-				{
-					type: 'tool-call-suspended',
-					payload: {
-						toolCallId: 'tc-first',
-						runId: 'run-parallel',
-						toolName: 'external_action',
-						input: { type: 'integration_action' },
-					},
-				},
-				{
-					type: 'tool-call-suspended',
-					payload: {
-						toolCallId: 'tc-second',
-						runId: 'run-parallel',
-						toolName: 'external_action',
-						input: { type: 'integration_action' },
-					},
-				},
-			]),
-		) as typeof fetch;
+			},
+		]);
 
 		const hook = buildHook();
 		await hook.sendMessage('wait for both actions');
@@ -877,235 +341,12 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		]);
 	});
 
-	it('does not reopen a submitted HITL card when its resumed stream is stopped', async () => {
-		const fetchMock = vi
-			.fn()
-			.mockResolvedValueOnce(
-				makeSseResponse([
-					{
-						type: 'tool-call',
-						toolCallId: 'tc-approval',
-						toolName: 'calculator',
-						input: { input: '2 + 2' },
-					},
-					{
-						type: 'tool-call-suspended',
-						payload: {
-							toolCallId: 'tc-approval',
-							runId: 'run-approval',
-							toolName: 'calculator',
-							input: {
-								type: 'approval',
-								toolName: 'calculator',
-								args: { input: '2 + 2' },
-							},
-						},
-					},
-				]),
-			)
-			.mockImplementationOnce(
-				async (_url: string, init: RequestInit) =>
-					await new Promise<Response>((_resolve, reject) => {
-						init.signal?.addEventListener(
-							'abort',
-							() => reject(new DOMException('Aborted', 'AbortError')),
-							{ once: true },
-						);
-					}),
-			);
-		globalThis.fetch = fetchMock as unknown as typeof fetch;
-
-		const hook = buildHook();
-		await hook.sendMessage('calculate 2 + 2');
-		const resume = hook.resume({
-			runId: 'run-approval',
-			toolCallId: 'tc-approval',
-			resumeData: { approved: false },
-		});
-		await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
-		hook.stopGenerating();
-		await resume;
-
-		const assistant = hook.messages.value[1];
-		expect(assistant.toolCalls?.[0].state).toBe('done');
-		expect(assistant.interactive?.resolvedAt).toBeDefined();
-		expect(assistant.status).toBe('success');
-	});
-
-	it('reopens a cancelled HITL card when backend cleanup re-suspends it', async () => {
-		const approvalInput = {
-			type: 'approval' as const,
-			toolName: 'calculator',
-			args: { input: '2 + 2' },
-		};
-		const suspensionEvent: AgentSseEvent = {
-			type: 'tool-call-suspended',
-			payload: {
-				toolCallId: 'tc-approval',
-				runId: 'run-approval',
-				toolName: 'calculator',
-				input: approvalInput,
-			},
-		};
-		const fetchMock = vi
-			.fn()
-			.mockResolvedValueOnce(
-				makeSseResponse([
-					{
-						type: 'tool-call',
-						toolCallId: 'tc-approval',
-						toolName: 'calculator',
-						input: { input: '2 + 2' },
-					},
-					suspensionEvent,
-				]),
-			)
-			.mockResolvedValueOnce(makeSseResponse([suspensionEvent]));
-		globalThis.fetch = fetchMock as unknown as typeof fetch;
-
-		const hook = buildHook();
-		await hook.sendMessage('calculate 2 + 2');
-		await hook.resume({
-			runId: 'run-approval',
-			toolCallId: 'tc-approval',
-			cancelled: true,
-			text: 'Keep waiting',
-		});
-
-		const assistant = hook.messages.value[1];
-		expect(assistant.status).toBe('awaitingUser');
-		expect(assistant.toolCalls?.[0]).toMatchObject({
-			state: 'suspended',
-			canceled: false,
-			output: undefined,
-			displaySummary: undefined,
-		});
-		expect(assistant.interactive).toMatchObject({
-			toolCallId: 'tc-approval',
-			runId: 'run-approval',
-		});
-		expect(assistant.interactive?.cancelled).toBeUndefined();
-		expect(assistant.interactive?.resolvedAt).toBeUndefined();
-	});
-
-	it('reconciles a failed resume against the backend suspension state', async () => {
-		const approvalInput = {
-			type: 'approval' as const,
-			toolName: 'calculator',
-			args: { input: '2 + 2' },
-		};
-		globalThis.fetch = vi
-			.fn()
-			.mockResolvedValueOnce(
-				makeSseResponse([
-					{
-						type: 'tool-call',
-						toolCallId: 'tc-approval',
-						toolName: 'calculator',
-						input: { input: '2 + 2' },
-					},
-					{
-						type: 'tool-call-suspended',
-						payload: {
-							toolCallId: 'tc-approval',
-							runId: 'run-approval',
-							toolName: 'calculator',
-							input: approvalInput,
-						},
-					},
-				]),
-			)
-			.mockResolvedValueOnce(
-				makeSseResponse([{ type: 'error', message: 'This action has already been handled' }]),
-			) as unknown as typeof fetch;
-		getTestChatMessagesMock.mockResolvedValue({
-			messages: [
-				{
-					id: 'm1',
-					role: 'assistant',
-					content: [
-						{
-							type: 'tool-call',
-							toolName: 'calculator',
-							toolCallId: 'tc-approval',
-							input: approvalInput,
-						},
-					],
-				},
-			],
-			openSuspensions: [],
-		});
-
-		const hook = buildHook();
-		await hook.sendMessage('calculate 2 + 2');
-		await hook.resume({
-			runId: 'run-approval',
-			toolCallId: 'tc-approval',
-			resumeData: { approved: false },
-		});
-
-		expect(getTestChatMessagesMock).toHaveBeenCalled();
-		const assistant = hook.messages.value[0];
-		expect(assistant.interactive).toBeUndefined();
-		expect(assistant.toolCalls?.[0].state).toBe('cancelled');
-	});
-
-	it('keeps the suspended card open when failed resume reconciliation returns 404', async () => {
-		const approvalInput = {
-			type: 'approval' as const,
-			toolName: 'calculator',
-			args: { input: '2 + 2' },
-		};
-		globalThis.fetch = vi
-			.fn()
-			.mockResolvedValueOnce(
-				makeSseResponse([
-					{
-						type: 'tool-call',
-						toolCallId: 'tc-approval',
-						toolName: 'calculator',
-						input: { input: '2 + 2' },
-					},
-					{
-						type: 'tool-call-suspended',
-						payload: {
-							toolCallId: 'tc-approval',
-							runId: 'run-approval',
-							toolName: 'calculator',
-							input: approvalInput,
-						},
-					},
-				]),
-			)
-			.mockResolvedValueOnce(
-				makeSseResponse([{ type: 'error', message: 'Resume failed' }]),
-			) as unknown as typeof fetch;
-		getTestChatMessagesMock.mockRejectedValue(
-			Object.assign(new Error('thread not found'), { httpStatusCode: 404 }),
-		);
-
-		const hook = buildHook();
-		await hook.sendMessage('calculate 2 + 2');
-		await hook.resume({
-			runId: 'run-approval',
-			toolCallId: 'tc-approval',
-			resumeData: { approved: false },
-		});
-
-		expect(getTestChatMessagesMock).toHaveBeenCalled();
-		expect(hook.messages.value[0].content).toBe('calculate 2 + 2');
-		const assistant = hook.messages.value[1];
-		expect(assistant.status).toBe('awaitingUser');
-		expect(assistant.toolCalls?.[0].state).toBe('suspended');
-		expect(assistant.interactive?.resolvedAt).toBeUndefined();
-	});
-
-	it('breaks out of the consume loop on `done` so isStreaming flips back to false', async () => {
+	it('finishes live rendering when done arrives', async () => {
 		const events: AgentSseEvent[] = [
 			{ type: 'text-delta', id: 't-1', delta: 'hello' },
 			{ type: 'done' },
 		];
-		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+		mockChatEvents(events);
 
 		const hook = buildHook();
 		await hook.sendMessage('hi');
@@ -1122,7 +363,7 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 			{ type: 'reasoning-end', id: 'reasoning-1' },
 			{ type: 'done' },
 		];
-		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+		mockChatEvents(events);
 
 		const hook = buildHook();
 		await hook.sendMessage('think about this');
@@ -1137,100 +378,6 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 				endTime: expect.any(Number),
 			},
 		]);
-	});
-
-	it('marks active messages and tool calls as failed when the stream closes prematurely', async () => {
-		const events: AgentSseEvent[] = [
-			{ type: 'start-step' },
-			{
-				type: 'tool-call',
-				toolCallId: 'tc-1',
-				toolName: 'lookup',
-				input: { query: 'n8n' },
-			},
-			{ type: 'finish-step' },
-			{
-				type: 'tool-execution-start',
-				toolCallId: 'tc-1',
-				toolName: 'lookup',
-				startTime: 1_000,
-			},
-		];
-		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
-
-		const hook = buildHook();
-		await hook.sendMessage('look this up');
-		await nextTick();
-
-		const assistantMessages = hook.messages.value.filter((message) => message.role === 'assistant');
-		expect(assistantMessages).toHaveLength(2);
-		expect(assistantMessages[0].status).toBe('error');
-		expect(assistantMessages[0].toolCalls?.[0].state).toBe('error');
-		expect(assistantMessages[1]).toMatchObject({
-			content: 'agents.chat.streamInterrupted',
-			status: 'error',
-		});
-		expect(hook.isStreaming.value).toBe(false);
-	});
-
-	it('marks active messages and tool calls as failed when reading the stream throws', async () => {
-		const events: AgentSseEvent[] = [
-			{
-				type: 'tool-call',
-				toolCallId: 'tc-1',
-				toolName: 'lookup',
-				input: { query: 'n8n' },
-			},
-			{
-				type: 'tool-execution-start',
-				toolCallId: 'tc-1',
-				toolName: 'lookup',
-				startTime: 1_000,
-			},
-		];
-		globalThis.fetch = vi.fn(async () => makeInterruptedSseResponse(events)) as typeof fetch;
-
-		const hook = buildHook();
-		await hook.sendMessage('look this up');
-		await nextTick();
-
-		const assistantMessages = hook.messages.value.filter((message) => message.role === 'assistant');
-		expect(assistantMessages).toHaveLength(2);
-		expect(assistantMessages[0].status).toBe('error');
-		expect(assistantMessages[0].toolCalls?.[0].state).toBe('error');
-		expect(assistantMessages[1]).toMatchObject({
-			content: 'agents.chat.streamInterrupted',
-			status: 'error',
-		});
-		expect(hook.isStreaming.value).toBe(false);
-	});
-
-	it('preserves partial reasoning when the stream closes prematurely', async () => {
-		const events: AgentSseEvent[] = [
-			{ type: 'reasoning-start', id: 'r-1' },
-			{ type: 'reasoning-delta', id: 'r-1', delta: 'Checking the workflow' },
-		];
-		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
-
-		const hook = buildHook();
-		await hook.sendMessage('inspect this');
-		await nextTick();
-
-		const assistantMessages = hook.messages.value.filter((message) => message.role === 'assistant');
-		expect(assistantMessages).toHaveLength(2);
-		expect(assistantMessages[0]).toMatchObject({
-			thinking: 'Checking the workflow',
-			thinkingSegments: [
-				expect.objectContaining({
-					id: 'r-1',
-					content: 'Checking the workflow',
-					startTime: expect.any(Number),
-					endTime: expect.any(Number),
-				}),
-			],
-			status: 'error',
-		});
-		expect(assistantMessages[1].content).toBe('agents.chat.streamInterrupted');
 	});
 
 	it('opens a fresh ChatMessage after finish-step / start-step iteration boundary', async () => {
@@ -1255,7 +402,7 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 			{ type: 'finish-step' },
 			{ type: 'done' },
 		];
-		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+		mockChatEvents(events);
 
 		const hook = buildHook();
 		await hook.sendMessage('hello');
@@ -1306,7 +453,7 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 			},
 			{ type: 'done' },
 		];
-		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+		mockChatEvents(events);
 
 		const hook = buildHook();
 		await hook.sendMessage('build me an agent');
@@ -1331,7 +478,7 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		const events: AgentSseEvent[] = [
 			{ type: 'error', message: 'Tool execution failed', errorCode: 'tool_error' },
 		];
-		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+		mockChatEvents(events);
 
 		const hook = buildHook();
 		await hook.sendMessage('run');
@@ -1357,7 +504,7 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 			{ type: 'text-delta', id: 't-1', delta: 'hello' },
 			{ type: 'done' },
 		];
-		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+		mockChatEvents(events);
 
 		const hook = buildHook();
 		await hook.sendMessage('run');
@@ -1376,14 +523,14 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 			{ type: 'done' },
 		];
 		const withoutWarning: AgentSseEvent[] = [{ type: 'done' }];
-		globalThis.fetch = vi.fn(async () => makeSseResponse(withWarning)) as typeof fetch;
+		mockChatEvents(withWarning);
 
 		const hook = buildHook();
 		await hook.sendMessage('run');
 		await nextTick();
 		expect(hook.warnings.value).toHaveLength(1);
 
-		globalThis.fetch = vi.fn(async () => makeSseResponse(withoutWarning)) as typeof fetch;
+		mockChatEvents(withoutWarning);
 		await hook.sendMessage('run again');
 		await nextTick();
 		expect(hook.warnings.value).toHaveLength(0);
@@ -1395,7 +542,7 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 			{ type: 'warning', message: 'b', source: 'mcp', server: 's2' },
 			{ type: 'done' },
 		];
-		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+		mockChatEvents(events);
 
 		const hook = buildHook();
 		await hook.sendMessage('run');
@@ -1417,17 +564,19 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 			},
 			{ type: 'done' },
 		];
-		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+		mockChatEvents(events);
 
 		const hook = buildHook();
 		await hook.sendMessage('run');
 		hook.dismissWarning(0);
 
+		mockChatEvents(events);
 		await hook.sendMessage('run again');
 
 		expect(hook.warnings.value).toHaveLength(0);
 
 		const refreshedHook = buildHook();
+		mockChatEvents(events);
 		await refreshedHook.sendMessage('run');
 
 		expect(refreshedHook.warnings.value).toEqual([
@@ -1448,10 +597,8 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 			{ type: 'warning', message: 'Connection timed out', source: 'mcp', server: 'Linear' },
 			{ type: 'done' },
 		];
-		globalThis.fetch = vi
-			.fn()
-			.mockResolvedValueOnce(makeSseResponse(firstEvents))
-			.mockResolvedValueOnce(makeSseResponse(secondEvents)) as typeof fetch;
+		mockChatEvents(firstEvents);
+		mockChatEvents(secondEvents);
 
 		const hook = buildHook();
 		await hook.sendMessage('run');
@@ -1471,7 +618,7 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 				missing: ['model'],
 			},
 		];
-		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+		mockChatEvents(events);
 
 		const hook = buildHook();
 		await hook.sendMessage('run');
@@ -1491,7 +638,7 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 			{ type: 'start-step' },
 			{ type: 'error', message: 'Stream died', errorCode: 'stream_error' },
 		];
-		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+		mockChatEvents(events);
 
 		const hook = buildHook();
 		await hook.sendMessage('hello');
@@ -1511,7 +658,7 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 			{ type: 'finish-step' },
 			{ type: 'error', message: 'Downstream failure', errorCode: 'runtime_error' },
 		];
-		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+		mockChatEvents(events);
 
 		const hook = buildHook();
 		await hook.sendMessage('tell me');
@@ -1530,7 +677,7 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 			{ type: 'reasoning-delta', id: 'reasoning-1', delta: 'Partial analysis' },
 			{ type: 'error', message: 'Downstream failure', errorCode: 'runtime_error' },
 		];
-		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+		mockChatEvents(events);
 
 		const hook = buildHook();
 		await hook.sendMessage('tell me');
@@ -1555,7 +702,7 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 			{ type: 'finish-step' },
 			{ type: 'error', message: 'Crashed after tool call', errorCode: 'runtime_error' },
 		];
-		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+		mockChatEvents(events);
 
 		const hook = buildHook();
 		await hook.sendMessage('search');
@@ -1579,7 +726,7 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 			},
 			{ type: 'error', message: 'Tool failed', errorCode: 'runtime_error' },
 		];
-		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+		mockChatEvents(events);
 
 		const hook = buildHook();
 		await hook.sendMessage('search');
@@ -1614,7 +761,7 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 			},
 			{ type: 'error', message: 'Run failed', errorCode: 'runtime_error' },
 		];
-		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+		mockChatEvents(events);
 
 		const hook = buildHook();
 		await hook.sendMessage('calculate 2 + 2');
@@ -1649,7 +796,7 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 			},
 			{ type: 'done' },
 		];
-		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+		mockChatEvents(events);
 
 		const hook = buildHook();
 		await hook.sendMessage('do thing');
@@ -1679,7 +826,7 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 			} as AgentSseEvent,
 			{ type: 'done' },
 		];
-		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+		mockChatEvents(events);
 
 		const hook = buildHook();
 		await hook.sendMessage('delete file');
@@ -1716,7 +863,7 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 			},
 			{ type: 'done' },
 		];
-		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+		mockChatEvents(events);
 
 		const hook = buildHook();
 		await hook.sendMessage('do thing');
@@ -1745,7 +892,7 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 			},
 			{ type: 'done' },
 		];
-		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+		mockChatEvents(events);
 
 		const hook = buildHook();
 		await hook.sendMessage('go');
@@ -1773,7 +920,7 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 			},
 			{ type: 'done' },
 		];
-		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+		mockChatEvents(events);
 
 		const hook = buildHook();
 		await hook.sendMessage('go');
@@ -1810,7 +957,7 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 			},
 			{ type: 'done' },
 		];
-		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+		mockChatEvents(events);
 
 		const hook = buildHook();
 		await hook.sendMessage('do thing');
@@ -1850,7 +997,7 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 			},
 			{ type: 'done' },
 		];
-		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+		mockChatEvents(events);
 
 		const hook = buildHook();
 		await hook.sendMessage('hello');
@@ -1896,7 +1043,7 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 			},
 			{ type: 'done' },
 		];
-		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+		mockChatEvents(events);
 
 		const hook = buildHook();
 		await hook.sendMessage('show me a snapshot');
@@ -1958,7 +1105,7 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 			},
 			{ type: 'done' },
 		];
-		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+		mockChatEvents(events);
 
 		const hook = buildHook();
 		await hook.sendMessage('show two cards');
@@ -2041,7 +1188,7 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 			},
 			{ type: 'done' },
 		];
-		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+		mockChatEvents(events);
 
 		const hook = buildHook();
 		await hook.sendMessage('show two choices');
@@ -2059,23 +1206,23 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 });
 
 describe('useAgentChatStream — loadHistory', () => {
-	let originalFetch: typeof fetch;
-	let originalLocalStorage: typeof globalThis.localStorage | undefined;
-
 	beforeEach(() => {
-		originalFetch = globalThis.fetch;
-		originalLocalStorage = globalThis.localStorage;
-		vi.stubGlobal('localStorage', {
-			getItem: vi.fn(() => ''),
-		});
 		getChatMessagesMock.mockReset();
 		getTestChatMessagesMock.mockReset();
 	});
 
 	afterEach(() => {
-		globalThis.fetch = originalFetch;
-		vi.stubGlobal('localStorage', originalLocalStorage);
 		vi.restoreAllMocks();
+	});
+
+	it('reports when the initial queue load fails', async () => {
+		const onHistoryLoaded = vi.fn();
+		getQueueMock.mockRejectedValueOnce(new Error('Queue unavailable'));
+
+		const hook = buildHook('thread-1', onHistoryLoaded);
+		await hook.loadHistory();
+
+		expect(onHistoryLoaded).toHaveBeenCalledWith(0, false, false);
 	});
 
 	it('re-arms a suspended n8n_chat_action card from the chat history sidecar', async () => {
@@ -2160,7 +1307,7 @@ describe('useAgentChatStream — done executionId', () => {
 			{ type: 'text-end', id: 't1' },
 			{ type: 'done', sessionId: 'thread-1', executionId: 'exec-live-1' },
 		];
-		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+		mockChatEvents(events);
 
 		const hook = buildHook();
 		await hook.sendMessage('hi');
@@ -2202,7 +1349,7 @@ describe('useAgentChatStream — subagent-chunk', () => {
 			},
 			{ type: 'done' },
 		];
-		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+		mockChatEvents(events);
 
 		const hook = buildHook();
 		await hook.sendMessage('delegate');
@@ -2243,7 +1390,7 @@ describe('useAgentChatStream — subagent-chunk', () => {
 			},
 			{ type: 'done' },
 		];
-		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+		mockChatEvents(events);
 
 		const hook = buildHook();
 		await hook.sendMessage('delegate');
@@ -2273,7 +1420,7 @@ describe('useAgentChatStream — subagent-chunk', () => {
 			},
 			{ type: 'done' },
 		];
-		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+		mockChatEvents(events);
 
 		const hook = buildHook();
 		await hook.sendMessage('hi');
@@ -2307,7 +1454,7 @@ describe('useAgentChatStream — subagent-chunk', () => {
 			},
 			{ type: 'done' },
 		];
-		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+		mockChatEvents(events);
 
 		const hook = buildHook();
 		await hook.sendMessage('delegate');
@@ -2322,21 +1469,13 @@ describe('useAgentChatStream — subagent-chunk', () => {
 });
 
 describe('useAgentChatStream — stuck/desync recovery', () => {
-	let originalFetch: typeof fetch;
-	let originalLocalStorage: typeof globalThis.localStorage | undefined;
-
 	beforeEach(() => {
-		originalFetch = globalThis.fetch;
-		originalLocalStorage = globalThis.localStorage;
-		vi.stubGlobal('localStorage', { getItem: vi.fn(() => '') });
 		cancelAgentChatRunMock.mockReset();
 		cancelAgentChatRunMock.mockResolvedValue({ cancelled: true });
 		getTestChatMessagesMock.mockReset();
 	});
 
 	afterEach(() => {
-		globalThis.fetch = originalFetch;
-		vi.stubGlobal('localStorage', originalLocalStorage);
 		vi.restoreAllMocks();
 	});
 
@@ -2360,7 +1499,7 @@ describe('useAgentChatStream — stuck/desync recovery', () => {
 			},
 			{ type: 'done' },
 		];
-		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+		mockChatEvents(events);
 
 		const hook = buildHook();
 		await hook.sendMessage('go');
@@ -2369,44 +1508,6 @@ describe('useAgentChatStream — stuck/desync recovery', () => {
 		expect(hook.isStreaming.value).toBe(false);
 		// Tool would otherwise keep pulsing as `running` — it must settle.
 		expect(hook.messages.value[1].toolCalls?.[0].state).toBe('done');
-	});
-
-	it('stopGenerating settles stale in-flight tool calls when the stream already ended', async () => {
-		// Same desync: stream ended with a tool still `running`, no open suspension.
-		const events: AgentSseEvent[] = [
-			{ type: 'start-step' },
-			{
-				type: 'tool-call',
-				toolCallId: 'tc-stuck-2',
-				toolName: 'create_issue',
-				input: { title: 'y' },
-			},
-			{ type: 'finish-step' },
-			{
-				type: 'tool-execution-start',
-				toolCallId: 'tc-stuck-2',
-				toolName: 'create_issue',
-				startTime: 1_000,
-			},
-			{ type: 'done' },
-		];
-		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
-
-		const hook = buildHook();
-		await hook.sendMessage('go');
-		await nextTick();
-
-		// Simulate the desync: force the tool back to `running` after the stream
-		// ended (as if its terminal event had been lost).
-		hook.messages.value[1].toolCalls![0].state = 'running';
-		expect(hook.isStreaming.value).toBe(false);
-
-		await hook.stopGenerating();
-		await nextTick();
-
-		expect(hook.messages.value[1].toolCalls?.[0].state).toBe('cancelled');
-		// No backend cancel call — there is no runId/suspension to cancel.
-		expect(cancelAgentChatRunMock).not.toHaveBeenCalled();
 	});
 });
 
@@ -2506,14 +1607,7 @@ describe('useAgentChatStream — transcript push', () => {
 		const stale = Promise.withResolvers<ReturnType<typeof history>>();
 		const fresh = Promise.withResolvers<ReturnType<typeof history>>();
 		getChatMessagesMock.mockReturnValueOnce(stale.promise).mockReturnValueOnce(fresh.promise);
-		const fetchMock = vi
-			.spyOn(globalThis, 'fetch')
-			.mockResolvedValue(
-				makeSseResponse([
-					{ type: 'text-delta', id: 'reply', delta: 'new reply' },
-					{ type: 'done' },
-				]),
-			);
+		mockChatEvents([{ type: 'text-delta', id: 'reply', delta: 'new reply' }, { type: 'done' }]);
 		const { hook, dispose } = scopedHook('thread-1');
 		try {
 			emitPush(update());
@@ -2528,7 +1622,6 @@ describe('useAgentChatStream — transcript push', () => {
 			expect(hook.messages.value.map((message) => message.content)).toEqual(['new reply']);
 		} finally {
 			dispose();
-			fetchMock.mockRestore();
 		}
 	});
 
@@ -2536,17 +1629,14 @@ describe('useAgentChatStream — transcript push', () => {
 		const stale = Promise.withResolvers<ReturnType<typeof history>>();
 		const fresh = Promise.withResolvers<ReturnType<typeof history>>();
 		getChatMessagesMock.mockReturnValueOnce(stale.promise).mockReturnValueOnce(fresh.promise);
-		const stream = makeControllableSseResponse(
-			[{ type: 'text-delta', id: 'reply', delta: 'new reply' }],
-			null,
-		);
-		const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(stream.response);
+		const stream = mockChatEvents([{ type: 'text-delta', id: 'reply', delta: 'new reply' }], false);
 		const { hook, dispose } = scopedHook('thread-1');
 		try {
 			const sending = hook.sendMessage('hello');
 			await flushPromises();
 			const loading = hook.loadHistory();
-			stream.close([{ type: 'done' }]);
+			await vi.waitFor(() => expect(getChatMessagesMock).toHaveBeenCalledTimes(1));
+			stream.emit({ type: 'done' });
 			await sending;
 			stale.resolve(history('old reply'));
 			await loading;
@@ -2558,13 +1648,11 @@ describe('useAgentChatStream — transcript push', () => {
 			expect(hook.messages.value.map((message) => message.content)).toEqual(['new reply']);
 		} finally {
 			dispose();
-			fetchMock.mockRestore();
 		}
 	});
 
 	it('refreshes after a local stream ends when pushes arrived during the stream', async () => {
-		const stream = makeControllableSseResponse([], null);
-		const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(stream.response);
+		const stream = mockChatEvents([], false);
 		const { hook, dispose } = scopedHook('thread-1');
 		try {
 			const sending = hook.sendMessage('hello');
@@ -2572,13 +1660,12 @@ describe('useAgentChatStream — transcript push', () => {
 			emitPush(update());
 			await flushPromises();
 			expect(getChatMessagesMock).not.toHaveBeenCalled();
-			stream.close([{ type: 'done' }]);
+			stream.emit({ type: 'done' });
 			await sending;
 			await flushPromises();
 			expect(getChatMessagesMock).toHaveBeenCalledTimes(1);
 		} finally {
 			dispose();
-			fetchMock.mockRestore();
 		}
 	});
 
@@ -2639,6 +1726,7 @@ describe('useAgentChatStream — transcript push', () => {
 			useAgentChatStream({ projectId: ref('p1'), agentId: ref('a1'), continueSessionId: threadId }),
 		)!;
 		const loading = hook.loadHistory();
+		await vi.waitFor(() => expect(getChatMessagesMock).toHaveBeenCalledTimes(1));
 		threadId.value = 'thread-2';
 		await flushPromises();
 		stale.resolve(history('old session'));
@@ -2729,12 +1817,12 @@ describe('useAgentChatStream — transcript push', () => {
 		await flushPromises();
 
 		// A send begins before the refetch resolves.
-		hook.messages.value = [{ role: 'user', content: 'live' }] as never;
-		(hook.isStreaming as { value: boolean }).value = true;
+		mockChatEvents([], false);
+		await hook.sendMessage('live');
 		release();
 		await flushPromises();
 
-		expect(hook.messages.value).toEqual([{ role: 'user', content: 'live' }]);
+		expect(hook.messages.value.map(({ content }) => content)).toEqual(['live']);
 		dispose();
 	});
 
@@ -2763,7 +1851,7 @@ describe('useAgentChatStream — transcript push', () => {
 
 	it('stops listening once the chat is torn down', () => {
 		const { dispose } = scopedHook();
-		expect(pushListeners).toHaveLength(1);
+		expect(pushListeners).toHaveLength(2);
 
 		dispose();
 

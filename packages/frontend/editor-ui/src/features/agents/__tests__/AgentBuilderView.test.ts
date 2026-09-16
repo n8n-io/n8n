@@ -9,6 +9,7 @@ import type {
 	AgentJsonConfig,
 	AgentJsonSkillRef,
 	AgentJsonToolRef,
+	AgentContinueLoadedEvent,
 	AgentFixWithAssistantEvent,
 	CustomToolEntry,
 } from '../types';
@@ -1831,9 +1832,14 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 
 		(
 			wrapper.vm as unknown as {
-				onContinueLoaded: (event: { sessionId: string; count: number }) => void;
+				onContinueLoaded: (event: AgentContinueLoadedEvent) => void;
 			}
-		).onContinueLoaded({ sessionId: 'stale-missing-thread', count: 0 });
+		).onContinueLoaded({
+			sessionId: 'stale-missing-thread',
+			count: 0,
+			hasQueueEntries: false,
+			queueLoadSucceeded: true,
+		});
 		await flushPromises();
 
 		expect(routerReplace).toHaveBeenCalledWith(
@@ -1861,9 +1867,14 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 
 		(
 			wrapper.vm as unknown as {
-				onContinueLoaded: (event: { sessionId: string; count: number }) => void;
+				onContinueLoaded: (event: AgentContinueLoadedEvent) => void;
 			}
-		).onContinueLoaded({ sessionId: 'stale-route-thread', count: 0 });
+		).onContinueLoaded({
+			sessionId: 'stale-route-thread',
+			count: 0,
+			hasQueueEntries: false,
+			queueLoadSucceeded: true,
+		});
 		await flushPromises();
 
 		expect(routerReplace).toHaveBeenCalledWith({
@@ -1872,6 +1883,44 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props('effectiveSessionId')).toBe(
 			'thread-latest',
 		);
+	});
+
+	it('keeps a queued session before its first history record exists', async () => {
+		localStorage.setItem('N8N_AGENT_PREVIEW_OPEN:p1:a1', 'true');
+		routeQuery.continueSessionId = 'queued-thread';
+		const wrapper = await renderView();
+		const preview = wrapper.findComponent({ name: 'AgentPreviewDock' });
+		routerReplace.mockClear();
+
+		preview.vm.$emit('continue-loaded', {
+			sessionId: 'queued-thread',
+			count: 0,
+			hasQueueEntries: true,
+			queueLoadSucceeded: true,
+		});
+		await flushPromises();
+
+		expect(routerReplace).not.toHaveBeenCalled();
+		expect(preview.props('effectiveSessionId')).toBe('queued-thread');
+	});
+
+	it('keeps an unknown session when its initial queue load fails', async () => {
+		localStorage.setItem('N8N_AGENT_PREVIEW_OPEN:p1:a1', 'true');
+		routeQuery.continueSessionId = 'unknown-thread';
+		const wrapper = await renderView();
+		const preview = wrapper.findComponent({ name: 'AgentPreviewDock' });
+		routerReplace.mockClear();
+
+		preview.vm.$emit('continue-loaded', {
+			sessionId: 'unknown-thread',
+			count: 0,
+			hasQueueEntries: false,
+			queueLoadSucceeded: false,
+		});
+		await flushPromises();
+
+		expect(routerReplace).not.toHaveBeenCalled();
+		expect(preview.props('effectiveSessionId')).toBe('unknown-thread');
 	});
 
 	it('ignores stale continue-loaded events after New session takes ownership', async () => {
