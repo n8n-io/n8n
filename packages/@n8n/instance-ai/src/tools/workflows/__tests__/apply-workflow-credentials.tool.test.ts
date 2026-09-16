@@ -1,3 +1,4 @@
+import { isZodSchema } from '@n8n/agents';
 import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 
 import { executeTool } from '../../../__tests__/tool-test-utils';
@@ -32,6 +33,7 @@ function makeContext(options: MakeContextOptions = {}): OrchestrationContext {
 			updateFromWorkflowJSON: vi.fn().mockResolvedValue({
 				id: 'wf-1',
 				versionId: 'v-1',
+				activeVersionId: null,
 				checksum: 'checksum-1',
 			}),
 		} as never,
@@ -70,7 +72,7 @@ describe('createApplyWorkflowCredentialsTool', () => {
 			credentials: { googlePalmApi: AI_GATEWAY_MANAGED_TAG },
 		});
 
-		expect(result).toEqual({ success: true, appliedNodes: ['Gemini'] });
+		expect(result).toMatchObject({ success: true, appliedNodes: ['Gemini'] });
 		expect(context.domainContext!.credentialService.get).not.toHaveBeenCalled();
 		expect(context.domainContext!.workflowService.updateFromWorkflowJSON).toHaveBeenCalledWith(
 			'wf-1',
@@ -128,7 +130,7 @@ describe('createApplyWorkflowCredentialsTool', () => {
 			credentials: { notionApi: 'cred-1' },
 		});
 
-		expect(result).toEqual({ success: true, appliedNodes: ['Notion'] });
+		expect(result).toMatchObject({ success: true, appliedNodes: ['Notion'] });
 		expect(context.workflowTaskService!.updateBuildOutcome).toHaveBeenCalledWith(
 			'wi_test',
 			expect.objectContaining({
@@ -140,5 +142,61 @@ describe('createApplyWorkflowCredentialsTool', () => {
 				simulationFixtures: undefined,
 			}),
 		);
+	});
+
+	it.each([
+		{ activeVersionId: null, live: 'unpublished' },
+		{ activeVersionId: 'v-published', live: 'stale' },
+		{ activeVersionId: 'v-saved', live: 'current' },
+	])('reports $live state from the credential save', async ({ activeVersionId, live }) => {
+		const context = makeContext();
+		vi.mocked(context.domainContext!.workflowService.updateFromWorkflowJSON).mockResolvedValue({
+			id: 'wf-1',
+			versionId: 'v-saved',
+			activeVersionId,
+			checksum: 'saved-checksum',
+		} as never);
+		const tool = createApplyWorkflowCredentialsTool(context);
+		const result = await executeTool(tool, {
+			workItemId: 'wi_test',
+			workflowId: 'wf-1',
+			credentials: { googlePalmApi: 'cred-1' },
+		});
+
+		expect(result).toMatchObject({
+			success: true,
+			publishState: { live, savedVersionId: 'v-saved', activeVersionId },
+		});
+		if (!isZodSchema(tool.outputSchema)) throw new Error('Expected an output schema');
+		expect(tool.outputSchema.parse(result)).toMatchObject({ publishState: result.publishState });
+		if (live === 'stale') expect(result.publishStateNote).toContain('this save is a draft');
+	});
+
+	it('returns no saved revision when there are no nodes to update', async () => {
+		const context = makeContext({ workflowJson: { nodes: [], connections: {} } });
+		const result = await executeTool(createApplyWorkflowCredentialsTool(context), {
+			workItemId: 'wi_test',
+			workflowId: 'wf-1',
+			credentials: { googlePalmApi: 'cred-1' },
+		});
+
+		expect(result).toEqual({ success: true, appliedNodes: [] });
+		expect(context.domainContext!.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
+	});
+
+	it('returns no saved revision when the credential save fails', async () => {
+		const context = makeContext();
+		vi.mocked(context.domainContext!.workflowService.updateFromWorkflowJSON).mockRejectedValue(
+			new Error('Save failed'),
+		);
+		const result = await executeTool(createApplyWorkflowCredentialsTool(context), {
+			workItemId: 'wi_test',
+			workflowId: 'wf-1',
+			credentials: { googlePalmApi: 'cred-1' },
+		});
+
+		expect(result.success).toBe(false);
+		expect(result).not.toHaveProperty('publishState');
+		expect(result).not.toHaveProperty('publishStateNote');
 	});
 });

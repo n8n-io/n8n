@@ -1351,6 +1351,8 @@ async function handleSetupApply(
 				success: true,
 				partial: true,
 				reason: `Applied setup for ${String(validCompletedNodes.length)} node(s), ${String(pendingRequests.length)} node(s) still need configuration.`,
+				publishState: applyResult.publishState,
+				publishStateNote: applyResult.publishStateNote,
 				completedNodes: validCompletedNodes,
 				nodesStillNeedingSetup,
 				...skippedByUserReport,
@@ -1362,6 +1364,8 @@ async function handleSetupApply(
 
 		return {
 			success: true,
+			publishState: applyResult.publishState,
+			publishStateNote: applyResult.publishStateNote,
 			completedNodes: validCompletedNodes,
 			...skippedByUserReport,
 			failedNodes: mergedFailedNodes,

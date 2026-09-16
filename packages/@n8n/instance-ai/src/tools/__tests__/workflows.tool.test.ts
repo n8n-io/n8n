@@ -2292,6 +2292,50 @@ describe('workflows tool', () => {
 	});
 
 	describe('setup action', () => {
+		it.each([false, true])(
+			'returns the saved publication state when partial=%s',
+			async (partial) => {
+				const context = createMockContext();
+				const publishState = {
+					live: 'stale' as const,
+					savedVersionId: 'v-saved',
+					activeVersionId: 'v-live',
+				};
+				vi.mocked(applyNodeChanges).mockResolvedValueOnce({
+					applied: ['Slack'],
+					failed: [],
+					publishState,
+					publishStateNote: 'This save is a draft.',
+				});
+				vi.mocked(analyzeWorkflow).mockResolvedValueOnce(
+					partial
+						? [
+								{
+									node: { name: 'Pending', type: 'n8n-nodes-base.slack', parameters: {} },
+									credentialType: 'slackApi',
+									needsAction: true,
+								} as never,
+							]
+						: [],
+				);
+
+				const result = await executeTool(
+					createWorkflowsTool(context),
+					{ action: 'setup', workflowId: 'wf1' },
+					{
+						resumeData: { approved: true, credentials: { Slack: { slackApi: 'cred-1' } } },
+					},
+				);
+
+				expect(result).toMatchObject({
+					success: true,
+					publishState,
+					publishStateNote: 'This save is a draft.',
+				});
+				expect(result.partial === true).toBe(partial);
+			},
+		);
+
 		it('should block setup when updateWorkflow permission is blocked', async () => {
 			const context = createMockContext({
 				permissions: { updateWorkflow: 'blocked' },

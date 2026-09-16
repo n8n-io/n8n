@@ -1,3 +1,5 @@
+import { isZodSchema } from '@n8n/agents';
+
 import { executeTool } from '../../../__tests__/tool-test-utils';
 import { FolderResolutionError } from '../../../errors/folder-resolution.error';
 import { WorkflowNotFoundError } from '../../../errors/workflow-not-found.error';
@@ -166,13 +168,19 @@ function makeContext(input: {
 		workflowService: {
 			createFromWorkflowJSON: vi.fn(
 				async () =>
-					await Promise.resolve({ id: 'wf-1', versionId: 'v-1', checksum: 'checksum-create' }),
+					await Promise.resolve({
+						id: 'wf-1',
+						versionId: 'v-1',
+						activeVersionId: null,
+						checksum: 'checksum-create',
+					}),
 			),
 			updateFromWorkflowJSON: vi.fn(
 				async (workflowId: string) =>
 					await Promise.resolve({
 						id: workflowId,
 						versionId: 'v-next',
+						activeVersionId: null,
 						checksum: 'checksum-update',
 					}),
 			),
@@ -308,16 +316,29 @@ describe('createBuildWorkflowTool', () => {
 			expect(result.publishStateNote).not.toMatch(/ask the user/i);
 		});
 
-		it('reports no publish state for an unpublished workflow', async () => {
+		it('reports the saved revision and draft state for an unpublished workflow', async () => {
 			const { context, filePath } = makeContext({});
+			vi.mocked(context.workflowService.createFromWorkflowJSON).mockResolvedValue({
+				id: 'wf-1',
+				versionId: 'v-new-draft',
+				activeVersionId: null,
+				checksum: 'checksum-new-draft',
+			} as never);
 
-			const result = await executeTool<BuildToolOutput & { publishState?: unknown }>(
-				createBuildWorkflowTool(context),
-				{ filePath, name: 'Fresh workflow' },
-			);
+			const tool = createBuildWorkflowTool(context);
+			const result = await executeTool<BuildToolOutput & { publishState?: unknown }>(tool, {
+				filePath,
+				name: 'Fresh workflow',
+			});
 
 			expect(result.success).toBe(true);
-			expect(result.publishState).toBeUndefined();
+			expect(result.publishState).toEqual({
+				live: 'unpublished',
+				activeVersionId: null,
+				savedVersionId: 'v-new-draft',
+			});
+			if (!isZodSchema(tool.outputSchema)) throw new Error('Expected an output schema');
+			expect(tool.outputSchema.parse(result)).toMatchObject({ publishState: result.publishState });
 		});
 
 		it('does not warn when the published version is the version just saved', async () => {
