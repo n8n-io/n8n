@@ -33,9 +33,10 @@ export class AgentApiHelper {
 		);
 
 		if (!response.ok()) {
-			return null;
+			throw new TestError(`Failed to fetch agent write lock: ${await response.text()}`);
 		}
 
-		return await response.json();
+		const result = await response.json();
+		return result.data ?? result;
 	}
 }
