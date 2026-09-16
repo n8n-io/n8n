@@ -1,7 +1,5 @@
 /* eslint-disable @typescript-eslint/no-invalid-void-type */
-import { LicenseState } from '@n8n/backend-common';
 import type { BooleanLicenseFeature } from '@n8n/constants';
-import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import type { AuthenticatedRequest } from '@n8n/db';
 import type { DeprecationInfo } from '@n8n/decorators';
 import { Container } from '@n8n/di';
@@ -175,7 +173,8 @@ export const validLicenseWithUserQuota = (
 	res: express.Response,
 	next: express.NextFunction,
 ): express.Response | void => {
-	if (Container.get(LicenseState).getMaxUsers() !== UNLIMITED_LICENSE_QUOTA) {
+	const license = Container.get(License);
+	if (!license.getUsersLimit()) {
 		return res.status(403).json({
 			message: USER_QUOTA_FORBIDDEN_MESSAGE,
 		});
