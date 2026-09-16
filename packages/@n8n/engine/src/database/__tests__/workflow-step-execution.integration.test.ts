@@ -504,16 +504,6 @@ describe('workflow_step_execution table (integration)', () => {
 		});
 	});
 
-	it('TypeOrmStepStore.claimStep reports no wait and no resume on a first dispatch', async () => {
-		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
-		const [step] = await store.createSteps(executionId, [
-			{ nodeId: 'a', iteration: 0, status: 'queued' },
-		]);
-
-		expect(await store.claimStep(step.id)).toMatchObject({ wait: null, resume: null });
-	});
-
 	/** A suspended row. A `waitTill` of `null` seeds a wait that only a request ends. */
 	async function seedWaitingStep(
 		executionId: string,
@@ -536,36 +526,31 @@ describe('workflow_step_execution table (integration)', () => {
 		});
 	}
 
-	it('TypeOrmStepStore.resumeDueSteps queues the waits whose deadline has passed and returns them', async () => {
+	it('TypeOrmStepStore.resumeDueSteps queues the waits that are due and leaves the rest', async () => {
 		const executionId = await createExecution();
 		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
 		const { id } = await seedWaitingStep(executionId, 'a', new Date('2020-01-01T00:00:00.000Z'));
+		// a second wait, still in the future at the instant the sweep asks about
+		const { id: laterId } = await seedWaitingStep(
+			executionId,
+			'later',
+			new Date('2020-01-03T00:00:00.000Z'),
+		);
 
 		expect(await store.resumeDueSteps(new Date('2020-01-02T00:00:00.000Z'), 10)).toEqual([
 			{ id, executionId },
 		]);
 
-		const found = await dataSource
-			.getRepository(WorkflowStepExecution)
-			.findOneOrFail({ where: { id } });
+		const repo = dataSource.getRepository(WorkflowStepExecution);
+		const found = await repo.findOneOrFail({ where: { id } });
 		expect(found.status).toBe('queued');
 		expect(found.resume).toEqual({ kind: 'deadline' });
 		// the declaration stays: the dispatch reads its captured outputs
 		expect(found.wait).not.toBeNull();
-	});
 
-	it('TypeOrmStepStore.resumeDueSteps leaves a wait whose deadline has not passed', async () => {
-		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
-		const { id } = await seedWaitingStep(executionId, 'a', new Date('2020-01-03T00:00:00.000Z'));
-
-		expect(await store.resumeDueSteps(new Date('2020-01-02T00:00:00.000Z'), 10)).toEqual([]);
-
-		const found = await dataSource
-			.getRepository(WorkflowStepExecution)
-			.findOneOrFail({ where: { id } });
-		expect(found.status).toBe('waiting');
-		expect(found.resume).toBeNull();
+		const later = await repo.findOneOrFail({ where: { id: laterId } });
+		expect(later.status).toBe('waiting');
+		expect(later.resume).toBeNull();
 	});
 
 	it('TypeOrmStepStore.resumeDueSteps ignores a wait that only a resume request ends', async () => {

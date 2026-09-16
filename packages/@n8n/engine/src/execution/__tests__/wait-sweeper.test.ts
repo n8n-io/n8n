@@ -61,7 +61,7 @@ describe('WaitSweeper', () => {
 		await vi.advanceTimersByTimeAsync(SWEEP_MS);
 
 		// the sweeper decides what `now` is and passes it, so the store never reads its own clock
-		expect(resumeDueSteps).toHaveBeenCalledWith(new Date(), expect.any(Number));
+		expect(resumeDueSteps).toHaveBeenCalledWith(new Date(), 500);
 		expect(queue.publish).toHaveBeenCalledTimes(2);
 		expect(queue.publish).toHaveBeenCalledWith({
 			type: 'step:ready',
@@ -118,7 +118,9 @@ describe('WaitSweeper', () => {
 
 		expect(resumeDueSteps).toHaveBeenCalledTimes(2);
 		expect(queue.publish).toHaveBeenCalledTimes(2);
-		expect(logger.error).toHaveBeenCalled();
+		expect(logger.error).toHaveBeenCalledWith('engine: wait sweep failed to resume due waits', {
+			error: expect.any(Error),
+		});
 
 		await sweeper.stop();
 	});
@@ -141,7 +143,82 @@ describe('WaitSweeper', () => {
 			executionId: 'exec-2',
 			stepId: 'step-b',
 		});
-		expect(logger.error).toHaveBeenCalled();
+		// the ids are what makes the stranded step findable for CAT-2938
+		expect(logger.error).toHaveBeenCalledWith(
+			'engine: wait sweep failed to announce a resumed step',
+			{ error: expect.any(Error), executionId: 'exec-1', stepId: 'step-a' },
+		);
+
+		await sweeper.stop();
+	});
+
+	it('does not sweep again when it is stopped mid-sweep', async () => {
+		// `stop()` clears the pending timer, but a sweep already in flight re-arms
+		// from its own `finally`. Only the stopped flag prevents that.
+		let releaseSweep!: () => void;
+		const inFlight = new Promise<DueStep[]>((resolve) => {
+			releaseSweep = () => resolve([]);
+		});
+		const resumeDueSteps = vi.fn().mockReturnValue(inFlight);
+		const sweeper = new WaitSweeper(
+			makeStepStore(resumeDueSteps),
+			makeStepQueue(),
+			makeLogger(),
+			SWEEP_MS,
+		);
+
+		sweeper.start();
+		await vi.advanceTimersByTimeAsync(SWEEP_MS);
+		const stopped = sweeper.stop();
+		releaseSweep();
+		await stopped;
+		await vi.advanceTimersByTimeAsync(SWEEP_MS * 5);
+
+		expect(resumeDueSteps).toHaveBeenCalledTimes(1);
+	});
+
+	it('does not start a sweep while one is still running', async () => {
+		// The next sweep is armed from the previous one's `finally`, so a slow
+		// database stretches the interval instead of stacking sweeps.
+		const resumeDueSteps = vi.fn().mockReturnValue(new Promise<DueStep[]>(() => {}));
+		const sweeper = new WaitSweeper(
+			makeStepStore(resumeDueSteps),
+			makeStepQueue(),
+			makeLogger(),
+			SWEEP_MS,
+		);
+
+		sweeper.start();
+		await vi.advanceTimersByTimeAsync(SWEEP_MS * 3);
+
+		// no stop(): it would wait for the sweep that never settles
+		expect(resumeDueSteps).toHaveBeenCalledTimes(1);
+	});
+
+	it('leaves its timer unreferenced, so a pending sweep holds no process open', async () => {
+		const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout');
+		const sweeper = new WaitSweeper(makeStepStore(), makeStepQueue(), makeLogger(), SWEEP_MS);
+
+		sweeper.start();
+
+		const timer = setTimeoutSpy.mock.results[0].value as NodeJS.Timeout;
+		expect(timer.hasRef()).toBe(false);
+
+		await sweeper.stop();
+	});
+
+	it('defaults to a sweep a minute', async () => {
+		// v1 resolves waits on a 60-second poll, so the default matches it.
+		const stepStore = makeStepStore();
+		const sweeper = new WaitSweeper(stepStore, makeStepQueue(), makeLogger());
+
+		sweeper.start();
+		await vi.advanceTimersByTimeAsync(59_999);
+
+		expect(stepStore.resumeDueSteps).not.toHaveBeenCalled();
+
+		await vi.advanceTimersByTimeAsync(1);
+		expect(stepStore.resumeDueSteps).toHaveBeenCalledTimes(1);
 
 		await sweeper.stop();
 	});

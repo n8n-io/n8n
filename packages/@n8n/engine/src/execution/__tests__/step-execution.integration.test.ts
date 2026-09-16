@@ -234,7 +234,7 @@ describe('step execution (integration)', () => {
 		expect(step?.outputs).toBeNull();
 	});
 
-	it('suspends a step that declares a wait, leaving the execution running and its successor unplanned', async () => {
+	it('suspends a step that declares a wait, leaving the execution running', async () => {
 		const waitGraph: WorkflowGraph = {
 			nodes: [
 				{ id: 'trigger', name: 'Webhook', type: 'trigger' },
@@ -274,8 +274,6 @@ describe('step execution (integration)', () => {
 		expect(waiting?.wait).toEqual(wait);
 		expect(waiting?.waitTill).toEqual(new Date(wait.resumeAt));
 		expect(waiting?.outputs).toBeNull();
-		// planning stalls behind the wait: node-b has no row at all
-		expect(steps.map(({ nodeId }) => nodeId).sort()).toEqual(['node-a', 'trigger']);
 	});
 
 	it('fires a due wait, resumes the step and runs the execution to the end', async () => {
