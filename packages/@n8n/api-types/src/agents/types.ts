@@ -366,6 +366,27 @@ export interface AgentChatMessagesResponse {
 	openSuspensions: AgentBuilderOpenSuspension[];
 }
 
+export type AgentChatQueueItem = {
+	id: string;
+	status: 'queued' | 'processing' | 'cancelling';
+	executionId?: string;
+} & (
+	| {
+			kind: 'message';
+			message: string;
+			attachments: Array<{ id: string; fileName: string; mimeType: string; sizeBytes: number }>;
+	  }
+	| { kind: 'hitl'; runId: string; toolCallId: string }
+);
+
+export interface AgentChatQueueResponse {
+	items: AgentChatQueueItem[];
+}
+
+export type AgentChatAdmissionResponse =
+	| { status: 'queued'; sessionId: string; item: AgentChatQueueItem }
+	| { status: 'agent_misconfigured'; missing: string[] };
+
 export interface AgentSessionLangSmithExportResponse {
 	traceId: string;
 }

@@ -190,11 +190,11 @@ export class N8NCheckpointStorage {
 	async findSuspendedForThread(
 		agentId: string,
 		threadId: string,
-	): Promise<SerializableAgentState | null> {
+	): Promise<(SerializableAgentState & { runId: string }) | null> {
 		const rows = await this.agentCheckpointRepository.findActiveForAgent(agentId);
 		for (const row of rows) {
 			const checkpoint = this.parseSuspendedState(row.state, threadId);
-			if (checkpoint) return checkpoint;
+			if (checkpoint) return { ...checkpoint, runId: row.runId };
 		}
 		return null;
 	}

@@ -218,6 +218,7 @@ export const agentChatAttachmentSchema = z.object({
 export type AgentChatAttachmentPayload = z.infer<typeof agentChatAttachmentSchema>;
 
 const agentChatMessageShape = {
+	clientRequestId: z.string().uuid(),
 	// `message` may be empty when at least one attachment is present
 	// (attachment-only sends) — see the schema-level refinement below.
 	message: z.string(),
@@ -256,6 +257,7 @@ export class AgentChatMessageDto extends Z.class(agentChatMessageShape) {
 }
 
 export class AgentChatResumeDto extends Z.class({
+	clientRequestId: z.string().uuid(),
 	runId: z.string().min(1),
 	toolCallId: z.string().min(1),
 	// Deliberately untyped at this boundary: the possible resume shapes overlap
@@ -266,6 +268,8 @@ export class AgentChatResumeDto extends Z.class({
 	// `.resume(schema)`.
 	resumeData: z.unknown(),
 }) {}
+
+export class AgentChatQueueEditDto extends Z.class({ message: z.string() }) {}
 
 /**
  * Envelope check for the connect body. The channel itself is validated against

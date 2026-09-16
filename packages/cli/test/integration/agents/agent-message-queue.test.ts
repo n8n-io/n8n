@@ -1,11 +1,13 @@
 import { AgentConversationLeaseLostError } from '@/modules/agents/agent-conversation-lease.types';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
-import type { Logger } from '@n8n/backend-common';
+import { LockService, type Logger } from '@n8n/backend-common';
+import { RedisLockService } from '@/scaling/redis-lock.service';
 import { TransactionRunner } from '@n8n/db';
 import { AgentConversationLeaseService } from '@/modules/agents/agent-conversation-lease.service';
 import { AgentConversationLeaseRepository } from '@/modules/agents/repositories/agent-conversation-lease.repository';
 import { Container } from '@n8n/di';
 import { GlobalConfig } from '@n8n/config';
+import type { ProjectRelationRepository } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
 import { createServiceStack } from 'n8n-containers';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
@@ -20,6 +22,8 @@ import type {
 import { AgentWorkflowToolResumeService } from '@/modules/agents/agent-workflow-tool-resume.service';
 import { AgentWakeService } from '@/modules/agents/background/agent-wake.service';
 import { hashAgentSandboxPrincipal } from '@/modules/agents/agent-sandbox-principal';
+import { AgentExecutionUpdateBroadcaster } from '@/modules/agents/agent-execution-update-broadcaster';
+import type { Push } from '@/push';
 import type { AgentExecutionOrchestratorService } from '@/modules/agents/agent-execution-orchestrator.service';
 import type { AgentBackgroundJobRepository } from '@/modules/agents/repositories/agent-background-job.repository';
 import type { AgentBackgroundJob } from '@/modules/agents/entities/agent-background-job.entity';
@@ -29,6 +33,7 @@ import { AgentMessageQueueService } from '@/modules/agents/agent-message-queue.s
 import type {
 	AgentQueueInput,
 	QueueExecutionContext,
+	AgentPreviewQueueInput,
 	IntegrationMessageQueuePayload,
 } from '@/modules/agents/agent-message-queue.types';
 import type { AgentChatBridge } from '@/modules/agents/integrations/agent-chat-bridge';
@@ -57,6 +62,7 @@ describe('agent message queue', () => {
 	let redisConfig: GlobalConfig | undefined;
 	let closeRedis: Array<() => void>;
 	const checkpoints = mock<N8NCheckpointStorage>();
+	const orchestrator = mock<AgentExecutionOrchestratorService>();
 	const bridge = mock<AgentChatBridge>();
 	const integrations = mock<ChatIntegrationService>();
 	const attachments = mock<AgentChatAttachmentService>();
@@ -100,7 +106,7 @@ describe('agent message queue', () => {
 		text: string,
 		threadId = 'conversation',
 		files?: StoredAttachmentRef[],
-	): AgentQueueInput => ({
+	): AgentPreviewQueueInput => ({
 		agentId,
 		threadId,
 		payload: {
@@ -117,11 +123,19 @@ describe('agent message queue', () => {
 	const makeMain = async () => {
 		const logger = mock<Logger>();
 		logger.scoped.mockReturnValue(logger);
+		const instance = mock<InstanceSettings>({
+			hostId: randomUUID(),
+			isWorker: false,
+			isMultiMain: true,
+		});
 		let publisher: Publisher;
+		let consumerLocks = Container.get(LockService);
 		let eventBus: PubSubEventBus | undefined;
 		if (redisConfig) {
 			const clients = new RedisClientService(logger, redisConfig);
-			const instance = mock<InstanceSettings>({ hostId: randomUUID(), isWorker: false });
+			const redisLocks = new RedisLockService(logger, redisConfig, clients);
+			consumerLocks = new LockService(mock<ConstructorParameters<typeof LockService>[0]>());
+			consumerLocks.setProvider(redisLocks);
 			publisher = new Publisher(logger, clients, instance, redisConfig.executions, redisConfig);
 			eventBus = new PubSubEventBus();
 			const subscriber = new Subscriber(
@@ -136,16 +150,30 @@ describe('agent message queue', () => {
 			closeRedis.push(() => {
 				publisher.shutdown();
 				subscriber.shutdown();
+				redisLocks.destroy();
 			});
 		} else {
 			const localPublisher = mock<Publisher>();
 			localPublisher.publishCommand.mockImplementation(async (command) => {
 				if (command.command === 'drain-agent-message-queue') {
 					for (const peer of mains) if (peer !== main) peer.handleDrainRequest(command.payload);
+				} else if (command.command === 'relay-agent-chat-event') {
+					for (const peer of mains)
+						if (peer !== main) peer['broadcaster'].handleChatEvent(command.payload);
 				}
 			});
 			publisher = localPublisher;
 		}
+		const projectRelations = mock<ProjectRelationRepository>();
+		projectRelations.findUserIdsByProjectId.mockResolvedValue([]);
+		const broadcaster = new AgentExecutionUpdateBroadcaster(
+			logger,
+			projectRelations,
+			mock<Push>(),
+			publisher,
+			instance,
+			Container.get(AgentExecutionThreadRepository),
+		);
 		const main = new AgentMessageQueueService(
 			logger,
 			repository,
@@ -161,8 +189,12 @@ describe('agent message queue', () => {
 			executions,
 			attachments,
 			publisher,
+			broadcaster,
+			orchestrator,
+			consumerLocks,
 		);
 		eventBus?.on('drain-agent-message-queue', (payload) => main.handleDrainRequest(payload));
+		eventBus?.on('relay-agent-chat-event', (payload) => broadcaster.handleChatEvent(payload));
 		mains.push(main);
 		main.start();
 		return main;
@@ -285,7 +317,7 @@ describe('agent message queue', () => {
 	});
 
 	it('processes HITL before ordinary messages and holds them through another suspension', async () => {
-		const paused = mock<SerializableAgentState>({ status: 'suspended' });
+		const paused = mock<SerializableAgentState & { runId: string }>({ status: 'suspended' });
 		checkpoints.findSuspendedForThread.mockResolvedValue(paused);
 		const main = await makeMain();
 		await main.enqueue(message('ordinary'));
@@ -328,7 +360,7 @@ describe('agent message queue', () => {
 			peak = Math.max(peak, ++active);
 		};
 		let paused = false;
-		const checkpoint = mock<SerializableAgentState>({ status: 'suspended' });
+		const checkpoint = mock<SerializableAgentState & { runId: string }>({ status: 'suspended' });
 		checkpoints.findSuspendedForThread.mockImplementation(async () => (paused ? checkpoint : null));
 		checkpoints.getStatus.mockImplementation(async () =>
 			paused ? { status: 'active', checkpoint } : { status: 'not-found' },
@@ -467,36 +499,156 @@ describe('agent message queue', () => {
 	it('keeps a preview entry on its origin main and preserves its place in the queue', async () => {
 		const mainA = await makeMain();
 		const mainB = await makeMain();
-		checkpoints.findSuspendedForThread.mockResolvedValue(mock<SerializableAgentState>());
-		const controller = new AbortController();
-		const response = mainA.enqueuePreview(
-			preview('preview'),
-			async () => {
-				received.push('preview');
-			},
-			controller.signal,
+		checkpoints.findSuspendedForThread.mockResolvedValue(
+			mock<SerializableAgentState & { runId: string }>(),
 		);
-		await retryUntil(async () => expect(await repository.count()).toBe(1));
+		await mainA.enqueuePreview(preview('preview'), 'request', async () => {
+			received.push('preview');
+		});
 		await mainB.enqueue(message('integration'));
 		checkpoints.findSuspendedForThread.mockResolvedValue(null);
 		mainB.notify('conversation');
-		await response;
 		await retryUntil(async () => expect(await repository.count()).toBe(0));
 		expect(received).toEqual(['preview', 'integration']);
 	});
 
-	it('cancels a disconnected waiting preview without executing it', async () => {
-		checkpoints.findSuspendedForThread.mockResolvedValue(mock<SerializableAgentState>());
+	it('admits only one concurrent preview response for a suspended tool call', async () => {
+		const checkpoint: SerializableAgentState = {
+			status: 'suspended',
+			persistence: { threadId: 'conversation', resourceId: 'user' },
+			messageList: { messages: [], historyIds: [], inputIds: [], responseIds: [] },
+			pendingToolCalls: {
+				tool: {
+					toolCallId: 'tool',
+					toolName: 'approval',
+					input: {},
+					suspended: true,
+					runId: 'run',
+					resumeSchema: { type: 'object' },
+					suspendPayload: {},
+				},
+			},
+		};
+		checkpoints.getStatus.mockResolvedValue({ status: 'active', checkpoint });
+		const resume: AgentPreviewQueueInput = {
+			agentId,
+			threadId: 'conversation',
+			payload: {
+				source: 'preview',
+				kind: 'hitl',
+				projectId,
+				userId: 'user',
+				resourceId: 'user',
+				runId: 'run',
+				toolCallId: 'tool',
+				resumeData: { approved: true },
+			},
+		};
+		const inserted = createDeferredPromise();
+		const releaseAdmission = createDeferredPromise();
+		const finishExecution = createDeferredPromise();
+		const enqueue = repository.enqueue.bind(repository);
+		vi.spyOn(repository, 'enqueue').mockImplementationOnce(async (input) => {
+			const entry = await enqueue(input);
+			inserted.resolve();
+			await releaseAdmission.promise;
+			return entry;
+		});
+		const mainA = await makeMain();
+		const mainB = await makeMain();
+		const execute = async () => await finishExecution.promise;
+
+		const first = mainA.enqueuePreview(resume, 'request-1', execute);
+		await inserted.promise;
+		const second = mainB.enqueuePreview(resume, 'request-2', execute);
+		try {
+			releaseAdmission.resolve();
+			const results = await Promise.allSettled([first, second]);
+			expect(results[0].status).toBe('fulfilled');
+			expect(results[1]).toMatchObject({
+				status: 'rejected',
+				reason: { message: 'This action has already been handled or has expired' },
+			});
+			expect(await repository.findPreviewEntries(agentId, 'conversation')).toHaveLength(1);
+			finishExecution.resolve();
+			await retryUntil(async () => expect(await repository.count()).toBe(0));
+		} finally {
+			releaseAdmission.resolve();
+			finishExecution.resolve();
+		}
+	});
+
+	it('acknowledges waiting previews and removes only the selected message from another main', async () => {
+		checkpoints.findSuspendedForThread.mockResolvedValue(
+			mock<SerializableAgentState & { runId: string }>(),
+		);
 		const main = await makeMain();
-		const controller = new AbortController();
-		const execute = vi.fn();
-		const response = main.enqueuePreview(preview('cancelled'), execute, controller.signal);
-		const rejected = expect(response).rejects.toThrow();
-		await retryUntil(async () => expect(await repository.count()).toBe(1));
-		controller.abort();
-		await rejected;
+		const peer = await makeMain();
+		const scope = {
+			agentId,
+			projectId,
+			threadId: 'conversation',
+			userId: 'user',
+			resourceId: 'user',
+		};
+		const items = [];
+		for (const text of ['one', 'two', 'three']) {
+			items.push(
+				await main.enqueuePreview(preview(text), text, async (payload) => {
+					if (payload.kind === 'message') received.push(payload.message);
+				}),
+			);
+		}
+		expect(await repository.count()).toBe(3);
+		await peer.removePreview(scope, items[1].id);
+		expect((await peer.listPreview(scope)).map((item) => item.id)).toEqual([
+			items[0].id,
+			items[2].id,
+		]);
+		checkpoints.findSuspendedForThread.mockResolvedValue(null);
+		peer.notify('conversation');
+		await retryUntil(async () => expect(await repository.count()).toBe(0));
+		expect(received).toEqual(['one', 'three']);
+	});
+
+	it('keeps attachments and the queue position on edits and checks the preview owner', async () => {
+		checkpoints.findSuspendedForThread.mockResolvedValue(
+			mock<SerializableAgentState & { runId: string }>(),
+		);
+		const main = await makeMain();
+		const scope = {
+			agentId,
+			projectId,
+			threadId: 'conversation',
+			userId: 'user',
+			resourceId: 'user',
+		};
+		const files = [{ id: 'file', fileName: 'notes.txt', mimeType: 'text/plain', sizeBytes: 10 }];
+		const item = await main.enqueuePreview(
+			preview('original', 'conversation', files),
+			'request',
+			vi.fn(),
+		);
+		for (const foreign of [{ userId: 'other' }, { projectId: 'other' }, { threadId: 'other' }]) {
+			expect(await main.listPreview({ ...scope, ...foreign })).toEqual([]);
+			await expect(main.editPreview({ ...scope, ...foreign }, item.id, 'changed')).rejects.toThrow(
+				'not found',
+			);
+			await expect(main.removePreview({ ...scope, ...foreign }, item.id)).rejects.toThrow(
+				'not found',
+			);
+			await expect(main.stopPreview({ ...scope, ...foreign }, item.id)).rejects.toThrow(
+				'not found',
+			);
+		}
+		expect(await main.editPreview(scope, item.id, '')).toEqual({
+			...item,
+			message: '',
+			attachments: files,
+		});
+		await main.removePreview(scope, item.id);
 		expect(await repository.count()).toBe(0);
-		expect(execute).not.toHaveBeenCalled();
+		expect(attachments.deleteByIds).toHaveBeenCalledWith(['file']);
 	});
 
 	it('cancels a preview that finishes enqueueing during shutdown', async () => {
@@ -508,11 +660,7 @@ describe('agent message queue', () => {
 			return entry;
 		});
 		const main = await makeMain();
-		const response = main.enqueuePreview(
-			preview('stopping'),
-			vi.fn(),
-			new AbortController().signal,
-		);
+		const response = main.enqueuePreview(preview('stopping'), 'request', vi.fn());
 		try {
 			await retryUntil(async () => expect(await repository.count()).toBe(1));
 			await main.shutdown();
@@ -524,32 +672,142 @@ describe('agent message queue', () => {
 		}
 	});
 
-	it('aborts an active preview and continues with the next input', async () => {
+	it('stops an active preview through another main and waits for cleanup before the next input', async () => {
 		const main = await makeMain();
-		const controller = new AbortController();
+		const peer = await makeMain();
 		const started = createDeferredPromise();
-		const response = main.enqueuePreview(
+		const aborted = createDeferredPromise();
+		const finishCleanup = createDeferredPromise();
+		const laterStarted = createDeferredPromise<AbortSignal>();
+		const finishLater = createDeferredPromise();
+		const scope = {
+			agentId,
+			projectId,
+			threadId: 'conversation',
+			userId: 'user',
+			resourceId: 'user',
+		};
+		const item = await main.enqueuePreview(
 			preview('active'),
-			async ({ abortSignal }) => {
+			'request',
+			async (_payload, { abortSignal }) => {
 				started.resolve();
 				await new Promise<void>((resolve) =>
 					abortSignal.addEventListener('abort', () => resolve(), { once: true }),
 				);
-				abortSignal.throwIfAborted();
+				aborted.resolve();
+				await finishCleanup.promise;
 			},
-			controller.signal,
 		);
-		const rejected = expect(response).rejects.toThrow();
 		try {
 			await started.promise;
 			await main.enqueue(message('next'));
-			controller.abort();
-			await rejected;
+			expect(await peer.stopPreview(scope, item.id)).toBe(true);
+			await aborted.promise;
+			expect((await repository.findById(item.id))?.status).toBe('cancelling');
+			expect(received).toEqual([]);
+			finishCleanup.resolve();
 			await retryUntil(async () => expect(await repository.count()).toBe(0));
 			expect(received).toEqual(['next']);
+			const later = await main.enqueuePreview(
+				preview('later'),
+				'later-request',
+				async (_payload, { abortSignal }) => {
+					laterStarted.resolve(abortSignal);
+					await finishLater.promise;
+				},
+			);
+			const laterSignal = await laterStarted.promise;
+			expect(later.id).not.toBe(item.id);
+			await expect(peer.stopPreview(scope, item.id)).rejects.toThrow('not found');
+			expect(laterSignal.aborted).toBe(false);
+			finishLater.resolve();
+			await retryUntil(async () => expect(await repository.count()).toBe(0));
 		} finally {
-			controller.abort();
+			finishCleanup.resolve();
+			finishLater.resolve();
 		}
+	});
+
+	it('cancels a preview that suspends during Stop before releasing the next message', async () => {
+		const main = await makeMain();
+		const peer = await makeMain();
+		const reachedFinish = createDeferredPromise();
+		const finish = createDeferredPromise();
+		const finishProcessing = repository.finishProcessing.bind(repository);
+		vi.spyOn(repository, 'finishProcessing').mockImplementationOnce(async (id) => {
+			reachedFinish.resolve();
+			await finish.promise;
+			return await finishProcessing(id);
+		});
+		const checkpoint = mock<SerializableAgentState & { runId: string }>({
+			runId: 'suspended-run',
+			status: 'suspended',
+			persistence: { threadId: 'conversation', resourceId: 'user' },
+		});
+		const cancel = vi.mocked(main['orchestrator'].cancelChatRun);
+		cancel.mockImplementation(async () => {
+			expect(received).toEqual([]);
+			expect(await repository.countBy({ status: 'cancelling' })).toBe(1);
+			checkpoints.findSuspendedForThread.mockResolvedValue(null);
+			return true;
+		});
+		const item = await main.enqueuePreview(preview('first'), 'request-1', async () => {
+			checkpoints.findSuspendedForThread.mockResolvedValue(checkpoint);
+		});
+		try {
+			await reachedFinish.promise;
+			await main.enqueue(message('next'));
+			await peer.stopPreview(
+				{ agentId, projectId, threadId: 'conversation', userId: 'user', resourceId: 'user' },
+				item.id,
+			);
+			finish.resolve();
+			await retryUntil(async () => expect(await repository.count()).toBe(0));
+			expect(cancel).toHaveBeenCalledWith({ agentId, runId: 'suspended-run', resourceId: 'user' });
+			expect(received).toEqual(['next']);
+		} finally {
+			finish.resolve();
+		}
+	});
+
+	it('orders preview events across mains and continues when a viewer cannot receive an event', async () => {
+		const main = await makeMain();
+		const peer = await makeMain();
+		const push = vi.mocked(peer['broadcaster']['push'].sendToUsers);
+		const send = vi.spyOn(main['broadcaster'], 'sendChatEvent');
+		send.mockRejectedValueOnce(new Error('Viewer unavailable'));
+		await main.enqueuePreview(preview('first'), 'request-1', async (_payload, context) => {
+			context.send({ type: 'text-delta', id: 'text', delta: 'one' });
+			context.send({ type: 'text-delta', id: 'text', delta: 'two' });
+		});
+		await main.drain('conversation');
+		await retryUntil(async () => expect(push).toHaveBeenCalledTimes(3));
+		expect(
+			push.mock.calls.map(([event]) => (event.type === 'agentChatEvent' ? event.data.event : null)),
+		).toEqual([
+			{ type: 'text-delta', id: 'text', delta: 'one' },
+			{ type: 'text-delta', id: 'text', delta: 'two' },
+			{ type: 'done', sessionId: 'conversation' },
+		]);
+		expect(
+			push.mock.calls.every(([, userIds]) => userIds.length === 1 && userIds[0] === 'user'),
+		).toBe(true);
+		expect(await repository.count()).toBe(0);
+	});
+
+	it('records a failure after admission without a viewer and keeps referenced attachments', async () => {
+		const main = await makeMain();
+		const files = [{ id: 'file-1', fileName: 'notes.txt', mimeType: 'text/plain', sizeBytes: 4 }];
+		await main.enqueuePreview(preview('failed', 'failure', files), 'request-1', async () => {
+			throw new Error('Model unavailable');
+		});
+		await main.drain('failure');
+		const history = await executions.getThreadDetail('failure', projectId, agentId);
+		expect(history?.executions).toHaveLength(1);
+		expect(history?.executions[0]).toMatchObject({ status: 'error', userMessage: 'failed' });
+		expect(attachments.deleteByIds).not.toHaveBeenCalledWith(['file-1']);
+		expect(await repository.count()).toBe(0);
 	});
 
 	it('waits for a connection to return and removes inputs for a deleted connection', async () => {
@@ -569,7 +827,9 @@ describe('agent message queue', () => {
 		integrations.getBridge.mockReturnValue(undefined);
 		await main.enqueue(message('removed'));
 		await main.drain('conversation');
-		checkpoints.findSuspendedForThread.mockResolvedValue(mock<SerializableAgentState>());
+		checkpoints.findSuspendedForThread.mockResolvedValue(
+			mock<SerializableAgentState & { runId: string }>(),
+		);
 		await agents.update(agentId, { integrations: [] });
 		await main.drain('conversation');
 		expect(await repository.count()).toBe(0);
@@ -688,16 +948,53 @@ describe('agent message queue', () => {
 		}
 	});
 
+	it('uses a saved edit made after selection and rejects edits after the claim', async () => {
+		const selected = createDeferredPromise();
+		const finishClaim = createDeferredPromise();
+		const started = createDeferredPromise();
+		const finishRun = createDeferredPromise();
+		checkpoints.findSuspendedForThread.mockImplementationOnce(async () => {
+			selected.resolve();
+			await finishClaim.promise;
+			return null;
+		});
+		const main = await makeMain();
+		const scope = {
+			agentId,
+			projectId,
+			threadId: 'conversation',
+			userId: 'user',
+			resourceId: 'user',
+		};
+		try {
+			const item = await main.enqueuePreview(preview('original'), 'request-1', async (payload) => {
+				if (payload.kind === 'message') received.push(payload.message);
+				started.resolve();
+				await finishRun.promise;
+			});
+			await selected.promise;
+			await main.editPreview(scope, item.id, 'saved');
+			finishClaim.resolve();
+			await started.promise;
+			expect(received).toEqual(['saved']);
+			await expect(main.editPreview(scope, item.id, 'too late')).rejects.toThrow();
+			await expect(main.removePreview(scope, item.id)).rejects.toThrow();
+		} finally {
+			finishClaim.resolve();
+			finishRun.resolve();
+		}
+	});
+
 	it('heartbeats live preview waiters in one batch so another main does not cancel them', async () => {
 		vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
-		const controller = new AbortController();
 		const main = await makeMain();
 		const peer = await makeMain();
-		checkpoints.findSuspendedForThread.mockResolvedValue(mock<SerializableAgentState>());
-		const waits = ['one', 'two'].map(
-			async (id) => await main.enqueuePreview(preview(id, id), vi.fn(), controller.signal),
+		checkpoints.findSuspendedForThread.mockResolvedValue(
+			mock<SerializableAgentState & { runId: string }>(),
 		);
-		const cancelled = waits.map(async (wait) => await expect(wait).rejects.toThrow());
+		await Promise.all(
+			['one', 'two'].map(async (id) => await main.enqueuePreview(preview(id, id), id, vi.fn())),
+		);
 		try {
 			await retryUntil(async () => expect(await repository.count()).toBe(2));
 			await repository.update({}, { updatedAt: new Date(Date.now() - 180_000) });
@@ -710,8 +1007,6 @@ describe('agent message queue', () => {
 			expect(await repository.count()).toBe(2);
 			heartbeat.mockRestore();
 		} finally {
-			controller.abort();
-			await Promise.all(cancelled);
 			await main.shutdown();
 			await peer.shutdown();
 			vi.useRealTimers();
@@ -747,7 +1042,7 @@ describe('agent message queue', () => {
 			await repository.linkExecution(entry.id, execution.id, {});
 			await repository.update(entry.id, { updatedAt: old });
 		}
-		const suspension = mock<SerializableAgentState>({ status: 'suspended' });
+		const suspension = mock<SerializableAgentState & { runId: string }>({ status: 'suspended' });
 		checkpoints.findSuspendedForThread.mockImplementation(async (_agentId, threadId) =>
 			threadId === 'suspended' ? suspension : null,
 		);
@@ -784,6 +1079,52 @@ describe('agent message queue', () => {
 		expect(await repository.countBy({ threadId: 'healthy', status: 'processing' })).toBe(1);
 		expect(await repository.countBy({ threadId: 'refreshed', status: 'processing' })).toBe(1);
 		expect(await repository.countBy({ threadId: 'suspended', status: 'queued' })).toBe(1);
+	});
+
+	it('cancels a matching suspended run before recovering its stale cancelling preview', async () => {
+		const stale = await repository.enqueue(preview('stopped'));
+		await repository.markProcessing(stale.id);
+		await repository.requestCancellation(stale.id);
+		await repository.update(stale.id, { updatedAt: new Date(Date.now() - 180_000) });
+		await repository.enqueue(message('successor'));
+		checkpoints.findSuspendedForThread.mockResolvedValue(
+			mock<SerializableAgentState & { runId: string }>({
+				runId: 'stopped-run',
+				status: 'suspended',
+				persistence: { threadId: 'conversation', resourceId: 'user' },
+			}),
+		);
+		const cancelled = createDeferredPromise();
+		orchestrator.cancelChatRun.mockImplementation(async () => {
+			await cancelled.promise;
+			checkpoints.findSuspendedForThread.mockResolvedValue(null);
+			return true;
+		});
+		const main = await makeMain();
+		const lease = vi.spyOn(main['lockService'], 'withLease');
+		let draining: Promise<void> | undefined;
+
+		const recovering = main.recover();
+		try {
+			await retryUntil(async () => expect(orchestrator.cancelChatRun).toHaveBeenCalledTimes(1));
+			draining = main.drain('conversation');
+			await retryUntil(async () => expect(lease).toHaveBeenCalledTimes(2));
+			expect(await repository.existsBy({ id: stale.id })).toBe(true);
+			expect(received).toEqual([]);
+			cancelled.resolve();
+			await Promise.all([recovering, draining]);
+
+			expect(orchestrator.cancelChatRun).toHaveBeenCalledWith({
+				agentId,
+				runId: 'stopped-run',
+				resourceId: 'user',
+			});
+			await retryUntil(async () => expect(received).toEqual(['successor']));
+			expect(await repository.existsBy({ id: stale.id })).toBe(false);
+		} finally {
+			cancelled.resolve();
+			await Promise.all([recovering, draining]);
+		}
 	});
 
 	it('stops recovery when its conversation lease is lost', async () => {
@@ -837,12 +1178,10 @@ describe('agent message queue', () => {
 		);
 		await repository.update(lostPreview.id, { updatedAt: new Date(Date.now() - 180_000) });
 		checkpoints.findSuspendedForThread.mockImplementation(async (_agentId, threadId) =>
-			threadId === 'live-preview' ? mock<SerializableAgentState>() : null,
+			threadId === 'live-preview' ? mock<SerializableAgentState & { runId: string }>() : null,
 		);
 		const origin = await makeMain();
-		const controller = new AbortController();
-		const live = origin.enqueuePreview(preview('live', 'live-preview'), vi.fn(), controller.signal);
-		const cancelled = expect(live).rejects.toThrow();
+		await origin.enqueuePreview(preview('live', 'live-preview'), 'request', vi.fn());
 		await retryUntil(async () =>
 			expect(await repository.countBy({ threadId: 'live-preview' })).toBe(1),
 		);
@@ -854,7 +1193,6 @@ describe('agent message queue', () => {
 			{ id: 'unused-file', binaryDataId: 'filesystem-v2:unused-file' },
 		]);
 		expect(await repository.countBy({ threadId: 'live-preview' })).toBe(1);
-		controller.abort();
-		await cancelled;
+		await origin.shutdown();
 	});
 });
