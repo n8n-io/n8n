@@ -65,7 +65,12 @@ import type {
 import { getRectOfNodes, MarkerType, PanelPosition, useVueFlow, VueFlow } from '@vue-flow/core';
 import { MiniMap } from '@vue-flow/minimap';
 import { onKeyDown, onKeyUp, useThrottleFn, watchDebounced } from '@vueuse/core';
-import { NodeConnectionTypes, type IConnections, type IWorkflowGroup } from 'n8n-workflow';
+import {
+	getEmptyGroupAnchor as getEmptyGroupAnchorFromNodes,
+	NodeConnectionTypes,
+	type IConnections,
+	type IWorkflowGroup,
+} from 'n8n-workflow';
 import {
 	createCanvasConnectionHandleString,
 	shouldIgnoreCanvasShortcut,
@@ -462,6 +467,7 @@ const extractableGroupIds = computed(() => {
 	const ids = new Set<string>();
 	if (settingsStore.isSubworkflowConversionDisabled) return ids;
 	for (const group of workflowDocumentStore.value.allGroups) {
+		if (isEmptyGroup(group.id)) continue;
 		if (isSelectionExtractable(group.nodeIds).valid) {
 			ids.add(group.id);
 		}
@@ -480,6 +486,23 @@ const soleSelectedGroupId = computed<string | null>(() => {
 
 	const memberIds = new Set(group.nodeIds);
 	return selectedNodes.value.every((node) => memberIds.has(node.id)) ? groupId : null;
+});
+
+const soleSelectedEmptyGroup = computed(() => {
+	const selectedGroups = selectedNodesAndGroups.value.filter(isCanvasGroupNode);
+	if (selectedGroups.length !== 1) return false;
+
+	const groupNode = selectedGroups[0];
+	if (groupNode.data?.isEmptyGroup !== true) return false;
+
+	const groupId = parseCanvasGroupNodeId(groupNode.id);
+	if (!groupId) return false;
+
+	const group = workflowDocumentStore.value.getGroupById(groupId);
+	if (!group) return false;
+
+	const memberIds = new Set(group.nodeIds);
+	return selectedNodes.value.every((node) => memberIds.has(node.id));
 });
 
 const groupTelemetry = useCanvasNodeGroupTelemetry();
@@ -569,7 +592,7 @@ const keyMap = computed(() => {
 		},
 		shift_alt_t: async () => await onTidyUp({ source: 'keyboard-shortcut' }),
 		alt_x: {
-			disabled: () => settingsStore.isSubworkflowConversionDisabled,
+			disabled: () => settingsStore.isSubworkflowConversionDisabled || soleSelectedEmptyGroup.value,
 			run: emitWithSelectedNodes((ids) => emit('extract-workflow', ids)),
 		},
 		c: () => emit('start-chat'),
@@ -986,6 +1009,7 @@ function onCanvasGroupUngroup(
 ) {
 	// Capture before deletion — the group is gone by the time we track.
 	const group = workflowDocumentStore.value.getGroupById(groupId);
+	if (!group || isEmptyGroup(groupId)) return;
 	// Ungrouping a collapsed group makes its hidden members reappear, so expand
 	// it first: the expansion pushes overlapping nodes aside, and the commit
 	// below persists that displacement (the group is gone after, so the push
@@ -998,17 +1022,25 @@ function onCanvasGroupUngroup(
 	commitPushedPositionsForSourceGroups([groupId]);
 	ungroup(groupId);
 
-	if (group) {
-		groupTelemetry.trackUngrouped(group, source);
-	}
+	groupTelemetry.trackUngrouped(group, source);
 }
 
 // Same downstream path as extracting the members through Alt+X or the
 // context menu, so collapsed and expanded groups behave identically.
 function onCanvasGroupExtract(groupId: string) {
 	const group = workflowDocumentStore.value.getGroupById(groupId);
-	if (!group) return;
+	if (!group || isEmptyGroup(groupId)) return;
 	emit('extract-workflow', [...group.nodeIds]);
+}
+
+function isEmptyGroup(groupId: string): boolean {
+	const group = workflowDocumentStore.value.getGroupById(groupId);
+	if (!group) return false;
+
+	const memberNodes = group.nodeIds
+		.map((nodeId) => workflowDocumentStore.value.getNodeById(nodeId))
+		.filter(isPresent);
+	return getEmptyGroupAnchorFromNodes(group, memberNodes) !== undefined;
 }
 
 function onCanvasGroupAddNodesToChat(groupId: string) {
