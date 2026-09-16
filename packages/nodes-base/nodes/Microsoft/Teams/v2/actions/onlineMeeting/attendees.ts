@@ -31,13 +31,13 @@ const roleField: INodeProperties = {
 
 // The collection UI does not render a fixedCollection's own description, so the note is repeated
 // on the row fields, which always show.
-const rowsWithNote = (note: string): INodePropertyCollection[] => [
+const rowsWithNote = (note: string, withRole = true): INodePropertyCollection[] => [
 	{
 		displayName: 'Attendee',
 		name: 'attendee',
 		values: [
 			{ ...userRLC, description: [userRLC.description, note].join(' ') },
-			{ ...roleField, description: `${ROLE_DESCRIPTION}. ${note}` },
+			...(withRole ? [{ ...roleField, description: `${ROLE_DESCRIPTION}. ${note}` }] : []),
 		],
 	},
 ];
@@ -67,7 +67,8 @@ export const attendeesField: INodeProperties = {
 export const createOrGetAttendeesField: INodeProperties = {
 	...attendeesField,
 	description: `The people to invite. ${CREATE_OR_GET_NOTE}`,
-	options: rowsWithNote(CREATE_OR_GET_NOTE),
+	// No role: the createOrGet body has no Allowed Presenters, so a Presenter row could not take effect.
+	options: rowsWithNote(CREATE_OR_GET_NOTE, false),
 };
 
 /** Update: inside Update Fields. */

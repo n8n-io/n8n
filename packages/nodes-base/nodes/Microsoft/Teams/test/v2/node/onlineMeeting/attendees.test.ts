@@ -1,6 +1,12 @@
 import type { Mock } from 'vitest';
 import type { MockProxy } from 'vitest-mock-extended';
-import type { IDataObject, IExecuteFunctions, NodeParameterValueType } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	INodeProperties,
+	INodePropertyCollection,
+	NodeParameterValueType,
+} from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 import { createExecuteContext, meetingHeaders, setParams } from '../helpers';
@@ -349,6 +355,28 @@ describe('Microsoft Teams V2, onlineMeeting attendees', () => {
 			.map((property) => property.name);
 
 		expect(names).toEqual(['subject', 'startDateTime', 'endDateTime', 'attendees', 'options']);
+	});
+
+	it('offers the role only where Allowed Presenters exists', () => {
+		const field = (operation: string, name: string) =>
+			versionDescription.properties.find(
+				(property) =>
+					property.name === name &&
+					property.displayOptions?.show?.resource?.includes('onlineMeeting') &&
+					property.displayOptions?.show?.operation?.includes(operation),
+			);
+		const inside = (container: INodeProperties | undefined) =>
+			((container?.options ?? []) as INodeProperties[]).find(
+				(option) => option.name === 'attendees',
+			);
+		const rowNames = (attendees: INodeProperties | undefined) =>
+			((attendees?.options ?? []) as INodePropertyCollection[])[0]?.values.map(
+				(value) => value.name,
+			);
+
+		expect(rowNames(field('create', 'attendees'))).toEqual(['userId', 'role']);
+		expect(rowNames(inside(field('update', 'updateFields')))).toEqual(['userId', 'role']);
+		expect(rowNames(inside(field('createOrGet', 'options')))).toEqual(['userId']);
 	});
 
 	describe('update', () => {
