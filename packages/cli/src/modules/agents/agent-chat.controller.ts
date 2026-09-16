@@ -179,7 +179,6 @@ export class AgentChatController {
 							attachments: queued.attachments,
 							abortSignal: context.abortSignal,
 							onExecutionStarted: context.onExecutionStarted,
-							onExecutionRecorded: context.onExecutionRecorded,
 						}),
 						context.send,
 					);
@@ -248,7 +247,6 @@ export class AgentChatController {
 						expectedMemory: memory,
 						abortSignal: context.abortSignal,
 						onExecutionStarted: context.onExecutionStarted,
-						onExecutionRecorded: context.onExecutionRecorded,
 					}),
 					context.send,
 				);
@@ -335,7 +333,7 @@ export class AgentChatController {
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
 
 		let resumeCancelled = false;
-		let resumeCancellationError: unknown;
+		let cancelled = false;
 		try {
 			resumeCancelled = await this.messageQueue.cancelPreviewResumes(
 				{
@@ -346,17 +344,14 @@ export class AgentChatController {
 				},
 				runId,
 			);
-		} catch (error) {
-			resumeCancellationError = error;
+		} finally {
+			cancelled = await this.agentExecutionOrchestratorService.cancelChatRun({
+				agentId,
+				runId,
+				resourceId: draftChatMemoryResourceId(req.user.id),
+				onCancelled: (threadId) => this.messageQueue.notify(threadId),
+			});
 		}
-
-		const cancelled = await this.agentExecutionOrchestratorService.cancelChatRun({
-			agentId,
-			runId,
-			resourceId: draftChatMemoryResourceId(req.user.id),
-			onCancelled: (threadId) => this.messageQueue.notify(threadId),
-		});
-		if (resumeCancellationError !== undefined) throw resumeCancellationError;
 		return { cancelled: cancelled || resumeCancelled };
 	}
 
