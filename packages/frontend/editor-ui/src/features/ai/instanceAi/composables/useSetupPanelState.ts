@@ -128,8 +128,8 @@ export function useSetupPanelState(options: {
 			);
 			return [...eventItems.value, ...stillRequired].map((event) => {
 				const item = completeCredentialContext(
-					completeCredentialContext(event, credentialContext.get(event.id)),
-					derivedById.get(event.id),
+					completeCredentialContext(event, derivedById.get(event.id)),
+					credentialContext.get(event.id),
 				);
 				return { item, isDone: derivation.isItemDone(item) };
 			});

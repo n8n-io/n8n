@@ -1913,7 +1913,7 @@ onUpdated(async () => {
 						remoteParameterOptionsLoadingIssues !== null
 					"
 					:title="compactHints && fullPlaceholderHint ? fullPlaceholderHint : displayTitle"
-					:aria-label="compactHints ? displayTitle : undefined"
+					:aria-label="compactHints ? switchLabel : undefined"
 					:placeholder="getPlaceholder()"
 					data-test-id="parameter-input-field"
 					@update:model-value="

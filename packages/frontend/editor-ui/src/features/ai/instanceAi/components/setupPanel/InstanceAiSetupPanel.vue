@@ -521,8 +521,14 @@ watch(readyToReturn, (ready) => {
 	if (ready) scheduleReturn();
 });
 
-function finishSubmission(result: SetupPanelApplyResult, version: number | undefined) {
+function finishSubmission(
+	result: SetupPanelApplyResult,
+	version: number | undefined,
+	workflowId: string,
+) {
 	if (
+		active &&
+		props.workflowId === workflowId &&
 		version === selectionVersion &&
 		(result === 'applied' || result === 'noop' || result === 'queued')
 	)
@@ -621,7 +627,8 @@ async function connectFromRow(id: string) {
 	}
 }
 
-async function notifyApplyResult(result: SetupPanelApplyResult) {
+async function notifyApplyResult(result: SetupPanelApplyResult, workflowId: string) {
+	if (!active || props.workflowId !== workflowId) return;
 	if (result === 'error' || result === 'conflict') {
 		toast.showMessage({ title: i18n.baseText('instanceAi.setupPanel.applyError'), type: 'error' });
 	}
@@ -631,6 +638,7 @@ async function notifyApplyResult(result: SetupPanelApplyResult) {
 }
 
 async function onBindCredential(item: SetupCredentialItem, credentialId: string) {
+	const workflowId = props.workflowId;
 	const version =
 		selectedGroup.value?.credential?.item.credentialType === item.credentialType
 			? selectionVersion
@@ -641,21 +649,21 @@ async function onBindCredential(item: SetupCredentialItem, credentialId: string)
 			name: '',
 			__aiGatewayManaged: true,
 		});
-		await notifyApplyResult(result);
+		await notifyApplyResult(result, workflowId);
 		panelTelemetry.trackConnectionCompleted(item, null, result);
-		finishSubmission(result, version);
+		finishSubmission(result, version, workflowId);
 		return;
 	}
 	const credential =
-		(credentialsStore.hasUsableCredentialsForScope({ workflowId: props.workflowId })
+		(credentialsStore.hasUsableCredentialsForScope({ workflowId })
 			? credentialsStore.getUsableCredentialById(credentialId)
 			: undefined) ?? credentialsStore.getCredentialById(credentialId);
 	if (!credential) return;
 	void testCredentialInBackground(credential.id, credential.name, item.credentialType);
 	const result = await actions.bindCredential(item, { id: credential.id, name: credential.name });
-	await notifyApplyResult(result);
+	await notifyApplyResult(result, workflowId);
 	panelTelemetry.trackConnectionCompleted(item, credential.id, result);
-	finishSubmission(result, version);
+	finishSubmission(result, version, workflowId);
 }
 
 async function onConfirmParameters() {
@@ -666,12 +674,13 @@ async function onConfirmParameters() {
 		return submission ? [submission] : [];
 	});
 	if (!submissions.length) return;
+	const workflowId = props.workflowId;
 	const version = selectionVersion;
 	isApplying.value = true;
 	try {
 		const result = await actions.applyParameterBatch(submissions);
-		await notifyApplyResult(result);
-		finishSubmission(result, version);
+		await notifyApplyResult(result, workflowId);
+		finishSubmission(result, version, workflowId);
 	} finally {
 		isApplying.value = false;
 	}

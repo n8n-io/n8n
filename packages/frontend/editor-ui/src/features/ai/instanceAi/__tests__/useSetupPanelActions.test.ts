@@ -67,7 +67,7 @@ function createHarness(
 	options: {
 		agentBuilding?: boolean;
 		workflowId?: string | undefined;
-		onFlushResult?: (result: SetupPanelApplyResult) => void;
+		onFlushResult?: (result: SetupPanelApplyResult, workflowId: string) => void;
 	} = {},
 ) {
 	const building = ref(options.agentBuilding ?? false);
@@ -462,7 +462,9 @@ describe('useSetupPanelActions', () => {
 		updateWorkflow.mockRejectedValue(conflictError());
 
 		building.value = false;
-		await vi.waitFor(() => expect(onFlushResult).toHaveBeenCalledExactlyOnceWith('conflict'));
+		await vi.waitFor(() =>
+			expect(onFlushResult).toHaveBeenCalledExactlyOnceWith('conflict', WORKFLOW_ID),
+		);
 	});
 
 	it('does not report a settle flush when nothing is queued', async () => {

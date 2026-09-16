@@ -26,12 +26,17 @@ const base = useTemplateRef<HTMLElement>('base');
 const { height: baseHeight } = useElementSize(base);
 const { height: overlayHeight } = useElementSize(overlay);
 watch([baseHeight, overlayHeight, activeItem], () => {
-	emit(
-		'update:overlapHeight',
-		activeItem.value ? Math.max(0, overlayHeight.value - baseHeight.value) : 0,
-	);
+	// Keep the clearance while the outgoing overlay is still visible.
+	if (activeItem.value && overlayHeight.value > 0)
+		emit('update:overlapHeight', Math.max(0, overlayHeight.value - baseHeight.value));
 });
 onScopeDispose(() => emit('update:overlapHeight', 0));
+
+function onOverlayLeft() {
+	if (activeItem.value) return;
+	emit('update:overlapHeight', 0);
+	emit('detailClosed');
+}
 
 function deactivateOverlay(element: Element) {
 	element.setAttribute('inert', '');
@@ -61,7 +66,7 @@ watch(
 	([item, id], [previousItem]) => {
 		if (id && !item) emit('update:activeItemId', undefined);
 		// An empty panel unmounts the overlay without a leave transition.
-		if (previousItem && !props.items.length) emit('detailClosed');
+		if (previousItem && !props.items.length) onOverlayLeft();
 	},
 	{ immediate: true },
 );
@@ -197,7 +202,7 @@ watch(
 			@before-enter="activateOverlay"
 			@before-leave="deactivateOverlay"
 			@leave-cancelled="activateOverlay"
-			@after-leave="emit('detailClosed')"
+			@after-leave="onOverlayLeft"
 		>
 			<div
 				v-if="activeItem && showChecklist"

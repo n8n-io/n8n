@@ -138,7 +138,7 @@ export function useSetupPanelActions(options: {
 	 * caller to return to. Manual `flushPendingApplies` calls report through
 	 * their return value instead.
 	 */
-	onFlushResult?: (result: SetupPanelApplyResult) => void;
+	onFlushResult?: (result: SetupPanelApplyResult, workflowId: string) => void;
 }) {
 	const rootStore = useRootStore();
 	const workflowsStore = useWorkflowsStore();
@@ -500,9 +500,10 @@ export function useSetupPanelActions(options: {
 	watch(
 		() => toValue(options.isAgentBuilding),
 		(building, wasBuilding) => {
-			if (wasBuilding && !building) {
+			const workflowId = toValue(options.workflowId);
+			if (wasBuilding && !building && workflowId) {
 				void flushPendingApplies().then((result) => {
-					if (result) options.onFlushResult?.(result);
+					if (result) options.onFlushResult?.(result, workflowId);
 				});
 			}
 		},
