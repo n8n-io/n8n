@@ -1,0 +1,61 @@
+packages/frontend/editor-ui/src/features/ai/shared/composables/useFileDrop.ts
+  s_6ce85d4a1f6067::t_3328b7344a42c1 27
+  s_6ce85d4a1f6067::t_05b86bb751382e 2,25-26,28
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentAdvancedPanel.test.ts
+  s_6ce85d4a1f6067::t_ca245564ca2729 65-73
+  s_6ce85d4a1f6067::t_e32b20e9a9f290 266
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSubAgentsModal.spec.ts
+  s_6ce85d4a1f6067::t_3328b7344a42c1 110-112
+  s_6ce85d4a1f6067::t_7e70851dd74bcb 72-73,76,109,113
+packages/frontend/@n8n/design-system/src/components/N8nMarkdownEditor/MarkdownEditor.test.ts
+  s_6ce85d4a1f6067::t_7e70851dd74bcb 98-109
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentTaskModal.test.ts
+  s_6ce85d4a1f6067::t_7e70851dd74bcb 158,160,223-226
+packages/frontend/@n8n/design-system/src/components/N8nMarkdownEditor/MarkdownEditor.vue
+  s_6ce85d4a1f6067::t_c7ee8ef0328b9a 49
+packages/frontend/editor-ui/src/features/ai/shared/components/ChatInputBase.vue
+  s_6ce85d4a1f6067::t_69c01e65ab89d6 240
+  s_6ce85d4a1f6067::t_05b86bb751382e 15,73-77,183-186
+  s_6ce85d4a1f6067::t_7e70851dd74bcb 72,78
+packages/frontend/editor-ui/src/features/ai/shared/composables/useFileDrop.test.ts
+  s_6ce85d4a1f6067::t_eb96f2ef720261 1-28
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderEditorColumn.spec.ts
+  s_6ce85d4a1f6067::t_05b86bb751382e 7,154,177,358
+packages/frontend/editor-ui/src/features/ai/chatHub/chat.utils.ts
+  s_6ce85d4a1f6067::t_05b86bb751382e 437-440
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentMemoryModelSetting.test.ts
+  s_6ce85d4a1f6067::t_98a41a5668df79 1-208
+packages/frontend/editor-ui/src/features/agents/components/AgentMemoryPanel.vue
+  s_6ce85d4a1f6067::t_14ac07d21fb1c8 110
+  s_6ce85d4a1f6067::t_f6eac2dd0cd1c4 152
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentMemoryPanel.test.ts
+  s_6ce85d4a1f6067::t_9a562dc0e8a610 27,162,176,179-185,187-188,190-192
+  s_6ce85d4a1f6067::t_e32b20e9a9f290 5,112,124,129,159,169,174
+packages/frontend/editor-ui/src/features/ai/shared/utils/fileAccept.ts
+  s_6ce85d4a1f6067::t_05b86bb751382e 1-42
+packages/frontend/editor-ui/src/features/agents/components/AgentMemoryModelSetting.vue
+  s_6ce85d4a1f6067::t_1ea130822a6ce3 44,46-47,50-52,56-62,64-70,83,129,132,182
+  s_6ce85d4a1f6067::t_e8a32cfe5fb4b1 42,71-79,122-128,165
+  s_6ce85d4a1f6067::t_167103719896b0 130
+packages/frontend/editor-ui/src/features/ai/shared/components/ChatInputBase.test.ts
+  s_6ce85d4a1f6067::t_7e70851dd74bcb 172
+  s_6ce85d4a1f6067::t_6134fd89b19b27 187,195
+  s_6ce85d4a1f6067::t_eb96f2ef720261 2,51-66,165-171,173-186,188-194,196
+  s_6ce85d4a1f6067::t_4425b572f744be 197
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "ebfd3e6fce81e33a28cec0bd88ecca575eb30986",
+  "prompts": {},
+  "sessions": {
+    "s_6ce85d4a1f6067": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0a4c4-d4ab-7d52-b983-c70679bb264f",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}
