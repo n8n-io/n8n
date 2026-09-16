@@ -30,16 +30,16 @@ const props = withDefaults(defineProps<IconProps>(), {
 
 const $style = useCssModule();
 const classes = computed(() => {
-	const applied: string[] = [];
+	const applied: string[] = [$style.host];
 	if (props.spin) {
-		applied.push('spin');
+		applied.push($style.spin);
 	}
 
 	if (props.strokeWidth) {
-		applied.push('strokeWidth');
+		applied.push($style.strokeWidth);
 	}
 
-	return ['n8n-icon', ...applied.map((c) => $style[c])];
+	return ['n8n-icon', ...applied];
 });
 
 const sizesInPixels: Record<IconSize, number> = {
@@ -129,39 +129,45 @@ watch(
 </script>
 
 <template>
-	<Component
-		:is="resolvedComponent"
-		v-if="resolvedComponent"
+	<span
 		:class="classes"
-		aria-hidden="true"
-		focusable="false"
-		role="img"
-		:height="size.height"
-		:width="size.width"
-		:data-icon="props.icon"
-		:style="styles"
-	/><svg
-		v-else-if="fallbackBody"
-		v-svg-content="fallbackBody"
-		xmlns="http://www.w3.org/2000/svg"
-		viewBox="0 0 24 24"
-		:class="[...classes, $style.fallbackIcon]"
-		:height="size.height"
-		:width="size.width"
-		fill="none"
-		stroke="currentColor"
-		stroke-linecap="round"
-		stroke-linejoin="round"
+		:style="{ ...styles, width: size.width, height: size.height }"
 		aria-hidden="true"
 		focusable="false"
 		role="img"
 		:data-icon="props.icon"
-		:style="styles"
-	/>
+	>
+		<Component
+			:is="resolvedComponent"
+			v-if="resolvedComponent"
+			:height="size.height"
+			:width="size.width"
+		/>
+		<svg
+			v-else-if="fallbackBody"
+			v-svg-content="fallbackBody"
+			xmlns="http://www.w3.org/2000/svg"
+			viewBox="0 0 24 24"
+			:class="$style.fallbackIcon"
+			:height="size.height"
+			:width="size.width"
+			fill="none"
+			stroke="currentColor"
+			stroke-linecap="round"
+			stroke-linejoin="round"
+			:data-icon="props.icon"
+		/>
+	</span>
 </template>
 
 <style lang="scss" module>
 @use '../../css/mixins/motion';
+
+.host {
+	display: inline-flex;
+	flex-shrink: 0;
+	box-sizing: content-box;
+}
 
 .fallbackIcon {
 	stroke-width: 1.5;
