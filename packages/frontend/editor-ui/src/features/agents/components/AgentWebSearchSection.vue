@@ -285,7 +285,7 @@ function onCreateFallbackCredential() {
 </script>
 
 <template>
-	<div :class="$style.content" data-testid="agent-advanced-content">
+	<div :class="$style.content" data-testid="agent-web-search-content">
 		<div :class="$style.settingGroup">
 			<div :class="$style.row">
 				<div :class="$style.rowLabel">

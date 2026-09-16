@@ -5,6 +5,7 @@ import { nextTick, ref } from 'vue';
 import type * as VueUse from '@vueuse/core';
 
 import AgentAdvancedPanel from '../components/AgentAdvancedPanel.vue';
+import AgentWebSearchSection from '../components/AgentWebSearchSection.vue';
 import type { ProviderCatalog } from '../composables/useAgentApi';
 import type { AgentJsonConfig } from '../types';
 
@@ -214,13 +215,14 @@ describe('AgentAdvancedPanel', () => {
 		expect(wrapper.find('[data-testid="agent-reasoning-toggle"]').isVisible()).toBe(true);
 	});
 
-	it('should not render Web Search', () => {
+	it('does not render web search controls', function doesNotRenderWebSearchControls() {
 		const wrapper = mount(AgentAdvancedPanel, {
 			props: { config: makeConfig() },
 			global: { stubs: globalStubs },
 		});
 
-		expect(wrapper.text()).not.toContain('agents.builder.advanced.webSearch');
+		expect(wrapper.findComponent(AgentWebSearchSection).exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-web-search-method"]').exists()).toBe(false);
 	});
 
 	it('loads the model catalog for the current project', () => {

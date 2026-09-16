@@ -100,6 +100,11 @@ const globalStubs = {
 		template:
 			'<button :disabled="disabled" :data-checked="modelValue" @click="$emit(\'update:modelValue\', !modelValue)" />',
 	},
+	N8nSegmentControl: {
+		props: ['modelValue', 'options', 'disabled', 'size'],
+		emits: ['update:modelValue'],
+		template: '<div v-bind="$attrs" />',
+	},
 };
 
 function makeConfig(overrides: Partial<AgentJsonConfig> = {}): AgentJsonConfig {
@@ -123,6 +128,7 @@ function findStubComponent(wrapper: ReturnType<typeof mount>, testId: string) {
 	return wrapper.findComponent(`[data-testid="${testId}"]`) as unknown as {
 		exists: () => boolean;
 		props: (name: string) => unknown;
+		vm: { $emit: (event: 'update:modelValue', value: string) => void };
 	};
 }
 
@@ -220,6 +226,48 @@ describe('AgentWebSearchSection', () => {
 			},
 		});
 	});
+
+	it.each(['low', 'medium', 'high'] as const)(
+		'emits the %s search context size and offers all context size options',
+		async function emitsSearchContextSize(contextSize) {
+			const config = makeConfig({
+				model: 'openai/gpt-5',
+				config: { webSearch: { enabled: true } },
+				providerTools: { 'openai.web_search': {} },
+			} as Partial<AgentJsonConfig>);
+			const wrapper = mount(AgentWebSearchSection, {
+				props: { config },
+				global: { stubs: globalStubs },
+			});
+			const contextSizeControl = wrapper.findComponent({ name: 'SegmentControl' });
+
+			expect(contextSizeControl.props('options')).toEqual([
+				{
+					label: 'agents.builder.advanced.webSearch.contextSize.low',
+					value: 'low',
+				},
+				{
+					label: 'agents.builder.advanced.webSearch.contextSize.medium',
+					value: 'medium',
+				},
+				{
+					label: 'agents.builder.advanced.webSearch.contextSize.high',
+					value: 'high',
+				},
+			]);
+
+			contextSizeControl.vm.$emit('update:modelValue', contextSize);
+			await nextTick();
+
+			const last = wrapper.emitted('update:config')?.at(-1)?.[0] as Partial<AgentJsonConfig>;
+			expect(last.providerTools).toEqual({
+				'openai.web_search': {
+					externalWebAccess: true,
+					searchContextSize: contextSize,
+				},
+			});
+		},
+	);
 
 	it('strips native web search provider tools when native web search is disabled', async () => {
 		const config = makeConfig({
