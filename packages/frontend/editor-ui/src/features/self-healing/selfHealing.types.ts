@@ -4,7 +4,7 @@ import type {
 	WorkflowReviewRequestDetail,
 } from '@n8n/api-types';
 
-export type SelfHealingAutonomy = 'review' | 'deploy';
+export type SelfHealingAutonomy = 'diagnose' | 'review' | 'deploy';
 
 export type SelfHealingConfigStatus = 'active' | 'paused';
 
@@ -35,6 +35,7 @@ export type WorkflowHealingStatus =
 	| { enrolled: false; config: SelfHealingConfig | null }
 	| { enrolled: true; config: SelfHealingConfig; state: 'monitoring' }
 	| { enrolled: true; config: SelfHealingConfig; state: 'fixing'; executionId: string }
+	| { enrolled: true; config: SelfHealingConfig; state: 'diagnosed'; diagnosedAt: string }
 	| {
 			enrolled: true;
 			config: SelfHealingConfig;
@@ -53,6 +54,13 @@ export type WorkflowHealingStatus =
 /** Progress of one fix the user started from a failed execution. */
 export type SelfHealingFixJob =
 	| { status: 'running'; executionId: string; workflowId: string; startedAt: string }
+	| {
+			status: 'diagnosed';
+			executionId: string;
+			workflowId: string;
+			summary: string;
+			suggestedFix: string;
+	  }
 	| {
 			status: 'submitted';
 			executionId: string;

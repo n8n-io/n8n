@@ -49,7 +49,7 @@ const workflowsListStore = useWorkflowsListStore();
 const projectsStore = useProjectsStore();
 const usersStore = useUsersStore();
 
-const AUTONOMY_OPTIONS: SelfHealingAutonomy[] = ['review', 'deploy'];
+const AUTONOMY_OPTIONS: SelfHealingAutonomy[] = ['diagnose', 'review', 'deploy'];
 const REMOVE_REVIEWER_ACTION = 'remove';
 
 function emptyForm(): SelfHealingConfigInput {

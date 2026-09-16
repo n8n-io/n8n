@@ -50,8 +50,10 @@ Workflow Reviews backend feature is off. See `isReviewInboxEnabled` in
    in the inbox with the assistant avatar and a one-line summary. Open one:
    the Activity tab explains the fix and the Changes tab shows the diff.
    Approve it; the workflow's chip flips to "Healed just now".
-5. Switch a configuration to **Auto-fix and auto-deploy** and repeat step 3.
-   The fix lands already approved and published.
+5. Switch the configuration to **Deploy fixes automatically** and repeat
+   step 3. The fix lands already approved and published. Switch it to
+   **Diagnose and notify** instead and the banner shows a root-cause summary
+   with a suggested fix, and nothing is changed.
 
 ## Files
 

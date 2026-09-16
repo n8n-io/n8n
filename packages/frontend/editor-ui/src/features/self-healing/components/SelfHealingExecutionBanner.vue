@@ -49,14 +49,39 @@ const isDeployed = computed(
 		store.findReview(job.value.reviewId)?.item.state === 'closed',
 );
 
+const autonomy = computed(() =>
+	healingStatus.value.enrolled ? healingStatus.value.config.autonomy : 'review',
+);
+
 const idleBody = computed(() => {
 	if (!healingStatus.value.enrolled) {
 		return i18n.baseText('selfHealing.executionBanner.notEnrolled');
 	}
-	return healingStatus.value.config.autonomy === 'deploy'
-		? i18n.baseText('selfHealing.executionBanner.bodyAutoDeploy')
-		: i18n.baseText('selfHealing.executionBanner.body');
+	switch (autonomy.value) {
+		case 'diagnose':
+			return i18n.baseText('selfHealing.executionBanner.bodyDiagnose');
+		case 'deploy':
+			return i18n.baseText('selfHealing.executionBanner.bodyAutoDeploy');
+		default:
+			return i18n.baseText('selfHealing.executionBanner.body');
+	}
 });
+
+const ctaLabel = computed(() =>
+	i18n.baseText(
+		autonomy.value === 'diagnose'
+			? 'selfHealing.executionBanner.ctaDiagnose'
+			: 'selfHealing.executionBanner.cta',
+	),
+);
+
+const runningLabel = computed(() =>
+	i18n.baseText(
+		autonomy.value === 'diagnose'
+			? 'selfHealing.executionBanner.runningDiagnose'
+			: 'selfHealing.executionBanner.running',
+	),
+);
 
 const reviewRoute = computed(() =>
 	job.value?.status === 'submitted'
@@ -97,8 +122,23 @@ async function onFix() {
 				data-test-id="self-healing-execution-banner-running"
 			>
 				<N8nSpinner size="small" />
-				<N8nText size="small" color="text-base">
-					{{ i18n.baseText('selfHealing.executionBanner.running') }}
+				<N8nText size="small" color="text-base">{{ runningLabel }}</N8nText>
+			</div>
+			<div
+				v-else-if="job.status === 'diagnosed'"
+				:class="$style.text"
+				data-test-id="self-healing-execution-banner-diagnosed"
+			>
+				<N8nText size="small" bold color="text-dark">
+					{{ i18n.baseText('selfHealing.executionBanner.diagnosed.title') }}
+				</N8nText>
+				<N8nText size="small" color="text-base">{{ job.summary }}</N8nText>
+				<N8nText size="small" color="text-dark">
+					{{
+						i18n.baseText('selfHealing.executionBanner.diagnosed.suggestedFix', {
+							interpolate: { fix: job.suggestedFix },
+						})
+					}}
 				</N8nText>
 			</div>
 			<div v-else :class="$style.text" data-test-id="self-healing-execution-banner-submitted">
@@ -127,7 +167,7 @@ async function onFix() {
 				v-if="!job"
 				size="small"
 				icon="sparkles"
-				:label="i18n.baseText('selfHealing.executionBanner.cta')"
+				:label="ctaLabel"
 				:class="$style.action"
 				data-test-id="self-healing-fix-button"
 				@click="onFix"

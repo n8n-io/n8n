@@ -521,3 +521,16 @@ export function createLiveReviewCopy(input: {
 		analysis: `What failed: execution #${input.executionId} stopped at "${input.changedNode}" with "${error}".\n\nWhat I changed: turned on Retry On Fail for "${input.changedNode}" with 3 attempts, 5 seconds apart. No other node or parameter changed.\n\nHow I checked: replayed the failed execution against the fixed version with pinned input data. The run completed.`,
 	};
 }
+
+/** Root-cause summary and suggestion for the "diagnose and notify" autonomy level. */
+export function createDiagnosisCopy(input: {
+	executionId: string;
+	failedNode: string;
+	errorMessage: string | null;
+}): { summary: string; suggestedFix: string } {
+	const error = input.errorMessage ?? 'an unhandled error';
+	return {
+		summary: `Execution #${input.executionId} stopped at "${input.failedNode}" with ${error}. The upstream data looked valid, so the failure is most likely transient.`,
+		suggestedFix: `Turn on Retry On Fail for "${input.failedNode}" with 3 attempts, 5 seconds apart.`,
+	};
+}

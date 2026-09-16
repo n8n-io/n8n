@@ -25,6 +25,7 @@ import {
 import {
 	buildSelfHealingReview,
 	createDefaultConfig,
+	createDiagnosisCopy,
 	createEntryIdGenerator,
 	createLiveFixSnapshots,
 	createLiveReviewCopy,
@@ -45,6 +46,7 @@ import type {
 /** What the store remembers about a workflow after the user acted on it in this session. */
 type LiveWorkflowRecord =
 	| { state: 'fixing'; executionId: string }
+	| { state: 'diagnosed'; diagnosedAt: string }
 	| { state: 'in_review'; reviewId: string; since: string }
 	| { state: 'healed'; healedAt: string; reviewId: string | null };
 
@@ -242,17 +244,22 @@ export const useSelfHealingStore = defineStore('selfHealing', () => {
 	}
 
 	/**
-	 * Fakes the assistant fixing a failed execution: a short "analysing" phase,
-	 * then a review appears in the inbox. Under the auto-deploy autonomy level
-	 * the review is created already approved and published.
+	 * Fakes the assistant handling a failed execution: a short "analysing"
+	 * phase, then the outcome the project's autonomy level allows. "Diagnose"
+	 * only produces a root-cause summary and returns `null`; "review" opens a
+	 * review; "deploy" creates the review already approved and published.
 	 */
-	async function startFix(execution: ExecutionSummary, context: StartFixContext): Promise<string> {
+	async function startFix(
+		execution: ExecutionSummary,
+		context: StartFixContext,
+	): Promise<string | null> {
 		ensureSeeded();
 		const executionId = execution.id;
 		const workflowId = execution.workflowId;
 
 		const existing = fixJobs.value[executionId];
 		if (existing?.status === 'submitted') return existing.reviewId;
+		if (existing?.status === 'diagnosed') return null;
 
 		fixJobs.value[executionId] = {
 			status: 'running',
@@ -263,6 +270,26 @@ export const useSelfHealingStore = defineStore('selfHealing', () => {
 		liveRecords.value[workflowId] = { state: 'fixing', executionId };
 
 		await sleep(SELF_HEALING_FIX_DURATION_MS);
+
+		const config = context.projectId !== null ? getActiveConfig(context.projectId) : null;
+
+		if (config?.autonomy === 'diagnose') {
+			const diagnosedAt = nowIso();
+			const failedNode =
+				execution.lastNodeExecuted ?? context.nodes?.at(-1)?.name ?? 'the failing node';
+			fixJobs.value[executionId] = {
+				status: 'diagnosed',
+				executionId,
+				workflowId,
+				...createDiagnosisCopy({
+					executionId,
+					failedNode,
+					errorMessage: execution.executionError?.message?.trim() || null,
+				}),
+			};
+			liveRecords.value[workflowId] = { state: 'diagnosed', diagnosedAt };
+			return null;
+		}
 
 		const { baseline, pinned, changedNode } = createLiveFixSnapshots({
 			nodes: context.nodes,
@@ -277,7 +304,6 @@ export const useSelfHealingStore = defineStore('selfHealing', () => {
 			errorMessage: execution.executionError?.message?.trim() || null,
 		});
 		const createdAt = nowIso();
-		const config = context.projectId !== null ? getActiveConfig(context.projectId) : null;
 		const autoDeploy = config?.autonomy === 'deploy';
 		const reviewId = `${SELF_HEALING_REVIEW_ID_PREFIX}${executionId}-${Date.now()}`;
 

@@ -35,6 +35,8 @@ const tooltip = computed(() => {
 	switch (status.value.state) {
 		case 'fixing':
 			return i18n.baseText('selfHealing.badge.tooltip.fixing');
+		case 'diagnosed':
+			return i18n.baseText('selfHealing.badge.tooltip.diagnosed');
 		case 'in_review':
 			return i18n.baseText('selfHealing.badge.tooltip.inReview');
 		case 'healed':
@@ -69,6 +71,10 @@ const tooltip = computed(() => {
 				</template>
 				<template v-else-if="status.state === 'in_review'">
 					{{ i18n.baseText('selfHealing.badge.inReview') }}
+				</template>
+				<template v-else-if="status.state === 'diagnosed'">
+					{{ i18n.baseText('selfHealing.badge.diagnosed') }}
+					<TimeAgo :date="status.diagnosedAt" />
 				</template>
 				<template v-else-if="status.state === 'fixing'">
 					{{ i18n.baseText('selfHealing.badge.fixing') }}
