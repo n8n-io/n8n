@@ -67,6 +67,11 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 		displayName: 'Manage Node Type Policies',
 		description: 'Allows managing which node types are available, on the instance or in a project.',
 	},
+	'credentialTypePolicy:manage': {
+		displayName: 'Manage Credential Type Policies',
+		description:
+			'Allows managing which credential types are available, on the instance or in a project.',
+	},
 	'encryptionKey:manage': {
 		displayName: 'Manage Encryption Keys',
 		description: 'Allows listing and rotating instance encryption keys.',

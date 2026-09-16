@@ -16,6 +16,7 @@ describe('permissions', () => {
 			community: {},
 			communityPackage: {},
 			credential: {},
+			credentialTypePolicy: {},
 			externalSecretsProvider: {},
 			externalSecret: {},
 			eventBusDestination: {},
@@ -113,6 +114,7 @@ describe('permissions', () => {
 				share: true,
 				update: true,
 			},
+			credentialTypePolicy: {},
 			eventBusDestination: {
 				list: true,
 				test: true,
