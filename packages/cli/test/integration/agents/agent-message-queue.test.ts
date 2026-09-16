@@ -763,9 +763,10 @@ describe('agent message queue', () => {
 		}
 	});
 
-	it('cancels a preview that suspends during Stop before releasing the next message', async () => {
+	it('recovers a preview when checkpoint cleanup fails during Stop', async () => {
 		const main = await makeMain();
 		const peer = await makeMain();
+		const push = vi.mocked(main['broadcaster']['push'].sendToUsers);
 		const reachedFinish = createDeferredPromise();
 		const finish = createDeferredPromise();
 		const finishProcessing = repository.finishProcessing.bind(repository);
@@ -780,12 +781,14 @@ describe('agent message queue', () => {
 			persistence: { threadId: 'conversation', resourceId: 'user' },
 		});
 		const cancel = vi.mocked(main['orchestrator'].cancelChatRun);
-		cancel.mockImplementation(async () => {
-			expect(received).toEqual([]);
-			expect(await repository.countBy({ status: 'cancelling' })).toBe(1);
-			checkpoints.findSuspendedForThread.mockResolvedValue(null);
-			return true;
-		});
+		cancel
+			.mockRejectedValueOnce(new Error('Checkpoint storage unavailable'))
+			.mockImplementationOnce(async () => {
+				expect(received).toEqual([]);
+				expect(await repository.countBy({ status: 'cancelling' })).toBe(1);
+				checkpoints.findSuspendedForThread.mockResolvedValue(null);
+				return true;
+			});
 		const item = await main.enqueuePreview(preview('first'), 'request-1', async () => {
 			checkpoints.findSuspendedForThread.mockResolvedValue(checkpoint);
 		});
@@ -797,8 +800,34 @@ describe('agent message queue', () => {
 				item.id,
 			);
 			finish.resolve();
-			await retryUntil(async () => expect(await repository.count()).toBe(0));
-			expect(cancel).toHaveBeenCalledWith({ agentId, runId: 'suspended-run', resourceId: 'user' });
+			await retryUntil(async () => expect(cancel).toHaveBeenCalledTimes(1));
+			await retryUntil(async () => expect(main['processing'].has(item.id)).toBe(false));
+			expect(await repository.findById(item.id)).toMatchObject({ status: 'cancelling' });
+			expect(push).not.toHaveBeenCalledWith(
+				expect.objectContaining({
+					data: expect.objectContaining({ event: { type: 'cancelled' } }),
+				}),
+				['user'],
+			);
+
+			await repository.update(item.id, { updatedAt: new Date(Date.now() - 180_000) });
+			await main['heartbeat']();
+			await peer.recover();
+
+			expect(cancel).toHaveBeenCalledTimes(2);
+			expect(cancel).toHaveBeenLastCalledWith({
+				agentId,
+				runId: 'suspended-run',
+				resourceId: 'user',
+			});
+			await retryUntil(async () =>
+				expect(push).toHaveBeenCalledWith(
+					expect.objectContaining({
+						data: expect.objectContaining({ event: { type: 'cancelled' } }),
+					}),
+					['user'],
+				),
+			);
 			expect(received).toEqual(['next']);
 		} finally {
 			finish.resolve();
@@ -1067,6 +1096,31 @@ describe('agent message queue', () => {
 		} finally {
 			finishClaim.resolve();
 			finishRun.resolve();
+		}
+	});
+
+	it('releases a preview claim when the saved payload read fails', async () => {
+		const readStarted = createDeferredPromise();
+		const findById = repository.findById.bind(repository);
+		const findByIdSpy = vi
+			.spyOn(repository, 'findById')
+			.mockImplementationOnce(async () => {
+				readStarted.resolve();
+				throw new Error('Queue read failed');
+			})
+			.mockImplementation(findById);
+		const main = await makeMain();
+		try {
+			await main.enqueuePreview(preview('first'), 'request-1', async (payload) => {
+				if (payload.kind === 'message') received.push(payload.message);
+			});
+			await readStarted.promise;
+			await main.enqueue(message('next'));
+
+			await retryUntil(async () => expect(received).toEqual(['first', 'next']));
+			expect(await repository.count()).toBe(0);
+		} finally {
+			findByIdSpy.mockRestore();
 		}
 	});
 
