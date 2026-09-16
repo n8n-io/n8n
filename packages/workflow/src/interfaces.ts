@@ -55,6 +55,14 @@ export interface IAdditionalCredentialOptions {
 	 * override when a gateway signals an expired token with a different status.
 	 */
 	preAuthenticationRetryStatusCode?: number | number[];
+	/**
+	 * Whether a `preAuthenticationRetryStatusCode` other than 401 only forces the
+	 * refresh-and-resend when the token the credential stored in `n8n_expires_at` is at or past
+	 * its expiry. The counterpart of `IOAuth2Options.skipRefreshWhileTokenIsFresh`, for
+	 * credentials that mint their own token in `preAuthentication`. A 401 and an unknown expiry
+	 * still retry.
+	 */
+	skipPreAuthenticationRetryWhileTokenIsFresh?: boolean;
 }
 
 export type IAllExecuteFunctions =
