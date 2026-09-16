@@ -136,25 +136,25 @@ describe('S3 Node Generic Functions', () => {
 					'folder%2F..%2Fsecret.txt',
 					'folder%252Ffile.txt',
 				]) {
-				mockContext.getCredentials.mockResolvedValueOnce({
-					endpoint: 'https://s3.amazonaws.com',
-					forcePathStyle,
-				});
-				mockContext.helpers.request.mockResolvedValueOnce('success');
+					mockContext.getCredentials.mockResolvedValueOnce({
+						endpoint: 'https://s3.amazonaws.com',
+						forcePathStyle,
+					});
+					mockContext.helpers.request.mockResolvedValueOnce('success');
 
-				await s3ApiRequest.call(mockContext, 'test-bucket', 'GET', `/${fileKey}`);
+					await s3ApiRequest.call(mockContext, 'test-bucket', 'GET', `/${fileKey}`);
 
-				expect(sign).toHaveBeenLastCalledWith(
-					expect.objectContaining({
-						path: `${signedPathPrefix}/${fileKey}?`,
-					}),
-					expect.any(Object),
-				);
-				expect(mockContext.helpers.request).toHaveBeenLastCalledWith(
-					expect.objectContaining({
-						uri: `${uriPrefix}/${fileKey}`,
-					}),
-				);
+					expect(sign).toHaveBeenLastCalledWith(
+						expect.objectContaining({
+							path: `${signedPathPrefix}/${fileKey}?`,
+						}),
+						expect.any(Object),
+					);
+					expect(mockContext.helpers.request).toHaveBeenLastCalledWith(
+						expect.objectContaining({
+							uri: `${uriPrefix}/${fileKey}`,
+						}),
+					);
 				}
 			},
 		);

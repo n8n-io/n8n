@@ -1708,9 +1708,7 @@ describe('uriEncodeS3Pathname', () => {
 		const options = { preserveEncodedSlashes: true };
 
 		expect(uriEncodeS3Pathname('/bucket/a%2Fb.txt', options)).toBe('/bucket/a%2Fb.txt');
-		expect(uriEncodeS3Pathname('/bucket/a%2F..%2Fb.txt', options)).toBe(
-			'/bucket/a%2F..%2Fb.txt',
-		);
+		expect(uriEncodeS3Pathname('/bucket/a%2F..%2Fb.txt', options)).toBe('/bucket/a%2F..%2Fb.txt');
 		expect(uriEncodeS3Pathname('/bucket/a%252Fb.txt', options)).toBe('/bucket/a%252Fb.txt');
 	});
 
