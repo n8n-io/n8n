@@ -115,19 +115,7 @@ const renderIcon: Story['render'] = (args) => ({
 });
 
 export const Default: Story = {
-	// Native wrapper so Storybook's unnamed mount does not share the svg root.
-	// story.to.design then reads N8nIcon from `.n8n-icon` instead of lucide-* / no name.
-	render: (args) => ({
-		components: { N8nIcon },
-		setup() {
-			return { args };
-		},
-		template: `
-			<div style="display: inline-flex; width: fit-content; height: fit-content;">
-				<N8nIcon v-bind="args" />
-			</div>
-		`,
-	}),
+	render: renderIcon,
 	args: {
 		icon: 'check',
 		size: 'medium',
