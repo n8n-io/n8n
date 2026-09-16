@@ -1,9 +1,17 @@
+packages/cli/src/modules/git-connections.ee/database/repositories/git-connection.repository.ts
+  h_9b272a633435fb 18
+  s_7562978115634d::t_63fb13e56a4fff 13-17
 ---
 {
   "schema_version": "authorship/3.0.0",
   "git_ai_version": "1.5.2",
-  "base_commit_sha": "3ca0f5546eb1bef35133eae28fdf5785dadfadd9",
+  "base_commit_sha": "57a25847ab5df25844cfcfe58f722d613c2b4fc5",
   "prompts": {},
+  "humans": {
+    "h_9b272a633435fb": {
+      "author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  },
   "sessions": {
     "s_7562978115634d": {
       "agent_id": {

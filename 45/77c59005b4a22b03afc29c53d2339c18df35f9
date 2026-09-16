@@ -1,8 +1,10 @@
+packages/@n8n/api-types/src/dto/git-connections/git-connections.dto.ts
+  s_7562978115634d::t_8deb080811fa6b 13-15
 ---
 {
   "schema_version": "authorship/3.0.0",
   "git_ai_version": "1.5.2",
-  "base_commit_sha": "3ca0f5546eb1bef35133eae28fdf5785dadfadd9",
+  "base_commit_sha": "4577c59005b4a22b03afc29c53d2339c18df35f9",
   "prompts": {},
   "sessions": {
     "s_7562978115634d": {

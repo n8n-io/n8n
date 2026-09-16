@@ -1,11 +1,23 @@
 packages/@n8n/cli/src/client.ts
-  s_ce3ad51e58ece2::t_add23b14b3121e 216,249-279
+  s_ce3ad51e58ece2::t_add23b14b3121e 216,217-234,237-248,249-279
   s_677c6aba5d38ab::t_6e73ac1ff39998 280-284,286-291
   s_677c6aba5d38ab::t_bd57d36932a398 285
 packages/@n8n/cli/src/index.ts
-  s_ce3ad51e58ece2::t_add23b14b3121e 32-38,105-111
+  s_ce3ad51e58ece2::t_add23b14b3121e 26-31,32-38,90-93,95-96,105-111
 packages/@n8n/cli/package.json
-  s_ce3ad51e58ece2::t_add23b14b3121e 72-74
+  s_ce3ad51e58ece2::t_add23b14b3121e 69-71,72-74
+packages/@n8n/cli/src/commands/git-connections/create.ts
+  s_ce3ad51e58ece2::t_add23b14b3121e 1-20
+packages/@n8n/cli/src/commands/git-connections/disconnect.ts
+  s_ce3ad51e58ece2::t_add23b14b3121e 1-16
+packages/@n8n/cli/src/commands/git-connections/list.ts
+  s_ce3ad51e58ece2::t_add23b14b3121e 1-21
+packages/@n8n/cli/src/commands/git-connections/update.ts
+  s_ce3ad51e58ece2::t_add23b14b3121e 1-21
+packages/@n8n/cli/src/commands/git-connections/get.ts
+  s_ce3ad51e58ece2::t_add23b14b3121e 1-16
+packages/@n8n/cli/src/commands/git-connections/delete.ts
+  s_ce3ad51e58ece2::t_add23b14b3121e 1-17
 ---
 {
   "schema_version": "authorship/3.0.0",
