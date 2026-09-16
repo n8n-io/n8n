@@ -1,11 +1,10 @@
+import { RoleService } from '@n8n/backend-services';
 import type { Folder, User } from '@n8n/db';
 import { chunkIds, FolderRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
 import type { FindOptionsWhere } from '@n8n/typeorm';
 import { In } from '@n8n/typeorm';
-
-import { RoleService } from '@/services/role.service';
 
 /**
  * Resolves folders by id for a user, enforcing access through the folder's home

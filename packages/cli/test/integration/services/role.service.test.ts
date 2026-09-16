@@ -1,6 +1,11 @@
 import type { CreateRoleDto, UpdateRoleDto } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
-import { BadRequestError, NotFoundError } from '@n8n/backend-services';
+import {
+	BadRequestError,
+	NotFoundError,
+	RoleDeletionCheckProxy,
+	RoleService,
+} from '@n8n/backend-services';
 import { testDb } from '@n8n/backend-test-utils';
 import { ProjectRepository } from '@n8n/db';
 import { RoleMappingRuleRepository, RoleRepository, UserRepository } from '@n8n/db';
@@ -10,8 +15,6 @@ import { ALL_ROLES } from '@n8n/permissions';
 import { License } from '@/license';
 import { ProvisioningRoleDeletionChecker } from '@/modules/provisioning.ee/role-deletion-checker.ee';
 import { ProjectService } from '@/services/project.service.ee';
-import { RoleDeletionCheckProxy } from '@/services/role-deletion-check-proxy.service';
-import { RoleService } from '@/services/role.service';
 
 import {
 	createRole,

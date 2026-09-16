@@ -1,4 +1,5 @@
 import type { LicenseState } from '@n8n/backend-common';
+import type { RoleService } from '@n8n/backend-services';
 import type {
 	User,
 	CredentialsEntity,
@@ -16,7 +17,6 @@ import type { ExternalSecretsConfig } from '@/modules/external-secrets.ee/extern
 import type { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
 import type { OwnershipService } from '@/services/ownership.service';
 import type { ProjectService } from '@/services/project.service.ee';
-import type { RoleService } from '@/services/role.service';
 
 describe('EnterpriseCredentialsService', () => {
 	const sharedCredentialsRepository = mock<SharedCredentialsRepository>();

@@ -1,3 +1,4 @@
+import type { RoleService } from '@n8n/backend-services';
 import { ForbiddenError, NotFoundError } from '@n8n/backend-services';
 import type {
 	ProjectSecretsProviderAccessRepository,
@@ -8,7 +9,6 @@ import type { Scope } from '@n8n/permissions';
 import { mock } from 'vitest-mock-extended';
 
 import type { ProjectService } from '@/services/project.service.ee';
-import type { RoleService } from '@/services/role.service';
 
 import { SecretsProviderAccessCheckService } from '../secret-provider-access-check.service.ee';
 

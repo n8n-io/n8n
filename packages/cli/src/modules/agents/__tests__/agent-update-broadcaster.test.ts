@@ -1,11 +1,11 @@
 import type { Logger } from '@n8n/backend-common';
+import type { RoleService } from '@n8n/backend-services';
 import type { UserRepository } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import type { Push } from '@/push';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
-import type { RoleService } from '@/services/role.service';
 
 import { AgentUpdateBroadcaster } from '../agent-update-broadcaster';
 

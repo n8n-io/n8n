@@ -8,7 +8,7 @@ import {
 	UpdateRolePublicDto,
 	roleSlugParamSchema,
 } from '@n8n/api-types';
-import { EventService, NotFoundError } from '@n8n/backend-services';
+import { EventService, NotFoundError, RoleService } from '@n8n/backend-services';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import { AuthenticatedRequest } from '@n8n/db';
 import {
@@ -32,7 +32,6 @@ import { RoleNamespace, type Role as RoleDTO } from '@n8n/permissions';
 import type { Response } from 'express';
 
 import { assertCanManageRoleType, canReassignUsers } from '@/services/role-authorization';
-import { RoleService } from '@/services/role.service';
 
 type PublicRoleNamespace = Extract<RoleNamespace, 'global' | 'project'>;
 const isPublicRole = (role: RoleDTO): role is RoleDTO & { roleType: PublicRoleNamespace } =>

@@ -1,5 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
-import type { EventService } from '@n8n/backend-services';
+import type { EventService, RoleService } from '@n8n/backend-services';
 import { BadRequestError, ForbiddenError } from '@n8n/backend-services';
 import type {
 	CredentialsRepository,
@@ -48,7 +48,6 @@ import * as checkAccess from '@/permissions.ee/check-access';
 import type { CredentialsTester } from '@/services/credentials-tester.service';
 import type { OwnershipService } from '@/services/ownership.service';
 import type { ProjectService } from '@/services/project.service.ee';
-import type { RoleService } from '@/services/role.service';
 
 import { mockExistingCredential } from './credentials.test-data';
 

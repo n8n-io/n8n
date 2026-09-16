@@ -1,3 +1,4 @@
+import { RoleCacheService } from '@n8n/backend-services';
 import {
 	createWorkflow,
 	shareWorkflowWithUsers,
@@ -18,7 +19,6 @@ import { In } from '@n8n/typeorm';
 import config from '@/config';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ProjectService } from '@/services/project.service.ee';
-import { RoleCacheService } from '@/services/role-cache.service';
 import { SecuritySettingsService } from '@/services/security-settings.service';
 import { UserManagementMailer } from '@/user-management/email';
 

@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/unbound-method -- vi mocks */
+import type { RoleService } from '@n8n/backend-services';
 import type {
 	FolderRepository,
 	SharedWorkflow,
@@ -6,8 +7,6 @@ import type {
 	WorkflowRepository,
 } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
-
-import type { RoleService } from '@/services/role.service';
 
 import { WorkflowFinderService } from '../workflow-finder.service';
 

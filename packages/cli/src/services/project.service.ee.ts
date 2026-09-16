@@ -5,6 +5,7 @@ import {
 	EventService,
 	ForbiddenError,
 	NotFoundError,
+	RoleService,
 } from '@n8n/backend-services';
 import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import {
@@ -38,7 +39,6 @@ import { UserError } from 'n8n-workflow';
 import { UserManagementMailer } from '@/user-management/email';
 
 import { OwnershipService } from './ownership.service';
-import { RoleService } from './role.service';
 
 export class TeamProjectOverQuotaError extends UserError {
 	constructor(limit: number) {

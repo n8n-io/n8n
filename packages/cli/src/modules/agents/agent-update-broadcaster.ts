@@ -1,5 +1,6 @@
 import type { PushPayload } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { RoleService } from '@n8n/backend-services';
 import { UserRepository } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
@@ -8,7 +9,6 @@ import { InstanceSettings } from 'n8n-core';
 import { Push } from '@/push';
 import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
-import { RoleService } from '@/services/role.service';
 
 type AgentUpdate = PushPayload<'agentUpdated'>;
 

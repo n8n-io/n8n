@@ -1,6 +1,6 @@
 import type { ProjectRelation } from '@n8n/api-types';
 import type { Logger, ModuleRegistry } from '@n8n/backend-common';
-import type { EventService } from '@n8n/backend-services';
+import type { EventService, RoleService } from '@n8n/backend-services';
 import { BadRequestError } from '@n8n/backend-services';
 import {
 	type Project,
@@ -21,7 +21,6 @@ import { mock } from 'vitest-mock-extended';
 
 import type { OwnershipService } from '../ownership.service';
 import { ProjectService } from '../project.service.ee';
-import type { RoleService } from '../role.service';
 
 import type { ICredentialConnectionStatusProvider } from '@/credentials/credential-connection-status-provider.interface';
 import type { AgentChatAttachmentService } from '@/modules/agents/agent-chat-attachment.service';

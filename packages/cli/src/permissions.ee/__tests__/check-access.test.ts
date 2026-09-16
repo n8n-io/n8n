@@ -1,4 +1,4 @@
-import { NotFoundError } from '@n8n/backend-services';
+import { NotFoundError, RoleService } from '@n8n/backend-services';
 import {
 	GLOBAL_MEMBER_ROLE,
 	ProjectRepository,
@@ -13,7 +13,6 @@ import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import { RoleService } from '@/services/role.service';
 
 import { userHasScopes } from '../check-access';
 

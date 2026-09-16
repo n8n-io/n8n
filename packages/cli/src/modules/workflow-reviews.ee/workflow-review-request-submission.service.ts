@@ -5,7 +5,13 @@ import type {
 	WorkflowReviewEligibleReviewersList,
 	WorkflowReviewRequestSummary,
 } from '@n8n/api-types';
-import { BadRequestError, ConflictError, EventService, NotFoundError } from '@n8n/backend-services';
+import {
+	BadRequestError,
+	ConflictError,
+	EventService,
+	NotFoundError,
+	RoleService,
+} from '@n8n/backend-services';
 import {
 	DbLock,
 	DbLockService,
@@ -23,7 +29,6 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import { RoleService } from '@/services/role.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 

@@ -1,10 +1,9 @@
 import type { ListDataTableQueryDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { RoleService } from '@n8n/backend-services';
 import { ProjectRelationRepository, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
-
-import { RoleService } from '@/services/role.service';
 
 import { DataTableRepository } from './data-table.repository';
 

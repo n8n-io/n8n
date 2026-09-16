@@ -5,6 +5,7 @@ import {
 	EventService,
 	ForbiddenError,
 	NotFoundError,
+	RoleService,
 } from '@n8n/backend-services';
 import {
 	Project,
@@ -72,7 +73,6 @@ import type { CredentialRequest, ListQuery } from '@/requests';
 import { CredentialsTester } from '@/services/credentials-tester.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
-import { RoleService } from '@/services/role.service';
 
 import { CredentialConnectionStatusProxy } from './credential-connection-status-proxy';
 import {

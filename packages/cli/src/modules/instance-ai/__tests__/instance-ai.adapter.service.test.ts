@@ -41,6 +41,7 @@ vi.mock('@n8n/instance-ai', async () => {
 	};
 });
 
+import type { RoleService } from '@n8n/backend-services';
 import { ConflictError, LockedError, NotFoundError } from '@n8n/backend-services';
 import type { Mock, Mocked, MockInstance } from 'vitest';
 
@@ -1503,7 +1504,6 @@ import { WorkflowNotFoundError } from '../../../../../@n8n/instance-ai/src/error
 import { WorkflowSaveConflictError } from '../../../../../@n8n/instance-ai/src/errors/workflow-save-conflict.error';
 import type { WorkflowService } from '@/workflows/workflow.service';
 import type { License } from '@/license';
-import type { RoleService } from '@/services/role.service';
 
 import type { OutboundHttp } from '@n8n/backend-network';
 import { ModuleRegistry } from '@n8n/backend-common';

@@ -1,5 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
-import { WorkflowPublishBlockedError } from '@n8n/backend-services';
+import { RoleService, WorkflowPublishBlockedError } from '@n8n/backend-services';
 import {
 	createWorkflowWithHistory,
 	testDb,
@@ -33,7 +33,6 @@ import { NodeTypes } from '@/node-types';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
-import { RoleService } from '@/services/role.service';
 import { Telemetry } from '@/telemetry';
 import { WebhookService } from '@/webhooks/webhook.service';
 import { WorkflowHookContextService } from '@/workflow-hook-context.service';

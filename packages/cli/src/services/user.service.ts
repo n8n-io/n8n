@@ -6,6 +6,7 @@ import {
 	ForbiddenError,
 	InternalServerError,
 	NotFoundError,
+	RoleService,
 	UrlService,
 } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
@@ -41,7 +42,6 @@ import { JwtService } from './jwt.service';
 import { OwnershipService } from './ownership.service';
 import { ProjectService } from './project.service.ee';
 import { PublicApiKeyService } from './public-api-key.service';
-import { RoleService } from './role.service';
 
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { ExternalHooks } from '@/external-hooks';

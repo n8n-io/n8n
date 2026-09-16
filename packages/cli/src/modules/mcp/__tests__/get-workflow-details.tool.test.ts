@@ -1,3 +1,4 @@
+import { RoleService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { User, type WorkflowEntity } from '@n8n/db';
 import type { INode, INodeTypes } from 'n8n-workflow';
@@ -6,7 +7,6 @@ import { mock } from 'vitest-mock-extended';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ProjectService } from '@/services/project.service.ee';
-import { RoleService } from '@/services/role.service';
 import { Telemetry } from '@/telemetry';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 

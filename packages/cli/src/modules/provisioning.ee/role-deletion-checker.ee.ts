@@ -1,7 +1,6 @@
+import type { RoleDeletionChecker } from '@n8n/backend-services';
 import { RoleMappingRuleRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-
-import type { RoleDeletionChecker } from '@/services/role-deletion-check-proxy.service';
 
 import { ProvisioningService } from './provisioning.service.ee';
 

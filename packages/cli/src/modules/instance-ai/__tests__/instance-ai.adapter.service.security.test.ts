@@ -29,7 +29,7 @@ vi.mock('@n8n/instance-ai', async () => {
 });
 
 import type { Logger } from '@n8n/backend-common';
-import type { EventService } from '@n8n/backend-services';
+import type { EventService, RoleService } from '@n8n/backend-services';
 import type { GlobalConfig } from '@n8n/config';
 import { GLOBAL_MEMBER_ROLE } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -66,7 +66,6 @@ import type { DataTableService } from '@/modules/data-table/data-table.service';
 import type { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 import type { NodeTypes } from '@/node-types';
 import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
-import type { RoleService } from '@/services/role.service';
 import type { OutboundHttp } from '@n8n/backend-network';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { Telemetry } from '@/telemetry';

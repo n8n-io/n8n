@@ -7,6 +7,7 @@ import {
 	EventService,
 	InternalServerError,
 	NotFoundError,
+	RoleService,
 } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type {
@@ -60,7 +61,6 @@ import { License } from '@/license';
 import { NodeTypes } from '@/node-types';
 import { ExecutionStopService } from '@/scaling/execution-stop.service';
 import { OwnershipService } from '@/services/ownership.service';
-import { RoleService } from '@/services/role.service';
 import { WaitTracker } from '@/wait-tracker';
 import { WorkflowRunner } from '@/workflow-runner';
 import { getWorkflowProjectDetailsSafe } from '@/workflows/utils';

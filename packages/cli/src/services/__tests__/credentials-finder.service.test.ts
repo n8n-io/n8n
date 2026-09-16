@@ -1,3 +1,4 @@
+import { RoleService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import {
 	GLOBAL_MEMBER_ROLE,
@@ -20,8 +21,6 @@ import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-
-import { RoleService } from '../role.service';
 
 describe('CredentialsFinderService', () => {
 	const roleService = mockInstance(RoleService);

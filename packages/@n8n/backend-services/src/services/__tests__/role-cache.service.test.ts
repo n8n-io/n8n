@@ -1,13 +1,12 @@
-import { Logger } from '@n8n/backend-common';
-import type { CacheService } from '@n8n/backend-services';
-import { mockInstance } from '@n8n/backend-test-utils';
+import type { Logger } from '@n8n/backend-common';
 import { RoleRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { staticRolesWithScope } from '@n8n/permissions';
 import type { MockedFunction } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { RoleCacheService } from '@/services/role-cache.service';
+import type { CacheService } from '../cache/cache.service';
+import { RoleCacheService } from '../role-cache.service';
 
 // Mock static function
 vi.mock('@n8n/permissions', async () => ({
@@ -17,8 +16,8 @@ vi.mock('@n8n/permissions', async () => ({
 
 describe('RoleCacheService', () => {
 	const cacheService = mock<CacheService>();
-	const logger = mockInstance(Logger);
-	const roleRepository = mockInstance(RoleRepository);
+	const logger = mock<Logger>();
+	const roleRepository = mock<RoleRepository>();
 	const staticRolesMock = staticRolesWithScope as MockedFunction<typeof staticRolesWithScope>;
 
 	const roleCacheService = new RoleCacheService(cacheService, logger);

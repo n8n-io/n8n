@@ -350,8 +350,6 @@ export default defineConfig(
 			'./src/scheduling/poll-trigger-node/poll-trigger-job-registrar.ts',
 			'./src/scheduling/schedule-trigger-node/schedule-trigger-job-registrar.ts',
 			'./src/security-audit/risk-reporters/credentials-risk-reporter.ts',
-			'./src/services/role-cache.service.ts',
-			'./src/services/role.service.ts',
 			'./src/services/user.service.ts',
 			'./src/workflows/workflow-creation.service.ts',
 		],

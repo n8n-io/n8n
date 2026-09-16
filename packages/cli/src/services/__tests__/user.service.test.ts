@@ -1,5 +1,5 @@
 import { InviteUsersRequestDto } from '@n8n/api-types';
-import type { EventService } from '@n8n/backend-services';
+import type { EventService, RoleService } from '@n8n/backend-services';
 import { BadRequestError, ForbiddenError, NotFoundError, UrlService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
@@ -32,7 +32,6 @@ import { JwtService } from '../jwt.service';
 import type { OwnershipService } from '../ownership.service';
 import type { ProjectService } from '../project.service.ee';
 import type { PublicApiKeyService } from '../public-api-key.service';
-import type { RoleService } from '../role.service';
 
 describe('UserService', () => {
 	const globalConfig = mockInstance(GlobalConfig, {

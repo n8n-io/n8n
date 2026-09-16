@@ -34,6 +34,7 @@ and infrastructure services that need the persistence layer or that only
 | `RedisClientService` | Redis client factory with reconnect handling |
 | `ProtectedResourceRegistry` | Registry of OAuth 2.1 protected resources served by the instance |
 | `EventService` and `EventMap` | Typed event bus. See [Events](#events) |
+| `RoleService`, `RoleCacheService`, `RoleDeletionCheckProxy` | Role and scope resolution |
 
 ## Events
 

@@ -19,6 +19,12 @@ export { WorkflowPublishBlockedError } from './errors/response-errors/workflow-p
 export { UncacheableValueError } from './errors/cache-errors/uncacheable-value.error';
 export { CacheService } from './services/cache/cache.service';
 export { EventService, type EventMap } from './events/event.service';
+export { RoleCacheService } from './services/role-cache.service';
+export {
+	RoleDeletionCheckProxy,
+	type RoleDeletionChecker,
+} from './services/role-deletion-check-proxy.service';
+export { RoleService } from './services/role.service';
 export {
 	ProtectedResourceRegistry,
 	type ProtectedResource,

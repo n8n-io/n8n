@@ -1,3 +1,4 @@
+import { RoleService } from '@n8n/backend-services';
 import type { SharedCredentials, User } from '@n8n/db';
 import {
 	CredentialsEntity,
@@ -10,8 +11,6 @@ import { hasGlobalScope } from '@n8n/permissions';
 import type { CredentialSharingRole, ProjectRole, Scope } from '@n8n/permissions';
 import type { EntityManager, FindOptionsWhere } from '@n8n/typeorm';
 import { In } from '@n8n/typeorm';
-
-import { RoleService } from '@/services/role.service';
 
 @Service()
 export class CredentialsFinderService {

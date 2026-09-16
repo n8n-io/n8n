@@ -429,7 +429,7 @@ describe('CredentialsRepository', () => {
 			const { CredentialsFinderService } = await import(
 				'@/credentials/credentials-finder.service.js'
 			);
-			const { RoleService } = await import('@/services/role.service.js');
+			const { RoleService } = await import('@n8n/backend-services');
 
 			const member = await createMember();
 			const teamProject = await createTeamProject('test-project');
@@ -523,7 +523,7 @@ describe('CredentialsRepository', () => {
 			const { CredentialsFinderService } = await import(
 				'@/credentials/credentials-finder.service.js'
 			);
-			const { RoleService } = await import('@/services/role.service.js');
+			const { RoleService } = await import('@n8n/backend-services');
 
 			const member = await createMember();
 			const teamProject = await createTeamProject('test-project');
@@ -593,7 +593,7 @@ describe('CredentialsRepository', () => {
 			const { CredentialsFinderService } = await import(
 				'@/credentials/credentials-finder.service.js'
 			);
-			const { RoleService } = await import('@/services/role.service.js');
+			const { RoleService } = await import('@n8n/backend-services');
 
 			const member = await createMember();
 
@@ -680,7 +680,7 @@ describe('CredentialsRepository', () => {
 			const { CredentialsFinderService } = await import(
 				'@/credentials/credentials-finder.service.js'
 			);
-			const { RoleService } = await import('@/services/role.service.js');
+			const { RoleService } = await import('@n8n/backend-services');
 
 			// Create two separate users
 			const userA = await createMember();

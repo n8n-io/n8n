@@ -15,9 +15,7 @@ export class ProvisioningModule implements ModuleInterface {
 		// Register the role-deletion checker so the core `RoleService` blocks
 		// deleting a role still targeted by a mapping rule, without importing
 		// this module.
-		const { RoleDeletionCheckProxy } = await import(
-			'@/services/role-deletion-check-proxy.service.js'
-		);
+		const { RoleDeletionCheckProxy } = await import('@n8n/backend-services');
 		const { ProvisioningRoleDeletionChecker } = await import('./role-deletion-checker.ee.js');
 		Container.get(RoleDeletionCheckProxy).registerProvider(
 			Container.get(ProvisioningRoleDeletionChecker),
