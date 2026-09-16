@@ -176,7 +176,7 @@ watch(
 const { isVariantEnabled: isSplitVariantEnabled } = useInstanceAiSplitEmptyStateExperiment();
 // Experiment cleanup: remove with instanceAiSplitEmptyState.
 const splitPreviewPromptKey = ref<BaseTextKey | null>(null);
-const splitWriting = ref(false);
+const composerHasContent = ref(false);
 const {
 	currentVariant: personalizedPromptSuggestionsVariant,
 	isTreatmentVariant: isPersonalizedPromptSuggestionsTreatmentVariant,
@@ -512,6 +512,10 @@ const emptyStateTitleKey = computed<BaseTextKey>(() => {
 });
 
 const chatInputRef = ref<InstanceType<typeof InstanceAiInput> | null>(null);
+// Layout changes mount a new, empty composer.
+watch(chatInputRef, () => {
+	composerHasContent.value = false;
+});
 const isStartingThread = ref(false);
 
 watch(
@@ -693,10 +697,16 @@ async function handleSubmit(
 		});
 	}
 
-	void router.replace({
-		name: INSTANCE_AI_THREAD_VIEW,
-		params: { threadId },
-	});
+	try {
+		await router.replace({
+			name: INSTANCE_AI_THREAD_VIEW,
+			params: { threadId },
+		});
+	} catch (error) {
+		toast.showError(error, i18n.baseText('generic.error'));
+	} finally {
+		isStartingThread.value = false;
+	}
 }
 
 function handleShelfSuggestionSubmit(payload: ShelfSuggestionPayload) {
@@ -711,7 +721,10 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 
 <template>
 	<div :class="$style.chatArea">
-		<InstanceAiViewHeader v-if="!isSplitLayoutActive" />
+		<InstanceAiViewHeader
+			v-if="!isSplitLayoutActive"
+			:show-thread-history-label="!isStartingThread"
+		/>
 
 		<div :class="$style.contentArea">
 			<div v-if="showProactiveStarter" :class="$style.proactiveLayout">
@@ -733,8 +746,9 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 						:is-submitting="isStartingThread"
 						:is-workflow-builder-available="settingsStore.isWorkflowBuilderAvailable"
 						@submit="handleSubmit"
+						@content-change="composerHasContent = $event"
 					>
-						<template #footer v-if="projectsStore.myProjects.length > 1">
+						<template v-if="projectsStore.myProjects.length > 1" #footer>
 							<div :class="$style.inputFooter">
 								<ProjectSelect v-model="selectedProject" />
 							</div>
@@ -746,13 +760,13 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 				v-else-if="isSplitVariantEnabled"
 				:project-id="selectedProject"
 				:disabled="isStartingThread || !settingsStore.isWorkflowBuilderAvailable"
-				:writing="splitWriting"
+				:writing="composerHasContent"
 				@submit-suggestion="handleShelfSuggestionSubmit"
 				@insert-suggestion="handleShelfSuggestionInsert"
 				@example-change="(_i, key) => (splitPreviewPromptKey = key)"
 			>
 				<template #header>
-					<InstanceAiViewHeader />
+					<InstanceAiViewHeader :show-thread-history-label="!isStartingThread" />
 				</template>
 				<template #input>
 					<div :class="$style.centeredInput">
@@ -770,13 +784,13 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 							:is-submitting="isStartingThread"
 							:is-workflow-builder-available="settingsStore.isWorkflowBuilderAvailable"
 							:placeholder-key="INSTANCE_AI_SPLIT_EMPTY_STATE_PLACEHOLDER_KEY"
-							:preview-prompt-key="splitWriting ? null : splitPreviewPromptKey"
+							:preview-prompt-key="composerHasContent ? null : splitPreviewPromptKey"
 							:fixed-rows="INSTANCE_AI_SPLIT_FIXED_ROWS"
 							:submit-label="i18n.baseText('experiments.instanceAiSplitEmptyState.cta.buildWithAi')"
 							:submit-active-requires-focus="true"
 							:suggestion-catalog-version="INSTANCE_AI_SPLIT_EMPTY_STATE_SUGGESTIONS_VERSION"
 							@submit="handleSubmit"
-							@content-change="splitWriting = $event"
+							@content-change="composerHasContent = $event"
 						>
 							<template v-if="projectsStore.myProjects.length > 1" #footer>
 								<div :class="$style.inputFooter" data-test-id="instance-ai-split-project-select">
@@ -819,8 +833,9 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 						v-bind="emptyStatePromptSuggestionProps"
 						@submit="handleSubmit"
 						@workflow-preview="handleWorkflowPreview"
+						@content-change="composerHasContent = $event"
 					>
-						<template #footer v-if="projectsStore.myProjects.length > 1">
+						<template v-if="projectsStore.myProjects.length > 1" #footer>
 							<div :class="$style.inputFooter">
 								<ProjectSelect v-model="selectedProject" />
 							</div>
