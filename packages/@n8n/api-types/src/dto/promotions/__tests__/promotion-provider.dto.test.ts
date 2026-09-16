@@ -110,6 +110,10 @@ describe('CreatePromotionProviderDto', () => {
 });
 
 describe('UpdatePromotionProviderDto', () => {
+	it('rejects an empty update', () => {
+		expect(UpdatePromotionProviderDto.safeParse({}).success).toBe(false);
+	});
+
 	it('keeps the stored credentials when auth is omitted', () => {
 		expect(UpdatePromotionProviderDto.safeParse({ name: 'Renamed' }).success).toBe(true);
 	});

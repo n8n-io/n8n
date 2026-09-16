@@ -11,9 +11,9 @@ import type { ApiHelpers } from '../../../services/api-helper';
  * rejection: the submitter stays on the page with their answers, and a
  * banner above Submit tells them what to do next.
  *
- * Unlike the other specs in this directory this one carries **no
- * `@capability:dynamic-credentials` / `@licensed` tag** and runs locally without
- * Keycloak: it exercises the client branch only, injecting the gate response
+ * Unlike the other specs in this directory, this one does not use the
+ * dynamic-credentials capability or the `@licensed` tag. It runs locally
+ * without Keycloak. It exercises the client branch and injects the gate response
  * with `context.route` instead of provisioning a private credential. Opening
  * the form still goes through first-party n8n OAuth (the GET for `n8nUserAuth`
  * always does) — that hop does not need Keycloak or a license. The server side

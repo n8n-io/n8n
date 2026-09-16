@@ -555,32 +555,37 @@ describe('scheduled repositories', () => {
 		});
 	});
 
-	describe('ScheduledJobRepository.updateMisfirePolicy', () => {
-		it('rewrites the policy and grace of the given jobs only', async () => {
+	describe('ScheduledJobRepository.updateRunOptions', () => {
+		it('rewrites the attempts, policy and grace of the given jobs only', async () => {
 			const updated = await createJob({
+				maxAttempts: 1,
 				misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 				misfireGraceSeconds: 60,
 			});
 			const untouched = await createJob({
+				maxAttempts: 1,
 				misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 				misfireGraceSeconds: 60,
 			});
 
 			await dataSource.transaction(
 				async (trx) =>
-					await jobRepository.updateMisfirePolicy(trx, [updated.id], {
+					await jobRepository.updateRunOptions(trx, [updated.id], {
+						maxAttempts: 5,
 						misfirePolicy: ScheduledJobMisfirePolicy.Skip,
 						misfireGraceSeconds: 120,
 					}),
 			);
 
 			const after = await jobRepository.findOneByOrFail({ id: updated.id });
+			expect(after.maxAttempts).toBe(5);
 			expect(after.misfirePolicy).toBe(ScheduledJobMisfirePolicy.Skip);
 			expect(after.misfireGraceSeconds).toBe(120);
 			expect(after.intervalSeconds).toBe(updated.intervalSeconds);
 			expect(after.nextRunAt).toEqual(updated.nextRunAt);
 
 			const other = await jobRepository.findOneByOrFail({ id: untouched.id });
+			expect(other.maxAttempts).toBe(1);
 			expect(other.misfirePolicy).toBe(ScheduledJobMisfirePolicy.Coalesce);
 			expect(other.misfireGraceSeconds).toBe(60);
 		});
@@ -591,7 +596,8 @@ describe('scheduled repositories', () => {
 
 			await dataSource.transaction(
 				async (trx) =>
-					await jobRepository.updateMisfirePolicy(trx, [job.id], {
+					await jobRepository.updateRunOptions(trx, [job.id], {
+						maxAttempts: job.maxAttempts,
 						misfirePolicy: ScheduledJobMisfirePolicy.Skip,
 						misfireGraceSeconds: 60,
 					}),
@@ -605,7 +611,8 @@ describe('scheduled repositories', () => {
 
 			await dataSource.transaction(
 				async (trx) =>
-					await jobRepository.updateMisfirePolicy(trx, [], {
+					await jobRepository.updateRunOptions(trx, [], {
+						maxAttempts: job.maxAttempts,
 						misfirePolicy: ScheduledJobMisfirePolicy.Skip,
 						misfireGraceSeconds: 120,
 					}),
@@ -613,6 +620,25 @@ describe('scheduled repositories', () => {
 
 			const after = await jobRepository.findOneByOrFail({ id: job.id });
 			expect(after.misfirePolicy).toBe(ScheduledJobMisfirePolicy.Coalesce);
+		});
+	});
+
+	describe('ScheduledJobRepository.findOwnerMemberIds', () => {
+		it('lists each member once, for this owner and task type only, skipping member-less jobs', async () => {
+			const agent = { ownerType: 'agent', ownerId: 'agent-1' };
+			const taskType = 'agent:scheduled-task';
+			// Two jobs under one member must yield that member once.
+			await createJob({ ...agent, ownerMemberId: 'task-1', taskType });
+			await createJob({ ...agent, ownerMemberId: 'task-1', taskType });
+			await createJob({ ...agent, ownerMemberId: 'task-2', taskType });
+			// Not this task type, not a member, not this owner.
+			await createJob({ ...agent, ownerMemberId: 'timer-1', taskType: 'agent:wakeup' });
+			await createJob({ ...agent, ownerMemberId: null, taskType });
+			await createJob({ ...agent, ownerId: 'agent-2', ownerMemberId: 'task-9', taskType });
+
+			const memberIds = await jobRepository.findOwnerMemberIds(agent, taskType);
+
+			expect(memberIds.sort()).toEqual(['task-1', 'task-2']);
 		});
 	});
 
@@ -661,6 +687,38 @@ describe('scheduled repositories', () => {
 				orphanedAt: null,
 			});
 		});
+	});
+
+	describe('ScheduledJobRepository.deleteIfPayloadUnchanged', () => {
+		it.skipIf(!isPostgres)(
+			'keeps a row whose restamp was in flight when the delete started',
+			async () => {
+				const observed = { n8nVersion: '0.0.1' };
+				const restamped = { n8nVersion: '0.0.2' };
+				const job = await createJob({ payload: observed });
+
+				const restamp = secondaryDataSource!.createQueryRunner();
+				try {
+					await restamp.connect();
+					await restamp.startTransaction();
+					await jobRepository.updatePayload(restamp.manager, [job.id], restamped);
+
+					const pendingDelete = dataSource.transaction(
+						async (trx) => await jobRepository.deleteIfPayloadUnchanged(trx, job.id, observed),
+					);
+					// The delete must reach the row before the restamp commits.
+					await new Promise((resolve) => setTimeout(resolve, 200));
+					await restamp.commitTransaction();
+
+					expect(await pendingDelete).toBe(0);
+					expect(await jobRepository.findOneByOrFail({ id: job.id })).toMatchObject({
+						payload: restamped,
+					});
+				} finally {
+					await restamp.release();
+				}
+			},
+		);
 	});
 
 	describe('ScheduledTaskRepository.insertIgnoringDuplicates', () => {

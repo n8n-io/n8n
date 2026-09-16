@@ -17,8 +17,8 @@ export async function callLifecycle(
 ): Promise<void> {
 	const internalKey = `_${method}` as keyof LifecycleTarget;
 	const plainKey = method as keyof LifecycleTarget;
-	const fn = (provider[internalKey] ?? provider[plainKey]) as (() => Promise<void>) | undefined;
-	if (fn) await fn.call(provider);
+	const fn = (provider[internalKey] ?? provider[plainKey])?.bind(provider);
+	if (fn) await fn();
 }
 
 export type { LifecycleMethod };

@@ -3,8 +3,8 @@ import { useConsentStore } from '@/app/stores/consent.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
-import { onMounted, computed, ref, watch } from 'vue';
-import type { ConsentDetails } from '@n8n/rest-api-client/api/consent';
+import { onMounted, onUnmounted, computed, ref, watch } from 'vue';
+import type { ConsentDetailsPicker } from '@n8n/rest-api-client/api/consent';
 import {
 	N8nButton,
 	N8nCallout,
@@ -31,12 +31,21 @@ const telemetry = useTelemetry();
 
 // Success state:
 const waitingForRedirect = ref(false);
+// Set instead of `waitingForRedirect` when the server silently reused a prior consent:
+// the visitor never clicked anything here, so a "success" message would be confusing —
+// this renders the same blank state as the initial fetch, not a message that then flashes.
+const autoApprovedRedirect = ref(false);
+const detailsResolved = ref(false);
 const redirectUriTrusted = ref(false);
 const selectedScopes = ref<string[]>([]);
 
+let isActive = true;
+onUnmounted(() => {
+	isActive = false;
+});
+
 const error = computed(() => consentStore.error);
 const loading = computed(() => consentStore.isLoading);
-const resourceName = computed(() => consentStore.consentDetails?.resourceName);
 
 const errorMessage = computed(() => {
 	if (consentStore.errorCode === 'resource_unavailable') {
@@ -47,7 +56,14 @@ const errorMessage = computed(() => {
 	return consentStore.error;
 });
 
-const clientDetails = computed<ConsentDetails | null>(() => consentStore.consentDetails);
+// Narrows away the auto-approved redirect signal, which carries none of these fields
+// and is handled separately in `onMounted` before this is ever read.
+const clientDetails = computed<ConsentDetailsPicker | null>(() => {
+	const details = consentStore.consentDetails;
+	return details && !details.autoApproved ? details : null;
+});
+const resourceName = computed(() => clientDetails.value?.resourceName);
+const uiHints = computed(() => consentStore.consentDetails?.uiHints);
 // Known clients get their brand mark on the left tile; unknown ones fall back to the MCP glyph.
 const clientBrandIcon = computed(() => getClientBrand(clientDetails.value?.clientName ?? '').icon);
 // Localized noun for first-party copy, driven by the resource's consentType hint.
@@ -139,12 +155,20 @@ const handleClose = () => {
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('oauth.consentView.title'));
 	try {
-		await consentStore.fetchConsentDetails();
+		const details = await consentStore.fetchConsentDetails();
+		if (!isActive) return;
+		detailsResolved.value = true;
+		if (details?.autoApproved && details.redirectUrl) {
+			autoApprovedRedirect.value = true;
+			window.location.href = details.redirectUrl;
+			return;
+		}
 		telemetry.track('User viewed MCP consent screen', {
 			client_name: clientDetails.value?.clientName,
 			available_scopes_count: availableScopes.value.length,
 		});
 	} catch (err) {
+		if (!isActive) return;
 		toast.showError(err, i18n.baseText('oauth.consentView.error.fetchDetails'));
 	}
 });
@@ -155,18 +179,13 @@ onMounted(async () => {
 		<div :class="$style['consent-dialog']">
 			<header :class="$style.header">
 				<div :class="$style.logo">
-					<N8nIcon
-						v-if="clientDetails?.uiHints?.icon"
-						:icon="clientDetails.uiHints.icon"
-						size="large"
-						color="text-dark"
-					/>
+					<N8nIcon v-if="uiHints?.icon" :icon="uiHints.icon" size="large" color="text-dark" />
 					<component
 						:is="clientBrandIcon"
 						v-else-if="clientBrandIcon"
 						:class="$style['brand-icon']"
 					/>
-					<N8nIcon v-else icon="mcp" size="large" color="text-dark" />
+					<N8nIcon v-else-if="detailsResolved || error" icon="mcp" size="large" color="text-dark" />
 				</div>
 				<!-- Pending-connection connector: a dashed SVG line marching toward the n8n tile
 				     with a slow muted spinner badge. Decorative. -->
@@ -213,6 +232,15 @@ onMounted(async () => {
 					:content="errorMessage ?? ''"
 				></N8nNotice>
 			</div>
+			<!-- Nothing resolved yet, or the server just silently reused a prior consent:
+				never guess at generic instance-wide copy, and never announce a "success"
+				the visitor didn't ask for — the header's own connector spinner already
+				signals activity while this redirects. -->
+			<div
+				v-else-if="autoApprovedRedirect || !detailsResolved"
+				:class="$style.content"
+				data-test-id="consent-loading"
+			/>
 			<!-- Default content -->
 			<div v-else :class="$style.content" data-test-id="consent-content">
 				<N8nHeading v-if="clientDetails?.isFirstParty" tag="h2" size="large" :bold="true">
@@ -285,7 +313,10 @@ onMounted(async () => {
 					</ul>
 				</div>
 			</div>
-			<footer v-if="!waitingForRedirect" :class="$style.footer">
+			<footer
+				v-if="!waitingForRedirect && !autoApprovedRedirect && (error || detailsResolved)"
+				:class="$style.footer"
+			>
 				<!-- Third-party clients: the redirect destination, with the trust acknowledgment
 				     below it in the action row so it reads as a step rather than banner small
 				     print. Both are gated on the same `trustRequired` as the Allow button, so the

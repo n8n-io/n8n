@@ -12,13 +12,15 @@ function registrationEqual(base: INode | undefined, target: INode | undefined): 
 	return isEqual(pick(base, registrationProps), pick(target, registrationProps));
 }
 
-// Before the workflow publication service, we re-registered every trigger on
-// publication. With the new flow, we only re-register triggers that have been
-// modified. However, some triggers relied on the old behaviour, so we force it
-// for those triggers.
+// TODO: remove this list and each special case (CAT-4492). Before the workflow
+// publication service, we re-registered every trigger on publication. With the
+// new flow, we only re-register triggers that have been modified. However, these
+// triggers relied on the old behaviour, so we force it for them.
 const ALWAYS_REREGISTER_TRIGGER_TYPES: ReadonlySet<string> = new Set([
 	'n8n-nodes-base.n8nTrigger',
 	'n8n-nodes-base.workflowTrigger',
+	'n8n-nodes-base.emailReadImap',
+	'n8n-nodes-base.postgresTrigger',
 ]);
 
 export interface TriggerDiffOptions {

@@ -57,6 +57,9 @@ export const createBaseInlineConfig = (options: InlineConfig = {}): InlineConfig
 	// spies set up once don't leak across tests. Packages may override via `options`.
 	restoreMocks: true,
 	environment: 'node',
+	// Inline so vitest maps the `vitest` import inside it to the running instance.
+	// Externalized, pnpm can link it to a second vitest copy, which breaks snapshot state.
+	server: { deps: { inline: ['vitest-mock-extended'] } },
 	...forkPoolOptions(),
 	reporters: process.env.CI === 'true' ? ['default', 'junit'] : ['default'],
 	outputFile: { junit: './junit.xml' },

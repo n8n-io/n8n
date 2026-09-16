@@ -17,14 +17,10 @@ import type {
 	INodeCredentialsDetails,
 	INodeParameters,
 	INodeProperties,
-	INodeType,
-	IVersionedNodeType,
 	IRequestOptionsSimplified,
 	IWorkflowDataProxyAdditionalKeys,
 	WorkflowExecuteMode,
 	IHttpRequestHelper,
-	INodeTypeData,
-	INodeTypes,
 	IWorkflowExecuteAdditionalData,
 	IExecuteData,
 	IDataObject,
@@ -35,6 +31,7 @@ import {
 	Workflow,
 	UnexpectedError,
 	UserError,
+	getCredentialOwnRequestAllowedDomains,
 	isExpression,
 	jsonParse,
 } from 'n8n-workflow';
@@ -49,44 +46,56 @@ import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-se
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 
-import { RESPONSE_ERROR_MESSAGES } from './constants';
 import { DynamicCredentialsProxy } from './credentials/dynamic-credentials-proxy';
+import { createMockNodeTypes } from './credentials/mock-node-types';
 import { CredentialMissingIdError } from './errors/credential-missing-id.error';
 import { CredentialNotFoundError } from './errors/credential-not-found.error';
+
+/**
+ * Applies the credential's allowlist to the requests its `preAuthentication` hook issues.
+ *
+ * Narrowed to the single method `IHttpRequestHelper` declares, rather than spreading the
+ * node's wider helper bag, so a hook cannot reach an unwrapped request method on it.
+ *
+ * Read per request rather than up front: `runPreAuthentication` runs on every OAuth2
+ * request for hooks that only transform token data in memory, and an empty `'domains'`
+ * list must not fail those.
+ */
+function restrictToCredentialDomains(
+	helpers: IHttpRequestHelper,
+	credentials: ICredentialDataDecryptedObject,
+): IHttpRequestHelper {
+	return {
+		helpers: {
+			httpRequest: async (requestOptions: IHttpRequestOptions): Promise<unknown> => {
+				const allowedDomains = getCredentialOwnRequestAllowedDomains(credentials);
+				if (allowedDomains === undefined) {
+					return await helpers.helpers.httpRequest(requestOptions);
+				}
+
+				// A request carries one allowlist, and honouring either side alone could widen
+				// what the other permits, so refuse rather than pick.
+				if (requestOptions.allowedDomains !== undefined) {
+					throw new UserError(
+						'This credential restricts requests to specific domains, which cannot be combined with the domains its authentication step asks for.',
+					);
+				}
+
+				return await helpers.helpers.httpRequest({ ...requestOptions, allowedDomains });
+			},
+		},
+	};
+}
 
 const mockNode = {
 	name: '',
 	typeVersion: 1,
 	type: 'mock',
 	position: [0, 0],
-	parameters: {} as INodeParameters,
+	parameters: {},
 } as INode;
 
-const mockNodesData: INodeTypeData = {
-	mock: {
-		sourcePath: '',
-		type: {
-			description: { properties: [] as INodeProperties[] },
-		} as INodeType,
-	},
-};
-
-const mockNodeTypes: INodeTypes = {
-	getKnownTypes(): IDataObject {
-		return {};
-	},
-	getByName(nodeType: string): INodeType | IVersionedNodeType {
-		return mockNodesData[nodeType]?.type;
-	},
-	getByNameAndVersion(nodeType: string, version?: number): INodeType {
-		if (!mockNodesData[nodeType]) {
-			throw new UnexpectedError(RESPONSE_ERROR_MESSAGES.NO_NODE, {
-				tags: { nodeType },
-			});
-		}
-		return NodeHelpers.getVersionedNodeType(mockNodesData[nodeType].type, version);
-	},
-};
+const { nodeTypes: mockNodeTypes } = createMockNodeTypes();
 
 const INVALID_JSON_VALUE = Symbol('invalidJsonValue');
 
@@ -204,7 +213,10 @@ export class CredentialsHelper extends ICredentialsHelper {
 					credentialsExpired ||
 					isTestingCredentials
 				) {
-					const output = await credentialType.preAuthentication.call(helpers, credentials);
+					const output = await credentialType.preAuthentication.call(
+						restrictToCredentialDomains(helpers, credentials),
+						credentials,
+					);
 
 					// if there is data in the output, make sure the returned
 					// property is the expirable property
@@ -252,7 +264,10 @@ export class CredentialsHelper extends ICredentialsHelper {
 		if (typeof credentialType.preAuthentication !== 'function') {
 			return undefined;
 		}
-		const output = await credentialType.preAuthentication.call(helpers, credentials);
+		const output = await credentialType.preAuthentication.call(
+			restrictToCredentialDomains(helpers, credentials),
+			credentials,
+		);
 		return (output as ICredentialDataDecryptedObject) ?? undefined;
 	}
 
@@ -517,6 +532,11 @@ export class CredentialsHelper extends ICredentialsHelper {
 		raw?: boolean,
 		expressionResolveValues?: ICredentialsExpressionResolveValues,
 	): Promise<ICredentialDataDecryptedObject> {
+		// Sub-nodes, such as a chat model connected to a chain or agent, inherit executeData.node
+		// from their parent. Prefer expressionResolveValues.node when present: it is always
+		// the node making this call to resolve credentials.
+		const consumerNode = expressionResolveValues?.node ?? executeData?.node;
+
 		if (nodeCredentials.__aiGatewayManaged) {
 			const { userId, workflowId, projectId, executionId } = additionalData;
 			return await this.aiGatewayService.getSyntheticCredential({
@@ -525,7 +545,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 				workflowId,
 				projectId,
 				executionId,
-				node: executeData?.node,
+				node: consumerNode,
 			});
 		}
 
@@ -535,7 +555,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		await this.policyEnforcementService.enforceCredentialDecrypt({
 			credentialType: type,
 			credentialId: credentialsEntity.id,
-			consumer: executeData ? { nodeType: executeData.node.type } : null,
+			consumer: consumerNode ? { nodeType: consumerNode.type } : null,
 			projectId: additionalData.projectId ?? null,
 		});
 

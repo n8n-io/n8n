@@ -364,7 +364,7 @@ const hasDynamicCredentials = computed(() => {
 	return isPrivateCredentialsEnabled.value && props.data.hasResolvableCredentials;
 });
 
-const workflowHasDependencies = computed(() => hasDependencies(props.data.id));
+const workflowHasDependencies = computed(() => hasDependencies(props.data.id, 'workflow'));
 
 async function onClick(event?: KeyboardEvent | PointerEvent) {
 	// Experiment cleanup: remove with openWorkflowInAssistant.

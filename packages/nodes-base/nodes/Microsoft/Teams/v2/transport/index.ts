@@ -1,9 +1,11 @@
 import type { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import {
 	buildMicrosoftGraphPath,
 	createMicrosoftGraphTransport,
 	type MicrosoftGraphCredentialType,
+	type MicrosoftGraphPathSegment,
 	rewriteNotFound,
 	SERVICE_PRINCIPAL_AUTH,
 	SP_HIDE,
@@ -16,6 +18,7 @@ import {
 export {
 	SERVICE_PRINCIPAL_AUTH,
 	SP_HIDE,
+	type MicrosoftGraphPathSegment,
 	buildMicrosoftGraphPath as buildTeamsPath,
 	rewriteNotFound,
 	validateMicrosoftGraphId as validateTeamsId,
@@ -65,4 +68,20 @@ export function validateTaskBodyIdsUnderSp(
 	const node = this.getNode();
 	if (ids.planId !== undefined) validateMicrosoftGraphId(ids.planId, node);
 	if (ids.bucketId !== undefined) validateMicrosoftGraphId(ids.bucketId, node);
+}
+
+// The kernel's app-only 403 is generic; call sites name the missing permission or policy.
+export function rewriteForbiddenUnderSp(
+	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
+	error: unknown,
+	message: string,
+	description: string,
+): unknown {
+	if (getTeamsCredentialType.call(this) !== SERVICE_PRINCIPAL_AUTH) return error;
+	if (!(error instanceof NodeApiError) || error.httpCode !== '403') return error;
+	return new NodeApiError(
+		this.getNode(),
+		{ message, description },
+		{ message, description, httpCode: '403' },
+	);
 }

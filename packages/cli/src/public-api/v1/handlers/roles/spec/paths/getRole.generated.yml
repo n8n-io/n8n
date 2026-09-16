@@ -12,7 +12,7 @@ parameters:
       type: string
     required: true
     description: The slug of the role.
-    name: slug
+    name: roleSlug
     in: path
   - schema:
       type: string

@@ -52,6 +52,7 @@ import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { countAttachedNodes } from './utils/buildNodesAttachment';
 import { useToast } from '@n8n/composables/useToast';
+import { ResponseError } from '@n8n/rest-api-client';
 import { provideThread, useInstanceAiStore } from './instanceAi.store';
 import {
 	getAgentBuilderTargetFromThreadMetadata,
@@ -91,7 +92,6 @@ import {
 	getDismissedContextKeys,
 	handoffContextKey,
 } from './instanceAi.handoffContext';
-import { useSidebarState } from './instanceAiLayout';
 import InstanceAiMessage from './components/InstanceAiMessage.vue';
 import InstanceAiInput from './components/InstanceAiInput.vue';
 import InstanceAiDebugPanel from './components/InstanceAiDebugPanel.vue';
@@ -99,6 +99,7 @@ import InstanceAiArtifactsPanel from './components/InstanceAiArtifactsPanel.vue'
 import InstanceAiStatusBar from './components/InstanceAiStatusBar.vue';
 import InstanceAiConfirmationPanel from './components/InstanceAiConfirmationPanel.vue';
 import InstanceAiFixWithAiPanel from './components/InstanceAiFixWithAiPanel.vue';
+import InstanceAiSetupPanel from './components/setupPanel/InstanceAiSetupPanel.vue';
 import InstanceAiTestAgentPanel from './components/InstanceAiTestAgentPanel.vue';
 import InstanceAiPreviewTabBar from './components/InstanceAiPreviewTabBar.vue';
 import InstanceAiViewHeader from './components/InstanceAiViewHeader.vue';
@@ -135,7 +136,6 @@ const i18n = useI18n();
 const router = useRouter();
 const { goToUpgrade } = usePageRedirectionHelper();
 const creditBanner = useCreditWarningBanner(showCreditWarning);
-const sidebar = useSidebarState();
 const { width: windowWidth } = useWindowSize();
 const { isCollapsed: isMainSidebarCollapsed, sidebarWidth: mainSidebarWidth } = useSidebarLayout();
 const telemetry = useTelemetry();
@@ -316,6 +316,24 @@ const preview = useCanvasPreview({
 		persistedArtifactPreviewOpen.value = open;
 	},
 });
+// --- Setup panel (checklist docked above the composer) ---
+// Anchors to the active canvas tab's workflow; on a hydrated thread with no
+// tab state yet, the latest workflow artifact wins (insertion order).
+const setupPanelWorkflowId = computed(() => {
+	if (!settingsStore.isInstanceAiSetupPanelEnabled) return undefined;
+	const active = preview.activeWorkflowId.value;
+	if (preview.activeTabId.value) return active ?? undefined;
+	let latest: string | undefined;
+	for (const entry of thread.producedArtifacts.values()) {
+		if (entry.type === 'workflow') latest = entry.id;
+	}
+	return latest;
+});
+const setupPanelProjectId = computed(() =>
+	setupPanelWorkflowId.value
+		? thread.producedArtifacts.get(setupPanelWorkflowId.value)?.projectId
+		: undefined,
+);
 
 const agentReturnContext = useAgentReturnContextStore().consumePendingArtifactReturn();
 const agentReturnWorkflowId = agentReturnContext?.workflowId;
@@ -354,24 +372,12 @@ provide('openAgentChatPreview', openAgentChatPreview);
 provide('pendingComposerContext', pendingComposerContext);
 provide('dismissPendingComposerContext', dismissPendingComposerContext);
 
-// Focus the composer when plan-edit mode is entered. The thread runtime
-// owns the activePlanEdit state; this watcher just reacts to the transition.
-watch(
-	() => thread.activePlanEdit,
-	(next, prev) => {
-		if (next && !prev) {
-			void nextTick(() => chatInputRef.value?.focus());
-		}
-	},
-);
-
 // --- Side panels ---
 const showDebugPanel = ref(false);
 const isDebugEnabled = computed(() => localStorage.getItem('instanceAi.debugMode') === 'true');
 const hasPreviewTabs = computed(() => preview.allArtifactTabs.value.length > 0);
 const isArtifactsPanelRevealed = ref(false);
 const isArtifactsPanelDismissedInLayout = ref(false);
-const DEFAULT_INSTANCE_AI_SIDEBAR_WIDTH = 260;
 const MIN_AVAILABLE_WIDTH_FOR_PINNED_ARTIFACTS_PANEL = 900;
 const artifactsPanelTransitionGate = useTransitionGate({
 	isBlocked: () => thread.isHydratingThread,
@@ -453,11 +459,8 @@ const { width: threadAreaWidth } = useElementSize(threadAreaRef);
 const mainSidebarOccupiedWidth = computed(() =>
 	isMainSidebarCollapsed.value ? COLLAPSED_MAIN_SIDEBAR_WIDTH : (mainSidebarWidth.value ?? 0),
 );
-const instanceAiSidebarOccupiedWidth = computed(() =>
-	sidebar.collapsed.value ? 0 : (sidebar.width?.value ?? DEFAULT_INSTANCE_AI_SIDEBAR_WIDTH),
-);
 const availableWidthForPinnedArtifactsPanel = computed(
-	() => windowWidth.value - mainSidebarOccupiedWidth.value - instanceAiSidebarOccupiedWidth.value,
+	() => windowWidth.value - mainSidebarOccupiedWidth.value,
 );
 const isArtifactsPanelInLayout = computed(
 	() =>
@@ -756,9 +759,9 @@ watch(
 );
 
 watch(
-	[chatInputRef, pendingComposerDraft, () => thread.activePlanEdit],
-	([input, draft, planEdit]) => {
-		if (!input || !draft || planEdit) return;
+	[chatInputRef, pendingComposerDraft, () => thread.pendingPlanReview],
+	([input, draft, planReview]) => {
+		if (!input || !draft || planReview) return;
 		input.setText(draft);
 		generatedComposerDraft.value = draft;
 		pendingComposerDraft.value = null;
@@ -876,7 +879,7 @@ function reconnectThreadAfterHydration(): void {
 	});
 }
 
-// Validate the route's :threadId against the loaded thread list, then connect
+// Resolve the route's thread independently of the paginated history, then connect
 // this route-scoped runtime. Route changes remount this component, so no
 // store-level "active thread" state is needed here.
 async function syncRouteToStore() {
@@ -885,16 +888,24 @@ async function syncRouteToStore() {
 	// submit cannot race past it while the thread list is still loading.
 	pendingComposerContext.value = getPendingHandoffContext(requestedThreadId);
 	pendingComposerDraft.value = getPendingComposerDraft(requestedThreadId);
-	if (!store.threads.length) {
-		await store.loadThreads();
-	}
-	// User may have navigated elsewhere while we awaited
-	if (requestedThreadId !== props.threadId) return;
 	if (!store.threads.some((t) => t.id === requestedThreadId)) {
-		clearPendingThreadHandoff(requestedThreadId);
-		void router.replace({ name: INSTANCE_AI_VIEW });
-		return;
+		try {
+			await store.loadThread(requestedThreadId);
+		} catch (error) {
+			if (router.currentRoute.value.params.threadId !== requestedThreadId) return;
+			if (
+				error instanceof ResponseError &&
+				(error.httpStatusCode === 403 || error.httpStatusCode === 404)
+			) {
+				clearPendingThreadHandoff(requestedThreadId);
+				void router.replace({ name: INSTANCE_AI_VIEW });
+			} else {
+				toast.showError(error, i18n.baseText('generic.error'));
+			}
+			return;
+		}
 	}
+	if (router.currentRoute.value.params.threadId !== requestedThreadId) return;
 	if (thread.sseState === 'disconnected') {
 		reconnectThreadAfterHydration();
 	}
@@ -931,6 +942,23 @@ const workflowPreviewRef =
 	useTemplateRef<InstanceType<typeof InstanceAiWorkflowPreview>>('workflowPreview');
 
 // --- Message handlers ---
+/** Put a failed submission back in the composer without clobbering newer typing. */
+function restoreFailedSubmission(message: string, restoreDraft?: () => boolean) {
+	if (restoreDraft?.()) return;
+	const input = chatInputRef.value;
+	if (input && !input.isDirty()) input.setText(message);
+}
+
+/**
+ * A plan change request is in flight. `confirmAction` never touches the send
+ * counter, so without this the composer stays live for the round trip and a
+ * second Enter is dropped by the runtime's duplicate guard without a trace.
+ */
+const isPlanChangeInFlight = computed(() => {
+	const requestId = thread.pendingPlanReview?.requestId;
+	return requestId !== undefined && thread.updatingPlanRequestIds.has(requestId);
+});
+
 function handleSubmit(
 	message: string,
 	attachments?: InstanceAiAttachment[],
@@ -943,40 +971,35 @@ function handleSubmit(
 	// Reset scroll on new user message
 	userScrolledUp.value = false;
 
-	const planEdit = thread.activePlanEdit;
-	if (planEdit) {
-		thread.cancelPlanEdit();
-		telemetry.track('User finished providing input', {
-			thread_id: thread.id,
-			input_thread_id: planEdit.inputThreadId ?? '',
-			instance_id: rootStore.instanceId,
-			type: 'plan-review',
-			provided_inputs: [
-				{
-					label: 'plan',
-					options: ['approve', 'ask-for-edits', 'deny'],
-					option_chosen: 'ask-for-edits',
-				},
-			],
-			skipped_inputs: [],
-			num_tasks: planEdit.taskCount,
-			feedback: scrubSecretsInText(message),
-			plan_feedback_type: 'changes_requested',
-		});
-		thread.markPlanUpdatePending(planEdit.requestId);
-		void thread
-			.confirmAction(planEdit.requestId, {
-				kind: 'approval',
-				approved: false,
-				userInput: message,
-			})
-			.then((success) => {
-				if (success) {
-					thread.resolveConfirmation(planEdit.requestId, 'changes-requested');
-				} else {
-					thread.clearPlanUpdatePending(planEdit.requestId);
-				}
+	// While a plan review is pending every message is feedback on that plan —
+	// the user does not have to click "Ask for edits" first.
+	const planReview = thread.pendingPlanReview;
+	if (planReview) {
+		void thread.requestPlanChanges(planReview.requestId, message).then((sent) => {
+			if (!sent) {
+				restoreFailedSubmission(message, restoreDraft);
+				return;
+			}
+			// Only an accepted request revises the plan. Tracking up front would
+			// also count a dropped or failed submit the run never saw.
+			telemetry.track('User finished providing input', {
+				thread_id: thread.id,
+				input_thread_id: planReview.inputThreadId ?? '',
+				instance_id: rootStore.instanceId,
+				type: 'plan-review',
+				provided_inputs: [
+					{
+						label: 'plan',
+						options: ['approve', 'ask-for-edits', 'deny'],
+						option_chosen: 'ask-for-edits',
+					},
+				],
+				skipped_inputs: [],
+				num_tasks: planReview.taskCount,
+				feedback: scrubSecretsInText(message),
+				plan_feedback_type: 'changes_requested',
 			});
+		});
 		return;
 	}
 
@@ -994,9 +1017,7 @@ function handleSubmit(
 		.sendMessage(message, submittedAttachments, rootStore.pushRef, handoffContext)
 		.then((sent) => {
 			if (!sent) {
-				if (restoreDraft?.()) return;
-				const input = chatInputRef.value;
-				if (input && !input.isDirty()) input.setText(message);
+				restoreFailedSubmission(message, restoreDraft);
 				return;
 			}
 			// Track message-with-nodes only after a successful send, so failed
@@ -1070,6 +1091,10 @@ function handleAgentPreviewAssistantHandoff(params: AgentPreviewHandoffParams) {
 		return;
 	}
 
+	// The request now belongs to the assistant composer beside it, so leaving the
+	// preview chat open reads as two places to ask the same thing.
+	isAgentPreviewDockOpen.value = false;
+
 	const context = buildInstanceAiAgentPreviewHandoffContext(params);
 	stashPendingHandoffContext(props.threadId, context);
 	pendingComposerContext.value = context;
@@ -1095,7 +1120,7 @@ function handleAgentPreviewAssistantHandoff(params: AgentPreviewHandoffParams) {
 		generatedComposerDraft.value = null;
 	}
 
-	if (!thread.activePlanEdit) {
+	if (!thread.pendingPlanReview) {
 		void nextTick(() => chatInputRef.value?.focus());
 	}
 }
@@ -1197,15 +1222,7 @@ async function dismissComposerContextChip() {
 			<div :class="$style.builderChatHeader" data-test-id="instance-ai-builder-chat-header">
 				<InstanceAiViewHeader>
 					<template #title>
-						<N8nHeading
-							v-if="currentThreadTitle"
-							tag="h2"
-							size="small"
-							:class="[
-								$style.headerTitle,
-								{ [$style.headerTitleWithSidebar]: !sidebar.collapsed.value },
-							]"
-						>
+						<N8nHeading v-if="currentThreadTitle" tag="h2" size="small" :class="$style.headerTitle">
 							{{ currentThreadTitle }}
 						</N8nHeading>
 						<N8nText
@@ -1375,6 +1392,11 @@ async function dismissComposerContextChip() {
 											@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
 											@dismiss="creditBanner.dismiss()"
 										/>
+										<InstanceAiSetupPanel
+											v-if="setupPanelWorkflowId"
+											:workflow-id="setupPanelWorkflowId"
+											:project-id="setupPanelProjectId"
+										/>
 										<div :class="$style.inputSwap">
 											<Transition name="input-swap">
 												<InstanceAiConfirmationPanel
@@ -1387,9 +1409,9 @@ async function dismissComposerContextChip() {
 													ref="chatInputRef"
 													key="chat-input"
 													:is-streaming="thread.isStreaming"
-													:is-submitting="thread.isSendingMessage"
+													:is-submitting="thread.isSendingMessage || isPlanChangeInFlight"
 													:is-awaiting-confirmation="thread.isAwaitingConfirmation"
-													:is-plan-edit-mode="thread.activePlanEdit !== null"
+													:is-awaiting-plan-review="thread.pendingPlanReview !== null"
 													:is-workflow-builder-available="settingsStore.isWorkflowBuilderAvailable"
 													:current-thread-id="thread.id"
 													:amend-context="thread.amendContext"
@@ -1397,7 +1419,6 @@ async function dismissComposerContextChip() {
 													:contextual-suggestion="thread.contextualSuggestion"
 													@submit="handleSubmit"
 													@stop="handleStop"
-													@cancel-plan-edit="thread.cancelPlanEdit"
 													@dismiss-context-chip="dismissComposerContextChip"
 												/>
 											</Transition>
@@ -1470,9 +1491,10 @@ async function dismissComposerContextChip() {
 					@resizeend="isResizingPreview = false"
 				>
 					<TabsRoot
-						v-model="preview.activeTabId.value"
+						:model-value="preview.activeTabId.value"
 						orientation="horizontal"
 						:class="$style.previewPanel"
+						@update:model-value="preview.selectTab"
 					>
 						<InstanceAiPreviewTabBar
 							:tabs="preview.allArtifactTabs.value"
@@ -1595,10 +1617,6 @@ async function dismissComposerContextChip() {
 	white-space: nowrap;
 	min-width: 0;
 	color: var(--color--text);
-}
-
-.headerTitleWithSidebar {
-	padding-left: var(--spacing--4xs);
 }
 
 .activeButton {

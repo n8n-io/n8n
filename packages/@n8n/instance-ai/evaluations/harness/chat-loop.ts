@@ -11,14 +11,15 @@
 // flows automatically.
 // ---------------------------------------------------------------------------
 
-import type { InstanceAiConfirmRequest } from '@n8n/api-types';
+import type { InstanceAiBuildMode, InstanceAiConfirmRequest } from '@n8n/api-types';
 import { INSTANCE_AI_MEMORY_TASK_WAIT_TIMEOUT_MS } from '@n8n/api-types';
+import { isTerminalExecutionStatus } from 'n8n-workflow';
 import { setTimeout as delay } from 'node:timers/promises';
 
 import type { EvalLogger } from './logger';
 import type { N8nClient } from '../clients/n8n-client';
 import { consumeSseStream } from '../clients/sse-client';
-import { lastSavedWorkflowIdFromEvents } from '../outcome/event-parser';
+import { lastSavedWorkflowIdFromEvents, savedWorkflowsFromEvents } from '../outcome/event-parser';
 import type { CapturedEvent } from '../types';
 import { USER_TURN_EVENT } from '../types';
 import { getEventPayload, tryInfrastructureResponse } from '../utils/confirmation-payload';
@@ -288,11 +289,19 @@ export type NextMessageDecision =
 			 * its own setup or credential work happens to advance the checksum.
 			 */
 			renameWorkflowTo?: string;
+			/** A normal user run, performed before delivering the next message. */
+			runWorkflowId?: string;
 	  }
 	| { kind: 'done' };
 
 export interface MultiTurnConfig extends WaitConfig {
 	nextMessageDecider: () => Promise<NextMessageDecision>;
+	/** Restore the case's declared input rows before a normal user execution. */
+	beforeUserExecution?: (deadline: number) => Promise<void>;
+	allowUserExecution?: boolean;
+	/** Repeat the eval override on each message to bypass the backend assignment. */
+	buildMode?: InstanceAiBuildMode;
+	promptVersion?: string;
 }
 
 export async function runMultiTurnConversation(config: MultiTurnConfig): Promise<void> {
@@ -319,12 +328,27 @@ export async function runMultiTurnConversation(config: MultiTurnConfig): Promise
 			await applyExternalRename(config, decision.renameWorkflowTo);
 		}
 
+		// Before the follow-up is delivered, so a "I just ran it" message is true
+		// by the time the agent reads it and inspects the executions list.
+		if (decision.runWorkflowId !== undefined) {
+			if (!config.allowUserExecution) throw new Error('User executions are disabled for this case');
+			await applyUserExecution(config, decision.runWorkflowId);
+		}
+
+		if (Date.now() - config.startTime >= config.timeoutMs) return;
+
 		config.logger.verbose(
 			`[multi-turn] Sending follow-up: ${decision.message.slice(0, 80)}${decision.message.length > 80 ? '...' : ''}`,
 		);
 		recordUserTurn(config.events, decision.message);
 		try {
-			await config.client.sendMessage(config.threadId, decision.message);
+			await config.client.sendMessage(
+				config.threadId,
+				decision.message,
+				undefined,
+				config.buildMode,
+				config.promptVersion,
+			);
 		} catch (error: unknown) {
 			const msg = error instanceof Error ? error.message : String(error);
 			config.logger.verbose(`[multi-turn] sendMessage failed: ${msg} — exiting loop`);
@@ -388,6 +412,54 @@ async function applyExternalRename(config: MultiTurnConfig, rename: string): Pro
 		config.logger.warn(
 			`[external-edit] Failed to rename ${workflowId} to "${rename}": ${message} — the conflict path was not exercised`,
 		);
+	}
+}
+
+/** Use the normal execution route so the agent can inspect user-run evidence. */
+async function applyUserExecution(config: MultiTurnConfig, workflowId: string): Promise<void> {
+	if (!savedWorkflowsFromEvents(config.events).some((workflow) => workflow.id === workflowId)) {
+		throw new Error(`User-run workflow ${workflowId} was not saved in this conversation`);
+	}
+	const remainingMs = () => {
+		const remaining = config.timeoutMs - (Date.now() - config.startTime);
+		if (remaining <= 0) throw new Error('Case timed out before the user execution completed');
+		return remaining;
+	};
+	remainingMs();
+	await config.beforeUserExecution?.(config.startTime + config.timeoutMs);
+	const workflow = await config.client.getWorkflow(workflowId, remainingMs());
+	if (Object.keys(workflow.pinData ?? {}).length > 0) {
+		throw new Error('User-run evals require a workflow without pinned data');
+	}
+	if (workflow.nodes.some((node) => Object.keys(node.credentials ?? {}).length > 0)) {
+		throw new Error('User-run evals require a workflow without credentials');
+	}
+	const trigger = workflow.nodes.find((node) =>
+		['n8n-nodes-base.manualTrigger', 'n8n-nodes-base.scheduleTrigger'].includes(node.type),
+	);
+	if (!trigger) throw new Error('User-run evals require a manual or schedule trigger');
+
+	const { executionId } = await config.client.executeWorkflow(
+		workflowId,
+		trigger.name,
+		remainingMs(),
+	);
+	try {
+		while (true) {
+			const execution = await config.client.getExecution(executionId, remainingMs());
+			if (isTerminalExecutionStatus(execution.status)) {
+				config.logger.info(
+					`[user-run] Executed ${workflowId}: status=${execution.status} executionId=${executionId}`,
+				);
+				return;
+			}
+			await delay(Math.min(POLL_INTERVAL_MS, remainingMs()));
+		}
+	} catch (error) {
+		await config.client.stopExecution(executionId).catch(() => {
+			config.logger.warn(`[user-run] Could not stop execution ${executionId}`);
+		});
+		throw error;
 	}
 }
 

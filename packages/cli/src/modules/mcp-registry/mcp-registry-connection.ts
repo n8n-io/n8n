@@ -80,6 +80,8 @@ export function resolveMcpRegistryConnection(
 			urlTemplate: remote.url,
 			transport: 'httpStreamable',
 			isTemplated: true,
+			headers: remote.headers,
+			attribution: server.attribution,
 		};
 	}
 
@@ -92,6 +94,8 @@ export function resolveMcpRegistryConnection(
 			transport: remote.type === 'streamable-http' ? 'httpStreamable' : 'sse',
 			credentialBindings,
 			isTemplated: false,
+			headers: remote.headers,
+			attribution: server.attribution,
 		};
 	} catch {
 		return null;
@@ -128,6 +132,8 @@ export function prepareMcpRegistryConnection({
 	}
 
 	const { nodeTypeName, transport } = connection;
+	// Credential headers win over registry-configured ones on a name clash
+	const mergedHeaders = { ...connection.headers, ...headers };
 
 	if (connection.isTemplated) {
 		const serverUrl = credentialData.serverUrl;
@@ -151,7 +157,7 @@ export function prepareMcpRegistryConnection({
 				credentialType,
 				transport,
 				endpointUrl: endpoint.toString(),
-				headers,
+				headers: mergedHeaders,
 				// Pinned to the host actually being called, so the restriction can
 				// never guard a different host than the request goes to.
 				allowedDomains: endpoint.hostname,
@@ -166,7 +172,7 @@ export function prepareMcpRegistryConnection({
 			credentialType,
 			transport,
 			endpointUrl: connection.endpointUrl,
-			headers,
+			headers: mergedHeaders,
 			allowedDomains: connection.endpointHostname,
 		},
 	};

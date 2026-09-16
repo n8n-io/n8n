@@ -1,3 +1,9 @@
+import {
+	CreatePolicyDocumentDto,
+	PutInstancePolicyDto,
+	ReplaceAttachmentsDto,
+	UpdatePolicyDocumentDto,
+} from '@n8n/api-types';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import { AuthenticatedRequest } from '@n8n/db';
 import {
@@ -16,17 +22,8 @@ import type { Response } from 'express';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
-import { CreatePolicyDocumentDto } from './dto/create-policy-document.dto';
-import { PutInstancePolicyDto } from './dto/put-instance-policy.dto';
-import { ReplaceAttachmentsDto } from './dto/replace-attachments.dto';
-import { UpdatePolicyDocumentDto } from './dto/update-policy-document.dto';
+import { NODE_TYPES_KIND } from './constants';
 import { TypeAvailabilityPolicyService } from './type-availability-policy.service';
-
-/**
- * The one `kind` this REST surface manages. Other kinds (e.g. credential types) would get
- * their own controller mounted on their own path, reusing the same service and DTOs.
- */
-const NODE_TYPES_KIND = 'node-types';
 
 /**
  * Instance-scope REST surface for node type availability policies. Every route requires
@@ -105,7 +102,7 @@ export class TypeAvailabilityPolicyInstanceController {
 	@Licensed(LICENSE_FEATURES.NODE_TYPE_POLICIES)
 	@GlobalScope('nodeTypePolicy:manage')
 	async getPolicy(_req: AuthenticatedRequest, _res: Response, @Param('policyId') policyId: string) {
-		const policy = await this.service.getPolicyDocument(policyId);
+		const policy = await this.service.getPolicyDocument(NODE_TYPES_KIND, policyId);
 		if (!policy) {
 			throw new NotFoundError(`Policy document not found: ${policyId}`);
 		}
@@ -123,6 +120,7 @@ export class TypeAvailabilityPolicyInstanceController {
 		@Body dto: UpdatePolicyDocumentDto,
 	) {
 		const { policy, warnings } = await this.service.updatePolicyDocument(
+			NODE_TYPES_KIND,
 			policyId,
 			dto.rules,
 			dto.version,
@@ -140,7 +138,7 @@ export class TypeAvailabilityPolicyInstanceController {
 		_res: Response,
 		@Param('policyId') policyId: string,
 	) {
-		await this.service.deletePolicyDocument(policyId, req.user.id);
+		await this.service.deletePolicyDocument(NODE_TYPES_KIND, policyId, req.user.id);
 
 		return { success: true };
 	}

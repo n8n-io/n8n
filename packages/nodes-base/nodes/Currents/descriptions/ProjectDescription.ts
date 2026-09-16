@@ -27,7 +27,7 @@ export const projectOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
-						url: '=/projects/{{$parameter["projectId"]}}',
+						url: '=/projects/{{toPathSegment($parameter["projectId"])}}',
 					},
 				},
 				action: 'Get a project',
@@ -61,7 +61,7 @@ export const projectOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
-						url: '=/projects/{{$parameter["projectId"]}}/insights',
+						url: '=/projects/{{toPathSegment($parameter["projectId"])}}/insights',
 					},
 					output: {
 						postReceive: [

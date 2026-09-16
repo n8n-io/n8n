@@ -170,6 +170,7 @@ describe('Expression — compatibility corpus', () => {
 				selectedCardId: 'c1',
 				dimensions: ['2026-08-24 10:30:00', 'DE'],
 				metrics: [10, 20],
+				pathId: 'a/b c',
 				jsonString: '{"k":[1,2,3]}',
 				key: 'dimensions',
 				zero: 0,
@@ -820,6 +821,7 @@ describe('Expression — compatibility corpus', () => {
 		['$prevNode.outputIndex', '={{ $prevNode.outputIndex }}', 0],
 		['$execution.id', '={{ $execution.id }}', 'exec-1'],
 		['$workflow.active', '={{ $workflow.active }}', false],
+		['toPathSegment($json.pathId)', '={{ toPathSegment($json.pathId) }}', 'a%2Fb%20c'],
 		['`${$runIndex}:${$itemIndex}`', '={{ `${$runIndex}:${$itemIndex}` }}', '0:0'],
 		['$("Rates").first()?.json?.cardId', '={{ $("Rates").first()?.json?.cardId }}', 'c1'],
 		[
@@ -873,6 +875,7 @@ describe('Expression — compatibility corpus', () => {
 		['"}}"', '={{ "}}" }}'],
 		['"{{" + "}}"', '={{ "{{" + "}}" }}'],
 		['literal {{ }} braces? {{ 1 + 1', '=literal {{ }} braces? {{ 1 + 1 }}'],
+		['dot URL path segment', '={{ toPathSegment("..") }}'],
 	];
 
 	it.each(REJECTED)('rejects: %s', (_name, expr) => {

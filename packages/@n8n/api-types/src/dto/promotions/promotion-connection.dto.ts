@@ -1,3 +1,5 @@
+import '../../openapi-extend';
+
 import { z } from 'zod';
 
 import { promotionDisplayNameSchema } from './promotion-common.dto';
@@ -7,6 +9,7 @@ import {
 	promotionConnectionConfigsPublicSchema,
 } from './promotion-config.dto';
 import { promotionProviderSummarySchema } from './promotion-provider.dto';
+import { n8nIdSchema } from '../../schemas/id.schema';
 import { Z } from '../../zod-class';
 import { publicApiPaginationSchema } from '../pagination/pagination.dto';
 
@@ -37,7 +40,7 @@ export class CreatePromotionConnectionDto extends Z.class(
 		name: promotionDisplayNameSchema,
 		scope: promotionConnectionScopeSchema,
 		/** Providers are created on their own route. A connection only picks one. */
-		providerId: z.string().min(1),
+		providerId: n8nIdSchema,
 		target: promotionConnectionTargetSchema,
 		/**
 		 * Initial configs, keyed by direction, reusing the bodies of the config
@@ -61,14 +64,43 @@ export class CreatePromotionConnectionDto extends Z.class(
  * package operations each have their own route, so a strict shape rejects them
  * here.
  */
-export class UpdatePromotionConnectionDto extends Z.class(
-	{
+const updatePromotionConnectionSchema = z
+	.object({
 		name: promotionDisplayNameSchema.optional(),
 		target: promotionConnectionTargetSchema.optional(),
-		providerId: z.string().min(1).optional(),
-	},
-	{ strict: true },
-) {}
+		providerId: n8nIdSchema.optional(),
+	})
+	.strict()
+	.refine(
+		({ name, target, providerId }) =>
+			name !== undefined || target !== undefined || providerId !== undefined,
+		{ message: 'At least one field is required' },
+	)
+	.openapi({ minProperties: 1 });
+
+type UpdatePromotionConnection = z.infer<typeof updatePromotionConnectionSchema>;
+
+export class UpdatePromotionConnectionDto implements UpdatePromotionConnection {
+	name?: string;
+
+	target?: PromotionConnectionTarget;
+
+	providerId?: string;
+
+	static schema = updatePromotionConnectionSchema;
+
+	constructor(data: UpdatePromotionConnection) {
+		Object.assign(this, updatePromotionConnectionSchema.parse(data));
+	}
+
+	static safeParse(data: unknown) {
+		return updatePromotionConnectionSchema.safeParse(data);
+	}
+
+	static parse(data: unknown) {
+		return updatePromotionConnectionSchema.parse(data);
+	}
+}
 
 /**
  * The `providerId` filter shows which connections a provider edit affects. The
@@ -79,7 +111,7 @@ export class ListPromotionConnectionsQueryDto extends Z.class({
 	limit: publicApiPaginationSchema.limit,
 	cursor: z.string().optional(),
 	scope: promotionConnectionScopeSchema.optional(),
-	providerId: z.string().optional(),
+	providerId: n8nIdSchema.optional(),
 }) {}
 
 /**
@@ -92,7 +124,7 @@ export class ListPromotionConnectionsQueryDto extends Z.class({
  * detail route.
  */
 export const promotionConnectionPublicSchema = z.object({
-	id: z.string(),
+	id: n8nIdSchema,
 	name: z.string(),
 	scope: promotionConnectionScopeSchema,
 	target: promotionConnectionTargetSchema,
@@ -110,8 +142,8 @@ export class PromotionConnectionListPublicDto extends Z.class({
 }) {}
 
 export const promotionConnectionProjectPublicSchema = z.object({
-	projectId: z.string(),
-	connectionId: z.string(),
+	projectId: n8nIdSchema,
+	connectionId: n8nIdSchema,
 });
 
 export class PromotionConnectionProjectPublicDto extends Z.class(
@@ -119,5 +151,5 @@ export class PromotionConnectionProjectPublicDto extends Z.class(
 ) {}
 
 export class PromotionConnectionProjectListPublicDto extends Z.class({
-	projectIds: z.array(z.string()),
+	projectIds: z.array(n8nIdSchema),
 }) {}

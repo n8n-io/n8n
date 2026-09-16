@@ -72,6 +72,25 @@ export { DeleteProjectDto } from './project/delete-project.dto';
 export { AddUsersToProjectDto } from './project/add-users-to-project.dto';
 export { ChangeUserRoleInProject } from './project/change-user-role-in-project.dto';
 export { ListProjectsQueryDto } from './project/list-projects-query.dto';
+export {
+	projectPublicSchema,
+	ProjectPublicDto,
+	ProjectListPublicDto,
+	CreatedProjectPublicDto,
+	CreateProjectPublicDto,
+	ListProjectsQueryPublicDto,
+	UpdateProjectPublicDto,
+	DeleteProjectQueryPublicDto,
+} from './project/project-public.dto';
+export type { ProjectPublic } from './project/project-public.dto';
+export {
+	projectMemberPublicSchema,
+	ProjectMemberPublicDto,
+	ProjectMemberListPublicDto,
+	ListProjectMembersQueryPublicDto,
+	AddProjectMembersPublicDto,
+	ChangeProjectMemberRolePublicDto,
+} from './project/project-member-public.dto';
 
 export { SamlAcsDto } from './saml/saml-acs.dto';
 export { SamlPreferences } from './saml/saml-preferences.dto';
@@ -89,6 +108,9 @@ export { RoleChangeRequestDto } from './user/role-change-request.dto';
 export { SettingsUpdateRequestDto } from './user/settings-update-request.dto';
 export { UserSelfSettingsUpdateRequestDto } from './user/user-self-settings-update-request.dto';
 export { UserUpdateRequestDto } from './user/user-update-request.dto';
+export { ChangeEmailRequestDto } from './user/change-email-request.dto';
+export { ResolveChangeEmailTokenQueryDto } from './user/resolve-change-email-token-query.dto';
+export { ConfirmEmailChangeRequestDto } from './user/confirm-email-change-request.dto';
 
 export { CommunityRegisteredRequestDto } from './license/community-registered-request.dto';
 
@@ -103,38 +125,47 @@ export { SourceControlStatusPublicDto } from './source-control/source-control-st
 export { SourceControlPushRequestPublicDto } from './source-control/source-control-push-request-public.dto';
 export { SourceControlPushResponsePublicDto } from './source-control/source-control-push-response-public.dto';
 export { SourceControlPushConflictErrorPublicDto } from './source-control/source-control-push-conflict-error-public.dto';
-export {
-	CloneGitConnectionDto,
-	CreateGitConnectionDto,
-	GitConnectionListPublicDto,
-	GitConnectionProjectListPublicDto,
-	GitConnectionProjectPublicDto,
-	GitConnectionPublicDto,
-	GitConnectionPullResultDto,
-	GitConnectionPushResultDto,
-	ListGitConnectionsQueryDto,
-	PushGitConnectionDto,
-	UpdateGitConnectionDto,
-	gitConnectionTypeSchema,
-	gitKeyGeneratorTypeSchema,
-	type GitConnectionType,
-	type GitKeyGeneratorType,
-} from './git-connections/git-connections.dto';
+export { SourceControlPullResponsePublicDto } from './source-control/source-control-pull-response-public.dto';
 
 export { CreateCredentialDto } from './credentials/create-credential.dto';
+export { TestCredentialRequestDto } from './credentials/test-credential-request.dto';
 export {
 	CredentialPublicDto,
 	CredentialListPublicDto,
+	CreateCredentialPublicDto,
+	UpdateCredentialPublicDto,
+	DeleteCredentialPublicDto,
+	TransferCredentialPublicDto,
 	credentialPublicSchema,
 } from './credentials/credential-public.dto';
 export { ListCredentialsQueryDto } from './credentials/list-credentials-query.dto';
+export { AiPreferenceRequestDto } from './ai-preference/ai-preference-request.dto';
+export {
+	AiPreferenceListQueryDto,
+	AI_PREFERENCES_DEFAULT_PAGE_SIZE,
+	AI_PREFERENCES_MAX_PAGE_SIZE,
+} from './ai-preference/ai-preference-list-query.dto';
 export { VariableListRequestDto } from './variables/variables-list-request.dto';
 export {
 	CreateVariableRequestDto,
 	NEW_VARIABLE_KEY_REGEX,
 } from './variables/create-variable-request.dto';
-export { variableTypeSchema, variableValueSchema } from './variables/base.dto';
+export {
+	TYPE_DEFAULT as VARIABLE_TYPE_DEFAULT,
+	variableTypeSchema,
+	variableValueSchema,
+} from './variables/base.dto';
 export { UpdateVariableRequestDto } from './variables/update-variable-request.dto';
+export {
+	GLOBAL_PROJECT_ID_FILTER,
+	ListVariablesQueryDto,
+} from './variables/list-variables-query.dto';
+export { VariableListPublicDto, variablePublicSchema } from './variables/variable-public.dto';
+export type { VariablePublic } from './variables/variable-public.dto';
+export {
+	CreateVariablePublicDto,
+	UpdateVariablePublicDto,
+} from './variables/variable-write-public.dto';
 export { CredentialsGetOneRequestQuery } from './credentials/credentials-get-one-request.dto';
 export { CredentialsGetManyRequestQuery } from './credentials/credentials-get-many-request.dto';
 export { GenerateCredentialNameRequestQuery } from './credentials/generate-credential-name.dto';
@@ -201,7 +232,12 @@ export {
 export { CreateOrUpdateTagRequestDto } from './tag/create-or-update-tag-request.dto';
 export { RetrieveTagQueryDto } from './tag/retrieve-tag-query.dto';
 export { ListTagsQueryDto } from './tag/list-tags-query.dto';
-export { TagPublicDto, TagListPublicDto, tagPublicSchema } from './tag/tag-public.dto';
+export {
+	CreateTagPublicDto,
+	TagPublicDto,
+	TagListPublicDto,
+	tagPublicSchema,
+} from './tag/tag-public.dto';
 
 export { UpdateApiKeyRequestDto } from './api-keys/update-api-key-request.dto';
 export { CreateApiKeyRequestDto } from './api-keys/create-api-key-request.dto';
@@ -237,6 +273,36 @@ export {
 } from './log-streaming/public-destination.dto';
 
 export { PaginationDto, MAX_ITEMS_PER_PAGE } from './pagination/pagination.dto';
+
+export type {
+	NonDelegatingPolicyAction,
+	NonDelegatingPolicyRule,
+	PolicyAction,
+	PolicyRule,
+	PolicySelector,
+} from './node-type-policies/policy-rule.types';
+export { policySelectorSchema } from './node-type-policies/policy-selector.schema';
+export {
+	nonDelegatingPolicyActionSchema,
+	nonDelegatingPolicyRuleListSchema,
+	policyActionSchema,
+	policyRuleListSchema,
+	policyRuleSchema,
+} from './node-type-policies/policy-rule.schema';
+export { PutInstancePolicyDto } from './node-type-policies/put-instance-policy.dto';
+export { PutProjectPolicyDto } from './node-type-policies/put-project-policy.dto';
+export { CreatePolicyDocumentDto } from './node-type-policies/create-policy-document.dto';
+export { UpdatePolicyDocumentDto } from './node-type-policies/update-policy-document.dto';
+export { ReplaceAttachmentsDto } from './node-type-policies/replace-attachments.dto';
+export {
+	ListNodeTypePolicyDocumentsQueryDto,
+	NodeTypePolicyAttachmentsPublicDto,
+	NodeTypePolicyDocumentListPublicDto,
+	NodeTypePolicyDocumentPublicDto,
+	NodeTypePolicyDocumentWriteResultPublicDto,
+	NodeTypePolicyEffectivePublicDto,
+	NodeTypePolicyEffectiveWriteResultPublicDto,
+} from './node-type-policies/node-type-policy-public.dto';
 export {
 	UsersListFilterDto,
 	type UsersListSortOptions,
@@ -452,6 +518,7 @@ export { TestOtelTraceDto } from './otel/test-otel-trace.dto';
 export { InstanceAiExamplesQueryDto } from './instance-ai-examples/instance-ai-examples-query.dto';
 
 export {
+	PromotionChangesQueryDto,
 	promotableResourceSchema,
 	promotableResourceStatusSchema,
 	promotableResourceTypeSchema,
@@ -508,6 +575,10 @@ export {
 	type PromotionConnectionConfigsPublic,
 	type PromotionDirection,
 } from './promotions/promotion-config.dto';
+export {
+	PromotionCheckoutPublicDto,
+	promotionCheckoutPublicSchema,
+} from './promotions/promotion-checkout.dto';
 export {
 	CreatePromotionConnectionDto,
 	ListPromotionConnectionsQueryDto,

@@ -7,9 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
-
-import { toPathSegment } from '@utils/url';
+import { toPathSegment, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import {
 	caseCommentFields,
@@ -22,6 +20,7 @@ import {
 	connectorOperations,
 } from './descriptions';
 import {
+	buildDeleteCasesEndpoint,
 	elasticSecurityApiRequest,
 	getConnector,
 	getVersion,
@@ -213,11 +212,7 @@ export class ElasticSecurity implements INodeType {
 						// https://www.elastic.co/guide/en/security/current/cases-api-delete-case.html
 
 						const caseId = this.getNodeParameter('caseId', i);
-						await elasticSecurityApiRequest.call(
-							this,
-							'DELETE',
-							`/cases?ids=${encodeURIComponent(JSON.stringify([String(caseId)]))}`,
-						);
+						await elasticSecurityApiRequest.call(this, 'DELETE', buildDeleteCasesEndpoint(caseId));
 						responseData = { success: true };
 					} else if (operation === 'get') {
 						// ----------------------------------------
