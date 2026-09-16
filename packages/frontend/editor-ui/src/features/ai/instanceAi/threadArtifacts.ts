@@ -2,8 +2,13 @@ import type { InstanceAiThreadArtifact, InstanceAiThreadArtifactsContext } from 
 
 import type { ResourceEntry } from './useResourceRegistry';
 
-const THREAD_ARTIFACT_TYPES = new Set<ResourceEntry['type']>(['workflow', 'agent', 'data-table']);
+type ThreadArtifactType = InstanceAiThreadArtifact['type'];
+
 const MAX_THREAD_ARTIFACTS = 20;
+
+function isThreadArtifactType(type: ResourceEntry['type']): type is ThreadArtifactType {
+	return type === 'workflow' || type === 'agent' || type === 'data-table';
+}
 
 /**
  * Build the per-turn index the backend injects inside `<thread-context>`.
@@ -15,7 +20,7 @@ export function buildThreadArtifactsContext(
 ): InstanceAiThreadArtifactsContext | undefined {
 	const artifacts: InstanceAiThreadArtifact[] = [];
 	for (const entry of produced) {
-		if (!THREAD_ARTIFACT_TYPES.has(entry.type)) continue;
+		if (!isThreadArtifactType(entry.type)) continue;
 		artifacts.push({
 			type: entry.type,
 			id: entry.id,
