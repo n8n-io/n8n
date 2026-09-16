@@ -300,6 +300,9 @@ describe('InstanceContextService', () => {
 		describe('deltas', () => {
 			const cursor: InstanceContextCursor = {
 				activityMark: 500,
+				// An earlier turn cut at 400, so a delta reads down to there and no further.
+				activityFloor: 400,
+				activityCategories: ['workflow', 'credential'],
 				activitySeen: [500, 499],
 				runsThrough: new Date(NOW.getTime() - 10 * 60_000).toISOString(),
 			};
@@ -345,16 +348,117 @@ describe('InstanceContextService', () => {
 					1,
 					expect.objectContaining({ afterId: 500 }),
 				);
-				// The band is bounded by its own width and closed at the mark.
+				// Floored on what an earlier turn cut and closed at the mark, so the span holds only
+				// what could still legitimately appear.
 				expect(activityEventRepository.findFeed).toHaveBeenNthCalledWith(
 					2,
-					expect.objectContaining({ afterId: 300, beforeId: 500, limit: 200 }),
+					expect.objectContaining({ afterId: 400, beforeId: 500, limit: 160 }),
 				);
 				expect(built?.block).toContain('[498]');
 				// The band deliberately re-reads what the mark already covered, so de-duplicating
 				// against the seen ids is what stops an entry appearing in two blocks.
 				expect(built?.block).not.toContain('[499]');
 				expect(built?.block).not.toContain('Shown already');
+			});
+
+			/**
+			 * The floor is what stops a backlog draining a window per turn: rows the window trimmed
+			 * are decided against, and a later delta must not read back down to them.
+			 */
+			it('floors the next delta at the highest entry this turn cut', async () => {
+				const service = serviceWith();
+				activityEventRepository.findFeed.mockResolvedValueOnce(
+					// One more than a window's worth (40), newest first.
+					Array.from({ length: 41 }, (_, index) => entry({ id: 900 - index })),
+				);
+
+				const built = await service.buildBlock({
+					user: USER,
+					projectId: PROJECT_ID,
+					cursor: null,
+					now: NOW,
+				});
+
+				// 900 down to 861 were shown; 860 was cut, and is the boundary from now on.
+				expect(built?.cursor.activityFloor).toBe(860);
+				expect(built?.cursor.activitySeen).not.toContain(860);
+			});
+
+			/**
+			 * A project grants `workflow:read` and `credential:read` separately, and a credential
+			 * entry carries the credential's name and type. A role denied credential access
+			 * everywhere else must not be handed an inventory of them here.
+			 */
+			it('withholds credential entries from a caller without credential:read', async () => {
+				userHasScopes.mockImplementation(async (...args: unknown[]) => {
+					const scopes = args[1];
+					return !(Array.isArray(scopes) && scopes.includes('credential:read'));
+				});
+				const service = serviceWith();
+
+				await service.buildBlock({
+					user: USER,
+					projectId: PROJECT_ID,
+					cursor: null,
+					now: NOW,
+				});
+
+				expect(activityEventRepository.findFeed).toHaveBeenCalledWith(
+					expect.objectContaining({ categories: ['workflow'] }),
+				);
+			});
+
+			/** With both scopes the feed carries everything the project recorded. */
+			it('allows credential entries for a caller that may read them', async () => {
+				const service = serviceWith();
+
+				await service.buildBlock({
+					user: USER,
+					projectId: PROJECT_ID,
+					cursor: null,
+					now: NOW,
+				});
+
+				expect(activityEventRepository.findFeed).toHaveBeenCalledWith(
+					expect.objectContaining({ categories: ['workflow', 'credential'] }),
+				);
+			});
+
+			/**
+			 * The floor a narrower scope set must not outlive that scope. Only the floor moves:
+			 * resetting the whole cursor would also drop `runsThrough` and bring the inventory back,
+			 * repeating a week of run summaries for a change that says nothing about either.
+			 */
+			it('reopens the entry window when the scope widens, without repeating the rest', async () => {
+				const service = serviceWith();
+				activityEventRepository.findFeed.mockResolvedValue([
+					entry({
+						id: 320,
+						category: 'credential',
+						resourceType: 'credential',
+						resourceId: 'cred-1',
+						resourceName: 'Slack account',
+					}),
+				]);
+
+				const built = await service.buildBlock({
+					user: USER,
+					projectId: PROJECT_ID,
+					cursor: {
+						activityMark: 500,
+						activityFloor: 400,
+						activityCategories: ['workflow'],
+						activitySeen: [500],
+						runsThrough: new Date(NOW.getTime() - 60_000).toISOString(),
+					},
+					now: NOW,
+				});
+
+				expect(built?.block).toContain('Slack account');
+				expect(workflowRepository.findRecentForProjects).not.toHaveBeenCalled();
+				expect(activityEventRepository.findFeed).toHaveBeenCalledWith(
+					expect.objectContaining({ afterId: 0, beforeId: 500 }),
+				);
 			});
 
 			/**
@@ -591,7 +695,13 @@ describe('InstanceContextService', () => {
 
 describe('readInstanceContextCursor', () => {
 	it('reads a stored cursor', () => {
-		const stored = { activityMark: 12, activitySeen: [12, 11], runsThrough: NOW.toISOString() };
+		const stored = {
+			activityMark: 12,
+			activityFloor: 4,
+			activityCategories: ['workflow'],
+			activitySeen: [12, 11],
+			runsThrough: NOW.toISOString(),
+		};
 
 		expect(readInstanceContextCursor({ instanceContext: stored })).toEqual(stored);
 	});
@@ -600,7 +710,21 @@ describe('readInstanceContextCursor', () => {
 		['no metadata', undefined],
 		['no cursor', {}],
 		['a cursor of the wrong shape', { instanceContext: { activityMark: 'nope' } }],
-		['an unparseable timestamp', { instanceContext: { activityMark: 1, runsThrough: 'soon' } }],
+		[
+			'an unparseable timestamp',
+			{
+				instanceContext: {
+					activityMark: 1,
+					activityFloor: 0,
+					activityCategories: [],
+					runsThrough: 'soon',
+				},
+			},
+		],
+		[
+			'a cursor written before the floor existed',
+			{ instanceContext: { activityMark: 12, runsThrough: NOW.toISOString() } },
+		],
 	])('starts over on %s', (_case, metadata) => {
 		expect(readInstanceContextCursor(metadata)).toBeNull();
 	});
@@ -609,6 +733,8 @@ describe('readInstanceContextCursor', () => {
 		const cursor = readInstanceContextCursor({
 			instanceContext: {
 				activityMark: 5,
+				activityFloor: 0,
+				activityCategories: ['workflow'],
 				activitySeen: [5, 'four', null],
 				runsThrough: NOW.toISOString(),
 			},

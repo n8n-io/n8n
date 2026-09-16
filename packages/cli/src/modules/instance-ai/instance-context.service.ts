@@ -45,36 +45,17 @@ const inventorySize = 8;
 const resourceHistoryLimit = 20;
 
 /**
- * How far below the high-water mark a delta re-reads.
- *
- * Ids are an ordering key, not a completeness watermark: Postgres allocates a sequence value
- * outside the surrounding transaction, so two writers can commit id 101 before id 100, and a
- * cursor that asks for "everything above the highest id seen" skips 100 for good. The entries most
- * worth surfacing are deletions, written by whichever request happens to be committing.
- *
- * So a delta re-reads this far below the mark and drops what it has already shown.
- *
- * What this does and does not promise. The read below is newest-first and capped, so when more
- * rows sit above the floor than the cap, the ones dropped are the lowest — and the mark then
- * advances past them. Those rows are by definition further down than a cap's worth of newer ones,
- * so no row the window could have shown is lost; what is lost is a late commit on a turn that was
- * already too busy to show it. The guarantee is therefore "a straggler is recovered whenever it
- * could be displayed", not "every straggler is recovered". What makes even that much true is
- * `entryFetchLimit` staying above `windowSize`, which is why that one is derived rather than set.
+ * Shown ids a delta remembers, so it cannot offer one twice. A sequence value is allocated
+ * outside its transaction, so a delta re-reads between the cursor's floor and its mark to catch
+ * a late commit; the floor is the highest id a turn cut, which stops that re-read draining a
+ * backlog a window at a time.
  */
-const activityLagIds = 200;
+const seenIdsCap = 200;
 
 /**
- * Ids remembered inside the band, so a delta does not show one twice. Deliberately the band's own
- * width: the band spans that many ids, so a smaller cap would forget an id still inside it and
- * show it again, and a larger one would store ids the floor already excludes.
- */
-const seenIdsCap = activityLagIds;
-
-/**
- * Rows one delta reads. Derived from `windowSize` rather than set by hand: staying above it is
- * what bounds what a truncated read can lose — see the note on `activityLagIds` — and the multiple
- * leaves room for the age filter to discard rows and still fill a window.
+ * Rows one delta reads. Derived from `windowSize` rather than set by hand: it has to stay above
+ * the window so a turn can tell "this is all there is" from "this is the first page", and the
+ * multiple leaves room for the age filter to discard rows and still fill a window.
  */
 const entryFetchLimit = windowSize * fetchMultiplier;
 
@@ -82,9 +63,16 @@ const entryFetchLimit = windowSize * fetchMultiplier;
 export const INSTANCE_CONTEXT_CURSOR = 'instanceContext';
 
 export type InstanceContextCursor = {
-	/** Highest activity entry id shown. */
+	/** Highest activity entry id read. */
 	activityMark: number;
-	/** Entry ids already shown that still sit inside the lag band. */
+	/** Highest entry id a turn cut. Nothing at or below it is offered again. */
+	activityFloor: number;
+	/**
+	 * The categories the turns behind this cursor were allowed to read. A floor advanced by a
+	 * narrower scope would otherwise hide, for good, the rows a later widening makes readable.
+	 */
+	activityCategories: ActivityEventCategory[];
+	/** Entry ids already shown that still sit above the floor. */
 	activitySeen: number[];
 	/** ISO timestamp runs were summarised up to. */
 	runsThrough: string;
@@ -100,17 +88,44 @@ export function readInstanceContextCursor(
 	const value = metadata?.[INSTANCE_CONTEXT_CURSOR];
 	if (!isRecord(value)) return null;
 
-	const { activityMark, activitySeen, runsThrough } = value;
+	const { activityMark, activityFloor, activityCategories, activitySeen, runsThrough } = value;
 	if (typeof activityMark !== 'number' || !Number.isFinite(activityMark)) return null;
+	if (typeof activityFloor !== 'number' || !Number.isFinite(activityFloor)) return null;
+	if (!Array.isArray(activityCategories)) return null;
 	if (typeof runsThrough !== 'string' || Number.isNaN(Date.parse(runsThrough))) return null;
 
 	return {
 		activityMark,
+		activityFloor,
+		activityCategories: activityCategories.filter(isKnownCategory),
 		activitySeen: Array.isArray(activitySeen)
 			? activitySeen.filter((id): id is number => typeof id === 'number' && Number.isFinite(id))
 			: [],
 		runsThrough,
 	};
+}
+
+/** What one caller may read: which projects, and which categories inside them. */
+type ActivityReadScope = {
+	projectIds: string[];
+	categories: ActivityEventCategory[];
+};
+
+/** Lowers the floor when the scope widens: rows the narrower scope hid were never offered. */
+function cursorForScope(
+	cursor: InstanceContextCursor | null,
+	scope: ActivityReadScope,
+): InstanceContextCursor | null {
+	if (cursor === null) return null;
+
+	const widened = scope.categories.some(
+		(category) => !cursor.activityCategories.includes(category),
+	);
+	if (!widened) return cursor;
+
+	// Only the floor: keeping the mark, the shown ids and `runsThrough` stops the inventory and
+	// the run window repeating for a change that says nothing about either.
+	return { ...cursor, activityFloor: 0, activityCategories: scope.categories };
 }
 
 type RunSummary = {
@@ -183,16 +198,19 @@ export class InstanceContextService {
 
 		try {
 			const now = input.now ?? new Date();
-			const isUpdate = input.cursor !== null;
-			const projectIds = await this.readableProjectIds(input.user, input.projectId);
+			const scope = await this.readableScope(input.user, input.projectId);
+			const { projectIds } = scope;
 
 			// Every leg is project-scoped, and a run has no acting user, so project is the only
 			// boundary available. Nothing in scope means nothing to show, never something wider.
 			if (projectIds.length === 0) return null;
 
+			const cursor = cursorForScope(input.cursor, scope);
+			const isUpdate = cursor !== null;
+
 			const [entries, runs, inventory] = await Promise.all([
-				this.readEntries({ projectIds, cursor: input.cursor, now }),
-				this.readRuns({ projectIds, cursor: input.cursor, now }),
+				this.readEntries({ scope, cursor, now }),
+				this.readRuns({ projectIds, cursor, now }),
 				// Only on the opening block. A delta skips it: the estate has not changed in a way
 				// the earlier block failed to cover.
 				isUpdate
@@ -216,6 +234,8 @@ export class InstanceContextService {
 				}),
 				cursor: {
 					activityMark: entries.mark,
+					activityFloor: entries.floor,
+					activityCategories: scope.categories,
 					activitySeen: entries.seen,
 					runsThrough: now.toISOString(),
 				},
@@ -240,12 +260,17 @@ export class InstanceContextService {
 		// answer a narrowing request by widening it to the whole feed.
 		if (input.category !== undefined && !isKnownCategory(input.category)) return [];
 
-		const projectIds = await this.readableProjectIds(input.user, input.projectId);
+		const { projectIds, categories } = await this.readableScope(input.user, input.projectId);
 		if (projectIds.length === 0) return [];
+
+		// A category the caller may not read is refused rather than dropped, for the same reason
+		// an unknown one is: answering a narrowing request by widening it is the wrong failure.
+		if (input.category !== undefined && !categories.includes(input.category)) return [];
 
 		const rows = await this.activityEventRepository.findFeed({
 			limit: input.limit,
 			projectIds,
+			categories,
 			...(input.category !== undefined ? { category: input.category } : {}),
 			...(input.resourceId !== undefined ? { resourceId: input.resourceId } : {}),
 			...(input.beforeId !== undefined ? { beforeId: input.beforeId } : {}),
@@ -263,10 +288,14 @@ export class InstanceContextService {
 		user: User;
 		projectId?: string;
 	}): Promise<InstanceAiActivityExpansion | null> {
-		const projectIds = await this.readableProjectIds(input.user, input.projectId);
+		const { projectIds, categories } = await this.readableScope(input.user, input.projectId);
 		if (projectIds.length === 0) return null;
 
-		const row = await this.activityEventRepository.findEntry({ id: input.id, projectIds });
+		const row = await this.activityEventRepository.findEntry({
+			id: input.id,
+			projectIds,
+			categories,
+		});
 		if (!row) return null;
 
 		const history =
@@ -297,28 +326,32 @@ export class InstanceContextService {
 	 * shown: they have been accounted for, and re-reading them next turn would only cost tokens.
 	 */
 	private async readEntries(input: {
-		projectIds: string[];
+		scope: ActivityReadScope;
 		cursor: InstanceContextCursor | null;
 		now: Date;
-	}): Promise<{ rows: ActivityEvent[]; mark: number; seen: number[]; truncated: boolean }> {
+	}): Promise<{
+		rows: ActivityEvent[];
+		mark: number;
+		floor: number;
+		seen: number[];
+		truncated: boolean;
+	}> {
 		const cursor = input.cursor;
 
 		// Newest first, and on a delta only what arrived above the mark.
 		const arrivals = await this.activityEventRepository.findFeed({
 			limit: entryFetchLimit,
-			projectIds: input.projectIds,
+			...input.scope,
 			...(cursor ? { afterId: cursor.activityMark } : {}),
 		});
 
-		// The band below the mark is read separately, not folded into the query above. One capped
-		// read cannot cover both: arrivals are unbounded and come back first, so a busy turn would
-		// fill the page and push the band out — losing exactly the late commit the band exists for.
-		// Alone it is bounded by its own width, since it spans that many ids at most.
+		// Read separately from the arrivals above: one capped query would let a busy turn fill the
+		// page and push the late commit out.
 		const band = cursor
 			? await this.activityEventRepository.findFeed({
-					limit: activityLagIds,
-					projectIds: input.projectIds,
-					afterId: Math.max(0, cursor.activityMark - activityLagIds),
+					limit: entryFetchLimit,
+					...input.scope,
+					afterId: cursor.activityFloor,
 					beforeId: cursor.activityMark,
 				})
 			: [];
@@ -337,17 +370,22 @@ export class InstanceContextService {
 			(highest, row) => Math.max(highest, row.id),
 			cursor?.activityMark ?? 0,
 		);
-		// What was shown, not what was read: an entry the window cut is still unseen, and the band
-		// gives it another turn to appear rather than burying it under a mark it never reached.
-		// Only ids inside the band need remembering — below it, the floor already excludes them.
+		// The highest row this turn cut — newest-first, so it is the first past the window. A turn
+		// that cut nothing keeps its inherited floor.
+		const cut = fresh[windowSize];
+		const floor = cut ? cut.id : (cursor?.activityFloor ?? 0);
+
+		// What was shown, not what was read, and only above the floor — below it the floor already
+		// excludes them.
 		const seen = [...alreadyShown, ...shown.map((row) => row.id)]
-			.filter((id) => id > mark - activityLagIds)
+			.filter((id) => id > floor)
 			.sort((a, b) => b - a)
 			.slice(0, seenIdsCap);
 
 		return {
 			rows: shown,
 			mark,
+			floor,
 			seen,
 			// Said out loud rather than left to inference. A cut list that does not say it is cut
 			// reads as the whole story, and the agent would draw conclusions from it.
@@ -394,18 +432,26 @@ export class InstanceContextService {
 	 * Bare project membership is also not read access — `project:chatUser` holds neither
 	 * `workflow:read` nor `credential:read`.
 	 */
-	private async readableProjectIds(user: User, projectId?: string): Promise<string[]> {
-		if (projectId === undefined) return [];
+	private async readableScope(user: User, projectId?: string): Promise<ActivityReadScope> {
+		if (projectId === undefined) return { projectIds: [], categories: [] };
 
 		// Re-checked every turn, not trusted from the binding. A thread outlives the membership that
 		// authorised it — `assertThreadAccess` proves the thread is the caller's own and nothing more
 		// — so a user removed from a project would otherwise keep reading it here for the life of the
 		// thread, while every other read in this module refused them.
 		//
-		// `workflow:read` stands for the whole block: it is what the inventory and run legs expose,
-		// and credential entries carry a name and a type rather than a secret.
-		const allowed = await userHasScopes(user, ['workflow:read'], false, { projectId });
-		return allowed ? [projectId] : [];
+		// Asked separately because a project grants the two independently: a role without
+		// `credential:read` must not read a credential's name and type here.
+		const [workflows, credentials] = await Promise.all([
+			userHasScopes(user, ['workflow:read'], false, { projectId }),
+			userHasScopes(user, ['credential:read'], false, { projectId }),
+		]);
+		if (!workflows) return { projectIds: [], categories: [] };
+
+		return {
+			projectIds: [projectId],
+			categories: credentials ? ['workflow', 'credential'] : ['workflow'],
+		};
 	}
 }
 

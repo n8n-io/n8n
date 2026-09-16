@@ -116,7 +116,11 @@ describe('InstanceContextService', () => {
 				resourceType: 'workflow',
 				resourceId: 'wf-theirs',
 			});
-			const [entry] = await activity.findFeed({ projectIds: [otherProject.id], limit: 1 });
+			const [entry] = await activity.findFeed({
+				projectIds: [otherProject.id],
+				categories: ['workflow', 'credential'],
+				limit: 1,
+			});
 
 			// Scoped to the user's own project, so the other project's entry is out of reach.
 			expect(await service.expand({ id: entry.id, user, projectId: project.id })).toBeNull();
@@ -126,6 +130,11 @@ describe('InstanceContextService', () => {
 			).toBeNull();
 		});
 	});
+
+	/** The bracketed entry ids a block rendered, newest first. */
+	function shownIds(block: string): number[] {
+		return [...block.matchAll(/^\[(\d+)\]/gm)].map((match) => Number(match[1]));
+	}
 
 	describe('deltas', () => {
 		/**
@@ -149,13 +158,20 @@ describe('InstanceContextService', () => {
 					resourceName: name,
 				});
 			}
-			const [newest] = await activity.findFeed({ projectIds: [project.id], limit: 1 });
+			const [newest] = await activity.findFeed({
+				projectIds: [project.id],
+				categories: ['workflow', 'credential'],
+				limit: 1,
+			});
 
 			const delta = await service.buildBlock({
 				user,
 				projectId: project.id,
 				cursor: {
 					activityMark: newest.id,
+					// No turn has cut anything yet, so every id below the mark is still offerable.
+					activityFloor: 0,
+					activityCategories: ['workflow', 'credential'],
 					activitySeen: [newest.id],
 					runsThrough: new Date().toISOString(),
 				},
@@ -165,6 +181,82 @@ describe('InstanceContextService', () => {
 			expect(delta?.block).toContain('Also late');
 			// The one the mark accounted for is not repeated.
 			expect(delta?.block).not.toContain('Seen already');
+		});
+
+		/**
+		 * A backlog deeper than one window used to drain a window per turn: the delta re-read a
+		 * fixed span below the mark, which holds the rows the window trimmed as well as the late
+		 * commits it is there for. Each turn then presented entries older than the last batch under
+		 * a preamble calling them additions, whatever the conversation was about.
+		 */
+		it('does not re-offer the entries a full window already cut', async () => {
+			for (let i = 1; i <= 90; i++) {
+				await record({
+					category: 'workflow',
+					action: 'created',
+					projectId: project.id,
+					resourceType: 'workflow',
+					resourceId: `wf-${i}`,
+					resourceName: `Workflow ${i}`,
+				});
+			}
+
+			const opening = await service.buildBlock({ user, projectId: project.id, cursor: null });
+			expect(shownIds(opening?.block ?? '')).toHaveLength(40);
+			expect(opening?.block).toContain('and more than these');
+
+			const next = await service.buildBlock({
+				user,
+				projectId: project.id,
+				cursor: opening?.cursor ?? null,
+			});
+
+			// Nothing happened in between, so there is nothing to add: not the next forty down.
+			expect(next).toBeNull();
+		});
+
+		/**
+		 * A late commit is a row that was invisible when a turn read, sits below that turn's mark,
+		 * and was never shown. Built by handing `buildBlock` a cursor accounting for every row in
+		 * the span except one, rather than inserting a row at a chosen id: an explicit primary key
+		 * is honoured on sqlite and ignored on Postgres.
+		 */
+		it('still recovers a late commit that lands above the cut', async () => {
+			for (let i = 1; i <= 45; i++) {
+				await record({
+					category: 'workflow',
+					action: 'created',
+					projectId: project.id,
+					resourceType: 'workflow',
+					resourceId: `wf-${i}`,
+					resourceName: `Workflow ${i}`,
+				});
+			}
+			const seeded = await activity.findFeed({
+				projectIds: [project.id],
+				categories: ['workflow', 'credential'],
+				limit: 50,
+			});
+			const straggler = seeded[5];
+
+			const delta = await service.buildBlock({
+				user,
+				projectId: project.id,
+				cursor: {
+					activityMark: seeded[0].id,
+					activityFloor: seeded[10].id,
+					activityCategories: ['workflow', 'credential'],
+					activitySeen: seeded
+						.slice(0, 10)
+						.map((row) => row.id)
+						.filter((id) => id !== straggler.id),
+					runsThrough: new Date().toISOString(),
+				},
+			});
+
+			// Only the straggler: the rows below the floor were cut and must not come back.
+			expect(shownIds(delta?.block ?? '')).toEqual([straggler.id]);
+			expect(delta?.block).toContain(straggler.resourceName);
 		});
 
 		it('leaves the inventory out of a delta and says it is an addition', async () => {
@@ -264,7 +356,11 @@ describe('InstanceContextService', () => {
 				resourceName: 'Lead enrichment',
 			});
 		}
-		const [newest] = await activity.findFeed({ projectIds: [project.id], limit: 1 });
+		const [newest] = await activity.findFeed({
+			projectIds: [project.id],
+			categories: ['workflow', 'credential'],
+			limit: 1,
+		});
 
 		const expansion = await service.expand({
 			id: newest.id,
