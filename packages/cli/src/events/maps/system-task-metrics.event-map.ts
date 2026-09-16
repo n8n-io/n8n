@@ -68,6 +68,12 @@ export type SystemTaskMetricsEventMap = {
 		name: string;
 	};
 
+	/** The in-memory timer of a task armed itself for the occurrence it reports. */
+	'system-task-next-run-planned': {
+		name: string;
+		nextRunAtMs: number;
+	};
+
 	'system-task-fired': {
 		name: string;
 		lagMs: number;

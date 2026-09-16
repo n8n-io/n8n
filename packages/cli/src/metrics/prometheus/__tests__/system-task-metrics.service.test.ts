@@ -113,6 +113,7 @@ describe('PrometheusSystemTaskMetricsService', () => {
 				'myapp_system_task_runs_in_flight',
 				'myapp_system_task_info',
 				'myapp_system_task_interval_seconds',
+				'myapp_system_task_next_run_timestamp_seconds',
 				'myapp_system_task_scheduled',
 			]);
 		});
@@ -143,6 +144,7 @@ describe('PrometheusSystemTaskMetricsService', () => {
 				'system-task-scheduling-failed',
 				'system-task-provision-check-failed',
 				'system-task-retry-scheduled',
+				'system-task-next-run-planned',
 				'system-task-fired',
 			]);
 		});
@@ -213,6 +215,9 @@ describe('PrometheusSystemTaskMetricsService', () => {
 			]) {
 				expect(metric(name).remove).toHaveBeenCalledExactlyOnceWith(inMemory);
 			}
+			expect(
+				metric('system_task_next_run_timestamp_seconds').remove,
+			).toHaveBeenCalledExactlyOnceWith({ task: 'prune' });
 		});
 	});
 
@@ -311,6 +316,32 @@ describe('PrometheusSystemTaskMetricsService', () => {
 			expect(metric('system_task_scheduled').set).toHaveBeenCalledWith(
 				{ task: 'prune', mode: 'durable' },
 				0,
+			);
+		});
+
+		it('leaves the next run of a task whose schedule failed to plan where it stood', () => {
+			service.init();
+			handler('system-task-next-run-planned')({
+				name: 'prune',
+				nextRunAtMs: NOW.getTime(),
+			});
+
+			handler('system-task-scheduling-failed')({ name: 'prune', mode: 'in_memory' });
+
+			expect(metric('system_task_next_run_timestamp_seconds').remove).not.toHaveBeenCalled();
+		});
+
+		it('sets the next run in seconds', () => {
+			service.init();
+
+			handler('system-task-next-run-planned')({
+				name: 'prune',
+				nextRunAtMs: NOW.getTime() + 1500,
+			});
+
+			expect(metric('system_task_next_run_timestamp_seconds').set).toHaveBeenCalledWith(
+				{ task: 'prune' },
+				NOW.getTime() / 1000 + 1.5,
 			);
 		});
 

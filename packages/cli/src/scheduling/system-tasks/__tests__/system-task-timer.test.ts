@@ -12,9 +12,15 @@ const MAX_TIMEOUT_MS = 2 ** 31 - 1;
 describe('SystemTaskTimer', () => {
 	const onFire = vi.fn();
 	const onPlanError = vi.fn();
+	const onPlan = vi.fn();
 
 	function createTimer(schedule: SystemTaskSchedule) {
-		return new SystemTaskTimer(scheduleFromDefinition(schedule, 'UTC'), onFire, onPlanError);
+		return new SystemTaskTimer(
+			scheduleFromDefinition(schedule, 'UTC'),
+			onFire,
+			onPlanError,
+			onPlan,
+		);
 	}
 
 	beforeEach(() => {
@@ -96,6 +102,7 @@ describe('SystemTaskTimer', () => {
 			scheduleFromDefinition({ kind: 'interval', intervalSeconds: 60 }, 'UTC'),
 			onFire,
 			onPlanError,
+			onPlan,
 			() => clock,
 		);
 
@@ -112,6 +119,7 @@ describe('SystemTaskTimer', () => {
 			scheduleFromDefinition({ kind: 'interval', intervalSeconds: 60 }, 'UTC'),
 			onFire,
 			onPlanError,
+			onPlan,
 			() => clock,
 		);
 
@@ -128,6 +136,7 @@ describe('SystemTaskTimer', () => {
 			scheduleFromDefinition({ kind: 'interval', intervalSeconds: 60 }, 'UTC'),
 			onFire,
 			onPlanError,
+			onPlan,
 			() => clock,
 		);
 
@@ -153,6 +162,7 @@ describe('SystemTaskTimer', () => {
 			scheduleFromDefinition({ kind: 'interval', intervalSeconds: 1 }, 'UTC'),
 			onFire,
 			onPlanError,
+			onPlan,
 			() => clock,
 		);
 
@@ -176,6 +186,7 @@ describe('SystemTaskTimer', () => {
 			scheduleFromDefinition({ kind: 'cron', cronExpression: '* * * * *', timezone: 'UTC' }, 'UTC'),
 			onFire,
 			onPlanError,
+			onPlan,
 			() => clock,
 		);
 
@@ -212,6 +223,7 @@ describe('SystemTaskTimer', () => {
 			),
 			onFire,
 			onPlanError,
+			onPlan,
 			() => clock,
 		);
 
@@ -223,6 +235,56 @@ describe('SystemTaskTimer', () => {
 		vi.advanceTimersByTime(MAX_TIMEOUT_MS + 1);
 
 		expect(onFire).toHaveBeenCalledTimes(1);
+	});
+
+	it('announces the occurrence it arms for, on start and on every rearm', () => {
+		const timer = createTimer({ kind: 'interval', intervalSeconds: 60 });
+
+		timer.start(new Date());
+		expect(onPlan).toHaveBeenCalledExactlyOnceWith(
+			new Date(START.getTime() + 60 * Time.seconds.toMilliseconds),
+		);
+
+		vi.advanceTimersByTime(60 * Time.seconds.toMilliseconds);
+		expect(onPlan).toHaveBeenLastCalledWith(
+			new Date(START.getTime() + 120 * Time.seconds.toMilliseconds),
+		);
+	});
+
+	it('announces the resumed occurrence after a coalesced fire, not the one slept through', () => {
+		let clock = START.getTime();
+		const timer = new SystemTaskTimer(
+			scheduleFromDefinition({ kind: 'interval', intervalSeconds: 60 }, 'UTC'),
+			onFire,
+			onPlanError,
+			onPlan,
+			() => clock,
+		);
+
+		timer.start(new Date(clock));
+		clock = START.getTime() + Time.hours.toMilliseconds;
+		vi.advanceTimersByTime(60 * Time.seconds.toMilliseconds);
+
+		expect(onPlan).toHaveBeenLastCalledWith(new Date(clock + 60 * Time.seconds.toMilliseconds));
+	});
+
+	it('announces a far-off occurrence once, not at every horizon hop', () => {
+		const timer = createTimer({ kind: 'interval', intervalSeconds: 40 * Time.days.toSeconds });
+
+		timer.start(new Date());
+		vi.advanceTimersByTime(MAX_TIMEOUT_MS);
+
+		expect(onPlan).toHaveBeenCalledExactlyOnceWith(
+			new Date(START.getTime() + 40 * Time.days.toMilliseconds),
+		);
+	});
+
+	it('announces nothing for a schedule it cannot plan', () => {
+		const timer = createTimer({ kind: 'cron', cronExpression: 'not-a-cron', timezone: 'UTC' });
+
+		timer.start(new Date());
+
+		expect(onPlan).not.toHaveBeenCalled();
 	});
 
 	it('reports a schedule it cannot plan and stays stopped', () => {
@@ -240,6 +302,7 @@ describe('SystemTaskTimer', () => {
 			{ kind: 'one_off', fireAt: new Date(START.getTime() - 1) },
 			onFire,
 			onPlanError,
+			onPlan,
 		);
 
 		timer.start(new Date());

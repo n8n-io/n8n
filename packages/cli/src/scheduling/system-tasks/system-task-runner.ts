@@ -301,6 +301,12 @@ export class SystemTaskRunner {
 					mode: 'in_memory',
 				});
 			},
+			(fireAt) => {
+				emitSystemTaskMetric(this.eventService, 'system-task-next-run-planned', {
+					name: task.name,
+					nextRunAtMs: fireAt.getTime(),
+				});
+			},
 		);
 	}
 

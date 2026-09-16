@@ -78,6 +78,12 @@ export class PrometheusSystemTaskMetricsService implements PrometheusMetricsColl
 			labelNames: ['task'],
 		});
 
+		const nextRun = new promClient.Gauge({
+			name: `${prefix}system_task_next_run_timestamp_seconds`,
+			help: 'Unix timestamp in seconds of the next occurrence an in-memory system task is armed for on this instance, by task.',
+			labelNames: ['task'],
+		});
+
 		const scheduled = new promClient.Gauge({
 			name: `${prefix}system_task_scheduled`,
 			help: '1 while a system task is scheduled to run on this instance, 0 once it stopped being scheduled, by task and mode: its in-memory schedule could not be planned, or its durable job could not be provisioned.',
@@ -115,6 +121,7 @@ export class PrometheusSystemTaskMetricsService implements PrometheusMetricsColl
 		const inMemoryGauges = [info, scheduled, runsInFlight, lastSuccess];
 		const removeInMemorySeries = (task: string) => {
 			inMemoryGauges.forEach((gauge) => gauge.remove({ task, mode: 'in_memory' }));
+			nextRun.remove({ task });
 		};
 
 		this.eventService.on('system-task-routed', ({ name, mode, intervalSeconds }) => {
@@ -156,6 +163,8 @@ export class PrometheusSystemTaskMetricsService implements PrometheusMetricsColl
 		});
 
 		this.eventService.on('system-task-scheduling-failed', ({ name, mode }) => {
+			// The next-run series is left as it stood: a due time that stops advancing
+			// is what makes a timer that no longer plans visible to an alert.
 			scheduled.set({ task: name, mode }, 0);
 		});
 
@@ -165,6 +174,10 @@ export class PrometheusSystemTaskMetricsService implements PrometheusMetricsColl
 
 		this.eventService.on('system-task-retry-scheduled', ({ name }) => {
 			retries.inc({ task: name });
+		});
+
+		this.eventService.on('system-task-next-run-planned', ({ name, nextRunAtMs }) => {
+			nextRun.set({ task: name }, nextRunAtMs / Time.seconds.toMilliseconds);
 		});
 
 		this.eventService.on('system-task-fired', ({ name, lagMs }) => {

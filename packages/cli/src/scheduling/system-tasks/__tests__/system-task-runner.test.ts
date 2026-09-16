@@ -963,6 +963,24 @@ describe('SystemTaskRunner', () => {
 			});
 		});
 
+		it('emits the occurrence each timer arms for', async () => {
+			const { runner, metadata, eventService } = setup();
+			metadata.register(DummySystemTask);
+			await runner.init();
+
+			expect(eventService.emit).toHaveBeenCalledWith('system-task-next-run-planned', {
+				name: 'dummy',
+				nextRunAtMs: START.getTime() + ONE_INTERVAL_MS,
+			});
+
+			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS);
+
+			expect(eventService.emit).toHaveBeenCalledWith('system-task-next-run-planned', {
+				name: 'dummy',
+				nextRunAtMs: START.getTime() + 2 * ONE_INTERVAL_MS,
+			});
+		});
+
 		it('emits the timers as started on takeover and as stopped on stepdown', async () => {
 			const { runner, metadata, eventService } = setup({ isLeader: false });
 			metadata.register(DummySystemTask);

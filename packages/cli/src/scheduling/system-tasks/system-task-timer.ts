@@ -21,7 +21,8 @@ const MAX_WALKED_OCCURRENCES = 1_000;
 /**
  * One task's in-memory cadence: a chained timeout firing `onFire` at every
  * occurrence of `schedule`, handing it how late the fire is in milliseconds and
- * how many occurrences it stands in for.
+ * how many occurrences it stands in for. Every armed occurrence is announced to
+ * `onPlan` with the instant it is due.
  *
  * Occurrences the process slept through are coalesced: the timer fires once,
  * counting them, and resumes from now, rather than replaying the whole backlog.
@@ -37,6 +38,7 @@ export class SystemTaskTimer {
 		private readonly schedule: Schedule,
 		private readonly onFire: (lagMs: number, coalesced: number) => void,
 		private readonly onPlanError: (error: Error) => void,
+		private readonly onPlan: (fireAt: Date) => void,
 		private readonly now: () => number = Date.now,
 	) {}
 
@@ -88,6 +90,7 @@ export class SystemTaskTimer {
 		}
 
 		this.waitFor(next, delayMs);
+		this.onPlan(next);
 		return 0;
 	}
 
