@@ -1415,12 +1415,24 @@ export const instanceAiPromptConfigurationSchema = z.object({
 });
 export type InstanceAiPromptConfiguration = z.infer<typeof instanceAiPromptConfigurationSchema>;
 
+/**
+ * A Computer Use entry point in the chat input's + menu. The client decides
+ * which entries it renders — its rollout and the device are only visible there
+ * — so it reports them and the backend never advertises an entry it is not told
+ * about.
+ */
+export const computerUseChannelSchema = z.enum(['localComputer', 'browser']);
+export type ComputerUseChannel = z.infer<typeof computerUseChannelSchema>;
+
 export class InstanceAiSendMessageRequest extends Z.class({
 	message: z.string().default(''),
 	attachments: z.array(instanceAiAttachmentSchema).max(10).optional(),
 	context: instanceAiHandoffContextSchema.optional(),
 	timeZone: TimeZoneSchema,
 	pushRef: z.string().optional(),
+	/** Entries the client renders for this user. Omit to advertise none. The
+	 *  backend still applies the admin switches, so this can only narrow. */
+	computerUseChannels: z.array(computerUseChannelSchema).optional(),
 	/** Explicit override for evals. Omit to use the backend experiment assignment. */
 	mode: instanceAiBuildModeSchema.optional(),
 	/** Pin a published prompt profile. Takes precedence over mode. */

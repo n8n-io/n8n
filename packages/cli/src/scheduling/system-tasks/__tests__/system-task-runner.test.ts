@@ -1,29 +1,23 @@
 import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
+import type { ScheduledJobRepository } from '@n8n/db';
 import { SystemTaskMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import type { ClaimedTask, ProvisionSummary } from '@n8n/scheduler';
+import type { ClaimedTask } from '@n8n/scheduler';
 import { createDispatchReporter } from '@n8n/scheduler';
 import type { ErrorReporter, InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import type { DurableJobProvisioner } from '../../durable-job-provisioner';
 import type { DurableScheduler } from '../../durable-scheduler';
 import { SystemTaskHandler } from '../system-task-handler';
+import type { SystemTaskJobRegistrar } from '../system-task-job-registrar';
 import { SystemTaskRunner } from '../system-task-runner';
 import { SystemTaskScheduledJobOwner } from '../system-task-scheduled-job-owner';
 import { DummySystemTask, OtherDummySystemTask } from './dummy.task';
 
 const START = new Date('2026-01-01T00:00:00.000Z');
 const ONE_INTERVAL_MS = 60 * Time.seconds.toMilliseconds;
-
-const emptySummary: ProvisionSummary = {
-	inserted: [],
-	redefined: [],
-	unchanged: [],
-	removed: [],
-};
 
 describe('SystemTaskRunner', () => {
 	let dummy: DummySystemTask;
@@ -39,14 +33,17 @@ describe('SystemTaskRunner', () => {
 		const durableScheduler = mock<DurableScheduler>();
 		durableScheduler.isActive.mockReturnValue(schedulerActive);
 		const errorReporter = mock<ErrorReporter>();
-		const durableJobProvisioner = mock<DurableJobProvisioner>();
-		durableJobProvisioner.provision.mockResolvedValue(emptySummary);
+		const jobRegistrar = mock<SystemTaskJobRegistrar>();
+		jobRegistrar.isProvisioned.mockResolvedValue(false);
+		const jobs = mock<ScheduledJobRepository>();
+		jobs.findPayloadsByOwnerIds.mockResolvedValue([]);
+		const systemTaskOwner = new SystemTaskScheduledJobOwner(jobs);
 		const runner = new SystemTaskRunner(
 			mock<Logger>({ scoped: vi.fn().mockReturnValue(logger) }),
 			metadata,
 			durableScheduler,
-			durableJobProvisioner,
-			new SystemTaskScheduledJobOwner(),
+			jobRegistrar,
+			systemTaskOwner,
 			mock<GlobalConfig>({
 				generic: { timezone: 'UTC' },
 				scheduler: { enabledForSystemTasks },
@@ -55,7 +52,16 @@ describe('SystemTaskRunner', () => {
 			errorReporter,
 		);
 
-		return { runner, metadata, durableScheduler, durableJobProvisioner, errorReporter, logger };
+		return {
+			runner,
+			metadata,
+			durableScheduler,
+			jobRegistrar,
+			jobs,
+			systemTaskOwner,
+			errorReporter,
+			logger,
+		};
 	}
 
 	beforeEach(() => {
@@ -369,6 +375,82 @@ describe('SystemTaskRunner', () => {
 		});
 	});
 
+	describe('in-memory runs of a task provisioned elsewhere', () => {
+		it('skips the run when a durable job is stored for the task', async () => {
+			const { runner, metadata, jobRegistrar, logger } = setup();
+			dummy.durable = true;
+			dummy.retryDelaySeconds = 1;
+			jobRegistrar.isProvisioned.mockResolvedValue(true);
+			metadata.register(DummySystemTask);
+			await runner.init();
+
+			await vi.advanceTimersByTimeAsync(2 * ONE_INTERVAL_MS);
+
+			expect(dummy.runCount).toBe(0);
+			expect(jobRegistrar.isProvisioned).toHaveBeenCalledTimes(2);
+			expect(jobRegistrar.isProvisioned).toHaveBeenCalledWith('dummy');
+			expect(logger.debug).toHaveBeenCalledWith(expect.stringContaining('Skipped'), {
+				name: 'dummy',
+			});
+		});
+
+		it('skips a takeover run when a durable job is stored for the task', async () => {
+			const { runner, metadata, jobRegistrar } = setup();
+			dummy.durable = true;
+			dummy.runOnTakeover = true;
+			jobRegistrar.isProvisioned.mockResolvedValue(true);
+			metadata.register(DummySystemTask);
+
+			await runner.init();
+
+			expect(dummy.runCount).toBe(0);
+		});
+
+		it('runs when no durable job is stored for the task', async () => {
+			const { runner, metadata, jobRegistrar } = setup();
+			dummy.durable = true;
+			jobRegistrar.isProvisioned.mockResolvedValue(false);
+			metadata.register(DummySystemTask);
+			await runner.init();
+
+			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS);
+
+			expect(dummy.runCount).toBe(1);
+		});
+
+		it('does not run a task whose store check settles after stepdown', async () => {
+			const { runner, metadata, jobRegistrar } = setup();
+			dummy.durable = true;
+			let settleCheck!: (exists: boolean) => void;
+			jobRegistrar.isProvisioned.mockReturnValue(
+				new Promise<boolean>((resolve) => {
+					settleCheck = resolve;
+				}),
+			);
+			metadata.register(DummySystemTask);
+			await runner.init();
+			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS);
+
+			const stepdown = runner.stopTimers();
+			settleCheck(false);
+			await stepdown;
+
+			expect(dummy.runCount).toBe(0);
+		});
+
+		it('does not ask for a task that never runs durably', async () => {
+			const { runner, metadata, jobRegistrar } = setup();
+			jobRegistrar.isProvisioned.mockResolvedValue(true);
+			metadata.register(DummySystemTask);
+			await runner.init();
+
+			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS);
+
+			expect(dummy.runCount).toBe(1);
+			expect(jobRegistrar.isProvisioned).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('leadership and shutdown', () => {
 		it('refuses to init before the instance role is resolved', async () => {
 			const { runner, metadata } = setup({ instanceRole: 'unset' });
@@ -508,56 +590,27 @@ describe('SystemTaskRunner', () => {
 	describe('provisioning durable jobs', () => {
 		const durably = { schedulerActive: true, enabledForSystemTasks: true };
 
-		it('provisions one job per durable task, owned by the task', async () => {
-			dummy.durable = true;
-			const { runner, metadata, durableJobProvisioner } = setup(durably);
-			metadata.register(DummySystemTask);
-
-			await runner.init();
-
-			expect(durableJobProvisioner.provision).toHaveBeenCalledTimes(1);
-			expect(durableJobProvisioner.provision).toHaveBeenCalledWith({
-				owner: { ownerType: 'system-task', ownerId: 'dummy', ownerMemberId: null },
-				taskType: 'system:dummy',
-				payload: {},
-				desired: [
-					{
-						name: 'system:dummy',
-						schedule: { kind: 'interval', intervalSeconds: 60 },
-						firstRunAt: new Date(START.getTime() + ONE_INTERVAL_MS),
-					},
-				],
-				misfirePolicy: 'coalesce',
-				misfireGraceSeconds: 60,
-				maxAttempts: 3,
-			});
-		});
-
-		it('provisions each durable task separately', async () => {
+		it('hands each durable task to the job registrar', async () => {
 			dummy.durable = true;
 			const other = new OtherDummySystemTask();
 			other.durable = true;
 			Container.set(OtherDummySystemTask, other);
-			const { runner, metadata, durableJobProvisioner } = setup(durably);
+			const { runner, metadata, jobRegistrar } = setup(durably);
 			metadata.register(DummySystemTask);
 			metadata.register(OtherDummySystemTask);
 
 			await runner.init();
 
-			expect(durableJobProvisioner.provision).toHaveBeenCalledTimes(2);
-			expect(durableJobProvisioner.provision.mock.calls.map(([request]) => request.owner)).toEqual([
-				{ ownerType: 'system-task', ownerId: 'dummy', ownerMemberId: null },
-				{ ownerType: 'system-task', ownerId: 'other-dummy', ownerMemberId: null },
-			]);
+			expect(jobRegistrar.provision.mock.calls).toEqual([[dummy], [other]]);
 		});
 
 		it('leaves a task on an in-memory timer unprovisioned', async () => {
-			const { runner, metadata, durableJobProvisioner } = setup(durably);
+			const { runner, metadata, jobRegistrar } = setup(durably);
 			metadata.register(DummySystemTask);
 
 			await runner.init();
 
-			expect(durableJobProvisioner.provision).not.toHaveBeenCalled();
+			expect(jobRegistrar.provision).not.toHaveBeenCalled();
 		});
 
 		it.each([
@@ -571,7 +624,7 @@ describe('SystemTaskRunner', () => {
 			'leaves a durable task unprovisioned while $case',
 			async ({ schedulerActive, enabledForSystemTasks }) => {
 				dummy.durable = true;
-				const { runner, metadata, durableJobProvisioner } = setup({
+				const { runner, metadata, jobRegistrar } = setup({
 					schedulerActive,
 					enabledForSystemTasks,
 				});
@@ -579,55 +632,40 @@ describe('SystemTaskRunner', () => {
 
 				await runner.init();
 
-				expect(durableJobProvisioner.provision).not.toHaveBeenCalled();
+				expect(jobRegistrar.provision).not.toHaveBeenCalled();
 			},
 		);
+	});
 
-		it('reports a task it cannot provision and provisions the rest', async () => {
+	describe('removing stale durable jobs', () => {
+		const durably = { schedulerActive: true, enabledForSystemTasks: true };
+
+		it('removes stale jobs once, after provisioning the wanted ones', async () => {
 			dummy.durable = true;
-			const other = new OtherDummySystemTask();
-			other.durable = true;
-			Container.set(OtherDummySystemTask, other);
-			const error = new Error('insert failed');
-			const { runner, metadata, durableJobProvisioner, errorReporter, logger } = setup(durably);
-			durableJobProvisioner.provision.mockRejectedValueOnce(error);
-			metadata.register(DummySystemTask);
-			metadata.register(OtherDummySystemTask);
-
-			await expect(runner.init()).resolves.toBeUndefined();
-
-			expect(errorReporter.error).toHaveBeenCalledExactlyOnceWith(error, {
-				extra: { systemTask: 'dummy' },
-				shouldBeLogged: false,
-				shouldIsolate: true,
-			});
-			expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('will not run'), {
-				name: 'dummy',
-				error,
-			});
-			expect(durableJobProvisioner.provision).toHaveBeenCalledTimes(2);
-		});
-
-		it('logs what the provisioning pass changed for each task', async () => {
-			dummy.durable = true;
-			const { runner, metadata, durableJobProvisioner, logger } = setup(durably);
-			durableJobProvisioner.provision.mockResolvedValue({
-				inserted: [{ id: 1, name: 'system:dummy' }],
-				redefined: [],
-				unchanged: [],
-				removed: [],
-			});
+			const { runner, metadata, jobRegistrar } = setup(durably);
 			metadata.register(DummySystemTask);
 
 			await runner.init();
 
-			expect(logger.debug).toHaveBeenCalledWith('Provisioned the durable job of a system task', {
-				name: 'dummy',
-				inserted: 1,
-				redefined: 0,
-				unchanged: 0,
-				removed: 0,
-			});
+			expect(jobRegistrar.removeStale).toHaveBeenCalledOnce();
+			const [provisioned] = jobRegistrar.provision.mock.invocationCallOrder;
+			const [removed] = jobRegistrar.removeStale.mock.invocationCallOrder;
+			expect(provisioned).toBeLessThan(removed);
+		});
+
+		it.each([
+			{
+				case: 'the durable scheduler is inactive',
+				schedulerActive: false,
+				enabledForSystemTasks: true,
+			},
+			{ case: 'the system-task flag is off', schedulerActive: true, enabledForSystemTasks: false },
+		])('removes stale jobs while $case', async ({ schedulerActive, enabledForSystemTasks }) => {
+			const { runner, jobRegistrar } = setup({ schedulerActive, enabledForSystemTasks });
+
+			await runner.init();
+
+			expect(jobRegistrar.removeStale).toHaveBeenCalledOnce();
 		});
 	});
 
@@ -745,6 +783,26 @@ describe('SystemTaskRunner', () => {
 
 			expect(durableScheduler.registerTaskHandler).not.toHaveBeenCalled();
 			expect(dummy.runCount).toBe(1);
+		});
+
+		it('declares a task it hands to the durable scheduler to the job owner', async () => {
+			dummy.durable = true;
+			const { runner, metadata, systemTaskOwner } = setup(durably);
+			metadata.register(DummySystemTask);
+
+			await runner.init();
+
+			await expect(systemTaskOwner.findExisting(['dummy'])).resolves.toEqual(new Set(['dummy']));
+		});
+
+		it('does not declare a task it keeps on a timer to the job owner', async () => {
+			dummy.durable = true;
+			const { runner, metadata, systemTaskOwner } = setup({ enabledForSystemTasks: false });
+			metadata.register(DummySystemTask);
+
+			await runner.init();
+
+			await expect(systemTaskOwner.findExisting(['dummy'])).resolves.toEqual(new Set());
 		});
 
 		it.each([0, -5, 2.5, NaN, Infinity, 2_147_484])(
