@@ -1,14 +1,8 @@
-import {
-	createTeamProject,
-	linkUserToProject,
-	testDb,
-	mockInstance,
-} from '@n8n/backend-test-utils';
+import { createTeamProject, linkUserToProject, testDb } from '@n8n/backend-test-utils';
 import { GLOBAL_MEMBER_ROLE, type User } from '@n8n/db';
 import { v4 as uuid } from 'uuid';
 import validator from 'validator';
 
-import { License } from '@/license';
 import { USER_QUOTA_FORBIDDEN_MESSAGE } from '@/public-api/v1/shared/middlewares/global.middleware';
 
 import {
@@ -20,10 +14,6 @@ import {
 } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
-
-mockInstance(License, {
-	getUsersLimit: vi.fn().mockReturnValue(-1),
-});
 
 const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
 
@@ -292,7 +282,7 @@ describe('With license without quota:users', () => {
 	let authOwnerAgent: SuperAgentTest;
 
 	beforeEach(async () => {
-		mockInstance(License, { getUsersLimit: vi.fn().mockReturnValue(null) });
+		testServer.license.setQuota('quota:users', 0);
 
 		const owner = await createOwnerWithApiKey();
 		authOwnerAgent = testServer.publicApiAgentFor(owner);
