@@ -174,7 +174,7 @@ describe('PromotionBindingPreflightService (directory + database)', () => {
 		});
 		const before = await snapshot();
 
-		const result = await service.checkDirectory({ sourceDir, user: owner });
+		const result = await service.checkDirectory({ sourceDir });
 
 		const alpha = { id: projectA.id, name: 'Alpha' };
 		const consumerAlpha = {
@@ -264,7 +264,7 @@ describe('PromotionBindingPreflightService (directory + database)', () => {
 			},
 		});
 
-		const first = await service.checkDirectory({ sourceDir, user: owner });
+		const first = await service.checkDirectory({ sourceDir });
 		expect(first).toMatchObject({ accessRequirements: [], conflicts: [], warnings: [] });
 		expect(first.missingBindings.map((binding) => binding.kind)).toEqual([
 			'credential',
@@ -277,7 +277,7 @@ describe('PromotionBindingPreflightService (directory + database)', () => {
 		);
 		await createVariable('REGION', 'global');
 
-		const second = await service.checkDirectory({ sourceDir, user: owner });
+		const second = await service.checkDirectory({ sourceDir });
 		expect(second).toMatchObject({ accessRequirements: [], conflicts: [], warnings: [] });
 		expect(second.missingBindings).toEqual([
 			expect.objectContaining({
@@ -290,7 +290,7 @@ describe('PromotionBindingPreflightService (directory + database)', () => {
 
 		await createProjectVariable('REGION', 'eu', projectA);
 
-		expect(await service.checkDirectory({ sourceDir, user: owner })).toEqual({
+		expect(await service.checkDirectory({ sourceDir })).toEqual({
 			missingBindings: [],
 			accessRequirements: [],
 			conflicts: [],
@@ -298,7 +298,7 @@ describe('PromotionBindingPreflightService (directory + database)', () => {
 		});
 	});
 
-	it('checks grants for each project independently of the caller and reads only requested facts', async () => {
+	it('checks grants for each project and reads only requested facts', async () => {
 		const member = await createMember();
 		const alpha = await createTeamProject('Alpha', member);
 		const beta = await createTeamProject('Beta', member);
@@ -344,8 +344,7 @@ describe('PromotionBindingPreflightService (directory + database)', () => {
 				},
 			],
 		};
-		expect(await service.checkDirectory({ sourceDir, user: owner })).toEqual(expected);
-		expect(await service.checkDirectory({ sourceDir, user: member })).toEqual(expected);
+		expect(await service.checkDirectory({ sourceDir })).toEqual(expected);
 		expect(
 			await Container.get(CredentialsRepository).findPromotionBindingAccess(
 				[credential.id],
@@ -392,7 +391,7 @@ describe('PromotionBindingPreflightService (directory + database)', () => {
 			]),
 		});
 		const before = await snapshot();
-		const result = await service.checkDirectory({ sourceDir, user: owner });
+		const result = await service.checkDirectory({ sourceDir });
 		expect(result).toEqual({
 			missingBindings: [],
 			warnings: [],
@@ -435,7 +434,7 @@ describe('PromotionBindingPreflightService (directory + database)', () => {
 			'projects/beta/workflows/w2/workflow.json': workflowFile('w2', [regionNode()]),
 			'variables/region/variable.json': { name: 'REGION', type: 'string', value: '' },
 		});
-		const first = await service.checkDirectory({ sourceDir, user: owner });
+		const first = await service.checkDirectory({ sourceDir });
 		expect(first).toMatchObject({ accessRequirements: [], conflicts: [] });
 		expect(first.missingBindings[0].consumers).toHaveLength(2);
 		expect(first.missingBindings).toEqual([
@@ -464,7 +463,7 @@ describe('PromotionBindingPreflightService (directory + database)', () => {
 		]);
 		await createVariable('REGION', 'target-global-value');
 		const before = await snapshot();
-		expect(await service.checkDirectory({ sourceDir, user: owner })).toEqual({
+		expect(await service.checkDirectory({ sourceDir })).toEqual({
 			missingBindings: [],
 			accessRequirements: [],
 			conflicts: [],
@@ -484,16 +483,14 @@ describe('PromotionBindingPreflightService (directory + database)', () => {
 		});
 		const before = await snapshot();
 
-		await expect(service.checkDirectory({ sourceDir, user: owner })).rejects.toThrow(
-			'is not valid JSON',
-		);
+		await expect(service.checkDirectory({ sourceDir })).rejects.toThrow('is not valid JSON');
 
 		expect(await snapshot()).toEqual(before);
 	});
 
 	it('rejects a missing source directory', async () => {
 		await expect(
-			service.checkDirectory({ sourceDir: path.join(sourceDir, 'missing'), user: owner }),
+			service.checkDirectory({ sourceDir: path.join(sourceDir, 'missing') }),
 		).rejects.toThrow();
 	});
 });

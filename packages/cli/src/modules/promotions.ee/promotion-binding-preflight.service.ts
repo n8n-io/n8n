@@ -4,7 +4,7 @@ import type {
 	PromotionBindingProject,
 	PromotionVariableScope,
 } from '@n8n/api-types';
-import { CredentialsRepository, ProjectRepository, VariablesRepository, type User } from '@n8n/db';
+import { CredentialsRepository, ProjectRepository, VariablesRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { UnexpectedError } from 'n8n-workflow';
 
@@ -19,6 +19,7 @@ import {
 	type InventoryWorkflow,
 	type PackageDirectoryInventory,
 } from '@/modules/n8n-packages/io/directory/package-directory-inventory-reader';
+import { PACKAGE_ENTITY_LAYOUT } from '@/modules/n8n-packages/io/manifest-entry';
 import { PackageImportConfig } from '@/modules/n8n-packages/n8n-packages.config';
 
 interface CredentialReference {
@@ -53,7 +54,7 @@ export class PromotionBindingPreflightService {
 	/** The caller must enforce inspection permissions. Project access does not depend on user visibility. */
 	async checkDirectory({
 		sourceDir,
-	}: { sourceDir: string; user: User }): Promise<PromotionBindingPreflightResult> {
+	}: { sourceDir: string }): Promise<PromotionBindingPreflightResult> {
 		const reader = new DirectoryPackageReader(sourceDir, this.packageImportConfig);
 		const inventory = await this.inventoryReader.read(reader);
 		const credentials = collectCredentialReferences(inventory);
@@ -86,19 +87,39 @@ export class PromotionBindingPreflightService {
 		const personalProjectIds = new Set(
 			targetProjects.filter(({ type }) => type === 'personal').map(({ id }) => id),
 		);
+		this.checkProjects(inventory, personalProjectIds, projectOf, result);
+		this.checkCredentials(credentials, targetCredentials, personalProjectIds, projectOf, result);
+		this.checkVariables(variables, targetVariables, personalProjectIds, projectOf, result);
+		return result;
+	}
+
+	private checkProjects(
+		inventory: PackageDirectoryInventory,
+		personalProjectIds: ReadonlySet<string>,
+		projectOf: ProjectLookup,
+		result: PromotionBindingPreflightResult,
+	): void {
 		for (const project of [...inventory.projects].sort((a, b) => compare(a.id, b.id))) {
 			if (!personalProjectIds.has(project.id)) continue;
 			result.conflicts.push({
 				kind: 'project',
 				code: 'project-not-team',
 				project: projectOf(project.id),
-				filePath: `${project.path}/project.json`,
+				filePath: `${project.path}/${PACKAGE_ENTITY_LAYOUT.projects.fileName}`,
 				workflows: workflowRefs(
 					inventory.workflows.filter(({ projectId }) => projectId === project.id),
 				),
 			});
 		}
+	}
 
+	private checkCredentials(
+		credentials: CredentialReference[],
+		targetCredentials: Awaited<ReturnType<CredentialsRepository['findPromotionBindingAccess']>>,
+		personalProjectIds: ReadonlySet<string>,
+		projectOf: ProjectLookup,
+		result: PromotionBindingPreflightResult,
+	): void {
 		const credentialsById = new Map(
 			targetCredentials.map((credential) => [credential.id, credential]),
 		);
@@ -162,7 +183,15 @@ export class PromotionBindingPreflightService {
 				});
 			}
 		}
+	}
 
+	private checkVariables(
+		variables: VariableReference[],
+		targetVariables: Awaited<ReturnType<VariablesRepository['findKeysInProjectsOrGlobal']>>,
+		personalProjectIds: ReadonlySet<string>,
+		projectOf: ProjectLookup,
+		result: PromotionBindingPreflightResult,
+	): void {
 		const existingVariables = new Set(
 			targetVariables.map(({ key, projectId }) => variableKey(key, projectId)),
 		);
@@ -210,7 +239,6 @@ export class PromotionBindingPreflightService {
 				}
 			}
 		}
-		return result;
 	}
 }
 

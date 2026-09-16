@@ -421,7 +421,6 @@ export class PromotionsService {
 
 		const preflight = await this.bindingPreflight.checkDirectory({
 			sourceDir: packageFolder,
-			user: actor,
 		});
 		if (
 			preflight.missingBindings.length > 0 ||

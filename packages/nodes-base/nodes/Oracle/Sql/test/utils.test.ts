@@ -1,15 +1,145 @@
 import { DateTime } from 'luxon';
-import * as oracleDBTypes from 'oracledb';
 import type { IDataObject, IExecuteFunctions, INode, INodeExecutionData } from 'n8n-workflow';
+import * as oracleDBTypes from 'oracledb';
+import { mock } from 'vitest-mock-extended';
 
-import type { ExecuteOpBindParam } from '../helpers/interfaces';
+import type { ColumnMap, ExecuteOpBindParam } from '../helpers/interfaces';
 import {
 	addSortRules,
+	addWhereClauses,
 	configureQueryRunner,
+	escapeSqlStringLiteral,
 	getBindParameters,
 	getCompatibleValue,
 	getOutBindDefsForExecute,
+	quoteSqlIdentifier,
 } from '../helpers/utils';
+
+describe('Test addWhereClauses', () => {
+	const schema: ColumnMap = { ID: { type: 'NUMBER', nullable: true, maxSize: 0 } };
+	const node = mock<INode>();
+
+	const build = (condition: string, value: unknown = 1) =>
+		addWhereClauses(
+			'DELETE FROM "T"',
+			[{ column: 'ID', condition, value }],
+			'AND',
+			schema,
+			node,
+			0,
+		);
+
+	it('should normalise the "equal" operator to =', () => {
+		const [query] = build('equal');
+		expect(query).toEqual('DELETE FROM "T" WHERE "ID" = :0');
+	});
+
+	it('should keep the column and value out of the concatenated SQL', () => {
+		const [query, binds] = build('>', 5);
+		expect(query).toEqual('DELETE FROM "T" WHERE "ID" > :0');
+		expect(binds).toHaveLength(1);
+	});
+
+	it('should build value-less clauses for IS NULL / IS NOT NULL', () => {
+		const [query, binds] = build('IS NULL', undefined);
+		expect(query).toEqual('DELETE FROM "T" WHERE "ID" IS NULL');
+		expect(binds).toHaveLength(0);
+	});
+
+	it.each(['<>', '^=', 'NOT LIKE'])('should accept the %s operator synonym', (condition) => {
+		const [query] = build(condition);
+		expect(query).toEqual(`DELETE FROM "T" WHERE "ID" ${condition} :0`);
+	});
+
+	it('should accept a lowercase operator, normalising it to uppercase', () => {
+		const [query] = build('like');
+		expect(query).toEqual('DELETE FROM "T" WHERE "ID" LIKE :0');
+	});
+
+	it('should accept a lowercase "is null" and build a value-less clause', () => {
+		const [query, binds] = build('is null', undefined);
+		expect(query).toEqual('DELETE FROM "T" WHERE "ID" IS NULL');
+		expect(binds).toHaveLength(0);
+	});
+
+	it('should tolerate surrounding whitespace in the operator', () => {
+		const [query] = build('  =  ');
+		expect(query).toEqual('DELETE FROM "T" WHERE "ID" = :0');
+	});
+
+	it('should reject an operator outside the allowed set', () => {
+		expect(() => build("= 'x' OR 1=1 --")).toThrow('is not valid');
+	});
+
+	it('should reject an empty operator', () => {
+		expect(() => build('')).toThrow('is not valid');
+	});
+
+	it.each([5, null, { op: '=' }])(
+		'should reject the non-string operator %o with the operator error',
+		(condition) => {
+			expect(() => build(condition as unknown as string)).toThrow('is not valid');
+		},
+	);
+});
+
+describe('Test quoteSqlIdentifier', () => {
+	it('should wrap a simple identifier in double quotes', () => {
+		expect(quoteSqlIdentifier('employees')).toEqual('"employees"');
+	});
+
+	it('should quote each part of a dot-separated identifier', () => {
+		expect(quoteSqlIdentifier('scott.employees')).toEqual('"scott"."employees"');
+	});
+
+	it('should preserve an already-quoted identifier', () => {
+		expect(quoteSqlIdentifier('"My Table"')).toEqual('"My Table"');
+	});
+
+	it('should trim surrounding whitespace before quoting', () => {
+		expect(quoteSqlIdentifier('  employees  ')).toEqual('"employees"');
+	});
+
+	it('should reject an identifier containing a double quote', () => {
+		expect(() => quoteSqlIdentifier('my"table')).toThrow('is not valid');
+	});
+
+	it('should accept a single quote, which is legal in an Oracle identifier', () => {
+		expect(quoteSqlIdentifier("O'Brien")).toEqual('"O\'Brien"');
+	});
+
+	it('should preserve a single quote inside an already-quoted identifier', () => {
+		expect(quoteSqlIdentifier('"O\'Brien"')).toEqual('"O\'Brien"');
+	});
+
+	it('should quote (not reject) a value crafted to close a string literal', () => {
+		// The literal-context safety comes from escapeSqlStringLiteral, not from rejection here.
+		expect(quoteSqlIdentifier("X') PURGE; EXECUTE IMMEDIATE 'DROP TABLE SENSITIVE_DATA")).toEqual(
+			'"X\') PURGE; EXECUTE IMMEDIATE \'DROP TABLE SENSITIVE_DATA"',
+		);
+	});
+
+	it('should reject a double-dot identifier', () => {
+		expect(() => quoteSqlIdentifier('my..column')).toThrow('is not valid');
+	});
+});
+
+describe('Test escapeSqlStringLiteral', () => {
+	it('should double a single quote so it cannot terminate a literal', () => {
+		expect(escapeSqlStringLiteral('"O\'Brien"')).toEqual('"O\'\'Brien"');
+	});
+
+	it('should leave a value without single quotes unchanged', () => {
+		expect(escapeSqlStringLiteral('"scott"."employees"')).toEqual('"scott"."employees"');
+	});
+
+	it('should neutralise an identifier crafted to close the DROP literal', () => {
+		const quoted = quoteSqlIdentifier("X') PURGE; EXECUTE IMMEDIATE 'DROP TABLE SENSITIVE_DATA");
+		expect(escapeSqlStringLiteral(quoted)).toEqual(
+			"\"X'') PURGE; EXECUTE IMMEDIATE ''DROP TABLE SENSITIVE_DATA\"",
+		);
+	});
+});
 
 describe('Test addSortRules', () => {
 	it('should ORDER BY ASC', () => {

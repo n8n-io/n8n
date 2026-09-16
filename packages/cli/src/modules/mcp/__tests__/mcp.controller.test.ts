@@ -410,13 +410,12 @@ describe('McpController', () => {
 			{ mcpApps: { enabled: true, variant: 'variant' }, canvasGroupsEnabled: false },
 			{ name: 'Claude', version: '1.0.0' },
 			{ caller: undefined, grantedScopes: undefined },
-			{ isConnectionHandshake: true },
 		);
 	});
 
 	// The 2026-07-28 revision drops `initialize`, so a modern client opens with
-	// `server/discover`. It is the other branch of `isConnectionHandshake`, and the
-	// one that has to reach `getServer` for the handshake-only reads to happen.
+	// `server/discover`. It is the other branch of `isConnectionHandshake`, which still
+	// labels the connection telemetry.
 	test('forwards server/discover to getServer as the connection handshake', async () => {
 		(mcpSettingsService.getEnabled as Mock).mockResolvedValue(true);
 		(mcpService.getServer as unknown as Mock).mockReturnValue({
@@ -452,7 +451,6 @@ describe('McpController', () => {
 			expect.objectContaining({ aiPreferencesEnabled: true }),
 			{ name: 'Claude', version: '1.0.0' },
 			{ caller: undefined, grantedScopes: undefined },
-			{ isConnectionHandshake: true },
 		);
 	});
 
@@ -486,7 +484,6 @@ describe('McpController', () => {
 			{ mcpApps: { enabled: false, variant: 'control' }, canvasGroupsEnabled: false },
 			undefined,
 			{ caller: undefined, grantedScopes: undefined },
-			{ isConnectionHandshake: false },
 		);
 		// Non-initialize requests still skip telemetry tracking.
 		expect(telemetry.track).not.toHaveBeenCalled();
@@ -520,7 +517,6 @@ describe('McpController', () => {
 				caller: { authType: 'oauth', clientId: 'client-abc' },
 				grantedScopes: ['workflow:read'],
 			},
-			{ isConnectionHandshake: false },
 		);
 	});
 
