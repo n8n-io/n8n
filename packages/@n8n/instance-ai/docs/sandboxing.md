@@ -151,17 +151,19 @@ node --import tsx build.mjs <source-file>
 The tool then performs server-side workflow validation, resolves credentials,
 and saves the workflow through the backend service.
 
-If source construction or workflow validation fails, the tool runs supplemental
+If source construction or source validation fails, the tool runs supplemental
 TypeScript diagnostics after automatic import recovery. This pass checks the
 requested file and its imports. It uses the sandbox compiler options and the
 installed SDK declarations. It uses the pinned TypeScript 7.0.2 experimental
 async API. Verify the API contract before upgrading. It does not check unrelated
-workflow files or execute the source.
+workflow files or execute the source. Chat-model and node-group validation
+failures do not start this pass.
 
-The package build compiles `src/workspace/workflow-diagnostics-worker.ts`.
-Setup copies the output into new sandboxes as `workflow-diagnostics.cjs`.
-Snapshot builds include this file. The tool executes it with Node.
-Run the package build after worker changes before testing from source.
+The package includes `assets/workflow-diagnostics.mts` as a source asset.
+Setup copies it into new sandboxes as `workflow-diagnostics.mts`.
+Snapshot builds include this file. The tool runs it with `node --import tsx`.
+The worker extends the sandbox's `tsconfig.json` and selects the requested file.
+Worker changes do not require a package build before testing from source.
 
 Initialized sandboxes keep their existing compiler and files. Sandboxes without
 the worker or pinned compiler return the original build errors. They receive

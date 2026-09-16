@@ -531,7 +531,9 @@ async function handleValidationFailure(args: ValidationFailureArgs) {
 		(e) => `[${e.code}]${e.nodeName ? ` (${e.nodeName})` : ''}: ${e.message}`,
 	);
 	const formattedErrors = withEscalation(
-		await appendWorkflowSourceDiagnostics(context, filePath, validationErrors, args.abortSignal),
+		reason === 'workflow_source_validation_failed'
+			? await appendWorkflowSourceDiagnostics(context, filePath, validationErrors, args.abortSignal)
+			: validationErrors,
 		{ trackingErrors: validationErrors },
 	);
 	const remediation = createCodeFixableRemediation({ reason, guidance });

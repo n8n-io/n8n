@@ -202,7 +202,7 @@ describe('SnapshotManager.ensureImage', () => {
 
 		const stagingDir = image.contextList[0]?.sourcePath;
 		expect(stagingDir).toBeDefined();
-		await expect(readFile(join(stagingDir, 'workflow-diagnostics.cjs'), 'utf8')).resolves.toContain(
+		await expect(readFile(join(stagingDir, 'workflow-diagnostics.mts'), 'utf8')).resolves.toContain(
 			'typescript/unstable/async',
 		);
 		expect(stagingDir).toContain('n8n-snapshot-context-1.123.0');

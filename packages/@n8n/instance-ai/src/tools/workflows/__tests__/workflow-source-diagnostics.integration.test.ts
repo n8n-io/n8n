@@ -8,6 +8,7 @@ import { promisify } from 'node:util';
 import {
 	loadWorkflowDiagnosticsWorker,
 	SANDBOX_TYPESCRIPT_VERSION,
+	TSCONFIG_JSON,
 	WORKFLOW_DIAGNOSTICS_FILENAME,
 } from '../../../workspace/sandbox-typescript';
 
@@ -25,6 +26,8 @@ describe('sandbox TypeScript diagnostics', () => {
 			await loadWorkflowDiagnosticsWorker(),
 		);
 		await writeFile(join(root, 'package.json'), JSON.stringify({ type: 'module' }));
+		await writeFile(join(root, 'tsconfig.json'), TSCONFIG_JSON);
+		await symlink(dirname(require.resolve('tsx/package.json')), join(root, 'node_modules/tsx'));
 		await mkdir(join(root, 'node_modules/@types'));
 		await symlink(
 			dirname(require.resolve('@types/node/package.json')),
@@ -50,7 +53,7 @@ describe('sandbox TypeScript diagnostics', () => {
 		await writeFile(join(root, 'src/main.ts'), source);
 		const { stdout } = await exec(
 			process.execPath,
-			[WORKFLOW_DIAGNOSTICS_FILENAME, './src/main.ts'],
+			['--import', 'tsx', WORKFLOW_DIAGNOSTICS_FILENAME, './src/main.ts'],
 			{ cwd: root, timeout: 10_000 },
 		);
 		return jsonParse<string[]>(stdout);

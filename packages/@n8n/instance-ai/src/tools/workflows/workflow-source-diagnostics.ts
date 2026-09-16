@@ -34,7 +34,7 @@ export async function appendWorkflowSourceDiagnostics(
 			const sourcePath = joinWorkspacePath(root, filePath);
 			return await runInSandbox(
 				workspace,
-				`exec node --max-old-space-size=512 ${WORKFLOW_DIAGNOSTICS_FILENAME} '${escapeSingleQuotes(sourcePath)}'`,
+				`exec node --max-old-space-size=512 --import tsx ${WORKFLOW_DIAGNOSTICS_FILENAME} '${escapeSingleQuotes(sourcePath)}'`,
 				{ cwd: root, abortSignal: diagnosticSignal, timeout: DIAGNOSTIC_TIMEOUT_MS },
 			);
 		}, diagnosticSignal);

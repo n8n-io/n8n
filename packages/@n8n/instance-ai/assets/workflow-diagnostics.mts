@@ -1,27 +1,6 @@
 import path from 'node:path';
 import type { Diagnostic } from 'typescript/unstable/async';
 
-// Pin the experimental API. Verify its contract before upgrading.
-export const SANDBOX_TYPESCRIPT_VERSION = '7.0.2';
-
-const TSCONFIG = {
-	compilerOptions: {
-		strict: true,
-		// The SDK types mark onTrue/onFalse as optional. They are present at runtime.
-		strictNullChecks: false,
-		noEmit: true,
-		target: 'ES2022',
-		types: ['node'],
-		module: 'ES2022',
-		moduleResolution: 'bundler',
-		esModuleInterop: true,
-		skipLibCheck: true,
-	},
-	include: ['src/**/*.ts', 'chunks/**/*.ts'],
-};
-
-export const TSCONFIG_JSON = JSON.stringify(TSCONFIG, null, 2);
-
 function formatMessage(diagnostic: Diagnostic, indent = ''): string {
 	return [
 		indent + diagnostic.text,
@@ -37,7 +16,7 @@ async function main(): Promise<void> {
 	const cwd = process.cwd();
 	const configPath = path.join(cwd, `.workflow-diagnostics-${process.pid}.json`);
 	const config = JSON.stringify({
-		...TSCONFIG,
+		extends: './tsconfig.json',
 		files: [path.resolve(process.argv[2])],
 		include: [],
 	});
@@ -86,7 +65,4 @@ async function main(): Promise<void> {
 	}
 }
 
-// The host imports the config. Only the sandbox executes the worker.
-if (require.main === module) {
-	void main();
-}
+await main();

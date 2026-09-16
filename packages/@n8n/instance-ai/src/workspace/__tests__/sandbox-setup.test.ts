@@ -311,7 +311,7 @@ describe('setupSandboxWorkspace', () => {
 
 		await setupSandboxWorkspace(createFilesystemWorkspace(writeFile), createSetupContext());
 		expect(writeFile).toHaveBeenCalledWith(
-			'/home/daytona/workspace/workflow-diagnostics.cjs',
+			'/home/daytona/workspace/workflow-diagnostics.mts',
 			expect.any(String),
 			{ recursive: true },
 		);
@@ -398,7 +398,7 @@ describe('setupSandboxWorkspace', () => {
 		expect(initialized).toBe(false);
 		expect(installCommandsFrom(runInSandbox)).toEqual([]);
 		const writtenPaths = writeFile.mock.calls.map(([path]) => path);
-		expect(writtenPaths).not.toContain('/sandbox/workflow-diagnostics.cjs');
+		expect(writtenPaths).not.toContain('/sandbox/workflow-diagnostics.mts');
 		expect(writtenPaths.some((p) => p.includes('/knowledge-base/templates/'))).toBe(true);
 	});
 
