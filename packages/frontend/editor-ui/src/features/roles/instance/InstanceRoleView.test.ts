@@ -42,7 +42,7 @@ const mockCustomRole = {
 	displayName: 'Support',
 	slug: 'support',
 	description: 'A custom instance role',
-	// The mandatory options every instance role carries — see instanceRoleScopes.ts.
+	// The mandatory options every instance role carries — see MANDATORY_INSTANCE_OPTIONS.
 	scopes: ['user:list', 'tag:read', 'tag:list'],
 	licensed: true,
 	systemRole: false,
