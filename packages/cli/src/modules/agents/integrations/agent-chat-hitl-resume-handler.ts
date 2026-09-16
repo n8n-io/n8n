@@ -130,7 +130,6 @@ export class AgentChatHitlResumeHandler {
 	): Promise<{
 		actionId: string;
 		value: string | undefined;
-		kind?: 'approval';
 		label?: string;
 	} | null> {
 		if (!this.options.callbackStore) return { actionId, value };
@@ -146,7 +145,6 @@ export class AgentChatHitlResumeHandler {
 		return {
 			actionId: resolved.actionId,
 			value: resolved.value,
-			kind: resolved.kind,
 			label: resolved.label,
 		};
 	}
@@ -155,7 +153,7 @@ export class AgentChatHitlResumeHandler {
 	private async cleanUpBeforeResume(
 		event: ActionEvent,
 		resumeData: unknown,
-		callbackData: { kind?: 'approval'; label?: string },
+		callbackData: { label?: string },
 	): Promise<void> {
 		if (this.options.deleteActionMessageBeforeResume) {
 			try {
@@ -169,8 +167,10 @@ export class AgentChatHitlResumeHandler {
 		}
 
 		try {
-			const approved =
-				callbackData.kind === 'approval' ? this.getApprovalDecision(resumeData) : undefined;
+			// Read the decision off the payload, not off store metadata: the button
+			// value already carries `{ approved }` whenever the tool's resume schema
+			// declares it, so platforms without a CallbackStore get it too.
+			const approved = this.getApprovalDecision(resumeData);
 			const message = this.options.formatActionDecisionMessage?.({
 				...(approved !== undefined ? { approved } : {}),
 				...(callbackData.label !== undefined ? { selectedLabel: callbackData.label } : {}),

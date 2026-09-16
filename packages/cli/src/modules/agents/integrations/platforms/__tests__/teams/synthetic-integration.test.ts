@@ -150,6 +150,14 @@ describe('Microsoft Teams integration scenarios', () => {
 						displayName: 'Send Teams message',
 						args: { text: 'Continue?' },
 					},
+					// What the approval gate really sends: APPROVAL_RESUME_SCHEMA as
+					// JSON Schema. Without it the mapper encodes the button value as a
+					// bare string, and no decision reaches the formatter.
+					resumeSchema: {
+						type: 'object',
+						properties: { approved: { type: 'boolean' } },
+						required: ['approved'],
+					},
 				},
 				{ type: 'finish', finishReason: 'stop' },
 			],
@@ -178,9 +186,8 @@ describe('Microsoft Teams integration scenarios', () => {
 				}),
 			);
 
-			// Generic wording: no CallbackStore, so no decision reaches the formatter.
 			expect(ctx.lastEdit()?.body).toMatchObject({
-				text: '✅ Action selected by Alice',
+				text: '✅ Approved by Alice',
 			});
 		} finally {
 			await ctx.shutdown();

@@ -140,6 +140,15 @@ export class TeamsIntegration extends AgentChatIntegration {
 		return expandSelectsToButtons(components);
 	}
 
+	/**
+	 * Two things a settled Teams card cannot say, both for want of a carrier
+	 * rather than by choice:
+	 * - `selectedLabel` for a non-approval button. The inbound `Action.Submit`
+	 *   data is `{ actionId, value }`, with no button title, and Teams has no
+	 *   CallbackStore to look one up in — hence the generic fallback.
+	 * - The original question. The card-action activity carries the source
+	 *   message id, not the card, so restoring it needs a Graph or Bot API fetch.
+	 */
 	formatActionDecisionMessage({
 		approved,
 		selectedLabel,

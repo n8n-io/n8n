@@ -45,7 +45,7 @@ import {
 	AgentChatStreamConsumer,
 	type SuspensionHandlingResult,
 } from './agent-chat-stream-consumer';
-import { buildSuspendCardPayload, isApprovalSuspendPayload } from './agent-chat-suspension-cards';
+import { buildSuspendCardPayload } from './agent-chat-suspension-cards';
 import { CallbackStore, type CallbackMetadata } from './callback-store';
 import type { ComponentMapper, ShortenCallback } from './component-mapper';
 import { loadChatSdk } from './esm-loader';
@@ -1018,7 +1018,6 @@ export class AgentChatBridge {
 		if (!cardPayload) return 'skipped';
 		const callbackMetadata: CallbackMetadata = {
 			groupId: JSON.stringify([runId, toolCallId]),
-			...(isApprovalSuspendPayload(suspendPayload) ? { kind: 'approval' } : {}),
 		};
 
 		try {
