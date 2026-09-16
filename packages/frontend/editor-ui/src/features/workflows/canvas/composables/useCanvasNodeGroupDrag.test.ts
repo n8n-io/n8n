@@ -343,7 +343,7 @@ describe('useCanvasNodeGroupDrag', () => {
 				x: snapToGrid(120 - GROUP_PADDING_X),
 				y: snapToGrid(200 - GROUP_PADDING_Y_TOP - GROUP_HEADER_HEIGHT),
 			});
-			expect(patch.width).toBe(GROUP_HEADER_WIDTH_COLLAPSED);
+			expect(patch.width).toBe(Math.max(280 + 2 * GROUP_PADDING_X, GROUP_HEADER_WIDTH_COLLAPSED));
 			expect(patch.data.foo).toBe('bar'); // preserves other data fields
 			expect(patch.data.nodesRect).toEqual({ x: 120, y: 200, width: 280, height: 100 });
 		});
