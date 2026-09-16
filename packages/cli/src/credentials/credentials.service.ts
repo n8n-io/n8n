@@ -194,6 +194,20 @@ type WorkflowCredentialResult = {
 	currentUserHasAccess: boolean;
 } & CredentialConnectionStatus;
 
+/**
+ * Trims a written description and stores a blank one as `null`, so reads have a
+ * single "unset" value. `undefined` means the caller left the field alone.
+ */
+function normalizeCredentialDescription(
+	description: string | null | undefined,
+): string | null | undefined {
+	if (description === undefined) return undefined;
+	if (description === null) return null;
+
+	const trimmed = description.trim();
+	return trimmed === '' ? null : trimmed;
+}
+
 /** Codes an auth probe must not treat as rejection, stored as a JSON array in the credential. */
 function parseAcceptedStatusCodes(raw: unknown): number[] | undefined {
 	if (typeof raw !== 'string' || raw.trim() === '') return undefined;
@@ -792,6 +806,10 @@ export class CredentialsService {
 		const dataMerge = options?.dataMerge ?? 'unredact';
 
 		const mergedData = deepCopy(data);
+		if (data.description !== undefined) {
+			// Normalize before validateEntity so the cap applies to the trimmed value.
+			mergedData.description = normalizeCredentialDescription(data.description);
+		}
 		if (mergedData.data) {
 			mergedData.data = this.applyDataMerge(
 				mergedData.data,
@@ -1984,6 +2002,8 @@ export class CredentialsService {
 			data: opts.data as ICredentialDataDecryptedObject,
 		});
 
+		encryptedCredential.description = normalizeCredentialDescription(opts.description) ?? null;
+
 		// Set isGlobal if provided in the payload and user has permission
 		const isGlobal = opts.isGlobal;
 		if (isGlobal === true) {
@@ -2055,6 +2075,7 @@ export class CredentialsService {
 		this.validateCredentialData(opts.type, hookedData);
 		const credentialEntity = this.credentialsRepository.create({
 			...encryptedCredential,
+			description: normalizeCredentialDescription(opts.description) ?? null,
 			isManaged: false,
 			isResolvable: false,
 			usageScope: 'instance' as const,

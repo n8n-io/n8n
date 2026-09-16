@@ -13,6 +13,8 @@ type CredentialPackageKeyHandling = {
 	createdAt: 'exclude';
 	updatedAt: 'exclude';
 	name: 'copy';
+	// Local note on the instance, not part of the package format.
+	description: 'exclude';
 	data: 'transform';
 	type: 'copy';
 	shared: 'exclude';

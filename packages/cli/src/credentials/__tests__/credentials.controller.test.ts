@@ -502,6 +502,54 @@ describe('CredentialsController', () => {
 			);
 		});
 
+		describe('description', () => {
+			const updateRequest = (body: Record<string, unknown>) =>
+				({
+					user: { id: 'owner-id', role: GLOBAL_OWNER_ROLE },
+					params: { credentialId },
+					body: {
+						name: 'Updated Credential',
+						type: 'apiKey',
+						data: { apiKey: 'updated-key' },
+						...body,
+					},
+				}) as unknown as CredentialRequest.Update;
+
+			beforeEach(() => {
+				credentialsFinderService.findCredentialForUser.mockResolvedValue(existingCredential);
+				updateSpy.mockResolvedValue({ ...existingCredential, name: 'Updated Credential' });
+			});
+
+			it.each([
+				['writes a description the payload sends', 'Read-only reporting key.'],
+				['clears a description the payload blanks out', null],
+			])('%s', async (_label, prepared) => {
+				const req = updateRequest({ description: prepared ?? '  ' });
+				// The service normalizes; the controller only decides whether to write it.
+				prepareUpdateDataSpy.mockResolvedValue({ ...req.body, description: prepared });
+
+				await credentialsController.updateCredentials(req);
+
+				expect(updateSpy).toHaveBeenCalledWith(
+					credentialId,
+					expect.objectContaining({ description: prepared }),
+					expect.anything(),
+					expect.any(Object),
+				);
+			});
+
+			it('leaves the stored description alone when the payload omits the field', async () => {
+				const req = updateRequest({});
+				prepareUpdateDataSpy.mockResolvedValue({ ...req.body });
+
+				await credentialsController.updateCredentials(req);
+
+				// `not.objectContaining({ description: expect.anything() })` would also pass
+				// for an explicit `null`, which is the wipe this guard exists to prevent.
+				expect(updateSpy.mock.calls[0][1]).not.toHaveProperty('description');
+			});
+		});
+
 		it('should emit "credentials-updated" with jweEnabled true when JWE is enabled in payload', async () => {
 			// ARRANGE
 			const ownerReq = {
