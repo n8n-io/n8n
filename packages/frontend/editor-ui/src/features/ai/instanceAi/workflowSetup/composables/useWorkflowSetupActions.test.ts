@@ -36,7 +36,7 @@ interface Harness {
 	actions: ReturnType<typeof useWorkflowSetupActions>;
 }
 
-function setupHarness(): Harness {
+function setupHarness(opts: { isReady?: boolean } = {}): Harness {
 	const sectionA = makeWorkflowSetupSection({
 		id: 'A:typeA',
 		targetNodeName: 'A',
@@ -49,7 +49,7 @@ function setupHarness(): Harness {
 	});
 	const sections = computed(() => [sectionA, sectionB]);
 	const currentStepIndex = ref(0);
-	const isReady = ref(true);
+	const isReady = ref(opts.isReady ?? true);
 	const activeSection = computed<WorkflowSetupSection | undefined>(
 		() => sections.value[currentStepIndex.value],
 	);
@@ -168,6 +168,15 @@ describe('useWorkflowSetupActions', () => {
 				label: expect.anything(),
 			}),
 		);
+	});
+
+	it('does not track a step as shown until bootstrap is ready', async () => {
+		const h = setupHarness({ isReady: false });
+		expect(getTelemetryCalls('Instance AI workflow setup step shown')).toHaveLength(0);
+
+		h.isReady.value = true;
+		await nextTick();
+		expect(getTelemetryCalls('Instance AI workflow setup step shown')).toHaveLength(1);
 	});
 
 	it('marks the active section skipped and advances to the next unhandled step without calling the API', async () => {

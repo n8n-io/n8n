@@ -129,16 +129,18 @@ export function useWorkflowSetupTelemetry(deps: {
 	}
 
 	// A primitive source so the callback only runs when the active section or
-	// its outcome changes, not on every unrelated reactive tick.
+	// its outcome changes, not on every unrelated reactive tick. The source is
+	// undefined until bootstrap finishes: the wizard is not on screen yet and
+	// parameter completeness is unknown before node types load.
 	watch(
 		() => {
 			const section = deps.isReady.value ? deps.activeSection.value : undefined;
 			if (!section) return undefined;
 			return `${getTrackingStepKey(section)}:${getStepOutcome(section) ?? 'pending'}`;
 		},
-		() => {
+		(trackedKey) => {
 			const section = deps.activeSection.value;
-			if (!section) return;
+			if (trackedKey === undefined || !section) return;
 			trackStepShown(section);
 			trackStepHandled(section);
 		},
