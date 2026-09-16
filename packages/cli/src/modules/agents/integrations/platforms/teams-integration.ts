@@ -40,9 +40,16 @@ const TENANT_ID_DOMAIN =
  * endpoint is configured once in Azure Bot Service, so there is no API call to
  * register or release it and no `onAfterConnect`/`onBeforeDisconnect` hook.
  *
- * This first slice targets 1:1 direct messages. Group chats and channels are not
- * blocked, but they are untested: without RSC permissions Teams only delivers an
- * @-mention there, so nothing arrives ambiently.
+ * Direct messages, team channels and group chats are all supported. Outside a
+ * DM the bot must be @-mentioned once; the mention subscribes the conversation,
+ * so later messages reach the agent without a mention. In a channel that
+ * subscription covers the one thread, because the thread id carries the root
+ * message id. In a group chat it covers the whole chat.
+ *
+ * Ambient delivery depends on the RSC permissions in the app manifest
+ * (`ChannelMessage.Read.Group`, `ChatMessage.Read.Chat`). Teams grants them when
+ * the app is added to a team or a chat, and they also make Teams deliver every
+ * message rather than mentions alone.
  */
 @Service()
 export class TeamsIntegration extends AgentChatIntegration {
@@ -59,13 +66,15 @@ export class TeamsIntegration extends AgentChatIntegration {
 
 	readonly builderGuidance = {
 		capabilities: [
-			'Receive Microsoft Teams direct messages as agent triggers.',
-			'Respond in the same Microsoft Teams conversation.',
+			'Receive Microsoft Teams direct messages, team channel messages and group chat messages as agent triggers.',
+			'Respond in the same Microsoft Teams conversation, and in the same channel thread.',
+			'Stay in the conversation after an @-mention, so later messages need no mention.',
 			'Render Adaptive Cards with buttons.',
 		],
 		useIntegrationWhen: [
 			'The agent should be chatted with from Microsoft Teams or act as a Teams bot.',
 			'The agent needs to reply to Teams users in the same conversation context.',
+			'The agent should take part in a Microsoft Teams channel or group chat.',
 		],
 		useNodeToolWhen: [
 			'Microsoft Teams is only a backend API step and the agent does not need to be connected as a Teams chat surface.',

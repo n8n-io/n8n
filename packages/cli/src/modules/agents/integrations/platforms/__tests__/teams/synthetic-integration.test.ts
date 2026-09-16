@@ -3,10 +3,17 @@ import { isRecord } from '@n8n/utils/is-record';
 import { createTeamsReplayContext } from '../../../__tests__/helpers/teams/replay-test-context';
 import {
 	cardAction,
+	channelFollowUp,
+	channelMention,
+	channelSecondThreadMention,
 	dmFollowUp,
 	dmMessage,
+	groupChatFollowUp,
+	groupChatMention,
 	selfMessage,
+	TEAMS_CHANNEL_CONVERSATION_ID,
 	TEAMS_DM_CONVERSATION_ID,
+	TEAMS_GROUP_CHAT_CONVERSATION_ID,
 	TEAMS_USER_ID,
 } from '../../../__tests__/helpers/teams/synthetic-fixtures';
 
@@ -182,6 +189,129 @@ describe('Microsoft Teams integration scenarios', () => {
 			expect(ctx.lastEdit()?.body).toMatchObject({
 				text: '✅ Action selected by Alice',
 			});
+		} finally {
+			await ctx.shutdown();
+		}
+	});
+
+	it('routes a team channel mention to the agent and replies in the same thread', async () => {
+		const ctx = await createTeamsReplayContext();
+		try {
+			await expect(ctx.sendWebhook(channelMention)).resolves.toMatchObject({ status: 200 });
+
+			expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message: '@n8n Agent hello agent',
+					author: { id: TEAMS_USER_ID, name: 'Alice' },
+					integrationType: 'teams',
+				}),
+			);
+			expect(ctx.lastPost()?.body).toMatchObject({
+				type: 'message',
+				text: 'Got it',
+				conversation: { id: TEAMS_CHANNEL_CONVERSATION_ID },
+			});
+		} finally {
+			await ctx.shutdown();
+		}
+	});
+
+	it('routes an unmentioned follow-up in a subscribed channel thread to the same session', async () => {
+		const ctx = await createTeamsReplayContext();
+		try {
+			await ctx.sendWebhook(channelMention);
+			const firstThreadId = ctx.latestThreadId();
+
+			await ctx.sendWebhook(channelFollowUp);
+
+			expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenCalledTimes(2);
+			expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenLastCalledWith(
+				expect.objectContaining({ message: 'follow up' }),
+			);
+			expect(ctx.latestThreadId()).toBe(firstThreadId);
+		} finally {
+			await ctx.shutdown();
+		}
+	});
+
+	it('keeps a separate session for each thread in the same channel', async () => {
+		const ctx = await createTeamsReplayContext();
+		try {
+			await ctx.sendWebhook(channelMention);
+			const firstThreadId = ctx.latestThreadId();
+
+			await ctx.sendWebhook(channelSecondThreadMention);
+
+			expect(ctx.latestThreadId()).not.toBe(firstThreadId);
+		} finally {
+			await ctx.shutdown();
+		}
+	});
+
+	it('keeps one session for a whole group chat', async () => {
+		const ctx = await createTeamsReplayContext();
+		try {
+			await ctx.sendWebhook(groupChatMention);
+			const firstThreadId = ctx.latestThreadId();
+
+			expect(ctx.lastPost()?.body).toMatchObject({
+				conversation: { id: TEAMS_GROUP_CHAT_CONVERSATION_ID },
+			});
+
+			await ctx.sendWebhook(groupChatFollowUp);
+
+			expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenCalledTimes(2);
+			expect(ctx.latestThreadId()).toBe(firstThreadId);
+		} finally {
+			await ctx.shutdown();
+		}
+	});
+
+	it('resumes a suspended approval from a card click in a channel thread', async () => {
+		const ctx = await createTeamsReplayContext({
+			stream: [
+				{
+					type: 'tool-call-suspended',
+					runId: 'run-channel-card-1',
+					toolCallId: 'tool-channel-card-1',
+					toolName: 'approval',
+					suspendPayload: {
+						type: 'approval',
+						toolName: 'send_teams_message',
+						displayName: 'Send Teams message',
+						args: { text: 'Continue?' },
+					},
+				},
+				{ type: 'finish', finishReason: 'stop' },
+			],
+		});
+		try {
+			await ctx.sendWebhook(channelMention);
+
+			const cardMessageId = ctx.lastPostedMessageId();
+			if (!cardMessageId) throw new Error('Expected the approval card to have been posted');
+			const approve = cardActions(ctx.lastPost()?.body)[0];
+			if (!approve) throw new Error('Expected an Adaptive Card action on the approval card');
+
+			ctx.nextStream([
+				{ type: 'text-delta', id: 'resume-text', delta: 'Card handled' },
+				{ type: 'finish', finishReason: 'stop' },
+			]);
+			await ctx.sendWebhook(
+				cardAction(
+					approve.data as Record<string, unknown>,
+					cardMessageId,
+					channelMention.conversation,
+				),
+			);
+
+			expect(ctx.agentExecutor.resumeForChat).toHaveBeenCalledWith(
+				expect.objectContaining({
+					runId: 'run-channel-card-1',
+					toolCallId: 'tool-channel-card-1',
+					integrationType: 'teams',
+				}),
+			);
 		} finally {
 			await ctx.shutdown();
 		}
