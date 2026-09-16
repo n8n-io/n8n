@@ -4,6 +4,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { flushPromises, mount } from '@vue/test-utils';
 
 import type { AgentBuilderMainTab } from '../composables/useAgentBuilderMainTabs';
+import type { AgentResource } from '../types';
 
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
@@ -150,6 +151,7 @@ async function mountColumn(
 		}>;
 		knowledgeBaseEnabled: boolean;
 		canEditAgent: boolean;
+		agent: AgentResource | null;
 	}> = {},
 ) {
 	const { default: AgentBuilderEditorColumn } = await import(
@@ -172,7 +174,7 @@ async function mountColumn(
 				instructions: 'Help the user.',
 				memory: { enabled: true, storage: 'n8n' },
 			},
-			agent: null,
+			agent: overrides.agent ?? null,
 			projectId: 'project-1',
 			agentId: 'agent-1',
 			agentFiles: [],
@@ -353,7 +355,7 @@ describe('AgentBuilderEditorColumn', () => {
 	});
 
 	it('opens preview chat from the Triggers card', async function opensPreviewChat() {
-		const wrapper = await mountColumn();
+		const wrapper = await mountColumn({ agent: { isRunnable: true } as AgentResource });
 
 		await wrapper.get('[data-testid="agent-triggers-preview-chat-button"]').trigger('click');
 

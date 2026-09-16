@@ -39,35 +39,48 @@ const { credentialsByProvider, selectCredential } = useAgentModelCredentials(
 	usersStore.currentUserId ?? 'anonymous',
 	projectId,
 );
+const pendingCredential = ref<{ provider: AgentModelProvider; credentialId: string } | null>(null);
 
-const configuredMemoryModel = computed(() => {
+const configuredMemoryWorker = computed(() => {
 	const episodicMemory = props.config?.memory?.episodicMemory;
-	const episodicModel =
-		episodicMemory?.enabled === true ? (episodicMemory.reflectorModel?.model ?? null) : null;
+	const episodicWorker =
+		episodicMemory?.enabled === true ? (episodicMemory.reflectorModel ?? null) : null;
 
 	return (
-		episodicModel ??
-		props.config?.memory?.observationalMemory?.reflectorModel?.model ??
-		props.config?.memory?.observationalMemory?.observerModel?.model ??
+		episodicWorker ??
+		props.config?.memory?.observationalMemory?.reflectorModel ??
+		props.config?.memory?.observationalMemory?.observerModel ??
 		null
 	);
 });
-const configuredMemoryCredential = computed(() => {
-	const episodicMemory = props.config?.memory?.episodicMemory;
-	const episodicCredential =
-		episodicMemory?.enabled === true ? (episodicMemory.reflectorModel?.credential ?? null) : null;
+const configuredMemoryModel = computed(() => configuredMemoryWorker.value?.model ?? null);
+const configuredMemoryCredential = computed(
+	() => configuredMemoryWorker.value?.credential ?? props.config?.credential ?? null,
+);
+const configuredMemoryProvider = computed<AgentModelProvider | null>(() => {
+	const model = configuredMemoryModel.value ?? modelToString(props.config?.model);
+	if (!model) return null;
 
-	return (
-		episodicCredential ??
-		props.config?.memory?.observationalMemory?.reflectorModel?.credential ??
-		props.config?.memory?.observationalMemory?.observerModel?.credential ??
-		props.config?.credential ??
-		null
-	);
+	const parsed = parseModelString(model);
+	return parsed && isAgentModelProvider(parsed.provider) ? parsed.provider : null;
+});
+const effectiveCredentials = computed(() => {
+	const credentials = credentialsByProvider.value;
+	const provider = configuredMemoryProvider.value;
+	const credential = configuredMemoryCredential.value;
+	if (!credentials) return credentials;
+
+	const effectiveCredentials =
+		provider && credential ? { ...credentials, [provider]: credential } : { ...credentials };
+	if (pendingCredential.value) {
+		effectiveCredentials[pendingCredential.value.provider] = pendingCredential.value.credentialId;
+	}
+
+	return effectiveCredentials;
 });
 const selectedMemoryModel = ref<string | null>(configuredMemoryModel.value);
 const modelsByProvider = computed<AgentModelsByProvider>(() =>
-	getModelsForPicker(credentialsByProvider.value),
+	getModelsForPicker(effectiveCredentials.value),
 );
 const selectedModel = computed<AgentModelOption | null>(() => {
 	const modelString = selectedMemoryModel.value ?? modelToString(props.config?.model);
@@ -106,8 +119,17 @@ watch(configuredMemoryModel, (model) => {
 	selectedMemoryModel.value = model;
 });
 
+watch([configuredMemoryProvider, configuredMemoryCredential], ([provider, credential]) => {
+	if (
+		pendingCredential.value?.provider === provider &&
+		pendingCredential.value.credentialId === credential
+	) {
+		pendingCredential.value = null;
+	}
+});
+
 function onMemoryModelChange(selection: AgentModelSelection) {
-	const credentialId = credentialsByProvider.value?.[selection.provider] ?? '';
+	const credentialId = effectiveCredentials.value?.[selection.provider] ?? '';
 	if (!credentialId) return;
 
 	const model = `${selection.provider}/${sanitizeModelId(selection.provider, selection.model)}`;
@@ -140,6 +162,7 @@ function onMemoryModelChange(selection: AgentModelSelection) {
 
 function onSelectCredential(provider: AgentModelProvider, credentialId: string | null) {
 	selectCredential(provider, credentialId);
+	pendingCredential.value = credentialId ? { provider, credentialId } : null;
 }
 </script>
 
@@ -156,7 +179,7 @@ function onSelectCredential(provider: AgentModelProvider, credentialId: string |
 		<div :class="$style.modelSelector">
 			<AgentModelSelector
 				:selected-model="selectedModel"
-				:credentials="credentialsByProvider"
+				:credentials="effectiveCredentials"
 				:models-by-provider="modelsByProvider"
 				:is-loading="isLoading"
 				:project-id="projectId"

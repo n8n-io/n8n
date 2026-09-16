@@ -4,10 +4,8 @@ import { N8nDialog, N8nDialogHeader, N8nDialogTitle, N8nText, N8nSwitch } from '
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { MANAGED_CREDENTIAL_TOKEN } from '@n8n/api-types';
 import { useSettingsStore } from '@n8n/stores/settings.store';
-import { useUsersStore } from '@n8n/stores/users.store';
 import CredentialPicker from '@/features/credentials/components/CredentialPicker/CredentialPicker.vue';
 import { AGENT_EPISODIC_MEMORY_CREDENTIAL_TYPE } from '../constants';
-import { useAgentModelCredentials } from '../composables/useAgentModelCredentials';
 import { useAgentProjectId } from '../composables/useAgentProjectId';
 import AgentPanel from './AgentPanel.vue';
 
@@ -26,22 +24,9 @@ const emit = defineEmits<{ 'update:config': [changes: Partial<AgentJsonConfig>] 
 const i18n = useI18n();
 const credentialDialogOpen = ref(false);
 const settingsStore = useSettingsStore();
-const usersStore = useUsersStore();
 const projectId = useAgentProjectId();
-const { credentialsByProvider, getCredentialsForProvider } = useAgentModelCredentials(
-	usersStore.currentUserId ?? 'anonymous',
-	projectId,
-);
 const episodicMemory = computed(() => props.config?.memory?.episodicMemory ?? null);
 const episodicMemoryEnabled = computed(() => episodicMemory.value?.enabled === true);
-const episodicMemoryCredential = computed(() =>
-	episodicMemory.value?.enabled === true ? episodicMemory.value.credential : null,
-);
-const selectedEpisodicMemoryCredential = computed(() =>
-	episodicMemoryCredential.value === MANAGED_CREDENTIAL_TOKEN
-		? null
-		: episodicMemoryCredential.value,
-);
 const isAiAssistantProxyEnabled = computed(
 	() => settingsStore.moduleSettings.agents?.proxyEnabled === true,
 );
@@ -80,22 +65,6 @@ function disableEpisodicMemory() {
 	});
 }
 
-function getAvailableOpenAiCredentialId(): string | null {
-	const credentials = getCredentialsForProvider('openai');
-	const preferredCredentialIds = [
-		selectedEpisodicMemoryCredential.value,
-		credentialsByProvider.value?.openai,
-	];
-
-	for (const credentialId of preferredCredentialIds) {
-		if (credentialId && credentials.some((credential) => credential.id === credentialId)) {
-			return credentialId;
-		}
-	}
-
-	return credentials[0]?.id ?? null;
-}
-
 function onCredentialSelected(credentialId: string) {
 	enableEpisodicMemory(credentialId);
 	credentialDialogOpen.value = false;
@@ -109,12 +78,6 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 
 	if (isAiAssistantProxyEnabled.value) {
 		enableEpisodicMemory(MANAGED_CREDENTIAL_TOKEN);
-		return;
-	}
-
-	const credentialId = getAvailableOpenAiCredentialId();
-	if (credentialId) {
-		enableEpisodicMemory(credentialId);
 		return;
 	}
 
@@ -144,7 +107,7 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 			</div>
 			<N8nSwitch
 				:model-value="episodicMemoryEnabled"
-				:disabled="props.disabled || (!isAiAssistantProxyEnabled && credentialsByProvider === null)"
+				:disabled="props.disabled"
 				:class="$style.switch"
 				data-testid="agent-episodic-memory-toggle"
 				@update:model-value="(value) => onEpisodicMemoryToggle(Boolean(value))"
@@ -186,7 +149,7 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 							size="medium"
 							button-size="large"
 							:credential-type="AGENT_EPISODIC_MEMORY_CREDENTIAL_TYPE"
-							:selected-credential-id="selectedEpisodicMemoryCredential"
+							:selected-credential-id="null"
 							:project-id="projectId"
 							:show-delete="false"
 							:hide-create-new="false"

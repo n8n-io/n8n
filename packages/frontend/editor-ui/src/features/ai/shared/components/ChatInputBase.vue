@@ -12,6 +12,7 @@ import { N8nIconButton, N8nChatInput, N8nText, N8nTooltip } from '@n8n/design-sy
 import { useI18n } from '@n8n/i18n';
 import { useSpeechRecognition } from '@vueuse/core';
 import { useFileDrop } from '@/features/ai/shared/composables/useFileDrop';
+import { isFileAcceptedByAccept } from '@/features/ai/shared/utils/fileAccept';
 
 const props = withDefaults(
 	defineProps<{
@@ -68,7 +69,13 @@ const isFocused = ref(false);
 const canAcceptFiles = computed(() =>
 	Boolean(props.showAttach && !props.disabled && !props.isStreaming),
 );
-const fileDrop = useFileDrop(canAcceptFiles, handleFiles);
+const acceptedMimeTypeList = computed(() =>
+	(props.acceptedMimeTypes ?? '')
+		.split(',')
+		.map((type) => type.trim())
+		.filter(Boolean),
+);
+const fileDrop = useFileDrop(canAcceptFiles, handleFiles, acceptedMimeTypeList);
 
 // Visual only — must NOT gate `submit-disabled`, or clicking the button (which
 // blurs the textarea) would disable it mid-click and swallow the submit.
@@ -173,7 +180,10 @@ function withinSizeLimit(files: File[]): File[] {
 }
 
 function handleFiles(files: File[]) {
-	const accepted = withinSizeLimit(files);
+	const acceptedByType = files.filter((file) =>
+		isFileAcceptedByAccept(file.name, file.type, props.acceptedMimeTypes ?? ''),
+	);
+	const accepted = withinSizeLimit(acceptedByType);
 	if (accepted.length > 0) emit('files-selected', accepted);
 }
 
@@ -227,7 +237,7 @@ defineExpose({
 		<div
 			v-if="fileDrop.isDragging.value"
 			:class="$style.dropOverlay"
-			data-testid="chat-input-drop-overlay"
+			data-test-id="chat-input-drop-overlay"
 		>
 			<N8nText color="text-dark">{{ i18n.baseText('chatInputBase.dropOverlay') }}</N8nText>
 		</div>

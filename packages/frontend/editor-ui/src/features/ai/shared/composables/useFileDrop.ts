@@ -1,4 +1,5 @@
 import { ref, toValue, type MaybeRef } from 'vue';
+import { isFileAcceptedByAccept } from '@/features/ai/shared/utils/fileAccept';
 
 export function useFileDrop(
 	canAcceptFiles: MaybeRef<boolean>,
@@ -21,7 +22,10 @@ export function useFileDrop(
 				const fileItems = Array.from(e.dataTransfer.items).filter((item) => item.kind === 'file');
 				isDraggingUnsupported.value =
 					fileItems.length > 0 &&
-					fileItems.every((item) => item.type !== '' && !accepted.includes(item.type));
+					fileItems.every(
+						(item) =>
+							item.type !== '' && !isFileAcceptedByAccept('', item.type, accepted.join(',')),
+					);
 			}
 		}
 	}
