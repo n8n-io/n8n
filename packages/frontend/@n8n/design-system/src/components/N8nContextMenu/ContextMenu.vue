@@ -20,7 +20,7 @@ import {
 } from 'vue';
 
 import {
-	ContextMenuStateKey,
+	contextMenuStateKey,
 	type ContextMenuEmits,
 	type ContextMenuId,
 	type ContextMenuProps,
@@ -161,7 +161,7 @@ const menuState: ContextMenuState = {
 	onSubmenuToggle,
 };
 
-provide(ContextMenuStateKey, menuState);
+provide(contextMenuStateKey, menuState);
 
 watch(
 	() => props.open,

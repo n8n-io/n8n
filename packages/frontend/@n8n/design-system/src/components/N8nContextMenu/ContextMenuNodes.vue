@@ -3,7 +3,7 @@ import { ContextMenuLabel, ContextMenuRadioGroup } from 'reka-ui';
 import { computed, inject, useCssModule } from 'vue';
 
 import {
-	ContextMenuStateKey,
+	contextMenuStateKey,
 	type ContextMenuId,
 	type ContextMenuItemSlots,
 	type ContextMenuNode,
@@ -22,7 +22,7 @@ const props = defineProps<{
 const slots = defineSlots<ContextMenuItemSlots<T>>();
 
 const $style = useCssModule();
-const state = inject(ContextMenuStateKey);
+const state = inject(contextMenuStateKey);
 
 const selectedValues = computed(() => state?.selectedValues.value ?? []);
 
@@ -149,8 +149,8 @@ function onRadioGroupChange(group: ContextMenuRadioGroupNode<T>, value: string |
 .separated {
 	border-top: var(--border);
 	padding-block-start: var(--context-menu--padding);
-	margin-inline: calc(-1 * var(--context-menu--padding) + 1px);
-	padding-inline: calc(var(--context-menu--padding) - 1px);
+	margin-inline: calc(-1 * var(--context-menu--padding) + var(--border-width));
+	padding-inline: calc(var(--context-menu--padding) - var(--border-width));
 }
 
 .group {

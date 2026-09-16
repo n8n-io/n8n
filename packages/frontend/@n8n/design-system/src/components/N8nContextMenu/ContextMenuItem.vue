@@ -12,7 +12,7 @@ import {
 import { computed, inject, ref, useCssModule } from 'vue';
 
 import {
-	ContextMenuStateKey,
+	contextMenuStateKey,
 	type ContextMenuId,
 	type ContextMenuItemEmits,
 	type ContextMenuItemProps,
@@ -30,7 +30,7 @@ const props = defineProps<ContextMenuItemProps<T>>();
 const emit = defineEmits<ContextMenuItemEmits<T>>();
 const slots = defineSlots<ContextMenuItemSlots<T>>();
 const $style = useCssModule();
-const state = inject(ContextMenuStateKey);
+const state = inject(contextMenuStateKey);
 
 type ItemTone = 'disabled' | 'destructive' | 'default';
 
@@ -49,7 +49,7 @@ const ICON_COLOR = {
 const ITEMS_PADDING_PX = 4;
 /** Shift the submenu up so its first row lines up with the trigger. */
 const SUBMENU_ALIGN_OFFSET_PX = -ITEMS_PADDING_PX;
-/** Matches the 1px panel border (`--border`). */
+/** Matches the 1px inset outline (`--shadow--outline`). */
 const SUBMENU_SIDE_OFFSET_PX = 1;
 /** Pixel value of `--spacing--2xs`. Reka `collisionPadding` is a number. */
 const COLLISION_PADDING_PX = 8;

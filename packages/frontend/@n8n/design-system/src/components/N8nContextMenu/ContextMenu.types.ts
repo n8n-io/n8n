@@ -134,11 +134,11 @@ export type ContextMenuProps<T extends ContextMenuId = ContextMenuId> = {
 };
 
 export type ContextMenuEmits<T extends ContextMenuId = ContextMenuId> = {
-	'update:open': [open: boolean];
-	'update:selectedValues': [value: T[]];
-	select: [value: T];
-	'submenu:toggle': [itemId: T, open: boolean];
-	'close-auto-focus': [event: Event];
+	(e: 'update:open', open: boolean): void;
+	(e: 'update:selectedValues', value: T[]): void;
+	(e: 'select', value: T): void;
+	(e: 'submenu:toggle', itemId: T, open: boolean): void;
+	(e: 'close-auto-focus', event: Event): void;
 };
 
 type SlotUiProps = { class: string };
@@ -146,9 +146,9 @@ type SlotUiProps = { class: string };
 export type ContextMenuSlots<T extends ContextMenuId = ContextMenuId> = {
 	trigger?: () => void;
 	item?: (props: { item: ContextMenuLeaf<T> }) => void;
-	'item-leading'?: (props: { item: ContextMenuLeaf<T>; ui: SlotUiProps }) => void;
-	'item-label'?: (props: { item: ContextMenuLeaf<T>; ui: SlotUiProps }) => void;
-	'item-trailing'?: (props: { item: ContextMenuLeaf<T>; ui: SlotUiProps }) => void;
+	['item-leading']?: (props: { item: ContextMenuLeaf<T>; ui: SlotUiProps }) => void;
+	['item-label']?: (props: { item: ContextMenuLeaf<T>; ui: SlotUiProps }) => void;
+	['item-trailing']?: (props: { item: ContextMenuLeaf<T>; ui: SlotUiProps }) => void;
 	loading?: () => void;
 	empty?: () => void;
 };
@@ -158,9 +158,9 @@ export type ContextMenuItemProps<T extends ContextMenuId = ContextMenuId> = {
 };
 
 export type ContextMenuItemEmits<T extends ContextMenuId = ContextMenuId> = {
-	select: [value: T];
-	'toggle-checkbox': [id: T];
-	'submenu:toggle': [open: boolean];
+	(e: 'select', value: T): void;
+	(e: 'toggle-checkbox', id: T): void;
+	(e: 'submenu:toggle', open: boolean): void;
 };
 
 export type ContextMenuItemSlots<T extends ContextMenuId = ContextMenuId> = Pick<
@@ -183,4 +183,4 @@ export type ContextMenuState = {
 	onSubmenuToggle(itemId: string, open: boolean): void;
 };
 
-export const ContextMenuStateKey: InjectionKey<ContextMenuState> = Symbol('N8nContextMenuState');
+export const contextMenuStateKey: InjectionKey<ContextMenuState> = Symbol('N8nContextMenuState');
