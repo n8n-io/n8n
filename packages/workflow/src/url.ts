@@ -1,4 +1,4 @@
-import { UserError } from 'n8n-workflow';
+import { UserError } from './errors';
 
 /**
  * Encode an id as a single URL path segment. `.`, `..`, and the empty string

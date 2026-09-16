@@ -107,10 +107,14 @@ export class LmChatAzureOpenAi implements INodeType {
 				const configuration: ClientOptions = {
 					baseURL: foundryURL,
 					fetchOptions: {
-						dispatcher: getProxyAgent(foundryURL, {
-							headersTimeout: timeout,
-							bodyTimeout: timeout,
-						}),
+						dispatcher: getProxyAgent(
+							foundryURL,
+							{
+								headersTimeout: timeout,
+								bodyTimeout: timeout,
+							},
+							this.helpers.getSecureEgressFilter(),
+						),
 					},
 				};
 				if (modelConfig.azureADTokenProvider) {
@@ -161,6 +165,7 @@ export class LmChatAzureOpenAi implements INodeType {
 								headersTimeout: timeout,
 								bodyTimeout: timeout,
 							},
+							this.helpers.getSecureEgressFilter(),
 						),
 					},
 				},

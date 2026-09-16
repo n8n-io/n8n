@@ -9,6 +9,15 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
+/**
+ * ServiceNow encoded queries separate clauses with `^` (and `^OR`, `^NQ`), and
+ * offer no way to write one inside a value, so a value carrying one cannot be
+ * looked up.
+ *
+ * @see https://developer.servicenow.com/dev.do#!/reference/api/latest/rest/c_TableAPI
+ */
+export const ENCODED_QUERY_DELIMITERS = ['^'];
+
 export async function serviceNowApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
