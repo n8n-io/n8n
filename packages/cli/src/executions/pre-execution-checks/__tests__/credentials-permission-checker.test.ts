@@ -1,3 +1,4 @@
+import type { CredentialsFinderService } from '@n8n/backend-services';
 import {
 	type Project,
 	type User,
@@ -11,7 +12,6 @@ import {
 import type { INode } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import type { NodeTypes } from '@/node-types';
 import type { OwnershipService } from '@/services/ownership.service';
 import type { ProjectService } from '@/services/project.service.ee';

@@ -1,3 +1,4 @@
+import { CredentialsFinderService } from '@n8n/backend-services';
 import type { Project } from '@n8n/db';
 import { CredentialsRepository, SharedCredentialsRepository, UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -5,7 +6,6 @@ import { hasGlobalScope } from '@n8n/permissions';
 import type { INode, INodeTypeDescription } from 'n8n-workflow';
 import { getActiveCredentialTypes, UserError } from 'n8n-workflow';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { NodeTypes } from '@/node-types';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';

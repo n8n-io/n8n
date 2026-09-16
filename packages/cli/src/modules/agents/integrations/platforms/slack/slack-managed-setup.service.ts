@@ -7,7 +7,12 @@ import type {
 	SlackManagedWorkspaceSummary,
 	SlackManagerCredentialSummary,
 } from '@n8n/api-types';
-import { BadRequestError, CacheService, NotFoundError } from '@n8n/backend-services';
+import {
+	BadRequestError,
+	CacheService,
+	CredentialsFinderService,
+	NotFoundError,
+} from '@n8n/backend-services';
 import type { CredentialsEntity, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
@@ -18,7 +23,6 @@ import { randomBytes } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 

@@ -1,9 +1,8 @@
+import type { CredentialsFinderService } from '@n8n/backend-services';
 import { ForbiddenError } from '@n8n/backend-services';
 import type { CredentialsEntity, User } from '@n8n/db';
 import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
-
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 
 import { assertUserCanUseDestinationCredentials } from '../destination-credentials-access';
 

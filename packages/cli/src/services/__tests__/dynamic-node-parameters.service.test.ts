@@ -1,7 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import type { HttpRequestClient } from '@n8n/backend-network';
-import { BadRequestError, ForbiddenError } from '@n8n/backend-services';
+import { BadRequestError, CredentialsFinderService, ForbiddenError } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { CredentialsRepository, SharedWorkflowRepository } from '@n8n/db';
 import type { CredentialsEntity } from '@n8n/db';
@@ -30,7 +30,6 @@ vi.mock('n8n-core', async () => {
 import { DynamicNodeParametersService } from '../dynamic-node-parameters.service';
 import { WorkflowLoaderService } from '../workflow-loader.service';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { NodeTypes } from '@/node-types';
 import * as checkAccess from '@/permissions.ee/check-access';
 

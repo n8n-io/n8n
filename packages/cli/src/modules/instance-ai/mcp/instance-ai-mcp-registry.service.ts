@@ -8,7 +8,13 @@ import type {
 import { isObjectLiteral, Logger } from '@n8n/backend-common';
 import type { CustomFetch } from '@n8n/backend-network';
 import { OutboundHttp } from '@n8n/backend-network';
-import { BadRequestError, ConflictError, EventService, NotFoundError } from '@n8n/backend-services';
+import {
+	BadRequestError,
+	ConflictError,
+	CredentialsFinderService,
+	EventService,
+	NotFoundError,
+} from '@n8n/backend-services';
 import { isUniqueConstraintError, type CredentialsEntity, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { McpServerConfig } from '@n8n/instance-ai';
@@ -17,7 +23,6 @@ import type { ICredentialDataDecryptedObject, LiteralMcpRegistryConnection } fro
 import { randomUUID } from 'node:crypto';
 
 import { CredentialTypes } from '@/credential-types';
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import {
 	isSupportedMcpRegistryCredentialType,

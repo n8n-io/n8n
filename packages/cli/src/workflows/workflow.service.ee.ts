@@ -1,5 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import { BadRequestError, NotFoundError } from '@n8n/backend-services';
+import { BadRequestError, CredentialsFinderService, NotFoundError } from '@n8n/backend-services';
 import type {
 	CredentialUsedByWorkflow,
 	User,
@@ -32,7 +32,6 @@ import {
 } from 'n8n-workflow';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';

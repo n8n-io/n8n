@@ -1,4 +1,4 @@
-import type { EventService } from '@n8n/backend-services';
+import type { CredentialsFinderService, EventService } from '@n8n/backend-services';
 import type { Mocked } from 'vitest';
 import { type AgentJsonConfig } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
@@ -15,7 +15,6 @@ import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import type { ExternalHooks } from '@/external-hooks';
 import { CredentialsService } from '@/credentials/credentials.service';
 import type { EphemeralNodeExecutor } from '@/node-execution';

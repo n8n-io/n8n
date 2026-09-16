@@ -1,8 +1,7 @@
+import { CredentialsFinderService } from '@n8n/backend-services';
 import type { CredentialsEntity, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { Credentials } from 'n8n-core';
-
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 
 import { selectCredentialDataForExport } from './credential-export-policy';
 import { CredentialSerializer } from './credential.serializer';

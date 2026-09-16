@@ -1,11 +1,15 @@
 import { PublicCreateDestinationDto } from '@n8n/api-types';
 import { OutboundHttp } from '@n8n/backend-network';
-import { BadRequestError, ConflictError, NotFoundError } from '@n8n/backend-services';
+import {
+	BadRequestError,
+	ConflictError,
+	CredentialsFinderService,
+	NotFoundError,
+} from '@n8n/backend-services';
 import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { eventNamesAll } from '@/eventbus/event-message-classes';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { createMessageEventBusDestination } from '@/modules/log-streaming.ee/create-message-event-bus-destination';

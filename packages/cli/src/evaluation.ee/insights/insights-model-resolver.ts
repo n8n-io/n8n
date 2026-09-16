@@ -1,9 +1,9 @@
 import type { ModelConfig } from '@n8n/agents';
+import { CredentialsFinderService } from '@n8n/backend-services';
 import type { EvaluationConfig, User } from '@n8n/db';
 import { EvaluationConfigRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 
 // LLM-judge provider node types → `@n8n/agents` provider prefix. Only the

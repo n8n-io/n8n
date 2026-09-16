@@ -15,6 +15,7 @@
 		{ "path": "../db/tsconfig.build.json" },
 		{ "path": "../decorators/tsconfig.build.json" },
 		{ "path": "../di/tsconfig.build.json" },
-		{ "path": "../permissions/tsconfig.build.json" }
+		{ "path": "../permissions/tsconfig.build.json" },
+		{ "path": "../typeorm/tsconfig.build.json" }
 	]
 }

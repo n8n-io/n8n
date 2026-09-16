@@ -18,7 +18,9 @@ export { UnsupportedMediaTypeError } from './errors/response-errors/unsupported-
 export { WorkflowPublishBlockedError } from './errors/response-errors/workflow-publish-blocked.error';
 export { UncacheableValueError } from './errors/cache-errors/uncacheable-value.error';
 export { CacheService } from './services/cache/cache.service';
+export { CredentialsFinderService } from './credentials/credentials-finder.service';
 export { EventService, type EventMap } from './events/event.service';
+export { FolderFinderService } from './services/folder-finder.service';
 export { RoleCacheService } from './services/role-cache.service';
 export {
 	RoleDeletionCheckProxy,

@@ -1,5 +1,6 @@
 import {
 	ConflictError,
+	CredentialsFinderService,
 	EventService,
 	ForbiddenError,
 	UnprocessableRequestError,
@@ -40,7 +41,6 @@ import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { ICredentialDataDecryptedObject, IUserSettings } from 'n8n-workflow';
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import {
 	InstanceCredentialBroker,

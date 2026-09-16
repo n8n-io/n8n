@@ -1,9 +1,9 @@
+import { CredentialsFinderService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { GLOBAL_OWNER_ROLE, type CredentialsEntity, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { ExecutionRecoveryService } from '@/executions/execution-recovery.service';
 import { LogStreamingDestinationService } from '@/modules/log-streaming.ee/log-streaming-destination.service';

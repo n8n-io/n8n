@@ -1700,6 +1700,9 @@ importers:
       '@n8n/permissions':
         specifier: workspace:*
         version: link:../permissions
+      '@n8n/typeorm':
+        specifier: workspace:*
+        version: link:../typeorm
       '@n8n/utils':
         specifier: workspace:*
         version: link:../utils

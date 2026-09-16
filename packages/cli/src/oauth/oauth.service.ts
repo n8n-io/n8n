@@ -9,6 +9,7 @@ import {
 	AuthError,
 	BadRequestError,
 	CacheService,
+	CredentialsFinderService,
 	EventService,
 	NotFoundError,
 	UrlService,
@@ -29,7 +30,6 @@ import {
 	RESPONSE_ERROR_MESSAGES,
 } from '@/constants';
 import { AuthService } from '@/auth/auth.service';
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsHelper } from '@/credentials-helper';
 import type { OAuthRequest } from '@/requests';
 import { extractAccountIdentifierFromData } from '@/oauth/account-identifier';

@@ -426,9 +426,7 @@ describe('CredentialsRepository', () => {
 			const { createMember } = await import('../../shared/db/users.js');
 			const { createTeamProject, linkUserToProject } = await import('@n8n/backend-test-utils');
 			const { createCredentials } = await import('../../shared/db/credentials.js');
-			const { CredentialsFinderService } = await import(
-				'@/credentials/credentials-finder.service.js'
-			);
+			const { CredentialsFinderService } = await import('@n8n/backend-services');
 			const { RoleService } = await import('@n8n/backend-services');
 
 			const member = await createMember();
@@ -475,9 +473,7 @@ describe('CredentialsRepository', () => {
 			const { createOwner } = await import('../../shared/db/users.js');
 			const { getPersonalProject } = await import('@n8n/backend-test-utils');
 			const { createCredentials } = await import('../../shared/db/credentials.js');
-			const { CredentialsFinderService } = await import(
-				'@/credentials/credentials-finder.service.js'
-			);
+			const { CredentialsFinderService } = await import('@n8n/backend-services');
 
 			const owner = await createOwner();
 			const personalProject = await getPersonalProject(owner);
@@ -520,9 +516,7 @@ describe('CredentialsRepository', () => {
 			const { createMember } = await import('../../shared/db/users.js');
 			const { createTeamProject, linkUserToProject } = await import('@n8n/backend-test-utils');
 			const { createCredentials } = await import('../../shared/db/credentials.js');
-			const { CredentialsFinderService } = await import(
-				'@/credentials/credentials-finder.service.js'
-			);
+			const { CredentialsFinderService } = await import('@n8n/backend-services');
 			const { RoleService } = await import('@n8n/backend-services');
 
 			const member = await createMember();
@@ -590,9 +584,7 @@ describe('CredentialsRepository', () => {
 			const { createMember } = await import('../../shared/db/users.js');
 			const { createTeamProject, linkUserToProject } = await import('@n8n/backend-test-utils');
 			const { createCredentials } = await import('../../shared/db/credentials.js');
-			const { CredentialsFinderService } = await import(
-				'@/credentials/credentials-finder.service.js'
-			);
+			const { CredentialsFinderService } = await import('@n8n/backend-services');
 			const { RoleService } = await import('@n8n/backend-services');
 
 			const member = await createMember();
@@ -677,9 +669,7 @@ describe('CredentialsRepository', () => {
 			const { createMember } = await import('../../shared/db/users.js');
 			const { createTeamProject, linkUserToProject } = await import('@n8n/backend-test-utils');
 			const { createCredentials } = await import('../../shared/db/credentials.js');
-			const { CredentialsFinderService } = await import(
-				'@/credentials/credentials-finder.service.js'
-			);
+			const { CredentialsFinderService } = await import('@n8n/backend-services');
 			const { RoleService } = await import('@n8n/backend-services');
 
 			// Create two separate users

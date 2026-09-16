@@ -7,6 +7,7 @@ import {
 import { LicenseState, Logger } from '@n8n/backend-common';
 import {
 	BadRequestError,
+	CredentialsFinderService,
 	EventService,
 	ForbiddenError,
 	NotFoundError,
@@ -37,7 +38,6 @@ import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { CredentialConnectionStatusProxy } from './credential-connection-status-proxy';
-import { CredentialsFinderService } from './credentials-finder.service';
 import { CredentialsService } from './credentials.service';
 import { EnterpriseCredentialsService } from './credentials.service.ee';
 import { getExternalSecretExpressionPaths } from './external-secrets.utils';

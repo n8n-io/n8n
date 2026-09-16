@@ -1,8 +1,8 @@
+import { FolderFinderService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { User } from '@n8n/db';
 import { PROJECT_ROOT } from 'n8n-workflow';
 
-import { FolderFinderService } from '@/services/folder-finder.service';
 import { Telemetry } from '@/telemetry';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowService } from '@/workflows/workflow.service';

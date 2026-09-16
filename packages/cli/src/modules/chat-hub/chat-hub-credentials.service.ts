@@ -3,13 +3,12 @@ import {
 	PROVIDER_CREDENTIAL_TYPE_MAP,
 	type ChatHubConversationModel,
 } from '@n8n/api-types';
-import { BadRequestError, ForbiddenError } from '@n8n/backend-services';
+import { BadRequestError, CredentialsFinderService, ForbiddenError } from '@n8n/backend-services';
 import { ProjectRepository, SharedWorkflowRepository, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { EntityManager } from '@n8n/typeorm';
 import type { INodeCredentials } from 'n8n-workflow';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 
 @Service()

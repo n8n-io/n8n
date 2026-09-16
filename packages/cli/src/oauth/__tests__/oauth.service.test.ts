@@ -4,6 +4,7 @@ import {
 	AuthError,
 	BadRequestError,
 	CacheService,
+	CredentialsFinderService,
 	EventService,
 	NotFoundError,
 	UrlService,
@@ -24,7 +25,6 @@ import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { AuthService } from '@/auth/auth.service';
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
 import { CredentialsHelper } from '@/credentials-helper';
 import { ExternalHooks } from '@/external-hooks';

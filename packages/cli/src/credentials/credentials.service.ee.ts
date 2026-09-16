@@ -1,6 +1,6 @@
 import type { CredentialConnectionStatus } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
-import { NotFoundError, RoleService } from '@n8n/backend-services';
+import { CredentialsFinderService, NotFoundError, RoleService } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import {
 	CredentialsEntity,
@@ -20,7 +20,6 @@ import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 
 import { CredentialConnectionStatusProxy } from './credential-connection-status-proxy';
-import { CredentialsFinderService } from './credentials-finder.service';
 import { CredentialsService } from './credentials.service';
 import { validateAccessToReferencedSecretProviders } from './validation';
 

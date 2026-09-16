@@ -11,6 +11,7 @@ import {
 import { LicenseState } from '@n8n/backend-common';
 import {
 	BadRequestError,
+	CredentialsFinderService,
 	EventService,
 	ForbiddenError,
 	NotFoundError,
@@ -39,7 +40,6 @@ import type { Response } from 'express';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 
 import { CredentialTypes } from '@/credential-types';
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
 import { CredentialsHelper } from '@/credentials-helper';

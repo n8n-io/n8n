@@ -246,7 +246,6 @@ export default defineConfig(
 			'./src/credentials/credential-connection-status-provider.interface.ts',
 			'./src/credentials/credential-connection-status-proxy.ts',
 			'./src/credentials/credential-dependency.service.ts',
-			'./src/credentials/credentials-finder.service.ts',
 			'./src/credentials/credentials.controller.ts',
 			'./src/credentials/credentials.service.ee.ts',
 			'./src/credentials/credentials.service.ts',
@@ -261,7 +260,6 @@ export default defineConfig(
 			// services/ (incl. ownership.service.ts — surfaced only by the deep-path prefix change)
 			'./src/services/export.service.ts',
 			'./src/services/folder.service.ts',
-			'./src/services/folder-finder.service.ts',
 			'./src/services/hooks.service.ts',
 			'./src/services/import.service.ts',
 			'./src/services/ownership.service.ts',

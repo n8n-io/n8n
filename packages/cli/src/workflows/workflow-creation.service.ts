@@ -2,6 +2,7 @@ import type { RedactionFloor } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import {
 	BadRequestError,
+	CredentialsFinderService,
 	EventService,
 	ForbiddenError,
 	InternalServerError,
@@ -21,7 +22,6 @@ import { Service } from '@n8n/di';
 import { PROJECT_ROOT } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { WorkflowValidationError } from '@/errors/response-errors/workflow-validation.error';
 import type { WorkflowActionSource } from '@/events/maps/relay.event-map';
 import { ExternalHooks, toWorkflowLifecycleHookActor } from '@/external-hooks';

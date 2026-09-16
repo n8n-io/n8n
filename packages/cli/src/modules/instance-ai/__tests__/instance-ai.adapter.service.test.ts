@@ -41,7 +41,7 @@ vi.mock('@n8n/instance-ai', async () => {
 	};
 });
 
-import type { RoleService } from '@n8n/backend-services';
+import type { CredentialsFinderService, RoleService } from '@n8n/backend-services';
 import { ConflictError, LockedError, NotFoundError } from '@n8n/backend-services';
 import type { Mock, Mocked, MockInstance } from 'vitest';
 
@@ -1494,7 +1494,6 @@ import type {
 	WorkflowRepository,
 } from '@n8n/db';
 import { UserError, UnexpectedError } from 'n8n-workflow';
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import type { DataTableService } from '@/modules/data-table/data-table.service';
 import type { InstanceWriteAccessService } from '@/services/instance-write-access.service';
