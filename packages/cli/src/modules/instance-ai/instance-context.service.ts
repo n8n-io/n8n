@@ -352,18 +352,40 @@ export class InstanceContextService {
 			...(input.cursor ? { afterId: input.cursor.activityMark } : {}),
 		});
 
-		// A mark can outlive the id space it was taken from. `ActivityEvent.id` is a rowid alias
-		// on SQLite, so emptying the table — which age-based retention does on an instance quiet
-		// for longer than its window — restarts ids at 1, and every new row then lands below a
-		// stored mark. The floor would hide them for good, since the ids never climb back.
+		// Read separately from the arrivals above: one capped query would let a busy turn fill the
+		// page and push the late commit out.
 		//
-		// Nothing above the mark is the signature, so the check is paid only on turns that found
-		// nothing new, and it is one indexed read. A scope holding nothing at all is left alone:
-		// there is no id to compare against, and nothing to show either way.
+		// Limited by `seenIdsCap`, not by `entryFetchLimit`: the band is newest-first, so a
+		// smaller limit drops its oldest end — exactly where a late commit's low id sits. Turns
+		// that cut nothing leave the floor put while the mark runs on, so the band spans far more
+		// ids than one window. Reading it to the de-duplication budget is the widest this can go
+		// and still promise not to repeat: past `seenIdsCap` the shown ids are forgotten, and a
+		// re-read would offer them a second time. A commit later than that many rows is lost, and
+		// that is the price of the budget rather than an oversight.
 		let cursor = input.cursor;
-		if (cursor !== null && arrivals.length === 0) {
-			const highest = await this.activityEventRepository.findHighestId(input.scope);
-			if (highest !== null && highest < cursor.activityMark) {
+		const band = cursor
+			? await this.activityEventRepository.findFeed({
+					limit: seenIdsCap,
+					...input.scope,
+					afterId: cursor.activityFloor,
+					beforeId: cursor.activityMark,
+				})
+			: [];
+
+		// A mark can outlive the id space it was taken from. `ActivityEvent.id` is a rowid alias on
+		// SQLite, so emptying the table — which age-based retention does to an instance quiet for
+		// longer than its window — restarts the sequence, and the rows written next land at or
+		// below a mark a live thread still holds. Neither leg can reach them: arrivals start above
+		// the mark, and the band stops below it.
+		//
+		// Both legs coming back empty is the signature, and the timestamp is what makes it one. By
+		// id alone a renumbered feed and a quiet one are identical, so the question asked here is
+		// "is the newest row newer than the last block?" rather than "is its id lower?". That also
+		// keeps the two cases this must not fire on out of it: a narrowed scope still sees its own
+		// older rows, and a late commit inside the band leaves the band non-empty.
+		if (cursor !== null && arrivals.length === 0 && band.length === 0) {
+			const newest = await this.activityEventRepository.findNewestEntry(input.scope);
+			if (newest && newest.createdAt.getTime() > Date.parse(cursor.runsThrough)) {
 				// Only the id-based bounds. `runsThrough` is a timestamp and the inventory does not
 				// depend on ids, so the rest of the block stays a delta rather than repeating a
 				// week of run summaries over a renumbering the reader never saw. The shown ids go
@@ -376,25 +398,6 @@ export class InstanceContextService {
 				});
 			}
 		}
-
-		// Read separately from the arrivals above: one capped query would let a busy turn fill the
-		// page and push the late commit out.
-		//
-		// Limited by `seenIdsCap`, not by `entryFetchLimit`: the band is newest-first, so a
-		// smaller limit drops its oldest end — exactly where a late commit's low id sits. Turns
-		// that cut nothing leave the floor put while the mark runs on, so the band spans far more
-		// ids than one window. Reading it to the de-duplication budget is the widest this can go
-		// and still promise not to repeat: past `seenIdsCap` the shown ids are forgotten, and a
-		// re-read would offer them a second time. A commit later than that many rows is lost, and
-		// that is the price of the budget rather than an oversight.
-		const band = cursor
-			? await this.activityEventRepository.findFeed({
-					limit: seenIdsCap,
-					...input.scope,
-					afterId: cursor.activityFloor,
-					beforeId: cursor.activityMark,
-				})
-			: [];
 
 		// Both are newest-first and every arrival outranks every band row, so this stays ordered.
 		const rows = [...arrivals, ...band];
