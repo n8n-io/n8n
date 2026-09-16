@@ -200,6 +200,7 @@ export class RoleController {
 			userId: req.user.id,
 			roleSlug: result.slug,
 			scopes: result.scopes,
+			source: 'ui',
 		});
 		return result;
 	}

@@ -40,6 +40,7 @@ describe('RoleController', () => {
 					userId: '123',
 					roleSlug: 'custom-editor',
 					scopes: ['workflow:read', 'workflow:update'],
+					source: 'ui',
 				});
 			});
 		});
