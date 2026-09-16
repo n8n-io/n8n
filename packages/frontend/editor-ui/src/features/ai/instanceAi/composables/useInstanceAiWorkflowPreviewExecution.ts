@@ -65,9 +65,9 @@ export function useInstanceAiWorkflowPreviewExecution(
 	// True while this composable toggles the panel, so the watcher below can tell
 	// its own toggles from the user's.
 	let isTogglingLogsAutomatically = false;
-	// Only a panel this composable opened collapses again after a successful run.
-	let isLogsPanelAutoOpened = false;
-	let latestStartedExecutionId: string | undefined;
+	// The thread runtime keeps the auto-open bookkeeping because this composable
+	// is recreated on every tab switch.
+	const logsPanelMemory = thread.logsPanelMemory;
 
 	function isPaneLargeEnoughForLogs(): boolean {
 		const rect = options.paneElement()?.getBoundingClientRect();
@@ -78,11 +78,18 @@ export function useInstanceAiWorkflowPreviewExecution(
 		);
 	}
 
+	// A preview behind another artifact tab stays mounted but hidden. Runs of a
+	// tab the user does not see leave the panel as it is.
+	function isPaneVisible(): boolean {
+		const pane = options.paneElement();
+		return pane !== null && getComputedStyle(pane).visibility !== 'hidden';
+	}
+
 	function toggleLogsAutomatically(open: boolean) {
 		isTogglingLogsAutomatically = true;
 		logsStore.toggleOpen(open);
 		isTogglingLogsAutomatically = false;
-		isLogsPanelAutoOpened = open;
+		logsPanelMemory.autoOpened = open;
 		telemetry.track('User toggled log view', {
 			new_state: open ? 'attached' : 'collapsed',
 			source: 'auto',
@@ -94,17 +101,21 @@ export function useInstanceAiWorkflowPreviewExecution(
 	// (user- or agent-made) starts for this artifact's workflow (INS-860). Skip
 	// it when the user collapsed the panel in this thread or the pane is small.
 	function openLogsForRun(executionId: string) {
-		latestStartedExecutionId = executionId;
-		if (logsStore.isOpen || thread.hasUserCollapsedLogsPanel()) return;
+		if (!isPaneVisible()) return;
+		logsPanelMemory.latestStartedExecutionIds.set(options.workflowId(), executionId);
+		if (logsStore.isOpen || logsPanelMemory.collapsedByUser) return;
 		if (!isPaneLargeEnoughForLogs()) return;
 		toggleLogsAutomatically(true);
 	}
 
-	// A successful run collapses the panel this composable opened. A failed run
+	// A successful run collapses the panel that opened automatically. A failed run
 	// keeps it open, and the logs panel selects the failing node by itself.
 	function collapseLogsAfterRun(executionId: string) {
-		if (executionId !== latestStartedExecutionId) return;
-		if (!isLogsPanelAutoOpened || !logsStore.isOpen) return;
+		if (!isPaneVisible()) return;
+		if (executionId !== logsPanelMemory.latestStartedExecutionIds.get(options.workflowId())) {
+			return;
+		}
+		if (!logsPanelMemory.autoOpened || !logsStore.isOpen) return;
 		toggleLogsAutomatically(false);
 	}
 
@@ -114,8 +125,8 @@ export function useInstanceAiWorkflowPreviewExecution(
 		() => logsStore.isOpen,
 		(isOpen) => {
 			if (isTogglingLogsAutomatically) return;
-			isLogsPanelAutoOpened = false;
-			if (!isOpen) thread.rememberLogsPanelCollapsed();
+			logsPanelMemory.autoOpened = false;
+			if (!isOpen) logsPanelMemory.collapsedByUser = true;
 		},
 		{ flush: 'sync' },
 	);

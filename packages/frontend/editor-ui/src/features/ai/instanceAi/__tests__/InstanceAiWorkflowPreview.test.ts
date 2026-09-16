@@ -1,4 +1,4 @@
-import { createTestingPinia } from '@pinia/testing';
+import { createTestingPinia, type TestingPinia } from '@pinia/testing';
 import { flushPromises, mount } from '@vue/test-utils';
 import { createRunExecutionData, type IPinData } from 'n8n-workflow';
 import { setActivePinia } from 'pinia';
@@ -30,7 +30,6 @@ import InstanceAiWorkflowPreview from '../components/InstanceAiWorkflowPreview.v
 // disposed execution-state store) so a remembered user run survives the simulated
 // tab-switch dispose, exactly like the real per-thread runtime.
 const rememberedManualExecutions = new Map<string, RememberedManualExecution>();
-let isLogsPanelCollapsedByUser = false;
 
 const { telemetryTrackSpy } = vi.hoisted(() => ({ telemetryTrackSpy: vi.fn() }));
 
@@ -48,10 +47,12 @@ const thread = reactive({
 	) => rememberedManualExecutions.set(workflowId, { executionId, agentExecutionId }),
 	getRememberedManualExecution: (workflowId: string) => rememberedManualExecutions.get(workflowId),
 	forgetManualExecution: (workflowId: string) => rememberedManualExecutions.delete(workflowId),
-	rememberLogsPanelCollapsed: () => {
-		isLogsPanelCollapsedByUser = true;
+	// Same shape as the runtime's logs panel memory; it survives the simulated tab switch.
+	logsPanelMemory: {
+		collapsedByUser: false,
+		autoOpened: false,
+		latestStartedExecutionIds: new Map<string, string>(),
 	},
-	hasUserCollapsedLogsPanel: () => isLogsPanelCollapsedByUser,
 });
 
 vi.mock('../instanceAi.store', () => ({
@@ -136,11 +137,13 @@ interface MountPreviewOptions {
 	initialNodeId?: string;
 	/** Size of the artifact pane. jsdom has no layout, so the logs auto-open size gate reads this. */
 	paneSize?: { width: number; height: number };
+	/** Reuse the stores of an earlier mount, like a remount after a tab switch. */
+	pinia?: TestingPinia;
 }
 
 async function mountPreview(options: MountPreviewOptions = {}) {
 	const listeners: OnPushMessageHandler[] = [];
-	const pinia = createTestingPinia({ stubActions: false });
+	const pinia = options.pinia ?? createTestingPinia({ stubActions: false });
 	setActivePinia(pinia);
 
 	const paneSize = options.paneSize ?? { width: 1200, height: 900 };
@@ -177,7 +180,7 @@ async function mountPreview(options: MountPreviewOptions = {}) {
 	});
 	await flushPromises();
 
-	return { wrapper, listeners, workflowsStore };
+	return { wrapper, listeners, workflowsStore, pinia };
 }
 
 function startExecution(
@@ -219,7 +222,9 @@ describe('InstanceAiWorkflowPreview', () => {
 		thread.consumePendingHandoff.mockReset();
 		thread.sendMessage.mockReset();
 		rememberedManualExecutions.clear();
-		isLogsPanelCollapsedByUser = false;
+		thread.logsPanelMemory.collapsedByUser = false;
+		thread.logsPanelMemory.autoOpened = false;
+		thread.logsPanelMemory.latestStartedExecutionIds.clear();
 		telemetryTrackSpy.mockReset();
 	});
 
@@ -548,7 +553,7 @@ describe('InstanceAiWorkflowPreview', () => {
 			finishExecution(listeners, 'exec-user-1', 'success');
 			startExecution(listeners, 'exec-agent-2', 'instance_ai');
 
-			expect(thread.hasUserCollapsedLogsPanel()).toBe(true);
+			expect(thread.logsPanelMemory.collapsedByUser).toBe(true);
 			expect(logsStore.isOpen).toBe(false);
 			expect(toggleEvents()).toHaveLength(1);
 		});
@@ -595,6 +600,52 @@ describe('InstanceAiWorkflowPreview', () => {
 			}
 
 			expect(logsStore.isOpen).toBe(false);
+		});
+
+		it('collapses the panel after a tab switch when the run that opened it succeeds', async () => {
+			const first = await mountPreview();
+			const logsStore = useLogsStore();
+			startExecution(first.listeners, 'exec-user-1');
+			expect(logsStore.isOpen).toBe(true);
+
+			// A tab switch and back remounts the preview on the same thread runtime.
+			first.wrapper.unmount();
+			const { listeners } = await mountPreview({ pinia: first.pinia });
+			finishExecution(listeners, 'exec-user-1', 'success');
+
+			expect(logsStore.isOpen).toBe(false);
+			expect(toggleEvents()).toHaveLength(2);
+		});
+
+		// Another artifact tab is active: the preview stays mounted but hidden.
+		// jsdom caches computed styles until a stylesheet changes, so append one.
+		const hidePreview = (wrapper: Awaited<ReturnType<typeof mountPreview>>['wrapper']) => {
+			wrapper.element.setAttribute('style', 'visibility: hidden');
+			document.head.appendChild(document.createElement('style'));
+		};
+
+		it('does not open the panel for a run of a hidden tab', async () => {
+			const { wrapper, listeners } = await mountPreview();
+			const logsStore = useLogsStore();
+			hidePreview(wrapper);
+
+			startExecution(listeners, 'exec-user-1');
+
+			expect(logsStore.isOpen).toBe(false);
+			expect(toggleEvents()).toHaveLength(0);
+		});
+
+		it('does not collapse the panel for a run of a hidden tab', async () => {
+			const { wrapper, listeners } = await mountPreview();
+			const logsStore = useLogsStore();
+			startExecution(listeners, 'exec-user-1');
+			expect(logsStore.isOpen).toBe(true);
+
+			hidePreview(wrapper);
+			finishExecution(listeners, 'exec-user-1', 'success');
+
+			expect(logsStore.isOpen).toBe(true);
+			expect(toggleEvents()).toHaveLength(1);
 		});
 	});
 });
