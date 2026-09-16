@@ -1,4 +1,5 @@
 import type { ExecutionSummary } from 'n8n-workflow';
+import { nextTick } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
 
 import { SELF_HEALING_WORKFLOWS_EXPERIMENT } from '@/app/constants/experiments';
@@ -228,6 +229,38 @@ describe('useSelfHealingStore', () => {
 			expect(entry.createdBy?.id).toBe('user-1');
 			// The store keeps a reactive proxy of the entry, so compare by id.
 			expect(store.getActivity(item.id).at(-1)?.id).toBe(entry.id);
+		});
+	});
+
+	describe('coachmark', () => {
+		beforeEach(() => {
+			localStorage.clear();
+			store.reset();
+		});
+
+		it('shows for a failed execution that has no fix yet', () => {
+			expect(store.shouldShowCoachmark(failedExecution())).toBe(true);
+			expect(store.shouldShowCoachmark(failedExecution({ status: 'success' }))).toBe(false);
+		});
+
+		it('hides once the flag is off', () => {
+			mockGetVariant.mockReturnValue(SELF_HEALING_WORKFLOWS_EXPERIMENT.control);
+			expect(store.shouldShowCoachmark(failedExecution())).toBe(false);
+		});
+
+		it('snoozes on "not now" and hides for good on dismiss', async () => {
+			store.dismissCoachmark('later');
+			expect(store.isCoachmarkDismissed).toBe(true);
+			expect(store.shouldShowCoachmark(failedExecution())).toBe(false);
+
+			store.reset();
+			expect(store.isCoachmarkDismissed).toBe(false);
+
+			store.dismissCoachmark('forever');
+			// The storage ref flushes its write on the next tick.
+			await nextTick();
+			expect(localStorage.getItem('N8N_SELF_HEALING_COACHMARK')).toBe('forever');
+			expect(store.isCoachmarkDismissed).toBe(true);
 		});
 	});
 

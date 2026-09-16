@@ -43,8 +43,8 @@ Workflow Reviews backend feature is off. See `isReviewInboxEnabled` in
    section lists one default configuration. Edit it, add another, pause it.
 2. Open the project's **Workflows**. Enrolled workflows show a chip:
    "Monitoring" or "Healed 3 hours ago". Workflows outside the scope show nothing.
-3. Open a workflow's **Executions** and select a failed one. Click
-   **Let AI Assistant fix this**. After a short delay the banner links to the
+3. Open a workflow's **Executions** and select a failed one. A one-time
+   coachmark points at **Let AI Assistant fix this**; click either. After a short delay the banner links to the
    new review, and the workflow's chip reads "Fix in review".
 4. Open **Reviews**. Two seeded auto-fix reviews plus the one you started sit
    in the inbox with the assistant avatar and a one-line summary. Open one:

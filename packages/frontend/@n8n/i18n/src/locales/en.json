@@ -8763,5 +8763,10 @@
 	"selfHealing.workflowSettings.off": "Off",
 	"selfHealing.workflowSettings.excluded": "Not among the selected workflows",
 	"selfHealing.workflowSettings.paused": "Paused in project settings",
-	"selfHealing.workflowSettings.manage": "Manage in project settings"
+	"selfHealing.workflowSettings.manage": "Manage in project settings",
+	"selfHealing.coachmark.title": "Try self-healing",
+	"selfHealing.coachmark.body": "Let AI Assistant handle failed executions. {behaviour}",
+	"selfHealing.coachmark.notNow": "Not now",
+	"selfHealing.coachmark.tryNow": "Try now",
+	"selfHealing.coachmark.dismiss": "Dismiss"
 }
