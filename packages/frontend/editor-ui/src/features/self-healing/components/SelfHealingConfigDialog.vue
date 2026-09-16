@@ -6,6 +6,7 @@ import {
 	N8nDialogFooter,
 	N8nDialogHeader,
 	N8nDialogTitle,
+	N8nIcon,
 	N8nIconButton,
 	N8nInput,
 	N8nInputLabel,
@@ -110,6 +111,29 @@ const projectWorkflows = computed(() =>
 		(workflow) => workflow.homeProject?.id === props.projectId && !workflow.isArchived,
 	),
 );
+
+/** Workflows not yet selected; the picker lists these. */
+const pickableWorkflows = computed(() =>
+	projectWorkflows.value.filter(
+		(workflow) => !form.value.selectedWorkflowIds.includes(workflow.id),
+	),
+);
+
+const selectedWorkflows = computed(() =>
+	form.value.selectedWorkflowIds.flatMap((id) => {
+		const workflow = workflowsListStore.getWorkflowById(id);
+		return workflow ? [{ id, name: workflow.name }] : [];
+	}),
+);
+
+function addWorkflow(workflowId: string) {
+	if (!workflowId || form.value.selectedWorkflowIds.includes(workflowId)) return;
+	form.value.selectedWorkflowIds = [...form.value.selectedWorkflowIds, workflowId];
+}
+
+function removeWorkflow(workflowId: string) {
+	form.value.selectedWorkflowIds = form.value.selectedWorkflowIds.filter((id) => id !== workflowId);
+}
 
 const scopeOptions = computed<Array<SegmentOption<SelfHealingScope>>>(() => [
 	{ value: 'all', label: i18n.baseText('selfHealing.dialog.scope.all') },
@@ -262,27 +286,62 @@ function save() {
 					:class="$style.scope"
 					data-test-id="self-healing-scope-control"
 				/>
-				<N8nSelect
-					v-if="form.scope === 'selected'"
-					id="self-healing-selected-workflows"
-					v-model="form.selectedWorkflowIds"
-					multiple
-					filterable
-					collapse-tags
-					:collapse-tags-tooltip="true"
-					:teleported="false"
-					:loading="loadingWorkflows"
-					:placeholder="i18n.baseText('selfHealing.dialog.scope.select.placeholder')"
-					:class="$style.scopeSelect"
-					data-test-id="self-healing-selected-workflows"
-				>
-					<N8nOption
-						v-for="workflow in projectWorkflows"
-						:key="workflow.id"
-						:label="workflow.name"
-						:value="workflow.id"
-					/>
-				</N8nSelect>
+				<template v-if="form.scope === 'selected'">
+					<N8nSelect
+						id="self-healing-selected-workflows"
+						model-value=""
+						filterable
+						:teleported="false"
+						:loading="loadingWorkflows"
+						:placeholder="i18n.baseText('selfHealing.dialog.scope.select.placeholder')"
+						:class="$style.scopeSelect"
+						data-test-id="self-healing-selected-workflows"
+						@update:model-value="addWorkflow"
+					>
+						<N8nOption
+							v-for="workflow in pickableWorkflows"
+							:key="workflow.id"
+							:label="workflow.name"
+							:value="workflow.id"
+						/>
+					</N8nSelect>
+					<ul
+						v-if="selectedWorkflows.length > 0"
+						:class="$style.entries"
+						data-test-id="self-healing-selected-workflow-list"
+					>
+						<li
+							v-for="workflow in selectedWorkflows"
+							:key="workflow.id"
+							:class="$style.entry"
+							:data-test-id="`self-healing-selected-workflow-${workflow.id}`"
+						>
+							<span :class="$style.circleIcon">
+								<N8nIcon icon="workflow" size="small" color="text-base" />
+							</span>
+							<N8nText size="medium" color="text-dark" :class="$style.entryName">
+								{{ workflow.name }}
+							</N8nText>
+							<N8nIconButton
+								icon="x"
+								variant="ghost"
+								size="small"
+								:title="i18n.baseText('selfHealing.dialog.people.remove')"
+								data-test-id="self-healing-selected-workflow-remove"
+								@click="removeWorkflow(workflow.id)"
+							/>
+						</li>
+					</ul>
+					<N8nText
+						v-else
+						size="xsmall"
+						color="text-light"
+						:class="$style.hint"
+						data-test-id="self-healing-selected-workflows-empty"
+					>
+						{{ i18n.baseText('selfHealing.dialog.scope.empty') }}
+					</N8nText>
+				</template>
 			</N8nInputLabel>
 
 			<N8nInputLabel
@@ -325,7 +384,7 @@ function save() {
 						data-test-id="self-healing-pick-project-members"
 					>
 						<div :class="$style.pickRow">
-							<span :class="$style.projectAvatar">
+							<span :class="$style.circleIcon">
 								<ProjectIcon :icon="projectIcon" size="small" round border-less />
 							</span>
 							<span>
@@ -352,18 +411,18 @@ function save() {
 				</N8nSelect>
 				<ul
 					v-if="hasAnyoneToNotify"
-					:class="$style.reviewers"
+					:class="$style.entries"
 					data-test-id="self-healing-reviewer-list"
 				>
 					<li
 						v-if="form.notifyProjectMembers"
-						:class="$style.reviewer"
+						:class="$style.entry"
 						data-test-id="self-healing-project-members"
 					>
-						<span :class="$style.projectAvatar">
+						<span :class="$style.circleIcon">
 							<ProjectIcon :icon="projectIcon" size="small" round border-less />
 						</span>
-						<N8nText size="medium" color="text-dark" :class="$style.reviewerName">
+						<N8nText size="medium" color="text-dark" :class="$style.entryName">
 							{{
 								i18n.baseText('selfHealing.people.projectMembers', {
 									interpolate: { project: projectName },
@@ -382,11 +441,11 @@ function save() {
 					<li
 						v-for="user in selectedReviewers"
 						:key="user.id"
-						:class="$style.reviewer"
+						:class="$style.entry"
 						:data-test-id="`self-healing-reviewer-${user.id}`"
 					>
 						<N8nAvatar :first-name="user.firstName" :last-name="user.lastName" size="small" />
-						<N8nText size="medium" color="text-dark" :class="$style.reviewerName">
+						<N8nText size="medium" color="text-dark" :class="$style.entryName">
 							{{ reviewerName(user) }}
 						</N8nText>
 						<N8nIconButton
@@ -481,7 +540,8 @@ function save() {
 	margin-bottom: var(--spacing--3xs);
 }
 
-.reviewers {
+// Rows under a picker: the selected workflows and the people to notify.
+.entries {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--2xs);
@@ -490,13 +550,13 @@ function save() {
 	list-style: none;
 }
 
-.reviewer {
+.entry {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
 }
 
-.reviewerName {
+.entryName {
 	flex: 1;
 	min-width: 0;
 	overflow: hidden;
@@ -505,7 +565,7 @@ function save() {
 }
 
 // Same footprint as the small person avatar next to it.
-.projectAvatar {
+.circleIcon {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
