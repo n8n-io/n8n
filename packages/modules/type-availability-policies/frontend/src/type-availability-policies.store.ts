@@ -21,8 +21,8 @@ export const useTypeAvailabilityPoliciesStore = defineStore(
 		const requestedProjectId = ref<string | null>(null);
 		const isLoading = ref(false);
 
-		const isEnabled = computed(() =>
-			settingsStore.isModuleActive(TYPE_AVAILABILITY_POLICIES_MODULE_ID),
+		const isEnabled = computed(
+			() => settingsStore.isModuleActive(TYPE_AVAILABILITY_POLICIES_MODULE_ID) ?? false,
 		);
 
 		async function fetchForProject(projectId: string): Promise<void> {

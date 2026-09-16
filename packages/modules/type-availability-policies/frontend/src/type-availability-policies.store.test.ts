@@ -68,6 +68,22 @@ describe('useTypeAvailabilityPoliciesStore', () => {
 		});
 	});
 
+	describe('when the instance reports no active modules', () => {
+		beforeEach(() => {
+			mocks.isModuleActive.mockReturnValue(undefined);
+		});
+
+		it('reports every type as available and makes no request', async () => {
+			const store = useTypeAvailabilityPoliciesStore();
+
+			await store.fetchForProject('project-a');
+
+			expect(store.isEnabled).toBe(false);
+			expect(mocks.fetchAvailableTypes).not.toHaveBeenCalled();
+			expect(store.isNodeTypeAvailable(RESTRICTED)).toBe(true);
+		});
+	});
+
 	describe('when the module is active', () => {
 		it('returns the restricted entry with its scope and rule', async () => {
 			mocks.fetchAvailableTypes.mockResolvedValue(PROJECT_A_RESPONSE);
