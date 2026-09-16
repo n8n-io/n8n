@@ -81,9 +81,9 @@ function makeStepStore(
 		iteration: 0,
 		status: 'completed',
 		outputs: null,
-		...step,
 		wait: null,
 		resume: null,
+		...step,
 	};
 	const summariesByKey = Object.fromEntries(summaries.map((s) => [stepKeyId(s), s]));
 	return {
