@@ -12,6 +12,8 @@ export type { ToolDescriptor, CustomToolEntry, AgentSkill, AgentSkillReference }
 export interface AgentContinueLoadedEvent {
 	sessionId: string;
 	count: number;
+	hasQueueEntries: boolean;
+	queueLoadSucceeded: boolean;
 }
 
 export interface AgentFixWithAssistantFailure {
