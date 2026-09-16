@@ -1163,6 +1163,25 @@ describe('NodeCreator - utils', () => {
 		});
 	});
 
+	describe('searchNodes', () => {
+		it('searches command descriptions without searching node descriptions', () => {
+			const node = mockNodeCreateElement(
+				{ key: 'node' },
+				{ name: 'node', displayName: 'Node', description: 'A container node' },
+			);
+			const command = mockCommandCreateElement({
+				key: 'group',
+				properties: {
+					title: 'Group',
+					description: 'Add an organisational container to your workflow',
+					icon: 'group',
+				},
+			});
+
+			expect(searchNodes('container', [node, command]).map((item) => item.key)).toEqual(['group']);
+		});
+	});
+
 	describe('searchNodes - n8n Connect boost', () => {
 		const makeNode = (name: string, displayName: string, alias: string[] = []) =>
 			mockNodeCreateElement(
