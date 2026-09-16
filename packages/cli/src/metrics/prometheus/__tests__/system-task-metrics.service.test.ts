@@ -367,6 +367,9 @@ describe('PrometheusSystemTaskMetricsService', () => {
 			handler('system-task-scheduling-failed')({ name: 'prune', mode: 'in_memory' });
 
 			expect(metric('system_task_next_run_timestamp_seconds').remove).not.toHaveBeenCalled();
+			expect(metric('system_task_next_run_timestamp_seconds').value({ task: 'prune' })).toBe(
+				NOW.getTime() / 1000,
+			);
 		});
 
 		it('sets the next run in seconds', () => {
