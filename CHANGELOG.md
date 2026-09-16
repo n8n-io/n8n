@@ -1,3 +1,11 @@
+## [1.123.80](https://github.com/n8n-io/n8n/compare/n8n@1.123.79...n8n@1.123.80) (2026-09-16)
+
+
+### Bug Fixes
+
+* **core:** Apply credential allowed domains in declarative node requests ([#38723](https://github.com/n8n-io/n8n/issues/38723)) ([35ffb88](https://github.com/n8n-io/n8n/commit/35ffb8881e967ca8937643497177335839be41ac))
+
+
 ## [1.123.79](https://github.com/n8n-io/n8n/compare/n8n@1.123.77...n8n@1.123.79) (2026-09-10)
 
 
