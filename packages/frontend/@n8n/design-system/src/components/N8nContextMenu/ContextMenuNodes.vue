@@ -26,9 +26,7 @@ const state = inject(ContextMenuStateKey);
 
 const selectedValues = computed(() => state?.selectedValues.value ?? []);
 
-function isRow(
-	node: ContextMenuNode<T>,
-): node is Extract<ContextMenuNode<T>, { type: 'item' | 'checkbox' | 'submenu' }> {
+function isRow(node: ContextMenuNode<T>) {
 	return node.type === 'item' || node.type === 'checkbox' || node.type === 'submenu';
 }
 
@@ -151,9 +149,6 @@ function onRadioGroupChange(group: ContextMenuRadioGroupNode<T>, value: string |
 .separated {
 	border-top: var(--border);
 	padding-block-start: var(--context-menu--padding);
-	// Inset 1px each side so the line sits inside the panel's inset outline
-	// (`inset var(--shadow--outline)`). Both use a transparent border color,
-	// so a full-bleed separator darkens the outline at the edges.
 	margin-inline: calc(-1 * var(--context-menu--padding) + 1px);
 	padding-inline: calc(var(--context-menu--padding) - 1px);
 }
