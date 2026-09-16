@@ -18,7 +18,11 @@ import {
 	CODE_BUILDER_VALIDATE_TOOL,
 	CODE_BUILDER_VALIDATE_NODE_TOOL,
 } from './constants';
-import { LIST_N8N_GATEWAY_SERVICES_TOOL_NAME } from '../../mcp.constants';
+import {
+	LIST_N8N_GATEWAY_SERVICES_TOOL_NAME,
+	MCP_GET_USER_PREFERENCES_TOOL_NAME,
+	MCP_USER_PREFERENCES_TRIGGER_CLAUSE,
+} from '../../mcp.constants';
 
 export type McpInstructionsOptions = {
 	/**
@@ -46,10 +50,11 @@ export type McpInstructionsOptions = {
 	isAgentsEnabled?: boolean;
 
 	/**
-	 * The caller's saved AI preferences, already rendered as a tagged block by
-	 * `AiPreferenceService`. Appended as the last section when set.
+	 * Whether the `get_user_preferences` tool is registered for this caller. If true, one
+	 * sentence points the client at it: clients that load tool descriptions on demand never
+	 * read the tool's own description before building. Identical for every caller.
 	 */
-	aiPreferences?: string;
+	isUserPreferencesEnabled?: boolean;
 };
 export function getMcpInstructions(options: McpInstructionsOptions): string {
 	const {
@@ -57,15 +62,21 @@ export function getMcpInstructions(options: McpInstructionsOptions): string {
 		isN8nConnectAvailable = false,
 		canvasGroupsEnabled = false,
 		isAgentsEnabled = false,
-		aiPreferences,
+		isUserPreferencesEnabled = false,
 	} = options;
 	const INTRO = 'This is the official MCP server for n8n, a workflow automation platform.';
+
+	// One sentence, placed right after the intro: some clients keep only the first 2048
+	// characters of the instructions, and a test pins the sentence inside that budget.
+	const USER_PREFERENCES_HINT = isUserPreferencesEnabled
+		? `Before ${MCP_USER_PREFERENCES_TRIGGER_CLAUSE} call ${MCP_GET_USER_PREFERENCES_TOOL_NAME} first and apply what it returns for the remainder of the task.`
+		: '';
 
 	// Only appended when the flag is on; keeps the paid-per-session string short.
 	const GROUPS_HINT = canvasGroupsEnabled
 		? `
 
-Node groups: when a workflow has several distinct stages, organise it into named groups so it is readable on the canvas. Before creating groups, call ${MCP_GET_SDK_REFERENCE_TOOL.toolName} with section "groups" for the rules, and ${MCP_GET_WORKFLOW_BEST_PRACTICES_TOOL.toolName} (technique "list") for when to group.`
+Node groups: when a workflow has several distinct stages, organise it into named groups so it is readable on the canvas. Before creating groups, call ${MCP_GET_SDK_REFERENCE_TOOL.toolName} with section "groups" for the rules, and ${MCP_GET_WORKFLOW_BEST_PRACTICES_TOOL.toolName} (technique "list") for when to group. The save never fails because of groups, so read its result: when it reports TOP_LEVEL_ITEMS_OVER_CEILING, skippedGroups or removedGroups, repair the groups with ${MCP_UPDATE_WORKFLOW_TOOL.toolName} before you tell the user the workflow is done. A warning marked [pre-existing] describes a canvas that was already like that before your update; you do not need to repair it before you report done.`
 		: '';
 
 	const N8N_CONNECT_HINT = isN8nConnectAvailable
@@ -125,10 +136,10 @@ Agent conversations and runs are not workflow executions: get_workflow_execution
 
 	return [
 		INTRO,
+		USER_PREFERENCES_HINT,
 		isBuilderEnabled && isAgentsEnabled ? ARTIFACT_ROUTING_INSTRUCTIONS : '',
 		isAgentsEnabled ? AGENT_INSTRUCTIONS : '',
 		isBuilderEnabled ? BUILDER_INSTRUCTIONS : '',
-		aiPreferences,
 	]
 		.filter(Boolean)
 		.join('\n\n');

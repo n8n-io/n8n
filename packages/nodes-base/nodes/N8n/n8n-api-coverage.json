@@ -51,10 +51,10 @@
 			"status": "covered",
 			"nodeOperation": "credential:create"
 		},
-		"PATCH /credentials/{id}": {
+		"PATCH /credentials/{credentialId}": {
 			"status": "gap"
 		},
-		"DELETE /credentials/{id}": {
+		"DELETE /credentials/{credentialId}": {
 			"status": "covered",
 			"nodeOperation": "credential:delete"
 		},
@@ -62,7 +62,7 @@
 			"status": "covered",
 			"nodeOperation": "credential:getSchema"
 		},
-		"PUT /credentials/{id}/transfer": {
+		"PUT /credentials/{credentialId}/transfer": {
 			"status": "gap"
 		},
 		"POST /credentials/{id}/test": {
@@ -122,7 +122,7 @@
 		"GET /tags": {
 			"status": "gap"
 		},
-		"GET /tags/{id}": {
+		"GET /tags/{tagId}": {
 			"status": "gap"
 		},
 		"DELETE /tags/{id}": {
@@ -449,6 +449,24 @@
 			"status": "gap"
 		},
 		"PUT /node-type-policies/projects/{projectId}": {
+			"status": "gap"
+		},
+		"GET /node-type-policies/policies": {
+			"status": "gap"
+		},
+		"POST /node-type-policies/policies": {
+			"status": "gap"
+		},
+		"GET /node-type-policies/policies/{policyId}": {
+			"status": "gap"
+		},
+		"PUT /node-type-policies/policies/{policyId}": {
+			"status": "gap"
+		},
+		"DELETE /node-type-policies/policies/{policyId}": {
+			"status": "gap"
+		},
+		"PUT /node-type-policies/scopes/{scopeId}/attachments": {
 			"status": "gap"
 		}
 	}

@@ -1,10 +1,54 @@
+import type { UpdateCredentialPublicDto } from '@n8n/api-types';
 import type { CredentialsEntity } from '@n8n/db';
 import { validate, type Schema } from 'jsonschema';
 import type { GenericValue, IDataObject, INodeProperties } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
+import type { CredentialsHelper } from '@/credentials-helper';
 import type { IDependency } from '@/public-api/types';
 
-import { buildSharedForCredential, toJsonSchema } from '../credentials.utils';
+import {
+	assertValidUpdateProperties,
+	buildSharedForCredential,
+	toJsonSchema,
+	validateCredentialData,
+} from '../credentials.utils';
+
+const SIMPLE_PROPERTIES: INodeProperties[] = [
+	{ name: 'apiKey', type: 'string', required: true, displayName: 'API Key', default: '' },
+];
+
+const HIDDEN_REQUIRED_PROPERTIES: INodeProperties[] = [
+	{ name: 'apiKey', type: 'string', required: true, displayName: 'API Key', default: '' },
+	{ name: 'internalFlag', type: 'hidden', required: true, displayName: 'Internal', default: '' },
+];
+
+const CONDITIONAL_PROPERTIES: INodeProperties[] = [
+	{
+		name: 'authType',
+		type: 'options',
+		options: [
+			{ value: 'basic', name: 'Basic' },
+			{ value: 'token', name: 'Token' },
+		],
+		displayName: 'Auth Type',
+		default: 'basic',
+	},
+	{
+		name: 'token',
+		type: 'string',
+		required: true,
+		displayName: 'Token',
+		default: '',
+		displayOptions: { show: { authType: ['token'] } },
+	},
+];
+
+function credentialsHelperWithProperties(properties: INodeProperties[]) {
+	const credentialsHelper = mock<CredentialsHelper>();
+	credentialsHelper.getCredentialsProperties.mockReturnValue(properties);
+	return credentialsHelper;
+}
 
 describe('credentials.utils', () => {
 	describe('buildSharedForCredential', () => {
@@ -70,6 +114,133 @@ describe('credentials.utils', () => {
 					updatedAt: updatedAt2,
 				},
 			]);
+		});
+	});
+
+	describe('validateCredentialData', () => {
+		it('does not throw when data satisfies the schema', () => {
+			const credentialsHelper = credentialsHelperWithProperties(SIMPLE_PROPERTIES);
+
+			expect(() =>
+				validateCredentialData(credentialsHelper, 'someType', { apiKey: 'secret' }),
+			).not.toThrow();
+		});
+
+		it('throws a BadRequestError naming the offending field when data violates the schema', () => {
+			const credentialsHelper = credentialsHelperWithProperties(SIMPLE_PROPERTIES);
+
+			expect(() => validateCredentialData(credentialsHelper, 'someType', {})).toThrow(
+				/request\.body\.data/,
+			);
+		});
+
+		it('filters out hidden properties, so a missing hidden required field does not fail', () => {
+			const credentialsHelper = credentialsHelperWithProperties(HIDDEN_REQUIRED_PROPERTIES);
+
+			expect(() =>
+				validateCredentialData(credentialsHelper, 'someType', { apiKey: 'secret' }),
+			).not.toThrow();
+		});
+
+		it('enforces conditionally-required fields when partialData is not set', () => {
+			const credentialsHelper = credentialsHelperWithProperties(CONDITIONAL_PROPERTIES);
+
+			expect(() =>
+				validateCredentialData(credentialsHelper, 'someType', { authType: 'token' }),
+			).toThrow();
+		});
+
+		it('drops conditionally-required checks when partialData is set', () => {
+			const credentialsHelper = credentialsHelperWithProperties(CONDITIONAL_PROPERTIES);
+
+			expect(() =>
+				validateCredentialData(
+					credentialsHelper,
+					'someType',
+					{ authType: 'token' },
+					{ partialData: true },
+				),
+			).not.toThrow();
+		});
+	});
+
+	describe('assertValidUpdateProperties', () => {
+		it('does nothing when neither type nor data are provided', () => {
+			const credentialsHelper = credentialsHelperWithProperties(SIMPLE_PROPERTIES);
+			const existingCredential = { type: 'githubApi' } as unknown as CredentialsEntity;
+			const body = {} as UpdateCredentialPublicDto;
+
+			expect(() =>
+				assertValidUpdateProperties(credentialsHelper, existingCredential, body),
+			).not.toThrow();
+			expect(credentialsHelper.getCredentialsProperties).not.toHaveBeenCalled();
+		});
+
+		it('validates data against the existing type when body.type is not provided', () => {
+			const credentialsHelper = credentialsHelperWithProperties(SIMPLE_PROPERTIES);
+			const existingCredential = { type: 'githubApi' } as unknown as CredentialsEntity;
+			const body = { data: { apiKey: 'secret' } } as UpdateCredentialPublicDto;
+
+			assertValidUpdateProperties(credentialsHelper, existingCredential, body);
+
+			expect(credentialsHelper.getCredentialsProperties).toHaveBeenCalledWith('githubApi');
+		});
+
+		it('validates data against the new type when body.type is provided', () => {
+			const credentialsHelper = credentialsHelperWithProperties(SIMPLE_PROPERTIES);
+			const existingCredential = { type: 'githubApi' } as unknown as CredentialsEntity;
+			const body = { type: 'ftp', data: { apiKey: 'secret' } } as UpdateCredentialPublicDto;
+
+			assertValidUpdateProperties(credentialsHelper, existingCredential, body);
+
+			expect(credentialsHelper.getCredentialsProperties).toHaveBeenCalledWith('ftp');
+		});
+
+		it('throws a BadRequestError when data violates the schema', () => {
+			const credentialsHelper = credentialsHelperWithProperties(SIMPLE_PROPERTIES);
+			const existingCredential = { type: 'githubApi' } as unknown as CredentialsEntity;
+			const body = { data: {} } as UpdateCredentialPublicDto;
+
+			expect(() =>
+				assertValidUpdateProperties(credentialsHelper, existingCredential, body),
+			).toThrow(/request\.body\.data/);
+		});
+
+		it('passes isPartialData through to relax required-field checks', () => {
+			const credentialsHelper = credentialsHelperWithProperties(CONDITIONAL_PROPERTIES);
+			const existingCredential = { type: 'someType' } as unknown as CredentialsEntity;
+			const body = {
+				data: { authType: 'token' },
+				isPartialData: true,
+			} as UpdateCredentialPublicDto;
+
+			expect(() =>
+				assertValidUpdateProperties(credentialsHelper, existingCredential, body),
+			).not.toThrow();
+		});
+
+		it('does not require data when type is unchanged', () => {
+			const credentialsHelper = credentialsHelperWithProperties(SIMPLE_PROPERTIES);
+			const existingCredential = { type: 'githubApi' } as unknown as CredentialsEntity;
+			const body = { type: 'githubApi' } as UpdateCredentialPublicDto;
+
+			expect(() =>
+				assertValidUpdateProperties(credentialsHelper, existingCredential, body),
+			).not.toThrow();
+			expect(credentialsHelper.getCredentialsProperties).not.toHaveBeenCalled();
+		});
+
+		it('throws a BadRequestError when type changes without data', () => {
+			const credentialsHelper = credentialsHelperWithProperties(SIMPLE_PROPERTIES);
+			const existingCredential = { type: 'githubApi' } as unknown as CredentialsEntity;
+			const body = { type: 'ftp' } as UpdateCredentialPublicDto;
+
+			expect(() =>
+				assertValidUpdateProperties(credentialsHelper, existingCredential, body),
+			).toThrow(
+				'req.body.data is required when changing credential type. The existing data cannot ' +
+					'be used with the new type.',
+			);
 		});
 	});
 

@@ -71,8 +71,8 @@ describe('useWorkflowsListStore', () => {
 			workflowsListStore.addWorkflow(workflow);
 
 			const result = workflowsListStore.getWorkflowById('123');
-			expect(result.id).toBe('123');
-			expect(result.name).toBe('Test Workflow');
+			expect(result?.id).toBe('123');
+			expect(result?.name).toBe('Test Workflow');
 		});
 
 		it('should return undefined for non-existent workflow', () => {

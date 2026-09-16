@@ -827,6 +827,41 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		);
 	});
 
+	it('flushes a pending autosave and prevents browser save with Cmd/Ctrl+S', async () => {
+		const wrapper = await renderView();
+		updateConfigMock.mockClear();
+
+		vi.useFakeTimers();
+		try {
+			wrapper
+				.findComponent({ name: 'AgentBuilderEditorColumn' })
+				.vm.$emit('update:config', { name: 'Renamed agent' });
+			await nextTick();
+			expect(updateConfigMock).not.toHaveBeenCalled();
+
+			const event = new KeyboardEvent('keydown', {
+				key: 's',
+				code: 'KeyS',
+				metaKey: true,
+				ctrlKey: true,
+				bubbles: true,
+				cancelable: true,
+			});
+			document.dispatchEvent(event);
+			await vi.advanceTimersByTimeAsync(0);
+
+			expect(event.defaultPrevented).toBe(true);
+			expect(updateConfigMock).toHaveBeenCalledWith(
+				'p1',
+				'a1',
+				expect.objectContaining({ name: 'Renamed agent' }),
+				'hash-1',
+			);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
 	it('opens the preview dock with a new session when requested by the route', async () => {
 		localStorage.removeItem('N8N_AGENT_PREVIEW_OPEN:p1:a1');
 		routeQuery[NEW_SESSION_PARAM] = 'true';
@@ -930,13 +965,17 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 			...(event
 				? {
 						executionId: event.executionId,
-						initialDraft: expect.any(String),
+						initialDraft: {
+							text: expect.any(String),
+							prefillType: 'handoff_agent_change_request',
+						},
 					}
 				: {}),
 		});
 
 		if (event) {
-			const initialDraft = sendPreviewSessionToInstanceAiMock.mock.calls[0]?.[0]?.initialDraft;
+			const initialDraft =
+				sendPreviewSessionToInstanceAiMock.mock.calls[0]?.[0]?.initialDraft?.text;
 			expect(initialDraft).toContain(
 				'Review these failed tool calls, identify the root cause, fix the agent, and verify the change.',
 			);
@@ -1003,9 +1042,12 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 					threadId: 'thread-1',
 					sessionTitle: 'Failed order lookup',
 					executionId: 'exec-turn-1',
-					initialDraft: expect.stringContaining(
-						'Review these failed tool calls, identify the root cause, fix the agent, and verify the change.',
-					),
+					initialDraft: {
+						text: expect.stringContaining(
+							'Review these failed tool calls, identify the root cause, fix the agent, and verify the change.',
+						),
+						prefillType: 'handoff_agent_change_request',
+					},
 				}),
 			],
 		]);
@@ -1087,7 +1129,10 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		expect(wrapper.emitted('assistant-handoff')).toEqual([
 			[
 				expect.objectContaining({
-					initialDraft: expect.stringContaining('"sessionNumber": 42'),
+					initialDraft: {
+						text: expect.stringContaining('"sessionNumber": 42'),
+						prefillType: 'handoff_agent_change_request',
+					},
 				}),
 			],
 		]);

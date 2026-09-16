@@ -7,8 +7,8 @@ import {
 	onBeforeUnmount,
 	useTemplateRef,
 	type DeepReadonly,
+	type VNode,
 } from 'vue';
-import type { VNode } from 'vue';
 import Modal from '@/app/components/Modal.vue';
 import { WORKFLOW_PUBLISH_MODAL_KEY } from '@/app/constants';
 import { telemetry } from '@/app/plugins/telemetry';
@@ -34,7 +34,7 @@ const i18n = useI18n();
 const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const credentialsStore = useCredentialsStore();
-const { showMessage } = useToast();
+const { showMessage, showError } = useToast();
 const workflowActivate = useWorkflowActivate();
 const publishing = ref(false);
 
@@ -97,7 +97,9 @@ const activeCalloutId = computed<WorkflowPublishCalloutId | null>(() => {
 		return 'reattempt';
 	}
 
-	if (!wfHasAnyChanges.value) {
+	// After a submit the change check only describes the publish that is already
+	// under way, so "no changes" would be both true and misleading.
+	if (!wfHasAnyChanges.value && !publishing.value) {
 		return 'noChanges';
 	}
 
@@ -198,54 +200,68 @@ async function displayActivationError() {
 	});
 }
 
+function onPublishSucceeded() {
+	publishing.value = false;
+
+	workflowDocumentStore.value?.setVersionData({
+		versionId: workflowDocumentStore.value?.versionId ?? '',
+		name: versionName.value,
+		description: description.value,
+	});
+
+	// Show AI credits warning if applicable
+	if (shouldShowFreeAiCreditsWarning.value) {
+		showMessage({
+			title: i18n.baseText('freeAi.credits.showWarning.workflow.activation.title'),
+			message: i18n.baseText('freeAi.credits.showWarning.workflow.activation.description'),
+			type: 'warning',
+			duration: 0,
+		});
+	}
+
+	telemetry.track('User published version from canvas', {
+		workflow_id: workflowDocumentStore.value.workflowId,
+	});
+
+	// For now, just close the modal after successful activation
+	modalBus.emit('close');
+}
+
 async function handlePublish() {
 	if (isPublishDisabled.value) {
 		return;
 	}
 
+	const versionId = workflowDocumentStore.value?.versionId ?? '';
 	publishing.value = true;
 
-	// Activate the workflow
-	const { success, errorHandled } = await workflowActivate.publishWorkflow(
-		workflowDocumentStore.value.workflowId,
-		workflowDocumentStore.value?.versionId ?? '',
-		{
-			name: versionName.value,
-			description: description.value,
-		},
-	);
+	try {
+		// Activate the workflow
+		const { success, errorHandled } = await workflowActivate.publishWorkflow(
+			workflowDocumentStore.value.workflowId,
+			versionId,
+			{
+				name: versionName.value,
+				description: description.value,
+			},
+		);
 
-	if (success) {
-		workflowDocumentStore.value?.setVersionData({
-			versionId: workflowDocumentStore.value?.versionId ?? '',
-			name: versionName.value,
-			description: description.value,
-		});
-
-		// Show AI credits warning if applicable
-		if (shouldShowFreeAiCreditsWarning.value) {
-			showMessage({
-				title: i18n.baseText('freeAi.credits.showWarning.workflow.activation.title'),
-				message: i18n.baseText('freeAi.credits.showWarning.workflow.activation.description'),
-				type: 'warning',
-				duration: 0,
-			});
-		}
-
-		telemetry.track('User published version from canvas', {
-			workflow_id: workflowDocumentStore.value.workflowId,
-		});
-
-		// For now, just close the modal after successful activation
-		modalBus.emit('close');
-	} else {
-		// Display activation error if it fails
-		if (!errorHandled) {
+		if (success) {
+			onPublishSucceeded();
+		} else if (!errorHandled) {
+			// Display activation error if it fails
 			await displayActivationError();
 		}
+	} catch (error) {
+		showError(
+			error,
+			i18n.baseText('workflowActivator.showError.title', {
+				interpolate: { newStateName: 'published' },
+			}),
+		);
+	} finally {
+		publishing.value = false;
 	}
-
-	publishing.value = false;
 }
 </script>
 

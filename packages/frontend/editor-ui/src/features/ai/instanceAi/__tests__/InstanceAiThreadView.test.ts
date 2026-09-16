@@ -4,15 +4,18 @@ import userEvent from '@testing-library/user-event';
 import { fireEvent } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
 import { createTestingPinia } from '@pinia/testing';
+import {
+	USER_TYPED_MESSAGE,
+	type InstanceAiMessageAuthorship,
+	type InstanceAiPrefillType,
+} from '../prefills';
 import { setActivePinia } from 'pinia';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import InstanceAiThreadView from '../InstanceAiThreadView.vue';
 import { useInstanceAiStore, type ThreadRuntime } from '../instanceAi.store';
-import type { PlanEditContext } from '../instanceAi.threadRuntime';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
-import { SidebarStateKey } from '../instanceAiLayout';
 import { NEW_CONVERSATION_TITLE } from '../constants';
 import {
 	LOCAL_STORAGE_INSTANCE_AI_ARTIFACT_PREVIEW_OPEN,
@@ -157,37 +160,61 @@ vi.mock('@vueuse/core', async (importOriginal) => {
 
 const inputFocusSpy = vi.fn();
 const inputSetTextSpy = vi.fn();
-const mockSidebarCollapsed = ref(false);
 
 const InstanceAiInputStub = defineComponent({
 	name: 'InstanceAiInputStub',
 	props: {
 		suggestions: { type: Array, required: false },
 		isStreaming: { type: Boolean, required: false },
-		isPlanEditMode: { type: Boolean, required: false },
+		isAwaitingPlanReview: { type: Boolean, required: false },
+		isSubmitting: { type: Boolean, required: false },
 		isWorkflowBuilderAvailable: { type: Boolean, required: false },
 		contextChip: { type: Object, required: false },
 	},
-	emits: ['submit', 'cancel-plan-edit', 'dismiss-context-chip'],
+	emits: ['submit', 'dismiss-context-chip'],
 	setup(props, { emit, expose }) {
 		const inputDraft = ref(inputState.initialDraft);
 		const hasAttachments = ref(inputState.hasAttachments);
+		// Mirrors the real composer: whatever pre-filled the box is reported on submit,
+		// and a pre-fill must arrive through setPrefill rather than setText.
+		const activePrefill = ref<{ text: string; prefillType: InstanceAiPrefillType } | null>(null);
 		const setText = (text: string) => {
 			inputDraft.value = text;
+			// Emptying the box drops the pre-fill, as the real composer's watcher does:
+			// a dismissed draft must not attribute whatever the user types next.
+			if (text.length === 0) activePrefill.value = null;
 			inputSetTextSpy(text);
+		};
+		const setPrefill = (prefill: { text: string; prefillType: InstanceAiPrefillType }) => {
+			setText(prefill.text);
+			activePrefill.value = { ...prefill };
 		};
 		const clearTextIfMatches = (text: string) => {
 			if (inputDraft.value === text) setText('');
 		};
 		const isDirty = () => inputDraft.value.trim().length > 0 || hasAttachments.value;
-		expose({ focus: inputFocusSpy, setText, clearTextIfMatches, isDirty });
+		const resolveAuthorship = (message: string): InstanceAiMessageAuthorship => {
+			const prefill = activePrefill.value;
+			if (!prefill) return USER_TYPED_MESSAGE;
+			return {
+				kind: 'prefill',
+				prefillType: prefill.prefillType,
+				promptModified: message !== prefill.text.trim(),
+			};
+		};
+		expose({ focus: inputFocusSpy, setText, setPrefill, clearTextIfMatches, isDirty });
 		return () =>
 			h('div', { 'data-test-id': 'instance-ai-input-stub' }, [
 				props.suggestions === undefined ? 'unset' : String(props.suggestions.length),
 				h(
 					'span',
 					{ 'data-test-id': 'instance-ai-input-mode' },
-					props.isPlanEditMode ? 'plan-edit' : 'normal',
+					props.isAwaitingPlanReview ? 'plan-review' : 'normal',
+				),
+				h(
+					'span',
+					{ 'data-test-id': 'instance-ai-input-busy' },
+					props.isSubmitting ? 'busy' : 'idle',
 				),
 				h(
 					'span',
@@ -233,22 +260,30 @@ const InstanceAiInputStub = defineComponent({
 					{
 						'data-test-id': 'instance-ai-input-submit',
 						onClick: () => {
-							const message = props.isPlanEditMode
+							const message = props.isAwaitingPlanReview
 								? planEditSubmitState.message
 								: inputDraft.value || 'Normal message';
 							const submittedHasAttachments = hasAttachments.value;
-							if (submittedHasAttachments) {
-								emit('submit', message, undefined, () => {
+							const authorship = resolveAuthorship(message);
+							const submittedPrefill = activePrefill.value;
+							// Mirrors the real composer: always provided, and it restores the
+							// pre-fill with the text so a retry stays attributed.
+							emit(
+								'submit',
+								message,
+								undefined,
+								() => {
 									if (isDirty()) return false;
 									setText(message);
+									activePrefill.value = submittedPrefill;
 									hasAttachments.value = submittedHasAttachments;
 									return true;
-								});
-							} else {
-								emit('submit', message, undefined);
-							}
+								},
+								authorship,
+							);
 							inputDraft.value = '';
 							hasAttachments.value = false;
+							activePrefill.value = null;
 						},
 					},
 					'Submit',
@@ -261,16 +296,6 @@ const InstanceAiInputStub = defineComponent({
 								onClick: () => emit('dismiss-context-chip'),
 							},
 							'Dismiss context',
-						)
-					: null,
-				props.isPlanEditMode
-					? h(
-							'button',
-							{
-								'data-test-id': 'instance-ai-input-cancel-plan-edit',
-								onClick: () => emit('cancel-plan-edit'),
-							},
-							'Cancel',
 						)
 					: null,
 			]);
@@ -351,7 +376,10 @@ const InstanceAiAgentPreviewStub = defineComponent({
 									agentId: props.agentId,
 									threadId: 'preview-session-1',
 									executionId: 'execution-1',
-									initialDraft: 'Fix the failed tool calls',
+									initialDraft: {
+										text: 'Fix the failed tool calls',
+										prefillType: 'handoff_agent_change_request',
+									},
 								}),
 						},
 						'Fix with Assistant',
@@ -433,9 +461,6 @@ const InstanceAiArtifactsPanelStub = defineComponent({
 
 const renderView = createComponentRenderer(InstanceAiThreadView, {
 	global: {
-		provide: {
-			[SidebarStateKey as symbol]: { collapsed: mockSidebarCollapsed, toggle: vi.fn() },
-		},
 		stubs: {
 			InstanceAiSetupPanel: defineComponent({
 				props: { workflowId: String, projectId: String },
@@ -543,7 +568,7 @@ describe('InstanceAiThreadView', () => {
 			isAwaitingConfirmation: false,
 			isHydratingThread: false,
 			amendContext: null,
-			activePlanEdit: null,
+			pendingPlanReview: null,
 			updatingPlanRequestIds: new Set<string>(),
 			contextualSuggestion: null,
 			currentTasks: null,
@@ -568,14 +593,7 @@ describe('InstanceAiThreadView', () => {
 			copyFullTrace: vi.fn(),
 			submitFeedback: vi.fn(),
 		}) as unknown as ThreadRuntime;
-		// startPlanEdit / cancelPlanEdit need to mutate the thread so the
-		// chat-input submission path can read activePlanEdit back out.
-		thread.startPlanEdit = vi.fn((context: PlanEditContext) => {
-			thread.activePlanEdit = context;
-		});
-		thread.cancelPlanEdit = vi.fn(() => {
-			thread.activePlanEdit = null;
-		});
+		thread.requestPlanChanges = vi.fn().mockResolvedValue(true);
 
 		store = mockedStore(useInstanceAiStore);
 		store.getOrCreateRuntime.mockReturnValue(thread);
@@ -609,7 +627,6 @@ describe('InstanceAiThreadView', () => {
 		localStorageState.store.clear();
 		inputState.initialDraft = '';
 		inputState.hasAttachments = false;
-		mockSidebarCollapsed.value = false;
 		history.replaceState({}, '');
 		testAgentOfferState.evalsFlagEnabled = false;
 		testAgentOfferState.capabilitySummary = null;
@@ -695,12 +712,12 @@ describe('InstanceAiThreadView', () => {
 			expect(getByTestId('setup-panel')).toHaveAttribute('data-project-id', 'project-2');
 
 			await fireEvent.click(getByTestId('instance-ai-input-submit'));
-			expect(thread.sendMessage).toHaveBeenCalledWith(
-				'Normal message',
-				undefined,
-				expect.any(String),
-				undefined,
-			);
+			expect(thread.sendMessage).toHaveBeenCalledWith('Normal message', {
+				authorship: USER_TYPED_MESSAGE,
+				attachments: undefined,
+				pushRef: expect.any(String),
+				handoffContext: undefined,
+			});
 		});
 
 		it('follows the selected workflow and project when tabs change', async () => {
@@ -783,9 +800,12 @@ describe('InstanceAiThreadView', () => {
 		expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('SEO Auditor session');
 		expect(getByTestId('instance-ai-input-draft')).toHaveTextContent('Fix the failed tool calls');
 		expect(localStorageState.store.has('n8n-instance-ai-handoff-context:thread-1')).toBe(true);
-		expect(localStorageState.store.get('n8n-instance-ai-composer-draft:thread-1')).toBe(
-			'Fix the failed tool calls',
-		);
+		expect(
+			JSON.parse(localStorageState.store.get('n8n-instance-ai-composer-draft:thread-1') ?? 'null'),
+		).toEqual({
+			text: 'Fix the failed tool calls',
+			prefillType: 'handoff_agent_change_request',
+		});
 		expect(getByTestId('instance-ai-agent-preview-stub')).toHaveAttribute(
 			'data-preview-session-id',
 			'preview-session-1',
@@ -794,23 +814,50 @@ describe('InstanceAiThreadView', () => {
 
 		await user.click(getByTestId('instance-ai-input-submit'));
 
-		expect(thread.sendMessage).toHaveBeenCalledWith(
-			'Fix the failed tool calls',
-			undefined,
-			expect.any(String),
-			{
+		expect(thread.sendMessage).toHaveBeenCalledWith('Fix the failed tool calls', {
+			authorship: {
+				kind: 'prefill',
+				prefillType: 'handoff_agent_change_request',
+				promptModified: false,
+			},
+			attachments: undefined,
+			pushRef: expect.any(String),
+			handoffContext: {
 				source: 'agent-preview',
 				agentId: 'agent-1',
 				threadId: 'preview-session-1',
 				executionId: 'execution-1',
 			},
-		);
+		});
 		await vi.waitFor(() => {
 			expect(getByTestId('instance-ai-agent-preview-stub')).toHaveAttribute(
 				'data-preview-session-id',
 				'preview-session-1',
 			);
 		});
+	});
+
+	// The edit/accept distinction is the point of prompt_modified, so assert the
+	// true path on a send that actually goes through.
+	it('reports an edited pre-fill as modified when the send succeeds', async () => {
+		const { getByTestId, user } = await renderAgentArtifact();
+		store.updateThreadMetadata.mockResolvedValueOnce(undefined);
+		vi.mocked(thread.sendMessage).mockClear();
+
+		await user.click(getByTestId('instance-ai-agent-preview-fix-with-assistant'));
+		await user.click(getByTestId('instance-ai-input-edit-draft'));
+		await user.click(getByTestId('instance-ai-input-submit'));
+
+		expect(thread.sendMessage).toHaveBeenCalledWith(
+			'Edited user draft',
+			expect.objectContaining({
+				authorship: {
+					kind: 'prefill',
+					prefillType: 'handoff_agent_change_request',
+					promptModified: true,
+				},
+			}),
+		);
 	});
 
 	it('restores an edited fix draft and its attachments when sending fails', async () => {
@@ -851,6 +898,7 @@ describe('InstanceAiThreadView', () => {
 	});
 
 	it('clears the generated draft when pending context is dismissed from the artifacts panel', async () => {
+		mockWindowSizeState.width.value = 900;
 		const { findByTestId, getByTestId, user } = await renderAgentArtifact();
 		store.updateThreadMetadata.mockResolvedValueOnce(undefined);
 
@@ -873,6 +921,7 @@ describe('InstanceAiThreadView', () => {
 	});
 
 	it('preserves edited text and attachments when artifacts-panel context is dismissed', async () => {
+		mockWindowSizeState.width.value = 900;
 		const { findByTestId, getByTestId, user } = await renderAgentArtifact();
 		store.updateThreadMetadata.mockResolvedValueOnce(undefined);
 
@@ -1061,7 +1110,10 @@ describe('InstanceAiThreadView', () => {
 				executionId: 'exec-1',
 			}),
 		);
-		stashPendingComposerDraft('thread-1', FIX_WITH_ASSISTANT_DRAFT);
+		stashPendingComposerDraft('thread-1', {
+			text: FIX_WITH_ASSISTANT_DRAFT,
+			prefillType: 'handoff_agent_change_request',
+		});
 		stashPendingAgentAttachment('thread-1', {
 			type: 'agent',
 			id: 'agent-1',
@@ -1096,9 +1148,13 @@ describe('InstanceAiThreadView', () => {
 
 		await userEvent.click(getByTestId('instance-ai-input-submit'));
 
-		expect(thread.sendMessage).toHaveBeenCalledWith(
-			FIX_WITH_ASSISTANT_DRAFT,
-			[
+		expect(thread.sendMessage).toHaveBeenCalledWith(FIX_WITH_ASSISTANT_DRAFT, {
+			authorship: {
+				kind: 'prefill',
+				prefillType: 'handoff_agent_change_request',
+				promptModified: false,
+			},
+			attachments: [
 				{
 					type: 'agent',
 					id: 'agent-1',
@@ -1106,14 +1162,14 @@ describe('InstanceAiThreadView', () => {
 					name: 'SEO Auditor',
 				},
 			],
-			expect.any(String),
-			{
+			pushRef: expect.any(String),
+			handoffContext: {
 				source: 'agent-preview',
 				agentId: 'agent-1',
 				threadId: 'preview-thread-1',
 				executionId: 'exec-1',
 			},
-		);
+		});
 		await vi.waitFor(() => {
 			expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('');
 			expect(getByTestId('instance-ai-agent-preview-stub')).toHaveAttribute(
@@ -1123,13 +1179,13 @@ describe('InstanceAiThreadView', () => {
 		});
 	});
 
-	it('prefills pending composer state before the thread list finishes loading', async () => {
+	it('prefills pending composer state before the thread finishes loading', async () => {
 		store.threads = [];
-		let resolveThreadList!: (loaded: boolean) => void;
-		store.loadThreads.mockImplementation(
+		let resolveThread!: () => void;
+		store.loadThread.mockImplementation(
 			() =>
 				new Promise((resolve) => {
-					resolveThreadList = resolve;
+					resolveThread = resolve;
 				}),
 		);
 		localStorageState.store.set(
@@ -1140,12 +1196,15 @@ describe('InstanceAiThreadView', () => {
 				threadId: 'preview-thread-1',
 			}),
 		);
-		stashPendingComposerDraft('thread-1', 'Fix the failed tool');
+		stashPendingComposerDraft('thread-1', {
+			text: 'Fix the failed tool',
+			prefillType: 'handoff_agent_change_request',
+		});
 
 		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
 		await vi.waitFor(() => {
-			expect(store.loadThreads).toHaveBeenCalledWith();
+			expect(store.loadThread).toHaveBeenCalledWith('thread-1');
 			expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('Preview session');
 			expect(getByTestId('instance-ai-input-draft')).toHaveTextContent('Fix the failed tool');
 		});
@@ -1158,7 +1217,7 @@ describe('InstanceAiThreadView', () => {
 				updatedAt: '2026-04-01T00:00:00.000Z',
 			},
 		] as typeof store.threads;
-		resolveThreadList(true);
+		resolveThread();
 		await flushPromises();
 	});
 
@@ -1203,16 +1262,16 @@ describe('InstanceAiThreadView', () => {
 
 		await userEvent.click(getByTestId('instance-ai-input-submit'));
 
-		expect(thread.sendMessage).toHaveBeenCalledWith(
-			'Normal message',
-			undefined,
-			expect.any(String),
-			{
+		expect(thread.sendMessage).toHaveBeenCalledWith('Normal message', {
+			authorship: USER_TYPED_MESSAGE,
+			attachments: undefined,
+			pushRef: expect.any(String),
+			handoffContext: {
 				source: 'agent-preview',
 				agentId: 'agent-1',
 				threadId: 'preview-thread-1',
 			},
-		);
+		});
 		await vi.waitFor(() => {
 			expect(localStorageState.store.has('n8n-instance-ai-handoff-context:thread-1')).toBe(false);
 		});
@@ -1257,16 +1316,16 @@ describe('InstanceAiThreadView', () => {
 
 		await userEvent.click(getByTestId('instance-ai-input-submit'));
 
-		expect(thread.sendMessage).toHaveBeenCalledWith(
-			'Normal message',
-			undefined,
-			expect.any(String),
-			{
+		expect(thread.sendMessage).toHaveBeenCalledWith('Normal message', {
+			authorship: USER_TYPED_MESSAGE,
+			attachments: undefined,
+			pushRef: expect.any(String),
+			handoffContext: {
 				source: 'agent-preview',
 				agentId: 'agent-1',
 				threadId: 'preview-thread-1',
 			},
-		);
+		});
 		await vi.waitFor(() => {
 			expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent(
 				'SEO Auditor session',
@@ -1277,17 +1336,16 @@ describe('InstanceAiThreadView', () => {
 
 		await userEvent.click(getByTestId('instance-ai-input-submit'));
 
-		expect(thread.sendMessage).toHaveBeenNthCalledWith(
-			2,
-			'Normal message',
-			undefined,
-			expect.any(String),
-			{
+		expect(thread.sendMessage).toHaveBeenNthCalledWith(2, 'Normal message', {
+			authorship: USER_TYPED_MESSAGE,
+			attachments: undefined,
+			pushRef: expect.any(String),
+			handoffContext: {
 				source: 'agent-preview',
 				agentId: 'agent-1',
 				threadId: 'preview-thread-1',
 			},
-		);
+		});
 		await vi.waitFor(() => {
 			expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('');
 			expect(localStorageState.store.has('n8n-instance-ai-handoff-context:thread-1')).toBe(false);
@@ -1339,10 +1397,9 @@ describe('InstanceAiThreadView', () => {
 
 		await userEvent.click(getByTestId('instance-ai-input-submit'));
 
-		expect(thread.sendMessage).toHaveBeenNthCalledWith(
-			1,
-			'Normal message',
-			[
+		expect(thread.sendMessage).toHaveBeenNthCalledWith(1, 'Normal message', {
+			authorship: USER_TYPED_MESSAGE,
+			attachments: [
 				{
 					type: 'agent',
 					id: 'agent-1',
@@ -1351,18 +1408,17 @@ describe('InstanceAiThreadView', () => {
 					pending: true,
 				},
 			],
-			expect.any(String),
-			undefined,
-		);
+			pushRef: expect.any(String),
+			handoffContext: undefined,
+		});
 		expect(getPendingAgentAttachment('thread-1')).not.toBeNull();
 		expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('New Agent');
 
 		await userEvent.click(getByTestId('instance-ai-input-submit'));
 
-		expect(thread.sendMessage).toHaveBeenNthCalledWith(
-			2,
-			'Normal message',
-			[
+		expect(thread.sendMessage).toHaveBeenNthCalledWith(2, 'Normal message', {
+			authorship: USER_TYPED_MESSAGE,
+			attachments: [
 				{
 					type: 'agent',
 					id: 'agent-1',
@@ -1371,9 +1427,9 @@ describe('InstanceAiThreadView', () => {
 					pending: true,
 				},
 			],
-			expect.any(String),
-			undefined,
-		);
+			pushRef: expect.any(String),
+			handoffContext: undefined,
+		});
 		await vi.waitFor(() => {
 			expect(getPendingAgentAttachment('thread-1')).toBeNull();
 			expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('');
@@ -1381,13 +1437,12 @@ describe('InstanceAiThreadView', () => {
 
 		await userEvent.click(getByTestId('instance-ai-input-submit'));
 
-		expect(thread.sendMessage).toHaveBeenNthCalledWith(
-			3,
-			'Normal message',
-			undefined,
-			expect.any(String),
-			undefined,
-		);
+		expect(thread.sendMessage).toHaveBeenNthCalledWith(3, 'Normal message', {
+			authorship: USER_TYPED_MESSAGE,
+			attachments: undefined,
+			pushRef: expect.any(String),
+			handoffContext: undefined,
+		});
 	});
 
 	it('attaches the bound target when the new agent was persisted before the first message', async () => {
@@ -1420,9 +1475,9 @@ describe('InstanceAiThreadView', () => {
 		});
 		await userEvent.click(getByTestId('instance-ai-input-submit'));
 
-		expect(thread.sendMessage).toHaveBeenCalledWith(
-			'Normal message',
-			[
+		expect(thread.sendMessage).toHaveBeenCalledWith('Normal message', {
+			authorship: USER_TYPED_MESSAGE,
+			attachments: [
 				{
 					type: 'agent',
 					id: 'agent-1',
@@ -1430,9 +1485,9 @@ describe('InstanceAiThreadView', () => {
 					projectId: 'project-1',
 				},
 			],
-			expect.any(String),
-			undefined,
-		);
+			pushRef: expect.any(String),
+			handoffContext: undefined,
+		});
 	});
 
 	it('detaches dismissed saved-agent context without closing its preview', async () => {
@@ -1466,12 +1521,12 @@ describe('InstanceAiThreadView', () => {
 		expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('');
 		expect(preview).toBeInTheDocument();
 		await userEvent.click(getByTestId('instance-ai-input-submit'));
-		expect(thread.sendMessage).toHaveBeenCalledWith(
-			'Normal message',
-			undefined,
-			expect.any(String),
-			undefined,
-		);
+		expect(thread.sendMessage).toHaveBeenCalledWith('Normal message', {
+			authorship: USER_TYPED_MESSAGE,
+			attachments: undefined,
+			pushRef: expect.any(String),
+			handoffContext: undefined,
+		});
 	});
 
 	it('dismisses a pending preview-context chip without sending it', async () => {
@@ -1485,7 +1540,10 @@ describe('InstanceAiThreadView', () => {
 				threadId: 'preview-thread-1',
 			}),
 		);
-		stashPendingComposerDraft('thread-1', 'Fix the failed tool');
+		stashPendingComposerDraft('thread-1', {
+			text: 'Fix the failed tool',
+			prefillType: 'handoff_agent_change_request',
+		});
 
 		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
@@ -1502,12 +1560,12 @@ describe('InstanceAiThreadView', () => {
 
 		await userEvent.click(getByTestId('instance-ai-input-submit'));
 
-		expect(thread.sendMessage).toHaveBeenCalledWith(
-			'Normal message',
-			undefined,
-			expect.any(String),
-			undefined,
-		);
+		expect(thread.sendMessage).toHaveBeenCalledWith('Normal message', {
+			authorship: USER_TYPED_MESSAGE,
+			attachments: undefined,
+			pushRef: expect.any(String),
+			handoffContext: undefined,
+		});
 	});
 
 	it('shows a sent preview-context chip and dismisses it through thread metadata', async () => {
@@ -1649,6 +1707,7 @@ describe('InstanceAiThreadView', () => {
 	});
 
 	it('connects the route thread when navigating to a known thread', async () => {
+		mockRouteState.params.threadId = 'thread-2';
 		thread.sseState = 'disconnected';
 		store.threads = [
 			...store.threads,
@@ -2515,33 +2574,64 @@ describe('InstanceAiThreadView', () => {
 		});
 	});
 
-	it('focuses the main composer when asking for plan edits', async () => {
+	/** Put the thread in the suspended-on-plan-review state the runtime derives. */
+	function seedPendingPlanReview() {
 		thread.messages = [makePlanReviewMessage()];
+		thread.isStreaming = true;
+		thread.pendingPlanReview = {
+			requestId: 'req-plan',
+			inputThreadId: 'input-thread-1',
+			taskCount: 1,
+		};
+	}
+
+	it('hands the composer a live plan-review state while the run is suspended', async () => {
+		seedPendingPlanReview();
 
 		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
 		await vi.waitFor(() => {
-			expect(getByTestId('instance-ai-plan-ask-for-edits')).toBeInTheDocument();
-		});
-
-		await getByTestId('instance-ai-plan-ask-for-edits').click();
-
-		await vi.waitFor(() => {
-			expect(inputFocusSpy).toHaveBeenCalled();
-			expect(getByTestId('instance-ai-input-mode')).toHaveTextContent('plan-edit');
+			expect(getByTestId('instance-ai-input-mode')).toHaveTextContent('plan-review');
 		});
 	});
 
-	it('scrubs credential patterns from plan-edit feedback before sending to telemetry, but keeps the raw text in the backend confirmation', async () => {
-		thread.messages = [makePlanReviewMessage()];
+	// The live composer is the one way to ask for edits, so the card must not
+	// offer a second one that only points back at it.
+	it('renders the plan card without an ask-for-edits action', async () => {
+		seedPendingPlanReview();
+
+		const { getByTestId, queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+		await vi.waitFor(() => {
+			expect(getByTestId('instance-ai-plan-approve')).toBeInTheDocument();
+		});
+
+		expect(queryByTestId('instance-ai-plan-ask-for-edits')).not.toBeInTheDocument();
+	});
+
+	it('routes a typed message to the plan without any prior click', async () => {
+		seedPendingPlanReview();
+
+		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+		await vi.waitFor(() => {
+			expect(getByTestId('instance-ai-input-submit')).toBeInTheDocument();
+		});
+		await getByTestId('instance-ai-input-submit').click();
+
+		expect(thread.requestPlanChanges).toHaveBeenCalledWith('req-plan', 'Make the plan simpler');
+		expect(thread.sendMessage).not.toHaveBeenCalled();
+	});
+
+	it('scrubs credential patterns from plan feedback telemetry but sends the raw text on', async () => {
+		seedPendingPlanReview();
 		planEditSubmitState.message = 'use sk-proj-abcdef1234567890XYZ to call the API';
 
 		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
 		await vi.waitFor(() => {
-			expect(getByTestId('instance-ai-plan-ask-for-edits')).toBeInTheDocument();
+			expect(getByTestId('instance-ai-input-submit')).toBeInTheDocument();
 		});
-		await getByTestId('instance-ai-plan-ask-for-edits').click();
 		await getByTestId('instance-ai-input-submit').click();
 
 		expect(telemetryTrackSpy).toHaveBeenCalledWith(
@@ -2549,55 +2639,78 @@ describe('InstanceAiThreadView', () => {
 			expect.objectContaining({
 				feedback: 'use [REDACTED] to call the API',
 				plan_feedback_type: 'changes_requested',
+				num_tasks: 1,
+				input_thread_id: 'input-thread-1',
 			}),
 		);
-		expect(thread.confirmAction).toHaveBeenCalledWith('req-plan', {
-			kind: 'approval',
-			approved: false,
-			userInput: 'use sk-proj-abcdef1234567890XYZ to call the API',
-		});
+		expect(thread.requestPlanChanges).toHaveBeenCalledWith(
+			'req-plan',
+			'use sk-proj-abcdef1234567890XYZ to call the API',
+		);
 	});
 
-	it('submits plan edit feedback through confirmation instead of a new chat message', async () => {
-		thread.messages = [makePlanReviewMessage()];
+	it('restores the draft when the plan change request fails', async () => {
+		seedPendingPlanReview();
+		vi.mocked(thread.requestPlanChanges).mockResolvedValueOnce(false);
 
 		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
 		await vi.waitFor(() => {
-			expect(getByTestId('instance-ai-plan-ask-for-edits')).toBeInTheDocument();
+			expect(getByTestId('instance-ai-input-submit')).toBeInTheDocument();
 		});
-		await getByTestId('instance-ai-plan-ask-for-edits').click();
 		await getByTestId('instance-ai-input-submit').click();
 
-		expect(thread.confirmAction).toHaveBeenCalledWith('req-plan', {
-			kind: 'approval',
-			approved: false,
-			userInput: 'Make the plan simpler',
-		});
-		// resolveConfirmation only fires after the backend call succeeds, so it
-		// happens on the next tick once the confirmAction promise resolves.
 		await vi.waitFor(() => {
-			expect(thread.resolveConfirmation).toHaveBeenCalledWith('req-plan', 'changes-requested');
+			expect(getByTestId('instance-ai-input-draft')).toHaveTextContent('Make the plan simpler');
 		});
-		expect(thread.sendMessage).not.toHaveBeenCalled();
 	});
 
-	it('does not resolve the plan when the backend confirmAction fails', async () => {
-		thread.messages = [makePlanReviewMessage()];
-		vi.mocked(thread.confirmAction).mockResolvedValueOnce(false);
+	// A submission the run never saw is not feedback. It reports one revision per
+	// accepted request, so a dropped or failed submit must record nothing.
+	it('reports no plan feedback telemetry when the change request is not sent', async () => {
+		seedPendingPlanReview();
+		vi.mocked(thread.requestPlanChanges).mockResolvedValueOnce(false);
 
 		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
 		await vi.waitFor(() => {
-			expect(getByTestId('instance-ai-plan-ask-for-edits')).toBeInTheDocument();
+			expect(getByTestId('instance-ai-input-submit')).toBeInTheDocument();
 		});
-		await getByTestId('instance-ai-plan-ask-for-edits').click();
 		await getByTestId('instance-ai-input-submit').click();
 
 		await vi.waitFor(() => {
-			expect(thread.clearPlanUpdatePending).toHaveBeenCalledWith('req-plan');
+			expect(getByTestId('instance-ai-input-draft')).toHaveTextContent('Make the plan simpler');
 		});
-		expect(thread.resolveConfirmation).not.toHaveBeenCalled();
+		expect(telemetryTrackSpy).not.toHaveBeenCalledWith(
+			'User finished providing input',
+			expect.objectContaining({ plan_feedback_type: 'changes_requested' }),
+		);
+	});
+
+	// `confirmAction` never touches the send counter, so without this the composer
+	// stays live through the round trip and a second Enter is silently dropped.
+	it('holds the composer busy while a plan change request is in flight', async () => {
+		seedPendingPlanReview();
+		thread.updatingPlanRequestIds = new Set(['req-plan']);
+
+		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+		await vi.waitFor(() => {
+			expect(getByTestId('instance-ai-input-busy')).toHaveTextContent('busy');
+		});
+	});
+
+	// The runtime refuses to route feedback into a card a newer turn stranded, so
+	// the card must not offer to approve that same abandoned run either.
+	it('renders a plan card stranded by a newer turn without its actions', async () => {
+		seedPendingPlanReview();
+		thread.pendingPlanReview = null;
+
+		const { findByTestId, queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+		expect(await findByTestId('instance-ai-plan-review')).toBeInTheDocument();
+		expect(queryByTestId('instance-ai-plan-approve')).not.toBeInTheDocument();
+		expect(queryByTestId('instance-ai-plan-deny')).not.toBeInTheDocument();
 	});
 
 	describe('runtime disposal on unmount', () => {
@@ -2627,12 +2740,12 @@ describe('InstanceAiThreadView', () => {
 
 		await getByTestId('instance-ai-input-submit').click();
 
-		expect(thread.sendMessage).toHaveBeenCalledWith(
-			'Normal message',
-			undefined,
-			expect.any(String),
-			undefined,
-		);
+		expect(thread.sendMessage).toHaveBeenCalledWith('Normal message', {
+			authorship: USER_TYPED_MESSAGE,
+			attachments: undefined,
+			pushRef: expect.any(String),
+			handoffContext: undefined,
+		});
 		expect(thread.confirmAction).not.toHaveBeenCalled();
 	});
 });

@@ -5,6 +5,7 @@ import { N8nRecycleScroller } from '@n8n/design-system';
 import SessionTimelineRow from './SessionTimelineRow.vue';
 import type { IdleRange, TimelineItem } from '../session-timeline.types';
 import { filteredTimelineItemIndexes, formatDuration } from '../session-timeline.utils';
+import { backgroundJobTimelineLabelKey } from '../utils/background-job-labels';
 
 const ROW_HEIGHT = 40;
 const SCROLL_PADDING = 24;
@@ -27,6 +28,9 @@ const canScrollDown = ref(false);
 let scrollContainer: HTMLElement | null = null;
 
 function labelForKey(key: string): string {
+	const backgroundJobKey = backgroundJobTimelineLabelKey(key);
+	if (backgroundJobKey) return i18n.baseText(backgroundJobKey);
+
 	switch (key) {
 		case 'user':
 			return i18n.baseText('agentSessions.timeline.user');

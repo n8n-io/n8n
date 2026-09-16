@@ -2,17 +2,20 @@
  * Consolidated executions tool — list, get, run, debug, get-node-output,
  * get-resolved-node-parameters, stop.
  */
-import { Tool } from '@n8n/agents';
 import {
+	instanceAiApprovalDetailsSchema,
 	buildRunWorkflowSessionGrantKey,
 	instanceAiApprovalResumeSchema,
 	instanceAiConfirmationSeveritySchema,
 } from '@n8n/api-types';
+import type { InstanceAiApprovalDetails } from '@n8n/api-types';
+import { Tool } from '@n8n/agents';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext } from '../types';
+import { approvalSummarySchema, formatApprovalMessage } from './approval-copy';
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
@@ -21,7 +24,19 @@ const MAX_TIMEOUT_MS = 600_000;
 // ── Action schemas ─────────────────────────────────────────────────────────
 
 const listAction = z.object({
-	action: z.literal('list').describe('List recent workflow executions'),
+	action: z
+		.literal('list')
+		.describe(
+			'List recent workflow executions. Each row carries the `workflowVersionId` it ran. ' +
+				'With `workflowId`, the result also carries `workflow.activeVersionId` (the published ' +
+				'version, null while unpublished) and `workflow.draftVersionId`. Use them to answer ' +
+				'whether the LIVE workflow works: a row ran the published code only when its ' +
+				'`workflowVersionId` and `workflow.activeVersionId` are both set and equal. Two nulls ' +
+				'are not a match — a null `activeVersionId` means the workflow is not published, so no ' +
+				'row can prove production works, and a row with a null `workflowVersionId` ran an ' +
+				'unknown version, which is not the same as a draft. A draft version different from the ' +
+				'published one means the latest changes are not live yet.',
+		),
 	workflowId: z.string().optional().describe('Workflow ID'),
 	status: z
 		.string()
@@ -37,12 +52,19 @@ const listAction = z.object({
 });
 
 const getAction = z.object({
-	action: z.literal('get').describe('Get execution status without blocking (poll running ones)'),
+	action: z
+		.literal('get')
+		.describe(
+			'Get execution status without blocking (poll running ones). `workflowVersionId` is the ' +
+				'version this run executed; it only tells you whether the run was live when compared ' +
+				"with the workflow's `activeVersionId`.",
+		),
 	executionId: z.string().describe('Execution ID'),
 });
 
 const runAction = z.object({
 	action: z.literal('run').describe('Execute a workflow and wait for completion'),
+	approvalSummary: approvalSummarySchema,
 	workflowId: z.string().describe('Workflow ID'),
 	inputData: z
 		.record(z.unknown())
@@ -155,6 +177,8 @@ type Input = z.infer<typeof inputSchema>;
 const suspendSchema = z.object({
 	requestId: z.string(),
 	message: z.string(),
+	approvalDetails: instanceAiApprovalDetailsSchema.optional(),
+	resourceName: z.string().optional(),
 	severity: instanceAiConfirmationSeveritySchema,
 });
 
@@ -164,12 +188,39 @@ const resumeSchema = instanceAiApprovalResumeSchema;
 // ── Handlers ───────────────────────────────────────────────────────────────
 
 async function handleList(context: InstanceAiContext, input: Extract<Input, { action: 'list' }>) {
-	const executions = await context.executionService.list({
-		workflowId: input.workflowId,
-		status: input.status,
-		limit: input.limit,
-	});
-	return { executions };
+	const [executions, workflow] = await Promise.all([
+		context.executionService.list({
+			workflowId: input.workflowId,
+			status: input.status,
+			limit: input.limit,
+		}),
+		resolveListedWorkflowVersions(context, input.workflowId),
+	]);
+
+	return workflow === undefined ? { executions } : { executions, workflow };
+}
+
+/**
+ * Published and draft version of the listed workflow. Only for a list scoped to
+ * one workflow: without it, "did the live version run?" is unanswerable from
+ * the rows alone. A failed read drops the block rather than the whole list.
+ */
+async function resolveListedWorkflowVersions(
+	context: InstanceAiContext,
+	workflowId: string | undefined,
+): Promise<{ activeVersionId: string | null; draftVersionId: string } | undefined> {
+	if (workflowId === undefined) return undefined;
+
+	try {
+		const head = await context.workflowService.getWorkflowHead(workflowId);
+		return { activeVersionId: head.activeVersionId, draftVersionId: head.versionId };
+	} catch (error) {
+		context.logger.warn('Failed to read workflow versions for the execution list', {
+			workflowId,
+			error: error instanceof Error ? error.message : String(error),
+		});
+		return undefined;
+	}
 }
 
 async function handleGet(context: InstanceAiContext, input: Extract<Input, { action: 'get' }>) {
@@ -282,7 +333,16 @@ async function handleRun(
 		const workflowName = (await getWorkflowName()) ?? input.workflowId;
 		return await suspend({
 			requestId: nanoid(),
-			message: `Execute ${workflowName} (ID: ${input.workflowId})`,
+			message: formatApprovalMessage(
+				`Run this workflow live${input.triggerNodeName ? ` from "${input.triggerNodeName}"` : ''}`,
+				input.approvalSummary,
+			),
+			resourceName: workflowName,
+			approvalDetails: {
+				action: 'run-workflow',
+				summary: input.approvalSummary,
+				trigger: input.triggerNodeName,
+			} satisfies InstanceAiApprovalDetails,
 			severity: 'warning' as const,
 		});
 	}

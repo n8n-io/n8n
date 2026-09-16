@@ -41,7 +41,8 @@ export const useWorkflowsListStore = defineStore(STORES.WORKFLOWS_LIST, () => {
 	);
 
 	// Methods - Getters
-	function getWorkflowById(id: string): IWorkflowDb {
+	// Returns undefined for a workflow that was never paged into the cache.
+	function getWorkflowById(id: string): IWorkflowDb | undefined {
 		return workflowsById.value[id];
 	}
 
