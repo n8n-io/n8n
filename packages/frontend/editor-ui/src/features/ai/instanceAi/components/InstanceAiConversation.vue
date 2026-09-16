@@ -69,10 +69,6 @@ import AgentSection from './AgentSection.vue';
 import { collectActiveBuilderAgents, messageHasVisibleContent } from '../builderAgents';
 import CreditWarningBanner from '@/features/ai/assistant/components/Agent/CreditWarningBanner.vue';
 
-/** Escape markdown link labels so brackets in a workflow name stay literal. */
-function escapeMarkdownLinkText(value: string): string {
-	return value.replace(/\\/g, '\\\\').replace(/\[/g, '\\[').replace(/\]/g, '\\]');
-}
 const props = defineProps<{
 	/** Runs before every send (e.g. flush a pending autosave). Rejecting cancels the send. */
 	beforeSend?: () => Promise<void>;
@@ -239,10 +235,11 @@ const composerContextChip = computed(() => {
 const workflowHandoffGreeting = computed(() => {
 	const attachment = thread.pendingWorkflowAttachment;
 	if (!attachment || thread.isHydratingThread || thread.hasMessages) return null;
+	// Plain name: the pending attachment is registered as linkable, so the
+	// markdown renderer turns it into a resource chip.
 	const name = attachment.name ?? i18n.baseText('instanceAi.workflowHandoff.untitledWorkflow');
-	const workflowLink = `[${escapeMarkdownLinkText(name)}](n8n-resource://workflow/${encodeURIComponent(attachment.id)})`;
 	return i18n.baseText('instanceAi.workflowHandoff.greeting', {
-		interpolate: { workflow: workflowLink },
+		interpolate: { workflow: name },
 	});
 });
 
@@ -521,14 +518,21 @@ async function handleSubmit(
 	const queuedAgentAttachment = pendingAgentAttachment.value;
 	const agentAttachment = currentAgentAttachment.value;
 	const queuedWorkflowAttachment = thread.pendingWorkflowAttachment;
-	const submittedAttachments = (() => {
-		const base = agentAttachment
-			? [...(attachments ?? []), agentAttachment]
-			: [...(attachments ?? [])];
-		if (!queuedWorkflowAttachment) return base.length > 0 ? base : attachments;
-		if (base.some((attachment) => attachment.id === queuedWorkflowAttachment.id)) return base;
-		return [...base, queuedWorkflowAttachment];
-	})();
+	// The queued hand-off resources ride the first real prompt. A workflow the
+	// composer already attached is not added twice.
+	const extraAttachments: InstanceAiAttachment[] = [];
+	if (agentAttachment) extraAttachments.push(agentAttachment);
+	if (
+		queuedWorkflowAttachment &&
+		!attachments?.some(
+			(attachment) =>
+				attachment.type === 'workflow' && attachment.id === queuedWorkflowAttachment.id,
+		)
+	) {
+		extraAttachments.push(queuedWorkflowAttachment);
+	}
+	const submittedAttachments =
+		extraAttachments.length > 0 ? [...(attachments ?? []), ...extraAttachments] : attachments;
 
 	const nodeCount = countAttachedNodes(attachments);
 

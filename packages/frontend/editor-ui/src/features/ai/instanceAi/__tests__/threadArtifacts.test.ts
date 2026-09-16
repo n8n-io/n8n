@@ -47,6 +47,20 @@ describe('buildThreadArtifactsContext', () => {
 		});
 	});
 
+	it('keeps the newest tabs and the focused one when over the cap', () => {
+		const entries = Array.from({ length: 25 }, (_, index) =>
+			entry({ type: 'workflow', id: `wf-${index}`, name: `Workflow ${index}` }),
+		);
+
+		const result = buildThreadArtifactsContext(entries, 'wf-0');
+
+		expect(result?.artifacts).toHaveLength(20);
+		expect(result?.artifacts[0]?.id).toBe('wf-0');
+		expect(result?.artifacts.at(-1)?.id).toBe('wf-24');
+		expect(result?.artifacts.some((artifact) => artifact.id === 'wf-5')).toBe(false);
+		expect(result?.activeId).toBe('wf-0');
+	});
+
 	it('omits activeId when it does not match a tab', () => {
 		expect(
 			buildThreadArtifactsContext([entry({ type: 'workflow', id: 'wf-1', name: 'A' })], 'other'),

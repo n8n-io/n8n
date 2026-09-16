@@ -687,7 +687,16 @@ export function useInstanceAiHandoff() {
 				return false;
 			}
 			prepare?.(threadId);
-			await router.push({ name: INSTANCE_AI_THREAD_VIEW, params: { threadId } });
+			try {
+				const failure = await router.push({ name: INSTANCE_AI_THREAD_VIEW, params: { threadId } });
+				if (failure) throw new Error('Navigation failed');
+			} catch {
+				// Same as the agent path: a thread nobody reached must not linger.
+				clearPendingThreadHandoff(threadId);
+				await instanceAiStore.deleteThread(threadId);
+				showOpenFailed();
+				return false;
+			}
 			return true;
 		} finally {
 			handoffInFlight = false;

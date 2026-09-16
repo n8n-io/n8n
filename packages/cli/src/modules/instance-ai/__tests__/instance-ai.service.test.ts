@@ -5186,7 +5186,11 @@ describe('InstanceAiService — editor handoff context resources', () => {
 	it('builds the context block from combined workflow and agent attachments', () => {
 		const source = InstanceAiService.toString();
 
-		expect(source).toMatch(/buildThreadArtifactsBlock\)?\s*\(/);
+		// Imported helpers compile to `(0,__vite_ssr_import_N__.fn)(args)`. Both
+		// arguments must reach the block, or the editor hand-off drops out of it.
+		expect(source).toMatch(
+			/buildThreadArtifactsBlock\)?\s*\(\s*threadArtifacts\s*,\s*contextAttachments\s*\)/,
+		);
 		expect(source).toMatch(/buildThreadContextBlock\)?/);
 		expect(source).not.toContain('buildContextResourcesBlock');
 		expect(source).not.toContain('EDITOR_CONTEXT_OPEN_TAG');

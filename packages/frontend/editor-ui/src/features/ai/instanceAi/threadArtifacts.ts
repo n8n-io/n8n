@@ -18,10 +18,10 @@ export function buildThreadArtifactsContext(
 	produced: Iterable<ResourceEntry>,
 	activeId?: string,
 ): InstanceAiThreadArtifactsContext | undefined {
-	const artifacts: InstanceAiThreadArtifact[] = [];
+	const all: InstanceAiThreadArtifact[] = [];
 	for (const entry of produced) {
 		if (!isThreadArtifactType(entry.type)) continue;
-		artifacts.push({
+		all.push({
 			type: entry.type,
 			id: entry.id,
 			...(entry.name ? { name: entry.name } : {}),
@@ -29,14 +29,19 @@ export function buildThreadArtifactsContext(
 			...(entry.pending ? { pending: true as const } : {}),
 			...(entry.archived ? { archived: true as const } : {}),
 		});
-		if (artifacts.length >= MAX_THREAD_ARTIFACTS) break;
 	}
-	if (artifacts.length === 0) return undefined;
+	if (all.length === 0) return undefined;
+
+	// Insertion order is oldest first. Over the cap, keep the newest tabs — the
+	// ones the user most likely refers to — and never drop the focused one.
+	const active = all.find((artifact) => artifact.id === activeId);
+	let artifacts = all.slice(-MAX_THREAD_ARTIFACTS);
+	if (active && !artifacts.includes(active)) {
+		artifacts = [active, ...artifacts.slice(1)];
+	}
 
 	return {
 		artifacts,
-		...(activeId !== undefined && artifacts.some((artifact) => artifact.id === activeId)
-			? { activeId }
-			: {}),
+		...(active ? { activeId: active.id } : {}),
 	};
 }

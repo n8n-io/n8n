@@ -88,11 +88,15 @@ export function buildWorkflowTestRequestBlock(workflowId: string): string {
 const TASK_CONTEXT_BLOCK =
 	/^(?:<thread-context>\n[\s\S]*?\n<\/thread-context>|<running-tasks>\n[\s\S]*?\n<\/running-tasks>|<planned-task-follow-up[\s\S]*?\n<\/planned-task-follow-up>|<planning-blueprint>\n[\s\S]*?\n<\/planning-blueprint>|<background-task-completed>\n[\s\S]*?\n<\/background-task-completed>|<workflow-verification-follow-up>\n[\s\S]*?\n<\/workflow-verification-follow-up>|<workflow-setup-required>\n[\s\S]*?\n<\/workflow-setup-required>|<workflow-setup-state>\n[\s\S]*?\n<\/workflow-setup-state>|<workflow-test-request>\n[\s\S]*?\n<\/workflow-test-request>|<editor-context>\n[\s\S]*?\n<\/editor-context>|<credential-context>\n[\s\S]*?\n<\/credential-context>|<agent-preview-context>\n[\s\S]*?\n<\/agent-preview-context>|<instance-context>\n[\s\S]*?\n<\/instance-context>|<thread-artifacts>\n[\s\S]*?\n<\/thread-artifacts>)(?:\n\n|$)/;
 
-/** Captures the leading JSON line inside a thread-artifacts block (handoff turns). */
-const THREAD_ARTIFACTS_RESOURCE_JSON = /<thread-artifacts>\n(\[[\s\S]*?\])\n/;
+/**
+ * Captures the leading JSON line inside a thread-artifacts block (hand-off
+ * turns). The block sits inside `<thread-context>`, so it starts a line rather
+ * than the message; only ever run against `leadingInternalBlocks()` output.
+ */
+const THREAD_ARTIFACTS_RESOURCE_JSON = /(?:^|\n)<thread-artifacts>\n(\[[\s\S]*?\])\n/;
 
 /** Captures the leading JSON line inside a legacy editor-context block. */
-const EDITOR_CONTEXT_JSON = /<editor-context>\n(\[[\s\S]*?\])\n/;
+const EDITOR_CONTEXT_JSON = /^<editor-context>\n(\[[\s\S]*?\])\n/;
 
 /** Captures the leading JSON line inside an agent-preview-context block. */
 const AGENT_PREVIEW_CONTEXT_JSON = /^<agent-preview-context>\n(\{[\s\S]*?\})\n/;
@@ -233,6 +237,23 @@ export function cleanStoredUserMessage(stored: string): string | null {
 	return text === AUTO_FOLLOW_UP_MESSAGE ? null : text;
 }
 
+/**
+ * The service-injected blocks at the head of a stored message — everything
+ * `cleanStoredUserMessage` strips from the front. Structured payloads are read
+ * from this prefix only, so a tag lookalike in the user's own text is never
+ * parsed as if the service wrote it.
+ */
+function leadingInternalBlocks(stored: string): string {
+	let rest = stored;
+	let prefix = '';
+	for (;;) {
+		const match = TASK_CONTEXT_BLOCK.exec(rest);
+		if (!match) return prefix;
+		prefix += match[0];
+		rest = rest.slice(match[0].length);
+	}
+}
+
 function parseResourceAttachmentJson(raw: string): InstanceAiResourceAttachment[] {
 	const parsed = z
 		.array(instanceAiResourceAttachmentSchema)
@@ -248,11 +269,12 @@ function parseResourceAttachmentJson(raw: string): InstanceAiResourceAttachment[
 export function extractEditorContextResourceAttachments(
 	stored: string,
 ): InstanceAiResourceAttachment[] {
-	const fromThreadArtifacts = THREAD_ARTIFACTS_RESOURCE_JSON.exec(stored);
+	const prefix = leadingInternalBlocks(stored);
+	const fromThreadArtifacts = THREAD_ARTIFACTS_RESOURCE_JSON.exec(prefix);
 	if (fromThreadArtifacts) {
 		return parseResourceAttachmentJson(fromThreadArtifacts[1]);
 	}
-	const fromEditorContext = EDITOR_CONTEXT_JSON.exec(stored);
+	const fromEditorContext = EDITOR_CONTEXT_JSON.exec(prefix);
 	if (!fromEditorContext) return [];
 	return parseResourceAttachmentJson(fromEditorContext[1]);
 }
@@ -282,8 +304,8 @@ const THREAD_ARTIFACT_KIND: Record<InstanceAiThreadArtifact['type'], string> = {
 const THREAD_ARTIFACT_NAME_MAX_LENGTH = 128;
 
 /**
- * Neutralise a stored name before it enters the block. Names are user-written and
- * the block is prose the model reads as trusted, so a name holding a closing tag
+ * Neutralise client-supplied text (names, ids) before it enters the block. The
+ * block is prose the model reads as trusted, so a value holding a closing tag
  * would end the block early.
  */
 function sanitiseThreadArtifactName(value: string): string {
@@ -307,48 +329,48 @@ function formatThreadArtifactLine(
 	current: boolean,
 	executionId?: string,
 ): string {
-	const kind =
-		artifact.type === 'agent' && artifact.pending
-			? 'New unsaved Agent'
-			: THREAD_ARTIFACT_KIND[artifact.type];
+	const pendingAgent = artifact.type === 'agent' && artifact.pending;
+	const kind = pendingAgent ? 'New unsaved Agent' : THREAD_ARTIFACT_KIND[artifact.type];
 	const name = artifact.name ? ` "${sanitiseThreadArtifactName(artifact.name)}"` : '';
-	const project = artifact.projectId ? `, in project \`${artifact.projectId}\`` : '';
+	const idLabel = pendingAgent ? 'pending id' : 'id';
+	const project = artifact.projectId
+		? `, in project \`${sanitiseThreadArtifactName(artifact.projectId)}\``
+		: '';
 	const flags = [current ? 'current' : '', artifact.archived ? 'archived' : '']
 		.filter(Boolean)
 		.join(', ');
 	const flagSuffix = flags ? ` [${flags}]` : '';
 	const execution =
 		artifact.type === 'workflow' && executionId
-			? `, currently viewing its execution \`${executionId}\``
+			? `, currently viewing its execution \`${sanitiseThreadArtifactName(executionId)}\``
 			: '';
-	return `  - ${kind}${name} (id: \`${artifact.id}\`${project})${flagSuffix}${execution}`;
+	return `  - ${kind}${name} (${idLabel}: \`${sanitiseThreadArtifactName(artifact.id)}\`${project})${flagSuffix}${execution}`;
 }
 
 /** Renders one canvas node-selection attachment as one line per set. */
 function buildNodesAttachmentLine(attachment: InstanceAiNodesAttachment): string {
-	const setLines = attachment.sets.map((set) => {
-		const names = set.nodes.map((node) => node.name ?? node.id);
+	const label = (ref: { id: string; name?: string }) =>
+		sanitiseThreadArtifactName(ref.name ?? ref.id);
 
-		const label =
+	const setLines = attachment.sets.map((set) => {
+		const names = set.nodes.map(label);
+
+		const head =
 			names.length === 1
 				? `Node "${names[0]}"`
 				: `A chain of connected nodes: ${names.join(' → ')}`;
 
-		const input = set.inputNode
-			? `, receiving input from "${set.inputNode.name ?? set.inputNode.id}"`
-			: '';
+		const input = set.inputNode ? `, receiving input from "${label(set.inputNode)}"` : '';
 
-		const output = set.outputNode
-			? `, sending output to "${set.outputNode.name ?? set.outputNode.id}"`
-			: '';
+		const output = set.outputNode ? `, sending output to "${label(set.outputNode)}"` : '';
 
 		const group = set.canvasGroupName
-			? `, part of canvas group "${set.canvasGroupName}"`
+			? `, part of canvas group "${sanitiseThreadArtifactName(set.canvasGroupName)}"`
 			: set.canvasGroupId
-				? `, part of canvas group \`${set.canvasGroupId}\``
+				? `, part of canvas group \`${sanitiseThreadArtifactName(set.canvasGroupId)}\``
 				: '';
 
-		return `    - ${label}${input}${output}${group}.`;
+		return `    - ${head}${input}${output}${group}.`;
 	});
 
 	const hasBoundary = attachment.sets.some((set) => set.inputNode ?? set.outputNode);
@@ -356,7 +378,17 @@ function buildNodesAttachmentLine(attachment: InstanceAiNodesAttachment): string
 		? '\n  The "receiving input from"/"sending output to" nodes show only where the selection connects; they are not part of the selection. Do not describe, inspect, or make claims about them — scope your answer to the selected nodes.'
 		: '';
 
-	return `  - Selected nodes in workflow \`${attachment.workflowId}\`:\n${setLines.join('\n')}${boundaryNote}`;
+	return `  - Selected nodes in workflow \`${sanitiseThreadArtifactName(attachment.workflowId)}\`:\n${setLines.join('\n')}${boundaryNote}`;
+}
+
+/**
+ * JSON that cannot hold a literal tag: `<` and `>` become `\u003c` / `\u003e`,
+ * which `JSON.parse` maps back to the original characters. Keeps a name like
+ * `</thread-artifacts>` from closing the block and from being rewritten by the
+ * `<thread-context>` wrapper's escaping, so reload restores the exact name.
+ */
+function toTagSafeJson(value: unknown): string {
+	return JSON.stringify(value).replace(/</g, '\\u003c').replace(/>/g, '\\u003e');
 }
 
 function attachmentToThreadArtifact(
@@ -385,9 +417,6 @@ export function buildThreadArtifactsBlock(
 	if (previewArtifacts.length === 0 && resourceAttachments.length === 0) return '';
 
 	const executionByWorkflowId = new Map<string, string>();
-	const listedIds = new Set(previewArtifacts.map((artifact) => artifact.id));
-	const lines: string[] = [];
-
 	for (const attachment of resourceAttachments) {
 		if (attachment.type === 'workflow' && attachment.executionId) {
 			executionByWorkflowId.set(attachment.id, attachment.executionId);
@@ -399,23 +428,26 @@ export function buildThreadArtifactsBlock(
 			? context.activeId
 			: undefined;
 
-	for (const artifact of previewArtifacts) {
-		lines.push(
-			formatThreadArtifactLine(
-				artifact,
-				artifact.id === activeId,
-				executionByWorkflowId.get(artifact.id),
-			),
-		);
-	}
+	// Section 1: the preview tabs. A handed-off execution enriches its tab's line.
+	const previewLines = previewArtifacts.map((artifact) =>
+		formatThreadArtifactLine(
+			artifact,
+			artifact.id === activeId,
+			executionByWorkflowId.get(artifact.id),
+		),
+	);
 
+	// Section 2: what the editor handed off that is not already a tab — a node
+	// selection is never a tab, so it always lands here.
+	const listedIds = new Set(previewArtifacts.map((artifact) => artifact.id));
+	const handoffLines: string[] = [];
 	for (const attachment of resourceAttachments) {
 		if (attachment.type === 'nodes') {
-			lines.push(buildNodesAttachmentLine(attachment));
+			handoffLines.push(buildNodesAttachmentLine(attachment));
 			continue;
 		}
 		if (listedIds.has(attachment.id)) continue;
-		lines.push(
+		handoffLines.push(
 			formatThreadArtifactLine(
 				attachmentToThreadArtifact(attachment),
 				false,
@@ -434,14 +466,21 @@ export function buildThreadArtifactsBlock(
 		? 'Treat “this workflow”, “the agent”, “the data table”, or “it” as the item marked current.'
 		: 'When the user refers to an artifact in this conversation, match it against this list.';
 
+	// The hand-off rides the user's own request, so the agent acts on that request;
+	// it must not treat the list itself as a prompt to go and look at everything.
 	const inspectGuidance =
-		resourceAttachments.length > 0
-			? "Treat this purely as context. Until the user tells you what they need, don't read, inspect, run, or otherwise call tools on these resources, and don't make claims about their contents — just briefly acknowledge what they're working on and ask how you can help."
-			: 'Use these ids when you act. Do not inspect, run, or describe their contents until the user asks.';
+		'Use these ids when you act on the user’s request. Do not inspect, run, or describe their contents beyond what that request needs.';
 
 	const prose = [
-		'Artifacts the user can see in this conversation’s preview:',
-		...lines,
+		...(previewLines.length > 0
+			? ['Artifacts the user can see in this conversation’s preview:', ...previewLines]
+			: []),
+		...(handoffLines.length > 0
+			? [
+					'The user opened this conversation from the editor, where they are looking at:',
+					...handoffLines,
+				]
+			: []),
 		currentGuidance,
 		pendingAgentGuidance,
 		inspectGuidance,
@@ -449,8 +488,9 @@ export function buildThreadArtifactsBlock(
 		.filter(Boolean)
 		.join('\n');
 
+	// Leading JSON line: the parser rebuilds `message.attachments` from it on reload.
 	const durableJson =
-		resourceAttachments.length > 0 ? `${JSON.stringify(resourceAttachments)}\n\n` : '';
+		resourceAttachments.length > 0 ? `${toTagSafeJson(resourceAttachments)}\n\n` : '';
 
 	return `${THREAD_ARTIFACTS_OPEN_TAG}\n${durableJson}${prose}\n${THREAD_ARTIFACTS_CLOSE_TAG}`;
 }
