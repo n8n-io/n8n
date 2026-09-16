@@ -8,13 +8,13 @@ import {
 	N8nInput,
 	N8nInputLabel,
 	N8nOption,
-	N8nRadioGroup,
-	N8nRadioGroupItem,
 	N8nSelect,
+	N8nSelect2,
 	N8nText,
 	N8nUserSelect,
 	N8nUsersList,
 	type IUser,
+	type SelectValue,
 	type UserAction,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -49,8 +49,28 @@ const workflowsListStore = useWorkflowsListStore();
 const projectsStore = useProjectsStore();
 const usersStore = useUsersStore();
 
-const AUTONOMY_OPTIONS: SelfHealingAutonomy[] = ['diagnose', 'review', 'deploy'];
 const REMOVE_REVIEWER_ACTION = 'remove';
+
+const AUTONOMY_LEVELS: SelfHealingAutonomy[] = ['diagnose', 'review', 'deploy'];
+
+const autonomyOptions = computed(() =>
+	AUTONOMY_LEVELS.map((value) => ({
+		value,
+		label: i18n.baseText(`selfHealing.autonomy.${value}.label`),
+	})),
+);
+
+function isAutonomy(value: SelectValue | undefined): value is SelfHealingAutonomy {
+	return typeof value === 'string' && AUTONOMY_LEVELS.some((level) => level === value);
+}
+
+function autonomyDescription(value: SelectValue): string {
+	return isAutonomy(value) ? i18n.baseText(`selfHealing.autonomy.${value}.description`) : '';
+}
+
+function onAutonomyChange(value: SelectValue | undefined) {
+	if (isAutonomy(value)) form.value.autonomy = value;
+}
 
 function emptyForm(): SelfHealingConfigInput {
 	return {
@@ -210,22 +230,26 @@ function save() {
 		</N8nDialogHeader>
 
 		<form :class="$style.form" data-test-id="self-healing-config-dialog" @submit.prevent="save">
-			<N8nInputLabel :label="i18n.baseText('selfHealing.dialog.autonomy.label')">
-				<N8nRadioGroup
-					v-model="form.autonomy"
-					orientation="vertical"
-					:class="$style.radios"
-					data-test-id="self-healing-autonomy-radio"
+			<N8nInputLabel
+				input-name="self-healing-autonomy"
+				:label="i18n.baseText('selfHealing.dialog.autonomy.label')"
+			>
+				<N8nSelect2
+					id="self-healing-autonomy"
+					:model-value="form.autonomy"
+					:items="autonomyOptions"
+					size="large"
+					:class="$style.autonomySelect"
+					data-test-id="self-healing-autonomy-select"
+					@update:model-value="onAutonomyChange"
 				>
-					<N8nRadioGroupItem
-						v-for="option in AUTONOMY_OPTIONS"
-						:key="option"
-						:value="option"
-						:label="i18n.baseText(`selfHealing.autonomy.${option}.label`)"
-						:description="i18n.baseText(`selfHealing.autonomy.${option}.description`)"
-						:data-test-id="`self-healing-autonomy-${option}`"
-					/>
-				</N8nRadioGroup>
+					<template #item-label="{ item }">
+						<div :class="$style.option">
+							<div :class="$style.optionLabel">{{ item.label }}</div>
+							<div :class="$style.optionDescription">{{ autonomyDescription(item.value) }}</div>
+						</div>
+					</template>
+				</N8nSelect2>
 			</N8nInputLabel>
 
 			<N8nInputLabel
@@ -285,9 +309,6 @@ function save() {
 					:placeholder="i18n.baseText('selfHealing.dialog.instructions.placeholder')"
 					data-test-id="self-healing-instructions-input"
 				/>
-				<N8nText size="xsmall" color="text-light" :class="$style.hint">
-					{{ i18n.baseText('selfHealing.dialog.instructions.hint') }}
-				</N8nText>
 			</N8nInputLabel>
 
 			<N8nInputLabel
@@ -353,8 +374,29 @@ function save() {
 	margin-top: var(--spacing--md);
 }
 
-.radios {
-	margin-top: var(--spacing--3xs);
+.autonomySelect {
+	width: 100%;
+}
+
+// Same shape as the multi-line options in the workflow settings modal.
+.option {
+	margin: var(--spacing--3xs) 0;
+	padding-right: var(--spacing--md);
+	white-space: normal;
+}
+
+.optionLabel {
+	font-weight: var(--font-weight--medium);
+	line-height: var(--line-height--md);
+	overflow-wrap: break-word;
+}
+
+.optionDescription {
+	margin-top: var(--spacing--5xs);
+	font-size: var(--font-size--2xs);
+	font-weight: var(--font-weight--regular);
+	line-height: var(--line-height--xl);
+	color: var(--color--text--tint-1);
 }
 
 .hint {

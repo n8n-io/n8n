@@ -196,9 +196,6 @@ onMounted(async () => {
 		<h3>
 			<label>{{ i18n.baseText('selfHealing.title') }}</label>
 		</h3>
-		<N8nText color="text-light" size="small" :class="$style.help">
-			{{ i18n.baseText('selfHealing.projectSettings.description') }}
-		</N8nText>
 
 		<div v-if="configs.length > 0" :class="$style.table" data-test-id="self-healing-config-list">
 			<N8nDataTableServer
@@ -276,11 +273,6 @@ onMounted(async () => {
 </template>
 
 <style lang="scss" module>
-.help {
-	display: block;
-	margin-bottom: var(--spacing--sm);
-}
-
 .table {
 	margin-bottom: var(--spacing--sm);
 }
