@@ -340,12 +340,13 @@ describe('useContextMenu', () => {
 			const anchor = nodeFactory({ parameters: { emptyGroupAnchor: true } });
 			workflowDocumentStore.setNodes([...nodes, anchor]);
 			const group = workflowDocumentStore.createGroup([nodes[0].id], 'Empty group');
-			const { open, actions } = useContextMenu();
+			const { open, actions, targetNodeIds } = useContextMenu();
 			open(mockEvent, { source: 'group', groupId: group.id, nodeIds: group.nodeIds });
 
 			workflowDocumentStore.replaceNodeInGroup(group.id, nodes[0].id, anchor.id);
 			workflowDocumentStore.setNodes([...nodes.slice(1), anchor]);
 
+			expect(targetNodeIds.value).toEqual([anchor.id]);
 			const ids = actions.value.map((action) => action.id);
 			expect(ids).not.toContain('ungroup_nodes');
 			expect(ids).not.toContain('extract_sub_workflow');
