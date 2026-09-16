@@ -10,6 +10,7 @@ import get from 'lodash/get';
 import { CredentialTestContext, ErrorReporter, ExecuteContext, RoutingNode } from 'n8n-core';
 import type {
 	ICredentialsDecrypted,
+	ICredentialsHelper,
 	ICredentialTestFunction,
 	ICredentialTestRequestData,
 	INode,
@@ -473,6 +474,13 @@ export class CredentialsTester {
 			projectId: credentialsDecrypted.homeProject?.id,
 			currentNodeParameters: node.parameters,
 		});
+		// OAuth1/OAuth2 helpers re-read the stored credential by id via credentialsHelper.getDecrypted.
+		// Serve the posted data instead; other methods delegate through the prototype to the real
+		// singleton, including the token write-back (it must keep persisting rotated refresh tokens).
+		// Relies on CredentialsHelper using TS `private`, not `#` fields.
+		additionalData.credentialsHelper = Object.create(additionalData.credentialsHelper, {
+			getDecrypted: { value: async () => credentialsDecrypted.data ?? {} },
+		}) as ICredentialsHelper;
 
 		const executeData: IExecuteData = { node, data: {}, source: null };
 		const executeFunctions = new ExecuteContext(
