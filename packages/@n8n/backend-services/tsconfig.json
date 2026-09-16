@@ -12,6 +12,7 @@
 		{ "path": "../backend-common/tsconfig.build.json" },
 		{ "path": "../config/tsconfig.build.json" },
 		{ "path": "../constants/tsconfig.build.json" },
+		{ "path": "../db/tsconfig.build.json" },
 		{ "path": "../decorators/tsconfig.build.json" },
 		{ "path": "../di/tsconfig.build.json" }
 	]

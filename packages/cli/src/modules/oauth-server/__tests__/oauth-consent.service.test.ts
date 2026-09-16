@@ -1,4 +1,5 @@
-import { ForbiddenError, UrlService } from '@n8n/backend-services';
+import type { ProtectedResource } from '@n8n/backend-services';
+import { ForbiddenError, ProtectedResourceRegistry, UrlService } from '@n8n/backend-services';
 import type { Mocked } from 'vitest';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { Logger } from '@n8n/backend-common';
@@ -11,10 +12,6 @@ import { OAuthClientRepository } from '../database/repositories/oauth-client.rep
 import { OAuthSessionService } from '../oauth-session.service';
 import type { UserConsent } from '../database/entities/oauth-user-consent.entity';
 import { UserConsentRepository } from '../database/repositories/oauth-user-consent.repository';
-import {
-	ProtectedResourceRegistry,
-	type ProtectedResource,
-} from '@/services/protected-resource.registry';
 import type { User } from '@n8n/db';
 
 const issuer = 'https://n8n.example.com';

@@ -1,4 +1,4 @@
-import { CacheService, UrlService } from '@n8n/backend-services';
+import { CacheService, ProtectedResourceRegistry, UrlService } from '@n8n/backend-services';
 import {
 	createWorkflowWithHistory,
 	setActiveVersion,
@@ -20,7 +20,6 @@ import { setupTestServer } from '@test-integration/utils';
 import { AuthService } from '@/auth/auth.service';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import { OAuthTokenService } from '@/modules/oauth-server/oauth-token.service';
-import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
 
 /** Root-level (no `/rest` prefix) agent authenticated as `user` — `authAgentFor` always
  * prefixes `/rest`, which 404s against root-level routes like `/oauth/authorize`. */

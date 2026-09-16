@@ -3,7 +3,8 @@ import { clientRegistrationHandler } from '@modelcontextprotocol/sdk/server/auth
 import { revocationHandler } from '@modelcontextprotocol/sdk/server/auth/handlers/revoke.js';
 import { tokenHandler } from '@modelcontextprotocol/sdk/server/auth/handlers/token.js';
 import { Logger } from '@n8n/backend-common';
-import { UrlService } from '@n8n/backend-services';
+import type { ProtectedResource } from '@n8n/backend-services';
+import { ProtectedResourceRegistry, UrlService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import {
@@ -15,9 +16,6 @@ import {
 } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { Response, Request, RequestHandler, Router } from 'express';
-
-import type { ProtectedResource } from '@/services/protected-resource.registry';
-import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
 
 import { OAuthServerConfig } from './oauth-server.config';
 import { OAuthServerService } from './oauth-server.service';

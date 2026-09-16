@@ -1,5 +1,6 @@
 import { Logger } from '@n8n/backend-common';
-import type { ResponseError } from '@n8n/backend-services';
+import type { ProtectedResource, ResponseError } from '@n8n/backend-services';
+import { ProtectedResourceRegistry } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { Project, User } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
@@ -58,8 +59,6 @@ import { EventService } from '@/events/event.service';
 import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
 import { EngineV2Dispatcher } from '@/services/engine-v2-dispatcher.service';
 import { OwnershipService } from '@/services/ownership.service';
-import type { ProtectedResource } from '@/services/protected-resource.registry';
-import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowRunner } from '@/workflow-runner';

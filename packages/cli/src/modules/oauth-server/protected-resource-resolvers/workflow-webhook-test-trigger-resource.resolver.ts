@@ -1,13 +1,9 @@
 import { Logger } from '@n8n/backend-common';
+import type { ProtectedResource, ProtectedResourceResolver } from '@n8n/backend-services';
 import { UrlService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { WEBHOOK_NODE_TYPE } from 'n8n-workflow';
-
-import type {
-	ProtectedResource,
-	ProtectedResourceResolver,
-} from '@/services/protected-resource.registry';
 
 import { triggerResourceGate } from '../resource-gate';
 import { TestWebhooks } from '@/webhooks/test-webhooks';

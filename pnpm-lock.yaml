@@ -1688,6 +1688,9 @@ importers:
       '@n8n/constants':
         specifier: workspace:*
         version: link:../constants
+      '@n8n/db':
+        specifier: workspace:*
+        version: link:../db
       '@n8n/decorators':
         specifier: workspace:*
         version: link:../decorators

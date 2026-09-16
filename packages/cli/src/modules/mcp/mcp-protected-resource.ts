@@ -1,12 +1,11 @@
 import { MCP_AGENT_SCOPES, MCP_INSTANCE_SCOPES } from '@n8n/api-types';
 import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
+import type { ProtectedResource } from '@n8n/backend-services';
 import { UrlService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { INSTANCE_MCP_RESOURCE_ID } from '@n8n/constants';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-
-import type { ProtectedResource } from '@/services/protected-resource.registry';
 
 import { BUILDER_TOOLS, FOLDER_FEATURE_TOOLS, TOOLS_BY_SCOPE } from './mcp-scopes';
 import { areAgentToolsAvailable } from './mcp-tool-availability';

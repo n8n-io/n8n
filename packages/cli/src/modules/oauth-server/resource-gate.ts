@@ -1,7 +1,7 @@
+import type { ProtectedResource } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import type { OAuthResourceGrant } from 'n8n-workflow';
 
-import type { ProtectedResource } from '@/services/protected-resource.registry';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 /**

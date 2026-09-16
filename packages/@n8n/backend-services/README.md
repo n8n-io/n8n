@@ -32,6 +32,7 @@ and infrastructure services that need the persistence layer or that only
 | `ResponseError` and its subclasses (`BadRequestError`, `NotFoundError`, `ForbiddenError`, ...) | Errors that map to an HTTP status code in a REST response |
 | `CacheService` | Memory or Redis cache with hash support |
 | `RedisClientService` | Redis client factory with reconnect handling |
+| `ProtectedResourceRegistry` | Registry of OAuth 2.1 protected resources served by the instance |
 
 ## Rules for adding code
 

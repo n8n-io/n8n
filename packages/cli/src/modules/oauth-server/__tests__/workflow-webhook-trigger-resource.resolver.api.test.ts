@@ -1,4 +1,4 @@
-import { CacheService, UrlService } from '@n8n/backend-services';
+import { CacheService, ProtectedResourceRegistry, UrlService } from '@n8n/backend-services';
 import {
 	createWorkflowWithHistory,
 	setActiveVersion,
@@ -18,7 +18,6 @@ import { setupTestServer } from '@test-integration/utils';
 
 import { OAuthServerService } from '@/modules/oauth-server/oauth-server.service';
 import { OAuthTokenService } from '@/modules/oauth-server/oauth-token.service';
-import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
 
 const testServer = setupTestServer({ modules: ['oauth-server', 'mcp'], endpointGroups: ['mcp'] });
 

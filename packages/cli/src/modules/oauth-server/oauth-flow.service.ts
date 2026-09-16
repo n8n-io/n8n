@@ -2,7 +2,7 @@ import {
 	InvalidGrantError,
 	InvalidTargetError,
 } from '@modelcontextprotocol/sdk/server/auth/errors.js';
-import { CacheService, UrlService } from '@n8n/backend-services';
+import { CacheService, ProtectedResourceRegistry, UrlService } from '@n8n/backend-services';
 import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import { UserError, type N8nOAuth2FlowResult, type N8nOAuth2RefreshResult } from 'n8n-workflow';
@@ -11,7 +11,6 @@ import pkceChallenge from 'pkce-challenge';
 
 import { OAuthTokenVerifierProxy } from '@/services/oauth-token-verifier-proxy.service';
 import type { N8nOAuth2Flow } from '@/services/oauth2-flow-proxy.service';
-import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
 
 import { OAuthServerService } from './oauth-server.service';
 

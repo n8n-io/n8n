@@ -1,4 +1,4 @@
-import { CacheService, UrlService } from '@n8n/backend-services';
+import { CacheService, ProtectedResourceRegistry, UrlService } from '@n8n/backend-services';
 import { createWorkflowWithHistory, setActiveVersion, testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
@@ -12,7 +12,6 @@ import { setupTestServer } from '@test-integration/utils';
 
 import { MCP_TRIGGER_NODE_TYPE } from '@/constants';
 import { OAuthTokenService } from '@/modules/oauth-server/oauth-token.service';
-import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
 
 const testServer = setupTestServer({ modules: ['oauth-server', 'mcp'], endpointGroups: ['mcp'] });
 
