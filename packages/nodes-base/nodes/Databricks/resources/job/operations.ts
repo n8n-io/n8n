@@ -12,6 +12,12 @@ export const jobOperations: INodeProperties = {
 	},
 	options: [
 		{
+			name: 'Get',
+			value: 'getJob',
+			description: 'Get the definition of a job: its name, tasks, clusters and schedule',
+			action: 'Get a job',
+		},
+		{
 			name: 'Get Run Output',
 			value: 'getRunOutput',
 			description: 'Get what the tasks of a job run produced',

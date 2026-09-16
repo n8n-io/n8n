@@ -24,6 +24,7 @@ import { INSTANCE_AI_TEMPLATE_EXAMPLES_EXPOSURE_EVENT } from '@/experiments/inst
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { useInstanceAiStore } from './instanceAi.store';
+import type { InstanceAiMessageAuthorship, InstanceAiPrefillDeclaration } from './prefills';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import {
 	INSTANCE_AI_THREAD_VIEW,
@@ -175,7 +176,7 @@ watch(
 const { isVariantEnabled: isSplitVariantEnabled } = useInstanceAiSplitEmptyStateExperiment();
 // Experiment cleanup: remove with instanceAiSplitEmptyState.
 const splitPreviewPromptKey = ref<BaseTextKey | null>(null);
-const splitWriting = ref(false);
+const composerHasContent = ref(false);
 const {
 	currentVariant: personalizedPromptSuggestionsVariant,
 	isTreatmentVariant: isPersonalizedPromptSuggestionsTreatmentVariant,
@@ -511,6 +512,10 @@ const emptyStateTitleKey = computed<BaseTextKey>(() => {
 });
 
 const chatInputRef = ref<InstanceType<typeof InstanceAiInput> | null>(null);
+// Layout changes mount a new, empty composer.
+watch(chatInputRef, () => {
+	composerHasContent.value = false;
+});
 const isStartingThread = ref(false);
 
 watch(
@@ -537,10 +542,17 @@ function handleTemplateHoverEnd() {
 const inputPulsing = ref(false);
 const selectedTemplatePrompt = ref<string | null>(null);
 
+type ShelfSuggestionPayload = InstanceAiPrefillDeclaration & {
+	promptKey: BaseTextKey;
+	suggestionId: string;
+	suggestionKind: 'prompt' | 'quick_example';
+	position: number;
+};
+
 function handleTemplateSelectPrompt(prompt: string) {
 	templatePreviewPrompt.value = null;
 	if (chatInputRef.value) {
-		chatInputRef.value.setText(prompt);
+		chatInputRef.value.setPrefill({ text: prompt, prefillType: 'template_example' });
 		chatInputRef.value.focus();
 	}
 	selectedTemplatePrompt.value = prompt;
@@ -593,27 +605,27 @@ onMounted(() => {
 
 onUnmounted(clearPersonalizedPromptMetadataTimeout);
 
-function restoreDraftAfterFailedSubmit(message: string, restoreDraft?: () => boolean) {
+function restoreDraftAfterFailedSubmit(restoreDraft: () => boolean) {
 	void nextTick(() => {
-		// Restore text without replacing new text or attachments.
-		if (!restoreDraft?.()) {
-			chatInputRef.value?.setTextIfEmpty(message);
-		}
+		// Puts the text, the attachments and the pre-fill provenance back, and
+		// declines if the user has already typed something newer.
+		restoreDraft();
 		chatInputRef.value?.focus();
 	});
 }
 
 async function handleSubmit(
 	message: string,
-	attachments?: InstanceAiAttachment[],
-	restoreDraft?: () => boolean,
+	attachments: InstanceAiAttachment[] | undefined,
+	restoreDraft: () => boolean,
+	authorship: InstanceAiMessageAuthorship,
 ) {
 	if (!settingsStore.isWorkflowBuilderAvailable) {
 		return;
 	}
 
 	if (!selectedProject.value) {
-		restoreDraftAfterFailedSubmit(message, restoreDraft);
+		restoreDraftAfterFailedSubmit(restoreDraft);
 		toast.showError(new Error('Please select a project before starting a thread.'), 'Send failed');
 		return;
 	}
@@ -638,7 +650,7 @@ async function handleSubmit(
 		});
 	} catch {
 		isStartingThread.value = false;
-		restoreDraftAfterFailedSubmit(message, restoreDraft);
+		restoreDraftAfterFailedSubmit(restoreDraft);
 		toast.showError(new Error('Failed to start a new thread. Try again.'), 'Send failed');
 		return;
 	}
@@ -649,10 +661,14 @@ async function handleSubmit(
 	// not an option: it reads its composer draft from localStorage once, synchronously, on
 	// mount, which always precedes this response. `sendMessage` has already surfaced the
 	// reason, so restore what was typed and stay put.
-	const sent = await thread.sendMessage(finalMessage, attachments, rootStore.pushRef);
+	const sent = await thread.sendMessage(finalMessage, {
+		authorship,
+		attachments,
+		pushRef: rootStore.pushRef,
+	});
 	if (!sent) {
 		isStartingThread.value = false;
-		restoreDraftAfterFailedSubmit(message, restoreDraft);
+		restoreDraftAfterFailedSubmit(restoreDraft);
 		// `syncThread` already persisted the thread and `sendMessage` already opened its SSE,
 		// so without this every refusal would strand a blank thread in the sidebar and leave
 		// an EventSource open behind it (deleting disposes the runtime, which closes it).
@@ -681,27 +697,23 @@ async function handleSubmit(
 		});
 	}
 
-	void router.replace({
-		name: INSTANCE_AI_THREAD_VIEW,
-		params: { threadId },
-	});
+	try {
+		await router.replace({
+			name: INSTANCE_AI_THREAD_VIEW,
+			params: { threadId },
+		});
+	} catch (error) {
+		toast.showError(error, i18n.baseText('generic.error'));
+	} finally {
+		isStartingThread.value = false;
+	}
 }
 
-function handleShelfSuggestionSubmit(payload: {
-	promptKey: BaseTextKey;
-	suggestionId: string;
-	suggestionKind: 'prompt' | 'quick_example';
-	position: number;
-}) {
+function handleShelfSuggestionSubmit(payload: ShelfSuggestionPayload) {
 	void chatInputRef.value?.submitSuggestion(payload);
 }
 
-function handleShelfSuggestionInsert(payload: {
-	promptKey: BaseTextKey;
-	suggestionId: string;
-	suggestionKind: 'prompt' | 'quick_example';
-	position: number;
-}) {
+function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 	splitPreviewPromptKey.value = null;
 	void chatInputRef.value?.insertSuggestion(payload);
 }
@@ -709,7 +721,10 @@ function handleShelfSuggestionInsert(payload: {
 
 <template>
 	<div :class="$style.chatArea">
-		<InstanceAiViewHeader v-if="!isSplitLayoutActive" />
+		<InstanceAiViewHeader
+			v-if="!isSplitLayoutActive"
+			:show-thread-history-label="!isStartingThread"
+		/>
 
 		<div :class="$style.contentArea">
 			<div v-if="showProactiveStarter" :class="$style.proactiveLayout">
@@ -731,8 +746,9 @@ function handleShelfSuggestionInsert(payload: {
 						:is-submitting="isStartingThread"
 						:is-workflow-builder-available="settingsStore.isWorkflowBuilderAvailable"
 						@submit="handleSubmit"
+						@content-change="composerHasContent = $event"
 					>
-						<template #footer v-if="projectsStore.myProjects.length > 1">
+						<template v-if="projectsStore.myProjects.length > 1" #footer>
 							<div :class="$style.inputFooter">
 								<ProjectSelect v-model="selectedProject" />
 							</div>
@@ -744,13 +760,13 @@ function handleShelfSuggestionInsert(payload: {
 				v-else-if="isSplitVariantEnabled"
 				:project-id="selectedProject"
 				:disabled="isStartingThread || !settingsStore.isWorkflowBuilderAvailable"
-				:writing="splitWriting"
+				:writing="composerHasContent"
 				@submit-suggestion="handleShelfSuggestionSubmit"
 				@insert-suggestion="handleShelfSuggestionInsert"
 				@example-change="(_i, key) => (splitPreviewPromptKey = key)"
 			>
 				<template #header>
-					<InstanceAiViewHeader />
+					<InstanceAiViewHeader :show-thread-history-label="!isStartingThread" />
 				</template>
 				<template #input>
 					<div :class="$style.centeredInput">
@@ -768,13 +784,13 @@ function handleShelfSuggestionInsert(payload: {
 							:is-submitting="isStartingThread"
 							:is-workflow-builder-available="settingsStore.isWorkflowBuilderAvailable"
 							:placeholder-key="INSTANCE_AI_SPLIT_EMPTY_STATE_PLACEHOLDER_KEY"
-							:preview-prompt-key="splitWriting ? null : splitPreviewPromptKey"
+							:preview-prompt-key="composerHasContent ? null : splitPreviewPromptKey"
 							:fixed-rows="INSTANCE_AI_SPLIT_FIXED_ROWS"
 							:submit-label="i18n.baseText('experiments.instanceAiSplitEmptyState.cta.buildWithAi')"
 							:submit-active-requires-focus="true"
 							:suggestion-catalog-version="INSTANCE_AI_SPLIT_EMPTY_STATE_SUGGESTIONS_VERSION"
 							@submit="handleSubmit"
-							@content-change="splitWriting = $event"
+							@content-change="composerHasContent = $event"
 						>
 							<template v-if="projectsStore.myProjects.length > 1" #footer>
 								<div :class="$style.inputFooter" data-test-id="instance-ai-split-project-select">
@@ -817,8 +833,9 @@ function handleShelfSuggestionInsert(payload: {
 						v-bind="emptyStatePromptSuggestionProps"
 						@submit="handleSubmit"
 						@workflow-preview="handleWorkflowPreview"
+						@content-change="composerHasContent = $event"
 					>
-						<template #footer v-if="projectsStore.myProjects.length > 1">
+						<template v-if="projectsStore.myProjects.length > 1" #footer>
 							<div :class="$style.inputFooter">
 								<ProjectSelect v-model="selectedProject" />
 							</div>

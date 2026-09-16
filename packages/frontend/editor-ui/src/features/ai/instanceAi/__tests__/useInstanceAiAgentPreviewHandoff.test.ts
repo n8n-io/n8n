@@ -90,7 +90,10 @@ describe('useInstanceAiAgentPreviewHandoff', () => {
 			agentId: 'agent-1',
 			threadId: 'thread-1',
 			executionId: 'exec-1',
-			initialDraft: FIX_WITH_ASSISTANT_DRAFT,
+			initialDraft: {
+				text: FIX_WITH_ASSISTANT_DRAFT,
+				prefillType: 'handoff_agent_change_request',
+			},
 		});
 
 		expect(openAgentArtifactThreadMock).toHaveBeenCalledWith(
@@ -111,7 +114,10 @@ describe('useInstanceAiAgentPreviewHandoff', () => {
 					threadId: 'thread-1',
 					executionId: 'exec-1',
 				},
-				initialDraft: FIX_WITH_ASSISTANT_DRAFT,
+				initialDraft: {
+					text: FIX_WITH_ASSISTANT_DRAFT,
+					prefillType: 'handoff_agent_change_request',
+				},
 			},
 		);
 		expect(trackMock).toHaveBeenCalledWith(
