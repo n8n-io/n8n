@@ -1,4 +1,4 @@
-import type { IDataObject } from 'n8n-workflow';
+import type { IDataObject, INodeProperties } from 'n8n-workflow';
 
 import {
 	applyMeetingSettings,
@@ -13,6 +13,7 @@ describe('Microsoft Teams V2 — onlineMeeting meeting settings', () => {
 		[{ allowMeetingChat: 'limited' }, { allowMeetingChat: 'limited' }],
 		[{ allowTeamworkReactions: false }, { allowTeamworkReactions: false }],
 		[{ allowedPresenters: 'organizer' }, { allowedPresenters: 'organizer' }],
+		[{ allowedPresenters: 'roleIsPresenter' }, { allowedPresenters: 'roleIsPresenter' }],
 		[{ isEntryExitAnnounced: true }, { isEntryExitAnnounced: true }],
 		[{ lobbyBypassScope: 'invited' }, { lobbyBypassSettings: { scope: 'invited' } }],
 		[{ recordAutomatically: false }, { recordAutomatically: false }],
@@ -75,5 +76,22 @@ describe('Microsoft Teams V2 — onlineMeeting meeting settings', () => {
 			'recordAutomatically',
 			'passcodeRequired',
 		]);
+	});
+
+	it('offers Specific People last among the allowed presenters', () => {
+		const options = versionDescription.properties.find(
+			(property) =>
+				property.name === 'options' &&
+				property.displayOptions?.show?.resource?.includes('onlineMeeting') &&
+				property.displayOptions?.show?.operation?.includes('create'),
+		);
+		const allowedPresenters = (options?.options ?? []).find(
+			(option) => option.name === 'allowedPresenters',
+		) as INodeProperties | undefined;
+		const values = (allowedPresenters?.options ?? []).map((option) =>
+			'value' in option ? option.value : undefined,
+		);
+
+		expect(values).toEqual(['everyone', 'organization', 'organizer', 'roleIsPresenter']);
 	});
 });
