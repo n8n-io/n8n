@@ -156,6 +156,17 @@ describe('LmChatDatabricks', () => {
 			expect(fetchOptions.expiredStatus).toBe(403);
 		});
 
+		it('should name the configured model service in the rate limit error', async () => {
+			const ctx = setupMockContext();
+
+			await node.supplyData.call(ctx, 0);
+
+			const [, databricksHandler] = mockedMakeN8nLlmFailedAttemptHandler.mock.calls[0];
+			expect(() => databricksHandler?.(Object.assign(new Error('429 x'), { status: 429 }))).toThrow(
+				'Databricks rate limit reached for my-chat-endpoint',
+			);
+		});
+
 		it('should send the bearer and the partner User-Agent on every request', async () => {
 			const ctx = setupMockContext();
 
