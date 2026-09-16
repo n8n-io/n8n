@@ -275,6 +275,7 @@ describe('AgentMcpAccessService', () => {
 			expect(collaborationService.validateAgentWriteLock).toHaveBeenCalledWith(
 				'user-1',
 				'push-ref-1',
+				'p1',
 				'a1',
 				'toggle MCP availability for',
 			);

@@ -91,6 +91,7 @@ export class AgentMcpAccessService {
 						this.collaborationService.validateAgentWriteLock(
 							user.id,
 							pushRef,
+							agent.projectId,
 							agent.id,
 							'toggle MCP availability for',
 						),

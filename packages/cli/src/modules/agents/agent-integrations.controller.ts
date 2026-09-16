@@ -50,6 +50,7 @@ export class AgentIntegrationsController {
 		await this.collaborationService.validateAgentWriteLock(
 			req.user.id,
 			clientId,
+			req.params.projectId,
 			agentId,
 			'connect integration for',
 		);
@@ -84,6 +85,7 @@ export class AgentIntegrationsController {
 		await this.collaborationService.validateAgentWriteLock(
 			req.user.id,
 			clientId,
+			req.params.projectId,
 			agentId,
 			'disconnect integration for',
 		);

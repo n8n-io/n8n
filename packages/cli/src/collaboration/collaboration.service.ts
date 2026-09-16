@@ -24,6 +24,7 @@ import type {
 import { CollaborationState } from '@/collaboration/collaboration.state';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { LockedError } from '@/errors/response-errors/locked.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { Push } from '@/push';
 import type { OnPushMessage } from '@/push/types';
@@ -630,9 +631,19 @@ export class CollaborationService {
 	async validateAgentWriteLock(
 		userId: User['id'],
 		clientId: string | undefined,
+		projectId: string,
 		agentId: string,
 		action: string,
 	): Promise<void> {
+		// Validate the agent belongs to the given project before checking
+		// the lock. Without this, a request with an agentId from a different
+		// project would return 409/423 (leaking lock state) instead of the
+		// expected 404 from the downstream project-boundary check.
+		const agent = await this.agentRepository.findById(agentId);
+		if (agent?.projectId !== projectId) {
+			throw new NotFoundError('Agent not found');
+		}
+
 		if (!clientId) {
 			return;
 		}

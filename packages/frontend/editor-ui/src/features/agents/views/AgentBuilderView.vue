@@ -1165,6 +1165,7 @@ watch(isEditingLocked, (locked) => {
 	configAutosave.cancelPendingAutosave();
 	skillAutosave.cancelPendingAutosave();
 	mcpAutosave.cancelPendingAutosave();
+	mcpAvailabilityOverride.value = null;
 });
 
 /**
@@ -2234,6 +2235,7 @@ function onSwitchAgent(nextAgentId: string) {
 						Boolean(agent?.activeVersionId) && agent?.versionId !== agent?.activeVersionId
 					"
 					:agent-name="agent?.name ?? agentName"
+					:editing-locked="isEditingLocked"
 					@close="onCloseVersionHistory"
 					@reverted="onReverted"
 					@published="onPublished"

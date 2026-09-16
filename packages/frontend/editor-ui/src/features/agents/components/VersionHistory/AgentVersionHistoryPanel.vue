@@ -18,6 +18,10 @@ const props = defineProps<{
 	hasUnpublishedChanges?: boolean;
 	// Used only for the unpublish confirmation modal copy.
 	agentName?: string;
+	// True when the collaboration write lock or artifact lock prevents
+	// edits — disables revert/publish/unpublish actions to avoid requests
+	// that can only fail with 409/423.
+	editingLocked?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -42,21 +46,23 @@ const { unpublish } = useAgentPublish();
 
 const { canUpdate, canPublish, canUnpublish } = useAgentPermissions(toRef(props, 'projectId'));
 
-// Hide actions the user can't perform server-side.
+// Hide actions the user can't perform server-side. Disable them while the
+// collaboration write lock prevents edits so the user sees the button is
+// unavailable rather than getting a 409/423 on click.
 const actions = computed<Array<UserAction<IUser>>>(() => {
 	const result: Array<UserAction<IUser>> = [];
 	if (canUpdate.value) {
 		result.push({
 			label: i18n.baseText('agents.versionHistory.item.actions.revert'),
 			value: 'revert',
-			disabled: false,
+			disabled: props.editingLocked,
 		});
 	}
 	if (canPublish.value) {
 		result.push({
 			label: i18n.baseText('agents.versionHistory.item.actions.publish'),
 			value: 'publish',
-			disabled: false,
+			disabled: props.editingLocked,
 		});
 	}
 	return result;

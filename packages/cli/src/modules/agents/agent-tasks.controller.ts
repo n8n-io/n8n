@@ -58,6 +58,7 @@ export class AgentTasksController {
 		await this.collaborationService.validateAgentWriteLock(
 			req.user.id,
 			clientId,
+			projectId,
 			agentId,
 			'create task for',
 		);
@@ -83,6 +84,7 @@ export class AgentTasksController {
 		await this.collaborationService.validateAgentWriteLock(
 			req.user.id,
 			clientId,
+			projectId,
 			agentId,
 			'update task for',
 		);
@@ -107,6 +109,7 @@ export class AgentTasksController {
 		await this.collaborationService.validateAgentWriteLock(
 			req.user.id,
 			clientId,
+			projectId,
 			agentId,
 			'delete task for',
 		);

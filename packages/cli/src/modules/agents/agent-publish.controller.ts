@@ -32,6 +32,7 @@ export class AgentPublishController {
 		await this.collaborationService.validateAgentWriteLock(
 			req.user.id,
 			clientId,
+			req.params.projectId,
 			agentId,
 			'publish',
 		);
@@ -62,6 +63,7 @@ export class AgentPublishController {
 		await this.collaborationService.validateAgentWriteLock(
 			req.user.id,
 			clientId,
+			req.params.projectId,
 			agentId,
 			'unpublish',
 		);
@@ -90,6 +92,7 @@ export class AgentPublishController {
 		await this.collaborationService.validateAgentWriteLock(
 			req.user.id,
 			clientId,
+			req.params.projectId,
 			agentId,
 			'revert to published',
 		);
@@ -119,6 +122,7 @@ export class AgentPublishController {
 		await this.collaborationService.validateAgentWriteLock(
 			req.user.id,
 			clientId,
+			req.params.projectId,
 			agentId,
 			'revert to version',
 		);

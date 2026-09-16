@@ -75,6 +75,7 @@ export class AgentsConfigController {
 		await this.collaborationService.validateAgentWriteLock(
 			req.user.id,
 			clientId,
+			projectId,
 			agentId,
 			'update',
 		);
@@ -98,6 +99,7 @@ export class AgentsConfigController {
 		await this.collaborationService.validateAgentWriteLock(
 			req.user.id,
 			clientId,
+			projectId,
 			agentId,
 			'delete',
 		);

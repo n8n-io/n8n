@@ -331,6 +331,10 @@ export const useAgentCollaborationStore = defineStore(STORES.AGENT_COLLABORATION
 			pushStoreEventListenerRemovalFn.value();
 			pushStoreEventListenerRemovalFn.value = null;
 		}
+		// Clear stale queued messages (heartbeats, etc.) BEFORE sending
+		// the cleanup messages. If the connection is down, the close and
+		// release messages are queued and must survive so they are delivered on reconnect.
+		pushStore.clearQueue();
 		notifyAgentClosed();
 		stopHeartbeat();
 		stopWriteLockHeartbeat();
@@ -338,7 +342,6 @@ export const useAgentCollaborationStore = defineStore(STORES.AGENT_COLLABORATION
 		if (isCurrentTabWriter.value) {
 			releaseWriteAccess();
 		}
-		pushStore.clearQueue();
 		collaboratingAgentId.value = null;
 		currentWriterLock.value = null;
 		isRequestingWriteAccess.value = false;
@@ -349,6 +352,7 @@ export const useAgentCollaborationStore = defineStore(STORES.AGENT_COLLABORATION
 	return {
 		collaborators,
 		currentWriter,
+		currentWriterLock,
 		isCurrentTabWriter,
 		isCurrentUserWriter,
 		isAnyoneWriting,

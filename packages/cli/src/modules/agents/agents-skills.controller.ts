@@ -54,6 +54,7 @@ export class AgentsSkillsController {
 		await this.collaborationService.validateAgentWriteLock(
 			req.user.id,
 			clientId,
+			projectId,
 			agentId,
 			'create skill for',
 		);
@@ -79,6 +80,7 @@ export class AgentsSkillsController {
 		await this.collaborationService.validateAgentWriteLock(
 			req.user.id,
 			clientId,
+			projectId,
 			agentId,
 			'update skill for',
 		);
@@ -109,6 +111,7 @@ export class AgentsSkillsController {
 		await this.collaborationService.validateAgentWriteLock(
 			req.user.id,
 			clientId,
+			projectId,
 			agentId,
 			'delete skill for',
 		);

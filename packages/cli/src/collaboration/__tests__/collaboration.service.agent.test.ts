@@ -213,7 +213,7 @@ describe('CollaborationService — agent messages', () => {
 			state.getAgentWriteLock.mockResolvedValue(null);
 
 			await expect(
-				service.validateAgentWriteLock(userId, 'client-1', 'agent-1', 'update'),
+				service.validateAgentWriteLock(userId, 'client-1', 'project-1', 'agent-1', 'update'),
 			).resolves.toBeUndefined();
 		});
 
@@ -221,7 +221,7 @@ describe('CollaborationService — agent messages', () => {
 			state.getAgentWriteLock.mockResolvedValue({ clientId: 'client-1', userId: 'user-1' });
 
 			await expect(
-				service.validateAgentWriteLock(userId, 'client-1', 'agent-1', 'update'),
+				service.validateAgentWriteLock(userId, 'client-1', 'project-1', 'agent-1', 'update'),
 			).resolves.toBeUndefined();
 		});
 
@@ -229,7 +229,7 @@ describe('CollaborationService — agent messages', () => {
 			state.getAgentWriteLock.mockResolvedValue({ clientId: 'other-client', userId: 'user-1' });
 
 			await expect(
-				service.validateAgentWriteLock(userId, 'client-1', 'agent-1', 'update'),
+				service.validateAgentWriteLock(userId, 'client-1', 'project-1', 'agent-1', 'update'),
 			).rejects.toThrow(/another tab/);
 		});
 
@@ -237,7 +237,7 @@ describe('CollaborationService — agent messages', () => {
 			state.getAgentWriteLock.mockResolvedValue({ clientId: 'other-client', userId: 'other-user' });
 
 			await expect(
-				service.validateAgentWriteLock(userId, 'client-1', 'agent-1', 'update'),
+				service.validateAgentWriteLock(userId, 'client-1', 'project-1', 'agent-1', 'update'),
 			).rejects.toThrow(/another user/);
 		});
 
@@ -245,8 +245,16 @@ describe('CollaborationService — agent messages', () => {
 			state.getAgentWriteLock.mockResolvedValue({ clientId: 'client-1', userId: 'user-1' });
 
 			await expect(
-				service.validateAgentWriteLock('other-user', 'client-1', 'agent-1', 'update'),
+				service.validateAgentWriteLock('other-user', 'client-1', 'project-1', 'agent-1', 'update'),
 			).rejects.toThrow(/another user/);
+		});
+
+		it('throws NotFoundError when the agent belongs to a different project', async () => {
+			state.getAgentWriteLock.mockResolvedValue({ clientId: 'client-1', userId: 'user-1' });
+
+			await expect(
+				service.validateAgentWriteLock(userId, 'client-1', 'other-project', 'agent-1', 'update'),
+			).rejects.toThrow(/Agent not found/);
 		});
 	});
 
