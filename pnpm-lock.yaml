@@ -545,6 +545,9 @@ catalogs:
     js-tiktoken:
       specifier: 1.0.21
       version: 1.0.21
+    jsdom:
+      specifier: 23.0.1
+      version: 23.0.1
     json-schema:
       specifier: 0.4.0
       version: 0.4.0
@@ -1410,7 +1413,7 @@ importers:
         specifier: 'catalog:'
         version: 7.0.2
       jsdom:
-        specifier: 23.0.1
+        specifier: 'catalog:'
         version: 23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10)
       langchain:
         specifier: 'catalog:'
@@ -1955,6 +1958,9 @@ importers:
       '@lezer/generator':
         specifier: 'catalog:'
         version: 1.8.0
+      '@lezer/javascript':
+        specifier: 1.5.4
+        version: 1.5.4
       '@n8n/vitest-config':
         specifier: workspace:*
         version: link:../vitest-config
@@ -3009,7 +3015,7 @@ importers:
         specifier: 'catalog:'
         version: 0.26.0
       jsdom:
-        specifier: ^23.0.1
+        specifier: 'catalog:'
         version: 23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10)
       nanoid:
         specifier: 'catalog:'
@@ -3443,7 +3449,7 @@ importers:
         specifier: 'catalog:'
         version: 1.0.21
       jsdom:
-        specifier: 23.0.1
+        specifier: 'catalog:'
         version: 23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10)
       jsonwebtoken:
         specifier: 'catalog:'
@@ -3705,6 +3711,9 @@ importers:
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
+      vite:
+        specifier: 'catalog:'
+        version: 8.0.2(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vitest:
         specifier: 'catalog:'
         version: 4.1.9(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@4.1.9)(@vitest/coverage-v8@4.1.9)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@5.5.0)(utf-8-validate@5.0.10))(vite@8.0.2(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
@@ -6018,6 +6027,9 @@ importers:
       '@n8n/eslint-config':
         specifier: workspace:*
         version: link:../../@n8n/eslint-config
+      '@n8n/expression-runtime':
+        specifier: workspace:*
+        version: link:../../@n8n/expression-runtime
       '@n8n/frontend-constants':
         specifier: workspace:*
         version: link:../@n8n/frontend-constants
@@ -6255,6 +6267,9 @@ importers:
       humanize-duration:
         specifier: ^3.27.2
         version: 3.27.3
+      jsdom:
+        specifier: 'catalog:'
+        version: 23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10)
       jsonpath-plus:
         specifier: ^10.3.0
         version: 10.4.0
@@ -6327,6 +6342,9 @@ importers:
       timeago.js:
         specifier: ^4.0.2
         version: 4.0.2
+      type-fest:
+        specifier: 5.8.0
+        version: 5.8.0
       typescript:
         specifier: 'catalog:'
         version: 6.0.2
@@ -6942,7 +6960,7 @@ importers:
         specifier: 1.4.0
         version: 1.4.0
       jsdom:
-        specifier: 23.0.1
+        specifier: 'catalog:'
         version: 23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10)
       json-schema:
         specifier: 'catalog:'
@@ -7398,6 +7416,9 @@ importers:
       axe-html-reporter:
         specifier: ^2.2.11
         version: 2.2.11(axe-core@4.13.0)
+      debug:
+        specifier: ^4.3.4
+        version: 4.4.3(supports-color@8.1.1)
       eslint-plugin-playwright:
         specifier: catalog:e2e
         version: 2.2.2(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))
@@ -7626,6 +7647,9 @@ importers:
       fast-check:
         specifier: 'catalog:'
         version: 3.23.2
+      jsdom:
+        specifier: 'catalog:'
+        version: 23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10)
       nock:
         specifier: 'catalog:'
         version: 14.0.14

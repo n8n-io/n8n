@@ -75,6 +75,7 @@
     "autocannon": "^8.0.0",
     "axe-core": "^4.13.0",
     "axe-html-reporter": "^2.2.11",
+    "debug": "^4.3.4",
     "eslint-plugin-playwright": "catalog:e2e",
     "flatted": "catalog:",
     "generate-schema": "2.6.0",
