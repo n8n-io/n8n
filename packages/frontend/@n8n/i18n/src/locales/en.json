@@ -8726,6 +8726,8 @@
 	"selfHealing.dialog.people.placeholder": "Add a person to notify",
 	"selfHealing.dialog.people.remove": "Remove",
 	"selfHealing.dialog.people.you": "{name} (you)",
+	"selfHealing.dialog.people.projectMembers": "People from {project}",
+	"selfHealing.dialog.people.addProjectMembers": "Add everyone in {project}",
 	"selfHealing.dialog.people.empty": "Nobody is notified yet.",
 	"selfHealing.projectSettings.column.reviewers": "Reviewers",
 	"selfHealing.projectSettings.noReviewers": "None",

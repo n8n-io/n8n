@@ -80,7 +80,8 @@ describe('useSelfHealingStore', () => {
 				autonomy: 'review',
 				status: 'active',
 				scope: 'all',
-				reviewerIds: ['user-1'],
+				notifyProjectMembers: true,
+				reviewerIds: [],
 			});
 		});
 
@@ -99,6 +100,7 @@ describe('useSelfHealingStore', () => {
 				scope: 'selected',
 				selectedWorkflowIds: ['wf-9'],
 				customInstructions: '',
+				notifyProjectMembers: false,
 				reviewerIds: ['user-2'],
 				status: 'active',
 			});
@@ -154,6 +156,7 @@ describe('useSelfHealingStore', () => {
 			expect(closed).toHaveLength(1);
 			expect(open[0].title).toMatch(/^Auto-fix:/);
 			expect(open[0].requester).toEqual(SELF_HEALING_ASSISTANT);
+			// Seeded reviews are reviewed by the signed-in user.
 			expect(open[0].reviewers[0].id).toBe('user-1');
 			expect(store.countByState('open')).toBe(1);
 		});
@@ -286,7 +289,10 @@ describe('useSelfHealingStore', () => {
 
 		it('assigns the configured reviewers to the new review', async () => {
 			const [defaultConfig] = store.getProjectConfigs(PROJECT_ID);
-			store.updateConfig(PROJECT_ID, defaultConfig.id, { reviewerIds: ['user-2', 'missing'] });
+			store.updateConfig(PROJECT_ID, defaultConfig.id, {
+				notifyProjectMembers: false,
+				reviewerIds: ['user-2', 'missing'],
+			});
 
 			const pending = store.startFix(failedExecution(), {
 				workflowName: 'Order sync',

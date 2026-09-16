@@ -104,10 +104,11 @@ function statusLabel(config: SelfHealingConfig): string {
 	return i18n.baseText(`selfHealing.status.${config.status}`);
 }
 
-/** Reviewer ids resolved through the project's members, then any known user. */
+/** Everyone the configuration notifies, resolved through the project's members, then any known user. */
 function reviewerUsers(config: SelfHealingConfig): IUser[] {
 	const relations = projectsStore.currentProject?.relations ?? [];
-	return config.reviewerIds.flatMap((id) => {
+	const memberIds = config.notifyProjectMembers ? relations.map((relation) => relation.id) : [];
+	return [...new Set([...memberIds, ...config.reviewerIds])].flatMap((id) => {
 		const relation = relations.find((candidate) => candidate.id === id);
 		const user = relation
 			? {

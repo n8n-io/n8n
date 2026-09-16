@@ -38,10 +38,10 @@ export function hashString(value: string): number {
 	return Math.abs(hash >>> 0);
 }
 
-/** The signed-in user starts out as the only reviewer; `null` when nobody is signed in yet. */
+/** New configurations notify every project member; `ownerId` is unused but kept for callers. */
 export function createDefaultConfig(
 	projectId: string,
-	ownerId: string | null,
+	_ownerId: string | null,
 	now = Date.now(),
 ): SelfHealingConfig {
 	return {
@@ -52,7 +52,8 @@ export function createDefaultConfig(
 		selectedWorkflowIds: [],
 		customInstructions:
 			'Prefer adding retries and guards over changing business logic. Never edit credentials or webhook paths. Keep the fix to the failing branch.',
-		reviewerIds: ownerId ? [ownerId] : [],
+		notifyProjectMembers: true,
+		reviewerIds: [],
 		status: 'active',
 		createdAt: daysAgo(12, now),
 		updatedAt: daysAgo(3, now),

@@ -24,6 +24,8 @@ import { useUsersStore } from '@n8n/stores/users.store';
 import { computed, ref, watch } from 'vue';
 
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import ProjectIcon from '@/features/collaboration/projects/components/ProjectIcon.vue';
+import { DEFAULT_PROJECT_ICON } from '@/features/collaboration/projects/projects.constants';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 
 import { useSelfHealingStore } from '../selfHealing.store';
@@ -79,7 +81,8 @@ function emptyForm(): SelfHealingConfigInput {
 		scope: 'all',
 		selectedWorkflowIds: [],
 		customInstructions: '',
-		reviewerIds: usersStore.currentUser?.id ? [usersStore.currentUser.id] : [],
+		notifyProjectMembers: true,
+		reviewerIds: [],
 		status: 'active',
 	};
 }
@@ -90,6 +93,7 @@ function formFrom(config: SelfHealingConfig): SelfHealingConfigInput {
 		scope: config.scope,
 		selectedWorkflowIds: [...config.selectedWorkflowIds],
 		customInstructions: config.customInstructions,
+		notifyProjectMembers: config.notifyProjectMembers,
 		reviewerIds: [...config.reviewerIds],
 		status: config.status,
 	};
@@ -128,6 +132,13 @@ const candidateUsers = computed<IUser[]>(() => {
 	}
 	return usersStore.allUsers.filter((user) => !user.isPendingUser);
 });
+
+const projectName = computed(() => projectsStore.currentProject?.name ?? '');
+const projectIcon = computed(() => projectsStore.currentProject?.icon ?? DEFAULT_PROJECT_ICON);
+
+const hasAnyoneToNotify = computed(
+	() => form.value.notifyProjectMembers || form.value.reviewerIds.length > 0,
+);
 
 const selectedReviewers = computed<IUser[]>(() =>
 	form.value.reviewerIds.flatMap((id) => {
@@ -290,10 +301,34 @@ function save() {
 					@update:model-value="addReviewer"
 				/>
 				<ul
-					v-if="selectedReviewers.length > 0"
+					v-if="hasAnyoneToNotify"
 					:class="$style.reviewers"
 					data-test-id="self-healing-reviewer-list"
 				>
+					<li
+						v-if="form.notifyProjectMembers"
+						:class="$style.reviewer"
+						data-test-id="self-healing-project-members"
+					>
+						<span :class="$style.projectAvatar">
+							<ProjectIcon :icon="projectIcon" size="small" round border-less />
+						</span>
+						<N8nText size="medium" color="text-dark" :class="$style.reviewerName">
+							{{
+								i18n.baseText('selfHealing.dialog.people.projectMembers', {
+									interpolate: { project: projectName },
+								})
+							}}
+						</N8nText>
+						<N8nIconButton
+							icon="x"
+							variant="ghost"
+							size="small"
+							:title="i18n.baseText('selfHealing.dialog.people.remove')"
+							data-test-id="self-healing-project-members-remove"
+							@click="form.notifyProjectMembers = false"
+						/>
+					</li>
 					<li
 						v-for="user in selectedReviewers"
 						:key="user.id"
@@ -323,6 +358,21 @@ function save() {
 				>
 					{{ i18n.baseText('selfHealing.dialog.people.empty') }}
 				</N8nText>
+				<N8nButton
+					v-if="!form.notifyProjectMembers"
+					variant="ghost"
+					size="small"
+					icon="users"
+					type="button"
+					:label="
+						i18n.baseText('selfHealing.dialog.people.addProjectMembers', {
+							interpolate: { project: projectName },
+						})
+					"
+					:class="$style.addMembers"
+					data-test-id="self-healing-add-project-members"
+					@click="form.notifyProjectMembers = true"
+				/>
 			</N8nInputLabel>
 
 			<N8nDialogFooter>
@@ -417,5 +467,22 @@ function save() {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+// Same footprint as the small person avatar next to it.
+.projectAvatar {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+	width: 28px;
+	height: 28px;
+	border-radius: 50%;
+	background-color: var(--color--background--light-3);
+}
+
+.addMembers {
+	align-self: flex-start;
+	margin-top: var(--spacing--2xs);
 }
 </style>

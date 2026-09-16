@@ -16,6 +16,7 @@ import { computed, ref } from 'vue';
 
 import { SELF_HEALING_WORKFLOWS_EXPERIMENT } from '@/app/constants/experiments';
 import { usePostHog } from '@/app/stores/posthog.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 
 import {
 	SELF_HEALING_ASSISTANT,
@@ -72,6 +73,7 @@ const SEED_PROJECT_ID = 'self-healing-demo-project';
 export const useSelfHealingStore = defineStore('selfHealing', () => {
 	const posthogStore = usePostHog();
 	const usersStore = useUsersStore();
+	const projectsStore = useProjectsStore();
 
 	const isEnabled = computed(() => {
 		const variant = posthogStore.getVariant(SELF_HEALING_WORKFLOWS_EXPERIMENT.name);
@@ -133,9 +135,19 @@ export const useSelfHealingStore = defineStore('selfHealing', () => {
 		);
 	}
 
-	/** Resolves configured reviewer ids to users; unknown ids are dropped, the viewer is the fallback. */
-	function resolveReviewers(reviewerIds: string[]): WorkflowReviewEligibleReviewer[] {
-		const resolved = reviewerIds.flatMap((id) => {
+	/**
+	 * The people a configuration notifies: every project member when enabled (as
+	 * far as the loaded project tells us), plus the individually picked users.
+	 * Unknown ids are dropped; the viewer is the fallback.
+	 */
+	function resolveReviewers(config: SelfHealingConfig | null): WorkflowReviewEligibleReviewer[] {
+		const project = projectsStore.currentProject;
+		const memberIds =
+			config?.notifyProjectMembers && project && project.id === config.projectId
+				? project.relations.map((relation) => relation.id)
+				: [];
+		const ids = [...new Set([...memberIds, ...(config?.reviewerIds ?? [])])];
+		const resolved = ids.flatMap((id) => {
 			if (id === viewer.value?.id) return viewer.value ? [viewer.value] : [];
 			const user = usersStore.usersById?.[id];
 			return user
@@ -320,7 +332,7 @@ export const useSelfHealingStore = defineStore('selfHealing', () => {
 				projectId: context.projectId ?? SEED_PROJECT_ID,
 				baseline,
 				pinned,
-				reviewers: resolveReviewers(config?.reviewerIds ?? []),
+				reviewers: resolveReviewers(config),
 				createdAt,
 				...(autoDeploy
 					? {

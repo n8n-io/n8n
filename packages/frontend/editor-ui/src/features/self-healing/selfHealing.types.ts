@@ -23,7 +23,9 @@ export interface SelfHealingConfig {
 	/** Only read when `scope` is `selected`. */
 	selectedWorkflowIds: string[];
 	customInstructions: string;
-	/** Users who review each fix and are notified when the assistant submits one. */
+	/** Notify every member of the project, on top of `reviewerIds`. */
+	notifyProjectMembers: boolean;
+	/** Individually picked users who are notified when the assistant submits a fix. */
 	reviewerIds: string[];
 	status: SelfHealingConfigStatus;
 	createdAt: string;
