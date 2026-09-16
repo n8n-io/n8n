@@ -56,6 +56,7 @@ export {
 	getNodeProxyAgent,
 	proxyFetch,
 	type AgentTimeoutOptions,
+	type EgressFilter,
 	type ProxyFetchOptions,
 } from './utils/http-proxy-agent';
 export { braveSearch, searxngSearch, type BraveSearchOptions } from './web-search';
