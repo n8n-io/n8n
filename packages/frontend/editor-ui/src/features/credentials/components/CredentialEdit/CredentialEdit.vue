@@ -201,18 +201,19 @@ const telemetryWorkflowId = computed(() => {
 });
 
 const contextNode = computed<INode | null>(() => {
-	if (ndvStore.value.activeNode) return ndvStore.value.activeNode;
 	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
 	if (isCredentialModalState(modalState) && modalState.contextNode) {
 		return modalState.contextNode;
 	}
+	if (ndvStore.value.activeNode) return ndvStore.value.activeNode;
 	const fallbackName = isCredentialModalState(modalState) ? modalState.nodeName : undefined;
 	return fallbackName ? (workflowDocumentStore.value?.getNodeByName(fallbackName) ?? null) : null;
 });
 
 const workflowContextNode = computed(() => {
-	if (!contextNode.value) return null;
-	return workflowDocumentStore.value.getNodeByName(contextNode.value.name);
+	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
+	if (!isCredentialModalState(modalState) || !modalState.contextNode) return null;
+	return workflowDocumentStore.value.getNodeById(modalState.contextNode.id);
 });
 
 const overrideProjectId = computed(() => {
@@ -379,7 +380,18 @@ const showAiGatewayErrorNudge = computed(() => {
 	const node = workflowContextNode.value;
 	const type = credentialTypeName.value;
 	const nodeType = activeNodeType.value;
-	if (!authError.value || !node || !type || !nodeType || !aiGateway.isEnabled.value) return false;
+	if (
+		activeTab.value !== 'connection' ||
+		!authError.value ||
+		!node ||
+		!type ||
+		!nodeType ||
+		!aiGateway.isEnabled.value
+	) {
+		return false;
+	}
+	if (!nodeType.credentials?.some((credential) => credential.name === type)) return false;
+	if (node.credentials?.[type]?.id !== credentialId.value) return false;
 	if (node.credentials?.[type]?.__aiGatewayManaged === true) return false;
 
 	const resolvedParameters =
@@ -687,26 +699,25 @@ async function useGatewayCredits(): Promise<void> {
 	const node = workflowContextNode.value;
 	const type = credentialTypeName.value;
 	if (!node || !type || !showAiGatewayErrorNudge.value) return;
-	const workflowId = telemetryWorkflowId.value || undefined;
+	const previousCredentials = { ...(node.credentials ?? {}) };
+	const updateCredentials = (credentials: INode['credentials']) => {
+		workflowDocumentStore.value.updateNodeProperties({
+			name: node.name,
+			properties: { credentials },
+		});
+		nodeHelpers.updateNodesCredentialsIssues();
+	};
 
-	workflowDocumentStore.value.updateNodeProperties({
-		name: node.name,
-		properties: {
-			credentials: {
-				...(node.credentials ?? {}),
-				[type]: { id: null, name: '', __aiGatewayManaged: true },
-			},
-		},
+	updateCredentials({
+		...previousCredentials,
+		[type]: { id: null, name: '', __aiGatewayManaged: true },
 	});
+	if (!(await aiGateway.saveAfterToggle())) {
+		updateCredentials(previousCredentials);
+		return;
+	}
 
-	telemetry.track(
-		TELEMETRY_EVENT.CREDENTIALS.USER_SWITCHED_TO_GATEWAY_CREDITS_FROM_CREDENTIAL_ERROR,
-		{
-			credential_type: type,
-			node_type: node.type,
-			workflow_id: workflowId,
-		},
-	);
+	const workflowId = telemetryWorkflowId.value || undefined;
 	telemetry.track('User toggled n8n connect credential', {
 		credential_type: type,
 		node_type: node.type,
@@ -723,7 +734,6 @@ async function useGatewayCredits(): Promise<void> {
 	});
 
 	closeDialog();
-	await aiGateway.saveAfterToggle();
 	toast.showMessage({
 		title: i18n.baseText('credentialEdit.credentialConfig.aiGatewayErrorNudge.toast.title'),
 		type: 'success',

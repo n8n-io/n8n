@@ -13,16 +13,6 @@ export const CREDENTIALS_TELEMETRY = defineTelemetryEvents({
 			workflow_id: z.string().optional(),
 		}),
 	},
-	USER_SWITCHED_TO_GATEWAY_CREDITS_FROM_CREDENTIAL_ERROR: {
-		name: 'User switched to Gateway credits from credential error',
-		description:
-			'The user selected Gateway credits from the suggestion shown after a failed credential test.',
-		properties: z.object({
-			credential_type: z.string(),
-			node_type: z.string(),
-			workflow_id: z.string().optional(),
-		}),
-	},
 	USER_PROBED_CREDENTIAL: {
 		name: 'User probed credential',
 		description:
