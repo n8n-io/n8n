@@ -19,11 +19,6 @@ variable "vm_size" {
   default = "Standard_D8s_v5"
 }
 
-variable "number_of_vms" {
-  description = "Number of VMs to create"
-  default     = 1
-}
-
 locals {
   common_tags = {
     Id        = "N8nBenchmark"

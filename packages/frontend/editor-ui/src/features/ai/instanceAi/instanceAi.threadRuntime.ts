@@ -16,6 +16,7 @@ import {
 	type InstanceAiAttachment,
 	type InstanceAiEvent,
 	type InstanceAiMessage,
+	type InstanceAiThreadSummary,
 	type InstanceAiAgentNode,
 	type InstanceAiToolCallState,
 	type InstanceAiSSEConnectionState,
@@ -27,7 +28,7 @@ import {
 } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
-import { redactTelemetryProperties } from '@n8n/telemetry';
+import { redactTelemetryProperties, TELEMETRY_EVENT } from '@n8n/telemetry';
 import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
@@ -45,6 +46,7 @@ import {
 	fetchThreadMessages as fetchThreadMessagesApi,
 	fetchThreadStatus as fetchThreadStatusApi,
 } from './instanceAi.memory.api';
+import type { InstanceAiMessageAuthorship } from './prefills';
 import { handleEvent as reduceEvent, createRunStateFromTree } from './instanceAi.reducer';
 import { getLatestBuildResult, type RememberedManualExecution } from './canvasPreview.utils';
 import { useResourceRegistry } from './useResourceRegistry';
@@ -54,6 +56,7 @@ import {
 	INSTANCE_AI_AGENT_PREVIEW_SESSION_METADATA_KEY,
 	INSTANCE_AI_AGENT_PREVIEW_VIEW_METADATA_KEY,
 	INSTANCE_AI_PENDING_AGENT_METADATA_KEY,
+	NEW_CONVERSATION_TITLE,
 } from './constants';
 import {
 	findToolCallInTree,
@@ -113,6 +116,25 @@ export interface ThreadRuntimeHooks {
 	onRunFinish: () => void;
 	/** Thread-list metadata, used to enrich historical artifacts. */
 	getThreadMetadata?: (threadId: string) => Record<string, unknown> | undefined;
+}
+
+/**
+ * The title a thread shows in a header: the summary title once the server has
+ * generated one, else the first user message (truncated), else undefined —
+ * rendering only on a defined value avoids a "New conversation" → real title
+ * flash. Shared by `InstanceAiThreadView` and the embedded `InstanceAiChatPanel`.
+ */
+export function getThreadDisplayTitle(
+	summary: InstanceAiThreadSummary | undefined,
+	messages: InstanceAiMessage[],
+): string | undefined {
+	if (summary?.title && summary.title !== NEW_CONVERSATION_TITLE) return summary.title;
+	const firstUserMessage = messages.find((message) => message.role === 'user');
+	if (firstUserMessage?.content) {
+		const text = firstUserMessage.content.trim();
+		return text.length > 60 ? text.slice(0, 60) + '…' : text;
+	}
+	return undefined;
 }
 
 export function getAgentBuilderTargetFromThreadMetadata(
@@ -1228,7 +1250,10 @@ export function createThreadRuntime(
 		}
 	}
 
-	function trackUserMessageSent(isFirstMessage: boolean): void {
+	function trackUserMessageSent(
+		isFirstMessage: boolean,
+		authorship: InstanceAiMessageAuthorship,
+	): void {
 		const rawSource = hooks.getThreadMetadata?.(threadId)?.source;
 		const actionSource = isInstanceAiThreadSource(rawSource)
 			? rawSource
@@ -1245,11 +1270,17 @@ export function createThreadRuntime(
 			);
 		}
 
-		telemetry.track('User sent builder message', {
+		const isPrefill = authorship.kind === 'prefill';
+		telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE, {
 			thread_id: threadId,
 			instance_id: rootStore.instanceId,
 			is_first_message: isFirstMessage,
 			action_source: actionSource,
+			// Explicit nulls, not omissions: the warehouse needs the column present on
+			// organic messages so `prefill_type IS NULL` is a usable predicate.
+			prefill_type: isPrefill ? authorship.prefillType : null,
+			prefill_id: isPrefill ? (authorship.prefillId ?? null) : null,
+			prompt_modified: isPrefill ? (authorship.promptModified ?? false) : null,
 		});
 	}
 
@@ -1308,19 +1339,27 @@ export function createThreadRuntime(
 		}
 	}
 
+	/**
+	 * `authorship` is required so a new pre-fill surface cannot ship untagged:
+	 * omitting it fails typecheck rather than reporting the opener as user-typed.
+	 */
 	async function sendMessage(
 		message: string,
-		attachments?: InstanceAiAttachment[],
-		pushRef?: string,
-		handoffContext?: InstanceAiHandoffContext,
+		opts: {
+			authorship: InstanceAiMessageAuthorship;
+			attachments?: InstanceAiAttachment[];
+			pushRef?: string;
+			handoffContext?: InstanceAiHandoffContext;
+		},
 	): Promise<boolean> {
+		const { authorship, attachments, pushRef, handoffContext } = opts;
 		amendContext.value = null;
 		pendingMessageCount.value += 1;
 		try {
 			ensureSSEConnected();
 			const isFirstMessage = !messages.value.some((m) => m.role === 'user');
 			const optimistic = pushOptimisticUserMessage(message, attachments, handoffContext);
-			trackUserMessageSent(isFirstMessage);
+			trackUserMessageSent(isFirstMessage, authorship);
 
 			if (!(await dispatchUserMessage(message, attachments, handoffContext, pushRef))) {
 				removeOptimisticMessage(optimistic);
