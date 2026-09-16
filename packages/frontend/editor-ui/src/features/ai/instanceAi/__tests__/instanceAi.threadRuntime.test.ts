@@ -1352,7 +1352,9 @@ describe('createThreadRuntime - SSE and hydration', () => {
 		});
 		runtime.setActiveArtifactId('wf-1');
 
-		await runtime.sendMessage('Change the WhatsApp node');
+		await runtime.sendMessage('Change the WhatsApp node', {
+			authorship: USER_TYPED_MESSAGE,
+		});
 
 		expect(mockPostMessage).toHaveBeenCalledWith(
 			expect.anything(),
