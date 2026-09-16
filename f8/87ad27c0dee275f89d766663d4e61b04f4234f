@@ -1,0 +1,9 @@
+pnpm-lock.yaml
+  ai_agent 3285,28440,28467,28482,28488,28491,28493,28504,28524,28529,28533,28539,28541,28545,28551,28557,28560,28562
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f887ad27c0dee275f89d766663d4e61b04f4234f",
+  "prompts": {}
+}

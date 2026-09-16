@@ -1,0 +1,32 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.threadRuntime.ts
+  s_f1d38c3c7a3230::t_fbf8ed44836d99 1474
+  s_f1d38c3c7a3230::t_80edb3284390e9 449-458
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useInstanceAiWorkflowPreviewExecution.ts
+  s_f1d38c3c7a3230::t_e94257f50539c8 68-70,81-84,86-87,92,104-106,111,114-118,128-129
+  s_f1d38c3c7a3230::t_5122cc51a0bd86 85
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiWorkflowPreview.test.ts
+  s_f1d38c3c7a3230::t_800120730d770f 620-626,630,644
+  s_f1d38c3c7a3230::t_d4f2e70759ba16 556
+  s_f1d38c3c7a3230::t_81665325f4bdfc 1
+  s_f1d38c3c7a3230::t_a577b6aefe04b4 50-54
+  s_f1d38c3c7a3230::t_59b5e11e2328a0 183
+  s_f1d38c3c7a3230::t_fd9d1260f93324 604-619,627-629,631-643,645-649
+  s_f1d38c3c7a3230::t_4f8929dcfc7983 140-141,146
+  s_f1d38c3c7a3230::t_48e134afd8627e 225-227
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "76500f4e80498573c8242b3cacfa8ffc20db447b",
+  "prompts": {},
+  "sessions": {
+    "s_f1d38c3c7a3230": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "046b7916-96df-4517-8265-9290c2687bf2",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}
