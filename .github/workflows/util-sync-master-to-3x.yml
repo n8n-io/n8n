@@ -60,6 +60,7 @@ jobs:
           permission-contents: write # force-push 3.x / push the conflict branch
           permission-pull-requests: write # open the conflict PR
           permission-issues: write # create the conflict label
+          permission-workflows: write # push commits that touch .github/workflows/*
 
       - name: Checkout 3.x
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2

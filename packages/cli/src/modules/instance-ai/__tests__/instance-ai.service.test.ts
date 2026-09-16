@@ -18,6 +18,11 @@ vi.mock('@n8n/instance-ai', async () => {
 		assertInstanceAiPromptVersion: profiles.assertInstanceAiPromptVersion,
 		describePromptProfile: profiles.describePromptProfile,
 		setTracePromptVersion: vi.fn(),
+		setTraceModelId: vi.fn(),
+		modelIdTraceMetadata: (modelId: unknown) =>
+			typeof modelId === 'string' && modelId.length > 0 ? { model_id: modelId } : {},
+		modelConfigId: (config: unknown) =>
+			typeof config === 'string' && config.length > 0 ? config : undefined,
 		// Wiring-only stub: the real mapping has its own unit tests
 		// (instance-ai/src/tracing/__tests__/thread-provenance.test.ts). What the
 		// service tests pin is that its OUTPUT reaches the trace — spreading an
@@ -254,6 +259,7 @@ import {
 	type BuilderUsageItem,
 	type ManagedBackgroundTask,
 	type InstanceAiTraceContext,
+	type ModelConfig,
 	type TraceStatus,
 	type WorkflowVerificationObligation,
 } from '@n8n/instance-ai';
@@ -579,6 +585,7 @@ type TerminalGuardOrderServiceInternals = {
 			messageGroupId?: string;
 			resumeTracing?: InstanceAiTraceContext;
 			unregisteredResumeTracing?: InstanceAiTraceContext;
+			modelId?: ModelConfig;
 		},
 	) => Promise<void>;
 };
@@ -3021,6 +3028,42 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			error_source: 'exception',
 			user_id: 'user-1',
 			prompt_version: 'progressive@1',
+		});
+	});
+
+	it('includes the resolved model id on resumed-run telemetry', async () => {
+		const service = createTerminalGuardOrderService();
+		service.runState.getPromptConfiguration.mockReturnValue({ version: 'progressive@1' });
+		const abortController = new AbortController();
+		mockClaimedResumeResult({
+			status: 'completed',
+			agentRunId: 'agent-run-1',
+			text: Promise.resolve('done'),
+			workSummary: { toolCalls: [], totalToolCalls: 0, totalToolErrors: 0 },
+		});
+
+		await service.processResumedStream(
+			{},
+			{},
+			{
+				runId: 'run-1',
+				agentRunId: 'agent-run-1',
+				threadId: 'thread-a',
+				user: fakeUser,
+				toolCallId: 'tool-call-1',
+				signal: abortController.signal,
+				abortController,
+				modelId: 'anthropic/claude-sonnet-4-6',
+			},
+		);
+
+		expect(service.telemetry.track).toHaveBeenCalledWith('instance_ai_run_finished', {
+			thread_id: 'thread-a',
+			prompt_version: 'progressive@1',
+			run_id: 'run-1',
+			status: 'completed',
+			user_id: 'user-1',
+			model_id: 'anthropic/claude-sonnet-4-6',
 		});
 	});
 
