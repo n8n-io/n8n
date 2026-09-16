@@ -1,10 +1,8 @@
-import { BadRequestError } from '@n8n/backend-services';
+import { BadRequestError, EventService } from '@n8n/backend-services';
 import type { LdapConfig } from '@n8n/constants';
 import { Get, Post, Put, RestController, GlobalScope, Licensed } from '@n8n/decorators';
 import pick from 'lodash/pick';
 import { CREDENTIAL_BLANKING_VALUE } from 'n8n-workflow';
-
-import { EventService } from '@/events/event.service';
 
 import { NON_SENSIBLE_LDAP_CONFIG_PROPERTIES } from './constants';
 import { getLdapSynchronizations } from './helpers.ee';

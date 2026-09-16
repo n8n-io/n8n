@@ -1,5 +1,6 @@
 import { BLOCK_ACCESS_ASSIGNMENT, type ProvisioningConfigDto } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
+import type { EventService } from '@n8n/backend-services';
 import { BadRequestError, ForbiddenError } from '@n8n/backend-services';
 import { type GlobalConfig } from '@n8n/config';
 import {
@@ -17,7 +18,6 @@ import type { EntityManager } from '@n8n/typeorm';
 import { type InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import { type EventService } from '@/events/event.service';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { type RoleMappingRuleService } from '@/modules/provisioning.ee/role-mapping-rule.service.ee';
 import { type RoleResolverService } from '@/modules/provisioning.ee/role-resolver.service.ee';

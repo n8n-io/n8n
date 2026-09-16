@@ -1,5 +1,5 @@
 import { SamlAcsDto, SamlPreferences, SamlToggleDto } from '@n8n/api-types';
-import { AuthError, ForbiddenError, UrlService } from '@n8n/backend-services';
+import { AuthError, EventService, ForbiddenError, UrlService } from '@n8n/backend-services';
 import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Get, Post, RestController, GlobalScope, Body } from '@n8n/decorators';
@@ -10,7 +10,6 @@ import type { PostBindingContext } from 'samlify/types/src/entity';
 import url from 'url';
 
 import { AuthService } from '@/auth/auth.service';
-import { EventService } from '@/events/event.service';
 import { SSO_ACCESS_DENIED_REDIRECT_PATH } from '@/modules/provisioning.ee/constants';
 import { SsoAccessDeniedError } from '@/modules/provisioning.ee/errors/sso-access-denied.error';
 import { AuthlessRequest } from '@/requests';

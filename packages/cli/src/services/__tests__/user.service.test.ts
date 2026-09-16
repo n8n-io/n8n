@@ -1,4 +1,5 @@
 import { InviteUsersRequestDto } from '@n8n/api-types';
+import type { EventService } from '@n8n/backend-services';
 import { BadRequestError, ForbiddenError, NotFoundError, UrlService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
@@ -20,7 +21,6 @@ import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
-import type { EventService } from '@/events/event.service';
 import type { ExternalHooks } from '@/external-hooks';
 import type { License } from '@/license';
 import type { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';

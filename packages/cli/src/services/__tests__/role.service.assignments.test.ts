@@ -1,11 +1,10 @@
 import type { LicenseState } from '@n8n/backend-common';
 import { Logger } from '@n8n/backend-common';
-import { NotFoundError } from '@n8n/backend-services';
+import { EventService, NotFoundError } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { RoleRepository, ScopeRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import { EventService } from '@/events/event.service';
 import { RoleCacheService } from '@/services/role-cache.service';
 import { RoleDeletionCheckProxy } from '@/services/role-deletion-check-proxy.service';
 import { RoleService } from '@/services/role.service';

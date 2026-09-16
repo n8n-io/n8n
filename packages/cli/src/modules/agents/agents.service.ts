@@ -11,7 +11,7 @@ import {
 	type ListAgentsQueryDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { ConflictError, NotFoundError } from '@n8n/backend-services';
+import { ConflictError, EventService, NotFoundError } from '@n8n/backend-services';
 import { In, isUniqueConstraintError, ProjectRelationRepository, type User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
@@ -22,7 +22,6 @@ import { v4 as uuid } from 'uuid';
 // in this area (see `agents-credential-provider.ts`). Resolved lazily by DI.
 // eslint-disable-next-line import-x/no-cycle
 import { CredentialsService } from '@/credentials/credentials.service';
-import { EventService } from '@/events/event.service';
 
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
 import { AgentExecutionService } from './agent-execution.service';

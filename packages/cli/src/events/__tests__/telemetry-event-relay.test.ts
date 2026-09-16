@@ -1,4 +1,6 @@
 import type { LicenseState } from '@n8n/backend-common';
+import type { EventMap } from '@n8n/backend-services';
+import { EventService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import {
@@ -29,7 +31,6 @@ import { mock } from 'vitest-mock-extended';
 
 import { N8N_VERSION } from '@/constants';
 import type { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
-import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { TelemetryEventRelay, getSemanticVersioning } from '@/events/relays/telemetry.event-relay';
 import type { License } from '@/license';
@@ -1192,7 +1193,7 @@ describe('TelemetryEventRelay', () => {
 
 	describe('custom role events', () => {
 		it('should track on `custom-role-created` event', () => {
-			const event: RelayEventMap['custom-role-created'] = {
+			const event: EventMap['custom-role-created'] = {
 				userId: 'user123',
 				roleSlug: 'project:my-role-abc123',
 				scopes: ['workflow:create', 'workflow:read', 'credential:read'],
@@ -1208,7 +1209,7 @@ describe('TelemetryEventRelay', () => {
 		});
 
 		it('should track on `custom-role-updated` event', () => {
-			const event: RelayEventMap['custom-role-updated'] = {
+			const event: EventMap['custom-role-updated'] = {
 				userId: 'user123',
 				roleSlug: 'project:my-role-abc123',
 				scopes: ['workflow:create', 'workflow:read'],
@@ -1224,7 +1225,7 @@ describe('TelemetryEventRelay', () => {
 		});
 
 		it('should track on `custom-role-deleted` event', () => {
-			const event: RelayEventMap['custom-role-deleted'] = {
+			const event: EventMap['custom-role-deleted'] = {
 				userId: 'user123',
 				roleSlug: 'project:my-role-abc123',
 			};

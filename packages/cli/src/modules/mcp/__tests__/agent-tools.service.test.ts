@@ -1,6 +1,7 @@
 import { zodToJsonSchema } from '@n8n/ai-utilities/json-schema';
 import { APPROVAL_RESUME_SCHEMA } from '@n8n/agents/tool';
 import type { AgentJsonConfig } from '@n8n/api-types';
+import type { EventService } from '@n8n/backend-services';
 import { ConflictError, UrlService } from '@n8n/backend-services';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { OutboundHttp } from '@n8n/backend-network';
@@ -27,7 +28,6 @@ vi.mock('@/modules/agents/json-config/mcp-client-factory', () => ({
 }));
 
 import { CredentialsService } from '@/credentials/credentials.service';
-import type { EventService } from '@/events/event.service';
 import { AgentConfigService } from '@/modules/agents/agent-config.service';
 import { AgentCustomToolsService } from '@/modules/agents/agent-custom-tools.service';
 import { AgentIntegrationManagementService } from '@/modules/agents/agent-integration-management.service';

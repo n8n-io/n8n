@@ -7,6 +7,7 @@
 import { Logger } from '@n8n/backend-common';
 import {
 	BadRequestError,
+	EventService,
 	InternalServerError,
 	NotFoundError,
 	ProtectedResourceRegistry,
@@ -71,7 +72,6 @@ import { finished } from 'stream/promises';
 import { ActiveExecutions } from '@/active-executions';
 import { AuthService } from '@/auth/auth.service';
 import { MCP_TRIGGER_NODE_TYPE } from '@/constants';
-import { EventService } from '@/events/event.service';
 import { parseBody } from '@/middlewares';
 import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
 import {

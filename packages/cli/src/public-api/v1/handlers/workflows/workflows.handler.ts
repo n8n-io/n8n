@@ -1,7 +1,6 @@
-import { NotFoundError } from '@n8n/backend-services';
+import { EventService, NotFoundError } from '@n8n/backend-services';
 import { Container } from '@n8n/di';
 
-import { EventService } from '@/events/event.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 
 import type { WorkflowRequest } from '../../../types';

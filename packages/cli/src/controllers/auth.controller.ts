@@ -3,6 +3,7 @@ import { Logger } from '@n8n/backend-common';
 import {
 	AuthError,
 	BadRequestError,
+	EventService,
 	ForbiddenError,
 	InternalServerError,
 } from '@n8n/backend-services';
@@ -23,7 +24,6 @@ import { Response } from 'express';
 import { AuthHandlerRegistry } from '@/auth/auth-handler.registry';
 import { AuthService } from '@/auth/auth.service';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
-import { EventService } from '@/events/event.service';
 import { License } from '@/license';
 import { MfaService } from '@/mfa/mfa.service';
 import { PostHogClient } from '@/posthog';

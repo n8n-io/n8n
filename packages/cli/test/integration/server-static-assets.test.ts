@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import type { EventService } from '@n8n/backend-services';
 import { mockInstance, mockLogger, testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { HTML_NONCE_PLACEHOLDER } from '@n8n/constants';
@@ -16,7 +17,6 @@ import { AUTH_COOKIE_NAME } from '@/constants';
 import { ControllerRegistry } from '@/controller.registry';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
-import type { EventService } from '@/events/event.service';
 import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
 import { ExternalHooks } from '@/external-hooks';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';

@@ -4,6 +4,7 @@ import {
 	AuthError,
 	BadRequestError,
 	CacheService,
+	EventService,
 	NotFoundError,
 	UrlService,
 } from '@n8n/backend-services';
@@ -26,7 +27,6 @@ import { AuthService } from '@/auth/auth.service';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
 import { CredentialsHelper } from '@/credentials-helper';
-import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { OAuthBrowserBindingService } from '@/oauth/oauth-browser-binding.service';
 import { OAuthJweServiceProxy } from '@/oauth/oauth-jwe-service.proxy';

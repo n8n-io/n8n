@@ -1,3 +1,4 @@
+import { EventService } from '@n8n/backend-services';
 import {
 	createTeamProject,
 	shareWorkflowWithUsers,
@@ -9,7 +10,6 @@ import { Container } from '@n8n/di';
 import { jsonParse } from 'n8n-workflow';
 
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
-import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { createMember, createOwner } from '@test-integration/db/users';
 import { createProjectVariable, createVariable } from '@test-integration/db/variables';

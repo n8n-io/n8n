@@ -12,7 +12,12 @@ import {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp, SsrfBlockedIpError } from '@n8n/backend-network';
-import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/backend-services';
+import {
+	BadRequestError,
+	EventService,
+	ForbiddenError,
+	NotFoundError,
+} from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import {
 	AuthenticatedRequest,
@@ -42,7 +47,6 @@ import express from 'express';
 import { calculateWorkflowChecksum } from 'n8n-workflow';
 
 import { AuthService } from '@/auth/auth.service';
-import { EventService } from '@/events/event.service';
 import { ExecutionService } from '@/executions/execution.service';
 import { IWorkflowResponse } from '@/interfaces';
 import { License } from '@/license';

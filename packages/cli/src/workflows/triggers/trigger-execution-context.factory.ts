@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type { IWorkflowDb, PollerCursor, PollLeaseFence } from '@n8n/db';
@@ -33,7 +34,6 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 
 import { ActiveExecutions } from '@/active-executions';
 import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
-import { EventService } from '@/events/event.service';
 import { executeErrorWorkflow } from '@/execution-lifecycle/execute-error-workflow';
 import { ExecutionService } from '@/executions/execution.service';
 import { NodeTypes } from '@/node-types';

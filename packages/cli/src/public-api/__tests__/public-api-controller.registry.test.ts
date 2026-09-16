@@ -1,4 +1,5 @@
 import { Z } from '@n8n/api-types';
+import type { EventService } from '@n8n/backend-services';
 import type { AuthenticatedRequest, User } from '@n8n/db';
 import {
 	ApiResponse,
@@ -16,7 +17,6 @@ import request from 'supertest';
 import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
 
-import type { EventService } from '@/events/event.service';
 import {
 	markPublicApiController,
 	OptionalWidgetBodyDto,

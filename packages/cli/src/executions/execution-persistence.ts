@@ -1,4 +1,5 @@
 import { parseFlatted } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { DatabaseConfig, ExecutionsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type {
@@ -40,7 +41,6 @@ import {
 import { UnreadableRunDataError } from './execution-data/unreadable-run-data.error';
 import { sumBinaryDataBytes } from './sum-binary-data-bytes';
 import { DuplicateExecutionError } from '../errors/duplicate-execution.error';
-import { EventService } from '../events/event.service';
 
 type DeletionTarget = ExecutionRef & { storedAt: ExecutionDataStorageLocation };
 

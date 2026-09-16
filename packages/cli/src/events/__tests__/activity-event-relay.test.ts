@@ -1,4 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import type { ActivityLogConfig } from '@n8n/config';
 import type {
 	ActivityEventRepository,
@@ -11,7 +12,6 @@ import type {
 import type { INode } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { ActivityEventRelay } from '@/events/relays/activity.event-relay';
 

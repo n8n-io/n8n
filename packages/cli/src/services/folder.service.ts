@@ -1,4 +1,5 @@
 import type { CreateFolderDto, DeleteFolderDto, UpdateFolderDto } from '@n8n/api-types';
+import { EventService } from '@n8n/backend-services';
 import type {
 	FolderWithWorkflowAndSubFolderCount,
 	FolderWithWorkflowAndSubFolderCountAndPath,
@@ -10,7 +11,6 @@ import type { EntityManager } from '@n8n/typeorm';
 import { UserError, PROJECT_ROOT } from 'n8n-workflow';
 
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
-import { EventService } from '@/events/event.service';
 import type { ListQuery } from '@/requests';
 import { WorkflowService } from '@/workflows/workflow.service';
 

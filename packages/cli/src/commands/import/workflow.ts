@@ -1,3 +1,4 @@
+import { EventService } from '@n8n/backend-services';
 import {
 	generateNanoId,
 	ProjectRepository,
@@ -16,7 +17,6 @@ import { jsonParse, UserError } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { UM_FIX_INSTRUCTION } from '@/constants';
-import { EventService } from '@/events/event.service';
 import type { IWorkflowToImport, IWorkflowWithVersionMetadata } from '@/interfaces';
 import { ImportService, type WorkflowImportViolations } from '@/services/import.service';
 

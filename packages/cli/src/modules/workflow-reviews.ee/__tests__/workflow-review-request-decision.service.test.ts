@@ -1,5 +1,6 @@
 import type { DecideWorkflowReviewRequestDto } from '@n8n/api-types';
 import type { LicenseState, Logger } from '@n8n/backend-common';
+import type { EventService } from '@n8n/backend-services';
 import {
 	BadRequestError,
 	ConflictError,
@@ -36,7 +37,6 @@ import { WorkflowReviewRequestMutationGuard } from '../workflow-review-request-m
 import { WorkflowReviewStateNotifier } from '../workflow-review-state-notifier.service';
 
 import type { CollaborationService } from '@/collaboration/collaboration.service';
-import type { EventService } from '@/events/event.service';
 import type { ProjectService } from '@/services/project.service.ee';
 import type { RoleService } from '@/services/role.service';
 import type { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';

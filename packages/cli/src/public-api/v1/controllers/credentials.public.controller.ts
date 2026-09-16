@@ -9,7 +9,12 @@ import {
 	TransferCredentialPublicDto,
 } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
-import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/backend-services';
+import {
+	BadRequestError,
+	EventService,
+	ForbiddenError,
+	NotFoundError,
+} from '@n8n/backend-services';
 import type { AuthenticatedRequest, CredentialsEntity, ICredentialsDb, User } from '@n8n/db';
 import {
 	ApiDescription,
@@ -38,7 +43,6 @@ import { CredentialsFinderService } from '@/credentials/credentials-finder.servi
 import { CredentialsService } from '@/credentials/credentials.service';
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
 import { CredentialsHelper } from '@/credentials-helper';
-import { EventService } from '@/events/event.service';
 import {
 	assertValidUpdateProperties,
 	buildSharedForCredential,

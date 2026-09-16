@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import type { ProtectedResource, ResponseError } from '@n8n/backend-services';
-import { ProtectedResourceRegistry } from '@n8n/backend-services';
+import { EventService, ProtectedResourceRegistry } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { Project, User } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
@@ -55,7 +55,6 @@ import { mock, type MockProxy } from 'vitest-mock-extended';
 
 import { ActiveExecutions } from '@/active-executions';
 import { AuthService } from '@/auth/auth.service';
-import { EventService } from '@/events/event.service';
 import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
 import { EngineV2Dispatcher } from '@/services/engine-v2-dispatcher.service';
 import { OwnershipService } from '@/services/ownership.service';

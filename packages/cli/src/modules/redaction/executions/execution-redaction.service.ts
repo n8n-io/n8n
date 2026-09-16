@@ -1,5 +1,5 @@
 import { LicenseState, Logger } from '@n8n/backend-common';
-import { ForbiddenError, ScopeForbiddenError } from '@n8n/backend-services';
+import { EventService, ForbiddenError, ScopeForbiddenError } from '@n8n/backend-services';
 import { Service } from '@n8n/di';
 import {
 	channelsToPolicy,
@@ -8,7 +8,6 @@ import {
 	WorkflowSettings,
 } from 'n8n-workflow';
 
-import { EventService } from '@/events/event.service';
 import type {
 	ExecutionRedaction,
 	ExecutionRedactionOptions,

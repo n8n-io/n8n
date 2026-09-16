@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { WorkflowsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { WorkflowPublicationOutbox, WorkflowPublicationOutboxRepository } from '@n8n/db';
@@ -8,7 +9,6 @@ import { ErrorReporter, InstanceSettings, SpanStatus, Tracing } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { OperationalError, UnexpectedError, UserError } from 'n8n-workflow';
 
-import { EventService } from '@/events/event.service';
 import type {
 	PublicationOutcomeReason,
 	PublicationOutcomeResult,

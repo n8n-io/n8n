@@ -1,5 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
-import type { UrlService } from '@n8n/backend-services';
+import type { EventService, UrlService } from '@n8n/backend-services';
 import { ForbiddenError } from '@n8n/backend-services';
 import type { GlobalConfig, InstanceSettingsLoaderConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
@@ -9,7 +9,6 @@ import { mock } from 'vitest-mock-extended';
 
 import type { AuthService } from '@/auth/auth.service';
 import { OIDC_NONCE_COOKIE_NAME, OIDC_STATE_COOKIE_NAME } from '@/constants';
-import type { EventService } from '@/events/event.service';
 import { SsoAccessDeniedError } from '@/modules/provisioning.ee/errors/sso-access-denied.error';
 import type { AuthlessRequest } from '@/requests';
 

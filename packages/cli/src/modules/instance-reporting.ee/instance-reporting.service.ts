@@ -1,6 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import type { HttpRequestClient } from '@n8n/backend-network';
 import { OutboundHttp } from '@n8n/backend-network';
+import { EventService } from '@n8n/backend-services';
 import { Time } from '@n8n/constants';
 import { LicenseMetricsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -8,7 +9,6 @@ import { InstanceSettings } from 'n8n-core';
 import { OperationalError } from 'n8n-workflow';
 
 import { N8N_VERSION } from '@/constants';
-import { EventService } from '@/events/event.service';
 import { InsightsService } from '@/modules/insights/insights.service';
 import { OwnershipService } from '@/services/ownership.service';
 

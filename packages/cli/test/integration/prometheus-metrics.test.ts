@@ -1,4 +1,4 @@
-import { CacheService } from '@n8n/backend-services';
+import { CacheService, EventService } from '@n8n/backend-services';
 import { createActiveWorkflow } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { WorkflowRepository } from '@n8n/db';
@@ -9,7 +9,6 @@ import { parse as semverParse } from 'semver';
 import request, { type Response } from 'supertest';
 
 import { N8N_VERSION } from '@/constants';
-import { EventService } from '@/events/event.service';
 
 import { setupTestServer } from './shared/utils';
 

@@ -1,7 +1,7 @@
 import type { LockService, Logger } from '@n8n/backend-common';
 import { OutboundHttp, type SsrfProtectionService } from '@n8n/backend-network';
 import { type LocalServer, startServer } from '@n8n/backend-network/testing';
-import type { CacheService, UrlService } from '@n8n/backend-services';
+import type { CacheService, EventService, UrlService } from '@n8n/backend-services';
 import type { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
 import type { CredentialsRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
@@ -12,7 +12,6 @@ import type { AuthService } from '@/auth/auth.service';
 import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import type { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
 import type { CredentialsHelper } from '@/credentials-helper';
-import type { EventService } from '@/events/event.service';
 import type { ExternalHooks } from '@/external-hooks';
 import type { OAuthBrowserBindingService } from '@/oauth/oauth-browser-binding.service';
 import type { OAuthJweServiceProxy } from '@/oauth/oauth-jwe-service.proxy';

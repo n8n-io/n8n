@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { ExecutionsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
@@ -6,7 +7,6 @@ import type { IWorkflowExecutionDataProcess } from 'n8n-workflow';
 import { strict as assert } from 'node:assert';
 
 import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
-import { EventService } from '@/events/event.service';
 import { ExecutionCrashService } from '@/executions/execution-crash.service';
 import { ExecutionService } from '@/executions/execution.service';
 import { OwnershipService } from '@/services/ownership.service';

@@ -1,3 +1,4 @@
+import type { EventService } from '@n8n/backend-services';
 import { ConflictError, NotFoundError } from '@n8n/backend-services';
 import type { EndpointsConfig } from '@n8n/config';
 import type { IExecutionResponse } from '@n8n/db';
@@ -8,7 +9,6 @@ import type { INodeParameters, IWorkflowBase, Workflow } from 'n8n-workflow';
 import { SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import type { EventService } from '@/events/event.service';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import { WaitingWebhooks } from '@/webhooks/waiting-webhooks';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';

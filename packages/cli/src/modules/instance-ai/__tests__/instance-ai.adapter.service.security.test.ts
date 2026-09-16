@@ -29,6 +29,7 @@ vi.mock('@n8n/instance-ai', async () => {
 });
 
 import type { Logger } from '@n8n/backend-common';
+import type { EventService } from '@n8n/backend-services';
 import type { GlobalConfig } from '@n8n/config';
 import { GLOBAL_MEMBER_ROLE } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -58,7 +59,6 @@ import type { InstanceAiSettingsService } from '../instance-ai-settings.service'
 import type { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { CollaborationService } from '@/collaboration/collaboration.service';
-import type { EventService } from '@/events/event.service';
 import type { License } from '@/license';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { DataTableRepository } from '@/modules/data-table/data-table.repository';

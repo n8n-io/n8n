@@ -5,7 +5,7 @@ import type {
 } from '@n8n/api-types';
 import { CreateRoleDto } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
-import { BadRequestError, NotFoundError } from '@n8n/backend-services';
+import { BadRequestError, EventService, NotFoundError } from '@n8n/backend-services';
 import {
 	CredentialsEntity,
 	SharedCredentials,
@@ -41,7 +41,6 @@ import {
 } from '@n8n/permissions';
 import { UnexpectedError, UserError } from 'n8n-workflow';
 
-import { EventService } from '@/events/event.service';
 import { isUniqueConstraintError } from '@/response-helper';
 
 import { RoleCacheService } from './role-cache.service';

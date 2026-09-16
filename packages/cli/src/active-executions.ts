@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { ExecutionsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type { CreateExecutionPayload, IExecutionDb } from '@n8n/db';
@@ -36,7 +37,6 @@ import { EXECUTION_ENDED_WITHOUT_RESPONSE } from '@/webhooks/constants';
 
 import { ConcurrencyCapacityReservation } from './concurrency/concurrency-capacity-reservation';
 import { ConcurrencyControlService } from './concurrency/concurrency-control.service';
-import { EventService } from './events/event.service';
 
 const DEFAULT_CANCEL_WRITE_TIMEOUT_MS = 3 * Time.seconds.toMilliseconds;
 

@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { ExecutionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -7,7 +8,6 @@ import { ErrorReporter } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
 
 import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
-import { EventService } from '@/events/event.service';
 import { OwnershipService } from '@/services/ownership.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';

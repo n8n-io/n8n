@@ -5,7 +5,12 @@ import {
 	type ChangeEmailResponse,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { BadRequestError, InternalServerError, NotFoundError } from '@n8n/backend-services';
+import {
+	BadRequestError,
+	EventService,
+	InternalServerError,
+	NotFoundError,
+} from '@n8n/backend-services';
 import { AuthenticatedRequest, UserRepository } from '@n8n/db';
 import {
 	Body,
@@ -18,7 +23,6 @@ import {
 import { Response } from 'express';
 
 import { AuthService } from '@/auth/auth.service';
-import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { AuthlessRequest } from '@/requests';
 import { EmailChangeService } from '@/services/email-change.service';

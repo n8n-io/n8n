@@ -2,6 +2,7 @@ import type { RoleChangeRequestDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import {
 	BadRequestError,
+	EventService,
 	ForbiddenError,
 	InternalServerError,
 	NotFoundError,
@@ -43,7 +44,6 @@ import { PublicApiKeyService } from './public-api-key.service';
 import { RoleService } from './role.service';
 
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
-import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import type { Invitation } from '@/interfaces';
 import { License } from '@/license';

@@ -1,5 +1,10 @@
 import { LicenseState } from '@n8n/backend-common';
-import { ConflictError, ForbiddenError, UnprocessableRequestError } from '@n8n/backend-services';
+import {
+	ConflictError,
+	EventService,
+	ForbiddenError,
+	UnprocessableRequestError,
+} from '@n8n/backend-services';
 import {
 	createTeamProject,
 	createWorkflow,
@@ -24,7 +29,6 @@ import { pickVariableForProject } from 'n8n-workflow';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
-import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { createFolder } from '@test-integration/db/folders';
 import { createTag } from '@test-integration/db/tags';

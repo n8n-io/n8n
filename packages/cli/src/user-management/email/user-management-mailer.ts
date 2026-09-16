@@ -1,5 +1,5 @@
 import { inTest, Logger } from '@n8n/backend-common';
-import { InternalServerError, UrlService } from '@n8n/backend-services';
+import { EventService, InternalServerError, UrlService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type { ApiKey, User } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
@@ -20,7 +20,6 @@ import type {
 } from './interfaces';
 import { NodeMailer } from './node-mailer';
 
-import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { toError } from '@/utils';
 

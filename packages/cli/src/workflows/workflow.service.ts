@@ -4,6 +4,7 @@ import { LicenseState, Logger } from '@n8n/backend-common';
 import {
 	BadRequestError,
 	ConflictError,
+	EventService,
 	ForbiddenError,
 	NotFoundError,
 } from '@n8n/backend-services';
@@ -52,7 +53,6 @@ import { WorkflowDeactivationBadRequestError } from '@/errors/response-errors/wo
 import { WorkflowPublishForbiddenError } from '@/errors/response-errors/workflow-publish-forbidden.error';
 import { WorkflowValidationError } from '@/errors/response-errors/workflow-validation.error';
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
-import { EventService } from '@/events/event.service';
 import type { WorkflowActionSource } from '@/events/maps/relay.event-map';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { ExternalHooks, toWorkflowLifecycleHookActor } from '@/external-hooks';

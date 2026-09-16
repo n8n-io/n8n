@@ -6,6 +6,7 @@ import {
 import { Logger } from '@n8n/backend-common';
 import {
 	BadRequestError,
+	EventService,
 	ForbiddenError,
 	InternalServerError,
 	NotFoundError,
@@ -27,7 +28,6 @@ import { ErrorReporter } from 'n8n-core';
 
 import { AuthService } from '@/auth/auth.service';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
-import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { License } from '@/license';
 import { MfaService } from '@/mfa/mfa.service';

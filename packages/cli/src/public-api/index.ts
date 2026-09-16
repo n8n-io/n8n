@@ -1,5 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import { UrlService } from '@n8n/backend-services';
+import { EventService, UrlService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -15,7 +15,6 @@ import { PublicApiControllerRegistry } from './public-api-controller.registry';
 import { sendPublicApiErrorResponse } from './v1/public-api-error-response';
 
 import { AUTH_COOKIE_NAME } from '@/constants';
-import { EventService } from '@/events/event.service';
 import { License } from '@/license';
 import { createN8nPackageMulterOptions } from '@/modules/n8n-packages/utils/import-package-upload';
 import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';

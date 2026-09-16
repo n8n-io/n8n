@@ -1,4 +1,5 @@
 import type { SourceControlledFile } from '@n8n/api-types';
+import { EventService } from '@n8n/backend-services';
 import { createTeamProject, mockInstance, testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { Project, User } from '@n8n/db';
@@ -21,7 +22,6 @@ import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { EventService } from '@/events/event.service';
 import { SourceControlImportService } from '@/modules/source-control.ee/source-control-import.service.ee';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';

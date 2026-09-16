@@ -6,7 +6,12 @@ import type {
 	WorkflowReviewEligibleReviewer,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { BadRequestError, ConflictError, ForbiddenError } from '@n8n/backend-services';
+import {
+	BadRequestError,
+	ConflictError,
+	EventService,
+	ForbiddenError,
+} from '@n8n/backend-services';
 import {
 	TransactionRunner,
 	UserRepository,
@@ -17,8 +22,6 @@ import {
 	type WorkflowReviewActivityFeedEntry,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-
-import { EventService } from '@/events/event.service';
 
 import { WorkflowReviewAuthorizationService } from './workflow-review-authorization.service';
 import { WorkflowReviewFeatureGate } from './workflow-review-feature-gate.service';

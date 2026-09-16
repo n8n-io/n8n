@@ -1,11 +1,10 @@
-import { AuthError } from '@n8n/backend-services';
+import { AuthError, EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { User, UserRepository } from '@n8n/db';
 import type { IPasswordAuthHandler } from '@n8n/decorators';
 import { AuthHandler } from '@n8n/decorators';
 import { Constructable } from '@n8n/di';
 
-import { EventService } from '@/events/event.service';
 import { PasswordUtility } from '@/services/password.utility';
 
 @AuthHandler()

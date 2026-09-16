@@ -1,4 +1,9 @@
-import { ConflictError, ForbiddenError, UnprocessableRequestError } from '@n8n/backend-services';
+import {
+	ConflictError,
+	EventService,
+	ForbiddenError,
+	UnprocessableRequestError,
+} from '@n8n/backend-services';
 import { isDeepStrictEqual } from 'node:util';
 
 import {
@@ -42,7 +47,6 @@ import {
 	type InstanceCredentialUse,
 	type ResolvedInstanceCredential,
 } from '@/credentials/instance-credential-broker';
-import { EventService } from '@/events/event.service';
 import { AiService } from '@/services/ai.service';
 import {
 	INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY,

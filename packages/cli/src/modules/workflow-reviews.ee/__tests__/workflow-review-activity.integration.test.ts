@@ -1,3 +1,4 @@
+import { EventService } from '@n8n/backend-services';
 import { createTeamProject, createWorkflow, mockInstance, testDb } from '@n8n/backend-test-utils';
 import type { Project, User } from '@n8n/db';
 import {
@@ -12,7 +13,6 @@ import {
 import { Container } from '@n8n/di';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { EventService } from '@/events/event.service';
 import { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
 import { createWorkflowHistoryItem } from '@test-integration/db/workflow-history';

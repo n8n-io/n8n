@@ -1,6 +1,11 @@
 import type { CreateProjectDto, ProjectType, UpdateProjectDto } from '@n8n/api-types';
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
-import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/backend-services';
+import {
+	BadRequestError,
+	EventService,
+	ForbiddenError,
+	NotFoundError,
+} from '@n8n/backend-services';
 import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import {
 	type User,
@@ -30,7 +35,6 @@ import type { FindOptionsWhere, EntityManager } from '@n8n/typeorm';
 import { In } from '@n8n/typeorm';
 import { UserError } from 'n8n-workflow';
 
-import { EventService } from '@/events/event.service';
 import { UserManagementMailer } from '@/user-management/email';
 
 import { OwnershipService } from './ownership.service';

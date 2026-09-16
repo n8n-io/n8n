@@ -9,6 +9,7 @@ import {
 	AuthError,
 	BadRequestError,
 	CacheService,
+	EventService,
 	NotFoundError,
 	UrlService,
 } from '@n8n/backend-services';
@@ -69,7 +70,6 @@ import {
 } from './types';
 import { CredentialStoreMetadata } from '@/credentials/dynamic-credential-storage.interface';
 import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
-import { EventService } from '@/events/event.service';
 import { OAuthJweServiceProxy } from '@/oauth/oauth-jwe-service.proxy';
 import { OAuthBrowserBindingService } from '@/oauth/oauth-browser-binding.service';
 import { Time } from '@n8n/constants';

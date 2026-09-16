@@ -1,10 +1,9 @@
 import type { SourceControlledFile } from '@n8n/api-types';
-import { BadRequestError, ForbiddenError } from '@n8n/backend-services';
+import { BadRequestError, EventService, ForbiddenError } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { EventService } from '@/events/event.service';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { SourceControlService } from '@/modules/source-control.ee/source-control.service.ee';
 import { Telemetry } from '@/telemetry';

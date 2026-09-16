@@ -1,9 +1,9 @@
+import type { EventService } from '@n8n/backend-services';
 import { NotFoundError } from '@n8n/backend-services';
 import type { AuthenticatedRequest, Project } from '@n8n/db';
 import type { Role } from '@n8n/permissions';
 import { mock } from 'vitest-mock-extended';
 
-import type { EventService } from '@/events/event.service';
 import type { ProjectService } from '@/services/project.service.ee';
 import type { RoleService } from '@/services/role.service';
 

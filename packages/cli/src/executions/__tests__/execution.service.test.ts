@@ -1,4 +1,5 @@
 import { DeleteExecutionsDto } from '@n8n/api-types';
+import type { EventService } from '@n8n/backend-services';
 import { BadRequestError, NotFoundError } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
@@ -30,7 +31,6 @@ import type { EngineV2ExecutionReader } from '@/executions/engine-v2-execution-r
 import type { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
 import { ExecutionService } from '@/executions/execution.service';
 import type { ExecutionRequest } from '@/executions/execution.types';
-import type { EventService } from '@/events/event.service';
 import type { ExecutionStopService } from '@/scaling/execution-stop.service';
 import { ScalingService } from '@/scaling/scaling.service';
 import type { Job } from '@/scaling/scaling.types';

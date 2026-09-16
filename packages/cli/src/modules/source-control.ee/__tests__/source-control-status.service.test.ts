@@ -1,3 +1,4 @@
+import type { EventService } from '@n8n/backend-services';
 import { ForbiddenError } from '@n8n/backend-services';
 import { mockLogger } from '@n8n/backend-test-utils';
 import {
@@ -16,8 +17,6 @@ import {
 import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
-
-import type { EventService } from '@/events/event.service';
 
 import type { SourceControlContextFactory } from '../source-control-context.factory';
 import type { SourceControlGitService } from '../source-control-git.service.ee';

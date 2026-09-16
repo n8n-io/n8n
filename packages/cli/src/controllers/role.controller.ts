@@ -13,7 +13,7 @@ import type {
 	RoleMembersResponse,
 	RoleProjectMembersResponse,
 } from '@n8n/api-types';
-import { NotFoundError } from '@n8n/backend-services';
+import { EventService, NotFoundError } from '@n8n/backend-services';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import { AuthenticatedRequest } from '@n8n/db';
 import {
@@ -30,7 +30,6 @@ import {
 } from '@n8n/decorators';
 import { Role as RoleDTO } from '@n8n/permissions';
 
-import { EventService } from '@/events/event.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { assertCanManageRoleType, canReassignUsers } from '@/services/role-authorization';
 import { RoleService } from '@/services/role.service';

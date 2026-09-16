@@ -36,6 +36,7 @@ vi.mock('@n8n/ai-utilities', () => ({
 import type { Logger } from '@n8n/backend-common';
 import { INSTANCE_AI_NODE_USAGE_FLAG } from '@n8n/api-types';
 import type { OutboundHttp } from '@n8n/backend-network';
+import type { EventService } from '@n8n/backend-services';
 import type { GlobalConfig } from '@n8n/config';
 import type {
 	AiBuilderTemporaryWorkflowRepository,
@@ -54,7 +55,6 @@ import type { ActiveExecutions } from '@/active-executions';
 import type { CollaborationService } from '@/collaboration/collaboration.service';
 import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
-import type { EventService } from '@/events/event.service';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { License } from '@/license';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';

@@ -1,6 +1,6 @@
 import { OidcConfigDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { BadRequestError, ForbiddenError, UrlService } from '@n8n/backend-services';
+import { BadRequestError, EventService, ForbiddenError, UrlService } from '@n8n/backend-services';
 import { GlobalConfig, InstanceSettingsLoaderConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { AuthenticatedRequest } from '@n8n/db';
@@ -9,7 +9,6 @@ import { Request, Response } from 'express';
 
 import { AuthService } from '@/auth/auth.service';
 import { OIDC_NONCE_COOKIE_NAME, OIDC_STATE_COOKIE_NAME } from '@/constants';
-import { EventService } from '@/events/event.service';
 import {
 	SSO_ACCESS_DENIED_REDIRECT_PATH,
 	SSO_LOGIN_FAILED_REDIRECT_PATH,

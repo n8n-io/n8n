@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import type { EventService } from '@n8n/backend-services';
 import { UnprocessableRequestError } from '@n8n/backend-services';
 import type { InstanceAiConfig } from '@n8n/config';
 import type {
@@ -11,7 +12,6 @@ import type {
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
-import type { EventService } from '@/events/event.service';
 import type { AiService } from '@/services/ai.service';
 import {
 	INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY,

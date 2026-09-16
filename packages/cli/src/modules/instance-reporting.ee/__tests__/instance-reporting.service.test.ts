@@ -1,4 +1,5 @@
 import type { InsightsByTime } from '@n8n/api-types';
+import type { EventService } from '@n8n/backend-services';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type {
 	HttpRequestClient,
@@ -11,7 +12,6 @@ import type { IHttpRequestOptions } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { EventService } from '@/events/event.service';
 import type { InsightsService } from '@/modules/insights/insights.service';
 import type { OwnershipService } from '@/services/ownership.service';
 

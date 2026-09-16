@@ -1,4 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
+import type { EventService } from '@n8n/backend-services';
 import { DbLock } from '@n8n/db';
 import type {
 	DbLockService,
@@ -14,7 +15,6 @@ import type {
 import { mock } from 'vitest-mock-extended';
 
 import type { CollaborationService } from '@/collaboration/collaboration.service';
-import type { EventService } from '@/events/event.service';
 
 import { WorkflowReviewLifecycleService } from '../workflow-review-lifecycle.service';
 import { WorkflowReviewStateNotifier } from '../workflow-review-state-notifier.service';
