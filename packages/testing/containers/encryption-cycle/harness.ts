@@ -86,6 +86,7 @@ export function summary(ctx: CycleContext): void {
 	const phaseSeconds = new Map<string, number>();
 	const decrypts = new Map<string, number[]>();
 	const rotates: number[] = [];
+	const journeyExecs: number[] = [];
 	const lines = readFileSync(ctx.metricsFile, 'utf8')
 		.split('\n')
 		.filter((l) => l.length > 0);
@@ -99,6 +100,8 @@ export function summary(ctx: CycleContext): void {
 			decrypts.set(label, list);
 		} else if (kind === 'rotate_ms') {
 			rotates.push(Number(value));
+		} else if (kind === 'journey_exec_ms') {
+			journeyExecs.push(Number(value));
 		}
 	}
 
@@ -127,6 +130,13 @@ export function summary(ctx: CycleContext): void {
 		const avg = (rotates.reduce((a, b) => a + b, 0) / rotates.length).toFixed(1);
 		console.log(
 			`rotate api: ${rotates.length} calls, avg ${avg} ms, max ${Math.max(...rotates).toFixed(1)} ms`,
+		);
+	}
+	if (journeyExecs.length) {
+		const avg = (journeyExecs.reduce((a, b) => a + b, 0) / journeyExecs.length / 1000).toFixed(1);
+		const max = (Math.max(...journeyExecs) / 1000).toFixed(1);
+		console.log(
+			`scheduled executions: ${journeyExecs.length} boots verified, avg ${avg} s, max ${max} s to a fresh success`,
 		);
 	}
 }

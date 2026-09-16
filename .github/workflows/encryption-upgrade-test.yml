@@ -45,17 +45,19 @@ concurrency:
 
 jobs:
   encryption-cycle:
-    name: ${{ matrix.mode }} cycle
+    name: ${{ matrix.mode }} cycle (${{ matrix.db }})
     runs-on: ubuntu-latest
     timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
         # PRs run both modes; a dispatch runs the selected one; the cron runs
-        # the full upgrade cycle.
+        # the full upgrade cycle. Each database backend is its own job.
         mode: ${{ fromJSON(github.event_name == 'pull_request' && '["upgrade","rotation"]' || format('["{0}"]', inputs.test || 'upgrade')) }}
+        db: ${{ fromJSON((inputs.db == 'sqlite' || inputs.db == 'postgres') && format('["{0}"]', inputs.db) || '["sqlite","postgres"]') }}
     env:
       MODE: ${{ matrix.mode }}
+      DB: ${{ matrix.db }}
       # Not a hidden dir: upload-artifact skips hidden paths by default.
       WORK_ROOT: ${{ github.workspace }}/upgrade-test-work
     steps:
@@ -72,7 +74,6 @@ jobs:
 
       - name: Run the test cycle
         env:
-          DB: ${{ inputs.db || 'both' }}
           FROM_IMAGE_INPUT: ${{ inputs.from-image }}
         run: |
           mkdir -p "$WORK_ROOT"
@@ -84,9 +85,9 @@ jobs:
         if: always()
         run: |
           LOG="$WORK_ROOT/run.log"
-          [ -f "$LOG" ] || { echo "## Encryption test ($MODE)" >> "$GITHUB_STEP_SUMMARY"; echo "No run log was produced." >> "$GITHUB_STEP_SUMMARY"; exit 0; }
+          [ -f "$LOG" ] || { echo "## Encryption test ($MODE, $DB)" >> "$GITHUB_STEP_SUMMARY"; echo "No run log was produced." >> "$GITHUB_STEP_SUMMARY"; exit 0; }
           {
-            echo "## Encryption test ($MODE)"
+            echo "## Encryption test ($MODE, $DB)"
             echo
             if grep -q "all requested backends green" "$LOG"; then
               echo "**Result: PASS** :white_check_mark:"
@@ -118,7 +119,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
-          name: encryption-test-${{ matrix.mode }}-${{ github.run_id }}
+          name: encryption-test-${{ matrix.mode }}-${{ matrix.db }}-${{ github.run_id }}
           retention-days: 14
           if-no-files-found: warn
           path: |

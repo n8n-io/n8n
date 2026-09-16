@@ -80,7 +80,10 @@ credentials.
 Every run prints a summary table per backend: per-phase duration, number of
 decrypt round-trips, and their average/max end-to-end latency. Runs that
 rotate also print a `rotate api:` line with the count and average/max latency
-of the rotation call itself. Raw samples land in `<work root>/<backend>/metrics.csv`.
+of the rotation call itself, and every run prints a `scheduled executions:`
+line — how many boots produced a fresh successful execution and how long the
+wait was (activation + schedule fire + engine decrypt, end to end). Raw
+samples land in `<work root>/<backend>/metrics.csv`.
 
 ## Failure behavior
 

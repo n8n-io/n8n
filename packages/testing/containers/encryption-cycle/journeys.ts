@@ -1,7 +1,7 @@
 import type { RestClient } from './api';
 import { dbQuery } from './db';
 import type { CycleContext } from './harness';
-import { fail, ok, step } from './harness';
+import { fail, metric, ok, step } from './harness';
 
 /** Ids of the data one cycle seeds and keeps asserting across phases. */
 export interface SeededJourneys {
@@ -136,7 +136,8 @@ export async function assertJourneys(
 
 	const countSql = `SELECT COUNT(*) AS c FROM execution_entity WHERE "workflowId"='${seeded.workflowId}' AND status='success';`;
 	const baseline = Number(await dbQuery(ctx, countSql));
-	const deadline = Date.now() + 30_000;
+	const waitStarted = Date.now();
+	const deadline = waitStarted + 30_000;
 	let current = baseline;
 	while (current <= baseline && Date.now() < deadline) {
 		await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -153,6 +154,9 @@ export async function assertJourneys(
 			`successful executions: ${baseline} (unchanged), last status: ${lastStatus || '(none)'}`,
 		);
 	}
+	// Time from "instance is up" polling start until a fresh execution landed:
+	// activation + schedule fire + engine decrypt, end to end.
+	metric(ctx, 'journey_exec_ms', ctx.phase, Date.now() - waitStarted);
 	ok(
 		ctx,
 		`a scheduled execution succeeded on this boot (engine decrypted the credential; ${baseline} -> ${current})`,
