@@ -21,6 +21,12 @@ export interface RedactionInfo {
 	isRedacted: boolean;
 	reason: string;
 	canReveal: boolean;
+	/**
+	 * True when the info is synthesized from live push markers before the
+	 * authoritative executionFinished metadata arrives. `canReveal` is a
+	 * pessimistic guess while this is set.
+	 */
+	provisional?: boolean;
 }
 
 // DIFF: switches startData.destinationNode to a structured object, rather than just the name of the string.

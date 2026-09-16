@@ -99,12 +99,36 @@ describe('discoveryTestCaseSchema', () => {
 	});
 
 	it.each([
-		['connected with capabilities', { status: 'connected', capabilities: ['screenshot'] }, true],
-		['connected without capabilities', { status: 'connected' }, false],
-		['disabled', { status: 'disabled' }, true],
+		[
+			'connected with tool categories',
+			{ status: 'connected', toolCategories: ['screenshot'] },
+			true,
+		],
+		['connected without tool categories', { status: 'connected' }, false],
+		['disconnected', { status: 'disconnected' }, true],
+		['disabledByUser', { status: 'disabledByUser' }, true],
+		['unavailable', { status: 'unavailable' }, true],
 		['an unknown status', { status: 'on-fire' }, false],
-	])('validates instanceState.localGateway strictly: %s', (_name, localGateway, ok) => {
-		const withGateway = { ...valid, instanceState: { localGateway } };
-		expect(discoveryTestCaseSchema.safeParse(withGateway).success).toBe(ok);
+	])('validates each computerUse channel strictly: %s', (_name, channel, ok) => {
+		const withChannel = {
+			...valid,
+			instanceState: {
+				computerUse: { localComputer: channel, browser: { status: 'unavailable' } },
+			},
+		};
+		expect(discoveryTestCaseSchema.safeParse(withChannel).success).toBe(ok);
+	});
+
+	it('requires both channels — a half-filled state is dead config', () => {
+		const halfFilled = {
+			...valid,
+			instanceState: { computerUse: { localComputer: { status: 'disconnected' } } },
+		};
+		expect(discoveryTestCaseSchema.safeParse(halfFilled).success).toBe(false);
+	});
+
+	it('rejects the retired localGateway key instead of passing vacuously', () => {
+		const retired = { ...valid, instanceState: { localGateway: { status: 'disconnected' } } };
+		expect(discoveryTestCaseSchema.safeParse(retired).success).toBe(false);
 	});
 });

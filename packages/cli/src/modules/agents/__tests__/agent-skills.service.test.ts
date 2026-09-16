@@ -303,7 +303,7 @@ describe('AgentSkillsService', () => {
 		});
 		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
 		expect(agentUpdateBroadcaster.notify).toHaveBeenCalledWith(
-			{ projectId, agentId },
+			{ projectId, agentId, source: 'user' },
 			'writer-push-ref',
 		);
 	});

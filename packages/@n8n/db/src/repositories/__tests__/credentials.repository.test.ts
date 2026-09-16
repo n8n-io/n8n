@@ -3,7 +3,7 @@ import type { EntityManager, SelectQueryBuilder } from '@n8n/typeorm';
 import { In, Not, QueryFailedError } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
-import { CredentialsEntity } from '../../entities';
+import { CredentialsEntity, SharedCredentials } from '../../entities';
 import { TypeOrmTransaction } from '../../services/typeorm-transaction';
 import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
 import { CredentialsRepository } from '../credentials.repository';
@@ -45,6 +45,59 @@ describe('CredentialsRepository', () => {
 		await expect(credentialsRepository.findGlobalProjectCredentialIds([])).resolves.toEqual([]);
 
 		expect(entityManager.find).not.toHaveBeenCalled();
+	});
+
+	it('loads only binding metadata and preserves credential and project pairs', async () => {
+		entityManager.find
+			.mockResolvedValueOnce([
+				{ id: 'cred-a', type: 'githubApi', usageScope: 'project', isGlobal: false },
+				{ id: 'cred-b', type: 'slackApi', usageScope: 'project', isGlobal: true },
+			])
+			.mockResolvedValueOnce([
+				{ credentialsId: 'cred-a', projectId: 'alpha' },
+				{ credentialsId: 'cred-b', projectId: 'beta' },
+			]);
+		expect(
+			await credentialsRepository.findPromotionBindingAccess(
+				['cred-a', 'cred-b'],
+				['alpha', 'beta'],
+			),
+		).toEqual([
+			{
+				id: 'cred-a',
+				type: 'githubApi',
+				usageScope: 'project',
+				isGlobal: false,
+				projectIds: ['alpha'],
+			},
+			{
+				id: 'cred-b',
+				type: 'slackApi',
+				usageScope: 'project',
+				isGlobal: true,
+				projectIds: ['beta'],
+			},
+		]);
+		expect(entityManager.find).toHaveBeenCalledTimes(2);
+		expect(entityManager.find).toHaveBeenNthCalledWith(1, CredentialsEntity, {
+			where: { id: In(['cred-a', 'cred-b']) },
+			select: ['id', 'type', 'usageScope', 'isGlobal'],
+		});
+		expect(entityManager.find).toHaveBeenNthCalledWith(2, SharedCredentials, {
+			where: { credentialsId: In(['cred-a', 'cred-b']), projectId: In(['alpha', 'beta']) },
+			select: ['credentialsId', 'projectId'],
+		});
+	});
+
+	it('reads binding metadata without target projects and skips an empty credential list', async () => {
+		entityManager.find.mockResolvedValueOnce([
+			{ id: 'cred-a', type: 'githubApi', usageScope: 'project', isGlobal: true },
+		]);
+		expect(await credentialsRepository.findPromotionBindingAccess(['cred-a'], [])).toEqual([
+			{ id: 'cred-a', type: 'githubApi', usageScope: 'project', isGlobal: true, projectIds: [] },
+		]);
+		expect(await credentialsRepository.findPromotionBindingAccess([], ['alpha'])).toEqual([]);
+		expect(entityManager.find).toHaveBeenCalledTimes(1);
 	});
 
 	it('finds only dangling project credentials', async () => {

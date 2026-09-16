@@ -128,7 +128,7 @@
 		"DELETE /tags/{id}": {
 			"status": "gap"
 		},
-		"PUT /tags/{id}": {
+		"PUT /tags/{tagId}": {
 			"status": "gap"
 		},
 		"POST /workflows": {
@@ -449,6 +449,24 @@
 			"status": "gap"
 		},
 		"PUT /node-type-policies/projects/{projectId}": {
+			"status": "gap"
+		},
+		"GET /node-type-policies/policies": {
+			"status": "gap"
+		},
+		"POST /node-type-policies/policies": {
+			"status": "gap"
+		},
+		"GET /node-type-policies/policies/{policyId}": {
+			"status": "gap"
+		},
+		"PUT /node-type-policies/policies/{policyId}": {
+			"status": "gap"
+		},
+		"DELETE /node-type-policies/policies/{policyId}": {
+			"status": "gap"
+		},
+		"PUT /node-type-policies/scopes/{scopeId}/attachments": {
 			"status": "gap"
 		}
 	}

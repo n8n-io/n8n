@@ -72,6 +72,10 @@ export class PrometheusMetricsConfig {
 	@Env('N8N_METRICS_INCLUDE_POLL_TRIGGER_METRICS')
 	includePollTriggerMetrics: boolean = false;
 
+	/** Whether to include system task metrics (run duration, skips, in-flight runs, last success, scheduling failures). */
+	@Env('N8N_METRICS_INCLUDE_SYSTEM_TASK_METRICS')
+	includeSystemTaskMetrics: boolean = false;
+
 	/** How often (in seconds) to update active workflow metric */
 	@Env('N8N_METRICS_ACTIVE_WORKFLOW_METRIC_INTERVAL')
 	activeWorkflowCountInterval: number = 60;
@@ -131,6 +135,10 @@ export class PrometheusMetricsConfig {
 	/** Whether to include metrics for the workflow publication service (main instances only). */
 	@Env('N8N_METRICS_INCLUDE_WORKFLOW_PUBLICATION_METRICS')
 	includeWorkflowPublicationMetrics: boolean = false;
+
+	/** Whether to include MCP workflow-builder post-save failure metrics. */
+	@Env('N8N_METRICS_INCLUDE_MCP_POST_SAVE_METRICS')
+	includeMcpPostSaveMetrics: boolean = false;
 
 	/** How often (in seconds) to refresh the cached workflow publication outbox gauges. */
 	@Env('N8N_METRICS_WORKFLOW_PUBLICATION_METRIC_INTERVAL')
