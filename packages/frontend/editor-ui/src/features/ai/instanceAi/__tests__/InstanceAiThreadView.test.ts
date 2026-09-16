@@ -9,7 +9,6 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import InstanceAiThreadView from '../InstanceAiThreadView.vue';
 import { useInstanceAiStore, type ThreadRuntime } from '../instanceAi.store';
-import type { PlanEditContext } from '../instanceAi.threadRuntime';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { NEW_CONVERSATION_TITLE } from '../constants';
@@ -162,11 +161,12 @@ const InstanceAiInputStub = defineComponent({
 	props: {
 		suggestions: { type: Array, required: false },
 		isStreaming: { type: Boolean, required: false },
-		isPlanEditMode: { type: Boolean, required: false },
+		isAwaitingPlanReview: { type: Boolean, required: false },
+		isSubmitting: { type: Boolean, required: false },
 		isWorkflowBuilderAvailable: { type: Boolean, required: false },
 		contextChip: { type: Object, required: false },
 	},
-	emits: ['submit', 'cancel-plan-edit', 'dismiss-context-chip'],
+	emits: ['submit', 'dismiss-context-chip'],
 	setup(props, { emit, expose }) {
 		const inputDraft = ref(inputState.initialDraft);
 		const hasAttachments = ref(inputState.hasAttachments);
@@ -185,7 +185,12 @@ const InstanceAiInputStub = defineComponent({
 				h(
 					'span',
 					{ 'data-test-id': 'instance-ai-input-mode' },
-					props.isPlanEditMode ? 'plan-edit' : 'normal',
+					props.isAwaitingPlanReview ? 'plan-review' : 'normal',
+				),
+				h(
+					'span',
+					{ 'data-test-id': 'instance-ai-input-busy' },
+					props.isSubmitting ? 'busy' : 'idle',
 				),
 				h(
 					'span',
@@ -231,7 +236,7 @@ const InstanceAiInputStub = defineComponent({
 					{
 						'data-test-id': 'instance-ai-input-submit',
 						onClick: () => {
-							const message = props.isPlanEditMode
+							const message = props.isAwaitingPlanReview
 								? planEditSubmitState.message
 								: inputDraft.value || 'Normal message';
 							const submittedHasAttachments = hasAttachments.value;
@@ -259,16 +264,6 @@ const InstanceAiInputStub = defineComponent({
 								onClick: () => emit('dismiss-context-chip'),
 							},
 							'Dismiss context',
-						)
-					: null,
-				props.isPlanEditMode
-					? h(
-							'button',
-							{
-								'data-test-id': 'instance-ai-input-cancel-plan-edit',
-								onClick: () => emit('cancel-plan-edit'),
-							},
-							'Cancel',
 						)
 					: null,
 			]);
@@ -538,7 +533,7 @@ describe('InstanceAiThreadView', () => {
 			isAwaitingConfirmation: false,
 			isHydratingThread: false,
 			amendContext: null,
-			activePlanEdit: null,
+			pendingPlanReview: null,
 			updatingPlanRequestIds: new Set<string>(),
 			contextualSuggestion: null,
 			currentTasks: null,
@@ -563,14 +558,7 @@ describe('InstanceAiThreadView', () => {
 			copyFullTrace: vi.fn(),
 			submitFeedback: vi.fn(),
 		}) as unknown as ThreadRuntime;
-		// startPlanEdit / cancelPlanEdit need to mutate the thread so the
-		// chat-input submission path can read activePlanEdit back out.
-		thread.startPlanEdit = vi.fn((context: PlanEditContext) => {
-			thread.activePlanEdit = context;
-		});
-		thread.cancelPlanEdit = vi.fn(() => {
-			thread.activePlanEdit = null;
-		});
+		thread.requestPlanChanges = vi.fn().mockResolvedValue(true);
 
 		store = mockedStore(useInstanceAiStore);
 		store.getOrCreateRuntime.mockReturnValue(thread);
@@ -2512,33 +2500,64 @@ describe('InstanceAiThreadView', () => {
 		});
 	});
 
-	it('focuses the main composer when asking for plan edits', async () => {
+	/** Put the thread in the suspended-on-plan-review state the runtime derives. */
+	function seedPendingPlanReview() {
 		thread.messages = [makePlanReviewMessage()];
+		thread.isStreaming = true;
+		thread.pendingPlanReview = {
+			requestId: 'req-plan',
+			inputThreadId: 'input-thread-1',
+			taskCount: 1,
+		};
+	}
+
+	it('hands the composer a live plan-review state while the run is suspended', async () => {
+		seedPendingPlanReview();
 
 		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
 		await vi.waitFor(() => {
-			expect(getByTestId('instance-ai-plan-ask-for-edits')).toBeInTheDocument();
-		});
-
-		await getByTestId('instance-ai-plan-ask-for-edits').click();
-
-		await vi.waitFor(() => {
-			expect(inputFocusSpy).toHaveBeenCalled();
-			expect(getByTestId('instance-ai-input-mode')).toHaveTextContent('plan-edit');
+			expect(getByTestId('instance-ai-input-mode')).toHaveTextContent('plan-review');
 		});
 	});
 
-	it('scrubs credential patterns from plan-edit feedback before sending to telemetry, but keeps the raw text in the backend confirmation', async () => {
-		thread.messages = [makePlanReviewMessage()];
+	// The live composer is the one way to ask for edits, so the card must not
+	// offer a second one that only points back at it.
+	it('renders the plan card without an ask-for-edits action', async () => {
+		seedPendingPlanReview();
+
+		const { getByTestId, queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+		await vi.waitFor(() => {
+			expect(getByTestId('instance-ai-plan-approve')).toBeInTheDocument();
+		});
+
+		expect(queryByTestId('instance-ai-plan-ask-for-edits')).not.toBeInTheDocument();
+	});
+
+	it('routes a typed message to the plan without any prior click', async () => {
+		seedPendingPlanReview();
+
+		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+		await vi.waitFor(() => {
+			expect(getByTestId('instance-ai-input-submit')).toBeInTheDocument();
+		});
+		await getByTestId('instance-ai-input-submit').click();
+
+		expect(thread.requestPlanChanges).toHaveBeenCalledWith('req-plan', 'Make the plan simpler');
+		expect(thread.sendMessage).not.toHaveBeenCalled();
+	});
+
+	it('scrubs credential patterns from plan feedback telemetry but sends the raw text on', async () => {
+		seedPendingPlanReview();
 		planEditSubmitState.message = 'use sk-proj-abcdef1234567890XYZ to call the API';
 
 		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
 		await vi.waitFor(() => {
-			expect(getByTestId('instance-ai-plan-ask-for-edits')).toBeInTheDocument();
+			expect(getByTestId('instance-ai-input-submit')).toBeInTheDocument();
 		});
-		await getByTestId('instance-ai-plan-ask-for-edits').click();
 		await getByTestId('instance-ai-input-submit').click();
 
 		expect(telemetryTrackSpy).toHaveBeenCalledWith(
@@ -2546,55 +2565,78 @@ describe('InstanceAiThreadView', () => {
 			expect.objectContaining({
 				feedback: 'use [REDACTED] to call the API',
 				plan_feedback_type: 'changes_requested',
+				num_tasks: 1,
+				input_thread_id: 'input-thread-1',
 			}),
 		);
-		expect(thread.confirmAction).toHaveBeenCalledWith('req-plan', {
-			kind: 'approval',
-			approved: false,
-			userInput: 'use sk-proj-abcdef1234567890XYZ to call the API',
-		});
+		expect(thread.requestPlanChanges).toHaveBeenCalledWith(
+			'req-plan',
+			'use sk-proj-abcdef1234567890XYZ to call the API',
+		);
 	});
 
-	it('submits plan edit feedback through confirmation instead of a new chat message', async () => {
-		thread.messages = [makePlanReviewMessage()];
+	it('restores the draft when the plan change request fails', async () => {
+		seedPendingPlanReview();
+		vi.mocked(thread.requestPlanChanges).mockResolvedValueOnce(false);
 
 		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
 		await vi.waitFor(() => {
-			expect(getByTestId('instance-ai-plan-ask-for-edits')).toBeInTheDocument();
+			expect(getByTestId('instance-ai-input-submit')).toBeInTheDocument();
 		});
-		await getByTestId('instance-ai-plan-ask-for-edits').click();
 		await getByTestId('instance-ai-input-submit').click();
 
-		expect(thread.confirmAction).toHaveBeenCalledWith('req-plan', {
-			kind: 'approval',
-			approved: false,
-			userInput: 'Make the plan simpler',
-		});
-		// resolveConfirmation only fires after the backend call succeeds, so it
-		// happens on the next tick once the confirmAction promise resolves.
 		await vi.waitFor(() => {
-			expect(thread.resolveConfirmation).toHaveBeenCalledWith('req-plan', 'changes-requested');
+			expect(getByTestId('instance-ai-input-draft')).toHaveTextContent('Make the plan simpler');
 		});
-		expect(thread.sendMessage).not.toHaveBeenCalled();
 	});
 
-	it('does not resolve the plan when the backend confirmAction fails', async () => {
-		thread.messages = [makePlanReviewMessage()];
-		vi.mocked(thread.confirmAction).mockResolvedValueOnce(false);
+	// A submission the run never saw is not feedback. It reports one revision per
+	// accepted request, so a dropped or failed submit must record nothing.
+	it('reports no plan feedback telemetry when the change request is not sent', async () => {
+		seedPendingPlanReview();
+		vi.mocked(thread.requestPlanChanges).mockResolvedValueOnce(false);
 
 		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
 		await vi.waitFor(() => {
-			expect(getByTestId('instance-ai-plan-ask-for-edits')).toBeInTheDocument();
+			expect(getByTestId('instance-ai-input-submit')).toBeInTheDocument();
 		});
-		await getByTestId('instance-ai-plan-ask-for-edits').click();
 		await getByTestId('instance-ai-input-submit').click();
 
 		await vi.waitFor(() => {
-			expect(thread.clearPlanUpdatePending).toHaveBeenCalledWith('req-plan');
+			expect(getByTestId('instance-ai-input-draft')).toHaveTextContent('Make the plan simpler');
 		});
-		expect(thread.resolveConfirmation).not.toHaveBeenCalled();
+		expect(telemetryTrackSpy).not.toHaveBeenCalledWith(
+			'User finished providing input',
+			expect.objectContaining({ plan_feedback_type: 'changes_requested' }),
+		);
+	});
+
+	// `confirmAction` never touches the send counter, so without this the composer
+	// stays live through the round trip and a second Enter is silently dropped.
+	it('holds the composer busy while a plan change request is in flight', async () => {
+		seedPendingPlanReview();
+		thread.updatingPlanRequestIds = new Set(['req-plan']);
+
+		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+		await vi.waitFor(() => {
+			expect(getByTestId('instance-ai-input-busy')).toHaveTextContent('busy');
+		});
+	});
+
+	// The runtime refuses to route feedback into a card a newer turn stranded, so
+	// the card must not offer to approve that same abandoned run either.
+	it('renders a plan card stranded by a newer turn without its actions', async () => {
+		seedPendingPlanReview();
+		thread.pendingPlanReview = null;
+
+		const { findByTestId, queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+		expect(await findByTestId('instance-ai-plan-review')).toBeInTheDocument();
+		expect(queryByTestId('instance-ai-plan-approve')).not.toBeInTheDocument();
+		expect(queryByTestId('instance-ai-plan-deny')).not.toBeInTheDocument();
 	});
 
 	describe('runtime disposal on unmount', () => {

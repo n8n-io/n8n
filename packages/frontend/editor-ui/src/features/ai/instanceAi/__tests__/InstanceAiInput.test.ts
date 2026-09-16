@@ -20,7 +20,7 @@ type InputTestProps = {
 	isStreaming: boolean;
 	isSubmitting: boolean;
 	isAwaitingConfirmation: boolean;
-	isPlanEditMode: boolean;
+	isAwaitingPlanReview: boolean;
 	currentThreadId: string;
 	amendContext: { agentId: string; role: string } | null;
 	contextualSuggestion: string | null;
@@ -38,7 +38,7 @@ const defaultProps = (): InputTestProps => ({
 	isStreaming: false,
 	isSubmitting: false,
 	isAwaitingConfirmation: false,
-	isPlanEditMode: false,
+	isAwaitingPlanReview: false,
 	currentThreadId: 'thread-1',
 	amendContext: null,
 	contextualSuggestion: null,
@@ -800,25 +800,20 @@ describe('InstanceAiInput', () => {
 		});
 	});
 
-	it('uses plan edit mode for focused plan feedback', async () => {
+	it('stays live for plan feedback while the run is suspended', async () => {
 		const { container, emitted, getByRole, getByTestId, queryByTestId } = renderComponent({
 			props: {
-				isPlanEditMode: true,
+				isAwaitingPlanReview: true,
 				isStreaming: true,
 				suggestions,
 			},
 		});
 
 		const textbox = getByRole('textbox');
-		const planEditChip = getByTestId('instance-ai-plan-edit-context');
 
-		expect(planEditChip).toHaveTextContent('Ask for edits');
-		expect(planEditChip.querySelector('.n8n-tag')?.className).toContain('lg');
-		expect(planEditChip.querySelector('[data-icon="corner-down-right"]')).toBeInTheDocument();
-		expect(planEditChip.closest('[class*="inputWrapper"]')).toContainElement(textbox);
-		expect(textbox).toHaveAttribute('placeholder', 'What should we change?');
-		expect(queryByTestId('chat-input-attach-button')).not.toBeInTheDocument();
+		expect(textbox).toHaveAttribute('placeholder', 'Ask for edits to the plan');
 		expect(queryByTestId('instance-ai-stop-button')).not.toBeInTheDocument();
+		expect(queryByTestId('chat-input-attach-button')).not.toBeInTheDocument();
 		expect(container.querySelector('input[type="file"]')).not.toBeInTheDocument();
 		expect(queryByTestId('instance-ai-suggestion-build-workflow')).not.toBeInTheDocument();
 
@@ -830,23 +825,76 @@ describe('InstanceAiInput', () => {
 		]);
 	});
 
-	it('emits cancel-plan-edit and clears the draft when the plan edit context is closed', async () => {
-		const { emitted, getByRole, getByTestId, rerender } = renderComponent({
+	// A suggestion draft survives into a plan review now that the transition no
+	// longer wipes the composer, and plan feedback is not a suggestion submission.
+	it('does not track an inserted suggestion as submitted when it is sent as plan feedback', async () => {
+		const { getByTestId, rerender } = renderComponent({
 			props: {
-				isPlanEditMode: true,
-				isStreaming: true,
+				suggestions,
+				suggestionsComponent: CustomInsertSuggestionsComponent,
+				suggestionCatalogVersion: 'v2',
+				currentThreadId: '',
 			},
+		});
+
+		await userEvent.click(getByTestId('custom-suggestion-insert'));
+		telemetryTrack.mockClear();
+
+		await rerender(inputProps({ isAwaitingPlanReview: true, isStreaming: true }));
+		await userEvent.click(getByTestId('instance-ai-send-button'));
+
+		expect(telemetryTrack).not.toHaveBeenCalledWith(
+			'Instance AI prompt suggestion submitted',
+			expect.anything(),
+		);
+	});
+
+	it('submits plan feedback on Enter without any prior click', async () => {
+		const { emitted, getByRole } = renderComponent({
+			props: { isAwaitingPlanReview: true, isStreaming: true },
+		});
+
+		await userEvent.type(getByRole('textbox'), 'Drop the third workflow{Enter}');
+
+		expect(emitted().submit).toEqual([
+			['Drop the third workflow', undefined, expect.any(Function)],
+		]);
+	});
+
+	it('no longer renders the plan edit chip', () => {
+		const { queryByTestId } = renderComponent({
+			props: { isAwaitingPlanReview: true, isStreaming: true },
+		});
+
+		expect(queryByTestId('instance-ai-plan-edit-context')).not.toBeInTheDocument();
+		expect(queryByTestId('instance-ai-plan-edit-cancel')).not.toBeInTheDocument();
+	});
+
+	// There is no mode to enter now, so a draft typed before the plan card
+	// arrives has to survive the transition instead of being wiped.
+	it('keeps a draft typed before the plan review appeared', async () => {
+		const { getByRole, rerender } = renderComponent({
+			props: { isAwaitingPlanReview: false, isStreaming: true },
 		});
 
 		const textbox = getByRole('textbox');
 		await userEvent.type(textbox, 'Change the plan');
-		await userEvent.click(getByTestId('instance-ai-plan-edit-cancel'));
+		await rerender(inputProps({ isAwaitingPlanReview: true, isStreaming: true }));
 
-		expect(emitted()['cancel-plan-edit']).toEqual([[]]);
+		expect(textbox).toHaveValue('Change the plan');
+	});
 
-		await rerender(inputProps({ isPlanEditMode: false }));
+	// Plan feedback is sent as a plain string, so an empty or whitespace-only
+	// draft must not resolve the plan review with nothing in it.
+	it('does not submit a whitespace-only draft as plan feedback', async () => {
+		const { emitted, getByRole, getByTestId } = renderComponent({
+			props: { isAwaitingPlanReview: true, isStreaming: true },
+		});
 
-		expect(textbox).toHaveValue('');
+		await userEvent.type(getByRole('textbox'), '   ');
+		await userEvent.click(getByTestId('instance-ai-send-button'));
+
+		expect(emitted().submit).toBeUndefined();
 	});
 
 	it('renders a dismissible handoff context chip inside the input', async () => {
@@ -874,10 +922,10 @@ describe('InstanceAiInput', () => {
 		expect(emitted()['dismiss-context-chip']).toEqual([[]]);
 	});
 
-	it('keeps plan edit mode as the only visible chip when both plan edit and handoff context are present', () => {
+	it('still shows the handoff context chip while a plan review is pending', () => {
 		const { queryByTestId } = renderComponent({
 			props: {
-				isPlanEditMode: true,
+				isAwaitingPlanReview: true,
 				contextChip: {
 					type: 'agent-preview-session',
 					agentId: 'agent-1',
@@ -887,8 +935,7 @@ describe('InstanceAiInput', () => {
 			},
 		});
 
-		expect(queryByTestId('instance-ai-plan-edit-context')).toBeInTheDocument();
-		expect(queryByTestId('instance-ai-handoff-context-chip')).not.toBeInTheDocument();
+		expect(queryByTestId('instance-ai-handoff-context-chip')).toBeInTheDocument();
 	});
 
 	it('emits stop when the streaming stop button is clicked', async () => {
