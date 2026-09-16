@@ -1,13 +1,16 @@
 import { WorkflowExecutionStatus } from '@n8n/api-types';
-import { BadRequestError, NotFoundError, UrlService } from '@n8n/backend-services';
+import {
+	BadRequestError,
+	NotFoundError,
+	UrlService,
+	WorkflowFinderService,
+} from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { isAuthenticatedRequest } from '@n8n/db';
 import { Get, Options, RestController } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { Request, Response } from 'express';
-
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { DynamicCredentialsConfig } from './dynamic-credentials.config';
 import { CredentialResolverWorkflowService } from './services/credential-resolver-workflow.service';

@@ -9,6 +9,7 @@
  * fails the whole operation instead of silently skipping every workflow in turn.
  */
 import type { SourceControlledFile } from '@n8n/api-types';
+import { WorkflowFinderService } from '@n8n/backend-services';
 import { getPersonalProject, getWorkflowById, newWorkflow, testDb } from '@n8n/backend-test-utils';
 import {
 	CredentialsRepository,
@@ -43,7 +44,6 @@ import { SourceControlImportService } from '@/modules/source-control.ee/source-c
 import { SourceControlScopedService } from '@/modules/source-control.ee/source-control-scoped.service';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { ImportService } from '@/services/import.service';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 
 import { createOwner } from '../shared/db/users';

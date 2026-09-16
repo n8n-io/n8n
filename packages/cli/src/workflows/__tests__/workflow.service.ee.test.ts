@@ -1,3 +1,4 @@
+import type { WorkflowFinderService } from '@n8n/backend-services';
 import type {
 	CredentialsEntity,
 	FolderRepository,
@@ -16,7 +17,6 @@ import { mock } from 'vitest-mock-extended';
 import type { ActiveWorkflowManager } from '@/active-workflow-manager';
 import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import type { ProjectService } from '@/services/project.service.ee';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowMutationHooksProxy } from '@/workflows/workflow-mutation-hooks-proxy.service';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 

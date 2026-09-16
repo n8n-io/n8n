@@ -1,7 +1,6 @@
+import type { WorkflowFinderService } from '@n8n/backend-services';
 import type { WorkflowEntity, WorkflowRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
-
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { WorkflowImportMatchService } from '../workflow-import-match.service';
 

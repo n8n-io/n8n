@@ -1,5 +1,5 @@
 import type { ValidationWarning } from '@n8n/ai-workflow-builder';
-import type { UrlService } from '@n8n/backend-services';
+import type { UrlService, WorkflowFinderService } from '@n8n/backend-services';
 import type { GlobalConfig } from '@n8n/config';
 import { type User, type SharedWorkflowRepository, WorkflowEntity } from '@n8n/db';
 import { hasGlobalScope } from '@n8n/permissions';
@@ -20,7 +20,6 @@ import {
 	makeGetNodeTypeForGrouping,
 	resolveNodeWebhookIds,
 } from '@/workflow-helpers';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 

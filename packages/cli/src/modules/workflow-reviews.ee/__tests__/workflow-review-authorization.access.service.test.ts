@@ -1,4 +1,4 @@
-import type { RoleService } from '@n8n/backend-services';
+import type { RoleService, WorkflowFinderService } from '@n8n/backend-services';
 import { NotFoundError } from '@n8n/backend-services';
 import type {
 	Project,
@@ -17,7 +17,6 @@ import { mock } from 'vitest-mock-extended';
 import { WorkflowReviewAuthorizationService } from '../workflow-review-authorization.service';
 
 import type { ProjectService } from '@/services/project.service.ee';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 const requestId = 'req-1';
 const workflowId = 'wf-1';

@@ -1,5 +1,5 @@
 import type { CredentialProvider, StreamChunk } from '@n8n/agents';
-import { ForbiddenError } from '@n8n/backend-services';
+import { ForbiddenError, userHasScopes } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
@@ -13,8 +13,6 @@ import {
 import { type Scope } from '@n8n/permissions';
 import { Like } from '@n8n/typeorm';
 import { UserError } from 'n8n-workflow';
-
-import { userHasScopes } from '@/permissions.ee/check-access';
 
 import { AgentConfigService } from './agent-config.service';
 import { AGENT_CAPABILITIES, AGENT_LIMITATIONS } from './agent-capabilities';

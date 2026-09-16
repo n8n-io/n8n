@@ -1,4 +1,4 @@
-import { BadRequestError, NotFoundError } from '@n8n/backend-services';
+import { BadRequestError, NotFoundError, WorkflowFinderService } from '@n8n/backend-services';
 import { CredentialsEntity, CredentialsRepository, In, User, WorkflowRepository } from '@n8n/db';
 import { ICredentialResolver } from '@n8n/decorators';
 import { Service } from '@n8n/di';
@@ -6,7 +6,6 @@ import { Cipher } from 'n8n-core';
 import { ICredentialContext, INode, isNodeWithWorkflowSelector, jsonParse } from 'n8n-workflow';
 
 import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { DynamicCredentialResolverRegistry } from './credential-resolver-registry.service';
 import { DynamicCredentialResolverRepository } from '../database/repositories/credential-resolver.repository';

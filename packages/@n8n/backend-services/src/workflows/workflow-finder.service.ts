@@ -1,4 +1,3 @@
-import { RoleService } from '@n8n/backend-services';
 import type { SharedWorkflow, User, WorkflowEntity, ListQuery } from '@n8n/db';
 import { SharedWorkflowRepository, FolderRepository, WorkflowRepository, chunkIds } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -6,7 +5,8 @@ import { hasGlobalScope, type Scope } from '@n8n/permissions';
 import type { EntityManager, FindOptionsWhere } from '@n8n/typeorm';
 import { In, IsNull } from '@n8n/typeorm';
 
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { userHasScopes } from '../permissions.ee/check-access';
+import { RoleService } from '../services/role.service';
 
 export type FindWorkflowsForUserOptions = {
 	filters?: {

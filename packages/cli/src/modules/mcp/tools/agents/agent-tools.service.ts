@@ -20,7 +20,13 @@ import {
 	type AgentJsonConfig,
 } from '@n8n/api-types';
 import { OutboundHttp } from '@n8n/backend-network';
-import { ConflictError, ForbiddenError, UrlService } from '@n8n/backend-services';
+import {
+	ConflictError,
+	ForbiddenError,
+	ProjectScopeService,
+	UrlService,
+	userHasScopes,
+} from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
@@ -58,8 +64,6 @@ import { createAgentCredentialProvider } from '@/modules/agents/utils/agent-cred
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import { NodeTypes } from '@/node-types';
 import { OauthService } from '@/oauth/oauth.service';
-import { userHasScopes } from '@/permissions.ee/check-access';
-import { ProjectScopeService } from '@/permissions.ee/project-scope.service';
 import { Telemetry } from '@/telemetry';
 import { createAiMcpFetch } from '@/utils/ai-proxy-fetch';
 

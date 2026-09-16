@@ -2,7 +2,12 @@ import { zodToJsonSchema } from '@n8n/ai-utilities/json-schema';
 import { APPROVAL_RESUME_SCHEMA } from '@n8n/agents/tool';
 import type { AgentJsonConfig } from '@n8n/api-types';
 import type { EventService } from '@n8n/backend-services';
-import { ConflictError, UrlService } from '@n8n/backend-services';
+import {
+	ConflictError,
+	ProjectScopeService,
+	UrlService,
+	userHasScopes,
+} from '@n8n/backend-services';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { OutboundHttp } from '@n8n/backend-network';
 import { User, type WorkflowRepository } from '@n8n/db';
@@ -10,7 +15,8 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-vi.mock('@/permissions.ee/check-access', () => ({
+vi.mock('@n8n/backend-services', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/backend-services')>()),
 	userHasScopes: vi.fn(),
 }));
 
@@ -57,8 +63,6 @@ import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry
 import type { RegisterToolFn } from '@/modules/mcp/mcp.types';
 import { NodeTypes } from '@/node-types';
 import { OauthService } from '@/oauth/oauth.service';
-import { userHasScopes } from '@/permissions.ee/check-access';
-import { ProjectScopeService } from '@/permissions.ee/project-scope.service';
 import { Telemetry } from '@/telemetry';
 
 import { AGENT_TOOLS, TOOLS_BY_SCOPE } from '../mcp-scopes';

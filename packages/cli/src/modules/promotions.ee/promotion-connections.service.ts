@@ -17,11 +17,10 @@ import {
 	ConflictError,
 	ForbiddenError,
 	NotFoundError,
+	userHasScopes,
 } from '@n8n/backend-services';
 import { ProjectRepository, TransactionRunner, type OperationContext, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
-
-import { userHasScopes } from '@/permissions.ee/check-access';
 
 import { DIRECTION_LABELS } from './constants';
 import type { PromotionConfig } from './database/entities/promotion-config.entity';

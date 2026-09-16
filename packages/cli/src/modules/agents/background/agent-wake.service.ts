@@ -1,4 +1,5 @@
 import { LockNamespace, LockService, Logger } from '@n8n/backend-common';
+import { userHasScopes } from '@n8n/backend-services';
 import { AgentsConfig } from '@n8n/config';
 import { UserRepository } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
@@ -6,7 +7,6 @@ import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import { OperationalError, UnexpectedError } from 'n8n-workflow';
 
-import { userHasScopes } from '@/permissions.ee/check-access';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import {

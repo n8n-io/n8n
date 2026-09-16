@@ -250,7 +250,6 @@ export default defineConfig(
 			'./src/credentials/credentials.service.ee.ts',
 			'./src/credentials/credentials.service.ts',
 			// workflows/
-			'./src/workflows/workflow-finder.service.ts',
 			'./src/workflows/workflow-history/workflow-history.service.ts',
 			'./src/workflows/workflow-sharing.service.ts',
 			'./src/workflows/workflow-validation.service.ts',
@@ -342,7 +341,6 @@ export default defineConfig(
 			'./src/modules/chat-hub/chat-hub.service.ts',
 			'./src/modules/chat-hub/chat-hub.settings.service.ts',
 			'./src/modules/dynamic-credentials.ee/services/credential-resolver-workflow.service.ts',
-			'./src/permissions.ee/check-access.ts',
 			'./src/scheduling/durable-job-provisioner.ts',
 			'./src/scheduling/durable-scheduler.ts',
 			'./src/scheduling/poll-trigger-node/poll-trigger-job-registrar.ts',

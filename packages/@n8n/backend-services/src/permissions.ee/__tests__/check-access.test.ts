@@ -1,4 +1,3 @@
-import { CredentialsFinderService, NotFoundError, RoleService } from '@n8n/backend-services';
 import {
 	GLOBAL_MEMBER_ROLE,
 	ProjectRepository,
@@ -12,7 +11,11 @@ import { type Scope } from '@n8n/permissions';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
+import { CredentialsFinderService } from '../../credentials/credentials-finder.service';
+import { NotFoundError } from '../../errors/response-errors/not-found.error';
+import { RoleService } from '../../services/role.service';
 import { userHasScopes } from '../check-access';
+import { ScopedResourceResolverRegistry } from '../scoped-resource-resolver.registry';
 
 describe('userHasScopes', () => {
 	let findByWorkflowMock: Mock;
@@ -23,7 +26,10 @@ describe('userHasScopes', () => {
 	let hasGlobalReadOnlyAccessMock: Mock;
 	let hasGlobalConnectAccessMock: Mock;
 	let roleServiceMock: Mock;
-	let mockQueryBuilder: any;
+	let mockQueryBuilder: Record<
+		'innerJoin' | 'where' | 'andWhere' | 'groupBy' | 'having' | 'select' | 'getRawMany',
+		Mock
+	>;
 
 	beforeAll(() => {
 		findByWorkflowMock = vi.fn();
@@ -647,6 +653,47 @@ describe('userHasScopes', () => {
 			expect(hasGlobalReadOnlyAccessMock).not.toHaveBeenCalled();
 			expect(findGlobalCredentialByIdMock).not.toHaveBeenCalled();
 			expect(result).toBe(true);
+		});
+	});
+
+	describe('data tables', () => {
+		const user = { id: 'userId', scopes: [], role: GLOBAL_MEMBER_ROLE } as unknown as User;
+		const scopes = ['dataTable:read'] as Scope[];
+		let registry: ScopedResourceResolverRegistry;
+
+		beforeEach(() => {
+			registry = new ScopedResourceResolverRegistry();
+			Container.set(ScopedResourceResolverRegistry, registry);
+		});
+
+		it('should throw NotFoundError when no module registered a data table resolver', async () => {
+			await expect(userHasScopes(user, scopes, false, { dataTableId: 'dt-1' })).rejects.toThrow(
+				NotFoundError,
+			);
+		});
+
+		it('should throw NotFoundError when the data table does not exist', async () => {
+			registry.register('dataTable', { findProjectId: vi.fn().mockResolvedValue(null) });
+
+			await expect(userHasScopes(user, scopes, false, { dataTableId: 'dt-1' })).rejects.toThrow(
+				NotFoundError,
+			);
+		});
+
+		it('should grant access when the data table belongs to a project of the user', async () => {
+			registry.register('dataTable', { findProjectId: vi.fn().mockResolvedValue('projectId') });
+
+			await expect(userHasScopes(user, scopes, false, { dataTableId: 'dt-1' })).resolves.toBe(true);
+		});
+
+		it('should deny access when the data table belongs to another project', async () => {
+			registry.register('dataTable', {
+				findProjectId: vi.fn().mockResolvedValue('otherProjectId'),
+			});
+
+			await expect(userHasScopes(user, scopes, false, { dataTableId: 'dt-1' })).resolves.toBe(
+				false,
+			);
 		});
 	});
 });

@@ -19,9 +19,11 @@ export default defineConfig(
 		// use-case repository methods in @n8n/db. NEVER add to this list — a new leak must fail CI.
 		files: [
 			'src/credentials/credentials-finder.service.ts',
+			'src/permissions.ee/check-access.ts',
 			'src/services/folder-finder.service.ts',
 			'src/services/role-cache.service.ts',
 			'src/services/role.service.ts',
+			'src/workflows/workflow-finder.service.ts',
 		],
 		rules: {
 			'n8n-local-rules/misplaced-n8n-typeorm-import': 'off',

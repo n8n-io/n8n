@@ -9,6 +9,7 @@ import {
 	EventService,
 	ForbiddenError,
 	NotFoundError,
+	WorkflowFinderService,
 } from '@n8n/backend-services';
 import {
 	DbLock,
@@ -25,7 +26,6 @@ import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 
 import { CollaborationService } from '@/collaboration/collaboration.service';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 import { WorkflowReviewAuthorizationService } from './workflow-review-authorization.service';

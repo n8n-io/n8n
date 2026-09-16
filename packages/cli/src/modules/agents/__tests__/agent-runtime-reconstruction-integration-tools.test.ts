@@ -1,4 +1,8 @@
-import type { CredentialsFinderService, EventService } from '@n8n/backend-services';
+import type {
+	CredentialsFinderService,
+	EventService,
+	WorkflowFinderService,
+} from '@n8n/backend-services';
 import type { Mocked } from 'vitest';
 import { type AgentJsonConfig } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
@@ -24,7 +28,6 @@ import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { AiService } from '@/services/ai.service';
 import type { Telemetry } from '@/telemetry';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import { AgentConfigService } from '../agent-config.service';

@@ -1,4 +1,4 @@
-import { NotFoundError, UrlService } from '@n8n/backend-services';
+import { NotFoundError, UrlService, WorkflowFinderService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { ProjectRepository, User, WorkflowEntity } from '@n8n/db';
 import { NodeConnectionTypes, type INode } from 'n8n-workflow';
@@ -11,7 +11,6 @@ import { NodeTypes } from '@/node-types';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import { Telemetry } from '@/telemetry';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import {
 	createCreateWorkflowFromCodeTool,

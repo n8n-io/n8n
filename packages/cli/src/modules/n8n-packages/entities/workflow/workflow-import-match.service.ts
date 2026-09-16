@@ -1,7 +1,6 @@
+import { WorkflowFinderService } from '@n8n/backend-services';
 import { WorkflowRepository, type WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
-
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 export interface WorkflowIdConflict {
 	sourceWorkflowId: string;

@@ -1,9 +1,7 @@
 import { addDatasetRowSchema, upsertEvaluationConfigSchema } from '@n8n/api-types';
-import { BadRequestError, NotFoundError } from '@n8n/backend-services';
+import { BadRequestError, NotFoundError, WorkflowFinderService } from '@n8n/backend-services';
 import type { AuthenticatedRequest, User } from '@n8n/db';
 import { Delete, Get, Post, Put, RestController } from '@n8n/decorators';
-
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { EvaluationConfigService } from './evaluation-config.service';
 import { EvaluationDatasetService } from './evaluation-dataset.service';

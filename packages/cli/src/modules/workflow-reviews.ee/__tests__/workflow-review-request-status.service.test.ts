@@ -1,5 +1,6 @@
 import type { ListWorkflowReviewRequestsQueryDto } from '@n8n/api-types';
 import type { LicenseState } from '@n8n/backend-common';
+import type { WorkflowFinderService } from '@n8n/backend-services';
 import { ForbiddenError, NotFoundError } from '@n8n/backend-services';
 import { User } from '@n8n/db';
 import type {
@@ -11,7 +12,6 @@ import type {
 import { mock } from 'vitest-mock-extended';
 
 import type { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import type { WorkflowReviewAuthorizationService } from '../workflow-review-authorization.service';
 import { WorkflowReviewFeatureGate } from '../workflow-review-feature-gate.service';

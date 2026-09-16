@@ -11,6 +11,7 @@ import {
 	EventService,
 	NotFoundError,
 	RoleService,
+	WorkflowFinderService,
 } from '@n8n/backend-services';
 import {
 	DbLock,
@@ -29,7 +30,6 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 
 import { WorkflowReviewFeatureGate } from './workflow-review-feature-gate.service';

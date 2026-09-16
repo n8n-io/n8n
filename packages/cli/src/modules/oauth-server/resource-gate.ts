@@ -1,8 +1,6 @@
-import type { ProtectedResource } from '@n8n/backend-services';
+import type { ProtectedResource, WorkflowFinderService } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import type { OAuthResourceGrant } from 'n8n-workflow';
-
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 /**
  * Re-takes the grant's decision for `user`. Used by the live resource's `authorize` and,

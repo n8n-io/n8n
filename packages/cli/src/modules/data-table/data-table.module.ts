@@ -32,6 +32,11 @@ export class DataTableModule implements ModuleInterface {
 		const { registerFavoriteResolver } = await import('./register-favorite-resolver.js');
 		registerFavoriteResolver();
 
+		const { registerScopedResourceResolver } = await import(
+			'./register-scoped-resource-resolver.js'
+		);
+		registerScopedResourceResolver();
+
 		const { DataTableAggregateService } = await import('./data-table-aggregate.service.js');
 		await Container.get(DataTableAggregateService).start();
 

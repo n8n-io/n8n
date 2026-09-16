@@ -1,6 +1,6 @@
 import type { ZodClass } from '@n8n/api-types';
 import { inProduction } from '@n8n/backend-common';
-import { NotFoundError, UnauthenticatedError } from '@n8n/backend-services';
+import { NotFoundError, UnauthenticatedError, userHasScopes } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { type BooleanLicenseFeature } from '@n8n/constants';
 import { isAuthenticatedRequest } from '@n8n/db';
@@ -22,7 +22,6 @@ import assert from 'node:assert';
 import { AuthService } from '@/auth/auth.service';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { License } from '@/license';
-import { userHasScopes } from '@/permissions.ee/check-access';
 import { reportError, send, sendErrorResponse } from '@/response-helper';
 
 import { AbstractServer } from './abstract-server';

@@ -42,7 +42,7 @@ vi.mock('@n8n/instance-ai', async () => {
 });
 
 import type { CredentialsFinderService, RoleService } from '@n8n/backend-services';
-import { ConflictError, LockedError, NotFoundError } from '@n8n/backend-services';
+import { ConflictError, LockedError, NotFoundError, userHasScopes } from '@n8n/backend-services';
 import type { Mock, Mocked, MockInstance } from 'vitest';
 
 vi.mock('@n8n/ai-utilities', () => ({
@@ -1480,7 +1480,8 @@ function connect(from: string, to: string): IConnections {
 // createDataTableAdapter – access control
 // ---------------------------------------------------------------------------
 
-vi.mock('@/permissions.ee/check-access', () => ({
+vi.mock('@n8n/backend-services', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/backend-services')>()),
 	userHasScopes: vi.fn(),
 }));
 
@@ -1510,7 +1511,6 @@ import type { InstanceAiBuilderDelegate } from '@n8n/instance-ai';
 
 import { InstanceAiAdapterService } from '../instance-ai.adapter.service';
 import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
-import { userHasScopes } from '@/permissions.ee/check-access';
 
 const mockedUserHasScopes = vi.mocked(userHasScopes);
 

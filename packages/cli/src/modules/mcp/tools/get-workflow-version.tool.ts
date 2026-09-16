@@ -1,10 +1,10 @@
+import type { WorkflowFinderService } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { type IConnections } from 'n8n-workflow';
 import z from 'zod';
 
 import type { Telemetry } from '@/telemetry';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';

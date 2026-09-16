@@ -23,7 +23,13 @@ import {
 	workflowIdParamSchema,
 	workflowVersionIdParamSchema,
 } from '@n8n/api-types';
-import { BadRequestError, EventService, NotFoundError, ResponseError } from '@n8n/backend-services';
+import {
+	BadRequestError,
+	EventService,
+	NotFoundError,
+	ResponseError,
+	WorkflowFinderService,
+} from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type {
 	AuthenticatedRequest,
@@ -69,7 +75,6 @@ import {
 import { TagService } from '@/services/tag.service';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { createWorkflowEntityFromPayload } from '@/workflows/workflow-entity-mapper';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';

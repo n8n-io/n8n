@@ -1,5 +1,5 @@
 import { StartTestRunRequestDto, type MetricScale } from '@n8n/api-types';
-import { ConflictError, NotFoundError } from '@n8n/backend-services';
+import { ConflictError, NotFoundError, WorkflowFinderService } from '@n8n/backend-services';
 import {
 	EvaluationConfigRepository,
 	TestCaseExecutionRepository,
@@ -17,7 +17,6 @@ import { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.servi
 import { TestRunsRequest } from '@/evaluation.ee/test-runs.types.ee';
 import { listQueryMiddleware } from '@/middlewares';
 import { Telemetry } from '@/telemetry';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 @RestController('/workflows')
 export class TestRunsController {

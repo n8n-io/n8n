@@ -1,10 +1,12 @@
 import type { Logger } from '@n8n/backend-common';
-import type { ProtectedResource, ProtectedResourceResolver } from '@n8n/backend-services';
+import type {
+	ProtectedResource,
+	ProtectedResourceResolver,
+	WorkflowFinderService,
+} from '@n8n/backend-services';
 import type { GlobalConfig } from '@n8n/config';
 import type { INode } from 'n8n-workflow';
 import { CHAT_TRIGGER_PATH_SUFFIX } from 'n8n-workflow';
-
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { triggerResourceGate } from '../resource-gate';
 import {

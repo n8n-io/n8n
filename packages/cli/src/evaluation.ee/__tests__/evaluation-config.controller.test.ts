@@ -1,9 +1,8 @@
+import type { WorkflowFinderService } from '@n8n/backend-services';
 import { BadRequestError, NotFoundError } from '@n8n/backend-services';
 import type { Mocked } from 'vitest';
 import type { AuthenticatedRequest, EvaluationConfig, User, WorkflowEntity } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
-
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { EvaluationApiError } from '../evaluation-api-error';
 import { EvaluationConfigController } from '../evaluation-config.controller';

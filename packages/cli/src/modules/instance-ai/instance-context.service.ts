@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { userHasScopes } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import {
@@ -12,8 +13,6 @@ import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
 import type { InstanceAiActivityEntry, InstanceAiActivityExpansion } from '@n8n/instance-ai';
 import type { IDataObject } from 'n8n-workflow';
-
-import { userHasScopes } from '@/permissions.ee/check-access';
 
 import { INSTANCE_CONTEXT_CLOSE_TAG, INSTANCE_CONTEXT_OPEN_TAG } from './internal-messages';
 

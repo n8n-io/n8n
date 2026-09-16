@@ -1,6 +1,11 @@
 import type { TestRunCancelDto, TestRunDto } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
-import { ConflictError, ForbiddenError, NotFoundError } from '@n8n/backend-services';
+import {
+	ConflictError,
+	ForbiddenError,
+	NotFoundError,
+	WorkflowFinderService,
+} from '@n8n/backend-services';
 import { Container } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
 import { EVALUATION_TRIGGER_NODE_TYPE } from 'n8n-workflow';
@@ -17,7 +22,6 @@ import { encodeNextCursor } from '../../shared/services/pagination.service';
 
 import { EvaluationTestRunService } from '@/evaluation.ee/evaluation-test-run.service';
 import { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.service.ee';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 type EvaluationsHandlers = {
 	getTestRuns: PublicAPIEndpoint<TestRunRequest.GetMany>;

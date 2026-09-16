@@ -1,6 +1,11 @@
 import type { AgentEvalRunSummary } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
-import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/backend-services';
+import {
+	BadRequestError,
+	ForbiddenError,
+	NotFoundError,
+	userHasScopes,
+} from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type { AgentEvalDataset, AgentEvalResult, User } from '@n8n/db';
 import {
@@ -26,7 +31,6 @@ import { License } from '@/license';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { EvalAgentExecutionService } from '@/modules/instance-ai/eval/agent-execution.service';
-import { userHasScopes } from '@/permissions.ee/check-access';
 
 import { AgentEvalsFlagGate } from './agent-evals-flag-gate';
 import { assertRequiredModulesActive } from './agent-evals-required-modules';

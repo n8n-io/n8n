@@ -1,4 +1,4 @@
-import { ForbiddenError } from '@n8n/backend-services';
+import { ForbiddenError, WorkflowFinderService } from '@n8n/backend-services';
 import { WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 
@@ -6,7 +6,6 @@ import {
 	WorkflowCreationService,
 	type WorkflowCreateBatchContext,
 } from '@/workflows/workflow-creation.service';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 import { workflowReferences } from './references/workflow-references';

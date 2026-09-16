@@ -11,6 +11,7 @@ import {
 	EventService,
 	ForbiddenError,
 	NotFoundError,
+	userHasScopes,
 } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import {
@@ -45,7 +46,6 @@ import { getExternalSecretExpressionPaths } from './external-secrets.utils';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
 import { listQueryMiddleware } from '@/middlewares';
-import { userHasScopes } from '@/permissions.ee/check-access';
 import { CredentialRequest } from '@/requests';
 import { NamingService } from '@/services/naming.service';
 import { UserManagementMailer } from '@/user-management/email';

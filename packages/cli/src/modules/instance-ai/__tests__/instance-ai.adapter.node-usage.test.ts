@@ -36,7 +36,12 @@ vi.mock('@n8n/ai-utilities', () => ({
 import type { Logger } from '@n8n/backend-common';
 import { INSTANCE_AI_NODE_USAGE_FLAG } from '@n8n/api-types';
 import type { OutboundHttp } from '@n8n/backend-network';
-import type { CredentialsFinderService, EventService, RoleService } from '@n8n/backend-services';
+import type {
+	CredentialsFinderService,
+	EventService,
+	RoleService,
+	WorkflowFinderService,
+} from '@n8n/backend-services';
 import type { GlobalConfig } from '@n8n/config';
 import type {
 	AiBuilderTemporaryWorkflowRepository,
@@ -72,7 +77,6 @@ import type { ProjectService } from '@/services/project.service.ee';
 import type { TagService } from '@/services/tag.service';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowRunner } from '@/workflow-runner';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 import type { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';

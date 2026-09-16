@@ -1,5 +1,5 @@
 import type { ModuleRegistry } from '@n8n/backend-common';
-import { NotFoundError } from '@n8n/backend-services';
+import { NotFoundError, userHasScopes } from '@n8n/backend-services';
 import type { GlobalConfig } from '@n8n/config';
 import type {
 	AgentEvalDataset,
@@ -19,7 +19,6 @@ import type { Agent } from '@/modules/agents/entities/agent.entity';
 import type { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import type { DataTableService } from '@/modules/data-table/data-table.service';
 import type { EvalAgentExecutionService } from '@/modules/instance-ai/eval/agent-execution.service';
-import { userHasScopes } from '@/permissions.ee/check-access';
 
 import { AgentEvalRunnerService } from '../agent-eval-runner.service';
 import type { AgentEvalsFlagGate } from '../agent-evals-flag-gate';
@@ -43,7 +42,8 @@ vi.mock('@/modules/data-table/data-table.service', () => ({
 vi.mock('@/modules/instance-ai/eval/agent-execution.service', () => ({
 	EvalAgentExecutionService: class EvalAgentExecutionService {},
 }));
-vi.mock('@/permissions.ee/check-access', () => ({
+vi.mock('@n8n/backend-services', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/backend-services')>()),
 	userHasScopes: vi.fn().mockResolvedValue(true),
 }));
 

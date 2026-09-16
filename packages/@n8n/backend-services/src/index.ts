@@ -17,9 +17,17 @@ export { UnprocessableRequestError } from './errors/response-errors/unprocessabl
 export { UnsupportedMediaTypeError } from './errors/response-errors/unsupported-media-type.error';
 export { WorkflowPublishBlockedError } from './errors/response-errors/workflow-publish-blocked.error';
 export { UncacheableValueError } from './errors/cache-errors/uncacheable-value.error';
+
 export { CacheService } from './services/cache/cache.service';
 export { CredentialsFinderService } from './credentials/credentials-finder.service';
 export { EventService, type EventMap } from './events/event.service';
+export { userHasScopes } from './permissions.ee/check-access';
+export { ProjectScopeService } from './permissions.ee/project-scope.service';
+export {
+	ScopedResourceResolverRegistry,
+	type ScopedResourceResolver,
+	type ScopedResourceType,
+} from './permissions.ee/scoped-resource-resolver.registry';
 export { FolderFinderService } from './services/folder-finder.service';
 export { RoleCacheService } from './services/role-cache.service';
 export {
@@ -35,3 +43,7 @@ export {
 export { RedisClientService } from './services/redis-client.service';
 export type { RedisClientType } from './services/redis.types';
 export { UrlService } from './services/url.service';
+export {
+	WorkflowFinderService,
+	type FindWorkflowsForUserOptions,
+} from './workflows/workflow-finder.service';
