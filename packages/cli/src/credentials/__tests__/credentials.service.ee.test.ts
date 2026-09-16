@@ -1,5 +1,5 @@
 import type { LicenseState } from '@n8n/backend-common';
-import type { RoleService } from '@n8n/backend-services';
+import type { CredentialsFinderService, RoleService } from '@n8n/backend-services';
 import type {
 	User,
 	CredentialsEntity,
@@ -10,7 +10,6 @@ import type {
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialConnectionStatusProxy } from '@/credentials/credential-connection-status-proxy';
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
 import type { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';

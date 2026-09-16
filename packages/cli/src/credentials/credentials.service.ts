@@ -2,6 +2,7 @@ import type { CreateCredentialDto, CredentialConnectionStatus } from '@n8n/api-t
 import { Logger } from '@n8n/backend-common';
 import {
 	BadRequestError,
+	CredentialsFinderService,
 	EventService,
 	ForbiddenError,
 	NotFoundError,
@@ -88,7 +89,6 @@ import {
 	CredentialDependencyService,
 	type CredentialDependencyFilter,
 } from './credential-dependency.service';
-import { CredentialsFinderService } from './credentials-finder.service';
 import { getExternalSecretExpressionPaths } from './external-secrets.utils';
 import { InstanceCredentialUseRegistry } from './instance-credential-use.registry';
 import {

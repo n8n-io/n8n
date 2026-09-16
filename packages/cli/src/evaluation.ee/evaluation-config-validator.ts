@@ -4,6 +4,7 @@ import type {
 	UpsertEvaluationConfigDto,
 } from '@n8n/api-types';
 import { EvaluationErrorCode } from '@n8n/api-types';
+import { CredentialsFinderService } from '@n8n/backend-services';
 import type { EvaluationConfig, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { INode, IWorkflowBase } from 'n8n-workflow';
@@ -14,7 +15,6 @@ import {
 	mapConnectionsByDestination,
 } from 'n8n-workflow';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 
 import { LlmJudgeProviderRegistry } from './llm-judge-provider-registry';

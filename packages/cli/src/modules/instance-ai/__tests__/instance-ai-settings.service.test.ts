@@ -1,7 +1,8 @@
 import { DEFAULT_INSTANCE_AI_PERMISSIONS } from '@n8n/api-types';
 import type { InstanceAiPermissions } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import type { EventService } from '@n8n/backend-services';
+import type { CredentialsFinderService, EventService } from '@n8n/backend-services';
+import { UnprocessableRequestError } from '@n8n/backend-services';
 import type { InstanceAiConfig } from '@n8n/config';
 import type {
 	CredentialsEntity,
@@ -21,7 +22,6 @@ import {
 	type SandboxSettingsService,
 } from '@/services/sandbox-settings.service';
 import type { UserService } from '@/services/user.service';
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { InstanceCredentialBroker } from '@/credentials/instance-credential-broker';
 
