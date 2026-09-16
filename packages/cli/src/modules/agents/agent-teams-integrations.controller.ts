@@ -1,6 +1,6 @@
 import type { TeamsAgentSetupState, TeamsCredentialCheck } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
-import { Get, Param, Post, ProjectScope, RestController } from '@n8n/decorators';
+import { Get, Options, Param, Post, ProjectScope, RestController } from '@n8n/decorators';
 import type { Request, Response } from 'express';
 
 import { TeamsCredentialCheckService } from './integrations/platforms/teams/teams-credential-check.service';
@@ -61,8 +61,25 @@ export class AgentTeamsIntegrationsController {
 	}
 
 	/**
-	 * Fetched by the Azure portal on the user's behalf, so it carries no n8n
-	 * session and authorises on the signed token in the query string instead.
+	 * The Azure portal fetches this from the user's browser, not from its own
+	 * servers, so the route needs CORS headers as well as being reachable. Azure
+	 * reports both failures with the same message, which names CORS second.
+	 */
+	private setCorsHeaders(res: Response) {
+		res.header('Access-Control-Allow-Origin', '*');
+		res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
+		res.header('Access-Control-Allow-Headers', 'Content-Type');
+	}
+
+	@Options('/:agentId/integrations/teams/arm-template', { skipAuth: true })
+	armTemplatePreflight(_req: Request, res: Response): void {
+		this.setCorsHeaders(res);
+		res.status(204).send();
+	}
+
+	/**
+	 * Carries no n8n session, so it authorises on the signed token in the query
+	 * string instead.
 	 *
 	 * Written straight to the response rather than returned: the REST layer wraps
 	 * a returned value in `{ data: ... }`, and the portal rejects that with
@@ -82,6 +99,7 @@ export class AgentTeamsIntegrationsController {
 			credentialId: typeof credentialId === 'string' ? credentialId : '',
 		});
 
+		this.setCorsHeaders(res);
 		res.setHeader('Content-Type', 'application/json');
 		res.send(JSON.stringify(template));
 	}
