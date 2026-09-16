@@ -32,3 +32,8 @@
 		@include focus-ring-offset;
 	}
 }
+
+@mixin focus-ring-inset {
+	outline: var(--focus--border-width) solid var(--focus--border-color);
+	outline-offset: -2px;
+}
