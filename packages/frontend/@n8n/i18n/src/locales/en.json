@@ -125,6 +125,7 @@
 	"generic.upgrade": "Upgrade",
 	"generic.upgradeNow": "Upgrade now",
 	"generic.update": "Update",
+	"generic.agent": "Agent | {count} Agent | {count} Agents",
 	"generic.credential": "Credential | {count} Credential | {count} Credentials",
 	"generic.credentials": "Credentials",
 	"generic.datatable": "Data table | {count} Data table | {count} Data tables",
