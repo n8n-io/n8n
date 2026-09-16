@@ -591,6 +591,25 @@ describe('AgentChannelTeamsSetup', () => {
 		await waitFor(() => expect(checkedSwitch(getByTestId('teams-scope-groups'))).toBe(true));
 	});
 
+	it('adopts saved values for the fields the user has not touched', async () => {
+		const { getByTestId, rerender } = renderComponent({ props: props({ mode: 'edit' }) });
+
+		const name = () => getByTestId('teams-display-name').querySelector('input');
+		await waitFor(() => expect(name()).toBeInTheDocument());
+		await fireEvent.update(name() as HTMLInputElement, 'My own name');
+
+		await rerender(
+			props({
+				mode: 'edit',
+				savedSettings: { displayName: 'Saved name', teamChannels: true },
+			}),
+		);
+
+		// Editing the name must not stop the availability adopting what arrived.
+		await waitFor(() => expect(checkedSwitch(getByTestId('teams-scope-channels'))).toBe(true));
+		expect(name()).toHaveValue('My own name');
+	});
+
 	it('asks for the setup state once on open, not once per trigger that wants it', async () => {
 		renderComponent({ props: props() });
 

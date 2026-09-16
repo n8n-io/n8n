@@ -117,22 +117,25 @@ const checking = ref(false);
  */
 let latestRequest = 0;
 
-/** Set by a real edit, so re-syncing saved settings never discards one. */
-const touched = ref(false);
+/**
+ * Tracked per field, so an edit to one does not stop the others adopting
+ * settings that arrive afterwards.
+ */
+const touched = ref(new Set<'availability' | 'displayName' | 'description'>());
 
 function editAvailability(value: TeamsAvailability) {
 	availability.value = value;
-	touched.value = true;
+	touched.value.add('availability');
 }
 
 function editDisplayName(value: string) {
 	displayName.value = value;
-	touched.value = true;
+	touched.value.add('displayName');
 }
 
 function editDescription(value: string) {
 	description.value = value;
-	touched.value = true;
+	touched.value.add('description');
 }
 
 /**
@@ -227,15 +230,17 @@ watch(
 watch(
 	() => props.savedSettings,
 	(saved) => {
-		if (!saved || touched.value) return;
-		availability.value = {
-			teamChannels: saved.teamChannels ?? false,
-			groupChats: saved.groupChats ?? false,
-			readAllChannelMessages: saved.readAllChannelMessages ?? false,
-			readAllGroupMessages: saved.readAllGroupMessages ?? false,
-		};
-		displayName.value = saved.displayName ?? '';
-		description.value = saved.description ?? '';
+		if (!saved) return;
+		if (!touched.value.has('availability')) {
+			availability.value = {
+				teamChannels: saved.teamChannels ?? false,
+				groupChats: saved.groupChats ?? false,
+				readAllChannelMessages: saved.readAllChannelMessages ?? false,
+				readAllGroupMessages: saved.readAllGroupMessages ?? false,
+			};
+		}
+		if (!touched.value.has('displayName')) displayName.value = saved.displayName ?? '';
+		if (!touched.value.has('description')) description.value = saved.description ?? '';
 	},
 );
 

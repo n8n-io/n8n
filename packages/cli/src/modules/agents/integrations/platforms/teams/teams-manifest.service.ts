@@ -199,8 +199,10 @@ export class TeamsManifestService {
 	private buildVersion(updatedAt: Date): string {
 		const millis = Math.max(0, updatedAt.getTime());
 		const days = Math.floor(millis / 86_400_000);
-		const secondsIntoDay = Math.floor((millis % 86_400_000) / 1000);
-		return `1.${days}.${secondsIntoDay}`;
+		// Milliseconds, not seconds: two downloads a moment apart would otherwise
+		// carry the same version, and Teams ignores a version it has already seen.
+		const millisIntoDay = millis % 86_400_000;
+		return `1.${days}.${millisIntoDay}`;
 	}
 
 	/**

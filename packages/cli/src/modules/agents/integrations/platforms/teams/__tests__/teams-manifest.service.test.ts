@@ -202,6 +202,15 @@ describe('TeamsManifestService', () => {
 			expect([earlier, later].sort()[1]).toBe(later);
 		});
 
+		it('separates two stamps inside the same second', () => {
+			const at = new Date('2026-09-15T10:00:00.000Z');
+			const barelyLater = new Date('2026-09-15T10:00:00.010Z');
+
+			expect(service.buildManifest(options({ versionAt: at })).version).not.toBe(
+				service.buildManifest(options({ versionAt: barelyLater })).version,
+			);
+		});
+
 		it('rises when only the settings changed, so Teams applies the re-upload', () => {
 			const at = new Date('2026-09-15T10:00:00.000Z');
 			const later = new Date('2026-09-15T10:00:05.000Z');
@@ -216,7 +225,7 @@ describe('TeamsManifestService', () => {
 
 		it.each([
 			['1.0.0', new Date('1970-01-01T00:00:00.000Z')],
-			['1.20711.36000', new Date('2026-09-15T10:00:00.000Z')],
+			['1.20711.36000000', new Date('2026-09-15T10:00:00.000Z')],
 		])('formats the version as %s', (expected, updatedAt) => {
 			expect(service.buildManifest(options({ versionAt: updatedAt })).version).toBe(expected);
 		});
