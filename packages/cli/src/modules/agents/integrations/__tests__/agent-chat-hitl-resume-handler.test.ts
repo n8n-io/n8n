@@ -216,4 +216,56 @@ describe('notices that answer one click', () => {
 		expect(thread.postEphemeral).not.toHaveBeenCalled();
 		expect(thread.post).not.toHaveBeenCalled();
 	});
+
+	it('tells the clicking user when the run behind the card is gone', async () => {
+		const thread = createThread(true);
+		const resumeForChat = vi.fn(() => (async function* () {})());
+		const settleActionMessage = vi.fn().mockResolvedValue(undefined);
+		const handler = createHandler({
+			agentService: { resumeForChat, isResumable: async () => false },
+			formatActionDecisionMessage: () => 'never settled',
+			settleActionMessage,
+		});
+
+		await handler.handleAction({
+			actionId: 'resume:run-1:tool-1:0',
+			value: JSON.stringify({ approved: true }),
+			thread,
+			threadId: THREAD_ID,
+			messageId: 'message-1',
+			user: ALICE,
+			adapter: { deleteMessage: vi.fn() },
+			raw: {},
+		} as never);
+
+		expect(thread.postEphemeral).toHaveBeenCalledWith(ALICE, EXPIRED_NOTICE, {
+			fallbackToDM: false,
+		});
+		// No resume, so the misconfiguration error never reaches the thread, and
+		// the card is not relabelled with a decision that never took effect.
+		expect(resumeForChat).not.toHaveBeenCalled();
+		expect(settleActionMessage).not.toHaveBeenCalled();
+	});
+
+	it('resumes when the run is still resumable', async () => {
+		const thread = createThread(true);
+		const resumeForChat = vi.fn(() => (async function* () {})());
+		const handler = createHandler({
+			agentService: { resumeForChat, isResumable: async () => true },
+		});
+
+		await handler.handleAction({
+			actionId: 'resume:run-1:tool-1:0',
+			value: JSON.stringify({ approved: true }),
+			thread,
+			threadId: THREAD_ID,
+			messageId: 'message-1',
+			user: ALICE,
+			adapter: { deleteMessage: vi.fn() },
+			raw: {},
+		} as never);
+
+		expect(resumeForChat).toHaveBeenCalled();
+		expect(thread.postEphemeral).not.toHaveBeenCalled();
+	});
 });

@@ -18,7 +18,20 @@ import type {
 	AgentExecutionOrchestratorService,
 } from '../agent-execution-orchestrator.service';
 
-type ResumeExecutor = Pick<AgentExecutionOrchestratorService, 'resumeForChat'>;
+type ResumeExecutor = Pick<AgentExecutionOrchestratorService, 'resumeForChat'> & {
+	/**
+	 * Whether the parked run is still resumable. Optional so a caller that
+	 * cannot look checkpoints up (tests) simply skips the gate.
+	 */
+	isResumable?(config: { agentId: string; runId: string }): Promise<boolean>;
+};
+
+/**
+ * Sent when a card is answered but its run is no longer there to resume: an
+ * expired callback key, or a checkpoint that expired or was already resolved.
+ */
+const STALE_ACTION_NOTICE =
+	'This action is no longer available. The link may have expired or already been used.';
 
 /**
  * Answer one person's card click where only they can see it. Slack and Teams
@@ -36,6 +49,7 @@ async function postPrivateNotice(
 	const sent = await thread.postEphemeral(user, text, { fallbackToDM: false });
 	if (!sent) await thread.post(text);
 }
+
 
 interface AgentChatHitlResumeHandlerOptions {
 	agentId: string;
@@ -89,6 +103,19 @@ export class AgentChatHitlResumeHandler {
 
 		const parsed = this.parseActionId(callbackData.actionId, callbackData.value);
 		if (!parsed) return;
+
+		// A card whose run is gone cannot be resumed, and resuming anyway reports
+		// it as an agent misconfiguration — which it is not. Check before the card
+		// is settled, so a stale card is never relabelled with a decision that
+		// never took effect. Teams cards are the common case: a targeted card
+		// cannot be edited, so its buttons stay live after the run finishes.
+		if (!(await this.isRunResumable(parsed.runId))) {
+			await postPrivateNotice(thread, event.user, STALE_ACTION_NOTICE);
+			return;
+		}
+		// Persist the interacting user / messageId into the thread's message
+		// context so tools running on resume can read it via the message
+		// context store — no need to bolt a duplicate copy onto resumeData.
 		const platformThreadId = this.options.resolvePlatformThreadId(thread);
 		const threadId = this.options.toAgentThreadId(platformThreadId);
 		const messageContext = this.options.messageContextBridge.capture(thread, {
@@ -161,11 +188,7 @@ export class AgentChatHitlResumeHandler {
 		const resolved = await this.options.callbackStore.resolve(actionId);
 		if (!resolved) {
 			this.options.logger.warn('[AgentChatBridge] Callback key not found or expired', { actionId });
-			await postPrivateNotice(
-				thread,
-				user,
-				'This action is no longer available. The link may have expired or already been used.',
-			);
+			await postPrivateNotice(thread, user, STALE_ACTION_NOTICE);
 			return null;
 		}
 		return {
@@ -220,6 +243,23 @@ export class AgentChatHitlResumeHandler {
 			this.options.logger.warn('[AgentChatBridge] Failed to settle action card', {
 				error: editError instanceof Error ? editError.message : String(editError),
 			});
+		}
+	}
+
+	private async isRunResumable(runId: string): Promise<boolean> {
+		if (!this.options.agentService.isResumable) return true;
+		try {
+			return await this.options.agentService.isResumable({
+				agentId: this.options.agentId,
+				runId,
+			});
+		} catch (error) {
+			// A failed lookup must not swallow the click: let the resume decide.
+			this.options.logger.warn('[AgentChatBridge] Could not check whether a run is resumable', {
+				runId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return true;
 		}
 	}
 

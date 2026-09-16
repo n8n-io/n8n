@@ -142,6 +142,12 @@ interface AgentExecutor extends Pick<AgentExecutionOrchestratorService, 'resumeF
 		agentId: string;
 		threadId: string;
 	}): Promise<OpenSuspension | null>;
+
+	/**
+	 * Whether the parked run is still resumable. Optional so a caller that
+	 * cannot look checkpoints up (tests) simply skips the gate.
+	 */
+	isResumable?(config: { agentId: string; runId: string }): Promise<boolean>;
 }
 
 /** An open checkpoint prevents automatic session rotation. */
@@ -344,6 +350,9 @@ export class AgentChatBridge {
 					(toolCall) => toolCall.suspended,
 				);
 				return suspended ? { suspendPayload: suspended.suspendPayload } : null;
+			},
+			async isResumable({ agentId: aid, runId }) {
+				return await Container.get(AgentConversationStateService).isResumable(aid, runId);
 			},
 		};
 		return new AgentChatBridge(
