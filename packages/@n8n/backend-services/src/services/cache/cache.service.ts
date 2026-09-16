@@ -2,18 +2,14 @@ import { TypedEmitter } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { Container, Service } from '@n8n/di';
+import { isRecord } from '@n8n/utils/is-record';
 import { caching } from 'cache-manager';
 import { jsonStringify, UserError } from 'n8n-workflow';
 
-import { UncacheableValueError } from '@/errors/cache-errors/uncacheable-value.error';
-import { REDIS_TTL_KEY_MISSING } from '@/services/cache/cache.constants';
-import type {
-	TaggedRedisCache,
-	TaggedMemoryCache,
-	MaybeHash,
-	Hash,
-} from '@/services/cache/cache.types';
-import { isObject } from '@/utils';
+import { UncacheableValueError } from '../../errors/cache-errors/uncacheable-value.error';
+
+import { REDIS_TTL_KEY_MISSING } from './cache.constants';
+import type { TaggedRedisCache, TaggedMemoryCache, MaybeHash, Hash } from './cache.types';
 
 type CacheEvents = {
 	'metrics.cache.hit': never;
@@ -29,7 +25,8 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 		super();
 	}
 
-	private cache: TaggedRedisCache | TaggedMemoryCache;
+	// Set by `init()`, which every public method awaits before use.
+	private cache!: TaggedRedisCache | TaggedMemoryCache;
 
 	async init() {
 		const { backend } = this.globalConfig.cache;
@@ -54,7 +51,7 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 				extraOptions: { keyPrefix: prefix },
 			});
 
-			const { redisStoreUsingClient } = await import('@/services/cache/redis.cache-manager.js');
+			const { redisStoreUsingClient } = await import('./redis.cache-manager.js');
 			const redisStore = redisStoreUsingClient(redisClient, {
 				ttl: this.globalConfig.cache.redis.ttl,
 			});
@@ -364,7 +361,7 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 		}
 
 		const isEmptyArray = Array.isArray(value) && value.length === 0;
-		const isEmptyObject = isObject(value) && Object.keys(value).length === 0;
+		const isEmptyObject = isRecord(value) && Object.keys(value).length === 0;
 		if (isEmptyArray || isEmptyObject) {
 			// Redis adapters may return [] or {} for missing string or hash keys after restart.
 			const keyExists = await this.doesRedisKeyExist(key);

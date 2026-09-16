@@ -1,3 +1,4 @@
+import type { RedisClientService } from '@n8n/backend-services';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import type { DbConnection } from '@n8n/db';
@@ -12,7 +13,6 @@ import type { CredentialsOverwrites } from '@/credentials-overwrites';
 import type { ExternalHooks } from '@/external-hooks';
 import type { PrometheusMetricsService } from '@/metrics/prometheus';
 import { bodyParser, rawBodyReader } from '@/middlewares';
-import type { RedisClientService } from '@/services/redis-client.service';
 
 import { WorkerServer } from '../worker-server';
 

@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import type { CacheService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { RoleRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -6,7 +7,6 @@ import { staticRolesWithScope } from '@n8n/permissions';
 import type { MockedFunction } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { CacheService } from '@/services/cache/cache.service';
 import { RoleCacheService } from '@/services/role-cache.service';
 
 // Mock static function

@@ -1,13 +1,12 @@
 import type { ChatHubConversationModel, ChatMessageId, ChatSessionId } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { RedisClientService } from '@n8n/backend-services';
 import { ChatHubConfig, ExecutionsConfig, GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import type { Cluster, Redis } from 'ioredis';
 import { InstanceSettings } from 'n8n-core';
-
-import { RedisClientService } from '@/services/redis-client.service';
 
 import type { NonStreamingResponseMode } from './chat-hub.types';
 

@@ -1,6 +1,6 @@
 import { OwnerSetupRequestDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { BadRequestError } from '@n8n/backend-services';
+import { BadRequestError, CacheService } from '@n8n/backend-services';
 import type { ListQueryDb } from '@n8n/db';
 import {
 	GLOBAL_OWNER_ROLE,
@@ -20,7 +20,6 @@ import { Not } from '@n8n/typeorm/find-options/operator/Not';
 
 import config from '@/config';
 import { EventService } from '@/events/event.service';
-import { CacheService } from '@/services/cache/cache.service';
 
 import { PasswordUtility } from './password.utility';
 

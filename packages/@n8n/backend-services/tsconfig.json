@@ -9,7 +9,10 @@
 	"references": [
 		{ "path": "../../workflow/tsconfig.build.cjs.json" },
 		{ "path": "../api-types/tsconfig.build.json" },
+		{ "path": "../backend-common/tsconfig.build.json" },
 		{ "path": "../config/tsconfig.build.json" },
+		{ "path": "../constants/tsconfig.build.json" },
+		{ "path": "../decorators/tsconfig.build.json" },
 		{ "path": "../di/tsconfig.build.json" }
 	]
 }

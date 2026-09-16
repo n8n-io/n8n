@@ -9,12 +9,11 @@ import {
 } from '@n8n/api-types';
 import { LockNamespace, LockService } from '@n8n/backend-common';
 import { type HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
+import { CacheService } from '@n8n/backend-services';
 import { Time } from '@n8n/constants';
 import { Container } from '@n8n/di';
 import type { Attachment, Author, Chat, Message, Thread } from 'chat';
 import { UserError, type Logger } from 'n8n-workflow';
-
-import { CacheService } from '@/services/cache/cache.service';
 
 import {
 	AgentChatAttachmentService,

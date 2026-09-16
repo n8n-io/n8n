@@ -1,3 +1,4 @@
+import { RedisClientService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { DbConnection, DeploymentKeyRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -11,7 +12,6 @@ import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { JwtService } from '@/services/jwt.service';
-import { RedisClientService } from '@/services/redis-client.service';
 import { WebhookServer } from '@/webhooks/webhook-server';
 
 import { BaseCommand } from '../base-command';

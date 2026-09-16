@@ -242,7 +242,7 @@ export const setupTestServer = ({
 						// CacheService must be initialized before PrometheusMetricsService
 						// because cache-metrics.service calls isRedis() during init, which
 						// reads this.cache.kind — only set after CacheService.init() resolves.
-						const { CacheService } = await import('@/services/cache/cache.service.js');
+						const { CacheService } = await import('@n8n/backend-services');
 						await Container.get(CacheService).init();
 						const { PrometheusMetricsService } = await import('@/metrics/prometheus/index.js');
 						Container.get(PrometheusMetricsService).init(app);

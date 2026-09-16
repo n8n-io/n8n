@@ -1,4 +1,4 @@
-import { UrlService } from '@n8n/backend-services';
+import { CacheService, UrlService } from '@n8n/backend-services';
 import { createWorkflowWithHistory, setActiveVersion, testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
@@ -13,7 +13,6 @@ import {
 } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
-import { CacheService } from '@/services/cache/cache.service';
 import { createOwner, createMember } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 

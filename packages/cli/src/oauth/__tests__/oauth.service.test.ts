@@ -1,6 +1,12 @@
 import { LockAcquisitionTimeoutError, LockService, Logger } from '@n8n/backend-common';
 import { OutboundHttp, SsrfProtectionService, type HttpRequestClient } from '@n8n/backend-network';
-import { AuthError, BadRequestError, NotFoundError, UrlService } from '@n8n/backend-services';
+import {
+	AuthError,
+	BadRequestError,
+	CacheService,
+	NotFoundError,
+	UrlService,
+} from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { OAuth2CredentialData } from '@n8n/client-oauth2';
 import { AuthError as OAuth2AuthError } from '@n8n/client-oauth2';
@@ -34,7 +40,6 @@ import {
 	type OAuth1CredentialData,
 } from '@/oauth/oauth.service';
 import type { OAuthRequest } from '@/requests';
-import { CacheService } from '@/services/cache/cache.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 
 vi.mock('@/workflow-execute-additional-data');

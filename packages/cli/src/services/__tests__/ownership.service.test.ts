@@ -1,5 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import { BadRequestError } from '@n8n/backend-services';
+import { BadRequestError, CacheService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import {
 	Project,
@@ -23,8 +23,6 @@ import type { EventService } from '@/events/event.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { PasswordUtility } from '@/services/password.utility';
 import { mockCredential, mockProject } from '@test/mock-objects';
-
-import { CacheService } from '../cache/cache.service';
 
 describe('OwnershipService', () => {
 	const userRepository = mockInstance(UserRepository);

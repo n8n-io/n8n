@@ -1,11 +1,10 @@
 import type { ProjectPoolSettingsResponse, UpdateProjectPoolSettingsDto } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
+import { CacheService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { ProjectPoolSettingsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { IWorkflowExecutionDataProcess } from 'n8n-workflow';
-
-import { CacheService } from '@/services/cache/cache.service';
 
 import { DEFAULT_QUEUE_NAME, poolQueueName } from './queue-name';
 import { WorkerPoolsService } from './worker-pools.service.ee';

@@ -1,10 +1,9 @@
+import { CacheService } from '@n8n/backend-services';
 import { PrometheusMetricsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import promClient from 'prom-client';
-
-import { CacheService } from '@/services/cache/cache.service';
 
 import type { PrometheusMetricsCollector } from './base';
 import { CachedMetricQuery } from './cached-metric-query';

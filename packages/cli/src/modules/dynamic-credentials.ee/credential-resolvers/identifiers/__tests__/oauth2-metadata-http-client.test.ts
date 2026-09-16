@@ -1,9 +1,8 @@
 import type { HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
+import type { CacheService } from '@n8n/backend-services';
 import { mockLogger } from '@n8n/backend-test-utils';
 import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
-
-import type { CacheService } from '@/services/cache/cache.service';
 
 import { IdentifierValidationError } from '../identifier-interface';
 import { OAuth2MetadataHttpClient } from '../oauth2-metadata-http-client';

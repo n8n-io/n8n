@@ -5,12 +5,11 @@ import {
 	SsrfProtectionService,
 } from '@n8n/backend-network';
 import { startServer, type LocalServer } from '@n8n/backend-network/testing';
+import type { CacheService } from '@n8n/backend-services';
 import { mockLogger } from '@n8n/backend-test-utils';
 import { SsrfProtectionConfig } from '@n8n/config';
 import { mock } from 'vitest-mock-extended';
 import type { IncomingHttpHeaders } from 'node:http';
-
-import type { CacheService } from '@/services/cache/cache.service';
 
 import { IdentifierValidationError } from '../identifier-interface';
 import { OAuth2TokenIntrospectionIdentifier } from '../oauth2-introspection-identifier';

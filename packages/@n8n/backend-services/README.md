@@ -30,6 +30,8 @@ and infrastructure services that need the persistence layer or that only
 | Export | Purpose |
 | --- | --- |
 | `ResponseError` and its subclasses (`BadRequestError`, `NotFoundError`, `ForbiddenError`, ...) | Errors that map to an HTTP status code in a REST response |
+| `CacheService` | Memory or Redis cache with hash support |
+| `RedisClientService` | Redis client factory with reconnect handling |
 
 ## Rules for adding code
 

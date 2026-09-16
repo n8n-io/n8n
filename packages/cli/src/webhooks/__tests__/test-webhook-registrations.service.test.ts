@@ -1,3 +1,4 @@
+import type { CacheService } from '@n8n/backend-services';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
@@ -6,7 +7,6 @@ import {
 	TEST_WEBHOOK_TIMEOUT,
 	TEST_WEBHOOK_TIMEOUT_BUFFER,
 } from '@/constants';
-import type { CacheService } from '@/services/cache/cache.service';
 import type { TestWebhookRegistration } from '@/webhooks/test-webhook-registrations.service';
 import { TestWebhookRegistrationsService } from '@/webhooks/test-webhook-registrations.service';
 

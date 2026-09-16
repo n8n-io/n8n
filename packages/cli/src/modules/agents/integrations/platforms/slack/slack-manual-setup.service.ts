@@ -1,5 +1,10 @@
 import type { CreateSlackAgentAppResponse, SlackAgentAppManifestResponse } from '@n8n/api-types';
-import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/backend-services';
+import {
+	BadRequestError,
+	CacheService,
+	ForbiddenError,
+	NotFoundError,
+} from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -8,7 +13,6 @@ import { Cipher } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 import { randomBytes } from 'node:crypto';
 
-import { CacheService } from '@/services/cache/cache.service';
 import { ProjectService } from '@/services/project.service.ee';
 
 import { SlackMethodsService } from './slack-methods.service';

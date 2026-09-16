@@ -1,11 +1,10 @@
 import { Logger } from '@n8n/backend-common';
+import { CacheService } from '@n8n/backend-services';
 import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import type { JSONWebKeySet, JWTPayload } from 'jose';
 import type { ICredentialContext } from 'n8n-workflow';
 import { z } from 'zod';
-
-import { CacheService } from '@/services/cache/cache.service';
 
 import { IdentifierValidationError, ITokenIdentifier } from './identifier-interface';
 import { OAuth2MetadataHttpClient } from './oauth2-metadata-http-client';

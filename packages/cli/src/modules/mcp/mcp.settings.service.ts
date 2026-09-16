@@ -1,5 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import { BadRequestError } from '@n8n/backend-services';
+import { BadRequestError, CacheService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import {
 	SettingsRepository,
@@ -18,7 +18,6 @@ import {
 } from 'n8n-workflow';
 
 import { CollaborationService } from '@/collaboration/collaboration.service';
-import { CacheService } from '@/services/cache/cache.service';
 import { removeDefaultValues } from '@/workflow-helpers';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 

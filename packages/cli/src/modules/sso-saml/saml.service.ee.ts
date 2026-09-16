@@ -1,7 +1,7 @@
 import type { SamlPreferences, SamlPreferencesAttributeMapping } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
-import { AuthError, BadRequestError, UrlService } from '@n8n/backend-services';
+import { AuthError, BadRequestError, CacheService, UrlService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type { Settings, User } from '@n8n/db';
 import { isValidEmail, SettingsRepository, UserRepository } from '@n8n/db';
@@ -20,7 +20,6 @@ import type {
 
 import { buildSamlClaimsContext } from '@/modules/provisioning.ee/claims-context.builder';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
-import { CacheService } from '@/services/cache/cache.service';
 import {
 	getSamlLoginLabel,
 	isSamlLicensedAndEnabled,

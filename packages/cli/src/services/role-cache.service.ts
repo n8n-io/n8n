@@ -1,11 +1,10 @@
 import { Logger } from '@n8n/backend-common';
+import { CacheService } from '@n8n/backend-services';
 import { Time } from '@n8n/constants';
 import { RoleRepository } from '@n8n/db';
 import type { EntityManager } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { staticRolesWithScope, type Scope } from '@n8n/permissions';
-
-import { CacheService } from './cache/cache.service';
 
 type RoleInfo = {
 	scopes: string[]; // array of scope slugs

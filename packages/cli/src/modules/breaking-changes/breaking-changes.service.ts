@@ -6,14 +6,13 @@ import {
 	BreakingChangeWorkflowRuleResult,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { CacheService } from '@n8n/backend-services';
 import { Time } from '@n8n/constants';
 import { WorkflowRepository, WorkflowStatisticsRepository } from '@n8n/db';
 import { BreakingChangeRuleMetadata } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { In } from '@n8n/typeorm';
 import { ErrorReporter } from 'n8n-core';
-
-import { CacheService } from '@/services/cache/cache.service';
 
 import { MigrationRegistry } from './breaking-changes.migration-registry.service';
 import { RuleRegistry } from './breaking-changes.rule-registry.service';

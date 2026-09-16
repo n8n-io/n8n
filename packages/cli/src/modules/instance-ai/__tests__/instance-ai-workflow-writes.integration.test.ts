@@ -1,4 +1,5 @@
 import { LicenseState } from '@n8n/backend-common';
+import { CacheService } from '@n8n/backend-services';
 import {
 	createWorkflow,
 	mockInstance,
@@ -16,7 +17,6 @@ import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { License } from '@/license';
 import { Push } from '@/push';
-import { CacheService } from '@/services/cache/cache.service';
 import { Telemetry } from '@/telemetry';
 import { createMember, createOwner } from '@test-integration/db/users';
 

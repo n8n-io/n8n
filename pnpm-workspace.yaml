@@ -213,6 +213,8 @@ catalog:
   http-proxy-agent: 7.0.2
   https-proxy-agent: 7.0.6
   iconv-lite: 0.6.3
+  ioredis: 5.3.2
+  ioredis-mock: ^8.8.1
   isolated-vm: ^7.0.1
   js-base64: 3.7.8
   js-tiktoken: 1.0.21

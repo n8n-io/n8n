@@ -1,4 +1,4 @@
-import { UrlService } from '@n8n/backend-services';
+import { CacheService, UrlService } from '@n8n/backend-services';
 import {
 	createWorkflowWithHistory,
 	getPersonalProject,
@@ -25,7 +25,6 @@ import { DynamicCredentialUserEntryStorage } from '@/modules/dynamic-credentials
 import { N8nResolverSeeder } from '@/modules/dynamic-credentials.ee/services/n8n-resolver-seeder.service';
 import { OAuthClientRepository } from '@/modules/oauth-server/database/repositories/oauth-client.repository';
 import { OAuthTokenService } from '@/modules/oauth-server/oauth-token.service';
-import { CacheService } from '@/services/cache/cache.service';
 import { WebhookServer } from '@/webhooks/webhook-server';
 
 import { createCredentials } from '../shared/db/credentials';

@@ -1,4 +1,5 @@
 import { LicenseState, Logger } from '@n8n/backend-common';
+import { CacheService } from '@n8n/backend-services';
 import { SettingsRepository, UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { Cipher } from 'n8n-core';
@@ -6,7 +7,6 @@ import { v4 as uuid } from 'uuid';
 
 import { InvalidMfaCodeError } from '@/errors/response-errors/invalid-mfa-code.error';
 import { InvalidMfaRecoveryCodeError } from '@/errors/response-errors/invalid-mfa-recovery-code-error';
-import { CacheService } from '@/services/cache/cache.service';
 
 import { MFA_ENFORCE_SETTING } from './constants';
 import { TOTPService } from './totp.service';

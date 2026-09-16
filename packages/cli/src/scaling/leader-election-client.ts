@@ -1,11 +1,10 @@
+import { RedisClientService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type { Cluster, Redis } from 'ioredis';
 import { InstanceSettings } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { type Result, createResultOk, createResultError } from '@n8n/utils/result';
-
-import { RedisClientService } from '@/services/redis-client.service';
 
 const COMMAND_TIMEOUT_MS = 5_000;
 

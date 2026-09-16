@@ -1,11 +1,10 @@
 import type { BreakingChangeWorkflowRuleResult } from '@n8n/api-types';
+import type { CacheService } from '@n8n/backend-services';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { WorkflowRepository, WorkflowStatisticsRepository } from '@n8n/db';
 import type { ErrorReporter } from 'n8n-core';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
-
-import type { CacheService } from '@/services/cache/cache.service';
 
 import { N8N_VERSION } from '../../../constants';
 import { MigrationRegistry } from '../breaking-changes.migration-registry.service';

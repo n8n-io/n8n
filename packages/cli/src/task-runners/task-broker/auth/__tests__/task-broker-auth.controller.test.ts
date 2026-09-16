@@ -1,8 +1,6 @@
-import { BadRequestError, ForbiddenError } from '@n8n/backend-services';
+import { BadRequestError, CacheService, ForbiddenError } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-
-import { CacheService } from '@/services/cache/cache.service';
 
 import type { AuthlessRequest } from '../../../../requests';
 import { TaskBrokerAuthController } from '../task-broker-auth.controller';

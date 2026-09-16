@@ -1,3 +1,4 @@
+import { CacheService } from '@n8n/backend-services';
 import { testDb } from '@n8n/backend-test-utils';
 import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
@@ -10,7 +11,6 @@ import {
 import { In } from '@n8n/typeorm';
 
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
-import { CacheService } from '@/services/cache/cache.service';
 import { createMemberWithApiKey, createOwnerWithApiKey } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 

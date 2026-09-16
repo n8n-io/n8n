@@ -1,4 +1,4 @@
-import { UrlService } from '@n8n/backend-services';
+import { CacheService, UrlService } from '@n8n/backend-services';
 import {
 	createWorkflowWithHistory,
 	setActiveVersion,
@@ -18,7 +18,6 @@ import { setupTestServer } from '@test-integration/utils';
 
 import { OAuthClientRepository } from '../database/repositories/oauth-client.repository';
 import { OAuthTokenService } from '@/modules/oauth-server/oauth-token.service';
-import { CacheService } from '@/services/cache/cache.service';
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
 import { TestWebhookRegistrationsService } from '@/webhooks/test-webhook-registrations.service';
 

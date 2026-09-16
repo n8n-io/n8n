@@ -1,11 +1,10 @@
 import type { InstanceRegistration } from '@n8n/api-types';
+import type { RedisClientService } from '@n8n/backend-services';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import type { Redis as SingleNodeClient } from 'ioredis';
 import { jsonStringify } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
-
-import type { RedisClientService } from '@/services/redis-client.service';
 
 import { REDIS_KEY_PATTERNS, REGISTRY_CONSTANTS } from '../../instance-registry.types';
 import {

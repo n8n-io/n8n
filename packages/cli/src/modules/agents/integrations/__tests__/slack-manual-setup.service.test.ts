@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests intentionally reference unbound methods */
+import type { CacheService } from '@n8n/backend-services';
 import { BadRequestError } from '@n8n/backend-services';
 import type { UserRepository } from '@n8n/db';
 import type { Cipher } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import type { CacheService } from '@/services/cache/cache.service';
 import type { ProjectService } from '@/services/project.service.ee';
 
 import { SlackManualSetupService } from '../platforms/slack/slack-manual-setup.service';

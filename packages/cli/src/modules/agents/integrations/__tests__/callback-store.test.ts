@@ -1,9 +1,8 @@
 import { LockService } from '@n8n/backend-common';
+import { CacheService } from '@n8n/backend-services';
 import type { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
-
-import { CacheService } from '@/services/cache/cache.service';
 
 import { CallbackStore } from '../callback-store';
 

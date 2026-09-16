@@ -16,4 +16,8 @@ export { UnauthenticatedError } from './errors/response-errors/unauthenticated.e
 export { UnprocessableRequestError } from './errors/response-errors/unprocessable.error';
 export { UnsupportedMediaTypeError } from './errors/response-errors/unsupported-media-type.error';
 export { WorkflowPublishBlockedError } from './errors/response-errors/workflow-publish-blocked.error';
+export { UncacheableValueError } from './errors/cache-errors/uncacheable-value.error';
+export { CacheService } from './services/cache/cache.service';
+export { RedisClientService } from './services/redis-client.service';
+export type { RedisClientType } from './services/redis.types';
 export { UrlService } from './services/url.service';

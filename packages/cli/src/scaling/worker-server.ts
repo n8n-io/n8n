@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { RedisClientService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { DbConnection } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -17,7 +18,6 @@ import type { ICredentialsOverwrite } from '@/interfaces';
 import { PrometheusMetricsService } from '@/metrics/prometheus';
 import { rawBodyReader, bodyParser } from '@/middlewares';
 import * as ResponseHelper from '@/response-helper';
-import { RedisClientService } from '@/services/redis-client.service';
 import { resolveBackendHealthEndpointPath } from '@/utils/health-endpoint.util';
 
 export type WorkerServerEndpointsConfig = {

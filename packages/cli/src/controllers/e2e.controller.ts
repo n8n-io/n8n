@@ -1,5 +1,6 @@
 import type { PushMessage } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { CacheService } from '@n8n/backend-services';
 import { ExecutionsConfig } from '@n8n/config';
 import type { BooleanLicenseFeature, NumericLicenseFeature } from '@n8n/constants';
 import { LICENSE_FEATURES, LICENSE_QUOTAS, UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
@@ -32,7 +33,6 @@ import { MfaService } from '@/mfa/mfa.service';
 import { LogStreamingDestinationService } from '@/modules/log-streaming.ee/log-streaming-destination.service';
 import { Push } from '@/push';
 import { WorkflowScheduledJobOwner } from '@/scheduling/workflow-scheduled-job-owner';
-import { CacheService } from '@/services/cache/cache.service';
 import { FrontendService } from '@/services/frontend.service';
 import { PasswordUtility } from '@/services/password.utility';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';

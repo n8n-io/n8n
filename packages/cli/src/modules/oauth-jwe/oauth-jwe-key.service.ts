@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { CacheService } from '@n8n/backend-services';
 import { DeploymentKeyRepository, isUniqueConstraintError } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
@@ -6,8 +7,6 @@ import type { CryptoKey, JWK } from 'jose';
 import { exportJWK, generateKeyPair, importJWK } from 'jose';
 import { Cipher } from 'n8n-core';
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
-
-import { CacheService } from '@/services/cache/cache.service';
 
 import {
 	JWE_KEY_ALGORITHMS,

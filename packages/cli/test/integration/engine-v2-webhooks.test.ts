@@ -6,6 +6,7 @@
  * assert what reaches the data plane.
  */
 
+import { CacheService } from '@n8n/backend-services';
 import { createWorkflow, mockInstance, testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { UUID_V7_PATTERN } from '@n8n/constants';
@@ -16,7 +17,6 @@ import { WEBHOOK_NODE_TYPE } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 import { agent as testAgent } from 'supertest';
 
-import { CacheService } from '@/services/cache/cache.service';
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
 import { Telemetry } from '@/telemetry';
 import { WebhookServer } from '@/webhooks/webhook-server';

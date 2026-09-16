@@ -1,4 +1,4 @@
-import type { UrlService } from '@n8n/backend-services';
+import type { CacheService, UrlService } from '@n8n/backend-services';
 import { BadRequestError, ForbiddenError } from '@n8n/backend-services';
 import type { Mock, Mocked } from 'vitest';
 import type { SamlPreferences } from '@n8n/api-types';
@@ -16,7 +16,6 @@ import type { IdentityProviderInstance, ServiceProviderInstance } from 'samlify'
 
 import type { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
-import type { CacheService } from '@/services/cache/cache.service';
 import * as ssoHelpers from '@/sso.ee/sso-helpers';
 
 import { SAML_PREFERENCES_DB_KEY } from '../constants';
