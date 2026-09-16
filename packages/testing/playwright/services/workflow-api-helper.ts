@@ -23,6 +23,9 @@ type WorkflowImportResult = {
 	webhookMethod?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'HEAD';
 };
 
+/** Engine 2.0 mints uuidv7 execution ids; the legacy engine mints numbers. */
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export class WorkflowApiHelper {
 	constructor(private api: ApiHelpers) {}
 
@@ -127,7 +130,28 @@ export class WorkflowApiHelper {
 		}
 
 		const result = await response.json();
-		return result.data ?? result;
+		const run = (result.data ?? result) as { executionId: string };
+		this.assertRoutedToEngine(run.executionId);
+		return run;
+	}
+
+	/**
+	 * Fails a run that the stack meant for engine 2.0 but the control plane kept.
+	 * A v1 id is numeric and a v2 id is a uuid, which the engine validates on the
+	 * wire (`packages/cli/src/executions/execution-id.ts`), so the shape says
+	 * which plane ran it. Without this a workflow that missed `engineType` runs
+	 * on v1 and the spec still passes, which is parity evidence that proves
+	 * nothing.
+	 */
+	private assertRoutedToEngine(executionId: string): void {
+		if (this.api.options.workflowSettings?.engineType !== 'v2') return;
+		if (UUID.test(executionId)) return;
+
+		throw new TestError(
+			`Expected an engine 2.0 execution id, got "${executionId}". The workflow did not carry ` +
+				'`settings.engineType`, so the run stayed on the legacy engine. Create it through ' +
+				'`api.workflows`, which applies the stack default.',
+		);
 	}
 
 	/**

@@ -91,3 +91,36 @@ describe('WorkflowApiHelper.waitForExecutionById', () => {
 		);
 	});
 });
+
+describe('WorkflowApiHelper.runManually engine routing', () => {
+	function apiReturningExecutionId(executionId: string, options: ApiHelpers['options']) {
+		const post = vi.fn().mockResolvedValue({
+			ok: () => true,
+			json: async () => ({ data: { executionId } }),
+		});
+		return { api: { request: { post }, options } as unknown as ApiHelpers };
+	}
+
+	test('accepts the engine 2.0 execution id a routed run mints', async () => {
+		const id = '0199c3a1-8f4e-7c2b-9a1d-2f6b8e4c1a77';
+		const { api } = apiReturningExecutionId(id, { workflowSettings: { engineType: 'v2' } });
+
+		await expect(new WorkflowApiHelper(api).runManually('wf-1', 'Trigger')).resolves.toEqual({
+			executionId: id,
+		});
+	});
+
+	test('rejects a legacy execution id when the stack routes to engine 2.0', async () => {
+		const { api } = apiReturningExecutionId('1783', { workflowSettings: { engineType: 'v2' } });
+
+		await expect(new WorkflowApiHelper(api).runManually('wf-1', 'Trigger')).rejects.toThrow(/1783/);
+	});
+
+	test('accepts a legacy execution id on a stack without engine 2.0', async () => {
+		const { api } = apiReturningExecutionId('1783', {});
+
+		await expect(new WorkflowApiHelper(api).runManually('wf-1', 'Trigger')).resolves.toEqual({
+			executionId: '1783',
+		});
+	});
+});
