@@ -53,7 +53,7 @@ import {
 	updateFromAIOverrideValues,
 	type FromAIOverride,
 } from '../../utils/fromAIOverride.utils';
-import { completeExpressionSyntax } from '@/app/utils/expressions';
+import { completeExpressionSyntax, shouldConvertToExpression } from '@/app/utils/expressions';
 import { openSafeUrl } from '@/app/utils/htmlUtils';
 import { DEBOUNCE_TIME, ExpressionLocalResolveContextSymbol } from '@/app/constants';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -748,7 +748,12 @@ function onInputChange(value: INodeParameterResourceLocator['value']): void {
 			params.cachedResultUrl = resource.url;
 		}
 	} else {
-		params.value = completeExpressionSyntax(value);
+		// Same rule as ParameterInput: a full `{{ }}` entered into an empty field
+		// becomes an expression, otherwise it is stored and validated as a literal id.
+		params.value =
+			!props.modelValue?.value && shouldConvertToExpression(value)
+				? '=' + value
+				: completeExpressionSyntax(value);
 	}
 	emit('update:modelValue', params);
 }
