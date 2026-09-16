@@ -10,11 +10,13 @@ import { computed, onMounted, useCssModule } from 'vue';
 import { useRouter, type RouteLocationRaw } from 'vue-router';
 import type { AgentConfigValidationIssue } from '@n8n/api-types';
 import {
+	N8nAssistantIcon,
 	N8nBreadcrumbs,
 	N8nButton,
 	N8nDropdownMenu,
 	N8nDropdownMenuItem,
 	N8nIcon,
+	N8nToggle,
 } from '@n8n/design-system';
 import type { PathItem } from '@n8n/design-system';
 import type { DropdownMenuItemProps } from '@n8n/design-system';
@@ -38,6 +40,10 @@ const props = defineProps<{
 	beforeRevertToPublished?: () => Promise<void> | void;
 	artifactMode?: boolean;
 	isPreviewOpen?: boolean;
+	/** Whether the embedded n8n Assistant panel toggle is available at all. */
+	instanceAiAvailable?: boolean;
+	/** Whether the embedded n8n Assistant panel is currently open. */
+	isAiPanelOpen?: boolean;
 	/** True while the AI is actively building/mutating this agent in artifact mode — disables publish/revert/unpublish without hiding them. */
 	editingLocked?: boolean;
 	configValidationStatus?: 'valid' | 'invalid' | null;
@@ -54,6 +60,7 @@ const emit = defineEmits<{
 	reverted: [agent: AgentResource];
 	'switch-agent': [agentId: string];
 	'toggle-version-history': [];
+	'toggle-instance-ai': [];
 }>();
 
 const i18n = useI18n();
@@ -146,6 +153,18 @@ function onMenuSelect(id: string) {
 <template>
 	<header :class="$style.header" data-testid="agent-builder-header">
 		<div :class="$style.left">
+			<N8nToggle
+				v-if="!props.artifactMode && props.instanceAiAvailable"
+				:model-value="props.isAiPanelOpen"
+				variant="ghost"
+				size="medium"
+				:label="i18n.baseText('agents.builder.header.editWithAi')"
+				:disabled="!props.agent"
+				data-testid="agent-builder-instance-ai-btn"
+				@click="emit('toggle-instance-ai')"
+			>
+				<N8nAssistantIcon size="large" />
+			</N8nToggle>
 			<N8nBreadcrumbs
 				v-if="!props.artifactMode"
 				:items="breadcrumbItems"

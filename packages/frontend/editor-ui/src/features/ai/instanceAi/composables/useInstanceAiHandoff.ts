@@ -23,9 +23,11 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import {
 	INSTANCE_AI_AGENT_BUILDER_TARGET_METADATA_KEY,
 	INSTANCE_AI_AGENT_PREVIEW_VIEW_METADATA_KEY,
+	INSTANCE_AI_PENDING_AGENT_METADATA_KEY,
 	INSTANCE_AI_THREAD_VIEW,
 	INSTANCE_AI_VIEW,
 } from '../constants';
+import type { InstanceAiEmbedSubject } from '../embed/instanceAiEmbed.types';
 import { useInstanceAiStore } from '../instanceAi.store';
 import { useInstanceAiReady } from './useInstanceAiAvailability';
 import {
@@ -349,6 +351,58 @@ export async function provisionLaunchedThread(
 	return threadId;
 }
 
+/**
+ * Mint a thread bound to a subject: the id, the target metadata (a pending
+ * marker or a bound target), and — for the agent variant — the stashed
+ * attachment the destination view resolves it with. `extraMetadata` merges
+ * into the same write so binding a subject and recording where it opened from
+ * (e.g. the agent-preview view) costs one round trip, not two.
+ *
+ * Shared by `InstanceAiChatPanel` (embed/) and `openAgentArtifactThread` below,
+ * which used to run this in two separate steps.
+ */
+export async function provisionSubjectThread(
+	subject: InstanceAiEmbedSubject,
+	launch: InstanceAiThreadLaunch,
+	extraMetadata?: Record<string, unknown>,
+): Promise<string> {
+	const store = useInstanceAiStore();
+	const threadId = uuidv4();
+	await store.syncThread(threadId, subject.projectId, launch);
+
+	const targetMetadata =
+		subject.type === 'agent'
+			? subject.pending
+				? {
+						[INSTANCE_AI_PENDING_AGENT_METADATA_KEY]: {
+							projectId: subject.projectId,
+							agentId: subject.id,
+						},
+					}
+				: {
+						[INSTANCE_AI_AGENT_BUILDER_TARGET_METADATA_KEY]: {
+							agentId: subject.id,
+							projectId: subject.projectId,
+							...(subject.name ? { name: subject.name } : {}),
+						},
+					}
+			: {}; // workflow: no target metadata yet — see instanceAiEmbed.types.ts.
+
+	try {
+		await store.updateThreadMetadata(threadId, { ...targetMetadata, ...extraMetadata });
+	} catch (error) {
+		// The thread now exists server-side — leaving it target-less would strand
+		// an unbound conversation the user never asked to start. Silent: the
+		// caller already surfaces its own failure toast.
+		await store.deleteThread(threadId, { silent: true });
+		throw error;
+	}
+
+	if (subject.type === 'agent') stashPendingAgentAttachment(threadId, subject);
+
+	return threadId;
+}
+
 export async function provisionContextOnlyThread(
 	projectId: string,
 	context: InstanceAiHandoffContext,
@@ -414,35 +468,27 @@ export function useInstanceAiHandoff() {
 		if (handoffInFlight) return false;
 		handoffInFlight = true;
 		try {
-			const threadId = uuidv4();
+			let threadId: string;
 			try {
-				await instanceAiStore.syncThread(threadId, attachment.projectId, launch);
-			} catch {
-				showOpenFailed();
-				return false;
-			}
-			try {
-				await instanceAiStore.updateThreadMetadata(threadId, {
-					[INSTANCE_AI_AGENT_BUILDER_TARGET_METADATA_KEY]: {
-						agentId: attachment.id,
-						projectId: attachment.projectId,
-						...(attachment.name ? { name: attachment.name } : {}),
-					},
-					...(options?.context?.source === 'agent-preview'
+				// Mints the thread, binds it to the agent, and stashes the attachment —
+				// the agent-preview view metadata rides along as extra metadata so this
+				// is one merged write, not two. Same primitive `InstanceAiChatPanel` uses.
+				threadId = await provisionSubjectThread(
+					attachment,
+					launch,
+					options?.context?.source === 'agent-preview'
 						? {
 								[INSTANCE_AI_AGENT_PREVIEW_VIEW_METADATA_KEY]: {
 									agentId: options.context.agentId,
 									threadId: options.context.threadId,
 								},
 							}
-						: {}),
-				});
+						: undefined,
+				);
 			} catch {
-				await instanceAiStore.deleteThread(threadId);
 				showOpenFailed();
 				return false;
 			}
-			stashPendingAgentAttachment(threadId, attachment);
 			if (options?.context) stashPendingHandoffContext(threadId, options.context);
 			if (options?.initialDraft) stashPendingComposerDraft(threadId, options.initialDraft);
 			try {

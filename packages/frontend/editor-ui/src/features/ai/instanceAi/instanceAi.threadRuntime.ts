@@ -16,6 +16,7 @@ import {
 	type InstanceAiAttachment,
 	type InstanceAiEvent,
 	type InstanceAiMessage,
+	type InstanceAiThreadSummary,
 	type InstanceAiAgentNode,
 	type InstanceAiToolCallState,
 	type InstanceAiSSEConnectionState,
@@ -55,6 +56,7 @@ import {
 	INSTANCE_AI_AGENT_PREVIEW_SESSION_METADATA_KEY,
 	INSTANCE_AI_AGENT_PREVIEW_VIEW_METADATA_KEY,
 	INSTANCE_AI_PENDING_AGENT_METADATA_KEY,
+	NEW_CONVERSATION_TITLE,
 } from './constants';
 import {
 	findToolCallInTree,
@@ -114,6 +116,25 @@ export interface ThreadRuntimeHooks {
 	onRunFinish: () => void;
 	/** Thread-list metadata, used to enrich historical artifacts. */
 	getThreadMetadata?: (threadId: string) => Record<string, unknown> | undefined;
+}
+
+/**
+ * The title a thread shows in a header: the summary title once the server has
+ * generated one, else the first user message (truncated), else undefined —
+ * rendering only on a defined value avoids a "New conversation" → real title
+ * flash. Shared by `InstanceAiThreadView` and the embedded `InstanceAiChatPanel`.
+ */
+export function getThreadDisplayTitle(
+	summary: InstanceAiThreadSummary | undefined,
+	messages: InstanceAiMessage[],
+): string | undefined {
+	if (summary?.title && summary.title !== NEW_CONVERSATION_TITLE) return summary.title;
+	const firstUserMessage = messages.find((message) => message.role === 'user');
+	if (firstUserMessage?.content) {
+		const text = firstUserMessage.content.trim();
+		return text.length > 60 ? text.slice(0, 60) + '…' : text;
+	}
+	return undefined;
 }
 
 export function getAgentBuilderTargetFromThreadMetadata(

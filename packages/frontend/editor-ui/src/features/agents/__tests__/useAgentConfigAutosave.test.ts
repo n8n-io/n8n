@@ -27,6 +27,30 @@ describe('useAgentConfigAutosave', () => {
 		expect(save).toHaveBeenCalledTimes(1);
 	});
 
+	it("hasQueuedSnapshot is true only while a debounced snapshot hasn't fired yet", async () => {
+		vi.useFakeTimers();
+		const pending = Promise.withResolvers<undefined>();
+		const save = vi.fn().mockReturnValue(pending.promise);
+		const autosave = useAgentConfigAutosave<{ value: string }>({
+			save,
+			debounceMs: 500,
+		});
+
+		expect(autosave.hasQueuedSnapshot.value).toBe(false);
+
+		autosave.scheduleAutosave({ value: 'latest' });
+		expect(autosave.hasQueuedSnapshot.value).toBe(true);
+
+		// Once the debounce fires the snapshot is in flight, not merely queued.
+		await vi.advanceTimersByTimeAsync(500);
+		expect(autosave.hasQueuedSnapshot.value).toBe(false);
+		expect(autosave.hasPendingSave.value).toBe(true);
+
+		pending.resolve(undefined);
+		await autosave.flushAutosave();
+		expect(autosave.hasPendingSave.value).toBe(false);
+	});
+
 	it('flushAutosave rejects when the immediate save fails', async () => {
 		vi.useFakeTimers();
 		const error = new Error('save failed');
