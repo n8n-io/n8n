@@ -142,16 +142,16 @@ function resolveTranslation(
 }
 
 /**
- * Fingerprint of which nodes sit together: `"a,b|c"` for the groups [a, b] and [c].
+ * Fingerprint of which nodes sit together: `["a","b"]["c"]` for the groups [a, b] and [c].
  * A group's own name and id are left out, so renaming a group does not change it.
  * Sorted twice so the same grouping always gives the same text, whatever order the
  * build lists its groups and members in.
  */
 function groupingFingerprint(json: WorkflowJSON): string {
 	return (json.nodeGroups ?? [])
-		.map((group) => [...group.nodeIds].sort().join(','))
+		.map((group) => JSON.stringify([...group.nodeIds].sort()))
 		.sort()
-		.join('|');
+		.join('');
 }
 
 /** Corner the whole set starts at: the smallest x and the smallest y. */

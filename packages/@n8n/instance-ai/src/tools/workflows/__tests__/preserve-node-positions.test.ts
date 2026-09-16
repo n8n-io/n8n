@@ -240,6 +240,39 @@ describe('preserveExistingNodePositions', () => {
 			expect(positionsByName(built)).toEqual(positionsByName(saved));
 		});
 
+		it('tells apart groupings whose node ids contain a separator', async () => {
+			const withId = (name: string, id: string, position: [number, number]): NodeJSON => ({
+				...node(name, position),
+				id,
+			});
+			// "x,y" is one node. A fingerprint that joins ids with a comma cannot tell the group
+			// holding it apart from a group holding the two nodes "x" and "y".
+			const saved = grouped(
+				workflow([
+					withId('Pair', 'x,y', [320, 480]),
+					withId('X', 'x', [528, 624]),
+					withId('Y', 'y', [736, 768]),
+				]),
+				[{ name: 'Stage', nodeIds: ['x,y'] }],
+			);
+			const built = grouped(
+				workflow([
+					withId('Pair', 'x,y', [0, 0]),
+					withId('X', 'x', [208, 0]),
+					withId('Y', 'y', [416, 0]),
+				]),
+				[{ name: 'Stage', nodeIds: ['x', 'y'] }],
+			);
+
+			await preserveExistingNodePositions(built, 'wf-1', contextReturning(saved));
+
+			expect(positionsByName(built)).toEqual({
+				Pair: [320, 480],
+				X: [528, 480],
+				Y: [736, 480],
+			});
+		});
+
 		it('restores saved positions when a group is only renamed', async () => {
 			const saved = grouped(savedStaircase(), [{ name: 'Stage', nodeIds: ['b', 'c'] }]);
 			const built = grouped(builtRow(), [{ name: 'Renamed stage', nodeIds: ['b', 'c'] }]);
