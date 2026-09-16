@@ -147,6 +147,13 @@ export const useAgentCollaborationStore = defineStore(STORES.AGENT_COLLABORATION
 
 		const writeLock = await fetchWriteLockState(projectId, agentId);
 
+		// The poll captures agentId at call time. If the view switched to a
+		// different agent during the await, the response is stale and must
+		// not mutate the new agent's lock state.
+		if (collaboratingAgentId.value !== agentId) {
+			return;
+		}
+
 		// If lock is gone on backend but still exists in frontend, clear it
 		// and request the lock so this tab becomes the next writer.
 		if (!writeLock && currentWriterLock.value) {
@@ -184,6 +191,10 @@ export const useAgentCollaborationStore = defineStore(STORES.AGENT_COLLABORATION
 				agentId: collaboratingAgentId.value,
 			});
 		} catch {
+			// send threw (e.g. WebSocket tearing down). Reset the pending
+			// flag so the tab is not trapped read-only — the lock-state
+			// poll will re-request once the connection recovers.
+			isRequestingWriteAccess.value = false;
 			return false;
 		}
 

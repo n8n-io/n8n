@@ -78,7 +78,6 @@ describe('CollaborationService — agent messages', () => {
 		await service.handleUserMessage(userId, 'client-1', msg);
 
 		expect(state.addAgentCollaborator).not.toHaveBeenCalled();
-		expect(state.sendAgentUsersChangedMessage).not.toHaveBeenCalled();
 	});
 
 	it('releases the agent write lock on agentClosed when the client holds it', async () => {

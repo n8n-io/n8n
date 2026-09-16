@@ -19,4 +19,23 @@ export class AgentApiHelper {
 		const result = await response.json();
 		return result.data ?? result;
 	}
+
+	/**
+	 * Fetch the current write lock for an agent. Returns null when no
+	 * lock is held.
+	 */
+	async getWriteLock(
+		projectId: string,
+		agentId: string,
+	): Promise<{ userId: string; clientId: string } | null> {
+		const response = await this.api.request.get(
+			`/rest/projects/${projectId}/agents/v2/${agentId}/collaboration/write-lock`,
+		);
+
+		if (!response.ok()) {
+			return null;
+		}
+
+		return await response.json();
+	}
 }

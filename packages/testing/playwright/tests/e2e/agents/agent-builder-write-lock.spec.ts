@@ -32,6 +32,19 @@ test.describe(
 			await expect(n8n.agentBuilder.getHeader()).toBeVisible();
 			await expect(n8n.agentBuilder.getCollaborationBanner()).toBeHidden();
 
+			// Wait for the first tab to acquire the write lock before opening
+			// the second tab — the lock is acquired asynchronously after mount
+			// via WebSocket round-trip, and the second tab must see it.
+			await expect
+				.poll(
+					async () => {
+						const lock = await api.agents.getWriteLock(projectId, agentId);
+						return lock?.userId;
+					},
+					{ timeout: 15_000, intervals: [500] },
+				)
+				.toBeTruthy();
+
 			// Second tab in the same browser context (same user, different push-ref).
 			const secondTab = await n8n.start.newTab();
 			await secondTab.agentBuilder.goto(projectId, agentId);

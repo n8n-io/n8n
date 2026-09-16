@@ -43,16 +43,22 @@ export class CollaborationState {
 	 */
 	private lockChains = new Map<string, Promise<unknown>>();
 
-	private serializeLockOp<T>(key: string, fn: () => Promise<T>): Promise<T> {
+	private async serializeLockOp<T>(key: string, fn: () => Promise<T>): Promise<T> {
 		const previous = this.lockChains.get(key) ?? Promise.resolve();
 		const next = previous.then(fn, fn);
 		// Keep the chain alive for the next op, but don't reject the chain
 		// if this op throws — the caller still sees the real error.
-		this.lockChains.set(
-			key,
-			next.catch(() => {}),
-		);
-		return next;
+		const settled = next.catch(() => {});
+		this.lockChains.set(key, settled);
+		// Remove the entry once it settles so long-lived instances don't
+		// accumulate one chain per resource ever opened. Only delete if
+		// the map still points at this chain.
+		void settled.then(() => {
+			if (this.lockChains.get(key) === settled) {
+				this.lockChains.delete(key);
+			}
+		});
+		return await next;
 	}
 
 	/**
@@ -194,7 +200,7 @@ export class CollaborationState {
 		clientId: string,
 		userId: User['id'],
 	): Promise<boolean> {
-		return this.serializeLockOp(this.formWriteLockCacheKey(workflowId), async () => {
+		return await this.serializeLockOp(this.formWriteLockCacheKey(workflowId), async () => {
 			const current = await this.getWriteLock(workflowId);
 			if (current && current.clientId !== clientId) return false;
 			await this.setWriteLock(workflowId, clientId, userId);
@@ -203,7 +209,7 @@ export class CollaborationState {
 	}
 
 	async renewWriteLock(workflowId: Workflow['id'], clientId: string) {
-		return this.serializeLockOp(this.formWriteLockCacheKey(workflowId), async () => {
+		return await this.serializeLockOp(this.formWriteLockCacheKey(workflowId), async () => {
 			const currentLock = await this.getWriteLock(workflowId);
 			if (currentLock?.clientId === clientId) {
 				const lockData = JSON.stringify(currentLock);
@@ -244,7 +250,7 @@ export class CollaborationState {
 	 * another tab between the check and the delete.
 	 */
 	async releaseWriteLockIfHolder(workflowId: Workflow['id'], clientId: string): Promise<boolean> {
-		return this.serializeLockOp(this.formWriteLockCacheKey(workflowId), async () => {
+		return await this.serializeLockOp(this.formWriteLockCacheKey(workflowId), async () => {
 			const current = await this.getWriteLock(workflowId);
 			if (current?.clientId !== clientId) return false;
 			await this.cache.delete(this.formWriteLockCacheKey(workflowId));
@@ -268,7 +274,7 @@ export class CollaborationState {
 		clientId: string,
 		userId: User['id'],
 	): Promise<boolean> {
-		return this.serializeLockOp(this.formWriteLockCacheKey(workflowId), async () => {
+		return await this.serializeLockOp(this.formWriteLockCacheKey(workflowId), async () => {
 			const currentLock = await this.getWriteLock(workflowId);
 			if (currentLock && currentLock.userId !== userId) return false;
 			await this.setWriteLock(workflowId, clientId, userId);
@@ -355,7 +361,7 @@ export class CollaborationState {
 		clientId: string,
 		userId: User['id'],
 	): Promise<boolean> {
-		return this.serializeLockOp(this.formAgentWriteLockCacheKey(agentId), async () => {
+		return await this.serializeLockOp(this.formAgentWriteLockCacheKey(agentId), async () => {
 			const current = await this.getAgentWriteLock(agentId);
 			if (current && current.clientId !== clientId) return false;
 			await this.setAgentWriteLock(agentId, clientId, userId);
@@ -364,7 +370,7 @@ export class CollaborationState {
 	}
 
 	async renewAgentWriteLock(agentId: string, clientId: string) {
-		return this.serializeLockOp(this.formAgentWriteLockCacheKey(agentId), async () => {
+		return await this.serializeLockOp(this.formAgentWriteLockCacheKey(agentId), async () => {
 			const currentLock = await this.getAgentWriteLock(agentId);
 			if (currentLock?.clientId === clientId) {
 				const lockData = JSON.stringify(currentLock);
@@ -401,7 +407,7 @@ export class CollaborationState {
 	 * Atomically release the agent write lock only if the caller holds it.
 	 */
 	async releaseAgentWriteLockIfHolder(agentId: string, clientId: string): Promise<boolean> {
-		return this.serializeLockOp(this.formAgentWriteLockCacheKey(agentId), async () => {
+		return await this.serializeLockOp(this.formAgentWriteLockCacheKey(agentId), async () => {
 			const current = await this.getAgentWriteLock(agentId);
 			if (current?.clientId !== clientId) return false;
 			await this.cache.delete(this.formAgentWriteLockCacheKey(agentId));
@@ -424,7 +430,7 @@ export class CollaborationState {
 		clientId: string,
 		userId: User['id'],
 	): Promise<boolean> {
-		return this.serializeLockOp(this.formAgentWriteLockCacheKey(agentId), async () => {
+		return await this.serializeLockOp(this.formAgentWriteLockCacheKey(agentId), async () => {
 			const currentLock = await this.getAgentWriteLock(agentId);
 			if (currentLock && currentLock.userId !== userId) return false;
 			await this.setAgentWriteLock(agentId, clientId, userId);

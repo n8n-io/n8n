@@ -87,14 +87,15 @@ export class AgentMcpAccessService {
 			await Promise.all(
 				toUpdate
 					.slice(start, start + BULK_CHUNK_SIZE)
-					.map((agent) =>
-						this.collaborationService.validateAgentWriteLock(
-							user.id,
-							pushRef,
-							agent.projectId,
-							agent.id,
-							'toggle MCP availability for',
-						),
+					.map(
+						async (agent) =>
+							await this.collaborationService.validateAgentWriteLock(
+								user.id,
+								pushRef,
+								agent.projectId,
+								agent.id,
+								'toggle MCP availability for',
+							),
 					),
 			);
 		}

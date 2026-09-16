@@ -70,8 +70,22 @@ vi.mock('vue-router', () => ({
 	RouterLink: { template: '<a><slot/></a>' },
 }));
 
+const rootStoreMock = {
+	restApiContext: { baseUrl: 'http://localhost:5678' },
+	pushRef: 'tab-1' as string,
+};
+
 vi.mock('@n8n/stores/useRootStore', () => ({
-	useRootStore: () => ({ restApiContext: { baseUrl: 'http://localhost:5678' } }),
+	useRootStore: () => rootStoreMock,
+}));
+
+const usersStoreMock = {
+	currentUserId: 'user-1' as string,
+	usersById: {} as Record<string, unknown>,
+};
+
+vi.mock('@n8n/stores/users.store', () => ({
+	useUsersStore: () => usersStoreMock,
 }));
 
 vi.mock('@/features/collaboration/projects/projects.store', () => ({
@@ -147,6 +161,7 @@ const listAgentFilesMock = vi.fn().mockResolvedValue([]);
 const uploadAgentFilesMock = vi.fn().mockResolvedValue([]);
 const warmAgentKnowledgeSandboxMock = vi.fn().mockResolvedValue({ accepted: true });
 const getAgentConfigValidationMock = vi.fn().mockResolvedValue({ status: 'valid', issues: [] });
+const getAgentWriteLockMock = vi.fn().mockResolvedValue(null);
 interface SessionThread {
 	id: string;
 	updatedAt: string;
@@ -186,7 +201,7 @@ vi.mock('../composables/useAgentApi', () => ({
 	deleteAgentFile: vi.fn(),
 	warmAgentKnowledgeSandbox: warmAgentKnowledgeSandboxMock,
 	getAgentConfigValidation: getAgentConfigValidationMock,
-	getAgentWriteLock: vi.fn().mockResolvedValue(null),
+	getAgentWriteLock: getAgentWriteLockMock,
 }));
 
 const generateDraftCasesMock = vi.fn();
@@ -597,6 +612,15 @@ const commonStubs = {
 			'<button v-bind="$attrs" @click="$emit(\'click\')"><slot /><slot name="icon" /></button>',
 		emits: ['click'],
 	},
+	N8nCallout: {
+		template:
+			'<div data-testid="stub-n8n-callout" :data-theme="theme"><slot /><slot name="actions" /><slot name="trailingContent" /></div>',
+		props: ['theme', 'iconTooltip', 'roundCorners'],
+	},
+	N8nUserStack: {
+		template: '<div data-testid="stub-n8n-user-stack" />',
+		props: ['users', 'currentUserEmail'],
+	},
 	N8nAssistantIcon: { template: '<i data-testid="stub-assistant-icon" />', props: ['size'] },
 	N8nTooltip: {
 		template: '<span data-testid="stub-tooltip"><slot /></span>',
@@ -682,6 +706,13 @@ function resetViewMocks() {
 	getIntegrationStatusMock.mockResolvedValue({ status: 'connected', integrations: [] });
 	getAgentConfigValidationMock.mockReset();
 	getAgentConfigValidationMock.mockResolvedValue({ status: 'valid', issues: [] });
+	getAgentWriteLockMock.mockResolvedValue(null);
+	// Keep pushRef unset by default: isCurrentTabWriter resolves to
+	// `undefined === undefined` = true, so existing tests stay editable.
+	// Collaboration lock tests override pushRef in their own beforeEach.
+	rootStoreMock.pushRef = undefined as unknown as string;
+	usersStoreMock.currentUserId = 'user-1';
+	usersStoreMock.usersById = {};
 	listAgentFilesMock.mockReset();
 	listAgentFilesMock.mockResolvedValue([]);
 	uploadAgentFilesMock.mockReset();
@@ -3677,4 +3708,87 @@ describe('AgentBuilderView — evals focus request', { timeout: 60_000 }, () => 
 	// flight, so whether the request is served or still legitimately held within a
 	// bounded settle is not deterministic. The store tests pin the hold/consume
 	// semantics instead; see `agentEvals.store.test.ts`.
+});
+
+describe('AgentBuilderView — collaboration write lock', { timeout: 60_000 }, () => {
+	beforeEach(() => {
+		resetViewMocks();
+		vi.restoreAllMocks();
+		agentPermissionsMock.canCreate.value = true;
+		agentPermissionsMock.canUpdate.value = true;
+		agentPermissionsMock.canPublish.value = true;
+		agentPermissionsMock.canUnpublish.value = true;
+	});
+
+	it('shows a read-only banner and disables editing when another user holds the lock', async () => {
+		// Simulate an existing lock held by a different user and tab.
+		getAgentWriteLockMock.mockResolvedValue({
+			userId: 'user-2',
+			clientId: 'tab-2',
+		});
+		rootStoreMock.pushRef = 'tab-1';
+		usersStoreMock.currentUserId = 'user-1';
+
+		const wrapper = await renderView();
+		await flushPromises();
+
+		// The collaboration banner is visible.
+		expect(wrapper.find('[data-test-id="agent-collaboration-banner"]').exists()).toBe(true);
+
+		// Editing is disabled via effectiveCanEditAgent → isEditingLocked.
+		expect(wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('canEditAgent')).toBe(
+			false,
+		);
+
+		wrapper.unmount();
+	});
+
+	it('reacts to writeAccessAcquired from another client by showing the read-only banner', async () => {
+		// Start with no lock — this tab will request and acquire it.
+		getAgentWriteLockMock.mockResolvedValue(null);
+		rootStoreMock.pushRef = 'tab-1';
+		usersStoreMock.currentUserId = 'user-1';
+
+		const wrapper = await renderView();
+		await flushPromises();
+
+		// The tab is read-only while requesting the lock (isRequestingWriteAccess).
+		// Simulate the backend granting the lock to this tab.
+		const acquireSelf: PushMessage = {
+			type: 'writeAccessAcquired',
+			data: {
+				agentId: 'a1',
+				userId: 'user-1',
+				clientId: 'tab-1',
+			},
+		};
+		for (const listener of pushListeners) listener(acquireSelf);
+		await flushPromises();
+
+		// Now editable — this tab holds the lock.
+		expect(wrapper.find('[data-test-id="agent-collaboration-banner"]').exists()).toBe(false);
+		expect(wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('canEditAgent')).toBe(
+			true,
+		);
+
+		// Another client acquires the lock (takeover).
+		const acquireOther: PushMessage = {
+			type: 'writeAccessAcquired',
+			data: {
+				agentId: 'a1',
+				userId: 'user-2',
+				clientId: 'tab-2',
+			},
+		};
+		for (const listener of pushListeners) listener(acquireOther);
+		await flushPromises();
+
+		// The banner appears and editing is disabled.
+		expect(wrapper.find('[data-test-id="agent-collaboration-banner"]').exists()).toBe(true);
+		expect(wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('canEditAgent')).toBe(
+			false,
+		);
+
+		wrapper.unmount();
+	});
 });
