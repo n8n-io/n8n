@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import userEvent from '@testing-library/user-event';
 import { fireEvent, waitFor, within } from '@testing-library/vue';
 import { setActivePinia, createPinia } from 'pinia';
-import { defineComponent, h, type Component, type PropType } from 'vue';
+import { defineComponent, h, ref, type Component, type PropType } from 'vue';
 import type { BaseTextKey } from '@n8n/i18n';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -217,6 +217,40 @@ const InputMenuStub = defineComponent({
 			);
 	},
 });
+
+const DirectSubmitHarness = defineComponent({
+	setup(_props, { emit }) {
+		const inputRef = ref<InstanceType<typeof InstanceAiInput> | null>(null);
+		return () =>
+			h('div', [
+				h(InstanceAiInput, {
+					ref: (el: unknown) => {
+						inputRef.value = el as InstanceType<typeof InstanceAiInput> | null;
+					},
+					...defaultProps(),
+					currentThreadId: '',
+					onSubmit: (...args: unknown[]) => emit('submit', ...args),
+				}),
+				h(
+					'button',
+					{
+						'data-test-id': 'harness-direct-submit',
+						onClick: () =>
+							inputRef.value?.submitSuggestion({
+								prompt: 'Score my leads automatically',
+								suggestionId: 'score-my-leads',
+								suggestionKind: 'quick_example',
+								position: 1,
+								prefillType: 'suggestion_catalog',
+							}),
+					},
+					'Direct submit',
+				),
+			]);
+	},
+});
+
+const renderDirectSubmitHarness = createComponentRenderer(DirectSubmitHarness);
 
 const renderComponent = createComponentRenderer(InstanceAiInput, {
 	props: defaultProps(),
@@ -726,6 +760,27 @@ describe('InstanceAiInput', () => {
 			prefillType: 'contextual_followup',
 			promptModified: false,
 		});
+	});
+
+	// The split empty state sends a row straight off, with no insert step, so the
+	// composer was already empty and `resetDraftComposer` does not change it --
+	// the watcher never fires. Anything the user types next must not inherit the
+	// pre-fill that was just sent.
+	it('does not attribute a later typed message to a directly submitted suggestion', async () => {
+		const { emitted, getByRole, getByTestId } = renderDirectSubmitHarness();
+
+		await userEvent.click(getByTestId('harness-direct-submit'));
+		await waitFor(() => expect(emitted().submit?.[0]).toBeDefined());
+		expect(emittedArgument(emitted().submit?.[0], 3)).toMatchObject({
+			kind: 'prefill',
+			prefillType: 'suggestion_catalog',
+		});
+
+		await userEvent.type(getByRole('textbox'), 'Something else entirely');
+		await userEvent.click(getByTestId('instance-ai-send-button'));
+
+		await waitFor(() => expect(emitted().submit?.[1]).toBeDefined());
+		expect(emittedArgument(emitted().submit?.[1], 3)).toEqual({ kind: 'user_typed' });
 	});
 
 	it('submits typed text and attachments from the send button', async () => {

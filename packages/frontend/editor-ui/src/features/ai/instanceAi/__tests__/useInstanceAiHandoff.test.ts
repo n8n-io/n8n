@@ -283,6 +283,20 @@ describe('useInstanceAiHandoff', () => {
 		});
 	});
 
+	// A retired or mistyped value must not cost the user their draft text, and must
+	// certainly not put the raw envelope in the composer for them to send.
+	it('keeps the draft text when the stored pre-fill type is not recognised', () => {
+		localStorage.setItem(
+			'n8n-instance-ai-composer-draft:thread-1',
+			JSON.stringify({ text: 'Fix the failed tool calls', prefillType: 'retired_catalog' }),
+		);
+
+		expect(getPendingComposerDraft('thread-1')).toEqual({
+			text: 'Fix the failed tool calls',
+			prefillType: INSTANCE_AI_PREFILL_TYPE_FALLBACK,
+		});
+	});
+
 	it('round-trips a composer draft stashed under the fallback type', () => {
 		stashPendingComposerDraft('thread-1', {
 			text: 'Fix the failed tool calls',

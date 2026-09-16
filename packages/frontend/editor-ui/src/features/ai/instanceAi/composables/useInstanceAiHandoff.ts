@@ -232,12 +232,17 @@ export function getPendingComposerDraft(threadId: string): PendingComposerDraft 
 	};
 	try {
 		const parsed = JSON.parse(raw) as Partial<PendingComposerDraft>;
-		// The reported guard, not the declarable one: a draft stashed under the
-		// fallback has to round-trip.
-		if (typeof parsed?.text !== 'string' || !isInstanceAiPrefillTypeReported(parsed.prefillType)) {
-			return legacy;
-		}
-		return { text: parsed.text, prefillType: parsed.prefillType };
+		// Only the type falls back. Rejecting the whole envelope over an
+		// unrecognised type would put the raw JSON in the composer for the user to
+		// send. The guard is the reported one, not the declarable one, so a draft
+		// stashed under the fallback round-trips.
+		if (typeof parsed?.text !== 'string') return legacy;
+		return {
+			text: parsed.text,
+			prefillType: isInstanceAiPrefillTypeReported(parsed.prefillType)
+				? parsed.prefillType
+				: INSTANCE_AI_PREFILL_TYPE_FALLBACK,
+		};
 	} catch {
 		return legacy;
 	}

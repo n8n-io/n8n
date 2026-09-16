@@ -439,13 +439,14 @@ function submitComposerMessage(
 function submitSuggestion(payload: SuggestionSelectionPayload) {
 	const prompt = getSuggestionPrompt(payload);
 	selectedSuggestionDraft.value = { ...payload, originalPrompt: prompt };
-	const prefill: ActivePrefill = {
+	// Passed by argument, not staged in `activePrefill`: the composer is already
+	// empty on this path, so `resetDraftComposer` leaves `inputText` unchanged and
+	// the watcher never clears it -- a later typed message would inherit it.
+	submitComposerMessage(prompt, undefined, {
 		text: prompt,
 		prefillType: payload.prefillType,
 		prefillId: payload.suggestionId,
-	};
-	activePrefill.value = prefill;
-	submitComposerMessage(prompt, undefined, prefill);
+	});
 }
 
 async function handleSubmit() {
