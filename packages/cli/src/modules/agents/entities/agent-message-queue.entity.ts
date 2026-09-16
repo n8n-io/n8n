@@ -19,6 +19,10 @@ import type { AgentQueuePayload } from '../agent-message-queue.types';
 @Index(['status', 'updatedAt'])
 @Index(['agentId'])
 @Index(['executionId'])
+@Index(['threadId', 'steeringOrder'], {
+	unique: true,
+	where: '"steeringOrder" IS NOT NULL',
+})
 export class AgentMessageQueue extends WithTimestamps {
 	@Generated()
 	@PrimaryColumn({ type: dbType === 'sqlite' ? 'integer' : 'bigint', transformer: idStringifier })
@@ -42,13 +46,29 @@ export class AgentMessageQueue extends WithTimestamps {
 	kind: AgentQueuePayload['kind'];
 
 	@Column({ type: 'varchar', length: 16 })
-	status: 'queued' | 'processing' | 'cancelling';
+	status: 'queued' | 'steering' | 'processing' | 'cancelling' | 'delivered' | 'undelivered';
 
 	@JsonColumn()
 	payload: AgentQueuePayload;
 
 	@Column({ type: 'varchar', length: 36, nullable: true })
 	executionId: string | null;
+
+	/** SDK run selected for this correction. Null reserves a new parent turn. */
+	@Column({
+		type: 'varchar',
+		length: 255,
+		nullable: true,
+		comment: 'SDK run selected for this correction. Null reserves a new parent turn.',
+	})
+	steeringRunId: string | null;
+
+	@Column({
+		type: 'int',
+		nullable: true,
+		comment: 'Order in which Send now actions were accepted for this thread.',
+	})
+	steeringOrder: number | null;
 
 	@ManyToOne(() => AgentExecution, { onDelete: 'SET NULL', nullable: true })
 	@JoinColumn({ name: 'executionId' })

@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
 import {
 	type CredentialProvider,
+	type AgentInputBoundary,
 	type SerializableAgentState,
 	type StreamChunk,
 } from '@n8n/agents';
@@ -47,7 +48,8 @@ interface StreamDraftRunInput {
 	/** Set by the in-app preview chat only — see `ExecuteForChatConfig.previewChat`. */
 	previewChat?: boolean;
 	onExecutionRecorded?: (executionId: string) => void;
-	onExecutionStarted?: (executionId: string) => Promise<void>;
+	onExecutionStarted?: (executionId: string, runId: string) => Promise<void>;
+	onInputBoundary?: (boundary: AgentInputBoundary) => Promise<boolean>;
 	abortSignal?: AbortSignal;
 }
 
@@ -70,6 +72,8 @@ interface ResumeDraftRunInput {
 	/** Set by the in-app preview chat only — see `ExecuteForChatConfig.previewChat`. */
 	previewChat?: boolean;
 	response: string;
+	onExecutionStarted?: (executionId: string, runId: string) => Promise<void>;
+	onInputBoundary?: (boundary: AgentInputBoundary) => Promise<boolean>;
 	abortSignal?: AbortSignal;
 }
 
@@ -197,6 +201,7 @@ export class AgentTestRunService {
 		previewChat,
 		onExecutionRecorded,
 		onExecutionStarted,
+		onInputBoundary,
 		abortSignal,
 	}: StreamDraftRunInput): AsyncGenerator<StreamChunk> {
 		return this.agentExecutionOrchestratorService.executeForChat({
@@ -213,6 +218,7 @@ export class AgentTestRunService {
 			previewChat,
 			onExecutionRecorded,
 			onExecutionStarted,
+			onInputBoundary,
 			abortSignal,
 		});
 	}
@@ -255,6 +261,8 @@ export class AgentTestRunService {
 			},
 			source: input.source,
 			previewChat: input.previewChat,
+			onExecutionStarted: input.onExecutionStarted,
+			onInputBoundary: input.onInputBoundary,
 			onExecutionRecorded: (id) => {
 				executionId = id;
 			},

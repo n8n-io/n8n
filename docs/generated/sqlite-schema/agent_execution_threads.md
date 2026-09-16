@@ -98,6 +98,7 @@ erDiagram
   varchar_36_ versionId
 }
 "agent_execution" {
+  INTEGER acceptsSteering
   TEXT attachments
   TEXT author
   INTEGER completionTokens
@@ -110,6 +111,7 @@ erDiagram
   varchar_36_ id PK
   varchar_255_ model
   INTEGER promptTokens
+  varchar_255_ runtimeRunId
   varchar_32_ source
   datetime_3_ startedAt
   varchar_16_ status

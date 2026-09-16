@@ -419,6 +419,32 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		expect(second.content).toBe('second turn');
 	});
 
+	it('renders steering input between assistant segments', async () => {
+		mockChatEvents([
+			{ type: 'text-delta', id: 'before', delta: 'First answer' },
+			{
+				type: 'message',
+				message: {
+					id: 'queue-2',
+					role: 'user',
+					content: [{ type: 'text', text: 'Use the corrected value' }],
+				},
+			},
+			{ type: 'text-delta', id: 'after', delta: 'Updated answer' },
+			{ type: 'done' },
+		]);
+
+		const hook = buildHook();
+		await hook.sendMessage('Start');
+
+		expect(hook.messages.value.map(({ role, content, id }) => ({ role, content, id }))).toEqual([
+			expect.objectContaining({ role: 'user', content: 'Start' }),
+			expect.objectContaining({ role: 'assistant', content: 'First answer' }),
+			{ role: 'user', content: 'Use the corrected value', id: 'queue-2' },
+			expect.objectContaining({ role: 'assistant', content: 'Updated answer' }),
+		]);
+	});
+
 	it('attaches tool-call-suspended to the existing ToolCall after a closed iteration (no duplicate)', async () => {
 		// Real BE event order for a suspended interactive tool: the tool-call
 		// is streamed inside one LLM iteration that closes with `finish-step`,

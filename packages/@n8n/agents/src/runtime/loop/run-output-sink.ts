@@ -125,6 +125,8 @@ export interface RunOutputSink<TResult> {
 	 * finish chunk carrying the tokens consumed before the stop.
 	 */
 	reportUsage(usage: TokenUsage | undefined): void;
+	/** Emit user input that the host added between model calls. */
+	emitMessage?(message: AgentMessage): Promise<void>;
 	/**
 	 * Signal that the just-returned turn's messages have been folded into the list.
 	 * Streaming implementations drop the retained streamed text here so a later abort

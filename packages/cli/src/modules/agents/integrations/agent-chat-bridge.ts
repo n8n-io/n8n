@@ -85,7 +85,7 @@ interface SessionGenerationState {
 interface AgentExecutor {
 	executeForChatPublished(config: {
 		abortSignal?: AbortSignal;
-		onExecutionStarted?: (executionId: string) => Promise<void>;
+		onExecutionStarted?: (executionId: string, runId: string) => Promise<void>;
 		agentId: string;
 		projectId: string;
 		message: string;

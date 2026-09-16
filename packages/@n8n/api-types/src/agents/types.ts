@@ -368,19 +368,26 @@ export interface AgentChatMessagesResponse {
 
 export type AgentChatQueueItem = {
 	id: string;
-	status: 'queued' | 'processing' | 'cancelling';
+	status: 'queued' | 'steering' | 'processing' | 'cancelling' | 'delivered' | 'undelivered';
 	executionId?: string;
 } & (
 	| {
 			kind: 'message';
 			message: string;
 			attachments: Array<{ id: string; fileName: string; mimeType: string; sizeBytes: number }>;
+			failureReason?: string;
 	  }
 	| { kind: 'hitl'; runId: string; toolCallId: string }
 );
 
+export type AgentChatSteeringTarget =
+	| { mode: 'active'; executionId: string; runId: string }
+	| { mode: 'new-parent-turn'; previousExecutionId: string };
+
 export interface AgentChatQueueResponse {
 	items: AgentChatQueueItem[];
+	sendNowTarget?: AgentChatSteeringTarget;
+	sendNowUnavailableReason?: 'hitl-pending' | 'no-active-run';
 }
 
 export type AgentChatAdmissionResponse =

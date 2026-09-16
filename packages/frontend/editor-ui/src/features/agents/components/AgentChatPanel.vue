@@ -100,6 +100,10 @@ const {
 	resume,
 	hasPendingResponse,
 	queuedMessages,
+	sendNowTarget,
+	sendNowUnavailableReason,
+	sendQueuedMessageNow,
+	requeueUndeliveredMessage,
 	editQueuedMessage,
 	removeQueuedMessage,
 	dismissFatalError,
@@ -619,6 +623,11 @@ onBeforeUnmount(() => {
 					<AgentChatQueue
 						:key="continueSessionId"
 						:messages="queuedMessages"
+						:send-now="sendQueuedMessageNow"
+						:send-again="requeueUndeliveredMessage"
+						:can-send-now="!!sendNowTarget"
+						:starts-new-turn="sendNowTarget?.mode === 'new-parent-turn'"
+						:send-now-unavailable-reason="sendNowUnavailableReason"
 						:save-message="editQueuedMessage"
 						:remove-message="removeQueuedMessage"
 					/>

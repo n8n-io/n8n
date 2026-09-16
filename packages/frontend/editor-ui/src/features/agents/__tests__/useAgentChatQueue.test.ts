@@ -17,6 +17,8 @@ const api = vi.hoisted(() => ({
 	getTestChatMessages: vi.fn(),
 	editAgentChatQueueMessage: vi.fn(),
 	removeAgentChatQueueMessage: vi.fn(),
+	sendAgentChatQueueMessageNow: vi.fn(),
+	requeueAgentChatQueueMessage: vi.fn(),
 	stopAgentChatQueueEntry: vi.fn(),
 	cancelAgentChatRun: vi.fn(),
 }));
@@ -107,6 +109,27 @@ it('reports a queued conversation as present before its first execution is recor
 	await hook.loadHistory();
 	expect(hook.queuedMessages.value).toEqual(items);
 	expect(onHistoryLoaded).toHaveBeenCalledWith(0, true, true);
+});
+
+it('sends the server-provided active target with the selected queued message', async () => {
+	items = [message('2', 'correction')];
+	const target = { mode: 'active', executionId: crypto.randomUUID(), runId: 'run-1' } as const;
+	api.getAgentChatQueue.mockResolvedValue({ items, sendNowTarget: target });
+	api.sendAgentChatQueueMessageNow.mockResolvedValue(message('2', 'correction', 'steering'));
+	hook.refresh();
+	await flushPromises();
+
+	await hook.sendQueuedMessageNow('2');
+
+	expect(api.sendAgentChatQueueMessageNow).toHaveBeenCalledWith(
+		{},
+		'p1',
+		'a1',
+		'thread-1',
+		'2',
+		target,
+	);
+	expect(hook.queuedMessages.value[0]?.status).toBe('steering');
 });
 
 it('admits more messages while a run is active and shows saved text only when it starts', async () => {

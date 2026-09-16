@@ -11,6 +11,7 @@ import type {
 	AgentSseEvent,
 	AgentChatAdmissionResponse,
 	AgentChatQueueItem,
+	AgentChatSteeringTarget,
 } from '@n8n/api-types';
 import { applyForwardedChildChunk, APPROVAL_TOOL_NAME, emptyChildTrace } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
@@ -26,6 +27,8 @@ import {
 	editAgentChatQueueMessage,
 	removeAgentChatQueueMessage,
 	stopAgentChatQueueEntry,
+	sendAgentChatQueueMessageNow,
+	requeueAgentChatQueueMessage,
 } from './useAgentApi';
 
 import {
@@ -92,13 +95,18 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 
 	const messages = ref<ChatMessage[]>([]);
 	const queueItems = ref<AgentChatQueueItem[]>([]);
+	const sendNowTarget = ref<AgentChatSteeringTarget>();
+	const sendNowUnavailableReason = ref<'hitl-pending' | 'no-active-run'>();
 	const queuedMessages = computed(() =>
 		queueItems.value.filter(
 			(item): item is Extract<AgentChatQueueItem, { kind: 'message' }> =>
-				item.kind === 'message' && item.status === 'queued',
+				item.kind === 'message' &&
+				(item.status === 'queued' || item.status === 'steering' || item.status === 'undelivered'),
 		),
 	);
-	const activeEntry = computed(() => queueItems.value.find((item) => item.status !== 'queued'));
+	const activeEntry = computed(() =>
+		queueItems.value.find((item) => item.status === 'processing' || item.status === 'cancelling'),
+	);
 	const hasPendingResponse = computed(() => queueItems.value.some((item) => item.kind === 'hitl'));
 	const isStreaming = computed(() => activeEntry.value !== undefined);
 	const stopping = ref(false);
@@ -283,6 +291,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				return false;
 			}
 			queueItems.value = result.items;
+			sendNowTarget.value = result.sendNowTarget;
+			sendNowUnavailableReason.value = result.sendNowUnavailableReason;
 			for (const [requestId, session] of requests) {
 				if (session.queueId && !result.items.some((item) => item.id === session.queueId)) {
 					session.settled = true;
@@ -351,6 +361,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		detachedQueueIds.clear();
 		admittedSessionId.value = undefined;
 		queueItems.value = [];
+		sendNowTarget.value = undefined;
+		sendNowUnavailableReason.value = undefined;
 		messages.value = [];
 		historyLoaded.value = false;
 		historyVersion++;
@@ -744,8 +756,34 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				break;
 			}
 			case 'message':
-				// Custom (sub-agent / app-defined) message envelope. Reserved
-				// for future use; nothing renders today.
+				if (event.message.role !== 'user') break;
+				settleOpenReasoning(session);
+				session.current = undefined;
+				const userMessage = reactive<ChatMessage>({
+					id: event.message.id ?? crypto.randomUUID(),
+					role: 'user',
+					content: event.message.content
+						.filter((part) => part.type === 'text')
+						.map((part) => part.text ?? '')
+						.join(''),
+					attachments: event.message.content.flatMap((part) =>
+						part.type === 'file' && part.fileId && part.fileName && part.mimeType
+							? [
+									{
+										fileId: part.fileId,
+										fileName: part.fileName,
+										mimeType: part.mimeType,
+										sizeBytes: part.sizeBytes,
+									},
+								]
+							: [],
+					),
+					status: CHAT_MESSAGE_STATUS.SUCCESS,
+					executionId: session.executionId,
+				});
+				messages.value.push(userMessage);
+				session.minted.add(userMessage);
+				if (event.message.id) removeQueueItem(event.message.id);
 				break;
 			case 'warning': {
 				// Non-fatal run warning (e.g. an MCP server was unavailable, so its
@@ -1049,6 +1087,42 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		}
 	}
 
+	async function sendQueuedMessageNow(queueId: string): Promise<void> {
+		const currentThread = threadId.value;
+		const steeringTarget = sendNowTarget.value;
+		if (!currentThread || !steeringTarget) return;
+		const target = targetKey();
+		try {
+			const item = await sendAgentChatQueueMessageNow(
+				rootStore.restApiContext,
+				params.projectId.value,
+				params.agentId.value,
+				currentThread,
+				queueId,
+				steeringTarget,
+			);
+			if (!disposed && target === targetKey()) upsertQueueItem(item);
+		} finally {
+			refresh();
+		}
+	}
+
+	async function requeueUndeliveredMessage(queueId: string): Promise<void> {
+		const currentThread = threadId.value;
+		if (!currentThread) return;
+		await admit(
+			async (clientRequestId) =>
+				await requeueAgentChatQueueMessage(
+					rootStore.restApiContext,
+					params.projectId.value,
+					params.agentId.value,
+					currentThread,
+					queueId,
+					{ clientRequestId },
+				),
+		);
+	}
+
 	function dismissFatalError(): void {
 		fatalError.value = null;
 	}
@@ -1111,6 +1185,10 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		stopGenerating,
 		resume,
 		queuedMessages,
+		sendNowTarget,
+		sendNowUnavailableReason,
+		sendQueuedMessageNow,
+		requeueUndeliveredMessage,
 		editQueuedMessage,
 		removeQueuedMessage,
 		dismissFatalError,

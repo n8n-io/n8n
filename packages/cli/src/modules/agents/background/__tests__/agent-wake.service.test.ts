@@ -400,6 +400,16 @@ describe('AgentWakeService', () => {
 		expect(suspended.orchestrator.executeForWake).not.toHaveBeenCalled();
 	});
 
+	it('leaves background results for a reserved parent turn', async () => {
+		const { service, messageQueue, orchestrator, jobRepository } = setup();
+		messageQueue.hasParentTurnReservation.mockResolvedValue(true);
+
+		await service.attemptWake('thread-1');
+
+		expect(orchestrator.executeForWake).not.toHaveBeenCalled();
+		expect(jobRepository.markMailConsumed).not.toHaveBeenCalled();
+	});
+
 	it('permits wakes after the checkpoint has resumed', async () => {
 		// A resumed run keeps its suspended status. Only an active checkpoint blocks the wake.
 		const resumed = setup();

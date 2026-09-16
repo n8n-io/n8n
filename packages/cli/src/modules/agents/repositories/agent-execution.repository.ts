@@ -43,6 +43,45 @@ export class AgentExecutionRepository extends Repository<AgentExecution> {
 		return await this.existsBy({ threadId, status: 'running' });
 	}
 
+	async findSteeringTarget(threadId: string): Promise<AgentExecution | null> {
+		return await this.findOne({
+			where: { threadId, status: 'running', acceptsSteering: true },
+			order: { createdAt: 'DESC' },
+		});
+	}
+
+	async findLatestByThreadId(threadId: string): Promise<AgentExecution | null> {
+		return await this.findOne({ where: { threadId }, order: { createdAt: 'DESC' } });
+	}
+
+	async openSteering(executionId: string, runId: string): Promise<boolean> {
+		return (
+			(
+				await this.update(
+					{ id: executionId, status: 'running' },
+					{ runtimeRunId: runId, acceptsSteering: true },
+				)
+			).affected === 1
+		);
+	}
+
+	async closeSteering(executionId: string, runId: string): Promise<void> {
+		await this.update(
+			{ id: executionId, runtimeRunId: runId, acceptsSteering: true },
+			{ acceptsSteering: false },
+		);
+	}
+
+	async isSteeringTarget(executionId: string, threadId: string, runId: string): Promise<boolean> {
+		return await this.existsBy({
+			id: executionId,
+			threadId,
+			status: 'running',
+			runtimeRunId: runId,
+			acceptsSteering: true,
+		});
+	}
+
 	async findRunningById(id: string): Promise<RunningAgentExecution | null> {
 		return await this.findOne({
 			select: ['id', 'threadId', 'startedAt', 'updatedAt', 'timeline'],

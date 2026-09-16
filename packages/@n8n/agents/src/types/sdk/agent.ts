@@ -184,6 +184,13 @@ export interface AgentExecutionCounter {
 	incrementTokenCount(tokenCount: number): void;
 }
 
+export interface AgentInputBoundary {
+	runId: string;
+	reason: 'before-model' | 'before-finish';
+	canContinue: boolean;
+	addInput: (messages: AgentMessage[]) => Promise<void>;
+}
+
 export interface ExecutionOptions {
 	maxIterations?: number;
 	abortSignal?: AbortSignal;
@@ -235,6 +242,8 @@ export interface ExecutionOptions {
 	 * persistence-backed CheckpointStore; recover via `crashResume()`.
 	 */
 	stepCheckpoints?: boolean;
+	/** Add host-owned user input at a safe boundary in the current run. */
+	onInputBoundary?: (boundary: AgentInputBoundary) => Promise<boolean>;
 }
 
 export interface PersistedExecutionOptions {

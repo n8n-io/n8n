@@ -13,20 +13,31 @@ import type { AgentChatQueueItem } from '@n8n/api-types';
 import { formatBytes } from '@n8n/utils/number/bytes';
 
 type QueuedMessage = Extract<AgentChatQueueItem, { kind: 'message' }>;
-const props = defineProps<{
-	messages: QueuedMessage[];
-	saveMessage: (id: string, message: string) => Promise<void>;
-	removeMessage: (id: string) => Promise<void>;
-}>();
+const props = withDefaults(
+	defineProps<{
+		messages: QueuedMessage[];
+		saveMessage: (id: string, message: string) => Promise<void>;
+		removeMessage: (id: string) => Promise<void>;
+		sendNow: (id: string) => Promise<void>;
+		sendAgain: (id: string) => Promise<void>;
+		canSendNow?: boolean;
+		startsNewTurn?: boolean;
+		sendNowUnavailableReason?: 'hitl-pending' | 'no-active-run';
+	}>(),
+	{ canSendNow: false, startsNewTurn: false, sendNowUnavailableReason: undefined },
+);
 
 const locale = useI18n();
 const editor = ref<{ item: QueuedMessage; text: string }>();
 const input = useTemplateRef<Array<InstanceType<typeof N8nInput>>>('input');
 const saving = ref(false);
 const removingId = ref<string>();
+const sendingId = ref<string>();
 const error = ref('');
 const canSave = computed(
-	() => editor.value && props.messages.some(({ id }) => id === editor.value?.item.id),
+	() =>
+		editor.value &&
+		props.messages.some(({ id, status }) => id === editor.value?.item.id && status === 'queued'),
 );
 const rows = computed(() =>
 	editor.value && !canSave.value ? [...props.messages, editor.value.item] : props.messages,
@@ -76,6 +87,43 @@ async function remove(id: string) {
 		removingId.value = undefined;
 	}
 }
+
+async function sendMessageNow(id: string) {
+	sendingId.value = id;
+	error.value = '';
+	try {
+		await props.sendNow(id);
+	} catch {
+		error.value = locale.baseText('agents.chat.queue.sendNow.error');
+	} finally {
+		sendingId.value = undefined;
+	}
+}
+
+async function sendMessageAgain(id: string) {
+	sendingId.value = id;
+	error.value = '';
+	try {
+		await props.sendAgain(id);
+	} catch {
+		error.value = locale.baseText('agents.chat.queue.sendAgain.error');
+	} finally {
+		sendingId.value = undefined;
+	}
+}
+
+const sendNowTooltip = computed(() => {
+	if (props.canSendNow) {
+		return locale.baseText(
+			props.startsNewTurn ? 'agents.chat.queue.sendNow.newParentTurn' : 'agents.chat.queue.sendNow',
+		);
+	}
+	return locale.baseText(
+		props.sendNowUnavailableReason === 'hitl-pending'
+			? 'agents.chat.queue.sendNow.hitlPending'
+			: 'agents.chat.queue.sendNow.noActiveRun',
+	);
+});
 </script>
 
 <template>
@@ -119,9 +167,48 @@ async function remove(id: string) {
 							</div>
 						</form>
 						<div v-else :class="$style.messageRow" data-testid="agent-chat-queue-message-row">
-							<p :class="$style.message">{{ item.message }}</p>
+							<div :class="$style.message">
+								<p>{{ item.message }}</p>
+								<p v-if="item.status === 'steering'" :class="$style.status">
+									{{ locale.baseText('agents.chat.queue.sendNow.pending') }}
+								</p>
+								<p v-else-if="item.status === 'undelivered'" :class="$style.status">
+									{{
+										item.failureReason ?? locale.baseText('agents.chat.queue.sendNow.undelivered')
+									}}
+								</p>
+							</div>
 							<div :class="$style.actions">
-								<N8nTooltip :content="locale.baseText('generic.edit')" placement="top">
+								<N8nButton
+									v-if="item.status === 'undelivered'"
+									size="small"
+									variant="ghost"
+									:disabled="sendingId !== undefined"
+									data-test-id="agent-chat-queue-send-again"
+									@click="sendMessageAgain(item.id)"
+								>
+									{{ locale.baseText('agents.chat.queue.sendAgain') }}
+								</N8nButton>
+								<N8nTooltip
+									v-if="item.status === 'queued'"
+									:content="sendNowTooltip"
+									placement="top"
+								>
+									<N8nButton
+										size="small"
+										variant="ghost"
+										:disabled="!canSendNow || !!editor || sendingId !== undefined"
+										data-test-id="agent-chat-queue-send-now"
+										@click="sendMessageNow(item.id)"
+									>
+										{{ locale.baseText('agents.chat.queue.sendNow') }}
+									</N8nButton>
+								</N8nTooltip>
+								<N8nTooltip
+									v-if="item.status === 'queued'"
+									:content="locale.baseText('generic.edit')"
+									placement="top"
+								>
 									<N8nIconButton
 										icon="pencil"
 										size="xsmall"
@@ -132,7 +219,11 @@ async function remove(id: string) {
 										@click="edit(item)"
 									/>
 								</N8nTooltip>
-								<N8nTooltip :content="locale.baseText('agents.chat.queue.remove')" placement="top">
+								<N8nTooltip
+									v-if="item.status === 'queued' || item.status === 'undelivered'"
+									:content="locale.baseText('agents.chat.queue.remove')"
+									placement="top"
+								>
 									<N8nIconButton
 										icon="trash-2"
 										size="xsmall"
@@ -193,6 +284,15 @@ async function remove(id: string) {
 	white-space: pre-wrap;
 	overflow-wrap: anywhere;
 	margin: 0;
+}
+
+.message p {
+	margin: 0;
+}
+
+.status {
+	color: var(--color--text--tint-1);
+	font-size: var(--font-size--2xs);
 }
 
 .messageRow {

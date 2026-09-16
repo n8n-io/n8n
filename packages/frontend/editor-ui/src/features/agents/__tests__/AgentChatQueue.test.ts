@@ -20,9 +20,31 @@ const message: Extract<AgentChatQueueItem, { kind: 'message' }> = {
 function render(messages = [message]) {
 	const saveMessage = vi.fn().mockResolvedValue(undefined);
 	const removeMessage = vi.fn().mockResolvedValue(undefined);
-	const wrapper = mount(AgentChatQueue, { props: { messages, saveMessage, removeMessage } });
-	return { wrapper, saveMessage, removeMessage };
+	const sendNow = vi.fn().mockResolvedValue(undefined);
+	const sendAgain = vi.fn().mockResolvedValue(undefined);
+	const wrapper = mount(AgentChatQueue, {
+		props: { messages, saveMessage, removeMessage, sendNow, sendAgain, canSendNow: true },
+	});
+	return { wrapper, saveMessage, removeMessage, sendNow, sendAgain };
 }
+
+it('sends a queued message now', async () => {
+	const { wrapper, sendNow } = render();
+	await wrapper.get('button').trigger('click');
+	await wrapper.get('[data-test-id="agent-chat-queue-send-now"]').trigger('click');
+	await flushPromises();
+	expect(sendNow).toHaveBeenCalledWith('1');
+});
+
+it('queues an undelivered message again', async () => {
+	const { wrapper, sendAgain } = render([
+		{ ...message, status: 'undelivered', failureReason: 'The run stopped' },
+	]);
+	await wrapper.get('button').trigger('click');
+	await wrapper.get('[data-test-id="agent-chat-queue-send-again"]').trigger('click');
+	await flushPromises();
+	expect(sendAgain).toHaveBeenCalledWith('1');
+});
 
 it('starts collapsed and renders waiting messages in the given order with attachment metadata', async () => {
 	const { wrapper, removeMessage } = render([

@@ -12,6 +12,8 @@
 | payload | json |  | false |  |  | Typed input and actor, project, and reply routing data. |
 | source | varchar(16) |  | false |  |  | Preview HTTP request or integration chat input. |
 | status | varchar(16) |  | false |  |  | Waiting, active, or cancelling input. |
+| steeringOrder | integer |  | true |  |  | Order in which Send now actions were accepted for this thread. |
+| steeringRunId | varchar(255) |  | true |  |  | SDK run selected for this correction. Null reserves a new parent turn. |
 | threadId | varchar(128) |  | false |  |  | Existing conversation routing ID. |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 
@@ -21,7 +23,7 @@
 | ---- | ---- | ---------- |
 | CHK_agent_message_queue_kind | CHECK | CHECK (((kind)::text = ANY ((ARRAY['message'::character varying, 'hitl'::character varying])::text[]))) |
 | CHK_agent_message_queue_source | CHECK | CHECK (((source)::text = ANY ((ARRAY['preview'::character varying, 'integration'::character varying])::text[]))) |
-| CHK_agent_message_queue_status | CHECK | CHECK (((status)::text = ANY ((ARRAY['queued'::character varying, 'processing'::character varying, 'cancelling'::character varying])::text[]))) |
+| CHK_agent_message_queue_status | CHECK | CHECK (((status)::text = ANY ((ARRAY['queued'::character varying, 'processing'::character varying, 'cancelling'::character varying, 'steering'::character varying, 'delivered'::character varying, 'undelivered'::character varying])::text[]))) |
 | FK_2349d84b4f2a660fc264f38fef3 | FOREIGN KEY | FOREIGN KEY ("executionId") REFERENCES agent_execution(id) ON DELETE SET NULL |
 | FK_8a5699c954416a2172688ff39fa | FOREIGN KEY | FOREIGN KEY ("agentId") REFERENCES agents(id) ON DELETE CASCADE |
 | PK_733d8c959a6057f04f4da5ab721 | PRIMARY KEY | PRIMARY KEY (id) |
@@ -43,6 +45,7 @@
 | IDX_2349d84b4f2a660fc264f38fef | CREATE INDEX "IDX_2349d84b4f2a660fc264f38fef" ON public.agent_message_queue USING btree ("executionId") |
 | IDX_832d536d7954194b88e0edb5bd | CREATE INDEX "IDX_832d536d7954194b88e0edb5bd" ON public.agent_message_queue USING btree (status, "updatedAt") |
 | IDX_8a5699c954416a2172688ff39f | CREATE INDEX "IDX_8a5699c954416a2172688ff39f" ON public.agent_message_queue USING btree ("agentId") |
+| IDX_agent_message_queue_threadId_steeringOrder | CREATE UNIQUE INDEX "IDX_agent_message_queue_threadId_steeringOrder" ON public.agent_message_queue USING btree ("threadId", "steeringOrder") WHERE ("steeringOrder" IS NOT NULL) |
 | PK_733d8c959a6057f04f4da5ab721 | CREATE UNIQUE INDEX "PK_733d8c959a6057f04f4da5ab721" ON public.agent_message_queue USING btree (id) |
 
 ## Relations
@@ -62,6 +65,8 @@ erDiagram
   json payload
   varchar_16_ source
   varchar_16_ status
+  integer steeringOrder
+  varchar_255_ steeringRunId
   varchar_128_ threadId
   timestamp_3__with_time_zone updatedAt
 }
@@ -82,6 +87,7 @@ erDiagram
   varchar_36_ versionId
 }
 "public.agent_execution" {
+  boolean acceptsSteering
   json attachments
   json author
   integer completionTokens
@@ -94,6 +100,7 @@ erDiagram
   varchar_36_ id
   varchar_255_ model
   integer promptTokens
+  varchar_255_ runtimeRunId
   varchar_32_ source
   timestamp_3__with_time_zone startedAt
   varchar_16_ status

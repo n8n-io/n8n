@@ -9,6 +9,8 @@ import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import type { Response } from 'express';
 import { LoggerProxy } from 'n8n-workflow';
 
+import { contentPartToDto } from './agent-message-mapper';
+
 export type FlushableResponse = Response & { flush?: () => void };
 
 const SSE_HEARTBEAT_INTERVAL_MS = 30_000;
@@ -54,17 +56,12 @@ export function initSseStream(res: FlushableResponse) {
 function toAgentSseMessage(message: AgentMessage): AgentSseMessage | undefined {
 	if (!('content' in message) || !Array.isArray(message.content)) return undefined;
 
-	const content: AgentPersistedMessageContentPart[] = [];
-	for (const part of message.content) {
-		if (part.type === 'text' && 'text' in part) {
-			content.push({ type: 'text', text: part.text });
-		} else if (part.type === 'reasoning' && 'text' in part) {
-			content.push({ type: 'reasoning', text: part.text });
-		}
-	}
+	const content: AgentPersistedMessageContentPart[] = message.content
+		.filter((part) => part.type === 'text' || part.type === 'reasoning' || part.type === 'file')
+		.map(contentPartToDto);
 
 	if (content.length === 0) return undefined;
-	return { role: message.role, content };
+	return { ...(message.id ? { id: message.id } : {}), role: message.role, content };
 }
 
 function toolResultOutputForSse(output: unknown, isError: boolean | undefined): unknown {

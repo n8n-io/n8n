@@ -6,7 +6,9 @@ import type {
 	AgentChatMessageDto,
 	AgentChatResumeDto,
 	AgentChatQueueItem,
+	AgentChatQueueRequeueDto,
 	AgentChatQueueResponse,
+	AgentChatSteeringTarget,
 	AgentConfigMutationResponse,
 	AgentConfigResponse,
 	AgentConfigValidationResponse,
@@ -649,6 +651,38 @@ export const editAgentChatQueueMessage = async (
 		'PATCH',
 		`${chatQueuePath(projectId, agentId, threadId)}/${encodeURIComponent(queueId)}`,
 		{ message },
+	);
+};
+
+export const sendAgentChatQueueMessageNow = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	threadId: string,
+	queueId: string,
+	target: AgentChatSteeringTarget,
+): Promise<AgentChatQueueItem> => {
+	return await makeRestApiRequest(
+		context,
+		'POST',
+		`${chatQueuePath(projectId, agentId, threadId)}/${encodeURIComponent(queueId)}/send-now`,
+		{ target },
+	);
+};
+
+export const requeueAgentChatQueueMessage = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	threadId: string,
+	queueId: string,
+	payload: AgentChatQueueRequeueDto,
+): Promise<AgentChatAdmissionResponse> => {
+	return await makeRestApiRequest(
+		context,
+		'POST',
+		`${chatQueuePath(projectId, agentId, threadId)}/${encodeURIComponent(queueId)}/requeue`,
+		payload,
 	);
 };
 

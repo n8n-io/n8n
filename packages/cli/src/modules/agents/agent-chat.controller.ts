@@ -4,6 +4,8 @@ import {
 	type AgentChatAdmissionResponse,
 	type AgentChatQueueResponse,
 	AgentChatQueueEditDto,
+	AgentChatQueueRequeueDto,
+	AgentChatQueueSendNowDto,
 	AgentChatMessageDto,
 	type AgentChatMessagesResponse,
 	AgentChatResumeDto,
@@ -179,6 +181,7 @@ export class AgentChatController {
 							attachments: queued.attachments,
 							abortSignal: context.abortSignal,
 							onExecutionStarted: context.onExecutionStarted,
+							onInputBoundary: context.onInputBoundary,
 						}),
 						context.send,
 					);
@@ -247,6 +250,7 @@ export class AgentChatController {
 						expectedMemory: memory,
 						abortSignal: context.abortSignal,
 						onExecutionStarted: context.onExecutionStarted,
+						onInputBoundary: context.onInputBoundary,
 					}),
 					context.send,
 				);
@@ -279,7 +283,57 @@ export class AgentChatController {
 	async getQueue(
 		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
 	): Promise<AgentChatQueueResponse> {
-		return { items: await this.messageQueue.listPreview(await this.previewQueueScope(req)) };
+		return await this.messageQueue.getPreviewQueue(await this.previewQueueScope(req));
+	}
+
+	@Post('/:agentId/chat/:threadId/queue/:queueId/send-now')
+	@ProjectScope('agent:execute')
+	async sendQueuedMessageNow(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
+		_res: Response,
+		@Param('queueId') queueId: string,
+		@Body payload: AgentChatQueueSendNowDto,
+	) {
+		return await this.messageQueue.sendNow(
+			await this.previewQueueScope(req),
+			queueId,
+			payload.target,
+		);
+	}
+
+	@Post('/:agentId/chat/:threadId/queue/:queueId/requeue')
+	@ProjectScope('agent:execute')
+	async requeueMessage(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
+		_res: Response,
+		@Param('queueId') queueId: string,
+		@Body payload: AgentChatQueueRequeueDto,
+	): Promise<AgentChatAdmissionResponse> {
+		const scope = await this.previewQueueScope(req);
+		const item = await this.messageQueue.requeuePreview(
+			scope,
+			queueId,
+			payload.clientRequestId,
+			async (queued, context) => {
+				if (queued.kind !== 'message') return;
+				await pumpChunks(
+					this.agentTestRunService.streamDraftRun({
+						agentId: scope.agentId,
+						projectId: scope.projectId,
+						sessionId: scope.threadId,
+						user: req.user,
+						previewChat: true,
+						message: queued.message,
+						attachments: queued.attachments,
+						abortSignal: context.abortSignal,
+						onExecutionStarted: context.onExecutionStarted,
+						onInputBoundary: context.onInputBoundary,
+					}),
+					context.send,
+				);
+			},
+		);
+		return { status: 'queued', sessionId: scope.threadId, item };
 	}
 
 	@Patch('/:agentId/chat/:threadId/queue/:queueId')
@@ -412,7 +466,17 @@ export class AgentChatController {
 			if (checkpoint) return withOpenSuspensions([], checkpoint);
 			throw new NotFoundError(`Thread "${threadId}" not found`);
 		}
-		return withOpenSuspensions(history, checkpoint, {
+		const reconciledHistory = await this.messageQueue.reconcileDeliveredHistory(
+			{
+				projectId,
+				agentId,
+				threadId,
+				userId: req.user.id,
+				resourceId: draftChatMemoryResourceId(req.user.id),
+			},
+			history,
+		);
+		return withOpenSuspensions(reconciledHistory, checkpoint, {
 			appendInactiveCheckpointMessages: false,
 		});
 	}

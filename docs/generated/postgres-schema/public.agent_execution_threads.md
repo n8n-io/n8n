@@ -97,6 +97,7 @@ erDiagram
   varchar_36_ versionId
 }
 "public.agent_execution" {
+  boolean acceptsSteering
   json attachments
   json author
   integer completionTokens
@@ -109,6 +110,7 @@ erDiagram
   varchar_36_ id
   varchar_255_ model
   integer promptTokens
+  varchar_255_ runtimeRunId
   varchar_32_ source
   timestamp_3__with_time_zone startedAt
   varchar_16_ status

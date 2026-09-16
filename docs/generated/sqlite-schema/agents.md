@@ -224,6 +224,8 @@ erDiagram
   TEXT payload
   varchar_16_ source
   varchar_16_ status
+  INTEGER steeringOrder
+  varchar_255_ steeringRunId
   varchar_128_ threadId
   datetime_3_ updatedAt
 }

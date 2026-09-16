@@ -44,6 +44,7 @@ function makeController() {
 			: { kind: 'hitl', runId: input.payload.runId, toolCallId: input.payload.toolCallId }),
 	}));
 	queue.cancelPreviewResumes.mockResolvedValue(false);
+	queue.reconcileDeliveredHistory.mockImplementation(async (_scope, history) => history);
 	queue.getResumeScope.mockResolvedValue({ threadId: 'thread-1', resourceId: 'draft-chat:user-1' });
 	agentTestRunService.prepareDraftRun.mockResolvedValue({
 		status: 'ready',
@@ -99,6 +100,8 @@ describe('AgentChatController route access scopes', () => {
 		['chat', 'agent:execute'],
 		['chatResume', 'agent:execute'],
 		['getQueue', 'agent:read'],
+		['sendQueuedMessageNow', 'agent:execute'],
+		['requeueMessage', 'agent:execute'],
 		['editQueuedMessage', 'agent:execute'],
 		['removeQueuedMessage', 'agent:execute'],
 		['stopQueuedMessage', 'agent:execute'],
@@ -275,6 +278,7 @@ describe('AgentChatController chat message history', () => {
 
 		const result = await controller.getChatMessages({
 			params: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
+			user: { id: 'user-1' },
 		} as never);
 
 		expect(result).toEqual({
@@ -352,13 +356,14 @@ describe('AgentChatController admission', () => {
 				abortSignal: new AbortController().signal,
 				send: vi.fn(),
 				onExecutionStarted: vi.fn(),
+				onInputBoundary: vi.fn(),
 			};
 			agentExecutionOrchestratorService.executeForChat.mockImplementation(async function* (config) {
-				await config.onExecutionStarted?.('execution-1');
+				await config.onExecutionStarted?.('execution-1', 'run-1');
 				yield { type: 'text-delta', id: 'text', delta: 'Hello' };
 			});
 			agentExecutionOrchestratorService.resumeForChat.mockImplementation(async function* (config) {
-				await config.onExecutionStarted?.('execution-1');
+				await config.onExecutionStarted?.('execution-1', 'run-1');
 				yield { type: 'text-delta', id: 'text', delta: 'Hello' };
 			});
 			await execute(
@@ -408,9 +413,9 @@ describe('AgentChatController queue scope', () => {
 		const { controller, agentsService, agentExecutionService, queue } = makeController();
 		agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
 		agentExecutionService.findThreadById.mockResolvedValue(null);
-		queue.listPreview.mockResolvedValue([]);
+		queue.getPreviewQueue.mockResolvedValue({ items: [] });
 		await expect(controller.getQueue(request as never)).resolves.toEqual({ items: [] });
-		expect(queue.listPreview).toHaveBeenCalledWith({
+		expect(queue.getPreviewQueue).toHaveBeenCalledWith({
 			...request.params,
 			userId: 'user-1',
 			resourceId: 'draft-chat:user-1',
@@ -425,7 +430,7 @@ describe('AgentChatController queue scope', () => {
 		agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
 		agentExecutionService.findThreadById.mockResolvedValue(mock<AgentExecutionThread>(scope));
 		await expect(controller.getQueue(request as never)).rejects.toThrow(NotFoundError);
-		expect(queue.listPreview).not.toHaveBeenCalled();
+		expect(queue.getPreviewQueue).not.toHaveBeenCalled();
 	});
 });
 

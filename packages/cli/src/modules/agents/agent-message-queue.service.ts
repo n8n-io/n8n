@@ -4,7 +4,15 @@ import {
 	LockService,
 	Logger,
 } from '@n8n/backend-common';
-import type { AgentChatQueueItem, PushPayload } from '@n8n/api-types';
+import type { AgentInputBoundary, AgentMessage } from '@n8n/agents';
+import type {
+	AgentChatQueueItem,
+	AgentChatQueueResponse,
+	AgentChatSteeringTarget,
+	AgentPersistedMessageContentPart,
+	AgentPersistedMessageDto,
+	PushPayload,
+} from '@n8n/api-types';
 import { OnPubSubEvent, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
@@ -19,6 +27,7 @@ import { AgentChatAttachmentService } from './agent-chat-attachment.service';
 import { AgentExecutionOrchestratorService } from './agent-execution-orchestrator.service';
 import { AgentExecutionUpdateBroadcaster } from './agent-execution-update-broadcaster';
 import { AgentExecutionService } from './agent-execution.service';
+import { hashAgentSandboxPrincipal } from './agent-sandbox-principal';
 import {
 	agentConversationLockKey,
 	type AgentQueueInput,
@@ -33,8 +42,10 @@ import type { AgentChatBridge } from './integrations/agent-chat-bridge';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { AgentExecutionRepository } from './repositories/agent-execution.repository';
+import { AgentBackgroundJobRepository } from './repositories/agent-background-job.repository';
 import { AgentMessageQueueRepository } from './repositories/agent-message-queue.repository';
 import { AgentRepository } from './repositories/agent.repository';
+import { buildInboundUserMessage } from './utils/inbound-attachments';
 
 type PreviewExecution = {
 	input: AgentPreviewQueueInput;
@@ -64,6 +75,7 @@ export class AgentMessageQueueService {
 		private readonly integrations: ChatIntegrationService,
 		private readonly agents: AgentRepository,
 		private readonly executionRepository: AgentExecutionRepository,
+		private readonly backgroundJobRepository: AgentBackgroundJobRepository,
 		private readonly executionService: AgentExecutionService,
 		private readonly attachments: AgentChatAttachmentService,
 		private readonly publisher: Publisher,
@@ -97,12 +109,16 @@ export class AgentMessageQueueService {
 		onPersisted?: () => void,
 	): Promise<AgentChatQueueItem> {
 		this.stopping.signal.throwIfAborted();
-		const payload = input.payload;
+		const persistedInput: AgentPreviewQueueInput = {
+			...input,
+			payload: { ...input.payload, clientRequestId },
+		};
+		const payload = persistedInput.payload;
 		const entry = await this.lockService.withLease(
 			LockNamespace.KNOWN_LOCKS,
 			previewAdmissionLockKey(input.threadId),
 			async () => {
-				if (payload.kind === 'message') return await this.repository.enqueue(input);
+				if (payload.kind === 'message') return await this.repository.enqueue(persistedInput);
 				const memory = await this.getResumeScope(
 					input.agentId,
 					payload.runId,
@@ -120,12 +136,12 @@ export class AgentMessageQueueService {
 				if (memory.threadId !== input.threadId || duplicate) {
 					throw new UserError('This action has already been handled or has expired');
 				}
-				return await this.repository.enqueue(input);
+				return await this.repository.enqueue(persistedInput);
 			},
 		);
 		onPersisted?.();
 		this.previews.set(entry.id, {
-			input,
+			input: persistedInput,
 			clientRequestId,
 			execute,
 			controller: new AbortController(),
@@ -153,6 +169,9 @@ export class AgentMessageQueueService {
 					kind: 'message',
 					message: payload.message,
 					attachments: payload.attachments ?? [],
+					...(payload.steering?.failureReason
+						? { failureReason: payload.steering.failureReason }
+						: {}),
 				}
 			: { ...base, kind: 'hitl', runId: payload.runId, toolCallId: payload.toolCallId };
 	}
@@ -168,9 +187,274 @@ export class AgentMessageQueueService {
 		);
 	}
 
+	private isRequeuedReceipt(entry: Pick<AgentMessageQueue, 'status' | 'payload'>): boolean {
+		return (
+			entry.status === 'undelivered' &&
+			entry.payload.source === 'preview' &&
+			entry.payload.kind === 'message' &&
+			Boolean(entry.payload.steering?.requeuedAsId)
+		);
+	}
+
 	async listPreview(scope: PreviewQueueScope): Promise<AgentChatQueueItem[]> {
 		const entries = await this.repository.findPreviewEntries(scope.agentId, scope.threadId);
-		return entries.filter((entry) => this.owns(entry, scope)).map((entry) => this.toItem(entry));
+		return entries
+			.filter((entry) => this.owns(entry, scope) && !this.isRequeuedReceipt(entry))
+			.map((entry) => this.toItem(entry));
+	}
+
+	async reconcileDeliveredHistory(
+		scope: PreviewQueueScope,
+		history: AgentPersistedMessageDto[],
+	): Promise<AgentPersistedMessageDto[]> {
+		const reconciled = [...history];
+		for (const entry of await this.repository.findDeliveredSteering(scope.threadId)) {
+			if (
+				!entry.executionId ||
+				!this.owns(entry, scope) ||
+				entry.payload.source !== 'preview' ||
+				entry.payload.kind !== 'message' ||
+				reconciled.some(({ id }) => id === entry.id)
+			) {
+				continue;
+			}
+			const content: AgentPersistedMessageContentPart[] = entry.payload.message
+				? [{ type: 'text', text: entry.payload.message }]
+				: [];
+			content.push(
+				...(entry.payload.attachments ?? []).map((attachment) => ({
+					type: 'file',
+					fileId: attachment.id,
+					fileName: attachment.fileName,
+					mimeType: attachment.mimeType,
+					sizeBytes: attachment.sizeBytes,
+				})),
+			);
+			const message: AgentPersistedMessageDto = {
+				id: entry.id,
+				role: 'user',
+				content,
+				executionId: entry.executionId,
+			};
+			let insertAt = reconciled.length;
+			for (let index = reconciled.length - 1; index >= 0; index--) {
+				if (reconciled[index].executionId === entry.executionId) {
+					insertAt = index + 1;
+					break;
+				}
+			}
+			reconciled.splice(insertAt, 0, message);
+		}
+		return reconciled;
+	}
+
+	async getPreviewQueue(scope: PreviewQueueScope): Promise<AgentChatQueueResponse> {
+		const items = await this.listPreview(scope);
+		if (await this.checkpoints.findSuspendedForThread(scope.agentId, scope.threadId)) {
+			return { items, sendNowUnavailableReason: 'hitl-pending' };
+		}
+
+		const active = await this.executionRepository.findSteeringTarget(scope.threadId);
+		if (active?.runtimeRunId) {
+			return {
+				items,
+				sendNowTarget: {
+					mode: 'active',
+					executionId: active.id,
+					runId: active.runtimeRunId,
+				},
+			};
+		}
+
+		if (!(await this.executionRepository.existsRunningByThread(scope.threadId))) {
+			const latest = await this.executionRepository.findLatestByThreadId(scope.threadId);
+			if (latest && (await this.hasBackgroundWork(scope))) {
+				return {
+					items,
+					sendNowTarget: {
+						mode: 'new-parent-turn',
+						previousExecutionId: latest.id,
+					},
+				};
+			}
+		}
+
+		return { items, sendNowUnavailableReason: 'no-active-run' };
+	}
+
+	private async hasBackgroundWork(scope: PreviewQueueScope): Promise<boolean> {
+		const principalHash = hashAgentSandboxPrincipal({ type: 'n8n-user', userId: scope.userId });
+		return (await this.backgroundJobRepository.findByParentThread(scope.threadId)).some(
+			(job) =>
+				job.parentAgentId === scope.agentId &&
+				job.parentResourceId === scope.resourceId &&
+				job.parentPrincipalHash === principalHash &&
+				(job.status === 'running' || job.notifiedAt === null),
+		);
+	}
+
+	async sendNow(
+		scope: PreviewQueueScope,
+		id: string,
+		target: AgentChatSteeringTarget,
+	): Promise<AgentChatQueueItem> {
+		if (target.mode === 'active') return await this.sendNowToActiveRun(scope, id, target);
+
+		let item: AgentChatQueueItem;
+		try {
+			item = await this.lockService.withLease(
+				LockNamespace.KNOWN_LOCKS,
+				agentConversationLockKey(scope.threadId),
+				async (signal) => {
+					signal.throwIfAborted();
+					return await this.lockService.withLease(
+						LockNamespace.KNOWN_LOCKS,
+						previewAdmissionLockKey(scope.threadId),
+						async () => await this.reserveParentTurn(scope, id, target),
+					);
+				},
+				{ waitTimeoutMs: 250 },
+			);
+		} catch (error) {
+			if (error instanceof LockAcquisitionTimeoutError) {
+				throw new ConflictError('The conversation state changed');
+			}
+			throw error;
+		}
+		this.notify(scope.threadId);
+		return item;
+	}
+
+	async requeuePreview(
+		scope: PreviewQueueScope,
+		id: string,
+		clientRequestId: string,
+		execute: PreviewExecution['execute'],
+	): Promise<AgentChatQueueItem> {
+		const queued = await this.lockService.withLease(
+			LockNamespace.KNOWN_LOCKS,
+			previewAdmissionLockKey(scope.threadId),
+			async () => {
+				const previous = await this.getPreview(scope, id);
+				if (
+					previous.status !== 'undelivered' ||
+					previous.payload.source !== 'preview' ||
+					previous.payload.kind !== 'message'
+				) {
+					throw new ConflictError('This message cannot be sent again');
+				}
+				const result = await this.repository.requeueUndelivered(id, clientRequestId);
+				if (!result || result.payload.source !== 'preview' || result.payload.kind !== 'message') {
+					throw new ConflictError('This message cannot be sent again');
+				}
+				const requestId = result.payload.clientRequestId ?? clientRequestId;
+				if (!this.previews.has(result.id)) {
+					this.previews.set(result.id, {
+						input: {
+							agentId: result.agentId,
+							threadId: result.threadId,
+							payload: result.payload,
+						},
+						clientRequestId: requestId,
+						execute,
+						controller: new AbortController(),
+						errorEmitted: false,
+					});
+				}
+				return result;
+			},
+		);
+		this.notify(scope.threadId);
+		return this.toItem(queued);
+	}
+
+	private async sendNowToActiveRun(
+		scope: PreviewQueueScope,
+		id: string,
+		target: Extract<AgentChatSteeringTarget, { mode: 'active' }>,
+	): Promise<AgentChatQueueItem> {
+		return await this.lockService.withLease(
+			LockNamespace.KNOWN_LOCKS,
+			previewAdmissionLockKey(scope.threadId),
+			async () => {
+				const entry = await this.getPreview(scope, id);
+				if (
+					entry.status === 'steering' &&
+					entry.steeringRunId === target.runId &&
+					entry.payload.source === 'preview' &&
+					entry.payload.kind === 'message' &&
+					entry.payload.steering?.targetExecutionId === target.executionId
+				) {
+					return this.toItem(entry);
+				}
+				if (
+					entry.status !== 'queued' ||
+					entry.payload.source !== 'preview' ||
+					entry.payload.kind !== 'message'
+				) {
+					throw new ConflictError('This message is no longer waiting');
+				}
+				if (await this.checkpoints.findSuspendedForThread(scope.agentId, scope.threadId)) {
+					throw new ConflictError('The agent is waiting for a response');
+				}
+				if (
+					!(await this.executionRepository.isSteeringTarget(
+						target.executionId,
+						scope.threadId,
+						target.runId,
+					))
+				) {
+					throw new ConflictError('The active run changed');
+				}
+				const promoted = await this.repository.promoteQueued(
+					id,
+					{ mode: 'active', targetExecutionId: target.executionId },
+					target.runId,
+					target.executionId,
+				);
+				if (!promoted) {
+					throw new ConflictError('This message is no longer waiting');
+				}
+				return this.toItem(promoted);
+			},
+		);
+	}
+
+	private async reserveParentTurn(
+		scope: PreviewQueueScope,
+		id: string,
+		target: Extract<AgentChatSteeringTarget, { mode: 'new-parent-turn' }>,
+	): Promise<AgentChatQueueItem> {
+		const entry = await this.getPreview(scope, id);
+		if (
+			entry.status !== 'queued' ||
+			entry.payload.source !== 'preview' ||
+			entry.payload.kind !== 'message'
+		) {
+			throw new ConflictError('This message is no longer waiting');
+		}
+		const latest = await this.executionRepository.findLatestByThreadId(scope.threadId);
+		if (
+			latest?.id !== target.previousExecutionId ||
+			(await this.executionRepository.existsRunningByThread(scope.threadId)) ||
+			(await this.checkpoints.findSuspendedForThread(scope.agentId, scope.threadId)) ||
+			(await this.repository.hasParentTurnReservation(scope.threadId)) ||
+			!(await this.hasBackgroundWork(scope))
+		) {
+			throw new ConflictError('The conversation state changed');
+		}
+		const promoted = await this.repository.promoteQueued(
+			id,
+			{
+				mode: 'new-parent-turn',
+				targetExecutionId: target.previousExecutionId,
+			},
+			null,
+		);
+		if (!promoted) {
+			throw new ConflictError('This message is no longer waiting');
+		}
+		return this.toItem(promoted);
 	}
 
 	private async getPreview(scope: PreviewQueueScope, id: string): Promise<AgentMessageQueue> {
@@ -184,33 +468,54 @@ export class AgentMessageQueueService {
 		id: string,
 		message: string,
 	): Promise<AgentChatQueueItem> {
-		const entry = await this.getPreview(scope, id);
-		if (entry.payload.source !== 'preview' || entry.payload.kind !== 'message') {
-			throw new BadRequestError('Only waiting messages can be edited');
-		}
-		if (!message.trim() && !entry.payload.attachments?.length) {
-			throw new BadRequestError('Message text or at least one attachment is required');
-		}
-		const payload = { ...entry.payload, message };
-		if (!(await this.repository.editQueuedPreview(id, payload))) {
-			throw new ConflictError('This message is no longer waiting');
-		}
-		entry.payload = payload;
-		return this.toItem(entry);
+		return await this.lockService.withLease(
+			LockNamespace.KNOWN_LOCKS,
+			previewAdmissionLockKey(scope.threadId),
+			async () => {
+				const entry = await this.getPreview(scope, id);
+				if (entry.payload.source !== 'preview' || entry.payload.kind !== 'message') {
+					throw new BadRequestError('Only waiting messages can be edited');
+				}
+				if (!message.trim() && !entry.payload.attachments?.length) {
+					throw new BadRequestError('Message text or at least one attachment is required');
+				}
+				const payload = { ...entry.payload, message };
+				if (!(await this.repository.editQueuedPreview(id, payload))) {
+					throw new ConflictError('This message is no longer waiting');
+				}
+				entry.payload = payload;
+				return this.toItem(entry);
+			},
+		);
 	}
 
 	async removePreview(scope: PreviewQueueScope, id: string): Promise<void> {
-		const entry = await this.getPreview(scope, id);
-		if (entry.kind !== 'message' || !(await this.repository.cancelQueued(id))) {
-			throw new ConflictError('This message is no longer waiting');
+		const entry = await this.lockService.withLease(
+			LockNamespace.KNOWN_LOCKS,
+			previewAdmissionLockKey(scope.threadId),
+			async () => {
+				const current = await this.getPreview(scope, id);
+				if (current.kind !== 'message' || !(await this.repository.cancelQueued(id))) {
+					throw new ConflictError('This message is no longer waiting');
+				}
+				return current;
+			},
+		);
+		if (!this.isRequeuedReceipt(entry)) {
+			await this.deleteUnusedAttachments(entry);
 		}
-		await this.deleteUnusedAttachments(entry);
 		this.notify(entry.threadId);
 	}
 
 	async stopPreview(scope: PreviewQueueScope, id: string): Promise<boolean> {
-		await this.getPreview(scope, id);
-		const cancelled = await this.repository.requestCancellation(id);
+		const cancelled = await this.lockService.withLease(
+			LockNamespace.KNOWN_LOCKS,
+			previewAdmissionLockKey(scope.threadId),
+			async () => {
+				await this.getPreview(scope, id);
+				return await this.repository.requestCancellation(id);
+			},
+		);
 		if (cancelled) this.notify(scope.threadId);
 		return cancelled;
 	}
@@ -272,6 +577,96 @@ export class AgentMessageQueueService {
 		return await this.repository.hasEntries(threadId);
 	}
 
+	async hasParentTurnReservation(threadId: string): Promise<boolean> {
+		return await this.repository.hasParentTurnReservation(threadId);
+	}
+
+	async openSteeringExecution(executionId: string, runId: string): Promise<void> {
+		if (!(await this.executionRepository.openSteering(executionId, runId))) {
+			throw new UnexpectedError('Failed to open the execution for steering');
+		}
+	}
+
+	async closeSteeringExecution(
+		executionId: string,
+		runId: string,
+		threadId: string,
+		failureReason?: string,
+	): Promise<void> {
+		await this.executionRepository.closeSteering(executionId, runId);
+		if (failureReason) {
+			await this.repository.markSteeringUndelivered(threadId, runId, failureReason);
+		}
+	}
+
+	async acceptSteeringInput(
+		scope: PreviewQueueScope,
+		executionId: string | undefined,
+		boundary: AgentInputBoundary,
+	): Promise<boolean> {
+		if (!executionId) throw new UnexpectedError('The steering execution is not ready');
+		return await this.lockService.withLease(
+			LockNamespace.KNOWN_LOCKS,
+			previewAdmissionLockKey(scope.threadId),
+			async () => {
+				if (
+					!(await this.executionRepository.isSteeringTarget(
+						executionId,
+						scope.threadId,
+						boundary.runId,
+					))
+				) {
+					throw new ConflictError('The active run changed');
+				}
+
+				const pending = (
+					await this.repository.findPendingSteering(scope.threadId, boundary.runId)
+				).filter(
+					(item) =>
+						item.agentId === scope.agentId &&
+						item.payload.source === 'preview' &&
+						item.payload.kind === 'message' &&
+						item.payload.projectId === scope.projectId &&
+						item.payload.userId === scope.userId &&
+						item.payload.resourceId === scope.resourceId,
+				);
+				if (!boundary.canContinue) {
+					await this.repository.markSteeringUndelivered(
+						scope.threadId,
+						boundary.runId,
+						'The agent reached its execution limit',
+					);
+					await this.executionRepository.closeSteering(executionId, boundary.runId);
+					return false;
+				}
+				if (pending.length === 0) {
+					if (boundary.reason === 'before-finish') {
+						await this.executionRepository.closeSteering(executionId, boundary.runId);
+					}
+					return false;
+				}
+
+				const messages: AgentMessage[] = pending.flatMap((item) => {
+					if (item.payload.source !== 'preview' || item.payload.kind !== 'message') return [];
+					return buildInboundUserMessage(item.payload.message, item.payload.attachments ?? []).map(
+						(message) => ({ ...message, id: item.id }),
+					);
+				});
+				await boundary.addInput(messages);
+				if (
+					!(await this.repository.markSteeringDelivered(
+						pending.map(({ id }) => id),
+						boundary.runId,
+						executionId,
+					))
+				) {
+					throw new UnexpectedError('Failed to save the steering delivery receipt');
+				}
+				return true;
+			},
+		);
+	}
+
 	private async deleteUnusedAttachments(entry: AgentMessageQueue): Promise<void> {
 		if (entry.payload.source === 'preview' && entry.payload.kind === 'message') {
 			try {
@@ -287,8 +682,9 @@ export class AgentMessageQueueService {
 
 	private async cancelPreview(id: string): Promise<void> {
 		const entry = await this.repository.findById(id);
-		if (entry && (await this.repository.cancelQueued(id)))
+		if (entry && (await this.repository.cancelQueued(id)) && !this.isRequeuedReceipt(entry)) {
 			await this.deleteUnusedAttachments(entry);
+		}
 		await this.reconcilePreviews();
 	}
 
@@ -429,19 +825,37 @@ export class AgentMessageQueueService {
 		]);
 		if (entry.status === 'cancelling') preview?.controller.abort();
 		let executionId: string | undefined;
-		const onExecutionStarted = async (id: string) => {
+		let runtimeRunId: string | undefined;
+		let failed = false;
+		const steeringScope: PreviewQueueScope | undefined =
+			entry.payload.source === 'preview'
+				? {
+						agentId: entry.agentId,
+						threadId,
+						projectId: entry.payload.projectId,
+						userId: entry.payload.userId,
+						resourceId: entry.payload.resourceId,
+					}
+				: undefined;
+		const onExecutionStarted = async (id: string, runId: string) => {
 			executionId = id;
+			runtimeRunId = runId;
 			await this.repository.linkExecution(entry.id, id);
-			if (preview)
+			if (preview) {
+				await this.openSteeringExecution(id, runId);
 				this.sendPreviewEvent(entry.id, preview, { type: 'execution-started', executionId: id });
+			}
 		};
 		try {
 			if (preview && entry.payload.source === 'preview') {
+				if (!steeringScope) throw new UnexpectedError('Expected a preview queue scope');
 				this.sendPreviewEvent(entry.id, preview, { type: 'processing', item: this.toItem(entry) });
 				abortSignal.throwIfAborted();
 				await preview.execute(entry.payload, {
 					abortSignal,
 					onExecutionStarted,
+					onInputBoundary: async (boundary) =>
+						await this.acceptSteeringInput(steeringScope, executionId, boundary),
 					send: (event) => {
 						if (!abortSignal.aborted) this.sendPreviewEvent(entry.id, preview, event);
 					},
@@ -454,6 +868,7 @@ export class AgentMessageQueueService {
 				});
 			}
 		} catch (error) {
+			failed = true;
 			if (preview) {
 				if (!executionId)
 					executionId = await this.recordFailedPreview(entry, error, abortSignal.aborted);
@@ -467,6 +882,18 @@ export class AgentMessageQueueService {
 			this.logger.warn('Queued agent input ended with an error', { id: entry.id, threadId, error });
 		} finally {
 			try {
+				if (executionId && runtimeRunId) {
+					await this.closeSteeringExecution(
+						executionId,
+						runtimeRunId,
+						threadId,
+						failed || abortSignal.aborted
+							? abortSignal.aborted
+								? 'The agent stopped before delivery'
+								: 'The agent run failed'
+							: undefined,
+					);
+				}
 				// The conditional delete makes a concurrent Stop win before suspension cleanup.
 				if (preview && !preview.controller.signal.aborted) {
 					if (await this.repository.finishProcessing(entry.id)) {
@@ -567,6 +994,10 @@ export class AgentMessageQueueService {
 			if (this.previews.get(id) !== preview) continue;
 			const entry = entries.get(id);
 			const started = this.processing.has(id);
+			if ((entry?.status === 'delivered' || (entry && this.isRequeuedReceipt(entry))) && !started) {
+				this.previews.delete(id);
+				continue;
+			}
 			if (entry?.status === 'cancelling' || (!entry && started)) preview.controller.abort();
 			if (!entry && !started && this.previews.get(id) === preview) {
 				this.previews.delete(id);
@@ -601,6 +1032,27 @@ export class AgentMessageQueueService {
 					async (leaseSignal) => {
 						for (const entry of await this.repository.findStale(threadId, staleBefore)) {
 							if (leaseSignal.aborted) return;
+							if (
+								entry.status === 'steering' &&
+								entry.payload.source === 'preview' &&
+								entry.payload.kind === 'message'
+							) {
+								const checkpoint = await this.checkpoints.findSuspendedForThread(
+									entry.agentId,
+									threadId,
+								);
+								if (checkpoint?.runId === entry.steeringRunId) continue;
+								const targetId = entry.payload.steering?.targetExecutionId;
+								const target = targetId
+									? await this.executionRepository.findRunningById(targetId)
+									: null;
+								if (target && target.updatedAt > staleBefore) continue;
+								await this.repository.markUndelivered(
+									entry.id,
+									'The agent process stopped before delivery',
+								);
+								continue;
+							}
 							if (entry.executionId) {
 								const execution = await this.executionRepository.findRunningById(entry.executionId);
 								if (execution && execution.updatedAt > staleBefore) continue;

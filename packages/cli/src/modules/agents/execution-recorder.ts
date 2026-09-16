@@ -1,10 +1,11 @@
-import type { StreamChunk } from '@n8n/agents';
+import type { AgentMessage, StreamChunk } from '@n8n/agents';
 import {
 	applyForwardedChildChunk,
 	emptyChildTrace,
 	settleChildTrace,
 	type PersistedChildTrace,
 	type AgentBackgroundJobSignal,
+	type AgentPersistedMessageContentPart,
 } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { isSensitiveKey } from '@n8n/utils/redaction/sensitive-key';
@@ -12,6 +13,7 @@ import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import { extractFromAICalls, isFromAIOnlyExpression } from 'n8n-workflow';
 
 import type { ToolRegistry } from './tool-registry';
+import { contentPartToDto } from './agent-message-mapper';
 
 /** Cap on child trace characters persisted per delegation. Tighter than the
  *  live forwarding budget because this is written into every parent execution row. */
@@ -263,6 +265,12 @@ export interface RecordedUsage {
 
 export type TimelineEvent =
 	| { type: 'background-task-signal'; signal: AgentBackgroundJobSignal; timestamp: number }
+	| {
+			type: 'user-input';
+			id: string;
+			content: AgentPersistedMessageContentPart[];
+			timestamp: number;
+	  }
 	| { type: 'text'; content: string; timestamp: number; endTime?: number }
 	| { type: 'reasoning'; content: string; timestamp: number; endTime?: number }
 	| {
@@ -396,6 +404,9 @@ export class ExecutionRecorder {
 	/** Feed a stream chunk into the recorder. */
 	record(chunk: StreamChunk): void {
 		switch (chunk.type) {
+			case 'message':
+				this.recordUserInput(chunk.message);
+				break;
 			case 'text-delta':
 				this.flushReasoningBuffer();
 				if (this.textStartTime === null) {
@@ -495,6 +506,25 @@ export class ExecutionRecorder {
 				break;
 			}
 		}
+	}
+
+	private recordUserInput(message: AgentMessage): void {
+		if (
+			!('content' in message) ||
+			message.role !== 'user' ||
+			!message.id ||
+			!Array.isArray(message.content)
+		) {
+			return;
+		}
+		this.flushReasoningBuffer();
+		this.flushTextBuffer();
+		this.appendCompletedEvent({
+			type: 'user-input',
+			id: message.id,
+			content: message.content.map(contentPartToDto),
+			timestamp: Date.now(),
+		});
 	}
 
 	/** Whether the stream ended with a tool-call suspension (incomplete cycle). */

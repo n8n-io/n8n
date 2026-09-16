@@ -20,7 +20,7 @@ import { hashAgentSandboxPrincipal } from '@/modules/agents/agent-sandbox-princi
 import { AgentExecutionUpdateBroadcaster } from '@/modules/agents/agent-execution-update-broadcaster';
 import type { Push } from '@/push';
 import type { AgentExecutionOrchestratorService } from '@/modules/agents/agent-execution-orchestrator.service';
-import type { AgentBackgroundJobRepository } from '@/modules/agents/repositories/agent-background-job.repository';
+import { AgentBackgroundJobRepository } from '@/modules/agents/repositories/agent-background-job.repository';
 import type { AgentBackgroundJob } from '@/modules/agents/entities/agent-background-job.entity';
 import type { ChatIntegrationRegistry } from '@/modules/agents/integrations/agent-chat-integration';
 import { AgentExecutionService } from '@/modules/agents/agent-execution.service';
@@ -176,6 +176,7 @@ describe('agent message queue', () => {
 			integrations,
 			agents,
 			Container.get(AgentExecutionRepository),
+			Container.get(AgentBackgroundJobRepository),
 			executions,
 			attachments,
 			publisher,
@@ -280,6 +281,119 @@ describe('agent message queue', () => {
 		} finally {
 			first.resolve();
 		}
+	});
+
+	it('keeps a promoted message out of ordinary pickup and preserves acceptance order', async () => {
+		const waiting = await repository.enqueue(preview('B'));
+		const acceptedSecond = await repository.enqueue(preview('C'));
+		const acceptedFirst = await repository.enqueue(preview('D'));
+		expect(
+			await repository.promoteQueued(
+				acceptedFirst.id,
+				{ mode: 'active', targetExecutionId: crypto.randomUUID() },
+				'run-1',
+			),
+		).toMatchObject({ status: 'steering', steeringOrder: 1 });
+		expect(
+			await repository.promoteQueued(
+				acceptedSecond.id,
+				{ mode: 'active', targetExecutionId: crypto.randomUUID() },
+				'run-1',
+			),
+		).toMatchObject({ status: 'steering', steeringOrder: 2 });
+		expect((await repository.findNext('conversation'))?.id).toBe(waiting.id);
+		expect(
+			(await repository.findPendingSteering('conversation', 'run-1')).map(({ id }) => id),
+		).toEqual([acceptedFirst.id, acceptedSecond.id]);
+		const reserved = await repository.enqueue(preview('E'));
+		await repository.promoteQueued(
+			reserved.id,
+			{
+				mode: 'new-parent-turn',
+				targetExecutionId: crypto.randomUUID(),
+			},
+			null,
+		);
+		expect((await repository.findNext('conversation'))?.id).toBe(reserved.id);
+
+		expect(await repository.markUndelivered(acceptedSecond.id, 'The run stopped')).toBe(true);
+		const requeued = await repository.requeueUndelivered(acceptedSecond.id, randomUUID());
+		expect(requeued).toMatchObject({ status: 'queued' });
+		expect((await repository.requeueUndelivered(acceptedSecond.id, randomUUID()))?.id).toBe(
+			requeued?.id,
+		);
+	});
+
+	it('delivers a queued preview to the exact active run', async () => {
+		const threadId = 'preview-conversation';
+		const executionRepository = Container.get(AgentExecutionRepository);
+		await Container.get(AgentExecutionThreadRepository).findOrCreate(
+			threadId,
+			agentId,
+			'Queued agent',
+			projectId,
+		);
+		const execution = await executionRepository.save(
+			executionRepository.create({ threadId, status: 'running', startedAt: new Date() }),
+		);
+		await executionRepository.openSteering(execution.id, 'run-1');
+
+		const main = await makeMain();
+		const item = await main.enqueuePreview(preview('Correction', threadId), randomUUID(), vi.fn());
+		const scope = { projectId, agentId, threadId, userId: 'user', resourceId: 'user' };
+		const queue = await main.getPreviewQueue(scope);
+		expect(queue.sendNowTarget).toEqual({
+			mode: 'active',
+			executionId: execution.id,
+			runId: 'run-1',
+		});
+		checkpoints.findSuspendedForThread.mockResolvedValue({} as never);
+		expect(await main.getPreviewQueue(scope)).toMatchObject({
+			sendNowUnavailableReason: 'hitl-pending',
+		});
+		await expect(main.sendNow(scope, item.id, queue.sendNowTarget!)).rejects.toThrow(
+			'The agent is waiting for a response',
+		);
+		checkpoints.findSuspendedForThread.mockResolvedValue(null);
+		await executionRepository.closeSteering(execution.id, 'run-1');
+		await executionRepository.openSteering(execution.id, 'run-2');
+		await expect(main.sendNow(scope, item.id, queue.sendNowTarget!)).rejects.toThrow(
+			'The active run changed',
+		);
+		const refreshedTarget = (await main.getPreviewQueue(scope)).sendNowTarget;
+		if (!refreshedTarget) throw new Error('Expected an active steering target');
+		await main.sendNow(scope, item.id, refreshedTarget);
+
+		const addInput = vi.fn(async () => {});
+		await expect(
+			main.acceptSteeringInput(scope, execution.id, {
+				runId: 'run-2',
+				reason: 'before-model',
+				canContinue: true,
+				addInput,
+			}),
+		).resolves.toBe(true);
+		expect(addInput).toHaveBeenCalledWith([expect.objectContaining({ id: item.id, role: 'user' })]);
+		expect(await repository.findById(item.id)).toMatchObject({
+			status: 'delivered',
+			executionId: execution.id,
+			steeringRunId: 'run-2',
+		});
+
+		const blocked = await main.enqueuePreview(preview('Too late', threadId), randomUUID(), vi.fn());
+		await main.sendNow(scope, blocked.id, refreshedTarget);
+		await expect(
+			main.acceptSteeringInput(scope, execution.id, {
+				runId: 'run-2',
+				reason: 'before-finish',
+				canContinue: false,
+				addInput,
+			}),
+		).resolves.toBe(false);
+		expect(await repository.findById(blocked.id)).toMatchObject({
+			status: 'undelivered',
+			payload: { steering: { failureReason: 'The agent reached its execution limit' } },
+		});
 	});
 
 	it('runs another conversation while the first conversation is busy', async () => {
@@ -669,6 +783,37 @@ describe('agent message queue', () => {
 		await main.removePreview(scope, item.id);
 		expect(await repository.count()).toBe(0);
 		expect(attachments.deleteByIds).toHaveBeenCalledWith(['file']);
+	});
+
+	it('keeps attachments when an undelivered receipt was requeued', async () => {
+		checkpoints.findSuspendedForThread.mockResolvedValue({} as never);
+		const main = await makeMain();
+		const scope = {
+			agentId,
+			projectId,
+			threadId: 'conversation',
+			userId: 'user',
+			resourceId: 'user',
+		};
+		const item = await main.enqueuePreview(
+			preview('original', 'conversation', [
+				{ id: 'file', fileName: 'notes.txt', mimeType: 'text/plain', sizeBytes: 10 },
+			]),
+			randomUUID(),
+			vi.fn(),
+		);
+		await repository.promoteQueued(
+			item.id,
+			{ mode: 'active', targetExecutionId: randomUUID() },
+			'run-1',
+		);
+		await repository.markUndelivered(item.id, 'The run stopped');
+		const requeued = await repository.requeueUndelivered(item.id, randomUUID());
+
+		await main.removePreview(scope, item.id);
+
+		expect(attachments.deleteByIds).not.toHaveBeenCalledWith(['file']);
+		expect(await repository.findById(requeued!.id)).toMatchObject({ status: 'queued' });
 	});
 
 	it('cancels a preview that finishes enqueueing during shutdown', async () => {

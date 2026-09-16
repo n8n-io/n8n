@@ -271,6 +271,30 @@ export class AgentChatResumeDto extends Z.class({
 
 export class AgentChatQueueEditDto extends Z.class({ message: z.string() }) {}
 
+const agentChatQueueSendNowTargetSchema = z.discriminatedUnion('mode', [
+	z
+		.object({
+			mode: z.literal('active'),
+			executionId: z.string().uuid(),
+			runId: z.string().min(1),
+		})
+		.strict(),
+	z
+		.object({
+			mode: z.literal('new-parent-turn'),
+			previousExecutionId: z.string().uuid(),
+		})
+		.strict(),
+]);
+
+export class AgentChatQueueSendNowDto extends Z.class({
+	target: agentChatQueueSendNowTargetSchema,
+}) {}
+
+export class AgentChatQueueRequeueDto extends Z.class({
+	clientRequestId: z.string().uuid(),
+}) {}
+
 /**
  * Envelope check for the connect body. The channel itself is validated against
  * the per-platform integration schema, which is where `settings` is checked.
