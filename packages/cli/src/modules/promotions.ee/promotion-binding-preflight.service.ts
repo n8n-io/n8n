@@ -87,6 +87,18 @@ export class PromotionBindingPreflightService {
 		const personalProjectIds = new Set(
 			targetProjects.filter(({ type }) => type === 'personal').map(({ id }) => id),
 		);
+		this.checkProjects(inventory, personalProjectIds, projectOf, result);
+		this.checkCredentials(credentials, targetCredentials, personalProjectIds, projectOf, result);
+		this.checkVariables(variables, targetVariables, personalProjectIds, projectOf, result);
+		return result;
+	}
+
+	private checkProjects(
+		inventory: PackageDirectoryInventory,
+		personalProjectIds: ReadonlySet<string>,
+		projectOf: ProjectLookup,
+		result: PromotionBindingPreflightResult,
+	): void {
 		for (const project of [...inventory.projects].sort((a, b) => compare(a.id, b.id))) {
 			if (!personalProjectIds.has(project.id)) continue;
 			result.conflicts.push({
@@ -99,7 +111,15 @@ export class PromotionBindingPreflightService {
 				),
 			});
 		}
+	}
 
+	private checkCredentials(
+		credentials: CredentialReference[],
+		targetCredentials: Awaited<ReturnType<CredentialsRepository['findPromotionBindingAccess']>>,
+		personalProjectIds: ReadonlySet<string>,
+		projectOf: ProjectLookup,
+		result: PromotionBindingPreflightResult,
+	): void {
 		const credentialsById = new Map(
 			targetCredentials.map((credential) => [credential.id, credential]),
 		);
@@ -163,7 +183,15 @@ export class PromotionBindingPreflightService {
 				});
 			}
 		}
+	}
 
+	private checkVariables(
+		variables: VariableReference[],
+		targetVariables: Awaited<ReturnType<VariablesRepository['findKeysInProjectsOrGlobal']>>,
+		personalProjectIds: ReadonlySet<string>,
+		projectOf: ProjectLookup,
+		result: PromotionBindingPreflightResult,
+	): void {
 		const existingVariables = new Set(
 			targetVariables.map(({ key, projectId }) => variableKey(key, projectId)),
 		);
@@ -211,7 +239,6 @@ export class PromotionBindingPreflightService {
 				}
 			}
 		}
-		return result;
 	}
 }
 
