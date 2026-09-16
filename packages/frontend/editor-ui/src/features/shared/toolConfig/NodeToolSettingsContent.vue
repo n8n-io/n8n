@@ -20,7 +20,11 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
 import ParameterInputList from '@/features/ndv/parameters/components/ParameterInputList.vue';
-import { collectParametersByTab, createCommonNodeSettings } from '@/features/ndv/shared/ndv.utils';
+import {
+	collectParametersByTab,
+	createCommonNodeSettings,
+	removeMismatchedOptionValues,
+} from '@/features/ndv/shared/ndv.utils';
 import { omitOperationOptions } from '@/features/shared/toolConfig/toolConfig.utils';
 import type { INodeUpdatePropertiesInformation, ITab, IUpdateInformation } from '@/Interface';
 import { N8nTabs, N8nText } from '@n8n/design-system';
@@ -218,8 +222,49 @@ function makeUniqueName(baseName: string, existingNames: string[]): string {
 function handleChangeParameter(updateData: IUpdateInformation) {
 	if (!node.value) return;
 
-	const newParameters = deepCopy(node.value.parameters);
-	setParameterValue(newParameters, updateData.name, updateData.value);
+	const nodeType = nodeTypeDescription.value;
+	if (!nodeType) {
+		const newParameters = deepCopy(node.value.parameters);
+		setParameterValue(newParameters, updateData.name, updateData.value);
+		node.value = { ...node.value, parameters: newParameters };
+		return;
+	}
+
+	// Re-derive parameters the same way the NDV does (see
+	// `useNodeSettingsParameters.updateNodeParameter`): strip to user-set values,
+	// apply the change, drop options that no longer match, then refill defaults.
+	// This resets a dependent param (e.g. `operation`) to the new resource's
+	// default when `resource` changes, instead of keeping a stale selection.
+	let parameters =
+		NodeHelpers.getNodeParameters(
+			nodeType.properties,
+			node.value.parameters,
+			false,
+			false,
+			node.value,
+			nodeType,
+		) ?? {};
+	parameters = deepCopy(parameters);
+
+	setParameterValue(parameters, updateData.name, updateData.value);
+	if (updateData.value !== undefined) {
+		// `removeMismatchedOptionValues` keys off the changed param's `name` only;
+		// its `value` field is unused, so `null` keeps the call type-clean.
+		removeMismatchedOptionValues(nodeType, node.value.typeVersion, parameters, {
+			name: updateData.name,
+			value: null,
+		});
+	}
+
+	const newParameters =
+		NodeHelpers.getNodeParameters(
+			nodeType.properties,
+			parameters,
+			true,
+			false,
+			node.value,
+			nodeType,
+		) ?? parameters;
 
 	node.value = {
 		...node.value,

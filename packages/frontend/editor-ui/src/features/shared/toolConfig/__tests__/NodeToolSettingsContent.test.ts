@@ -699,4 +699,94 @@ describe('NodeToolSettingsContent', () => {
 			});
 		});
 	});
+
+	describe('dependent parameter reset', () => {
+		// Node type whose operation options depend on the selected resource.
+		const RESOURCE_DEPENDENT_NODE_TYPE: INodeTypeDescription = {
+			...MOCK_NODE_TYPE,
+			properties: [
+				{
+					displayName: 'Resource',
+					name: 'resource',
+					type: 'options',
+					options: [
+						{ name: 'Contact', value: 'contact' },
+						{ name: 'Deal', value: 'deal' },
+					],
+					default: 'contact',
+					noDataExpression: true,
+				},
+				{
+					displayName: 'Operation',
+					name: 'operation',
+					type: 'options',
+					displayOptions: { show: { resource: ['contact'] } },
+					options: [
+						{ name: 'Create', value: 'create' },
+						{ name: 'Get', value: 'get' },
+					],
+					default: 'create',
+					noDataExpression: true,
+				},
+				{
+					displayName: 'Operation',
+					name: 'operation',
+					type: 'options',
+					displayOptions: { show: { resource: ['deal'] } },
+					options: [
+						{ name: 'Close', value: 'close' },
+						{ name: 'Reopen', value: 'reopen' },
+					],
+					default: 'close',
+					noDataExpression: true,
+				},
+			],
+		};
+
+		const renderWithEmittingList = createComponentRenderer(NodeToolSettingsContent, {
+			global: {
+				stubs: {
+					ParameterInputList: defineComponent({
+						emits: ['value-changed'],
+						template: `
+							<div data-test-id="parameter-input-list">
+								<slot />
+								<button
+									data-test-id="change-resource"
+									@click="$emit('value-changed', { name: 'resource', value: 'deal' })"
+								/>
+							</div>
+						`,
+					}),
+					NodeCredentials: {
+						template: '<div data-test-id="node-credentials" />',
+						props: ['node', 'readonly', 'showAll', 'hideIssues'],
+					},
+				},
+			},
+		});
+
+		it('resets a stale operation to the new resource default when resource changes', async () => {
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(RESOURCE_DEPENDENT_NODE_TYPE);
+
+			const { emitted, getAllByTestId } = renderWithEmittingList({
+				props: {
+					initialNode: createMockNode({
+						name: 'My Tool',
+						parameters: { resource: 'contact', operation: 'get' },
+					}),
+				},
+			});
+
+			getAllByTestId('change-resource')[0].click();
+
+			await waitFor(() => {
+				const nodeEmissions = emitted('update:node') as INode[][];
+				const latest = nodeEmissions.at(-1)?.[0];
+				expect(latest?.parameters.resource).toBe('deal');
+				// `get` is not valid for the `deal` resource, so it resets to `close`.
+				expect(latest?.parameters.operation).toBe('close');
+			});
+		});
+	});
 });
