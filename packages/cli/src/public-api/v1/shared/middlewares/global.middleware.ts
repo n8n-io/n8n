@@ -15,6 +15,8 @@ import type { PaginatedRequest } from '@/public-api/types';
 
 import { decodeCursor } from '../services/pagination.service';
 
+const UNLIMITED_USERS_QUOTA = -1;
+
 export const USER_QUOTA_FORBIDDEN_MESSAGE =
 	'/users path can only be used with a valid license. See https://n8n.io/pricing/';
 
@@ -174,7 +176,7 @@ export const validLicenseWithUserQuota = (
 	next: express.NextFunction,
 ): express.Response | void => {
 	const license = Container.get(License);
-	if (!license.getUsersLimit()) {
+	if (license.getUsersLimit() !== UNLIMITED_USERS_QUOTA) {
 		return res.status(403).json({
 			message: USER_QUOTA_FORBIDDEN_MESSAGE,
 		});
