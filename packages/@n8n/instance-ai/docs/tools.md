@@ -662,7 +662,8 @@ Store Tool <= 1, Workflow Tool <= 2.1; `toolName` on a retrieve-as-tool vector
 store < 1.3) and is hardcoded on Think 1. An empty name makes the Tool Executor
 run the only tool connected to it, so a name this cannot know never stops the
 run; the arguments are keyed under every name the tool can have so the lookup
-finds them.
+finds them. Think 1's hardcoded `thinking_tool` is the one name this cannot key,
+and there it costs the arguments, not the run.
 
 A node that holds several tools (MCP
 Client Tool, MCP Registry Client Tool) is refused: the Tool Executor runs the
