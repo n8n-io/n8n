@@ -15,7 +15,6 @@ import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { WORKFLOW_REVIEW_REQUESTS_VIEW } from '@/features/workflow-reviews/constants';
 
 import { useSelfHealingStore } from '../selfHealing.store';
-import SelfHealingCoachmark from './SelfHealingCoachmark.vue';
 
 /**
  * Sits in the execution preview header of a failed execution and offers a
@@ -164,16 +163,15 @@ async function onFix() {
 				</N8nText>
 			</div>
 
-			<SelfHealingCoachmark v-if="!job" :execution="execution" @try-now="onFix">
-				<N8nButton
-					size="small"
-					icon="sparkles"
-					:label="ctaLabel"
-					:class="$style.action"
-					data-test-id="self-healing-fix-button"
-					@click="onFix"
-				/>
-			</SelfHealingCoachmark>
+			<N8nButton
+				v-if="!job"
+				size="small"
+				icon="sparkles"
+				:label="ctaLabel"
+				:class="$style.action"
+				data-test-id="self-healing-fix-button"
+				@click="onFix"
+			/>
 			<N8nLink
 				v-else-if="reviewRoute"
 				:to="reviewRoute"

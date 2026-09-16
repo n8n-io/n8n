@@ -3,46 +3,75 @@ import { N8nButton, N8nIconButton, N8nPopover, N8nText } from '@n8n/design-syste
 import { useI18n } from '@n8n/i18n';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { computed } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 
+import { VIEWS } from '@/app/constants';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import type { IWorkflowDb } from '@/Interface';
 
 import { useSelfHealingStore } from '../selfHealing.store';
 
 /**
- * One-time nudge anchored to the "fix this" button of a failed execution.
- * The slot is the anchor. The store decides when to show it and remembers
- * a dismissal in local storage, so the coachmark never comes back after
- * the user has seen the feature once.
+ * One-time nudge anchored to a failed execution in the executions list.
+ * The slot is the anchor and renders unchanged when the coachmark is not
+ * showing. The store decides when to show it and remembers a dismissal in
+ * local storage, so the coachmark never comes back after the user has seen
+ * the feature once.
  */
 const props = defineProps<{
 	execution: ExecutionSummary;
-}>();
-
-const emit = defineEmits<{
-	tryNow: [];
+	/** True for the one row the list picked as the anchor. */
+	active: boolean;
 }>();
 
 const i18n = useI18n();
+const route = useRoute();
+const router = useRouter();
 const store = useSelfHealingStore();
 const workflowsListStore = useWorkflowsListStore();
 
-const isOpen = computed(() => store.shouldShowCoachmark(props.execution));
+const isOpen = computed(() => props.active && store.shouldShowCoachmark(props.execution));
+
+const workflow = computed(() => workflowsListStore.getWorkflowById(props.execution.workflowId));
+
+const projectId = computed(() => {
+	const fromRoute = route.params.projectId;
+	if (typeof fromRoute === 'string' && fromRoute) return fromRoute;
+	return workflow.value?.homeProject?.id ?? null;
+});
 
 const body = computed(() => {
-	const workflow = workflowsListStore.getWorkflowById(props.execution.workflowId);
-	const status = store.getWorkflowStatus(
-		props.execution.workflowId,
-		workflow?.homeProject?.id ?? null,
-	);
+	const status = store.getWorkflowStatus(props.execution.workflowId, projectId.value);
 	const autonomy = status.enrolled ? status.config.autonomy : 'review';
 	return i18n.baseText('selfHealing.coachmark.body', {
 		interpolate: { behaviour: i18n.baseText(`selfHealing.autonomy.${autonomy}.description`) },
 	});
 });
 
-function onTryNow() {
+/** The list only holds workflow summaries; the mock fix needs the nodes to name a real one. */
+async function loadWorkflow(): Promise<IWorkflowDb | undefined> {
+	if (workflow.value?.nodes?.length) return workflow.value;
+	try {
+		return await workflowsListStore.fetchWorkflow(props.execution.workflowId);
+	} catch {
+		return workflow.value;
+	}
+}
+
+async function onTryNow() {
 	store.dismissCoachmark('forever');
-	emit('tryNow');
+	const fullWorkflow = await loadWorkflow();
+	void store.startFix(props.execution, {
+		workflowName: fullWorkflow?.name ?? props.execution.workflowName ?? '',
+		projectId: projectId.value,
+		nodes: fullWorkflow?.nodes,
+		connections: fullWorkflow?.connections,
+	});
+	// The fix job lives in the store, so the execution view picks it up mid-flight.
+	await router.push({
+		name: VIEWS.EXECUTION_PREVIEW,
+		params: { workflowId: props.execution.workflowId, executionId: props.execution.id },
+	});
 }
 
 function onNotNow() {
@@ -56,10 +85,11 @@ function onClose() {
 
 <template>
 	<N8nPopover
-		:open="isOpen"
+		v-if="isOpen"
+		:open="true"
 		side="bottom"
-		align="end"
-		:side-offset="10"
+		align="start"
+		:side-offset="8"
 		width="320px"
 		show-arrow
 		suppress-auto-focus
@@ -103,6 +133,8 @@ function onClose() {
 			</div>
 		</template>
 	</N8nPopover>
+	<!-- eslint-disable-next-line vue/no-multiple-template-root -- rows without the coachmark keep their original markup -->
+	<slot v-else />
 </template>
 
 <style lang="scss" module>

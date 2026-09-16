@@ -15,6 +15,7 @@ import { useIntersectionObserver } from '@vueuse/core';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { computed, ref, useTemplateRef, watch, type ComponentPublicInstance } from 'vue';
 import { useExecutionsStore } from '../../executions.store';
+import { useSelfHealingStore } from '@/features/self-healing/selfHealing.store';
 import type { ExecutionFilterType, ExecutionSummaryWithScopes } from '../../executions.types';
 import { executionRetryMessage } from '../../executions.utils';
 import ConcurrentExecutionsHeader from '../ConcurrentExecutionsHeader.vue';
@@ -48,6 +49,12 @@ const telemetry = useTelemetry();
 const workflowsListStore = useWorkflowsListStore();
 const executionsStore = useExecutionsStore();
 const settingsStore = useSettingsStore();
+const selfHealingStore = useSelfHealingStore();
+
+// The list is newest first, so this is the most recent failed execution.
+const selfHealingCoachmarkExecutionId = computed(
+	() => props.executions.find((execution) => selfHealingStore.shouldShowCoachmark(execution))?.id,
+);
 const pageRedirectionHelper = usePageRedirectionHelper();
 
 const autoRefresh = computed({
@@ -431,6 +438,7 @@ const goToUpgrade = () => {
 							:selected="selectedItems[execution.id] || allExistingSelected"
 							:concurrency-cap="settingsStore.concurrency"
 							:is-cloud-deployment="settingsStore.isCloudDeployment"
+							:self-healing-coachmark="execution.id === selfHealingCoachmarkExecutionId"
 							data-test-id="global-execution-list-item"
 							@stop="stopExecution"
 							@delete="deleteExecution"

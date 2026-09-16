@@ -4,6 +4,7 @@ import { WAIT_INDEFINITELY, type ExecutionSummary } from 'n8n-workflow';
 import GlobalExecutionsListItem from './GlobalExecutionsListItem.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { DateTime } from 'luxon';
+import { defineComponent } from 'vue';
 
 vi.mock('vue-router', async () => {
 	const actual = await vi.importActual('vue-router');
@@ -26,6 +27,12 @@ const renderComponent = createComponentRenderer(GlobalExecutionsListItem, {
 			GlobalExecutionsListItemQueuedTooltip: {
 				render: globalExecutionsListItemQueuedTooltipRenderSpy,
 			},
+			// The coachmark reads the self-healing store; the row itself needs no store.
+			SelfHealingCoachmark: defineComponent({
+				setup(_, { slots }) {
+					return () => slots.default?.();
+				},
+			}),
 		},
 	},
 });

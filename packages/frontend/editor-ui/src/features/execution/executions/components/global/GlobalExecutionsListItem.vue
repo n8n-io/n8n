@@ -24,6 +24,7 @@ import {
 	N8nTooltip,
 } from '@n8n/design-system';
 import PrivateCredentialIcon from '@/features/resolvers/components/PrivateCredentialIcon.vue';
+import SelfHealingCoachmark from '@/features/self-healing/components/SelfHealingCoachmark.vue';
 type Command = 'retrySaved' | 'retryOriginal' | 'delete';
 
 const emit = defineEmits<{
@@ -43,10 +44,13 @@ const props = withDefaults(
 		workflowPermissions: PermissionsRecord['workflow'];
 		concurrencyCap: number;
 		isCloudDeployment?: boolean;
+		/** Anchor the one-time self-healing coachmark to this row's status. */
+		selfHealingCoachmark?: boolean;
 	}>(),
 	{
 		selected: false,
 		workflowName: '',
+		selfHealingCoachmark: false,
 	},
 );
 
@@ -212,47 +216,49 @@ async function handleActionItemClick(commandData: Command) {
 				</RouterLink>
 			</N8nTooltip>
 		</td>
-		<td data-test-id="execution-status">
-			<GlobalExecutionsListItemQueuedTooltip
-				v-if="isWaitTillIndefinite || execution.status === EXECUTION_STATUS.NEW"
-				:status="props.execution.status"
-				:concurrency-cap="props.concurrencyCap"
-				:is-cloud-deployment="props.isCloudDeployment"
-				@go-to-upgrade="emit('goToUpgrade')"
-			>
-				<div>
-					<N8nIcon :icon="statusRender.icon" :color="statusRender.color" class="mr-2xs" />
-					{{ statusRender.label }}
-				</div>
-			</GlobalExecutionsListItemQueuedTooltip>
-			<N8nTooltip
-				v-else
-				:disabled="execution.status !== EXECUTION_STATUS.WAITING"
-				:content="
-					locale.baseText('executionsList.statusWaiting', {
-						interpolate: { status: execution.status, time: formattedWaitTillDate },
-					})
-				"
-			>
-				<div>
-					<N8nText
-						v-if="execution.status === EXECUTION_STATUS.RUNNING"
-						color="secondary"
-						class="mr-2xs"
-					>
-						<AnimatedSpinner />
-					</N8nText>
-					<N8nIcon
-						v-else
-						size="medium"
-						:icon="statusRender.icon"
-						:color="statusRender.color"
-						class="mr-2xs"
-					/>
-					{{ statusRender.label }}
-				</div>
-			</N8nTooltip>
-		</td>
+		<SelfHealingCoachmark :execution="execution" :active="selfHealingCoachmark">
+			<td data-test-id="execution-status">
+				<GlobalExecutionsListItemQueuedTooltip
+					v-if="isWaitTillIndefinite || execution.status === EXECUTION_STATUS.NEW"
+					:status="props.execution.status"
+					:concurrency-cap="props.concurrencyCap"
+					:is-cloud-deployment="props.isCloudDeployment"
+					@go-to-upgrade="emit('goToUpgrade')"
+				>
+					<div>
+						<N8nIcon :icon="statusRender.icon" :color="statusRender.color" class="mr-2xs" />
+						{{ statusRender.label }}
+					</div>
+				</GlobalExecutionsListItemQueuedTooltip>
+				<N8nTooltip
+					v-else
+					:disabled="execution.status !== EXECUTION_STATUS.WAITING"
+					:content="
+						locale.baseText('executionsList.statusWaiting', {
+							interpolate: { status: execution.status, time: formattedWaitTillDate },
+						})
+					"
+				>
+					<div>
+						<N8nText
+							v-if="execution.status === EXECUTION_STATUS.RUNNING"
+							color="secondary"
+							class="mr-2xs"
+						>
+							<AnimatedSpinner />
+						</N8nText>
+						<N8nIcon
+							v-else
+							size="medium"
+							:icon="statusRender.icon"
+							:color="statusRender.color"
+							class="mr-2xs"
+						/>
+						{{ statusRender.label }}
+					</div>
+				</N8nTooltip>
+			</td>
+		</SelfHealingCoachmark>
 		<td>
 			{{ formattedStartedAtDate }}
 		</td>
