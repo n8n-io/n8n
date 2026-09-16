@@ -119,27 +119,28 @@ export class ActivityEventRepository extends Repository<ActivityEvent> {
 	}
 
 	/**
-	 * The newest id in scope, or null when the scope holds nothing.
+	 * The newest entry in scope by id, reduced to when it was written. Null when the scope holds
+	 * nothing.
 	 *
-	 * For a reader holding a stored id to ask whether that id is still plausible. `id` is an
+	 * For a reader holding a stored id to ask whether that id still means what it did. `id` is an
 	 * ordering key, not a durable name: on SQLite the column is a rowid alias, so emptying the
-	 * table restarts the sequence and an id a reader remembers can come back attached to a
-	 * different row. A tailing reader compares its high-water mark against this to notice.
+	 * table restarts the sequence and an id a reader remembers comes back on a different row. The
+	 * timestamp is what separates the two cases — a quiet feed and a renumbered one look identical
+	 * by id alone.
 	 *
 	 * Served by `IDX_activity_event_project` alone, since that index already trails `id`.
 	 */
-	async findHighestId(query: {
+	async findNewestEntry(query: {
 		projectIds: string[];
 		categories: Array<ActivityEvent['category']>;
-	}): Promise<number | null> {
+	}): Promise<Pick<ActivityEvent, 'id' | 'createdAt'> | null> {
 		if (query.projectIds.length === 0 || query.categories.length === 0) return null;
 
-		const newest = await this.findOne({
+		return await this.findOne({
 			where: { projectId: In(query.projectIds), category: In(query.categories) },
 			order: { id: 'DESC' },
-			select: ['id'],
+			select: { id: true, createdAt: true },
 		});
-		return newest?.id ?? null;
 	}
 
 	/**

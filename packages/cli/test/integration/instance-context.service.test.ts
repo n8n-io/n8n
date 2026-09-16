@@ -385,4 +385,55 @@ describe('InstanceContextService', () => {
 
 		expect(await service.buildBlock({ user, cursor: null })).toBeNull();
 	});
+
+	/**
+	 * Emptying the table is what age-based retention does to an instance quiet for longer than its
+	 * window, and on SQLite the entry id is a rowid alias, so the sequence restarts and new rows
+	 * land below a mark a live thread still holds.
+	 *
+	 * Driven through the real database rather than a stubbed id, because the behaviour under test
+	 * belongs to the driver: stubbing the reader would assert our own assumption about how ids are
+	 * allocated instead of what actually happens. The assertion holds either way — where ids
+	 * restart the recovery surfaces the rows, and where they keep climbing the ordinary read does.
+	 */
+	it('still carries what changed after the feed was emptied and refilled', async () => {
+		await record({
+			category: 'workflow',
+			action: 'saved',
+			projectId: project.id,
+			resourceType: 'workflow',
+			resourceId: 'wf-before',
+			resourceName: 'Before the sweep',
+		});
+
+		const first = await service.buildBlock({ user, projectId: project.id, cursor: null });
+		expect(first?.block).toContain('Before the sweep');
+		const carried = first!.cursor;
+		expect(carried.activityMark).toBeGreaterThan(0);
+
+		// Retention takes everything, since every row is older than the window it was given.
+		await testDb.truncate(['ActivityEvent']);
+		await record({
+			category: 'workflow',
+			action: 'saved',
+			projectId: project.id,
+			resourceType: 'workflow',
+			resourceId: 'wf-after',
+			resourceName: 'After the sweep',
+		});
+
+		const second = await service.buildBlock({
+			user,
+			projectId: project.id,
+			cursor: carried,
+		});
+
+		expect(second?.block).toContain('After the sweep');
+		// The mark tracks the surviving id space rather than staying stranded above it.
+		const newest = await activity.findNewestEntry({
+			projectIds: [project.id],
+			categories: ['workflow', 'credential'],
+		});
+		expect(second?.cursor.activityMark).toBe(newest?.id);
+	});
 });

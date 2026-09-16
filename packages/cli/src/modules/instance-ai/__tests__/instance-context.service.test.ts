@@ -68,7 +68,7 @@ describe('InstanceContextService', () => {
 
 		activityEventRepository.findFeed.mockResolvedValue([]);
 		// An id space that never regressed, which is every case but the one that tests it.
-		activityEventRepository.findHighestId.mockResolvedValue(null);
+		activityEventRepository.findNewestEntry.mockResolvedValue(null);
 		executionRepository.summariseRunsForProjects.mockResolvedValue([]);
 		workflowRepository.findRecentForProjects.mockResolvedValue({ total: 0, workflows: [] });
 
@@ -583,7 +583,12 @@ describe('InstanceContextService', () => {
 				const service = serviceWith();
 				// The feed was emptied and refilled: ids 1..3 are all that exist now.
 				const table = [3, 2, 1];
-				activityEventRepository.findHighestId.mockResolvedValue(3);
+				activityEventRepository.findNewestEntry.mockResolvedValue({
+					id: 3,
+					// Written since the last block, which is what tells a renumbered feed from a
+					// quiet one: by id alone both look like nothing happened.
+					createdAt: new Date(NOW.getTime() - 30_000),
+				});
 				activityEventRepository.findFeed.mockImplementation(async (query) => {
 					const ids = table
 						.filter((id) => (query.afterId === undefined ? true : id > query.afterId))
@@ -618,7 +623,10 @@ describe('InstanceContextService', () => {
 			/** A mark below the newest id is the normal case and must not restart anything. */
 			it('leaves a healthy cursor alone when nothing new arrived', async () => {
 				const service = serviceWith();
-				activityEventRepository.findHighestId.mockResolvedValue(500);
+				activityEventRepository.findNewestEntry.mockResolvedValue({
+					id: 500,
+					createdAt: new Date(NOW.getTime() - 10 * 60_000),
+				});
 
 				await service.buildBlock({ user: USER, projectId: PROJECT_ID, cursor, now: NOW });
 
@@ -628,6 +636,65 @@ describe('InstanceContextService', () => {
 					2,
 					expect.objectContaining({ afterId: 400, beforeId: 500 }),
 				);
+			});
+
+			/**
+			 * A narrowed scope reads like a renumbering to anything that only compares ids: the
+			 * mark was set by a row this turn may no longer see, so the highest id left to it is
+			 * legitimately lower. Restarting on that would re-offer rows an earlier block already
+			 * carried, and walk the mark backwards.
+			 *
+			 * Two real turns, because the cursor has to be the output of the wider one to carry
+			 * categories the narrower turn cannot read.
+			 */
+			it('does not restart the read when the scope narrowed rather than the ids resetting', async () => {
+				const service = serviceWith();
+				const rows = [
+					{ id: 20, category: 'credential' as const },
+					{ id: 10, category: 'workflow' as const },
+				];
+				// Honours the category scope, which is the whole point: both reads are narrowed.
+				const visible = (query: {
+					categories?: string[];
+					afterId?: number;
+					beforeId?: number;
+				}) =>
+					rows
+						.filter((row) => (query.categories ?? []).includes(row.category))
+						.filter((row) => (query.afterId === undefined ? true : row.id > query.afterId))
+						.filter((row) => (query.beforeId === undefined ? true : row.id < query.beforeId));
+				activityEventRepository.findFeed.mockImplementation(async (query) =>
+					visible(query).map((row) =>
+						entry({ id: row.id, category: row.category, resourceType: row.category }),
+					),
+				);
+
+				const wide = await service.buildBlock({
+					user: USER,
+					projectId: PROJECT_ID,
+					cursor: null,
+					now: NOW,
+				});
+				expect(wide?.block.match(/^\[\d+\]/gm)).toEqual(['[20]', '[10]']);
+
+				// Credential access revoked, and nothing written since.
+				userHasScopes.mockImplementation(async (...args: unknown[]) => {
+					const scopes = args[1];
+					return !(Array.isArray(scopes) && scopes.includes('credential:read'));
+				});
+				const narrowed = await service.buildBlock({
+					user: USER,
+					projectId: PROJECT_ID,
+					cursor: wide!.cursor,
+					now: NOW,
+				});
+
+				// Nothing new is readable, so there is nothing to say — and in particular id 10,
+				// already shown above, is not offered again.
+				expect(narrowed).toBeNull();
+				// The band still reaches id 10, so the recovery is never even considered: a
+				// narrowing leaves the reader's own older rows in view, and a renumbering does not.
+				expect(activityEventRepository.findNewestEntry).not.toHaveBeenCalled();
 			});
 
 			/**

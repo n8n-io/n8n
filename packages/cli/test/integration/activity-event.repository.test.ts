@@ -92,7 +92,7 @@ describe('ActivityEventRepository', () => {
 	 * id is still plausible, and that depends on how the driver allocates ids after the table is
 	 * emptied — which a mocked entity manager cannot tell anyone.
 	 */
-	describe('findHighestId', () => {
+	describe('findNewestEntry', () => {
 		let otherProject: Project;
 
 		beforeAll(async () => (otherProject = await createTeamProject()));
@@ -105,7 +105,7 @@ describe('ActivityEventRepository', () => {
 			await record(project.id);
 
 			expect(
-				await repository.findHighestId({
+				await repository.findNewestEntry({
 					projectIds: [otherProject.id],
 					categories: ['workflow', 'credential'],
 				}),
@@ -122,19 +122,19 @@ describe('ActivityEventRepository', () => {
 				categories: ['workflow', 'credential'],
 				limit: 1,
 			});
-			const highest = await repository.findHighestId({
+			const highest = await repository.findNewestEntry({
 				projectIds: [project.id],
 				categories: ['workflow', 'credential'],
 			});
-			expect(highest).toBe(newest.id);
+			expect(highest?.id).toBe(newest.id);
 
 			// A category out of scope is out of the answer too, or a reader would compare its mark
 			// against an id it was never allowed to be shown.
-			const workflowOnly = await repository.findHighestId({
+			const workflowOnly = await repository.findNewestEntry({
 				projectIds: [project.id],
 				categories: ['workflow'],
 			});
-			expect(workflowOnly).toBeLessThan(newest.id);
+			expect(workflowOnly?.id).toBeLessThan(newest.id);
 		});
 
 		/**
@@ -145,7 +145,7 @@ describe('ActivityEventRepository', () => {
 		it('reports the refilled id space after the table is emptied', async () => {
 			await record(project.id);
 			await record(project.id);
-			const before = await repository.findHighestId({
+			const before = await repository.findNewestEntry({
 				projectIds: [project.id],
 				categories: ['workflow', 'credential'],
 			});
@@ -153,28 +153,31 @@ describe('ActivityEventRepository', () => {
 
 			await testDb.truncate(['ActivityEvent']);
 			expect(
-				await repository.findHighestId({
+				await repository.findNewestEntry({
 					projectIds: [project.id],
 					categories: ['workflow', 'credential'],
 				}),
 			).toBeNull();
 
 			await record(project.id);
-			const after = await repository.findHighestId({
+			const after = await repository.findNewestEntry({
 				projectIds: [project.id],
 				categories: ['workflow', 'credential'],
 			});
 
 			// Whether `after` restarted below `before` is the driver's business, not this
-			// repository's. What has to hold either way is that the newest id is reported as it
-			// now stands, so a reader comparing a stored mark against it sees the truth.
+			// repository's. What has to hold either way is that the newest entry is reported as it
+			// now stands, so a reader comparing a stored mark against it sees the truth — and that
+			// it carries when it was written, which is what separates a renumbered feed from a
+			// quiet one when the ids alone cannot.
 			expect(after).not.toBeNull();
+			expect(after?.createdAt).toBeInstanceOf(Date);
 			const [newest] = await repository.findFeed({
 				projectIds: [project.id],
 				categories: ['workflow', 'credential'],
 				limit: 1,
 			});
-			expect(after).toBe(newest.id);
+			expect(after?.id).toBe(newest.id);
 		});
 	});
 
