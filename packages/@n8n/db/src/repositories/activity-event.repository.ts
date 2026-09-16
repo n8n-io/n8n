@@ -158,6 +158,11 @@ export class ActivityEventRepository extends Repository<ActivityEvent> {
 	 * the highest-write table in the schema, so the index is a deliberate follow-up rather than a
 	 * free add — but the read that has to pay for it now exists.
 	 *
+	 * In practice the scan stays small: `N8N_ACTIVITY_LOG_MAX_ENTRIES` defaults to 1,000
+	 * instance-wide with an hourly sweep. The case that needs the index is an instance that sets
+	 * that cap to `0`, which removes the only bound this read has left now that `'all-projects'`
+	 * removes the project one.
+	 *
 	 * `resourceType` is part of the query, not just the index prefix: ids are unique per resource
 	 * kind but nothing in the schema says so, and an entry is a dangling pointer by design.
 	 */

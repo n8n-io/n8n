@@ -7,6 +7,7 @@ import {
 	CONTEXT_PREFERENCES_CONTROL_VARIANT,
 	CONTEXT_PREFERENCES_ENABLED_VARIANT,
 	CONTEXT_PREFERENCES_FLAG,
+	MCP_INSTANCE_CONTEXT_FLAG,
 } from '@n8n/api-types';
 import { LicenseState, ModuleRegistry, type Logger } from '@n8n/backend-common';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
@@ -469,6 +470,31 @@ describe('McpService', () => {
 
 				await expect(service.resolveFeatureFlags(user)).resolves.toMatchObject({
 					mcpApps: { enabled: false, variant: 'unassigned' },
+				});
+			});
+		});
+
+		describe('instance context', () => {
+			it('enables the surface from the rollout flag with the env override off', async () => {
+				const postHogClient = mockInstance(PostHogClient);
+				postHogClient.getFeatureFlags.mockResolvedValue({ [MCP_INSTANCE_CONTEXT_FLAG]: true });
+				const service = buildResolutionService({ postHogClient });
+
+				await expect(service.resolveFeatureFlags(user)).resolves.toMatchObject({
+					instanceContextEnabled: true,
+				});
+			});
+
+			/** A wrong key or a variant-string value would otherwise never roll out, silently. */
+			it('leaves the surface off for any value that is not boolean true', async () => {
+				const postHogClient = mockInstance(PostHogClient);
+				postHogClient.getFeatureFlags.mockResolvedValue({
+					[MCP_INSTANCE_CONTEXT_FLAG]: 'variant',
+				});
+				const service = buildResolutionService({ postHogClient });
+
+				await expect(service.resolveFeatureFlags(user)).resolves.toMatchObject({
+					instanceContextEnabled: false,
 				});
 			});
 		});

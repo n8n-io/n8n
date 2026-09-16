@@ -736,6 +736,53 @@ describe('InstanceContextService', () => {
 			expect(page.nextBeforeId).toBeUndefined();
 		});
 
+		/**
+		 * The row that decides whether a caller with no access reads the whole instance or nothing.
+		 * It is correct today, but nothing pinned it.
+		 */
+		it('reads nothing for a caller with workflow:read in no project at all', async () => {
+			const service = serviceWith();
+			projectService.getProjectIdsWithScope.mockResolvedValue([]);
+			projectRepository.getPersonalProjectForUser.mockResolvedValue(null);
+
+			expect(await service.list({ user: USER, scope: unbound(), limit: 5 })).toEqual([]);
+			expect(activityEventRepository.findFeed).not.toHaveBeenCalled();
+		});
+
+		/**
+		 * `beforeId` is an exclusive `LessThan`, so resuming below a row the over-fetch read but
+		 * did not return drops it for good. Visible 20, 19, 18, 17 with a limit of 2 must resume
+		 * at 19, not at 17.
+		 */
+		it('resumes below the last row shown when the page filled', async () => {
+			const service = serviceWith();
+			activityEventRepository.findFeed.mockResolvedValue(
+				[20, 19, 18, 17].map((id) => entry({ id, resourceId: 'wf-1' })),
+			);
+			workflowRepository.findMcpAvailabilityByIds.mockResolvedValue(new Map([['wf-1', true]]));
+
+			const page = await service.listPage({ user: USER, scope: MCP_BOUND, limit: 2 });
+
+			expect(page.entries.map((e) => e.id)).toEqual([20, 19]);
+			expect(page.nextBeforeId).toBe(19);
+		});
+
+		/** A deleted workflow keeps its deletion and loses the rest of its history. */
+		it('keeps only the deletion for a workflow that no longer resolves', async () => {
+			const service = serviceWith();
+			activityEventRepository.findFeed.mockResolvedValue([
+				entry({ id: 4, action: 'deleted', resourceId: 'wf-gone' }),
+				entry({ id: 3, action: 'archived', resourceId: 'wf-gone' }),
+				entry({ id: 2, action: 'saved', resourceId: 'wf-gone' }),
+				entry({ id: 1, action: 'created', resourceId: 'wf-gone' }),
+			]);
+			workflowRepository.findMcpAvailabilityByIds.mockResolvedValue(new Map());
+
+			const entries = await service.list({ user: USER, scope: MCP_BOUND, limit: 10 });
+
+			expect(entries.map((e) => e.action)).toEqual(['deleted']);
+		});
+
 		it('reads nothing from a named project the caller cannot open', async () => {
 			const service = serviceWith();
 			userHasScopes.mockResolvedValue(false);
@@ -803,6 +850,7 @@ describe('InstanceContextService', () => {
 			activityEventRepository.findFeed.mockResolvedValue(
 				Array.from({ length: 12 }, (_, index) => entry({ id: index + 1 })),
 			);
+			workflowRepository.findMcpAvailabilityByIds.mockResolvedValue(new Map([['wf-1', true]]));
 
 			const entries = await service.list({ user: USER, scope: MCP_BOUND, limit: 5 });
 

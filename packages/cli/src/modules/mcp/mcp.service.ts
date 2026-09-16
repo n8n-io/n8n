@@ -609,9 +609,16 @@ export class McpService {
 			// caller's real access for the other half.
 			const credentialGranted = allowedToolNames?.has('list_credentials') ?? true;
 
+			// The two activity tools also need the log to be *written*. `N8N_ACTIVITY_LOG_ENABLED`
+			// is off by default, and a tool that answers from a store nothing writes to reports an
+			// empty feed — which an agent reads as "nothing has happened here", the exact wrong
+			// conclusion. The inventory and run legs do not come from the log, so the context tool
+			// and node-usage stay available either way.
+			const activityLogWritten = this.globalConfig.activityLog.enabled;
+
 			// The activity reader belongs to the `instance-ai` module, so it is resolved lazily and
 			// only when that module is active — an instance with the surface off never builds it.
-			if (this.moduleRegistry.isActive('instance-ai')) {
+			if (activityLogWritten && this.moduleRegistry.isActive('instance-ai')) {
 				const { InstanceContextService } = await import(
 					'@/modules/instance-ai/instance-context.service.js'
 				);

@@ -121,6 +121,7 @@ describe('McpService scope enforcement', () => {
 		builderEnabled = true,
 		foldersLicensed = true,
 		instanceAiActive = false,
+		activityLogEnabled = true,
 	} = {}) =>
 		new McpService(
 			mockLogger(),
@@ -139,6 +140,7 @@ describe('McpService scope enforcement', () => {
 					mcpBuilderEnabled: builderEnabled,
 				},
 				tags: { disabled: false },
+				activityLog: { enabled: activityLogEnabled },
 				diagnostics: { enabled: false, frontendConfig: '' },
 			}),
 			mockInstance(Telemetry),
@@ -265,6 +267,26 @@ describe('McpService scope enforcement', () => {
 
 		const registered = getRegisteredToolNames(server);
 		for (const name of INSTANCE_CONTEXT_TOOLS) expect(registered).not.toContain(name);
+	});
+
+	/**
+	 * The log is off by default, and a tool answering from a store nothing writes to reports an
+	 * empty feed — which an agent reads as "nothing has happened here".
+	 */
+	it('withholds the activity tools when the activity log is not being written', async () => {
+		mockInstance(InstanceContextService);
+		mockInstance(WorkflowDependencyQueryService);
+
+		const server = await buildService({
+			instanceAiActive: true,
+			activityLogEnabled: false,
+		}).getServer(user, mcpFeatureFlags({ instanceContextEnabled: true }));
+
+		const registered = getRegisteredToolNames(server);
+		expect(registered).not.toContain('get_instance_activity');
+		expect(registered).not.toContain('expand_instance_activity');
+		// Node usage reads its own index, so the log has no bearing on it.
+		expect(registered).toContain('get_node_usage');
 	});
 
 	it('BUILDER_TOOLS matches the tools gated behind the builder flag (drift guard)', async () => {

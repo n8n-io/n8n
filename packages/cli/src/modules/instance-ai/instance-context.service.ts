@@ -40,6 +40,11 @@ const fetchMultiplier = 4;
 /**
  * The MCP read discards rows for a different reason — workflows withheld from that surface — so it
  * over-fetches on its own dial. Tuning the window above must not silently retune paging here.
+ *
+ * Four because it covers an instance where three quarters of the estate is withheld, which is the
+ * shape `availableInMCP` defaulting to off produces once a few workflows are exposed by hand.
+ * Beyond that the page comes back short rather than wrong: `hasMore` and the cursor carry the
+ * caller to the rest, so the number trades reads against round trips, not against correctness.
  */
 const withheldFetchMultiplier = 4;
 
@@ -362,12 +367,19 @@ export class InstanceContextService {
 		// The cursor is the lowest id *read*, not the lowest shown. A page where everything was
 		// withheld shows nothing and still has to be pageable — that is the whole case `hasMore`
 		// exists for, and a cursor drawn from the visible rows would be absent exactly there.
-		const lowestRead = rows.at(-1)?.id;
+		const shown = visible.slice(0, input.limit);
+
+		// `findFeed` applies `beforeId` as an exclusive `LessThan`, so resuming below a row the
+		// over-fetch read but did not return drops it for good. Resume below the last row shown
+		// when the page filled; only a short page can resume below everything read, because then
+		// no row read was left unshown. Re-reading a withheld row costs one filter pass and skips
+		// nothing, which is the safe direction to err in.
+		const resumeFrom = shown.length === input.limit ? shown.at(-1)?.id : rows.at(-1)?.id;
 
 		return {
-			entries: visible.slice(0, input.limit).map((row) => toActivityEntry(row, input.user.id)),
+			entries: shown.map((row) => toActivityEntry(row, input.user.id)),
 			hasMore,
-			...(hasMore && lowestRead !== undefined ? { nextBeforeId: lowestRead } : {}),
+			...(hasMore && resumeFrom !== undefined ? { nextBeforeId: resumeFrom } : {}),
 		};
 	}
 
@@ -554,7 +566,7 @@ export class InstanceContextService {
 			}
 
 			const credentialProjectIds = scope.credentialGranted
-				? await this.credentialReadableProjectIds(user, [projectId])
+				? await this.credentialReadableProjectIds(user, [projectId], undefined)
 				: [];
 			return { surface: 'mcp', projectIds: [projectId], credentialProjectIds };
 		}
@@ -582,7 +594,7 @@ export class InstanceContextService {
 		if (projectIds.length === 0) return null;
 
 		const credentialProjectIds = scope.credentialGranted
-			? await this.credentialReadableProjectIds(user, projectIds)
+			? await this.credentialReadableProjectIds(user, projectIds, personalProject?.id)
 			: [];
 
 		return { surface: 'mcp', projectIds, credentialProjectIds };
@@ -597,12 +609,23 @@ export class InstanceContextService {
 	 * would otherwise read credential names and types for a project whose credentials they cannot
 	 * list.
 	 */
-	private async credentialReadableProjectIds(user: User, projectIds: string[]): Promise<string[]> {
-		const readable = await this.projectService.getProjectIdsWithScope(user, ['credential:read']);
-		const readableSet = new Set(readable);
+	private async credentialReadableProjectIds(
+		user: User,
+		projectIds: string[],
+		/** Already read by the caller; passed in so this does not read it a second time. */
+		personalProjectId: string | undefined,
+	): Promise<string[]> {
+		if (projectIds.length === 0) return [];
 
-		const personalProject = await this.projectRepository.getPersonalProjectForUser(user.id);
-		if (personalProject) readableSet.add(personalProject.id);
+		// Bounded to what the caller can already see. Asking for every project on the instance
+		// where they may read credentials and then intersecting would read strictly more.
+		const readable = await this.projectService.getProjectIdsWithScope(
+			user,
+			['credential:read'],
+			projectIds,
+		);
+		const readableSet = new Set(readable);
+		if (personalProjectId) readableSet.add(personalProjectId);
 
 		return projectIds.filter((projectId) => readableSet.has(projectId));
 	}
@@ -614,9 +637,10 @@ export class InstanceContextService {
 	 * and the workflow history, version and diff tools all enforce it — so a feed that ignored it
 	 * would report the edits and runs of workflows the user has deliberately kept off this surface.
 	 *
-	 * An entry whose workflow no longer resolves is kept. A deleted workflow cannot be withheld
-	 * from anything, and its deletion is the entry most worth carrying: dropping it to be safe
-	 * would lose the one signal this surface exists to give.
+	 * An entry whose workflow no longer resolves keeps only its deletion. The setting that
+	 * withheld the workflow is gone with the row, so releasing the rest of its history would undo
+	 * that setting retroactively — while dropping the deletion too would lose the signal this
+	 * surface most exists to give.
 	 */
 	private async withoutWithheldWorkflows(
 		rows: ActivityEvent[],
@@ -639,7 +663,13 @@ export class InstanceContextService {
 
 		return rows.filter((row) => {
 			if (row.resourceType !== 'workflow' || !row.resourceId) return true;
-			return availability.get(row.resourceId) ?? true;
+
+			const available = availability.get(row.resourceId);
+			// A deleted workflow resolves to nothing, taking with it any proof it was ever exposed.
+			// Its deletion is still worth carrying; its earlier history is not, because releasing
+			// that would undo the setting retroactively the moment the workflow was removed.
+			if (available === undefined) return row.action === 'deleted';
+			return available;
 		});
 	}
 }
@@ -677,7 +707,7 @@ function isCredentialVisible(row: ActivityEvent, scope: ResolvedScope): boolean 
 	if (row.category !== 'credential' && row.resourceType !== 'credential') return true;
 
 	if (scope.credentialProjectIds === 'all-projects') return true;
-	return row.projectId !== null && scope.credentialProjectIds.includes(row.projectId);
+	return scope.credentialProjectIds.includes(row.projectId);
 }
 
 const initialPreamble = [
