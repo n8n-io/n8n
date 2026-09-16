@@ -71,6 +71,19 @@ describe('SecretsCache', () => {
 			expect(updateSpy).toHaveBeenCalledTimes(1);
 		});
 
+		it('should not join the pull of another instance under the same name', async () => {
+			const replacement = new DummyProvider();
+			await replacement.init(providerSettings);
+			await replacement.connect();
+			vi.spyOn(dummyProvider, 'update').mockImplementation(async () => await new Promise(() => {}));
+			const replacementUpdate = vi.spyOn(replacement, 'update');
+
+			void cache.updateProvider('dummy', dummyProvider).catch(() => {});
+			await cache.updateProvider('dummy', replacement);
+
+			expect(replacementUpdate).toHaveBeenCalledTimes(1);
+		});
+
 		it('should not hang when update exceeds refresh timeout', async () => {
 			vi.useFakeTimers();
 			try {

@@ -73,7 +73,7 @@ describe('VaultProvider', () => {
 	logger.scoped.mockReturnValue(logger);
 
 	// Use preferGet so list requests are plain GETs with `?list=true`.
-	mockInstance(ExternalSecretsConfig, { preferGet: true, connectTimeout: 20, refreshTimeout: 20 });
+	mockInstance(ExternalSecretsConfig, { preferGet: true, connectTimeout: 20, refreshTimeout: 45 });
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -81,7 +81,7 @@ describe('VaultProvider', () => {
 		mockInstance(ExternalSecretsConfig, {
 			preferGet: true,
 			connectTimeout: 20,
-			refreshTimeout: 20,
+			refreshTimeout: 45,
 		});
 	});
 
@@ -108,7 +108,7 @@ describe('VaultProvider', () => {
 				baseURL: VAULT_URL,
 				headers: expect.any(Function),
 				useDefaultSsrfPolicy: 'unsafe',
-				timeout: 20_000,
+				timeout: 45_000,
 			});
 		});
 
@@ -652,7 +652,7 @@ describe('VaultProvider', () => {
 	});
 
 	describe('token refresh', () => {
-		it('keeps one renewal timer across repeated connects and clears it on disconnect', async () => {
+		it('keeps one renewal timer across reconnects and drops it once the token is not renewable', async () => {
 			const renewable = {
 				data: {
 					...tokenLookupResponse().data,
@@ -675,7 +675,8 @@ describe('VaultProvider', () => {
 				await provider.connect();
 				expect(vi.getTimerCount()).toBe(1);
 
-				await provider.disconnect();
+				renewable.data.renewable = false;
+				await provider.connect();
 				expect(vi.getTimerCount()).toBe(0);
 			} finally {
 				vi.useRealTimers();

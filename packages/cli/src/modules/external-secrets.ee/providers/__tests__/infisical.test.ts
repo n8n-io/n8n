@@ -83,7 +83,7 @@ describe('InfisicalProvider', () => {
 	const logger = mockInstance(Logger);
 	logger.scoped.mockReturnValue(logger);
 
-	mockInstance(ExternalSecretsConfig, { connectTimeout: 20, refreshTimeout: 20 });
+	mockInstance(ExternalSecretsConfig, { connectTimeout: 20, refreshTimeout: 45 });
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -122,7 +122,7 @@ describe('InfisicalProvider', () => {
 				baseURL: SITE_URL,
 				headers: expect.any(Function),
 				useDefaultSsrfPolicy: 'unsafe',
-				timeout: 20_000,
+				timeout: 45_000,
 			});
 		});
 

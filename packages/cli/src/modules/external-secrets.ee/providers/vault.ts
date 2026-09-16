@@ -374,6 +374,8 @@ export class VaultProvider extends SecretsProvider {
 	}
 
 	private setupTokenRefresh() {
+		// One renewal chain per provider, and none once the token stops being renewable.
+		this.clearTokenRefresh();
 		if (!this.#tokenInfo) {
 			return;
 		}
@@ -386,8 +388,6 @@ export class VaultProvider extends SecretsProvider {
 			return;
 		}
 
-		// One renewal chain per provider: a late connect attempt must not start a second one.
-		this.clearTokenRefresh();
 		const expireDate = new Date(this.#tokenInfo.expire_time);
 		this.refreshTimeout = setTimeout(this.tokenRefresh, (expireDate.valueOf() - Date.now()) / 2);
 	}
