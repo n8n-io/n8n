@@ -214,12 +214,55 @@ test('import:credentials should keep a stored description when the file omits it
 		'--input=./test/integration/commands/import-credentials/credentials-description.json',
 	]);
 
-	// The second file carries no description for this id, so the stored text must survive.
-	await command.run(['--input=./test/integration/commands/import-credentials/credentials.json']);
+	// The second file re-imports the same id without a description key, so the
+	// upsert must rewrite the row and the stored text must survive.
+	await command.run([
+		'--input=./test/integration/commands/import-credentials/credentials-description-omitted.json',
+	]);
 
-	const byId = new Map((await getAllCredentials()).map((c) => [c.id, c.description]));
-	expect(byId.get('desc-untrimmed')).toBe('Read-only key for reporting.');
+	const byId = new Map((await getAllCredentials()).map((c) => [c.id, c]));
+	expect(byId.get('desc-untrimmed')?.name).toBe('cred-untrimmed-description-reimported');
+	expect(byId.get('desc-untrimmed')?.description).toBe('Read-only key for reporting.');
 });
+
+test.each([
+	['a non-string', 42],
+	['an over-cap', 'x'.repeat(513)],
+])(
+	'import:credentials should reject %s description and keep the stored one',
+	async (_label, description) => {
+		await createOwner();
+		await command.run([
+			'--input=./test/integration/commands/import-credentials/credentials-description.json',
+		]);
+
+		const temporaryDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'n8n-credential-import-'));
+		const inputPath = path.join(temporaryDirectory, 'credentials.json');
+		fs.writeFileSync(
+			inputPath,
+			JSON.stringify([
+				{
+					id: 'desc-untrimmed',
+					name: 'cred-untrimmed-description',
+					type: 'aws',
+					data: { region: 'eu-west-1' },
+					description,
+				},
+			]),
+		);
+
+		try {
+			await expect(command.run([`--input=${inputPath}`])).rejects.toThrow(
+				'Credential "desc-untrimmed"',
+			);
+		} finally {
+			fs.rmSync(temporaryDirectory, { recursive: true, force: true });
+		}
+
+		const byId = new Map((await getAllCredentials()).map((c) => [c.id, c.description]));
+		expect(byId.get('desc-untrimmed')).toBe('Read-only key for reporting.');
+	},
+);
 
 test('import:credentials should exclude selected credential properties', async () => {
 	const owner = await createOwner();

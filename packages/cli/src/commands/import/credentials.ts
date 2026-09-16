@@ -1,3 +1,4 @@
+import { credentialDescriptionSchema } from '@n8n/api-types';
 import {
 	CredentialsEntity,
 	DbLock,
@@ -170,11 +171,18 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 		project: Project,
 		ctx: OperationContext,
 	) {
-		// A file is hand-written, so give its description the same shape a write
-		// through the API gets. Only touch the key when the file supplies it: the
-		// upsert writes the supplied columns, so an absent key keeps the stored text.
+		// A file is hand-written, so hold its description to the same schema a write
+		// through the API gets: one cap and one message across all write surfaces.
+		// Only touch the key when the file supplies it: the upsert writes the
+		// supplied columns, so an absent key keeps the stored text.
 		if (credential.description !== undefined) {
-			credential.description = normalizeCredentialDescription(credential.description);
+			const parsed = credentialDescriptionSchema.safeParse(credential.description);
+			if (!parsed.success) {
+				throw new UserError(
+					`Credential "${credential.id ?? credential.name ?? 'unknown'}": ${parsed.error.issues[0].message}`,
+				);
+			}
+			credential.description = normalizeCredentialDescription(parsed.data);
 		}
 
 		// UsageScope is instance-local state; imports never change it for existing credentials.
