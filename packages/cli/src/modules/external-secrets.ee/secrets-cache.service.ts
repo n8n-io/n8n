@@ -14,7 +14,8 @@ import { withTimeout } from './with-timeout';
  */
 @Service()
 export class ExternalSecretsSecretsCache {
-	private readonly inFlight = new Map<SecretsProvider, Promise<void>>();
+	// Weak, so a pull that never settles does not keep a removed provider reachable.
+	private readonly inFlight = new WeakMap<SecretsProvider, Promise<void>>();
 
 	constructor(
 		private readonly logger: Logger,
