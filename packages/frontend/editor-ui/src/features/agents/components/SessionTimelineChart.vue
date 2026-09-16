@@ -471,7 +471,8 @@ onBeforeUnmount(() => {
 	border-radius: var(--radius--sm);
 	background-color: var(--color--danger);
 	content: '';
-	z-index: 10;
+	/* Only needs to clear the block inside this cell. */
+	z-index: 1;
 }
 
 .chart:has(.block:hover, .block.selected) .block:not(:hover):not(.selected) {
