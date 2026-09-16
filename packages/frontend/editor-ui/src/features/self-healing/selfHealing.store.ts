@@ -124,7 +124,31 @@ export const useSelfHealingStore = defineStore('selfHealing', () => {
 	// -- Configurations -------------------------------------------------------
 
 	function getProjectConfigs(projectId: string): SelfHealingConfig[] {
-		return configsByProject.value[projectId] ?? [createDefaultConfig(projectId)];
+		return (
+			configsByProject.value[projectId] ?? [
+				createDefaultConfig(projectId, viewer.value?.id ?? null),
+			]
+		);
+	}
+
+	/** Resolves configured reviewer ids to users; unknown ids are dropped, the viewer is the fallback. */
+	function resolveReviewers(reviewerIds: string[]): WorkflowReviewEligibleReviewer[] {
+		const resolved = reviewerIds.flatMap((id) => {
+			if (id === viewer.value?.id) return viewer.value ? [viewer.value] : [];
+			const user = usersStore.usersById?.[id];
+			return user
+				? [
+						{
+							id: user.id,
+							email: user.email ?? '',
+							firstName: user.firstName ?? null,
+							lastName: user.lastName ?? null,
+						},
+					]
+				: [];
+		});
+		if (resolved.length > 0) return resolved;
+		return viewer.value ? [viewer.value] : [];
 	}
 
 	function materialize(projectId: string): SelfHealingConfig[] {
@@ -253,8 +277,8 @@ export const useSelfHealingStore = defineStore('selfHealing', () => {
 			errorMessage: execution.executionError?.message?.trim() || null,
 		});
 		const createdAt = nowIso();
-		const autoDeploy =
-			context.projectId !== null && getActiveConfig(context.projectId)?.autonomy === 'deploy';
+		const config = context.projectId !== null ? getActiveConfig(context.projectId) : null;
+		const autoDeploy = config?.autonomy === 'deploy';
 		const reviewId = `${SELF_HEALING_REVIEW_ID_PREFIX}${executionId}-${Date.now()}`;
 
 		const review = buildSelfHealingReview(
@@ -268,7 +292,7 @@ export const useSelfHealingStore = defineStore('selfHealing', () => {
 				projectId: context.projectId ?? SEED_PROJECT_ID,
 				baseline,
 				pinned,
-				reviewer: viewer.value,
+				reviewers: resolveReviewers(config?.reviewerIds ?? []),
 				createdAt,
 				...(autoDeploy
 					? {

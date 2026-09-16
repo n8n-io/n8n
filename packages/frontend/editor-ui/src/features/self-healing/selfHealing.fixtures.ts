@@ -38,7 +38,12 @@ export function hashString(value: string): number {
 	return Math.abs(hash >>> 0);
 }
 
-export function createDefaultConfig(projectId: string, now = Date.now()): SelfHealingConfig {
+/** The signed-in user starts out as the only reviewer; `null` when nobody is signed in yet. */
+export function createDefaultConfig(
+	projectId: string,
+	ownerId: string | null,
+	now = Date.now(),
+): SelfHealingConfig {
 	return {
 		id: `default-${projectId}`,
 		projectId,
@@ -47,11 +52,7 @@ export function createDefaultConfig(projectId: string, now = Date.now()): SelfHe
 		excludedWorkflowIds: [],
 		customInstructions:
 			'Prefer adding retries and guards over changing business logic. Never edit credentials or webhook paths. Keep the fix to the failing branch.',
-		notifications: {
-			emailOnReview: true,
-			emailOnDeploy: true,
-			slackChannel: null,
-		},
+		reviewerIds: ownerId ? [ownerId] : [],
 		status: 'active',
 		createdAt: daysAgo(12, now),
 		updatedAt: daysAgo(3, now),
@@ -255,7 +256,7 @@ export interface BuildReviewOptions {
 	projectId: string;
 	baseline: WorkflowReviewVersionSnapshot;
 	pinned: WorkflowReviewVersionSnapshot;
-	reviewer: WorkflowReviewEligibleReviewer | null;
+	reviewers: WorkflowReviewEligibleReviewer[];
 	createdAt: string;
 	state?: WorkflowReviewRequestState;
 	decision?: WorkflowReviewRequestDecision;
@@ -286,7 +287,7 @@ export function buildSelfHealingReview(
 		workflowName: options.workflowName,
 		requester: SELF_HEALING_ASSISTANT,
 		authors: [SELF_HEALING_ASSISTANT],
-		reviewers: options.reviewer ? [options.reviewer] : [],
+		reviewers: [...options.reviewers],
 	};
 
 	const detail: WorkflowReviewRequestDetail = {
@@ -396,6 +397,7 @@ export function createSeedReviews(
 	const openedAt = hoursAgo(2, now);
 	const invoiceOpenedAt = daysAgo(3, now);
 	const invoiceApprovedAt = daysAgo(2, now);
+	const reviewers = reviewer ? [reviewer] : [];
 
 	return [
 		buildSelfHealingReview(
@@ -425,7 +427,7 @@ export function createSeedReviews(
 					LEAD_ENRICHMENT_CONNECTIONS,
 					openedAt,
 				),
-				reviewer,
+				reviewers,
 				createdAt: openedAt,
 			},
 			nextEntryId,
@@ -457,7 +459,7 @@ export function createSeedReviews(
 					INVOICE_REMINDER_FIXED_CONNECTIONS,
 					invoiceOpenedAt,
 				),
-				reviewer,
+				reviewers,
 				createdAt: invoiceOpenedAt,
 				state: 'closed',
 				decision: 'approved',

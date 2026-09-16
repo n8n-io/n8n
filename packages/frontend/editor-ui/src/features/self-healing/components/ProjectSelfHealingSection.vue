@@ -4,17 +4,23 @@ import {
 	N8nActionToggle,
 	N8nBadge,
 	N8nButton,
+	N8nDataTableServer,
 	N8nStatusDot,
 	N8nText,
+	N8nUserStack,
+	type IUser,
+	type TableHeader,
+	type TableOptions,
 	type UserAction,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import type { IUser } from 'n8n-workflow';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { computed, nextTick, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 
 import { useMessage } from '@/app/composables/useMessage';
 import { MODAL_CONFIRM } from '@/app/constants';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 
 import { SELF_HEALING_SETTINGS_HASH } from '../selfHealing.constants';
 import { useSelfHealingStore } from '../selfHealing.store';
@@ -32,12 +38,62 @@ const toast = useToast();
 const message = useMessage();
 const route = useRoute();
 const store = useSelfHealingStore();
+const projectsStore = useProjectsStore();
+const usersStore = useUsersStore();
 
 const sectionRef = ref<HTMLElement | null>(null);
 const dialogOpen = ref(false);
 const editingConfig = ref<SelfHealingConfig | null>(null);
 
 const configs = computed(() => store.getProjectConfigs(props.projectId));
+
+// Same shape as the members table above: one page, sorting off.
+const tableOptions = ref<TableOptions>({ page: 0, itemsPerPage: 10, sortBy: [] });
+
+const headers = computed<Array<TableHeader<SelfHealingConfig>>>(() => [
+	{
+		title: i18n.baseText('selfHealing.projectSettings.column.name'),
+		key: 'name',
+		width: 320,
+		disableSort: true,
+	},
+	{
+		title: i18n.baseText('selfHealing.projectSettings.column.scope'),
+		key: 'scope',
+		width: 160,
+		disableSort: true,
+		value: (row: SelfHealingConfig) => row.excludedWorkflowIds.length,
+	},
+	{
+		title: i18n.baseText('selfHealing.projectSettings.column.autonomy'),
+		key: 'autonomy',
+		width: 220,
+		disableSort: true,
+	},
+	{
+		title: i18n.baseText('selfHealing.projectSettings.column.reviewers'),
+		key: 'reviewers',
+		width: 120,
+		disableSort: true,
+		value: (row: SelfHealingConfig) => row.reviewerIds,
+	},
+	{
+		title: i18n.baseText('selfHealing.projectSettings.column.status'),
+		key: 'status',
+		width: 110,
+		disableSort: true,
+	},
+	{
+		title: '',
+		key: 'actions',
+		align: 'end',
+		width: 46,
+		disableSort: true,
+		value() {
+			return;
+		},
+	},
+]);
 
 function scopeLabel(config: SelfHealingConfig): string {
 	const excluded = config.excludedWorkflowIds.length;
@@ -52,6 +108,23 @@ function autonomyLabel(config: SelfHealingConfig): string {
 
 function statusLabel(config: SelfHealingConfig): string {
 	return i18n.baseText(`selfHealing.status.${config.status}`);
+}
+
+/** Reviewer ids resolved through the project's members, then any known user. */
+function reviewerUsers(config: SelfHealingConfig): IUser[] {
+	const relations = projectsStore.currentProject?.relations ?? [];
+	return config.reviewerIds.flatMap((id) => {
+		const relation = relations.find((candidate) => candidate.id === id);
+		const user = relation
+			? {
+					id: relation.id,
+					email: relation.email,
+					firstName: relation.firstName,
+					lastName: relation.lastName,
+				}
+			: usersStore.usersById[id];
+		return user ? [user] : [];
+	});
 }
 
 function actionsFor(config: SelfHealingConfig): Array<UserAction<IUser>> {
@@ -136,59 +209,65 @@ onMounted(async () => {
 			{{ i18n.baseText('selfHealing.projectSettings.description') }}
 		</N8nText>
 
-		<div v-if="configs.length > 0" :class="$style.list" data-test-id="self-healing-config-list">
-			<div :class="[$style.row, $style.headerRow]" aria-hidden="true">
-				<N8nText size="xsmall" color="text-light" bold>
-					{{ i18n.baseText('selfHealing.projectSettings.column.name') }}
-				</N8nText>
-				<N8nText size="xsmall" color="text-light" bold>
-					{{ i18n.baseText('selfHealing.projectSettings.column.scope') }}
-				</N8nText>
-				<N8nText size="xsmall" color="text-light" bold>
-					{{ i18n.baseText('selfHealing.projectSettings.column.autonomy') }}
-				</N8nText>
-				<N8nText size="xsmall" color="text-light" bold>
-					{{ i18n.baseText('selfHealing.projectSettings.column.status') }}
-				</N8nText>
-				<span />
-			</div>
-
-			<div
-				v-for="config in configs"
-				:key="config.id"
-				:class="$style.row"
-				data-test-id="self-healing-config-row"
+		<div v-if="configs.length > 0" :class="$style.table" data-test-id="self-healing-config-list">
+			<N8nDataTableServer
+				v-model:sort-by="tableOptions.sortBy"
+				v-model:page="tableOptions.page"
+				:items-per-page="configs.length"
+				:headers="headers"
+				:items="configs"
+				:items-length="configs.length"
+				:page-sizes="[configs.length + 1]"
 			>
-				<div :class="$style.nameCell">
-					<N8nText size="small" bold color="text-dark" :class="$style.truncate">
-						{{ config.name }}
+				<template #[`item.name`]="{ item }">
+					<div :class="$style.nameCell" data-test-id="self-healing-config-row">
+						<N8nText size="small" bold color="text-dark" :class="$style.truncate">
+							{{ item.name }}
+						</N8nText>
+						<N8nText
+							v-if="item.customInstructions"
+							size="xsmall"
+							color="text-light"
+							:class="$style.truncate"
+							:title="item.customInstructions"
+						>
+							{{ item.customInstructions }}
+						</N8nText>
+					</div>
+				</template>
+				<template #[`item.scope`]="{ item }">
+					<N8nText size="small" color="text-dark">{{ scopeLabel(item) }}</N8nText>
+				</template>
+				<template #[`item.autonomy`]="{ item }">
+					<N8nBadge theme="tertiary" :show-border="false">{{ autonomyLabel(item) }}</N8nBadge>
+				</template>
+				<template #[`item.reviewers`]="{ item }">
+					<N8nUserStack
+						v-if="reviewerUsers(item).length > 0"
+						:users="{ reviewers: reviewerUsers(item) }"
+						:current-user-id="usersStore.currentUser?.id ?? ''"
+						data-test-id="self-healing-config-reviewers"
+					/>
+					<N8nText v-else size="small" color="text-light">
+						{{ i18n.baseText('selfHealing.projectSettings.noReviewers') }}
 					</N8nText>
-					<N8nText
-						v-if="config.customInstructions"
-						size="xsmall"
-						color="text-light"
-						:class="$style.truncate"
-						:title="config.customInstructions"
-					>
-						{{ config.customInstructions }}
-					</N8nText>
-				</div>
-				<N8nText size="small" color="text-base">{{ scopeLabel(config) }}</N8nText>
-				<div>
-					<N8nBadge theme="tertiary" :show-border="false">{{ autonomyLabel(config) }}</N8nBadge>
-				</div>
-				<div :class="$style.statusCell">
-					<N8nStatusDot :variant="config.status === 'active' ? 'success' : 'warning'" />
-					<N8nText size="small" color="text-base">{{ statusLabel(config) }}</N8nText>
-				</div>
-				<N8nActionToggle
-					:actions="actionsFor(config)"
-					placement="bottom-end"
-					theme="dark"
-					data-test-id="self-healing-config-actions"
-					@action="onAction(config, $event)"
-				/>
-			</div>
+				</template>
+				<template #[`item.status`]="{ item }">
+					<div :class="$style.statusCell">
+						<N8nStatusDot :variant="item.status === 'active' ? 'success' : 'warning'" />
+						<N8nText size="small" color="text-dark">{{ statusLabel(item) }}</N8nText>
+					</div>
+				</template>
+				<template #[`item.actions`]="{ item }">
+					<N8nActionToggle
+						:actions="actionsFor(item)"
+						placement="bottom"
+						theme="dark"
+						data-test-id="self-healing-config-actions"
+						@action="onAction(item, $event)"
+					/>
+				</template>
+			</N8nDataTableServer>
 		</div>
 		<N8nText
 			v-else
@@ -225,32 +304,8 @@ onMounted(async () => {
 	margin-bottom: var(--spacing--sm);
 }
 
-.list {
-	display: flex;
-	flex-direction: column;
-	border: var(--border);
-	border-radius: var(--radius);
+.table {
 	margin-bottom: var(--spacing--sm);
-	overflow: hidden;
-}
-
-.row {
-	display: grid;
-	grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) auto auto var(--spacing--xl);
-	align-items: center;
-	gap: var(--spacing--sm);
-	padding: var(--spacing--xs) var(--spacing--sm);
-	border-top: var(--border);
-
-	&:first-child {
-		border-top: none;
-	}
-}
-
-.headerRow {
-	background-color: var(--color--background--light-2);
-	padding-top: var(--spacing--2xs);
-	padding-bottom: var(--spacing--2xs);
 }
 
 .nameCell {
@@ -258,6 +313,7 @@ onMounted(async () => {
 	flex-direction: column;
 	gap: var(--spacing--5xs);
 	min-width: 0;
+	padding: var(--spacing--2xs) 0;
 }
 
 .truncate {

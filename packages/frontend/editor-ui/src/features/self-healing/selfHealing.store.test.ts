@@ -14,6 +14,9 @@ vi.mock('@/app/stores/posthog.store', () => ({
 vi.mock('@n8n/stores/users.store', () => ({
 	useUsersStore: () => ({
 		currentUser: { id: 'user-1', email: 'jane@example.com', firstName: 'Jane', lastName: 'Doe' },
+		usersById: {
+			'user-2': { id: 'user-2', email: 'sam@example.com', firstName: 'Sam', lastName: 'Lee' },
+		},
 	}),
 }));
 
@@ -70,6 +73,7 @@ describe('useSelfHealingStore', () => {
 				autonomy: 'review',
 				status: 'active',
 				excludedWorkflowIds: [],
+				reviewerIds: ['user-1'],
 			});
 		});
 
@@ -88,7 +92,7 @@ describe('useSelfHealingStore', () => {
 				autonomy: 'deploy',
 				excludedWorkflowIds: ['wf-9'],
 				customInstructions: '',
-				notifications: { emailOnReview: false, emailOnDeploy: true, slackChannel: '#ops' },
+				reviewerIds: ['user-2'],
 				status: 'active',
 			});
 			expect(store.getProjectConfigs(PROJECT_ID)).toHaveLength(2);
@@ -267,6 +271,20 @@ describe('useSelfHealingStore', () => {
 				(node) => node.name === 'Post to Slack',
 			);
 			expect(fixedNode).toMatchObject({ retryOnFail: true, maxTries: 3, waitBetweenTries: 5000 });
+		});
+
+		it('assigns the configured reviewers to the new review', async () => {
+			const [defaultConfig] = store.getProjectConfigs(PROJECT_ID);
+			store.updateConfig(PROJECT_ID, defaultConfig.id, { reviewerIds: ['user-2', 'missing'] });
+
+			const pending = store.startFix(failedExecution(), {
+				workflowName: 'Order sync',
+				projectId: PROJECT_ID,
+			});
+			await vi.advanceTimersByTimeAsync(SELF_HEALING_FIX_DURATION_MS);
+			const reviewId = await pending;
+
+			expect(store.findReview(reviewId)?.item.reviewers.map((user) => user.id)).toEqual(['user-2']);
 		});
 
 		it('deploys straight away when the project auto-deploys', async () => {

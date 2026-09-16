@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import {
 	N8nButton,
-	N8nCheckbox,
 	N8nDialog,
 	N8nDialogFooter,
 	N8nDialogHeader,
@@ -13,11 +12,17 @@ import {
 	N8nRadioGroupItem,
 	N8nSelect,
 	N8nText,
+	N8nUserSelect,
+	N8nUsersList,
+	type IUser,
+	type UserAction,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { computed, ref, watch } from 'vue';
 
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 
 import { useSelfHealingStore } from '../selfHealing.store';
 import type {
@@ -41,8 +46,11 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const store = useSelfHealingStore();
 const workflowsListStore = useWorkflowsListStore();
+const projectsStore = useProjectsStore();
+const usersStore = useUsersStore();
 
 const AUTONOMY_OPTIONS: SelfHealingAutonomy[] = ['review', 'deploy'];
+const REMOVE_REVIEWER_ACTION = 'remove';
 
 function emptyForm(): SelfHealingConfigInput {
 	return {
@@ -50,7 +58,7 @@ function emptyForm(): SelfHealingConfigInput {
 		autonomy: 'review',
 		excludedWorkflowIds: [],
 		customInstructions: '',
-		notifications: { emailOnReview: true, emailOnDeploy: true, slackChannel: null },
+		reviewerIds: usersStore.currentUser?.id ? [usersStore.currentUser.id] : [],
 		status: 'active',
 	};
 }
@@ -61,13 +69,12 @@ function formFrom(config: SelfHealingConfig): SelfHealingConfigInput {
 		autonomy: config.autonomy,
 		excludedWorkflowIds: [...config.excludedWorkflowIds],
 		customInstructions: config.customInstructions,
-		notifications: { ...config.notifications },
+		reviewerIds: [...config.reviewerIds],
 		status: config.status,
 	};
 }
 
 const form = ref<SelfHealingConfigInput>(emptyForm());
-const slackEnabled = ref(false);
 const loadingWorkflows = ref(false);
 
 const isEditing = computed(() => props.config !== null);
@@ -82,6 +89,36 @@ const projectWorkflows = computed(() =>
 const enrolledCount = computed(() =>
 	Math.max(projectWorkflows.value.length - form.value.excludedWorkflowIds.length, 0),
 );
+
+/**
+ * Reviewer candidates are the project's members, since only they can open the
+ * project's workflows. Falls back to every known user while the project is
+ * still loading.
+ */
+const candidateUsers = computed<IUser[]>(() => {
+	const relations = projectsStore.currentProject?.relations ?? [];
+	if (relations.length > 0) {
+		return relations.map((relation) => ({
+			id: relation.id,
+			email: relation.email,
+			firstName: relation.firstName,
+			lastName: relation.lastName,
+		}));
+	}
+	return usersStore.allUsers.filter((user) => !user.isPendingUser);
+});
+
+const selectedReviewers = computed<IUser[]>(() =>
+	form.value.reviewerIds.flatMap((id) => {
+		const user =
+			candidateUsers.value.find((candidate) => candidate.id === id) ?? usersStore.usersById[id];
+		return user ? [user] : [];
+	}),
+);
+
+const reviewerActions: Array<UserAction<IUser>> = [
+	{ label: i18n.baseText('selfHealing.dialog.reviewers.remove'), value: REMOVE_REVIEWER_ACTION },
+];
 
 async function loadProjectWorkflows() {
 	loadingWorkflows.value = true;
@@ -99,17 +136,19 @@ watch(
 	(open) => {
 		if (!open) return;
 		form.value = props.config ? formFrom(props.config) : emptyForm();
-		slackEnabled.value = form.value.notifications.slackChannel !== null;
 		void loadProjectWorkflows();
 	},
 	{ immediate: true },
 );
 
-function onSlackToggle(enabled: boolean) {
-	slackEnabled.value = enabled;
-	form.value.notifications.slackChannel = enabled
-		? (form.value.notifications.slackChannel ?? '')
-		: null;
+function addReviewer(userId: string) {
+	if (!userId || form.value.reviewerIds.includes(userId)) return;
+	form.value.reviewerIds = [...form.value.reviewerIds, userId];
+}
+
+function onReviewerAction({ action, userId }: { action: string; userId: string }) {
+	if (action !== REMOVE_REVIEWER_ACTION) return;
+	form.value.reviewerIds = form.value.reviewerIds.filter((id) => id !== userId);
 }
 
 function close() {
@@ -123,12 +162,6 @@ function save() {
 		...form.value,
 		name: form.value.name.trim(),
 		customInstructions: form.value.customInstructions.trim(),
-		notifications: {
-			...form.value.notifications,
-			slackChannel: slackEnabled.value
-				? (form.value.notifications.slackChannel?.trim() ?? '') || null
-				: null,
-		},
 	};
 
 	const saved = props.config
@@ -247,36 +280,41 @@ function save() {
 				</N8nText>
 			</N8nInputLabel>
 
-			<N8nInputLabel :label="i18n.baseText('selfHealing.dialog.notifications.label')">
-				<div :class="$style.checkboxes">
-					<N8nCheckbox
-						v-model="form.notifications.emailOnReview"
-						:label="i18n.baseText('selfHealing.dialog.notifications.emailOnReview')"
-						data-test-id="self-healing-notify-review"
-					/>
-					<N8nCheckbox
-						v-model="form.notifications.emailOnDeploy"
-						:label="i18n.baseText('selfHealing.dialog.notifications.emailOnDeploy')"
-						data-test-id="self-healing-notify-deploy"
-					/>
-					<N8nCheckbox
-						:model-value="slackEnabled"
-						:label="i18n.baseText('selfHealing.dialog.notifications.slack')"
-						data-test-id="self-healing-notify-slack"
-						@update:model-value="onSlackToggle"
-					/>
-					<N8nInput
-						v-if="slackEnabled"
-						:model-value="form.notifications.slackChannel ?? ''"
-						size="small"
-						:class="$style.slackInput"
-						:placeholder="
-							i18n.baseText('selfHealing.dialog.notifications.slackChannel.placeholder')
-						"
-						data-test-id="self-healing-slack-channel-input"
-						@update:model-value="form.notifications.slackChannel = $event"
-					/>
-				</div>
+			<N8nInputLabel
+				input-name="self-healing-reviewers"
+				:label="i18n.baseText('selfHealing.dialog.reviewers.label')"
+			>
+				<N8nText size="small" color="text-light" :class="$style.hint">
+					{{ i18n.baseText('selfHealing.dialog.reviewers.description') }}
+				</N8nText>
+				<N8nUserSelect
+					id="self-healing-reviewers"
+					:users="candidateUsers"
+					:ignore-ids="form.reviewerIds"
+					:current-user-id="usersStore.currentUser?.id ?? ''"
+					:placeholder="i18n.baseText('selfHealing.dialog.reviewers.placeholder')"
+					:teleported="false"
+					data-test-id="self-healing-reviewer-select"
+					@update:model-value="addReviewer"
+				/>
+				<N8nUsersList
+					v-if="selectedReviewers.length > 0"
+					:users="selectedReviewers"
+					:actions="reviewerActions"
+					:current-user-id="usersStore.currentUser?.id ?? ''"
+					:class="$style.reviewers"
+					data-test-id="self-healing-reviewer-list"
+					@action="onReviewerAction"
+				/>
+				<N8nText
+					v-else
+					size="xsmall"
+					color="text-light"
+					:class="$style.hint"
+					data-test-id="self-healing-reviewers-empty"
+				>
+					{{ i18n.baseText('selfHealing.dialog.reviewers.empty') }}
+				</N8nText>
 			</N8nInputLabel>
 
 			<N8nDialogFooter>
@@ -313,15 +351,7 @@ function save() {
 	margin-bottom: var(--spacing--3xs);
 }
 
-.checkboxes {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--2xs);
-	margin-top: var(--spacing--3xs);
-}
-
-.slackInput {
-	max-width: 280px;
-	margin-left: var(--spacing--lg);
+.reviewers {
+	margin-top: var(--spacing--xs);
 }
 </style>
