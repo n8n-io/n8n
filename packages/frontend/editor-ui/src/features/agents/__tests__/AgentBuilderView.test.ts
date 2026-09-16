@@ -353,12 +353,24 @@ vi.mock('@/features/ai/instanceAi/composables/useInstanceAiHandoff', () => ({
 	}),
 }));
 
-const baseTextFn = (key: string, options?: { interpolate?: Record<string, string | number> }) => {
+const baseTextFn = (
+	key: string,
+	options?: { adjustToNumber?: number; interpolate?: Record<string, string | number> },
+) => {
 	const map: Record<string, string> = {
 		'agents.builder.preview.button': 'Preview',
 		'agents.builder.preview.close.ariaLabel': 'Close preview',
 		'projects.menu.personal': 'Personal',
 	};
+	if (key === 'agents.builder.externalUpdate.time') {
+		const minutes = options?.adjustToNumber ?? 0;
+		if (minutes === 0) return 'just now';
+		if (minutes === 1) return '1 minute ago';
+		return `${minutes} minutes ago`;
+	}
+	if (key.startsWith('agents.builder.externalUpdate.') && options?.interpolate?.time) {
+		return `${key} ${String(options.interpolate.time)}`;
+	}
 	if (key === 'agents.builder.preview.fixWithAssistantPrompt.template') {
 		return `Review these failed tool calls, identify the root cause, fix the agent, and verify the change.
 
@@ -2267,7 +2279,7 @@ describe('AgentBuilderView — three-column shell', () => {
 
 			if (label) {
 				expect(wrapper.get(externalUpdateSelector).text()).toBe(
-					`agents.builder.externalUpdate.${label}`,
+					`agents.builder.externalUpdate.${label} just now`,
 				);
 				expect(wrapper.get('[role="status"]').attributes('aria-live')).toBe('polite');
 			} else {
@@ -2287,8 +2299,14 @@ describe('AgentBuilderView — three-column shell', () => {
 					data: { projectId: 'p1', agentId: 'a1', source: 'mcp' },
 				} as PushMessage);
 			}
-			await vi.advanceTimersByTimeAsync(299_000);
-			expect(wrapper.get(externalUpdateSelector).text()).toBe('agents.builder.externalUpdate.mcp');
+			await vi.advanceTimersByTimeAsync(60_000);
+			expect(wrapper.get(externalUpdateSelector).text()).toBe(
+				'agents.builder.externalUpdate.mcp 1 minute ago',
+			);
+			await vi.advanceTimersByTimeAsync(239_000);
+			expect(wrapper.get(externalUpdateSelector).text()).toBe(
+				'agents.builder.externalUpdate.mcp 4 minutes ago',
+			);
 
 			for (const listener of pushListeners) {
 				listener({
@@ -2296,10 +2314,14 @@ describe('AgentBuilderView — three-column shell', () => {
 					data: { projectId: 'p1', agentId: 'a1', source: 'builder' },
 				} as PushMessage);
 			}
+			await nextTick();
+			expect(wrapper.get(externalUpdateSelector).text()).toBe(
+				'agents.builder.externalUpdate.builder just now',
+			);
 			await vi.advanceTimersByTimeAsync(299_999);
 			expect(wrapper.findAll(externalUpdateSelector)).toHaveLength(1);
 			expect(wrapper.get(externalUpdateSelector).text()).toBe(
-				'agents.builder.externalUpdate.builder',
+				'agents.builder.externalUpdate.builder 4 minutes ago',
 			);
 
 			await vi.advanceTimersByTimeAsync(1);
@@ -2333,7 +2355,7 @@ describe('AgentBuilderView — three-column shell', () => {
 		}
 		await nextTick();
 		expect(wrapper.get(externalUpdateSelector).text()).toBe(
-			'agents.builder.externalUpdate.builder',
+			'agents.builder.externalUpdate.builder just now',
 		);
 	});
 

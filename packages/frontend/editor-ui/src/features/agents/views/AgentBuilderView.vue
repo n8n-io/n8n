@@ -36,7 +36,7 @@ import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { MODAL_CONFIRM } from '@/app/constants';
-import { AGENT_EXTERNAL_UPDATE_NOTICE_DURATION } from '@/app/constants/durations';
+import { AGENT_EXTERNAL_UPDATE_NOTICE_DURATION, TIME } from '@/app/constants/durations';
 import { deepCopy } from 'n8n-workflow';
 import {
 	getAgent,
@@ -1330,22 +1330,39 @@ function handleArtifactRefreshError(error: unknown) {
 
 let externalRefreshTimer: ReturnType<typeof setTimeout> | undefined;
 let externalUpdateTimer: ReturnType<typeof setTimeout> | undefined;
+let externalUpdateAgeTimer: ReturnType<typeof setInterval> | undefined;
+let externalUpdateAt = 0;
 const recentExternalUpdate = ref<PushPayload<'agentUpdated'> | null>(null);
+const externalUpdateAgeMinutes = ref(0);
+const externalUpdateTime = computed(() =>
+	locale.baseText('agents.builder.externalUpdate.time', {
+		adjustToNumber: externalUpdateAgeMinutes.value,
+		interpolate: { count: externalUpdateAgeMinutes.value },
+	}),
+);
 const externalUpdateMessage = computed(() => {
+	let key: BaseTextKey;
 	switch (recentExternalUpdate.value?.source) {
 		case 'mcp':
-			return locale.baseText('agents.builder.externalUpdate.mcp');
+			key = 'agents.builder.externalUpdate.mcp';
+			break;
 		case 'builder':
-			return locale.baseText('agents.builder.externalUpdate.builder');
+			key = 'agents.builder.externalUpdate.builder';
+			break;
 		case 'user':
-			return locale.baseText('agents.builder.externalUpdate.user');
+			key = 'agents.builder.externalUpdate.user';
+			break;
 		default:
-			return locale.baseText('agents.builder.externalUpdate.unknown');
+			key = 'agents.builder.externalUpdate.unknown';
 	}
+	return locale.baseText(key, { interpolate: { time: externalUpdateTime.value } });
 });
 
 function clearExternalUpdate() {
 	clearTimeout(externalUpdateTimer);
+	clearInterval(externalUpdateAgeTimer);
+	externalUpdateAt = 0;
+	externalUpdateAgeMinutes.value = 0;
 	recentExternalUpdate.value = null;
 }
 
@@ -1406,9 +1423,13 @@ function onAgentPushMessage(event: PushMessage) {
 		return;
 	}
 	if (shouldShowExternalUpdate(event.data.source)) {
+		clearExternalUpdate();
 		recentExternalUpdate.value = event.data;
-		clearTimeout(externalUpdateTimer);
+		externalUpdateAt = Date.now();
 		externalUpdateTimer = setTimeout(clearExternalUpdate, AGENT_EXTERNAL_UPDATE_NOTICE_DURATION);
+		externalUpdateAgeTimer = setInterval(() => {
+			externalUpdateAgeMinutes.value = Math.floor((Date.now() - externalUpdateAt) / TIME.MINUTE);
+		}, TIME.MINUTE);
 	}
 	onExternalAgentUpdated({ agentId: event.data.agentId, source: 'push' });
 }
