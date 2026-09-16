@@ -363,7 +363,7 @@ export class InstanceContextService {
 		// re-read would offer them a second time. A commit later than that many rows is lost, and
 		// that is the price of the budget rather than an oversight.
 		let cursor = input.cursor;
-		const band = cursor
+		let band = cursor
 			? await this.activityEventRepository.findFeed({
 					limit: seenIdsCap,
 					...input.scope,
@@ -372,31 +372,21 @@ export class InstanceContextService {
 				})
 			: [];
 
-		// A mark can outlive the id space it was taken from. `ActivityEvent.id` is a rowid alias on
-		// SQLite, so emptying the table — which age-based retention does to an instance quiet for
-		// longer than its window — restarts the sequence, and the rows written next land at or
-		// below a mark a live thread still holds. Neither leg can reach them: arrivals start above
-		// the mark, and the band stops below it.
-		//
-		// Both legs coming back empty is the signature, and the timestamp is what makes it one. By
-		// id alone a renumbered feed and a quiet one are identical, so the question asked here is
-		// "is the newest row newer than the last block?" rather than "is its id lower?". That also
-		// keeps the two cases this must not fire on out of it: a narrowed scope still sees its own
-		// older rows, and a late commit inside the band leaves the band non-empty.
-		if (cursor !== null && arrivals.length === 0 && band.length === 0) {
-			const newest = await this.activityEventRepository.findNewestEntry(input.scope);
-			if (newest && newest.createdAt.getTime() > Date.parse(cursor.runsThrough)) {
-				// Only the id-based bounds. `runsThrough` is a timestamp and the inventory does not
-				// depend on ids, so the rest of the block stays a delta rather than repeating a
-				// week of run summaries over a renumbering the reader never saw. The shown ids go
-				// with the mark: they name rows from the old sequence, and holding them would
-				// suppress new rows that reuse those numbers.
-				cursor = null;
-				arrivals = await this.activityEventRepository.findFeed({
-					limit: entryFetchLimit,
-					...input.scope,
-				});
-			}
+		if (cursor !== null && (await this.idSpaceRestarted(cursor, input.scope, arrivals, band))) {
+			// Only the id-based bounds. `runsThrough` is a timestamp and the inventory does not
+			// depend on ids, so the rest of the block stays a delta rather than repeating a week of
+			// run summaries over a renumbering the reader never saw. The shown ids go with the
+			// mark: they name rows from the old sequence, and holding them would suppress the new
+			// rows that reuse those numbers.
+			//
+			// The band goes too. It was read under bounds taken from the old sequence, and the
+			// re-read below covers the whole feed — keeping both would offer the same row twice.
+			cursor = null;
+			band = [];
+			arrivals = await this.activityEventRepository.findFeed({
+				limit: entryFetchLimit,
+				...input.scope,
+			});
 		}
 
 		// Both are newest-first and every arrival outranks every band row, so this stays ordered.
@@ -438,6 +428,46 @@ export class InstanceContextService {
 			// reads as the whole story, and the agent would draw conclusions from it.
 			truncated: fresh.length > windowSize || arrivals.length === entryFetchLimit,
 		};
+	}
+
+	/**
+	 * Whether the ids this cursor remembers still name the rows it saw.
+	 *
+	 * `ActivityEvent.id` is a rowid alias on SQLite, so emptying the table — which age-based
+	 * retention does to an instance quiet for longer than its window — restarts the sequence. The
+	 * rows written next reuse ids a live thread already holds, and the cursor then reads the feed
+	 * through bounds that describe a sequence which no longer exists.
+	 *
+	 * Decided on time rather than on ids, because by id alone a renumbered feed and a quiet one
+	 * are identical. A row cannot have been shown in an earlier block and also be newer than that
+	 * block, so "newer than `runsThrough`" has no false positive to trade against — where an id
+	 * comparison cannot separate a reused id from a late commit, or from a scope that narrowed.
+	 *
+	 * Two shapes, because a reused id lands in one of two places relative to the bounds:
+	 */
+	private async idSpaceRestarted(
+		cursor: InstanceContextCursor,
+		scope: ActivityReadScope,
+		arrivals: ActivityEvent[],
+		band: ActivityEvent[],
+	): Promise<boolean> {
+		const lastBlock = Date.parse(cursor.runsThrough);
+
+		// Inside the band, which is the common case: the floor only leaves 0 when a single turn cut
+		// more than a window, so a quiet feed is read with a band of `(0, mark)` that covers the
+		// whole restarted sequence. The row comes back, and the shown ids suppress it because one
+		// of them is its number. Read the id and the timestamp together to catch it.
+		const shown = new Set(cursor.activitySeen);
+		if (band.some((row) => shown.has(row.id) && row.createdAt.getTime() > lastBlock)) return true;
+
+		// Or in the gap between the legs, when the band is floored above the reused ids or closes
+		// below them: arrivals start above the mark and the band stops below it, so nothing reads
+		// the row at all. Nothing to inspect, so this asks the feed for its newest row instead —
+		// one indexed read, and only on a turn that came back empty-handed.
+		if (arrivals.length > 0 || band.length > 0) return false;
+
+		const newest = await this.activityEventRepository.findNewestEntry(scope);
+		return newest !== null && newest.createdAt.getTime() > lastBlock;
 	}
 
 	private async readRuns(input: {

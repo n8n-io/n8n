@@ -335,7 +335,15 @@ describe('InstanceContextService', () => {
 					.mockResolvedValueOnce([]) // arrivals above the mark
 					// 499 is inside the band and already in `activitySeen`; 498 is not.
 					.mockResolvedValueOnce([
-						entry({ id: 499, resourceName: 'Shown already' }),
+						entry({
+							id: 499,
+							resourceName: 'Shown already',
+							// Older than the cursor's own `runsThrough`, because a block cannot have
+							// shown a row that did not exist yet. An id in `activitySeen` carrying a
+							// timestamp newer than the block that showed it is how a reused id is
+							// told apart from a late commit, so the two have to stay coherent here.
+							createdAt: new Date(NOW.getTime() - 15 * 60_000),
+						}),
 						entry({ id: 498, resourceName: 'Committed late' }),
 					]);
 
