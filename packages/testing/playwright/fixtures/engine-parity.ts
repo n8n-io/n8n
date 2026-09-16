@@ -18,6 +18,23 @@ export const ENGINE_TAGS = {
 	pending: `${ENGINE_TAG_PREFIX}v2-pending`,
 } as const;
 
+/**
+ * A tag that starts with the prefix but names no bucket is a typo. The
+ * `engine-v2:e2e` project greps for the prefix, so it would be selected and
+ * then treated as supported: a spec meant to be skipped or to fail becomes a
+ * required green, and the required check goes red with nothing naming the tag.
+ */
+function assertKnownTags(tags: readonly string[]): void {
+	const known: readonly string[] = Object.values(ENGINE_TAGS);
+	const unknown = tags.filter((tag) => tag.startsWith(ENGINE_TAG_PREFIX) && !known.includes(tag));
+
+	if (unknown.length > 0) {
+		throw new Error(
+			`Unknown engine 2.0 tag: ${unknown.join(', ')}. Use one of: ${known.join(', ')}.`,
+		);
+	}
+}
+
 export type EngineParityDisposition =
 	| { action: 'run' }
 	| { action: 'skip' | 'expect-fail'; reason: string };
@@ -30,6 +47,8 @@ export function engineParityDisposition(
 	tags: readonly string[],
 	engine: N8NConfig['engine'],
 ): EngineParityDisposition {
+	assertKnownTags(tags);
+
 	if (!engine) return { action: 'run' };
 
 	if (tags.includes(ENGINE_TAGS.unsupported)) {

@@ -57,4 +57,14 @@ describe('engineParityDisposition', () => {
 			reason: expect.stringContaining('yet'),
 		});
 	});
+
+	test('rejects a misspelled engine tag instead of treating it as supported', () => {
+		expect(() => engineParityDisposition(['@engine:v2-pendign'], 'in-process')).toThrow(
+			/@engine:v2-pendign/,
+		);
+	});
+
+	test('rejects a misspelled engine tag on the legacy engine too', () => {
+		expect(() => engineParityDisposition(['@engine:v1only'], undefined)).toThrow(/@engine:v1only/);
+	});
 });
