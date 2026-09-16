@@ -58,10 +58,16 @@ defineExpose<InputNumberExposed>({ focus, blur, select });
 // Map precision to formatOptions - uses Intl.NumberFormatOptions
 // When no precision is set, use maximumFractionDigits: 20 (the max allowed by Intl.NumberFormat)
 // to preserve full decimal precision and avoid default rounding behavior
+// Grouping separators are always disabled: values such as ports, timeouts or IDs have to
+// stay readable as plain digits (1433, not 1,433)
 const formatOptions = computed<Intl.NumberFormatOptions>(() =>
 	props.precision !== undefined
-		? { maximumFractionDigits: props.precision, minimumFractionDigits: props.precision }
-		: { maximumFractionDigits: 20 },
+		? {
+				maximumFractionDigits: props.precision,
+				minimumFractionDigits: props.precision,
+				useGrouping: false,
+			}
+		: { maximumFractionDigits: 20, useGrouping: false },
 );
 
 const rootProps = useForwardPropsEmits(
