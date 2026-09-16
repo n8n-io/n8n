@@ -1,6 +1,7 @@
 import { average as aAverage } from './array-extensions';
 import { ExpressionExtensionError } from '../errors/expression-extension.error';
 import { ExpressionError } from '../errors/expression.error';
+import { toPathSegment as toPathSegmentValue } from '../url';
 
 // Define an own data field rather than assigning through an inherited setter.
 function defineField(target: Record<string, unknown>, key: PropertyKey, value: unknown): void {
@@ -72,6 +73,17 @@ function ifEmpty<T, V>(value: V, defaultValue: T) {
 	return value;
 }
 
+function toPathSegment(value: unknown): string {
+	try {
+		return toPathSegmentValue(value);
+	} catch (error) {
+		if (error instanceof Error) {
+			throw new ExpressionError(error.message);
+		}
+		throw error;
+	}
+}
+
 ifEmpty.doc = {
 	name: 'ifEmpty',
 	description:
@@ -91,6 +103,7 @@ export const extendedFunctions = {
 	average,
 	numberList,
 	zip,
+	toPathSegment,
 	$min: min,
 	$max: max,
 	$average: average,

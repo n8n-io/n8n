@@ -119,24 +119,41 @@ export class RoutingNode {
 				} as DeclarativeRestApiSettings.ResultOptions,
 			});
 
-			const { proxy, timeout, allowUnauthorizedCerts } = itemContext[
-				itemIndex
-			].thisArgs.getNodeParameter('requestOptions', 0, {}) as {
-				proxy: string;
-				timeout: number;
-				allowUnauthorizedCerts: boolean;
-			};
-
-			if (nodeType.description.requestOperations) {
-				itemContext[itemIndex].requestData.requestOperations = {
-					...nodeType.description.requestOperations,
+			try {
+				const { proxy, timeout, allowUnauthorizedCerts } = itemContext[
+					itemIndex
+				].thisArgs.getNodeParameter('requestOptions', 0, {}) as {
+					proxy: string;
+					timeout: number;
+					allowUnauthorizedCerts: boolean;
 				};
-			}
 
-			if (nodeType.description.requestDefaults) {
-				for (const key of Object.keys(nodeType.description.requestDefaults)) {
-					// eslint-disable-next-line @typescript-eslint/no-explicit-any
-					let value = (nodeType.description.requestDefaults as Record<string, any>)[key];
+				if (nodeType.description.requestOperations) {
+					itemContext[itemIndex].requestData.requestOperations = {
+						...nodeType.description.requestOperations,
+					};
+				}
+
+				if (nodeType.description.requestDefaults) {
+					for (const key of Object.keys(nodeType.description.requestDefaults)) {
+						// eslint-disable-next-line @typescript-eslint/no-explicit-any
+						let value = (nodeType.description.requestDefaults as Record<string, any>)[key];
+						// If the value is an expression resolve it
+						value = this.getParameterValue(
+							value,
+							itemIndex,
+							runIndex,
+							executeData,
+							{ $credentials: credentials, $version: node.typeVersion },
+							false,
+						) as string;
+						// eslint-disable-next-line @typescript-eslint/no-explicit-any
+						(itemContext[itemIndex].requestData.options as Record<string, any>)[key] = value;
+					}
+				}
+
+				for (const property of nodeType.description.properties) {
+					let value = get(node.parameters, property.name, []) as string | NodeParameterValue;
 					// If the value is an expression resolve it
 					value = this.getParameterValue(
 						value,
@@ -145,109 +162,113 @@ export class RoutingNode {
 						executeData,
 						{ $credentials: credentials, $version: node.typeVersion },
 						false,
-					) as string;
-					// eslint-disable-next-line @typescript-eslint/no-explicit-any
-					(itemContext[itemIndex].requestData.options as Record<string, any>)[key] = value;
+					) as string | NodeParameterValue;
+
+					const tempOptions = this.getRequestOptionsFromParameters(
+						itemContext[itemIndex].thisArgs,
+						property,
+						itemIndex,
+						runIndex,
+						'',
+						{ $credentials: credentials, $value: value, $version: node.typeVersion },
+					);
+
+					this.mergeOptions(itemContext[itemIndex].requestData, tempOptions);
 				}
-			}
 
-			for (const property of nodeType.description.properties) {
-				let value = get(node.parameters, property.name, []) as string | NodeParameterValue;
-				// If the value is an expression resolve it
-				value = this.getParameterValue(
-					value,
-					itemIndex,
-					runIndex,
-					executeData,
-					{ $credentials: credentials, $version: node.typeVersion },
-					false,
-				) as string | NodeParameterValue;
+				if (proxy) {
+					const proxyParsed = url.parse(proxy);
+					const proxyProperties = ['host', 'port'];
 
-				const tempOptions = this.getRequestOptionsFromParameters(
-					itemContext[itemIndex].thisArgs,
-					property,
-					itemIndex,
-					runIndex,
-					'',
-					{ $credentials: credentials, $value: value, $version: node.typeVersion },
-				);
+					for (const property of proxyProperties) {
+						if (
+							!(property in proxyParsed) ||
+							proxyParsed[property as keyof typeof proxyParsed] === null
+						) {
+							throw new NodeOperationError(node, 'The proxy is not value', {
+								runIndex,
+								itemIndex,
+								description: `The proxy URL does not contain a valid value for "${property}"`,
+							});
+						}
+					}
 
-				this.mergeOptions(itemContext[itemIndex].requestData, tempOptions);
-			}
+					itemContext[itemIndex].requestData.options.proxy = {
+						host: proxyParsed.hostname as string,
+						port: parseInt(proxyParsed.port!),
+						protocol: proxyParsed.protocol?.replace(/:$/, '') || undefined,
+					};
 
-			if (proxy) {
-				const proxyParsed = url.parse(proxy);
-				const proxyProperties = ['host', 'port'];
-
-				for (const property of proxyProperties) {
-					if (
-						!(property in proxyParsed) ||
-						proxyParsed[property as keyof typeof proxyParsed] === null
-					) {
-						throw new NodeOperationError(node, 'The proxy is not value', {
-							runIndex,
-							itemIndex,
-							description: `The proxy URL does not contain a valid value for "${property}"`,
-						});
+					if (proxyParsed.auth) {
+						const [username, password] = proxyParsed.auth.split(':');
+						itemContext[itemIndex].requestData.options.proxy!.auth = {
+							username,
+							password,
+						};
 					}
 				}
 
-				itemContext[itemIndex].requestData.options.proxy = {
-					host: proxyParsed.hostname as string,
-					port: parseInt(proxyParsed.port!),
-					protocol: proxyParsed.protocol?.replace(/:$/, '') || undefined,
-				};
-
-				if (proxyParsed.auth) {
-					const [username, password] = proxyParsed.auth.split(':');
-					itemContext[itemIndex].requestData.options.proxy!.auth = {
-						username,
-						password,
-					};
+				if (allowUnauthorizedCerts) {
+					itemContext[itemIndex].requestData.options.skipSslCertificateValidation =
+						allowUnauthorizedCerts;
 				}
-			}
 
-			if (allowUnauthorizedCerts) {
-				itemContext[itemIndex].requestData.options.skipSslCertificateValidation =
-					allowUnauthorizedCerts;
-			}
+				if (timeout) {
+					itemContext[itemIndex].requestData.options.timeout = timeout;
+				} else {
+					// set default timeout to 5 minutes
+					itemContext[itemIndex].requestData.options.timeout = 300_000;
+				}
 
-			if (timeout) {
-				itemContext[itemIndex].requestData.options.timeout = timeout;
-			} else {
-				// set default timeout to 5 minutes
-				itemContext[itemIndex].requestData.options.timeout = 300_000;
-			}
+				if (credentials?.allowedHttpRequestDomains === 'none') {
+					throw new NodeOperationError(
+						node,
+						'This credential is configured to prevent use within an HTTP Request node',
+					);
+				}
 
-			if (credentials?.allowedHttpRequestDomains === 'none') {
-				throw new NodeOperationError(
-					node,
-					'This credential is configured to prevent use within an HTTP Request node',
+				const allowedDomains = getCredentialAllowedDomains(credentials);
+				if (credentials?.allowedHttpRequestDomains === 'domains' && !allowedDomains) {
+					throw new NodeOperationError(
+						node,
+						'No allowed domains specified. Configure allowed domains or change restriction setting.',
+					);
+				}
+				if (allowedDomains) {
+					itemContext[itemIndex].requestData.options.allowedDomains = allowedDomains;
+				}
+
+				requestPromises.push(
+					this.makeRequest(
+						itemContext[itemIndex].requestData,
+						itemContext[itemIndex].thisArgs,
+						itemIndex,
+						runIndex,
+						credentialDescription?.name,
+						itemContext[itemIndex].requestData.requestOperations,
+						credentialsDecrypted,
+					),
 				);
-			}
+			} catch (error) {
+				const nodeError =
+					error instanceof NodeApiError || error instanceof NodeOperationError
+						? error
+						: new NodeOperationError(
+								node,
+								error instanceof Error ? error : new Error(String(error)),
+								{ itemIndex, runIndex },
+							);
 
-			const allowedDomains = getCredentialAllowedDomains(credentials);
-			if (credentials?.allowedHttpRequestDomains === 'domains' && !allowedDomains) {
-				throw new NodeOperationError(
-					node,
-					'No allowed domains specified. Configure allowed domains or change restriction setting.',
-				);
-			}
-			if (allowedDomains) {
-				itemContext[itemIndex].requestData.options.allowedDomains = allowedDomains;
-			}
+				set(nodeError, 'context.itemIndex', itemIndex);
+				set(nodeError, 'context.runIndex', runIndex);
 
-			requestPromises.push(
-				this.makeRequest(
-					itemContext[itemIndex].requestData,
-					itemContext[itemIndex].thisArgs,
-					itemIndex,
-					runIndex,
-					credentialDescription?.name,
-					itemContext[itemIndex].requestData.requestOperations,
-					credentialsDecrypted,
-				),
-			);
+				if (itemContext[itemIndex].thisArgs.continueOnFail()) {
+					requestPromises.push(Promise.resolve([{ json: {}, error: nodeError }]));
+					continue;
+				}
+
+				throw nodeError;
+			}
 		}
 
 		const promisesResponses = await Promise.allSettled(requestPromises);

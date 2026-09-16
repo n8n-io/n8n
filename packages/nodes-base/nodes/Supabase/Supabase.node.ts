@@ -11,9 +11,10 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, toPathSegment } from 'n8n-workflow';
 
 import {
+	appendFilterStringToEndpoint,
 	buildGetQuery,
 	buildOrQuery,
 	buildQuery,
@@ -175,7 +176,7 @@ export class Supabase implements INodeType {
 		const operation = this.getNodeParameter('operation', 0);
 
 		if (resource === 'row') {
-			const tableId = this.getNodeParameter('tableId', 0) as string;
+			const tableId = toPathSegment(this.getNodeParameter('tableId', 0));
 
 			if (operation === 'create') {
 				const records: IDataObject[] = [];
@@ -265,8 +266,7 @@ export class Supabase implements INodeType {
 					}
 
 					if (filterType === 'string') {
-						const filterString = this.getNodeParameter('filterString', i) as string;
-						endpoint = `${endpoint}?${encodeURI(filterString)}`;
+						endpoint = appendFilterStringToEndpoint(this, endpoint, i);
 					}
 
 					let rows;
@@ -367,8 +367,7 @@ export class Supabase implements INodeType {
 					}
 
 					if (filterType === 'string') {
-						const filterString = this.getNodeParameter('filterString', i) as string;
-						endpoint = `${endpoint}?${encodeURI(filterString)}`;
+						endpoint = appendFilterStringToEndpoint(this, endpoint, i);
 					}
 
 					if (!returnAll) {
@@ -442,8 +441,7 @@ export class Supabase implements INodeType {
 					}
 
 					if (filterType === 'string') {
-						const filterString = this.getNodeParameter('filterString', i) as string;
-						endpoint = `${endpoint}?${encodeURI(filterString)}`;
+						endpoint = appendFilterStringToEndpoint(this, endpoint, i);
 					}
 
 					const record: IDataObject = {};

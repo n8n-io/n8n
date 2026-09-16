@@ -1622,8 +1622,10 @@ describe('POST /credentials/test', () => {
 		expect(mockCredentialsTester.testCredentials.mock.calls[0][1]).toBe(savedCredential.type);
 		expect(mockCredentialsTester.testCredentials.mock.calls[0][2]).toEqual({
 			id: savedCredential.id,
+			name: '',
 			type: savedCredential.type,
 			data: credential.data,
+			homeProject: expect.objectContaining({ id: ownerPersonalProject.id }),
 		});
 	});
 
@@ -1652,8 +1654,10 @@ describe('POST /credentials/test', () => {
 		expect(mockCredentialsTester.testCredentials.mock.calls[0][1]).toBe(savedCredential.type);
 		expect(mockCredentialsTester.testCredentials.mock.calls[0][2]).toEqual({
 			id: savedCredential.id,
+			name: '',
 			type: savedCredential.type,
 			data: credential.data,
+			homeProject: expect.objectContaining({ id: ownerPersonalProject.id }),
 		});
 	});
 

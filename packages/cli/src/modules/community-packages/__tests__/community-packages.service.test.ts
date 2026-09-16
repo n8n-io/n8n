@@ -402,6 +402,7 @@ describe('CommunityPackagesService', () => {
 		const PACKAGE_NAME = 'n8n-nodes-test';
 		const installedPackageForUpdateTest = mock<InstalledPackages>({
 			packageName: PACKAGE_NAME,
+			installedVersion: '1.0.0',
 		});
 
 		const packageDirectoryLoader = mock<PackageDirectoryLoader>({
@@ -533,7 +534,7 @@ describe('CommunityPackagesService', () => {
 
 			expect(publisher.publishCommand).toHaveBeenCalledWith({
 				command: 'community-package-update',
-				payload: { packageName: PACKAGE_NAME, packageVersion: 'latest' },
+				payload: { packageName: PACKAGE_NAME, packageVersion: '1.0.0', checksum: undefined },
 			});
 		});
 
@@ -554,12 +555,75 @@ describe('CommunityPackagesService', () => {
 	});
 
 	describe('installPackage', () => {
+		const PACKAGE_NAME = 'n8n-nodes-test';
+
 		test('should throw when installation of not vetted packages is forbidden', async () => {
 			config.unverifiedEnabled = false;
 			config.registry = 'https://registry.npmjs.org';
 			await expect(communityPackagesService.installPackage('package', '0.1.0')).rejects.toThrow(
 				'Installation of unverified community packages is forbidden!',
 			);
+		});
+
+		test('should throw when the package is rejected by the package status check', async () => {
+			config.unverifiedEnabled = true;
+			config.registry = 'https://registry.npmjs.org';
+			mocked(axios.post).mockResolvedValue({ data: { status: 'Banned', reason: 'not allowed' } });
+
+			await expect(communityPackagesService.installPackage(PACKAGE_NAME, '1.0.0')).rejects.toThrow(
+				`Package "${PACKAGE_NAME}" is not allowed`,
+			);
+
+			expect(execFile).not.toHaveBeenCalled();
+		});
+
+		test('should throw for a package name that resolves outside its own directory', async () => {
+			config.unverifiedEnabled = true;
+			config.registry = 'https://registry.npmjs.org';
+
+			// `installPackage` does not parse the name, which is why the resolved directory is
+			// asserted to be the named one.
+			await expect(
+				communityPackagesService.installPackage(`${PACKAGE_NAME}/..`, '1.0.0'),
+			).rejects.toThrow('Invalid package name');
+
+			expect(mkdir).not.toHaveBeenCalled();
+			expect(rm).not.toHaveBeenCalled();
+		});
+
+		test('should publish the installed version rather than the requested specifier', async () => {
+			config.unverifiedEnabled = true;
+			config.registry = 'https://registry.npmjs.org';
+
+			mocked(execFile).mockImplementation(((...args: Parameters<typeof execFile>) => {
+				const cmdArgs = args[1];
+				const actualCallback = args[args.length - 1] as ExecFileCallback;
+
+				if (cmdArgs?.[0] === 'pack') {
+					actualCallback(null, { stdout: `${PACKAGE_NAME}-latest.tgz` } as never, '');
+				} else {
+					actualCallback(null, 'Done', '');
+				}
+			}) as typeof execFile);
+
+			mocked(readFile).mockResolvedValue(
+				JSON.stringify({ name: PACKAGE_NAME, version: '1.2.3', dependencies: {} }),
+			);
+			loadNodesAndCredentials.loadPackage.mockResolvedValue(
+				mock<PackageDirectoryLoader>({
+					loadedNodes: [{ name: 'a-node-from-the-loader', version: 1 }],
+				}),
+			);
+			installedPackageRepository.saveInstalledPackageWithNodes.mockResolvedValue(
+				mock<InstalledPackages>({ packageName: PACKAGE_NAME, installedVersion: '1.2.3' }),
+			);
+
+			await communityPackagesService.installPackage(PACKAGE_NAME);
+
+			expect(publisher.publishCommand).toHaveBeenCalledWith({
+				command: 'community-package-install',
+				payload: { packageName: PACKAGE_NAME, packageVersion: '1.2.3', checksum: undefined },
+			});
 		});
 	});
 

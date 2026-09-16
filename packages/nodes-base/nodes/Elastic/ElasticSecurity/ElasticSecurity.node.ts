@@ -7,9 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
-
-import { toPathSegment } from '@utils/url';
+import { toPathSegment, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import {
 	caseCommentFields,

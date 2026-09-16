@@ -7,9 +7,7 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, jsonParse, NodeApiError } from 'n8n-workflow';
-
-import { toPathSegment } from '@utils/url';
+import { NodeConnectionTypes, jsonParse, NodeApiError, toPathSegment } from 'n8n-workflow';
 
 import { documentFields, documentOperations, indexFields, indexOperations } from './descriptions';
 import {

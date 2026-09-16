@@ -681,6 +681,34 @@ VALUES (
 				expect(runQueries).toHaveBeenCalledWith(queries, emptyInputItems, nodeOptions);
 			},
 		);
+
+		it('should neutralise an injected Drop table name by escaping the string literal', async () => {
+			const nodeParameters: IDataObject = {
+				operation: 'deleteTable',
+				schema: { __rl: true, mode: 'list', value: CONFIG.user },
+				table: {
+					__rl: true,
+					mode: 'list',
+					value: "X') PURGE; EXECUTE IMMEDIATE 'DROP TABLE SENSITIVE_DATA",
+				},
+				deleteCommand: 'drop',
+				options: {},
+			};
+			const mockThis = createMockExecuteFunction(nodeParameters);
+			const items = [{ json: {}, pairedItem: { item: 0, input: undefined } }];
+			const runQueries = getRunQueriesFn(mockThis, pool);
+
+			await deleteTable.execute.call(mockThis, runQueries, items, {}, pool);
+
+			expect(runQueries).toHaveBeenCalledTimes(1);
+			const { query } = runQueries.mock.calls[0][0][0];
+			// The injected quotes are doubled, so they stay inside the identifier and
+			// cannot terminate the EXECUTE IMMEDIATE literal.
+			expect(query).toContain(
+				".\"X'') PURGE; EXECUTE IMMEDIATE ''DROP TABLE SENSITIVE_DATA\" PURGE')",
+			);
+			expect(query).not.toContain("X') PURGE");
+		});
 	});
 
 	describe('Test execute operation', () => {

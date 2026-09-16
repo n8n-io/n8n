@@ -7,6 +7,7 @@ import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type { INodeParameterResourceLocator } from 'n8n-workflow';
 import { computed, onBeforeUnmount, onMounted, ref, useCssModule, watch } from 'vue';
+import { openSafeUrl } from '@/app/utils/htmlUtils';
 
 const SEARCH_BAR_HEIGHT_PX = 40;
 const SCROLL_MARGIN_PX = 10;
@@ -135,7 +136,7 @@ function openUrl(event: MouseEvent, url: string) {
 	event.preventDefault();
 	event.stopPropagation();
 
-	window.open(url, '_blank');
+	openSafeUrl(url);
 }
 
 function onKeyDown(e: KeyboardEvent) {

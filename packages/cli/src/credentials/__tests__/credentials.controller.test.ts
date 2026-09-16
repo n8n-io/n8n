@@ -1,3 +1,4 @@
+import type { TestCredentialRequestDto } from '@n8n/api-types';
 import type {
 	AuthenticatedRequest,
 	CredentialsEntity,
@@ -128,6 +129,90 @@ describe('CredentialsController', () => {
 			});
 
 			expect(newApiKey).toEqual(createdCredentials);
+		});
+	});
+
+	describe('testCredentials', () => {
+		const storedCredential = mock<CredentialsEntity>({
+			id: 'credential-id',
+			name: 'Stored Credential',
+			type: 'githubApi',
+		});
+		const decryptedData = { accessToken: 'stored-token' };
+		const testResult = { status: 'OK', message: 'Credential tested successfully' } as any;
+
+		beforeEach(() => {
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(storedCredential);
+			jest.mocked(credentialsService.decrypt).mockReturnValue(decryptedData);
+			jest
+				.spyOn(credentialsService, 'replaceCredentialContentsForSharee')
+				.mockResolvedValue(undefined);
+			jest.spyOn(credentialsService, 'unredact').mockReturnValue(decryptedData);
+			jest.spyOn(credentialsService, 'test').mockResolvedValue(testResult);
+		});
+
+		it('discards a caller-supplied homeProject and resolves the owning project from storage', async () => {
+			const owningProject = createRawProjectData({ id: 'real-owning-project-id', type: 'team' });
+			sharedCredentialsRepository.findCredentialOwningProject.mockResolvedValue(owningProject);
+
+			const payload = {
+				credentials: {
+					id: 'credential-id',
+					name: 'Stored Credential',
+					type: 'githubApi',
+					// A caller naming a project it doesn't own — this must never
+					// reach the credential test.
+					homeProject: {
+						id: 'attacker-chosen-project-id',
+						name: 'Attacker Project',
+						icon: null,
+						type: 'team',
+						createdAt: '2024-01-01T00:00:00.000Z',
+						updatedAt: '2024-01-01T00:00:00.000Z',
+					},
+					data: { accessToken: 'live-token' },
+				},
+			} as unknown as TestCredentialRequestDto;
+
+			await credentialsController.testCredentials(req, res, payload);
+
+			expect(sharedCredentialsRepository.findCredentialOwningProject).toHaveBeenCalledWith(
+				'credential-id',
+			);
+			expect(credentialsService.test).toHaveBeenCalledWith(
+				req.user.id,
+				expect.objectContaining({
+					homeProject: expect.objectContaining({ id: 'real-owning-project-id' }),
+				}),
+			);
+		});
+
+		it('does not fall back to a caller-supplied homeProject when no owning project is found', async () => {
+			sharedCredentialsRepository.findCredentialOwningProject.mockResolvedValue(undefined);
+
+			const payload = {
+				credentials: {
+					id: 'credential-id',
+					name: 'Stored Credential',
+					type: 'githubApi',
+					homeProject: {
+						id: 'attacker-chosen-project-id',
+						name: 'Attacker Project',
+						icon: null,
+						type: 'team',
+						createdAt: '2024-01-01T00:00:00.000Z',
+						updatedAt: '2024-01-01T00:00:00.000Z',
+					},
+					data: { accessToken: 'live-token' },
+				},
+			} as unknown as TestCredentialRequestDto;
+
+			await credentialsController.testCredentials(req, res, payload);
+
+			expect(credentialsService.test).toHaveBeenCalledWith(
+				req.user.id,
+				expect.objectContaining({ homeProject: undefined }),
+			);
 		});
 	});
 

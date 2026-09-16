@@ -3,6 +3,7 @@ import {
 	CredentialsGetManyRequestQuery,
 	CredentialsGetOneRequestQuery,
 	GenerateCredentialNameRequestQuery,
+	TestCredentialRequestDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
@@ -29,7 +30,7 @@ import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
 import { deepCopy } from 'n8n-workflow';
-import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
+import type { ICredentialDataDecryptedObject, ICredentialsDecrypted } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { CredentialsFinderService } from './credentials-finder.service';
@@ -135,8 +136,12 @@ export class CredentialsController {
 
 	// TODO: Write at least test cases for the failure paths.
 	@Post('/test')
-	async testCredentials(req: CredentialRequest.Test) {
-		const { credentials } = req.body;
+	async testCredentials(
+		req: AuthenticatedRequest,
+		_res: unknown,
+		@Body payload: TestCredentialRequestDto,
+	) {
+		const { credentials } = payload;
 
 		const storedCredential = await this.credentialsFinderService.findCredentialForUser(
 			credentials.id,
@@ -148,8 +153,28 @@ export class CredentialsController {
 			throw new ForbiddenError();
 		}
 
-		const mergedCredentials = deepCopy(credentials);
+		const mergedCredentials: ICredentialsDecrypted = deepCopy({
+			...credentials,
+			data: credentials.data as ICredentialDataDecryptedObject | undefined,
+		});
 		const decryptedData = this.credentialsService.decrypt(storedCredential, true);
+
+		// Find the owning project to prevent leakage of other project data.
+		const owningProject = await this.sharedCredentialsRepository.findCredentialOwningProject(
+			storedCredential.id,
+		);
+		if (!owningProject) {
+			mergedCredentials.homeProject = undefined;
+		} else {
+			mergedCredentials.homeProject = {
+				id: owningProject.id,
+				name: owningProject.name,
+				icon: owningProject.icon,
+				type: owningProject.type,
+				createdAt: owningProject.createdAt.toISOString(),
+				updatedAt: owningProject.updatedAt.toISOString(),
+			};
+		}
 
 		// When a sharee (or project viewer) opens a credential, the fields and the
 		// credential data are missing so the payload will be empty

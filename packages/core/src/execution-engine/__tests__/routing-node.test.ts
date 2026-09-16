@@ -2256,6 +2256,125 @@ describe('RoutingNode', () => {
 		}
 	});
 
+	describe('per-item errors', () => {
+		const createRoutingNode = ({
+			continueOnFail,
+			requestErrorUrl,
+		}: {
+			continueOnFail: boolean;
+			requestErrorUrl?: string;
+		}) => {
+			const items: INodeExecutionData[] = [
+				{ json: { id: 'first' } },
+				{ json: requestErrorUrl ? { id: 'second' } : {} },
+				{ json: { id: 'third' } },
+			];
+			const node: INode = {
+				parameters: {},
+				name: 'test',
+				type: 'test.set',
+				typeVersion: 1,
+				id: 'uuid-1234',
+				position: [0, 0],
+			};
+			const nodeType = mock<INodeType>();
+			nodeType.description = {
+				requestDefaults: {
+					baseURL: 'http://127.0.0.1:5678',
+					url: '=/items/{{ toPathSegment($json.id) }}',
+				},
+				properties: [],
+			} as unknown as INodeTypeDescription;
+			const runExecutionData = createEmptyRunExecutionData();
+			const workflow = new Workflow({
+				nodes: [node],
+				connections: {},
+				active: false,
+				nodeTypes,
+			});
+			const executeFunctions = mock<executionContexts.ExecuteContext>();
+			Object.assign(executeFunctions, {
+				executeData: { data: {}, node, source: null } as IExecuteData,
+				inputData: { main: [items] } as ITaskDataConnections,
+				runIndex: 0,
+				additionalData,
+				workflow,
+				node,
+				mode: 'internal',
+				connectionInputData: items,
+				runExecutionData,
+			});
+			executeFunctions.getNodeParameter.mockReturnValue({});
+
+			const requestUrls: string[] = [];
+			const contexts = items.map((_, itemIndex) => {
+				const context = getExecuteSingleFunctions(workflow, runExecutionData, 0, node, itemIndex);
+				// @ts-expect-error overwriting a method
+				context.getNodeParameter = () => ({});
+				context.continueOnFail.mockReturnValue(continueOnFail);
+				context.helpers.httpRequest = jest.fn(async (requestOptions: IHttpRequestOptions) => {
+					requestUrls.push(requestOptions.url);
+					if (requestOptions.url === requestErrorUrl) {
+						throw new Error('Request failed');
+					}
+					return { body: { url: requestOptions.url } };
+				});
+				return context;
+			});
+			let contextIndex = 0;
+			jest.spyOn(executionContexts, 'ExecuteSingleContext').mockImplementation(function (
+				this: executionContexts.ExecuteSingleContext,
+			) {
+				return contexts[contextIndex++] as never;
+			} as never);
+
+			return {
+				requestUrls,
+				run: new RoutingNode(executeFunctions, nodeType).runNode(),
+			};
+		};
+
+		test('returns a preparation error and processes later items when continue on fail is enabled', async () => {
+			const { requestUrls, run } = createRoutingNode({ continueOnFail: true });
+
+			const result = await run;
+
+			expect(requestUrls).toEqual(['/items/first', '/items/third']);
+			expect(result?.[0]?.[0]?.json).toEqual({ url: '/items/first' });
+			expect(result?.[0]?.[1]?.error).toMatchObject({
+				name: 'NodeOperationError',
+				message: 'Invalid identifier: a value is required',
+				context: { itemIndex: 1, runIndex: 0 },
+			});
+			expect(result?.[0]?.[2]?.json).toEqual({ url: '/items/third' });
+		});
+
+		test('throws a preparation error and does not process later items when continue on fail is disabled', async () => {
+			const { requestUrls, run } = createRoutingNode({ continueOnFail: false });
+
+			await expect(run).rejects.toMatchObject({
+				name: 'NodeOperationError',
+				message: 'Invalid identifier: a value is required',
+				context: { itemIndex: 1, runIndex: 0 },
+			});
+			expect(requestUrls).toEqual(['/items/first']);
+		});
+
+		test('returns a request error and processes later items when continue on fail is enabled', async () => {
+			const { requestUrls, run } = createRoutingNode({
+				continueOnFail: true,
+				requestErrorUrl: '/items/second',
+			});
+
+			const result = await run;
+
+			expect(requestUrls).toEqual(['/items/first', '/items/second', '/items/third']);
+			expect(result?.[0]?.[0]?.json).toEqual({ url: '/items/first' });
+			expect(result?.[0]?.[1]?.error).toMatchObject({ message: 'Request failed' });
+			expect(result?.[0]?.[2]?.json).toEqual({ url: '/items/third' });
+		});
+	});
+
 	describe('itemIndex', () => {
 		const tests: Array<{
 			description: string;
