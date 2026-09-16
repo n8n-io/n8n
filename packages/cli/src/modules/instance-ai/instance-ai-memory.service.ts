@@ -2,6 +2,7 @@ import type { AgentDbMessage } from '@n8n/agents';
 import type {
 	InstanceAiEnsureThreadResponse,
 	InstanceAiEvent,
+	InstanceAiMessage,
 	InstanceAiRichMessagesResponse,
 	InstanceAiThreadInfo,
 	InstanceAiThreadListResponse,
@@ -262,6 +263,13 @@ function buildLogDerivedSnapshots(
 	return { entries };
 }
 
+/** Pages one history read may skip while looking for one that renders. The
+ *  skip is cheap here (an indexed read and a scoped fold, no round trip), but a
+ *  thread can hold a long stretch of tool-only rows, so one read must not walk
+ *  it all. Reaching the cap returns the page it stopped on with `hasMore` still
+ *  set, so the caller resumes from there. */
+const MAX_EMPTY_HISTORY_PAGE_SKIPS = 10;
+
 @Service()
 export class InstanceAiMemoryService {
 	private readonly instanceAiConfig: InstanceAiConfig;
@@ -434,43 +442,61 @@ export class InstanceAiMemoryService {
 			excludeMessageGroupIds?: string[];
 		},
 	): Promise<Omit<InstanceAiRichMessagesResponse, 'nextEventId'>> {
-		const page = options?.page ?? 0;
-		const result = await this.agentMemory.listMessages({
-			threadId,
-			limit: options?.limit ?? 50,
-			page,
-			// The next page's first message is this page's upper bound.
-			withNewerBoundary: true,
-		});
-
-		// Hydrate trees only for the page we are about to render.
-		const pageWindow = historyWindow(result.messages, page, result.newerBoundaryAt);
-
 		// The fold's suspension carve-out: a HITL-suspended run legitimately has
 		// no run-finish, so its turn still folds (the confirmation card and the
 		// in-flight work are durable facts) instead of being skipped as in-flight.
+		// Read once: it describes the thread, not the page.
 		const activeCheckpoints = await this.loadActiveCheckpoints(threadId);
+		const suspendedHostRunIds = collectSuspendedHostRunIds(activeCheckpoints);
 
-		// No window means an out-of-range older page: it has no message rows for
-		// a tree to pair with, and hydrating it unbounded would read the whole
-		// thread to render nothing.
-		//
-		// Fold-on-read: history trees derive from the event log.
-		const snapshots = !pageWindow
-			? []
-			: await this.foldSnapshotsFromLog(
-					threadId,
-					collectSuspendedHostRunIds(activeCheckpoints),
-					pageWindow,
-					options?.excludeRunIds,
-					options?.excludeMessageGroupIds,
-				);
+		let page = options?.page ?? 0;
+		let messages: InstanceAiMessage[] = [];
+		let hasMore = false;
 
-		const messages = parseStoredMessages(result.messages, snapshots);
+		// A page can hold rows and still render nothing — the parser drops tool and
+		// system rows. Walk to the next page that has something on it rather than
+		// answering with an empty one, which only makes the caller ask again.
+		for (let read = 0; read < MAX_EMPTY_HISTORY_PAGE_SKIPS; read++) {
+			// Stepped here, not after the read, so `page` always names the page the
+			// response carries — the caller resumes from it and skips nothing.
+			if (read > 0) page += 1;
+			const result = await this.agentMemory.listMessages({
+				threadId,
+				limit: options?.limit ?? 50,
+				page,
+				// The next page's first message is this page's upper bound.
+				withNewerBoundary: true,
+			});
+
+			// Hydrate trees only for the page we are about to render.
+			const pageWindow = historyWindow(result.messages, page, result.newerBoundaryAt);
+
+			// No window means an out-of-range older page: it has no message rows for
+			// a tree to pair with, and hydrating it unbounded would read the whole
+			// thread to render nothing.
+			//
+			// Fold-on-read: history trees derive from the event log.
+			const snapshots = !pageWindow
+				? []
+				: await this.foldSnapshotsFromLog(
+						threadId,
+						suspendedHostRunIds,
+						pageWindow,
+						options?.excludeRunIds,
+						options?.excludeMessageGroupIds,
+					);
+
+			// Parsed with the snapshots: an orphan snapshot renders on its own, so a
+			// page with no readable rows is not always an empty page.
+			messages = parseStoredMessages(result.messages, snapshots);
+			hasMore = result.hasMore;
+			if (messages.length > 0 || !hasMore) break;
+		}
+
 		await this.flagExpiredConfirmations(messages);
 
 		const projectId = await this.agentMemory.getThreadProjectId(threadId);
-		return { threadId, projectId: projectId ?? undefined, messages };
+		return { threadId, projectId: projectId ?? undefined, messages, hasMore, page };
 	}
 
 	/**

@@ -1529,12 +1529,20 @@ export class InstanceAiEventsQuery extends Z.class({
 
 /** Ceilings for a single thread-history read: `limit` bounds the rows (and the
  *  tree hydration hanging off them) one request can pull, `page` bounds the
- *  offset scan behind it. Both sit above any real client — the UI's largest page
- *  is 100 messages and it never pages past the first — so they only ever bite a
- *  hand-crafted request. */
+ *  offset scan behind it. Both sit above any real client — the UI reads
+ *  `INSTANCE_AI_THREAD_HISTORY_PAGE_SIZE` rows per page and walks back one page
+ *  at a time — so they only ever bite a hand-crafted request. */
 export const INSTANCE_AI_THREAD_MESSAGES_DEFAULT_LIMIT = 50;
 export const INSTANCE_AI_THREAD_MESSAGES_MAX_LIMIT = 200;
 export const INSTANCE_AI_THREAD_MESSAGES_MAX_PAGE = 1000;
+
+/** Rows the editor reads per history page. Shared because the endpoint pages by
+ *  offset (`skip = page * limit`): every page of one thread must use the same
+ *  limit, or the offsets of later pages no longer line up. It sits above
+ *  `INSTANCE_AI_THREAD_MESSAGES_DEFAULT_LIMIT` because the editor renders parsed
+ *  messages, and a page of rows collapses to far fewer bubbles. It must stay at
+ *  or under `INSTANCE_AI_THREAD_MESSAGES_MAX_LIMIT`, or every read answers 400. */
+export const INSTANCE_AI_THREAD_HISTORY_PAGE_SIZE = 100;
 
 export class InstanceAiThreadMessagesQuery extends Z.class({
 	limit: z.coerce
@@ -1804,6 +1812,14 @@ export interface InstanceAiRichMessagesResponse {
 	messages: InstanceAiMessage[];
 	/** Next SSE event ID for this thread — use as cursor to avoid replaying events already covered by these messages. */
 	nextEventId: number;
+	/** Whether renderable history older than this page exists, so the editor
+	 *  knows to offer "load earlier" rather than presenting a truncated thread
+	 *  as complete. */
+	hasMore: boolean;
+	/** The page actually served. It runs ahead of the requested page when the
+	 *  pages in between held only rows that render nothing, so the caller asks
+	 *  for `page + 1` next instead of re-reading what was already skipped. */
+	page: number;
 }
 
 // ---------------------------------------------------------------------------

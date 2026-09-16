@@ -9,7 +9,9 @@ import { fetchThreadMessages, fetchThreadStatus } from '../instanceAi.memory.api
 import { ensureThread, postMessage, postConfirmation, postCancel } from '../instanceAi.api';
 import {
 	INSTANCE_AI_THREAD_SOURCE_FALLBACK,
+	INSTANCE_AI_THREAD_HISTORY_PAGE_SIZE,
 	type InstanceAiCredentialDestination,
+	type InstanceAiMessage,
 	type InstanceAiTargetApproval,
 } from '@n8n/api-types';
 import {
@@ -19,6 +21,7 @@ import {
 	getAgentPreviewViewFromThreadMetadata,
 	type ThreadRuntime,
 } from '../instanceAi.threadRuntime';
+import { useIsAgentWorking } from '../composables/useIsAgentWorking';
 
 // ---------------------------------------------------------------------------
 // Mocks
@@ -293,6 +296,8 @@ describe('createThreadRuntime - SSE and hydration', () => {
 			threadId: 'thread-1',
 			messages: [],
 			nextEventId: 0,
+			hasMore: false,
+			page: 0,
 		});
 		mockFetchThreadStatus.mockResolvedValue({
 			hasActiveRun: false,
@@ -393,6 +398,8 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				},
 			],
 			nextEventId: 10,
+			hasMore: false,
+			page: 0,
 		});
 
 		const runtime = registry.getOrCreateRuntime('thread-restore');
@@ -681,6 +688,8 @@ describe('createThreadRuntime - SSE and hydration', () => {
 			threadId: 'thread-2',
 			messages: [],
 			nextEventId: 0,
+			hasMore: false,
+			page: 0,
 		});
 
 		await vi.waitFor(() => {
@@ -720,6 +729,8 @@ describe('createThreadRuntime - SSE and hydration', () => {
 			threadId: 'thread-a',
 			messages: [],
 			nextEventId: 0,
+			hasMore: false,
+			page: 0,
 		});
 		await new Promise((resolve) => setTimeout(resolve, 0));
 
@@ -732,6 +743,8 @@ describe('createThreadRuntime - SSE and hydration', () => {
 			threadId: 'thread-b',
 			messages: [],
 			nextEventId: 0,
+			hasMore: false,
+			page: 0,
 		});
 
 		await vi.waitFor(() => {
@@ -798,6 +811,8 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				},
 			],
 			nextEventId: 11,
+			hasMore: false,
+			page: 0,
 		});
 
 		await vi.waitFor(() => {
@@ -821,6 +836,8 @@ describe('createThreadRuntime - SSE and hydration', () => {
 			threadId: 'thread-b',
 			messages: [],
 			nextEventId: 0,
+			hasMore: false,
+			page: 0,
 		});
 		await new Promise((resolve) => setTimeout(resolve, 0));
 
@@ -859,6 +876,8 @@ describe('createThreadRuntime - SSE and hydration', () => {
 			threadId: 'thread-a',
 			messages: [],
 			nextEventId: 11,
+			hasMore: false,
+			page: 0,
 		});
 		await expect(threadAHydration).resolves.toBe('applied');
 		expect(registry.getRuntime('thread-a')?.lastEventId).toBe(10);
@@ -867,6 +886,8 @@ describe('createThreadRuntime - SSE and hydration', () => {
 			threadId: 'thread-b',
 			messages: [],
 			nextEventId: 21,
+			hasMore: false,
+			page: 0,
 		});
 		await expect(currentHydration).resolves.toBe('applied');
 		expect(registry.getRuntime('thread-b')?.lastEventId).toBe(20);
@@ -892,6 +913,332 @@ describe('createThreadRuntime - SSE and hydration', () => {
 		expect(mockFetchThreadMessages).not.toHaveBeenCalled();
 		expect(activeRuntime(registry).messages).toHaveLength(1);
 		expect(activeRuntime(registry).lastEventId).toBeUndefined();
+	});
+
+	const historyMessage = (
+		id: string,
+		createdAt: string,
+		overrides: Partial<InstanceAiMessage> = {},
+	): InstanceAiMessage => ({
+		id,
+		role: 'assistant',
+		createdAt,
+		content: id,
+		reasoning: '',
+		isStreaming: false,
+		...overrides,
+	});
+
+	async function hydrateWithMoreHistory(runtime: ThreadRuntime, hasMore = true) {
+		mockFetchThreadMessages.mockResolvedValueOnce({
+			threadId: 'thread-1',
+			messages: [historyMessage('m-newest', '2026-01-05T00:00:00.000Z')],
+			nextEventId: 1,
+			hasMore,
+			page: 0,
+		});
+		await runtime.loadHistoricalMessages();
+	}
+
+	test('loadEarlierMessages prepends the next older page at the same page size', async () => {
+		const runtime = activeRuntime(registry);
+		await hydrateWithMoreHistory(runtime);
+		expect(runtime.hasMoreHistory).toBe(true);
+
+		mockFetchThreadMessages.mockResolvedValueOnce({
+			threadId: 'thread-1',
+			messages: [historyMessage('m-older', '2026-01-01T00:00:00.000Z')],
+			nextEventId: 1,
+			hasMore: false,
+			page: 1,
+		});
+
+		await runtime.loadEarlierMessages();
+
+		expect(runtime.messages.map((m) => m.id)).toEqual(['m-older', 'm-newest']);
+		expect(runtime.hasMoreHistory).toBe(false);
+		// Same limit as page 0: the endpoint pages by offset, so a different
+		// limit would misalign every later page.
+		expect(mockFetchThreadMessages).toHaveBeenLastCalledWith(
+			expect.anything(),
+			runtime.id,
+			INSTANCE_AI_THREAD_HISTORY_PAGE_SIZE,
+			1,
+		);
+	});
+
+	test('loadEarlierMessages drops rows the newest page already showed', async () => {
+		const runtime = activeRuntime(registry);
+		await hydrateWithMoreHistory(runtime);
+
+		// New rows arrived since page 0 was read, so the offset shifted and this
+		// older page re-returns a row already on screen.
+		mockFetchThreadMessages.mockResolvedValueOnce({
+			threadId: 'thread-1',
+			messages: [
+				historyMessage('m-older', '2026-01-01T00:00:00.000Z'),
+				historyMessage('m-newest', '2026-01-05T00:00:00.000Z'),
+			],
+			nextEventId: 1,
+			hasMore: false,
+			page: 1,
+		});
+
+		await runtime.loadEarlierMessages();
+
+		expect(runtime.messages.map((m) => m.id)).toEqual(['m-older', 'm-newest']);
+	});
+
+	test('loadEarlierMessages drops a turn the newest page already showed under another row id', async () => {
+		const runtime = activeRuntime(registry);
+		mockFetchThreadMessages.mockResolvedValueOnce({
+			threadId: 'thread-1',
+			messages: [
+				historyMessage('row-late', '2026-01-05T00:00:00.000Z', { messageGroupId: 'group-1' }),
+			],
+			nextEventId: 1,
+			hasMore: true,
+			page: 0,
+		});
+		await runtime.loadHistoricalMessages();
+
+		// Same turn, but this page ends mid-turn so the parser kept an earlier
+		// row of it — a different id for a turn already rendered.
+		mockFetchThreadMessages.mockResolvedValueOnce({
+			threadId: 'thread-1',
+			messages: [
+				historyMessage('row-early', '2026-01-04T00:00:00.000Z', { messageGroupId: 'group-1' }),
+			],
+			nextEventId: 1,
+			hasMore: false,
+			page: 1,
+		});
+
+		await runtime.loadEarlierMessages();
+
+		expect(runtime.messages.map((m) => m.id)).toEqual(['row-late']);
+	});
+
+	test('loadEarlierMessages stops the walk when the server reports no more rows', async () => {
+		const runtime = activeRuntime(registry);
+		await hydrateWithMoreHistory(runtime);
+
+		mockFetchThreadMessages.mockResolvedValueOnce({
+			threadId: 'thread-1',
+			messages: [],
+			nextEventId: 1,
+			hasMore: false,
+			page: 1,
+		});
+
+		await runtime.loadEarlierMessages();
+
+		expect(runtime.hasMoreHistory).toBe(false);
+		expect(runtime.messages).toHaveLength(1);
+	});
+
+	test('loadEarlierMessages resumes from the page the server served', async () => {
+		const runtime = activeRuntime(registry);
+		await hydrateWithMoreHistory(runtime);
+
+		// The server skips pages that render nothing, so the page it answers with
+		// can run ahead of the one asked for. Reading from the requested page
+		// again would re-fetch what it already skipped.
+		mockFetchThreadMessages.mockResolvedValueOnce({
+			threadId: 'thread-1',
+			messages: [historyMessage('m-older', '2026-01-01T00:00:00.000Z')],
+			nextEventId: 1,
+			hasMore: true,
+			page: 3,
+		});
+		await runtime.loadEarlierMessages();
+
+		mockFetchThreadMessages.mockResolvedValueOnce({
+			threadId: 'thread-1',
+			messages: [historyMessage('m-oldest', '2025-12-01T00:00:00.000Z')],
+			nextEventId: 1,
+			hasMore: false,
+			page: 4,
+		});
+		await runtime.loadEarlierMessages();
+
+		expect(mockFetchThreadMessages).toHaveBeenLastCalledWith(
+			expect.anything(),
+			runtime.id,
+			INSTANCE_AI_THREAD_HISTORY_PAGE_SIZE,
+			4,
+		);
+		expect(runtime.messages.map((m) => m.id)).toEqual(['m-oldest', 'm-older', 'm-newest']);
+	});
+
+	test('hydration resumes from the page the server served', async () => {
+		const runtime = activeRuntime(registry);
+		// Even the newest read can skip: the first pages may be all tool rows.
+		mockFetchThreadMessages.mockResolvedValueOnce({
+			threadId: 'thread-1',
+			messages: [historyMessage('m-newest', '2026-01-05T00:00:00.000Z')],
+			nextEventId: 1,
+			hasMore: true,
+			page: 2,
+		});
+		await runtime.loadHistoricalMessages();
+
+		mockFetchThreadMessages.mockResolvedValueOnce({
+			threadId: 'thread-1',
+			messages: [historyMessage('m-older', '2026-01-01T00:00:00.000Z')],
+			nextEventId: 1,
+			hasMore: false,
+			page: 3,
+		});
+		await runtime.loadEarlierMessages();
+
+		expect(mockFetchThreadMessages).toHaveBeenLastCalledWith(
+			expect.anything(),
+			runtime.id,
+			INSTANCE_AI_THREAD_HISTORY_PAGE_SIZE,
+			3,
+		);
+	});
+
+	test('loadEarlierMessages stays armed when a page holds only rows already shown', async () => {
+		const runtime = activeRuntime(registry);
+		await hydrateWithMoreHistory(runtime);
+
+		// The server cannot know what is already on screen, so dedup can still
+		// empty a page here. One read, and the control stays available: the next
+		// click carries on from the page this one served.
+		mockFetchThreadMessages.mockResolvedValueOnce({
+			threadId: 'thread-1',
+			messages: [historyMessage('m-newest', '2026-01-05T00:00:00.000Z')],
+			nextEventId: 1,
+			hasMore: true,
+			page: 1,
+		});
+		await runtime.loadEarlierMessages();
+
+		expect(runtime.messages.map((m) => m.id)).toEqual(['m-newest']);
+		expect(runtime.hasMoreHistory).toBe(true);
+		expect(mockFetchThreadMessages).toHaveBeenCalledTimes(2);
+
+		mockFetchThreadMessages.mockResolvedValueOnce({
+			threadId: 'thread-1',
+			messages: [historyMessage('m-older', '2026-01-01T00:00:00.000Z')],
+			nextEventId: 1,
+			hasMore: false,
+			page: 2,
+		});
+		await runtime.loadEarlierMessages();
+
+		expect(runtime.messages.map((m) => m.id)).toEqual(['m-older', 'm-newest']);
+		expect(runtime.hasMoreHistory).toBe(false);
+	});
+
+	test('loadEarlierMessages does not resurrect an approval prompt from an older turn', async () => {
+		const runtime = activeRuntime(registry);
+		await hydrateWithMoreHistory(runtime);
+		expect(runtime.isAwaitingConfirmation).toBe(false);
+
+		// A confirmation the reader never answered — a cancelled or abandoned
+		// turn. It must not come back as a live prompt just because it scrolled
+		// back into view.
+		mockFetchThreadMessages.mockResolvedValueOnce({
+			threadId: runtime.id,
+			messages: [
+				historyMessage('m-older', '2026-01-01T00:00:00.000Z', {
+					agentTree: {
+						agentId: 'agent-old',
+						role: 'orchestrator',
+						status: 'completed',
+						textContent: '',
+						reasoning: '',
+						children: [],
+						timeline: [],
+						toolCalls: [
+							{
+								toolCallId: 'tc-old',
+								toolName: 'update-workflow',
+								args: {},
+								isLoading: true,
+								confirmation: {
+									requestId: 'req-old',
+									inputType: 'approval',
+									message: 'Update the workflow?',
+									severity: 'warning',
+								},
+							},
+						],
+					},
+				} as Partial<InstanceAiMessage>),
+			],
+			nextEventId: 1,
+			hasMore: false,
+			page: 1,
+		});
+
+		await runtime.loadEarlierMessages();
+
+		expect(runtime.messages).toHaveLength(2);
+		expect(runtime.isAwaitingConfirmation).toBe(false);
+		expect(runtime.pendingConfirmations).toHaveLength(0);
+		// Nothing is going to finish this call, so it must not keep reading as
+		// in-flight either.
+		expect(runtime.messages[0].agentTree?.toolCalls[0].isLoading).toBe(false);
+	});
+
+	test('loadEarlierMessages does not report an older unfinished builder as still working', async () => {
+		const runtime = activeRuntime(registry);
+		await hydrateWithMoreHistory(runtime);
+
+		// A builder left mid-flight by a crashed run. Treating it as live would
+		// hold every artifact preview read-only with nothing to finish it.
+		mockFetchThreadMessages.mockResolvedValueOnce({
+			threadId: runtime.id,
+			messages: [
+				historyMessage('m-older', '2026-01-01T00:00:00.000Z', {
+					agentTree: {
+						agentId: 'agent-old',
+						role: 'orchestrator',
+						status: 'completed',
+						textContent: '',
+						reasoning: '',
+						toolCalls: [],
+						timeline: [],
+						children: [
+							{
+								agentId: 'builder-old',
+								role: 'workflow-builder',
+								kind: 'builder',
+								status: 'active',
+								textContent: '',
+								reasoning: '',
+								toolCalls: [],
+								children: [],
+								timeline: [],
+							},
+						],
+					},
+				} as Partial<InstanceAiMessage>),
+			],
+			nextEventId: 1,
+			hasMore: false,
+			page: 1,
+		});
+
+		await runtime.loadEarlierMessages();
+
+		expect(runtime.messages).toHaveLength(2);
+		expect(useIsAgentWorking(runtime).value).toBe(false);
+	});
+
+	test('loadEarlierMessages does nothing once history is exhausted', async () => {
+		const runtime = activeRuntime(registry);
+		await hydrateWithMoreHistory(runtime, false);
+		expect(runtime.hasMoreHistory).toBe(false);
+		mockFetchThreadMessages.mockClear();
+
+		await runtime.loadEarlierMessages();
+
+		expect(mockFetchThreadMessages).not.toHaveBeenCalled();
 	});
 
 	test('loadHistoricalMessages returns applied on fetch failure when hydration request is current', async () => {
@@ -927,6 +1274,8 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				},
 			],
 			nextEventId: 11,
+			hasMore: false,
+			page: 0,
 		});
 
 		await activeRuntime(registry).loadHistoricalMessages();
@@ -977,6 +1326,8 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				},
 			],
 			nextEventId: 11,
+			hasMore: false,
+			page: 0,
 		});
 
 		await activeRuntime(registry).loadHistoricalMessages();
@@ -2256,6 +2607,8 @@ describe('createThreadRuntime - "User viewed new builder workflow" telemetry', (
 			threadId: 'thread-1',
 			messages: [],
 			nextEventId: 0,
+			hasMore: false,
+			page: 0,
 		});
 	});
 
@@ -2371,6 +2724,8 @@ describe('createThreadRuntime - "User viewed new builder workflow" telemetry', (
 				},
 			],
 			nextEventId: 11,
+			hasMore: false,
+			page: 0,
 		});
 
 		await activeRuntime(registry).loadHistoricalMessages();
