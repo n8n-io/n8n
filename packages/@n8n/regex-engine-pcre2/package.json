@@ -1,0 +1,45 @@
+{
+  "name": "@n8n/regex-engine-pcre2",
+  "version": "0.1.0",
+  "description": "PCRE2 regex engine compiled to WebAssembly",
+  "license": "MIT",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "NOTICE"
+  ],
+  "scripts": {
+    "clean": "rimraf dist .turbo",
+    "build": "tsc -p tsconfig.build.json && mkdir -p dist/generated && cp src/generated/pcre2_wrapper.js src/generated/pcre2_wrapper.wasm dist/generated/",
+    "build:unchecked": "tsc -p tsconfig.build.json --noCheck && mkdir -p dist/generated && cp src/generated/pcre2_wrapper.js src/generated/pcre2_wrapper.wasm dist/generated/",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --quiet",
+    "lint:fix": "eslint . --fix",
+    "format": "biome format --write src test",
+    "format:check": "biome ci src test",
+    "test": "vitest run",
+    "test:dev": "vitest --watch --silent false",
+    "build:wasm": "node scripts/wasm/build.mjs",
+    "build:wasm:verify": "node scripts/wasm/verify.mjs",
+    "pcre2:verify-tag": "node scripts/pcre2/verify-tag.mjs",
+    "corpus:build": "pnpm build && node scripts/corpus/build-corpus.mjs",
+    "corpus:update-rust-regex": "node scripts/corpus/update-rust-regex.mjs"
+  },
+  "devDependencies": {
+    "@n8n/eslint-config": "workspace:*",
+    "@n8n/typescript-config": "workspace:*",
+    "@n8n/vitest-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:typescript",
+    "vitest": "catalog:"
+  }
+}

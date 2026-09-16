@@ -1,0 +1,7 @@
+{
+	"extends": "@n8n/typescript-config/modern/tsconfig.json",
+	"compilerOptions": {
+		"types": ["node"]
+	},
+	"include": ["src/**/*.ts", "test/**/*.ts"]
+}
