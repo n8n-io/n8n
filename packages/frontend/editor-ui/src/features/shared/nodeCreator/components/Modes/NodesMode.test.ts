@@ -171,41 +171,41 @@ describe('NodesMode', () => {
 	it.each(['group', 'organisational', 'container'])(
 		'shows the Group item when searching for %s',
 		async (search) => {
-		const groupItem: CommandCreateElement = {
-			key: ADD_EMPTY_GROUP_NODE_CREATOR_ITEM,
-			type: 'command',
-			properties: {
-				title: 'Group',
-			description: 'Add an organisational container to your workflow',
-				icon: 'group',
-			},
-		};
-
-		useViewStacks().pushViewStack({
-			title: 'What happens next?',
-			mode: 'nodes',
-			rootView: REGULAR_NODE_CREATOR_VIEW,
-			hasSearch: true,
-			search,
-			items: [groupItem],
-			searchItems: [
-				{
-					key: 'n8n-nodes-base.set',
-					type: 'node',
-					subcategory: '*',
-					properties: mockSimplifiedNodeType({
-						name: 'n8n-nodes-base.set',
-						displayName: 'Edit Fields',
-					}),
+			const groupItem: CommandCreateElement = {
+				key: ADD_EMPTY_GROUP_NODE_CREATOR_ITEM,
+				type: 'command',
+				properties: {
+					title: 'Group',
+					description: 'Add an organisational container to your workflow',
+					icon: 'group',
 				},
-				groupItem,
-			],
-		});
+			};
 
-		render({ pinia });
-		await nextTick();
+			useViewStacks().pushViewStack({
+				title: 'What happens next?',
+				mode: 'nodes',
+				rootView: REGULAR_NODE_CREATOR_VIEW,
+				hasSearch: true,
+				search,
+				items: [groupItem],
+				searchItems: [
+					{
+						key: 'n8n-nodes-base.set',
+						type: 'node',
+						subcategory: '*',
+						properties: mockSimplifiedNodeType({
+							name: 'n8n-nodes-base.set',
+							displayName: 'Edit Fields',
+						}),
+					},
+					groupItem,
+				],
+			});
 
-		expect(screen.getByText('Group')).toBeInTheDocument();
+			render({ pinia });
+			await nextTick();
+
+			expect(screen.getByText('Group')).toBeInTheDocument();
 		},
 	);
 
