@@ -568,6 +568,56 @@ it on a dev instance, fetch both, scrub, paste. Things worth knowing:
 - **Requires the agents module.** A seeded agent restore fails loudly (as a
   framework issue) on an instance where agents are disabled, rather than running
   the case unseeded.
+#### `folders` — "look at the ODW folder"
+
+A folder case grades how the agent finds the contents of a folder the user names
+(CONTEXT-86: the workflow list tool takes `folderPath` or `folderId`). Declare the
+folders and place the seed workflows in them:
+
+```json
+"seed": {
+  "mode": "inline",
+  "folders": [{ "id": "odwFolder0001", "name": "ODW" }],
+  "workflows": [
+    { "id": "odwSignal1Wf", "name": "Odds Watch - 1", "parentFolderId": "odwFolder0001", "nodes": [], "connections": {} },
+    { "id": "rootWorkflow1", "name": "Voice Agent", "nodes": [], "connections": {} }
+  ]
+}
+```
+
+Things worth knowing:
+
+- **Leave decoys at the root.** A folder case is only informative when the folder's
+  contents differ from what a name search would return. Keep workflows outside the
+  folder, and pick names a `query` filter for the folder name would not match.
+- **Grade the mechanism and the result.** One expectation for the `folderPath` or
+  `folderId` call, one for reporting exactly the folder's workflows, one for not asking
+  the user what the folder holds. The miss path (no folder exists) is a separate case:
+  LangTracer case 699 grades it, and it needs no `folders` slot.
+- **Names are verbatim and leftovers are evicted**, like seeded projects. The live turn
+  names the folder, so the created name has to match exactly; a root folder of the same
+  name that existed before the run started is deleted before the restore, with every
+  workflow and subfolder in it. There is no seed marker on the name, so a same-named
+  folder a human made on that instance goes too: use an eval instance, and a name a
+  real project would not use. A previous iteration's folder, created during the run,
+  is left alone.
+- **Run it alone.** A folder case and its miss-path sibling (case 699) share the
+  project, so one invocation per case. With several iterations the previous folder can
+  still be live for a few seconds while it is judged; keep the name distinctive.
+- **Nesting works.** A folder's own `parentFolderId` names another seed folder. Parents
+  are created first. The `folderPath` for a nested folder is `Parent/Child`, so a folder
+  name cannot contain `/`.
+- **Rules are checked at case load**: ids of at least 8 characters, unique; every
+  `parentFolderId` names a declared folder; no cycles; trimmed names that pass n8n's
+  folder-name rules; at most 20 folders.
+- **Needs a licensed instance** (`feat:folders`) with
+  `N8N_INSTANCE_AI_FOLDER_EXPLORATION_ENABLED=true`. An unlicensed instance fails the
+  restore with a hint rather than running the case without its folder. Locally, after
+  `/rest/e2e/reset`: `PATCH /rest/e2e/feature {"feature":"feat:folders","enabled":true}`.
+- **Keep it on disk for now.** The LangTracer case-write API does not store
+  `seed.folders` or `workflows[].parentFolderId`, so the push refuses the case until
+  `n8n-io/lang-tracer` adds both.
+
 #### Which opening shape — the agent is handed the workflow, or it has to find it
 
 Two real conversations look the same in a case file but test different things, and
