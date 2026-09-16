@@ -54,7 +54,9 @@ export async function s3ApiRequest(
 	}
 
 	endpoint.pathname = `${endpoint.pathname === '/' ? '' : endpoint.pathname}${path}`;
-	endpoint.pathname = uriEncodeS3Pathname(endpoint.pathname);
+	endpoint.pathname = uriEncodeS3Pathname(endpoint.pathname, {
+		preserveEncodedSlashes: true,
+	});
 
 	// Sign AWS API request with the user credentials
 	const signOpts = {
