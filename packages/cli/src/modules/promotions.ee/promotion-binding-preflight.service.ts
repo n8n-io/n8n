@@ -19,6 +19,7 @@ import {
 	type InventoryWorkflow,
 	type PackageDirectoryInventory,
 } from '@/modules/n8n-packages/io/directory/package-directory-inventory-reader';
+import { PACKAGE_ENTITY_LAYOUT } from '@/modules/n8n-packages/io/manifest-entry';
 import { PackageImportConfig } from '@/modules/n8n-packages/n8n-packages.config';
 
 interface CredentialReference {
@@ -92,7 +93,7 @@ export class PromotionBindingPreflightService {
 				kind: 'project',
 				code: 'project-not-team',
 				project: projectOf(project.id),
-				filePath: `${project.path}/project.json`,
+				filePath: `${project.path}/${PACKAGE_ENTITY_LAYOUT.projects.fileName}`,
 				workflows: workflowRefs(
 					inventory.workflows.filter(({ projectId }) => projectId === project.id),
 				),
