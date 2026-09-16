@@ -1,5 +1,4 @@
 import type {
-	IDataObject,
 	IHttpRequestOptions,
 	ILoadOptionsFunctions,
 	INodeListSearchResult,
@@ -8,11 +7,13 @@ import type {
 import {
 	databricksApiRequest,
 	extractResourceLocatorValue,
+	fetchDatabricksPage,
 	getActiveCredentialType,
 	getHost,
 	makePermissionErrorLegible,
 	permissionHintFor,
 	sanitizeApiMessage,
+	type DatabricksCredentialType,
 } from '../actions/helpers';
 import type { DatabricksJobRun } from '../actions/interfaces';
 import { getRunOutcome } from '../actions/job/runState';
@@ -21,7 +22,7 @@ import { getRunOutcome } from '../actions/job/runState';
 // doesn't cover them — apply it here for every listSearch call site instead
 async function listRequest<T>(
 	context: ILoadOptionsFunctions,
-	credentialType: 'databricksApi' | 'databricksOAuth2Api',
+	credentialType: DatabricksCredentialType,
 	options: IHttpRequestOptions,
 	permissionHint?: string,
 ): Promise<T> {
@@ -211,7 +212,7 @@ export async function getSchemas(
 
 async function fetchResourcesInSchema<T extends { name: string }>(
 	context: ILoadOptionsFunctions,
-	credentialType: 'databricksApi' | 'databricksOAuth2Api',
+	credentialType: DatabricksCredentialType,
 	host: string,
 	apiPath: string,
 	catalogName: string,
@@ -437,27 +438,19 @@ type JobsListPage = { jobs?: JobSummary[]; next_page_token?: string };
 
 async function fetchListPage<T>(
 	context: ILoadOptionsFunctions,
-	credentialType: 'databricksApi' | 'databricksOAuth2Api',
+	credentialType: DatabricksCredentialType,
 	host: string,
 	path: string,
 	limit: number,
 	pageToken?: string,
 	permissionHint?: string,
 ): Promise<T> {
-	const qs: IDataObject = { limit };
-	if (pageToken) qs.page_token = pageToken;
-	return await listRequest<T>(
-		context,
-		credentialType,
-		{
-			method: 'GET',
-			url: `${host}${path}`,
-			qs,
-			headers: { Accept: 'application/json' },
-			json: true,
-		},
-		permissionHint,
-	);
+	try {
+		return await fetchDatabricksPage<T>(context, credentialType, host, path, { limit }, pageToken);
+	} catch (error) {
+		makePermissionErrorLegible(error, permissionHint);
+		throw error;
+	}
 }
 
 export async function getJobs(

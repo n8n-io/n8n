@@ -1,4 +1,5 @@
 import { ref, toValue, type MaybeRef } from 'vue';
+import { isFileAcceptedByAccept } from '@/features/ai/shared/utils/fileAccept';
 
 export function useFileDrop(
 	canAcceptFiles: MaybeRef<boolean>,
@@ -13,16 +14,18 @@ export function useFileDrop(
 			return;
 		}
 
-		// Check if dragging files (not text or other content)
 		if (e.dataTransfer?.types.includes('Files')) {
 			isDragging.value = true;
 
 			const accepted = toValue(acceptedTypes);
 			if (accepted && e.dataTransfer.items) {
-				const fileItems = Array.from(e.dataTransfer.items).filter((i) => i.kind === 'file');
+				const fileItems = Array.from(e.dataTransfer.items).filter((item) => item.kind === 'file');
 				isDraggingUnsupported.value =
 					fileItems.length > 0 &&
-					fileItems.every((i) => i.type !== '' && !accepted.includes(i.type));
+					fileItems.every(
+						(item) =>
+							item.type !== '' && !isFileAcceptedByAccept('', item.type, accepted.join(',')),
+					);
 			}
 		}
 	}
@@ -32,7 +35,6 @@ export function useFileDrop(
 			return;
 		}
 
-		// Only hide overlay if leaving the component
 		const target = e.currentTarget as HTMLElement;
 		const relatedTarget = e.relatedTarget as Node | null;
 
@@ -45,7 +47,7 @@ export function useFileDrop(
 	}
 
 	function handleDragOver(e: DragEvent) {
-		if (!toValue(canAcceptFiles)) {
+		if (!toValue(canAcceptFiles) || !e.dataTransfer?.types.includes('Files')) {
 			return;
 		}
 
@@ -54,6 +56,10 @@ export function useFileDrop(
 	}
 
 	function handleDrop(e: DragEvent) {
+		if (!e.dataTransfer?.types.includes('Files')) {
+			return;
+		}
+
 		e.preventDefault();
 		e.stopPropagation();
 		isDragging.value = false;
@@ -63,7 +69,7 @@ export function useFileDrop(
 			return;
 		}
 
-		const files = e.dataTransfer?.files;
+		const files = e.dataTransfer.files;
 		if (!files || files.length === 0) {
 			return;
 		}
@@ -72,30 +78,20 @@ export function useFileDrop(
 	}
 
 	function handlePaste(e: ClipboardEvent) {
-		if (!toValue(canAcceptFiles)) {
+		if (!toValue(canAcceptFiles) || !e.clipboardData) {
 			return;
 		}
 
-		const items = e.clipboardData?.items;
-		if (!items) {
-			return;
-		}
-
-		let hasFiles = false;
-		const files: File[] = [];
-
-		for (const item of Array.from(items)) {
-			if (item.kind === 'file') {
+		const files = Array.from(e.clipboardData.files);
+		if (files.length === 0) {
+			for (const item of Array.from(e.clipboardData.items)) {
+				if (item.kind !== 'file') continue;
 				const file = item.getAsFile();
-				if (file) {
-					files.push(file);
-					hasFiles = true;
-				}
+				if (file) files.push(file);
 			}
 		}
 
-		// Prevent default paste behavior if files were found
-		if (hasFiles) {
+		if (files.length > 0) {
 			e.preventDefault();
 			onFilesDropped(files);
 		}
