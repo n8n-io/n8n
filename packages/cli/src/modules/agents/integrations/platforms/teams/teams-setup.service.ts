@@ -66,7 +66,11 @@ export class TeamsSetupService {
 	 * closes the setup, so waiting for it would put the download behind a round
 	 * trip through the edit view.
 	 */
-	async buildPackage(scope: AgentScope, selectedCredentialId?: string): Promise<Buffer> {
+	async buildPackage(
+		scope: AgentScope,
+		selectedCredentialId?: string,
+		selectedSettings?: AgentTeamsIntegrationSettings,
+	): Promise<Buffer> {
 		const agent = await this.getAgent(scope);
 		const credentialId = selectedCredentialId ?? this.connectedCredentialId(agent);
 		const identity = credentialId ? await this.readIdentity(agent.projectId, credentialId) : null;
@@ -80,7 +84,9 @@ export class TeamsSetupService {
 			agentId: agent.id,
 			botId,
 			agentUpdatedAt: agent.updatedAt,
-			settings: this.teamsSettingsOf(agent),
+			// The open form wins over what is stored: during setup nothing is stored
+			// yet, and in the settings view the fields sit above this button.
+			settings: selectedSettings ?? this.teamsSettingsOf(agent),
 		});
 	}
 

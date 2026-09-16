@@ -200,7 +200,12 @@ export class TeamsManifestService {
 		return `1.${days}.${secondsIntoDay}`;
 	}
 
+	/**
+	 * Counted in code points, which is both what the manifest schema counts and
+	 * what keeps the cut from landing inside an emoji.
+	 */
 	private truncate(value: string, max: number): string {
-		return value.length <= max ? value : value.slice(0, max).trimEnd();
+		const points = Array.from(value);
+		return points.length <= max ? value : points.slice(0, max).join('').trimEnd();
 	}
 }

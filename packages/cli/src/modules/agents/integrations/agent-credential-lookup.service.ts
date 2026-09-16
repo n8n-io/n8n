@@ -10,6 +10,10 @@ import { CredentialsService } from '@/credentials/credentials.service';
  * Shared so that a setup step and the check that gates it cannot disagree about
  * which credentials a project may read. They did: a globally shared credential
  * that setup accepted was reported as missing by the check.
+ *
+ * `ChatIntegrationService.decryptCredentialForProject` still resolves the same
+ * way for the running channel and has not been moved here, so this is not yet
+ * the only copy.
  */
 @Service()
 export class AgentCredentialLookupService {

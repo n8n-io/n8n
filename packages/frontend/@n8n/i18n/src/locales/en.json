@@ -8558,7 +8558,6 @@
 	"agents.channels.teams.settings.updateNotice": "Changes here update the app in Teams. Download the package again and upload it to apply them.",
 	"agents.channels.teams.settings.displayName": "Agent name in Teams",
 	"agents.channels.teams.settings.description": "Description",
-	"agents.channels.teams.settings.descriptionPlaceholder": "What this agent helps with",
 	"agents.channels.teams.setup.createBot.title": "Deploy the Azure Bot",
 	"agents.channels.teams.setup.createBot.description": "Create the Azure Bot that delivers Teams messages to this agent. The deployment is filled in from your credential, so you only pick a subscription and a resource group.",
 	"agents.channels.teams.setup.createBot.button": "Deploy to Azure",

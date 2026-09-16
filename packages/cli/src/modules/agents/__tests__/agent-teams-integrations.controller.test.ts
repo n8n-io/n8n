@@ -20,9 +20,11 @@ describe('AgentTeamsIntegrationsController', () => {
 
 	const routes = getRoutesByHandlerName(AgentTeamsIntegrationsController);
 
+	// All three hand back or act on a credential the caller names, so none of
+	// them is a read of the agent alone.
 	it.each([
-		['getSetupState', 'agent:read'],
-		['downloadPackage', 'agent:read'],
+		['getSetupState', 'agent:update'],
+		['downloadPackage', 'agent:update'],
 		['checkCredential', 'agent:update'],
 	])('%s uses %s', (handlerName, scope) => {
 		expect(routes.get(handlerName)?.accessScope?.scope).toBe(scope);
@@ -58,16 +60,27 @@ describe('AgentTeamsIntegrationsController', () => {
 			expect(res.send).toHaveBeenCalledWith(JSON.stringify(TEMPLATE));
 		});
 
-		it('allows the portal to read it from the browser', async () => {
+		it('serves it as JSON', async () => {
 			const { controller } = buildController();
 			const res = mock<Response>();
 
 			await controller.getArmTemplate(request(), res, 'agent-1');
 
-			// Azure fetches this client-side, so without CORS it reports the
-			// template as unreachable.
-			expect(res.header).toHaveBeenCalledWith('Access-Control-Allow-Origin', '*');
 			expect(res.setHeader).toHaveBeenCalledWith('Content-Type', 'application/json');
+		});
+
+		// Azure fetches this from the user's browser, so without CORS it reports
+		// the template as unreachable. Declared on the route rather than set in
+		// the handler, so a request that never reaches the handler still carries
+		// the headers.
+		it.each(['getArmTemplate', 'armTemplatePreflight'])('declares CORS on %s', (handlerName) => {
+			const cors = routes.get(handlerName)?.cors;
+
+			expect(cors).toMatchObject({ allowedOrigins: ['*'], allowedMethods: ['get', 'options'] });
+		});
+
+		it('rate limits the route, which anyone can reach', () => {
+			expect(routes.get('getArmTemplate')?.ipRateLimit).toBeDefined();
 		});
 
 		it('answers a preflight without touching the agent', async () => {
@@ -77,7 +90,6 @@ describe('AgentTeamsIntegrationsController', () => {
 
 			controller.armTemplatePreflight(mock<Request>(), res);
 
-			expect(res.header).toHaveBeenCalledWith('Access-Control-Allow-Origin', '*');
 			expect(res.status).toHaveBeenCalledWith(204);
 			expect(setupService.buildArmTemplate).not.toHaveBeenCalled();
 		});

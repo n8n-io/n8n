@@ -289,7 +289,27 @@ describe('TeamsManifestService', () => {
 		});
 
 		it('falls back to a default name when the agent name has no usable characters', () => {
-			expect(service.buildManifest(options({ agentName: '🎉🎉🎉' })).name.short).toBe('n8n Agent');
+			// Zero-width and control characters only.
+			expect(service.buildManifest(options({ agentName: '\u200b\u0007 \u200e' })).name.short).toBe(
+				'n8n Agent',
+			);
+		});
+
+		it.each([
+			['an accented name', 'Müller Bot'],
+			['a non-Latin name', 'サポートボット'],
+			['an emoji name', '🎉 Party Bot'],
+		])('keeps %s intact, which Teams accepts', (_label, agentName) => {
+			expect(service.buildManifest(options({ agentName })).name.short).toBe(agentName);
+		});
+
+		it('does not cut an emoji in half at the length cap', () => {
+			const name = '🎉'.repeat(40);
+
+			const short = service.buildManifest(options({ agentName: name })).name.short;
+
+			expect([...short]).toHaveLength(30);
+			expect(short).toBe('🎉'.repeat(30));
 		});
 
 		it('serves every developer URL over HTTPS', () => {

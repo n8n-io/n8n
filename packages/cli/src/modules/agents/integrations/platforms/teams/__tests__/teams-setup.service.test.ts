@@ -1,4 +1,5 @@
 import { mock } from 'vitest-mock-extended';
+import { unzipSync } from 'fflate';
 import type { GlobalConfig } from '@n8n/config';
 import type { InstanceSettings } from 'n8n-core';
 
@@ -168,6 +169,37 @@ describe('TeamsSetupService', () => {
 			await expect(
 				service.buildPackage({ projectId: PROJECT_ID, agentId: AGENT_ID }),
 			).resolves.toBeInstanceOf(Buffer);
+		});
+
+		const manifestOf = (archive: Buffer) =>
+			JSON.parse(Buffer.from(unzipSync(new Uint8Array(archive))['manifest.json']).toString());
+
+		it('builds from the settings it is given, which are not stored during setup', async () => {
+			connectTeamsCredential();
+
+			const archive = await service.buildPackage(
+				{ projectId: PROJECT_ID, agentId: AGENT_ID },
+				CREDENTIAL_ID,
+				{ teamChannels: true, groupChats: true, displayName: 'Helpdesk' },
+			);
+
+			const manifest = manifestOf(archive);
+			expect(manifest.bots[0].scopes).toEqual(['personal', 'team', 'groupChat']);
+			expect(manifest.name.short).toBe('Helpdesk');
+		});
+
+		it('falls back to the stored settings when none are given', async () => {
+			agentRepository.findByIdAndProjectId.mockResolvedValue(
+				agentWith([{ type: 'teams', credentialId: CREDENTIAL_ID, settings: { groupChats: true } }]),
+			);
+			credentialsService.findAllCredentialIdsForProject.mockResolvedValue([
+				mock({ id: CREDENTIAL_ID, type: 'microsoftEntraServicePrincipalApi' }),
+			]);
+			credentialsService.decrypt.mockResolvedValue({ clientId: CLIENT_ID, tenantId: TENANT_ID });
+
+			const archive = await service.buildPackage({ projectId: PROJECT_ID, agentId: AGENT_ID });
+
+			expect(manifestOf(archive).bots[0].scopes).toEqual(['personal', 'groupChat']);
 		});
 	});
 
