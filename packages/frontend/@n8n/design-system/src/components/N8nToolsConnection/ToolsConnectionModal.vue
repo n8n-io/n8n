@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, useId, useTemplateRef, watch } from 'vue';
+import { VisuallyHidden } from 'reka-ui';
 import { N8nDialog } from '../N8nDialog';
 import N8nIcon from '../N8nIcon';
 import N8nInput from '../N8nInput';
@@ -303,15 +304,19 @@ function handleOpenChange(value: boolean) {
 }
 
 const listIndex = ref(0);
-const toolListId = useId();
+const keyboardInstructionsId = useId();
 const activeToolRow = computed(() => toolRows.value[listIndex.value]);
-const activeToolRowId = computed(() =>
-	activeToolRow.value ? toolRowId(activeToolRow.value.item.id) : undefined,
-);
+const activeToolAnnouncement = computed(() => {
+	if (!activeToolRow.value) return '';
 
-function toolRowId(itemId: string): string {
-	return `${toolListId}-row-${itemId}`;
-}
+	return i18n.baseText('tools.connection.search.activeItem', {
+		interpolate: {
+			title: activeToolRow.value.item.title,
+			position: listIndex.value + 1,
+			total: toolRows.value.length,
+		},
+	});
+});
 
 watch(toolRows, (rows) => {
 	listIndex.value = Math.min(listIndex.value, Math.max(rows.length - 1, 0));
@@ -329,6 +334,17 @@ function handleNavigateListIndex(direction: -1 | 1) {
 	scrollerRef.value?.scrollToKeyIfNeeded(toolRows.value[listIndex.value].key);
 }
 
+function isTextInputTarget(target: EventTarget | null): boolean {
+	if (!(target instanceof HTMLElement)) return false;
+
+	return (
+		target.isContentEditable ||
+		target instanceof HTMLInputElement ||
+		target instanceof HTMLTextAreaElement ||
+		target instanceof HTMLSelectElement
+	);
+}
+
 function onNavigationKeyPress(event: KeyboardEvent) {
 	const isDefaultView = !props.detailItem;
 	const target = event.target;
@@ -338,7 +354,7 @@ function onNavigationKeyPress(event: KeyboardEvent) {
 
 	switch (event.key) {
 		case 'Backspace':
-			if (isDefaultView) break;
+			if (isDefaultView || isTextInputTarget(target)) break;
 			event.preventDefault();
 			closeDetail();
 			focusSearchInput();
@@ -436,8 +452,7 @@ function toolRowIndex(row: FlattenedRow): number {
 						ref="searchInputRef"
 						v-model="searchQuery"
 						:placeholder="searchPlaceholder"
-						:aria-activedescendant="activeToolRowId"
-						:aria-controls="toolListId"
+						:aria-describedby="keyboardInstructionsId"
 						clearable
 						data-test-id="tools-connection-search"
 						:class="$style.searchInput"
@@ -446,7 +461,24 @@ function toolRowIndex(row: FlattenedRow): number {
 							<N8nIcon icon="search" />
 						</template>
 					</N8nInput>
-					<N8nIconButton size="large" variant="ghost" icon="x" @click="handleOpenChange(false)" />
+					<VisuallyHidden :id="keyboardInstructionsId" feature="fully-hidden">
+						{{ i18n.baseText('tools.connection.search.keyboardInstructions') }}
+					</VisuallyHidden>
+					<VisuallyHidden
+						feature="fully-hidden"
+						role="status"
+						aria-live="polite"
+						aria-atomic="true"
+					>
+						{{ activeToolAnnouncement }}
+					</VisuallyHidden>
+					<N8nIconButton
+						:aria-label="i18n.baseText('generic.close')"
+						size="large"
+						variant="ghost"
+						icon="x"
+						@click="handleOpenChange(false)"
+					/>
 				</div>
 
 				<N8nTabs
@@ -498,9 +530,7 @@ function toolRowIndex(row: FlattenedRow): number {
 					</template>
 					<N8nRecycleScroller
 						v-else
-						:id="toolListId"
 						ref="scrollerRef"
-						role="listbox"
 						:items="flattenedRows"
 						:item-size="ITEM_HEIGHT"
 						item-key="key"
@@ -509,11 +539,8 @@ function toolRowIndex(row: FlattenedRow): number {
 						<template #default="{ item: row }">
 							<ToolRow
 								v-if="'item' in row"
-								:id="toolRowId(row.item.id)"
 								:item="row.item"
-								role="option"
-								:tabindex="-1"
-								:aria-selected="isToolRowSelected(toolRowIndex(row))"
+								:data-active="isToolRowSelected(toolRowIndex(row))"
 								:class="{ [$style.selectedToolRow]: isToolRowSelected(toolRowIndex(row)) }"
 								@pointermove="onPointerMoveToolRow($event, toolRowIndex(row))"
 								@open-detail="openDetail($event)"
