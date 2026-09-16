@@ -30,6 +30,8 @@ export function makeThread(): ThreadRuntime {
 		producedArtifacts: new Map(),
 		resourceNameIndex: new Map(),
 		linkableResourceNameIndex: new Map(),
+		activeArtifactId: undefined,
+		setActiveArtifactId: vi.fn(),
 		feedbackByResponseId: {},
 		rateableResponseId: null,
 		pendingConfirmations: [],
