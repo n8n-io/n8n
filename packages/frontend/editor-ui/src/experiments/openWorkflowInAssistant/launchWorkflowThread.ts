@@ -52,7 +52,11 @@ export async function launchWorkflowThread(
 			: 'workflow_list_auto';
 	const threadId = await provisionLaunchedThread(
 		projectId,
-		{ message: '', attachments: [{ type: 'workflow', id: workflowId, name }] },
+		{
+			message: '',
+			attachments: [{ type: 'workflow', id: workflowId, name }],
+			authorship: { kind: 'prefill', prefillType: 'workflow_attachment_opener' },
+		},
 		{ source, origin: 'internal', sourceContext: { workflowId } },
 	);
 	if (!threadId) return editorFallback;

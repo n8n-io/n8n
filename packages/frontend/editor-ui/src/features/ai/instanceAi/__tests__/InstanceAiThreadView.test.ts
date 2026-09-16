@@ -4,6 +4,11 @@ import userEvent from '@testing-library/user-event';
 import { fireEvent } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
 import { createTestingPinia } from '@pinia/testing';
+import {
+	USER_TYPED_MESSAGE,
+	type InstanceAiMessageAuthorship,
+	type InstanceAiPrefillType,
+} from '../prefills';
 import { setActivePinia } from 'pinia';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
@@ -170,15 +175,34 @@ const InstanceAiInputStub = defineComponent({
 	setup(props, { emit, expose }) {
 		const inputDraft = ref(inputState.initialDraft);
 		const hasAttachments = ref(inputState.hasAttachments);
+		// Mirrors the real composer: whatever pre-filled the box is reported on submit,
+		// and a pre-fill must arrive through setPrefill rather than setText.
+		const activePrefill = ref<{ text: string; prefillType: InstanceAiPrefillType } | null>(null);
 		const setText = (text: string) => {
 			inputDraft.value = text;
+			// Emptying the box drops the pre-fill, as the real composer's watcher does:
+			// a dismissed draft must not attribute whatever the user types next.
+			if (text.length === 0) activePrefill.value = null;
 			inputSetTextSpy(text);
+		};
+		const setPrefill = (prefill: { text: string; prefillType: InstanceAiPrefillType }) => {
+			setText(prefill.text);
+			activePrefill.value = { ...prefill };
 		};
 		const clearTextIfMatches = (text: string) => {
 			if (inputDraft.value === text) setText('');
 		};
 		const isDirty = () => inputDraft.value.trim().length > 0 || hasAttachments.value;
-		expose({ focus: inputFocusSpy, setText, clearTextIfMatches, isDirty });
+		const resolveAuthorship = (message: string): InstanceAiMessageAuthorship => {
+			const prefill = activePrefill.value;
+			if (!prefill) return USER_TYPED_MESSAGE;
+			return {
+				kind: 'prefill',
+				prefillType: prefill.prefillType,
+				promptModified: message !== prefill.text.trim(),
+			};
+		};
+		expose({ focus: inputFocusSpy, setText, setPrefill, clearTextIfMatches, isDirty });
 		return () =>
 			h('div', { 'data-test-id': 'instance-ai-input-stub' }, [
 				props.suggestions === undefined ? 'unset' : String(props.suggestions.length),
@@ -240,18 +264,26 @@ const InstanceAiInputStub = defineComponent({
 								? planEditSubmitState.message
 								: inputDraft.value || 'Normal message';
 							const submittedHasAttachments = hasAttachments.value;
-							if (submittedHasAttachments) {
-								emit('submit', message, undefined, () => {
+							const authorship = resolveAuthorship(message);
+							const submittedPrefill = activePrefill.value;
+							// Mirrors the real composer: always provided, and it restores the
+							// pre-fill with the text so a retry stays attributed.
+							emit(
+								'submit',
+								message,
+								undefined,
+								() => {
 									if (isDirty()) return false;
 									setText(message);
+									activePrefill.value = submittedPrefill;
 									hasAttachments.value = submittedHasAttachments;
 									return true;
-								});
-							} else {
-								emit('submit', message, undefined);
-							}
+								},
+								authorship,
+							);
 							inputDraft.value = '';
 							hasAttachments.value = false;
+							activePrefill.value = null;
 						},
 					},
 					'Submit',
@@ -344,7 +376,10 @@ const InstanceAiAgentPreviewStub = defineComponent({
 									agentId: props.agentId,
 									threadId: 'preview-session-1',
 									executionId: 'execution-1',
-									initialDraft: 'Fix the failed tool calls',
+									initialDraft: {
+										text: 'Fix the failed tool calls',
+										prefillType: 'handoff_agent_change_request',
+									},
 								}),
 						},
 						'Fix with Assistant',
@@ -677,12 +712,12 @@ describe('InstanceAiThreadView', () => {
 			expect(getByTestId('setup-panel')).toHaveAttribute('data-project-id', 'project-2');
 
 			await fireEvent.click(getByTestId('instance-ai-input-submit'));
-			expect(thread.sendMessage).toHaveBeenCalledWith(
-				'Normal message',
-				undefined,
-				expect.any(String),
-				undefined,
-			);
+			expect(thread.sendMessage).toHaveBeenCalledWith('Normal message', {
+				authorship: USER_TYPED_MESSAGE,
+				attachments: undefined,
+				pushRef: expect.any(String),
+				handoffContext: undefined,
+			});
 		});
 
 		it('follows the selected workflow and project when tabs change', async () => {
@@ -765,9 +800,12 @@ describe('InstanceAiThreadView', () => {
 		expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('SEO Auditor session');
 		expect(getByTestId('instance-ai-input-draft')).toHaveTextContent('Fix the failed tool calls');
 		expect(localStorageState.store.has('n8n-instance-ai-handoff-context:thread-1')).toBe(true);
-		expect(localStorageState.store.get('n8n-instance-ai-composer-draft:thread-1')).toBe(
-			'Fix the failed tool calls',
-		);
+		expect(
+			JSON.parse(localStorageState.store.get('n8n-instance-ai-composer-draft:thread-1') ?? 'null'),
+		).toEqual({
+			text: 'Fix the failed tool calls',
+			prefillType: 'handoff_agent_change_request',
+		});
 		expect(getByTestId('instance-ai-agent-preview-stub')).toHaveAttribute(
 			'data-preview-session-id',
 			'preview-session-1',
@@ -776,23 +814,50 @@ describe('InstanceAiThreadView', () => {
 
 		await user.click(getByTestId('instance-ai-input-submit'));
 
-		expect(thread.sendMessage).toHaveBeenCalledWith(
-			'Fix the failed tool calls',
-			undefined,
-			expect.any(String),
-			{
+		expect(thread.sendMessage).toHaveBeenCalledWith('Fix the failed tool calls', {
+			authorship: {
+				kind: 'prefill',
+				prefillType: 'handoff_agent_change_request',
+				promptModified: false,
+			},
+			attachments: undefined,
+			pushRef: expect.any(String),
+			handoffContext: {
 				source: 'agent-preview',
 				agentId: 'agent-1',
 				threadId: 'preview-session-1',
 				executionId: 'execution-1',
 			},
-		);
+		});
 		await vi.waitFor(() => {
 			expect(getByTestId('instance-ai-agent-preview-stub')).toHaveAttribute(
 				'data-preview-session-id',
 				'preview-session-1',
 			);
 		});
+	});
+
+	// The edit/accept distinction is the point of prompt_modified, so assert the
+	// true path on a send that actually goes through.
+	it('reports an edited pre-fill as modified when the send succeeds', async () => {
+		const { getByTestId, user } = await renderAgentArtifact();
+		store.updateThreadMetadata.mockResolvedValueOnce(undefined);
+		vi.mocked(thread.sendMessage).mockClear();
+
+		await user.click(getByTestId('instance-ai-agent-preview-fix-with-assistant'));
+		await user.click(getByTestId('instance-ai-input-edit-draft'));
+		await user.click(getByTestId('instance-ai-input-submit'));
+
+		expect(thread.sendMessage).toHaveBeenCalledWith(
+			'Edited user draft',
+			expect.objectContaining({
+				authorship: {
+					kind: 'prefill',
+					prefillType: 'handoff_agent_change_request',
+					promptModified: true,
+				},
+			}),
+		);
 	});
 
 	it('restores an edited fix draft and its attachments when sending fails', async () => {
@@ -1045,7 +1110,10 @@ describe('InstanceAiThreadView', () => {
 				executionId: 'exec-1',
 			}),
 		);
-		stashPendingComposerDraft('thread-1', FIX_WITH_ASSISTANT_DRAFT);
+		stashPendingComposerDraft('thread-1', {
+			text: FIX_WITH_ASSISTANT_DRAFT,
+			prefillType: 'handoff_agent_change_request',
+		});
 		stashPendingAgentAttachment('thread-1', {
 			type: 'agent',
 			id: 'agent-1',
@@ -1080,9 +1148,13 @@ describe('InstanceAiThreadView', () => {
 
 		await userEvent.click(getByTestId('instance-ai-input-submit'));
 
-		expect(thread.sendMessage).toHaveBeenCalledWith(
-			FIX_WITH_ASSISTANT_DRAFT,
-			[
+		expect(thread.sendMessage).toHaveBeenCalledWith(FIX_WITH_ASSISTANT_DRAFT, {
+			authorship: {
+				kind: 'prefill',
+				prefillType: 'handoff_agent_change_request',
+				promptModified: false,
+			},
+			attachments: [
 				{
 					type: 'agent',
 					id: 'agent-1',
@@ -1090,14 +1162,14 @@ describe('InstanceAiThreadView', () => {
 					name: 'SEO Auditor',
 				},
 			],
-			expect.any(String),
-			{
+			pushRef: expect.any(String),
+			handoffContext: {
 				source: 'agent-preview',
 				agentId: 'agent-1',
 				threadId: 'preview-thread-1',
 				executionId: 'exec-1',
 			},
-		);
+		});
 		await vi.waitFor(() => {
 			expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('');
 			expect(getByTestId('instance-ai-agent-preview-stub')).toHaveAttribute(
@@ -1124,7 +1196,10 @@ describe('InstanceAiThreadView', () => {
 				threadId: 'preview-thread-1',
 			}),
 		);
-		stashPendingComposerDraft('thread-1', 'Fix the failed tool');
+		stashPendingComposerDraft('thread-1', {
+			text: 'Fix the failed tool',
+			prefillType: 'handoff_agent_change_request',
+		});
 
 		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
@@ -1187,16 +1262,16 @@ describe('InstanceAiThreadView', () => {
 
 		await userEvent.click(getByTestId('instance-ai-input-submit'));
 
-		expect(thread.sendMessage).toHaveBeenCalledWith(
-			'Normal message',
-			undefined,
-			expect.any(String),
-			{
+		expect(thread.sendMessage).toHaveBeenCalledWith('Normal message', {
+			authorship: USER_TYPED_MESSAGE,
+			attachments: undefined,
+			pushRef: expect.any(String),
+			handoffContext: {
 				source: 'agent-preview',
 				agentId: 'agent-1',
 				threadId: 'preview-thread-1',
 			},
-		);
+		});
 		await vi.waitFor(() => {
 			expect(localStorageState.store.has('n8n-instance-ai-handoff-context:thread-1')).toBe(false);
 		});
@@ -1241,16 +1316,16 @@ describe('InstanceAiThreadView', () => {
 
 		await userEvent.click(getByTestId('instance-ai-input-submit'));
 
-		expect(thread.sendMessage).toHaveBeenCalledWith(
-			'Normal message',
-			undefined,
-			expect.any(String),
-			{
+		expect(thread.sendMessage).toHaveBeenCalledWith('Normal message', {
+			authorship: USER_TYPED_MESSAGE,
+			attachments: undefined,
+			pushRef: expect.any(String),
+			handoffContext: {
 				source: 'agent-preview',
 				agentId: 'agent-1',
 				threadId: 'preview-thread-1',
 			},
-		);
+		});
 		await vi.waitFor(() => {
 			expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent(
 				'SEO Auditor session',
@@ -1261,17 +1336,16 @@ describe('InstanceAiThreadView', () => {
 
 		await userEvent.click(getByTestId('instance-ai-input-submit'));
 
-		expect(thread.sendMessage).toHaveBeenNthCalledWith(
-			2,
-			'Normal message',
-			undefined,
-			expect.any(String),
-			{
+		expect(thread.sendMessage).toHaveBeenNthCalledWith(2, 'Normal message', {
+			authorship: USER_TYPED_MESSAGE,
+			attachments: undefined,
+			pushRef: expect.any(String),
+			handoffContext: {
 				source: 'agent-preview',
 				agentId: 'agent-1',
 				threadId: 'preview-thread-1',
 			},
-		);
+		});
 		await vi.waitFor(() => {
 			expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('');
 			expect(localStorageState.store.has('n8n-instance-ai-handoff-context:thread-1')).toBe(false);
@@ -1323,10 +1397,9 @@ describe('InstanceAiThreadView', () => {
 
 		await userEvent.click(getByTestId('instance-ai-input-submit'));
 
-		expect(thread.sendMessage).toHaveBeenNthCalledWith(
-			1,
-			'Normal message',
-			[
+		expect(thread.sendMessage).toHaveBeenNthCalledWith(1, 'Normal message', {
+			authorship: USER_TYPED_MESSAGE,
+			attachments: [
 				{
 					type: 'agent',
 					id: 'agent-1',
@@ -1335,18 +1408,17 @@ describe('InstanceAiThreadView', () => {
 					pending: true,
 				},
 			],
-			expect.any(String),
-			undefined,
-		);
+			pushRef: expect.any(String),
+			handoffContext: undefined,
+		});
 		expect(getPendingAgentAttachment('thread-1')).not.toBeNull();
 		expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('New Agent');
 
 		await userEvent.click(getByTestId('instance-ai-input-submit'));
 
-		expect(thread.sendMessage).toHaveBeenNthCalledWith(
-			2,
-			'Normal message',
-			[
+		expect(thread.sendMessage).toHaveBeenNthCalledWith(2, 'Normal message', {
+			authorship: USER_TYPED_MESSAGE,
+			attachments: [
 				{
 					type: 'agent',
 					id: 'agent-1',
@@ -1355,9 +1427,9 @@ describe('InstanceAiThreadView', () => {
 					pending: true,
 				},
 			],
-			expect.any(String),
-			undefined,
-		);
+			pushRef: expect.any(String),
+			handoffContext: undefined,
+		});
 		await vi.waitFor(() => {
 			expect(getPendingAgentAttachment('thread-1')).toBeNull();
 			expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('');
@@ -1365,13 +1437,12 @@ describe('InstanceAiThreadView', () => {
 
 		await userEvent.click(getByTestId('instance-ai-input-submit'));
 
-		expect(thread.sendMessage).toHaveBeenNthCalledWith(
-			3,
-			'Normal message',
-			undefined,
-			expect.any(String),
-			undefined,
-		);
+		expect(thread.sendMessage).toHaveBeenNthCalledWith(3, 'Normal message', {
+			authorship: USER_TYPED_MESSAGE,
+			attachments: undefined,
+			pushRef: expect.any(String),
+			handoffContext: undefined,
+		});
 	});
 
 	it('attaches the bound target when the new agent was persisted before the first message', async () => {
@@ -1404,9 +1475,9 @@ describe('InstanceAiThreadView', () => {
 		});
 		await userEvent.click(getByTestId('instance-ai-input-submit'));
 
-		expect(thread.sendMessage).toHaveBeenCalledWith(
-			'Normal message',
-			[
+		expect(thread.sendMessage).toHaveBeenCalledWith('Normal message', {
+			authorship: USER_TYPED_MESSAGE,
+			attachments: [
 				{
 					type: 'agent',
 					id: 'agent-1',
@@ -1414,9 +1485,9 @@ describe('InstanceAiThreadView', () => {
 					projectId: 'project-1',
 				},
 			],
-			expect.any(String),
-			undefined,
-		);
+			pushRef: expect.any(String),
+			handoffContext: undefined,
+		});
 	});
 
 	it('detaches dismissed saved-agent context without closing its preview', async () => {
@@ -1450,12 +1521,12 @@ describe('InstanceAiThreadView', () => {
 		expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('');
 		expect(preview).toBeInTheDocument();
 		await userEvent.click(getByTestId('instance-ai-input-submit'));
-		expect(thread.sendMessage).toHaveBeenCalledWith(
-			'Normal message',
-			undefined,
-			expect.any(String),
-			undefined,
-		);
+		expect(thread.sendMessage).toHaveBeenCalledWith('Normal message', {
+			authorship: USER_TYPED_MESSAGE,
+			attachments: undefined,
+			pushRef: expect.any(String),
+			handoffContext: undefined,
+		});
 	});
 
 	it('dismisses a pending preview-context chip without sending it', async () => {
@@ -1469,7 +1540,10 @@ describe('InstanceAiThreadView', () => {
 				threadId: 'preview-thread-1',
 			}),
 		);
-		stashPendingComposerDraft('thread-1', 'Fix the failed tool');
+		stashPendingComposerDraft('thread-1', {
+			text: 'Fix the failed tool',
+			prefillType: 'handoff_agent_change_request',
+		});
 
 		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
@@ -1486,12 +1560,12 @@ describe('InstanceAiThreadView', () => {
 
 		await userEvent.click(getByTestId('instance-ai-input-submit'));
 
-		expect(thread.sendMessage).toHaveBeenCalledWith(
-			'Normal message',
-			undefined,
-			expect.any(String),
-			undefined,
-		);
+		expect(thread.sendMessage).toHaveBeenCalledWith('Normal message', {
+			authorship: USER_TYPED_MESSAGE,
+			attachments: undefined,
+			pushRef: expect.any(String),
+			handoffContext: undefined,
+		});
 	});
 
 	it('shows a sent preview-context chip and dismisses it through thread metadata', async () => {
@@ -2666,12 +2740,12 @@ describe('InstanceAiThreadView', () => {
 
 		await getByTestId('instance-ai-input-submit').click();
 
-		expect(thread.sendMessage).toHaveBeenCalledWith(
-			'Normal message',
-			undefined,
-			expect.any(String),
-			undefined,
-		);
+		expect(thread.sendMessage).toHaveBeenCalledWith('Normal message', {
+			authorship: USER_TYPED_MESSAGE,
+			attachments: undefined,
+			pushRef: expect.any(String),
+			handoffContext: undefined,
+		});
 		expect(thread.confirmAction).not.toHaveBeenCalled();
 	});
 });
