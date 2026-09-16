@@ -91,6 +91,21 @@ describe('lintRulesForShadowing', () => {
 		]);
 	});
 
+	it('flags a shadow via a custom resolver, for a type whose package is not part of its name', () => {
+		// Stands in for the `credential-types` resolver: a credential type name (e.g.
+		// `slackApi`) carries no package prefix, unlike a node type.
+		const resolvePackage = (typeName: string) =>
+			typeName === 'slackApi' ? 'n8n-nodes-base' : null;
+		const rules = [
+			rule({ id: 'allow-package', selector: { kind: 'package', value: 'n8n-nodes-base' } }),
+			rule({ id: 'deny-slack-api', action: 'deny', selector: { kind: 'name', value: 'slackApi' } }),
+		];
+
+		expect(lintRulesForShadowing(rules, resolvePackage)).toEqual([
+			{ ruleId: 'deny-slack-api', shadowedByRuleId: 'allow-package' },
+		]);
+	});
+
 	it('returns no warnings for an empty or single-rule list', () => {
 		expect(lintRulesForShadowing([])).toEqual([]);
 		expect(
