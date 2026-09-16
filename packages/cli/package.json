@@ -1,6 +1,6 @@
 {
   "name": "n8n",
-  "version": "2.39.0",
+  "version": "2.40.0",
   "description": "n8n Workflow Automation Tool",
   "main": "dist/index",
   "types": "dist/index.d.ts",
@@ -65,7 +65,9 @@
     "dist"
   ],
   "janitor": {
-    "ignoreDepsForScoping": ["n8n-editor-ui"]
+    "ignoreDepsForScoping": [
+      "n8n-editor-ui"
+    ]
   },
   "devDependencies": {
     "@faker-js/faker": "^8.0.2",

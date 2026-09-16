@@ -1,9 +1,9 @@
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
+import type { Mock } from 'vitest';
 
 import { sheetsSearch, spreadSheetsSearch } from '../../../v2/methods/listSearch';
 import { apiRequest } from '../../../v2/transport';
-import type { Mock } from 'vitest';
 
 vi.mock('../../../v2/transport', () => ({
 	apiRequest: {
@@ -109,6 +109,40 @@ describe('Google Sheets Search Functions', () => {
 				{},
 				expect.objectContaining({
 					q: "name contains 'Test\\'s Sheet' and mimeType = 'application/vnd.google-apps.spreadsheet'",
+				}),
+				expect.any(String),
+			);
+		});
+
+		it('should escape every single quote in the filter, not just the first', async () => {
+			(apiRequest.call as Mock).mockResolvedValue({ files: [] });
+
+			await spreadSheetsSearch.call(mockLoadOptionsFunctions as ILoadOptionsFunctions, "a'b'c");
+
+			expect(apiRequest.call).toHaveBeenCalledWith(
+				expect.anything(),
+				'GET',
+				'',
+				{},
+				expect.objectContaining({
+					q: "name contains 'a\\'b\\'c' and mimeType = 'application/vnd.google-apps.spreadsheet'",
+				}),
+				expect.any(String),
+			);
+		});
+
+		it('should escape backslashes so a trailing one cannot consume the escape', async () => {
+			(apiRequest.call as Mock).mockResolvedValue({ files: [] });
+
+			await spreadSheetsSearch.call(mockLoadOptionsFunctions as ILoadOptionsFunctions, "x\\'");
+
+			expect(apiRequest.call).toHaveBeenCalledWith(
+				expect.anything(),
+				'GET',
+				'',
+				{},
+				expect.objectContaining({
+					q: "name contains 'x\\\\\\'' and mimeType = 'application/vnd.google-apps.spreadsheet'",
 				}),
 				expect.any(String),
 			);
