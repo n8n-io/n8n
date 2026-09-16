@@ -398,7 +398,6 @@ describe('workflow_step_execution table (integration)', () => {
 			.findOneOrFail({ where: { id } });
 		expect(found.status).toBe('waiting');
 		expect(found.wait).toEqual(wait);
-		// the deadline is lifted out of the declaration so the sweep can index it
 		expect(found.waitTill).toEqual(new Date(wait.resumeAt));
 		// a suspension is not an outcome
 		expect(found.outputs).toBeNull();
@@ -462,8 +461,8 @@ describe('workflow_step_execution table (integration)', () => {
 			.findOneOrFail({ where: { id } });
 		expect(found.status).toBe('queued');
 		expect(found.resume).toEqual(resume);
-		// the declaration stays: a deadline resume reads its captured outputs
-		// after the claim, and the row is the only place it lives
+		// the declaration stays: the row is the only place it lives, and the
+		// dispatch reads it after the claim
 		expect(found.wait).toEqual(wait);
 	});
 
@@ -515,7 +514,7 @@ describe('workflow_step_execution table (integration)', () => {
 		expect(await store.claimStep(step.id)).toMatchObject({ wait: null, resume: null });
 	});
 
-	/** A suspended row with its deadline at `waitTill`. */
+	/** A suspended row. A `waitTill` of `null` seeds a wait that only a request ends. */
 	async function seedWaitingStep(
 		executionId: string,
 		nodeId: string,
@@ -620,12 +619,7 @@ describe('workflow_step_execution table (integration)', () => {
 		expect(new Set(resumed.map(({ id }) => id))).toEqual(new Set([oldest, middle]));
 	});
 
-	/**
-	 * These two pin the claim's concurrency contract, which is the reason
-	 * `resumeDueSteps` is one statement rather than a scan and a transition per
-	 * row. Deadlines sit in 2019, earlier than every other case's, so only the
-	 * rows seeded here are ever due and leftovers cannot join the batch.
-	 */
+	/** Earlier than every other case's deadline, so only the rows seeded here are ever due. */
 	const SWEEP_DUE = new Date('2019-06-01T00:00:00.000Z');
 
 	async function seedBacklog(executionId: string, count: number): Promise<string[]> {
@@ -641,6 +635,8 @@ describe('workflow_step_execution table (integration)', () => {
 		return ids;
 	}
 
+	// These two pin the concurrency contract that makes `resumeDueSteps` one
+	// statement rather than a scan and a transition per row.
 	it('TypeOrmStepStore.resumeDueSteps skips the rows another sweeper holds, taking the rest of the backlog', async () => {
 		const executionId = await createExecution();
 		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));

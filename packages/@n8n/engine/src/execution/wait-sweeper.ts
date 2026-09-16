@@ -62,11 +62,13 @@ export class WaitSweeper {
 	/**
 	 * One pass. Never throws: a failed sweep must not stop the next one.
 	 *
-	 * Resume first, announce second. The other order would announce a step still
-	 * `waiting`, whose claim then refuses it and loses the resume for good — so
-	 * TODO(CAT-2938): a crash between the two strands these rows `queued` with
-	 * nothing dispatching them, which is the same state an unannounced planned
-	 * step leaves behind and the same re-announcement recovers.
+	 * The sweep resumes a step first, then announces it. The reverse order
+	 * announces a step that is still `waiting`. The claim then refuses that step,
+	 * and the resume is lost for good.
+	 *
+	 * TODO(CAT-2938): a crash between the two leaves the row `queued` with
+	 * nothing to dispatch it. A planned step that was never announced leaves the
+	 * same state, and the same re-announcement recovers both.
 	 */
 	private async sweep(): Promise<void> {
 		let due: DueStep[];

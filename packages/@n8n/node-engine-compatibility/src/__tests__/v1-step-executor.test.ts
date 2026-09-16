@@ -45,11 +45,7 @@ const graphWith = (type: string, parameters = {}): WorkflowGraph =>
 		),
 	);
 
-/**
- * The outputs of a result that the test feeds into a later step. A step result
- * holds outputs or a wait declaration, so a caller that needs the outputs must
- * say which one it expects.
- */
+/** The outputs of a result, for a test that feeds one step's output into the next. */
 function outputsOf(result: StepExecutionResult): StepSlots {
 	if (result.wait) throw new Error('the step declared a wait, but the test expects outputs');
 	return result.outputs;

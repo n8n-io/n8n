@@ -60,7 +60,7 @@ describe('WaitSweeper', () => {
 		sweeper.start();
 		await vi.advanceTimersByTimeAsync(SWEEP_MS);
 
-		// the sweep names the instant, so the store applies a deadline it was given
+		// the sweeper decides what `now` is and passes it, so the store never reads its own clock
 		expect(resumeDueSteps).toHaveBeenCalledWith(new Date(), expect.any(Number));
 		expect(queue.publish).toHaveBeenCalledTimes(2);
 		expect(queue.publish).toHaveBeenCalledWith({

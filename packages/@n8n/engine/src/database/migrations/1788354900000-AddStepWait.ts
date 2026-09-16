@@ -24,7 +24,7 @@ export class AddStepWait1788354900000 implements MigrationInterface {
 			}),
 		]);
 
-		// A waiting step has no outcome, so it settles no more than a running one.
+		// The status check must accept the new `waiting` status.
 		await queryRunner.dropCheckConstraint(TABLE, STATUS_CHECK);
 		await queryRunner.createCheckConstraint(
 			TABLE,
@@ -35,7 +35,7 @@ export class AddStepWait1788354900000 implements MigrationInterface {
 			}),
 		);
 
-		// The sweep asks only for due waits, so it indexes only waiting rows.
+		// The sweep reads waiting rows only, so the index is partial.
 		await queryRunner.query(
 			`CREATE INDEX "${WAIT_TILL_INDEX}" ON ${TABLE} (wait_till) WHERE status = 'waiting'`,
 		);
