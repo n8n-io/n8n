@@ -9,7 +9,7 @@ import {
 	type DatabricksCredentialType,
 } from '../actions/helpers';
 import type { DatabricksJobRun } from '../actions/interfaces';
-import { clampPageSize, collectPages, DEFAULT_MAX_PAGES, toPage, type Page } from './pagination';
+import { clampPageSize, collectPages, toPage, type Page, type PageLimits } from './pagination';
 
 export const JOB_RUNS_MAX_PAGE_SIZE = 25;
 
@@ -82,14 +82,14 @@ export async function listJobRuns(
 export async function listAllJobRuns(
 	context: DatabricksContext,
 	credentialType: DatabricksCredentialType,
-	params: ListJobRunsParams = {},
-	maxPages = DEFAULT_MAX_PAGES,
+	params: ListJobRunsParams,
+	limits: PageLimits,
 ): Promise<Page<DatabricksJobRun>> {
 	const host = await getHost(context, credentialType);
 	return await collectPages(
 		async (pageToken) =>
 			await fetchJobRunsPage(context, credentialType, host, { ...params, pageToken }),
+		limits,
 		params.pageToken,
-		maxPages,
 	);
 }

@@ -4,7 +4,7 @@ export {
 	listJobRuns,
 	type ListJobRunsParams,
 } from './jobRuns';
-export { DEFAULT_MAX_PAGES, type Page } from './pagination';
+export { DEFAULT_MAX_PAGES, type Page, type PageLimits } from './pagination';
 export {
 	isPipelineEventLevel,
 	listAllPipelineEvents,

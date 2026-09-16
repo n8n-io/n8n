@@ -5,6 +5,11 @@ export interface Page<T> {
 	nextPageToken?: string;
 }
 
+export interface PageLimits {
+	deadlineEpochMs: number;
+	maxPages?: number;
+}
+
 export function toPage<T>(items: T[] | undefined, nextPageToken: string | undefined): Page<T> {
 	return { items: items ?? [], nextPageToken: nextPageToken || undefined };
 }
@@ -16,8 +21,8 @@ export function clampPageSize(value: number | undefined, max: number): number | 
 
 export async function collectPages<T>(
 	fetchPage: (pageToken?: string) => Promise<Page<T>>,
+	{ deadlineEpochMs, maxPages = DEFAULT_MAX_PAGES }: PageLimits,
 	startToken?: string,
-	maxPages = DEFAULT_MAX_PAGES,
 ): Promise<Page<T>> {
 	const items: T[] = [];
 	let pageToken = startToken;
@@ -25,7 +30,7 @@ export async function collectPages<T>(
 		const result = await fetchPage(pageToken);
 		items.push(...result.items);
 		pageToken = result.nextPageToken;
-		if (pageToken === undefined) break;
+		if (pageToken === undefined || Date.now() >= deadlineEpochMs) break;
 	}
 	return { items, nextPageToken: pageToken };
 }
