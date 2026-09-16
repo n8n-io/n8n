@@ -32,7 +32,6 @@ const handleError = (error: unknown) => {
 type FolderHandlers = {
 	createFolder: PublicAPIEndpoint<AuthenticatedRequest<{ projectId: string }>>;
 	deleteFolder: PublicAPIEndpoint<AuthenticatedRequest<{ projectId: string; folderId: string }>>;
-	getFolder: PublicAPIEndpoint<AuthenticatedRequest<{ projectId: string; folderId: string }>>;
 	updateFolder: PublicAPIEndpoint<AuthenticatedRequest<{ projectId: string; folderId: string }>>;
 };
 
@@ -80,24 +79,6 @@ const folderHandlers: FolderHandlers = {
 			try {
 				await Container.get(FolderService).deleteFolder(req.user, folderId, projectId, query.data);
 				return res.status(204).send();
-			} catch (error) {
-				return handleError(error);
-			}
-		},
-	],
-	getFolder: [
-		isLicensed('feat:folders'),
-		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'folder:read' }),
-		async (req, res) => {
-			const { projectId } = req.params;
-			await assertProjectScope(req.user, projectId, ['folder:read']);
-
-			try {
-				const { folder, totalSubFolders, totalWorkflows } = await Container.get(
-					FolderService,
-				).findFolderWithContentCounts(req.params.folderId, projectId);
-
-				return res.json({ ...folder, totalSubFolders, totalWorkflows });
 			} catch (error) {
 				return handleError(error);
 			}

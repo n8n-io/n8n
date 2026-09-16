@@ -43,6 +43,9 @@ paths:
   /projects/{projectId}/folders:
     get:
       $ref: ./handlers/projects/spec/paths/listFolders.generated.yml
+  /projects/{projectId}/folders/{folderId}:
+    get:
+      $ref: ./handlers/projects/spec/paths/getFolder.generated.yml
   /node-type-policies/instance:
     get:
       $ref: ./handlers/node-type-policies/spec/paths/getInstancePolicy.generated.yml

@@ -1,4 +1,5 @@
 import {
+	FolderDetailsPublicDto,
 	FolderListPublicDto,
 	folderPublicSchema,
 	ListFoldersQueryPublicDto,
@@ -59,6 +60,34 @@ describe('folderPublicSchema', () => {
 
 	test('strips fields the Public API does not publish', () => {
 		const result = folderPublicSchema.parse({ ...folder, projectId: 'VmwOO9HeTEj20kxM' });
+
+		expect(result).not.toHaveProperty('projectId');
+	});
+});
+
+describe('FolderDetailsPublicDto', () => {
+	const details = {
+		id: folder.id,
+		name: folder.name,
+		parentFolderId: folder.parentFolderId,
+		createdAt: folder.createdAt,
+		updatedAt: folder.updatedAt,
+		totalSubFolders: 1,
+		totalWorkflows: 3,
+	};
+
+	test('accepts a folder with recursive content counts', () => {
+		expect(FolderDetailsPublicDto.safeParse(details).success).toBe(true);
+	});
+
+	test('rejects a folder missing required fields', () => {
+		expect(FolderDetailsPublicDto.safeParse({ id: folder.id, name: folder.name }).success).toBe(
+			false,
+		);
+	});
+
+	test('strips fields the get-one route does not publish', () => {
+		const result = FolderDetailsPublicDto.parse({ ...details, projectId: 'VmwOO9HeTEj20kxM' });
 
 		expect(result).not.toHaveProperty('projectId');
 	});

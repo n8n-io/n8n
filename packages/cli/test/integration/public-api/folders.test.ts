@@ -65,6 +65,8 @@ beforeEach(async () => {
 	authMemberAgent = testServer.publicApiAgentFor(member);
 });
 
+const ISO_DATE_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
+
 const testWithAPIKey =
 	(method: 'get' | 'post' | 'patch' | 'delete', url: string, apiKey: string | null) => async () => {
 		void authOwnerAgent.set({ 'X-N8N-API-KEY': apiKey });
@@ -733,14 +735,53 @@ describe('GET /projects/:projectId/folders/:folderId', () => {
 		);
 
 		expect(response.statusCode).toBe(200);
-		expect(response.body).toEqual(
-			expect.objectContaining({
-				id: folder.id,
-				name: 'Parent',
-				totalSubFolders: 1,
-				totalWorkflows: 0,
-			}),
+		expect(response.body).toEqual({
+			id: folder.id,
+			name: 'Parent',
+			parentFolderId: null,
+			createdAt: expect.stringMatching(ISO_DATE_TIME),
+			updatedAt: expect.stringMatching(ISO_DATE_TIME),
+			totalSubFolders: 1,
+			totalWorkflows: 0,
+		});
+	});
+
+	test('should return the parent folder id of a nested folder', async () => {
+		testServer.license.enable('feat:folders');
+
+		const parentFolder = await createFolder(ownerPersonalProject, { name: 'Parent' });
+		const childFolder = await createFolder(ownerPersonalProject, {
+			name: 'Child',
+			parentFolder,
+		});
+
+		const response = await authOwnerAgent.get(
+			`/projects/${ownerPersonalProject.id}/folders/${childFolder.id}`,
 		);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.parentFolderId).toBe(parentFolder.id);
+	});
+
+	test('should not expose internal folder fields', async () => {
+		testServer.license.enable('feat:folders');
+
+		const folder = await createFolder(ownerPersonalProject, { name: 'Folder' });
+
+		const response = await authOwnerAgent.get(
+			`/projects/${ownerPersonalProject.id}/folders/${folder.id}`,
+		);
+
+		expect(response.statusCode).toBe(200);
+		expect(Object.keys(response.body as Record<string, unknown>).sort()).toEqual([
+			'createdAt',
+			'id',
+			'name',
+			'parentFolderId',
+			'totalSubFolders',
+			'totalWorkflows',
+			'updatedAt',
+		]);
 	});
 
 	test('should return 404 when folder does not exist', async () => {
@@ -751,6 +792,9 @@ describe('GET /projects/:projectId/folders/:folderId', () => {
 		);
 
 		expect(response.statusCode).toBe(404);
+		expect(response.body).toEqual({
+			message: 'Could not find the folder: non-existent-folder-id',
+		});
 	});
 
 	test('should return 404 when project does not exist', async () => {
@@ -761,6 +805,24 @@ describe('GET /projects/:projectId/folders/:folderId', () => {
 		);
 
 		expect(response.statusCode).toBe(404);
+		expect(response.body).toEqual({
+			message: 'Project with ID "non-existent-project-id" not found',
+		});
+	});
+
+	test('should return 500 when findFolderWithContentCounts throws an unexpected error', async () => {
+		testServer.license.enable('feat:folders');
+
+		const folder = await createFolder(ownerPersonalProject, { name: 'Folder' });
+		vi.spyOn(Container.get(FolderService), 'findFolderWithContentCounts').mockRejectedValueOnce(
+			new Error('Unexpected read error'),
+		);
+
+		const response = await authOwnerAgent.get(
+			`/projects/${ownerPersonalProject.id}/folders/${folder.id}`,
+		);
+
+		expect(response.statusCode).toBe(500);
 	});
 });
 
