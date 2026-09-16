@@ -144,7 +144,7 @@ const emit = defineEmits<{
 	'replace:node': [id: string];
 	'create:node': [source: NodeCreatorOpenSource];
 	'create:sticky': [];
-	'delete:nodes': [ids: string[]];
+	'delete:nodes': [ids: string[], deleteWholeGroups?: boolean];
 	'update:nodes:enabled': [ids: string[]];
 	'copy:nodes': [ids: string[]];
 	'duplicate:nodes': [ids: string[]];
@@ -1103,8 +1103,10 @@ function onKeyboardSetGroupsExpanded(expanded: boolean) {
  */
 function onDeleteSelection() {
 	const ids = selectedNodeIdsWithGroupMembers.value;
-	// Removing the last group member also deletes the group via the document store
-	if (ids.length > 0) emit('delete:nodes', ids);
+	// Expand selected groups to their member nodes before deletion.
+	if (ids.length > 0) {
+		emit('delete:nodes', ids, selectedNodesAndGroups.value.some(isCanvasGroupNode));
+	}
 }
 
 // Last header-click toggle, for double-click suppression in onNodeClick.
@@ -1607,7 +1609,11 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[],
 		case 'copy':
 			return emit('copy:nodes', nodeIds);
 		case 'delete':
-			return emit('delete:nodes', nodeIds);
+			return emit(
+				'delete:nodes',
+				nodeIds,
+				Boolean(groupId) || selectedNodesAndGroups.value.some(isCanvasGroupNode),
+			);
 		case 'select_all':
 			return onSelectAllNodes();
 		case 'deselect_all':

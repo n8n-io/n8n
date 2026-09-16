@@ -1943,6 +1943,33 @@ describe('useCanvasOperations', () => {
 			expect(historyStore.pushCommandToUndo).toHaveBeenCalled();
 		});
 
+		it('does not restore an anchor when deleting the selected group', () => {
+			const historyStore = mockedStore(useHistoryStore);
+			vi.mocked(workflowDocumentStoreInstance.incomingConnectionsByNodeName).mockReturnValue({});
+
+			const node = createTestNode({ id: 'b', name: 'B' });
+			const group = { id: 'g1', name: 'Group 1', nodeIds: [node.id] };
+			const nodesById = new Map([[node.id, node]]);
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockImplementation((id) =>
+				nodesById.get(id),
+			);
+			vi.spyOn(workflowDocumentStoreInstance, 'getGroupForNode').mockImplementation((id) =>
+				group.nodeIds.includes(id) ? group : undefined,
+			);
+			vi.spyOn(workflowDocumentStoreInstance, 'getGroupById').mockReturnValue(undefined);
+			vi.spyOn(workflowDocumentStoreInstance, 'removeNodeById').mockImplementation((id) => {
+				nodesById.delete(id);
+			});
+
+			const { deleteNodes } = useCanvasOperations();
+			deleteNodes([node.id], { trackHistory: true, preserveEmptyGroupAnchor: false });
+
+			expect(workflowDocumentStoreInstance.addNode).not.toHaveBeenCalled();
+			expect(workflowDocumentStoreInstance.removeNodeById).toHaveBeenCalledWith(node.id);
+			expect(nodesById.has(node.id)).toBe(false);
+			expect(historyStore.pushCommandToUndo).toHaveBeenCalled();
+		});
+
 		it('does not leave an anchor add command when replacement is rejected', () => {
 			const historyStore = mockedStore(useHistoryStore);
 			const nodeTypesStore = mockedStore(useNodeTypesStore);
