@@ -233,9 +233,11 @@ export { CreateOrUpdateTagRequestDto } from './tag/create-or-update-tag-request.
 export { RetrieveTagQueryDto } from './tag/retrieve-tag-query.dto';
 export { ListTagsQueryDto } from './tag/list-tags-query.dto';
 export {
-	CreateTagPublicDto,
 	TagPublicDto,
 	TagListPublicDto,
+	CreateTagPublicDto,
+	UpdateTagPublicDto,
+	UpdatedTagPublicDto,
 	tagPublicSchema,
 } from './tag/tag-public.dto';
 
