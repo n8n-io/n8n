@@ -198,7 +198,8 @@ cmp -s "$WORK/migrated.stripped" "$WORK/current.stripped" &&
 	fail "migrated v1 compose.yml matches the current stack definition"
 check "migrated compose.yml validates" docker compose -f "$WORK/legacy/compose.yml" config -q
 cp "$WORK/legacy/compose.yml" "$WORK/legacy-compose-migrated"
-second_out="$(env N8N_DIR="$WORK/legacy" sh "$SCRIPT" --upgrade --version 2.32.0 --no-start 2>&1)"
+second_out="$(env N8N_DIR="$WORK/legacy" sh "$SCRIPT" --upgrade --version 2.32.0 --no-start 2>&1)" &&
+	pass "second --upgrade succeeds" || fail "second --upgrade succeeds"
 cmp -s "$WORK/legacy-compose-migrated" "$WORK/legacy/compose.yml" &&
 	pass "second --upgrade leaves a migrated compose.yml untouched" || fail "second --upgrade leaves a migrated compose.yml untouched"
 echo "$second_out" | grep -q 'Updated compose.yml' && fail "second --upgrade prints no compose.yml notice" ||
@@ -209,7 +210,7 @@ echo "$second_out" | grep -q 'Updated compose.yml' && fail "second --upgrade pri
 sed 's|ghcr.io/n8n-io/n8n-sandbox-service-api:${N8N_SANDBOX_VERSION}|docker.io/n8nio/n8n-sandbox-service-api:1.3.0|' \
 	"$COMPOSE_SRC" >"$WORK/custom-compose.yml"
 env N8N_DIR="$WORK/custom" N8N_COMPOSE_URL="$WORK/custom-compose.yml" sh "$SCRIPT" --version 2.31.4 --no-start >/dev/null 2>&1
-env N8N_DIR="$WORK/custom" sh "$SCRIPT" --upgrade --version 2.32.0 --no-start >/dev/null 2>&1
+check "--upgrade with user-chosen images succeeds" env N8N_DIR="$WORK/custom" sh "$SCRIPT" --upgrade --version 2.32.0 --no-start
 check "--upgrade leaves user-chosen sandbox images alone" grep -q 'docker.io/n8nio/n8n-sandbox-service-api:1.3.0' "$WORK/custom/compose.yml"
 
 # refuses non-empty foreign directory
