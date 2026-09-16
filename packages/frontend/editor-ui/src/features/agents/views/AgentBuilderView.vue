@@ -2269,6 +2269,7 @@ function onSwitchAgent(nextAgentId: string) {
 
 <style lang="scss" module>
 .root {
+	position: relative;
 	display: flex;
 	flex-direction: column;
 	height: 100%;
@@ -2326,8 +2327,12 @@ function onSwitchAgent(nextAgentId: string) {
 }
 
 .externalUpdateNotice {
+	position: absolute;
+	top: var(--height--4xl);
+	right: 0;
+	left: 0;
+	z-index: 10;
 	display: flex;
-	flex-shrink: 0;
 	justify-content: center;
 	padding-inline: var(--spacing--sm);
 	pointer-events: none;
