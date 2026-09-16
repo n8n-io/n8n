@@ -1991,7 +1991,12 @@ async function onRemoveVectorStore(vectorStore: AgentJsonVectorStoreConfig) {
 	});
 }
 
-function onContinueLoaded({ sessionId, count }: AgentContinueLoadedEvent) {
+function onContinueLoaded({
+	sessionId,
+	count,
+	hasQueueEntries,
+	queueLoadSucceeded,
+}: AgentContinueLoadedEvent) {
 	if (sessionId !== effectiveSessionId.value) return;
 
 	// Only kick away from a URL-supplied session when the URL points at a
@@ -2002,7 +2007,7 @@ function onContinueLoaded({ sessionId, count }: AgentContinueLoadedEvent) {
 		? sessionsStore.threads.some((thread) => thread.id === requestedSessionId)
 		: false;
 
-	if (count === 0 && requestedSessionId && !knownThread) {
+	if (count === 0 && queueLoadSucceeded && !hasQueueEntries && requestedSessionId && !knownThread) {
 		// A session switch re-keys the chat immediately, before its route replace
 		// necessarily lands. Ignore a load event until the route catches up.
 		if (requestedSessionId !== sessionId) return;
