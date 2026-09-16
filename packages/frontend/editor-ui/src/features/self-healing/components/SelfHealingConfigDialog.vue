@@ -5,6 +5,7 @@ import {
 	N8nDialogFooter,
 	N8nDialogHeader,
 	N8nDialogTitle,
+	N8nIconButton,
 	N8nInput,
 	N8nInputLabel,
 	N8nOption,
@@ -15,7 +16,6 @@ import {
 	N8nUsersList,
 	type IUser,
 	type SelectValue,
-	type UserAction,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useUsersStore } from '@n8n/stores/users.store';
@@ -48,8 +48,6 @@ const store = useSelfHealingStore();
 const workflowsListStore = useWorkflowsListStore();
 const projectsStore = useProjectsStore();
 const usersStore = useUsersStore();
-
-const REMOVE_REVIEWER_ACTION = 'remove';
 
 const AUTONOMY_LEVELS: SelfHealingAutonomy[] = ['diagnose', 'review', 'deploy'];
 
@@ -133,10 +131,6 @@ const selectedReviewers = computed<IUser[]>(() =>
 	}),
 );
 
-const reviewerActions: Array<UserAction<IUser>> = [
-	{ label: i18n.baseText('selfHealing.dialog.reviewers.remove'), value: REMOVE_REVIEWER_ACTION },
-];
-
 /**
  * Only "propose fixes for review" has reviewers. The other levels notify the
  * same people, so the section is titled and described accordingly.
@@ -193,8 +187,7 @@ function addReviewer(userId: string) {
 	form.value.reviewerIds = [...form.value.reviewerIds, userId];
 }
 
-function onReviewerAction({ action, userId }: { action: string; userId: string }) {
-	if (action !== REMOVE_REVIEWER_ACTION) return;
+function removeReviewer(userId: string) {
 	form.value.reviewerIds = form.value.reviewerIds.filter((id) => id !== userId);
 }
 
@@ -333,12 +326,21 @@ function save() {
 				<N8nUsersList
 					v-if="selectedReviewers.length > 0"
 					:users="selectedReviewers"
-					:actions="reviewerActions"
 					:current-user-id="usersStore.currentUser?.id ?? ''"
 					:class="$style.reviewers"
 					data-test-id="self-healing-reviewer-list"
-					@action="onReviewerAction"
-				/>
+				>
+					<template #actions="{ user }">
+						<N8nIconButton
+							icon="x"
+							variant="ghost"
+							size="small"
+							:title="i18n.baseText('selfHealing.dialog.reviewers.remove')"
+							data-test-id="self-healing-reviewer-remove"
+							@click="removeReviewer(user.id)"
+						/>
+					</template>
+				</N8nUsersList>
 				<N8nText
 					v-else
 					size="xsmall"
