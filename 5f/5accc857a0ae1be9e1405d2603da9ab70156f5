@@ -1,0 +1,28 @@
+packages/frontend/editor-ui/src/features/core/auth/views/ConfirmEmailChangeView.vue
+  s_0990e06268d89b::t_b97b7cbd45e232 2,39-43,50-51
+  s_0990e06268d89b::t_1e0bd248cba58b 45-47
+packages/frontend/editor-ui/src/features/core/auth/views/ConfirmEmailChangeView.test.ts
+  s_0990e06268d89b::t_b97b7cbd45e232 9
+  s_0990e06268d89b::t_9e04b59d9177ab 48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "5f5accc857a0ae1be9e1405d2603da9ab70156f5",
+  "prompts": {},
+  "humans": {
+    "h_435b1d7d3e52c0": {
+      "author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_0990e06268d89b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fab127da-d600-430b-b385-5c5b5a437d66",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}
