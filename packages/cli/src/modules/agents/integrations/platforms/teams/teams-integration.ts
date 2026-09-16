@@ -10,7 +10,6 @@ import {
 	AgentChatIntegration,
 	type AgentChannelPreconditionContext,
 	type AgentChatIntegrationContext,
-	type ActionDecisionMessageParams,
 } from '../../agent-chat-integration';
 import { expandSelectsToButtons, type SuspendComponent } from '../../component-mapper';
 import { assertCredentialNotClaimed } from '../../credential-claim';
@@ -88,15 +87,15 @@ export class TeamsIntegration extends AgentChatIntegration {
 	];
 
 	/**
-	 * Teams acknowledges an Adaptive Card action by editing the card in place, so
-	 * the answered card is settled rather than deleted.
-	 */
-	readonly deleteActionMessageBeforeResume = false;
-
-	/**
 	 * A channel or group chat card goes out as a Teams targeted message, so only
 	 * the user who asked sees the approval. A 1:1 chat is already private, and
 	 * the adapter posts there normally.
+	 *
+	 * An answered card is deleted rather than settled in place — the base
+	 * default, and what Slack and Linear do. Teams answers an update that would
+	 * turn a targeted card back into a public message with `400 Bad Request`: a
+	 * targeted message can be edited or deleted, but its visibility cannot
+	 * change, and `Adapter.editMessage` has nowhere to carry the recipient.
 	 */
 	readonly targetSuspensionCardAtActingUser = true;
 
@@ -145,27 +144,6 @@ export class TeamsIntegration extends AgentChatIntegration {
 	 */
 	normalizeComponents(components: SuspendComponent[]): SuspendComponent[] {
 		return expandSelectsToButtons(components);
-	}
-
-	/**
-	 * Two things a settled Teams card cannot say, both for want of a carrier
-	 * rather than by choice:
-	 * - `selectedLabel` for a non-approval button. The inbound `Action.Submit`
-	 *   data is `{ actionId, value }`, with no button title, and Teams has no
-	 *   CallbackStore to look one up in — hence the generic fallback.
-	 * - The original question. The card-action activity carries the source
-	 *   message id, not the card, so restoring it needs a Graph or Bot API fetch.
-	 */
-	formatActionDecisionMessage({
-		approved,
-		selectedLabel,
-		user,
-	}: ActionDecisionMessageParams): string {
-		const responder = user.fullName || user.userName || user.userId;
-		if (approved === undefined) {
-			return `✅ ${selectedLabel || 'Action'} selected by ${responder}`;
-		}
-		return approved ? `✅ Approved by ${responder}` : `🚫 Declined by ${responder}`;
 	}
 
 	/**

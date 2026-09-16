@@ -188,9 +188,10 @@ describe('Microsoft Teams integration scenarios', () => {
 				}),
 			);
 
-			expect(ctx.lastEdit()?.body).toMatchObject({
-				text: '✅ Approved by Alice',
-			});
+			// The answered card is removed rather than relabelled, so a stale button
+			// cannot be clicked again.
+			expect(ctx.lastDelete()?.body.uri).toContain(cardMessageId);
+			expect(ctx.lastEdit()).toBeUndefined();
 		} finally {
 			await ctx.shutdown();
 		}
@@ -234,7 +235,7 @@ describe('Microsoft Teams integration scenarios', () => {
 		}
 	});
 
-	it('resumes and settles a targeted group chat card', async () => {
+	it('removes an answered targeted card', async () => {
 		const ctx = await createTeamsReplayContext({
 			stream: [
 				{
@@ -272,7 +273,11 @@ describe('Microsoft Teams integration scenarios', () => {
 			expect(ctx.agentExecutor.resumeForChat).toHaveBeenCalledWith(
 				expect.objectContaining({ runId: 'run-group-1', toolCallId: 'tool-group-1' }),
 			);
-			expect(ctx.lastEdit()?.body).toMatchObject({ text: '✅ Approved by Alice' });
+
+			// Teams refuses an update that would make a targeted card public, so the
+			// card is deleted instead of being settled in place.
+			expect(ctx.lastDelete()?.body.uri).toContain(cardMessageId);
+			expect(ctx.lastEdit()).toBeUndefined();
 		} finally {
 			await ctx.shutdown();
 		}
