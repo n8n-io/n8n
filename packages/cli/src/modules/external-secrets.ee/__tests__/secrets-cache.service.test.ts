@@ -75,11 +75,16 @@ describe('SecretsCache', () => {
 			const replacement = new DummyProvider();
 			await replacement.init(providerSettings);
 			await replacement.connect();
-			vi.spyOn(dummyProvider, 'update').mockImplementation(async () => await new Promise(() => {}));
+			let finish!: () => void;
+			vi.spyOn(dummyProvider, 'update').mockImplementation(
+				async () => await new Promise<void>((r) => (finish = r)),
+			);
 			const replacementUpdate = vi.spyOn(replacement, 'update');
 
-			void cache.updateProvider('dummy', dummyProvider).catch(() => {});
+			const first = cache.updateProvider('dummy', dummyProvider);
 			await cache.updateProvider('dummy', replacement);
+			finish();
+			await first;
 
 			expect(replacementUpdate).toHaveBeenCalledTimes(1);
 		});

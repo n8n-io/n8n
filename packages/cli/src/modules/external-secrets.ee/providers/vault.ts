@@ -374,11 +374,11 @@ export class VaultProvider extends SecretsProvider {
 	}
 
 	private setupTokenRefresh() {
-		// One renewal chain per provider, and none once the token stops being renewable.
-		this.clearTokenRefresh();
+		// A failed lookup keeps the chain that exists. A token that is not renewable drops it.
 		if (!this.#tokenInfo) {
 			return;
 		}
+		this.clearTokenRefresh();
 		// Token never expires
 		if (this.#tokenInfo.expire_time === null) {
 			return;
