@@ -4,7 +4,7 @@ import { DataSource, In } from '@n8n/typeorm';
 
 import { conversationDbTime } from './agent-conversation-lease.repository';
 
-import type { AgentQueueInput } from '../agent-message-queue.types';
+import type { AgentQueueInput, PreviewMessageQueuePayload } from '../agent-message-queue.types';
 import { AgentMessageQueue } from '../entities/agent-message-queue.entity';
 
 @Service()
@@ -17,7 +17,7 @@ export class AgentMessageQueueRepository extends BaseRepository<AgentMessageQueu
 		return conversationDbTime(this.manager.connection.options.type === 'postgres', offsetMs);
 	}
 
-	async findById(id: string, ctx: OperationContext): Promise<AgentMessageQueue | null> {
+	async findById(id: string, ctx: OperationContext = {}): Promise<AgentMessageQueue | null> {
 		return await this.managerFor(ctx).findOneBy(AgentMessageQueue, { id });
 	}
 
@@ -42,7 +42,7 @@ export class AgentMessageQueueRepository extends BaseRepository<AgentMessageQueu
 	}
 
 	async hasProcessing(threadId: string): Promise<boolean> {
-		return await this.existsBy({ threadId, status: 'processing' });
+		return await this.existsBy({ threadId, status: In(['processing', 'cancelling']) });
 	}
 
 	async hasEntries(threadId: string): Promise<boolean> {
@@ -67,9 +67,39 @@ export class AgentMessageQueueRepository extends BaseRepository<AgentMessageQueu
 	async linkExecution(id: string, executionId: string, ctx: OperationContext): Promise<void> {
 		await this.managerFor(ctx).update(
 			AgentMessageQueue,
-			{ id, status: 'processing' },
+			{ id, status: In(['processing', 'cancelling']) },
 			{ executionId },
 		);
+	}
+
+	async findPreviewEntries(agentId: string, threadId?: string): Promise<AgentMessageQueue[]> {
+		return await this.find({
+			where: { agentId, source: 'preview', ...(threadId ? { threadId } : {}) },
+			order: { id: 'ASC' },
+		});
+	}
+
+	async editQueuedPreview(id: string, payload: PreviewMessageQueuePayload): Promise<boolean> {
+		return (
+			(await this.update({ id, status: 'queued', source: 'preview', kind: 'message' }, { payload }))
+				.affected === 1
+		);
+	}
+
+	async requestCancellation(id: string): Promise<boolean> {
+		return (
+			(
+				await this.update(
+					{ id, source: 'preview', status: In(['processing', 'cancelling']) },
+					{ status: 'cancelling' },
+				)
+			).affected === 1
+		);
+	}
+
+	async findLiveEntries(ids: string[]): Promise<Array<Pick<AgentMessageQueue, 'id' | 'status'>>> {
+		if (ids.length === 0) return [];
+		return await this.find({ select: ['id', 'status'], where: { id: In(ids) } });
 	}
 
 	async removeEntry(id: string, ctx: OperationContext): Promise<void> {
@@ -87,6 +117,10 @@ export class AgentMessageQueueRepository extends BaseRepository<AgentMessageQueu
 		return deleted.affected === 1;
 	}
 
+	async finishProcessing(id: string, ctx: OperationContext): Promise<boolean> {
+		return (await this.managerFor(ctx).delete(AgentMessageQueue, { id, status: 'processing' })).affected === 1;
+	}
+
 	async cancelQueued(id: string): Promise<boolean> {
 		return (await this.delete({ id, status: 'queued' })).affected === 1;
 	}
@@ -95,16 +129,15 @@ export class AgentMessageQueueRepository extends BaseRepository<AgentMessageQueu
 		await this.delete({ threadId, status: 'queued' });
 	}
 
-	async touchLiveEntries(ids: string[]): Promise<string[]> {
-		if (ids.length === 0) return [];
+	async touchLiveEntries(ids: string[]): Promise<void> {
+		if (ids.length === 0) return;
 		await this.update({ id: In(ids), status: 'queued' }, { updatedAt: () => this.time() });
-		return await this.findExistingIds(ids);
 	}
 
 	async touchProcessing(id: string, ctx: OperationContext): Promise<void> {
 		await this.managerFor(ctx).update(
 			AgentMessageQueue,
-			{ id, status: 'processing' },
+			{ id, status: In(['processing', 'cancelling']) },
 			{
 				updatedAt: () => this.time(),
 			},
@@ -122,9 +155,9 @@ export class AgentMessageQueueRepository extends BaseRepository<AgentMessageQueu
 			.where({ threadId })
 			.andWhere(`item.updatedAt < ${this.time(-graceMs)}`)
 			.andWhere(
-				'(item.status = :processing OR (item.status = :queued AND item.source = :preview))',
+				'(item.status IN (:...active) OR (item.status = :queued AND item.source = :preview))',
 				{
-					processing: 'processing',
+					active: ['processing', 'cancelling'],
 					queued: 'queued',
 					preview: 'preview',
 				},
@@ -136,8 +169,8 @@ export class AgentMessageQueueRepository extends BaseRepository<AgentMessageQueu
 		const rows = await this.createQueryBuilder('item')
 			.select('DISTINCT item.threadId', 'threadId')
 			.where(`item.updatedAt < ${this.time(-graceMs)}`)
-			.andWhere('(item.status = :processing OR item.source = :preview)', {
-				processing: 'processing',
+			.andWhere('(item.status IN (:...active) OR item.source = :preview)', {
+				active: ['processing', 'cancelling'],
 				preview: 'preview',
 			})
 			.getRawMany<{ threadId: string }>();

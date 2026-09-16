@@ -2,6 +2,7 @@ import { MAX_AGENT_CHAT_ATTACHMENTS_PER_MESSAGE } from '../agent-chat-attachment
 import { AgentChatMessageDto } from '../dto';
 
 describe('AgentChatMessageDto', () => {
+	const clientRequestId = '724038b9-fc74-4428-bf08-07998f1e3b20';
 	const attachment = {
 		fileName: 'photo.png',
 		mimeType: 'image/png',
@@ -10,6 +11,7 @@ describe('AgentChatMessageDto', () => {
 
 	it('accepts a message with attachments', () => {
 		const result = AgentChatMessageDto.safeParse({
+			clientRequestId,
 			message: 'look',
 			attachments: [attachment],
 		});
@@ -17,18 +19,32 @@ describe('AgentChatMessageDto', () => {
 	});
 
 	it('accepts an attachment-only payload with empty message text', () => {
-		const result = AgentChatMessageDto.safeParse({ message: '', attachments: [attachment] });
+		const result = AgentChatMessageDto.safeParse({
+			clientRequestId,
+			message: '',
+			attachments: [attachment],
+		});
 		expect(result.success).toBe(true);
 	});
 
+	it('rejects a missing or invalid client request ID', () => {
+		expect(AgentChatMessageDto.safeParse({ message: 'look' }).success).toBe(false);
+		expect(
+			AgentChatMessageDto.safeParse({ clientRequestId: 'not-a-uuid', message: 'look' }).success,
+		).toBe(false);
+	});
+
 	it('rejects a payload with neither message text nor attachments', () => {
-		expect(AgentChatMessageDto.safeParse({ message: '' }).success).toBe(false);
-		expect(AgentChatMessageDto.safeParse({ message: '   ' }).success).toBe(false);
-		expect(AgentChatMessageDto.safeParse({ message: '   ', attachments: [] }).success).toBe(false);
+		expect(AgentChatMessageDto.safeParse({ clientRequestId, message: '' }).success).toBe(false);
+		expect(AgentChatMessageDto.safeParse({ clientRequestId, message: '   ' }).success).toBe(false);
+		expect(
+			AgentChatMessageDto.safeParse({ clientRequestId, message: '   ', attachments: [] }).success,
+		).toBe(false);
 	});
 
 	it('rejects base64 data above the 10 MB cap', () => {
 		const result = AgentChatMessageDto.safeParse({
+			clientRequestId,
 			message: '',
 			attachments: [{ ...attachment, data: 'a'.repeat(14_000_001) }],
 		});
@@ -37,6 +53,7 @@ describe('AgentChatMessageDto', () => {
 
 	it('rejects more attachments than the per-message cap', () => {
 		const result = AgentChatMessageDto.safeParse({
+			clientRequestId,
 			message: '',
 			attachments: Array.from(
 				{ length: MAX_AGENT_CHAT_ATTACHMENTS_PER_MESSAGE + 1 },
@@ -49,12 +66,14 @@ describe('AgentChatMessageDto', () => {
 	it('rejects attachments with empty fileName or mimeType', () => {
 		expect(
 			AgentChatMessageDto.safeParse({
+				clientRequestId,
 				message: '',
 				attachments: [{ ...attachment, fileName: '' }],
 			}).success,
 		).toBe(false);
 		expect(
 			AgentChatMessageDto.safeParse({
+				clientRequestId,
 				message: '',
 				attachments: [{ ...attachment, mimeType: '' }],
 			}).success,

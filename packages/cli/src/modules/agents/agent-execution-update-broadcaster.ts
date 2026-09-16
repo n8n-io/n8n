@@ -4,6 +4,7 @@ import { ProjectRelationRepository } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
+import { OperationalError } from 'n8n-workflow';
 
 import { Push } from '@/push';
 import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
@@ -12,6 +13,8 @@ import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { AgentExecutionThreadRepository } from './repositories/agent-execution-thread.repository';
 
 type AgentExecutionUpdate = PushPayload<'agentExecutionUpdated'>;
+
+const CHAT_EVENT_RELAY_TIMEOUT_MS = 1_000;
 
 @Service()
 export class AgentExecutionUpdateBroadcaster {
@@ -34,6 +37,42 @@ export class AgentExecutionUpdateBroadcaster {
 				error: error instanceof Error ? error.message : String(error),
 			});
 		});
+	}
+
+	async sendChatEvent(data: PushPayload<'agentChatEvent'>, userId: string): Promise<void> {
+		try {
+			this.push.sendToUsers({ type: 'agentChatEvent', data }, [userId]);
+		} catch (error) {
+			// A viewer connection must not control the execution lifetime.
+			this.logger.warn('Failed to deliver agent chat event', { queueId: data.queueId, error });
+		}
+
+		let relayTimer: NodeJS.Timeout | undefined;
+		try {
+			if (this.instanceSettings.isWorker || this.instanceSettings.isMultiMain) {
+				await Promise.race([
+					this.publisher.publishCommand({
+						command: 'relay-agent-chat-event',
+						payload: { data, userId },
+					}),
+					new Promise<never>((_, reject) => {
+						relayTimer = setTimeout(
+							() => reject(new OperationalError('Agent chat event relay timed out')),
+							CHAT_EVENT_RELAY_TIMEOUT_MS,
+						);
+					}),
+				]);
+			}
+		} catch (error) {
+			this.logger.warn('Failed to deliver agent chat event', { queueId: data.queueId, error });
+		} finally {
+			clearTimeout(relayTimer);
+		}
+	}
+
+	@OnPubSubEvent('relay-agent-chat-event', { instanceType: 'main' })
+	handleChatEvent({ data, userId }: PubSubCommandMap['relay-agent-chat-event']): void {
+		this.push.sendToUsers({ type: 'agentChatEvent', data }, [userId]);
 	}
 
 	private async broadcast(data: AgentExecutionUpdate): Promise<void> {
