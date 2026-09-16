@@ -52,21 +52,30 @@ the create right on the new one.
 
 Both numbers live in
 [`ai-preference.schema.ts`](../../../@n8n/api-types/src/schemas/ai-preference.schema.ts),
-so the settings modal, the REST DTO and every tool input schema use one value:
+so one value serves every reader:
 
 - `AI_PREFERENCE_CONTENT_MAX_LENGTH` is 2,000 characters for one preference. The request
-  DTO refuses a longer one.
-- `AI_PREFERENCE_MAX_PER_SCOPE` is 50 preferences for one scope. `create()` counts the
-  target scope and refuses the write past that number.
+  DTO validates it through `aiPreferenceContentSchema`, and the settings modal reads the
+  same constant.
+- `AI_PREFERENCE_MAX_PER_SCOPE` is 50 preferences for one scope. The service is its only
+  reader: `create()` counts the target scope, and `update()` counts it again when the write
+  moves a row to another scope.
+
+No tool input schema carries either number yet, because no tool writes a preference yet.
+The `describe()` text on `aiPreferenceContentSchema` states both limits for a model, and
+the write tool of CONTEXT-138 reuses that schema for its content field.
 
 The caps apply on the write, never on the read. A read that dropped a row would hide a
 colleague's preference with no way to tell. A write can refuse the text while the person
 who wrote it is still looking at it.
 
-The two numbers multiply badly in theory: 50 preferences of 2,000 characters is 100,000
-characters, which no prompt can carry. The applied-preferences event therefore reports the
-rendered length of the block. Review the caps if the 95th percentile of a rendered block
-passes 8,000 characters, which is about 2,000 tokens.
+Nothing bounds the rendered block itself, and that is the number to watch. One scope at the
+cap renders about 100,000 characters, and the block adds a group for every project the
+caller can read, so a caller in ten full projects renders about 1.3 million characters,
+which is past every context window. The MCP read reports `rendered_length` on its tool
+event, and `PREFERENCES_APPLIED_TO_TURN` carries the same number once CONTEXT-139 fires it.
+Review the caps, and bound the block, if the 95th percentile of a rendered block passes
+8,000 characters, which is about 2,000 tokens.
 
 ## What the AI surfaces receive
 
