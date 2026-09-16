@@ -3,6 +3,7 @@ import { User } from '@n8n/db';
 import type { ExecutionSummary } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 
+import { encodeExecutionCursor } from '@/executions/execution-cursor';
 import { ExecutionService } from '@/executions/execution.service';
 import { Telemetry } from '@/telemetry';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -35,6 +36,7 @@ describe('search-executions MCP tool', () => {
 				results: [],
 				count: 0,
 				estimated: false,
+				nextCursor: null,
 			}),
 			buildSharingOptions: vi.fn().mockResolvedValue({
 				scopes: ['workflow:read'],
@@ -81,6 +83,7 @@ describe('search-executions MCP tool', () => {
 			results: executions,
 			count: 2,
 			estimated: false,
+			nextCursor: 'next-page-cursor',
 		});
 
 		const result = await createTool().handler({} as never, {} as never);
@@ -108,6 +111,7 @@ describe('search-executions MCP tool', () => {
 			],
 			count: 2,
 			estimated: false,
+			nextCursor: 'next-page-cursor',
 		});
 	});
 
@@ -160,11 +164,20 @@ describe('search-executions MCP tool', () => {
 		expect(query.range.limit).toBe(200);
 	});
 
-	test('handles pagination with lastId', async () => {
-		await createTool().handler({ lastId: 'exec-50' } as never, {} as never);
+	test('pages from the execution ID the cursor encodes', async () => {
+		const cursor = encodeExecutionCursor('50');
+
+		await createTool().handler({ cursor } as never, {} as never);
 
 		const query = (executionService.findRangeWithCount as Mock).mock.calls[0][0];
-		expect(query.range.lastId).toBe('exec-50');
+		expect(query.range.beforeId).toBe('50');
+	});
+
+	test('returns an error for an invalid cursor', async () => {
+		const result = await createTool().handler({ cursor: 'not-a-cursor' } as never, {} as never);
+
+		expect(result.isError).toBe(true);
+		expect(executionService.findRangeWithCount).not.toHaveBeenCalled();
 	});
 
 	test('returns empty results with correct structure', async () => {
@@ -174,6 +187,7 @@ describe('search-executions MCP tool', () => {
 			data: [],
 			count: 0,
 			estimated: false,
+			nextCursor: null,
 		});
 	});
 
@@ -188,6 +202,7 @@ describe('search-executions MCP tool', () => {
 			results: [createExecution()],
 			count: 1,
 			estimated: false,
+			nextCursor: null,
 		});
 
 		await createTool().handler({ workflowId: 'wf-1' } as never, {} as never);
@@ -214,6 +229,7 @@ describe('search-executions MCP tool', () => {
 			data: [],
 			count: 0,
 			estimated: false,
+			nextCursor: null,
 			error: 'DB connection lost',
 		});
 
