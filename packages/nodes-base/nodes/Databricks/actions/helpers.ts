@@ -6,38 +6,34 @@ import type {
 	IExecuteFunctions,
 	IHttpRequestOptions,
 	ILoadOptionsFunctions,
+	IPollFunctions,
 } from 'n8n-workflow';
 
 import { DATABRICKS_PARTNER_USER_AGENT } from '../constants';
 
 import type { DatabricksCredentials, OpenAPISchema } from './interfaces';
 
+export type DatabricksContext = IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions;
+export type DatabricksCredentialType = 'databricksApi' | 'databricksOAuth2Api';
+
 const RATE_LIMIT_MAX_RETRIES = 3;
 const RATE_LIMIT_FALLBACK_DELAY_MS = 1_000;
 const RATE_LIMIT_MAX_DELAY_MS = 30_000;
 
 /**
- * Single egress point for the Databricks API, so every request carries the
- * partner User-Agent. Enforced by eslint-user-agent-restriction.mjs.
- *
- * Takes `context` explicitly rather than the house `this`-binding style because
- * some callers (e.g. `fetchResourcesInSchema` in methods/listSearch.ts) are plain
- * functions with no `this`.
- *
- * Setting a User-Agent deliberately opts these calls out of the instance-wide
- * outbound UA, including `N8N_GLOBAL_USER_AGENT_VALUE` — partner attribution
- * requires a single predictable token.
+ * Single egress point for the Databricks API, enforced by eslint-user-agent-restriction.mjs.
+ * Setting a User-Agent opts these calls out of N8N_GLOBAL_USER_AGENT_VALUE on purpose:
+ * partner attribution needs one predictable token.
  */
 export async function databricksApiRequest(
-	context: IExecuteFunctions | ILoadOptionsFunctions,
-	credentialType: 'databricksApi' | 'databricksOAuth2Api',
+	context: DatabricksContext,
+	credentialType: DatabricksCredentialType,
 	options: IHttpRequestOptions,
 ): ReturnType<IExecuteFunctions['helpers']['httpRequestWithAuthentication']> {
 	const requestOptions: IHttpRequestOptions = {
 		...options,
 		headers: {
 			...options.headers,
-			// Last, so a caller cannot override it
 			'User-Agent': DATABRICKS_PARTNER_USER_AGENT,
 		},
 	};
@@ -63,44 +59,37 @@ export async function databricksApiRequest(
 }
 
 export function getActiveCredentialType(
-	context: IExecuteFunctions | ILoadOptionsFunctions,
+	context: DatabricksContext,
 	itemIndex = 0,
-): 'databricksApi' | 'databricksOAuth2Api' {
-	const authentication = context.getNodeParameter(
-		'authentication',
-		itemIndex,
-		'accessToken',
-	) as string;
+): DatabricksCredentialType {
+	const authentication =
+		'getInputData' in context
+			? context.getNodeParameter('authentication', itemIndex, 'accessToken')
+			: context.getNodeParameter('authentication', 'accessToken');
 	return authentication === 'oAuth2' ? 'databricksOAuth2Api' : 'databricksApi';
 }
 
 export async function getHost(
-	context: IExecuteFunctions | ILoadOptionsFunctions,
-	credentialType: 'databricksApi' | 'databricksOAuth2Api',
+	context: DatabricksContext,
+	credentialType: DatabricksCredentialType,
 ): Promise<string> {
 	const credentials = await context.getCredentials<DatabricksCredentials>(credentialType);
 	return credentials.host.replace(/\/$/, '');
 }
 
-// Body text comes from whatever server `host` points at — truncate and strip
-// control chars before promoting it to a visible error message
+// Body text comes from whatever server `host` points at
 export function sanitizeApiMessage(message: string): string {
 	// eslint-disable-next-line no-control-regex
 	return message.replace(/[\x00-\x1f\x7f]+/g, ' ').slice(0, 500);
 }
 
-// Must be called at every request entry point (router catch, listSearch wrapper):
-// databricksApiRequest() only attaches the User-Agent and deliberately does not
-// wrap errors, so callers still own their catch. Keyed on PERMISSION_DENIED only; widen
-// the key if other Databricks error_codes with legible messages show up. Keyed on
-// the error_code, not HTTP 403, so expired-token 403s (which core retries via
-// refresh) aren't mislabeled if they leak through. Mutates rather than re-wraps:
-// `new NodeApiError(node, existingNodeApiError)` returns the original untouched.
+// Called at every request entry point (router catch, listSearch wrapper) because
+// databricksApiRequest() does not wrap errors. Keyed on error_code, not HTTP 403, so
+// expired-token 403s are not mislabeled. Mutates: re-wrapping a NodeApiError returns the same instance.
 export function makePermissionErrorLegible(error: unknown): void {
 	if (!(error instanceof NodeApiError)) return;
 
-	// Requests with encoding: 'arraybuffer' (file downloads) receive their 403
-	// JSON body as raw bytes, so parse Buffer/string bodies before reading it
+	// File downloads receive the 403 body as raw bytes
 	let data = error.context.data;
 	if (Buffer.isBuffer(data) || typeof data === 'string') {
 		try {
@@ -292,9 +281,7 @@ export function generateExampleFromSchema(schema: unknown, format: string): stri
 			if (Object.keys(exampleObj).length > 0) {
 				return JSON.stringify(exampleObj, null, 2);
 			}
-		} catch (e) {
-			// Fall through to default examples
-		}
+		} catch {}
 	}
 
 	const examples: Record<string, string> = {
@@ -388,4 +375,21 @@ export function validateRequestBody(
 			}
 			break;
 	}
+}
+
+export async function fetchDatabricksPage<T>(
+	context: IExecuteFunctions | ILoadOptionsFunctions,
+	credentialType: 'databricksApi' | 'databricksOAuth2Api',
+	host: string,
+	path: string,
+	qs: IDataObject,
+	pageToken?: string,
+): Promise<T> {
+	return await databricksApiRequest(context, credentialType, {
+		method: 'GET',
+		url: `${host}${path}`,
+		qs: pageToken ? { ...qs, page_token: pageToken } : { ...qs },
+		headers: { Accept: 'application/json' },
+		json: true,
+	});
 }

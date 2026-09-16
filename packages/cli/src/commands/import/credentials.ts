@@ -131,8 +131,8 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 				const result = await this.checkRelations(
 					transactionManager,
 					credentials,
-					flags.projectId,
-					flags.userId,
+					project.id,
+					flags,
 				);
 
 				if (!result.success) {
@@ -281,8 +281,8 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 	private async checkRelations(
 		transactionManager: EntityManager,
 		credentials: Array<Pick<Partial<CredentialsEntity>, 'id'>>,
-		projectId?: string,
-		userId?: string,
+		targetProjectId: string,
+		{ userId, projectId }: { userId?: string; projectId?: string },
 	) {
 		// The credential is not supposed to be re-owned.
 		if (!projectId && !userId) {
@@ -310,7 +310,7 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 				continue;
 			}
 
-			if (ownerProject.id !== projectId) {
+			if (ownerProject.id !== targetProjectId) {
 				const currentOwner =
 					ownerProject.type === 'personal'
 						? `the user with the ID "${user.id}"`

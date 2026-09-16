@@ -14,6 +14,7 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { fetchSettings } from '../instanceAi.settings.api';
 import type { FrontendModuleSettings } from '@n8n/api-types';
 import type { ICredentialType } from 'n8n-workflow';
+import { defaultModuleSettings } from './createThreadComponentRenderer';
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -103,18 +104,6 @@ function setModuleSettings(
 ) {
 	settingsStore.moduleSettings = { 'instance-ai': instanceAi };
 }
-
-const defaultModuleSettings: NonNullable<FrontendModuleSettings['instance-ai']> = {
-	enabled: true,
-	localGatewayDisabled: false,
-	browserUseEnabled: true,
-	proxyEnabled: false,
-	cloudManaged: false,
-	sandboxEnabled: true,
-	workflowBuilderAvailable: true,
-	sandboxUnavailableReason: null,
-	runDebugEnabled: false,
-};
 
 describe('SettingsInstanceAiView', () => {
 	let store: ReturnType<typeof useInstanceAiSettingsStore>;

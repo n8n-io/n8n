@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import userEvent from '@testing-library/user-event';
 import { fireEvent, waitFor, within } from '@testing-library/vue';
 import { setActivePinia, createPinia } from 'pinia';
-import { defineComponent, h, type Component, type PropType } from 'vue';
+import { defineComponent, h, ref, type Component, type PropType } from 'vue';
 import type { BaseTextKey } from '@n8n/i18n';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -93,6 +93,7 @@ const CustomInsertSuggestionsComponent = defineComponent({
 							suggestionId: 'custom-build-workflow',
 							suggestionKind: 'prompt',
 							position: 1,
+							prefillType: 'suggestion_catalog',
 						});
 					},
 				},
@@ -177,6 +178,7 @@ const CustomRawPromptSuggestionsComponent = defineComponent({
 								suggestionKind: 'prompt',
 								position: 1,
 								telemetryPayload: { suggestion_source: 'v2_top_used_fallback' },
+								prefillType: 'suggestion_catalog',
 							}),
 					},
 					'Insert raw suggestion',
@@ -215,6 +217,40 @@ const InputMenuStub = defineComponent({
 			);
 	},
 });
+
+const DirectSubmitHarness = defineComponent({
+	setup(_props, { emit }) {
+		const inputRef = ref<InstanceType<typeof InstanceAiInput> | null>(null);
+		return () =>
+			h('div', [
+				h(InstanceAiInput, {
+					ref: (el: unknown) => {
+						inputRef.value = el as InstanceType<typeof InstanceAiInput> | null;
+					},
+					...defaultProps(),
+					currentThreadId: '',
+					onSubmit: (...args: unknown[]) => emit('submit', ...args),
+				}),
+				h(
+					'button',
+					{
+						'data-test-id': 'harness-direct-submit',
+						onClick: () =>
+							inputRef.value?.submitSuggestion({
+								prompt: 'Score my leads automatically',
+								suggestionId: 'score-my-leads',
+								suggestionKind: 'quick_example',
+								position: 1,
+								prefillType: 'suggestion_catalog',
+							}),
+					},
+					'Direct submit',
+				),
+			]);
+	},
+});
+
+const renderDirectSubmitHarness = createComponentRenderer(DirectSubmitHarness);
 
 const renderComponent = createComponentRenderer(InstanceAiInput, {
 	props: defaultProps(),
@@ -480,6 +516,12 @@ describe('InstanceAiInput', () => {
 			'I want to build a new agent. Help me figure out what to build. Ask me what the main purpose of the agent is, what should trigger it into action, what apps, tools, or knowledge it should have access to, and whether I have a preference for the AI model used.',
 			undefined,
 			expect.any(Function),
+			{
+				kind: 'prefill',
+				prefillType: 'v1_opener',
+				prefillId: 'build-agent',
+				promptModified: false,
+			},
 		]);
 		expect(textbox).toHaveValue('');
 	});
@@ -598,6 +640,149 @@ describe('InstanceAiInput', () => {
 		expect(submittedEvents).toHaveLength(0);
 	});
 
+	it('reports the pre-fill that filled the composer when an inserted suggestion is sent', async () => {
+		const { emitted, getByTestId } = renderComponent({
+			props: {
+				isStreaming: false,
+				suggestions,
+				suggestionsComponent: CustomInsertSuggestionsComponent,
+				suggestionCatalogVersion: 'v2',
+				currentThreadId: '',
+			},
+		});
+
+		await userEvent.click(getByTestId('custom-suggestion-insert'));
+		await userEvent.click(getByTestId('instance-ai-send-button'));
+
+		await waitFor(() => expect(emitted().submit?.[0]).toBeDefined());
+		expect(emittedArgument(emitted().submit?.[0], 3)).toEqual({
+			kind: 'prefill',
+			prefillType: 'suggestion_catalog',
+			prefillId: 'custom-build-workflow',
+			promptModified: false,
+		});
+	});
+
+	it('reports the pre-fill as modified when the inserted prompt is edited before sending', async () => {
+		const { emitted, getByRole, getByTestId } = renderComponent({
+			props: {
+				isStreaming: false,
+				suggestions,
+				suggestionsComponent: CustomInsertSuggestionsComponent,
+				suggestionCatalogVersion: 'v2',
+				currentThreadId: '',
+			},
+		});
+
+		await userEvent.click(getByTestId('custom-suggestion-insert'));
+		await userEvent.type(getByRole('textbox'), ' Also handle errors.');
+		await userEvent.click(getByTestId('instance-ai-send-button'));
+
+		await waitFor(() => expect(emitted().submit?.[0]).toBeDefined());
+		expect(emittedArgument(emitted().submit?.[0], 3)).toMatchObject({
+			kind: 'prefill',
+			prefillType: 'suggestion_catalog',
+			promptModified: true,
+		});
+	});
+
+	it('reports user authorship once a pre-filled prompt is cleared and replaced', async () => {
+		const { emitted, getByRole, getByTestId } = renderComponent({
+			props: {
+				isStreaming: false,
+				suggestions,
+				suggestionsComponent: CustomInsertSuggestionsComponent,
+				suggestionCatalogVersion: 'v2',
+				currentThreadId: '',
+			},
+		});
+
+		await userEvent.click(getByTestId('custom-suggestion-insert'));
+		const textbox = getByRole('textbox');
+		await userEvent.clear(textbox);
+		await userEvent.type(textbox, 'Build something unrelated from scratch');
+		await userEvent.click(getByTestId('instance-ai-send-button'));
+
+		await waitFor(() => expect(emitted().submit?.[0]).toBeDefined());
+		expect(emittedArgument(emitted().submit?.[0], 3)).toEqual({ kind: 'user_typed' });
+	});
+
+	// A refused send (a concurrency cap, a 429) puts the draft back. The retry has
+	// to stay attributed to the surface that wrote it, not read as user-typed.
+	it('keeps the pre-fill attribution when a refused send restores the draft', async () => {
+		const { emitted, getByTestId } = renderComponent({
+			props: {
+				isStreaming: false,
+				suggestions,
+				suggestionsComponent: CustomInsertSuggestionsComponent,
+				suggestionCatalogVersion: 'v2',
+				currentThreadId: '',
+			},
+		});
+
+		await userEvent.click(getByTestId('custom-suggestion-insert'));
+		await userEvent.click(getByTestId('instance-ai-send-button'));
+		await waitFor(() => expect(emitted().submit?.[0]).toBeDefined());
+
+		// The host refuses the send and hands the draft back.
+		const restoreDraft = emittedArgument(emitted().submit?.[0], 2);
+		if (typeof restoreDraft !== 'function') throw new Error('Expected a draft recovery callback');
+		expect(restoreDraft()).toBe(true);
+
+		await userEvent.click(getByTestId('instance-ai-send-button'));
+		await waitFor(() => expect(emitted().submit?.[1]).toBeDefined());
+
+		expect(emittedArgument(emitted().submit?.[1], 3)).toEqual({
+			kind: 'prefill',
+			prefillType: 'suggestion_catalog',
+			prefillId: 'custom-build-workflow',
+			promptModified: false,
+		});
+	});
+
+	it('reports a Tab-accepted contextual follow-up as a pre-fill', async () => {
+		const { emitted, getByRole, getByTestId } = renderComponent({
+			props: {
+				isStreaming: false,
+				suggestions,
+				contextualSuggestion: 'Add error handling to the workflow',
+			},
+		});
+
+		getByRole('textbox').focus();
+		await userEvent.keyboard('{Tab}');
+		await userEvent.click(getByTestId('instance-ai-send-button'));
+
+		await waitFor(() => expect(emitted().submit?.[0]).toBeDefined());
+		expect(emittedArgument(emitted().submit?.[0], 0)).toBe('Add error handling to the workflow');
+		expect(emittedArgument(emitted().submit?.[0], 3)).toEqual({
+			kind: 'prefill',
+			prefillType: 'contextual_followup',
+			promptModified: false,
+		});
+	});
+
+	// The split empty state sends a row straight off, with no insert step, so the
+	// composer was already empty and `resetDraftComposer` does not change it --
+	// the watcher never fires. Anything the user types next must not inherit the
+	// pre-fill that was just sent.
+	it('does not attribute a later typed message to a directly submitted suggestion', async () => {
+		const { emitted, getByRole, getByTestId } = renderDirectSubmitHarness();
+
+		await userEvent.click(getByTestId('harness-direct-submit'));
+		await waitFor(() => expect(emitted().submit?.[0]).toBeDefined());
+		expect(emittedArgument(emitted().submit?.[0], 3)).toMatchObject({
+			kind: 'prefill',
+			prefillType: 'suggestion_catalog',
+		});
+
+		await userEvent.type(getByRole('textbox'), 'Something else entirely');
+		await userEvent.click(getByTestId('instance-ai-send-button'));
+
+		await waitFor(() => expect(emitted().submit?.[1]).toBeDefined());
+		expect(emittedArgument(emitted().submit?.[1], 3)).toEqual({ kind: 'user_typed' });
+	});
+
 	it('submits typed text and attachments from the send button', async () => {
 		const { container, emitted, getByRole, getByTestId, queryByTestId } = renderComponent({
 			props: {
@@ -631,6 +816,7 @@ describe('InstanceAiInput', () => {
 					}),
 				],
 				expect.any(Function),
+				{ kind: 'user_typed' },
 			],
 		]);
 		expect(textbox).toHaveValue('');
@@ -821,7 +1007,7 @@ describe('InstanceAiInput', () => {
 		await userEvent.click(getByTestId('instance-ai-send-button'));
 
 		expect(emitted().submit).toEqual([
-			['Make the first workflow simpler', undefined, expect.any(Function)],
+			['Make the first workflow simpler', undefined, expect.any(Function), { kind: 'user_typed' }],
 		]);
 	});
 
@@ -857,7 +1043,7 @@ describe('InstanceAiInput', () => {
 		await userEvent.type(getByRole('textbox'), 'Drop the third workflow{Enter}');
 
 		expect(emitted().submit).toEqual([
-			['Drop the third workflow', undefined, expect.any(Function)],
+			['Drop the third workflow', undefined, expect.any(Function), { kind: 'user_typed' }],
 		]);
 	});
 

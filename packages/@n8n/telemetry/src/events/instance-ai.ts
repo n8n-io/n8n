@@ -1,3 +1,9 @@
+import {
+	INSTANCE_AI_PREFILL_TYPES,
+	INSTANCE_AI_PREFILL_TYPE_FALLBACK,
+	INSTANCE_AI_THREAD_SOURCES,
+	INSTANCE_AI_THREAD_SOURCE_FALLBACK,
+} from '@n8n/api-types';
 import { z } from 'zod/v4';
 
 import { defineTelemetryEvents } from '../define';
@@ -36,6 +42,14 @@ const freeNudgeVariant = z.enum(['control', 'variant-1', 'variant-2']);
 const freeNudgeTreatmentVariant = z.enum(['variant-1', 'variant-2']);
 // Experiment cleanup: remove with openWorkflowInAssistant.
 const openWorkflowInAssistantVariant = z.enum(['control', 'variant']);
+
+// Both taxonomies are owned by `@n8n/api-types`, beside the request schemas that
+// enforce them; the fallbacks are read-path only, so no caller can declare them.
+const threadActionSource = z.enum([
+	...INSTANCE_AI_THREAD_SOURCES,
+	INSTANCE_AI_THREAD_SOURCE_FALLBACK,
+]);
+const prefillType = z.enum([...INSTANCE_AI_PREFILL_TYPES, INSTANCE_AI_PREFILL_TYPE_FALLBACK]);
 
 export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 	USER_CLICKED_AI_CREDIT_BALANCE: {
@@ -334,6 +348,38 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 			'The user sent an Instance AI chat message that carried node context. Fires only when the submitted message includes at least one node attachment; node_count is the total nodes across every attached set in the message.',
 		properties: z.object({
 			node_count: z.number().describe('Total nodes attached across the sent message'),
+		}),
+	},
+	USER_SENT_BUILDER_MESSAGE: {
+		name: 'User sent builder message',
+		description:
+			'The user sent a message to the n8n Assistant. Fires once per message on the optimistic send, before the request is admitted, so a refused send still counts as an attempt. Carries who wrote the text: a pre-fill is an opener n8n composed (a failed execution, a credential modal, a template card, a suggestion chip) that the user accepted or edited, so pre-fill share must be read from prefill_type rather than matched against the message body.',
+		properties: z.object({
+			thread_id: z.string(),
+			instance_id: z.string(),
+			is_first_message: z
+				.boolean()
+				.describe('Whether this is the first user message in the thread'),
+			action_source: threadActionSource.describe(
+				"The thread's entry point, read back from thread metadata. 'unknown' covers threads created before source was required.",
+			),
+			prefill_type: prefillType
+				.nullable()
+				.describe(
+					"Which pre-fill surface composed the text. Null when the user typed it. 'unknown' is a read-path fallback for a pre-fill a previous deploy stashed in the browser, so a non-trivial share of it is a bug, not a category.",
+				),
+			prefill_id: z
+				.string()
+				.nullable()
+				.describe(
+					'Catalog entry id for pre-fill types that have sub-items, e.g. a suggestion id. Null otherwise.',
+				),
+			prompt_modified: z
+				.boolean()
+				.nullable()
+				.describe(
+					'Whether the user edited the pre-filled text before sending. Always false for pre-fills that send without being shown. Null when the user typed the message.',
+				),
 		}),
 	},
 	BUILDER_LISTED_WORKFLOWS: {

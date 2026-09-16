@@ -66,7 +66,7 @@ const {
 	 */
 	boundCredentialId?: string | null;
 	disabled?: boolean;
-	/** Append credential modals to body (needed when embedded in the Memory dialog). */
+	/** Render credential modals outside the current container. */
 	credentialModalAppendToBody?: boolean;
 }>();
 
@@ -143,6 +143,7 @@ const selectedCredentialName = computed(() =>
 
 const isCredentialsMissing = computed(
 	() =>
+		credentials !== null &&
 		!isManagedCredential.value &&
 		warnMissingCredentials &&
 		Boolean(selectedModel?.provider) &&
