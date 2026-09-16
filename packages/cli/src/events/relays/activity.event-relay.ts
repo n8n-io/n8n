@@ -91,14 +91,13 @@ export class ActivityEventRelay extends EventRelay {
 		// turn both on for a user without a deploy — so this cannot be decided once here.
 		//
 		// It can still be ruled out. With diagnostics off there is no PostHog to consult, so the
-		// flag can only come from an explicit override — which is checked here too, or an instance
-		// that forces the read on that way would read a log nothing writes. Ruled out on every
-		// other combination, and such an instance registers no listeners and pays nothing per
-		// event exactly as before.
+		// flag can only come from an explicit override that turns it ON — an override to `false`
+		// rules the relay out like any other, rather than registering listeners that can only
+		// answer no. A ruled-out instance registers nothing and pays nothing per event.
 		if (
 			!this.activityLogConfig.enabled &&
 			!this.globalConfig.diagnostics.enabled &&
-			!(INSTANCE_ACTIVITY_CONTEXT_FLAG in this.globalConfig.featureFlags.override)
+			!this.overrideEnablesFlag()
 		) {
 			return;
 		}
@@ -118,6 +117,13 @@ export class ActivityEventRelay extends EventRelay {
 				'credentials-deleted': async (e) => await this.onCredentialDeleted(e),
 			}),
 		);
+	}
+
+	/** Whether an explicit override turns the flag on. Its value decides, not its presence. */
+	private overrideEnablesFlag(): boolean {
+		const override = this.globalConfig.featureFlags.override[INSTANCE_ACTIVITY_CONTEXT_FLAG];
+		const value = typeof override === 'object' ? override.value : override;
+		return value === true;
 	}
 
 	/** In-flight gate checks, keyed by user, so one burst asks PostHog once. */

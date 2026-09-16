@@ -63,6 +63,9 @@ export class PostHogClient {
 
 	private readonly flagsCache = new Map<string, CachedFlags>();
 
+	/** Evaluations still outstanding, keyed as the cache is, so callers join rather than race. */
+	private readonly inFlightEvaluations = new Map<string, Promise<FeatureFlagData>>();
+
 	constructor(
 		private readonly instanceSettings: InstanceSettings,
 		private readonly globalConfig: GlobalConfig,
@@ -190,11 +193,32 @@ export class PostHogClient {
 			return cached;
 		}
 
+		// One evaluation per key at a time. Two callers racing an expired key would otherwise both
+		// request, and a failing one landing second would replace the other's answer with an empty
+		// short-lived entry — enrolled users failing closed until it expired.
+		const inFlight = this.inFlightEvaluations.get(cacheKey);
+		if (inFlight) return await inFlight;
+
+		const evaluation = this.evaluateAndRemember(this.postHog, cacheKey, fullId, user).finally(() =>
+			this.inFlightEvaluations.delete(cacheKey),
+		);
+		this.inFlightEvaluations.set(cacheKey, evaluation);
+		return await evaluation;
+	}
+
+	private async evaluateAndRemember(
+		postHog: PostHog,
+		cacheKey: string,
+		fullId: string,
+		user: Pick<PublicUser, 'id' | 'createdAt'>,
+	): Promise<FeatureFlagData> {
+		const { instanceId } = this.instanceSettings;
+
 		// Cached like an empty one rather than propagating uncached, or a per-event caller sends
 		// one request per event for as long as PostHog is unreachable.
 		let data: FeatureFlagData;
 		try {
-			const evaluatedFlags = await this.postHog.evaluateFlags(fullId, {
+			const evaluatedFlags = await postHog.evaluateFlags(fullId, {
 				personProperties: {
 					created_at_timestamp: user.createdAt.getTime().toString(),
 					instance_id: instanceId,
