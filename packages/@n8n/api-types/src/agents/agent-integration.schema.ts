@@ -103,7 +103,17 @@ export const AgentTeamsSettingsSchema = z
 		 * How the app appears in Teams. Both fall back to the agent's own name
 		 * when unset, so a first setup needs neither.
 		 */
-		displayName: z.string().trim().min(1).max(TEAMS_DISPLAY_NAME_MAX).optional(),
+		displayName: z
+			.string()
+			.trim()
+			.min(1)
+			.max(TEAMS_DISPLAY_NAME_MAX)
+			// Teams strips control and formatting characters, so a name made only of
+			// those would be stored as an override that never appears.
+			.refine((value) => /[^\p{Cc}\p{Cf}\s]/u.test(value), {
+				message: 'Enter a name with at least one visible character',
+			})
+			.optional(),
 		description: z.string().trim().min(1).max(TEAMS_DESCRIPTION_MAX).optional(),
 		teamChannels: z.boolean().optional(),
 		groupChats: z.boolean().optional(),

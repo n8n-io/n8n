@@ -339,6 +339,31 @@ export class AgentRepository extends Repository<Agent> {
 	}
 
 	/**
+	 * Finds agents whose `integrations` JSON column contains an entry matching the
+	 * given `type` + `credentialId`, anywhere on the instance, excluding
+	 * `excludeAgentId`.
+	 *
+	 * Instance-wide, unlike `findByIntegrationCredential`: a vendor app such as an
+	 * Entra or Slack registration is bound to one bot at the vendor, so an agent
+	 * in another project breaks a setup just as surely as one in this project.
+	 *
+	 * Reads only the columns the predicate and the caller need, so an instance
+	 * with large agent configurations does not transfer and parse all of them.
+	 */
+	async findByIntegrationCredentialAnyProject(
+		type: string,
+		credentialId: string,
+		excludeAgentId: string,
+	): Promise<Array<Pick<Agent, 'id' | 'name' | 'integrations'>>> {
+		const agents = await this.find({ select: ['id', 'name', 'integrations'] });
+		return agents.filter(
+			(agent) =>
+				agent.id !== excludeAgentId &&
+				(agent.integrations ?? []).some((i) => i.type === type && i.credentialId === credentialId),
+		);
+	}
+
+	/**
 	 * Finds agents within a project whose `integrations` JSON column contains an
 	 * entry matching the given `type` + `credentialId`, excluding `excludeAgentId`.
 	 *
@@ -350,24 +375,6 @@ export class AgentRepository extends Repository<Agent> {
 	 * SQL query across SQLite/Postgres/MySQL. Agent counts per project are small
 	 * enough that this is fine.
 	 */
-	/**
-	 * Instance-wide, unlike `findByIntegrationCredential`: an Entra or Slack app
-	 * is bound to one bot at the vendor, so another project holding the same
-	 * credential breaks the setup just as surely as this project does.
-	 */
-	async findByIntegrationCredentialAnyProject(
-		type: string,
-		credentialId: string,
-		excludeAgentId: string,
-	): Promise<Agent[]> {
-		const agents = await this.find({});
-		return agents.filter(
-			(agent) =>
-				agent.id !== excludeAgentId &&
-				(agent.integrations ?? []).some((i) => i.type === type && i.credentialId === credentialId),
-		);
-	}
-
 	async findByIntegrationCredential(
 		type: string,
 		credentialId: string,

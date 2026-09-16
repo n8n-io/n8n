@@ -110,6 +110,32 @@ const credentialCheck = ref<TeamsCredentialCheck | null>(null);
 const checking = ref(false);
 
 /**
+ * Both requests answer for the credential that was selected when they were
+ * sent. Without this, switching credentials quickly lets an earlier answer
+ * land last and describe the wrong one -- as a verified credential, or as a
+ * deployment link for the credential no longer selected.
+ */
+let latestRequest = 0;
+
+/** Set by a real edit, so re-syncing saved settings never discards one. */
+const touched = ref(false);
+
+function editAvailability(value: TeamsAvailability) {
+	availability.value = value;
+	touched.value = true;
+}
+
+function editDisplayName(value: string) {
+	displayName.value = value;
+	touched.value = true;
+}
+
+function editDescription(value: string) {
+	description.value = value;
+	touched.value = true;
+}
+
+/**
  * Saving is gated on the credential actually reaching Microsoft. Without this
  * the channel connects on a wrong secret and fails on the first message, long
  * after the setup said it succeeded.
@@ -119,26 +145,29 @@ const credentialProblem = computed(() =>
 	credentialCheck.value?.status === 'failed' ? credentialCheck.value.reason : null,
 );
 
-async function runCredentialCheck() {
+async function runCredentialCheck(request = ++latestRequest) {
 	const id = credentialId.value;
+	// A result for the credential just replaced says nothing about this one, so
+	// it goes before the new answer arrives rather than after.
+	credentialCheck.value = null;
 	// Only the setup step reads the result, and the check costs a token request
 	// to Microsoft, so the settings view does not pay for it.
-	if (props.mode !== 'setup' || !id) {
-		credentialCheck.value = null;
-		return;
-	}
+	if (props.mode !== 'setup' || !id) return;
+
 	checking.value = true;
 	try {
-		credentialCheck.value = await checkTeamsCredential(
+		const result = await checkTeamsCredential(
 			rootStore.restApiContext,
 			props.projectId,
 			props.agentId,
 			id,
 		);
+		if (request === latestRequest) credentialCheck.value = result;
 	} catch {
-		credentialCheck.value = { status: 'failed', reason: 'unreachable' };
+		if (request === latestRequest)
+			credentialCheck.value = { status: 'failed', reason: 'unreachable' };
 	} finally {
-		checking.value = false;
+		if (request === latestRequest) checking.value = false;
 	}
 }
 
@@ -161,28 +190,53 @@ async function downloadPackage() {
 	}
 }
 
-async function loadSetupState() {
+async function loadSetupState(request = ++latestRequest) {
 	if (!props.projectId || !props.agentId) return;
 	try {
-		setupState.value = await getTeamsSetupState(
+		const state = await getTeamsSetupState(
 			rootStore.restApiContext,
 			props.projectId,
 			props.agentId,
 			credentialId.value || undefined,
 		);
+		if (request === latestRequest) setupState.value = state;
 	} catch {
-		setupState.value = null;
+		if (request === latestRequest) setupState.value = null;
 	}
 }
 
-watch(() => props.connected, loadSetupState);
+watch(
+	() => props.connected,
+	() => loadSetupState(),
+);
 
 watch(
 	credentialId,
 	async () => {
-		await Promise.all([runCredentialCheck(), loadSetupState()]);
+		const request = ++latestRequest;
+		await Promise.all([runCredentialCheck(request), loadSetupState(request)]);
 	},
 	{ immediate: true },
+);
+
+/**
+ * Re-synced rather than read once, so settings that arrive after this mounts
+ * are not overwritten by the empty defaults the refs started with. Edits
+ * already made here win: only an untouched field follows the saved value.
+ */
+watch(
+	() => props.savedSettings,
+	(saved) => {
+		if (!saved || touched.value) return;
+		availability.value = {
+			teamChannels: saved.teamChannels ?? false,
+			groupChats: saved.groupChats ?? false,
+			readAllChannelMessages: saved.readAllChannelMessages ?? false,
+			readAllGroupMessages: saved.readAllGroupMessages ?? false,
+		};
+		displayName.value = saved.displayName ?? '';
+		description.value = saved.description ?? '';
+	},
 );
 
 const steps = computed(() => [
@@ -216,12 +270,21 @@ const steps = computed(() => [
  * Empty strings are absent rather than values: the schema requires a non-empty
  * string when the field is present, and both fall back server-side.
  */
-const currentSettings = computed(() => ({
-	...props.savedSettings,
-	...availability.value,
-	...(displayName.value.trim() ? { displayName: displayName.value.trim() } : {}),
-	...(description.value.trim() ? { description: description.value.trim() } : {}),
-}));
+const currentSettings = computed(() => {
+	// The identity keys are dropped from the base: an empty field means "fall
+	// back to the agent", and the saved value would otherwise reinstate itself.
+	const {
+		displayName: _saved,
+		description: _savedDescription,
+		...rest
+	} = props.savedSettings ?? {};
+	return {
+		...rest,
+		...availability.value,
+		...(displayName.value.trim() ? { displayName: displayName.value.trim() } : {}),
+		...(description.value.trim() ? { description: description.value.trim() } : {}),
+	};
+});
 
 defineExpose({ credentialId, validationError: null, currentSettings });
 </script>
@@ -330,7 +393,10 @@ defineExpose({ credentialId, validationError: null, currentSettings });
 					</div>
 
 					<div v-else-if="step.id === 'availability'" :class="$style.stepStack">
-						<AgentChannelTeamsAvailability v-model="availability" />
+						<AgentChannelTeamsAvailability
+							:model-value="availability"
+							@update:model-value="editAvailability"
+						/>
 					</div>
 
 					<div v-else-if="step.id === 'install'" :class="$style.stepStack">
@@ -435,7 +501,8 @@ defineExpose({ credentialId, validationError: null, currentSettings });
 				</label>
 				<N8nInput
 					id="teams-display-name"
-					v-model="displayName"
+					:model-value="displayName"
+					@update:model-value="editDisplayName"
 					size="large"
 					:maxlength="TEAMS_DISPLAY_NAME_MAX"
 					:placeholder="defaultDisplayName"
@@ -451,7 +518,8 @@ defineExpose({ credentialId, validationError: null, currentSettings });
 				</label>
 				<N8nInput
 					id="teams-description"
-					v-model="description"
+					:model-value="description"
+					@update:model-value="editDescription"
 					size="large"
 					:maxlength="TEAMS_DESCRIPTION_MAX"
 					:placeholder="defaultDescription"
@@ -459,7 +527,11 @@ defineExpose({ credentialId, validationError: null, currentSettings });
 				/>
 			</div>
 
-			<AgentChannelTeamsAvailability v-model="availability" start-collapsed />
+			<AgentChannelTeamsAvailability
+				:model-value="availability"
+				start-collapsed
+				@update:model-value="editAvailability"
+			/>
 
 			<N8nButton
 				v-if="canDownloadPackage"

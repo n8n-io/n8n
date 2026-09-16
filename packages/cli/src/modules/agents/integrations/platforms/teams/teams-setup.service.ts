@@ -14,6 +14,8 @@ import { stringProperty } from '../../integration-helpers';
 
 const TEAMS_CREDENTIAL_TYPE = 'microsoftEntraServicePrincipalApi';
 
+const GUID = /^[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$/;
+
 interface AgentScope {
 	projectId: string;
 	agentId: string;
@@ -57,7 +59,7 @@ export class TeamsSetupService {
 			// the portal, and the user would read Azure's wording for an n8n-side
 			// choice they can still change here.
 			deployToAzureUrl:
-				credentialId && !claimedBy
+				credentialId && identity && !claimedBy
 					? this.armTemplateService.buildDeployUrl(scope.projectId, scope.agentId, credentialId)
 					: null,
 			credentialClaimedBy: claimedBy,
@@ -78,16 +80,37 @@ export class TeamsSetupService {
 		const agent = await this.getAgent(scope);
 		const credentialId = selectedCredentialId ?? this.connectedCredentialId(agent);
 		const identity = credentialId ? await this.readIdentity(agent.projectId, credentialId) : null;
-		const botId = identity?.clientId;
-		if (!botId) {
+		if (!credentialId || !identity) {
 			throw new BadRequestError('Add the credential before downloading the app package.');
+		}
+
+		// Teams rejects a package whose botId is not a GUID, and it says so only
+		// at upload, by which point the cause is three steps behind.
+		if (!GUID.test(identity.clientId)) {
+			throw new BadRequestError(
+				"This credential's Application (client) ID is not a GUID, which Teams requires.",
+			);
+		}
+
+		// The manifest names this credential's bot, so a credential another agent
+		// holds would build that agent's app under this agent's name.
+		const claimedBy = await this.credentialClaimedBy(agent.id, credentialId);
+		if (claimedBy) {
+			throw new BadRequestError(
+				`This credential already backs the Teams channel of "${claimedBy}". Pick a different one.`,
+			);
 		}
 
 		return await this.manifestService.buildPackage({
 			agentName: agent.name,
 			agentId: agent.id,
-			botId,
-			agentUpdatedAt: agent.updatedAt,
+			botId: identity.clientId,
+			// Settings supplied by the caller are not stored yet, so the agent's own
+			// timestamp does not move with them. Stamping now keeps the version
+			// rising, which is the only way Teams applies the package.
+			versionAt: selectedSettings
+				? new Date(Math.max(Date.now(), agent.updatedAt.getTime()))
+				: agent.updatedAt,
 			// The open form wins over what is stored: during setup nothing is stored
 			// yet, and in the settings view the fields sit above this button.
 			settings: selectedSettings ?? this.teamsSettingsOf(agent),

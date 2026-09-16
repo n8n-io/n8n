@@ -84,10 +84,11 @@ it goes through the adapter:
   `platforms/teams/__tests__/fixtures/MicrosoftTeams.schema.v1.16.json` so the
   test needs no network. The schema is **draft-04**, hence `ajv-draft-04`. Icon
   checks decode the bundled PNGs with `node:zlib` rather than adding a decoder.
-- `teams-credential-check.service.test.ts` mints a Bot Framework token the way
-  the channel will, so the check fails for the same reasons the channel would.
-  A 200 carrying no token counts as a failure: anything short of a real token is
-  not evidence the channel works.
+- `teams-credential-check.service.test.ts` asserts the shape of the token
+  request — the tenant-scoped URL, the Bot Framework scope, the
+  client-credentials grant — and that the reply carries an access token. The
+  token itself is opaque in the test and is not validated. A 200 carrying no
+  token counts as a failure.
 - **`[TeamsAdapter] Failed to fetch user info from Graph API` is expected.** The
   adapter calls `GET /users/{aadObjectId}` with the bot's app-only token, and a
   fresh Entra app registration has no Graph permissions. It warns, caches a

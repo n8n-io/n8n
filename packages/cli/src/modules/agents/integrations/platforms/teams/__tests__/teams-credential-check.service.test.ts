@@ -134,6 +134,49 @@ describe('TeamsCredentialCheckService', () => {
 		expect(request).not.toHaveBeenCalled();
 	});
 
+	it('refuses a non-global Microsoft cloud, which the channel refuses too', async () => {
+		withCredential({ ...workingCredential, graphApiBaseUrl: 'https://graph.microsoft.us/' });
+
+		expect(await service.check(PROJECT_ID, CREDENTIAL_ID)).toEqual({
+			status: 'failed',
+			reason: 'cloud',
+		});
+		expect(request).not.toHaveBeenCalled();
+	});
+
+	it('accepts the global cloud spelled with a trailing slash', async () => {
+		withCredential({ ...workingCredential, graphApiBaseUrl: 'https://graph.microsoft.com/' });
+		request.mockResolvedValue({ statusCode: 200, body: { access_token: 'a-token' } });
+
+		expect(await service.check(PROJECT_ID, CREDENTIAL_ID)).toEqual({ status: 'ok' });
+	});
+
+	it('trims the credential fields, as the channel does before using them', async () => {
+		withCredential({
+			tenantId: ` ${TENANT_ID} `,
+			clientId: ` ${CLIENT_ID} `,
+			clientSecret: ' a-secret ',
+		});
+		request.mockResolvedValue({ statusCode: 200, body: { access_token: 'a-token' } });
+
+		expect(await service.check(PROJECT_ID, CREDENTIAL_ID)).toEqual({ status: 'ok' });
+
+		const [options] = request.mock.calls[0] as [{ url: string; body: string }];
+		expect(options.url).toContain(TENANT_ID);
+		expect(options.body).toContain(`client_id=${CLIENT_ID}`);
+	});
+
+	it('bounds the wait, so a stalled Microsoft does not hang the step', async () => {
+		withCredential(workingCredential);
+		request.mockResolvedValue({ statusCode: 200, body: { access_token: 'a-token' } });
+
+		await service.check(PROJECT_ID, CREDENTIAL_ID);
+
+		const [options] = request.mock.calls[0] as [{ timeout?: number }];
+		expect(options.timeout).toBeGreaterThan(0);
+		expect(options.timeout).toBeLessThanOrEqual(60_000);
+	});
+
 	it('never returns the client secret', async () => {
 		withCredential(workingCredential);
 		request.mockResolvedValue({ statusCode: 200, body: { access_token: 'a-token' } });

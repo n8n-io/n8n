@@ -1,4 +1,5 @@
 import { Service } from '@n8n/di';
+import { UserError } from 'n8n-workflow';
 import { createHmac } from 'node:crypto';
 
 import { JwtService } from '@/services/jwt.service';
@@ -49,6 +50,14 @@ export class TeamsArmTemplateService {
 	 * from defaults and offers no way to pass values in the URL.
 	 */
 	buildTemplate(options: TeamsArmTemplateOptions): Record<string, unknown> {
+		// Azure Bot Service refuses a plain-http endpoint, and the deployment fails
+		// with a message that names neither n8n nor the setting behind it.
+		if (!options.messagingEndpoint.startsWith('https://')) {
+			throw new UserError(
+				"The Teams bot needs an HTTPS messaging endpoint. Set N8N_WEBHOOK_URL to this instance's public HTTPS URL.",
+			);
+		}
+
 		return {
 			$schema: 'https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#',
 			contentVersion: '1.0.0.0',

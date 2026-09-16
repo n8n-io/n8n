@@ -36,6 +36,12 @@ describe('TeamsArmTemplateService', () => {
 		template.parameters as Record<string, { defaultValue: unknown }>;
 
 	describe('buildTemplate', () => {
+		it('refuses a plain-http endpoint, which Azure will not accept', () => {
+			expect(() =>
+				service.buildTemplate({ ...options, messagingEndpoint: 'http://n8n.example.com/hook' }),
+			).toThrow(/HTTPS/);
+		});
+
 		it('creates the bot resource and enables the Teams channel', () => {
 			const types = resourcesOf(service.buildTemplate(options)).map((r) => r.type);
 

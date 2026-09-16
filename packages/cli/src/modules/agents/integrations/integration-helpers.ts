@@ -112,24 +112,51 @@ export function hasUpdateIssueField(input: {
 }
 
 /**
+ * Zero-width joiner and the variation selectors are formatting characters that
+ * hold an emoji sequence together, so removing them breaks the glyph. Checked
+ * by code point rather than a character class, which cannot hold a combining
+ * character without becoming misleading.
+ */
+function isEmojiGlue(character: string): boolean {
+	const point = character.codePointAt(0) ?? 0;
+	return point === 0x200d || (point >= 0xfe00 && point <= 0xfe0f);
+}
+
+/** Whitespace that is also a control character, so it becomes a space first. */
+const WHITESPACE_CONTROLS = /[\t\n\v\f\r\u0085\u2028\u2029]/gu;
+
+const FORMATTING = /[\p{Cc}\p{Cf}]/gu;
+
+const GRAPHEMES = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
+
+/**
  * Reduces a user-chosen name to something safe to put in a vendor app listing:
- * no control or formatting characters, no runs of whitespace, and within the
- * vendor's length cap.
+ * no stray control characters, no runs of whitespace, and within the vendor's
+ * length cap.
  *
  * Accented and non-Latin names survive. Slack keeps its own stricter rule,
  * because Slack's app names are restricted where Teams' are not.
  *
- * Length is counted in code points, so the cap cannot cut an emoji in half.
+ * `maxLength` counts code points, which is what a JSON Schema `maxLength`
+ * counts, but the cut lands on a grapheme boundary, so a flag or a joined emoji
+ * is never left half-written.
  */
 export function sanitiseAppName(raw: string, maxLength: number, fallback: string): string {
-	const cleaned = Array.from(
-		raw
-			.replace(/[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/gu, '')
-			.replace(/\s+/g, ' ')
-			.trim(),
-	)
-		.slice(0, maxLength)
-		.join('')
+	const cleaned = raw
+		.replace(WHITESPACE_CONTROLS, ' ')
+		.replace(FORMATTING, (character) => (isEmojiGlue(character) ? character : ''))
+		.replace(/\s+/g, ' ')
 		.trim();
-	return cleaned.length > 0 ? cleaned : fallback;
+
+	let out = '';
+	let points = 0;
+	for (const { segment } of GRAPHEMES.segment(cleaned)) {
+		const size = Array.from(segment).length;
+		if (points + size > maxLength) break;
+		out += segment;
+		points += size;
+	}
+
+	out = out.trim();
+	return out.length > 0 ? out : fallback;
 }
