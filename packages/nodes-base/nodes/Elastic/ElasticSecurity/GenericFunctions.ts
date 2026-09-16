@@ -6,9 +6,7 @@ import type {
 	IRequestOptions,
 	IHttpRequestMethods,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
-
-import { toPathSegment } from '@utils/url';
+import { toPathSegment, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import type { Connector, ElasticSecurityApiCredentials } from './types';
 

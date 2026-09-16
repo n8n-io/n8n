@@ -94,7 +94,7 @@ const activateOperation: INodeProperties[] = [
 		routing: {
 			request: {
 				method: 'POST',
-				url: '=/workflows/{{ $value }}/activate',
+				url: '=/workflows/{{ toPathSegment($value) }}/activate',
 			},
 		},
 	},
@@ -141,7 +141,7 @@ const deactivateOperation: INodeProperties[] = [
 		routing: {
 			request: {
 				method: 'POST',
-				url: '=/workflows/{{ $value }}/deactivate',
+				url: '=/workflows/{{ toPathSegment($value) }}/deactivate',
 			},
 		},
 	},
@@ -160,7 +160,7 @@ const deleteOperation: INodeProperties[] = [
 		routing: {
 			request: {
 				method: 'DELETE',
-				url: '=/workflows/{{ $value }}',
+				url: '=/workflows/{{ toPathSegment($value) }}',
 			},
 		},
 	},
@@ -303,7 +303,7 @@ const getOperation: INodeProperties[] = [
 		routing: {
 			request: {
 				method: 'GET',
-				url: '=/workflows/{{ $value }}',
+				url: '=/workflows/{{ toPathSegment($value) }}',
 			},
 		},
 	},
@@ -322,7 +322,7 @@ const updateOperation: INodeProperties[] = [
 		routing: {
 			request: {
 				method: 'PUT',
-				url: '=/workflows/{{ $value }}',
+				url: '=/workflows/{{ toPathSegment($value) }}',
 			},
 		},
 	},

@@ -12,7 +12,9 @@ import type {
 } from 'n8n-workflow';
 import { CHAT_TRIGGER_NODE_TYPE, createRunExecutionData, NodeConnectionTypes } from 'n8n-workflow';
 
+import { WAITING_TOKEN_QUERY_PARAM } from '@/constants';
 import { InstanceSettings } from '@/instance-settings';
+import { generateUrlSignature, prepareUrlForSigning } from '@/utils/signature-helpers';
 
 import { NodeExecutionContext } from '../node-execution-context';
 
@@ -402,6 +404,51 @@ describe('NodeExecutionContext', () => {
 			expect(result).toBe(
 				'http://localhost/waiting-webhook/123/node456?approved=true&signature=11c5efc97a0d6f2ea9045dba6e397596cba29dc24adb44a9ebd3d1272c991e9b',
 			);
+		});
+
+		describe('when the node id is not a plain path segment', () => {
+			const NODE_ID = '../43/dddd2020-0000-4000-8000-000000002099';
+
+			const signedUrlForNodeId = (nodeId: string) =>
+				new URL(
+					new TestContext(
+						workflow,
+						mock<INode>({ id: nodeId }),
+						mock<IWorkflowExecuteAdditionalData>({
+							executionId: '123',
+							webhookWaitingBaseUrl: 'http://localhost/waiting-webhook',
+							formWaitingBaseUrl: 'http://localhost/form-waiting',
+						}),
+						mode,
+						createRunExecutionData({ resultData: { runData: {} } }),
+					).getSignedResumeUrl({ approved: 'true' }),
+				);
+
+			it('should keep the node id inside its own path segment', () => {
+				expect(signedUrlForNodeId(NODE_ID).pathname).toBe(
+					'/waiting-webhook/123/..%2F43%2Fdddd2020-0000-4000-8000-000000002099',
+				);
+			});
+
+			it('should keep the signature scoped to the escaped path', () => {
+				const signature = signedUrlForNodeId(NODE_ID).searchParams.get('signature')!;
+
+				// Unescaped, the same ids normalise to a different path, so the signature over the
+				// escaped one must not validate against it.
+				const normalisedUrl = new URL(
+					`http://localhost/waiting-webhook/123/${NODE_ID}?approved=true&signature=${signature}`,
+				);
+				expect(normalisedUrl.pathname).toBe(
+					'/waiting-webhook/43/dddd2020-0000-4000-8000-000000002099',
+				);
+
+				normalisedUrl.searchParams.delete(WAITING_TOKEN_QUERY_PARAM);
+				const expectedSignature = generateUrlSignature(
+					prepareUrlForSigning(normalisedUrl),
+					instanceSettings.hmacSignatureSecret,
+				);
+				expect(signature).not.toBe(expectedSignature);
+			});
 		});
 	});
 });

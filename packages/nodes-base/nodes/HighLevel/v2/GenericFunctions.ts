@@ -16,7 +16,7 @@ import type {
 	IPollFunctions,
 	IWebhookFunctions,
 } from 'n8n-workflow';
-import { ApplicationError, NodeApiError } from 'n8n-workflow';
+import { ApplicationError, NodeApiError, toPathSegment } from 'n8n-workflow';
 
 const VALID_EMAIL_REGEX =
 	/^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
@@ -218,7 +218,13 @@ export const addNotePostReceiveAction = async function (
 		body: note,
 	};
 
-	await highLevelApiRequest.call(this, 'POST', `/contacts/${contactId}/notes`, requestBody, {});
+	await highLevelApiRequest.call(
+		this,
+		'POST',
+		`/contacts/${toPathSegment(contactId)}/notes`,
+		requestBody,
+		{},
+	);
 
 	return items;
 };
@@ -231,7 +237,7 @@ export async function taskUpdatePreSendAction(
 	if (!body.title || !body.dueDate) {
 		const contactId = this.getNodeParameter('contactId');
 		const taskId = this.getNodeParameter('taskId');
-		const resource = `/contacts/${contactId}/tasks/${taskId}`;
+		const resource = `/contacts/${toPathSegment(contactId)}/tasks/${toPathSegment(taskId)}`;
 		const responseData = await highLevelApiRequest.call(this, 'GET', resource);
 		body.title = body.title || responseData.title;
 		// the api response dueDate has to be formatted or it will error on update

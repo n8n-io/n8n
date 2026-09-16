@@ -11,6 +11,7 @@ import { Git } from '../Git.node';
 const mockGit = {
 	log: jest.fn(),
 	raw: jest.fn(),
+	listConfig: jest.fn(),
 	env: jest.fn().mockReturnThis(),
 };
 
@@ -71,6 +72,11 @@ describe('Git Node', () => {
 		mockGit.raw.mockImplementation(async (args: string[]) =>
 			args[0] === 'rev-parse' ? revParseOutput : '',
 		);
+		mockGit.listConfig.mockResolvedValue({
+			files: ['.git/config', 'command line:'],
+			values: { '.git/config': {}, 'command line:': {} },
+			all: {},
+		});
 
 		gitNode = new Git();
 	});
@@ -84,7 +90,7 @@ describe('Git Node', () => {
 
 			expect(mockSimpleGit).toHaveBeenCalledWith(
 				expect.objectContaining({
-					config: ['safe.bareRepository=explicit'],
+					config: expect.arrayContaining(['safe.bareRepository=explicit']),
 				}),
 			);
 		});
@@ -97,7 +103,7 @@ describe('Git Node', () => {
 
 			expect(mockSimpleGit).toHaveBeenCalledWith(
 				expect.objectContaining({
-					config: ['safe.bareRepository=explicit'],
+					config: expect.arrayContaining(['safe.bareRepository=explicit']),
 				}),
 			);
 		});
@@ -110,7 +116,7 @@ describe('Git Node', () => {
 
 			expect(mockSimpleGit).toHaveBeenCalledWith(
 				expect.objectContaining({
-					config: ['safe.bareRepository=explicit'],
+					config: expect.arrayContaining(['safe.bareRepository=explicit']),
 				}),
 			);
 		});
@@ -121,11 +127,8 @@ describe('Git Node', () => {
 
 			await gitNode.execute.call(executeFunctions);
 
-			expect(mockSimpleGit).toHaveBeenCalledWith(
-				expect.objectContaining({
-					config: [],
-				}),
-			);
+			const options = mockSimpleGit.mock.calls[0][0];
+			expect(options.config).not.toContain('safe.bareRepository=explicit');
 		});
 	});
 
@@ -137,7 +140,7 @@ describe('Git Node', () => {
 
 			expect(mockSimpleGit).toHaveBeenCalledWith(
 				expect.objectContaining({
-					config: ['core.hooksPath=/dev/null'],
+					config: expect.arrayContaining(['core.hooksPath=/dev/null']),
 				}),
 			);
 		});
@@ -147,11 +150,8 @@ describe('Git Node', () => {
 
 			await gitNode.execute.call(executeFunctions);
 
-			expect(mockSimpleGit).toHaveBeenCalledWith(
-				expect.objectContaining({
-					config: [],
-				}),
-			);
+			const options = mockSimpleGit.mock.calls[0][0];
+			expect(options.config).not.toContain('core.hooksPath=/dev/null');
 		});
 	});
 

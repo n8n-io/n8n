@@ -46,7 +46,11 @@ import { ensureType } from './utils/ensure-type';
 import { extractValue } from './utils/extract-value';
 import { getAdditionalKeys } from './utils/get-additional-keys';
 import { validateValueAgainstSchema } from './utils/validate-value-against-schema';
-import { generateUrlSignature, prepareUrlForSigning } from '../../utils/signature-helpers';
+import {
+	buildResumeUrlSuffix,
+	generateUrlSignature,
+	prepareUrlForSigning,
+} from '../../utils/signature-helpers';
 
 export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCredentials'> {
 	protected readonly instanceSettings = Container.get(InstanceSettings);
@@ -238,7 +242,9 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 			throw new UnexpectedError('Execution id is missing');
 		}
 
-		const baseURL = new URL(`${webhookWaitingBaseUrl}/${executionId}/${this.node.id}`);
+		const baseURL = new URL(
+			`${webhookWaitingBaseUrl}${buildResumeUrlSuffix(executionId, this.node.id)}`,
+		);
 
 		for (const [key, value] of Object.entries(parameters)) {
 			baseURL.searchParams.set(key, value);

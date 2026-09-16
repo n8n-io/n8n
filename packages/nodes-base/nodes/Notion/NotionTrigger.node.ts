@@ -5,6 +5,7 @@ import {
 	type INodeExecutionData,
 	type INodeType,
 	type INodeTypeDescription,
+	toPathSegment,
 	NodeConnectionTypes,
 } from 'n8n-workflow';
 
@@ -198,7 +199,7 @@ export class NotionTrigger implements INodeType {
 		let { results: data } = await notionApiRequest.call(
 			this,
 			'POST',
-			`/databases/${databaseId}/query`,
+			`/databases/${toPathSegment(databaseId)}/query`,
 			body,
 			{},
 			'',
@@ -221,7 +222,7 @@ export class NotionTrigger implements INodeType {
 				const { results, has_more, next_cursor } = await notionApiRequest.call(
 					this,
 					'POST',
-					`/databases/${databaseId}/query`,
+					`/databases/${toPathSegment(databaseId)}/query`,
 					body,
 					{},
 					'',

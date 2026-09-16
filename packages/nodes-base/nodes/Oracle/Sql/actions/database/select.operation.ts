@@ -112,7 +112,14 @@ export async function execute(
 		const whereClauses =
 			((this.getNodeParameter('where', i, []) as IDataObject).values as WhereClause[]) || [];
 		const combineConditions = this.getNodeParameter('combineConditions', i, 'AND') as string;
-		[query, values] = addWhereClauses(query, whereClauses, combineConditions, columnMetaDataObject);
+		[query, values] = addWhereClauses(
+			query,
+			whereClauses,
+			combineConditions,
+			columnMetaDataObject,
+			this.getNode(),
+			i,
+		);
 
 		const sortRules =
 			((this.getNodeParameter('sort', i, []) as IDataObject).values as SortRule[]) || [];

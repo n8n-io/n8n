@@ -9,7 +9,7 @@ import type {
 	SupplyData,
 } from 'n8n-workflow';
 
-import { getSessionId } from '@utils/helpers';
+import { coerceSessionIdToString, getSessionId } from '@utils/helpers';
 import { logWrapper } from '@utils/logWrapper';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
@@ -110,7 +110,11 @@ export class MemoryXata implements INodeType {
 		if (nodeVersion >= 1.2) {
 			sessionId = getSessionId(this, itemIndex);
 		} else {
-			sessionId = this.getNodeParameter('sessionId', itemIndex) as string;
+			sessionId = coerceSessionIdToString(
+				this,
+				this.getNodeParameter('sessionId', itemIndex),
+				itemIndex,
+			);
 		}
 
 		const xataClient = new BaseClient({

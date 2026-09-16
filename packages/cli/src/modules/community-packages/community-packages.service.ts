@@ -14,7 +14,7 @@ import {
 } from 'n8n-workflow';
 import { execFile } from 'node:child_process';
 import { access, constants, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { join, relative, resolve, sep } from 'node:path';
 import { promisify } from 'node:util';
 
 import {
@@ -69,6 +69,11 @@ const INVALID_OR_SUSPICIOUS_PACKAGE_NAME = /[^0-9a-z@\-._/]/;
 
 /** Built-in package names cannot be installed as community packages. */
 const RESERVED_PACKAGE_NAMES = new Set<string>(BUILTIN_NODES_PACKAGES);
+
+const NPM_PACKAGE_SCOPE_PATTERN = /^@[a-z0-9][a-z0-9\-._]*$/;
+
+/** A package name holds no path separator, so it can never widen the resolved directory. */
+const NPM_PACKAGE_NAME_PATTERN = /^[a-z0-9][a-z0-9\-._]*$/;
 
 type PackageJson = {
 	name: 'installed-nodes';
@@ -146,6 +151,10 @@ export class CommunityPackagesService {
 
 		const scope = rawString.includes('/') ? rawString.split('/')[0] : undefined;
 
+		if (scope && !NPM_PACKAGE_SCOPE_PATTERN.test(scope)) {
+			throw new UnexpectedError(`Invalid package scope: ${scope}`);
+		}
+
 		const packageNameWithoutScope = scope ? rawString.replace(`${scope}/`, '') : rawString;
 
 		if (!packageNameWithoutScope.startsWith(NODE_PACKAGE_PREFIX)) {
@@ -161,6 +170,12 @@ export class CommunityPackagesService {
 		}
 
 		const packageName = version ? rawString.replace(`@${version}`, '') : rawString;
+
+		const nameWithoutScopeOrVersion = scope ? packageName.replace(`${scope}/`, '') : packageName;
+
+		if (!NPM_PACKAGE_NAME_PATTERN.test(nameWithoutScopeOrVersion)) {
+			throw new UnexpectedError(`Invalid package name: ${packageName}`);
+		}
 
 		if (RESERVED_PACKAGE_NAMES.has(packageName)) {
 			throw new UserError(`Package name "${packageName}" is reserved for n8n built-in packages`);
@@ -416,6 +431,24 @@ export class CommunityPackagesService {
 		}
 	}
 
+	private async runRegistryChecks(packageName: string, packageVersion: string, checksum?: string) {
+		this.checkInstallPermissions(Boolean(checksum));
+
+		const packageStatus = await this.checkNpmPackageStatus(packageName);
+
+		if (packageStatus.status !== NPM_PACKAGE_STATUS_GOOD) {
+			throw new UnexpectedError(`Package "${packageName}" is not allowed`);
+		}
+
+		const registry = this.getNpmRegistry();
+
+		if (checksum) {
+			await verifyIntegrity(packageName, packageVersion, registry, checksum);
+		}
+
+		await checkIfVersionExistsOrThrow(packageName, packageVersion, registry);
+	}
+
 	private async installOrUpdatePackage(
 		packageName: string,
 		options:
@@ -425,14 +458,7 @@ export class CommunityPackagesService {
 		const isUpdate = 'installedPackage' in options;
 		const packageVersion = !options.version ? 'latest' : options.version;
 
-		const shouldValidateChecksum = 'checksum' in options && Boolean(options.checksum);
-		this.checkInstallPermissions(shouldValidateChecksum);
-
-		if (options.checksum) {
-			await verifyIntegrity(packageName, packageVersion, this.getNpmRegistry(), options.checksum);
-		}
-
-		await checkIfVersionExistsOrThrow(packageName, packageVersion, this.getNpmRegistry());
+		await this.runRegistryChecks(packageName, packageVersion, options.checksum);
 
 		try {
 			await this.downloadPackage(packageName, packageVersion);
@@ -464,7 +490,11 @@ export class CommunityPackagesService {
 				const installedPackage = await this.persistInstalledPackage(loader);
 				void this.publisher.publishCommand({
 					command: isUpdate ? 'community-package-update' : 'community-package-install',
-					payload: { packageName, packageVersion },
+					payload: {
+						packageName,
+						packageVersion: installedPackage.installedVersion,
+						checksum: options.checksum,
+					},
 				});
 				await this.loadNodesAndCredentials.postProcessLoaders();
 				this.logger.info(`Community package installed: ${packageName}`);
@@ -484,18 +514,107 @@ export class CommunityPackagesService {
 		}
 	}
 
+	private assertPackageChangesAllowed() {
+		if (!this.config.enabled) {
+			throw new UserError('Community packages are disabled on this instance');
+		}
+
+		if (this.config.preventLoading) {
+			throw new UserError('Community package loading is disabled on this instance');
+		}
+	}
+
+	// Payloads from other instances pass the same gates as a local install request. Not
+	// `communityPackagesManagedByEnv`: only the main runs the env loader, and it publishes
+	// these commands, so a follower that refused them would never get the packages.
+	// Failures are logged rather than rethrown, so one message cannot break the subscriber.
 	@OnPubSubEvent('community-package-install')
 	@OnPubSubEvent('community-package-update')
 	async handleInstallEvent({
 		packageName,
 		packageVersion,
-	}: { packageName: string; packageVersion: string }) {
-		await this.installOrUpdateNpmPackage(packageName, packageVersion);
+		checksum,
+	}: { packageName: string; packageVersion: string; checksum?: string }) {
+		let accepted = false;
+
+		try {
+			this.assertPackageChangesAllowed();
+
+			const parsed = this.parseNpmPackageName(packageName);
+
+			// The payload only says that something needs converging. What gets installed comes
+			// from the record the publishing instance persisted before it published.
+			const installedPackage = await this.findInstalledPackage(parsed.packageName);
+
+			if (!installedPackage) {
+				throw new UnexpectedError('No installed package record found', {
+					extra: { packageName: parsed.packageName },
+				});
+			}
+
+			const resolvedVersion = installedPackage.installedVersion;
+
+			if (!valid(resolvedVersion)) {
+				throw new UnexpectedError(`Invalid version: ${resolvedVersion}`);
+			}
+
+			const versionMatches = resolvedVersion === packageVersion;
+
+			if (!versionMatches) {
+				this.logger.warn('Community package version differs from the stored record', {
+					packageName: installedPackage.packageName,
+					packageVersion,
+					installedVersion: resolvedVersion,
+				});
+			}
+
+			// Integrity is recorded per version, so the payload checksum only applies when the
+			// payload names the version that is about to be installed.
+			await this.runRegistryChecks(
+				installedPackage.packageName,
+				resolvedVersion,
+				versionMatches ? checksum : undefined,
+			);
+
+			accepted = true;
+
+			await this.installOrUpdateNpmPackage(installedPackage.packageName, resolvedVersion);
+		} catch (error) {
+			const details = { packageName, reason: ensureError(error).message };
+
+			if (accepted) this.logger.error('Failed to install community package', details);
+			else this.logger.warn('Skipped installing community package', details);
+		}
 	}
 
 	@OnPubSubEvent('community-package-uninstall')
 	async handleUninstallEvent({ packageName }: { packageName: string }) {
-		await this.removeNpmPackage(packageName);
+		let accepted = false;
+
+		try {
+			this.assertPackageChangesAllowed();
+
+			const parsed = this.parseNpmPackageName(packageName);
+
+			// The mirror of the install path: the removed record is what says the package is
+			// meant to be gone, so a payload on its own never removes anything.
+			const installedPackage = await this.findInstalledPackage(parsed.packageName);
+
+			if (installedPackage) {
+				throw new UnexpectedError('Installed package record still present', {
+					extra: { packageName: parsed.packageName },
+				});
+			}
+
+			accepted = true;
+
+			await this.removeNpmPackage(parsed.packageName);
+		} catch (error) {
+			const details = { packageName, reason: ensureError(error).message };
+
+			if (accepted) this.logger.error('Failed to uninstall community package', details);
+			else this.logger.warn('Skipped uninstalling community package', details);
+		}
 	}
 
 	private async installOrUpdateNpmPackage(packageName: string, packageVersion: string) {
@@ -513,7 +632,25 @@ export class CommunityPackagesService {
 	}
 
 	private resolvePackageDirectory(packageName: string) {
-		return `${this.downloadFolder}/node_modules/${packageName}`;
+		const nodeModulesDirectory = `${this.downloadFolder}/node_modules`;
+		const packageDirectory = `${nodeModulesDirectory}/${packageName}`;
+
+		// Not every caller validates the name, so confirm the resolved path is exactly the
+		// named directory. A prefix check alone still accepts a name like `@scope/pkg/..`,
+		// which resolves to the scope directory and stays under node_modules.
+		const relativePath = relative(resolve(nodeModulesDirectory), resolve(packageDirectory));
+
+		// An empty relative path is the download folder itself, and a leading `..` is outside
+		// it. Both of those compare equal to the name that produced them, so reject them first.
+		if (
+			relativePath === '' ||
+			relativePath.startsWith('..') ||
+			relativePath.split(sep).join('/') !== packageName
+		) {
+			throw new UserError('Invalid package name', { extra: { packageName } });
+		}
+
+		return packageDirectory;
 	}
 
 	private async downloadPackage(packageName: string, packageVersion: string): Promise<string> {

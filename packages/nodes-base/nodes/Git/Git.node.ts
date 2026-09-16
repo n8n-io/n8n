@@ -830,6 +830,7 @@ export class Git implements INodeType {
 						logOptions.file = options.file as string;
 					}
 
+					await validateGitConfig();
 					const log = await git.log(logOptions);
 
 					returnItems.push(
