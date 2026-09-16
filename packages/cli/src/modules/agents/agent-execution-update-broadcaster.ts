@@ -4,7 +4,6 @@ import { ProjectRelationRepository } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
-import { OperationalError } from 'n8n-workflow';
 
 import { Push } from '@/push';
 import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
@@ -14,10 +13,10 @@ import { AgentExecutionThreadRepository } from './repositories/agent-execution-t
 
 type AgentExecutionUpdate = PushPayload<'agentExecutionUpdated'>;
 
-const CHAT_EVENT_RELAY_TIMEOUT_MS = 1_000;
-
 @Service()
 export class AgentExecutionUpdateBroadcaster {
+	private isChatEventRelayUnavailable = false;
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly projectRelationRepository: ProjectRelationRepository,
@@ -47,26 +46,21 @@ export class AgentExecutionUpdateBroadcaster {
 			this.logger.warn('Failed to deliver agent chat event', { queueId: data.queueId, error });
 		}
 
-		let relayTimer: NodeJS.Timeout | undefined;
-		try {
-			if (this.instanceSettings.isWorker || this.instanceSettings.isMultiMain) {
-				await Promise.race([
-					this.publisher.publishCommand({
-						command: 'relay-agent-chat-event',
-						payload: { data, userId },
-					}),
-					new Promise<never>((_, reject) => {
-						relayTimer = setTimeout(
-							() => reject(new OperationalError('Agent chat event relay timed out')),
-							CHAT_EVENT_RELAY_TIMEOUT_MS,
-						);
-					}),
-				]);
-			}
-		} catch (error) {
-			this.logger.warn('Failed to deliver agent chat event', { queueId: data.queueId, error });
-		} finally {
-			clearTimeout(relayTimer);
+		if (this.instanceSettings.isWorker || this.instanceSettings.isMultiMain) {
+			void this.publisher
+				.publishCommand({ command: 'relay-agent-chat-event', payload: { data, userId } })
+				.then(() => {
+					if (this.isChatEventRelayUnavailable) {
+						this.isChatEventRelayUnavailable = false;
+						this.logger.info('Agent chat event relay recovered', { queueId: data.queueId });
+					}
+				})
+				.catch((error) => {
+					if (this.isChatEventRelayUnavailable) return;
+
+					this.isChatEventRelayUnavailable = true;
+					this.logger.warn('Failed to deliver agent chat event', { queueId: data.queueId, error });
+				});
 		}
 	}
 

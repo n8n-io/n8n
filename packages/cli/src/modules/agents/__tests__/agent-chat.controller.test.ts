@@ -460,6 +460,28 @@ describe('AgentChatController HITL cancellation', () => {
 		});
 		expect(queue.notify).toHaveBeenCalledWith('thread-1');
 	});
+
+	it('attempts active run cancellation when preview resume cleanup fails', async () => {
+		const { controller, agentExecutionOrchestratorService, agentsService, queue } =
+			makeController();
+		agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
+		queue.cancelPreviewResumes.mockRejectedValue(new Error('Queue cleanup failed'));
+		agentExecutionOrchestratorService.cancelChatRun.mockResolvedValue(true);
+
+		await expect(
+			controller.cancelChatRun(
+				{
+					params: { projectId: 'project-1' },
+					user: { id: 'user-1' },
+				} as never,
+				{} as never,
+				'agent-1',
+				'run-1',
+			),
+		).rejects.toThrow('Queue cleanup failed');
+
+		expect(agentExecutionOrchestratorService.cancelChatRun).toHaveBeenCalled();
+	});
 });
 
 describe('AgentChatController attachment admission', () => {
@@ -483,6 +505,26 @@ describe('AgentChatController attachment admission', () => {
 			controller.chat(request as never, {} as never, 'agent-1', payload),
 		).rejects.toThrow('Queue unavailable');
 		expect(agentChatAttachmentService.deleteByIds).toHaveBeenCalledWith(['att-1']);
+	});
+
+	it('keeps attachments when admission fails after persistence', async () => {
+		const { controller, queue, agentChatAttachmentService } = makeController();
+		agentChatAttachmentService.storeInbound.mockResolvedValue(stored as never);
+		queue.enqueuePreview.mockImplementationOnce(
+			async (_input, _clientRequestId, _execute, onPersisted) => {
+				onPersisted?.();
+				throw new Error('Queue unavailable after persistence');
+			},
+		);
+
+		await expect(
+			controller.chat(request as never, {} as never, 'agent-1', {
+				message: 'hi',
+				attachments: [attachment],
+				clientRequestId,
+			}),
+		).rejects.toThrow('Queue unavailable after persistence');
+		expect(agentChatAttachmentService.deleteByIds).not.toHaveBeenCalled();
 	});
 
 	it('deletes earlier attachments when a later one fails to store', async () => {

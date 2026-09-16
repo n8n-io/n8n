@@ -7,6 +7,7 @@ import {
 import type { AgentChatQueueItem, PushPayload } from '@n8n/api-types';
 import { OnPubSubEvent, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
+import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import { UserError, UnexpectedError } from 'n8n-workflow';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -45,7 +46,7 @@ type PreviewExecution = {
 	pendingEvents: Promise<void>;
 };
 
-const hitlAdmissionLockKey = (threadId: string) => `agent-hitl-admission:${threadId}`;
+const previewAdmissionLockKey = (threadId: string) => `agent-preview-admission:${threadId}`;
 
 @Service()
 export class AgentMessageQueueService {
@@ -95,36 +96,36 @@ export class AgentMessageQueueService {
 		input: AgentPreviewQueueInput,
 		clientRequestId: string,
 		execute: PreviewExecution['execute'],
+		onPersisted?: () => void,
 	): Promise<AgentChatQueueItem> {
 		this.stopping.signal.throwIfAborted();
 		const payload = input.payload;
-		const entry =
-			payload.kind === 'hitl'
-				? await this.lockService.withLease(
-						LockNamespace.KNOWN_LOCKS,
-						hitlAdmissionLockKey(input.threadId),
-						async () => {
-							const memory = await this.getResumeScope(
-								input.agentId,
-								payload.runId,
-								payload.resourceId,
-								payload.toolCallId,
-							);
-							const duplicate = (
-								await this.repository.findPreviewEntries(input.agentId, input.threadId)
-							).some(
-								(entry) =>
-									entry.payload.kind === 'hitl' &&
-									entry.payload.runId === payload.runId &&
-									entry.payload.toolCallId === payload.toolCallId,
-							);
-							if (memory.threadId !== input.threadId || duplicate) {
-								throw new UserError('This action has already been handled or has expired');
-							}
-							return await this.repository.enqueue(input);
-						},
-					)
-				: await this.repository.enqueue(input);
+		const entry = await this.lockService.withLease(
+			LockNamespace.KNOWN_LOCKS,
+			previewAdmissionLockKey(input.threadId),
+			async () => {
+				if (payload.kind === 'message') return await this.repository.enqueue(input);
+				const memory = await this.getResumeScope(
+					input.agentId,
+					payload.runId,
+					payload.resourceId,
+					payload.toolCallId,
+				);
+				const duplicate = (
+					await this.repository.findPreviewEntries(input.agentId, input.threadId)
+				).some(
+					(entry) =>
+						entry.payload.kind === 'hitl' &&
+						entry.payload.runId === payload.runId &&
+						entry.payload.toolCallId === payload.toolCallId,
+				);
+				if (memory.threadId !== input.threadId || duplicate) {
+					throw new UserError('This action has already been handled or has expired');
+				}
+				return await this.repository.enqueue(input);
+			},
+		);
+		onPersisted?.();
 		this.previews.set(entry.id, {
 			input,
 			clientRequestId,
@@ -277,7 +278,14 @@ export class AgentMessageQueueService {
 
 	private async deleteUnusedAttachments(entry: AgentMessageQueue): Promise<void> {
 		if (entry.payload.source === 'preview' && entry.payload.kind === 'message') {
-			await this.attachments.deleteByIds(entry.payload.attachments?.map(({ id }) => id) ?? []);
+			try {
+				await this.attachments.deleteByIds(entry.payload.attachments?.map(({ id }) => id) ?? []);
+			} catch (error) {
+				this.logger.warn('Failed to delete unused agent chat attachments', {
+					id: entry.id,
+					error,
+				});
+			}
 		}
 	}
 
@@ -455,7 +463,7 @@ export class AgentMessageQueueService {
 				if (!abortSignal.aborted && !preview.errorEmitted) {
 					this.sendPreviewEvent(entry.id, preview, {
 						type: 'error',
-						message: error instanceof Error ? error.message : 'Chat failed',
+						message: scrubSecretsInText(error instanceof Error ? error.message : 'Chat failed'),
 					});
 				}
 			}
