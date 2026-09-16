@@ -10,6 +10,7 @@ export const DOMAIN_TOOL_IDS = {
 	RESEARCH: 'research',
 	N8N_DOCS: 'n8n-docs',
 	NODES: 'nodes',
+	SEARCH_MODELS: 'searchModels',
 	ASK_USER: 'ask-user',
 	BUILD_WORKFLOW: 'build-workflow',
 	PARSE_FILE: 'parse-file',

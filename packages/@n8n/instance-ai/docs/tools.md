@@ -61,7 +61,7 @@ keep their explicit pattern. `like` matches case; `ilike` ignores case.
 | `eval-config` | 6 |
 | `n8n-docs` | 3 |
 | `agents` | 1 |
-| `build-workflow`, `ask-user`, `parse-file` | single-purpose |
+| `build-workflow`, `ask-user`, `parse-file`, `searchModels` | single-purpose |
 
 ## Orchestration Tools
 
@@ -847,6 +847,39 @@ discriminator values like spreadsheet IDs, calendar names, etc.
 | `currentNodeParameters` | object | no | Parameters needed by dependent lookups |
 
 **Returns**: `{ results, paginationToken?, builderHint?, error? }`.
+
+---
+
+## `searchModels`
+
+Preliminary models.dev catalog search before a relevant provider credential is
+connected. This tool is deferred: discover it with `search_tools` and load it
+with `load_tool` when needed. If a provider credential or Gateway credits is
+available, use `nodes(action="explore-resources")` with that credential instead.
+Do not use catalog search to validate an unfamiliar model or to recover from a
+failed credential lookup.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `provider` | string | yes | Serving provider ID. Case-insensitive. Aliases: `gemini` → `google`, `claude` → `anthropic`, `bedrock` / `amazon-bedrock` → `aws-bedrock`, `azure` / `azure-cognitive-services` → `azure-openai`. |
+| `limit` | integer | no | Default 10, minimum 1, maximum 10. |
+
+Returns recent non-deprecated models whose catalog input and output modalities
+both include text. Preview models remain eligible. Results are ordered by a valid ISO release
+date, newest first, then by model ID. Missing or invalid dates sort last and are
+returned as `null`. Existing catalog alias normalization removes equivalent
+dated snapshots where the catalog identifies a latest alias.
+
+The result includes exact IDs, model metadata, catalog pricing, `hasMore`,
+`source`, `fetchedAt`, `freshness`, and `credentialAccess: "not_checked"`.
+Missing metadata is `null`. Status is `ok`, `unknown_provider`,
+`no_matching_models`, or `catalog_unavailable`. Absence from this limited
+catalog result does not establish that a model is invalid.
+
+The public catalog cache is shared across requests for one hour. Refreshes have
+a five-second deadline. On failure, a snapshot younger than 24 hours can be
+returned with `freshness: "stale"`. Older snapshots are not returned. Cancelling
+one caller stops its wait without cancelling a refresh shared with other callers.
 
 ---
 

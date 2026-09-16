@@ -802,6 +802,10 @@ asked for that exact name.
   model fields when credentials are available, including Gateway credits.
   The credential's model list takes precedence over hints and node defaults.
   Choose a supported model that fits the task and budget.
+- For preliminary provider/model exploration without a relevant credential,
+  load and call `searchModels` for catalog candidates. Once a credential is
+  available, use its resource lookup instead. Do not use catalog search as a
+  model-validity check or a fallback for a failed credential lookup.
 - Keep an explicitly requested or working model unless current provider
   evidence shows it is unavailable or unsuitable. This includes model IDs in
   configuration fields and expressions. A failed lookup does not prove a model
