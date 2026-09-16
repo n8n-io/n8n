@@ -81,6 +81,21 @@ it goes through the adapter:
   the channel will, so the check fails for the same reasons the channel would.
   A 200 carrying no token counts as a failure: anything short of a real token is
   not evidence the channel works.
+- **`[TeamsAdapter] Failed to fetch user info from Graph API` is expected.** The
+  adapter calls `GET /users/{aadObjectId}` with the bot's app-only token, and a
+  fresh Entra app registration has no Graph permissions. It warns, caches a
+  negative result so it does not retry per message, and returns null.
+
+  The only thing lost is `message.author.email`. The author's name and id come
+  from the activity payload, so routing, sessions and replies are unaffected.
+
+  Curing it needs `User.Read.All` granted on the **Entra app registration**, with
+  admin consent. The Teams manifest cannot grant it: manifest permissions are
+  resource-specific, scoped to one team or chat and consented by its owner, while
+  this is a tenant-wide directory read. `User.ReadBasic.All` would be the lighter
+  ask but is delegated-only, so app-only has no smaller option. We do not ask for
+  it — tenant-wide directory read is a poor trade for one optional field.
+
 - The bundled icons live in `platforms/teams/assets/`. `copyAgentIntegrationAssets`
   in `packages/cli/scripts/build.mjs` discovers every `platforms/*/assets`
   directory; a platform that hardcodes itself out of that list works in dev,
