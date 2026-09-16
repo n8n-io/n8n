@@ -3,6 +3,7 @@ import { createFakeOutboundHttp, type Route } from '@n8n/backend-network/testing
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { IHttpRequestOptions } from 'n8n-workflow';
 
+import { ExternalSecretsConfig } from '../../external-secrets.config';
 import { InfisicalProvider } from '../infisical';
 
 const SITE_URL = 'https://app.infisical.com';
@@ -81,6 +82,8 @@ const infisicalUpdateSettingsLogContext = {
 describe('InfisicalProvider', () => {
 	const logger = mockInstance(Logger);
 	logger.scoped.mockReturnValue(logger);
+
+	mockInstance(ExternalSecretsConfig, { connectTimeout: 20, refreshTimeout: 20 });
 
 	beforeEach(() => {
 		vi.clearAllMocks();

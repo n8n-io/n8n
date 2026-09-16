@@ -131,6 +131,23 @@ describe('ExternalSecretsProviderConnectionManager', () => {
 		expect(mockSecretsCache.updateProvider).toHaveBeenCalledWith('my-vault', provider);
 	});
 
+	it('should stop the initial retry once another instance holds the slot', async () => {
+		const provider = new DummyProvider();
+		mockProviderLifecycle.initialize.mockResolvedValue({ success: true, provider });
+		mockProviderLifecycle.connect.mockResolvedValueOnce({
+			success: false,
+			error: new Error('down'),
+		});
+		await upsertProvider();
+
+		providersMap.set('my-vault', new DummyProvider());
+		const result = await runPendingRetry();
+
+		expect(result).toEqual({ success: true });
+		expect(mockProviderLifecycle.connect).toHaveBeenCalledTimes(1);
+		expect(pendingRetries.has('my-vault')).toBe(false);
+	});
+
 	it('should prepare batch upserts in order and await their completions concurrently', async () => {
 		const firstProvider = new DummyProvider();
 		const secondProvider = new DummyProvider();

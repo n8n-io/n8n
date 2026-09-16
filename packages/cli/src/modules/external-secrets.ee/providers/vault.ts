@@ -303,13 +303,15 @@ export class VaultProvider extends SecretsProvider {
 
 	async init(settings: SecretsProviderSettings): Promise<void> {
 		this.settings = settings.settings as unknown as VaultSettings;
+		const config = Container.get(ExternalSecretsConfig);
 
 		this.#http = this.outboundHttp.requests({
 			baseURL: new URL(this.settings.url).toString(), // Normalize here so a malformed URL fails at init time rather than on the first request.
 			headers: () => this.buildAuthHeaders(),
 			useDefaultSsrfPolicy: 'unsafe', // admin-configured infrastructure
-			// Aborts the socket, so a request a caller stopped waiting for does not stay open.
-			timeout: Container.get(ExternalSecretsConfig).connectTimeout * Time.seconds.toMilliseconds,
+			// Aborts the socket, so a request a caller stopped waiting for does not stay open. The
+			// larger bound, so no single request is cut before its operation's own deadline.
+			timeout: Math.max(config.connectTimeout, config.refreshTimeout) * Time.seconds.toMilliseconds,
 		});
 
 		this.logger.debug('Vault provider initialized');

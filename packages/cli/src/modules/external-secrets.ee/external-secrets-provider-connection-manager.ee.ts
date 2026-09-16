@@ -151,23 +151,24 @@ export class ExternalSecretsProviderConnectionManager {
 		this.providerRegistry.set(providerKey, result.provider);
 
 		if (config.connected) {
+			const provider = result.provider;
 			await this.retryManager.runWithRetry(
 				providerKey,
-				async () => await this.connectAndHydrate(providerKey),
+				async () => await this.connectAndHydrate(providerKey, provider),
 			);
 		}
 	}
 
 	/**
 	 * Connects only while the provider is not connected: doConnect() is not idempotent, so a
-	 * retry after a failed hydration must pull again without reconnecting.
+	 * retry after a failed hydration must pull again without reconnecting. Reports success once
+	 * the slot holds another instance, so a superseded attempt neither re-arms nor touches it.
 	 */
-	private async connectAndHydrate(providerKey: string): Promise<ProviderConnectResult> {
-		const provider = this.providerRegistry.get(providerKey);
-		if (!provider) {
-			this.logger.warn(`Cannot connect provider ${providerKey}: not found in registry`);
-			throw new Error(`Provider ${providerKey} not found in registry`);
-		}
+	private async connectAndHydrate(
+		providerKey: string,
+		provider: SecretsProvider,
+	): Promise<ProviderConnectResult> {
+		if (this.providerRegistry.get(providerKey) !== provider) return { success: true };
 
 		if (provider.state !== 'connected') {
 			const connectResult = await this.providerLifecycle.connect(provider);

@@ -173,13 +173,15 @@ export class InfisicalProvider extends SecretsProvider {
 
 	async init(settings: SecretsProviderSettings): Promise<void> {
 		this.settings = settings.settings as unknown as InfisicalSettings;
+		const config = Container.get(ExternalSecretsConfig);
 
 		this.http = this.outboundHttp.requests({
 			baseURL: this.settings.siteURL,
 			headers: () => this.buildAuthHeaders(),
 			useDefaultSsrfPolicy: 'unsafe', // admin-configured infrastructure
-			// Aborts the socket, so a request a caller stopped waiting for does not stay open.
-			timeout: Container.get(ExternalSecretsConfig).connectTimeout * Time.seconds.toMilliseconds,
+			// Aborts the socket, so a request a caller stopped waiting for does not stay open. The
+			// larger bound, so no single request is cut before its operation's own deadline.
+			timeout: Math.max(config.connectTimeout, config.refreshTimeout) * Time.seconds.toMilliseconds,
 		});
 
 		this.logger.debug('Infisical provider initialized');

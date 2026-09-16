@@ -73,12 +73,16 @@ describe('VaultProvider', () => {
 	logger.scoped.mockReturnValue(logger);
 
 	// Use preferGet so list requests are plain GETs with `?list=true`.
-	mockInstance(ExternalSecretsConfig, { preferGet: true, connectTimeout: 20 });
+	mockInstance(ExternalSecretsConfig, { preferGet: true, connectTimeout: 20, refreshTimeout: 20 });
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 		logger.scoped.mockReturnValue(logger);
-		mockInstance(ExternalSecretsConfig, { preferGet: true, connectTimeout: 20 });
+		mockInstance(ExternalSecretsConfig, {
+			preferGet: true,
+			connectTimeout: 20,
+			refreshTimeout: 20,
+		});
 	});
 
 	function createProvider(routes: Route[], settings = vaultSettings) {

@@ -57,6 +57,20 @@ describe('SecretsCache', () => {
 			await expect(cache.refreshProvider('dummy', dummyProvider)).resolves.not.toThrow();
 		});
 
+		it('should join a running update instead of starting a second one', async () => {
+			let finish!: () => void;
+			const updateSpy = vi
+				.spyOn(dummyProvider, 'update')
+				.mockImplementation(async () => await new Promise<void>((r) => (finish = r)));
+
+			const first = cache.updateProvider('dummy', dummyProvider);
+			const second = cache.updateProvider('dummy', dummyProvider);
+			finish();
+			await Promise.all([first, second]);
+
+			expect(updateSpy).toHaveBeenCalledTimes(1);
+		});
+
 		it('should not hang when update exceeds refresh timeout', async () => {
 			vi.useFakeTimers();
 			try {
