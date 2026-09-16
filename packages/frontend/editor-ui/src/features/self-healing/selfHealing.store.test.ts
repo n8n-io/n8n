@@ -79,7 +79,7 @@ describe('useSelfHealingStore', () => {
 				projectId: PROJECT_ID,
 				autonomy: 'review',
 				status: 'active',
-				excludedWorkflowIds: [],
+				scope: 'all',
 				reviewerIds: ['user-1'],
 			});
 		});
@@ -96,7 +96,8 @@ describe('useSelfHealingStore', () => {
 		it('creates, updates and deletes configurations', () => {
 			const created = store.createConfig(PROJECT_ID, {
 				autonomy: 'deploy',
-				excludedWorkflowIds: ['wf-9'],
+				scope: 'selected',
+				selectedWorkflowIds: ['wf-9'],
 				customInstructions: '',
 				reviewerIds: ['user-2'],
 				status: 'active',
@@ -125,9 +126,12 @@ describe('useSelfHealingStore', () => {
 			expect(status.enrolled).toBe(true);
 		});
 
-		it('excludes workflows listed in the configuration', () => {
+		it('only enrolls the selected workflows when the scope is limited', () => {
 			const [defaultConfig] = store.getProjectConfigs(PROJECT_ID);
-			store.updateConfig(PROJECT_ID, defaultConfig.id, { excludedWorkflowIds: ['wf-1'] });
+			store.updateConfig(PROJECT_ID, defaultConfig.id, {
+				scope: 'selected',
+				selectedWorkflowIds: ['wf-2'],
+			});
 
 			expect(store.getWorkflowStatus('wf-1', PROJECT_ID).enrolled).toBe(false);
 			expect(store.getWorkflowStatus('wf-2', PROJECT_ID).enrolled).toBe(true);

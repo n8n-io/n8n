@@ -10,11 +10,13 @@ import {
 	N8nInput,
 	N8nInputLabel,
 	N8nOption,
+	N8nSegmentControl,
 	N8nSelect,
 	N8nSelect2,
 	N8nText,
 	N8nUserSelect,
 	type IUser,
+	type SegmentOption,
 	type SelectValue,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -29,6 +31,7 @@ import type {
 	SelfHealingAutonomy,
 	SelfHealingConfig,
 	SelfHealingConfigInput,
+	SelfHealingScope,
 } from '../selfHealing.types';
 
 const props = defineProps<{
@@ -73,7 +76,8 @@ function onAutonomyChange(value: SelectValue | undefined) {
 function emptyForm(): SelfHealingConfigInput {
 	return {
 		autonomy: 'review',
-		excludedWorkflowIds: [],
+		scope: 'all',
+		selectedWorkflowIds: [],
 		customInstructions: '',
 		reviewerIds: usersStore.currentUser?.id ? [usersStore.currentUser.id] : [],
 		status: 'active',
@@ -83,7 +87,8 @@ function emptyForm(): SelfHealingConfigInput {
 function formFrom(config: SelfHealingConfig): SelfHealingConfigInput {
 	return {
 		autonomy: config.autonomy,
-		excludedWorkflowIds: [...config.excludedWorkflowIds],
+		scope: config.scope,
+		selectedWorkflowIds: [...config.selectedWorkflowIds],
 		customInstructions: config.customInstructions,
 		reviewerIds: [...config.reviewerIds],
 		status: config.status,
@@ -101,9 +106,10 @@ const projectWorkflows = computed(() =>
 	),
 );
 
-const enrolledCount = computed(() =>
-	Math.max(projectWorkflows.value.length - form.value.excludedWorkflowIds.length, 0),
-);
+const scopeOptions = computed<Array<SegmentOption<SelfHealingScope>>>(() => [
+	{ value: 'all', label: i18n.baseText('selfHealing.dialog.scope.all') },
+	{ value: 'selected', label: i18n.baseText('selfHealing.dialog.scope.selected') },
+]);
 
 /**
  * Reviewer candidates are the project's members, since only they can open the
@@ -223,24 +229,26 @@ function save() {
 				</N8nSelect2>
 			</N8nInputLabel>
 
-			<N8nInputLabel
-				input-name="self-healing-opt-out"
-				:label="i18n.baseText('selfHealing.dialog.scope.label')"
-			>
-				<N8nText size="small" color="text-light" :class="$style.hint">
-					{{ i18n.baseText('selfHealing.dialog.scope.description') }}
-				</N8nText>
+			<N8nInputLabel :label="i18n.baseText('selfHealing.dialog.scope.label')">
+				<N8nSegmentControl
+					v-model="form.scope"
+					:options="scopeOptions"
+					:class="$style.scope"
+					data-test-id="self-healing-scope-control"
+				/>
 				<N8nSelect
-					id="self-healing-opt-out"
-					v-model="form.excludedWorkflowIds"
+					v-if="form.scope === 'selected'"
+					id="self-healing-selected-workflows"
+					v-model="form.selectedWorkflowIds"
 					multiple
 					filterable
 					collapse-tags
 					:collapse-tags-tooltip="true"
 					:teleported="false"
 					:loading="loadingWorkflows"
-					:placeholder="i18n.baseText('selfHealing.dialog.scope.optOut.placeholder')"
-					data-test-id="self-healing-opt-out-select"
+					:placeholder="i18n.baseText('selfHealing.dialog.scope.select.placeholder')"
+					:class="$style.scopeSelect"
+					data-test-id="self-healing-selected-workflows"
 				>
 					<N8nOption
 						v-for="workflow in projectWorkflows"
@@ -249,22 +257,6 @@ function save() {
 						:value="workflow.id"
 					/>
 				</N8nSelect>
-				<N8nText
-					v-if="projectWorkflows.length > 0"
-					size="xsmall"
-					color="text-light"
-					:class="$style.hint"
-					data-test-id="self-healing-scope-summary"
-				>
-					{{
-						i18n.baseText('selfHealing.dialog.scope.optOut.summary', {
-							interpolate: {
-								enrolled: String(enrolledCount),
-								excluded: String(form.excludedWorkflowIds.length),
-							},
-						})
-					}}
-				</N8nText>
 			</N8nInputLabel>
 
 			<N8nInputLabel
@@ -309,7 +301,7 @@ function save() {
 						:data-test-id="`self-healing-reviewer-${user.id}`"
 					>
 						<N8nAvatar :first-name="user.firstName" :last-name="user.lastName" size="small" />
-						<N8nText size="medium" bold color="text-dark" :class="$style.reviewerName">
+						<N8nText size="medium" color="text-dark" :class="$style.reviewerName">
 							{{ reviewerName(user) }}
 						</N8nText>
 						<N8nIconButton
@@ -360,6 +352,14 @@ function save() {
 
 .autonomySelect {
 	width: 100%;
+}
+
+.scope {
+	margin-top: var(--spacing--3xs);
+}
+
+.scopeSelect {
+	margin-top: var(--spacing--xs);
 }
 
 // The menu sizes to its longest line by default; the descriptions must wrap

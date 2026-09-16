@@ -8,15 +8,20 @@ export type SelfHealingAutonomy = 'diagnose' | 'review' | 'deploy';
 
 export type SelfHealingConfigStatus = 'active' | 'paused';
 
+/** Which of the project's workflows the configuration covers. */
+export type SelfHealingScope = 'all' | 'selected';
+
 /**
- * One self-healing configuration. It lives at project level: every workflow
- * in the project is enrolled unless it is listed in `excludedWorkflowIds`.
+ * One self-healing configuration. It lives at project level and covers either
+ * every workflow in the project or only the selected ones.
  */
 export interface SelfHealingConfig {
 	id: string;
 	projectId: string;
 	autonomy: SelfHealingAutonomy;
-	excludedWorkflowIds: string[];
+	scope: SelfHealingScope;
+	/** Only read when `scope` is `selected`. */
+	selectedWorkflowIds: string[];
 	customInstructions: string;
 	/** Users who review each fix and are notified when the assistant submits one. */
 	reviewerIds: string[];

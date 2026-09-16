@@ -48,7 +48,8 @@ export function createDefaultConfig(
 		id: `default-${projectId}`,
 		projectId,
 		autonomy: 'review',
-		excludedWorkflowIds: [],
+		scope: 'all',
+		selectedWorkflowIds: [],
 		customInstructions:
 			'Prefer adding retries and guards over changing business logic. Never edit credentials or webhook paths. Keep the fix to the failing branch.',
 		reviewerIds: ownerId ? [ownerId] : [],

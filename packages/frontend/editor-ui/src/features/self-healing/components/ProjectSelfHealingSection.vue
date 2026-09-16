@@ -55,7 +55,7 @@ const headers = computed<Array<TableHeader<SelfHealingConfig>>>(() => [
 		key: 'scope',
 		width: 260,
 		disableSort: true,
-		value: (row: SelfHealingConfig) => row.excludedWorkflowIds.length,
+		value: (row: SelfHealingConfig) => `${row.scope}:${row.selectedWorkflowIds.length}`,
 	},
 	{
 		title: i18n.baseText('selfHealing.projectSettings.column.autonomy'),
@@ -89,10 +89,11 @@ const headers = computed<Array<TableHeader<SelfHealingConfig>>>(() => [
 ]);
 
 function scopeLabel(config: SelfHealingConfig): string {
-	const excluded = config.excludedWorkflowIds.length;
-	return excluded === 0
+	return config.scope === 'all'
 		? i18n.baseText('selfHealing.scope.all')
-		: i18n.baseText('selfHealing.scope.allExcept', { interpolate: { count: String(excluded) } });
+		: i18n.baseText('selfHealing.scope.selected', {
+				interpolate: { count: String(config.selectedWorkflowIds.length) },
+			});
 }
 
 function autonomyLabel(config: SelfHealingConfig): string {

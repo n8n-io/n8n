@@ -209,7 +209,9 @@ export const useSelfHealingStore = defineStore('selfHealing', () => {
 
 		const config = getActiveConfig(projectId);
 		if (!config) return { enrolled: false, config: getProjectConfigs(projectId)[0] ?? null };
-		if (config.excludedWorkflowIds.includes(workflowId)) return { enrolled: false, config };
+		if (config.scope === 'selected' && !config.selectedWorkflowIds.includes(workflowId)) {
+			return { enrolled: false, config };
+		}
 
 		const live = liveRecords.value[workflowId];
 		if (live) return { enrolled: true, config, ...live };
