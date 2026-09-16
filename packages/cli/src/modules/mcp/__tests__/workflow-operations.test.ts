@@ -839,6 +839,31 @@ describe('applyOperations', () => {
 			expect(parsed.success).toBe(false);
 		});
 
+		test('schema accepts availableInMCP', () => {
+			const parsed = partialUpdateOperationSchema.safeParse({
+				type: 'setWorkflowSettings',
+				settings: { availableInMCP: false },
+			});
+			expect(parsed.success).toBe(true);
+		});
+
+		test('turns availableInMCP off on a workflow created with it on', () => {
+			// Goes through the schema, because that is where the field used to be dropped:
+			// an unknown key left `settings` empty, which the refine then rejected.
+			const parsed = partialUpdateOperationSchema.safeParse({
+				type: 'setWorkflowSettings',
+				settings: { availableInMCP: false },
+			});
+			expect(parsed.success).toBe(true);
+			if (!parsed.success) return;
+
+			const wf = { ...baseWorkflow(), settings: { availableInMCP: true } };
+			const result = applyOperations(wf, [parsed.data]);
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			expect(result.workflow.settings).toEqual({ availableInMCP: false });
+		});
+
 		test('schema rejects an unknown executionOrder value', () => {
 			const parsed = partialUpdateOperationSchema.safeParse({
 				type: 'setWorkflowSettings',
