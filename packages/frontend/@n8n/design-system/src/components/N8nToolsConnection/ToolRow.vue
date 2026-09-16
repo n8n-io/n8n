@@ -26,6 +26,7 @@ const emit = defineEmits<{
 	connect: [item: ToolConnectionItem];
 	'select-credential': [item: ToolConnectionItem, authType: string, credentialId: string];
 	'credential-dropdown-open': [item: ToolConnectionItem];
+	'credential-dropdown-close': [item: ToolConnectionItem];
 	'first-credential-connect': [item: ToolConnectionItem];
 	'new-credential-connect': [item: ToolConnectionItem];
 }>();
@@ -140,7 +141,7 @@ function handleConnect() {
 				<span :class="$style.workflowIcon" aria-hidden="true">
 					<N8nIcon icon="workflow" :size="20" />
 				</span>
-				<N8nText :class="$style.workflowTitle" tag="span" bold>{{ item.title }}</N8nText>
+				<N8nText :class="$style.workflowTitle" bold>{{ item.title }}</N8nText>
 				<N8nText
 					v-if="item.warning"
 					:class="$style.workflowWarning"
@@ -157,7 +158,7 @@ function handleConnect() {
 				<ToolIcon :source="resolvedIcon" :fallback-icon="placeholderIcon" />
 				<span :class="$style.text">
 					<span :class="$style.titleRow">
-						<N8nText :class="$style.title" tag="span" bold>{{ item.title }}</N8nText>
+						<N8nText :class="$style.title" step="xs" bold>{{ item.title }}</N8nText>
 						<N8nTooltip
 							v-if="item.verified"
 							:content="i18n.baseText('communityNodeInfo.approved')"
@@ -180,13 +181,7 @@ function handleConnect() {
 							{{ creditsPill.text }}
 						</N8nBadge>
 					</span>
-					<N8nText
-						v-if="item.description"
-						:class="$style.description"
-						tag="span"
-						size="small"
-						color="text-light"
-					>
+					<N8nText v-if="item.description" :class="$style.description" step="xs" color="text-light">
 						{{ item.description }}
 					</N8nText>
 				</span>
@@ -214,12 +209,13 @@ function handleConnect() {
 				v-else-if="shouldShowCredentialPicker"
 				:item="item"
 				:credentials="item.credentials ?? []"
-				connect-variant="outline"
+				connect-variant="subtle"
 				@select-credential="
 					(toolItem, authType, credentialId) =>
 						emit('select-credential', toolItem, authType, credentialId)
 				"
 				@credential-dropdown-open="emit('credential-dropdown-open', $event)"
+				@credential-dropdown-close="emit('credential-dropdown-close', $event)"
 				@first-credential-connect="emit('first-credential-connect', $event)"
 				@new-credential-connect="emit('new-credential-connect', $event)"
 			/>
@@ -245,19 +241,17 @@ function handleConnect() {
 					:content="i18n.baseText('tools.connection.install.contactAdmin')"
 					placement="top"
 				>
-					<span>
-						<N8nButton
-							:label="actionLabel"
-							variant="outline"
-							size="small"
-							disabled
-							data-test-id="tools-connection-row-install"
-						/>
-					</span>
+					<N8nButton
+						:label="actionLabel"
+						variant="outline"
+						size="small"
+						disabled
+						data-test-id="tools-connection-row-install"
+					/>
 				</N8nTooltip>
 				<N8nButton
 					v-else
-					variant="outline"
+					variant="subtle"
 					size="small"
 					:loading="item.installing"
 					:data-test-id="
@@ -301,19 +295,13 @@ function handleConnect() {
 .row {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--xs);
+	gap: var(--spacing--sm);
 	width: 100%;
-	padding: var(--spacing--2xs) var(--spacing--xs) var(--spacing--2xs) var(--spacing--2xs);
-	border-radius: var(--radius--2xs);
-	transition: background-color var(--duration--snappy) var(--easing--ease-out);
-	@include motion.reduced-motion;
+	padding: var(--spacing--2xs) var(--spacing--xs);
+	border-radius: var(--radius);
 
 	/** Important that this is a fixed value as it's needd for RecycleScroller height estimation **/
-	min-height: 58px;
-
-	&:hover:not(:has(.action button:hover)) {
-		background: var(--background--hover);
-	}
+	height: 64px;
 
 	&:focus-within:not(:has(.action button:focus-visible, .action button:active)) {
 		@include focus.focus-ring-inset;
@@ -354,12 +342,14 @@ function handleConnect() {
 
 .workflowIcon {
 	flex-shrink: 0;
-	width: var(--height--md);
-	height: var(--height--md);
+	width: var(--height--xl);
+	height: var(--height--xl);
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	color: var(--color--primary);
+	background-color: var(--color--orange-alpha-100);
+	border-radius: var(--radius--full);
 }
 
 .text {
