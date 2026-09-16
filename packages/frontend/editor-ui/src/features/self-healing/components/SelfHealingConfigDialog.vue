@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import {
+	N8nAvatar,
 	N8nButton,
 	N8nDialog,
 	N8nDialogFooter,
@@ -13,7 +14,6 @@ import {
 	N8nSelect2,
 	N8nText,
 	N8nUserSelect,
-	N8nUsersList,
 	type IUser,
 	type SelectValue,
 } from '@n8n/design-system';
@@ -161,6 +161,13 @@ function removeReviewer(userId: string) {
 	form.value.reviewerIds = form.value.reviewerIds.filter((id) => id !== userId);
 }
 
+function reviewerName(user: IUser): string {
+	const name = [user.firstName, user.lastName].filter(Boolean).join(' ') || (user.email ?? '');
+	return user.id === usersStore.currentUser?.id
+		? i18n.baseText('selfHealing.dialog.people.you', { interpolate: { name } })
+		: name;
+}
+
 function close() {
 	emit('update:open', false);
 }
@@ -290,14 +297,21 @@ function save() {
 					data-test-id="self-healing-reviewer-select"
 					@update:model-value="addReviewer"
 				/>
-				<N8nUsersList
+				<ul
 					v-if="selectedReviewers.length > 0"
-					:users="selectedReviewers"
-					:current-user-id="usersStore.currentUser?.id ?? ''"
 					:class="$style.reviewers"
 					data-test-id="self-healing-reviewer-list"
 				>
-					<template #actions="{ user }">
+					<li
+						v-for="user in selectedReviewers"
+						:key="user.id"
+						:class="$style.reviewer"
+						:data-test-id="`self-healing-reviewer-${user.id}`"
+					>
+						<N8nAvatar :first-name="user.firstName" :last-name="user.lastName" size="small" />
+						<N8nText size="medium" bold color="text-dark" :class="$style.reviewerName">
+							{{ reviewerName(user) }}
+						</N8nText>
 						<N8nIconButton
 							icon="x"
 							variant="ghost"
@@ -306,8 +320,8 @@ function save() {
 							data-test-id="self-healing-reviewer-remove"
 							@click="removeReviewer(user.id)"
 						/>
-					</template>
-				</N8nUsersList>
+					</li>
+				</ul>
 				<N8nText
 					v-else
 					size="xsmall"
@@ -373,7 +387,7 @@ function save() {
 	font-size: var(--font-size--2xs);
 	font-weight: var(--font-weight--regular);
 	line-height: var(--line-height--xl);
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtle);
 }
 
 .hint {
@@ -383,6 +397,25 @@ function save() {
 }
 
 .reviewers {
-	margin-top: var(--spacing--xs);
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+	margin: var(--spacing--xs) 0 0;
+	padding: 0;
+	list-style: none;
+}
+
+.reviewer {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
+
+.reviewerName {
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 </style>
