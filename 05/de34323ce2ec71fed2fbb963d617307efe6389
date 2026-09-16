@@ -1,10 +1,12 @@
 packages/cli/src/modules/git-connections.ee/__tests__/git-connections-git.service.test.ts
   s_453e0bdd28d498::t_36f36e1b091566 53-54
   s_37ea2c10fb0e32::t_6ee13a54bf658a 70
+  s_c5af3107e0afb1::t_e71893d1363690 74-101
 packages/cli/src/modules/git-connections.ee/git-connections-git.service.ts
   s_453e0bdd28d498::t_9c58d2412289c8 82-87
   ai_agent 90
   s_37ea2c10fb0e32::t_159d945e1a6b1c 87-89
+  s_c5af3107e0afb1::t_ba4b12834a7988 98-101
 packages/@n8n/api-types/src/dto/git-connections/__tests__/git-connections.dto.test.ts
   s_aeecfe178a9b3d::t_b805497a554994 1-36,53-57
 packages/@n8n/api-types/src/dto/index.ts
@@ -53,6 +55,14 @@ packages/@n8n/constants/src/index.ts
       "agent_id": {
         "tool": "claude",
         "id": "a1c3abc3-6b2a-413e-a33c-2c784b044f11",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_c5af3107e0afb1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d5f30216-16b1-463d-983f-29dcd10464ab",
         "model": "claude-opus-4-8"
       },
       "human_author": "Irénée <irenee.ajeneza@n8n.io>"

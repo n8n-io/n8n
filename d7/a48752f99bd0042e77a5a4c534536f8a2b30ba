@@ -31,6 +31,12 @@ packages/cli/test/integration/shared/types.ts
   s_909fa6f565ea9a::t_0fd020292f5d35 73
 packages/cli/src/public-api/v1/handlers/git-connections/spec/paths/update.generated.yml
   ai_agent 1-62
+packages/cli/src/modules/git-connections.ee/git-connections-git.service.ts
+  s_b85ce308d3a991::t_68349408984f31 123
+packages/cli/src/modules/git-connections.ee/git-connections.service.ts
+  s_b85ce308d3a991::t_584df25bbb8e23 92
+packages/cli/src/modules/git-connections.ee/constants.ts
+  s_b85ce308d3a991::t_3de9434ae475ef 21
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -42,6 +48,14 @@ packages/cli/src/public-api/v1/handlers/git-connections/spec/paths/update.genera
       "agent_id": {
         "tool": "claude",
         "id": "8ff7411a-ff0e-4742-bbd8-41ee448e0c30",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_b85ce308d3a991": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "59291f68-813d-4934-bdab-ee78cdd99d69",
         "model": "claude-opus-4-8"
       },
       "human_author": "Irénée <irenee.ajeneza@n8n.io>"
