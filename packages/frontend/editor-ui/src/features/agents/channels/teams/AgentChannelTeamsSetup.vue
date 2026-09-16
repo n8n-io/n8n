@@ -79,19 +79,19 @@ const availability = ref<TeamsAvailability>({
 	readAllGroupMessages: props.savedSettings?.readAllGroupMessages ?? false,
 });
 
-/**
- * Pre-filled with what the manifest would use, so the fields show what Teams
- * will actually display. The defaults come from the server rather than being
- * derived here: the modal has no agent name to derive them from, and deriving
- * them twice invites the two copies to drift.
- */
 const displayName = ref(props.savedSettings?.displayName ?? '');
 const description = ref(props.savedSettings?.description ?? '');
 
-function applyDefaults(state: TeamsAgentSetupState) {
-	if (!displayName.value) displayName.value = state.defaultDisplayName;
-	if (!description.value) description.value = state.defaultDescription;
-}
+/**
+ * Shown as placeholders rather than written into the fields. Filling them in
+ * would save them as overrides on the first connect, and the Teams app would
+ * then keep the agent's old name after a rename.
+ *
+ * They come from the server because that is where the manifest derives them,
+ * and a second derivation here would drift from it.
+ */
+const defaultDisplayName = computed(() => setupState.value?.defaultDisplayName ?? '');
+const defaultDescription = computed(() => setupState.value?.defaultDescription ?? '');
 
 const messagingEndpointUrl = computed(() => {
 	if (setupState.value) return setupState.value.messagingEndpointUrl;
@@ -152,6 +152,7 @@ async function downloadPackage() {
 			props.projectId,
 			props.agentId,
 			credentialId.value || undefined,
+			currentSettings.value,
 		);
 		saveAs(blob, 'n8n-agent-teams-app.zip');
 	} catch {
@@ -170,7 +171,6 @@ async function loadSetupState() {
 			props.agentId,
 			credentialId.value || undefined,
 		);
-		applyDefaults(setupState.value);
 	} catch {
 		// Leave the fallback endpoint URL in place; the rest of the step still works.
 		setupState.value = null;
@@ -212,17 +212,22 @@ const steps = computed(() => [
 	},
 ]);
 
-defineExpose({
-	credentialId,
-	validationError: null,
-	// Empty strings are absent rather than values: the schema requires a
-	// non-empty string when the field is present, and both fall back server-side.
-	currentSettings: computed(() => ({
-		...availability.value,
-		...(displayName.value.trim() ? { displayName: displayName.value.trim() } : {}),
-		...(description.value.trim() ? { description: description.value.trim() } : {}),
-	})),
-});
+/**
+ * Built on the saved settings, because connecting replaces the settings object
+ * wholesale: a field this form does not render would otherwise be dropped the
+ * first time someone saves from here.
+ *
+ * Empty strings are absent rather than values: the schema requires a non-empty
+ * string when the field is present, and both fall back server-side.
+ */
+const currentSettings = computed(() => ({
+	...props.savedSettings,
+	...availability.value,
+	...(displayName.value.trim() ? { displayName: displayName.value.trim() } : {}),
+	...(description.value.trim() ? { description: description.value.trim() } : {}),
+}));
+
+defineExpose({ credentialId, validationError: null, currentSettings });
 </script>
 
 <template>
@@ -435,6 +440,7 @@ defineExpose({
 					v-model="displayName"
 					size="large"
 					:maxlength="TEAMS_DISPLAY_NAME_MAX"
+					:placeholder="defaultDisplayName"
 					show-word-limit
 				/>
 			</div>
@@ -450,8 +456,8 @@ defineExpose({
 					v-model="description"
 					size="large"
 					:maxlength="TEAMS_DESCRIPTION_MAX"
+					:placeholder="defaultDescription"
 					show-word-limit
-					:placeholder="i18n.baseText('agents.channels.teams.settings.descriptionPlaceholder')"
 				/>
 			</div>
 

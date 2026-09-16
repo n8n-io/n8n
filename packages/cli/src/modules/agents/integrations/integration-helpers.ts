@@ -107,14 +107,24 @@ export function hasUpdateIssueField(input: {
 }
 
 /**
- * Reduces a user-chosen name to what a vendor app catalogue accepts. Teams and
- * Slack both reject the same characters, so the allow-list lives in one place.
+ * Reduces a user-chosen name to something safe to put in a vendor app listing:
+ * no control or formatting characters, no runs of whitespace, and within the
+ * vendor's length cap.
+ *
+ * Accented and non-Latin names survive. Slack keeps its own stricter rule,
+ * because Slack's app names are restricted where Teams' are not.
+ *
+ * Length is counted in code points, so the cap cannot cut an emoji in half.
  */
 export function sanitiseAppName(raw: string, maxLength: number, fallback: string): string {
-	const cleaned = raw
-		.replace(/[^a-zA-Z0-9 ._-]/g, '')
-		.replace(/\s+/g, ' ')
-		.trim()
-		.slice(0, maxLength);
+	const cleaned = Array.from(
+		raw
+			.replace(/[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/gu, '')
+			.replace(/\s+/g, ' ')
+			.trim(),
+	)
+		.slice(0, maxLength)
+		.join('')
+		.trim();
 	return cleaned.length > 0 ? cleaned : fallback;
 }

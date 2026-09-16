@@ -67,6 +67,13 @@ so response stubs only need to be valid enough for the real adapter to proceed.
   required: the client-credentials token endpoint is **tenant**-scoped, not `botframework.com`-scoped,
   and the SDK decodes the access token it gets back, so that stub must return a real JWT rather than
   an opaque string.
+- **Linear** — webhooks are HMAC-signed (`linear-signature`) and timestamp-checked, so the helper
+  refreshes `webhookTimestamp` and signs the body. `@linear/sdk` strictly deserializes typed
+  entities and lazily fetches relationships, so the GraphQL stub returns fully-shaped entities
+  (e.g. a `Comment` needs `reactions: []`; an `AgentActivity` references `agentSession`/`sourceComment`
+  by id). Linear's "mention" is an **agent-session** event, not a comment — see the contract note
+  below.
+
 #### Teams setup, outside the adapter
 
 The Teams **setup** path is tested separately from the channel, because none of
@@ -100,13 +107,6 @@ it goes through the adapter:
   in `packages/cli/scripts/build.mjs` discovers every `platforms/*/assets`
   directory; a platform that hardcodes itself out of that list works in dev,
   where assets are read from `src`, and ships without them.
-
-- **Linear** — webhooks are HMAC-signed (`linear-signature`) and timestamp-checked, so the helper
-  refreshes `webhookTimestamp` and signs the body. `@linear/sdk` strictly deserializes typed
-  entities and lazily fetches relationships, so the GraphQL stub returns fully-shaped entities
-  (e.g. a `Comment` needs `reactions: []`; an `AgentActivity` references `agentSession`/`sourceComment`
-  by id). Linear's "mention" is an **agent-session** event, not a comment — see the contract note
-  below.
 
 ## Test Layout
 

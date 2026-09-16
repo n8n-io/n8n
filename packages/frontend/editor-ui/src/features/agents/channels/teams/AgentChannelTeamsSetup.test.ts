@@ -358,13 +358,17 @@ describe('AgentChannelTeamsSetup', () => {
 			await waitFor(() => expect(getByTestId('teams-scope-channels')).toBeVisible());
 		});
 
-		it('fills the name and description with what the manifest would use', async () => {
+		it('shows what the manifest would use as a placeholder, not as a value', async () => {
 			const { getByTestId } = renderComponent({ props: settingsProps() });
 
-			await waitFor(() =>
-				expect(getByTestId('teams-display-name').querySelector('input')).toHaveValue(DEFAULT_NAME),
-			);
-			expect(getByTestId('teams-description').querySelector('input')).toHaveValue(
+			const name = () => getByTestId('teams-display-name').querySelector('input');
+			await waitFor(() => expect(name()).toHaveAttribute('placeholder', DEFAULT_NAME));
+
+			// Filling them in would save them as overrides, and the Teams app would
+			// then keep the old name after the agent is renamed.
+			expect(name()).toHaveValue('');
+			expect(getByTestId('teams-description').querySelector('input')).toHaveAttribute(
+				'placeholder',
 				DEFAULT_DESCRIPTION,
 			);
 		});
@@ -377,10 +381,8 @@ describe('AgentChannelTeamsSetup', () => {
 			await waitFor(() =>
 				expect(getByTestId('teams-display-name').querySelector('input')).toHaveValue('Helpdesk'),
 			);
-			// The description had no override, so it still takes the default.
-			expect(getByTestId('teams-description').querySelector('input')).toHaveValue(
-				DEFAULT_DESCRIPTION,
-			);
+			// The description had no override, so it keeps following the agent.
+			expect(getByTestId('teams-description').querySelector('input')).toHaveValue('');
 		});
 
 		it('restores saved settings, including the app identity', async () => {
@@ -444,6 +446,33 @@ describe('AgentChannelTeamsSetup', () => {
 			await waitFor(() => expect(queryByTestId('teams-deploy-to-azure')).toBeNull());
 			expect(queryByTestId('teams-entra-register-link')).toBeNull();
 		});
+	});
+
+	it('downloads the package with the availability chosen in the stepper, not the stored one', async () => {
+		vi.mocked(getTeamsSetupState).mockResolvedValue({
+			messagingEndpointUrl: ENDPOINT,
+			botId: CLIENT_ID,
+			deployToAzureUrl: DEPLOY_URL,
+			defaultDisplayName: DEFAULT_NAME,
+			defaultDescription: DEFAULT_DESCRIPTION,
+		});
+
+		const { getByTestId } = renderComponent({ props: props({ modelValue: 'cred-1' }) });
+
+		await waitFor(() => expect(getByTestId('teams-download-package')).toBeVisible());
+		await fireEvent.click(getByTestId('teams-scope-channels'));
+		await fireEvent.click(getByTestId('teams-download-package'));
+
+		// Nothing is stored until connect, which happens after this download.
+		await waitFor(() =>
+			expect(fetchTeamsAppPackage).toHaveBeenCalledWith(
+				expect.anything(),
+				'p',
+				'a',
+				'cred-1',
+				expect.objectContaining({ teamChannels: true }),
+			),
+		);
 	});
 
 	it('asks for the setup state once on open, not once per trigger that wants it', async () => {

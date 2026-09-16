@@ -1,10 +1,25 @@
+import { AgentTeamsPackageDto } from '@n8n/api-types';
 import type { TeamsAgentSetupState, TeamsCredentialCheck } from '@n8n/api-types';
+import { Time } from '@n8n/constants';
 import type { AuthenticatedRequest } from '@n8n/db';
-import { Get, Options, Param, Post, ProjectScope, RestController } from '@n8n/decorators';
+import type { CorsOptions } from '@n8n/decorators';
+import { Body, Get, Options, Param, Post, ProjectScope, RestController } from '@n8n/decorators';
 import type { Request, Response } from 'express';
 
 import { TeamsCredentialCheckService } from './integrations/platforms/teams/teams-credential-check.service';
 import { TeamsSetupService } from './integrations/platforms/teams/teams-setup.service';
+
+/**
+ * The portal is reached through several hosts (national clouds, and its own
+ * preview host), and an allow-list that misses one fails as "template
+ * unreachable" with nothing naming the origin. The signed token is what
+ * authorises this route; the origin is not relied on for it.
+ */
+const TEMPLATE_CORS: Partial<CorsOptions> = {
+	allowedOrigins: ['*'],
+	allowedMethods: ['get', 'options'],
+	allowedHeaders: ['Content-Type'],
+};
 
 @RestController('/projects/:projectId/agents/v2')
 export class AgentTeamsIntegrationsController {
@@ -29,7 +44,7 @@ export class AgentTeamsIntegrationsController {
 	}
 
 	@Get('/:agentId/integrations/teams/setup')
-	@ProjectScope('agent:read')
+	@ProjectScope('agent:update')
 	async getSetupState(
 		req: AuthenticatedRequest<{ projectId: string }, {}, {}, { credentialId?: string }>,
 		_res: Response,
@@ -42,17 +57,22 @@ export class AgentTeamsIntegrationsController {
 		);
 	}
 
-	@Get('/:agentId/integrations/teams/package')
-	@ProjectScope('agent:read')
+	/**
+	 * A POST because the manifest is built from the settings in the open form,
+	 * which are not stored until the channel is connected.
+	 */
+	@Post('/:agentId/integrations/teams/package')
+	@ProjectScope('agent:update')
 	async downloadPackage(
-		req: AuthenticatedRequest<{ projectId: string }, {}, {}, { credentialId?: string }>,
+		req: AuthenticatedRequest<{ projectId: string }>,
 		res: Response,
 		@Param('agentId') agentId: string,
+		@Body payload: AgentTeamsPackageDto,
 	): Promise<void> {
-		const credentialId = req.query.credentialId;
 		const archive = await this.setupService.buildPackage(
 			{ projectId: req.params.projectId, agentId },
-			typeof credentialId === 'string' ? credentialId : undefined,
+			payload.credentialId,
+			payload.settings,
 		);
 
 		res.setHeader('Content-Type', 'application/zip');
@@ -60,32 +80,25 @@ export class AgentTeamsIntegrationsController {
 		res.send(archive);
 	}
 
-	/**
-	 * The Azure portal fetches this from the user's browser, not from its own
-	 * servers, so the route needs CORS headers as well as being reachable. Azure
-	 * reports both failures with the same message, which names CORS second.
-	 */
-	private setCorsHeaders(res: Response) {
-		res.header('Access-Control-Allow-Origin', '*');
-		res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
-		res.header('Access-Control-Allow-Headers', 'Content-Type');
-	}
-
-	@Options('/:agentId/integrations/teams/arm-template', { skipAuth: true })
+	@Options('/:agentId/integrations/teams/arm-template', { skipAuth: true, cors: TEMPLATE_CORS })
 	armTemplatePreflight(_req: Request, res: Response): void {
-		this.setCorsHeaders(res);
 		res.status(204).send();
 	}
 
 	/**
 	 * Carries no n8n session, so it authorises on the signed token in the query
-	 * string instead.
+	 * string instead. Rate limited because it is reachable by anyone and does a
+	 * database read once a token verifies.
 	 *
 	 * Written straight to the response rather than returned: the REST layer wraps
 	 * a returned value in `{ data: ... }`, and the portal rejects that with
 	 * "this is not a valid template" because the ARM schema has to be at the root.
 	 */
-	@Get('/:agentId/integrations/teams/arm-template', { skipAuth: true })
+	@Get('/:agentId/integrations/teams/arm-template', {
+		skipAuth: true,
+		cors: TEMPLATE_CORS,
+		ipRateLimit: { limit: 60, windowMs: Time.minutes.toMilliseconds },
+	})
 	async getArmTemplate(
 		req: Request<{ projectId: string }>,
 		res: Response,
@@ -99,7 +112,6 @@ export class AgentTeamsIntegrationsController {
 			credentialId: typeof credentialId === 'string' ? credentialId : '',
 		});
 
-		this.setCorsHeaders(res);
 		res.setHeader('Content-Type', 'application/json');
 		res.send(JSON.stringify(template));
 	}
