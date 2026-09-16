@@ -21,7 +21,11 @@ import {
 	renderAiPreferencesBlock,
 } from '@/services/ai-preference.service';
 
-/** A saved preference now carries its id. Ids do not affect rendering, so the text doubles as one. */
+/**
+ * A saved preference now carries its id. Rendering ignores the id, so these fixtures derive one
+ * from the text to keep the assertions readable. Where the id itself is under test, write it out:
+ * see "ids are independent of the text" below.
+ */
 const saved = (...texts: string[]) => texts.map((content) => ({ id: `id-${content}`, content }));
 
 // The id is derived from the content so a grouped item can be traced back to its row.
@@ -395,6 +399,72 @@ describe('groupAiPreferences', () => {
 		);
 
 		expect(result).toEqual({ instance: [], user: [], projects: [] });
+	});
+});
+
+describe('ids are independent of the text', () => {
+	it('keeps two rows with the same content apart, in row order', () => {
+		const result = groupAiPreferences(
+			[
+				row({ id: 'a3f1', content: 'Keep replies short.', userId: 'user-1' }),
+				row({ id: '77bc', content: 'Keep replies short.', userId: 'user-1' }),
+			],
+			[],
+		);
+
+		expect(result.user).toEqual([
+			{ id: 'a3f1', content: 'Keep replies short.' },
+			{ id: '77bc', content: 'Keep replies short.' },
+		]);
+	});
+
+	it('carries the row id, not something minted from the content', () => {
+		const result = groupAiPreferences(
+			[
+				row({ id: 'e91d', content: 'Use British English.' }),
+				row({ id: '0b52', content: 'Marketing rule.', projectId: 'p-1' }),
+			],
+			[{ id: 'p-1', name: 'Marketing' }],
+		);
+
+		expect(result.instance).toEqual([{ id: 'e91d', content: 'Use British English.' }]);
+		expect(result.projects[0].items).toEqual([{ id: '0b52', content: 'Marketing rule.' }]);
+	});
+
+	it('flattens repeated content into two items with their own ids', () => {
+		const items = flattenAiPreferences({
+			instance: [],
+			user: [
+				{ id: 'a3f1', content: 'Keep replies short.' },
+				{ id: '77bc', content: 'Keep replies short.' },
+			],
+			projects: [],
+		});
+
+		expect(items).toEqual([
+			{ id: 'a3f1', scope: 'user', text: 'Keep replies short.' },
+			{ id: '77bc', scope: 'user', text: 'Keep replies short.' },
+		]);
+	});
+
+	it('names both ids in the applied-preferences payload', () => {
+		const payload = buildAppliedPreferencesPayload({
+			preferences: {
+				instance: [],
+				user: [
+					{ id: 'a3f1', content: 'Keep replies short.' },
+					{ id: '77bc', content: 'Keep replies short.' },
+				],
+				projects: [],
+			},
+			renderedLength: 60,
+			injectedThisTurn: true,
+		});
+
+		expect(payload.preferences).toEqual([
+			{ id: 'a3f1', scope: 'user' },
+			{ id: '77bc', scope: 'user' },
+		]);
 	});
 });
 
@@ -967,7 +1037,7 @@ describe('renderAiPreferencesBlock', () => {
  * settings endpoint, which answers a different question.
  */
 describe('buildAppliedPreferencesPayload', () => {
-	const base = { renderedLength: 120, injectedThisTurn: true };
+	const base = { renderedLength: 120, injectedThisTurn: true as const };
 
 	it('names every preference with its id and scope, instance then personal then projects', () => {
 		const payload = buildAppliedPreferencesPayload({

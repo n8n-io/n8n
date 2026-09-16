@@ -643,27 +643,51 @@ describe('DELETE /ai-preferences/:id', () => {
 
 describe('the preferences a write produces', () => {
 	test('reach the block the AI surfaces inject', async () => {
-		await ownerAgent.post('/ai-preferences').send({ content: 'Everyone.', scope: 'instance' });
-		await memberAgent.post('/ai-preferences').send({ content: 'Just me.', scope: 'user' });
-		await memberAgent
+		const instance = await ownerAgent
+			.post('/ai-preferences')
+			.send({ content: 'Everyone.', scope: 'instance' });
+		const mine = await memberAgent
+			.post('/ai-preferences')
+			.send({ content: 'Just me.', scope: 'user' });
+		const marketing = await memberAgent
 			.post('/ai-preferences')
 			.send({ content: 'Marketing rule.', scope: 'project', projectId: project.id });
 
 		const applicable = await Container.get(AiPreferenceService).getApplicableAcrossProjects(member);
 
-		// Each item carries its row id, which is what lets a later edit address it.
+		// The id of the row the write created, not just some id: an edit addresses this value.
 		expect(applicable).toEqual({
-			instance: [{ id: expect.any(String), content: 'Everyone.' }],
-			user: [{ id: expect.any(String), content: 'Just me.' }],
+			instance: [{ id: instance.body.data.id, content: 'Everyone.' }],
+			user: [{ id: mine.body.data.id, content: 'Just me.' }],
 			projects: [
 				{
 					id: project.id,
 					name: 'Marketing',
 					type: 'team',
-					items: [{ id: expect.any(String), content: 'Marketing rule.' }],
+					items: [{ id: marketing.body.data.id, content: 'Marketing rule.' }],
 				},
 			],
 		});
+	});
+
+	test('keep two preferences with the same text apart by id', async () => {
+		// A remint or a conflation of ids is invisible when the text is unique, and the assistant
+		// edits by id, so the same sentence saved twice has to stay two addressable rows.
+		const first = await memberAgent
+			.post('/ai-preferences')
+			.send({ content: 'Keep replies short.', scope: 'user' });
+		const second = await memberAgent
+			.post('/ai-preferences')
+			.send({ content: 'Keep replies short.', scope: 'user' });
+
+		expect(second.body.data.id).not.toBe(first.body.data.id);
+
+		const applicable = await Container.get(AiPreferenceService).getApplicable(member.id, []);
+
+		expect(applicable.user).toEqual([
+			{ id: first.body.data.id, content: 'Keep replies short.' },
+			{ id: second.body.data.id, content: 'Keep replies short.' },
+		]);
 	});
 
 	test('reach the block only when the personal project is in scope', async () => {
