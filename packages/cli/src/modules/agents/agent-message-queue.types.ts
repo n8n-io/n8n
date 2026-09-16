@@ -12,7 +12,6 @@ export interface QueueExecutionContext {
 
 export interface PreviewQueueExecutionContext extends QueueExecutionContext {
 	send: (event: AgentSseEvent) => void;
-	onExecutionRecorded: (executionId: string) => void;
 }
 
 export interface PreviewQueueScope {

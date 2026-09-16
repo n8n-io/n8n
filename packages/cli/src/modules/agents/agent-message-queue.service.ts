@@ -41,9 +41,7 @@ type PreviewExecution = {
 	clientRequestId: string;
 	execute: (payload: PreviewQueuePayload, context: PreviewQueueExecutionContext) => Promise<void>;
 	controller: AbortController;
-	started: boolean;
 	errorEmitted: boolean;
-	pendingEvents: Promise<void>;
 };
 
 const previewAdmissionLockKey = (threadId: string) => `agent-preview-admission:${threadId}`;
@@ -131,9 +129,7 @@ export class AgentMessageQueueService {
 			clientRequestId,
 			execute,
 			controller: new AbortController(),
-			started: false,
 			errorEmitted: false,
-			pendingEvents: Promise.resolve(),
 		});
 		if (this.stopping.signal.aborted) {
 			await this.cancelPreview(entry.id);
@@ -303,20 +299,18 @@ export class AgentMessageQueueService {
 	): void {
 		if (event.type === 'error') preview.errorEmitted = true;
 		const { input, clientRequestId } = preview;
-		preview.pendingEvents = preview.pendingEvents
-			.then(async () => {
-				await this.broadcaster.sendChatEvent(
-					{
-						projectId: input.payload.projectId,
-						agentId: input.agentId,
-						threadId: input.threadId,
-						queueId: id,
-						clientRequestId,
-						event,
-					},
-					input.payload.userId,
-				);
-			})
+		void this.broadcaster
+			.sendChatEvent(
+				{
+					projectId: input.payload.projectId,
+					agentId: input.agentId,
+					threadId: input.threadId,
+					queueId: id,
+					clientRequestId,
+					event,
+				},
+				input.payload.userId,
+			)
 			.catch((error: unknown) =>
 				this.logger.warn('Failed to deliver preview event', { id, error }),
 			);
@@ -421,7 +415,6 @@ export class AgentMessageQueueService {
 		const entry = await this.repository.findById(selected.id);
 		if (!entry) return true;
 		this.processing.add(entry.id);
-		if (preview) preview.started = true;
 		const abortSignal = AbortSignal.any([
 			leaseSignal,
 			this.stopping.signal,
@@ -442,9 +435,6 @@ export class AgentMessageQueueService {
 				await preview.execute(entry.payload, {
 					abortSignal,
 					onExecutionStarted,
-					onExecutionRecorded: (id) => {
-						executionId = id;
-					},
 					send: (event) => {
 						if (!abortSignal.aborted) this.sendPreviewEvent(entry.id, preview, event);
 					},
@@ -503,7 +493,6 @@ export class AgentMessageQueueService {
 							? { type: 'cancelled' }
 							: { type: 'done', sessionId: threadId, ...(executionId ? { executionId } : {}) },
 					);
-					await preview.pendingEvents;
 				}
 				if (executionId)
 					this.broadcaster.notify({
@@ -570,8 +559,9 @@ export class AgentMessageQueueService {
 		for (const [id, preview] of previews) {
 			if (this.previews.get(id) !== preview) continue;
 			const entry = entries.get(id);
-			if (entry?.status === 'cancelling' || (!entry && preview.started)) preview.controller.abort();
-			if (!entry && !preview.started && this.previews.get(id) === preview) {
+			const started = this.processing.has(id);
+			if (entry?.status === 'cancelling' || (!entry && started)) preview.controller.abort();
+			if (!entry && !started && this.previews.get(id) === preview) {
 				this.previews.delete(id);
 				if (preview.input.payload.kind === 'message') {
 					await this.attachments.deleteByIds(
@@ -579,7 +569,6 @@ export class AgentMessageQueueService {
 					);
 				}
 				this.sendPreviewEvent(id, preview, { type: 'removed' });
-				await preview.pendingEvents;
 			}
 		}
 	}

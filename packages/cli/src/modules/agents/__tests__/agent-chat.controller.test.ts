@@ -352,7 +352,6 @@ describe('AgentChatController admission', () => {
 				abortSignal: new AbortController().signal,
 				send: vi.fn(),
 				onExecutionStarted: vi.fn(),
-				onExecutionRecorded: vi.fn(),
 			};
 			agentExecutionOrchestratorService.executeForChat.mockImplementation(async function* (config) {
 				await config.onExecutionStarted?.('execution-1');
