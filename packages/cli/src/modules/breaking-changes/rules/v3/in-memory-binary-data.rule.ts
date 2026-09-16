@@ -26,7 +26,7 @@ export class InMemoryBinaryDataRule implements IBreakingChangeInstanceRule {
 
 	async detect(): Promise<InstanceDetectionReport> {
 		if (!isInMemoryModeConfigured()) {
-			return { isAffected: false, instanceIssues: [], recommendations: [] };
+			return NOT_AFFECTED_INSTANCE;
 		}
 
 		return {
