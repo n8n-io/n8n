@@ -249,10 +249,12 @@ describe('viewsData', () => {
 			expect(triggerSection.children[0].uuid).toBe('additional-workflow-elements-trigger');
 			expect(triggerSection.children[0].key).toBe('Trigger');
 			expect(groupItem?.key).toBe(ADD_EMPTY_GROUP_NODE_CREATOR_ITEM);
+			expect(groupItem?.type).toBe('command');
 			if (!groupItem || !isNodeViewItem(groupItem)) return;
 			expect(groupItem.properties).toMatchObject({
 				title: 'Group',
 				icon: 'group',
+				description: 'Add an organisational container to your workflow',
 			});
 		});
 	});

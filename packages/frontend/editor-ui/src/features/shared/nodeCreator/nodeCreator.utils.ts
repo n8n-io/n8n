@@ -35,7 +35,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 import { i18n } from '@n8n/i18n';
 import { reRankSearchResults } from '@n8n/utils/search/re-rank-search-results';
-import { sublimeSearch } from '@n8n/utils/search/sublime-search';
+import { DEFAULT_KEYS, sublimeSearch } from '@n8n/utils/search/sublime-search';
 import * as changeCase from 'change-case';
 import sortBy from 'lodash/sortBy';
 import type { NodeViewItemSection } from './views/viewsData';
@@ -56,6 +56,12 @@ import type { CommunityNodeDetails, ViewStack } from './composables/useViewStack
 
 const COMMUNITY_NODE_TYPE_PREVIEW_TOKEN = '-preview';
 
+const NODE_CREATOR_SEARCH_KEYS = [
+	...DEFAULT_KEYS,
+	{ key: 'properties.title', weight: 1.3 },
+	{ key: 'properties.description', weight: 0.8 },
+];
+
 export function transformNodeType(
 	node: SimplifiedNodeType,
 	subcategory?: string,
@@ -75,6 +81,21 @@ export function transformNodeType(
 	return type === 'action'
 		? (createElement as ActionCreateElement)
 		: (createElement as NodeCreateElement);
+}
+
+/**
+ * Build one search collection from raw nodes and executable commands.
+ * The additional items can be raw view definitions or existing create elements;
+ * navigation views are intentionally excluded in both cases.
+ */
+export function getNodeCreatorSearchItems(
+	nodes: SimplifiedNodeType[],
+	items: ReadonlyArray<{ type: string }>,
+): INodeCreateElement[] {
+	return [
+		...nodes.map((node) => transformNodeType(node)),
+		...(items.filter((item) => item.type === 'command') as INodeCreateElement[]),
+	];
 }
 
 export function subcategorizeItems(items: SimplifiedNodeType[]) {
@@ -238,7 +259,8 @@ export function searchNodes(
 
 	// We have a snapshot of this call in sublimeSearch.test.ts to assert practical order for some cases
 	// Please update the snapshots per the README next to the snapshots if you modify items significantly.
-	const searchResults = sublimeSearch<INodeCreateElement>(trimmedFilter, items) || [];
+	const searchResults =
+		sublimeSearch<INodeCreateElement>(trimmedFilter, items, NODE_CREATOR_SEARCH_KEYS) || [];
 
 	// Any alias-prefix match is also a fuzzy match, so scanning the results
 	// (instead of all items) can never miss a boostable node.

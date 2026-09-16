@@ -174,6 +174,7 @@ watch(
 						clickable: !disabled,
 						[$style.active]: activeItemId === item.uuid && highlightActiveItem,
 						[$style.iteratorItem]: !communityNode,
+						[$style.view]: item.type === 'command',
 						[$style[item.type]]: true,
 						[$style.preview]: isPreview,
 						// Borderless is only applied to views
@@ -207,7 +208,7 @@ watch(
 					<AgentItem v-if="item.type === 'agent'" :agent="item.properties" />
 
 					<ViewItem
-						v-else-if="item.type === 'view'"
+						v-else-if="item.type === 'view' || item.type === 'command'"
 						:view="item.properties"
 						:class="$style.viewItem"
 					/>
@@ -292,6 +293,9 @@ watch(
 			border-top: 1px solid var(--color--foreground);
 		}
 	}
+}
+.command {
+	@extend .view;
 }
 .link {
 	position: relative;

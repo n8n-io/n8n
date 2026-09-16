@@ -16,7 +16,7 @@ import {
 	SUGGEST_SERVICE_FORM_URL_REMOTE_CONFIG_KEY,
 	TRIGGER_NODE_CREATOR_VIEW,
 } from '@/app/constants';
-import type { NodeCreateElement } from '@/Interface';
+import type { CommandCreateElement, NodeCreateElement } from '@/Interface';
 import { useViewStacks } from '@/features/shared/nodeCreator/composables/useViewStacks';
 import { useKeyboardNavigation } from '@/features/shared/nodeCreator/composables/useKeyboardNavigation';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -250,7 +250,7 @@ describe('NodesMode', () => {
 			items: [
 				{
 					key: ADD_EMPTY_GROUP_NODE_CREATOR_ITEM,
-					type: 'view',
+					type: 'command',
 					properties: {
 						title: 'Group',
 						description: 'Add an organisational container to your workflow',
@@ -268,6 +268,47 @@ describe('NodesMode', () => {
 		expect(emitted('emptyGroupSelected')).toEqual([[]]);
 		expect(emitted('nodeTypeSelected')).toBeUndefined();
 	});
+
+	it.each(['group', 'organisational', 'container'])(
+		'shows the Group item when searching for %s',
+		async (search) => {
+		const groupItem: CommandCreateElement = {
+			key: ADD_EMPTY_GROUP_NODE_CREATOR_ITEM,
+			type: 'command',
+			properties: {
+				title: 'Group',
+			description: 'Add an organisational container to your workflow',
+				icon: 'group',
+			},
+		};
+
+		useViewStacks().pushViewStack({
+			title: 'What happens next?',
+			mode: 'nodes',
+			rootView: REGULAR_NODE_CREATOR_VIEW,
+			hasSearch: true,
+			search,
+			items: [groupItem],
+			searchItems: [
+				{
+					key: 'n8n-nodes-base.set',
+					type: 'node',
+					subcategory: '*',
+					properties: mockSimplifiedNodeType({
+						name: 'n8n-nodes-base.set',
+						displayName: 'Edit Fields',
+					}),
+				},
+				groupItem,
+			],
+		});
+
+		render({ pinia });
+		await nextTick();
+
+		expect(screen.getByText('Group')).toBeInTheDocument();
+		},
+	);
 
 	it('keeps the MCP client pinned once and shows the MCP empty state for no results', async () => {
 		const mcpClient = mcpClientElement();
