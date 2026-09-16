@@ -288,7 +288,6 @@ describe('InstanceContextService', () => {
 			expect(blockOf(delta)).toContain(straggler.resourceName);
 		});
 
-
 		it('leaves the inventory out of a delta and says it is an addition', async () => {
 			await createWorkflow({ name: 'Lead enrichment' }, project);
 			await record({
