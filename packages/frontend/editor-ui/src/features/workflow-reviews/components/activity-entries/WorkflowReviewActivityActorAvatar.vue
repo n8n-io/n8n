@@ -1,19 +1,30 @@
 <script setup lang="ts">
 import type { WorkflowReviewEligibleReviewer } from '@n8n/api-types';
-import { N8nAvatar, N8nIcon } from '@n8n/design-system';
+import { N8nAssistantAvatar, N8nAvatar, N8nIcon } from '@n8n/design-system';
+
+import { isSelfHealingAssistant } from '@/features/self-healing/selfHealing.constants';
 
 /**
  * The avatar column of a feed entry that names a person: the actor's avatar, or a person
- * silhouette when the actor was deleted.
+ * silhouette when the actor was deleted. The self-healing assistant gets its own avatar.
  */
 defineProps<{
-	actor: Pick<WorkflowReviewEligibleReviewer, 'firstName' | 'lastName'> | null;
+	actor:
+		| (Pick<WorkflowReviewEligibleReviewer, 'firstName' | 'lastName'> &
+				Partial<Pick<WorkflowReviewEligibleReviewer, 'id'>>)
+		| null;
 }>();
 </script>
 
 <template>
+	<N8nAssistantAvatar
+		v-if="isSelfHealingAssistant(actor)"
+		size="mini"
+		:class="[$style.avatar, $style.assistantAvatar]"
+		data-test-id="workflow-review-activity-assistant-avatar"
+	/>
 	<N8nAvatar
-		v-if="actor"
+		v-else-if="actor"
 		size="xxsmall"
 		:class="$style.avatar"
 		:first-name="actor.firstName"
@@ -35,6 +46,12 @@ defineProps<{
 
 .avatar {
 	@include activity-avatar;
+}
+
+/* Sized like the person avatar so both keep the same column. */
+.assistantAvatar {
+	width: var(--review-activity--avatar-size);
+	height: var(--review-activity--avatar-size);
 }
 
 /* Sized and centred exactly like the avatar, so the two columns cannot drift apart. */

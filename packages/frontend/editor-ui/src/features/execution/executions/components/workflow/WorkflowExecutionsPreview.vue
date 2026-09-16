@@ -27,6 +27,7 @@ import { useAddExecutionToDataset } from '@/features/ai/evaluation.ee/composable
 import { ElDropdown, ElDropdownItem, ElDropdownMenu } from 'element-plus';
 import { N8nButton, N8nIconButton, N8nSpinner, N8nText, N8nTooltip } from '@n8n/design-system';
 import VoteButtons from './VoteButtons.vue';
+import SelfHealingExecutionBanner from '@/features/self-healing/components/SelfHealingExecutionBanner.vue';
 
 type RetryDropdownRef = InstanceType<typeof ElDropdown>;
 
@@ -387,6 +388,7 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 					v-if="isAnnotationEnabled && execution"
 					:execution="execution"
 				/>
+				<SelfHealingExecutionBanner :execution="execution" />
 			</div>
 
 			<div :class="$style.actions">

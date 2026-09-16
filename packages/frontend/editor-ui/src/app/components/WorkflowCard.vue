@@ -58,6 +58,7 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import { usePrivateCredentials } from '@/features/resolvers/composables/usePrivateCredentials';
 import PrivateCredentialIcon from '@/features/resolvers/components/PrivateCredentialIcon.vue';
 import { useDependencies } from '@/app/composables/useDependencies';
+import SelfHealingWorkflowBadge from '@/features/self-healing/components/SelfHealingWorkflowBadge.vue';
 
 const WORKFLOW_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
@@ -749,6 +750,11 @@ const tags = computed(
 						</N8nBreadcrumbs>
 					</div>
 				</ProjectCardBadge>
+				<SelfHealingWorkflowBadge
+					v-if="!data.isArchived"
+					:workflow-id="data.id"
+					:project-id="data.homeProject?.id"
+				/>
 				<N8nText
 					v-if="data.isArchived"
 					color="text-light"

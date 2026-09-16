@@ -20,7 +20,7 @@ export const WorkflowReviewsModule = defineFrontendModule({
 			component: WorkflowReviewRequestsView,
 			beforeEnter() {
 				return (
-					useWorkflowReviewsFeature().isWorkflowReviewsEnabled.value || {
+					useWorkflowReviewsFeature().isReviewInboxEnabled.value || {
 						name: VIEWS.HOMEPAGE,
 					}
 				);

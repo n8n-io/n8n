@@ -29,6 +29,8 @@ import { isProjectRole } from '@/app/utils/typeGuards';
 import ProjectExternalSecrets from '../components/ProjectExternalSecrets.vue';
 import ProjectSettingsCustomTelemetryTags from '../components/ProjectSettingsCustomTelemetryTags.vue';
 import ProjectWorkerPoolsSection from '../components/ProjectWorkerPoolsSection.vue';
+import ProjectSelfHealingSection from '@/features/self-healing/components/ProjectSelfHealingSection.vue';
+import { useSelfHealingStore } from '@/features/self-healing/selfHealing.store';
 import { getResourcePermissions } from '@n8n/permissions';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 
@@ -56,6 +58,7 @@ const projectsStore = useProjectsStore();
 const rolesStore = useRolesStore();
 const cloudPlanStore = useCloudPlanStore();
 const settingsStore = useSettingsStore();
+const selfHealingStore = useSelfHealingStore();
 const toast = useToast();
 const router = useRouter();
 const telemetry = useTelemetry();
@@ -790,6 +793,10 @@ onMounted(async () => {
 							onTextInput();
 						}
 					"
+				/>
+				<ProjectSelfHealingSection
+					v-if="selfHealingStore.isEnabled && projectsStore.currentProject"
+					:project-id="projectsStore.currentProject.id"
 				/>
 
 				<fieldset>

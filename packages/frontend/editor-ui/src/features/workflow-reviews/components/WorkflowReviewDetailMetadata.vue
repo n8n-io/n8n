@@ -1,10 +1,18 @@
 <script setup lang="ts">
 import type { WorkflowReviewInboxItem, WorkflowReviewRequestDetail } from '@n8n/api-types';
-import { N8nAvatar, N8nCard, N8nIcon, N8nLink, N8nText } from '@n8n/design-system';
+import {
+	N8nAssistantAvatar,
+	N8nAvatar,
+	N8nCard,
+	N8nIcon,
+	N8nLink,
+	N8nText,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 
 import { VIEWS } from '@/app/constants';
+import { isSelfHealingAssistant } from '@/features/self-healing/selfHealing.constants';
 import { formatUserDisplayName } from '../workflowReviews.utils';
 import { getWorkflowReviewStatusDisplay } from '../workflowReviewStatus.utils';
 import WorkflowReviewStatusDot from './WorkflowReviewStatusDot.vue';
@@ -56,7 +64,13 @@ const statusSummary = computed(() =>
 					{{ i18n.baseText('workflowReviews.detail.metadata.requestedBy') }}
 				</N8nText>
 				<div v-if="review.requester" :class="$style.person">
+					<N8nAssistantAvatar
+						v-if="isSelfHealingAssistant(review.requester)"
+						size="small"
+						data-test-id="workflow-review-detail-assistant-avatar"
+					/>
 					<N8nAvatar
+						v-else
 						:first-name="review.requester.firstName"
 						:last-name="review.requester.lastName"
 						size="xsmall"

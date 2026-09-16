@@ -11,6 +11,8 @@ import { computed, ref } from 'vue';
 
 import { useRootStore } from '@n8n/stores/useRootStore';
 
+import { useSelfHealingReviewMocks } from '@/features/self-healing/composables/useSelfHealingReviewMocks';
+
 import {
 	decideWorkflowReviewRequest,
 	fetchWorkflowReviewInbox,
@@ -161,6 +163,8 @@ function createInboxListSlice(requestPage: RequestPage) {
 
 export const useReviewInboxStore = defineStore('workflowReviewInbox', () => {
 	const rootStore = useRootStore();
+	// Self-healing prototype: merges assistant-authored reviews into the inbox.
+	const reviewMocks = useSelfHealingReviewMocks();
 
 	const openCount = ref<number | null>(null);
 	const closedCount = ref<number | null>(null);
@@ -177,13 +181,13 @@ export const useReviewInboxStore = defineStore('workflowReviewInbox', () => {
 		state: WorkflowReviewRequestState,
 		category?: WorkflowReviewInboxCategory,
 	): RequestPage {
-		return async (cursor?: string) =>
-			await fetchWorkflowReviewInbox(rootStore.restApiContext, {
-				state,
-				category,
-				limit: DEFAULT_LIMIT,
-				cursor,
-			});
+		return async (cursor?: string) => {
+			const params = { state, category, limit: DEFAULT_LIMIT, cursor };
+			return await reviewMocks.fetchInbox(
+				params,
+				async () => await fetchWorkflowReviewInbox(rootStore.restApiContext, params),
+			);
+		};
 	}
 
 	/**
@@ -236,7 +240,9 @@ export const useReviewInboxStore = defineStore('workflowReviewInbox', () => {
 		const requestSeq = ++summaryRequestSeq;
 
 		try {
-			const summary = await fetchWorkflowReviewInboxSummary(rootStore.restApiContext);
+			const summary = await reviewMocks.fetchSummary(
+				async () => await fetchWorkflowReviewInboxSummary(rootStore.restApiContext),
+			);
 			if (requestSeq !== summaryRequestSeq) return;
 
 			openCount.value = summary.open;
@@ -278,7 +284,10 @@ export const useReviewInboxStore = defineStore('workflowReviewInbox', () => {
 		}
 
 		try {
-			const response = await fetchWorkflowReviewRequestDetail(rootStore.restApiContext, id);
+			const response = await reviewMocks.fetchDetail(
+				id,
+				async () => await fetchWorkflowReviewRequestDetail(rootStore.restApiContext, id),
+			);
 			if (requestSeq !== detailRequestSeq) {
 				return;
 			}
@@ -318,7 +327,11 @@ export const useReviewInboxStore = defineStore('workflowReviewInbox', () => {
 	 * the auto-publish outcome.
 	 */
 	async function decideOnReview(id: string, input: WorkflowReviewDecisionInput) {
-		const summary = await decideWorkflowReviewRequest(rootStore.restApiContext, id, input);
+		const summary = await reviewMocks.decide(
+			id,
+			input,
+			async () => await decideWorkflowReviewRequest(rootStore.restApiContext, id, input),
+		);
 
 		const item = findItemById(id);
 		if (item) {

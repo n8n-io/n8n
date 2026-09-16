@@ -58,6 +58,8 @@ import { useDebounce } from '@n8n/composables/useDebounce';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 import RedactionMembersModal from '@/features/workflows/components/WorkflowSettings/RedactionMembersModal.vue';
+import SelfHealingWorkflowSettingsValue from '@/features/self-healing/components/SelfHealingWorkflowSettingsValue.vue';
+import { useSelfHealingStore } from '@/features/self-healing/selfHealing.store';
 import { useGlobalLinkActions } from '@/app/composables/useGlobalLinkActions';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
@@ -99,6 +101,7 @@ const collaborationStore = useCollaborationStore();
 const workflowsStore = useWorkflowsStore();
 const workflowsListStore = useWorkflowsListStore();
 const projectsStore = useProjectsStore();
+const selfHealingStore = useSelfHealingStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const workflowsEEStore = useWorkflowsEEStore();
 const nodeCreatorStore = useNodeCreatorStore();
@@ -1676,6 +1679,25 @@ onBeforeUnmount(() => {
 								></ElSwitch>
 							</N8nTooltip>
 						</div>
+					</ElCol>
+				</ElRow>
+				<ElRow v-if="selfHealingStore.isEnabled" data-test-id="workflow-settings-self-healing">
+					<ElCol :span="10" :class="$style['setting-name']">
+						<label>
+							{{ i18n.baseText('selfHealing.workflowSettings.label') }}
+							<N8nTooltip placement="top">
+								<template #content>
+									{{ i18n.baseText('selfHealing.workflowSettings.tooltip') }}
+								</template>
+								<N8nIcon icon="circle-help" />
+							</N8nTooltip>
+						</label>
+					</ElCol>
+					<ElCol :span="14">
+						<SelfHealingWorkflowSettingsValue
+							:workflow-id="workflowId"
+							:project-id="workflow?.homeProject?.id"
+						/>
 					</ElCol>
 				</ElRow>
 				<ElRow>

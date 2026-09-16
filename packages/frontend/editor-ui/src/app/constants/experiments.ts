@@ -161,6 +161,15 @@ export const INSTANCE_AI_PROGRESSIVE_BUILDING_EXPERIMENT = createExperiment(
  */
 export const MCP_JSON_NUDGE_EXPERIMENT = createExperiment('113_mcp_nudge_modal_on_export_import');
 
+/**
+ * Self-healing workflows UI prototype. Frontend only: every surface behind this
+ * flag reads from a mock store, so it can be toggled on any instance with
+ * `window.featureFlags.override('self_healing_workflows_prototype', 'variant')`.
+ */
+export const SELF_HEALING_WORKFLOWS_EXPERIMENT = createExperiment(
+	'self_healing_workflows_prototype',
+);
+
 export const EXPERIMENTS_TO_TRACK = [
 	INSTANCE_AI_PROGRESSIVE_BUILDING_EXPERIMENT.name,
 	EXTRA_TEMPLATE_LINKS_EXPERIMENT.name,

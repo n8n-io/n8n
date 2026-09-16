@@ -170,7 +170,7 @@ const getInstanceAiThreadMenuItem = (thread: InstanceAiThreadSummary): IMenuItem
 	},
 });
 
-const { isWorkflowReviewsEnabled: isWorkflowReviewsNavVisible } = useWorkflowReviewsFeature();
+const { isReviewInboxEnabled: isWorkflowReviewsNavVisible } = useWorkflowReviewsFeature();
 
 const workflowReviews = computed<IMenuItem>(() => ({
 	id: 'workflow-reviews',

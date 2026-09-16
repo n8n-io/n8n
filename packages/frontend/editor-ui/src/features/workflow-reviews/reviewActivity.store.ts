@@ -4,6 +4,8 @@ import { ref } from 'vue';
 
 import { useRootStore } from '@n8n/stores/useRootStore';
 
+import { useSelfHealingReviewMocks } from '@/features/self-healing/composables/useSelfHealingReviewMocks';
+
 import { createWorkflowReviewComment, fetchWorkflowReviewActivity } from './workflowReviews.api';
 import { toError } from './workflowReviews.utils';
 
@@ -15,6 +17,8 @@ const DEFAULT_LIMIT = 25;
  */
 export const useReviewActivityStore = defineStore('workflowReviewActivity', () => {
 	const rootStore = useRootStore();
+	// Self-healing prototype: serves the feed of assistant-authored reviews.
+	const reviewMocks = useSelfHealingReviewMocks();
 
 	const currentReviewId = ref<string | null>(null);
 	const entries = ref<WorkflowReviewActivityEntry[]>([]);
@@ -56,9 +60,13 @@ export const useReviewActivityStore = defineStore('workflowReviewActivity', () =
 		}
 
 		try {
-			const response = await fetchWorkflowReviewActivity(rootStore.restApiContext, reviewId, {
-				limit: DEFAULT_LIMIT,
-			});
+			const response = await reviewMocks.fetchActivity(
+				reviewId,
+				async () =>
+					await fetchWorkflowReviewActivity(rootStore.restApiContext, reviewId, {
+						limit: DEFAULT_LIMIT,
+					}),
+			);
 			if (requestSeq !== feedRequestSeq) return;
 
 			// Merged, not assigned: a comment posted while this page was in flight is already
@@ -94,10 +102,14 @@ export const useReviewActivityStore = defineStore('workflowReviewActivity', () =
 		error.value = null;
 
 		try {
-			const response = await fetchWorkflowReviewActivity(rootStore.restApiContext, reviewId, {
-				limit: DEFAULT_LIMIT,
-				cursor,
-			});
+			const response = await reviewMocks.fetchActivity(
+				reviewId,
+				async () =>
+					await fetchWorkflowReviewActivity(rootStore.restApiContext, reviewId, {
+						limit: DEFAULT_LIMIT,
+						cursor,
+					}),
+			);
 			if (requestSeq !== feedRequestSeq || currentReviewId.value !== reviewId) return;
 
 			entries.value = [...response.data, ...entries.value];
@@ -127,7 +139,11 @@ export const useReviewActivityStore = defineStore('workflowReviewActivity', () =
 		const requestSeq = ++postSeq;
 		posting.value = true;
 		try {
-			const entry = await createWorkflowReviewComment(rootStore.restApiContext, reviewId, { body });
+			const entry = await reviewMocks.postComment(
+				reviewId,
+				body,
+				async () => await createWorkflowReviewComment(rootStore.restApiContext, reviewId, { body }),
+			);
 			if (currentReviewId.value !== reviewId) return false;
 
 			// A feed refetch that raced this post may already carry the comment.

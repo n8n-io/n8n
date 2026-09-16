@@ -3,6 +3,7 @@ import type { WorkflowReviewInboxItem, WorkflowReviewRequestState } from '@n8n/a
 import { computed, ref, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import {
+	N8nAssistantAvatar,
 	N8nBadge,
 	N8nButton,
 	N8nCard,
@@ -13,6 +14,8 @@ import {
 	N8nText,
 } from '@n8n/design-system';
 import { useUsersStore } from '@n8n/stores/users.store';
+import { isSelfHealingAssistant } from '@/features/self-healing/selfHealing.constants';
+import { useSelfHealingStore } from '@/features/self-healing/selfHealing.store';
 import { useIntersectionObserver } from '@/app/composables/useIntersectionObserver';
 import TimeAgo from '@/app/components/TimeAgo.vue';
 import WorkflowReviewStatusDot from './WorkflowReviewStatusDot.vue';
@@ -52,7 +55,13 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const usersStore = useUsersStore();
+const selfHealingStore = useSelfHealingStore();
 const { isCollapsed, toggleSection } = useReviewInboxSectionCollapse();
+
+/** Reviews the assistant submitted carry a one-line "what failed → what changed". */
+function autoFixSummary(item: WorkflowReviewInboxItem): string | null {
+	return isSelfHealingAssistant(item.requester) ? selfHealingStore.getReviewSummary(item.id) : null;
+}
 
 /**
  * Admins see every review, including ones nobody assigned them, so "Waiting for
@@ -240,11 +249,26 @@ function onListBackgroundClick() {
 						>
 							<div :class="$style.cardContent">
 								<div :class="$style.cardHeader">
+									<N8nAssistantAvatar
+										v-if="isSelfHealingAssistant(item.requester)"
+										size="mini"
+										:class="$style.assistantAvatar"
+										data-test-id="workflow-review-request-assistant-avatar"
+									/>
 									<N8nText bold tag="h3" :class="$style.cardTitle">
 										{{ item.title }}
 									</N8nText>
 									<WorkflowReviewStatusDot :state="item.state" :decision="item.decision" />
 								</div>
+								<N8nText
+									v-if="autoFixSummary(item)"
+									size="xsmall"
+									color="text-light"
+									:class="$style.cardSummary"
+									data-test-id="workflow-review-request-auto-fix-summary"
+								>
+									{{ autoFixSummary(item) }}
+								</N8nText>
 								<div :class="$style.cardMeta">
 									<N8nBadge
 										v-if="item.workflowName"
@@ -453,6 +477,19 @@ function onListBackgroundClick() {
 	white-space: nowrap;
 	min-width: 0;
 	font-size: var(--font-size--sm);
+}
+
+.assistantAvatar {
+	flex-shrink: 0;
+}
+
+.cardSummary {
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
+	overflow: hidden;
+	min-width: 0;
+	width: 100%;
 }
 
 .cardMeta {
