@@ -389,3 +389,20 @@ export function validateRequestBody(
 			break;
 	}
 }
+
+export async function fetchDatabricksPage<T>(
+	context: IExecuteFunctions | ILoadOptionsFunctions,
+	credentialType: 'databricksApi' | 'databricksOAuth2Api',
+	host: string,
+	path: string,
+	qs: IDataObject,
+	pageToken?: string,
+): Promise<T> {
+	return await databricksApiRequest(context, credentialType, {
+		method: 'GET',
+		url: `${host}${path}`,
+		qs: pageToken ? { ...qs, page_token: pageToken } : { ...qs },
+		headers: { Accept: 'application/json' },
+		json: true,
+	});
+}

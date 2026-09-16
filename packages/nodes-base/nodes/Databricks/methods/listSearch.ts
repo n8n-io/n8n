@@ -1,5 +1,4 @@
 import type {
-	IDataObject,
 	IHttpRequestOptions,
 	ILoadOptionsFunctions,
 	INodeListSearchResult,
@@ -8,6 +7,7 @@ import type {
 import {
 	databricksApiRequest,
 	extractResourceLocatorValue,
+	fetchDatabricksPage,
 	getActiveCredentialType,
 	getHost,
 	makePermissionErrorLegible,
@@ -440,15 +440,12 @@ async function fetchListPage<T>(
 	limit: number,
 	pageToken?: string,
 ): Promise<T> {
-	const qs: IDataObject = { limit };
-	if (pageToken) qs.page_token = pageToken;
-	return await listRequest<T>(context, credentialType, {
-		method: 'GET',
-		url: `${host}${path}`,
-		qs,
-		headers: { Accept: 'application/json' },
-		json: true,
-	});
+	try {
+		return await fetchDatabricksPage<T>(context, credentialType, host, path, { limit }, pageToken);
+	} catch (error) {
+		makePermissionErrorLegible(error);
+		throw error;
+	}
 }
 
 export async function getJobs(

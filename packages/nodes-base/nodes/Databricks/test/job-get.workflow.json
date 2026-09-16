@@ -70,6 +70,11 @@
 							"pause_status": "UNPAUSED"
 						},
 						"max_concurrent_runs": 1
+					},
+					"trigger_state": {
+						"file_arrival": {
+							"using_file_events": false
+						}
 					}
 				}
 			}

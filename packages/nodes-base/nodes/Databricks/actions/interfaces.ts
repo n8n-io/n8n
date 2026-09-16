@@ -90,7 +90,6 @@ export type DatabricksJobRun = {
 	queue_duration?: number;
 	run_duration?: number;
 	status?: DatabricksJobRunStatus;
-	/** @deprecated Jobs API 2.2 reports `status` instead */
 	state?: DatabricksJobRunLegacyState;
 	tasks?: DatabricksJobRunTask[];
 	has_more?: boolean;

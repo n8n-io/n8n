@@ -1,15 +1,9 @@
 import { NodeOperationError } from 'n8n-workflow';
-import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
-import {
-	databricksApiRequest,
-	getActiveCredentialType,
-	getHost,
-	readIdParameter,
-} from '../helpers';
+import { JOBS_ARRAY_PAGE_SIZE, JOBS_PAGES_MAX } from '../../constants';
+import { fetchDatabricksPage, getActiveCredentialType, getHost, readIdParameter } from '../helpers';
 import type { DatabricksJob, DatabricksJobSettings } from '../interfaces';
-
-const SETTINGS_PAGES_MAX = 20;
 
 type PaginatedSettingsKey = 'tasks' | 'job_clusters' | 'environments' | 'parameters';
 const PAGINATED_SETTINGS_KEYS: PaginatedSettingsKey[] = [
@@ -18,24 +12,6 @@ const PAGINATED_SETTINGS_KEYS: PaginatedSettingsKey[] = [
 	'environments',
 	'parameters',
 ];
-
-async function fetchJobPage(
-	context: IExecuteFunctions,
-	credentialType: 'databricksApi' | 'databricksOAuth2Api',
-	host: string,
-	jobId: number,
-	pageToken?: string,
-): Promise<DatabricksJob> {
-	const qs: IDataObject = { job_id: jobId };
-	if (pageToken) qs.page_token = pageToken;
-	return await databricksApiRequest(context, credentialType, {
-		method: 'GET',
-		url: `${host}/api/2.2/jobs/get`,
-		qs,
-		headers: { Accept: 'application/json' },
-		json: true,
-	});
-}
 
 function appendPaginatedSettings(
 	target: DatabricksJobSettings,
@@ -51,16 +27,20 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const credentialType = getActiveCredentialType(this, i);
 	const host = await getHost(this, credentialType);
 	const jobId = readIdParameter(this, i, 'jobId', 'job');
+	const fetchPage = async (pageToken?: string) =>
+		await fetchDatabricksPage<DatabricksJob>(
+			this,
+			credentialType,
+			host,
+			'/api/2.2/jobs/get',
+			{ job_id: jobId, include_trigger_state: true },
+			pageToken,
+		);
 
-	const { has_more, next_page_token, ...job } = await fetchJobPage(
-		this,
-		credentialType,
-		host,
-		jobId,
-	);
+	const { has_more, next_page_token, ...job } = await fetchPage();
 	let pageToken = next_page_token;
-	for (let page = 1; pageToken && page < SETTINGS_PAGES_MAX; page++) {
-		const next = await fetchJobPage(this, credentialType, host, jobId, pageToken);
+	for (let page = 1; pageToken && page < JOBS_PAGES_MAX; page++) {
+		const next = await fetchPage(pageToken);
 		job.settings ??= {};
 		appendPaginatedSettings(job.settings, next.settings);
 		pageToken = next.next_page_token;
@@ -68,10 +48,10 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	if (pageToken) {
 		throw new NodeOperationError(
 			this.getNode(),
-			`Job ${jobId} has more tasks than the node can read`,
+			`Job ${jobId} has more settings entries than the node can read`,
 			{
 				itemIndex: i,
-				description: `The node reads at most ${SETTINGS_PAGES_MAX * 100} tasks of one job. Open the job in Databricks to see its full definition.`,
+				description: `The node reads at most ${JOBS_PAGES_MAX * JOBS_ARRAY_PAGE_SIZE} tasks, job clusters, environments or parameters of one job. Open the job in Databricks to see its full definition.`,
 			},
 		);
 	}

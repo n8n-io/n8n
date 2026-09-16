@@ -671,7 +671,7 @@ describe('Databricks', () => {
 			const databricksNock = nock(HOST);
 			databricksNock
 				.get('/api/2.2/jobs/get')
-				.query({ job_id: '281874479417551' })
+				.query({ job_id: '281874479417551', include_trigger_state: 'true' })
 				.matchHeader('user-agent', 'n8n_DatabricksNode')
 				.reply(200, {
 					job_id: 281874479417551,
@@ -696,12 +696,13 @@ describe('Databricks', () => {
 						},
 						max_concurrent_runs: 1,
 					},
+					trigger_state: { file_arrival: { using_file_events: false } },
 					has_more: true,
 					next_page_token: 'page-2',
 				});
 			databricksNock
 				.get('/api/2.2/jobs/get')
-				.query({ job_id: '281874479417551', page_token: 'page-2' })
+				.query({ job_id: '281874479417551', include_trigger_state: 'true', page_token: 'page-2' })
 				.matchHeader('user-agent', 'n8n_DatabricksNode')
 				.reply(200, {
 					job_id: 281874479417551,
@@ -720,10 +721,7 @@ describe('Databricks', () => {
 		});
 	});
 
-	describe('Router -> PERMISSION_DENIED surfaces the Databricks message', () => {
-		// A 403 PERMISSION_DENIED body must surface its legible Databricks message
-		// instead of the generic "Forbidden - perhaps check your credentials?" —
-		// deleting the makePermissionErrorLegible call in the router must fail this
+	describe('Router -> PERMISSION_DENIED replaces the generic Forbidden message with the Databricks message', () => {
 		beforeAll(() => {
 			nock(HOST)
 				.get('/api/2.1/unity-catalog/catalogs')
