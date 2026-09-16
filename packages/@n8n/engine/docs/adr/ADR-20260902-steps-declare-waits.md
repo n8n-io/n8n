@@ -65,6 +65,36 @@ deadline, or accept a resume request, or do both.
    status projection, the `step:waiting` event and the control-plane mapping are
    one later slice. The decision holds; only the code is absent.
 
+## How the design doc's model maps onto this one
+
+Design doc §3.3 sketches a `WaitStepConfig` with an `until` of four kinds, an
+optional `action`, and a `timeout`. This ADR keeps the intent and needs fewer
+parts. The mapping matters, because the doc is what the team reviewed.
+
+- **`duration` and `timestamp` both become a deadline.** The shim resolves a
+  duration to an absolute instant, because v1 gives it a `Date` and not a
+  length of time. One field, `resumeAt`, covers both kinds.
+- **`webhook` and `signal` both become a resume request.** In the doc they
+  differ by who registers the wait: a webhook registers a path with the control
+  plane, and a signal hands out an opaque token. Decision 5 registers nothing,
+  so the difference disappears. Every resume request reaches the same resolve
+  endpoint with the execution id and a signed token. What the caller is — a
+  webhook client, a form, a person who clicked Approve — only changes the
+  payload the node's resume method reads.
+- **`action` is not needed.** In the doc, the engine performs the action, so the
+  engine needs a vocabulary of actions to perform. Decision 1 runs the node's
+  own code instead, and that code already sends the message. The doc calls the
+  `WaitAction` set the largest open question in the design; this removes the
+  question rather than answering it.
+- **`timeout` becomes a deadline with a resume request.** A declaration can
+  carry both, and then the first of the two ends the wait. One behaviour does
+  change: the doc makes a timeout fail the step, and this ADR emits the
+  captured outputs instead. Engine v1 continues past an expired wait limit, so
+  a failure would be a new behaviour, not a preserved one.
+
+The `wait` step type in the graph stays unused. A wait now enters through the
+step result contract, so no node needs to convert to a different step type.
+
 ## Alternatives Considered
 
 - **Translate the v1 Wait node into a declarative wait step at conversion
