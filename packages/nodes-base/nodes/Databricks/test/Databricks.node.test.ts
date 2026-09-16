@@ -15,7 +15,7 @@ import { mockDeep } from 'vitest-mock-extended';
 import { execute as executeQuery } from '../actions/databricksSql/executeQuery.operation';
 import { makePermissionErrorLegible } from '../actions/helpers';
 import { execute as runJob } from '../actions/job/run.operation';
-import { getCatalogs, getJobs, getSchemas } from '../methods/listSearch';
+import { getCatalogs, getJobs, getRuns, getSchemas } from '../methods/listSearch';
 import { jobParameters } from '../resources/job/parameters';
 
 // The operation is imported from source, so this mock replaces the real poll delay
@@ -632,6 +632,40 @@ describe('Databricks', () => {
 		});
 	});
 
+	describe('Job -> Get Run Output', () => {
+		beforeAll(() => {
+			const databricksNock = nock(HOST);
+			databricksNock
+				.get('/api/2.2/jobs/runs/get')
+				.query({ run_id: '41847992357943' })
+				.matchHeader('user-agent', 'n8n_DatabricksNode')
+				.reply(200, {
+					job_id: 281874479417551,
+					run_id: 41847992357943,
+					tasks: [{ task_key: 'main', run_id: 41847992357944 }],
+				});
+			databricksNock
+				.get('/api/2.2/jobs/runs/get-output')
+				.query({ run_id: '41847992357944' })
+				.matchHeader('user-agent', 'n8n_DatabricksNode')
+				.reply(200, {
+					metadata: {
+						run_id: 41847992357944,
+						task_key: 'main',
+						status: { state: 'TERMINATED', termination_details: { code: 'SUCCESS' } },
+					},
+					notebook_output: { result: 'done', truncated: false },
+				});
+		});
+
+		afterAll(() => nock.cleanAll());
+
+		new NodeTestHarness().setupTests({
+			credentials,
+			workflowFiles: ['job-get-run-output.workflow.json'],
+		});
+	});
+
 	describe('Router -> PERMISSION_DENIED surfaces the Databricks message', () => {
 		// A 403 PERMISSION_DENIED body must surface its legible Databricks message
 		// instead of the generic "Forbidden - perhaps check your credentials?" —
@@ -734,6 +768,7 @@ describe('listSearch -> PERMISSION_DENIED surfaces the Databricks message', () =
 	it.each([
 		['getCatalogs', getCatalogs],
 		['getJobs', getJobs],
+		['getRuns', getRuns],
 	])('should reject with the legible message from %s', async (_name, method) => {
 		const context = mockDeep<ILoadOptionsFunctions>();
 		context.getNodeParameter.mockReturnValue('accessToken');

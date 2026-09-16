@@ -3,6 +3,7 @@ import {
 	CredentialsGetManyRequestQuery,
 	CredentialsGetOneRequestQuery,
 	GenerateCredentialNameRequestQuery,
+	TestCredentialRequestDto,
 } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
@@ -144,9 +145,16 @@ export class CredentialsController {
 
 	// TODO: Write at least test cases for the failure paths.
 	@Post('/test')
-	async testCredentials(req: CredentialRequest.Test) {
+	async testCredentials(
+		req: AuthenticatedRequest,
+		_res: unknown,
+		@Body payload: TestCredentialRequestDto,
+	) {
 		try {
-			return await this.credentialsService.testWithCredentials(req.user, req.body.credentials);
+			return await this.credentialsService.testWithCredentials(req.user, {
+				...payload.credentials,
+				data: payload.credentials.data as ICredentialDataDecryptedObject,
+			});
 		} catch (error) {
 			if (error instanceof CredentialNotFoundError) {
 				throw new ForbiddenError();

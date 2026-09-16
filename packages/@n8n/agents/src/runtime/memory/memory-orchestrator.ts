@@ -509,6 +509,9 @@ export class MemoryOrchestrator {
 	): Promise<void> {
 		const { memory, observationalMemory } = this.config;
 		if (!memory || !options?.persistence || !hasObservationLogObserverMemory(memory)) return;
+		// Hosts can restrict the Observer to the post-turn path, so the visible
+		// window stays byte-stable within a turn (better prompt-cache reuse).
+		if (observationalMemory?.midRunObservation === false) return;
 		const observerThresholdTokens = observationalMemory?.observerThresholdTokens;
 		if (!observationalMemory?.observe || observerThresholdTokens === undefined) return;
 

@@ -26,6 +26,7 @@ import {
 	type InstanceAiRunLimitReason,
 } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import { redactTelemetryProperties } from '@n8n/telemetry';
 import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
@@ -378,6 +379,7 @@ export function createThreadRuntime(
 	initialProjectId?: string,
 ) {
 	const rootStore = useRootStore();
+	const instanceAiSettingsStore = useInstanceAiSettingsStore();
 	const workflowsListStore = useWorkflowsListStore();
 	const toast = useToast();
 	const telemetry = useTelemetry();
@@ -1224,6 +1226,7 @@ export function createThreadRuntime(
 				handoffContext,
 				Intl.DateTimeFormat().resolvedOptions().timeZone,
 				pushRef,
+				instanceAiSettingsStore.computerUseChannels,
 			);
 
 			if (runId) {

@@ -7,6 +7,7 @@ import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import type { CSSProperties } from 'vue';
 import type { IdleRange, TimelineItem } from '../session-timeline.types';
 import {
+	backgroundJobSignalSummary,
 	executionErrorLabel,
 	executionErrorMessage,
 	formatDuration,
@@ -107,6 +108,8 @@ function popoverPillKind(item: TimelineItem) {
 function popoverLabel(item: TimelineItem): string {
 	if (isSubAgentTimelineItem(item)) return i18n.baseText('agentSessions.timeline.subAgent');
 	switch (item.kind) {
+		case 'background-task-signal':
+			return i18n.baseText('agents.chat.backgroundTasks.resultsReceived');
 		case 'user':
 			return i18n.baseText('agentSessions.timeline.user');
 		case 'agent':
@@ -133,6 +136,8 @@ function popoverName(item: TimelineItem): string {
 		return item.subAgentName ?? formatToolNameForDisplay(item.toolName);
 	}
 	switch (item.kind) {
+		case 'background-task-signal':
+			return backgroundJobSignalSummary(item, i18n);
 		case 'user':
 		case 'agent':
 			return truncate(item.content ?? '', 80);

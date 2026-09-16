@@ -137,7 +137,10 @@ profiles, tokens, determinism, and the other commands.
 - `pnpm lint` - Lint code
 - `pnpm typecheck` - Run type checks
 - `pnpm knip` - Report declared dependencies that no file in the package uses.
-  Ignores and per-package entries live in `knip.ts`
+  CI runs it on every PR as the "Unused Dependencies" check. To resolve a
+  finding, remove the dependency from the manifest. If the dependency is used
+  in a way knip cannot see, add an `ignoreDependencies` entry for the package
+  in `knip.ts` with a one-line reason
 
 Always run lint and typecheck before committing code to ensure quality.
 Execute these commands from within the specific package directory you're

@@ -13,6 +13,7 @@ import {
 	NodeOperationError,
 	NodeConnectionTypes,
 	getCredentialAllowedDomains,
+	toHostname,
 } from 'n8n-workflow';
 import type {
 	ICredentialDataDecryptedObject,
@@ -120,26 +121,43 @@ export class RoutingNode {
 				},
 			});
 
-			const { proxy, timeout, allowUnauthorizedCerts } = itemContext[
-				itemIndex
-			].thisArgs.getNodeParameter('requestOptions', 0, {}) as {
-				proxy: string;
-				timeout: number;
-				allowUnauthorizedCerts: boolean;
-			};
-
-			if (nodeType.description.requestOperations) {
-				itemContext[itemIndex].requestData.requestOperations = {
-					...nodeType.description.requestOperations,
+			try {
+				const { proxy, timeout, allowUnauthorizedCerts } = itemContext[
+					itemIndex
+				].thisArgs.getNodeParameter('requestOptions', 0, {}) as {
+					proxy: string;
+					timeout: number;
+					allowUnauthorizedCerts: boolean;
 				};
-			}
 
-			const additionalKeys = getAdditionalKeys(additionalData, mode, runExecutionData);
+				if (nodeType.description.requestOperations) {
+					itemContext[itemIndex].requestData.requestOperations = {
+						...nodeType.description.requestOperations,
+					};
+				}
 
-			if (nodeType.description.requestDefaults) {
-				for (const key of Object.keys(nodeType.description.requestDefaults)) {
-					// eslint-disable-next-line @typescript-eslint/no-explicit-any
-					let value = (nodeType.description.requestDefaults as Record<string, any>)[key];
+				const additionalKeys = getAdditionalKeys(additionalData, mode, runExecutionData);
+
+				if (nodeType.description.requestDefaults) {
+					for (const key of Object.keys(nodeType.description.requestDefaults)) {
+						// eslint-disable-next-line @typescript-eslint/no-explicit-any
+						let value = (nodeType.description.requestDefaults as Record<string, any>)[key];
+						// If the value is an expression resolve it
+						value = this.getParameterValue(
+							value,
+							itemIndex,
+							runIndex,
+							executeData,
+							{ ...additionalKeys, $credentials: credentials, $version: node.typeVersion },
+							false,
+						) as string;
+						// eslint-disable-next-line @typescript-eslint/no-explicit-any
+						(itemContext[itemIndex].requestData.options as Record<string, any>)[key] = value;
+					}
+				}
+
+				for (const property of nodeType.description.properties) {
+					let value = get(node.parameters, property.name, []) as string | NodeParameterValue;
 					// If the value is an expression resolve it
 					value = this.getParameterValue(
 						value,
@@ -148,111 +166,131 @@ export class RoutingNode {
 						executeData,
 						{ ...additionalKeys, $credentials: credentials, $version: node.typeVersion },
 						false,
-					) as string;
-					// eslint-disable-next-line @typescript-eslint/no-explicit-any
-					(itemContext[itemIndex].requestData.options as Record<string, any>)[key] = value;
+					) as string | NodeParameterValue;
+
+					const tempOptions = this.getRequestOptionsFromParameters(
+						itemContext[itemIndex].thisArgs,
+						property,
+						itemIndex,
+						runIndex,
+						'',
+						{
+							...additionalKeys,
+							$credentials: credentials,
+							$value: value,
+							$version: node.typeVersion,
+						},
+					);
+
+					this.mergeOptions(itemContext[itemIndex].requestData, tempOptions);
 				}
-			}
 
-			for (const property of nodeType.description.properties) {
-				let value = get(node.parameters, property.name, []) as string | NodeParameterValue;
-				// If the value is an expression resolve it
-				value = this.getParameterValue(
-					value,
-					itemIndex,
-					runIndex,
-					executeData,
-					{ ...additionalKeys, $credentials: credentials, $version: node.typeVersion },
-					false,
-				) as string | NodeParameterValue;
+				if (proxy) {
+					const proxyParsed = url.parse(proxy);
+					const proxyProperties = ['host', 'port'];
 
-				const tempOptions = this.getRequestOptionsFromParameters(
-					itemContext[itemIndex].thisArgs,
-					property,
-					itemIndex,
-					runIndex,
-					'',
-					{
-						...additionalKeys,
-						$credentials: credentials,
-						$value: value,
-						$version: node.typeVersion,
-					},
-				);
+					for (const property of proxyProperties) {
+						if (
+							!(property in proxyParsed) ||
+							proxyParsed[property as keyof typeof proxyParsed] === null
+						) {
+							throw new NodeOperationError(node, 'The proxy is not valid', {
+								runIndex,
+								itemIndex,
+								description: `The proxy URL does not contain a valid value for "${property}"`,
+							});
+						}
+					}
 
-				this.mergeOptions(itemContext[itemIndex].requestData, tempOptions);
-			}
+					itemContext[itemIndex].requestData.options.proxy = {
+						host: proxyParsed.hostname as string,
+						port: parseInt(proxyParsed.port!),
+						protocol: proxyParsed.protocol?.replace(/:$/, '') || undefined,
+					};
 
-			if (proxy) {
-				const proxyParsed = url.parse(proxy);
-				const proxyProperties = ['host', 'port'];
-
-				for (const property of proxyProperties) {
-					if (
-						!(property in proxyParsed) ||
-						proxyParsed[property as keyof typeof proxyParsed] === null
-					) {
-						throw new NodeOperationError(node, 'The proxy is not valid', {
-							runIndex,
-							itemIndex,
-							description: `The proxy URL does not contain a valid value for "${property}"`,
-						});
+					if (proxyParsed.auth) {
+						const [username, password] = proxyParsed.auth.split(':');
+						itemContext[itemIndex].requestData.options.proxy!.auth = {
+							username,
+							password,
+						};
 					}
 				}
 
-				itemContext[itemIndex].requestData.options.proxy = {
-					host: proxyParsed.hostname as string,
-					port: parseInt(proxyParsed.port!),
-					protocol: proxyParsed.protocol?.replace(/:$/, '') || undefined,
-				};
-
-				if (proxyParsed.auth) {
-					const [username, password] = proxyParsed.auth.split(':');
-					itemContext[itemIndex].requestData.options.proxy!.auth = {
-						username,
-						password,
-					};
+				if (allowUnauthorizedCerts) {
+					itemContext[itemIndex].requestData.options.skipSslCertificateValidation =
+						allowUnauthorizedCerts;
 				}
-			}
 
-			if (allowUnauthorizedCerts) {
-				itemContext[itemIndex].requestData.options.skipSslCertificateValidation =
-					allowUnauthorizedCerts;
-			}
+				if (timeout) {
+					itemContext[itemIndex].requestData.options.timeout = timeout;
+				} else {
+					// set default timeout to 5 minutes
+					itemContext[itemIndex].requestData.options.timeout = 300_000;
+				}
 
-			if (timeout) {
-				itemContext[itemIndex].requestData.options.timeout = timeout;
-			} else {
-				// set default timeout to 5 minutes
-				itemContext[itemIndex].requestData.options.timeout = 300_000;
-			}
+				// A node parameter can drive the effective `baseURL`, making the host the caller's
+				// choice rather than the node's. Detect that by comparing the already-resolved
+				// `baseURL`'s host against the host `baseURL` would resolve to with
+				// `$parameter`/`$rawParameter` cleared (see `resolveBaseUrl`) - only the host matters,
+				// since that's all the domain allowlist checks.
+				const baseUrlOwnershipKeys: IWorkflowDataProxyAdditionalKeys = {
+					...additionalKeys,
+					$credentials: credentials,
+					$version: node.typeVersion,
+				};
+				const baseUrlIsNodeOwned =
+					toHostname(itemContext[itemIndex].requestData.options.baseURL) ===
+					toHostname(
+						this.resolveBaseUrl(itemIndex, runIndex, executeData, itemContext[itemIndex].thisArgs, {
+							...baseUrlOwnershipKeys,
+							$parameter: {},
+							$rawParameter: {},
+						}),
+					);
+				const allowedDomains = credentials
+					? getCredentialAllowedDomains({
+							node,
+							credentialData: credentials,
+							credentialOwnedSurface: baseUrlIsNodeOwned,
+							nodeEndpointUrl: itemContext[itemIndex].requestData.options.baseURL,
+						})
+					: undefined;
+				if (allowedDomains) {
+					itemContext[itemIndex].requestData.options.allowedDomains = allowedDomains;
+				}
 
-			// A declarative node's URL comes from its own routing, not from the user. Only
-			// `baseURL` is safe to widen the allowlist with: a per-operation `url` can
-			// interpolate a node parameter, and that host is the user's choice, not the node's.
-			const allowedDomains = credentials
-				? getCredentialAllowedDomains({
-						node,
-						credentialData: credentials,
-						credentialOwnedSurface: true,
-						nodeEndpointUrl: itemContext[itemIndex].requestData.options.baseURL,
-					})
-				: undefined;
-			if (allowedDomains) {
-				itemContext[itemIndex].requestData.options.allowedDomains = allowedDomains;
-			}
+				requestPromises.push(
+					this.makeRequest(
+						itemContext[itemIndex].requestData,
+						itemContext[itemIndex].thisArgs,
+						itemIndex,
+						runIndex,
+						credentialDescription?.name,
+						itemContext[itemIndex].requestData.requestOperations,
+						credentialsDecrypted,
+					),
+				);
+			} catch (error) {
+				const nodeError =
+					error instanceof NodeApiError || error instanceof NodeOperationError
+						? error
+						: new NodeOperationError(
+								node,
+								error instanceof Error ? error : new Error(String(error)),
+								{ itemIndex, runIndex },
+							);
 
-			requestPromises.push(
-				this.makeRequest(
-					itemContext[itemIndex].requestData,
-					itemContext[itemIndex].thisArgs,
-					itemIndex,
-					runIndex,
-					credentialDescription?.name,
-					itemContext[itemIndex].requestData.requestOperations,
-					credentialsDecrypted,
-				),
-			);
+				set(nodeError, 'context.itemIndex', itemIndex);
+				set(nodeError, 'context.runIndex', runIndex);
+
+				if (itemContext[itemIndex].thisArgs.continueOnFail()) {
+					requestPromises.push(Promise.resolve([{ json: {}, error: nodeError }]));
+					continue;
+				}
+
+				throw nodeError;
+			}
 		}
 
 		const promisesResponses = await Promise.allSettled(requestPromises);
@@ -793,6 +831,67 @@ export class RoutingNode {
 		}
 
 		return parameterValue;
+	}
+
+	/**
+	 * Resolves the `baseURL` a request would use under the given parameter keys, replaying the
+	 * same requestDefaults + per-property routing computation `runNode` does, without touching
+	 * `itemContext`. Comparing this under real vs. `$parameter`/`$rawParameter`-cleared keys tells
+	 * a node-owned `baseURL` from one a caller-supplied parameter determines - whether that
+	 * parameter drives `requestDefaults.baseURL` directly, or a property's own routing override of
+	 * it (e.g. Google Cloud Storage's upload operations).
+	 */
+	private resolveBaseUrl(
+		itemIndex: number,
+		runIndex: number,
+		executeData: IExecuteData,
+		thisArgs: IExecuteSingleFunctions,
+		parameterKeys: IWorkflowDataProxyAdditionalKeys,
+	): string | undefined {
+		const { nodeType, context } = this;
+		const { node } = context;
+		const scratch: DeclarativeRestApiSettings.ResultOptions = {
+			options: { qs: {}, body: {}, headers: {} },
+			preSend: [],
+			postReceive: [],
+			requestOperations: {},
+		};
+
+		if (nodeType.description.requestDefaults?.baseURL !== undefined) {
+			scratch.options.baseURL = this.getParameterValue(
+				nodeType.description.requestDefaults.baseURL,
+				itemIndex,
+				runIndex,
+				executeData,
+				parameterKeys,
+				false,
+			) as string;
+		}
+
+		for (const property of nodeType.description.properties) {
+			let value = get(node.parameters, property.name, []) as string | NodeParameterValue;
+			value = this.getParameterValue(
+				value,
+				itemIndex,
+				runIndex,
+				executeData,
+				parameterKeys,
+				false,
+			) as string | NodeParameterValue;
+
+			const tempOptions = this.getRequestOptionsFromParameters(
+				thisArgs,
+				property,
+				itemIndex,
+				runIndex,
+				'',
+				{ ...parameterKeys, $value: value },
+			);
+
+			this.mergeOptions(scratch, tempOptions);
+		}
+
+		return scratch.options.baseURL;
 	}
 
 	// eslint-disable-next-line complexity

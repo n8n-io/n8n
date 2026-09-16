@@ -104,6 +104,28 @@ describe('custom role scope whitelists', () => {
 		}
 	});
 
+	it('exposes "Tags: View" as exactly the tag read/list pair', () => {
+		expect(GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.tag.View).toEqual(['tag:read', 'tag:list']);
+	});
+
+	it('keeps tag "Manage" a strict superset of tag "View"', () => {
+		// The editor's implied/downgrade arithmetic (SUPERSEDED_BY: View -> Manage)
+		// only holds while Manage contains everything View grants.
+		const view = GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.tag.View;
+		const manage = GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.tag.Manage;
+		expect(view.every((scope) => (manage as readonly string[]).includes(scope))).toBe(true);
+		expect(manage.length).toBeGreaterThan(view.length);
+	});
+
+	it('keeps "Tags: View" within GLOBAL_MEMBER_SCOPES', () => {
+		// "Tags: View" is granted to every instance role by default (see
+		// instanceRoleScopes.ts), so it must never exceed what the built-in Member
+		// role already has.
+		for (const scope of GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.tag.View) {
+			expect(GLOBAL_MEMBER_SCOPES).toContain(scope);
+		}
+	});
+
 	it('exposes "Users: View" as exactly user:list, matching GLOBAL_MEMBER_SCOPES', () => {
 		// "Users: View" is granted to every instance role by default (see
 		// instanceRoleScopes.ts). It must never exceed what the built-in Member

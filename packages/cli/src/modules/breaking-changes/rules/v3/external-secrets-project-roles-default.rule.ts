@@ -1,6 +1,7 @@
 import { LicenseState } from '@n8n/backend-common';
 import { BreakingChangeRule } from '@n8n/decorators';
 
+import { NOT_AFFECTED_INSTANCE } from '../../detection-report';
 import type {
 	BreakingChangeRuleMetadata,
 	IBreakingChangeInstanceRule,
@@ -29,9 +30,17 @@ export class ExternalSecretsProjectRolesDefaultRule implements IBreakingChangeIn
 	async detect(): Promise<InstanceDetectionReport> {
 		// Project-scoped external secrets apply only on licensed instances.
 		if (!this.licenseState.isExternalSecretsLicensed()) {
-			return { isAffected: false, instanceIssues: [], recommendations: [] };
+			return NOT_AFFECTED_INSTANCE;
 		}
 
+<<<<<<< HEAD
+=======
+		// The toggle already matching the v3 default means no behaviour change.
+		if (await this.isSystemRolesEnabled()) {
+			return NOT_AFFECTED_INSTANCE;
+		}
+
+>>>>>>> cf0a4911d0ec756287332c659afb494e513809ed
 		return {
 			isAffected: true,
 			instanceIssues: [
