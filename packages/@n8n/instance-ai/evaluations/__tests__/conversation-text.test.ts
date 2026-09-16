@@ -120,6 +120,15 @@ describe('conversationUserTurnsAsText', () => {
 			'[attached workflow: Batch loop]',
 		);
 	});
+
+	it('names an attached Agent by the name declared in its seed config', () => {
+		const conversation: ConversationTurn[] = [
+			{ role: 'user', text: '', attach: { agent: 'AgentMcpRepairSeed01' } },
+		];
+		expect(conversationUserTurnsAsText(conversation, seedDeclaringAgent())).toBe(
+			'[attached agent: Notion research]',
+		);
+	});
 });
 
 /** An inline seed declaring one workflow under the id the tests attach. */
@@ -140,6 +149,27 @@ function seedDeclaring(name: string): CaseSeed {
 		agents: [],
 		folders: [],
 		projects: [],
+	};
+}
+
+function seedDeclaringAgent(): CaseSeed {
+	return {
+		mode: 'inline',
+		messages: [],
+		workflows: [],
+		dataTables: [],
+		folders: [],
+		projects: [],
+		agents: [
+			{
+				id: 'AgentMcpRepairSeed01',
+				config: {
+					name: 'Notion research',
+					model: 'anthropic/claude-sonnet-4-5',
+					instructions: 'Research company notes.',
+				},
+			},
+		],
 	};
 }
 

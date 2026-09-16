@@ -55,6 +55,7 @@ const silentLogger: EvalLogger = {
 };
 
 const SEED_WF_ID = 'wKk3RmT9xQ2bVn7L';
+const SEED_AGENT_ID = 'AgentMcpRepairSeed01';
 
 function inlineSeed(): ConversationSeed {
 	return {
@@ -81,6 +82,26 @@ function inlineSeed(): ConversationSeed {
 		agents: [],
 		folders: [],
 		projects: [],
+	};
+}
+
+function inlineAgentSeed(): ConversationSeed {
+	return {
+		messages: [],
+		workflows: [],
+		dataTables: [],
+		folders: [],
+		projects: [],
+		agents: [
+			{
+				id: SEED_AGENT_ID,
+				config: {
+					name: 'Notion research',
+					model: 'anthropic/claude-sonnet-4-5',
+					instructions: 'Research company notes.',
+				},
+			},
+		],
 	};
 }
 
@@ -341,6 +362,63 @@ describe('buildWorkflow with an inline seed', () => {
 		];
 		expect(attachments?.[0].id).toBe(workflows[0].id);
 		expect(attachments?.[0].name).toBe(workflows[0].name);
+	});
+
+	it('sends an attached seeded Agent with its remapped id, name, and project', async () => {
+		const sendMessage = vi.fn().mockResolvedValue({ runId: 'run-1' });
+		const restoreThread = vi.fn(async (...args: unknown[]) => {
+			const agents = args[4];
+			if (!Array.isArray(agents)) throw new Error('Expected seed Agents.');
+			const agentIds = agents.map((agent) => {
+				if (typeof agent !== 'object' || agent === null || !('id' in agent)) {
+					throw new Error('Expected a seeded Agent id.');
+				}
+				return String(agent.id);
+			});
+			return {
+				restored: 0,
+				workflowIds: [],
+				dataTableIds: [],
+				agentIds,
+				folderIds: [],
+			};
+		});
+
+		await buildWorkflow({
+			client: makeClient(restoreThread, { sendMessage }),
+			...baseConfig,
+			conversation: [
+				{
+					role: 'user' as const,
+					text: 'work out why this Agent cannot use Notion',
+					attach: { agent: SEED_AGENT_ID },
+				},
+			],
+			seed: { mode: 'inline' as const, ...inlineAgentSeed() },
+		});
+
+		const [, , attachments] = sendMessage.mock.calls[0] as [
+			string,
+			string,
+			Array<{ type: string; id: string; name: string; projectId: string }> | undefined,
+		];
+		const agents = (
+			restoreThread.mock.calls[0] as [unknown, unknown, unknown, unknown, unknown[]]
+		)[4];
+		const restoredAgent = agents[0];
+		if (typeof restoredAgent !== 'object' || restoredAgent === null || !('id' in restoredAgent)) {
+			throw new Error('Expected a restored Agent.');
+		}
+
+		expect(attachments).toEqual([
+			{
+				type: 'agent',
+				id: restoredAgent.id,
+				name: 'Notion research',
+				projectId: 'project-1',
+			},
+		]);
+		expect(attachments?.[0].id).not.toBe(SEED_AGENT_ID);
 	});
 
 	// The API carries the attachment out of band, so the graded transcript would show a

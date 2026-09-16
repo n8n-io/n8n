@@ -332,6 +332,42 @@ describe('attach round-trip: write → export → reparse', () => {
 		expect(parsed.conversation?.[0].attach).toEqual({ workflow: WORKFLOW_ID });
 	});
 
+	it('carries an Agent attachment through create, export, and reparse', () => {
+		const agentId = 'AgentMcpRepairSeed01';
+		const agentCase = diskCase({
+			conversation: [{ role: 'user', text: '', attach: { agent: agentId } }],
+			seed: {
+				mode: 'inline',
+				messages: [],
+				workflows: [],
+				dataTables: [],
+				folders: [],
+				projects: [],
+				agents: [
+					{
+						id: agentId,
+						config: {
+							name: 'Notion research',
+							model: 'anthropic/claude-sonnet-4-5',
+							instructions: 'Research company notes.',
+						},
+					},
+				],
+			},
+		} as Partial<EvalTestCaseInput>);
+		const body = diskCaseToLangTracerCreate(agentCase, 'agent-handoff', {
+			suiteId: 1,
+			setKind: 'regression',
+			synthetic: true,
+		});
+
+		const parsed = EvalTestCaseSchema.parse(
+			normalizeExportedCase(exportedFrom(body.conversation, body.seed)),
+		);
+
+		expect(parsed.conversation?.[0].attach).toEqual({ agent: agentId });
+	});
+
 	it('fails at load when the deployment stripped attach, instead of running as a find-it case', () => {
 		const stripped = exportedFrom([{ role: 'user', text: '' }], handoffCase().seed);
 
