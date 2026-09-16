@@ -76,6 +76,7 @@ function setup(options: { worker?: boolean; enabled?: boolean } = {}) {
 	const instanceSettings = mock<InstanceSettings>({ isWorker: options.worker ?? false });
 	const agentsConfig = mock<AgentsConfig>({ backgroundTasksEnabled: options.enabled ?? true });
 	const logger = mock<Logger>();
+	const messageQueue = mock<AgentMessageQueueService>();
 	logger.scoped.mockReturnValue(logger);
 
 	jobRepository.findWakeableUnconsumedSettled.mockResolvedValue([makeJob()]);
@@ -103,7 +104,7 @@ function setup(options: { worker?: boolean; enabled?: boolean } = {}) {
 		agentsConfig,
 		logger,
 		backgroundJobService,
-		mock<AgentMessageQueueService>(),
+		messageQueue,
 	);
 
 	return {
@@ -119,6 +120,7 @@ function setup(options: { worker?: boolean; enabled?: boolean } = {}) {
 		publisher,
 		integrationRegistry,
 		logger,
+		messageQueue,
 	};
 }
 
@@ -426,18 +428,22 @@ describe('AgentWakeService', () => {
 	});
 
 	it('leaves results pending when the wake cannot acquire the lease', async () => {
-		const { service, lockService, orchestrator, jobRepository } = setup();
+		const { service, lockService, orchestrator, jobRepository, messageQueue } = setup();
 		lockService.withLease.mockRejectedValue(new Error('lock unavailable'));
 
 		await service.attemptWake('thread-1');
 
 		expect(orchestrator.executeForWake).not.toHaveBeenCalled();
 		expect(jobRepository.markMailConsumed).not.toHaveBeenCalled();
+		expect(messageQueue.notify).not.toHaveBeenCalled();
 	});
 
 	it('leaves results pending after a failed wake and omits error details from the log', async () => {
-		const { service, orchestrator, jobRepository, logger } = setup();
-		orchestrator.executeForWake.mockRejectedValue(new Error('401 for token sk-secret'));
+		const { service, orchestrator, jobRepository, logger, messageQueue } = setup();
+		orchestrator.executeForWake.mockImplementation(async () => {
+			expect(messageQueue.notify).not.toHaveBeenCalled();
+			throw new Error('401 for token sk-secret');
+		});
 
 		await service.attemptWake('thread-1');
 
@@ -447,6 +453,7 @@ describe('AgentWakeService', () => {
 			expect.objectContaining({ threadId: 'thread-1', attempt: 1, reason: 'Wake run failed' }),
 		);
 		expect(JSON.stringify(logger.warn.mock.calls)).not.toContain('sk-secret');
+		expect(messageQueue.notify).toHaveBeenCalledExactlyOnceWith('thread-1');
 	});
 
 	describe('identity validation', () => {

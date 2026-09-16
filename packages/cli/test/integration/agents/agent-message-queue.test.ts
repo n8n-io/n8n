@@ -180,6 +180,7 @@ describe('agent message queue', () => {
 			mock(),
 			mock(),
 			mock(),
+			repository,
 		);
 		if (process.env.DB_TYPE === 'postgresdb') {
 			redisStack = await createServiceStack({
@@ -241,15 +242,19 @@ describe('agent message queue', () => {
 		});
 		const mainA = await makeMain();
 		const mainB = await makeMain();
-		await mainA.enqueue(message('first'));
-		await retryUntil(async () => expect(received).toEqual(['first']));
-		await mainB.enqueue(message('second'));
-		await mainA.enqueue(message('third'));
-		expect(await repository.countBy({ status: 'queued' })).toBe(2);
-		expect(received).toEqual(['first']);
-		first.resolve();
-		await retryUntil(async () => expect(await repository.count()).toBe(0));
-		expect(received).toEqual(['first', 'second', 'third']);
+		try {
+			await mainA.enqueue(message('first'));
+			await retryUntil(async () => expect(received).toEqual(['first']));
+			await mainB.enqueue(message('second'));
+			await mainA.enqueue(message('third'));
+			expect(await repository.countBy({ status: 'queued' })).toBe(2);
+			expect(received).toEqual(['first']);
+			first.resolve();
+			await retryUntil(async () => expect(await repository.count()).toBe(0));
+			expect(received).toEqual(['first', 'second', 'third']);
+		} finally {
+			first.resolve();
+		}
 	});
 
 	it('runs another conversation while the first conversation is busy', async () => {
@@ -260,12 +265,16 @@ describe('agent message queue', () => {
 			if (payload.message.text === 'first') await release.promise;
 		});
 		const main = await makeMain();
-		await main.enqueue(message('first', 'one'));
-		await main.enqueue(message('second', 'two'));
-		await retryUntil(async () => expect(received).toContain('second'));
-		expect(await repository.countBy({ threadId: 'one', status: 'processing' })).toBe(1);
-		release.resolve();
-		await retryUntil(async () => expect(await repository.count()).toBe(0));
+		try {
+			await main.enqueue(message('first', 'one'));
+			await main.enqueue(message('second', 'two'));
+			await retryUntil(async () => expect(received).toContain('second'));
+			expect(await repository.countBy({ threadId: 'one', status: 'processing' })).toBe(1);
+			release.resolve();
+			await retryUntil(async () => expect(await repository.count()).toBe(0));
+		} finally {
+			release.resolve();
+		}
 	});
 
 	it('processes HITL before ordinary messages and holds them through another suspension', async () => {
@@ -483,6 +492,31 @@ describe('agent message queue', () => {
 		expect(execute).not.toHaveBeenCalled();
 	});
 
+	it('cancels a preview that finishes enqueueing during shutdown', async () => {
+		const finishEnqueue = createDeferredPromise();
+		const enqueue = repository.enqueue.bind(repository);
+		vi.spyOn(repository, 'enqueue').mockImplementationOnce(async (input) => {
+			const entry = await enqueue(input);
+			await finishEnqueue.promise;
+			return entry;
+		});
+		const main = await makeMain();
+		const response = main.enqueuePreview(
+			preview('stopping'),
+			vi.fn(),
+			new AbortController().signal,
+		);
+		try {
+			await retryUntil(async () => expect(await repository.count()).toBe(1));
+			await main.shutdown();
+			finishEnqueue.resolve();
+			await expect(response).rejects.toThrow('Message was cancelled');
+			expect(await repository.count()).toBe(0);
+		} finally {
+			finishEnqueue.resolve();
+		}
+	});
+
 	it('aborts an active preview and continues with the next input', async () => {
 		const main = await makeMain();
 		const controller = new AbortController();
@@ -499,12 +533,16 @@ describe('agent message queue', () => {
 			controller.signal,
 		);
 		const rejected = expect(response).rejects.toThrow();
-		await started.promise;
-		await main.enqueue(message('next'));
-		controller.abort();
-		await rejected;
-		await retryUntil(async () => expect(await repository.count()).toBe(0));
-		expect(received).toEqual(['next']);
+		try {
+			await started.promise;
+			await main.enqueue(message('next'));
+			controller.abort();
+			await rejected;
+			await retryUntil(async () => expect(await repository.count()).toBe(0));
+			expect(received).toEqual(['next']);
+		} finally {
+			controller.abort();
+		}
 	});
 
 	it('waits for a connection to return and removes inputs for a deleted connection', async () => {
@@ -542,15 +580,19 @@ describe('agent message queue', () => {
 		);
 		const mainA = await makeMain();
 		const mainB = await makeMain();
-		await mainA.enqueue(message('active'));
-		await retryUntil(async () => expect(received).toEqual(['active']));
-		await mainB.enqueue(message('old backlog'));
-		await mainB.cancelWaiting('conversation');
-		expect(await repository.countBy({ status: 'processing' })).toBe(1);
-		expect(await repository.countBy({ status: 'queued' })).toBe(0);
-		finish.resolve();
-		await retryUntil(async () => expect(await repository.count()).toBe(0));
-		expect(received).toEqual(['active']);
+		try {
+			await mainA.enqueue(message('active'));
+			await retryUntil(async () => expect(received).toEqual(['active']));
+			await mainB.enqueue(message('old backlog'));
+			await mainB.cancelWaiting('conversation');
+			expect(await repository.countBy({ status: 'processing' })).toBe(1);
+			expect(await repository.countBy({ status: 'queued' })).toBe(0);
+			finish.resolve();
+			await retryUntil(async () => expect(await repository.count()).toBe(0));
+			expect(received).toEqual(['active']);
+		} finally {
+			finish.resolve();
+		}
 	});
 
 	it('does not start an input removed after selection and before its claim', async () => {
@@ -615,7 +657,7 @@ describe('agent message queue', () => {
 		const executionRepository = Container.get(AgentExecutionRepository);
 		const old = new Date(Date.now() - 180_000);
 		const ids: Record<string, string> = {};
-		for (const threadId of ['interrupted', 'completed', 'suspended', 'healthy']) {
+		for (const threadId of ['interrupted', 'completed', 'suspended', 'healthy', 'refreshed']) {
 			await Container.get(AgentExecutionThreadRepository).findOrCreate(
 				threadId,
 				agentId,
@@ -625,7 +667,10 @@ describe('agent message queue', () => {
 			const execution = await executionRepository.save(
 				executionRepository.create({
 					threadId,
-					status: threadId === 'interrupted' || threadId === 'healthy' ? 'running' : 'success',
+					status:
+						threadId === 'interrupted' || threadId === 'healthy' || threadId === 'refreshed'
+							? 'running'
+							: 'success',
 					startedAt: old,
 					updatedAt: threadId === 'healthy' ? new Date() : old,
 					hitlStatus: threadId === 'suspended' ? 'suspended' : null,
@@ -643,6 +688,15 @@ describe('agent message queue', () => {
 		);
 		await repository.enqueue(message('waiting', 'interrupted'));
 		await repository.enqueue(message('still waiting', 'suspended'));
+		const finalize = executions.finalizeInterruptedExecution.bind(executions);
+		vi.spyOn(executions, 'finalizeInterruptedExecution').mockImplementation(
+			async (execution, staleBefore) => {
+				if (execution.threadId === 'refreshed') {
+					await executionRepository.touchRunning(execution.id);
+				}
+				return await finalize(execution, staleBefore);
+			},
+		);
 		await (await makeMain()).recover();
 		await retryUntil(async () => expect(received).toEqual(['waiting']));
 		expect(await executionRepository.findOneBy({ id: ids.interrupted })).toMatchObject({
@@ -658,8 +712,36 @@ describe('agent message queue', () => {
 		expect(await executionRepository.findOneBy({ id: ids.healthy })).toMatchObject({
 			status: 'running',
 		});
+		expect(await executionRepository.findOneBy({ id: ids.refreshed })).toMatchObject({
+			status: 'running',
+		});
 		expect(await repository.countBy({ threadId: 'healthy', status: 'processing' })).toBe(1);
+		expect(await repository.countBy({ threadId: 'refreshed', status: 'processing' })).toBe(1);
 		expect(await repository.countBy({ threadId: 'suspended', status: 'queued' })).toBe(1);
+	});
+
+	it('stops recovery when its conversation lease is lost', async () => {
+		const lease = new AbortController();
+		const stale = await repository.enqueue(
+			preview('lost', 'lost-preview', [
+				{ id: 'unused-file', fileName: 'note.txt', mimeType: 'text/plain', sizeBytes: 1 },
+			]),
+		);
+		await repository.update(stale.id, { updatedAt: new Date(Date.now() - 180_000) });
+		const findStale = repository.findStale.bind(repository);
+		vi.spyOn(repository, 'findStale').mockImplementationOnce(async (...args) => {
+			const entries = await findStale(...args);
+			lease.abort();
+			return entries;
+		});
+		vi.spyOn(locks, 'withLease').mockImplementationOnce(
+			async (_namespace, _key, run) => await run(lease.signal),
+		);
+
+		await (await makeMain()).recover();
+
+		expect(await repository.existsBy({ id: stale.id })).toBe(true);
+		expect(attachments.deleteByIds).not.toHaveBeenCalled();
 	});
 
 	it('recovers waiting integrations, abandons interrupted inputs, and keeps live preview waiters', async () => {

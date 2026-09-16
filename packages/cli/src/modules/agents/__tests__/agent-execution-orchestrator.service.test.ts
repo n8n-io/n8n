@@ -1453,6 +1453,7 @@ describe('AgentExecutionOrchestratorService', () => {
 		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
 
 		const abortController = new AbortController();
+		const onResumeClaimed = vi.fn();
 		await collect(
 			service.resumeForChat({
 				agentId,
@@ -1462,6 +1463,7 @@ describe('AgentExecutionOrchestratorService', () => {
 				resumeData: { value: 'yes' },
 				integrationType: 'slack',
 				abortSignal: abortController.signal,
+				onResumeClaimed,
 			}),
 		);
 		expect(checkpointStorage.getStatus).toHaveBeenLastCalledWith('run-1', agentId);
@@ -1473,6 +1475,7 @@ describe('AgentExecutionOrchestratorService', () => {
 				runId: 'run-1',
 				toolCallId: 'tc-1',
 				abortSignal: abortController.signal,
+				onResumeClaimed,
 			}),
 		);
 		expect(externalHooks.run).not.toHaveBeenCalled();

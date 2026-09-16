@@ -73,6 +73,7 @@ function makeController() {
 		agentExecutionOrchestratorService,
 		agentTestRunService,
 		agentChatAttachmentService,
+		queue,
 		agentsService: {
 			findById: agentsService.findById,
 			getConversationHistory: agentExecutionOrchestratorService.getConversationHistory,
@@ -462,9 +463,13 @@ describe('AgentChatController SSE done payload', () => {
 
 describe('AgentChatController HITL cancellation', () => {
 	it('cancels a suspended run for the current preview user', async () => {
-		const { controller, agentExecutionOrchestratorService, agentsService } = makeController();
+		const { controller, agentExecutionOrchestratorService, agentsService, queue } =
+			makeController();
 		agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
-		agentExecutionOrchestratorService.cancelChatRun.mockResolvedValue(true);
+		agentExecutionOrchestratorService.cancelChatRun.mockImplementation(async ({ onCancelled }) => {
+			onCancelled?.('thread-1');
+			return true;
+		});
 
 		await expect(
 			controller.cancelChatRun(
@@ -484,6 +489,7 @@ describe('AgentChatController HITL cancellation', () => {
 			resourceId: 'draft-chat:user-1',
 			onCancelled: expect.any(Function),
 		});
+		expect(queue.notify).toHaveBeenCalledWith('thread-1');
 	});
 });
 

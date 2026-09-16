@@ -34,6 +34,10 @@ export class AgentMessageQueueRepository extends Repository<AgentMessageQueue> {
 		return await this.existsBy({ threadId, status: 'processing' });
 	}
 
+	async hasEntries(threadId: string): Promise<boolean> {
+		return await this.existsBy({ threadId });
+	}
+
 	async markProcessing(id: string): Promise<boolean> {
 		return (await this.update({ id, status: 'queued' }, { status: 'processing' })).affected === 1;
 	}

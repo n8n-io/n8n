@@ -1,15 +1,23 @@
 import type { Mock } from 'vitest';
 import type { StreamChunk } from '@n8n/agents';
 import { MAX_AGENT_CHAT_ATTACHMENT_FILENAME_LENGTH } from '@n8n/api-types';
+import { LockAcquisitionTimeoutError, LockService } from '@n8n/backend-common';
 import type { HttpRequestClient } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
 import type { Author, Message, Thread } from 'chat';
 import type { AgentMessageQueueService } from '../../agent-message-queue.service';
+import type { IntegrationQueuePayload } from '../../agent-message-queue.types';
 import { mock } from 'vitest-mock-extended';
-import { UserError, type Logger } from 'n8n-workflow';
+import { OperationalError, UserError, type Logger } from 'n8n-workflow';
 
 import { CacheService } from '@/services/cache/cache.service';
 
+import { AgentChatAttachmentService } from '../../agent-chat-attachment.service';
+import type {
+	AgentExecutionOrchestratorService,
+	ResumeForChatConfig,
+} from '../../agent-execution-orchestrator.service';
+import { AgentExecutionService } from '../../agent-execution.service';
 import type { AgentRepository } from '../../repositories/agent.repository';
 import { AgentChatBridge } from '../agent-chat-bridge';
 import {
@@ -19,7 +27,8 @@ import {
 } from '../agent-chat-integration';
 import type { ComponentMapper } from '../component-mapper';
 import * as esmLoader from '../esm-loader';
-import type { IntegrationMessageContextService } from '../integration-message-context.service';
+import { IntegrationMessageContextService } from '../integration-message-context.service';
+import { N8NCheckpointStorage } from '../n8n-checkpoint-storage';
 import { SlackIntegration } from '../platforms/slack/slack-integration';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 import type { RichCardComponentType } from '@n8n/api-types';
@@ -170,7 +179,12 @@ function makeAgentExecutor(chunks: StreamChunk[]) {
 	});
 	return {
 		executeForChatPublished,
-		resumeForChat: vi.fn(() => toStream(chunks)),
+		resumeForChat: vi.fn((config: ResumeForChatConfig) =>
+			(async function* () {
+				await config.onResumeClaimed?.();
+				yield* chunks;
+			})(),
+		),
 		captured,
 	};
 }
@@ -328,6 +342,61 @@ describe('AgentChatBridge — consumeStream', () => {
 		vi.useRealTimers();
 		Container.reset();
 		vi.clearAllMocks();
+	});
+
+	describe('factory suspension lookup', () => {
+		function createFactoryBridge(
+			executionService: AgentExecutionService,
+			checkpointStorage: N8NCheckpointStorage,
+		) {
+			Container.set(AgentExecutionService, executionService);
+			Container.set(N8NCheckpointStorage, checkpointStorage);
+			Container.set(IntegrationMessageContextService, mock<IntegrationMessageContextService>());
+			Container.set(AgentChatAttachmentService, mock<AgentChatAttachmentService>());
+
+			return AgentChatBridge.create(
+				makeBot().bot as unknown as ChatBotLike,
+				'agent-1',
+				mock<AgentExecutionOrchestratorService>(),
+				componentMapper,
+				logger,
+				'project-1',
+				streamingIntegration,
+				mock<AgentMessageQueueService>(),
+			);
+		}
+
+		it('skips the checkpoint scan when the thread has no suspended run', async () => {
+			const executionService = mock<AgentExecutionService>();
+			executionService.hasSuspendedRun.mockResolvedValue(false);
+			const checkpointStorage = mock<N8NCheckpointStorage>();
+			const bridge = createFactoryBridge(executionService, checkpointStorage);
+
+			await expect(
+				bridge['agentService'].findOpenSuspension?.({
+					agentId: 'agent-1',
+					threadId: 'thread-1',
+				}),
+			).resolves.toBeNull();
+			expect(executionService.hasSuspendedRun).toHaveBeenCalledWith('thread-1');
+			expect(checkpointStorage.findSuspendedForThread).not.toHaveBeenCalled();
+		});
+
+		it('scans checkpoints when the thread has a suspended run', async () => {
+			const executionService = mock<AgentExecutionService>();
+			executionService.hasSuspendedRun.mockResolvedValue(true);
+			const checkpointStorage = mock<N8NCheckpointStorage>();
+			checkpointStorage.findSuspendedForThread.mockResolvedValue(null);
+			const bridge = createFactoryBridge(executionService, checkpointStorage);
+
+			await expect(
+				bridge['agentService'].findOpenSuspension?.({
+					agentId: 'agent-1',
+					threadId: 'thread-1',
+				}),
+			).resolves.toBeNull();
+			expect(checkpointStorage.findSuspendedForThread).toHaveBeenCalledWith('agent-1', 'thread-1');
+		});
 	});
 
 	describe('silent outcome from the integration action tool', () => {
@@ -780,6 +849,52 @@ describe('AgentChatBridge — consumeStream', () => {
 		}
 	});
 
+	it('does not post an integration error when queued input is aborted', async () => {
+		const post = vi.fn();
+		const loadChatSdkSpy = vi.spyOn(esmLoader, 'loadChatSdk').mockResolvedValue({
+			Message: { fromJSON: vi.fn() },
+			ThreadImpl: class {
+				readonly id = 'thread-1';
+				readonly post = post;
+			},
+			ThreadHistoryCache: class {},
+		} as never);
+		try {
+			const { bot } = makeBot();
+			bot.getAdapter.mockReturnValue({});
+			const bridge = createBridge(
+				{ ...bot, getState: vi.fn() } as unknown as ChatBotLike,
+				'agent-1',
+				makeAgentExecutor([]) as never,
+				componentMapper,
+				logger,
+				'project-1',
+				streamingIntegration,
+			);
+			const abortController = new AbortController();
+			abortController.abort();
+			const payload = {
+				source: 'integration',
+				kind: 'message',
+				projectId: 'project-1',
+				resourceId: 'u1',
+				integrationType: 'test-streaming',
+				credentialId: 'cred-1',
+				thread: { id: 'thread-1', channelId: 'channel-1', adapterName: 'test' },
+			} as unknown as IntegrationQueuePayload;
+
+			await expect(
+				bridge.processQueuedInput(payload, 'thread-1', {
+					abortSignal: abortController.signal,
+					onExecutionStarted: async () => {},
+				}),
+			).rejects.toMatchObject({ name: 'AbortError' });
+			expect(post).not.toHaveBeenCalled();
+		} finally {
+			loadChatSdkSpy.mockRestore();
+		}
+	});
+
 	it('keeps adapter text unchanged when it is not the plain-text projection', async () => {
 		const chatSdk = await import('chat');
 		const loadChatSdkSpy = vi.spyOn(esmLoader, 'loadChatSdk').mockResolvedValue(chatSdk);
@@ -947,6 +1062,36 @@ describe('AgentChatBridge — consumeStream', () => {
 			return `agents:chat-session-generation:${baseId}`;
 		}
 
+		it('does not admit a message after the session lease is lost', async () => {
+			const cache = mockCache();
+			const lockService = mock<LockService>();
+			const controller = new AbortController();
+			controller.abort();
+			lockService.withLease.mockImplementation(
+				async (_namespace, _key, callback) => await callback(controller.signal),
+			);
+			Container.set(LockService, lockService);
+			const { bot, handlers } = makeBot();
+			const bridge = createBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				makeAgentExecutor([finishChunk]) as never,
+				componentMapper,
+				logger,
+				'project-1',
+				integrationWithIdleTimeout(30),
+			);
+			const queue = bridge['messageQueue'] as ReturnType<typeof mock<AgentMessageQueueService>>;
+
+			await handlers.mention!(makeThread('thread-1'), {
+				text: 'hi',
+				author: { userId: 'u1', userName: 'user1' },
+			});
+
+			expect(cache.set).not.toHaveBeenCalled();
+			expect(queue.enqueue).not.toHaveBeenCalled();
+		});
+
 		it('stays on the same session while within the idle window', async () => {
 			mockCache([
 				sessionGenerationKey('agent-1:thread-1'),
@@ -985,7 +1130,7 @@ describe('AgentChatBridge — consumeStream', () => {
 			]);
 			const { bot, handlers } = makeBot();
 			const agentExecutor = makeAgentExecutor([finishChunk]);
-			createBridge(
+			const bridge = createBridge(
 				bot as unknown as ChatBotLike,
 				'agent-1',
 				agentExecutor as never,
@@ -999,7 +1144,12 @@ describe('AgentChatBridge — consumeStream', () => {
 				text: 'hi',
 				author: { userId: 'u1', userName: 'user1' },
 			});
-
+			const queue = bridge['messageQueue'] as ReturnType<typeof mock<AgentMessageQueueService>>;
+			expect(queue.enqueue).toHaveBeenCalledWith(
+				expect.objectContaining({
+					threadId: 'agent-1:thread-1#1',
+				}),
+			);
 			expect(agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
 				expect.objectContaining({
 					memory: expect.objectContaining({
@@ -1038,6 +1188,75 @@ describe('AgentChatBridge — consumeStream', () => {
 					}),
 				}),
 			);
+		});
+
+		it('does not rotate while the current conversation has queued work', async () => {
+			mockCache([
+				sessionGenerationKey('agent-1:thread-1'),
+				{ generation: 0, lastActivityAt: Date.now() - 31 * 60_000 },
+			]);
+			const { bot, handlers } = makeBot();
+			const agentExecutor = makeAgentExecutor([finishChunk]);
+			const bridge = createBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				integrationWithIdleTimeout(30),
+			);
+			const queue = bridge['messageQueue'] as ReturnType<typeof mock<AgentMessageQueueService>>;
+			queue.hasEntries.mockResolvedValue(true);
+			queue.enqueue.mockResolvedValueOnce('queue-entry');
+
+			await handlers.mention!(makeThread('thread-1'), {
+				text: 'hi',
+				author: { userId: 'u1', userName: 'user1' },
+			});
+
+			expect(queue.enqueue).toHaveBeenCalledWith(
+				expect.objectContaining({ threadId: 'agent-1:thread-1' }),
+			);
+			expect(agentExecutor.executeForChatPublished).not.toHaveBeenCalled();
+		});
+
+		it('does not rotate while another execution holds the conversation lease', async () => {
+			mockCache([
+				sessionGenerationKey('agent-1:thread-1'),
+				{ generation: 0, lastActivityAt: Date.now() - 31 * 60_000 },
+			]);
+			const lockService = mock<LockService>();
+			lockService.withLease.mockImplementation(async (_namespace, key, callback) => {
+				if (key === 'agent-conversation:agent-1:thread-1') {
+					throw new LockAcquisitionTimeoutError('Conversation is busy');
+				}
+				return await callback(new AbortController().signal);
+			});
+			Container.set(LockService, lockService);
+			const { bot, handlers } = makeBot();
+			const agentExecutor = makeAgentExecutor([finishChunk]);
+			const bridge = createBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				integrationWithIdleTimeout(30),
+			);
+			const queue = bridge['messageQueue'] as ReturnType<typeof mock<AgentMessageQueueService>>;
+			queue.enqueue.mockResolvedValueOnce('queue-entry');
+
+			await handlers.mention!(makeThread('thread-1'), {
+				text: 'hi',
+				author: { userId: 'u1', userName: 'user1' },
+			});
+
+			expect(queue.enqueue).toHaveBeenCalledWith(
+				expect.objectContaining({ threadId: 'agent-1:thread-1' }),
+			);
+			expect(agentExecutor.executeForChatPublished).not.toHaveBeenCalled();
 		});
 
 		it('resets on the /new command without invoking the agent, even without an idle timeout', async () => {
@@ -1289,6 +1508,41 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(messageContextStore.unbindSession).toHaveBeenCalledWith('agent-1:thread-1');
 		});
 
+		it('throws an operational error before unbinding when the session lease is lost', async () => {
+			const cache = mockCache();
+			const lockService = mock<LockService>();
+			const controller = new AbortController();
+			lockService.withLease.mockImplementation(
+				async (_namespace, _key, callback) => await callback(controller.signal),
+			);
+			Container.set(LockService, lockService);
+			const { bot } = makeBot();
+			const messageContextStore = mock<IntegrationMessageContextService>();
+			messageContextStore.resolveSession.mockResolvedValue({
+				threadId: 'task-1-uuid',
+				resourceId: 'task:task-1',
+			});
+			const bridge = createBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				makeAgentExecutor([finishChunk]) as never,
+				componentMapper,
+				logger,
+				'project-1',
+				integrationWithIdleTimeout(null),
+				messageContextStore,
+			);
+			const queue = bridge['messageQueue'] as ReturnType<typeof mock<AgentMessageQueueService>>;
+			queue.cancelWaiting.mockImplementation(async () => controller.abort());
+
+			await expect(bridge['resetSession'](makeThread('thread-1') as never)).rejects.toBeInstanceOf(
+				OperationalError,
+			);
+			expect(queue.cancelWaiting).toHaveBeenCalledWith('task-1-uuid');
+			expect(messageContextStore.unbindSession).not.toHaveBeenCalled();
+			expect(cache.set).not.toHaveBeenCalled();
+		});
+
 		it('reports an error instead of confirming success when unbinding the task session fails', async () => {
 			mockCache();
 			const { bot, handlers } = makeBot();
@@ -1423,7 +1677,7 @@ describe('AgentChatBridge — consumeStream', () => {
 				author: { userId: 'u1', userName: 'user1' },
 			});
 			await vi.waitFor(() => expect(unbindStarted).toBe(true));
-			// Reset resolves the old backlog before it removes the binding.
+			// Reset clears the old backlog before it removes the binding.
 			messageContextStore.resolveSession.mockClear();
 
 			// Started while the reset is still gated inside its lock, with the
@@ -2497,19 +2751,14 @@ describe('AgentChatBridge — consumeStream', () => {
 			const { bot, handlers } = makeBot();
 			const thread = makeThread();
 			const deleteMessage = vi.fn().mockResolvedValue(undefined);
-			const agentExecutor = {
-				executeForChatPublished: vi.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
-				resumeForChat: vi.fn(() =>
-					toStream([
-						{ type: 'reasoning-start', id: 'reasoning-1' },
-						{ type: 'reasoning-delta', id: 'reasoning-1', delta: 'The tool was approved.' },
-						{ type: 'reasoning-end', id: 'reasoning-1' },
-						{ type: 'text-delta', id: 't1', delta: 'Approved ' },
-						{ type: 'text-delta', id: 't1', delta: 'response' },
-						{ type: 'finish', finishReason: 'stop' },
-					]),
-				),
-			};
+			const agentExecutor = makeAgentExecutor([
+				{ type: 'reasoning-start', id: 'reasoning-1' },
+				{ type: 'reasoning-delta', id: 'reasoning-1', delta: 'The tool was approved.' },
+				{ type: 'reasoning-end', id: 'reasoning-1' },
+				{ type: 'text-delta', id: 't1', delta: 'Approved ' },
+				{ type: 'text-delta', id: 't1', delta: 'response' },
+				{ type: 'finish', finishReason: 'stop' },
+			]);
 
 			createBridge(
 				bot as unknown as ChatBotLike,

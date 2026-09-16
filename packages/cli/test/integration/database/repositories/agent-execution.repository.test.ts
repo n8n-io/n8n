@@ -77,6 +77,35 @@ describe('AgentExecutionRepository', () => {
 		return await repository.save(execution);
 	};
 
+	it('does not interrupt an execution refreshed after the stale cutoff', async () => {
+		const thread = await createThread();
+		const staleBefore = new Date('2026-01-01T00:00:00Z');
+		const execution = await createExecution({
+			threadId: thread.id,
+			status: 'running',
+			startedAt: new Date('2025-12-31T23:59:00Z'),
+			updatedAt: new Date('2025-12-31T23:59:30Z'),
+		});
+		expect(execution.updatedAt.getTime()).toBeLessThanOrEqual(staleBefore.getTime());
+		await repository.touchRunning(execution.id);
+
+		const interrupted = await repository.updateIfAbandoned(execution.id, staleBefore, {
+			status: 'interrupted',
+			stoppedAt: new Date('2026-01-01T00:00:01Z'),
+			duration: 61_000,
+			timeline: null,
+			storedAt: 'db',
+			error: 'Agent execution was interrupted by a process restart.',
+			failureSummary: null,
+		});
+
+		expect(interrupted).toBe(false);
+		expect(await repository.findOneByOrFail({ id: execution.id })).toMatchObject({
+			status: 'running',
+			stoppedAt: null,
+		});
+	});
+
 	describe('findFirstUserMessageByThreadIds', () => {
 		// The repository builds a raw SQL fragment referencing camelCase columns.
 		// Postgres folds unquoted identifiers to lowercase, so this regression

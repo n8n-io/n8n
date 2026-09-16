@@ -29,6 +29,7 @@ import {
 	AgentExecutionRepository,
 	type RunningAgentExecution,
 } from './repositories/agent-execution.repository';
+import { AgentMessageQueueRepository } from './repositories/agent-message-queue.repository';
 import {
 	computeExecutionFailureSummary,
 	type ThreadFailureSummary,
@@ -119,6 +120,7 @@ export class AgentExecutionService {
 		private readonly storageConfig: StorageConfig,
 		private readonly errorReporter: ErrorReporter,
 		private readonly executionUpdateBroadcaster: AgentExecutionUpdateBroadcaster,
+		private readonly agentMessageQueueRepository: AgentMessageQueueRepository,
 	) {}
 
 	async startExecutionRecording(params: StartExecutionParams, startedAt: Date): Promise<string> {
@@ -224,27 +226,34 @@ export class AgentExecutionService {
 		}
 	}
 
-	async finalizeInterruptedExecution(execution: RunningAgentExecution): Promise<boolean> {
+	async finalizeInterruptedExecution(
+		execution: RunningAgentExecution,
+		staleBefore: Date,
+	): Promise<boolean> {
 		const timeline = execution.timeline ?? [];
 		const stoppedAt = new Date();
 		const error = 'Agent execution was interrupted by a process restart.';
 		const duration = execution.startedAt
 			? Math.max(0, stoppedAt.getTime() - execution.startedAt.getTime())
 			: 0;
-		const finalized = await this.agentExecutionRepository.updateIfRunning(execution.id, {
-			status: 'interrupted',
-			stoppedAt,
-			duration,
-			timeline: timeline.length > 0 ? timeline : null,
-			storedAt: 'db',
-			error,
-			failureSummary: computeExecutionFailureSummary({
-				timeline,
+		const finalized = await this.agentExecutionRepository.updateIfAbandoned(
+			execution.id,
+			staleBefore,
+			{
 				status: 'interrupted',
+				stoppedAt,
+				duration,
+				timeline: timeline.length > 0 ? timeline : null,
+				storedAt: 'db',
 				error,
-				stoppedAt: stoppedAt.getTime(),
-			}),
-		});
+				failureSummary: computeExecutionFailureSummary({
+					timeline,
+					status: 'interrupted',
+					error,
+					stoppedAt: stoppedAt.getTime(),
+				}),
+			},
+		);
 		if (finalized) void this.notifyInterruptedExecution(execution);
 		return finalized;
 	}
@@ -429,6 +438,10 @@ export class AgentExecutionService {
 		return await this.agentExecutionRepository.hasSuspendedRun(threadId);
 	}
 
+	async hasRunningExecution(threadId: string): Promise<boolean> {
+		return await this.agentExecutionRepository.existsRunningByThread(threadId);
+	}
+
 	/**
 	 * Backfill `model` on suspended runs in a thread that don't yet have it.
 	 * Called when the resumed run finishes — the model applies to the whole
@@ -488,6 +501,7 @@ export class AgentExecutionService {
 		await this.agentChatAttachmentService.deleteByThread(threadId, { projectId });
 		await Promise.all([
 			this.agentExecutionThreadRepository.delete({ id: threadId }),
+			this.agentMessageQueueRepository.cancelWaiting(threadId),
 			this.agentExecutionLogStore.delete(
 				blobRefs.map((r) => ({ agentId, threadId, executionId: r.id, storedAt: r.storedAt })),
 			),

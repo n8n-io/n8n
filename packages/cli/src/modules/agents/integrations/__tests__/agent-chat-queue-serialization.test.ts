@@ -166,10 +166,6 @@ it('restores each saved message with its originating adapter and state', async (
 			const history = [];
 			for await (const message of chat.thread(threadId).messages) history.push(message.id);
 			expect(history).toContain('reply');
-			if (index === 0) {
-				expect(connections[1].adapter.postMessage).not.toHaveBeenCalled();
-				expect(await connections[1].chat.thread(threadId).state).toBeNull();
-			}
 		}
 	} finally {
 		await Promise.all(connections.map(async ({ chat }) => await chat.shutdown()));

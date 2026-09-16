@@ -1,5 +1,5 @@
 import { Service } from '@n8n/di';
-import { DataSource, IsNull, Not, Repository } from '@n8n/typeorm';
+import { DataSource, IsNull, LessThanOrEqual, Not, Repository } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 
 import { AgentExecution, type AgentExecutionStatus } from '../entities/agent-execution.entity';
@@ -71,6 +71,18 @@ export class AgentExecutionRepository extends Repository<AgentExecution> {
 	): Promise<boolean> {
 		const result = await this.update(
 			{ id: executionId, status: 'running' },
+			values as QueryDeepPartialEntity<AgentExecution>,
+		);
+		return result.affected === 1;
+	}
+
+	async updateIfAbandoned(
+		executionId: string,
+		staleBefore: Date,
+		values: AgentExecutionFinalizationValues,
+	): Promise<boolean> {
+		const result = await this.update(
+			{ id: executionId, status: 'running', updatedAt: LessThanOrEqual(staleBefore) },
 			values as QueryDeepPartialEntity<AgentExecution>,
 		);
 		return result.affected === 1;

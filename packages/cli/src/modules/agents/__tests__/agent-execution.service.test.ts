@@ -15,6 +15,7 @@ import type { AgentExecutionLogStore } from '../execution-log/agent-execution-lo
 import type { N8nMemory } from '../integrations/n8n-memory';
 import type { AgentExecutionThreadRepository } from '../repositories/agent-execution-thread.repository';
 import type { AgentExecutionRepository } from '../repositories/agent-execution.repository';
+import type { AgentMessageQueueRepository } from '../repositories/agent-message-queue.repository';
 
 type N8nMemoryImplementation = ReturnType<N8nMemory['getImplementation']>;
 
@@ -66,12 +67,14 @@ describe('AgentExecutionService', () => {
 	let errorReporter: Mocked<ErrorReporter>;
 	let agentChatAttachmentService: Mocked<AgentChatAttachmentService>;
 	let executionUpdateBroadcaster: Mocked<AgentExecutionUpdateBroadcaster>;
+	let agentMessageQueueRepository: Mocked<AgentMessageQueueRepository>;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 
 		agentExecutionRepository = mock<AgentExecutionRepository>();
 		agentExecutionRepository.updateIfRunning.mockResolvedValue(true);
+		agentExecutionRepository.updateIfAbandoned.mockResolvedValue(true);
 		agentExecutionRepository.updateTimelineIfRunning.mockResolvedValue(true);
 		agentExecutionThreadRepository = mock<AgentExecutionThreadRepository>();
 		n8nMemory = mock<N8nMemory>();
@@ -83,6 +86,7 @@ describe('AgentExecutionService', () => {
 		errorReporter = mock<ErrorReporter>();
 		agentChatAttachmentService = mock<AgentChatAttachmentService>();
 		executionUpdateBroadcaster = mock<AgentExecutionUpdateBroadcaster>();
+		agentMessageQueueRepository = mock<AgentMessageQueueRepository>();
 
 		service = new AgentExecutionService(
 			mockLogger(),
@@ -95,6 +99,7 @@ describe('AgentExecutionService', () => {
 			storageConfig,
 			errorReporter,
 			executionUpdateBroadcaster,
+			agentMessageQueueRepository,
 		);
 	});
 
@@ -328,6 +333,7 @@ describe('AgentExecutionService', () => {
 				storageConfig,
 				errorReporter,
 				executionUpdateBroadcaster,
+				agentMessageQueueRepository,
 			);
 
 			const record = makeMessageRecord({
@@ -404,6 +410,7 @@ describe('AgentExecutionService', () => {
 				storageConfig,
 				errorReporter,
 				executionUpdateBroadcaster,
+				agentMessageQueueRepository,
 			);
 
 			const record = makeMessageRecord({
@@ -819,18 +826,23 @@ describe('AgentExecutionService', () => {
 				storageConfig,
 				errorReporter,
 				executionUpdateBroadcaster,
+				agentMessageQueueRepository,
 			);
 			const partial = [{ type: 'text', content: 'Partial', timestamp: 1, endTime: 2 }] as const;
-			agentExecutionRepository.updateIfRunning.mockResolvedValue(true);
+			agentExecutionRepository.updateIfAbandoned.mockResolvedValue(true);
 			agentExecutionThreadRepository.findOneBy.mockResolvedValue(makeThread());
 
-			await service.finalizeInterruptedExecution({
-				id: 'execution-1',
-				threadId: 'thread-1',
-				startedAt: new Date(Date.now() - 100),
-				timeline: [...partial],
-				thread: makeThread(),
-			} as AgentExecution);
+			const staleBefore = new Date();
+			await service.finalizeInterruptedExecution(
+				{
+					id: 'execution-1',
+					threadId: 'thread-1',
+					startedAt: new Date(Date.now() - 100),
+					timeline: [...partial],
+					thread: makeThread(),
+				} as AgentExecution,
+				staleBefore,
+			);
 
 			await vi.waitFor(() =>
 				expect(executionUpdateBroadcaster.notify).toHaveBeenCalledWith({
@@ -840,8 +852,9 @@ describe('AgentExecutionService', () => {
 					executionId: 'execution-1',
 				}),
 			);
-			expect(agentExecutionRepository.updateIfRunning).toHaveBeenCalledWith(
+			expect(agentExecutionRepository.updateIfAbandoned).toHaveBeenCalledWith(
 				'execution-1',
+				staleBefore,
 				expect.objectContaining({
 					status: 'interrupted',
 					timeline: partial,
@@ -1049,7 +1062,7 @@ describe('AgentExecutionService', () => {
 	});
 
 	describe('deleteThread', () => {
-		it('deletes thread memory, attachments, and the execution thread', async () => {
+		it('deletes thread memory, attachments, queued inputs, and the execution thread', async () => {
 			agentExecutionThreadRepository.findOneBy.mockResolvedValue({
 				id: 'thread-1',
 				agentId: 'agent-1',
@@ -1071,6 +1084,7 @@ describe('AgentExecutionService', () => {
 				projectId: 'project-1',
 			});
 			expect(agentExecutionThreadRepository.delete).toHaveBeenCalledWith({ id: 'thread-1' });
+			expect(agentMessageQueueRepository.cancelWaiting).toHaveBeenCalledWith('thread-1');
 		});
 
 		it('deletes blob-stored logs when deleting a thread', async () => {
@@ -1106,6 +1120,7 @@ describe('AgentExecutionService', () => {
 			expect(n8nMemory.getImplementation).not.toHaveBeenCalled();
 			expect(memoryBackend.deleteThread).not.toHaveBeenCalled();
 			expect(agentExecutionThreadRepository.delete).not.toHaveBeenCalled();
+			expect(agentMessageQueueRepository.cancelWaiting).not.toHaveBeenCalled();
 		});
 	});
 

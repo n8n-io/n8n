@@ -91,7 +91,7 @@ export class AgentMessageQueueService {
 			});
 		};
 		signal.addEventListener('abort', cancel, { once: true });
-		if (signal.aborted) cancel();
+		if (signal.aborted || this.stopping.signal.aborted) cancel();
 		else this.notify(input.threadId);
 		try {
 			await done.promise;
@@ -120,6 +120,10 @@ export class AgentMessageQueueService {
 	async cancelWaiting(threadId: string): Promise<void> {
 		await this.repository.cancelWaiting(threadId);
 		this.notify(threadId);
+	}
+
+	async hasEntries(threadId: string): Promise<boolean> {
+		return await this.repository.hasEntries(threadId);
 	}
 
 	private async cancelPreview(id: string): Promise<void> {
@@ -272,28 +276,40 @@ export class AgentMessageQueueService {
 	}
 
 	async recover(): Promise<void> {
-		const cutoff = new Date(Date.now() - AgentMessageQueueService.LIVENESS_GRACE_MS);
-		for (const threadId of await this.repository.findStaleThreads(cutoff)) {
+		const staleBefore = new Date(Date.now() - AgentMessageQueueService.LIVENESS_GRACE_MS);
+		for (const threadId of await this.repository.findStaleThreads(staleBefore)) {
 			try {
 				await this.lockService.withLease(
 					LockNamespace.KNOWN_LOCKS,
 					agentConversationLockKey(threadId),
-					async () => {
-						for (const entry of await this.repository.findStale(threadId, cutoff)) {
+					async (leaseSignal) => {
+						for (const entry of await this.repository.findStale(threadId, staleBefore)) {
+							if (leaseSignal.aborted) return;
 							if (entry.executionId) {
 								const execution = await this.executionRepository.findRunningById(entry.executionId);
-								if (execution && execution.updatedAt > cutoff) continue;
-								if (execution) await this.executionService.finalizeInterruptedExecution(execution);
+								if (execution && execution.updatedAt > staleBefore) continue;
+								if (execution) {
+									if (leaseSignal.aborted) return;
+									if (
+										!(await this.executionService.finalizeInterruptedExecution(
+											execution,
+											staleBefore,
+										))
+									)
+										continue;
+								}
 							}
 							if (
 								entry.status === 'queued' &&
 								entry.payload.source === 'preview' &&
 								entry.payload.kind === 'message'
 							) {
+								if (leaseSignal.aborted) return;
 								await this.attachments.deleteByIds(
 									entry.payload.attachments?.map(({ id }) => id) ?? [],
 								);
 							}
+							if (leaseSignal.aborted) return;
 							await this.repository.removeEntry(entry.id);
 							this.logger.info('Removed interrupted agent queue entry without replay', {
 								id: entry.id,

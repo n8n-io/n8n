@@ -146,13 +146,17 @@ export class AgentWakeService {
 			await this.lockService.withLease(
 				LockNamespace.KNOWN_LOCKS,
 				agentConversationLockKey(threadId),
-				async (signal) => await this.deliverInsideLease(threadId, signal),
+				async (signal) => {
+					try {
+						await this.deliverInsideLease(threadId, signal);
+					} finally {
+						this.messageQueue.notify(threadId);
+					}
+				},
 				{ waitTimeoutMs: WAKE_LOCK_WAIT_MS, leaseTtlMs: WAKE_LOCK_TTL_MS },
 			);
 		} catch (error) {
 			this.logger.warn('Failed to acquire the background job wake lease', { threadId, error });
-		} finally {
-			this.messageQueue.notify(threadId);
 		}
 	}
 

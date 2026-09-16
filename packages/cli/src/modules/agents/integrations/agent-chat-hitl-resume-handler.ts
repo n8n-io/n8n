@@ -120,24 +120,26 @@ export class AgentChatHitlResumeHandler {
 		if (memory.threadId !== threadId || memory.resourceId !== payload.resourceId) {
 			throw new UserError(`Checkpoint ${payload.runId} does not belong to this chat`);
 		}
-		await this.options.messageContextBridge.updateLatest(threadId, payload.resourceId, thread, {
-			messageId: payload.action.messageId,
-			interactingUserId: payload.action.user.userId,
-			...this.options.getPlatformAgentContext(),
-			replyExpectation: 'required',
-		});
-		await this.cleanUpBeforeResume(
-			{
-				adapter: thread.adapter,
-				threadId: thread.id,
-				...payload.action,
-			},
-			payload.resumeData,
-			payload.action.callbackData,
-		);
 		await this.executeResume(thread, payload.runId, payload.toolCallId, payload.resumeData, {
 			...context,
 			expectedMemory: memory,
+			onResumeClaimed: async () => {
+				await this.options.messageContextBridge.updateLatest(threadId, payload.resourceId, thread, {
+					messageId: payload.action.messageId,
+					interactingUserId: payload.action.user.userId,
+					...this.options.getPlatformAgentContext(),
+					replyExpectation: 'required',
+				});
+				await this.cleanUpBeforeResume(
+					{
+						adapter: thread.adapter,
+						threadId: thread.id,
+						...payload.action,
+					},
+					payload.resumeData,
+					payload.action.callbackData,
+				);
+			},
 		});
 	}
 
@@ -243,7 +245,7 @@ export class AgentChatHitlResumeHandler {
 		resumeData: unknown,
 		execution: Pick<
 			ResumeForChatConfig,
-			'abortSignal' | 'onExecutionStarted' | 'expectedMemory'
+			'abortSignal' | 'onExecutionStarted' | 'expectedMemory' | 'onResumeClaimed'
 		> = {},
 	): Promise<void> {
 		const resumeExecutionContext = await this.options.createResumeExecutionContext(thread);

@@ -146,6 +146,7 @@ export interface ResumeForChatConfig {
 	previewChat?: boolean;
 	/** Fired after the resumed turn is persisted; used to attach `executionId` to SSE `done`. */
 	onExecutionRecorded?: (executionId: string) => void;
+	onResumeClaimed?: () => void | Promise<void>;
 	onExecutionStarted?: (executionId: string) => Promise<void>;
 	abortSignal?: AbortSignal;
 }
@@ -528,6 +529,7 @@ export class AgentExecutionOrchestratorService {
 				...modelStreamStallOptions(this.aiConfig),
 				...(tracing ? { telemetry: tracing } : {}),
 				...(abortSignal ? { abortSignal } : {}),
+				onResumeClaimed: config.onResumeClaimed,
 			});
 			recorder.recordHitlResponse(toolCallId, resumeData);
 			const startParams: StartExecutionParams = {

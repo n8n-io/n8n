@@ -7,12 +7,12 @@ import {
 	type AgentIntegrationConfig,
 	type AgentMessageAuthor,
 } from '@n8n/api-types';
-import { LockNamespace, LockService } from '@n8n/backend-common';
+import { LockAcquisitionTimeoutError, LockNamespace, LockService } from '@n8n/backend-common';
 import { type HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import { Time } from '@n8n/constants';
 import { Container } from '@n8n/di';
 import type { Attachment, Author, Chat, Message, Thread } from 'chat';
-import { UserError, type Logger } from 'n8n-workflow';
+import { OperationalError, UserError, type Logger } from 'n8n-workflow';
 
 import { CacheService } from '@/services/cache/cache.service';
 
@@ -24,11 +24,13 @@ import type {
 	AgentExecutionOrchestratorService,
 	ResumeForChatConfig,
 } from '../agent-execution-orchestrator.service';
+import { AgentExecutionService } from '../agent-execution.service';
 import type { AgentMessageQueueService } from '../agent-message-queue.service';
-import type {
-	IntegrationMessageQueuePayload,
-	IntegrationQueuePayload,
-	QueueExecutionContext,
+import {
+	agentConversationLockKey,
+	type IntegrationMessageQueuePayload,
+	type IntegrationQueuePayload,
+	type QueueExecutionContext,
 } from '../agent-message-queue.types';
 import {
 	hashAgentSandboxPrincipal,
@@ -106,6 +108,7 @@ interface AgentExecutor {
 		agentId: string;
 		threadId: string;
 	}): Promise<OpenSuspension | null>;
+	hasRunningExecution?(threadId: string): Promise<boolean>;
 }
 
 /** Enough of a parked run to tell the user what the agent is still waiting on. */
@@ -271,6 +274,9 @@ export class AgentChatBridge {
 				yield* agentService.resumeForChat(config);
 			},
 			async findOpenSuspension({ agentId: aid, threadId }) {
+				if (!(await Container.get(AgentExecutionService).hasSuspendedRun(threadId))) {
+					return null;
+				}
 				const checkpoint = await Container.get(N8NCheckpointStorage).findSuspendedForThread(
 					aid,
 					threadId,
@@ -280,6 +286,9 @@ export class AgentChatBridge {
 					(toolCall) => toolCall.suspended,
 				);
 				return suspended ? { suspendPayload: suspended.suspendPayload } : null;
+			},
+			async hasRunningExecution(threadId) {
+				return await Container.get(AgentExecutionService).hasRunningExecution(threadId);
 			},
 		};
 		return new AgentChatBridge(
@@ -476,12 +485,14 @@ export class AgentChatBridge {
 	 */
 	private async resetSession(thread: Thread): Promise<void> {
 		const baseId = this.baseThreadId(thread);
-		await this.withSessionLock(baseId, async () => {
-			const currentId = await this.computeGeneration(baseId, false, null);
+		await this.withSessionLock(baseId, async (leaseSignal) => {
+			const currentId = await this.computeGeneration(baseId, false, null, leaseSignal);
 			const origin = await this.messageContextBridge.resolveSession(baseId);
+			this.throwIfSessionLeaseLost(leaseSignal);
 			await this.messageQueue.cancelWaiting(origin?.threadId ?? currentId);
+			this.throwIfSessionLeaseLost(leaseSignal);
 			await this.messageContextBridge.unbindSession(baseId);
-			await this.computeGeneration(baseId, true, null);
+			await this.computeGeneration(baseId, true, null, leaseSignal);
 		});
 		await thread.post('🔄 Started a new session.');
 	}
@@ -493,12 +504,19 @@ export class AgentChatBridge {
 	 * concurrent idle-triggered rotation (or unbind) mutually exclusive
 	 * instead of racing on stale reads.
 	 */
-	private async withSessionLock<T>(baseId: string, fn: () => Promise<T>): Promise<T> {
+	private async withSessionLock<T>(
+		baseId: string,
+		fn: (leaseSignal: AbortSignal) => Promise<T>,
+	): Promise<T> {
 		return await Container.get(LockService).withLease(
 			LockNamespace.KNOWN_LOCKS,
 			this.sessionGenerationCacheKey(baseId),
 			fn,
 		);
+	}
+
+	private throwIfSessionLeaseLost(leaseSignal: AbortSignal): void {
+		if (leaseSignal.aborted) throw new OperationalError('Agent chat session lost its lease');
 	}
 
 	/**
@@ -521,6 +539,7 @@ export class AgentChatBridge {
 		baseId: string,
 		forceRotate: boolean,
 		idleTimeoutMinutes: number | null,
+		leaseSignal: AbortSignal,
 	): Promise<string> {
 		const cache = Container.get(CacheService);
 		const key = this.sessionGenerationCacheKey(baseId);
@@ -535,7 +554,11 @@ export class AgentChatBridge {
 			state !== undefined &&
 			now - state.lastActivityAt > idleTimeoutMinutes * 60_000;
 		const currentId = currentGeneration === 0 ? baseId : `${baseId}#${currentGeneration}`;
-		const rotate = forceRotate || (idleExpired && !(await this.hasOpenSuspension(currentId)));
+		const rotate =
+			forceRotate ||
+			(idleExpired &&
+				!(await this.isConversationBusy(currentId)) &&
+				!(await this.hasOpenSuspension(currentId)));
 		const generation = rotate ? currentGeneration + 1 : currentGeneration;
 
 		// Only persist when it matters: a rotation just happened (so the next
@@ -544,9 +567,31 @@ export class AgentChatBridge {
 		// Otherwise this thread has never been touched by either mechanism, or
 		// the timeout was turned off after an earlier reset — nothing to track.
 		if (rotate || idleTimeoutMinutes !== null) {
+			this.throwIfSessionLeaseLost(leaseSignal);
 			await cache.set(key, { generation, lastActivityAt: now }, SESSION_GENERATION_TTL_MS);
 		}
 		return generation === 0 ? baseId : `${baseId}#${generation}`;
+	}
+
+	private async isConversationBusy(threadId: string): Promise<boolean> {
+		if (
+			(await this.messageQueue.hasEntries(threadId)) ||
+			(await this.agentService.hasRunningExecution?.(threadId))
+		) {
+			return true;
+		}
+		try {
+			await Container.get(LockService).withLease(
+				LockNamespace.KNOWN_LOCKS,
+				agentConversationLockKey(threadId),
+				async () => {},
+				{ waitTimeoutMs: 1 },
+			);
+			return false;
+		} catch (error) {
+			if (error instanceof LockAcquisitionTimeoutError) return true;
+			throw error;
+		}
 	}
 
 	private async hasOpenSuspension(threadId: string): Promise<boolean> {
@@ -590,13 +635,15 @@ export class AgentChatBridge {
 		if (!text && !message.attachments?.length) return;
 		if (await this.handleResetCommand(thread, text, message.attachments ?? [])) return;
 		const baseId = this.baseThreadId(thread);
-		await this.withSessionLock(baseId, async () => {
+		await this.withSessionLock(baseId, async (leaseSignal) => {
 			const contextThreadId = await this.computeGeneration(
 				baseId,
 				false,
 				this.integration.settings?.sessionIdleTimeoutMinutes ?? null,
+				leaseSignal,
 			);
 			const origin = await this.messageContextBridge.resolveSession(baseId);
+			this.throwIfSessionLeaseLost(leaseSignal);
 			await this.messageQueue.enqueue({
 				agentId: this.agentId,
 				threadId: origin?.threadId ?? contextThreadId,
@@ -665,7 +712,7 @@ export class AgentChatBridge {
 				);
 			}
 		} catch (error) {
-			await this.postErrorToThread(thread, error);
+			if (!context.abortSignal.aborted) await this.postErrorToThread(thread, error);
 			throw error;
 		}
 	}

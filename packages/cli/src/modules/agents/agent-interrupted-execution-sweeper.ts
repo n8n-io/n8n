@@ -32,6 +32,7 @@ export class AgentInterruptedExecutionSweeper {
 	}
 
 	async sweep(): Promise<void> {
+		const staleBefore = new Date(Date.now() - AgentInterruptedExecutionSweeper.LIVENESS_GRACE_MS);
 		let running;
 		try {
 			running = await this.executionRepository.findRunning();
@@ -42,10 +43,7 @@ export class AgentInterruptedExecutionSweeper {
 
 		for (const execution of running) {
 			try {
-				if (
-					execution.updatedAt.getTime() >
-					Date.now() - AgentInterruptedExecutionSweeper.LIVENESS_GRACE_MS
-				) {
+				if (execution.updatedAt > staleBefore) {
 					continue;
 				}
 				await this.lockService.withLease(
@@ -53,13 +51,8 @@ export class AgentInterruptedExecutionSweeper {
 					agentConversationLockKey(execution.threadId),
 					async () => {
 						const current = await this.executionRepository.findRunningById(execution.id);
-						if (
-							!current ||
-							current.updatedAt.getTime() >
-								Date.now() - AgentInterruptedExecutionSweeper.LIVENESS_GRACE_MS
-						)
-							return;
-						if (await this.executionService.finalizeInterruptedExecution(current)) {
+						if (!current || current.updatedAt > staleBefore) return;
+						if (await this.executionService.finalizeInterruptedExecution(current, staleBefore)) {
 							this.logger.info('Marked abandoned agent execution as interrupted', {
 								executionId: execution.id,
 								threadId: execution.threadId,

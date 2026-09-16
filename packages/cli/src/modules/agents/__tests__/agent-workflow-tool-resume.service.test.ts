@@ -58,6 +58,7 @@ function setup() {
 	lockService.withLease.mockImplementation(
 		async (_ns, _key, execute) => await execute(new AbortController().signal),
 	);
+	const messageQueue = mock<AgentMessageQueueService>();
 	const service = new AgentWorkflowToolResumeService(
 		logger,
 		userRepository,
@@ -70,7 +71,7 @@ function setup() {
 		publisher,
 		backgroundJobService,
 		lockService,
-		mock<AgentMessageQueueService>(),
+		messageQueue,
 	);
 	return {
 		service,
@@ -85,6 +86,7 @@ function setup() {
 		instanceSettings,
 		messageContextService,
 		backgroundJobService,
+		messageQueue,
 	};
 }
 
@@ -107,7 +109,7 @@ function afterContext(
 
 describe('AgentWorkflowToolResumeService → lifecycle wiring', () => {
 	it('resumes the agent run once the sub-workflow finishes', async () => {
-		const { service, bridge, chatIntegrationService } = setup();
+		const { service, bridge, chatIntegrationService, messageQueue } = setup();
 		chatIntegrationService.getBridge.mockReturnValue(bridge);
 
 		await service.handleWorkflowExecuteAfter(afterContext('success', agentRun));
@@ -119,6 +121,7 @@ describe('AgentWorkflowToolResumeService → lifecycle wiring', () => {
 			{ type: 'workflow_finished', value: 'success' },
 			expect.any(AbortSignal),
 		);
+		expect(messageQueue.notify).toHaveBeenCalledWith(agentRun.threadId);
 	});
 
 	it.each([
@@ -163,12 +166,13 @@ describe('AgentWorkflowToolResumeService → lifecycle wiring', () => {
 	});
 
 	it('resumes on a main when the relayed command arrives', async () => {
-		const { service, bridge, chatIntegrationService } = setup();
+		const { service, bridge, chatIntegrationService, messageQueue } = setup();
 		chatIntegrationService.getBridge.mockReturnValue(bridge);
 
 		await service.handleResumeRelay({ agentRun, status: 'success' });
 
 		expect(bridge.resumeInAgentThread).toHaveBeenCalled();
+		expect(messageQueue.notify).toHaveBeenCalledWith(agentRun.threadId);
 	});
 
 	it('never lets a failed resume disturb the execution that triggered it', async () => {
