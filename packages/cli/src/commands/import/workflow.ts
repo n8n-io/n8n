@@ -140,7 +140,7 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 
 		const workflows = await this.readWorkflows(flags.input, flags.separate);
 
-		const result = await this.checkRelations(workflows, project.id, flags.userId, flags.projectId);
+		const result = await this.checkRelations(workflows, project.id, flags);
 
 		if (!result.success) {
 			throw new UserError(result.message);
@@ -164,8 +164,7 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 	private async checkRelations(
 		workflows: IWorkflowBase[],
 		targetProjectId: string,
-		userId?: string,
-		projectId?: string,
+		{ userId, projectId }: { userId?: string; projectId?: string },
 	) {
 		// The workflow is not supposed to be re-owned.
 		if (!userId && !projectId) {

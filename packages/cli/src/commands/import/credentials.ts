@@ -132,8 +132,7 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 					transactionManager,
 					credentials,
 					project.id,
-					flags.userId,
-					flags.projectId,
+					flags,
 				);
 
 				if (!result.success) {
@@ -283,8 +282,7 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 		transactionManager: EntityManager,
 		credentials: Array<Pick<Partial<CredentialsEntity>, 'id'>>,
 		targetProjectId: string,
-		userId?: string,
-		projectId?: string,
+		{ userId, projectId }: { userId?: string; projectId?: string },
 	) {
 		// The credential is not supposed to be re-owned.
 		if (!projectId && !userId) {
