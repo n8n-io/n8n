@@ -20,8 +20,8 @@ export class InsightsSummaryPublicDto extends Z.class({
 	averageRunTime: summaryMetricPublicSchema('millisecond'),
 }) {}
 
-// `{ offset: true }` matches the legacy `format: date-time` check. The shape check still passes an
-// out-of-range offset such as `+99:99`, so the refine rejects what `Date` cannot parse.
+// `{ offset: true }` matches the legacy `format: date-time` check. `.datetime()` only checks the
+// pattern, so an impossible offset such as `+99:99` passes it; the refine rejects those values.
 const dateTimeQuerySchema = z
 	.string()
 	.datetime({ offset: true })

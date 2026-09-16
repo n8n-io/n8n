@@ -38,7 +38,6 @@ export class InsightsPublicController {
 			? new Date(query.startDate)
 			: DateTime.now().minus({ days: 7 }).toJSDate();
 
-		// Only a caller-supplied pair can be out of order — a default never is.
 		if (query.startDate && query.endDate && startDate > endDate) {
 			throw new BadRequestError('endDate must be the same as or after startDate');
 		}
