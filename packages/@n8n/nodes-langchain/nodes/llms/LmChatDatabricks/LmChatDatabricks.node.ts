@@ -320,7 +320,7 @@ export class LmChatDatabricks implements INodeType {
 						headersTimeout: timeout,
 						bodyTimeout: timeout,
 					},
-					egressFilter?.createSecureLookup(),
+					egressFilter,
 				),
 			},
 		};

@@ -6,6 +6,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
+import { escapeODataValue } from '@utils/query-escaping';
+
 import { getExcelCredentialType, microsoftApiRequest } from '../transport';
 
 // listSearch context throughout this file: the transport's trailing `0` is its
@@ -27,13 +29,12 @@ export async function searchWorkbooks(
 			},
 		);
 	}
-	const fileExtensions = ['.xlsx', '.xlsm', '.xlst'];
-	const extensionFilter = fileExtensions.join(' OR ');
+	const trimmed = filter?.trim() ?? '';
+	const fileExtensions = ['.xlsx', '.xlsm'];
+	const q = trimmed === '' ? fileExtensions.join(' OR ') : trimmed;
+	const encodedQuery = trimmed === '' ? q : encodeURIComponent(escapeODataValue(q));
 
-	const q = filter || extensionFilter;
-
-	let response: IDataObject = {};
-
+	let response: IDataObject;
 	if (paginationToken) {
 		response = await microsoftApiRequest.call(
 			this,
@@ -41,7 +42,7 @@ export async function searchWorkbooks(
 			'',
 			undefined,
 			undefined,
-			paginationToken, // paginationToken contains the full URL
+			paginationToken,
 			undefined,
 			0,
 		);
@@ -49,10 +50,10 @@ export async function searchWorkbooks(
 		response = await microsoftApiRequest.call(
 			this,
 			'GET',
-			`/drive/root/search(q='${q}')`,
+			`/drive/root/search(q='${encodedQuery}')`,
 			undefined,
 			{
-				select: 'id,name,webUrl',
+				select: 'id,name,webUrl,file',
 				$top: 100,
 			},
 			undefined,
@@ -61,22 +62,27 @@ export async function searchWorkbooks(
 		);
 	}
 
-	if (response.value && filter) {
+	if (response.value) {
 		response.value = (response.value as IDataObject[]).filter((workbook: IDataObject) => {
-			return fileExtensions.some((extension) => (workbook.name as string).includes(extension));
+			const name = workbook.name as string;
+			return (
+				workbook.file !== undefined &&
+				fileExtensions.some((extension) => name.toLowerCase().endsWith(extension))
+			);
 		});
 	}
 
 	return {
-		results: (response.value as IDataObject[]).map((workbook: IDataObject) => {
+		results: ((response.value as IDataObject[] | undefined) ?? []).map((workbook: IDataObject) => {
+			let name = workbook.name as string;
 			for (const extension of fileExtensions) {
-				if ((workbook.name as string).includes(extension)) {
-					workbook.name = (workbook.name as string).replace(extension, '');
+				if (name.toLowerCase().endsWith(extension)) {
+					name = name.slice(0, -extension.length);
 					break;
 				}
 			}
 			return {
-				name: workbook.name as string,
+				name,
 				value: workbook.id as string,
 				url: workbook.webUrl as string,
 			};

@@ -213,7 +213,7 @@
   "devDependencies": {
     "@n8n/eslint-plugin-community-nodes": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
-    "@typescript-eslint/typescript-estree": "^8.35.0",
+    "@typescript-eslint/typescript-estree": "catalog:",
     "@types/basic-auth": "catalog:",
     "@types/cheerio": "^0.22.15",
     "@types/express": "catalog:",
@@ -326,7 +326,7 @@
     "sanitize-html": "catalog:",
     "sqlite3": "5.1.7",
     "temp": "0.9.4",
-    "tmp-promise": "3.0.3",
+    "tmp-promise": "catalog:",
     "uuid": "catalog:",
     "vm2": "catalog:",
     "weaviate-client": "3.9.0",

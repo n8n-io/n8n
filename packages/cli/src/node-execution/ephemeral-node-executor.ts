@@ -575,12 +575,24 @@ export class EphemeralNodeExecutor {
 	 *
 	 * Returns `null` when the tool has no structured schema (base `Tool` /
 	 * `DynamicTool` — caller falls back to `{ input: string }`) or when
-	 * introspection fails for any reason (credentials missing, MCP server
-	 * unreachable). Swallowing failures here keeps tool registration robust:
-	 * a bad MCP connection shouldn't prevent the agent from loading.
+	 * introspection fails because a credential is missing or inaccessible to the
+	 * project, or the MCP server is unreachable. Failures do not stop registration.
 	 */
 	async introspectSupplyDataToolSchema(tool: EphemeralWorkflowToolLike): Promise<unknown> {
-		const result = await this.withSupplyDataTool(tool, [], (response) => {
+		let credentials = tool.credentials;
+		if (credentials && Object.keys(credentials).length > 0) {
+			try {
+				credentials = await this.verifyCredentialDetailsForProject(tool.projectId, credentials);
+			} catch (error) {
+				this.logger.warn('supplyData tool introspection failed', {
+					nodeType: tool.nodeType,
+					error: error instanceof Error ? error.message : String(error),
+				});
+				return null;
+			}
+		}
+
+		const result = await this.withSupplyDataTool({ ...tool, credentials }, [], (response) => {
 			// Toolkits hold multiple tools, each with its own schema — there's no
 			// single Zod schema to hand back. Return null so the factory falls
 			// through to its `{ input: string }` default; proper per-method

@@ -140,11 +140,10 @@ describe('LmChatDatabricks', () => {
 
 		it('should thread the egress filter into the token provider and proxy agent', async () => {
 			const ctx = setupMockContext();
-			const secureLookup = vi.fn();
 			const egressFilter = {
 				validateUrl: vi.fn(),
 				validateRedirectSync: vi.fn(),
-				createSecureLookup: vi.fn().mockReturnValue(secureLookup),
+				createSecureLookup: vi.fn(),
 			};
 			ctx.helpers.getSecureEgressFilter = vi.fn().mockReturnValue(egressFilter);
 
@@ -159,7 +158,7 @@ describe('LmChatDatabricks', () => {
 			expect(mockedGetProxyAgent).toHaveBeenCalledWith(
 				'https://my.databricks.com/serving-endpoints',
 				expect.any(Object),
-				secureLookup,
+				egressFilter,
 			);
 		});
 

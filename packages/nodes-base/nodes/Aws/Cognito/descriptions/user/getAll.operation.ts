@@ -1,3 +1,4 @@
+import { escapeCognitoFilterValue } from '@utils/query-escaping';
 import type {
 	IDataObject,
 	IExecuteSingleFunctions,
@@ -88,7 +89,9 @@ const properties: INodeProperties[] = [
 							acceptJSObject: true,
 							errorMessage: 'Invalid request body. Request body must be valid JSON.',
 						});
-						const filterString = filterAttribute ? `"${filterAttribute}"^="${filterValue}"` : '';
+						const filterString = filterAttribute
+							? `"${escapeCognitoFilterValue(filterAttribute)}"^="${escapeCognitoFilterValue(filterValue)}"`
+							: '';
 						return {
 							...requestOptions,
 							body: JSON.stringify({ ...body, Filter: filterString }),
