@@ -336,6 +336,20 @@ describe('useContextMenu', () => {
 			expect(ids).toContain('rename_group');
 		});
 
+		it('refreshes the target to the anchor when the last real member is deleted', () => {
+			const anchor = nodeFactory({ parameters: { emptyGroupAnchor: true } });
+			workflowDocumentStore.setNodes([...nodes, anchor]);
+			const group = workflowDocumentStore.createGroup([nodes[0].id], 'Empty group');
+			const { open, actions } = useContextMenu();
+			open(mockEvent, { source: 'group', groupId: group.id, nodeIds: group.nodeIds });
+
+			workflowDocumentStore.replaceNodeInGroup(group.id, nodes[0].id, anchor.id);
+
+			const ids = actions.value.map((action) => action.id);
+			expect(ids).not.toContain('ungroup_nodes');
+			expect(ids).not.toContain('extract_sub_workflow');
+		});
+
 		it('falls back to the group actions alone when no member node resolves', () => {
 			const group = workflowDocumentStore.createGroup([nodes[0].id], 'My group');
 			const { open, actions } = useContextMenu();

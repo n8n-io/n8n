@@ -25,7 +25,7 @@ import {
 
 import type { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useVueFlow } from '@vue-flow/core';
-import { SIMULATE_NODE_TYPE } from '@/app/constants';
+import { NO_OP_NODE_TYPE, SIMULATE_NODE_TYPE } from '@/app/constants';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { GROUP_PADDING_Y_BOTTOM, GROUP_PADDING_Y_TOP } from '../stores/canvasNodeGroups.constants';
@@ -1007,6 +1007,39 @@ describe('Canvas', () => {
 			await waitFor(() => expect(rendered.getByTestId('canvas-node-group')).toBeInTheDocument());
 			return { group, groupNode, ...rendered };
 		};
+
+		it('selects an expanded empty group when its anchor is selected', async () => {
+			workflowDocumentStore.setScopes(['workflow:update']);
+			workflowDocumentStore.setNodes([
+				createTestNode({
+					id: 'anchor',
+					type: NO_OP_NODE_TYPE,
+					parameters: { emptyGroupAnchor: true },
+				}),
+			]);
+			const group = workflowDocumentStore.createGroup(['anchor'], 'Empty group');
+			const groupNode = createCanvasGroupElement({
+				id: group.id,
+				name: group.name,
+				nodeIds: ['anchor'],
+				isCollapsed: false,
+			});
+			groupNode.data!.isEmptyGroup = true;
+			const rendered = renderComponent({
+				props: {
+					nodes: [groupNode, createCanvasNodeElement({ id: 'anchor', position: { x: 40, y: 40 } })],
+				},
+				global: {
+					provide: { [NodeGroupViewKey as symbol]: createNodeGroupViewMock(false) },
+				},
+			});
+			const vueFlow = useVueFlow(canvasId);
+
+			await waitFor(() => expect(vueFlow.findNode('anchor')).toBeDefined());
+			vueFlow.addSelectedNodes([vueFlow.findNode('anchor')!]);
+
+			await waitFor(() => expect(getSelectionRing(rendered.container)).toBeInTheDocument());
+		});
 
 		it('hides the selection toolbar when the selection is exactly one group', async () => {
 			const { groupNode, queryByTestId } = await setupExpandedGroupWithLooseNodes();
