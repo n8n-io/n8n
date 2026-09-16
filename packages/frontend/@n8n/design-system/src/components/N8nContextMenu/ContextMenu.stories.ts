@@ -505,11 +505,12 @@ const meta = {
 		position: {
 			control: false,
 			description:
-				'Override for defaultOpen and controlled open. Offset from the trigger, or viewport coordinates when the trigger is omitted. Right-click ignores this.',
+				'Override for defaultOpen, controlled open, and open(). Offset from the trigger, or viewport coordinates when the trigger is omitted. Right-click ignores this.',
 		},
 		selectedValues: {
 			control: 'object',
-			description: 'Controlled selected ids. Supports v-model:selectedValues.',
+			description:
+				'Controlled selected ids for checkbox and radio items. Supports v-model:selectedValues.',
 		},
 		defaultSelectedValues: {
 			control: 'object',

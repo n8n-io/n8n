@@ -10,15 +10,15 @@ A menu that opens at the pointer on right-click or long-press. Built on Reka UI 
 
 **Props**
 
-- `id?: string`
+- `id?: string` HTML id for the menu content element.
 - `items: Array<ContextMenuNode<T>>` Root list. May mix rows (`item`, `checkbox`) and sections (`group`, `submenu`, `radio-group`). `radio` is not a node; nest it in `radio-group`. A separator renders before each section that follows another node.
 - `open?: boolean` Controlled open state. When set to `true`, the menu opens at `position` if set. Otherwise it opens at the trigger, or `[0, 0]`. Right-click still uses the pointer.
-- `defaultOpen?: boolean` Initial open state when uncontrolled. Uses `position` if set. Otherwise it opens at the trigger, or `[0, 0]`.
+- `defaultOpen?: boolean` Initial open state when uncontrolled. Uses `position` if set. Otherwise it opens at the trigger, or `[0, 0]`. | `default: false`
 - `position?: [number, number]` Override for programmatic open (`defaultOpen`, controlled `open`, or `open()`). Offset from the trigger when a trigger exists. Viewport coordinates when the trigger is omitted. Right-click ignores this. Fallback is `[0, 0]`.
-- `selectedValues?: T[]` Controlled selected **item** ids
-- `defaultSelectedValues?: T[]` Initial selected ids when `selectedValues` is omitted
-- `disabled?: boolean` Disables the **trigger**. | `default: false`
-- `loading?: boolean` | `default: false`
+- `selectedValues?: T[]` Controlled selected ids for checkbox and radio items. Bind with `v-model:selectedValues`.
+- `defaultSelectedValues?: T[]` Initial selected ids when `selectedValues` is omitted | `default: []`
+- `disabled?: boolean` Disables the **trigger**. `open()` is a no-op when disabled. | `default: false`
+- `loading?: boolean` Show skeleton rows instead of items. | `default: false`
 - `loadingItemCount?: number` | `default: 3`
 - `contentClass?: ClassValue` Class on the root panel and every submenu panel (max-height and other constraints). Set `--context-menu--width` here when the panel must use a fixed width instead of hugging its content.
 - `modal?: boolean` When `true`, blocks pointer events on the rest of the page while the menu is open. Canvas menus set this to `false`. | `default: true`
@@ -27,13 +27,18 @@ Extra HTML attributes, including `class`, land on the trigger element.
 
 **Empty copy**
 
-The default empty state uses i18n key `contextMenu.noItems` (`No items`). Pass `#empty` to replace it.
+The default empty state uses i18n key `contextMenu.noItems` (`No items`). It shows when a panel has no nodes, including an empty submenu. Pass `#empty` to replace it.
+
+**Icon color**
+
+The default leading icon uses the row tone: `--icon-color`, `--icon-color--subtle` when disabled, `--icon-color--danger` when `variant` is `destructive`. If `icon.type` is `icon` and `icon.color` is set, that value wins. `#item-leading` replaces this default, including emoji and tone handling.
 
 **Panel tokens**
 
 - `--context-menu--width` is unset by default. Panels then use `fit-content`, with a min of `--spacing--4xl` (8rem) and a max of `24rem`. Set it from `contentClass` to give the root panel and every submenu the same fixed width.
-- `--context-menu--padding` aliases `--spacing--4xs` (4px). It is the item list padding and the submenu `alignOffset` (`-4`) so the first submenu row lines up with the trigger. Reka `alignOffset` is a pixel number, so the JS constant must stay equal to `--spacing--4xs`.
-- Submenu `sideOffset` is `1`, which matches the 1px panel border (`--border`).
+- Default `max-height` is `--reka-context-menu-content-available-height`. Override it from `contentClass`.
+- `--context-menu--padding` is an internal variable on the item list. It aliases `--spacing--4xs` (4px). Submenu `alignOffset` is `-4` so the first submenu row lines up with the trigger. Reka `alignOffset` is a pixel number, so `ITEMS_PADDING_PX` must stay equal to `--spacing--4xs`.
+- Submenu `sideOffset` is `1`, which matches the 1px inset outline (`--shadow--outline`).
 - Root and submenu panels set Reka `collisionPadding` to `--spacing--2xs` (8px) so the menu stays inset from the viewport edge. Reka `collisionPadding` is a pixel number, so the JS constant must stay equal to `--spacing--2xs`.
 
 **Events**
@@ -48,15 +53,15 @@ The default empty state uses i18n key `contextMenu.noItems` (`No items`). Pass `
 
 - `trigger` Target element. Omit in coordinate mode
 - `item` `{ item: ContextMenuLeaf<T> }` Replaces default `N8nContextMenuItem`. Re-render `N8nContextMenuItem` so the row keeps selection and keyboard behaviour.
-- `item-leading` `{ item: ContextMenuLeaf<T>, ui: { class: string } }`
-- `item-label` `{ item: ContextMenuLeaf<T>, ui: { class: string } }`
-- `item-trailing` `{ item: ContextMenuLeaf<T>, ui: { class: string } }`
-- `loading`
-- `empty` Root empty state
+- `item-leading` `{ item: ContextMenuLeaf<T>, ui: { class: string } }` Replaces the default icon or emoji. Bind `ui.class`.
+- `item-label` `{ item: ContextMenuLeaf<T>, ui: { class: string } }` Replaces the default label. Bind `ui.class`.
+- `item-trailing` `{ item: ContextMenuLeaf<T>, ui: { class: string } }` Replaces the default shortcut. Bind `ui.class`.
+- `loading` Replaces the skeleton rows
+- `empty` Empty state for a panel with no nodes (root or submenu)
 
 **Exposed methods**
 
-- `open()` Opens the menu. Uses `position` if set. Otherwise opens at the trigger, or `[0, 0]`.
+- `open()` Opens the menu. Uses `position` if set. Otherwise opens at the trigger, or `[0, 0]`. No-op when `disabled`.
 - `close()` Closes the menu.
 
 **Types**
