@@ -241,7 +241,7 @@ describe('node type policy store reads', () => {
 			expect(await slackVerdict(null)).toBe('deny');
 			expect(await slackVerdict(project.id)).toBe('deny');
 
-			await service.updatePolicyDocument(policy.id, [], policy.version, 'user-1');
+			await service.updatePolicyDocument(KIND, policy.id, [], policy.version, 'user-1');
 
 			expect(await slackVerdict(null)).toBe('allow');
 			expect(await slackVerdict(project.id)).toBe('allow');

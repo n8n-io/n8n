@@ -1,11 +1,8 @@
-// Forces every Databricks API call through databricksApiRequest() in
-// actions/helpers.ts, which is what attaches the partner User-Agent. Spread into
-// packages/nodes-base's eslint.config.mjs, which is where the `files`/`ignores`
-// globs below are resolved from (this file's own location doesn't affect path
-// resolution).
+// Every Databricks API call must go through databricksApiRequest() in actions/helpers.ts.
+// Spread into packages/nodes-base/eslint.config.mjs; the globs below resolve from there.
 
 // Flat-config `rules` blocks replace, not merge, for any file matched by more
-// than one block — so the scoped `no-restricted-syntax` below must repeat the
+// than one block, so the scoped `no-restricted-syntax` below must repeat the
 // base config's raw-enum rule, or it silently stops applying there.
 const NO_RAW_ENUM_SYNTAX_RULE = {
 	selector: 'TSEnumDeclaration:not([const=true])',
@@ -13,38 +10,42 @@ const NO_RAW_ENUM_SYNTAX_RULE = {
 		'Do not declare raw enums as it leads to runtime overhead. Use const enum instead. See https://www.typescriptlang.org/docs/handbook/enums.html#const-enums',
 };
 
-// Raw request helpers that would skip the partner User-Agent, shared by both
-// selectors below so the list can't drift between them.
+// `request` also names unrelated members (error.request), so it stays anchored to `helpers`.
 const RESTRICTED_HELPER_METHODS =
-	'/^(httpRequest|httpRequestWithAuthentication|request|requestWithAuthentication|requestWithAuthenticationPaginated)$/';
+	'/^(httpRequest|httpRequestWithAuthentication|request|requestWithAuthentication|requestWithAuthenticationPaginated|requestOAuth1|requestOAuth2)$/';
+const DISTINCTIVE_HELPER_METHODS =
+	'/^(httpRequest|httpRequestWithAuthentication|requestWithAuthentication|requestWithAuthenticationPaginated|requestOAuth1|requestOAuth2)$/';
+const USE_DATABRICKS_API_REQUEST =
+	'Use databricksApiRequest() from actions/helpers.ts so the partner User-Agent is sent.';
 
 export const databricksUserAgentRestriction = [
 	{
 		files: ['./nodes/Databricks/**/*.ts'],
-		// helpers.ts is the one file allowed to call the raw helper; tests stub it directly.
+		// helpers.ts is the one file allowed to call the raw helpers; tests stub them directly.
 		ignores: ['./nodes/Databricks/actions/helpers.ts', './nodes/Databricks/test/**'],
 		rules: {
 			'no-restricted-syntax': [
 				'error',
 				NO_RAW_ENUM_SYNTAX_RULE,
 				{
-					// Siblings of httpRequestWithAuthentication are restricted too: an
-					// operation written with helpers.httpRequest would otherwise skip
-					// the User-Agent silently. Anchored to `helpers` (as a member or a bare
-					// binding from `const { helpers } = this`) so unrelated members like
-					// `error.request` don't trip the guard.
-					selector: `MemberExpression:matches([object.property.name="helpers"], [object.name="helpers"])[property.name=${RESTRICTED_HELPER_METHODS}]`,
-					message:
-						'Use databricksApiRequest() from actions/helpers.ts so the partner User-Agent is sent.',
+					selector: `MemberExpression[computed=false][property.name=${DISTINCTIVE_HELPER_METHODS}]`,
+					message: USE_DATABRICKS_API_REQUEST,
 				},
 				{
-					// The same helpers reached by destructuring rather than member access.
-					// Anchored to a `*.helpers` or bare `helpers` initialiser so an unrelated
-					// `const { request } = response` doesn't trip the guard with a confusing
-					// message.
-					selector: `VariableDeclarator:matches([init.name="helpers"], [init.property.name="helpers"]) > ObjectPattern > Property[key.name=${RESTRICTED_HELPER_METHODS}]`,
-					message:
-						'Use databricksApiRequest() from actions/helpers.ts so the partner User-Agent is sent.',
+					selector: `MemberExpression[computed=true] > Literal.property[value=${RESTRICTED_HELPER_METHODS}]`,
+					message: USE_DATABRICKS_API_REQUEST,
+				},
+				{
+					selector: `MemberExpression:matches([object.property.name="helpers"], [object.name="helpers"])[property.name="request"]`,
+					message: USE_DATABRICKS_API_REQUEST,
+				},
+				{
+					selector: `ObjectPattern > Property[key.name=${DISTINCTIVE_HELPER_METHODS}]`,
+					message: USE_DATABRICKS_API_REQUEST,
+				},
+				{
+					selector: `VariableDeclarator:matches([init.name="helpers"], [init.property.name="helpers"]) > ObjectPattern > Property[key.name="request"]`,
+					message: USE_DATABRICKS_API_REQUEST,
 				},
 			],
 		},

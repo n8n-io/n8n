@@ -86,6 +86,26 @@ describe('McpProtectedResource', () => {
 			expect(scopeTools['project:read']).toContain('search_projects');
 		});
 
+		it('advertises the preferences scope with its one tool', () => {
+			expect(resource.scopes).toContain('aiPreference:read');
+			expect(resource.getScopeTools()['aiPreference:read']).toEqual(['get_user_preferences']);
+		});
+
+		// The flag is per-user PostHog and unreachable from the descriptor, so the scope is
+		// offered to everyone; granting it yields no tool until the flag is on.
+		it('keeps advertising the preferences scope regardless of the builder', () => {
+			const withoutBuilder = new McpProtectedResource(
+				urlService,
+				mcpSettingsService,
+				mcpConfig,
+				makeGlobalConfig({ builderEnabled: false }),
+				moduleRegistry,
+				licenseState,
+			);
+
+			expect(withoutBuilder.getScopeTools()['aiPreference:read']).toEqual(['get_user_preferences']);
+		});
+
 		it('should drop agent scopes and tools when the agents module is inactive', () => {
 			moduleRegistry.isActive.mockReturnValue(false);
 
