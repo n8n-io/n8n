@@ -119,13 +119,12 @@ export class InstanceAiPage extends BasePage {
 		return this.getContainer().getByTestId('instance-ai-sidebar-toggle');
 	}
 
+	getNewThreadButton(): Locator {
+		return this.page.getByRole('menuitem', { name: 'n8n Assistant' });
+	}
+
 	/**
-	 * Expand the chat-history sidebar if it isn't already open. The sidebar
-	 * starts collapsed by default, so any test that needs to query thread
-	 * items must open it first. Idempotent — does nothing if already open.
-	 *
-	 * Waits for the thread-list to become visible so callers can immediately
-	 * query thread items without racing the 200ms slide-in transition.
+	 * Open the chat-history popover if needed and wait until its list is queryable.
 	 */
 	async openSidebar(): Promise<void> {
 		const threadList = this.page.getByTestId('instance-ai-thread-list');
