@@ -19,6 +19,7 @@ import { AuthProviderSyncHistory } from './auth-provider-sync-history';
 import { BinaryDataFile, SourceTypeSchema, type SourceType } from './binary-data-file';
 import {
 	CredentialDependency,
+	EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE,
 	type CredentialDependencyType,
 } from './credential-dependency-entity';
 import { CredentialsEntity, type CredentialUsageScope } from './credentials-entity';
@@ -133,6 +134,7 @@ export {
 	CredentialsEntity,
 	type CredentialUsageScope,
 	CredentialDependency,
+	EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE,
 	type CredentialDependencyType,
 	DeploymentKey,
 	EvaluationCollection,
