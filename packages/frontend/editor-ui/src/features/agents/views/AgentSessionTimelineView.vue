@@ -21,11 +21,13 @@ import AgentSessionTimelineHeader from '@/features/agents/components/AgentSessio
 import AgentSessionTimelinePanel from '@/features/agents/components/AgentSessionTimelinePanel.vue';
 import AgentPreviewDock from '@/features/agents/components/AgentPreviewDock.vue';
 import { useAgentBuilderSession } from '@/features/agents/composables/useAgentBuilderSession';
+import { useAgentExecutionUpdates } from '@/features/agents/composables/useAgentExecutionUpdates';
 import { getAgent } from '@/features/agents/composables/useAgentApi';
 import { useAgentConfig } from '@/features/agents/composables/useAgentConfig';
 import type { AgentResource } from '@/features/agents/types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useI18n } from '@n8n/i18n';
+import { N8nEmptyState } from '@n8n/design-system';
 import type { DropdownMenuItemProps, IconName, PathItem } from '@n8n/design-system';
 import { computed, ref, watch } from 'vue';
 import { useStorage } from '@vueuse/core';
@@ -63,11 +65,25 @@ const {
 	activeChatSessionId,
 	effectiveSessionId,
 	currentSessionHasMessages,
+	currentSessionIsEphemeral,
 	currentSessionTitle,
 	sessionMenu,
 	onSessionPick,
 	onNewChat,
 } = useAgentBuilderSession({ routeBacked: computed(() => false) });
+
+/**
+ * True while the docked preview sits on a brand-new session that has no thread
+ * yet, so this page's thread is no longer what the preview is running. Picking
+ * an existing session is excluded: that one has a thread to show right away,
+ * and the dock's own trace action navigates to it.
+ */
+const isPreviewSessionStale = computed(
+	() =>
+		currentSessionIsEphemeral.value &&
+		effectiveSessionId.value !== undefined &&
+		effectiveSessionId.value !== threadId.value,
+);
 
 const triggerSource = computed((): string | null => {
 	if (executions.value.length === 0) return null;
@@ -218,6 +234,32 @@ watch(
 	{ immediate: true },
 );
 
+/**
+ * Clear this thread's data the instant the live preview session moves on, so
+ * its error markers/title/metrics don't linger next to a new session.
+ */
+watch(isPreviewSessionStale, (stale) => {
+	if (!stale) return;
+	thread.value = null;
+	executions.value = [];
+});
+
+/**
+ * The new session has no thread to fetch until the backend records its first
+ * turn, and that push is the signal it now has one — so re-bind the page to it.
+ */
+useAgentExecutionUpdates({ projectId, agentId, threadId: effectiveSessionId }, () => {
+	if (!isPreviewSessionStale.value || !effectiveSessionId.value) return;
+	void router.replace({
+		name: AGENT_SESSION_DETAIL_VIEW,
+		params: {
+			projectId: projectId.value,
+			agentId: agentId.value,
+			threadId: effectiveSessionId.value,
+		},
+	});
+});
+
 function formatDuration(ms: number): string {
 	if (!ms || ms <= 0) return '0ms';
 	if (ms < 1000) return `${ms}ms`;
@@ -303,11 +345,19 @@ function viewPreviewTrace() {
 
 		<div :class="[$style.content, { [$style.previewOpen]: isPreviewOpen }]">
 			<AgentSessionTimelinePanel
+				v-if="!isPreviewSessionStale"
 				:project-id="projectId"
 				:agent-id="agentId"
 				:thread-id="threadId"
 				@loaded="onPanelLoaded"
 			/>
+			<div v-else :class="$style.newSessionEmpty">
+				<N8nEmptyState
+					:icon="{ type: 'icon', value: 'message-square' }"
+					:heading="i18n.baseText('agentSessions.timeline.emptyState.heading')"
+					:description="i18n.baseText('agentSessions.timeline.emptyState.description')"
+				/>
+			</div>
 
 			<AgentPreviewDock
 				:is-open="isPreviewOpen"
@@ -355,5 +405,14 @@ function viewPreviewTrace() {
 	@media (prefers-reduced-motion: reduce) {
 		transition: none;
 	}
+}
+
+.newSessionEmpty {
+	display: flex;
+	flex: 1 1 auto;
+	min-height: 0;
+	align-items: center;
+	justify-content: center;
+	padding: var(--spacing--xl);
 }
 </style>
