@@ -30,7 +30,7 @@ const EXCERPT_LENGTH = 200;
 const MAX_EXCERPTS_PER_THREAD = 3;
 /**
  * Candidates are the newest raw-JSON matches, and internal enrichment blocks
- * (`<project-context>` etc.) can make boilerplate-only rows outnumber a genuine
+ * (`<thread-context>` etc.) can make boilerplate-only rows outnumber a genuine
  * older match — so fetch a few more than the excerpts we keep.
  */
 const EXCERPT_CANDIDATES_PER_THREAD = 8;
@@ -130,11 +130,12 @@ function parseStoredContent(raw: string): { content: unknown } | undefined {
 }
 
 /**
- * User text as the user saw it: stored user messages carry appended internal
- * enrichment (`<project-context>`, `<current-date-time>`, editor/task context
- * blocks), which must not surface in excerpts — nor match a query, or wrapper
- * boilerplate would rank every thread for terms like "project". `null` marks
- * an internal auto-follow-up row with no user-authored content at all.
+ * User text as the user saw it: stored user messages carry internal
+ * enrichment (`<thread-context>`, or older trailing `<project-context>` /
+ * `<current-date-time>` and editor/task context blocks), which must not
+ * surface in excerpts — nor match a query, or wrapper boilerplate would rank
+ * every thread for terms like "project". `null` marks an internal
+ * auto-follow-up row with no user-authored content at all.
  */
 function extractUserText(content: unknown): string | null {
 	return cleanStoredUserMessage(extractTextFromContent(content));

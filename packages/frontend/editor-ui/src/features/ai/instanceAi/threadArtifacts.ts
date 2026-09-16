@@ -6,7 +6,7 @@ const THREAD_ARTIFACT_TYPES = new Set<ResourceEntry['type']>(['workflow', 'agent
 const MAX_THREAD_ARTIFACTS = 20;
 
 /**
- * Build the per-turn index the backend injects as `<thread-artifacts>`.
+ * Build the per-turn index the backend injects inside `<thread-context>`.
  * Matches the thread preview tabs: ids and names only.
  */
 export function buildThreadArtifactsContext(

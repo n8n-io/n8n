@@ -5189,6 +5189,7 @@ describe('InstanceAiService — editor handoff context resources', () => {
 		expect(source).toContain('buildContextResourcesBlock(contextAttachments)');
 		// Imported helpers compile to `(0,__vite_ssr_import_N__.fn)(arg)`.
 		expect(source).toMatch(/buildThreadArtifactsBlock\)?\s*\(\s*threadArtifacts\s*\)/);
+		expect(source).toMatch(/buildThreadContextBlock\)?/);
 		expect(source).not.toContain('buildContextResourcesBlock(workflowAttachments)');
 	});
 

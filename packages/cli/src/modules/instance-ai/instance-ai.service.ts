@@ -192,15 +192,15 @@ import {
 	CREDENTIAL_CONTEXT_OPEN_TAG,
 	CREDENTIAL_CONTEXT_CLOSE_TAG,
 	cleanStoredUserMessage,
-	withCurrentDateTime,
-	withAiPreferences,
-	withPastConversations,
-	withProjectContext,
-	getProjectContextSection,
-	WORKFLOW_SETUP_STATE_OPEN_TAG,
-	WORKFLOW_SETUP_STATE_CLOSE_TAG,
-	buildWorkflowTestRequestBlock,
+	buildCurrentDateTimeBlock,
+	buildPastConversationsBlock,
+	buildProjectContextBlock,
 	buildThreadArtifactsBlock,
+	buildThreadContextBlock,
+	buildWorkflowTestRequestBlock,
+	getProjectContextSection,
+	WORKFLOW_SETUP_STATE_CLOSE_TAG,
+	WORKFLOW_SETUP_STATE_OPEN_TAG,
 } from './internal-messages';
 import { INSTANCE_AI_RUN_TIMEOUT_REASON, InstanceAiLivenessService } from './liveness';
 import { InstanceAiMcpRegistryService } from './mcp';
@@ -4114,56 +4114,39 @@ export class InstanceAiService {
 						? `${enrichedMessage}\n\n${attachmentManifest}`
 						: enrichedMessage;
 
-			// The context block (an editor hand-off) leads the message so the agent
-			// knows what the user is looking at. On an empty-text hand-off it is the
-			// entire prompt, and the agent greets rather than investigating.
-			// Instance context sits last of the leading blocks, nearest the user's own words: it is
-			// background for reading their intent, not a statement of what they are looking at now.
-			// Thread artifacts sit after that so “this workflow” resolves to the open preview tab
-			// even after observation-log compaction hides the original build tool results.
+			// Handoff and setup blocks lead so the agent knows what the user opened
+			// this turn about. Ambient context (instance, preview tabs, project, clock)
+			// is one `<thread-context>` wrapper. The user's own words stay last.
 			const threadArtifactsBlock =
 				resumeReason === undefined ? buildThreadArtifactsBlock(threadArtifacts) : '';
-			const messageWithContext = [
-				contextResourcesBlock,
-				handoffContextBlock,
-				setupStateBlock,
-				instanceContext?.block ?? '',
-				threadArtifactsBlock,
-				messageBody,
-			]
-				.filter(Boolean)
-				.join('\n\n');
-			// The bound project's NAME rides turn for the same reason as the clock: it is per-thread,
-			// so putting it in the cached system prefix would break caching.
-			//
-			// The opening turn names the project's recent conversations; otherwise the
-			// agent has no reason to believe the conversation-history tool holds anything.
 			const [boundProject, pastConversationsSection] = await Promise.all([
 				this.resolveBoundProject(context),
 				isOpeningTurn ? conversationHistory?.getPastConversationsSection() : undefined,
 			]);
 			const projectSection = boundProject ? getProjectContextSection(boundProject) : undefined;
-			// Saved preferences ride the opening turn too, under the same project name.
 			const aiPreferencesBlock =
 				isOpeningTurn && aiPreferencesEnabled
 					? await this.resolveAiPreferencesBlock(user.id, boundProject)
 					: undefined;
-			const messageWithProject = projectSection
-				? withProjectContext(messageWithContext, projectSection)
-				: messageWithContext;
-			const messageWithPastConversations = pastConversationsSection
-				? withPastConversations(messageWithProject, pastConversationsSection)
-				: messageWithProject;
-			const messageWithPreferences = aiPreferencesBlock
-				? withAiPreferences(messageWithPastConversations, aiPreferencesBlock)
-				: messageWithPastConversations;
-
-			// Carry "now" on the per-turn input, not the cached system prefix, so the prefix stays cacheable.
-			// Wrapped so the parser strips it from the displayed user message on history reload.
-			const fullMessage = withCurrentDateTime(
-				messageWithPreferences,
-				getDateTimeSection(timeZone ?? this.defaultTimeZone),
-			);
+			const threadContextBlock = buildThreadContextBlock([
+				instanceContext?.block ?? '',
+				threadArtifactsBlock,
+				projectSection ? buildProjectContextBlock(projectSection) : undefined,
+				pastConversationsSection
+					? buildPastConversationsBlock(pastConversationsSection)
+					: undefined,
+				aiPreferencesBlock,
+				buildCurrentDateTimeBlock(getDateTimeSection(timeZone ?? this.defaultTimeZone)),
+			]);
+			const fullMessage = [
+				contextResourcesBlock,
+				handoffContextBlock,
+				setupStateBlock,
+				threadContextBlock,
+				messageBody,
+			]
+				.filter(Boolean)
+				.join('\n\n');
 
 			const promptBuildRun = tracing
 				? await tracing.startChildRun(tracing.messageRun, {
@@ -6626,7 +6609,7 @@ export class InstanceAiService {
 			const userTexts: string[] = [];
 			for (const m of history) {
 				if (!('role' in m) || m.role !== 'user') continue;
-				// Stored user messages carry service-injected blocks (<current-date-time>,
+				// Stored user messages carry service-injected blocks (<thread-context>,
 				// task context). Strip them or a trivial "hey" looks substantial enough to
 				// title, and the injected blocks leak into the title prompt.
 				const text = cleanStoredUserMessage(this.extractStoredMessageText(m.content));

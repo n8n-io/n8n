@@ -49,6 +49,8 @@ export const AGENT_PREVIEW_CONTEXT_CLOSE_TAG = '</agent-preview-context>';
  */
 export const INSTANCE_CONTEXT_OPEN_TAG = '<instance-context>';
 export const INSTANCE_CONTEXT_CLOSE_TAG = '</instance-context>';
+export const THREAD_CONTEXT_OPEN_TAG = '<thread-context>';
+export const THREAD_CONTEXT_CLOSE_TAG = '</thread-context>';
 export const THREAD_ARTIFACTS_OPEN_TAG = '<thread-artifacts>';
 export const THREAD_ARTIFACTS_CLOSE_TAG = '</thread-artifacts>';
 export const PROJECT_CONTEXT_OPEN_TAG = '<project-context>';
@@ -84,7 +86,7 @@ export function buildWorkflowTestRequestBlock(workflowId: string): string {
  * content is the workflow context).
  */
 const TASK_CONTEXT_BLOCK =
-	/^(?:<running-tasks>\n[\s\S]*?\n<\/running-tasks>|<planned-task-follow-up[\s\S]*?\n<\/planned-task-follow-up>|<planning-blueprint>\n[\s\S]*?\n<\/planning-blueprint>|<background-task-completed>\n[\s\S]*?\n<\/background-task-completed>|<workflow-verification-follow-up>\n[\s\S]*?\n<\/workflow-verification-follow-up>|<workflow-setup-required>\n[\s\S]*?\n<\/workflow-setup-required>|<workflow-setup-state>\n[\s\S]*?\n<\/workflow-setup-state>|<workflow-test-request>\n[\s\S]*?\n<\/workflow-test-request>|<editor-context>\n[\s\S]*?\n<\/editor-context>|<credential-context>\n[\s\S]*?\n<\/credential-context>|<agent-preview-context>\n[\s\S]*?\n<\/agent-preview-context>|<instance-context>\n[\s\S]*?\n<\/instance-context>|<thread-artifacts>\n[\s\S]*?\n<\/thread-artifacts>)(?:\n\n|$)/;
+	/^(?:<thread-context>\n[\s\S]*?\n<\/thread-context>|<running-tasks>\n[\s\S]*?\n<\/running-tasks>|<planned-task-follow-up[\s\S]*?\n<\/planned-task-follow-up>|<planning-blueprint>\n[\s\S]*?\n<\/planning-blueprint>|<background-task-completed>\n[\s\S]*?\n<\/background-task-completed>|<workflow-verification-follow-up>\n[\s\S]*?\n<\/workflow-verification-follow-up>|<workflow-setup-required>\n[\s\S]*?\n<\/workflow-setup-required>|<workflow-setup-state>\n[\s\S]*?\n<\/workflow-setup-state>|<workflow-test-request>\n[\s\S]*?\n<\/workflow-test-request>|<editor-context>\n[\s\S]*?\n<\/editor-context>|<credential-context>\n[\s\S]*?\n<\/credential-context>|<agent-preview-context>\n[\s\S]*?\n<\/agent-preview-context>|<instance-context>\n[\s\S]*?\n<\/instance-context>|<thread-artifacts>\n[\s\S]*?\n<\/thread-artifacts>)(?:\n\n|$)/;
 
 /** Captures the leading JSON line inside an editor-context block. */
 const EDITOR_CONTEXT_JSON = /^<editor-context>\n(\[[\s\S]*?\])\n/;
@@ -102,8 +104,9 @@ function trailingBlockRegex(tag: string): RegExp {
 }
 
 /**
- * Every trailing block the service appends. Registering here is what makes a
- * block invisible to BOTH readers of a stored message: the UI, and the
+ * Trailing blocks from older stored messages. New turns wrap these inside a
+ * leading `<thread-context>` instead. Registering here is what makes a block
+ * invisible to BOTH readers of a stored message: the UI, and the
  * conversation-history tool's text extraction — so injected context never
  * pollutes a later history search.
  */
@@ -133,30 +136,55 @@ function stripTrailingContextBlocks(message: string): string {
 	return text;
 }
 
+export function buildCurrentDateTimeBlock(dateTimeSection: string): string {
+	return `<current-date-time>${dateTimeSection}\n</current-date-time>`;
+}
+
+export function buildProjectContextBlock(projectSection: string): string {
+	return `${PROJECT_CONTEXT_OPEN_TAG}\n${projectSection}\n${PROJECT_CONTEXT_CLOSE_TAG}`;
+}
+
+export function buildPastConversationsBlock(section: string): string {
+	return `${PAST_CONVERSATIONS_OPEN_TAG}\n${section}\n${PAST_CONVERSATIONS_CLOSE_TAG}`;
+}
+
+/**
+ * Wrap per-turn ambient context into one leading block. The user text stays last.
+ * On the turn rather than in the system prompt for prompt-caching reasons.
+ */
+export function buildThreadContextBlock(sections: Array<string | undefined>): string {
+	const parts = sections
+		.map((section) => section?.trim())
+		.filter((section): section is string => Boolean(section))
+		.map((section) => section.replaceAll(THREAD_CONTEXT_CLOSE_TAG, '&lt;/thread-context&gt;'));
+	if (parts.length === 0) return '';
+	return `${THREAD_CONTEXT_OPEN_TAG}\n${parts.join('\n\n')}\n${THREAD_CONTEXT_CLOSE_TAG}`;
+}
+
 /**
  * Append the per-turn clock as a tagged suffix the parser strips before display.
- * On the turn rather than in the system prompt for prompt-caching reasons.
+ * Kept for older stored messages and tests that rebuild that shape.
  * */
 export function withCurrentDateTime(message: string, dateTimeSection: string): string {
-	return `${message}\n\n<current-date-time>${dateTimeSection}\n</current-date-time>`;
+	return `${message}\n\n${buildCurrentDateTimeBlock(dateTimeSection)}`;
 }
 
 /**
  * Name the project this conversation is scoped to.
- * On the turn rather than in the system prompt for prompt-caching reasons.
+ * Kept for older stored messages and tests that rebuild that shape.
  */
 export function withProjectContext(message: string, projectSection: string): string {
-	return `${message}\n\n<project-context>\n${projectSection}\n</project-context>`;
+	return `${message}\n\n${buildProjectContextBlock(projectSection)}`;
 }
 
 /**
  * Tell the agent the project has searchable past conversations. First turn of a
  * thread only — it exists to make the agent reach for the `conversation-history`
  * tool, which it otherwise has no reason to believe has anything in it.
- * On the turn rather than in the system prompt for prompt-caching reasons.
+ * Kept for older stored messages and tests that rebuild that shape.
  */
 export function withPastConversations(message: string, section: string): string {
-	return `${message}\n\n${PAST_CONVERSATIONS_OPEN_TAG}\n${section}\n${PAST_CONVERSATIONS_CLOSE_TAG}`;
+	return `${message}\n\n${buildPastConversationsBlock(section)}`;
 }
 
 /**
