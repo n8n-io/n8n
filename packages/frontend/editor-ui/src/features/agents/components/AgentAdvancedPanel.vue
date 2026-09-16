@@ -1,14 +1,11 @@
 <script setup lang="ts">
-/**
- * Behavior panel — execution-behavior knobs that used to live in the old
- * AgentOverviewPanel: reasoning depth and tool-call
- * concurrency.
- */
+/** Advanced settings for memory and execution behavior. */
 import { ref, computed, watch } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
 import { AGENT_REASONING_LEVELS, type AgentReasoningLevel } from '@n8n/api-types';
 import { N8nInputNumber, N8nOption, N8nSelect, N8nSwitch2, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import AgentMemoryModelSetting from './AgentMemoryModelSetting.vue';
 import AgentPanel from './AgentPanel.vue';
 
 import { useModelCatalog } from '../composables/useModelCatalog';
@@ -241,6 +238,13 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 			:description="i18n.baseText('agents.builder.advanced.description')"
 		>
 			<div :class="$style.content">
+				<AgentMemoryModelSetting
+					:config="props.config"
+					:disabled="props.disabled"
+					:project-id="props.projectId"
+					@update:config="emit('update:config', $event)"
+				/>
+
 				<div :class="$style.settingGroup">
 					<div :class="$style.row">
 						<div :class="$style.rowLabel">

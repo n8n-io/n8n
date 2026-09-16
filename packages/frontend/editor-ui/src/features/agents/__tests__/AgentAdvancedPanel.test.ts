@@ -62,6 +62,15 @@ vi.mock('@/app/stores/ui.store', () => ({
 	useUIStore: () => ({ openNewCredential: openNewCredentialMock }),
 }));
 
+vi.mock('../components/AgentMemoryModelSetting.vue', () => ({
+	default: {
+		name: 'AgentMemoryModelSetting',
+		template: '<div data-testid="agent-memory-model-setting" />',
+		props: ['config', 'disabled', 'projectId'],
+		emits: ['update:config'],
+	},
+}));
+
 // Numeric/reasoning sub-controls debounce — execute synchronously in the test.
 vi.mock('@vueuse/core', async (importOriginal) => {
 	const actual = await importOriginal<typeof VueUse>();
@@ -209,6 +218,7 @@ describe('AgentAdvancedPanel', () => {
 		});
 
 		expect(wrapper.text()).toContain('agents.builder.advanced.title');
+		expect(wrapper.find('[data-testid="agent-memory-model-setting"]').exists()).toBe(true);
 		expect(wrapper.find('[data-testid="agent-advanced-trigger"]').exists()).toBe(false);
 		expect(wrapper.find('[data-testid="agent-advanced-chevron"]').exists()).toBe(false);
 		expect(wrapper.find('[data-testid="agent-behavior-panel"]').isVisible()).toBe(true);
