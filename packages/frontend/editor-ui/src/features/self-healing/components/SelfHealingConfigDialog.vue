@@ -240,6 +240,7 @@ function save() {
 					:items="autonomyOptions"
 					size="large"
 					:class="$style.autonomySelect"
+					:content-class="$style.autonomyMenu"
 					data-test-id="self-healing-autonomy-select"
 					@update:model-value="onAutonomyChange"
 				>
@@ -376,6 +377,13 @@ function save() {
 
 .autonomySelect {
 	width: 100%;
+}
+
+// The menu sizes to its longest line by default; the descriptions must wrap
+// inside the trigger width instead.
+.autonomyMenu {
+	width: var(--reka-select-trigger-width);
+	max-width: var(--reka-select-trigger-width);
 }
 
 // Same shape as the multi-line options in the workflow settings modal.
