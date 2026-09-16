@@ -672,10 +672,62 @@ describe('Databricks', () => {
 		});
 	});
 
-	describe('Router -> PERMISSION_DENIED surfaces the Databricks message', () => {
-		// A 403 PERMISSION_DENIED body must surface its legible Databricks message
-		// instead of the generic "Forbidden - perhaps check your credentials?" —
-		// deleting the makePermissionErrorLegible call in the router must fail this
+	describe('Job -> Get', () => {
+		beforeAll(() => {
+			const databricksNock = nock(HOST);
+			databricksNock
+				.get('/api/2.2/jobs/get')
+				.query({ job_id: '281874479417551', include_trigger_state: 'true' })
+				.matchHeader('user-agent', 'n8n_DatabricksNode')
+				.reply(200, {
+					job_id: 281874479417551,
+					creator_user_name: 'owner@example.com',
+					run_as_user_name: 'owner@example.com',
+					created_time: 1757923200000,
+					settings: {
+						name: 'Nightly ETL',
+						tasks: [
+							{ task_key: 'extract', notebook_task: { notebook_path: '/Repos/etl/extract' } },
+						],
+						job_clusters: [
+							{
+								job_cluster_key: 'etl',
+								new_cluster: { spark_version: '15.4.x-scala2.12', num_workers: 2 },
+							},
+						],
+						schedule: {
+							quartz_cron_expression: '0 0 2 * * ?',
+							timezone_id: 'UTC',
+							pause_status: 'UNPAUSED',
+						},
+						max_concurrent_runs: 1,
+					},
+					trigger_state: { file_arrival: { using_file_events: false } },
+					has_more: true,
+					next_page_token: 'page-2',
+				});
+			databricksNock
+				.get('/api/2.2/jobs/get')
+				.query({ job_id: '281874479417551', include_trigger_state: 'true', page_token: 'page-2' })
+				.matchHeader('user-agent', 'n8n_DatabricksNode')
+				.reply(200, {
+					job_id: 281874479417551,
+					settings: {
+						tasks: [{ task_key: 'load', notebook_task: { notebook_path: '/Repos/etl/load' } }],
+					},
+					has_more: false,
+				});
+		});
+
+		afterAll(() => nock.cleanAll());
+
+		new NodeTestHarness().setupTests({
+			credentials,
+			workflowFiles: ['job-get.workflow.json'],
+		});
+	});
+
+	describe('Router -> PERMISSION_DENIED replaces the generic Forbidden message with the Databricks message', () => {
 		beforeAll(() => {
 			nock(HOST)
 				.get('/api/2.1/unity-catalog/catalogs')
