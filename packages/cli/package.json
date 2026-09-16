@@ -67,9 +67,7 @@
     "dist"
   ],
   "janitor": {
-    "ignoreDepsForScoping": [
-      "n8n-editor-ui"
-    ]
+    "ignoreDepsForScoping": ["n8n-editor-ui"]
   },
   "devDependencies": {
     "@faker-js/faker": "^8.0.2",
@@ -106,8 +104,6 @@
     "@types/ws": "catalog:",
     "@types/xml2js": "catalog:",
     "@types/yargs-parser": "21.0.0",
-    "@typescript/native": "catalog:typescript-tooling",
-    "@vitest/coverage-v8": "catalog:",
     "@vvo/tzdb": "^6.141.0",
     "ajv": "^8.18.0",
     "ajv-draft-04": "^1.0.0",
