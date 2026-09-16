@@ -43,6 +43,7 @@ class TestNode extends Node {
 `,
 			[
 				{
+					files: ['**/*.ts'],
 					plugins: { '@n8n/community-nodes': communityNodesPlugin },
 					rules: { [ruleName]: 'warn' },
 				},
