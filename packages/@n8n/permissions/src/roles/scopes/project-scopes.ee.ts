@@ -71,6 +71,11 @@ export const REGULAR_PROJECT_ADMIN_SCOPES: Scope[] = [
 	'projectVariable:create',
 	'projectVariable:update',
 	'projectVariable:delete',
+	'projectAiPreference:list',
+	'projectAiPreference:read',
+	'projectAiPreference:create',
+	'projectAiPreference:update',
+	'projectAiPreference:delete',
 ];
 
 export const PERSONAL_PROJECT_OWNER_SCOPES: Scope[] = [
@@ -126,6 +131,11 @@ export const PERSONAL_PROJECT_OWNER_SCOPES: Scope[] = [
 	'dataTable:writeRow',
 	'dataTable:readColumn',
 	'dataTable:writeColumn',
+	'projectAiPreference:list',
+	'projectAiPreference:read',
+	'projectAiPreference:create',
+	'projectAiPreference:update',
+	'projectAiPreference:delete',
 ];
 
 export const PROJECT_EDITOR_SCOPES: Scope[] = [
@@ -179,6 +189,11 @@ export const PROJECT_EDITOR_SCOPES: Scope[] = [
 	'projectVariable:create',
 	'projectVariable:update',
 	'projectVariable:delete',
+	'projectAiPreference:list',
+	'projectAiPreference:read',
+	'projectAiPreference:create',
+	'projectAiPreference:update',
+	'projectAiPreference:delete',
 ];
 
 export const PROJECT_VIEWER_SCOPES: Scope[] = [
@@ -204,6 +219,8 @@ export const PROJECT_VIEWER_SCOPES: Scope[] = [
 	'dataTable:readColumn',
 	'projectVariable:list',
 	'projectVariable:read',
+	'projectAiPreference:list',
+	'projectAiPreference:read',
 ];
 
 export const PROJECT_CHAT_USER_SCOPES: Scope[] = ['agent:execute', 'workflow:execute-chat'];

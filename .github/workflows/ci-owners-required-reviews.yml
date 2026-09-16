@@ -73,8 +73,20 @@ jobs:
     permissions:
       statuses: write
     steps:
+      - name: Generate App Token
+        id: app-token
+        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
+        with:
+          app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
+          private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
+          # Scope the token to what the script needs; without these inputs it
+          # would inherit every permission of the app installation.
+          permission-members: read
+          permission-pull-requests: read
+          permission-statuses: write
+
       - env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
           SHA: ${{ github.event.merge_group.head_sha }}
         run: |
           gh api "repos/${GITHUB_REPOSITORY}/statuses/${SHA}" \
@@ -100,24 +112,6 @@ jobs:
       contents: read
       statuses: write
     steps:
-      # Fail closed before any fallible step: replace a possibly-green status
-      # with pending, so a failure in token generation, checkout, or setup
-      # cannot leave a stale verdict in effect. The script sets the verdict.
-      # Skipped for workflow_dispatch (no SHA in the event); there the script
-      # sets pending itself.
-      - name: Set pending status
-        if: github.event_name != 'workflow_dispatch'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          SHA: ${{ github.event.pull_request.head.sha }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-        run: |
-          gh api "repos/${GITHUB_REPOSITORY}/statuses/${SHA}" \
-            -f state=pending \
-            -f context='Required Reviews' \
-            -f description='Evaluating required reviews' \
-            -f "target_url=${RUN_URL}"
-
       - name: Generate App Token
         id: app-token
         uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
@@ -129,6 +123,23 @@ jobs:
           permission-members: read
           permission-pull-requests: read
           permission-statuses: write
+      # Fail closed before any fallible step: replace a possibly-green status
+      # with pending, so a failure in token generation, checkout, or setup
+      # cannot leave a stale verdict in effect. The script sets the verdict.
+      # Skipped for workflow_dispatch (no SHA in the event); there the script
+      # sets pending itself.
+      - name: Set pending status
+        if: github.event_name != 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh api "repos/${GITHUB_REPOSITORY}/statuses/${SHA}" \
+            -f state=pending \
+            -f context='Required Reviews' \
+            -f description='Evaluating required reviews' \
+            -f "target_url=${RUN_URL}"
 
       # Always check out the base branch, never the PR merge ref: the OWNERS
       # file and the scripts must be trusted input. The 'master' fallback
@@ -158,7 +169,7 @@ jobs:
       - name: Report the bootstrap state
         if: steps.bootstrap.outputs.ready != 'true' && github.event.pull_request.head.sha != ''
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
           SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           gh api "repos/${GITHUB_REPOSITORY}/statuses/${SHA}" \

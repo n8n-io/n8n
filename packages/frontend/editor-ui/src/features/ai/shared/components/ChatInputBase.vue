@@ -252,6 +252,7 @@ defineExpose({
 			@blur="isFocused = false"
 		>
 			<template #leading>
+				<slot name="header" />
 				<slot name="attachments" />
 			</template>
 			<template #left-actions>

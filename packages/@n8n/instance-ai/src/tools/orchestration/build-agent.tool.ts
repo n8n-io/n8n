@@ -62,6 +62,7 @@ import {
 	type AgentSnapshotArtifact,
 	type AgentSnapshotReason,
 } from '../../tracing/agent-snapshot-event';
+import { modelIdTraceMetadata } from '../../tracing/langsmith-tracing';
 import type {
 	BuilderTurnStream,
 	InstanceAiBuilderDelegate,
@@ -140,7 +141,11 @@ function builderSessionFor(context: OrchestrationContext, agentId: string) {
 		agentRole: BUILDER_SUB_AGENT_ROLE,
 		functionId: 'instance-ai.subagent.agent-builder',
 		executionMode: 'foreground',
-		metadata: { agent_id: builderAgentIdFor(agentId), target_agent_id: agentId },
+		metadata: {
+			agent_id: builderAgentIdFor(agentId),
+			target_agent_id: agentId,
+			...modelIdTraceMetadata(context.modelId),
+		},
 	});
 	return {
 		threadId: `${instanceAiBuilderThreadPrefix(context.threadId)}${agentId}`,

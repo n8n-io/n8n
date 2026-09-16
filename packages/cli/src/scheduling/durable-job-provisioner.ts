@@ -26,11 +26,13 @@ import type {
 	RunInTransaction,
 } from '@n8n/scheduler';
 import { Tracing } from 'n8n-core';
+import { isDeepStrictEqual } from 'node:util';
 
 import { AgentScheduledJobOwner } from './agent-scheduled-job-owner';
 import { rowSchedule, scheduleColumns } from './schedule-columns';
 import { createScheduledJobOwnerRegistry } from './scheduled-job-owner-registry';
 import { createSchedulerTracer } from './scheduler-tracer';
+import { SystemTaskScheduledJobOwner } from './system-tasks/system-task-scheduled-job-owner';
 import { WorkflowScheduledJobOwner } from './workflow-scheduled-job-owner';
 
 /**
@@ -55,20 +57,30 @@ export interface ProvisionRequest {
 	 * scheduler's own floor and ceiling; omit to inherit the instance default.
 	 */
 	misfireGraceSeconds?: number;
+	/** Retry ceiling stamped on each occurrence; omit to inherit the instance setting. */
+	maxAttempts?: number;
 }
 
 /** What provisioning stamps on the rows it writes, plus the owner it diffs against. */
 type ProvisionScope = Omit<ProvisionRequest, 'desired'>;
 
+/** One job as a caller read it, identified by id and pinned to the payload it saw. */
+export interface ObservedJob {
+	id: number;
+	payload: Record<string, unknown>;
+}
+
 /**
- * Which jobs to delete: one member's, all of an owner's, or an owner's of one
- * task type. Tagged rather than told apart by the shape of `owner`, since a full
- * {@link ScheduledJobOwner} is assignable to a {@link ScheduledJobOwnerRef}.
+ * Which jobs to delete: one member's, all of an owner's, an owner's of one task
+ * type, or one job as it was read. Tagged rather than told apart by the shape of
+ * `owner`, since a full {@link ScheduledJobOwner} is assignable to a
+ * {@link ScheduledJobOwnerRef}.
  */
 type DeprovisionScope =
 	| { scope: 'member'; owner: ScheduledJobOwner }
 	| { scope: 'owner'; owner: ScheduledJobOwnerRef }
-	| { scope: 'task-type'; owner: ScheduledJobOwnerRef; taskType: string };
+	| { scope: 'task-type'; owner: ScheduledJobOwnerRef; taskType: string }
+	| { scope: 'job'; job: ObservedJob };
 
 /**
  * The write side of the durable scheduler: persists an owner's scheduled jobs.
@@ -124,13 +136,14 @@ export class DurableJobProvisioner {
 		private readonly globalConfig: GlobalConfig,
 		workflowOwner: WorkflowScheduledJobOwner,
 		agentOwner: AgentScheduledJobOwner,
+		systemTaskOwner: SystemTaskScheduledJobOwner,
 		tracing: Tracing,
 	) {
 		this.logger = this.logger.scoped('scheduler');
 		this.provisioner = createJobProvisioner<ProvisionScope, DeprovisionScope>({
 			provisionTransaction: (scope) => this.provisionTransaction(scope),
 			deprovisionTransaction: (scope) => this.deprovisionTransaction(scope),
-			owners: createScheduledJobOwnerRegistry(workflowOwner, agentOwner),
+			owners: createScheduledJobOwnerRegistry(workflowOwner, agentOwner, systemTaskOwner),
 			tracer: createSchedulerTracer(tracing),
 		});
 		this.materializerOptions = {
@@ -185,6 +198,15 @@ export class DurableJobProvisioner {
 	}
 
 	/**
+	 * Delete one job while its payload is still what the caller read, so a delete
+	 * decided on a listing cannot remove a row another instance rewrote in between.
+	 * Its queued tasks cascade away.
+	 */
+	async deprovisionUnchangedJob(job: ObservedJob): Promise<{ removed: number }> {
+		return await this.provisioner.deprovision({ scope: 'job', job });
+	}
+
+	/**
 	 * Delete every job an owner holds within a caller-owned transaction; their
 	 * queued tasks cascade away. The main teardown path: it commits with the
 	 * caller's own delete, so a crash cannot leave jobs behind.
@@ -214,11 +236,13 @@ export class DurableJobProvisioner {
 		payload,
 		misfirePolicy,
 		misfireGraceSeconds: requestedMisfireGraceSeconds,
+		maxAttempts: requestedMaxAttempts,
 	}: ProvisionScope): RunInProvisionTransaction {
 		const misfireGraceSeconds = this.resolveMisfireGraceSeconds(
 			requestedMisfireGraceSeconds,
 			owner,
 		);
+		const maxAttempts = requestedMaxAttempts ?? this.globalConfig.scheduler.maxAttempts;
 		return async (work) =>
 			await this.dataSource.transaction(async (manager) => {
 				// Provisioning is evidence the owner is back, so lift any quarantine now
@@ -234,8 +258,9 @@ export class DurableJobProvisioner {
 				// Jobs freshly inserted or redefined this pass; their first window is
 				// seeded before the transaction commits (see `seedInitialOccurrences`).
 				const seededJobIds = new Set<number>();
-				const outdatedPolicyJobIds: number[] = [];
+				const outdatedRunOptionJobIds: number[] = [];
 				const outdatedGraceJobIds: number[] = [];
+				const outdatedPayloadJobIds: number[] = [];
 				const result = await work({
 					findExisting: async () => {
 						const rows = await this.jobs.findManyByOwner(manager, owner);
@@ -244,8 +269,15 @@ export class DurableJobProvisioner {
 							if (graceChanged) {
 								outdatedGraceJobIds.push(row.id);
 							}
-							if (graceChanged || row.misfirePolicy !== misfirePolicy) {
-								outdatedPolicyJobIds.push(row.id);
+							if (
+								graceChanged ||
+								row.misfirePolicy !== misfirePolicy ||
+								row.maxAttempts !== maxAttempts
+							) {
+								outdatedRunOptionJobIds.push(row.id);
+							}
+							if (!isDeepStrictEqual(row.payload, payload)) {
+								outdatedPayloadJobIds.push(row.id);
 							}
 						}
 						return rows.map(
@@ -266,7 +298,7 @@ export class DurableJobProvisioner {
 								payload,
 								...scheduleColumns(job.schedule),
 								nextRunAt: job.firstRunAt,
-								maxAttempts: this.globalConfig.scheduler.maxAttempts,
+								maxAttempts,
 								misfirePolicy,
 								misfireGraceSeconds,
 							}),
@@ -279,6 +311,7 @@ export class DurableJobProvisioner {
 						await this.jobs.updateDefinition(manager, jobId, {
 							...scheduleColumns(schedule),
 							nextRunAt,
+							maxAttempts,
 							misfirePolicy,
 							misfireGraceSeconds,
 						});
@@ -288,12 +321,15 @@ export class DurableJobProvisioner {
 						await this.tasks.deletePendingByJobIds(manager, jobIds),
 					deleteJobs: async (jobIds) => await this.jobs.deleteManyByIds(manager, jobIds),
 				});
-				// Only `redefine` touches a job's misfire policy and grace, so an unchanged
-				// schedule needs this to pick up a policy/grace change on its own.
-				await this.jobs.updateMisfirePolicy(manager, outdatedPolicyJobIds, {
+				// Only `redefine` touches a job's run options, so an unchanged schedule
+				// needs this to pick up a change to them on its own.
+				await this.jobs.updateRunOptions(manager, outdatedRunOptionJobIds, {
+					maxAttempts,
 					misfirePolicy,
 					misfireGraceSeconds,
 				});
+				// Only `insert` writes the payload, so an existing row picks up a change to it here.
+				await this.jobs.updatePayload(manager, outdatedPayloadJobIds, payload);
 				// Queued tasks were stamped with the previous grace; recompute their deadline.
 				await this.tasks.updateMissedAfterForJobs(
 					manager,
@@ -431,6 +467,8 @@ export class DurableJobProvisioner {
 				return await this.jobs.deleteByOwnerRef(manager, target.owner);
 			case 'task-type':
 				return await this.jobs.deleteByOwnerTaskType(manager, target.owner, target.taskType);
+			case 'job':
+				return await this.jobs.deleteIfPayloadUnchanged(manager, target.job.id, target.job.payload);
 		}
 	}
 }

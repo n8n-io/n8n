@@ -37,6 +37,7 @@ import './v3/get-paired-item.rule';
 import './v3/gmail-trigger-version.rule';
 import './v3/in-memory-binary-data.rule';
 import './v3/offload-manual-executions.rule';
+import './v3/pre-execute-error-creates-execution.rule';
 import './v3/removed-nodes.rule';
 import './v3/removed-nodes-with-replacements.rule';
 import './v3/ssrf-default-blocked-ranges.rule';
