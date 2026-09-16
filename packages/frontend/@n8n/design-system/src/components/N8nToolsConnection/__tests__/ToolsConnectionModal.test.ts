@@ -4,6 +4,7 @@ import { createComponentRenderer } from '../../../__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 
 const scrollToKeyMock = vi.hoisted(() => vi.fn());
+const scrollToKeyIfNeededMock = vi.hoisted(() => vi.fn());
 const scrollToMock = vi.hoisted(() => vi.fn());
 // Lets a test hand the modal a non-zero offset to read off the scroller stub.
 const scrollTopValue = vi.hoisted(() => ({ current: 0 }));
@@ -35,6 +36,7 @@ vi.mock('../../N8nRecycleScroller', () => ({
 		},
 		methods: {
 			scrollToKey: scrollToKeyMock,
+			scrollToKeyIfNeeded: scrollToKeyIfNeededMock,
 			scrollTo: scrollToMock,
 		},
 		template: `
@@ -79,6 +81,7 @@ const ALL_CATEGORIES: ToolCategoryKey[] = ['connected', 'mcp', 'ai', 'app-action
 
 beforeEach(() => {
 	scrollToKeyMock.mockClear();
+	scrollToKeyIfNeededMock.mockClear();
 	scrollToMock.mockClear();
 	scrollTopValue.current = 0;
 });
@@ -431,6 +434,135 @@ describe('ToolsConnectionModal', () => {
 		await waitFor(() => {
 			expect(document.activeElement).toBe(inputEl);
 		});
+	});
+
+	it('moves the active row with arrow keys and updates the active descendant', async () => {
+		const { getAllByTestId, getByPlaceholderText } = renderWith({ categories: ['mcp'] });
+		const input = getByPlaceholderText('Search all tools...');
+		const rows = getAllByTestId('tools-connection-row');
+
+		expect(rows[0]).toHaveAttribute('aria-selected', 'true');
+		expect(input).toHaveAttribute('aria-activedescendant', rows[0].id);
+
+		await fireEvent.keyDown(input, { key: 'ArrowDown' });
+		expect(rows[0]).toHaveAttribute('aria-selected', 'false');
+		expect(rows[1]).toHaveAttribute('aria-selected', 'true');
+		expect(input).toHaveAttribute('aria-activedescendant', rows[1].id);
+
+		await fireEvent.keyDown(input, { key: 'ArrowUp' });
+		expect(rows[0]).toHaveAttribute('aria-selected', 'true');
+		expect(input).toHaveAttribute('aria-activedescendant', rows[0].id);
+	});
+
+	it('keeps arrow navigation inside the list bounds', async () => {
+		const items = makeLargeMcpList(3);
+		const { getAllByTestId, getByPlaceholderText } = renderWith({ items, categories: ['mcp'] });
+		const input = getByPlaceholderText('Search all tools...');
+		const rows = getAllByTestId('tools-connection-row');
+
+		await fireEvent.keyDown(input, { key: 'ArrowUp' });
+		expect(rows[0]).toHaveAttribute('aria-selected', 'true');
+
+		for (let index = 0; index < items.length + 1; index++) {
+			await fireEvent.keyDown(input, { key: 'ArrowDown' });
+		}
+		expect(rows[2]).toHaveAttribute('aria-selected', 'true');
+	});
+
+	it('opens the active row when Enter is pressed in the search input', async () => {
+		const items = makeLargeMcpList(3);
+		const { emitted, getByPlaceholderText } = renderWith({ items, categories: ['mcp'] });
+		const input = getByPlaceholderText('Search all tools...');
+
+		await fireEvent.keyDown(input, { key: 'ArrowDown' });
+		await fireEvent.keyDown(input, { key: 'Enter' });
+
+		expect(emitted()['open-detail']?.[0]).toEqual([items[1]]);
+		expect(emitted()['update:detailItem']?.[0]).toEqual([items[1]]);
+	});
+
+	it('returns from detail on Backspace and restores focus to search', async () => {
+		const Host = {
+			components: { ToolsConnectionModal },
+			data() {
+				return { detailItem: realisticItems[2] };
+			},
+			template: `
+				<ToolsConnectionModal
+					:open="true"
+					:items="realisticItems"
+					:categories="['mcp']"
+					:detail-item="detailItem"
+					@update:detail-item="detailItem = $event"
+				/>
+			`,
+			setup() {
+				return { realisticItems };
+			},
+		};
+		const { getByPlaceholderText, getByRole } = render(Host, {
+			pinia: createTestingPinia(),
+		});
+
+		await fireEvent.keyDown(getByRole('dialog'), { key: 'Backspace' });
+		const input = getByPlaceholderText('Search all tools...');
+		await waitFor(() => expect(document.activeElement).toBe(input));
+	});
+
+	it('resets the active row when the category changes', async () => {
+		const { getAllByTestId, getByPlaceholderText, getByTestId } = renderWith({
+			categories: ['mcp', 'ai'],
+		});
+		const input = getByPlaceholderText('Search all tools...');
+
+		await fireEvent.keyDown(input, { key: 'ArrowDown' });
+		expect(getAllByTestId('tools-connection-row')[1]).toHaveAttribute('aria-selected', 'true');
+
+		await fireEvent.click(getByTestId('tab-ai'));
+		await waitFor(() =>
+			expect(getAllByTestId('tools-connection-row')[0]).toHaveAttribute('aria-selected', 'true'),
+		);
+	});
+
+	it('selects a row only after the pointer position changes', async () => {
+		const { getAllByTestId, getByPlaceholderText, getByRole } = renderWith({
+			categories: ['mcp'],
+		});
+		const input = getByPlaceholderText('Search all tools...');
+		const rows = getAllByTestId('tools-connection-row');
+
+		await fireEvent.keyDown(input, { key: 'ArrowDown' });
+		await fireEvent.pointerMove(getByRole('dialog'), { clientX: 0, clientY: 0 });
+		await fireEvent.pointerMove(rows[2], { clientX: 0, clientY: 0 });
+		expect(rows[1]).toHaveAttribute('aria-selected', 'true');
+
+		await fireEvent.pointerMove(rows[2], { clientX: 1, clientY: 1 });
+		expect(rows[2]).toHaveAttribute('aria-selected', 'true');
+	});
+
+	it('clamps the active row when search removes later results', async () => {
+		const items = makeLargeMcpList(3);
+		const { getAllByTestId, getByPlaceholderText } = renderWith({ items, categories: ['mcp'] });
+		const input = getByPlaceholderText('Search all tools...') as HTMLInputElement;
+
+		await fireEvent.keyDown(input, { key: 'ArrowDown' });
+		await fireEvent.keyDown(input, { key: 'ArrowDown' });
+		await fireEvent.update(input, '#1');
+
+		await waitFor(() => expect(getAllByTestId('tools-connection-row')).toHaveLength(1));
+		const remainingRow = getAllByTestId('tools-connection-row')[0];
+		expect(remainingRow).toHaveAttribute('aria-selected', 'true');
+		expect(input).toHaveAttribute('aria-activedescendant', remainingRow.id);
+	});
+
+	it('clears the active descendant when search has no results', async () => {
+		const { getByPlaceholderText, getByTestId } = renderWith({ categories: ['mcp'] });
+		const input = getByPlaceholderText('Search all tools...') as HTMLInputElement;
+
+		await fireEvent.update(input, 'zzzznomatch');
+		await waitFor(() => expect(getByTestId('tools-connection-empty')).toBeTruthy());
+
+		expect(input).not.toHaveAttribute('aria-activedescendant');
 	});
 
 	it('restores the tab, search text and scroll offset after stepping aside for another dialog', async () => {

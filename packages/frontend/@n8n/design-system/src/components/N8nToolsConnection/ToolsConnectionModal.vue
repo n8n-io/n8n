@@ -226,10 +226,8 @@ const tabsVisible = computed(
 
 async function selectCategory(category: ToolCategoryKey) {
 	activeCategory.value = category;
-	// The scroller keeps its offset across a list swap, so reset to the top.
 	await nextTick();
-	const firstKey = flattenedRows.value[0]?.key;
-	if (firstKey) scrollerRef.value?.scrollToKey(firstKey);
+	listIndex.value = 0;
 }
 
 const CATEGORY_I18N: Record<ToolCategoryKey, BaseTextKey> = {
@@ -274,6 +272,7 @@ watch(visibleCategories, (categories) => {
 const fixedProps = {
 	/** We want a custom position for close button as it breaks horizontal alignment */
 	showCloseButton: false,
+	/** Use aria-label for screen readers to announce what modal is for. We dont need a visual one. */
 	header: undefined,
 };
 

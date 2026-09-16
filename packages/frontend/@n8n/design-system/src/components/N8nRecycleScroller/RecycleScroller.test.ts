@@ -60,6 +60,86 @@ describe('components', () => {
 			}
 		});
 
+		it.each([
+			['above the viewport', '1', 300, 100],
+			['below the viewport', '5', 100, 400],
+			['inside the viewport', '2', 100, 100],
+		] as const)(
+			'scrolls to an item %s only when needed',
+			async function (_case, key, initialScrollTop, expectedScrollTop) {
+				const originalOffsetHeight = Object.getOwnPropertyDescriptor(
+					HTMLElement.prototype,
+					'offsetHeight',
+				);
+				const originalClientHeight = Object.getOwnPropertyDescriptor(
+					HTMLElement.prototype,
+					'clientHeight',
+				);
+				Object.defineProperty(HTMLElement.prototype, 'offsetHeight', {
+					configurable: true,
+					value: itemSize,
+				});
+				Object.defineProperty(HTMLElement.prototype, 'clientHeight', {
+					configurable: true,
+					value: itemSize * 2,
+				});
+
+				try {
+					const wrapper = mount(N8nRecycleScroller, {
+						props: { itemSize, itemKey, items },
+					});
+					await nextTick();
+					const scrollWrapper = wrapper.find('.recycle-scroller-wrapper').element;
+					scrollWrapper.scrollTop = initialScrollTop;
+
+					wrapper.vm.scrollToKeyIfNeeded(key);
+
+					expect(scrollWrapper.scrollTop).toBe(expectedScrollTop);
+				} finally {
+					if (originalOffsetHeight) {
+						Object.defineProperty(HTMLElement.prototype, 'offsetHeight', originalOffsetHeight);
+					} else {
+						Reflect.deleteProperty(HTMLElement.prototype, 'offsetHeight');
+					}
+					if (originalClientHeight) {
+						Object.defineProperty(HTMLElement.prototype, 'clientHeight', originalClientHeight);
+					} else {
+						Reflect.deleteProperty(HTMLElement.prototype, 'clientHeight');
+					}
+				}
+			},
+		);
+
+		it('does not scroll when the item key is unknown', async () => {
+			const originalClientHeight = Object.getOwnPropertyDescriptor(
+				HTMLElement.prototype,
+				'clientHeight',
+			);
+			Object.defineProperty(HTMLElement.prototype, 'clientHeight', {
+				configurable: true,
+				value: itemSize * 2,
+			});
+
+			try {
+				const wrapper = mount(N8nRecycleScroller, {
+					props: { itemSize, itemKey, items },
+				});
+				await nextTick();
+				const scrollWrapper = wrapper.find('.recycle-scroller-wrapper').element;
+				scrollWrapper.scrollTop = 100;
+
+				wrapper.vm.scrollToKeyIfNeeded('unknown');
+
+				expect(scrollWrapper.scrollTop).toBe(100);
+			} finally {
+				if (originalClientHeight) {
+					Object.defineProperty(HTMLElement.prototype, 'clientHeight', originalClientHeight);
+				} else {
+					Reflect.deleteProperty(HTMLElement.prototype, 'clientHeight');
+				}
+			}
+		});
+
 		it('keeps positions finite when the item keys are all replaced', async () => {
 			const originalOffsetHeight = Object.getOwnPropertyDescriptor(
 				HTMLElement.prototype,
