@@ -22,6 +22,7 @@ const onDrop = (value: string) => {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 .area {
 	border: dashed 1px var(--color--foreground--shade-1);
 	border-radius: var(--radius--lg);
@@ -38,6 +39,7 @@ const onDrop = (value: string) => {
 		border-color: var(--ndv--droppable-parameter--color);
 		background: var(--ndv--droppable-parameter--color--background);
 	}
+	@include motion.reduced-motion;
 }
 
 .droppable {

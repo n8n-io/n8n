@@ -121,6 +121,10 @@ const formatRunAt = (iso: string | null) => {
 			]"
 			data-test-id="versions-table-row"
 			@click="emit('toggle-version', row.key)"
+			role="button"
+			tabindex="0"
+			@keydown.enter.self="emit('toggle-version', row.key)"
+			@keydown.space.self.prevent="emit('toggle-version', row.key)"
 		>
 			<div :class="$style.col_check">
 				<N8nCheckbox
@@ -190,6 +194,7 @@ const formatRunAt = (iso: string | null) => {
 </template>
 
 <style module lang="scss">
+@use '@n8n/design-system/css/mixins/motion';
 .wrap {
 	border: 1px solid var(--border-color--subtle);
 	border-radius: var(--radius--md);
@@ -215,6 +220,7 @@ const formatRunAt = (iso: string | null) => {
 	border-bottom: 1px solid var(--border-color--subtle);
 	cursor: pointer;
 	transition: background-color var(--animation--duration--snappy) var(--animation--easing);
+	@include motion.reduced-motion;
 }
 
 .row:last-child {

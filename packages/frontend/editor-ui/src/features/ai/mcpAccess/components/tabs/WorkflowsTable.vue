@@ -253,6 +253,10 @@ const onConnectClick = () => {
 							data-test-id="mcp-workflow-description-cell"
 							:class="$style['description-cell']"
 							@click="emit('updateDescription', item)"
+							role="button"
+							tabindex="0"
+							@keydown.enter.self="emit('updateDescription', item)"
+							@keydown.space.self.prevent="emit('updateDescription', item)"
 						>
 							<N8nText
 								v-if="item.description"

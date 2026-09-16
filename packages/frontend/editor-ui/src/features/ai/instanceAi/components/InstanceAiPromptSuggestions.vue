@@ -272,6 +272,7 @@ function handleQuickExampleLeave() {
 </template>
 
 <style module lang="scss">
+@use '@n8n/design-system/css/mixins/motion';
 @use '../../shared/styles/prompt-suggestion-buttons' as promptSuggestions;
 
 .suggestions {
@@ -366,6 +367,7 @@ function handleQuickExampleLeave() {
 		background: var(--color--foreground--tint-2);
 		color: var(--color--text);
 	}
+	@include motion.reduced-motion;
 }
 
 .quickExamplesList {
@@ -402,6 +404,7 @@ function handleQuickExampleLeave() {
 		color: color-mix(in srgb, var(--color--primary) 18%, var(--color--text));
 		padding-left: calc(var(--spacing--md) + var(--spacing--4xs));
 	}
+	@include motion.reduced-motion;
 }
 
 :global(.quick-examples-fade-enter-active),
@@ -409,6 +412,7 @@ function handleQuickExampleLeave() {
 	transition:
 		opacity 0.15s ease,
 		transform 0.15s ease;
+	@include motion.reduced-motion;
 }
 
 :global(.quick-examples-fade-enter-from),

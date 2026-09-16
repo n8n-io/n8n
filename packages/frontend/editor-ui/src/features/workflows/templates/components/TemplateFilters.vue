@@ -124,6 +124,10 @@ watch(
 			:class="$style.button"
 			data-test-id="expand-categories-button"
 			@click="collapseAction"
+			role="button"
+			tabindex="0"
+			@keydown.enter.self="collapseAction"
+			@keydown.space.self.prevent="collapseAction"
 		>
 			<N8nText size="small" color="primary">
 				+ {{ `${sortedCategories.length - expandLimit} more` }}

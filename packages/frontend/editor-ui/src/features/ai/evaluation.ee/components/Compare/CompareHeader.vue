@@ -132,6 +132,7 @@ const legend = computed(() =>
 </template>
 
 <style module lang="scss">
+@use '@n8n/design-system/css/mixins/motion';
 .header {
 	display: flex;
 	flex-direction: column;
@@ -176,5 +177,6 @@ const legend = computed(() =>
 	&:hover {
 		border-color: var(--border-color--strong);
 	}
+	@include motion.reduced-motion;
 }
 </style>

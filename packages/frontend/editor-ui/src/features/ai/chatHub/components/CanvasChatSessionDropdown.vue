@@ -210,6 +210,7 @@ watch(isOpen, (open, _oldValue, onCleanup) => {
 	.open & {
 		transform: rotate(180deg);
 	}
+	@include motion.reduced-motion;
 }
 
 .content {

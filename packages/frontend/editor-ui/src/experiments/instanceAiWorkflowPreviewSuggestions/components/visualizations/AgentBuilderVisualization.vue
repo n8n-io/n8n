@@ -220,6 +220,7 @@ onUnmounted(clearTimers);
 		<div :class="[$style.panel, panelVisible && $style.panelVisible]">
 			<div
 				aria-hidden="true"
+				inert
 				:class="[$style.publishGroup, publishPressed && $style.publishPressed]"
 			>
 				<N8nButton
@@ -408,6 +409,7 @@ onUnmounted(clearTimers);
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 .stage {
 	display: grid;
 	place-items: center;
@@ -431,6 +433,7 @@ onUnmounted(clearTimers);
 	transition:
 		opacity 0.35s ease,
 		transform 0.35s ease;
+	@include motion.reduced-motion;
 }
 
 .panelVisible {
@@ -448,6 +451,7 @@ onUnmounted(clearTimers);
 	border-radius: var(--radius--3xs);
 	background: light-dark(var(--background--surface), var(--background--subtle));
 	transition: transform 0.15s ease;
+	@include motion.reduced-motion;
 }
 
 .publishPressed {
@@ -472,6 +476,7 @@ onUnmounted(clearTimers);
 	box-shadow: 0 0 4px color-mix(in srgb, var(--background--brand) 60%, transparent);
 	opacity: 0;
 	animation: agent-builder-sparkle 0.55s ease-out both;
+	@include motion.reduced-motion;
 }
 
 @keyframes agent-builder-sparkle {
@@ -503,6 +508,7 @@ onUnmounted(clearTimers);
 		opacity 0.25s ease;
 	filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.35));
 	pointer-events: none;
+	@include motion.reduced-motion;
 }
 
 .cursorVisible {
@@ -518,6 +524,7 @@ onUnmounted(clearTimers);
 	transition:
 		transform 0.12s ease,
 		opacity 0.25s ease;
+	@include motion.reduced-motion;
 }
 
 .groupButtonLeft,
@@ -560,6 +567,7 @@ onUnmounted(clearTimers);
 	transition:
 		opacity 0.35s ease,
 		transform 0.35s ease;
+	@include motion.reduced-motion;
 }
 
 .chatHidden {
@@ -587,6 +595,7 @@ onUnmounted(clearTimers);
 	padding: var(--spacing--lg) var(--spacing--xl);
 	transition: transform 0.7s cubic-bezier(0.4, 0, 0.2, 1);
 	will-change: transform;
+	@include motion.reduced-motion;
 }
 
 .sections {
@@ -826,10 +835,12 @@ onUnmounted(clearTimers);
 	vertical-align: text-bottom;
 	background-color: var(--text-color, var(--color--text--base));
 	animation: agent-builder-caret-blink 1s step-end infinite;
+	@include motion.reduced-motion;
 }
 
 .popIn {
 	animation: agent-builder-pop-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+	@include motion.reduced-motion;
 }
 
 @keyframes agent-builder-pop-in {

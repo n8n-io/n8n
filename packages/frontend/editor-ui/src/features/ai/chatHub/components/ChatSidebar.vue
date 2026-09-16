@@ -109,6 +109,7 @@ const onLogout = () => {
 
 <style lang="scss" module>
 @use '@/app/css/variables' as *;
+@use '@n8n/design-system/css/mixins/motion';
 
 .sideMenu {
 	position: relative;
@@ -128,6 +129,7 @@ const onLogout = () => {
 	&.sideMenuResizing {
 		transition: none;
 	}
+	@include motion.reduced-motion;
 }
 
 .scrollArea {

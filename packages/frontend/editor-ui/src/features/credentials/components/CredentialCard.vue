@@ -311,6 +311,7 @@ function moveResource() {
 
 <style lang="scss" module>
 @use '@n8n/design-system/css/mixins/breakpoints';
+@use '@n8n/design-system/css/mixins/motion';
 
 .cardLink {
 	--card--padding: 0 0 0 var(--spacing--sm);
@@ -322,6 +323,7 @@ function moveResource() {
 	&:hover {
 		box-shadow: var(--shadow--card-hover);
 	}
+	@include motion.reduced-motion;
 }
 
 .cardHeading {

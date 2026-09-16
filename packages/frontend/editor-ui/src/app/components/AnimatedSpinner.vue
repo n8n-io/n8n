@@ -35,7 +35,8 @@
 	</svg>
 </template>
 
-<style scoped>
+<style scoped lang="scss">
+@use '@n8n/design-system/css/mixins/motion';
 @keyframes fade {
 	0% {
 		opacity: 100;
@@ -50,6 +51,7 @@
 
 .line {
 	animation: fade 1.6s infinite;
+	@include motion.reduced-motion;
 }
 
 .one {

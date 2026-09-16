@@ -385,6 +385,7 @@ const openCommunityRegisterModal = () => {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 @use '@/app/css/variables' as *;
 
 .center > div {
@@ -467,6 +468,7 @@ const openCommunityRegisterModal = () => {
 	background: var(--color--secondary);
 	border-radius: 10px;
 	transition: width 0.2s $ease-out-expo;
+	@include motion.reduced-motion;
 }
 
 div[class*='info'] > span > span:last-child {

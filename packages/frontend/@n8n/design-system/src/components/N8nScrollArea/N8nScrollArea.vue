@@ -279,4 +279,11 @@ defineExpose({
 		opacity: 1;
 	}
 }
+
+@media (prefers-reduced-motion: reduce) {
+	.scrollbar,
+	.scrollAreaRoot[data-type='hover'] .scrollbar {
+		transition: none;
+	}
+}
 </style>

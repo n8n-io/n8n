@@ -98,6 +98,7 @@ onMounted(() => {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 .heading {
 	margin-bottom: var(--spacing--2xs);
 	margin-top: var(--spacing--md) !important;
@@ -189,6 +190,7 @@ onMounted(() => {
 	&:hover {
 		background: var(--color--foreground--tint-1);
 	}
+	@include motion.reduced-motion;
 }
 
 .visible {

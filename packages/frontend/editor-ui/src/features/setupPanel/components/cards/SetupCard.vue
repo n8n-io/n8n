@@ -129,7 +129,15 @@ defineExpose({ markInteracted });
 		@mouseenter="onCardMouseEnter"
 		@mouseleave="onCardMouseLeave"
 	>
-		<header :data-test-id="`${cardTestId}-header`" :class="$style.header" @click="onHeaderClick">
+		<header
+			:data-test-id="`${cardTestId}-header`"
+			:class="$style.header"
+			@click="onHeaderClick"
+			role="button"
+			tabindex="0"
+			@keydown.enter.self="onHeaderClick"
+			@keydown.space.self.prevent="onHeaderClick"
+		>
 			<N8nIcon
 				v-if="!expanded && loading && !isComplete"
 				:data-test-id="`${cardTestId}-loading-icon`"
@@ -204,6 +212,7 @@ defineExpose({ markInteracted });
 </template>
 
 <style module lang="scss">
+@use '@n8n/design-system/css/mixins/motion';
 .card {
 	width: 100%;
 	display: flex;
@@ -295,6 +304,7 @@ defineExpose({ markInteracted });
 		white-space: nowrap;
 		text-overflow: ellipsis;
 		transition: color 100ms ease;
+		@include motion.reduced-motion;
 	}
 
 	&:hover .card-title {
@@ -326,11 +336,13 @@ defineExpose({ markInteracted });
 </style>
 
 <style lang="scss" scoped>
+@use '@n8n/design-system/css/mixins/motion';
 .callout-fade-enter-active,
 .callout-fade-leave-active {
 	transition:
 		grid-template-rows 200ms ease,
 		opacity 200ms ease;
+	@include motion.reduced-motion;
 }
 
 .callout-fade-enter-from,

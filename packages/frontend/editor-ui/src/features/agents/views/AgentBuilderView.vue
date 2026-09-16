@@ -2214,6 +2214,7 @@ function onSwitchAgent(nextAgentId: string) {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 .root {
 	display: flex;
 	flex-direction: column;
@@ -2234,6 +2235,7 @@ function onSwitchAgent(nextAgentId: string) {
 	&.previewOpen {
 		padding-right: var(--agent-preview-chat-column-width, 30rem);
 		transition: padding-right var(--duration--snappy) var(--easing--ease-out);
+		@include motion.reduced-motion;
 	}
 
 	@media (prefers-reduced-motion: reduce) {

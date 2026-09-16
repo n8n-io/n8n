@@ -282,6 +282,10 @@ function toggleScope(scope: S, checked: boolean) {
 					:key="option.value"
 					:class="[$style.modeCard, mode === option.value && $style.modeCardActive]"
 					@click="onModeCardClick(option.value)"
+					role="button"
+					tabindex="0"
+					@keydown.enter.self="onModeCardClick(option.value)"
+					@keydown.space.self.prevent="onModeCardClick(option.value)"
 				>
 					<N8nRadioGroupItem
 						:value="option.value"
@@ -440,6 +444,7 @@ function toggleScope(scope: S, checked: boolean) {
 </template>
 
 <style module lang="scss">
+@use '@n8n/design-system/css/mixins/motion';
 @use '@n8n/design-system/css/mixins/focus';
 
 /* Option and checkbox labels render at 12px here, one step below the body copy. */
@@ -546,6 +551,7 @@ function toggleScope(scope: S, checked: boolean) {
 	}
 
 	@include focus.focus-visible-ring-offset;
+	@include motion.reduced-motion;
 }
 
 /* the shared tooltip caps content at 180px and centers it; tool identifiers need more room */

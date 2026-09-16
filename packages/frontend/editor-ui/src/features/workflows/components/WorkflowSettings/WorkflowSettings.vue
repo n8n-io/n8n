@@ -1436,6 +1436,10 @@ onBeforeUnmount(() => {
 										<span
 											:class="$style['permission-notice-link']"
 											@click="redactionMembersModalOpen = true"
+											role="button"
+											tabindex="0"
+											@keydown.enter.self="redactionMembersModalOpen = true"
+											@keydown.space.self.prevent="redactionMembersModalOpen = true"
 											>{{
 												i18n.baseText('workflowSettings.redactionPermissionNotice.viewUsers')
 											}}</span
@@ -1545,6 +1549,10 @@ onBeforeUnmount(() => {
 										<span
 											:class="$style['permission-notice-link']"
 											@click="redactionMembersModalOpen = true"
+											role="button"
+											tabindex="0"
+											@keydown.enter.self="redactionMembersModalOpen = true"
+											@keydown.space.self.prevent="redactionMembersModalOpen = true"
 											>{{
 												i18n.baseText('workflowSettings.redactionPermissionNotice.viewUsers')
 											}}</span
@@ -1825,6 +1833,7 @@ onBeforeUnmount(() => {
 
 <style module lang="scss">
 @use '@/app/css/variables' as *;
+@use '@n8n/design-system/css/mixins/motion';
 
 .workflow-settings {
 	font-size: var(--font-size--sm);
@@ -1859,6 +1868,7 @@ onBeforeUnmount(() => {
 		display: inline-flex;
 		opacity: 0;
 		transition: opacity 0.3s ease;
+		@include motion.reduced-motion;
 	}
 
 	&:hover {
@@ -2037,6 +2047,7 @@ onBeforeUnmount(() => {
 	:global(.el-select-dropdown__item):hover & {
 		opacity: 1;
 	}
+	@include motion.reduced-motion;
 }
 
 .credential-resolver-container {

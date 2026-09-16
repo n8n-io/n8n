@@ -283,6 +283,7 @@ watch(
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 .header {
 	display: flex;
 	align-items: center;
@@ -355,6 +356,7 @@ watch(
 			color: var(--color--primary);
 		}
 	}
+	@include motion.reduced-motion;
 }
 
 .footer {

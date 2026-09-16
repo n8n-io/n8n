@@ -238,6 +238,7 @@ function handleCopyClick(commandData: { command: string }) {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 .actionsGroup {
 	position: absolute;
 	z-index: 10;
@@ -246,5 +247,6 @@ function handleCopyClick(commandData: { command: string }) {
 	padding-right: var(--spacing--sm);
 	opacity: 0;
 	transition: opacity 0.3s ease;
+	@include motion.reduced-motion;
 }
 </style>

@@ -36,6 +36,10 @@ function onCopyToClipboard(content: string) {
 					:key="item.address"
 					:class="$style.accordionItem"
 					@click="onCopyToClipboard(item.address)"
+					role="button"
+					tabindex="0"
+					@keydown.enter.self="onCopyToClipboard(item.address)"
+					@keydown.space.self.prevent="onCopyToClipboard(item.address)"
 				>
 					{{ item.family }}: <span :class="$style.clickable">{{ item.address }}</span>
 					{{ item.internal ? '(internal)' : '' }}

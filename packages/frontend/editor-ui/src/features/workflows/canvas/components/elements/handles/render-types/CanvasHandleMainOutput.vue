@@ -156,12 +156,14 @@ function onClickAdd() {
 </style>
 
 <style lang="scss">
+@use '@n8n/design-system/css/mixins/motion';
 .canvas-node-handle-main-output-enter-active,
 .canvas-node-handle-main-output-leave-active {
 	transform-origin: 0 center;
 	transition-property: transform, opacity;
 	transition-duration: 0.2s;
 	transition-timing-function: ease;
+	@include motion.reduced-motion;
 }
 
 .canvas-node-handle-main-output-enter-from,

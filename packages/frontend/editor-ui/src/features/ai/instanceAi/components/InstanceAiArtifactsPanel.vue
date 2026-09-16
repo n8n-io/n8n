@@ -380,6 +380,7 @@ async function dismissContext(key: string) {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 .panel {
 	width: 280px;
 	flex-shrink: 0;
@@ -506,6 +507,7 @@ async function dismissContext(key: string) {
 			color: var(--color--text);
 		}
 	}
+	@include motion.reduced-motion;
 }
 
 .artifactIconWrap {

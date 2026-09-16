@@ -1754,6 +1754,10 @@ onUpdated(async () => {
 							class="textarea-modal-opener"
 							data-test-id="code-editor-fullscreen-button"
 							@click="displayEditDialog()"
+							role="button"
+							tabindex="0"
+							@keydown.enter.self="displayEditDialog()"
+							@keydown.space.self.prevent="displayEditDialog()"
 						>
 							<N8nIcon
 								icon="external-link"
@@ -1778,6 +1782,10 @@ onUpdated(async () => {
 							class="textarea-modal-opener"
 							data-test-id="code-editor-fullscreen-button"
 							@click="displayEditDialog()"
+							role="button"
+							tabindex="0"
+							@keydown.enter.self="displayEditDialog()"
+							@keydown.space.self.prevent="displayEditDialog()"
 						>
 							<N8nIcon
 								icon="external-link"
@@ -1800,6 +1808,10 @@ onUpdated(async () => {
 							class="textarea-modal-opener"
 							data-test-id="code-editor-fullscreen-button"
 							@click="displayEditDialog()"
+							role="button"
+							tabindex="0"
+							@keydown.enter.self="displayEditDialog()"
+							@keydown.space.self.prevent="displayEditDialog()"
 						>
 							<N8nIcon
 								icon="external-link"
@@ -1823,6 +1835,10 @@ onUpdated(async () => {
 							class="textarea-modal-opener"
 							data-test-id="code-editor-fullscreen-button"
 							@click="displayEditDialog()"
+							role="button"
+							tabindex="0"
+							@keydown.enter.self="displayEditDialog()"
+							@keydown.space.self.prevent="displayEditDialog()"
 						>
 							<N8nIcon
 								icon="external-link"
@@ -1847,6 +1863,10 @@ onUpdated(async () => {
 							class="textarea-modal-opener"
 							data-test-id="code-editor-fullscreen-button"
 							@click="displayEditDialog()"
+							role="button"
+							tabindex="0"
+							@keydown.enter.self="displayEditDialog()"
+							@keydown.space.self.prevent="displayEditDialog()"
 						>
 							<N8nIcon
 								icon="external-link"
@@ -1869,6 +1889,10 @@ onUpdated(async () => {
 							class="textarea-modal-opener"
 							data-test-id="code-editor-fullscreen-button"
 							@click="displayEditDialog()"
+							role="button"
+							tabindex="0"
+							@keydown.enter.self="displayEditDialog()"
+							@keydown.space.self.prevent="displayEditDialog()"
 						>
 							<N8nIcon
 								icon="external-link"
@@ -1879,7 +1903,15 @@ onUpdated(async () => {
 					</template>
 				</JsonEditor>
 
-				<div v-else-if="editorType" class="readonly-code clickable" @click="displayEditDialog()">
+				<div
+					v-else-if="editorType"
+					class="readonly-code clickable"
+					@click="displayEditDialog()"
+					role="button"
+					tabindex="0"
+					@keydown.enter.self="displayEditDialog()"
+					@keydown.space.self.prevent="displayEditDialog()"
+				>
 					<CodeNodeEditor
 						v-if="!codeEditDialogVisible"
 						:id="parameterId"
@@ -1928,6 +1960,10 @@ onUpdated(async () => {
 							}"
 							@click="displayEditDialog()"
 							@focus="setFocus"
+							role="button"
+							tabindex="0"
+							@keydown.enter.self="displayEditDialog()"
+							@keydown.space.self.prevent="displayEditDialog()"
 						>
 							<N8nIcon
 								icon="external-link"

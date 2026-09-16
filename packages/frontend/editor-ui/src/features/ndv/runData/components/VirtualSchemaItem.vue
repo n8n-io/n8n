@@ -74,7 +74,15 @@ const emit = defineEmits<{
 <template>
 	<div class="schema-item" :class="{ draggable }" data-test-id="run-data-schema-item">
 		<div class="toggle-container">
-			<div v-if="collapsable" class="toggle" @click="emit('click')">
+			<div
+				v-if="collapsable"
+				class="toggle"
+				@click="emit('click')"
+				role="button"
+				tabindex="0"
+				@keydown.enter.self="emit('click')"
+				@keydown.space.self.prevent="emit('click')"
+			>
 				<N8nIcon icon="chevron-down" :class="{ 'collapse-icon': true, collapsed }" />
 			</div>
 		</div>
@@ -123,6 +131,10 @@ const emit = defineEmits<{
 					'pill--locked': locked,
 				}"
 				@click="downloadBinaryData"
+				role="button"
+				tabindex="0"
+				@keydown.enter.self="downloadBinaryData"
+				@keydown.space.self.prevent="downloadBinaryData"
 			>
 				<N8nIcon class="type-icon" :icon="'download'" size="small" />
 			</div>
@@ -134,6 +146,10 @@ const emit = defineEmits<{
 					'pill--locked': locked,
 				}"
 				@click="viewBinaryData"
+				role="button"
+				tabindex="0"
+				@keydown.enter.self="viewBinaryData"
+				@keydown.space.self.prevent="viewBinaryData"
 			>
 				<N8nIcon class="type-icon" :icon="'eye'" size="small" />
 			</div>
@@ -142,6 +158,7 @@ const emit = defineEmits<{
 </template>
 
 <style lang="css" scoped>
+@use '@n8n/design-system/css/mixins/motion';
 .schema-item {
 	display: flex;
 	margin-left: calc(var(--spacing--lg) * v-bind(level));
@@ -253,6 +270,7 @@ const emit = defineEmits<{
 
 .collapse-icon {
 	transition: transform 0.2s cubic-bezier(0.19, 1, 0.22, 1);
+	@include motion.reduced-motion;
 }
 .collapsed {
 	transform: rotateZ(-90deg);
@@ -268,6 +286,7 @@ const emit = defineEmits<{
 	opacity: 0;
 	transition: all 0.2s ease-in-out;
 	cursor: pointer;
+	@include motion.reduced-motion;
 }
 
 .schema-item:hover .binary-controls {

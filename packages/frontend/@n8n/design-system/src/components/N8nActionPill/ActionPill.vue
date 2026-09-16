@@ -37,7 +37,9 @@ const hovered = ref(false);
 </script>
 
 <template>
-	<span
+	<component
+		:is="clickable ? 'button' : 'span'"
+		:type="clickable ? 'button' : undefined"
 		:class="[
 			$style.root,
 			size === 'small' && $style.small,
@@ -57,7 +59,7 @@ const hovered = ref(false);
 			<span :class="[$style.label, !hovered && $style.labelHidden]">{{ hoverText }}</span>
 		</span>
 		<slot v-else>{{ text }}</slot>
-	</span>
+	</component>
 </template>
 
 <style lang="scss" module>
@@ -132,5 +134,12 @@ const hovered = ref(false);
 .labelHidden {
 	opacity: 0;
 	pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.clickable,
+	.label {
+		transition: none;
+	}
 }
 </style>

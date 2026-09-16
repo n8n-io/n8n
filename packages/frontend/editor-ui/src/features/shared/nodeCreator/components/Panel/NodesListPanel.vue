@@ -340,6 +340,7 @@ function onBackButton() {
 
 <style lang="scss" module>
 @use '@/app/css/variables' as *;
+@use '@n8n/design-system/css/mixins/motion';
 
 :global(.panel-slide-in-leave-active),
 :global(.panel-slide-in-enter-active),
@@ -349,6 +350,7 @@ function onBackButton() {
 	position: absolute;
 	left: 0;
 	right: 0;
+	@include motion.reduced-motion;
 }
 
 :global(.panel-slide-out-enter-from),

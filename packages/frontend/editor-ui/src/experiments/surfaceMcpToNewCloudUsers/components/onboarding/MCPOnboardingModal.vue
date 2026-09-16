@@ -583,6 +583,7 @@ onBeforeUnmount(() => {
 		background-color var(--duration--snappy) ease,
 		border-color var(--duration--snappy) ease,
 		color var(--duration--snappy) ease;
+	@include motion.reduced-motion;
 }
 
 .sectionStepDone {

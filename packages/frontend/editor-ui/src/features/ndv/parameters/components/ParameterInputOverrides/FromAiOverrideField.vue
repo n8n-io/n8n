@@ -28,7 +28,15 @@ const emit = defineEmits<{
 		</div>
 		<div v-if="issues?.length || !isReadOnly" :class="$style.actions">
 			<ParameterIssues v-if="issues?.length" :issues="issues" />
-			<div v-if="!isReadOnly" :class="$style.overrideCloseButton" @click="emit('close')">
+			<div
+				v-if="!isReadOnly"
+				:class="$style.overrideCloseButton"
+				@click="emit('close')"
+				role="button"
+				tabindex="0"
+				@keydown.enter.self="emit('close')"
+				@keydown.space.self.prevent="emit('close')"
+			>
 				<N8nIcon icon="x" size="small" />
 			</div>
 		</div>

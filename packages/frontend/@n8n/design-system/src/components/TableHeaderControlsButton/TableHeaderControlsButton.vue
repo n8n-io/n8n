@@ -158,7 +158,7 @@ const handleDragEnd = () => {
 							@dragend="handleDragEnd"
 						>
 							<N8nIcon icon="grip-vertical" :class="$style.grip" />
-							<label>{{ column.label }}</label>
+							<span>{{ column.label }}</span>
 							<N8nIcon
 								:class="$style.visibilityToggle"
 								icon="eye"
@@ -198,7 +198,7 @@ const handleDragEnd = () => {
 						:data-column-key="column.key"
 					>
 						<N8nIcon icon="grip-vertical" :class="[$style.grip, $style.hidden]" />
-						<label>{{ column.label }}</label>
+						<span>{{ column.label }}</span>
 						<N8nIcon
 							:class="$style.visibilityToggle"
 							icon="eye-off"
@@ -290,5 +290,11 @@ const handleDragEnd = () => {
 
 .visibilityToggle {
 	cursor: pointer;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.draggable {
+		transition: none;
+	}
 }
 </style>

@@ -279,6 +279,10 @@ async function onFiltersChange(value: AgentSessionFilters) {
 						:data-status="thread.status"
 						data-test-id="agent-session-list-item"
 						@click="onViewTrace({ agentId, threadId: thread.id })"
+						role="button"
+						tabindex="0"
+						@keydown.enter.self="onViewTrace({ agentId, threadId: thread.id })"
+						@keydown.space.self.prevent="onViewTrace({ agentId, threadId: thread.id })"
 					>
 						<td :class="$style.titleCell">
 							<button type="button" :class="$style.sessionOpen" data-test-id="agent-session-open">

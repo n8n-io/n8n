@@ -107,8 +107,8 @@ function deltas(row: CompareCaseRow) {
 					tabindex="0"
 					:aria-sort="ariaSort('index')"
 					@click="toggleSort('index')"
-					@keydown.enter="toggleSort('index')"
-					@keydown.space.prevent="toggleSort('index')"
+					@keydown.enter.self="toggleSort('index')"
+					@keydown.space.self.prevent="toggleSort('index')"
 				>
 					{{ i18n.baseText('evaluation.compare.cases.col.index') }}
 				</th>
@@ -121,8 +121,8 @@ function deltas(row: CompareCaseRow) {
 					tabindex="0"
 					:aria-sort="ariaSort('best')"
 					@click="toggleSort('best')"
-					@keydown.enter="toggleSort('best')"
-					@keydown.space.prevent="toggleSort('best')"
+					@keydown.enter.self="toggleSort('best')"
+					@keydown.space.self.prevent="toggleSort('best')"
 				>
 					{{ i18n.baseText('evaluation.compare.cases.col.best') }}
 				</th>
@@ -131,8 +131,8 @@ function deltas(row: CompareCaseRow) {
 					tabindex="0"
 					:aria-sort="ariaSort('spread')"
 					@click="toggleSort('spread')"
-					@keydown.enter="toggleSort('spread')"
-					@keydown.space.prevent="toggleSort('spread')"
+					@keydown.enter.self="toggleSort('spread')"
+					@keydown.space.self.prevent="toggleSort('spread')"
 				>
 					{{ i18n.baseText('evaluation.compare.cases.col.deltaVsBest') }}
 				</th>
@@ -147,7 +147,9 @@ function deltas(row: CompareCaseRow) {
 				tabindex="0"
 				data-test-id="compare-cases-row"
 				@click="emit('drilldown', row.index)"
-				@keydown.enter="emit('drilldown', row.index)"
+				@keydown.enter.self="emit('drilldown', row.index)"
+				role="button"
+				@keydown.space.self.prevent="emit('drilldown', row.index)"
 			>
 				<td :class="$style.num">{{ row.displayIndex }}</td>
 				<td :class="$style.input" :title="row.inputPreview">

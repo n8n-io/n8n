@@ -23,6 +23,7 @@ export const defaultOptions: ChatOptions = {
 			footer: '',
 			getStarted: 'New Conversation',
 			inputPlaceholder: 'Type your question..',
+			openButtonTooltip: 'Open chat',
 			closeButtonTooltip: 'Close chat',
 			repostButton: 'Repost message',
 			reuseButton: 'Reuse message',

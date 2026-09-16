@@ -294,6 +294,7 @@ defineExpose({
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 .inputWrapper {
 	width: 100%;
 }
@@ -310,6 +311,7 @@ defineExpose({
    Visual only — the button stays enabled so the click still submits. */
 .focusGatedSubmit [data-test-id='instance-ai-send-button'] {
 	transition: opacity 0.15s ease;
+	@include motion.reduced-motion;
 }
 
 .submitMuted [data-test-id='instance-ai-send-button'] {

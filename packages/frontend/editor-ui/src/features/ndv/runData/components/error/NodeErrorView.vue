@@ -726,6 +726,7 @@ async function onInstanceAiHandoffClick() {
 </template>
 
 <style lang="scss">
+@use '@n8n/design-system/css/mixins/motion';
 .node-error-view {
 	&__header {
 		margin: 0 auto var(--spacing--sm) auto;
@@ -877,6 +878,7 @@ async function onInstanceAiHandoffClick() {
 			&-icon {
 				transform: rotate(90deg);
 				transition: transform 0.3s ease;
+				@include motion.reduced-motion;
 			}
 		}
 	}

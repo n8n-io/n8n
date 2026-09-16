@@ -303,6 +303,14 @@ defineExpose({
 							}"
 							:style="`--nodes-length: ${connectedNodes[getConnectionKey(connection, index)].length}`"
 							@click="expandConnectionGroup(getConnectionContext(connection, index), true)"
+							role="button"
+							tabindex="0"
+							@keydown.enter.self="
+								expandConnectionGroup(getConnectionContext(connection, index), true)
+							"
+							@keydown.space.self.prevent="
+								expandConnectionGroup(getConnectionContext(connection, index), true)
+							"
 						>
 							<div
 								v-if="
@@ -315,6 +323,10 @@ defineExpose({
 									[$style.hasIssues]: hasInputIssues(getConnectionContext(connection, index)),
 								}"
 								@click="onPlusClick(getConnectionContext(connection, index))"
+								role="button"
+								tabindex="0"
+								@keydown.enter.self="onPlusClick(getConnectionContext(connection, index))"
+								@keydown.space.self.prevent="onPlusClick(getConnectionContext(connection, index))"
 							>
 								<N8nTooltip
 									placement="top"
@@ -380,6 +392,14 @@ defineExpose({
 										<div
 											:class="$style.connectedNode"
 											@click="onNodeClick(node.node.name, getConnectionContext(connection, index))"
+											role="button"
+											tabindex="0"
+											@keydown.enter.self="
+												onNodeClick(node.node.name, getConnectionContext(connection, index))
+											"
+											@keydown.space.self.prevent="
+												onNodeClick(node.node.name, getConnectionContext(connection, index))
+											"
 										>
 											<NodeIcon
 												:node-type="node.nodeType"
@@ -401,6 +421,7 @@ defineExpose({
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
 @keyframes horizontal-shake {
 	0% {
 		transform: translateX(0);
@@ -444,6 +465,7 @@ defineExpose({
 	flex-direction: column;
 	align-items: center;
 	transition: all calc((var(--ndv--sub-connections--duration) - 50ms)) ease;
+	@include motion.reduced-motion;
 }
 .connectionLabel {
 	margin-bottom: var(--spacing--2xs);
@@ -473,6 +495,7 @@ defineExpose({
 			--button--color--text: var(--color--danger);
 			--button--border-color: var(--color--danger);
 		}
+		@include motion.reduced-motion;
 	}
 
 	&:not(:last-child) {
@@ -488,10 +511,12 @@ defineExpose({
 			pointer-events: all;
 		}
 	}
+	@include motion.reduced-motion;
 }
 
 .connectedNodesMultiple {
 	transition: all var(--ndv--sub-connections--duration) ease;
+	@include motion.reduced-motion;
 }
 .connectedNodesWrapperExpanded {
 	z-index: 1;
@@ -515,6 +540,7 @@ defineExpose({
 	display: flex;
 	justify-self: center;
 	align-self: center;
+	@include motion.reduced-motion;
 }
 .connectedNodes {
 	display: flex;
@@ -554,5 +580,6 @@ defineExpose({
 	.connectedNodesWrapperExpanded & {
 		transform: translateX(0);
 	}
+	@include motion.reduced-motion;
 }
 </style>
