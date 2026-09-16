@@ -451,12 +451,11 @@ const isChatBusy = computed(
 
 async function onAskForHelp(credential: InstanceAiCredentialContext) {
 	if (isChatBusy.value) return;
-	await thread.sendMessage(
-		buildInstanceAiArtifactCredentialQuestion(credential),
-		undefined,
-		rootStore.pushRef,
-		buildInstanceAiCredentialHandoffContext(credential),
-	);
+	await thread.sendMessage(buildInstanceAiArtifactCredentialQuestion(credential), {
+		authorship: { kind: 'prefill', prefillType: 'handoff_credential_setup' },
+		pushRef: rootStore.pushRef,
+		handoffContext: buildInstanceAiCredentialHandoffContext(credential),
+	});
 }
 const allRowsDone = computed(() => rows.value.length > 0 && rows.value.every((row) => row.isDone));
 const hasChanges = computed(() => credentialHasChanges.value || dirtyParameters.size > 0);

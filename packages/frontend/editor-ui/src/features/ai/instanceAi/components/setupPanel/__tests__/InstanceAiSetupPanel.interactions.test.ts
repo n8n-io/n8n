@@ -599,8 +599,10 @@ describe('InstanceAiSetupPanel interactions', () => {
 		await waitFor(() =>
 			expect(thread.sendMessage).toHaveBeenCalledExactlyOnceWith(
 				'The workflow execution finished with execution id "run-first"',
-				undefined,
-				useRootStore().pushRef,
+				{
+					authorship: { kind: 'prefill', prefillType: 'handoff_setup_panel_execute' },
+					pushRef: useRootStore().pushRef,
+				},
 			),
 		);
 		expect(view.getByRole('button', { name: /Slack/ })).toBeVisible();

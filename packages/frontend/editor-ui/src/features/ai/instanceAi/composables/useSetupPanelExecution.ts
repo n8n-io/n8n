@@ -221,8 +221,10 @@ export function useSetupPanelExecution(options: {
 				i18n.baseText('instanceAi.setupPanel.executedMessage', {
 					interpolate: { executionId: result.executionId },
 				}),
-				undefined,
-				rootStore.pushRef,
+				{
+					authorship: { kind: 'prefill', prefillType: 'handoff_setup_panel_execute' },
+					pushRef: rootStore.pushRef,
+				},
 			);
 			return { ...result, notified };
 		} finally {

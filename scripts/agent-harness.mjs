@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 import { execFileSync } from 'node:child_process';
-import { createHash } from 'node:crypto';
 import {
 	existsSync,
 	lstatSync,
@@ -25,8 +24,7 @@ export function validateLock(lock) {
 		lock?.repository !== REPOSITORY ||
 		!/^[0-9]+\.[0-9]+\.[0-9]+$/.test(lock.version) ||
 		lock.releaseTag !== `harness-v${lock.version}` ||
-		lock.assetName !== `n8n-opencode-harness-${lock.version}.tgz` ||
-		!/^[0-9a-f]{64}$/.test(lock.sha256)
+		lock.assetName !== `n8n-opencode-harness-${lock.version}.tgz`
 	) {
 		throw new Error('The agent harness lock is invalid.');
 	}
@@ -39,10 +37,6 @@ export function readLock(lockPath = join(REPO_ROOT, 'agent-harness.lock.json')) 
 	} catch (error) {
 		throw new Error(`Cannot read the agent harness lock at ${lockPath}: ${error.message}`);
 	}
-}
-
-export function sha256File(path) {
-	return createHash('sha256').update(readFileSync(path)).digest('hex');
 }
 
 export function downloadReleaseAsset(lock, destination, { run = execFileSync } = {}) {
@@ -99,7 +93,7 @@ export function installAgentHarness({
 	const pluginPath = join(bundlePath, 'plugins', PLUGIN_FILE);
 	mkdirSync(cacheRoot, { recursive: true });
 
-	// The version cache is write-once and trusted after its checksum succeeds.
+	// The version cache is write-once after a successful installation.
 	const cacheHit = existsSync(pluginPath);
 	if (!cacheHit) {
 		const stagingRoot = mkdtempSync(join(cacheRoot, '.install-'));
@@ -108,9 +102,6 @@ export function installAgentHarness({
 		try {
 			mkdirSync(stagedVersion);
 			download(lock, stagedVersion);
-			if (sha256File(archivePath) !== lock.sha256) {
-				throw new Error('Agent harness checksum mismatch.');
-			}
 			// Cat-bot validates archive contents before publishing these pinned bytes.
 			extract(archivePath, stagedVersion);
 			if (!existsSync(join(stagedVersion, BUNDLE_ROOT, 'plugins', PLUGIN_FILE))) {

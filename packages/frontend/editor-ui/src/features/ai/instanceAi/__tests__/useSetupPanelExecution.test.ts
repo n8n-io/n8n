@@ -115,8 +115,10 @@ describe('useSetupPanelExecution', () => {
 			});
 			expect(thread.sendMessage).toHaveBeenCalledExactlyOnceWith(
 				'The workflow execution finished with execution id "exec-1"',
-				undefined,
-				useRootStore().pushRef,
+				{
+					authorship: { kind: 'prefill', prefillType: 'handoff_setup_panel_execute' },
+					pushRef: useRootStore().pushRef,
+				},
 			);
 			expect(track).toHaveBeenCalledWith(TELEMETRY_EVENT.WORKFLOW.USER_REQUESTED_WORKFLOW_TEST, {
 				source: 'instance_ai_setup_panel',
