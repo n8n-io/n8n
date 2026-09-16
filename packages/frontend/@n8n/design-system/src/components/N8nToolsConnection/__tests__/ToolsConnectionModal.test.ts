@@ -457,6 +457,19 @@ describe('ToolsConnectionModal', () => {
 		expect(rows[0]).toHaveAttribute('data-active', 'true');
 	});
 
+	it('moves to the last and first rows with Meta and arrow keys', async () => {
+		const items = makeLargeMcpList(3);
+		const { getAllByTestId, getByPlaceholderText } = renderWith({ items, categories: ['mcp'] });
+		const input = getByPlaceholderText('Search all tools...');
+		const rows = getAllByTestId('tools-connection-row');
+
+		await fireEvent.keyDown(input, { key: 'ArrowDown', metaKey: true });
+		expect(rows[2]).toHaveAttribute('data-active', 'true');
+
+		await fireEvent.keyDown(input, { key: 'ArrowUp', metaKey: true });
+		expect(rows[0]).toHaveAttribute('data-active', 'true');
+	});
+
 	it('keeps arrow navigation inside the list bounds', async () => {
 		const items = makeLargeMcpList(3);
 		const { getAllByTestId, getByPlaceholderText } = renderWith({ items, categories: ['mcp'] });

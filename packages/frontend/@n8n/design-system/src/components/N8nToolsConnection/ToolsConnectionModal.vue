@@ -323,15 +323,19 @@ watch(toolRows, (rows) => {
 	listIndex.value = Math.min(listIndex.value, Math.max(rows.length - 1, 0));
 });
 
+watch(effectiveSearchQuery, function resetActiveSearchResult() {
+	listIndex.value = 0;
+});
+
 function isToolRowSelected(index: number): boolean {
 	return listIndex.value === index;
 }
 
-function handleNavigateListIndex(direction: -1 | 1) {
+function handleNavigateListIndex(delta: number) {
 	const maxIndex = toolRows.value.length - 1;
 	if (maxIndex < 0) return;
 
-	listIndex.value = Math.min(Math.max(listIndex.value + direction, 0), maxIndex);
+	listIndex.value = Math.min(Math.max(listIndex.value + delta, 0), maxIndex);
 	scrollerRef.value?.scrollToKeyIfNeeded(toolRows.value[listIndex.value].key);
 }
 
@@ -358,6 +362,12 @@ function onNavigationKeyPress(event: KeyboardEvent) {
 		case 'ArrowUp':
 			if (!isDefaultView) break;
 			event.preventDefault();
+			if (event.metaKey) {
+				handleNavigateListIndex(
+					event.key === 'ArrowDown' ? toolRows.value.length : -toolRows.value.length,
+				);
+				break;
+			}
 			handleNavigateListIndex(event.key === 'ArrowDown' ? 1 : -1);
 			if (!isSearchInputFocused) {
 				focusSearchInput();
