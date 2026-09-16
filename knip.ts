@@ -56,6 +56,8 @@ const config: KnipConfig = {
 			],
 		},
 		'packages/**': pkg(),
+		// Only tsconfig files, so the shared entry pattern has nothing to match.
+		'packages/@n8n/typescript-config': pkg({ entry: [] }),
 		'packages/cli': pkg({
 			ignoreDependencies: [
 				// bin/n8n has no extension, so knip does not parse it.

@@ -10,6 +10,7 @@ import { ExecutionService } from '@/executions/execution.service';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import type { AgentBackgroundJob } from '../../entities/agent-background-job.entity';
+import type { AgentExecutionUpdateBroadcaster } from '../../agent-execution-update-broadcaster';
 import type { AgentBackgroundJobRepository } from '../../repositories/agent-background-job.repository';
 import type { AgentExecutionRepository } from '../../repositories/agent-execution.repository';
 import {
@@ -67,6 +68,7 @@ function setup(options: { backgroundTasksEnabled?: boolean } = {}) {
 	const executionPersistence = mock<ExecutionPersistence>();
 	const publisher = mock<Publisher>();
 	const logger = mock<Logger>();
+	const updateBroadcaster = mock<AgentExecutionUpdateBroadcaster>();
 	const agentsConfig = mock<AgentsConfig>({
 		backgroundTasksEnabled: options.backgroundTasksEnabled ?? false,
 	});
@@ -77,6 +79,7 @@ function setup(options: { backgroundTasksEnabled?: boolean } = {}) {
 	jobRepository.insertWorkflowJobOrGetExisting.mockResolvedValue({ inserted: true });
 	jobRepository.settleIfRunning.mockResolvedValue(true);
 	jobRepository.findByParentThread.mockResolvedValue([]);
+	jobRepository.findGroupCandidates.mockResolvedValue([]);
 	jobRepository.findRunningJobs.mockResolvedValue([]);
 	jobRepository.findRunningPastTimeout.mockResolvedValue([]);
 	executionRepository.findLatestStatusesByThreadIds.mockResolvedValue(new Map());
@@ -88,8 +91,17 @@ function setup(options: { backgroundTasksEnabled?: boolean } = {}) {
 		publisher,
 		logger,
 		agentsConfig,
+		updateBroadcaster,
 	);
-	return { service, jobRepository, executionRepository, executionPersistence, publisher, logger };
+	return {
+		service,
+		jobRepository,
+		executionRepository,
+		executionPersistence,
+		publisher,
+		logger,
+		updateBroadcaster,
+	};
 }
 
 const registerParams = {
@@ -123,6 +135,83 @@ describe('markMailConsumed', () => {
 			else expect(jobRepository.markMailConsumed).toHaveBeenCalledWith('thread-1', ['job-1']);
 		},
 	);
+});
+
+describe('background task notifications', () => {
+	it('notifies after registration succeeds, but not after a limit or insert error', async () => {
+		const { service, jobRepository, updateBroadcaster } = setup();
+		await service.registerSubAgentJob(registerParams);
+		expect(updateBroadcaster.notifyBackgroundJobsUpdated).toHaveBeenCalledWith(
+			'agent-1',
+			'thread-1',
+		);
+		expect(jobRepository.insertJob.mock.invocationCallOrder[0]).toBeLessThan(
+			updateBroadcaster.notifyBackgroundJobsUpdated.mock.invocationCallOrder[0],
+		);
+		jobRepository.countRunningSubAgentsByParentThread.mockResolvedValueOnce(
+			MAX_RUNNING_JOBS_PER_THREAD,
+		);
+		await service.registerSubAgentJob(registerParams);
+		jobRepository.insertJob.mockRejectedValueOnce(new Error('insert failed'));
+		await expect(service.registerSubAgentJob(registerParams)).rejects.toThrow('insert failed');
+		expect(updateBroadcaster.notifyBackgroundJobsUpdated).toHaveBeenCalledOnce();
+	});
+
+	it.each(['completed', 'failed', 'cancelled'] as const)(
+		'notifies after the task reaches %s',
+		async (status) => {
+			const { service, jobRepository, updateBroadcaster } = setup();
+			jobRepository.findById.mockResolvedValue(makeJob({ status }));
+			await service.settle('job-1', { status });
+			expect(updateBroadcaster.notifyBackgroundJobsUpdated).toHaveBeenCalledWith(
+				'agent-1',
+				'thread-1',
+			);
+			jobRepository.settleIfRunning.mockResolvedValueOnce(false);
+			await service.settle('job-1', { status });
+			expect(updateBroadcaster.notifyBackgroundJobsUpdated).toHaveBeenCalledOnce();
+		},
+	);
+
+	it.each(['subagent', 'workflow'] as const)(
+		'notifies after an external cancellation of a %s job',
+		async (kind) => {
+			const { service, jobRepository, updateBroadcaster } = setup();
+			jobRepository.findByParentThread.mockResolvedValue([makeJob({ kind })]);
+			await service.cancel('thread-1', 'job-1');
+			expect(updateBroadcaster.notifyBackgroundJobsUpdated).toHaveBeenCalledWith(
+				'agent-1',
+				'thread-1',
+			);
+		},
+	);
+
+	it('notifies when the timeout sweep ends a task', async () => {
+		const { service, jobRepository, updateBroadcaster } = setup();
+		const job = makeJob();
+		jobRepository.findRunningPastTimeout.mockResolvedValue([job]);
+		jobRepository.findById.mockResolvedValue(job);
+		await service.reconcile();
+		expect(updateBroadcaster.notifyBackgroundJobsUpdated).toHaveBeenCalledWith(
+			'agent-1',
+			'thread-1',
+		);
+	});
+
+	it('notifies when reconciliation ends a workflow job', async () => {
+		const { service, jobRepository, executionPersistence, updateBroadcaster } = setup();
+		const job = makeWorkflowJob();
+		jobRepository.findRunningJobs.mockResolvedValue([job]);
+		jobRepository.findById.mockResolvedValue(job);
+		executionPersistence.findStatusesByIds.mockResolvedValue([
+			{ id: 'exec-1', status: 'error' },
+		] as never);
+		await service.reconcileWorkflowJobs();
+		expect(updateBroadcaster.notifyBackgroundJobsUpdated).toHaveBeenCalledWith(
+			'agent-1',
+			'thread-1',
+		);
+	});
 });
 
 describe('registerSubAgentJob', () => {
@@ -190,10 +279,16 @@ describe('settle', () => {
 		).resolves.toBe(true);
 
 		const disabled = setup();
+		wakeService.requestWake.mockClear();
+		disabled.jobRepository.findById.mockResolvedValue(makeJob({ status: 'completed' }));
 		await expect(
 			disabled.service.settle('job-1', { status: 'completed', result: 'done' }),
 		).resolves.toBe(true);
-		expect(disabled.jobRepository.findById).not.toHaveBeenCalled();
+		expect(wakeService.requestWake).not.toHaveBeenCalled();
+		expect(disabled.updateBroadcaster.notifyBackgroundJobsUpdated).toHaveBeenCalledWith(
+			'agent-1',
+			'thread-1',
+		);
 	});
 
 	it('drops the abort handle even when the settle write throws', async () => {
@@ -259,6 +354,113 @@ describe('listForThread', () => {
 
 		expect(executionRepository.findLatestStatusesByThreadIds).not.toHaveBeenCalled();
 		expect(jobs[0].status).toBe('running');
+	});
+});
+
+describe('listCurrentGroupForThread', () => {
+	it.each(['completed', 'failed', 'cancelled'] as const)(
+		'keeps a %s job until every job is terminal and its results are consumed',
+		async (status) => {
+			const { service, jobRepository } = setup();
+			const finished = makeJob({
+				status,
+				createdAt: new Date(1000),
+				settledAt: new Date(3000),
+			});
+			const running = makeJob({ id: 'job-2', createdAt: new Date(2000) });
+			const list = jobRepository.findGroupCandidates.mockResolvedValue([running, finished]);
+			expect(await service.listCurrentGroupForThread('agent-1', 'thread-1')).toEqual([
+				expect.objectContaining({ id: finished.id }),
+				expect.objectContaining({ id: running.id }),
+			]);
+			expect(list).toHaveBeenCalledWith('agent-1', 'thread-1');
+			const terminal = { ...running, status, settledAt: new Date(4000) };
+			list.mockResolvedValue([finished, terminal]);
+			expect(await service.listCurrentGroupForThread('agent-1', 'thread-1')).toEqual([
+				expect.objectContaining({ id: finished.id, status }),
+				expect.objectContaining({ id: terminal.id, status }),
+			]);
+			list.mockResolvedValue(
+				[finished, terminal].map((job) => ({ ...job, notifiedAt: new Date(5000) })),
+			);
+			expect(await service.listCurrentGroupForThread('agent-1', 'thread-1')).toEqual([]);
+		},
+	);
+
+	it('restores all overlapping jobs in the current group and excludes an earlier group', async () => {
+		const { service, jobRepository } = setup();
+		const earlier = makeJob({
+			id: 'earlier',
+			status: 'completed',
+			createdAt: new Date(1000),
+			settledAt: new Date(2000),
+		});
+		const first = makeJob({
+			id: 'first',
+			status: 'completed',
+			createdAt: new Date(3000),
+			settledAt: new Date(5000),
+		});
+		const second = makeJob({
+			id: 'second',
+			status: 'failed',
+			createdAt: new Date(4000),
+			settledAt: new Date(7000),
+		});
+		const running = makeWorkflowJob({ id: 'running', createdAt: new Date(6000) });
+		jobRepository.findGroupCandidates.mockResolvedValue([running, earlier, second, first]);
+		expect(await service.listCurrentGroupForThread('agent-1', 'thread-1')).toEqual(
+			[first, second, running].map(({ id }) => expect.objectContaining({ id })),
+		);
+	});
+
+	it('starts a fresh group after a gap with no running jobs', async () => {
+		const { service, jobRepository } = setup();
+		const finished = makeJob({
+			status: 'completed',
+			createdAt: new Date(1000),
+			settledAt: new Date(2000),
+		});
+		const next = makeJob({ id: 'next', createdAt: new Date(3000) });
+		jobRepository.findGroupCandidates.mockResolvedValue([finished, next]);
+		expect(await service.listCurrentGroupForThread('agent-1', 'thread-1')).toEqual([
+			expect.objectContaining({ id: next.id }),
+		]);
+	});
+
+	it('returns no group when the thread has no jobs', async () => {
+		const { service } = setup();
+		expect(await service.listCurrentGroupForThread('agent-1', 'thread-1')).toEqual([]);
+	});
+});
+
+describe('result consumption updates', () => {
+	it('broadcasts after a foreground turn consumes results', async () => {
+		const { service, jobRepository, updateBroadcaster } = setup();
+		jobRepository.findById.mockResolvedValue(makeJob());
+		jobRepository.markMailConsumed.mockResolvedValue(1);
+		await service.markMailConsumed('thread-1', ['job-1']);
+		expect(updateBroadcaster.notifyBackgroundJobsUpdated).toHaveBeenCalledWith(
+			'agent-1',
+			'thread-1',
+		);
+		expect(jobRepository.markMailConsumed.mock.invocationCallOrder[0]).toBeLessThan(
+			updateBroadcaster.notifyBackgroundJobsUpdated.mock.invocationCallOrder[0],
+		);
+	});
+
+	it('broadcasts after cancellation consumes results without a parent wake', async () => {
+		const { service, jobRepository, updateBroadcaster } = setup();
+		const job = makeJob();
+		jobRepository.findByParentThread.mockResolvedValue([job]);
+		jobRepository.findById.mockResolvedValue(job);
+		jobRepository.markMailConsumed.mockResolvedValue(1);
+		service.registerAbortController(job.id, new AbortController());
+		await service.cancel('thread-1', job.id);
+		expect(updateBroadcaster.notifyBackgroundJobsUpdated).toHaveBeenCalledTimes(2);
+		expect(jobRepository.markMailConsumed.mock.invocationCallOrder[0]).toBeLessThan(
+			updateBroadcaster.notifyBackgroundJobsUpdated.mock.invocationCallOrder[1],
+		);
 	});
 });
 
@@ -437,11 +639,15 @@ describe('registerWorkflowJob', () => {
 	};
 
 	it('registers a running workflow job keyed to its execution', async () => {
-		const { service, jobRepository } = setup();
+		const { service, jobRepository, updateBroadcaster } = setup();
 
 		const receipt = await service.registerWorkflowJob(workflowParams);
 
 		expect(receipt).toEqual({ status: 'started', jobId: 'wf-job-1' });
+		expect(updateBroadcaster.notifyBackgroundJobsUpdated).toHaveBeenCalledWith(
+			'agent-1',
+			'thread-1',
+		);
 		expect(jobRepository.insertWorkflowJobOrGetExisting).toHaveBeenCalledWith(
 			expect.objectContaining({
 				kind: 'workflow',
@@ -457,7 +663,7 @@ describe('registerWorkflowJob', () => {
 	});
 
 	it('converges a replayed registration on the job already tracking the execution', async () => {
-		const { service, jobRepository } = setup();
+		const { service, jobRepository, updateBroadcaster } = setup();
 		jobRepository.insertWorkflowJobOrGetExisting.mockResolvedValue({
 			inserted: false,
 			existing: makeWorkflowJob({ id: 'wf-existing' }),
@@ -466,6 +672,7 @@ describe('registerWorkflowJob', () => {
 		const receipt = await service.registerWorkflowJob(workflowParams);
 
 		expect(receipt).toEqual({ status: 'started', jobId: 'wf-existing' });
+		expect(updateBroadcaster.notifyBackgroundJobsUpdated).not.toHaveBeenCalled();
 	});
 
 	it('converges on the existing job even after it settled', async () => {
@@ -745,4 +952,101 @@ describe('serializeWorkflowJobResult', () => {
 			`${overCapSerialized.slice(0, WORKFLOW_JOB_RESULT_MAX_CHARS)}… [truncated, full data on execution]`,
 		);
 	});
+});
+
+describe('background task update failures', () => {
+	afterEach(() => Container.reset());
+
+	it('reads orphan candidates without reconciliation or notifications', async () => {
+		const { service, jobRepository, executionRepository, executionPersistence, updateBroadcaster } =
+			setup({ backgroundTasksEnabled: true });
+		const wake = mock<AgentWakeService>();
+		Container.set(AgentWakeService, wake);
+		jobRepository.findGroupCandidates.mockResolvedValue([makeJob(), makeWorkflowJob()]);
+		executionRepository.findLatestStatusesByThreadIds.mockResolvedValue(
+			new Map([['child-thread-1', 'error']]),
+		);
+		executionPersistence.findStatusesByIds.mockResolvedValue([{ id: 'exec-1', status: 'success' }]);
+
+		expect(await service.listCurrentGroupForThread('agent-1', 'thread-1')).toHaveLength(2);
+		expect(executionRepository.findLatestStatusesByThreadIds).not.toHaveBeenCalled();
+		expect(executionPersistence.findStatusesByIds).not.toHaveBeenCalled();
+		expect(jobRepository.settleIfRunning).not.toHaveBeenCalled();
+		expect(updateBroadcaster.notifyBackgroundJobsUpdated).not.toHaveBeenCalled();
+		expect(wake.requestWake).not.toHaveBeenCalled();
+	});
+
+	it('uses the start time when a terminal job has no settlement time and orders ties by ID', async () => {
+		const { service, jobRepository } = setup();
+		jobRepository.findGroupCandidates.mockResolvedValue([
+			makeJob({ id: 'b', createdAt: new Date(1000), status: 'completed' }),
+			makeJob({ id: 'a', createdAt: new Date(1000), status: 'failed' }),
+		]);
+		expect(
+			(await service.listCurrentGroupForThread('agent-1', 'thread-1')).map(({ id }) => id),
+		).toEqual(['a', 'b']);
+		jobRepository.findGroupCandidates.mockResolvedValue([
+			makeJob({ id: 'a', createdAt: new Date(1000), status: 'completed' }),
+			makeJob({ id: 'b', createdAt: new Date(2000), status: 'completed' }),
+		]);
+		expect(
+			(await service.listCurrentGroupForThread('agent-1', 'thread-1')).map(({ id }) => id),
+		).toEqual(['b']);
+	});
+
+	it('preserves settlement when the job lookup fails', async () => {
+		const { service, jobRepository, updateBroadcaster } = setup({ backgroundTasksEnabled: true });
+		const wake = mock<AgentWakeService>();
+		Container.set(AgentWakeService, wake);
+		jobRepository.findById.mockRejectedValue(new Error('lookup failed'));
+		await expect(service.settle('job-1', { status: 'completed' })).resolves.toBe(true);
+		expect(jobRepository.findById).toHaveBeenCalledOnce();
+		expect(updateBroadcaster.notifyBackgroundJobsUpdated).not.toHaveBeenCalled();
+		expect(wake.requestWake).not.toHaveBeenCalled();
+	});
+
+	it('requests a wake when notification fails after a successful lookup', async () => {
+		const { service, jobRepository, updateBroadcaster } = setup({ backgroundTasksEnabled: true });
+		const wake = mock<AgentWakeService>();
+		Container.set(AgentWakeService, wake);
+		jobRepository.findById.mockResolvedValue(makeJob());
+		updateBroadcaster.notifyBackgroundJobsUpdated.mockImplementation(() => {
+			throw new Error('notification failed');
+		});
+		await expect(service.settle('job-1', { status: 'completed' })).resolves.toBe(true);
+		expect(jobRepository.findById).toHaveBeenCalledOnce();
+		expect(wake.requestWake).toHaveBeenCalledWith('thread-1');
+	});
+
+	it('skips notification when no results are consumed', async () => {
+		const { service, jobRepository, updateBroadcaster } = setup();
+		jobRepository.markMailConsumed.mockResolvedValue(0);
+		await expect(service.markMailConsumed('thread-1', ['job-1'])).resolves.toBe(0);
+		expect(jobRepository.findById).not.toHaveBeenCalled();
+		expect(updateBroadcaster.notifyBackgroundJobsUpdated).not.toHaveBeenCalled();
+	});
+
+	it.each(['success', 'zero', 'consume-error', 'lookup-error'] as const)(
+		'notifies workflow cancellation when consumption has outcome %s',
+		async (outcome) => {
+			const { service, jobRepository, updateBroadcaster } = setup();
+			const job = makeWorkflowJob();
+			Container.set(ExecutionService, mock<ExecutionService>());
+			jobRepository.findByParentThread.mockResolvedValue([job]);
+			jobRepository.findById.mockResolvedValue(job);
+			jobRepository.markMailConsumed.mockResolvedValue(outcome === 'zero' ? 0 : 1);
+			if (outcome === 'consume-error')
+				jobRepository.markMailConsumed.mockRejectedValue(new Error('consume failed'));
+			if (outcome === 'lookup-error')
+				jobRepository.findById.mockRejectedValue(new Error('lookup failed'));
+			await expect(service.cancel('thread-1', job.id)).resolves.toBe('cancelled');
+			expect(updateBroadcaster.notifyBackgroundJobsUpdated).toHaveBeenCalledWith(
+				'agent-1',
+				'thread-1',
+			);
+			expect(updateBroadcaster.notifyBackgroundJobsUpdated).toHaveBeenCalledTimes(
+				outcome === 'success' ? 2 : 1,
+			);
+		},
+	);
 });

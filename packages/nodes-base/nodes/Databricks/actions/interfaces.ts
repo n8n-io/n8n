@@ -93,8 +93,24 @@ export type DatabricksJobRun = {
 	status?: DatabricksJobRunStatus;
 	/** @deprecated Jobs API 2.2 reports `status` instead */
 	state?: DatabricksJobRunLegacyState;
-	/** With `expand_tasks`, at most 100 tasks; `has_more` marks a longer list. */
 	tasks?: DatabricksJobRunTask[];
 	has_more?: boolean;
+	next_page_token?: string;
 	job_parameters?: Array<{ name?: string; default?: string; value?: string }>;
+};
+
+export type DatabricksNotebookOutput = { result?: string; truncated?: boolean };
+
+export type DatabricksRunOutput = {
+	metadata?: DatabricksJobRun;
+	notebook_output?: DatabricksNotebookOutput;
+	sql_output?: Record<string, unknown>;
+	dbt_output?: Record<string, unknown>;
+	run_job_output?: { run_id?: number };
+	clean_rooms_notebook_output?: { notebook_output?: DatabricksNotebookOutput };
+	logs?: string;
+	logs_truncated?: boolean;
+	error?: string;
+	error_trace?: string;
+	info?: string;
 };

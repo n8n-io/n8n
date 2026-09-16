@@ -2,6 +2,7 @@ import type { User } from '@n8n/db';
 import { ExecutionStatusList, WorkflowExecuteModeList, type ExecutionStatus } from 'n8n-workflow';
 import z from 'zod';
 
+import { parseExecutionCursor } from '@/executions/execution-cursor';
 import type { ExecutionService } from '@/executions/execution.service';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -31,10 +32,12 @@ const inputSchema = {
 		.optional()
 		.describe('ISO 8601 timestamp — only return executions that started before this time'),
 	limit: createLimitSchema(MAX_RESULTS),
-	lastId: z
+	cursor: z
 		.string()
 		.optional()
-		.describe('Cursor for pagination — pass the last execution ID from the previous page'),
+		.describe(
+			'Cursor for pagination — pass the `nextCursor` from the previous page. Treat it as opaque',
+		),
 } satisfies z.ZodRawShape;
 
 const outputSchema = {
@@ -58,6 +61,10 @@ const outputSchema = {
 		.union([z.literal(-1), z.number().int().min(0)])
 		.describe('Total matching executions, or -1 if the count is unavailable'),
 	estimated: z.boolean().describe('Whether the count is an estimate (for large datasets)'),
+	nextCursor: z
+		.string()
+		.nullable()
+		.describe('Cursor for the next page, or null when there is no next page'),
 	error: z.string().optional().describe('Error message if the query failed'),
 } satisfies z.ZodRawShape;
 
@@ -87,16 +94,16 @@ export const createSearchExecutionsTool = (
 		startedAfter,
 		startedBefore,
 		limit = MAX_RESULTS,
-		lastId,
+		cursor,
 	}: {
 		workflowId?: string;
 		status?: ExecutionStatus[];
 		startedAfter?: string;
 		startedBefore?: string;
 		limit?: number;
-		lastId?: string;
+		cursor?: string;
 	}) => {
-		const parameters = { workflowId, status, startedAfter, startedBefore, limit, lastId };
+		const parameters = { workflowId, status, startedAfter, startedBefore, limit, cursor };
 		const telemetryPayload: UserCalledMCPToolEventPayload = {
 			user_id: user.id,
 			tool_name: 'search_workflow_executions',
@@ -111,6 +118,7 @@ export const createSearchExecutionsTool = (
 
 			const safeLimit = Math.min(Math.max(1, limit), MAX_RESULTS);
 			const sharingOptions = await executionService.buildSharingOptions('workflow:read');
+			const beforeId = parseExecutionCursor(cursor);
 
 			const query = {
 				kind: 'range' as const,
@@ -118,9 +126,8 @@ export const createSearchExecutionsTool = (
 				sharingOptions,
 				range: {
 					limit: safeLimit,
-					...(lastId ? { lastId } : {}),
+					...(beforeId ? { beforeId } : {}),
 				},
-				order: { startedAt: 'DESC' as const },
 				...(workflowId ? { workflowId } : {}),
 				...(status?.length ? { status } : {}),
 				...(startedAfter ? { startedAfter } : {}),
@@ -129,7 +136,8 @@ export const createSearchExecutionsTool = (
 				workflowBooleanSettings: [{ key: 'availableInMCP', value: true }],
 			};
 
-			const { results, count, estimated } = await executionService.findRangeWithCount(query);
+			const { results, count, estimated, nextCursor } =
+				await executionService.findRangeWithCount(query);
 
 			const data = results.map((execution) => ({
 				id: execution.id,
@@ -141,7 +149,7 @@ export const createSearchExecutionsTool = (
 				waitTill: execution.waitTill ?? null,
 			}));
 
-			const payload = { data, count, estimated };
+			const payload = { data, count, estimated, nextCursor };
 
 			telemetryPayload.results = {
 				success: true,
@@ -164,7 +172,13 @@ export const createSearchExecutionsTool = (
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
-			const output = { data: [], count: 0, estimated: false, error: error.message };
+			const output = {
+				data: [],
+				count: 0,
+				estimated: false,
+				nextCursor: null,
+				error: error.message,
+			};
 			return {
 				content: [{ type: 'text', text: JSON.stringify(output) }],
 				structuredContent: output,

@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // Catastrophic-regression gate for canvas performance e2e benchmarks.
 //
-// Reads the Playwright JSON reporter output (test-results.json) and checks each
-// canvas-* metric against a small, fixed set of thresholds defined here. Exits
+// Reads one or more Playwright JSON reporter outputs (test-results.json) and
+// checks each canvas-* metric against a small, fixed set of thresholds. Exits
 // non-zero on any breach so the nightly job fails loudly. Trend / soft
 // regressions are intentionally NOT gated here — those flow through the QA
 // metrics webhook + PR comment, which tolerates the 15-30% wall-clock noise
@@ -53,9 +53,9 @@ const SENTINELS = [
 	},
 ];
 
-function findResultsPath() {
-	const explicit = process.argv[2];
-	if (explicit) return resolve(explicit);
+function findResultsPaths() {
+	const explicit = process.argv.slice(2);
+	if (explicit.length > 0) return explicit.map((path) => resolve(path));
 	const candidates = [
 		'test-results.json',
 		'packages/testing/playwright/test-results.json',
@@ -63,10 +63,10 @@ function findResultsPath() {
 	];
 	for (const candidate of candidates) {
 		const path = resolve(candidate);
-		if (existsSync(path)) return path;
+		if (existsSync(path)) return [path];
 	}
 	throw new Error(
-		`test-results.json not found. Looked in: ${candidates.join(', ')}. Pass an explicit path as argv[1].`,
+		`test-results.json not found. Looked in: ${candidates.join(', ')}. Pass one or more explicit paths.`,
 	);
 }
 
@@ -157,10 +157,13 @@ function emitSummary(lines) {
 }
 
 function main() {
-	const path = findResultsPath();
-	const raw = readFileSync(path, 'utf8');
-	const results = JSON.parse(raw);
-	const metrics = extractMetrics(results);
+	const paths = findResultsPaths();
+	const metrics = new Map();
+	for (const path of paths) {
+		const raw = readFileSync(path, 'utf8');
+		const results = JSON.parse(raw);
+		for (const [name, value] of extractMetrics(results)) metrics.set(name, value);
+	}
 	const ranTiers = tiersThatRan(metrics);
 
 	const breaches = [];

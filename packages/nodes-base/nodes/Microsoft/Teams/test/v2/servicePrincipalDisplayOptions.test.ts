@@ -32,6 +32,19 @@ describe('Microsoft Teams Service Principal displayOptions contract', () => {
 		});
 	});
 
+	// The per-resource loops below assert "every field is hidden under SP", which is vacuously
+	// true for a field that was never added. Pin that the mention picker is one they cover.
+	it.each(['channelMessage', 'chatMessage'])('%s:create has a mentions field', (resource) => {
+		const mentions = actionProps.find(
+			(p) =>
+				p.name === 'mentions' &&
+				p.displayOptions?.show?.resource?.includes(resource) &&
+				p.displayOptions?.show?.operation?.includes('create'),
+		);
+
+		expect(mentions).toBeDefined();
+	});
+
 	describe.each(['chatMessage', 'chatMember'])(
 		'%s - hidden under SP via the slash-prefixed field-level key',
 		(resource) => {
@@ -158,7 +171,7 @@ describe('Microsoft Teams Service Principal displayOptions contract', () => {
 					p.displayOptions?.show?.operation?.includes(operation),
 			);
 
-		it.each(['create', 'reply', 'softDeleteMessage'])(
+		it.each(['create', 'reply', 'softDeleteMessage', 'undoSoftDeleteMessage'])(
 			'%s fields are hidden under SP',
 			(operation) => {
 				const fields = fieldsFor(operation);
@@ -177,7 +190,7 @@ describe('Microsoft Teams Service Principal displayOptions contract', () => {
 			}
 		});
 
-		it.each(['softDeleteMessage'])(
+		it.each(['softDeleteMessage', 'undoSoftDeleteMessage'])(
 			'%s is offered and shows only the team, channel, message and options fields',
 			(operation) => {
 				expect(operationValues).toContain(operation);
@@ -206,6 +219,7 @@ describe('Microsoft Teams Service Principal displayOptions contract', () => {
 					'getAll',
 					'getAllReplies',
 					'softDeleteMessage',
+					'undoSoftDeleteMessage',
 				]),
 			);
 		});

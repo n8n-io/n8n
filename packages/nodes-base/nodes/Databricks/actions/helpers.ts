@@ -1,4 +1,6 @@
-import { NodeApiError, UserError } from 'n8n-workflow';
+import { retryabilityFromError } from '@n8n/backend-network';
+import { sleep } from '@n8n/utils/sleep';
+import { NodeApiError, NodeOperationError, UserError } from 'n8n-workflow';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -14,6 +16,10 @@ import type { DatabricksCredentials, OpenAPISchema } from './interfaces';
 export type DatabricksContext = IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions;
 export type DatabricksCredentialType = 'databricksApi' | 'databricksOAuth2Api';
 
+const RATE_LIMIT_MAX_RETRIES = 3;
+const RATE_LIMIT_FALLBACK_DELAY_MS = 1_000;
+const RATE_LIMIT_MAX_DELAY_MS = 30_000;
+
 /**
  * Single egress point for the Databricks API, enforced by eslint-user-agent-restriction.mjs.
  * Setting a User-Agent opts these calls out of N8N_GLOBAL_USER_AGENT_VALUE on purpose:
@@ -24,13 +30,32 @@ export async function databricksApiRequest(
 	credentialType: DatabricksCredentialType,
 	options: IHttpRequestOptions,
 ): ReturnType<IExecuteFunctions['helpers']['httpRequestWithAuthentication']> {
-	return await context.helpers.httpRequestWithAuthentication.call(context, credentialType, {
+	const requestOptions: IHttpRequestOptions = {
 		...options,
 		headers: {
 			...options.headers,
 			'User-Agent': DATABRICKS_PARTNER_USER_AGENT,
 		},
-	});
+	};
+	const abortSignal =
+		'getExecutionCancelSignal' in context ? context.getExecutionCancelSignal() : undefined;
+
+	for (let attempt = 0; ; attempt++) {
+		try {
+			return await context.helpers.httpRequestWithAuthentication.call(
+				context,
+				credentialType,
+				requestOptions,
+			);
+		} catch (error) {
+			const { status, retryAfterMs } = retryabilityFromError(error);
+			if (status !== 429 || attempt >= RATE_LIMIT_MAX_RETRIES) throw error;
+			await sleep(
+				Math.min(retryAfterMs || RATE_LIMIT_FALLBACK_DELAY_MS, RATE_LIMIT_MAX_DELAY_MS),
+				abortSignal,
+			);
+		}
+	}
 }
 
 export function getActiveCredentialType(
@@ -83,6 +108,31 @@ export function makePermissionErrorLegible(error: unknown): void {
 		error.description =
 			'Grant the named permission to the signed-in user or service principal in Databricks, then retry.';
 	}
+}
+
+export function readIdParameter(
+	context: IExecuteFunctions,
+	itemIndex: number,
+	parameterName: string,
+	noun: string,
+): number {
+	const label = `${noun.charAt(0).toUpperCase()}${noun.slice(1)} ID`;
+	const value = String(
+		context.getNodeParameter(parameterName, itemIndex, '', { extractValue: true }),
+	);
+	if (!/^[0-9]+$/.test(value)) {
+		throw new NodeOperationError(context.getNode(), `${label} must be a whole number`, {
+			itemIndex,
+			description: `Use the numeric ID shown in the ${noun} URL in Databricks.`,
+		});
+	}
+	if (!Number.isSafeInteger(Number(value))) {
+		throw new NodeOperationError(context.getNode(), `${label} is too large to send exactly`, {
+			itemIndex,
+			description: `IDs above ${Number.MAX_SAFE_INTEGER} lose precision in JavaScript, so the node cannot send this ${noun} ID.`,
+		});
+	}
+	return Number(value);
 }
 
 export function extractResourceLocatorValue(param: unknown): string {

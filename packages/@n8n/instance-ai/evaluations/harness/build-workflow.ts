@@ -13,6 +13,7 @@ import type {
 	InstanceAiHandoffContext,
 	InstanceAiWorkflowAttachment,
 } from '@n8n/api-types';
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { truncate } from '@n8n/utils/string/truncate';
 import crypto from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -253,6 +254,10 @@ export interface BuildResult {
 	 *  a regression ever did let the agent write into one, an early delete would
 	 *  destroy the workflow under grading and read as a build failure. */
 	createdProjectIds?: string[];
+	/** The ROOT folders a seed created in the thread's project (a folder delete
+	 *  cascades to its subfolders). Deleted in `cleanupBuild` after the workflows,
+	 *  because a folder delete archives what it holds. */
+	createdFolderIds?: string[];
 	/** Maps each scenario seed table's declared NAME to the real id it was created
 	 *  under (empty) before the build turn, so each scenario can reset+seed its
 	 *  rows into the table the built workflow actually bound (TRUST-311 follow-up).
@@ -473,6 +478,9 @@ export interface BuildWorkflowConfig {
 	/** Data tables present before any build on this lane — the only ones the
 	 *  scenario-table eviction may delete. Omitted = no eviction. */
 	preRunDataTableIds?: Set<string>;
+	/** Root folders present before any build on this lane — the only ones the
+	 *  seed-folder eviction may delete. Omitted = no eviction. */
+	preRunFolderIds?: Set<string>;
 	claimedWorkflowIds: Set<string>;
 	logger: EvalLogger;
 	/** Optional " [lane N/M]" suffix appended to the scenario log line. */
@@ -533,6 +541,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 	let restoredWorkflowIds: string[] = [];
 	let restoredDataTableIds: string[] = [];
 	let restoredAgentIds: string[] = [];
+	let restoredFolderIds: string[] = [];
 	/** Projects this run created, torn down after it — instance-level, so they
 	 *  outlive the thread and would otherwise pile up across runs. */
 	const seededProjectIds: string[] = [];
@@ -804,6 +813,16 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 					const created = await client.createTeamProject(project.name);
 					seededProjectIds.push(created.id);
 				}
+				// Seed folders are named verbatim too (the live turn says "the ODW
+				// folder"), so a crashed run's leftover would give the agent two folders
+				// of one name to disambiguate. Evicted by name before the restore.
+				await evictLeftoverSeedFolders(
+					client,
+					remapped.folders,
+					config.preRunFolderIds,
+					logger,
+					config.laneTag,
+				);
 				// A fixture-only seed (projects, no history) has nothing thread-scoped to
 				// restore, and `restore-thread` with an empty message list would be a
 				// pointless round-trip that logs "Seeded 0 prior message(s)".
@@ -811,7 +830,8 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 					remapped.messages.length > 0 ||
 					remapped.workflows.length > 0 ||
 					remapped.dataTables.length > 0 ||
-					remapped.agents.length > 0;
+					remapped.agents.length > 0 ||
+					remapped.folders.length > 0;
 				const restoreResult = hasThreadScopedSeed
 					? await client.restoreThread(
 							threadId,
@@ -819,11 +839,17 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 							remapped.workflows,
 							remapped.dataTables,
 							remapped.agents,
+							{ folders: remapped.folders },
 						)
-					: { restored: 0, workflowIds: [], dataTableIds: [], agentIds: [] };
+					: { restored: 0, workflowIds: [], dataTableIds: [], agentIds: [], folderIds: [] };
 				restoredWorkflowIds = restoreResult.workflowIds;
 				restoredDataTableIds = restoreResult.dataTableIds;
 				restoredAgentIds = restoreResult.agentIds;
+				// `folderIds` is positional to `folders`. Cleanup needs the ROOT folders
+				// only: n8n's folder delete cascades to the subfolders.
+				restoredFolderIds = remapped.folders.flatMap((folder, index) =>
+					folder.parentFolderId === undefined ? [restoreResult.folderIds[index]] : [],
+				);
 				// The server binds the thread to the agent the history LAST targeted, so
 				// the harness has to grade that same one — array order is an authoring
 				// artifact and `findAgentArtifactRef` takes the first ref it sees.
@@ -835,13 +861,20 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 						: '';
 				const agentSuffix =
 					restoredAgentIds.length > 0 ? `, ${String(restoredAgentIds.length)} agent(s)` : '';
+				// Logged for the same reason as projects: a folder case is graded on the
+				// agent FINDING the folder, so a run where it never landed must be readable
+				// from the log alone.
+				const folderSuffix =
+					restoreResult.folderIds.length > 0
+						? `, ${String(restoreResult.folderIds.length)} folder(s)`
+						: '';
 				// Logged explicitly, not folded into the counts above: a project-scope case
 				// is graded on the agent SEEING this project, so a run where the fixture
 				// silently didn't land has to be readable from the log alone.
 				const projectSuffix =
 					seededProjectIds.length > 0 ? `, ${String(seededProjectIds.length)} project(s)` : '';
 				logger.info(
-					`  Seeded ${String(restoreResult.restored)} prior message(s), ${String(restoredWorkflowIds.length)} workflow(s)${dtSuffix}${agentSuffix}${projectSuffix}${config.laneTag ?? ''}`,
+					`  Seeded ${String(restoreResult.restored)} prior message(s), ${String(restoredWorkflowIds.length)} workflow(s)${dtSuffix}${agentSuffix}${folderSuffix}${projectSuffix}${config.laneTag ?? ''}`,
 				);
 			} catch (error: unknown) {
 				seedingFailed = true;
@@ -1145,6 +1178,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 					createdDataTableIds: [...outcome.dataTablesCreated, ...restoredDataTableIds],
 					createdAgentIds: restoredAgentIds,
 					createdProjectIds: seededProjectIds,
+					createdFolderIds: restoredFolderIds,
 					conversationMetrics,
 					events,
 					threadId,
@@ -1165,6 +1199,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				createdDataTableIds: [...outcome.dataTablesCreated, ...restoredDataTableIds],
 				createdAgentIds: restoredAgentIds,
 				createdProjectIds: seededProjectIds,
+				createdFolderIds: restoredFolderIds,
 				artifactRefs,
 				conversationMetrics,
 				events,
@@ -1211,6 +1246,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			createdDataTableIds: [...outcome.dataTablesCreated, ...restoredDataTableIds],
 			createdAgentIds: restoredAgentIds,
 			createdProjectIds: seededProjectIds,
+			createdFolderIds: restoredFolderIds,
 			seededScenarioTableIdsByName: scenarioTableIdsByName,
 			artifactRefs,
 			conversationMetrics,
@@ -1234,6 +1270,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			createdDataTableIds: [...restoredDataTableIds, ...builtDataTableIds],
 			createdAgentIds: restoredAgentIds,
 			createdProjectIds: seededProjectIds,
+			createdFolderIds: restoredFolderIds,
 			conversationMetrics,
 			events,
 			threadId,
@@ -1342,16 +1379,49 @@ async function evictLeftoverSeedWorkflows(
 }
 
 /**
+ * Shared shape of the by-name evictions: list what is on the instance, keep
+ * what is stale, delete each one on its own so a failed delete never shields
+ * the next leftover, and log every outcome. Best-effort throughout — a failure
+ * here is logged and the restore still runs.
+ */
+async function evictLeftovers<T extends { name: string }>(args: {
+	noun: string;
+	list: () => Promise<T[]>;
+	isStale: (item: T) => boolean;
+	/** Deletes the item; the returned text is appended to the success log line. */
+	remove: (item: T) => Promise<string>;
+	logger: EvalLogger;
+	laneTag?: string;
+}): Promise<void> {
+	const tag = args.laneTag ?? '';
+	try {
+		const stale = (await args.list()).filter(args.isStale);
+		for (const item of stale) {
+			try {
+				const detail = await args.remove(item);
+				args.logger.info(
+					`  Evicted leftover seed ${args.noun} "${item.name}" before restore${detail}${tag}`,
+				);
+			} catch (error: unknown) {
+				args.logger.info(
+					`  Could not evict leftover seed ${args.noun} "${item.name}" (continuing): ${getErrorMessage(error)}${tag}`,
+				);
+			}
+		}
+	} catch (error: unknown) {
+		args.logger.info(
+			`  Could not list ${args.noun}s to evict leftovers (continuing): ${getErrorMessage(error)}${tag}`,
+		);
+	}
+}
+
+/**
  * Delete any team project already sitting on the instance under a seed project's
  * name, so a crashed run's leftover doesn't turn into a second "Foobar" the agent
  * has to disambiguate. Exact-name match: seed project names are NOT suffixed (the
  * live turn names them), so there is no pattern to key off — which also means this
  * would delete a same-named project a human created. Seed names should therefore be
  * distinctive enough not to collide with real ones.
- *
- * Best-effort: a failure here is logged and the run continues, since a duplicate
- * duplicate still leaves the case's premise (a visible project that isn't the bound
- * one) intact.
  */
 async function evictLeftoverSeedProjects(
 	client: N8nClient,
@@ -1359,23 +1429,55 @@ async function evictLeftoverSeedProjects(
 	logger: EvalLogger,
 	laneTag?: string,
 ): Promise<void> {
-	try {
-		const stale = (await client.listTeamProjects()).filter((project) => project.name === name);
-		for (const project of stale) {
-			try {
-				await client.deleteProject(project.id);
-				logger.info(`  Evicted leftover seed project "${name}" before restore${laneTag ?? ''}`);
-			} catch (error: unknown) {
-				logger.info(
-					`  Could not evict leftover seed project "${name}" (continuing): ${error instanceof Error ? error.message : String(error)}${laneTag ?? ''}`,
-				);
-			}
-		}
-	} catch (error: unknown) {
-		logger.info(
-			`  Could not list projects to evict leftovers (continuing): ${error instanceof Error ? error.message : String(error)}${laneTag ?? ''}`,
-		);
-	}
+	await evictLeftovers({
+		noun: 'project',
+		list: async () => await client.listTeamProjects(),
+		isStale: (project) => project.name === name,
+		remove: async (project) => {
+			await client.deleteProject(project.id);
+			return '';
+		},
+		logger,
+		laneTag,
+	});
+}
+
+/**
+ * Delete any root folder that carries a seed folder's name AND existed before
+ * the run started, with everything in it. Root level only: a seed tree always
+ * starts at the root (every `parentFolderId` names a declared folder). Same
+ * blast radius as the project eviction, for the same reason: the name is
+ * verbatim, so nothing marks a leftover — see the README's `folders` section.
+ *
+ * The pre-run snapshot keeps a same-name match from reaching a sibling: the
+ * previous iteration's folder is still live (its cleanup runs after judging)
+ * when this one restores, and nothing created during the run is in the
+ * snapshot. No snapshot means no eviction.
+ */
+async function evictLeftoverSeedFolders(
+	client: N8nClient,
+	folders: ConversationSeed['folders'],
+	preRunFolderIds: Set<string> | undefined,
+	logger: EvalLogger,
+	laneTag?: string,
+): Promise<void> {
+	const rootNames = new Set(
+		folders.filter((folder) => folder.parentFolderId === undefined).map((folder) => folder.name),
+	);
+	if (rootNames.size === 0 || preRunFolderIds === undefined) return;
+	// Inside the guarded callbacks: a failed project lookup is an eviction
+	// failure (logged, restore continues), not a seeding failure.
+	await evictLeftovers({
+		noun: 'folder',
+		list: async () => await client.listFolders(await client.getPersonalProjectId()),
+		isStale: (folder) => preRunFolderIds.has(folder.id) && rootNames.has(folder.name),
+		remove: async (folder) => {
+			const deleted = await client.deleteFolderTree(await client.getPersonalProjectId(), folder.id);
+			return deleted > 0 ? `, with ${String(deleted)} workflow(s) inside` : '';
+		},
+		logger,
+		laneTag,
+	});
 }
 
 function formatProxyStatsSuffix(stats: ProxyDecisionStats | undefined): string {
