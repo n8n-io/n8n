@@ -1027,7 +1027,7 @@ async function onAddNodesAndConnections(
 	}
 }
 
-async function onAddEmptyGroup(position: XYPosition) {
+async function onAddEmptyGroup(position: XYPosition, connectToLastInteractedNode = false) {
 	if (!checkIfEditingIsAllowed() || isAddingEmptyGroup.value) return;
 	isAddingEmptyGroup.value = true;
 
@@ -1041,7 +1041,7 @@ async function onAddEmptyGroup(position: XYPosition) {
 					type: NO_OP_NODE_TYPE,
 					position,
 					parameters: { emptyGroupAnchor: true },
-					isAutoAdd: true,
+					isAutoAdd: !connectToLastInteractedNode,
 					openDetail: false,
 				},
 			],
