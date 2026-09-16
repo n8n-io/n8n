@@ -638,7 +638,10 @@ export function useCanvasOperations() {
 		}
 	}
 
-	function deleteNode(id: string, { trackHistory = false, trackBulk = true } = {}) {
+	function deleteNode(
+		id: string,
+		{ trackHistory = false, trackBulk = true, preserveEmptyGroupAnchor = true } = {},
+	) {
 		const node = workflowDocumentStore.value.getNodeById(id);
 		if (!node) {
 			return;
@@ -656,7 +659,10 @@ export function useCanvasOperations() {
 
 		const group = workflowDocumentStore.value.getGroupForNode(id);
 		const shouldRestoreEmptyGroupAnchor =
-			group?.nodeIds.length === 1 && node.type !== STICKY_NODE_TYPE && !isEmptyGroupAnchor(node);
+			preserveEmptyGroupAnchor &&
+			group?.nodeIds.length === 1 &&
+			node.type !== STICKY_NODE_TYPE &&
+			!isEmptyGroupAnchor(node);
 
 		if (shouldRestoreEmptyGroupAnchor) {
 			const anchorNodeType = requireNodeTypeDescription(NO_OP_NODE_TYPE);
@@ -746,12 +752,21 @@ export function useCanvasOperations() {
 		trackDeleteNode(id);
 	}
 
-	function deleteNodes(ids: string[], { trackHistory = true, trackBulk = true } = {}) {
+	function deleteNodes(
+		ids: string[],
+		{ trackHistory = true, trackBulk = true, preserveEmptyGroupAnchor = true } = {},
+	) {
 		if (trackHistory && trackBulk) {
 			historyStore.startRecordingUndo();
 		}
 
-		ids.forEach((id) => deleteNode(id, { trackHistory, trackBulk: false }));
+		ids.forEach((id) =>
+			deleteNode(id, {
+				trackHistory,
+				trackBulk: false,
+				preserveEmptyGroupAnchor,
+			}),
+		);
 
 		if (trackHistory && trackBulk) {
 			historyStore.stopRecordingUndo();
