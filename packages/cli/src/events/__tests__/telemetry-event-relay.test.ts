@@ -870,6 +870,20 @@ describe('TelemetryEventRelay', () => {
 			);
 		});
 
+		it('should drop a policy document with an unrecognized kind instead of reporting it', () => {
+			const event: RelayEventMap['node-type-policy-document-created'] = {
+				updatedBy: 'user123',
+				kind: 'not-a-registered-kind',
+				policyId: 'policy-1',
+				origin: 'document-api',
+				after: { rules: [], version: 1 },
+			};
+
+			eventService.emit('node-type-policy-document-created', event);
+
+			expect(telemetry.track).not.toHaveBeenCalled();
+		});
+
 		it('should track an updated policy document', () => {
 			const event: RelayEventMap['node-type-policy-document-updated'] = {
 				updatedBy: 'user123',
@@ -1090,6 +1104,21 @@ describe('TelemetryEventRelay', () => {
 				TELEMETRY_EVENT.NODE_TYPE_POLICIES.USER_UPDATED_NODE_TYPE_POLICY_ATTACHMENTS,
 				expect.objectContaining({ kind: 'credential-types' }),
 			);
+		});
+
+		it('should drop attachments with an unrecognized kind instead of reporting them', () => {
+			const event: RelayEventMap['node-type-policy-attachments-updated'] = {
+				updatedBy: 'user123',
+				kind: 'not-a-registered-kind',
+				projectId: null,
+				scopeId: 'scope-1',
+				before: { attachments: [], version: 1 },
+				after: { attachments: [], version: 2 },
+			};
+
+			eventService.emit('node-type-policy-attachments-updated', event);
+
+			expect(telemetry.track).not.toHaveBeenCalled();
 		});
 	});
 
