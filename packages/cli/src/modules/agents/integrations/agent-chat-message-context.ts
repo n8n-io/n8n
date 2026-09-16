@@ -77,12 +77,10 @@ export class AgentChatMessageContextBridge {
 
 	async resolveSubject(
 		message: Message<unknown>,
-		adapter?: Adapter,
+		adapter: Adapter,
 	): Promise<IntegrationMessageSubject | undefined> {
 		try {
-			return toIntegrationMessageSubject(
-				adapter ? await adapter.fetchSubject?.(message.raw) : await message.subject,
-			);
+			return toIntegrationMessageSubject(await adapter.fetchSubject?.(message.raw));
 		} catch (error) {
 			this.logger.debug(
 				`[AgentChatBridge] Failed to fetch message subject: ${

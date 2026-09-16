@@ -12,7 +12,7 @@ import { type HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import { Time } from '@n8n/constants';
 import { Container } from '@n8n/di';
 import type { Attachment, Author, Chat, Message, Thread } from 'chat';
-import { OperationalError, UserError, type Logger } from 'n8n-workflow';
+import { UserError, type Logger } from 'n8n-workflow';
 
 import { CacheService } from '@/services/cache/cache.service';
 
@@ -99,21 +99,11 @@ interface AgentExecutor {
 
 	resumeForChat(config: ResumeForChatConfig): AsyncGenerator<StreamChunk>;
 
-	/**
-	 * The thread's still-open suspension, if the run is parked on one right now.
-	 * Optional so a caller that cannot look checkpoints up (tests) simply skips
-	 * the inbound gate.
-	 */
-	findOpenSuspension?(config: {
+	hasOpenSuspension?(config: {
 		agentId: string;
 		threadId: string;
-	}): Promise<OpenSuspension | null>;
+	}): Promise<boolean>;
 	hasRunningExecution?(threadId: string): Promise<boolean>;
-}
-
-/** Enough of a parked run to tell the user what the agent is still waiting on. */
-interface OpenSuspension {
-	suspendPayload?: unknown;
 }
 
 /**
@@ -273,19 +263,17 @@ export class AgentChatBridge {
 			async *resumeForChat(config) {
 				yield* agentService.resumeForChat(config);
 			},
-			async findOpenSuspension({ agentId: aid, threadId }) {
+			async hasOpenSuspension({ agentId: aid, threadId }) {
 				if (!(await Container.get(AgentExecutionService).hasSuspendedRun(threadId))) {
-					return null;
+					return false;
 				}
 				const checkpoint = await Container.get(N8NCheckpointStorage).findSuspendedForThread(
 					aid,
 					threadId,
 				);
-				if (!checkpoint) return null;
-				const suspended = Object.values(checkpoint.pendingToolCalls ?? {}).find(
+				return Object.values(checkpoint?.pendingToolCalls ?? {}).some(
 					(toolCall) => toolCall.suspended,
 				);
-				return suspended ? { suspendPayload: suspended.suspendPayload } : null;
 			},
 			async hasRunningExecution(threadId) {
 				return await Container.get(AgentExecutionService).hasRunningExecution(threadId);
@@ -488,9 +476,9 @@ export class AgentChatBridge {
 		await this.withSessionLock(baseId, async (leaseSignal) => {
 			const currentId = await this.computeGeneration(baseId, false, null, leaseSignal);
 			const origin = await this.messageContextBridge.resolveSession(baseId);
-			this.throwIfSessionLeaseLost(leaseSignal);
+			leaseSignal.throwIfAborted();
 			await this.messageQueue.cancelWaiting(origin?.threadId ?? currentId);
-			this.throwIfSessionLeaseLost(leaseSignal);
+			leaseSignal.throwIfAborted();
 			await this.messageContextBridge.unbindSession(baseId);
 			await this.computeGeneration(baseId, true, null, leaseSignal);
 		});
@@ -513,10 +501,6 @@ export class AgentChatBridge {
 			this.sessionGenerationCacheKey(baseId),
 			fn,
 		);
-	}
-
-	private throwIfSessionLeaseLost(leaseSignal: AbortSignal): void {
-		if (leaseSignal.aborted) throw new OperationalError('Agent chat session lost its lease');
 	}
 
 	/**
@@ -567,7 +551,7 @@ export class AgentChatBridge {
 		// Otherwise this thread has never been touched by either mechanism, or
 		// the timeout was turned off after an earlier reset — nothing to track.
 		if (rotate || idleTimeoutMinutes !== null) {
-			this.throwIfSessionLeaseLost(leaseSignal);
+			leaseSignal.throwIfAborted();
 			await cache.set(key, { generation, lastActivityAt: now }, SESSION_GENERATION_TTL_MS);
 		}
 		return generation === 0 ? baseId : `${baseId}#${generation}`;
@@ -595,8 +579,9 @@ export class AgentChatBridge {
 	}
 
 	private async hasOpenSuspension(threadId: string): Promise<boolean> {
-		const open = await this.agentService.findOpenSuspension?.({ agentId: this.agentId, threadId });
-		return open !== null && open !== undefined;
+		return (
+			(await this.agentService.hasOpenSuspension?.({ agentId: this.agentId, threadId })) ?? false
+		);
 	}
 
 	private sessionGenerationCacheKey(baseId: string): string {
@@ -643,7 +628,7 @@ export class AgentChatBridge {
 				leaseSignal,
 			);
 			const origin = await this.messageContextBridge.resolveSession(baseId);
-			this.throwIfSessionLeaseLost(leaseSignal);
+			leaseSignal.throwIfAborted();
 			await this.messageQueue.enqueue({
 				agentId: this.agentId,
 				threadId: origin?.threadId ?? contextThreadId,

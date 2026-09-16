@@ -714,6 +714,7 @@ describe('agent message queue', () => {
 		});
 		expect(await executionRepository.findOneBy({ id: ids.refreshed })).toMatchObject({
 			status: 'running',
+			stoppedAt: null,
 		});
 		expect(await repository.countBy({ threadId: 'healthy', status: 'processing' })).toBe(1);
 		expect(await repository.countBy({ threadId: 'refreshed', status: 'processing' })).toBe(1);
