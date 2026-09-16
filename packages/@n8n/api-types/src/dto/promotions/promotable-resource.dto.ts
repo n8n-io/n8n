@@ -1,9 +1,11 @@
 import { z } from 'zod';
 
+import { promotionDirectionSchema } from './promotion-config.dto';
 import { n8nIdSchema } from '../../schemas/id.schema';
 import { Z } from '../../zod-class';
 
 export class PromotionChangesQueryDto extends Z.class({
+	direction: promotionDirectionSchema.default('promote'),
 	search: z.string().trim().optional(),
 	sort: z.enum(['name', 'updatedAt', 'status']).default('name'),
 	order: z.enum(['asc', 'desc']).default('asc'),
@@ -36,6 +38,15 @@ export const promotableResourceSchema = z.object({
 });
 
 export type PromotableResource = z.infer<typeof promotableResourceSchema>;
+
+export const promotionChangesSchema = z.object({
+	commitSha: z.string().nullable(),
+	changes: promotableResourceSchema.array(),
+});
+
+export type PromotionChanges = z.infer<typeof promotionChangesSchema>;
+
+export class PromotionChangesDto extends Z.class(promotionChangesSchema.shape) {}
 
 export const promoteRequestSchema = z.object({
 	workflowIds: z.array(n8nIdSchema).min(1),

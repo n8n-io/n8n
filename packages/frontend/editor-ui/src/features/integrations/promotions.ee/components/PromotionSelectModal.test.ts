@@ -31,6 +31,9 @@ const mockChanges = [
 	},
 ];
 
+/** The endpoint wraps the rows with the commit they were read from. */
+const changesBody = (changes: unknown[]) => ({ commitSha: 'a'.repeat(40), changes });
+
 const renderComponent = createComponentRenderer(PromotionSelectModal, {
 	global: {
 		stubs: {
@@ -54,7 +57,7 @@ describe('PromotionSelectModal', () => {
 		pinia = createTestingPinia();
 		vi.clearAllMocks();
 		server = createServer({ environment: 'test' });
-		server.get('/rest/promotions/project-1/changes', () => ({ data: mockChanges }));
+		server.get('/rest/promotions/project-1/changes', () => ({ data: changesBody(mockChanges) }));
 
 		const usersStore = useUsersStore();
 		usersStore.usersById = {
@@ -67,10 +70,10 @@ describe('PromotionSelectModal', () => {
 
 	it('should render change list after loading', async () => {
 		server.get('/rest/promotions/project-1/changes', () => ({
-			data: [
+			data: changesBody([
 				{ ...mockChanges[0], status: 'renamed' },
 				{ ...mockChanges[1], status: 'renamed-and-modified' },
-			],
+			]),
 		}));
 		const { getByText } = renderComponent({
 			pinia,
@@ -135,7 +138,7 @@ describe('PromotionSelectModal', () => {
 	});
 
 	it('should show empty state when no changes', async () => {
-		server.get('/rest/promotions/project-1/changes', () => ({ data: [] }));
+		server.get('/rest/promotions/project-1/changes', () => ({ data: changesBody([]) }));
 
 		const { getByText } = renderComponent({
 			pinia,
@@ -167,7 +170,9 @@ describe('PromotionSelectModal', () => {
 		expect(submitButton).toBeDisabled();
 		expect(submitButton.textContent).toContain('Promote 2 changes');
 
-		server.get('/rest/promotions/project-1/changes', () => ({ data: [mockChanges[1]] }));
+		server.get('/rest/promotions/project-1/changes', () => ({
+			data: changesBody([mockChanges[1]]),
+		}));
 		await userEvent.click(await findByTestId('promotion-refresh'));
 		await waitFor(() => {
 			expect(queryByText('Email summary')).not.toBeInTheDocument();
@@ -192,7 +197,7 @@ describe('PromotionSelectModal', () => {
 		await findByTestId('promotion-error');
 		expect(getByText('Could not load changes')).toBeInTheDocument();
 
-		server.get('/rest/promotions/project-1/changes', () => ({ data: mockChanges }));
+		server.get('/rest/promotions/project-1/changes', () => ({ data: changesBody(mockChanges) }));
 		await userEvent.click(await findByTestId('promotion-retry'));
 
 		await waitFor(() => {
@@ -219,7 +224,7 @@ describe('PromotionSelectModal', () => {
 
 	it('should show distinct labels for archived and deleted workflows', async () => {
 		server.get('/rest/promotions/project-1/changes', () => ({
-			data: [
+			data: changesBody([
 				{
 					id: 'wf-archived',
 					name: 'Archived workflow',
@@ -240,7 +245,7 @@ describe('PromotionSelectModal', () => {
 					updatedBy: null,
 					dependencyCount: 0,
 				},
-			],
+			]),
 		}));
 
 		const { getAllByTestId } = renderComponent({

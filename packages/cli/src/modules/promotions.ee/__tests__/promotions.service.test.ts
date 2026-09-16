@@ -894,6 +894,82 @@ describe('PromotionsService', () => {
 		});
 	});
 
+	describe('readBranchPackage', () => {
+		const commitSha = 'c'.repeat(40);
+		const workflowPath = 'n8n-export/projects/orders-p1/workflows/order-w1/workflow.json';
+
+		beforeEach(async () => {
+			const input = applyInput();
+			resolver.resolveForProject.mockResolvedValue(input);
+			await markCloned(input, 'dev');
+		});
+
+		it('lists the package of the branch at one commit and reads files from that commit', async () => {
+			gitService.listBranchTree.mockResolvedValue({
+				commitSha,
+				lsTreeOutput:
+					[
+						'100644 blob p1\tn8n-export/projects/orders-p1/project.json',
+						`100644 blob w1\t${workflowPath}`,
+						'100644 blob x1\tn8n-export/projects/other-p2/project.json',
+					].join('\0') + '\0',
+			});
+			gitService.readFileAtCommit.mockResolvedValue('{"id":"w1"}');
+
+			const branch = await service.readBranchPackage('p1', 'apply');
+
+			expect(resolver.resolveForProject).toHaveBeenCalledWith('p1', 'apply');
+			expect(gitService.listBranchTree).toHaveBeenCalledWith(
+				expect.objectContaining({
+					remoteUrl: REMOTE_URL,
+					branchName: 'dev',
+					configId: CONFIG_ID,
+					credentials: { authType: 'ssh-key', privateKey: 'PRIV' },
+					pathspecs: [
+						'n8n-export/projects/',
+						'n8n-export/credentials/',
+						'n8n-export/data-tables/',
+						'n8n-export/variables/',
+						'n8n-export/tags/',
+					],
+				}),
+			);
+			expect(branch.commitSha).toBe(commitSha);
+			expect(branch.files.map(({ entityId, type }) => ({ entityId, type }))).toEqual([
+				{ entityId: 'p1', type: 'project' },
+				{ entityId: 'w1', type: 'workflow' },
+			]);
+			await expect(branch.readFile(workflowPath)).resolves.toBe('{"id":"w1"}');
+			expect(gitService.readFileAtCommit).toHaveBeenCalledWith(
+				expect.objectContaining({
+					commitSha,
+					branchName: 'dev',
+					configId: CONFIG_ID,
+					filePath: workflowPath,
+				}),
+			);
+		});
+
+		it('lists a branch without commits as empty and refuses to read a file from it', async () => {
+			gitService.listBranchTree.mockResolvedValue({ commitSha: null, lsTreeOutput: '' });
+
+			const branch = await service.readBranchPackage('p1', 'apply');
+
+			expect(branch).toMatchObject({ commitSha: null, files: [] });
+			await expect(branch.readFile('n8n-export/manifest.json')).rejects.toThrow(
+				'no exported package',
+			);
+			expect(gitService.readFileAtCommit).not.toHaveBeenCalled();
+		});
+
+		it('refuses to read before the direction is cloned', async () => {
+			gitService.hasCheckout.mockResolvedValueOnce(false);
+
+			await expect(service.readBranchPackage('p1', 'apply')).rejects.toThrow('not cloned');
+			expect(gitService.listBranchTree).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('apply', () => {
 		const actor = mock<User>({ id: 'actor', role: { slug: 'global:owner' } });
 

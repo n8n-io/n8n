@@ -1,11 +1,17 @@
-import type { PromotableResource } from '@n8n/api-types';
+import type {
+	PromotableResource,
+	PromotionChanges,
+	PromotionChangesQueryDto,
+	PromotionDirection,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { WorkflowRepository, type User, type WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { hasGlobalScope } from '@n8n/permissions';
+import { hasGlobalScope, type Scope } from '@n8n/permissions';
 import { jsonParse } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { HashingPackageWriter } from '@/modules/n8n-packages/io/hashing-package-writer';
 import {
@@ -19,15 +25,21 @@ import {
 	MissingWorkflowDependencyPolicy,
 	WorkflowVersionPolicy,
 } from '@/modules/n8n-packages/n8n-packages.types';
-import type { ManifestEntry, PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
-import type { SerializedWorkflow } from '@/modules/n8n-packages/spec/serialized/workflow.schema';
+import { MANIFEST_FILE } from '@/modules/n8n-packages/spec/constants';
+import {
+	packageManifestSchema,
+	type ManifestEntry,
+	type PackageManifest,
+} from '@/modules/n8n-packages/spec/manifest.schema';
 import type { PackageRequirements } from '@/modules/n8n-packages/spec/requirements.schema';
+import type { SerializedWorkflow } from '@/modules/n8n-packages/spec/serialized/workflow.schema';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
 import { parsePackageFiles, type PackageFile } from './base-branch-files';
 import { PACKAGE_SUBFOLDER } from './constants';
 import { diffPackageFiles } from './diff-package-files';
 import { PromotionsService } from './promotions.service';
+import type { BranchPackage } from './promotions.types';
 
 const DEPENDENCY_COLLECTIONS = {
 	credentials: 'credentials',
@@ -37,6 +49,25 @@ const DEPENDENCY_COLLECTIONS = {
 	workflows: 'workflows',
 	nodeTypes: null,
 } as const satisfies Record<keyof PackageRequirements, ManifestEntityCollection | null>;
+
+const REQUIRED_SCOPES = {
+	promote: {
+		global: 'gitConnection:push',
+		project: 'project:export',
+		label: 'project export and promotion push',
+	},
+	apply: {
+		global: 'gitConnection:pull',
+		project: 'project:update',
+		label: 'project update and promotion pull',
+	},
+} as const satisfies Record<PromotionDirection, { global: Scope; project: Scope; label: string }>;
+
+type DesiredPackage = {
+	files: readonly PackageFile[];
+	manifest: PackageManifest;
+	isWorkflowArchived: (path: string) => Promise<boolean | undefined>;
+};
 
 @Service()
 export class PromotionChangeService {
@@ -49,23 +80,60 @@ export class PromotionChangeService {
 		this.logger = this.logger.scoped('promotions');
 	}
 
-	async getChanges(user: User, projectId: string): Promise<PromotableResource[]> {
+	/**
+	 * Lists the workflows that differ between the project on this instance and the
+	 * branch of its config for `direction`. The rows describe the receiving side.
+	 * Promote compares the branch (base) with the instance (desired). Apply swaps the
+	 * sides: the instance is the base, and the branch is what the instance becomes.
+	 */
+	async getChanges(
+		user: User,
+		projectId: string,
+		query: PromotionChangesQueryDto,
+	): Promise<PromotionChanges> {
+		const { direction } = query;
+		await this.assertCanPreview(user, projectId, direction);
+		const branch = await this.promotionsService.readBranchPackage(projectId, direction);
+		const instance = await this.exportInstancePackage(user, projectId);
+		const rows =
+			direction === 'promote'
+				? await this.buildRows({ projectId, direction, base: branch.files, desired: instance })
+				: await this.buildRows({
+						projectId,
+						direction,
+						base: instance.files,
+						desired: await this.readBranchDesired(branch, projectId),
+					});
+
+		return { commitSha: branch.commitSha, changes: applyQuery(rows, query) };
+	}
+
+	private async assertCanPreview(user: User, projectId: string, direction: PromotionDirection) {
+		const required = REQUIRED_SCOPES[direction];
 		if (
-			!hasGlobalScope(user, 'gitConnection:push') ||
-			!(await userHasScopes(user, ['project:export'], false, { projectId }))
+			!hasGlobalScope(user, required.global) ||
+			!(await userHasScopes(user, [required.project], false, { projectId }))
 		) {
 			throw new ForbiddenError(
-				'Change preview requires project export and promotion push permissions. Ask an administrator for access.',
+				`Change preview requires ${required.label} permissions. Ask an administrator for access.`,
 			);
 		}
-		const base = await this.promotionsService.listBaseBranchFiles(projectId);
+	}
+
+	private async buildRows({
+		projectId,
+		direction,
+		base,
+		desired,
+	}: {
+		projectId: string;
+		direction: PromotionDirection;
+		base: readonly PackageFile[];
+		desired: DesiredPackage;
+	}): Promise<PromotableResource[]> {
 		const previewId = randomUUID();
-		const {
-			files: desired,
-			manifest,
-			archiveState,
-		} = await this.exportDesiredSnapshot(user, projectId);
-		const changes = diffPackageFiles(base, desired);
+		const { manifest } = desired;
+		const changes = diffPackageFiles(base, desired.files);
 		const changedIds = new Set<string>();
 		const renamedIds = new Set<string>();
 		const modifiedIds = new Set<string>();
@@ -81,7 +149,12 @@ export class PromotionChangeService {
 				}
 				if (fileChange.change !== 'renamed') modifiedIds.add(file.entityId);
 			}
-			this.logger.debug('Promotion file change', { previewId, projectId, ...fileChange });
+			this.logger.debug('Promotion file change', {
+				previewId,
+				projectId,
+				direction,
+				...fileChange,
+			});
 		}
 		const { affectedWorkflowIds, dependencyCounts } = calculateDependencyImpact({
 			base,
@@ -97,8 +170,9 @@ export class PromotionChangeService {
 		this.logger.debug('Promotion change preview', {
 			previewId,
 			projectId,
+			direction,
 			baseFileCount: base.length,
-			desiredFileCount: desired.length,
+			desiredFileCount: desired.files.length,
 			fileChangeCount: changes.length,
 			workflowIds: [...changedIds],
 		});
@@ -106,10 +180,10 @@ export class PromotionChangeService {
 			[...changedIds].filter((id) => desiredWorkflows.has(id)),
 			{ fields: ['updatedAt', 'versionCounter'] },
 		);
-		return buildPromotableResources({
+		return await buildPromotableResources({
 			base,
+			desired,
 			desiredWorkflows,
-			archiveState,
 			changedIds,
 			renamedIds,
 			modifiedIds,
@@ -118,7 +192,7 @@ export class PromotionChangeService {
 		});
 	}
 
-	private async exportDesiredSnapshot(user: User, projectId: string) {
+	private async exportInstancePackage(user: User, projectId: string): Promise<DesiredPackage> {
 		const writer = new HashingPackageWriter();
 		const archiveState = new Map<string, boolean>();
 		const { manifest } = await this.packagesService.exportPackageToWriter(
@@ -137,7 +211,7 @@ export class PromotionChangeService {
 					writer.writeFile(path, content);
 					if (path.endsWith(`/${PACKAGE_ENTITY_LAYOUT.workflows.fileName}`)) {
 						const workflow = jsonParse<SerializedWorkflow>(String(content));
-						archiveState.set(path, workflow.isArchived);
+						archiveState.set(`${PACKAGE_SUBFOLDER}/${path}`, workflow.isArchived);
 					}
 				},
 			},
@@ -149,8 +223,89 @@ export class PromotionChangeService {
 			})),
 			{ exportRoot: PACKAGE_SUBFOLDER, projectId },
 		);
-		return { files, manifest, archiveState };
+		return { files, manifest, isWorkflowArchived: async (path) => archiveState.get(path) };
 	}
+
+	private async readBranchDesired(
+		branch: BranchPackage,
+		projectId: string,
+	): Promise<DesiredPackage> {
+		const manifest = packageManifestSchema.safeParse(
+			parseBranchJson(await branch.readFile(`${PACKAGE_SUBFOLDER}/${MANIFEST_FILE}`)),
+		);
+		if (!manifest.success) {
+			throw new BadRequestError('The package manifest on the branch cannot be read');
+		}
+		return {
+			files: branch.files,
+			manifest: scopeManifestToProject(manifest.data, projectId),
+			isWorkflowArchived: async (path) => {
+				// A workflow whose archive state cannot be read still lists as modified.
+				// Apply reports the real problem when it imports the file.
+				try {
+					return jsonParse<SerializedWorkflow>(await branch.readFile(path)).isArchived;
+				} catch {
+					return undefined;
+				}
+			},
+		};
+	}
+}
+
+function parseBranchJson(raw: string): unknown {
+	try {
+		return jsonParse<unknown>(raw);
+	} catch {
+		return undefined;
+	}
+}
+
+/**
+ * Keeps only this project's workflows and the requirement rows they use, so a
+ * dependency change on the branch cannot list another project's workflows.
+ */
+function scopeManifestToProject(manifest: PackageManifest, projectId: string): PackageManifest {
+	const projectTarget = manifest.projects?.find(({ id }) => id === projectId)?.target;
+	const workflows =
+		projectTarget === undefined
+			? []
+			: (manifest.workflows ?? []).filter(({ target }) => target.startsWith(`${projectTarget}/`));
+	const workflowIds = new Set(workflows.map(({ id }) => id));
+	const scopeRows = <T extends { usedByWorkflows: string[] }>(rows: T[] | undefined) => {
+		const kept = rows
+			?.map((row) => ({
+				...row,
+				usedByWorkflows: row.usedByWorkflows.filter((id) => workflowIds.has(id)),
+			}))
+			.filter((row) => row.usedByWorkflows.length > 0);
+		return kept?.length ? kept : undefined;
+	};
+	const { requirements } = manifest;
+	return {
+		...manifest,
+		workflows,
+		requirements: requirements && {
+			credentials: scopeRows(requirements.credentials),
+			dataTables: scopeRows(requirements.dataTables),
+			workflows: scopeRows(requirements.workflows),
+			variables: scopeRows(requirements.variables),
+			tags: scopeRows(requirements.tags),
+			nodeTypes: scopeRows(requirements.nodeTypes),
+		},
+	};
+}
+
+function applyQuery(
+	changes: PromotableResource[],
+	query: Pick<PromotionChangesQueryDto, 'search' | 'sort' | 'order'>,
+): PromotableResource[] {
+	const search = query.search?.toLowerCase();
+	return changes
+		.filter(({ name }) => !search || name.toLowerCase().includes(search))
+		.sort((a, b) => {
+			const comparison = (a[query.sort] ?? '').localeCompare(b[query.sort] ?? '');
+			return (query.order === 'desc' ? -comparison : comparison) || a.id.localeCompare(b.id);
+		});
 }
 
 function calculateDependencyImpact({
@@ -212,10 +367,10 @@ function calculateDependencyImpact({
 	return { affectedWorkflowIds, dependencyCounts };
 }
 
-function buildPromotableResources({
+async function buildPromotableResources({
 	base,
+	desired,
 	desiredWorkflows,
-	archiveState,
 	changedIds,
 	renamedIds,
 	modifiedIds,
@@ -223,29 +378,39 @@ function buildPromotableResources({
 	dependencyCounts,
 }: {
 	base: readonly PackageFile[];
+	desired: DesiredPackage;
 	desiredWorkflows: ReadonlyMap<string, ManifestEntry>;
-	archiveState: ReadonlyMap<string, boolean>;
 	changedIds: ReadonlySet<string>;
 	renamedIds: ReadonlySet<string>;
 	modifiedIds: ReadonlySet<string>;
 	metadata: ReadonlyArray<Pick<WorkflowEntity, 'id' | 'updatedAt' | 'versionCounter'>>;
 	dependencyCounts: ReadonlyMap<string, number>;
-}): PromotableResource[] {
+}): Promise<PromotableResource[]> {
 	const metadataById = new Map(metadata.map((workflow) => [workflow.id, workflow]));
 	const baseWorkflowSlugs = new Map(
 		base.filter(({ type }) => type === 'workflow').map(({ entityId, slug }) => [entityId, slug]),
 	);
-	return [...changedIds].map((id) => {
+	const desiredWorkflowPaths = new Map(
+		desired.files
+			.filter(
+				({ type, fileName }) =>
+					type === 'workflow' && fileName === PACKAGE_ENTITY_LAYOUT.workflows.fileName,
+			)
+			.map(({ entityId, path }) => [entityId, path]),
+	);
+	const resources: PromotableResource[] = [];
+	for (const id of changedIds) {
 		const entry = desiredWorkflows.get(id);
 		const workflow = metadataById.get(id);
+		const path = desiredWorkflowPaths.get(id);
 		let status: PromotableResource['status'] = 'modified';
 		if (!entry) status = 'deleted';
 		else if (!baseWorkflowSlugs.has(id)) status = 'new';
-		else if (archiveState.get(entityFilePath('workflows', entry.target))) status = 'archived';
+		else if (path !== undefined && (await desired.isWorkflowArchived(path))) status = 'archived';
 		else if (renamedIds.has(id)) {
 			status = modifiedIds.has(id) ? 'renamed-and-modified' : 'renamed';
 		}
-		return {
+		resources.push({
 			id,
 			name: entry?.name ?? baseWorkflowSlugs.get(id) ?? id,
 			type: 'workflow',
@@ -254,6 +419,7 @@ function buildPromotableResources({
 			updatedAt: workflow?.updatedAt.toISOString() ?? null,
 			updatedBy: null,
 			dependencyCount: dependencyCounts.get(id) ?? 0,
-		};
-	});
+		});
+	}
+	return resources;
 }
