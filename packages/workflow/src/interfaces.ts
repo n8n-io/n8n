@@ -976,6 +976,22 @@ interface NodeHelperFunctions {
 }
 
 /**
+ * Controls whether an outbound HTTP client is subject to the instance's
+ * outbound network policy (SSRF protection).
+ *
+ * - `'safe'` (default): the client enforces the instance policy. Whether the
+ *   guard actually runs is decided inside `OutboundHttp` from
+ *   `SsrfProtectionConfig.enabled` — callers never read that flag themselves.
+ * - `'enforced'`: the guard runs unconditionally, regardless of
+ *   `SsrfProtectionConfig.enabled`. Reserve this for destinations that must
+ *   stay guarded even on instances that leave protection off.
+ * - `'unsafe'`: the client bypasses the policy unconditionally. Reserve this
+ *   for fixed, n8n-owned or operator-configured destinations, and state the
+ *   reason in a comment at the call site.
+ */
+export type UseDefaultSsrfPolicy = 'safe' | 'enforced' | 'unsafe';
+
+/**
  * Egress filter exposed to nodes whose embedded HTTP clients cannot go through
  * `httpRequest`. Mirrors the layers n8n's own egress uses: a pre-flight URL
  * validation, a connect-time secure DNS lookup, and per-redirect validation.
@@ -983,6 +999,8 @@ interface NodeHelperFunctions {
 export interface NodeEgressFilter {
 	/** Validate a target URL before any connection. Resolves hostnames; direct IP literals are checked without DNS. */
 	validateUrl(url: string | URL): Promise<Result<void, Error>>;
+	/** Validate a connection host no DNS lookup will see (e.g. an IP-literal proxy host), without resolving it. */
+	validateConnectionHost(host: string): Result<void, Error>;
 	/** DNS lookup drop-in that validates resolved addresses against the configured egress rules. */
 	createSecureLookup(): LookupFunction;
 	/** Validate a redirect hop synchronously; throws when the target is not allowed. */
@@ -1049,10 +1067,12 @@ export interface RequestHelperFunctions {
 	): Promise<any>;
 	/**
 	 * Returns the instance egress filter for clients that build their own HTTP
-	 * transport. When egress filtering is not configured, this is a passthrough
-	 * implementation, so callers can always use the returned filter unguarded.
+	 * transport. Under the default `'safe'` policy, this is a passthrough
+	 * implementation when egress filtering is not configured, so callers can
+	 * always use the returned filter unguarded.
+	 * @param {UseDefaultSsrfPolicy} [useDefaultSsrfPolicy='safe'] how the instance policy applies to the returned filter
 	 */
-	getSecureEgressFilter(): NodeEgressFilter;
+	getSecureEgressFilter(useDefaultSsrfPolicy?: UseDefaultSsrfPolicy): NodeEgressFilter;
 }
 
 export type SSHCredentials = {
@@ -3456,6 +3476,8 @@ export interface ITaskMetadata {
 	parentExecution?: RelatedExecution;
 	subExecution?: RelatedExecution;
 	subExecutionsCount?: number;
+	/** Sub-executions whose wait parked this execution; read by the sweep that resumes the parent. */
+	waitingChildExecutionIds?: string[];
 	/**
 	 * Private-credential usage a sub-execution reported while this execution was
 	 * waiting. The waiting task is popped and the node re-runs disabled on resume,

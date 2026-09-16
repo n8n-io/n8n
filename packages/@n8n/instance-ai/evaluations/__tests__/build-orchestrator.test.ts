@@ -104,6 +104,7 @@ function makeLane(num: number, tracedBuild: LaneState['tracedBuild']): LaneState
 			baseUrl: `http://lane${String(num)}.test`,
 			preRunWorkflowIds: new Set<string>(),
 			preRunDataTableIds: new Set<string>(),
+			preRunFolderIds: new Set<string>(),
 			claimedWorkflowIds: new Set<string>(),
 			createdCredentialIds: new Set<string>(),
 			workflowIdsToDelete: new Set<string>(),

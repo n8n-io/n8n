@@ -11,10 +11,10 @@ Secure, isolated expression evaluation runtime for n8n workflows.
 - ✅ `IsolatedVmBridge`: V8 isolate management via `isolated-vm`
 - ✅ `ExpressionEvaluator`: tournament integration, expression code caching, isolate pooling
 - ✅ Workflow integration — default engine; `N8N_EXPRESSION_ENGINE=legacy` opts out
+- ✅ Editor support — the `QuickJsBridge` runs in the browser; `N8N_EXPRESSION_ENGINE_FRONTEND=quickjs` opts in
 - ✅ Observability (metrics, traces, logs) wired up in `packages/cli`
 
 Coming later:
-- 🚧 Web Worker support (Phase 2+)
 - 🚧 Performance optimizations (Phase 3)
 
 ## Overview
@@ -23,9 +23,9 @@ This package provides a secure runtime for evaluating expressions in isolated co
 
 Currently supports:
 - **Node.js Backend**: Uses `isolated-vm` for V8 isolate-based isolation with lazy data loading
+- **Browser Frontend**: Uses `QuickJsBridge` (QuickJS compiled to WASM); `N8N_EXPRESSION_ENGINE_FRONTEND=quickjs` opts in
 
 Future support (Phase 2+):
-- **Browser Frontend**: Will use Web Workers for browser-based isolation
 - **Task Runners**: Will use IPC for separate process isolation
 
 ## Features
@@ -170,7 +170,7 @@ interface RuntimeBridge {
   - Synchronous callbacks via ivm.Reference
   - Security wrappers (SafeObject, SafeError)
   - `E()` error handler for tournament-generated try-catch code
-- **WebWorkerBridge**: 🚧 For browser frontend (Web Workers) - Phase 2+
+- **QuickJsBridge**: ✅ QuickJS in WASM, for the Node.js backend and the browser frontend
 - **Task Runner Integration**: 🚧 TBD - May use IsolatedVmBridge locally or direct evaluation - Phase 2+
 
 ## Configuration
@@ -194,6 +194,9 @@ In n8n, the evaluator is configured via `ExpressionEngineConfig` (`@n8n/config`)
 ```bash
 # Engine selection ('vm' is the default; 'legacy' opts out of isolation)
 N8N_EXPRESSION_ENGINE=vm
+
+# Editor engine selection ('legacy' is the default; 'quickjs' runs the WASM engine in the browser)
+N8N_EXPRESSION_ENGINE_FRONTEND=legacy
 
 # Isolate pool and code cache
 N8N_EXPRESSION_ENGINE_POOL_SIZE=1
