@@ -4008,7 +4008,7 @@ importers:
         specifier: ^9.0.0
         version: 9.0.8
       '@typescript-eslint/eslint-plugin':
-        specifier: ^8.35.0
+        specifier: 'catalog:'
         version: 8.35.0(@typescript-eslint/parser@8.35.0(eslint@8.57.1(supports-color@8.1.1))(supports-color@8.1.1)(typescript@7.0.2))(eslint@8.57.1(supports-color@8.1.1))(supports-color@8.1.1)(typescript@7.0.2)
       chai:
         specifier: ^4.3.7

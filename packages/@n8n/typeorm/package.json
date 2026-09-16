@@ -70,7 +70,7 @@
     "@types/sinon": "^10.0.13",
     "@types/source-map-support": "^0.5.6",
     "@types/uuid": "^9.0.0",
-    "@typescript-eslint/eslint-plugin": "^8.35.0",
+    "@typescript-eslint/eslint-plugin": "catalog:",
     "chai": "^4.3.7",
     "chai-as-promised": "^7.1.1",
     "eslint": "^8.44.0",
