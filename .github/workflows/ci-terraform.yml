@@ -6,6 +6,10 @@ on:
       - packages/@n8n/benchmark/infra/**
       - .github/workflows/ci-terraform.yml
 
+# The job only reads the repo and runs terraform. It writes nothing.
+permissions:
+  contents: read
+
 jobs:
   checks:
     name: Checks
