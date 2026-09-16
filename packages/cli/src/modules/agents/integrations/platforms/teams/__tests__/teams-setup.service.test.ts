@@ -1,6 +1,7 @@
 import { mock } from 'vitest-mock-extended';
 import { unzipSync } from 'fflate';
 import type { GlobalConfig } from '@n8n/config';
+import type { User } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
 
 import { JwtService } from '@/services/jwt.service';
@@ -20,6 +21,8 @@ const AGENT_ID = 'agent-1';
 const CREDENTIAL_ID = 'cred-1';
 const CLIENT_ID = '11111111-2222-3333-4444-555555555555';
 const TENANT_ID = '99999999-8888-7777-6666-555555555555';
+
+const user = mock<User>({ id: 'user-1' });
 
 const jwtService = new JwtService(
 	mock<InstanceSettings>({ encryptionKey: 'test-encryption-key' }),
@@ -70,6 +73,9 @@ describe('TeamsSetupService', () => {
 		urlService.getWebhookBaseUrl.mockReturnValue('https://n8n.example.com/');
 		credentialsService.findAllCredentialIdsForProject.mockResolvedValue([]);
 		credentialsService.findAllGlobalCredentialIds.mockResolvedValue([]);
+		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+			mock({ id: CREDENTIAL_ID }),
+		]);
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agentWith([]));
 		agentRepository.findByIntegrationCredentialAnyProject.mockResolvedValue([]);
 
@@ -85,7 +91,7 @@ describe('TeamsSetupService', () => {
 
 	describe('getSetupState', () => {
 		it('always shows the messaging endpoint URL, credential or not', async () => {
-			const state = await service.getSetupState({ projectId: PROJECT_ID, agentId: AGENT_ID });
+			const state = await service.getSetupState(user, { projectId: PROJECT_ID, agentId: AGENT_ID });
 
 			expect(state.messagingEndpointUrl).toBe(
 				'https://n8n.example.com/rest/projects/project-1/agents/v2/agent-1/webhooks/teams',
@@ -93,7 +99,7 @@ describe('TeamsSetupService', () => {
 		});
 
 		it('withholds the deployment until a credential supplies the Entra IDs', async () => {
-			const state = await service.getSetupState({ projectId: PROJECT_ID, agentId: AGENT_ID });
+			const state = await service.getSetupState(user, { projectId: PROJECT_ID, agentId: AGENT_ID });
 
 			expect(state.botId).toBeNull();
 			expect(state.deployToAzureUrl).toBeNull();
@@ -110,7 +116,11 @@ describe('TeamsSetupService', () => {
 			});
 
 			const state = await service.getSetupState(
-				{ projectId: PROJECT_ID, agentId: AGENT_ID },
+				user,
+				{
+					projectId: PROJECT_ID,
+					agentId: AGENT_ID,
+				},
 				CREDENTIAL_ID,
 			);
 
@@ -121,7 +131,7 @@ describe('TeamsSetupService', () => {
 		it('reports the bot once a credential is connected', async () => {
 			connectTeamsCredential();
 
-			const state = await service.getSetupState({ projectId: PROJECT_ID, agentId: AGENT_ID });
+			const state = await service.getSetupState(user, { projectId: PROJECT_ID, agentId: AGENT_ID });
 
 			expect(state.botId).toBe(CLIENT_ID);
 		});
@@ -129,7 +139,7 @@ describe('TeamsSetupService', () => {
 		it('ignores a connected credential of the wrong type', async () => {
 			connectTeamsCredential('slackApi');
 
-			const state = await service.getSetupState({ projectId: PROJECT_ID, agentId: AGENT_ID });
+			const state = await service.getSetupState(user, { projectId: PROJECT_ID, agentId: AGENT_ID });
 
 			expect(state.botId).toBeNull();
 		});
@@ -137,7 +147,7 @@ describe('TeamsSetupService', () => {
 		it('never leaks the client secret', async () => {
 			connectTeamsCredential();
 
-			const state = await service.getSetupState({ projectId: PROJECT_ID, agentId: AGENT_ID });
+			const state = await service.getSetupState(user, { projectId: PROJECT_ID, agentId: AGENT_ID });
 
 			expect(JSON.stringify(state)).not.toContain('super-secret');
 		});
@@ -155,7 +165,11 @@ describe('TeamsSetupService', () => {
 			claimedByOtherAgent();
 
 			const state = await service.getSetupState(
-				{ projectId: PROJECT_ID, agentId: AGENT_ID },
+				user,
+				{
+					projectId: PROJECT_ID,
+					agentId: AGENT_ID,
+				},
 				CREDENTIAL_ID,
 			);
 
@@ -167,7 +181,11 @@ describe('TeamsSetupService', () => {
 			claimedByOtherAgent();
 
 			const state = await service.getSetupState(
-				{ projectId: PROJECT_ID, agentId: AGENT_ID },
+				user,
+				{
+					projectId: PROJECT_ID,
+					agentId: AGENT_ID,
+				},
 				CREDENTIAL_ID,
 			);
 
@@ -177,7 +195,11 @@ describe('TeamsSetupService', () => {
 		it("looks beyond the agent's own project, because the clash is at Microsoft", async () => {
 			connectTeamsCredential();
 
-			await service.getSetupState({ projectId: PROJECT_ID, agentId: AGENT_ID }, CREDENTIAL_ID);
+			await service.getSetupState(
+				user,
+				{ projectId: PROJECT_ID, agentId: AGENT_ID },
+				CREDENTIAL_ID,
+			);
 
 			expect(agentRepository.findByIntegrationCredentialAnyProject).toHaveBeenCalledWith(
 				'teams',
@@ -191,7 +213,7 @@ describe('TeamsSetupService', () => {
 			claimedByOtherAgent();
 
 			await expect(
-				service.buildPackage({ projectId: PROJECT_ID, agentId: AGENT_ID }, CREDENTIAL_ID),
+				service.buildPackage(user, { projectId: PROJECT_ID, agentId: AGENT_ID }, CREDENTIAL_ID),
 			).rejects.toThrow(/already backs the Teams channel/);
 		});
 
@@ -199,7 +221,11 @@ describe('TeamsSetupService', () => {
 			connectTeamsCredential();
 
 			const state = await service.getSetupState(
-				{ projectId: PROJECT_ID, agentId: AGENT_ID },
+				user,
+				{
+					projectId: PROJECT_ID,
+					agentId: AGENT_ID,
+				},
 				CREDENTIAL_ID,
 			);
 
@@ -211,7 +237,7 @@ describe('TeamsSetupService', () => {
 	describe('buildPackage', () => {
 		it('refuses to build a package before a credential supplies the client ID', async () => {
 			await expect(
-				service.buildPackage({ projectId: PROJECT_ID, agentId: AGENT_ID }),
+				service.buildPackage(user, { projectId: PROJECT_ID, agentId: AGENT_ID }),
 			).rejects.toThrow(/Add the credential/);
 		});
 
@@ -225,7 +251,7 @@ describe('TeamsSetupService', () => {
 			});
 
 			await expect(
-				service.buildPackage({ projectId: PROJECT_ID, agentId: AGENT_ID }, CREDENTIAL_ID),
+				service.buildPackage(user, { projectId: PROJECT_ID, agentId: AGENT_ID }, CREDENTIAL_ID),
 			).resolves.toBeInstanceOf(Buffer);
 		});
 
@@ -233,7 +259,7 @@ describe('TeamsSetupService', () => {
 			connectTeamsCredential();
 
 			await expect(
-				service.buildPackage({ projectId: PROJECT_ID, agentId: AGENT_ID }),
+				service.buildPackage(user, { projectId: PROJECT_ID, agentId: AGENT_ID }),
 			).resolves.toBeInstanceOf(Buffer);
 		});
 
@@ -248,7 +274,7 @@ describe('TeamsSetupService', () => {
 			});
 
 			await expect(
-				service.buildPackage({ projectId: PROJECT_ID, agentId: AGENT_ID }, CREDENTIAL_ID),
+				service.buildPackage(user, { projectId: PROJECT_ID, agentId: AGENT_ID }, CREDENTIAL_ID),
 			).rejects.toThrow(/not a GUID/);
 		});
 
@@ -259,6 +285,7 @@ describe('TeamsSetupService', () => {
 			connectTeamsCredential();
 
 			const archive = await service.buildPackage(
+				user,
 				{ projectId: PROJECT_ID, agentId: AGENT_ID },
 				CREDENTIAL_ID,
 				{ teamChannels: true, groupChats: true, displayName: 'Helpdesk' },
@@ -273,12 +300,17 @@ describe('TeamsSetupService', () => {
 			connectTeamsCredential();
 
 			const stored = manifestOf(
-				await service.buildPackage({ projectId: PROJECT_ID, agentId: AGENT_ID }),
+				await service.buildPackage(user, { projectId: PROJECT_ID, agentId: AGENT_ID }),
 			).version;
 			const chosen = manifestOf(
-				await service.buildPackage({ projectId: PROJECT_ID, agentId: AGENT_ID }, CREDENTIAL_ID, {
-					teamChannels: true,
-				}),
+				await service.buildPackage(
+					user,
+					{ projectId: PROJECT_ID, agentId: AGENT_ID },
+					CREDENTIAL_ID,
+					{
+						teamChannels: true,
+					},
+				),
 			).version;
 
 			// The agent's own timestamp does not move when unsaved settings change,
@@ -295,7 +327,10 @@ describe('TeamsSetupService', () => {
 			]);
 			credentialsService.decrypt.mockResolvedValue({ clientId: CLIENT_ID, tenantId: TENANT_ID });
 
-			const archive = await service.buildPackage({ projectId: PROJECT_ID, agentId: AGENT_ID });
+			const archive = await service.buildPackage(user, {
+				projectId: PROJECT_ID,
+				agentId: AGENT_ID,
+			});
 
 			expect(manifestOf(archive).bots[0].scopes).toEqual(['personal', 'groupChat']);
 		});
@@ -309,12 +344,42 @@ describe('TeamsSetupService', () => {
 		credentialsService.decrypt.mockResolvedValue({ clientId: '', tenantId: '' });
 
 		const state = await service.getSetupState(
-			{ projectId: PROJECT_ID, agentId: AGENT_ID },
+			user,
+			{
+				projectId: PROJECT_ID,
+				agentId: AGENT_ID,
+			},
 			CREDENTIAL_ID,
 		);
 
 		// The portal would fetch the template and be told the credential is
 		// incomplete, which reads as an n8n outage.
+		expect(state.deployToAzureUrl).toBeNull();
+	});
+
+	it('refuses to build a package on a credential the caller may not use', async () => {
+		connectTeamsCredential();
+		// Present in the project, but not shared with this user.
+		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([]);
+
+		await expect(
+			service.buildPackage(user, { projectId: PROJECT_ID, agentId: AGENT_ID }, CREDENTIAL_ID),
+		).rejects.toThrow(/Add the credential/);
+	});
+
+	it('hides the bot ID of a credential the caller may not use', async () => {
+		connectTeamsCredential();
+		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([]);
+
+		const state = await service.getSetupState(
+			user,
+			{ projectId: PROJECT_ID, agentId: AGENT_ID },
+			CREDENTIAL_ID,
+		);
+
+		// The client ID is credential content, and the deploy link would serve
+		// it plus the tenant ID to an unauthenticated fetch.
+		expect(state.botId).toBeNull();
 		expect(state.deployToAzureUrl).toBeNull();
 	});
 

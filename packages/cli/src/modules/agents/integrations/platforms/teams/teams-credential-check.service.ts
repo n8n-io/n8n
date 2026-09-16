@@ -1,6 +1,7 @@
 import type { TeamsCredentialCheck } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
+import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { AgentCredentialLookupService } from '../../agent-credential-lookup.service';
 import { stringProperty } from '../../integration-helpers';
@@ -32,8 +33,11 @@ export class TeamsCredentialCheckService {
 	 * reasons the channel would: a wrong secret, a wrong tenant, a wrong client
 	 * ID. Anything short of a real token is not evidence the channel will work.
 	 */
-	async check(projectId: string, credentialId: string): Promise<TeamsCredentialCheck> {
-		const data = await this.credentialLookup.decryptForProject(
+	async check(user: User, projectId: string, credentialId: string): Promise<TeamsCredentialCheck> {
+		// Scoped to the caller, not just the project: this mints a real token, and
+		// naming a credential is not the same as being allowed to use it.
+		const data = await this.credentialLookup.decryptForUser(
+			user,
 			projectId,
 			credentialId,
 			TEAMS_CREDENTIAL_TYPE,

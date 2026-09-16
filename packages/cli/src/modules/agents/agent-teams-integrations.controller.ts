@@ -40,7 +40,7 @@ export class AgentTeamsIntegrationsController {
 		_res: Response,
 		@Param('credentialId') credentialId: string,
 	): Promise<TeamsCredentialCheck> {
-		return await this.credentialCheckService.check(req.params.projectId, credentialId);
+		return await this.credentialCheckService.check(req.user, req.params.projectId, credentialId);
 	}
 
 	@Get('/:agentId/integrations/teams/setup')
@@ -52,6 +52,7 @@ export class AgentTeamsIntegrationsController {
 	): Promise<TeamsAgentSetupState> {
 		const credentialId = req.query.credentialId;
 		return await this.setupService.getSetupState(
+			req.user,
 			{ projectId: req.params.projectId, agentId },
 			typeof credentialId === 'string' ? credentialId : undefined,
 		);
@@ -70,6 +71,7 @@ export class AgentTeamsIntegrationsController {
 		@Body payload: AgentTeamsPackageDto,
 	): Promise<void> {
 		const archive = await this.setupService.buildPackage(
+			req.user,
 			{ projectId: req.params.projectId, agentId },
 			payload.credentialId,
 			payload.settings,
