@@ -2196,6 +2196,122 @@
 				"message": "packages/modules/insights/frontend turns '@typescript-eslint/require-await' down to 'warn' for the whole package.",
 				"hash": "b857963c49d1"
 			}
+		],
+		"packages/cli/oxlint.config.mts": [
+			{
+				"rule": "lint-config-layering",
+				"line": 86,
+				"message": "packages/cli turns 'typescript/ban-ts-comment' down to 'off' for the whole package.",
+				"hash": "8ce649f6325e"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 87,
+				"message": "packages/cli turns 'import/no-cycle' down to 'warn' for the whole package.",
+				"hash": "d1a323605d82"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 88,
+				"message": "packages/cli turns 'no-ex-assign' down to 'warn' for the whole package.",
+				"hash": "8e06c3185fea"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 89,
+				"message": "packages/cli turns 'no-case-declarations' down to 'warn' for the whole package.",
+				"hash": "0113294d567c"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 90,
+				"message": "packages/cli turns 'no-fallthrough' down to 'warn' for the whole package.",
+				"hash": "1c2c962990dc"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 91,
+				"message": "packages/cli turns 'no-unsafe-optional-chaining' down to 'warn' for the whole package.",
+				"hash": "ea7abf87c8e1"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 92,
+				"message": "packages/cli turns 'no-async-promise-executor' down to 'warn' for the whole package.",
+				"hash": "439bd5663098"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 93,
+				"message": "packages/cli turns 'typescript/prefer-promise-reject-errors' down to 'warn' for the whole package.",
+				"hash": "f66fb711f73c"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 94,
+				"message": "packages/cli turns 'typescript/no-explicit-any' down to 'warn' for the whole package.",
+				"hash": "8d04d20abf14"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 95,
+				"message": "packages/cli turns 'typescript/no-base-to-string' down to 'warn' for the whole package.",
+				"hash": "150b70a83647"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 96,
+				"message": "packages/cli turns 'typescript/no-redundant-type-constituents' down to 'warn' for the whole package.",
+				"hash": "305977256d63"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 97,
+				"message": "packages/cli turns 'typescript/no-restricted-types' down to 'warn' for the whole package.",
+				"hash": "c54dd4e9a991"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 98,
+				"message": "packages/cli turns 'typescript/no-unsafe-enum-comparison' down to 'warn' for the whole package.",
+				"hash": "24212381cd2c"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 99,
+				"message": "packages/cli turns 'typescript/no-unsafe-declaration-merging' down to 'warn' for the whole package.",
+				"hash": "b356b9e9c40f"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 100,
+				"message": "packages/cli turns 'typescript/only-throw-error' down to 'warn' for the whole package.",
+				"hash": "1a50fa1c43a1"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 101,
+				"message": "packages/cli turns 'typescript/no-require-imports' down to 'warn' for the whole package.",
+				"hash": "311019e3d1e5"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 102,
+				"message": "packages/cli turns 'typescript/array-type' down to 'warn' for the whole package.",
+				"hash": "51a269c524d3"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 103,
+				"message": "packages/cli turns 'no-useless-escape' down to 'warn' for the whole package.",
+				"hash": "6a48caa02e63"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 104,
+				"message": "packages/cli turns 'typescript/no-duplicate-type-constituents' down to 'warn' for the whole package.",
+				"hash": "9e547bb1eaae"
+			}
 		]
 	}
 }

@@ -3,7 +3,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 
-import type { AgentModelOption, AgentModelsByProvider } from '../model-providers';
+import type {
+	AgentCredentialsByProvider,
+	AgentModelOption,
+	AgentModelsByProvider,
+} from '../model-providers';
 
 type Credential = { id: string; name: string; type: string; isManaged?: boolean };
 type TestMenuItem = {
@@ -201,7 +205,7 @@ const modelsByProvider: AgentModelsByProvider = {
 };
 
 async function mountSelector(
-	credentials: Record<string, string | null>,
+	credentials: AgentCredentialsByProvider | null,
 	extraProps: {
 		credentialModalAppendToBody?: boolean;
 		boundCredentialId?: string | null;
@@ -533,6 +537,60 @@ describe('AgentModelSelector', () => {
 		// Shown as plain text (like an own credential name), not a custom badge.
 		expect(dropdown.props('selectedCredentialName')).toBe('Gateway credits');
 	});
+
+	it('keeps the warning hidden while Gateway credits load on mount and remount', async () => {
+		credentialsByType.value = {};
+		aiGatewayState.isEnabled.value = true;
+		aiGatewayState.supportedTypes = new Set(['anthropicApi']);
+
+		for (const mountNumber of [1, 2]) {
+			const wrapper = await mountSelector(null, {
+				boundCredentialId: AI_GATEWAY_MANAGED_TAG,
+			});
+			const dropdown = getDropdown(wrapper);
+
+			expect(dropdown.props('credentialsMissing'), `mount ${mountNumber}`).toBe(false);
+
+			await wrapper.setProps({ credentials: { anthropic: AI_GATEWAY_MANAGED_TAG } });
+
+			expect(dropdown.props('credentialsMissing')).toBe(false);
+			expect(dropdown.props('selectedCredentialName')).toBe('Gateway credits');
+			wrapper.unmount();
+		}
+	});
+
+	it('keeps the warning hidden while a stored credential loads', async () => {
+		credentialsByType.value = {};
+		const wrapper = await mountSelector(null, { boundCredentialId: 'anthropic-cred' });
+		const dropdown = getDropdown(wrapper);
+
+		expect(dropdown.props('credentialsMissing')).toBe(false);
+
+		credentialsByType.value = {
+			anthropicApi: [{ id: 'anthropic-cred', name: 'Anthropic credential', type: 'anthropicApi' }],
+		};
+		await wrapper.setProps({ credentials: { anthropic: 'anthropic-cred' } });
+
+		expect(dropdown.props('credentialsMissing')).toBe(false);
+		expect(dropdown.props('selectedCredentialName')).toBe('Anthropic credential');
+	});
+
+	it.each([
+		{ state: 'missing', boundCredentialId: null },
+		{ state: 'deleted', boundCredentialId: 'deleted-credential' },
+	])(
+		'shows a $state credential warning only after credentials resolve',
+		async ({ boundCredentialId }) => {
+			const wrapper = await mountSelector(null, { boundCredentialId });
+			const dropdown = getDropdown(wrapper);
+
+			expect(dropdown.props('credentialsMissing')).toBe(false);
+
+			await wrapper.setProps({ credentials: { anthropic: null } });
+
+			expect(dropdown.props('credentialsMissing')).toBe(true);
+		},
+	);
 
 	it('surfaces a stale selected credential as missing', async () => {
 		const wrapper = await mountSelector(
