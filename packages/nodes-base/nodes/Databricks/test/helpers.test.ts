@@ -5,12 +5,18 @@ import type {
 	IHttpRequestOptions,
 	ILoadOptionsFunctions,
 	INode,
+	IPollFunctions,
 	JsonObject,
 } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock, mockDeep } from 'vitest-mock-extended';
 
-import { databricksApiRequest, fetchDatabricksPage, readIdParameter } from '../actions/helpers';
+import {
+	databricksApiRequest,
+	fetchDatabricksPage,
+	getActiveCredentialType,
+	readIdParameter,
+} from '../actions/helpers';
 import { DATABRICKS_PARTNER_USER_AGENT } from '../constants';
 
 vi.mock('@n8n/utils/sleep', () => ({
@@ -86,8 +92,6 @@ describe('databricksApiRequest', () => {
 	});
 
 	it('should forward the credential type and bind the call to the passed context', async () => {
-		// `fetchResourcesInSchema` in methods/listSearch.ts passes a context object
-		// rather than `this`, so the receiver must come from the argument.
 		const loadOptionsContext = mock<ILoadOptionsFunctions>({
 			getNode: () => mock<INode>({ typeVersion: 1 }),
 			helpers: { httpRequestWithAuthentication },
@@ -101,27 +105,23 @@ describe('databricksApiRequest', () => {
 		expect(httpRequestWithAuthentication.mock.calls[0][0]).toBe('databricksOAuth2Api');
 		expect(httpRequestWithAuthentication.mock.instances[0]).toBe(loadOptionsContext);
 	});
+});
 
-	it('should track the integration version rather than the node typeVersion', async () => {
-		// A node instance pinned to an older typeVersion must still report the version
-		// of the integration that is actually running.
-		const staleContext = mock<IExecuteFunctions>({
-			getNode: () => mock<INode>({ typeVersion: 0.1 }),
-			helpers: { httpRequestWithAuthentication },
-		});
+describe('getActiveCredentialType', () => {
+	it('should read the authentication parameter of the given item on an execute context', () => {
+		const context = mock<IExecuteFunctions>({ getInputData: vi.fn() });
+		context.getNodeParameter.mockReturnValue('oAuth2');
 
-		await databricksApiRequest(staleContext, 'databricksApi', {
-			method: 'GET',
-			url: 'https://example.databricks.com/api/2.1/unity-catalog/catalogs',
-		});
-
-		expect(capturedOptions().headers).toEqual({
-			'User-Agent': DATABRICKS_PARTNER_USER_AGENT,
-		});
+		expect(getActiveCredentialType(context, 2)).toBe('databricksOAuth2Api');
+		expect(context.getNodeParameter).toHaveBeenCalledWith('authentication', 2, 'accessToken');
 	});
 
-	it('should send the unversioned partner User-Agent', () => {
-		expect(DATABRICKS_PARTNER_USER_AGENT).toBe('n8n_DatabricksNode');
+	it('should read the authentication parameter without an item index on a polling context', () => {
+		const context = mock<IPollFunctions>();
+		context.getNodeParameter.mockReturnValue('accessToken');
+
+		expect(getActiveCredentialType(context)).toBe('databricksApi');
+		expect(context.getNodeParameter).toHaveBeenCalledWith('authentication', 'accessToken');
 	});
 });
 

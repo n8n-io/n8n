@@ -74,6 +74,7 @@ export type DatabricksJobRunTask = {
 	start_time?: number;
 	end_time?: number;
 	status?: DatabricksJobRunStatus;
+	/** @deprecated Jobs API 2.2 reports `status` instead */
 	state?: DatabricksJobRunLegacyState;
 };
 
