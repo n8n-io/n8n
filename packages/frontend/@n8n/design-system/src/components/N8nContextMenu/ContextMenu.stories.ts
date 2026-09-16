@@ -379,11 +379,13 @@ const overflowItems: Array<ContextMenuNode<string>> = [
 		id: 'team',
 		label: 'Team',
 		icon: { type: 'icon', value: 'users' },
-		children: teamUserNames.map((name) => ({
-			type: 'item' as const,
-			id: `user-${name.toLowerCase().replaceAll(' ', '-')}`,
-			label: name,
-		})),
+		children: teamUserNames.map(
+			(name): ContextMenuNode<string> => ({
+				type: 'item',
+				id: `user-${name.toLowerCase().replaceAll(' ', '-')}`,
+				label: name,
+			}),
+		),
 	},
 	{
 		type: 'group',
@@ -451,7 +453,7 @@ const storyTriggerStyle = `
 	height: 12rem;
 	flex-shrink: 0;
 	padding: var(--spacing--lg);
-	border: var(--border-width--base) dashed var(--border-color);
+	border: var(--border-width) dashed var(--border-color);
 	border-radius: var(--radius--lg);
 	color: var(--text-color--subtler);
 	text-align: center;
@@ -564,7 +566,14 @@ function logSelect(action: string) {
 	console.log('Selected:', action);
 }
 
-const positionArgTypes = {
+type PositionNumberArgType = {
+	name: string;
+	control: { type: 'number'; min: number; max: number; step: number };
+	description: string;
+	table: { category: string };
+};
+
+const positionArgTypes: { positionX: PositionNumberArgType; positionY: PositionNumberArgType } = {
 	positionX: {
 		name: 'positionX',
 		control: { type: 'number', min: 0, max: 1280, step: 1 },
@@ -798,10 +807,10 @@ export const ControlledUncontrolled: Story = {
 			const open = ref(false);
 			const selectedValues = ref(['show-grid']);
 			const position = computed(() => triggerAwarePosition(args.positionX, args.positionY));
-			const presets = [
+			const presets: Array<{ label: string; values: string[] }> = [
 				{ label: 'Grid only', values: ['show-grid'] },
 				{ label: 'Grid + minimap', values: ['show-grid', 'show-minimap'] },
-				{ label: 'Clear', values: [] as string[] },
+				{ label: 'Clear', values: [] },
 			];
 			return { args, checkboxItems, open, selectedValues, position, presets, logSelect };
 		},
@@ -1396,8 +1405,8 @@ export const CoordinateMode: Story = {
 			);
 
 			watch(
-				() => [args.positionX, args.positionY] as const,
-				([x, y]) => {
+				() => ({ x: args.positionX, y: args.positionY }),
+				({ x, y }) => {
 					const next = storyPosition(x, y);
 					if (next) position.value = next;
 				},
