@@ -101,11 +101,20 @@ const messagingEndpointUrl = computed(() => {
 	return `${base}/rest/projects/${props.projectId}/agents/v2/${props.agentId}/webhooks/teams`;
 });
 
+/**
+ * Surfaced here rather than at connect, which is three steps later: by then the
+ * user has already spent an Azure deployment that the portal refuses, and reads
+ * Azure's wording for a choice they could still change on this step.
+ */
+const credentialClaimedBy = computed(() => setupState.value?.credentialClaimedBy ?? null);
+
 const downloading = ref(false);
 const downloadError = ref('');
 // The manifest needs the bot's client ID, which the picked credential supplies
 // before it is connected, so the step does not wait on connecting.
-const canDownloadPackage = computed(() => Boolean(setupState.value?.botId));
+const canDownloadPackage = computed(
+	() => Boolean(setupState.value?.botId) && !credentialClaimedBy.value,
+);
 
 const credentialCheck = ref<TeamsCredentialCheck | null>(null);
 const checking = ref(false);
@@ -254,6 +263,19 @@ defineExpose({ credentialId, validationError: null, currentSettings });
 							@edit="emit('edit')"
 						/>
 
+						<N8nText
+							v-if="credentialClaimedBy"
+							size="small"
+							:class="$style.error"
+							data-testid="teams-credential-claimed"
+						>
+							{{
+								i18n.baseText('agents.channels.teams.setup.createCredential.claimed', {
+									interpolate: { agent: credentialClaimedBy },
+								})
+							}}
+						</N8nText>
+
 						<!--
 							A link, not a button: the credential is the action on this step. It
 							stays because the credential's own fields say where to copy each
@@ -285,7 +307,11 @@ defineExpose({ credentialId, validationError: null, currentSettings });
 							{{ i18n.baseText('agents.channels.teams.setup.createBot.button') }}
 						</N8nButton>
 						<N8nText v-else :class="$style.hint" size="small" data-testid="teams-deploy-blocked">
-							{{ i18n.baseText('agents.channels.teams.setup.createBot.needsCredential') }}
+							{{
+								credentialClaimedBy
+									? i18n.baseText('agents.channels.teams.setup.createBot.needsFreeCredential')
+									: i18n.baseText('agents.channels.teams.setup.createBot.needsCredential')
+							}}
 						</N8nText>
 
 						<N8nText :class="$style.hint" size="small">
@@ -403,7 +429,7 @@ defineExpose({ credentialId, validationError: null, currentSettings });
 							<N8nButton
 								variant="solid"
 								size="medium"
-								:disabled="!credentialVerified || loading"
+								:disabled="!credentialVerified || Boolean(credentialClaimedBy) || loading"
 								:loading="loading"
 								data-testid="teams-connect"
 								@click="emit('connect')"

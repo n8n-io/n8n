@@ -49,14 +49,22 @@ export class TeamsSetupService {
 	): Promise<TeamsAgentSetupState> {
 		const agent = await this.getAgent(scope);
 		const credentialId = selectedCredentialId ?? this.connectedCredentialId(agent);
-		const identity = credentialId ? await this.readIdentity(agent.projectId, credentialId) : null;
+		const [identity, claimedBy] = await Promise.all([
+			credentialId ? this.readIdentity(agent.projectId, credentialId) : null,
+			credentialId ? this.credentialClaimedBy(agent.id, credentialId) : null,
+		]);
 
 		return {
 			messagingEndpointUrl: this.messagingEndpointUrl(scope),
 			botId: identity?.clientId ?? null,
-			deployToAzureUrl: credentialId
-				? this.armTemplateService.buildDeployUrl(scope.projectId, scope.agentId, credentialId)
-				: null,
+			// Withheld while the credential is taken: the deployment would fail in
+			// the portal, and the user would read Azure's wording for an n8n-side
+			// choice they can still change here.
+			deployToAzureUrl:
+				credentialId && !claimedBy
+					? this.armTemplateService.buildDeployUrl(scope.projectId, scope.agentId, credentialId)
+					: null,
+			credentialClaimedBy: claimedBy,
 			...this.defaultIdentity(agent.name),
 		};
 	}
@@ -127,6 +135,20 @@ export class TeamsSetupService {
 	 * The app's settings live on the connected integration, because they are what
 	 * the user chose for this agent's Teams app rather than for the agent itself.
 	 */
+	/**
+	 * Looked up across projects, because the clash is at Microsoft rather than in
+	 * n8n. Connecting is still refused only within the project, by the shared
+	 * precondition every channel uses.
+	 */
+	private async credentialClaimedBy(agentId: string, credentialId: string): Promise<string | null> {
+		const others = await this.agentRepository.findByIntegrationCredentialAnyProject(
+			'teams',
+			credentialId,
+			agentId,
+		);
+		return others[0]?.name ?? null;
+	}
+
 	private teamsSettingsOf(agent: Agent): AgentTeamsIntegrationSettings | undefined {
 		return agent.integrations?.find((item) => item.type === 'teams')?.settings;
 	}

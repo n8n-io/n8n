@@ -65,6 +65,7 @@ describe('AgentChannelTeamsSetup', () => {
 			messagingEndpointUrl: ENDPOINT,
 			botId: null,
 			deployToAzureUrl: DEPLOY_URL,
+			credentialClaimedBy: null,
 			defaultDisplayName: DEFAULT_NAME,
 			defaultDescription: DEFAULT_DESCRIPTION,
 		});
@@ -246,6 +247,8 @@ describe('AgentChannelTeamsSetup', () => {
 				messagingEndpointUrl: ENDPOINT,
 				botId: CLIENT_ID,
 				deployToAzureUrl: DEPLOY_URL,
+				credentialClaimedBy: null,
+				credentialClaimedBy: null,
 				defaultDisplayName: DEFAULT_NAME,
 				defaultDescription: DEFAULT_DESCRIPTION,
 			});
@@ -265,6 +268,8 @@ describe('AgentChannelTeamsSetup', () => {
 				messagingEndpointUrl: ENDPOINT,
 				botId: CLIENT_ID,
 				deployToAzureUrl: DEPLOY_URL,
+				credentialClaimedBy: null,
+				credentialClaimedBy: null,
 				defaultDisplayName: DEFAULT_NAME,
 				defaultDescription: DEFAULT_DESCRIPTION,
 			});
@@ -411,6 +416,8 @@ describe('AgentChannelTeamsSetup', () => {
 				messagingEndpointUrl: ENDPOINT,
 				botId: CLIENT_ID,
 				deployToAzureUrl: DEPLOY_URL,
+				credentialClaimedBy: null,
+				credentialClaimedBy: null,
 				defaultDisplayName: DEFAULT_NAME,
 				defaultDescription: DEFAULT_DESCRIPTION,
 			});
@@ -453,6 +460,7 @@ describe('AgentChannelTeamsSetup', () => {
 			messagingEndpointUrl: ENDPOINT,
 			botId: CLIENT_ID,
 			deployToAzureUrl: DEPLOY_URL,
+			credentialClaimedBy: null,
 			defaultDisplayName: DEFAULT_NAME,
 			defaultDescription: DEFAULT_DESCRIPTION,
 		});
@@ -473,6 +481,50 @@ describe('AgentChannelTeamsSetup', () => {
 				expect.objectContaining({ teamChannels: true }),
 			),
 		);
+	});
+
+	describe('a credential another agent already uses', () => {
+		const claimed = () =>
+			vi.mocked(getTeamsSetupState).mockResolvedValue({
+				messagingEndpointUrl: ENDPOINT,
+				botId: CLIENT_ID,
+				// The server withholds the deployment for the same reason.
+				deployToAzureUrl: null,
+				credentialClaimedBy: 'Sales Bot',
+				defaultDisplayName: DEFAULT_NAME,
+				defaultDescription: DEFAULT_DESCRIPTION,
+			});
+
+		it('says so on the step where the credential is chosen', async () => {
+			claimed();
+
+			const { getByTestId } = renderComponent({ props: props({ modelValue: 'cred-1' }) });
+
+			await waitFor(() =>
+				expect(getByTestId('teams-credential-claimed')).toHaveTextContent('Sales Bot'),
+			);
+		});
+
+		it('offers neither the deployment nor the package', async () => {
+			claimed();
+
+			const { getByTestId, queryByTestId } = renderComponent({
+				props: props({ modelValue: 'cred-1' }),
+			});
+
+			await waitFor(() => expect(getByTestId('teams-credential-claimed')).toBeVisible());
+			expect(queryByTestId('teams-deploy-to-azure')).toBeNull();
+			expect(queryByTestId('teams-download-package')).toBeNull();
+		});
+
+		it('keeps connect disabled even though the credential itself works', async () => {
+			claimed();
+
+			const { getByTestId } = renderComponent({ props: props({ modelValue: 'cred-1' }) });
+
+			await waitFor(() => expect(getByTestId('teams-credential-claimed')).toBeVisible());
+			expect(getByTestId('teams-connect')).toBeDisabled();
+		});
 	});
 
 	it('asks for the setup state once on open, not once per trigger that wants it', async () => {

@@ -9024,5 +9024,7 @@
 	"agents.channels.teams.settings.displayNamePlaceholder": "Uses the agent's name",
 	"agents.channels.teams.settings.description": "Description",
 	"agents.channels.teams.settings.descriptionPlaceholder": "What this agent helps with",
-	"agents.channels.teams.settings.descriptionDefault": "Chat with {name}, an agent powered by n8n."
+	"agents.channels.teams.settings.descriptionDefault": "Chat with {name}, an agent powered by n8n.",
+	"agents.channels.teams.setup.createCredential.claimed": "{agent} already uses this credential for Teams. Microsoft allows one bot for each app registration, so pick a different credential or register another app in Entra.",
+	"agents.channels.teams.setup.createBot.needsFreeCredential": "Pick a credential no other agent uses before deploying."
 }

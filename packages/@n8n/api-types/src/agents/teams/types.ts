@@ -61,6 +61,13 @@ export interface TeamsAgentSetupState {
 	/** Null until a credential is connected, because the template needs the client ID. */
 	deployToAzureUrl: string | null;
 	/**
+	 * Name of the agent already using the selected credential, if any. Microsoft
+	 * binds one Azure bot to one app registration, so a second deployment with
+	 * the same credential is refused by the portal and both agents would in any
+	 * case share one messaging endpoint.
+	 */
+	credentialClaimedBy: string | null;
+	/**
 	 * What the manifest uses when the settings override neither. Computed here so
 	 * the fields show the values Teams will actually display, rather than the
 	 * frontend guessing at the same derivation.

@@ -71,6 +71,7 @@ describe('TeamsSetupService', () => {
 		credentialsService.findAllCredentialIdsForProject.mockResolvedValue([]);
 		credentialsService.findAllGlobalCredentialIds.mockResolvedValue([]);
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agentWith([]));
+		agentRepository.findByIntegrationCredentialAnyProject.mockResolvedValue([]);
 
 		armTemplateService = new TeamsArmTemplateService(jwtService, urlService);
 		service = new TeamsSetupService(
@@ -139,6 +140,62 @@ describe('TeamsSetupService', () => {
 			const state = await service.getSetupState({ projectId: PROJECT_ID, agentId: AGENT_ID });
 
 			expect(JSON.stringify(state)).not.toContain('super-secret');
+		});
+	});
+
+	describe('a credential another agent already uses', () => {
+		const claimedByOtherAgent = () => {
+			agentRepository.findByIntegrationCredentialAnyProject.mockResolvedValue([
+				mock<Agent>({ name: 'Sales Bot' }),
+			]);
+		};
+
+		it('names the agent holding it', async () => {
+			connectTeamsCredential();
+			claimedByOtherAgent();
+
+			const state = await service.getSetupState(
+				{ projectId: PROJECT_ID, agentId: AGENT_ID },
+				CREDENTIAL_ID,
+			);
+
+			expect(state.credentialClaimedBy).toBe('Sales Bot');
+		});
+
+		it('withholds the deployment, which the portal would refuse', async () => {
+			connectTeamsCredential();
+			claimedByOtherAgent();
+
+			const state = await service.getSetupState(
+				{ projectId: PROJECT_ID, agentId: AGENT_ID },
+				CREDENTIAL_ID,
+			);
+
+			expect(state.deployToAzureUrl).toBeNull();
+		});
+
+		it("looks beyond the agent's own project, because the clash is at Microsoft", async () => {
+			connectTeamsCredential();
+
+			await service.getSetupState({ projectId: PROJECT_ID, agentId: AGENT_ID }, CREDENTIAL_ID);
+
+			expect(agentRepository.findByIntegrationCredentialAnyProject).toHaveBeenCalledWith(
+				'teams',
+				CREDENTIAL_ID,
+				AGENT_ID,
+			);
+		});
+
+		it('leaves the deployment alone when nothing else uses the credential', async () => {
+			connectTeamsCredential();
+
+			const state = await service.getSetupState(
+				{ projectId: PROJECT_ID, agentId: AGENT_ID },
+				CREDENTIAL_ID,
+			);
+
+			expect(state.credentialClaimedBy).toBeNull();
+			expect(state.deployToAzureUrl).toContain('portal.azure.com');
 		});
 	});
 
