@@ -351,7 +351,7 @@ catalogs:
   undici-v6:
     undici: ^6.28.0
   undici-v7:
-    undici: ^7.29.0
+    undici: ^7.29.1
   # knip needs zod 4 while the default catalog pins zod 3.
   zod-v4:
     zod: ^4.4.3
