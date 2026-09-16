@@ -46,7 +46,7 @@ export interface StepExecutionRequest {
 	/**
 	 * Present when this run resumes a wait on request: the executor runs the
 	 * node's resume path with this payload instead of its execute path. A
-	 * deadline resume never arrives here - the engine emits the declaration's
+	 * deadline resume never arrives here — the engine emits the declaration's
 	 * captured outputs itself.
 	 */
 	resumeRequest?: { payload: JsonValue };
@@ -54,7 +54,7 @@ export interface StepExecutionRequest {
 
 /**
  * What running a step produced: its output slots, or a declaration that it is
- * not done. Exclusive - a step that waits has no outputs yet, and the outputs
+ * not done. Exclusive — a step that waits has no outputs yet, and the outputs
  * a deadline would emit ride inside the declaration.
  *
  * The `?: never` members give both branches the same keys, so `result.wait`

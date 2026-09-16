@@ -135,8 +135,8 @@ export class TypeOrmStepStore implements StepStore {
 		// among the returned columns: a step claimed out of `queued` can't have
 		// an outcome yet, so it is `null` by the lifecycle.
 		//
-		// `wait` and `resume` are, because a resumed step is also claimed out of
-		// `queued` and carries both — a deadline resume reads its captured
+		// `wait` and `resume` are returned, because a resumed step is also claimed
+		// out of `queued` and carries both. A deadline resume reads its captured
 		// outputs straight off the claim, so dispatching one costs no extra read.
 		//
 		// The execution-row lock serializes the claim with `failStep`, so no
@@ -197,6 +197,8 @@ export class TypeOrmStepStore implements StepStore {
 	}
 
 	async resumeStep(id: string, resume: StepResume): Promise<boolean> {
+		// `wait_till` stays as it was, so the status is the only thing that keeps
+		// the sweep from firing this row again.
 		return await this.transition(id, 'waiting', 'queued', { resume });
 	}
 

@@ -137,8 +137,9 @@ export function createEngineRuntime({
 			// TODO(CAT-3882): drain in-flight work instead. Stopping a worker waits
 			// only for whatever it is mid-handling; anything queued behind it is
 			// dropped, since the in-memory queues die with the process.
-			// The sweeper first: it feeds the step queue, so stopping it before the
-			// workers means nothing lands after they have drained.
+
+			// The sweeper stops first: it feeds the step queue, so nothing lands
+			// there after the workers have drained.
 			await waitSweeper.stop();
 			await Promise.all([orchestrationWorker.stop(), stepWorker.stop()]);
 			// After the workers are quiet, so the last events still reach the host.

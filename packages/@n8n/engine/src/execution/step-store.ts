@@ -121,7 +121,7 @@ export interface StepStore {
 
 	/**
 	 * Record a wait: persist `wait` and move the step to `waiting`. A
-	 * compare-and-set on `running`, as `completeStep` - but `waiting` is no
+	 * compare-and-set on `running`, as `completeStep` — but `waiting` is no
 	 * outcome, so nothing plans behind the step and nothing counts it settled.
 	 */
 	suspendStep(id: string, wait: WaitDeclaration): Promise<boolean>;
@@ -129,18 +129,22 @@ export interface StepStore {
 	/**
 	 * Resume a wait: persist `resume` and return the step to `queued`, from
 	 * where the normal worker path re-dispatches it. A compare-and-set on
-	 * `waiting`, so a doubled resume - a webhook retry, a sweep racing a
-	 * request - resolves the wait once. The declaration stays on the row: a
+	 * `waiting`, so a doubled resume — a webhook retry, a sweep racing a
+	 * request — resolves the wait once. The declaration stays on the row: a
 	 * deadline resume reads its captured outputs after the claim.
 	 *
 	 * Whether a given resume is allowed against a given wait is checked by
 	 * whoever accepts it, not here.
+	 *
+	 * TODO(CAT-2928): nothing calls this yet. The resolve endpoint that accepts
+	 * a resume request is the caller.
 	 */
 	resumeStep(id: string, resume: StepResume): Promise<boolean>;
 
 	/**
-	 * Resume every waiting step whose deadline has passed, oldest first, up to
-	 * `limit`, and return the rows resumed.
+	 * Resume every waiting step whose deadline has passed, up to `limit`, and
+	 * return the rows resumed. The oldest deadlines are taken first. The order
+	 * of the returned rows is not defined.
 	 *
 	 * One statement, unlike `resumeStep`, and that is the point: a second
 	 * sweeper cannot take a step this one already claimed, and a step resolved
@@ -161,10 +165,11 @@ export interface StepStore {
 	 * is `queued` or `waiting`. No worker runs either one, and nothing starts
 	 * either one again after the execution ends.
 	 *
-	 * A `waiting` step must be included. A request-only wait would otherwise stay
-	 * on the row for ever, and the sweep would resume a deadline wait inside an
-	 * execution that already failed. `resumeDueSteps` reads the status, so a
-	 * cancelled row is invisible to it.
+	 * A `waiting` step must be included. Nothing resumes a request-only wait
+	 * after the execution ends, so the step would stay `waiting` for ever. The
+	 * sweep would also resume a deadline wait inside an execution that already
+	 * failed. `resumeDueSteps` reads the status, so a cancelled row is invisible
+	 * to it.
 	 *
 	 * A `running` step keeps its status. Its worker still owns the outcome, and
 	 * `completeStep` and `failStep` compare-and-set on `running`.

@@ -31,8 +31,8 @@ export interface CallerContext {
 /**
  * Lifecycle status of a single step within an execution. `skipped` is terminal
  * at birth: the step was considered and decided against (no live input), so it
- * never runs. `waiting` is the opposite end: the step ran, produced no outcome,
- * and still owes the execution one.
+ * never runs. `waiting` is the other extreme: the step ran, but it produced no
+ * outcome. It still owes the execution one.
  */
 export const STEP_STATUSES = [
 	'queued',
@@ -50,6 +50,10 @@ export type StepStatus = (typeof STEP_STATUSES)[number];
  * A settled step has reached a terminal state: its status and outputs are
  * immutable, and it will never produce more data. Planning decisions are made
  * over settled predecessors only, so they hold no matter when they're computed.
+ *
+ * `waiting` is deliberately absent. A suspended step still owes an outcome, so
+ * planning must not treat it as decided, and the completion count must not
+ * count it.
  */
 export const SETTLED_STEP_STATUSES = ['completed', 'failed', 'skipped', 'cancelled'] as const;
 
@@ -92,21 +96,18 @@ export const DEFAULT_TRIGGER_OUTPUTS: TriggerOutputs = [];
 /**
  * A step's declaration that it is not done: instead of outputs, it says when
  * to resume. The executor produces it, the engine persists it on the step row,
- * and whatever resumes the step reads it back - the engine never interprets
+ * and whatever resumes the step reads it back — the engine never interprets
  * what a resume means to the node.
  *
- * A deadline ends the wait, or a resume request does, or either one first. A
- * deadline comes paired with the slots it emits: the step is never re-run, so
- * a deadline with nothing captured would resume into nothing.
+ * A deadline can end the wait. A resume request can end it. A declaration can
+ * name both, and then the first of the two ends it. A deadline comes paired
+ * with the slots it emits, because the step is never re-run.
  */
 export type WaitDeclaration =
 	| {
 			/** Deadline, ISO-8601. */
 			resumeAt: string;
-			/**
-			 * The slots the step emits when the deadline fires. The step is never
-			 * re-run, so the outputs it would have produced are captured up front.
-			 */
+			/** The slots the step emits when the deadline fires. */
 			outputsAtDeadline: StepSlots;
 			/** Whether a resume request may end the wait early. */
 			acceptsResumeRequest: boolean;
@@ -126,10 +127,10 @@ export type WaitDeclaration =
 export type StepResume = { kind: 'deadline' } | { kind: 'request'; payload: JsonValue };
 
 /**
- * A wait with neither condition would never end, stranding the execution. The
- * union above rules that out, so this only ever catches an executor that built
- * a declaration outside the type system - as `assertCreatableRecord` does for
- * step creation.
+ * A wait with no deadline and no resume request would never end, and would
+ * strand the execution. The union above makes that unrepresentable. This
+ * function catches only a declaration that an executor built outside the type
+ * system, as `assertCreatableRecord` does for step creation.
  */
 export function hasResumeCondition(wait: WaitDeclaration): boolean {
 	return wait.acceptsResumeRequest || wait.resumeAt !== undefined;

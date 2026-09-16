@@ -719,7 +719,7 @@ describe('StepReadyHandler', () => {
 });
 
 describe('StepReadyHandler waits', () => {
-	/** What the shim returns for a Wait node in time mode. */
+	/** A deadline wait with its captured outputs, as a time-mode Wait node will declare it. */
 	const timeWait: WaitDeclaration = {
 		resumeAt: '2099-01-01T00:00:00.000Z',
 		outputsAtDeadline: [[{ json: { passed: 'through' } }]],

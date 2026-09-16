@@ -76,12 +76,13 @@ export class StepReadyHandler {
 		// This worker won the claim, so it is the one that announces the start.
 		this.lifecycleEventPublisher.publish({ type: 'step:started', ...stepEventFields(step, node) });
 
-		// A deadline resume emits what the declaration captured, so the node does
-		// not run again and has no inputs to gather. Every other dispatch does,
-		// and the gather stays outside the `try` below on purpose: the errors it
-		// raises are the engine's own bookkeeping, not the node's, so they leave
-		// the step running rather than recording it failed. In the future that is
-		// handled by either:
+		// A deadline resume emits what the declaration captured. The node does not
+		// run again, so it has no inputs to gather. Every other dispatch gathers.
+		//
+		// The gather stays outside the `try` below on purpose. Its errors are the
+		// engine's own bookkeeping, not the node's, so they leave the step
+		// `running` instead of recording it failed. In the future one of these
+		// resolves that:
 		// - Reconciliation (CAT-2938) taking over the step and retrying it for transient errors
 		// - Internal consistency checks (CAT-3930) detecting a misconfigured graph and failing the execution
 		const dispatch: { kind: 'deadline' } | { kind: 'run'; inputs: StepSlots } =
@@ -98,8 +99,6 @@ export class StepReadyHandler {
 		try {
 			let result: StepExecutionResult;
 			if (dispatch.kind === 'deadline') {
-				// The declaration already holds what this step emits, so the node does
-				// not run again and no executor is involved.
 				result = { outputs: capturedDeadlineOutputs(step) };
 			} else if (executor) {
 				result = await this.runStep(step, execution, node, dispatch.inputs, executor);
@@ -129,7 +128,7 @@ export class StepReadyHandler {
 		if (!recorded) return;
 
 		// A wait is no outcome: nothing settled, so nothing is announced and no
-		// planning follows. TODO(CAT-2928): `step:waiting` surfaces it to the UI.
+		// planning follows. TODO(CAT-2928): publish `step:waiting` so the UI can show it.
 		if (run.kind === 'wait') return;
 
 		// Before the settled event, or the execution could announce its end first.
@@ -154,9 +153,10 @@ export class StepReadyHandler {
 		inputs: StepSlots,
 		executor: IStepExecutor,
 	): Promise<StepExecutionResult> {
-		// The result is stored without inspection - which slots fired, or what a
-		// wait means to the node, is not this handler's concern. The one exception
-		// is a wait nothing could ever end, which would strand the execution.
+		// The result is stored without inspection. Which slots fired is the
+		// settlement handler's concern, and what a wait means is the node's. The
+		// one exception is a wait that nothing could ever end: it would strand the
+		// execution.
 		const result = await executor.execute({
 			node,
 			inputs,
@@ -376,7 +376,7 @@ function toStepError(error: unknown): StepError {
 /**
  * The outputs a deadline resume emits, taken from the declaration on the row.
  * `WaitDeclaration` pairs a deadline with its outputs, so an absent one means
- * the row disagrees with the contract - and a row is a write from outside the
+ * the row disagrees with the contract — and a row is a write from outside the
  * type system.
  */
 function capturedDeadlineOutputs(step: StepRecord): StepSlots {
