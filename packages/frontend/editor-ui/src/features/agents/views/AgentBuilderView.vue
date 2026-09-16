@@ -1348,6 +1348,12 @@ function clearExternalUpdate() {
 	recentExternalUpdate.value = null;
 }
 
+function shouldShowExternalUpdate(source: PushPayload<'agentUpdated'>['source']) {
+	if (source === 'builder') return !isArtifactMode.value;
+	if (source === 'user') return isArtifactMode.value;
+	return true;
+}
+
 watch([projectId, agentId], clearExternalUpdate);
 
 const canApplyPushedAgentUpdate = computed(
@@ -1398,7 +1404,7 @@ function onAgentPushMessage(event: PushMessage) {
 	) {
 		return;
 	}
-	if (!isArtifactMode.value) {
+	if (shouldShowExternalUpdate(event.data.source)) {
 		recentExternalUpdate.value = event.data;
 		clearTimeout(externalUpdateTimer);
 		externalUpdateTimer = setTimeout(clearExternalUpdate, AGENT_EXTERNAL_UPDATE_NOTICE_DURATION);
@@ -2108,13 +2114,7 @@ function onSwitchAgent(nextAgentId: string) {
 			@reverted="onReverted"
 			@switch-agent="onSwitchAgent"
 		/>
-		<div
-			v-if="!isArtifactMode"
-			:class="$style.externalUpdateNotice"
-			role="status"
-			aria-live="polite"
-			aria-atomic="true"
-		>
+		<div :class="$style.externalUpdateNotice" role="status" aria-live="polite" aria-atomic="true">
 			<N8nCanvasPill
 				v-if="recentExternalUpdate"
 				:class="$style.externalUpdatePill"

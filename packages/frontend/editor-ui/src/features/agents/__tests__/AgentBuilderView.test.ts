@@ -2221,11 +2221,6 @@ describe('AgentBuilderView — three-column shell', () => {
 		});
 
 		expect(wrapper.find('[data-testid="agent-builder-instance-ai-btn"]').exists()).toBe(false);
-		for (const listener of pushListeners) {
-			listener({ type: 'agentUpdated', data: { projectId: 'p2', agentId: 'a2' } });
-		}
-		await nextTick();
-		expect(wrapper.find(externalUpdateSelector).exists()).toBe(false);
 	});
 
 	it('hides the floating Instance AI button when Instance AI is unavailable', async () => {
@@ -2235,32 +2230,52 @@ describe('AgentBuilderView — three-column shell', () => {
 	});
 
 	it.each([
-		['mcp', 'mcp'],
-		['builder', 'builder'],
-		['user', 'user'],
-		[undefined, 'unknown'],
-		['future-source', 'unknown'],
-	] as const)('shows recent %s updates in preview without the Assistant', async (source, label) => {
-		instanceAiAvailableRef.value = false;
-		routeQuery[OPEN_PREVIEW_PARAM] = 'true';
-		const wrapper = await renderView();
-		expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props('isOpen')).toBe(true);
-		expect(wrapper.find(externalUpdateSelector).exists()).toBe(false);
+		[false, 'mcp', 'mcp'],
+		[false, 'builder', 'builder'],
+		[false, 'user', null],
+		[false, undefined, 'unknown'],
+		[false, 'future-source', 'unknown'],
+		[true, 'mcp', 'mcp'],
+		[true, 'builder', null],
+		[true, 'user', 'user'],
+		[true, undefined, 'unknown'],
+		[true, 'future-source', 'unknown'],
+	] as const)(
+		'shows the correct recent update notice (artifact: %s, source: %s)',
+		async (artifactMode, source, label) => {
+			instanceAiAvailableRef.value = false;
+			if (!artifactMode) routeQuery[OPEN_PREVIEW_PARAM] = 'true';
+			const wrapper = await renderView({
+				props: {
+					artifactMode,
+					artifactProjectId: 'p1',
+					artifactAgentId: 'a1',
+				},
+			});
+			if (!artifactMode) {
+				expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props('isOpen')).toBe(true);
+			}
+			expect(wrapper.find(externalUpdateSelector).exists()).toBe(false);
 
-		for (const listener of pushListeners) {
-			listener({
-				type: 'agentUpdated',
-				data: { projectId: 'p1', agentId: 'a1', source },
-			} as PushMessage);
-		}
-		await nextTick();
+			for (const listener of pushListeners) {
+				listener({
+					type: 'agentUpdated',
+					data: { projectId: 'p1', agentId: 'a1', source },
+				} as PushMessage);
+			}
+			await nextTick();
 
-		expect(wrapper.get(externalUpdateSelector).text()).toBe(
-			`agents.builder.externalUpdate.${label}`,
-		);
-		expect(wrapper.get('[role="status"]').attributes('aria-live')).toBe('polite');
-		expect(wrapper.find('[data-testid="agent-builder-instance-ai-btn"]').exists()).toBe(false);
-	});
+			if (label) {
+				expect(wrapper.get(externalUpdateSelector).text()).toBe(
+					`agents.builder.externalUpdate.${label}`,
+				);
+				expect(wrapper.get('[role="status"]').attributes('aria-live')).toBe('polite');
+			} else {
+				expect(wrapper.find(externalUpdateSelector).exists()).toBe(false);
+			}
+			expect(wrapper.find('[data-testid="agent-builder-instance-ai-btn"]').exists()).toBe(false);
+		},
+	);
 
 	it('keeps only the latest notice for five minutes after the last update', async () => {
 		const wrapper = await renderView();
@@ -2741,7 +2756,7 @@ describe('AgentBuilderView — three-column shell', () => {
 
 				expect(getAgentMock).not.toHaveBeenCalled();
 				expect(fetchConfigMock).not.toHaveBeenCalled();
-				expect(wrapper.find(externalUpdateSelector).exists()).toBe(!artifactMode);
+				expect(wrapper.find(externalUpdateSelector).exists()).toBe(true);
 
 				// The remote change is not lost: once the local save lands it is applied.
 				// (The save itself refetches the agent, so the config fetch is the marker.)
