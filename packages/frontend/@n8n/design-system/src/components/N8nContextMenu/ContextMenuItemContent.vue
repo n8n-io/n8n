@@ -13,7 +13,7 @@ defineOptions({ name: 'N8nContextMenuItemContent' });
 const props = defineProps<{
 	item: ContextMenuLeaf<T>;
 	textColor?: TextColor;
-	iconColor: IconColor | (string & {});
+	iconColor: IconColor;
 	title?: string;
 }>();
 
@@ -60,6 +60,8 @@ const leadingIconColor = computed(() => {
 </template>
 
 <style module lang="scss">
+@use '../../css/mixins/utils';
+
 .content {
 	display: contents;
 }
@@ -69,15 +71,13 @@ const leadingIconColor = computed(() => {
 
 .emoji {
 	font-size: var(--font-size--sm);
-	line-height: 1;
+	line-height: var(--line-height--xs);
 }
 
 .itemLabel {
 	flex-grow: 1;
 	min-width: 0;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
+	@include utils.utils-ellipsis;
 }
 
 .itemTrailing,
