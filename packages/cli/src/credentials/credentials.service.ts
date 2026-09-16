@@ -196,7 +196,9 @@ type WorkflowCredentialResult = {
 } & CredentialConnectionStatus;
 
 /** Stores a blank description as `null`, so reads have a single "unset" value. */
-function normalizeCredentialDescription(description: string | null | undefined): string | null {
+export function normalizeCredentialDescription(
+	description: string | null | undefined,
+): string | null {
 	if (typeof description !== 'string') return null;
 
 	const trimmed = description.trim();

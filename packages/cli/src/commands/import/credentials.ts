@@ -22,7 +22,10 @@ import { jsonParse, UserError, type ICredentialDataDecryptedObject } from 'n8n-w
 import { z } from 'zod';
 
 import { UM_FIX_INSTRUCTION } from '@/constants';
-import { CredentialsService } from '@/credentials/credentials.service';
+import {
+	CredentialsService,
+	normalizeCredentialDescription,
+} from '@/credentials/credentials.service';
 
 import { BaseCommand } from '../base-command';
 
@@ -167,6 +170,13 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 		project: Project,
 		ctx: OperationContext,
 	) {
+		// A file is hand-written, so give its description the same shape a write
+		// through the API gets. Only touch the key when the file supplies it: the
+		// upsert writes the supplied columns, so an absent key keeps the stored text.
+		if (credential.description !== undefined) {
+			credential.description = normalizeCredentialDescription(credential.description);
+		}
+
 		// UsageScope is instance-local state; imports never change it for existing credentials.
 		let existing: Pick<CredentialsEntity, 'id' | 'type' | 'usageScope'> | null = null;
 		if (credential.id) {

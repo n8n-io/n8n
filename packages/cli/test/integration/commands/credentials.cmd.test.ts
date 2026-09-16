@@ -195,6 +195,32 @@ test('import:credentials should include only selected credential properties', as
 	expect(after.credentials[0].updatedAt.toISOString()).not.toBe(credentialsFixture.updatedAt);
 });
 
+test('import:credentials should trim a description and store a blank one as null', async () => {
+	await createOwner();
+
+	await command.run([
+		'--input=./test/integration/commands/import-credentials/credentials-description.json',
+	]);
+
+	const byId = new Map((await getAllCredentials()).map((c) => [c.id, c.description]));
+
+	expect(byId.get('desc-untrimmed')).toBe('Read-only key for reporting.');
+	expect(byId.get('desc-blank')).toBeNull();
+});
+
+test('import:credentials should keep a stored description when the file omits it', async () => {
+	await createOwner();
+	await command.run([
+		'--input=./test/integration/commands/import-credentials/credentials-description.json',
+	]);
+
+	// The second file carries no description for this id, so the stored text must survive.
+	await command.run(['--input=./test/integration/commands/import-credentials/credentials.json']);
+
+	const byId = new Map((await getAllCredentials()).map((c) => [c.id, c.description]));
+	expect(byId.get('desc-untrimmed')).toBe('Read-only key for reporting.');
+});
+
 test('import:credentials should exclude selected credential properties', async () => {
 	const owner = await createOwner();
 	const ownerProject = await getPersonalProject(owner);
