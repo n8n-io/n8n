@@ -5,7 +5,6 @@ import { mock } from 'vitest-mock-extended';
 
 import type { AgentIntegrationManagementService } from '../agent-integration-management.service';
 import { AgentIntegrationsController } from '../agent-integrations.controller';
-import type { AgentUpdateBroadcaster } from '../agent-update-broadcaster';
 import type { AgentChannelStatus } from '../entities/agent-channel-status.entity';
 import type { Agent } from '../entities/agent.entity';
 import type { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
@@ -102,6 +101,7 @@ describe('AgentIntegrationsController integration management', () => {
 				params: { projectId: agent.projectId },
 				user,
 				body: integration,
+				headers: { 'push-ref': 'sender-1' },
 			} as never,
 			undefined as never,
 			agent.id,
@@ -110,7 +110,7 @@ describe('AgentIntegrationsController integration management', () => {
 
 		expect(managementService.validateConfig).toHaveBeenCalledWith(integration);
 		expect(managementService.connect).toHaveBeenCalledWith(
-			expect.objectContaining({ agent, user, integration }),
+			expect.objectContaining({ agent, user, integration, pushRef: 'sender-1' }),
 		);
 		expect(result).toEqual({ status: 'connected' });
 	});
@@ -199,13 +199,9 @@ describe('AgentIntegrationsController integration management', () => {
 	});
 
 	it('delegates disconnect without platform-specific cleanup', async () => {
-		const { controller, managementService, agentRepository, agentUpdateBroadcaster } =
-			makeController();
+		const { controller, managementService, agentRepository } = makeController();
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
-		managementService.disconnect.mockImplementation(async (options) => {
-			options.onPersisted?.();
-			return { savedAgent: agent };
-		});
+		managementService.disconnect.mockResolvedValue({ savedAgent: agent });
 
 		const result = await controller.disconnectIntegration(
 			{
@@ -224,11 +220,8 @@ describe('AgentIntegrationsController integration management', () => {
 				user,
 				type: 'slack',
 				credentialId: 'credential-1',
+				pushRef: 'sender-1',
 			}),
-		);
-		expect(agentUpdateBroadcaster.notify).toHaveBeenCalledWith(
-			{ projectId: agent.projectId, agentId: agent.id },
-			'sender-1',
 		);
 		expect(result).toEqual({ status: 'disconnected' });
 	});

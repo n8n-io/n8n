@@ -533,12 +533,11 @@ describe('useSetupPanelActions', () => {
 
 		await expect(actions.executeWorkflow()).resolves.toBe(true);
 
-		expect(sendMessage).toHaveBeenCalledExactlyOnceWith(
-			'Run a test execution of this workflow.',
-			undefined,
-			useRootStore().pushRef,
-			{ source: 'setup-panel-execute', workflowId: WORKFLOW_ID },
-		);
+		expect(sendMessage).toHaveBeenCalledExactlyOnceWith('Run a test execution of this workflow.', {
+			authorship: { kind: 'prefill', prefillType: 'handoff_setup_panel_execute' },
+			pushRef: useRootStore().pushRef,
+			handoffContext: { source: 'setup-panel-execute', workflowId: WORKFLOW_ID },
+		});
 	});
 
 	it('does not send Execute without an active artifact workflow', async () => {
