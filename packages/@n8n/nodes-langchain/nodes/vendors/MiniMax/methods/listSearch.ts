@@ -7,10 +7,10 @@ export async function modelSearch(
 	filter?: string,
 ): Promise<INodeListSearchResult> {
 	const response = (await apiRequest.call(this, 'GET', '/v1/models')) as {
-		data: Array<{ id: string }>;
+		data?: Array<{ id: string }>;
 	};
 
-	let models = response.data;
+	let models = response.data ?? [];
 	if (filter) {
 		models = models.filter((model) => model.id.toLowerCase().includes(filter.toLowerCase()));
 	}
