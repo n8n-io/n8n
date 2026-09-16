@@ -105,7 +105,6 @@ describe('getMcpInstructions', () => {
 			const instructions = getMcpInstructions({
 				isBuilderEnabled: true,
 				isN8nConnectAvailable: true,
-				canvasGroupsEnabled: true,
 				isAgentsEnabled: true,
 				isUserPreferencesEnabled: true,
 			});
