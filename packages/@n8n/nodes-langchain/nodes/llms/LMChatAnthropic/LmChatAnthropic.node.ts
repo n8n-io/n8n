@@ -679,7 +679,7 @@ export class LmChatAnthropic implements INodeType {
 			// undici v7 and the SDK's bundled fetch types disagree structurally
 			// (FormData iterators), so the dispatcher cannot carry its own type here.
 			fetchOptions: {
-				dispatcher: getProxyAgent(baseURL),
+				dispatcher: getProxyAgent(baseURL, undefined, this.helpers.getSecureEgressFilter()),
 			} as NonNullable<ChatAnthropicInput['clientOptions']>['fetchOptions'],
 		};
 

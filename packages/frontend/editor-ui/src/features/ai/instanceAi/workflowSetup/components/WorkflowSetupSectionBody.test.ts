@@ -444,6 +444,7 @@ describe('WorkflowSetupSectionBody', () => {
 		expect(instanceAiHandoffMock.startThread).toHaveBeenCalledWith(
 			'project-1',
 			'Where do I find the "fal.ai API key" for my "fal.ai API Key" credential?',
+			{ kind: 'prefill', prefillType: 'handoff_credential_setup' },
 			{ source: 'credential_edit', origin: 'internal' },
 			undefined,
 			undefined,

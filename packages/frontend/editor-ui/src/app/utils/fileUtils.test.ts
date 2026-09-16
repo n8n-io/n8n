@@ -27,6 +27,7 @@ describe('convertFileToBinaryData', () => {
 		['README', 'text/plain', undefined, 'text'],
 		['.env', 'text/plain', undefined, 'text'],
 		['README', '', undefined, undefined],
+		['notes.md', '', 'md', 'text'],
 		['archive.tar.gz', 'application/gzip', 'gz', undefined],
 		['data.json', 'application/json', 'json', 'json'],
 		['page.html', 'text/html', 'html', 'html'],
@@ -54,6 +55,14 @@ describe('convertFileToBinaryData', () => {
 			fileExtension: 'pdf',
 			fileType: 'pdf',
 		});
+	});
+
+	it('uses the Markdown MIME type when the browser does not supply one', async () => {
+		const file = new File(['hello'], 'notes.md');
+
+		expect(await convertFileToBinaryData(file)).toEqual(
+			expect.objectContaining({ mimeType: 'text/markdown', fileType: 'text' }),
+		);
 	});
 
 	it('rejects when the file cannot be read', async () => {
