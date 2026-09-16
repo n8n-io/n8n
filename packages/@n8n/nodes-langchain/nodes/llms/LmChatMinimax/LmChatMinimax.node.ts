@@ -13,6 +13,8 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
+import { MODEL_SELECTION_HINT } from '@utils/model-builder-hints';
+
 import type { OpenAICompatibleCredential } from '../../../types/types';
 import { minimaxTextModelOptions } from '../../vendors/MiniMax/helpers/modelOptions';
 import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-handling';
@@ -85,7 +87,8 @@ export class LmChatMinimax implements INodeType {
 				options: minimaxTextModelOptions.v1_1,
 				default: 'MiniMax-M3',
 				builderHint: {
-					propertyHint: 'Default to the latest MiniMax flagship model (MiniMax-M3).',
+					propertyHint:
+						"Choose a model from this node version's supported options. " + MODEL_SELECTION_HINT,
 				},
 				displayOptions: {
 					show: {

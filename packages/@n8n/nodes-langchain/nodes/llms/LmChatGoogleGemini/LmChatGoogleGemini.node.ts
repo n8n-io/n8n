@@ -17,6 +17,8 @@ import {
 	getConnectionHintNoticeField,
 } from '@n8n/ai-utilities';
 
+import { GEMINI_CHAT_MODEL_HINT } from '@utils/model-builder-hints';
+
 function errorDescriptionMapper(error: NodeError) {
 	if (error.description?.includes('properties: should be non-empty for OBJECT type')) {
 		return 'Google Gemini requires at least one <a href="https://docs.n8n.io/advanced-ai/examples/using-the-fromai-function/" target="_blank">dynamic parameter</a> when using tools';
@@ -79,8 +81,7 @@ const modelRLC: INodeProperties = {
 	},
 	default: 'models/gemini-2.5-flash',
 	builderHint: {
-		propertyHint:
-			'Default to the latest flagship Gemini (models/gemini-3.1-pro-preview). Use models/gemini-3.1-flash-lite for cost-efficient builds. Avoid Gemini 2.x, 1.x, and earlier.',
+		propertyHint: GEMINI_CHAT_MODEL_HINT,
 	},
 };
 export class LmChatGoogleGemini implements INodeType {

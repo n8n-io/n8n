@@ -796,9 +796,17 @@ asked for that exact name.
 ## Node Configuration Safety Rules
 
 - Fetch `nodes(action="type-definition")` before configuring nodes. Generated
-  definitions and `@builderHint` annotations are the source of truth.
+  definitions specify parameter names and shapes. Model IDs in `@builderHint`
+  annotations are recommendations, not proof of availability.
 - Use live `nodes(action="explore-resources")` for resource locator, list, and
-  model fields when credentials are available.
+  model fields when credentials are available, including Gateway credits.
+  The credential's model list takes precedence over hints and node defaults.
+  Choose a supported model that fits the task and budget.
+- Keep an explicitly requested or working model unless current provider
+  evidence shows it is unavailable or unsuitable. This includes model IDs in
+  configuration fields and expressions. A failed lookup does not prove a model
+  is invalid. Without a credential, check official provider documentation
+  before suggesting model versions or declaring one nonexistent.
 - If a configuration is unclear after reading the definition, ask for
   clarification or use placeholders. Do not guess.
 - Pay attention to `@builderHint` annotations in search results and type

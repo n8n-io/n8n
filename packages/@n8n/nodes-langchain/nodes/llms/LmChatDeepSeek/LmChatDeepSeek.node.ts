@@ -13,6 +13,8 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
+import { MODEL_SELECTION_HINT } from '@utils/model-builder-hints';
+
 import type { OpenAICompatibleCredential } from '../../../types/types';
 import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-handling';
 
@@ -119,7 +121,8 @@ export class LmChatDeepSeek implements INodeType {
 				default: 'deepseek-chat',
 				builderHint: {
 					propertyHint:
-						'Default to the latest DeepSeek (deepseek-chat = V3.2 non-thinking, deepseek-reasoner = V3.2 thinking / R-series reasoning). Avoid older V3 and R1 snapshots.',
+						'Choose deepseek-chat or deepseek-reasoner according to the task. Confirm their current capabilities in the provider documentation instead of assuming a fixed underlying version. ' +
+						MODEL_SELECTION_HINT,
 				},
 			},
 			{

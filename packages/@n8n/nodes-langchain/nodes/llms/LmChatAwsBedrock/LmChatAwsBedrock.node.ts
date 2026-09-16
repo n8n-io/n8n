@@ -20,6 +20,7 @@ import {
 import { createBedrockRuntimeClient } from '@utils/aws/createBedrockRuntimeClient';
 import { resolveAwsCredentials } from '@utils/aws/resolveAwsCredentials';
 import { resolveBedrockRegion } from '@utils/aws/resolveBedrockRegion';
+import { MODEL_SELECTION_HINT } from '@utils/model-builder-hints';
 
 import { listInferenceProfiles, listModels } from './methods/listModels';
 
@@ -147,7 +148,8 @@ export class LmChatAwsBedrock implements INodeType {
 				default: '',
 				builderHint: {
 					propertyHint:
-						'Default to the latest Claude Sonnet on Bedrock (anthropic.claude-sonnet-4-6 family). For Claude Sonnet 4+, switch Model Source to Inference Profiles. Avoid claude-sonnet-4-5, claude-3.x, and non-Claude legacy models unless requested.',
+						'For Claude Sonnet 5, switch Model Source to Inference Profiles and select an available profile. ' +
+						MODEL_SELECTION_HINT,
 				},
 			},
 			{
@@ -179,7 +181,8 @@ export class LmChatAwsBedrock implements INodeType {
 				default: '',
 				builderHint: {
 					propertyHint:
-						'Default to the latest Claude Sonnet inference profile (anthropic.claude-sonnet-4-6 family). Avoid claude-sonnet-4-5 and claude-3.x profiles unless specifically requested.',
+						'Prefer an available Claude Sonnet 5 inference profile. Use the exact ID returned by the list. ' +
+						MODEL_SELECTION_HINT,
 				},
 			},
 			{
@@ -210,7 +213,8 @@ export class LmChatAwsBedrock implements INodeType {
 				default: '',
 				builderHint: {
 					propertyHint:
-						'Prefer the newest Claude Sonnet model (claude-sonnet-4-6 family). The newest models only work through their inference profile ID, which starts with a region prefix (e.g. "eu.anthropic.claude-sonnet-4-6..."). Avoid claude-sonnet-4-5, claude-3.x, and older non-Claude models unless the user asks for them.',
+						'Prefer an available Claude Sonnet 5 inference profile. Profile IDs can have a global or regional prefix; copy the exact ID returned by the list. ' +
+						MODEL_SELECTION_HINT,
 				},
 			},
 			{
