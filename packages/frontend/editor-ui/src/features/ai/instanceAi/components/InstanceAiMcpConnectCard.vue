@@ -210,7 +210,6 @@ function openSettings(row: CardRow) {
 				<template #action>
 					<ToolCredentialPicker
 						v-if="showsCredentialPicker(row)"
-						teleported
 						:item="row.item"
 						:credentials="row.item.credentials"
 						@select-credential="

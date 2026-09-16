@@ -201,7 +201,25 @@ function scrollToKey(key: Item[Key]) {
 	scrollTo(position);
 }
 
-defineExpose({ scrollToKey, scrollTo, scrollTop });
+function scrollToKeyIfNeeded(key: Item[Key]) {
+	if (!wrapperRef.value) return;
+
+	const position = itemPositionCache.value[key];
+	if (position === undefined) return;
+
+	const itemSize = itemSizeCache.value[key] ?? props.itemSize;
+	const viewportStart = wrapperRef.value.scrollTop;
+	const viewportEnd = viewportStart + wrapperRef.value.clientHeight;
+	const itemEnd = position + itemSize;
+
+	if (position < viewportStart) {
+		scrollTo(position);
+	} else if (itemEnd > viewportEnd) {
+		scrollTo(itemEnd - wrapperRef.value.clientHeight);
+	}
+}
+
+defineExpose({ scrollToKey, scrollToKeyIfNeeded, scrollTo, scrollTop });
 </script>
 
 <template>
