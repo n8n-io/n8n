@@ -117,6 +117,36 @@ const reviewerActions: Array<UserAction<IUser>> = [
 	{ label: i18n.baseText('selfHealing.dialog.reviewers.remove'), value: REMOVE_REVIEWER_ACTION },
 ];
 
+/**
+ * Only "propose fixes for review" has reviewers. The other levels notify the
+ * same people, so the section is titled and described accordingly.
+ */
+const peopleCopy = computed(() => {
+	switch (form.value.autonomy) {
+		case 'deploy':
+			return {
+				label: i18n.baseText('selfHealing.dialog.notify.label'),
+				description: i18n.baseText('selfHealing.dialog.notify.description.deploy'),
+				placeholder: i18n.baseText('selfHealing.dialog.notify.placeholder'),
+				empty: i18n.baseText('selfHealing.dialog.notify.empty'),
+			};
+		case 'diagnose':
+			return {
+				label: i18n.baseText('selfHealing.dialog.notify.label'),
+				description: i18n.baseText('selfHealing.dialog.notify.description.diagnose'),
+				placeholder: i18n.baseText('selfHealing.dialog.notify.placeholder'),
+				empty: i18n.baseText('selfHealing.dialog.notify.empty'),
+			};
+		default:
+			return {
+				label: i18n.baseText('selfHealing.dialog.reviewers.label'),
+				description: i18n.baseText('selfHealing.dialog.reviewers.description'),
+				placeholder: i18n.baseText('selfHealing.dialog.reviewers.placeholder'),
+				empty: i18n.baseText('selfHealing.dialog.reviewers.empty'),
+			};
+	}
+});
+
 async function loadProjectWorkflows() {
 	loadingWorkflows.value = true;
 	try {
@@ -262,17 +292,18 @@ function save() {
 
 			<N8nInputLabel
 				input-name="self-healing-reviewers"
-				:label="i18n.baseText('selfHealing.dialog.reviewers.label')"
+				:label="peopleCopy.label"
+				data-test-id="self-healing-people-label"
 			>
 				<N8nText size="small" color="text-light" :class="$style.hint">
-					{{ i18n.baseText('selfHealing.dialog.reviewers.description') }}
+					{{ peopleCopy.description }}
 				</N8nText>
 				<N8nUserSelect
 					id="self-healing-reviewers"
 					:users="candidateUsers"
 					:ignore-ids="form.reviewerIds"
 					:current-user-id="usersStore.currentUser?.id ?? ''"
-					:placeholder="i18n.baseText('selfHealing.dialog.reviewers.placeholder')"
+					:placeholder="peopleCopy.placeholder"
 					:teleported="false"
 					data-test-id="self-healing-reviewer-select"
 					@update:model-value="addReviewer"
@@ -293,7 +324,7 @@ function save() {
 					:class="$style.hint"
 					data-test-id="self-healing-reviewers-empty"
 				>
-					{{ i18n.baseText('selfHealing.dialog.reviewers.empty') }}
+					{{ peopleCopy.empty }}
 				</N8nText>
 			</N8nInputLabel>
 
