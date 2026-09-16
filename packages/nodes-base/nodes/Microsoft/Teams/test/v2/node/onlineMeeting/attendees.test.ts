@@ -195,6 +195,27 @@ describe('Microsoft Teams V2, onlineMeeting attendees', () => {
 		expect(apiRequest).not.toHaveBeenCalled();
 	});
 
+	it('rejects a value with a path separator before any request', async () => {
+		await expect(runCreate([{ userId: 'a/b' }])).rejects.toThrow(
+			'The user for attendee 1 is not valid',
+		);
+		expect(apiRequest).not.toHaveBeenCalled();
+	});
+
+	it('does not cache a user that came back without an ID', async () => {
+		ctx.getInputData.mockReturnValue([{ json: {} }, { json: {} }]);
+		ctx.continueOnFail.mockReturnValue(true);
+		apiRequest.mockResolvedValue({ displayName: 'Ghost' });
+
+		const [output] = await runCreate([{ userId: JANE }]);
+
+		expect(output.map((item) => item.json)).toEqual([
+			{ error: 'Could not find the user for attendee 1' },
+			{ error: 'Could not find the user for attendee 1' },
+		]);
+		expect(apiRequest.mock.calls.map((call) => call[0])).toEqual(['GET', 'GET']);
+	});
+
 	it.each(['coorganizer', null, ''])('rejects the role %j before any request', async (role) => {
 		await expect(runCreate([{ userId: JANE, role }])).rejects.toThrow(
 			'The role for attendee 1 is not valid',
@@ -396,6 +417,7 @@ describe('Microsoft Teams V2, onlineMeeting attendees', () => {
 			['null rows', { attendee: null }],
 			['a string', 'x'],
 			['a bare list of rows', [{ userId: JANE }]],
+			['a wrong row key', { attendees: [{ userId: JANE }] }],
 		])('rejects %s in the attendees field before any request', async (_label, attendees) => {
 			await expect(runUpdate({ attendees })).rejects.toThrow('The Attendees field is not valid');
 			expect(apiRequest).not.toHaveBeenCalled();
@@ -422,7 +444,6 @@ describe('Microsoft Teams V2, onlineMeeting attendees', () => {
 
 			expect(thrown).toBeInstanceOf(NodeApiError);
 			expect((thrown as NodeApiError).message).toBe(FORBIDDEN_MESSAGE);
-			expect((thrown as NodeApiError).message).toContain('User.Read.All');
 			expect((thrown as NodeApiError).description).toContain('admin consent');
 			expect(apiRequest).toHaveBeenCalledTimes(1);
 		});

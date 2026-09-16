@@ -88,7 +88,9 @@ export async function execute(this: IExecuteFunctions, i: number) {
 		body.endDateTime = toGraphUtc.call(this, options.endDateTime, 'End Time');
 	}
 	const attendees = await resolveAttendees.call(this, i, options.attendees);
-	if (attendees.length) body.participants = { attendees };
+	if (attendees.length) {
+		body.participants = { attendees };
+	}
 
 	return await meetingRequest.call(
 		this,

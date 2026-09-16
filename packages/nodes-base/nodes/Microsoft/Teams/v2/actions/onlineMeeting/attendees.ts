@@ -9,7 +9,7 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import { isSet } from './meetingSettings';
 import { userRLC } from '../../descriptions';
-import { resolveUser, rlcValue, type ResolvedUser } from '../../helpers/utils';
+import { resolveUser, rlcValue } from '../../helpers/utils';
 import { rewriteForbiddenUnderSp } from '../../transport';
 
 const ROLE_DESCRIPTION =
@@ -103,10 +103,15 @@ export async function resolveAttendees(
 ): Promise<MeetingAttendee[]> {
 	const node = this.getNode();
 	// `field` is the whole fixedCollection value, `{}` or `{ attendee: rows }` from the editor. Any
-	// other shape comes from the API, imported JSON or an expression and is rejected before any
-	// request, so no call site can fall through to an empty list and clear a roster by accident.
+	// other container shape (a string, a bare list, an unknown key, rows that are not a list) can
+	// only come from the API, imported JSON or an expression. It is rejected before any request
+	// instead of being read as an empty list, which on Update would clear the roster.
 	if (!isSet(field)) return [];
-	if (!isRecord(field) || (field.attendee !== undefined && !Array.isArray(field.attendee))) {
+	if (
+		!isRecord(field) ||
+		Object.keys(field).some((key) => key !== 'attendee') ||
+		(field.attendee !== undefined && !Array.isArray(field.attendee))
+	) {
 		throw new NodeOperationError(node, 'The Attendees field is not valid', {
 			itemIndex,
 			description: 'Attendees must be a list of rows.',
@@ -135,14 +140,13 @@ export async function resolveAttendees(
 	const byId = new Map<string, MeetingAttendee>();
 	for (let index = 0; index < rows.length; index++) {
 		const row: IDataObject = rows[index] ?? {};
-		let user: ResolvedUser;
-		try {
-			user = await resolveUser.call(this, rlcValue(row.userId), itemIndex, 'attendee', index + 1);
-		} catch (error) {
-			// Every attendee mode is looked up, so under SP even a GUID needs the permission. No-op
-			// for a delegated credential and for every status but 403; the router stamps itemIndex.
-			throw rewriteForbiddenUnderSp.call(this, error, FORBIDDEN_MESSAGE, FORBIDDEN_DESCRIPTION);
-		}
+		// Every attendee mode is looked up, so under SP even a GUID needs the permission. No-op
+		// for a delegated credential and for every status but 403; the router stamps itemIndex.
+		const user = await resolveUser
+			.call(this, rlcValue(row.userId), itemIndex, 'attendee', index + 1)
+			.catch((error: unknown) => {
+				throw rewriteForbiddenUnderSp.call(this, error, FORBIDDEN_MESSAGE, FORBIDDEN_DESCRIPTION);
+			});
 
 		const existing = byId.get(user.id);
 		if (existing) {

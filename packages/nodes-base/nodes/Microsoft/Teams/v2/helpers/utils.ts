@@ -43,11 +43,12 @@ function escapeMentionText(text: string): string {
 
 export type ResolvedUser = { id: string; displayName: string; userPrincipalName: string };
 
+type LookupNoun = 'mention' | 'attendee';
 type LookupMessages = UserTargetMessages & { notFound: { message: string; description: string } };
 
 // `row` is the node-generated row number (loop index + 1), never a user-supplied value, so
 // these stay static in the sense that matters: they cannot echo the id back.
-const lookupMessages = (noun: 'mention' | 'attendee', row: number): LookupMessages => ({
+const lookupMessages = (noun: LookupNoun, row: number): LookupMessages => ({
 	required: {
 		message: `No user selected for ${noun} ${row}`,
 		description: 'Pick the user from the list, or enter a user ID or email address.',
@@ -140,7 +141,7 @@ export const rlcValue = (value: unknown): string => {
 	return typeof raw === 'number' || typeof raw === 'boolean' ? String(raw) : '';
 };
 
-// Same scope and rules as `resolvedPerRun` below, for the user lookup mentions and attendees share.
+// Same scope and rules as `resolvedPerRun` below, for the user lookup that mentions and attendees share.
 const usersPerRun = new WeakMap<IExecuteFunctions, Map<string, ResolvedUser>>();
 
 /**
@@ -151,7 +152,7 @@ export async function resolveUser(
 	this: IExecuteFunctions,
 	value: string,
 	itemIndex: number,
-	noun: 'mention' | 'attendee',
+	noun: LookupNoun,
 	row: number,
 ): Promise<ResolvedUser> {
 	let cache = usersPerRun.get(this);
@@ -201,12 +202,18 @@ export async function resolveUser(
 		}
 	}
 
+	if (typeof user.id !== 'string' || !user.id) {
+		throw new NodeOperationError(node, messages.notFound.message, {
+			itemIndex,
+			description: 'Microsoft Graph returned a user without an ID.',
+		});
+	}
+
 	// Directory objects with no display name exist (some guests, some service accounts);
 	// without a fallback the mention renders as a blank chip. `||`, so `''` falls through.
-	const displayName =
-		(user.displayName as string) || (user.userPrincipalName as string) || (user.id as string);
+	const displayName = (user.displayName as string) || (user.userPrincipalName as string) || user.id;
 	const resolved: ResolvedUser = {
-		id: user.id as string,
+		id: user.id,
 		displayName,
 		userPrincipalName: (user.userPrincipalName as string) || '',
 	};

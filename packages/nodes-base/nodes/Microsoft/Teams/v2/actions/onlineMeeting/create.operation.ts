@@ -74,7 +74,9 @@ export async function execute(this: IExecuteFunctions, i: number) {
 		body.joinMeetingIdSettings = { isPasscodeRequired: options.passcodeRequired };
 	}
 	const attendees = await resolveAttendees.call(this, i, this.getNodeParameter('attendees', i, {}));
-	if (attendees.length) body.participants = { attendees };
+	if (attendees.length) {
+		body.participants = { attendees };
+	}
 
 	return await meetingRequest.call(this, 'POST', await meetingsPath.call(this, i), body);
 }
