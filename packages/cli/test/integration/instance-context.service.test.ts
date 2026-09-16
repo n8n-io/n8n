@@ -429,6 +429,61 @@ describe('InstanceContextService', () => {
 	});
 
 	/**
+	 * The same renumbering, but with rows still inside the band. `activityFloor` only leaves 0 when
+	 * a single turn cut more than a window, so a quiet instance — the one retention empties — reads
+	 * a band of `(0, mark)`. A recycled id then lands inside it and comes back from the band read
+	 * rather than being missed by both legs, and the shown ids suppress it because an id from the
+	 * old sequence is sitting in the list.
+	 */
+	it('carries a refilled entry whose id was reused from one already shown', async () => {
+		for (const name of ['First', 'Second', 'Third']) {
+			await record({
+				category: 'workflow',
+				action: 'saved',
+				projectId: project.id,
+				resourceType: 'workflow',
+				resourceId: `wf-${name}`,
+				resourceName: name,
+			});
+		}
+
+		// An explicit, past `now`, so the block's own timestamp sits clearly before the row written
+		// below. The recovery compares the two, and only a test compresses into one millisecond a
+		// gap the product measures in minutes — racing the clock here would make it flaky, not
+		// realistic.
+		const opening = await service.buildBlock({
+			user,
+			projectId: project.id,
+			cursor: null,
+			now: recently(),
+			enabled: true,
+		});
+		expect(blockOf(opening)).toContain('Third');
+		// Nothing was cut, so the floor stays at 0 and the band will span the whole id space.
+		expect(cursorOf(opening).activityFloor).toBe(0);
+		expect(cursorOf(opening).activitySeen.length).toBe(3);
+
+		await testDb.truncate(['ActivityEvent']);
+		await record({
+			category: 'workflow',
+			action: 'saved',
+			projectId: project.id,
+			resourceType: 'workflow',
+			resourceId: 'wf-after',
+			resourceName: 'Written after the sweep',
+		});
+
+		const next = await service.buildBlock({
+			user,
+			projectId: project.id,
+			cursor: cursorOf(opening),
+			enabled: true,
+		});
+
+		expect(blockOf(next)).toContain('Written after the sweep');
+	});
+
+	/**
 	 * Emptying the table is what age-based retention does to an instance quiet for longer than its
 	 * window, and on SQLite the entry id is a rowid alias, so the sequence restarts and new rows
 	 * land below a mark a live thread still holds.
@@ -448,10 +503,12 @@ describe('InstanceContextService', () => {
 			resourceName: 'Before the sweep',
 		});
 
+		// Past `now` for the same reason as above: the block has to predate the refilled row.
 		const first = await service.buildBlock({
 			user,
 			projectId: project.id,
 			cursor: null,
+			now: recently(),
 			enabled: true,
 		});
 		expect(blockOf(first)).toContain('Before the sweep');
