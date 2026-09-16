@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { computed, inject, nextTick, ref, watch } from 'vue';
+import { computed, inject, ref, watch } from 'vue';
 import N8nButton from '../N8nButton';
+import { N8nDropdownMenu, type DropdownMenuItemProps } from '../N8nDropdownMenu';
 import N8nIcon from '../N8nIcon';
-import N8nInput from '../N8nInput';
-import N8nPopover from '../N8nPopover';
+import N8nIconButton from '../N8nIconButton';
 import N8nSpinner from '../N8nSpinner';
-import N8nText from '../N8nText';
+import N8nTooltip from '../N8nTooltip';
 import { useI18n } from '@n8n/i18n';
 import {
 	hasToolConnection,
@@ -40,7 +40,6 @@ const adapter = inject(TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY, null);
 
 const isOpen = ref(false);
 const searchQuery = ref('');
-const searchInputRef = ref<InstanceType<typeof N8nInput> | null>(null);
 
 const selectedCredentialIds = computed(() =>
 	props.credentials.map((c) => c.credentialId).filter((id): id is string => Boolean(id)),
@@ -68,27 +67,39 @@ const statusLabel = computed(() => {
 	return '';
 });
 
-const filteredCredentials = computed(() => {
-	const query = searchQuery.value.trim().toLowerCase();
-	if (!query) return availableCredentials.value;
-	return availableCredentials.value.filter((cred) => cred.name.toLowerCase().includes(query));
-});
+type CredentialMenuData = {
+	authType: string;
+	credentialId: string;
+	authDisplayName?: string;
+};
+
+const credentialMenuItems = computed<Array<DropdownMenuItemProps<string, CredentialMenuData>>>(
+	() => {
+		const query = searchQuery.value.trim().toLowerCase();
+		return availableCredentials.value
+			.filter((credential) => !query || credential.name.toLowerCase().includes(query))
+			.map((credential) => ({
+				id: `${credential.authType}:${credential.id}`,
+				label: credential.name,
+				testId: 'tool-credential-picker-row',
+				checked: selectedCredentialIds.value.includes(credential.id),
+				data: {
+					authType: credential.authType,
+					credentialId: credential.id,
+					...(credential.authDisplayName ? { authDisplayName: credential.authDisplayName } : {}),
+				},
+			}));
+	},
+);
 
 watch(isOpen, (open) => {
-	if (open) {
-		emit('credential-dropdown-open', props.item);
-		searchQuery.value = '';
-		void nextTick(() => {
-			(searchInputRef.value?.$el as HTMLElement | undefined)
-				?.querySelector('input')
-				?.focus({ preventScroll: true });
-		});
-	}
+	if (open) emit('credential-dropdown-open', props.item);
 });
 
-function pickCredential(authType: string, credentialId: string) {
-	emit('select-credential', props.item, authType, credentialId);
-	isOpen.value = false;
+function pickCredential(itemId: string) {
+	const credential = credentialMenuItems.value.find((item) => item.id === itemId)?.data;
+	if (!credential) return;
+	emit('select-credential', props.item, credential.authType, credential.credentialId);
 }
 
 const creatableCredentials = computed(() =>
@@ -129,20 +140,23 @@ function editCredential(credentialId: string) {
 		<N8nSpinner size="small" />
 		{{ i18n.baseText('tools.connection.action.connecting') }}
 	</span>
-	<N8nPopover
+	<N8nDropdownMenu
 		v-else-if="
 			hasToolConnection(item.status) ||
 			availableCredentials.length > 0 ||
 			creatableCredentials.length > 1
 		"
-		v-model:open="isOpen"
-		side="bottom"
-		align="end"
-		:side-offset="6"
-		:width="'260px'"
-		:teleported="teleported"
-		:z-index="2000"
-		data-test-id="tool-credential-picker"
+		v-model="isOpen"
+		:items="credentialMenuItems"
+		:teleported="true"
+		:search-placeholder="i18n.baseText('tools.connection.credentialPicker.search')"
+		:empty-text="i18n.baseText('tools.connection.credentialPicker.noResults')"
+		content-test-id="tool-credential-picker"
+		placement="bottom-end"
+		width="260px"
+		searchable
+		@search="searchQuery = $event"
+		@select="pickCredential"
 	>
 		<template #trigger>
 			<N8nButton
@@ -151,25 +165,20 @@ function editCredential(credentialId: string) {
 				size="small"
 				data-test-id="tool-credential-picker-trigger-disconnected"
 			>
-				<N8nIcon
-					icon="circle-x"
-					:size="14"
-					:class="$style.statusIconDisconnected"
-					aria-hidden="true"
-				/>
+				<N8nIcon icon="circle-x" :size="14" :class="$style.statusIconDisconnected" />
 				<span>{{ statusLabel }}</span>
 				<N8nIcon icon="chevron-down" :size="12" />
 			</N8nButton>
-			<button
+			<N8nButton
 				v-else-if="hasToolConnection(item.status)"
-				type="button"
-				:class="$style.statusPill"
+				variant="ghost"
+				size="small"
 				:data-test-id="`tool-credential-picker-trigger-${item.status}`"
 			>
-				<N8nIcon icon="check" :size="14" :class="$style.statusIconConnected" aria-hidden="true" />
+				<N8nIcon icon="check" :size="14" :class="$style.statusIconConnected" />
 				<span>{{ statusLabel }}</span>
-				<N8nIcon icon="chevron-down" :size="12" />
-			</button>
+				<!-- <N8nIcon icon="chevron-down" :size="12" /> -->
+			</N8nButton>
 			<N8nButton
 				v-else
 				:variant="connectVariant"
@@ -177,78 +186,48 @@ function editCredential(credentialId: string) {
 				data-test-id="tool-credential-picker-trigger-connect"
 			>
 				<span>{{ i18n.baseText('tools.connection.action.connect') }}</span>
-				<N8nIcon icon="chevron-down" :size="14" :class="$style.triggerCaret" />
+				<!-- <N8nIcon icon="chevron-down" :size="14" :class="$style.triggerCaret" /> -->
 			</N8nButton>
 		</template>
 
-		<template #content>
-			<div :class="$style.searchWrapper">
-				<N8nInput
-					ref="searchInputRef"
-					v-model="searchQuery"
-					size="small"
-					:placeholder="i18n.baseText('tools.connection.credentialPicker.search')"
-					data-test-id="tool-credential-picker-search"
-					:class="$style.searchInput"
+		<template #item-label="{ item, ui }">
+			<span :class="[$style.rowLabel, ui.class]">
+				{{ item.label }}
+				<small
+					v-if="creatableCredentials.length > 1 && item.data?.authDisplayName"
+					:class="$style.authLabel"
 				>
-					<template #prefix>
-						<N8nIcon icon="search" :size="14" />
-					</template>
-				</N8nInput>
-			</div>
-			<ul :class="$style.list" data-test-id="tool-credential-picker-list">
-				<li v-if="filteredCredentials.length === 0" :class="$style.emptyRow">
-					<N8nText size="small" color="text-light">
-						{{ i18n.baseText('tools.connection.credentialPicker.noResults') }}
-					</N8nText>
-				</li>
-				<li
-					v-for="cred in filteredCredentials"
-					:key="`${cred.authType}:${cred.id}`"
-					:class="$style.row"
-					data-test-id="tool-credential-picker-row"
-					:data-credential-id="cred.id"
-					:data-auth-type="cred.authType"
-					@click="pickCredential(cred.authType, cred.id)"
-				>
-					<span :class="$style.rowLabel">
-						{{ cred.name }}
-						<small
-							v-if="creatableCredentials.length > 1 && cred.authDisplayName"
-							:class="$style.authLabel"
-						>
-							{{ cred.authDisplayName }}
-						</small>
-					</span>
-					<span :class="$style.rowActions">
-						<span :class="$style.rowCheck" aria-hidden="true">
-							<N8nIcon v-if="selectedCredentialIds.includes(cred.id)" icon="check" :size="14" />
-						</span>
-						<button
-							type="button"
-							:class="$style.rowEdit"
-							:title="i18n.baseText('generic.edit')"
-							:aria-label="i18n.baseText('generic.edit')"
-							data-test-id="tool-credential-picker-edit"
-							@click.stop="editCredential(cred.id)"
-						>
-							<N8nIcon icon="square-pen" :size="14" />
-						</button>
-					</span>
-				</li>
-			</ul>
-			<button
+					{{ item.data.authDisplayName }}
+				</small>
+			</span>
+		</template>
+		<template #item-trailing="{ item, ui }">
+			<N8nTooltip v-if="item.data" :content="i18n.baseText('generic.edit')" as-child>
+				<N8nIconButton
+					:class="[ui.class, $style.itemIcon]"
+					:aria-label="i18n.baseText('generic.edit')"
+					icon="square-pen"
+					icon-size="medium"
+					size="xsmall"
+					variant="ghost"
+					data-test-id="tool-credential-picker-edit"
+					@click.stop="editCredential(item.data.credentialId)"
+				/>
+			</N8nTooltip>
+		</template>
+		<template #footer>
+			<N8nButton
 				v-if="creatableCredentials[0]"
-				type="button"
 				:class="$style.createRow"
+				icon="plus"
+				variant="ghost"
 				data-test-id="tool-credential-picker-create"
 				@click="createCredential(creatableCredentials[0].authType, 'dropdown')"
 			>
-				<N8nIcon icon="plus" :size="14" />
-				<span>{{ i18n.baseText('tools.connection.credentialPicker.create') }}</span>
-			</button>
+				{{ i18n.baseText('tools.connection.credentialPicker.create') }}
+			</N8nButton>
 		</template>
-	</N8nPopover>
+	</N8nDropdownMenu>
 	<N8nButton
 		v-else
 		:variant="connectVariant"
@@ -265,8 +244,7 @@ function editCredential(credentialId: string) {
 	margin-left: var(--spacing--4xs);
 }
 
-.statusMarker,
-.statusPill {
+.statusMarker {
 	display: inline-flex;
 	align-items: center;
 	gap: var(--spacing--3xs);
@@ -276,10 +254,16 @@ function editCredential(credentialId: string) {
 	white-space: nowrap;
 }
 
-.statusPill {
-	background: none;
-	border: 0;
-	cursor: pointer;
+.itemIcon {
+	opacity: 0;
+	pointer-events: none;
+	color: var(--text-color--subtle);
+}
+
+:global([role='menuitem']:hover) .itemIcon,
+:global([role='menuitem'][aria-selected='true']) .itemIcon {
+	opacity: 1;
+	pointer-events: auto;
 }
 
 .statusIconConnected,
@@ -295,44 +279,6 @@ function editCredential(credentialId: string) {
 	color: var(--color--danger);
 }
 
-.searchWrapper {
-	padding: var(--spacing--2xs);
-}
-
-.searchInput {
-	width: 100%;
-}
-
-.list {
-	list-style: none;
-	padding: 0 var(--spacing--4xs) var(--spacing--4xs);
-	margin: 0;
-	max-height: 260px;
-	overflow-y: auto;
-}
-
-.row {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	padding: var(--spacing--2xs);
-	cursor: pointer;
-	border-radius: var(--radius--2xs);
-	font-size: var(--font-size--xs);
-	line-height: var(--line-height--md);
-	transition: background-color 80ms ease;
-
-	&:hover {
-		background: var(--color--background--light-1);
-
-		.rowEdit {
-			opacity: 1;
-			pointer-events: auto;
-			color: var(--color--text);
-		}
-	}
-}
-
 .rowLabel {
 	display: flex;
 	flex-direction: column;
@@ -346,58 +292,11 @@ function editCredential(credentialId: string) {
 	font-size: var(--font-size--3xs);
 }
 
-.rowActions {
-	margin-left: auto;
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	flex-shrink: 0;
-}
-
-.rowCheck {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	color: var(--color--text--tint-1);
-}
-
-.rowEdit {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	padding: 0;
-	border: 0;
-	opacity: 0;
-	background: none;
-	pointer-events: none;
-	color: var(--color--text--tint-1);
-	cursor: pointer;
-}
-
-.emptyRow {
-	padding: var(--spacing--2xs);
-	text-align: center;
-}
-
 .createRow {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
 	width: 100%;
-	padding: var(--spacing--xs);
-	border-top: 1px solid var(--color--foreground);
-	background: none;
-	border-left: 0;
-	border-right: 0;
-	border-bottom: 0;
-	color: var(--color--text);
-	border-bottom-left-radius: var(--radius--2xs);
-	border-bottom-right-radius: var(--radius--2xs);
-	cursor: pointer;
-	text-align: left;
-
-	&:hover {
-		background: var(--color--background--light-1);
-	}
+	justify-content: flex-start;
+	border-top: 1px solid var(--border-color);
+	border-radius: 0;
+	height: var(--height--xl);
 }
 </style>

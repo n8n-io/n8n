@@ -295,18 +295,28 @@ function handleConnect() {
 </template>
 
 <style lang="scss" module>
+@use '../../css/mixins/focus';
+@use '../../css/mixins/motion';
+
 .row {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--xs);
 	width: 100%;
 	padding: var(--spacing--2xs) var(--spacing--xs) var(--spacing--2xs) var(--spacing--2xs);
-	min-height: 58px;
 	border-radius: var(--radius--2xs);
-	transition: background-color 120ms ease;
+	transition: background-color var(--duration--snappy) var(--easing--ease-out);
+	@include motion.reduced-motion;
 
-	&:hover {
-		background: var(--color--background--light-1);
+	/** Important that this is a fixed value as it's needd for RecycleScroller height estimation **/
+	min-height: 58px;
+
+	&:hover:not(:has(.action button:hover)) {
+		background: var(--background--hover);
+	}
+
+	&:focus-within:not(:has(.action button:focus-visible, .action button:active)) {
+		@include focus.focus-ring-inset;
 	}
 }
 
@@ -331,25 +341,21 @@ function handleConnect() {
 	color: inherit;
 	text-align: left;
 	cursor: pointer;
+	outline: none;
 
 	&:disabled {
 		cursor: not-allowed;
 	}
-
-	&:focus-visible {
-		outline: var(--focus--border-width) solid var(--focus--border-color);
-		outline-offset: 2px;
-	}
 }
 
 .row--workflow {
-	min-height: 48px;
+	min-height: var(--height--2xl);
 }
 
 .workflowIcon {
 	flex-shrink: 0;
-	width: 32px;
-	height: 32px;
+	width: var(--height--md);
+	height: var(--height--md);
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -361,7 +367,7 @@ function handleConnect() {
 	min-width: 0;
 	display: flex;
 	flex-direction: column;
-	gap: 2px;
+	gap: var(--spacing--5xs);
 }
 
 .workflowTitle {
