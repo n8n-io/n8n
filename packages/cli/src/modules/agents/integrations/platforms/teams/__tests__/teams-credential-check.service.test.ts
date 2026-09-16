@@ -4,6 +4,7 @@ import type { OutboundHttp } from '@n8n/backend-network';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 
+import { AgentCredentialLookupService } from '../../../agent-credential-lookup.service';
 import { TeamsCredentialCheckService } from '../teams-credential-check.service';
 
 const PROJECT_ID = 'project-1';
@@ -35,20 +36,22 @@ describe('TeamsCredentialCheckService', () => {
 	beforeEach(() => {
 		credentialsService = mock<CredentialsService>();
 		credentialsService.findAllCredentialIdsForProject.mockResolvedValue([]);
+		credentialsService.findAllGlobalCredentialIds.mockResolvedValue([]);
 		request = vi.fn();
 		const outboundHttp = mock<OutboundHttp>();
 		outboundHttp.requests.mockReturnValue(mock({ request }) as never);
-		service = new TeamsCredentialCheckService(credentialsService, outboundHttp, mock<Logger>());
+		service = new TeamsCredentialCheckService(
+			new AgentCredentialLookupService(credentialsService),
+			outboundHttp,
+			mock<Logger>(),
+		);
 	});
 
 	it('passes when Microsoft issues a token', async () => {
 		withCredential(workingCredential);
 		request.mockResolvedValue({ statusCode: 200, body: { access_token: 'a-token' } });
 
-		expect(await service.check(PROJECT_ID, CREDENTIAL_ID)).toEqual({
-			status: 'ok',
-			clientId: CLIENT_ID,
-		});
+		expect(await service.check(PROJECT_ID, CREDENTIAL_ID)).toEqual({ status: 'ok' });
 	});
 
 	it('asks for a Bot Framework token, which is what the channel needs', async () => {

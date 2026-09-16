@@ -106,12 +106,14 @@ describe('TeamsManifestService', () => {
 				['group chats', { groupChats: true }, ['personal', 'groupChat']],
 				['both', { teamChannels: true, groupChats: true }, ['personal', 'team', 'groupChat']],
 			])('adds the %s scope', (_label, availability, expected) => {
-				expect(service.buildManifest(options({ availability })).bots[0].scopes).toEqual(expected);
+				expect(service.buildManifest(options({ settings: availability })).bots[0].scopes).toEqual(
+					expected,
+				);
 			});
 
 			it('keeps direct chat on whatever else is turned off', () => {
 				expect(
-					service.buildManifest(options({ availability: { teamChannels: false } })).bots[0].scopes,
+					service.buildManifest(options({ settings: { teamChannels: false } })).bots[0].scopes,
 				).toEqual(['personal']);
 			});
 
@@ -134,7 +136,7 @@ describe('TeamsManifestService', () => {
 					'ChatMessage.Read.Chat',
 				],
 			])('asks to read all %s', (_label, availability, permission) => {
-				const manifest = service.buildManifest(options({ availability }));
+				const manifest = service.buildManifest(options({ settings: availability }));
 
 				expect(manifest.authorization?.permissions.resourceSpecific).toEqual([
 					{ name: permission, type: 'Application' },
@@ -143,7 +145,7 @@ describe('TeamsManifestService', () => {
 
 			it('pairs a read permission with webApplicationInfo, which Teams requires', () => {
 				const manifest = service.buildManifest(
-					options({ availability: { teamChannels: true, readAllChannelMessages: true } }),
+					options({ settings: { teamChannels: true, readAllChannelMessages: true } }),
 				);
 
 				expect(manifest.webApplicationInfo).toEqual({ id: BOT_ID });
@@ -151,7 +153,7 @@ describe('TeamsManifestService', () => {
 
 			it('drops a read permission whose surface is off, so it cannot read as in effect', () => {
 				const manifest = service.buildManifest(
-					options({ availability: { teamChannels: false, readAllChannelMessages: true } }),
+					options({ settings: { teamChannels: false, readAllChannelMessages: true } }),
 				);
 
 				expect(manifest.authorization).toBeUndefined();
@@ -173,7 +175,9 @@ describe('TeamsManifestService', () => {
 			])('still satisfies the published schema with %s turned on', (_label, availability) => {
 				const ajv = new Ajv({ strict: false });
 
-				expect(ajv.validate(schema, service.buildManifest(options({ availability })))).toBe(true);
+				expect(
+					ajv.validate(schema, service.buildManifest(options({ settings: availability }))),
+				).toBe(true);
 				expect(ajv.errors).toBeNull();
 			});
 		});
@@ -243,7 +247,7 @@ describe('TeamsManifestService', () => {
 
 			it('prefers the name chosen for Teams', () => {
 				const manifest = service.buildManifest(
-					options({ identity: { displayName: 'Support desk' } }),
+					options({ settings: { displayName: 'Support desk' } }),
 				);
 
 				expect(manifest.name.short).toBe('Support desk');
@@ -252,7 +256,7 @@ describe('TeamsManifestService', () => {
 
 			it('prefers the description chosen for Teams', () => {
 				const manifest = service.buildManifest(
-					options({ identity: { description: 'Answers questions about orders' } }),
+					options({ settings: { description: 'Answers questions about orders' } }),
 				);
 
 				expect(manifest.description.short).toBe('Answers questions about orders');
@@ -277,7 +281,7 @@ describe('TeamsManifestService', () => {
 
 			it('still truncates an override to the Teams limits', () => {
 				const manifest = service.buildManifest(
-					options({ identity: { displayName: 'A'.repeat(200) } }),
+					options({ settings: { displayName: 'A'.repeat(200) } }),
 				);
 
 				expect(manifest.name.short.length).toBeLessThanOrEqual(30);

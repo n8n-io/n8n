@@ -1,16 +1,31 @@
 import { Service } from '@n8n/di';
-import { createHmac, timingSafeEqual } from 'node:crypto';
-import { InstanceSettings } from 'n8n-core';
+import { createHmac } from 'node:crypto';
 
+import { JwtService } from '@/services/jwt.service';
 import { UrlService } from '@/services/url.service';
+
+import { sanitiseAppName } from '../../integration-helpers';
 
 /**
  * The Azure portal fetches the template itself, so the link stays usable only
  * long enough to click it.
  */
-const TOKEN_TTL_MS = 15 * 60 * 1000;
+const TOKEN_TTL = '15m';
+
+/** Scopes the token to this route, so no other n8n-signed token is accepted. */
+const TOKEN_SUBJECT = 'teams-arm-template';
+
+interface TeamsArmTokenClaims {
+	projectId: string;
+	agentId: string;
+	credentialId: string;
+}
 
 const BOT_API_VERSION = '2022-09-15';
+
+/** Azure caps the bot's display name; the fallback matches the manifest's. */
+const BOT_DISPLAY_NAME_MAX = 42;
+const DEFAULT_BOT_DISPLAY_NAME = 'n8n Agent';
 
 export interface TeamsArmTemplateOptions {
 	agentName: string;
@@ -29,7 +44,7 @@ export interface TeamsArmTemplateOptions {
 @Service()
 export class TeamsArmTemplateService {
 	constructor(
-		private readonly instanceSettings: InstanceSettings,
+		private readonly jwtService: JwtService,
 		private readonly urlService: UrlService,
 	) {}
 
@@ -93,7 +108,11 @@ export class TeamsArmTemplateService {
 					sku: { name: "[parameters('sku')]" },
 					kind: 'azurebot',
 					properties: {
-						displayName: this.sanitiseDisplayName(options.agentName),
+						displayName: sanitiseAppName(
+							options.agentName,
+							BOT_DISPLAY_NAME_MAX,
+							DEFAULT_BOT_DISPLAY_NAME,
+						),
 						endpoint: "[parameters('messagingEndpoint')]",
 						msaAppId: "[parameters('msaAppId')]",
 						msaAppType: 'SingleTenant',
@@ -133,44 +152,36 @@ export class TeamsArmTemplateService {
 	 * Entra IDs it must pre-fill.
 	 */
 	buildTemplateUrl(projectId: string, agentId: string, credentialId: string): string {
-		const token = this.signToken(projectId, agentId, credentialId, Date.now() + TOKEN_TTL_MS);
+		const token = this.signToken(projectId, agentId, credentialId);
 		const query = new URLSearchParams({ token, credentialId });
 		return `${this.urlService.getWebhookBaseUrl()}rest/projects/${projectId}/agents/v2/${agentId}/integrations/teams/arm-template?${query.toString()}`;
 	}
 
 	/**
 	 * The portal fetches the template with no n8n session, so the token is the
-	 * only thing standing between this endpoint and the open internet.
+	 * only thing standing between this endpoint and the open internet. Every
+	 * value the template is built from is a claim, so a token cannot be reused
+	 * for another agent or another credential.
 	 */
 	verifyToken(projectId: string, agentId: string, credentialId: string, token: string): boolean {
-		const [expiry, signature] = token.split('.');
-		const expiresAt = Number(expiry);
-		if (!Number.isSafeInteger(expiresAt) || expiresAt < Date.now()) return false;
-		if (!signature) return false;
-
-		const expected = Buffer.from(this.sign(projectId, agentId, credentialId, expiresAt), 'hex');
-		const received = Buffer.from(signature, 'hex');
-		return expected.length === received.length && timingSafeEqual(expected, received);
+		try {
+			const claims = this.jwtService.verify<TeamsArmTokenClaims>(token, { subject: TOKEN_SUBJECT });
+			return (
+				claims.projectId === projectId &&
+				claims.agentId === agentId &&
+				claims.credentialId === credentialId
+			);
+		} catch {
+			// Covers a bad signature, a tampered payload and an expired token alike.
+			return false;
+		}
 	}
 
-	private signToken(
-		projectId: string,
-		agentId: string,
-		credentialId: string,
-		expiresAt: number,
-	): string {
-		return `${expiresAt}.${this.sign(projectId, agentId, credentialId, expiresAt)}`;
-	}
-
-	private sign(
-		projectId: string,
-		agentId: string,
-		credentialId: string,
-		expiresAt: number,
-	): string {
-		return createHmac('sha256', this.instanceSettings.encryptionKey)
-			.update(`teams-arm:${projectId}:${agentId}:${credentialId}:${expiresAt}`)
-			.digest('hex');
+	private signToken(projectId: string, agentId: string, credentialId: string): string {
+		return this.jwtService.sign(
+			{ projectId, agentId, credentialId },
+			{ subject: TOKEN_SUBJECT, expiresIn: TOKEN_TTL },
+		);
 	}
 
 	/**
@@ -179,10 +190,6 @@ export class TeamsArmTemplateService {
 	 * is globally unique and the bare name would collide for the second person
 	 * who tried it.
 	 */
-	suggestedBotName(agentName: string, agentId: string): string {
-		return this.buildBotName(agentName, agentId);
-	}
-
 	private buildBotName(agentName: string, agentId: string): string {
 		const suffix = createHmac('sha256', 'teams-bot-name').update(agentId).digest('hex').slice(0, 8);
 		const slug = agentName
@@ -194,14 +201,5 @@ export class TeamsArmTemplateService {
 			.replace(/-+$/, '');
 		// An Azure Bot name must start with a letter.
 		return /^[a-z]/.test(slug) ? `${slug}-${suffix}` : `n8n-agent-${suffix}`;
-	}
-
-	private sanitiseDisplayName(raw: string): string {
-		const cleaned = raw
-			.replace(/[^a-zA-Z0-9 ._-]/g, '')
-			.replace(/\s+/g, ' ')
-			.trim()
-			.slice(0, 42);
-		return cleaned.length > 0 ? cleaned : 'n8n Agent';
 	}
 }

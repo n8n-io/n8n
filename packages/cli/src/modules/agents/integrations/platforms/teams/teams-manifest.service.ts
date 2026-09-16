@@ -1,9 +1,16 @@
-import type { AgentTeamsIntegrationSettings, TeamsAgentAppManifest } from '@n8n/api-types';
+import {
+	TEAMS_DESCRIPTION_MAX,
+	TEAMS_DISPLAY_NAME_MAX,
+	type AgentTeamsIntegrationSettings,
+	type TeamsAgentAppManifest,
+} from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import { zipSync } from 'fflate';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { v5 as uuidv5 } from 'uuid';
+
+import { sanitiseAppName } from '../../integration-helpers';
 
 const MANIFEST_VERSION = '1.16';
 const MANIFEST_SCHEMA = `https://developer.microsoft.com/json-schemas/teams/v${MANIFEST_VERSION}/MicrosoftTeams.schema.json`;
@@ -22,9 +29,11 @@ const MANIFEST_ID_NAMESPACE = 'b6b3f2a4-1c5e-4d9a-9f3b-7e2c8a1d4f60';
 
 /** Teams rejects anything longer, naming the field. */
 const LIMITS = {
-	shortName: 30,
+	// The same caps the settings schema enforces, so a value it accepts is never
+	// truncated on its way into the manifest.
+	shortName: TEAMS_DISPLAY_NAME_MAX,
+	shortDescription: TEAMS_DESCRIPTION_MAX,
 	fullName: 100,
-	shortDescription: 80,
 	fullDescription: 4000,
 	developerName: 32,
 } as const;
@@ -36,13 +45,11 @@ export interface BuildTeamsManifestOptions {
 	botId: string;
 	/** Drives the manifest version, so a re-upload is an update. */
 	agentUpdatedAt: Date;
-	/** Where the app may be used. Absent means direct chat only. */
-	availability?: Pick<
-		AgentTeamsIntegrationSettings,
-		'teamChannels' | 'groupChats' | 'readAllChannelMessages' | 'readAllGroupMessages'
-	>;
-	/** How the app appears in Teams. Both fall back to the agent's name. */
-	identity?: Pick<AgentTeamsIntegrationSettings, 'displayName' | 'description'>;
+	/**
+	 * Where the app may be used and how it appears. Absent means direct chat
+	 * only, with the name and description falling back to the agent's.
+	 */
+	settings?: AgentTeamsIntegrationSettings;
 }
 
 /**
@@ -63,12 +70,22 @@ const READ_PERMISSIONS = [
 	},
 ] as const;
 
+/** The one sentence both the manifest and the setup defaults fall back to. */
+function describeApp(appName: string): string {
+	return `Chat with ${appName}, an agent powered by n8n.`;
+}
+
 @Service()
 export class TeamsManifestService {
 	buildManifest(options: BuildTeamsManifestOptions): TeamsAgentAppManifest {
-		const appName = this.sanitiseName(options.identity?.displayName ?? options.agentName);
-		const shortDescription =
-			options.identity?.description ?? `Chat with ${appName}, an agent powered by n8n.`;
+		const appName = sanitiseAppName(
+			options.settings?.displayName ?? options.agentName,
+			LIMITS.fullName,
+			DEFAULT_APP_NAME,
+		);
+		// Falls back to describing the chosen name, not the agent's, so a renamed
+		// app does not describe itself as something else.
+		const shortDescription = options.settings?.description ?? describeApp(appName);
 		return {
 			$schema: MANIFEST_SCHEMA,
 			manifestVersion: MANIFEST_VERSION,
@@ -97,14 +114,14 @@ export class TeamsManifestService {
 			bots: [
 				{
 					botId: options.botId,
-					scopes: this.buildScopes(options.availability),
+					scopes: this.buildScopes(options.settings),
 					isNotificationOnly: false,
 					supportsFiles: false,
 				},
 			],
 			permissions: ['identity', 'messageTeamMembers'],
 			validDomains: [],
-			...this.buildReadPermissions(options.botId, options.availability),
+			...this.buildReadPermissions(options.botId, options.settings),
 		};
 	}
 
@@ -130,7 +147,7 @@ export class TeamsManifestService {
 	}
 
 	/** Direct chat is always on: it is what makes the connection testable. */
-	private buildScopes(availability: BuildTeamsManifestOptions['availability']): string[] {
+	private buildScopes(availability: BuildTeamsManifestOptions['settings']): string[] {
 		return [
 			'personal',
 			...(availability?.teamChannels ? ['team'] : []),
@@ -144,7 +161,7 @@ export class TeamsManifestService {
 	 */
 	private buildReadPermissions(
 		botId: string,
-		availability: BuildTeamsManifestOptions['availability'],
+		availability: BuildTeamsManifestOptions['settings'],
 	): Partial<TeamsAgentAppManifest> {
 		const resourceSpecific = READ_PERMISSIONS.filter(
 			({ setting, requires }) => availability?.[setting] && availability?.[requires],
@@ -159,13 +176,10 @@ export class TeamsManifestService {
 
 	/** What the manifest falls back to, so the setup can show it before saving. */
 	defaultIdentity(agentName: string): { displayName: string; description: string } {
-		const appName = this.sanitiseName(agentName);
+		const appName = sanitiseAppName(agentName, LIMITS.fullName, DEFAULT_APP_NAME);
 		return {
 			displayName: this.truncate(appName, LIMITS.shortName),
-			description: this.truncate(
-				`Chat with ${appName}, an agent powered by n8n.`,
-				LIMITS.shortDescription,
-			),
+			description: this.truncate(describeApp(appName), LIMITS.shortDescription),
 		};
 	}
 
@@ -184,14 +198,6 @@ export class TeamsManifestService {
 		const days = Math.floor(millis / 86_400_000);
 		const secondsIntoDay = Math.floor((millis % 86_400_000) / 1000);
 		return `1.${days}.${secondsIntoDay}`;
-	}
-
-	private sanitiseName(raw: string): string {
-		const cleaned = raw
-			.replace(/[^a-zA-Z0-9 ._-]/g, '')
-			.replace(/\s+/g, ' ')
-			.trim();
-		return cleaned.length > 0 ? cleaned : DEFAULT_APP_NAME;
 	}
 
 	private truncate(value: string, max: number): string {

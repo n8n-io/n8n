@@ -105,3 +105,16 @@ export function hasUpdateIssueField(input: {
 		input.parentId !== undefined
 	);
 }
+
+/**
+ * Reduces a user-chosen name to what a vendor app catalogue accepts. Teams and
+ * Slack both reject the same characters, so the allow-list lives in one place.
+ */
+export function sanitiseAppName(raw: string, maxLength: number, fallback: string): string {
+	const cleaned = raw
+		.replace(/[^a-zA-Z0-9 ._-]/g, '')
+		.replace(/\s+/g, ' ')
+		.trim()
+		.slice(0, maxLength);
+	return cleaned.length > 0 ? cleaned : fallback;
+}

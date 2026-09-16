@@ -1,6 +1,8 @@
 import { mock } from 'vitest-mock-extended';
+import type { GlobalConfig } from '@n8n/config';
 import type { InstanceSettings } from 'n8n-core';
 
+import { JwtService } from '@/services/jwt.service';
 import type { UrlService } from '@/services/url.service';
 
 import { TeamsArmTemplateService } from '../teams-arm-template.service';
@@ -9,7 +11,10 @@ const PROJECT_ID = 'project-1';
 const AGENT_ID = 'agent-1';
 const CREDENTIAL_ID = 'cred-1';
 
-const instanceSettings = mock<InstanceSettings>({ encryptionKey: 'test-encryption-key' });
+const jwtService = new JwtService(
+	mock<InstanceSettings>({ encryptionKey: 'test-encryption-key' }),
+	mock<GlobalConfig>({ userManagement: { jwtSecret: 'test-jwt-secret' } }),
+);
 const urlService = mock<UrlService>();
 urlService.getWebhookBaseUrl.mockReturnValue('https://n8n.example.com/');
 
@@ -23,7 +28,7 @@ const options = {
 };
 
 describe('TeamsArmTemplateService', () => {
-	const service = new TeamsArmTemplateService(instanceSettings, urlService);
+	const service = new TeamsArmTemplateService(jwtService, urlService);
 
 	const resourcesOf = (template: Record<string, unknown>) =>
 		template.resources as Array<Record<string, unknown>>;
@@ -144,31 +149,47 @@ describe('TeamsArmTemplateService', () => {
 		});
 
 		it('rejects a tampered signature', () => {
-			const [expiry, signature] = tokenFrom(
+			const [header, payload, signature] = tokenFrom(
 				service.buildTemplateUrl(PROJECT_ID, AGENT_ID, CREDENTIAL_ID),
 			).split('.');
 			const flipped = signature.startsWith('a')
 				? `b${signature.slice(1)}`
 				: `a${signature.slice(1)}`;
 
-			expect(service.verifyToken(PROJECT_ID, AGENT_ID, CREDENTIAL_ID, `${expiry}.${flipped}`)).toBe(
-				false,
-			);
+			expect(
+				service.verifyToken(PROJECT_ID, AGENT_ID, CREDENTIAL_ID, `${header}.${payload}.${flipped}`),
+			).toBe(false);
 		});
 
 		it('rejects a token whose expiry was pushed out', () => {
-			const [, signature] = tokenFrom(
+			const [header, payload, signature] = tokenFrom(
 				service.buildTemplateUrl(PROJECT_ID, AGENT_ID, CREDENTIAL_ID),
 			).split('.');
+			const claims = JSON.parse(Buffer.from(payload, 'base64url').toString());
+			const extended = Buffer.from(
+				JSON.stringify({ ...claims, exp: claims.exp + 86_400 }),
+			).toString('base64url');
 
+			// The expiry is inside the signed payload, so pushing it out invalidates
+			// the signature that still travels with it.
 			expect(
 				service.verifyToken(
 					PROJECT_ID,
 					AGENT_ID,
 					CREDENTIAL_ID,
-					`${Date.now() + 86_400_000}.${signature}`,
+					`${header}.${extended}.${signature}`,
 				),
 			).toBe(false);
+		});
+
+		it('rejects an n8n token minted for anything other than this route', () => {
+			// The instance signs tokens for other purposes with the same secret.
+			const token = jwtService.sign(
+				{ projectId: PROJECT_ID, agentId: AGENT_ID, credentialId: CREDENTIAL_ID },
+				{ expiresIn: '15m' },
+			);
+
+			expect(service.verifyToken(PROJECT_ID, AGENT_ID, CREDENTIAL_ID, token)).toBe(false);
 		});
 
 		it('rejects a token minted for a different agent', () => {
@@ -192,7 +213,7 @@ describe('TeamsArmTemplateService', () => {
 		it.each([
 			['', 'empty'],
 			['nonsense', 'malformed'],
-			['123.', 'signature-less'],
+			['123.456.', 'signature-less'],
 		])('rejects a %s token (%s)', (token) => {
 			expect(service.verifyToken(PROJECT_ID, AGENT_ID, CREDENTIAL_ID, token)).toBe(false);
 		});

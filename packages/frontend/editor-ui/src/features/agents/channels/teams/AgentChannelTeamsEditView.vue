@@ -12,9 +12,10 @@ const emit = defineEmits<{
 	edit: [];
 }>();
 const viewRef = ref<AgentChannelViewExpose>();
+const currentSettings = computed(() => viewRef.value?.currentSettings);
 const validationError = computed(() => viewRef.value?.validationError ?? null);
 
-defineExpose({ validationError });
+defineExpose({ currentSettings, validationError });
 </script>
 
 <template>

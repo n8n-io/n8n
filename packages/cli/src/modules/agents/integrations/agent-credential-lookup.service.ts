@@ -1,0 +1,36 @@
+import { Service } from '@n8n/di';
+
+import { CredentialsService } from '@/credentials/credentials.service';
+
+/**
+ * Resolves a credential the way an agent's channel resolves it: through the
+ * agent's project rather than through a signed-in user, because the routes that
+ * need it run without one.
+ *
+ * Shared so that a setup step and the check that gates it cannot disagree about
+ * which credentials a project may read. They did: a globally shared credential
+ * that setup accepted was reported as missing by the check.
+ */
+@Service()
+export class AgentCredentialLookupService {
+	constructor(private readonly credentialsService: CredentialsService) {}
+
+	/**
+	 * Returns the decrypted credential, or null when it is not visible to the
+	 * project or is not of the expected type.
+	 */
+	async decryptForProject(projectId: string, credentialId: string, expectedType: string) {
+		const projectCredentials =
+			await this.credentialsService.findAllCredentialIdsForProject(projectId);
+		// Global credentials are only consulted on a miss: the query reads every
+		// global credential, data column included.
+		const credential =
+			projectCredentials.find((item) => item.id === credentialId) ??
+			(await this.credentialsService.findAllGlobalCredentialIds(true)).find(
+				(item) => item.id === credentialId,
+			);
+
+		if (!credential || credential.type !== expectedType) return null;
+		return await this.credentialsService.decrypt(credential, true);
+	}
+}
