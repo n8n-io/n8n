@@ -50,17 +50,10 @@ export class GetPairedItemRule implements IBreakingChangeWorkflowRule {
 			JSON.stringify(node.parameters ?? {}).includes(HELPER_NAME),
 		);
 
-		if (affectedNodes.length === 0) return { isAffected: false, issues: [] };
-
-		return {
-			isAffected: true,
-			issues: affectedNodes.map((node) => ({
-				title: `Node '${node.name}' uses the removed ${HELPER_NAME} helper`,
-				description: `Expressions in this node call ${HELPER_NAME}, which is removed. After the update they fail with an error naming the replacement.`,
-				level: 'error',
-				nodeId: node.id,
-				nodeName: node.name,
-			})),
-		};
+		return reportAffectedNodes(affectedNodes, (node) => ({
+			title: `Node '${node.name}' uses the removed ${HELPER_NAME} helper`,
+			description: `Expressions in this node call ${HELPER_NAME}, which is removed. After the update they fail with an error naming the replacement.`,
+			level: 'error',
+		}));
 	}
 }
