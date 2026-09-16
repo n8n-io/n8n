@@ -250,9 +250,10 @@ export class AgentChatHitlResumeHandler {
 		resumeData: unknown,
 		options: Pick<ResumeForChatConfig, 'messageContext' | 'contextConversation'> & {
 			/**
-			 * The user who clicked, when there is one. Present means they are told
-			 * privately that the action was already handled; a resume the user did
-			 * not trigger (a sub-workflow waking the run) omits it and stays silent.
+			 * The user who clicked, when there is one. They are told privately that
+			 * the action was already handled, and a card the resumed turn raises is
+			 * addressed to them. A resume the user did not trigger (a sub-workflow
+			 * waking the run) omits it and stays silent.
 			 */
 			actingUser?: Author;
 		} = {},
@@ -283,6 +284,7 @@ export class AgentChatHitlResumeHandler {
 				await this.options.streamConsumer.consume(stream, thread, {
 					...resumeExecutionContext,
 					statusHandle,
+					...(actingUser ? { actingUserId: actingUser.userId } : {}),
 				});
 			} finally {
 				// The stream consumer clears the status right before the first response;

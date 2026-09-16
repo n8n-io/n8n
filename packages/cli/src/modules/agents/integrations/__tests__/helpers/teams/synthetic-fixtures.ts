@@ -66,11 +66,54 @@ export const selfMessage: TeamsActivityFixture = baseActivity({
 /**
  * An Adaptive Card button click. Teams delivers `Action.Submit` as a message
  * activity carrying `value` and no text.
+ *
+ * The click is derived from the activity that produced the card, so the
+ * conversation and its `channelData` cannot drift apart: Teams never sends a
+ * group chat conversation with the `channelData` of a direct message.
  */
-export function cardAction(value: Record<string, unknown>, replyToId: string) {
+export function cardAction(
+	value: Record<string, unknown>,
+	replyToId: string,
+	from: TeamsActivityFixture = baseActivity(),
+) {
 	return baseActivity({
 		id: 'activity-action-1',
+		conversation: from.conversation,
+		channelData: from.channelData,
 		replyToId,
 		value,
 	});
 }
+
+const mentionEntity = {
+	type: 'mention',
+	text: '<at>n8n Agent</at>',
+	mentioned: { id: `28:${TEAMS_APP_ID}`, name: 'n8n Agent' },
+};
+
+// ---------------------------------------------------------------------------
+// Group chat
+//
+// A group chat conversation id carries no message id, so the whole chat is one
+// conversation and one session.
+// ---------------------------------------------------------------------------
+
+export const TEAMS_GROUP_CHAT_CONVERSATION_ID = '19:group_chat_test@thread.v2';
+
+function groupChatActivity(overrides: Partial<TeamsActivityFixture> = {}): TeamsActivityFixture {
+	return baseActivity({
+		conversation: {
+			id: TEAMS_GROUP_CHAT_CONVERSATION_ID,
+			conversationType: 'groupChat',
+			tenantId: TEAMS_TENANT_ID,
+			isGroup: true,
+		},
+		...overrides,
+	});
+}
+
+export const groupChatMention: TeamsActivityFixture = groupChatActivity({
+	id: 'activity-group-1',
+	text: '<at>n8n Agent</at> hello agent',
+	entities: [mentionEntity],
+});

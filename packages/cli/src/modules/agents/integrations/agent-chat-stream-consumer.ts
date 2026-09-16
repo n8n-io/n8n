@@ -25,6 +25,7 @@ interface AgentChatStreamConsumerOptions {
 	handleSuspension: (
 		chunk: SuspendedChunk,
 		thread: Thread<unknown, unknown>,
+		actingUserId?: string,
 	) => Promise<SuspensionHandlingResult>;
 	handleMessage: (
 		chunk: MessageChunk,
@@ -44,6 +45,12 @@ interface ConsumeStreamOptions {
 	/** Buffer output and report posting failures so the caller can retry. */
 	throwOnDeliveryError?: boolean;
 	statusHandle?: BridgeStatusHandle;
+	/**
+	 * The user whose message or click drove this turn. A suspension card can be
+	 * addressed to them instead of the whole conversation. Absent for a turn no
+	 * user drove, such as a sub-workflow waking a parked run.
+	 */
+	actingUserId?: string;
 }
 
 interface ResponseState {
@@ -193,7 +200,7 @@ export class AgentChatStreamConsumer {
 					}
 					case 'tool-call-suspended': {
 						await responseLifecycle.startDiscreteResponse();
-						const result = await this.options.handleSuspension(chunk, thread);
+						const result = await this.options.handleSuspension(chunk, thread, options.actingUserId);
 						responseState.hasVisibleResponse ||= result === 'posted';
 						if (result === 'failed') {
 							responseState.fallbackSource = 'suspension';
@@ -361,7 +368,7 @@ export class AgentChatStreamConsumer {
 							await flushBuffer();
 						}
 						await responseLifecycle.startDiscreteResponse();
-						const result = await this.options.handleSuspension(chunk, thread);
+						const result = await this.options.handleSuspension(chunk, thread, options.actingUserId);
 						responseState.hasVisibleResponse ||= result === 'posted';
 						if (result === 'failed') {
 							if (options.throwOnDeliveryError) {

@@ -93,6 +93,13 @@ export class TeamsIntegration extends AgentChatIntegration {
 	 */
 	readonly deleteActionMessageBeforeResume = false;
 
+	/**
+	 * A channel or group chat card goes out as a Teams targeted message, so only
+	 * the user who asked sees the approval. A 1:1 chat is already private, and
+	 * the adapter posts there normally.
+	 */
+	readonly targetSuspensionCardAtActingUser = true;
+
 	readonly disableStreaming = true;
 
 	constructor(

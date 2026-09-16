@@ -5,8 +5,10 @@ import {
 	cardAction,
 	dmFollowUp,
 	dmMessage,
+	groupChatMention,
 	selfMessage,
 	TEAMS_DM_CONVERSATION_ID,
+	TEAMS_GROUP_CHAT_CONVERSATION_ID,
 	TEAMS_USER_ID,
 } from '../../../__tests__/helpers/teams/synthetic-fixtures';
 
@@ -189,6 +191,88 @@ describe('Microsoft Teams integration scenarios', () => {
 			expect(ctx.lastEdit()?.body).toMatchObject({
 				text: '✅ Approved by Alice',
 			});
+		} finally {
+			await ctx.shutdown();
+		}
+	});
+
+	it('addresses a group chat approval card at the user who asked', async () => {
+		const ctx = await createTeamsReplayContext({
+			stream: [
+				{
+					type: 'tool-call-suspended',
+					runId: 'run-group-1',
+					toolCallId: 'tool-group-1',
+					toolName: 'approval',
+					suspendPayload: {
+						type: 'approval',
+						toolName: 'send_teams_message',
+						displayName: 'Send Teams message',
+						args: { text: 'Continue?' },
+					},
+					resumeSchema: {
+						type: 'object',
+						properties: { approved: { type: 'boolean' } },
+						required: ['approved'],
+					},
+				},
+				{ type: 'finish', finishReason: 'stop' },
+			],
+		});
+		try {
+			await ctx.sendWebhook(groupChatMention);
+
+			const cardPost = ctx.lastPost();
+			expect(cardPost?.body).toMatchObject({
+				conversation: { id: TEAMS_GROUP_CHAT_CONVERSATION_ID },
+				// A Teams targeted message: delivered to this user alone.
+				recipient: { id: TEAMS_USER_ID },
+			});
+			expect(cardActions(cardPost?.body)).not.toHaveLength(0);
+		} finally {
+			await ctx.shutdown();
+		}
+	});
+
+	it('resumes and settles a targeted group chat card', async () => {
+		const ctx = await createTeamsReplayContext({
+			stream: [
+				{
+					type: 'tool-call-suspended',
+					runId: 'run-group-1',
+					toolCallId: 'tool-group-1',
+					toolName: 'approval',
+					suspendPayload: {
+						type: 'approval',
+						toolName: 'send_teams_message',
+						displayName: 'Send Teams message',
+						args: { text: 'Continue?' },
+					},
+					resumeSchema: {
+						type: 'object',
+						properties: { approved: { type: 'boolean' } },
+						required: ['approved'],
+					},
+				},
+				{ type: 'finish', finishReason: 'stop' },
+			],
+		});
+		try {
+			await ctx.sendWebhook(groupChatMention);
+			const cardMessageId = ctx.lastPostedMessageId();
+			if (!cardMessageId) throw new Error('Expected the approval card to have been posted');
+			const approve = cardActions(ctx.lastPost()?.body)[0];
+			if (!approve) throw new Error('Expected an Adaptive Card action on the approval card');
+
+			ctx.nextStream([{ type: 'finish', finishReason: 'stop' }]);
+			await ctx.sendWebhook(
+				cardAction(approve.data as Record<string, unknown>, cardMessageId, groupChatMention),
+			);
+
+			expect(ctx.agentExecutor.resumeForChat).toHaveBeenCalledWith(
+				expect.objectContaining({ runId: 'run-group-1', toolCallId: 'tool-group-1' }),
+			);
+			expect(ctx.lastEdit()?.body).toMatchObject({ text: '✅ Approved by Alice' });
 		} finally {
 			await ctx.shutdown();
 		}

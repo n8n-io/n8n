@@ -252,6 +252,14 @@ export abstract class AgentChatIntegration {
 	readonly deleteActionMessageBeforeResume: boolean = true;
 
 	/**
+	 * True to deliver a suspension card only to the user whose turn raised it,
+	 * so a bystander in a channel cannot answer someone else's approval. The
+	 * card still goes to the whole conversation when the platform has no
+	 * ephemeral delivery — a HITL card is never dropped for want of privacy.
+	 */
+	readonly targetSuspensionCardAtActingUser: boolean = false;
+
+	/**
 	 * True if the bridge should buffer streaming output and post it as a single
 	 * message instead of streaming text deltas via post-and-edit.
 	 */

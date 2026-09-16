@@ -11,7 +11,7 @@ import { LockNamespace, LockService } from '@n8n/backend-common';
 import { type HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
-import type { Attachment, Author, Chat, Message, Thread } from 'chat';
+import type { Attachment, Author, CardElement, Chat, Message, Thread } from 'chat';
 import { UserError, type Logger } from 'n8n-workflow';
 
 import { CacheService } from '@/services/cache/cache.service';
@@ -847,6 +847,7 @@ export class AgentChatBridge {
 			await this.streamConsumer.consume(stream, thread, {
 				forceBuffered: payload.forceBuffered,
 				statusHandle,
+				actingUserId: payload.sender.userId,
 			});
 		} catch (error) {
 			await this.postErrorToThread(thread, error);
@@ -1006,6 +1007,7 @@ export class AgentChatBridge {
 	private async handleSuspension(
 		chunk: Extract<StreamChunk, { type: 'tool-call-suspended' }>,
 		thread: Thread,
+		actingUserId?: string,
 	): Promise<SuspensionHandlingResult> {
 		const { runId, toolCallId, suspendPayload } = chunk;
 
@@ -1029,7 +1031,7 @@ export class AgentChatBridge {
 				this.getShortenCallback(callbackMetadata),
 				this.integration.type,
 			);
-			await thread.post({ card });
+			await this.deliverSuspensionCard(thread, card, actingUserId);
 			return 'posted';
 		} catch (error) {
 			this.logger.error('[AgentChatBridge] Failed to post suspension card', {
@@ -1040,6 +1042,25 @@ export class AgentChatBridge {
 			});
 			return 'failed';
 		}
+	}
+
+	/**
+	 * Put the card where the platform's rules allow. Teams addresses a channel
+	 * card at the user whose turn raised it, so nobody else can answer their
+	 * approval; a platform with no ephemeral delivery, and a turn with no acting
+	 * user, fall back to the conversation. Losing the card would leave the run
+	 * parked with nothing to click, so privacy never costs delivery.
+	 */
+	private async deliverSuspensionCard(
+		thread: Thread,
+		card: CardElement,
+		actingUserId?: string,
+	): Promise<void> {
+		if (this.integrationImpl?.targetSuspensionCardAtActingUser && actingUserId) {
+			const sent = await thread.postEphemeral(actingUserId, { card }, { fallbackToDM: false });
+			if (sent) return;
+		}
+		await thread.post({ card });
 	}
 
 	// ---------------------------------------------------------------------------
