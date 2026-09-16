@@ -118,6 +118,7 @@ function valueChanged(parameterData: IUpdateInformation) {
 				<N8nText
 					v-if="hasRequiredError(parameter)"
 					:id="`${inputId}-${parameter.name}-error`"
+					class="mt-2xs"
 					color="danger"
 					size="small"
 					role="alert"
