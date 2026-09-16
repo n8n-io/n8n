@@ -372,17 +372,6 @@ provide('openAgentChatPreview', openAgentChatPreview);
 provide('pendingComposerContext', pendingComposerContext);
 provide('dismissPendingComposerContext', dismissPendingComposerContext);
 
-// Focus the composer when plan-edit mode is entered. The thread runtime
-// owns the activePlanEdit state; this watcher just reacts to the transition.
-watch(
-	() => thread.activePlanEdit,
-	(next, prev) => {
-		if (next && !prev) {
-			void nextTick(() => chatInputRef.value?.focus());
-		}
-	},
-);
-
 // --- Side panels ---
 const showDebugPanel = ref(false);
 const isDebugEnabled = computed(() => localStorage.getItem('instanceAi.debugMode') === 'true');
@@ -770,9 +759,9 @@ watch(
 );
 
 watch(
-	[chatInputRef, pendingComposerDraft, () => thread.activePlanEdit],
-	([input, draft, planEdit]) => {
-		if (!input || !draft || planEdit) return;
+	[chatInputRef, pendingComposerDraft, () => thread.pendingPlanReview],
+	([input, draft, planReview]) => {
+		if (!input || !draft || planReview) return;
 		input.setText(draft);
 		generatedComposerDraft.value = draft;
 		pendingComposerDraft.value = null;
@@ -953,6 +942,23 @@ const workflowPreviewRef =
 	useTemplateRef<InstanceType<typeof InstanceAiWorkflowPreview>>('workflowPreview');
 
 // --- Message handlers ---
+/** Put a failed submission back in the composer without clobbering newer typing. */
+function restoreFailedSubmission(message: string, restoreDraft?: () => boolean) {
+	if (restoreDraft?.()) return;
+	const input = chatInputRef.value;
+	if (input && !input.isDirty()) input.setText(message);
+}
+
+/**
+ * A plan change request is in flight. `confirmAction` never touches the send
+ * counter, so without this the composer stays live for the round trip and a
+ * second Enter is dropped by the runtime's duplicate guard without a trace.
+ */
+const isPlanChangeInFlight = computed(() => {
+	const requestId = thread.pendingPlanReview?.requestId;
+	return requestId !== undefined && thread.updatingPlanRequestIds.has(requestId);
+});
+
 function handleSubmit(
 	message: string,
 	attachments?: InstanceAiAttachment[],
@@ -965,40 +971,35 @@ function handleSubmit(
 	// Reset scroll on new user message
 	userScrolledUp.value = false;
 
-	const planEdit = thread.activePlanEdit;
-	if (planEdit) {
-		thread.cancelPlanEdit();
-		telemetry.track('User finished providing input', {
-			thread_id: thread.id,
-			input_thread_id: planEdit.inputThreadId ?? '',
-			instance_id: rootStore.instanceId,
-			type: 'plan-review',
-			provided_inputs: [
-				{
-					label: 'plan',
-					options: ['approve', 'ask-for-edits', 'deny'],
-					option_chosen: 'ask-for-edits',
-				},
-			],
-			skipped_inputs: [],
-			num_tasks: planEdit.taskCount,
-			feedback: scrubSecretsInText(message),
-			plan_feedback_type: 'changes_requested',
-		});
-		thread.markPlanUpdatePending(planEdit.requestId);
-		void thread
-			.confirmAction(planEdit.requestId, {
-				kind: 'approval',
-				approved: false,
-				userInput: message,
-			})
-			.then((success) => {
-				if (success) {
-					thread.resolveConfirmation(planEdit.requestId, 'changes-requested');
-				} else {
-					thread.clearPlanUpdatePending(planEdit.requestId);
-				}
+	// While a plan review is pending every message is feedback on that plan —
+	// the user does not have to click "Ask for edits" first.
+	const planReview = thread.pendingPlanReview;
+	if (planReview) {
+		void thread.requestPlanChanges(planReview.requestId, message).then((sent) => {
+			if (!sent) {
+				restoreFailedSubmission(message, restoreDraft);
+				return;
+			}
+			// Only an accepted request revises the plan. Tracking up front would
+			// also count a dropped or failed submit the run never saw.
+			telemetry.track('User finished providing input', {
+				thread_id: thread.id,
+				input_thread_id: planReview.inputThreadId ?? '',
+				instance_id: rootStore.instanceId,
+				type: 'plan-review',
+				provided_inputs: [
+					{
+						label: 'plan',
+						options: ['approve', 'ask-for-edits', 'deny'],
+						option_chosen: 'ask-for-edits',
+					},
+				],
+				skipped_inputs: [],
+				num_tasks: planReview.taskCount,
+				feedback: scrubSecretsInText(message),
+				plan_feedback_type: 'changes_requested',
 			});
+		});
 		return;
 	}
 
@@ -1016,9 +1017,7 @@ function handleSubmit(
 		.sendMessage(message, submittedAttachments, rootStore.pushRef, handoffContext)
 		.then((sent) => {
 			if (!sent) {
-				if (restoreDraft?.()) return;
-				const input = chatInputRef.value;
-				if (input && !input.isDirty()) input.setText(message);
+				restoreFailedSubmission(message, restoreDraft);
 				return;
 			}
 			// Track message-with-nodes only after a successful send, so failed
@@ -1121,7 +1120,7 @@ function handleAgentPreviewAssistantHandoff(params: AgentPreviewHandoffParams) {
 		generatedComposerDraft.value = null;
 	}
 
-	if (!thread.activePlanEdit) {
+	if (!thread.pendingPlanReview) {
 		void nextTick(() => chatInputRef.value?.focus());
 	}
 }
@@ -1410,9 +1409,9 @@ async function dismissComposerContextChip() {
 													ref="chatInputRef"
 													key="chat-input"
 													:is-streaming="thread.isStreaming"
-													:is-submitting="thread.isSendingMessage"
+													:is-submitting="thread.isSendingMessage || isPlanChangeInFlight"
 													:is-awaiting-confirmation="thread.isAwaitingConfirmation"
-													:is-plan-edit-mode="thread.activePlanEdit !== null"
+													:is-awaiting-plan-review="thread.pendingPlanReview !== null"
 													:is-workflow-builder-available="settingsStore.isWorkflowBuilderAvailable"
 													:current-thread-id="thread.id"
 													:amend-context="thread.amendContext"
@@ -1420,7 +1419,6 @@ async function dismissComposerContextChip() {
 													:contextual-suggestion="thread.contextualSuggestion"
 													@submit="handleSubmit"
 													@stop="handleStop"
-													@cancel-plan-edit="thread.cancelPlanEdit"
 													@dismiss-context-chip="dismissComposerContextChip"
 												/>
 											</Transition>
