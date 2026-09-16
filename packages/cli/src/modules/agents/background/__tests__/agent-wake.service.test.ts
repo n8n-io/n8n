@@ -1,4 +1,4 @@
-import type { LockService, Logger } from '@n8n/backend-common';
+import { LockAcquisitionTimeoutError, type LockService, type Logger } from '@n8n/backend-common';
 import type { AgentsConfig } from '@n8n/config';
 import type { UserRepository } from '@n8n/db';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
@@ -428,14 +428,19 @@ describe('AgentWakeService', () => {
 	});
 
 	it('leaves results pending when the wake cannot acquire the lease', async () => {
-		const { service, lockService, orchestrator, jobRepository, messageQueue } = setup();
-		lockService.withLease.mockRejectedValue(new Error('lock unavailable'));
+		const { service, lockService, orchestrator, jobRepository, messageQueue, logger } = setup();
+		lockService.withLease.mockRejectedValue(new LockAcquisitionTimeoutError('lock unavailable'));
 
 		await service.attemptWake('thread-1');
 
 		expect(orchestrator.executeForWake).not.toHaveBeenCalled();
 		expect(jobRepository.markMailConsumed).not.toHaveBeenCalled();
 		expect(messageQueue.notify).not.toHaveBeenCalled();
+		expect(logger.debug).toHaveBeenCalledWith(
+			'Skipped background job wake because the conversation lease is busy',
+			{ threadId: 'thread-1' },
+		);
+		expect(logger.warn).not.toHaveBeenCalled();
 	});
 
 	it('leaves results pending after a failed wake and omits error details from the log', async () => {

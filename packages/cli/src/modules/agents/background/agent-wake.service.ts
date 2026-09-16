@@ -1,4 +1,9 @@
-import { LockNamespace, LockService, Logger } from '@n8n/backend-common';
+import {
+	LockAcquisitionTimeoutError,
+	LockNamespace,
+	LockService,
+	Logger,
+} from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
 import { UserRepository } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
@@ -156,7 +161,13 @@ export class AgentWakeService {
 				{ waitTimeoutMs: WAKE_LOCK_WAIT_MS, leaseTtlMs: WAKE_LOCK_TTL_MS },
 			);
 		} catch (error) {
-			this.logger.warn('Failed to acquire the background job wake lease', { threadId, error });
+			if (error instanceof LockAcquisitionTimeoutError) {
+				this.logger.debug('Skipped background job wake because the conversation lease is busy', {
+					threadId,
+				});
+				return;
+			}
+			this.logger.warn('Failed to run the background job wake', { threadId, error });
 		}
 	}
 
