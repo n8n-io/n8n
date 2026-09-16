@@ -143,6 +143,36 @@ describe('POST /ai-preferences', () => {
 		await repository().delete({ userId: outsider.id });
 	});
 
+	test("counts the target user's scope when an admin writes for somebody else", async () => {
+		// The cap belongs to the scope, so a full scope refuses the admin too, and an admin
+		// with an empty scope of their own can still write for themselves.
+		const filler = Array.from({ length: AI_PREFERENCE_MAX_PER_SCOPE }, (_, index) => ({
+			id: crypto.randomUUID(),
+			content: `Rule ${index}.`,
+			source: 'ui' as const,
+			userId: member.id,
+			projectId: null,
+			createdById: member.id,
+		}));
+		await repository().insert(filler);
+
+		const refused = await ownerAgent
+			.post('/ai-preferences')
+			.send({ content: 'One too many.', scope: 'user', userId: member.id });
+		expect(refused.statusCode).toBe(400);
+		expect(await repository().countForTarget({ scope: 'user', userId: member.id })).toBe(
+			AI_PREFERENCE_MAX_PER_SCOPE,
+		);
+
+		const own = await ownerAgent
+			.post('/ai-preferences')
+			.send({ content: 'Mine alone.', scope: 'user' });
+		expect(own.statusCode).toBe(200);
+
+		await repository().delete({ userId: member.id });
+		await repository().delete({ userId: owner.id });
+	});
+
 	test('records the author', async () => {
 		const response = await memberAgent
 			.post('/ai-preferences')
@@ -498,6 +528,34 @@ describe('PATCH /ai-preferences/:id', () => {
 		expect((await repository().findOneByOrFail({ id: row.id })).content).toBe('New');
 	});
 
+	test('keeps the surface that created the row, whatever the edit says', async () => {
+		const created = await memberAgent
+			.post('/ai-preferences')
+			.send({ content: 'From settings.', scope: 'user' });
+
+		// A body carrying a surface is ignored on an edit as it is on a create, so an
+		// assistant edit of a person's row never relabels it.
+		const response = await memberAgent
+			.patch(`/ai-preferences/${created.body.data.id}`)
+			.send({ content: 'Edited.', scope: 'user', source: 'aia' });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.source).toBe('ui');
+		expect((await repository().findOneByOrFail({ id: created.body.data.id })).source).toBe('ui');
+	});
+
+	test('carries the surface through a move between scopes', async () => {
+		const row = await seed({ content: 'Written by a client.', userId: member.id, source: 'mcp' });
+
+		const response = await memberAgent
+			.patch(`/ai-preferences/${row.id}`)
+			.send({ content: 'Written by a client.', scope: 'project', projectId: project.id });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.source).toBe('mcp');
+		expect((await repository().findOneByOrFail({ id: row.id })).source).toBe('mcp');
+	});
+
 	test('moves a preference when the caller may write both targets', async () => {
 		const row = await seed({ content: 'Mine', userId: member.id });
 
@@ -684,10 +742,14 @@ describe('the preferences a write produces', () => {
 
 		const applicable = await Container.get(AiPreferenceService).getApplicable(member.id, []);
 
-		expect(applicable.user).toEqual([
-			{ id: first.body.data.id, content: 'Keep replies short.' },
-			{ id: second.body.data.id, content: 'Keep replies short.' },
-		]);
+		// Ids, not order: two writes inside one millisecond tie on `createdAt` and the query
+		// falls back to `id ASC`, which is a random uuid. Order is covered where it is seeded,
+		// in `ai-preference.repository.test.ts` and in the `GET /ai-preferences` block above.
+		expect(applicable.user).toHaveLength(2);
+		expect(applicable.user.map((item) => item.id).sort()).toEqual(
+			[first.body.data.id, second.body.data.id].sort(),
+		);
+		expect(applicable.user.every((item) => item.content === 'Keep replies short.')).toBe(true);
 	});
 
 	test('reach the block only when the personal project is in scope', async () => {

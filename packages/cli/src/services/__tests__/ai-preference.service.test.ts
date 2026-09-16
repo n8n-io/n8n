@@ -354,6 +354,47 @@ describe('AiPreferenceService', () => {
 			expect(aiPreferenceRepository.save).not.toHaveBeenCalled();
 		});
 
+		it("counts the target user's scope when an admin writes for somebody else", async () => {
+			// The cap belongs to the scope. Counting the caller would let an admin with no
+			// preferences of their own push another user past the cap, and would stop a full
+			// admin from writing for anybody.
+			userRepository.findOneBy.mockResolvedValue(mock<User>({ id: 'user-2' }));
+
+			await service.create(owner, { content: 'Rule.', scope: 'user', userId: 'user-2' }, 'ui');
+
+			expect(aiPreferenceRepository.countForTarget).toHaveBeenCalledWith({
+				scope: 'user',
+				userId: 'user-2',
+			});
+		});
+
+		it("refuses an admin's write when the target user's scope is full", async () => {
+			userRepository.findOneBy.mockResolvedValue(mock<User>({ id: 'user-2' }));
+			aiPreferenceRepository.countForTarget.mockResolvedValue(AI_PREFERENCE_MAX_PER_SCOPE);
+
+			await expect(
+				service.create(owner, { content: 'Rule.', scope: 'user', userId: 'user-2' }, 'ui'),
+			).rejects.toThrow(`A user cannot hold more than ${AI_PREFERENCE_MAX_PER_SCOPE} preferences`);
+			expect(aiPreferenceRepository.save).not.toHaveBeenCalled();
+		});
+
+		it('keeps the source the create wrote when an edit saves the row again', async () => {
+			// An assistant edit of a row a person wrote must not relabel it as assistant-written.
+			aiPreferenceRepository.findByIdWithRelations.mockResolvedValue(
+				row({ id: 'pref-1', content: 'Rule.', userId: 'owner-1', source: 'ui' }),
+			);
+
+			const updated = await service.update(owner, 'pref-1', {
+				content: 'A better rule.',
+				scope: 'user',
+			});
+
+			expect(updated.source).toBe('ui');
+			expect(aiPreferenceRepository.save).toHaveBeenCalledWith(
+				expect.objectContaining({ content: 'A better rule.', source: 'ui' }),
+			);
+		});
+
 		it('checks the scope a move lands in, not the one it leaves', async () => {
 			aiPreferenceRepository.findByIdWithRelations.mockResolvedValue(
 				row({ id: 'pref-1', content: 'Rule.', userId: 'owner-1' }),
