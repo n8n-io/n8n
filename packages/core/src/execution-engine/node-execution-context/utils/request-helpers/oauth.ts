@@ -311,7 +311,12 @@ function resolveTokenExpiredStatusCode(
 	oAuth2Options?: IOAuth2Options,
 	credentials?: OAuth2CredentialData,
 ): number {
-	return credentials?.tokenExpiredStatusCode ?? oAuth2Options?.tokenExpiredStatusCode ?? 401;
+	const credentialStatusCode = credentials?.tokenExpiredStatusCode;
+	if (credentialStatusCode === undefined) {
+		return oAuth2Options?.tokenExpiredStatusCode ?? 401;
+	}
+
+	return Number(credentialStatusCode);
 }
 
 function isSingleUseValue(value: unknown): boolean {
