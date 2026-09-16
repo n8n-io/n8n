@@ -777,7 +777,9 @@ describe('KeyManagerService', () => {
 			await service.repairLegacyDataEncryptionKeys();
 
 			expect(repo.rewrapLegacyDataEncryptionValue).not.toHaveBeenCalled();
-			expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('unrecognized format'));
+			expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('unrecognized format'), {
+				error: expect.any(Error),
+			});
 		});
 
 		it('does not warn about an already GCM-wrapped value', async () => {

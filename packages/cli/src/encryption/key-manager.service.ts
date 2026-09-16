@@ -172,9 +172,10 @@ export class KeyManagerService implements IEncryptionKeyProvider {
 		// with a message that blames the instance key.
 		try {
 			this.cipher.decryptDEKWithInstanceKey(value);
-		} catch {
+		} catch (error) {
 			this.logger.warn(
 				`DEK ${keyInfo.id} is in an unrecognized format. n8n cannot re-wrap it with this instance key, so reads of data without a key-id prefix will fail.`,
+				{ error },
 			);
 		}
 		return null;
