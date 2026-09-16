@@ -199,6 +199,7 @@ const durationLabel = computed(() => formatDuration(thread.value?.totalDuration 
 function onPanelLoaded(detail: ThreadDetail | null) {
 	thread.value = detail?.thread ?? null;
 	executions.value = detail?.executions ?? [];
+	if (detail) sessionsStore.upsertThread(detail.thread);
 }
 
 let previewLoadRequestId = 0;

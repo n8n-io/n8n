@@ -18,6 +18,7 @@ const routeParams = reactive({ projectId: 'p1', agentId: 'a1', threadId: 'thread
 const routerPush = vi.fn();
 const routerReplace = vi.fn();
 const sessionThreads = reactive<SessionThread[]>([]);
+const upsertThreadMock = vi.fn();
 const pushListeners = new Set<(event: PushMessage) => void>();
 
 vi.mock('vue-router', () => ({
@@ -53,6 +54,7 @@ vi.mock('@/features/agents/agentSessions.store', () => ({
 	useAgentSessionsStore: () => ({
 		threads: sessionThreads,
 		fetchThreads: vi.fn().mockResolvedValue(undefined),
+		upsertThread: upsertThreadMock,
 	}),
 }));
 
@@ -103,6 +105,7 @@ describe('AgentSessionTimelineView', () => {
 		pushListeners.clear();
 		routerPush.mockClear();
 		routerReplace.mockClear();
+		upsertThreadMock.mockClear();
 	});
 
 	it('replaces the stale thread with an empty state when a new preview session starts', async () => {
@@ -140,6 +143,21 @@ describe('AgentSessionTimelineView', () => {
 			name: AGENT_SESSION_DETAIL_VIEW,
 			params: { projectId: 'p1', agentId: 'a1', threadId: 'thread-b' },
 		});
+	});
+
+	it('adds the loaded thread to the session list, so the dock can name and act on it', async () => {
+		const wrapper = shallowMount(AgentSessionTimelineView);
+		await flushPromises();
+
+		const panel = wrapper.findComponent(AgentSessionTimelinePanel);
+		// The panel emits null at the start of every load — nothing to register yet.
+		await panel.vm.$emit('loaded', null);
+		expect(upsertThreadMock).not.toHaveBeenCalled();
+
+		const thread = { id: 'thread-b', updatedAt: '2026-01-02T00:00:00.000Z' };
+		await panel.vm.$emit('loaded', { thread, executions: [] });
+
+		expect(upsertThreadMock).toHaveBeenCalledWith(thread);
 	});
 
 	it('keeps the timeline when the preview switches to an existing session', async () => {
