@@ -117,7 +117,10 @@ describe('WorkflowSelectorParameterInput', () => {
 			await flushPromises();
 			const input = view.getByRole('textbox');
 			expect(input).not.toHaveDisplayValue(/__PLACEHOLDER_VALUE__/);
-			if (cachedResultName) expect(input).toHaveValue(cachedResultName);
+			expect(input).toHaveValue(cachedResultName ?? '');
+			expect(workflowsListStore.fetchWorkflow).not.toHaveBeenCalled();
+			expect(view.queryByTestId('rlc-open-resource-link')).not.toBeInTheDocument();
+			expect(view.emitted('update:modelValue')).toBeUndefined();
 		},
 	);
 

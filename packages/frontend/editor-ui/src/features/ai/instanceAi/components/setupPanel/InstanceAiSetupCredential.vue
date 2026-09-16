@@ -223,14 +223,13 @@ const inlineFields = computed(() => {
 	const inputs = required.length ? required : fields.filter((property) => !property.default);
 	return inputs.length <= 2 ? inputs : [];
 });
-const useAdvancedForm = computed(
-	() => !isTemplated.value && !canQuickConnect.value && inlineFields.value.length === 0,
-);
 const fieldTitles = computed(() =>
 	isTemplated.value
 		? listPlaceholderTitles(form.credentialData.value)
 		: inlineFields.value.map((property) => property.displayName),
 );
+const useAdvancedForm = computed(() => !canQuickConnect.value && fieldTitles.value.length === 0);
+const advancedIsPrimary = computed(() => isTemplated.value && useAdvancedForm.value);
 const valueLabel = computed(() =>
 	binding.value?.__aiGatewayManaged
 		? i18n.baseText('instanceAi.setupPanel.connectedWith')
@@ -260,16 +259,17 @@ const useCredits = computed(() => gatewayAvailable.value && mode.value === 'cred
 const actionLabel = computed(() =>
 	useCredits.value
 		? i18n.baseText('instanceAi.setupPanel.useCredits')
-		: canQuickConnect.value || useAdvancedForm.value
-			? i18n.baseText('instanceAi.setupPanel.connect')
-			: isOAuth.value
-				? i18n.baseText('instanceAi.setupPanel.saveAndSignIn')
-				: i18n.baseText('generic.save'),
+		: advancedIsPrimary.value
+			? i18n.baseText('instanceAi.setupPanel.advancedSetup')
+			: canQuickConnect.value || useAdvancedForm.value
+				? i18n.baseText('instanceAi.setupPanel.connect')
+				: isOAuth.value
+					? i18n.baseText('instanceAi.setupPanel.saveAndSignIn')
+					: i18n.baseText('generic.save'),
 );
 const actionDisabled = computed(
 	() =>
 		!initialized.value ||
-		(isTemplated.value && fieldTitles.value.length === 0) ||
 		(!useCredits.value &&
 			!canQuickConnect.value &&
 			!useAdvancedForm.value &&
@@ -323,7 +323,9 @@ const actions = computed<DropdownMenuItemProps[]>(() => {
 				},
 				{ id: 'edit', label: i18n.baseText('instanceAi.setupPanel.editCredential') },
 			]
-		: [{ id: 'advanced', label: i18n.baseText('instanceAi.setupPanel.advancedSetup') }];
+		: advancedIsPrimary.value
+			? []
+			: [{ id: 'advanced', label: i18n.baseText('instanceAi.setupPanel.advancedSetup') }];
 	return [...items, ...existing, ...perNodeActions.value];
 });
 

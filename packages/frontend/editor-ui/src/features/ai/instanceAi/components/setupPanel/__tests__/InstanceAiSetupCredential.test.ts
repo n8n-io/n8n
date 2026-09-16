@@ -577,6 +577,8 @@ describe('InstanceAiSetupCredential', () => {
 			template: { headers: { Authorization: '{{api_key}}' } },
 			placeholders: [{ name: 'api_key', title: 'API key' }],
 		};
+		form.credentialData.value.template = JSON.stringify(setupHint.template);
+		form.credentialData.value.placeholderDefs = JSON.stringify(setupHint.placeholders);
 		const rendered = renderComponent({
 			props: {
 				item: {
@@ -608,6 +610,44 @@ describe('InstanceAiSetupCredential', () => {
 		ui.openNewCredential.mock.calls[0][7]?.onCredentialCreated?.(savedCredential);
 		expect(rendered.emitted<[unknown, string]>('bindCredential')?.[0][1]).toBe(savedCredential.id);
 	});
+
+	it.each(['', JSON.stringify({ headers: { 'X-Client': 'n8n' } })])(
+		'opens Advanced setup directly when the custom-auth template has no input markers: %s',
+		async (template) => {
+			form.credentialData.value.template = template;
+			const rendered = renderComponent({
+				props: {
+					item: {
+						...item,
+						nodeBindings: [...item.nodeBindings],
+						credentialType: TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
+					},
+				},
+				global: { stubs: { TemplatedAuthSimpleView: false } },
+			});
+			await flushPromises();
+			expect(rendered.queryByTestId('templated-auth-simple-view')).not.toBeInTheDocument();
+			expect(rendered.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();
+			expect(rendered.queryByRole('button', { name: 'More options' })).not.toBeInTheDocument();
+			await fireEvent.click(rendered.getByRole('button', { name: 'Advanced setup' }));
+			const ui = mockedStore(useUIStore);
+			expect(ui.openNewCredential).toHaveBeenCalledWith(
+				TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
+				false,
+				true,
+				'workflow-project',
+				undefined,
+				'Service',
+				node,
+				expect.objectContaining({ workflowId: 'wf', closeOnSave: true }),
+			);
+			ui.openNewCredential.mock.calls[0][7]?.onCredentialCreated?.(savedCredential);
+			expect(rendered.emitted<[unknown, string]>('bindCredential')?.[0][1]).toBe(
+				savedCredential.id,
+			);
+			expect(mockedStore(useCredentialsStore).createNewCredential).not.toHaveBeenCalled();
+		},
+	);
 
 	it('recovers initialization failures and cancels pending connections when closed', async () => {
 		form.initialize.mockRejectedValueOnce(new Error('offline'));

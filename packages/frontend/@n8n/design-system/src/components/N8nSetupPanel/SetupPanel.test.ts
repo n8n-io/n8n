@@ -38,8 +38,8 @@ describe('SetupPanel', () => {
 			{ global: { stubs: { transition: false } } },
 		);
 		const overlay = getByTestId('setup-panel-overlay');
-		overlay.style.animationDuration = '1s';
-		overlay.style.animationDelay = '0s';
+		overlay.style.transitionDuration = '1s';
+		overlay.style.transitionDelay = '0s';
 		await fireEvent.click(getByRole('button', { name: 'Back to setup checklist' }));
 		await nextTick();
 		expect(overlay).toBeInTheDocument();
@@ -176,8 +176,8 @@ describe('SetupPanel', () => {
 				global: { stubs: { transition: false } },
 			});
 			const overlay = getByTestId('setup-panel-overlay');
-			overlay.style.animationDuration = '0.05s';
-			overlay.style.animationDelay = '0s';
+			overlay.style.transitionDuration = '0.05s';
+			overlay.style.transitionDelay = '0s';
 			await rerender({
 				items:
 					change === 'empty'

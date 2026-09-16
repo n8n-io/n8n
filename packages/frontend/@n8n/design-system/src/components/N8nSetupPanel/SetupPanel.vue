@@ -133,7 +133,12 @@ watch(
 					</N8nButton>
 				</template>
 			</div>
-			<Transition :enter-active-class="$style.enterActive" :leave-active-class="$style.leaveActive">
+			<Transition
+				:enter-active-class="$style.enterActive"
+				:leave-active-class="$style.leaveActive"
+				:enter-from-class="$style.enterFrom"
+				:leave-to-class="$style.leaveTo"
+			>
 				<div v-show="showChecklist" :class="$style.checklist">
 					<div :class="{ [$style.listSpacing]: showTerminal }">
 						<ul
@@ -187,6 +192,8 @@ watch(
 		<Transition
 			:enter-active-class="$style.enterActive"
 			:leave-active-class="$style.leaveActive"
+			:enter-from-class="$style.enterFrom"
+			:leave-to-class="$style.leaveTo"
 			@before-enter="activateOverlay"
 			@before-leave="deactivateOverlay"
 			@leave-cancelled="activateOverlay"
@@ -261,6 +268,11 @@ watch(
 
 .base {
 	@include motion.popover-in;
+}
+
+.base,
+.enterActive,
+.leaveActive {
 	transition:
 		transform var(--duration--snappy) var(--easing--ease-out),
 		opacity var(--duration--snappy) var(--easing--ease-out),
@@ -270,9 +282,14 @@ watch(
 
 .hidden {
 	visibility: hidden;
+	transition-delay: 0s, 0s, var(--duration--snappy);
+}
+
+.hidden,
+.enterFrom,
+.leaveTo {
 	opacity: 0;
 	transform: scale(0.7);
-	transition-delay: 0s, 0s, var(--duration--snappy);
 }
 
 .listSpacing {
@@ -329,16 +346,6 @@ watch(
 	display: flex;
 	flex-direction: column;
 	max-height: 60vh;
-}
-
-.enterActive,
-.leaveActive {
-	@include motion.popover-in;
-	animation-fill-mode: both;
-}
-
-.leaveActive {
-	animation-direction: reverse;
 }
 
 .header,

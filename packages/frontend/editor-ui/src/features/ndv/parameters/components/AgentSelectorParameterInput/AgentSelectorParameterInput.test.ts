@@ -88,7 +88,6 @@ describe('AgentSelectorParameterInput', () => {
 	it.each([undefined, 'Previously selected agent'])(
 		'hides setup markers while preserving the cached name: %s',
 		async (cachedResultName) => {
-			getAgent.mockRejectedValueOnce(new Error('No selected agent'));
 			const view = renderComponent({
 				props: makeProps({
 					modelValue: {
@@ -102,7 +101,10 @@ describe('AgentSelectorParameterInput', () => {
 			await flushPromises();
 			const input = view.getByRole('textbox');
 			expect(input).not.toHaveDisplayValue(/__PLACEHOLDER_VALUE__/);
-			if (cachedResultName) expect(input).toHaveValue(cachedResultName);
+			expect(input).toHaveValue(cachedResultName ?? '');
+			expect(getAgent).not.toHaveBeenCalled();
+			expect(view.queryByTestId('rlc-open-resource-link')).not.toBeInTheDocument();
+			expect(view.emitted('update:modelValue')).toBeUndefined();
 		},
 	);
 
