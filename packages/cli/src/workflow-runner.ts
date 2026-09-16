@@ -4,6 +4,7 @@ import { Logger } from '@n8n/backend-common';
 import { ExecutionsConfig } from '@n8n/config';
 import { ExecutionRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { ExecutionLifecycleHooks } from 'n8n-core';
 import {
@@ -29,6 +30,7 @@ import {
 	ManualExecutionCancelledError,
 	TimeoutExecutionCancelledError,
 	Workflow,
+	WorkflowOperationError,
 } from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
 
@@ -46,6 +48,7 @@ import {
 	getLifecycleHooksForScalingWorker,
 	getLifecycleHooksForScalingMain,
 } from '@/execution-lifecycle/execution-lifecycle-hooks';
+import { toSaveSettings } from '@/execution-lifecycle/to-save-settings';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { FailedRunFactory } from '@/executions/failed-run-factory';
 import {
@@ -141,6 +144,79 @@ export class WorkflowRunner {
 			});
 			if (executionWithoutData?.finished === true && executionWithoutData?.status === 'success') {
 				// false positive, execution was successful
+				let successRunData: IRun | undefined;
+
+				try {
+					const fullExecutionData = await this.executionPersistence.findSingleExecution(
+						executionId,
+						{
+							includeData: true,
+							unflattenData: true,
+						},
+					);
+
+					if (fullExecutionData?.data) {
+						successRunData = {
+							finished: fullExecutionData.finished,
+							mode: fullExecutionData.mode,
+							startedAt: fullExecutionData.startedAt,
+							stoppedAt: fullExecutionData.stoppedAt,
+							status: fullExecutionData.status,
+							waitTill: fullExecutionData.waitTill,
+							data: fullExecutionData.data,
+							storedAt: fullExecutionData.storedAt,
+						};
+					}
+
+					// No lifecycle hooks ran for this execution, so make the retention
+					// decision they would have made, regardless of data readability.
+					if (fullExecutionData) {
+						try {
+							const saveSettings = toSaveSettings(fullExecutionData.workflowData?.settings);
+							const isManualExecution = fullExecutionData.mode === 'manual';
+							if (isManualExecution && !saveSettings.manual) {
+								await this.executionRepository.softDelete(executionId);
+							} else if (!isManualExecution && !saveSettings.success) {
+								await this.executionPersistence.deleteInFlightExecution({
+									workflowId: fullExecutionData.workflowId,
+									executionId,
+									storedAt: fullExecutionData.storedAt,
+								});
+							}
+						} catch (pruneError) {
+							this.logger.warn('Could not prune a recovered false-positive success', {
+								executionId,
+								error: ensureError(pruneError),
+							});
+						}
+					}
+				} catch (readError) {
+					this.logger.warn('Could not read execution data for a successful execution', {
+						executionId,
+						error: ensureError(readError),
+					});
+				}
+
+				const runData: IRun = successRunData ?? {
+					data: createRunExecutionData({
+						resultData: {
+							error: new WorkflowOperationError(
+								`Execution ${executionId} succeeded, but its result could not be read`,
+							),
+							runData: {},
+						},
+					}),
+					finished: false,
+					mode: executionMode,
+					startedAt,
+					stoppedAt: new Date(),
+					status: 'error',
+					storedAt: this.storageConfig.modeTag,
+				};
+
+				this.activeExecutions.resolveExecutionResponsePromise(executionId);
+				this.activeExecutions.finalizeExecution(executionId, runData);
+
 				return;
 			}
 		}
