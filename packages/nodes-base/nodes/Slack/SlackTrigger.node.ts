@@ -11,6 +11,7 @@ import {
 	type IWebhookResponseData,
 	type IBinaryKeyData,
 	NodeConnectionTypes,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import { downloadFile, getChannelInfo, getUserInfo, verifySignature } from './SlackTriggerHelpers';
@@ -323,6 +324,19 @@ export class SlackTrigger implements INodeType {
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
+				// Runs on activation. Fail here with a clear message instead of answering every
+				// Slack request with 401 later; the webhook itself is registered in the Slack app.
+				const { signatureSecret } = await this.getCredentials('slackApi');
+				if (typeof signatureSecret !== 'string' || signatureSecret === '') {
+					throw new NodeOperationError(
+						this.getNode(),
+						'The Slack API credential has no signature secret',
+						{
+							description:
+								'Edit the credential and add the signing secret of your Slack app. Find it under "Basic Information" in the Slack API dashboard.',
+						},
+					);
+				}
 				return true;
 			},
 			async create(this: IHookFunctions): Promise<boolean> {

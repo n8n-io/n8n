@@ -113,11 +113,17 @@ export async function verifySignature(
 		return false;
 	}
 
+	// The signature secret is a required credential field. A credential saved before it became
+	// required can still lack it; reject the request instead of skipping verification.
 	const signatureSecret = credential.signatureSecret;
+	if (typeof signatureSecret !== 'string' || signatureSecret === '') {
+		return false;
+	}
+
 	try {
 		const isValid = verifySignatureGeneric({
 			getExpectedSignature: () => {
-				if (!signatureSecret || typeof signatureSecret !== 'string' || !req.rawBody) {
+				if (!req.rawBody) {
 					return null;
 				}
 
@@ -135,7 +141,6 @@ export async function verifySignature(
 				const computedSignature = `v0=${hmac.digest('hex')}`;
 				return computedSignature;
 			},
-			skipIfNoExpectedSignature: !signatureSecret || typeof signatureSecret !== 'string',
 			getActualSignature: () => {
 				const actualSignature = req.header('x-slack-signature');
 				return typeof actualSignature === 'string' ? actualSignature : null;
