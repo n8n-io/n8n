@@ -871,6 +871,7 @@ export class AgentRuntime {
 				staticLoopContext.aiProviderTools,
 				options?.persistence,
 				options?.executionCounter,
+				list,
 			);
 			const batch = await this.toolExecutor.iteratePendingToolCallsConcurrent({
 				...buildToolBatchContext(pendingLoopContext.toolMap),
@@ -899,6 +900,7 @@ export class AgentRuntime {
 				staticLoopContext.aiProviderTools,
 				options?.persistence,
 				options?.executionCounter,
+				list,
 			);
 			const hostVolatileInstructions = await this.resolveVolatileInstructions(options?.persistence);
 			const combinedVolatileInstructions = [volatileInstructions, hostVolatileInstructions]

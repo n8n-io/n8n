@@ -8,7 +8,7 @@ pnpm --filter=n8n-playwright test:local <file-path>
 pnpm --filter=n8n-playwright test:local tests/e2e/credentials/crud.spec.ts
 
 # Run with container capabilities (requires pnpm build:docker first)
-pnpm --filter=n8n-playwright test:container:sqlite --grep @capability:email
+pnpm --filter=n8n-playwright test:container:sqlite tests/e2e/auth/password-reset.spec.ts
 
 # Lint and typecheck
 pnpm --filter=n8n-playwright lint

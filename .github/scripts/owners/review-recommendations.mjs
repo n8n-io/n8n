@@ -282,7 +282,11 @@ export async function run(pullRequestNumber) {
 	await postOrUpdateComment(pullRequestNumber, body, BOT_MARKER);
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+export async function main() {
 	const pullRequestNumber = parseInt(ensureEnvVar('PULL_REQUEST_NUMBER'));
 	await run(pullRequestNumber);
+}
+
+if (import.meta.url === `file://${process.argv[1]}`) {
+	await main();
 }

@@ -37,3 +37,6 @@ export const localRulesPlugin = {
 		},
 	},
 } satisfies ESLint.Plugin;
+
+// oxlint loads a jsPlugin from the module default export.
+export default localRulesPlugin;

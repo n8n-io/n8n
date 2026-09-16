@@ -19,6 +19,8 @@ import {
 	modelServingParameters,
 	vectorSearchOperations,
 	vectorSearchParameters,
+	jobOperations,
+	jobParameters,
 } from './resources';
 
 import { router } from './actions/router';
@@ -129,12 +131,14 @@ export class Databricks implements INodeType {
 			databricksSqlOperations,
 			modelServingOperations,
 			vectorSearchOperations,
+			jobOperations,
 			...filesParameters,
 			...genieParameters,
 			...unityCatalogParameters,
 			...databricksSqlParameters,
 			...modelServingParameters,
 			...vectorSearchParameters,
+			...jobParameters,
 		],
 	};
 
