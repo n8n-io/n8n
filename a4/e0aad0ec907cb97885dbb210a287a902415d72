@@ -21,6 +21,14 @@ packages/cli/test/migration/1786547629549-create-git-connection-table.test.ts
       },
       "human_author": "Irénée <irenee.ajeneza@n8n.io>"
     },
+    "s_9c782a75089598": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e00744d1-d8d4-4c51-afc6-6871d15ae4d6",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
     "s_aeecfe178a9b3d": {
       "agent_id": {
         "tool": "claude",
@@ -41,6 +49,14 @@ packages/cli/test/migration/1786547629549-create-git-connection-table.test.ts
       "agent_id": {
         "tool": "claude",
         "id": "d0d1ba17-1e97-4931-bc10-1912b50c57f0",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_cde07e4490f40c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7eeea650-8cd3-4efb-9b4c-d9f9d39dcfc1",
         "model": "claude-opus-4-8"
       },
       "human_author": "Irénée <irenee.ajeneza@n8n.io>"
