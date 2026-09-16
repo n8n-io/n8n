@@ -323,6 +323,19 @@ describe('useContextMenu', () => {
 			);
 		});
 
+		it('hides ungroup and convert actions for an empty group', () => {
+			const anchor = nodeFactory({ parameters: { emptyGroupAnchor: true } });
+			workflowDocumentStore.setNodes([...nodes, anchor]);
+			const group = workflowDocumentStore.createGroup([anchor.id], 'Empty group');
+			const { open, actions } = useContextMenu();
+			open(mockEvent, { source: 'group', groupId: group.id, nodeIds: group.nodeIds });
+
+			const ids = actions.value.map((action) => action.id);
+			expect(ids).not.toContain('ungroup_nodes');
+			expect(ids).not.toContain('extract_sub_workflow');
+			expect(ids).toContain('rename_group');
+		});
+
 		it('falls back to the group actions alone when no member node resolves', () => {
 			const group = workflowDocumentStore.createGroup([nodes[0].id], 'My group');
 			const { open, actions } = useContextMenu();
