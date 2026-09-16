@@ -8739,6 +8739,8 @@
 	"agents.channels.teams.setup.createCredential.button": "Register an app in Microsoft Entra",
 	"agents.channels.teams.setup.createCredential.prerequisites": "The three values come from a Microsoft Entra app registration. If you do not have one, create it first — you need a work or school account with permission to register apps, and an Azure subscription for the next step.",
 	"agents.channels.teams.setup.createBot.needsCredential": "Add the credential first. The deployment needs its Application and Directory IDs.",
+	"agents.channels.teams.setup.createCredential.claimed": "{agent} already uses this credential for Teams. Microsoft allows one bot for each app registration, so pick a different credential or register another app in Entra.",
+	"agents.channels.teams.setup.createBot.needsFreeCredential": "Pick a credential no other agent uses before deploying.",
 	"agents.channels.teams.setup.createBot.existingBot": "Already have an Azure bot?",
 	"agents.channels.teams.setup.createBot.existingBotHint": "Paste this into your bot's Configuration page as the messaging endpoint, and turn on the Microsoft Teams channel.",
 	"agents.channels.teams.setup.availability.whereTitle": "Where can people use the agent?",
