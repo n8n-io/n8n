@@ -2,11 +2,11 @@
 import { useToast } from '@n8n/composables/useToast';
 import {
 	N8nActionToggle,
+	N8nAvatar,
 	N8nButton,
 	N8nDataTableServer,
 	N8nStatusDot,
 	N8nText,
-	N8nUserStack,
 	type IUser,
 	type TableHeader,
 	type TableOptions,
@@ -19,6 +19,8 @@ import { useRoute } from 'vue-router';
 
 import { useMessage } from '@/app/composables/useMessage';
 import { MODAL_CONFIRM } from '@/app/constants';
+import ProjectIcon from '@/features/collaboration/projects/components/ProjectIcon.vue';
+import { DEFAULT_PROJECT_ICON } from '@/features/collaboration/projects/projects.constants';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 
 import { SELF_HEALING_SETTINGS_HASH } from '../selfHealing.constants';
@@ -66,7 +68,7 @@ const headers = computed<Array<TableHeader<SelfHealingConfig>>>(() => [
 	{
 		title: i18n.baseText('selfHealing.projectSettings.column.reviewers'),
 		key: 'reviewers',
-		width: 120,
+		width: 220,
 		disableSort: true,
 		value: (row: SelfHealingConfig) => row.reviewerIds,
 	},
@@ -104,11 +106,13 @@ function statusLabel(config: SelfHealingConfig): string {
 	return i18n.baseText(`selfHealing.status.${config.status}`);
 }
 
-/** Everyone the configuration notifies, resolved through the project's members, then any known user. */
-function reviewerUsers(config: SelfHealingConfig): IUser[] {
+const projectName = computed(() => projectsStore.currentProject?.name ?? '');
+const projectIcon = computed(() => projectsStore.currentProject?.icon ?? DEFAULT_PROJECT_ICON);
+
+/** Individually picked people, resolved through the project's members, then any known user. */
+function pickedUsers(config: SelfHealingConfig): IUser[] {
 	const relations = projectsStore.currentProject?.relations ?? [];
-	const memberIds = config.notifyProjectMembers ? relations.map((relation) => relation.id) : [];
-	return [...new Set([...memberIds, ...config.reviewerIds])].flatMap((id) => {
+	return config.reviewerIds.flatMap((id) => {
 		const relation = relations.find((candidate) => candidate.id === id);
 		const user = relation
 			? {
@@ -120,6 +124,10 @@ function reviewerUsers(config: SelfHealingConfig): IUser[] {
 			: usersStore.usersById[id];
 		return user ? [user] : [];
 	});
+}
+
+function userName(user: IUser): string {
+	return [user.firstName, user.lastName].filter(Boolean).join(' ') || (user.email ?? '');
 }
 
 function actionsFor(config: SelfHealingConfig): Array<UserAction<IUser>> {
@@ -218,12 +226,30 @@ onMounted(async () => {
 					<N8nText size="medium" color="text-dark">{{ autonomyLabel(item) }}</N8nText>
 				</template>
 				<template #[`item.reviewers`]="{ item }">
-					<N8nUserStack
-						v-if="reviewerUsers(item).length > 0"
-						:users="{ reviewers: reviewerUsers(item) }"
-						:current-user-id="usersStore.currentUser?.id ?? ''"
+					<div
+						v-if="item.notifyProjectMembers || pickedUsers(item).length > 0"
+						:class="$style.people"
 						data-test-id="self-healing-config-reviewers"
-					/>
+					>
+						<div v-if="item.notifyProjectMembers" :class="$style.person">
+							<span :class="$style.projectAvatar">
+								<ProjectIcon :icon="projectIcon" size="mini" round border-less />
+							</span>
+							<N8nText size="medium" color="text-dark" :class="$style.personName">
+								{{
+									i18n.baseText('selfHealing.people.projectMembers', {
+										interpolate: { project: projectName },
+									})
+								}}
+							</N8nText>
+						</div>
+						<div v-for="user in pickedUsers(item)" :key="user.id" :class="$style.person">
+							<N8nAvatar :first-name="user.firstName" :last-name="user.lastName" size="xsmall" />
+							<N8nText size="medium" color="text-dark" :class="$style.personName">
+								{{ userName(user) }}
+							</N8nText>
+						</div>
+					</div>
 					<N8nText v-else size="medium" color="text-light">
 						{{ i18n.baseText('selfHealing.projectSettings.noReviewers') }}
 					</N8nText>
@@ -284,6 +310,38 @@ onMounted(async () => {
 	align-items: center;
 	gap: var(--spacing--3xs);
 	white-space: nowrap;
+}
+
+.people {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--3xs);
+	padding: var(--spacing--2xs) 0;
+}
+
+.person {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	min-width: 0;
+}
+
+.personName {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+// Same footprint as the extra-small person avatar next to it.
+.projectAvatar {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+	width: var(--spacing--md);
+	height: var(--spacing--md);
+	border-radius: 50%;
+	background-color: var(--color--background--light-3);
 }
 
 .empty {

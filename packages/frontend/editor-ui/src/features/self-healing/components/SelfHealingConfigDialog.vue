@@ -14,7 +14,6 @@ import {
 	N8nSelect,
 	N8nSelect2,
 	N8nText,
-	N8nUserSelect,
 	type IUser,
 	type SegmentOption,
 	type SelectValue,
@@ -55,6 +54,8 @@ const projectsStore = useProjectsStore();
 const usersStore = useUsersStore();
 
 const AUTONOMY_LEVELS: SelfHealingAutonomy[] = ['diagnose', 'review', 'deploy'];
+/** Value of the picker entry that stands for every member of the project. */
+const PROJECT_MEMBERS_OPTION = '__project-members__';
 
 const autonomyOptions = computed(() =>
 	AUTONOMY_LEVELS.map((value) => ({
@@ -140,6 +141,11 @@ const hasAnyoneToNotify = computed(
 	() => form.value.notifyProjectMembers || form.value.reviewerIds.length > 0,
 );
 
+/** Members not yet picked individually; the picker lists these. */
+const pickableUsers = computed<IUser[]>(() =>
+	candidateUsers.value.filter((user) => !form.value.reviewerIds.includes(user.id)),
+);
+
 const selectedReviewers = computed<IUser[]>(() =>
 	form.value.reviewerIds.flatMap((id) => {
 		const user =
@@ -172,6 +178,15 @@ watch(
 function addReviewer(userId: string) {
 	if (!userId || form.value.reviewerIds.includes(userId)) return;
 	form.value.reviewerIds = [...form.value.reviewerIds, userId];
+}
+
+/** The picker never keeps a value: choosing an entry adds it to the list below. */
+function onPick(value: string) {
+	if (value === PROJECT_MEMBERS_OPTION) {
+		form.value.notifyProjectMembers = true;
+		return;
+	}
+	addReviewer(value);
 }
 
 function removeReviewer(userId: string) {
@@ -290,16 +305,51 @@ function save() {
 				:label="i18n.baseText('selfHealing.dialog.people.label')"
 				data-test-id="self-healing-people-label"
 			>
-				<N8nUserSelect
+				<N8nSelect
 					id="self-healing-reviewers"
-					:users="candidateUsers"
-					:ignore-ids="form.reviewerIds"
-					:current-user-id="usersStore.currentUser?.id ?? ''"
-					:placeholder="i18n.baseText('selfHealing.dialog.people.placeholder')"
+					model-value=""
+					filterable
 					:teleported="false"
+					:placeholder="i18n.baseText('selfHealing.dialog.people.placeholder')"
 					data-test-id="self-healing-reviewer-select"
-					@update:model-value="addReviewer"
-				/>
+					@update:model-value="onPick"
+				>
+					<N8nOption
+						v-if="!form.notifyProjectMembers"
+						:value="PROJECT_MEMBERS_OPTION"
+						:label="
+							i18n.baseText('selfHealing.people.projectMembers', {
+								interpolate: { project: projectName },
+							})
+						"
+						data-test-id="self-healing-pick-project-members"
+					>
+						<div :class="$style.pickRow">
+							<span :class="$style.projectAvatar">
+								<ProjectIcon :icon="projectIcon" size="small" round border-less />
+							</span>
+							<span>
+								{{
+									i18n.baseText('selfHealing.people.projectMembers', {
+										interpolate: { project: projectName },
+									})
+								}}
+							</span>
+						</div>
+					</N8nOption>
+					<N8nOption
+						v-for="user in pickableUsers"
+						:key="user.id"
+						:value="user.id"
+						:label="reviewerName(user)"
+						:data-test-id="`self-healing-pick-${user.id}`"
+					>
+						<div :class="$style.pickRow">
+							<N8nAvatar :first-name="user.firstName" :last-name="user.lastName" size="small" />
+							<span>{{ reviewerName(user) }}</span>
+						</div>
+					</N8nOption>
+				</N8nSelect>
 				<ul
 					v-if="hasAnyoneToNotify"
 					:class="$style.reviewers"
@@ -315,7 +365,7 @@ function save() {
 						</span>
 						<N8nText size="medium" color="text-dark" :class="$style.reviewerName">
 							{{
-								i18n.baseText('selfHealing.dialog.people.projectMembers', {
+								i18n.baseText('selfHealing.people.projectMembers', {
 									interpolate: { project: projectName },
 								})
 							}}
@@ -358,21 +408,6 @@ function save() {
 				>
 					{{ i18n.baseText('selfHealing.dialog.people.empty') }}
 				</N8nText>
-				<N8nButton
-					v-if="!form.notifyProjectMembers"
-					variant="ghost"
-					size="small"
-					icon="users"
-					type="button"
-					:label="
-						i18n.baseText('selfHealing.dialog.people.addProjectMembers', {
-							interpolate: { project: projectName },
-						})
-					"
-					:class="$style.addMembers"
-					data-test-id="self-healing-add-project-members"
-					@click="form.notifyProjectMembers = true"
-				/>
 			</N8nInputLabel>
 
 			<N8nDialogFooter>
@@ -481,8 +516,12 @@ function save() {
 	background-color: var(--color--background--light-3);
 }
 
-.addMembers {
-	align-self: flex-start;
-	margin-top: var(--spacing--2xs);
+// A picker entry: same avatar and name layout as the rows below the picker.
+.pickRow {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--3xs) 0;
+	white-space: normal;
 }
 </style>
