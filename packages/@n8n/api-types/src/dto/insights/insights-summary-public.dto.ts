@@ -5,8 +5,6 @@ import { z } from 'zod';
 import { insightsSummaryQueryFieldDocs } from './insights-summary-public.openapi';
 import { Z } from '../../zod-class';
 
-// Not `insightsSummaryDataSchemas`: its `z.union([z.null(), z.number()])` emits `anyOf`
-// where the legacy spec has `nullable: true`.
 const summaryMetricPublicSchema = <Unit extends string>(unit: Unit) =>
 	z.object({
 		value: z.number(),
