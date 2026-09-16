@@ -161,6 +161,28 @@ describe('useTypeAvailabilityPoliciesStore', () => {
 			expect(store.isLoading).toBe(false);
 		});
 
+		it('discards an in-flight response when the user returns to the loaded project', async () => {
+			let resolveB: (value: AvailableTypesResponse) => void = () => {};
+			mocks.fetchAvailableTypes.mockResolvedValueOnce(PROJECT_A_RESPONSE).mockImplementationOnce(
+				async () =>
+					await new Promise<AvailableTypesResponse>((resolve) => {
+						resolveB = resolve;
+					}),
+			);
+			const store = useTypeAvailabilityPoliciesStore();
+
+			await store.fetchForProject('project-a');
+			const pendingB = store.fetchForProject('project-b');
+			await store.fetchForProject('project-a');
+			resolveB(PROJECT_B_RESPONSE);
+			await pendingB;
+
+			expect(store.loadedProjectId).toBe('project-a');
+			expect(store.isNodeTypeAvailable(ALLOWED)).toBe(true);
+			expect(store.isNodeTypeAvailable(RESTRICTED)).toBe(false);
+			expect(store.isLoading).toBe(false);
+		});
+
 		it('degrades to available and logs when the request fails', async () => {
 			mocks.fetchAvailableTypes.mockRejectedValue(new Error('endpoint failure'));
 			const store = useTypeAvailabilityPoliciesStore();

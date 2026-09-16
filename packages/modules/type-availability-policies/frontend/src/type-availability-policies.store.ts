@@ -26,9 +26,15 @@ export const useTypeAvailabilityPoliciesStore = defineStore(
 		);
 
 		async function fetchForProject(projectId: string): Promise<void> {
-			if (!isEnabled.value || projectId === loadedProjectId.value) return;
+			if (!isEnabled.value) return;
 
 			requestedProjectId.value = projectId;
+
+			if (projectId === loadedProjectId.value) {
+				isLoading.value = false;
+				return;
+			}
+
 			isLoading.value = true;
 			try {
 				const entries = await fetchAvailableTypes(rootStore.restApiContext, projectId);
