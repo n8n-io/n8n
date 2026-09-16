@@ -1,8 +1,8 @@
-packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
-  s_2063b158e1d22e::t_78a7007587ced6 1411,1507-1510,1512,3487-3501,3508,3552-3566
 packages/cli/src/modules/instance-ai/instance-ai.service.ts
   s_2063b158e1d22e::t_08adefaadeddb2 2627-2629,2631,2648,6510
   s_b14be13e16080d::t_470378a95541c6 4143,4320,5486,5668
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_2063b158e1d22e::t_78a7007587ced6 1411,1507-1510,1512,3487-3501,3508,3552-3566
 ---
 {
   "schema_version": "authorship/3.0.0",

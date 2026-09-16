@@ -1,0 +1,27 @@
+packages/@n8n/engine/src/server/__tests__/workflow-executions.integration.test.ts
+  s_d19c2d0e8e5e12::t_188a6ebc3cc2cd 68,73-82
+  s_d19c2d0e8e5e12::t_3e1b3ca7b52cee 9
+  s_d19c2d0e8e5e12::t_8f80ee11bb0d69 34-36
+packages/@n8n/engine/src/database/typeorm-execution-view-store.ts
+  s_d19c2d0e8e5e12::t_4edd2fb5f1e152 4
+  s_d19c2d0e8e5e12::t_cc5b529a82a61d 19-30
+  s_d19c2d0e8e5e12::t_ce8a19a5bad3b6 46
+packages/@n8n/engine/src/server/routes/workflow-executions.handlers.ts
+  s_d19c2d0e8e5e12::t_820b0e8e19a78c 46-53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2a6988171f1d76c2f091c370242521df0131f4f2",
+  "prompts": {},
+  "sessions": {
+    "s_d19c2d0e8e5e12": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "63270251-26a5-45da-9f21-2772ab485850",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}
