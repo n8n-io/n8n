@@ -181,6 +181,15 @@ describe('AgentChannelTeamsSetup', () => {
 			);
 		});
 
+		it('collapses an open panel when its header is clicked', async () => {
+			const { getByTestId } = renderComponent({ props: props() });
+
+			await waitFor(() => expect(getByTestId('teams-scope-channels')).toBeVisible());
+			await fireEvent.click(getByTestId('teams-where-summary'));
+
+			await waitFor(() => expect(getByTestId('teams-scope-channels')).not.toBeVisible());
+		});
+
 		it('keeps a read permission locked until its surface is on', async () => {
 			const { getByTestId } = renderComponent({ props: props() });
 
@@ -328,6 +337,26 @@ describe('AgentChannelTeamsSetup', () => {
 			// on five controls.
 			expect(getByTestId('teams-scope-channels')).not.toBeVisible();
 			expect(getByTestId('teams-reading-summary')).toBeVisible();
+		});
+
+		it('opens a collapsed panel when its header is clicked', async () => {
+			const { getByTestId } = renderComponent({ props: settingsProps() });
+
+			await waitFor(() => expect(getByTestId('teams-where-summary')).toBeVisible());
+			await fireEvent.click(getByTestId('teams-where-summary'));
+
+			await waitFor(() => expect(getByTestId('teams-scope-channels')).toBeVisible());
+		});
+
+		it('fills the name and description with what the manifest would use', async () => {
+			const { getByTestId } = renderComponent({ props: settingsProps({ agentName: 'Support' }) });
+
+			await waitFor(() =>
+				expect(getByTestId('teams-display-name').querySelector('input')).toHaveValue('Support'),
+			);
+			expect(getByTestId('teams-description').querySelector('input')).toHaveValue(
+				'agents.channels.teams.settings.descriptionDefault Support',
+			);
 		});
 
 		it('restores saved settings, including the app identity', async () => {

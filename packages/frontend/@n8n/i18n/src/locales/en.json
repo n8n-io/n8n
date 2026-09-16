@@ -8557,7 +8557,6 @@
 	"agents.channels.teams.messagingEndpointUrl.label": "Messaging endpoint URL",
 	"agents.channels.teams.settings.updateNotice": "Changes here update the app in Teams. Download the package again and upload it to apply them.",
 	"agents.channels.teams.settings.displayName": "Agent name in Teams",
-	"agents.channels.teams.settings.displayNamePlaceholder": "Uses the agent's name",
 	"agents.channels.teams.settings.description": "Description",
 	"agents.channels.teams.settings.descriptionPlaceholder": "What this agent helps with",
 	"agents.channels.teams.setup.createBot.title": "Deploy the Azure Bot",
@@ -8745,5 +8744,6 @@
 	"agents.channels.teams.setup.createBot.existingBotHint": "Paste this into your bot's Configuration page as the messaging endpoint, and turn on the Microsoft Teams channel.",
 	"agents.channels.teams.setup.availability.whereTitle": "Where can people use the agent?",
 	"agents.channels.teams.setup.availability.readingSummaryNone": "Only messages addressed to it",
-	"agents.channels.teams.setup.availability.readingNote": "Team owners approve read access when they install the app."
+	"agents.channels.teams.setup.availability.readingNote": "Team owners approve read access when they install the app.",
+	"agents.channels.teams.settings.descriptionDefault": "Chat with {name}, an agent powered by n8n."
 }

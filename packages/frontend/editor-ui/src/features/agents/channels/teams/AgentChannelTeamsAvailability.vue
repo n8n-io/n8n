@@ -5,7 +5,7 @@
  * Shared by the setup stepper and the channel settings, because these are
  * manifest fields: changing one produces a new app package either way.
  */
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { N8nCollapsiblePanel, N8nIcon, N8nSwitch2, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
@@ -18,9 +18,17 @@ export interface TeamsAvailability {
 
 const value = defineModel<TeamsAvailability>({ required: true });
 
-withDefaults(defineProps<{ startCollapsed?: boolean }>(), { startCollapsed: false });
+const props = withDefaults(defineProps<{ startCollapsed?: boolean }>(), {
+	startCollapsed: false,
+});
 
 const i18n = useI18n();
+
+// Local, because `startCollapsed` is only where the panels begin. Binding it
+// straight to the panel made them emit an open state that nothing applied, so
+// they never opened.
+const whereOpen = ref(!props.startCollapsed);
+const readingOpen = ref(!props.startCollapsed);
 
 function set(patch: Partial<TeamsAvailability>) {
 	const next = { ...value.value, ...patch };
@@ -61,7 +69,7 @@ const readingSummary = computed(() => {
 
 <template>
 	<div :class="$style.panels">
-		<N8nCollapsiblePanel :model-value="!startCollapsed" :class="$style.panel">
+		<N8nCollapsiblePanel v-model="whereOpen" :class="$style.panel">
 			<template #title>
 				<span :class="$style.panelTitle">
 					<N8nText size="small" bold>
@@ -123,7 +131,7 @@ const readingSummary = computed(() => {
 			</div>
 		</N8nCollapsiblePanel>
 
-		<N8nCollapsiblePanel :model-value="!startCollapsed" :class="$style.panel">
+		<N8nCollapsiblePanel v-model="readingOpen" :class="$style.panel">
 			<template #title>
 				<span :class="$style.panelTitle">
 					<N8nText size="small" bold>

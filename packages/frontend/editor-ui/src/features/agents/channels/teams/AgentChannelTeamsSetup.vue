@@ -81,9 +81,18 @@ const availability = ref<TeamsAvailability>({
 	readAllGroupMessages: props.savedSettings?.readAllGroupMessages ?? false,
 });
 
-/** Both fall back to the agent's own name, so an empty field is not a value. */
-const displayName = ref(props.savedSettings?.displayName ?? '');
-const description = ref(props.savedSettings?.description ?? '');
+/**
+ * Pre-filled with what the manifest would use anyway, so the fields show what
+ * Teams will actually display rather than leaving the user to guess from a
+ * placeholder.
+ */
+const displayName = ref(props.savedSettings?.displayName ?? props.agentName);
+const description = ref(
+	props.savedSettings?.description ??
+		i18n.baseText('agents.channels.teams.settings.descriptionDefault', {
+			interpolate: { name: props.agentName },
+		}),
+);
 
 const messagingEndpointUrl = computed(() => {
 	if (setupState.value) return setupState.value.messagingEndpointUrl;
@@ -436,7 +445,6 @@ defineExpose({
 					size="large"
 					:maxlength="TEAMS_DISPLAY_NAME_MAX"
 					show-word-limit
-					:placeholder="agentName"
 				/>
 			</div>
 
@@ -530,46 +538,13 @@ defineExpose({
 	gap: var(--spacing--2xs);
 }
 
-.panel {
-	width: 100%;
-	border: var(--border);
-	border-radius: var(--radius);
-	padding: var(--spacing--2xs);
-}
-
-.panelTitle {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--5xs);
-	text-align: left;
-	/* Air between the chevron and the heading. */
-	padding-left: var(--spacing--3xs);
-}
-
 /* One left edge for every row and note, matching the header's own padding. */
-.panelBody {
+
+.field {
 	display: flex;
 	flex-direction: column;
-	padding: 0 var(--spacing--xs) var(--spacing--2xs);
-}
-
-.row {
-	display: flex;
-	align-items: flex-start;
-	justify-content: space-between;
-	gap: var(--spacing--sm);
-	padding: var(--spacing--2xs) 0;
-}
-
-.rowText {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--5xs);
-}
-
-.fixed {
-	color: var(--text-color--subtler);
-	flex-shrink: 0;
+	gap: var(--spacing--3xs);
+	width: 100%;
 }
 
 .urlField {
