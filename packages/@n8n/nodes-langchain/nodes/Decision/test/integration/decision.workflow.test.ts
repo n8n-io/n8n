@@ -67,21 +67,17 @@ describe('Decision Node Integration', () => {
 	};
 
 	const testData: WorkflowTestData = {
-		description: 'should decide with the TypeSafe sub-node and route on the decision',
+		description: 'should decide with the TypeSafe sub-node and route to the chosen output',
 		input: {
 			workflowData: testHarness.readWorkflowJSON('workflows/decision-ticket-routing.json'),
 		},
 		output: {
 			nodeData: {
+				// One output for each option, plus "Low Confidence" for the threshold. The model
+				// chose "billing" above the threshold, so the item is on output 0 and the
+				// engine trims the empty outputs after it.
 				Decision: [[{ json: decisionOutput }]],
-				// Output 0 is the "Billing" branch of the Switch
-				'Route by department': [
-					[
-						{
-							json: decisionOutput,
-						},
-					],
-				],
+				'Billing Team': [[{ json: decisionOutput }]],
 			},
 		},
 		nock: {

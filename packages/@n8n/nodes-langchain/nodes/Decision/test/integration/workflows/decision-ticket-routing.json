@@ -66,9 +66,15 @@
 							"instructions": "How severe is the customer impact?",
 							"levels": {
 								"level": [
-									{ "description": "Low impact" },
-									{ "description": "Material impact" },
-									{ "description": "Critical business impact" }
+									{
+										"description": "Low impact"
+									},
+									{
+										"description": "Material impact"
+									},
+									{
+										"description": "Critical business impact"
+									}
 								]
 							}
 						}
@@ -76,7 +82,8 @@
 				},
 				"options": {
 					"confidenceThreshold": 0.8
-				}
+				},
+				"outputMode": "branch"
 			},
 			"type": "@n8n/n8n-nodes-langchain.decision",
 			"typeVersion": 1,
@@ -102,83 +109,103 @@
 			}
 		},
 		{
-			"parameters": {
-				"rules": {
-					"values": [
-						{
-							"conditions": {
-								"options": {
-									"caseSensitive": true,
-									"leftValue": "",
-									"typeValidation": "strict",
-									"version": 2
-								},
-								"conditions": [
-									{
-										"id": "billing-condition",
-										"leftValue": "={{ $json.decisions.department.value }}",
-										"rightValue": "billing",
-										"operator": {
-											"type": "string",
-											"operation": "equals"
-										}
-									}
-								],
-								"combinator": "and"
-							},
-							"renameOutput": true,
-							"outputKey": "Billing"
-						},
-						{
-							"conditions": {
-								"options": {
-									"caseSensitive": true,
-									"leftValue": "",
-									"typeValidation": "strict",
-									"version": 2
-								},
-								"conditions": [
-									{
-										"id": "technical-condition",
-										"leftValue": "={{ $json.decisions.department.value }}",
-										"rightValue": "technical",
-										"operator": {
-											"type": "string",
-											"operation": "equals"
-										}
-									}
-								],
-								"combinator": "and"
-							},
-							"renameOutput": true,
-							"outputKey": "Technical"
-						}
-					]
-				},
-				"options": {
-					"fallbackOutput": "extra",
-					"renameFallbackOutput": "Other"
-				}
-			},
-			"type": "n8n-nodes-base.switch",
-			"typeVersion": 3.4,
-			"position": [640, 0],
-			"id": "switch-id",
-			"name": "Route by department"
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [640, -270],
+			"id": "billing-team-id",
+			"name": "Billing Team"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [640, -90],
+			"id": "technical-team-id",
+			"name": "Technical Team"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [640, 90],
+			"id": "general-inbox-id",
+			"name": "General Inbox"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [640, 270],
+			"id": "flag-for-review-id",
+			"name": "Flag for Review"
 		}
 	],
 	"connections": {
 		"When clicking 'Execute workflow'": {
-			"main": [[{ "node": "Edit Fields", "type": "main", "index": 0 }]]
+			"main": [
+				[
+					{
+						"node": "Edit Fields",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
 		},
 		"Edit Fields": {
-			"main": [[{ "node": "Decision", "type": "main", "index": 0 }]]
+			"main": [
+				[
+					{
+						"node": "Decision",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
 		},
 		"TypeSafe Jev Decision Model": {
-			"ai_decisionModel": [[{ "node": "Decision", "type": "ai_decisionModel", "index": 0 }]]
+			"ai_decisionModel": [
+				[
+					{
+						"node": "Decision",
+						"type": "ai_decisionModel",
+						"index": 0
+					}
+				]
+			]
 		},
 		"Decision": {
-			"main": [[{ "node": "Route by department", "type": "main", "index": 0 }]]
+			"main": [
+				[
+					{
+						"node": "Billing Team",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Technical Team",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "General Inbox",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Flag for Review",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
 		}
 	}
 }

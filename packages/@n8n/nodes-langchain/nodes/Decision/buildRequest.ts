@@ -31,6 +31,21 @@ export function buildState(rawState: unknown, node: INode, itemIndex: number): D
 	return text;
 }
 
+/**
+ * Trims a choice question's options and drops the blank ones. Shared with the
+ * output planner, so a branch always matches an option that was sent.
+ */
+export function normalizeChoiceOptions(
+	question: QuestionParameter,
+): Array<{ value: string; description: string }> {
+	return (question.options?.option ?? [])
+		.map((option) => ({
+			value: (option.value ?? '').trim(),
+			description: option.description?.trim() ?? '',
+		}))
+		.filter((option) => option.value !== '');
+}
+
 function buildQuestion(
 	question: QuestionParameter,
 	id: string,
@@ -44,12 +59,7 @@ function buildQuestion(
 
 	switch (question.type) {
 		case 'choice': {
-			const options = (question.options?.option ?? [])
-				.map((option) => ({
-					value: (option.value ?? '').trim(),
-					description: option.description?.trim() ?? '',
-				}))
-				.filter((option) => option.value !== '');
+			const options = normalizeChoiceOptions(question);
 
 			if (options.length === 0) {
 				fail(

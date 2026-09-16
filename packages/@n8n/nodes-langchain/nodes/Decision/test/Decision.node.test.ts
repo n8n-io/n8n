@@ -3,7 +3,7 @@ import type { IExecuteFunctions, INode, INodeExecutionData } from 'n8n-workflow'
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { Decision } from '../Decision.node';
+import { configuredOutputs, Decision } from '../Decision.node';
 import type { QuestionParameter } from '../types';
 
 const choiceQuestion: QuestionParameter = {
@@ -13,13 +13,13 @@ const choiceQuestion: QuestionParameter = {
 	options: { option: [{ value: 'billing' }, { value: 'technical' }] },
 };
 
-function decisionResponse() {
+function decisionResponse(value = 'billing', confidence = 0.92) {
 	return {
 		decisions: {
 			department: {
 				type: 'choice' as const,
-				value: 'billing',
-				confidence: 0.92,
+				value,
+				confidence,
 				probabilities: { billing: 0.96, technical: 0.04 },
 			},
 		},
@@ -37,11 +37,13 @@ describe('Decision Node', () => {
 		state?: unknown;
 		questions?: QuestionParameter[];
 		options?: object;
+		outputMode?: 'single' | 'branch';
 	}) {
 		ctx.getNodeParameter.mockImplementation((name, _itemIndex, fallback) => {
 			if (name === 'state') return parameters.state ?? 'Charged twice';
 			if (name === 'questions.question') return parameters.questions ?? [choiceQuestion];
 			if (name === 'options') return parameters.options ?? {};
+			if (name === 'outputMode') return parameters.outputMode ?? 'single';
 			return fallback;
 		});
 	}
@@ -233,8 +235,136 @@ describe('Decision Node', () => {
 			]);
 		});
 
-		it('should have one main output', () => {
-			expect(node.description.outputs).toEqual(['main']);
+		it('should derive its outputs from the parameters', () => {
+			expect(node.description.outputs).toBe(`={{(${configuredOutputs})($parameter)}}`);
+		});
+	});
+
+	describe('Branch by Choice', () => {
+		const threeOptions: QuestionParameter = {
+			...choiceQuestion,
+			options: { option: [{ value: 'billing' }, { value: 'technical' }, { value: 'sales' }] },
+		};
+
+		it('should send the item to the output of the selected option', async () => {
+			setParameters({ outputMode: 'branch', questions: [threeOptions] });
+
+			const result = await node.execute.call(ctx);
+
+			expect(result).toHaveLength(3);
+			expect(result[0]).toEqual([expect.objectContaining({ pairedItem: { item: 0 } })]);
+			expect(result[1]).toEqual([]);
+			expect(result[2]).toEqual([]);
+		});
+
+		it('should keep the full decisions on the branched item', async () => {
+			setParameters({ outputMode: 'branch', questions: [threeOptions] });
+
+			const result = await node.execute.call(ctx);
+
+			expect(result[0][0].json).toMatchObject({
+				decisions: { department: { value: 'billing', confidence: 0.92 } },
+			});
+		});
+
+		it('should split the items across the outputs', async () => {
+			setParameters({ outputMode: 'branch', questions: [threeOptions] });
+			ctx.getInputData.mockReturnValue([
+				{ json: { ticket: 'refund' } },
+				{ json: { ticket: 'crash' } },
+				{ json: { ticket: 'refund again' } },
+			]);
+			(model.decide as ReturnType<typeof vi.fn>)
+				.mockResolvedValueOnce(decisionResponse())
+				.mockResolvedValueOnce(decisionResponse('technical'))
+				.mockResolvedValueOnce(decisionResponse());
+
+			const result = await node.execute.call(ctx);
+
+			expect(result[0].map((item) => item.pairedItem)).toEqual([{ item: 0 }, { item: 2 }]);
+			expect(result[1].map((item) => item.pairedItem)).toEqual([{ item: 1 }]);
+			expect(result[2]).toEqual([]);
+		});
+
+		it('should send an answer below the threshold to the last output', async () => {
+			setParameters({
+				outputMode: 'branch',
+				questions: [threeOptions],
+				options: { confidenceThreshold: 0.8 },
+			});
+			(model.decide as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
+				decisionResponse('billing', 0.4),
+			);
+
+			const result = await node.execute.call(ctx);
+
+			expect(result).toHaveLength(4);
+			expect(result[0]).toEqual([]);
+			expect(result[3]).toEqual([expect.objectContaining({ pairedItem: { item: 0 } })]);
+		});
+
+		it('should keep a confident answer on its own output', async () => {
+			setParameters({
+				outputMode: 'branch',
+				questions: [threeOptions],
+				options: { confidenceThreshold: 0.8 },
+			});
+
+			const result = await node.execute.call(ctx);
+
+			expect(result[0]).toHaveLength(1);
+			expect(result[3]).toEqual([]);
+		});
+
+		it('should fail when the node has no choice question to branch on', async () => {
+			setParameters({
+				outputMode: 'branch',
+				questions: [
+					{
+						id: 'severity',
+						type: 'score',
+						instructions: 'How severe?',
+						levels: { level: [{ description: 'Low' }, { description: 'High' }] },
+					},
+				],
+			});
+
+			await expect(node.execute.call(ctx)).rejects.toThrow(
+				'Branch by Choice needs a choice question',
+			);
+		});
+
+		it('should fail when an expression changes the options between items', async () => {
+			// The outputs come from item 0, so per-item options cannot be routed
+			const perItemOptions: QuestionParameter = {
+				...choiceQuestion,
+				options: { option: [{ value: 'escalation' }] },
+			};
+			ctx.getInputData.mockReturnValue([{ json: { ticket: 'a' } }, { json: { ticket: 'b' } }]);
+			ctx.getNodeParameter.mockImplementation((name, itemIndex, fallback) => {
+				if (name === 'state') return 'Charged twice';
+				if (name === 'questions.question') return [itemIndex === 0 ? threeOptions : perItemOptions];
+				if (name === 'options') return {};
+				if (name === 'outputMode') return 'branch';
+				return fallback;
+			});
+			(model.decide as ReturnType<typeof vi.fn>)
+				.mockResolvedValueOnce(decisionResponse())
+				.mockResolvedValueOnce(decisionResponse('escalation'));
+
+			await expect(node.execute.call(ctx)).rejects.toThrow(
+				"“escalation” is not one of this node's outputs",
+			);
+		});
+
+		it('should put a failed item on the first output when continuing', async () => {
+			setParameters({ outputMode: 'branch', questions: [threeOptions] });
+			ctx.continueOnFail.mockReturnValue(true);
+			(model.decide as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error('Rate limited'));
+
+			const result = await node.execute.call(ctx);
+
+			expect(result[0]).toEqual([{ json: { error: 'Rate limited' }, pairedItem: { item: 0 } }]);
 		});
 	});
 });

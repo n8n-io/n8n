@@ -92,13 +92,57 @@ A low confidence means the model found no clear winner: the options overlap, the
 state lacks the necessary information, or the question does not fit the state.
 
 Set **Confidence Threshold** in Options to add `meetsConfidenceThreshold` to
-every answer that reports confidence. The node routes nothing and drops nothing;
-your workflow decides what to do. No threshold is right for every use case:
-a threshold for a refund is not a threshold for a page title.
+every answer that reports confidence. With **Single Output** the node routes
+nothing and drops nothing; your workflow decides what to do. With **Branch by
+Choice** the threshold also adds a **Low Confidence** output. No threshold is
+right for every use case: a threshold for a refund is not a threshold for a page
+title.
 
 ## Output
 
-One item per input item, with paired-item information preserved:
+Set **Output** to pick how the decisions leave the node.
+
+### Single Output
+
+The default. Every item goes to one output, and you branch later with a Switch
+or If node. This keeps every question equal, so it fits a node that asks several.
+
+### Branch by Choice
+
+The node adds one output for each option of its choice question, in the order you
+configured them, and sends each item to the option the model selected. This
+classifies and routes in one node, so no Switch node repeats the option values:
+
+```text
+Decision  (choice: department — billing, technical, other)
+ ├ billing   → Billing Team
+ ├ technical → Technical Team
+ └ other     → General Inbox
+```
+
+This needs exactly one choice question to branch on. Other question types still
+answer normally and ride along in the item, so a Decision node can branch on
+`department` while it also reports `severity` and `urgency`.
+
+With a **Confidence Threshold** above 0, a last **Low Confidence** output is
+added. An answer below the threshold goes there instead of to its option, so an
+uncertain decision never takes a confident path:
+
+```text
+Decision  (choice: department, Confidence Threshold 0.8)
+ ├ billing         → Billing Team
+ ├ technical       → Technical Team
+ ├ other           → General Inbox
+ └ Low Confidence  → Flag for Review
+```
+
+An answer that reports no confidence is routed by its value, because a missing
+confidence is not the same as doubt.
+
+### Item shape
+
+One item per input item, with paired-item information preserved. The shape is
+the same in both output modes:
 
 ```json
 {
@@ -123,21 +167,28 @@ read it.
 
 ```text
 Webhook
-→ Decision  (choice: department; score: severity; boolean probability: urgency)
+→ Decision  (Branch by Choice; choice: department; score: severity;
+             boolean probability: urgency; Confidence Threshold 0.8)
    ↳ TypeSafe Jev Decision Model
-→ Switch on {{ $json.decisions.department.value }}
+   ├ billing         → Billing Team
+   ├ technical       → Technical Team
+   ├ other           → General Inbox
+   └ Low Confidence  → Flag for Review
 ```
 
 Ask all three questions in one Decision node. One call answers every question,
-which is cheaper and faster than one call per question.
+which is cheaper and faster than one call per question. The node classifies and
+routes in one step, so `severity` and `urgency` stay on the item for the team
+node that receives it.
 
 An importable version of this workflow is in
 [`test/integration/workflows/decision-ticket-routing.json`](test/integration/workflows/decision-ticket-routing.json).
 
 ### Low-confidence escalation
 
-Set **Confidence Threshold** to the value your use case justifies, then branch
-on the annotation before you act:
+Set **Confidence Threshold** to the value your use case justifies. With **Branch
+by Choice** the **Low Confidence** output does the escalation for you. With
+**Single Output**, branch on the annotation before you act:
 
 ```text
 Decision
@@ -170,6 +221,11 @@ Decision  (score: complexity, levels "Trivial", "Moderate", "Needs deep reasonin
    no inference, so testing the credential costs nothing.
 
 ## Errors
+
+With **Branch by Choice**, the node also fails before any request when it has no
+choice question to branch on, more than one, or a choice question with no
+options. Switch **Output** back to **Single Output** to branch with a Switch node
+instead.
 
 The node reports a clear error and runs no request when a question is invalid:
 a missing or duplicate ID, a choice without options, a score with fewer than two
