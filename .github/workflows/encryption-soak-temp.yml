@@ -1,0 +1,52 @@
+name: 'Test: Encryption Rollout Soak (temporary)'
+
+# Temporary soak: 10 iterations x 2 modes = 20 independent runs to measure
+# metric variance on CI runners. Removed after the data is collected.
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/encryption-soak-temp.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  soak:
+    name: ${{ matrix.mode }} soak ${{ matrix.iteration }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      max-parallel: 10
+      matrix:
+        mode: [upgrade, rotation]
+        iteration: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    env:
+      MODE: ${{ matrix.mode }}
+      WORK_ROOT: ${{ github.workspace }}/upgrade-test-work
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Setup and build the image under test
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: pnpm build:docker
+
+      - name: Run the test cycle
+        run: |
+          mkdir -p "$WORK_ROOT"
+          set -o pipefail
+          pnpm --filter n8n-containers encryption-cycle 2>&1 | tee "$WORK_ROOT/run.log"
+
+      - name: Upload run artifacts
+        if: always()
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: soak-${{ matrix.mode }}-${{ matrix.iteration }}
+          retention-days: 3
+          if-no-files-found: warn
+          path: |
+            ${{ github.workspace }}/upgrade-test-work/run.log
+            ${{ github.workspace }}/upgrade-test-work/*/metrics.csv
