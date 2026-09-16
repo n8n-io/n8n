@@ -1527,6 +1527,18 @@
 				"line": 40,
 				"message": "packages/nodes-base turns '@typescript-eslint/prefer-promise-reject-errors' down to 'warn' for the whole package.",
 				"hash": "2d61f9d00a79"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 26,
+				"message": "packages/nodes-base turns '@n8n/community-nodes/node-class-description-icon-missing' down to 'warn' for the whole package.",
+				"hash": "203610fabf04"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 27,
+				"message": "packages/nodes-base turns '@n8n/community-nodes/cred-class-field-icon-missing' down to 'warn' for the whole package.",
+				"hash": "ac79bc55562e"
 			}
 		],
 		"packages/workflow/eslint.config.mjs": [

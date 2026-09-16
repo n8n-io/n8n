@@ -482,7 +482,10 @@ export {
 	InstanceAiFilesystemResponseDto,
 	instanceAiEvalSeedDataTableSchema,
 	instanceAiEvalSeedAgentSchema,
+	instanceAiEvalSeedFolderSchema,
+	instanceAiEvalSeedArtifactIdSchema,
 	findUnbackedSeedWorkflowTools,
+	findSeedFolderIssues,
 	applyBranchReadOnlyOverrides,
 	deriveInstanceAiSetupState,
 	INSTANCE_AI_THREAD_SOURCES,
@@ -637,6 +640,7 @@ export type {
 	InstanceAiEvalSeedWorkflow,
 	InstanceAiEvalSeedDataTable,
 	InstanceAiEvalSeedAgent,
+	InstanceAiEvalSeedFolder,
 } from './schemas/instance-ai.schema';
 
 export type {
@@ -820,3 +824,9 @@ export {
 	instanceAiApprovalDetailsSchema,
 	type InstanceAiApprovalDetails,
 } from './schemas/instance-ai-approval.schema';
+export type {
+	ExecutionListPagination,
+	ExecutionListPaginationQuery,
+	SerializedCursor,
+} from './dto/executions/execution-list-pagination';
+export { compareExecutionListItems } from './dto/executions/compare-execution-list-items';

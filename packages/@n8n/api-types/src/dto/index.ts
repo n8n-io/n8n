@@ -128,6 +128,7 @@ export { SourceControlPushConflictErrorPublicDto } from './source-control/source
 export { SourceControlPullResponsePublicDto } from './source-control/source-control-pull-response-public.dto';
 
 export { CreateCredentialDto } from './credentials/create-credential.dto';
+export { TestCredentialRequestDto } from './credentials/test-credential-request.dto';
 export {
 	CredentialPublicDto,
 	CredentialListPublicDto,
@@ -578,6 +579,7 @@ export {
 	PromotionCheckoutPublicDto,
 	promotionCheckoutPublicSchema,
 } from './promotions/promotion-checkout.dto';
+export * from './promotions/promotion-binding-preflight.dto';
 export {
 	CreatePromotionConnectionDto,
 	ListPromotionConnectionsQueryDto,
