@@ -1,5 +1,6 @@
 import {
 	NodeApiError,
+	type IDataObject,
 	type IExecuteFunctions,
 	type INode,
 	type IWorkflowMetadata,
@@ -30,6 +31,30 @@ const mention = (id: string, label: string): Mention => ({
 	mentionText: label,
 	mentioned: { user: { id, displayName: label, userIdentityType: 'aadUser' } },
 });
+
+const tagMention = (id: string, label: string): Mention => ({
+	mentionText: label,
+	mentioned: { tag: { id, displayName: label } },
+});
+
+/** The two arms are told apart by key presence, so a test that built a user mention narrows. */
+const userOf = (entry: Mention) => {
+	if (!('user' in entry.mentioned)) throw new Error('expected a user mention');
+	return entry.mentioned.user;
+};
+
+const tagOf = (entry: Mention) => {
+	if (!('tag' in entry.mentioned)) throw new Error('expected a team tag mention');
+	return entry.mentioned.tag;
+};
+
+// Byte-identical to a live 403, captured 2026-09-08 against `/beta/teams/{id}/tags`. The node
+// calls `/v1.0`: same permission check, but the v1.0 wording is not separately confirmed (D7).
+const TAG_SCOPE_TEXT =
+	"API requires one of 'TeamworkTag.Read, TeamworkTag.ReadWrite, TeamSettings.ReadWrite.All'";
+
+const SHAPES = ['production', 'raw'] as const;
+type Shape = (typeof SHAPES)[number];
 
 describe('Test MicrosoftTeamsV2, filterSortSearchListItems', () => {
 	it('should filter, sort and search list items', () => {
@@ -150,7 +175,7 @@ describe('Test MicrosoftTeamsV2, prepareMessage', () => {
 		for (const entry of emitted) {
 			expect(content).toContain(`<at id="${entry.id}">${entry.mentionText}</at>`);
 		}
-		expect(emitted.map((entry) => entry.mentioned.user.id)).toEqual(['guid-1', 'guid-2', 'guid-3']);
+		expect(emitted.map((entry) => userOf(entry).id)).toEqual(['guid-1', 'guid-2', 'guid-3']);
 	});
 
 	it('switches a text message to HTML when it carries a mention', () => {
@@ -174,8 +199,35 @@ describe('Test MicrosoftTeamsV2, prepareMessage', () => {
 		// The two must be the same string.
 		expect(emitted[0].mentionText).toBe('A &amp; B &lt;Ops&gt;');
 		expect(content).toContain(`<at id="0">${emitted[0].mentionText}</at>`);
-		// Metadata, not markup: Graph does not measure this one.
-		expect(emitted[0].mentioned.user.displayName).toBe('A & B <Ops>');
+		// Metadata, not markup: Graph does not measure this one. Read through `userOf`, because
+		// `Mention.mentioned` is a two-arm union once team tags exist.
+		expect(userOf(emitted[0]).displayName).toBe('A & B <Ops>');
+	});
+
+	it('emits a team tag mention unchanged', () => {
+		const tag = tagMention('tag-1', 'Engineering');
+
+		const body = prepareMessage.call(ctx, 'hi', 'html', false, undefined, [tag]);
+
+		expect(body).toEqual({
+			body: { contentType: 'html', content: '<at id="0">Engineering</at> hi' },
+			mentions: [{ id: 0, ...tag }],
+		});
+	});
+
+	// The escaping fix lives in `prepareMessage`, which treats both arms alike, so the tag arm
+	// inherits it. A tag name is set by a team owner, so it is the same untrusted input class as
+	// a guest display name.
+	it('escapes the marker text of a team tag mention too', () => {
+		const body = prepareMessage.call(ctx, 'hi', 'html', false, undefined, [
+			tagMention('tag-1', 'R&D <core>'),
+		]);
+
+		const content = (body.body as { content: string }).content;
+		const emitted = body.mentions as Mention[];
+		expect(content).toBe('<at id="0">R&amp;D &lt;core&gt;</at> hi');
+		expect(emitted[0].mentionText).toBe('R&amp;D &lt;core&gt;');
+		expect(tagOf(emitted[0]).displayName).toBe('R&D <core>');
 	});
 });
 
@@ -191,12 +243,12 @@ describe('Test MicrosoftTeamsV2, resolveMentions', () => {
 		);
 	};
 
-	/** One row per entry, addressed the way the node reads them out of the fixedCollection. */
+	/** One user row per entry, the way the fixedCollection stores them. */
 	const setRows = (...userIds: string[]) =>
-		setParams({
-			'mentions.mention': userIds.map(() => ({})),
-			...Object.fromEntries(userIds.map((id, i) => [`mentions.mention[${i}].userId`, id])),
-		});
+		setParams({ 'mentions.mention': userIds.map((userId) => ({ userId })) });
+
+	/** Rows verbatim, for tag rows and for resource-locator values. */
+	const setMentionRows = (...rows: IDataObject[]) => setParams({ 'mentions.mention': rows });
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -268,7 +320,7 @@ describe('Test MicrosoftTeamsV2, resolveMentions', () => {
 		// `Mention.mentionText` stays the raw name; `prepareMessage` escapes it for both the
 		// token and the payload. Escaping here too renders `A &amp;amp; B`.
 		expect(resolved.mentionText).toBe('A & B <Ops>');
-		expect(resolved.mentioned.user.displayName).toBe('A & B <Ops>');
+		expect(userOf(resolved).displayName).toBe('A & B <Ops>');
 	});
 
 	it('trims a pasted user id before validating and encoding it', async () => {
@@ -343,7 +395,7 @@ describe('Test MicrosoftTeamsV2, resolveMentions', () => {
 
 		const mentions = await resolveMentions.call(ctx, 0);
 
-		expect(mentions[0].mentioned.user.id).toBe('guid-guest');
+		expect(userOf(mentions[0]).id).toBe('guid-guest');
 		expect(mentions[0].mentionText).toBe('Alex Guest');
 		expect(apiRequest).toHaveBeenNthCalledWith(
 			2,
@@ -427,5 +479,268 @@ describe('Test MicrosoftTeamsV2, resolveMentions', () => {
 		const mentions = await resolveMentions.call(ctx, 0);
 
 		expect(mentions).toEqual([mention('guid-1', 'Jane Smith'), mention('guid-2', 'Bob Jones')]);
+	});
+
+	it('unwraps a resource locator value', async () => {
+		setMentionRows({
+			userId: { __rl: true, mode: 'id', value: '714c1202-cbac-40ff-9160-53ab5c4df9b8' },
+		});
+		apiRequest.mockResolvedValue({ id: 'guid-1', displayName: 'Jane Smith' });
+
+		await resolveMentions.call(ctx, 0);
+
+		expect(apiRequest).toHaveBeenCalledWith(
+			'GET',
+			'/v1.0/users/714c1202-cbac-40ff-9160-53ab5c4df9b8',
+			{},
+			RESOLVE_QS,
+		);
+	});
+
+	it('names the empty row when a picker was added but never filled in', async () => {
+		// The resource locator default. Unwrapping it on truthiness instead of on key presence
+		// tells the user to remove slashes from an ID they never typed.
+		setMentionRows({ userId: { __rl: true, mode: 'list', value: '' } });
+
+		await expect(resolveMentions.call(ctx, 0)).rejects.toThrow('No user selected for mention 1');
+	});
+
+	it('treats a row with no mention type as a user mention', async () => {
+		// The shape a workflow saved before the discriminator existed still has on disk.
+		setMentionRows({ userId: 'jane@example.com' });
+		apiRequest.mockResolvedValue({ id: 'guid-1', displayName: 'Jane Smith' });
+
+		const mentions = await resolveMentions.call(ctx, 0, 'team-1');
+
+		expect(mentions).toEqual([mention('guid-1', 'Jane Smith')]);
+	});
+
+	// `isResourceLocatorValue` needs `__rl`, so a hand-authored locator missing it is not
+	// unwrapped. Stringifying it would send the literal `[object Object]` to Graph, which
+	// `validateMicrosoftGraphId` does not reject, and burn a request to learn nothing.
+	it('names the empty row for a resource locator missing its __rl marker', async () => {
+		setMentionRows({ userId: { mode: 'id', value: '714c1202-cbac-40ff-9160-53ab5c4df9b8' } });
+
+		await expect(resolveMentions.call(ctx, 0)).rejects.toThrow('No user selected for mention 1');
+		expect(apiRequest).not.toHaveBeenCalled();
+	});
+
+	// The collapse above is for objects only. A number is a bad ID but not a guaranteed-useless
+	// one, so it keeps reaching the validator and its "not valid" wording.
+	it('still stringifies a non-string primitive', async () => {
+		setMentionRows({ userId: 12345 });
+
+		await expect(resolveMentions.call(ctx, 0)).rejects.toThrow(
+			'The user for mention 1 is not valid',
+		);
+		expect(apiRequest).not.toHaveBeenCalled();
+	});
+
+	it('rejects a mention type it does not know', async () => {
+		// Reachable from imported JSON, the public API, the workflow builder, or a `$fromAI()`
+		// discriminator. Falling through to the user branch would report "No user selected" on a
+		// row the UI labels Team Tag.
+		setMentionRows({ mentionType: 'Tag', tagId: 'tag-1' });
+
+		await expect(resolveMentions.call(ctx, 0, 'team-1')).rejects.toThrow(
+			'The mention type for mention 1 is not valid',
+		);
+		expect(apiRequest).not.toHaveBeenCalled();
+	});
+
+	describe('team tag rows', () => {
+		const tagRow = (tagId: string) => setMentionRows({ mentionType: 'tag', tagId });
+
+		// The two shapes a Graph error reaches the gate in, see `tagPermissionError`.
+		const graphError = (shape: Shape, statusCode: number, message: string) =>
+			new NodeApiError(node, { message, statusCode }, shape === 'production' ? { message } : {});
+
+		it('resolves a tag through the team it belongs to', async () => {
+			tagRow('tag-1');
+			apiRequest.mockResolvedValue({ id: 'tag-1', displayName: 'Engineering' });
+
+			const mentions = await resolveMentions.call(ctx, 0, 'team-1');
+
+			expect(apiRequest).toHaveBeenCalledWith('GET', '/v1.0/teams/team-1/tags/tag-1');
+			expect(mentions).toEqual([tagMention('tag-1', 'Engineering')]);
+		});
+
+		// `validateMicrosoftGraphId` decodes before validating, so a percent-encoded ID is
+		// accepted here even though the By ID field rejects it in the editor. The user branch
+		// diverges the other way and rejects `jane%40example.com` outright.
+		it.each([
+			['leaves base64 padding unencoded', 'YWJjZA==', '/v1.0/teams/team-1/tags/YWJjZA=='],
+			['decodes a percent-encoded ID', 'abc%3D', '/v1.0/teams/team-1/tags/abc='],
+		])('%s in the path', async (_label, tagId, expected) => {
+			tagRow(tagId);
+			apiRequest.mockResolvedValue({ id: tagId, displayName: 'Engineering' });
+
+			await resolveMentions.call(ctx, 0, 'team-1');
+
+			expect(apiRequest).toHaveBeenCalledWith('GET', expected);
+		});
+
+		it('takes the tag ID from the Graph response, not from the input', async () => {
+			// Real Graph echoes the requested id back, so only an artificial mismatch can pin
+			// which side the body binds from. The body is what decides who gets notified.
+			tagRow('REQUESTED=');
+			apiRequest.mockResolvedValue({ id: 'RESPONSE=', displayName: 'Engineering' });
+
+			const mentions = await resolveMentions.call(ctx, 0, 'team-1');
+
+			expect(apiRequest).toHaveBeenCalledWith('GET', '/v1.0/teams/team-1/tags/REQUESTED=');
+			expect(mentions).toEqual([tagMention('RESPONSE=', 'Engineering')]);
+		});
+
+		// The v1.0 get-by-id docs example wraps the entity in `value`, the list endpoint returns
+		// an array under the same key. The live spike settles which one Graph really sends.
+		it.each([
+			['a wrapped body', { value: { id: 'tag-1', displayName: 'Engineering' } }],
+			['a flat body', { id: 'tag-1', displayName: 'Engineering' }],
+		])('reads the tag out of %s', async (_label, response) => {
+			tagRow('tag-1');
+			apiRequest.mockResolvedValue(response);
+
+			const mentions = await resolveMentions.call(ctx, 0, 'team-1');
+
+			expect(mentions).toEqual([tagMention('tag-1', 'Engineering')]);
+		});
+
+		// No fallback for either field: a tag id makes a garbage chip that Graph still accepts,
+		// and a missing id drops `mentioned.tag` from the body for a green run and a mention
+		// that notifies nobody.
+		it.each([
+			['the list shape', { value: [{ id: 'tag-1', displayName: 'Engineering' }] }],
+			['no display name', { id: 'tag-1' }],
+			['no ID', { displayName: 'Engineering' }],
+		])('refuses to build a mention from %s', async (_label, response) => {
+			tagRow('tag-1');
+			apiRequest.mockResolvedValue(response);
+
+			await expect(resolveMentions.call(ctx, 0, 'team-1')).rejects.toThrow(
+				'Could not read the team tag for mention 1',
+			);
+		});
+
+		it('keeps a tag row and a user row in their own slots', async () => {
+			setMentionRows(
+				{ mentionType: 'tag', tagId: 'tag-1' },
+				{ mentionType: 'user', userId: 'jane@example.com' },
+			);
+			apiRequest
+				.mockResolvedValueOnce({ id: 'tag-1', displayName: 'Engineering' })
+				.mockResolvedValueOnce({ id: 'guid-1', displayName: 'Jane Smith' });
+
+			const mentions = await resolveMentions.call(ctx, 0, 'team-1');
+
+			expect(mentions).toEqual([
+				tagMention('tag-1', 'Engineering'),
+				mention('guid-1', 'Jane Smith'),
+			]);
+		});
+
+		it('leaves the resolved tag name raw', async () => {
+			tagRow('tag-1');
+			apiRequest.mockResolvedValue({ id: 'tag-1', displayName: 'R&D <core>' });
+
+			const [resolved] = await resolveMentions.call(ctx, 0, 'team-1');
+
+			// Only the `<at>` inner text is escaped, downstream in `prepareMessage`.
+			expect(resolved).toEqual(tagMention('tag-1', 'R&D <core>'));
+		});
+
+		it('names the row when no tag was picked', async () => {
+			setMentionRows({ mentionType: 'tag', tagId: { __rl: true, mode: 'list', value: '' } });
+
+			const error = (await resolveMentions
+				.call(ctx, 3, 'team-1')
+				.catch((e) => e)) as NodeOperationError;
+
+			expect(error.message).toBe('No team tag selected for mention 1');
+			expect(error.context.itemIndex).toBe(3);
+			expect(apiRequest).not.toHaveBeenCalled();
+		});
+
+		it('names the row when the team is empty', async () => {
+			tagRow('tag-1');
+
+			const error = (await resolveMentions.call(ctx, 3, '').catch((e) => e)) as NodeOperationError;
+
+			expect(error.message).toBe('No team selected for the team tag in mention 1');
+			expect(error.context.itemIndex).toBe(3);
+			expect(apiRequest).not.toHaveBeenCalled();
+		});
+
+		it('rejects a tag row on a chat message', async () => {
+			// A chat message passes no team. Only a hand-edited row or the public API gets here,
+			// because the chat form offers no tag picker.
+			tagRow('tag-1');
+
+			const error = (await resolveMentions.call(ctx, 3).catch((e) => e)) as NodeOperationError;
+
+			expect(error.message).toBe('Team tags are not available in a chat message');
+			expect(error.description).toBe('Remove mention 1 or use a channel message.');
+			expect(error.context.itemIndex).toBe(3);
+			expect(apiRequest).not.toHaveBeenCalled();
+		});
+
+		it('stamps the item index on a malformed tag ID', async () => {
+			// The path is built inside the same try as the request, so the failure is still
+			// attributed to its item under continueOnFail. It keeps the validator's own message:
+			// the same call validates the team segment, so relabelling it as a tag problem would
+			// mislabel a malformed team ID.
+			tagRow('a/b');
+
+			const error = (await resolveMentions
+				.call(ctx, 3, 'team-1')
+				.catch((e) => e)) as NodeOperationError;
+
+			expect(error.message).toBe('The ID is not valid');
+			expect(error.context.itemIndex).toBe(3);
+		});
+
+		it.each(SHAPES)('names the missing permission on a %s-shaped 403', async (shape) => {
+			tagRow('tag-1');
+			apiRequest.mockRejectedValue(graphError(shape, 403, TAG_SCOPE_TEXT));
+
+			const error = (await resolveMentions
+				.call(ctx, 3, 'team-1')
+				.catch((e) => e)) as NodeOperationError;
+
+			expect(error.message).toBe('Could not read the team tag');
+			expect(error.description).toContain('TeamworkTag.Read');
+			expect(error.context.itemIndex).toBe(3);
+		});
+
+		it.each(SHAPES)('passes a %s-shaped 403 about something else through', async (shape) => {
+			tagRow('tag-1');
+			const original = graphError(shape, 403, 'Insufficient privileges to complete the operation.');
+			apiRequest.mockRejectedValue(original);
+
+			await expect(resolveMentions.call(ctx, 0, 'team-1')).rejects.toBe(original);
+		});
+
+		// The scope text, so the status is the only thing keeping this out of the rewrite.
+		it.each(SHAPES)('passes a %s-shaped server error through', async (shape) => {
+			tagRow('tag-1');
+			const original = graphError(shape, 500, TAG_SCOPE_TEXT);
+			apiRequest.mockRejectedValue(original);
+
+			await expect(resolveMentions.call(ctx, 0, 'team-1')).rejects.toBe(original);
+		});
+
+		it('names the row when the tag is not in this team', async () => {
+			// A foreign tag ID 404s under `/teams/{other}/tags/{id}`, which is how team
+			// ownership is proven.
+			tagRow('tag-1');
+			apiRequest.mockRejectedValue(notFound());
+
+			const error = (await resolveMentions
+				.call(ctx, 3, 'team-1')
+				.catch((e) => e)) as NodeOperationError;
+
+			expect(error.message).toBe('Could not find the team tag for mention 1');
+			expect(error.context.itemIndex).toBe(3);
+		});
 	});
 });

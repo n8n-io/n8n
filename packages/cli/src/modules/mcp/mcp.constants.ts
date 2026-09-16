@@ -51,6 +51,14 @@ export const MISSING_PROTOCOL_VERSION_ERROR_MESSAGE =
  * Tool name constants
  */
 export const LIST_N8N_GATEWAY_SERVICES_TOOL_NAME = 'list_n8n_gateway_services';
+export const MCP_GET_USER_PREFERENCES_TOOL_NAME = 'get_user_preferences';
+
+/**
+ * Shared by the `get_user_preferences` description and the pointer in the server instructions,
+ * so the two cannot drift. Stored without a leading word; each caller supplies its own.
+ */
+export const MCP_USER_PREFERENCES_TRIGGER_CLAUSE =
+	'you create or modify anything in n8n — a workflow, an Agent, a data table, a folder —';
 export const MCP_CALL_AGENT_TOOL_NAME = 'call_agent';
 export const MCP_CREATE_AGENT_TOOL_NAME = 'create_agent';
 

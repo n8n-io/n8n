@@ -16,10 +16,9 @@ import { ErrorReporter, InstanceSettings } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
 import { strict } from 'node:assert';
 
-import { DurableJobProvisioner } from '../durable-job-provisioner';
 import { DurableScheduler } from '../durable-scheduler';
 import { SystemTaskHandler } from './system-task-handler';
-import { systemTaskProvisionRequest } from './system-task-job';
+import { SystemTaskJobRegistrar } from './system-task-job-registrar';
 import { SystemTaskScheduledJobOwner } from './system-task-scheduled-job-owner';
 import { SystemTaskTimer } from './system-task-timer';
 import { systemTaskType } from './system-task-type';
@@ -73,7 +72,7 @@ export class SystemTaskRunner {
 		logger: Logger,
 		private readonly metadata: SystemTaskMetadata,
 		private readonly durableScheduler: DurableScheduler,
-		private readonly durableJobProvisioner: DurableJobProvisioner,
+		private readonly jobRegistrar: SystemTaskJobRegistrar,
 		private readonly systemTaskOwner: SystemTaskScheduledJobOwner,
 		private readonly globalConfig: GlobalConfig,
 		private readonly instanceSettings: InstanceSettings,
@@ -85,8 +84,9 @@ export class SystemTaskRunner {
 	/**
 	 * Take ownership of the registry: route every task registered so far and
 	 * every one registered later, start the in-memory timers if this instance is
-	 * already the leader, and provision the durable jobs. Later leadership
-	 * changes arrive through {@link startTimers} and {@link stopTimers}.
+	 * already the leader, provision the durable jobs and remove the stale ones.
+	 * Later leadership changes arrive through {@link startTimers} and
+	 * {@link stopTimers}.
 	 */
 	async init(): Promise<void> {
 		strict(this.instanceSettings.instanceRole !== 'unset', 'Instance role is not set');
@@ -100,36 +100,10 @@ export class SystemTaskRunner {
 				this.startTimers();
 			}
 
-			for (const routed of this.durableTasks()) {
-				await this.provisionOne(routed);
+			for (const { task } of this.durableTasks()) {
+				await this.jobRegistrar.provision(task);
 			}
-		}
-	}
-
-	/** Never throws: one task that cannot be provisioned must not stop the rest. */
-	private async provisionOne({ task }: RoutedTask): Promise<void> {
-		try {
-			const summary = await this.durableJobProvisioner.provision(
-				systemTaskProvisionRequest(
-					task,
-					this.systemTaskOwner,
-					this.globalConfig.generic.timezone,
-					new Date(),
-				),
-			);
-			this.logger.debug('Provisioned the durable job of a system task', {
-				name: task.name,
-				inserted: summary.inserted.length,
-				redefined: summary.redefined.length,
-				unchanged: summary.unchanged.length,
-				removed: summary.removed.length,
-			});
-		} catch (error) {
-			this.reportFailure(
-				'Could not provision a durable system task, so it will not run',
-				task,
-				error,
-			);
+			await this.jobRegistrar.removeStale();
 		}
 	}
 
@@ -235,6 +209,7 @@ export class SystemTaskRunner {
 		this.routedTasksByName.set(task.name, routed);
 
 		if (this.runsDurably(task)) {
+			this.systemTaskOwner.declareDurable(task.name);
 			this.durableScheduler.registerTaskHandler(
 				systemTaskType(task.name),
 				new SystemTaskHandler(task, this.shutdownController.signal, this.logger, (error) =>
@@ -319,9 +294,18 @@ export class SystemTaskRunner {
 	}
 
 	private async runOnce(routed: RoutedTask): Promise<void> {
+		const { task } = routed;
+		if (task.durable && (await this.jobRegistrar.isProvisioned(task.name))) {
+			this.logger.debug('Skipped an in-memory system task run, its durable job is provisioned', {
+				name: task.name,
+			});
+			return;
+		}
+
 		const { signal } = this.inMemoryRunsController;
+		if (signal.aborted) return;
 		try {
-			await routed.task.run(signal);
+			await task.run(signal);
 		} catch (error) {
 			// A rejection after the run's signal aborted is the task honoring the
 			// abort, not a failure.
@@ -345,7 +329,7 @@ export class SystemTaskRunner {
 		routed.retryTimer.unref();
 	}
 
-	private reportFailure(message: string, task: SystemTask, error: unknown): void {
+	private reportFailure(message: string, task: Pick<SystemTask, 'name'>, error: unknown): void {
 		this.logger.error(message, { name: task.name, error });
 		this.errorReporter.error(error, {
 			extra: { systemTask: task.name },

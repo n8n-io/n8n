@@ -21,6 +21,7 @@ import type {
 	TaskList,
 	InstanceAiPromptConfiguration,
 	InstanceAiFileAttachment,
+	ComputerUseChannel,
 	InstanceAiPermissions,
 	InstanceAiSetupItem,
 	McpTool,
@@ -1312,16 +1313,22 @@ export interface InstanceAiBuilderDelegate {
 	} | null>;
 }
 
-// ── Local gateway status ─────────────────────────────────────────────────────
+// ── Computer Use state ──────────────────────────────────────────────────────
 
-export type LocalGatewayStatus =
-	| {
-			status: 'connected';
-			capabilities: string[];
-	  }
-	| {
-			status: 'disabledGlobally' | 'disconnected' | 'disabled';
-	  };
+export type ComputerUseChannelState =
+	/** Not offered to this user, so the + menu has no entry to name. */
+	| { status: 'unavailable' }
+	/** In the + menu, not paired. */
+	| { status: 'disconnected' }
+	/** In the + menu, switched off in the user's own settings. */
+	| { status: 'disabledByUser' }
+	/** Live. `toolCategories` are the categories this channel serves, in the
+	 *  daemon's own vocabulary: `filesystem`, `shell`, `browser`, … */
+	| { status: 'connected'; toolCategories: string[] };
+
+export type ComputerUseState = Record<ComputerUseChannel, ComputerUseChannelState>;
+
+export type { ComputerUseChannel };
 
 // ── Conversation history ─────────────────────────────────────────────────────
 
@@ -1424,8 +1431,8 @@ export interface InstanceAiContext {
 	 * Connected remote MCP server (e.g. computer-use daemon). When set, dynamic tools are created from its advertised capabilities.
 	 */
 	localMcpServer?: LocalMcpServer;
-	/** Connection state of the local gateway — drives system prompt guidance. */
-	localGatewayStatus?: LocalGatewayStatus;
+	/** Per-channel Computer Use state — drives system prompt guidance. */
+	computerUseState?: ComputerUseState;
 	/** Per-action HITL permission overrides. When absent, tools default to requiring approval. */
 	permissions?: InstanceAiPermissions;
 	/** When set, `runWorkflow: 'always_allow'` only short-circuits HITL approval for these workflow IDs.

@@ -15,6 +15,7 @@ import {
 	EncryptionKeyProxy,
 } from 'n8n-core';
 import { SalesforceJwtApi } from 'n8n-nodes-base/credentials/SalesforceJwtApi.credentials';
+import { WekanApi } from 'n8n-nodes-base/credentials/WekanApi.credentials';
 import type {
 	IAuthenticateGeneric,
 	ICredentialDataDecryptedObject,
@@ -2470,6 +2471,216 @@ describe('CredentialsHelper', () => {
 
 			expect(mockTokenRequest).toHaveBeenCalledTimes(2);
 			expect(refreshed).toMatchObject({ accessToken: 'TOKEN_2' });
+		});
+	});
+	describe('preAuthentication domain restrictions', () => {
+		// This layer attaches the policy; the outbound client enforces it.
+		const wekan = new WekanApi();
+		const httpRequest = vi.fn();
+		const helpers = mock<IHttpRequestHelper>({ helpers: { httpRequest } });
+
+		const storedCredentials = mock<Credentials>({ getData: vi.fn().mockResolvedValue({}) });
+
+		const selfPolicingApi: ICredentialType = {
+			name: 'selfPolicingApi',
+			displayName: 'Self Policing API',
+			properties: [],
+			async preAuthentication(this: IHttpRequestHelper) {
+				await this.helpers.httpRequest({
+					method: 'POST',
+					url: 'https://other.example/login',
+					allowedDomains: 'other.example',
+				});
+				return { token: 'SESSION_TOKEN' };
+			},
+		};
+
+		let updateSpy: MockInstance;
+
+		const wekanNode: INode = {
+			id: 'uuid-1',
+			name: 'Node',
+			type: 'n8n-nodes-base.noOp',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+			credentials: { wekanApi: { id: 'cred-1', name: 'Credential' } },
+		};
+
+		const wekanCredentials = (overrides: ICredentialDataDecryptedObject = {}) => ({
+			url: 'https://wekan.example.com',
+			username: 'admin',
+			password: 'secret',
+			token: '',
+			...overrides,
+		});
+
+		const exchange = async (overrides: ICredentialDataDecryptedObject = {}) =>
+			await credentialsHelper.preAuthentication(
+				helpers,
+				wekanCredentials(overrides),
+				'wekanApi',
+				wekanNode,
+				false,
+			);
+
+		// The spies below need no teardown: `restoreMocks` is enabled repo-wide.
+		beforeEach(() => {
+			vi.clearAllMocks();
+			mockNodesAndCredentials.getCredential
+				.calledWith('wekanApi')
+				.mockReturnValue({ type: wekan, sourcePath: '' });
+			mockNodesAndCredentials.getCredential
+				.calledWith('selfPolicingApi')
+				.mockReturnValue({ type: selfPolicingApi, sourcePath: '' });
+			httpRequest.mockResolvedValue({ token: 'SESSION_TOKEN' });
+			updateSpy = vi.spyOn(credentialsHelper, 'updateCredentials').mockResolvedValue();
+			vi.spyOn(credentialsHelper, 'getCredentials').mockResolvedValue(storedCredentials);
+		});
+
+		test('binds the exchange to the allowlist the credential declares', async () => {
+			const result = await exchange({
+				allowedHttpRequestDomains: 'domains',
+				allowedDomains: 'wekan.example.com',
+			});
+
+			expect(result).toMatchObject({ token: 'SESSION_TOKEN' });
+			expect(httpRequest).toHaveBeenCalledWith(
+				expect.objectContaining({
+					url: 'https://wekan.example.com/users/login',
+					allowedDomains: 'wekan.example.com',
+				}),
+			);
+		});
+
+		test('binds the exchange for any host the credential names', async () => {
+			await exchange({
+				url: 'https://other.example',
+				allowedHttpRequestDomains: 'domains',
+				allowedDomains: 'wekan.example.com',
+			});
+
+			expect(httpRequest).toHaveBeenCalledWith(
+				expect.objectContaining({
+					url: 'https://other.example/users/login',
+					allowedDomains: 'wekan.example.com',
+				}),
+			);
+		});
+
+		test('leaves the request unrestricted when the credential declares no allowlist', async () => {
+			await exchange();
+
+			expect(httpRequest).toHaveBeenCalledWith({
+				method: 'POST',
+				url: 'https://wekan.example.com/users/login',
+				body: { username: 'admin', password: 'secret' },
+			});
+		});
+
+		test('still authenticates when the credential is scoped out of HTTP Request nodes', async () => {
+			const result = await exchange({ allowedHttpRequestDomains: 'none' });
+
+			expect(result).toMatchObject({ token: 'SESSION_TOKEN' });
+			expect(httpRequest).toHaveBeenCalledWith(
+				expect.not.objectContaining({ allowedDomains: expect.anything() }),
+			);
+		});
+
+		test('refuses the exchange when the allowlist was left empty', async () => {
+			await expect(
+				exchange({ allowedHttpRequestDomains: 'domains', allowedDomains: '   ' }),
+			).rejects.toThrow('No allowed domains specified');
+
+			expect(httpRequest).not.toHaveBeenCalled();
+			expect(updateSpy).not.toHaveBeenCalled();
+		});
+
+		test('does not refuse a hook that issues no request of its own', async () => {
+			const inMemoryApi: ICredentialType = {
+				name: 'inMemoryApi',
+				displayName: 'In Memory API',
+				properties: [],
+				// eslint-disable-next-line @typescript-eslint/require-await
+				async preAuthentication(this: IHttpRequestHelper) {
+					return { oauthTokenData: { access_token: 'transformed' } };
+				},
+			};
+
+			mockNodesAndCredentials.getCredential
+				.calledWith('inMemoryApi')
+				.mockReturnValue({ type: inMemoryApi, sourcePath: '' });
+
+			const result = await credentialsHelper.runPreAuthentication(
+				helpers,
+				{ allowedHttpRequestDomains: 'domains', allowedDomains: '' },
+				'inMemoryApi',
+			);
+
+			expect(result).toMatchObject({ oauthTokenData: { access_token: 'transformed' } });
+			expect(httpRequest).not.toHaveBeenCalled();
+		});
+
+		test('refuses to combine the credential allowlist with one the hook set itself', async () => {
+			await expect(
+				credentialsHelper.runPreAuthentication(
+					helpers,
+					{ allowedHttpRequestDomains: 'domains', allowedDomains: 'wekan.example.com' },
+					'selfPolicingApi',
+				),
+			).rejects.toThrow('cannot be combined');
+		});
+
+		test('leaves that allowlist alone when the credential declares none', async () => {
+			await credentialsHelper.runPreAuthentication(helpers, {}, 'selfPolicingApi');
+
+			expect(httpRequest).toHaveBeenCalledWith(
+				expect.objectContaining({ allowedDomains: 'other.example' }),
+			);
+		});
+
+		test('hides request methods it does not wrap', async () => {
+			const unwrapped = vi.fn();
+			let reachable: unknown;
+
+			const probingApi: ICredentialType = {
+				name: 'probingApi',
+				displayName: 'Probing API',
+				properties: [],
+				// eslint-disable-next-line @typescript-eslint/require-await
+				async preAuthentication(this: IHttpRequestHelper) {
+					reachable = (this.helpers as unknown as Record<string, unknown>).request;
+					return { token: 'SESSION_TOKEN' };
+				},
+			};
+
+			mockNodesAndCredentials.getCredential
+				.calledWith('probingApi')
+				.mockReturnValue({ type: probingApi, sourcePath: '' });
+
+			await credentialsHelper.runPreAuthentication(
+				{ helpers: { httpRequest, request: unwrapped } } as unknown as IHttpRequestHelper,
+				{ allowedHttpRequestDomains: 'domains', allowedDomains: 'wekan.example.com' },
+				'probingApi',
+			);
+
+			expect(reachable).toBeUndefined();
+			expect(unwrapped).not.toHaveBeenCalled();
+		});
+
+		test('binds the non-persisting entry point the same way', async () => {
+			await credentialsHelper.runPreAuthentication(
+				helpers,
+				wekanCredentials({
+					allowedHttpRequestDomains: 'domains',
+					allowedDomains: 'wekan.example.com',
+				}),
+				'wekanApi',
+			);
+
+			expect(httpRequest).toHaveBeenCalledWith(
+				expect.objectContaining({ allowedDomains: 'wekan.example.com' }),
+			);
 		});
 	});
 

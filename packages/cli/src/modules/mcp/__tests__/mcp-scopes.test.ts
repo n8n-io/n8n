@@ -1,7 +1,13 @@
 import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
-import { ExecutionRepository, ProjectRepository, SharedWorkflowRepository, User } from '@n8n/db';
+import {
+	ExecutionRepository,
+	GLOBAL_MEMBER_ROLE,
+	ProjectRepository,
+	SharedWorkflowRepository,
+	User,
+} from '@n8n/db';
 import { registerWorkflowPreviewApp } from '@n8n/mcp-apps/server';
 import { InstanceSettings } from 'n8n-core';
 
@@ -56,7 +62,9 @@ const mcpFeatureFlags = (overrides: Partial<McpFeatureFlags> = {}): McpFeatureFl
 	mcpApps: { enabled: false, variant: 'unassigned' },
 	canvasGroupsEnabled: false,
 	instanceContextEnabled: false,
-	aiPreferencesEnabled: false,
+	// On by default so the drift guards below cover `get_user_preferences`. Its own
+	// registration tests set it explicitly either way.
+	aiPreferencesEnabled: true,
 	...overrides,
 });
 
@@ -77,6 +85,10 @@ describe('getAllowedToolNames', () => {
 		expect(allowed).toEqual(
 			new Set(['get_workflow_execution', 'search_workflow_executions', 'list_workflow_tags']),
 		);
+	});
+
+	it('resolves the preferences scope to its one tool', () => {
+		expect(getAllowedToolNames(['aiPreference:read'])).toEqual(new Set(['get_user_preferences']));
 	});
 
 	it('ignores unknown scopes', () => {
@@ -101,7 +113,9 @@ describe('getAllowedToolNames', () => {
 });
 
 describe('McpService scope enforcement', () => {
-	const user = Object.assign(new User(), { id: 'user-1' });
+	// A real MCP caller always arrives with its role loaded: `get_user_preferences` and
+	// `list_workflow_tags` both read the role to check a scope.
+	const user = Object.assign(new User(), { id: 'user-1', role: GLOBAL_MEMBER_ROLE });
 
 	const buildService = ({
 		builderEnabled = true,
@@ -263,6 +277,49 @@ describe('McpService scope enforcement', () => {
 
 		const gated = [...withBuilder].filter((name) => !withoutBuilder.has(name)).sort();
 		expect(gated).toEqual([...BUILDER_TOOLS].sort());
+	});
+
+	describe('get_user_preferences registration', () => {
+		it('registers the tool when the preferences flag is on', async () => {
+			const server = await buildService().getServer(
+				user,
+				mcpFeatureFlags({ aiPreferencesEnabled: true }),
+			);
+
+			expect(getRegisteredToolNames(server)).toContain('get_user_preferences');
+		});
+
+		it('does not register the tool when the preferences flag is off', async () => {
+			const server = await buildService().getServer(
+				user,
+				mcpFeatureFlags({ aiPreferencesEnabled: false }),
+			);
+
+			expect(getRegisteredToolNames(server)).not.toContain('get_user_preferences');
+		});
+
+		// Preferences cover Agents, data tables and folders too, none of which are
+		// builder-gated, so the tool must not disappear with the builder.
+		it('registers the tool with the builder disabled', async () => {
+			const server = await buildService({ builderEnabled: false }).getServer(
+				user,
+				mcpFeatureFlags({ aiPreferencesEnabled: true }),
+			);
+
+			expect(getRegisteredToolNames(server)).toContain('get_user_preferences');
+		});
+
+		it('is not a builder tool, so it stays out of the builder-gated set', () => {
+			expect(BUILDER_TOOLS.has('get_user_preferences')).toBe(false);
+		});
+
+		it('is out of reach of a grant that does not hold the preferences scope', async () => {
+			const server = await buildService().getServer(user, mcpFeatureFlags(), undefined, {
+				grantedScopes: ['workflow:read', 'workflow:write'],
+			});
+
+			expect(getRegisteredToolNames(server)).not.toContain('get_user_preferences');
+		});
 	});
 
 	it('does not register folder tools when folders are not licensed', async () => {

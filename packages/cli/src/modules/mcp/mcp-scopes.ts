@@ -1,6 +1,8 @@
 import type { McpScope } from '@n8n/api-types';
 import { MCP_INSTANCE_SCOPES } from '@n8n/api-types';
 
+import { MCP_GET_USER_PREFERENCES_TOOL_NAME } from './mcp.constants';
+
 /**
  * Maps each grantable OAuth scope to the MCP tools it unlocks. A tool is
  * available if ANY granted scope covers it, so support tools (node search,
@@ -95,6 +97,10 @@ export const TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = {
 	// so the search tools ride along on a write-only grant.
 	'project:write': ['create_folder', 'update_folder', 'search_projects', 'search_folders'],
 	'tag:read': ['list_workflow_tags'],
+	// `ai_preference` is a first-class resource, so reading it rides on a normal scope rather
+	// than an MCP-only string. Not builder-gated: preferences apply to Agents, data tables and
+	// folders too, none of which need the builder.
+	'aiPreference:read': [MCP_GET_USER_PREFERENCES_TOOL_NAME],
 };
 
 /**

@@ -416,6 +416,7 @@ export {
 	INSTANCE_AI_NODE_USAGE_FLAG,
 	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
 	INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
+	computerUseChannelSchema,
 	domainAccessActionSchema,
 	domainAccessMetaSchema,
 	instanceAiApprovalResumeSchema,
@@ -479,7 +480,10 @@ export {
 	InstanceAiFilesystemResponseDto,
 	instanceAiEvalSeedDataTableSchema,
 	instanceAiEvalSeedAgentSchema,
+	instanceAiEvalSeedFolderSchema,
+	instanceAiEvalSeedArtifactIdSchema,
 	findUnbackedSeedWorkflowTools,
+	findSeedFolderIssues,
 	applyBranchReadOnlyOverrides,
 	deriveInstanceAiSetupState,
 	INSTANCE_AI_THREAD_SOURCES,
@@ -505,6 +509,7 @@ export type {
 	InstanceAiSetupStateInput,
 	InstanceAiRunLimitReason,
 	InstanceAiRunLimitMeta,
+	ComputerUseChannel,
 } from './schemas/instance-ai.schema';
 
 export type {
@@ -631,6 +636,7 @@ export type {
 	InstanceAiEvalSeedWorkflow,
 	InstanceAiEvalSeedDataTable,
 	InstanceAiEvalSeedAgent,
+	InstanceAiEvalSeedFolder,
 } from './schemas/instance-ai.schema';
 
 export type {
@@ -814,3 +820,9 @@ export {
 	instanceAiApprovalDetailsSchema,
 	type InstanceAiApprovalDetails,
 } from './schemas/instance-ai-approval.schema';
+export type {
+	ExecutionListPagination,
+	ExecutionListPaginationQuery,
+	SerializedCursor,
+} from './dto/executions/execution-list-pagination';
+export { compareExecutionListItems } from './dto/executions/compare-execution-list-items';

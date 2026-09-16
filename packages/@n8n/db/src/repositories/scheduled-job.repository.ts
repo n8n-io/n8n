@@ -135,6 +135,25 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 		return await manager.findBy(ScheduledJob, { id: In(ids) });
 	}
 
+	/** The owner id and payload of every job these owners of one kind hold. */
+	async findPayloadsByOwnerIds(
+		ownerType: string,
+		ownerIds: string[],
+	): Promise<Array<Pick<ScheduledJob, 'ownerId' | 'payload'>>> {
+		if (ownerIds.length === 0) return [];
+		return await this.find({
+			where: { ownerType, ownerId: In(ownerIds) },
+			select: ['ownerId', 'payload'],
+		});
+	}
+
+	/** The id, owner id and payload of every job owners of one kind hold. */
+	async findPayloadsByOwnerType(
+		ownerType: string,
+	): Promise<Array<Pick<ScheduledJob, 'id' | 'ownerId' | 'payload'>>> {
+		return await this.find({ where: { ownerType }, select: ['id', 'ownerId', 'payload'] });
+	}
+
 	/**
 	 * The member ids under which an owner holds jobs of one task type, each once.
 	 * A caller uses them to tell which of its parts still provision a job.
@@ -152,6 +171,13 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 
 	async countByOwner(owner: ScheduledJobOwner): Promise<number> {
 		return await this.count({ where: ownerCriteria(owner) });
+	}
+
+	/** Whether the owner holds a job the scheduler will claim: enabled and not quarantined. */
+	async existsRunnableByOwner(owner: ScheduledJobOwner): Promise<boolean> {
+		return await this.exists({
+			where: { ...ownerCriteria(owner), enabled: true, orphanedAt: IsNull() },
+		});
 	}
 
 	async backdateNextRunAt(owner: ScheduledJobOwner, secondsInPast: number): Promise<void> {
@@ -248,6 +274,17 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 		await manager.update(ScheduledJob, ids, update);
 	}
 
+	/** Rewrites the payload only, leaving schedule and clock untouched. */
+	async updatePayload(
+		manager: EntityManager,
+		ids: number[],
+		payload: ScheduledJob['payload'],
+	): Promise<void> {
+		if (ids.length === 0) return;
+		// `payload` is a free-form JSON column, which TypeORM's QueryDeepPartialEntity can't express.
+		await manager.update(ScheduledJob, ids, { payload } as QueryDeepPartialEntity<ScheduledJob>);
+	}
+
 	async deleteManyByIds(manager: EntityManager, ids: number[]): Promise<void> {
 		if (ids.length > 0) {
 			await manager.delete(ScheduledJob, ids);
@@ -260,6 +297,30 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 	 */
 	async deleteByOwnerMember(manager: EntityManager, owner: ScheduledJobOwner): Promise<number> {
 		const result = await manager.delete(ScheduledJob, ownerCriteria(owner));
+		return result.affected ?? 0;
+	}
+
+	/**
+	 * Delete one job while its payload still equals what the caller read. Postgres
+	 * `json` has no equality operator, so both sides are cast to `jsonb`; on SQLite
+	 * the column holds the `JSON.stringify` text TypeORM wrote, which re-serializing
+	 * the payload reproduces.
+	 */
+	async deleteIfPayloadUnchanged(
+		manager: EntityManager,
+		id: number,
+		payload: ScheduledJob['payload'],
+	): Promise<number> {
+		const payloadUnchanged = this.isPostgres
+			? 'CAST("payload" AS jsonb) = CAST(:payload AS jsonb)'
+			: '"payload" = :payload';
+		const result = await manager
+			.createQueryBuilder()
+			.delete()
+			.from(ScheduledJob)
+			.where('"id" = :id', { id })
+			.andWhere(payloadUnchanged, { payload: JSON.stringify(payload) })
+			.execute();
 		return result.affected ?? 0;
 	}
 
