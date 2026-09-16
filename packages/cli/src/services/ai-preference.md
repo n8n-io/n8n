@@ -8,7 +8,8 @@ through `AiPreferenceService`.
 ## The data
 
 One table, `ai_preference`. See
-[the migration](../../../@n8n/db/src/migrations/common/1788882375989-CreateAiPreferenceTable.ts)
+[the table](../../../@n8n/db/src/migrations/common/1788882375989-CreateAiPreferenceTable.ts),
+[the `source` column with its backfill](../../../@n8n/db/src/migrations/common/1789479099132-AddSourceToAiPreference.ts)
 and [the entity](../../../@n8n/db/src/entities/ai-preference.ts).
 
 | Column | Meaning |
