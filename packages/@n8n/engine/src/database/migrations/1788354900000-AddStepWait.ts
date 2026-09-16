@@ -1,4 +1,4 @@
-import { TableCheck, TableColumn } from '@n8n/typeorm';
+import { TableCheck, TableColumn, TableIndex } from '@n8n/typeorm';
 import type { MigrationInterface, QueryRunner } from '@n8n/typeorm';
 
 const TABLE = 'workflow_step_execution';
@@ -36,13 +36,18 @@ export class AddStepWait1788354900000 implements MigrationInterface {
 		);
 
 		// The sweep reads waiting rows only, so the index is partial.
-		await queryRunner.query(
-			`CREATE INDEX "${WAIT_TILL_INDEX}" ON ${TABLE} (wait_till) WHERE status = 'waiting'`,
+		await queryRunner.createIndex(
+			TABLE,
+			new TableIndex({
+				name: WAIT_TILL_INDEX,
+				columnNames: ['wait_till'],
+				where: "status = 'waiting'",
+			}),
 		);
 	}
 
 	async down(queryRunner: QueryRunner): Promise<void> {
-		await queryRunner.query(`DROP INDEX "${WAIT_TILL_INDEX}"`);
+		await queryRunner.dropIndex(TABLE, WAIT_TILL_INDEX);
 		await queryRunner.dropCheckConstraint(TABLE, STATUS_CHECK);
 		await queryRunner.createCheckConstraint(
 			TABLE,
