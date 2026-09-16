@@ -833,6 +833,7 @@ const { fullySelectedGroupMemberIds, selectedElementCount, selectionBoxBounds } 
 		isEnabled: () => props.showNodeGroups,
 		getGroupById: (id) => workflowDocumentStore.value.getGroupById(id),
 		getGroupForNode: (id) => workflowDocumentStore.value.getGroupForNode(id),
+		isEmptyGroup,
 		isGroupCollapsed: (id) => injectedNodeGroupView?.isGroupCollapsed(id) ?? false,
 	});
 
