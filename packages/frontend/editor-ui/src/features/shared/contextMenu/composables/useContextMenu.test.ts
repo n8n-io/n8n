@@ -344,6 +344,7 @@ describe('useContextMenu', () => {
 			open(mockEvent, { source: 'group', groupId: group.id, nodeIds: group.nodeIds });
 
 			workflowDocumentStore.replaceNodeInGroup(group.id, nodes[0].id, anchor.id);
+			workflowDocumentStore.setNodes([...nodes.slice(1), anchor]);
 
 			const ids = actions.value.map((action) => action.id);
 			expect(ids).not.toContain('ungroup_nodes');
