@@ -1079,29 +1079,43 @@ export const threadTitleUpdatedPayloadSchema = z.object({
  *
  * CONTEXT-137 defines the shape. CONTEXT-139 publishes the event on every turn.
  */
-export const aiPreferencesAppliedPayloadSchema = z.object({
+const appliedPreferenceSchema = z.object({
+	/** Stable row id, so a reader can link to the preference or edit it. */
+	id: z.string(),
+	scope: aiPreferenceScopeSchema,
+	/** Set only for a team project. A personal project reports as `user`. */
+	projectId: z.string().optional(),
+	projectName: z.string().optional(),
+});
+
+const appliedPreferencesBase = {
 	preferences: z
-		.array(
-			z.object({
-				/** Stable row id, so a reader can link to the preference or edit it. */
-				id: z.string(),
-				scope: aiPreferenceScopeSchema,
-				/** Set only for a team project. A personal project reports as `user`. */
-				projectId: z.string().optional(),
-				projectName: z.string().optional(),
-			}),
-		)
+		.array(appliedPreferenceSchema)
 		.describe('Every preference the request carried, instance first, then personal, then projects'),
 	/** Characters in the rendered block. Reviews the caps against real conversations. */
 	renderedLength: z.number(),
-	/**
-	 * False when this turn sent no new block because the text has not changed. The thread
-	 * history travels with every request, so an earlier block still reaches the model.
-	 */
-	injectedThisTurn: z.boolean(),
-	/** The run whose block the model is reading. Set only when `injectedThisTurn` is false. */
-	carriedFromRunId: z.string().optional(),
-});
+};
+
+/**
+ * Two arms, because a turn either sent the block or it did not, and only the second case has a
+ * run to name. `injectedThisTurn: false` means the text was unchanged, so an earlier block in
+ * the same conversation still carries it and `carriedFromRunId` says which run sent it. A
+ * payload that claims both is refused here as well as in the type.
+ */
+export const aiPreferencesAppliedPayloadSchema = z.discriminatedUnion('injectedThisTurn', [
+	// `z.undefined().optional()` rather than a strict object: a present `carriedFromRunId`
+	// fails, an absent one passes, and a field a newer server adds is still ignored.
+	z.object({
+		...appliedPreferencesBase,
+		injectedThisTurn: z.literal(true),
+		carriedFromRunId: z.undefined().optional(),
+	}),
+	z.object({
+		...appliedPreferencesBase,
+		injectedThisTurn: z.literal(false),
+		carriedFromRunId: z.string().optional(),
+	}),
+]);
 
 export type AiPreferencesAppliedPayload = z.infer<typeof aiPreferencesAppliedPayloadSchema>;
 
