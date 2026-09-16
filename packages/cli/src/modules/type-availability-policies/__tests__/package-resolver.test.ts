@@ -38,6 +38,37 @@ describe('packageResolverFor', () => {
 
 		expect(resolvePackage('unknownApi')).toBeNull();
 	});
+
+	it('resolves a credential type named after an Object.prototype property to null', () => {
+		const registry = makeRegistry({
+			'n8n-nodes-base': {
+				packageName: 'n8n-nodes-base',
+				known: { nodes: {}, credentials: {} },
+			} as unknown as LoadNodesAndCredentials['loaders'][string],
+		});
+		const resolvePackage = packageResolverFor(CREDENTIAL_TYPES_KIND, registry);
+
+		expect(resolvePackage('toString')).toBeNull();
+		expect(resolvePackage('constructor')).toBeNull();
+	});
+
+	it('resolves to the last loader when two packages register the same credential type', () => {
+		const registry = makeRegistry({
+			first: {
+				packageName: 'first',
+				known: { nodes: {}, credentials: { sharedApi: { className: 'Shared', sourcePath: '' } } },
+			} as unknown as LoadNodesAndCredentials['loaders'][string],
+			second: {
+				packageName: 'second',
+				known: { nodes: {}, credentials: { sharedApi: { className: 'Shared', sourcePath: '' } } },
+			} as unknown as LoadNodesAndCredentials['loaders'][string],
+		});
+		const resolvePackage = packageResolverFor(CREDENTIAL_TYPES_KIND, registry);
+
+		// Matches `LoadNodesAndCredentials.getCredential()`, which keeps overwriting as it
+		// iterates every loader, so the last one registered wins.
+		expect(resolvePackage('sharedApi')).toBe('second');
+	});
 });
 
 describe('isPackageInstalled', () => {
@@ -51,5 +82,10 @@ describe('isPackageInstalled', () => {
 
 	it('is false for a package with no registered loader', () => {
 		expect(isPackageInstalled(makeRegistry({}), 'n8n-nodes-not-installed')).toBe(false);
+	});
+
+	it('is false for a package named after an inherited Object.prototype property', () => {
+		expect(isPackageInstalled(makeRegistry({}), 'toString')).toBe(false);
+		expect(isPackageInstalled(makeRegistry({}), 'constructor')).toBe(false);
 	});
 });
