@@ -16,6 +16,7 @@ export interface UseCanvasNodeGroupSelectionDeps {
 	isEnabled: MaybeRefOrGetter<boolean>;
 	getGroupById: (groupId: string) => IWorkflowGroup | undefined;
 	getGroupForNode: (nodeId: string) => IWorkflowGroup | undefined;
+	isEmptyGroup: (groupId: string) => boolean;
 	isGroupCollapsed: (groupId: string) => boolean;
 }
 
@@ -110,7 +111,10 @@ export function useCanvasNodeGroupSelection(deps: UseCanvasNodeGroupSelectionDep
 			// mounts around an already-selected member is a grouping operation, so
 			// it must still fold the selection into the new group.
 			const isDirectMemberSelection =
-				group.nodeIds.length === 1 && !target.has(groupNodeId) && added.includes(group.nodeIds[0]);
+				group.nodeIds.length === 1 &&
+				!deps.isEmptyGroup(group.id) &&
+				!target.has(groupNodeId) &&
+				added.includes(group.nodeIds[0]);
 			if (isDirectMemberSelection) continue;
 			if (group.nodeIds.every((memberId) => target.has(memberId))) {
 				target.add(groupNodeId);

@@ -127,8 +127,23 @@ export function useContextMenuItems(
 		return !!NodeHelpers.getSubworkflowId(node);
 	});
 
+	const effectiveTargetNodeIds = computed(() => {
+		const groupId = targetGroupId?.value;
+		if (!groupId) return targetNodeIds.value;
+
+		const group = workflowDocumentStore?.value?.getGroupById(groupId);
+		if (!group) return targetNodeIds.value;
+
+		const currentMemberNodes = group.nodeIds
+			.map((nodeId) => workflowDocumentStore?.value?.getNodeById(nodeId))
+			.filter(isPresent);
+		const anchor = getEmptyGroupAnchor(group, currentMemberNodes);
+
+		return anchor ? [anchor.id] : targetNodeIds.value;
+	});
+
 	const targetNodes = computed(() =>
-		targetNodeIds.value
+		effectiveTargetNodeIds.value
 			.map((nodeId) => workflowDocumentStore?.value?.getNodeById(nodeId))
 			.filter(isPresent),
 	);

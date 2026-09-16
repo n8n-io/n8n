@@ -338,6 +338,45 @@ describe('CanvasNodeGroupTitleBar', () => {
 			expect(wrapper.queryByTestId('canvas-node-group-info')).toBeTruthy();
 		});
 
+		it('shows the description affordance and panel for a collapsed empty group', async () => {
+			const visibility = useCanvasNodeGroupDescriptionVisibility({
+				workflowId: () => 'wf-1',
+				getCurrentGroups: () => [
+					{
+						id: 'g1',
+						name: 'My group',
+						nodeIds: ['anchor'],
+						description: 'Empty group description',
+					},
+				],
+				onNodeGroupsChange: () => ({ off: () => {} }),
+			});
+			const wrapper = render(
+				{
+					data: makeData({
+						isCollapsed: true,
+						isEmptyGroup: true,
+						group: {
+							...baseGroup,
+							nodeIds: ['anchor'],
+							description: 'Empty group description',
+						},
+					}),
+				},
+				visibility,
+			);
+
+			expect(wrapper.getByTestId('canvas-node-group-info')).toBeVisible();
+
+			visibility.setVisible('g1', true);
+			await waitFor(() => {
+				expect(wrapper.getByTestId('canvas-node-group-description-panel')).toBeVisible();
+			});
+			expect(wrapper.getByTestId('canvas-node-group-description-text')).toHaveTextContent(
+				'Empty group description',
+			);
+		});
+
 		it('hides the info icon and description below the zoom threshold', () => {
 			viewportRef.value = { x: 0, y: 0, zoom: 0.5 };
 			const collapsed = render({ data: makeData({ isCollapsed: true }) });
