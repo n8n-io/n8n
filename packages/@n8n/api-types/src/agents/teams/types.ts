@@ -82,4 +82,7 @@ export interface TeamsAgentSetupState {
  */
 export type TeamsCredentialCheck =
 	| { status: 'ok' }
-	| { status: 'failed'; reason: 'certificate' | 'incomplete' | 'rejected' | 'unreachable' };
+	| {
+			status: 'failed';
+			reason: 'certificate' | 'incomplete' | 'rejected' | 'unreachable' | 'cloud';
+	  };

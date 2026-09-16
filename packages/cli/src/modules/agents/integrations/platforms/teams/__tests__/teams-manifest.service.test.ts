@@ -74,7 +74,7 @@ const options = (
 	agentName: 'Support Bot',
 	agentId: 'agent-abc',
 	botId: BOT_ID,
-	agentUpdatedAt: new Date('2026-09-15T10:00:00.000Z'),
+	versionAt: new Date('2026-09-15T10:00:00.000Z'),
 	...overrides,
 });
 
@@ -195,22 +195,34 @@ describe('TeamsManifestService', () => {
 		it('raises the version when the agent changes, so Teams accepts the re-upload', () => {
 			const earlier = service.buildManifest(options()).version;
 			const later = service.buildManifest(
-				options({ agentUpdatedAt: new Date('2026-09-15T10:00:05.000Z') }),
+				options({ versionAt: new Date('2026-09-15T10:00:05.000Z') }),
 			).version;
 
 			expect(later).not.toBe(earlier);
 			expect([earlier, later].sort()[1]).toBe(later);
 		});
 
+		it('rises when only the settings changed, so Teams applies the re-upload', () => {
+			const at = new Date('2026-09-15T10:00:00.000Z');
+			const later = new Date('2026-09-15T10:00:05.000Z');
+
+			const before = service.buildManifest(options({ versionAt: at })).version;
+			const after = service.buildManifest(
+				options({ versionAt: later, settings: { teamChannels: true } }),
+			).version;
+
+			expect(after).not.toBe(before);
+		});
+
 		it.each([
 			['1.0.0', new Date('1970-01-01T00:00:00.000Z')],
 			['1.20711.36000', new Date('2026-09-15T10:00:00.000Z')],
 		])('formats the version as %s', (expected, updatedAt) => {
-			expect(service.buildManifest(options({ agentUpdatedAt: updatedAt })).version).toBe(expected);
+			expect(service.buildManifest(options({ versionAt: updatedAt })).version).toBe(expected);
 		});
 
 		it('never emits a version with a major below 1', () => {
-			expect(service.buildManifest(options({ agentUpdatedAt: new Date(0) })).version).toMatch(
+			expect(service.buildManifest(options({ versionAt: new Date(0) })).version).toMatch(
 				/^[1-9]\d*\.\d+\.\d+$/,
 			);
 		});
@@ -301,6 +313,27 @@ describe('TeamsManifestService', () => {
 			['an emoji name', '🎉 Party Bot'],
 		])('keeps %s intact, which Teams accepts', (_label, agentName) => {
 			expect(service.buildManifest(options({ agentName })).name.short).toBe(agentName);
+		});
+
+		it('keeps a word break that was written as a newline', () => {
+			expect(service.buildManifest(options({ agentName: 'Support\nBot' })).name.short).toBe(
+				'Support Bot',
+			);
+		});
+
+		it('keeps a joined emoji whole, rather than splitting it into its parts', () => {
+			const joined = '👩‍💻 Bot';
+
+			expect(service.buildManifest(options({ agentName: joined })).name.short).toBe(joined);
+		});
+
+		it('does not cut a flag in half at the length cap', () => {
+			// Each flag is one grapheme of two code points, so an odd cap has to
+			// stop short rather than leave half a flag.
+			const short = service.buildManifest(options({ agentName: '🇺🇸'.repeat(20) })).name.short;
+
+			expect(short).toBe('🇺🇸'.repeat(15));
+			expect(Array.from(short)).toHaveLength(30);
 		});
 
 		it('does not cut an emoji in half at the length cap', () => {

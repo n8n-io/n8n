@@ -9026,5 +9026,6 @@
 	"agents.channels.teams.settings.descriptionPlaceholder": "What this agent helps with",
 	"agents.channels.teams.settings.descriptionDefault": "Chat with {name}, an agent powered by n8n.",
 	"agents.channels.teams.setup.createCredential.claimed": "{agent} already uses this credential for Teams. Microsoft allows one bot for each app registration, so pick a different credential or register another app in Entra.",
-	"agents.channels.teams.setup.createBot.needsFreeCredential": "Pick a credential no other agent uses before deploying."
+	"agents.channels.teams.setup.createBot.needsFreeCredential": "Pick a credential no other agent uses before deploying.",
+	"agents.channels.teams.setup.install.failed.cloud": "Teams channels only reach the global Microsoft cloud. Set the credential's Microsoft Graph API base URL back to https://graph.microsoft.com."
 }

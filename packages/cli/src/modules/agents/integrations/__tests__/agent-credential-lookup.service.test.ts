@@ -1,5 +1,7 @@
 import { mock } from 'vitest-mock-extended';
 
+import type { CredentialsEntity } from '@n8n/db';
+
 import type { CredentialsService } from '@/credentials/credentials.service';
 
 import { AgentCredentialLookupService } from '../agent-credential-lookup.service';
@@ -21,28 +23,36 @@ describe('AgentCredentialLookupService', () => {
 	});
 
 	it('finds a credential belonging to the project', async () => {
+		const wanted = mock<CredentialsEntity>({ id: CREDENTIAL_ID, type: TYPE });
 		credentialsService.findAllCredentialIdsForProject.mockResolvedValue([
-			mock({ id: CREDENTIAL_ID, type: TYPE }),
+			mock<CredentialsEntity>({ id: 'another-cred', type: TYPE }),
+			wanted,
 		]);
 
 		expect(await service.decryptForProject(PROJECT_ID, CREDENTIAL_ID, TYPE)).toEqual({
 			clientId: 'a-client',
 		});
+		// Asserted by identity: decrypt is stubbed, so a wrong pick would still
+		// return the expected object.
+		expect(credentialsService.decrypt).toHaveBeenCalledWith(wanted, true);
 	});
 
 	it('finds a credential shared globally rather than through the project', async () => {
+		const wanted = mock<CredentialsEntity>({ id: CREDENTIAL_ID, type: TYPE });
 		credentialsService.findAllGlobalCredentialIds.mockResolvedValue([
-			mock({ id: CREDENTIAL_ID, type: TYPE }),
+			mock<CredentialsEntity>({ id: 'another-cred', type: TYPE }),
+			wanted,
 		]);
 
 		expect(await service.decryptForProject(PROJECT_ID, CREDENTIAL_ID, TYPE)).toEqual({
 			clientId: 'a-client',
 		});
+		expect(credentialsService.decrypt).toHaveBeenCalledWith(wanted, true);
 	});
 
 	it('leaves the global credentials unread when the project already has it', async () => {
 		credentialsService.findAllCredentialIdsForProject.mockResolvedValue([
-			mock({ id: CREDENTIAL_ID, type: TYPE }),
+			mock<CredentialsEntity>({ id: CREDENTIAL_ID, type: TYPE }),
 		]);
 
 		await service.decryptForProject(PROJECT_ID, CREDENTIAL_ID, TYPE);
@@ -53,7 +63,7 @@ describe('AgentCredentialLookupService', () => {
 
 	it('refuses a credential of another type', async () => {
 		credentialsService.findAllCredentialIdsForProject.mockResolvedValue([
-			mock({ id: CREDENTIAL_ID, type: 'slackApi' }),
+			mock<CredentialsEntity>({ id: CREDENTIAL_ID, type: 'slackApi' }),
 		]);
 
 		expect(await service.decryptForProject(PROJECT_ID, CREDENTIAL_ID, TYPE)).toBeNull();

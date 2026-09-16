@@ -186,6 +186,15 @@ describe('TeamsSetupService', () => {
 			);
 		});
 
+		it("refuses to build the package, which would name the other agent's bot", async () => {
+			connectTeamsCredential();
+			claimedByOtherAgent();
+
+			await expect(
+				service.buildPackage({ projectId: PROJECT_ID, agentId: AGENT_ID }, CREDENTIAL_ID),
+			).rejects.toThrow(/already backs the Teams channel/);
+		});
+
 		it('leaves the deployment alone when nothing else uses the credential', async () => {
 			connectTeamsCredential();
 
@@ -228,6 +237,21 @@ describe('TeamsSetupService', () => {
 			).resolves.toBeInstanceOf(Buffer);
 		});
 
+		it('refuses a client ID that is not a GUID, which Teams rejects at upload', async () => {
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agentWith([]));
+			credentialsService.findAllCredentialIdsForProject.mockResolvedValue([
+				mock({ id: CREDENTIAL_ID, type: 'microsoftEntraServicePrincipalApi' }),
+			]);
+			credentialsService.decrypt.mockResolvedValue({
+				clientId: 'not-a-guid',
+				tenantId: TENANT_ID,
+			});
+
+			await expect(
+				service.buildPackage({ projectId: PROJECT_ID, agentId: AGENT_ID }, CREDENTIAL_ID),
+			).rejects.toThrow(/not a GUID/);
+		});
+
 		const manifestOf = (archive: Buffer) =>
 			JSON.parse(Buffer.from(unzipSync(new Uint8Array(archive))['manifest.json']).toString());
 
@@ -245,6 +269,23 @@ describe('TeamsSetupService', () => {
 			expect(manifest.name.short).toBe('Helpdesk');
 		});
 
+		it('raises the version when settings are supplied, so Teams applies the package', async () => {
+			connectTeamsCredential();
+
+			const stored = manifestOf(
+				await service.buildPackage({ projectId: PROJECT_ID, agentId: AGENT_ID }),
+			).version;
+			const chosen = manifestOf(
+				await service.buildPackage({ projectId: PROJECT_ID, agentId: AGENT_ID }, CREDENTIAL_ID, {
+					teamChannels: true,
+				}),
+			).version;
+
+			// The agent's own timestamp does not move when unsaved settings change,
+			// and Teams ignores a package whose version it has already seen.
+			expect(chosen).not.toBe(stored);
+		});
+
 		it('falls back to the stored settings when none are given', async () => {
 			agentRepository.findByIdAndProjectId.mockResolvedValue(
 				agentWith([{ type: 'teams', credentialId: CREDENTIAL_ID, settings: { groupChats: true } }]),
@@ -258,6 +299,23 @@ describe('TeamsSetupService', () => {
 
 			expect(manifestOf(archive).bots[0].scopes).toEqual(['personal', 'groupChat']);
 		});
+	});
+
+	it('withholds the deployment when the credential carries no Entra IDs', async () => {
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agentWith([]));
+		credentialsService.findAllCredentialIdsForProject.mockResolvedValue([
+			mock({ id: CREDENTIAL_ID, type: 'microsoftEntraServicePrincipalApi' }),
+		]);
+		credentialsService.decrypt.mockResolvedValue({ clientId: '', tenantId: '' });
+
+		const state = await service.getSetupState(
+			{ projectId: PROJECT_ID, agentId: AGENT_ID },
+			CREDENTIAL_ID,
+		);
+
+		// The portal would fetch the template and be told the credential is
+		// incomplete, which reads as an n8n outage.
+		expect(state.deployToAzureUrl).toBeNull();
 	});
 
 	describe('buildArmTemplate', () => {

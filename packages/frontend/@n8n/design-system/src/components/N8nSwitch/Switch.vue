@@ -26,8 +26,18 @@ const ariaLabel = computed(() => {
 const getRootAttrs = () => {
 	const rootAttrs = { ...attrs };
 	delete rootAttrs.class;
+	// Applied through `ariaLabel` instead, so the explicit binding below cannot
+	// overwrite a label the caller forwarded.
+	delete rootAttrs['aria-label'];
 	return rootAttrs;
 };
+
+/** A caller's own label wins; "Toggle" is only the last resort. */
+const ariaLabel = computed(() => {
+	if (props.label) return undefined;
+	const forwarded = attrs['aria-label'];
+	return typeof forwarded === 'string' && forwarded.length > 0 ? forwarded : 'Toggle';
+});
 </script>
 
 <template>

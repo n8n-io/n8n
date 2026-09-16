@@ -10,6 +10,15 @@ const TEAMS_CREDENTIAL_TYPE = 'microsoftEntraServicePrincipalApi';
 /** The audience the Bot Framework connector issues tokens for. */
 const BOT_FRAMEWORK_SCOPE = 'https://api.botframework.com/.default';
 
+/** The only cloud the Teams channel reaches, matching what the channel enforces. */
+const GLOBAL_GRAPH_API_BASE_URL = 'https://graph.microsoft.com';
+
+/**
+ * The check gates a button, so a Microsoft connection that opens and then
+ * stalls has to give up long before the instance-wide request timeout.
+ */
+const CHECK_TIMEOUT_MS = 30_000;
+
 @Service()
 export class TeamsCredentialCheckService {
 	constructor(
@@ -37,9 +46,18 @@ export class TeamsCredentialCheckService {
 			return { status: 'failed', reason: 'certificate' };
 		}
 
-		const tenantId = stringProperty(data, 'tenantId');
-		const clientId = stringProperty(data, 'clientId');
-		const clientSecret = stringProperty(data, 'clientSecret');
+		// The channel refuses a non-global cloud, so accepting one here would let
+		// the setup pass on a credential the first message rejects.
+		const graphApiBaseUrl = stringProperty(data, 'graphApiBaseUrl');
+		if (graphApiBaseUrl && graphApiBaseUrl.replace(/\/+$/, '') !== GLOBAL_GRAPH_API_BASE_URL) {
+			return { status: 'failed', reason: 'cloud' };
+		}
+
+		// Trimmed the way the channel trims them, so the check does not refuse a
+		// credential that would actually work.
+		const tenantId = stringProperty(data, 'tenantId')?.trim();
+		const clientId = stringProperty(data, 'clientId')?.trim();
+		const clientSecret = stringProperty(data, 'clientSecret')?.trim();
 		if (!tenantId || !clientId || !clientSecret) {
 			return { status: 'failed', reason: 'incomplete' };
 		}
@@ -60,6 +78,7 @@ export class TeamsCredentialCheckService {
 					}).toString(),
 					returnFullResponse: true,
 					ignoreHttpStatusErrors: true,
+					timeout: CHECK_TIMEOUT_MS,
 				});
 
 			const body: unknown = response.body;

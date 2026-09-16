@@ -43,8 +43,13 @@ export interface BuildTeamsManifestOptions {
 	agentId: string;
 	/** Application (client) ID of the Entra app backing the bot. */
 	botId: string;
-	/** Drives the manifest version, so a re-upload is an update. */
-	agentUpdatedAt: Date;
+	/**
+	 * Drives the manifest version, so a re-upload is an update. It has to move
+	 * whenever anything else in the manifest does: Teams ignores a package whose
+	 * version it has already seen, so an unchanged version silently discards the
+	 * new scopes or name.
+	 */
+	versionAt: Date;
 	/**
 	 * Where the app may be used and how it appears. Absent means direct chat
 	 * only, with the name and description falling back to the agent's.
@@ -88,7 +93,7 @@ export class TeamsManifestService {
 		return {
 			$schema: MANIFEST_SCHEMA,
 			manifestVersion: MANIFEST_VERSION,
-			version: this.buildVersion(options.agentUpdatedAt),
+			version: this.buildVersion(options.versionAt),
 			id: this.buildManifestId(options.agentId),
 			packageName: `io.n8n.agent.${this.buildManifestId(options.agentId)}`,
 			developer: {

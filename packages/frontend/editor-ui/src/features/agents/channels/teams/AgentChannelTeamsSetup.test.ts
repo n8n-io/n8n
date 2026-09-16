@@ -4,6 +4,8 @@ import { createTestingPinia } from '@pinia/testing';
 import { configure, fireEvent, waitFor } from '@testing-library/vue';
 
 import AgentChannelTeamsSetup from './AgentChannelTeamsSetup.vue';
+import type { TeamsCredentialCheck } from '@n8n/api-types';
+
 import { checkTeamsCredential, fetchTeamsAppPackage, getTeamsSetupState } from './api';
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
@@ -523,6 +525,70 @@ describe('AgentChannelTeamsSetup', () => {
 			await waitFor(() => expect(getByTestId('teams-credential-claimed')).toBeVisible());
 			expect(getByTestId('teams-connect')).toBeDisabled();
 		});
+	});
+
+	describe('when the selected credential changes', () => {
+		it('drops the previous verification, so Save cannot use it', async () => {
+			let release: ((value: TeamsCredentialCheck) => void) | undefined;
+			vi.mocked(checkTeamsCredential)
+				.mockResolvedValueOnce({ status: 'ok' })
+				.mockImplementationOnce(async () => await new Promise((resolve) => (release = resolve)));
+
+			const { getByTestId, rerender } = renderComponent({
+				props: props({ modelValue: 'cred-1' }),
+			});
+			await waitFor(() => expect(getByTestId('teams-connect')).toBeEnabled());
+
+			await rerender(props({ modelValue: 'cred-2' }));
+
+			// The second check has not answered yet, so nothing is verified.
+			await waitFor(() => expect(getByTestId('teams-connect')).toBeDisabled());
+			release?.({ status: 'ok' });
+		});
+
+		it('ignores an answer for the credential that is no longer selected', async () => {
+			let releaseFirst: ((value: TeamsCredentialCheck) => void) | undefined;
+			vi.mocked(checkTeamsCredential)
+				.mockImplementationOnce(
+					async () => await new Promise((resolve) => (releaseFirst = resolve)),
+				)
+				.mockResolvedValueOnce({ status: 'failed', reason: 'rejected' });
+
+			const { getByTestId, rerender } = renderComponent({
+				props: props({ modelValue: 'cred-1' }),
+			});
+			await rerender(props({ modelValue: 'cred-2' }));
+			await waitFor(() => expect(getByTestId('teams-credential-problem')).toBeVisible());
+
+			// The first credential's answer lands last and must be discarded.
+			releaseFirst?.({ status: 'ok' });
+
+			await waitFor(() => expect(getByTestId('teams-connect')).toBeDisabled());
+		});
+	});
+
+	it('adopts saved settings that arrive after the view is rendered', async () => {
+		const { getByTestId, rerender } = renderComponent({ props: props({ mode: 'edit' }) });
+
+		// The panels start collapsed here, so the switch is present but not shown.
+		await waitFor(() => expect(getByTestId('teams-scope-channels')).toBeInTheDocument());
+		expect(checkedSwitch(getByTestId('teams-scope-channels'))).toBe(false);
+
+		await rerender(props({ mode: 'edit', savedSettings: { teamChannels: true } }));
+
+		await waitFor(() => expect(checkedSwitch(getByTestId('teams-scope-channels'))).toBe(true));
+	});
+
+	it('keeps an edit when saved settings arrive afterwards', async () => {
+		const { getByTestId, rerender } = renderComponent({ props: props({ mode: 'edit' }) });
+
+		await waitFor(() => expect(getByTestId('teams-scope-groups')).toBeInTheDocument());
+		await fireEvent.click(getByTestId('teams-scope-groups'));
+
+		await rerender(props({ mode: 'edit', savedSettings: { teamChannels: true } }));
+
+		// The late arrival must not undo what the user just turned on.
+		await waitFor(() => expect(checkedSwitch(getByTestId('teams-scope-groups'))).toBe(true));
 	});
 
 	it('asks for the setup state once on open, not once per trigger that wants it', async () => {
