@@ -27,6 +27,8 @@ configure({ testIdAttribute: 'data-testid' });
 // N8nStepper renders every step's slot, so one render covers the whole stepper.
 const ENDPOINT = 'https://n8n.example.com/rest/projects/p/agents/v2/a/webhooks/teams';
 const DEPLOY_URL = 'https://portal.azure.com/#create/Microsoft.Template/uri/encoded';
+const DEFAULT_NAME = 'Support Bot';
+const DEFAULT_DESCRIPTION = 'Chat with Support Bot, an agent powered by n8n.';
 const CLIENT_ID = '11111111-2222-3333-4444-555555555555';
 
 const renderComponent = createComponentRenderer(AgentChannelTeamsSetup);
@@ -60,6 +62,8 @@ describe('AgentChannelTeamsSetup', () => {
 			botId: null,
 			deployToAzureUrl: DEPLOY_URL,
 			suggestedBotName: 'support-bot-abc12345',
+			defaultDisplayName: DEFAULT_NAME,
+			defaultDescription: DEFAULT_DESCRIPTION,
 		});
 		vi.mocked(fetchTeamsAppPackage).mockResolvedValue(new Blob(['zip']));
 		vi.mocked(checkTeamsCredential).mockResolvedValue({ status: 'ok', clientId: CLIENT_ID });
@@ -116,6 +120,8 @@ describe('AgentChannelTeamsSetup', () => {
 				botId: null,
 				deployToAzureUrl: null,
 				suggestedBotName: 'support-bot-abc12345',
+				defaultDisplayName: DEFAULT_NAME,
+				defaultDescription: DEFAULT_DESCRIPTION,
 			});
 
 			const { getByTestId, queryByTestId } = renderComponent({ props: props() });
@@ -239,6 +245,8 @@ describe('AgentChannelTeamsSetup', () => {
 				botId: CLIENT_ID,
 				deployToAzureUrl: DEPLOY_URL,
 				suggestedBotName: 'support-bot-abc12345',
+				defaultDisplayName: DEFAULT_NAME,
+				defaultDescription: DEFAULT_DESCRIPTION,
 			});
 
 			const { getByTestId } = renderComponent({ props: props({ connected: true }) });
@@ -257,6 +265,8 @@ describe('AgentChannelTeamsSetup', () => {
 				botId: CLIENT_ID,
 				deployToAzureUrl: DEPLOY_URL,
 				suggestedBotName: 'support-bot-abc12345',
+				defaultDisplayName: DEFAULT_NAME,
+				defaultDescription: DEFAULT_DESCRIPTION,
 			});
 			vi.mocked(fetchTeamsAppPackage).mockRejectedValue(new Error('401'));
 
@@ -349,13 +359,27 @@ describe('AgentChannelTeamsSetup', () => {
 		});
 
 		it('fills the name and description with what the manifest would use', async () => {
-			const { getByTestId } = renderComponent({ props: settingsProps({ agentName: 'Support' }) });
+			const { getByTestId } = renderComponent({ props: settingsProps() });
 
 			await waitFor(() =>
-				expect(getByTestId('teams-display-name').querySelector('input')).toHaveValue('Support'),
+				expect(getByTestId('teams-display-name').querySelector('input')).toHaveValue(DEFAULT_NAME),
 			);
 			expect(getByTestId('teams-description').querySelector('input')).toHaveValue(
-				'agents.channels.teams.settings.descriptionDefault Support',
+				DEFAULT_DESCRIPTION,
+			);
+		});
+
+		it('keeps a saved override rather than replacing it with the default', async () => {
+			const { getByTestId } = renderComponent({
+				props: settingsProps({ savedSettings: { displayName: 'Helpdesk' } }),
+			});
+
+			await waitFor(() =>
+				expect(getByTestId('teams-display-name').querySelector('input')).toHaveValue('Helpdesk'),
+			);
+			// The description had no override, so it still takes the default.
+			expect(getByTestId('teams-description').querySelector('input')).toHaveValue(
+				DEFAULT_DESCRIPTION,
 			);
 		});
 
@@ -386,6 +410,8 @@ describe('AgentChannelTeamsSetup', () => {
 				botId: CLIENT_ID,
 				deployToAzureUrl: DEPLOY_URL,
 				suggestedBotName: 'support-bot-abc12345',
+				defaultDisplayName: DEFAULT_NAME,
+				defaultDescription: DEFAULT_DESCRIPTION,
 			});
 
 			const { getByTestId } = renderComponent({ props: settingsProps() });

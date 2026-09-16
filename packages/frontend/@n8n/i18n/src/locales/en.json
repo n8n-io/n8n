@@ -8744,6 +8744,5 @@
 	"agents.channels.teams.setup.createBot.existingBotHint": "Paste this into your bot's Configuration page as the messaging endpoint, and turn on the Microsoft Teams channel.",
 	"agents.channels.teams.setup.availability.whereTitle": "Where can people use the agent?",
 	"agents.channels.teams.setup.availability.readingSummaryNone": "Only messages addressed to it",
-	"agents.channels.teams.setup.availability.readingNote": "Team owners approve read access when they install the app.",
-	"agents.channels.teams.settings.descriptionDefault": "Chat with {name}, an agent powered by n8n."
+	"agents.channels.teams.setup.availability.readingNote": "Team owners approve read access when they install the app."
 }
