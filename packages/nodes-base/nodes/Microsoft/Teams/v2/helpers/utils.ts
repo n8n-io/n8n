@@ -23,21 +23,6 @@ export type Mention = {
 	mentioned: { user: { id: string; displayName: string; userIdentityType: 'aadUser' } };
 };
 
-/**
- * Escapes the marker text. A B2B guest's display name is third-party input, and an unescaped
- * angle bracket breaks the token. NOT `escapeHtml` from `utils/utilities.ts`: that one decodes.
- *
- * Apply this to the `<at>` inner text AND to `mentions[].mentionText`, so the two are the same
- * string. Graph matches the marker leniently (either form is accepted) but then uses
- * `mentionText.length` to find where the token ends. Feeding it the raw name while the body
- * holds the escaped one makes it resume that many characters early and duplicate the tail of
- * `</at>` into the message, which renders as a stray `/at>` after the chip. Same length on both
- * sides, no drift.
- */
-function escapeMentionText(text: string): string {
-	return text.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
-}
-
 // `row` is the node-generated row number (loop index + 1), never a user-supplied value, so
 // these stay static in the sense that matters: they cannot echo the id back.
 const mentionMessages = (row: number): UserTargetMessages => ({
