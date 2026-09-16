@@ -1,0 +1,26 @@
+packages/frontend/editor-ui/src/app/utils/expressions.ts
+  s_bd05efa6545a84::t_f80085981bb11e 14,21-35
+packages/frontend/editor-ui/src/app/stores/executionData.store.test.ts
+  s_bd05efa6545a84::t_9c4c48cf0f7032 225
+packages/frontend/editor-ui/src/app/composables/useResolvedExpression.test.ts
+  s_bd05efa6545a84::t_8f8b827489aa54 178-190
+packages/frontend/editor-ui/src/app/composables/useResolvedExpression.ts
+  s_bd05efa6545a84::t_8a99e97a05b6b2 6
+  s_bd05efa6545a84::t_82f0521860de89 129-131,137-138
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "26353110e84916fe13c762174ef17766748ebaf2",
+  "prompts": {},
+  "sessions": {
+    "s_bd05efa6545a84": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "279d6961-129d-4cfb-b8fa-66b26147d76d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}
