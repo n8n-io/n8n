@@ -8,6 +8,7 @@ import {
 	parseSystemBlocks,
 	parseSystemPromptForDisplay,
 	parseToolCallBlocks,
+	resolveLlmStepSystemPrompt,
 	parseToolResultBlocks,
 	parseUsageSummary,
 	summarizeJsonValue,
@@ -231,6 +232,37 @@ describe('llm-step-display', () => {
 			messagePreview: 'Build a weather workflow please',
 			systemCharCount: 100,
 		});
+	});
+
+	it('reads the system prompt from AI SDK instructions when system is absent', () => {
+		expect(resolveLlmStepSystemPrompt({ instructions: 'You are helpful' })).toBe('You are helpful');
+		expect(
+			parseStepSummary(
+				{
+					instructions: { role: 'system', content: 'You are helpful' },
+					messages: [{ role: 'user', content: 'hello' }],
+				},
+				{},
+			).systemCharCount,
+		).toBe('You are helpful'.length);
+		expect(
+			parseInputExtras({
+				instructions: 'You are helpful',
+				messages: [],
+				tools: { search: { description: 'search' } },
+			}),
+		).toEqual({
+			tools: { search: { description: 'search' } },
+		});
+	});
+
+	it('prefers a legacy system field over instructions', () => {
+		expect(
+			resolveLlmStepSystemPrompt({
+				system: 'legacy prompt',
+				instructions: 'sdk prompt',
+			}),
+		).toBe('legacy prompt');
 	});
 
 	it('includes full tools and config in input extras', () => {

@@ -21,6 +21,7 @@ import {
 	parseStepSummary,
 	parseSystemPromptForDisplay,
 	parseUsageSummary,
+	resolveLlmStepSystemPrompt,
 } from '@n8n/api-types';
 import fs from 'fs';
 import path from 'path';
@@ -116,7 +117,7 @@ function renderStepDetail(
 	step: InstanceAiRunDebugStep,
 	workflowCode: InstanceAiRunDebugWorkflowCodeSnapshot[],
 ): string {
-	const parsedSystem = parseSystemPromptForDisplay(step.input?.system);
+	const parsedSystem = parseSystemPromptForDisplay(resolveLlmStepSystemPrompt(step.input));
 	const messageBlocks = parseMessageBlocks(step.input?.messages);
 	const inputExtras = parseInputExtras(step.input);
 	const outputBlocks = parseOutputDisplayBlocks(step.output);

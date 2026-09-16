@@ -346,6 +346,18 @@ function parseContentBlock(
 	};
 }
 
+/**
+ * AI SDK v7 stores the system prompt on `instructions`. Older captures still
+ * use `system`. Prefer `system` so a mixed payload does not drop the legacy field.
+ */
+export function resolveLlmStepSystemPrompt(input: Record<string, unknown> | undefined): unknown {
+	if (!input) return undefined;
+	if (input.system !== undefined && input.system !== null) {
+		return input.system;
+	}
+	return input.instructions;
+}
+
 export function parseSystemBlocks(system: unknown): ReadableContentBlock[] {
 	if (system === undefined || system === null) {
 		return [];
@@ -588,7 +600,13 @@ export function parseInputExtras(input: Record<string, unknown> | undefined): un
 	if (!input) return undefined;
 
 	const extras: Record<string, unknown> = {};
-	const primaryKeys = new Set(['system', 'messages', 'stepNumber', 'sdkStepNumber']);
+	const primaryKeys = new Set([
+		'system',
+		'instructions',
+		'messages',
+		'stepNumber',
+		'sdkStepNumber',
+	]);
 
 	for (const [key, value] of Object.entries(input)) {
 		if (!primaryKeys.has(key)) {
@@ -753,15 +771,11 @@ export function parseStepSummary(
 		}
 	}
 
-	let systemCharCount: number | undefined;
-	if (typeof input?.system === 'string') {
-		systemCharCount = input.system.length;
-	} else if (Array.isArray(input?.system)) {
-		systemCharCount = parseSystemBlocks(input.system).reduce(
-			(total, block) => total + block.content.length,
-			0,
-		);
-	}
+	const systemBlocks = parseSystemBlocks(resolveLlmStepSystemPrompt(input));
+	const systemCharCount =
+		systemBlocks.length > 0
+			? systemBlocks.reduce((total, block) => total + block.content.length, 0)
+			: undefined;
 
 	return {
 		finishReason: typeof output?.finishReason === 'string' ? output.finishReason : undefined,

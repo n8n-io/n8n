@@ -662,6 +662,7 @@ export {
 	formatDebugJson,
 	summarizeJsonValue,
 	parseSystemPromptForDisplay,
+	resolveLlmStepSystemPrompt,
 	parseMessageBlocks,
 	parseUsageSummary,
 	parseInputExtras,
