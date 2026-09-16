@@ -50,11 +50,9 @@ export type McpInstructionsOptions = {
 	isAgentsEnabled?: boolean;
 
 	/**
-	 * Whether the `get_user_preferences` tool is registered for this caller.
-	 * If true, one sentence points the client at it. Clients that defer tool
-	 * descriptions (Claude Code loads them on demand, by name) never read the
-	 * tool's own description before building, so this is the only text that
-	 * reliably reaches them. Identical for every caller; nothing per-user.
+	 * Whether the `get_user_preferences` tool is registered for this caller. If true, one
+	 * sentence points the client at it: clients that load tool descriptions on demand never
+	 * read the tool's own description before building. Identical for every caller.
 	 */
 	isUserPreferencesEnabled?: boolean;
 };
@@ -68,14 +66,8 @@ export function getMcpInstructions(options: McpInstructionsOptions): string {
 	} = options;
 	const INTRO = 'This is the official MCP server for n8n, a workflow automation platform.';
 
-	// Deliberately one sentence: its only job is to make the client load and call the
-	// tool. The tool's description carries the rest once it has been loaded.
-	//
-	// It is placed second, right after the intro, and that placement is load-bearing: a client
-	// may keep only the first part of these instructions (Claude Code truncates at 2048
-	// characters, and the full text is over 9000), so anything below the truncation point never
-	// arrives. That is what happened to the preferences block this replaces. A test pins the
-	// sentence inside the budget — do not push it down the list.
+	// One sentence, placed right after the intro: some clients keep only the first 2048
+	// characters of the instructions, and a test pins the sentence inside that budget.
 	const USER_PREFERENCES_HINT = isUserPreferencesEnabled
 		? `Before ${MCP_USER_PREFERENCES_TRIGGER_CLAUSE} call ${MCP_GET_USER_PREFERENCES_TOOL_NAME} first and apply what it returns for the remainder of the task.`
 		: '';

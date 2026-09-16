@@ -54,13 +54,8 @@ export const LIST_N8N_GATEWAY_SERVICES_TOOL_NAME = 'list_n8n_gateway_services';
 export const MCP_GET_USER_PREFERENCES_TOOL_NAME = 'get_user_preferences';
 
 /**
- * The trigger clause agreed in CONTEXT-132. It opens both the `get_user_preferences` tool
- * description and the one-sentence pointer in the server instructions, and each copy is pinned
- * verbatim by a test, so it lives here and neither copy can drift from the other.
- *
- * The four artifacts are named because "anything in n8n" on its own is too vague to act on.
- * Stored without a leading word so each caller supplies its own ("Before ...", "Call this
- * before ...").
+ * Shared by the `get_user_preferences` description and the pointer in the server instructions,
+ * so the two cannot drift. Stored without a leading word; each caller supplies its own.
  */
 export const MCP_USER_PREFERENCES_TRIGGER_CLAUSE =
 	'you create or modify anything in n8n — a workflow, an Agent, a data table, a folder —';

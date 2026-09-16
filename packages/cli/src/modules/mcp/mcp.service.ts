@@ -426,11 +426,10 @@ export class McpService {
 		// the agent tools gets no agent build walkthrough.
 		const agentInstructionsEnabled =
 			agentsEnabled && (allowedToolNames?.has(MCP_CREATE_AGENT_TOOL_NAME) ?? true);
-		// Same rationale again: never point a caller at a tool it cannot see. No RBAC check: a
-		// user's own preferences need no scope (the global `aiPreference` scopes cover other
-		// users' rows), so the OAuth grant is the whole answer. One flag for the tool and the
-		// sentence that points at it, so the two can never disagree.
-		const userPreferencesEnabled =
+		// Same rationale again: never point a caller at a tool it cannot see. Gates the sentence
+		// only; registration below goes through `registerIfAllowed` like every other tool. No
+		// RBAC check: a user's own preferences need no scope.
+		const userPreferencesInstructionsEnabled =
 			featureFlags.aiPreferencesEnabled &&
 			(allowedToolNames?.has(MCP_GET_USER_PREFERENCES_TOOL_NAME) ?? true);
 		const server = new McpServer(
@@ -444,7 +443,7 @@ export class McpService {
 					isN8nConnectAvailable: n8nConnectAvailable,
 					canvasGroupsEnabled: featureFlags.canvasGroupsEnabled,
 					isAgentsEnabled: agentInstructionsEnabled,
-					isUserPreferencesEnabled: userPreferencesEnabled,
+					isUserPreferencesEnabled: userPreferencesInstructionsEnabled,
 				}),
 			},
 		);
@@ -630,7 +629,7 @@ export class McpService {
 
 		// Not builder-gated: preferences apply to Agents, data tables and folders as well as
 		// workflows, so a caller without the builder still has changes to apply them to.
-		if (userPreferencesEnabled) {
+		if (featureFlags.aiPreferencesEnabled) {
 			registerIfAllowed(
 				createGetUserPreferencesTool(user, this.aiPreferenceService, this.telemetry),
 			);

@@ -13,18 +13,8 @@ import {
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
 
 /**
- * The wording agreed in CONTEXT-132, and a requirement of that ticket rather than a choice made
- * here, so it is covered verbatim by a test — read the ticket before editing it.
- *
- * Each clause has a job. "For the remainder of the task" stops the result being treated as a
- * preamble that was satisfied once, and the precedence clause makes a conflict visible instead
- * of resolved arbitrarily, so text written by other people never outranks the person the
- * assistant is talking to.
- *
- * What this text does NOT do is make the model obey: the manual test report on CONTEXT-132
- * measured no change in what the model built across three wordings and 13 runs. It states the
- * contract clearly and it makes the client load and call the tool. Anything that has to hold
- * needs to be a rule the server checks.
+ * The wording is a requirement of CONTEXT-132 and is pinned verbatim by a test. It gets the
+ * tool called and states the contract; it does not, on its own, make the model comply.
  */
 const DESCRIPTION = [
 	'Returns the preferences saved for this n8n instance, the caller, and their projects: node and credential choices, naming, how work is organised, and patterns to avoid.',
