@@ -30,7 +30,6 @@
 
 import { getWorkspaceRoot } from '@n8n/agents/sandbox';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
-import { isRecord } from '@n8n/utils/is-record';
 import { createRequire } from 'node:module';
 
 import type { Logger } from '../logger';
@@ -456,39 +455,6 @@ async function readWorkspaceFile(
 	return await readFileViaSandbox(workspace, path);
 }
 
-async function ensureSandboxTypeScript(
-	workspace: SandboxWorkspace,
-	root: string,
-	logger: Logger,
-): Promise<void> {
-	try {
-		await writeWorkspaceFiles(
-			workspace,
-			root,
-			new Map([[WORKFLOW_DIAGNOSTICS_FILENAME, await loadWorkflowDiagnosticsWorker()]]),
-		);
-		const installed = await readWorkspaceFile(
-			workspace,
-			joinWorkspacePath(root, 'node_modules/typescript/package.json'),
-		);
-		const parsed: unknown = installed === null ? null : JSON.parse(installed);
-		if (isRecord(parsed) && parsed.version === SANDBOX_TYPESCRIPT_VERSION) return;
-
-		// Update old sandboxes without replacing their source or other dependencies.
-		const result = await runInSandbox(
-			workspace,
-			`npm install typescript@${SANDBOX_TYPESCRIPT_VERSION} --save-exact ${NPM_INSTALL_FLAGS_REFRESH_METADATA}`,
-			root,
-		);
-		if (result.exitCode !== 0) throw new Error(result.stderr);
-	} catch (error) {
-		// Supplemental diagnostics must not prevent normal workspace use.
-		logger.warn('Could not prepare sandbox TypeScript diagnostics', {
-			error: getErrorMessage(error),
-		});
-	}
-}
-
 async function materializeKnowledgeBaseStep(
 	workspace: SandboxWorkspace,
 	root: string,
@@ -533,7 +499,6 @@ export async function setupSandboxWorkspace(
 				async () => await readWorkspaceFile(workspace, markerFile),
 			);
 			if (marker !== null) {
-				await ensureSandboxTypeScript(workspace, root, context.logger);
 				await materializeKnowledgeBaseStep(workspace, root, context);
 				return false;
 			}

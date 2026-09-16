@@ -110,20 +110,18 @@ entry that they already resolved.
 
 Initialization is lazy and idempotent. A marker file prevents repeated base
 setup. Knowledge-base content is refreshed when an existing sandbox is
-reattached. Setup also installs pinned diagnostic dependencies in older sandboxes.
-A failed dependency upgrade does not block workspace use. The setup creates or
-materializes:
+reattached. Initial setup creates or materializes:
 
-| Path | Purpose |
-|------|---------|
-| `package.json` | Pinned `@n8n/workflow-sdk`, `tsx`, `typescript`, and Node type dependencies in normal mode |
-| `tsconfig.json` | Strict TypeScript configuration |
-| `build.mjs` | Workflow SDK execution and JSON conversion |
-| `node-types/index.txt` | Searchable node-type catalog |
-| `src/` | Workflow source files |
-| `chunks/` | Reusable source modules |
-| `knowledge-base/` | Best-practice, template, and SDK reference material |
-| `.sandbox-initialized` | Setup marker |
+| Path                   | Purpose                                                                                    |
+| ---------------------- | ------------------------------------------------------------------------------------------ |
+| `package.json`         | Pinned `@n8n/workflow-sdk`, `tsx`, `typescript`, and Node type dependencies in normal mode |
+| `tsconfig.json`        | Strict TypeScript configuration                                                            |
+| `build.mjs`            | Workflow SDK execution and JSON conversion                                                 |
+| `node-types/index.txt` | Searchable node-type catalog                                                               |
+| `src/`                 | Workflow source files                                                                      |
+| `chunks/`              | Reusable source modules                                                                    |
+| `knowledge-base/`      | Best-practice, template, and SDK reference material                                        |
+| `.sandbox-initialized` | Setup marker                                                                               |
 
 The Daytona image or versioned snapshot includes the stable workspace files
 and installed dependencies. The node-type catalog is written after sandbox
@@ -161,9 +159,13 @@ async API. Verify the API contract before upgrading. It does not check unrelated
 workflow files or execute the source.
 
 The package build compiles `src/workspace/workflow-diagnostics-worker.ts`.
-Setup copies the output into new and reused sandboxes as `workflow-diagnostics.cjs`.
+Setup copies the output into new sandboxes as `workflow-diagnostics.cjs`.
 Snapshot builds include this file. The tool executes it with Node.
 Run the package build after worker changes before testing from source.
+
+Initialized sandboxes keep their existing compiler and files. Sandboxes without
+the worker or pinned compiler return the original build errors. They receive
+supplemental diagnostics after they are recreated.
 
 The original errors appear first. Compiler findings include the file, line,
 column, and TypeScript error code. Exact duplicates are removed. The compiler
@@ -205,15 +207,15 @@ Sandbox operations use the active Instance AI trace. Each span inherits the
 thread metadata. The sandbox does not retain a turn's trace handle. Skill
 preparation runs inside the agent's lazy build and uses the same trace context.
 
-| Operation | Trace data |
-|-----------|------------|
-| Acquire and start | Provider, sandbox ID, cached reuse, shared acquisition, duration, and errors |
-| Initialize workspace | Marker check, node catalog, base files, dependency installation, and optional SDK linking |
-| Sync skills and knowledge base | Bundle hash, file counts, byte counts, reuse or upload, and manifest check result |
-| Read, write, and edit files | File operations under the existing tool span, paths, byte counts, and errors |
+| Operation                              | Trace data                                                                                |
+| -------------------------------------- | ----------------------------------------------------------------------------------------- |
+| Acquire and start                      | Provider, sandbox ID, cached reuse, shared acquisition, duration, and errors              |
+| Initialize workspace                   | Marker check, node catalog, base files, dependency installation, and optional SDK linking |
+| Sync skills and knowledge base         | Bundle hash, file counts, byte counts, reuse or upload, and manifest check result         |
+| Read, write, and edit files            | File operations under the existing tool span, paths, byte counts, and errors              |
 | Execute commands and compile workflows | Command size, exit code, timeout or cancellation, compile result, and bounded diagnostics |
-| Retry and fallback | File path, failed attempt, retry delay, and command fallback |
-| Evict cache and destroy | Reason, provider, sandbox ID, and cleanup errors |
+| Retry and fallback                     | File path, failed attempt, retry delay, and command fallback                              |
+| Evict cache and destroy                | Reason, provider, sandbox ID, and cleanup errors                                          |
 
 Batch operations reject on the first failure. Their spans end at that point.
 Transfers that already started can continue. Batch spans omit individual successful
@@ -242,24 +244,24 @@ provider notifications or polling.
 
 ## Configuration
 
-| Variable | Default | Purpose |
-|----------|---------|---------|
-| `N8N_INSTANCE_AI_SANDBOX_ENABLED` | `false` | Enable the sandbox-backed workspace |
-| `N8N_INSTANCE_AI_SANDBOX_PROVIDER` | `n8n-sandbox` | Select `n8n-sandbox` or `daytona` |
-| `N8N_SANDBOX_SERVICE_URL` | empty | n8n sandbox service URL |
-| `N8N_SANDBOX_SERVICE_API_KEY` | empty | n8n sandbox service API key |
-| `DAYTONA_API_URL` | empty | Daytona API URL |
-| `DAYTONA_API_KEY` | empty | Daytona API key for direct mode |
-| `N8N_INSTANCE_AI_SANDBOX_IMAGE` | `daytonaio/sandbox:0.5.0` | Daytona base image |
-| `N8N_INSTANCE_AI_SANDBOX_SNAPSHOT` | empty | Daytona proxy snapshot override |
-| `N8N_INSTANCE_AI_SANDBOX_TIMEOUT` | `300000` | Default command timeout in milliseconds |
-| `N8N_INSTANCE_AI_BUILDER_SANDBOX_TTL_MS` | `900000` | In-process idle cache TTL; `0` disables eviction |
-| `N8N_INSTANCE_AI_SANDBOX_NAME_PREFIX` | empty | Prefix and label for Daytona names |
-| `N8N_INSTANCE_AI_SANDBOX_EPHEMERAL` | `false` | Delete the sandbox once idle instead of stopping it |
-| `N8N_INSTANCE_AI_SANDBOX_AUTO_STOP_MINUTES` | `15` | Daytona idle time before stop; `0` disables auto-stop |
-| `N8N_INSTANCE_AI_SANDBOX_AUTO_ARCHIVE_MINUTES` | `60` | Daytona stopped time before archive; `0` uses its maximum |
-| `N8N_INSTANCE_AI_SANDBOX_AUTO_DELETE_MINUTES` | `10080` | Daytona stopped time before delete; negative disables and `0` deletes on stop |
-| `N8N_INSTANCE_AI_DAYTONA_TOKEN_REFRESH_SKEW_MS` | `300000` | Proxy-token refresh skew |
-| `N8N_INSTANCE_AI_SANDBOX_LINK_SDK` | `false` | Install local workspace packages for development |
+| Variable                                        | Default                   | Purpose                                                                       |
+| ----------------------------------------------- | ------------------------- | ----------------------------------------------------------------------------- |
+| `N8N_INSTANCE_AI_SANDBOX_ENABLED`               | `false`                   | Enable the sandbox-backed workspace                                           |
+| `N8N_INSTANCE_AI_SANDBOX_PROVIDER`              | `n8n-sandbox`             | Select `n8n-sandbox` or `daytona`                                             |
+| `N8N_SANDBOX_SERVICE_URL`                       | empty                     | n8n sandbox service URL                                                       |
+| `N8N_SANDBOX_SERVICE_API_KEY`                   | empty                     | n8n sandbox service API key                                                   |
+| `DAYTONA_API_URL`                               | empty                     | Daytona API URL                                                               |
+| `DAYTONA_API_KEY`                               | empty                     | Daytona API key for direct mode                                               |
+| `N8N_INSTANCE_AI_SANDBOX_IMAGE`                 | `daytonaio/sandbox:0.5.0` | Daytona base image                                                            |
+| `N8N_INSTANCE_AI_SANDBOX_SNAPSHOT`              | empty                     | Daytona proxy snapshot override                                               |
+| `N8N_INSTANCE_AI_SANDBOX_TIMEOUT`               | `300000`                  | Default command timeout in milliseconds                                       |
+| `N8N_INSTANCE_AI_BUILDER_SANDBOX_TTL_MS`        | `900000`                  | In-process idle cache TTL; `0` disables eviction                              |
+| `N8N_INSTANCE_AI_SANDBOX_NAME_PREFIX`           | empty                     | Prefix and label for Daytona names                                            |
+| `N8N_INSTANCE_AI_SANDBOX_EPHEMERAL`             | `false`                   | Delete the sandbox once idle instead of stopping it                           |
+| `N8N_INSTANCE_AI_SANDBOX_AUTO_STOP_MINUTES`     | `15`                      | Daytona idle time before stop; `0` disables auto-stop                         |
+| `N8N_INSTANCE_AI_SANDBOX_AUTO_ARCHIVE_MINUTES`  | `60`                      | Daytona stopped time before archive; `0` uses its maximum                     |
+| `N8N_INSTANCE_AI_SANDBOX_AUTO_DELETE_MINUTES`   | `10080`                   | Daytona stopped time before delete; negative disables and `0` deletes on stop |
+| `N8N_INSTANCE_AI_DAYTONA_TOKEN_REFRESH_SKEW_MS` | `300000`                  | Proxy-token refresh skew                                                      |
+| `N8N_INSTANCE_AI_SANDBOX_LINK_SDK`              | `false`                   | Install local workspace packages for development                              |
 
 See [Configuration](configuration.md) for the complete environment reference.
