@@ -238,13 +238,13 @@ export async function requestWithAuthentication(
 			Object.assign(credentialsDecrypted, data);
 		}
 
-		requestOptions = (await additionalData.credentialsHelper.authenticate(
+		requestOptions = await additionalData.credentialsHelper.authenticate(
 			credentialsDecrypted,
 			credentialsType,
 			requestOptions as IHttpRequestOptions,
 			workflow,
 			node,
-		)) as IRequestOptions;
+		);
 		requestSent = true;
 		return await proxyRequestToAxios(workflow, additionalData, node, requestOptions);
 	} catch (error) {
@@ -269,13 +269,13 @@ export async function requestWithAuthentication(
 						);
 						throw error;
 					}
-					requestOptions = (await additionalData.credentialsHelper.authenticate(
+					requestOptions = await additionalData.credentialsHelper.authenticate(
 						credentialsDecrypted,
 						credentialsType,
 						requestOptions as IHttpRequestOptions,
 						workflow,
 						node,
-					)) as IRequestOptions;
+					);
 					return await proxyRequestToAxios(workflow, additionalData, node, requestOptions);
 				}
 			}

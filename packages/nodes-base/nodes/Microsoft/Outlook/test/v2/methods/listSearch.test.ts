@@ -1,6 +1,8 @@
-import { mockDeep } from 'vitest-mock-extended';
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
+import type { Mocked } from 'vitest';
+import { mockDeep } from 'vitest-mock-extended';
 
+import * as utils from '../../../v2/helpers/utils';
 import {
 	searchContacts,
 	searchCalendars,
@@ -11,8 +13,6 @@ import {
 	searchAttachments,
 } from '../../../v2/methods/listSearch';
 import * as transport from '../../../v2/transport';
-import * as utils from '../../../v2/helpers/utils';
-import type { Mocked } from 'vitest';
 
 vi.mock('../../../v2/transport');
 vi.mock('../../../v2/helpers/utils');
@@ -89,6 +89,23 @@ describe('MicrosoftOutlookV2 - listSearch methods', () => {
 				results: [{ name: 'John Doe', value: 'contact1' }],
 				paginationToken: undefined,
 			});
+		});
+
+		it('should keep quotes in the filter inside the OData literal', async () => {
+			mockTransport.microsoftApiRequest.mockResolvedValue({ value: [] });
+
+			// No spaces: encodeURI percent-encodes those, which would obscure the quoting.
+			await searchContacts.call(mockLoadOptionsFunctions, "a'b");
+
+			expect(mockTransport.microsoftApiRequest).toHaveBeenCalledWith(
+				'GET',
+				'/contacts',
+				0,
+				undefined,
+				expect.objectContaining({
+					$filter: "contains(displayName, 'a''b')",
+				}),
+			);
 		});
 
 		it('should handle pagination token', async () => {

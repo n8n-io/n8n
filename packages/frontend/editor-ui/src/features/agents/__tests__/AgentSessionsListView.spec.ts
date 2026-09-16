@@ -46,12 +46,14 @@ vi.mock('@n8n/i18n', () => ({
 				{
 					'agentSessions.viewTrace': 'View session trace',
 					'agentSessions.origin.preview': 'Preview',
-					'agentSessions.origin.instanceAi': 'AI Assistant',
+					'agentSessions.origin.instanceAi': 'n8n Assistant',
 					'agentSessions.origin.mcp': 'MCP',
 					'agentSessions.origin.subAgent': 'Sub-agent',
 					'agentSessions.origin.schedule': 'Schedule',
 					'agentSessions.origin.workflow': 'Workflow',
 					'agentSessions.empty': 'No agent sessions',
+					'agentSessions.emptyDescription':
+						'Sessions will appear here after you preview your agent.',
 					'agentSessions.emptyWithFilters': 'No sessions match these filters',
 					'agentSessions.status.running': 'Running',
 					'agentSessions.status.succeeded': 'Succeeded',
@@ -296,6 +298,17 @@ describe('AgentSessionsListView', () => {
 		});
 	});
 
+	it('shows guidance in the empty state when there are no sessions', async () => {
+		const wrapper = await mountView({
+			threads: [],
+		});
+
+		expect(wrapper.get('[data-test-id="agent-sessions-empty"]').text()).toBe('No agent sessions');
+		expect(wrapper.get('[data-test-id="agent-sessions-empty-description"]').text()).toBe(
+			'Sessions will appear here after you preview your agent.',
+		);
+	});
+
 	it('shows the filtered empty state when no sessions match', async () => {
 		const wrapper = await mountView({
 			threads: [],
@@ -305,6 +318,7 @@ describe('AgentSessionsListView', () => {
 		expect(wrapper.get('[data-test-id="agent-sessions-empty"]').text()).toBe(
 			'No sessions match these filters',
 		);
+		expect(wrapper.find('[data-test-id="agent-sessions-empty-description"]').exists()).toBe(false);
 	});
 
 	it('opens the parent trace in the current tab by default', async () => {
@@ -400,7 +414,7 @@ describe('AgentSessionsListView', () => {
 		[{ source: 'telegram' }, 'Telegram', 'telegram'],
 		[{ source: 'linear' }, 'Linear', 'linear'],
 		[{ source: 'discord' }, 'Discord', 'discord'],
-		[{ source: 'instance-ai' }, 'AI Assistant', 'flask-conical'],
+		[{ source: 'instance-ai' }, 'n8n Assistant', 'flask-conical'],
 		[{ source: 'mcp' }, 'MCP', 'flask-conical'],
 		[{ source: null }, 'Preview', 'flask-conical'],
 		[{ source: 'chat' }, 'Preview', 'flask-conical'],

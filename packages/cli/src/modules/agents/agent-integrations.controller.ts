@@ -49,10 +49,9 @@ export class AgentIntegrationsController {
 			...(payload.replaces
 				? { replaces: { type: payload.type, credentialId: payload.replaces.credentialId } }
 				: {}),
+			pushRef: req.headers?.['push-ref'],
 		});
-		if (savedAgent.activeVersionId === null) return { status: 'configured' };
-
-		return { status: 'connected' };
+		return { status: savedAgent.activeVersionId === null ? 'configured' : 'connected' };
 	}
 
 	@Post('/:agentId/integrations/disconnect')
@@ -72,8 +71,8 @@ export class AgentIntegrationsController {
 			type,
 			credentialId,
 			deleteExternalResource,
+			pushRef: req.headers?.['push-ref'],
 		});
-
 		return { status: 'disconnected', ...(warning ? { warning } : {}) };
 	}
 

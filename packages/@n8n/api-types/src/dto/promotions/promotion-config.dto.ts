@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { promotionDisplayNameSchema } from './promotion-common.dto';
+import { n8nIdSchema } from '../../schemas/id.schema';
 import { Z } from '../../zod-class';
 
 export const promotionDirectionSchema = z.enum(['apply', 'promote']);
@@ -82,7 +83,7 @@ const configPublicFields = {
 	 * Also names the local checkout directory. Stable while the config exists, and
 	 * replaced by a new one if the direction is deleted and set up again.
 	 */
-	id: z.string(),
+	id: n8nIdSchema,
 	name: z.string(),
 	createdAt: z.string().datetime(),
 	updatedAt: z.string().datetime(),

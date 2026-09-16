@@ -18,7 +18,7 @@ CREATE TABLE "agents" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(128
 | activeVersionId | varchar(36) |  | true |  | [agent_history](agent_history.md) |  |
 | availableInMCP | boolean | false | false |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
-| id | varchar(36) |  | false | [agent_background_job](agent_background_job.md) [agent_channel_status](agent_channel_status.md) [agent_chat_attachments](agent_chat_attachments.md) [agent_chat_subscriptions](agent_chat_subscriptions.md) [agent_checkpoints](agent_checkpoints.md) [agent_credential_dependency](agent_credential_dependency.md) [agent_eval_dataset](agent_eval_dataset.md) [agent_execution_threads](agent_execution_threads.md) [agent_files](agent_files.md) [agent_history](agent_history.md) [agent_task_definition](agent_task_definition.md) [agent_task_run_lock](agent_task_run_lock.md) [agent_workflow_dependency](agent_workflow_dependency.md) [agents_memory_entries](agents_memory_entries.md) [agents_memory_entry_cursors](agents_memory_entry_cursors.md) [agents_memory_entry_locks](agents_memory_entry_locks.md) [agents_memory_entry_sources](agents_memory_entry_sources.md) [agents_observation_cursors](agents_observation_cursors.md) [agents_observation_locks](agents_observation_locks.md) [agents_observations](agents_observations.md) |  |  |
+| id | varchar(36) |  | false | [agent_background_job](agent_background_job.md) [agent_channel_status](agent_channel_status.md) [agent_chat_attachments](agent_chat_attachments.md) [agent_chat_subscriptions](agent_chat_subscriptions.md) [agent_checkpoints](agent_checkpoints.md) [agent_credential_dependency](agent_credential_dependency.md) [agent_eval_dataset](agent_eval_dataset.md) [agent_execution_threads](agent_execution_threads.md) [agent_files](agent_files.md) [agent_history](agent_history.md) [agent_task_definition](agent_task_definition.md) [agent_task_run_lock](agent_task_run_lock.md) [agent_workflow_dependency](agent_workflow_dependency.md) [agents_memory_entries](agents_memory_entries.md) [agents_memory_entry_candidates](agents_memory_entry_candidates.md) [agents_memory_entry_locks](agents_memory_entry_locks.md) [agents_memory_entry_sources](agents_memory_entry_sources.md) [agents_observation_cursors](agents_observation_cursors.md) [agents_observation_locks](agents_observation_locks.md) [agents_observations](agents_observations.md) |  |  |
 | integrations | TEXT | '[]' | false |  |  |  |
 | name | varchar(128) |  | false |  |  |  |
 | projectId | varchar(255) |  | false |  | [project](project.md) |  |
@@ -67,7 +67,7 @@ erDiagram
 "agent_task_run_lock" |o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_workflow_dependency" |o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agents_memory_entries" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"agents_memory_entry_cursors" |o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"agents_memory_entry_candidates" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agents_memory_entry_locks" |o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agents_memory_entry_sources" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agents_observation_cursors" |o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -252,12 +252,20 @@ erDiagram
   varchar_36_ supersededBy FK
   datetime_3_ updatedAt
 }
-"agents_memory_entry_cursors" {
-  varchar_36_ agentId PK
+"agents_memory_entry_candidates" {
+  varchar_36_ agentId FK
+  smallint attemptCount
+  TEXT content
   datetime_3_ createdAt
-  datetime_3_ lastIndexedObservationCreatedAt
-  varchar_36_ lastIndexedObservationId
-  varchar_255_ observationScopeId PK
+  TEXT evidenceText
+  varchar_36_ id PK
+  varchar_32_ kind
+  varchar_255_ resourceId FK
+  varchar_255_ runId
+  varchar_36_ sourceMessageId FK
+  varchar_16_ status
+  varchar_255_ threadId FK
+  varchar_255_ toolCallId
   datetime_3_ updatedAt
 }
 "agents_memory_entry_locks" {
@@ -270,6 +278,7 @@ erDiagram
 }
 "agents_memory_entry_sources" {
   varchar_36_ agentId FK
+  varchar_36_ candidateId FK
   datetime_3_ createdAt
   varchar_64_ evidenceHash
   TEXT evidenceText

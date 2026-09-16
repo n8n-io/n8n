@@ -54,7 +54,7 @@ describe('custom role scope whitelists', () => {
 		expect(bundle).toContain('chatHub:message');
 	});
 
-	it('exposes AI Assistant and n8n Agent scopes as their own use/manage options', () => {
+	it('exposes n8n Assistant and n8n Agent scopes as their own use/manage options', () => {
 		const { 'AiAssistant use': use, 'AiAssistant manage': manage } =
 			GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.settings;
 
@@ -67,7 +67,7 @@ describe('custom role scope whitelists', () => {
 	});
 
 	it('"AiAssistant use" matches GLOBAL_MEMBER_SCOPES\' instanceAi:* grants exactly', () => {
-		// Member's baseline AI Assistant access is `instanceAi:message` +
+		// Member's baseline n8n Assistant access is `instanceAi:message` +
 		// `instanceAi:gateway` (computer-use gateway pairing). A custom role built
 		// to mirror Member must get both, or it ends up strictly weaker than Member.
 		const use = GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.settings['AiAssistant use'];
@@ -87,7 +87,7 @@ describe('custom role scope whitelists', () => {
 		expect(manage).toContain('mcpApiKey:rotate');
 	});
 
-	it('includes MCP and AI Assistant scopes in the general settings.Manage bundle, as a superset of their own options', () => {
+	it('includes MCP and n8n Assistant scopes in the general settings.Manage bundle, as a superset of their own options', () => {
 		const bundle = GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.settings.Manage;
 
 		for (const scope of [
@@ -101,6 +101,28 @@ describe('custom role scope whitelists', () => {
 			'instanceAi:gateway',
 		]) {
 			expect(bundle).toContain(scope);
+		}
+	});
+
+	it('exposes "Tags: View" as exactly the tag read/list pair', () => {
+		expect(GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.tag.View).toEqual(['tag:read', 'tag:list']);
+	});
+
+	it('keeps tag "Manage" a strict superset of tag "View"', () => {
+		// The editor's implied/downgrade arithmetic (SUPERSEDED_BY: View -> Manage)
+		// only holds while Manage contains everything View grants.
+		const view = GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.tag.View;
+		const manage = GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.tag.Manage;
+		expect(view.every((scope) => (manage as readonly string[]).includes(scope))).toBe(true);
+		expect(manage.length).toBeGreaterThan(view.length);
+	});
+
+	it('keeps "Tags: View" within GLOBAL_MEMBER_SCOPES', () => {
+		// "Tags: View" is granted to every instance role by default (see
+		// instanceRoleScopes.ts), so it must never exceed what the built-in Member
+		// role already has.
+		for (const scope of GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.tag.View) {
+			expect(GLOBAL_MEMBER_SCOPES).toContain(scope);
 		}
 	});
 

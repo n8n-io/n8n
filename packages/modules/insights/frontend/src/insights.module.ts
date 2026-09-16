@@ -1,10 +1,10 @@
 import { VIEWS } from '@n8n/frontend-constants/views';
-import type { FrontendModuleDescription } from '@n8n/frontend-module-sdk';
+import { defineFrontendModule } from '@n8n/frontend-module-sdk';
 import { RouterView } from 'vue-router';
 
 const InsightsDashboard = async () => await import('./components/InsightsDashboard.vue');
 
-export const InsightsModule: FrontendModuleDescription = {
+export const InsightsModule = defineFrontendModule({
 	id: 'insights',
 	name: 'Insights',
 	description: 'Provides insights and analytics features for projects.',
@@ -42,4 +42,4 @@ export const InsightsModule: FrontendModuleDescription = {
 			],
 		},
 	],
-};
+});

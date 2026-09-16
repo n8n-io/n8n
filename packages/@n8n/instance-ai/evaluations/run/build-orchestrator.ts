@@ -28,6 +28,7 @@ import { N8nClient } from '../clients/n8n-client';
 import {
 	fetchAgentScenarioContext,
 	findAgentArtifactRef,
+	type AgentScenarioContext,
 	type executeAgentScenario,
 } from '../harness/agent-execution';
 import { resolveArtifactContext } from '../harness/artifacts/artifact-context';
@@ -82,6 +83,9 @@ export interface Lane {
 	/** Data tables present before any build here — the scenario-table eviction's
 	 *  allowlist, so it can't delete a concurrent iteration's live table. */
 	preRunDataTableIds: Set<string>;
+	/** Root folders present before any build here — the seed-folder eviction's
+	 *  allowlist, for the same reason. */
+	preRunFolderIds: Set<string>;
 	claimedWorkflowIds: Set<string>;
 	/** Credentials created for test cases on this lane; cleaned up after the run. */
 	createdCredentialIds: Set<string>;
@@ -106,6 +110,9 @@ export type BuildArgs = Pick<
 	WorkflowTestCase,
 	| 'conversation'
 	| 'messageBudget'
+	| 'buildMode'
+	| 'promptVersion'
+	| 'allowUserExecution'
 	| 'credentials'
 	| 'seed'
 	| 'executionScenarios'
@@ -291,7 +298,7 @@ export interface BuildOrchestratorDeps {
 	transcriptByThreadId: Map<string, TranscriptTurn[]>;
 	buildExpectationsByKey: Map<string, Promise<BuildExpectationResult[]>>;
 	runDebugByThreadId: Map<string, Promise<InstanceAiRunDebugResponse[]>>;
-	agentContextByKey: Map<string, Promise<string>>;
+	agentContextByKey: Map<string, Promise<AgentScenarioContext>>;
 	/** Injectable delay for the provider-outage retry backoff — tests pass a no-op. */
 	sleep?: (ms: number) => Promise<void>;
 }
@@ -644,6 +651,9 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 					build = await lane.tracedBuild({
 						conversation: entry.conversation,
 						messageBudget: entry.messageBudget,
+						buildMode: entry.buildMode,
+						promptVersion: entry.promptVersion,
+						allowUserExecution: entry.allowUserExecution,
 						credentials: entry.credentials,
 						seed: entry.seed,
 						executionScenarios: entry.executionScenarios,

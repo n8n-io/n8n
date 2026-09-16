@@ -1,4 +1,5 @@
 import { ClientOAuth2 } from '@n8n/client-oauth2';
+import { DATABRICKS_PARTNER_USER_AGENT } from 'n8n-nodes-base/dist/nodes/Databricks/constants';
 import type {
 	INode,
 	ISupplyDataFunctions,
@@ -7,13 +8,12 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { CHAT_MODEL_USER_AGENT } from './constants';
 import type { OAuth2TokenData, RefreshingTokenSource } from '../../../utils/oauth2-token-provider';
 import { createRefreshingOAuth2TokenProvider } from '../../../utils/oauth2-token-provider';
 
 export const DATABRICKS_CREDENTIAL_TYPE = 'databricksOAuth2Api';
 
-export interface DatabricksOAuth2Credential {
+export type DatabricksOAuth2Credential = {
 	host: string;
 	grantType: 'clientCredentials' | 'authorizationCode';
 	clientId: string;
@@ -22,7 +22,7 @@ export interface DatabricksOAuth2Credential {
 	authentication?: 'header' | 'body';
 	oauthTokenData?: OAuth2TokenData;
 	tokenExpiredStatusCode?: number;
-}
+};
 
 /**
  * A service principal re-mints from its permanent secret; a user login spends a
@@ -80,7 +80,7 @@ function getServicePrincipalTokenProvider(
 				scopes: credential.scope?.split(' '),
 				authentication: credential.authentication,
 				ssrfBridge: egressFilter,
-				headers: { 'User-Agent': CHAT_MODEL_USER_AGENT },
+				headers: { 'User-Agent': DATABRICKS_PARTNER_USER_AGENT },
 			});
 			const token = await oAuthClient.credentials.getToken();
 			const expiresIn = Number(token.data.expires_in);

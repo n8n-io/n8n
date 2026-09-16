@@ -1,8 +1,15 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onBeforeUnmount, useTemplateRef } from 'vue';
-import { useStorage } from '@vueuse/core';
+import { useEventListener, useStorage } from '@vueuse/core';
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router';
-import { N8nAssistantIcon, N8nButton, N8nIcon, type ActionDropdownItem } from '@n8n/design-system';
+import {
+	N8nAssistantIcon,
+	N8nButton,
+	N8nCanvasPill,
+	N8nIcon,
+	N8nIconButton,
+	type ActionDropdownItem,
+} from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import {
 	MAX_AGENT_FILE_SIZE_BYTES,
@@ -12,18 +19,24 @@ import {
 	MAX_AGENT_KNOWLEDGE_BASE_SIZE_GB,
 	addMissingAgentPersonalisation,
 	type AgentFileDto,
+	type PushMessage,
+	type PushPayload,
 } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { ResponseError } from '@n8n/rest-api-client';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@n8n/composables/useToast';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
+import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { MODAL_CONFIRM } from '@/app/constants';
+import { AGENT_EXTERNAL_UPDATE_NOTICE_DURATION, TIME } from '@/app/constants/durations';
 import { deepCopy } from 'n8n-workflow';
 import {
 	getAgent,
@@ -39,7 +52,7 @@ import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrations
 import type {
 	AgentResource,
 	AgentContinueLoadedEvent,
-	AgentFixWithAssistantEvent,
+	AgentSendToAssistantEvent,
 	AgentJsonConfig,
 	AgentJsonVectorStoreConfig,
 	AgentSkill,
@@ -52,7 +65,7 @@ import { useAgentPermissions } from '../composables/useAgentPermissions';
 import { useAgentSessionsStore } from '../agentSessions.store';
 import { useAgentEvalsStore } from '../agentEvals.store';
 import { useAgentBuilderSession } from '../composables/useAgentBuilderSession';
-import { useAgentConfigAutosave } from '../composables/useAgentConfigAutosave';
+import { useAgentConfigAutosave, type AutosaveResult } from '../composables/useAgentConfigAutosave';
 import { useAgentBuilderMainTabs } from '../composables/useAgentBuilderMainTabs';
 import { useAgentCapabilitiesActions } from '../composables/useAgentCapabilitiesActions';
 import {
@@ -65,6 +78,7 @@ import {
 } from '@/features/ai/instanceAi/composables/useInstanceAiAgentPreviewHandoff';
 import {
 	AGENT_BUILDER_VIEW,
+	AGENT_PREVIEW_VIEW,
 	AGENT_SESSION_DETAIL_VIEW,
 	AGENT_JSON_IMPORT_MODAL_KEY,
 	AGENT_VECTOR_STORES_MODAL_KEY,
@@ -76,6 +90,8 @@ import { getDebounceTime } from '@n8n/composables/useDebounce';
 import { agentsEventBus, type AgentUpdatedEvent } from '../agents.eventBus';
 import AgentBuilderHeader from '../components/AgentBuilderHeader.vue';
 import AgentBuilderEditorColumn from '../components/AgentBuilderEditorColumn.vue';
+import AgentPreviewHeader from '../components/AgentPreviewHeader.vue';
+import AgentPreviewChatPage from '../components/AgentPreviewChatPage.vue';
 import AgentPreviewDock from '../components/AgentPreviewDock.vue';
 import AgentVersionHistoryPanel from '../components/VersionHistory/AgentVersionHistoryPanel.vue';
 import { useInstanceAiHandoff } from '@/features/ai/instanceAi/composables/useInstanceAiHandoff';
@@ -83,6 +99,7 @@ import { useInstanceAiAvailable } from '@/features/ai/instanceAi/composables/use
 import { INSTANCE_AI_PENDING_AGENT_ID_STATE } from '@/features/ai/instanceAi/constants';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
+import { buildAgentChangeRequestPrompt } from '../utils/agent-change-request';
 import { buildAgentFixWithAssistantPrompt } from '../utils/fix-with-assistant';
 import { hasBlockingIssues } from '../utils/validationIssues';
 
@@ -133,6 +150,7 @@ const route = useRoute();
 const router = useRouter();
 const locale = useI18n();
 const rootStore = useRootStore();
+const pushConnectionStore = usePushConnectionStore();
 const projectsStore = useProjectsStore();
 const telemetry = useTelemetry();
 const { openAgentArtifactThread } = useInstanceAiHandoff();
@@ -147,6 +165,7 @@ const uiStore = useUIStore();
 const favoritesStore = useFavoritesStore();
 const mcpStore = useMCPStore();
 const mcp = useMcp();
+const { isCtrlKeyPressed } = useDeviceSupport();
 
 // Gates the Knowledge Base files table (upload, list, sandbox fetch/warmup) on
 // the backend: Daytona sandbox env vars (N8N_AGENTS_AI_SANDBOX_ENABLED +
@@ -161,6 +180,9 @@ const { openAgentConfirmationModal } = useAgentConfirmationModal();
 // singleton agent session/credential stores, so only one builder shell should
 // be mounted at a time.
 const isArtifactMode = computed(() => props.artifactMode);
+const isStandalonePreview = computed(function isStandalonePreview() {
+	return !isArtifactMode.value && route.name === AGENT_PREVIEW_VIEW;
+});
 const projectId = computed(
 	() =>
 		(isArtifactMode.value ? props.artifactProjectId : undefined) ??
@@ -187,8 +209,19 @@ const previewOpenStorageKey = computed(function getPreviewOpenStorageKey() {
 	return `N8N_AGENT_PREVIEW_OPEN:${projectId.value}:${agentId.value}`;
 });
 const persistedPreviewOpen = useStorage(previewOpenStorageKey, false);
-const isPreviewDockOpen = computed(() => persistedPreviewOpen.value);
-const isPreviewActive = computed(() => isPreviewDockOpen.value);
+const isPreviewDockOpen = computed(function isPreviewDockOpen() {
+	return !isStandalonePreview.value && persistedPreviewOpen.value;
+});
+const isPreviewActive = computed(function isPreviewActive() {
+	return isStandalonePreview.value || isPreviewDockOpen.value;
+});
+const agentBuilderHref = computed(function getAgentBuilderHref() {
+	return router.resolve({
+		name: AGENT_BUILDER_VIEW,
+		params: { projectId: projectId.value, agentId: agentId.value },
+		query: { [CONTINUE_SESSION_ID_PARAM]: effectiveSessionId.value },
+	}).href;
+});
 const isFavorite = computed(() => favoritesStore.isFavorite(agentId.value, 'agent'));
 
 const {
@@ -221,7 +254,7 @@ watch(
 	{ immediate: true },
 );
 
-async function onSendPreviewToAssistant(event?: AgentFixWithAssistantEvent) {
+async function onSendPreviewToAssistant(event?: AgentSendToAssistantEvent) {
 	const threadId = effectiveSessionId.value;
 	if (!threadId || !agentId.value || !projectId.value) return;
 	const session = sessionsStore.threads.find(({ id }) => id === threadId);
@@ -235,32 +268,47 @@ async function onSendPreviewToAssistant(event?: AgentFixWithAssistantEvent) {
 		agentName: agentName.value || undefined,
 		agentIcon: localConfig.value?.personalisation?.icon,
 		sessionTitle,
-		...(event
-			? {
-					executionId: event.executionId,
-					initialDraft: buildAgentFixWithAssistantPrompt(
-						{
-							projectId: projectId.value,
-							agentId: agentId.value,
-							agentName: agentName.value || undefined,
-							threadId,
-							sessionTitle,
-							...(sessionNumber !== undefined ? { sessionNumber } : {}),
-							executionId: event.executionId,
-							failures: event.failures,
+		...(!event
+			? {}
+			: 'failures' in event
+				? {
+						executionId: event.executionId,
+						initialDraft: {
+							text: buildAgentFixWithAssistantPrompt(
+								{
+									projectId: projectId.value,
+									agentId: agentId.value,
+									agentName: agentName.value || undefined,
+									threadId,
+									sessionTitle,
+									...(sessionNumber !== undefined ? { sessionNumber } : {}),
+									executionId: event.executionId,
+									failures: event.failures,
+								},
+								locale,
+							),
+							prefillType: 'handoff_agent_change_request',
 						},
-						locale,
-					),
-				}
-			: {}),
+					}
+				: {
+						initialDraft: {
+							text: buildAgentChangeRequestPrompt(event.changeRequest, locale),
+							prefillType: 'handoff_agent_change_request',
+						},
+					}),
 	};
 
 	if (isArtifactMode.value) {
+		// The host closes the dock — only it knows whether the hand-off went
+		// through (it refuses one while its composer holds a draft).
 		emit('assistant-handoff', params);
 		return;
 	}
 
-	await sendPreviewSessionToInstanceAi(params);
+	// Close the preview once the assistant has the request: coming back to an
+	// open preview chat beside the assistant reads as two places to ask.
+	// No route push — the hand-off already navigated to the assistant.
+	if (await sendPreviewSessionToInstanceAi(params)) persistedPreviewOpen.value = false;
 }
 
 /**
@@ -308,7 +356,7 @@ const {
 } = useAgentBuilderSession({ routeBacked: computed(() => !isArtifactMode.value) });
 
 // Config
-const { config, fetchConfig, updateConfig, repoint: repointConfig } = useAgentConfig();
+const { config, configHash, fetchConfig, updateConfig, repoint: repointConfig } = useAgentConfig();
 const {
 	validation: configValidation,
 	repoint: repointConfigValidation,
@@ -641,6 +689,10 @@ function closePreviewRoute() {
 	});
 }
 
+function returnToBuilderFromPreview() {
+	void router.push(agentBuilderHref.value);
+}
+
 function closePreviewDock() {
 	persistedPreviewOpen.value = false;
 	if (!isArtifactMode.value) closePreviewRoute();
@@ -713,11 +765,16 @@ function warmAgentKnowledgeSandboxForPage() {
 	);
 }
 
+// Base hashes are captured when the edit is scheduled, not when the debounced
+// save fires: a refresh landing in between would otherwise lend a stale
+// snapshot the fresh hash and let it overwrite the newer server state.
 interface ConfigAutosaveSnapshot {
 	type: 'config';
 	projectId: string;
 	agentId: string;
 	config: AgentJsonConfig;
+	/** `undefined` while the agent's config has not been fetched yet (e.g. before it is persisted). */
+	baseConfigHash: string | null | undefined;
 }
 
 interface SkillAutosaveSnapshot {
@@ -726,6 +783,7 @@ interface SkillAutosaveSnapshot {
 	agentId: string;
 	skillId: string;
 	skill: AgentSkill;
+	baseSkillHash: string | undefined;
 }
 
 interface McpAvailabilitySnapshot {
@@ -859,12 +917,50 @@ async function ensureAgentPersisted(): Promise<void> {
 	}
 }
 
-async function saveConfig(snapshot: ConfigAutosaveSnapshot): Promise<'skipped' | undefined> {
+async function handleAutosaveConflict(snapshot: {
+	projectId: string;
+	agentId: string;
+}): Promise<'stale'> {
+	if (!isStaleAgentTarget(snapshot.projectId, snapshot.agentId)) {
+		await onConfigUpdated();
+		if (!isStaleAgentTarget(snapshot.projectId, snapshot.agentId)) {
+			showMessage({
+				title: locale.baseText('agents.builder.remoteChange.title'),
+				message: locale.baseText('agents.builder.remoteChange.message'),
+				type: 'warning',
+			});
+		}
+	}
+	return 'stale';
+}
+
+async function saveConfig(snapshot: ConfigAutosaveSnapshot): Promise<AutosaveResult> {
 	// The AI may be mutating this agent right now — a save queued just before
 	// the lock engaged must not persist its now-stale full config over it.
 	if (props.artifactEditingLocked) return 'skipped';
 	await ensureAgentPersisted();
-	const result = await updateConfig(snapshot.projectId, snapshot.agentId, snapshot.config);
+	let result;
+	try {
+		result = await updateConfig(
+			snapshot.projectId,
+			snapshot.agentId,
+			snapshot.config,
+			// Edits made before the agent was persisted have no fetched hash yet; the
+			// create response for that target carries the hash of the seeded config.
+			snapshot.baseConfigHash === undefined
+				? (persistedAgentsByTarget.get(`${snapshot.projectId}:${snapshot.agentId}`)?.configHash ??
+						null)
+				: snapshot.baseConfigHash,
+		);
+	} catch (error) {
+		if (error instanceof ResponseError && error.httpStatusCode === 409) {
+			// Detach before the reload: everything scheduled so far is stale,
+			// but edits typed while the reload runs must still get saved.
+			configAutosave.reset();
+			return await handleAutosaveConflict(snapshot);
+		}
+		throw error;
+	}
 	// The write landed regardless of staleness below — tell other surfaces
 	// (e.g. canvas agent cards invalidate their capability-summary cache).
 	agentsEventBus.emit('agentUpdated', { agentId: snapshot.agentId, source: 'agent-builder' });
@@ -884,21 +980,35 @@ async function saveConfig(snapshot: ConfigAutosaveSnapshot): Promise<'skipped' |
 	return undefined;
 }
 
-async function saveSkill(snapshot: SkillAutosaveSnapshot): Promise<'skipped' | undefined> {
+async function saveSkill(snapshot: SkillAutosaveSnapshot): Promise<AutosaveResult> {
 	if (props.artifactEditingLocked) return 'skipped';
 	await ensureAgentPersisted();
-	const result = await updateAgentSkill(
-		rootStore.restApiContext,
-		snapshot.projectId,
-		snapshot.agentId,
-		snapshot.skillId,
-		snapshot.skill,
-	);
+	let result;
+	try {
+		result = await updateAgentSkill(
+			rootStore.restApiContext,
+			snapshot.projectId,
+			snapshot.agentId,
+			snapshot.skillId,
+			snapshot.skill,
+			snapshot.baseSkillHash,
+		);
+	} catch (error) {
+		if (error instanceof ResponseError && error.httpStatusCode === 409) {
+			skillAutosave.reset();
+			return await handleAutosaveConflict(snapshot);
+		}
+		throw error;
+	}
 	agentsEventBus.emit('agentUpdated', { agentId: snapshot.agentId, source: 'agent-builder' });
 	if (agent.value?.id !== snapshot.agentId) return undefined;
 	agent.value = {
 		...agent.value,
 		versionId: result.versionId,
+		skillHashes: {
+			...(agent.value.skillHashes ?? {}),
+			[snapshot.skillId]: result.skillHash,
+		},
 		skills: {
 			...(agent.value.skills ?? {}),
 			[snapshot.skillId]: result.skill,
@@ -1021,6 +1131,12 @@ async function flushAutosave() {
 	]);
 }
 
+useEventListener(document, 'keydown', (event) => {
+	if (!isCtrlKeyPressed(event) || event.key.toLowerCase() !== 's') return;
+	event.preventDefault();
+	void flushAutosave().catch(() => {});
+});
+
 async function flushPendingRouteDraftBeforeNavigation() {
 	if (!isRouteAgentPending.value || !isUnsaved.value) return;
 	await flushAutosave();
@@ -1131,6 +1247,7 @@ function onConfigFieldUpdate(updates: Partial<AgentJsonConfig>) {
 		// corrected the next time the user makes a real edit, without mutating
 		// config during component mount.
 		config: normalizeAgentMemoryConfig(deepCopy(localConfig.value)),
+		baseConfigHash: configHash.value,
 	});
 }
 
@@ -1155,6 +1272,7 @@ const caps = useAgentCapabilitiesActions({
 			agentId: agentId.value,
 			skillId,
 			skill,
+			baseSkillHash: agent.value?.skillHashes?.[skillId],
 		});
 	},
 	telemetry: {
@@ -1177,6 +1295,7 @@ function replaceConfigAndScheduleSave(nextConfig: AgentJsonConfig) {
 		agentId: agentId.value,
 		type: 'config',
 		config: normalizeAgentMemoryConfig(deepCopy(localConfig.value)),
+		baseConfigHash: configHash.value,
 	});
 }
 
@@ -1218,12 +1337,78 @@ function handleArtifactRefreshError(error: unknown) {
 }
 
 let externalRefreshTimer: ReturnType<typeof setTimeout> | undefined;
-function scheduleExternalRefresh() {
+let externalUpdateTimer: ReturnType<typeof setTimeout> | undefined;
+let externalUpdateAgeTimer: ReturnType<typeof setInterval> | undefined;
+let externalUpdateAt = 0;
+const recentExternalUpdate = ref<PushPayload<'agentUpdated'> | null>(null);
+const externalUpdateAgeMinutes = ref(0);
+const externalUpdateTime = computed(() =>
+	locale.baseText('agents.builder.externalUpdate.time', {
+		adjustToNumber: externalUpdateAgeMinutes.value,
+		interpolate: { count: externalUpdateAgeMinutes.value },
+	}),
+);
+const externalUpdateMessage = computed(() => {
+	let key: BaseTextKey;
+	switch (recentExternalUpdate.value?.source) {
+		case 'mcp':
+			key = 'agents.builder.externalUpdate.mcp';
+			break;
+		case 'builder':
+			key = 'agents.builder.externalUpdate.builder';
+			break;
+		case 'user':
+			key = 'agents.builder.externalUpdate.user';
+			break;
+		default:
+			key = 'agents.builder.externalUpdate.unknown';
+	}
+	return locale.baseText(key, { interpolate: { time: externalUpdateTime.value } });
+});
+
+function clearExternalUpdate() {
+	clearTimeout(externalUpdateTimer);
+	clearInterval(externalUpdateAgeTimer);
+	externalUpdateAt = 0;
+	externalUpdateAgeMinutes.value = 0;
+	recentExternalUpdate.value = null;
+}
+
+function shouldShowExternalUpdate(source: PushPayload<'agentUpdated'>['source']) {
+	if (source === 'builder') return !isArtifactMode.value;
+	if (source === 'user') return isArtifactMode.value;
+	return true;
+}
+
+watch([projectId, agentId], clearExternalUpdate);
+
+const canApplyPushedAgentUpdate = computed(
+	() =>
+		!props.artifactEditingLocked &&
+		!configAutosave.hasPendingSave.value &&
+		!skillAutosave.hasPendingSave.value &&
+		!mcpAutosave.hasPendingSave.value,
+);
+
+function scheduleExternalRefresh(onlyWhenIdle = false) {
 	clearTimeout(externalRefreshTimer);
 	externalRefreshTimer = setTimeout(() => {
+		// A push that lands mid-autosave is deferred, not dropped: if the local
+		// write was accepted first there is no 409 to catch the newer remote
+		// state, so this tab would keep the older config. Replayed once idle.
+		if (onlyWhenIdle && !canApplyPushedAgentUpdate.value) {
+			pendingExternalRefresh.value = true;
+			return;
+		}
 		void refreshArtifactShell().catch(handleArtifactRefreshError);
 	}, getDebounceTime(400));
 }
+
+watch(canApplyPushedAgentUpdate, (idle) => {
+	if (idle && initialized.value) {
+		void replayPendingExternalRefresh().catch(handleArtifactRefreshError);
+	}
+});
 
 function onExternalAgentUpdated(event?: AgentUpdatedEvent) {
 	if (event?.source === 'agent-builder') return;
@@ -1234,7 +1419,27 @@ function onExternalAgentUpdated(event?: AgentUpdatedEvent) {
 		pendingExternalRefresh.value = true;
 		return;
 	}
-	scheduleExternalRefresh();
+	scheduleExternalRefresh(event?.source === 'push');
+}
+
+function onAgentPushMessage(event: PushMessage) {
+	if (
+		event.type !== 'agentUpdated' ||
+		event.data.projectId !== projectId.value ||
+		event.data.agentId !== agentId.value
+	) {
+		return;
+	}
+	if (shouldShowExternalUpdate(event.data.source)) {
+		clearExternalUpdate();
+		recentExternalUpdate.value = event.data;
+		externalUpdateAt = Date.now();
+		externalUpdateTimer = setTimeout(clearExternalUpdate, AGENT_EXTERNAL_UPDATE_NOTICE_DURATION);
+		externalUpdateAgeTimer = setInterval(() => {
+			externalUpdateAgeMinutes.value = Math.floor((Date.now() - externalUpdateAt) / TIME.MINUTE);
+		}, TIME.MINUTE);
+	}
+	onExternalAgentUpdated({ agentId: event.data.agentId, source: 'push' });
 }
 
 async function replayPendingExternalRefresh() {
@@ -1244,6 +1449,8 @@ async function replayPendingExternalRefresh() {
 }
 
 agentsEventBus.on('agentUpdated', onExternalAgentUpdated);
+pushConnectionStore.pushConnect();
+const removeAgentUpdateListener = pushConnectionStore.addEventListener(onAgentPushMessage);
 
 // Serves a request from outside the builder to focus the eval surface (the
 // assistant's post-setup suggestion). `immediate` so a request raised before
@@ -1694,7 +1901,10 @@ onBeforeUnmount(() => {
 	disposed = true;
 	latestSessionsFetchRequestId++;
 	agentsEventBus.off('agentUpdated', onExternalAgentUpdated);
+	removeAgentUpdateListener();
+	pushConnectionStore.pushDisconnect();
 	clearTimeout(externalRefreshTimer);
+	clearExternalUpdate();
 	sessionsStore.stopAutoRefresh();
 	void flushAutosave().catch(() => {});
 });
@@ -1890,16 +2100,29 @@ function onContinueLoaded({ sessionId, count }: AgentContinueLoadedEvent) {
 function onSwitchAgent(nextAgentId: string) {
 	if (!nextAgentId || nextAgentId === agentId.value) return;
 	void router.push({
-		name: AGENT_BUILDER_VIEW,
+		name: isStandalonePreview.value ? AGENT_PREVIEW_VIEW : AGENT_BUILDER_VIEW,
 		params: { projectId: projectId.value, agentId: nextAgentId },
-		query: route.query,
+		query: isStandalonePreview.value ? {} : route.query,
 	});
 }
 </script>
 
 <template>
 	<div :class="$style.root">
+		<AgentPreviewHeader
+			v-if="isStandalonePreview"
+			:agent-name="agent?.name ?? agentName"
+			:agent-href="agentBuilderHref"
+			:session-title="currentSessionTitle"
+			:session-options="sessionMenu"
+			:has-trace="currentSessionHasMessages && Boolean(effectiveSessionId)"
+			@back="returnToBuilderFromPreview"
+			@new-session="startNewPreviewSession"
+			@session-select="onSessionPick"
+			@view-trace="viewPreviewTrace"
+		/>
 		<AgentBuilderHeader
+			v-else
 			:agent="agent"
 			:project-id="projectId"
 			:agent-id="agentId"
@@ -1921,6 +2144,30 @@ function onSwitchAgent(nextAgentId: string) {
 			@reverted="onReverted"
 			@switch-agent="onSwitchAgent"
 		/>
+		<div :class="$style.externalUpdateNotice" role="status" aria-live="polite" aria-atomic="true">
+			<N8nCanvasPill
+				v-if="recentExternalUpdate"
+				:class="$style.externalUpdatePill"
+				data-testid="agent-builder-external-update"
+			>
+				<template #icon>
+					<N8nIcon icon="info" aria-hidden="true" />
+				</template>
+				<span :class="$style.externalUpdateContent">
+					<span :class="$style.externalUpdateText">{{ externalUpdateMessage }}</span>
+					<N8nIconButton
+						:class="$style.externalUpdateDismiss"
+						icon="x"
+						variant="ghost"
+						size="xsmall"
+						:aria-label="locale.baseText('generic.dismiss')"
+						:title="locale.baseText('generic.dismiss')"
+						data-testid="agent-builder-external-update-dismiss"
+						@click="clearExternalUpdate"
+					/>
+				</span>
+			</N8nCanvasPill>
+		</div>
 		<div
 			ref="builderContainer"
 			:class="[
@@ -1931,7 +2178,7 @@ function onSwitchAgent(nextAgentId: string) {
 			]"
 		>
 			<div
-				v-if="!isPreviewDockOpen && !isArtifactMode && instanceAiAvailable"
+				v-if="!isPreviewActive && !isArtifactMode && instanceAiAvailable"
 				:class="$style.aiButtonWrapper"
 			>
 				<N8nButton
@@ -1955,7 +2202,25 @@ function onSwitchAgent(nextAgentId: string) {
 				<N8nIcon icon="spinner" spin />
 			</div>
 			<template v-else>
+				<AgentPreviewChatPage
+					v-if="isStandalonePreview"
+					layout="page"
+					:initialized="initialized"
+					:project-id="projectId"
+					:agent-id="agentId"
+					:agent="agent"
+					:local-config="localConfig"
+					:connected-triggers="connectedTriggers"
+					:effective-session-id="effectiveSessionId"
+					:can-send-to-assistant="canSendPreviewToInstanceAi"
+					:before-send="beforePreviewSend"
+					@continue-loaded="onContinueLoaded"
+					@open-build="returnToBuilderFromPreview"
+					@send-to-assistant="onSendPreviewToAssistant"
+				/>
+
 				<AgentBuilderEditorColumn
+					v-else
 					v-model:active-main-tab="activeMainTab"
 					:class="$style.editorColumn"
 					:local-config="localConfig"
@@ -1999,10 +2264,11 @@ function onSwitchAgent(nextAgentId: string) {
 					@tasks-changed="() => onConfigUpdated()"
 					@agent-changed="refreshAgentAfterIntegrationChange"
 					@generate-eval-cases="onGenerateEvalCases"
+					@open-preview="onOpenPreview"
 				/>
 
 				<AgentVersionHistoryPanel
-					v-if="isVersionHistoryOpen"
+					v-if="!isStandalonePreview && isVersionHistoryOpen"
 					ref="versionHistoryPanel"
 					:project-id="projectId"
 					:agent-id="agentId"
@@ -2017,6 +2283,7 @@ function onSwitchAgent(nextAgentId: string) {
 				/>
 
 				<AgentPreviewDock
+					v-if="!isStandalonePreview"
 					:is-open="isPreviewDockOpen"
 					:session-title="currentSessionTitle"
 					:session-options="sessionMenu"
@@ -2044,6 +2311,7 @@ function onSwitchAgent(nextAgentId: string) {
 
 <style lang="scss" module>
 .root {
+	position: relative;
 	display: flex;
 	flex-direction: column;
 	height: 100%;
@@ -2098,6 +2366,44 @@ function onSwitchAgent(nextAgentId: string) {
 	gap: var(--spacing--2xs);
 	padding: var(--spacing--sm);
 	z-index: 1;
+}
+
+.externalUpdateNotice {
+	position: absolute;
+	top: var(--height--4xl);
+	right: 0;
+	left: 0;
+	z-index: 10;
+	display: flex;
+	justify-content: center;
+	padding-inline: var(--spacing--sm);
+	pointer-events: none;
+}
+
+.externalUpdatePill {
+	max-width: 100%;
+	height: auto;
+	min-height: var(--height--xl);
+	margin-block: var(--spacing--xs);
+	padding-block: var(--spacing--2xs);
+	color: var(--color--neutral-white);
+}
+
+.externalUpdateContent {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
+
+.externalUpdateText {
+	white-space: normal;
+	overflow-wrap: anywhere;
+}
+
+.externalUpdateDismiss {
+	flex-shrink: 0;
+	color: var(--color--neutral-white);
+	pointer-events: auto;
 }
 
 .aiButtonIcon {

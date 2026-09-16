@@ -41,6 +41,8 @@ const TARBALL_NAME = `${PACKAGE_NAME}-2.0.0.tgz`;
 describe('CommunityPackagesService install rollback (real filesystem)', () => {
 	const license = mock<License>();
 	const config = mock<CommunityPackagesConfig>({
+		enabled: true,
+		preventLoading: false,
 		reinstallMissing: false,
 		registry: 'https://registry.npmjs.org',
 		unverifiedEnabled: true,
@@ -263,6 +265,13 @@ describe('CommunityPackagesService install rollback (real filesystem)', () => {
 	});
 
 	describe('pub/sub follower', () => {
+		// The follower installs the version the leader stored, so the record has to be there.
+		beforeEach(() => {
+			installedPackageRepository.findOne.mockResolvedValue(
+				mock<InstalledPackages>({ packageName: PACKAGE_NAME, installedVersion: '2.0.0' }),
+			);
+		});
+
 		test('keeps the existing package when the download fails', async () => {
 			vi.mocked(executeNpmCommand).mockRejectedValueOnce(new Error('download failed'));
 

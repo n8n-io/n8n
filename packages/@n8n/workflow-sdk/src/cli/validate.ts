@@ -206,7 +206,7 @@ function resolveWorkflowExport(mod: { default?: unknown }): unknown {
 		return exported;
 	}
 	if (typeof exported === 'object' && exported !== null && 'default' in exported) {
-		const nested = (exported as { default: unknown }).default;
+		const nested = exported.default;
 		if (isWorkflowBuilder(nested)) {
 			return nested;
 		}

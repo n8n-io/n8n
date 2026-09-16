@@ -10,7 +10,6 @@ import type {
 	INode,
 	INodeExecutionData,
 	IRunExecutionData,
-	ITaskDataConnections,
 	IUser,
 	IWebhookData,
 	IWebhookFunctions,
@@ -62,8 +61,8 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 					json: {
 						body: (req.body ?? {}) as IDataObject,
 						headers: req.headers,
-						params: req.params as IDataObject,
-						query: req.query as IDataObject,
+						params: req.params,
+						query: req.query,
 					},
 				},
 			];
@@ -100,11 +99,7 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 	}
 
 	async getCredentials<T extends object = ICredentialDataDecryptedObject>(type: string) {
-		// No real task run backs a webhook call, so this only exists to surface `node`
-		// to the credentials helper (e.g. for policy checks) — `data`/`source` are unused.
-		const executeData: IExecuteData = { data: {}, node: this.node, source: null };
-
-		return await this._getCredentials<T>(type, executeData);
+		return await this._getRunlessCredentials<T>(type);
 	}
 
 	getBodyData() {
@@ -279,7 +274,7 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 			runExecutionData,
 			this.runIndex,
 			connectionInputData,
-			{} as ITaskDataConnections,
+			{},
 			this.additionalData,
 			executeData,
 			this.mode,

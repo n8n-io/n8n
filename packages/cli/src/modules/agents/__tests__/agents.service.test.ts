@@ -24,6 +24,7 @@ import type { AgentTaskRepository } from '../repositories/agent-task.repository'
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { SubAgentCleanupService } from '../sub-agents/sub-agent-cleanup.service';
 import type { EventService } from '@/events/event.service';
+import type { CredentialsService } from '@/credentials/credentials.service';
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
@@ -57,12 +58,17 @@ function makeService() {
 	const subAgentCleanupService = mock<SubAgentCleanupService>();
 	const eventService = mock<EventService>();
 	const agentExecutionService = mock<AgentExecutionService>();
+	const credentialsService = mock<CredentialsService>();
 
 	agentRepository.save.mockImplementation(async (agent) => agent as Agent);
 	agentTaskService.requestReconcile.mockResolvedValue();
 	chatIntegrationService.disconnectChannel.mockResolvedValue();
 	testChatService.clearAllTestChatMessages.mockResolvedValue();
 	subAgentCleanupService.removeSubAgentFromParents.mockResolvedValue();
+	// `createAgentCredentialProvider` builds the provider with `new`, so the
+	// service awaits the real provider's `list()`, which in turn calls this.
+	// Default to "no accessible credentials" so sanitization blanks everything.
+	credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([]);
 	Container.set(AgentTaskService, agentTaskService);
 	Container.set(ChatIntegrationService, chatIntegrationService);
 
@@ -78,6 +84,7 @@ function makeService() {
 		subAgentCleanupService,
 		eventService,
 		agentExecutionService,
+		credentialsService,
 	);
 
 	return {
@@ -93,6 +100,7 @@ function makeService() {
 		subAgentCleanupService,
 		eventService,
 		agentExecutionService,
+		credentialsService,
 	};
 }
 
@@ -193,6 +201,185 @@ describe('AgentsService', () => {
 
 		const [entity] = agentRepository.create.mock.calls[0];
 		expect(entity).not.toHaveProperty('integrations');
+	});
+
+	it('seeds custom tool bodies onto the entity when duplicating a configured agent', async () => {
+		// Tool bodies live in their own JSON column keyed by id; the duplicate path
+		// copies both the refs (inside `schema.tools`) and the bodies so the clone
+		// is runnable without a follow-up write.
+		const { service, agentRepository } = makeService();
+		const saved = makeAgent();
+		agentRepository.create.mockReturnValue(saved);
+		agentRepository.save.mockResolvedValue(saved);
+		const tools = {
+			refund_tool: { code: 'return 1', descriptor: { name: 'refund_tool' } },
+		};
+
+		await service.create(projectId, 'Support Agent', {
+			schema: {
+				name: 'Support Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Triage refunds.',
+				tools: [{ type: 'custom', id: 'refund_tool' }],
+			},
+			tools,
+		});
+
+		const [entity] = agentRepository.create.mock.calls[0];
+		expect(entity.tools).toEqual(tools);
+		expect(entity.schema).toMatchObject({
+			tools: [{ type: 'custom', id: 'refund_tool' }],
+		});
+	});
+
+	it('seeds skill bodies onto the entity alongside their schema refs', async () => {
+		const { service, agentRepository } = makeService();
+		const saved = makeAgent();
+		agentRepository.create.mockReturnValue(saved);
+		agentRepository.save.mockResolvedValue(saved);
+		const skills = {
+			skill_abc: { name: 'Triage', description: '', instructions: 'Sort tickets.' },
+		};
+
+		await service.create(projectId, 'Support Agent', {
+			schema: {
+				name: 'Support Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Triage tickets.',
+				skills: [{ type: 'skill', id: 'skill_abc' }],
+			},
+			skills,
+		});
+
+		const [entity] = agentRepository.create.mock.calls[0];
+		expect(entity.skills).toEqual(skills);
+	});
+
+	describe('duplicate path (user-driven create-with-schema)', () => {
+		const user = { id: 'user-1' } as unknown as User;
+
+		it('copies chat channels as drafts so the clone does not claim the source credential', async () => {
+			// The credential-claim check ignores publish state, so a copy holding the
+			// source's channel credentialId would block the original from republishing.
+			// Drafts (credentialId '') are skipped by that check and show needs-setup.
+			const { service, agentRepository } = makeService();
+			const saved = makeAgent();
+			agentRepository.create.mockReturnValue(saved);
+			agentRepository.save.mockResolvedValue(saved);
+
+			await service.create(projectId, 'Support Agent', {
+				schema: {
+					name: 'Support Agent',
+					model: 'anthropic/claude-sonnet-4-5',
+					instructions: 'Triage tickets.',
+					integrations: [
+						{ type: 'telegram', credentialId: 'cred-telegram-1' },
+						{ type: 'slack', credentialId: 'cred-slack-1' },
+					],
+				},
+				user,
+			});
+
+			const [entity] = agentRepository.create.mock.calls[0];
+			expect(entity.integrations).toEqual([
+				{ type: 'telegram', credentialId: '' },
+				{ type: 'slack', credentialId: '' },
+			]);
+		});
+
+		it('blanks inaccessible non-channel credentials and keeps accessible ones', async () => {
+			const { service, agentRepository, credentialsService } = makeService();
+			const saved = makeAgent();
+			agentRepository.create.mockReturnValue(saved);
+			agentRepository.save.mockResolvedValue(saved);
+			// The duplicating user can use cred-model-1 but not cred-model-2.
+			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+				{ id: 'cred-model-1', name: 'OpenAI', type: 'openaiApi' } as never,
+			]);
+
+			await service.create(projectId, 'Support Agent', {
+				schema: {
+					name: 'Support Agent',
+					model: 'openai/gpt-5-mini',
+					instructions: 'Triage tickets.',
+					credential: 'cred-model-1',
+					integrations: [{ type: 'telegram', credentialId: 'cred-telegram-1' }],
+					memory: {
+						enabled: true,
+						storage: 'n8n',
+						episodicMemory: {
+							enabled: true,
+							credential: 'cred-model-2',
+						},
+					},
+				},
+				user,
+			});
+
+			const [entity] = agentRepository.create.mock.calls[0];
+			// `entity.schema` is typed nullable + a discriminated union on memory, so
+			// read it back through a permissive shape for the assertions.
+			const schema = entity.schema as unknown as {
+				credential?: string;
+				memory?: { episodicMemory?: { credential?: string } };
+			};
+			// Accessible model credential kept.
+			expect(schema.credential).toBe('cred-model-1');
+			// Inaccessible episodic-memory credential blanked.
+			expect(schema.memory?.episodicMemory?.credential).toBe('');
+			// Channels always drafted regardless of access.
+			expect(entity.integrations).toEqual([{ type: 'telegram', credentialId: '' }]);
+		});
+
+		it('emits agent-saved for the duplicate (creation is tracked by the frontend "User duplicated agent" event)', async () => {
+			const { service, agentRepository, eventService } = makeService();
+			const saved = makeAgent();
+			agentRepository.create.mockReturnValue(saved);
+			agentRepository.save.mockResolvedValue(saved);
+
+			await service.create(projectId, 'Support Agent', {
+				schema: {
+					name: 'Support Agent',
+					model: 'anthropic/claude-sonnet-4-5',
+					instructions: 'Triage tickets.',
+				},
+				user,
+			});
+
+			expect(eventService.emit).toHaveBeenCalledWith('agent-saved', { agentId: saved.id });
+		});
+
+		it('stays silent on an empty-draft create (no user) — no event', async () => {
+			const { service, agentRepository, eventService } = makeService();
+			const saved = makeAgent();
+			agentRepository.create.mockReturnValue(saved);
+			agentRepository.save.mockResolvedValue(saved);
+
+			await service.create(projectId, 'Support Agent');
+
+			expect(eventService.emit).not.toHaveBeenCalledWith('agent-saved', expect.anything());
+		});
+
+		it('stays silent on eval seeding (schema but no user)', async () => {
+			const { service, agentRepository, eventService } = makeService();
+			const saved = makeAgent();
+			agentRepository.create.mockReturnValue(saved);
+			agentRepository.save.mockResolvedValue(saved);
+
+			await service.create(projectId, 'Support Agent', {
+				schema: {
+					name: 'Support Agent',
+					model: 'anthropic/claude-sonnet-4-5',
+					instructions: 'Triage tickets.',
+					integrations: [{ type: 'slack', credentialId: 'cred-slack-1' }],
+				},
+			});
+
+			// Eval seeding copies integrations verbatim and emits nothing.
+			const [entity] = agentRepository.create.mock.calls[0];
+			expect(entity.integrations).toEqual([{ type: 'slack', credentialId: 'cred-slack-1' }]);
+			expect(eventService.emit).not.toHaveBeenCalledWith('agent-saved', expect.anything());
+		});
 	});
 
 	describe('create with a client-minted id', () => {

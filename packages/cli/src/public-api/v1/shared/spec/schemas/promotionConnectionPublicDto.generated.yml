@@ -2,6 +2,8 @@ type: object
 properties:
   id:
     type: string
+    minLength: 1
+    maxLength: 36
   name:
     type: string
   scope:
@@ -28,6 +30,8 @@ properties:
     properties:
       id:
         type: string
+        minLength: 1
+        maxLength: 36
       name:
         type: string
       type:
@@ -60,6 +64,8 @@ properties:
         properties:
           id:
             type: string
+            minLength: 1
+            maxLength: 36
           name:
             type: string
           createdAt:
@@ -94,6 +100,8 @@ properties:
         properties:
           id:
             type: string
+            minLength: 1
+            maxLength: 36
           name:
             type: string
           createdAt:

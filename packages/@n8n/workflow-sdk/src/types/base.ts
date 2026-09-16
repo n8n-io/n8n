@@ -87,6 +87,11 @@ export interface NewCredentialValue {
  */
 export type OnError = 'stopWorkflow' | 'continueRegularOutput' | 'continueErrorOutput';
 
+/** Custom OpenTelemetry span attributes, set for each node in the node's Settings tab. */
+export interface CustomTelemetryTags {
+	tag?: Array<{ key: string; value: string }>;
+}
+
 // =============================================================================
 // Workflow Settings (with extensibility)
 // =============================================================================
@@ -323,6 +328,7 @@ export interface NodeJSON {
 	alwaysOutputData?: boolean;
 	onError?: OnError;
 	extendsCredential?: string;
+	customTelemetryTags?: CustomTelemetryTags;
 }
 
 /**
@@ -462,6 +468,7 @@ export interface NodeConfig<TParams = IDataObject> {
 	alwaysOutputData?: boolean;
 	onError?: OnError;
 	extendsCredential?: string;
+	customTelemetryTags?: CustomTelemetryTags;
 	pinData?: IDataObject[];
 	/**
 	 * Declared output shape for data flow validation.
@@ -1125,6 +1132,13 @@ export interface WorkflowBuilder {
 	 * `.to(switchNode).onCase(0, a).onCase(1, b)`. Throws if the current node is not a Switch.
 	 */
 	onCase(index: number, target: SwitchCaseTarget): WorkflowBuilder;
+	/**
+	 * Route the error output of the node the cursor is on to `handler`, e.g.
+	 * `.to(httpNode).onError(notifyFailure).to(next)`. The cursor stays on that node,
+	 * so a following `.to()` continues the main branch. Equivalent to
+	 * `.to(httpNode.onError(notifyFailure))`.
+	 */
+	onError(handler: NodeInstance<string, string, unknown> | InputTarget): WorkflowBuilder;
 
 	settings(settings: WorkflowSettings): WorkflowBuilder;
 

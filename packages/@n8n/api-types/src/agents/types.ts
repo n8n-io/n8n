@@ -2,6 +2,9 @@ import { EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, getChildNodes, type IConnections } 
 
 import type { AgentIntegrationSettings } from './agent-integration.schema';
 import type { AgentJsonConfig } from './agent-json-config.schema';
+import type { AgentBackgroundJobSignal } from './background-job';
+
+export type AgentActor = 'user' | 'builder' | 'mcp';
 
 export const SUPPORTED_WORKFLOW_TOOL_TRIGGERS = [EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE] as const;
 
@@ -184,9 +187,20 @@ export interface AgentSkill {
 	references?: AgentSkillReference[];
 }
 
+export interface AgentConfigResponse {
+	config: AgentJsonConfig;
+	configHash: string;
+}
+
+export interface AgentConfigMutationResponse extends AgentConfigResponse {
+	updatedAt: string;
+	versionId: string | null;
+}
+
 export interface AgentSkillMutationResponse {
 	id: string;
 	skill: AgentSkill;
+	skillHash: string;
 	versionId: string | null;
 }
 
@@ -316,10 +330,20 @@ export interface AgentPersistedMessageContentPart {
 	childTrace?: PersistedChildTrace;
 }
 
+/** Platform user who wrote a turn in a shared integration thread. */
+export interface AgentMessageAuthor {
+	id: string;
+	name: string;
+}
+
 export interface AgentPersistedMessageDto {
+	/** Background results that started this turn. */
+	backgroundTaskSignal?: AgentBackgroundJobSignal;
 	id: string;
 	role: 'user' | 'assistant' | (string & {});
 	content: AgentPersistedMessageContentPart[];
+	/** Set on user turns that came in through a chat integration. */
+	author?: AgentMessageAuthor;
 	/** Agent-execution turn id when this message was produced from an execution transcript. */
 	executionId?: string;
 	/** Outcome of the execution that produced this message. */

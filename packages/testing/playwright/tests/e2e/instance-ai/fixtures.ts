@@ -807,7 +807,7 @@ export const test = base.extend<InstanceAiFixtures>({
 								try {
 									const bodyMatcher = createAnthropicBodyMatcher(raw);
 									if (bodyMatcher) {
-										request.body = bodyMatcher as unknown as typeof request.body;
+										request.body = bodyMatcher;
 									} else {
 										delete request.body;
 									}

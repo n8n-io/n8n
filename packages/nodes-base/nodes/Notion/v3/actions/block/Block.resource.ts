@@ -4,6 +4,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
+import { toPathSegment } from 'n8n-workflow';
 
 import {
 	extractBlockId,
@@ -42,7 +43,7 @@ async function fetchNestedBlocks(
 			this,
 			'results',
 			'GET',
-			`/blocks/${blockId}/children`,
+			`/blocks/${toPathSegment(blockId)}/children`,
 		);
 		const nestedBlocks = children.map((entry) => ({
 			object: entry.object,
@@ -159,7 +160,7 @@ export async function append(this: IExecuteFunctions, items: INodeExecutionData[
 			const response = await notionApiRequestV3.call(
 				this,
 				'PATCH',
-				`/blocks/${blockIdValue}/children`,
+				`/blocks/${toPathSegment(blockIdValue)}/children`,
 				body,
 			);
 			const executionData = this.helpers.constructExecutionMetaData(
@@ -185,7 +186,7 @@ export async function getMarkdown(this: IExecuteFunctions, items: INodeExecution
 			const response = await notionApiRequestV3.call(
 				this,
 				'GET',
-				`/pages/${blockIdValue}/markdown`,
+				`/pages/${toPathSegment(blockIdValue)}/markdown`,
 				{},
 				includeTranscript ? { include_transcript: true } : {},
 			);
@@ -214,7 +215,7 @@ export async function getAll(this: IExecuteFunctions, items: INodeExecutionData[
 				this,
 				'results',
 				'GET',
-				`/blocks/${blockIdValue}/children`,
+				`/blocks/${toPathSegment(blockIdValue)}/children`,
 				{},
 				limit ? { page_size: Math.min(limit, 100), limit } : {},
 			);

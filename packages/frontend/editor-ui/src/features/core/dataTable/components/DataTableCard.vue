@@ -46,7 +46,7 @@ const getDataTableSize = computed(() => {
 	return size;
 });
 
-const dataTableHasDependents = computed(() => hasDependencies(props.dataTable.id));
+const dataTableHasDependents = computed(() => hasDependencies(props.dataTable.id, 'dataTable'));
 </script>
 <template>
 	<div data-test-id="data-table-card">

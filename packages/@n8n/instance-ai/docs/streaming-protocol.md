@@ -337,6 +337,12 @@ Observation checks saved credential bindings, required values, and placeholders.
 It does not test connections or resource availability. Configured items have not
 necessarily passed a connection test or workflow execution.
 
+Completing setup does not start an agent run. Execute sends a user message with
+`context: { source: 'setup-panel-execute', workflowId }` through the existing
+chat endpoint. The host adds an internal `workflow-test-request` block while the
+flag is on. Message projection removes that block. The agent's execution tools
+and summary use the normal event stream.
+
 ```json
 {
   "type": "setup-items",
