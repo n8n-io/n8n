@@ -1,5 +1,6 @@
 import type { SourceControlledFile, WorkflowPublishBlockedDetails } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { WorkflowPublishBlockedError } from '@n8n/backend-services';
 import type {
 	FindOptionsWhere,
 	Project,
@@ -46,7 +47,6 @@ import path from 'path';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
-import { WorkflowPublishBlockedError } from '@/errors/response-errors/workflow-publish-blocked.error';
 import type { IWorkflowToImport } from '@/interfaces';
 import { DataTableColumn } from '@/modules/data-table/data-table-column.entity';
 import { DataTableColumnRepository } from '@/modules/data-table/data-table-column.repository';

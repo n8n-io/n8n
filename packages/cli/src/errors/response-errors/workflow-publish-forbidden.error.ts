@@ -2,8 +2,7 @@ import type {
 	WorkflowPublishForbiddenDetails,
 	WorkflowPublishForbiddenReason,
 } from '@n8n/api-types';
-
-import { ForbiddenError } from './forbidden.error';
+import { ForbiddenError } from '@n8n/backend-services';
 
 const messages: Record<WorkflowPublishForbiddenReason, string> = {
 	insufficient_api_key_scope:

@@ -1,8 +1,8 @@
 import { AGENT_EVALS_FLAG } from '@n8n/api-types';
+import { NotFoundError } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { PostHogClient } from '@/posthog';
 
 /**

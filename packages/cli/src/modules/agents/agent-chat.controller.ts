@@ -9,6 +9,7 @@ import {
 	N8N_CHAT_INTEGRATION_TYPE,
 	ViewableMimeTypes,
 } from '@n8n/api-types';
+import { BadRequestError, NotFoundError } from '@n8n/backend-services';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Body, Delete, Get, Param, Post, ProjectScope, RestController } from '@n8n/decorators';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
@@ -18,8 +19,6 @@ import { FileNotFoundError, getHtmlSandboxCSP } from 'n8n-core';
 import { pipeline } from 'node:stream/promises';
 
 import { CredentialsService } from '@/credentials/credentials.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 import {

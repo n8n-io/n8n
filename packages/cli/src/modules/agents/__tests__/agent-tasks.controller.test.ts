@@ -1,7 +1,6 @@
+import { NotFoundError } from '@n8n/backend-services';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
-
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import type { AgentTaskService } from '../agent-task.service';
 import { AgentTasksController } from '../agent-tasks.controller';

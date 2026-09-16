@@ -1,3 +1,4 @@
+import { BadRequestError, ForbiddenError } from '@n8n/backend-services';
 import type { Mock } from 'vitest';
 import type { ImportWorkflowFromUrlDto } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
@@ -9,8 +10,6 @@ import { mock } from 'vitest-mock-extended';
 
 import { WorkflowsController } from '../workflows.controller';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import type { ExecutionService } from '@/executions/execution.service';
 import type { ProjectService } from '@/services/project.service.ee';
 

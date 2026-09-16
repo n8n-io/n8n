@@ -1,3 +1,4 @@
+import { BadRequestError } from '@n8n/backend-services';
 import type { BooleanLicenseFeature } from '@n8n/constants';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { ControllerRegistryMetadata } from '@n8n/decorators';
@@ -9,7 +10,6 @@ import { z } from 'zod';
 import type { ZodTypeAny } from 'zod';
 
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { EventService } from '@/events/event.service';
 import { License } from '@/license';
 import { userHasScopes } from '@/permissions.ee/check-access';

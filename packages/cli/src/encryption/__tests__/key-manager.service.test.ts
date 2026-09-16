@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { NotFoundError } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { DeploymentKey } from '@n8n/db';
 import { DeploymentKeyRepository } from '@n8n/db';
@@ -13,7 +14,6 @@ import {
 import { randomBytes } from 'node:crypto';
 import { mock } from 'vitest-mock-extended';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { KeyManagerService } from '@/encryption/key-manager.service';
 
 const makeKey = (overrides: Partial<DeploymentKey> = {}): DeploymentKey =>

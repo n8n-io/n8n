@@ -20,6 +20,7 @@ import {
 	type RuntimeSkillStateStore,
 } from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
+import { ConflictError, ForbiddenError } from '@n8n/backend-services';
 import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
 import {
@@ -30,9 +31,6 @@ import {
 import { In, LessThan, Like } from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
 import { z } from 'zod';
-
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
 import { TypeORMObservationLogStore } from './typeorm-observation-log-store';
 import type { InstanceAiMessage } from '../entities/instance-ai-message.entity';

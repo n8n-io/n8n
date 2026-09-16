@@ -1,7 +1,6 @@
+import { BadRequestError } from '@n8n/backend-services';
 import { Service } from '@n8n/di';
 import type { Request, Response } from 'express';
-
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 import type { ResolveCredentialResponse } from './engine-credentials.contract';
 import { resolveCredentialRequestSchema } from './engine-credentials.contract';

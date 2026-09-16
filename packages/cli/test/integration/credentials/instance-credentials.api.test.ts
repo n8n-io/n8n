@@ -1,3 +1,4 @@
+import { UnprocessableRequestError } from '@n8n/backend-services';
 import { mockInstance, randomCredentialPayload, testDb } from '@n8n/backend-test-utils';
 import type { ICredentialsDb, User } from '@n8n/db';
 import {
@@ -11,7 +12,6 @@ import { Container } from '@n8n/di';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { InstanceCredentialBroker } from '@/credentials/instance-credential-broker';
 import type { InstanceCredentialUse } from '@/credentials/instance-credential-use.registry';
-import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 import { ExternalHooks } from '@/external-hooks';
 
 import {

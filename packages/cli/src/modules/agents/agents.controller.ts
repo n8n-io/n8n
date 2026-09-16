@@ -1,4 +1,5 @@
 import { type AgentCapabilitySummary, CreateAgentDto, ListAgentsQueryDto } from '@n8n/api-types';
+import { NotFoundError } from '@n8n/backend-services';
 import type { AuthenticatedRequest } from '@n8n/db';
 import {
 	Body,
@@ -11,8 +12,6 @@ import {
 	RestController,
 } from '@n8n/decorators';
 import type { Response } from 'express';
-
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { AgentRunnableStateService } from './agent-runnable-state.service';
 import { AgentDefaultModelResolverService } from './agent-default-model-resolver.service';

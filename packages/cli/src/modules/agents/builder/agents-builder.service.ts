@@ -12,6 +12,7 @@ import type {
 } from '@n8n/agents';
 import { createObservationLogObserveFn, createObservationLogReflectFn } from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
+import { NotFoundError } from '@n8n/backend-services';
 import { AiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -27,7 +28,6 @@ import {
 	type ReportRequiredArtifactInput,
 } from '@n8n/instance-ai';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { NodeCatalogService } from '@/node-catalog';
 
 import { InstanceAiCreditService } from '../../instance-ai/instance-ai-credit.service';

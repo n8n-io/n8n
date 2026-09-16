@@ -11,6 +11,7 @@ vi.mock('openid-client', async () => ({
 
 import type { OidcConfigDto, ProvisioningConfigDto } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
+import { BadRequestError, ForbiddenError } from '@n8n/backend-services';
 import { createTeamProject, getProjectRoleForUser, testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { type User, UserRepository, RoleRepository, RoleMappingRuleRepository } from '@n8n/db';
@@ -23,8 +24,6 @@ beforeAll(async () => {
 	real_odic_client = await vi.importActual<typeof import('openid-client')>('openid-client');
 });
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { License } from '@/license';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { OIDC_CLIENT_SECRET_REDACTED_VALUE } from '@/modules/sso-oidc/constants';

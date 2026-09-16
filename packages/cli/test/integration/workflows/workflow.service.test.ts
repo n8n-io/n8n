@@ -1,4 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
+import { WorkflowPublishBlockedError } from '@n8n/backend-services';
 import {
 	createWorkflowWithHistory,
 	testDb,
@@ -36,7 +37,6 @@ import { RoleService } from '@/services/role.service';
 import { Telemetry } from '@/telemetry';
 import { WebhookService } from '@/webhooks/webhook.service';
 import { WorkflowHookContextService } from '@/workflow-hook-context.service';
-import { WorkflowPublishBlockedError } from '@/errors/response-errors/workflow-publish-blocked.error';
 import type { WorkflowPublicationNotifier } from '@/workflows/publication/workflow-publication-notifier';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowPublicationStatusService } from '@/workflows/publication/workflow-publication-status.service';

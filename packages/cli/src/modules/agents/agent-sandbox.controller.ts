@@ -1,9 +1,8 @@
 import { Logger } from '@n8n/backend-common';
+import { NotFoundError } from '@n8n/backend-services';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Param, Post, ProjectScope, RestController } from '@n8n/decorators';
 import type { Response } from 'express';
-
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { AgentKnowledgeService } from './agent-knowledge.service';
 import { AgentSandboxRuntimeService } from './agent-sandbox-runtime.service';

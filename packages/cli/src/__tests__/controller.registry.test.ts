@@ -6,6 +6,7 @@ vi.mock('@n8n/backend-common', async () => {
 });
 
 import { Z } from '@n8n/api-types';
+import { ForbiddenError } from '@n8n/backend-services';
 import type { GlobalConfig } from '@n8n/config';
 import {
 	ControllerRegistryMetadata,
@@ -28,7 +29,6 @@ import { z } from 'zod';
 
 import type { AuthService } from '@/auth/auth.service';
 import { ControllerRegistry } from '@/controller.registry';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import type { License } from '@/license';
 import type { LastActiveAtService } from '@/services/last-active-at.service';
 import { RateLimitService } from '@/services/rate-limit.service';

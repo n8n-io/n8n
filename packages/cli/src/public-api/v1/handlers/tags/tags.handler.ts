@@ -1,11 +1,10 @@
+import { ConflictError, NotFoundError } from '@n8n/backend-services';
 import { Container } from '@n8n/di';
 
 import type { TagRequest } from '../../../types';
 import type { PublicAPIEndpoint } from '../../shared/handler.types';
 import { apiKeyHasScopeWithGlobalScopeFallback } from '../../shared/middlewares/global.middleware';
 
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { TagService } from '@/services/tag.service';
 
 type TagHandlers = {

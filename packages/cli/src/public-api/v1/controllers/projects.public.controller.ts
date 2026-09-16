@@ -14,6 +14,7 @@ import {
 	projectIdParamSchema,
 	userIdParamSchema,
 } from '@n8n/api-types';
+import { ForbiddenError, NotFoundError } from '@n8n/backend-services';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import type { AuthenticatedRequest, Project, ProjectRelation } from '@n8n/db';
 import {
@@ -36,8 +37,6 @@ import {
 } from '@n8n/decorators';
 import type { Response } from 'express';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import {
 	encodeNextCursor,

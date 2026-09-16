@@ -1,5 +1,6 @@
 import type { PushPayload } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { ConflictError, LockedError } from '@n8n/backend-services';
 import { UserRepository } from '@n8n/db';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -17,8 +18,6 @@ import type {
 } from './collaboration.message';
 
 import { CollaborationState } from '@/collaboration/collaboration.state';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { LockedError } from '@/errors/response-errors/locked.error';
 import { Push } from '@/push';
 import type { OnPushMessage } from '@/push/types';
 import { AccessService } from '@/services/access.service';

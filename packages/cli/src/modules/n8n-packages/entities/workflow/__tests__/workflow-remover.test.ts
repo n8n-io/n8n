@@ -1,7 +1,7 @@
+import { ConflictError } from '@n8n/backend-services';
 import type { User, WorkflowEntity } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import { ConflictError } from '@/errors/response-errors/conflict.error';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 

@@ -1,4 +1,5 @@
 import { InviteUsersRequestDto, RoleChangeRequestDto } from '@n8n/api-types';
+import { BadRequestError, NotFoundError } from '@n8n/backend-services';
 import { type AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
 
@@ -12,8 +13,6 @@ import {
 } from '../../shared/middlewares/global.middleware';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import type { UserRequest } from '@/requests';
 import { ProjectService } from '@/services/project.service.ee';

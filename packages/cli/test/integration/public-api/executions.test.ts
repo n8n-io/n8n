@@ -1,3 +1,4 @@
+import { ConflictError } from '@n8n/backend-services';
 import {
 	createManyWorkflows,
 	createTeamProject,
@@ -17,7 +18,6 @@ import { ActiveExecutions } from '@/active-executions';
 import type { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
 import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ExecutionService } from '@/executions/execution.service';
 import { Telemetry } from '@/telemetry';
 

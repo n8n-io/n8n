@@ -1,11 +1,10 @@
 /* eslint-disable n8n-local-rules/no-uncaught-json-parse */
+import { BadRequestError, UnprocessableRequestError } from '@n8n/backend-services';
 import type { Request, Response } from 'express';
 import { createServer } from 'http';
 import request from 'supertest';
 import { gzipSync, deflateSync } from 'zlib';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 import { rawBodyReader, bodyParser, parseBody } from '@/middlewares/body-parser';
 
 describe('bodyParser', () => {

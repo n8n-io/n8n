@@ -1,8 +1,8 @@
+import { ForbiddenError } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { getAuthPrincipalScopes, type Role as RoleDTO, type RoleNamespace } from '@n8n/permissions';
 
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
 /**
  * Whether a caller can manage a role requires `role:manage`; `role:manageProject` grants it for

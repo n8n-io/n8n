@@ -1,7 +1,6 @@
+import { BadRequestError } from '@n8n/backend-services';
 import type { ExecutionDataStorageLocation } from '@n8n/db';
 import { z } from 'zod';
-
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 import { hasControlCharacter } from './agent-knowledge-storage';
 

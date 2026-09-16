@@ -1,3 +1,4 @@
+import { NotFoundError } from '@n8n/backend-services';
 import {
 	type Folder,
 	type Project,
@@ -33,7 +34,6 @@ import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.ty
 import { getSdkReferenceHint } from '../workflow-validation.utils';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service';
 import type { NodeTypes } from '@/node-types';
 import type { AiGatewayService } from '@/services/ai-gateway.service';

@@ -3,6 +3,12 @@ import {
 	PublicApiCreateDataTableDto,
 	UpdateDataTableDto,
 } from '@n8n/api-types';
+import {
+	BadRequestError,
+	ConflictError,
+	ForbiddenError,
+	NotFoundError,
+} from '@n8n/backend-services';
 import { Container } from '@n8n/di';
 
 import type { DataTableRequest } from '../../../types';
@@ -15,10 +21,6 @@ import {
 import { encodeNextCursor } from '../../shared/services/pagination.service';
 import { stringifyQuery } from './data-tables.utils';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { DataTableAggregateService } from '@/modules/data-table/data-table-aggregate.service';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { DataTableAccessDeniedError } from '@/modules/data-table/errors/data-table-access-denied.error';

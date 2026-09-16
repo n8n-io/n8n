@@ -1,4 +1,4 @@
-import { UnsupportedMediaTypeError } from '@/errors/response-errors/unsupported-media-type.error';
+import { UnsupportedMediaTypeError } from '@n8n/backend-services';
 
 const JSON_MEDIA_TYPE = 'application/json';
 

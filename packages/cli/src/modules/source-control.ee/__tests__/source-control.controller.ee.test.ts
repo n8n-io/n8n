@@ -1,4 +1,5 @@
 import type { PullWorkFolderRequestDto, PushWorkFolderRequestDto } from '@n8n/api-types';
+import { ForbiddenError } from '@n8n/backend-services';
 import type { AuthenticatedRequest, Project, User } from '@n8n/db';
 import { ControllerRegistryMetadata, type Controller } from '@n8n/decorators';
 import { Container } from '@n8n/di';
@@ -7,7 +8,6 @@ import type { Response } from 'express';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import type { EventService } from '@/events/event.service';
 
 import type { SourceControlContextFactory } from '../source-control-context.factory';

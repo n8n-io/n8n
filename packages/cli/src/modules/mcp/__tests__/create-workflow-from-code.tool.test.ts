@@ -1,3 +1,4 @@
+import { NotFoundError } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { ProjectRepository, User, WorkflowEntity } from '@n8n/db';
 import { NodeConnectionTypes, type INode } from 'n8n-workflow';
@@ -6,7 +7,6 @@ import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
 
 import { CredentialsService } from '@/credentials/credentials.service';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { NodeTypes } from '@/node-types';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import { UrlService } from '@/services/url.service';

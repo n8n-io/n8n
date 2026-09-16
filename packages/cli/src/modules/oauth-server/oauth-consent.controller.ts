@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { ForbiddenError } from '@n8n/backend-services';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, Post, RestController } from '@n8n/decorators';
 import type { Response } from 'express';
@@ -7,7 +8,6 @@ import { UserError } from 'n8n-workflow';
 import { ApproveConsentRequestDto } from './dto/approve-consent-request.dto';
 import { OAuthConsentService } from './oauth-consent.service';
 import { OAuthSessionService } from './oauth-session.service';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
 @RestController('/consent')
 export class OAuthConsentController {

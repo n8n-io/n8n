@@ -24,6 +24,7 @@ import {
 	CHAT_USER_BLOCKED_CHAT_HUB_TOOL_TYPES,
 } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
+import { BadRequestError, ForbiddenError } from '@n8n/backend-services';
 import { AuthenticatedRequest } from '@n8n/db';
 import {
 	RestController,
@@ -43,8 +44,6 @@ import { sanitizeFilename } from '@n8n/utils/files/sanitize-filename';
 import type { NextFunction, Request, Response } from 'express';
 import multer from 'multer';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { sendErrorResponse } from '@/response-helper';
 
 import { ChatHubAgentService } from './chat-hub-agent.service';

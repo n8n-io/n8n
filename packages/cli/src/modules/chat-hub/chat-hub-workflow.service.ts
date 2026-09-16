@@ -7,6 +7,7 @@ import {
 	type ChatHubAgentKnowledgeItem,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { BadRequestError } from '@n8n/backend-services';
 import {
 	DEFAULT_CONTEXT_WINDOW_LENGTH,
 	EMBEDDINGS_NODE_TYPE_MAP,
@@ -49,7 +50,6 @@ import {
 } from 'n8n-workflow';
 import { v4 as uuidv4 } from 'uuid';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 

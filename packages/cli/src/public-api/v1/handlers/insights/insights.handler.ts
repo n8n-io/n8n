@@ -1,11 +1,10 @@
 import { InsightsDateFilterDto } from '@n8n/api-types';
+import { BadRequestError, ForbiddenError } from '@n8n/backend-services';
 import { Container } from '@n8n/di';
 import { DateTime } from 'luxon';
 import { UserError } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { InsightsService } from '@/modules/insights/insights.service';
 import type { InsightsRequest } from '@/public-api/types';
 

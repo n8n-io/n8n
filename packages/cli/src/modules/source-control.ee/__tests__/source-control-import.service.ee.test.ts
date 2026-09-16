@@ -1,5 +1,6 @@
 import type { SourceControlledFile } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
+import { WorkflowPublishBlockedError } from '@n8n/backend-services';
 import type { PolicyCleared, PolicyViolation } from '@n8n/decorators';
 import {
 	type Variables,
@@ -36,7 +37,6 @@ import { mock } from 'vitest-mock-extended';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
-import { WorkflowPublishBlockedError } from '@/errors/response-errors/workflow-publish-blocked.error';
 import type { DataTableColumnRepository } from '@/modules/data-table/data-table-column.repository';
 import type { DataTableDDLService } from '@/modules/data-table/data-table-ddl.service';
 import type { DataTableSizeValidator } from '@/modules/data-table/data-table-size-validator.service';

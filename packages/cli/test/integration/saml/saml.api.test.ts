@@ -5,6 +5,7 @@ vi.unmock('node:fs');
 
 import { BLOCK_ACCESS_ASSIGNMENT, type SamlPreferences } from '@n8n/api-types';
 import { type LocalServer, startServer } from '@n8n/backend-network/testing';
+import { BadRequestError, ForbiddenError } from '@n8n/backend-services';
 import {
 	createTeamProject,
 	getProjectRoleForUser,
@@ -26,8 +27,6 @@ import type express from 'express';
 import { CREDENTIAL_BLANKING_VALUE } from 'n8n-workflow';
 
 import { TEMPLATES_DIR } from '@/constants';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import {
 	EC_TEST_CERTIFICATE,

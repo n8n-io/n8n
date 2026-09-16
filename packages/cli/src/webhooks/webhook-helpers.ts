@@ -5,6 +5,12 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 
 import { Logger } from '@n8n/backend-common';
+import {
+	BadRequestError,
+	InternalServerError,
+	NotFoundError,
+	ResponseError,
+} from '@n8n/backend-services';
 import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
 import type { Project } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
@@ -64,10 +70,6 @@ import { finished } from 'stream/promises';
 import { ActiveExecutions } from '@/active-executions';
 import { AuthService } from '@/auth/auth.service';
 import { MCP_TRIGGER_NODE_TYPE } from '@/constants';
-import { ResponseError } from '@/errors/response-errors/abstract/response.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import { parseBody } from '@/middlewares';
 import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';

@@ -41,6 +41,7 @@ vi.mock('@n8n/instance-ai', async () => {
 	};
 });
 
+import { ConflictError, LockedError, NotFoundError } from '@n8n/backend-services';
 import type { Mock, Mocked, MockInstance } from 'vitest';
 
 vi.mock('@n8n/ai-utilities', () => ({
@@ -1501,9 +1502,6 @@ import { WorkflowEditorLockedError } from '../../../../../@n8n/instance-ai/src/e
 import { WorkflowNotFoundError } from '../../../../../@n8n/instance-ai/src/errors/workflow-not-found.error';
 import { WorkflowSaveConflictError } from '../../../../../@n8n/instance-ai/src/errors/workflow-save-conflict.error';
 import type { WorkflowService } from '@/workflows/workflow.service';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { LockedError } from '@/errors/response-errors/locked.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { License } from '@/license';
 import type { RoleService } from '@/services/role.service';
 

@@ -1669,6 +1669,13 @@ importers:
         version: 3.1.0(typescript@7.0.2)(vitest@4.1.9)
 
   packages/@n8n/backend-services:
+    dependencies:
+      '@n8n/api-types':
+        specifier: workspace:*
+        version: link:../api-types
+      n8n-workflow:
+        specifier: workspace:*
+        version: link:../../workflow
     devDependencies:
       '@n8n/eslint-config':
         specifier: workspace:*
@@ -4269,6 +4276,9 @@ importers:
       '@n8n/backend-network':
         specifier: workspace:*
         version: link:../@n8n/backend-network
+      '@n8n/backend-services':
+        specifier: workspace:*
+        version: link:../@n8n/backend-services
       '@n8n/blob-storage':
         specifier: workspace:*
         version: link:../@n8n/blob-storage

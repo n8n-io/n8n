@@ -1,3 +1,4 @@
+import { BadRequestError } from '@n8n/backend-services';
 import { randomValidPassword, uniqueId, testDb, mockInstance } from '@n8n/backend-test-utils';
 import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { LICENSE_FEATURES } from '@n8n/constants';
@@ -7,7 +8,6 @@ import { randomString } from 'n8n-workflow';
 
 import { AuthService } from '@/auth/auth.service';
 import config from '@/config';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ExternalHooks } from '@/external-hooks';
 import { MFA_ENFORCE_SETTING } from '@/mfa/constants';
 import { MFA_CACHE_KEY } from '@/mfa/mfa.service';

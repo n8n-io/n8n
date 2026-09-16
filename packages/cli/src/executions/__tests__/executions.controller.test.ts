@@ -1,10 +1,8 @@
 import { DeleteExecutionsDto } from '@n8n/api-types';
+import { BadRequestError, NotFoundError, NotImplementedError } from '@n8n/backend-services';
 import type { AuthenticatedRequest, ExecutionSummaries, User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { NotImplementedError } from '@/errors/response-errors/not-implemented.error';
 import type { ExecutionService } from '@/executions/execution.service';
 import type { ExecutionRequest } from '@/executions/execution.types';
 import { ExecutionsController } from '@/executions/executions.controller';

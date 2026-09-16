@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { BadRequestError, NotFoundError } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
@@ -8,8 +9,6 @@ import { mock } from 'vitest-mock-extended';
 
 import { AuthService } from '@/auth/auth.service';
 import { ChangeEmailController } from '@/controllers/change-email.controller';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import type { AuthlessRequest } from '@/requests';

@@ -20,6 +20,7 @@ import {
 import type { AiGatewayConfigDto } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
+import { ConflictError, LockedError, NotFoundError } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type { User, ExecutionSummaries, EvaluationConfig } from '@n8n/db';
@@ -140,9 +141,6 @@ import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { LockedError } from '@/errors/response-errors/locked.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EvaluationConfigService } from '@/evaluation.ee/evaluation-config.service';
 import { LlmJudgeProviderRegistry } from '@/evaluation.ee/llm-judge-provider-registry';
 import { EventService } from '@/events/event.service';

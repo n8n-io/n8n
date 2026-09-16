@@ -1,5 +1,11 @@
 import { LoginRequestDto, ResolveSignupTokenQueryDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import {
+	AuthError,
+	BadRequestError,
+	ForbiddenError,
+	InternalServerError,
+} from '@n8n/backend-services';
 import { Time } from '@n8n/constants';
 import type { User, PublicUser, AuthProviderType } from '@n8n/db';
 import { UserRepository, AuthenticatedRequest, GLOBAL_OWNER_ROLE } from '@n8n/db';
@@ -17,10 +23,6 @@ import { Response } from 'express';
 import { AuthHandlerRegistry } from '@/auth/auth-handler.registry';
 import { AuthService } from '@/auth/auth.service';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
-import { AuthError } from '@/errors/response-errors/auth.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { EventService } from '@/events/event.service';
 import { License } from '@/license';
 import { MfaService } from '@/mfa/mfa.service';

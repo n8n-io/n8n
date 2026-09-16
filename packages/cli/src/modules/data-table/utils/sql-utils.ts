@@ -4,6 +4,7 @@ import {
 	DATA_TABLE_COLUMN_ERROR_MESSAGE,
 	type DataTableCreateColumnSchema,
 } from '@n8n/api-types';
+import { NotFoundError } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { DslColumn } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -16,8 +17,6 @@ import type {
 	DataTableRowsReturn,
 } from 'n8n-workflow';
 import { DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP, UnexpectedError } from 'n8n-workflow';
-
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import type { DataTableColumn } from '../data-table-column.entity';
 import type { DataTableUserTableName } from '../data-table.types';

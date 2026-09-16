@@ -1,4 +1,5 @@
 import { DeleteExecutionsDto } from '@n8n/api-types';
+import { BadRequestError, NotFoundError } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type {
@@ -23,8 +24,6 @@ import type { ActiveExecutions } from '@/active-executions';
 import type { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
 import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { MissingExecutionDataError } from '@/executions/execution-data/missing-execution-data.error';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { EngineV2ExecutionReader } from '@/executions/engine-v2-execution-reader.service';

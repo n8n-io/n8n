@@ -1,3 +1,4 @@
+import { NotFoundError } from '@n8n/backend-services';
 import type {
 	Project,
 	ProjectRelationRepository,
@@ -14,7 +15,6 @@ import { mock } from 'vitest-mock-extended';
 
 import { WorkflowReviewAuthorizationService } from '../workflow-review-authorization.service';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { ProjectService } from '@/services/project.service.ee';
 import type { RoleService } from '@/services/role.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';

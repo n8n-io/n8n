@@ -1,8 +1,7 @@
+import { ForbiddenError } from '@n8n/backend-services';
 import type { AuthenticatedRequest, Project } from '@n8n/db';
 import { hasGlobalScope } from '@n8n/permissions';
 import { mock } from 'vitest-mock-extended';
-
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
 import type { SourceControlContextFactory } from '../source-control-context.factory';
 import { SourceControlScopedService } from '../source-control-scoped.service';

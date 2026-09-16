@@ -3,6 +3,7 @@ import type { AgentSessionLangSmithExportResponse } from '@n8n/api-types';
 import { buildProxyHeaders } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
+import { ConflictError, NotFoundError, ServiceUnavailableError } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
@@ -13,9 +14,6 @@ import { nanoid } from 'nanoid';
 import { v5 as uuidv5 } from 'uuid';
 
 import { N8N_VERSION } from '@/constants';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
 import { AiService } from '@/services/ai.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
 import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';

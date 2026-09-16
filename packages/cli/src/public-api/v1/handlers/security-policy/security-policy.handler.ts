@@ -1,9 +1,8 @@
 import { UpdateSecurityPolicyDto, type SecurityPolicyResponse } from '@n8n/api-types';
+import { BadRequestError, ConflictError } from '@n8n/backend-services';
 import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
 import type { SecurityPolicyReadResult } from '@/services/security-settings.service';
 import { SecuritySettingsService } from '@/services/security-settings.service';
 

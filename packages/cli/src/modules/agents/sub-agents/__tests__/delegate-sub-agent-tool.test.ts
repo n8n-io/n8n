@@ -6,11 +6,10 @@ import {
 	type GenerateResult,
 } from '@n8n/agents';
 import type { SubAgentSource } from '@n8n/api-types';
+import { NotFoundError } from '@n8n/backend-services';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 import { OperationalError, UserError } from 'n8n-workflow';
-
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import {
 	encodeAgentSandboxHostMetadata,

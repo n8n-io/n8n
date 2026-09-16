@@ -1,3 +1,4 @@
+import { AuthError } from '@n8n/backend-services';
 import type { Mocked } from 'vitest';
 import type { Logger } from '@n8n/backend-common';
 import type { User, UserRepository } from '@n8n/db';
@@ -5,7 +6,6 @@ import { CredentialResolverError } from '@n8n/decorators';
 import { mock } from 'vitest-mock-extended';
 
 import type { AuthService } from '@/auth/auth.service';
-import { AuthError } from '@/errors/response-errors/auth.error';
 import type { OAuthTokenVerifierProxy } from '@/services/oauth-token-verifier-proxy.service';
 
 import {

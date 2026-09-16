@@ -1,9 +1,8 @@
 import { TestOtelTraceDto, UpdateOtelSettingsDto } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
+import { BadRequestError, ConflictError } from '@n8n/backend-services';
 import { Container } from '@n8n/di';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { OtelLifecycleHandler } from '@/modules/otel/otel-lifecycle-handler';
 import { OtelSettingsService } from '@/modules/otel/otel-settings.service';
 import { OtelService } from '@/modules/otel/otel.service';

@@ -7,6 +7,7 @@
  * skips the blocked workflow and lets the rest land.
  */
 import { LicenseState } from '@n8n/backend-common';
+import { UnprocessableRequestError } from '@n8n/backend-services';
 import {
 	createTeamProject,
 	createWorkflow,
@@ -27,7 +28,6 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 import { PolicyDecisionService } from '@/modules/policy-infrastructure/policy-decision.service';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { createOwner } from '@test-integration/db/users';

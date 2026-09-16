@@ -1,4 +1,5 @@
 import { ModuleRegistry } from '@n8n/backend-common';
+import { BadRequestError } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type {
 	CredentialsEntity,
@@ -14,7 +15,6 @@ import type { PolicyCleared, PolicyViolation } from '@n8n/decorators';
 import type { EntityManager } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { AgentsService } from '@/modules/agents/agents.service';
 import type { DataTable } from '@/modules/data-table/data-table.entity';
 import type { DataTableService } from '@/modules/data-table/data-table.service';

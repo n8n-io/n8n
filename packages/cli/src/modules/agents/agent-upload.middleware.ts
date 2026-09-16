@@ -3,13 +3,12 @@ import {
 	MAX_AGENT_FILE_SIZE_BYTES,
 	MAX_AGENT_FILES_PER_UPLOAD,
 } from '@n8n/api-types';
+import { BadRequestError } from '@n8n/backend-services';
 import { Service } from '@n8n/di';
 import type { RequestHandler } from 'express';
 import multer from 'multer';
 import { unlink } from 'node:fs/promises';
 import path from 'node:path';
-
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 const allowedAgentFileExtensions = new Set<string>(ALLOWED_AGENT_FILE_EXTENSIONS);
 

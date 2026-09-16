@@ -1,6 +1,12 @@
 import { UpdateWorkflowHistoryVersionDto } from '@n8n/api-types';
 import type { WorkflowListPublicationStatus } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
+import {
+	BadRequestError,
+	ConflictError,
+	ForbiddenError,
+	NotFoundError,
+} from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type { User, ListQueryDb, Project, WorkflowFolderUnionFull, WorkflowHistory } from '@n8n/db';
 import {
@@ -41,10 +47,6 @@ import { WorkflowValidationService } from './workflow-validation.service';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WorkflowActivationBadRequestError } from '@/errors/response-errors/workflow-activation-bad-request.error';
 import { WorkflowDeactivationBadRequestError } from '@/errors/response-errors/workflow-deactivation-bad-request.error';
 import { WorkflowPublishForbiddenError } from '@/errors/response-errors/workflow-publish-forbidden.error';

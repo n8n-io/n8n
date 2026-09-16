@@ -1,9 +1,9 @@
 import { EVAL_COLLECTIONS_FLAG, GenerateInsightsDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { NotFoundError } from '@n8n/backend-services';
 import type { AuthenticatedRequest, User } from '@n8n/db';
 import { Body, Post, ProjectScope, RestController } from '@n8n/decorators';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { PostHogClient } from '@/posthog';
 
 import { EvalInsightsService } from './eval-insights.service';

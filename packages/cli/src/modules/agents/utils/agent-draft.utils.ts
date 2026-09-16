@@ -1,6 +1,5 @@
+import { ConflictError } from '@n8n/backend-services';
 import { v4 as uuid } from 'uuid';
-
-import { ConflictError } from '@/errors/response-errors/conflict.error';
 
 import type { Agent } from '../entities/agent.entity';
 import type { AgentRepository } from '../repositories/agent.repository';

@@ -1,5 +1,6 @@
 import type { ProjectRelation } from '@n8n/api-types';
 import type { Logger, ModuleRegistry } from '@n8n/backend-common';
+import { BadRequestError } from '@n8n/backend-services';
 import {
 	type Project,
 	type ProjectRepository,
@@ -22,7 +23,6 @@ import { ProjectService } from '../project.service.ee';
 import type { RoleService } from '../role.service';
 
 import type { ICredentialConnectionStatusProvider } from '@/credentials/credential-connection-status-provider.interface';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import type { EventService } from '@/events/event.service';
 import type { AgentChatAttachmentService } from '@/modules/agents/agent-chat-attachment.service';
 import type { AgentExecutionService } from '@/modules/agents/agent-execution.service';

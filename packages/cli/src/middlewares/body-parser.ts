@@ -1,4 +1,5 @@
 import { parseIncomingMessage } from '@n8n/backend-network';
+import { BadRequestError, UnprocessableRequestError } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { Request, RequestHandler } from 'express';
@@ -8,9 +9,6 @@ import getRawBody from 'raw-body';
 import { type Readable } from 'stream';
 import { Parser as XmlParser } from 'xml2js';
 import { createGunzip, createInflate } from 'zlib';
-
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 
 const xmlParser = new XmlParser({
 	async: true,

@@ -1,9 +1,8 @@
 import { ListAgentSessionsQueryDto } from '@n8n/api-types';
+import { NotFoundError } from '@n8n/backend-services';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Delete, Get, Post, ProjectScope, Query, RestController } from '@n8n/decorators';
 import type { Response } from 'express';
-
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { AgentExecutionService } from './agent-execution.service';
 import { AgentSessionLangSmithExportService } from './agent-session-langsmith-export.service';

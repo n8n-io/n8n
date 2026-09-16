@@ -1,9 +1,8 @@
 import type { Logger } from '@n8n/backend-common';
 import type { OutboundHttp } from '@n8n/backend-network';
+import { ConflictError } from '@n8n/backend-services';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
-
-import { ConflictError } from '@/errors/response-errors/conflict.error';
 
 import type { AgentRepository } from '../../repositories/agent.repository';
 import type { AgentChatIntegrationContext } from '../agent-chat-integration';

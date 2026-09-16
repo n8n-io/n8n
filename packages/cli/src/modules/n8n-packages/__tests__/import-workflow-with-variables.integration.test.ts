@@ -1,4 +1,6 @@
 import { LicenseState } from '@n8n/backend-common';
+import type { ConflictError } from '@n8n/backend-services';
+import { ForbiddenError } from '@n8n/backend-services';
 import {
 	createTeamProject,
 	getPersonalProject,
@@ -11,8 +13,6 @@ import { VariablesRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
-import type { ConflictError } from '@/errors/response-errors/conflict.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { VariableCountLimitReachedError } from '@/errors/variable-count-limit-reached.error';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { createMember, createOwner } from '@test-integration/db/users';

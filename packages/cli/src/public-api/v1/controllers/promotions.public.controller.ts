@@ -29,6 +29,7 @@ import {
 	type PromotionDirection,
 } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
+import { BadRequestError, NotFoundError, ServiceUnavailableError } from '@n8n/backend-services';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import type { AuthenticatedRequest } from '@n8n/db';
 import {
@@ -52,9 +53,6 @@ import {
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
 import {
 	encodeNextCursor,
 	resolveOffsetPagination,

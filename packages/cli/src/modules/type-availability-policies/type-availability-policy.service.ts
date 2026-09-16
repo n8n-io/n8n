@@ -1,9 +1,8 @@
+import { ConflictError, NotFoundError } from '@n8n/backend-services';
 import { TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 
 import { TypeAvailabilityPolicyAttachmentRepository } from './database/repositories/type-availability-policy-attachment.repository';

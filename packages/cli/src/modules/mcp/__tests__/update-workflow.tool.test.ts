@@ -1,3 +1,4 @@
+import { NotFoundError } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { SharedWorkflowRepository, User, WorkflowEntity, type Project } from '@n8n/db';
@@ -13,7 +14,6 @@ import { z } from 'zod';
 
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsService } from '@/credentials/credentials.service';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { SubworkflowPolicyDenialError } from '@/errors/subworkflow-policy-denial.error';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';

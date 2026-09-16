@@ -1,11 +1,10 @@
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests intentionally reference unbound methods */
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
+import { BadRequestError, NotFoundError } from '@n8n/backend-services';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { AgentIntegrationManagementService } from '../agent-integration-management.service';
 import type { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';

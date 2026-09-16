@@ -11,6 +11,7 @@ import {
 	type ChatHubSessionDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { BadRequestError, NotFoundError } from '@n8n/backend-services';
 import { parseMessage } from '@n8n/chat-hub';
 import { GlobalConfig } from '@n8n/config';
 import { User } from '@n8n/db';
@@ -27,8 +28,6 @@ import {
 } from 'n8n-workflow';
 
 import { ChatExecutionManager } from '@/chat/chat-execution-manager';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 

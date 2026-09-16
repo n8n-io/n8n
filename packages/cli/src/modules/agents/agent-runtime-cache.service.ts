@@ -1,5 +1,6 @@
 import type { Agent as RuntimeAgent } from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
+import { NotFoundError } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type { User } from '@n8n/db';
@@ -8,7 +9,6 @@ import { Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { IAgentConfigurationTelemetryProperties } from '@/interfaces';
 import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
 import { Publisher } from '@/scaling/pubsub/publisher.service';

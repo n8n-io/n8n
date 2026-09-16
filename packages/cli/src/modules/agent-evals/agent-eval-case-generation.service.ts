@@ -8,13 +8,13 @@ import {
 	type GenerateDraftCasesResult,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { ForbiddenError } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { AgentEvalDatasetRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { OperationalError, UserError } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 
 import { AgentEvalsFlagGate } from './agent-evals-flag-gate';

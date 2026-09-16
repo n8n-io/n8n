@@ -1,5 +1,6 @@
 import type { ListWorkflowReviewRequestsQueryDto } from '@n8n/api-types';
 import type { LicenseState } from '@n8n/backend-common';
+import { ForbiddenError, NotFoundError } from '@n8n/backend-services';
 import { User } from '@n8n/db';
 import type {
 	UserRepository,
@@ -9,8 +10,6 @@ import type {
 } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 

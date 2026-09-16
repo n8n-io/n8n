@@ -1,6 +1,7 @@
 import type { AgentTaskDto, CreateAgentTaskDto, UpdateAgentTaskDto } from '@n8n/api-types';
 import { isValidTimeZone } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { BadRequestError, NotFoundError } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover, OnPubSubEvent, OnShutdown } from '@n8n/decorators';
@@ -10,8 +11,6 @@ import { randomUUID } from 'crypto';
 import { DateTime } from 'luxon';
 import { InstanceSettings, ScheduledTaskManager, type ScheduledTaskGroup } from 'n8n-core';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 

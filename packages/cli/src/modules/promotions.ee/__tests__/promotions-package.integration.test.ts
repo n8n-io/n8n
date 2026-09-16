@@ -1,4 +1,5 @@
 import { LicenseState } from '@n8n/backend-common';
+import { BadRequestError } from '@n8n/backend-services';
 import {
 	createTeamProject,
 	createWorkflow,
@@ -21,7 +22,6 @@ import { simpleGit, type SimpleGit } from 'simple-git';
 import { mock } from 'vitest-mock-extended';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { mockDataTableSizeValidator } from '@/modules/data-table/__tests__/test-helpers';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import {

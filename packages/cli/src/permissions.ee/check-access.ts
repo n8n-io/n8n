@@ -1,4 +1,5 @@
 import { ModuleRegistry } from '@n8n/backend-common';
+import { NotFoundError } from '@n8n/backend-services';
 import type { User, EntityManager } from '@n8n/db';
 import {
 	CredentialsEntity,
@@ -15,7 +16,6 @@ import { hasGlobalScope, type Scope } from '@n8n/permissions';
 import { UnexpectedError } from 'n8n-workflow';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { RoleService } from '@/services/role.service';
 
 const INSTANCE_CREDENTIAL_MANAGEMENT_SCOPES = new Set<Scope>([

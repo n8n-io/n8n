@@ -4,6 +4,7 @@ import {
 	ProvisioningConfigPatchDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { BadRequestError } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import {
 	RoleRepository,
@@ -24,7 +25,6 @@ import { InstanceSettings } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 import { ZodError } from 'zod';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { EventService } from '@/events/event.service';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { ProjectService } from '@/services/project.service.ee';

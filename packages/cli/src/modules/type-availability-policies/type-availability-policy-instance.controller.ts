@@ -4,6 +4,7 @@ import {
 	ReplaceAttachmentsDto,
 	UpdatePolicyDocumentDto,
 } from '@n8n/api-types';
+import { NotFoundError } from '@n8n/backend-services';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import { AuthenticatedRequest } from '@n8n/db';
 import {
@@ -19,8 +20,6 @@ import {
 	RestController,
 } from '@n8n/decorators';
 import type { Response } from 'express';
-
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { NODE_TYPES_KIND } from './constants';
 import { TypeAvailabilityPolicyService } from './type-availability-policy.service';

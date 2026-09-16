@@ -1,13 +1,11 @@
 import type { CommandResult } from '@n8n/agents/sandbox';
 import { Logger } from '@n8n/backend-common';
+import { BadRequestError, NotFoundError } from '@n8n/backend-services';
 import { AgentsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import escapeRegExp from 'lodash/escapeRegExp';
 import { OperationalError, safeRegex } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
-
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import {
 	buildMirrorFinalizeCommand,

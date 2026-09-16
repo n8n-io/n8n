@@ -1,4 +1,5 @@
 import { LicenseState } from '@n8n/backend-common';
+import { ConflictError, ForbiddenError } from '@n8n/backend-services';
 import { createTeamProject, createWorkflow, testDb, testModules } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
@@ -10,8 +11,6 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { createFolder } from '@test-integration/db/folders';
 import { assignTagToWorkflow, createTag, updateTag } from '@test-integration/db/tags';
 import { createOwner } from '@test-integration/db/users';

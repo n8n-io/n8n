@@ -5,11 +5,10 @@ import {
 	CUSTOM_TOOL_ID_REGEX,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { NotFoundError } from '@n8n/backend-services';
 import { Service } from '@n8n/di';
 import isEqual from 'lodash/isEqual';
 import { UserError } from 'n8n-workflow';
-
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import {
 	AgentModificationTelemetryService,

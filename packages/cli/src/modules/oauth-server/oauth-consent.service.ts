@@ -1,5 +1,6 @@
 import type { ConsentUiHints } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { ForbiddenError } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
@@ -9,7 +10,6 @@ import { UserConsentRepository } from './database/repositories/oauth-user-consen
 import { OAuthAuthorizationCodeService } from './oauth-authorization-code.service';
 import { OAuthSessionService, type OAuthSessionPayload } from './oauth-session.service';
 import { OAuthHelpers } from './oauth.helpers';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import {
 	ProtectedResourceRegistry,
 	type ProtectedResource,

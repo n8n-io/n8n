@@ -1,8 +1,7 @@
+import { BadRequestError } from '@n8n/backend-services';
 import type { Request, Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 import { Readable } from 'stream';
-
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 import { rawBodyReader } from '../body-parser';
 

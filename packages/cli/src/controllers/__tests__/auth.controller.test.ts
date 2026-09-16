@@ -1,6 +1,7 @@
 import type { LoginRequestDto } from '@n8n/api-types';
 import { ResolveSignupTokenQueryDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { AuthError, BadRequestError, ForbiddenError } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { AuthenticatedRequest, User } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
@@ -14,9 +15,6 @@ import { AuthService } from '@/auth/auth.service';
 import type { EmailAuthHandler } from '@/auth/handlers/email.auth-handler';
 import config from '@/config';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
-import { AuthError } from '@/errors/response-errors/auth.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
 import { License } from '@/license';
 import { MfaService } from '@/mfa/mfa.service';

@@ -4,12 +4,11 @@ import {
 	type AgentIntegrationDisconnectWarning,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { BadRequestError, NotFoundError } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
 import { CredentialsService } from '@/credentials/credentials.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import {
 	AgentIntegrationPersistenceService,

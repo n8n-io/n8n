@@ -5,6 +5,7 @@ import {
 	TagPublicDto,
 	tagIdParamSchema,
 } from '@n8n/api-types';
+import { ConflictError, NotFoundError } from '@n8n/backend-services';
 import type { AuthenticatedRequest, TagEntity } from '@n8n/db';
 import {
 	ApiDescription,
@@ -22,8 +23,6 @@ import {
 } from '@n8n/decorators';
 import type { Response } from 'express';
 
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import {
 	encodeNextCursor,
 	resolveOffsetPagination,

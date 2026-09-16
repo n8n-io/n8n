@@ -1,5 +1,6 @@
 import type { PushMessage } from '@n8n/api-types';
 import { inProduction, Logger, TypedEmitter } from '@n8n/backend-common';
+import { BadRequestError, InternalServerError } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { OnPubSubEvent, OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
@@ -13,8 +14,6 @@ import { parse as parseUrl } from 'url';
 import { Server as WSServer } from 'ws';
 
 import { AuthService } from '@/auth/auth.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { MAX_PUBSUB_PAYLOAD_BYTES } from '@/scaling/constants';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 

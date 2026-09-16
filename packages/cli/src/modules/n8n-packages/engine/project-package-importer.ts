@@ -1,7 +1,6 @@
 import { LicenseState } from '@n8n/backend-common';
+import { ForbiddenError } from '@n8n/backend-services';
 import { Service } from '@n8n/di';
-
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
 import type { CredentialBindingRequest } from '../entities/credential/credential.types';
 import { removesUnpackagedWorkflows } from '../entities/folder/folder-conflict-policy';

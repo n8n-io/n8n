@@ -1,4 +1,4 @@
-import { ResponseError } from './abstract/response.error';
+import { ResponseError } from '@n8n/backend-services';
 
 export class TransferWorkflowError extends ResponseError {
 	constructor(message: string) {

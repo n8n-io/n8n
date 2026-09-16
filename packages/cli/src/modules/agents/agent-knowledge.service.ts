@@ -5,6 +5,7 @@ import {
 } from '@n8n/api-types';
 import { N8nPdfLoader } from '@n8n/ai-utilities';
 import { Logger } from '@n8n/backend-common';
+import { BadRequestError, NotFoundError } from '@n8n/backend-services';
 import { isUniqueConstraintError } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
@@ -12,8 +13,6 @@ import { createReadStream } from 'node:fs';
 import { unlink } from 'node:fs/promises';
 import path from 'node:path';
 import type { Readable } from 'node:stream';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import {
 	AgentKnowledgeFileStore,

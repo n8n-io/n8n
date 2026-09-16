@@ -1,8 +1,8 @@
+import { ForbiddenError } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import type { Scope } from '@n8n/permissions';
 import { mock } from 'vitest-mock-extended';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { assertCanManageRoleType } from '@/services/role-authorization';
 
 describe('assertCanManageRoleType', () => {

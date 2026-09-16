@@ -1,8 +1,8 @@
+import { NotFoundError } from '@n8n/backend-services';
 import type { AuthenticatedRequest, CredentialsEntity, User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import type { McpRegistryServer } from '@/modules/mcp-registry/registry/mcp-registry.types';
 

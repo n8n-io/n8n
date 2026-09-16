@@ -6,14 +6,13 @@ import type {
 	PromotionDirection,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { BadRequestError, NotFoundError } from '@n8n/backend-services';
 import { ProjectRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { cp, mkdir, mkdtemp, rename, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { UnexpectedError } from 'n8n-workflow';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
 import {
 	DataTableMissingMode,

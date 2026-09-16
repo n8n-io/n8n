@@ -7,6 +7,7 @@ import {
 	type ChatHubAgentKnowledgeItemStatus,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { BadRequestError, NotFoundError } from '@n8n/backend-services';
 import type { EntityManager, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { readFile, unlink } from 'fs/promises';
@@ -14,8 +15,6 @@ import { type IBinaryData } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { v4 as uuidv4 } from 'uuid';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import { getBase } from '@/workflow-execute-additional-data';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';

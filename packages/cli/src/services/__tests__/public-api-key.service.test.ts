@@ -1,10 +1,9 @@
 import type { Logger } from '@n8n/backend-common';
+import { BadRequestError, NotFoundError } from '@n8n/backend-services';
 import type { ApiKey, ApiKeyRepository, User } from '@n8n/db';
 import { hasGlobalScope } from '@n8n/permissions';
 import { mock } from 'vitest-mock-extended';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { UserManagementMailer } from '@/user-management/email';
 
 import type { JwtService } from '../jwt.service';

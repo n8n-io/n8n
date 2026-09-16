@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-invalid-void-type */
+import { NotFoundError } from '@n8n/backend-services';
 import type { BooleanLicenseFeature } from '@n8n/constants';
 import type { AuthenticatedRequest } from '@n8n/db';
 import type { DeprecationInfo } from '@n8n/decorators';
@@ -8,7 +9,6 @@ import type express from 'express';
 import type { NextFunction, Request, Response } from 'express';
 
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { License } from '@/license';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import type { PaginatedRequest } from '@/public-api/types';

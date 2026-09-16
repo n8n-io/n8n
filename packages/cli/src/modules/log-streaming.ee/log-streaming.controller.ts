@@ -5,14 +5,13 @@ import {
 	TestDestinationQueryDto,
 } from '@n8n/api-types';
 import { OutboundHttp } from '@n8n/backend-network';
+import { BadRequestError, ForbiddenError } from '@n8n/backend-services';
 import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Delete, Get, GlobalScope, Licensed, Post, Query, RestController } from '@n8n/decorators';
 import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { eventNamesAll } from '@/eventbus/event-message-classes';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 

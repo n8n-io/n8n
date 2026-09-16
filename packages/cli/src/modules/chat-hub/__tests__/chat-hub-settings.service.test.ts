@@ -1,9 +1,8 @@
 import type { ChatProviderSettingsDto } from '@n8n/api-types';
+import { BadRequestError } from '@n8n/backend-services';
 import type { Settings, SettingsRepository } from '@n8n/db';
 import type { EntityManager } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
-
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 import { ChatHubSettingsService } from '../chat-hub.settings.service';
 

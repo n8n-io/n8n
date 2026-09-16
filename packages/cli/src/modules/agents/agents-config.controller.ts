@@ -1,4 +1,5 @@
 import { type AgentConfigValidationResponse, UpdateAgentConfigDto } from '@n8n/api-types';
+import { NotFoundError } from '@n8n/backend-services';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Body, Delete, Get, Param, ProjectScope, Put, RestController } from '@n8n/decorators';
 import type { Response } from 'express';
@@ -10,7 +11,6 @@ import { AgentValidationService } from './agent-validation.service';
 import { AgentRepository } from './repositories/agent.repository';
 import { getAgentConfigHash } from './utils/agent-config-hash';
 import { CredentialsService } from '@/credentials/credentials.service';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 @RestController('/projects/:projectId/agents/v2')
 export class AgentsConfigController {

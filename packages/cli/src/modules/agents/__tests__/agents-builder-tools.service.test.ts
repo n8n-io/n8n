@@ -1,3 +1,4 @@
+import { ConflictError } from '@n8n/backend-services';
 import type { Mocked } from 'vitest';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import {
@@ -21,7 +22,6 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialTypes } from '@/credential-types';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
 import type { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import type { NodeTypes } from '@/node-types';
 import type { AiGatewayService } from '@/services/ai-gateway.service';

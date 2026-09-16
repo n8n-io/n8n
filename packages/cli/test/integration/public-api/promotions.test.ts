@@ -1,10 +1,10 @@
+import { BadRequestError } from '@n8n/backend-services';
 import { createTeamProject, getPersonalProject, testDb } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { PromotionConfigRepository } from '@/modules/promotions.ee/database/repositories/promotion-config.repository';
 import { PromotionConnectionProjectRepository } from '@/modules/promotions.ee/database/repositories/promotion-connection-project.repository';
 import { PromotionConnectionRepository } from '@/modules/promotions.ee/database/repositories/promotion-connection.repository';

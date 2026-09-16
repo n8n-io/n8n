@@ -36,6 +36,7 @@ import {
 	type ConfigValidationError,
 } from '@n8n/api-types';
 import { OutboundHttp } from '@n8n/backend-network';
+import { ConflictError } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { InstanceAiCredentialService } from '@n8n/instance-ai';
@@ -43,7 +44,6 @@ import type { Operation } from 'fast-json-patch';
 import { z } from 'zod';
 
 import { CredentialTypes } from '@/credential-types';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import { NodeTypes } from '@/node-types';
 import { OauthService } from '@/oauth/oauth.service';
