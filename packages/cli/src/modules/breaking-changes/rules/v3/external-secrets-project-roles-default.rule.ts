@@ -32,15 +32,6 @@ export class ExternalSecretsProjectRolesDefaultRule implements IBreakingChangeIn
 		if (!this.licenseState.isExternalSecretsLicensed()) {
 			return NOT_AFFECTED_INSTANCE;
 		}
-
-<<<<<<< HEAD
-=======
-		// The toggle already matching the v3 default means no behaviour change.
-		if (await this.isSystemRolesEnabled()) {
-			return NOT_AFFECTED_INSTANCE;
-		}
-
->>>>>>> cf0a4911d0ec756287332c659afb494e513809ed
 		return {
 			isAffected: true,
 			instanceIssues: [

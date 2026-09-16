@@ -47,26 +47,11 @@ export class AiTransformDeprecatedRule implements IBreakingChangeWorkflowRule {
 		nodesGroupedByType: Map<string, INode[]>,
 	): Promise<WorkflowDetectionReport> {
 		const affectedNodes = nodesGroupedByType.get(AI_TRANSFORM_NODE_TYPE) ?? [];
-
-<<<<<<< HEAD
-		return {
-			isAffected: true,
-			issues: affectedNodes.map((node) => ({
-				title: `AI Transform node '${node.name}' is no longer supported`,
-				description:
-					'The AI Transform node is no longer supported. Migrate it to a Code node to keep its generated code running.',
-				level: 'error',
-				nodeId: node.id,
-				nodeName: node.name,
-			})),
-		};
-=======
 		return reportAffectedNodes(affectedNodes, (node) => ({
-			title: `Node '${node.name}' uses the deprecated AI Transform node`,
+			title: `AI Transform node '${node.name}' is no longer supported`,
 			description:
-				'The AI Transform node is deprecated. Migrate it to a Code node to keep it working.',
-			level: 'warning',
+				'The AI Transform node is no longer supported. Migrate it to a Code node to keep its generated code running.',
+			level: 'error',
 		}));
->>>>>>> cf0a4911d0ec756287332c659afb494e513809ed
 	}
 }
