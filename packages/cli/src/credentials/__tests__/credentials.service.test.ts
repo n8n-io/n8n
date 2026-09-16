@@ -372,8 +372,16 @@ describe('CredentialsService', () => {
 
 			await expect(tooLong).rejects.toThrow(BadRequestError);
 			await expect(tooLong).rejects.toThrow(
-				`Credential description must be at most ${CREDENTIAL_DESCRIPTION_MAX_LENGTH} characters long.`,
+				`Credential description cannot be longer than ${CREDENTIAL_DESCRIPTION_MAX_LENGTH} characters`,
 			);
+		});
+
+		it('rejects a non-string description with a 400, not a crash', async () => {
+			// The PATCH body has no request schema, so the value reaches the service raw.
+			const notAString = prepare(42 as unknown as string);
+
+			await expect(notAString).rejects.toThrow(BadRequestError);
+			await expect(notAString).rejects.toThrow('Expected string, received number');
 		});
 
 		it('accepts a description that only exceeds the cap before trimming', async () => {

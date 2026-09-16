@@ -1701,7 +1701,7 @@ describe('credential description', () => {
 		expect(fetched.body.data.description).toBe(description);
 	});
 
-	test('a credential created before the column reads back as null', async () => {
+	test('a credential saved without a description reads back as null', async () => {
 		const saved = await saveOwned();
 
 		const fetched = await authOwnerAgent.get(`/credentials/${saved.id}`);
@@ -1733,6 +1733,55 @@ describe('credential description', () => {
 		expect(response.statusCode).toBe(400);
 		const stored = await Container.get(CredentialsRepository).findOneByOrFail({ id: saved.id });
 		expect(stored.description).toBeNull();
+	});
+
+	test('a non-string description is rejected with a 400', async () => {
+		const saved = await saveOwned();
+
+		const response = await patchDescription(saved.id, 42);
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	test('both verbs reject the same over-cap value with the same message', async () => {
+		const tooLong = 'a'.repeat(CREDENTIAL_DESCRIPTION_MAX_LENGTH + 1);
+		const saved = await saveOwned();
+
+		const created = await authOwnerAgent
+			.post('/credentials')
+			.send({ ...randomCredentialPayload(), description: tooLong });
+		const patched = await patchDescription(saved.id, tooLong);
+
+		expect(created.statusCode).toBe(400);
+		expect(patched.statusCode).toBe(400);
+		expect(patched.body.message).toBe(created.body.message);
+	});
+
+	test('a null description is accepted by both verbs and stored as null', async () => {
+		const created = await authOwnerAgent
+			.post('/credentials')
+			.send({ ...randomCredentialPayload(), description: null });
+		expect(created.statusCode).toBe(200);
+
+		const patched = await patchDescription(created.body.data.id, null);
+
+		expect(patched.statusCode).toBe(200);
+		expect(patched.body.data.description).toBeNull();
+	});
+
+	test('both verbs apply the cap to the same character count', async () => {
+		// zod counts UTF-16 units; the entity validator subtracts surrogate pairs.
+		// Routing both verbs through the shared schema keeps them in agreement.
+		const astral = '\u{1F600}'.repeat(CREDENTIAL_DESCRIPTION_MAX_LENGTH);
+		const saved = await saveOwned();
+
+		const created = await authOwnerAgent
+			.post('/credentials')
+			.send({ ...randomCredentialPayload(), description: astral });
+		const patched = await patchDescription(saved.id, astral);
+
+		expect(patched.statusCode).toBe(created.statusCode);
+		expect(created.statusCode).toBe(400);
 	});
 
 	test('a POST stores a trimmed description', async () => {

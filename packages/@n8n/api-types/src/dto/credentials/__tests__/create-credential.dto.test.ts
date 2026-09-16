@@ -64,6 +64,16 @@ describe('CreateCredentialDto', () => {
 					description: 'a'.repeat(CREDENTIAL_DESCRIPTION_MAX_LENGTH),
 				},
 			},
+			{
+				// A read returns `null`, so posting back what was read must work.
+				name: 'null description',
+				request: {
+					name: 'My API Credentials',
+					type: 'apiKey',
+					data: {},
+					description: null,
+				},
+			},
 		])('should validate $name', ({ request }) => {
 			const result = CreateCredentialDto.safeParse(request);
 			expect(result.success).toBe(true);
