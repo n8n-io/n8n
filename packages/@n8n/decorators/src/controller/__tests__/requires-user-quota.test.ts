@@ -2,6 +2,7 @@ import { Container } from '@n8n/di';
 
 import { ControllerRegistryMetadata } from '../controller-registry-metadata';
 import { RequiresUserQuota } from '../requires-user-quota';
+import { Get } from '../route';
 import type { Controller } from '../types';
 
 describe('@RequiresUserQuota Decorator', () => {
@@ -42,17 +43,6 @@ describe('@RequiresUserQuota Decorator', () => {
 	});
 
 	it('should work alongside other decorators', () => {
-		const Get = (path: string) => {
-			return (target: object, handlerName: string | symbol) => {
-				const routeMetadata = controllerRegistryMetadata.getRouteMetadata(
-					target.constructor as Controller,
-					String(handlerName),
-				);
-				routeMetadata.method = 'get';
-				routeMetadata.path = path;
-			};
-		};
-
 		class TestController {
 			@Get('/test')
 			@RequiresUserQuota()
