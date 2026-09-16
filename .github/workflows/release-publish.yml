@@ -67,7 +67,8 @@ jobs:
         run: node .github/scripts/detect-new-packages.mjs
 
       - name: Dry-run publishing
-        run: pnpm publish -r --no-git-checks --dry-run
+        run: |
+          "$PNPM_HOME/pnpm" publish -r --no-git-checks --dry-run
 
       - name: Pre publishing changes
         run: |
@@ -87,7 +88,7 @@ jobs:
           if [[ "$PUBLISH_TAG" =~ ^v?[0-9] ]]; then
             PUBLISH_TAG="release-${PUBLISH_TAG}"
           fi
-          pnpm publish -r --publish-branch "$PUBLISH_BRANCH" --access public --tag "$PUBLISH_TAG" --no-git-checks
+          "$PNPM_HOME/pnpm" publish -r --publish-branch "$PUBLISH_BRANCH" --access public --tag "$PUBLISH_TAG" --no-git-checks
 
   publish-to-docker-hub:
     name: Publish to DockerHub
