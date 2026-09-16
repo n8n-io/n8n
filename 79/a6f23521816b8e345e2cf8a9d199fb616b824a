@@ -1,0 +1,37 @@
+packages/cli/src/scheduling/system-tasks/__tests__/system-task-runner.test.ts
+  s_10fedff3e39187::t_893011f702f8fe 1015-1037
+  s_10fedff3e39187::t_2f81a092b80712 44,55,70
+  s_66b4f2c79da3af::t_1ff70be2c7674b 999-1014
+packages/cli/src/commands/__tests__/start-system-task-metrics.test.ts
+  s_10fedff3e39187::t_893011f702f8fe 1-3,5-15,17-24,26-53,59-60,63,93,100-102,104,106-115,117-118,121-132,187
+  s_10fedff3e39187::t_f5865a887f7e90 4,16,25
+  s_66b4f2c79da3af::t_e0d5cbe1098d79 54-58,61-62,64-92,94-99,103,105,116,119-120,133-148,152-154,157,164,167-168,170-171,174-185
+  s_66b4f2c79da3af::t_80184f3845687d 149-151,155-156,158-163,165-166,169,172-173,186
+packages/cli/src/scheduling/system-tasks/system-task-runner.ts
+  s_66b4f2c79da3af::t_cee0af414a12c4 124-129
+  s_66b4f2c79da3af::t_90ea942a825878 132
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "79a6f23521816b8e345e2cf8a9d199fb616b824a",
+  "prompts": {},
+  "sessions": {
+    "s_10fedff3e39187": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0a9f4-e6a8-77c1-87f6-c2987f2d9d5e",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    },
+    "s_66b4f2c79da3af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "38f586b1-c48f-41d2-bc4f-6eb2435f5ade",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
