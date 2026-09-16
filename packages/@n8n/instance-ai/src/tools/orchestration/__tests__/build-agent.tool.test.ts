@@ -2306,7 +2306,11 @@ describe('build-agent tool', () => {
 				agentRole: 'agent-builder',
 				functionId: 'instance-ai.subagent.agent-builder',
 				executionMode: 'foreground',
-				metadata: { agent_id: 'agent-builder:agent-1', target_agent_id: 'agent-1' },
+				metadata: {
+					agent_id: 'agent-builder:agent-1',
+					target_agent_id: 'agent-1',
+					model_id: 'anthropic/claude-sonnet-host-resolved',
+				},
 			});
 			const [, , sessionArg] = vi.mocked(delegate.streamBuild).mock.calls[0];
 			expect(sessionArg).toEqual(expect.objectContaining({ telemetry: sentinelTelemetry }));

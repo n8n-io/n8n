@@ -1,6 +1,6 @@
 {
   "name": "n8n-monorepo",
-  "version": "2.39.0",
+  "version": "2.40.0",
   "private": true,
   "engines": {
     "node": ">=24.0.0",
@@ -49,6 +49,7 @@
     "seed:test": "node --test scripts/instance-seeding/*.test.mjs",
     "nathan": "node scripts/nathan.mjs",
     "agent:setup": "node scripts/agent-setup.mjs",
+    "agent:harness": "node scripts/agent-harness.mjs",
     "format:check": "turbo run format:check",
     "lint": "turbo run lint",
     "lint:styles": "turbo run lint:styles",

@@ -229,6 +229,7 @@ export class InstanceAiController {
 			payload.pushRef,
 			payload.mode,
 			payload.promptVersion,
+			payload.computerUseChannels,
 		);
 		return { runId };
 	}

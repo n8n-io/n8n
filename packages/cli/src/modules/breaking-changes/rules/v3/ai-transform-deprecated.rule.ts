@@ -3,6 +3,7 @@ import type { WorkflowEntity } from '@n8n/db';
 import { BreakingChangeRule } from '@n8n/decorators';
 import type { INode } from 'n8n-workflow';
 
+import { reportAffectedNodes } from '../../detection-report';
 import type {
 	BreakingChangeRuleMetadata,
 	IBreakingChangeWorkflowRule,
@@ -46,18 +47,12 @@ export class AiTransformDeprecatedRule implements IBreakingChangeWorkflowRule {
 		nodesGroupedByType: Map<string, INode[]>,
 	): Promise<WorkflowDetectionReport> {
 		const affectedNodes = nodesGroupedByType.get(AI_TRANSFORM_NODE_TYPE) ?? [];
-		if (affectedNodes.length === 0) return { isAffected: false, issues: [] };
 
-		return {
-			isAffected: true,
-			issues: affectedNodes.map((node) => ({
-				title: `AI Transform node '${node.name}' is no longer supported`,
-				description:
-					'The AI Transform node is no longer supported. Migrate it to a Code node to keep its generated code running.',
-				level: 'error',
-				nodeId: node.id,
-				nodeName: node.name,
-			})),
-		};
+		return reportAffectedNodes(affectedNodes, (node) => ({
+			title: `AI Transform node '${node.name}' is no longer supported`,
+			description:
+				'The AI Transform node is no longer supported. Migrate it to a Code node to keep its generated code running.',
+			level: 'error',
+		}));
 	}
 }

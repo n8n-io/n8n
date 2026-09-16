@@ -127,6 +127,7 @@ export { SourceControlPushConflictErrorPublicDto } from './source-control/source
 export { SourceControlPullResponsePublicDto } from './source-control/source-control-pull-response-public.dto';
 
 export { CreateCredentialDto } from './credentials/create-credential.dto';
+export { TestCredentialRequestDto } from './credentials/test-credential-request.dto';
 export {
 	CredentialPublicDto,
 	CredentialListPublicDto,
@@ -292,6 +293,11 @@ export { CreatePolicyDocumentDto } from './node-type-policies/create-policy-docu
 export { UpdatePolicyDocumentDto } from './node-type-policies/update-policy-document.dto';
 export { ReplaceAttachmentsDto } from './node-type-policies/replace-attachments.dto';
 export {
+	ListNodeTypePolicyDocumentsQueryDto,
+	NodeTypePolicyAttachmentsPublicDto,
+	NodeTypePolicyDocumentListPublicDto,
+	NodeTypePolicyDocumentPublicDto,
+	NodeTypePolicyDocumentWriteResultPublicDto,
 	NodeTypePolicyEffectivePublicDto,
 	NodeTypePolicyEffectiveWriteResultPublicDto,
 } from './node-type-policies/node-type-policy-public.dto';
