@@ -67,13 +67,7 @@ jobs:
         run: node .github/scripts/detect-new-packages.mjs
 
       - name: Dry-run publishing
-<<<<<<< HEAD
-        run: pnpm publish -r --no-git-checks --dry-run
-=======
-        run: |
-          "$PNPM_HOME/pnpm" --filter n8n publish --no-git-checks --dry-run
-          "$PNPM_HOME/pnpm" publish -r --filter '!n8n' --no-git-checks --dry-run
->>>>>>> cf0a4911d0ec756287332c659afb494e513809ed
+        run: '"$PNPM_HOME/pnpm" publish -r --no-git-checks --dry-run'
 
       - name: Pre publishing changes
         run: |
@@ -93,22 +87,7 @@ jobs:
           if [[ "$PUBLISH_TAG" =~ ^v?[0-9] ]]; then
             PUBLISH_TAG="release-${PUBLISH_TAG}"
           fi
-<<<<<<< HEAD
-          pnpm publish -r --publish-branch "$PUBLISH_BRANCH" --access public --tag "$PUBLISH_TAG" --no-git-checks
-=======
-          "$PNPM_HOME/pnpm" publish -r --filter '!n8n' --publish-branch "$PUBLISH_BRANCH" --access public --tag "$PUBLISH_TAG" --no-git-checks
-
-      # If we don't use the --tag rc, all releases will default to "latest".
-      - name: Publish n8n to NPM with rc tag
-        env:
-          PUBLISH_BRANCH: ${{ github.event.pull_request.base.ref }}
-        run: |
-          "$PNPM_HOME/pnpm" --filter n8n publish --publish-branch "$PUBLISH_BRANCH" --access public --tag rc --no-git-checks
-
-      - name: Cleanup rc tag
-        run: npm dist-tag rm n8n rc
-        continue-on-error: true
->>>>>>> cf0a4911d0ec756287332c659afb494e513809ed
+          "$PNPM_HOME/pnpm" publish -r --publish-branch "$PUBLISH_BRANCH" --access public --tag "$PUBLISH_TAG" --no-git-checks
 
   publish-to-docker-hub:
     name: Publish to DockerHub

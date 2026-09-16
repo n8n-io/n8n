@@ -6712,8 +6712,6 @@ importers:
         specifier: ^2.2.8
         version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)
 
-<<<<<<< HEAD
-=======
   packages/modules/type-availability-policies/frontend:
     dependencies:
       '@n8n/frontend-module-sdk':
@@ -6766,50 +6764,6 @@ importers:
         specifier: ^2.2.8
         version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)
 
-  packages/node-dev:
-    dependencies:
-      '@n8n/di':
-        specifier: workspace:*
-        version: link:../@n8n/di
-      '@oclif/core':
-        specifier: 4.0.7
-        version: 4.0.7
-      change-case:
-        specifier: 'catalog:'
-        version: 5.4.4
-      fast-glob:
-        specifier: 'catalog:'
-        version: 3.3.3
-      inquirer:
-        specifier: ^7.0.1
-        version: 7.3.3
-      n8n-core:
-        specifier: workspace:*
-        version: link:../core
-      n8n-workflow:
-        specifier: workspace:*
-        version: link:../workflow
-      replace-in-file:
-        specifier: ^6.0.0
-        version: 6.3.5
-      tmp-promise:
-        specifier: 'catalog:'
-        version: 3.0.3
-    devDependencies:
-      '@n8n/eslint-config':
-        specifier: workspace:*
-        version: link:../@n8n/eslint-config
-      '@n8n/typescript-config':
-        specifier: workspace:*
-        version: link:../@n8n/typescript-config
-      '@types/inquirer':
-        specifier: ^7.0.1
-        version: 7.3.3
-      typescript:
-        specifier: 'catalog:'
-        version: 6.0.2
-
->>>>>>> cf0a4911d0ec756287332c659afb494e513809ed
   packages/nodes-base:
     dependencies:
       '@aws-crypto/sha256-js':
@@ -14168,14 +14122,6 @@ packages:
 
   '@types/humanize-duration@3.27.1':
     resolution: {integrity: sha512-K3e+NZlpCKd6Bd/EIdqjFJRFHbrq5TzPPLwREk5Iv/YoIjQrs6ljdAUCo+Lb2xFlGNOjGSE0dqsVD19cZL137w==}
-
-<<<<<<< HEAD
-  '@types/imap@0.8.40':
-    resolution: {integrity: sha512-kWFwOc88CGwWZlHqCnZiceS6EralsAHdjpQyk1+fIA875NQdIHvLpdD5NU3Pi1yZ8FKFdOF81UDNAo8/XS6HiQ==}
-=======
-  '@types/inquirer@7.3.3':
-    resolution: {integrity: sha512-HhxyLejTHMfohAuhRun4csWigAMjXTmRyiJTU1Y/I1xmggikFMkOUoMQRlFm+zQcPEGHSs3io/0FAmNZf8EymQ==}
->>>>>>> cf0a4911d0ec756287332c659afb494e513809ed
 
   '@types/ioredis-mock@8.2.2':
     resolution: {integrity: sha512-bnbPHOjxy4TUDjRh61MMoK2QvDNZqrMDXJYrEDZP/HPFvBubR24CQ0DBi5lgWhLxG4lvVsXPRDXtZ03+JgonoQ==}
@@ -32585,17 +32531,6 @@ snapshots:
       '@types/node': 20.19.41
 
   '@types/humanize-duration@3.27.1': {}
-
-<<<<<<< HEAD
-  '@types/imap@0.8.40':
-    dependencies:
-      '@types/node': 20.19.41
-=======
-  '@types/inquirer@7.3.3':
-    dependencies:
-      '@types/through': 0.0.30
-      rxjs: 6.6.7
->>>>>>> cf0a4911d0ec756287332c659afb494e513809ed
 
   '@types/ioredis-mock@8.2.2(supports-color@8.1.1)':
     dependencies:
