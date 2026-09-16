@@ -83,7 +83,6 @@ function valueChanged(parameterData: IUpdateInformation) {
 					i18n.credText(credentialType ?? '').inputLabelDescription(parameter) ||
 					i18n.credText(credentialType ?? '').hint(parameter)
 				"
-				:required="parameter.required"
 				:bold="false"
 				show-tooltip
 				size="small"
@@ -134,6 +133,7 @@ function valueChanged(parameterData: IUpdateInformation) {
 				:documentation-url="documentationUrl"
 				:show-validation-warnings="showValidationWarnings"
 				:label="{ size: compact ? 'small' : 'medium' }"
+				:hide-required-indicator="compact"
 				event-source="credentials"
 				@update="valueChanged"
 			/>

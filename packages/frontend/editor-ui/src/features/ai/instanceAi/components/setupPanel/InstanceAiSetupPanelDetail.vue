@@ -1,16 +1,16 @@
 <script lang="ts" setup>
-import { computed, onScopeDispose, ref, watch } from 'vue';
+import { computed, onScopeDispose, provide, ref, watch } from 'vue';
 import isEqual from 'lodash/isEqual';
-import { N8nButton } from '@n8n/design-system';
 import type { InstanceAiSetupItem } from '@n8n/api-types';
-import { useI18n } from '@n8n/i18n';
 import { findPlaceholderDetails } from '@n8n/utils/placeholder';
 import { deepCopy, NodeHelpers, type INodeParameters, type INodeProperties } from 'n8n-workflow';
 import ParameterInputList from '@/features/ndv/parameters/components/ParameterInputList.vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { setParameterValue as setParameterValueByPath } from '@/app/utils/parameterUtils';
 import type { INodeUi, IUpdateInformation } from '@/Interface';
+import { CompactParameterHintsKey } from '@/app/constants/injectionKeys';
 import { useSetupPanelDocument } from '../../composables/useSetupPanelDocument';
+import type { SetupParameterSubmission } from '../../composables/useSetupPanelActions';
 import {
 	applySetupParameterChanges,
 	getSetupParameterChanges,
@@ -25,19 +25,16 @@ const props = defineProps<{
 	node: INodeUi;
 	workflowId?: string;
 	projectId?: string;
-	isApplying?: boolean;
-	isComplete?: boolean;
 	/** Confirmed edits waiting for the workflow write. */
 	pendingChanges?: SetupParameterChange[];
 }>();
 
 const emit = defineEmits<{
-	applyParameters: [nodeName: string, values: INodeParameters, baseline: INodeParameters];
 	'update:hasChanges': [value: boolean];
 }>();
 
-const i18n = useI18n();
 const nodeTypesStore = useNodeTypesStore();
+provide(CompactParameterHintsKey, true);
 
 const parametersItem = computed(() => props.item);
 
@@ -95,23 +92,24 @@ function onParameterValueChanged(update: IUpdateInformation) {
 	);
 }
 
-function onConfirm() {
-	const item = parametersItem.value;
-	if (!item || !parameterChanges.value.length) return;
+function getSubmission(): SetupParameterSubmission | undefined {
 	for (const parameter of parameterDefinitions.value) touchedParameters.value.add(parameter.name);
+	const item = parametersItem.value;
+	if (!item || !hasChanges.value) return;
 	// Pass the baseline so queued writes preserve later edits to sibling fields.
 	const values: INodeParameters = {};
 	for (const change of parameterChanges.value) {
 		const root = change.path[0];
 		if (typeof root === 'string') values[root] = displayParameters.value[root];
 	}
-	emit(
-		'applyParameters',
-		item.nodeName,
+	return {
+		nodeName: item.nodeName,
 		values,
-		applySetupParameterChanges(props.node.parameters, props.pendingChanges ?? []),
-	);
+		baseline: applySetupParameterChanges(props.node.parameters, props.pendingChanges ?? []),
+	};
 }
+
+defineExpose({ getSubmission });
 
 const nodeType = computed(() =>
 	nodeTypesStore.getNodeType(props.node.type, props.node.typeVersion),
@@ -169,15 +167,6 @@ const assignmentCollectionEditableValueIndices = computed<Record<string, number[
 	return result;
 });
 
-const hasSingleField = computed(() => {
-	if (parameterDefinitions.value.length !== 1) return false;
-	const parameter = parameterDefinitions.value[0];
-	if (parameter.type === 'assignmentCollection') {
-		return assignmentCollectionEditableValueIndices.value[parameter.name]?.length === 1;
-	}
-	return !['collection', 'fixedCollection', 'filter', 'resourceMapper'].includes(parameter.type);
-});
-
 const displayNode = computed<INodeUi>(() => ({
 	...props.node,
 	parameters: nodeType.value
@@ -200,10 +189,7 @@ useSetupPanelDocument({
 </script>
 
 <template>
-	<div
-		:class="[$style.body, { [$style.singleField]: hasSingleField }]"
-		data-test-id="instance-ai-setup-panel-detail"
-	>
+	<div :class="$style.body" data-test-id="instance-ai-setup-panel-detail">
 		<template v-if="parametersItem">
 			<ParameterInputList
 				:parameters="parameterDefinitions"
@@ -219,17 +205,6 @@ useSetupPanelDocument({
 				@value-changed="onParameterValueChanged"
 				@parameter-blur="touchedParameters.add($event)"
 			/>
-			<div :class="$style.footer">
-				<N8nButton
-					size="medium"
-					:disabled="!hasChanges || isApplying"
-					:loading="isApplying"
-					data-test-id="instance-ai-setup-panel-confirm"
-					@click="onConfirm"
-				>
-					{{ i18n.baseText(isComplete ? 'generic.update' : 'generic.confirm') }}
-				</N8nButton>
-			</div>
 		</template>
 	</div>
 </template>
@@ -239,16 +214,5 @@ useSetupPanelDocument({
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);
-}
-
-.footer {
-	display: flex;
-	justify-content: flex-end;
-}
-
-.singleField {
-	display: grid;
-	grid-template-columns: minmax(0, 1fr) auto;
-	align-items: end;
 }
 </style>

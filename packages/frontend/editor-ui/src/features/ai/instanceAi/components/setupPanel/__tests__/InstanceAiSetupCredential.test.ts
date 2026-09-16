@@ -213,6 +213,101 @@ describe('InstanceAiSetupCredential', () => {
 		await userEvent.click(await rendered.findByRole('menuitem', { name: label }));
 	}
 
+	it('offers per-node accounts only after a shared credential has been selected', async () => {
+		const view = renderComponent({ props: { allowPerNode: true } });
+		await userEvent.click(view.getByRole('button', { name: 'More options' }));
+		expect(
+			view.queryByRole('menuitem', { name: 'Set credentials per node' }),
+		).not.toBeInTheDocument();
+		await userEvent.keyboard('{Escape}');
+		await view.rerender({
+			node: {
+				...node,
+				credentials: { serviceApi: { id: savedCredential.id, name: savedCredential.name } },
+			},
+		});
+		await openMenu(view, 'Set credentials per node');
+		expect(view.emitted('setCredentialsPerNode')).toHaveLength(1);
+		expect(mockedStore(useCredentialsStore).createNewCredential).not.toHaveBeenCalled();
+	});
+
+	it('shows the form without an action spinner while its credential name loads', async () => {
+		const initialization = Promise.withResolvers<void>();
+		form.initialize.mockReturnValueOnce(initialization.promise);
+		const view = renderComponent({ global: { stubs: { CredentialInputs: false } } });
+		expect(view.getByLabelText('API key')).toBeVisible();
+		expect(view.getByRole('button', { name: 'Save' })).toBeDisabled();
+		expect(view.queryByText(/This workflow needs/)).not.toBeInTheDocument();
+		expect(view.getByRole('button', { name: 'Save' })).not.toHaveAttribute('aria-busy', 'true');
+		initialization.resolve();
+		await flushPromises();
+	});
+
+	it('keeps the default GitHub server and saves its two empty fields inline', async () => {
+		form.credentialProperties.value = [
+			{
+				name: 'server',
+				displayName: 'GitHub Server',
+				type: 'string',
+				default: 'https://api.github.com',
+			},
+			{ name: 'user', displayName: 'User', type: 'string', default: '' },
+			{
+				name: 'accessToken',
+				displayName: 'Access Token',
+				type: 'string',
+				default: '',
+				typeOptions: { password: true },
+			},
+		];
+		form.credentialData.value = {
+			server: 'https://api.github.com',
+			apiKey: 'fixture-required-value',
+		};
+		const store = mockedStore(useCredentialsStore);
+		store.createNewCredential.mockResolvedValue(savedCredential);
+		const view = renderComponent({ global: { stubs: { CredentialInputs: false } } });
+		await flushPromises();
+		expect(view.queryByLabelText('GitHub Server')).not.toBeInTheDocument();
+		await fireEvent.update(view.getByLabelText('User'), 'example-user');
+		await fireEvent.update(view.getByLabelText('Access Token'), 'example-token');
+		await fireEvent.click(view.getByRole('button', { name: 'Save' }));
+		await flushPromises();
+		expect(store.createNewCredential).toHaveBeenCalledWith(
+			expect.objectContaining({
+				data: expect.objectContaining({
+					server: 'https://api.github.com',
+					user: 'example-user',
+					accessToken: 'example-token',
+				}),
+			}),
+			'workflow-project',
+			undefined,
+			{ skipStoreUpdate: true },
+		);
+		expect(mockedStore(useUIStore).openNewCredential).not.toHaveBeenCalled();
+	});
+
+	it('includes visible OAuth fields and instance availability in its help request', async () => {
+		mocks.isOAuth.mockReturnValue(true);
+		form.credentialProperties.value = [
+			{ name: 'clientId', displayName: 'Client ID', type: 'string', default: '', required: true },
+			{
+				name: 'clientSecret',
+				displayName: 'Client Secret',
+				type: 'string',
+				default: '',
+				required: true,
+			},
+		];
+		const view = renderComponent();
+		await fireEvent.click(view.getByRole('button', { name: 'Help me set this up' }));
+		expect(view.emitted<[unknown]>('askForHelp')?.[0]?.[0]).toMatchObject({
+			setupContext:
+				"The OAuth form asks for: Client ID, Client Secret. Managed OAuth isn't available on this instance. Help me configure my own OAuth app.",
+		});
+	});
+
 	it.each([1, 2])(
 		'saves %s inline inputs when legacy metadata omits required flags',
 		async (count) => {

@@ -142,6 +142,32 @@ describe('useSetupPanelState', () => {
 		expect(state.rows.value).toEqual([]);
 	});
 
+	it('keeps a recipe omitted from a later snapshot only while its workflow node remains', () => {
+		const item: InstanceAiSetupItem = {
+			id: `${WORKFLOW_ID}:credential:httpTemplatedCustomAuth:Fetch notes`,
+			kind: 'credential',
+			credentialType: 'httpTemplatedCustomAuth',
+			nodeBindings: [{ nodeName: 'Fetch notes' }],
+		};
+		const setupHint = {
+			template: { headers: { Authorization: 'Bearer {{api_key}}' } },
+			placeholders: [{ name: 'api_key', title: 'API key' }],
+			suggestedName: 'Notes service',
+		};
+		const { state, thread, derived } = createHarness({
+			agentEditing: true,
+			workflowAvailable: true,
+			eventItems: [{ ...item, setupHint }],
+			derivedItems: [item],
+		});
+		thread.setupItemsByWorkflowId[WORKFLOW_ID] = [item];
+		expect(state.rows.value[0].item).toMatchObject({ setupHint });
+		thread.setupItemsByWorkflowId[WORKFLOW_ID] = [];
+		expect(state.rows.value[0].item).toMatchObject({ setupHint });
+		derived.value = [];
+		expect(state.rows.value).toEqual([]);
+	});
+
 	it('does not share a generic credential recipe or binding with another node', () => {
 		const announcement: InstanceAiSetupItem = {
 			id: `${WORKFLOW_ID}:credential:httpTemplatedCustomAuth:First service`,

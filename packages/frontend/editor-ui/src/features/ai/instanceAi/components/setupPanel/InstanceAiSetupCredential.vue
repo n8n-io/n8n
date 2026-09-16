@@ -6,6 +6,7 @@ import {
 	N8nButton,
 	N8nCallout,
 	N8nCopyInput,
+	N8nDropdownMenu,
 	N8nIcon,
 	N8nSegmentControl,
 	N8nSetupConnection,
@@ -59,11 +60,14 @@ const props = defineProps<{
 	projectId: string;
 	/** Whether the assistant is busy with another request. */
 	helpDisabled?: boolean;
+	/** Allow the shared account to be configured separately for each node. */
+	allowPerNode?: boolean;
 }>();
 const emit = defineEmits<{
 	bindCredential: [item: SetupCredentialItem, credentialId: string];
 	connectStarted: [method: SetupPanelConnectionMethod];
 	askForHelp: [credential: InstanceAiCredentialContext];
+	setCredentialsPerNode: [];
 	'update:busy': [value: boolean];
 	'update:hasChanges': [value: boolean];
 }>();
@@ -216,15 +220,11 @@ const inlineFields = computed(() => {
 	);
 	const required = fields.filter((property) => property.required);
 	// Older credential definitions can omit required flags even for access tokens.
-	if (required.length === 0 && !isOAuth.value && fields.length <= 2) return fields;
-	return required;
+	const inputs = required.length ? required : fields.filter((property) => !property.default);
+	return inputs.length <= 2 ? inputs : [];
 });
 const useAdvancedForm = computed(
-	() =>
-		!isOAuth.value &&
-		!isTemplated.value &&
-		!canQuickConnect.value &&
-		inlineFields.value.length === 0,
+	() => !isTemplated.value && !canQuickConnect.value && inlineFields.value.length === 0,
 );
 const fieldTitles = computed(() =>
 	isTemplated.value
@@ -269,6 +269,7 @@ const actionLabel = computed(() =>
 const actionDisabled = computed(
 	() =>
 		!initialized.value ||
+		(isTemplated.value && fieldTitles.value.length === 0) ||
 		(!useCredits.value &&
 			!canQuickConnect.value &&
 			!useAdvancedForm.value &&
@@ -290,6 +291,11 @@ const modeOptions = computed<Array<{ value: 'credits' | 'own'; label: string }>>
 	{ value: 'credits', label: i18n.baseText('generic.n8nCredits') },
 	{ value: 'own', label: i18n.baseText('instanceAi.setupPanel.useOwnKey') },
 ]);
+const perNodeActions = computed<DropdownMenuItemProps[]>(() =>
+	props.allowPerNode && connected.value
+		? [{ id: 'per-node', label: i18n.baseText('instanceAi.setupPanel.setCredentialsPerNode') }]
+		: [],
+);
 const actions = computed<DropdownMenuItemProps[]>(() => {
 	const existing = usableCredentials.value.some(
 		(credential) => !connected.value || credential.id !== binding.value?.id,
@@ -301,6 +307,7 @@ const actions = computed<DropdownMenuItemProps[]>(() => {
 		return [
 			{ id: 'replace', label: i18n.baseText('instanceAi.setupPanel.useOwnKey') },
 			{ id: 'manage', label: i18n.baseText('instanceAi.setupPanel.manageCredits') },
+			...perNodeActions.value,
 		];
 	const items: DropdownMenuItemProps[] = connected.value
 		? [
@@ -317,7 +324,7 @@ const actions = computed<DropdownMenuItemProps[]>(() => {
 				{ id: 'edit', label: i18n.baseText('instanceAi.setupPanel.editCredential') },
 			]
 		: [{ id: 'advanced', label: i18n.baseText('instanceAi.setupPanel.advancedSetup') }];
-	return [...items, ...existing];
+	return [...items, ...existing, ...perNodeActions.value];
 });
 
 const helpLabel = computed(() => {
@@ -341,6 +348,22 @@ function askForHelp() {
 		placeholderTitles: isOAuth.value ? undefined : fieldTitles.value,
 		documentationUrl: documentationUrl.value || undefined,
 		oauthRedirectUrl: isOAuth.value ? redirectUrl.value : undefined,
+		setupContext: isOAuth.value
+			? [
+					fieldTitles.value.length
+						? i18n.baseText('instanceAi.setupPanel.helpVisibleFields', {
+								interpolate: { fields: fieldTitles.value.join(', ') },
+							})
+						: '',
+					i18n.baseText(
+						canQuickConnect.value
+							? 'instanceAi.setupPanel.helpManagedOAuthAvailable'
+							: 'instanceAi.setupPanel.helpManagedOAuthUnavailable',
+					),
+				]
+					.filter(Boolean)
+					.join(' ')
+			: undefined,
 	});
 }
 
@@ -420,6 +443,8 @@ async function connect() {
 		if (useCredits.value) {
 			emit('connectStarted', 'gateway');
 			emitBinding(AI_GATEWAY_MANAGED_TAG);
+		} else if (useAdvancedForm.value) {
+			onMenuAction('advanced');
 		} else if (isOAuth.value) {
 			emit('connectStarted', 'oauth');
 			const submittedData = canQuickConnect.value ? undefined : deepCopy(formData());
@@ -445,8 +470,6 @@ async function connect() {
 				workflowId: props.workflowId,
 			});
 			if (credential) emitBinding(credential.id);
-		} else if (useAdvancedForm.value) {
-			onMenuAction('advanced');
 		} else {
 			emit('connectStarted', 'api_key');
 			await saveKey();
@@ -459,6 +482,10 @@ async function connect() {
 }
 
 function onMenuAction(id: string) {
+	if (id === 'per-node') {
+		emit('setCredentialsPerNode');
+		return;
+	}
 	if (id === 'existing') {
 		chooseExisting.value = true;
 		return;
@@ -504,9 +531,9 @@ function onMenuAction(id: string) {
 
 async function initialize() {
 	initializationFailed.value = false;
-	busy.value = true;
 	try {
 		uiStore.activeCredentialType = props.item.credentialType;
+		const initialization = form.initialize();
 		const type = props.item.credentialType;
 		const locale = rootStore.defaultLocale;
 		if (locale !== 'en' && !i18n.exists(`n8n-nodes-base.credentials.${type}`)) {
@@ -515,18 +542,22 @@ async function initialize() {
 				.catch(() => undefined);
 			if (translation) addCredentialTranslation({ [type]: translation }, locale);
 		}
-		await form.initialize();
+		await initialization;
 		initialized.value = true;
 	} catch (error) {
 		initializationFailed.value = true;
 		if (active) toast.showError(error, i18n.baseText('instanceAi.setupPanel.connectionError'));
-	} finally {
-		busy.value = false;
 	}
 }
+if (connected.value) initialized.value = true;
+else void initialize();
+watch(
+	() => props.item.setupHint,
+	(hint) => {
+		if (hint && !connected.value) void initialize();
+	},
+);
 onMounted(() => {
-	if (connected.value) initialized.value = true;
-	else void initialize();
 	void Promise.all([gateway.fetchConfig(), gateway.fetchWallet()]).catch(() => {});
 });
 onScopeDispose(() => {
@@ -543,6 +574,7 @@ onScopeDispose(() => {
 		<template v-if="showExistingPicker">
 			<NodeCredentials
 				v-if="node"
+				:class="$style.existing"
 				:node="node"
 				:override-cred-type="item.credentialType"
 				:project-id="projectId"
@@ -555,7 +587,28 @@ onScopeDispose(() => {
 				@credential-selected="onCredentialSelected"
 				@connection-started="emit('connectStarted', 'oauth')"
 				@connection-completed="emitBinding($event)"
-			/>
+			>
+				<template v-if="perNodeActions.length" #label-postfix>
+					<N8nDropdownMenu
+						:items="perNodeActions"
+						:modal="false"
+						placement="bottom-end"
+						@select="onMenuAction"
+					>
+						<template #trigger>
+							<N8nButton
+								variant="ghost"
+								size="xsmall"
+								icon-only
+								:disabled="busy"
+								:aria-label="i18n.baseText('node.moreActions')"
+							>
+								<N8nIcon icon="pencil" size="small" />
+							</N8nButton>
+						</template>
+					</N8nDropdownMenu>
+				</template>
+			</NodeCredentials>
 			<CredentialsDropdown
 				v-else
 				teleported
@@ -615,6 +668,7 @@ onScopeDispose(() => {
 					v-else-if="!useCredits"
 					variant="ghost"
 					size="small"
+					:class="$style.help"
 					:disabled="helpDisabled || busy"
 					@click="askForHelp"
 				>
@@ -622,14 +676,7 @@ onScopeDispose(() => {
 					{{ helpLabel }}
 				</N8nButton>
 			</template>
-			<template v-if="initialized && !useCredits && !canQuickConnect">
-				<N8nText size="small" :class="$style.hint">
-					{{
-						i18n.baseText('instanceAi.setupPanel.accessDescription', {
-							interpolate: { service: serviceName },
-						})
-					}}
-				</N8nText>
+			<template v-if="!useCredits && !canQuickConnect && !useAdvancedForm">
 				<label v-if="isOAuth && redirectUrl" :class="$style.redirect">
 					{{ i18n.baseText('instanceAi.setupPanel.redirectUrl') }}
 					<N8nCopyInput
@@ -641,6 +688,7 @@ onScopeDispose(() => {
 				</label>
 				<TemplatedAuthSimpleView
 					v-if="isTemplated"
+					compact
 					:credential-data="form.credentialData.value"
 					@update="onDataChange"
 				/>
@@ -680,6 +728,14 @@ onScopeDispose(() => {
 
 .hint {
 	color: var(--text-color--subtle);
+}
+
+.help {
+	padding-inline: 0;
+}
+
+.form .existing {
+	margin-top: 0;
 }
 
 .redirectInput {

@@ -147,27 +147,37 @@ const SetupCredentialStub = defineComponent({
 		node: Object as PropType<INodeUi>,
 		workflowId: String,
 		projectId: String,
+		allowPerNode: Boolean,
 	},
-	emits: ['bindCredential'],
+	emits: ['bindCredential', 'setCredentialsPerNode'],
 	setup(props, { emit }) {
 		return () =>
 			props.node
-				? h(NodeCredentialsStub, {
-						node: props.node,
-						overrideCredType: props.item.credentialType,
-						credentialSetupHint: props.item.setupHint,
-						workflowId: props.workflowId,
-						projectId: props.projectId,
-						skipAutoSelect: true,
-						onCredentialSelected: (update: {
-							properties: { credentials: Record<string, { id: string }> };
-						}) =>
-							emit(
-								'bindCredential',
-								props.item,
-								update.properties.credentials[props.item.credentialType].id,
-							),
-					})
+				? h('div', [
+						props.allowPerNode
+							? h(
+									'button',
+									{ onClick: () => emit('setCredentialsPerNode') },
+									'Set credentials per node',
+								)
+							: null,
+						h(NodeCredentialsStub, {
+							node: props.node,
+							overrideCredType: props.item.credentialType,
+							credentialSetupHint: props.item.setupHint,
+							workflowId: props.workflowId,
+							projectId: props.projectId,
+							skipAutoSelect: true,
+							onCredentialSelected: (update: {
+								properties: { credentials: Record<string, { id: string }> };
+							}) =>
+								emit(
+									'bindCredential',
+									props.item,
+									update.properties.credentials[props.item.credentialType].id,
+								),
+						}),
+					])
 				: null;
 	},
 });
@@ -344,6 +354,68 @@ describe('InstanceAiSetupPanel interactions', () => {
 		await fireEvent.click(await rendered.findByRole('button', { name: /Slack/ }));
 		return rendered;
 	}
+
+	it('preserves drafts when splitting a shared account and saves both nodes with one Confirm', async () => {
+		saved.nodes[0].credentials = { slackApi: { id: 'cred-1', name: 'First account' } };
+		saved.nodes.push({
+			...deepCopy(saved.nodes[0]),
+			id: 'second-node',
+			name: 'Second notification',
+		});
+		const view = await openParameters();
+		const channels = view.getAllByLabelText('Channel');
+		await fireEvent.update(channels[0], 'first-channel');
+		await fireEvent.update(channels[1], 'second-channel');
+		expect(view.getAllByLabelText('Account')).toHaveLength(1);
+		await fireEvent.click(view.getByRole('button', { name: 'Set credentials per node' }));
+		expect(updateWorkflow).not.toHaveBeenCalled();
+		expect(
+			view.getAllByLabelText('Channel').map((input) => (input as HTMLInputElement).value),
+		).toEqual(['first-channel', 'second-channel']);
+		const accounts = view.getAllByLabelText('Account');
+		expect(accounts).toHaveLength(2);
+		await fireEvent.update(accounts[1], 'cred-2');
+		await flushPromises();
+		expect(saved.nodes.map((node) => node.credentials?.slackApi.id)).toEqual(['cred-1', 'cred-2']);
+		updateWorkflow.mockClear();
+		expect(view.getAllByRole('button', { name: 'Confirm' })).toHaveLength(1);
+		await fireEvent.click(view.getByRole('button', { name: 'Confirm' }));
+		await flushPromises();
+		expect(updateWorkflow).toHaveBeenCalledTimes(1);
+		expect(saved.nodes.map((node) => node.parameters.channel)).toEqual([
+			'first-channel',
+			'second-channel',
+		]);
+	});
+
+	it('opens existing different accounts per node and preserves all drafts after a failed batch', async () => {
+		saved.nodes.push({
+			...deepCopy(saved.nodes[0]),
+			id: 'second-node',
+			name: 'Second notification',
+			credentials: { slackApi: { id: 'cred-2', name: 'Second account' } },
+		});
+		const view = await openParameters();
+		expect(
+			view.getAllByLabelText('Account').map((input) => (input as HTMLSelectElement).value),
+		).toEqual(['cred-1', 'cred-2']);
+		const channels = view.getAllByLabelText('Channel');
+		await fireEvent.update(channels[0], 'first-channel');
+		await fireEvent.update(channels[1], 'second-channel');
+		updateWorkflow.mockRejectedValueOnce(new Error('offline'));
+		await fireEvent.click(view.getByRole('button', { name: 'Confirm' }));
+		await flushPromises();
+		expect(saved.nodes.map((node) => node.parameters.channel)).toEqual(['', '']);
+		expect(
+			view.getAllByLabelText('Channel').map((input) => (input as HTMLInputElement).value),
+		).toEqual(['first-channel', 'second-channel']);
+		await fireEvent.click(view.getByRole('button', { name: 'Confirm' }));
+		await flushPromises();
+		expect(saved.nodes.map((node) => node.parameters.channel)).toEqual([
+			'first-channel',
+			'second-channel',
+		]);
+	});
 
 	it('holds confirmed fields briefly, then preserves the completed review when an edit is saved', async () => {
 		const defaultMatchMedia = window.matchMedia;

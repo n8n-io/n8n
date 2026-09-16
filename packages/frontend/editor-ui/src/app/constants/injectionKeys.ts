@@ -31,6 +31,8 @@ export const ExecutionDataStoreKey: InjectionKey<
 // derived from it via injectWorkflowExecutionStateStore(), so a subtree's
 // document scope and execution scope can never diverge.
 export const CanvasRenderDataKey: InjectionKey<Ref<CanvasRenderData>> = Symbol('CanvasRenderData');
+/** Keep setup hints compact while retaining their full text on the field. */
+export const CompactParameterHintsKey: InjectionKey<boolean> = Symbol('CompactParameterHints');
 /**
  * Opts resource-locator dropdowns into teleporting to `<body>`. Defaults to
  * `false` (stay in the local stacking context, e.g. inside the NDV dialog).

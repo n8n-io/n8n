@@ -693,6 +693,9 @@ watch(
 
 // --- Scroll management ---
 const scrollableRef = useTemplateRef<HTMLElement>('scrollable');
+const messageListRef = useTemplateRef<HTMLElement>('messageList');
+const inputDockRef = useTemplateRef<HTMLElement>('inputDock');
+const setupOverlapHeight = ref(0);
 // The actual scroll container is the reka-ui viewport inside N8nScrollArea,
 // NOT the immediate parent (which is a non-scrolling content wrapper).
 const scrollContainerRef = computed(
@@ -728,16 +731,19 @@ function scrollToBottom(smooth = false) {
 let contentResizeObserver: ResizeObserver | null = null;
 
 watch(
-	scrollableRef,
-	(el) => {
+	[messageListRef, inputDockRef],
+	(elements) => {
 		contentResizeObserver?.disconnect();
-		if (el) {
+		if (elements.some(Boolean)) {
 			contentResizeObserver = new ResizeObserver(() => {
 				if (!userScrolledUp.value) {
 					scrollToBottom();
 				}
 			});
-			contentResizeObserver.observe(el);
+			// Extra setup clearance changes the scroll range without moving the messages.
+			for (const element of elements) {
+				if (element) contentResizeObserver.observe(element);
+			}
 		}
 	},
 	{ immediate: true },
@@ -1319,8 +1325,12 @@ async function dismissComposerContextChip() {
 			>
 				<div :class="$style.chatContent">
 					<N8nScrollArea as-child type="auto" :class="$style.scrollArea">
-						<div ref="scrollable" :class="$style.scrollContent">
-							<div :class="$style.messageList">
+						<div
+							ref="scrollable"
+							:class="$style.scrollContent"
+							:style="{ overflowAnchor: setupPanelWorkflowId ? 'none' : undefined }"
+						>
+							<div ref="messageList" :class="$style.messageList">
 								<TransitionGroup name="message-slide">
 									<InstanceAiMessage
 										v-for="message in displayedMessages"
@@ -1374,7 +1384,12 @@ async function dismissComposerContextChip() {
 								 anchored above the slot in both states. The leaving child is
 								 positioned absolutely during the cross-fade so the in-flow child
 								 can size the slot to its natural height. -->
-							<div :class="$style.inputDock">
+							<div
+								v-if="setupOverlapHeight"
+								:style="{ minHeight: `${setupOverlapHeight}px` }"
+								data-test-id="setup-scroll-clearance"
+							/>
+							<div ref="inputDock" :class="$style.inputDock">
 								<!-- Scroll to bottom button -->
 								<div :class="$style.scrollButtonContainer">
 									<Transition name="scroll-button-fade">
@@ -1410,6 +1425,7 @@ async function dismissComposerContextChip() {
 											v-if="setupPanelWorkflowId"
 											:workflow-id="setupPanelWorkflowId"
 											:project-id="setupPanelProjectId"
+											@update:overlap-height="setupOverlapHeight = $event"
 										/>
 										<div :class="$style.inputSwap">
 											<Transition name="input-swap">

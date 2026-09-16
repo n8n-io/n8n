@@ -8,7 +8,7 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 
 import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
 import { mockedStore } from '@/__tests__/utils';
-import type { IWorkflowDb } from '@/Interface';
+import type { INodeUi, IWorkflowDb } from '@/Interface';
 import { getWorkflow } from '@/app/api/workflows';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -90,6 +90,36 @@ function createHarness(
 }
 
 describe('useSetupPanelActions', () => {
+	it('keeps a per-node selection visible while a shared and per-node bind drain together', async () => {
+		const { actions, building, updateWorkflow } = createHarness({ agentBuilding: true });
+		const shared = {
+			...credentialItem,
+			nodeBindings: [{ nodeName: 'Slack' }, { nodeName: 'Second' }],
+		};
+		const second = {
+			...credentialItem,
+			id: `${credentialItem.id}:Second`,
+			nodeBindings: [{ nodeName: 'Second' }],
+		};
+		const secondCredential = { id: 'cred-2', name: 'Second account' };
+		await actions.bindCredential(shared, credential);
+		await actions.bindCredential(second, secondCredential);
+		expect(actions.getPendingCredential(shared.id, 'Second')).toEqual(secondCredential);
+		vi.mocked(getWorkflow).mockImplementation(async () => {
+			expect(actions.getPendingCredential(shared.id, 'Slack')).toEqual(credential);
+			expect(actions.getPendingCredential(shared.id, 'Second')).toEqual(secondCredential);
+			return makeWorkflow({
+				nodes: [createTestNode({ name: 'Slack' }), createTestNode({ name: 'Second' })],
+			});
+		});
+		building.value = false;
+		await expect(actions.flushPendingApplies()).resolves.toBe('applied');
+		expect(updateWorkflow).toHaveBeenCalledTimes(1);
+		expect(
+			updateWorkflow.mock.calls[0][1].nodes.map((node: INodeUi) => node.credentials?.slackApi),
+		).toEqual([credential, secondCredential]);
+	});
+
 	it.each([false, true])('tracks a draining write until it settles, failed: %s', async (failed) => {
 		const { actions, building } = createHarness({ agentBuilding: true });
 		await actions.bindCredential(credentialItem, credential);

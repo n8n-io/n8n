@@ -56,6 +56,12 @@ interface ParameterApply {
 	changes: SetupParameterChange[];
 }
 
+export interface SetupParameterSubmission {
+	nodeName: string;
+	values: INodeParameters;
+	baseline: INodeParameters;
+}
+
 interface NodesDelta {
 	credentialBinds: CredentialBind[];
 	parameterApplies: ParameterApply[];
@@ -156,13 +162,16 @@ export function useSetupPanelActions(options: {
 		() => pendingCredentialBinds.size + pendingParameterApplies.size,
 	);
 
-	function getPendingCredential(itemId: string): SetupCredentialRef | undefined {
+	function getPendingCredential(itemId: string, nodeName?: string): SetupCredentialRef | undefined {
 		const workflowId = toValue(options.workflowId);
-		const queued = pendingCredentialBinds.get(itemId);
+		const scopedId = nodeName ? `${itemId}:${nodeName}` : itemId;
+		const queued = pendingCredentialBinds.get(scopedId) ?? pendingCredentialBinds.get(itemId);
 		if (queuedWorkflowId === workflowId && queued) return queued.credential;
 		for (const [delta, targetId] of [...applyingDeltas].reverse()) {
 			if (targetId !== workflowId) continue;
-			const bind = delta.credentialBinds.find(({ item }) => item.id === itemId);
+			const bind =
+				delta.credentialBinds.find(({ item }) => item.id === scopedId) ??
+				delta.credentialBinds.find(({ item }) => item.id === itemId);
 			if (bind) return bind.credential;
 		}
 		return undefined;
@@ -432,18 +441,30 @@ export function useSetupPanelActions(options: {
 		values: INodeParameters,
 		baseline: INodeParameters = {},
 	): Promise<SetupPanelApplyResult> {
-		const changes = getSetupParameterChanges(baseline, { ...baseline, ...values });
+		return await applyParameterBatch([{ nodeName, values, baseline }]);
+	}
+
+	/** Confirm all visible node fields in one guarded workflow update. */
+	async function applyParameterBatch(
+		submissions: SetupParameterSubmission[],
+	): Promise<SetupPanelApplyResult> {
+		const parameterApplies = submissions.map(({ nodeName, values, baseline }) => ({
+			nodeName,
+			changes: getSetupParameterChanges(baseline, { ...baseline, ...values }),
+		}));
 		if (toValue(options.isAgentBuilding)) {
 			queuedWorkflowId = toValue(options.workflowId);
-			const existing = pendingParameterApplies.get(nodeName) ?? [];
-			pendingParameterApplies.set(nodeName, mergeSetupParameterChanges(existing, changes));
+			for (const { nodeName, changes } of parameterApplies) {
+				const existing = pendingParameterApplies.get(nodeName) ?? [];
+				pendingParameterApplies.set(nodeName, mergeSetupParameterChanges(existing, changes));
+			}
 			return 'queued';
 		}
 		const workflowId = toValue(options.workflowId);
 		if (!workflowId) return 'error';
 		return await patchWorkflowNodes(workflowId, {
 			credentialBinds: [],
-			parameterApplies: [{ nodeName, changes }],
+			parameterApplies,
 		});
 	}
 
@@ -500,6 +521,7 @@ export function useSetupPanelActions(options: {
 	return {
 		bindCredential,
 		applyParameterValues,
+		applyParameterBatch,
 		flushPendingApplies,
 		pendingApplyCount,
 		getPendingCredential,

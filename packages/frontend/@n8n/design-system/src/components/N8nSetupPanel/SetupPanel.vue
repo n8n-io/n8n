@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, useId, useTemplateRef, watch } from 'vue';
+import { computed, nextTick, onScopeDispose, ref, useId, useTemplateRef, watch } from 'vue';
+import { useElementSize } from '@vueuse/core';
 
 import { useI18n } from '../../composables/useI18n';
 import N8nButton from '../N8nButton';
@@ -11,6 +12,7 @@ const emit = defineEmits<{
 	'update:activeItemId': [id: string | undefined];
 	detailClosed: [];
 	execute: [];
+	'update:overlapHeight': [height: number];
 }>();
 const { t } = useI18n();
 const activeItem = computed(() =>
@@ -20,6 +22,16 @@ const activeItem = computed(() =>
 );
 const panel = useTemplateRef<HTMLElement>('panel');
 const overlay = useTemplateRef<HTMLElement>('overlay');
+const base = useTemplateRef<HTMLElement>('base');
+const { height: baseHeight } = useElementSize(base);
+const { height: overlayHeight } = useElementSize(overlay);
+watch([baseHeight, overlayHeight, activeItem], () => {
+	emit(
+		'update:overlapHeight',
+		activeItem.value ? Math.max(0, overlayHeight.value - baseHeight.value) : 0,
+	);
+});
+onScopeDispose(() => emit('update:overlapHeight', 0));
 
 function deactivateOverlay(element: Element) {
 	element.setAttribute('inert', '');
@@ -57,12 +69,13 @@ watch(
 	() => activeItem.value?.id,
 	async (id, previousId) => {
 		await nextTick();
-		if (id) overlay.value?.querySelector<HTMLButtonElement>('button')?.focus();
+		if (id)
+			overlay.value?.querySelector<HTMLButtonElement>('button')?.focus({ preventScroll: true });
 		else if (previousId) {
 			if (!showChecklist.value) {
 				panel.value
 					?.querySelector<HTMLButtonElement>('[data-test-id="setup-panel-review"]')
-					?.focus();
+					?.focus({ preventScroll: true });
 				return;
 			}
 			const buttons = Array.from(
@@ -74,7 +87,7 @@ watch(
 				buttons.find((button) => button.dataset.setupItemId === previousId) ??
 				buttons[0] ??
 				panel.value?.querySelector<HTMLButtonElement>('button:not(:disabled)')
-			)?.focus();
+			)?.focus({ preventScroll: true });
 		}
 	},
 );
@@ -87,7 +100,7 @@ watch(
 		:class="$style.panel"
 		:aria-label="t('setupPanel.label')"
 	>
-		<div :class="[$style.base, { [$style.hidden]: activeItem }]">
+		<div ref="base" :class="[$style.base, { [$style.hidden]: activeItem }]">
 			<div
 				v-if="showTerminal"
 				:class="$style.terminal"
@@ -237,8 +250,6 @@ watch(
 .overlay {
 	--animation--popover-in--scale: 0.7;
 
-	// Reserve the taller card's height so the chat can scroll above it.
-	grid-area: 1 / 1;
 	align-self: end;
 }
 
@@ -305,7 +316,9 @@ watch(
 }
 
 .overlay {
-	position: relative;
+	position: absolute;
+	inset-inline: 0;
+	bottom: 0;
 	z-index: 1;
 	box-sizing: content-box;
 	max-height: 60vh;

@@ -1,5 +1,13 @@
 <script lang="ts" setup>
-import { computed, onScopeDispose, provide, ref, shallowReactive, watch } from 'vue';
+import {
+	computed,
+	onScopeDispose,
+	provide,
+	ref,
+	shallowReactive,
+	useTemplateRef,
+	watch,
+} from 'vue';
 import { useLocalStorage, usePreferredReducedMotion, useTimeoutFn } from '@vueuse/core';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -12,7 +20,6 @@ import {
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
-import type { INodeParameters } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import {
 	LOCAL_STORAGE_INSTANCE_AI_SETUP_ITEMS,
@@ -55,6 +62,9 @@ const props = defineProps<{
 	/** Workflow selected from an artifact or an early setup announcement. */
 	workflowId: string;
 	projectId?: string;
+}>();
+const emit = defineEmits<{
+	'update:overlapHeight': [height: number];
 }>();
 
 // Resource menus must escape the scrollable card and the composer beneath it.
@@ -146,7 +156,7 @@ function getNodeByName(name: string, includePendingParameters = true): INodeUi |
 			!item.nodeBindings?.some((binding) => binding.nodeName === name)
 		)
 			continue;
-		const pending = actions.getPendingCredential(item.id);
+		const pending = actions.getPendingCredential(item.id, name);
 		if (pending) credentials = { ...credentials, [item.credentialType]: pending };
 	}
 	const changes = includePendingParameters ? actions.getPendingParameterChanges(name) : [];
@@ -164,8 +174,12 @@ function getNodeByName(name: string, includePendingParameters = true): INodeUi |
 const displayedRows = computed(() =>
 	rows.value.map((row) => {
 		if (row.item.kind === 'credential') {
-			const pending = actions.getPendingCredential(row.item.id);
-			return pending ? { ...row, isDone: isCredentialConfigured(pending) } : row;
+			const pending =
+				actions.getPendingCredential(row.item.id) ||
+				row.item.nodeBindings?.some(({ nodeName }) =>
+					actions.getPendingCredential(row.item.id, nodeName),
+				);
+			return pending ? { ...row, isDone: isItemDone(row.item, getNodeByName) } : row;
 		}
 		return actions.getPendingParameterChanges(row.item.nodeName).length
 			? { ...row, isDone: isItemDone(row.item, getNodeByName) }
@@ -252,15 +266,6 @@ const panelTelemetry = useSetupPanelTelemetry({
 const selectedGroup = computed(() =>
 	groups.value.find((group) => group.id === selectedItemId.value),
 );
-const pendingCredential = computed(() => {
-	const item = selectedGroup.value?.credential?.item;
-	return item ? actions.getPendingCredential(item.id) : undefined;
-});
-const selectedNode = computed(() => {
-	const item = selectedGroup.value?.credential?.item;
-	const name = item?.nodeBindings?.find((binding) => getNodeByName(binding.nodeName))?.nodeName;
-	return name ? getNodeByName(name) : undefined;
-});
 const selectedNodes = computed(() =>
 	(selectedGroup.value?.credential?.item.nodeBindings ?? []).flatMap((binding) => {
 		const node = getNodeByName(binding.nodeName);
@@ -358,7 +363,6 @@ const parameterEditors = computed(() =>
 					{
 						item: row.item,
 						node,
-						isComplete: row.isDone,
 						pendingChanges: actions.getPendingParameterChanges(row.item.nodeName),
 					},
 				]
@@ -366,11 +370,79 @@ const parameterEditors = computed(() =>
 	}),
 );
 
+const perNodeGroups = shallowReactive(new Set<string>());
+const perNodeCredentials = computed(() => {
+	const group = selectedGroup.value;
+	if (!group?.credential || selectedNodes.value.length < 2) return false;
+	if (perNodeGroups.has(group.id)) return true;
+	const type = group.credential.item.credentialType;
+	return (
+		new Set(
+			selectedNodes.value.map((node) => {
+				const credential = node.credentials?.[type];
+				return credential?.__aiGatewayManaged ? AI_GATEWAY_MANAGED_TAG : credential?.id;
+			}),
+		).size > 1
+	);
+});
+const detailSections = computed(() => {
+	const group = selectedGroup.value;
+	if (!group) return [];
+	const credential = group.credential?.item;
+	const editors = parameterEditors.value;
+	const nodes = credential ? selectedNodes.value : editors.map((editor) => editor.node);
+	return [
+		...(credential && !perNodeCredentials.value
+			? [
+					{
+						id: group.id,
+						title: undefined,
+						credential,
+						nodes: selectedNodes.value,
+						editors: [],
+						showParameters: false,
+					},
+				]
+			: []),
+		...nodes
+			.filter(
+				(node) =>
+					perNodeCredentials.value || editors.some((editor) => editor.node.name === node.name),
+			)
+			.map((node) => ({
+				id: `node:${node.name}`,
+				title: nodes.length > 1 ? node.name : undefined,
+				credential:
+					credential && perNodeCredentials.value
+						? {
+								...credential,
+								id: `${credential.id}:${node.name}`,
+								nodeBindings: [{ nodeName: node.name }],
+							}
+						: undefined,
+				nodes: [node],
+				editors: editors.filter((editor) => editor.node.name === node.name),
+				showParameters:
+					credential && perNodeCredentials.value
+						? isCredentialConfigured(node.credentials?.[credential.credentialType])
+						: !group.credential || group.credential.isDone,
+			})),
+	];
+});
+const parameterEditorComponents = useTemplateRef<
+	Array<InstanceType<typeof InstanceAiSetupPanelDetail>>
+>('parameterEditorComponents');
+const showParameterConfirm = computed(() =>
+	detailSections.value.some((section) => section.showParameters && section.editors.length > 0),
+);
+
 // --- Apply paths (T6 actions; row done-ness re-derives after each write) ---
 
 const isApplying = ref(false);
-const credentialBusy = ref(false);
-const credentialHasChanges = ref(false);
+const busyCredentials = shallowReactive(new Set<string>());
+const dirtyCredentials = shallowReactive(new Set<string>());
+const credentialBusy = computed(() => busyCredentials.size > 0);
+const credentialHasChanges = computed(() => dirtyCredentials.size > 0);
 const dirtyParameters = shallowReactive(new Set<string>());
 const requestingExecution = execution.isRunning;
 const isChatBusy = computed(
@@ -420,8 +492,8 @@ const { start: scheduleReturn, stop: cancelReturn } = useTimeoutFn(
 );
 
 function clearDetailState() {
-	credentialBusy.value = false;
-	credentialHasChanges.value = false;
+	busyCredentials.clear();
+	dirtyCredentials.clear();
 	dirtyParameters.clear();
 }
 
@@ -560,7 +632,9 @@ async function notifyApplyResult(result: SetupPanelApplyResult) {
 
 async function onBindCredential(item: SetupCredentialItem, credentialId: string) {
 	const version =
-		selectedGroup.value?.credential?.item.id === item.id ? selectionVersion : undefined;
+		selectedGroup.value?.credential?.item.credentialType === item.credentialType
+			? selectionVersion
+			: undefined;
 	if (credentialId === AI_GATEWAY_MANAGED_TAG) {
 		const result = await actions.bindCredential(item, {
 			id: null,
@@ -584,17 +658,18 @@ async function onBindCredential(item: SetupCredentialItem, credentialId: string)
 	finishSubmission(result, version);
 }
 
-async function onApplyParameters(
-	nodeName: string,
-	values: INodeParameters,
-	baseline?: INodeParameters,
-) {
-	const version = selectedGroup.value?.parameters.some((row) => row.item.nodeName === nodeName)
-		? selectionVersion
-		: undefined;
+async function onConfirmParameters() {
+	if (isApplying.value || credentialBusy.value) return;
+	const editors = parameterEditorComponents.value ?? [];
+	const submissions = editors.flatMap((editor) => {
+		const submission = editor.getSubmission();
+		return submission ? [submission] : [];
+	});
+	if (!submissions.length) return;
+	const version = selectionVersion;
 	isApplying.value = true;
 	try {
-		const result = await actions.applyParameterValues(nodeName, values, baseline);
+		const result = await actions.applyParameterBatch(submissions);
 		await notifyApplyResult(result);
 		finishSubmission(result, version);
 	} finally {
@@ -614,6 +689,7 @@ async function onApplyParameters(
 		data-test-id="instance-ai-setup-panel"
 		@execute="onExecute"
 		@detail-closed="onDetailClosed"
+		@update:overlap-height="emit('update:overlapHeight', $event)"
 	>
 		<template #action="{ item }">
 			<N8nButton
@@ -641,68 +717,96 @@ async function onApplyParameters(
 		</template>
 		<template #detail="{ item }">
 			<div v-if="selectedGroup" :class="$style.detail">
-				<InstanceAiSetupCredential
-					v-if="selectedGroup.credential && credentialProjectId"
-					:key="selectedGroup.credential.item.id"
-					:item="selectedGroup.credential.item"
-					:node="selectedNode"
-					:pending-credential="pendingCredential"
-					:nodes="selectedNodes"
-					:workflow-id="workflowId"
-					:project-id="credentialProjectId"
-					:help-disabled="isChatBusy"
-					@ask-for-help="onAskForHelp"
-					@bind-credential="
-						(credential, id) => selectedItemId === item.id && onBindCredential(credential, id)
-					"
-					@update:busy="
-						(selectedItemId === item.id || (!selectedItemId && !$event)) &&
-						(credentialBusy = $event)
-					"
-					@update:has-changes="
-						(selectedItemId === item.id || (!selectedItemId && !$event)) &&
-						(credentialHasChanges = $event)
-					"
-					@connect-started="
-						selectedItemId === item.id &&
-						panelTelemetry.trackConnectionStarted(selectedGroup.credential.item, $event)
-					"
-				/>
-				<template v-if="!selectedGroup.credential || selectedGroup.credential.isDone">
-					<div v-for="editor in parameterEditors" :key="editor.item.id">
-						<N8nText v-if="parameterEditors.length > 1" size="small" bold>
-							{{ editor.node.name }}
-						</N8nText>
-						<InstanceAiSetupPanelDetail
-							:item="editor.item"
-							:node="editor.node"
-							:workflow-id="workflowId"
-							:project-id="credentialProjectId"
-							:is-applying="isApplying"
-							:is-complete="editor.isComplete"
-							:pending-changes="editor.pendingChanges"
-							@apply-parameters="
-								(name, values, baseline) =>
-									selectedItemId === item.id && onApplyParameters(name, values, baseline)
-							"
-							@update:has-changes="
-								(selectedItemId === item.id || (!selectedItemId && !$event)) &&
-								($event
-									? dirtyParameters.add(editor.item.id)
-									: dirtyParameters.delete(editor.item.id))
-							"
-						/>
-					</div>
-				</template>
+				<section
+					v-for="section in detailSections"
+					:key="section.id"
+					:class="[$style.section, { [$style.divided]: section.title }]"
+				>
+					<N8nText v-if="section.title" tag="h3" size="medium" bold :class="$style.sectionTitle">{{
+						section.title
+					}}</N8nText>
+					<InstanceAiSetupCredential
+						v-if="section.credential && credentialProjectId"
+						:key="section.credential.id"
+						:item="section.credential"
+						:node="section.nodes[0]"
+						:pending-credential="actions.getPendingCredential(section.credential.id)"
+						:nodes="section.nodes"
+						:workflow-id="workflowId"
+						:project-id="credentialProjectId"
+						:help-disabled="isChatBusy"
+						:allow-per-node="!perNodeCredentials && selectedNodes.length > 1"
+						@set-credentials-per-node="perNodeGroups.add(item.id)"
+						@ask-for-help="onAskForHelp"
+						@bind-credential="
+							(credential, id) => selectedItemId === item.id && onBindCredential(credential, id)
+						"
+						@update:busy="
+							(selectedItemId === item.id || (!selectedItemId && !$event)) &&
+							($event ? busyCredentials.add(section.id) : busyCredentials.delete(section.id))
+						"
+						@update:has-changes="
+							(selectedItemId === item.id || (!selectedItemId && !$event)) &&
+							($event ? dirtyCredentials.add(section.id) : dirtyCredentials.delete(section.id))
+						"
+						@connect-started="
+							selectedItemId === item.id &&
+							panelTelemetry.trackConnectionStarted(section.credential, $event)
+						"
+					/>
+					<template v-if="section.showParameters">
+						<div v-for="editor in section.editors" :key="editor.item.id">
+							<InstanceAiSetupPanelDetail
+								ref="parameterEditorComponents"
+								:item="editor.item"
+								:node="editor.node"
+								:workflow-id="workflowId"
+								:project-id="credentialProjectId"
+								:pending-changes="editor.pendingChanges"
+								@update:has-changes="
+									(selectedItemId === item.id || (!selectedItemId && !$event)) &&
+									($event
+										? dirtyParameters.add(editor.item.id)
+										: dirtyParameters.delete(editor.item.id))
+								"
+							/>
+						</div>
+					</template>
+				</section>
+				<div v-if="showParameterConfirm" :class="$style.footer">
+					<N8nButton
+						size="small"
+						:disabled="dirtyParameters.size === 0 || isApplying || credentialBusy"
+						:loading="isApplying"
+						data-test-id="instance-ai-setup-panel-confirm"
+						@click="onConfirmParameters"
+					>
+						{{ i18n.baseText(activeGroupComplete ? 'generic.update' : 'generic.confirm') }}
+					</N8nButton>
+				</div>
 			</div>
 		</template>
 	</N8nSetupPanel>
 </template>
 
 <style lang="scss" module>
-.detail {
+.detail,
+.section {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);
+}
+.section + .divided {
+	border-top: var(--border);
+	padding-top: var(--spacing--sm);
+}
+
+.sectionTitle {
+	margin: 0;
+}
+
+.footer {
+	display: flex;
+	justify-content: flex-end;
 }
 </style>
