@@ -123,6 +123,7 @@ describe('AgentChannelTeamsSetup', () => {
 				messagingEndpointUrl: ENDPOINT,
 				botId: null,
 				deployToAzureUrl: null,
+				credentialClaimedBy: null,
 				defaultDisplayName: DEFAULT_NAME,
 				defaultDescription: DEFAULT_DESCRIPTION,
 			});
@@ -248,7 +249,6 @@ describe('AgentChannelTeamsSetup', () => {
 				botId: CLIENT_ID,
 				deployToAzureUrl: DEPLOY_URL,
 				credentialClaimedBy: null,
-				credentialClaimedBy: null,
 				defaultDisplayName: DEFAULT_NAME,
 				defaultDescription: DEFAULT_DESCRIPTION,
 			});
@@ -268,7 +268,6 @@ describe('AgentChannelTeamsSetup', () => {
 				messagingEndpointUrl: ENDPOINT,
 				botId: CLIENT_ID,
 				deployToAzureUrl: DEPLOY_URL,
-				credentialClaimedBy: null,
 				credentialClaimedBy: null,
 				defaultDisplayName: DEFAULT_NAME,
 				defaultDescription: DEFAULT_DESCRIPTION,
@@ -416,7 +415,6 @@ describe('AgentChannelTeamsSetup', () => {
 				messagingEndpointUrl: ENDPOINT,
 				botId: CLIENT_ID,
 				deployToAzureUrl: DEPLOY_URL,
-				credentialClaimedBy: null,
 				credentialClaimedBy: null,
 				defaultDisplayName: DEFAULT_NAME,
 				defaultDescription: DEFAULT_DESCRIPTION,
