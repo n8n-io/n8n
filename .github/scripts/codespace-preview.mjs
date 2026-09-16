@@ -27,7 +27,7 @@ const IDLE_TIMEOUT = '2 hours';
 const RETENTION_PERIOD = '24 hours';
 // A slept box comes back with a private port, so every recovery hint points here.
 export const WORKFLOW_URL =
-	'https://github.com/n8n-io/n8n/actions/workflows/util-codespace-preview.yml';
+	'https://internal.users.n8n.cloud/webhook/codespace-preview/up';
 // What a manual run may ask for. `ls` is absent: it needs no PR and posts no comment.
 export const DISPATCH_OPERATIONS = ['up', 'refresh', 'down'];
 // Resolved against this file, so the script runs the same from any directory.
@@ -142,8 +142,8 @@ export function readyComment({ url, codespace, sha, orgVisible, pr }) {
 		access,
 		'',
 		`The instance sleeps after ${IDLE_TIMEOUT} of no use and is deleted after ${RETENTION_PERIOD}.`,
-		`A box that slept comes back private, so wake it with [the preview workflow](${WORKFLOW_URL})`,
-		'(`Run workflow` → this PR number → `up`), or by pushing a commit.',
+		`A box that slept comes back private, so wake it with [the preview workflow](${WORKFLOW_URL}),`,
+		'or by pushing a commit.',
 		`Remove the \`${PREVIEW_LABEL}\` label to delete it now.`,
 	].join('\n');
 }
