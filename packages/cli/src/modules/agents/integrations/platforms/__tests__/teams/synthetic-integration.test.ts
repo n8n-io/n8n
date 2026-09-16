@@ -10,10 +10,13 @@ import {
 	dmMessage,
 	groupChatFollowUp,
 	groupChatMention,
+	legacyGroupChatFollowUp,
+	legacyGroupChatMention,
 	selfMessage,
 	TEAMS_CHANNEL_CONVERSATION_ID,
 	TEAMS_DM_CONVERSATION_ID,
 	TEAMS_GROUP_CHAT_CONVERSATION_ID,
+	TEAMS_LEGACY_GROUP_CHAT_CONVERSATION_ID,
 	TEAMS_USER_ID,
 } from '../../../__tests__/helpers/teams/synthetic-fixtures';
 
@@ -81,6 +84,7 @@ describe('Microsoft Teams integration scenarios', () => {
 		try {
 			await ctx.sendWebhook(dmMessage);
 			const firstThreadId = ctx.latestThreadId();
+			expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenCalledTimes(1);
 
 			await ctx.sendWebhook(dmFollowUp);
 
@@ -371,6 +375,7 @@ describe('Microsoft Teams integration scenarios', () => {
 		try {
 			await ctx.sendWebhook(channelMention);
 			const firstThreadId = ctx.latestThreadId();
+			expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenCalledTimes(1);
 
 			await ctx.sendWebhook(channelFollowUp);
 
@@ -404,6 +409,9 @@ describe('Microsoft Teams integration scenarios', () => {
 			await ctx.sendWebhook(groupChatMention);
 			const firstThreadId = ctx.latestThreadId();
 
+			// One run for one mention: Teams retries an activity that the adapter
+			// leaves unanswered, and a retry would show up as a second run here.
+			expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenCalledTimes(1);
 			expect(ctx.lastPost()?.body).toMatchObject({
 				conversation: { id: TEAMS_GROUP_CHAT_CONVERSATION_ID },
 			});
@@ -411,6 +419,39 @@ describe('Microsoft Teams integration scenarios', () => {
 			await ctx.sendWebhook(groupChatFollowUp);
 
 			expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenCalledTimes(2);
+			expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenLastCalledWith(
+				expect.objectContaining({ message: 'follow up' }),
+			);
+			expect(ctx.latestThreadId()).toBe(firstThreadId);
+		} finally {
+			await ctx.shutdown();
+		}
+	});
+
+	it('reads a group chat whose id does not start with 19: as a group chat', async () => {
+		const { decodeThreadId } = await import('@chat-adapter/teams');
+		const ctx = await createTeamsReplayContext();
+		try {
+			await ctx.sendWebhook(legacyGroupChatMention);
+			const firstThreadId = ctx.latestThreadId();
+
+			expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenCalledTimes(1);
+			// Without the explicit conversation type the adapter would read this id
+			// as a direct message, and then hold the webhook response open for the
+			// whole agent run. The thread id carries the agent prefix, so decode
+			// only the platform part.
+			const platformThreadId = (firstThreadId ?? '').slice((firstThreadId ?? '').indexOf('teams:'));
+			expect(decodeThreadId(platformThreadId)).toMatchObject({
+				conversationId: TEAMS_LEGACY_GROUP_CHAT_CONVERSATION_ID,
+				conversationType: 'groupChat',
+			});
+
+			await ctx.sendWebhook(legacyGroupChatFollowUp);
+
+			expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenCalledTimes(2);
+			expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenLastCalledWith(
+				expect.objectContaining({ message: 'follow up' }),
+			);
 			expect(ctx.latestThreadId()).toBe(firstThreadId);
 		} finally {
 			await ctx.shutdown();
@@ -431,6 +472,11 @@ describe('Microsoft Teams integration scenarios', () => {
 						displayName: 'Send Teams message',
 						args: { text: 'Continue?' },
 					},
+					resumeSchema: {
+						type: 'object',
+						properties: { approved: { type: 'boolean' } },
+						required: ['approved'],
+					},
 				},
 				{ type: 'finish', finishReason: 'stop' },
 			],
@@ -448,11 +494,7 @@ describe('Microsoft Teams integration scenarios', () => {
 				{ type: 'finish', finishReason: 'stop' },
 			]);
 			await ctx.sendWebhook(
-				cardAction(
-					approve.data as Record<string, unknown>,
-					cardMessageId,
-					channelMention.conversation,
-				),
+				cardAction(approve.data as Record<string, unknown>, cardMessageId, channelMention),
 			);
 
 			expect(ctx.agentExecutor.resumeForChat).toHaveBeenCalledWith(
@@ -460,8 +502,16 @@ describe('Microsoft Teams integration scenarios', () => {
 					runId: 'run-channel-card-1',
 					toolCallId: 'tool-channel-card-1',
 					integrationType: 'teams',
+					resumeData: { approved: true },
 				}),
 			);
+			// The resume payload carries no thread id, so the outbound reply is what
+			// proves the resumed run stayed in the channel thread.
+			expect(ctx.lastPost()?.body).toMatchObject({
+				conversation: { id: TEAMS_CHANNEL_CONVERSATION_ID },
+			});
+			// Removed rather than relabelled, so a stale button cannot be clicked.
+			expect(ctx.lastDelete()?.body.uri).toContain(cardMessageId);
 		} finally {
 			await ctx.shutdown();
 		}
