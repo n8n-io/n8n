@@ -6,6 +6,11 @@ packages/@n8n/cli/src/__tests__/client.test.ts
   "git_ai_version": "1.5.2",
   "base_commit_sha": "cdc32cbe94b2e70d003a057019a4d3f0d8cd223f",
   "prompts": {},
+  "humans": {
+    "h_9b272a633435fb": {
+      "author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  },
   "sessions": {
     "s_daa5baaa049e3d": {
       "agent_id": {
