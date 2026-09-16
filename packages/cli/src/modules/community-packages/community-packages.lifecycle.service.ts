@@ -77,6 +77,10 @@ export class CommunityPackagesLifecycleService {
 				await executeNpmCommand(['outdated', '--json'], {
 					doNotHandleError: true,
 					cwd: this.instanceSettings.nodesDownloadDir,
+					// Install and pack resolve against the configured registry; this check must too,
+					// or an instance with no route to the public registry waits for a reply forever.
+					registry: this.communityPackagesConfig.registry,
+					authToken: this.communityPackagesConfig.authToken,
 				});
 			} catch (error) {
 				if (isNpmExecErrorWithStdout(error) && error.code === 1) {
