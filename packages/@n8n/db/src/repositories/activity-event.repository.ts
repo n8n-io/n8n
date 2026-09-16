@@ -119,6 +119,30 @@ export class ActivityEventRepository extends Repository<ActivityEvent> {
 	}
 
 	/**
+	 * The newest id in scope, or null when the scope holds nothing.
+	 *
+	 * For a reader holding a stored id to ask whether that id is still plausible. `id` is an
+	 * ordering key, not a durable name: on SQLite the column is a rowid alias, so emptying the
+	 * table restarts the sequence and an id a reader remembers can come back attached to a
+	 * different row. A tailing reader compares its high-water mark against this to notice.
+	 *
+	 * Served by `IDX_activity_event_project` alone, since that index already trails `id`.
+	 */
+	async findHighestId(query: {
+		projectIds: string[];
+		categories: Array<ActivityEvent['category']>;
+	}): Promise<number | null> {
+		if (query.projectIds.length === 0 || query.categories.length === 0) return null;
+
+		const newest = await this.findOne({
+			where: { projectId: In(query.projectIds), category: In(query.categories) },
+			order: { id: 'DESC' },
+			select: ['id'],
+		});
+		return newest?.id ?? null;
+	}
+
+	/**
 	 * One entry by id, or null when it is not in scope — which is also what a pruned id returns.
 	 * The two are deliberately indistinguishable: an id is a guess a reader may get wrong, and a
 	 * distinct "exists but not yours" would turn this into a probe for what other projects hold.

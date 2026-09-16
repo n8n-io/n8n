@@ -72,7 +72,10 @@ export type InstanceContextCursor = {
 	 * narrower scope would otherwise hide, for good, the rows a later widening makes readable.
 	 */
 	activityCategories: ActivityEventCategory[];
-	/** Entry ids already shown that still sit above the floor. */
+	/**
+	 * Entry ids already shown. Kept independently of the floor, which moves down again whenever
+	 * the scope widens — so these have to outlive it to stop a reopened window repeating itself.
+	 */
 	activitySeen: number[];
 	/** ISO timestamp runs were summarised up to. */
 	runsThrough: string;
@@ -111,7 +114,13 @@ type ActivityReadScope = {
 	categories: ActivityEventCategory[];
 };
 
-/** Lowers the floor when the scope widens: rows the narrower scope hid were never offered. */
+/**
+ * Lowers the floor when the scope widens, so rows the narrower scope hid become offerable again.
+ *
+ * It reopens more than it needs to: the floor is one number for every category, so dropping it
+ * also reopens rows in the categories that were readable all along, some of which were shown. The
+ * shown ids are what stops those repeating, which is why they are not trimmed to the floor.
+ */
 function cursorForScope(
 	cursor: InstanceContextCursor | null,
 	scope: ActivityReadScope,
@@ -336,20 +345,51 @@ export class InstanceContextService {
 		seen: number[];
 		truncated: boolean;
 	}> {
-		const cursor = input.cursor;
-
 		// Newest first, and on a delta only what arrived above the mark.
-		const arrivals = await this.activityEventRepository.findFeed({
+		let arrivals = await this.activityEventRepository.findFeed({
 			limit: entryFetchLimit,
 			...input.scope,
-			...(cursor ? { afterId: cursor.activityMark } : {}),
+			...(input.cursor ? { afterId: input.cursor.activityMark } : {}),
 		});
+
+		// A mark can outlive the id space it was taken from. `ActivityEvent.id` is a rowid alias
+		// on SQLite, so emptying the table — which age-based retention does on an instance quiet
+		// for longer than its window — restarts ids at 1, and every new row then lands below a
+		// stored mark. The floor would hide them for good, since the ids never climb back.
+		//
+		// Nothing above the mark is the signature, so the check is paid only on turns that found
+		// nothing new, and it is one indexed read. A scope holding nothing at all is left alone:
+		// there is no id to compare against, and nothing to show either way.
+		let cursor = input.cursor;
+		if (cursor !== null && arrivals.length === 0) {
+			const highest = await this.activityEventRepository.findHighestId(input.scope);
+			if (highest !== null && highest < cursor.activityMark) {
+				// Only the id-based bounds. `runsThrough` is a timestamp and the inventory does not
+				// depend on ids, so the rest of the block stays a delta rather than repeating a
+				// week of run summaries over a renumbering the reader never saw. The shown ids go
+				// with the mark: they name rows from the old sequence, and holding them would
+				// suppress new rows that reuse those numbers.
+				cursor = null;
+				arrivals = await this.activityEventRepository.findFeed({
+					limit: entryFetchLimit,
+					...input.scope,
+				});
+			}
+		}
 
 		// Read separately from the arrivals above: one capped query would let a busy turn fill the
 		// page and push the late commit out.
+		//
+		// Limited by `seenIdsCap`, not by `entryFetchLimit`: the band is newest-first, so a
+		// smaller limit drops its oldest end — exactly where a late commit's low id sits. Turns
+		// that cut nothing leave the floor put while the mark runs on, so the band spans far more
+		// ids than one window. Reading it to the de-duplication budget is the widest this can go
+		// and still promise not to repeat: past `seenIdsCap` the shown ids are forgotten, and a
+		// re-read would offer them a second time. A commit later than that many rows is lost, and
+		// that is the price of the budget rather than an oversight.
 		const band = cursor
 			? await this.activityEventRepository.findFeed({
-					limit: entryFetchLimit,
+					limit: seenIdsCap,
 					...input.scope,
 					afterId: cursor.activityFloor,
 					beforeId: cursor.activityMark,
@@ -375,10 +415,14 @@ export class InstanceContextService {
 		const cut = fresh[windowSize];
 		const floor = cut ? cut.id : (cursor?.activityFloor ?? 0);
 
-		// What was shown, not what was read, and only above the floor — below it the floor already
-		// excludes them.
+		// What was shown, not what was read. Deliberately not trimmed to the floor: the floor only
+		// excludes rows while it stays where it is, and `cursorForScope` lowers it when the scope
+		// widens — so ids dropped for sitting below it would come back offerable, having already
+		// been shown. The cap is the one authority on what a delta remembers.
+		//
+		// Keeping them is close to free: the sort is descending, so a below-floor id is always
+		// evicted before an above-floor one and can only occupy a slot the cap was not using.
 		const seen = [...alreadyShown, ...shown.map((row) => row.id)]
-			.filter((id) => id > floor)
 			.sort((a, b) => b - a)
 			.slice(0, seenIdsCap);
 
