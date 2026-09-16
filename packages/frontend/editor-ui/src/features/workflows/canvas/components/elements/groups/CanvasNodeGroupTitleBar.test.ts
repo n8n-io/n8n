@@ -605,6 +605,16 @@ describe('CanvasNodeGroupTitleBar', () => {
 			expect(wrapper.emitted().ungroup).toEqual([['g1']]);
 		});
 
+		it('hides ungroup and convert actions for an empty group', () => {
+			const wrapper = render({
+				data: makeData({ isEmptyGroup: true }),
+				canExtract: true,
+			});
+
+			expect(wrapper.queryByTestId('canvas-node-group-ungroup')).toBeNull();
+			expect(wrapper.queryByTestId('canvas-node-group-extract')).toBeNull();
+		});
+
 		// The toolbar offers the same actions whether the group is collapsed or
 		// expanded.
 		it.each([{ isCollapsed: true }, { isCollapsed: false }])(
