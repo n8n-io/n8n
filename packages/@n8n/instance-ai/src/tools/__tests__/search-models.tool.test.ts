@@ -8,6 +8,11 @@ import { createSearchModelsTool } from '../search-models.tool';
 vi.mock('@n8n/agents/catalog', () => ({ fetchProviderCatalog: vi.fn() }));
 
 describe('searchModels tool', () => {
+	// INS-539: Keep external catalog results marked as untrusted.
+	it('declares catalog output as untrusted', () => {
+		expect(createSearchModelsTool().outputTrust).toBe('untrusted');
+	});
+
 	it('returns ten results by default and preserves the declared output contract', async () => {
 		vi.mocked(fetchProviderCatalog).mockResolvedValue({
 			openai: {

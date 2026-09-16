@@ -16,6 +16,7 @@ export function createSearchModelsTool(service = catalogService) {
 		)
 		.input(searchModelsInputSchema)
 		.output(searchModelsOutputSchema)
+		.untrustedOutput()
 		.handler(async (input, ctx) => await service.search(input, ctx.abortSignal))
 		.build();
 }

@@ -98,7 +98,7 @@ eval-config(
     name: "Helpfulness",
     preset: "helpfulness",
     credentialId: "<cred_id>",   // provider is derived from this credential
-    model: "claude-sonnet-4-5",
+    model: "<model_id>",
     userQuery: "={{ $json.input }}",
     actualAnswer: "={{ $json.output }}"
   }]
