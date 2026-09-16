@@ -1,6 +1,6 @@
 import type { RichCardComponentType } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { Container, Service } from '@n8n/di';
+import { Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 
 import { AgentRepository } from '../../../repositories/agent.repository';
@@ -11,14 +11,11 @@ import {
 	type AgentChannelPreconditionContext,
 	type AgentChatIntegrationContext,
 	type ActionDecisionMessageParams,
-	type UnauthenticatedWebhookResponse,
-	type WebhookRequestContext,
 } from '../../agent-chat-integration';
 import { expandSelectsToButtons, type SuspendComponent } from '../../component-mapper';
 import { assertCredentialNotClaimed } from '../../credential-claim';
 import { loadTeamsAdapter } from '../../esm-loader';
 import { resolveIntegrationActionDefinitions } from '../../integration-tool-definitions';
-import { TeamsDiscoveryService } from './teams-discovery.service';
 
 /** Pinned so a stray TEAMS_API_URL env var cannot redirect proactive sends. */
 const TEAMS_API_URL = 'https://smba.trafficmanager.net/teams';
@@ -103,33 +100,6 @@ export class TeamsIntegration extends AgentChatIntegration {
 		private readonly agentRepository: AgentRepository,
 	) {
 		super();
-	}
-
-	/**
-	 * Picks the bot up from the first activity that reaches this endpoint while
-	 * the setup step is listening, so the user does not have to copy the
-	 * Application and Directory IDs out of the Azure portal by hand.
-	 *
-	 * Only reached when no credential is connected yet, which is the same branch
-	 * Slack's setup-time challenge uses. Once a credential exists the normal
-	 * handler takes the activity and this never runs.
-	 *
-	 * Always answers 200. An activity Bot Framework cannot deliver is retried,
-	 * and a retry storm against a half-configured endpoint helps nobody; the
-	 * step reports progress through its own polling route instead.
-	 */
-	async handleUnauthenticatedWebhook({
-		headers,
-		body,
-		agentId,
-		projectId,
-	}: WebhookRequestContext): Promise<UnauthenticatedWebhookResponse | undefined> {
-		const recorded = await Container.get(TeamsDiscoveryService).record(
-			{ projectId, agentId },
-			headers,
-			body,
-		);
-		return recorded ? { status: 200, body: {} } : undefined;
 	}
 
 	async createAdapter(ctx: AgentChatIntegrationContext): Promise<unknown> {
