@@ -319,6 +319,7 @@ function save() {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--md);
+	margin-top: var(--spacing--md);
 }
 
 .radios {
