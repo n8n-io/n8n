@@ -24,6 +24,8 @@ import WorkflowReviewRequestsSidebar from '../components/WorkflowReviewRequestsS
 import type { ReviewInboxSidebarSection } from '../components/WorkflowReviewRequestsSidebar.vue';
 import WorkflowReviewStatusDot from '../components/WorkflowReviewStatusDot.vue';
 import { REVIEW_INBOX_QUERY_PARAM, WORKFLOW_REVIEW_REQUESTS_VIEW } from '../constants';
+import { useSelfHealingStore } from '@/features/self-healing/selfHealing.store';
+
 import { useReviewActivityStore } from '../reviewActivity.store';
 import { useReviewInboxStore, type ReviewInboxSectionKey } from '../reviewInbox.store';
 import type { WorkflowReviewDecisionInput } from '../workflowReviews.api';
@@ -32,6 +34,8 @@ const store = useReviewInboxStore();
 // The tab round trip destroys the feed subtree, so its lifecycle lives here; the
 // feed and the composer read the store themselves.
 const activityStore = useReviewActivityStore();
+// Self-healing prototype: a decided review stays selected in the open tab.
+const selfHealingStore = useSelfHealingStore();
 const {
 	activeTab,
 	detail,
@@ -252,7 +256,7 @@ async function onDecide(id: string, input: WorkflowReviewDecisionInput) {
 			void activityStore.fetchFeed(id);
 			if (state === 'closed') {
 				void store.fetchDetail(id).catch(handleLoadError);
-				followClosedReview(id);
+				if (!selfHealingStore.isEnabled) followClosedReview(id);
 			}
 		}
 

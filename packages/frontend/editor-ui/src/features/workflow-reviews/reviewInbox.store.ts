@@ -12,6 +12,7 @@ import { computed, ref } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
 import { useSelfHealingReviewMocks } from '@/features/self-healing/composables/useSelfHealingReviewMocks';
+import { useSelfHealingStore } from '@/features/self-healing/selfHealing.store';
 
 import {
 	decideWorkflowReviewRequest,
@@ -165,6 +166,7 @@ export const useReviewInboxStore = defineStore('workflowReviewInbox', () => {
 	const rootStore = useRootStore();
 	// Self-healing prototype: merges assistant-authored reviews into the inbox.
 	const reviewMocks = useSelfHealingReviewMocks();
+	const selfHealingStore = useSelfHealingStore();
 
 	const openCount = ref<number | null>(null);
 	const closedCount = ref<number | null>(null);
@@ -351,8 +353,10 @@ export const useReviewInboxStore = defineStore('workflowReviewInbox', () => {
 			if (closedCount.value !== null) closedCount.value += 1;
 		}
 
-		// The sections only show items matching the active tab filter.
-		if (item && item.state !== activeTab.value) {
+		// The sections only show items matching the active tab filter. Under the
+		// self-healing prototype the decided review stays in place, with its new
+		// status, so the viewer is not moved to the closed tab.
+		if (item && item.state !== activeTab.value && !selfHealingStore.isEnabled) {
 			for (const slice of allSlices) {
 				slice.removeItem(id);
 			}
