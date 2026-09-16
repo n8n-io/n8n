@@ -1,5 +1,48 @@
 import type { INodeProperties } from 'n8n-workflow';
 
+const V1 = { '@version': [1] };
+const V2 = { '@version': [{ _cnd: { gte: 2 } }] };
+
+// In version 2, a column mapper replaces the version 1 inputs for values and matching.
+const columnsField = (operation: 'create' | 'update' | 'upsert'): INodeProperties => ({
+	displayName: 'Columns',
+	name: 'columns',
+	type: 'resourceMapper',
+	noDataExpression: true,
+	default: {
+		mappingMode: 'defineBelow',
+		value: null,
+	},
+	required: true,
+	typeOptions: {
+		loadOptionsDependsOn: ['docId.value', 'tableId.value'],
+		resourceMapper: {
+			resourceMapperMethod:
+				operation === 'create' ? 'getMappingColumns' : 'getMappingColumnsWithRowId',
+			mode: operation === 'create' ? 'add' : operation,
+			fieldWords: {
+				singular: 'column',
+				plural: 'columns',
+			},
+			addAllFields: true,
+			multiKeyMatch: true,
+		},
+	},
+	displayOptions: {
+		show: {
+			operation: [operation],
+			...V2,
+		},
+		// The mapper has nothing to show until it knows the table.
+		hide: {
+			tableId: [''],
+		},
+	},
+});
+
+// The column pickers read the table from a version 1 plain string or a version 2 locator.
+const columnOptionsDependsOn = ['docId', 'docId.value', 'tableId', 'tableId.value'];
+
 export const operationFields: INodeProperties[] = [
 	{
 		displayName: 'Operation',
@@ -53,6 +96,11 @@ export const operationFields: INodeProperties[] = [
 		required: true,
 		description:
 			'In your document, click your profile icon, then Document Settings, then copy the value under "This document\'s ID"',
+		displayOptions: {
+			show: {
+				...V1,
+			},
+		},
 	},
 	{
 		displayName: 'Table ID',
@@ -61,6 +109,100 @@ export const operationFields: INodeProperties[] = [
 		default: '',
 		required: true,
 		description: 'ID of table to operate on. If unsure, look at the Code View.',
+		displayOptions: {
+			show: {
+				...V1,
+			},
+		},
+	},
+	{
+		displayName: 'Document',
+		name: 'docId',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
+		required: true,
+		description: 'The document to use. Select it from the list, or give its URL or ID.',
+		displayOptions: {
+			show: {
+				...V2,
+			},
+		},
+		modes: [
+			{
+				displayName: 'From List',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'searchDocs',
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'By URL',
+				name: 'url',
+				type: 'string',
+				placeholder: 'e.g. https://docs.getgrist.com/utN3ysvktaDR/Sales',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '^https?://.+',
+							errorMessage: 'The URL must start with http:// or https://',
+						},
+					},
+				],
+			},
+			{
+				displayName: 'By ID',
+				name: 'id',
+				type: 'string',
+				placeholder: 'e.g. utN3ysvktaDRm1hAUJJ8PH',
+				hint: 'In Grist, open Document Settings and copy the document ID.',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '^[^/]+$',
+							errorMessage: 'A document ID holds no "/". To give a URL, use By URL.',
+						},
+					},
+				],
+			},
+		],
+	},
+	{
+		displayName: 'Table',
+		name: 'tableId',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
+		required: true,
+		description: 'The table to use. Select it from the list, or give its ID.',
+		displayOptions: {
+			show: {
+				...V2,
+			},
+		},
+		typeOptions: {
+			loadOptionsDependsOn: ['docId.value'],
+		},
+		modes: [
+			{
+				displayName: 'From List',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'searchTables',
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'By ID',
+				name: 'id',
+				type: 'string',
+				placeholder: 'e.g. Table1',
+				hint: 'A table ID is not always its name. In Grist, use raw data view to see it.',
+			},
+		],
 	},
 
 	// ----------------------------------
@@ -144,7 +286,7 @@ export const operationFields: INodeProperties[] = [
 								name: 'field',
 								type: 'options',
 								typeOptions: {
-									loadOptionsDependsOn: ['docId', 'tableId'],
+									loadOptionsDependsOn: columnOptionsDependsOn,
 									loadOptionsMethod: 'getTableColumns',
 								},
 								default: '',
@@ -182,7 +324,7 @@ export const operationFields: INodeProperties[] = [
 								name: 'field',
 								type: 'options',
 								typeOptions: {
-									loadOptionsDependsOn: ['docId', 'tableId'],
+									loadOptionsDependsOn: columnOptionsDependsOn,
 									loadOptionsMethod: 'getTableColumns',
 								},
 								default: '',
@@ -224,6 +366,7 @@ export const operationFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				operation: ['update'],
+				...V1,
 			},
 		},
 		default: '',
@@ -246,6 +389,7 @@ export const operationFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				operation: ['upsert'],
+				...V1,
 			},
 		},
 		default: {},
@@ -262,7 +406,7 @@ export const operationFields: INodeProperties[] = [
 							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 						type: 'options',
 						typeOptions: {
-							loadOptionsDependsOn: ['tableId'],
+							loadOptionsDependsOn: columnOptionsDependsOn,
 							loadOptionsMethod: 'getTableColumns',
 						},
 						default: '',
@@ -308,7 +452,7 @@ export const operationFields: INodeProperties[] = [
 	},
 
 	// ----------------------------------
-	//         create + update
+	//    create + update + upsert (v1)
 	// ----------------------------------
 	{
 		displayName: 'Data to Send',
@@ -329,6 +473,7 @@ export const operationFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				operation: ['create', 'update', 'upsert'],
+				...V1,
 			},
 		},
 		default: 'defineInNode',
@@ -342,6 +487,7 @@ export const operationFields: INodeProperties[] = [
 			show: {
 				operation: ['create', 'update', 'upsert'],
 				dataToSend: ['autoMapInputs'],
+				...V1,
 			},
 		},
 		default: '',
@@ -362,6 +508,7 @@ export const operationFields: INodeProperties[] = [
 			show: {
 				operation: ['create', 'update', 'upsert'],
 				dataToSend: ['defineInNode'],
+				...V1,
 			},
 		},
 		default: {},
@@ -377,7 +524,7 @@ export const operationFields: INodeProperties[] = [
 							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 						type: 'options',
 						typeOptions: {
-							loadOptionsDependsOn: ['tableId'],
+							loadOptionsDependsOn: columnOptionsDependsOn,
 							loadOptionsMethod: 'getTableColumns',
 						},
 						default: '',
@@ -392,4 +539,11 @@ export const operationFields: INodeProperties[] = [
 			},
 		],
 	},
+
+	// ----------------------------------
+	//    create + update + upsert (v2)
+	// ----------------------------------
+	columnsField('create'),
+	columnsField('update'),
+	columnsField('upsert'),
 ];
