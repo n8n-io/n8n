@@ -13,6 +13,21 @@ const COMPATIBLE_MODE_SUFFIX = '/compatible-mode/v1';
 const DEFAULT_BASE_URL = `https://dashscope-intl.aliyuncs.com${COMPATIBLE_MODE_SUFFIX}`;
 
 /**
+ * Keep only chat-capable Qwen models. DashScope's OpenAI-compatible `/models`
+ * lists non-chat models with no capability field, so filter by id: drop
+ * embedding, reranking, image-generation (`qwen-image-*`) and machine
+ * translation (`qwen-mt-*`) models.
+ */
+export function shouldIncludeAlibabaModel(id: string): boolean {
+	return (
+		!id.includes('embedding') &&
+		!id.includes('rerank') &&
+		!id.includes('image') &&
+		!id.includes('-mt-')
+	);
+}
+
+/**
  * Source: LmChatAlibabaCloud `loadOptions` routing.
  *
  * n8n Alibaba credentials store the region's bare host — Alibaba serves its
@@ -30,5 +45,7 @@ export const listAlibabaModels: ListModelsFn = async (options) => {
 		options,
 		'alibaba',
 	)) as { data?: IdItem[] };
-	return idsToModels(data.data ?? []).sort(byName);
+	return idsToModels(data.data ?? [])
+		.filter((model) => shouldIncludeAlibabaModel(model.id))
+		.sort(byName);
 };
