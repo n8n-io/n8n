@@ -26,7 +26,7 @@ const status = computed(() => store.getWorkflowStatus(props.workflowId, props.pr
 const summary = computed(() => {
 	if (status.value.enrolled) {
 		const autonomy = i18n.baseText(`selfHealing.autonomy.${status.value.config.autonomy}.label`);
-		return [i18n.baseText('selfHealing.workflowSettings.on'), status.value.config.name, autonomy];
+		return [i18n.baseText('selfHealing.workflowSettings.on'), autonomy];
 	}
 
 	const off = i18n.baseText('selfHealing.workflowSettings.off');
@@ -35,12 +35,8 @@ const summary = computed(() => {
 	return [
 		off,
 		config.status === 'paused'
-			? i18n.baseText('selfHealing.workflowSettings.paused', {
-					interpolate: { config: config.name },
-				})
-			: i18n.baseText('selfHealing.workflowSettings.excluded', {
-					interpolate: { config: config.name },
-				}),
+			? i18n.baseText('selfHealing.workflowSettings.paused')
+			: i18n.baseText('selfHealing.workflowSettings.excluded'),
 	];
 });
 

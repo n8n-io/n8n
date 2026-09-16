@@ -88,7 +88,6 @@ describe('useSelfHealingStore', () => {
 
 		it('creates, updates and deletes configurations', () => {
 			const created = store.createConfig(PROJECT_ID, {
-				name: 'Night shift',
 				autonomy: 'deploy',
 				excludedWorkflowIds: ['wf-9'],
 				customInstructions: '',
@@ -97,10 +96,11 @@ describe('useSelfHealingStore', () => {
 			});
 			expect(store.getProjectConfigs(PROJECT_ID)).toHaveLength(2);
 
-			store.updateConfig(PROJECT_ID, created.id, { name: 'Night shift v2' });
+			store.updateConfig(PROJECT_ID, created.id, { customInstructions: 'Retry twice.' });
 			expect(
-				store.getProjectConfigs(PROJECT_ID).find((config) => config.id === created.id)?.name,
-			).toBe('Night shift v2');
+				store.getProjectConfigs(PROJECT_ID).find((config) => config.id === created.id)
+					?.customInstructions,
+			).toBe('Retry twice.');
 
 			store.deleteConfig(PROJECT_ID, created.id);
 			expect(store.getProjectConfigs(PROJECT_ID)).toHaveLength(1);

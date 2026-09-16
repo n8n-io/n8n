@@ -54,7 +54,6 @@ const REMOVE_REVIEWER_ACTION = 'remove';
 
 function emptyForm(): SelfHealingConfigInput {
 	return {
-		name: '',
 		autonomy: 'review',
 		excludedWorkflowIds: [],
 		customInstructions: '',
@@ -65,7 +64,6 @@ function emptyForm(): SelfHealingConfigInput {
 
 function formFrom(config: SelfHealingConfig): SelfHealingConfigInput {
 	return {
-		name: config.name,
 		autonomy: config.autonomy,
 		excludedWorkflowIds: [...config.excludedWorkflowIds],
 		customInstructions: config.customInstructions,
@@ -78,7 +76,6 @@ const form = ref<SelfHealingConfigInput>(emptyForm());
 const loadingWorkflows = ref(false);
 
 const isEditing = computed(() => props.config !== null);
-const canSave = computed(() => form.value.name.trim().length > 0);
 
 const projectWorkflows = computed(() =>
 	workflowsListStore.allWorkflows.filter(
@@ -156,11 +153,8 @@ function close() {
 }
 
 function save() {
-	if (!canSave.value) return;
-
 	const input: SelfHealingConfigInput = {
 		...form.value,
-		name: form.value.name.trim(),
 		customInstructions: form.value.customInstructions.trim(),
 	};
 
@@ -186,20 +180,6 @@ function save() {
 		</N8nDialogHeader>
 
 		<form :class="$style.form" data-test-id="self-healing-config-dialog" @submit.prevent="save">
-			<N8nInputLabel
-				input-name="self-healing-name"
-				:label="i18n.baseText('selfHealing.dialog.name.label')"
-				required
-			>
-				<N8nInput
-					id="self-healing-name"
-					v-model="form.name"
-					:maxlength="80"
-					:placeholder="i18n.baseText('selfHealing.dialog.name.placeholder')"
-					data-test-id="self-healing-name-input"
-				/>
-			</N8nInputLabel>
-
 			<N8nInputLabel :label="i18n.baseText('selfHealing.dialog.autonomy.label')">
 				<N8nRadioGroup
 					v-model="form.autonomy"
@@ -326,7 +306,7 @@ function save() {
 				>
 					{{ i18n.baseText('generic.cancel') }}
 				</N8nButton>
-				<N8nButton type="submit" :disabled="!canSave" data-test-id="self-healing-dialog-save">
+				<N8nButton type="submit" data-test-id="self-healing-dialog-save">
 					{{ i18n.baseText(isEditing ? 'generic.save' : 'generic.create') }}
 				</N8nButton>
 			</N8nDialogFooter>

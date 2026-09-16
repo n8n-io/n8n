@@ -47,7 +47,6 @@ export function createDefaultConfig(
 	return {
 		id: `default-${projectId}`,
 		projectId,
-		name: 'Production auto-fix',
 		autonomy: 'review',
 		excludedWorkflowIds: [],
 		customInstructions:

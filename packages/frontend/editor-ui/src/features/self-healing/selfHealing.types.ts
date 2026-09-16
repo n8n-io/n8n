@@ -15,7 +15,6 @@ export type SelfHealingConfigStatus = 'active' | 'paused';
 export interface SelfHealingConfig {
 	id: string;
 	projectId: string;
-	name: string;
 	autonomy: SelfHealingAutonomy;
 	excludedWorkflowIds: string[];
 	customInstructions: string;

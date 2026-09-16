@@ -2,7 +2,6 @@
 import { useToast } from '@n8n/composables/useToast';
 import {
 	N8nActionToggle,
-	N8nBadge,
 	N8nButton,
 	N8nDataTableServer,
 	N8nStatusDot,
@@ -52,15 +51,9 @@ const tableOptions = ref<TableOptions>({ page: 0, itemsPerPage: 10, sortBy: [] }
 
 const headers = computed<Array<TableHeader<SelfHealingConfig>>>(() => [
 	{
-		title: i18n.baseText('selfHealing.projectSettings.column.name'),
-		key: 'name',
-		width: 320,
-		disableSort: true,
-	},
-	{
 		title: i18n.baseText('selfHealing.projectSettings.column.scope'),
 		key: 'scope',
-		width: 160,
+		width: 260,
 		disableSort: true,
 		value: (row: SelfHealingConfig) => row.excludedWorkflowIds.length,
 	},
@@ -160,9 +153,7 @@ async function onAction(config: SelfHealingConfig, action: string) {
 			break;
 		case 'delete': {
 			const confirmed = await message.confirm(
-				i18n.baseText('selfHealing.projectSettings.delete.message', {
-					interpolate: { name: config.name },
-				}),
+				i18n.baseText('selfHealing.projectSettings.delete.message'),
 				i18n.baseText('selfHealing.projectSettings.delete.headline'),
 				{
 					type: 'warning',
@@ -219,27 +210,13 @@ onMounted(async () => {
 				:items-length="configs.length"
 				:page-sizes="[configs.length + 1]"
 			>
-				<template #[`item.name`]="{ item }">
-					<div :class="$style.nameCell" data-test-id="self-healing-config-row">
-						<N8nText size="small" bold color="text-dark" :class="$style.truncate">
-							{{ item.name }}
-						</N8nText>
-						<N8nText
-							v-if="item.customInstructions"
-							size="xsmall"
-							color="text-light"
-							:class="$style.truncate"
-							:title="item.customInstructions"
-						>
-							{{ item.customInstructions }}
-						</N8nText>
-					</div>
-				</template>
 				<template #[`item.scope`]="{ item }">
-					<N8nText size="small" color="text-dark">{{ scopeLabel(item) }}</N8nText>
+					<N8nText size="medium" color="text-dark" data-test-id="self-healing-config-row">
+						{{ scopeLabel(item) }}
+					</N8nText>
 				</template>
 				<template #[`item.autonomy`]="{ item }">
-					<N8nBadge theme="tertiary" :show-border="false">{{ autonomyLabel(item) }}</N8nBadge>
+					<N8nText size="medium" color="text-dark">{{ autonomyLabel(item) }}</N8nText>
 				</template>
 				<template #[`item.reviewers`]="{ item }">
 					<N8nUserStack
@@ -248,14 +225,14 @@ onMounted(async () => {
 						:current-user-id="usersStore.currentUser?.id ?? ''"
 						data-test-id="self-healing-config-reviewers"
 					/>
-					<N8nText v-else size="small" color="text-light">
+					<N8nText v-else size="medium" color="text-light">
 						{{ i18n.baseText('selfHealing.projectSettings.noReviewers') }}
 					</N8nText>
 				</template>
 				<template #[`item.status`]="{ item }">
 					<div :class="$style.statusCell">
 						<N8nStatusDot :variant="item.status === 'active' ? 'success' : 'warning'" />
-						<N8nText size="small" color="text-dark">{{ statusLabel(item) }}</N8nText>
+						<N8nText size="medium" color="text-dark">{{ statusLabel(item) }}</N8nText>
 					</div>
 				</template>
 				<template #[`item.actions`]="{ item }">
@@ -281,7 +258,7 @@ onMounted(async () => {
 
 		<N8nButton
 			variant="subtle"
-			size="small"
+			size="large"
 			icon="plus"
 			native-type="button"
 			:label="i18n.baseText('selfHealing.projectSettings.add')"
@@ -306,21 +283,6 @@ onMounted(async () => {
 
 .table {
 	margin-bottom: var(--spacing--sm);
-}
-
-.nameCell {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--5xs);
-	min-width: 0;
-	padding: var(--spacing--2xs) 0;
-}
-
-.truncate {
-	display: block;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
 }
 
 .statusCell {
