@@ -56,6 +56,8 @@ export const useTypeAvailabilityPoliciesStore = defineStore(
 		}
 
 		function getNodeTypeAvailability(name: string): NodeTypeAvailability {
+			if (loadedProjectId.value !== requestedProjectId.value) return { name, available: true };
+
 			return restrictedNodeTypes.value.get(name) ?? { name, available: true };
 		}
 

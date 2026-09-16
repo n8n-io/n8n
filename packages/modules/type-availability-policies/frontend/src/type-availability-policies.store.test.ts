@@ -139,6 +139,32 @@ describe('useTypeAvailabilityPoliciesStore', () => {
 			expect(store.isNodeTypeAvailable(RESTRICTED)).toBe(true);
 		});
 
+		it('reports every type as available while a project switch is in flight', async () => {
+			let resolveB: (value: AvailableTypesResponse) => void = () => {};
+			mocks.fetchAvailableTypes.mockResolvedValueOnce(PROJECT_A_RESPONSE).mockImplementationOnce(
+				async () =>
+					await new Promise<AvailableTypesResponse>((resolve) => {
+						resolveB = resolve;
+					}),
+			);
+			const store = useTypeAvailabilityPoliciesStore();
+
+			await store.fetchForProject('project-a');
+			const pendingB = store.fetchForProject('project-b');
+
+			expect(store.isNodeTypeAvailable(RESTRICTED)).toBe(true);
+			expect(store.getNodeTypeAvailability(RESTRICTED)).toEqual({
+				name: RESTRICTED,
+				available: true,
+			});
+
+			resolveB(PROJECT_B_RESPONSE);
+			await pendingB;
+
+			expect(store.isNodeTypeAvailable(ALLOWED)).toBe(false);
+			expect(store.isNodeTypeAvailable(RESTRICTED)).toBe(true);
+		});
+
 		it('discards a response for a project that is no longer requested', async () => {
 			let resolveA: (value: AvailableTypesResponse) => void = () => {};
 			mocks.fetchAvailableTypes
