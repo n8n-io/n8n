@@ -1,0 +1,23 @@
+packages/cli/src/modules/git-connections.ee/database/entities/git-connection.entity.ts
+  s_396d47bc47d872::t_33929b1851a526 9-10
+docs/generated/sqlite-schema/README.md
+  ai_agent 903-905,906-917
+docs/generated/postgres-schema/README.md
+  ai_agent 916-918,919-930
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d42484b7f62957ba236a3a4eb88af0486341e724",
+  "prompts": {},
+  "sessions": {
+    "s_396d47bc47d872": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e5bfb8ea-92ad-44b7-bec2-37a3a6ca2c8d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}

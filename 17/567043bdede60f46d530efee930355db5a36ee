@@ -74,7 +74,7 @@ packages/cli/src/modules/git-connections.ee/__tests__/git-connections-git.utils.
   s_a5246f8acb611f::t_0628c0599b464e 75-84
   s_a5246f8acb611f::t_986a2e0d2fa5f7 110-118
 packages/cli/src/modules/git-connections.ee/git-connections-git.utils.ts
-  s_cbb79750df051b::t_c4a7faebadafaf 1-4,14-16,21-26,33-38,40,44-45,47,49-69
+  s_cbb79750df051b::t_c4a7faebadafaf 1-4,12,14-16,21-26,33-38,40,44-45,47,49-69
   s_a5246f8acb611f::t_3aa28c4831de89 5-12
   s_7562978115634d::t_ad6b2e63eac650 18
   s_a5246f8acb611f::t_cb5d28b750d2e2 27-32
