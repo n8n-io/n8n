@@ -84,7 +84,7 @@ function onDismiss() {
 		</template>
 		<template #content>
 			<div :class="$style.header">
-				<N8nText size="medium" bold :class="$style.title">
+				<N8nText size="medium" :class="$style.title">
 					{{ i18n.baseText('selfHealing.coachmark.title') }}
 				</N8nText>
 				<N8nIconButton
@@ -97,7 +97,7 @@ function onDismiss() {
 					@click="onDismiss"
 				/>
 			</div>
-			<N8nText size="small" :class="$style.body">{{ body }}</N8nText>
+			<N8nText size="medium" :class="$style.body">{{ body }}</N8nText>
 			<div :class="$style.actions">
 				<N8nButton
 					variant="ghost"
@@ -149,6 +149,10 @@ function onDismiss() {
 .title,
 .body {
 	color: inherit;
+}
+
+.title {
+	font-weight: var(--font-weight--medium);
 }
 
 .close {
