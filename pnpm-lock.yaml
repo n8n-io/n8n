@@ -3846,6 +3846,9 @@ importers:
 
   packages/@n8n/telemetry:
     dependencies:
+      '@n8n/api-types':
+        specifier: workspace:*
+        version: link:../api-types
       '@n8n/utils':
         specifier: workspace:*
         version: link:../utils

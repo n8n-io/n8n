@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, h, nextTick, reactive, ref } from 'vue';
+import { USER_TYPED_MESSAGE, type InstanceAiPrefillType } from '../prefills';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
@@ -162,6 +163,7 @@ vi.mock('@/experiments/instanceAiSplitEmptyState', async () => {
 										suggestionId: 'score-my-leads',
 										suggestionKind: 'quick_example',
 										position: 1,
+										prefillType: 'suggestion_catalog',
 									}),
 							},
 							'submit',
@@ -323,9 +325,38 @@ const InstanceAiInputStub = defineComponent({
 	setup(props, { emit, expose, slots }) {
 		const i18n = useI18n();
 		const currentText = ref('');
+		// Mirrors the real composer: whatever pre-filled the box is reported on submit.
+		const activePrefill = ref<{
+			text: string;
+			prefillType: InstanceAiPrefillType;
+			prefillId?: string;
+		} | null>(null);
 		const submit = (message: string) => {
-			emit('submit', message);
+			const prefill = activePrefill.value;
+			// Mirrors the real composer: the restore callback is always provided, and
+			// it puts the pre-fill back with the text so a retry stays attributed.
+			const restoreDraft = () => {
+				if (currentText.value.trim()) return false;
+				currentText.value = message;
+				activePrefill.value = prefill;
+				return true;
+			};
+			emit(
+				'submit',
+				message,
+				undefined,
+				restoreDraft,
+				prefill
+					? {
+							kind: 'prefill',
+							prefillType: prefill.prefillType,
+							...(prefill.prefillId ? { prefillId: prefill.prefillId } : {}),
+							promptModified: message !== prefill.text.trim(),
+						}
+					: USER_TYPED_MESSAGE,
+			);
 			currentText.value = '';
+			activePrefill.value = null;
 		};
 		expose({
 			focus: vi.fn(),
@@ -335,9 +366,25 @@ const InstanceAiInputStub = defineComponent({
 			setText: (text: string) => {
 				currentText.value = text;
 			},
+			setPrefill: (prefill: { text: string; prefillType: InstanceAiPrefillType }) => {
+				currentText.value = prefill.text;
+				activePrefill.value = { ...prefill };
+			},
 			// Mirror the real submitSuggestion: resolve the prompt + emit submit.
-			submitSuggestion: (payload: { promptKey: BaseTextKey }) =>
-				submit(i18n.baseText(payload.promptKey)),
+			submitSuggestion: (payload: {
+				promptKey: BaseTextKey;
+				suggestionId: string;
+				prefillType: InstanceAiPrefillType;
+			}) => {
+				const prompt = i18n.baseText(payload.promptKey);
+				// Mirrors the real submitSuggestion, which reports the entry id.
+				activePrefill.value = {
+					text: prompt,
+					prefillType: payload.prefillType,
+					prefillId: payload.suggestionId,
+				};
+				submit(prompt);
+			},
 		});
 		return () =>
 			h('div', { 'data-test-id': 'instance-ai-input-stub' }, [
@@ -853,8 +900,16 @@ describe('InstanceAiEmptyView', () => {
 		);
 		expect(thread.sendMessage).toHaveBeenCalledWith(
 			'When a new lead is created in my CRM, enrich it with Lemlist, score it based on fit, then update the lead if qualified and notify the sales team on Slack.',
-			undefined,
-			'test-push-ref',
+			{
+				authorship: {
+					kind: 'prefill',
+					prefillType: 'suggestion_catalog',
+					prefillId: 'score-my-leads',
+					promptModified: false,
+				},
+				attachments: undefined,
+				pushRef: 'test-push-ref',
+			},
 		);
 		expect(replaceMock).toHaveBeenCalledWith({
 			name: INSTANCE_AI_THREAD_VIEW,
@@ -1077,7 +1132,11 @@ describe('InstanceAiEmptyView', () => {
 			'thread-placeholder',
 			PERSONAL_PROJECT_ID,
 		);
-		expect(thread.sendMessage).toHaveBeenCalledWith('hello', undefined, 'test-push-ref');
+		expect(thread.sendMessage).toHaveBeenCalledWith('hello', {
+			authorship: USER_TYPED_MESSAGE,
+			attachments: undefined,
+			pushRef: 'test-push-ref',
+		});
 		expect(replaceMock).toHaveBeenCalledWith({
 			name: INSTANCE_AI_THREAD_VIEW,
 			params: { threadId: 'thread-placeholder' },
@@ -1094,7 +1153,11 @@ describe('InstanceAiEmptyView', () => {
 		await flushPromises();
 		await nextTick();
 
-		expect(thread.sendMessage).toHaveBeenCalledWith('hello', undefined, 'test-push-ref');
+		expect(thread.sendMessage).toHaveBeenCalledWith('hello', {
+			authorship: USER_TYPED_MESSAGE,
+			attachments: undefined,
+			pushRef: 'test-push-ref',
+		});
 		// Navigating would drop the user into a blank thread, and the destination cannot be
 		// handed the draft either: it reads localStorage once, synchronously, on mount.
 		expect(replaceMock).not.toHaveBeenCalled();
@@ -1310,6 +1373,34 @@ describe('InstanceAiEmptyView', () => {
 		expect(getByTestId('instance-ai-free-nudge-stub')).not.toHaveClass('inputPulse');
 		expect(getByTestId('instance-ai-input-text')).toHaveTextContent(
 			'Build me an invoice automation',
+		);
+	});
+
+	// The pre-fill tagging must not disturb what the agent receives: the suffix is
+	// still appended, and the card now reports itself instead of being recovered by
+	// matching that suffix against the message body.
+	it('sends a template example with its suffix intact and reports it as a pre-fill', async () => {
+		templateExamplesEnabled.value = true;
+		store.syncThread.mockResolvedValue(undefined);
+
+		const { getByTestId } = renderView();
+
+		await fireEvent.click(getByTestId('template-example-card'));
+		await flushPromises();
+		await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
+		await flushPromises();
+
+		expect(thread.sendMessage).toHaveBeenCalledWith(
+			'Build me an invoice automation\n\nAsk me questions to narrow down my use case and the tools I use to best personalize the example for my needs.',
+			{
+				authorship: {
+					kind: 'prefill',
+					prefillType: 'template_example',
+					promptModified: false,
+				},
+				attachments: undefined,
+				pushRef: 'test-push-ref',
+			},
 		);
 	});
 });
