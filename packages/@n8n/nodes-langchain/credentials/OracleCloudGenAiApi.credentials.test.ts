@@ -1,4 +1,4 @@
-import { OracleCloudGenAiApi } from '../OracleCloudGenAiApi.credentials';
+import { OracleCloudGenAiApi } from './OracleCloudGenAiApi.credentials';
 
 describe('OracleCloudGenAiApi credential', () => {
 	const credential = new OracleCloudGenAiApi();

@@ -25,6 +25,14 @@ vi.mock('oci-common', () => ({
 				getTenantId: () => 'ocid1.tenancy.oc1..test',
 			};
 		}),
+	InstancePrincipalsAuthenticationDetailsProviderBuilder: vi
+		.fn()
+		.mockImplementation(function MockInstancePrincipalProviderBuilder() {
+			return { build: vi.fn().mockResolvedValue({}) };
+		}),
+	ResourcePrincipalAuthenticationDetailsProvider: {
+		builder: vi.fn(() => ({})),
+	},
 }));
 
 vi.mock('oci-generativeai', () => ({
@@ -124,17 +132,92 @@ describe('OCI input validation', () => {
 			).toBe(true);
 		});
 
-		it('does not synthesize a provider model ID from a management model OCID', () => {
+		it.each([
+			['Meta', 'Meta Llama 3.3 (70B)', 'meta.llama-3.3-70b-instruct'],
+			['Meta', 'Meta Llama 3.3 70B Instruct', 'meta.llama-3.3-70b-instruct'],
+			['Google', 'Google Gemini 2.5 Pro', 'google.gemini-2.5-pro'],
+			['OpenAI', 'OpenAI GPT OSS 120B', 'openai.gpt-oss-120b'],
+			['xAI', 'xAI Grok 4.3', 'xai.grok-4.3'],
+			['xAI', 'Grok 4.3', 'xai.grok-4.3'],
+			['Cohere', 'Cohere Command A', 'cohere.command-a-03-2025'],
+			['Meta', 'mEtA: Llama 3.3 70B Instruct', 'meta.llama-3.3-70b-instruct'],
+		])('resolves a verified provider model ID for %s', (vendor, displayName, expectedId) => {
+			expect(
+				getOnDemandModelId({
+					id: 'ocid1.generativeaimodel.oc1.phx.example',
+					vendor,
+					displayName,
+				}),
+			).toBe(expectedId);
+		});
+
+		it('does not derive a provider model ID without vendor and display-name metadata', () => {
+			expect(
+				getOnDemandModelId({
+					id: 'ocid1.generativeaimodel.oc1.phx.example',
+					displayName: 'Grok 4.3',
+				}),
+			).toBe('');
+			expect(
+				getOnDemandModelId({
+					id: 'ocid1.generativeaimodel.oc1.phx.example',
+					vendor: 'xAI',
+				}),
+			).toBe('');
+		});
+
+		it('does not derive a provider model ID from invalid OCID metadata', () => {
+			expect(
+				getOnDemandModelId({
+					id: 'ocid1.generativeaimodel.oc1.phx.example',
+					vendor: 'xAI',
+					displayName: '---',
+				}),
+			).toBe('');
+		});
+
+		it('does not guess a provider model ID for an unverified catalog name', () => {
 			expect(
 				getOnDemandModelId({
 					id: 'ocid1.generativeaimodel.oc1.phx.example',
 					vendor: 'Meta',
-					displayName: 'Meta Llama 3.3 70B Instruct',
+					displayName: 'Meta Llama 4 Maverick',
 				}),
 			).toBe('');
+			expect(
+				getOnDemandModelId({
+					id: 'ocid1.generativeaimodel.oc1.phx.example',
+					vendor: 'Cohere',
+					displayName: 'Cohere Command R',
+				}),
+			).toBe('');
+		});
+
+		it('preserves an explicit provider model ID from the catalog', () => {
 			expect(getOnDemandModelId({ id: 'meta.llama-3.3-70b-instruct' })).toBe(
 				'meta.llama-3.3-70b-instruct',
 			);
+			expect(getOnDemandModelId({ id: 'invalid/model-id' })).toBe('');
+		});
+
+		it('uses a provider model ID supplied as the display name for a management OCID', () => {
+			expect(
+				getOnDemandModelId({
+					id: 'ocid1.generativeaimodel.oc1.phx.amaaaaaask7dceyal3a65uayrndlskb3atfb3juhkveeg4qkujuzcnl2jfna',
+					vendor: 'xai',
+					displayName: 'xai.grok-4.6',
+				}),
+			).toBe('xai.grok-4.6');
+		});
+
+		it('does not treat an unprefixed display name as a provider model ID', () => {
+			expect(
+				getOnDemandModelId({
+					id: 'ocid1.generativeaimodel.oc1.phx.amaaaaaask7dceyal3a65uayrndlskb3atfb3juhkveeg4qkujuzcnl2jfna',
+					vendor: 'xai',
+					displayName: 'Grok-5',
+				}),
+			).toBe('');
 		});
 	});
 
@@ -170,6 +253,22 @@ describe('OCI input validation', () => {
 			expect(secondClient).toBe(firstClient);
 			expect(generativeAiInferenceClient).toHaveBeenCalledTimes(1);
 		});
+
+		it.each(['instancePrincipal', 'resourcePrincipal'] as const)(
+			'does not cache inference clients for %s authentication',
+			async (authentication) => {
+				const credentials: OciGenAiCredentials = {
+					authentication,
+					regionId: 'us-phoenix-1',
+				};
+
+				const firstClient = await createOciGenAiClient(credentials);
+				const secondClient = await createOciGenAiClient(credentials);
+
+				expect(secondClient).not.toBe(firstClient);
+				expect(generativeAiInferenceClient).toHaveBeenCalledTimes(2);
+			},
+		);
 
 		it('does not include private key material in the inference client cache identity', async () => {
 			const credentials = {
@@ -429,8 +528,8 @@ describe('OCI input validation', () => {
 						},
 						{
 							id: 'ocid1.generativeaimodel.oc1.phx.example',
-							vendor: 'Cohere',
-							displayName: 'Cohere Embed 4',
+							vendor: 'xAI',
+							displayName: 'xAI Grok 4.3',
 						},
 					],
 				},
@@ -451,8 +550,46 @@ describe('OCI input validation', () => {
 					name: 'Meta Llama 3.3 70B Instruct',
 					searchText: 'meta llama 3.3 70b instruct meta.llama-3.3-70b-instruct',
 				},
+				{
+					id: 'xai.grok-4.3',
+					name: 'xAI Grok 4.3',
+					searchText: 'xai grok 4.3 xai.grok-4.3',
+				},
 			]);
 			expect(listModels).toHaveBeenCalledTimes(1);
+		});
+
+		it('forwards and caches a valid pagination token as a separate catalog page', async () => {
+			listModels
+				.mockResolvedValueOnce({
+					modelCollection: { items: [] },
+					opcNextPage: 'next-page-token',
+				})
+				.mockResolvedValueOnce({
+					modelCollection: { items: [] },
+					opcNextPage: undefined,
+				});
+
+			const request = {
+				compartmentId: 'ocid1.compartment.oc1..test',
+				capability: ociModels.ModelCapability.Chat,
+			};
+
+			await getCachedOciGenAiModelCatalogPage(ociCredentials, request);
+			await getCachedOciGenAiModelCatalogPage(ociCredentials, {
+				...request,
+				paginationToken: 'next-page-token',
+			});
+			await getCachedOciGenAiModelCatalogPage(ociCredentials, {
+				...request,
+				paginationToken: 'next-page-token',
+			});
+
+			expect(listModels).toHaveBeenNthCalledWith(
+				2,
+				expect.objectContaining({ page: 'next-page-token' }),
+			);
+			expect(listModels).toHaveBeenCalledTimes(2);
 		});
 
 		it('validates vendor filters before calling OCI', async () => {

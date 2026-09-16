@@ -201,11 +201,11 @@ const modelProperty: INodeProperties = {
 			displayName: 'ID',
 			name: 'id',
 			type: 'string',
-			placeholder: 'meta.llama-3.3-70b-instruct',
+			placeholder: 'xai.grok-4.6',
 		},
 	],
 	description:
-		'Select an OCI Generative AI chat model from the compartment or enter the model ID directly',
+		'Select a chat model from the OCI catalog, or enter its provider model ID, such as xai.grok-4.6. Do not enter the OCI model OCID.',
 };
 
 const compartmentProperty: INodeProperties = {

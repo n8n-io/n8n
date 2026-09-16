@@ -104,6 +104,17 @@ describe('LmChatOciGenAi', () => {
 		});
 	});
 
+	it('explains the provider model ID required for manual model entry', () => {
+		const node = new LmChatOciGenAi();
+		const model = node.description.properties.find((property) => property.name === 'model');
+		const idMode = model?.modes?.find((mode) => mode.name === 'id');
+
+		expect(model?.description).toBe(
+			'Select a chat model from the OCI catalog, or enter its provider model ID, such as xai.grok-4.6. Do not enter the OCI model OCID.',
+		);
+		expect(idMode?.placeholder).toBe('xai.grok-4.6');
+	});
+
 	it('creates one OCI chat model with the selected on-demand model and options', async () => {
 		const node = new LmChatOciGenAi();
 		const context = createContext();
@@ -122,6 +133,47 @@ describe('LmChatOciGenAi', () => {
 			}),
 		);
 		expect(result.response).toBeInstanceOf(MockedOciGenAiGenericChat);
+	});
+
+	it('uses chat defaults and omits optional sampling parameters when they are unset', async () => {
+		const node = new LmChatOciGenAi();
+		const context = createContext();
+		context.getNodeParameter = vi.fn().mockImplementation((name: string) => {
+			if (name === 'model') return 'meta.llama-3.3-70b-instruct';
+			if (name === 'compartmentId') return 'ocid1.compartment.oc1..test';
+			if (name === 'servingMode') return 'onDemand';
+			if (name === 'options') return {};
+			return '';
+		});
+
+		await node.supplyData.call(context, 0);
+
+		expect(MockedOciGenAiGenericChat).toHaveBeenCalledWith(
+			expect.objectContaining({
+				defaultRequestParams: { temperature: 0.7, maxTokens: 1024, topP: 0.9 },
+			}),
+		);
+	});
+
+	it('supports a resource-locator model ID and preserves seed zero', async () => {
+		const node = new LmChatOciGenAi();
+		const context = createContext();
+		context.getNodeParameter = vi.fn().mockImplementation((name: string) => {
+			if (name === 'model') return { mode: 'id', value: 'xai.grok-4.3' };
+			if (name === 'compartmentId') return 'ocid1.compartment.oc1..test';
+			if (name === 'servingMode') return 'onDemand';
+			if (name === 'options') return { topK: 0, seed: 0 };
+			return '';
+		});
+
+		await node.supplyData.call(context, 0);
+
+		expect(MockedOciGenAiGenericChat).toHaveBeenCalledWith(
+			expect.objectContaining({
+				onDemandModelId: 'xai.grok-4.3',
+				defaultRequestParams: { temperature: 0.7, maxTokens: 1024, topP: 0.9, seed: 0 },
+			}),
+		);
 	});
 
 	it('uses a dedicated endpoint without retrieving or validating an on-demand model', async () => {

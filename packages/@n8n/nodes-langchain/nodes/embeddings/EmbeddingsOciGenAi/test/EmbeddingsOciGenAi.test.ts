@@ -185,6 +185,28 @@ describe('EmbeddingsOciGenAi', () => {
 		expect(result).toHaveProperty('response');
 	});
 
+	it('uses embedding defaults and omits unset optional request parameters', async () => {
+		const node = new EmbeddingsOciGenAi();
+		const context = createContext();
+		context.getNodeParameter = vi.fn().mockImplementation((name: string) => {
+			if (name === 'model') return { mode: 'id', value: 'cohere.embed-v4.0' };
+			if (name === 'compartmentId') return 'ocid1.compartment.oc1..test';
+			if (name === 'servingMode') return 'onDemand';
+			if (name === 'options') return {};
+			return '';
+		});
+
+		await node.supplyData.call(context, 0);
+
+		expect(MockedOciGenAiEmbeddings).toHaveBeenCalledWith({
+			client: { client: 'inference' },
+			compartmentId: 'ocid1.compartment.oc1..test',
+			batchSize: 96,
+			maxConcurrency: 2,
+			onDemandModelId: 'cohere.embed-v4.0',
+		});
+	});
+
 	it('requires an endpoint ID for dedicated embeddings', async () => {
 		const node = new EmbeddingsOciGenAi();
 		const context = createContext();
@@ -276,6 +298,24 @@ describe('EmbeddingsOciGenAi', () => {
 		);
 	});
 
+	it('passes the selected truncation mode to OCI', async () => {
+		const node = new EmbeddingsOciGenAi();
+		const context = createContext();
+		context.getNodeParameter = vi.fn().mockImplementation((name: string) => {
+			if (name === 'model') return 'cohere.embed-v4.0';
+			if (name === 'compartmentId') return 'ocid1.compartment.oc1..test';
+			if (name === 'servingMode') return 'onDemand';
+			if (name === 'options') return { truncate: 'START' };
+			return '';
+		});
+
+		await node.supplyData.call(context, 0);
+
+		expect(MockedOciGenAiEmbeddings).toHaveBeenCalledWith(
+			expect.objectContaining({ truncate: 'START' }),
+		);
+	});
+
 	it('rejects non-positive or non-integer custom output dimensions', async () => {
 		const node = new EmbeddingsOciGenAi();
 		const context = createContext();
@@ -284,6 +324,23 @@ describe('EmbeddingsOciGenAi', () => {
 			if (name === 'compartmentId') return 'ocid1.compartment.oc1..test';
 			if (name === 'servingMode') return 'onDemand';
 			if (name === 'options') return { outputDimensions: '1.5' };
+			return '';
+		});
+
+		await expect(node.supplyData.call(context, 0)).rejects.toThrow(
+			'Output Dimensions must be a positive integer.',
+		);
+		expect(createClient).not.toHaveBeenCalled();
+	});
+
+	it('rejects non-numeric custom output dimensions before creating an inference client', async () => {
+		const node = new EmbeddingsOciGenAi();
+		const context = createContext();
+		context.getNodeParameter = vi.fn().mockImplementation((name: string) => {
+			if (name === 'model') return 'new.embedding-model';
+			if (name === 'compartmentId') return 'ocid1.compartment.oc1..test';
+			if (name === 'servingMode') return 'onDemand';
+			if (name === 'options') return { outputDimensions: 'not-a-number' };
 			return '';
 		});
 

@@ -114,10 +114,6 @@ function getExpectedOciInferenceEndpointHost(regionId: string): string {
 		throw new UserError('Region ID must be a valid OCI region');
 	}
 
-	if (!region) {
-		throw new UserError('Region ID must be a valid OCI region');
-	}
-
 	return `inference.generativeai.${region.regionId}.oci.${region.realm.secondLevelDomain}`;
 }
 
@@ -244,9 +240,65 @@ export function isOnDemandModelAvailable(model: OciGenAiCatalogModel): boolean {
 	return Number.isNaN(retiredAt) || retiredAt > Date.now();
 }
 
+function isOciModelOCID(modelId: string): boolean {
+	return /^ocid[0-9]+\.generativeaimodel\./i.test(modelId);
+}
+
+// When the catalog displayName is a friendly name rather than a provider-qualified
+// model ID, use only mappings verified against OCI's documented inference model IDs.
+const VERIFIED_OCI_PROVIDER_MODEL_IDS: Readonly<Record<string, string>> = {
+	'meta:metallama3370b': 'meta.llama-3.3-70b-instruct',
+	'meta:metallama3370binstruct': 'meta.llama-3.3-70b-instruct',
+	'google:googlegemini25pro': 'google.gemini-2.5-pro',
+	'openai:openaigptoss120b': 'openai.gpt-oss-120b',
+	'xai:xaigrok43': 'xai.grok-4.3',
+	'xai:grok43': 'xai.grok-4.3',
+	'cohere:coherecommanda': 'cohere.command-a-03-2025',
+};
+
+function getVerifiedOciModelMappingKey(vendor: string, displayName: string): string {
+	const normalize = (value: string) => value.toLowerCase().replace(/[^a-z0-9]/g, '');
+	return `${normalize(vendor)}:${normalize(displayName)}`;
+}
+
+function getVerifiedOciProviderModelId(model: OciGenAiCatalogModel): string {
+	const vendor = model.vendor?.trim();
+	const displayName = model.displayName?.trim();
+	if (!vendor || !displayName) {
+		return '';
+	}
+
+	return VERIFIED_OCI_PROVIDER_MODEL_IDS[getVerifiedOciModelMappingKey(vendor, displayName)] ?? '';
+}
+
+function getProviderModelIdFromDisplayName(
+	vendor: string | undefined,
+	displayName: string | undefined,
+): string {
+	const normalizedVendor = vendor?.trim().toLowerCase();
+	if (!normalizedVendor || !displayName) return '';
+
+	try {
+		const modelId = validateOciModelId(displayName);
+		return modelId.toLowerCase().startsWith(`${normalizedVendor}.`) ? modelId : '';
+	} catch {
+		return '';
+	}
+}
+
 export function getOnDemandModelId(model: OciGenAiCatalogModel): string {
-	// A management model OCID is not a provider inference ID. Do not derive one from display metadata.
-	return /^ocid[0-9]+\.generativeaimodel\./i.test(model.id) ? '' : model.id;
+	if (isOciModelOCID(model.id)) {
+		return (
+			getProviderModelIdFromDisplayName(model.vendor, model.displayName) ||
+			getVerifiedOciProviderModelId(model)
+		);
+	}
+
+	try {
+		return validateOciModelId(model.id);
+	} catch {
+		return '';
+	}
 }
 
 function normalizeOciModelCatalog(models: OciGenAiCatalogModel[]): OciGenAiSearchModel[] {
@@ -257,13 +309,8 @@ function normalizeOciModelCatalog(models: OciGenAiCatalogModel[]): OciGenAiSearc
 			const id = getOnDemandModelId(model);
 			if (!id) return [];
 
-			try {
-				const validatedId = validateOciModelId(id);
-				const name = model.displayName || validatedId || 'OCI Chat Model';
-				return [{ id: validatedId, name, searchText: `${name} ${validatedId}`.toLowerCase() }];
-			} catch {
-				return [];
-			}
+			const name = model.displayName || id;
+			return [{ id, name, searchText: `${name} ${id}`.toLowerCase() }];
 		})
 		.sort((first, second) => first.name.localeCompare(second.name));
 }
@@ -431,10 +478,23 @@ async function getCachedOciGenAiClient(
 	return await request;
 }
 
+function usesExternalPrincipalAuthentication(credentials: OciGenAiCredentials): boolean {
+	return (
+		credentials.authentication === 'instancePrincipal' ||
+		credentials.authentication === 'resourcePrincipal'
+	);
+}
+
 // Preserve the shared client factory used by both OCI Chat and Embeddings nodes.
 export async function createOciGenAiClient(
 	credentials: OciGenAiCredentials,
 ): Promise<genaiInference.GenerativeAiInferenceClient> {
+	// Principal identity comes from the runtime environment and is not represented in credential data.
+	// Do not reuse a client when its cache key cannot identify that external identity.
+	if (usesExternalPrincipalAuthentication(credentials)) {
+		return await createOciGenAiClientInternal(credentials);
+	}
+
 	return await getCachedOciGenAiClient(credentials);
 }
 

@@ -39,6 +39,7 @@ minimumReleaseAgeExclude:
   - '@ai-sdk/anthropic'
   # Security patch (Aikido) newer than the minimumReleaseAge window; allow it in.
   - '@xmldom/xmldom'
+  - '@oracle/langchain-oci@0.0.2'
 
 packages:
   - packages/*
