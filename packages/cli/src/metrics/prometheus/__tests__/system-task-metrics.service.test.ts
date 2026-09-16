@@ -26,12 +26,29 @@ describe('PrometheusSystemTaskMetricsService', () => {
 	const ctorByType = { Counter: vi.fn(), Gauge: vi.fn(), Histogram: vi.fn() };
 	const instancesByName = new Map<string, FakeMetric>();
 
+	/**
+	 * Tracks a value for each label set the way `prom-client` does, so a test can
+	 * assert what a series holds and not only which calls it received.
+	 */
 	class FakeMetric {
-		inc = vi.fn();
-		dec = vi.fn();
-		set = vi.fn();
+		private readonly valuesByLabels = new Map<string, number>();
+
+		inc = vi.fn((labels: object, value = 1) => this.addTo(labels, value));
+		dec = vi.fn((labels: object, value = 1) => this.addTo(labels, -value));
+		set = vi.fn((labels: object, value: number) =>
+			this.valuesByLabels.set(JSON.stringify(labels), value),
+		);
 		observe = vi.fn();
-		remove = vi.fn();
+		remove = vi.fn((labels: object) => this.valuesByLabels.delete(JSON.stringify(labels)));
+
+		value(labels: object) {
+			return this.valuesByLabels.get(JSON.stringify(labels));
+		}
+
+		private addTo(labels: object, delta: number) {
+			const key = JSON.stringify(labels);
+			this.valuesByLabels.set(key, (this.valuesByLabels.get(key) ?? 0) + delta);
+		}
 	}
 
 	function fake(type: keyof typeof ctorByType) {
@@ -161,7 +178,7 @@ describe('PrometheusSystemTaskMetricsService', () => {
 
 			expect(metric('system_task_info').set).toHaveBeenCalledWith(durable, 1);
 			expect(metric('system_task_scheduled').set).toHaveBeenCalledWith(durable, 1);
-			expect(metric('system_task_runs_in_flight').set).toHaveBeenCalledWith(durable, 0);
+			expect(metric('system_task_runs_in_flight').value(durable)).toBe(0);
 			expect(metric('system_task_interval_seconds').set).not.toHaveBeenCalled();
 		});
 
@@ -176,7 +193,7 @@ describe('PrometheusSystemTaskMetricsService', () => {
 			);
 			expect(metric('system_task_info').set).not.toHaveBeenCalled();
 			expect(metric('system_task_scheduled').set).not.toHaveBeenCalled();
-			expect(metric('system_task_runs_in_flight').set).not.toHaveBeenCalled();
+			expect(metric('system_task_runs_in_flight').value(inMemory)).toBeUndefined();
 		});
 
 		it('seeds the in-memory series of the routed tasks when the timers start', () => {
@@ -187,7 +204,7 @@ describe('PrometheusSystemTaskMetricsService', () => {
 
 			expect(metric('system_task_info').set).toHaveBeenCalledWith(inMemory, 1);
 			expect(metric('system_task_scheduled').set).toHaveBeenCalledWith(inMemory, 1);
-			expect(metric('system_task_runs_in_flight').set).toHaveBeenCalledWith(inMemory, 0);
+			expect(metric('system_task_runs_in_flight').value(inMemory)).toBe(0);
 		});
 
 		it('seeds an in-memory task routed while the timers run at once', () => {
@@ -197,6 +214,27 @@ describe('PrometheusSystemTaskMetricsService', () => {
 			handler('system-task-routed')({ name: 'prune', mode: 'in_memory' });
 
 			expect(metric('system_task_info').set).toHaveBeenCalledWith(inMemory, 1);
+		});
+
+		it('leaves the in-flight count of a run that outlived a stepdown alone when the timers start again', () => {
+			service.init();
+			handler('system-task-timers-started')({});
+			handler('system-task-routed')({ name: 'prune', mode: 'in_memory' });
+			handler('system-task-run-started')({ name: 'prune', mode: 'in_memory' });
+
+			// A stepdown whose run has not settled emits no stop, so the takeover that
+			// outran it seeds the series again while that run is still going.
+			handler('system-task-timers-started')({});
+			expect(metric('system_task_runs_in_flight').value(inMemory)).toBe(1);
+
+			handler('system-task-run-settled')({
+				name: 'prune',
+				mode: 'in_memory',
+				result: 'aborted',
+				durationMs: 3000,
+			});
+
+			expect(metric('system_task_runs_in_flight').value(inMemory)).toBe(0);
 		});
 
 		it('removes the in-memory series, and only those, when the timers stop', () => {

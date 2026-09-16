@@ -115,7 +115,10 @@ export class PrometheusSystemTaskMetricsService implements PrometheusMetricsColl
 		const seed = (task: string, mode: SystemTaskMode) => {
 			info.set({ task, mode }, 1);
 			scheduled.set({ task, mode }, 1);
-			runsInFlight.set({ task, mode }, 0);
+			// Creates the series without writing it: a run still settling from before
+			// a takeover has its own decrement to come, and an absolute 0 here would
+			// turn that decrement into a permanent -1.
+			runsInFlight.inc({ task, mode }, 0);
 		};
 
 		const inMemoryGauges = [info, scheduled, runsInFlight, lastSuccess];
