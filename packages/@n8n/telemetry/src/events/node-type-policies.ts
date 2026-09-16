@@ -17,9 +17,9 @@ const scope = z
 	.describe('Which scope the policy was written at; project policies compose under instance');
 
 const kind = z
-	.string()
+	.enum(['node-types', 'credential-types'])
 	.describe(
-		"Which type family the policy governs, e.g. 'node-types' or 'credential-types'. Credential type policies report through these same events instead of a second set, so this is what tells the two apart.",
+		'Which type family the policy governs. Credential type policies report through these same events instead of a second set, so this is what tells the two apart.',
 	);
 
 const projectId = z.string().optional().describe('Absent at instance scope');

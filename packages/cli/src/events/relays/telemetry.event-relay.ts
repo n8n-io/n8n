@@ -81,6 +81,20 @@ function policyScope(projectId: string | null): {
 	return projectId === null ? { scope: 'instance' } : { scope: 'project', project_id: projectId };
 }
 
+/**
+ * The domain event keeps `kind` as a plain string, so a later ticket can add controllers for a
+ * new kind (e.g. credential types) without changing the service or event map. Telemetry still
+ * wants a closed set, so this is the one place that checks it — an unrecognized kind is a bug in
+ * the caller (a new kind landed without registering it here), not something to crash telemetry
+ * over, so it is dropped rather than reported.
+ */
+const POLICY_KINDS = ['node-types', 'credential-types'] as const;
+type PolicyKind = (typeof POLICY_KINDS)[number];
+
+function isPolicyKind(kind: string): kind is PolicyKind {
+	return (POLICY_KINDS as readonly string[]).includes(kind);
+}
+
 function countRuleActions(rules: readonly PolicyRule[]) {
 	return {
 		rule_count: rules.length,
@@ -536,6 +550,8 @@ export class TelemetryEventRelay extends EventRelay {
 		rulesAfter,
 		warningCount,
 	}: RelayEventMap['node-type-policy-saved']) {
+		if (!isPolicyKind(kind)) return;
+
 		this.telemetry.track(TELEMETRY_EVENT.NODE_TYPE_POLICIES.USER_SAVED_NODE_TYPE_POLICY, {
 			...policyActor(updatedBy),
 			kind,
@@ -602,6 +618,8 @@ export class TelemetryEventRelay extends EventRelay {
 		rulesAfter: readonly PolicyRule[],
 		rulesBefore: readonly PolicyRule[] | null,
 	) {
+		if (!isPolicyKind(kind)) return;
+
 		this.telemetry.track(
 			TELEMETRY_EVENT.NODE_TYPE_POLICIES.USER_UPDATED_NODE_TYPE_POLICY_DOCUMENT,
 			{
@@ -623,6 +641,8 @@ export class TelemetryEventRelay extends EventRelay {
 		before,
 		after,
 	}: RelayEventMap['node-type-policy-attachments-updated']) {
+		if (!isPolicyKind(kind)) return;
+
 		this.telemetry.track(
 			TELEMETRY_EVENT.NODE_TYPE_POLICIES.USER_UPDATED_NODE_TYPE_POLICY_ATTACHMENTS,
 			{
