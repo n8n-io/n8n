@@ -133,8 +133,8 @@ catalogs:
       specifier: ^3.1.0
       version: 3.1.0
     vm2:
-      specifier: 3.11.6
-      version: 3.11.6
+      specifier: 3.12.2
+      version: 3.12.2
     xml2js:
       specifier: 0.6.2
       version: 0.6.2
@@ -1394,7 +1394,7 @@ importers:
         version: 7.29.0
       vm2:
         specifier: 'catalog:'
-        version: 3.11.6
+        version: 3.12.2
       weaviate-client:
         specifier: 3.6.2
         version: 3.6.2(encoding@0.1.13)
@@ -3240,7 +3240,7 @@ importers:
         version: 11.1.1
       vm2:
         specifier: 'catalog:'
-        version: 3.11.6
+        version: 3.12.2
       xlsx:
         specifier: https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz
         version: https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz
@@ -17775,8 +17775,8 @@ packages:
   vm-browserify@1.1.2:
     resolution: {integrity: sha512-2ham8XPWTONajOR0ohOKOHXkm3+gaBmGut3SRuu75xLd/RRaY6vqgh8NBYYk7+RW3u5AtzPQZG8F10LHkl0lAQ==}
 
-  vm2@3.11.6:
-    resolution: {integrity: sha512-35hVTcKieg7jJMntHhgWT5c2a1J2vmpXm66Xs1Z8ayHOJTj8rzIlXKzba3nO1Om/sonmnkjlAOMt9p8lYJXsWw==}
+  vm2@3.12.2:
+    resolution: {integrity: sha512-LRHt4xU6eXshlZEcSZVrTehLGxRDjHvjmFPGwEp4xGpZX61QzH6Xm9wK2nU7XAp36V1w2xILAL1LwxVkgD1Ipw==}
     engines: {node: '>=6.0'}
     hasBin: true
 
@@ -21359,7 +21359,7 @@ snapshots:
       '@currents/commit-info': 1.0.1-beta.0
       async-retry: 1.3.3
       axios: 1.18.0(debug@4.4.1)
-      axios-retry: 4.5.0(axios@1.18.0)
+      axios-retry: 4.5.0(axios@1.18.0(debug@4.4.1))
       c12: 1.11.2(magicast@0.3.5)
       chalk: 4.1.2
       commander: 12.1.0
@@ -23618,7 +23618,7 @@ snapshots:
   '@rudderstack/rudder-sdk-node@3.0.5':
     dependencies:
       axios: 1.18.0(debug@4.4.1)
-      axios-retry: 4.5.0(axios@1.18.0)
+      axios-retry: 4.5.0(axios@1.18.0(debug@4.4.1))
       component-type: 2.0.0
       join-component: 1.1.0
       lodash.clonedeep: 4.5.0
@@ -26682,7 +26682,7 @@ snapshots:
 
   axe-core@4.7.2: {}
 
-  axios-retry@4.5.0(axios@1.18.0):
+  axios-retry@4.5.0(axios@1.18.0(debug@4.4.1)):
     dependencies:
       axios: 1.18.0(debug@4.4.1)
       is-retry-allowed: 2.2.0
@@ -30126,7 +30126,7 @@ snapshots:
       file-type: 16.5.4
       form-data: 4.0.6
       isstream: 0.1.2
-      jsonwebtoken: 9.0.2
+      jsonwebtoken: 9.0.3
       mime-types: 2.1.35
       retry-axios: 2.6.0(axios@1.18.0(debug@4.4.3))
       tough-cookie: 4.1.4
@@ -36738,7 +36738,7 @@ snapshots:
 
   vm-browserify@1.1.2: {}
 
-  vm2@3.11.6:
+  vm2@3.12.2:
     dependencies:
       acorn: 8.15.0
       acorn-walk: 8.3.4
