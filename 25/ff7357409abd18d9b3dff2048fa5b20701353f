@@ -1,0 +1,41 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentTaskModal.vue
+  s_6ce85d4a1f6067::t_72a290f8d33aa3 477
+packages/frontend/editor-ui/src/features/agents/components/AgentSkillViewer.vue
+  s_6ce85d4a1f6067::t_72a290f8d33aa3 576,623
+packages/frontend/editor-ui/src/features/ai/chatHub/ChatView.vue
+  s_6ce85d4a1f6067::t_dd73756237f63d 43
+packages/frontend/editor-ui/src/features/agents/components/AgentSubAgentsModal.vue
+  s_6ce85d4a1f6067::t_72a290f8d33aa3 233
+packages/frontend/editor-ui/src/features/ai/shared/composables/useFileDrop.ts
+  s_6ce85d4a1f6067::t_dd73756237f63d 21,24,73,77-80,82,86
+packages/frontend/editor-ui/src/features/ai/chatHub/components/CanvasChatHubPanel.vue
+  s_6ce85d4a1f6067::t_dd73756237f63d 22
+packages/frontend/editor-ui/src/features/ai/chatHub/components/AgentEditorModal.vue
+  s_6ce85d4a1f6067::t_dd73756237f63d 47
+packages/frontend/editor-ui/src/features/ai/shared/components/ChatInputBase.vue
+  s_6ce85d4a1f6067::t_c25ba6dfb1a507 11,14,71,175-179,184,220-224,232-234,308,312-324
+  s_6ce85d4a1f6067::t_abf7643dcd2444 68-70,227-231
+  s_6ce85d4a1f6067::t_8b336d7ae88690 325
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_6ce85d4a1f6067::t_72a290f8d33aa3 7590,8556
+  s_6ce85d4a1f6067::t_7c48b50665286a 7918-7920,7922-7923
+packages/frontend/editor-ui/src/features/agents/components/AgentMemoryPanel.vue
+  s_6ce85d4a1f6067::t_7c48b50665286a 229-246,356-359
+  s_6ce85d4a1f6067::t_75a39a356c668e 360-361
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "25ff7357409abd18d9b3dff2048fa5b20701353f",
+  "prompts": {},
+  "sessions": {
+    "s_6ce85d4a1f6067": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0a4c4-d4ab-7d52-b983-c70679bb264f",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}
