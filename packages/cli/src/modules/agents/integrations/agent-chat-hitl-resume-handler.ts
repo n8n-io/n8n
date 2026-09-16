@@ -1,5 +1,5 @@
 import type { AgentIntegrationConfig } from '@n8n/api-types';
-import type { ActionEvent, Thread } from 'chat';
+import type { ActionEvent, Author, Thread } from 'chat';
 import type { Logger } from 'n8n-workflow';
 
 import type {
@@ -19,6 +19,23 @@ import type {
 } from '../agent-execution-orchestrator.service';
 
 type ResumeExecutor = Pick<AgentExecutionOrchestratorService, 'resumeForChat'>;
+
+/**
+ * Answer one person's card click where only they can see it. Slack and Teams
+ * post it natively; the SDK returns `null` for an adapter that cannot, and the
+ * notice falls back to the thread rather than being dropped.
+ *
+ * `fallbackToDM: false` is deliberate — the SDK's DM fallback would turn an
+ * in-channel notice into an unsolicited direct message on Discord and Telegram.
+ */
+async function postPrivateNotice(
+	thread: Thread<unknown, unknown>,
+	user: Author,
+	text: string,
+): Promise<void> {
+	const sent = await thread.postEphemeral(user, text, { fallbackToDM: false });
+	if (!sent) await thread.post(text);
+}
 
 interface AgentChatHitlResumeHandlerOptions {
 	agentId: string;
@@ -62,7 +79,12 @@ export class AgentChatHitlResumeHandler {
 			return;
 		}
 
-		const callbackData = await this.resolveCallbackData(event.actionId, event.value, thread);
+		const callbackData = await this.resolveCallbackData(
+			event.actionId,
+			event.value,
+			thread,
+			event.user,
+		);
 		if (!callbackData) return;
 
 		const parsed = this.parseActionId(callbackData.actionId, callbackData.value);
@@ -80,6 +102,7 @@ export class AgentChatHitlResumeHandler {
 		await this.executeResume(thread, parsed.runId, parsed.toolCallId, parsed.resumeData, {
 			messageContext,
 			contextConversation: { threadId: threadId.id, resourceId: event.user.userId },
+			actingUser: event.user,
 		});
 	}
 
@@ -127,6 +150,7 @@ export class AgentChatHitlResumeHandler {
 		actionId: string,
 		value: string | undefined,
 		thread: Thread<unknown, unknown>,
+		user: Author,
 	): Promise<{
 		actionId: string;
 		value: string | undefined;
@@ -137,7 +161,9 @@ export class AgentChatHitlResumeHandler {
 		const resolved = await this.options.callbackStore.resolve(actionId);
 		if (!resolved) {
 			this.options.logger.warn('[AgentChatBridge] Callback key not found or expired', { actionId });
-			await thread.post(
+			await postPrivateNotice(
+				thread,
+				user,
 				'This action is no longer available. The link may have expired or already been used.',
 			);
 			return null;
@@ -223,13 +249,20 @@ export class AgentChatHitlResumeHandler {
 		toolCallId: string,
 		resumeData: unknown,
 		options: Pick<ResumeForChatConfig, 'messageContext' | 'contextConversation'> & {
-			notifyOnDuplicate?: boolean;
+			/**
+			 * The user who clicked, when there is one. Present means they are told
+			 * privately that the action was already handled; a resume the user did
+			 * not trigger (a sub-workflow waking the run) omits it and stays silent.
+			 */
+			actingUser?: Author;
 		} = {},
 	): Promise<void> {
-		const { notifyOnDuplicate = true, ...context } = options;
+		const { actingUser, ...context } = options;
 		if (this.activeResumedRuns.has(runId)) {
 			this.options.logger.warn('[AgentChatBridge] Run is already active', { runId, toolCallId });
-			if (notifyOnDuplicate) await thread.post('This action has already been handled');
+			if (actingUser) {
+				await postPrivateNotice(thread, actingUser, 'This action has already been handled');
+			}
 			return;
 		}
 

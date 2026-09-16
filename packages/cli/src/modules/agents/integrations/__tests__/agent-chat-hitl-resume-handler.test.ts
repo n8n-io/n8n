@@ -29,6 +29,16 @@ function createHandler(overrides: Partial<HandlerOptions> = {}) {
 	} as HandlerOptions);
 }
 
+/** A thread whose `postEphemeral` either lands natively or is unsupported. */
+function createThread(nativeEphemeral: boolean) {
+	return {
+		post: vi.fn().mockResolvedValue(undefined),
+		postEphemeral: vi
+			.fn()
+			.mockResolvedValue(nativeEphemeral ? { id: 'ephemeral-1', usedFallback: false } : null),
+	};
+}
+
 describe('settling the action card', () => {
 	it.each([
 		{
@@ -83,7 +93,7 @@ describe('settling the action card', () => {
 			await handler.handleAction({
 				actionId,
 				value,
-				thread: { post: vi.fn() },
+				thread: createThread(true),
 				threadId: THREAD_ID,
 				messageId: 'message-1',
 				user: ALICE,
@@ -104,4 +114,106 @@ describe('settling the action card', () => {
 			);
 		},
 	);
+});
+
+describe('notices that answer one click', () => {
+	const EXPIRED_NOTICE =
+		'This action is no longer available. The link may have expired or already been used.';
+
+	it('tells only the clicking user that their callback key expired', async () => {
+		const thread = createThread(true);
+		const resumeForChat = vi.fn(() => (async function* () {})());
+		const handler = createHandler({
+			agentService: { resumeForChat },
+			callbackStore: { resolve: vi.fn().mockResolvedValue(undefined) } as never,
+		});
+
+		await handler.handleAction({
+			actionId: 'callback-key',
+			thread,
+			threadId: THREAD_ID,
+			messageId: 'message-1',
+			user: ALICE,
+			adapter: { deleteMessage: vi.fn() },
+			raw: {},
+		} as never);
+
+		expect(thread.postEphemeral).toHaveBeenCalledWith(ALICE, EXPIRED_NOTICE, {
+			fallbackToDM: false,
+		});
+		expect(thread.post).not.toHaveBeenCalled();
+		expect(resumeForChat).not.toHaveBeenCalled();
+	});
+
+	it('falls back to the thread where the platform has no ephemeral message', async () => {
+		const thread = createThread(false);
+		const handler = createHandler({
+			callbackStore: { resolve: vi.fn().mockResolvedValue(undefined) } as never,
+		});
+
+		await handler.handleAction({
+			actionId: 'callback-key',
+			thread,
+			threadId: THREAD_ID,
+			messageId: 'message-1',
+			user: ALICE,
+			adapter: { deleteMessage: vi.fn() },
+			raw: {},
+		} as never);
+
+		expect(thread.post).toHaveBeenCalledWith(EXPIRED_NOTICE);
+	});
+
+	it('tells only the clicking user that the action was already handled', async () => {
+		const thread = createThread(true);
+		// Hold the first resume open so the second one meets the in-flight guard.
+		let releaseFirstResume!: () => void;
+		const firstResumeHeld = new Promise<void>((resolve) => {
+			releaseFirstResume = resolve;
+		});
+		const handler = createHandler({
+			streamConsumer: { consume: async () => await firstResumeHeld } as never,
+		});
+
+		const first = handler.executeResume(
+			thread as never,
+			'run-1',
+			'tool-1',
+			{},
+			{
+				actingUser: ALICE,
+			},
+		);
+		await handler.executeResume(thread as never, 'run-1', 'tool-1', {}, { actingUser: ALICE });
+		releaseFirstResume();
+		await first;
+
+		expect(thread.postEphemeral).toHaveBeenCalledWith(
+			ALICE,
+			'This action has already been handled',
+			{
+				fallbackToDM: false,
+			},
+		);
+		expect(thread.post).not.toHaveBeenCalled();
+	});
+
+	it('stays silent on a resume no user triggered', async () => {
+		const thread = createThread(true);
+		let releaseFirstResume!: () => void;
+		const firstResumeHeld = new Promise<void>((resolve) => {
+			releaseFirstResume = resolve;
+		});
+		const handler = createHandler({
+			streamConsumer: { consume: async () => await firstResumeHeld } as never,
+		});
+
+		const first = handler.executeResume(thread as never, 'run-1', 'tool-1', {});
+		await handler.executeResume(thread as never, 'run-1', 'tool-1', {});
+		releaseFirstResume();
+		await first;
+
+		expect(thread.postEphemeral).not.toHaveBeenCalled();
+		expect(thread.post).not.toHaveBeenCalled();
+	});
 });

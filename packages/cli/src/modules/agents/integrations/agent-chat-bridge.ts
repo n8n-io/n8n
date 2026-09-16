@@ -480,7 +480,7 @@ export class AgentChatBridge {
 			runId,
 			toolCallId,
 			resumeData,
-			{ notifyOnDuplicate: false, ...(context ? { messageContext: context.messageContext } : {}) },
+			{ ...(context ? { messageContext: context.messageContext } : {}) },
 		);
 	}
 
