@@ -92,7 +92,6 @@ import {
 	getDismissedContextKeys,
 	handoffContextKey,
 } from './instanceAi.handoffContext';
-import { useSidebarState } from './instanceAiLayout';
 import InstanceAiMessage from './components/InstanceAiMessage.vue';
 import InstanceAiInput from './components/InstanceAiInput.vue';
 import InstanceAiDebugPanel from './components/InstanceAiDebugPanel.vue';
@@ -137,7 +136,6 @@ const i18n = useI18n();
 const router = useRouter();
 const { goToUpgrade } = usePageRedirectionHelper();
 const creditBanner = useCreditWarningBanner(showCreditWarning);
-const sidebar = useSidebarState();
 const { width: windowWidth } = useWindowSize();
 const { isCollapsed: isMainSidebarCollapsed, sidebarWidth: mainSidebarWidth } = useSidebarLayout();
 const telemetry = useTelemetry();
@@ -391,7 +389,6 @@ const isDebugEnabled = computed(() => localStorage.getItem('instanceAi.debugMode
 const hasPreviewTabs = computed(() => preview.allArtifactTabs.value.length > 0);
 const isArtifactsPanelRevealed = ref(false);
 const isArtifactsPanelDismissedInLayout = ref(false);
-const DEFAULT_INSTANCE_AI_SIDEBAR_WIDTH = 260;
 const MIN_AVAILABLE_WIDTH_FOR_PINNED_ARTIFACTS_PANEL = 900;
 const artifactsPanelTransitionGate = useTransitionGate({
 	isBlocked: () => thread.isHydratingThread,
@@ -473,11 +470,8 @@ const { width: threadAreaWidth } = useElementSize(threadAreaRef);
 const mainSidebarOccupiedWidth = computed(() =>
 	isMainSidebarCollapsed.value ? COLLAPSED_MAIN_SIDEBAR_WIDTH : (mainSidebarWidth.value ?? 0),
 );
-const instanceAiSidebarOccupiedWidth = computed(() =>
-	sidebar.collapsed.value ? 0 : (sidebar.width?.value ?? DEFAULT_INSTANCE_AI_SIDEBAR_WIDTH),
-);
 const availableWidthForPinnedArtifactsPanel = computed(
-	() => windowWidth.value - mainSidebarOccupiedWidth.value - instanceAiSidebarOccupiedWidth.value,
+	() => windowWidth.value - mainSidebarOccupiedWidth.value,
 );
 const isArtifactsPanelInLayout = computed(
 	() =>
@@ -1229,15 +1223,7 @@ async function dismissComposerContextChip() {
 			<div :class="$style.builderChatHeader" data-test-id="instance-ai-builder-chat-header">
 				<InstanceAiViewHeader>
 					<template #title>
-						<N8nHeading
-							v-if="currentThreadTitle"
-							tag="h2"
-							size="small"
-							:class="[
-								$style.headerTitle,
-								{ [$style.headerTitleWithSidebar]: !sidebar.collapsed.value },
-							]"
-						>
+						<N8nHeading v-if="currentThreadTitle" tag="h2" size="small" :class="$style.headerTitle">
 							{{ currentThreadTitle }}
 						</N8nHeading>
 						<N8nText
@@ -1633,10 +1619,6 @@ async function dismissComposerContextChip() {
 	white-space: nowrap;
 	min-width: 0;
 	color: var(--color--text);
-}
-
-.headerTitleWithSidebar {
-	padding-left: var(--spacing--4xs);
 }
 
 .activeButton {

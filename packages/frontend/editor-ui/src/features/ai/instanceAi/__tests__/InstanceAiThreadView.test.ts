@@ -12,7 +12,6 @@ import { useInstanceAiStore, type ThreadRuntime } from '../instanceAi.store';
 import type { PlanEditContext } from '../instanceAi.threadRuntime';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
-import { SidebarStateKey } from '../instanceAiLayout';
 import { NEW_CONVERSATION_TITLE } from '../constants';
 import {
 	LOCAL_STORAGE_INSTANCE_AI_ARTIFACT_PREVIEW_OPEN,
@@ -157,7 +156,6 @@ vi.mock('@vueuse/core', async (importOriginal) => {
 
 const inputFocusSpy = vi.fn();
 const inputSetTextSpy = vi.fn();
-const mockSidebarCollapsed = ref(false);
 
 const InstanceAiInputStub = defineComponent({
 	name: 'InstanceAiInputStub',
@@ -433,9 +431,6 @@ const InstanceAiArtifactsPanelStub = defineComponent({
 
 const renderView = createComponentRenderer(InstanceAiThreadView, {
 	global: {
-		provide: {
-			[SidebarStateKey as symbol]: { collapsed: mockSidebarCollapsed, toggle: vi.fn() },
-		},
 		stubs: {
 			InstanceAiSetupPanel: defineComponent({
 				props: { workflowId: String, projectId: String },
@@ -609,7 +604,6 @@ describe('InstanceAiThreadView', () => {
 		localStorageState.store.clear();
 		inputState.initialDraft = '';
 		inputState.hasAttachments = false;
-		mockSidebarCollapsed.value = false;
 		history.replaceState({}, '');
 		testAgentOfferState.evalsFlagEnabled = false;
 		testAgentOfferState.capabilitySummary = null;
@@ -851,6 +845,7 @@ describe('InstanceAiThreadView', () => {
 	});
 
 	it('clears the generated draft when pending context is dismissed from the artifacts panel', async () => {
+		mockWindowSizeState.width.value = 900;
 		const { findByTestId, getByTestId, user } = await renderAgentArtifact();
 		store.updateThreadMetadata.mockResolvedValueOnce(undefined);
 
@@ -873,6 +868,7 @@ describe('InstanceAiThreadView', () => {
 	});
 
 	it('preserves edited text and attachments when artifacts-panel context is dismissed', async () => {
+		mockWindowSizeState.width.value = 900;
 		const { findByTestId, getByTestId, user } = await renderAgentArtifact();
 		store.updateThreadMetadata.mockResolvedValueOnce(undefined);
 
