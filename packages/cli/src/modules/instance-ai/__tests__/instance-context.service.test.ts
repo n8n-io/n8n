@@ -909,8 +909,8 @@ describe('shouldTraceContextInjection', () => {
 	 * The distinction the row exists to draw. Without it, an agent that was handed nothing
 	 * looks the same as one that was handed something and ignored it.
 	 */
-	it('traces an empty block, so a turn told nothing stays distinguishable', () => {
-		expect(shouldTraceContextInjection({ state: 'absent', reason: 'empty' })).toBe(true);
+	it('stays out of the trace when nothing was read, which is a row saying nothing', () => {
+		expect(shouldTraceContextInjection({ state: 'absent', reason: 'empty' })).toBe(false);
 	});
 
 	/** The outcome a reader is most likely hunting for, so it must not be silent. */

@@ -67,7 +67,8 @@ describe('InstanceContextStep', () => {
 	});
 
 	/**
-	 * The distinction this row exists to draw: told nothing, versus told and ignored it.
+	 * A turn handed nothing is no longer traced, but the timeline is durable: threads that ran
+	 * before that change still replay these rows, so the label has to keep rendering them.
 	 */
 	it('reads differently when the turn was handed nothing', () => {
 		const entry = injected({

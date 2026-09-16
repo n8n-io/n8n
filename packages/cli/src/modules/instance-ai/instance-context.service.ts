@@ -178,25 +178,14 @@ export function toContextInjection(result: InstanceContextResult): InstanceConte
 }
 
 /**
- * Whether an outcome is worth a row in the trace.
- *
- * An empty block earns one: a turn told nothing has to be distinguishable from one that
- * was told and ignored it, and only the absent row can say which. A failed read earns one
- * too — that is the case someone is most likely to be looking for.
- *
- * The other two absences do not. A turn where the feature was off has no reader to inform
- * — a row on every turn of every instance that never enabled this would be noise standing
- * in for a signal — and a machine follow-up is the agent continuing its own task, where
- * nobody is reading intent. Both still reach telemetry, where the off arm is the
- * denominator.
- */
-/**
- * Typed against the reason union rather than tested with `||`, so a reason added later has to
- * decide here instead of silently defaulting to untraced.
+ * Whether an outcome is worth a row in the trace. Only a turn that was handed something, plus a
+ * read that broke: a row saying nothing was read is noise on every turn of a quiet project. Every
+ * arm still reaches telemetry, which is where the comparison lives. Typed against the reason union
+ * so a reason added later has to decide rather than default to untraced.
  */
 const TRACED_ABSENCE_REASONS: Record<InstanceContextAbsenceReason, boolean> = {
-	empty: true,
 	failed: true,
+	empty: false,
 	disabled: false,
 	'machine-follow-up': false,
 };
