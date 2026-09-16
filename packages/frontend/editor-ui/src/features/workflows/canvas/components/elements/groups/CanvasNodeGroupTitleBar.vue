@@ -464,6 +464,7 @@ function onWrapperPointerDown(event: PointerEvent) {
 			>
 				<div :class="$style.toolbarItems">
 					<KeyboardShortcutTooltip
+						v-if="!isEmptyGroup"
 						:label="i18n.baseText('canvas.selection.toolbar.ungroup')"
 						:shortcut="UNGROUP_NODES_SHORTCUT"
 					>
@@ -478,7 +479,7 @@ function onWrapperPointerDown(event: PointerEvent) {
 						/>
 					</KeyboardShortcutTooltip>
 					<KeyboardShortcutTooltip
-						v-if="canExtract"
+						v-if="canExtract && !isEmptyGroup"
 						:label="extractLabel"
 						:shortcut="EXTRACT_WORKFLOW_SHORTCUT"
 					>
