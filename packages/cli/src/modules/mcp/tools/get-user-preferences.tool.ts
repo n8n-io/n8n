@@ -32,6 +32,7 @@ const NOTHING_SAVED_FOR_PROJECT =
 const inputSchema = {
 	projectId: z
 		.string()
+		.min(1)
 		.optional()
 		.describe(
 			'Read one project instead of every project you can see. The instance and personal preferences are always included. Obtain the id from search_projects.',

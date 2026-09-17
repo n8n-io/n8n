@@ -79,6 +79,7 @@ describe('get-user-preferences MCP tool', () => {
 			expect(Object.keys(tool.config.inputSchema!)).toEqual(['projectId']);
 			expect(tool.config.inputSchema!.projectId.safeParse(undefined).success).toBe(true);
 			expect(tool.config.inputSchema!.projectId.safeParse('p-1').success).toBe(true);
+			expect(tool.config.inputSchema!.projectId.safeParse('').success).toBe(false);
 		});
 
 		test('is annotated read-only', () => {
