@@ -454,6 +454,31 @@ describe('createCasePipeline', () => {
 		expect(lane.tracedExecuteAgent).not.toHaveBeenCalled();
 	});
 
+	it('counts googlePalmApi as a declared LLM credential', async () => {
+		const lane = makeLane();
+		const build = okBuild({
+			workflowId: undefined,
+			workflowJsons: [],
+			transcript: [] as never,
+			artifactRefs: [{ type: 'agent', id: 'agent-1' }] as never,
+		});
+		const orchestrator = makeOrchestrator({ build, lane, buildDurationMs: 3 });
+		const draftArtifact = { agentId: 'agent-1', config: { name: 'Draft', model: '' }, skills: {} };
+		const testCase = { ...scenarioCase(['happy-path']), credentials: [{ type: 'googlePalmApi' }] };
+		const pipeline = createCasePipeline(
+			makeDeps(orchestrator, {
+				testCaseByFileSlug: new Map([['case-a', testCase]]),
+				agentContextByKey: new Map([
+					['0:case-a', Promise.resolve({ rendered: 'AGENT CONTEXT', artifact: draftArtifact })],
+				]),
+			}),
+		);
+
+		const output = await pipeline.runRow(rowInputs('happy-path'));
+
+		expect(output).toMatchObject({ passed: false, attribution: 'builder_issue' });
+	});
+
 	it('owns a draft Agent as builder_issue when the case declared an LLM credential', async () => {
 		const lane = makeLane();
 		const build = okBuild({

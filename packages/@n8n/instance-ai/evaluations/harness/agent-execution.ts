@@ -32,7 +32,7 @@ import type {
 } from '../types';
 
 /** LLM credential types the eval seeder can create (credentials/seeder.ts). */
-const LLM_CREDENTIAL_TYPES = new Set(['openAiApi']);
+const LLM_CREDENTIAL_TYPES = new Set(['openAiApi', 'googlePalmApi']);
 
 /**
  * A built Agent with no model cannot run. Who owns that depends on what the
