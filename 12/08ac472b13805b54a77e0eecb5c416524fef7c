@@ -1,0 +1,74 @@
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_d27d09d94cc9ff::t_caaaaecb11de39 262,277-281,298,307-338,340-350
+  s_d27d09d94cc9ff::t_d8d6d01f8227ae 339
+  s_d27d09d94cc9ff::t_81bc22b3dfd157 351-352
+packages/cli/src/modules/agents/repositories/agent-execution.repository.ts
+  s_d27d09d94cc9ff::t_6e5a9beb80cb4b 61-64
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_d27d09d94cc9ff::t_a882d056fc184a 349,351-362,493
+  s_d27d09d94cc9ff::t_1685f0e4360afb 494-496
+packages/cli/src/modules/agents/agent-message-queue.types.ts
+  s_d27d09d94cc9ff::t_173a6ad6f9ad71 31-32
+packages/cli/src/modules/agents/__tests__/agent-chat-attachment.service.test.ts
+  s_d27d09d94cc9ff::t_7c0668fe4fa48b 228,280-281
+  s_d27d09d94cc9ff::t_a3c683cc41465e 2,11,20,203-226,229-238,240-247,254-258,270-279
+  s_d27d09d94cc9ff::t_96be212b0eb1d0 227
+packages/cli/src/modules/agents/repositories/agent-message-queue.repository.ts
+  s_d27d09d94cc9ff::t_981944daf22a51 132-137
+  s_d27d09d94cc9ff::t_6e5a9beb80cb4b 3,67-68,70,73,110-111,115,118,154,162
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_d27d09d94cc9ff::t_0f5f0226fea478 26,1297,1320
+  s_d27d09d94cc9ff::t_5c835a30ff001a 70,124,211,587-588,656,748,1096
+  s_d27d09d94cc9ff::t_d38709e40c7e0a 601-607,622,1109-1127
+  s_d27d09d94cc9ff::t_c37a05d4f23068 1169
+  s_d27d09d94cc9ff::t_acd4c3570cd2ea 589-600
+packages/cli/src/modules/agents/agent-execution-update-broadcaster.ts
+  s_d27d09d94cc9ff::t_981944daf22a51 12,42-60
+  s_d27d09d94cc9ff::t_1d351cb9cf6c00 61-62
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_d27d09d94cc9ff::t_e9679b14fa32d8 44-45,106,145-186,188-193,291,323-364
+  s_d27d09d94cc9ff::t_981944daf22a51 635,637
+  s_d27d09d94cc9ff::t_a882d056fc184a 636
+  s_d27d09d94cc9ff::t_0f5f0226fea478 11,78-81,365
+  s_d27d09d94cc9ff::t_86e916e5eef704 82-83,366
+packages/cli/test/integration/agents/agent-message-queue.test.ts
+  s_d27d09d94cc9ff::t_917a4b5af974aa 590,596,598-602,604,608-610,663-666,668,670,703
+  s_d27d09d94cc9ff::t_7830e5eae4421d 5,36-39,172-204,648,650,873-875,880-882,884-890,892,906-1007
+  s_d27d09d94cc9ff::t_06e57410a49970 717-811
+  s_d27d09d94cc9ff::t_1298d608eea390 1395-1400,1402,1428,1446-1452,1454,1482-1484
+  s_d27d09d94cc9ff::t_ef71ffbd7d6f71 149,629,631,698-699,821-822,857,1021-1022,1070,1093-1099,1110,1121,1128,1160,1197,1218,1392-1393,1486,1599,1625,1677,1690
+  s_d27d09d94cc9ff::t_b70c3179bb1c65 848,862-863,869-872,876-879,883,891,893-905
+  s_d27d09d94cc9ff::t_a882d056fc184a 13,26-32,62,70,82-119,165-166,277,327-328,343-349
+  s_d27d09d94cc9ff::t_90def48fed8b87 302,605
+  s_d27d09d94cc9ff::t_8b64c3bea5af96 45,158
+  s_d27d09d94cc9ff::t_f224f7df715b70 357,860,1718
+  s_d27d09d94cc9ff::t_35df9970744be3 1024-1033,1044-1049,1081,1085,1087,1090,1140,1144-1146,1148,1150,1154,1157,1169-1171,1173,1180-1191,1195,1206,1209,1227,1230
+  s_d27d09d94cc9ff::t_68ea3b32dffe9c 1494,1497-1513,1641-1642,1661,1695-1696,1698,1700-1706,1708-1712,1714-1716
+  s_d27d09d94cc9ff::t_7c0668fe4fa48b 1697,1707,1713
+  s_d27d09d94cc9ff::t_998a79f9394f1a 825,1008
+packages/cli/src/modules/agents/agent-message-queue.service.ts
+  s_d27d09d94cc9ff::t_981944daf22a51 271-274,301
+  s_d27d09d94cc9ff::t_0bf070d126e185 372,418-422,433-440,444,446,450,467-478,481,490-510,513-514,517,520-525,538
+  s_d27d09d94cc9ff::t_e1eb49b9b08c7e 2-7,11,17,27-31,46-47,50,81,109-110,209,232-237,296,299-300,312
+  s_d27d09d94cc9ff::t_0f5f0226fea478 462-466
+  s_d27d09d94cc9ff::t_afbb1f59af5564 545-627,632-655,657-661,667,678,714-729,731-739,767
+  s_d27d09d94cc9ff::t_5d776a9b2617ac 115-132,134-136
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_d27d09d94cc9ff::t_a882d056fc184a 98
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "1208ac472b13805b54a77e0eecb5c416524fef7c",
+  "prompts": {},
+  "sessions": {
+    "s_d27d09d94cc9ff": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0a974-d93e-7a81-998f-70beb9ade7da",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
