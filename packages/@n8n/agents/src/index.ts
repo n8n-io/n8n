@@ -75,7 +75,6 @@ export type {
 	McpVerifyResult,
 	ModelConfig,
 	ExecutionOptions,
-	SteeringInput,
 	SmoothStreamOptions,
 	TokenUsage,
 	AgentExecutionCounter,

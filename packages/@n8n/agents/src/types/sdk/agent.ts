@@ -184,24 +184,9 @@ export interface AgentExecutionCounter {
 	incrementTokenCount(tokenCount: number): void;
 }
 
-/** One host-supplied mid-run user input. */
-export interface SteeringInput {
-	/** Host-owned id, so the host's eager row and the end-of-run save collapse into one. */
-	id?: string;
-	text: string;
-}
-
 export interface ExecutionOptions {
 	maxIterations?: number;
 	abortSignal?: AbortSignal;
-	/**
-	 * Stops the in-flight step without ending the run. The provider request is
-	 * cancelled, tool calls that have not started are skipped, and the loop settles
-	 * the step — so a host can use this to cut a step short and put its own user
-	 * input in front of the next one (via `steeringInput`) while keeping everything
-	 * the run already produced. Distinct from `abortSignal`, which ends the run.
-	 */
-	interruptSignal?: AbortSignal;
 	providerOptions?: ProviderOptions;
 	/**
 	 * Cap on completion tokens for each model call (`max_tokens` /
@@ -242,23 +227,23 @@ export interface ExecutionOptions {
 	onStepStart?: (event: GenerateTextStepStartEvent) => void | Promise<void>;
 	onStepEnd?: (event: GenerateTextStepEndEvent) => void | Promise<void>;
 	/**
-	 * Host-drained mid-run user input ("steering"). Called at each clean step
-	 * boundary — after a tool batch settles, before the next model call — and the
-	 * returned text is appended as user input so the next step accounts for it.
+	 * Host check for a graceful stop, asked before each tool call starts
+	 * (`before: 'tool-call'`) and at each clean step boundary before the next
+	 * model call (`before: 'model-call'`). The first `true` is final: the tool
+	 * call in flight finishes, the tool calls that have not started are settled
+	 * as skipped, no further model call is made, and the run finishes exactly
+	 * like one that reached its own stop (`finishReason: 'stop'`), so everything
+	 * settled so far is persisted. A host uses this to hand the thread to a new
+	 * run without cancelling anything.
 	 *
-	 * `force` marks the boundary the loop synthesised because the host called
-	 * `interrupt()` mid-step. Pass the same drain for it as for a natural boundary:
-	 * that call is what turns "stop this step" into "stop this step and start a new
-	 * one with my message", instead of leaving the interrupt to wait for a
-	 * boundary the current step may never reach.
-	 *
-	 * The host owns durability of the text: it must persist the message before
-	 * returning it. Must not throw; a failed drain must never fail the run.
+	 * `step` is the 1-based step in progress; at a boundary it is the step that
+	 * just ended. Must not throw; a failing check is logged and read as `false`,
+	 * so it never fails the run.
 	 */
-	steeringInput?: (context: {
+	shouldStopGracefully?: (context: {
 		step: number;
-		force?: boolean;
-	}) => SteeringInput[] | Promise<SteeringInput[]>;
+		before: 'tool-call' | 'model-call';
+	}) => boolean | Promise<boolean>;
 	/** @deprecated Use `onStepEnd` instead. */
 	onStepFinish?: (event: GenerateTextStepEndEvent) => void | Promise<void>;
 	/**

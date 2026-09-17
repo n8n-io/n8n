@@ -2090,6 +2090,15 @@ export interface OrchestrationContext {
 		status: TraceStatus,
 	) => Promise<void>;
 	abortSignal: AbortSignal;
+	/**
+	 * Aborts the sub-agent loops this run delegates to (the agent builder), and
+	 * only those. It fires on a user stop like `abortSignal`, and also when Send
+	 * now asks the run to take no further action, so a delegated builder stops at
+	 * once while the orchestrator's own tool call settles and the run ends
+	 * normally. A tool passes it to a delegated loop and keeps `abortSignal` for
+	 * its own work. Unset in hosts that do not steer.
+	 */
+	subAgentAbortSignal?: AbortSignal;
 	taskStorage: TaskStorage;
 	tracing?: InstanceAiTraceContext;
 	/** Local MCP server (Computer Use daemon) for filesystem, shell, browser, and related tools. */

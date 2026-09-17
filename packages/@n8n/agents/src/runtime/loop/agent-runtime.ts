@@ -251,9 +251,6 @@ export class AgentRuntime {
 			eventBus: this.eventBus,
 			concurrency: config.toolCallConcurrency ?? 1,
 			onCancelled: () => this.updateState({ status: 'cancelled' }),
-			// An interrupt is not a cancellation: leave the run's status alone so
-			// the loop can start the next step.
-			onInterrupted: () => {},
 			tokenCounter,
 			...(config.workspaceFilesystem ? { workspaceFilesystem: config.workspaceFilesystem } : {}),
 			...(this.activeSkills ? { loadSkill: this.activeSkills.load.bind(this.activeSkills) } : {}),
@@ -301,10 +298,7 @@ export class AgentRuntime {
 		input: AgentMessage[] | string,
 		options?: RunOptions & ExecutionOptions,
 	): Promise<GenerateResult> {
-		const abortScope = this.eventBus.createAbortScope({
-			externalSignal: options?.abortSignal,
-			interruptSignal: options?.interruptSignal,
-		});
+		const abortScope = this.eventBus.createAbortScope(options?.abortSignal);
 		let list: AgentMessageList | undefined = undefined;
 		try {
 			const sink = new GenerateSink(this.createRunServices());
@@ -356,10 +350,7 @@ export class AgentRuntime {
 		input: AgentMessage[] | string,
 		options?: RunOptions & ExecutionOptions,
 	): Promise<StreamResult> {
-		const abortScope = this.eventBus.createAbortScope({
-			externalSignal: options?.abortSignal,
-			interruptSignal: options?.interruptSignal,
-		});
+		const abortScope = this.eventBus.createAbortScope(options?.abortSignal);
 		// initRun runs inside startStream's root span (not before it) so the
 		// history-load and eager-input-persist memory spans it creates nest
 		// under `<agent>.stream` instead of starting as detached root spans.
@@ -472,10 +463,7 @@ export class AgentRuntime {
 			resumeClaimed = true;
 			await options.onResumeClaimed?.();
 
-			abortScope = this.eventBus.createAbortScope({
-				externalSignal: resumeOptions.abortSignal,
-				interruptSignal: resumeOptions.interruptSignal,
-			});
+			abortScope = this.eventBus.createAbortScope(resumeOptions.abortSignal);
 			const activeAbortScope = abortScope;
 
 			const pendingResume: PendingResume = {
@@ -612,10 +600,7 @@ export class AgentRuntime {
 				list.addInput([{ role: 'user', content: [{ type: 'text', text: note }] }]);
 			}
 
-			abortScope = this.eventBus.createAbortScope({
-				externalSignal: resumeOptions.abortSignal,
-				interruptSignal: resumeOptions.interruptSignal,
-			});
+			abortScope = this.eventBus.createAbortScope(resumeOptions.abortSignal);
 			const activeAbortScope = abortScope;
 
 			await this.ensureModelCost();
@@ -821,6 +806,18 @@ export class AgentRuntime {
 		let iterationCount = options?.iterationCount ?? 0;
 		let reachedStopCondition = false;
 
+		// The first `true` from the host is final for this run, so the check is not
+		// repeated once it has been answered.
+		let gracefulStopRequested = false;
+		const shouldStopGracefully = async (before: 'tool-call' | 'model-call'): Promise<boolean> => {
+			if (gracefulStopRequested) return true;
+			gracefulStopRequested = await this.checkGracefulStop(options, {
+				step: iterationCount + 1,
+				before,
+			});
+			return gracefulStopRequested;
+		};
+
 		const buildToolBatchContext = (toolMap: Map<string, BuiltTool>): ToolBatchContext => ({
 			toolMap,
 			list,
@@ -830,9 +827,7 @@ export class AgentRuntime {
 			executionCounter: options?.executionCounter,
 			abortSignal: abortScope.signal,
 			isAborted: () => abortScope.isAborted,
-			// Steers ride this: an interrupt skips the tool calls that have not
-			// started and hands the step back to the loop, which injects them.
-			isInterrupted: () => abortScope.isInterrupted,
+			shouldStop: async () => await shouldStopGracefully('tool-call'),
 		});
 		const finishToolBatch = async (
 			batch: ToolCallBatchResult,
@@ -950,7 +945,6 @@ export class AgentRuntime {
 				system,
 				messages: cached.messages,
 				abortSignal: abortScope.signal,
-				interrupted: () => abortScope.isInterrupted,
 				hasTools,
 				aiTools: cached.aiTools,
 				reasoning: staticLoopContext.reasoning,
@@ -1014,18 +1008,14 @@ export class AgentRuntime {
 			// Emit TurnEnd after all tool calls in this iteration are processed
 			this.emitTurnEnd(turn.newMessages, extractSettledToolCalls(list.responseDelta()));
 
-			// Clean loop boundary: all tool calls settled. Inject steering before the next
-			// model call so the observation pass and step checkpoint include the input,
-			// and force one here when the host stopped the step mid-loop — the inputs
-			// that stop was asked for otherwise wait for a boundary this iteration
-			// never reaches.
-			const stepWasInterrupted = abortScope.consumeInterrupt();
-			await this.injectSteeringInput(
-				list,
-				options?.steeringInput,
-				iterationCount + 1,
-				stepWasInterrupted,
-			);
+			// Clean loop boundary: all tool calls settled. The host may end the run
+			// here; a stop skips the observation pass and the checkpoint, because
+			// finishComplete persists the whole turn anyway.
+			if (await shouldStopGracefully('model-call')) {
+				lastFinishReason = 'stop';
+				reachedStopCondition = true;
+				break;
+			}
 			await this.memory.maybeObserveMidRun(list, options);
 
 			// Step boundary reached with nothing pending: durably checkpoint so a
@@ -1054,31 +1044,18 @@ export class AgentRuntime {
 		});
 	}
 
-	private async injectSteeringInput(
-		list: AgentMessageList,
-		drain: ExecutionOptions['steeringInput'],
-		step: number,
-		force = false,
-	): Promise<void> {
-		if (!drain) return;
-
-		let inputs;
+	private async checkGracefulStop(
+		options: ExecutionOptions | undefined,
+		context: { step: number; before: 'tool-call' | 'model-call' },
+	): Promise<boolean> {
+		const check = options?.shouldStopGracefully;
+		if (!check) return false;
 		try {
-			inputs = await drain({ step, force });
+			return await check(context);
 		} catch (error) {
-			logger.warn('Failed to drain steering input', { runId: this.runId, error });
-			return;
+			logger.warn('Graceful stop check failed; continuing the run', { runId: this.runId, error });
+			return false;
 		}
-		if (!Array.isArray(inputs)) return;
-
-		const messages: AgentMessage[] = inputs
-			.filter(({ text }) => text.trim().length > 0)
-			.map(({ id, text }) => ({
-				...(id ? { id } : {}),
-				role: 'user',
-				content: [{ type: 'text', text }],
-			}));
-		if (messages.length > 0) list.addInput(messages);
 	}
 
 	private async resolveVolatileInstructions(

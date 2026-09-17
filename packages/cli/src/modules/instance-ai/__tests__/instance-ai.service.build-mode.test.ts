@@ -40,7 +40,6 @@ type ServiceInternals = {
 	rebuildSuspendedRunFromCheckpoint: (
 		orphan: ResumableOrphan,
 	) => Promise<RebuildSuspendedRunOutcome>;
-	runInterrupts: Map<string, AbortController>;
 };
 
 const user = mock<User>({ id: 'user-1' });
@@ -58,8 +57,6 @@ function createService(checkpoint?: SerializableAgentState): ServiceInternals {
 	const service = Object.create(InstanceAiService.prototype) as ServiceInternals;
 	service.instanceAiConfig = { runDebugEnabled: false };
 	service.aiConfig = { modelStreamIdleTimeoutMs: 90_000, modelStreamFirstOutputTimeoutMs: 180_000 };
-	// The stream options read the thread's interrupt signal; no live run means no entry.
-	service.runInterrupts = new Map();
 	service.runState = new RunStateRegistry((owner: User) => owner.id);
 	service.threadPushRef = new Map();
 	service.checkpointStore = { load: vi.fn(async () => checkpoint) };

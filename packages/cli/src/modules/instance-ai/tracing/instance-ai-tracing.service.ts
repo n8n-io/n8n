@@ -298,6 +298,7 @@ export class InstanceAiTracingService {
 				? { cancellationReason: options.cancellationReason }
 				: {}),
 			...(options.runTimeout !== undefined ? { runTimeout: options.runTimeout } : {}),
+			...(options.steeredAtStep !== undefined ? { steeredAtStep: options.steeredAtStep } : {}),
 		};
 
 		// The events read hits the DB under the durable log, and most callers run

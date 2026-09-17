@@ -140,12 +140,12 @@ export interface ToolBatchContext {
 	abortSignal: AbortSignal;
 	isAborted: () => boolean;
 	/**
-	 * True while the host stopped the current step without ending the run. An
-	 * interrupted batch settles like an aborted one — calls that have not started
-	 * are skipped — but it is not a cancellation: the loop continues with the
-	 * next step instead of throwing.
+	 * Host request for a graceful stop, asked before each tool call starts. A
+	 * `true` settles every call that has not started as skipped; the in-flight
+	 * ones finish. Unlike an abort it is not a cancellation: the loop then ends
+	 * the run as a normal completion.
 	 */
-	isInterrupted?: () => boolean;
+	shouldStop?: () => boolean | Promise<boolean>;
 }
 
 /** A tool-call content block that has already been settled by the AI SDK. */
@@ -202,8 +202,6 @@ export interface ToolCallExecutorDeps {
 	concurrency: number;
 	/** Invoked when a run is aborted mid-batch so the runtime can set cancelled state. */
 	onCancelled: () => void;
-	/** Invoked when a step is interrupted mid-batch; the run itself is still alive. */
-	onInterrupted?: () => void;
 	tokenCounter: TokenCounter;
 	workspaceFilesystem?: WorkspaceFilesystem;
 }
@@ -247,6 +245,28 @@ export class ToolCallExecutor {
 		const delegateOptions = tool ? getInlineDelegateSubAgentToolOptions(tool) : undefined;
 		if (!delegateOptions) return this.concurrency;
 		return delegateOptions.policy?.maxChildren ?? DEFAULT_SUB_AGENT_MAX_CHILDREN;
+	}
+
+	/**
+	 * Why the calls that have not started must be settled as skipped, or
+	 * undefined to keep going. An abort wins over a graceful stop and marks the
+	 * run cancelled; a graceful stop only ends the batch, and is asked only
+	 * before a batch starts — the site after a batch settles exists for an abort
+	 * that landed mid-batch, and the next batch's own check covers a stop. The
+	 * model reads the text, so "aborted" stays reserved for a cancelled run.
+	 */
+	private async getSkipReason(
+		ctx: ToolBatchContext,
+		{ askHost }: { askHost: boolean },
+	): Promise<string | undefined> {
+		if (ctx.isAborted()) {
+			this.deps.onCancelled();
+			return '[Skipped: run was aborted]';
+		}
+		if (askHost && (await ctx.shouldStop?.())) {
+			return '[Skipped: the user sent a new instruction]';
+		}
+		return undefined;
 	}
 
 	private takeNextToolCallBatch<T extends { toolName: string }>(
@@ -348,17 +368,11 @@ export class ToolCallExecutor {
 		const pending: Record<string, PendingToolCall> = {};
 
 		for (let batchStart = 0; batchStart < executableCalls.length; ) {
-			if (ctx.isAborted() || ctx.isInterrupted?.() === true) {
-				const interruptedOnly = !ctx.isAborted();
-				if (interruptedOnly) this.deps.onInterrupted?.();
-				else this.deps.onCancelled();
+			const skipReason = await this.getSkipReason(ctx, { askHost: true });
+			if (skipReason) {
 				for (const id of unexecutedIds) {
 					const tc = executableCallsById.get(id)!;
-					// The model reads this; "aborted" is reserved for a cancelled run.
-					const modelOutput = interruptedOnly
-						? '[Skipped: the user sent a new instruction]'
-						: '[Skipped: run was aborted]';
-					list.setToolCallResult(tc.toolCallId, modelOutput, { canceled: true });
+					list.setToolCallResult(tc.toolCallId, skipReason, { canceled: true });
 					results.push({
 						toolCallId: tc.toolCallId,
 						toolName: tc.toolName,
@@ -366,11 +380,11 @@ export class ToolCallExecutor {
 						toolEntry: {
 							tool: tc.toolName,
 							input: tc.input,
-							output: modelOutput,
+							output: skipReason,
 							transformed: false,
 							canceled: true,
 						},
-						modelOutput,
+						modelOutput: skipReason,
 					});
 				}
 				return await this.finalizeBatch({ results, suspensions, errors, pending }, ctx);
@@ -470,17 +484,11 @@ export class ToolCallExecutor {
 				}
 			}
 
-			if (ctx.isAborted() || ctx.isInterrupted?.() === true) {
-				const interruptedOnly = !ctx.isAborted();
-				if (interruptedOnly) this.deps.onInterrupted?.();
-				else this.deps.onCancelled();
+			const settledSkipReason = await this.getSkipReason(ctx, { askHost: false });
+			if (settledSkipReason) {
 				for (const id of unexecutedIds) {
 					const tc = executableCallsById.get(id)!;
-					// The model reads this; "aborted" is reserved for a cancelled run.
-					const modelOutput = interruptedOnly
-						? '[Skipped: the user sent a new instruction]'
-						: '[Skipped: run was aborted]';
-					list.setToolCallResult(tc.toolCallId, modelOutput, { canceled: true });
+					list.setToolCallResult(tc.toolCallId, settledSkipReason, { canceled: true });
 					results.push({
 						toolCallId: tc.toolCallId,
 						toolName: tc.toolName,
@@ -488,11 +496,11 @@ export class ToolCallExecutor {
 						toolEntry: {
 							tool: tc.toolName,
 							input: tc.input,
-							output: modelOutput,
+							output: settledSkipReason,
 							transformed: false,
 							canceled: true,
 						},
-						modelOutput,
+						modelOutput: settledSkipReason,
 					});
 				}
 				return await this.finalizeBatch({ results, suspensions, errors, pending }, ctx);

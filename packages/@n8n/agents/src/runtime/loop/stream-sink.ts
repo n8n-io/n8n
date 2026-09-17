@@ -259,13 +259,6 @@ export class StreamSink implements RunOutputSink<void> {
 					: undefined,
 			),
 		});
-		// Some SDKs turn a mid-stream abort into a truncated success instead of an
-		// error. Settle the interrupted attempt as a turn that ran out of output, so
-		// the loop reads it as "the step stopped here" rather than a clean finish.
-		if (ctx.interrupted?.()) {
-			turnAbort.abort();
-			throw new NoOutputGeneratedError({ message: 'Model turn interrupted' });
-		}
 
 		// A healthy streaming response emits chunks continuously (raw provider
 		// events included), so prolonged silence means the connection or provider

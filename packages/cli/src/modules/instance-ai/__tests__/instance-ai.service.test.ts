@@ -234,7 +234,7 @@ vi.mock('@/permissions.ee/check-access', () => ({
 	userHasScopes: vi.fn(),
 }));
 
-import type { MemoryTaskUsageReport, ScopedMemoryTaskEvent, SteeringInput } from '@n8n/agents';
+import type { MemoryTaskUsageReport, ScopedMemoryTaskEvent } from '@n8n/agents';
 import type { InstanceAiEvent } from '@n8n/api-types';
 import type { InstanceAiHandoffContext, InstanceAiQueuedMessage } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
@@ -309,7 +309,6 @@ type StartRunServiceInternals = {
 	threadPushRef: Map<string, string>;
 	executeRun: Mock;
 	trackInFlightExecution: Mock;
-	runInterrupts: Map<string, AbortController>;
 };
 
 function createStartRunService(): StartRunServiceInternals {
@@ -338,8 +337,6 @@ function createStartRunService(): StartRunServiceInternals {
 	service.logger = { warn: vi.fn() };
 	service.eventService = { emit: vi.fn() };
 	service.threadPushRef = new Map();
-	// startRun arms the thread's step-interrupt signal for the next Send now.
-	service.runInterrupts = new Map();
 	service.executeRun = vi.fn();
 	service.trackInFlightExecution = vi.fn();
 	return service;
@@ -491,6 +488,7 @@ type TerminalGuardOrderServiceInternals = {
 		cancelThread: Mock;
 		clearActiveRun: Mock;
 		hasSuspendedRun: Mock;
+		hasLiveRun: Mock;
 		getActiveRun: Mock;
 		suspendRun: Mock;
 	};
@@ -561,6 +559,7 @@ type TerminalGuardOrderServiceInternals = {
 	syncPlannedTasksToUi: Mock;
 	taskProjector: { syncFromWorkflowLoop: Mock };
 	maybeStartWorkflowSetupFollowUp: Mock;
+	flushQueuedMessage: Mock;
 	finalizeRun: Mock;
 	preserveHitlOnShutdown: Set<string>;
 	inFlightExecutions: Set<Promise<unknown>>;
@@ -593,7 +592,6 @@ type TerminalGuardOrderServiceInternals = {
 			modelId?: ModelConfig;
 		},
 	) => Promise<void>;
-	runInterrupts: Map<string, AbortController>;
 };
 
 function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
@@ -610,6 +608,7 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 		cancelThread: vi.fn(),
 		clearActiveRun: vi.fn(),
 		hasSuspendedRun: vi.fn(() => true),
+		hasLiveRun: vi.fn(() => false),
 		getActiveRun: vi.fn(() => undefined),
 		suspendRun: vi.fn(),
 	};
@@ -642,7 +641,6 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 		registerTraceContext: vi.fn(),
 	};
 	service.threadPushRef = new Map();
-	service.runInterrupts = new Map();
 	service.pendingBrowserCredentialSetups = new Map();
 	service.backgroundTasks = { getRunningTasks: vi.fn(() => []) };
 	service.temporaryWorkflowService = { reapForRun: vi.fn(async () => []) };
@@ -707,6 +705,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 	const snapshotModes = ['off', 'seeded', 'read failure'];
 	it.each(snapshotModes)('starts with snapshots %s', async (snapshotMode) => {
 		const service = Object.create(InstanceAiService.prototype) as unknown as {
+			steerStops: Map<string, AbortController>;
 			createExecutionEnvironment: (
 				user: User,
 				threadId: string,
@@ -813,6 +812,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		};
 		service.ensureThreadExists = vi.fn(async () => {});
 		service.agentMemory = { getThreadProjectId: vi.fn(async () => 'project-1') };
+		service.steerStops = new Map();
 		service.dbIterationLogStorage = {};
 		service.checkpointStore = {};
 		service.instanceAiConfig = {};
@@ -1027,6 +1027,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		[true, 'progressive', 'default', 'retired@1'],
 	] as const)('selects mode (%s, %s, %s, %s)', async (enabled, override, expected, version) => {
 		const service = Object.create(InstanceAiService.prototype) as unknown as {
+			steerStops: Map<string, AbortController>;
 			createExecutionEnvironment: (
 				user: User,
 				threadId: string,
@@ -1134,6 +1135,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		};
 		service.ensureThreadExists = vi.fn(async () => {});
 		service.agentMemory = { getThreadProjectId: vi.fn(async () => 'project-1') };
+		service.steerStops = new Map();
 		service.dbIterationLogStorage = {};
 		service.dbSnapshotStorage = {};
 		service.checkpointStore = {};
@@ -4676,6 +4678,10 @@ describe('InstanceAiService — run error reporter lifecycle', () => {
 		service.maybeStartWorkflowSetupFollowUp = vi.fn(async () => {
 			callOrder.push('maybeStartWorkflowSetupFollowUp');
 		});
+		service.flushQueuedMessage = vi.fn(async () => {
+			callOrder.push('flushQueuedMessage');
+			return false;
+		});
 		service.finalizeRun = vi.fn(async () => {
 			callOrder.push('finalizeRun');
 		});
@@ -4698,6 +4704,8 @@ describe('InstanceAiService — run error reporter lifecycle', () => {
 		expect(callOrder).toEqual([
 			'beginRun',
 			'finalizeRun',
+			// The queued user turn is offered before any automatic follow-up.
+			'flushQueuedMessage',
 			'schedulePlannedTasks',
 			'syncFromWorkflowLoop',
 			'maybeStartWorkflowSetupFollowUp',
@@ -4815,7 +4823,6 @@ describe('InstanceAiService setup panel Execute input', () => {
 					hasSuspendedRun: vi.fn(() => true),
 					hasLiveRun: vi.fn(() => false),
 				},
-				runInterrupts: new Map(),
 				domainAccessTrackersByThread: new Map(),
 				updateInternalFollowUpFailureStreak: vi.fn(),
 			}) as {
@@ -4852,6 +4859,92 @@ describe('InstanceAiService setup panel Execute input', () => {
 			}
 		},
 	);
+});
+
+describe('InstanceAiService — queued user turn goes before automatic follow-ups', () => {
+	function createFinallyService(userTurnStarted: boolean) {
+		vi.mocked(createInstanceAiTraceContext).mockResolvedValueOnce(undefined);
+		vi.mocked(streamAgentRun).mockResolvedValueOnce({
+			status: 'cancelled',
+			agentRunId: 'agent-run-1',
+			text: Promise.resolve(''),
+			workSummary: { toolCalls: [], totalToolCalls: 0, totalToolErrors: 0 },
+		});
+		const environment = {
+			context: {},
+			memory: { getThread: vi.fn(async () => ({ title: 'Existing conversation' })) },
+			taskStorage: { get: vi.fn(async () => undefined) },
+			orchestrationContext: {},
+		};
+		return Object.assign(Object.create(InstanceAiService.prototype), {
+			resolveContextAttachments: vi.fn(async () => []),
+			instanceAiErrorReporter: { beginRun: vi.fn(), endRun: vi.fn() },
+			createProxyRunConfig: vi.fn(async () => ({})),
+			browserSessionService: { getExtensionTraceContext: vi.fn() },
+			readThreadProvenance: vi.fn(async () => ({})),
+			instanceContext: { buildBlock: vi.fn().mockResolvedValue(undefined) },
+			reclassifyMaskedStreamFailure: vi.fn(async (error: unknown) => {
+				throw error;
+			}),
+			isRunDebugEnabled: vi.fn(() => false),
+			eventBus: { publish: vi.fn() },
+			threadPushRef: new Map(),
+			createExecutionEnvironment: vi.fn(async () => environment),
+			snapshotAttachedAgents: vi.fn(),
+			buildMessageWithRunningTasks: vi.fn(async (_threadId: string, text: string) => text),
+			buildWorkflowSetupStateBlock: vi.fn(async () => ''),
+			resolveProjectContextSection: vi.fn(async () => ''),
+			createAgentFromEnvironment: vi.fn(async () => ({})),
+			buildOrchestratorAgentStreamOptions: vi.fn(() => ({})),
+			shouldPreserveHitlOnShutdown: vi.fn(() => true),
+			runState: {
+				clearActiveRun: vi.fn(),
+				hasSuspendedRun: vi.fn(() => false),
+				hasLiveRun: vi.fn(() => false),
+			},
+			domainAccessTrackersByThread: new Map(),
+			updateInternalFollowUpFailureStreak: vi.fn(),
+			flushQueuedMessage: vi.fn(async () => userTurnStarted),
+			schedulePlannedTasks: vi.fn(async () => {}),
+			maybeStartWorkflowSetupFollowUp: vi.fn(async () => false),
+			taskProjector: { syncFromWorkflowLoop: vi.fn(async () => {}) },
+		}) as {
+			executeRun: (
+				user: User,
+				threadId: string,
+				runId: string,
+				message: string,
+				controller: AbortController,
+			) => Promise<void>;
+			flushQueuedMessage: Mock;
+			schedulePlannedTasks: Mock;
+			maybeStartWorkflowSetupFollowUp: Mock;
+			taskProjector: { syncFromWorkflowLoop: Mock };
+		};
+	}
+
+	it('starts the queued message and holds the follow-ups for the next finish', async () => {
+		const service = createFinallyService(true);
+
+		await service.executeRun(fakeUser, 'thread-1', 'run-1', 'Build it.', new AbortController());
+
+		expect(service.flushQueuedMessage).toHaveBeenCalledWith(fakeUser, 'thread-1');
+		// A queued turn is a message the user already sent; setup routing and the
+		// planned-task tick wait for it, and the next finally re-derives them.
+		expect(service.schedulePlannedTasks).not.toHaveBeenCalled();
+		expect(service.maybeStartWorkflowSetupFollowUp).not.toHaveBeenCalled();
+		expect(service.taskProjector.syncFromWorkflowLoop).toHaveBeenCalledWith('thread-1', 'run-1');
+	});
+
+	it('runs the follow-ups as before when the queue is empty', async () => {
+		const service = createFinallyService(false);
+
+		await service.executeRun(fakeUser, 'thread-1', 'run-1', 'Build it.', new AbortController());
+
+		expect(service.flushQueuedMessage).toHaveBeenCalledWith(fakeUser, 'thread-1');
+		expect(service.schedulePlannedTasks).toHaveBeenCalledWith(fakeUser, 'thread-1');
+		expect(service.maybeStartWorkflowSetupFollowUp).toHaveBeenCalledWith(fakeUser, 'thread-1');
+	});
 });
 
 describe('InstanceAiService — user message persistence on cancel', () => {
@@ -5890,7 +5983,7 @@ describe('InstanceAiService — clearThreadState agent-builder cleanup', () => {
 		suspendedThreads: { dropPendingConfirmationsForThread: Mock };
 		logger: { warn: Mock };
 		clearThreadState: (threadId: string) => Promise<void>;
-		runInterrupts: Map<string, AbortController>;
+		steerStops: Map<string, AbortController>;
 	};
 
 	function buildService(): Internals {
@@ -5900,7 +5993,7 @@ describe('InstanceAiService — clearThreadState agent-builder cleanup', () => {
 		service.planRequestsByThread = new Map();
 		service.runState = { clearThread: vi.fn(() => ({ active: undefined, suspended: undefined })) };
 		service.backgroundTasks = { cancelThread: vi.fn(() => []) };
-		service.runInterrupts = new Map([['thread-1', new AbortController()]]);
+		service.steerStops = new Map([['thread-1', new AbortController()]]);
 		service.schedulerLocks = new Map();
 		service.failedInternalFollowUpStreaks = new Map();
 		service.liveness = { clearThreadState: vi.fn() };
@@ -6271,6 +6364,39 @@ describe('InstanceAiService — resolveAiPreferencesBlock', () => {
 	});
 });
 
+describe('InstanceAiService — steered run status', () => {
+	type StatusInternals = {
+		finalRunStatus: (
+			status: 'completed' | 'errored' | 'cancelled',
+			stopReason?: 'planned-tasks-scheduled' | 'user-steered',
+		) => string;
+	};
+
+	function createService(): StatusInternals {
+		return Object.create(InstanceAiService.prototype) as unknown as StatusInternals;
+	}
+
+	it('reports a run the user steered as steered, not completed', () => {
+		expect(createService().finalRunStatus('completed', 'user-steered')).toBe('steered');
+	});
+
+	it('leaves an ordinary completion alone', () => {
+		expect(createService().finalRunStatus('completed')).toBe('completed');
+	});
+
+	it('leaves a planned-tasks handoff as completed — that run ended by itself', () => {
+		expect(createService().finalRunStatus('completed', 'planned-tasks-scheduled')).toBe(
+			'completed',
+		);
+	});
+
+	it('never relabels a failure or a stop', () => {
+		const service = createService();
+		expect(service.finalRunStatus('errored', 'user-steered')).toBe('errored');
+		expect(service.finalRunStatus('cancelled', 'user-steered')).toBe('cancelled');
+	});
+});
+
 describe('InstanceAiService — queued messages', () => {
 	const USER = { id: 'user-1' } as User;
 
@@ -6286,9 +6412,15 @@ describe('InstanceAiService — queued messages', () => {
 		agentMemory: { getThread: Mock; patchThread: Mock; saveMessages: Mock };
 		eventBus: { publish: Mock };
 		telemetry: { track: Mock };
-		runState: { hasLiveRun: Mock; getThreadUser: Mock; getTimeZone: Mock; startRun: Mock };
+		runState: {
+			hasLiveRun: Mock;
+			getActiveRunId: Mock;
+			getThreadUser: Mock;
+			getTimeZone: Mock;
+			startRun: Mock;
+		};
 		backgroundTasks: { cancelThread: Mock };
-		runInterrupts: Map<string, AbortController>;
+		steerStops: Map<string, AbortController>;
 		startExecuteRun: Mock;
 		defaultTimeZone: string;
 		logger: { warn: Mock; debug: Mock };
@@ -6308,13 +6440,8 @@ describe('InstanceAiService — queued messages', () => {
 			threadId: string,
 			messageId: string,
 		) => Promise<{ queuedMessages: InstanceAiQueuedMessage[] }>;
-		claimSteeringInput: (
-			threadId: string,
-			runId: string,
-			step: number,
-			force?: boolean,
-		) => Promise<SteeringInput[]>;
-		flushQueuedMessage: (user: User, threadId: string) => Promise<void>;
+		claimSteerRequest: (threadId: string, runId: string, step: number) => Promise<boolean>;
+		flushQueuedMessage: (user: User, threadId: string) => Promise<boolean>;
 	};
 
 	function createService({ includeThread = true }: { includeThread?: boolean } = {}) {
@@ -6346,12 +6473,13 @@ describe('InstanceAiService — queued messages', () => {
 		service.eventBus = { publish: vi.fn() };
 		service.telemetry = { track: vi.fn() };
 		service.backgroundTasks = { cancelThread: vi.fn(() => []) };
-		service.runInterrupts = new Map([['thread-1', new AbortController()]]);
+		service.steerStops = new Map([['thread-1', new AbortController()]]);
 		service.startExecuteRun = vi.fn();
 		service.defaultTimeZone = 'UTC';
 		service.logger = { warn: vi.fn(), debug: vi.fn() };
 		service.runState = {
 			hasLiveRun: vi.fn(() => false),
+			getActiveRunId: vi.fn(() => 'run-live'),
 			getThreadUser: vi.fn(() => USER),
 			getTimeZone: vi.fn(() => 'Europe/Berlin'),
 			startRun: vi.fn(() => ({ runId: 'run-new', abortController: new AbortController() })),
@@ -6443,11 +6571,22 @@ describe('InstanceAiService — queued messages', () => {
 			expect(queuedMessages[0].steerRequestedAt).toBeDefined();
 			expect(readQueuedMessages(thread.metadata)[0].steerRequestedAt).toBeDefined();
 			expect(service.backgroundTasks.cancelThread).toHaveBeenCalledWith('thread-1');
-			// The step in flight is stopped now; the drain that follows is what puts
-			// the message in front of the next one.
-			expect(service.runInterrupts.get('thread-1')?.signal.aborted).toBe(true);
-			// The steer must not replace the run it steers.
+			// Delegated builders stop at once; the run's own signal is untouched.
+			expect(service.steerStops.get('thread-1')?.signal.aborted).toBe(true);
+			// Sent now is visible now: the transcript gets the bubble on the live run.
+			expect(service.eventBus.publish).toHaveBeenCalledWith(
+				'thread-1',
+				expect.objectContaining({
+					type: 'user-message',
+					runId: 'run-live',
+					agentId: 'orchestrator-run-live',
+					payload: { messageId: item.id, text: 'stop and use Slack', source: 'steered' },
+				}),
+			);
+			// The step in flight is left alone — the run's next boundary claims this
+			// item, so the action the agent is on still completes.
 			expect(service.startExecuteRun).not.toHaveBeenCalled();
+			expect(service.agentMemory.saveMessages).not.toHaveBeenCalled();
 		});
 
 		it('keeps the first request timestamp when the user presses Send now twice', async () => {
@@ -6461,6 +6600,8 @@ describe('InstanceAiService — queued messages', () => {
 			expect(second.queuedMessages[0].steerRequestedAt).toBe(
 				first.queuedMessages[0].steerRequestedAt,
 			);
+			// One bubble per message, however often the button is pressed.
+			expect(service.eventBus.publish).toHaveBeenCalledTimes(1);
 		});
 
 		it('delivers immediately as a new run when the thread is idle', async () => {
@@ -6507,58 +6648,48 @@ describe('InstanceAiService — queued messages', () => {
 		});
 	});
 
-	describe('claimSteeringInput', () => {
-		it('claims a marked item, persists it and reports the step', async () => {
+	describe('claimSteerRequest', () => {
+		it('moves the first steer request to the head and ends the run', async () => {
 			const { service, thread } = createService();
-			const [item] = await service.queueMessage('thread-1', 'use the Slack node');
+			// queueMessage returns the whole queue, so take the item each call added.
+			const plain = (await service.queueMessage('thread-1', 'later')).at(-1)!;
+			const first = (await service.queueMessage('thread-1', 'use the Slack node')).at(-1)!;
+			const second = (await service.queueMessage('thread-1', 'and add a filter')).at(-1)!;
 			service.runState.hasLiveRun.mockReturnValue(true);
-			await service.requestSteer(USER, 'thread-1', item.id);
+			await service.requestSteer(USER, 'thread-1', first.id);
+			await service.requestSteer(USER, 'thread-1', second.id);
 			service.startExecuteRun.mockClear();
+			service.eventBus.publish.mockClear();
 
-			const inputs = await service.claimSteeringInput('thread-1', 'run-1', 3);
+			await expect(service.claimSteerRequest('thread-1', 'run-1', 3)).resolves.toBe(true);
 
-			expect(inputs).toEqual([{ id: item.id, text: 'use the Slack node' }]);
-			expect(readQueuedMessages(thread.metadata)).toEqual([]);
-			expect(service.agentMemory.saveMessages).toHaveBeenCalledWith({
-				threadId: 'thread-1',
-				resourceId: 'user-1',
-				messages: [
-					expect.objectContaining({
-						id: item.id,
-						role: 'user',
-						type: 'llm',
-						content: [{ type: 'text', text: 'use the Slack node' }],
-					}),
-				],
-			});
-			expect(service.eventBus.publish).toHaveBeenCalledWith(
-				'thread-1',
-				expect.objectContaining({
-					type: 'user-message',
-					runId: 'run-1',
-					agentId: 'orchestrator-run-1',
-					payload: expect.objectContaining({
-						messageId: item.id,
-						source: 'steered',
-						step: 3,
-					}),
-				}),
-			);
+			// The claimed item leads the queue for the run-finish flush; the other
+			// request follows in queue order, without a stamp that would cut the
+			// next run at its first boundary.
+			expect(readQueuedMessages(thread.metadata)).toEqual([
+				{ id: first.id, text: 'use the Slack node', createdAt: first.createdAt },
+				{ id: plain.id, text: 'later', createdAt: plain.createdAt },
+				{ id: second.id, text: 'and add a filter', createdAt: second.createdAt },
+			]);
+			// The next run persists the row; a row written here would render twice.
+			expect(service.agentMemory.saveMessages).not.toHaveBeenCalled();
+			expect(service.startExecuteRun).not.toHaveBeenCalled();
+			// The bubble was published when the button was pressed, not here.
+			expect(service.eventBus.publish).not.toHaveBeenCalled();
 			expect(service.telemetry.track).toHaveBeenCalledWith(
 				TELEMETRY_EVENT.INSTANCE_AI.USER_STEERED_MESSAGE,
 				{ thread_id: 'thread-1', step: 3 },
 			);
 		});
 
-		it('leaves unmarked items queued', async () => {
+		it('keeps the run going when nothing was sent now', async () => {
 			const { service, thread } = createService();
 			await service.queueMessage('thread-1', 'just a queue entry');
 
-			const inputs = await service.claimSteeringInput('thread-1', 'run-1', 1);
+			await expect(service.claimSteerRequest('thread-1', 'run-1', 1)).resolves.toBe(false);
 
-			expect(inputs).toEqual([]);
 			expect(readQueuedMessages(thread.metadata)).toHaveLength(1);
-			expect(service.agentMemory.saveMessages).not.toHaveBeenCalled();
+			expect(service.telemetry.track).not.toHaveBeenCalled();
 		});
 
 		it('does not claim when the thread has no remembered user', async () => {
@@ -6568,62 +6699,60 @@ describe('InstanceAiService — queued messages', () => {
 			await service.requestSteer(USER, 'thread-1', item.id);
 			service.runState.getThreadUser.mockReturnValue(undefined);
 
-			const inputs = await service.claimSteeringInput('thread-1', 'run-1', 2);
+			await expect(service.claimSteerRequest('thread-1', 'run-1', 2)).resolves.toBe(false);
 
-			expect(inputs).toEqual([]);
-			expect(readQueuedMessages(thread.metadata)).toHaveLength(1);
+			expect(readQueuedMessages(thread.metadata)[0].steerRequestedAt).toBeDefined();
 		});
 
-		it('claims the head item on the boundary an interrupt synthesised', async () => {
-			const { service, thread } = createService();
-			const [item] = await service.queueMessage('thread-1', 'stop and do this instead');
-
-			// No steerRequestedAt yet: the interrupt cancelled the step before the
-			// stamp landed, and the boundary must still pick the message up.
-			const inputs = await service.claimSteeringInput('thread-1', 'run-1', 2, true);
-
-			expect(inputs).toEqual([{ id: item.id, text: 'stop and do this instead' }]);
-			expect(readQueuedMessages(thread.metadata)).toEqual([]);
-			expect(service.eventBus.publish).toHaveBeenCalledWith(
-				'thread-1',
-				expect.objectContaining({
-					payload: expect.objectContaining({ messageId: item.id, source: 'steered', step: 2 }),
-				}),
-			);
-		});
-
-		it('forces only the head item and leaves the rest queued', async () => {
-			const { service, thread } = createService();
-			const [head] = await service.queueMessage('thread-1', 'steer me');
-			await service.queueMessage('thread-1', 'second');
-
-			const inputs = await service.claimSteeringInput('thread-1', 'run-1', 2, true);
-
-			// One interrupt stops one step, so it consumes one message. The rest of
-			// the queue waits for the run's end, as it does without an interrupt.
-			expect(inputs).toEqual([{ id: head.id, text: 'steer me' }]);
-			expect(readQueuedMessages(thread.metadata).map((item) => item.text)).toEqual(['second']);
-		});
-
-		it('never throws — the run keeps going without the input', async () => {
+		it('never throws — a queue failure leaves the run running', async () => {
 			const { service } = createService();
 			const [item] = await service.queueMessage('thread-1', 'steer me');
 			service.runState.hasLiveRun.mockReturnValue(true);
 			await service.requestSteer(USER, 'thread-1', item.id);
-			service.agentMemory.saveMessages.mockRejectedValue(new Error('db down'));
+			service.agentMemory.patchThread.mockRejectedValue(new Error('db down'));
 
-			await expect(service.claimSteeringInput('thread-1', 'run-1', 2)).resolves.toEqual([]);
+			await expect(service.claimSteerRequest('thread-1', 'run-1', 2)).resolves.toBe(false);
 			expect(service.logger.warn).toHaveBeenCalled();
 		});
 	});
 
 	describe('flushQueuedMessage', () => {
+		it('delivers a steer request the run never reached before the head', async () => {
+			const { service, thread } = createService();
+			await service.queueMessage('thread-1', 'first');
+			const second = (await service.queueMessage('thread-1', 'second')).at(-1)!;
+			service.runState.hasLiveRun.mockReturnValue(true);
+			await service.requestSteer(USER, 'thread-1', second.id);
+			service.runState.hasLiveRun.mockReturnValue(false);
+
+			await service.flushQueuedMessage(USER, 'thread-1');
+
+			expect(service.startExecuteRun).toHaveBeenCalledWith(
+				USER,
+				'thread-1',
+				'run-new',
+				'second',
+				expect.anything(),
+				undefined,
+				undefined,
+				undefined,
+				'Europe/Berlin',
+			);
+			expect(service.eventBus.publish).toHaveBeenCalledWith(
+				'thread-1',
+				expect.objectContaining({
+					payload: expect.objectContaining({ messageId: second.id, source: 'queued' }),
+				}),
+			);
+			expect(readQueuedMessages(thread.metadata).map((item) => item.text)).toEqual(['first']);
+		});
+
 		it('delivers the head item as a new run and publishes it', async () => {
 			const { service, thread } = createService();
 			const [first] = await service.queueMessage('thread-1', 'first');
 			await service.queueMessage('thread-1', 'second');
 
-			await service.flushQueuedMessage(USER, 'thread-1');
+			await expect(service.flushQueuedMessage(USER, 'thread-1')).resolves.toBe(true);
 
 			expect(service.startExecuteRun).toHaveBeenCalledWith(
 				USER,
@@ -6676,7 +6805,7 @@ describe('InstanceAiService — queued messages', () => {
 			await service.queueMessage('thread-1', 'later');
 			service.agentMemory.patchThread.mockRejectedValue(new Error('db down'));
 
-			await expect(service.flushQueuedMessage(USER, 'thread-1')).resolves.toBeUndefined();
+			await expect(service.flushQueuedMessage(USER, 'thread-1')).resolves.toBe(false);
 			expect(service.logger.warn).toHaveBeenCalled();
 			expect(readQueuedMessages(thread.metadata)).toHaveLength(1);
 		});

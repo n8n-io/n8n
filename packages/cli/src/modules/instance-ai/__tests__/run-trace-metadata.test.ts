@@ -119,12 +119,12 @@ describe('buildInstanceAiRunTraceMetadata', () => {
 			idle_tail_ms: 606_400,
 		});
 	});
-	it('marks a run the user steered and records the step it landed on', () => {
+	it('marks a run the user steered and records the step it stopped at', () => {
 		const events: InstanceAiEvent[] = [
 			{
 				type: 'user-message',
 				...baseEvent,
-				payload: { messageId: 'qm-1', text: 'use Slack instead', source: 'steered', step: 4 },
+				payload: { messageId: 'qm-1', text: 'use Slack instead', source: 'steered' },
 			},
 			{
 				type: 'user-message',
@@ -133,13 +133,27 @@ describe('buildInstanceAiRunTraceMetadata', () => {
 			},
 		];
 
-		const metadata = buildInstanceAiRunTraceMetadata(events, { status: 'completed' });
+		const metadata = buildInstanceAiRunTraceMetadata(events, {
+			status: 'completed',
+			steeredAtStep: 4,
+		});
 
 		expect(metadata).toEqual({
 			first_visible_state: 'empty',
 			steered: true,
 			steer_count: 2,
-			steered_at_steps: [4],
+			steered_at_step: 4,
+		});
+	});
+
+	it('marks a run that a steer request stopped even when the request landed on an earlier run', () => {
+		const metadata = buildInstanceAiRunTraceMetadata([], { status: 'completed', steeredAtStep: 1 });
+
+		expect(metadata).toEqual({
+			first_visible_state: 'empty',
+			steered: true,
+			steer_count: 0,
+			steered_at_step: 1,
 		});
 	});
 

@@ -429,27 +429,45 @@ When a run's process died mid-flight, the startup sweep appends:
 {"type":"run-finish","runId":"run_abc123","agentId":"agent-001","payload":{"status":"interrupted","reason":"crash_interrupted"}}
 ```
 
-The four statuses are `completed`, `cancelled`, `error` and `interrupted`.
+When the user pressed Send now on a queued message, the run ends after the tool
+call it was on:
+
+```json
+{"type":"run-finish","runId":"run_abc123","agentId":"agent-001","payload":{"status":"steered"}}
+```
+
+The five statuses are `completed`, `steered`, `cancelled`, `error` and
+`interrupted`. `steered` is a completion: the run kept the work it did, and every
+consumer treats it as `completed`. The distinct value records that the user, not
+the agent, ended the run there.
 
 ### `user-message`
 
-A user message that was queued while a run was active is now delivered. The
-event is the durable fact for both delivery paths, and the frontend renders it as
-a normal user bubble.
+A queued user message entered the transcript. The event is the durable fact for
+both delivery paths, and the frontend renders it as a normal user bubble.
 
 ```json
-{"type":"user-message","runId":"run_abc123","agentId":"agent-001","payload":{"messageId":"qm_xyz","text":"Use the Slack node","source":"steered","step":3}}
+{"type":"user-message","runId":"run_abc123","agentId":"agent-001","payload":{"messageId":"qm_xyz","text":"Use the Slack node","source":"steered"}}
 ```
 
-- `source: "steered"` — the user pressed Send now. The message was injected into
-the live run at the clean step boundary that `step` names, so the next model call
-accounts for it. The run keeps the work it already did.
-- `source: "queued"` — the run finished and the message started its own run. The
-SDK persists that run's input row, so the service does not write one.
+- `source: "steered"` — the user pressed Send now while this run was active. The
+event is published at the press, on the live run, so the bubble appears at once,
+below the reply that is still streaming. The run finishes the tool call it is on,
+takes no further action (it finishes as `steered`), and the message starts its
+own run.
+- `source: "queued"` — a run started with the message. The SDK persists that
+run's input row, so the service does not write one.
 
-A steered delivery also marks the run's LangSmith root metadata with `steered`,
-`steer_count` and `steered_at_steps`, which tells a forced step apart from a step
-the agent reached on its own. A flushed `queued` message does not mark the run.
+A steered message gets both events: `steered` on the run it stopped, then
+`queued` on the run it started. The frontend keys user bubbles by `messageId`, so
+the second one is a no-op there; it is what makes the message durable on its own
+run's log. The queue list hides an item from the moment it is sent now, since it
+is no longer the user's to edit or withdraw.
+
+A stopped run's LangSmith root metadata carries `steered`, `steer_count` (the
+Send now presses made during the run) and `steered_at_step` (the boundary the
+first of them stopped the run before), which tells a run the user cut short from
+a run the agent ended on its own. A `queued` event does not mark the run.
 
 ## Queued Messages
 
@@ -470,13 +488,28 @@ client always renders the server's view of the queue.
 
 The service delivers the queue in two ways:
 
-1. **Send now** stamps `steerRequestedAt` on the item. The run drains the stamped
-   items at its next clean step boundary (all tool calls settled), persists them
-   as user messages and publishes `user-message`. Send now also cancels the
-   thread's background tasks, because the user redirects the whole thread.
-2. **Run finish** delivers the head item as a new run. The guard is the same as
-   the cancel path: no flush while a run is suspended on a confirmation or plan
-   review. A `409 Conflict` stays for a plain `POST /chat/:threadId`.
+1. **Send now** stamps `steerRequestedAt` on the item and publishes
+   `user-message` with `source: "steered"` on the live run right away. The
+   agent runtime asks the service's graceful-stop check before every tool call
+   and at every clean step boundary; the first check that finds the stamp
+   moves the item to the head of the queue, clears every stamp, and answers
+   `true`. The tool call in flight finishes, the tool calls that have not
+   started are settled as skipped, no further model call is made, and the run
+   ends as `steered`. A delegated sub-agent loop (the agent builder) is the one
+   exception to "finishes": Send now aborts it at once through the orchestration
+   context's `subAgentAbortSignal`, and its tool call settles as stopped without
+   cancelling the run. Send now also cancels the thread's background tasks,
+   because the user redirects the whole thread. Both of those stops are
+   in-process; on another main the queue stamp still ends the run at its next
+   tool call.
+2. **Run finish** delivers the next item as a new run: a stamped item first (the
+   run ended before a check could claim it), else the head. It runs before the
+   automatic follow-ups (workflow setup routing, the planned-task tick), and
+   when it starts a run those follow-ups hold until that run's own finish
+   re-derives them — a queued turn is a message the user already sent, so it
+   must not wait behind a follow-up or the card it parks on. The guard is the
+   same as the cancel path: no flush while a run is suspended on a confirmation
+   or plan review. A `409 Conflict` stays for a plain `POST /chat/:threadId`.
 
 ## Typical Event Sequence
 

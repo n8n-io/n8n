@@ -216,6 +216,19 @@ describe('InstanceAiConversation', () => {
 			await vi.waitFor(() => expect(thread.steerQueuedMessage).toHaveBeenCalledWith('qm-1'));
 		});
 
+		it('drops an item from the list once it was sent now', () => {
+			thread.isStreaming = true;
+			thread.queuedMessages = [
+				{ ...queued('qm-1', 'Use the Slack node'), steerRequestedAt: '2026-04-01T00:00:01.000Z' },
+				queued('qm-2', 'And add a filter'),
+			];
+			const { getAllByTestId } = renderWithQueue()();
+
+			const items = getAllByTestId('instance-ai-queued-message');
+			expect(items).toHaveLength(1);
+			expect(items[0].textContent).toContain('And add a filter');
+		});
+
 		it('hides the queue while an approval card owns the interaction', () => {
 			thread.isAwaitingConfirmation = true;
 			thread.queuedMessages = [queued('qm-1', 'Use the Slack node')];

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 
 import { useI18n } from '@n8n/i18n';
 
@@ -16,6 +16,13 @@ const emit = defineEmits<{ recall: [text: string] }>();
 
 const thread = useThread();
 const i18n = useI18n();
+
+// A message sent now is already in the transcript and no longer the user's to
+// edit or withdraw, so it leaves the list even while the server still holds it
+// for the run it is about to start.
+const pendingMessages = computed(() =>
+	thread.queuedMessages.filter((message) => message.steerRequestedAt === undefined),
+);
 
 // Per-item pending state: a steer lands at the next tool boundary, which can be
 // a while away, so the button must not invite a second press meanwhile.
@@ -44,13 +51,13 @@ function onRemove(messageId: string): void {
 
 <template>
 	<div
-		v-if="thread.queuedMessages.length > 0"
+		v-if="pendingMessages.length > 0"
 		:class="$style.queue"
 		:aria-label="i18n.baseText('instanceAi.queue.title')"
 		data-test-id="instance-ai-queued-messages"
 	>
 		<div
-			v-for="message in thread.queuedMessages"
+			v-for="message in pendingMessages"
 			:key="message.id"
 			:class="$style.item"
 			data-test-id="instance-ai-queued-message"

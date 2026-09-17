@@ -20,6 +20,12 @@ const props = withDefaults(
 		placeholder?: string;
 		isStreaming: boolean;
 		canSubmit: boolean;
+		/**
+		 * Whether the primary button is Stop. Defaults to `isStreaming`; a host that
+		 * accepts input mid-run passes `false` once the draft is submittable, so the
+		 * button reads Send while attach and dictation stay gated on the stream.
+		 */
+		showStopButton?: boolean;
 		disabled?: boolean;
 		showVoice?: boolean;
 		showAttach?: boolean;
@@ -47,6 +53,7 @@ const props = withDefaults(
 		attachedEncodedBytes: 0,
 		autosize: () => ({ minRows: 2, maxRows: 6 }),
 		buttonLabel: undefined,
+		showStopButton: undefined,
 		activeRequiresFocus: false,
 		maxLength: undefined,
 		showAttachButton: true,
@@ -256,7 +263,7 @@ defineExpose({
 			ref="inputRef"
 			:model-value="modelValue"
 			:placeholder="placeholder"
-			:streaming="isStreaming"
+			:streaming="showStopButton ?? isStreaming"
 			:disabled="disabled"
 			:submit-disabled="!canSubmit"
 			:button-label="props.buttonLabel"

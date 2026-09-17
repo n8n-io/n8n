@@ -8,12 +8,15 @@ This file fixes the cross-package interfaces so the work can be parallelised.
 
 - **queued message** — text the user submitted while a run was active; held
   server-side, editable, not yet in the transcript.
-- **steer / Send now** — deliver a queued message into the live run at its next
-  clean step boundary (a tool batch settled, no tool calls pending).
+- **steer / Send now** — let the live run finish the tool call it is on, take
+  no further action, and deliver the queued message as its own run right after.
 
-`source: 'steered'` means *exactly* that: the message was injected into a live run
-and so forced a step inside it. A Send now with no live run delivers immediately
-as a new run, and reports `source: 'queued'` — no step was forced.
+`source: 'steered'` means *exactly* that: the user pressed Send now while a run
+was active. The event is published at the press, on the live run, so the bubble
+is visible at once; the run then ends at its next step boundary. The run the
+message starts also publishes it with `source: 'queued'`, which the frontend
+dedupes by `messageId`. A Send now with no live run delivers immediately as a new
+run and reports only `source: 'queued'` — no run was stopped.
 - **flush** — deliver the head of the queue as a new run after the active run
   finished.
 
@@ -22,39 +25,31 @@ as a new run, and reports `source: 'queued'` — no step was forced.
 `packages/@n8n/agents/src/types/sdk/agent.ts`
 
 ```ts
-/** One host-supplied mid-run user input. */
-export interface SteeringInput {
-	/** Host-owned id, so the host's eager row and the end-of-run save collapse into one. */
-	id?: string;
-	text: string;
-}
-
 export interface ExecutionOptions {
 	// …existing fields…
 	/**
-	 * Host-drained mid-run user input ("steering"). Called at each clean step
-	 * boundary — after a tool batch settles, before the next model call — and the
-	 * returned text is appended as user input so the next step accounts for it.
-	 * The host owns durability of the text: it must persist the message before
-	 * returning it. Must not throw; a failed drain must never fail the run.
+	 * Host check at each clean step boundary — after a tool batch settles, before
+	 * the next model call. Return `true` to end the run there: the loop skips the
+	 * next model call and finishes exactly like a run that reached its own stop
+	 * (`finishReason: 'stop'`), so everything settled so far is persisted.
+	 * Must not throw; a failing check is logged and read as `false`.
 	 */
-	steeringInput?: (context: { step: number }) => SteeringInput[] | Promise<SteeringInput[]>;
+	shouldStopGracefully?: (context: { step: number; before: 'tool-call' | 'model-call' }) => boolean | Promise<boolean>;
 }
 ```
 
-`packages/@n8n/agents/src/index.ts` — export `SteeringInput` (type export list).
+Asked in two places, and the first `true` is final for the run:
+- `tools/tool-call-executor.ts` — before each tool call starts
+  (`before: 'tool-call'`): the calls that have not started are settled as
+  `[Skipped: the user sent a new instruction]`; the in-flight one finishes.
+- `loop/agent-runtime.ts` — inside `runAgentLoop`, after `emitTurnEnd` and
+  **before** `maybeObserveMidRun` / `persistStepCheckpoint`
+  (`before: 'model-call'`): sets `finishReason: 'stop'` and breaks out of the
+  loop, so `finishComplete` persists the turn and emits the terminal `finish`
+  chunk.
 
-`packages/@n8n/agents/src/runtime/loop/agent-runtime.ts` — inside `runAgentLoop`,
-after the tool batch finalisation (`emitTurnEnd`) and **before**
-`this.memory.maybeObserveMidRun(list, options)` / `persistStepCheckpoint`:
-
-```ts
-await this.injectSteeringInput(list, options?.steeringInput, iterationCount + 1);
-```
-
-Private helper: catches drain errors (warn + continue), drops empty text, builds
-`{ id?, role: 'user', content: [{ type: 'text', text }] }` and calls
-`list.addInput(...)`. No behaviour change when `steeringInput` is undefined.
+The check is wrapped: a thrown error is logged and read as `false`. No behaviour
+change when the option is undefined.
 
 ## 2. `@n8n/api-types`
 
@@ -67,10 +62,8 @@ Add `'user-message'` to `instanceAiEventTypeSchema` (after `'run-finish'`) and t
 export const userMessagePayloadSchema = z.object({
 	messageId: z.string(),
 	text: z.string(),
-	/** 'steered' = injected into the live run; 'queued' = delivered after it finished. */
+	/** 'steered' = sent now into a live run; 'queued' = started a run. */
 	source: z.enum(['steered', 'queued']),
-	/** Agent-loop step the steer landed before. Only set for 'steered'. */
-	step: z.number().int().nonnegative().optional(),
 });
 export type InstanceAiUserMessageEvent = Extract<InstanceAiEvent, { type: 'user-message' }>;
 ```
@@ -145,8 +138,12 @@ All mutations go through `patchThread(this.agentMemory, { threadId, update })`
 ### 3.3 `InstanceAiService` additions (private)
 
 ```ts
-/** SDK drain callback. Claims the oldest steer-requested item, persists it, publishes it. */
-private async claimSteeringInput(threadId: string, runId: string, step: number): Promise<SteeringInput[]>;
+/**
+ * `shouldStopGracefully` callback. Moves the first steer-requested item to the
+ * head of the queue (clearing every stamp) and reports whether the run must end
+ * here. The bubble was already published by `requestSteer`.
+ */
+private async claimSteerRequest(threadId: string, runId: string, step: number): Promise<boolean>;
 
 /** Run-finish flush. Claims the head item, starts a run, then persists + publishes. */
 private async flushQueuedMessage(user: User, threadId: string): Promise<void>;
@@ -159,33 +156,26 @@ private async deliverQueuedMessage(args: {
 ```
 
 Wiring:
-- `buildOrchestratorAgentStreamOptions` passes
-  `steeringInput: ({ step }) => this.claimSteeringInput(threadId, runId, step)`.
+- `buildOrchestratorAgentStreamOptions` (and the resume options) pass
+  `shouldStopGracefully: ({ step }) => this.claimSteerRequest(threadId, runId, step)`
+  and raise `runControl.requestHandoff('user-steered')` on `true`, so
+  `finalizeRun` publishes `run-finish` with `status: 'steered'`.
 - `executeRun`'s `finally`, **after** the planned-task wiring block:
   `if (!segmentSuspended && !signal.aborted && !this.runState.hasLiveRun(threadId)) await this.flushQueuedMessage(user, threadId);`
   (`runState.hasLiveRun` already exists.)
 - `requestSteer`: if `this.runState.hasLiveRun(threadId)` → mark
-  `steerRequestedAt` + cancel the thread's background tasks
+  `steerRequestedAt`, publish `user-message` (`steered`) on the live run at once
+  + cancel the thread's background tasks
   (extract the `backgroundTasks.cancelThread` block from `cancelRun` into a
   reusable private helper); else deliver immediately as a new run.
-- `flushQueuedMessage` ordering: re-check `hasLiveRun` → claim head item →
-  start run → persist + publish. If the run cannot be started, re-queue the item
-  at the head and publish nothing.
+- `flushQueuedMessage` ordering: re-check `hasLiveRun` → claim the first
+  steer-requested item, else the head → start run → publish. If the run cannot
+  be started, re-queue the item at the head and publish nothing.
 
-Persist pattern — **steered items only** (mirrors `persistInterruptedUserMessage`):
-
-```ts
-await this.agentMemory.saveMessages({
-	threadId,
-	resourceId: user.id,
-	messages: [{ id: item.id, createdAt: new Date(item.createdAt), type: 'llm', role: 'user', content: [{ type: 'text', text: item.text }] }],
-});
-```
-
-A **flushed** item must NOT be pre-persisted: it starts a new run, and the SDK's
-`persistInputMessages` writes that run's input row itself with its own id. Writing
-ours as well would leave two rows (and two user bubbles) for one message. So for
-`source: 'queued'` the delivery is: publish `user-message` only, after the run has
+The service never pre-persists a message: every delivered item starts a new run,
+and the SDK's `persistInputMessages` writes that run's input row itself with its
+own id. Writing ours as well would leave two rows (and two user bubbles) for one
+message. So the delivery is: publish `user-message` only, after the run has
 started. The durable row arrives with the run.
 
 Ordering therefore is: claim → start run → publish `user-message`. Publishing
@@ -206,16 +196,18 @@ this.eventBus.publish(threadId, {
 
 ### 3.4 Trace metadata — `run-trace-metadata.ts`
 
-From the run's events, for `user-message` events with `source === 'steered'`:
+From the run's events (`user-message` with `source === 'steered'` = Send now
+presses made during the run) and the `steeredAtStep` option the service passes
+from the boundary that ended the run:
 
 ```ts
 metadata.steered = true;
-metadata.steer_count = steers.length;
-metadata.steered_at_steps = steers.map(s => s.payload.step).filter((n): n is number => typeof n === 'number');
+metadata.steer_count = steerRequests.length;
+metadata.steered_at_step = options.steeredAtStep;
 ```
 
 Only `steered` counts (a flushed `queued` message arrives after the run ended,
-so it forced no step inside it).
+so it stopped nothing).
 
 ### 3.5 Telemetry — `packages/@n8n/telemetry/src/events/instance-ai.ts`
 
@@ -230,7 +222,7 @@ USER_STEERED_MESSAGE: {
 },
 ```
 
-Tracked from `claimSteeringInput` via `TELEMETRY_EVENT.INSTANCE_AI.USER_STEERED_MESSAGE`.
+Tracked from `claimSteerRequest` via `TELEMETRY_EVENT.INSTANCE_AI.USER_STEERED_MESSAGE`.
 
 ### 3.6 Controller — 5 endpoints on `InstanceAiController`
 
@@ -286,7 +278,8 @@ async function takeQueuedMessageForEdit(messageId: string): Promise<string | nul
 - Placement: for `source: 'queued'`, splice the message in *before* the assistant
   message of `event.runId` when that message exists (else append) — that makes the
   order independent of whether `run-start` was reduced yet. For
-  `source: 'steered'`, always append (it lands mid-run, below the live bubble).
+  `source: 'steered'`, always append (it lands below the bubble of the run it
+  stopped, ahead of the run it starts).
 - Exclude `'user-message'` from the mid-run phantom-creation guard.
 
 ### 4.4 `components/InstanceAiInput.vue`

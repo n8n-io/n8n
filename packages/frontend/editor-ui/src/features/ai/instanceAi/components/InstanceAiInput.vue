@@ -263,6 +263,15 @@ const canSubmit = computed(() =>
 		attachedFiles.value.length + attachedResources.value.length,
 	),
 );
+// Like a terminal agent: Stop while the run works and the box is empty, Send as
+// soon as there is something to queue. A plan review parks the run, so it never
+// shows Stop.
+const showStopButton = computed(
+	() =>
+		!props.isAwaitingPlanReview &&
+		props.isStreaming &&
+		!(props.queueWhileStreaming && canSubmit.value),
+);
 const canShowSuggestions = computed(
 	() =>
 		Boolean(props.suggestions?.length) &&
@@ -679,6 +688,7 @@ const resizable = computed(() => {
 			:class="$style.inputWrapper"
 			:placeholder="placeholder"
 			:is-streaming="props.isAwaitingPlanReview ? false : props.isStreaming"
+			:show-stop-button="showStopButton"
 			:can-submit="canSubmit"
 			:disabled="isGatedBySetup"
 			:autosize="resizable"

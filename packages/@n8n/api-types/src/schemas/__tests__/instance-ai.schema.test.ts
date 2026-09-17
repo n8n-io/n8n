@@ -100,12 +100,12 @@ describe.each([InstanceAiQueueMessageRequest, InstanceAiUpdateQueuedMessageReque
 );
 
 describe('instanceAiEventSchema', () => {
-	it('accepts a steered user message with a step', () => {
+	it('accepts a steered user message', () => {
 		const event = {
 			type: 'user-message',
 			runId: 'run-1',
 			agentId: 'agent-1',
-			payload: { messageId: 'message-1', text: 'Use a daily schedule', source: 'steered', step: 0 },
+			payload: { messageId: 'message-1', text: 'Use a daily schedule', source: 'steered' },
 		};
 
 		expect(instanceAiEventSchema.parse(event)).toEqual(event);

@@ -3053,7 +3053,9 @@ describe('Instance AI thread runtime — queued messages', () => {
 		expect(runtime.queuedMessages).toEqual([]);
 	});
 
-	it('requests immediate delivery and still shows the item as queued until it lands', async () => {
+	it('requests immediate delivery and keeps the server queue, stamp included', async () => {
+		const stamped = { ...queued('qm-1', 'queued'), steerRequestedAt: '2026-04-01T00:00:01.000Z' };
+		vi.mocked(postSteerQueuedMessage).mockResolvedValue({ queuedMessages: [stamped] });
 		const runtime = createThreadRuntime('thread-queue-steer', {
 			onTitleUpdated: vi.fn(),
 			onRunFinish: vi.fn(),
@@ -3066,7 +3068,9 @@ describe('Instance AI thread runtime — queued messages', () => {
 			'thread-queue-steer',
 			'qm-1',
 		);
-		expect(runtime.queuedMessages).toEqual([queued('qm-1', 'queued')]);
+		// The list hides stamped items; the runtime keeps the server's view so the
+		// stranded-queue recovery still sees the message after a reload.
+		expect(runtime.queuedMessages).toEqual([stamped]);
 	});
 
 	it('takes an item out of the queue for editing and returns its text', async () => {
@@ -3112,7 +3116,7 @@ describe('Instance AI thread runtime — queued messages', () => {
 				type: 'user-message',
 				runId: 'run-1',
 				agentId: 'agent-root',
-				payload: { messageId: 'qm-1', text: 'Use the Slack node', source: 'steered', step: 2 },
+				payload: { messageId: 'qm-1', text: 'Use the Slack node', source: 'steered' },
 			}),
 		);
 

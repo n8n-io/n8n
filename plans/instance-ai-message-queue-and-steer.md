@@ -12,8 +12,9 @@ The user wants what Codex / Cursor / Claude Code all have:
 
 1. **Queue** — type a message while the agent works; it is held, not rejected.
 2. **Edit** — change a queued message before it is sent.
-3. **Send now (steer)** — push a queued message into the *running* agent at the
-   next step boundary, so the work already done is kept.
+3. **Send now (steer)** — let the *running* agent finish the tool call it is
+   on, take no further action, and start the queued message as its own run
+   right after, so the work already done is kept and nothing in flight is cut.
 4. **Traceable** — traces record that the user steered, so we can tell "the agent
    finished its step naturally" from "the user forced a new step".
 
@@ -21,7 +22,7 @@ The user wants what Codex / Cursor / Claude Code all have:
 
 | Question | Decision |
 |---|---|
-| Steer semantics | **Inject into the live run** at the next clean step boundary — never cancel the run |
+| Steer semantics | **Finish the tool call in flight, skip the rest, end the live run** (it finishes as `steered`) and start the message as its own run — never cut a plain call in flight, never cancel. A delegated sub-agent loop (agent builder) is aborted at once via `OrchestrationContext.subAgentAbortSignal` |
 | Background tasks on steer | **Stop them** (the user is redirecting the thread) |
 | Queue lifetime | **Persisted server-side**, robust to a process or browser shutdown |
 | Queue UI | A list of items **just above the text input**, each with **Send now** and **Edit**; Edit moves the text back into the input and drops the item |
@@ -69,30 +70,25 @@ The user wants what Codex / Cursor / Claude Code all have:
 ```ts
 // types/sdk/agent.ts → ExecutionOptions
 /**
- * Host-drained mid-run user input ("steering"). Called at each clean step
- * boundary — after a tool batch settles, before the next model call — and the
- * returned text is appended as user input so the next step accounts for it.
- * The host owns durability of the text: persist it before returning. Must not
- * throw; a failed drain must never fail the run.
+ * Host check at each clean step boundary — after a tool batch settles, before
+ * the next model call. Return `true` to end the run there: the loop skips the
+ * next model call and finishes exactly like a run that reached its own stop
+ * (`finishReason: 'stop'`), so everything settled so far is persisted.
+ * Must not throw; a failing check is logged and read as `false`.
  */
-steeringInput?: (context: { step: number }) => SteeringInput[] | Promise<SteeringInput[]>;
-
-export interface SteeringInput { id?: string; text: string }
+shouldStopGracefully?: (context: { step: number; before: 'tool-call' | 'model-call' }) => boolean | Promise<boolean>;
 ```
 
-Call site in `runAgentLoop`, after `emitTurnEnd` and before `maybeObserveMidRun`
-/ `persistStepCheckpoint` (so the checkpoint and the observation include the
-injected turn):
+Asked by the tool executor before each tool call starts (a `true` settles the
+calls that have not started as skipped) and in `runAgentLoop` after
+`emitTurnEnd`, before `maybeObserveMidRun` / `persistStepCheckpoint` (a `true`
+breaks out of the loop with `finishReason: 'stop'`). The first `true` is
+final. `finishComplete` persists the turn and emits the terminal `finish`
+chunk; nothing keeps running in the background, and the run is not a
+cancellation.
 
-```ts
-await this.injectSteeringInput(list, options?.steeringInput, iterationCount + 1);
-```
-
-`injectSteeringInput` try/catches the callback, maps `{ id, text }` to
-`{ id, role: 'user', content: [{ type: 'text', text }] }` and calls `list.addInput`.
-
-Passing the host's `id` matters: the host persists the row eagerly with that id, so
-the SDK's end-of-run `saveToMemory` upserts it instead of inserting a duplicate.
+The message itself is never injected into the ending run: the run it starts
+persists it as that run's input row, so there is one row and no id juggling.
 
 ### 2. Queue storage: thread metadata
 
@@ -126,16 +122,20 @@ the persisted memory row's id, so the frontend can move an item from "queued" to
 - `queueMessage(threadId, text)` — append to metadata.
 - `updateQueuedMessage` / `removeQueuedMessage` — edit / delete by id.
 - `requestSteer(threadId, messageId)`
-  - Live run → set `steerRequestedAt`; cancel the thread's background tasks
-    (extracted helper shared with `cancelRun`); the run's drain hook picks it up.
-  - No live run → deliver immediately (`deliverQueuedMessage`, below).
-- `claimSteeringInput(threadId, runId, step)` — the SDK drain callback: claims the
-  oldest `steerRequestedAt` item inside the metadata lock, persists it as a user
-  message (`agentMemory.saveMessages`, same id), publishes `user-message`,
-  tracks telemetry, returns `[{ id, text }]`. Wired in
-  `buildOrchestratorAgentStreamOptions`.
-- `flushQueuedMessage(user, threadId)` — at the end of `executeRun`'s `finally`,
-  after the planned-task wiring, guarded by
+  - Live run → set `steerRequestedAt`, publish `user-message` (`steered`) on the
+    live run so the bubble shows at once; cancel the thread's background tasks
+    (extracted helper shared with `cancelRun`); the run's boundary check picks
+    it up.
+  - No live run → deliver immediately (`flushQueuedMessage`, below).
+- `claimSteerRequest(threadId, runId, step)` — the `shouldStopGracefully`
+  callback: inside the metadata lock, takes the first `steerRequestedAt` item,
+  moves it to the head of the queue and clears every stamp, tracks telemetry,
+  and returns `true`; the step reaches the trace root as `steered_at_step`. The service raises the `user-steered` handoff,
+  so the run finalises as `steered`. Wired in
+  `buildOrchestratorAgentStreamOptions` and the resume options.
+- `flushQueuedMessage(user, threadId)` — in the `finally` of `executeRun` and of
+  the resumed-run path, **before** the planned-task wiring (a started user turn
+  holds the follow-ups until its own finish), guarded by
   `!segmentSuspended && !hasSuspendedRun && !signal.aborted && !hasLiveRun`:
   deliver the oldest queued item (persist + publish `user-message` with
   `source: 'queued'`) and start a follow-up-style run for that text. If the run
@@ -149,15 +149,18 @@ without a run, and never delivered twice):
   publish `user-message`. When the start is skipped or refused, re-queue the item
   at the head and publish nothing. The claim-first order is what makes a double
   delivery impossible.
-- Steer: claim the item, persist the row, publish `user-message`, then return the
-  text to the SDK to inject. A run that dies before the next model call leaves the
-  message in history unread — visible and resendable, never lost.
+- Steer: the press publishes `user-message` (`steered`); the boundary moves the
+  item to the head and ends the run; the run-finish flush delivers it like any queued message (its
+  `queued` event is a no-op in the frontend, which keys bubbles by `messageId`).
+  A stamped item the run never reached (it ended first) is what the flush takes
+  before the head. A process that dies between the claim and the flush leaves
+  the item queued, and the stranded-queue recovery delivers it on the next mount.
 
 ### 5. Trace and telemetry
 
-- `buildInstanceAiRunTraceMetadata`: derive from the run's events
-  `steered: true`, `steer_count`, `steered_at_steps: number[]` → the LangSmith
-  root metadata answers "did the user force this step?".
+- `buildInstanceAiRunTraceMetadata`: `steered: true`, `steer_count` from the
+  run's `steered` events, `steered_at_step` from the boundary that ended the run
+  → the LangSmith root metadata answers "did the user cut this run short?".
 - Registered telemetry event `USER_STEERED_MESSAGE` (`events/instance-ai.ts`) with
   `thread_id`, `instance_id`, `step`.
 
@@ -203,10 +206,9 @@ Each reuses the controller's `assertThreadAccess`.
 ## Files to modify
 
 **`@n8n/agents`**
-- `src/types/sdk/agent.ts` — `steeringInput`, `SteeringInput`
-- `src/runtime/loop/agent-runtime.ts` — drain call site + `injectSteeringInput`
-- `src/index.ts` — export `SteeringInput`
-- `src/runtime/loop/__tests__/` — new cases
+- `src/types/sdk/agent.ts` — `shouldStopGracefully`
+- `src/runtime/loop/agent-runtime.ts` + `tools/tool-call-executor.ts` — graceful stop
+- `src/runtime/loop/__tests__/graceful-stop.test.ts` — new cases
 
 **`@n8n/api-types`**
 - `src/schemas/instance-ai.schema.ts` — `user-message` event + payload, queue DTOs,
@@ -217,7 +219,7 @@ Each reuses the controller's `assertThreadAccess`.
 - `instance-ai.service.ts` — queue CRUD, steer claim, flush, event publishing,
   background-task helper extraction
 - `instance-ai.controller.ts` — 5 endpoints
-- `run-trace-metadata.ts` — `steered` / `steer_count` / `steered_at_steps`
+- `run-trace-metadata.ts` — `steered` / `steer_count` / `steered_at_step`
 - `storage/typeorm-agent-memory.ts` — `PATCH_ONLY_METADATA_KEYS` entry
 - `storage/queued-messages.ts` (new, small) — metadata read/write helpers
 - `__tests__/` — service, controller, run-trace-metadata
@@ -236,9 +238,9 @@ Each reuses the controller's `assertThreadAccess`.
 
 ## Steps
 
-- [x] `@n8n/agents`: `steeringInput` option, drain at the step boundary, tests
-- [x] api-types: `user-message` event + queue DTOs/types
-- [x] cli: queue storage helpers + service CRUD + drain wiring
+- [x] `@n8n/agents`: `shouldStopGracefully` option, stop before the next tool call or model call, tests
+- [x] api-types: `user-message` event + queue DTOs/types + `steered` run status
+- [x] cli: queue storage helpers + service CRUD + boundary-check wiring + `user-steered` handoff
 - [x] cli: run-finish flush + stranded-queue recovery
 - [x] cli: controller endpoints
 - [x] cli: trace metadata + telemetry event
@@ -249,8 +251,9 @@ Each reuses the controller's `assertThreadAccess`.
 
 ## Verification
 
-- `pnpm --filter @n8n/agents test` — drain at the boundary, host id preserved,
-  a throwing drain cannot fail the run
+- `pnpm --filter @n8n/agents test` — a stop lets the call in flight finish and
+  skips the rest, is a normal completion, and a declining or throwing check
+  cannot fail the run
 - `pnpm --filter n8n test instance-ai` — queue CRUD, steer claim, flush on
   finish, no flush while suspended or parked, trace metadata
 - `pnpm --filter n8n-editor-ui test instanceAi` — queue-on-Enter while streaming,
@@ -263,9 +266,7 @@ Each reuses the controller's `assertThreadAccess`.
 
 ## Notes
 
-- A steered message is a real user row, so on reload it lands before its run's
-  assistant block (row order), while live it appears below the streaming bubble.
-  Both render as a normal user bubble; no parser change is planned for that
-  ordering nuance.
+- A steered message is persisted by the run it starts, so on reload it sits
+  between the run it stopped and its own run, the same order the live view shows.
 - Not in v1: steered-message rendering inside the agent activity timeline,
   attachments in the queue, reordering queued items.

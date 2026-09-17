@@ -229,7 +229,19 @@ export const INSTANCE_AI_EPHEMERAL_EVENT_TYPES: ReadonlySet<InstanceAiEventType>
 // 'interrupted' (durable-log RFC, resilience phase): appended by the
 // interrupted-run sweep for a run whose process died mid-flight — the fold
 // renders every in-flight item as terminated, no walk-and-mutate.
-export const instanceAiRunStatusSchema = z.enum(['completed', 'cancelled', 'error', 'interrupted']);
+//
+// 'steered': the user sent a new instruction while the run was working, so the
+// run stopped at its next step boundary and the instruction became the next run.
+// The work it completed is intact, which is why every consumer treats it the way
+// it treats 'completed'; the distinct value is what makes a steered step visible
+// in the data instead of looking like a run the agent ended by itself.
+export const instanceAiRunStatusSchema = z.enum([
+	'completed',
+	'steered',
+	'cancelled',
+	'error',
+	'interrupted',
+]);
 export type InstanceAiRunStatus = z.infer<typeof instanceAiRunStatusSchema>;
 
 // ---------------------------------------------------------------------------
@@ -334,10 +346,13 @@ export const runFinishPayloadSchema = z.object({
 export const userMessagePayloadSchema = z.object({
 	messageId: z.string(),
 	text: z.string(),
-	/** 'steered' enters the active run. 'queued' starts after the run finishes. */
+	/**
+	 * 'steered': the user pressed Send now while this run was active. The message
+	 * is in the transcript from that moment; the run ends at its next step
+	 * boundary and the message starts its own run. 'queued': the message started
+	 * a run after the previous one finished.
+	 */
 	source: z.enum(['steered', 'queued']),
-	/** The agent-loop step that follows the message. Only set for 'steered'. */
-	step: z.number().int().nonnegative().optional(),
 });
 
 export const agentSpawnedTargetResourceSchema = z.object({

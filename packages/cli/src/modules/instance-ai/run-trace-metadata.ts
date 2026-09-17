@@ -23,6 +23,8 @@ export type InstanceAiRunTraceMetadataOptions = {
 	status: 'completed' | 'cancelled' | 'error';
 	cancellationReason?: string;
 	runTimeout?: InstanceAiRunTimeoutTraceContext;
+	/** The agent-loop step Send now stopped this run before; unset when it ran to its own end. */
+	steeredAtStep?: number;
 };
 
 type FirstVisibleSummary = {
@@ -105,17 +107,17 @@ export function buildInstanceAiRunTraceMetadata(
 		metadata.first_tool_name = firstVisible.firstToolName;
 	}
 
-	const steers = events.filter(
+	// A Send now is announced on the run it will stop, so the requests made
+	// during this run are its `steered` events; the step it actually stopped at
+	// is only known at the boundary that claimed the first of them.
+	const steerRequests = events.filter(
 		(event): event is InstanceAiUserMessageEvent =>
 			event.type === 'user-message' && event.payload.source === 'steered',
 	);
-	if (steers.length > 0) {
+	if (steerRequests.length > 0 || options.steeredAtStep !== undefined) {
 		metadata.steered = true;
-		metadata.steer_count = steers.length;
-		const steps = steers
-			.map((event) => event.payload.step)
-			.filter((step): step is number => typeof step === 'number');
-		if (steps.length > 0) metadata.steered_at_steps = steps;
+		metadata.steer_count = steerRequests.length;
+		if (options.steeredAtStep !== undefined) metadata.steered_at_step = options.steeredAtStep;
 	}
 
 	const cancellationType = getCancellationType(options);

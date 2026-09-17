@@ -23,15 +23,12 @@ type RunDebugGatingInternals = {
 		signal: AbortSignal,
 	) => Record<string, unknown>;
 	getRunDebug: (runId: string) => ReturnType<RunDebugBuffer['get']>;
-	runInterrupts: Map<string, AbortController>;
 };
 
 function createRunDebugGatingService(runDebugEnabled: boolean): RunDebugGatingInternals {
 	const service = Object.create(InstanceAiService.prototype) as RunDebugGatingInternals;
 	service.instanceAiConfig = { runDebugEnabled };
 	service.aiConfig = { modelStreamIdleTimeoutMs: 90_000, modelStreamFirstOutputTimeoutMs: 180_000 };
-	// The stream options read the thread's interrupt signal; no live run means no entry.
-	service.runInterrupts = new Map();
 	service.runDebugBuffer = new RunDebugBuffer();
 	service.runState = new RunStateRegistry((user: User) => user.id);
 	return service;
