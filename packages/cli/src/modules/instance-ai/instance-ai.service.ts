@@ -1472,6 +1472,7 @@ export class InstanceAiService {
 		mode?: InstanceAiBuildMode,
 		promptVersion?: string,
 		computerUseChannels?: ComputerUseChannel[],
+		observerThresholdTokens?: number,
 	): string {
 		if (
 			promptVersion !== undefined &&
@@ -1501,6 +1502,7 @@ export class InstanceAiService {
 		// otherwise environment creation selects and stores the backend assignment.
 		this.runState.setBuildMode(threadId, mode);
 		this.runState.setPromptVersion(threadId, promptVersion);
+		this.runState.setObserverThresholdTokens(threadId, observerThresholdTokens);
 
 		if (pushRef !== undefined) {
 			this.threadPushRef.set(threadId, pushRef);
@@ -2214,7 +2216,9 @@ export class InstanceAiService {
 	private createAgentMemoryOptions(user: User, threadId: string, runId: string) {
 		return {
 			observationalMemory: {
-				observerThresholdTokens: this.instanceAiConfig.observerMessageTokens,
+				observerThresholdTokens:
+					this.runState.getObserverThresholdTokens(threadId) ??
+					this.instanceAiConfig.observerMessageTokens,
 				reflectorThresholdTokens: this.instanceAiConfig.reflectorObservationTokens,
 				midRunObservation: this.instanceAiConfig.midRunObservation,
 				// Observer/reflector calls run in the background outside the run's

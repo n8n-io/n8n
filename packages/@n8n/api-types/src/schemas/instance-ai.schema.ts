@@ -1505,6 +1505,9 @@ export class InstanceAiSendMessageRequest extends Z.class({
 	mode: instanceAiBuildModeSchema.optional(),
 	/** Pin a published prompt profile. Takes precedence over mode. */
 	promptVersion: z.string().trim().min(1).max(128).optional(),
+	/** Eval override: observer threshold for THIS thread, so driving compaction
+	 *  for one case does not lower it for every conversation on the instance. */
+	observerThresholdTokens: z.number().int().min(1000).max(1_000_000).optional(),
 }) {}
 
 export class InstanceAiCorrectTaskRequest extends Z.class({

@@ -15,7 +15,11 @@ import type { LaneAllocator } from './lane-allocator';
 import { provisionCaseBuildUser, type LaneUserPool } from './lane-users';
 import { collectExpectations } from '../build-expectations/collect';
 import { selectAuthorExpectations } from '../build-expectations/select';
-import { allFailVerdicts, verifyBuildExpectations } from '../build-expectations/verifier';
+import {
+	allFailVerdicts,
+	observationLogOf,
+	verifyBuildExpectations,
+} from '../build-expectations/verifier';
 import type { CliArgs } from '../cli/args';
 import {
 	buildWorkflowViaMcp,
@@ -48,6 +52,7 @@ import {
 	runCredentialSetupChecks,
 } from '../harness/credential-setup-checks';
 import type { EvalLogger } from '../harness/logger';
+import type { CaseSeed } from '../harness/schema';
 import {
 	fetchPrebuiltBuild,
 	pickPrebuiltWorkflowId,
@@ -123,6 +128,9 @@ export type BuildArgs = Pick<
 	// callback's parameter type, so tsc cannot catch a dropped field here; the
 	// orchestrator test pins it.
 	| 'credentialFixture'
+	// Same hazard: dropped, the case runs with the instance's own observer
+	// threshold, never compacts, and reads as an agent miss.
+	| 'requiresMemoryCompaction'
 > & {
 	timeoutMs: number;
 	/** Which case this build is, and which repeat of it. Not used by the build
@@ -507,11 +515,21 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 		buildExpectationsByKey.set(
 			key,
 			withInjected(
-				(async () =>
-					await verifyBuildExpectations(expectations, {
+				(async () => {
+					const runDebug = build.threadId
+						? await runDebugByThreadId.get(build.threadId)
+						: undefined;
+					// Premise, not an expectation — unjudged, so a misconfigured lane never
+					// reads as an agent regression.
+					if (testCase.requiresMemoryCompaction) {
+						const missing = compactionPremiseMissing(runDebug, testCase.seed);
+						if (missing) return allFailVerdicts(expectations, `not judged — ${missing}`);
+					}
+					return await verifyBuildExpectations(expectations, {
 						transcript,
 						workflowJson: build.workflowJsons[0],
 						metrics: build.conversationMetrics,
+						runDebug,
 						// Rendered non-workflow artifacts (agent AND config-eval), sectioned
 						// with "(no <type> produced)" fallbacks, so outcome expectations can
 						// judge artifact existence, absence and content — parity with the
@@ -521,7 +539,8 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 							client,
 							logger,
 						}),
-					}))()
+					});
+				})()
 					.catch((error: unknown) =>
 						allFailVerdicts(
 							expectations,
@@ -583,8 +602,10 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 				stashTranscript(build);
 				// isPrebuilt=true: MCP builds have no build transcript, so only
 				// outcome expectations are judged (against the workflow), like prebuilt.
-				stashBuildExpectations(key, fileSlug, lane.runner.client, build, true);
+				// Ordered before stashBuildExpectations so runDebugByThreadId already has
+				// this build's promise stashed by the time that call reads it.
 				stashRunDebug(lane.runner.client, build);
+				stashBuildExpectations(key, fileSlug, lane.runner.client, build, true);
 				if (build.success && !build.workflowChecks) {
 					build.workflowChecks = await runWorkflowChecks({
 						workflow: build.workflowJsons[0],
@@ -611,8 +632,10 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 				const buildDurationMs = Date.now() - start;
 				buildDurations.set(key, buildDurationMs);
 				stashTranscript(build);
-				stashBuildExpectations(key, fileSlug, lane.runner.client, build, true);
+				// Ordered before stashBuildExpectations so runDebugByThreadId already has
+				// this build's promise stashed by the time that call reads it.
 				stashRunDebug(lane.runner.client, build);
+				stashBuildExpectations(key, fileSlug, lane.runner.client, build, true);
 				if (build.success && !build.workflowChecks) {
 					// No transcript in prebuilt mode, but the authored conversation still
 					// carries the user's request — feed it so prompt-aware checks (e.g.
@@ -653,6 +676,7 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 						messageBudget: entry.messageBudget,
 						buildMode: entry.buildMode,
 						promptVersion: entry.promptVersion,
+						requiresMemoryCompaction: entry.requiresMemoryCompaction,
 						allowUserExecution: entry.allowUserExecution,
 						credentials: entry.credentials,
 						seed: entry.seed,
@@ -685,8 +709,10 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 			buildDurations.set(key, buildDurationMs);
 			stashTranscript(build);
 			stashAgentContext(key, lane.runner.client, build);
-			stashBuildExpectations(key, fileSlug, lane.runner.client, build, false);
+			// Ordered before stashBuildExpectations so runDebugByThreadId already has
+			// this build's promise stashed by the time that call reads it.
 			stashRunDebug(lane.runner.client, build);
+			stashBuildExpectations(key, fileSlug, lane.runner.client, build, false);
 			logger.info(
 				`[lane ${String(lane.laneNum)}] built ${fileSlug} (iteration ${String(iteration)}) thread=${build.threadId ?? 'none'} success=${String(build.success)}`,
 			);
@@ -714,4 +740,21 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 	}
 
 	return { getOrBuild, buildCache, orphanedBuilds, buildDurations };
+}
+
+/** Why the case has no premise to grade, or '' when it does. A log alone is not
+ *  enough — the seeded bulk must be behind the cursor at the graded turn. */
+function compactionPremiseMissing(
+	runDebug: InstanceAiRunDebugResponse[] | undefined,
+	seed: CaseSeed | undefined,
+): string {
+	if (!observationLogOf(runDebug)) {
+		return 'observational memory never compacted this conversation, so the case premise is missing. The case needs seeded history with something worth observing — compaction is driven for it automatically, but there has to be a conversation to compact';
+	}
+	const seeded = seed?.mode === 'inline' ? seed.messages.length : 0;
+	const gradedWindow = runDebug?.at(-1)?.steps[0]?.input?.messages;
+	if (seeded > 0 && Array.isArray(gradedWindow) && gradedWindow.length >= seeded) {
+		return `compaction ran but the graded turn still carries ${String(gradedWindow.length)} messages against a ${String(seeded)}-message seed, so the seeded turns were never masked out of the window and the case would pass off the raw history`;
+	}
+	return '';
 }

@@ -348,6 +348,7 @@ export class N8nClient {
 		mode: InstanceAiBuildMode = 'default',
 		promptVersion?: string,
 		handoffContext?: InstanceAiHandoffContext,
+		observerThresholdTokens?: number,
 	): Promise<{ runId: string }> {
 		const result = await this.fetch(`/rest/instance-ai/chat/${threadId}`, {
 			method: 'POST',
@@ -357,6 +358,8 @@ export class N8nClient {
 				mode,
 				...(promptVersion ? { promptVersion } : {}),
 				...(handoffContext ? { context: handoffContext } : {}),
+				// Per-thread, so other cases in the suite keep the instance default.
+				...(observerThresholdTokens ? { observerThresholdTokens } : {}),
 			} satisfies InstanceAiSendMessageRequest,
 		});
 		return this.unwrapRestData<{ runId: string }>(result);

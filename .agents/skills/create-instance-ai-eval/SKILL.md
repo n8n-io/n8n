@@ -150,9 +150,19 @@ case can still assert outcome), but the primary shape drives the work.
 | **Behaviour / process** | Does the agent *converse* correctly (ask the right clarifying question, not re-ask, honour a correction, respect plan approval)? | `processExpectations` + multi-turn director script; often **build-only** |
 | **Credential** | Does the build behave correctly given a specific credential view? | `credentials[]` |
 | **Seeded** | Start mid-thread, with prior work already in place, and drive the turn under test | `seed` (authored `mode: "inline"`; `"replay"` for a local check) |
+| **Context** | Does the agent still work once the conversation is long — does it reuse what it already read, and keep what matters after observational memory compacts the history? | `processExpectations` + a long `seed`; `requiresMemoryCompaction` for the compaction ones |
 
-**Build** is documented in full below. The other three, the director-script
+**Build** is documented in full below. The other four, the director-script
 vocabulary, and the seeding modes are in [`case-shapes.md`](case-shapes.md).
+
+The judge also sees **token ground truth** for every case: per-turn input and
+output tokens inline in each transcript turn header, a build-wide total, a
+cache read/write split, and the opening step's fixed overhead. So an
+expectation may reference cost or consumption directly ("does not re-read the
+same node's schema in turn 2"). The numbers
+come from the run-debug snapshots, so they need
+`N8N_INSTANCE_AI_RUN_DEBUG_ENABLED=true` on the instance under test; without it
+the judge reads `(no run debug captured)` and cost expectations are ungradeable.
 
 ## Core principle (all shapes)
 

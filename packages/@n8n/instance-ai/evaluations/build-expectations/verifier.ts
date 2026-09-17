@@ -1,3 +1,5 @@
+import type { InstanceAiRunDebugResponse } from '@n8n/api-types';
+import { parseSystemPromptForDisplay, stepInstructions } from '@n8n/api-types';
 import type { Message } from '@n8n/agents';
 
 import { buildAssertionsBlock, judgeExpectations } from './assertion-judge';
@@ -5,7 +7,7 @@ import { EPHEMERAL_CACHE } from '../../src/utils/eval-agents';
 import type { WorkflowResponse } from '../clients/n8n-client';
 import { buildWorkflowContextBlock } from '../harness/workflow-context';
 import type { BuildExpectationResult, ConversationMetrics, TranscriptTurn } from '../types';
-import { perTurnToolCallCounts, transcriptAsText } from '../utils/conversation-text';
+import { perTurnToolCallCounts, transcriptAsText, usageTokens } from '../utils/conversation-text';
 
 // Re-exported for import-site stability — cli/index.ts and runner.ts import it from here.
 export { allFailVerdicts } from './assertion-judge';
@@ -19,6 +21,8 @@ export interface BuildExpectationsInput {
 	transcript: TranscriptTurn[];
 	workflowJson?: WorkflowResponse;
 	metrics?: ConversationMetrics;
+	/** Per-step debug from the build; source of every token number below. */
+	runDebug?: InstanceAiRunDebugResponse[];
 	/** Rendered agent/config-eval sections (each with a "(no … produced)" fallback), appended
 	 *  to the cached build context so outcome expectations can be judged against them. */
 	artifactContext?: string;
@@ -53,13 +57,39 @@ export async function verifyBuildExpectations(
 				},
 				{
 					type: 'text',
-					text: buildConversationContext(expectations, build.transcript, build.metrics),
+					text: buildConversationContext(
+						expectations,
+						build.transcript,
+						build.metrics,
+						build.runDebug,
+					),
 				},
 			],
 		},
 	];
 
+	await dumpJudgeContext(messages);
+
 	return await judgeExpectations(messages, expectations);
+}
+
+/** Dump the assembled judge prompt to `DEBUG_JUDGE_CONTEXT`; nothing else shows it. */
+async function dumpJudgeContext(messages: Message[]): Promise<void> {
+	const target = process.env.DEBUG_JUDGE_CONTEXT;
+	if (!target) return;
+	const text = messages
+		.flatMap((message) =>
+			Array.isArray(message.content)
+				? message.content.flatMap((part) => ('text' in part ? [part.text] : []))
+				: [],
+		)
+		.join('\n\n--- block ---\n\n');
+	try {
+		const { appendFile } = await import('fs/promises');
+		await appendFile(target, `\n\n===== JUDGE CALL =====\n\n${text}\n`);
+	} catch {
+		// Diagnostics must never fail a run.
+	}
 }
 
 // ---------------------------------------------------------------------------
@@ -70,6 +100,7 @@ function buildConversationContext(
 	expectations: string[],
 	transcript: TranscriptTurn[],
 	metrics: ConversationMetrics | undefined,
+	runDebug: InstanceAiRunDebugResponse[] | undefined,
 ): string {
 	const metricsBlock = metrics
 		? `\`\`\`json\n${JSON.stringify(metrics, null, 2)}\n\`\`\``
@@ -77,7 +108,7 @@ function buildConversationContext(
 	return [
 		'## Conversation transcript',
 		'',
-		transcriptAsText(transcript),
+		transcriptAsText(transcript, runDebug),
 		'',
 		'## Conversation metrics (ground truth — do not recount)',
 		'',
@@ -87,6 +118,64 @@ function buildConversationContext(
 		'',
 		perTurnToolCallCounts(transcript),
 		'',
+		'## Token usage totals (ground truth — do not recount)',
+		'',
+		tokenUsageTotals(runDebug),
+		'',
 		buildAssertionsBlock(expectations),
+	].join('\n');
+}
+
+// ---------------------------------------------------------------------------
+// Observational memory
+// ---------------------------------------------------------------------------
+
+/** Latest observation log in the build, or null if it never compacted. Not shown to
+ *  the judge — a misconfigured lane must not score as an agent regression. */
+export function observationLogOf(
+	runDebug: InstanceAiRunDebugResponse[] | undefined,
+): string | null {
+	let latest: string | null = null;
+	for (const run of runDebug ?? []) {
+		for (const step of run.steps) {
+			const { observations } = parseSystemPromptForDisplay(stepInstructions(step.input));
+			if (observations) latest = observations;
+		}
+	}
+	return latest;
+}
+
+// ---------------------------------------------------------------------------
+// Token usage totals
+// ---------------------------------------------------------------------------
+
+/** Build-wide sum, the one number the turn headers don't carry. Orchestrator steps
+ *  only, so a delegated `build-agent` leg is absent (workflow builds are not). */
+function tokenUsageTotals(runDebug: InstanceAiRunDebugResponse[] | undefined): string {
+	if (!runDebug || runDebug.length === 0) return '(no run debug captured)';
+
+	let input = 0;
+	let output = 0;
+	let cacheRead = 0;
+	let cacheWrite = 0;
+	let stepCount = 0;
+	for (const run of runDebug) {
+		for (const step of run.steps) {
+			const usage = usageTokens(step.output?.usage);
+			input += usage.input;
+			output += usage.output;
+			cacheRead += usage.cacheRead;
+			cacheWrite += usage.cacheWrite;
+			stepCount++;
+		}
+	}
+
+	// Instructions + tool schemas + one message: the floor cost of any turn here.
+	const opening = usageTokens(runDebug[0]?.steps[0]?.output?.usage).input;
+	const runWord = runDebug.length === 1 ? 'run' : 'runs';
+	return [
+		`Total: ${String(input)} tokens in / ${String(output)} tokens out across ${String(stepCount)} LLM steps, ${String(runDebug.length)} ${runWord}`,
+		`Cache: ${String(cacheRead)} tokens read / ${String(cacheWrite)} tokens written`,
+		`Fixed overhead: ${String(opening)} tokens on the opening step, before the conversation had any history`,
 	].join('\n');
 }

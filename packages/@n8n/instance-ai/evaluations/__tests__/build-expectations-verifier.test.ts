@@ -1,3 +1,4 @@
+import type { InstanceAiRunDebugResponse } from '@n8n/api-types';
 import type { Mock, MockedFunction } from 'vitest';
 import { vi } from 'vitest';
 
@@ -169,6 +170,90 @@ describe('verifyBuildExpectations', () => {
 		expect(buildBlock.text).toContain('(no workflow built)');
 		expect(buildBlock.text).toContain('## Agent\n\n(no agent produced)');
 		expect(buildBlock.providerOptions).toEqual({});
+	});
+
+	it('renders the build-wide token total when run debug is captured', async () => {
+		const generate: GenerateMock = vi.fn<GenerateFn>().mockResolvedValue({
+			structuredOutput: { results: [{ index: 0, pass: true, reason: 'ok' }] },
+		});
+		mockJudge(generate);
+
+		const runDebug: InstanceAiRunDebugResponse[] = [
+			{
+				threadId: 't1',
+				runId: 'r1',
+				startedAt: 0,
+				workflowCode: [],
+				steps: [
+					{ stepNumber: 0, output: { usage: { inputTokens: 100, outputTokens: 20 } } },
+					{ stepNumber: 1, output: { usage: { inputTokens: 300, outputTokens: 40 } } },
+				],
+			},
+		];
+		await verifyBuildExpectations(['expectation zero'], { transcript: TRANSCRIPT, runDebug });
+
+		const sentMessages = JSON.stringify(generate.mock.calls[0]?.[0]);
+		expect(sentMessages).toContain('Token usage totals');
+		expect(sentMessages).toContain(
+			'Total: 400 tokens in / 60 tokens out across 2 LLM steps, 1 run',
+		);
+		expect(sentMessages).toContain('Cache: 0 tokens read / 0 tokens written');
+		// The opening step alone: fixed overhead, separable from what the turns added.
+		expect(sentMessages).toContain('Fixed overhead: 100 tokens on the opening step');
+	});
+
+	it('sums cache read/write tokens across steps, from the nested inputTokenDetails shape', async () => {
+		const generate: GenerateMock = vi.fn<GenerateFn>().mockResolvedValue({
+			structuredOutput: { results: [{ index: 0, pass: true, reason: 'ok' }] },
+		});
+		mockJudge(generate);
+
+		const runDebug: InstanceAiRunDebugResponse[] = [
+			{
+				threadId: 't1',
+				runId: 'r1',
+				startedAt: 0,
+				workflowCode: [],
+				steps: [
+					{
+						stepNumber: 0,
+						output: {
+							usage: {
+								inputTokens: 100,
+								outputTokens: 20,
+								inputTokenDetails: { cacheReadTokens: 8000, cacheWriteTokens: 0 },
+							},
+						},
+					},
+					{
+						stepNumber: 1,
+						output: {
+							usage: {
+								inputTokens: 300,
+								outputTokens: 40,
+								inputTokenDetails: { cacheReadTokens: 0, cacheWriteTokens: 2500 },
+							},
+						},
+					},
+				],
+			},
+		];
+		await verifyBuildExpectations(['expectation zero'], { transcript: TRANSCRIPT, runDebug });
+
+		const sentMessages = JSON.stringify(generate.mock.calls[0]?.[0]);
+		expect(sentMessages).toContain('Cache: 8000 tokens read / 2500 tokens written');
+	});
+
+	it('falls back to a placeholder when no run debug was captured', async () => {
+		const generate: GenerateMock = vi.fn<GenerateFn>().mockResolvedValue({
+			structuredOutput: { results: [{ index: 0, pass: true, reason: 'ok' }] },
+		});
+		mockJudge(generate);
+
+		await verifyBuildExpectations(['expectation zero'], { transcript: TRANSCRIPT });
+
+		const sentMessages = JSON.stringify(generate.mock.calls[0]?.[0]);
+		expect(sentMessages).toContain('(no run debug captured)');
 	});
 
 	it('sends only the workflow block when there is no artifact context', async () => {

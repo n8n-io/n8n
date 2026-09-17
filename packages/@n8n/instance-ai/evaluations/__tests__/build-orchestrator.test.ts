@@ -8,6 +8,7 @@ import {
 	scrubLocalSecretsFromBuild,
 	type BuildResult,
 } from '../harness/build-workflow';
+import { captureThreadRunDebug } from '../harness/capture-run-debug';
 import { runWorkflowChecks } from '../harness/cleanup';
 import { runCredentialSetupChecks } from '../harness/credential-setup-checks';
 import type { EvalLogger } from '../harness/logger';
@@ -181,6 +182,113 @@ describe('createBuildOrchestrator', () => {
 		expect(tracedBuild).toHaveBeenCalledWith(
 			expect.objectContaining({ credentialFixture: 'local' }),
 		);
+	});
+
+	it("forwards the case's requiresMemoryCompaction to the build", async () => {
+		// Same invisible-to-tsc hazard: dropped, it never compacts and reads as an agent miss.
+		const tracedBuild = vi.fn().mockResolvedValue(okBuild());
+		const orchestrator = createBuildOrchestrator(
+			makeDeps([makeLane(1, tracedBuild)], {
+				testCaseByFileSlug: new Map([['case-a', baseCase({ requiresMemoryCompaction: true })]]),
+			}),
+		);
+
+		await orchestrator.getOrBuild(0, 'case-a');
+
+		expect(tracedBuild).toHaveBeenCalledWith(
+			expect.objectContaining({ requiresMemoryCompaction: true }),
+		);
+	});
+
+	it('reports a requiresMemoryCompaction case unjudged when compaction never ran', async () => {
+		// Uncompacted, everything passes for free — so this must never reach the judge.
+		vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true }));
+		const building = vi.fn().mockResolvedValue(
+			okBuild({
+				threadId: 'thread-1',
+				transcript: [
+					{
+						userMessage: 'remind me what we decided',
+						steps: [{ kind: 'agent-text', text: 'The HTTP Request node.' }],
+					},
+				],
+			}),
+		);
+		const deps = makeDeps([makeLane(1, building)], {
+			testCaseByFileSlug: new Map([
+				[
+					'case-a',
+					baseCase({
+						requiresMemoryCompaction: true,
+						processExpectations: ['the agent recalls the earlier decision'],
+					}),
+				],
+			]),
+		});
+		const orchestrator = createBuildOrchestrator(deps);
+
+		await orchestrator.getOrBuild(0, 'case-a');
+
+		expect(vi.mocked(verifyBuildExpectations)).not.toHaveBeenCalled();
+		const verdicts = await deps.buildExpectationsByKey.get('0:case-a');
+		expect(verdicts).toHaveLength(1);
+		expect(verdicts?.[0].incomplete).toBe(true);
+		expect(verdicts?.[0].reason).toContain('never compacted');
+	});
+
+	it('reports it unjudged when compaction ran but the seed is still in the graded window', async () => {
+		// A log next to a still-raw opening proves nothing: it answers off raw history.
+		vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true }));
+		const seeded = [1, 2, 3].map((n) => ({ role: 'user', content: `seeded ${String(n)}` }));
+		vi.mocked(captureThreadRunDebug).mockResolvedValueOnce([
+			{
+				steps: [
+					{
+						input: {
+							instructions: '<observations>\n* CRITICAL (14:30) kept\n</observations>',
+							messages: seeded,
+						},
+					},
+				],
+			},
+		] as never);
+		const deps = makeDeps(
+			[
+				makeLane(
+					1,
+					vi.fn().mockResolvedValue(
+						okBuild({
+							threadId: 'thread-1',
+							transcript: [
+								{
+									userMessage: 'remind me',
+									steps: [{ kind: 'agent-text', text: 'HTTP Request.' }],
+								},
+							],
+						}),
+					),
+				),
+			],
+			{
+				testCaseByFileSlug: new Map([
+					[
+						'case-a',
+						baseCase({
+							requiresMemoryCompaction: true,
+							processExpectations: ['recalls the decision'],
+							seed: { mode: 'inline', messages: seeded } as never,
+						}),
+					],
+				]),
+			},
+		);
+		const orchestrator = createBuildOrchestrator(deps);
+
+		await orchestrator.getOrBuild(0, 'case-a');
+		const verdicts = await deps.buildExpectationsByKey.get('0:case-a');
+
+		expect(verdicts?.[0].incomplete).toBe(true);
+		expect(verdicts?.[0].reason).toContain('never masked out of the window');
 	});
 
 	it('forwards the case identity so the build can stamp its trace', async () => {

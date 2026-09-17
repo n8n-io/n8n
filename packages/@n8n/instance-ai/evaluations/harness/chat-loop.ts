@@ -302,6 +302,7 @@ export interface MultiTurnConfig extends WaitConfig {
 	/** Repeat the eval override on each message to bypass the backend assignment. */
 	buildMode?: InstanceAiBuildMode;
 	promptVersion?: string;
+	observerThresholdTokens?: number;
 }
 
 export async function runMultiTurnConversation(config: MultiTurnConfig): Promise<void> {
@@ -348,6 +349,9 @@ export async function runMultiTurnConversation(config: MultiTurnConfig): Promise
 				undefined,
 				config.buildMode,
 				config.promptVersion,
+				undefined,
+				// Re-sent per message: the backend clears an omitted override.
+				config.observerThresholdTokens,
 			);
 		} catch (error: unknown) {
 			const msg = error instanceof Error ? error.message : String(error);
