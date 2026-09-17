@@ -19,6 +19,19 @@ describe('ScopeGroupSelector', () => {
 		expect(container.querySelector('[data-test-id^="scope-checkbox-"]')).toBeNull();
 	});
 
+	it('renders the personal space block as the first card, outside the option count', () => {
+		const { container, getByTestId } = renderComponent(ScopeGroupSelector, {
+			props: { modelValue: [] },
+		});
+		const cards = container.querySelectorAll(
+			'[data-test-id="personal-space-card"], [data-test-id^="scope-option-"]',
+		);
+		expect(cards[0].getAttribute('data-test-id')).toBe('personal-space-card');
+		expect(getByTestId('personal-space-card').textContent).toContain('Personal space');
+		expect(getByTestId('personal-space-group-view').getAttribute('aria-checked')).toBe('true');
+		expect(getByTestId('personal-space-group-manage').getAttribute('aria-checked')).toBe('true');
+	});
+
 	it('renders an unchecked option for an empty scope list', () => {
 		const { getByTestId } = renderComponent(ScopeGroupSelector, { props: { modelValue: [] } });
 		expect(getByTestId('scope-option-tag-manage').getAttribute('aria-checked')).toBe('false');
