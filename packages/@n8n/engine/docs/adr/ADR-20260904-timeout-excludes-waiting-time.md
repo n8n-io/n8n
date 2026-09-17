@@ -60,10 +60,10 @@ separate names and separate defaults.
 - The timeout never stops an execution that waits without an end. No component
   can use the timeout to limit a wait. A wait that must end needs its own
   deadline.
-- The derived `waiting` status (ADR-20260902-steps-declare-waits, decision 6)
-  is the signal that the time accounting reads. An execution with one waiting
+- The stored `waiting` status (ADR-20260902-steps-declare-waits, decision 6) is
+  the signal that the time accounting reads. An execution with one waiting
   branch and one running branch reports `running`. Its time therefore counts,
-  which is correct, because the execution can make progress.
+  and that is correct, because the execution can make progress.
 
 ## Links
 
