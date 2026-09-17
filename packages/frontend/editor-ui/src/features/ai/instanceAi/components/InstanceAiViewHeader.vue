@@ -141,7 +141,7 @@ function handleThreadSelect(threadId: string) {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
-	background-color: var(--color--background--light-2);
+	background-color: var(--background--surface);
 }
 
 .headerActions {
