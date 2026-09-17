@@ -7,7 +7,7 @@ import {
 	type GraphNode,
 } from '../graph';
 import type { LifecycleEventPublisher } from '../lifecycle-events';
-import { ExecutionResponseChannel } from '../response-channel';
+import type { ExecutionResponseChannel } from '../response-channel';
 import type { OrchestrationMessage, StepMessage, StepSettledEvent, WorkQueue } from '../queue';
 import { countExpectedSettledSteps } from './completion';
 import type { ExecutionRecord, ExecutionStore } from './execution-store';
@@ -36,7 +36,7 @@ export class StepSettledHandler {
 		private readonly stepQueue: WorkQueue<StepMessage>,
 		private readonly orchestrationQueue: WorkQueue<OrchestrationMessage>,
 		private readonly lifecycleEventPublisher: LifecycleEventPublisher,
-		private readonly responseChannel: ExecutionResponseChannel = new ExecutionResponseChannel(),
+		private readonly responseChannel: ExecutionResponseChannel,
 	) {}
 
 	async handle(event: StepSettledEvent): Promise<void> {
@@ -229,6 +229,9 @@ export class StepSettledHandler {
 				nodeName: node.name,
 				status: step.status,
 				outputs: step.outputs,
+				// Name and message only: the caller reports them, and the rest of the
+				// error stays on the step row.
+				error: step.error ? { name: step.error.name, message: step.error.message } : undefined,
 			},
 		});
 	}

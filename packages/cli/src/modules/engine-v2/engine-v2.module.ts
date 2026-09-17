@@ -1,3 +1,4 @@
+import { Logger } from '@n8n/backend-common';
 import { EngineConfig, ExecutionsConfig } from '@n8n/config';
 import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule, OnShutdown } from '@n8n/decorators';
@@ -36,7 +37,7 @@ export class EngineV2Module implements ModuleInterface {
 		const { EngineControlPlaneServer } = await import('./engine-control-plane-server.js');
 		await Container.get(EngineControlPlaneServer).start();
 
-		// One channel, both planes. Subscribed before the engine starts: a short
+		// One channel, both planes. Handed over before the engine starts: a short
 		// run answers before `startExecution` returns, and nobody replays.
 		const { ExecutionResponseChannel, InMemoryResponseTransport } = await import('@n8n/engine');
 		const { EngineV2WebhookResponder } = await import(
@@ -44,8 +45,11 @@ export class EngineV2Module implements ModuleInterface {
 		);
 		// In-memory for now: both planes share this process. A transport that
 		// crosses one arrives with CAT-4572.
-		const responseChannel = new ExecutionResponseChannel(new InMemoryResponseTransport());
-		Container.get(EngineV2WebhookResponder).subscribeTo(responseChannel);
+		const responseChannel = new ExecutionResponseChannel(
+			new InMemoryResponseTransport(),
+			Container.get(Logger).scoped('engine-v2'),
+		);
+		Container.get(EngineV2WebhookResponder).useChannel(responseChannel);
 
 		const { EngineV2Runtime } = await import('./engine-v2.runtime.js');
 		await Container.get(EngineV2Runtime).init(responseChannel);

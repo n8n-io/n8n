@@ -11,14 +11,24 @@ const TIMEOUT_MS = 50_000;
  * Stands in for the channel. Only `src/modules/engine-v2/**` may import
  * `@n8n/engine` at runtime, and the channel's own suite covers the frame round
  * trip; what matters here is what the responder does with a response.
+ *
+ * Subscriptions are per execution, as the real channel's are, so a publish for
+ * another run reaches nobody.
  */
 function fakeChannel() {
-	const handlers: Array<(response: ExecutionResponse) => void> = [];
+	const handlers = new Map<string, Array<(response: ExecutionResponse) => void>>();
+
 	return {
 		channel: {
-			subscribe: (h: (r: ExecutionResponse) => void) => handlers.push(h),
+			subscribe: (executionId: string, handler: (r: ExecutionResponse) => void) => {
+				const forExecution = handlers.get(executionId) ?? [];
+				handlers.set(executionId, [...forExecution, handler]);
+
+				return () => handlers.delete(executionId);
+			},
 		} as unknown as ExecutionResponseChannel,
-		publish: (response: ExecutionResponse) => handlers.forEach((h) => h(response)),
+		publish: (response: ExecutionResponse) =>
+			handlers.get(response.executionId)?.forEach((h) => h(response)),
 	};
 }
 
@@ -36,6 +46,12 @@ const endedResponse = (executionId: string, overrides: Record<string, unknown> =
 	...overrides,
 });
 
+const newResponder = (timeoutMs = TIMEOUT_MS) =>
+	new EngineV2WebhookResponder(
+		mock<EngineConfig>({ webhookResponseTimeout: timeoutMs }),
+		mock<Logger>({ scoped: () => mock<Logger>() }),
+	);
+
 describe('EngineV2WebhookResponder', () => {
 	let channel: { publish: (response: ExecutionResponse) => void };
 	let responder: EngineV2WebhookResponder;
@@ -43,15 +59,16 @@ describe('EngineV2WebhookResponder', () => {
 	beforeEach(() => {
 		const fake = fakeChannel();
 		channel = fake;
-		responder = new EngineV2WebhookResponder(
-			mock<EngineConfig>({ webhookResponseTimeout: TIMEOUT_MS }),
-			mock<Logger>({ scoped: () => mock<Logger>() }),
-		);
-		responder.subscribeTo(fake.channel);
+		responder = newResponder();
+		responder.useChannel(fake.channel);
 	});
 
 	it('mints an execution id the run can be started with', () => {
 		expect(responder.expect().executionId).toMatch(/^[0-9a-f-]{36}$/);
+	});
+
+	it('refuses to open a wait before the host hands over a channel', () => {
+		expect(() => newResponder().expect()).toThrow('without a channel');
 	});
 
 	it('drops a response for a run another replica holds', () => {
@@ -81,19 +98,32 @@ describe('EngineV2WebhookResponder', () => {
 		await expect(pending.settled).resolves.toEqual({ status: 'completed', lastNode: undefined });
 	});
 
-	it('reports a failure', async () => {
+	it('reports a failure with the node that caused it', async () => {
 		const pending = responder.expect();
 
-		channel.publish(endedResponse(pending.executionId, { status: 'failed' }));
+		channel.publish(
+			endedResponse(pending.executionId, {
+				status: 'failed',
+				lastStep: {
+					nodeId: 'c',
+					nodeName: 'C',
+					status: 'failed',
+					outputs: null,
+					error: { name: 'NodeOperationError', message: 'it broke' },
+				},
+			}),
+		);
 
-		await expect(pending.settled).resolves.toEqual({ status: 'failed' });
+		await expect(pending.settled).resolves.toEqual({
+			status: 'failed',
+			nodeName: 'C',
+			error: { name: 'NodeOperationError', message: 'it broke' },
+		});
 	});
 
 	it('times out rather than waiting forever for a lost answer', async () => {
-		const impatient = new EngineV2WebhookResponder(
-			mock<EngineConfig>({ webhookResponseTimeout: 1 }),
-			mock<Logger>({ scoped: () => mock<Logger>() }),
-		);
+		const impatient = newResponder(1);
+		impatient.useChannel(fakeChannel().channel);
 
 		await expect(impatient.expect().settled).resolves.toEqual({ status: 'timeout' });
 	});

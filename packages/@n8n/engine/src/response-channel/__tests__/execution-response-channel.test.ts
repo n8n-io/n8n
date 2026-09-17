@@ -4,7 +4,7 @@ import type { EngineLogger } from '../../logging';
 import { ExecutionResponseChannel } from '../execution-response-channel';
 import type { ExecutionResponse } from '../execution-response.types';
 import { InMemoryResponseTransport } from '../in-memory-transport';
-import type { ResponseTransport } from '../response-transport';
+import type { ResponseTransport, Unsubscribe } from '../response-transport';
 
 const silentLogger = (): EngineLogger => ({
 	error: vi.fn(),
@@ -13,9 +13,9 @@ const silentLogger = (): EngineLogger => ({
 	debug: vi.fn(),
 });
 
-const ended = (outputs: unknown): ExecutionResponse => ({
+const ended = (outputs: unknown, executionId = 'exec-1'): ExecutionResponse => ({
 	type: 'ended',
-	executionId: 'exec-1',
+	executionId,
 	workflowId: 'wf-1',
 	status: 'completed',
 	lastStep: { nodeId: 'a', nodeName: 'A', status: 'completed', outputs: outputs as never },
@@ -27,13 +27,17 @@ class RecordingTransport implements ResponseTransport {
 
 	private handler?: (frame: string) => void;
 
-	publish(frame: string): void {
+	publish(_executionId: string, frame: string): void {
 		this.frames.push(frame);
 		this.handler?.(frame);
 	}
 
-	subscribe(handler: (frame: string) => void): void {
+	subscribe(_executionId: string, handler: (frame: string) => void): Unsubscribe {
 		this.handler = handler;
+
+		return () => {
+			this.handler = undefined;
+		};
 	}
 
 	async stop(): Promise<void> {}
@@ -43,12 +47,12 @@ describe('ExecutionResponseChannel', () => {
 	const newChannel = () =>
 		new ExecutionResponseChannel(new InMemoryResponseTransport(), silentLogger());
 
-	it('delivers a response to every subscriber', () => {
+	it('delivers a response to every subscriber of that execution', () => {
 		const channel = newChannel();
 		const first: ExecutionResponse[] = [];
 		const second: ExecutionResponse[] = [];
-		channel.subscribe((r) => first.push(r));
-		channel.subscribe((r) => second.push(r));
+		channel.subscribe('exec-1', (r) => first.push(r));
+		channel.subscribe('exec-1', (r) => second.push(r));
 
 		channel.publish(ended([[{ json: { a: 1 } }]]));
 
@@ -60,10 +64,31 @@ describe('ExecutionResponseChannel', () => {
 		expect(second).toEqual(first);
 	});
 
+	it('tells one execution nothing about another', () => {
+		const channel = newChannel();
+		const seen: ExecutionResponse[] = [];
+		channel.subscribe('exec-1', (r) => seen.push(r));
+
+		channel.publish(ended(null, 'exec-2'));
+
+		expect(seen).toEqual([]);
+	});
+
+	it('stops delivering once the subscriber unsubscribes', () => {
+		const channel = newChannel();
+		const seen: ExecutionResponse[] = [];
+		const unsubscribe = channel.subscribe('exec-1', (r) => seen.push(r));
+
+		unsubscribe();
+		channel.publish(ended(null));
+
+		expect(seen).toEqual([]);
+	});
+
 	it('strips a value no transport could carry, rather than passing it live', () => {
 		const channel = newChannel();
 		const seen: ExecutionResponse[] = [];
-		channel.subscribe((r) => seen.push(r));
+		channel.subscribe('exec-1', (r) => seen.push(r));
 
 		// `Date` has no JSON form. Passing the live object would work in-process
 		// and break over a socket, which is the divergence the channel prevents.
@@ -78,17 +103,17 @@ describe('ExecutionResponseChannel', () => {
 		const transport = new RecordingTransport();
 		const channel = new ExecutionResponseChannel(transport, silentLogger());
 		const seen: ExecutionResponse[] = [];
-		channel.subscribe((r) => seen.push(r));
+		channel.subscribe('exec-1', (r) => seen.push(r));
 
-		transport.publish('{"type":"nonsense"}');
-		transport.publish('not json at all');
+		transport.publish('exec-1', '{"type":"nonsense"}');
+		transport.publish('exec-1', 'not json at all');
 
 		expect(seen).toEqual([]);
 	});
 
 	it('isolates a subscriber that throws', () => {
 		const channel = newChannel();
-		channel.subscribe(() => {
+		channel.subscribe('exec-1', () => {
 			throw new Error('boom');
 		});
 

@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { WorkflowGraph } from '../../graph';
 import type { LifecycleEventPublisher } from '../../lifecycle-events';
 import type { OrchestrationMessage, StepMessage, WorkQueue } from '../../queue';
+import type { ExecutionResponseChannel } from '../../response-channel';
 import type { ExecutionRecord, ExecutionStore } from '../execution-store';
 import { stepKeyId, type StepKey, type StepStatus } from '../execution.types';
 import { StepSettledHandler } from '../step-settled-handler';
@@ -127,6 +128,11 @@ function makeLifecycleEventPublisher(): LifecycleEventPublisher {
 	return { publish: vi.fn(), stop: vi.fn() };
 }
 
+/** A channel fake; tests that care assert on `publish`. */
+function makeResponseChannel() {
+	return { publish: vi.fn() } as unknown as ExecutionResponseChannel;
+}
+
 function makeHandler(
 	stepStore: StepStore,
 	{
@@ -134,6 +140,7 @@ function makeHandler(
 		stepQueue = makeStepQueue(),
 		orchestrationQueue = makeOrchestrationQueue(),
 		lifecycleEventPublisher = makeLifecycleEventPublisher(),
+		responseChannel = makeResponseChannel(),
 	} = {},
 ) {
 	return {
@@ -143,11 +150,13 @@ function makeHandler(
 			stepQueue,
 			orchestrationQueue,
 			lifecycleEventPublisher,
+			responseChannel,
 		),
 		executionStore,
 		stepQueue,
 		orchestrationQueue,
 		lifecycleEventPublisher,
+		responseChannel,
 	};
 }
 

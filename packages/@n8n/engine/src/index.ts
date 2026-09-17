@@ -44,6 +44,7 @@ export type {
 	EndedMessage,
 	ExecutionResponse,
 	ResponseTransport,
+	Unsubscribe,
 } from './response-channel';
 
 export { UnimplementedError } from './common';

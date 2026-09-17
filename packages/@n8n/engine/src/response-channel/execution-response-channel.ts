@@ -1,32 +1,34 @@
-import { createConsoleLogger, type EngineLogger } from '../logging';
+import type { EngineLogger } from '../logging';
 import { executionResponseSchema } from './execution-response.schema';
 import type { ExecutionResponse } from './execution-response.types';
-import { noopResponseTransport, type ResponseTransport } from './response-transport';
+import type { ResponseTransport, Unsubscribe } from './response-transport';
 
 /**
  * Where an execution's responses go, and where a caller picks them up.
  *
+ * Every call names one execution: a publish is addressed to the run that
+ * produced it, and a subscriber asks for one run and hears nothing else. The
+ * transport below decides how that is carried — one channel per execution, or
+ * one shared bus — and no caller can tell the difference.
+ *
  * One class over any `ResponseTransport`. Everything that must not vary
- * between deployments lives here — the envelope, validation on receive, and
- * the per-step scoping — so an in-process deployment cannot accept a response
- * that a networked one mangles.
+ * between deployments lives here — the envelope and validation on receive — so
+ * an in-process deployment cannot accept a response that a networked one
+ * mangles.
  */
 export class ExecutionResponseChannel {
-	private readonly logger: EngineLogger;
-
 	constructor(
-		private readonly transport: ResponseTransport = noopResponseTransport,
-		logger?: EngineLogger,
-	) {
-		this.logger = logger ?? createConsoleLogger();
-	}
+		private readonly transport: ResponseTransport,
+		private readonly logger: EngineLogger,
+	) {}
 
 	publish(response: ExecutionResponse): void {
-		this.transport.publish(JSON.stringify(response));
+		this.transport.publish(response.executionId, JSON.stringify(response));
 	}
 
-	subscribe(handler: (response: ExecutionResponse) => void): void {
-		this.transport.subscribe((frame) => {
+	/** Listens to one execution. Call the returned function once the run is answered. */
+	subscribe(executionId: string, handler: (response: ExecutionResponse) => void): Unsubscribe {
+		return this.transport.subscribe(executionId, (frame) => {
 			const response = this.fromFrame(frame);
 			if (response === undefined) return;
 
@@ -50,15 +52,17 @@ export class ExecutionResponseChannel {
 	private fromFrame(frame: string): ExecutionResponse | undefined {
 		try {
 			const parsed = executionResponseSchema.safeParse(JSON.parse(frame));
-			if (parsed.success) return parsed.data;
+			if (!parsed.success) {
+				this.logger.error('discarding a malformed response', {
+					details: parsed.error.flatten(),
+				});
+				return undefined;
+			}
 
-			this.logger.error('discarding a malformed response', {
-				details: parsed.error.flatten(),
-			});
+			return parsed.data;
 		} catch (error) {
 			this.logger.error('discarding an unreadable response frame', { error });
+			return undefined;
 		}
-
-		return undefined;
 	}
 }

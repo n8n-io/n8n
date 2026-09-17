@@ -33,7 +33,16 @@ export interface CallerContext {
  * at birth: the step was considered and decided against (no live input), so it
  * never runs.
  */
-export type StepStatus = 'queued' | 'running' | 'completed' | 'failed' | 'skipped' | 'cancelled';
+export const STEP_STATUSES = [
+	'queued',
+	'running',
+	'completed',
+	'failed',
+	'skipped',
+	'cancelled',
+] as const;
+
+export type StepStatus = (typeof STEP_STATUSES)[number];
 
 /**
  * A settled step has reached a terminal state: its status and outputs are
