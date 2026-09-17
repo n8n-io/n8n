@@ -132,13 +132,11 @@ describe('node type policy document fan-out', () => {
 	});
 
 	/**
-	 * A second main is a second process over the same database and the same cache. Multi-main
-	 * needs queue mode, and `N8N_CACHE_BACKEND` defaults to `auto`, which is Redis there — so
-	 * the entry one main drops is the entry the others were reading.
-	 *
-	 * This builds a second service over those shared dependencies. It holds no state of its
-	 * own today, and this is the test that says so: a reader that memoized anything per
-	 * process would keep serving the old verdict here.
+	 * Multi-main needs queue mode, where `N8N_CACHE_BACKEND=auto` is Redis — so two mains share
+	 * one cache, and the entry one drops is the entry the other was reading. A second service
+	 * over that shared cache and database models this: a reader that memoized anything per
+	 * process would keep serving the old verdict. Two mains given unshared caches
+	 * (`N8N_CACHE_BACKEND=memory`) stay stale until the TTL instead, which is out of scope here.
 	 */
 	it('serves the committed edit to a second main that had already read the old one', async () => {
 		const { policy, projectIds } = await attachToThreeScopes();
