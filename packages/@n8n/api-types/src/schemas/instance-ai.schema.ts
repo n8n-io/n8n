@@ -2365,11 +2365,7 @@ export const INSTANCE_AI_NODE_USAGE_FLAG = '109_instance_ai_node_usage';
  */
 export const INSTANCE_AI_FOLDER_EXPLORATION_FLAG = '110_instance_ai_folder_exploration';
 
-/**
- * Rollout flag for the instance-activity record. `N8N_ACTIVITY_LOG_ENABLED` force-enables it, and
- * an explicit `N8N_FEATURE_FLAG_OVERRIDES` entry switches the assistant's read back off while the
- * env var keeps the record accruing.
- */
+/** Instance rollout gate for shared activity recording and retrieval. */
 export const INSTANCE_ACTIVITY_CONTEXT_FLAG = '114_instance_activity_context';
 
 /**
