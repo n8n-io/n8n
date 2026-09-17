@@ -1184,10 +1184,14 @@ export class CanvasPage extends BasePage {
 	async openWorkflowHistory(): Promise<void> {
 		await this.clickByTestId('workflow-menu');
 		await this.clickByTestId('workflow-menu-item-version-history');
+		// Wait for the initial version redirect before another navigation starts.
+		await this.page.waitForURL(/\/history\/[^/?#]+(?:[?#].*)?$/);
 	}
 
 	async closeWorkflowHistory(): Promise<void> {
+		const workflowId = this.getWorkflowIdFromUrl();
 		await this.getWorkflowHistoryCloseButton().click();
+		await this.page.waitForURL((url) => url.pathname.endsWith(`/workflow/${workflowId}`));
 	}
 
 	// Canvas node groups (selection toolbar + group overlay)
