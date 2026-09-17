@@ -283,7 +283,13 @@ function handleThreadAction(action: string, threadId: string) {
 							<div
 								v-for="thread in group.threads"
 								:key="thread.id"
-								:class="[$style.threadItem, { [$style.disabled]: disabled }]"
+								:class="[
+									$style.threadItem,
+									{
+										[$style.active]: thread.id === activeThreadId,
+										[$style.disabled]: disabled,
+									},
+								]"
 								data-test-id="instance-ai-thread-item"
 							>
 								<!-- Inline rename mode -->
@@ -528,7 +534,8 @@ function handleThreadAction(action: string, threadId: string) {
 
 	&:focus-within,
 	&:has([aria-expanded='true']),
-	&:has([data-highlighted]) {
+	&:has([data-highlighted]),
+	&.active {
 		background-color: var(--background--hover);
 	}
 
