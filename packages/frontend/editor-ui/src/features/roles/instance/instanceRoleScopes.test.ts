@@ -604,11 +604,12 @@ describe('system roles', () => {
 		expect(optionsInState(GLOBAL_MEMBER_SCOPES, 'indeterminate')).toEqual(['tag: Manage']);
 	});
 
-	it('Member fully grants MCP use, n8n Assistant use, Users View and API keys Manage own, and nothing else', () => {
+	it('Member fully grants MCP use, n8n Assistant use, Users View, Tags View and API keys Manage own, and nothing else', () => {
 		expect(optionsInState(GLOBAL_MEMBER_SCOPES, 'checked').sort()).toEqual([
 			'apiKey: Manage own',
 			'settings: AiAssistant use',
 			'settings: Mcp use',
+			'tag: View',
 			'user: View',
 		]);
 	});
@@ -632,10 +633,18 @@ describe('getPresetScopes', () => {
 
 		const preset = getPresetScopes(GLOBAL_MEMBER_SCOPES);
 
+		// user:list and tag:read/tag:list are the mandatory Users View and Tags View.
 		expect(new Set(preset)).toEqual(
-			new Set([...mcpUse.scopes, ...aiAssistantUse.scopes, ...manageOwn.scopes, 'user:list']),
+			new Set([
+				...mcpUse.scopes,
+				...aiAssistantUse.scopes,
+				...manageOwn.scopes,
+				'user:list',
+				'tag:read',
+				'tag:list',
+			]),
 		);
-		// Member's partial Tags subset and its chatHub:* / annotationTag:* scopes are left out.
+		// Member's partial Tags "Manage" subset and its chatHub:* / annotationTag:* scopes are left out.
 		expect(preset).not.toContain('tag:create');
 		expect(preset).not.toContain('chatHub:message');
 	});
