@@ -5,12 +5,15 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import { escapeODataValue } from '@utils/query-escaping';
 import { updateDisplayOptions } from '@utils/utilities';
 
 import { stampItemIndexOnError, validateUserTargetId } from '../../../../GenericFunctions';
 import { userRLC } from '../../descriptions';
-import { resolveUserTarget, userTargetMessages } from '../../helpers/utils';
+import {
+	aadUserConversationMember,
+	resolveUserTarget,
+	userTargetMessages,
+} from '../../helpers/utils';
 import { getGraphBaseUrl, microsoftApiRequest, SP_HIDE } from '../../transport';
 
 const properties: INodeProperties[] = [
@@ -235,11 +238,7 @@ export async function execute(this: IExecuteFunctions, i: number) {
 	const baseUrl = await getGraphBaseUrl.call(this);
 
 	const toMember = (member: { id: string; role: string; tenantId?: string }) => ({
-		'@odata.type': '#microsoft.graph.aadUserConversationMember',
-		roles: [member.role],
-		// Two escaping layers hold this bind: percent-encode the id for the URL (a B2B guest UPN
-		// truncates at its `#` otherwise), then double any quote for the OData literal.
-		'user@odata.bind': `${baseUrl}/v1.0/users('${escapeODataValue(encodeURIComponent(member.id))}')`,
+		...aadUserConversationMember(baseUrl, member.id, member.role),
 		...(member.tenantId ? { tenantId: member.tenantId } : {}),
 	});
 

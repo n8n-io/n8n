@@ -9,6 +9,7 @@ import {
 import { updateDisplayOptions } from '@utils/utilities';
 
 import { chatRLC, userRLC } from '../../descriptions';
+import { aadUserConversationMember } from '../../helpers/utils';
 import {
 	buildTeamsPath,
 	getGraphBaseUrl,
@@ -113,11 +114,11 @@ export async function execute(this: IExecuteFunctions, i: number) {
 	);
 	const options = this.getNodeParameter('options', i, {});
 
-	const body: IDataObject = {
-		'@odata.type': '#microsoft.graph.aadUserConversationMember',
-		'user@odata.bind': `${await getGraphBaseUrl.call(this)}/v1.0/users/${userId}`,
-		roles: [options.role === 'guest' ? 'guest' : 'owner'],
-	};
+	const body: IDataObject = aadUserConversationMember(
+		await getGraphBaseUrl.call(this),
+		userId,
+		options.role === 'guest' ? 'guest' : 'owner',
+	);
 
 	// Not inverted: omitting the field shares NO history, and the 0001-01-01 sentinel
 	// shares the WHOLE history.

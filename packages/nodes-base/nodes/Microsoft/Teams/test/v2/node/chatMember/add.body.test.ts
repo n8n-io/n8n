@@ -67,7 +67,7 @@ describe('Microsoft Teams V2 - chatMember:add request body', () => {
 
 		expect(apiRequest).toHaveBeenCalledWith('POST', '/v1.0/chats/19:abc@thread.v2/members', {
 			'@odata.type': '#microsoft.graph.aadUserConversationMember',
-			'user@odata.bind': `https://graph.microsoft.com/v1.0/users/${userId}`,
+			'user@odata.bind': `https://graph.microsoft.com/v1.0/users('${userId}')`,
 			roles: ['owner'],
 			visibleHistoryStartDateTime: '0001-01-01T00:00:00Z',
 		});
@@ -84,7 +84,7 @@ describe('Microsoft Teams V2 - chatMember:add request body', () => {
 
 		expect(apiRequest).toHaveBeenCalledWith('POST', '/v1.0/chats/19:abc@thread.v2/members', {
 			'@odata.type': '#microsoft.graph.aadUserConversationMember',
-			'user@odata.bind': `https://graph.microsoft.com/v1.0/users/${userId}`,
+			'user@odata.bind': `https://graph.microsoft.com/v1.0/users('${userId}')`,
 			roles: ['owner'],
 			visibleHistoryStartDateTime: '2026-08-01T00:00:00Z',
 		});
@@ -116,7 +116,7 @@ describe('Microsoft Teams V2 - chatMember:add request body', () => {
 
 		expect(apiRequest).toHaveBeenCalledWith('POST', '/v1.0/chats/19:abc@thread.v2/members', {
 			'@odata.type': '#microsoft.graph.aadUserConversationMember',
-			'user@odata.bind': `https://graph.microsoft.com/v1.0/users/${userId}`,
+			'user@odata.bind': `https://graph.microsoft.com/v1.0/users('${userId}')`,
 			roles: ['owner'],
 		});
 	});
@@ -135,7 +135,7 @@ describe('Microsoft Teams V2 - chatMember:add request body', () => {
 
 		expect(apiRequest).toHaveBeenCalledWith('POST', '/v1.0/chats/19:abc@thread.v2/members', {
 			'@odata.type': '#microsoft.graph.aadUserConversationMember',
-			'user@odata.bind': `https://graph.microsoft.com/v1.0/users/${userId}`,
+			'user@odata.bind': `https://graph.microsoft.com/v1.0/users('${userId}')`,
 			roles: ['guest'],
 		});
 	});
@@ -157,7 +157,7 @@ describe('Microsoft Teams V2 - chatMember:add request body', () => {
 
 		expect(apiRequest).toHaveBeenCalledWith('POST', '/v1.0/chats/19:abc@thread.v2/members', {
 			'@odata.type': '#microsoft.graph.aadUserConversationMember',
-			'user@odata.bind': `https://graph.microsoft.us/v1.0/users/${userId}`,
+			'user@odata.bind': `https://graph.microsoft.us/v1.0/users('${userId}')`,
 			roles: ['owner'],
 		});
 	});
