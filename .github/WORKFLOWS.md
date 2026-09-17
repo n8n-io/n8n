@@ -622,13 +622,13 @@ flags) and the long-lived `3.x` branch carries breaking changes. `util-sync-mast
 syncs daily by **replaying the `3.x`-only commits onto `master` and force-pushing `3.x`**, so a
 clean sync adds no commit and nothing is squashed. What it pushes is always verified to be
 exactly the tree a merge of `3.x` and `master` produces, and marker-free. Conflicts confined
-to mechanical, tool-generated files (the pnpm lockfile, bot-maintained data files — see
-`MECHANICAL_PATHS` in `sync-master-to-3x.mjs`) are auto-resolved during the replay; the tree
-check then applies to every path except those files. On a real code conflict `3.x` is left
-untouched and a draft PR carrying the conflict markers (labeled `automation:v3-sync`, with
-mechanical files pre-resolved) is opened on `sync/master-to-3x`, naming both ends of the
-conflict — the breaking-commit authors and the `master` commits that touched the same files
-— via `sync-conflict-owners.mjs`, posting to `#alerts-v3-sync` and pausing further syncs
+to non-lockfile mechanical files (bot-maintained data files — see `MECHANICAL_PATHS` in
+`sync-master-to-3x.mjs`) are auto-resolved during the replay. On a code or `pnpm-lock.yaml`
+conflict, `3.x` is left untouched and a draft PR carrying the conflict markers (labeled
+`automation:v3-sync`, with other mechanical files pre-resolved) is opened on
+`sync/master-to-3x`. The lockfile is always left for the resolver. The PR names both ends of
+the conflict — the breaking-commit authors and the `master` commits that touched the same
+files — via `sync-conflict-owners.mjs`, posts to `#alerts-v3-sync`, and pauses further syncs
 until it is resolved and merged normally. Delete/modify conflicts have no markers to carry,
 so they are resolved toward `3.x` and listed as an explicit decision in the PR body.
 `build-v3-nightly.yml` publishes `n8nio/n8n:v3-nightly[-<date>]` images from `3.x`
