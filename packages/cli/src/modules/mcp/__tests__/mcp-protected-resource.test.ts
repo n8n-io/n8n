@@ -9,9 +9,10 @@ import type { UrlService } from '@/services/url.service';
 import { INSTANCE_CONTEXT_TOOLS } from '../mcp-scopes';
 import { McpProtectedResource } from '../mcp-protected-resource';
 
-const makeGlobalConfig = ({ builderEnabled = true } = {}) =>
+const makeGlobalConfig = ({ builderEnabled = true, activityLogEnabled = true } = {}) =>
 	({
 		endpoints: { mcpBuilderEnabled: builderEnabled },
+		activityLog: { enabled: activityLogEnabled },
 	}) as unknown as GlobalConfig;
 
 describe('McpProtectedResource', () => {
