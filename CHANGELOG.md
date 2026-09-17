@@ -1,3 +1,12 @@
+## [2.40.2](https://github.com/n8n-io/n8n/compare/n8n@2.40.1...n8n@2.40.2) (2026-09-17)
+
+
+### Bug Fixes
+
+* **core:** Keep breaking change detection running when a rule throws ([#38789](https://github.com/n8n-io/n8n/issues/38789)) ([5b9a126](https://github.com/n8n-io/n8n/commit/5b9a126cbb69e3feb542ebca4da1716f1dba1032))
+* **editor:** Send number values in credential inputs ([#38880](https://github.com/n8n-io/n8n/issues/38880)) ([96ba38f](https://github.com/n8n-io/n8n/commit/96ba38f6d1121a543b9c0455b6dc1453ec47ddbc))
+
+
 ## [2.40.1](https://github.com/n8n-io/n8n/compare/n8n@2.40.0...n8n@2.40.1) (2026-09-16)
 
 
