@@ -6,7 +6,8 @@
 //     test_name text, status text, created_at timestamptz DEFAULT now());
 import { workflow, node, trigger, newCredential, placeholder, expr } from '@n8n/workflow-sdk';
 
-// Your CI posts JSON here: { commit, run_id, failed: [names], passed: [names] }.
+// Your CI posts JSON here: { commit, run_id, results: [{ test, status }] }. status is
+// passed or failed.
 const ciResults = trigger({
 	type: 'n8n-nodes-base.webhook',
 	version: 2.1,
@@ -18,33 +19,28 @@ const ciResults = trigger({
 				body: {
 					commit: 'a1b2c3d',
 					run_id: '5511',
-					failed: ['auth.spec.ts > login'],
-					passed: ['auth.spec.ts > logout'],
+					results: [
+						{ test: 'auth.spec.ts > login', status: 'failed' },
+						{ test: 'auth.spec.ts > logout', status: 'passed' },
+					],
 				},
 			},
 		],
 	},
 });
 
-// Tool-neutral step: one item per test result.
-const splitResults = node({
-	type: 'n8n-nodes-base.code',
-	version: 2,
+// Splits the results array into one item per test.
+const oneItemPerResult = node({
+	type: 'n8n-nodes-base.splitOut',
+	version: 1,
 	config: {
-		name: 'Split Results',
-		parameters: {
-			mode: 'runOnceForAllItems',
-			jsCode: `const body = $input.first().json.body || {};
-const rows = [];
-for (const test of body.failed || []) rows.push({ json: { commit: body.commit, run_id: String(body.run_id), test, status: 'failed' } });
-for (const test of body.passed || []) rows.push({ json: { commit: body.commit, run_id: String(body.run_id), test, status: 'passed' } });
-return rows;`,
-		},
+		name: 'One Item per Result',
+		parameters: { fieldToSplitOut: 'body.results', include: 'noOtherFields', options: {} },
 	},
 });
 
 // [database] Postgres. Swap for MySQL, Supabase or MongoDB: replace this node and the next
-// one. It reads $json.commit, $json.run_id, $json.test and $json.status.
+// one. It reads the CI Test Results body (commit, run_id) and $json.test, $json.status.
 const storeResults = node({
 	type: 'n8n-nodes-base.postgres',
 	version: 2.7,
@@ -57,7 +53,7 @@ const storeResults = node({
 				'INSERT INTO test_results (commit_sha, run_id, test_name, status) VALUES ($1, $2, $3, $4)',
 			options: {
 				queryReplacement: expr(
-					'{{ $json.commit }},{{ $json.run_id }},{{ $json.test }},{{ $json.status }}',
+					"{{ $('CI Test Results').first().json.body.commit }},{{ $('CI Test Results').first().json.body.run_id }},{{ $json.test }},{{ $json.status }}",
 				),
 			},
 		},
@@ -120,7 +116,7 @@ const openTask = node({
 
 export default workflow('id', 'Flaky Test Tracker')
 	.add(ciResults)
-	.to(splitResults)
+	.to(oneItemPerResult)
 	.to(storeResults)
 	.to(findFlakyTests)
 	.to(openTask);

@@ -96,6 +96,7 @@ const getUpdatedIssues = node({
 
 // Tool-neutral step: groups yesterday's activity per person. Plain text, readable in a
 // chat message and in an email.
+// Code node: groups two sources by person, a multi-pass algorithm.
 const buildSummary = node({
 	type: 'n8n-nodes-base.code',
 	version: 2,

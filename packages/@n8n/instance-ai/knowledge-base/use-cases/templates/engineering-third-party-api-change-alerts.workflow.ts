@@ -59,6 +59,7 @@ const loadPreviousSpec = node({
 // Tool-neutral step: compares the two documents and writes a plain-text change summary
 // ($json.subject, $json.message). The store node reads $json.api and $json.spec.
 // ponytail: path-level diff; compare operations too if you need finer alerts.
+// Code node: try/catch around JSON.parse of the stored copy, then a set difference of paths.
 const diffSpecs = node({
 	type: 'n8n-nodes-base.code',
 	version: 2,

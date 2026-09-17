@@ -57,20 +57,47 @@ const getMessage = node({
 	},
 });
 
-// Tool-neutral step: one item with summary, description, channel and ts.
+// Builds the ticket summary and description, and carries the channel and timestamp for the reply.
 const prepareTicket = node({
-	type: 'n8n-nodes-base.code',
-	version: 2,
+	type: 'n8n-nodes-base.set',
+	version: 3.4,
 	config: {
 		name: 'Prepare Ticket',
 		parameters: {
-			mode: 'runOnceForAllItems',
-			jsCode: `const message = $input.first().json;
-const source = $('Ticket Reaction Added').first().json.item;
-const text = (message.text || '').trim();
-const summary = text.length > 80 ? text.slice(0, 77) + '...' : text;
-const description = text + '\\n\\nCreated from a chat message by <@' + (message.user || 'unknown') + '>.';
-return [{ json: { summary, description, channel: source.channel, ts: source.ts } }];`,
+			mode: 'manual',
+			includeOtherFields: false,
+			assignments: {
+				assignments: [
+					{
+						id: 'a1',
+						name: 'summary',
+						value: expr(
+							'{{ $json.text.trim().length > 80 ? $json.text.trim().slice(0, 77) + "..." : $json.text.trim() }}',
+						),
+						type: 'string',
+					},
+					{
+						id: 'a2',
+						name: 'description',
+						value: expr(
+							"{{ $json.text.trim() + '\\n\\nReported in ' + $('Ticket Reaction Added').first().json.item.channel + ' at ' + $('Ticket Reaction Added').first().json.item.ts + '.' }}",
+						),
+						type: 'string',
+					},
+					{
+						id: 'a3',
+						name: 'channel',
+						value: expr("{{ $('Ticket Reaction Added').first().json.item.channel }}"),
+						type: 'string',
+					},
+					{
+						id: 'a4',
+						name: 'ts',
+						value: expr("{{ $('Ticket Reaction Added').first().json.item.ts }}"),
+						type: 'string',
+					},
+				],
+			},
 		},
 	},
 });

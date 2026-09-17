@@ -1,7 +1,7 @@
 // Use case: engineering / Pull request review reminders.
 // Notification tool: set NOTIFY to slack, teams, gmail or outlook. Nothing else changes.
 // Swap another tool: replace only the node marked with that family. Keep the variable
-// name and the fields the next node reads ($json.subject, $json.message, $json.count).
+// name and the fields the next node reads ($json.subject, $json.message).
 import { workflow, node, trigger, placeholder, newCredential, expr } from '@n8n/workflow-sdk';
 
 const schedule = trigger({
@@ -26,7 +26,7 @@ const schedule = trigger({
 });
 
 // [code hosting] GitHub. Swap for GitLab or Bitbucket: replace this node only.
-// The next node reads: number, title, html_url, created_at, requested_reviewers[].login.
+// The next nodes read: number, title, html_url, created_at, draft, user.login.
 const getOpenPRs = node({
 	type: 'n8n-nodes-base.github',
 	version: 1.1,
@@ -48,6 +48,7 @@ const getOpenPRs = node({
 				title: 'Fix authentication bug',
 				html_url: 'https://github.com/acme/api/pull/42',
 				created_at: '2026-09-15T05:00:00.000Z',
+				draft: false,
 				user: { login: 'alice' },
 				requested_reviewers: [{ login: 'bob' }, { login: 'carol' }],
 			},
@@ -56,6 +57,7 @@ const getOpenPRs = node({
 				title: 'Add new feature',
 				html_url: 'https://github.com/acme/api/pull/43',
 				created_at: '2026-09-16T07:00:00.000Z',
+				draft: false,
 				user: { login: 'dave' },
 				requested_reviewers: [{ login: 'eve' }],
 			},
@@ -63,28 +65,98 @@ const getOpenPRs = node({
 	},
 });
 
-// Tool-neutral step: plain text, readable in a chat message and in an email.
-const formatMessage = node({
-	type: 'n8n-nodes-base.code',
-	version: 2,
+// Keeps pull requests open for more than 24 hours and not marked as draft.
+const olderThan24h = node({
+	type: 'n8n-nodes-base.filter',
+	version: 2.2,
 	config: {
-		name: 'Filter and Format Message',
+		name: 'Older Than 24h',
 		parameters: {
-			mode: 'runOnceForAllItems',
-			jsCode: `const cutoff = $now.minus({ hours: 24 });
-const stale = $input.all().filter((item) => DateTime.fromISO(item.json.created_at) < cutoff);
-if (stale.length === 0) {
-  return [];
-}
-const lines = stale.map((item) => {
-  const pr = item.json;
-  const hoursOpen = Math.floor($now.diff(DateTime.fromISO(pr.created_at), 'hours').hours);
-  const reviewers = (pr.requested_reviewers || []).map((r) => '@' + r.login).join(', ') || 'no reviewers assigned';
-  return '- #' + pr.number + ' ' + pr.title + ' (' + reviewers + ', open for ' + hoursOpen + 'h) ' + pr.html_url;
+			conditions: {
+				options: { caseSensitive: true, leftValue: '', typeValidation: 'strict', version: 2 },
+				conditions: [
+					{
+						id: 'c1',
+						leftValue: expr('{{ $json.created_at }}'),
+						rightValue: expr('{{ $now.minus({ hours: 24 }).toISO() }}'),
+						operator: { type: 'dateTime', operation: 'before' },
+					},
+					{
+						id: 'c2',
+						leftValue: expr('{{ $json.draft }}'),
+						rightValue: '',
+						operator: { type: 'boolean', operation: 'false', singleValue: true },
+					},
+				],
+				combinator: 'and',
+			},
+		},
+	},
 });
-const subject = 'Pull requests waiting for review (open > 24h): ' + stale.length;
-const message = subject + '\\n' + lines.join('\\n');
-return [{ json: { subject, message, count: stale.length } }];`,
+
+// Formats one line per pull request.
+const formatPrLine = node({
+	type: 'n8n-nodes-base.set',
+	version: 3.4,
+	config: {
+		name: 'Format PR Line',
+		parameters: {
+			mode: 'manual',
+			includeOtherFields: false,
+			assignments: {
+				assignments: [
+					{
+						id: 'a1',
+						name: 'line',
+						value: expr(
+							'{{ "#" + $json.number + " " + $json.title + " by " + $json.user.login + ", opened " + $json.created_at + " " + $json.html_url }}',
+						),
+						type: 'string',
+					},
+				],
+			},
+		},
+	},
+});
+
+// Collects the formatted lines into one list.
+const collectLines = node({
+	type: 'n8n-nodes-base.aggregate',
+	version: 1,
+	config: {
+		name: 'Collect Lines',
+		parameters: {
+			aggregate: 'aggregateIndividualFields',
+			fieldsToAggregate: { fieldToAggregate: [{ fieldToAggregate: 'line' }] },
+		},
+	},
+});
+
+// Builds the chat message and email subject and body.
+const buildMessage = node({
+	type: 'n8n-nodes-base.set',
+	version: 3.4,
+	config: {
+		name: 'Build Message',
+		parameters: {
+			mode: 'manual',
+			includeOtherFields: false,
+			assignments: {
+				assignments: [
+					{
+						id: 'a1',
+						name: 'subject',
+						value: expr('{{ "Pull requests waiting for review: " + $json.line.length }}'),
+						type: 'string',
+					},
+					{
+						id: 'a2',
+						name: 'message',
+						value: expr('{{ $json.line.join("\\n") }}'),
+						type: 'string',
+					},
+				],
+			},
 		},
 	},
 });
@@ -186,5 +258,8 @@ const notify = sinks[NOTIFY]();
 export default workflow('id', 'PR Review Reminders')
 	.add(schedule)
 	.to(getOpenPRs)
-	.to(formatMessage)
+	.to(olderThan24h)
+	.to(formatPrLine)
+	.to(collectLines)
+	.to(buildMessage)
 	.to(notify);

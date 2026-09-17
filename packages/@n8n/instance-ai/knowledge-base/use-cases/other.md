@@ -1,68 +1,95 @@
-# Use cases: Other roles
+# Use cases: Other
 
-Role id: `other`. Ranked by how common the automation is, 1 is the most common.
+Role id: `other`. Ranked by how common the automation is, 1 is the most common. This file also serves users who did not pick a role.
 Tools are listed as family (example): any tool of the same family works, for example Outlook instead of Gmail.
+`Template:` names a workflow source in `templates/` to start the build from; swap the tool nodes marked with the family comment. A `notification` family means the template holds one ready node per notification tool behind its `NOTIFY` constant.
 
-## 1. Save email attachments to cloud storage
-
-- Trigger: Gmail email with an attachment
-- Tools: email (Gmail), file storage (Google Drive), spreadsheet (Google Sheets)
-- Category: generic-automation.file-management
-
-Saves attachments to a Google Drive folder named by sender and month and logs the file link in Google Sheets.
-
-## 2. Webhook events to a database
-
-- Trigger: Webhook
-- Tools: Webhook, database (Supabase)
-- Category: generic-automation.data-movement
-
-Stores each incoming event in Supabase and starts a processing sub-workflow when none is running.
-
-## 3. Daily calendar briefing
-
-- Trigger: Schedule, 7:00
-- Tools: calendar (Google Calendar), task manager (Todoist), chat (Telegram)
-- Category: productivity.personal-assistant
-
-Lists today's Google Calendar events and open Todoist tasks and sends a briefing to Telegram.
-
-## 4. Timesheet from calendar events
-
-- Trigger: Schedule, 6:00
-- Tools: calendar (Google Calendar), docs (Notion), CRM (Salesforce)
-- Category: hr.employee-lifecycle.time-and-attendance
-
-Takes yesterday's billable Google Calendar events, matches them to client projects, and logs time entries in Notion and the CRM.
-
-## 5. Sync two spreadsheets
+## 1. Job vacancies to the careers website
 
 - Trigger: Schedule, hourly
-- Tools: spreadsheet (Google Sheets), chat (Slack)
-- Category: generic-automation.data-sync
+- Tools: HTTP Request
+- Category: hr.recruitment.candidate-processing
+- Template: templates/other-job-vacancies-to-the-website.workflow.ts
 
-Copies new and changed rows from one Google Sheet to another, keyed by an id column, and posts the number of changes to Slack.
+Fetches the open vacancies from the HR system API, compares them with the job posts on the website CMS, and creates or updates a post for each vacancy that changed.
 
-## 6. Summarize long emails
+## 2. Tracking events into a database and an analytics tool
 
-- Trigger: Gmail email above a length threshold
-- Tools: email (Gmail), AI model (OpenAI), chat (Slack)
-- Category: productivity.email
+- Trigger: Webhook, called by the website or the app for each event
+- Tools: Webhook, database (Postgres), HTTP Request
+- Category: generic-automation.data-movement
+- Template: templates/other-tracking-events-into-a-database.workflow.ts
 
-Summarizes the email in three bullets with an AI model and forwards the summary to Slack.
+Receives a tracking event, inserts it into a database table, and forwards it to the analytics tool API in the shape that tool expects.
 
-## 7. Form to PDF and email
+## 3. Accounting expenses into a database
 
-- Trigger: n8n Form submission
-- Tools: form (n8n Form), docs (Google Docs), email (Gmail), file storage (Google Drive)
-- Category: generic-automation.document-generation
+- Trigger: Schedule, every 2 hours
+- Tools: accounting (QuickBooks), database (Postgres)
+- Category: finance.transactions-and-balances
+- Template: templates/other-accounting-expenses-into-a-database.workflow.ts
 
-Fills a Google Docs template, exports it as PDF, emails it to the requester, and stores it in Google Drive.
+Loads the purchases and bills changed since the last run from the accounting tool, maps them to one row shape, and upserts them into a database table for reporting.
 
-## 8. Feed digest in team chat
+## 4. Mark issues as released
 
-- Trigger: Schedule, daily
-- Tools: RSS, chat (Slack)
-- Category: productivity.information-monitoring
+- Trigger: Schedule, every 15 minutes
+- Tools: code hosting (GitHub), issue tracker (Linear)
+- Category: engineering.unclassified
+- Template: templates/other-mark-issues-as-released.workflow.ts
 
-Collects new items from a list of RSS feeds, removes duplicates, and posts a morning digest to Slack.
+Checks for releases published since the last run, extracts the issue ids from the release notes, and comments on each issue with the release version.
+
+## 5. Workflow backups to a Git repository
+
+- Trigger: Schedule, every 12 hours
+- Tools: n8n API, code hosting (GitHub)
+- Category: devops.unclassified
+- Template: templates/other-workflow-backups-to-git.workflow.ts
+
+Lists the workflows of this n8n instance, compares each one with the file in the repository, and commits the changed and new ones as JSON files.
+
+## 6. Asset inventory report to file storage
+
+- Trigger: Schedule, twice a day
+- Tools: HTTP Request, file storage (Box)
+- Category: it.device-management
+- Template: templates/other-asset-inventory-report-to-file-storage.workflow.ts
+
+Fetches the hardware and the users from the asset management API, joins them into one row per device, and uploads the result as a CSV file to file storage.
+
+## 7. Sales report in a spreadsheet
+
+- Trigger: Schedule, daily in the morning
+- Tools: database (MySQL), spreadsheet (Google Sheets)
+- Category: ecommerce.sales-reporting
+- Template: templates/other-sales-report-in-a-spreadsheet.workflow.ts
+
+Queries the sales and payments of the previous day from the shop database and appends or updates the daily row in a report spreadsheet.
+
+## 8. CRM deals updated from the data warehouse
+
+- Trigger: Schedule, daily at 05:00
+- Tools: data warehouse (Snowflake), CRM (HubSpot), notification (Slack)
+- Category: sales-and-marketing.crm-operations
+- Template: templates/other-crm-deals-from-the-data-warehouse.workflow.ts
+
+Queries the deal values from the data warehouse, updates each deal in the CRM, and posts a summary with the update and failure counts to a chat channel.
+
+## 9. Daily BI report export to file storage
+
+- Trigger: Schedule, daily at 05:00
+- Tools: HTTP Request, file storage (Box)
+- Category: generic-automation.data-movement
+- Template: templates/other-bi-report-export-to-file-storage.workflow.ts
+
+Runs a saved report in the BI tool through its API, removes the test rows, converts the result to a CSV file, and uploads it to file storage.
+
+## 10. Import files into the app database
+
+- Trigger: Schedule, every 4 hours
+- Tools: app builder (Bubble), HTTP Request
+- Category: sales-and-marketing.crm-operations
+- Template: templates/other-import-files-into-the-app.workflow.ts
+
+Finds the pending import records in the app database, downloads and parses each uploaded file, creates one record per row, and marks the import as done.

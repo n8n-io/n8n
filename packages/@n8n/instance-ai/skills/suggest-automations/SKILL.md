@@ -49,11 +49,13 @@ the user's tool replaces.
    output is the three entries to offer, best first, one per line, tab
    separated: rank, title, template file, tools, swaps, description. Use the
    three lines as they come: do not read the role file, do not score or
-   re-rank. `swaps` reads `notification (Slack) -> Gmail` when the user's tool
-   replaces the example, `notification (Slack) -> ?` when the user has no tool
-   of that family, `none` when the entry runs on the user's tools as is. Only
-   when every line shows `?` for every family, search the other role files for
-   a tool: `grep -il "gmail" ${N8N_WORKSPACE_DIR}/knowledge-base/use-cases/*.md`.
+   re-rank. `swaps` reads `email (Gmail) -> Microsoft Outlook` when the user's
+   tool replaces the example, `notification (Slack) -> Gmail [key: gmail]` when
+   the template also holds a ready node for that tool, `email (Gmail) -> ?`
+   when the user has no tool of that family, `none` when the entry runs on the
+   user's tools as is. Only when every line shows `?` for every family, search
+   the other role files for a tool:
+   `grep -il "gmail" ${N8N_WORKSPACE_DIR}/knowledge-base/use-cases/*.md`.
 2. Write one sentence of text, for example "Here are three automations that
    fit GitHub and Slack.", and no list: the card carries the options. Then
    ONE `ask-user` call with `questions` only: a `single` question "Which one
@@ -74,22 +76,23 @@ the user's tool replaces.
    template's tool. Write exactly one line before the first tool call,
    `Building <title> now.`, and no other text until the `build-workflow`
    result: do not report the validate result or the swap decision.
-   1. Copy, set the notification tool and validate in ONE
-      `workspace_execute_command` call:
+   1. Copy, set the keyed tool and validate in ONE `workspace_execute_command`
+      call:
       `mkdir -p src/workflows && cp ${N8N_WORKSPACE_DIR}/knowledge-base/use-cases/templates/<file> src/workflows/<file> && sed -i "s/^const NOTIFY: Sink = '[a-z]*'/const NOTIFY: Sink = '<key>'/" src/workflows/<file> && node --import tsx node_modules/@n8n/workflow-sdk/dist/cli/index.js validate src/workflows/<file>`
-      A `notification (...) -> <tool>` swap means the template holds one ready
-      node per tool behind `const NOTIFY`. `<key>` for that tool: Slack `slack`,
-      Microsoft Teams `teams`, Gmail `gmail`, Microsoft Outlook `outlook`. This
-      `sed` is the whole swap for that family. No notification swap, or a tool
-      with no key: leave the `sed` part out.
-   2. No swap in another family: do not read the file, call `build-workflow` at
-      once (step 4). A swap in another family, or a notification tool with no
-      key: read the copy with `workspace_read_file`. Every tool node starts
-      with a comment `// [family] Tool. Swap for ...` that names the fields the
-      next node reads. Swap only the nodes whose tool differs: one
+      `<key>` is the value in `[key: ...]` of the swaps column: the template
+      holds one ready node per key behind `const NOTIFY`, and the `sed` is the
+      whole swap for that family. No `[key: ...]` in the swaps column: leave
+      the `sed` part out. Never infer a key from a tool name.
+   2. Every swap done by the `sed`, or only `-> ?` left: do not read the file,
+      call `build-workflow` at once (step 4). Any other swap: read the copy
+      with `workspace_read_file`. Every tool node starts with a comment
+      `// [family] Tool. Swap for ...` that names the fields the next node
+      reads. Swap only the nodes whose tool differs: one
       `nodes(action="search")` and one `nodes(action="type-definition")` for
       the replacement, then rewrite that const's `type`, `version`,
-      `credentials` and `parameters` with `workspace_str_replace_file`. Keep
+      `credentials` and `parameters` with `workspace_str_replace_file`. Search
+      with the product word only, for example `excel`, `outlook`, `sheets`:
+      vendor words such as Microsoft or Google match many other nodes. Keep
       the variable name, the position in the chain, the `output` fixture shape
       and the `$json` fields the comment lists. Leave the other nodes as they
       are.

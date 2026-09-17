@@ -4,7 +4,8 @@
 import { workflow, node, trigger, placeholder, newCredential, expr } from '@n8n/workflow-sdk';
 
 // [code hosting] GitHub. Swap for GitLab or Bitbucket: replace this node and the two
-// other code hosting nodes. The next nodes read $json.ref and $json.ref_type.
+// other code hosting nodes. The next nodes read $json.ref, $json.ref_type and
+// $json.repository.full_name.
 const tagPushed = trigger({
 	type: 'n8n-nodes-base.githubTrigger',
 	version: 1,
@@ -57,34 +58,96 @@ const getClosedPRs = node({
 	},
 });
 
-// Tool-neutral step: one item with tag and the list of merged changes.
+// Keeps pull requests merged in the last 30 days, only when a tag was just pushed.
 // ponytail: 30-day window; use the previous release date if you tag less often.
-const collectChanges = node({
-	type: 'n8n-nodes-base.code',
-	version: 2,
+const mergedSinceLastTag = node({
+	type: 'n8n-nodes-base.filter',
+	version: 2.2,
 	config: {
-		name: 'Collect Changes',
+		name: 'Merged Since Last Tag',
 		parameters: {
-			mode: 'runOnceForAllItems',
-			jsCode: `const event = $('Tag Pushed').first().json;
-if (event.ref_type !== 'tag') {
-  return [];
-}
-const since = $now.minus({ days: 30 });
-const merged = $input.all()
-  .map((item) => item.json)
-  .filter((pr) => pr.merged_at && DateTime.fromISO(pr.merged_at) > since);
-if (merged.length === 0) {
-  return [];
-}
-const changes = merged.map((pr) => '- #' + pr.number + ' ' + pr.title + ' (@' + pr.user.login + ') ' + pr.html_url).join('\\n');
-return [{ json: { tag: event.ref, repo: event.repository.full_name, changes } }];`,
+			conditions: {
+				options: { caseSensitive: true, leftValue: '', typeValidation: 'strict', version: 2 },
+				conditions: [
+					{
+						id: 'c1',
+						leftValue: expr("{{ $('Tag Pushed').first().json.ref_type }}"),
+						rightValue: 'tag',
+						operator: { type: 'string', operation: 'equals' },
+					},
+					{
+						id: 'c2',
+						leftValue: expr('{{ $json.merged_at }}'),
+						rightValue: '',
+						operator: { type: 'string', operation: 'notEmpty', singleValue: true },
+					},
+					{
+						id: 'c3',
+						leftValue: expr('{{ $json.merged_at }}'),
+						rightValue: expr('{{ $now.minus({ days: 30 }).toISO() }}'),
+						operator: { type: 'dateTime', operation: 'after' },
+					},
+				],
+				combinator: 'and',
+			},
+		},
+	},
+});
+
+// Collects the merged pull requests into one list.
+const collectAll = node({
+	type: 'n8n-nodes-base.aggregate',
+	version: 1,
+	config: {
+		name: 'Collect All',
+		parameters: {
+			aggregate: 'aggregateAllItemData',
+			destinationFieldName: 'data',
+			include: 'allFields',
+		},
+	},
+});
+
+// Builds the AI prompt fields from the tag event and the merged pull requests.
+const preparePrompt = node({
+	type: 'n8n-nodes-base.set',
+	version: 3.4,
+	config: {
+		name: 'Prepare Prompt',
+		parameters: {
+			mode: 'manual',
+			includeOtherFields: false,
+			assignments: {
+				assignments: [
+					{
+						id: 'a1',
+						name: 'tag',
+						value: expr("{{ $('Tag Pushed').first().json.ref }}"),
+						type: 'string',
+					},
+					{
+						id: 'a2',
+						name: 'repo',
+						value: expr("{{ $('Tag Pushed').first().json.repository.full_name }}"),
+						type: 'string',
+					},
+					{
+						id: 'a3',
+						name: 'changes',
+						value: expr(
+							'{{ $json.data.map(p => "- " + p.title + " (#" + p.number + ")").join("\\n") }}',
+						),
+						type: 'string',
+					},
+				],
+			},
 		},
 	},
 });
 
 // [AI model] OpenAI. Swap for Anthropic, Google Gemini, Mistral or Ollama: replace this
-// node only. It reads $json.tag and $json.changes. The next node reads $json.message.content.
+// node only. It reads $json.tag, $json.repo and $json.changes. The next node reads
+// $json.message.content.
 const draftNotes = node({
 	type: '@n8n/n8n-nodes-langchain.openAi',
 	version: 1.8,
@@ -139,9 +202,9 @@ const createDraftRelease = node({
 			authentication: 'accessToken',
 			owner: { __rl: true, mode: 'name', value: placeholder('GitHub owner (org or username)') },
 			repository: { __rl: true, mode: 'name', value: placeholder('Repository name') },
-			releaseTag: expr("{{ $('Collect Changes').first().json.tag }}"),
+			releaseTag: expr("{{ $('Prepare Prompt').first().json.tag }}"),
 			additionalFields: {
-				name: expr("{{ $('Collect Changes').first().json.tag }}"),
+				name: expr("{{ $('Prepare Prompt').first().json.tag }}"),
 				body: expr('{{ $json.message.content }}'),
 				draft: true,
 			},
@@ -152,6 +215,8 @@ const createDraftRelease = node({
 export default workflow('id', 'Release Notes Draft')
 	.add(tagPushed)
 	.to(getClosedPRs)
-	.to(collectChanges)
+	.to(mergedSinceLastTag)
+	.to(collectAll)
+	.to(preparePrompt)
 	.to(draftNotes)
 	.to(createDraftRelease);
