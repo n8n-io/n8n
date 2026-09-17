@@ -18,6 +18,7 @@ import { N8N_VERSION, AI_ASSISTANT_SDK_VERSION } from '@/constants';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { License } from '@/license';
+import type { McpRegistryServer } from '@/modules/mcp-registry/registry/mcp-registry.types';
 import { checkAiGatewayEligibility } from '@/services/ai-gateway-eligibility';
 import { OwnershipService } from '@/services/ownership.service';
 import { UrlService } from '@/services/url.service';
@@ -25,6 +26,55 @@ import { UrlService } from '@/services/url.service';
 interface GatewayTokenResponse {
 	token: string;
 	expiresIn: number;
+}
+
+/**
+ * Builds the gateway-hosted Firecrawl MCP server entry. The remote URL is derived
+ * from the configured gateway base so it follows feature/staging/prod instead of
+ * hardcoding one host. `authType: 'gateway'` means the user connects it with
+ * Gateway credits rather than their own credential.
+ *
+ * POC note: this is a static definition. The intended shape is to drive the
+ * hosted-server list off the gateway's own `/v1/gateway/config` response so new
+ * providers surface without an n8n release.
+ */
+function buildFirecrawlGatewayServer(baseUrl: string): McpRegistryServer {
+	return {
+		name: 'com.n8n/firecrawl-mcp',
+		slug: 'firecrawl',
+		title: 'Firecrawl',
+		description: 'Scrape, crawl, map and search the web, billed to Gateway credits',
+		tagline: 'Read the web with n8n credits',
+		version: '1.0.0',
+		updatedAt: '2026-09-17T10:00:00.000Z',
+		icons: [{ src: 'https://www.firecrawl.dev/favicon.ico' }],
+		websiteUrl: 'https://firecrawl.dev',
+		authType: 'gateway',
+		remotes: [{ type: 'streamable-http', url: `${baseUrl}/v1/gateway/mcp/firecrawl` }],
+		tools: [
+			{ name: 'firecrawl_scrape', title: 'Firecrawl scrape', annotations: { readOnlyHint: true } },
+			{
+				name: 'firecrawl_map',
+				title: 'Firecrawl website map',
+				annotations: { readOnlyHint: true },
+			},
+			{
+				name: 'firecrawl_search',
+				title: 'Firecrawl web search',
+				annotations: { readOnlyHint: true },
+			},
+			{ name: 'firecrawl_crawl', title: 'Firecrawl crawl', annotations: { readOnlyHint: true } },
+			{
+				name: 'firecrawl_check_crawl_status',
+				title: 'Firecrawl crawl status',
+				annotations: { readOnlyHint: true },
+			},
+		],
+		isOfficial: true,
+		origin: 'registry',
+		status: 'active',
+		tags: ['web-scraping', 'search'],
+	};
 }
 
 export type AiGatewayAvailability =
@@ -411,6 +461,17 @@ export class AiGatewayService {
 	 * and its config fetches successfully; `{ available: false }` otherwise.
 	 * Never propagates gateway or config errors.
 	 */
+	/**
+	 * Gateway-hosted MCP servers to inject into the registry listing. These are
+	 * hosted and billed by the gateway, so the gateway (not the remote MCP
+	 * registry) is their source of truth. Returns `[]` unless n8n Connect is
+	 * licensed and enabled, which is what keeps them off unlicensed instances.
+	 */
+	getHostedMcpServers(): McpRegistryServer[] {
+		if (!this.isEnabled()) return [];
+		return [buildFirecrawlGatewayServer(this.requireBaseUrl())];
+	}
+
 	async isAvailable(): Promise<AiGatewayAvailability> {
 		if (!this.isEnabled()) return { available: false };
 		try {

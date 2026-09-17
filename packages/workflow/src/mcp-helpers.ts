@@ -19,7 +19,7 @@ interface McpRegistryConnectionBase {
 }
 
 export interface McpRegistryCredentialBinding {
-	credentialType: McpOAuth2CredentialType;
+	credentialType: McpOAuth2CredentialType | McpGatewayCredentialType;
 	selector: string;
 }
 
@@ -60,7 +60,7 @@ export function getConfiguredEndpointUrl(connection: McpRegistryConnection): str
 
 export interface PrepareMcpRegistryConnectionInput {
 	connection: McpRegistryConnection;
-	credentialType: McpOAuth2CredentialType;
+	credentialType: McpOAuth2CredentialType | McpGatewayCredentialType;
 	credentialData: ICredentialDataDecryptedObject;
 	headers?: Record<string, string>;
 }
@@ -70,7 +70,7 @@ export type PrepareMcpRegistryConnectionResult =
 			ok: true;
 			value: {
 				nodeTypeName: string;
-				credentialType: McpOAuth2CredentialType;
+				credentialType: McpOAuth2CredentialType | McpGatewayCredentialType;
 				transport: 'httpStreamable' | 'sse';
 				/** Always a literal URL, templated or not. */
 				endpointUrl: string;
@@ -145,7 +145,9 @@ export function getMcpAuthHeaders(
 			: {};
 	}
 
-	if (authentication === 'bearerAuth') {
+	if (authentication === 'bearerAuth' || isMcpGatewayAuthentication(authentication)) {
+		// A gateway-hosted server's synthetic credential carries the minted Gateway
+		// token as `token`, sent as a plain bearer to the gateway's MCP endpoint.
 		return typeof credentialData.token === 'string' && credentialData.token.length > 0
 			? { ['Authorization']: `Bearer ${credentialData.token}` }
 			: {};

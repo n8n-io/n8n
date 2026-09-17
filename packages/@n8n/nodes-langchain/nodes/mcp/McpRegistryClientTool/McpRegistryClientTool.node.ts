@@ -272,7 +272,7 @@ function resolveConfig(
 function getCredentialType(
 	ctx: Pick<ILoadOptionsFunctions | ISupplyDataFunctions | IExecuteFunctions, 'getNode'>,
 	resolved: ResolvedMcpRegistryConnection,
-): McpOAuth2CredentialType {
+): McpOAuth2CredentialType | McpGatewayCredentialType {
 	const node = ctx.getNode();
 	const { credentialType } = resolved.binding;
 	if (!Object.hasOwn(node.credentials ?? {}, credentialType)) {

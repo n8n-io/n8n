@@ -38,15 +38,35 @@ export class McpRegistryService {
 	}
 
 	async init(): Promise<void> {
+		await this.seedGatewayServers();
 		await this.refreshRegistryNodeTypes(false);
 	}
 
 	@OnPubSubEvent('reload-mcp-registry')
 	async handleReloadMcpRegistry(): Promise<void> {
+		await this.seedGatewayServers();
 		await this.refreshRegistryNodeTypes(true);
 		if (this.isMainInstance()) {
 			this.notifyNodeDescriptionsUpdated();
 		}
+	}
+
+	/**
+	 * Persist the gateway-hosted servers the gateway service owns as real registry
+	 * rows. This is what makes them work at run time: every process's node loader,
+	 * connection map and synthetic credential resolve them from the DB exactly like
+	 * a remote server, instead of depending on a live in-memory injection that a
+	 * loader refresh in another process or before enablement would miss.
+	 *
+	 * License-gated at the source: `getHostedMcpServers()` returns `[]` when n8n
+	 * Connect is off, so nothing is seeded there. Rows from a previously licensed
+	 * period are left in place (never deleted, like every registry row) and hidden
+	 * by `getAll`'s filter until the license returns.
+	 */
+	private async seedGatewayServers(): Promise<void> {
+		const hosted = this.aiGatewayService.getHostedMcpServers();
+		if (hosted.length === 0) return;
+		await this.saveServers(hosted);
 	}
 
 	/**
@@ -64,9 +84,11 @@ export class McpRegistryService {
 			: await this.repository.findBy({ status: 'active' });
 		const servers = entities.map(fromEntity);
 
-		// Servers the gateway hosts are billed to Gateway credits, so they are
-		// unusable without n8n Connect. Offering them on an instance that cannot
-		// mint a token would fail at run time instead of at selection time.
+		// Gateway-hosted servers are seeded into the repository by
+		// `seedGatewayServers` so the node loader, connection map and synthetic
+		// credential all resolve them uniformly. Still hide them when n8n Connect is
+		// off, so a row left over from a licensed period can't be selected on an
+		// instance that can no longer mint a token.
 		if (this.aiGatewayService.isEnabled()) return servers;
 		return servers.filter((server) => server.authType !== 'gateway');
 	}
@@ -152,7 +174,14 @@ export class McpRegistryService {
 			.filter((entry) => this.shouldFetchFullServer(entry, existingBySlug.get(entry.slug)))
 			.map(({ slug }) => slug);
 		const serversToDeprecate = existingServers
-			.filter((server) => !metadataSlugs.has(server.slug) && server.status !== 'deprecated')
+			// Gateway-hosted rows are seeded locally and never appear in the remote
+			// metadata, so exclude them or every refresh would deprecate them.
+			.filter(
+				(server) =>
+					server.authType !== 'gateway' &&
+					!metadataSlugs.has(server.slug) &&
+					server.status !== 'deprecated',
+			)
 			.map((server) => ({ ...server, status: 'deprecated' as const, updatedAt: now }));
 
 		if (slugsToFetch.length === 0 && serversToDeprecate.length === 0) {
