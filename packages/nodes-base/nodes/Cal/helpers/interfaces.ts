@@ -15,12 +15,17 @@ export interface CalPaginatedApiResponse<T> extends CalApiResponse<T[]> {
 	pagination?: CalPagination;
 }
 
-export interface CalEventType {
+/**
+ * The domain types extend `IDataObject` so that an operation can hand a
+ * response straight to the output, and so that the fields Cal.com adds beyond
+ * the ones named here survive.
+ */
+export interface CalEventType extends IDataObject {
 	id: number;
 	title: string;
 }
 
-export interface CalSchedule {
+export interface CalSchedule extends IDataObject {
 	id: number;
 	name: string;
 	timeZone?: string;

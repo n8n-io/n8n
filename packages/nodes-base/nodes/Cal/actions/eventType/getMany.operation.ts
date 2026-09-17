@@ -1,11 +1,11 @@
-import type { IDataObject, INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
 import { returnAllOrLimit } from '@utils/descriptions';
 import { updateDisplayOptions } from '@utils/utilities';
 
 import { CAL_API_VERSION, calApiRequestV2Versioned } from '../../GenericFunctions';
-import type { CalApiResponse } from '../../helpers/interfaces';
+import type { CalApiResponse, CalEventType } from '../../helpers/interfaces';
 import { getLimit, toQuery } from '../helpers';
 import type { CalOperation } from '../router';
 
@@ -55,7 +55,7 @@ export const execute: CalOperation = async function (this, itemIndex) {
 	}
 
 	// The endpoint answers with every event type at once, so the limit applies here.
-	const response = await (calApiRequestV2Versioned<CalApiResponse<IDataObject[]>>).call(
+	const response = await (calApiRequestV2Versioned<CalApiResponse<CalEventType[]>>).call(
 		this,
 		'GET',
 		'/event-types',
