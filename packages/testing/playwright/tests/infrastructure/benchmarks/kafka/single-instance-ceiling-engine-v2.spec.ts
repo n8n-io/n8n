@@ -10,6 +10,7 @@ test.use({
 		`single-instance-ceiling-${ENGINE_V2_BENCHMARK_PROFILE.isolationSuffix}`,
 		{
 			kafka: true,
+			engine: ENGINE_V2_BENCHMARK_PROFILE.engineDatabase,
 			env: ENGINE_V2_BENCHMARK_PROFILE.env,
 		},
 	),

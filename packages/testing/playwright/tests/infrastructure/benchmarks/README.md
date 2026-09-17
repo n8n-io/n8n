@@ -74,6 +74,7 @@ The direct Kafka and webhook baselines run with two explicit VM expression-engin
 | `vm-lazy-cache` | v1 | VM | On | On | Tracks the optimized no-expression execution path. |
 | `engine-v2` | v2 | VM | Off | Off | Tracks the new workflow execution engine with the same expression settings as `vm-eager`. |
 | `engine-v2-vm-lazy-cache` | v2 | VM | On | On | Measures the combined execution engine v2 and optimized expression-isolate path. |
+| `engine-v2-split-db-vm-lazy-cache` | v2 | VM | On | On | Runs the data plane on a separate PostgreSQL server. |
 
 Each metric records `execution_engine`, `expression_engine`, `expression_lazy_acquire`, `expression_compile_cache`, and `expression_profile` dimensions. The lazy and engine v2 comparison runs remain in benchmark telemetry and run-report artifacts, but do not feed the deployment sizing matrix while execution engine v1 with eager VM is the default runtime.
 
@@ -89,7 +90,7 @@ The engine v2 lazy-cache Kafka comparison requires at least 98% of its 10,000-me
 # Build n8n image first (skip if you only changed test code).
 pnpm build:docker
 
-# Full suite — all 19 specs sequentially (each spawns its own container).
+# Full suite — all 21 specs sequentially (each spawns its own container).
 pnpm --filter=n8n-playwright test:benchmark
 
 # One spec.

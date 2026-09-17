@@ -5,6 +5,7 @@ interface RuntimeBenchmarkProfile {
 	env: Record<string, string>;
 	dimensions: BenchmarkDimensions;
 	engineType?: 'v2';
+	engineDatabase?: 'shared' | 'split';
 }
 
 export const VM_EAGER_BENCHMARK_PROFILE: RuntimeBenchmarkProfile = {
@@ -43,12 +44,12 @@ export const ENGINE_V2_BENCHMARK_PROFILE: RuntimeBenchmarkProfile = {
 	isolationSuffix: 'engine-v2',
 	env: {
 		...VM_EAGER_BENCHMARK_PROFILE.env,
-		N8N_ENABLED_MODULES: 'engine-v2',
-		N8N_ENGINE_DATABASE_URL: 'postgresql://n8n_user:test_password@postgres:5432/n8n_db',
 	},
 	engineType: 'v2',
+	engineDatabase: 'shared',
 	dimensions: {
 		execution_engine: 'v2',
+		database_topology: 'shared-postgres',
 		expression_engine: 'vm',
 		expression_lazy_acquire: 0,
 		expression_compile_cache: 0,
@@ -60,12 +61,22 @@ export const ENGINE_V2_LAZY_CACHE_BENCHMARK_PROFILE: RuntimeBenchmarkProfile = {
 	isolationSuffix: 'engine-v2-vm-lazy-cache',
 	env: {
 		...VM_LAZY_CACHE_BENCHMARK_PROFILE.env,
-		N8N_ENABLED_MODULES: 'engine-v2',
-		N8N_ENGINE_DATABASE_URL: 'postgresql://n8n_user:test_password@postgres:5432/n8n_db',
 	},
 	engineType: 'v2',
+	engineDatabase: 'shared',
 	dimensions: {
 		...VM_LAZY_CACHE_BENCHMARK_PROFILE.dimensions,
 		execution_engine: 'v2',
+		database_topology: 'shared-postgres',
+	},
+};
+
+export const ENGINE_V2_SPLIT_DB_LAZY_CACHE_BENCHMARK_PROFILE: RuntimeBenchmarkProfile = {
+	...ENGINE_V2_LAZY_CACHE_BENCHMARK_PROFILE,
+	isolationSuffix: 'engine-v2-split-db-vm-lazy-cache',
+	engineDatabase: 'split',
+	dimensions: {
+		...ENGINE_V2_LAZY_CACHE_BENCHMARK_PROFILE.dimensions,
+		database_topology: 'split-postgres',
 	},
 };

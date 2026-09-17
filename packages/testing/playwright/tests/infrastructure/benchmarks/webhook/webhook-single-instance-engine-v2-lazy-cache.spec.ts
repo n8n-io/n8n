@@ -10,7 +10,10 @@ import {
 test.use({
 	capability: benchConfig(
 		`webhook-single-instance-${ENGINE_V2_LAZY_CACHE_BENCHMARK_PROFILE.isolationSuffix}`,
-		{ env: ENGINE_V2_LAZY_CACHE_BENCHMARK_PROFILE.env },
+		{
+			engine: ENGINE_V2_LAZY_CACHE_BENCHMARK_PROFILE.engineDatabase,
+			env: ENGINE_V2_LAZY_CACHE_BENCHMARK_PROFILE.env,
+		},
 	),
 });
 

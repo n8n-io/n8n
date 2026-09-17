@@ -215,11 +215,14 @@ export class PostgresHelper {
 		if (!/^[A-Za-z0-9_-]+$/.test(workflowId)) {
 			throw new Error(`Unexpected workflow ID: ${workflowId}`);
 		}
-		const output = await this.exec(`
+		const { output } = await this.runIn(
+			ENGINE_DATABASE,
+			`
 			SELECT COUNT(*)::bigint
 			FROM workflow_execution
 			WHERE status = 'completed' AND workflow_id = '${workflowId}';
-		`);
+		`,
+		);
 		return parseInt(output.trim(), 10);
 	}
 

@@ -24,6 +24,7 @@ const SERVICE_IMAGES = {
 	mailpit: ['mailpit'],
 	mysql: ['mysql'],
 	ngrok: ['ngrok'],
+	enginePostgres: ['postgres'],
 	postgres: ['postgres'],
 	postgresExporter: ['postgresExporter'],
 	proxy: ['mockserver'],

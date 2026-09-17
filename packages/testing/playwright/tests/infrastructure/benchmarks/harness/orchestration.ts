@@ -112,7 +112,10 @@ export async function setupBenchmarkRun(ctx: SetupContext): Promise<SetupResult>
 		});
 	const counterReader =
 		ctx.handle.workflow.settings?.engineType === 'v2'
-			? async () => await ctx.services.postgres.countCompletedEngineV2Executions(workflowId)
+			? async () =>
+					await (
+						ctx.services.enginePostgres ?? ctx.services.postgres
+					).countCompletedEngineV2Executions(workflowId)
 			: ctx.counterReader;
 
 	// VictoriaMetrics needs at least one scrape before queries return data.
@@ -136,7 +139,7 @@ export async function setupBenchmarkRun(ctx: SetupContext): Promise<SetupResult>
 	// Best-effort: the postgres helper may not be wired or pg_stat_statements
 	// may not be available on a custom postgres image.
 	try {
-		await ctx.services.postgres?.resetStatStatements();
+		await (ctx.services.enginePostgres ?? ctx.services.postgres)?.resetStatStatements();
 	} catch {
 		/* non-fatal */
 	}
@@ -146,7 +149,8 @@ export async function setupBenchmarkRun(ctx: SetupContext): Promise<SetupResult>
 	// reset per-database, so we capture and diff manually.
 	let walBaseline: SetupResult['walBaseline'] = null;
 	try {
-		walBaseline = (await ctx.services.postgres?.pgStatWal()) ?? null;
+		walBaseline =
+			(await (ctx.services.enginePostgres ?? ctx.services.postgres)?.pgStatWal()) ?? null;
 	} catch {
 		/* non-fatal */
 	}
@@ -202,7 +206,7 @@ export async function reportPgQueryBreakdown(ctx: {
 	let rows;
 	try {
 		// Wider fetch so the cost re-rank can surface heavy-but-rare queries.
-		rows = await services.postgres.topStatements(limit * 2);
+		rows = await (services.enginePostgres ?? services.postgres).topStatements(limit * 2);
 	} catch (error) {
 		console.warn(
 			`[PG QUERIES] Could not fetch pg_stat_statements: ${error instanceof Error ? error.message : String(error)}`,
@@ -244,9 +248,10 @@ export async function reportPgSaturation(ctx: {
 	let io: Awaited<ReturnType<typeof services.postgres.pgStatIo>> = [];
 	let wal: Awaited<ReturnType<typeof services.postgres.pgStatWal>> = null;
 	try {
-		totals = await services.postgres.totalStatementsCost();
-		io = await services.postgres.pgStatIo();
-		wal = await services.postgres.pgStatWal();
+		const postgres = services.enginePostgres ?? services.postgres;
+		totals = await postgres.totalStatementsCost();
+		io = await postgres.pgStatIo();
+		wal = await postgres.pgStatWal();
 	} catch (error) {
 		console.warn(
 			`[PG SATURATION] Could not collect saturation stats: ${error instanceof Error ? error.message : String(error)}`,
