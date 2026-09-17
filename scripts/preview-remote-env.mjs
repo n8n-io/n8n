@@ -53,7 +53,6 @@ export async function fetchRemoteEnv({
 	user,
 	password,
 	pr,
-	sha,
 	fetchImpl = fetch,
 	timeoutMs = 120_000,
 	intervalMs = 3000,
@@ -77,7 +76,6 @@ export async function fetchRemoteEnv({
 	}
 	// Context for the webhook, so one endpoint can answer per PR.
 	if (pr) endpoint.searchParams.set('pr', pr);
-	if (sha) endpoint.searchParams.set('sha', sha);
 
 	const headers = {
 		accept: 'application/json',

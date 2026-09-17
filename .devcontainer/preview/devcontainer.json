@@ -41,14 +41,14 @@
 		"N8N_LICENSE_ACTIVATION_KEY": {
 			"description": "Sandbox licence key. The preview:enterprise label decides whether it reaches n8n."
 		},
-		"PREVIEW_ENV_URL": {
+		"CODESPACE_ENV_URL": {
 			"description": "n8n webhook that returns extra environment for a preview, as a flat JSON object"
 		},
-		"PREVIEW_ENV_USER": {
-			"description": "Basic auth user for PREVIEW_ENV_URL. Defaults to `preview`."
+		"CODESPACE_ENV_USER": {
+			"description": "Basic auth user for CODESPACE_ENV_URL. Defaults to `preview`."
 		},
-		"PREVIEW_ENV_PASSWORD": {
-			"description": "Basic auth password for PREVIEW_ENV_URL"
+		"CODESPACE_ENV_PASSWORD": {
+			"description": "Basic auth password for CODESPACE_ENV_URL"
 		}
 	}
 }

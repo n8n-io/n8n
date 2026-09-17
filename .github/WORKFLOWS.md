@@ -322,9 +322,9 @@ It needs three **Codespaces** secrets on `n8n-io/n8n`, again not Actions secrets
 
 | Secret | Purpose |
 | ------------------------ | ------------------------------------------------- |
-| `PREVIEW_ENV_URL`        | The webhook URL |
-| `PREVIEW_ENV_USER`       | Basic auth user. Optional, defaults to `preview`. |
-| `PREVIEW_ENV_PASSWORD`   | Basic auth password |
+| `CODESPACE_ENV_URL`        | The webhook URL |
+| `CODESPACE_ENV_USER`       | Basic auth user. Optional, defaults to `preview`. |
+| `CODESPACE_ENV_PASSWORD`   | Basic auth password |
 
 The webhook answers with a flat JSON object. Its keys become environment
 variables and its values are used as-is, so a number or a boolean is stringified

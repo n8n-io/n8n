@@ -92,7 +92,7 @@ needs `gh` with the codespace scope, the same as `pnpm session`.
   toggles are defined in `scripts/preview-labels.mjs`; add new ones there.
 - **Configure the instance from a webhook.** A preview also reads extra
   environment from an n8n webhook, so a value can change without a commit. It
-  needs the `PREVIEW_ENV_URL`, `PREVIEW_ENV_USER` and `PREVIEW_ENV_PASSWORD`
+  needs the `CODESPACE_ENV_URL`, `CODESPACE_ENV_USER` and `CODESPACE_ENV_PASSWORD`
   codespace secrets. Every key the webhook returns becomes an environment
   variable, so editing that workflow runs code in the box. Without the secrets
   the preview serves as usual. See [WORKFLOWS.md](../../.github/WORKFLOWS.md).

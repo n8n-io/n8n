@@ -41,15 +41,6 @@ const healthPath = serveHealthPath();
 
 const tmux = (...args) => spawnSync('tmux', args, { stdio: 'ignore' });
 
-// Identifies the build to the preview env webhook: the box serves a detached head.
-const gitHead = () => {
-	try {
-		return execFileSync('git', ['rev-parse', 'HEAD'], { cwd: repoRoot, encoding: 'utf8' }).trim();
-	} catch {
-		return undefined;
-	}
-};
-
 // Stop the old backend before rebuilding: it frees the port, and it stops the
 // previous build being served alongside newly written assets.
 tmux('kill-session', '-t', SESSION);
@@ -108,11 +99,10 @@ if (labelEnv.length)
 // never on the runner. Whatever it returns becomes environment, so anyone who can
 // edit that workflow can run code in this box.
 const { env: remoteEnv, warnings: remoteWarnings } = await fetchRemoteEnv({
-	url: codespaceSecret('PREVIEW_ENV_URL'),
-	user: codespaceSecret('PREVIEW_ENV_USER'),
-	password: codespaceSecret('PREVIEW_ENV_PASSWORD'),
-	pr: process.env.PREVIEW_PR,
-	sha: gitHead(),
+	url: codespaceSecret('CODESPACE_ENV_URL'),
+	user: codespaceSecret('CODESPACE_ENV_USER'),
+	password: codespaceSecret('CODESPACE_ENV_PASSWORD'),
+	pr: process.env.PREVIEW_PR
 });
 for (const warning of remoteWarnings) console.warn(warning);
 if (remoteEnv.length)

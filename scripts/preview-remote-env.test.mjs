@@ -69,13 +69,11 @@ describe('fetchRemoteEnv', () => {
 			user: 'bot',
 			password: PASSWORD,
 			pr: '1234',
-			sha: 'abc123',
 			fetchImpl,
 		});
 
 		const [{ url, init }] = fetchImpl.calls;
 		assert.equal(url.searchParams.get('pr'), '1234');
-		assert.equal(url.searchParams.get('sha'), 'abc123');
 		assert.equal(
 			init.headers.authorization,
 			`Basic ${Buffer.from(`bot:${PASSWORD}`).toString('base64')}`,
