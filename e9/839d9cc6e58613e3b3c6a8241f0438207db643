@@ -1,0 +1,30 @@
+packages/@n8n/agents/src/runtime/memory/observation-log-renderer.ts
+  s_1389ed5ff32164::t_51506bdd6f54e2 14-20,51-58,61-62,64-70,72-76,100-103,105-106
+  s_1389ed5ff32164::t_cc4915969681f4 63,71,77
+packages/@n8n/agents/src/runtime/memory/observation-log-defaults.ts
+  s_1389ed5ff32164::t_51506bdd6f54e2 5-9,525-526,528,530-536,540,557-572
+  s_1389ed5ff32164::t_bb6201fe8f733f 527,529
+  s_1389ed5ff32164::t_2cebe2a3e39b07 393,395,397,399-401,403,405,407,409-412,414,416,418,420,422,424,426,428,430,432,435,437,442,444,446,448,451-453,455,457-462,465,468-470,472,475-479,482,485-488,493-497,500
+packages/@n8n/agents/src/runtime/__tests__/observation-log-renderer.test.ts
+  s_1389ed5ff32164::t_bb6201fe8f733f 97-131,136-139,143-146,150-154,158-160,163-166,169-175,205-209
+  s_1389ed5ff32164::t_0ccf3688d1e618 75-96,132-135,140-142,147-149,155-157,161-162,167-168,176-204,210-216
+packages/@n8n/agents/src/runtime/__tests__/observation-log-reflector.test.ts
+  s_1389ed5ff32164::t_bb6201fe8f733f 65-102,104-111,114-119,131-132,149-154,164-171,176-181,185-195,201-203,207-211,215-216,219-220,225-227,232-235,237-240
+  s_1389ed5ff32164::t_0ccf3688d1e618 1,18,58,60-64,103,112-113,120-130,134-148,155-163,172-175,182-184,196-200,204-206,212-214,217-218,221-224,228-231,236
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "e9839d9cc6e58613e3b3c6a8241f0438207db643",
+  "prompts": {},
+  "sessions": {
+    "s_1389ed5ff32164": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0afb5-5cd8-7dd1-ab29-acad02c48f33",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
