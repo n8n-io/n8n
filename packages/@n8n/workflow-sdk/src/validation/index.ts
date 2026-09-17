@@ -23,6 +23,7 @@ export {
 
 export {
 	type IssueSeverity,
+	type ValidationScope,
 	isInformationalIssue,
 	partitionValidationIssues,
 } from './issue-severity';

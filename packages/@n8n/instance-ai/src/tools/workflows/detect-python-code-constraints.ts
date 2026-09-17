@@ -50,6 +50,7 @@ export function detectPythonCodeConstraints(json: WorkflowJSON): ValidationWarni
 
 		for (const issue of issues) {
 			warnings.push({
+				scope: 'node',
 				code: issue.code,
 				message: issue.message,
 				nodeName,

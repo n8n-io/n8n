@@ -101,6 +101,7 @@ export function detectSlackBlocksShape(json: WorkflowJSON): ValidationWarning[] 
 
 		if (messageType !== 'block') {
 			warnings.push({
+				scope: 'node',
 				code: 'SLACK_BLOCKS_NOT_SENT',
 				nodeName,
 				message:
@@ -113,6 +114,7 @@ export function detectSlackBlocksShape(json: WorkflowJSON): ValidationWarning[] 
 
 		if (resolved.kind === 'unparseable') {
 			warnings.push({
+				scope: 'node',
 				code: 'SLACK_BLOCKS_SHAPE_INVALID',
 				nodeName,
 				message:
@@ -126,6 +128,7 @@ export function detectSlackBlocksShape(json: WorkflowJSON): ValidationWarning[] 
 		const content = resolved.value;
 		if (!isRecord(content) || Array.isArray(content)) {
 			warnings.push({
+				scope: 'node',
 				code: 'SLACK_BLOCKS_SHAPE_INVALID',
 				nodeName,
 				message:
@@ -142,6 +145,7 @@ export function detectSlackBlocksShape(json: WorkflowJSON): ValidationWarning[] 
 
 		if (blocks === undefined) {
 			warnings.push({
+				scope: 'node',
 				code: 'SLACK_BLOCKS_SHAPE_INVALID',
 				nodeName,
 				message:
@@ -154,6 +158,7 @@ export function detectSlackBlocksShape(json: WorkflowJSON): ValidationWarning[] 
 
 		if (!Array.isArray(blocks)) {
 			warnings.push({
+				scope: 'node',
 				code: 'SLACK_BLOCKS_SHAPE_INVALID',
 				nodeName,
 				message:

@@ -1,3 +1,4 @@
+import type { ValidationScope } from '../../validation/issue-severity';
 /**
  * Plugin Architecture Types
  *
@@ -71,6 +72,8 @@ export interface ValidationIssue {
 	 * - `warning` — non-fatal for `valid`, blocks save / CLI exit
 	 * - `informational` — never blocks save / CLI exit
 	 */
+	/** Override the validator entry point when this finding checks workflow structure. */
+	readonly scope?: ValidationScope;
 	readonly severity: 'error' | 'warning' | 'informational';
 	/** Violation level for evaluation scoring (defaults to 'minor' if not set) */
 	readonly violationLevel?: 'critical' | 'major' | 'minor';
