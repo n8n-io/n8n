@@ -15,17 +15,12 @@ import { createModel } from '../model/model-factory';
 import { toTokenUsage } from '../streaming/stream';
 import { buildAiSdkTelemetry } from '../telemetry/telemetry-options';
 
-// The observer's fixed prompt is a few thousand tokens, so firing per tiny delta
-// is majority overhead. 8k keeps that overhead ratio acceptable while still firing
-// within a typical session instead of never. Hosts with their own tuning (e.g.
-// Instance AI) override this.
-export const DEFAULT_OBSERVATION_LOG_OBSERVER_THRESHOLD_TOKENS = 8_000;
+// Batch messages to reduce the observer's fixed prompt overhead.
+export const DEFAULT_OBSERVATION_LOG_OBSERVER_THRESHOLD_TOKENS = 50_000;
 export const DEFAULT_OBSERVATION_LOG_TAIL_LIMIT = 20;
-// With the observer batching ~8k-token deltas, 12k/13.5k keeps the reflector firing
-// ~10% before the render budget, so newer observations are never silently omitted
-// from rendering between compactions.
-export const DEFAULT_OBSERVATION_LOG_REFLECTOR_THRESHOLD_TOKENS = 12_000;
-export const DEFAULT_OBSERVATION_LOG_RENDER_TOKEN_BUDGET = 13_500;
+// Leave room for new observations while reflection runs.
+export const DEFAULT_OBSERVATION_LOG_REFLECTOR_THRESHOLD_TOKENS = 60_000;
+export const DEFAULT_OBSERVATION_LOG_RENDER_TOKEN_BUDGET = 67_500;
 export const DEFAULT_OBSERVATION_LOG_LOCK_TTL_MS = 30_000;
 
 export const DEFAULT_OBSERVATION_LOG_OBSERVER_PROMPT = `You are observing a conversation between a user and an agent. Extract durable observations about what happened, what was decided, what changed, and what needs follow-up. The agent will read your observations on later turns as its memory of this conversation.
