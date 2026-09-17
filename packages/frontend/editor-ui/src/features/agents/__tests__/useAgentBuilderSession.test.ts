@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { nextTick, reactive, ref } from 'vue';
+import { effectScope, nextTick, reactive, ref } from 'vue';
 
 import { MODAL_CANCEL, MODAL_CONFIRM } from '@/app/constants/modals';
 
@@ -337,5 +337,27 @@ describe('useAgentBuilderSession', () => {
 		await expect(deletionResult).resolves.toBe(false);
 		expect(showMessage).not.toHaveBeenCalled();
 		expect(showError).not.toHaveBeenCalled();
+	});
+
+	it('ignores delete completion after its owner is disposed', async () => {
+		const deletion = Promise.withResolvers<void>();
+		sessionsStore.deleteThread.mockReturnValueOnce(deletion.promise);
+		const scope = effectScope();
+		const scopedSession = scope.run(() => createSession());
+		if (!scopedSession) throw new Error('Expected effect scope to run');
+		const { session } = scopedSession;
+		session.onSessionPick('thread-1');
+
+		const deletionResult = session.deleteSession('thread-1');
+		await vi.waitFor(() => {
+			expect(sessionsStore.deleteThread).toHaveBeenCalledTimes(1);
+		});
+		scope.stop();
+		deletion.resolve();
+
+		await expect(deletionResult).resolves.toBe(false);
+		expect(showMessage).not.toHaveBeenCalled();
+		expect(showError).not.toHaveBeenCalled();
+		expect(session.effectiveSessionId.value).toBe('thread-1');
 	});
 });

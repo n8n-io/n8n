@@ -19,6 +19,7 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 
 describe('AgentSessionHistoryDropdown', () => {
 	it('shows loading instead of the empty state while sessions load', async () => {
+		storeState.loading = true;
 		const renderComponent = createComponentRenderer(AgentSessionHistoryDropdown);
 		const result = renderComponent({
 			props: { sessionOptions: [] },

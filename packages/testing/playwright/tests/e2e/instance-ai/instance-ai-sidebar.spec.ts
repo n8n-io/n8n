@@ -47,6 +47,9 @@ test.describe(
 			);
 			await n8n.instanceAi.waitForResponseComplete();
 			await expect(n8n.page).toHaveURL(/\/assistant\/[^/]+$/);
+			const firstThreadId = n8n.instanceAi.getCurrentThreadId();
+			const firstThreadTitle = `First switch thread ${firstThreadId}`;
+			await n8n.api.renameInstanceAiThread(firstThreadId, firstThreadTitle);
 
 			// Create second thread
 			await n8n.instanceAi.getNewThreadButton().click();
@@ -57,9 +60,11 @@ test.describe(
 				'For this thread switch test, reply with exactly: second thread ready',
 			);
 			await n8n.instanceAi.waitForResponseComplete();
+			const secondThreadId = n8n.instanceAi.getCurrentThreadId();
+			await n8n.instanceAi.gotoThread(secondThreadId);
 
 			await n8n.instanceAi.openSidebar();
-			const firstThread = n8n.instanceAi.sidebar.getThreadByTitle('exactly: first');
+			const firstThread = n8n.instanceAi.sidebar.getThreadByTitle(firstThreadTitle);
 			await expect(firstThread).toBeVisible({ timeout: 10_000 });
 			await firstThread.click();
 

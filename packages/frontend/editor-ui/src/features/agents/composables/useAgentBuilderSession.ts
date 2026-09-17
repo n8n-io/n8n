@@ -1,4 +1,4 @@
-import { computed, ref, watch, type Ref } from 'vue';
+import { computed, getCurrentScope, onScopeDispose, ref, watch, type Ref } from 'vue';
 import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { truncate } from '@n8n/utils/string/truncate';
@@ -54,6 +54,8 @@ export function useAgentBuilderSession({
 	const toast = useToast();
 	const sessionsStore = useAgentSessionsStore();
 	const threadTitleOf = useThreadTitle();
+	let isDisposed = false;
+	if (getCurrentScope()) onScopeDispose(() => (isDisposed = true));
 
 	const activeChatSessionId = ref<string | null>(null);
 	const isDeletingSession = ref(false);
@@ -172,12 +174,12 @@ export function useAgentBuilderSession({
 	}
 
 	async function deleteSession(sessionId: string): Promise<boolean> {
-		if (isDeletingSession.value || !sessionId) return false;
+		if (isDisposed || isDeletingSession.value || !sessionId) return false;
 		const targetProjectId = projectId.value;
 		const targetAgentId = agentId.value;
 		if (!targetProjectId || !targetAgentId) return false;
 		const isTargetCurrent = () =>
-			projectId.value === targetProjectId && agentId.value === targetAgentId;
+			!isDisposed && projectId.value === targetProjectId && agentId.value === targetAgentId;
 
 		isDeletingSession.value = true;
 		try {

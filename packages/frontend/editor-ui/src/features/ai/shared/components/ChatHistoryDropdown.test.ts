@@ -46,7 +46,7 @@ function item(id: string, daysAgo: number, hour?: number): TestItem {
 const dropdownStub = {
 	name: 'N8nDropdownMenu',
 	template:
-		'<div><slot name="trigger" /><div v-for="item in items" :key="item.id"><slot v-if="!item.header" name="item-label" :item="item" :ui="{ class: \'item-label\' }" /><slot v-if="!item.header" name="item-trailing" :item="item" :ui="{ class: \'item-trailing\' }" /></div></div>',
+		'<div><slot name="trigger" /><div v-for="item in items" :key="item.id" @click="!item.disabled && $emit(\'select\', item.id)"><slot v-if="!item.header" name="item-label" :item="item" :ui="{ class: \'item-label\' }" /><slot v-if="!item.header" name="item-trailing" :item="item" :ui="{ class: \'item-trailing\' }" /></div></div>',
 	props: {
 		items: { type: Array, default: () => [] },
 		modelValue: Boolean,
@@ -62,6 +62,7 @@ const dropdownStub = {
 		extraPopperClass: String,
 	},
 	emits: ['update:modelValue', 'search', 'select'],
+	methods: { close: vi.fn() },
 };
 
 const textStub = {
@@ -70,13 +71,14 @@ const textStub = {
 	props: ['size', 'color'],
 };
 
-function mountHistory(items: TestItem[]) {
+function mountHistory(items: TestItem[], itemDoubleClickEnabled = false) {
 	return mount(ChatHistoryDropdown, {
 		props: {
 			items,
 			searchPlaceholder: 'Search history',
 			contentTestId: 'chat-history-list',
 			actionButtonLabel: 'Conversation actions',
+			itemDoubleClickEnabled,
 		},
 		slots: { trigger: '<button>History</button>' },
 		global: {
@@ -141,6 +143,32 @@ describe('ChatHistoryDropdown', () => {
 			'group-This week',
 			'week',
 		]);
+	});
+
+	it('delays selection only while waiting for a possible double-click', async () => {
+		vi.useFakeTimers();
+		try {
+			const immediate = mountHistory([item('immediate', 0)]);
+			await immediate.getComponent({ name: 'N8nText' }).trigger('click');
+			expect(immediate.emitted('select')).toEqual([['immediate']]);
+
+			const deferred = mountHistory([item('deferred', 0)], true);
+			const label = deferred.getComponent({ name: 'N8nText' });
+			await label.trigger('click');
+			expect(deferred.emitted('select')).toBeUndefined();
+
+			await vi.advanceTimersByTimeAsync(300);
+			expect(deferred.emitted('select')).toEqual([['deferred']]);
+
+			await label.trigger('click');
+			await label.trigger('dblclick');
+			await vi.advanceTimersByTimeAsync(300);
+
+			expect(deferred.emitted('select')).toEqual([['deferred']]);
+			expect(deferred.emitted('item-dblclick')).toEqual([['deferred']]);
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	it('keeps nested actions interactive and lets Tab leave after the last action', async () => {
