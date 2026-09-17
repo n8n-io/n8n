@@ -56,6 +56,7 @@ import {
 	MCP_CREATE_AGENT_TOOL_NAME,
 	MCP_GET_USER_PREFERENCES_TOOL_NAME,
 	MCP_PREVIEW_RENDER_REQUESTED_EVENT,
+	USER_CALLED_MCP_TOOL_EVENT,
 } from './mcp.constants';
 import { getAllowedToolNames } from './mcp-scopes';
 import { areAgentToolsAvailable } from './mcp-tool-availability';
@@ -81,6 +82,14 @@ import {
 } from './tools/data-table';
 import { createExecuteWorkflowTool } from './tools/execute-workflow.tool';
 import { createGetExecutionTool } from './tools/get-execution.tool';
+import {
+	createGetInstanceContextTool,
+	GET_INSTANCE_CONTEXT_TOOL_NAME,
+	instanceContextText,
+	INSTANCE_CONTEXT_RESOURCE_DESCRIPTION,
+	INSTANCE_CONTEXT_RESOURCE_URI,
+	readInstanceContext,
+} from './tools/get-instance-context.tool';
 import { createGetNodeUsageTool } from './tools/get-node-usage.tool';
 import { createGetUserPreferencesTool } from './tools/get-user-preferences.tool';
 import { createWorkflowDetailsTool } from './tools/get-workflow-details.tool';
@@ -136,7 +145,10 @@ export type McpAppsResolution = {
 /** Per-user resolution of every PostHog-gated MCP feature. */
 export type McpFeatureFlags = {
 	mcpApps: McpAppsResolution;
-	/** The instance-context read surface: the activity tools and node-usage. */
+	/**
+	 * The instance-context read surface: the four tools, the `n8n://instance/context` resource,
+	 * and the sentence in the instructions that points a client at them.
+	 */
 	instanceContextEnabled: boolean;
 	/** The `get_user_preferences` tool. */
 	aiPreferencesEnabled: boolean;
@@ -434,9 +446,11 @@ export class McpService {
 		// the agent tools gets no agent build walkthrough.
 		const agentInstructionsEnabled =
 			agentsEnabled && (allowedToolNames?.has(MCP_CREATE_AGENT_TOOL_NAME) ?? true);
-		// Same rationale again: never point a caller at a tool it cannot see. Gates the sentence
-		// only; registration below goes through `registerIfAllowed` like every other tool. No
-		// RBAC check: a user's own preferences need no scope.
+		// Same rationale again: a grant that cannot reach the instance-context tools is not told
+		// to start by calling them, and does not get the resource that carries the same data.
+		const contextToolsAllowed = allowedToolNames?.has(GET_INSTANCE_CONTEXT_TOOL_NAME) ?? true;
+		// Gates the sentence only; registration below goes through `registerIfAllowed` like every
+		// other tool. No RBAC check: a user's own preferences need no scope.
 		const userPreferencesInstructionsEnabled =
 			featureFlags.aiPreferencesEnabled &&
 			(allowedToolNames?.has(MCP_GET_USER_PREFERENCES_TOOL_NAME) ?? true);
@@ -447,6 +461,10 @@ export class McpService {
 			},
 			{
 				instructions: getMcpInstructions({
+					isInstanceContextEnabled:
+						featureFlags.instanceContextEnabled &&
+						this.moduleRegistry.isActive('instance-ai') &&
+						contextToolsAllowed,
 					isBuilderEnabled: builderInstructionsEnabled,
 					isN8nConnectAvailable: n8nConnectAvailable,
 					isAgentsEnabled: agentInstructionsEnabled,
@@ -607,6 +625,9 @@ export class McpService {
 			// permission, so the reader treats it as one half of the credential gate and resolves the
 			// caller's real access for the other half.
 			const credentialGranted = allowedToolNames?.has('list_credentials') ?? true;
+			// Same shape, for the run leg: it ships run counts and the id of the last failure, and
+			// every other execution read here sits behind `execution:read`.
+			const executionGranted = allowedToolNames?.has('get_workflow_execution') ?? true;
 
 			// The two activity tools also need the log to be *written*. `N8N_ACTIVITY_LOG_ENABLED`
 			// is off by default, and a tool that answers from a store nothing writes to reports an
@@ -626,11 +647,65 @@ export class McpService {
 				registerIfAllowed(
 					createGetInstanceActivityTool(user, instanceContext, this.telemetry, {
 						credentialGranted,
+						executionGranted,
 					}),
 				);
 				registerIfAllowed(
 					createExpandInstanceActivityTool(user, instanceContext, this.telemetry, {
 						credentialGranted,
+						executionGranted,
+					}),
+				);
+
+				// The opening context, offered three ways because an MCP client has no turn to have
+				// it injected into: a resource for clients that read resources, a tool for the rest,
+				// and a line in the server instructions naming both.
+				//
+				// The resource carries the same instance data as the tool, so it follows the same
+				// scope gate — `registerResource` does no filtering of its own, and the resources
+				// that predate this one are static documents that needed none. Mirrors
+				// `McpAgentToolsService`, which gates its reference resource on its reference tool.
+				if (contextToolsAllowed) {
+					registerResource({
+						name: 'instance-context',
+						uri: INSTANCE_CONTEXT_RESOURCE_URI,
+						config: {
+							description: INSTANCE_CONTEXT_RESOURCE_DESCRIPTION,
+							mimeType: 'text/plain',
+							// Per-user data: never cache it across callers. The SDK defaults to this
+							// today, so this states the requirement rather than changing behaviour.
+							cacheHint: { ttlMs: 0, cacheScope: 'private' },
+						},
+						read: async () => {
+							// The tool beside this emits `USER_CALLED_MCP_TOOL_EVENT`; without the same
+							// event here the resource is invisible, and it is the path the instructions
+							// send resource-reading clients to first. Same event with the surface on it
+							// beats a second event name.
+							const read = await readInstanceContext(user, instanceContext, {
+								executionGranted,
+							});
+							this.telemetry.track(USER_CALLED_MCP_TOOL_EVENT, {
+								user_id: user.id,
+								tool_name: GET_INSTANCE_CONTEXT_TOOL_NAME,
+								parameters: { surface: 'resource' },
+								results: { success: true, data: { outcome: read.kind } },
+							});
+
+							return {
+								contents: [
+									{
+										uri: INSTANCE_CONTEXT_RESOURCE_URI,
+										mimeType: 'text/plain',
+										text: instanceContextText(read),
+									},
+								],
+							};
+						},
+					});
+				}
+				registerIfAllowed(
+					createGetInstanceContextTool(user, instanceContext, this.telemetry, {
+						executionGranted,
 					}),
 				);
 			}

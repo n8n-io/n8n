@@ -53,7 +53,7 @@ import {
 	updateFromAIOverrideValues,
 	type FromAIOverride,
 } from '../../utils/fromAIOverride.utils';
-import { completeExpressionSyntax } from '@/app/utils/expressions';
+import { completeExpressionSyntax, shouldConvertToExpression } from '@/app/utils/expressions';
 import { openSafeUrl } from '@/app/utils/htmlUtils';
 import { DEBOUNCE_TIME, ExpressionLocalResolveContextSymbol } from '@/app/constants';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -748,7 +748,9 @@ function onInputChange(value: INodeParameterResourceLocator['value']): void {
 			params.cachedResultUrl = resource.url;
 		}
 	} else {
-		params.value = completeExpressionSyntax(value);
+		// A literal `{{ }}` is never a valid id or url, so a pasted expression
+		// always switches to expression mode, even when it replaces a stored value.
+		params.value = shouldConvertToExpression(value) ? '=' + value : completeExpressionSyntax(value);
 	}
 	emit('update:modelValue', params);
 }
