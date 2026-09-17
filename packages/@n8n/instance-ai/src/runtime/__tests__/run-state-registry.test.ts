@@ -102,6 +102,12 @@ describe('RunStateRegistry', () => {
 		expect(registry.getObserverThresholdTokens('thread-1')).toBeUndefined();
 	});
 
+	it('drops every observer threshold override on shutdown', () => {
+		registry.setObserverThresholdTokens('thread-1', 8000);
+		registry.shutdown();
+		expect(registry.getObserverThresholdTokens('thread-1')).toBeUndefined();
+	});
+
 	it('retains the selected prompt version and metadata until the next explicit selection', () => {
 		const metadata = {
 			version: 'progressive@1',

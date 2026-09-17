@@ -50,6 +50,7 @@ import {
 	Query,
 } from '@n8n/decorators';
 import type { StoredEvent } from '@n8n/instance-ai';
+import { hasGlobalScope } from '@n8n/permissions';
 import {
 	buildAgentTreeFromEvents,
 	clearedAgentBuilderTargetMetadata,
@@ -222,6 +223,15 @@ export class InstanceAiController {
 		// One active run per thread
 		if (this.instanceAiService.hasActiveRun(threadId)) {
 			throw new ConflictError('A run is already active for this thread');
+		}
+
+		// The override is an eval knob. It changes how often the observer runs, so a
+		// plain chat caller must not be able to set it.
+		if (
+			payload.observerThresholdTokens !== undefined &&
+			!hasGlobalScope(req.user, 'instanceAi:eval')
+		) {
+			throw new ForbiddenError('observerThresholdTokens requires the instanceAi:eval scope');
 		}
 
 		const runId = this.instanceAiService.startRun(
@@ -1062,6 +1072,23 @@ export class InstanceAiController {
 	 * cleared with the thread's state, so pins for never-created threads would
 	 * be uncollectable.
 	 */
+	@Post('/eval/thread-credential-allowlist')
+	@GlobalScope('instanceAi:eval')
+	async setThreadCredentialAllowlist(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: InstanceAiEvalCredentialAllowlistRequest,
+	) {
+		this.requireInstanceAiEnabled();
+		await this.assertThreadAccess(req.user.id, payload.threadId);
+		this.evalCredentialAllowlists.set(
+			payload.threadId,
+			payload.credentialIds,
+			payload.bypassCredentialTest,
+		);
+		return { ok: true };
+	}
+
 	/**
 	 * Observational memory for a thread, for a context eval to assert on.
 	 *
@@ -1079,23 +1106,6 @@ export class InstanceAiController {
 		this.requireInstanceAiEnabled();
 		await this.assertThreadAccess(req.user.id, threadId);
 		return await this.instanceAiService.getThreadMemory(threadId);
-	}
-
-	@Post('/eval/thread-credential-allowlist')
-	@GlobalScope('instanceAi:eval')
-	async setThreadCredentialAllowlist(
-		req: AuthenticatedRequest,
-		_res: Response,
-		@Body payload: InstanceAiEvalCredentialAllowlistRequest,
-	) {
-		this.requireInstanceAiEnabled();
-		await this.assertThreadAccess(req.user.id, payload.threadId);
-		this.evalCredentialAllowlists.set(
-			payload.threadId,
-			payload.credentialIds,
-			payload.bypassCredentialTest,
-		);
-		return { ok: true };
 	}
 
 	/**
