@@ -1,5 +1,11 @@
 import type { Logger } from '@n8n/backend-common';
-import type { ExecutionResponse, ExecutionResponseSender, UndeliverableMessage } from '@n8n/engine';
+import type {
+	ExecutionResponse,
+	ExecutionResponseSender,
+	JsonValue,
+	ResponseEmitter,
+	UndeliverableMessage,
+} from '@n8n/engine';
 import { toResult } from '@n8n/utils/result';
 
 import type { InMemoryExecutionResponseChannel } from './in-memory-execution-response-channel';
@@ -20,6 +26,13 @@ export class InMemoryExecutionResponseSender implements ExecutionResponseSender 
 		if (this.stopped) return;
 
 		this.channel.publish(response.executionId, this.toFrame(response));
+	}
+
+	/** Gives one step a response sender without exposing execution routing. */
+	emitterFor(executionId: string): ResponseEmitter {
+		return {
+			send: (payload: JsonValue) => this.send({ type: 'response', executionId, payload }),
+		};
 	}
 
 	async stop(): Promise<void> {

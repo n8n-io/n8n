@@ -1,5 +1,6 @@
 import type { z } from 'zod';
 
+import type { JsonValue } from '../common';
 import type { executionResponseSchema } from './execution-response.schema';
 
 /**
@@ -28,3 +29,17 @@ export type UndeliverableMessage = Extract<ExecutionResponse, { type: 'undeliver
  * to look further.
  */
 export type EndedMessage = Extract<ExecutionResponse, { type: 'ended' }>;
+
+/** The one answer the caller waits for, produced while the run is still going. */
+export type ResponseMessage = Extract<ExecutionResponse, { type: 'response' }>;
+
+/**
+ * One step's view of the channel. The channel fills in the execution id, so a
+ * step executor carries no routing state.
+ */
+export interface ResponseEmitter {
+	send(payload: JsonValue): void;
+}
+
+/** For a step whose responses nobody wants. */
+export const noopResponseEmitter: ResponseEmitter = Object.freeze({ send: () => {} });
