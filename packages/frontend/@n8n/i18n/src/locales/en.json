@@ -3751,7 +3751,7 @@
 	"settings.promotions.promote.dialog.commitMessage.placeholder": "Describe this promotion",
 	"settings.promotions.promote.dialog.confirm": "Promote",
 	"settings.promotions.promote.toast.success.title": "Instance promoted",
-	"settings.promotions.promote.toast.success.message": "Pushed to {branch}. {workflows} workflows and {credentials} credentials.",
+	"settings.promotions.promote.toast.success.message": "Pushed to {branch}.",
 	"settings.promotions.promote.toast.error": "Couldn't promote the instance",
 	"settings.promotions.promote.notConnected": "Connect the promote branch in the instance connection below before you promote.",
 	"settings.promotions.providers.title": "Git providers",

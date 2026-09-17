@@ -74,8 +74,6 @@ async function submit() {
 			message: i18n.baseText('settings.promotions.promote.toast.success.message', {
 				interpolate: {
 					branch: result.git.branchName,
-					workflows: result.counts.workflows,
-					credentials: result.counts.credentials,
 				},
 			}),
 			type: 'success',
