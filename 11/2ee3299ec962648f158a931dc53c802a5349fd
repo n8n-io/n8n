@@ -1,9 +1,9 @@
-packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
-  s_45e2f6fac3868c::t_5a6467ee0e136e 2943,2958,3007
-  ai_agent 669,805
 packages/@n8n/instance-ai/docs/configuration.md
   s_45e2f6fac3868c::t_02149a6e41f213 115,117-121
   s_45e2f6fac3868c::t_8e54e43c08ae6e 188-194
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_45e2f6fac3868c::t_5a6467ee0e136e 2943,2958,3007
+  ai_agent 669,805
 ---
 {
   "schema_version": "authorship/3.0.0",
