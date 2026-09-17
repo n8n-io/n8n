@@ -568,7 +568,11 @@ export type {
 	ResumableStreamSource,
 	TraceStatus,
 } from './runtime/resumable-stream-executor';
-export type { WorkSummary, ToolCallSummary } from './stream/work-summary-accumulator';
+export {
+	WorkSummaryAccumulator,
+	type WorkSummary,
+	type ToolCallSummary,
+} from './stream/work-summary-accumulator';
 export {
 	deriveInstanceContextReach,
 	mergeInstanceContextReach,

@@ -101,6 +101,7 @@ import {
 	type ConfirmationData,
 	type DomainAccessTracker,
 	type InstanceAiContext,
+	type InstanceAiEventBus,
 	type ManagedBackgroundTask,
 	type McpServerConfig,
 	type ModelConfig,
@@ -114,6 +115,7 @@ import {
 	type OrchestratorRunHandoffState,
 	type OrchestratorRunStopSignal,
 	type ServiceProxyConfig,
+	type StreamRunResult,
 	type SuspendedRunState,
 	type SuspensionInfo,
 	type WorkflowBuildOutcome,
@@ -123,6 +125,7 @@ import {
 	type WorkflowTaskService,
 	type WorkflowVerificationObligation,
 	type WorkSummary,
+	WorkSummaryAccumulator,
 	deriveInstanceContextReach,
 	mergeInstanceContextReach,
 	type RunTokenUsage,
@@ -3768,6 +3771,11 @@ export class InstanceAiService {
 		let turnHadFileAttachments = false;
 		const turnStartedAt = new Date();
 		let errorReporterExecutionToken: symbol | undefined;
+		let contextTurn: InstanceContextTurnBinding | undefined;
+		let contextResult: StreamRunResult | undefined;
+		let contextSegmentReported = false;
+		const observedContextWork = new WorkSummaryAccumulator();
+		const contextEventBus = this.observeInstanceContextEvents(observedContextWork);
 
 		try {
 			errorReporterExecutionToken = this.instanceAiErrorReporter.beginRun(runId);
@@ -4102,7 +4110,7 @@ export class InstanceAiService {
 
 			// Share the same injection summary with trace and telemetry.
 			const contextInjection = toContextInjection(instanceContext);
-			const contextTurn: InstanceContextTurnBinding = {
+			contextTurn = {
 				userId: user.id,
 				threadId,
 				runId,
@@ -4318,7 +4326,7 @@ export class InstanceAiService {
 							runId,
 							agentId: orchestratorAgentId(runId),
 							signal,
-							eventBus: this.eventBus,
+							eventBus: contextEventBus,
 							logger: this.logger,
 							onActivity: () => this.runState.touchActiveRun(threadId),
 							stopSignal,
@@ -4329,11 +4337,12 @@ export class InstanceAiService {
 						runId,
 						agentId: orchestratorAgentId(runId),
 						signal,
-						eventBus: this.eventBus,
+						eventBus: contextEventBus,
 						logger: this.logger,
 						onActivity: () => this.runState.touchActiveRun(threadId),
 						stopSignal,
 					});
+			contextResult = result;
 			if (result.status === 'suspended') {
 				// finalizeRun only fires on terminal outcomes; record suspended-segment usage here.
 				this.emitRunMetrics(threadId, 'suspended', {
@@ -4343,6 +4352,7 @@ export class InstanceAiService {
 				});
 				// Record the question even if the user never resumes the turn.
 				const suspendedReach = deriveInstanceContextReach(result.workSummary?.toolCalls ?? []);
+				contextSegmentReported = true;
 				this.emitInstanceContextTurn(contextTurn, {
 					segment: 'suspended',
 					status: 'suspended',
@@ -4565,6 +4575,7 @@ export class InstanceAiService {
 				this.backgroundTasks.getRunningTasks(threadId).length,
 			);
 			const contextReach = deriveInstanceContextReach(result.workSummary?.toolCalls ?? []);
+			contextSegmentReported = true;
 			this.emitInstanceContextTurn(contextTurn, {
 				segment: 'whole',
 				status: result.status,
@@ -4615,16 +4626,26 @@ export class InstanceAiService {
 				});
 			}
 		} catch (error) {
+			// Shutdown keeps the pending card. Do not finalize its segment here.
+			if (signal.aborted && this.shouldPreserveHitlOnShutdown(runId)) return;
+
+			const contextWork = contextResult
+				? contextResult.workSummary
+				: observedContextWork.toSummary();
+			const contextReach = contextTurn
+				? deriveInstanceContextReach(contextWork?.toolCalls ?? [])
+				: undefined;
+			if (contextTurn && contextReach && !contextSegmentReported) {
+				contextSegmentReported = true;
+				this.emitInstanceContextTurn(contextTurn, {
+					segment: 'whole',
+					status: signal.aborted ? 'cancelled' : 'errored',
+					reach: contextReach,
+					workSummary: contextWork,
+					usage: contextResult?.usage,
+				});
+			}
 			if (signal.aborted) {
-				// Shutdown asked us to preserve the HITL card on disk: the
-				// service has already finalised tracing and the per-run DB
-				// rows (pending_confirmation, snapshot) are the durable
-				// signal. Emitting the terminal-fallback text + run-finish
-				// here would clobber the plan/ask snapshot the user expects
-				// to see on reload, so just bail out.
-				if (this.shouldPreserveHitlOnShutdown(runId)) {
-					return;
-				}
 				if (!streamReached) {
 					await this.persistInterruptedUserMessage(threadId, user.id, message, turnStartedAt);
 				}
@@ -4665,7 +4686,7 @@ export class InstanceAiService {
 					cancellationReason,
 					archivedWorkflowIds,
 					user.id,
-					{ promptVersion, ...(modelId !== undefined ? { modelId } : {}) },
+					{ promptVersion, contextReach, ...(modelId !== undefined ? { modelId } : {}) },
 				);
 				return;
 			}
@@ -4742,6 +4763,7 @@ export class InstanceAiService {
 					errorMessage,
 					errorSource: 'exception',
 					promptVersion,
+					contextReach,
 					...(modelId !== undefined ? { modelId } : {}),
 				},
 			);
@@ -5561,6 +5583,11 @@ export class InstanceAiService {
 		let resumeClaimed = false;
 		let resumeTraceRegistered = false;
 		let errorReporterExecutionToken: symbol | undefined;
+		const contextTurn = this.instanceContextTurnBinding(opts);
+		let contextResult: StreamRunResult | undefined;
+		let contextSegmentReported = false;
+		const observedContextWork = new WorkSummaryAccumulator();
+		const contextEventBus = this.observeInstanceContextEvents(observedContextWork);
 		/**
 		 * Set once the model run has yielded output. The catch below also wraps
 		 * post-result finalization, so without this a finalization failure after a
@@ -5635,7 +5662,7 @@ export class InstanceAiService {
 							runId: opts.runId,
 							agentId: orchestratorAgentId(opts.runId),
 							signal: opts.signal,
-							eventBus: this.eventBus,
+							eventBus: contextEventBus,
 							logger: this.logger,
 							agentRunId: opts.agentRunId,
 							onActivity: () => this.runState.touchActiveRun(opts.threadId),
@@ -5647,12 +5674,13 @@ export class InstanceAiService {
 						runId: opts.runId,
 						agentId: orchestratorAgentId(opts.runId),
 						signal: opts.signal,
-						eventBus: this.eventBus,
+						eventBus: contextEventBus,
 						logger: this.logger,
 						agentRunId: opts.agentRunId,
 						onActivity: () => this.runState.touchActiveRun(opts.threadId),
 						stopSignal,
 					});
+			contextResult = result;
 			if (!resumeClaimed) {
 				skipPostRunCleanup = true;
 				const claimError = result.error ?? new Error('Resume checkpoint claim did not complete');
@@ -5672,9 +5700,9 @@ export class InstanceAiService {
 					opts.instanceContext?.reachSoFar,
 					resumedSegmentReach,
 				);
-				const resumedTurn = this.instanceContextTurnBinding(opts);
-				if (resumedTurn) {
-					this.emitInstanceContextTurn(resumedTurn, {
+				if (contextTurn) {
+					contextSegmentReported = true;
+					this.emitInstanceContextTurn(contextTurn, {
 						segment: 'suspended',
 						status: 'suspended',
 						reach: resumedSegmentReach,
@@ -5902,9 +5930,9 @@ export class InstanceAiService {
 				opts.instanceContext?.reachSoFar,
 				resumedSegmentReach,
 			);
-			const resumedTurn = this.instanceContextTurnBinding(opts);
-			if (resumedTurn) {
-				this.emitInstanceContextTurn(resumedTurn, {
+			if (contextTurn) {
+				contextSegmentReported = true;
+				this.emitInstanceContextTurn(contextTurn, {
 					segment: 'resumed',
 					status: result.status,
 					reach: resumedSegmentReach,
@@ -5966,10 +5994,26 @@ export class InstanceAiService {
 				return;
 			}
 
+			if (opts.signal.aborted && this.shouldPreserveHitlOnShutdown(opts.runId)) return;
+
+			const contextWork = contextResult
+				? contextResult.workSummary
+				: observedContextWork.toSummary();
+			const segmentReach = deriveInstanceContextReach(contextWork?.toolCalls ?? []);
+			const contextReach = contextTurn
+				? mergeInstanceContextReach(opts.instanceContext?.reachSoFar, segmentReach)
+				: undefined;
+			if (contextTurn && !contextSegmentReported) {
+				contextSegmentReported = true;
+				this.emitInstanceContextTurn(contextTurn, {
+					segment: 'resumed',
+					status: opts.signal.aborted ? 'cancelled' : 'errored',
+					reach: segmentReach,
+					workSummary: contextWork,
+					usage: contextResult?.usage,
+				});
+			}
 			if (opts.signal.aborted) {
-				if (this.shouldPreserveHitlOnShutdown(opts.runId)) {
-					return;
-				}
 				const messageGroupId = this.tracing.getMessageGroupId(opts.runId);
 				const runTimeout = this.liveness.consumeRunTimeout(opts.runId);
 				const cancellationReason = runTimeout.timedOut
@@ -6012,7 +6056,11 @@ export class InstanceAiService {
 					cancellationReason,
 					archivedWorkflowIds,
 					opts.user.id,
-					{ promptVersion, ...(opts.modelId !== undefined ? { modelId: opts.modelId } : {}) },
+					{
+						promptVersion,
+						contextReach,
+						...(opts.modelId !== undefined ? { modelId: opts.modelId } : {}),
+					},
 				);
 				return;
 			}
@@ -6092,6 +6140,7 @@ export class InstanceAiService {
 					errorMessage,
 					errorSource: 'exception',
 					promptVersion,
+					contextReach,
 					...(opts.modelId !== undefined ? { modelId: opts.modelId } : {}),
 				},
 			);
@@ -6746,6 +6795,16 @@ export class InstanceAiService {
 		};
 	}
 
+	private observeInstanceContextEvents(workSummary: WorkSummaryAccumulator): InstanceAiEventBus {
+		return {
+			publish: (threadId, event) => {
+				workSummary.observe(event);
+				this.eventBus.publish(threadId, event);
+			},
+			subscribe: (threadId, handler) => this.eventBus.subscribe(threadId, handler),
+		};
+	}
+
 	private emitInstanceContextTurn(
 		turn: InstanceContextTurnBinding,
 		input: {
@@ -6763,6 +6822,7 @@ export class InstanceAiService {
 			user_id: turn.userId,
 			thread_id: turn.threadId,
 			run_id: turn.runId,
+			surface: 'aia',
 			segment: input.segment,
 			instance_context_enabled: turn.instanceContextEnabled,
 			node_usage_enabled: turn.nodeUsageEnabled,

@@ -31,14 +31,14 @@ function legSummary(i18n: I18n, entry: InstanceContextEntry): string {
 		);
 	}
 
-	return parts.join(', ');
+	return parts.join(i18n.baseText('aiAssistant.instanceContext.trace.listSeparator'));
 }
 
 /** Name each surface so readers do not need the depth scale. */
 function reachSummary(i18n: I18n, entry: InstanceContextEntry): string {
 	return (entry.reach?.surfaces ?? [])
 		.map((surface) => i18n.baseText(`aiAssistant.instanceContext.trace.surface.${surface}`))
-		.join(', ');
+		.join(i18n.baseText('aiAssistant.instanceContext.trace.listSeparator'));
 }
 
 /** Share the label with the collapsed trace. */
@@ -46,22 +46,30 @@ export function useInstanceContextLabel() {
 	const i18n = useI18n();
 
 	function getInstanceContextLabel(entry: InstanceContextEntry): string {
+		let head: string;
 		// A turn can read activity even when its opening block is empty.
 		if (entry.injection.state === 'absent') {
 			// Keep failed reads distinct from empty results.
-			const head =
+			head =
 				entry.injection.reason === 'failed'
 					? i18n.baseText('aiAssistant.instanceContext.trace.failed')
 					: i18n.baseText('aiAssistant.instanceContext.trace.none');
-
-			return [head, reachSummary(i18n, entry)].filter(Boolean).join(' — ');
+		} else {
+			head = entry.injection.isUpdate
+				? i18n.baseText('aiAssistant.instanceContext.trace.readUpdate')
+				: i18n.baseText('aiAssistant.instanceContext.trace.read');
 		}
 
-		const head = entry.injection.isUpdate
-			? i18n.baseText('aiAssistant.instanceContext.trace.readUpdate')
-			: i18n.baseText('aiAssistant.instanceContext.trace.read');
-
-		return [head, legSummary(i18n, entry), reachSummary(i18n, entry)].filter(Boolean).join(' — ');
+		const legs = legSummary(i18n, entry);
+		const summary = legs
+			? i18n.baseText('aiAssistant.instanceContext.trace.withLegs', { interpolate: { head, legs } })
+			: head;
+		const reach = reachSummary(i18n, entry);
+		return reach
+			? i18n.baseText('aiAssistant.instanceContext.trace.withReach', {
+					interpolate: { summary, reach },
+				})
+			: summary;
 	}
 
 	return { getInstanceContextLabel };

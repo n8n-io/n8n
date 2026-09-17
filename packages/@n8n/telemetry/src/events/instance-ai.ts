@@ -1,5 +1,6 @@
 import {
 	INSTANCE_AI_PREFILL_TYPES,
+	instanceContextAbsenceReasonSchema,
 	instanceContextSurfaceSchema,
 	INSTANCE_AI_PREFILL_TYPE_FALLBACK,
 	INSTANCE_AI_THREAD_SOURCES,
@@ -8,6 +9,7 @@ import {
 import { z } from 'zod/v4';
 
 import { defineTelemetryEvents } from '../define';
+import { assistantSurfaceSchema } from '../schemas';
 
 /**
  * How each n8n Assistant setup component is configured. Source (who set it) and
@@ -417,6 +419,7 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 		description:
 			'One context result per turn segment, including turns without a block. Group by run_id. Count distinct runs, sum segment tokens, and count a question if any segment asked one.',
 		properties: z.object({
+			surface: assistantSurfaceSchema,
 			user_id: z.string(),
 			thread_id: z.string().optional(),
 			run_id: z.string().describe('Turn ID shared by all segments'),
@@ -429,7 +432,7 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 			node_usage_enabled: z.boolean().describe('Per-user node usage gate result'),
 			block_state: z.enum(['injected', 'absent']),
 			absence_reason: z
-				.enum(['disabled', 'machine-follow-up', 'empty', 'failed'])
+				.enum(instanceContextAbsenceReasonSchema.options)
 				.optional()
 				.describe('Why this turn received no block'),
 			block_is_update: z.boolean().optional().describe('The block adds to an earlier window'),
