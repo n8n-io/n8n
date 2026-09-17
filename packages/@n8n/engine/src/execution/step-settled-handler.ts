@@ -11,7 +11,7 @@ import type { ExecutionResponseChannel } from '../response-channel';
 import type { OrchestrationMessage, StepMessage, StepSettledEvent, WorkQueue } from '../queue';
 import { countExpectedSettledSteps } from './completion';
 import type { ExecutionRecord, ExecutionStore } from './execution-store';
-import { stepKeyId, type StepKey, type StepKeyId } from './execution.types';
+import { isSettledStatus, stepKeyId, type StepKey, type StepKeyId } from './execution.types';
 import { exitSourcesInto, loadTerminalIterations } from './loop-ledger';
 import { decideSuccessors, decisionKeys } from './settlement';
 import type { StepRecord, StepStore } from './step-store';
@@ -219,6 +219,14 @@ export class StepSettledHandler {
 		node: GraphNode,
 		status: 'completed' | 'failed',
 	): void {
+		if (!isSettledStatus(step.status)) {
+			// Steps never unsettle, and this runs only once a step has settled, so
+			// this is a bug in the caller, not a state this step can reach.
+			throw new UnexpectedError(
+				`Step ${step.nodeId} announced its end from status '${step.status}'`,
+			);
+		}
+
 		this.responseChannel.publish({
 			type: 'ended',
 			executionId: execution.id,

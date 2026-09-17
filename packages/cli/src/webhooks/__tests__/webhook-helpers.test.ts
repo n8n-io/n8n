@@ -2102,7 +2102,8 @@ describe('executeWebhook on engine 2.0', () => {
 			// The listener is created before the run starts, and the run has to use
 			// the id it listens under, so a fast answer is not lost.
 			expect(workflowRunner.run).toHaveBeenCalledTimes(1);
-			expect(workflowRunner.run.mock.calls[0][0].engineExecutionId).toEqual(expect.any(String));
+			const dispatchedId = workflowRunner.run.mock.calls[0][0].engineExecutionId as string;
+			expect(dataPlane.has(dispatchedId)).toBe(true);
 		});
 
 		it('answers with the data of the step the run ended on', async () => {

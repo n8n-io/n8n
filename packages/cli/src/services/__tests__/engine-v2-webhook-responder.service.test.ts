@@ -98,8 +98,18 @@ describe('EngineV2WebhookResponder', () => {
 		expect(() => responder.waitForResponse(createExecutionIdV2())).not.toThrow();
 	});
 
-	it('drops a response for a run another replica holds', () => {
-		expect(() => channel.publish(endedResponse('not-ours'))).not.toThrow();
+	it('leaves an unrelated pending run unaffected', async () => {
+		const other = responder.waitForResponse(createExecutionIdV2());
+		const pending = responder.waitForResponse(createExecutionIdV2());
+
+		channel.publish(endedResponse(pending.executionId));
+
+		await expect(pending.settled).resolves.toMatchObject({ status: 'completed' });
+
+		const stillPending = Symbol('still pending');
+		await expect(Promise.race([other.settled, Promise.resolve(stillPending)])).resolves.toBe(
+			stillPending,
+		);
 	});
 
 	it('reports the step the run ended with', async () => {

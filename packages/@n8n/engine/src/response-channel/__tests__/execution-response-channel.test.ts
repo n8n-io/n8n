@@ -90,8 +90,9 @@ describe('ExecutionResponseChannel', () => {
 		const seen: ExecutionResponse[] = [];
 		channel.subscribe('exec-1', (r) => seen.push(r));
 
-		// `Date` has no JSON form. Passing the live object would work in-process
-		// and break over a socket, which is the divergence the channel prevents.
+		// The channel always serializes, so a `Date` crosses as the ISO string
+		// `JSON.stringify` gives it, never as the live object a subscriber could
+		// otherwise get away with in-process.
 		channel.publish(ended([[{ at: new Date(0) }]]));
 
 		expect(seen[0]).toMatchObject({

@@ -50,7 +50,14 @@ describe('executionResponseSchema', () => {
 			'a step status the engine does not use',
 			ended({ lastStep: { nodeId: 'a', nodeName: 'A', status: 'paused', outputs: null } }),
 		],
-		['outputs that are not slots', ended({ lastStep: { nodeId: 'a', nodeName: 'A', outputs: 1 } })],
+		[
+			'a step that has not settled',
+			ended({ lastStep: { nodeId: 'a', nodeName: 'A', status: 'running', outputs: null } }),
+		],
+		[
+			'outputs that are not slots',
+			ended({ lastStep: { nodeId: 'a', nodeName: 'A', status: 'completed', outputs: 1 } }),
+		],
 	])('rejects %s', (_case, response) => {
 		expect(executionResponseSchema.safeParse(response).success).toBe(false);
 	});
