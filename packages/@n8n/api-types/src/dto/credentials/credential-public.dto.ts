@@ -116,19 +116,19 @@ export class CredentialTestPublicDto extends Z.class({
 	message: z.string().openapi({ example: 'Connection successful!' }),
 }) {}
 
-/**
- * `toJsonSchema()` builds this at runtime from a credential type's own declared properties, so
- * `properties`, `required`, and `allOf` differ per credential type. `additionalProperties` and
- * `type` are the only two constants; `allOf` is present only when the type has conditional
- * (`displayOptions`) fields. The per-type content stays untyped (`unknown`) rather than strict,
- * since it isn't a fixed shape to validate.
- */
 export class CredentialSchemaPublicDto extends Z.class(
 	{
 		additionalProperties: z.literal(false),
 		type: z.literal('object'),
-		properties: z.record(z.string(), z.unknown()),
-		required: z.array(z.string()),
+		properties: z.record(z.string(), z.unknown()).openapi({
+			description:
+				"JSON Schema fragment for each of the credential type's fields, keyed by field name.",
+			example: { apiKey: { type: 'string' }, domain: { type: 'string' } },
+		}),
+		required: z.array(z.string()).openapi({
+			description: 'Names of the fields that are required for this credential type.',
+			example: ['apiKey', 'domain'],
+		}),
 		allOf: z.array(z.unknown()).optional(),
 	},
 	{ strict: true },
