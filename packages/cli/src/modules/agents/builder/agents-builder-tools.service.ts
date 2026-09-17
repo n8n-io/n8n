@@ -35,10 +35,11 @@ import {
 	type AgentJsonConfig,
 	type ConfigValidationError,
 } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import type { InstanceAiCredentialService } from '@n8n/instance-ai';
+import { createAgentContextTool, type InstanceAiCredentialService } from '@n8n/instance-ai';
 import type { Operation } from 'fast-json-patch';
 import { z } from 'zod';
 
@@ -58,6 +59,7 @@ import { createAiMcpFetch } from '@/utils/ai-proxy-fetch';
 import { AgentConfigService } from '../agent-config.service';
 import { AgentCustomToolsService } from '../agent-custom-tools.service';
 import { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
+import { InstanceAiAgentContextAdapterService } from '../instance-ai-agent-context.adapter';
 import { AgentPublishService } from '../agent-publish.service';
 import { AgentSkillsService } from '../agent-skills.service';
 import { AgentTaskService } from '../agent-task.service';
@@ -283,6 +285,7 @@ export interface BuilderTools {
 @Service()
 export class AgentsBuilderToolsService {
 	constructor(
+		private readonly logger: Logger,
 		private readonly agentsService: AgentsService,
 		private readonly agentConfigService: AgentConfigService,
 		private readonly agentCustomToolsService: AgentCustomToolsService,
@@ -305,6 +308,7 @@ export class AgentsBuilderToolsService {
 		private readonly nodeTypes: NodeTypes,
 		private readonly freeAiCreditsService: FreeAiCreditsService,
 		private readonly telemetry: Telemetry,
+		private readonly agentContextAdapter: InstanceAiAgentContextAdapterService,
 	) {}
 
 	/**
@@ -324,7 +328,8 @@ export class AgentsBuilderToolsService {
 					result !== null &&
 					(('ok' in result && result.ok === true) ||
 						('configured' in result && result.configured === true) ||
-						('completed' in result && result.completed === true))
+						('completed' in result && result.completed === true)) &&
+					(!('changed' in result) || result.changed !== false)
 				) {
 					return { ...result, configMutated: true, agentId };
 				}
@@ -665,6 +670,9 @@ export class AgentsBuilderToolsService {
 					};
 				}
 				try {
+					const before = await this.agentsService.findById(agentId, projectId);
+					const beforeActiveVersionId = before?.activeVersionId;
+					const beforeVersionId = before?.versionId;
 					const { agent } = await this.agentPublishService.publishAgent(
 						agentId,
 						projectId,
@@ -677,6 +685,10 @@ export class AgentsBuilderToolsService {
 						agentId,
 						activeVersionId: agent.activeVersionId,
 						versionId: agent.versionId,
+						...(beforeActiveVersionId === agent.activeVersionId &&
+						beforeVersionId === agent.versionId
+							? { changed: false }
+							: {}),
 					};
 				} catch (e) {
 					return {
@@ -1004,7 +1016,7 @@ export class AgentsBuilderToolsService {
 						descriptor,
 						{ user, modifiedBy: 'builder' },
 					);
-					return { ok: true, id: built.id, name: descriptor.name };
+					return { ok: true, id: built.id, name: descriptor.name, changed: built.changed };
 				} catch (e) {
 					// Unlike its sibling handlers, this one runs long isolate work, so an
 					// abort can land mid-call and must not be reported as a build error.
@@ -1181,7 +1193,12 @@ export class AgentsBuilderToolsService {
 						{ user, modifiedBy: 'builder' },
 						baseSkillHash,
 					);
-					return { ok: true, id: updated.id, name: updated.skill.name };
+					return {
+						ok: true,
+						id: updated.id,
+						name: updated.skill.name,
+						...(updated.skillHash === baseSkillHash ? { changed: false } : {}),
+					};
 				} catch (e) {
 					const message = e instanceof Error ? e.message : String(e);
 					return {
@@ -1239,11 +1256,21 @@ export class AgentsBuilderToolsService {
 			.input(updateTaskInputSchema)
 			.handler(async ({ taskId, updates }: UpdateTaskInput) => {
 				try {
+					const before = (await this.agentTaskService.list(agentId)).find(
+						(task) => task.id === taskId,
+					);
 					const updated = await this.agentTaskService.update(agentId, projectId, taskId, updates, {
 						user,
 						modifiedBy: 'builder',
 					});
-					return { ok: true, id: updated.id, name: updated.name };
+					const changed =
+						before === undefined ||
+						(updates.name !== undefined && updates.name !== before.name) ||
+						(updates.objective !== undefined && updates.objective !== before.objective) ||
+						(updates.cronExpression !== undefined &&
+							updates.cronExpression !== before.cronExpression) ||
+						(updates.timezone !== undefined && updates.timezone !== before.timezone);
+					return { ok: true, id: updated.id, name: updated.name, ...(changed ? {} : { changed }) };
 				} catch (e) {
 					return {
 						ok: false,
@@ -1361,8 +1388,13 @@ export class AgentsBuilderToolsService {
 			.build();
 
 		return [
-			buildCustomToolTool,
-			createSkillsTool,
+			createAgentContextTool({
+				reader: this.agentContextAdapter.createReader(user, projectId),
+				resolveDefaultAgentId: async () => agentId,
+				logger: this.logger,
+			}),
+			this.withConfigMutationMarker(buildCustomToolTool, agentId),
+			this.withConfigMutationMarker(createSkillsTool, agentId),
 			listSkillsTool,
 			readSkillTool,
 			this.withConfigMutationMarker(updateSkillTool, agentId),

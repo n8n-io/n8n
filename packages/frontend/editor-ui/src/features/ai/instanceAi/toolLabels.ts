@@ -146,6 +146,11 @@ export function useToolLabel() {
 	const i18n = useI18n();
 
 	function getToolLabel(toolName: string, args?: Record<string, unknown>): string {
+		if (toolName === 'build-agent' && typeof args?.operation === 'string') {
+			const operationKey = `instanceAi.tools.build-agent.${args.operation}` as BaseTextKey;
+			const operationLabel = i18n.baseText(operationKey);
+			if (operationLabel !== operationKey) return operationLabel;
+		}
 		if (toolName === 'load_skill') {
 			const name = typeof args?.name === 'string' ? args.name : undefined;
 			const filePath = typeof args?.filePath === 'string' ? args.filePath : undefined;

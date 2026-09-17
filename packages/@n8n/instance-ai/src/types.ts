@@ -1452,32 +1452,32 @@ export interface AgentSessionSummary {
 	totalDuration: number;
 }
 
-export interface AgentSessionListResult {
-	sessions: AgentSessionSummary[];
-	nextCursor: string | null;
-}
+export type AgentContextLookup =
+	| { type: 'agents' }
+	| { type: 'config'; agentId: string }
+	| { type: 'skills'; agentId: string }
+	| { type: 'skill'; agentId: string; skillId: string; referencePaths?: string[] }
+	| { type: 'tasks'; agentId: string }
+	| { type: 'custom-tools'; agentId: string }
+	| { type: 'custom-tool'; agentId: string; toolId: string }
+	| {
+			type: 'sessions';
+			agentId: string;
+			limit?: number;
+			cursor?: string;
+			status?: AgentSessionStatus;
+			origin?: AgentSessionOrigin;
+			updatedAfter?: string;
+			updatedBefore?: string;
+	  }
+	| { type: 'session'; agentId: string; threadId: string; executionId?: string }
+	| { type: 'capabilities' }
+	| { type: 'integrations'; queries?: string[] }
+	| { type: 'attachable-workflows'; searchTerm?: string };
 
-export interface AgentSessionDetail {
-	session: AgentSessionSummary;
-	transcript: string;
-}
-
-/** Read-only Agent session access. The host binds this reader to one user and project. */
-export interface InstanceAiAgentSessionReader {
-	list(params: {
-		agentId: string;
-		limit?: number;
-		cursor?: string;
-		status?: AgentSessionStatus;
-		origin?: AgentSessionOrigin;
-		updatedAfter?: string;
-		updatedBefore?: string;
-	}): Promise<AgentSessionListResult>;
-	get(params: {
-		agentId: string;
-		threadId: string;
-		executionId?: string;
-	}): Promise<AgentSessionDetail | null>;
+/** Read-only Agent context. The host binds this reader to one user and project. */
+export interface InstanceAiAgentContextReader {
+	lookup(input: AgentContextLookup): Promise<unknown>;
 }
 
 // ── Context bundle ───────────────────────────────────────────────────────────
@@ -1519,8 +1519,8 @@ export interface InstanceAiContext {
 	/** Optional — wired by the host when the run has a bound project. Presence
 	 *  gates the `conversation-history` tool (orchestrator only). */
 	conversationHistoryService?: InstanceAiConversationHistoryReader;
-	/** Present when the user can read Agent sessions in the bound project. */
-	agentSessionService?: InstanceAiAgentSessionReader;
+	/** Present when the user can read Agents in the bound project. */
+	agentContextService?: InstanceAiAgentContextReader;
 	/** Present only when the instance-context reader is enabled; its absence hides the tool. */
 	activityService?: InstanceAiActivityService;
 	/** Per-run inventory behind `mcp-servers`' `connected` action. Captured when the

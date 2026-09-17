@@ -334,6 +334,25 @@ describe('getLatestAgentBuilderTarget', () => {
 });
 
 describe('getLatestAgentArtifactResult', () => {
+	test('returns no artifact for an explicit unchanged result', () => {
+		const orchestrator = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolName: 'build-agent',
+					args: { name: 'Existing Agent' },
+					result: { ok: true, agentChange: 'none', configUpdated: false },
+				}),
+			],
+		});
+
+		expect(
+			getLatestAgentArtifactResult(orchestrator, {
+				agentId: 'agent-1',
+				projectId: 'project-1',
+			}),
+		).toBeUndefined();
+	});
+
 	test('uses parent agent target for nested agent mutations', () => {
 		const nestedAgentBuilder = makeAgentNode({
 			agentId: 'nested-builder',

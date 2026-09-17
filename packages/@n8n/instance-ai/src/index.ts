@@ -25,6 +25,7 @@ import type * as StorageMod from './storage';
 import type * as MapChunkMod from './stream/map-chunk';
 import type * as UsageAccumulatorMod from './stream/usage-accumulator';
 import type * as AgentPersistenceMod from './tools/orchestration/agent-persistence';
+import type * as AgentContextToolMod from './tools/agent-context.tool';
 import type * as SanitizeWebContentMod from './tools/web-research/sanitize-web-content';
 import type * as AgentSnapshotEventMod from './tracing/agent-snapshot-event';
 import type * as LangsmithTracingMod from './tracing/langsmith-tracing';
@@ -108,6 +109,9 @@ const loadSanitizeWebContent = lazyModule(
 );
 const loadAgentPersistence = lazyModule(
 	() => require('./tools/orchestration/agent-persistence') as typeof AgentPersistenceMod,
+);
+const loadAgentContextTool = lazyModule(
+	() => require('./tools/agent-context.tool') as typeof AgentContextToolMod,
 );
 const loadTitleUtils = lazyModule(() => require('./memory/title-utils') as typeof TitleUtilsMod);
 const loadMcpClientManager = lazyModule(
@@ -361,6 +365,9 @@ export const getDateTimeSection: typeof SystemPromptMod.getDateTimeSection = laz
 );
 export const createSubAgentResourceIdPrefix: typeof AgentPersistenceMod.createSubAgentResourceIdPrefix =
 	lazyFunction(() => loadAgentPersistence().createSubAgentResourceIdPrefix);
+export const createAgentContextTool: typeof AgentContextToolMod.createAgentContextTool =
+	lazyFunction(() => loadAgentContextTool().createAgentContextTool);
+export type AgentContextToolOptions = AgentContextToolMod.AgentContextToolOptions;
 export declare const SUB_AGENT_RESOURCE_PREFIX: typeof AgentPersistenceMod.SUB_AGENT_RESOURCE_PREFIX;
 
 export declare const iterationEntrySchema: typeof StorageMod.iterationEntrySchema;
@@ -736,9 +743,8 @@ export type {
 	ConversationHistoryMessage,
 	ConversationHistoryMessagesResult,
 	AgentSessionSummary,
-	AgentSessionListResult,
-	AgentSessionDetail,
-	InstanceAiAgentSessionReader,
+	AgentContextLookup,
+	InstanceAiAgentContextReader,
 	ComputerUseChannel,
 	ComputerUseChannelState,
 	ComputerUseState,

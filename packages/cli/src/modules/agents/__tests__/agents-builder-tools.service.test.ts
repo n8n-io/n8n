@@ -33,6 +33,7 @@ import type { Telemetry } from '@/telemetry';
 import type { AgentConfigService } from '../agent-config.service';
 import type { AgentCustomToolsService } from '../agent-custom-tools.service';
 import type { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
+import type { InstanceAiAgentContextAdapterService } from '../instance-ai-agent-context.adapter';
 import type { AgentPublishService } from '../agent-publish.service';
 import type { AgentSkillsService } from '../agent-skills.service';
 import type { AgentTaskService } from '../agent-task.service';
@@ -92,6 +93,8 @@ function makeService() {
 	const agentPublishService = mock<AgentPublishService>();
 	const agentTestRunService = mock<AgentTestRunService>();
 	const telemetry = mock<Telemetry>();
+	const agentContextAdapter = mock<InstanceAiAgentContextAdapterService>();
+	agentContextAdapter.createReader.mockReturnValue({ lookup: vi.fn() });
 	const aiService = mock<AiService>();
 	aiService.isProxyEnabled.mockReturnValue(false);
 	const dynamicNodeParametersService = mock<DynamicNodeParametersService>();
@@ -107,6 +110,7 @@ function makeService() {
 	outboundHttp.transport.mockReturnValue(transport);
 
 	const service = new AgentsBuilderToolsService(
+		mock(),
 		agentsService as unknown as AgentsService,
 		agentConfigService as unknown as AgentConfigService,
 		agentCustomToolsService as unknown as AgentCustomToolsService,
@@ -129,6 +133,7 @@ function makeService() {
 		nodeTypes,
 		mock<FreeAiCreditsService>(),
 		telemetry,
+		agentContextAdapter,
 	);
 
 	return {
@@ -267,6 +272,16 @@ describe('AgentsBuilderToolsService', () => {
 				.getTools(agentId, projectId, credentialProvider, credentialService, user)
 				.json.find((tool) => tool.name === name)!;
 		}
+
+		it('registers the shared Agent context tool', () => {
+			const { service } = makeService();
+
+			const toolNames = service
+				.getTools(agentId, projectId, credentialProvider, credentialService, user)
+				.shared.map((tool) => tool.name);
+
+			expect(toolNames).toContain('agent-context');
+		});
 
 		it('registers MCP-specific tools in the builder toolset', () => {
 			const { service } = makeService();
@@ -1439,7 +1454,7 @@ describe('AgentsBuilderToolsService', () => {
 				.shared.find((tool) => tool.name === BUILDER_TOOLS.BUILD_CUSTOM_TOOL)!;
 		}
 
-		it('stores a custom tool and returns only its id and name, not the full descriptor', async () => {
+		it('stores a custom tool without returning the full descriptor', async () => {
 			const { service, agentsService, secureRuntime } = makeService();
 			const descriptor = {
 				name: 'seo_analyzer',
@@ -1458,6 +1473,7 @@ describe('AgentsBuilderToolsService', () => {
 				ok: true,
 				id: 'seo_analyzer',
 				descriptor,
+				changed: true,
 			});
 
 			const result = await getBuildCustomTool(service).handler!(
@@ -1476,6 +1492,9 @@ describe('AgentsBuilderToolsService', () => {
 				ok: true,
 				id: 'seo_analyzer',
 				name: 'seo_analyzer',
+				changed: true,
+				configMutated: true,
+				agentId,
 			});
 		});
 
@@ -1618,6 +1637,8 @@ describe('AgentsBuilderToolsService', () => {
 			);
 			expect(result).toEqual({
 				ok: true,
+				configMutated: true,
+				agentId,
 				skills: [
 					{ id: 'skill_0Ab9ZkLm3Pq7Xy2N', name: skillOne.name },
 					{ id: 'skill_1Cd8YkNm4Rz6Wv3M', name: skillTwo.name },
@@ -2134,6 +2155,7 @@ describe('AgentsBuilderToolsService', () => {
 
 		it('updates only supplied fields while preserving the task id', async () => {
 			const { service, agentTaskService } = makeService();
+			agentTaskService.list.mockResolvedValue([makeTaskDto()]);
 			agentTaskService.update.mockResolvedValue(
 				makeTaskDto({ cronExpression: '0 10 * * *', updatedAt: '2026-01-02T00:00:00.000Z' }),
 			);
@@ -2156,6 +2178,24 @@ describe('AgentsBuilderToolsService', () => {
 				name: 'Daily summary',
 				configMutated: true,
 				agentId,
+			});
+		});
+
+		it('does not mark an unchanged task as a config mutation', async () => {
+			const { service, agentTaskService } = makeService();
+			agentTaskService.list.mockResolvedValue([makeTaskDto()]);
+			agentTaskService.update.mockResolvedValue(makeTaskDto());
+
+			const result = await getUpdateTaskTool(service).handler!(
+				{ taskId: 'task-1', updates: { cronExpression: '0 9 * * *' } },
+				ctx,
+			);
+
+			expect(result).toEqual({
+				ok: true,
+				id: 'task-1',
+				name: 'Daily summary',
+				changed: false,
 			});
 		});
 
@@ -2522,6 +2562,27 @@ describe('AgentsBuilderToolsService', () => {
 				agentId,
 				activeVersionId: 'v-history',
 				versionId: 'v-draft',
+			});
+		});
+
+		it('does not mark an idempotent publish as a change', async () => {
+			const { service, agentsService, agentPublishService } = makeService();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			const publishedAgent = {
+				activeVersionId: 'v-active',
+				versionId: 'v-active',
+			} as Agent;
+			agentsService.findById.mockResolvedValue(publishedAgent);
+			agentPublishService.publishAgent.mockResolvedValue({ agent: publishedAgent });
+
+			const result = await getPublishTool(service).handler!({}, ctx);
+
+			expect(result).toEqual({
+				ok: true,
+				agentId,
+				activeVersionId: 'v-active',
+				versionId: 'v-active',
+				changed: false,
 			});
 		});
 

@@ -387,6 +387,12 @@ export function useCanvasPreview({
 		(agentId) => {
 			if (!agentId || !latestAgentBuilderTarget.value) return;
 			if (thread.isHydratingThread) return;
+			if (
+				latestAgentBuilderTarget.value.activity === 'exploring' ||
+				latestAgentBuilderTarget.value.activity === 'testing'
+			) {
+				return;
+			}
 
 			showAgentArtifact(latestAgentBuilderTarget.value.targetAgentId);
 		},

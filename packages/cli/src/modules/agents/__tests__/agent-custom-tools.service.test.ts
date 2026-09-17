@@ -87,6 +87,7 @@ describe('AgentCustomToolsService', () => {
 			ok: true,
 			id: 'lookup_customer',
 			descriptor,
+			changed: true,
 		});
 		expect(agent.tools[result.id]).toEqual({ code: 'return 1;', descriptor });
 		expect(agent.versionId).not.toBe(agent.activeVersionId);
@@ -101,6 +102,24 @@ describe('AgentCustomToolsService', () => {
 		await expect(
 			service.buildCustomTool(agentId, projectId, 'return 1;', descriptor, telemetryContext),
 		).rejects.toThrow(NotFoundError);
+		expect(runtimeCacheService.clearRuntimes).not.toHaveBeenCalled();
+	});
+
+	it('reports an unchanged custom tool without writing the draft', async () => {
+		const { service, agentRepository, runtimeCacheService } = makeService();
+		const agent = makeAgent({ tools: { lookup_customer: { code: 'return 1;', descriptor } } });
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+		const result = await service.buildCustomTool(
+			agentId,
+			projectId,
+			'return 1;',
+			descriptor,
+			telemetryContext,
+		);
+
+		expect(result.changed).toBe(false);
+		expect(agentRepository.saveDraftFenced).not.toHaveBeenCalled();
 		expect(runtimeCacheService.clearRuntimes).not.toHaveBeenCalled();
 	});
 
