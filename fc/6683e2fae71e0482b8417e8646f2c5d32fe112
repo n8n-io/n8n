@@ -1,0 +1,42 @@
+packages/@n8n/api-types/src/dto/promotions/promotion-config.dto.ts
+  s_550cbda7ca7146::t_a66f433a9c8f51 94,103-106,144-161
+  s_550cbda7ca7146::t_b2dfdcfe3fe5da 162
+packages/@n8n/api-types/src/dto/promotions/promotion-connection.dto.ts
+  s_550cbda7ca7146::t_a66f433a9c8f51 10,123,138-145,147
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionsSettings.api.ts
+  s_550cbda7ca7146::t_b8d8fc307d5b71 6,29,109,120-129
+  s_550cbda7ca7146::t_1f87f82a7cf291 130
+packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
+  s_550cbda7ca7146::t_435caa71a409b1 208
+packages/cli/src/modules/promotions.ee/promotion-connections.service.ts
+  s_550cbda7ca7146::t_5cfb4612ad1bfc 6,135-138,288-300,319-333,354-360
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionProviderDialog.vue
+  s_550cbda7ca7146::t_b8d8fc307d5b71 30,61
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionsSettingsView.vue
+  s_550cbda7ca7146::t_b8d8fc307d5b71 23,64-67
+packages/@n8n/api-types/src/dto/index.ts
+  s_550cbda7ca7146::t_a66f433a9c8f51 578,583-584,589,608
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionsSettingsView.test.ts
+  s_550cbda7ca7146::t_7f2de0e3d4cd57 18,131,273-282,301-306,390-394,423-425,452-454,482-484
+  s_550cbda7ca7146::t_f0c28b9b8784b3 397
+packages/@n8n/api-types/src/dto/promotions/__tests__/promotion-connection.dto.test.ts
+  s_550cbda7ca7146::t_435caa71a409b1 130
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionConnections.generated.yml
+  s_550cbda7ca7146::t_628c645597003d 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fc6683e2fae71e0482b8417e8646f2c5d32fe112",
+  "prompts": {},
+  "sessions": {
+    "s_550cbda7ca7146": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b04b-128d-7c93-b181-1058e9983ecb",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}
