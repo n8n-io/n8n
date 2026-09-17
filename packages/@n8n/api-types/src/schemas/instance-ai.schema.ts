@@ -1467,6 +1467,29 @@ export const instanceAiHandoffContextSchema = z.discriminatedUnion('source', [
 export type InstanceAiHandoffContext = z.infer<typeof instanceAiHandoffContextSchema>;
 
 /**
+ * One preview tab in the current Instance AI thread. Ids and names only — the
+ * agent resolves contents with its tools. Cap matches the send-message field.
+ */
+export const instanceAiThreadArtifactSchema = z.object({
+	type: z.enum(['workflow', 'agent', 'data-table']),
+	id: z.string().min(1).max(64),
+	name: z.string().max(255).optional(),
+	projectId: z.string().min(1).max(64).optional(),
+	pending: z.literal(true).optional(),
+	archived: z.literal(true).optional(),
+});
+export type InstanceAiThreadArtifact = z.infer<typeof instanceAiThreadArtifactSchema>;
+
+/** The thread view's artifact tabs, plus which tab is focused when the preview is open. */
+export const instanceAiThreadArtifactsContextSchema = z.object({
+	artifacts: z.array(instanceAiThreadArtifactSchema).min(1).max(20),
+	activeId: z.string().min(1).max(64).optional(),
+});
+export type InstanceAiThreadArtifactsContext = z.infer<
+	typeof instanceAiThreadArtifactsContextSchema
+>;
+
+/**
  * Build style for a run. `progressive` makes the agent build a minimal working
  * slice first, gate increments on real executions, and extend on actual
  * execution data. `default` uses the standard building policy.
@@ -1496,6 +1519,8 @@ export class InstanceAiSendMessageRequest extends Z.class({
 	message: z.string().default(''),
 	attachments: z.array(instanceAiAttachmentSchema).max(10).optional(),
 	context: instanceAiHandoffContextSchema.optional(),
+	/** Preview tabs in this thread. The server injects them as a per-turn index. */
+	threadArtifacts: instanceAiThreadArtifactsContextSchema.optional(),
 	timeZone: TimeZoneSchema,
 	pushRef: z.string().optional(),
 	/** Entries the client renders for this user. Omit to advertise none. The
@@ -1587,8 +1612,9 @@ export type InstanceAiThreadSourcePersisted =
  *   travels separately and is already catalog-prefixed
  * - `v1_opener` — the original empty-state openers ("I want to build a new
  *   workflow…")
- * - `workflow_attachment_opener` — a workflow opened in the assistant, which
- *   sends an empty message and lets the editor context greet
+ * - `workflow_attachment_opener` — legacy: a workflow opened in the assistant
+ *   used to send an empty message so the editor context would greet. New
+ *   hand-offs stash the attachment and wait for the user's first prompt.
  * - `contextual_followup` — the follow-up the composer offers as a placeholder
  *   after a build, accepted with Tab; lands mid-thread
  */

@@ -235,6 +235,7 @@ export class InstanceAiController {
 			payload.mode,
 			payload.promptVersion,
 			payload.computerUseChannels,
+			payload.threadArtifacts,
 			payload.observerThresholdTokens,
 		);
 		return { runId };
