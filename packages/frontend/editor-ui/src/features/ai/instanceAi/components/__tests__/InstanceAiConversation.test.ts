@@ -307,6 +307,7 @@ describe('InstanceAiConversation', () => {
 				'make changes, debug an issue, set up credentials',
 			);
 			expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('FAQ Responder');
+			expect(thread.sendMessage).not.toHaveBeenCalled();
 		});
 
 		it('appends the pending workflow attachment on first submit and clears it', async () => {

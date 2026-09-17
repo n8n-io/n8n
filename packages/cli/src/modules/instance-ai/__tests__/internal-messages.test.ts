@@ -622,14 +622,14 @@ describe('buildThreadArtifactsBlock', () => {
 		expect(block).not.toContain('opened this conversation from the editor');
 	});
 
-	it('does not tell the agent to only greet: the hand-off rides a real request', () => {
-		const block = buildThreadArtifactsBlock(undefined, [
-			{ type: 'workflow', id: 'wf-1', name: 'Digest' },
-		]);
+	it('round-trips a hand-off attachment when there are no preview tabs', () => {
+		const attachments = [{ type: 'workflow' as const, id: 'wf-1', name: 'Digest' }];
+		const block = buildThreadArtifactsBlock(undefined, attachments);
+		const stored = `${buildThreadContextBlock([block])}\n\nfix it`;
 
-		expect(block).not.toContain('ask how you can help');
-		expect(block).not.toContain('Treat this purely as context');
-		expect(block).toContain('act on the user’s request');
+		expect(extractEditorContextResourceAttachments(stored)).toEqual(attachments);
+		expect(block).toContain('opened this conversation from the editor');
+		expect(block).not.toContain('conversation’s preview');
 	});
 
 	it('lists a hand-off resource that is not a tab under its own header', () => {

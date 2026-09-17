@@ -325,6 +325,23 @@ describe('useResourceRegistry', () => {
 			});
 			expect(producedArtifacts.size).toBe(1);
 		});
+
+		test('falls back to Untitled when the pending workflow name is blank', async () => {
+			const pending = ref<
+				{ type: 'workflow'; id: string; name?: string; executionId?: string } | undefined
+			>({ type: 'workflow', id: 'wf-blank', name: '   ' });
+			const { producedArtifacts, linkableResourceNameIndex } = setup(
+				undefined,
+				undefined,
+				undefined,
+				() => pending.value,
+			);
+
+			await nextTick();
+
+			expect(producedArtifacts.get('wf-blank')?.name).toBe('Untitled');
+			expect(linkableResourceNameIndex.get('untitled')?.id).toBe('wf-blank');
+		});
 	});
 
 	describe('producedArtifacts — targetResource registration', () => {

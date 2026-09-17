@@ -423,7 +423,7 @@ function enrichWorkflowFromPendingAttachment(
 		{
 			type: 'workflow',
 			id: pending.id,
-			name: pending.name ?? 'Untitled',
+			name: optionalString(pending.name) ?? 'Untitled',
 		},
 		{ linkable: true },
 	);
