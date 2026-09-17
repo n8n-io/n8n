@@ -58,7 +58,7 @@ export class McpRegistryService {
 	 * n8n Connect is off, so nothing is seeded then.
 	 */
 	private async seedGatewayServers(): Promise<void> {
-		const hosted = this.aiGatewayService.getHostedMcpServers();
+		const hosted = await this.aiGatewayService.getHostedMcpServers();
 		if (hosted.length === 0) return;
 		await this.saveServers(hosted);
 	}

@@ -1,6 +1,8 @@
 import {
 	AiGatewayConfigDto,
+	AiGatewayMcpServersResponse,
 	getAgentModelProviderCredentialTypes,
+	type AiGatewayMcpServer,
 	type AiGatewayUsageResponse,
 	type AiGatewayWalletResponse,
 } from '@n8n/api-types';
@@ -18,7 +20,6 @@ import { N8N_VERSION, AI_ASSISTANT_SDK_VERSION } from '@/constants';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { License } from '@/license';
-import { getMcpRegistryGatewayCredentialTypeName } from '@/modules/mcp-registry/mcp-registry-connection';
 import type { McpRegistryServer } from '@/modules/mcp-registry/registry/mcp-registry.types';
 import { checkAiGatewayEligibility } from '@/services/ai-gateway-eligibility';
 import { OwnershipService } from '@/services/ownership.service';
@@ -30,49 +31,37 @@ interface GatewayTokenResponse {
 }
 
 /**
- * Builds the gateway-hosted Firecrawl MCP server entry, its remote URL derived
- * from the gateway base so it tracks feature/staging/prod. `authType: 'gateway'`
- * means Gateway credits, not a user credential.
- *
- * TODO: drive the hosted-server list off the gateway `/v1/gateway/config`
- * response so new providers surface without an n8n release.
+ * Maps a gateway-served MCP server DTO to a registry entry. The remote URL is
+ * built from the configured gateway base and the server slug, so it tracks
+ * feature/staging/prod. `authType: 'gateway'` means Gateway credits.
  */
-function buildFirecrawlGatewayServer(baseUrl: string): McpRegistryServer {
+function mcpServerToRegistryServer(server: AiGatewayMcpServer, baseUrl: string): McpRegistryServer {
 	return {
-		name: 'com.n8n/firecrawl-mcp',
-		slug: 'firecrawl',
-		title: 'Firecrawl',
-		description: 'Scrape, crawl, map and search the web, billed to Gateway credits',
-		tagline: 'Read the web with n8n credits',
-		version: '1.0.0',
-		updatedAt: '2026-09-17T10:00:00.000Z',
-		icons: [{ src: 'https://www.firecrawl.dev/favicon.ico' }],
-		websiteUrl: 'https://firecrawl.dev',
+		name: server.name,
+		slug: server.slug,
+		title: server.title,
+		description: server.description,
+		tagline: server.tagline,
+		version: server.version,
+		updatedAt: server.updatedAt,
+		icons: server.icons.map((icon) => ({
+			src: icon.src,
+			...(icon.theme ? { theme: icon.theme } : {}),
+		})),
+		websiteUrl: server.websiteUrl,
 		authType: 'gateway',
-		remotes: [{ type: 'streamable-http', url: `${baseUrl}/v1/gateway/mcp/firecrawl` }],
-		tools: [
-			{ name: 'firecrawl_scrape', title: 'Firecrawl scrape', annotations: { readOnlyHint: true } },
-			{
-				name: 'firecrawl_map',
-				title: 'Firecrawl website map',
-				annotations: { readOnlyHint: true },
-			},
-			{
-				name: 'firecrawl_search',
-				title: 'Firecrawl web search',
-				annotations: { readOnlyHint: true },
-			},
-			{ name: 'firecrawl_crawl', title: 'Firecrawl crawl', annotations: { readOnlyHint: true } },
-			{
-				name: 'firecrawl_check_crawl_status',
-				title: 'Firecrawl crawl status',
-				annotations: { readOnlyHint: true },
-			},
-		],
+		remotes: [{ type: 'streamable-http', url: `${baseUrl}/v1/gateway/mcp/${server.slug}` }],
+		tools: server.tools.map((tool) => ({
+			name: tool.name,
+			title: tool.title,
+			...(tool.readOnlyHint !== undefined
+				? { annotations: { readOnlyHint: tool.readOnlyHint } }
+				: {}),
+		})),
 		isOfficial: true,
 		origin: 'registry',
 		status: 'active',
-		tags: ['web-scraping', 'search'],
+		tags: server.tags,
 	};
 }
 
@@ -100,6 +89,11 @@ export class AiGatewayService {
 	 */
 	private configFetchFailedAt = 0;
 	private static readonly CONFIG_FAILURE_TTL_MS = 60 * 1000; // 1 minute
+
+	/** Cached hosted MCP servers (mapped to registry entries). Same TTL as the config. */
+	private hostedMcpServers: McpRegistryServer[] | null = null;
+	private hostedFetchedAt = 0;
+	private hostedFetchFailedAt = 0;
 
 	private static readonly GATEWAY_PATH_PREFIX = '/v1/gateway';
 
@@ -247,21 +241,14 @@ export class AiGatewayService {
 		// MCP servers the gateway hosts carry no provider config: the endpoint URL
 		// comes from the registry entry on the node, so the credential is just the
 		// bearer token. The token is not provider-scoped, so one mint serves any
-		// gateway path the entry points at.
+		// gateway path the entry points at. The type is authorized by the persisted
+		// registry binding that produced it, so minting stays independent of the
+		// gateway being reachable at execution time (and of startup order).
 		if (isMcpGatewayAuthentication(credentialType)) {
-			// Only mint for a type a currently-hosted server issues; the suffix alone
-			// would accept a planted marker. Empty unless licensed+enabled.
-			const hostedGatewayTypes = new Set(
-				this.getHostedMcpServers().map(getMcpRegistryGatewayCredentialTypeName),
-			);
-			if (!hostedGatewayTypes.has(credentialType)) {
-				throw new UserError(
-					`Credential type "${credentialType}" is not a hosted Gateway credits MCP server.`,
-				);
-			}
 			const { jwt } = await this.resolveAndMintToken({ userId, workflowId, projectId });
 			// Billed, non-provider-scoped token: pin its egress to the gateway host so
-			// no consumer can send it elsewhere, whatever URL the node carries.
+			// no consumer can send it elsewhere, whatever URL the node carries. This is
+			// what contains a token minted for a hand-planted managed marker.
 			return {
 				token: jwt,
 				allowedHttpRequestDomains: 'domains',
@@ -477,14 +464,62 @@ export class AiGatewayService {
 	 * Never propagates gateway or config errors.
 	 */
 	/**
-	 * Gateway-hosted MCP servers to inject into the registry listing. These are
-	 * hosted and billed by the gateway, so the gateway (not the remote MCP
-	 * registry) is their source of truth. Returns `[]` unless n8n Connect is
-	 * licensed and enabled, which is what keeps them off unlicensed instances.
+	 * Gateway-hosted MCP servers to inject into the registry listing. The gateway
+	 * (not the remote MCP registry) is their source of truth, fetched from
+	 * `/v1/gateway/mcp-servers` and cached. Returns `[]` unless n8n Connect is
+	 * licensed and enabled, and never throws: a gateway outage serves the last
+	 * good list, or `[]` if none was ever fetched, so seeding is not blocked.
 	 */
-	getHostedMcpServers(): McpRegistryServer[] {
+	async getHostedMcpServers(): Promise<McpRegistryServer[]> {
 		if (!this.isEnabled()) return [];
-		return [buildFirecrawlGatewayServer(this.requireBaseUrl())];
+		try {
+			await this.refreshHostedMcpServers();
+		} catch {
+			// Keep the last good list (empty if never fetched).
+		}
+		return this.hostedMcpServers ?? [];
+	}
+
+	/**
+	 * Refreshes the cached hosted-server list from the gateway. Serves the cache
+	 * while fresh, throttles retries after a failure, and serves a stale list
+	 * rather than re-hitting a down gateway.
+	 */
+	private async refreshHostedMcpServers(): Promise<void> {
+		const fresh =
+			this.hostedMcpServers !== null &&
+			Date.now() - this.hostedFetchedAt <= AiGatewayService.CONFIG_TTL_MS;
+		if (fresh) return;
+
+		if (
+			this.hostedFetchFailedAt > 0 &&
+			Date.now() - this.hostedFetchFailedAt < AiGatewayService.CONFIG_FAILURE_TTL_MS
+		) {
+			if (this.hostedMcpServers !== null) return;
+			throw new OperationalError(
+				'Gateway credits MCP server fetch recently failed; retry is throttled.',
+			);
+		}
+
+		const baseUrl = this.requireBaseUrl();
+		try {
+			const data = await this.gatewayRequest<unknown>(
+				{ method: 'GET', url: `${baseUrl}/v1/gateway/mcp-servers` },
+				'Failed to fetch Gateway credits MCP servers',
+			);
+			const parsed = AiGatewayMcpServersResponse.safeParse(data);
+			if (!parsed.success) {
+				throw new UserError('Gateway credits returned an invalid MCP servers response.');
+			}
+			this.hostedMcpServers = parsed.data.servers.map((server) =>
+				mcpServerToRegistryServer(server, baseUrl),
+			);
+			this.hostedFetchedAt = Date.now();
+			this.hostedFetchFailedAt = 0;
+		} catch (error) {
+			this.hostedFetchFailedAt = Date.now();
+			throw error;
+		}
 	}
 
 	async isAvailable(): Promise<AiGatewayAvailability> {

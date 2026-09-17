@@ -42,7 +42,7 @@ function createService(options: CreateServiceOptions = {}) {
 	const publisher = mock<Publisher>({ publishCommand: vi.fn().mockResolvedValue(undefined) });
 	const aiGatewayService = mock<AiGatewayService>({
 		isEnabled: vi.fn().mockReturnValue(options.aiGatewayEnabled ?? true),
-		getHostedMcpServers: vi.fn().mockReturnValue([]),
+		getHostedMcpServers: vi.fn().mockResolvedValue([]),
 	});
 
 	if (options.storedServers === null) {
