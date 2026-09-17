@@ -1,0 +1,27 @@
+packages/testing/playwright/pages/n8nPage.ts
+  s_6292f7a6ebb209::t_212e5550bc55ba 74,164,166
+packages/testing/playwright/tests/e2e/chat-hub/chat-hub-workflow-agent.spec.ts
+  s_6292f7a6ebb209::t_eec867246469d1 31,53
+packages/testing/playwright/composables/TestEntryComposer.ts
+  s_6292f7a6ebb209::t_5c0405bdb19a03 5,95,106,112-116,144
+  s_6292f7a6ebb209::t_eff32d4bf55ccd 110-111
+  s_6292f7a6ebb209::t_4c35af4dfd2ff2 107-109
+packages/testing/playwright/fixtures/base.ts
+  s_6292f7a6ebb209::t_eec867246469d1 294
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "c1305dc18485eb59df3bf2a2c8b4eb7e8bd7e0ed",
+  "prompts": {},
+  "sessions": {
+    "s_6292f7a6ebb209": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "79d76b24-efed-47cf-aba8-09fbf6fffd6a",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}
