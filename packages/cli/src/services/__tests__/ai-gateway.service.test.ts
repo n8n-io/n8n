@@ -239,6 +239,31 @@ describe('AiGatewayService', () => {
 			).rejects.toThrow(UserError);
 		});
 
+		it('mints a token-only credential for a gateway-hosted MCP server', async () => {
+			// These carry no provider config — the endpoint comes from the registry
+			// entry on the node — so only the token is requested, not the config.
+			requestMock.mockResolvedValueOnce(ok({ token: 'mock-jwt-token', expiresIn: 3600 }));
+			const service = makeService();
+
+			const result = await service.getSyntheticCredential({
+				credentialType: 'firecrawlMcpGatewayApi',
+				userId: USER_ID,
+			});
+
+			expect(result).toEqual({ token: 'mock-jwt-token' });
+		});
+
+		it('still requires a licence for a gateway-hosted MCP server', async () => {
+			const service = makeService({ isAiGatewayLicensed: false });
+
+			await expect(
+				service.getSyntheticCredential({
+					credentialType: 'firecrawlMcpGatewayApi',
+					userId: USER_ID,
+				}),
+			).rejects.toThrow(FeatureNotLicensedError);
+		});
+
 		it('returns synthetic credential with apiKey (JWT) and host (gateway URL)', async () => {
 			mockConfigThenToken('mock-jwt-token');
 			const service = makeService();

@@ -19,8 +19,11 @@ import {
 	type ResolvedMcpConfig,
 } from '../shared/runtime';
 import {
+	isMcpGatewayAuthentication,
 	isMcpOAuth2Authentication,
 	type McpAuthenticationOption,
+	type McpGatewayCredentialType,
+	type McpOAuth2CredentialType,
 	type McpServerTransport,
 } from '../shared/types';
 
@@ -197,14 +200,22 @@ function getCredentialType(
 ): McpAuthenticationOption {
 	const node = ctx.getNode();
 	const credentials = node.credentials ?? {};
-	const credentialType = Object.keys(credentials).find(
-		// for now we support only OAuth2
-		(credentialType) => isMcpOAuth2Authentication(credentialType),
-	);
+	const credentialType = Object.keys(credentials).find(isRegistryCredentialType);
 
 	if (!credentialType) {
-		throw new NodeOperationError(node, 'No MCP OAuth2 credential type found');
+		throw new NodeOperationError(node, 'No MCP OAuth2 or Gateway credential type found');
 	}
 
 	return credentialType;
+}
+
+/**
+ * OAuth2 for servers the user authorizes themselves; Gateway credits for servers
+ * the AI Gateway hosts and bills. Written as an explicit guard because a
+ * disjunction of two guards is not inferred as one.
+ */
+function isRegistryCredentialType(
+	credentialType: string,
+): credentialType is McpOAuth2CredentialType | McpGatewayCredentialType {
+	return isMcpOAuth2Authentication(credentialType) || isMcpGatewayAuthentication(credentialType);
 }

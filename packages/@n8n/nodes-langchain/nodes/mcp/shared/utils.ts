@@ -15,6 +15,7 @@ import type {
 import { assertCredentialAllowsUrl, assertUrlAllowed, NodeOperationError } from 'n8n-workflow';
 
 import {
+	isMcpGatewayAuthentication,
 	isMcpOAuth2Authentication,
 	type McpAuthenticationOption,
 	type McpServerTransport,
@@ -390,6 +391,21 @@ export async function getAuthHeaders(
 
 		return {
 			headers: { Authorization: `Bearer ${credentials.oauthTokenData.access_token}` },
+			credentials,
+		};
+	}
+
+	// Minted per execution rather than stored, so there is no refresh to manage:
+	// the token is already current by the time it reaches here.
+	if (isMcpGatewayAuthentication(authentication)) {
+		const credentials = await ctx
+			.getCredentials<{ token: string }>(authentication)
+			.catch(() => null);
+
+		if (!credentials?.token) return {};
+
+		return {
+			headers: { Authorization: `Bearer ${credentials.token}` },
 			credentials,
 		};
 	}

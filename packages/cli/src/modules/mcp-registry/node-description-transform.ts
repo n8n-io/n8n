@@ -18,6 +18,7 @@ export const MCP_REGISTRY_PACKAGE_NAME = '@n8n/mcp-registry';
 export const LANGCHAIN_PACKAGE_NAME = '@n8n/n8n-nodes-langchain';
 export const MCP_REGISTRY_BASE_NODE_NAME = 'mcpRegistryClientTool';
 export const MCP_BASE_OAUTH2_CREDENTIAL_NAME = 'mcpOAuth2Api';
+export const MCP_BASE_GATEWAY_CREDENTIAL_NAME = 'mcpGatewayApi';
 
 /**
  * Predicate that tells whether a credential type name is registered in the runtime.
@@ -32,11 +33,22 @@ function getMcpRegistryNodeTypeName(server: McpRegistryServer): string {
 }
 
 /**
+ * Suffix and human-readable label per auth type. The suffix is load-bearing:
+ * the MCP runtime picks its auth strategy from the credential type name
+ * (`isMcpOAuth2Authentication` / `isMcpGatewayAuthentication`).
+ */
+const CREDENTIAL_NAMING = {
+	oauth2: { suffix: 'McpOAuth2Api', label: 'MCP OAuth2' },
+	extendsCredential: { suffix: 'McpOAuth2Api', label: 'MCP OAuth2' },
+	gateway: { suffix: 'McpGatewayApi', label: 'MCP Gateway Credits' },
+} as const satisfies Record<McpRegistryServer['authType'], { suffix: string; label: string }>;
+
+/**
  * Get credentials type name based on server's slug and auth type
  */
 export function getMcpRegistryCredentialTypeName(server: McpRegistryServer): string {
-	// for now we support only OAuth2, so the suffix is always `McpOAuth2Api`
-	return `${camelCase(server.slug)}McpOAuth2Api`;
+	const naming = CREDENTIAL_NAMING[server.authType] ?? CREDENTIAL_NAMING.oauth2;
+	return `${camelCase(server.slug)}${naming.suffix}`;
 }
 
 /**
@@ -45,10 +57,11 @@ export function getMcpRegistryCredentialTypeName(server: McpRegistryServer): str
 function getMcpRegistryCredentialHeader(
 	server: McpRegistryServer,
 ): Pick<ICredentialType, 'name' | 'icon' | 'displayName'> {
+	const naming = CREDENTIAL_NAMING[server.authType] ?? CREDENTIAL_NAMING.oauth2;
 	return {
 		name: getMcpRegistryCredentialTypeName(server),
 		icon: `node:${MCP_REGISTRY_PACKAGE_NAME}.${getMcpRegistryNodeTypeName(server)}`,
-		displayName: `${server.title} MCP OAuth2`,
+		displayName: `${server.title} ${naming.label}`,
 	};
 }
 
@@ -176,6 +189,25 @@ function serverToExtendedCredentialDescription(
 }
 
 /**
+ * Builds the credential type for a server the AI Gateway hosts and bills.
+ *
+ * It carries no user-supplied fields: the token is minted per execution from the
+ * `__aiGatewayManaged` marker on the node's credential entry. The type exists so
+ * the runtime has something to resolve and so the domain restriction still pins
+ * requests to the gateway's own host.
+ */
+function serverToGatewayCredentialDescription(server: McpRegistryServer): ICredentialType | null {
+	const remote = resolveCredentialRemote(server);
+	if (!remote) return null;
+
+	return {
+		...getMcpRegistryCredentialHeader(server),
+		extends: [MCP_BASE_GATEWAY_CREDENTIAL_NAME],
+		properties: buildDomainRestrictionProperties(remote.hostname),
+	};
+}
+
+/**
  * Get the `credentials` property for node description based on the server's auth type
  */
 function getNodeDescriptionCredentials(
@@ -184,6 +216,7 @@ function getNodeDescriptionCredentials(
 ): INodeCredentialDescription[] {
 	switch (server.authType) {
 		case 'oauth2':
+		case 'gateway':
 			return [{ name: getMcpRegistryCredentialTypeName(server), required: true }];
 		case 'extendsCredential': {
 			const validated = getValidatedExtendsCredential(server, isKnownCredentialType);
@@ -271,6 +304,8 @@ export function serverToCredentialDescription(
 			return serverToOAuth2CredentialDescription(server);
 		case 'extendsCredential':
 			return serverToExtendedCredentialDescription(server, isKnownCredentialType);
+		case 'gateway':
+			return serverToGatewayCredentialDescription(server);
 		default:
 			return null;
 	}
@@ -284,7 +319,7 @@ export function serverToNodeDescription(
 	baseDescription: INodeTypeDescription,
 	isKnownCredentialType: IsKnownCredentialType,
 ): INodeTypeDescription | null {
-	if (server.authType !== 'oauth2' && server.authType !== 'extendsCredential') return null;
+	if (!(server.authType in CREDENTIAL_NAMING)) return null;
 
 	const remote = pickRemote(server);
 	if (!remote) return null;

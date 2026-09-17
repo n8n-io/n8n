@@ -7,6 +7,7 @@ import {
 } from '../node-description-transform';
 import type { McpRegistryServer } from '../registry/mcp-registry.types';
 import {
+	firecrawlGatewayMockServer,
 	gmailDirectExtendMockServer,
 	notionMockServer,
 	slackExtendingMockServer,
@@ -100,6 +101,26 @@ describe('serverToNodeDescription', () => {
 
 		expect(serverTransport?.default).toBe('sse');
 		expect(endpointUrl?.default).toBe('https://mcp.notion.com/sse');
+	});
+
+	it('wires a gateway-hosted server to its Gateway credits credential', () => {
+		const description = serverToNodeDescription(
+			firecrawlGatewayMockServer,
+			baseDescription,
+			isKnownCredentialType,
+		);
+
+		expect(description).not.toBeNull();
+		expect(description?.credentials).toEqual([{ name: 'firecrawlMcpGatewayApi', required: true }]);
+		// The endpoint is the gateway's own MCP path, not the vendor's.
+		expect(description?.properties).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					name: 'endpointUrl',
+					default: 'https://ai-assistant.n8n.io/v1/gateway/mcp/firecrawl',
+				}),
+			]),
+		);
 	});
 
 	it('returns null when no supported remote is available', () => {
@@ -424,6 +445,36 @@ describe('serverToCredentialDescription', () => {
 		});
 	});
 
+	it('returns a description for servers the gateway hosts', () => {
+		const description = serverToCredentialDescription(
+			firecrawlGatewayMockServer,
+			isKnownCredentialType,
+		);
+
+		// No user-supplied fields: the token is minted per execution from the
+		// `__aiGatewayManaged` marker. Only the domain pin remains.
+		expect(description).toEqual({
+			name: 'firecrawlMcpGatewayApi',
+			displayName: 'Firecrawl MCP Gateway Credits',
+			extends: ['mcpGatewayApi'],
+			icon: 'node:@n8n/mcp-registry.firecrawl',
+			properties: [
+				{
+					displayName: 'Allowed HTTP Request Domains',
+					name: 'allowedHttpRequestDomains',
+					type: 'hidden',
+					default: 'domains',
+				},
+				{
+					displayName: 'Allowed Domains',
+					name: 'allowedDomains',
+					type: 'hidden',
+					default: 'ai-assistant.n8n.io',
+				},
+			],
+		});
+	});
+
 	it('returns null when the auth type is not supported', () => {
 		const unsupportedServer: McpRegistryServer = {
 			...notionMockServer,
@@ -613,6 +664,13 @@ describe('serverToCredentialDescription', () => {
 });
 
 describe('getMcpRegistryCredentialTypeName', () => {
+	it('suffixes by auth type so the runtime picks the right auth strategy', () => {
+		expect(getMcpRegistryCredentialTypeName(notionMockServer)).toBe('notionMcpOAuth2Api');
+		expect(getMcpRegistryCredentialTypeName(firecrawlGatewayMockServer)).toBe(
+			'firecrawlMcpGatewayApi',
+		);
+	});
+
 	it.each([
 		{ slug: 'notion', expected: 'notionMcpOAuth2Api' },
 		{ slug: 'linear', expected: 'linearMcpOAuth2Api' },

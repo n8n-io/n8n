@@ -43,7 +43,13 @@ export type McpRegistryServer = {
 	updatedAt: string;
 	icons: McpRegistryIcon[];
 	websiteUrl?: string;
-	authType: 'oauth2' | 'extendsCredential';
+	/**
+	 * `oauth2` and `extendsCredential` are servers the user connects with their
+	 * own credential. `gateway` is a server the AI Gateway hosts and bills to
+	 * Gateway credits — it requires no credential from the user, and is only
+	 * offered on instances licensed for n8n Connect.
+	 */
+	authType: 'oauth2' | 'extendsCredential' | 'gateway';
 	remotes: McpRegistryRemote[];
 	tools: McpRegistryTool[];
 	isOfficial: boolean;

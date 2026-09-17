@@ -8,6 +8,7 @@ import { inE2ETests } from '@/constants';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { Push } from '@/push';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { AiGatewayService } from '@/services/ai-gateway.service';
 
 import { McpRegistryServerRepository } from './mcp-registry-server.repository';
 import { McpRegistryNodeLoader } from '../mcp-registry-node-loader';
@@ -44,6 +45,7 @@ export class McpRegistryService {
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
 		private readonly push: Push,
 		private readonly publisher: Publisher,
+		private readonly aiGatewayService: AiGatewayService,
 	) {
 		this.logger = logger.scoped('mcp-registry');
 	}
@@ -86,13 +88,26 @@ export class McpRegistryService {
 		}
 	}
 
+	/**
+	 * The single funnel for every registry read — search, list, and node-type
+	 * registration all go through here, so withholding an entry here withholds it
+	 * everywhere: no synthetic node type, no synthetic credential type, no search
+	 * hit. That is what makes a `gateway` entry's mere existence a reliable signal
+	 * that the instance can use it.
+	 */
 	async getAll({
 		includeDeprecated = false,
 	}: { includeDeprecated?: boolean } = {}): Promise<McpRegistryServer[]> {
 		const entities = includeDeprecated
 			? await this.repository.find()
 			: await this.repository.findBy({ status: 'active' });
-		return entities.map(fromEntity);
+		const servers = entities.map(fromEntity);
+
+		// Servers the gateway hosts are billed to Gateway credits, so they are
+		// unusable without n8n Connect. Offering them on an instance that cannot
+		// mint a token would fail at run time instead of at selection time.
+		if (this.aiGatewayService.isEnabled()) return servers;
+		return servers.filter((server) => server.authType !== 'gateway');
 	}
 
 	async get(slug: string): Promise<McpRegistryServer | undefined> {

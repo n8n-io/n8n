@@ -11,7 +11,7 @@ import { UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import type { ICredentialDataDecryptedObject, IHttpRequestMethods } from 'n8n-workflow';
-import { OperationalError, UserError } from 'n8n-workflow';
+import { isMcpGatewayAuthentication, OperationalError, UserError } from 'n8n-workflow';
 
 import { N8N_VERSION, AI_ASSISTANT_SDK_VERSION } from '@/constants';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
@@ -192,12 +192,52 @@ export class AiGatewayService {
 
 		const baseUrl = this.requireBaseUrl();
 
+		// MCP servers the gateway hosts carry no provider config: the endpoint URL
+		// comes from the registry entry on the node, so the credential is just the
+		// bearer token. The token is not provider-scoped, so one mint serves any
+		// gateway path the entry points at.
+		if (isMcpGatewayAuthentication(credentialType)) {
+			const { jwt } = await this.resolveAndMintToken({ userId, workflowId, projectId });
+			return { token: jwt };
+		}
+
 		const config = await this.getGatewayConfig();
 		const providerConfig = config.providerConfig[credentialType];
 		if (!providerConfig) {
 			throw new UserError(`Credential type "${credentialType}" is not supported by n8n credits.`);
 		}
 
+		const { jwt, resolvedProjectId } = await this.resolveAndMintToken({
+			userId,
+			workflowId,
+			projectId,
+		});
+
+		const urlFields = this.buildUrlFields(baseUrl, providerConfig, {
+			executionId,
+			workflowId,
+			projectId: resolvedProjectId,
+		});
+
+		return {
+			[providerConfig.apiKeyField]: jwt,
+			...urlFields,
+		};
+	}
+
+	/**
+	 * Resolves the project and user a credential is attributed to, then mints a
+	 * gateway token for that user.
+	 */
+	private async resolveAndMintToken({
+		userId,
+		workflowId,
+		projectId,
+	}: {
+		userId: string | undefined;
+		workflowId?: string;
+		projectId?: string;
+	}): Promise<{ jwt: string; resolvedProjectId?: string }> {
 		const resolvedProjectId = await this.resolveProjectId({ projectId, workflowId });
 		const resolvedUserId = await this.resolveUserId({
 			userId,
@@ -211,17 +251,7 @@ export class AiGatewayService {
 		if (!jwt) {
 			throw new UserError('Failed to obtain a valid n8n credits token.');
 		}
-
-		const urlFields = this.buildUrlFields(baseUrl, providerConfig, {
-			executionId,
-			workflowId,
-			projectId: resolvedProjectId,
-		});
-
-		return {
-			[providerConfig.apiKeyField]: jwt,
-			...urlFields,
-		};
+		return { jwt, resolvedProjectId };
 	}
 
 	/**

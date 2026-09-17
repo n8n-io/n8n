@@ -105,6 +105,22 @@ describe('McpRegistryClientTool', () => {
 			expect(result).toEqual([{ name: 'tool-a', value: 'tool-a' }]);
 		});
 
+		it('accepts a Gateway credits credential type', async () => {
+			const ctx = createLoadOptionsCtx(
+				{ serverTransport: 'httpStreamable', endpointUrl: 'https://gw.example.com/mcp' },
+				{ credentials: { firecrawlMcpGatewayApi: {} } },
+			);
+			loadMcpToolOptionsMock.mockResolvedValue([]);
+
+			const node = new McpRegistryClientTool();
+			await node.methods.loadOptions.getTools.call(ctx);
+
+			expect(loadMcpToolOptionsMock).toHaveBeenCalledWith(
+				ctx,
+				expect.objectContaining({ authentication: 'firecrawlMcpGatewayApi' }),
+			);
+		});
+
 		it('throws an error when no OAuth2 credentials are defined on the node', async () => {
 			const ctx = createLoadOptionsCtx(
 				{
@@ -120,7 +136,7 @@ describe('McpRegistryClientTool', () => {
 			const node = new McpRegistryClientTool();
 
 			await expect(node.methods.loadOptions.getTools.call(ctx)).rejects.toThrow(
-				'No MCP OAuth2 credential type found',
+				'No MCP OAuth2 or Gateway credential type found',
 			);
 		});
 
@@ -208,7 +224,7 @@ describe('McpRegistryClientTool', () => {
 
 			const node = new McpRegistryClientTool();
 			await expect(node.supplyData.call(ctx, 0)).rejects.toThrow(
-				'No MCP OAuth2 credential type found',
+				'No MCP OAuth2 or Gateway credential type found',
 			);
 		});
 	});
@@ -288,7 +304,9 @@ describe('McpRegistryClientTool', () => {
 
 			const node = new McpRegistryClientTool();
 
-			await expect(node.execute.call(ctx)).rejects.toThrow('No MCP OAuth2 credential type found');
+			await expect(node.execute.call(ctx)).rejects.toThrow(
+				'No MCP OAuth2 or Gateway credential type found',
+			);
 		});
 	});
 });

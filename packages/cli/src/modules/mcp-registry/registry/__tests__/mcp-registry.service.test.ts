@@ -5,6 +5,7 @@ import { mock } from 'vitest-mock-extended';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { Push } from '@/push';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { AiGatewayService } from '@/services/ai-gateway.service';
 
 import type { McpRegistryApiClient, McpRegistryServerMetadata } from '../mcp-registry-api.client';
 import type { McpRegistryServerEntity } from '../mcp-registry-server.entity';
@@ -12,7 +13,7 @@ import type { McpRegistryServerRepository } from '../mcp-registry-server.reposit
 import { McpRegistryService } from '../mcp-registry.service';
 import type { McpRegistryServer } from '../mcp-registry.types';
 import { toEntity } from '../mcp-registry.types';
-import { linearMockServer, notionMockServer } from '../mock-servers';
+import { firecrawlGatewayMockServer, linearMockServer, notionMockServer } from '../mock-servers';
 
 function toMockEntity(server: McpRegistryServer): McpRegistryServerEntity {
 	const now = new Date();
@@ -23,6 +24,8 @@ type CreateServiceOptions = {
 	storedServers?: McpRegistryServer[] | null;
 	isLeader?: boolean;
 	instanceType?: 'main' | 'worker';
+	/** n8n Connect enabled — gates `authType: 'gateway'` entries out of every read. */
+	aiGatewayEnabled?: boolean;
 };
 
 function createService(options: CreateServiceOptions = {}) {
@@ -36,6 +39,9 @@ function createService(options: CreateServiceOptions = {}) {
 	const loadNodesAndCredentials = mock<LoadNodesAndCredentials>({ loaders: {} });
 	const push = mock<Push>({ broadcast: vi.fn() });
 	const publisher = mock<Publisher>({ publishCommand: vi.fn().mockResolvedValue(undefined) });
+	const aiGatewayService = mock<AiGatewayService>({
+		isEnabled: vi.fn().mockReturnValue(options.aiGatewayEnabled ?? true),
+	});
 
 	if (options.storedServers === null) {
 		repository.find.mockResolvedValue([]);
@@ -71,12 +77,14 @@ function createService(options: CreateServiceOptions = {}) {
 		loadNodesAndCredentials,
 		push,
 		publisher,
+		aiGatewayService,
 	);
 
 	return {
 		service,
 		repository,
 		apiClient,
+		aiGatewayService,
 		push,
 		publisher,
 	};
@@ -119,6 +127,44 @@ describe('McpRegistryService', () => {
 			const servers = await service.getAll({ includeDeprecated: true });
 
 			expect(servers).toEqual([notionMockServer, linearMockServer, deprecated]);
+		});
+
+		it('offers gateway-hosted servers when n8n Connect is enabled', async () => {
+			const { service } = createService({
+				storedServers: [notionMockServer, firecrawlGatewayMockServer],
+				aiGatewayEnabled: true,
+			});
+
+			await service.init();
+
+			expect(await service.getAll()).toEqual([notionMockServer, firecrawlGatewayMockServer]);
+		});
+
+		// Without n8n Connect there is no token to mint, so offering the server would
+		// fail at run time rather than at selection time.
+		it('withholds gateway-hosted servers when n8n Connect is disabled', async () => {
+			const { service } = createService({
+				storedServers: [notionMockServer, firecrawlGatewayMockServer],
+				aiGatewayEnabled: false,
+			});
+
+			await service.init();
+
+			expect(await service.getAll()).toEqual([notionMockServer]);
+			expect(await service.getAll({ includeDeprecated: true })).toEqual([notionMockServer]);
+		});
+
+		it('keeps gateway-hosted servers out of search and list when disabled', async () => {
+			const { service } = createService({
+				storedServers: [notionMockServer, firecrawlGatewayMockServer],
+				aiGatewayEnabled: false,
+			});
+
+			await service.init();
+
+			const slugs = (await service.list(10)).map((entry) => entry.slug);
+			expect(slugs).not.toContain('firecrawl');
+			expect(slugs).toContain('notion');
 		});
 
 		it('returns server by slug and undefined for unknown slug', async () => {
