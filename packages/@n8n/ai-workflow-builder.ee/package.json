@@ -72,7 +72,7 @@
     "@n8n_io/ai-assistant-sdk": "catalog:",
     "axios": "catalog:",
     "csv-parse": "catalog:",
-    "jsdom": "23.0.1",
+    "jsdom": "catalog:",
     "langchain": "catalog:",
     "langsmith": "^0.4.6",
     "lodash": "catalog:",

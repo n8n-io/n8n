@@ -15,6 +15,9 @@ const sourceEntry = [
 // package override has to restate the shared defaults.
 const pkg = (overrides: Workspace = {}): Workspace => ({
 	entry: sourceEntry,
+	// Manifest `types` and `exports` fields make a local dist an entry. `ignore` only mutes
+	// findings in these files; a stale dist reports imports the source no longer has.
+	ignore: ['dist/**'],
 	// The default only reads tsconfig.json; build tsconfigs extend shared configs too.
 	typescript: { config: ['tsconfig.json', 'tsconfig.*.json'] },
 	// postcss is not a declared dependency, so the plugin needs to be forced on.
@@ -36,15 +39,15 @@ const config: KnipConfig = {
 		enumMembers: 'off',
 		namespaceMembers: 'off',
 		duplicates: 'off',
-		unlisted: 'off',
+		unlisted: 'error',
 		unresolved: 'off',
 		binaries: 'off',
-		catalogReferences: 'off',
+		catalogReferences: 'error',
 		cycles: 'off',
 	},
 	workspaces: {
 		'.': {
-			entry: ['scripts/**/*.{mjs,js,ts}', '.github/scripts/**/*.mjs'],
+			entry: ['scripts/**/*.{mjs,js,ts}'],
 			ignoreDependencies: [
 				// Invoked by path in the n8n-module-sdk script.
 				'@n8n/module-cli',
@@ -53,6 +56,24 @@ const config: KnipConfig = {
 				'@stryker-mutator/vitest-runner',
 				// Manual dev tool; CONTRIBUTING.md documents `pnpm exec dotenvx run`.
 				'@dotenvx/dotenvx',
+				// scripts/instance-seeding resolves it from packages/cli by path.
+				'flatted',
+				// scripts/generate-emoji-data.mjs is a manual generator; install emojibase-data ad hoc.
+				'emojibase-data',
+				// Only named in JSDoc type imports; @stryker-mutator/core provides it.
+				'@stryker-mutator/api',
+			],
+		},
+		// Not a pnpm workspace; the release and CI scripts carry their own manifest and lockfile.
+		'.github/scripts': {
+			entry: ['**/*.mjs'],
+			ignoreDependencies: [
+				// docker/kafka-native-smoke-check.mjs requires it from the n8n install under test.
+				'@confluentinc/kafka-javascript',
+				// The generate-sbom script runs the cdxgen binary; the package is not installed here.
+				'@cyclonedx/cdxgen',
+				// conventional-changelog loads the preset by name.
+				'conventional-changelog-angular',
 			],
 		},
 		'packages/**': pkg(),
@@ -114,6 +135,22 @@ const config: KnipConfig = {
 			// tsconfig.json reaches into design-system/src through rootDirs and types.
 			ignoreDependencies: ['@n8n/design-system'],
 		}),
+		'packages/workflow': pkg({
+			// Only named in JSDoc type imports; @stryker-mutator/core provides it.
+			ignoreDependencies: ['@stryker-mutator/api'],
+		}),
+		'packages/@n8n/scheduler': pkg({
+			// Only named in JSDoc type imports; @stryker-mutator/core provides it.
+			ignoreDependencies: ['@stryker-mutator/api'],
+		}),
+		'packages/@n8n/benchmark': pkg({
+			// The k6 runtime provides its own modules; only @types/k6 is installed.
+			ignoreDependencies: ['k6'],
+		}),
+		'packages/@n8n/backend-common': pkg({
+			// module-registry resolves the installed n8n package by path at runtime.
+			ignoreDependencies: ['n8n'],
+		}),
 		'packages/core': pkg({
 			// bin/generate-node-defs and bin/copy-static-files have no extension, so knip does not parse them.
 			ignoreDependencies: ['@n8n/workflow-sdk', 'p-limit'],
@@ -134,6 +171,10 @@ const config: KnipConfig = {
 				'web-tree-sitter',
 				// Target of the `stream` alias that @n8n/frontend-vite-config declares.
 				'stream-browserify',
+				// .oxlintrc.json names these plugins; @n8n/oxlint-config provides them.
+				'@stylistic/eslint-plugin',
+				'eslint-plugin-lodash',
+				'eslint-plugin-unused-imports',
 			],
 		}),
 		'packages/frontend/@n8n/storybook': pkg({
