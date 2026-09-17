@@ -3,7 +3,11 @@ import type { EngineConfig } from '@n8n/config';
 import type { ExecutionResponse, ExecutionResponseChannel } from '@n8n/engine';
 import { mock } from 'vitest-mock-extended';
 
-import { EngineV2WebhookResponder } from '@/services/engine-v2-webhook-responder.service';
+import { createExecutionIdV2 } from '@/executions/execution-id';
+import {
+	EngineV2WebhookResponder,
+	MAX_PENDING_WEBHOOKS,
+} from '@/services/engine-v2-webhook-responder.service';
 
 const TIMEOUT_MS = 50_000;
 
@@ -63,12 +67,35 @@ describe('EngineV2WebhookResponder', () => {
 		responder.useChannel(fake.channel);
 	});
 
-	it('mints an execution id the run can be started with', () => {
-		expect(responder.expect().executionId).toMatch(/^[0-9a-f-]{36}$/);
+	it('listens under the id the run is started with', () => {
+		const executionId = createExecutionIdV2();
+
+		expect(responder.waitForResponse(executionId).executionId).toBe(executionId);
 	});
 
-	it('refuses to open a wait before the host hands over a channel', () => {
-		expect(() => newResponder().expect()).toThrow('without a channel');
+	it('refuses to listen before the host hands over a channel', () => {
+		expect(() => newResponder().waitForResponse(createExecutionIdV2())).toThrow(
+			'without a channel',
+		);
+	});
+
+	it('refuses a run once it listens for as many as it can hold', () => {
+		for (let i = 0; i < MAX_PENDING_WEBHOOKS; i++) {
+			responder.waitForResponse(createExecutionIdV2());
+		}
+
+		// Refused before dispatch, so no run starts that nothing can answer.
+		expect(() => responder.waitForResponse(createExecutionIdV2())).toThrow('Try again later');
+	});
+
+	it('listens again once an answered run releases its slot', () => {
+		const pending = Array.from({ length: MAX_PENDING_WEBHOOKS }, () =>
+			responder.waitForResponse(createExecutionIdV2()),
+		);
+
+		pending[0].release();
+
+		expect(() => responder.waitForResponse(createExecutionIdV2())).not.toThrow();
 	});
 
 	it('drops a response for a run another replica holds', () => {
@@ -76,7 +103,7 @@ describe('EngineV2WebhookResponder', () => {
 	});
 
 	it('reports the step the run ended with', async () => {
-		const pending = responder.expect();
+		const pending = responder.waitForResponse(createExecutionIdV2());
 
 		channel.publish(endedResponse(pending.executionId));
 
@@ -87,7 +114,7 @@ describe('EngineV2WebhookResponder', () => {
 	});
 
 	it('reports no last node when that step produced nothing', async () => {
-		const pending = responder.expect();
+		const pending = responder.waitForResponse(createExecutionIdV2());
 
 		channel.publish(
 			endedResponse(pending.executionId, {
@@ -99,7 +126,7 @@ describe('EngineV2WebhookResponder', () => {
 	});
 
 	it('reports a failure with the node that caused it', async () => {
-		const pending = responder.expect();
+		const pending = responder.waitForResponse(createExecutionIdV2());
 
 		channel.publish(
 			endedResponse(pending.executionId, {
@@ -125,11 +152,13 @@ describe('EngineV2WebhookResponder', () => {
 		const impatient = newResponder(1);
 		impatient.useChannel(fakeChannel().channel);
 
-		await expect(impatient.expect().settled).resolves.toEqual({ status: 'timeout' });
+		await expect(impatient.waitForResponse(createExecutionIdV2()).settled).resolves.toEqual({
+			status: 'timeout',
+		});
 	});
 
 	it('drops later responses for a released run', async () => {
-		const pending = responder.expect();
+		const pending = responder.waitForResponse(createExecutionIdV2());
 		pending.release();
 
 		channel.publish(endedResponse(pending.executionId));

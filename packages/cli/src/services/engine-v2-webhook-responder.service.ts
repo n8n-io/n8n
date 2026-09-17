@@ -1,6 +1,5 @@
 import { Logger } from '@n8n/backend-common';
 import { EngineConfig } from '@n8n/config';
-import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import type {
 	EndedMessage,
@@ -8,30 +7,32 @@ import type {
 	ExecutionResponseChannel,
 	Unsubscribe,
 } from '@n8n/engine';
-import { UnexpectedError } from 'n8n-workflow';
+import { OperationalError, UnexpectedError } from 'n8n-workflow';
 
-import { createExecutionIdV2 } from '@/executions/execution-id';
+import type { ExecutionIdV2 } from '@/executions/execution-id';
 import { PendingWebhookResponse } from '@/services/pending-webhook-response';
 
-/** One open wait: the handle the request holds, and the subscription feeding it. */
-type Wait = { pending: PendingWebhookResponse; unsubscribe: Unsubscribe };
+/** A request that is still open, and the subscription that feeds its answer. */
+type PendingWebhook = { response: PendingWebhookResponse; unsubscribe: Unsubscribe };
 
-/** Long enough to outlive a slow run, short enough to bound the map. */
-const ENTRY_TTL_MS = 1 * Time.hours.toMilliseconds;
-const MAX_ENTRIES = 5000;
+/**
+ * How many runs this replica listens for at once. Every entry has its own
+ * response timeout, so the map drains on its own; this only bounds it.
+ */
+export const MAX_PENDING_WEBHOOKS = 5000;
 
 /**
  * Answers a webhook request from the responses its data-plane run publishes.
  *
- * The control-plane half: a wait is opened for one run, and it listens to that
- * run alone. A run this replica did not open is another replica's business, and
- * nothing here ever hears about it.
+ * The control-plane half: a listener is created for one run, and it hears that
+ * run alone. A run this replica did not start is another replica's business,
+ * and nothing here ever hears about it.
  */
 @Service()
 export class EngineV2WebhookResponder {
 	private channel?: ExecutionResponseChannel;
 
-	private readonly waits = new Map<string, Wait>();
+	private readonly pendingWebhooks = new Map<string, PendingWebhook>();
 
 	constructor(
 		private readonly engineConfig: EngineConfig,
@@ -46,57 +47,62 @@ export class EngineV2WebhookResponder {
 	}
 
 	/**
-	 * Opens the wait for one run. Call this before dispatch: a short workflow
-	 * answers before `startExecution` returns.
+	 * Listens for one run's answer. Call this before dispatch, with the id the
+	 * run is started under: a short workflow answers before `startExecution`
+	 * returns.
 	 *
-	 * Mints the execution id, because the run has to use the one being waited on.
+	 * Refuses at capacity, so the run never starts. Dropping an older listener
+	 * instead would hold its request open until the response timeout, and the
+	 * answer it was waiting for would arrive with nobody to take it.
 	 */
-	expect(): PendingWebhookResponse {
+	waitForResponse(executionId: ExecutionIdV2): PendingWebhookResponse {
 		const { channel } = this;
 		if (!channel) {
 			throw new UnexpectedError('Engine 2.0 cannot wait for a response without a channel');
 		}
 
-		this.evict();
+		if (this.pendingWebhooks.size >= MAX_PENDING_WEBHOOKS) {
+			throw new OperationalError(
+				`Engine 2.0 already awaits ${MAX_PENDING_WEBHOOKS} webhook responses. Try again later.`,
+			);
+		}
 
-		const pending = new PendingWebhookResponse(
-			createExecutionIdV2(),
-			this.engineConfig.webhookResponseTimeout,
-			(executionId) => this.release(executionId),
+		const response = new PendingWebhookResponse({
+			executionId,
+			timeoutMs: this.engineConfig.webhookResponseTimeout,
+			onRelease: (id) => this.release(id),
+		});
+		const unsubscribe = channel.subscribe(executionId, (published) =>
+			this.handle(published, response),
 		);
-		const unsubscribe = channel.subscribe(pending.executionId, (response) =>
-			this.handle(response, pending),
-		);
-		this.waits.set(pending.executionId, { pending, unsubscribe });
+		this.pendingWebhooks.set(executionId, { response, unsubscribe });
 
-		return pending;
+		return response;
 	}
 
-	private handle(response: ExecutionResponse, pending: PendingWebhookResponse): void {
-		pending.lastSeenAt = Date.now();
-
+	private handle(published: ExecutionResponse, response: PendingWebhookResponse): void {
 		try {
-			this.onEnded(response, pending);
+			this.onEnded(published, response);
 		} catch (error) {
 			this.logger.error('Failed to relay an engine 2.0 response', {
-				executionId: response.executionId,
-				type: response.type,
+				executionId: published.executionId,
+				type: published.type,
 				error,
 			});
 		}
 	}
 
-	private onEnded(response: EndedMessage, pending: PendingWebhookResponse): void {
-		const { nodeName, outputs, error } = response.lastStep;
+	private onEnded(published: EndedMessage, response: PendingWebhookResponse): void {
+		const { nodeName, outputs, error } = published.lastStep;
 
-		if (response.status === 'failed') {
+		if (published.status === 'failed') {
 			// The step that ended a failed run is the one that failed, so its name
 			// and error are what the caller reports.
-			pending.resolve({ status: 'failed', nodeName, error });
+			response.resolve({ status: 'failed', nodeName, error });
 			return;
 		}
 
-		pending.resolve({
+		response.resolve({
 			status: 'completed',
 			// A skipped or failed step carries nothing to answer with.
 			lastNode: outputs ? { nodeName, outputs } : undefined,
@@ -105,24 +111,7 @@ export class EngineV2WebhookResponder {
 
 	/** Ends the run's subscription: nothing more can arrive for it. */
 	private release(executionId: string): void {
-		this.waits.get(executionId)?.unsubscribe();
-		this.waits.delete(executionId);
-	}
-
-	/** Swept on write, so there is no interval to manage. */
-	private evict(): void {
-		const cutoff = Date.now() - ENTRY_TTL_MS;
-		for (const { pending } of this.waits.values()) {
-			if (pending.lastSeenAt < cutoff) pending.release();
-		}
-
-		// Leave room for the caller's entry, so the cap holds after the insert.
-		const excess = this.waits.size - MAX_ENTRIES + 1;
-		if (excess <= 0) return;
-
-		const oldestFirst = [...this.waits.values()].sort(
-			(a, b) => a.pending.lastSeenAt - b.pending.lastSeenAt,
-		);
-		for (const { pending } of oldestFirst.slice(0, excess)) pending.release();
+		this.pendingWebhooks.get(executionId)?.unsubscribe();
+		this.pendingWebhooks.delete(executionId);
 	}
 }

@@ -2093,11 +2093,11 @@ describe('executeWebhook on engine 2.0', () => {
 	});
 
 	describe('lastNode', () => {
-		it('dispatches the run under the id the answer is waited on', async () => {
+		it('dispatches the run under the id the answer is listened for on', async () => {
 			await startWebhook({ responseMode: 'lastNode' });
 
-			// The waiting request is recorded before the run starts, and the run
-			// has to use the id it was recorded under, so a fast answer is not lost.
+			// The listener is created before the run starts, and the run has to use
+			// the id it listens under, so a fast answer is not lost.
 			expect(workflowRunner.run).toHaveBeenCalledTimes(1);
 			expect(workflowRunner.run.mock.calls[0][0].engineExecutionId).toEqual(expect.any(String));
 		});

@@ -74,6 +74,7 @@ import { InternalServerError } from '@/errors/response-errors/internal-server.er
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { UnsupportedMediaTypeError } from '@/errors/response-errors/unsupported-media-type.error';
 import { EventService } from '@/events/event.service';
+import { createExecutionIdV2 } from '@/executions/execution-id';
 import { parseBody } from '@/middlewares';
 import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
 import {
@@ -1147,10 +1148,12 @@ export async function executeWebhook(
 		}
 
 		// Before the run, because a short workflow answers before `startExecution`
-		// returns and nothing replays a missed response.
+		// returns and nothing replays a missed response. The id is minted here, so
+		// the run and the listener agree on it.
 		if (routesToEngineV2) {
-			pending = Container.get(EngineV2WebhookResponder).expect();
-			runData.engineExecutionId = pending.executionId;
+			const engineExecutionId = createExecutionIdV2();
+			pending = Container.get(EngineV2WebhookResponder).waitForResponse(engineExecutionId);
+			runData.engineExecutionId = engineExecutionId;
 		}
 
 		// Extract W3C trace context from webhook headers for OTEL propagation.
