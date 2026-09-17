@@ -14,7 +14,6 @@ describe('PromotionCheckoutStatus', () => {
 		});
 
 		expect(getByTestId('promotion-checkout-connect')).toBeEnabled();
-		expect(queryByTestId('promotion-checkout-reconnect')).toBeNull();
 		expect(queryByTestId('promotion-checkout-disconnect')).toBeNull();
 	});
 
@@ -32,39 +31,26 @@ describe('PromotionCheckoutStatus', () => {
 		);
 	});
 
-	it('offers Reconnect and Disconnect when connected', () => {
+	it('offers only Disconnect when connected', () => {
 		const { getByTestId, queryByTestId } = renderComponent({
 			props: { checkout: { hasCheckout: true, matchesConfig: true } },
 		});
 
-		expect(getByTestId('promotion-checkout-reconnect')).toBeInTheDocument();
+		expect(getByTestId('promotion-checkout-status')).toHaveTextContent('Connected to main');
 		expect(getByTestId('promotion-checkout-disconnect')).toBeInTheDocument();
 		expect(queryByTestId('promotion-checkout-connect')).toBeNull();
 	});
 
-	it('keeps the connected status visible when Reconnect is disabled', () => {
-		const { getByTestId } = renderComponent({
-			props: {
-				checkout: { hasCheckout: true, matchesConfig: true },
-				disabledReason: 'Save your changes before you connect.',
-			},
-		});
-
-		expect(getByTestId('promotion-checkout-status')).toHaveTextContent('Connected to main');
-		expect(getByTestId('promotion-checkout-reconnect')).toBeDisabled();
-		expect(getByTestId('promotion-checkout-disconnect')).toBeEnabled();
-	});
-
-	it('offers Reconnect when the checkout is stale', () => {
+	it('offers Connect and Disconnect when the checkout is stale', () => {
 		const { getByTestId } = renderComponent({
 			props: { checkout: { hasCheckout: true, matchesConfig: false } },
 		});
 
-		expect(getByTestId('promotion-checkout-reconnect')).toBeInTheDocument();
+		expect(getByTestId('promotion-checkout-connect')).toBeInTheDocument();
 		expect(getByTestId('promotion-checkout-disconnect')).toBeInTheDocument();
 	});
 
-	it('keeps the stale status visible when Reconnect is disabled', () => {
+	it('keeps the stale status visible when Connect is disabled', () => {
 		const { getByTestId } = renderComponent({
 			props: {
 				checkout: { hasCheckout: true, matchesConfig: false },
@@ -73,18 +59,18 @@ describe('PromotionCheckoutStatus', () => {
 		});
 
 		expect(getByTestId('promotion-checkout-status')).toHaveTextContent(
-			'The remote or branch changed. Reconnect to update the local copy.',
+			'The remote or branch changed. Connect to update the local copy.',
 		);
-		expect(getByTestId('promotion-checkout-reconnect')).toBeDisabled();
+		expect(getByTestId('promotion-checkout-connect')).toBeDisabled();
 		expect(getByTestId('promotion-checkout-disconnect')).toBeEnabled();
 	});
 
-	it('shows the spinner on Reconnect while connecting', () => {
+	it('shows the spinner on Connect while connecting', () => {
 		const { getByTestId } = renderComponent({
-			props: { checkout: { hasCheckout: true, matchesConfig: true }, busy: 'connect' },
+			props: { checkout: { hasCheckout: true, matchesConfig: false }, busy: 'connect' },
 		});
 
-		expect(getByTestId('promotion-checkout-reconnect')).toHaveAttribute('aria-busy', 'true');
+		expect(getByTestId('promotion-checkout-connect')).toHaveAttribute('aria-busy', 'true');
 		expect(getByTestId('promotion-checkout-disconnect')).not.toHaveAttribute('aria-busy', 'true');
 		expect(getByTestId('promotion-checkout-disconnect')).toBeDisabled();
 	});
@@ -95,16 +81,14 @@ describe('PromotionCheckoutStatus', () => {
 		});
 
 		expect(getByTestId('promotion-checkout-disconnect')).toHaveAttribute('aria-busy', 'true');
-		expect(getByTestId('promotion-checkout-reconnect')).not.toHaveAttribute('aria-busy', 'true');
-		expect(getByTestId('promotion-checkout-reconnect')).toBeDisabled();
 	});
 
 	it('emits connect and disconnect on click', async () => {
 		const { getByTestId, emitted } = renderComponent({
-			props: { checkout: { hasCheckout: true, matchesConfig: true } },
+			props: { checkout: { hasCheckout: true, matchesConfig: false } },
 		});
 
-		await userEvent.click(getByTestId('promotion-checkout-reconnect'));
+		await userEvent.click(getByTestId('promotion-checkout-connect'));
 		await userEvent.click(getByTestId('promotion-checkout-disconnect'));
 
 		expect(emitted('connect')).toHaveLength(1);

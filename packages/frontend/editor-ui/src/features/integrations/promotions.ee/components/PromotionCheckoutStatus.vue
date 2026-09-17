@@ -59,19 +59,7 @@ const isConnected = computed(() => props.checkout?.hasCheckout ?? false);
 
 		<div :class="$style.actions">
 			<N8nButton
-				v-if="isConnected"
-				type="button"
-				variant="outline"
-				size="small"
-				:disabled="!!disabledReason || busy === 'disconnect'"
-				:loading="busy === 'connect'"
-				data-test-id="promotion-checkout-reconnect"
-				@click="emit('connect')"
-			>
-				{{ i18n.baseText('settings.promotions.connection.checkout.reconnect') }}
-			</N8nButton>
-			<N8nButton
-				v-else
+				v-if="status !== 'connected'"
 				type="button"
 				size="small"
 				:disabled="!!disabledReason || busy === 'disconnect'"
