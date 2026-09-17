@@ -79,6 +79,13 @@ export function validateMicrosoftGraphId(id: string, node: INode): string {
 			description: 'The ID contains a malformed percent-encoding. Copy it again and try again.',
 		});
 	}
+	// A lone surrogate is not valid text. `decodeURIComponent` passes it through, and the
+	// `encodeURIComponent` on a body value (`@odata.bind`) then throws a raw `URIError`.
+	if (/\p{Surrogate}/u.test(value)) {
+		throw new NodeOperationError(node, 'The ID is not valid', {
+			description: 'The ID contains an invalid character. Copy it again and try again.',
+		});
+	}
 	if (/^\.+$/.test(value)) {
 		throw new NodeOperationError(node, 'The ID is not valid', {
 			description: 'An ID cannot consist only of dots.',
