@@ -12,9 +12,15 @@ const MAX_TIMEOUT_MS = 2 ** 31 - 1;
 describe('SystemTaskTimer', () => {
 	const onFire = vi.fn();
 	const onPlanError = vi.fn();
+	const onPlan = vi.fn();
 
 	function createTimer(schedule: SystemTaskSchedule) {
-		return new SystemTaskTimer(scheduleFromDefinition(schedule, 'UTC'), onFire, onPlanError);
+		return new SystemTaskTimer(
+			scheduleFromDefinition(schedule, 'UTC'),
+			onFire,
+			onPlanError,
+			onPlan,
+		);
 	}
 
 	beforeEach(() => {
@@ -81,12 +87,56 @@ describe('SystemTaskTimer', () => {
 		expect(onFire).toHaveBeenCalledTimes(2);
 	});
 
+	it('hands each fire its lag, zero when the timeout fired on time', () => {
+		const timer = createTimer({ kind: 'interval', intervalSeconds: 60 });
+
+		timer.start(new Date());
+		vi.advanceTimersByTime(60 * Time.seconds.toMilliseconds);
+
+		expect(onFire).toHaveBeenCalledExactlyOnceWith(0, 0);
+	});
+
+	it('hands a coalesced fire the time the process slept past the occurrence and the occurrences it stands in for', () => {
+		let clock = START.getTime();
+		const timer = new SystemTaskTimer(
+			scheduleFromDefinition({ kind: 'interval', intervalSeconds: 60 }, 'UTC'),
+			onFire,
+			onPlanError,
+			onPlan,
+			() => clock,
+		);
+
+		timer.start(new Date(clock));
+		clock = START.getTime() + Time.hours.toMilliseconds;
+		vi.advanceTimersByTime(60 * Time.seconds.toMilliseconds);
+
+		expect(onFire).toHaveBeenCalledExactlyOnceWith(59 * Time.minutes.toMilliseconds, 59);
+	});
+
+	it('hands a fire that wakes before its occurrence no negative lag', () => {
+		let clock = START.getTime();
+		const timer = new SystemTaskTimer(
+			scheduleFromDefinition({ kind: 'interval', intervalSeconds: 60 }, 'UTC'),
+			onFire,
+			onPlanError,
+			onPlan,
+			() => clock,
+		);
+
+		timer.start(new Date(clock));
+		clock = START.getTime() + 59 * Time.seconds.toMilliseconds;
+		vi.advanceTimersByTime(60 * Time.seconds.toMilliseconds);
+
+		expect(onFire).toHaveBeenCalledExactlyOnceWith(0, 0);
+	});
+
 	it('coalesces the occurrences a stalled process slept through', () => {
 		let clock = START.getTime();
 		const timer = new SystemTaskTimer(
 			scheduleFromDefinition({ kind: 'interval', intervalSeconds: 60 }, 'UTC'),
 			onFire,
 			onPlanError,
+			onPlan,
 			() => clock,
 		);
 
@@ -104,6 +154,52 @@ describe('SystemTaskTimer', () => {
 
 		vi.advanceTimersByTime(1 * Time.seconds.toMilliseconds);
 		expect(onFire).toHaveBeenCalledTimes(2);
+	});
+
+	it('counts a wide gap of interval occurrences in full', () => {
+		let clock = START.getTime();
+		const timer = new SystemTaskTimer(
+			scheduleFromDefinition({ kind: 'interval', intervalSeconds: 1 }, 'UTC'),
+			onFire,
+			onPlanError,
+			onPlan,
+			() => clock,
+		);
+
+		timer.start(new Date(clock));
+
+		// A decade of one-second occurrences: 315 million, far too many to walk.
+		const days = 10 * 365;
+		clock = START.getTime() + days * Time.days.toMilliseconds;
+		vi.advanceTimersByTime(1 * Time.seconds.toMilliseconds);
+
+		const occurrences = days * Time.days.toSeconds;
+		expect(onFire).toHaveBeenCalledExactlyOnceWith(
+			(occurrences - 1) * Time.seconds.toMilliseconds,
+			occurrences - 1,
+		);
+	});
+
+	it('caps the occurrences it counts for a walked schedule', () => {
+		let clock = START.getTime();
+		const timer = new SystemTaskTimer(
+			scheduleFromDefinition({ kind: 'cron', cronExpression: '* * * * *', timezone: 'UTC' }, 'UTC'),
+			onFire,
+			onPlanError,
+			onPlan,
+			() => clock,
+		);
+
+		timer.start(new Date(clock));
+
+		// 30 days of minutes is 43,200 occurrences, above the cap.
+		clock = START.getTime() + 30 * Time.days.toMilliseconds;
+		vi.advanceTimersByTime(1 * Time.minutes.toMilliseconds);
+
+		expect(onFire).toHaveBeenCalledExactlyOnceWith(
+			30 * Time.days.toMilliseconds - Time.minutes.toMilliseconds,
+			1_000,
+		);
 	});
 
 	it('hops to the horizon instead of firing at once when the next fire is far off', () => {
@@ -127,6 +223,7 @@ describe('SystemTaskTimer', () => {
 			),
 			onFire,
 			onPlanError,
+			onPlan,
 			() => clock,
 		);
 
@@ -140,8 +237,73 @@ describe('SystemTaskTimer', () => {
 		expect(onFire).toHaveBeenCalledTimes(1);
 	});
 
+	it('announces the occurrence it arms for, on start and on every rearm', () => {
+		const timer = createTimer({ kind: 'interval', intervalSeconds: 60 });
+
+		timer.start(new Date());
+		expect(onPlan).toHaveBeenCalledExactlyOnceWith(
+			new Date(START.getTime() + 60 * Time.seconds.toMilliseconds),
+		);
+
+		vi.advanceTimersByTime(60 * Time.seconds.toMilliseconds);
+		expect(onPlan).toHaveBeenLastCalledWith(
+			new Date(START.getTime() + 120 * Time.seconds.toMilliseconds),
+		);
+	});
+
+	it('announces the resumed occurrence after a coalesced fire, not the one slept through', () => {
+		let clock = START.getTime();
+		const timer = new SystemTaskTimer(
+			scheduleFromDefinition({ kind: 'interval', intervalSeconds: 60 }, 'UTC'),
+			onFire,
+			onPlanError,
+			onPlan,
+			() => clock,
+		);
+
+		timer.start(new Date(clock));
+		clock = START.getTime() + Time.hours.toMilliseconds;
+		vi.advanceTimersByTime(60 * Time.seconds.toMilliseconds);
+
+		expect(onPlan).toHaveBeenLastCalledWith(new Date(clock + 60 * Time.seconds.toMilliseconds));
+	});
+
+	it('announces a far-off occurrence once, not at every horizon hop', () => {
+		const timer = createTimer({ kind: 'interval', intervalSeconds: 40 * Time.days.toSeconds });
+
+		timer.start(new Date());
+		vi.advanceTimersByTime(MAX_TIMEOUT_MS);
+
+		expect(onPlan).toHaveBeenCalledExactlyOnceWith(
+			new Date(START.getTime() + 40 * Time.days.toMilliseconds),
+		);
+	});
+
+	it('announces nothing for a schedule it cannot plan', () => {
+		const timer = createTimer({ kind: 'cron', cronExpression: 'not-a-cron', timezone: 'UTC' });
+
+		timer.start(new Date());
+
+		expect(onPlan).not.toHaveBeenCalled();
+	});
+
 	it('reports a schedule it cannot plan and stays stopped', () => {
 		const timer = createTimer({ kind: 'cron', cronExpression: 'not-a-cron', timezone: 'UTC' });
+
+		timer.start(new Date());
+
+		expect(onPlanError).toHaveBeenCalledTimes(1);
+		vi.advanceTimersByTime(10 * Time.days.toMilliseconds);
+		expect(onFire).not.toHaveBeenCalled();
+	});
+
+	it('reports a schedule with no next occurrence and stays stopped', () => {
+		const timer = new SystemTaskTimer(
+			{ kind: 'one_off', fireAt: new Date(START.getTime() - 1) },
+			onFire,
+			onPlanError,
+			onPlan,
+		);
 
 		timer.start(new Date());
 

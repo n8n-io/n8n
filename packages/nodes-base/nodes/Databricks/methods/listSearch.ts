@@ -1,5 +1,4 @@
 import type {
-	IDataObject,
 	IHttpRequestOptions,
 	ILoadOptionsFunctions,
 	INodeListSearchResult,
@@ -8,24 +7,29 @@ import type {
 import {
 	databricksApiRequest,
 	extractResourceLocatorValue,
+	fetchDatabricksPage,
 	getActiveCredentialType,
 	getHost,
 	makePermissionErrorLegible,
+	permissionHintFor,
 	sanitizeApiMessage,
+	type DatabricksCredentialType,
 } from '../actions/helpers';
 import type { DatabricksJobRun } from '../actions/interfaces';
+import { getRunOutcome } from '../actions/job/runState';
 
 // Dropdown requests never pass through the router, so its permission-error hook
 // doesn't cover them — apply it here for every listSearch call site instead
 async function listRequest<T>(
 	context: ILoadOptionsFunctions,
-	credentialType: 'databricksApi' | 'databricksOAuth2Api',
+	credentialType: DatabricksCredentialType,
 	options: IHttpRequestOptions,
+	permissionHint?: string,
 ): Promise<T> {
 	try {
 		return (await databricksApiRequest(context, credentialType, options)) as T;
 	} catch (error) {
-		makePermissionErrorLegible(error);
+		makePermissionErrorLegible(error, permissionHint);
 		throw error;
 	}
 }
@@ -208,7 +212,7 @@ export async function getSchemas(
 
 async function fetchResourcesInSchema<T extends { name: string }>(
 	context: ILoadOptionsFunctions,
-	credentialType: 'databricksApi' | 'databricksOAuth2Api',
+	credentialType: DatabricksCredentialType,
 	host: string,
 	apiPath: string,
 	catalogName: string,
@@ -434,21 +438,19 @@ type JobsListPage = { jobs?: JobSummary[]; next_page_token?: string };
 
 async function fetchListPage<T>(
 	context: ILoadOptionsFunctions,
-	credentialType: 'databricksApi' | 'databricksOAuth2Api',
+	credentialType: DatabricksCredentialType,
 	host: string,
 	path: string,
 	limit: number,
 	pageToken?: string,
+	permissionHint?: string,
 ): Promise<T> {
-	const qs: IDataObject = { limit };
-	if (pageToken) qs.page_token = pageToken;
-	return await listRequest<T>(context, credentialType, {
-		method: 'GET',
-		url: `${host}${path}`,
-		qs,
-		headers: { Accept: 'application/json' },
-		json: true,
-	});
+	try {
+		return await fetchDatabricksPage<T>(context, credentialType, host, path, { limit }, pageToken);
+	} catch (error) {
+		makePermissionErrorLegible(error, permissionHint);
+		throw error;
+	}
 }
 
 export async function getJobs(
@@ -472,6 +474,7 @@ export async function getJobs(
 			'/api/2.2/jobs/list',
 			JOBS_PAGE_SIZE,
 			pageToken,
+			permissionHintFor('job'),
 		);
 
 	if (!filter) {
@@ -496,18 +499,18 @@ export async function getJobs(
 	return { results, paginationToken: pageToken };
 }
 
+/** `runs/list` caps `limit` at 25 */
 const RUNS_PAGE_SIZE = 25;
 const RUNS_SEARCH_MAX_PAGES = 10;
 
 type RunsListPage = { runs?: DatabricksJobRun[]; next_page_token?: string };
 
 function describeRun(run: DatabricksJobRun): string {
-	const state = run.status?.state ?? run.state?.life_cycle_state;
-	const outcome = run.status?.termination_details?.code ?? run.state?.result_state;
+	const { code } = getRunOutcome(run);
 	const startedAt = run.start_time
 		? `${new Date(run.start_time).toISOString().replace('T', ' ').slice(0, 19)} UTC`
 		: undefined;
-	return [run.run_name || `Job ${run.job_id}`, outcome ?? state, startedAt, `Run ${run.run_id}`]
+	return [run.run_name || `Job ${run.job_id}`, code, startedAt, `Run ${run.run_id}`]
 		.filter(Boolean)
 		.join(' · ');
 }
@@ -533,6 +536,7 @@ export async function getRuns(
 			'/api/2.2/jobs/runs/list',
 			RUNS_PAGE_SIZE,
 			pageToken,
+			permissionHintFor('job'),
 		);
 
 	if (!filter) {
@@ -540,6 +544,7 @@ export async function getRuns(
 		return { results: (page.runs ?? []).map(toListItem), paginationToken: page.next_page_token };
 	}
 
+	// `runs/list` has no name filter, so search scans pages the same way getJobs does
 	const filterLower = filter.toLowerCase();
 	const results: INodeListSearchResult['results'] = [];
 	let pageToken = paginationToken;

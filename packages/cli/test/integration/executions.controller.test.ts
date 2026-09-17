@@ -19,6 +19,7 @@ import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.
 import { WaitTracker } from '@/wait-tracker';
 
 import {
+	createExecution,
 	createSuccessfulExecution,
 	createWaitingExecution,
 	getAllExecutions,
@@ -96,6 +97,86 @@ describe('GET /executions', () => {
 		const response = await testServer.authAgentFor(member).get('/executions').expect(200);
 		expect(response.body.data.results[0].scopes).toContain('workflow:execute');
 	});
+
+	describe('paging without a status filter', () => {
+		/** 2 running plus `completed` successful executions, newest id last. */
+		const seed = async (completed: number) => {
+			const workflow = await createWorkflow({}, owner);
+			await createExecution({ status: 'running', stoppedAt: undefined }, workflow);
+			await createExecution({ status: 'running', stoppedAt: undefined }, workflow);
+			for (let i = 0; i < completed; i++) {
+				await createExecution({ status: 'success' }, workflow);
+			}
+		};
+
+		test('reports the current block once and counts only completed rows', async () => {
+			await seed(5);
+
+			const response = await testServer
+				.authAgentFor(owner)
+				.get('/executions')
+				.query({ limit: 2 })
+				.expect(200);
+
+			const { results, count, nextCursor } = response.body.data;
+			expect(results.filter((r: { status: string }) => r.status === 'running')).toHaveLength(2);
+			// The count excludes the current block, so paging is over completed rows only.
+			expect(count).toBe(5);
+			expect(nextCursor).not.toBeNull();
+		});
+
+		test('keeps running executions out of later pages', async () => {
+			await seed(5);
+
+			const first = await testServer
+				.authAgentFor(owner)
+				.get('/executions')
+				.query({ limit: 2 })
+				.expect(200);
+
+			const second = await testServer
+				.authAgentFor(owner)
+				.get('/executions')
+				.query({ limit: 2, cursor: first.body.data.nextCursor })
+				.expect(200);
+
+			expect(second.body.data.results).toHaveLength(2);
+			expect(second.body.data.results.map((r: { status: string }) => r.status)).toEqual([
+				'success',
+				'success',
+			]);
+			expect(second.body.data.count).toBe(5);
+		});
+
+		test('walks every completed row exactly once', async () => {
+			await seed(5);
+
+			const seen: string[] = [];
+			let cursor: string | null = null;
+			// 5 rows at 2 per page needs 3 requests. A cursor that fails to advance
+			// would page forever, so cap the walk and assert on the cap.
+			let requests = 0;
+
+			do {
+				const response = await testServer
+					.authAgentFor(owner)
+					.get('/executions')
+					.query({ limit: 2, ...(cursor ? { cursor } : {}) })
+					.expect(200);
+
+				const data = response.body.data as {
+					results: Array<{ id: string; status: string }>;
+					nextCursor: string | null;
+				};
+				seen.push(...data.results.filter((r) => r.status === 'success').map((r) => r.id));
+				cursor = data.nextCursor;
+			} while (cursor && ++requests < 5);
+
+			expect(requests).toBeLessThan(4);
+			expect(seen).toHaveLength(5);
+			expect(new Set(seen).size).toBe(5);
+		});
+	});
 });
 
 describe('GET /executions/:id', () => {
@@ -148,7 +229,11 @@ describe('GET /executions/:id', () => {
 		const getExecution = vi.fn();
 
 		beforeAll(() => {
-			Container.get(EngineDataPlaneProxyService).registerProvider({ startExecution, getExecution });
+			Container.get(EngineDataPlaneProxyService).registerProvider({
+				startExecution,
+				getExecution,
+				searchExecutions: vi.fn().mockResolvedValue({ items: [], nextCursor: null, total: 0 }),
+			});
 		});
 
 		beforeEach(() => {

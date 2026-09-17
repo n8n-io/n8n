@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { ref } from 'vue';
+import { nextTick, ref } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import ChatInputBase from './ChatInputBase.vue';
@@ -46,6 +46,22 @@ function makeProps(overrides: Partial<InstanceType<typeof ChatInputBase>['$props
 		canSubmit: true,
 		...overrides,
 	};
+}
+
+function createFileDragEvent(
+	type: 'dragenter' | 'drop',
+	files: File[],
+	itemTypes: string[] = files.map((file) => file.type),
+) {
+	const event = new Event(type, { bubbles: true, cancelable: true });
+	Object.defineProperty(event, 'dataTransfer', {
+		value: {
+			types: ['Files'],
+			files,
+			items: itemTypes.map((itemType) => ({ kind: 'file', type: itemType })),
+		},
+	});
+	return event;
 }
 
 describe('ChatInputBase', () => {
@@ -144,6 +160,39 @@ describe('ChatInputBase', () => {
 		});
 
 		expect(getByTestId('chat-input-attach-button')).toBeInTheDocument();
+	});
+
+	it('shows the drop overlay and emits dropped files', async () => {
+		const file = new File(['image'], 'image.png', { type: 'image/png' });
+		const { getByRole, getByTestId, queryByTestId, emitted } = renderComponent({
+			props: makeProps({ showAttach: true, acceptedMimeTypes: 'image/*' }),
+		});
+		const textbox = getByRole('textbox');
+
+		textbox.dispatchEvent(createFileDragEvent('dragenter', [], ['image/png']));
+		await nextTick();
+		expect(getByTestId('chat-input-drop-overlay')).toBeInTheDocument();
+
+		const dropEvent = createFileDragEvent('drop', [file]);
+		textbox.dispatchEvent(dropEvent);
+		await nextTick();
+
+		expect(dropEvent.defaultPrevented).toBe(true);
+		expect(queryByTestId('chat-input-drop-overlay')).not.toBeInTheDocument();
+		expect(emitted()['files-selected']).toEqual([[[file]]]);
+	});
+
+	it('does not emit unsupported dropped files', () => {
+		const file = new File(['document'], 'document.pdf', { type: 'application/pdf' });
+		Object.defineProperty(file, 'size', { value: MAX_ATTACHMENT_BASE64_BYTES });
+		const { getByRole, emitted } = renderComponent({
+			props: makeProps({ showAttach: true, acceptedMimeTypes: 'image/*' }),
+		});
+
+		getByRole('textbox').dispatchEvent(createFileDragEvent('drop', [file]));
+
+		expect(emitted()['files-selected']).toBeFalsy();
+		expect(mockShowError).not.toHaveBeenCalled();
 	});
 
 	it('should NOT show attach button when showAttach is false', () => {

@@ -221,11 +221,31 @@ export function createMicrosoftGraphTransport<TDefault extends string>(config: {
 		this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
 	): Promise<string> {
 		const credentials = await this.getCredentials(getCredentialType.call(this));
-		return (
+		const baseUrl = (
 			typeof credentials.graphApiBaseUrl === 'string' && credentials.graphApiBaseUrl !== ''
 				? credentials.graphApiBaseUrl
 				: 'https://graph.microsoft.com'
 		).replace(/\/+$/, '');
+		// Refuse a base URL that cannot carry a request. An opaque scheme (`data:`, `file:`,
+		// `foo:`) parses, but `URL.origin` is then the string "null", so the request-time
+		// same-origin check compares "null" to "null" and lets it through. The token stays
+		// put either way: a different host has a different origin and is refused, and no
+		// scheme is both origin-"null" and able to carry a bearer. What the caller gets
+		// without this clause is a late unsupported-protocol error, or for `data:` a
+		// fabricated 200 that axios resolves in process. Fail here instead, where the
+		// message can name the credential. Same refusal message as the request-time guard
+		// (one concept, one string); the description is what distinguishes them.
+		if (!URL.canParse(baseUrl) || new URL(baseUrl).origin === 'null') {
+			throw new NodeOperationError(
+				this.getNode(),
+				'Refusing to send credentials to an unexpected host',
+				{
+					description:
+						'The Graph API base URL on the credential is not a valid URL. Fix it on the credential and try again.',
+				},
+			);
+		}
+		return baseUrl;
 	}
 
 	async function microsoftApiRequest(
@@ -370,7 +390,9 @@ export function createMicrosoftGraphTransport<TDefault extends string>(config: {
 			if (limit && returnData.length >= limit) {
 				return returnData.slice(0, limit);
 			}
-		} while (responseData['@odata.nextLink'] !== undefined);
+			// `uri`, not `responseData['@odata.nextLink']`: a literal `null` next link is not
+			// `undefined`, and with `uri` falsy the identical request would be re-sent forever.
+		} while (uri);
 
 		return returnData;
 	}
