@@ -2,7 +2,6 @@ import type { JSONReport, JSONReportSuite, JSONReportTestResult } from '@playwri
 import { chromium, type Page } from '@playwright/test';
 import { spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import { existsSync } from 'node:fs';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
@@ -32,7 +31,15 @@ test.each(['api-only', 'ui-only', 'combined', 'service-only', 'body-failure', 'b
 		const marker = randomUUID();
 		// Do not inherit instance endpoints, credentials, telemetry, NODE_OPTIONS, or proxy settings.
 		const env: NodeJS.ProcessEnv = {};
-		for (const key of ['PATH', 'HOME', 'TMPDIR', 'TEMP', 'TMP', 'SystemRoot']) {
+		for (const key of [
+			'PATH',
+			'HOME',
+			'TMPDIR',
+			'TEMP',
+			'TMP',
+			'SystemRoot',
+			'PLAYWRIGHT_BROWSERS_PATH',
+		]) {
 			if (process.env[key]) env[key] = process.env[key];
 		}
 		Object.assign(env, {
@@ -45,8 +52,6 @@ test.each(['api-only', 'ui-only', 'combined', 'service-only', 'body-failure', 'b
 			DEBUG_COLORS: '0',
 			FORCE_COLOR: '0',
 		});
-		const localBrowsers = join(packageDir, '.playwright-browsers');
-		if (existsSync(localBrowsers)) env.PLAYWRIGHT_BROWSERS_PATH = localBrowsers;
 		const child = spawn(
 			process.execPath,
 			[
@@ -205,14 +210,30 @@ test.each(['api-only', 'ui-only', 'combined', 'service-only', 'body-failure', 'b
 const historyNavigationCases = [
 	{
 		action: 'openWorkflowHistory',
+		history: 'populated',
 		initialPath: '/workflow/example',
 		incompletePath: '/workflow/example/history',
 		targetPath: '/workflow/example/history/version',
 	},
 	{
 		action: 'closeWorkflowHistory',
+		history: 'populated',
 		initialPath: '/workflow/example/history/version',
 		incompletePath: '/workflow/example/history/version',
+		targetPath: '/workflow/example',
+	},
+	{
+		action: 'openWorkflowHistory',
+		history: 'empty',
+		initialPath: '/workflow/example',
+		incompletePath: '/workflow/example',
+		targetPath: '/workflow/example/history?tab=history#list',
+	},
+	{
+		action: 'closeWorkflowHistory',
+		history: 'empty',
+		initialPath: '/workflow/example/history',
+		incompletePath: '/workflow/example/history',
 		targetPath: '/workflow/example',
 	},
 ] as const;
@@ -221,20 +242,29 @@ async function withHistoryPage(
 	initialPath: string,
 	nextPath: string,
 	run: (canvas: CanvasPage, page: Page) => Promise<void>,
+	history: 'populated' | 'empty' | 'loading' | 'unmounted' = 'populated',
 ) {
 	const browser = await chromium.launch();
 	try {
 		const page = await browser.newPage({ baseURL: 'http://history-navigation.test' });
+		const list =
+			history === 'unmounted'
+				? ''
+				: `<ul data-testid="workflow-history-list">
+			${history === 'populated' ? '<li data-testid="workflow-history-list-item">Version</li>' : ''}
+			${history === 'loading' ? '<li role="status">Loading</li>' : ''}
+		</ul>`;
 		await page.route('**/*', async (route) => {
 			await route.fulfill({
 				contentType: 'text/html',
 				body: `<button data-testid="workflow-menu">Menu</button>
 					<button data-testid="workflow-menu-item-version-history" onclick="history.pushState({}, '', '${nextPath}')">History</button>
-					<button data-testid="workflow-history-close-button" onclick="history.pushState({}, '', '${nextPath}')">Close</button>`,
+					<button data-testid="workflow-history-close-button" onclick="history.pushState({}, '', '${nextPath}')">Close</button>${list}`,
 			});
 		});
 		await page.goto(initialPath);
 		page.setDefaultNavigationTimeout(500);
+		page.setDefaultTimeout(500);
 		await run(new CanvasPage(page), page);
 	} finally {
 		await browser.close();
@@ -242,15 +272,39 @@ async function withHistoryPage(
 }
 
 test.each(historyNavigationCases)(
-	'CanvasPage.$action waits for the target route',
-	async ({ action, initialPath, incompletePath, targetPath }) => {
-		await withHistoryPage(initialPath, incompletePath, async (canvas, page) => {
-			await expect(canvas[action]()).rejects.toThrow(/Timeout/);
-			expect(new URL(page.url()).pathname).toBe(incompletePath);
-		});
-		await withHistoryPage(initialPath, targetPath, async (canvas, page) => {
-			await canvas[action]();
-			expect(new URL(page.url()).pathname).toBe(targetPath);
-		});
+	'CanvasPage.$action waits for the target route with $history history',
+	async ({ action, history, initialPath, incompletePath, targetPath }) => {
+		await withHistoryPage(
+			initialPath,
+			incompletePath,
+			async (canvas, page) => {
+				await expect(canvas[action]()).rejects.toThrow(/Timeout/);
+				expect(new URL(page.url()).pathname).toBe(new URL(incompletePath, page.url()).pathname);
+			},
+			history,
+		);
+		await withHistoryPage(
+			initialPath,
+			targetPath,
+			async (canvas, page) => {
+				await canvas[action]();
+				expect(new URL(page.url()).pathname).toBe(new URL(targetPath, page.url()).pathname);
+			},
+			history,
+		);
+	},
+);
+
+test.each(['unmounted', 'loading'] as const)(
+	'CanvasPage.openWorkflowHistory waits for a $history list',
+	async (history) => {
+		await withHistoryPage(
+			'/workflow/example',
+			'/workflow/example/history',
+			async (canvas) => {
+				await expect(canvas.openWorkflowHistory()).rejects.toThrow(/Timeout/);
+			},
+			history,
+		);
 	},
 );
