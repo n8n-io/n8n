@@ -1,7 +1,14 @@
 <script lang="ts" setup>
 import { computed, ref } from 'vue';
 import { useRoute } from 'vue-router';
-import { N8nButton, N8nCallout, N8nIcon, N8nPopover } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nCallout,
+	N8nIcon,
+	N8nPopover,
+	N8nTooltip,
+	TOOLTIP_DELAY_MS,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { InstanceAiThreadSummary } from '@n8n/api-types';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
@@ -75,23 +82,31 @@ function handleThreadSelect(threadId: string) {
 			:content-class="$style.threadHistoryPopover"
 		>
 			<template #trigger>
-				<N8nButton
-					variant="ghost"
-					size="small"
-					:class="[
-						$style.threadHistoryButton,
-						{ [$style.threadHistoryButtonCollapsed]: !props.showThreadHistoryLabel },
-					]"
-					data-test-id="instance-ai-sidebar-toggle"
-					:aria-label="i18n.baseText('instanceAi.sidebar.chatHistory')"
+				<N8nTooltip
+					as-child
+					:content="i18n.baseText('instanceAi.sidebar.chatHistory')"
+					:disabled="props.showThreadHistoryLabel"
+					placement="bottom"
+					:show-after="TOOLTIP_DELAY_MS"
 				>
-					<template #icon>
-						<N8nIcon icon="history" size="large" />
-					</template>
-					<span :class="$style.threadHistoryLabel" :aria-hidden="!props.showThreadHistoryLabel">
-						{{ i18n.baseText('instanceAi.sidebar.chatHistory') }}
-					</span>
-				</N8nButton>
+					<N8nButton
+						variant="ghost"
+						size="small"
+						:class="[
+							$style.threadHistoryButton,
+							{ [$style.threadHistoryButtonCollapsed]: !props.showThreadHistoryLabel },
+						]"
+						data-test-id="instance-ai-sidebar-toggle"
+						:aria-label="i18n.baseText('instanceAi.sidebar.chatHistory')"
+					>
+						<template #icon>
+							<N8nIcon icon="history" size="large" />
+						</template>
+						<span :class="$style.threadHistoryLabel" :aria-hidden="!props.showThreadHistoryLabel">
+							{{ i18n.baseText('instanceAi.sidebar.chatHistory') }}
+						</span>
+					</N8nButton>
+				</N8nTooltip>
 			</template>
 			<template #content>
 				<InstanceAiThreadList
@@ -141,7 +156,7 @@ function handleThreadSelect(threadId: string) {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
-	background-color: var(--color--background--light-2);
+	background-color: var(--background--surface);
 }
 
 .headerActions {

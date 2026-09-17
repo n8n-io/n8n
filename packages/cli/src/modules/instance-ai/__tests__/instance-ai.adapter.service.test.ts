@@ -4527,6 +4527,35 @@ describe('createExecutionAdapter run()', () => {
 		vi.clearAllMocks();
 	});
 
+	it('names the trigger whose output the caller injected', async () => {
+		const { adapter } = createRunAdapterForTests(
+			{
+				id: 'wf-1',
+				nodes: [
+					{
+						id: 'n1',
+						name: 'Webhook',
+						type: 'n8n-nodes-base.webhook',
+						typeVersion: 2,
+						position: [0, 0],
+					},
+				],
+				connections: {},
+			},
+			{ execution: makeExecution({ status: 'success' }) },
+		);
+
+		const injected = await adapter.run('wf-1', { body: { name: 'Ada' } });
+		const pinned = await adapter.run('wf-1', undefined, {
+			verificationPinData: { Webhook: [{ body: { name: 'Ada' } }] },
+		});
+		const live = await adapter.run('wf-1');
+
+		expect(injected.injectedTriggerNodeName).toBe('Webhook');
+		expect(pinned.injectedTriggerNodeName).toBe('Webhook');
+		expect(live).not.toHaveProperty('injectedTriggerNodeName');
+	});
+
 	it('reports workflow-pinned nodes on the run result', async () => {
 		const { adapter } = createRunAdapterForTests(
 			{

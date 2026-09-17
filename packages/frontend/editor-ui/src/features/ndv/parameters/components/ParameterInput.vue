@@ -517,6 +517,16 @@ const displayValue = computed(() => {
 	return returnValue as string;
 });
 
+function normalizeNumberValue(value: unknown): number | undefined {
+	if (typeof value === 'number') return Number.isFinite(value) ? value : undefined;
+	if (typeof value !== 'string' || value.trim() === '') return undefined;
+
+	const parsedValue = Number(value);
+	return Number.isFinite(parsedValue) ? parsedValue : undefined;
+}
+
+const numberDisplayValue = computed(() => normalizeNumberValue(displayValue.value));
+
 const expressionDisplayValue = computed(() => {
 	if (props.forceShowExpression) {
 		return '';
@@ -1246,9 +1256,9 @@ function onJsonPasswordFieldChange(value: string) {
 	onUpdateTextInputDebounced(value);
 }
 
-function onUpdateTextInput(value: string | number) {
+function onUpdateTextInput(value: string) {
 	valueChanged(value);
-	onTextInputChange(typeof value === 'string' ? value : String(value));
+	onTextInputChange(value);
 }
 
 const onUpdateTextInputDebounced = debounce(onUpdateTextInput, { debounceTime: 200 });
@@ -1998,7 +2008,7 @@ onUpdated(async () => {
 				v-else-if="parameter.type === 'number'"
 				ref="inputField"
 				:size="inputSize"
-				:model-value="typeof displayValue === 'number' ? displayValue : undefined"
+				:model-value="numberDisplayValue"
 				:controls="false"
 				:max="getTypeOption('maxValue')"
 				:min="getTypeOption('minValue')"
@@ -2007,7 +2017,7 @@ onUpdated(async () => {
 				:class="{ 'ph-no-capture': shouldRedactValue }"
 				:title="displayTitle"
 				:placeholder="parameter.placeholder"
-				@update:model-value="onUpdateTextInput"
+				@update:model-value="valueChanged"
 				@focus="setFocus"
 				@blur="onBlur"
 				@paste="onPasteNumber"
