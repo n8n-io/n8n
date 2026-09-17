@@ -26,51 +26,15 @@ $E: null;
 @mixin scroll-bar {
 	scrollbar-width: thin;
 	scrollbar-color: var.$scrollbar-background-color transparent;
-
-	&::-webkit-scrollbar {
-		z-index: 11;
-		width: 6px;
-
-		&:horizontal {
-			height: 6px;
-		}
-
-		&-thumb {
-			border-radius: 5px;
-			width: 6px;
-			background-color: var.$scrollbar-background-color;
-
-			&:hover {
-				background-color: var.$scrollbar-hover-background-color;
-			}
-		}
-
-		&-corner,
-		&-track,
-		&-track-piece {
-			background-color: transparent;
-		}
-	}
 }
 
 @mixin hoverable-scroll-bar {
 	@include scroll-bar;
 	scrollbar-color: transparent transparent;
 
-	&::-webkit-scrollbar-thumb {
-		background-color: transparent;
-	}
-
-	&:hover {
+	&:hover,
+	&:focus-visible {
 		scrollbar-color: var.$scrollbar-background-color transparent;
-
-		&::-webkit-scrollbar-thumb {
-			background-color: var.$scrollbar-background-color;
-
-			&:hover {
-				background-color: var.$scrollbar-hover-background-color;
-			}
-		}
 	}
 }
 
