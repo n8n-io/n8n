@@ -6,7 +6,20 @@ packages/cli/test/migration/1786547629549-create-git-connection-table.test.ts
   "git_ai_version": "1.5.2",
   "base_commit_sha": "b7536714b0e7186161f784689dbf5a5674b6f717",
   "prompts": {},
+  "humans": {
+    "h_9b272a633435fb": {
+      "author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  },
   "sessions": {
+    "s_7562978115634d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7789a6a0-eacd-4f54-97a9-3f6d2b2fb4c8",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
     "s_78ddf591ea62f7": {
       "agent_id": {
         "tool": "claude",
