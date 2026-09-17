@@ -203,7 +203,13 @@ The `engine-v2:e2e` project runs the regular `tests/e2e` specs against a stack
 that runs engine 2.0 in the main process (`containerConfig.engine:
 'in-process'`, Postgres, single main). Under that stack every workflow the API
 helpers create gets `settings.engineType = 'v2'`, so a spec proves parity
-without changes. Workflows imported through the UI do not get the setting.
+without changes.
+
+A workflow built in the UI does not get the setting, and a workflow without it
+runs on the legacy engine. A tagged spec must therefore create its workflow
+through `api.workflows` and run it through `api.workflows.runManually`, which
+fails the test when the run did not reach engine 2.0. A tag the parity buckets
+do not know also fails the test, and names the three valid tags.
 
 The project only picks up specs with an `@engine:*` tag for now. Tag a spec
 `@engine:v2` once it passes on both engines; use the other two tags to track
