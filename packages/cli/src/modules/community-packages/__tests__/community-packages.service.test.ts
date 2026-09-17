@@ -629,7 +629,7 @@ describe('CommunityPackagesService', () => {
 				expect(installedPackageRepository.replaceInstalledPackageWithNodes).not.toHaveBeenCalled();
 			});
 
-			test('should install a package that declares the supported node API version', async () => {
+			test('should update to a package that declares the supported node API version', async () => {
 				license.isCustomNpmRegistryEnabled.mockReturnValue(true);
 
 				await expect(updateToIncompatible(N8N_NODES_API_VERSION)).resolves.toBe(

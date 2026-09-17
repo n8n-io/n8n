@@ -296,6 +296,37 @@ describe('CommunityPackagesService install rollback (real filesystem)', () => {
 			expect(await ledgerDependencies()).toEqual({ [PACKAGE_NAME]: '2.0.0' });
 		});
 
+		describe('fresh install with no pre-existing directory', () => {
+			beforeEach(async () => {
+				// Nothing on disk and no ledger entry, unlike the shared beforeEach. The rollback
+				// has to remove the entry the download added, not restore a previous one.
+				await rm(packageDirectory, { recursive: true, force: true });
+				await writeFile(
+					path.join(nodesDownloadDir, 'package.json'),
+					JSON.stringify({ name: 'installed-nodes', private: true, dependencies: {} }),
+					'utf-8',
+				);
+			});
+
+			test('rejects the install and leaves no directory, ledger entry, or database row', async () => {
+				downloadedPackageJson = {
+					name: PACKAGE_NAME,
+					version: '2.0.0',
+					n8n: { n8nNodesApiVersion: N8N_NODES_API_VERSION + 1 },
+				};
+
+				await expect(communityPackagesService.installPackage(PACKAGE_NAME)).rejects.toThrow(
+					"isn't compatible with your version of n8n",
+				);
+
+				expect(await nodeModulesEntries()).toEqual([]);
+				expect(await ledgerDependencies()).toEqual({});
+				expect(installedPackageRepository.saveInstalledPackageWithNodes).not.toHaveBeenCalled();
+				// The rejected version's node code was never imported.
+				expect(loadNodesAndCredentials.loadPackage).not.toHaveBeenCalled();
+			});
+		});
+
 		describe('pub/sub follower', () => {
 			test('keeps the existing package and logs both node API versions when the leader sends an incompatible one', async () => {
 				downloadedPackageJson = {
