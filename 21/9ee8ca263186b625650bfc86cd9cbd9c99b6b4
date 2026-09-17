@@ -14,6 +14,8 @@ packages/cli/src/modules/agents/agent-chat.controller.ts
 packages/cli/src/modules/agents/agent-message-queue.service.ts
   s_d27d09d94cc9ff::t_bb2cf313c4322d 6,9,11-13,22-23,27-30,32-34,41-48,51-52,56,74-75,99-102,104-155,157-241,243,246,248-259,282-287,289-318,348-349,385-386,389-392,395-396,407,413-414,421-422,429,431,435,437-440,442-444,446-465,467,469-476,479-484,486-502,504-523,528-549,552-591,601,627-638,640
   s_d27d09d94cc9ff::t_ffa3533c0fddaa 639
+  s_d27d09d94cc9ff::t_aa4ebf1b06b4a6 76,388,410,425-427,430,441,468,485,503,550-551,600
+  s_d27d09d94cc9ff::t_89a7d3bb63cd20 1-5,25-26,31,242,244-245
 packages/cli/src/modules/agents/agent-message-queue.types.ts
   s_d27d09d94cc9ff::t_bb2cf313c4322d 2,11-23,83-86
 packages/cli/src/modules/agents/agent-execution-update-broadcaster.ts
@@ -35,12 +37,16 @@ packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
   s_d27d09d94cc9ff::t_bb2cf313c4322d 35-46,101-104,315-385,387-391,393-399,401,403-417,422-429,465-469,472-473,475-479,481-485,488-489,491-499,501,504,506-507,509-512
 packages/cli/src/modules/agents/repositories/agent-message-queue.repository.ts
   s_d27d09d94cc9ff::t_bb2cf313c4322d 7,45,65-66,73-102,122-123,132-133
+  s_d27d09d94cc9ff::t_aa4ebf1b06b4a6 20,70,120-121,140,158,160,172-173
+  s_d27d09d94cc9ff::t_89a7d3bb63cd20 103-104
 packages/cli/src/modules/agents/integrations/__tests__/n8n-checkpoint-storage.test.ts
   s_d27d09d94cc9ff::t_bb2cf313c4322d 289
 packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
   s_d27d09d94cc9ff::t_bb2cf313c4322d 394-395
 packages/cli/test/integration/agents/agent-message-queue.test.ts
   s_d27d09d94cc9ff::t_bb2cf313c4322d 10,25-26,36,63,107,124-128,158-160,165-174,190-191,195,317,360,499-500,502-504,512-581,583-646,648,660,672,674,676-687,689-690,695-696,702-706,709-722,724-725,729-809,827-829,948-952,954-955,957-984,989-993,1042,1081-1126,1164,1167,1176
+  s_d27d09d94cc9ff::t_aa4ebf1b06b4a6 3-4,130,151,192,953,956
+  s_d27d09d94cc9ff::t_89a7d3bb63cd20 134-136
 packages/@n8n/api-types/src/agents/__tests__/agent-chat-message.dto.test.ts
   s_d27d09d94cc9ff::t_bb2cf313c4322d 5,14,22-26,30-36,38-42,47,56,69,76
 packages/cli/src/modules/agents/integrations/n8n-checkpoint-storage.ts
