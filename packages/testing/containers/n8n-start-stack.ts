@@ -50,7 +50,7 @@ ${colors.yellow}Options:${colors.reset}
   --services-only   Start services only (no n8n containers), write .env for local dev
   --services <list> Comma-separated services (e.g. postgres,redis,mailpit,proxy,kafka)
   --postgres        Use PostgreSQL instead of SQLite
-  --engine          Run engine 2.0 in the main process (implies --postgres)
+  --engine          Run engine 2.0 in the main process (implies --postgres, not for --services-only)
   --queue           Enable queue mode (requires PostgreSQL)
   --source-control  Enable source control (Git) container for testing
   --oidc            Enable OIDC testing with Keycloak (requires PostgreSQL)
@@ -273,6 +273,10 @@ async function main() {
 		if (services.length === 0) {
 			log.error('No services specified. Use flags like --postgres, --redis, --mailpit, etc.');
 			process.exit(1);
+		}
+		if (values.engine) {
+			// TODO(CAT-4579): write the engine env into `.env` and make the flag work here.
+			log.warn('Services-only mode starts no n8n. Engine 2.0 ignored.');
 		}
 
 		log.header('Starting service containers');
