@@ -784,6 +784,8 @@ function hookFunctionsSaveWorker(
 
 			// In scaling mode, worker saves execution without metadata
 			// Main process will save metadata after deletion decisions to avoid FK violations
+			// The guard only applies for a non-canceled outcome. This run's own canceled
+			// completion must still persist its accumulated data.
 			wasUpdated = await updateExistingExecution({
 				executionId: this.executionId,
 				workflowId: this.workflowData.id,
@@ -791,6 +793,7 @@ function hookFunctionsSaveWorker(
 				conditions: fullRunData.status === 'canceled' ? undefined : { requireNotCanceled: true },
 			});
 		} finally {
+			// Counted only when the write above lands, so completions stay in sync with the database.
 			if (wasUpdated) {
 				workflowStatisticsService.emit('workflowExecutionCompleted', {
 					workflowData: this.workflowData,
