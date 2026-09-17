@@ -1731,6 +1731,21 @@ describe('Execution Lifecycle Hooks', () => {
 					undefined,
 				);
 			});
+
+			it('should require the execution to not be canceled when saving a successful completion', async () => {
+				const lifecycleHooks = createHooks('trigger');
+
+				await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRunWithMetadata, {}]);
+
+				expect(executionPersistence.updateExistingExecution).toHaveBeenCalledWith(
+					executionId,
+					expect.objectContaining({
+						finished: true,
+						status: 'success',
+					}),
+					{ requireNotCanceled: true },
+				);
+			});
 		});
 
 		describe('discarding run data for unsaved successful executions', () => {
