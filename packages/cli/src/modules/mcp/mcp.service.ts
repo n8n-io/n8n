@@ -259,11 +259,7 @@ export class McpService {
 		return {
 			mcpApps: this.resolveMcpApps(mcpAppsEnabled, flags),
 			canvasGroupsEnabled: mcpCanvasGroupsEnabled || flags[MCP_CANVAS_GROUPS_FLAG] === true,
-			// SPIKE (CONTEXT-142): env force-enable, because this flag has no env
-			// override and the spike must not depend on a PostHog variant locally.
-			aiPreferencesEnabled:
-				process.env.N8N_SPIKE_AI_PREFERENCES === 'true' ||
-				flags[CONTEXT_PREFERENCES_FLAG] === CONTEXT_PREFERENCES_ENABLED_VARIANT,
+			aiPreferencesEnabled: flags[CONTEXT_PREFERENCES_FLAG] === CONTEXT_PREFERENCES_ENABLED_VARIANT,
 		};
 	}
 
@@ -619,7 +615,11 @@ export class McpService {
 		}
 
 		// SPIKE (CONTEXT-142): preference write tool with elicitation probing.
-		if (featureFlags.aiPreferencesEnabled) {
+		// On by default so a deployed test build needs no env setup; opt out with
+		// N8N_SPIKE_AI_PREFERENCES=false. Gated on its own env, not the shared
+		// aiPreferencesEnabled flag, so it does not turn on the production
+		// preference-injection feature.
+		if (process.env.N8N_SPIKE_AI_PREFERENCES !== 'false') {
 			registerIfAllowed(
 				createSaveUserPreferenceTool(user, this.aiPreferenceService, this.telemetry, this.logger),
 			);

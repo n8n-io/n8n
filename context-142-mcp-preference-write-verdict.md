@@ -224,10 +224,11 @@ queues, inbox surfaces) is not justified by volume.
   attacker-controlled input — `ServerOptions.requestState.verify` with
   `createRequestStateCodec` (HMAC) becomes mandatory; n8n configures neither
   today.
-- An env override for the `111_context_preferences` flag. The spike hardcodes
-  `N8N_SPIKE_AI_PREFERENCES=true` into `resolveFeatureFlags`; the flag
-  otherwise fails closed on any PostHog outage, which would silently
-  unregister the tool.
+- A real gate for the write tool. The spike registers `save_user_preference`
+  whenever `N8N_SPIKE_AI_PREFERENCES` is not `false` (on by default so a
+  deployed test build needs no env setup), decoupled from the production
+  `111_context_preferences` PostHog flag. Production must put the tool behind
+  a proper flag or scope, not a spike env default.
 - Telemetry classification: `getToolCallOutcome` in `mcp.service.ts` reads an
   `input_required` result as a plain success. Harmless, but the
   `mcp-tool-called` event should learn an `input_required` outcome so the
@@ -262,7 +263,7 @@ queues, inbox surfaces) is not justified by volume.
 ## Reproduce
 
 1. Branch `spike-mcp-preference`, `pnpm exec turbo run build --filter=n8n`.
-2. `N8N_USER_FOLDER=<scratch> N8N_SPIKE_AI_PREFERENCES=true N8N_LOG_LEVEL=debug node packages/cli/bin/n8n start` (Node 24).
+2. `N8N_USER_FOLDER=<scratch> N8N_LOG_LEVEL=debug node packages/cli/bin/n8n start` (Node 24). The tool is on by default; set `N8N_SPIKE_AI_PREFERENCES=false` to disable it.
 3. Owner setup → `PATCH /rest/mcp/settings {"mcpAccessEnabled":true}` → `GET /rest/mcp/api-key`.
 4. `MCP_TOKEN=<key> node context-142-harness.mjs`.
 5. Probe lines: `grep 'CONTEXT-142' <server log>`.
