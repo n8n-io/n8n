@@ -87,6 +87,14 @@ export class EngineV2WebhookResponder {
 
 	private handle(received: ExecutionResponse, response: PendingWebhookResponse): void {
 		try {
+			if (received.type === 'failure') {
+				response.resolve({
+					status: 'failed',
+					error: { name: received.error.code, message: received.error.message },
+				});
+				return;
+			}
+
 			this.onEnded(received, response);
 		} catch (error) {
 			this.logger.error('Failed to relay an engine 2.0 response', {

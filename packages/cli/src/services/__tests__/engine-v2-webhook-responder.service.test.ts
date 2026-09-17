@@ -159,6 +159,21 @@ describe('EngineV2WebhookResponder', () => {
 		});
 	});
 
+	it('reports a response failure without attributing it to a node', async () => {
+		const pending = responder.waitForResponse(createExecutionIdV2());
+
+		deliver({
+			type: 'failure',
+			executionId: pending.executionId,
+			error: { code: 'RESPONSE_TOO_LARGE', message: 'The response is too large.' },
+		});
+
+		await expect(pending.settled).resolves.toEqual({
+			status: 'failed',
+			error: { name: 'RESPONSE_TOO_LARGE', message: 'The response is too large.' },
+		});
+	});
+
 	it('times out rather than waiting forever for a lost answer', async () => {
 		const impatient = newResponder(1);
 		impatient.useReceiver(fakeReceiver().receiver);
