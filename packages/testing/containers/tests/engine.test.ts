@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 
-import { applyEngineEnv, ENGINE_DATABASE } from '../services/engine';
+import { applyEngineEnv, assertEngineSupported, ENGINE_DATABASE } from '../services/engine';
 
 const postgresEnv: Record<string, string> = {
 	DB_TYPE: 'postgresdb',
@@ -68,5 +68,15 @@ describe('applyEngineEnv', () => {
 		expect(() => applyEngineEnv(env, { engine: 'in-process', isQueueMode: true })).toThrow(
 			/queue mode/,
 		);
+	});
+});
+
+describe('assertEngineSupported', () => {
+	// `createN8NStack` calls this for every stack, so the no-op keeps the stacks
+	// that do not run engine 2.0 starting at all.
+	test('accepts any stack that does not run engine 2.0', () => {
+		expect(() =>
+			assertEngineSupported({ engine: undefined, isQueueMode: true, usePostgres: false }),
+		).not.toThrow();
 	});
 });
