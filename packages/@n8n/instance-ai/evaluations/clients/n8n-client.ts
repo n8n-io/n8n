@@ -443,8 +443,7 @@ export class N8nClient {
 		);
 	}
 
-	/** What observational memory holds for a thread: live observations + the
-	 *  compaction cursor. Structural, so it needs no run-debug flag. */
+	/** Live observations + the compaction cursor for a thread. */
 	async getThreadMemory(
 		threadId: string,
 		timeoutMs?: number,

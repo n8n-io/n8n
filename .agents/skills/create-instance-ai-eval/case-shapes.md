@@ -726,11 +726,11 @@ Two limits to know before you write a cost expectation:
 
 ### `requiresMemoryCompaction` — grade the post-compaction window
 
-Observational memory compacts a long thread: an Observer writes an
-`<observations>` log into the system prompt and the early turns are masked out
-of the agent's window. A case that tests whether a decision *survives* that has
-a setup problem — production compacts at 30k tokens of visible message content,
-which is a conversation too long to hand-author.
+Observational memory compacts a long thread: an Observer summarises it into
+observation rows, the summary is rendered into the system prompt, and the early
+turns are masked out of the agent's window. A case that tests whether a decision
+*survives* that has a setup problem — production compacts at 30k tokens of
+visible message content, which is a conversation too long to hand-author.
 
 Set the flag and the harness handles it:
 
@@ -750,17 +750,47 @@ Two things happen, both per-thread, so no other case in the run is affected:
 
 The premise check is the point of the flag. Uncompacted, the raw early turns
 are still in the window, so the agent answers off them and every expectation
-passes for free — a green that tests nothing. Two ways it reports not judged:
+passes for free — a green that tests nothing.
 
-- No `<observations>` log in any step: compaction never ran. The seed has
-  nothing worth observing, or is empty.
-- A log exists, but the graded turn's window still carries at least as many
-  messages as the seed: the cursor never moved past the seeded turns, so the
-  case would pass off the raw history anyway.
+The evidence is structural. `GET /rest/instance-ai/eval/threads/:threadId/memory`
+returns the observation rows and the compaction cursor from their own tables. A
+cursor means the observer ran and everything up to `lastObservedMessageId` is
+masked out; the rows are what replaced it. Missing either, the case had nothing
+to test and is reported not judged. Nothing reads the system prompt, so this
+needs **no debug flag** and a prompt or SDK rename cannot quietly turn "never
+compacted" into the answer.
 
-The judge never sees any of this. It grades the conversation, not whether the
-harness configured the scenario — a misconfigured lane must not read as a
+The judge never sees the premise check — it grades the conversation, not whether
+the harness configured the scenario. A misconfigured lane must not read as a
 quality regression.
+
+### Grade the summary, not just the reply
+
+The judge *does* see the observation rows, as ground truth:
+
+```
+## Observational memory after compaction (ground truth — do not recount)
+
+- [CRITICAL] User ruled OUT the native Slack node; will post through the HTTP
+  Request node instead, because the workspace is pinned to a legacy Slack API
+  version. Do not revisit.
+- [CRITICAL] Alert fires when queue depth goes above 4700 items.
+```
+
+So write expectations at **both** layers:
+
+```json
+"processExpectations": [
+  "The observational-memory block retains the alert threshold as 4700 queued items. A summary that keeps the topic but loses the number is the specific failure this looks for.",
+  "In its reply to the final turn, the agent gives the alert threshold as 4700 queued items."
+]
+```
+
+The first grades the memory system, the second grades the agent. Grading only
+the reply is weaker than it looks: the agent can answer correctly from the
+unmasked tail, or guess well, and the case goes green while memory dropped the
+detail. The `[MARKER]` is the Observer's own priority label, so "retained as
+CRITICAL" is checkable too.
 
 ### Writing the conversation
 

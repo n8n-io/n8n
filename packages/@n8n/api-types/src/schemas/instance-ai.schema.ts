@@ -2604,9 +2604,8 @@ export interface InstanceAiEvalObservation {
 	tokenCount: number;
 }
 
-/** What observational memory holds for a thread, for an eval to assert on. Reads the
- *  observation rows themselves rather than the rendered system prompt, so a prompt
- *  or SDK rename cannot silently turn "never compacted" into the answer. */
+/** What observational memory holds for a thread. The rows themselves, not the rendered
+ *  system prompt — a prompt or SDK rename must not read as "never compacted". */
 export interface InstanceAiEvalThreadMemoryResponse {
 	/** Live observations, oldest first. Empty when nothing has been observed. */
 	observations: InstanceAiEvalObservation[];

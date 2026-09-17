@@ -72,11 +72,15 @@ heading, so a block is never something the judge re-derives from prose:
 - A build-wide token **Total**, a cache read/write split, and a **Fixed
   overhead** line (the opening step's input — instructions and tool schemas
   plus one user message, before the thread had any history).
+- The **observation rows** for the thread (markers + text), read from
+  `instance_ai_observations` — so an expectation can grade the compacted summary
+  itself, not just whether the reply happened to be right.
 - The built workflow, tool traces, and rendered artifacts.
 
-The token numbers come from `RunDebugBuffer` snapshots, so they need
-`N8N_INSTANCE_AI_RUN_DEBUG_ENABLED=true` on the instance under test. Without it
-the blocks render `(no run debug captured)`.
+The **token** numbers come from `RunDebugBuffer` snapshots, so they need
+`N8N_INSTANCE_AI_RUN_DEBUG_ENABLED=true` on the instance under test; without it
+those blocks render `(no run debug captured)`. The **memory** block does not —
+it is a separate REST read, so a compaction case runs with the flag off.
 
 The buffer keys records by `runId` and hooks only the orchestrator's own stream
 (`buildOrchestratorAgentStreamOptions` and its resume twin are the sole call
@@ -91,12 +95,20 @@ on `RunDebugStep` / `InstanceAiRunDebugStep`.
 practical way to check a new block renders as intended.
 
 **Preconditions belong in the harness, not the prompt.** When a case's premise
-can fail to materialise (`requiresMemoryCompaction` — observational memory
-never compacted, or compacted without moving the cursor past the seed),
-`run/build-orchestrator.ts` replaces the judge call with `allFailVerdicts(…)`,
-producing `incomplete` verdicts that scoring **excludes**. The judge never
-learns the premise was checked: it grades the conversation, and a misconfigured
-lane must not read as a quality regression. Same mechanism as `priorRunFailed`.
+can fail to materialise (`requiresMemoryCompaction` — no compaction cursor, or a
+cursor with no observations), `run/build-orchestrator.ts` replaces the judge call
+with `allFailVerdicts(…)`, producing `incomplete` verdicts that scoring
+**excludes**. The judge never learns the premise was checked: it grades the
+conversation, and a misconfigured lane must not read as a quality regression.
+Same mechanism as `priorRunFailed`.
+
+**Read state from its own store, not from a rendering.** The premise check used
+to regex an `<observations>` tag out of the debug snapshot's system prompt,
+through a *display* helper. That is the same surface that silently emptied when
+the AI SDK renamed `system` to `instructions` (#38887) — and it fails quietly, so
+a rename would report every compaction case "not judged" forever while looking
+fine. `GET /rest/instance-ai/eval/threads/:threadId/memory` serves the rows and
+the cursor instead.
 
 ## Where to add things
 

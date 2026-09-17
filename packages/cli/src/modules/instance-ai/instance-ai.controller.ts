@@ -1062,14 +1062,11 @@ export class InstanceAiController {
 	 * be uncollectable.
 	 */
 	/**
-	 * What observational memory holds for an owned thread: the live observations and
-	 * the compaction cursor. A context eval asserts on these rows — that compaction
-	 * ran at all, and that the summary kept the details the case cares about.
+	 * Observational memory for a thread, for a context eval to assert on.
 	 *
-	 * Returns the observation text, which is an LLM-written summary of the user's
-	 * conversation. Gated like every other `/eval/` route: the `instanceAi:eval`
-	 * scope is owner/admin-only, and `assertThreadAccess` keeps a caller to threads
-	 * they can already read in full.
+	 * Returns the observation text, an LLM-written summary of the user's conversation.
+	 * Gated like every other `/eval/` route: `instanceAi:eval` is owner/admin-only,
+	 * and `assertThreadAccess` keeps a caller to threads they can already read in full.
 	 */
 	@Get('/eval/threads/:threadId/memory')
 	@GlobalScope('instanceAi:eval')

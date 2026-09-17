@@ -400,9 +400,8 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 		agentContextByKey.set(key, fetchAgentScenarioContext(client, agentRef, logger));
 	}
 
-	/** Observational-memory rows for the thread. Structural evidence that compaction
-	 *  ran, and the summary text a case can assert on. Undefined on failure — the
-	 *  premise check reads that as "no evidence", never as "it compacted". */
+	/** Undefined on failure — the premise check reads that as "no evidence", never
+	 *  as "it compacted". */
 	function stashThreadMemory(client: N8nClient, build: BuildResult): void {
 		if (!build.threadId) return;
 		const threadId = build.threadId;
@@ -769,9 +768,8 @@ const NOT_COMPACTED_REASON =
 	'not judged — observational memory never compacted this thread, so the case premise is ' +
 	'absent. The seed needs a conversation with something worth observing.';
 
-/** Did observational memory actually compact this thread? A cursor means the observer
- *  ran and everything up to `lastObservedMessageId` is masked out of the window; the
- *  rows are what replaced it. Both, or the case had nothing to test. */
+/** A cursor means the observer ran and everything up to it is masked out; the rows are
+ *  what replaced it. Both, or the case had nothing to test. */
 function memoryWasCompacted(memory: InstanceAiEvalThreadMemoryResponse | undefined): boolean {
 	return Boolean(memory?.cursor) && (memory?.observations.length ?? 0) > 0;
 }

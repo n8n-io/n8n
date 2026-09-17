@@ -136,9 +136,8 @@ function buildConversationContext(
 	].join('\n');
 }
 
-/** What the agent actually remembers after compaction, so an expectation can grade the
- *  SUMMARY itself instead of inferring it from the reply. Markers are the Observer's
- *  own priority labels. */
+/** What the agent remembers after compaction, so an expectation can grade the summary
+ *  itself. Markers are the Observer's own priority labels. */
 function observationLogBlock(memory: InstanceAiEvalThreadMemoryResponse | undefined): string {
 	if (!memory) return '(not captured)';
 	if (!memory.cursor) return '(observational memory has not compacted this conversation)';
