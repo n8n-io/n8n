@@ -677,6 +677,7 @@ export type { AgentRunState } from './schemas/agent-run-reducer';
 export {
 	formatDebugJson,
 	summarizeJsonValue,
+	stepInstructions,
 	parseSystemPromptForDisplay,
 	parseMessageBlocks,
 	parseUsageSummary,
