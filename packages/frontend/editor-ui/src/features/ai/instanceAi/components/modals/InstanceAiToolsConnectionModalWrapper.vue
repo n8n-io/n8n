@@ -65,7 +65,6 @@ const computerUseTelemetry = useInstanceAiComputerUseTelemetry();
 const settingsStore = useInstanceAiSettingsStore();
 const toast = useToast();
 
-const isMcpEnabled = computed(() => settingsStore.isMcpAvailable);
 // The store owns Computer Use availability, so every entry point and the message
 // payload report the same thing.
 const isComputerUseEnabled = computed(() => settingsStore.isComputerUseAvailable);
@@ -121,7 +120,7 @@ function showConnectedServer(connectionId: string | null): void {
 	if (connectionId) activeItemId.value = connectionId;
 }
 
-if (isMcpEnabled.value) {
+if (settingsStore.isMcpAvailable) {
 	void mcpStore.fetchCatalogLazy();
 	void mcpStore.fetchConnectionsLazy();
 	void credentialsStore.fetchAllCredentials();
@@ -270,7 +269,7 @@ const activeServiceDefinition = computed<ServiceConnectionDefinition | null>(() 
 
 const items = computed<ToolConnectionItem[]>(() => {
 	const out: ToolConnectionItem[] = [...serviceItems.value];
-	if (isMcpEnabled.value) {
+	if (settingsStore.isMcpAvailable) {
 		const catalog = mcpStore.catalog ?? [];
 		for (const server of catalog) {
 			const connections = mcpStore.connectionsByServerSlug.get(server.slug) ?? [];

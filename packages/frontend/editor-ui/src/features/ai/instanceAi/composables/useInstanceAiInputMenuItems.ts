@@ -32,10 +32,9 @@ export function useInstanceAiInputMenuItems(attachFiles: () => void) {
 	const mcpTelemetry = useInstanceAiMcpTelemetry();
 	const { ensureConnected: ensureBrowserConnected } = useBrowserUseConnection();
 	const computerUseTelemetry = useInstanceAiComputerUseTelemetry();
-	const isMcpEnabled = computed(() => settingsStore.isMcpAvailable);
 
 	void settingsStore.fetch();
-	if (isMcpEnabled.value) void mcpStore.fetchConnectionsLazy();
+	if (settingsStore.isMcpAvailable) void mcpStore.fetchConnectionsLazy();
 
 	// The store owns this, so the + menu and the message payload cannot disagree.
 	const isComputerUseAvailable = computed(() => settingsStore.isComputerUseAvailable);
@@ -121,7 +120,7 @@ export function useInstanceAiInputMenuItems(attachFiles: () => void) {
 
 	const disconnectedConnectionCount = computed(() => {
 		let count = 0;
-		if (isMcpEnabled.value) {
+		if (settingsStore.isMcpAvailable) {
 			count += mcpStore.connections.filter(({ status }) => status === 'disconnected').length;
 		}
 		if (
@@ -149,7 +148,7 @@ export function useInstanceAiInputMenuItems(attachFiles: () => void) {
 			},
 		];
 
-		if (isMcpEnabled.value) {
+		if (settingsStore.isMcpAvailable) {
 			const tools: InputMenuItem[] = mcpStore.connections.map((connection) => ({
 				id: `mcp-${connection.id}`,
 				label: connection.serverTitle,

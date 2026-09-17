@@ -114,7 +114,6 @@ vi.mock('../../../composables/useMcpServerConnect', () => ({
 
 vi.mock('../../../instanceAiSettings.store', () => ({
 	useInstanceAiSettingsStore: () => ({
-		settings: { mcpAccessEnabled: true },
 		isMcpAvailable: true,
 		isComputerUseAvailable: true,
 		isBrowserUseAvailable: true,
