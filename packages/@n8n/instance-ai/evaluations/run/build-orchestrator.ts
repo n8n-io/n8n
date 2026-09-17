@@ -470,7 +470,7 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 					allFailVerdicts(
 						collectExpectations(testCase),
 						`not judged — prior run staging did not land, so the case premise is missing: ${build.priorRunFailed}`,
-					),
+					).map((verdict) => ({ ...verdict, attribution: 'framework_issue' as const })),
 				),
 			);
 			return;
@@ -775,7 +775,8 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 
 const NOT_COMPACTED_REASON =
 	'not judged — observational memory never compacted this thread, so the case premise is ' +
-	'absent. The seed needs a conversation with something worth observing.';
+	'absent. Either the seed is too short to cross the observer threshold, or the compaction ' +
+	'the harness asked for never reached the run.';
 
 /** A cursor means the observer ran and everything up to it is masked out; the rows are
  *  what replaced it. Both, or the case had nothing to test. */

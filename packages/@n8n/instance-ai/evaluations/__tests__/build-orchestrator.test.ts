@@ -523,6 +523,9 @@ describe('createBuildOrchestrator', () => {
 		// `incomplete` is the ONLY thing that keeps a verdict out of the pass rate.
 		expect(verdicts?.[0].incomplete).toBe(true);
 		expect(verdicts?.[0].reason).toContain('premise is missing');
+		// This branch bypasses `attribute`, so without stamping it here a failed unit
+		// ships with no owner at all.
+		expect(verdicts?.[0].attribution).toBe('framework_issue');
 	});
 
 	it('serves prebuilt workflows by fetching them, never invoking the builder', async () => {
