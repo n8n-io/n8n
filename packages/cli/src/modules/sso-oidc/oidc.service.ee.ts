@@ -138,7 +138,7 @@ export class OidcService {
 			payload.testMode = true;
 		}
 		return {
-			signed: this.jwtService.sign(payload, { expiresIn: '15m' }),
+			signed: this.jwtService.sign('oidcState', payload, { expiresIn: '15m' }),
 			plaintext: state,
 		};
 	}
@@ -147,7 +147,7 @@ export class OidcService {
 		let state: string;
 		let testMode: boolean | undefined;
 		try {
-			const decodedState = this.jwtService.verify(signedState);
+			const decodedState = this.jwtService.verify('oidcState', signedState);
 			state = decodedState?.state;
 			testMode = decodedState?.testMode;
 		} catch (error) {
@@ -181,7 +181,7 @@ export class OidcService {
 	generateNonce() {
 		const nonce = `n8n_nonce:${randomUUID()}`;
 		return {
-			signed: this.jwtService.sign({ nonce }, { expiresIn: '15m' }),
+			signed: this.jwtService.sign('oidcNonce', { nonce }, { expiresIn: '15m' }),
 			plaintext: nonce,
 		};
 	}
@@ -189,7 +189,7 @@ export class OidcService {
 	verifyNonce(signedNonce: string) {
 		let nonce: string;
 		try {
-			const decodedNonce = this.jwtService.verify(signedNonce);
+			const decodedNonce = this.jwtService.verify('oidcNonce', signedNonce);
 			nonce = decodedNonce?.nonce;
 		} catch (error) {
 			this.logger.error('Failed to verify nonce', { error });

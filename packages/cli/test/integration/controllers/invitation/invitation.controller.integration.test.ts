@@ -58,7 +58,7 @@ describe('InvitationController', () => {
 	});
 
 	function invitationToken(inviterId: string, inviteeId: string): string {
-		return Container.get(JwtService).sign({ inviterId, inviteeId }, { expiresIn: '90d' });
+		return Container.get(JwtService).sign('invite', { inviterId, inviteeId }, { expiresIn: '90d' });
 	}
 
 	describe('POST /invitations/accept', () => {

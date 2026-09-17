@@ -31,6 +31,16 @@ const instanceAiLazyRuntimeImports = [
 	message: INSTANCE_AI_LAZY_IMPORT_MESSAGE,
 }));
 
+// Only JwtService may reach the raw signing API: it derives the `aud` claim from
+// the token's purpose, which is what keeps a token for one purpose from being
+// presented for another. The error classes and types stay importable.
+const jsonwebtokenSigningRestriction = {
+	name: 'jsonwebtoken',
+	importNames: ['default', 'sign', 'verify', 'decode'],
+	message:
+		'Sign and verify through JwtService, so the token is bound to a purpose in token-purposes.ts.',
+};
+
 const engineV2ModuleOnlyImport = {
 	name: '@n8n/engine',
 	allowTypeImports: true,
@@ -178,7 +188,13 @@ export default defineConfig(
 			// wholesale rather than merging them.
 			'@typescript-eslint/no-restricted-imports': [
 				'error',
-				{ paths: [POLICY_INTERNAL_RESTRICTION, engineV2ModuleOnlyImport] },
+				{
+					paths: [
+						POLICY_INTERNAL_RESTRICTION,
+						engineV2ModuleOnlyImport,
+						jsonwebtokenSigningRestriction,
+					],
+				},
 			],
 		},
 	},
@@ -195,8 +211,35 @@ export default defineConfig(
 						POLICY_INTERNAL_RESTRICTION,
 						...instanceAiLazyRuntimeImports,
 						engineV2ModuleOnlyImport,
+						jsonwebtokenSigningRestriction,
 					],
 				},
+			],
+		},
+	},
+	{
+		// The two places that hold the raw signing API. NEVER add to this list.
+		files: [
+			// Owns the signing key and derives every audience from a purpose.
+			'./src/services/jwt.service.ts',
+			// Verifies subject tokens with a foreign key from the trusted-key store,
+			// against the audience that key is registered for.
+			'./src/modules/token-exchange/services/token-exchange.service.ts',
+		],
+		rules: {
+			'@typescript-eslint/no-restricted-imports': [
+				'error',
+				{ paths: [POLICY_INTERNAL_RESTRICTION, engineV2ModuleOnlyImport] },
+			],
+		},
+	},
+	{
+		// Tests mint tokens as fixtures, including malformed ones a purpose cannot express.
+		files: ['./src/**/__tests__/**/*.ts'],
+		rules: {
+			'@typescript-eslint/no-restricted-imports': [
+				'error',
+				{ paths: [POLICY_INTERNAL_RESTRICTION, engineV2ModuleOnlyImport] },
 			],
 		},
 	},

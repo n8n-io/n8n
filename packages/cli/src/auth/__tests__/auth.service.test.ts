@@ -41,7 +41,7 @@ describe('AuthService', () => {
 		userManagement: { jwtSecret: 'random-secret' },
 		endpoints: { rest: 'rest' },
 	});
-	const jwtService = new JwtService(mock(), globalConfig);
+	const jwtService = new JwtService(mock(), globalConfig, mock());
 	const urlService = mock<UrlService>();
 	const userRepository = mock<UserRepository>();
 	const invalidAuthTokenRepository = mock<InvalidAuthTokenRepository>();
@@ -63,10 +63,10 @@ describe('AuthService', () => {
 	vi.useFakeTimers({ now });
 
 	const validToken =
-		'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjEyMyIsImhhc2giOiJtSkFZeDRXYjdrIiwiYnJvd3NlcklkIjoiOFpDVXE1YU1uSFhnMFZvcURLcm9hMHNaZ0NwdWlPQ1AzLzB2UmZKUXU0MD0iLCJ1c2VkTWZhIjpmYWxzZSwiaWF0IjoxNzA2NzUwNjI1LCJleHAiOjE3MDczNTU0MjV9.N7JgwETmO41o4FUDVb4pA1HM3Clj4jyjDK-lE8Fa1Zw'; // Generated using `authService.issueJWT(user, false, browserId)`
+		'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjEyMyIsImhhc2giOiJtSkFZeDRXYjdrIiwiYnJvd3NlcklkIjoiOFpDVXE1YU1uSFhnMFZvcURLcm9hMHNaZ0NwdWlPQ1AzLzB2UmZKUXU0MD0iLCJ1c2VkTWZhIjpmYWxzZSwiaWF0IjoxNzA2NzUwNjI1LCJleHAiOjE3MDczNTU0MjUsImF1ZCI6Im44bjpzZXNzaW9uIn0.Non8MLCyq2HdJMu4G2EMKsooOSSZV09f3SJ0vGk3_O8'; // Generated using `authService.issueJWT(user, false, browserId)`
 
 	const validTokenWithMfa =
-		'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjEyMyIsImhhc2giOiJtSkFZeDRXYjdrIiwiYnJvd3NlcklkIjoiOFpDVXE1YU1uSFhnMFZvcURLcm9hMHNaZ0NwdWlPQ1AzLzB2UmZKUXU0MD0iLCJ1c2VkTWZhIjp0cnVlLCJpYXQiOjE3MDY3NTA2MjUsImV4cCI6MTcwNzM1NTQyNX0.9kTTue-ZdBQ0CblH0IrqW9K-k0WWfxfsWTglyPB10ko'; // Generated using `authService.issueJWT(user, true, browserId)`
+		'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjEyMyIsImhhc2giOiJtSkFZeDRXYjdrIiwiYnJvd3NlcklkIjoiOFpDVXE1YU1uSFhnMFZvcURLcm9hMHNaZ0NwdWlPQ1AzLzB2UmZKUXU0MD0iLCJ1c2VkTWZhIjp0cnVlLCJpYXQiOjE3MDY3NTA2MjUsImV4cCI6MTcwNzM1NTQyNSwiYXVkIjoibjhuOnNlc3Npb24ifQ.54_9gexM1Y39cMkmp7Rr2cVFxSx8R0xtgEdPAbagomE'; // Generated using `authService.issueJWT(user, true, browserId)`
 
 	beforeEach(() => {
 		vi.resetAllMocks();
@@ -588,7 +588,7 @@ describe('AuthService', () => {
 				const token = authService.issueJWT(user, false, browserId);
 
 				expect(authService.jwtExpiration).toBe(defaultInSeconds);
-				const decodedToken = jwtService.verify(token);
+				const decodedToken = jwtService.verify('session', token);
 				if (decodedToken.exp === undefined || decodedToken.iat === undefined) {
 					expect.fail('Expected exp and iat to be defined');
 				}
@@ -605,7 +605,7 @@ describe('AuthService', () => {
 				globalConfig.userManagement.jwtSessionDurationHours = testDurationHours;
 				const token = authService.issueJWT(user, false, browserId);
 
-				const decodedToken = jwtService.verify(token);
+				const decodedToken = jwtService.verify('session', token);
 				if (decodedToken.exp === undefined || decodedToken.iat === undefined) {
 					expect.fail('Expected exp and iat to be defined on decodedToken');
 				}
@@ -657,7 +657,7 @@ describe('AuthService', () => {
 		});
 
 		it('should throw when the payload is missing the user id', async () => {
-			const token = jwtService.sign({ hash: 'mJAYx4Wb7k' }, { expiresIn: '1h' });
+			const token = jwtService.sign('session', { hash: 'mJAYx4Wb7k' }, { expiresIn: '1h' });
 
 			await expect(authService.resolveJwt(token, req, res)).rejects.toThrow('Unauthorized');
 			expect(userRepository.findOne).not.toHaveBeenCalled();
