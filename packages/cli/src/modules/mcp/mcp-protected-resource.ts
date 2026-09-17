@@ -90,7 +90,9 @@ export class McpProtectedResource implements ProtectedResource {
 					tools.filter(
 						(tool) =>
 							(builderEnabled || !BUILDER_TOOLS.has(tool)) &&
-							(foldersLicensed || !FOLDER_FEATURE_TOOLS.has(tool)),
+							(foldersLicensed || !FOLDER_FEATURE_TOOLS.has(tool)) &&
+							(instanceContextAvailable || !INSTANCE_CONTEXT_TOOLS.has(tool)) &&
+							(activityToolsAvailable || !ACTIVITY_LOG_TOOLS.has(tool)),
 					),
 				]),
 		);
