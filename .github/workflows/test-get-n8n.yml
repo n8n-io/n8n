@@ -4,9 +4,9 @@ name: 'Test get-n8n.sh installer'
 # fresh install boots the full stack, re-runs are no-ops, --upgrade only
 # bumps N8N_VERSION, and all failure modes exit cleanly.
 #
-# Also runs nightly against master: the script pins n8n but pulls the
-# sandbox images at :latest, so an image-side change can break installs
-# without any change to the script itself.
+# Also runs nightly against master: the install resolves the latest n8n
+# release and pulls searxng at :latest, so a change outside this repo can
+# break installs without any change to the script itself.
 
 on:
   pull_request:

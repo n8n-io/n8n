@@ -35,6 +35,11 @@ const outputSchema = {
 	preferences: z
 		.array(
 			z.object({
+				id: z
+					.string()
+					.describe(
+						'Stable id of the preference. Name it when you update this preference, so an edit replaces the row instead of adding a second one.',
+					),
 				scope: z
 					.enum(['instance', 'user', 'project'])
 					.describe(
@@ -100,14 +105,25 @@ export const createGetUserPreferencesTool = (
 			// One source for "is there anything", so the flag and the list cannot disagree.
 			const items = flattenAiPreferences(preferences);
 			const hasPreferences = items.length > 0;
+			const text = hasPreferences ? renderAiPreferences(preferences) : NOTHING_SAVED;
 
-			telemetryPayload.results = { success: true, data: { hasPreferences } };
+			// Count, scopes and the size of the rendered text, never the text itself, which is
+			// the person's own writing. The length is what reviews the caps: CONTEXT-137 wants a
+			// new number once the 95th percentile of a rendered block passes 8,000 characters,
+			// and this read is one of the two paths that render one today (CONTEXT-137).
+			telemetryPayload.results = {
+				success: true,
+				data: {
+					hasPreferences,
+					count: items.length,
+					scopes: [...new Set(items.map((item) => item.scope))],
+					rendered_length: hasPreferences ? text.length : 0,
+				},
+			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
 			return {
-				content: [
-					{ type: 'text', text: hasPreferences ? renderAiPreferences(preferences) : NOTHING_SAVED },
-				],
+				content: [{ type: 'text', text }],
 				structuredContent: { hasPreferences, preferences: items },
 			};
 		} catch (error) {
