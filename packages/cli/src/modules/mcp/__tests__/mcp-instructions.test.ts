@@ -35,52 +35,25 @@ describe('getMcpInstructions', () => {
 	});
 
 	describe('node groups pointer', () => {
-		describe('when canvasGroupsEnabled is true', () => {
-			test('points the client to the groups reference', () => {
-				const instructions = getMcpInstructions({
-					isBuilderEnabled: true,
-					isN8nConnectAvailable: true,
-					canvasGroupsEnabled: true,
-				});
-
-				expect(instructions).toMatch(/group/i);
-				// Points at the on-demand groups section of the SDK reference.
-				expect(instructions).toContain('"groups"');
+		test('points the client to the groups reference', () => {
+			const instructions = getMcpInstructions({
+				isBuilderEnabled: true,
+				isN8nConnectAvailable: true,
 			});
 
-			test('stays intro-only when the builder is disabled', () => {
-				const instructions = getMcpInstructions({
-					isBuilderEnabled: false,
-					isN8nConnectAvailable: false,
-					canvasGroupsEnabled: true,
-				});
-
-				expect(instructions).toContain('official MCP server for n8n');
-				expect(instructions).not.toContain('"groups"');
-			});
+			expect(instructions).toMatch(/group/i);
+			// Points at the on-demand groups section of the SDK reference.
+			expect(instructions).toContain('"groups"');
 		});
 
-		describe('when canvasGroupsEnabled is false', () => {
-			test('does not mention the groups reference', () => {
-				const instructions = getMcpInstructions({
-					isBuilderEnabled: true,
-					isN8nConnectAvailable: true,
-					canvasGroupsEnabled: false,
-				});
-
-				expect(instructions).not.toContain('"groups"');
-				expect(instructions).not.toContain('does not fail the whole update');
-				expect(instructions).not.toContain('skippedOperations');
+		test('stays intro-only when the builder is disabled', () => {
+			const instructions = getMcpInstructions({
+				isBuilderEnabled: false,
+				isN8nConnectAvailable: false,
 			});
 
-			test('omits the groups pointer by default', () => {
-				const instructions = getMcpInstructions({
-					isBuilderEnabled: true,
-					isN8nConnectAvailable: true,
-				});
-
-				expect(instructions).not.toContain('"groups"');
-			});
+			expect(instructions).toContain('official MCP server for n8n');
+			expect(instructions).not.toContain('"groups"');
 		});
 	});
 
@@ -132,7 +105,6 @@ describe('getMcpInstructions', () => {
 			const instructions = getMcpInstructions({
 				isBuilderEnabled: true,
 				isN8nConnectAvailable: true,
-				canvasGroupsEnabled: true,
 				isAgentsEnabled: true,
 				isUserPreferencesEnabled: true,
 			});
