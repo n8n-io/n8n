@@ -25,6 +25,14 @@ describe('SsrfProtectionConfig', () => {
 			expect(config.blockedIpRanges).toEqual(SSRF_DEFAULT_BLOCKED_IP_RANGES);
 		});
 
+		test.each(['::/128', '100.64.0.0/10', '2002::/16', '64:ff9b::/96'])(
+			'default list includes %s',
+			(range) => {
+				process.env = {};
+				expect(Container.get(SsrfProtectionConfig).blockedIpRanges).toContain(range);
+			},
+		);
+
 		test('allowedIpRanges is empty array', () => {
 			process.env = {};
 			expect(Container.get(SsrfProtectionConfig).allowedIpRanges).toEqual([]);
