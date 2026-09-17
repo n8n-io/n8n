@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import { NodeHelpers } from 'n8n-workflow';
+import { NodeHelpers, isMcpGatewayAuthentication } from 'n8n-workflow';
 import type { INode, INodeCredentials, INodeParameters, INodeTypeDescription } from 'n8n-workflow';
 
 import { AI_MCP_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
@@ -241,20 +241,38 @@ function resolveAuthenticationParameterFromCredentialType(
 	return showCondition ? showCondition : undefined;
 }
 
+/**
+ * A gateway-hosted registry node declares its credential as a `*McpGatewayApi`
+ * type. Such a credential is managed by the AI Gateway and has no stored id, so
+ * the round-tripped config carries no `credential`. Return the type so we can
+ * rebuild the managed slot on the node.
+ */
+function resolveGatewayCredentialType(nodeType: INodeTypeDescription): string | undefined {
+	const credentialType = nodeType.credentials?.[0]?.name;
+	return typeof credentialType === 'string' && isMcpGatewayAuthentication(credentialType)
+		? credentialType
+		: undefined;
+}
+
 export function mcpServerToNode(
 	server: AgentJsonMcpServerConfig,
 	nodeTypeDescription: INodeTypeDescription,
 ): INode {
 	const credentialType = authenticationToCredentialType(server.authentication);
-	const credentials =
-		credentialType && server.credential
-			? {
-					[credentialType]: {
-						id: server.credential,
-						name: server.credential,
-					},
-				}
-			: undefined;
+	const gatewayCredentialType = resolveGatewayCredentialType(nodeTypeDescription);
+	let credentials: INodeCredentials | undefined;
+	if (gatewayCredentialType && !server.credential) {
+		// Rebuild the managed slot so the config modal opens with the gateway
+		// credential already selected and does not auto-enable it (which would
+		// trigger a spurious workflow save).
+		credentials = {
+			[gatewayCredentialType]: { id: null, name: '', __aiGatewayManaged: true },
+		};
+	} else if (credentialType && server.credential) {
+		credentials = {
+			[credentialType]: { id: server.credential, name: server.credential },
+		};
+	}
 	const toolFilterParams = resolveNodeToolFilter(server.toolFilter);
 	const options = server.connectionTimeoutMs ? { timeout: server.connectionTimeoutMs } : {};
 	const authentication = isMcpRegistryNodeType(nodeTypeDescription.name)
