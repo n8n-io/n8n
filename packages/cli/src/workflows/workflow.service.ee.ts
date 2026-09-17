@@ -198,8 +198,10 @@ export class EnterpriseWorkflowService {
 		/**
 		 * We only need to check nodes that use credentials the current user cannot access,
 		 * since these can be 2 possibilities:
-		 * - It matches exactly one previous node: it's a read only node and therefore cannot be changed
-		 * - It's a new node which indicates tampering and therefore must fail saving
+		 * - It matches exactly one previous node that already used such a credential: it's a
+		 *   read only node and therefore cannot be changed
+		 * - It's a new node, or an editable node that newly references such a credential,
+		 *   which indicates tampering and therefore must fail saving
 		 */
 
 		const allowedCredentialIds = credentialsUserHasAccessTo.map((cred) => cred.id);
@@ -212,6 +214,15 @@ export class EnterpriseWorkflowService {
 		if (nodesWithCredentialsUserDoesNotHaveAccessTo.size === 0) {
 			return newWorkflowVersion;
 		}
+
+		// A node the user could not use before stays read only and is restored. A node
+		// the user could edit that now carries a credential they cannot use fails the
+		// save like a new node does; restoring it would drop the other edits silently.
+		const readOnlyNodeIds = new Set(
+			this.getNodesWithInaccessibleCreds(previousWorkflowVersion, allowedCredentialIds).map(
+				(node) => node.id,
+			),
+		);
 
 		// Node ids are meant to be unique. Edge case: where stored data still repeats one, match the
 		// first node.
@@ -234,7 +245,7 @@ export class EnterpriseWorkflowService {
 			const previousNode = previousNodesById.get(node.id);
 			const idClaimedOnce = submittedIdCounts.get(node.id) === 1;
 
-			if (!previousNode || !idClaimedOnce) {
+			if (!previousNode || !idClaimedOnce || !readOnlyNodeIds.has(node.id)) {
 				this.logger.warn('Blocked workflow update due to tampering attempt', {
 					nodeType: node.type,
 					nodeName: node.name,
