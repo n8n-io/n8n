@@ -34,6 +34,8 @@ import {
 
 const ChangePasswordView = async () =>
 	await import('@/features/core/auth/views/ChangePasswordView.vue');
+const ConfirmEmailChangeView = async () =>
+	await import('@/features/core/auth/views/ConfirmEmailChangeView.vue');
 const ErrorView = async () => await import('@/app/views/ErrorView.vue');
 const EntityNotFound = async () => await import('@/app/views/EntityNotFound.vue');
 const EntityUnAuthorised = async () => await import('@/app/views/EntityUnAuthorised.vue');
@@ -595,6 +597,19 @@ export const routes: RouteRecordRaw[] = [
 		meta: {
 			layout: 'auth',
 			middleware: ['guest'],
+			telemetry: {
+				pageCategory: 'auth',
+			},
+		},
+	},
+	{
+		path: '/confirm-email-change',
+		name: VIEWS.CONFIRM_EMAIL_CHANGE,
+		component: ConfirmEmailChangeView,
+		// No auth middleware: the token authorizes the change, so the link works
+		// whether the user is signed in or not (the confirm endpoint is skipAuth).
+		meta: {
+			layout: 'auth',
 			telemetry: {
 				pageCategory: 'auth',
 			},

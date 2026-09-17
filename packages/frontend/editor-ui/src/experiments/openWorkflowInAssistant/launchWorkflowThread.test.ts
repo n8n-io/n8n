@@ -83,6 +83,7 @@ describe('launchWorkflowThread', () => {
 			{
 				message: '',
 				attachments: [{ type: 'workflow', id: 'wf1', name: 'Gmail fetch' }],
+				authorship: { kind: 'prefill', prefillType: 'workflow_attachment_opener' },
 			},
 			{
 				source: 'workflow_list_auto',
