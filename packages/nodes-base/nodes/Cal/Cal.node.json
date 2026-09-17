@@ -8,11 +8,6 @@
 			{
 				"url": "https://docs.n8n.io/integrations/builtin/credentials/cal/"
 			}
-		],
-		"primaryDocumentation": [
-			{
-				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.cal/"
-			}
 		]
 	}
 }

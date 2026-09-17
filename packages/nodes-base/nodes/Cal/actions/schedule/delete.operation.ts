@@ -5,7 +5,7 @@ import { updateDisplayOptions } from '@utils/utilities';
 
 import { CAL_API_VERSION, calApiRequestV2Versioned } from '../../GenericFunctions';
 import { scheduleRLC } from '../common.descriptions';
-import { requireResourceId } from '../helpers';
+import { requireResourceIdNumber } from '../helpers';
 import type { CalOperation } from '../router';
 
 const properties: INodeProperties[] = [scheduleRLC];
@@ -20,7 +20,7 @@ const displayOptions = {
 export const description = updateDisplayOptions(displayOptions, properties);
 
 export const execute: CalOperation = async function (this, itemIndex) {
-	const scheduleId = requireResourceId.call(this, 'schedule', itemIndex, 'Schedule');
+	const scheduleId = requireResourceIdNumber.call(this, 'schedule', itemIndex, 'Schedule');
 
 	// The endpoint answers with a status only, so the item reports the deleted ID.
 	await calApiRequestV2Versioned.call(

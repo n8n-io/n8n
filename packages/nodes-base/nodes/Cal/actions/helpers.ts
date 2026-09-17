@@ -29,8 +29,7 @@ export function requireString(
 	return value;
 }
 
-/** Reads a resourceLocator as the plain ID that the API path or query needs. */
-export function requireResourceId(
+function requireResourceId(
 	this: IExecuteFunctions,
 	name: string,
 	itemIndex: number,
@@ -44,7 +43,7 @@ export function requireResourceId(
 	return id;
 }
 
-/** Reads a resourceLocator for the endpoints that take the ID as a number. */
+/** Reads a resourceLocator. Cal.com identifies event types and schedules by number. */
 export function requireResourceIdNumber(
 	this: IExecuteFunctions,
 	name: string,

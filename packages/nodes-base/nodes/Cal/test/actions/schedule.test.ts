@@ -136,7 +136,14 @@ describe('Cal.com schedule operations', () => {
 			const result = await del.execute.call(ctx, 0);
 
 			expect(apiRequest).toHaveBeenCalledWith('DELETE', '/schedules/42', '2024-06-11');
-			expect(result).toEqual({ success: true, scheduleId: '42' });
+			expect(result).toEqual({ success: true, scheduleId: 42 });
+		});
+
+		it('rejects a schedule ID that is not a number', async () => {
+			const ctx = mockExecuteCtx({ schedule: { mode: 'id', value: 'working-hours' } });
+
+			await expect(del.execute.call(ctx, 0)).rejects.toThrow(NodeOperationError);
+			expect(apiRequest).not.toHaveBeenCalled();
 		});
 	});
 });

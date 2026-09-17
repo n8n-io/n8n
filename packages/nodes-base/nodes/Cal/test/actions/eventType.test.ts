@@ -31,6 +31,13 @@ describe('Cal.com eventType operations', () => {
 			expect(apiRequest).toHaveBeenCalledWith('GET', '/event-types/7', '2024-06-14');
 			expect(result).toEqual({ id: 7, title: 'Intro call' });
 		});
+
+		it('rejects a fractional ID before it reaches the API', async () => {
+			const ctx = mockExecuteCtx({ eventType: { mode: 'id', value: '1.5' } });
+
+			await expect(get.execute.call(ctx, 0)).rejects.toThrow(NodeOperationError);
+			expect(apiRequest).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('getMany', () => {
