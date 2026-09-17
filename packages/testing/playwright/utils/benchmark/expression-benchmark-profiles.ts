@@ -1,12 +1,13 @@
 import type { BenchmarkDimensions } from './types';
 
-interface ExpressionBenchmarkProfile {
+interface RuntimeBenchmarkProfile {
 	isolationSuffix: string;
 	env: Record<string, string>;
 	dimensions: BenchmarkDimensions;
+	engineType?: 'v2';
 }
 
-export const VM_EAGER_BENCHMARK_PROFILE: ExpressionBenchmarkProfile = {
+export const VM_EAGER_BENCHMARK_PROFILE: RuntimeBenchmarkProfile = {
 	isolationSuffix: 'vm-eager',
 	env: {
 		N8N_EXPRESSION_ENGINE: 'vm',
@@ -14,6 +15,7 @@ export const VM_EAGER_BENCHMARK_PROFILE: ExpressionBenchmarkProfile = {
 		N8N_EXPRESSION_ENGINE_COMPILE_CACHE: 'false',
 	},
 	dimensions: {
+		execution_engine: 'v1',
 		expression_engine: 'vm',
 		expression_lazy_acquire: 0,
 		expression_compile_cache: 0,
@@ -21,7 +23,7 @@ export const VM_EAGER_BENCHMARK_PROFILE: ExpressionBenchmarkProfile = {
 	},
 };
 
-export const VM_LAZY_CACHE_BENCHMARK_PROFILE: ExpressionBenchmarkProfile = {
+export const VM_LAZY_CACHE_BENCHMARK_PROFILE: RuntimeBenchmarkProfile = {
 	isolationSuffix: 'vm-lazy-cache',
 	env: {
 		N8N_EXPRESSION_ENGINE: 'vm',
@@ -29,9 +31,41 @@ export const VM_LAZY_CACHE_BENCHMARK_PROFILE: ExpressionBenchmarkProfile = {
 		N8N_EXPRESSION_ENGINE_COMPILE_CACHE: 'true',
 	},
 	dimensions: {
+		execution_engine: 'v1',
 		expression_engine: 'vm',
 		expression_lazy_acquire: 1,
 		expression_compile_cache: 1,
 		expression_profile: 'vm-lazy-cache',
+	},
+};
+
+export const ENGINE_V2_BENCHMARK_PROFILE: RuntimeBenchmarkProfile = {
+	isolationSuffix: 'engine-v2',
+	env: {
+		...VM_EAGER_BENCHMARK_PROFILE.env,
+		N8N_ENABLED_MODULES: 'engine-v2',
+		N8N_ENGINE_DATABASE_URL: 'postgresql://n8n_user:test_password@postgres:5432/n8n_db',
+	},
+	engineType: 'v2',
+	dimensions: {
+		execution_engine: 'v2',
+		expression_engine: 'vm',
+		expression_lazy_acquire: 0,
+		expression_compile_cache: 0,
+		expression_profile: 'vm-eager',
+	},
+};
+
+export const ENGINE_V2_LAZY_CACHE_BENCHMARK_PROFILE: RuntimeBenchmarkProfile = {
+	isolationSuffix: 'engine-v2-vm-lazy-cache',
+	env: {
+		...VM_LAZY_CACHE_BENCHMARK_PROFILE.env,
+		N8N_ENABLED_MODULES: 'engine-v2',
+		N8N_ENGINE_DATABASE_URL: 'postgresql://n8n_user:test_password@postgres:5432/n8n_db',
+	},
+	engineType: 'v2',
+	dimensions: {
+		...VM_LAZY_CACHE_BENCHMARK_PROFILE.dimensions,
+		execution_engine: 'v2',
 	},
 };

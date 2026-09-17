@@ -50,6 +50,8 @@ export interface LoadTestOptions {
 	trigger: TriggerType;
 	/** PromQL metric to track workflow completions. Defaults to resolveMetricQuery(testInfo). */
 	metricQuery?: string;
+	/** Direct completion reader for single-instance comparisons. */
+	counterReader?: SetupContext['counterReader'];
 	/** Additional dimensions attached to every metric and the run report. */
 	dimensions?: BenchmarkDimensions;
 	/** When provided, the result log includes a resource breakdown (mode/main/workers/total). */
@@ -97,6 +99,7 @@ export async function runLoadTest(options: LoadTestOptions): Promise<ExecutionMe
 		testInfo,
 		handle,
 		metricQuery: options.metricQuery,
+		counterReader: options.counterReader,
 		warmUp: options.warmUp,
 	});
 
@@ -105,6 +108,7 @@ export async function runLoadTest(options: LoadTestOptions): Promise<ExecutionMe
 		metrics: services.observability.metrics,
 		baselineCounter: setup.baselineCounter,
 		metricQuery: setup.metricQuery,
+		counterReader: setup.counterReader,
 		timeoutMs,
 		nodeCount,
 	});
@@ -117,8 +121,8 @@ export async function runLoadTest(options: LoadTestOptions): Promise<ExecutionMe
 		);
 	}
 
-	// Duration sampling — empty when EXECUTIONS_DATA_SAVE_ON_SUCCESS=none.
-	// Completion count comes from VictoriaMetrics regardless.
+	// Duration sampling is empty when EXECUTIONS_DATA_SAVE_ON_SUCCESS=none.
+	// Completion count comes from the configured counter reader.
 	const durations = await sampleExecutionDurations(api.workflows, setup.workflowId);
 	const metrics = buildMetrics(exec.throughputResult.totalCompleted, 0, totalDurationMs, durations);
 

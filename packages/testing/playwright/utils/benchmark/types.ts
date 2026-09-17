@@ -116,6 +116,7 @@ export interface TriggerSetupContext {
 		nodeOutputSize?: NodeOutputSize;
 		payloadSize: PayloadSize;
 		partitions?: number;
+		engineType?: 'v2';
 	};
 }
 

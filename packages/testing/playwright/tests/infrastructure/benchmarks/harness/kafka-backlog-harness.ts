@@ -7,9 +7,11 @@ import {
 	kafkaDriver,
 	resolveMetricQuery,
 	waitForThroughput,
+	WORKFLOW_SUCCESS_QUERY,
 } from '../../../../utils/benchmark';
 import type {
 	BenchmarkDimensions,
+	CompletionCounterReader,
 	ExecutionMetrics,
 	LoadProfile,
 	TriggerSetupContext,
@@ -31,6 +33,7 @@ interface KafkaLoadOptions {
 	minTailRateEfficiency?: number;
 	requireKeptUpStage?: boolean;
 	dimensions?: BenchmarkDimensions;
+	counterReader?: CompletionCounterReader;
 }
 
 export async function runKafkaLoadTest(options: KafkaLoadOptions): Promise<ExecutionMetrics> {
@@ -54,10 +57,11 @@ export async function runKafkaLoadTest(options: KafkaLoadOptions): Promise<Execu
 		minTailRateEfficiency: options.minTailRateEfficiency,
 		requireKeptUpStage: options.requireKeptUpStage,
 		dimensions: options.dimensions,
-		warmUp: async () => {
+		counterReader: options.counterReader,
+		warmUp: async ({ counterReader }) => {
 			const metrics = options.services.observability.metrics;
 			const metricQuery = resolveMetricQuery(options.testInfo);
-			const baselineCounter = await getBaselineCounter(metrics, metricQuery);
+			const baselineCounter = await getBaselineCounter(metrics, metricQuery, counterReader);
 			const published = await handle.preload(WARMUP_MESSAGE_COUNT);
 			const result = await waitForThroughput(metrics, {
 				expectedCount: published.totalPublished,
@@ -65,6 +69,7 @@ export async function runKafkaLoadTest(options: KafkaLoadOptions): Promise<Execu
 				timeoutMs: 60_000,
 				baselineValue: baselineCounter,
 				metricQuery,
+				counterReader,
 			});
 			if (result.totalCompleted !== published.totalPublished) {
 				throw new Error(
@@ -76,11 +81,25 @@ export async function runKafkaLoadTest(options: KafkaLoadOptions): Promise<Execu
 }
 
 export async function runKafkaBacklogTest(
-	options: Omit<KafkaLoadOptions, 'scenario' | 'load'> & { messageCount: number },
+	options: Omit<KafkaLoadOptions, 'scenario' | 'load'> & {
+		messageCount: number;
+		engineType?: 'v2';
+	},
 ): Promise<void> {
+	const { engineType, ...loadOptions } = options;
 	await runKafkaLoadTest({
-		...options,
-		scenario: { nodeCount: 1, payloadSize: '1KB', nodeOutputSize: 'noop', partitions: 3 },
+		...loadOptions,
+		counterReader:
+			options.dimensions?.execution_engine === 'v1'
+				? async () => await options.api.metrics.getCounter(WORKFLOW_SUCCESS_QUERY)
+				: undefined,
+		scenario: {
+			nodeCount: 1,
+			payloadSize: '1KB',
+			nodeOutputSize: 'noop',
+			partitions: 3,
+			engineType,
+		},
 		load: { type: 'preloaded', count: options.messageCount },
 	});
 }

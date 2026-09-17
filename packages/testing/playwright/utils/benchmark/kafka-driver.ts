@@ -224,6 +224,7 @@ export const kafkaDriver: TriggerDriver = {
 			kafkaTrigger,
 			ctx.scenario.nodeCount,
 			nodeOutputSize,
+			ctx.scenario.engineType,
 		);
 
 		return {

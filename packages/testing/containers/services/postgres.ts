@@ -211,6 +211,18 @@ export class PostgresHelper {
 		await this.exec('SELECT pg_stat_statements_reset();');
 	}
 
+	async countCompletedEngineV2Executions(workflowId: string): Promise<number> {
+		if (!/^[A-Za-z0-9_-]+$/.test(workflowId)) {
+			throw new Error(`Unexpected workflow ID: ${workflowId}`);
+		}
+		const output = await this.exec(`
+			SELECT COUNT(*)::bigint
+			FROM workflow_execution
+			WHERE status = 'completed' AND workflow_id = '${workflowId}';
+		`);
+		return parseInt(output.trim(), 10);
+	}
+
 	/** Top N statements ordered by call count descending. */
 	async topStatements(limit = 15): Promise<
 		Array<{

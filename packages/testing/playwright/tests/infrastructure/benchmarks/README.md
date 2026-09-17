@@ -64,18 +64,24 @@ Webhook-trigger specs in **Actual** and **Scaling** use the production-canonical
 
 All specs share a single env profile aligned with internal n8n production defaults — connection-pool, lock-duration, and Bull/Redis tuning from real deployments. See `BENCHMARK_CONFIG` in `playwright-projects.ts`.
 
-### Expression engine profiles
+### Runtime comparison profiles
 
-The direct Kafka and webhook baselines run with two explicit VM expression-engine profiles:
+The direct Kafka and webhook baselines run with two explicit VM expression-engine profiles and an execution engine v2 comparison:
 
-| Profile | Lazy acquisition | Compile cache | Purpose |
-|---------|------------------|---------------|---------|
-| `vm-eager` | Off | Off | Tracks the current default execution path. |
-| `vm-lazy-cache` | On | On | Tracks the optimized no-expression execution path. |
+| Profile | Execution engine | Expression engine | Lazy acquisition | Compile cache | Purpose |
+|---------|------------------|-------------------|------------------|---------------|---------|
+| `vm-eager` | v1 | VM | Off | Off | Tracks the current default execution path. |
+| `vm-lazy-cache` | v1 | VM | On | On | Tracks the optimized no-expression execution path. |
+| `engine-v2` | v2 | VM | Off | Off | Tracks the new workflow execution engine with the same expression settings as `vm-eager`. |
+| `engine-v2-vm-lazy-cache` | v2 | VM | On | On | Measures the combined execution engine v2 and optimized expression-isolate path. |
 
-Each metric records `expression_engine`, `expression_lazy_acquire`, `expression_compile_cache`, and `expression_profile` dimensions. The lazy comparison runs remain in benchmark telemetry and run-report artifacts, but do not feed the deployment sizing matrix while eager VM is the default runtime.
+Each metric records `execution_engine`, `expression_engine`, `expression_lazy_acquire`, `expression_compile_cache`, and `expression_profile` dimensions. The lazy and engine v2 comparison runs remain in benchmark telemetry and run-report artifacts, but do not feed the deployment sizing matrix while execution engine v1 with eager VM is the default runtime.
 
 These NoOp workflows do not evaluate expressions. Lazy mode therefore avoids acquiring an isolate, so these comparisons primarily measure lazy acquisition. Use the expression-engine microbenchmarks to measure compile-cache behavior directly.
+
+The engine v2 webhook comparison uses the same 120-second ingestion load as the v1 profiles. It does not wait for the accepted backlog to drain. Compare its tail execution rate and backlog growth instead of its completion ratio.
+
+The engine v2 lazy-cache Kafka comparison requires at least 98% of its 10,000-message load to complete. This profile reports saturation and incomplete drain instead of treating the experimental engine as an exact-delivery baseline.
 
 ## Running
 
@@ -83,7 +89,7 @@ These NoOp workflows do not evaluate expressions. Lazy mode therefore avoids acq
 # Build n8n image first (skip if you only changed test code).
 pnpm build:docker
 
-# Full suite — all 15 specs sequentially (each spawns its own container).
+# Full suite — all 19 specs sequentially (each spawns its own container).
 pnpm --filter=n8n-playwright test:benchmark
 
 # One spec.
