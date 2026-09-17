@@ -4,10 +4,8 @@ on:
   pull_request_review:
     types: [submitted]
 
-concurrency:
-  group: ci-review-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
-
+# Concurrency is job-level, not workflow-level: a run whose jobs are all
+# skipped (comment-only review) must not cancel an in-flight approval run.
 jobs:
   filter:
     name: Check Changes
@@ -15,6 +13,9 @@ jobs:
       github.event.review.state == 'approved' &&
       github.repository == 'n8n-io/n8n'
     runs-on: ubuntu-slim
+    concurrency:
+      group: ci-review-filter-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
     outputs:
       design_system: ${{ fromJSON(steps.ci-filter.outputs.results)['design-system'] == true }}
       commit_sha: ${{ steps.commit-sha.outputs.sha }}
@@ -48,17 +49,24 @@ jobs:
       needs.filter.outputs.design_system == 'true' &&
       github.event.pull_request.head.repo.full_name == github.repository
     uses: ./.github/workflows/release-chromatic.yml
+    concurrency:
+      group: ci-review-chromatic-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
     with:
       ref: ${{ needs.filter.outputs.commit_sha }}
     secrets: inherit
 
   # Required by GitHub branch protection rules.
   # PRs cannot be merged unless this job passes.
+  # Skipped for comment-only reviews: nothing above can run for them.
   required-review-checks:
     name: Required Review Checks
     needs: [filter]
-    if: always()
+    if: ${{ !cancelled() && github.event.review.state != 'commented' }}
     runs-on: ubuntu-slim
+    concurrency:
+      group: ci-review-checks-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
