@@ -67,7 +67,7 @@ const isMcpAvailable = computed(
 
 const emit = defineEmits<{
 	'update:activeMainTab': [tab: AgentBuilderMainTab];
-	'update:config': [updates: Partial<AgentJsonConfig>];
+	'update:config': [updates: Partial<AgentJsonConfig>, meta?: { source: 'auto' }];
 	'open-tool': [target: ToolOpenTarget];
 	'open-skill': [id: string];
 	'add-tool': [mode: ToolPickerMode];
@@ -124,7 +124,7 @@ const i18n = useI18n();
 						:config="localConfig"
 						:disabled="childrenDisabled"
 						:project-id="projectId"
-						@update:config="emit('update:config', $event)"
+						@update:config="(changes, meta) => emit('update:config', changes, meta)"
 					/>
 
 					<AgentPanel

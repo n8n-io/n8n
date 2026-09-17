@@ -85,7 +85,7 @@
     "@types/cookie-parser": "^1.4.8",
     "@types/express": "catalog:",
     "@types/formidable": "^3.4.5",
-    "@types/json-diff": "^1.0.0",
+    "@types/json-diff": "^1.0.3",
     "@types/json-schema": "catalog:",
     "@types/jsonwebtoken": "catalog:",
     "@types/lodash": "catalog:",

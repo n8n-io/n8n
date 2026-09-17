@@ -18,7 +18,12 @@
     "format:check": "biome ci . && prettier --check . --ignore-path ../../../../.prettierignore"
   },
   "dependencies": {
-    "@n8n/frontend-module-sdk": "workspace:*"
+    "@n8n/api-types": "workspace:*",
+    "@n8n/frontend-module-sdk": "workspace:*",
+    "@n8n/rest-api-client": "workspace:*",
+    "@n8n/stores": "workspace:*",
+    "pinia": "catalog:frontend",
+    "vue": "catalog:frontend"
   },
   "devDependencies": {
     "@n8n/eslint-config": "workspace:*",

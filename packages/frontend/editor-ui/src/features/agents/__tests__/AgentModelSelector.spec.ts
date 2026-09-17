@@ -645,6 +645,16 @@ describe('AgentModelSelector', () => {
 		expect(wrapper.emitted('change')).toBeUndefined();
 	});
 
+	it('emits change with no auto source for a direct model pick', async () => {
+		const wrapper = await mountSelector({ anthropic: 'anthropic-cred' });
+
+		getDropdown(wrapper).vm.$emit('select', 'anthropic::model::claude-sonnet-4-5');
+
+		expect(wrapper.emitted('change')).toEqual([
+			[{ provider: 'anthropic', model: 'claude-sonnet-4-5' }],
+		]);
+	});
+
 	it('selects gpt-5-mini when an existing free OpenAI credits credential is selected', async () => {
 		credentialsByType.value = {
 			openAiApi: [
@@ -662,7 +672,10 @@ describe('AgentModelSelector', () => {
 		await wrapper.vm.$nextTick();
 
 		expect(wrapper.emitted('selectCredential')).toEqual([['openai', 'free-openai-credential']]);
-		expect(wrapper.emitted('change')).toEqual([[{ provider: 'openai', model: 'gpt-5-mini' }]]);
+		// Resolved after a credential selection, not a direct model pick — 'auto'.
+		expect(wrapper.emitted('change')).toEqual([
+			[{ provider: 'openai', model: 'gpt-5-mini' }, 'auto'],
+		]);
 	});
 
 	it('groups the submenu with "Connect to <provider>" and "Models" section headers', async () => {
@@ -858,6 +871,9 @@ describe('AgentModelSelector', () => {
 			'project-1',
 		);
 		expect(wrapper.emitted('selectCredential')).toEqual([['openai', 'free-openai-credential']]);
-		expect(wrapper.emitted('change')).toEqual([[{ provider: 'openai', model: 'gpt-5-mini' }]]);
+		// Resolved after a credential selection, not a direct model pick — 'auto'.
+		expect(wrapper.emitted('change')).toEqual([
+			[{ provider: 'openai', model: 'gpt-5-mini' }, 'auto'],
+		]);
 	});
 });
