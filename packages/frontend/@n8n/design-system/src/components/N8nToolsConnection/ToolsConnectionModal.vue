@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, useId, useTemplateRef, watch } from 'vue';
 import { VisuallyHidden } from 'reka-ui';
-import { N8nDialog, type DialogSize } from '../N8nDialog';
+import { N8nDialog, N8nDialogHeader, type DialogSize } from '../N8nDialog';
 import N8nIcon from '../N8nIcon';
 import N8nInput from '../N8nInput';
 import N8nRecycleScroller from '../N8nRecycleScroller';
@@ -102,7 +102,7 @@ const containerProps = computed(() =>
 				open: props.open,
 				size: props.size,
 				...fixedProps,
-				'aria-label': modalTitle.value,
+				'aria-label': isDefaultView ? modalTitle.value : props.detailItem?.title,
 			},
 );
 const searchPlaceholder = computed(
@@ -267,6 +267,10 @@ async function selectCategory(category: ToolCategoryKey) {
 	activeCategory.value = category;
 	await nextTick();
 	listIndex.value = 0;
+	const firstRow = toolRows.value[0];
+	if (firstRow) {
+		scrollerRef.value?.scrollToKeyIfNeeded(firstRow.key);
+	}
 }
 
 const CATEGORY_I18N: Record<ToolCategoryKey, BaseTextKey> = {
@@ -307,6 +311,12 @@ watch(visibleCategories, (categories) => {
 		activeCategory.value = categories[0];
 	}
 });
+
+watch(effectiveSearchQuery, function resetActiveSearchResult() {
+	listIndex.value = 0;
+});
+
+const isDefaultView = !props.detailItem;
 
 const fixedProps = {
 	/** We want a custom position for close button as it breaks horizontal alignment */
@@ -362,10 +372,6 @@ watch(toolRows, (rows) => {
 	listIndex.value = Math.min(listIndex.value, Math.max(rows.length - 1, 0));
 });
 
-watch(effectiveSearchQuery, function resetActiveSearchResult() {
-	listIndex.value = 0;
-});
-
 function isToolRowSelected(index: number): boolean {
 	return listIndex.value === index;
 }
@@ -379,7 +385,6 @@ function handleNavigateListIndex(delta: number) {
 }
 
 function onNavigationKeyPress(event: KeyboardEvent) {
-	const isDefaultView = !props.detailItem;
 	const target = event.target;
 	const isSearchInputFocused =
 		target instanceof Element &&
@@ -399,7 +404,7 @@ function onNavigationKeyPress(event: KeyboardEvent) {
 			break;
 		case 'ArrowDown':
 		case 'ArrowUp':
-			if (!isDefaultView) break;
+			if (!isDefaultView || (!isSearchInputFocused && isInteractiveElementInFocus())) break;
 			event.preventDefault();
 			if (event.metaKey) {
 				handleNavigateListIndex(
@@ -484,7 +489,19 @@ function toolRowIndex(row: FlattenedRow): number {
 				</template>
 			</ToolDetailView>
 			<template v-else>
-				<div :class="$style.header">
+				<div :class="$style.top">
+					<N8nDialogHeader v-if="!embedded" :class="$style.header">
+						<N8nText as="h2" step="lg" bold>
+							{{ modalTitle }}
+						</N8nText>
+						<N8nIconButton
+							:aria-label="i18n.baseText('generic.close')"
+							size="large"
+							variant="ghost"
+							icon="x"
+							@click="handleOpenChange(false)"
+						/>
+					</N8nDialogHeader>
 					<N8nInput
 						ref="searchInputRef"
 						v-model="searchQuery"
@@ -492,7 +509,6 @@ function toolRowIndex(row: FlattenedRow): number {
 						:aria-describedby="keyboardInstructionsId"
 						clearable
 						data-test-id="tools-connection-search"
-						:class="$style.searchInput"
 					>
 						<template #prefix>
 							<N8nIcon icon="search" />
@@ -509,21 +525,11 @@ function toolRowIndex(row: FlattenedRow): number {
 					>
 						{{ activeToolAnnouncement }}
 					</VisuallyHidden>
-					<N8nIconButton
-						v-if="!embedded"
-						:aria-label="i18n.baseText('generic.close')"
-						size="large"
-						variant="ghost"
-						icon="x"
-						@click="handleOpenChange(false)"
-					/>
 				</div>
-
 				<N8nTabs
 					v-if="tabsVisible"
 					:model-value="activeCategory"
 					:options="tabOptions"
-					size="small"
 					variant="modern"
 					justified
 					:class="$style.tabs"
@@ -624,11 +630,21 @@ function toolRowIndex(row: FlattenedRow): number {
 	padding: 0;
 }
 
+.top {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--md);
+	padding-block-start: calc(var(--spacing--md) - var(--spacing--4xs));
+	padding-block-end: var(--spacing--lg);
+}
+
 .header {
 	display: flex;
 	align-items: center;
+	justify-content: space-between;
+	flex-direction: row;
 	gap: var(--spacing--4xs);
-	padding: var(--spacing--md);
 
 	button {
 		flex-shrink: 0;
@@ -645,13 +661,9 @@ function toolRowIndex(row: FlattenedRow): number {
 		max-height: 100%;
 	}
 
-	.header {
+	.top {
 		padding: 0;
-	}
-
-	.searchInput {
-		margin-top: 0;
-		margin-bottom: var(--spacing--lg);
+		padding-bottom: var(--spacing--lg);
 	}
 }
 
