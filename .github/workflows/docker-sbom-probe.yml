@@ -19,7 +19,7 @@ on:
         default: false
 
 env:
-  NODE_VERSION: '26.7.0'
+  NODE_VERSION: '26.9.0'
   SCRATCH_TAG: sbom-probe-${{ github.run_id }}
   # A separate package. These are throwaway fixtures (one is a two-layer
   # alpine), and ghcr.io/<repo> is where the real release tags live - they
