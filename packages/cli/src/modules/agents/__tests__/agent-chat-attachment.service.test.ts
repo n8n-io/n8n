@@ -1,4 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { BinaryDataService } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
@@ -7,6 +8,7 @@ import type { AgentChatAttachment } from '../entities/agent-chat-attachment.enti
 import type { AgentChatAttachmentRepository } from '../repositories/agent-chat-attachment.repository';
 
 describe('AgentChatAttachmentService', () => {
+	const logger = mock<Logger>();
 	let binaryDataService = mock<BinaryDataService>();
 	let repository = mock<AgentChatAttachmentRepository>();
 	let service: AgentChatAttachmentService;
@@ -15,7 +17,7 @@ describe('AgentChatAttachmentService', () => {
 		vi.clearAllMocks();
 		binaryDataService = mock<BinaryDataService>();
 		repository = mock<AgentChatAttachmentRepository>();
-		service = new AgentChatAttachmentService(mock<Logger>(), binaryDataService, repository);
+		service = new AgentChatAttachmentService(logger, binaryDataService, repository);
 	});
 
 	describe('storeInbound', () => {
@@ -198,15 +200,62 @@ describe('AgentChatAttachmentService', () => {
 		});
 	});
 
+	describe('deleteStoredBytes', () => {
+		it('deletes stored bytes without changing attachment rows', async () => {
+			binaryDataService.deleteManyByBinaryDataId.mockResolvedValue(undefined);
+			await service.deleteStoredBytes([]);
+			expect(binaryDataService.deleteManyByBinaryDataId).not.toHaveBeenCalled();
+
+			await service.deleteStoredBytes([
+				{ id: 'att-1', binaryDataId: 'filesystem-v2:a' },
+				{ id: 'att-2', binaryDataId: 'filesystem-v2:b' },
+			]);
+
+			expect(binaryDataService.deleteManyByBinaryDataId).toHaveBeenCalledWith([
+				'filesystem-v2:a',
+				'filesystem-v2:b',
+			]);
+			expect(repository.delete).not.toHaveBeenCalled();
+		});
+
+		it('logs a storage failure without rejecting the completed database cleanup', async () => {
+			const error = new Error('storage unavailable');
+			binaryDataService.deleteManyByBinaryDataId.mockRejectedValue(error);
+
+			await expect(
+				service.deleteStoredBytes([{ id: 'att-1', binaryDataId: 'filesystem-v2:a' }], {
+					threadId: 'thread-1',
+				}),
+			).resolves.toBeUndefined();
+
+			expect(logger.warn).toHaveBeenCalledWith('Failed to delete agent chat attachment bytes', {
+				threadId: 'thread-1',
+				error,
+			});
+			expect(repository.delete).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('deleteByThread', () => {
-		it('deletes rows and bytes for the thread within the given scope', async () => {
+		it('deletes scoped attachment rows before their bytes', async () => {
+			const deletingRows = createDeferredPromise();
+			const rowsDeleted = createDeferredPromise();
+			repository.delete.mockImplementation(async () => {
+				deletingRows.resolve();
+				await rowsDeleted.promise;
+				return { raw: [], affected: 2 };
+			});
 			binaryDataService.deleteManyByBinaryDataId.mockResolvedValue(undefined as never);
 			repository.findByThread.mockResolvedValue([
 				{ id: 'att-1', binaryDataId: 'filesystem-v2:a' },
 				{ id: 'att-2', binaryDataId: 'filesystem-v2:b' },
 			] as AgentChatAttachment[]);
 
-			await service.deleteByThread('thread-1', { projectId: 'project-1' });
+			const cleanup = service.deleteByThread('thread-1', { projectId: 'project-1' });
+			await deletingRows.promise;
+			expect(binaryDataService.deleteManyByBinaryDataId).not.toHaveBeenCalled();
+			rowsDeleted.resolve();
+			await cleanup;
 
 			expect(repository.findByThread).toHaveBeenCalledWith('thread-1', {
 				projectId: 'project-1',
@@ -216,6 +265,18 @@ describe('AgentChatAttachmentService', () => {
 				'filesystem-v2:a',
 				'filesystem-v2:b',
 			]);
+		});
+
+		it('retains bytes when deleting the attachment rows fails', async () => {
+			repository.findByThread.mockResolvedValue([
+				{ id: 'att-1', binaryDataId: 'filesystem-v2:a' },
+			] as AgentChatAttachment[]);
+			repository.delete.mockRejectedValue(new Error('database unavailable'));
+
+			await expect(service.deleteByThread('thread-1', { agentId: 'agent-1' })).rejects.toThrow(
+				'database unavailable',
+			);
+			expect(binaryDataService.deleteManyByBinaryDataId).not.toHaveBeenCalled();
 		});
 
 		it('is a no-op for threads without attachments', async () => {

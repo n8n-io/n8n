@@ -9,7 +9,6 @@ import {
 	AgentChatResumeDto,
 	MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES,
 	MAX_AGENT_CHAT_ATTACHMENT_SIZE_MB,
-	N8N_CHAT_INTEGRATION_TYPE,
 	ViewableMimeTypes,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
@@ -42,7 +41,6 @@ import { AgentExecutionOrchestratorService } from './agent-execution-orchestrato
 import { AgentExecutionService, threadBelongsTo } from './agent-execution.service';
 import { AgentMessageQueueService } from './agent-message-queue.service';
 import { messagesToDto } from './agent-message-mapper';
-import { pumpChunks } from './agent-sse-stream';
 import type { PreviewQueueScope } from './agent-message-queue.types';
 import { AgentTestChatService, chatThreadId } from './agent-test-chat.service';
 import { AgentTestRunService } from './agent-test-run.service';
@@ -166,23 +164,6 @@ export class AgentChatController {
 					},
 				},
 				payload.clientRequestId,
-				async (queued, context) => {
-					if (queued.kind !== 'message') return;
-					await pumpChunks(
-						this.agentTestRunService.streamDraftRun({
-							agentId,
-							projectId,
-							sessionId: threadId,
-							user,
-							previewChat: true,
-							message: queued.message,
-							attachments: queued.attachments,
-							abortSignal: context.abortSignal,
-							onExecutionStarted: context.onExecutionStarted,
-						}),
-						context.send,
-					);
-				},
 				() => {
 					attachmentsOwnedByQueue = true;
 				},
@@ -231,26 +212,6 @@ export class AgentChatController {
 				},
 			},
 			payload.clientRequestId,
-			async (queued, context) => {
-				if (queued.kind !== 'hitl') return;
-				await pumpChunks(
-					this.agentExecutionOrchestratorService.resumeForChat({
-						agentId,
-						projectId,
-						user,
-						runId: queued.runId,
-						toolCallId: queued.toolCallId,
-						resumeData: queued.resumeData,
-						usePublishedVersion: false,
-						integrationType: N8N_CHAT_INTEGRATION_TYPE,
-						previewChat: true,
-						expectedMemory: memory,
-						abortSignal: context.abortSignal,
-						onExecutionStarted: context.onExecutionStarted,
-					}),
-					context.send,
-				);
-			},
 		);
 		return { status: 'queued', sessionId: memory.threadId, item };
 	}

@@ -1,11 +1,10 @@
 import { BaseRepository, TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, In } from '@n8n/typeorm';
+import { DataSource, In, IsNull } from '@n8n/typeorm';
 
 import { conversationDbTime } from './agent-conversation-lease.repository';
 
 import type { AgentQueueInput, PreviewMessageQueuePayload } from '../agent-message-queue.types';
-import { AgentChatAttachment } from '../entities/agent-chat-attachment.entity';
 import { AgentMessageQueue } from '../entities/agent-message-queue.entity';
 
 @Service()
@@ -65,12 +64,13 @@ export class AgentMessageQueueRepository extends BaseRepository<AgentMessageQueu
 		);
 	}
 
-	async linkExecution(id: string, executionId: string, ctx: OperationContext): Promise<void> {
-		await this.managerFor(ctx).update(
+	async linkExecution(id: string, executionId: string, ctx: OperationContext): Promise<boolean> {
+		const result = await this.managerFor(ctx).update(
 			AgentMessageQueue,
-			{ id, status: In(['processing', 'cancelling']) },
+			{ id, status: In(['processing', 'cancelling']), executionId: IsNull() },
 			{ executionId },
 		);
+		return result.affected === 1;
 	}
 
 	async findPreviewEntries(agentId: string, threadId?: string): Promise<AgentMessageQueue[]> {
@@ -107,29 +107,15 @@ export class AgentMessageQueueRepository extends BaseRepository<AgentMessageQueu
 		await this.managerFor(ctx).delete(AgentMessageQueue, { id });
 	}
 
-	async removeStale(
-		id: string,
-		graceMs: number,
-		attachmentIds: string[],
-		ctx: OperationContext,
-	): Promise<Array<Pick<AgentChatAttachment, 'id' | 'binaryDataId'>> | null> {
-		const manager = this.managerFor(ctx);
-		const deleted = await manager
+	async removeStale(id: string, graceMs: number, ctx: OperationContext): Promise<boolean> {
+		const deleted = await this.managerFor(ctx)
 			.createQueryBuilder()
 			.delete()
 			.from(AgentMessageQueue)
-			.where({ id })
+			.where({ id, status: In(['processing', 'cancelling']) })
 			.andWhere(`"updatedAt" < ${this.time(-graceMs)}`)
 			.execute();
-		if (deleted.affected !== 1) return null;
-		if (attachmentIds.length === 0) return [];
-
-		const attachments = await manager.find(AgentChatAttachment, {
-			select: { id: true, binaryDataId: true },
-			where: { id: In(attachmentIds) },
-		});
-		await manager.delete(AgentChatAttachment, { id: In(attachmentIds) });
-		return attachments;
+		return deleted.affected === 1;
 	}
 
 	async finishProcessing(id: string, ctx: OperationContext): Promise<boolean> {
@@ -143,13 +129,12 @@ export class AgentMessageQueueRepository extends BaseRepository<AgentMessageQueu
 		return (await this.delete({ id, status: 'queued' })).affected === 1;
 	}
 
-	async cancelWaiting(threadId: string): Promise<void> {
-		await this.delete({ threadId, status: 'queued' });
-	}
-
-	async touchLiveEntries(ids: string[]): Promise<void> {
-		if (ids.length === 0) return;
-		await this.update({ id: In(ids), status: 'queued' }, { updatedAt: () => this.time() });
+	async cancelWaiting(threadId: string): Promise<AgentMessageQueue[]> {
+		const removed: AgentMessageQueue[] = [];
+		for (const entry of await this.find({ where: { threadId, status: 'queued' } })) {
+			if (await this.cancelQueued(entry.id)) removed.push(entry);
+		}
+		return removed;
 	}
 
 	async touchProcessing(id: string, ctx: OperationContext): Promise<void> {
@@ -166,14 +151,7 @@ export class AgentMessageQueueRepository extends BaseRepository<AgentMessageQueu
 		return await this.createQueryBuilder('item')
 			.where({ threadId })
 			.andWhere(`item.updatedAt < ${this.time(-graceMs)}`)
-			.andWhere(
-				'(item.status IN (:...active) OR (item.status = :queued AND item.source = :preview))',
-				{
-					active: ['processing', 'cancelling'],
-					queued: 'queued',
-					preview: 'preview',
-				},
-			)
+			.andWhere('item.status IN (:...active)', { active: ['processing', 'cancelling'] })
 			.getMany();
 	}
 
@@ -181,9 +159,8 @@ export class AgentMessageQueueRepository extends BaseRepository<AgentMessageQueu
 		const rows = await this.createQueryBuilder('item')
 			.select('DISTINCT item.threadId', 'threadId')
 			.where(`item.updatedAt < ${this.time(-graceMs)}`)
-			.andWhere('(item.status IN (:...active) OR item.source = :preview)', {
+			.andWhere('item.status IN (:...active)', {
 				active: ['processing', 'cancelling'],
-				preview: 'preview',
 			})
 			.getRawMany<{ threadId: string }>();
 		return rows.map(({ threadId }) => threadId);

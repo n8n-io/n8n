@@ -346,40 +346,21 @@ describe('AgentChatController admission', () => {
 			});
 			expect(agentTestRunService.streamDraftRun).not.toHaveBeenCalled();
 			expect(agentExecutionOrchestratorService.resumeForChat).not.toHaveBeenCalled();
-			const [input, correlationId, execute] = queue.enqueuePreview.mock.calls[0];
+			const [input, correlationId] = queue.enqueuePreview.mock.calls[0];
 			expect(correlationId).toBe(clientRequestId);
-			const context = {
-				abortSignal: new AbortController().signal,
-				send: vi.fn(),
-				onExecutionStarted: vi.fn(),
-			};
-			agentExecutionOrchestratorService.executeForChat.mockImplementation(async function* (config) {
-				await config.onExecutionStarted?.('execution-1');
-				yield { type: 'text-delta', id: 'text', delta: 'Hello' };
+			expect(input).toMatchObject({
+				agentId: 'agent-1',
+				threadId: 'thread-1',
+				payload: {
+					source: 'preview',
+					kind,
+					userId: 'user-1',
+					resourceId: 'draft-chat:user-1',
+					...(kind === 'message'
+						? { message: 'original' }
+						: { runId: 'run-1', toolCallId: 'tc-1', resumeData: { approved: true } }),
+				},
 			});
-			agentExecutionOrchestratorService.resumeForChat.mockImplementation(async function* (config) {
-				await config.onExecutionStarted?.('execution-1');
-				yield { type: 'text-delta', id: 'text', delta: 'Hello' };
-			});
-			await execute(
-				input.payload.kind === 'message'
-					? { ...input.payload, message: 'saved edit' }
-					: input.payload,
-				context,
-			);
-			expect(context.send).toHaveBeenCalledWith({ type: 'text-delta', id: 'text', delta: 'Hello' });
-			if (kind === 'message') {
-				expect(agentTestRunService.streamDraftRun).toHaveBeenCalledWith(
-					expect.objectContaining({ message: 'saved edit', previewChat: true }),
-				);
-			} else {
-				expect(agentExecutionOrchestratorService.resumeForChat).toHaveBeenCalledWith(
-					expect.objectContaining({
-						expectedMemory: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
-						previewChat: true,
-					}),
-				);
-			}
 		},
 	);
 
@@ -509,12 +490,10 @@ describe('AgentChatController attachment admission', () => {
 	it('keeps attachments when admission fails after persistence', async () => {
 		const { controller, queue, agentChatAttachmentService } = makeController();
 		agentChatAttachmentService.storeInbound.mockResolvedValue(stored as never);
-		queue.enqueuePreview.mockImplementationOnce(
-			async (_input, _clientRequestId, _execute, onPersisted) => {
-				onPersisted?.();
-				throw new Error('Queue unavailable after persistence');
-			},
-		);
+		queue.enqueuePreview.mockImplementationOnce(async (_input, _clientRequestId, onPersisted) => {
+			onPersisted?.();
+			throw new Error('Queue unavailable after persistence');
+		});
 
 		await expect(
 			controller.chat(request as never, {} as never, 'agent-1', {

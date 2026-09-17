@@ -2,16 +2,15 @@ import { AgentConversationLeaseLostError } from '@/modules/agents/agent-conversa
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import { LockService, type Logger } from '@n8n/backend-common';
 import { RedisLockService } from '@/scaling/redis-lock.service';
-import { TransactionRunner } from '@n8n/db';
+import { TransactionRunner, UserRepository, ProjectRelationRepository, type User } from '@n8n/db';
 import { AgentConversationLeaseService } from '@/modules/agents/agent-conversation-lease.service';
 import { AgentConversationLeaseRepository } from '@/modules/agents/repositories/agent-conversation-lease.repository';
 import { Container } from '@n8n/di';
 import { GlobalConfig } from '@n8n/config';
-import type { ProjectRelationRepository } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
 import { createServiceStack } from 'n8n-containers';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
-import type { SerializableAgentState } from '@n8n/agents';
+import type { SerializableAgentState, StreamChunk } from '@n8n/agents';
 import { randomUUID } from 'node:crypto';
 import { mock } from 'vitest-mock-extended';
 
@@ -24,16 +23,26 @@ import { AgentWakeService } from '@/modules/agents/background/agent-wake.service
 import { hashAgentSandboxPrincipal } from '@/modules/agents/agent-sandbox-principal';
 import { AgentExecutionUpdateBroadcaster } from '@/modules/agents/agent-execution-update-broadcaster';
 import type { Push } from '@/push';
-import type { AgentExecutionOrchestratorService } from '@/modules/agents/agent-execution-orchestrator.service';
+import type {
+	AgentExecutionOrchestratorService,
+	ExecuteForChatConfig,
+	ResumeForChatConfig,
+} from '@/modules/agents/agent-execution-orchestrator.service';
+import { ExecutionRecorder } from '@/modules/agents/execution-recorder';
+import { draftChatMemoryResourceId } from '@/modules/agents/utils/agent-memory-scope';
 import type { AgentBackgroundJobRepository } from '@/modules/agents/repositories/agent-background-job.repository';
 import type { AgentBackgroundJob } from '@/modules/agents/entities/agent-background-job.entity';
 import type { ChatIntegrationRegistry } from '@/modules/agents/integrations/agent-chat-integration';
-import { AgentExecutionService } from '@/modules/agents/agent-execution.service';
+import {
+	AgentExecutionRecordingError,
+	AgentExecutionService,
+} from '@/modules/agents/agent-execution.service';
 import { AgentMessageQueueService } from '@/modules/agents/agent-message-queue.service';
 import type {
 	AgentQueueInput,
 	QueueExecutionContext,
 	AgentPreviewQueueInput,
+	PreviewMessageQueuePayload,
 	IntegrationMessageQueuePayload,
 } from '@/modules/agents/agent-message-queue.types';
 import type { AgentChatBridge } from '@/modules/agents/integrations/agent-chat-bridge';
@@ -50,6 +59,7 @@ import { PubSubEventBus } from '@/scaling/pubsub/pubsub.eventbus';
 import { RedisClientService } from '@/services/redis-client.service';
 
 import { retryUntil } from '../shared/retry-until';
+import { createMember } from '../shared/db/users';
 
 describe('agent message queue', () => {
 	let repository: AgentMessageQueueRepository;
@@ -57,6 +67,7 @@ describe('agent message queue', () => {
 	let agents: AgentRepository;
 	let agentId: string;
 	let projectId: string;
+	let user: User;
 	let mains: AgentMessageQueueService[];
 	let redisStack: Awaited<ReturnType<typeof createServiceStack>> | undefined;
 	let redisConfig: GlobalConfig | undefined;
@@ -68,6 +79,44 @@ describe('agent message queue', () => {
 	const attachments = mock<AgentChatAttachmentService>();
 	let executions: AgentExecutionService;
 	const received: string[] = [];
+	type PreviewConfig = ExecuteForChatConfig | ResumeForChatConfig;
+	const previewChunks = vi.fn<(config: PreviewConfig) => AsyncGenerator<StreamChunk>>();
+
+	async function* recordPreview(config: PreviewConfig): AsyncGenerator<StreamChunk> {
+		const memory = 'message' in config ? config.memory : config.expectedMemory;
+		if (!memory?.threadId) throw new Error('Missing preview conversation');
+		const params = {
+			queueEntryId: config.queueEntryId,
+			agentId,
+			agentName: 'Queued agent',
+			projectId,
+			threadId: memory.threadId,
+			userMessage: 'message' in config ? config.message : null,
+			attachments: 'attachments' in config ? config.attachments : undefined,
+			source: 'chat',
+		};
+		const recorder = new ExecutionRecorder();
+		const id = await executions.startExecutionRecording(params, recorder.startedAt);
+		await config.onExecutionStarted?.(id);
+		try {
+			for await (const chunk of previewChunks(config)) {
+				recorder.record(chunk);
+				yield chunk;
+			}
+		} catch (error) {
+			recorder.record({ type: 'error', error });
+			throw error;
+		} finally {
+			recorder.record({ type: 'finish', finishReason: 'stop' });
+			await executions.finalizeExecution(id, {
+				...params,
+				record: {
+					...recorder.getMessageRecord(),
+					...(config.abortSignal?.aborted ? { finishReason: 'cancelled' } : {}),
+				},
+			});
+		}
+	}
 
 	const message = (text: string, threadId = 'conversation'): AgentQueueInput => ({
 		agentId,
@@ -97,7 +146,7 @@ describe('agent message queue', () => {
 				attachments: [],
 				formatted: { type: 'root', children: [] },
 				metadata: { dateSent: new Date().toISOString(), edited: false },
-				author: { userId: 'user', userName: 'user', fullName: 'User', isBot: false, isMe: false },
+				author: { userId: user.id, userName: 'user', fullName: 'User', isBot: false, isMe: false },
 			},
 		},
 	});
@@ -106,17 +155,50 @@ describe('agent message queue', () => {
 		text: string,
 		threadId = 'conversation',
 		files?: StoredAttachmentRef[],
-	): AgentPreviewQueueInput => ({
+	): AgentPreviewQueueInput & { payload: PreviewMessageQueuePayload } => ({
 		agentId,
 		threadId,
 		payload: {
 			source: 'preview',
 			kind: 'message',
 			projectId,
-			resourceId: 'user',
-			userId: 'user',
+			resourceId: draftChatMemoryResourceId(user.id),
+			userId: user.id,
 			message: text,
 			attachments: files,
+		},
+	});
+
+	const previewCheckpoint = (runId = 'run'): SerializableAgentState & { runId: string } => ({
+		runId,
+		status: 'suspended',
+		persistence: { threadId: 'conversation', resourceId: draftChatMemoryResourceId(user.id) },
+		messageList: { messages: [], historyIds: [], inputIds: [], responseIds: [] },
+		pendingToolCalls: {
+			tool: {
+				toolCallId: 'tool',
+				toolName: 'approval',
+				input: {},
+				suspended: true,
+				runId,
+				resumeSchema: { type: 'object' },
+				suspendPayload: {},
+			},
+		},
+	});
+
+	const previewResponse = (runId = 'run'): AgentPreviewQueueInput => ({
+		agentId,
+		threadId: 'conversation',
+		payload: {
+			source: 'preview',
+			kind: 'hitl',
+			projectId,
+			userId: user.id,
+			resourceId: draftChatMemoryResourceId(user.id),
+			runId,
+			toolCallId: 'tool',
+			resumeData: { approved: true },
 		},
 	});
 
@@ -192,6 +274,7 @@ describe('agent message queue', () => {
 			broadcaster,
 			orchestrator,
 			consumerLocks,
+			Container.get(UserRepository),
 		);
 		eventBus?.on('drain-agent-message-queue', (payload) => main.handleDrainRequest(payload));
 		eventBus?.on('relay-agent-chat-event', (payload) => broadcaster.handleChatEvent(payload));
@@ -216,7 +299,7 @@ describe('agent message queue', () => {
 			mock(),
 			attachments,
 			mock(),
-			mock(),
+			mock({ modeTag: 'db' }),
 			mock(),
 			mock(),
 			repository,
@@ -241,7 +324,8 @@ describe('agent message queue', () => {
 		vi.clearAllMocks();
 		await repository.delete({});
 		await agents.delete({});
-		projectId = (await createTeamProject()).id;
+		user = await createMember();
+		projectId = (await createTeamProject('Queue project', user)).id;
 		agentId = randomUUID();
 		await agents.save(
 			agents.create({
@@ -256,6 +340,13 @@ describe('agent message queue', () => {
 		closeRedis = [];
 		received.length = 0;
 		checkpoints.findSuspendedForThread.mockResolvedValue(null);
+		orchestrator.executeForChat.mockImplementation(recordPreview);
+		orchestrator.resumeForChat.mockImplementation(recordPreview);
+		orchestrator.cancelChatRun.mockResolvedValue(true);
+		previewChunks.mockImplementation(async function* (config) {
+			received.push('message' in config ? config.message : config.runId);
+			yield { type: 'text-delta', id: 'text', delta: 'Reply' };
+		});
 		integrations.getBridge.mockReturnValue(bridge);
 		bridge.processQueuedInput.mockImplementation(async (payload) => {
 			received.push(payload.kind === 'message' ? payload.message.text : payload.runId);
@@ -263,7 +354,7 @@ describe('agent message queue', () => {
 	});
 
 	afterEach(async () => {
-		await Promise.all(mains.map(async (main) => await main.shutdown()));
+		for (const main of mains) main.shutdown();
 		await Promise.all(mains.flatMap((main) => [...main['drains'].values()]));
 		for (const close of closeRedis) close();
 	});
@@ -496,20 +587,27 @@ describe('agent message queue', () => {
 		}
 	});
 
-	it('keeps a preview entry on its origin main and preserves its place in the queue', async () => {
+	it('executes an admitted preview on another main after its origin stops', async () => {
 		const mainA = await makeMain();
 		const mainB = await makeMain();
 		checkpoints.findSuspendedForThread.mockResolvedValue(
 			mock<SerializableAgentState & { runId: string }>(),
 		);
-		await mainA.enqueuePreview(preview('preview'), 'request', async () => {
-			received.push('preview');
-		});
+		const item = await mainA.enqueuePreview(preview('preview'), 'request');
 		await mainB.enqueue(message('integration'));
+		await mainA.drain('conversation');
+		mainA.shutdown();
+		expect((await repository.findById(item.id))?.payload).toMatchObject({
+			clientRequestId: 'request',
+		});
 		checkpoints.findSuspendedForThread.mockResolvedValue(null);
-		mainB.notify('conversation');
+		await mainB.recover();
+		await mainB.drain('conversation');
 		await retryUntil(async () => expect(await repository.count()).toBe(0));
 		expect(received).toEqual(['preview', 'integration']);
+		expect(await executions.getThreadDetail('conversation', projectId, agentId)).toMatchObject({
+			executions: [expect.objectContaining({ status: 'success', userMessage: 'preview' })],
+		});
 	});
 
 	it('serializes concurrent preview admission across mains in arrival order', async () => {
@@ -528,9 +626,9 @@ describe('agent message queue', () => {
 		);
 		const mainA = await makeMain();
 		const mainB = await makeMain();
-		const first = mainA.enqueuePreview(preview('first'), 'request-1', vi.fn());
+		const first = mainA.enqueuePreview(preview('first'), 'request-1');
 		await firstAdmission.promise;
-		const second = mainB.enqueuePreview(preview('second'), 'request-2', vi.fn());
+		const second = mainB.enqueuePreview(preview('second'), 'request-2');
 		try {
 			expect(enqueueSpy).toHaveBeenCalledTimes(1);
 			releaseFirst.resolve();
@@ -547,37 +645,9 @@ describe('agent message queue', () => {
 	});
 
 	it('admits only one concurrent preview response for a suspended tool call', async () => {
-		const checkpoint: SerializableAgentState = {
-			status: 'suspended',
-			persistence: { threadId: 'conversation', resourceId: 'user' },
-			messageList: { messages: [], historyIds: [], inputIds: [], responseIds: [] },
-			pendingToolCalls: {
-				tool: {
-					toolCallId: 'tool',
-					toolName: 'approval',
-					input: {},
-					suspended: true,
-					runId: 'run',
-					resumeSchema: { type: 'object' },
-					suspendPayload: {},
-				},
-			},
-		};
+		const checkpoint = previewCheckpoint();
 		checkpoints.getStatus.mockResolvedValue({ status: 'active', checkpoint });
-		const resume: AgentPreviewQueueInput = {
-			agentId,
-			threadId: 'conversation',
-			payload: {
-				source: 'preview',
-				kind: 'hitl',
-				projectId,
-				userId: 'user',
-				resourceId: 'user',
-				runId: 'run',
-				toolCallId: 'tool',
-				resumeData: { approved: true },
-			},
-		};
+		const resume = previewResponse();
 		const inserted = createDeferredPromise();
 		const releaseAdmission = createDeferredPromise();
 		const finishExecution = createDeferredPromise();
@@ -590,11 +660,14 @@ describe('agent message queue', () => {
 		});
 		const mainA = await makeMain();
 		const mainB = await makeMain();
-		const execute = async () => await finishExecution.promise;
+		previewChunks.mockImplementation(async function* () {
+			await finishExecution.promise;
+			yield { type: 'text-delta', id: 'text', delta: 'Approved' };
+		});
 
-		const first = mainA.enqueuePreview(resume, 'request-1', execute);
+		const first = mainA.enqueuePreview(resume, 'request-1');
 		await inserted.promise;
-		const second = mainB.enqueuePreview(resume, 'request-2', execute);
+		const second = mainB.enqueuePreview(resume, 'request-2');
 		try {
 			releaseAdmission.resolve();
 			const results = await Promise.allSettled([first, second]);
@@ -622,16 +695,12 @@ describe('agent message queue', () => {
 			agentId,
 			projectId,
 			threadId: 'conversation',
-			userId: 'user',
-			resourceId: 'user',
+			userId: user.id,
+			resourceId: draftChatMemoryResourceId(user.id),
 		};
 		const items = [];
 		for (const text of ['one', 'two', 'three']) {
-			items.push(
-				await main.enqueuePreview(preview(text), text, async (payload) => {
-					if (payload.kind === 'message') received.push(payload.message);
-				}),
-			);
+			items.push(await main.enqueuePreview(preview(text), text));
 		}
 		expect(await repository.count()).toBe(3);
 		await peer.removePreview(scope, items[1].id);
@@ -645,6 +714,101 @@ describe('agent message queue', () => {
 		expect(received).toEqual(['one', 'three']);
 	});
 
+	it('resumes an accepted HITL response on another main and keeps ordinary messages blocked through another suspension', async () => {
+		const checkpoint = previewCheckpoint();
+		checkpoints.getStatus.mockResolvedValue({ status: 'active', checkpoint });
+		checkpoints.findSuspendedForThread.mockResolvedValue(checkpoint);
+		const main = await makeMain();
+		vi.spyOn(main, 'notify').mockImplementation(() => {});
+		await main.enqueuePreview(preview('ordinary'), 'message-request');
+		await main.enqueuePreview(previewResponse(), 'response-request');
+		main.shutdown();
+		previewChunks.mockImplementation(async function* (config) {
+			received.push('runId' in config ? config.runId : config.message);
+			if ('runId' in config && config.runId === 'run') {
+				const next = previewCheckpoint('again');
+				checkpoints.findSuspendedForThread.mockResolvedValue(next);
+				checkpoints.getStatus.mockResolvedValue({ status: 'active', checkpoint: next });
+			} else checkpoints.findSuspendedForThread.mockResolvedValue(null);
+			yield { type: 'text-delta', id: 'text', delta: 'Reply' };
+		});
+		const peer = await makeMain();
+		const scope = {
+			agentId,
+			projectId,
+			threadId: 'conversation',
+			userId: user.id,
+			resourceId: draftChatMemoryResourceId(user.id),
+		};
+		expect(await peer.listPreview(scope)).toEqual([
+			expect.objectContaining({ kind: 'message', message: 'ordinary' }),
+			expect.objectContaining({ kind: 'hitl', runId: 'run', toolCallId: 'tool' }),
+		]);
+		await peer.recover();
+		await peer.drain('conversation');
+		expect(received).toEqual(['run']);
+		expect(await repository.countBy({ status: 'queued' })).toBe(1);
+
+		await peer.enqueuePreview(previewResponse('again'), 'second-response');
+		await peer.drain('conversation');
+		expect(received).toEqual(['run', 'again', 'ordinary']);
+		expect(await repository.count()).toBe(0);
+		expect(orchestrator.resumeForChat).toHaveBeenCalledWith(
+			expect.objectContaining({
+				user: expect.objectContaining({ id: user.id }),
+				expectedMemory: {
+					threadId: 'conversation',
+					resourceId: draftChatMemoryResourceId(user.id),
+				},
+				usePublishedVersion: false,
+			}),
+		);
+	});
+
+	it.each(['stale response', 'preparation failure', 'interruption'] as const)(
+		'preserves an unanswered HITL checkpoint after %s',
+		async (outcome) => {
+			const checkpoint = previewCheckpoint();
+			checkpoints.getStatus.mockResolvedValue({ status: 'active', checkpoint });
+			checkpoints.findSuspendedForThread.mockResolvedValue(checkpoint);
+			const main = await makeMain();
+			vi.spyOn(main, 'notify').mockImplementation(() => {});
+			await main.enqueuePreview(preview('ordinary'), 'message-request');
+			const response = await main.enqueuePreview(previewResponse(), 'response-request');
+			main.shutdown();
+			if (outcome === 'stale response') {
+				checkpoints.getStatus.mockResolvedValue({
+					status: 'active',
+					checkpoint: previewCheckpoint('new-run'),
+				});
+			} else if (outcome === 'preparation failure') {
+				orchestrator.resumeForChat.mockImplementationOnce(() => {
+					throw new Error('Runtime unavailable');
+				});
+			} else {
+				await repository.markProcessing(response.id, {});
+				await repository.update(response.id, { updatedAt: new Date(0) });
+			}
+			const peer = await makeMain();
+			await peer.recover();
+			await peer.drain('conversation');
+
+			expect(await repository.findById(response.id)).toBeNull();
+			expect(await repository.countBy({ status: 'queued' })).toBe(1);
+			expect(checkpoints.delete).not.toHaveBeenCalled();
+			expect(orchestrator.cancelChatRun).not.toHaveBeenCalled();
+			expect(orchestrator.executeForChat).not.toHaveBeenCalled();
+			expect(await executions.getThreadDetail('conversation', projectId, agentId)).toMatchObject({
+				executions: [
+					expect.objectContaining({
+						status: outcome === 'interruption' ? 'interrupted' : 'error',
+						userMessage: null,
+					}),
+				],
+			});
+		},
+	);
+
 	it('keeps attachments and the queue position on edits and checks the preview owner', async () => {
 		checkpoints.findSuspendedForThread.mockResolvedValue(
 			mock<SerializableAgentState & { runId: string }>(),
@@ -654,15 +818,11 @@ describe('agent message queue', () => {
 			agentId,
 			projectId,
 			threadId: 'conversation',
-			userId: 'user',
-			resourceId: 'user',
+			userId: user.id,
+			resourceId: draftChatMemoryResourceId(user.id),
 		};
 		const files = [{ id: 'file', fileName: 'notes.txt', mimeType: 'text/plain', sizeBytes: 10 }];
-		const item = await main.enqueuePreview(
-			preview('original', 'conversation', files),
-			'request',
-			vi.fn(),
-		);
+		const item = await main.enqueuePreview(preview('original', 'conversation', files), 'request');
 		for (const foreign of [{ userId: 'other' }, { projectId: 'other' }, { threadId: 'other' }]) {
 			expect(await main.listPreview({ ...scope, ...foreign })).toEqual([]);
 			await expect(main.editPreview({ ...scope, ...foreign }, item.id, 'changed')).rejects.toThrow(
@@ -685,7 +845,7 @@ describe('agent message queue', () => {
 		expect(attachments.deleteByIds).toHaveBeenCalledWith(['file']);
 	});
 
-	it('cancels a preview that finishes enqueueing during shutdown', async () => {
+	it('preserves a preview that finishes enqueueing during shutdown', async () => {
 		const finishEnqueue = createDeferredPromise();
 		const enqueue = repository.enqueue.bind(repository);
 		vi.spyOn(repository, 'enqueue').mockImplementationOnce(async (input) => {
@@ -694,17 +854,157 @@ describe('agent message queue', () => {
 			return entry;
 		});
 		const main = await makeMain();
-		const response = main.enqueuePreview(preview('stopping'), 'request', vi.fn());
+		const response = main.enqueuePreview(preview('stopping'), 'request');
 		try {
 			await retryUntil(async () => expect(await repository.count()).toBe(1));
-			await main.shutdown();
+			main.shutdown();
 			finishEnqueue.resolve();
-			await expect(response).rejects.toThrow('Message was cancelled');
-			expect(await repository.count()).toBe(0);
+			await expect(response).resolves.toMatchObject({ kind: 'message', status: 'queued' });
+			expect(await repository.countBy({ status: 'queued' })).toBe(1);
 		} finally {
 			finishEnqueue.resolve();
 		}
 	});
+
+	it('records an abandoned preview claim before removing it without replay', async () => {
+		const files = [
+			{ id: 'recorded-file', fileName: 'notes.txt', mimeType: 'text/plain', sizeBytes: 4 },
+		];
+		const input = preview('Before recording', 'unrecorded', files);
+		input.payload.clientRequestId = 'request';
+		const entry = await repository.enqueue(input);
+		await repository.markProcessing(entry.id, {});
+		await repository.update(entry.id, { updatedAt: new Date(0) });
+		const main = await makeMain();
+
+		vi.spyOn(Container.get(AgentExecutionRepository), 'createExecution').mockRejectedValueOnce(
+			new Error('Database unavailable'),
+		);
+		await main.recover();
+		expect(await repository.findById(entry.id)).toMatchObject({
+			status: 'processing',
+			executionId: null,
+		});
+		expect(await Container.get(AgentExecutionRepository).countBy({ threadId: 'unrecorded' })).toBe(
+			0,
+		);
+		await main.recover();
+		await main.recover();
+
+		const history = await executions.getThreadDetail('unrecorded', projectId, agentId);
+		expect(history?.executions).toHaveLength(1);
+		expect(history?.executions[0]).toMatchObject({
+			status: 'interrupted',
+			userMessage: 'Before recording',
+			attachments: files,
+			model: null,
+			totalTokens: null,
+		});
+		expect(await repository.findById(entry.id)).toBeNull();
+		expect(orchestrator.executeForChat).not.toHaveBeenCalled();
+		expect(attachments.deleteByIds).not.toHaveBeenCalled();
+		expect(main['broadcaster']['push'].sendToUsers).toHaveBeenCalledWith(
+			expect.objectContaining({
+				data: expect.objectContaining({
+					clientRequestId: 'request',
+					event: { type: 'done', sessionId: 'unrecorded', executionId: history!.executions[0].id },
+				}),
+			}),
+			[user.id],
+		);
+	});
+
+	it('rolls back a new execution when linking it to the queue fails', async () => {
+		const entry = await repository.enqueue(preview('atomic', 'atomic'));
+		await repository.markProcessing(entry.id, {});
+		const link = repository.linkExecution.bind(repository);
+		vi.spyOn(repository, 'linkExecution').mockImplementationOnce(async (...args) => {
+			await link(...args);
+			throw new Error('Link transaction failed');
+		});
+		const main = await makeMain();
+
+		await expect(
+			main['leases'].withLease(
+				agentId,
+				'atomic',
+				async () =>
+					await executions.startExecutionRecording(
+						{
+							agentId,
+							agentName: 'Agent',
+							projectId,
+							threadId: 'atomic',
+							queueEntryId: entry.id,
+							userMessage: 'atomic',
+							source: 'chat',
+						},
+						new Date(),
+					),
+			),
+		).rejects.toThrow('Link transaction failed');
+
+		expect(await Container.get(AgentExecutionRepository).countBy({ threadId: 'atomic' })).toBe(0);
+		expect(await repository.findById(entry.id)).toMatchObject({
+			status: 'processing',
+			executionId: null,
+		});
+		await repository.update(entry.id, { updatedAt: new Date(0) });
+		await main.recover();
+		expect(await executions.getThreadDetail('atomic', projectId, agentId)).toMatchObject({
+			executions: [expect.objectContaining({ status: 'interrupted', userMessage: 'atomic' })],
+		});
+	});
+
+	it('retains a claimed preview when execution recording fails and stops its heartbeats', async () => {
+		const main = await makeMain();
+		const error = new AgentExecutionRecordingError(new Error('Database unavailable'));
+		orchestrator.executeForChat.mockImplementationOnce(() => {
+			throw error;
+		});
+		const record = vi.spyOn(executions, 'startExecutionRecording');
+		const item = await main.enqueuePreview(preview('retained'), 'request');
+		await expect(main.drain('conversation')).rejects.toThrow('outcome was not recorded');
+
+		expect(record).not.toHaveBeenCalled();
+		expect(await repository.findById(item.id)).toMatchObject({
+			status: 'processing',
+			executionId: null,
+		});
+		await repository.update(item.id, { updatedAt: new Date(0) });
+		await main['heartbeat']();
+		expect((await repository.findById(item.id))?.updatedAt).toEqual(new Date(0));
+		await (await makeMain()).recover();
+		expect(await executions.getThreadDetail('conversation', projectId, agentId)).toMatchObject({
+			executions: [expect.objectContaining({ status: 'interrupted', userMessage: 'retained' })],
+		});
+	});
+
+	it.each(['disabled user', 'project access', 'preview scope'] as const)(
+		'rechecks %s after admission before starting an agent',
+		async (change) => {
+			const main = await makeMain();
+			vi.spyOn(main, 'notify').mockImplementation(() => {});
+			const item = await main.enqueuePreview(preview('accepted'), 'request');
+			if (change === 'disabled user')
+				await Container.get(UserRepository).update(user.id, { disabled: true });
+			else if (change === 'project access')
+				await Container.get(ProjectRelationRepository).delete({ projectId, userId: user.id });
+			else {
+				const input = preview('accepted');
+				input.payload.resourceId = 'draft-chat:other-user';
+				await repository.update(item.id, { payload: input.payload });
+			}
+			main.shutdown();
+			await (await makeMain()).drain('conversation');
+
+			expect(orchestrator.executeForChat).not.toHaveBeenCalled();
+			expect(await repository.findById(item.id)).toBeNull();
+			expect(await executions.getThreadDetail('conversation', projectId, agentId)).toMatchObject({
+				executions: [expect.objectContaining({ status: 'error', userMessage: 'accepted' })],
+			});
+		},
+	);
 
 	it('stops an active preview through another main and waits for cleanup before the next input', async () => {
 		const main = await makeMain();
@@ -718,21 +1018,19 @@ describe('agent message queue', () => {
 			agentId,
 			projectId,
 			threadId: 'conversation',
-			userId: 'user',
-			resourceId: 'user',
+			userId: user.id,
+			resourceId: draftChatMemoryResourceId(user.id),
 		};
-		const item = await main.enqueuePreview(
-			preview('active'),
-			'request',
-			async (_payload, { abortSignal }) => {
-				started.resolve();
-				await new Promise<void>((resolve) =>
-					abortSignal.addEventListener('abort', () => resolve(), { once: true }),
-				);
-				aborted.resolve();
-				await finishCleanup.promise;
-			},
-		);
+		previewChunks.mockImplementationOnce(async function* ({ abortSignal }) {
+			started.resolve();
+			await new Promise<void>((resolve) =>
+				abortSignal!.addEventListener('abort', () => resolve(), { once: true }),
+			);
+			aborted.resolve();
+			await finishCleanup.promise;
+			yield { type: 'finish', finishReason: 'stop' };
+		});
+		const item = await main.enqueuePreview(preview('active'), 'request');
 		try {
 			await started.promise;
 			await main.enqueue(message('next'));
@@ -743,14 +1041,12 @@ describe('agent message queue', () => {
 			finishCleanup.resolve();
 			await retryUntil(async () => expect(await repository.count()).toBe(0));
 			expect(received).toEqual(['next']);
-			const later = await main.enqueuePreview(
-				preview('later'),
-				'later-request',
-				async (_payload, { abortSignal }) => {
-					laterStarted.resolve(abortSignal);
-					await finishLater.promise;
-				},
-			);
+			previewChunks.mockImplementationOnce(async function* ({ abortSignal }) {
+				laterStarted.resolve(abortSignal!);
+				await finishLater.promise;
+				yield { type: 'finish', finishReason: 'stop' };
+			});
+			const later = await main.enqueuePreview(preview('later'), 'later-request');
 			const laterSignal = await laterStarted.promise;
 			expect(later.id).not.toBe(item.id);
 			await expect(peer.stopPreview(scope, item.id)).rejects.toThrow('not found');
@@ -765,14 +1061,13 @@ describe('agent message queue', () => {
 
 	it('recovers a preview when checkpoint cleanup fails during Stop', async () => {
 		const main = await makeMain();
-		const peer = await makeMain();
 		const push = vi.mocked(main['broadcaster']['push'].sendToUsers);
 		const reachedFinish = createDeferredPromise();
 		const finish = createDeferredPromise();
 		const checkpoint = mock<SerializableAgentState & { runId: string }>({
 			runId: 'suspended-run',
 			status: 'suspended',
-			persistence: { threadId: 'conversation', resourceId: 'user' },
+			persistence: { threadId: 'conversation', resourceId: draftChatMemoryResourceId(user.id) },
 		});
 		const cancel = vi.mocked(main['orchestrator'].cancelChatRun);
 		cancel
@@ -783,16 +1078,25 @@ describe('agent message queue', () => {
 				checkpoints.findSuspendedForThread.mockResolvedValue(null);
 				return true;
 			});
-		const item = await main.enqueuePreview(preview('first'), 'request-1', async () => {
+		previewChunks.mockImplementationOnce(async function* () {
 			checkpoints.findSuspendedForThread.mockResolvedValue(checkpoint);
 			reachedFinish.resolve();
 			await finish.promise;
+			yield { type: 'finish', finishReason: 'stop' };
 		});
+		const item = await main.enqueuePreview(preview('first'), 'request-1');
 		try {
 			await reachedFinish.promise;
+			const peer = await makeMain();
 			await main.enqueue(message('next'));
 			await peer.stopPreview(
-				{ agentId, projectId, threadId: 'conversation', userId: 'user', resourceId: 'user' },
+				{
+					agentId,
+					projectId,
+					threadId: 'conversation',
+					userId: user.id,
+					resourceId: draftChatMemoryResourceId(user.id),
+				},
 				item.id,
 			);
 			finish.resolve();
@@ -803,7 +1107,7 @@ describe('agent message queue', () => {
 				expect.objectContaining({
 					data: expect.objectContaining({ event: { type: 'cancelled' } }),
 				}),
-				['user'],
+				[user.id],
 			);
 
 			await repository.update(item.id, { updatedAt: new Date(Date.now() - 180_000) });
@@ -814,14 +1118,14 @@ describe('agent message queue', () => {
 			expect(cancel).toHaveBeenLastCalledWith({
 				agentId,
 				runId: 'suspended-run',
-				resourceId: 'user',
+				resourceId: draftChatMemoryResourceId(user.id),
 			});
 			await retryUntil(async () =>
 				expect(push).toHaveBeenCalledWith(
 					expect.objectContaining({
 						data: expect.objectContaining({ event: { type: 'cancelled' } }),
 					}),
-					['user'],
+					[user.id],
 				),
 			);
 			expect(received).toEqual(['next']);
@@ -833,24 +1137,27 @@ describe('agent message queue', () => {
 	it('orders preview events across mains and continues when a viewer cannot receive an event', async () => {
 		const main = await makeMain();
 		const peer = await makeMain();
+		vi.spyOn(peer, 'handleDrainRequest').mockImplementation(() => {});
 		const push = vi.mocked(peer['broadcaster']['push'].sendToUsers);
 		const send = vi.spyOn(main['broadcaster'], 'sendChatEvent');
 		send.mockRejectedValueOnce(new Error('Viewer unavailable'));
-		await main.enqueuePreview(preview('first'), 'request-1', async (_payload, context) => {
-			context.send({ type: 'text-delta', id: 'text', delta: 'one' });
-			context.send({ type: 'text-delta', id: 'text', delta: 'two' });
+		previewChunks.mockImplementationOnce(async function* () {
+			yield { type: 'text-delta', id: 'text', delta: 'one' };
+			yield { type: 'text-delta', id: 'text', delta: 'two' };
 		});
+		await main.enqueuePreview(preview('first'), 'request-1');
 		await main.drain('conversation');
-		await retryUntil(async () => expect(push).toHaveBeenCalledTimes(3));
+		await retryUntil(async () => expect(push).toHaveBeenCalledTimes(4));
 		expect(
 			push.mock.calls.map(([event]) => (event.type === 'agentChatEvent' ? event.data.event : null)),
 		).toEqual([
+			{ type: 'execution-started', executionId: expect.any(String) },
 			{ type: 'text-delta', id: 'text', delta: 'one' },
 			{ type: 'text-delta', id: 'text', delta: 'two' },
-			{ type: 'done', sessionId: 'conversation' },
+			{ type: 'done', sessionId: 'conversation', executionId: expect.any(String) },
 		]);
 		expect(
-			push.mock.calls.every(([, userIds]) => userIds.length === 1 && userIds[0] === 'user'),
+			push.mock.calls.every(([, userIds]) => userIds.length === 1 && userIds[0] === user.id),
 		).toBe(true);
 		expect(await repository.count()).toBe(0);
 	});
@@ -859,28 +1166,35 @@ describe('agent message queue', () => {
 		const main = await makeMain();
 		const peer = await makeMain();
 		const push = vi.mocked(peer['broadcaster']['push'].sendToUsers);
-		const started = createDeferredPromise();
-		const finish = createDeferredPromise();
+		checkpoints.findSuspendedForThread.mockResolvedValue(
+			mock<SerializableAgentState & { runId: string }>(),
+		);
 		attachments.deleteByIds.mockRejectedValueOnce(new Error('Storage unavailable'));
-		await main.enqueuePreview(
+		const item = await main.enqueuePreview(
 			preview('first', 'conversation', [
 				{ id: 'file', fileName: 'notes.txt', mimeType: 'text/plain', sizeBytes: 10 },
 			]),
 			'request-1',
-			async () => {
-				started.resolve();
-				await finish.promise;
-			},
 		);
-		await started.promise;
 		await main.enqueue(message('next'));
-		finish.resolve();
+		await peer.removePreview(
+			{
+				agentId,
+				projectId,
+				threadId: 'conversation',
+				userId: user.id,
+				resourceId: draftChatMemoryResourceId(user.id),
+			},
+			item.id,
+		);
+		checkpoints.findSuspendedForThread.mockResolvedValue(null);
+		await peer.drain('conversation');
 		await retryUntil(async () => expect(await repository.count()).toBe(0));
 		expect(push).toHaveBeenCalledWith(
 			expect.objectContaining({
-				data: expect.objectContaining({ event: { type: 'done', sessionId: 'conversation' } }),
+				data: expect.objectContaining({ event: { type: 'removed' } }),
 			}),
-			['user'],
+			[user.id],
 		);
 		expect(received).toEqual(['next']);
 	});
@@ -889,9 +1203,10 @@ describe('agent message queue', () => {
 		const main = await makeMain();
 		const peer = await makeMain();
 		const push = vi.mocked(peer['broadcaster']['push'].sendToUsers);
-		await main.enqueuePreview(preview('failed'), 'request-1', async () => {
+		orchestrator.executeForChat.mockImplementationOnce(() => {
 			throw new Error('Request failed with apiKey=super-secret-token');
 		});
+		await main.enqueuePreview(preview('failed'), 'request-1');
 		await main.drain('conversation');
 		await retryUntil(async () =>
 			expect(push).toHaveBeenCalledWith(
@@ -900,7 +1215,7 @@ describe('agent message queue', () => {
 						event: { type: 'error', message: 'Request failed with [REDACTED]' },
 					}),
 				}),
-				['user'],
+				[user.id],
 			),
 		);
 		expect(JSON.stringify(push.mock.calls)).not.toContain('super-secret-token');
@@ -909,9 +1224,10 @@ describe('agent message queue', () => {
 	it('records a failure after admission without a viewer and keeps referenced attachments', async () => {
 		const main = await makeMain();
 		const files = [{ id: 'file-1', fileName: 'notes.txt', mimeType: 'text/plain', sizeBytes: 4 }];
-		await main.enqueuePreview(preview('failed', 'failure', files), 'request-1', async () => {
+		orchestrator.executeForChat.mockImplementationOnce(() => {
 			throw new Error('Model unavailable');
 		});
+		await main.enqueuePreview(preview('failed', 'failure', files), 'request-1');
 		await main.drain('failure');
 		const history = await executions.getThreadDetail('failure', projectId, agentId);
 		expect(history?.executions).toHaveLength(1);
@@ -1073,15 +1389,17 @@ describe('agent message queue', () => {
 			agentId,
 			projectId,
 			threadId: 'conversation',
-			userId: 'user',
-			resourceId: 'user',
+			userId: user.id,
+			resourceId: draftChatMemoryResourceId(user.id),
 		};
+		previewChunks.mockImplementationOnce(async function* (config) {
+			if ('message' in config) received.push(config.message);
+			started.resolve();
+			await finishRun.promise;
+			yield { type: 'finish', finishReason: 'stop' };
+		});
 		try {
-			const item = await main.enqueuePreview(preview('original'), 'request-1', async (payload) => {
-				if (payload.kind === 'message') received.push(payload.message);
-				started.resolve();
-				await finishRun.promise;
-			});
+			const item = await main.enqueuePreview(preview('original'), 'request-1');
 			await selected.promise;
 			await main.editPreview(scope, item.id, 'saved');
 			finishClaim.resolve();
@@ -1107,9 +1425,7 @@ describe('agent message queue', () => {
 			.mockImplementation(findById);
 		const main = await makeMain();
 		try {
-			await main.enqueuePreview(preview('first'), 'request-1', async (payload) => {
-				if (payload.kind === 'message') received.push(payload.message);
-			});
+			await main.enqueuePreview(preview('first'), 'request-1');
 			await readStarted.promise;
 			await main.enqueue(message('next'));
 
@@ -1124,33 +1440,18 @@ describe('agent message queue', () => {
 		const started = createDeferredPromise<string>();
 		const finish = createDeferredPromise();
 		const main = await makeMain();
-		const peer = await makeMain();
 		const files = [
 			{ id: 'recorded-file', fileName: 'notes.txt', mimeType: 'text/plain', sizeBytes: 10 },
 		];
-		const item = await main.enqueuePreview(
-			preview('first', 'conversation', files),
-			'request',
-			async (_payload, context) => {
-				const executionId = await executions.startExecutionRecording(
-					{
-						agentId,
-						agentName: 'Agent',
-						projectId,
-						threadId: 'conversation',
-						userMessage: 'first',
-						attachments: files,
-						source: 'chat',
-					},
-					new Date(),
-				);
-				await context.onExecutionStarted(executionId);
-				started.resolve(executionId);
-				await finish.promise;
-				throw new Error('Runner finished after takeover');
-			},
-		);
+		previewChunks.mockImplementationOnce(async function* (config) {
+			const entry = await repository.findById(config.queueEntryId!);
+			started.resolve(entry!.executionId!);
+			await finish.promise;
+			yield { type: 'finish', finishReason: 'stop' };
+		});
+		const item = await main.enqueuePreview(preview('first', 'conversation', files), 'request');
 		const executionId = await started.promise;
+		const peer = await makeMain();
 		const oldDrain = main['drains'].get('conversation')?.catch((error: unknown) => error);
 		const leaseRepository = Container.get(AgentConversationLeaseRepository);
 		const executionRepository = Container.get(AgentExecutionRepository);
@@ -1178,9 +1479,11 @@ describe('agent message queue', () => {
 			expect(attachments.deleteByIds).not.toHaveBeenCalled();
 			expect(main['broadcaster']['push'].sendToUsers).toHaveBeenCalledWith(
 				expect.objectContaining({
-					data: expect.objectContaining({ event: { type: 'cancelled' } }),
+					data: expect.objectContaining({
+						event: { type: 'done', sessionId: 'conversation', executionId },
+					}),
 				}),
-				['user'],
+				[user.id],
 			);
 		} finally {
 			finish.resolve();
@@ -1188,32 +1491,26 @@ describe('agent message queue', () => {
 		}
 	});
 
-	it('heartbeats live preview waiters in one batch so another main does not cancel them', async () => {
-		vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+	it('discovers waiting previews after missed notifications without waiting heartbeats', async () => {
 		const main = await makeMain();
 		const peer = await makeMain();
-		checkpoints.findSuspendedForThread.mockResolvedValue(
-			mock<SerializableAgentState & { runId: string }>(),
-		);
-		await Promise.all(
-			['one', 'two'].map(async (id) => await main.enqueuePreview(preview(id, id), id, vi.fn())),
-		);
-		try {
-			await retryUntil(async () => expect(await repository.count()).toBe(2));
-			await repository.update({}, { updatedAt: new Date(Date.now() - 180_000) });
-			const heartbeat = vi.spyOn(repository, 'touchLiveEntries');
-			await vi.advanceTimersByTimeAsync(30_000);
-			await retryUntil(async () => expect(await repository.findStaleThreads(120_000)).toEqual([]));
-			expect(heartbeat.mock.calls.filter(([ids]) => ids.length > 0)).toHaveLength(1);
-			expect(heartbeat.mock.calls.find(([ids]) => ids.length > 0)?.[0]).toHaveLength(2);
-			await peer.recover();
-			expect(await repository.count()).toBe(2);
-			heartbeat.mockRestore();
-		} finally {
-			await main.shutdown();
-			await peer.shutdown();
-			vi.useRealTimers();
-		}
+		vi.spyOn(main, 'notify').mockImplementation(() => {});
+		await main.enqueuePreview(preview('one'), 'one');
+		await main.enqueuePreview(preview('two'), 'two');
+		main.shutdown();
+		await repository.update({}, { updatedAt: new Date(0) });
+		await peer['heartbeat']();
+		expect(await repository.countBy({ updatedAt: new Date(0), status: 'queued' })).toBe(2);
+		expect(await repository.findStaleThreads(120_000)).toEqual([]);
+
+		await peer.recover();
+		await retryUntil(async () => expect(await repository.count()).toBe(0));
+		expect(received).toEqual(['one', 'two']);
+
+		await repository.enqueue(preview('periodic'));
+		await peer.recover();
+		await retryUntil(async () => expect(await repository.count()).toBe(0));
+		expect(received).toEqual(['one', 'two', 'periodic']);
 	});
 
 	it('interrupts only stale running executions and preserves completed outcomes and checkpoints', async () => {
@@ -1299,7 +1596,7 @@ describe('agent message queue', () => {
 			mock<SerializableAgentState & { runId: string }>({
 				runId: 'stopped-run',
 				status: 'suspended',
-				persistence: { threadId: 'conversation', resourceId: 'user' },
+				persistence: { threadId: 'conversation', resourceId: draftChatMemoryResourceId(user.id) },
 			}),
 		);
 		const cancelled = createDeferredPromise();
@@ -1325,7 +1622,7 @@ describe('agent message queue', () => {
 			expect(orchestrator.cancelChatRun).toHaveBeenCalledWith({
 				agentId,
 				runId: 'stopped-run',
-				resourceId: 'user',
+				resourceId: draftChatMemoryResourceId(user.id),
 			});
 			await retryUntil(async () => expect(received).toEqual(['successor']));
 			expect(await repository.existsBy({ id: stale.id })).toBe(false);
@@ -1341,7 +1638,8 @@ describe('agent message queue', () => {
 				{ id: 'unused-file', fileName: 'note.txt', mimeType: 'text/plain', sizeBytes: 1 },
 			]),
 		);
-		await repository.update(stale.id, { updatedAt: new Date(Date.now() - 180_000) });
+		await repository.markProcessing(stale.id, {});
+		await repository.update(stale.id, { updatedAt: new Date(0) });
 		const findStale = repository.findStale.bind(repository);
 		const staleRead = vi.spyOn(repository, 'findStale').mockImplementation(async (...args) => {
 			const entries = await findStale(...args);
@@ -1360,7 +1658,7 @@ describe('agent message queue', () => {
 		staleRead.mockRestore();
 	});
 
-	it('recovers waiting integrations, abandons interrupted inputs, and keeps live preview waiters', async () => {
+	it('recovers legacy previews with attachments and preserves suspended waiters', async () => {
 		const abandoned = await repository.enqueue(message('interrupted'));
 		await repository.markProcessing(abandoned.id, {});
 		await repository.update(abandoned.id, { updatedAt: new Date(Date.now() - 180_000) });
@@ -1376,7 +1674,7 @@ describe('agent message queue', () => {
 				agentId,
 				projectId,
 				threadId: 'lost-preview',
-				resourceId: 'user',
+				resourceId: draftChatMemoryResourceId(user.id),
 				binaryDataId: 'filesystem-v2:unused-file',
 				fileName: 'note.txt',
 				mimeType: 'text/plain',
@@ -1389,18 +1687,34 @@ describe('agent message queue', () => {
 			threadId === 'live-preview' ? mock<SerializableAgentState & { runId: string }>() : null,
 		);
 		const origin = await makeMain();
-		await origin.enqueuePreview(preview('live', 'live-preview'), 'request', vi.fn());
+		await origin.enqueuePreview(preview('live', 'live-preview'), 'request');
 		await retryUntil(async () =>
 			expect(await repository.countBy({ threadId: 'live-preview' })).toBe(1),
 		);
 		await (await makeMain()).recover();
-		await retryUntil(async () => expect(received).toEqual(['waiting']));
+		await retryUntil(async () => expect([...received].sort()).toEqual(['lost', 'waiting']));
+		await retryUntil(async () =>
+			expect(await repository.countBy({ threadId: 'lost-preview' })).toBe(0),
+		);
 		expect(await repository.countBy({ threadId: 'lost-preview' })).toBe(0);
-		expect(await attachmentRepository.existsBy({ id: 'unused-file' })).toBe(false);
-		expect(attachments.deleteStoredBytes).toHaveBeenCalledWith([
-			{ id: 'unused-file', binaryDataId: 'filesystem-v2:unused-file' },
-		]);
+		expect(await attachmentRepository.existsBy({ id: 'unused-file' })).toBe(true);
+		expect(attachments.deleteStoredBytes).not.toHaveBeenCalled();
+		expect(await executions.getThreadDetail('lost-preview', projectId, agentId)).toMatchObject({
+			executions: [
+				expect.objectContaining({
+					status: 'success',
+					attachments: [expect.objectContaining({ id: 'unused-file' })],
+				}),
+			],
+		});
+		expect(origin['broadcaster']['push'].sendToUsers).not.toHaveBeenCalledWith(
+			expect.objectContaining({
+				type: 'agentChatEvent',
+				data: expect.objectContaining({ queueId: lostPreview.id }),
+			}),
+			expect.anything(),
+		);
 		expect(await repository.countBy({ threadId: 'live-preview' })).toBe(1);
-		await origin.shutdown();
+		origin.shutdown();
 	});
 });

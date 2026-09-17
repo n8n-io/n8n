@@ -28,6 +28,8 @@ interface QueuePayloadBase {
 interface PreviewQueueBase extends QueuePayloadBase {
 	source: 'preview';
 	userId: string;
+	/** Older queue entries have no live-event correlation ID. */
+	clientRequestId?: string;
 }
 
 interface IntegrationQueueBase extends QueuePayloadBase {

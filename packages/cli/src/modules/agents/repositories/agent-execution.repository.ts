@@ -58,6 +58,10 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 		return await this.existsBy({ threadId, status: 'running' });
 	}
 
+	async isFinished(id: string, ctx: OperationContext): Promise<boolean> {
+		return await this.managerFor(ctx).existsBy(AgentExecution, { id, status: Not('running') });
+	}
+
 	async findRunningById(id: string): Promise<RunningAgentExecution | null> {
 		return await this.findOne({
 			select: ['id', 'threadId', 'startedAt', 'updatedAt', 'timeline'],

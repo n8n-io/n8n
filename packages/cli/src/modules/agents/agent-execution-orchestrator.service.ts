@@ -23,6 +23,7 @@ import type { AgentRunTelemetryType, IAgentConfigurationTelemetryProperties } fr
 import { Telemetry } from '@/telemetry';
 
 import {
+	AgentExecutionRecordingError,
 	AgentExecutionService,
 	type RecordMessageParams,
 	type StartExecutionParams,
@@ -66,6 +67,7 @@ export interface AgentMemoryScope {
 }
 
 export interface ExecuteForChatConfig {
+	queueEntryId?: string;
 	agentId: string;
 	projectId: string;
 	message: string;
@@ -119,6 +121,7 @@ export interface ExecuteForChatPublishedConfig {
 }
 
 export interface ResumeForChatConfig {
+	queueEntryId?: string;
 	agentId: string;
 	projectId: string;
 	runId: string;
@@ -205,6 +208,7 @@ export interface ExecuteForWakeConfig {
 }
 
 export interface StreamChatResponseConfig {
+	queueEntryId?: string;
 	onExecutionStarted?: (executionId: string) => Promise<void>;
 	agentInstance: RuntimeAgent;
 	toolRegistry: ToolRegistry;
@@ -580,6 +584,27 @@ export class AgentExecutionOrchestratorService {
 				modelId: modelIdFromSnapshot(agentInstance.snapshot.model),
 			});
 
+			const startParams: StartExecutionParams = {
+				queueEntryId: config.queueEntryId,
+				threadId,
+				agentId,
+				agentName: agentInstance.name,
+				projectId,
+				userMessage: null,
+				...(executionSource !== undefined ? { source: executionSource } : {}),
+				telemetry: {
+					userId: user?.id,
+					runType,
+					configuration: runtime.telemetryConfiguration,
+				},
+			};
+			if (config.queueEntryId) {
+				executionId = await this.tryStartExecution(
+					startParams,
+					startedAt,
+					'Failed to start resumed agent execution recording',
+				);
+			}
 			const resultStream = await agentInstance.resume('stream', resumeData, {
 				runId,
 				toolCallId,
@@ -594,20 +619,7 @@ export class AgentExecutionOrchestratorService {
 				onResumeClaimed: config.onResumeClaimed,
 			});
 			recorder.recordHitlResponse(toolCallId, resumeData);
-			const startParams: StartExecutionParams = {
-				threadId,
-				agentId,
-				agentName: agentInstance.name,
-				projectId,
-				userMessage: null,
-				...(executionSource !== undefined ? { source: executionSource } : {}),
-				telemetry: {
-					userId: user?.id,
-					runType,
-					configuration: runtime.telemetryConfiguration,
-				},
-			};
-			executionId = await this.tryStartExecution(
+			executionId ??= await this.tryStartExecution(
 				startParams,
 				startedAt,
 				'Failed to start resumed agent execution recording',
@@ -641,6 +653,7 @@ export class AgentExecutionOrchestratorService {
 					onExecutionRecorded,
 					failureMessage: 'Failed to record resumed agent execution',
 					params: {
+						queueEntryId: config.queueEntryId,
 						threadId,
 						agentId,
 						agentName: agentInstance.name,
@@ -732,6 +745,7 @@ export class AgentExecutionOrchestratorService {
 				onExecutionRecorded,
 				abortSignal,
 				includeHitlToolDetails: true,
+				queueEntryId: config.queueEntryId,
 				onExecutionStarted: config.onExecutionStarted,
 				sandboxPrincipalHash,
 			});
@@ -1075,21 +1089,11 @@ export class AgentExecutionOrchestratorService {
 				projectId,
 				principalHash: sandboxPrincipalHash,
 			});
-			const resultStream = await agentInstance.stream(input, {
-				persistence: { threadId, resourceId, hostMetadata },
-				executionCounter: createAgentExecutionCounter(this.telemetry, {
-					agentId,
-					userId,
-					runType: telemetry.runType,
-				}),
-				...modelStreamStallOptions(this.aiConfig),
-				...(tracing ? { telemetry: tracing } : {}),
-				...(abortSignal ? { abortSignal } : {}),
-			});
 			const startParams: StartExecutionParams = {
 				...(backgroundJobSignal
 					? { initialTimeline: structuredClone(recorder.getMessageRecord().timeline) }
 					: {}),
+				queueEntryId: config.queueEntryId,
 				threadId,
 				agentId,
 				agentName: agentInstance.name,
@@ -1102,7 +1106,25 @@ export class AgentExecutionOrchestratorService {
 				taskVersionId,
 				telemetry: { ...telemetry, userId },
 			};
-			executionId = await this.tryStartExecution(
+			if (config.queueEntryId) {
+				executionId = await this.tryStartExecution(
+					startParams,
+					startedAt,
+					'Failed to start agent execution recording',
+				);
+			}
+			const resultStream = await agentInstance.stream(input, {
+				persistence: { threadId, resourceId, hostMetadata },
+				executionCounter: createAgentExecutionCounter(this.telemetry, {
+					agentId,
+					userId,
+					runType: telemetry.runType,
+				}),
+				...modelStreamStallOptions(this.aiConfig),
+				...(tracing ? { telemetry: tracing } : {}),
+				...(abortSignal ? { abortSignal } : {}),
+			});
+			executionId ??= await this.tryStartExecution(
 				startParams,
 				startedAt,
 				'Failed to start agent execution recording',
@@ -1144,6 +1166,7 @@ export class AgentExecutionOrchestratorService {
 				onExecutionRecorded,
 				failureMessage: 'Failed to record agent execution',
 				params: {
+					queueEntryId: config.queueEntryId,
 					threadId,
 					agentId,
 					agentName: agentInstance.name,
@@ -1271,6 +1294,7 @@ export class AgentExecutionOrchestratorService {
 			return await this.agentExecutionService.startExecutionRecording(params, startedAt);
 		} catch (error) {
 			if (error instanceof AgentConversationLeaseLostError) throw error;
+			if (params.queueEntryId) throw new AgentExecutionRecordingError(error);
 			this.logger.warn(failureMessage, {
 				agentId: params.agentId,
 				threadId: params.threadId,
@@ -1293,6 +1317,7 @@ export class AgentExecutionOrchestratorService {
 			onExecutionRecorded?.(recordedId);
 		} catch (error) {
 			if (error instanceof AgentConversationLeaseLostError) throw error;
+			if (params.queueEntryId) throw new AgentExecutionRecordingError(error);
 			this.logger.warn(failureMessage, {
 				agentId: params.agentId,
 				threadId: params.threadId,

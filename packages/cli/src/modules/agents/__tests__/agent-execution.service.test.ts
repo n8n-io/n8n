@@ -95,6 +95,7 @@ describe('AgentExecutionService', () => {
 		agentChatAttachmentService = mock<AgentChatAttachmentService>();
 		executionUpdateBroadcaster = mock<AgentExecutionUpdateBroadcaster>();
 		agentMessageQueueRepository = mock<AgentMessageQueueRepository>();
+		agentMessageQueueRepository.cancelWaiting.mockResolvedValue([]);
 
 		service = new AgentExecutionService(
 			mockLogger(),

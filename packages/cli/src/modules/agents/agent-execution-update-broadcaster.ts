@@ -9,6 +9,7 @@ import { Push } from '@/push';
 import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 
+import type { AgentMessageQueue } from './entities/agent-message-queue.entity';
 import { AgentExecutionThreadRepository } from './repositories/agent-execution-thread.repository';
 
 type AgentExecutionUpdate = PushPayload<'agentExecutionUpdated'>;
@@ -36,6 +37,27 @@ export class AgentExecutionUpdateBroadcaster {
 				error: error instanceof Error ? error.message : String(error),
 			});
 		});
+	}
+
+	sendQueuedChatEvent(
+		entry: AgentMessageQueue,
+		event: PushPayload<'agentChatEvent'>['event'],
+	): void {
+		const { payload } = entry;
+		if (payload.source !== 'preview' || !payload.clientRequestId) return;
+		void this.sendChatEvent(
+			{
+				projectId: payload.projectId,
+				agentId: entry.agentId,
+				threadId: entry.threadId,
+				queueId: entry.id,
+				clientRequestId: payload.clientRequestId,
+				event,
+			},
+			payload.userId,
+		).catch((error: unknown) =>
+			this.logger.warn('Failed to deliver preview event', { id: entry.id, error }),
+		);
 	}
 
 	async sendChatEvent(data: PushPayload<'agentChatEvent'>, userId: string): Promise<void> {
