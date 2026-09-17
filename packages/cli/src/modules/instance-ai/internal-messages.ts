@@ -90,10 +90,15 @@ const TASK_CONTEXT_BLOCK =
 
 /**
  * Captures the leading JSON line inside a thread-artifacts block (hand-off
- * turns). The block sits inside `<thread-context>`, so it starts a line rather
- * than the message; only ever run against `leadingInternalBlocks()` output.
+ * turns). Anchored to where the service writes it: the first child of
+ * `<thread-context>`, or the second after `<instance-context>`. Every value
+ * inside `<instance-context>` is sanitised, so its close tag cannot be forged.
+ * Later siblings carry project names, titles and preferences, which must never
+ * be able to pose as this block. Only ever run against one `<thread-context>`
+ * block from `leadingInternalBlocks()`.
  */
-const THREAD_ARTIFACTS_RESOURCE_JSON = /(?:^|\n)<thread-artifacts>\n(\[[\s\S]*?\])\n/;
+const THREAD_ARTIFACTS_RESOURCE_JSON =
+	/^<thread-context>\n(?:<instance-context>\n[\s\S]*?\n<\/instance-context>\n\n)?<thread-artifacts>\n(\[[\s\S]*?\])\n/;
 
 /** Captures the leading JSON line inside a legacy editor-context block. */
 const EDITOR_CONTEXT_JSON = /^<editor-context>\n(\[[\s\S]*?\])\n/;
@@ -204,11 +209,30 @@ export function withAiPreferences(message: string, block: string): string {
 	return `${message}\n\n${block}`;
 }
 
-/** Neutralize delimiter tags in title-derived text placed inside the block. */
-export function escapePastConversationsDelimiters(value: string): string {
-	return value
-		.replaceAll(PAST_CONVERSATIONS_OPEN_TAG, '&lt;past-conversations&gt;')
-		.replaceAll(PAST_CONVERSATIONS_CLOSE_TAG, '&lt;/past-conversations&gt;');
+/** Longest a user-supplied value may be inside a block. Matches the instance-context bound. */
+const PROMPT_TEXT_MAX_LENGTH = 128;
+
+/**
+ * Neutralise user-supplied text (names, ids, titles) before it enters a block.
+ * A block is prose the model reads as trusted, and the hand-off parser scans
+ * the same prefix, so a value must not be able to close a block, open another,
+ * or start a new line. Angle brackets are escaped rather than dropped, so a
+ * name that legitimately contains one still reads as itself.
+ */
+export function sanitisePromptText(value: string): string {
+	const printable = Array.from(value)
+		.map((character) => {
+			const code = character.codePointAt(0) ?? 0;
+			return code < 0x20 || code === 0x7f ? ' ' : character;
+		})
+		.join('');
+
+	return printable
+		.replace(/</g, '&lt;')
+		.replace(/>/g, '&gt;')
+		.replace(/\s+/g, ' ')
+		.trim()
+		.slice(0, PROMPT_TEXT_MAX_LENGTH);
 }
 
 /** The fact, and only the fact. The rule that follows from it ("writes are locked to
@@ -216,7 +240,7 @@ export function escapePastConversationsDelimiters(value: string): string {
  *  CACHED — restating it here would pay for the same sentence in uncached tokens on
  *  every turn of every conversation. Measured: the fact alone is enough. */
 export function getProjectContextSection(project: { name: string; type: string }): string {
-	return `This conversation is scoped to the project "${project.name}" (${project.type}).`;
+	return `This conversation is scoped to the project "${sanitisePromptText(project.name)}" (${project.type}).`;
 }
 
 /**
@@ -239,17 +263,17 @@ export function cleanStoredUserMessage(stored: string): string | null {
 
 /**
  * The service-injected blocks at the head of a stored message — everything
- * `cleanStoredUserMessage` strips from the front. Structured payloads are read
- * from this prefix only, so a tag lookalike in the user's own text is never
- * parsed as if the service wrote it.
+ * `cleanStoredUserMessage` strips from the front, one entry per block.
+ * Structured payloads are read from these only, so a tag lookalike in the
+ * user's own text is never parsed as if the service wrote it.
  */
-function leadingInternalBlocks(stored: string): string {
+function leadingInternalBlocks(stored: string): string[] {
 	let rest = stored;
-	let prefix = '';
+	const blocks: string[] = [];
 	for (;;) {
 		const match = TASK_CONTEXT_BLOCK.exec(rest);
-		if (!match) return prefix;
-		prefix += match[0];
+		if (!match) return blocks;
+		blocks.push(match[0]);
 		rest = rest.slice(match[0].length);
 	}
 }
@@ -269,12 +293,16 @@ function parseResourceAttachmentJson(raw: string): InstanceAiResourceAttachment[
 export function extractEditorContextResourceAttachments(
 	stored: string,
 ): InstanceAiResourceAttachment[] {
-	const prefix = leadingInternalBlocks(stored);
-	const fromThreadArtifacts = THREAD_ARTIFACTS_RESOURCE_JSON.exec(prefix);
+	const blocks = leadingInternalBlocks(stored);
+	const threadContext = blocks.find((block) => block.startsWith(THREAD_CONTEXT_OPEN_TAG));
+	const fromThreadArtifacts = threadContext
+		? THREAD_ARTIFACTS_RESOURCE_JSON.exec(threadContext)
+		: null;
 	if (fromThreadArtifacts) {
 		return parseResourceAttachmentJson(fromThreadArtifacts[1]);
 	}
-	const fromEditorContext = EDITOR_CONTEXT_JSON.exec(prefix);
+	// Legacy hand-off: the editor-context block opened the message.
+	const fromEditorContext = blocks[0] ? EDITOR_CONTEXT_JSON.exec(blocks[0]) : null;
 	if (!fromEditorContext) return [];
 	return parseResourceAttachmentJson(fromEditorContext[1]);
 }
@@ -300,30 +328,6 @@ const THREAD_ARTIFACT_KIND: Record<InstanceAiThreadArtifact['type'], string> = {
 	'data-table': 'Data table',
 };
 
-/** Longest a display name may be inside the block. Matches the instance-context bound. */
-const THREAD_ARTIFACT_NAME_MAX_LENGTH = 128;
-
-/**
- * Neutralise client-supplied text (names, ids) before it enters the block. The
- * block is prose the model reads as trusted, so a value holding a closing tag
- * would end the block early.
- */
-function sanitiseThreadArtifactName(value: string): string {
-	const printable = Array.from(value)
-		.map((character) => {
-			const code = character.codePointAt(0) ?? 0;
-			return code < 0x20 || code === 0x7f ? ' ' : character;
-		})
-		.join('');
-
-	return printable
-		.replace(/</g, '&lt;')
-		.replace(/>/g, '&gt;')
-		.replace(/\s+/g, ' ')
-		.trim()
-		.slice(0, THREAD_ARTIFACT_NAME_MAX_LENGTH);
-}
-
 function formatThreadArtifactLine(
 	artifact: InstanceAiThreadArtifact,
 	current: boolean,
@@ -331,10 +335,10 @@ function formatThreadArtifactLine(
 ): string {
 	const pendingAgent = artifact.type === 'agent' && artifact.pending;
 	const kind = pendingAgent ? 'New unsaved Agent' : THREAD_ARTIFACT_KIND[artifact.type];
-	const name = artifact.name ? ` "${sanitiseThreadArtifactName(artifact.name)}"` : '';
+	const name = artifact.name ? ` "${sanitisePromptText(artifact.name)}"` : '';
 	const idLabel = pendingAgent ? 'pending id' : 'id';
 	const project = artifact.projectId
-		? `, in project \`${sanitiseThreadArtifactName(artifact.projectId)}\``
+		? `, in project \`${sanitisePromptText(artifact.projectId)}\``
 		: '';
 	const flags = [current ? 'current' : '', artifact.archived ? 'archived' : '']
 		.filter(Boolean)
@@ -342,15 +346,14 @@ function formatThreadArtifactLine(
 	const flagSuffix = flags ? ` [${flags}]` : '';
 	const execution =
 		artifact.type === 'workflow' && executionId
-			? `, currently viewing its execution \`${sanitiseThreadArtifactName(executionId)}\``
+			? `, currently viewing its execution \`${sanitisePromptText(executionId)}\``
 			: '';
-	return `  - ${kind}${name} (${idLabel}: \`${sanitiseThreadArtifactName(artifact.id)}\`${project})${flagSuffix}${execution}`;
+	return `  - ${kind}${name} (${idLabel}: \`${sanitisePromptText(artifact.id)}\`${project})${flagSuffix}${execution}`;
 }
 
 /** Renders one canvas node-selection attachment as one line per set. */
 function buildNodesAttachmentLine(attachment: InstanceAiNodesAttachment): string {
-	const label = (ref: { id: string; name?: string }) =>
-		sanitiseThreadArtifactName(ref.name ?? ref.id);
+	const label = (ref: { id: string; name?: string }) => sanitisePromptText(ref.name ?? ref.id);
 
 	const setLines = attachment.sets.map((set) => {
 		const names = set.nodes.map(label);
@@ -365,9 +368,9 @@ function buildNodesAttachmentLine(attachment: InstanceAiNodesAttachment): string
 		const output = set.outputNode ? `, sending output to "${label(set.outputNode)}"` : '';
 
 		const group = set.canvasGroupName
-			? `, part of canvas group "${sanitiseThreadArtifactName(set.canvasGroupName)}"`
+			? `, part of canvas group "${sanitisePromptText(set.canvasGroupName)}"`
 			: set.canvasGroupId
-				? `, part of canvas group \`${sanitiseThreadArtifactName(set.canvasGroupId)}\``
+				? `, part of canvas group \`${sanitisePromptText(set.canvasGroupId)}\``
 				: '';
 
 		return `    - ${head}${input}${output}${group}.`;
@@ -378,7 +381,7 @@ function buildNodesAttachmentLine(attachment: InstanceAiNodesAttachment): string
 		? '\n  The "receiving input from"/"sending output to" nodes show only where the selection connects; they are not part of the selection. Do not describe, inspect, or make claims about them — scope your answer to the selected nodes.'
 		: '';
 
-	return `  - Selected nodes in workflow \`${sanitiseThreadArtifactName(attachment.workflowId)}\`:\n${setLines.join('\n')}${boundaryNote}`;
+	return `  - Selected nodes in workflow \`${sanitisePromptText(attachment.workflowId)}\`:\n${setLines.join('\n')}${boundaryNote}`;
 }
 
 /**

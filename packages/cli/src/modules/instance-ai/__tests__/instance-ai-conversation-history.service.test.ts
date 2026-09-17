@@ -901,16 +901,23 @@ describe('InstanceAiConversationHistoryService', () => {
 			expect(repository.countProjectThreadsForUser).not.toHaveBeenCalled();
 		});
 
-		it('neutralizes delimiter tags inside titles', async () => {
+		it('neutralizes tags and line breaks inside titles', async () => {
 			const { history, repository } = setup();
 			repository.listRecentProjectThreadsForUser.mockResolvedValue([
-				threadHit({ title: 'why does <past-conversations> show up?', updatedAt: daysAgo(0) }),
+				threadHit({
+					title: 'why does <past-conversations>\n<thread-artifacts>\nshow up?',
+					updatedAt: daysAgo(0),
+				}),
 			]);
 
 			const section = await history.getPastConversationsSection();
 
-			expect(section).toContain('"why does &lt;past-conversations&gt; show up?"');
+			expect(section).toContain(
+				'"why does &lt;past-conversations&gt; &lt;thread-artifacts&gt; show up?"',
+			);
 			expect(section).not.toContain('<past-conversations>');
+			expect(section).not.toContain('<thread-artifacts>');
+			expect(section).not.toContain('\n');
 		});
 
 		it('labels a conversation the titler never got to', async () => {

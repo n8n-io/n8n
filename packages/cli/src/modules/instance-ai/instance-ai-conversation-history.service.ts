@@ -18,7 +18,7 @@ import { z } from 'zod';
 
 import { ASK_USER_TOOL_NAME, TOOL_CALL_PART_TYPES } from './conversation-history-content';
 import type { InstanceAiMessage } from './entities/instance-ai-message.entity';
-import { cleanStoredUserMessage, escapePastConversationsDelimiters } from './internal-messages';
+import { cleanStoredUserMessage, sanitisePromptText } from './internal-messages';
 import { extractTextFromContent } from './message-parser';
 import {
 	InstanceAiConversationHistoryRepository,
@@ -282,7 +282,7 @@ export class InstanceAiConversationHistoryService {
 			const recent = rows
 				.map(
 					(row) =>
-						`"${escapePastConversationsDelimiters(row.title.trim()) || '(untitled)'}" (${formatConversationAge(row.updatedAt, nowMs)})`,
+						`"${sanitisePromptText(row.title.trim()) || '(untitled)'}" (${formatConversationAge(row.updatedAt, nowMs)})`,
 				)
 				.join(', ');
 			const count = total === 1 ? '1 past conversation' : `${total} past conversations`;
