@@ -344,6 +344,18 @@ describe('CredentialsTester', () => {
 				),
 			).resolves.toEqual(posted);
 			expect(storedGetDecrypted).not.toHaveBeenCalled();
+			// the refresh race check reads raw and must still see the stored token
+			await expect(
+				ctx.additionalData.credentialsHelper.getDecrypted(
+					ctx.additionalData,
+					{ id: 'credential-id', name: 'Databricks' },
+					'databricksOAuth2Api',
+					'internal',
+					undefined,
+					true,
+				),
+			).resolves.toEqual(stored);
+			expect(storedGetDecrypted).toHaveBeenCalledTimes(1);
 			// shared singleton not mutated
 			expect(storedHelper.getDecrypted).toBe(storedGetDecrypted);
 			// everything else delegates to the real helper

@@ -477,9 +477,19 @@ export class CredentialsTester {
 		// OAuth1/OAuth2 helpers re-read the stored credential by id via credentialsHelper.getDecrypted.
 		// Serve the posted data instead; other methods delegate through the prototype to the real
 		// singleton, including the token write-back (it must keep persisting rotated refresh tokens).
+		// Raw reads come only from the OAuth2 refresh race check, which must see the stored token so
+		// a refresh already done by another process is reused rather than repeated.
 		// Relies on CredentialsHelper using TS `private`, not `#` fields.
-		additionalData.credentialsHelper = Object.create(additionalData.credentialsHelper, {
-			getDecrypted: { value: async () => credentialsDecrypted.data ?? {} },
+		const storedCredentialsHelper = additionalData.credentialsHelper;
+		additionalData.credentialsHelper = Object.create(storedCredentialsHelper, {
+			getDecrypted: {
+				value: async (...args: Parameters<ICredentialsHelper['getDecrypted']>) => {
+					const raw = args[5];
+					return raw
+						? await storedCredentialsHelper.getDecrypted(...args)
+						: (credentialsDecrypted.data ?? {});
+				},
+			},
 		}) as ICredentialsHelper;
 
 		const executeData: IExecuteData = { node, data: {}, source: null };
