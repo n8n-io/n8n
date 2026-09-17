@@ -240,8 +240,8 @@ export function getProjects(): Project[] {
 		// workflow to the new engine. Opt-in by tag while the engine matures: any
 		// `@engine:*` tag selects the spec, and the parity fixture then runs, skips
 		// or expects failure by bucket. Drop the grep once the suite is triaged.
-		// The CI job e2e-engine blocks merges, so every spec this grep selects must
-		// pass on engine 2.0.
+		// The CI job e2e-engine blocks merges, so a spec this grep selects fails the
+		// PR when it misses the outcome its bucket asks for.
 		projects.push({
 			name: 'engine-v2:e2e',
 			testDir: './tests/e2e',
