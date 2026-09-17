@@ -302,7 +302,7 @@ watch(effectiveSearchQuery, function resetActiveSearchResult() {
 	listIndex.value = 0;
 });
 
-const isDefaultView = !props.detailItem;
+const isDefaultView = computed(() => !props.detailItem);
 
 const fixedProps = {
 	/** We want a custom position for close button as it breaks horizontal alignment */
@@ -392,19 +392,19 @@ function onNavigationKeyPress(event: KeyboardEvent) {
 
 	switch (event.key) {
 		case 'Backspace':
-			if (isDefaultView || isInteractiveElementInFocus()) break;
+			if (isDefaultView.value || isInteractiveElementInFocus()) break;
 			event.preventDefault();
 			closeDetail();
 			focusSearchInput();
 			break;
 		case 'Enter':
-			if (!isDefaultView || !activeListRow.value || !isSearchInputFocused) break;
+			if (!isDefaultView.value || !activeListRow.value || !isSearchInputFocused) break;
 			event.preventDefault();
 			activateActiveListRow();
 			break;
 		case 'ArrowDown':
 		case 'ArrowUp':
-			if (!isDefaultView || (!isSearchInputFocused && isInteractiveElementInFocus())) break;
+			if (!isDefaultView.value || (!isSearchInputFocused && isInteractiveElementInFocus())) break;
 			event.preventDefault();
 			if (event.metaKey) {
 				handleNavigateListIndex(
