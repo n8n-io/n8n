@@ -15,6 +15,7 @@ import { useDebounceFn } from '@vueuse/core';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
 import { isInteractiveElementInFocus } from '../../utils';
 
+import CreateWorkflowRow from './CreateWorkflowRow.vue';
 import ToolRow from './ToolRow.vue';
 import ToolDetailView from './ToolDetailView.vue';
 import ToolSettingsView from './ToolSettingsView.vue';
@@ -197,7 +198,9 @@ function tabCount(category: ToolCategoryKey): string {
 	return count > MAX_DISPLAYED_COUNT ? `${MAX_DISPLAYED_COUNT}+` : String(count);
 }
 
-type ListRow = FlattenedRow | { key: 'suggestion' };
+type CreateWorkflowRow = { key: 'create-workflow' };
+type NavigableRow = FlattenedRow | CreateWorkflowRow;
+type ListRow = NavigableRow | { key: 'suggestion' };
 
 const toolRows = computed<FlattenedRow[]>(() =>
 	itemsForCategory(activeCategory.value)
@@ -205,9 +208,29 @@ const toolRows = computed<FlattenedRow[]>(() =>
 		.map((item) => ({ key: `item:${item.id}`, item })),
 );
 
-const flattenedRows = computed<ListRow[]>(() =>
-	isMcpCategory.value ? [...toolRows.value, { key: 'suggestion' }] : toolRows.value,
+const showCreateWorkflowRow = computed(
+	() => activeCategory.value === 'workflows' && props.allowWorkflowCreation,
 );
+
+const flattenedRows = computed<ListRow[]>(() => {
+	const rows: ListRow[] = [...toolRows.value];
+
+	if (showCreateWorkflowRow.value) {
+		rows.unshift({ key: 'create-workflow' });
+	}
+
+	if (isMcpCategory.value) {
+		rows.push({ key: 'suggestion' });
+	}
+
+	return rows;
+});
+
+function isNavigableRow(row: ListRow): row is NavigableRow {
+	return row.key !== 'suggestion';
+}
+
+const navigableRows = computed<NavigableRow[]>(() => flattenedRows.value.filter(isNavigableRow));
 
 /** Categories only worth a tab once they hold something. */
 const HIDE_WHEN_EMPTY: ToolCategoryKey[] = ['community'];
@@ -230,7 +253,7 @@ async function selectCategory(category: ToolCategoryKey) {
 	activeCategory.value = category;
 	await nextTick();
 	listIndex.value = 0;
-	const firstRow = toolRows.value[0];
+	const firstRow = navigableRows.value[0];
 	if (firstRow) {
 		scrollerRef.value?.scrollToKeyIfNeeded(firstRow.key);
 	}
@@ -316,33 +339,49 @@ function handleOpenChange(value: boolean) {
 
 const listIndex = ref(0);
 const keyboardInstructionsId = useId();
-const activeToolRow = computed(() => toolRows.value[listIndex.value]);
+const activeListRow = computed(() => navigableRows.value[listIndex.value]);
 const activeToolAnnouncement = computed(() => {
-	if (!activeToolRow.value) return '';
+	if (!activeListRow.value) return '';
+
+	const title =
+		activeListRow.value.key === 'create-workflow'
+			? i18n.baseText('generic.create.workflow')
+			: activeListRow.value.item.title;
 
 	return i18n.baseText('tools.connection.search.activeItem', {
 		interpolate: {
-			title: activeToolRow.value.item.title,
+			title,
 			position: listIndex.value + 1,
-			total: toolRows.value.length,
+			total: navigableRows.value.length,
 		},
 	});
 });
 
-watch(toolRows, (rows) => {
+watch(navigableRows, (rows) => {
 	listIndex.value = Math.min(listIndex.value, Math.max(rows.length - 1, 0));
 });
 
-function isToolRowSelected(index: number): boolean {
-	return listIndex.value === index;
+function isListRowSelected(row: NavigableRow): boolean {
+	return navigableRows.value[listIndex.value]?.key === row.key;
 }
 
 function handleNavigateListIndex(delta: number) {
-	const maxIndex = toolRows.value.length - 1;
+	const maxIndex = navigableRows.value.length - 1;
 	if (maxIndex < 0) return;
 
 	listIndex.value = Math.min(Math.max(listIndex.value + delta, 0), maxIndex);
-	scrollerRef.value?.scrollToKeyIfNeeded(toolRows.value[listIndex.value].key);
+	scrollerRef.value?.scrollToKeyIfNeeded(navigableRows.value[listIndex.value].key);
+}
+
+function activateActiveListRow() {
+	if (!activeListRow.value) return;
+
+	if (activeListRow.value.key === 'create-workflow') {
+		emit('create-workflow');
+		return;
+	}
+
+	openDetail(activeListRow.value.item);
 }
 
 function onNavigationKeyPress(event: KeyboardEvent) {
@@ -359,9 +398,9 @@ function onNavigationKeyPress(event: KeyboardEvent) {
 			focusSearchInput();
 			break;
 		case 'Enter':
-			if (!isDefaultView || !activeToolRow.value || !isSearchInputFocused) break;
+			if (!isDefaultView || !activeListRow.value || !isSearchInputFocused) break;
 			event.preventDefault();
-			openDetail(activeToolRow.value.item);
+			activateActiveListRow();
 			break;
 		case 'ArrowDown':
 		case 'ArrowUp':
@@ -369,7 +408,7 @@ function onNavigationKeyPress(event: KeyboardEvent) {
 			event.preventDefault();
 			if (event.metaKey) {
 				handleNavigateListIndex(
-					event.key === 'ArrowDown' ? toolRows.value.length : -toolRows.value.length,
+					event.key === 'ArrowDown' ? navigableRows.value.length : -navigableRows.value.length,
 				);
 				break;
 			}
@@ -388,16 +427,14 @@ function trackPointerPosition(event: PointerEvent) {
 	lastPointerPosition = { x: event.clientX, y: event.clientY };
 }
 
-function onPointerMoveToolRow(event: PointerEvent, index: number) {
+function onPointerMoveListRow(event: PointerEvent, row: NavigableRow) {
 	const pointerMoved =
 		lastPointerPosition?.x !== event.clientX || lastPointerPosition.y !== event.clientY;
 
 	trackPointerPosition(event);
-	if (pointerMoved) listIndex.value = index;
-}
-
-function toolRowIndex(row: FlattenedRow): number {
-	return toolRows.value.findIndex((toolRow) => toolRow.key === row.key);
+	if (pointerMoved) {
+		listIndex.value = navigableRows.value.findIndex((listRow) => listRow.key === row.key);
+	}
 }
 </script>
 
@@ -500,25 +537,15 @@ function toolRowIndex(row: FlattenedRow): number {
 					@update:model-value="selectCategory"
 				/>
 
-				<button
-					v-if="activeCategory === 'workflows' && allowWorkflowCreation"
-					type="button"
-					:class="$style.createWorkflowRow"
-					:disabled="workflowCreationLoading"
-					:aria-busy="workflowCreationLoading"
-					data-test-id="tools-connection-create-workflow"
-					@click="emit('create-workflow')"
-				>
-					<span :class="$style.createWorkflowIcon" aria-hidden="true">
-						<N8nIcon icon="plus" :size="20" />
-					</span>
-					<N8nText :class="$style.createWorkflowTitle" bold>
-						{{ i18n.baseText('generic.create.workflow') }}
-					</N8nText>
-				</button>
-
-				<div :class="$style.listWrapper">
+				<div :class="[$style.listWrapper, isListEmpty ? $style.listWrapperEmpty : null]">
 					<template v-if="isListEmpty">
+						<CreateWorkflowRow
+							v-if="showCreateWorkflowRow"
+							:loading="workflowCreationLoading"
+							:class="{ [$style.selectedToolRow]: isListRowSelected({ key: 'create-workflow' }) }"
+							@pointermove="onPointerMoveListRow($event, { key: 'create-workflow' })"
+							@create="emit('create-workflow')"
+						/>
 						<div :class="$style.empty" data-test-id="tools-connection-empty">
 							<N8nText color="text-light">{{ emptyMessage }}</N8nText>
 						</div>
@@ -535,12 +562,20 @@ function toolRowIndex(row: FlattenedRow): number {
 						:class="$style.scroller"
 					>
 						<template #default="{ item: row }">
+							<CreateWorkflowRow
+								v-if="row.key === 'create-workflow'"
+								:data-active="isListRowSelected(row)"
+								:loading="workflowCreationLoading"
+								:class="{ [$style.selectedToolRow]: isListRowSelected(row) }"
+								@pointermove="onPointerMoveListRow($event, row)"
+								@create="emit('create-workflow')"
+							/>
 							<ToolRow
-								v-if="'item' in row"
+								v-else-if="'item' in row"
 								:item="row.item"
-								:data-active="isToolRowSelected(toolRowIndex(row))"
-								:class="{ [$style.selectedToolRow]: isToolRowSelected(toolRowIndex(row)) }"
-								@pointermove="onPointerMoveToolRow($event, toolRowIndex(row))"
+								:data-active="isListRowSelected(row)"
+								:class="{ [$style.selectedToolRow]: isListRowSelected(row) }"
+								@pointermove="onPointerMoveListRow($event, row)"
 								@open-detail="openDetail($event)"
 								@connect="emit('connect', $event)"
 								@select-credential="
@@ -565,7 +600,6 @@ function toolRowIndex(row: FlattenedRow): number {
 
 <style lang="scss" module>
 @use '../../css/mixins/mixins';
-@use '../../css/mixins/focus';
 
 .modal {
 	--n8n-dialog-content--padding: 0;
@@ -583,7 +617,7 @@ function toolRowIndex(row: FlattenedRow): number {
 .top {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--2xs);
+	gap: var(--spacing--4xs);
 	padding: var(--spacing--md);
 	padding-block-start: calc(var(--spacing--md) - var(--spacing--4xs));
 	padding-block-end: var(--spacing--lg);
@@ -615,52 +649,6 @@ function toolRowIndex(row: FlattenedRow): number {
 	overflow: hidden;
 }
 
-.createWorkflowRow {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--xs);
-	height: 64px;
-	padding: var(--spacing--2xs) var(--spacing--xs);
-	margin-inline: var(--spacing--2xs);
-	border: 0;
-	border-radius: var(--radius);
-	background: none;
-	color: inherit;
-	text-align: left;
-	cursor: pointer;
-	flex-shrink: 0;
-
-	&:hover:not(:disabled) {
-		background: var(--background--hover);
-	}
-
-	&:focus-visible {
-		@include focus.focus-ring-inset;
-	}
-
-	&:disabled {
-		cursor: default;
-	}
-}
-
-.createWorkflowIcon {
-	flex-shrink: 0;
-	width: var(--height--xl);
-	height: var(--height--xl);
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	color: var(--color--primary);
-	background-color: var(--color--orange-alpha-100);
-	border-radius: var(--radius--full);
-}
-
-.createWorkflowTitle {
-	flex: 1 1 0;
-	min-width: 0;
-	font-weight: var(--font-weight--medium);
-}
-
 .listWrapper {
 	display: flex;
 	flex-direction: column;
@@ -668,6 +656,10 @@ function toolRowIndex(row: FlattenedRow): number {
 	min-height: 0;
 	overflow: hidden;
 	padding-block-start: var(--spacing--2xs);
+}
+
+.listWrapperEmpty {
+	padding-inline: var(--spacing--2xs);
 }
 
 .scroller {
