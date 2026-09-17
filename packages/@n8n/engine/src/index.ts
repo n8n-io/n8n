@@ -37,8 +37,15 @@ export type {
 export {
 	executionResponseSchema,
 	noopExecutionResponseSender,
+	noopResponseEmitter,
 } from './response-channel';
-export type { EndedMessage, ExecutionResponse, ExecutionResponseSender } from './response-channel';
+export type {
+	EndedMessage,
+	ExecutionResponse,
+	ExecutionResponseSender,
+	ResponseEmitter,
+	ResponseMessage,
+} from './response-channel';
 
 export { UnimplementedError } from './common';
 export type { JsonObject, JsonValue } from './common';

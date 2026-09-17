@@ -390,6 +390,7 @@ describe('step execution (integration)', () => {
 			orchestrationQueue,
 			{ v1StepExecutor: { execute } },
 			noopLifecycleEventPublisher,
+			new ExecutionResponseSender(noopResponseFrameSender),
 		);
 
 		const executionId = generateId();
