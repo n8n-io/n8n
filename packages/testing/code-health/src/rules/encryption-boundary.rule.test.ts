@@ -7,16 +7,15 @@ import type { CodeHealthContext } from '../context.js';
 import { EncryptionBoundaryRule } from './encryption-boundary.rule.js';
 
 const BOUNDARY_CONFIG = `import { defineConfig } from 'eslint/config';
-import { baseConfig } from '@n8n/eslint-config/base';
-import { encryptionBoundaryConfig } from '@n8n/eslint-config/encryption-boundary';
+import { backendConfig } from '@n8n/eslint-config/backend';
 
-export default defineConfig(baseConfig, encryptionBoundaryConfig);
+export default defineConfig(backendConfig);
 `;
 
-const NODE_CONFIG = `import { defineConfig } from 'eslint/config';
-import { nodeConfig } from '@n8n/eslint-config/node';
+const NODES_CONFIG = `import { defineConfig } from 'eslint/config';
+import { nodesConfig } from '@n8n/eslint-config/nodes';
 
-export default defineConfig(nodeConfig);
+export default defineConfig(nodesConfig);
 `;
 
 const BASE_CONFIG = `import { defineConfig } from 'eslint/config';
@@ -65,14 +64,14 @@ describe('EncryptionBoundaryRule', () => {
 	}
 
 	describe('config coverage', () => {
-		it('accepts a package that composes encryptionBoundaryConfig', async () => {
+		it('accepts a package that extends backendConfig', async () => {
 			writePackage('packages/a', { 'n8n-core': 'workspace:*' });
 
 			expect(await analyze()).toEqual([]);
 		});
 
-		it('accepts a package on nodeConfig', async () => {
-			writePackage('packages/a', { 'n8n-core': 'workspace:*' }, 'dependencies', NODE_CONFIG);
+		it('accepts a package on nodesConfig', async () => {
+			writePackage('packages/a', { 'n8n-core': 'workspace:*' }, 'dependencies', NODES_CONFIG);
 
 			expect(await analyze()).toEqual([]);
 		});
@@ -87,8 +86,8 @@ describe('EncryptionBoundaryRule', () => {
 			expect(violations[0]).toContain('does not compose the encryption boundary');
 		});
 
-		it('flags a boundary import that is never used', async () => {
-			const imported = `${BASE_CONFIG}import { encryptionBoundaryConfig } from '@n8n/eslint-config/encryption-boundary';\n`;
+		it('flags a layer import that is never used', async () => {
+			const imported = `${BASE_CONFIG}import { backendConfig } from '@n8n/eslint-config/backend';\n`;
 			writePackage('packages/a', { 'n8n-core': 'workspace:*' }, 'dependencies', imported);
 
 			expect(await analyze()).toHaveLength(1);
@@ -132,9 +131,9 @@ export const extra = {
 			const violations = await analyze();
 
 			expect(violations).toHaveLength(2);
-			expect(violations[0]).toContain('eslint.config.mjs:8');
+			expect(violations[0]).toContain('eslint.config.mjs:7');
 			expect(violations[0]).toContain('no-deployment-key-delete');
-			expect(violations[1]).toContain('eslint.config.mjs:9');
+			expect(violations[1]).toContain('eslint.config.mjs:8');
 			expect(violations[1]).toContain('no-legacy-cipher-methods');
 		});
 	});
@@ -182,6 +181,40 @@ export const extra = {
 			expect(violations[2]).toContain('`eslint-disable` directive silences every lint rule');
 		});
 
+		it('flags oxlint-spelled directives the same way', async () => {
+			write(
+				'packages/a/src/index.ts',
+				[
+					'// oxlint-disable-next-line n8n-local-rules/no-legacy-cipher-methods',
+					'export const a = 1; // oxlint-disable-line no-console, no-deployment-key-delete',
+					'/* oxlint-disable */',
+					'/* oxlint n8n-local-rules/no-misplaced-cipher-primitives: "off" */',
+					'',
+				].join('\n'),
+			);
+
+			const violations = await analyze();
+
+			expect(violations).toHaveLength(4);
+			expect(violations[0]).toContain('no-legacy-cipher-methods');
+			expect(violations[1]).toContain('no-deployment-key-delete');
+			expect(violations[2]).toContain('`oxlint-disable` directive silences every lint rule');
+			expect(violations[3]).toContain('no-misplaced-cipher-primitives');
+		});
+
+		it('accepts oxlint directives that name unrelated rules', async () => {
+			write(
+				'packages/a/src/index.ts',
+				[
+					'// oxlint-disable-next-line typescript/no-explicit-any',
+					'/* oxlint-disable unicorn/filename-case */',
+					'',
+				].join('\n'),
+			);
+
+			expect(await analyze()).toEqual([]);
+		});
+
 		it('flags directives that name a guarded rule, with or without the plugin prefix', async () => {
 			write(
 				'packages/a/src/index.ts',
@@ -200,7 +233,7 @@ export const extra = {
 			expect(violations[0]).toContain('no-legacy-cipher-methods');
 			expect(violations[1]).toContain('no-deployment-key-delete');
 			expect(violations[2]).toContain('no-misplaced-cipher-primitives');
-			expect(violations[3]).toContain('inline ESLint configuration comment');
+			expect(violations[3]).toContain('inline `eslint` configuration comment');
 		});
 
 		it('ignores directive text inside string literals', async () => {

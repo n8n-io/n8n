@@ -5,6 +5,7 @@ import { useInstanceAiAvailable } from './useInstanceAiAvailability';
 import {
 	buildInstanceAiAgentPreviewHandoffContext,
 	useInstanceAiHandoff,
+	type PendingComposerDraft,
 } from './useInstanceAiHandoff';
 
 export interface AgentPreviewHandoffParams {
@@ -15,7 +16,7 @@ export interface AgentPreviewHandoffParams {
 	agentIcon?: string;
 	sessionTitle?: string;
 	executionId?: string;
-	initialDraft?: string;
+	initialDraft?: PendingComposerDraft;
 }
 
 export function useInstanceAiAgentPreviewHandoff() {
@@ -23,6 +24,7 @@ export function useInstanceAiAgentPreviewHandoff() {
 	const canSendPreviewToInstanceAi = useInstanceAiAvailable();
 	const { openAgentArtifactThread } = useInstanceAiHandoff();
 
+	/** Resolves true when the assistant thread actually opened. */
 	async function sendPreviewSessionToInstanceAi({
 		projectId,
 		agentId,
@@ -32,8 +34,8 @@ export function useInstanceAiAgentPreviewHandoff() {
 		sessionTitle,
 		executionId,
 		initialDraft,
-	}: AgentPreviewHandoffParams): Promise<void> {
-		if (!canSendPreviewToInstanceAi.value || !projectId || !agentId || !threadId) return;
+	}: AgentPreviewHandoffParams): Promise<boolean> {
+		if (!canSendPreviewToInstanceAi.value || !projectId || !agentId || !threadId) return false;
 
 		const context = buildInstanceAiAgentPreviewHandoffContext({
 			agentId,
@@ -60,13 +62,14 @@ export function useInstanceAiAgentPreviewHandoff() {
 				...(initialDraft ? { initialDraft } : {}),
 			},
 		);
-		if (!opened) return;
+		if (!opened) return false;
 
 		telemetry.track(TELEMETRY_EVENT.AGENTS.INSTANCE_AI_OPENED_FROM_AGENT_PREVIEW, {
 			agent_id: agentId,
 			preview_thread_id: threadId,
 			...(executionId ? { preview_execution_id: executionId } : {}),
 		});
+		return true;
 	}
 
 	return { canSendPreviewToInstanceAi, sendPreviewSessionToInstanceAi };

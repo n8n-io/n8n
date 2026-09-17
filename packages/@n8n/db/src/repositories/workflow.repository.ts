@@ -25,6 +25,7 @@ import {
 	WorkflowEntity,
 	WorkflowTagMapping,
 	WorkflowDependency,
+	WORKFLOW_DEPENDENCY_INDEX_VERSION,
 	User,
 } from '../entities';
 import { SharedWorkflow } from '../entities/shared-workflow';
@@ -153,6 +154,36 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 				active: Boolean(Number(row.active)),
 			})),
 		};
+	}
+
+	/**
+	 * Whether each of the given workflows is readable over MCP. An id absent from the map names a
+	 * workflow that no longer exists, which a caller must tell apart from one that is merely
+	 * withheld: a deleted workflow cannot be withheld from anything.
+	 *
+	 * Archived counts as not readable, matching every other MCP read — `validateMcpWorkflow` and
+	 * the execution search both refuse an archived workflow before they look at the setting.
+	 *
+	 * Reads the rows and tests in memory rather than filtering in SQL, because the caller needs the
+	 * withheld ids too, not only the visible ones.
+	 */
+	async findMcpAvailabilityByIds(workflowIds: string[]): Promise<Map<string, boolean>> {
+		if (workflowIds.length === 0) return new Map();
+
+		const availability = new Map<string, boolean>();
+
+		for (const chunk of chunkIds(workflowIds)) {
+			const rows = await this.find({
+				where: { id: In(chunk) },
+				select: ['id', 'settings', 'isArchived'],
+			});
+
+			for (const row of rows) {
+				availability.set(row.id, row.settings?.availableInMCP === true && !row.isArchived);
+			}
+		}
+
+		return availability;
 	}
 
 	async get(
@@ -1797,8 +1828,9 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 	}
 
 	/**
-	 * Find workflows that need draft indexing - either unindexed (no draft entries in workflow_dependency)
-	 * or outdated (versionCounter > workflowVersionId in workflow_dependency for drafts).
+	 * Find workflows that need draft indexing - unindexed (no draft entries in workflow_dependency),
+	 * outdated (versionCounter > workflowVersionId in workflow_dependency for drafts), or indexed
+	 * by an older indexer version (indexVersionId < WORKFLOW_DEPENDENCY_INDEX_VERSION).
 	 *
 	 * NOTE: we use a simple batch limit instead of proper pagination because we use this
 	 * method to retrieve workflows and then index them immediately - so they won't be returned
@@ -1809,6 +1841,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		const qb = this.createQueryBuilder('workflow');
 		const workflowIdAlias = 'workflowId';
 		const maxVersionIdAlias = 'maxVersionId';
+		const minIndexVersionAlias = 'minIndexVersion';
 		const depAlias = 'dep';
 
 		// Only select columns needed for indexing to avoid loading large unused
@@ -1826,6 +1859,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 					subQuery
 						.select('wd.workflowId', workflowIdAlias)
 						.addSelect('MAX(wd.workflowVersionId)', maxVersionIdAlias)
+						.addSelect('MIN(wd.indexVersionId)', minIndexVersionAlias)
 						.from(WorkflowDependency, 'wd')
 						// Only consider draft dependencies (publishedVersionId IS NULL)
 						.where('wd.publishedVersionId IS NULL')
@@ -1839,9 +1873,12 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		// Include workflows that are either:
 		// 1. Unindexed (no draft dependency entries exist)
 		// 2. Outdated (workflow version is newer than indexed version)
-		qb.where(`${qb.escape(depAlias)}.${qb.escape(workflowIdAlias)} IS NULL`).orWhere(
-			`workflow.versionCounter > ${qb.escape(depAlias)}.${qb.escape(maxVersionIdAlias)}`,
-		);
+		// 3. Indexed by an older indexer version
+		qb.where(`${qb.escape(depAlias)}.${qb.escape(workflowIdAlias)} IS NULL`)
+			.orWhere(`workflow.versionCounter > ${qb.escape(depAlias)}.${qb.escape(maxVersionIdAlias)}`)
+			.orWhere(`${qb.escape(depAlias)}.${qb.escape(minIndexVersionAlias)} < :indexVersion`, {
+				indexVersion: WORKFLOW_DEPENDENCY_INDEX_VERSION,
+			});
 		if (batchSize) {
 			qb.limit(batchSize);
 		}
@@ -1853,7 +1890,8 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 	 * Find active workflows that need published version indexing.
 	 * These are workflows where:
 	 * - activeVersionId IS NOT NULL (workflow is active/published)
-	 * - No dependency rows exist with matching publishedVersionId = activeVersionId
+	 * - No dependency rows exist with matching publishedVersionId = activeVersionId,
+	 *   or the matching rows were written by an older indexer version
 	 *
 	 * This includes the activeVersion relation for efficiency.
 	 */
@@ -1863,6 +1901,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		const qb = this.createQueryBuilder('workflow');
 		const depAlias = 'dep';
 		const publishedVersionIdAlias = 'publishedVersionId';
+		const minIndexVersionAlias = 'minIndexVersion';
 
 		// Only select columns needed for indexing to avoid loading large unused
 		// JSON columns (connections, staticData, pinData) that can cause OOM.
@@ -1876,6 +1915,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 				return subQuery
 					.select('wd.workflowId', 'workflowId')
 					.addSelect('wd.publishedVersionId', publishedVersionIdAlias)
+					.addSelect('MIN(wd.indexVersionId)', minIndexVersionAlias)
 					.from(WorkflowDependency, 'wd')
 					.where('wd.publishedVersionId IS NOT NULL')
 					.groupBy('wd.workflowId')
@@ -1885,9 +1925,11 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			`workflow.id = ${qb.escape(depAlias)}.${qb.escape('workflowId')} AND workflow.activeVersionId = ${qb.escape(depAlias)}.${qb.escape(publishedVersionIdAlias)}`,
 		);
 
-		// Only include active workflows with no matching published version dependency
+		// Only include active workflows whose published version dependency is
+		// missing or was written by an older indexer version
 		qb.where('workflow.activeVersionId IS NOT NULL').andWhere(
-			`${qb.escape(depAlias)}.${qb.escape(publishedVersionIdAlias)} IS NULL`,
+			`(${qb.escape(depAlias)}.${qb.escape(publishedVersionIdAlias)} IS NULL OR ${qb.escape(depAlias)}.${qb.escape(minIndexVersionAlias)} < :indexVersion)`,
+			{ indexVersion: WORKFLOW_DEPENDENCY_INDEX_VERSION },
 		);
 
 		// Include the published version's nodes for indexing (skip connections to save memory).

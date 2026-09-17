@@ -1,5 +1,5 @@
 import { Time } from '@n8n/constants';
-import { SystemTask, wholeSeconds } from '@n8n/decorators';
+import { SystemTask } from '@n8n/decorators';
 import type { SystemTaskEffects, SystemTaskSchedule } from '@n8n/decorators';
 
 import { InsightsCompactionService } from './insights-compaction.service';
@@ -15,9 +15,7 @@ export class InsightsCompactionTask implements SystemTask {
 
 	readonly schedule: SystemTaskSchedule = {
 		kind: 'interval',
-		intervalSeconds: wholeSeconds(
-			this.insightsConfig.compactionIntervalMinutes * Time.minutes.toSeconds,
-		),
+		intervalSeconds: this.insightsConfig.compactionIntervalMinutes * Time.minutes.toSeconds,
 	};
 
 	readonly effects: SystemTaskEffects = 'idempotent';

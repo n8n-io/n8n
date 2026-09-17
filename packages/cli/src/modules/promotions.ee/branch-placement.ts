@@ -2,11 +2,11 @@ import { entityFilePath } from '@/modules/n8n-packages/io/manifest-entry';
 import type { ManifestEntry, PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
 
 /**
- * What the branch holds for placement and guards: projects, folders, and
- * workflows. Import derives requirements from workflow files, so this state
- * does not list credentials or variables.
+ * Where each project, folder and workflow lives on the branch, read from the
+ * entity files on disk (not manifest.json).
+ * Credentials and variables are excluded: they are derived from workflow files on import.
  */
-export type BranchState = Pick<PackageManifest, 'projects' | 'folders' | 'workflows'>;
+export type BranchLayout = Pick<PackageManifest, 'projects' | 'folders' | 'workflows'>;
 
 /** Entry kinds whose target is a directory that holds other entries. */
 const CONTAINER_KINDS = ['projects', 'folders'] as const;
@@ -39,7 +39,7 @@ export const isUnder = (target: string, prefix: string) => target.startsWith(`${
  * directory, because renaming it would move every unselected workflow inside.
  * Paths under it are pinned back, so a selection lands next to its siblings.
  */
-export function containerPlacement(existing: BranchState, staging: PackageManifest): Placement {
+export function containerPlacement(existing: BranchLayout, staging: PackageManifest): Placement {
 	const pins: Pin[] = [];
 	const keptFiles = new Set<string>();
 
@@ -72,7 +72,7 @@ export function pinPath(target: string, pins: readonly Pin[]): string {
  * removes them. Selective cleanup is deferred.
  */
 export function staleWorkflowTargets(
-	existing: BranchState,
+	existing: BranchLayout,
 	staging: PackageManifest,
 	deletedWorkflowIds: Set<string>,
 ): string[] {

@@ -1,5 +1,5 @@
 import { LICENSE_FEATURES } from '@n8n/constants';
-import { ControllerRegistryMetadata, ModuleMetadata } from '@n8n/decorators';
+import { ControllerRegistryMetadata, ModuleMetadata, PolicyCheckMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
 // Importing the module runs the @BackendModule decorator, registering its metadata.
@@ -18,7 +18,9 @@ describe('TypeAvailabilityPoliciesModule', () => {
 		expect(entry?.licenseFlag).toBe(LICENSE_FEATURES.NODE_TYPE_POLICIES);
 	});
 
-	it('registers the instance and project controllers on init', async () => {
+	// The available-types controller injects the node registry, whose import chain takes
+	// several seconds to transform — more than the default per-test timeout.
+	it('registers the instance, project and available-types controllers on init', async () => {
 		const module = new TypeAvailabilityPoliciesModule();
 
 		await module.init();
@@ -29,6 +31,7 @@ describe('TypeAvailabilityPoliciesModule', () => {
 		const { TypeAvailabilityPolicyProjectController } = await import(
 			'../type-availability-policy-project.controller.js'
 		);
+		const { AvailableTypesController } = await import('../available-types.controller.js');
 		const registry = Container.get(ControllerRegistryMetadata);
 
 		expect(
@@ -37,7 +40,28 @@ describe('TypeAvailabilityPoliciesModule', () => {
 		expect(
 			registry.getControllerMetadata(TypeAvailabilityPolicyProjectController as never).routes.size,
 		).toBeGreaterThan(0);
-	});
+		expect(
+			registry.getControllerMetadata(AvailableTypesController as never).routes.size,
+		).toBeGreaterThan(0);
+	}, 30_000);
+
+	// Registration is what makes the check run at all: the decision service reads the registry
+	// per decision, so a missing import here is silent enforcement loss.
+	//
+	// Asserted by class name, because importing the check to compare identities would run
+	// `@PolicyCheck()` here and register it, and reading `id` off an instance would construct
+	// its repositories. Either one would make this pass with `init()` no longer importing it.
+	it('registers the node type policy check on init', async () => {
+		const module = new TypeAvailabilityPoliciesModule();
+
+		await module.init();
+
+		const registered = Container.get(PolicyCheckMetadata)
+			.getClasses()
+			.map((checkClass) => checkClass.name);
+
+		expect(registered).toContain('NodeTypePolicyCheck');
+	}, 30_000);
 
 	it('exposes its entities so the datasource picks them up', async () => {
 		const module = new TypeAvailabilityPoliciesModule();

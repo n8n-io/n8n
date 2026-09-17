@@ -3,6 +3,7 @@ import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import type { IWorkflowBase, JsonValue } from 'n8n-workflow';
 
+import { EventMessageGeneric } from '@/eventbus/event-message-classes/event-message-generic';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { EventService } from '@/events/event.service';
 import type { RelayEventMap, UserLike } from '@/events/maps/relay.event-map';
@@ -187,6 +188,8 @@ export class LogStreamingEventRelay extends EventRelay {
 			'mcp-oauth-completed': (event) => this.mcpOauthCompleted(event),
 			'mcp-tool-called': (event) => this.mcpToolCalled(event),
 			'mcp-access-updated': (event) => this.mcpAccessUpdated(event),
+			'instance-report-delivered': () => this.instanceReportDelivered(),
+			'instance-report-failed': () => this.instanceReportFailed(),
 		});
 	}
 
@@ -220,6 +223,16 @@ export class LogStreamingEventRelay extends EventRelay {
 			eventName: 'n8n.audit.n8n-package.export.failed',
 			payload: { ...user, operation: 'export', ...rest },
 		});
+	}
+
+	private instanceReportDelivered() {
+		void this.eventBus.send(
+			new EventMessageGeneric({ eventName: 'n8n.instanceReporting.success' }),
+		);
+	}
+
+	private instanceReportFailed() {
+		void this.eventBus.send(new EventMessageGeneric({ eventName: 'n8n.instanceReporting.failed' }));
 	}
 
 	@Redactable()

@@ -62,6 +62,7 @@ import {
 	type AgentSnapshotArtifact,
 	type AgentSnapshotReason,
 } from '../../tracing/agent-snapshot-event';
+import { modelIdTraceMetadata } from '../../tracing/langsmith-tracing';
 import type {
 	BuilderTurnStream,
 	InstanceAiBuilderDelegate,
@@ -69,6 +70,12 @@ import type {
 	OrchestrationContext,
 	SessionWorkflowRef,
 } from '../../types';
+import {
+	consumeUserDecisions,
+	formatParentHandoffEnvelope,
+	hydrateUserDecisions,
+	listUserDecisions,
+} from './parent-handoff-state';
 import { ORCHESTRATION_TOOL_IDS } from '../tool-ids';
 
 const BUILDER_SUB_AGENT_ROLE = 'agent-builder';
@@ -118,9 +125,19 @@ function formatWorkflowContextEnvelope(workflowContext: SessionWorkflowRef[]): s
 	].join('\n');
 }
 
-function buildOutboundMessage(message: string, workflowContext?: SessionWorkflowRef[]): string {
-	if (!workflowContext || workflowContext.length === 0) return message;
-	return `${message}\n\n${formatWorkflowContextEnvelope(workflowContext)}`;
+function buildOutboundMessage(
+	message: string,
+	workflowContext: SessionWorkflowRef[] | undefined,
+	context: OrchestrationContext,
+): string {
+	const parts = [message];
+	if (workflowContext && workflowContext.length > 0) {
+		parts.push(formatWorkflowContextEnvelope(workflowContext));
+	}
+	const handoff = formatParentHandoffEnvelope(context);
+	if (handoff) parts.push(handoff);
+
+	return parts.length === 1 ? message : parts.join('\n\n');
 }
 
 async function collectRequiredArtifacts(
@@ -140,7 +157,11 @@ function builderSessionFor(context: OrchestrationContext, agentId: string) {
 		agentRole: BUILDER_SUB_AGENT_ROLE,
 		functionId: 'instance-ai.subagent.agent-builder',
 		executionMode: 'foreground',
-		metadata: { agent_id: builderAgentIdFor(agentId), target_agent_id: agentId },
+		metadata: {
+			agent_id: builderAgentIdFor(agentId),
+			target_agent_id: agentId,
+			...modelIdTraceMetadata(context.modelId),
+		},
 	});
 	return {
 		threadId: `${instanceAiBuilderThreadPrefix(context.threadId)}${agentId}`,
@@ -852,7 +873,7 @@ async function resolveTargetForCall(
 				...(input.name ? { name: input.name } : {}),
 			};
 			// Same agent as the active binding — no re-persist needed.
-			if (boundTarget && boundTarget.agentId === target.agentId) {
+			if (boundTarget?.agentId === target.agentId) {
 				return {
 					ok: true,
 					target: { ...boundTarget, ...target },
@@ -889,7 +910,7 @@ async function resolveTargetForCall(
 		}
 
 		if (input.agentId) {
-			if (boundTarget && input.agentId === boundTarget.agentId) {
+			if (input.agentId === boundTarget?.agentId) {
 				return {
 					ok: true,
 					target: { ...boundTarget, ref: key, ...(input.name ? { name: input.name } : {}) },
@@ -984,7 +1005,7 @@ async function resolveTargetForCall(
 	// No addressing key (`name` always produces one) — agentId alone adopts,
 	// otherwise continue the bound target.
 	if (input.agentId) {
-		if (boundTarget && input.agentId === boundTarget.agentId) {
+		if (input.agentId === boundTarget?.agentId) {
 			return { ok: true, target: boundTarget, bindAfterTurn: false, mode: 'edit' };
 		}
 		if (!domainContext.projectId) {
@@ -1075,7 +1096,11 @@ export function createBuildAgentTool(context: OrchestrationContext) {
 			const bindAfterTurn = resolution.bindAfterTurn;
 
 			const session = builderSessionFor(context, boundTarget.agentId);
-			const outboundMessage = buildOutboundMessage(input.message, input.workflowContext);
+			await hydrateUserDecisions(domainContext);
+			const handedOffDecisions = listUserDecisions(domainContext).map((decision) => ({
+				...decision,
+			}));
+			const outboundMessage = buildOutboundMessage(input.message, input.workflowContext, context);
 			const builderAgentId = builderAgentIdFor(boundTarget.agentId);
 
 			publishAgentSpawned(context, builderAgentId, boundTarget);
@@ -1098,7 +1123,7 @@ export function createBuildAgentTool(context: OrchestrationContext) {
 				throw error;
 			}
 
-			return await runBuilderConsumeLoop({
+			const output = await runBuilderConsumeLoop({
 				context,
 				delegate,
 				ctx,
@@ -1116,6 +1141,8 @@ export function createBuildAgentTool(context: OrchestrationContext) {
 						}
 					: undefined,
 			});
+			if (output?.ok) await consumeUserDecisions(domainContext, handedOffDecisions);
+			return output;
 		})
 		.build();
 }

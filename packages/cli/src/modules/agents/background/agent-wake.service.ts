@@ -14,6 +14,7 @@ import {
 	type ExecuteForWakeConfig,
 } from '../agent-execution-orchestrator.service';
 import { hashAgentSandboxPrincipal, isAgentSandboxPrincipalHash } from '../agent-sandbox-principal';
+import { AgentBackgroundJobService } from './agent-background-job.service';
 import {
 	AGENT_BACKGROUND_UPDATES_CLOSE_TAG,
 	AGENT_BACKGROUND_UPDATES_OPEN_TAG,
@@ -61,6 +62,7 @@ export class AgentWakeService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly agentsConfig: AgentsConfig,
 		private readonly logger: Logger,
+		private readonly backgroundJobService: AgentBackgroundJobService,
 	) {
 		this.logger = this.logger.scoped('agents');
 	}
@@ -120,7 +122,7 @@ export class AgentWakeService {
 				return `${JSON.stringify(title)} (${job.status})`;
 			})
 			.join(', ');
-		return `${AGENT_BACKGROUND_UPDATES_OPEN_TAG}${jobs.length} background job(s) settled: ${summaries}. Call check_background_jobs before you finish this turn.${AGENT_BACKGROUND_UPDATES_CLOSE_TAG}`;
+		return `${AGENT_BACKGROUND_UPDATES_OPEN_TAG}${jobs.length} background job(s) settled: ${summaries}. Call check_background_jobs once before you finish this turn, only if you have not already checked in this turn. Collect all relevant jobs in that call.${AGENT_BACKGROUND_UPDATES_CLOSE_TAG}`;
 	}
 
 	private scheduleLocal(threadId: string): void {
@@ -205,6 +207,11 @@ export class AgentWakeService {
 					agentId: agent.id,
 					projectId: agent.projectId,
 					message: formatWakeMessage(jobs),
+					backgroundJobSignal: {
+						tasks: jobs.flatMap(({ id, title, kind, status }) =>
+							status === 'running' ? [] : [{ id, title, kind, status }],
+						),
+					},
 					memory: { threadId, resourceId: first.parentResourceId },
 					identity,
 					abortSignal: signal,
@@ -214,13 +221,14 @@ export class AgentWakeService {
 			}
 
 			if (signal.aborted) return;
-			await this.jobRepository.markMailConsumed(
+			await this.backgroundJobService.markMailConsumed(
 				threadId,
 				jobs.map((job) => job.id),
 			);
 			this.failures.delete(threadId);
 
-			if (jobs.length < pending.length) this.scheduleLocal(threadId);
+			// Check for results that arrived during this reply; an empty queue stops further checks.
+			this.scheduleLocal(threadId);
 		} catch {
 			if (signal.aborted) return;
 			// Keep provider and tool error details in the execution record.

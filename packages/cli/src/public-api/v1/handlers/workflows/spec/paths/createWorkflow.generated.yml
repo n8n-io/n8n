@@ -895,16 +895,21 @@ responses:
                     properties:
                       id:
                         type: string
+                        readOnly: true
+                        example: VmwOO9HeTEj20kxM
                       name:
                         type: string
+                        example: Marketing
                       type:
                         type: string
                         enum:
                           - personal
                           - team
+                        readOnly: true
+                        example: team
                       icon:
                         type: object
-                        nullable: true
+                        description: Icon of the project, or null when the project has none
                         properties:
                           type:
                             type: string
@@ -913,12 +918,16 @@ responses:
                               - icon
                           value:
                             type: string
+                          color:
+                            type: string
                         required:
                           - type
                           - value
+                        nullable: true
                       description:
                         type: string
                         nullable: true
+                        example: Workflows the marketing team owns.
                       customTelemetryTags:
                         type: array
                         items:
@@ -934,12 +943,15 @@ responses:
                       creatorId:
                         type: string
                         nullable: true
+                        example: f9a2cbb8-0b1e-4b64-9c1c-0d5f5f1f2a3b
                       createdAt:
                         type: string
                         format: date-time
+                        readOnly: true
                       updatedAt:
                         type: string
                         format: date-time
+                        readOnly: true
                     required:
                       - id
                       - name

@@ -63,6 +63,7 @@ import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-v
 import { EventService } from '@/events/event.service';
 import { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
+import { toPublicProject } from '@/public-api/v1/shared/project.mapper';
 import {
 	decodeCursor,
 	encodeNextCursor,
@@ -126,17 +127,7 @@ function toPublicSharedWorkflow(sharedWorkflow: SharedWorkflow) {
 		role: sharedWorkflow.role,
 		workflowId: sharedWorkflow.workflowId,
 		projectId: sharedWorkflow.projectId,
-		project: {
-			id: sharedWorkflow.project.id,
-			name: sharedWorkflow.project.name,
-			type: sharedWorkflow.project.type,
-			icon: sharedWorkflow.project.icon,
-			description: sharedWorkflow.project.description,
-			customTelemetryTags: sharedWorkflow.project.customTelemetryTags,
-			creatorId: sharedWorkflow.project.creatorId,
-			createdAt: sharedWorkflow.project.createdAt.toISOString(),
-			updatedAt: sharedWorkflow.project.updatedAt.toISOString(),
-		},
+		project: toPublicProject(sharedWorkflow.project),
 		createdAt: sharedWorkflow.createdAt.toISOString(),
 		updatedAt: sharedWorkflow.updatedAt.toISOString(),
 	};
@@ -748,7 +739,7 @@ export class WorkflowsPublicController {
 		}
 	}
 
-	@Get('/:workflowId/versions/:versionId')
+	@Get('/:workflowId/versions/:workflowVersionId')
 	@ApiKeyScope('workflow:read')
 	@ProjectScope('workflow:read')
 	@ApiSummary('Retrieve a workflow version')
@@ -760,13 +751,18 @@ export class WorkflowsPublicController {
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('workflowId', workflowIdParamSchema) workflowId: string,
-		@Param('versionId', workflowVersionIdParamSchema) versionId: string,
+		@Param('workflowVersionId', workflowVersionIdParamSchema) workflowVersionId: string,
 	): Promise<WorkflowVersionPublicDto> {
 		let version: WorkflowHistory;
 		try {
-			version = await this.workflowHistoryService.getVersion(req.user, workflowId, versionId, {
-				includePublishHistory: false,
-			});
+			version = await this.workflowHistoryService.getVersion(
+				req.user,
+				workflowId,
+				workflowVersionId,
+				{
+					includePublishHistory: false,
+				},
+			);
 		} catch (error) {
 			if (error instanceof SharedWorkflowNotFoundError) {
 				throw new NotFoundError('Workflow not found');

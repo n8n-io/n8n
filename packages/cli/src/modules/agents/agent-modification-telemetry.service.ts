@@ -1,4 +1,4 @@
-import type { AgentIntegrationConfig, AgentJsonConfig } from '@n8n/api-types';
+import type { AgentActor, AgentIntegrationConfig, AgentJsonConfig } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
@@ -16,13 +16,14 @@ import {
 
 export { isUnconfiguredAgent };
 
-/** Which surface acted: selects the per-surface event on every agent lifecycle emit. */
-export type AgentActor = 'user' | 'builder' | 'mcp';
+export type { AgentActor } from '@n8n/api-types';
 
 /** Context passed to canonical mutating sidecar services. */
 export type AgentMutationTelemetryContext = {
 	user: User;
 	modifiedBy: AgentActor;
+	/** Push connection of the tab that made the change; excluded from the `agentUpdated` broadcast. */
+	pushRef?: string;
 };
 
 export type AgentConfigPart =

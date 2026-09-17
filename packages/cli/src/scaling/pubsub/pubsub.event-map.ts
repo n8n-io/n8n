@@ -46,11 +46,13 @@ export type PubSubCommandMap = {
 	'community-package-install': {
 		packageName: string;
 		packageVersion: string;
+		checksum?: string;
 	};
 
 	'community-package-update': {
 		packageName: string;
 		packageVersion: string;
+		checksum?: string;
 	};
 
 	'community-package-uninstall': {
@@ -128,6 +130,17 @@ export type PubSubCommandMap = {
 	'relay-agent-execution-update': {
 		data: PushPayload<'agentExecutionUpdated'>;
 		userIds: string[];
+	};
+
+	'relay-agent-background-tasks-update': {
+		data: PushPayload<'agentBackgroundTasksUpdated'>;
+		userIds: string[];
+	};
+
+	'relay-agent-update': {
+		data: PushPayload<'agentUpdated'>;
+		userIds: string[];
+		excludePushRef?: string;
 	};
 
 	/** Ask mains to wake the agent run a finished sub-execution was parked on. */
@@ -211,6 +224,7 @@ export type PubSubCommandMap = {
 	 */
 	'relay-instance-ai-task-control': {
 		threadId: string;
+		userId?: string;
 		taskId?: string;
 		action: 'correct' | 'cancel-task' | 'cancel-thread' | 'clear-thread';
 		correction?: string;

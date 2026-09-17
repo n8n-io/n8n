@@ -35,11 +35,7 @@ import {
 	resolveIntegrationActionDefinitions,
 	resolveIntegrationContextQueryDefinitions,
 } from '../integration-tool-definitions';
-import {
-	DiscordGateway,
-	type DiscordConnection,
-	type DiscordGatewayAdapter,
-} from './discord-gateway';
+import { DiscordGateway, type DiscordConnection } from './discord-gateway';
 import {
 	executeDiscordContextQuery,
 	fetchDiscordApplicationMetadata,
@@ -244,7 +240,7 @@ export class DiscordIntegration extends AgentChatIntegration {
 		});
 
 		this.pendingConnections.set(this.sessionKey(ctx), {
-			adapter: adapter as unknown as DiscordGatewayAdapter,
+			adapter,
 			botToken,
 		});
 

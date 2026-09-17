@@ -46,7 +46,7 @@ export class ScenarioRunner {
 		console.log('Running scenario:', scenarioRunName);
 
 		console.log('Loading and importing data');
-		const testData = await this.dataLoader.loadDataForScenario(scenario);
+		const testData = this.dataLoader.loadDataForScenario(scenario);
 		const { dataTableId } = await testDataImporter.importTestScenarioData(testData);
 
 		// Wait for 1s before executing the scenario to ensure that the workflows are activated.

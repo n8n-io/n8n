@@ -13,12 +13,45 @@ union when the host has not wired them. Some tools instead keep an unavailable
 action or fallback tool surface and return an error or empty result. Tool ids
 live in `src/tools/tool-ids.ts`.
 
+### Approval copy
+
+An approval card has a title and a description. The title names the asset without
+its ID, for example `Assistant wants to edit CRM Lead enrichment`. The text below
+it is a plain-language description of the change. Tools send the asset name as
+`resourceName` on the suspend payload and structured `approvalDetails`. The
+frontend builds the title from `resourceName` and the
+`instanceAi.tools.{tool}.{action}.imperativeWithResource` i18n key.
+It renders the details with `instanceAi.approval.*` keys in the current UI locale.
+This includes row and column previews, filters, workflow actions, and publish
+verification notices. Counts use locale plural rules. Names and data values stay
+unchanged. Add locale translations for these keys; missing translations fall back
+to English. The backend retains `message` for older clients and saved approvals
+that have no structured details.
+
+`build-workflow`, `workflows(action="publish")`,
+and `executions(action="run")` accept `approvalSummary`. The agent supplies one
+line in the user’s language that describes the concrete change or effect of the
+call, for example `Add a Slack notification after the payment check`. Live execution summaries
+describe the external actions that the workflow will perform. The field is
+optional so older saved tool calls can still resume. Calls without the field
+show a generic description such as `Save the changes to this workflow`.
+
+Data-table approvals build the description from the tool input: columns, row
+counts, and filter conditions. Insert previews show up to three rows, five columns
+per row, and 100 characters per JSON-formatted value, including quotes. The card states how many rows or columns
+the preview omits. Pass `dataTableName` and `currentColumnName` when known
+so the card shows names instead of IDs. No tool looks up names only for the
+card. These messages do not change approval permissions or group separate tool
+calls. Bare `like` and `ilike` values use contains matching: the data-table
+service adds `%` before and after a value when it has no `%`. Values with `%`
+keep their explicit pattern. `like` matches case; `ilike` ignores case.
+
 | Tool | Actions |
 |------|---------|
 | `workflows` | 12 |
 | `data-tables` | 11 |
 | `workspace` | 8 |
-| `executions` | 7 |
+| `executions` | 8 |
 | `credentials` | 6 |
 | `nodes` | 6 |
 | `mcp-servers` | 4 |
@@ -192,16 +225,45 @@ waiting-with-output-as-success fallback.
 | Trigger | Pass | Adapter emits on `$json` |
 |---|---|---|
 | Form Trigger | flat field map, e.g. `{name: "Alice", email: "a@b.c"}` | `{ submittedAt, formMode: "instanceAi", name, email, ... }` — matches production. Do NOT wrap in `formFields`. |
-| Webhook | body payload, e.g. `{event: "signup", userId: "..."}` | `{ headers, query, body: { event, userId, ... } }` |
+| Webhook | body payload, e.g. `{event: "signup", userId: "..."}`, **or** the request envelope `{ body: {...}, query: {...}, headers: {...}, params: {...} }` when any expression reads `$json.query.*`, `$json.headers.*` or `$json.params.*` | flat payload → `{ headers: {}, query: {}, params: {}, body: { event, userId, ... } }`; envelope → passed through as-is |
 | Chat Trigger | `{chatInput: "..."}` | `{ sessionId, action, chatInput }` |
 | Schedule | omit | synthetic timestamp fields |
 
+For reusable workflows with multiple enabled triggers, pass `triggerNodeName`
+and run verification once for each trigger. Successful runs accumulate node
+coverage per trigger. Each retry reserves an attempt and clears that trigger's
+old pass before execution. A successful result restores the combined coverage.
+If either write fails, the tool reports an error. The attempt limit still applies.
+
+The returned and saved `claim` use the same cumulative evidence. Pending triggers
+and nodes without real coverage prevent a `verified` claim. Publishing during a
+retry requires explicit acknowledgement through `acknowledgeUnverified: true`.
+
 **Writes on success/failure**: the tool persists a structured `verification`
-record (`{ attempted, success, executionId, status, evidence, verifiedAt }`) onto
+record (`{ attempted, success, executionId, status, claim, evidence, verifiedAt }`) onto
 the build outcome so workflow-verification follow-ups and exceptional checkpoint
 turns can reuse it without re-running verify.
 
-**Returns**: `{ executionId?, success, status?, data?, error? }`
+**Returns**: `{ executionId?, success, status?, data?, error?, simulationNote?, resolvedParameterWarnings?, skippedParameterChecks?, skippedParameterCheckCount? }`
+
+**Simulated-node parameter check**: a simulated node's preview is fixture data, so
+an expression that resolved to empty leaves no trace in the run. After the run the
+tool replays parameter resolution (`getResolvedNodeParameters`) for every reached
+simulated node and returns `resolvedParameterWarnings`, one entry per parameter
+that resolved to `null`/`undefined`/`""` or threw (`{ nodeName, executionId, path, raw, issue:
+'empty' | 'failed', detail? }`), with a summary appended to `simulationNote`.
+For scripted gates, it checks each node against every pass that reached it.
+Each warning identifies the execution used for that check.
+Expressions that need live-only context (`$secrets`, `$response`, …) are excluded.
+The check is advisory and does not change execution success. Suppressed parameter
+values, replay failures, and missing executions produce `skippedParameterChecks`
+entries (`{ nodeName, executionId?, reason }`) and a note in `simulationNote`.
+The list contains at most 20 entries across all passes. `skippedParameterCheckCount`
+reports the total. When entries are omitted, the note states how many are shown.
+Omitted checks also leave dynamic fields unverified.
+The reasons are `parameter-values-disabled`, `replay-failed`, and
+`execution-unavailable`. Skipped checks expose no parameter values or replay
+error details. Their dynamic fields remain unverified.
 
 ### `report-verification-verdict` *(conditional)*
 
@@ -414,6 +476,17 @@ This observation reads saved bindings and checks required values and placeholder
 It does not test credentials or fetch provider resource lists. It does not produce
 fresh connection-test warnings. Live checks remain part of setup and verification.
 
+When setup items settle between turns, none remain open, and there are no
+validation warnings, the agent verifies the current configuration on the next
+user turn. Setup changes do not start an agent run by themselves.
+The panel's Execute action sends a normal chat message with
+`context: { source: 'setup-panel-execute', workflowId }`. With the flag on,
+the host adds a private `workflow-test-request` block that identifies the target.
+If required setup remains open, the agent reports those items and ends the turn
+without a run. Otherwise, it runs the saved workflow through `executions(action="run")`, inspects
+the output, and reports the test result in chat. Execution approval policy still
+applies. The new panel does not use the wizard's trigger-test resume loop.
+
 ### `workflows(action="publish")`
 
 Publish a workflow version to production. Makes it active — it will run on triggers.
@@ -486,7 +559,7 @@ Update a version's name or description.
 
 ---
 
-## `executions` (7 actions)
+## `executions` (8 actions)
 
 ### `executions(action="list")`
 
@@ -517,9 +590,71 @@ Default timeout: 5 minutes; max: 10 minutes. On timeout, execution is cancelled.
 **Type-aware pin data**: Constructs proper pin data per trigger type:
 - **Chat trigger**: `{ chatInput, sessionId, action }`
 - **Form trigger**: `{ submittedAt, formMode: 'instanceAi', ...inputData }`
-- **Webhook trigger**: `{ headers: {}, query: {}, body: inputData }`
+- **Webhook trigger**: flat `inputData` → `{ headers: {}, query: {}, params: {}, body: inputData }`; an envelope whose keys are only `body`/`query`/`headers`/`params` is passed through, so query- and header-driven expressions can be exercised
 - **Schedule trigger**: current datetime information
 - **Unknown trigger**: `{ json: inputData }` (generic fallback)
+
+### `executions(action="run-step")`
+
+Run ONE node of a saved workflow and return its real output — the canvas
+"Execute step". The node runs inside the real workflow, so expressions that
+reference other nodes resolve, sub-nodes (model, memory, tools) come along, and
+the run lands in the workflow's execution history. The execution is always
+manual: `WorkflowRunner.resolvePinData` returns pin data only for manual and
+evaluation mode, so any other mode would drop the workflow's pins.
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `workflowId` | string | yes | — | Workflow that owns the node |
+| `nodeName` | string | yes | — | Node to run |
+| `reuseExecutionId` | string | no | — | Replay this past execution's data for the nodes above the target |
+| `mockInput` | object[] | no | — | Items to feed the target, skipping every node above it |
+| `versionId` | string | no | current draft | Run a past version's graph |
+| `timeout` | number | no | 300000 | Max wait time in ms (max 600000) |
+
+**Returns**: `{ executionId, status, nodeName, inputMode, mockedNodeNames, replayedNodeNames?, reusedFromExecutionId?, executedNodeNames?, data?, error?, ... }`
+
+**Input modes**, in descending order of what the result proves:
+
+| `inputMode` | Set by | What it proves |
+|-------------|--------|----------------|
+| `reused-execution` | `reuseExecutionId` | The node ran on data the workflow really produced |
+| `chain` | neither option | The node ran on data its ancestors really produced in this run |
+| `mocked` | `mockInput` | Only that the node accepts *this* input — the upstream output is invented |
+
+`executedNodeNames` counts only what ran in *this* execution. Mocked and
+replayed nodes carry run data without having run, so they are excluded —
+otherwise a step run on a ten-node workflow would report ten nodes as executed
+when one was. `data` still shows their output, listed under
+`mockedNodeNames` and `replayedNodeNames`. `replayedNodeNames` names only
+what this run carried: a node of the reused execution that sits outside the
+trigger-to-target subgraph never enters the run and is not listed.
+
+`mocked` also invents a placeholder item for every node between the trigger
+and the target, because `findStartNodes` walks down from the trigger and stops
+at the first node with no run data. `mockedNodeNames` lists them. A
+placeholder on an upstream IF or Switch picks a branch that real data may pick
+differently, which is why a mocked step is never evidence that the workflow
+works.
+
+**Pin data**: the target's own pin, and any pin on a node whose output the
+mocked mode replaced, come off this run's copy — a pinned node never
+executes, so leaving them on would make the step replay stale output. The saved
+workflow keeps its pins. `workflowPinnedNodeNames` lists only the pins that fed
+the run.
+
+**Safety**: a step run is a real run, with the user's credentials against their
+systems. It suits reads and transforms. A node that writes
+(`create`/`update`/`delete`/`send`/`append`, non-GET HTTP Request) performs its
+effect again, so debug that from `debug` and `get-resolved-node-parameters`
+instead. `mockInput` does not change this: only the input is invented, the node
+still runs. See the `debugging-executions` skill.
+
+**Approval**: the same gate as `action="run"` — the admin `runWorkflow` policy,
+the pre-authorized workflow list, and session grants. The session grant is per
+node (`executions:run-step:<workflowId>:<nodeName>`), so a debug loop on one
+node stops prompting while the rest of the workflow still asks. A whole-workflow
+run grant covers a step of that workflow too.
 
 ### `executions(action="get")`
 
@@ -552,7 +687,11 @@ Get the output data of a specific node from an execution.
 | `startIndex` | number | no | First item index to return. Defaults to `0` |
 | `maxItems` | number | no | Maximum items to return. Defaults to `10`; maximum `50` |
 
-**Returns**: `{ nodeName, data?, error? }`
+**Returns**: `{ nodeName, outputs: [{ index, name?, totalItems, items }], totalItems, returned: { from, to } }`.
+One `outputs` entry per node output, in output order; a Filter reports `Kept` and
+`Discarded` separately. `name` follows the node's output pane labels, including
+renamed Switch outputs and `Success` / `Error` for nodes that route errors to an
+extra output. `totalItems` and `returned` count across all outputs.
 
 ### `executions(action="get-resolved-node-parameters")`
 

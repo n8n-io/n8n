@@ -8,7 +8,7 @@ pnpm --filter=n8n-playwright test:local <file-path>
 pnpm --filter=n8n-playwright test:local tests/e2e/credentials/crud.spec.ts
 
 # Run with container capabilities (requires pnpm build:docker first)
-pnpm --filter=n8n-playwright test:container:sqlite --grep @capability:email
+pnpm --filter=n8n-playwright test:container:sqlite tests/e2e/auth/password-reset.spec.ts
 
 # Lint and typecheck
 pnpm --filter=n8n-playwright lint
@@ -16,6 +16,21 @@ pnpm --filter=n8n-playwright typecheck
 ```
 
 Always trim output: `--reporter=list 2>&1 | tail -50`
+
+## Test Layout
+
+Product Playwright tests live under `tests/`. Keep product E2E specs under
+`tests/e2e/` and keep infrastructure, performance, evaluation, and related
+suites in their existing directories under `tests/`.
+
+Framework and harness tests live under `tests/framework/`. Use this directory
+for tests of fixtures, startup lifecycle, diagnostics, telemetry, and harness
+contracts. These tests are not product E2E specs and must not be placed under
+`tests/e2e/`.
+
+Framework unit tests use the package Vitest configuration. Browser-backed
+harness contract tests use `vitest.harness.config.ts` so they stay separate
+from browser-free unit tests.
 
 ## Test Maintenance (Janitor)
 

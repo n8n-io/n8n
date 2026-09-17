@@ -72,7 +72,7 @@ export class EventMessageAudit extends AbstractEventMessage {
 	deserialize(data: JsonObject): this {
 		if (isEventMessageOptionsWithType(data, this.__type)) {
 			this.setOptionsOrDefault(data);
-			if (data.payload) this.setPayload(data.payload as EventPayloadAudit);
+			if (data.payload) this.setPayload(data.payload);
 		}
 		return this;
 	}

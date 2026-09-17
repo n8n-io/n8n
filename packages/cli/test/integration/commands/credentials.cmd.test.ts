@@ -315,6 +315,57 @@ test('`import:credentials --userId ...` should fail if the credential exists alr
 	});
 });
 
+test('`import:credentials --userId ...` should succeed if the credential exists already and is owned by the same user', async () => {
+	const owner = await createOwner();
+	const ownerProject = await getPersonalProject(owner);
+
+	await command.run([
+		'--input=./test/integration/commands/import-credentials/credentials.json',
+		`--userId=${owner.id}`,
+	]);
+
+	const before = {
+		credentials: await getAllCredentials(),
+		sharings: await getAllSharedCredentials(),
+	};
+	expect(before).toMatchObject({
+		credentials: [expect.objectContaining({ id: '123', name: 'cred-aws-test' })],
+		sharings: [
+			expect.objectContaining({
+				credentialsId: '123',
+				projectId: ownerProject.id,
+				role: 'credential:owner',
+			}),
+		],
+	});
+
+	await command.run([
+		'--input=./test/integration/commands/import-credentials/credentials-updated.json',
+		`--userId=${owner.id}`,
+	]);
+
+	const after = {
+		credentials: await getAllCredentials(),
+		sharings: await getAllSharedCredentials(),
+	};
+
+	expect(after).toMatchObject({
+		credentials: [
+			expect.objectContaining({
+				id: '123',
+				name: 'cred-aws-prod',
+			}),
+		],
+		sharings: [
+			expect.objectContaining({
+				credentialsId: '123',
+				projectId: ownerProject.id,
+				role: 'credential:owner',
+			}),
+		],
+	});
+});
+
 test("only update credential, don't create or update owner if neither `--userId` nor `--projectId` is passed", async () => {
 	//
 	// ARRANGE
@@ -373,6 +424,51 @@ test("only update credential, don't create or update owner if neither `--userId`
 			expect.objectContaining({
 				credentialsId: '123',
 				projectId: memberProject.id,
+				role: 'credential:owner',
+			}),
+		],
+	});
+});
+
+test('`import:credentials --projectId ...` should succeed if the credential exists already and is owned by the same project', async () => {
+	const owner = await createOwner();
+	const ownerProject = await getPersonalProject(owner);
+
+	await command.run([
+		'--input=./test/integration/commands/import-credentials/credentials.json',
+		`--projectId=${ownerProject.id}`,
+	]);
+
+	const before = {
+		credentials: await getAllCredentials(),
+		sharings: await getAllSharedCredentials(),
+	};
+	expect(before).toMatchObject({
+		credentials: [expect.objectContaining({ id: '123', name: 'cred-aws-test' })],
+		sharings: [
+			expect.objectContaining({
+				credentialsId: '123',
+				projectId: ownerProject.id,
+				role: 'credential:owner',
+			}),
+		],
+	});
+
+	await command.run([
+		'--input=./test/integration/commands/import-credentials/credentials-updated.json',
+		`--projectId=${ownerProject.id}`,
+	]);
+
+	const after = {
+		credentials: await getAllCredentials(),
+		sharings: await getAllSharedCredentials(),
+	};
+	expect(after).toMatchObject({
+		credentials: [expect.objectContaining({ id: '123', name: 'cred-aws-prod' })],
+		sharings: [
+			expect.objectContaining({
+				credentialsId: '123',
+				projectId: ownerProject.id,
 				role: 'credential:owner',
 			}),
 		],

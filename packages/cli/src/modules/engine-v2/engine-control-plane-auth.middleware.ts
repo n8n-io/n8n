@@ -1,5 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
 import type { EngineConfig } from '@n8n/config';
+import type { ActionScope } from '@n8n/engine';
 import { InvalidActionTokenError, verifyActionToken } from '@n8n/engine';
 import type { NextFunction, Request, Response } from 'express';
 
@@ -11,12 +12,14 @@ const BEARER_PREFIX = /^bearer /i;
 type SyncRequestHandler = (req: Request, res: Response, next: NextFunction) => void;
 
 /**
- * Rejects a caller the shared secret does not vouch for. Reads the secret per
- * request, because it is generated after this is constructed.
+ * Rejects a caller the shared secret does not vouch for, and a caller whose
+ * token was minted for another scope. Reads the secret per request, because it
+ * is generated after this is constructed.
  */
 export function createEngineControlPlaneAuthMiddleware(
 	engineConfig: EngineConfig,
 	logger: Logger,
+	requiredScope: ActionScope,
 ): SyncRequestHandler {
 	const reject = (req: Request, res: Response, reason: string): void => {
 		// Logged, never returned: an operator needs the reason, a caller must not.
@@ -33,11 +36,7 @@ export function createEngineControlPlaneAuthMiddleware(
 		}
 
 		try {
-			verifyActionToken(
-				engineConfig.authSecret,
-				header.replace(BEARER_PREFIX, ''),
-				'lifecycle-events:write',
-			);
+			verifyActionToken(engineConfig.authSecret, header.replace(BEARER_PREFIX, ''), requiredScope);
 		} catch (error) {
 			if (!(error instanceof InvalidActionTokenError)) throw error;
 			reject(req, res, 'token rejected');

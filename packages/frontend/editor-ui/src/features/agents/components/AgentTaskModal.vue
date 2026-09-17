@@ -49,6 +49,7 @@ import {
 export type AgentTaskModalData = {
 	projectId: string;
 	agentId: string;
+	ensureAgentPersisted?: () => Promise<void>;
 	task?: AgentTaskDto | null;
 	isPublished: boolean;
 	taskState?: {
@@ -380,8 +381,9 @@ async function onSave() {
 				base,
 			);
 		} else {
-			// New tasks are enabled by default; the config ref carries the flag and
-			// the task starts running once the agent is published.
+			/** Save the agent only on submit, so canceling does not create an empty agent. */
+			await props.data.ensureAgentPersisted?.();
+			/** New tasks start running once the agent is published. */
 			await createAgentTask(rootStore.restApiContext, props.data.projectId, props.data.agentId, {
 				...base,
 				enabled: true,
@@ -472,6 +474,7 @@ async function onSave() {
 						:class="$style.objectiveEditor"
 						:model-value="objective"
 						:placeholder="i18n.baseText('agents.builder.tasks.objective.placeholder')"
+						show-toolbar="floating"
 						max-height="100%"
 						data-testid="agent-task-objective-input"
 						@update:model-value="onObjectiveInput"

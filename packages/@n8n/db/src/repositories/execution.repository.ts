@@ -12,6 +12,7 @@ import type {
 import {
 	Brackets,
 	DataSource,
+	Equal,
 	In,
 	IsNull,
 	LessThan,
@@ -37,6 +38,7 @@ import {
 	CRASHABLE_EXECUTION_STATUSES,
 	migrateRunExecutionData,
 	UnexpectedError,
+	WAIT_FOR_SUB_EXECUTION,
 } from 'n8n-workflow';
 
 import {
@@ -524,8 +526,7 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 				const whereCondition: FindOptionsWhere<ExecutionEntity> = { id: executionId };
 				if (conditions?.requireStatus) whereCondition.status = conditions.requireStatus;
 				if (conditions?.requireNotFinished) whereCondition.finished = false;
-				if (conditions?.requireNotCanceled)
-					whereCondition.status = Not('canceled') as FindOperator<ExecutionStatus>;
+				if (conditions?.requireNotCanceled) whereCondition.status = Not('canceled');
 
 				const result = await tx.update(ExecutionEntity, whereCondition, executionInformation);
 				const executionTableAffectedRows = result.affected ?? 0;
@@ -720,6 +721,23 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 				waitTill: 'ASC',
 			},
 		});
+	}
+
+	/** Ids of executions parked because a sub-execution they wait for is itself waiting. */
+	async findParkedOnSubExecution(): Promise<string[]> {
+		const where: FindOptionsWhere<ExecutionEntity> = {
+			waitTill: WAIT_FOR_SUB_EXECUTION,
+			status: 'waiting',
+		};
+
+		if (this.globalConfig.database.type === 'sqlite') {
+			// Same TypeORM <> SQLite date-parameter issue as in `getWaitingExecutions`.
+			where.waitTill = Equal(DateUtils.mixedDateToUtcDatetimeString(WAIT_FOR_SUB_EXECUTION));
+		}
+
+		const rows = await this.find({ select: ['id'], where, order: { id: 'ASC' } });
+
+		return rows.map(({ id }) => id);
 	}
 
 	async countInWorkflows(
@@ -1117,7 +1135,6 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			user,
 			sharingOptions,
 			status,
-			finished,
 			workflowId,
 			startedBefore,
 			startedAfter,
@@ -1156,24 +1173,26 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		}
 
 		if (query.kind === 'range') {
-			const { limit, firstId, lastId } = query.range;
+			const { limit, beforeId } = query.range;
 
 			qb.limit(limit);
 
-			if (firstId) qb.andWhere('execution.id > :firstId', { firstId });
-			if (lastId) qb.andWhere('execution.id < :lastId', { lastId });
+			if (beforeId) qb.andWhere('execution.id < :beforeId', { beforeId });
 
+			// Since a cursor pages by id, using a sort order other than `id` together
+			// with a cursor may skip or repeat rows at the boundary. This is because
+			// the row's status AND/OR startedAt timestamps can change after the fact.
+			// We accept this as a current limitation in the implementation.
 			if (query.order?.startedAt === 'DESC') {
 				qb.orderBy({ 'COALESCE(execution.startedAt, execution.createdAt)': 'DESC' });
 			} else if (query.order?.top) {
 				qb.orderBy(`(CASE WHEN execution.status = '${query.order.top}' THEN 0 ELSE 1 END)`);
-			} else {
-				qb.orderBy({ 'execution.id': 'DESC' });
 			}
+			qb.addOrderBy('execution.id', 'DESC');
 		}
 
 		if (status) qb.andWhere('execution.status IN (:...status)', { status });
-		if (finished) qb.andWhere({ finished });
+		if (query.mode) qb.andWhere('execution.mode = :filterMode', { filterMode: query.mode });
 		if (workflowId) qb.andWhere({ workflowId });
 		const startedAt = startedAtCondition({ startedAfter, startedBefore });
 		if (startedAt) qb.andWhere({ startedAt });
@@ -1285,9 +1304,8 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 				qb.orderBy({ [`COALESCE(${table}.${startedAt}, ${table}.${createdAt})`]: 'DESC' });
 			} else if (query.order?.top) {
 				qb.orderBy(`(CASE WHEN e.status = '${query.order.top}' THEN 0 ELSE 1 END)`);
-			} else {
-				qb.orderBy({ 'e.id': 'DESC' });
 			}
+			qb.addOrderBy('e.id', 'DESC');
 		}
 
 		return qb;
