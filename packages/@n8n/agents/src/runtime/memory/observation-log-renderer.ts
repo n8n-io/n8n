@@ -11,6 +11,13 @@ const MARKER_LABELS: Record<ObservationLogMarker, string> = {
 	completion: 'COMPLETION',
 };
 
+const MARKER_PRIORITY: Record<ObservationLogMarker, number> = {
+	critical: 0,
+	important: 1,
+	completion: 2,
+	info: 3,
+};
+
 const MEMORY_INTRO =
 	'The following is your memory of this conversation. It accumulates as observations are made. Older entries may have been merged or dropped during periodic restructuring.';
 const MARKER_LEGEND =
@@ -41,14 +48,33 @@ export function renderObservationLog(
 	options: RenderObservationLogOptions = {},
 ): string | null {
 	const activeEntries = entries.filter((entry) => entry.status === 'active').sort(compareEntries);
-	const renderTokenBudget = options.renderTokenBudget;
-	let remainingTokens = renderTokenBudget ?? Number.POSITIVE_INFINITY;
+	const activeById = new Map(activeEntries.map((entry) => [entry.id, entry]));
+	const candidates = [...activeEntries].sort(
+		(a, b) =>
+			MARKER_PRIORITY[a.marker] - MARKER_PRIORITY[b.marker] ||
+			b.createdAt.getTime() - a.createdAt.getTime() ||
+			a.id.localeCompare(b.id),
+	);
+	let remainingTokens = options.renderTokenBudget ?? Number.POSITIVE_INFINITY;
 
 	const included = new Set<string>();
-	for (const entry of activeEntries) {
-		const tokenCount = getStoredObservationTokenCount(entry);
-		if (tokenCount > remainingTokens) continue;
-		included.add(entry.id);
+	for (const entry of candidates) {
+		if (included.has(entry.id)) continue;
+		const required = new Set<string>();
+		let ancestor: ObservationLogEntry | undefined = entry;
+		let tokenCount = 0;
+		while (ancestor && !included.has(ancestor.id)) {
+			if (required.has(ancestor.id)) {
+				ancestor = undefined;
+				break;
+			}
+			required.add(ancestor.id);
+			tokenCount += getStoredObservationTokenCount(ancestor);
+			if (!ancestor.parentId) break;
+			ancestor = activeById.get(ancestor.parentId);
+		}
+		if (!ancestor || tokenCount > remainingTokens) continue;
+		for (const id of required) included.add(id);
 		remainingTokens -= tokenCount;
 	}
 
@@ -71,12 +97,13 @@ export function renderObservationLog(
 	if (roots.length === 0) return null;
 
 	const lines: string[] = ['<observations>', MEMORY_INTRO, MARKER_LEGEND, ''];
-	for (const root of roots) {
-		lines.push(renderBullet(root));
-		for (const child of childrenByParent.get(root.id) ?? []) {
-			lines.push(renderBullet(child, '  '));
+	const renderTree = (entry: ObservationLogEntry, indent = '') => {
+		lines.push(renderBullet(entry, indent));
+		for (const child of childrenByParent.get(entry.id) ?? []) {
+			renderTree(child, `${indent}  `);
 		}
-	}
+	};
+	for (const root of roots) renderTree(root);
 	lines.push('</observations>');
 
 	return lines.join('\n');
