@@ -3,6 +3,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import WorkflowLayout from './WorkflowLayout.vue';
 import { computed, ref, shallowRef } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 
 const mockRoute = vi.hoisted(() => ({
 	params: { workflowId: 'test-workflow-id', ticket: '' },
@@ -96,6 +97,9 @@ const defaultStubs = {
 	OemPrototypeWarning: {
 		template: '<div data-test-id="oem-prototype-warning">Prototype Warning</div>',
 	},
+	OemPrototypeCanvasLogo: {
+		template: '<div data-test-id="oem-prototype-canvas-logo">Prototype Logo</div>',
+	},
 	RouterView: {
 		template: '<div>Workflow Content</div>',
 	},
@@ -178,12 +182,18 @@ describe('WorkflowLayout', () => {
 	it('should preserve the full editor header on an OEM prototype', () => {
 		mockRoute.params.ticket = 'API-305';
 		mockRoute.meta.oemPrototype = true;
+		useSettingsStore().settings.canvasOnly = true;
 
 		const { getByTestId, getByText, queryByTestId } = renderComponent();
 
-		expect(getByTestId('oem-prototype-top-bar')).toBeInTheDocument();
-		expect(getByTestId('app-header')).toHaveAttribute('data-force-full-header');
-		expect(getByTestId('oem-prototype-warning')).toBeInTheDocument();
+		const topBar = getByTestId('oem-prototype-top-bar');
+		const warning = getByTestId('oem-prototype-warning');
+		const appHeader = getByTestId('app-header');
+
+		expect(topBar.compareDocumentPosition(warning)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+		expect(warning.compareDocumentPosition(appHeader)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+		expect(appHeader).toHaveAttribute('data-force-full-header');
+		expect(getByTestId('oem-prototype-canvas-logo')).toBeInTheDocument();
 		expect(queryByTestId('app-sidebar')).not.toBeInTheDocument();
 		expect(getByText('Workflow Content')).toBeInTheDocument();
 	});

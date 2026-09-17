@@ -1,21 +1,19 @@
 <script setup lang="ts">
 import { useI18n } from '@n8n/i18n';
-import { useRouter } from 'vue-router';
 
 import { VIEWS } from '@/app/constants';
 import { OEM_PROTOTYPE_TICKETS } from '@/features/oemPrototype/oemPrototype.constants';
 
 const i18n = useI18n();
-const router = useRouter();
 
 const prototypes = Object.entries(OEM_PROTOTYPE_TICKETS).map(([ticket, prototype]) => ({
 	ticket,
 	title: i18n.baseText(prototype.titleKey),
 	linearUrl: prototype.linearUrl,
-	prototypeUrl: router.resolve({
+	prototypeRoute: {
 		name: VIEWS.OEM_PROTOTYPE_LAUNCH,
 		params: { ticket },
-	}).href,
+	},
 }));
 </script>
 
@@ -26,9 +24,9 @@ const prototypes = Object.entries(OEM_PROTOTYPE_TICKETS).map(([ticket, prototype
 		<div :class="$style.grid">
 			<article v-for="prototype in prototypes" :key="prototype.ticket" :class="$style.card">
 				<h2 :class="$style.cardTitle">
-					<a :href="prototype.prototypeUrl" target="_blank" rel="noopener noreferrer">
+					<RouterLink :to="prototype.prototypeRoute">
 						{{ prototype.title }}
-					</a>
+					</RouterLink>
 				</h2>
 				<a
 					:class="$style.ticket"
@@ -68,6 +66,7 @@ const prototypes = Object.entries(OEM_PROTOTYPE_TICKETS).map(([ticket, prototype
 }
 
 .card {
+	position: relative;
 	padding: var(--spacing--lg);
 	background: var(--color--background--light-2);
 	border: var(--border);
@@ -82,6 +81,12 @@ const prototypes = Object.entries(OEM_PROTOTYPE_TICKETS).map(([ticket, prototype
 		color: var(--color--text--shade-1);
 		text-decoration: none;
 
+		&::after {
+			position: absolute;
+			inset: 0;
+			content: '';
+		}
+
 		&:hover {
 			text-decoration: underline;
 			text-underline-offset: var(--spacing--4xs);
@@ -90,6 +95,8 @@ const prototypes = Object.entries(OEM_PROTOTYPE_TICKETS).map(([ticket, prototype
 }
 
 .ticket {
+	position: relative;
+	z-index: 1;
 	color: var(--color--text--shade-2);
 	font-size: var(--font-size--sm);
 	text-underline-offset: var(--spacing--4xs);

@@ -34,9 +34,16 @@ onBeforeUnmount(() => {
 		"
 	>
 		<template #aside>
-			<N8nButton size="xsmall" variant="outline" @click="dismiss">
+			<N8nButton :class="$style.dismissButton" size="xsmall" variant="outline" @click="dismiss">
 				{{ i18n.baseText('generic.dismiss') }}
 			</N8nButton>
 		</template>
 	</N8nAlert>
 </template>
+
+<style lang="scss" module>
+.dismissButton {
+	color: inherit;
+	border-color: currentColor;
+}
+</style>

@@ -21,6 +21,7 @@ describe('OemPrototypeWarning', () => {
 		const { getByRole, getByText } = renderComponent();
 
 		expect(getByRole('alert')).toHaveClass('n8n-alert');
+		expect(getByRole('button', { name: 'Dismiss' })).toBeVisible();
 		expect(getByText("Usage reporting isn't reaching n8n")).toBeVisible();
 		expect(
 			getByText(
