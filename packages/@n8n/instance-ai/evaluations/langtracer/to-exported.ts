@@ -73,6 +73,9 @@ export interface ToLangTracerOptions {
  *  already holds, and such a case is barred from suites anyway. Returns a
  *  human-readable reason, else null. */
 export function unsupportedPushReason(testCase: EvalTestCaseInput): string | null {
+	if (testCase.credentials?.some((credential) => credential.description !== undefined)) {
+		return 'seeds credential descriptions, which the current LangTracer case-write schema does not store. Keep the case on disk until that contract supports descriptions.';
+	}
 	if (testCase.promptVersion !== undefined) {
 		return 'pins promptVersion, which the current case-write contract does not carry. Keep the case on disk.';
 	}

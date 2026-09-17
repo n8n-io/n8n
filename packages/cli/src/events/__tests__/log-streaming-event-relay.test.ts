@@ -1282,6 +1282,7 @@ describe('LogStreamingEventRelay', () => {
 		it('should log on `credentials-created` event', () => {
 			const event: RelayEventMap['credentials-created'] = {
 				credentialName: 'My GitHub account',
+				credentialDescriptionLength: 0,
 				user: {
 					id: 'user123',
 					email: 'user@example.com',

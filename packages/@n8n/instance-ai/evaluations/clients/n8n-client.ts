@@ -806,10 +806,11 @@ export class N8nClient {
 		name: string,
 		type: string,
 		data: Record<string, unknown>,
+		description?: string | null,
 	): Promise<{ id: string }> {
 		const result = (await this.fetch('/rest/credentials', {
 			method: 'POST',
-			body: { name, type, data },
+			body: { name, type, data, ...(description !== undefined ? { description } : {}) },
 		})) as { data: { id: string } };
 		return { id: result.data.id };
 	}

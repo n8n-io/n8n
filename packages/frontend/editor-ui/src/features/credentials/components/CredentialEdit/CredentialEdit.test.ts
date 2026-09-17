@@ -1,3 +1,4 @@
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { createComponentRenderer } from '@/__tests__/render';
 import CredentialEdit from './CredentialEdit.vue';
 import { createTestingPinia } from '@pinia/testing';
@@ -1412,7 +1413,7 @@ describe('CredentialEdit', () => {
 
 			await waitFor(() => expect(credentialsStore.createNewCredential).toHaveBeenCalled());
 			expect(telemetryTrackMock).toHaveBeenCalledWith(
-				'User created credentials',
+				TELEMETRY_EVENT.CREDENTIALS.USER_CREATED_CREDENTIALS,
 				expect.objectContaining({ workflow_id: 'wf-artifact' }),
 			);
 		});

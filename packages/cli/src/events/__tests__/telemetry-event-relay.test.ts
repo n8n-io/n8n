@@ -1399,6 +1399,7 @@ describe('TelemetryEventRelay', () => {
 		it('should track on `credentials-created` event', () => {
 			const event: RelayEventMap['credentials-created'] = {
 				credentialName: 'My GitHub account',
+				credentialDescriptionLength: 0,
 				user: {
 					id: 'user123',
 					email: 'user@example.com',
@@ -1418,19 +1419,24 @@ describe('TelemetryEventRelay', () => {
 
 			eventService.emit('credentials-created', event);
 
-			expect(telemetry.track).toHaveBeenCalledWith('User created credentials', {
-				user_id: 'user123',
-				user_role: GLOBAL_OWNER_ROLE.slug,
-				credential_type: 'github',
-				credential_id: 'cred123',
-				project_id: 'project123',
-				project_type: 'personal',
-				is_private: false,
-				uses_external_secrets: false,
-				jwe_enabled: false,
-				credential_supports_managed_auth: true,
-				credential_uses_managed_auth: true,
-			});
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.CREDENTIALS.USER_CREATED_CREDENTIALS,
+				{
+					user_id: 'user123',
+					user_role: GLOBAL_OWNER_ROLE.slug,
+					credential_type: 'github',
+					credential_id: 'cred123',
+					has_description: false,
+					description_length: 0,
+					project_id: 'project123',
+					project_type: 'personal',
+					is_private: false,
+					uses_external_secrets: false,
+					jwe_enabled: false,
+					credential_supports_managed_auth: true,
+					credential_uses_managed_auth: true,
+				},
+			);
 		});
 
 		it('should track on `credentials-shared` event', () => {

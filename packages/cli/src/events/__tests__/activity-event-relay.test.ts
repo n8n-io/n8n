@@ -204,6 +204,7 @@ describe('ActivityEventRelay', () => {
 						credentialType: 'slackApi',
 						credentialId: 'credential1',
 						credentialName: 'Team Slack',
+						credentialDescriptionLength: 0,
 						publicApi: false,
 						projectId: 'project1',
 					}),
@@ -313,6 +314,7 @@ describe('ActivityEventRelay', () => {
 				credentialType: 'slackApi',
 				credentialId: 'credential1',
 				credentialName: 'Team Slack',
+				credentialDescriptionLength: 0,
 				publicApi: true,
 				projectId: undefined,
 			});

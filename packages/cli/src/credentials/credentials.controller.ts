@@ -216,6 +216,7 @@ export class CredentialsController {
 			credentialType: newCredential.type,
 			credentialId: newCredential.id,
 			credentialName: newCredential.name,
+			credentialDescriptionLength: newCredential.description?.length ?? 0,
 			publicApi: false,
 			projectId: project?.id,
 			projectType: project?.type,

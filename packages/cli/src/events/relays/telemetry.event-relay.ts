@@ -833,6 +833,7 @@ export class TelemetryEventRelay extends EventRelay {
 		user,
 		credentialType,
 		credentialId,
+		credentialDescriptionLength,
 		projectId,
 		projectType,
 		uiContext,
@@ -842,11 +843,13 @@ export class TelemetryEventRelay extends EventRelay {
 		supportsManagedAuth,
 		usesManagedAuth,
 	}: RelayEventMap['credentials-created']) {
-		this.telemetry.track('User created credentials', {
+		this.telemetry.track(TELEMETRY_EVENT.CREDENTIALS.USER_CREATED_CREDENTIALS, {
 			user_id: user.id,
 			user_role: user.role?.slug,
 			credential_type: credentialType,
 			credential_id: credentialId,
+			has_description: credentialDescriptionLength > 0,
+			description_length: credentialDescriptionLength,
 			project_id: projectId,
 			project_type: projectType,
 			uiContext,

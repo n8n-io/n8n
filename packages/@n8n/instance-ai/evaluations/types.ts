@@ -15,7 +15,7 @@ import type { z } from 'zod';
 import type { CheckOutcome } from './binaryChecks/types';
 import type { WorkflowResponse } from './clients/n8n-client';
 import type { EvalAttribution } from './harness/attribution';
-import type { CaseSeed, ConversationTurnSchema } from './harness/schema';
+import type { CaseSeed, ConversationTurnSchema, EvalTestCaseInput } from './harness/schema';
 
 // ---------------------------------------------------------------------------
 // Checklist items and verification
@@ -208,32 +208,8 @@ export interface ExecutionScenario {
 
 export type ConversationTurn = z.infer<typeof ConversationTurnSchema>;
 
-export interface TestCaseCredential {
-	/** n8n credential type name, e.g. `slackApi`. Must have a template in credentials/seeder.ts. */
-	type: string;
-	/** Display name; defaults to the template's name, auto-suffixed on duplicates. */
-	name?: string;
-	/** Defaults to true. false models a credential that was already broken before
-	 *  the conversation started (expired/revoked/scope-changed) — left off the
-	 *  connection-test bypass list, so its real test runs and fails. Distinct from
-	 *  a credential set up on a card mid-conversation (UserProxyLlm), which always
-	 *  passes. */
-	valid?: boolean;
-	/** Defaults to false. true models a credential the user saved without filling
-	 *  anything in — seeded with no field values, and kept off the connection-test
-	 *  bypass so nothing resolves it as working. The shape behind a re-offered
-	 *  empty generic-auth credential.
-	 *
-	 *  DOES NOT SURVIVE A LANG-TRACER PUSH yet. Its case-write schema validates
-	 *  each credential against a non-strict `z.object({ type, name, valid })`
-	 *  (lang-tracer `packages/server/src/lib/case-writes.ts`), so this key is
-	 *  silently stripped and the suite copy seeds a FILLED credential instead —
-	 *  a case relying on it then fails in CI for a reason unrelated to the
-	 *  product. `eval:langtracer-push` catches it (`did not store credentials`,
-	 *  non-zero exit); until lang-tracer declares the field, a case using it
-	 *  lives on disk. */
-	blank?: boolean;
-}
+/** Seeded credentials use the case schema. The push verifies that the suite retains each field. */
+export type TestCaseCredential = NonNullable<EvalTestCaseInput['credentials']>[number];
 
 export interface WorkflowTestCase {
 	/** Optional human-readable note on what this case is testing (esp. for behaviour cases). */

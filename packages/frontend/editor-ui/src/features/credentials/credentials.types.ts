@@ -6,6 +6,7 @@ import type { IUserResponse } from '@n8n/rest-api-client/api/users';
 
 export interface ICredentialsResponse extends ICredentialsEncrypted {
 	id: string;
+	description?: string | null;
 	createdAt: Iso8601DateTimeString;
 	updatedAt: Iso8601DateTimeString;
 	sharedWithProjects?: ProjectSharingData[];
@@ -45,6 +46,7 @@ export interface ICredentialsBase {
 
 export interface ICredentialsDecryptedResponse extends ICredentialsBase, ICredentialsDecrypted {
 	id: string;
+	description?: string | null;
 	isResolvable?: boolean;
 	/** Whether the current user has personally connected this credential. Set on resolvable credentials only. */
 	connectedByMe?: boolean;
