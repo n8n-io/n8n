@@ -6,7 +6,6 @@ import {
 	hasOpenConflictPr,
 	mergeTree,
 	classifyPaths,
-	blocksLockfileRegen,
 	validateLockfile,
 	resolveMechanicalPath,
 	resolveQueueSidePath,
@@ -153,7 +152,7 @@ test('mergeTree reports the tree when clean, and the conflicted paths when the s
 	assert.deepEqual(res.conflictedPaths, [LOCKFILE, 'packages/cli/x.ts']);
 });
 
-test('classifyPaths and blocksLockfileRegen split mechanical from code conflicts', () => {
+test('classifyPaths splits mechanical from code conflicts', () => {
 	const { mechanical, code } = classifyPaths([
 		LOCKFILE,
 		'packages/cli/x.ts',
@@ -166,11 +165,6 @@ test('classifyPaths and blocksLockfileRegen split mechanical from code conflicts
 		'.github/test-metrics/e2e-impact-map.json',
 	]);
 	assert.deepEqual(code, ['packages/cli/x.ts']);
-
-	assert.equal(blocksLockfileRegen(['packages/cli/package.json']), true);
-	assert.equal(blocksLockfileRegen(['package.json']), true);
-	assert.equal(blocksLockfileRegen(['pnpm-workspace.yaml']), true);
-	assert.equal(blocksLockfileRegen(['packages/cli/x.ts']), false);
 });
 
 test('validateLockfile uses fresh stores under the configured temporary directory', () => {
@@ -702,52 +696,39 @@ test('sync fails without pushing when even the favoured replay cannot finish', a
 	assert.equal(git.calls.filter((a) => a[0] === 'rebase' && a[1] === '--abort').length, 2);
 });
 
-test('sync auto-resolves a lockfile-only conflict during the replay — no PR, no commit', async () => {
+test('sync opens a conflict PR for a lockfile-only conflict and defers the lockfile', async () => {
 	const git = makeStub([
 		...baseGitRoutes.filter((r) => !r[0](['merge-tree'])),
 		[(a) => a[0] === 'merge-tree', conflictedMergeTree(LOCKFILE)],
-		[(a) => a[0] === 'rebase' && a[1] === '--continue', ''],
-		[isRebase, fail(`CONFLICT (content): Merge conflict in ${LOCKFILE}`)],
+		[(a) => a[0] === 'merge', fail(`CONFLICT (content): Merge conflict in ${LOCKFILE}`)],
 		[isConflictedFiles, LOCKFILE],
-		[(a) => a[0] === 'diff' && a.includes('--quiet'), ''], // tip lockfile already consistent
-		[(a) => a[0] === 'diff-index', fail()], // staged resolution -> continue, not skip
+		[(a) => a[0] === 'log', 'breaking-sha'],
 	]);
-	const gh = makeStub(noOpenPr);
+	const gh = makeStub([
+		...noOpenPr,
+		[(a) => a[0] === 'pr' && a[1] === 'create', 'https://github.com/n8n-io/n8n/pull/99'],
+	]);
 	const pnpm = makeStub();
 
-	await sync({ git, gh, pnpm, env, log: () => {} });
+	await sync({ git, gh, pnpm, env, fetchFn: okFetch(['alice']), log: () => {} });
 
-	// The stall regen and tip reconciliation each run regeneration and exact CI validation.
-	assert.deepEqual(pnpm.calls[0], ['install', '--lockfile-only', '--no-frozen-lockfile']);
-	const stallValidation = isolatedValidationPaths(pnpm.calls[1]);
-	assert.deepEqual(pnpm.calls[2], ['install', '--lockfile-only', '--no-frozen-lockfile']);
-	const tipValidation = isolatedValidationPaths(pnpm.calls[3]);
-	assert.notEqual(stallValidation.storeDir, tipValidation.storeDir);
-	assert.notEqual(stallValidation.virtualStoreDir, tipValidation.virtualStoreDir);
-	assert.equal(pnpm.calls.length, 4);
-	assert.ok(git.calls.some((a) => a[0] === 'add' && a.includes(LOCKFILE)));
-	assert.ok(git.calls.some((a) => a[0] === 'rebase' && a[1] === '--continue'));
-	const push = git.calls.find((a) => a[0] === 'push');
-	assert.equal(push[1], `--force-with-lease=refs/heads/${TARGET_BRANCH}:${PRE_HEAD}`);
-	// No human surface: no merge commit, no amend, no conflict PR.
+	assert.equal(pnpm.calls.length, 0, 'the conflict-PR path must not run pnpm');
 	assert.equal(
-		git.calls.some((a) => a[0] === 'merge'),
+		git.calls.some((a) => a[0] === 'rebase'),
 		false,
 	);
-	assert.equal(
-		git.calls.some((a) => a[0] === 'commit'),
-		false,
-	);
-	assert.equal(
-		gh.calls.some((a) => a[0] === 'pr' && a[1] === 'create'),
-		false,
-	);
+	const create = gh.calls.find((a) => a[0] === 'pr' && a[1] === 'create');
+	assert.ok(create, 'expected a conflict PR');
+	assert.match(create[create.indexOf('--body') + 1], /pnpm-lock\.yaml.*conflict markers/);
+	const pushes = git.calls.filter((a) => a[0] === 'push');
+	assert.equal(pushes.length, 1);
+	assert.equal(pushes[0].at(-1), `HEAD:refs/heads/${SYNC_BRANCH}`);
 });
 
 test('sync falls back to a conflict PR when mechanical auto-resolution cannot complete', async () => {
 	const git = makeStub([
 		...baseGitRoutes.filter((r) => !r[0](['merge-tree'])),
-		[(a) => a[0] === 'merge-tree', conflictedMergeTree(LOCKFILE)],
+		[(a) => a[0] === 'merge-tree', conflictedMergeTree(POPULARITY)],
 		[isRebase, fail('CONFLICT')],
 		// Both replay attempts stall on a code file the endpoints do not reconcile.
 		[isConflictedFiles, 'packages/cli/x.ts'],
@@ -853,7 +834,7 @@ test('buildConflictBranch resolves marker-less delete/modify conflicts toward 3.
 	assert.ok(git.calls.some((a) => a[0] === 'checkout' && a.includes('--ours')));
 });
 
-test('buildConflictBranch pre-resolves mechanical files so only code conflicts remain', () => {
+test('buildConflictBranch defers the lockfile with code and pre-resolves other mechanical files', () => {
 	const git = makeStub([
 		[(a) => a[0] === 'merge', fail('CONFLICT')],
 		[isConflictedFiles, `packages/cli/x.ts\n${LOCKFILE}\n${POPULARITY}`],
@@ -869,20 +850,18 @@ test('buildConflictBranch pre-resolves mechanical files so only code conflicts r
 	});
 
 	assert.deepEqual(files, ['packages/cli/x.ts']);
-	assert.deepEqual(preResolved, [LOCKFILE, POPULARITY]);
-	assert.equal(lockfileDeferred, false);
-	assert.deepEqual(pnpm.calls[0], ['install', '--lockfile-only', '--no-frozen-lockfile']);
-	isolatedValidationPaths(pnpm.calls[1]);
-	assert.equal(pnpm.calls.length, 2);
+	assert.deepEqual(preResolved, [POPULARITY]);
+	assert.equal(lockfileDeferred, true);
+	assert.equal(pnpm.calls.length, 0);
 	assert.ok(
 		git.calls.some((a) => a[0] === 'checkout' && a[1] === MASTER && a.includes(POPULARITY)),
 	);
 });
 
-test('buildConflictBranch defers the lockfile when a manifest is conflicted too', () => {
+test('buildConflictBranch defers the lockfile with a code conflict without running pnpm', () => {
 	const git = makeStub([
 		[(a) => a[0] === 'merge', fail('CONFLICT')],
-		[isConflictedFiles, `packages/cli/package.json\n${LOCKFILE}`],
+		[isConflictedFiles, `packages/cli/x.ts\n${LOCKFILE}`],
 	]);
 	const pnpm = makeStub();
 
@@ -893,20 +872,19 @@ test('buildConflictBranch defers the lockfile when a manifest is conflicted too'
 		log: () => {},
 	});
 
-	assert.deepEqual(files, ['packages/cli/package.json']);
+	assert.deepEqual(files, ['packages/cli/x.ts']);
 	assert.deepEqual(preResolved, []);
 	assert.equal(lockfileDeferred, true);
-	assert.equal(pnpm.calls.length, 0, 'regen is meaningless until the manifests are resolved');
+	assert.equal(pnpm.calls.length, 0, 'the conflict-PR path must not run pnpm');
 });
 
-test('buildConflictBranch restores and defers a lockfile when the patched install fails', () => {
+test('buildConflictBranch reports only the deferred lockfile after resolving another mechanical file', () => {
 	const git = makeStub([
 		[(a) => a[0] === 'merge', fail('CONFLICT')],
-		[isConflictedFiles, `packages/cli/x.ts\n${LOCKFILE}`],
+		[isConflictedFiles, `${LOCKFILE}\n${POPULARITY}`],
+		[(a) => a[0] === 'cat-file', ''],
 	]);
-	const pnpm = makeStub([
-		[(a) => a.includes('--frozen-lockfile'), fail('ERR_PNPM_PATCH_FAILED')],
-	]);
+	const pnpm = makeStub();
 
 	const { files, preResolved, lockfileDeferred } = buildConflictBranch({
 		git,
@@ -915,47 +893,17 @@ test('buildConflictBranch restores and defers a lockfile when the patched instal
 		log: () => {},
 	});
 
-	assert.deepEqual(files, ['packages/cli/x.ts']);
-	assert.deepEqual(preResolved, []);
+	assert.deepEqual(files, [LOCKFILE]);
+	assert.deepEqual(preResolved, [POPULARITY]);
 	assert.equal(lockfileDeferred, true);
-	assert.deepEqual(pnpm.calls[0], ['install', '--lockfile-only', '--no-frozen-lockfile']);
-	isolatedValidationPaths(pnpm.calls[1]);
-	assert.equal(pnpm.calls.length, 2);
+	assert.equal(pnpm.calls.length, 0);
 	assert.ok(
-		git.calls.some(
-			(a) =>
-				a[0] === 'checkout' && a[1] === '--conflict=merge' && a.at(-1) === LOCKFILE,
-		),
-		'the committed conflict branch must contain the original lockfile markers',
+		git.calls.some((a) => a[0] === 'checkout' && a[1] === MASTER && a.includes(POPULARITY)),
 	);
-});
-
-test('buildConflictBranch leaves the original lockfile conflict untouched when regeneration fails', () => {
-	const git = makeStub([
-		[(a) => a[0] === 'merge', fail('CONFLICT')],
-		[isConflictedFiles, `packages/cli/x.ts\n${LOCKFILE}`],
-	]);
-	const pnpm = makeStub([[() => true, fail('ERR_PNPM_REGISTRY unreachable')]]);
-
-	const { files, preResolved, lockfileDeferred } = buildConflictBranch({
-		git,
-		pnpm,
-		masterSha: MASTER,
-		log: () => {},
-	});
-
-	assert.deepEqual(files, ['packages/cli/x.ts']);
-	assert.deepEqual(preResolved, []);
-	assert.equal(lockfileDeferred, true);
-	assert.equal(pnpm.calls.length, 1);
 	assert.equal(
-		git.calls.some((a) => a[0] === 'checkout' && a[1] === '--conflict=merge'),
+		git.calls.some((a) => a[0] === 'checkout' && a.includes(LOCKFILE)),
 		false,
-		'the initial failure leaves the unmodified conflict markers in place',
-	);
-	assert.ok(
-		git.calls.some((a) => a[0] === 'commit'),
-		'the conflict branch must still be committed',
+		'the lockfile conflict markers must stay untouched',
 	);
 });
 
@@ -1014,7 +962,7 @@ test('sync opens a draft conflict PR and leaves 3.x untouched on a real conflict
 	);
 });
 
-test('sync reports only the code conflicts on a mixed conflict, with mechanical files pre-resolved', async () => {
+test('sync reports the code conflict and defers the lockfile on a mixed conflict', async () => {
 	const git = makeStub([
 		...baseGitRoutes.filter((r) => !r[0](['merge-tree'])),
 		[(a) => a[0] === 'merge-tree', conflictedMergeTree(LOCKFILE, 'packages/cli/x.ts')],
@@ -1030,16 +978,13 @@ test('sync reports only the code conflicts on a mixed conflict, with mechanical 
 
 	await sync({ git, gh, pnpm, env, fetchFn: okFetch(['alice']), log: () => {} });
 
-	assert.equal(pnpm.calls.length, 2, 'the lockfile is regenerated and validated');
+	assert.equal(pnpm.calls.length, 0, 'the conflict-PR path must not run pnpm');
 
 	const create = gh.calls.find((a) => a[0] === 'pr' && a[1] === 'create');
 	const body = create[create.indexOf('--body') + 1];
 	assert.match(body, /### Conflicted files\n- `packages\/cli\/x\.ts`/);
-	assert.match(body, /### Auto-resolved for you/);
-	assert.ok(
-		body.indexOf(LOCKFILE) > body.indexOf('Auto-resolved'),
-		'the lockfile belongs to the auto-resolved section',
-	);
+	assert.doesNotMatch(body, /### Auto-resolved for you/);
+	assert.match(body, /pnpm-lock\.yaml.*conflict markers/);
 
 	// Owner attribution is scoped to the real code conflicts only.
 	const attributions = git.calls.filter((a) => a[0] === 'log' && a.includes('--format=%H'));
