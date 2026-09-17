@@ -1,15 +1,16 @@
 <script setup lang="ts">
 import { N8nAlert, N8nButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed, onBeforeUnmount, ref } from 'vue';
+import { storeToRefs } from 'pinia';
+import { onBeforeUnmount, ref } from 'vue';
 
 import { useUIStore } from '@/app/stores/ui.store';
 import { OEM_PROTOTYPE_WARNING_REAPPEAR_DELAY } from '@/features/oemPrototype/oemPrototype.constants';
 
 const i18n = useI18n();
 const uiStore = useUIStore();
+const { appliedTheme } = storeToRefs(uiStore);
 const visible = ref(true);
-const alertEffect = computed(() => (uiStore.appliedTheme === 'dark' ? 'dark' : 'light'));
 let reappearTimer: ReturnType<typeof setTimeout> | undefined;
 
 function dismiss() {
@@ -29,7 +30,7 @@ onBeforeUnmount(() => {
 		v-if="visible"
 		data-test-id="oem-prototype-warning"
 		type="warning"
-		:effect="alertEffect"
+		:effect="appliedTheme"
 		:title="i18n.baseText('oemPrototype.api305.warning.title')"
 		:description="
 			i18n.baseText('oemPrototype.api305.warning.description', {

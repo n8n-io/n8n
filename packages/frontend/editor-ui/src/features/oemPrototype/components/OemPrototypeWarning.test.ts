@@ -27,7 +27,9 @@ describe('OemPrototypeWarning', () => {
 		const dismissButton = getByRole('button', { name: 'Dismiss' });
 		expect(getByRole('alert')).toHaveClass('n8n-alert');
 		expect(dismissButton).toBeVisible();
+		expect(dismissButton.tagName).toBe('BUTTON');
 		expect(dismissButton).toHaveClass('ghost', 'xsmall');
+		expect(dismissButton).not.toHaveClass('subtle', 'outline');
 		expect(getByText("Usage reporting isn't reaching n8n")).toBeVisible();
 		expect(
 			getByText(
@@ -42,11 +44,13 @@ describe('OemPrototypeWarning', () => {
 
 		uiStore.setTheme('light');
 		await nextTick();
+		expect(document.body).toHaveAttribute('data-theme', 'light');
 		expect(getByRole('alert')).toHaveClass('light');
 		expect(getByRole('alert')).not.toHaveClass('dark');
 
 		uiStore.setTheme('dark');
 		await nextTick();
+		expect(document.body).toHaveAttribute('data-theme', 'dark');
 		expect(getByRole('alert')).toHaveClass('dark');
 		expect(getByRole('alert')).not.toHaveClass('light');
 	});
