@@ -656,6 +656,14 @@ describe('AuthService', () => {
 			expect(res.cookie).not.toHaveBeenCalled();
 		});
 
+		it('should throw when the payload is missing the user id', async () => {
+			const token = jwtService.sign({ hash: 'mJAYx4Wb7k' }, { expiresIn: '1h' });
+
+			await expect(authService.resolveJwt(token, req, res)).rejects.toThrow('Unauthorized');
+			expect(userRepository.findOne).not.toHaveBeenCalled();
+			expect(res.cookie).not.toHaveBeenCalled();
+		});
+
 		it('should throw on hijacked tokens', async () => {
 			userRepository.findOne.mockResolvedValue(user);
 			const req = mock<AuthenticatedRequest>({
