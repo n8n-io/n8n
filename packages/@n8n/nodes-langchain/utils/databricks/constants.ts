@@ -25,5 +25,8 @@ export function assertHttpsHost(
 	}
 }
 
+/** Matches the Timeout option's displayed default, and applies when it is unset. */
+export const DATABRICKS_REQUEST_TIMEOUT_MS = 360000;
+
 /** The gateway speaks the OpenAI protocol for both chat and embeddings. */
 export const gatewayBaseUrl = (host: string) => `${host.replace(/\/$/, '')}/ai-gateway/openai/v1`;

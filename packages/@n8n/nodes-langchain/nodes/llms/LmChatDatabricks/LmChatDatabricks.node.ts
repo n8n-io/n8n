@@ -211,16 +211,19 @@ export class LmChatDatabricks implements INodeType {
 		const options = this.getNodeParameter('options', itemIndex, {}) as {
 			frequencyPenalty?: number;
 			maxTokens?: number;
-			maxRetries: number;
-			timeout: number;
+			maxRetries?: number;
+			timeout?: number;
 			presencePenalty?: number;
 			temperature?: number;
 			topP?: number;
 			responseFormat?: 'text' | 'json_object';
 		};
 
-		const timeout = options.timeout;
-		const { configuration, tokenSource } = createDatabricksGatewayConfig(this, credential, timeout);
+		const { configuration, tokenSource, timeout } = createDatabricksGatewayConfig(
+			this,
+			credential,
+			options.timeout,
+		);
 
 		const modelKwargs: Record<string, unknown> = {};
 		if (options.responseFormat) {

@@ -147,8 +147,11 @@ export class EmbeddingsDatabricks implements INodeType {
 			maxRetries?: number;
 		};
 
-		const timeout = options.timeout ?? 360000;
-		const { configuration, tokenSource } = createDatabricksGatewayConfig(this, credential, timeout);
+		const { configuration, tokenSource, timeout } = createDatabricksGatewayConfig(
+			this,
+			credential,
+			options.timeout,
+		);
 
 		const embeddings = new OpenAIEmbeddings({
 			// Placeholder only - the fetch wrapper overwrites the Authorization header
