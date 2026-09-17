@@ -181,12 +181,15 @@ test('resolveMechanicalPath takes the blob from master, or the deletion when mas
 	);
 });
 
-test('resolveMechanicalPath regenerates the lockfile with pnpm and stages it', () => {
+test('resolveMechanicalPath regenerates and applies patches before staging the lockfile', () => {
 	const git = makeStub();
 	const pnpm = makeStub();
 	resolveMechanicalPath({ git, pnpm, path: LOCKFILE, masterSha: MASTER, log: () => {} });
-	// `--no-frozen-lockfile` is load-bearing: pnpm defaults to frozen when CI=true.
-	assert.deepEqual(pnpm.calls[0], ['install', '--lockfile-only', '--no-frozen-lockfile']);
+	// Regeneration must override CI's frozen default. Validation must match CI and bypass imports.
+	assert.deepEqual(pnpm.calls, [
+		['install', '--lockfile-only', '--no-frozen-lockfile'],
+		['install', '--frozen-lockfile', '--trust-lockfile', '--force'],
+	]);
 	assert.ok(git.calls.some((a) => a[0] === 'add' && a.includes(LOCKFILE)));
 });
 
@@ -416,8 +419,27 @@ test('reconcileLockfileAtTip folds an inconsistent lockfile into the tip commit,
 	]);
 	const pnpm = makeStub();
 	reconcileLockfileAtTip({ git: inconsistent, pnpm, masterSha: MASTER, log: () => {} });
-	assert.deepEqual(pnpm.calls[0], ['install', '--lockfile-only', '--no-frozen-lockfile']);
+	assert.deepEqual(pnpm.calls, [
+		['install', '--lockfile-only', '--no-frozen-lockfile'],
+		['install', '--frozen-lockfile', '--trust-lockfile', '--force'],
+	]);
 	assert.ok(inconsistent.calls.some((a) => a[0] === 'commit' && a.includes('--amend')));
+
+	const validationGit = makeStub();
+	const invalid = makeStub([
+		[(a) => a.includes('--frozen-lockfile'), fail('ERR_PNPM_PATCH_FAILED')],
+	]);
+	assert.throws(
+		() =>
+			reconcileLockfileAtTip({
+				git: validationGit,
+				pnpm: invalid,
+				masterSha: MASTER,
+				log: () => {},
+			}),
+		/command failed/,
+	);
+	assert.equal(validationGit.calls.length, 0, 'validation must fail before diff or amend checks');
 
 	const atMasterTip = makeStub([
 		[(a) => a[0] === 'diff', fail()],
@@ -662,9 +684,22 @@ test('sync auto-resolves a lockfile-only conflict during the replay — no PR, n
 
 	await sync({ git, gh, pnpm, env, log: () => {} });
 
-	// The stall regen plus the tip reconciliation check.
+	// The stall regen and tip reconciliation each run regeneration and CI-equivalent validation.
 	assert.deepEqual(pnpm.calls[0], ['install', '--lockfile-only', '--no-frozen-lockfile']);
-	assert.equal(pnpm.calls.length, 2);
+	assert.deepEqual(pnpm.calls[1], [
+		'install',
+		'--frozen-lockfile',
+		'--trust-lockfile',
+		'--force',
+	]);
+	assert.deepEqual(pnpm.calls[2], ['install', '--lockfile-only', '--no-frozen-lockfile']);
+	assert.deepEqual(pnpm.calls[3], [
+		'install',
+		'--frozen-lockfile',
+		'--trust-lockfile',
+		'--force',
+	]);
+	assert.equal(pnpm.calls.length, 4);
 	assert.ok(git.calls.some((a) => a[0] === 'add' && a.includes(LOCKFILE)));
 	assert.ok(git.calls.some((a) => a[0] === 'rebase' && a[1] === '--continue'));
 	const push = git.calls.find((a) => a[0] === 'push');
@@ -811,7 +846,10 @@ test('buildConflictBranch pre-resolves mechanical files so only code conflicts r
 	assert.deepEqual(files, ['packages/cli/x.ts']);
 	assert.deepEqual(preResolved, [LOCKFILE, POPULARITY]);
 	assert.equal(lockfileDeferred, false);
-	assert.deepEqual(pnpm.calls[0], ['install', '--lockfile-only', '--no-frozen-lockfile']);
+	assert.deepEqual(pnpm.calls, [
+		['install', '--lockfile-only', '--no-frozen-lockfile'],
+		['install', '--frozen-lockfile', '--trust-lockfile', '--force'],
+	]);
 	assert.ok(
 		git.calls.some((a) => a[0] === 'checkout' && a[1] === MASTER && a.includes(POPULARITY)),
 	);
@@ -837,7 +875,39 @@ test('buildConflictBranch defers the lockfile when a manifest is conflicted too'
 	assert.equal(pnpm.calls.length, 0, 'regen is meaningless until the manifests are resolved');
 });
 
-test('buildConflictBranch degrades to a deferred lockfile when the regen fails', () => {
+test('buildConflictBranch restores and defers a lockfile when the patched install fails', () => {
+	const git = makeStub([
+		[(a) => a[0] === 'merge', fail('CONFLICT')],
+		[isConflictedFiles, `packages/cli/x.ts\n${LOCKFILE}`],
+	]);
+	const pnpm = makeStub([
+		[(a) => a.includes('--frozen-lockfile'), fail('ERR_PNPM_PATCH_FAILED')],
+	]);
+
+	const { files, preResolved, lockfileDeferred } = buildConflictBranch({
+		git,
+		pnpm,
+		masterSha: MASTER,
+		log: () => {},
+	});
+
+	assert.deepEqual(files, ['packages/cli/x.ts']);
+	assert.deepEqual(preResolved, []);
+	assert.equal(lockfileDeferred, true);
+	assert.deepEqual(pnpm.calls, [
+		['install', '--lockfile-only', '--no-frozen-lockfile'],
+		['install', '--frozen-lockfile', '--trust-lockfile', '--force'],
+	]);
+	assert.ok(
+		git.calls.some(
+			(a) =>
+				a[0] === 'checkout' && a[1] === '--conflict=merge' && a.at(-1) === LOCKFILE,
+		),
+		'the committed conflict branch must contain the original lockfile markers',
+	);
+});
+
+test('buildConflictBranch leaves the original lockfile conflict untouched when regeneration fails', () => {
 	const git = makeStub([
 		[(a) => a[0] === 'merge', fail('CONFLICT')],
 		[isConflictedFiles, `packages/cli/x.ts\n${LOCKFILE}`],
@@ -854,6 +924,12 @@ test('buildConflictBranch degrades to a deferred lockfile when the regen fails',
 	assert.deepEqual(files, ['packages/cli/x.ts']);
 	assert.deepEqual(preResolved, []);
 	assert.equal(lockfileDeferred, true);
+	assert.equal(pnpm.calls.length, 1);
+	assert.equal(
+		git.calls.some((a) => a[0] === 'checkout' && a[1] === '--conflict=merge'),
+		false,
+		'the initial failure leaves the unmodified conflict markers in place',
+	);
 	assert.ok(
 		git.calls.some((a) => a[0] === 'commit'),
 		'the conflict branch must still be committed',
@@ -931,7 +1007,7 @@ test('sync reports only the code conflicts on a mixed conflict, with mechanical 
 
 	await sync({ git, gh, pnpm, env, fetchFn: okFetch(['alice']), log: () => {} });
 
-	assert.equal(pnpm.calls.length, 1, 'the lockfile is regenerated for the conflict branch');
+	assert.equal(pnpm.calls.length, 2, 'the lockfile is regenerated and validated');
 
 	const create = gh.calls.find((a) => a[0] === 'pr' && a[1] === 'create');
 	const body = create[create.indexOf('--body') + 1];
