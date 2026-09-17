@@ -238,6 +238,27 @@ describe('web-fetch.utils', () => {
 			expect(result.content).not.toContain('|     |     |');
 		});
 
+		it('should fall back to plain text when a table expands beyond the cell limit', async () => {
+			const html = `
+				<html>
+				<head><title>Oversized Table</title></head>
+				<body>
+					<article>
+						<table>
+							<tr><th colspan="1001">Expanded header</th></tr>
+							<tr><td>Body value</td></tr>
+						</table>
+					</article>
+				</body>
+				</html>
+			`;
+
+			const result = await extractReadableContent(html, 'https://example.com/oversized-table');
+
+			expect(result.content).toContain('Expanded header Body value');
+			expect(result.content).not.toContain('|');
+		});
+
 		it('should truncate content exceeding max chars', async () => {
 			// Generate content longer than WEB_FETCH_MAX_CONTENT_CHARS (30000)
 			const longText = 'A'.repeat(40_000);

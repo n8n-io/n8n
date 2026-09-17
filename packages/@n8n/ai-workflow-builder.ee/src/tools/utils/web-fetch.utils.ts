@@ -18,6 +18,9 @@ import {
 /** Maximum number of redirects axios will follow before aborting. */
 const WEB_FETCH_MAX_REDIRECTS = 5;
 
+/** Maximum number of table cells expanded by the GFM Turndown plugin. */
+const WEB_FETCH_MAX_TABLE_CELLS = 1_000;
+
 // ============================================================================
 // URL PROVENANCE
 // ============================================================================
@@ -83,6 +86,43 @@ export interface ExtractedContent {
 	content: string;
 	truncated: boolean;
 	truncateReason?: string;
+}
+
+function replaceOversizedTablesWithPlainText(root: Element): void {
+	let remainingCells = WEB_FETCH_MAX_TABLE_CELLS;
+
+	for (const table of root.querySelectorAll('table')) {
+		if (!root.contains(table)) continue;
+
+		let cellCount = 0;
+
+		for (const cell of table.querySelectorAll('th, td')) {
+			if (cell.closest('table') !== table) continue;
+
+			const colspan = Number(cell.getAttribute('colspan') ?? 1);
+			cellCount += Number.isNaN(colspan) || colspan < 1 ? 1 : Math.ceil(colspan);
+
+			if (cellCount > remainingCells) break;
+		}
+
+		if (cellCount <= remainingCells) {
+			remainingCells -= cellCount;
+			continue;
+		}
+
+		const plainText = Array.from(table.querySelectorAll('tr'))
+			.filter((row) => row.closest('table') === table)
+			.map((row) =>
+				Array.from(row.children)
+					.filter((cell) => cell.tagName === 'TH' || cell.tagName === 'TD')
+					.map((cell) => cell.textContent?.replace(/\s+/g, ' ').trim() ?? '')
+					.filter(Boolean)
+					.join(' '),
+			)
+			.filter(Boolean)
+			.join('\n');
+		table.replaceWith(root.ownerDocument.createTextNode(plainText));
+	}
 }
 
 function promoteFirstRowInHeaderlessTables(root: Element): void {
@@ -269,6 +309,7 @@ export async function extractReadableContent(html: string, url: string): Promise
 	const articleHtml = article?.content ?? '';
 	const articleRoot = dom.window.document.createElement('div');
 	articleRoot.innerHTML = articleHtml;
+	replaceOversizedTablesWithPlainText(articleRoot);
 	promoteFirstRowInHeaderlessTables(articleRoot);
 	const turndownService = new TurndownService({
 		headingStyle: 'atx',
