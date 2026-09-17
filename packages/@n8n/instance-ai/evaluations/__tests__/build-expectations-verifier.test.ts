@@ -244,6 +244,51 @@ describe('verifyBuildExpectations', () => {
 		expect(sentMessages).toContain('Cache: 8000 tokens read / 2500 tokens written');
 	});
 
+	it('renders the observation rows so an expectation can grade the summary itself', async () => {
+		// The point of reading the rows: without them a memory case can only check the
+		// agent's reply, which passes just as well on a lucky guess.
+		const generate: GenerateMock = vi.fn<GenerateFn>().mockResolvedValue({
+			structuredOutput: { results: [{ index: 0, pass: true, reason: 'ok' }] },
+		});
+		mockJudge(generate);
+
+		await verifyBuildExpectations(['memory kept the node decision'], {
+			transcript: TRANSCRIPT,
+			threadMemory: {
+				observations: [
+					{
+						marker: 'critical',
+						text: 'Posting via HTTP Request, not the Slack node',
+						tokenCount: 9,
+					},
+					{ marker: 'info', text: 'Timezone America/New_York', tokenCount: 4 },
+				],
+				cursor: { lastObservedMessageId: 'm137', lastObservedAt: '2020-01-01T00:00:00.000Z' },
+			},
+		});
+
+		const sent = JSON.stringify(generate.mock.calls[0]?.[0]);
+		expect(sent).toContain('Observational memory after compaction');
+		expect(sent).toContain('[CRITICAL] Posting via HTTP Request, not the Slack node');
+		expect(sent).toContain('[INFO] Timezone America/New_York');
+	});
+
+	it('says so when memory never compacted, rather than showing an empty block', async () => {
+		const generate: GenerateMock = vi.fn<GenerateFn>().mockResolvedValue({
+			structuredOutput: { results: [{ index: 0, pass: true, reason: 'ok' }] },
+		});
+		mockJudge(generate);
+
+		await verifyBuildExpectations(['anything'], {
+			transcript: TRANSCRIPT,
+			threadMemory: { observations: [], cursor: null },
+		});
+
+		expect(JSON.stringify(generate.mock.calls[0]?.[0])).toContain(
+			'observational memory has not compacted this conversation',
+		);
+	});
+
 	it('falls back to a placeholder when no run debug was captured', async () => {
 		const generate: GenerateMock = vi.fn<GenerateFn>().mockResolvedValue({
 			structuredOutput: { results: [{ index: 0, pass: true, reason: 'ok' }] },

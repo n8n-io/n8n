@@ -8,7 +8,6 @@ import {
 	scrubLocalSecretsFromBuild,
 	type BuildResult,
 } from '../harness/build-workflow';
-import { captureThreadRunDebug } from '../harness/capture-run-debug';
 import { runWorkflowChecks } from '../harness/cleanup';
 import { runCredentialSetupChecks } from '../harness/credential-setup-checks';
 import type { EvalLogger } from '../harness/logger';
@@ -98,10 +97,17 @@ function failedBuild(error: string): BuildResult {
 	};
 }
 
-function makeLane(num: number, tracedBuild: LaneState['tracedBuild']): LaneState {
+function makeLane(
+	num: number,
+	tracedBuild: LaneState['tracedBuild'],
+	// stashThreadMemory calls this on every build, so the stub must answer it.
+	threadMemory: unknown = { observations: [], cursor: null },
+): LaneState {
 	return {
 		runner: {
-			client: {} as unknown as N8nClient,
+			client: {
+				getThreadMemory: vi.fn().mockResolvedValue(threadMemory),
+			} as unknown as N8nClient,
 			baseUrl: `http://lane${String(num)}.test`,
 			preRunWorkflowIds: new Set<string>(),
 			preRunDataTableIds: new Set<string>(),
@@ -146,6 +152,7 @@ function makeDeps(
 		transcriptByThreadId: new Map(),
 		buildExpectationsByKey: new Map(),
 		runDebugByThreadId: new Map(),
+		threadMemoryByThreadId: new Map(),
 		agentContextByKey: new Map(),
 		// The provider-outage backoff is minutes long in production — never slept here.
 		sleep: vi.fn().mockResolvedValue(undefined),
@@ -161,6 +168,9 @@ async function settleMicrotasks(): Promise<void> {
 
 afterEach(() => {
 	vi.unstubAllGlobals();
+	// The module-level verifier/judge mocks are shared, and several tests assert
+	// they were NOT called — leaked calls make those pass or fail by test order.
+	vi.clearAllMocks();
 });
 
 describe('createBuildOrchestrator', () => {
@@ -200,95 +210,82 @@ describe('createBuildOrchestrator', () => {
 		);
 	});
 
-	it('reports a requiresMemoryCompaction case unjudged when compaction never ran', async () => {
-		// Uncompacted, everything passes for free — so this must never reach the judge.
-		vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true }));
-		const building = vi.fn().mockResolvedValue(
-			okBuild({
-				threadId: 'thread-1',
-				transcript: [
-					{
-						userMessage: 'remind me what we decided',
-						steps: [{ kind: 'agent-text', text: 'The HTTP Request node.' }],
-					},
-				],
-			}),
-		);
-		const deps = makeDeps([makeLane(1, building)], {
-			testCaseByFileSlug: new Map([
+	describe('requiresMemoryCompaction premise', () => {
+		/** A build whose thread memory is whatever the endpoint returned. */
+		function depsWithMemory(memory: unknown) {
+			vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true }));
+			return makeDeps(
 				[
-					'case-a',
-					baseCase({
-						requiresMemoryCompaction: true,
-						processExpectations: ['the agent recalls the earlier decision'],
-					}),
-				],
-			]),
-		});
-		const orchestrator = createBuildOrchestrator(deps);
-
-		await orchestrator.getOrBuild(0, 'case-a');
-
-		expect(vi.mocked(verifyBuildExpectations)).not.toHaveBeenCalled();
-		const verdicts = await deps.buildExpectationsByKey.get('0:case-a');
-		expect(verdicts).toHaveLength(1);
-		expect(verdicts?.[0].incomplete).toBe(true);
-		expect(verdicts?.[0].reason).toContain('never compacted');
-	});
-
-	it('reports it unjudged when compaction ran but the seed is still in the graded window', async () => {
-		// A log next to a still-raw opening proves nothing: it answers off raw history.
-		vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true }));
-		const seeded = [1, 2, 3].map((n) => ({ role: 'user', content: `seeded ${String(n)}` }));
-		vi.mocked(captureThreadRunDebug).mockResolvedValueOnce([
-			{
-				steps: [
-					{
-						input: {
-							instructions: '<observations>\n* CRITICAL (14:30) kept\n</observations>',
-							messages: seeded,
-						},
-					},
-				],
-			},
-		] as never);
-		const deps = makeDeps(
-			[
-				makeLane(
-					1,
-					vi.fn().mockResolvedValue(
-						okBuild({
-							threadId: 'thread-1',
-							transcript: [
-								{
-									userMessage: 'remind me',
-									steps: [{ kind: 'agent-text', text: 'HTTP Request.' }],
-								},
-							],
-						}),
+					makeLane(
+						1,
+						vi.fn().mockResolvedValue(
+							okBuild({
+								threadId: 'thread-1',
+								transcript: [
+									{
+										userMessage: 'remind me what we decided',
+										steps: [{ kind: 'agent-text', text: 'The HTTP Request node.' }],
+									},
+								],
+							}),
+						),
+						memory,
 					),
-				),
-			],
-			{
-				testCaseByFileSlug: new Map([
-					[
-						'case-a',
-						baseCase({
-							requiresMemoryCompaction: true,
-							processExpectations: ['recalls the decision'],
-							seed: { mode: 'inline', messages: seeded } as never,
-						}),
-					],
-				]),
-			},
-		);
-		const orchestrator = createBuildOrchestrator(deps);
+				],
+				{
+					testCaseByFileSlug: new Map([
+						[
+							'case-a',
+							baseCase({
+								requiresMemoryCompaction: true,
+								processExpectations: ['recalls the decision'],
+							}),
+						],
+					]),
+				},
+			);
+		}
 
-		await orchestrator.getOrBuild(0, 'case-a');
-		const verdicts = await deps.buildExpectationsByKey.get('0:case-a');
+		const OBSERVATION = { marker: 'critical', text: 'Posting via HTTP Request', tokenCount: 7 };
+		const CURSOR = { lastObservedMessageId: 'm137', lastObservedAt: '2020-01-01T00:00:00.000Z' };
 
-		expect(verdicts?.[0].incomplete).toBe(true);
-		expect(verdicts?.[0].reason).toContain('never masked out of the window');
+		it('reports it unjudged when the observer never ran', async () => {
+			// No cursor: uncompacted, the raw turns are still in the window and every
+			// expectation passes for free — so this must never reach the judge.
+			const deps = depsWithMemory({ observations: [], cursor: null });
+			await createBuildOrchestrator(deps).getOrBuild(0, 'case-a');
+
+			const verdicts = await deps.buildExpectationsByKey.get('0:case-a');
+			expect(verdicts?.[0].incomplete).toBe(true);
+			expect(verdicts?.[0].reason).toContain('never compacted');
+		});
+
+		it('reports it unjudged when it compacted but kept nothing', async () => {
+			// A cursor with no rows masked the history and remembered none of it, so
+			// there is no summary for the case to assert on.
+			const deps = depsWithMemory({ observations: [], cursor: CURSOR });
+			await createBuildOrchestrator(deps).getOrBuild(0, 'case-a');
+
+			const verdicts = await deps.buildExpectationsByKey.get('0:case-a');
+			expect(verdicts?.[0].incomplete).toBe(true);
+		});
+
+		it('reports it unjudged when the memory read failed', async () => {
+			// The stash swallows the error into undefined: "no evidence", never "it compacted".
+			const deps = depsWithMemory(undefined);
+			await createBuildOrchestrator(deps).getOrBuild(0, 'case-a');
+
+			expect((await deps.buildExpectationsByKey.get('0:case-a'))?.[0].incomplete).toBe(true);
+		});
+
+		it('judges it normally once the cursor and the observations are both there', async () => {
+			const deps = depsWithMemory({ observations: [OBSERVATION], cursor: CURSOR });
+			await createBuildOrchestrator(deps).getOrBuild(0, 'case-a');
+
+			const verdicts = await deps.buildExpectationsByKey.get('0:case-a');
+			expect(verdicts?.[0].incomplete).toBeUndefined();
+			expect(verdicts?.[0].pass).toBe(true);
+		});
 	});
 
 	it('forwards the case identity so the build can stamp its trace', async () => {

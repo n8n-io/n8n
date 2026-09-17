@@ -8,18 +8,17 @@
 // `LaneState`, so tracing stays a caller concern.
 // ---------------------------------------------------------------------------
 
-import type { InstanceAiRunDebugResponse } from '@n8n/api-types';
+import type {
+	InstanceAiEvalThreadMemoryResponse,
+	InstanceAiRunDebugResponse,
+} from '@n8n/api-types';
 import { sleep } from '@n8n/utils/sleep';
 
 import type { LaneAllocator } from './lane-allocator';
 import { provisionCaseBuildUser, type LaneUserPool } from './lane-users';
 import { collectExpectations } from '../build-expectations/collect';
 import { selectAuthorExpectations } from '../build-expectations/select';
-import {
-	allFailVerdicts,
-	observationLogOf,
-	verifyBuildExpectations,
-} from '../build-expectations/verifier';
+import { allFailVerdicts, verifyBuildExpectations } from '../build-expectations/verifier';
 import type { CliArgs } from '../cli/args';
 import {
 	buildWorkflowViaMcp,
@@ -52,7 +51,6 @@ import {
 	runCredentialSetupChecks,
 } from '../harness/credential-setup-checks';
 import type { EvalLogger } from '../harness/logger';
-import type { CaseSeed } from '../harness/schema';
 import {
 	fetchPrebuiltBuild,
 	pickPrebuiltWorkflowId,
@@ -306,6 +304,7 @@ export interface BuildOrchestratorDeps {
 	transcriptByThreadId: Map<string, TranscriptTurn[]>;
 	buildExpectationsByKey: Map<string, Promise<BuildExpectationResult[]>>;
 	runDebugByThreadId: Map<string, Promise<InstanceAiRunDebugResponse[]>>;
+	threadMemoryByThreadId: Map<string, Promise<InstanceAiEvalThreadMemoryResponse | undefined>>;
 	agentContextByKey: Map<string, Promise<AgentScenarioContext>>;
 	/** Injectable delay for the provider-outage retry backoff — tests pass a no-op. */
 	sleep?: (ms: number) => Promise<void>;
@@ -334,6 +333,7 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 		transcriptByThreadId,
 		buildExpectationsByKey,
 		runDebugByThreadId,
+		threadMemoryByThreadId,
 		agentContextByKey,
 	} = deps;
 	const delay = deps.sleep ?? sleep;
@@ -398,6 +398,23 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 		const agentRef = findAgentArtifactRef(build.artifactRefs);
 		if (!agentRef) return;
 		agentContextByKey.set(key, fetchAgentScenarioContext(client, agentRef, logger));
+	}
+
+	/** Observational-memory rows for the thread. Structural evidence that compaction
+	 *  ran, and the summary text a case can assert on. Undefined on failure — the
+	 *  premise check reads that as "no evidence", never as "it compacted". */
+	function stashThreadMemory(client: N8nClient, build: BuildResult): void {
+		if (!build.threadId) return;
+		const threadId = build.threadId;
+		threadMemoryByThreadId.set(
+			threadId,
+			client.getThreadMemory(threadId).catch((error: unknown) => {
+				logger.warn(
+					`  Dropped thread memory for ${threadId}: ${error instanceof Error ? error.message : String(error)}`,
+				);
+				return undefined;
+			}),
+		);
 	}
 
 	function stashRunDebug(client: N8nClient, build: BuildResult): void {
@@ -519,17 +536,20 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 					const runDebug = build.threadId
 						? await runDebugByThreadId.get(build.threadId)
 						: undefined;
+					const threadMemory = build.threadId
+						? await threadMemoryByThreadId.get(build.threadId)
+						: undefined;
 					// Premise, not an expectation — unjudged, so a misconfigured lane never
 					// reads as an agent regression.
-					if (testCase.requiresMemoryCompaction) {
-						const missing = compactionPremiseMissing(runDebug, testCase.seed);
-						if (missing) return allFailVerdicts(expectations, `not judged — ${missing}`);
+					if (testCase.requiresMemoryCompaction && !memoryWasCompacted(threadMemory)) {
+						return allFailVerdicts(expectations, NOT_COMPACTED_REASON);
 					}
 					return await verifyBuildExpectations(expectations, {
 						transcript,
 						workflowJson: build.workflowJsons[0],
 						metrics: build.conversationMetrics,
 						runDebug,
+						threadMemory,
 						// Rendered non-workflow artifacts (agent AND config-eval), sectioned
 						// with "(no <type> produced)" fallbacks, so outcome expectations can
 						// judge artifact existence, absence and content — parity with the
@@ -605,6 +625,7 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 				// Ordered before stashBuildExpectations so runDebugByThreadId already has
 				// this build's promise stashed by the time that call reads it.
 				stashRunDebug(lane.runner.client, build);
+				stashThreadMemory(lane.runner.client, build);
 				stashBuildExpectations(key, fileSlug, lane.runner.client, build, true);
 				if (build.success && !build.workflowChecks) {
 					build.workflowChecks = await runWorkflowChecks({
@@ -635,6 +656,7 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 				// Ordered before stashBuildExpectations so runDebugByThreadId already has
 				// this build's promise stashed by the time that call reads it.
 				stashRunDebug(lane.runner.client, build);
+				stashThreadMemory(lane.runner.client, build);
 				stashBuildExpectations(key, fileSlug, lane.runner.client, build, true);
 				if (build.success && !build.workflowChecks) {
 					// No transcript in prebuilt mode, but the authored conversation still
@@ -712,6 +734,7 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 			// Ordered before stashBuildExpectations so runDebugByThreadId already has
 			// this build's promise stashed by the time that call reads it.
 			stashRunDebug(lane.runner.client, build);
+			stashThreadMemory(lane.runner.client, build);
 			stashBuildExpectations(key, fileSlug, lane.runner.client, build, false);
 			logger.info(
 				`[lane ${String(lane.laneNum)}] built ${fileSlug} (iteration ${String(iteration)}) thread=${build.threadId ?? 'none'} success=${String(build.success)}`,
@@ -742,19 +765,13 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 	return { getOrBuild, buildCache, orphanedBuilds, buildDurations };
 }
 
-/** Why the case has no premise to grade, or '' when it does. A log alone is not
- *  enough — the seeded bulk must be behind the cursor at the graded turn. */
-function compactionPremiseMissing(
-	runDebug: InstanceAiRunDebugResponse[] | undefined,
-	seed: CaseSeed | undefined,
-): string {
-	if (!observationLogOf(runDebug)) {
-		return 'observational memory never compacted this conversation, so the case premise is missing. The case needs seeded history with something worth observing — compaction is driven for it automatically, but there has to be a conversation to compact';
-	}
-	const seeded = seed?.mode === 'inline' ? seed.messages.length : 0;
-	const gradedWindow = runDebug?.at(-1)?.steps[0]?.input?.messages;
-	if (seeded > 0 && Array.isArray(gradedWindow) && gradedWindow.length >= seeded) {
-		return `compaction ran but the graded turn still carries ${String(gradedWindow.length)} messages against a ${String(seeded)}-message seed, so the seeded turns were never masked out of the window and the case would pass off the raw history`;
-	}
-	return '';
+const NOT_COMPACTED_REASON =
+	'not judged — observational memory never compacted this thread, so the case premise is ' +
+	'absent. The seed needs a conversation with something worth observing.';
+
+/** Did observational memory actually compact this thread? A cursor means the observer
+ *  ran and everything up to `lastObservedMessageId` is masked out of the window; the
+ *  rows are what replaced it. Both, or the case had nothing to test. */
+function memoryWasCompacted(memory: InstanceAiEvalThreadMemoryResponse | undefined): boolean {
+	return Boolean(memory?.cursor) && (memory?.observations.length ?? 0) > 0;
 }

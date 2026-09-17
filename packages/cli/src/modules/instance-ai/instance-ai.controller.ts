@@ -26,7 +26,11 @@ import {
 	findSeedFolderIssues,
 	findUnbackedSeedWorkflowTools,
 } from '@n8n/api-types';
-import type { InstanceAiAdminSettingsResponse, InstanceAiEvent } from '@n8n/api-types';
+import type {
+	InstanceAiAdminSettingsResponse,
+	InstanceAiEvalThreadMemoryResponse,
+	InstanceAiEvent,
+} from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { AuthenticatedRequest, User, UserRepository } from '@n8n/db';
@@ -1057,6 +1061,28 @@ export class InstanceAiController {
 	 * cleared with the thread's state, so pins for never-created threads would
 	 * be uncollectable.
 	 */
+	/**
+	 * What observational memory holds for an owned thread: the live observations and
+	 * the compaction cursor. A context eval asserts on these rows — that compaction
+	 * ran at all, and that the summary kept the details the case cares about.
+	 *
+	 * Returns the observation text, which is an LLM-written summary of the user's
+	 * conversation. Gated like every other `/eval/` route: the `instanceAi:eval`
+	 * scope is owner/admin-only, and `assertThreadAccess` keeps a caller to threads
+	 * they can already read in full.
+	 */
+	@Get('/eval/threads/:threadId/memory')
+	@GlobalScope('instanceAi:eval')
+	async getEvalThreadMemory(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('threadId') threadId: string,
+	): Promise<InstanceAiEvalThreadMemoryResponse> {
+		this.requireInstanceAiEnabled();
+		await this.assertThreadAccess(req.user.id, threadId);
+		return await this.instanceAiService.getThreadMemory(threadId);
+	}
+
 	@Post('/eval/thread-credential-allowlist')
 	@GlobalScope('instanceAi:eval')
 	async setThreadCredentialAllowlist(

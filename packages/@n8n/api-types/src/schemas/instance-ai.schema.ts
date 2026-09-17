@@ -2598,6 +2598,23 @@ export interface InstanceAiEvalAgentSkippedFeature {
 	reason: string;
 }
 
+export interface InstanceAiEvalObservation {
+	marker: 'critical' | 'important' | 'info' | 'completion';
+	text: string;
+	tokenCount: number;
+}
+
+/** What observational memory holds for a thread, for an eval to assert on. Reads the
+ *  observation rows themselves rather than the rendered system prompt, so a prompt
+ *  or SDK rename cannot silently turn "never compacted" into the answer. */
+export interface InstanceAiEvalThreadMemoryResponse {
+	/** Live observations, oldest first. Empty when nothing has been observed. */
+	observations: InstanceAiEvalObservation[];
+	/** Null until the observer runs; `lastObservedMessageId` is the compaction
+	 *  cursor, so everything up to it is masked out of the agent's window. */
+	cursor: { lastObservedMessageId: string; lastObservedAt: string } | null;
+}
+
 export interface InstanceAiEvalAgentExecutionResult {
 	runId: string;
 	/** The run completed without framework/model errors. Tool-level errors live on toolCalls[].error. */

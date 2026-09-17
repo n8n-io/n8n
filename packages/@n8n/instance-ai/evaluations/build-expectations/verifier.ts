@@ -1,5 +1,7 @@
-import type { InstanceAiRunDebugResponse } from '@n8n/api-types';
-import { parseSystemPromptForDisplay, stepInstructions } from '@n8n/api-types';
+import type {
+	InstanceAiEvalThreadMemoryResponse,
+	InstanceAiRunDebugResponse,
+} from '@n8n/api-types';
 import type { Message } from '@n8n/agents';
 
 import { buildAssertionsBlock, judgeExpectations } from './assertion-judge';
@@ -23,6 +25,8 @@ export interface BuildExpectationsInput {
 	metrics?: ConversationMetrics;
 	/** Per-step debug from the build; source of every token number below. */
 	runDebug?: InstanceAiRunDebugResponse[];
+	/** Observational memory for the thread: rows plus the compaction cursor. */
+	threadMemory?: InstanceAiEvalThreadMemoryResponse;
 	/** Rendered agent/config-eval sections (each with a "(no … produced)" fallback), appended
 	 *  to the cached build context so outcome expectations can be judged against them. */
 	artifactContext?: string;
@@ -62,6 +66,7 @@ export async function verifyBuildExpectations(
 						build.transcript,
 						build.metrics,
 						build.runDebug,
+						build.threadMemory,
 					),
 				},
 			],
@@ -101,6 +106,7 @@ function buildConversationContext(
 	transcript: TranscriptTurn[],
 	metrics: ConversationMetrics | undefined,
 	runDebug: InstanceAiRunDebugResponse[] | undefined,
+	threadMemory: InstanceAiEvalThreadMemoryResponse | undefined,
 ): string {
 	const metricsBlock = metrics
 		? `\`\`\`json\n${JSON.stringify(metrics, null, 2)}\n\`\`\``
@@ -122,27 +128,24 @@ function buildConversationContext(
 		'',
 		tokenUsageTotals(runDebug),
 		'',
+		'## Observational memory after compaction (ground truth — do not recount)',
+		'',
+		observationLogBlock(threadMemory),
+		'',
 		buildAssertionsBlock(expectations),
 	].join('\n');
 }
 
-// ---------------------------------------------------------------------------
-// Observational memory
-// ---------------------------------------------------------------------------
-
-/** Latest observation log in the build, or null if it never compacted. Not shown to
- *  the judge — a misconfigured lane must not score as an agent regression. */
-export function observationLogOf(
-	runDebug: InstanceAiRunDebugResponse[] | undefined,
-): string | null {
-	let latest: string | null = null;
-	for (const run of runDebug ?? []) {
-		for (const step of run.steps) {
-			const { observations } = parseSystemPromptForDisplay(stepInstructions(step.input));
-			if (observations) latest = observations;
-		}
-	}
-	return latest;
+/** What the agent actually remembers after compaction, so an expectation can grade the
+ *  SUMMARY itself instead of inferring it from the reply. Markers are the Observer's
+ *  own priority labels. */
+function observationLogBlock(memory: InstanceAiEvalThreadMemoryResponse | undefined): string {
+	if (!memory) return '(not captured)';
+	if (!memory.cursor) return '(observational memory has not compacted this conversation)';
+	if (memory.observations.length === 0) return '(compacted, but no observations were kept)';
+	return memory.observations
+		.map(({ marker, text }) => `- [${marker.toUpperCase()}] ${text}`)
+		.join('\n');
 }
 
 // ---------------------------------------------------------------------------

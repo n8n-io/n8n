@@ -16,6 +16,7 @@ import type {
 	InstanceAiEvalAgentExecutionResult,
 	InstanceAiEvalExecutionResult,
 	InstanceAiRunDebugResponse,
+	InstanceAiEvalThreadMemoryResponse,
 	InstanceAiThreadDebugRunsResponse,
 	InstanceAiThreadStatusResponse,
 	InstanceAiEvalSeedAgent,
@@ -439,6 +440,17 @@ export class N8nClient {
 	async getRunDebug(runId: string, timeoutMs?: number): Promise<InstanceAiRunDebugResponse> {
 		return this.unwrapRestData<InstanceAiRunDebugResponse>(
 			await this.fetch(`/rest/instance-ai/debug/runs/${runId}`, { timeoutMs }),
+		);
+	}
+
+	/** What observational memory holds for a thread: live observations + the
+	 *  compaction cursor. Structural, so it needs no run-debug flag. */
+	async getThreadMemory(
+		threadId: string,
+		timeoutMs?: number,
+	): Promise<InstanceAiEvalThreadMemoryResponse> {
+		return this.unwrapRestData<InstanceAiEvalThreadMemoryResponse>(
+			await this.fetch(`/rest/instance-ai/eval/threads/${threadId}/memory`, { timeoutMs }),
 		);
 	}
 
