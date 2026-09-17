@@ -12,6 +12,8 @@ const props = defineProps<{
 	busy: 'connect' | 'disconnect' | false;
 	/** When set, Connect is blocked and this explains why (e.g. unsaved changes). */
 	disabledReason?: string;
+	/** Blocks both actions, e.g. when the user lacks the clone scope. */
+	disabled?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -35,9 +37,9 @@ const isConnected = computed(() => props.checkout?.hasCheckout ?? false);
 <template>
 	<div :class="$style.status" data-test-id="promotion-checkout-status">
 		<div :class="$style.state">
-			<N8nIcon v-if="status === 'connected'" icon="circle-check" color="success" :size="16" />
-			<N8nIcon v-else-if="status === 'stale'" icon="triangle-alert" color="warning" :size="16" />
-			<N8nIcon v-else icon="circle-dot" color="text-light" :size="16" />
+			<N8nIcon v-if="status === 'connected'" icon="circle-check" color="success" size="large" />
+			<N8nIcon v-else-if="status === 'stale'" icon="triangle-alert" color="warning" size="large" />
+			<N8nIcon v-else icon="circle-dot" color="text-light" size="large" />
 
 			<N8nText size="small" :color="status === 'stale' ? 'warning' : 'text-base'">
 				<template v-if="status === 'connected'">
@@ -62,7 +64,7 @@ const isConnected = computed(() => props.checkout?.hasCheckout ?? false);
 				v-if="status !== 'connected'"
 				type="button"
 				size="small"
-				:disabled="!!disabledReason || busy === 'disconnect'"
+				:disabled="!!disabledReason || busy === 'disconnect' || disabled"
 				:loading="busy === 'connect'"
 				data-test-id="promotion-checkout-connect"
 				@click="emit('connect')"
@@ -74,7 +76,7 @@ const isConnected = computed(() => props.checkout?.hasCheckout ?? false);
 				type="button"
 				variant="outline"
 				size="small"
-				:disabled="busy === 'connect'"
+				:disabled="busy === 'connect' || disabled"
 				:loading="busy === 'disconnect'"
 				data-test-id="promotion-checkout-disconnect"
 				@click="emit('disconnect')"

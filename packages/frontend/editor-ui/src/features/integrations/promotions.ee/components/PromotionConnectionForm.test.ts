@@ -1,8 +1,12 @@
 import { createTestingPinia } from '@pinia/testing';
+import type { IUser } from '@n8n/rest-api-client';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
+import { mock } from 'vitest-mock-extended';
 
 import { createComponentRenderer } from '@/__tests__/render';
+import { mockedStore } from '@/__tests__/utils';
 import type * as PromotionsApi from '../promotionsSettings.api';
 import type { PromotionConnection, PromotionProviderSummary } from '../promotionsSettings.api';
 import PromotionConnectionForm from './PromotionConnectionForm.vue';
@@ -75,9 +79,13 @@ const lastSaved = (emitted: (event: string) => unknown[]): PromotionConnection =
 };
 
 describe('PromotionConnectionForm', () => {
+	let usersStore: ReturnType<typeof mockedStore<typeof useUsersStore>>;
+
 	beforeEach(() => {
 		vi.resetAllMocks();
 		createTestingPinia();
+		usersStore = mockedStore(useUsersStore);
+		usersStore.currentUser = mock<IUser>({ globalScopes: ['gitConnection:clone'] });
 	});
 
 	it('blocks Connect for a direction that is enabled but not yet saved', async () => {
@@ -91,6 +99,21 @@ describe('PromotionConnectionForm', () => {
 			'Save this connection before you connect.',
 		);
 		expect(api.clonePromotionCheckout).not.toHaveBeenCalled();
+	});
+
+	it('blocks Connect and Disconnect without the clone scope', async () => {
+		usersStore.currentUser = mock<IUser>({ globalScopes: [] });
+		// A stale checkout renders both actions, so we can assert both are blocked.
+		const { getByTestId } = renderComponent({
+			props: {
+				connection: connectionWith({
+					apply: applyConfig({ hasCheckout: true, matchesConfig: false }),
+				}),
+			},
+		});
+
+		expect(getByTestId('promotion-checkout-connect')).toBeDisabled();
+		expect(getByTestId('promotion-checkout-disconnect')).toBeDisabled();
 	});
 
 	it('blocks Connect while the form has unsaved changes', async () => {

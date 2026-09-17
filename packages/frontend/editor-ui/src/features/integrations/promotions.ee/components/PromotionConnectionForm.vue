@@ -15,7 +15,9 @@ import {
 	N8nText,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { getResourcePermissions } from '@n8n/permissions';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { computed, reactive, ref } from 'vue';
 
 import { usePromotionConnectionSave } from '../composables/usePromotionConnectionSave';
@@ -49,7 +51,14 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const toast = useToast();
 const rootStore = useRootStore();
+const usersStore = useUsersStore();
 const save = usePromotionConnectionSave();
+
+// Connect and Disconnect both call the clone endpoint, which the backend gates on
+// this scope. Without it, keep both actions disabled instead of failing on click.
+const canClone = computed(
+	() => !!getResourcePermissions(usersStore.currentUser?.globalScopes).gitConnection.clone,
+);
 
 const current = ref<PromotionConnection | null>(props.connection);
 const form = reactive<ConnectionFormState>(
@@ -161,6 +170,7 @@ const branchNameFor = (direction: PromotionDirection): string => {
 };
 
 const connectDisabledReason = (direction: PromotionDirection): string | undefined => {
+	if (!canClone.value) return i18n.baseText('settings.promotions.connection.checkout.noPermission');
 	if (!current.value?.configs[direction])
 		return i18n.baseText('settings.promotions.connection.checkout.saveFirst');
 	if (isDirty.value)
@@ -333,6 +343,7 @@ defineExpose({ selectProvider });
 							:branch-name="branchNameFor('apply')"
 							:busy="connecting.apply"
 							:disabled-reason="connectDisabledReason('apply')"
+							:disabled="!canClone"
 							@connect="connect('apply')"
 							@disconnect="disconnect('apply')"
 						/>
@@ -382,6 +393,7 @@ defineExpose({ selectProvider });
 							:branch-name="branchNameFor('promote')"
 							:busy="connecting.promote"
 							:disabled-reason="connectDisabledReason('promote')"
+							:disabled="!canClone"
 							@connect="connect('promote')"
 							@disconnect="disconnect('promote')"
 						/>

@@ -3818,6 +3818,7 @@
 	"settings.promotions.connection.checkout.stale": "The remote or branch changed. Connect to update the local copy.",
 	"settings.promotions.connection.checkout.saveFirst": "Save this connection before you connect.",
 	"settings.promotions.connection.checkout.saveChangesFirst": "Save your changes before you connect.",
+	"settings.promotions.connection.checkout.noPermission": "You do not have permission to connect.",
 	"settings.promotions.connection.checkout.toast.connected": "Connected",
 	"settings.promotions.connection.checkout.toast.connectError": "Couldn't connect",
 	"settings.promotions.connection.checkout.toast.disconnected": "Disconnected",

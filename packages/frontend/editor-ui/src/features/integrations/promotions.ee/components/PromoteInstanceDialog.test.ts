@@ -67,7 +67,7 @@ describe('PromoteInstanceDialog', () => {
 		api.promotePackage.mockResolvedValue(promoteResult('main'));
 		const { findByTestId, getByTestId, emitted } = renderComponent();
 
-		await userEvent.type(await findByTestId('promote-commit-message'), 'Deploy today');
+		await userEvent.type(await findByTestId('promote-commit-message'), '  Deploy today  ');
 		await userEvent.click(getByTestId('promote-confirm-button'));
 
 		await waitFor(() =>

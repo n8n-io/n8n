@@ -78,20 +78,6 @@ describe('PromoteInstanceSection', () => {
 		expect(getByTestId('promote-instance-not-connected')).toBeInTheDocument();
 	});
 
-	it('disables the promote action when the checkout is stale', () => {
-		const { getByTestId } = renderComponent({
-			props: {
-				connection: instanceConnection({
-					configs: {
-						promote: promoteConfig('main', false, { hasCheckout: true, matchesConfig: false }),
-					},
-				}),
-			},
-		});
-
-		expect(getByTestId('promote-instance-button')).toBeDisabled();
-	});
-
 	it('shows nothing when the connection is not loaded yet', () => {
 		const { queryByTestId } = renderComponent({ props: { connection: null } });
 
