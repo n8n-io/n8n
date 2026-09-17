@@ -1,5 +1,13 @@
 packages/@n8n/api-types/src/dto/git-connections/__tests__/git-connections.dto.test.ts
   s_7562978115634d::t_eda8f562a9db0b 37-52
+packages/cli/src/modules/git-connections.ee/__tests__/git-connections.service.test.ts
+  s_7562978115634d::t_d37e3f61fb9dfc 55-60
+  s_7562978115634d::t_166d5d75abdc5c 20-28,30-31,38,41-43,50
+  s_7562978115634d::t_bc3301678c95a7 61
+  s_7562978115634d::t_38b110692dc811 1-19,29,32-37,39-40,44-49,51-54,62-194
+packages/cli/src/modules/git-connections.ee/__tests__/git-connections-git.service.test.ts
+  s_7562978115634d::t_d2fca78a7dc460 17-20
+  s_7562978115634d::t_879215479568e4 1-16,21-33,52-69,71-73,103-104
 ---
 {
   "schema_version": "authorship/3.0.0",
