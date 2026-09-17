@@ -134,6 +134,27 @@ export class AiPreferenceService {
 	}
 
 	/**
+	 * For a caller working in one project: that project's preferences plus the instance and
+	 * personal rows, and nothing from the caller's other projects. The access rule is the one
+	 * `getApplicableAcrossProjects` applies to each project, so narrowing the read can never
+	 * widen it. A project the caller may not read answers like a missing one, the same as
+	 * `requireVisible`.
+	 */
+	async getApplicableForProject(user: User, projectId: string): Promise<ApplicableAiPreferences> {
+		const readable = await this.projectAccess(user).has(projectId, 'read');
+		const project = readable ? await this.projectRepository.findOneBy({ id: projectId }) : null;
+		// A global scope covers every team project but never another user's personal project.
+		// The caller's own passes, and its rows fold into their personal preferences.
+		const foreignPersonal =
+			project?.type === 'personal' &&
+			(await this.projectRepository.getPersonalProjectForUser(user.id))?.id !== project.id;
+		if (!project || foreignPersonal) {
+			throw new NotFoundError(`Project with id ${projectId} not found`);
+		}
+		return await this.getApplicable(user.id, [project]);
+	}
+
+	/**
 	 * For callers with no current project, such as the MCP server. A project counts when the
 	 * caller may read its preferences, the same rule as the REST read, so a membership that
 	 * carries no `projectAiPreference:read` (a chat user) gets nothing here either. Never other
