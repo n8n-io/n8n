@@ -23,6 +23,8 @@ const { mockGit, simpleGitMock, GitPluginError } = vi.hoisted(() => {
 		checkIsRepo: vi.fn(),
 		listRemote: vi.fn(),
 		clone: vi.fn(),
+		show: vi.fn(),
+		branch: vi.fn(),
 	};
 	instance.env.mockReturnValue(instance);
 	// Match simple-git's timeout error shape.
@@ -511,21 +513,66 @@ describe('PromotionsGitService (git operations)', () => {
 	});
 
 	describe('listBranchTree', () => {
+		const commitSha = 'c'.repeat(40);
+		// `paths` is created per test, so build the operation when a test runs.
+		const operation = () => ({
+			remoteUrl,
+			credentials,
+			paths,
+			branchName: 'main',
+			configId,
+			pathspecs: ['n8n-export/manifest.json', 'n8n-export/projects/'],
+		});
+
+		beforeEach(() => {
+			mockGit.revparse.mockResolvedValue(`${commitSha}\n`);
+			mockGit.raw.mockResolvedValue('');
+		});
+
+		it('lists the tree at the fetched tip and returns that commit', async () => {
+			mockGit.raw.mockResolvedValueOnce('100644 blob b1\tn8n-export/manifest.json\0');
+
+			const result = await gitService.listBranchTree(operation());
+
+			expect(mockGit.fetch).toHaveBeenCalledWith(
+				'origin',
+				'+refs/heads/main:refs/remotes/origin/main',
+				['--progress'],
+			);
+			expect(mockGit.revparse).toHaveBeenCalledWith(['refs/remotes/origin/main']);
+			expect(mockGit.raw).toHaveBeenCalledWith([
+				'ls-tree',
+				'-r',
+				'-z',
+				commitSha,
+				'--',
+				'n8n-export/manifest.json',
+				'n8n-export/projects/',
+			]);
+			expect(result).toEqual({
+				commitSha,
+				lsTreeOutput: '100644 blob b1\tn8n-export/manifest.json\0',
+			});
+		});
+
+		it('reports no commit when the remote has none yet', async () => {
+			mockGit.fetch.mockRejectedValueOnce(new Error("couldn't find remote ref"));
+			mockGit.branch.mockResolvedValueOnce({ all: [] } as never);
+			mockGit.listRemote.mockResolvedValueOnce('');
+
+			await expect(gitService.listBranchTree(operation())).resolves.toEqual({
+				commitSha: null,
+				lsTreeOutput: '',
+			});
+			expect(mockGit.revparse).not.toHaveBeenCalled();
+		});
+
 		it('runs operations on one checkout one at a time', async () => {
 			const fetching = createDeferredPromise();
 			mockGit.fetch.mockReturnValueOnce(fetching.promise);
-			mockGit.raw.mockResolvedValue('');
-			const operation = {
-				remoteUrl,
-				credentials,
-				paths,
-				branchName: 'main',
-				configId,
-				pathspecs: ['n8n-export/'],
-			};
 
-			const first = gitService.listBranchTree(operation);
-			const second = gitService.listBranchTree(operation);
+			const first = gitService.listBranchTree(operation());
+			const second = gitService.listBranchTree(operation());
 			await vi.waitFor(() => expect(mockGit.fetch).toHaveBeenCalledTimes(1));
 			fetching.resolve();
 			await Promise.all([first, second]);
@@ -534,6 +581,85 @@ describe('PromotionsGitService (git operations)', () => {
 			const [firstListing] = mockGit.raw.mock.invocationCallOrder;
 			expect(firstListing).toBeGreaterThan(firstFetch);
 			expect(firstListing).toBeLessThan(secondFetch);
+		});
+	});
+
+	describe('readFilesAtCommit', () => {
+		const commitSha = 'c'.repeat(40);
+		const filePaths = [
+			'n8n-export/manifest.json',
+			'n8n-export/projects/a-p1/workflows/b-w1/workflow.json',
+		];
+		const read = async (over: Record<string, unknown> = {}) =>
+			await gitService.readFilesAtCommit({
+				paths,
+				branchName: 'main',
+				configId,
+				commitSha,
+				filePaths,
+				...over,
+			});
+
+		it('reads the files of one commit in a batch with bounded concurrency', async () => {
+			mockGit.show.mockImplementation(async ([spec]: string[]) => `content of ${spec}`);
+
+			const files = await read();
+
+			expect([...files]).toEqual(
+				filePaths.map((filePath) => [filePath, `content of ${commitSha}:${filePath}`]),
+			);
+			expect(simpleGitMock).toHaveBeenCalledTimes(1);
+			expect(simpleGitMock).toHaveBeenCalledWith(
+				expect.objectContaining({
+					baseDir: paths.repositoryFolder,
+					trimmed: false,
+					maxConcurrentProcesses: 4,
+				}),
+			);
+		});
+
+		it('waits for the checkout lock, so a fetch in progress finishes first', async () => {
+			const fetching = createDeferredPromise();
+			mockGit.fetch.mockReturnValueOnce(fetching.promise);
+			mockGit.revparse.mockResolvedValue(`${commitSha}\n`);
+			mockGit.raw.mockResolvedValue('');
+			mockGit.show.mockResolvedValue('{}');
+			const listing = gitService.listBranchTree({
+				remoteUrl,
+				credentials,
+				paths,
+				branchName: 'main',
+				configId,
+				pathspecs: ['n8n-export/'],
+			});
+			await vi.waitFor(() => expect(mockGit.fetch).toHaveBeenCalledTimes(1));
+
+			const reading = read();
+			await new Promise((resolve) => setImmediate(resolve));
+			expect(mockGit.show).not.toHaveBeenCalled();
+
+			fetching.resolve();
+			await Promise.all([listing, reading]);
+			expect(mockGit.show).toHaveBeenCalledTimes(filePaths.length);
+		});
+
+		it('returns nothing without calling Git for an empty list', async () => {
+			await expect(read({ filePaths: [] })).resolves.toEqual(new Map());
+			expect(simpleGitMock).not.toHaveBeenCalled();
+		});
+
+		it('rejects a commit that is not an object name before calling Git', async () => {
+			await expect(read({ commitSha: 'origin/main' })).rejects.toThrow(
+				'The commit SHA is not a Git object name',
+			);
+			expect(mockGit.show).not.toHaveBeenCalled();
+		});
+
+		it('redacts a read failure', async () => {
+			mockGit.show.mockRejectedValue(new Error("fatal: path 'secret' does not exist"));
+
+			await expect(read()).rejects.toThrow('Could not complete the Git operation');
+			expect(JSON.stringify(logger.warn.mock.calls)).not.toContain('secret');
 		});
 	});
 
