@@ -14,12 +14,11 @@ import {
 	AnnotationTagMappingRepository,
 	ExecutionAnnotationRepository,
 	ExecutionRepository,
-	In,
+	isForeignKeyConstraintError,
 	WorkflowHistoryRepository,
 	WorkflowRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { QueryFailedError } from '@n8n/typeorm';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { stringify } from 'flatted';
 import { validate as jsonSchemaValidate } from 'jsonschema';
@@ -811,7 +810,7 @@ export class ExecutionService {
 		try {
 			await this.annotationTagMappingRepository.overwriteTags(annotation.id, tagIds);
 		} catch (error) {
-			if (error instanceof QueryFailedError) {
+			if (isForeignKeyConstraintError(error)) {
 				throw new NotFoundError('Some tags not found');
 			}
 			throw error;
@@ -836,11 +835,10 @@ export class ExecutionService {
 		const versionIds = await this.executionRepository.getDistinctVersionIds(workflowId);
 		if (versionIds.length === 0) return [];
 
-		const versions = await this.workflowHistoryRepository.find({
-			where: { workflowId, versionId: In(versionIds) },
-			select: ['versionId', 'name', 'createdAt'],
-			order: { createdAt: 'DESC' },
-		});
+		const versions = await this.workflowHistoryRepository.findVersionSummaries(
+			workflowId,
+			versionIds,
+		);
 
 		return versions.map((v) => ({
 			versionId: v.versionId,
