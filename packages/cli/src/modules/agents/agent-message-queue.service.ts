@@ -1,8 +1,4 @@
-import {
-	LockNamespace,
-	LockService,
-	Logger,
-} from '@n8n/backend-common';
+import { LockNamespace, LockService, Logger } from '@n8n/backend-common';
 import type { AgentChatQueueItem, PushPayload } from '@n8n/api-types';
 import { OnPubSubEvent, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
@@ -45,6 +41,7 @@ type PreviewExecution = {
 	execute: (payload: PreviewQueuePayload, context: PreviewQueueExecutionContext) => Promise<void>;
 	controller: AbortController;
 	errorEmitted: boolean;
+	executionId?: string;
 };
 
 const previewAdmissionLockKey = (threadId: string) => `agent-preview-admission:${threadId}`;
@@ -409,7 +406,10 @@ export class AgentMessageQueueService {
 					id: selected.id,
 					threadId,
 				});
-				await this.leases.write(owner, async (ctx) => await this.repository.removeEntry(selected.id, ctx));
+				await this.leases.write(
+					owner,
+					async (ctx) => await this.repository.removeEntry(selected.id, ctx),
+				);
 				return true;
 			}
 			bridge = this.integrations.getBridge(
@@ -446,7 +446,11 @@ export class AgentMessageQueueService {
 		let executionId: string | undefined;
 		const onExecutionStarted = async (id: string) => {
 			executionId = id;
-			await this.leases.write(owner, async (ctx) => await this.repository.linkExecution(entry.id, id, ctx));
+			if (preview) preview.executionId = id;
+			await this.leases.write(
+				owner,
+				async (ctx) => await this.repository.linkExecution(entry.id, id, ctx),
+			);
 			if (preview)
 				this.sendPreviewEvent(entry.id, preview, { type: 'execution-started', executionId: id });
 		};
@@ -470,8 +474,10 @@ export class AgentMessageQueueService {
 			}
 		} catch (error) {
 			if (preview) {
-				if (!executionId && !owner.signal.aborted)
+				if (!executionId && !owner.signal.aborted) {
 					executionId = await this.recordFailedPreview(entry, error, abortSignal.aborted);
+					preview.executionId = executionId;
+				}
 				if (!abortSignal.aborted && !preview.errorEmitted) {
 					this.sendPreviewEvent(entry.id, preview, {
 						type: 'error',
@@ -484,7 +490,12 @@ export class AgentMessageQueueService {
 			try {
 				// The conditional delete makes a concurrent Stop win before suspension cleanup.
 				if (preview && !preview.controller.signal.aborted) {
-					if (await this.leases.write(owner, async (ctx) => await this.repository.finishProcessing(entry.id, ctx))) {
+					if (
+						await this.leases.write(
+							owner,
+							async (ctx) => await this.repository.finishProcessing(entry.id, ctx),
+						)
+					) {
 						this.previews.delete(entry.id);
 					} else {
 						const remaining = await this.repository.findById(entry.id);
@@ -502,7 +513,10 @@ export class AgentMessageQueueService {
 						});
 					}
 				}
-				await this.leases.write(owner, async (ctx) => await this.repository.removeEntry(entry.id, ctx));
+				await this.leases.write(
+					owner,
+					async (ctx) => await this.repository.removeEntry(entry.id, ctx),
+				);
 				this.previews.delete(entry.id);
 				if (preview) {
 					if (!executionId) await this.deleteUnusedAttachments(entry);
@@ -523,6 +537,7 @@ export class AgentMessageQueueService {
 					});
 				this.notifyPeers(threadId);
 			} finally {
+				if (owner.signal.aborted) preview?.controller.abort(owner.signal.reason);
 				this.processing.delete(entry.id);
 			}
 		}
@@ -552,7 +567,10 @@ export class AgentMessageQueueService {
 			};
 			executionId = await this.executionService.startExecutionRecording(params, recorder.startedAt);
 			const recordedId = executionId;
-			await this.leases.write(this.leases.requireOwner(entry.threadId), async (ctx) => await this.repository.linkExecution(entry.id, recordedId, ctx));
+			await this.leases.write(
+				this.leases.requireOwner(entry.threadId),
+				async (ctx) => await this.repository.linkExecution(entry.id, recordedId, ctx),
+			);
 			await this.executionService.finalizeExecution(executionId, {
 				...params,
 				record: {
@@ -586,7 +604,7 @@ export class AgentMessageQueueService {
 			if (entry?.status === 'cancelling' || (!entry && started)) preview.controller.abort();
 			if (!entry && !started && this.previews.get(id) === preview) {
 				this.previews.delete(id);
-				if (preview.input.payload.kind === 'message') {
+				if (preview.input.payload.kind === 'message' && !preview.executionId) {
 					await this.attachments.deleteByIds(
 						preview.input.payload.attachments?.map(({ id }) => id) ?? [],
 					);
@@ -658,6 +676,14 @@ export class AgentMessageQueueService {
 									await this.repository.removeStale(entry.id, graceMs, attachmentIds, ctx),
 							);
 							if (removedAttachments === null) continue;
+							if (entry.executionId) {
+								this.broadcaster.notify({
+									projectId: entry.payload.projectId,
+									agentId: entry.agentId,
+									threadId,
+									executionId: entry.executionId,
+								});
+							}
 							await this.attachments.deleteStoredBytes(removedAttachments);
 							if (leaseSignal.aborted) return;
 							this.logger.info('Removed interrupted agent queue entry without replay', {

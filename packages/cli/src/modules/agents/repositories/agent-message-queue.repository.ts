@@ -133,7 +133,10 @@ export class AgentMessageQueueRepository extends BaseRepository<AgentMessageQueu
 	}
 
 	async finishProcessing(id: string, ctx: OperationContext): Promise<boolean> {
-		return (await this.managerFor(ctx).delete(AgentMessageQueue, { id, status: 'processing' })).affected === 1;
+		return (
+			(await this.managerFor(ctx).delete(AgentMessageQueue, { id, status: 'processing' }))
+				.affected === 1
+		);
 	}
 
 	async cancelQueued(id: string): Promise<boolean> {
@@ -157,12 +160,6 @@ export class AgentMessageQueueRepository extends BaseRepository<AgentMessageQueu
 				updatedAt: () => this.time(),
 			},
 		);
-	}
-
-	async findExistingIds(ids: string[]): Promise<string[]> {
-		if (ids.length === 0) return [];
-		const rows = await this.find({ select: ['id'], where: { id: In(ids) } });
-		return rows.map(({ id }) => id);
 	}
 
 	async findStale(threadId: string, graceMs: number): Promise<AgentMessageQueue[]> {

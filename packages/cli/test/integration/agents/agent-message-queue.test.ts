@@ -769,12 +769,6 @@ describe('agent message queue', () => {
 		const push = vi.mocked(main['broadcaster']['push'].sendToUsers);
 		const reachedFinish = createDeferredPromise();
 		const finish = createDeferredPromise();
-		const finishProcessing = repository.finishProcessing.bind(repository);
-		vi.spyOn(repository, 'finishProcessing').mockImplementationOnce(async (id) => {
-			reachedFinish.resolve();
-			await finish.promise;
-			return await finishProcessing(id);
-		});
 		const checkpoint = mock<SerializableAgentState & { runId: string }>({
 			runId: 'suspended-run',
 			status: 'suspended',
@@ -791,6 +785,8 @@ describe('agent message queue', () => {
 			});
 		const item = await main.enqueuePreview(preview('first'), 'request-1', async () => {
 			checkpoints.findSuspendedForThread.mockResolvedValue(checkpoint);
+			reachedFinish.resolve();
+			await finish.promise;
 		});
 		try {
 			await reachedFinish.promise;
@@ -1099,7 +1095,7 @@ describe('agent message queue', () => {
 		}
 	});
 
-	it('releases a preview claim when the saved payload read fails', async () => {
+	it('rolls back a preview claim when the saved payload read fails', async () => {
 		const readStarted = createDeferredPromise();
 		const findById = repository.findById.bind(repository);
 		const findByIdSpy = vi
@@ -1121,6 +1117,74 @@ describe('agent message queue', () => {
 			expect(await repository.count()).toBe(0);
 		} finally {
 			findByIdSpy.mockRestore();
+		}
+	});
+
+	it('keeps recorded preview attachments after ownership loss and recovery', async () => {
+		const started = createDeferredPromise<string>();
+		const finish = createDeferredPromise();
+		const main = await makeMain();
+		const peer = await makeMain();
+		const files = [
+			{ id: 'recorded-file', fileName: 'notes.txt', mimeType: 'text/plain', sizeBytes: 10 },
+		];
+		const item = await main.enqueuePreview(
+			preview('first', 'conversation', files),
+			'request',
+			async (_payload, context) => {
+				const executionId = await executions.startExecutionRecording(
+					{
+						agentId,
+						agentName: 'Agent',
+						projectId,
+						threadId: 'conversation',
+						userMessage: 'first',
+						attachments: files,
+						source: 'chat',
+					},
+					new Date(),
+				);
+				await context.onExecutionStarted(executionId);
+				started.resolve(executionId);
+				await finish.promise;
+				throw new Error('Runner finished after takeover');
+			},
+		);
+		const executionId = await started.promise;
+		const oldDrain = main['drains'].get('conversation')?.catch((error: unknown) => error);
+		const leaseRepository = Container.get(AgentConversationLeaseRepository);
+		const executionRepository = Container.get(AgentExecutionRepository);
+		try {
+			await leaseRepository.update({ threadId: 'conversation' }, { expiresAt: new Date(0) });
+			const successor = await leaseRepository.acquire(agentId, 'conversation');
+			if (!successor) throw new Error('Missing successor');
+			finish.resolve();
+			expect(await oldDrain).toBeInstanceOf(AgentConversationLeaseLostError);
+			expect(await executionRepository.countBy({ threadId: 'conversation' })).toBe(1);
+			expect(await repository.findById(item.id)).toMatchObject({
+				status: 'processing',
+				executionId,
+			});
+			expect(attachments.deleteByIds).not.toHaveBeenCalled();
+			await leaseRepository.release(successor);
+			await repository.update(item.id, { updatedAt: new Date(0) });
+			await executionRepository.update(executionId, { updatedAt: new Date(0) });
+			await peer.recover();
+			await main['heartbeat']();
+			expect(await repository.findById(item.id)).toBeNull();
+			expect(await executionRepository.findOneBy({ id: executionId })).toMatchObject({
+				status: 'interrupted',
+			});
+			expect(attachments.deleteByIds).not.toHaveBeenCalled();
+			expect(main['broadcaster']['push'].sendToUsers).toHaveBeenCalledWith(
+				expect.objectContaining({
+					data: expect.objectContaining({ event: { type: 'cancelled' } }),
+				}),
+				['user'],
+			);
+		} finally {
+			finish.resolve();
+			executions['stopHeartbeat'](executionId);
 		}
 	});
 
@@ -1196,8 +1260,13 @@ describe('agent message queue', () => {
 				return await finalize(execution, staleBefore);
 			},
 		);
-		await (await makeMain()).recover();
+		const main = await makeMain();
+		const updates = vi.spyOn(main['broadcaster'], 'notify');
+		await main.recover();
 		await retryUntil(async () => expect(received).toEqual(['waiting']));
+		expect(updates.mock.calls.map(([update]) => update.executionId).sort()).toEqual(
+			[ids.interrupted, ids.completed, ids.suspended].sort(),
+		);
 		expect(await executionRepository.findOneBy({ id: ids.interrupted })).toMatchObject({
 			status: 'interrupted',
 		});
@@ -1222,7 +1291,7 @@ describe('agent message queue', () => {
 
 	it('cancels a matching suspended run before recovering its stale cancelling preview', async () => {
 		const stale = await repository.enqueue(preview('stopped'));
-		await repository.markProcessing(stale.id);
+		await repository.markProcessing(stale.id, {});
 		await repository.requestCancellation(stale.id);
 		await repository.update(stale.id, { updatedAt: new Date(Date.now() - 180_000) });
 		await repository.enqueue(message('successor'));
@@ -1240,7 +1309,7 @@ describe('agent message queue', () => {
 			return true;
 		});
 		const main = await makeMain();
-		const lease = vi.spyOn(main['lockService'], 'withLease');
+		const lease = vi.spyOn(main['leases'], 'withLease');
 		let draining: Promise<void> | undefined;
 
 		const recovering = main.recover();
