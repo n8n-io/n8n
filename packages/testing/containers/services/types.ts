@@ -70,6 +70,8 @@ export interface StartContext {
 export type LoadBalancerPolicy = 'first' | 'round_robin' | 'random' | 'least_conn' | 'ip_hash';
 
 export interface StackConfig {
+	/** Overall startup deadline and n8n readiness timeout override in milliseconds. */
+	startupTimeoutMs?: number;
 	mains?: number;
 	workers?: number;
 	/** Dedicated `n8n webhook` procs. Forces queue mode when > 0. */
@@ -115,8 +117,6 @@ export interface StackConfig {
 	userHomeHostDir?: string;
 	/** Run the n8n containers as this uid:gid (e.g. the host user for bind mounts). */
 	user?: string;
-	/** n8n readiness timeout override; an old release migrating a fresh DB can exceed the default. */
-	startupTimeoutMs?: number;
 }
 
 export interface Service<TResult extends ServiceResult = ServiceResult> {

@@ -9,6 +9,8 @@ import {
 	PromotePackageDto,
 	PromotePackageResultDto,
 	PromotionApplyConfigPublicDto,
+	PromotionChangesDto,
+	PromotionChangesQueryDto,
 	PromotionCheckoutPublicDto,
 	PromotionConnectionListPublicDto,
 	PromotionConnectionProjectListPublicDto,
@@ -46,6 +48,7 @@ import {
 	Licensed,
 	Param,
 	Post,
+	ProjectScope,
 	PublicApiController,
 	Put,
 	Query,
@@ -54,6 +57,7 @@ import { Container } from '@n8n/di';
 import type { Response } from 'express';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
 import {
@@ -574,6 +578,44 @@ export class PromotionsPublicController {
 		);
 	}
 
+	// -- Change preview ------------------------------------------------------
+
+	@Get('/projects/:projectId/changes/:direction')
+	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
+	@ApiKeyScope({ anyOf: ['gitConnection:push', 'gitConnection:pull'] })
+	@ProjectScope('project:export')
+	@ApiSummary('List the changes of a project in one direction')
+	@ApiDescription(
+		'Compares a team project on this instance with the branch of its promotion configuration and lists the workflows that differ. For `promote` the rows are what a promotion sends to the branch, and the key needs the gitConnection:push scope. For `apply` the rows are what applying the branch changes on this instance, and the key needs the gitConnection:pull scope. `commitSha` is the commit the rows were read from. Requires the direction to be cloned first.',
+	)
+	@ApiTags(tags)
+	@ApiResponse(200, PromotionChangesDto)
+	@ApiErrorResponse(400)
+	@ApiErrorResponse(404)
+	@ApiErrorResponse(503)
+	async getPromotionChanges(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('projectId', projectIdParamSchema) projectId: string,
+		@Param('direction', promotionDirectionParamSchema) direction: string,
+		@Query query: PromotionChangesQueryDto,
+	): Promise<PromotionChangesDto> {
+		const parsedDirection = parseDirection(direction);
+		// The route accepts a key with either scope. The direction decides which one this call needs.
+		const requiredScope = parsedDirection === 'apply' ? 'gitConnection:pull' : 'gitConnection:push';
+		if (!(req.tokenGrant?.apiKeyScopes?.includes(requiredScope) ?? false)) {
+			throw new ForbiddenError(
+				`The ${parsedDirection} direction requires the ${requiredScope} scope`,
+			);
+		}
+		return await (await this.changeService()).getChanges(
+			req.user,
+			projectId,
+			parsedDirection,
+			query,
+		);
+	}
+
 	// -- Module access -------------------------------------------------------
 
 	private assertModuleActive() {
@@ -602,6 +644,14 @@ export class PromotionsPublicController {
 		this.assertModuleActive();
 		const { PromotionsService } = await import('@/modules/promotions.ee/promotions.service.js');
 		return Container.get(PromotionsService);
+	}
+
+	private async changeService() {
+		this.assertModuleActive();
+		const { PromotionChangeService } = await import(
+			'@/modules/promotions.ee/promotion-change.service.js'
+		);
+		return Container.get(PromotionChangeService);
 	}
 
 	private resolvePage(query: { cursor?: string; limit: number }) {

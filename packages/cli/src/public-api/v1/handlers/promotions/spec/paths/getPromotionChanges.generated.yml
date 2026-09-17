@@ -1,0 +1,119 @@
+operationId: getPromotionChanges
+tags:
+  - Promotions
+summary: List the changes of a project in one direction
+description: Compares a team project on this instance with the branch of its promotion configuration and lists the workflows that differ. For `promote` the rows are what a promotion sends to the branch, and the key needs the gitConnection:push scope. For `apply` the rows are what applying the branch changes on this instance, and the key needs the gitConnection:pull scope. `commitSha` is the commit the rows were read from. Requires the direction to be cloned first.
+x-required-scope: gitConnection:push,gitConnection:pull
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+parameters:
+  - schema:
+      type: string
+    required: true
+    description: The ID of the project.
+    name: projectId
+    in: path
+  - schema:
+      type: string
+      enum:
+        - apply
+        - promote
+    required: true
+    description: 'The direction of the promotion: apply or promote.'
+    name: direction
+    in: path
+  - schema:
+      type: string
+    required: false
+    name: search
+    in: query
+  - schema:
+      type: string
+      enum:
+        - name
+        - updatedAt
+        - status
+      default: name
+    required: false
+    name: sort
+    in: query
+  - schema:
+      type: string
+      enum:
+        - asc
+        - desc
+      default: asc
+    required: false
+    name: order
+    in: query
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            commitSha:
+              type: string
+              nullable: true
+            changes:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    minLength: 1
+                    maxLength: 36
+                  name:
+                    type: string
+                  type:
+                    type: string
+                    enum:
+                      - workflow
+                  status:
+                    type: string
+                    enum:
+                      - new
+                      - modified
+                      - renamed
+                      - renamed-and-modified
+                      - archived
+                      - deleted
+                  version:
+                    type: integer
+                    nullable: true
+                    minimum: 0
+                  updatedAt:
+                    type: string
+                    nullable: true
+                  updatedBy:
+                    type: string
+                    nullable: true
+                  dependencyCount:
+                    type: integer
+                    minimum: 0
+                required:
+                  - id
+                  - name
+                  - type
+                  - status
+                  - version
+                  - updatedAt
+                  - updatedBy
+                  - dependencyCount
+          required:
+            - commitSha
+            - changes
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '503':
+    $ref: ../../../../shared/spec/responses/serviceUnavailable.yml

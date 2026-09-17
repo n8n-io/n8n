@@ -1,5 +1,5 @@
 import { K3sContainer, type StartedK3sContainer } from '@testcontainers/k3s';
-import { execSync } from 'node:child_process';
+import { exec as execCallback, execSync } from 'node:child_process';
 import {
 	copyFileSync,
 	existsSync,
@@ -11,9 +11,13 @@ import {
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { setTimeout as wait } from 'node:timers/promises';
+import { promisify } from 'node:util';
 
 import postgresVersions from './postgres-versions.json';
+import { StartupDeadline } from './startup-deadline';
 import { TEST_CONTAINER_IMAGES } from './test-containers';
+
+const execAsync = promisify(execCallback);
 
 const DEFAULT_K3S_IMAGE = 'rancher/k3s:v1.32.2-k3s1';
 const DEFAULT_CHART_REPO = 'https://github.com/n8n-io/n8n-hosting.git';
@@ -62,9 +66,22 @@ function log(message: string) {
 // -- Host command execution ---------------------------------------------------
 
 /** Execute a shell command on the host with the given environment. Returns stdout or throws with stderr. */
-function execOnHost(cmd: string, env: NodeJS.ProcessEnv, description: string): string {
+async function execOnHost(
+	cmd: string,
+	env: NodeJS.ProcessEnv,
+	description: string,
+	deadline: StartupDeadline,
+): Promise<string> {
+	deadline.throwIfAborted();
 	try {
-		return execSync(cmd, { env, stdio: 'pipe', encoding: 'utf-8', timeout: COMMAND_TIMEOUT_MS });
+		const { stdout } = await execAsync(cmd, {
+			env,
+			encoding: 'utf-8',
+			timeout: Math.min(COMMAND_TIMEOUT_MS, Math.max(1, deadline.remainingMs)),
+			signal: deadline.signal,
+		});
+		deadline.throwIfAborted();
+		return stdout;
 	} catch (error: unknown) {
 		const stderr = (error as { stderr?: string }).stderr ?? '';
 		const message = error instanceof Error ? error.message : String(error);
@@ -74,32 +91,49 @@ function execOnHost(cmd: string, env: NodeJS.ProcessEnv, description: string): s
 
 // -- Image preloading (must run inside K3s containerd) ------------------------
 
-async function preloadImage(container: StartedK3sContainer, imageName: string): Promise<void> {
+async function preloadImage(
+	container: StartedK3sContainer,
+	imageName: string,
+	deadline: StartupDeadline,
+): Promise<void> {
 	// Try crictl pull first (fast for public registry images like GHCR).
 	// Falls back to docker save + ctr import for local-only images (e.g. n8nio/n8n:local).
 	log(`Pulling ${imageName} inside K3s...`);
-	const pullResult = await container.exec(['crictl', 'pull', imageName]);
+	const pullResult = await deadline.run(
+		async () => await container.exec(['crictl', 'pull', imageName]),
+	);
 	if (pullResult.exitCode !== 0) {
 		log('Registry pull failed, importing from local Docker...');
 		const tarPath = `/tmp/n8n-helm-${Date.now()}.tar`;
 		try {
-			execSync(`docker save ${imageName} -o ${tarPath}`, { stdio: 'pipe' });
-			execSync(`docker cp ${tarPath} ${container.getId()}:/tmp/n8n-image.tar`, {
-				stdio: 'pipe',
-			});
+			await execOnHost(
+				`docker save ${imageName} -o ${tarPath}`,
+				process.env,
+				'Save n8n image',
+				deadline,
+			);
+			await execOnHost(
+				`docker cp ${tarPath} ${container.getId()}:/tmp/n8n-image.tar`,
+				process.env,
+				'Copy n8n image',
+				deadline,
+			);
 
-			const importResult = await container.exec([
-				'ctr',
-				'--namespace',
-				'k8s.io',
-				'images',
-				'import',
-				'/tmp/n8n-image.tar',
-			]);
+			const importResult = await deadline.run(
+				async () =>
+					await container.exec([
+						'ctr',
+						'--namespace',
+						'k8s.io',
+						'images',
+						'import',
+						'/tmp/n8n-image.tar',
+					]),
+			);
 			if (importResult.exitCode !== 0) {
 				throw new Error(`ctr import failed: ${importResult.output}`);
 			}
-			await container.exec(['rm', '-f', '/tmp/n8n-image.tar']);
+			await deadline.run(async () => await container.exec(['rm', '-f', '/tmp/n8n-image.tar']));
 		} finally {
 			try {
 				unlinkSync(tarPath);
@@ -111,19 +145,37 @@ async function preloadImage(container: StartedK3sContainer, imageName: string): 
 		}
 	}
 
-	const { output } = await container.exec(['crictl', 'images']);
+	const { output } = await deadline.run(async () => await container.exec(['crictl', 'images']));
 	log(`Available images after preload:\n${output}`);
 }
 
 // -- Chart download -----------------------------------------------------------
 
-function cloneChartToHost(repo: string, ref: string): string {
+async function cloneChartToHost(
+	repo: string,
+	ref: string,
+	deadline: StartupDeadline,
+): Promise<string> {
 	log(`Downloading chart from ${repo} @ ${ref}...`);
 	const dir = mkdtempSync(join(tmpdir(), 'n8n-chart-'));
 	const repoPath = repo.replace('https://github.com/', '').replace('.git', '');
 	const tarUrl = `https://github.com/${repoPath}/archive/${ref}.tar.gz`;
 
-	execSync(`curl -fsSL "${tarUrl}" | tar xz -C "${dir}" --strip-components=1`, { stdio: 'pipe' });
+	try {
+		await execOnHost(
+			`curl -fsSL "${tarUrl}" | tar xz -C "${dir}" --strip-components=1`,
+			process.env,
+			'Download Helm chart',
+			deadline,
+		);
+	} catch (error) {
+		try {
+			execSync(`rm -rf "${dir}"`, { stdio: 'pipe' });
+		} catch {
+			// Best-effort cleanup.
+		}
+		throw error;
+	}
 	log('Chart downloaded');
 	return dir;
 }
@@ -218,23 +270,28 @@ function buildHelmSetFlags(
 
 // -- K8s secrets --------------------------------------------------------------
 
-function createN8nSecret(env: NodeJS.ProcessEnv): void {
+async function createN8nSecret(env: NodeJS.ProcessEnv, deadline: StartupDeadline): Promise<void> {
 	log('Creating n8n core secrets...');
-	execOnHost(
+	await execOnHost(
 		'kubectl create secret generic n8n-secrets --from-literal=N8N_ENCRYPTION_KEY=test-encryption-key-for-e2e-testing --from-literal=N8N_HOST=localhost --from-literal=N8N_PORT=5678 --from-literal=N8N_PROTOCOL=http',
 		env,
 		'Create n8n core secrets',
+		deadline,
 	);
 }
 
 // -- Queue mode infrastructure ------------------------------------------------
 
-function deployQueueInfrastructure(env: NodeJS.ProcessEnv): void {
+async function deployQueueInfrastructure(
+	env: NodeJS.ProcessEnv,
+	deadline: StartupDeadline,
+): Promise<void> {
 	log('Adding Bitnami Helm repo...');
-	execOnHost(
+	await execOnHost(
 		'helm repo add bitnami https://charts.bitnami.com/bitnami && helm repo update',
 		env,
 		'Add Bitnami repo',
+		deadline,
 	);
 
 	// By digest because the Bitnami catalog only publishes `postgresql:latest`,
@@ -242,44 +299,52 @@ function deployQueueInfrastructure(env: NodeJS.ProcessEnv): void {
 	const { chartVersion, imageDigest } = postgresVersions.helm;
 
 	log(`Deploying PostgreSQL (chart ${chartVersion})...`);
-	execOnHost(
+	await execOnHost(
 		`helm install postgresql bitnami/postgresql --version ${chartVersion} --set image.digest=${imageDigest} --set auth.username=n8n --set auth.password=n8n-test-password --set auth.database=n8n --set primary.resources.requests.cpu=100m --set primary.resources.requests.memory=256Mi --set primary.resources.limits.cpu=500m --set primary.resources.limits.memory=512Mi --wait --timeout 3m`,
 		env,
 		'Deploy PostgreSQL',
+		deadline,
 	);
 	log('PostgreSQL deployed');
 
 	log('Deploying Redis...');
-	execOnHost(
+	await execOnHost(
 		"helm install redis bitnami/redis --set architecture=standalone --set auth.enabled=false --set-json 'master.disableCommands=[]' --set master.resources.requests.cpu=100m --set master.resources.requests.memory=128Mi --set master.resources.limits.cpu=250m --set master.resources.limits.memory=256Mi --wait --timeout 3m",
 		env,
 		'Deploy Redis',
+		deadline,
 	);
 	log('Redis deployed');
 
-	execOnHost(
+	await execOnHost(
 		'kubectl create secret generic n8n-db-secret --from-literal=password=n8n-test-password',
 		env,
 		'Create DB password secret',
+		deadline,
 	);
 }
 
 // -- Health check -------------------------------------------------------------
 
-async function pollHealthEndpoint(baseUrl: string, timeoutMs: number): Promise<void> {
+export async function pollHealthEndpoint(
+	baseUrl: string,
+	timeoutMs: number,
+	signal?: AbortSignal,
+): Promise<void> {
 	const url = `${baseUrl}/healthz/readiness`;
 	const startTime = Date.now();
 
 	while (Date.now() - startTime < timeoutMs) {
+		signal?.throwIfAborted();
 		try {
-			const response = await fetch(url);
+			const response = await fetch(url, { signal });
 			if (response.status === 200) {
 				return;
 			}
 		} catch {
-			// Retry
+			if (signal?.aborted) signal.throwIfAborted();
 		}
-		await wait(HEALTH_POLL_INTERVAL_MS);
+		await wait(HEALTH_POLL_INTERVAL_MS, { signal });
 	}
 
 	throw new Error(`n8n health check at ${url} did not return 200 within ${timeoutMs / 1000}s`);
@@ -297,6 +362,7 @@ export async function createHelmStack(config: HelmStackConfig = {}): Promise<Hel
 		mode = 'standalone',
 		env: envOverrides,
 	} = config;
+	const startupDeadline = new StartupDeadline(startupTimeoutMs);
 
 	const containerName = `n8n-helm-${mode}-${Date.now().toString(36)}`;
 
@@ -310,12 +376,18 @@ export async function createHelmStack(config: HelmStackConfig = {}): Promise<Hel
 	// Step 1: Start K3s with NodePort exposed (bypasses flaky kubectl port-forward)
 	// Ryuk is disabled so the container survives process exit — clean up via stack:helm:clean.
 	log('Starting K3s container (privileged)...');
-	const k3s = await new K3sContainer(k3sImage)
-		.withName(containerName)
-		.withLabels({ 'n8n.helm': 'true', 'n8n.helm.mode': mode })
-		.withExposedPorts(N8N_NODE_PORT)
-		.withStartupTimeout(K3S_STARTUP_TIMEOUT_MS)
-		.start();
+	let k3s: StartedK3sContainer;
+	try {
+		k3s = await new K3sContainer(k3sImage)
+			.withName(containerName)
+			.withLabels({ 'n8n.helm': 'true', 'n8n.helm.mode': mode })
+			.withExposedPorts(N8N_NODE_PORT)
+			.withStartupTimeout(Math.min(K3S_STARTUP_TIMEOUT_MS, startupDeadline.remainingMs))
+			.start();
+	} catch (error) {
+		startupDeadline.dispose();
+		throw error;
+	}
 	const hostPort = k3s.getMappedPort(N8N_NODE_PORT);
 	const baseUrl = `http://localhost:${hostPort}`;
 	log(`K3s started (NodePort ${N8N_NODE_PORT} -> host ${hostPort})`);
@@ -367,24 +439,25 @@ export async function createHelmStack(config: HelmStackConfig = {}): Promise<Hel
 		log('Waiting for containerd...');
 		const deadline = Date.now() + CONTAINERD_READY_TIMEOUT_MS;
 		while (Date.now() < deadline) {
-			const result = await k3s.exec(['crictl', 'images']);
+			startupDeadline.throwIfAborted();
+			const result = await startupDeadline.run(async () => await k3s.exec(['crictl', 'images']));
 			if (result.exitCode === 0) break;
-			await wait(HEALTH_POLL_INTERVAL_MS);
+			await wait(HEALTH_POLL_INTERVAL_MS, { signal: startupDeadline.signal });
 		}
 
 		// Step 4: Preload n8n image into K3s containerd
-		await preloadImage(k3s, n8nImage);
+		await preloadImage(k3s, n8nImage, startupDeadline);
 		log('Image preloaded');
 
 		// Step 5: Download chart to host
-		chartDir = cloneChartToHost(helmChartRepo, helmChartRef);
+		chartDir = await cloneChartToHost(helmChartRepo, helmChartRef, startupDeadline);
 
 		// Step 6: Create n8n core secrets (encryption key, host config)
-		createN8nSecret(env);
+		await createN8nSecret(env, startupDeadline);
 
 		// Step 7: Deploy queue infrastructure if needed
 		if (mode === 'queue') {
-			deployQueueInfrastructure(env);
+			await deployQueueInfrastructure(env, startupDeadline);
 		}
 
 		// Step 8: Install n8n chart using published example values file + dynamic overrides
@@ -392,26 +465,33 @@ export async function createHelmStack(config: HelmStackConfig = {}): Promise<Hel
 		const valuesFile = getExampleValuesFile(chartDir, mode);
 		const setFlags = buildHelmSetFlags(n8nImage, mode, baseUrl, envOverrides).join(' ');
 		log(`Using values file: ${valuesFile}`);
-		const helmOutput = execOnHost(
+		const helmOutput = await execOnHost(
 			`helm install n8n "${chartDir}/charts/n8n" -f "${valuesFile}" ${setFlags} --wait --timeout 5m`,
 			env,
 			'Helm install',
+			startupDeadline,
 		);
 		log(`Helm install complete:\n${helmOutput.trim()}`);
 
 		// Step 9: Patch service to NodePort so traffic goes through K3s's exposed port
 		// (bypasses kubectl port-forward which silently breaks after many connections)
 		log(`Patching n8n service to NodePort ${N8N_NODE_PORT}...`);
-		execOnHost(
+		await execOnHost(
 			`kubectl patch svc n8n-main --type merge -p '{"spec":{"type":"NodePort","ports":[{"port":5678,"targetPort":5678,"nodePort":${N8N_NODE_PORT}}]}}'`,
 			env,
 			'Patch service to NodePort',
+			startupDeadline,
 		);
 
 		// Step 10: Poll health endpoint
 		log(`Polling ${baseUrl}/healthz/readiness...`);
-		await pollHealthEndpoint(baseUrl, Math.min(startupTimeoutMs, 120_000));
+		await pollHealthEndpoint(
+			baseUrl,
+			Math.min(startupDeadline.remainingMs, 120_000),
+			startupDeadline.signal,
+		);
 		log(`n8n is ready at ${baseUrl}`);
+		startupDeadline.dispose();
 
 		return {
 			baseUrl,
@@ -435,24 +515,31 @@ export async function createHelmStack(config: HelmStackConfig = {}): Promise<Hel
 	} catch (error) {
 		// Dump debug info from host kubectl
 		try {
-			const podStatus = execOnHost('kubectl get pods -o wide 2>/dev/null || true', env, 'debug');
+			const podStatus = await execOnHost(
+				'kubectl get pods -o wide 2>/dev/null || true',
+				env,
+				'debug',
+				startupDeadline,
+			);
 			console.error('\n--- Pod Status ---');
 			console.error(podStatus);
 
-			const podLogs = execOnHost(
+			const podLogs = await execOnHost(
 				'kubectl logs -l app.kubernetes.io/name=n8n --tail=50 2>/dev/null || true',
 				env,
 				'debug',
+				startupDeadline,
 			);
 			if (podLogs.trim()) {
 				console.error('\n--- Pod Logs ---');
 				console.error(podLogs);
 			}
 
-			const events = execOnHost(
+			const events = await execOnHost(
 				'kubectl get events --sort-by=.lastTimestamp 2>/dev/null || true',
 				env,
 				'debug',
+				startupDeadline,
 			);
 			console.error('\n--- Events ---');
 			console.error(events);
@@ -473,6 +560,7 @@ export async function createHelmStack(config: HelmStackConfig = {}): Promise<Hel
 				/* ignore */
 			}
 		await k3s.stop();
+		startupDeadline.dispose();
 		throw error;
 	}
 }

@@ -378,7 +378,7 @@ defineExpose({ credentialId, currentSettings, validationError: null, loading: se
 .setupDescriptionContainer {
 	display: flex;
 	align-items: center;
-	height: var(--height--xs);
+	min-height: var(--height--xs);
 }
 
 .setupDescription {
