@@ -314,25 +314,15 @@ function isCurrentThreadRuntime(): boolean {
 }
 
 /**
- * A queue can outlive the process that would have delivered it: a restart, or a
- * run that died before its flush. Nothing picks it up while the thread is idle,
- * so hand the head item over — the server treats a Send now with no live run as
- * a plain delivery.
+ * Show what the server still holds. A queue a Stop left behind stays in the
+ * list, editable and sendable; nothing is sent on the user's behalf here — the
+ * server drops a queue whose run died with the process, and a message that
+ * appears without a visible cue is worse than one the user has to resend.
  */
-function deliverStrandedQueue(): void {
-	void thread
-		.loadQueuedMessages()
-		.then(() => {
-			if (!isCurrentThreadRuntime()) return;
-			const head = thread.queuedMessages[0];
-			// A parked run owns the interaction; its queue waits, as it does while paused.
-			if (!head || thread.isStreaming || thread.isAwaitingConfirmation) return;
-			if (thread.pendingPlanReview) return;
-			void thread.steerQueuedMessage(head.id);
-		})
-		.catch(() => {
-			// Queue state is display-only here; a failed read must not break the mount.
-		});
+function loadQueuedMessagesQuietly(): void {
+	void thread.loadQueuedMessages().catch(() => {
+		// Queue state is display-only here; a failed read must not break the mount.
+	});
 }
 
 function reconnectThreadAfterHydration(): void {
@@ -348,7 +338,7 @@ function reconnectThreadAfterHydration(): void {
 		await thread.loadThreadStatus();
 		if (!isCurrentThreadRuntime()) return;
 		thread.connectSSE();
-		deliverStrandedQueue();
+		loadQueuedMessagesQuietly();
 		// Replay an opening message handed off from another tab (e.g. credential help
 		// opened in a new tab) as if typed here, so it shows and streams in this runtime.
 		const pending = consumePendingFirstMessage(thread.id);

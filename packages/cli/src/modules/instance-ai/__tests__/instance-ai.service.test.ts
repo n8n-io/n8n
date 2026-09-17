@@ -309,6 +309,7 @@ type StartRunServiceInternals = {
 	threadPushRef: Map<string, string>;
 	executeRun: Mock;
 	trackInFlightExecution: Mock;
+	discardQueuedMessages: Mock;
 };
 
 function createStartRunService(): StartRunServiceInternals {
@@ -339,6 +340,7 @@ function createStartRunService(): StartRunServiceInternals {
 	service.threadPushRef = new Map();
 	service.executeRun = vi.fn();
 	service.trackInFlightExecution = vi.fn();
+	service.discardQueuedMessages = vi.fn(async () => {});
 	return service;
 }
 
@@ -1308,6 +1310,14 @@ describe('InstanceAiService — memory task observer', () => {
 });
 
 describe('InstanceAiService — run start', () => {
+	it('drops whatever a stopped run left queued when the user types a new turn', () => {
+		const service = createStartRunService();
+
+		service.startRun(fakeUser, 'thread-a', 'hello');
+
+		expect(service.discardQueuedMessages).toHaveBeenCalledWith('thread-a');
+	});
+
 	describe('concurrency admission', () => {
 		it('refuses a new turn when the user is at their limit', () => {
 			const service = createStartRunService();
@@ -6442,6 +6452,7 @@ describe('InstanceAiService — queued messages', () => {
 		) => Promise<{ queuedMessages: InstanceAiQueuedMessage[] }>;
 		claimSteerRequest: (threadId: string, runId: string, step: number) => Promise<boolean>;
 		flushQueuedMessage: (user: User, threadId: string) => Promise<boolean>;
+		discardQueuedMessages: (threadId: string) => Promise<void>;
 	};
 
 	function createService({ includeThread = true }: { includeThread?: boolean } = {}) {
@@ -6557,6 +6568,38 @@ describe('InstanceAiService — queued messages', () => {
 			await service.removeQueuedMessage('thread-1', item.id);
 
 			expect(thread.metadata).not.toHaveProperty(QUEUED_MESSAGES_METADATA_KEY);
+		});
+	});
+
+	describe('discardQueuedMessages', () => {
+		it('drops the whole queue, stamped items included', async () => {
+			const { service, thread } = createService();
+			const [item] = await service.queueMessage('thread-1', 'first');
+			await service.queueMessage('thread-1', 'second');
+			service.runState.hasLiveRun.mockReturnValue(true);
+			await service.requestSteer(USER, 'thread-1', item.id);
+
+			await service.discardQueuedMessages('thread-1');
+
+			expect(readQueuedMessages(thread.metadata)).toEqual([]);
+			expect(thread.metadata).not.toHaveProperty(QUEUED_MESSAGES_METADATA_KEY);
+		});
+
+		it('writes nothing when the queue is already empty', async () => {
+			const { service } = createService();
+
+			await service.discardQueuedMessages('thread-1');
+
+			expect(service.agentMemory.patchThread).not.toHaveBeenCalled();
+		});
+
+		it('never throws', async () => {
+			const { service } = createService();
+			await service.queueMessage('thread-1', 'later');
+			service.agentMemory.patchThread.mockRejectedValue(new Error('db down'));
+
+			await expect(service.discardQueuedMessages('thread-1')).resolves.toBeUndefined();
+			expect(service.logger.warn).toHaveBeenCalled();
 		});
 	});
 

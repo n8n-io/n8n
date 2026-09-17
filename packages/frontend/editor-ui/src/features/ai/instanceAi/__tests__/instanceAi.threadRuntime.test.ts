@@ -3068,8 +3068,8 @@ describe('Instance AI thread runtime — queued messages', () => {
 			'thread-queue-steer',
 			'qm-1',
 		);
-		// The list hides stamped items; the runtime keeps the server's view so the
-		// stranded-queue recovery still sees the message after a reload.
+		// The list hides stamped items; the runtime keeps the server's view, which
+		// is what a reload renders.
 		expect(runtime.queuedMessages).toEqual([stamped]);
 	});
 

@@ -511,6 +511,13 @@ The service delivers the queue in two ways:
    same as the cancel path: no flush while a run is suspended on a confirmation
    or plan review. A `409 Conflict` stays for a plain `POST /chat/:threadId`.
 
+A queued message waits for the run it was typed behind, and only for that run.
+The queue is dropped when that run dies with the process (the startup sweep
+that marks it `interrupted`, and service shutdown), and when the user starts a
+new turn with `POST /chat/:threadId` instead. A queue a Stop left behind stays:
+the list shows it on the idle thread, where it can be edited, removed, or sent
+now. The frontend never sends a queued message on its own.
+
 ## Typical Event Sequence
 
 ### Simple Query (No Sub-Agents)

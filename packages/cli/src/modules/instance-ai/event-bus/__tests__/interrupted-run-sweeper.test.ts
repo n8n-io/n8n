@@ -132,6 +132,7 @@ function buildSweeper(setup: Setup) {
 	const metrics = new DurableLogMetrics(mock<EventService>());
 	const host: InterruptedRunResumeHost = {
 		isRunLive: setup.host?.isRunLive ?? (() => false),
+		discardQueuedMessages: setup.host?.discardQueuedMessages ?? vi.fn(async () => {}),
 	};
 
 	const sweeper = new InterruptedRunSweeper(
@@ -143,7 +144,7 @@ function buildSweeper(setup: Setup) {
 		{ isMultiMain: setup.isMultiMain ?? false } as InstanceSettings,
 	);
 	sweeper.setResumeHost(host);
-	return { sweeper, published, metrics, eventLogRepo };
+	return { sweeper, published, metrics, eventLogRepo, host };
 }
 
 describe('InterruptedRunSweeper', () => {
@@ -189,6 +190,25 @@ describe('InterruptedRunSweeper', () => {
 		expect(completed.type === 'agent-completed' && completed.payload.error).toBe(
 			AGENT_INTERRUPTED_MESSAGE,
 		);
+	});
+
+	it('drops the queued user messages of a run it marks interrupted', async () => {
+		const { sweeper, host } = buildSweeper({ events: [runStart(), toolCall('tc-inflight')] });
+
+		await sweeper.sweep();
+
+		expect(host.discardQueuedMessages).toHaveBeenCalledWith(THREAD);
+	});
+
+	it('leaves the queue of a live run alone', async () => {
+		const { sweeper, host } = buildSweeper({
+			events: [runStart()],
+			host: { isRunLive: () => true },
+		});
+
+		await sweeper.sweep();
+
+		expect(host.discardQueuedMessages).not.toHaveBeenCalled();
 	});
 
 	it('is idempotent: a second sweep after the first is a no-op', async () => {

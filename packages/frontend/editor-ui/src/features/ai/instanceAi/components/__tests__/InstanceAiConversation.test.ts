@@ -206,7 +206,7 @@ describe('InstanceAiConversation', () => {
 			await vi.waitFor(() => expect(thread.removeQueuedMessage).toHaveBeenCalledWith('qm-1'));
 		});
 
-		it('still offers Send now on an idle thread, for a queue left by a shutdown', async () => {
+		it('still offers Send now on an idle thread, for a queue a Stop left behind', async () => {
 			thread.isStreaming = false;
 			thread.queuedMessages = [queued('qm-1', 'Use the Slack node')];
 			const { getByTestId } = renderWithQueue()();

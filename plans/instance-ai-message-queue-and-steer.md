@@ -154,7 +154,7 @@ without a run, and never delivered twice):
   `queued` event is a no-op in the frontend, which keys bubbles by `messageId`).
   A stamped item the run never reached (it ended first) is what the flush takes
   before the head. A process that dies between the claim and the flush leaves
-  the item queued, and the stranded-queue recovery delivers it on the next mount.
+  the item queued; the startup sweep drops it with the dead run.
 
 ### 5. Trace and telemetry
 
@@ -188,7 +188,8 @@ Each reuses the controller's `assertThreadAccess`.
     `pushOptimisticUserMessage` produces, so routing and artifact lookups are
     untouched.
   - Recovery: on thread open, if the queue is non-empty, the thread is idle and
-    not parked, deliver the head item (covers a queue stranded by a shutdown).
+    not parked, show the head item in the list; never deliver on the user's
+    behalf (a restart drops the queue server-side).
 - `instanceAi.reducer.ts`: `case 'user-message'` pushes the user message; exclude
   it from the mid-run phantom-creation guard.
 - `components/InstanceAiInput.vue`:
@@ -241,7 +242,7 @@ Each reuses the controller's `assertThreadAccess`.
 - [x] `@n8n/agents`: `shouldStopGracefully` option, stop before the next tool call or model call, tests
 - [x] api-types: `user-message` event + queue DTOs/types + `steered` run status
 - [x] cli: queue storage helpers + service CRUD + boundary-check wiring + `user-steered` handoff
-- [x] cli: run-finish flush + stranded-queue recovery
+- [x] cli: run-finish flush + discard on restart, shutdown and new turn
 - [x] cli: controller endpoints
 - [x] cli: trace metadata + telemetry event
 - [x] FE: api client + runtime queue state and actions

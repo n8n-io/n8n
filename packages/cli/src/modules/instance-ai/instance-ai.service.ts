@@ -1520,6 +1520,9 @@ export class InstanceAiService {
 			threadId,
 			user,
 		});
+		// A typed turn supersedes whatever a stopped run left queued; without this
+		// the leftover would follow this run with nothing on screen announcing it.
+		void this.discardQueuedMessages(threadId);
 
 		// Persist the user's time zone so checkpoint / replan / synthesize
 		// follow-up runs can reinject it into the system prompt
@@ -1583,6 +1586,25 @@ export class InstanceAiService {
 	/** Get the active runId for a thread. */
 	getActiveRunId(threadId: string): string | undefined {
 		return this.runState.getActiveRunId(threadId);
+	}
+
+	/**
+	 * Drop the thread's queue. A queued message waits for the run it was typed
+	 * behind: when that run is gone without a finish (restart, shutdown) or the
+	 * user starts a new turn instead, delivering it later would send a message
+	 * that nothing on screen announced. Never throws.
+	 */
+	async discardQueuedMessages(threadId: string): Promise<void> {
+		try {
+			const thread = await this.agentMemory.getThread(threadId);
+			if (!thread || readQueuedMessages(thread.metadata).length === 0) return;
+			await this.mutateQueuedMessages(threadId, () => []);
+		} catch (error) {
+			this.logger.warn('Failed to discard queued messages', {
+				threadId,
+				error: getErrorMessage(error),
+			});
+		}
 	}
 
 	async listQueuedMessages(threadId: string): Promise<InstanceAiQueuedMessage[]> {
@@ -2130,6 +2152,11 @@ export class InstanceAiService {
 
 		const { activeRuns, suspendedRuns, pendingThreadIds } = this.runState.shutdown();
 		const threadsWithPendingHitl = new Set(pendingThreadIds);
+		// The runs below die with the process, and nothing after the restart
+		// would announce a queued message before delivering it.
+		for (const threadId of new Set([...activeRuns, ...suspendedRuns].map((run) => run.threadId))) {
+			await this.discardQueuedMessages(threadId);
+		}
 		for (const run of activeRuns) {
 			// Runs holding an inline HITL confirmation (`create-tasks`,
 			// sub-agent `ask-user`) sit in `activeRuns` because the orchestrator

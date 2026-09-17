@@ -35,6 +35,12 @@ interface OrphanedSpawnedAgent {
 export interface InterruptedRunResumeHost {
 	/** Whether this specific run is live (active or suspended) in this process. */
 	isRunLive(threadId: string, runId: string): boolean;
+	/**
+	 * Drop the thread's queued user messages. A queued message waits for the run
+	 * it was typed behind; once that run is marked dead, nothing would announce
+	 * the message before delivering it. Never throws.
+	 */
+	discardQueuedMessages(threadId: string): Promise<void>;
 }
 
 /**
@@ -124,6 +130,7 @@ export class InterruptedRunSweeper {
 			runId,
 			inFlightToolCalls,
 		});
+		await this.resumeHost?.discardQueuedMessages(threadId);
 	}
 
 	/**
