@@ -91,7 +91,7 @@ defineSlots<{
 	width: var(--height--md);
 	height: var(--height--md);
 	border-radius: var(--radius--full);
-	background-color: var(--background--subtle);
+	background-color: light-dark(var(--background--subtle), var(--color--neutral-700));
 	display: flex;
 	justify-content: center;
 	align-items: center;
