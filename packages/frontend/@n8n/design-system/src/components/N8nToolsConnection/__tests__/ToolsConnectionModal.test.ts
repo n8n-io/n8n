@@ -22,6 +22,10 @@ vi.mock('../../N8nDialog', () => ({
 			</div>
 		`,
 	},
+	N8nDialogHeader: {
+		name: 'N8nDialogHeader',
+		template: '<header><slot /></header>',
+	},
 }));
 
 /** Render all virtual rows so tests can inspect them in jsdom. */
@@ -436,8 +440,9 @@ describe('ToolsConnectionModal', () => {
 		});
 	});
 
-	it('moves the active row with arrow keys and announces it', async () => {
+	it('moves the active row with arrow keys, scrolls to it, and announces it', async () => {
 		const { getAllByTestId, getByPlaceholderText, getByRole } = renderWith({
+			items: makeLargeMcpList(3),
 			categories: ['mcp'],
 		});
 		const input = getByPlaceholderText('Search all tools...');
@@ -452,9 +457,27 @@ describe('ToolsConnectionModal', () => {
 		await fireEvent.keyDown(input, { key: 'ArrowDown' });
 		expect(rows[0]).toHaveAttribute('data-active', 'false');
 		expect(rows[1]).toHaveAttribute('data-active', 'true');
+		expect(scrollToKeyIfNeededMock).toHaveBeenLastCalledWith('item:mcp-generated-1');
 
 		await fireEvent.keyDown(input, { key: 'ArrowUp' });
 		expect(rows[0]).toHaveAttribute('data-active', 'true');
+		expect(scrollToKeyIfNeededMock).toHaveBeenLastCalledWith('item:mcp-generated-0');
+	});
+
+	it('does not intercept arrow keys from an interactive row control', async () => {
+		const { getAllByTestId } = renderWith({
+			items: makeLargeMcpList(3),
+			categories: ['mcp'],
+		});
+		const rows = getAllByTestId('tools-connection-row');
+		const connectButton = getAllByTestId('tools-connection-row-connect')[0];
+
+		connectButton.focus();
+		await fireEvent.keyDown(connectButton, { key: 'ArrowDown' });
+
+		expect(rows[0]).toHaveAttribute('data-active', 'true');
+		expect(rows[1]).toHaveAttribute('data-active', 'false');
+		expect(scrollToKeyIfNeededMock).not.toHaveBeenCalled();
 	});
 
 	it('moves to the last and first rows with Meta and arrow keys', async () => {
@@ -525,8 +548,15 @@ describe('ToolsConnectionModal', () => {
 		await waitFor(() => expect(document.activeElement).toBe(input));
 	});
 
-	it('resets the active row when the category changes', async () => {
+	it('resets and scrolls to the active row when the category changes', async () => {
+		const mcpItems = makeLargeMcpList(2);
+		const aiItem: ToolConnectionItem = {
+			...mcpItems[0],
+			id: 'ai-1',
+			category: 'ai',
+		};
 		const { getAllByTestId, getByPlaceholderText, getByTestId } = renderWith({
+			items: [...mcpItems, aiItem],
 			categories: ['mcp', 'ai'],
 		});
 		const input = getByPlaceholderText('Search all tools...');
@@ -538,6 +568,7 @@ describe('ToolsConnectionModal', () => {
 		await waitFor(() =>
 			expect(getAllByTestId('tools-connection-row')[0]).toHaveAttribute('data-active', 'true'),
 		);
+		expect(scrollToKeyIfNeededMock).toHaveBeenLastCalledWith('item:ai-1');
 	});
 
 	it('selects a row only after the pointer position changes', async () => {
@@ -556,18 +587,22 @@ describe('ToolsConnectionModal', () => {
 		expect(rows[2]).toHaveAttribute('data-active', 'true');
 	});
 
-	it('clamps the active row when search removes later results', async () => {
-		const items = makeLargeMcpList(3);
+	it('resets the active row when the search changes', async () => {
+		const items = makeLargeMcpList(12);
 		const { getAllByTestId, getByPlaceholderText } = renderWith({ items, categories: ['mcp'] });
 		const input = getByPlaceholderText('Search all tools...') as HTMLInputElement;
 
-		await fireEvent.keyDown(input, { key: 'ArrowDown' });
-		await fireEvent.keyDown(input, { key: 'ArrowDown' });
+		for (let index = 0; index < 5; index++) {
+			await fireEvent.keyDown(input, { key: 'ArrowDown' });
+		}
 		await fireEvent.update(input, '#1');
 
-		await waitFor(() => expect(getAllByTestId('tools-connection-row')).toHaveLength(1));
-		const remainingRow = getAllByTestId('tools-connection-row')[0];
-		expect(remainingRow).toHaveAttribute('data-active', 'true');
+		await waitFor(() => {
+			const remainingRows = getAllByTestId('tools-connection-row');
+			expect(remainingRows).toHaveLength(4);
+			expect(remainingRows[0]).toHaveAttribute('data-active', 'true');
+			expect(remainingRows[3]).toHaveAttribute('data-active', 'false');
+		});
 	});
 
 	it('shows the empty state when search has no results', async () => {

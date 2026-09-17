@@ -151,7 +151,12 @@ function renderWithTrigger(
 					@select-credential="(item, authType, credentialId) => console.log('[story] select-credential', item, authType, credentialId)"
 				>
 					<template #suggestion-footer>
-						<N8nButton tag="a" href="https://example.com/suggest-tool" variant="subtle">
+						<N8nButton
+							tag="a"
+							href="https://example.com/suggest-tool"
+							target="_blank"
+							variant="subtle"
+						>
 							Suggest a tool
 						</N8nButton>
 					</template>
