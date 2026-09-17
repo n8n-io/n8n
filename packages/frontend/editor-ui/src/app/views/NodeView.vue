@@ -995,6 +995,21 @@ function onNodeCreatorClose() {
 	nodeCreatorReplaceTargetId.value = undefined;
 }
 
+// Reuse the auto-connection context, but only while the creator is open from an explicit output-plus action.
+function getRequestedNodeGroupId(): string | undefined {
+	const isExplicitOutputAdd =
+		nodeCreatorStore.isCreateNodeActive &&
+		(nodeCreatorStore.openSource === NODE_CREATOR_OPEN_SOURCES.PLUS_ENDPOINT ||
+			nodeCreatorStore.openSource === NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_ACTION);
+	if (!isExplicitOutputAdd || !uiStore.lastInteractedWithNodeId) return undefined;
+
+	const { type, mode } = parseCanvasConnectionHandleString(uiStore.lastInteractedWithNodeHandle);
+	if (type !== NodeConnectionTypes.Main || mode !== CanvasConnectionMode.Output) return undefined;
+
+	// Group selection can leave the previous workflow node here, so the open source above is the intent guard.
+	return workflowDocumentStore.value.getGroupForNode(uiStore.lastInteractedWithNodeId)?.id;
+}
+
 async function onAddNodesAndConnections(
 	{ nodes, connections }: AddedNodesAndConnections,
 	dragAndDrop = false,
@@ -1003,6 +1018,7 @@ async function onAddNodesAndConnections(
 	if (!checkIfEditingIsAllowed()) {
 		return;
 	}
+	const nodeGroupId = getRequestedNodeGroupId();
 
 	if (nodeCreatorReplaceTargetId.value !== undefined) {
 		uiStore.resetLastInteractedWith();
@@ -1019,6 +1035,7 @@ async function onAddNodesAndConnections(
 		viewport: viewportBoundaries.value,
 		telemetry: true,
 		replaceNodeId: nodeCreatorReplaceTargetId.value,
+		nodeGroupId,
 	});
 
 	if (addedNodes.length > 0) {
