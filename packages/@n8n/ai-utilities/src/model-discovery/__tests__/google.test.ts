@@ -68,6 +68,12 @@ describe('shouldIncludeGoogleModel', () => {
 			supportedGenerationMethods: chat,
 			include: false,
 		},
+		{
+			label: 'gemini embedding served through Gateway credits',
+			name: 'models/gemini-embedding-001',
+			supportedGenerationMethods: chat,
+			include: false,
+		},
 
 		// Excluded: missing or malformed methods field
 		{
