@@ -60,7 +60,7 @@ the most likely of those.
 3. **The claims name one step.** The claims hold the execution id and the step
    id. Therefore a token for one step cannot resolve the wait of a different
    step.
-4. **The token does not expire. The status of the step is the control.** The
+4. **The token does not expire.** The status of the step is the control. The
    token shows which caller can make the request. The compare-and-set that every
    other transition uses decides if the request still applies. `resumeStep`
    moves a step out of `waiting`, or it does nothing. A token for a wait that is
