@@ -1,5 +1,7 @@
 import { isRecord } from '@n8n/utils/is-record';
 import { isPlaceholderValue } from '@n8n/utils/placeholder';
+import { toEngineConnections, type WorkflowJSON } from '@n8n/workflow-sdk';
+import { getChildNodes, NodeConnectionTypes } from 'n8n-workflow';
 
 import type { ExecutionRunResult, VerificationNodePreview } from './types';
 import {
@@ -23,6 +25,30 @@ export type ChatModelRecoveryOptions = Pick<
 >;
 
 type ExecutionNodeError = NonNullable<ExecutionRunResult['nodeErrors']>[number];
+
+/** Disclosure for a node whose output came from pin data saved on the workflow. */
+export const WORKFLOW_PIN_SIMULATION_REASON =
+	'Output came from pinned data saved on the workflow — unpin it for a live test';
+
+/** Disclosure for a trigger whose output the assistant injected instead of a real event. */
+export const INJECTED_TRIGGER_SIMULATION_REASON =
+	'Trigger output was injected test input, not a real event — run a live test to prove the trigger';
+
+/** Injected trigger output, deduplicated against the other simulation sources. */
+export function injectedTriggerSimulations(
+	injectedTriggerNodeName: string | undefined,
+	reachedNames: ReadonlySet<string>,
+	alreadySimulatedNames: ReadonlySet<string>,
+): Array<{ nodeName: string; reason: string }> {
+	if (
+		injectedTriggerNodeName === undefined ||
+		!reachedNames.has(injectedTriggerNodeName) ||
+		alreadySimulatedNames.has(injectedTriggerNodeName)
+	) {
+		return [];
+	}
+	return [{ nodeName: injectedTriggerNodeName, reason: INJECTED_TRIGGER_SIMULATION_REASON }];
+}
 
 const CREDENTIAL_FAILURE_KEYWORDS = [
 	'credential',
@@ -84,6 +110,17 @@ function countOutputItems(nodeOutput: unknown): number | undefined {
 	return 1;
 }
 
+/** Per-output counts when the adapter grouped a multi-output node's items per output. */
+function countOutputBranchItems(nodeOutput: unknown): VerificationNodePreview['outputs'] {
+	const output = outputForInspection(nodeOutput);
+	if (!isRecord(output) || !Array.isArray(output.outputs)) return undefined;
+	return output.outputs.filter(isRecord).map((branch, position) => ({
+		index: typeof branch.index === 'number' ? branch.index : position,
+		...(typeof branch.name === 'string' ? { name: branch.name } : {}),
+		itemCount: countOutputItems(branch.items),
+	}));
+}
+
 function previewValue(value: unknown, maxChars: number): { preview: string; truncated: boolean } {
 	const serialized = stringifyForToolOutput(value);
 	if (maxChars <= 0) {
@@ -105,9 +142,11 @@ export function buildNodePreviews(
 	return Object.entries(resultData).map(([nodeName, nodeOutput]) => {
 		const serialized = stringifyForToolOutput(nodeOutput);
 		const preview = previewValue(nodeOutput, maxChars);
+		const outputs = countOutputBranchItems(nodeOutput);
 		return {
 			nodeName,
 			itemCount: countOutputItems(nodeOutput),
+			...(outputs ? { outputs } : {}),
 			preview: preview.preview,
 			truncated: preview.truncated,
 			chars: serialized.length,
@@ -413,6 +452,7 @@ export interface VerificationAnalysis {
 	success: boolean;
 	reachedNames: Set<string>;
 	reachedSimulatedNodes: Array<{ nodeName: string; reason: string }>;
+	workflowPinnedNodeNames: string[];
 	nodesNotReached: string[];
 	remediation?: RemediationMetadata;
 	nodesExecuted?: string[];
@@ -420,6 +460,16 @@ export interface VerificationAnalysis {
 	coverageNote?: string;
 	errorMessage?: string;
 	nodeErrors: ExecutionNodeError[];
+}
+
+export function getTriggerMainFlowScope(
+	connections: WorkflowJSON['connections'],
+	triggerNodeName: string,
+): Set<string> {
+	return new Set([
+		triggerNodeName,
+		...getChildNodes(toEngineConnections(connections), triggerNodeName, NodeConnectionTypes.Main),
+	]);
 }
 
 export function analyzeVerificationResult(args: {
@@ -440,6 +490,8 @@ export function analyzeVerificationResult(args: {
 	chatModelRecovery?: ChatModelRecoveryOptions;
 	/** Trigger this pass started from, when the caller named one. */
 	triggerNodeName?: string;
+	/** Main-flow nodes that belong to the selected trigger. */
+	verificationScope?: ReadonlySet<string>;
 }): VerificationAnalysis {
 	const {
 		result,
@@ -451,6 +503,7 @@ export function analyzeVerificationResult(args: {
 		chatModelRelatedNodeNames,
 		chatModelRecovery,
 		triggerNodeName,
+		verificationScope,
 	} = args;
 	const nodeErrors = result.nodeErrors ?? [];
 	const reachedNames = new Set(
@@ -462,16 +515,21 @@ export function analyzeVerificationResult(args: {
 	const plannedSimulatedNames = new Set(simulatedNodes.map((n) => n.nodeName));
 	const workflowPinnedNodes = (result.workflowPinnedNodeNames ?? [])
 		.filter((name) => reachedNames.has(name) && !plannedSimulatedNames.has(name))
-		.map((name) => ({
-			nodeName: name,
-			reason: 'Output came from pinned data saved on the workflow — unpin it for a live test',
-		}));
+		.map((name) => ({ nodeName: name, reason: WORKFLOW_PIN_SIMULATION_REASON }));
+	// An injected trigger (inputData or verification pin) never fired for real,
+	// so a run that starts from it is not a live test of the trigger either.
 	const reachedSimulatedNodes = [
 		...simulatedNodes.filter((n) => reachedNames.has(n.nodeName)),
 		...workflowPinnedNodes,
+		...injectedTriggerSimulations(
+			result.injectedTriggerNodeName,
+			reachedNames,
+			new Set([...plannedSimulatedNames, ...workflowPinnedNodes.map((n) => n.nodeName)]),
+		),
 	];
 	const nodesNotReached = (buildOutcome.nodeSimulationPlan ?? [])
 		.map((verdict) => verdict.nodeName)
+		.filter((name) => !verificationScope || verificationScope.has(name))
 		.filter((name) => !reachedNames.has(name));
 	const hasSimulationPlan = (buildOutcome.nodeSimulationPlan?.length ?? 0) > 0;
 	const hasOutput = result.data ? Object.keys(result.data).length > 0 : false;
@@ -502,6 +560,7 @@ export function analyzeVerificationResult(args: {
 		success,
 		reachedNames,
 		reachedSimulatedNodes,
+		workflowPinnedNodeNames: workflowPinnedNodes.map((n) => n.nodeName),
 		nodesNotReached,
 		remediation,
 		nodesExecuted: namesOrDataKeys(reachedNames, result.data),

@@ -2,15 +2,9 @@ import { INSTANCE_AI_THREAD_SOURCES, type InstanceAiThreadSource } from '@n8n/ap
 
 export const INSTANCE_AI_VIEW = 'InstanceAi';
 export const INSTANCE_AI_THREAD_VIEW = 'InstanceAiThread';
+export const INSTANCE_AI_THREADS_VIEW = 'InstanceAiThreads';
 export const INSTANCE_AI_SETTINGS_VIEW = 'InstanceAiSettings';
 export const INSTANCE_AI_PROJECT_ID_QUERY = 'projectId';
-/**
- * History-state key for the agent id minted at the click. Carried to the
- * new-agent view so the "clicked" and "created" events share a join key even
- * though no agent exists yet. Kept out of the URL so a hand-authored query
- * cannot force the view to adopt an arbitrary id.
- */
-export const INSTANCE_AI_PENDING_AGENT_ID_STATE = 'instanceAiPendingAgentId';
 /** Entry-point source carried into the empty view when a hand-off can't create a thread yet. */
 export const INSTANCE_AI_SOURCE_QUERY = 'source';
 
@@ -33,6 +27,8 @@ export const INSTANCE_AI_AGENT_PREVIEW_SESSION_METADATA_KEY = 'instanceAiAgentPr
  * `@n8n/instance-ai`.
  */
 export const INSTANCE_AI_PENDING_AGENT_METADATA_KEY = 'instanceAiPendingAgentTarget';
+/** Every agent the model has addressed in this conversation. Mirrors `REGISTRY_METADATA_KEY` in `agent-target-binding.ts` (backend-only). */
+export const INSTANCE_AI_AGENT_BUILDER_TARGETS_METADATA_KEY = 'instanceAiAgentBuilderTargets';
 export const NEW_CONVERSATION_TITLE = 'New conversation';
 export { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 export const BROWSER_USE_CONNECTION_TYPE = 'browser-use';
@@ -50,6 +46,7 @@ export function isInstanceAiThreadSource(value: unknown): value is InstanceAiThr
 const INSTANCE_AI_CHAT_ROUTE_NAMES: ReadonlySet<string> = new Set([
 	INSTANCE_AI_VIEW,
 	INSTANCE_AI_THREAD_VIEW,
+	INSTANCE_AI_THREADS_VIEW,
 	INSTANCE_AI_NEW_VIEW,
 ]);
 

@@ -81,6 +81,19 @@ describe('N8nDropdownMenuItem', () => {
 			});
 		});
 
+		it('should apply the destructive class', async function appliesDestructiveClass() {
+			const wrapper = renderMenuItem({
+				id: 'delete',
+				label: 'Delete',
+				icon: { type: 'icon', value: 'trash-2' },
+				destructive: true,
+			});
+
+			const item = await wrapper.findByRole('menuitem');
+
+			expect(item.className).toContain('destructive');
+		});
+
 		it('should render checked item with checkmark', async () => {
 			renderMenuItem({
 				id: 'test',

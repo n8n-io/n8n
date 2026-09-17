@@ -27,12 +27,17 @@ vi.mock('@n8n/instance-ai', async () => {
 		handleBuildOutcome: vi.fn(),
 		handleVerificationVerdict: vi.fn(),
 		createInstanceAgent: vi.fn(),
-		createAllTools: vi.fn(),
 		// No trace context so refineTitleIfNeeded takes the direct title-generation path.
 		createInternalOperationTraceContext: vi.fn(async () => undefined),
 		releaseTraceClient: vi.fn(),
 		generateTitleForRun,
 		patchThread,
+		setTracePromptVersion: vi.fn(),
+		setTraceModelId: vi.fn(),
+		modelIdTraceMetadata: (modelId: unknown) =>
+			typeof modelId === 'string' && modelId.length > 0 ? { model_id: modelId } : {},
+		modelConfigId: (config: unknown) =>
+			typeof config === 'string' && config.length > 0 ? config : undefined,
 	};
 });
 

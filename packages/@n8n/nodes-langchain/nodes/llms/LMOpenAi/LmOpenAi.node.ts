@@ -265,10 +265,14 @@ export class LmOpenAi implements INodeType {
 		const timeout = options.timeout;
 		const configuration: ClientOptions = {
 			fetchOptions: {
-				dispatcher: getProxyAgent(options.baseURL ?? 'https://api.openai.com/v1', {
-					headersTimeout: timeout,
-					bodyTimeout: timeout,
-				}),
+				dispatcher: getProxyAgent(
+					options.baseURL ?? 'https://api.openai.com/v1',
+					{
+						headersTimeout: timeout,
+						bodyTimeout: timeout,
+					},
+					this.helpers.getSecureEgressFilter(),
+				),
 			},
 			defaultHeaders,
 		};

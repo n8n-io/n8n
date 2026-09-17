@@ -52,6 +52,7 @@ import {
 	shouldSkipParamValidation,
 } from '@/features/ndv/shared/ndv.utils';
 import { hasExpressionMapping, isValueExpression } from '@/app/utils/nodeTypesUtils';
+import { useParameterInputContribution } from '@/features/ndv/parameters/composables/useParameterInputContribution';
 
 import {
 	AI_TRANSFORM_NODE_TYPE,
@@ -268,6 +269,22 @@ const isModelValueExpression = computed(() => isValueExpression(props.parameter,
 
 const isResourceLocatorParameter = computed<boolean>(() => {
 	return isResourceLocatorParameterType(props.parameter.type);
+});
+
+const parameterType = computed(() => props.parameter.type);
+const { contributedComponent, capabilities: contributedCapabilities } =
+	useParameterInputContribution(parameterType);
+
+/**
+ * A contributed input that owns expression rendering replaces every built-in
+ * branch. One that does not yields to the expression editor first, exactly as a
+ * built-in non-resource-locator type does.
+ */
+const showContributedComponent = computed<boolean>(() => {
+	if (!contributedComponent.value) return false;
+	if (contributedCapabilities.value.ownsExpressionRendering) return true;
+
+	return !isModelValueExpression.value && !props.forceShowExpression;
 });
 
 const isSecretParameter = computed<boolean>(() => {
@@ -499,6 +516,16 @@ const displayValue = computed(() => {
 
 	return returnValue as string;
 });
+
+function normalizeNumberValue(value: unknown): number | undefined {
+	if (typeof value === 'number') return Number.isFinite(value) ? value : undefined;
+	if (typeof value !== 'string' || value.trim() === '') return undefined;
+
+	const parsedValue = Number(value);
+	return Number.isFinite(parsedValue) ? parsedValue : undefined;
+}
+
+const numberDisplayValue = computed(() => normalizeNumberValue(displayValue.value));
 
 const expressionDisplayValue = computed(() => {
 	if (props.forceShowExpression) {
@@ -772,7 +799,7 @@ const isDropDisabled = computed(
 	() =>
 		props.parameter.noDataExpression === true ||
 		props.isReadOnly ||
-		isResourceLocatorParameter.value ||
+		contributedCapabilities.value.disableDrop ||
 		isModelValueExpression.value,
 );
 const showDragnDropTip = computed(
@@ -1229,9 +1256,9 @@ function onJsonPasswordFieldChange(value: string) {
 	onUpdateTextInputDebounced(value);
 }
 
-function onUpdateTextInput(value: string | number) {
+function onUpdateTextInput(value: string) {
 	valueChanged(value);
-	onTextInputChange(typeof value === 'string' ? value : String(value));
+	onTextInputChange(value);
 }
 
 const onUpdateTextInputDebounced = debounce(onUpdateTextInput, { debounceTime: 200 });
@@ -1521,8 +1548,30 @@ onUpdated(async () => {
 			:style="parameterInputWrapperStyle"
 			:data-parameter-path="path"
 		>
+			<component
+				:is="contributedComponent"
+				v-if="showContributedComponent"
+				:parameter="parameter"
+				:model-value="modelValue"
+				:path="path"
+				:node="node"
+				:display-title="displayTitle"
+				:is-read-only="isReadOnly"
+				:is-value-expression="isModelValueExpression"
+				:expression-display-value="expressionDisplayValue"
+				:expression-computed-value="expressionEvaluated"
+				:dependent-parameters-values="dependentParametersValues"
+				:parameter-issues="getIssues"
+				:droppable="droppable ?? false"
+				:event-bus="eventBus"
+				@update:model-value="valueChangedDebounced"
+				@modal-opener-click="openExpressionEditorModal"
+				@focus="setFocus"
+				@blur="onBlur"
+				@drop="onResourceLocatorDrop"
+			/>
 			<ResourceLocator
-				v-if="parameter.type === 'resourceLocator'"
+				v-else-if="parameter.type === 'resourceLocator'"
 				ref="resourceLocator"
 				:parameter="parameter"
 				:model-value="modelValueResourceLocator"
@@ -1959,7 +2008,7 @@ onUpdated(async () => {
 				v-else-if="parameter.type === 'number'"
 				ref="inputField"
 				:size="inputSize"
-				:model-value="typeof displayValue === 'number' ? displayValue : undefined"
+				:model-value="numberDisplayValue"
 				:controls="false"
 				:max="getTypeOption('maxValue')"
 				:min="getTypeOption('minValue')"
@@ -1968,7 +2017,7 @@ onUpdated(async () => {
 				:class="{ 'ph-no-capture': shouldRedactValue }"
 				:title="displayTitle"
 				:placeholder="parameter.placeholder"
-				@update:model-value="onUpdateTextInput"
+				@update:model-value="valueChanged"
 				@focus="setFocus"
 				@blur="onBlur"
 				@paste="onPasteNumber"
@@ -2179,6 +2228,8 @@ onUpdated(async () => {
 </style>
 
 <style lang="scss">
+@use '@/app/css/variables' as *;
+
 .ql-editor {
 	padding: 6px;
 	line-height: 26px;

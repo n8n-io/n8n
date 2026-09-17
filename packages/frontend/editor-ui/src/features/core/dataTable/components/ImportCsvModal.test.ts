@@ -1,8 +1,27 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
+import { mockedStore } from '@n8n/frontend-test-utils';
+import userEvent from '@testing-library/user-event';
+import { flushPromises } from '@vue/test-utils';
 import { vi } from 'vitest';
 import ImportCsvModal from '@/features/core/dataTable/components/ImportCsvModal.vue';
 import type { DataTable } from '@/features/core/dataTable/dataTable.types';
+import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
+import { useUIStore } from '@/app/stores/ui.store';
+
+const { showError, showMessage, track } = vi.hoisted(() => ({
+	showError: vi.fn(),
+	showMessage: vi.fn(),
+	track: vi.fn(),
+}));
+
+vi.mock('@n8n/composables/useToast', () => ({
+	useToast: () => ({ showError, showMessage }),
+}));
+
+vi.mock('@n8n/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track }),
+}));
 
 const ModalStub = {
 	template: `
@@ -69,10 +88,50 @@ const renderComponent = createComponentRenderer(ImportCsvModal, {
 	},
 });
 
+type UploadResponse = Awaited<ReturnType<ReturnType<typeof useDataTableStore>['uploadCsvFile']>>;
+
+const firstFile = new File(['name,age\nFirst,1'], 'first.csv', { type: 'text/csv' });
+const secondFile = new File(['name,age\nSecond,2'], 'second.csv', { type: 'text/csv' });
+const uploadResponse = (id: string): UploadResponse => ({
+	id,
+	originalName: `${id}.csv`,
+	rowCount: 1,
+	columnCount: 2,
+	columns: [
+		{ name: 'name', type: 'string', compatibleTypes: ['string'] },
+		{ name: 'age', type: 'number', compatibleTypes: ['number'] },
+	],
+});
+
+function renderUploads() {
+	const first = Promise.withResolvers<UploadResponse>();
+	const second = Promise.withResolvers<UploadResponse>();
+	const store = mockedStore(useDataTableStore);
+	store.uploadCsvFile.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise);
+	store.importCsvToDataTable.mockResolvedValue({
+		importedRowCount: 1,
+		systemColumnsIgnored: [],
+	});
+	const rendered = renderComponent();
+	const input = rendered.getByTestId('import-csv-upload').querySelector('input');
+	if (!input) throw new Error('Upload input is missing');
+
+	return {
+		...rendered,
+		first,
+		second,
+		store,
+		input,
+		user: userEvent.setup(),
+		importButton: rendered.getByTestId('import-csv-confirm'),
+	};
+}
+
 describe('ImportCsvModal', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		createTestingPinia();
+		mockedStore(useUIStore).modalsById = { 'import-csv-modal': { open: true } };
 	});
 
 	it('should render the upload area', () => {
@@ -88,10 +147,155 @@ describe('ImportCsvModal', () => {
 
 	it('should emit close when cancel is clicked', async () => {
 		const { getByTestId, emitted } = renderComponent();
-		const { default: userEvent } = await import('@testing-library/user-event');
 
 		await userEvent.click(getByTestId('import-csv-cancel'));
 
 		expect(emitted().close).toBeTruthy();
+	});
+
+	it('should import the completed upload', async () => {
+		const { user, input, first, store, importButton, emitted } = renderUploads();
+		await user.upload(input, firstFile);
+		expect(store.uploadCsvFile).toHaveBeenCalledWith(firstFile, true);
+		expect(importButton).toBeDisabled();
+
+		first.resolve(uploadResponse('first'));
+		await flushPromises();
+		await user.click(importButton);
+
+		expect(store.importCsvToDataTable).toHaveBeenCalledWith('dt-1', 'proj-1', 'first');
+		expect(emitted().imported).toHaveLength(1);
+	});
+
+	it('should block import until a replacement upload completes', async () => {
+		const { user, input, first, second, store, importButton, getByText, queryByTestId } =
+			renderUploads();
+		await user.upload(input, firstFile);
+		first.resolve(uploadResponse('first'));
+		await flushPromises();
+		expect(importButton).toBeEnabled();
+
+		await user.upload(input, secondFile);
+		expect(getByText('second.csv')).toBeInTheDocument();
+		expect(getByText('Uploading...')).toBeInTheDocument();
+		expect(queryByTestId('import-csv-ready-to-import')).not.toBeInTheDocument();
+		expect(importButton).toBeDisabled();
+		await user.click(importButton);
+		expect(store.importCsvToDataTable).not.toHaveBeenCalled();
+
+		second.resolve(uploadResponse('second'));
+		await flushPromises();
+		await user.click(importButton);
+		expect(store.importCsvToDataTable).toHaveBeenCalledWith('dt-1', 'proj-1', 'second');
+	});
+
+	it('should keep the replacement when an earlier upload completes last', async () => {
+		const { user, input, first, second, store, importButton, getByText } = renderUploads();
+		await user.upload(input, firstFile);
+		await user.upload(input, secondFile);
+		second.resolve(uploadResponse('second'));
+		await flushPromises();
+		first.resolve(uploadResponse('first'));
+		await flushPromises();
+
+		expect(getByText('second.csv')).toBeInTheDocument();
+		await user.click(importButton);
+		expect(store.importCsvToDataTable).toHaveBeenCalledWith('dt-1', 'proj-1', 'second');
+	});
+
+	it('should keep the replacement when an earlier upload fails', async () => {
+		const { user, input, first, second, store, importButton, getByText } = renderUploads();
+		await user.upload(input, firstFile);
+		await user.upload(input, secondFile);
+		second.resolve(uploadResponse('second'));
+		await flushPromises();
+		first.reject(new Error('Earlier upload failed'));
+		await flushPromises();
+
+		expect(showError).not.toHaveBeenCalled();
+		expect(getByText('second.csv')).toBeInTheDocument();
+		expect(importButton).toBeEnabled();
+		await user.click(importButton);
+		expect(store.importCsvToDataTable).toHaveBeenCalledWith('dt-1', 'proj-1', 'second');
+	});
+
+	it('should keep loading when an earlier upload completes before the replacement', async () => {
+		const { user, input, first, second, importButton, getByText, queryByText } = renderUploads();
+		await user.upload(input, firstFile);
+		await user.upload(input, secondFile);
+		first.resolve(uploadResponse('first'));
+		await flushPromises();
+
+		expect(getByText('Uploading...')).toBeInTheDocument();
+		expect(importButton).toBeDisabled();
+		second.resolve(uploadResponse('second'));
+		await flushPromises();
+		expect(queryByText('Uploading...')).not.toBeInTheDocument();
+		expect(importButton).toBeEnabled();
+	});
+
+	it('should clear loading and report the current upload failure', async () => {
+		const { user, input, first, importButton, queryByText, getByText } = renderUploads();
+		await user.upload(input, firstFile);
+		const error = new Error('Upload failed');
+		first.reject(error);
+		await flushPromises();
+
+		expect(showError).toHaveBeenCalledWith(error, 'dataTable.upload.error');
+		expect(queryByText('Uploading...')).not.toBeInTheDocument();
+		expect(getByText('Drop file here or click to upload')).toBeInTheDocument();
+		expect(importButton).toBeDisabled();
+	});
+
+	it.each([
+		['cancel', 'success'],
+		['cancel', 'error'],
+		['modal close', 'success'],
+		['modal close', 'error'],
+	])('should ignore a late upload result after %s (%s)', async (resetAction, outcome) => {
+		const { user, input, first, importButton, getByTestId, queryByText, getByText } =
+			renderUploads();
+		await user.upload(input, firstFile);
+		if (resetAction === 'cancel') {
+			await user.click(getByTestId('import-csv-cancel'));
+		} else {
+			mockedStore(useUIStore).modalsById = { 'import-csv-modal': { open: false } };
+			await flushPromises();
+		}
+		expect(queryByText('Uploading...')).not.toBeInTheDocument();
+
+		if (outcome === 'success') first.resolve(uploadResponse('first'));
+		else first.reject(new Error('Upload failed after close'));
+		await flushPromises();
+
+		expect(showError).not.toHaveBeenCalled();
+		expect(getByText('Drop file here or click to upload')).toBeInTheDocument();
+		expect(queryByText('Uploading...')).not.toBeInTheDocument();
+		expect(importButton).toBeDisabled();
+	});
+
+	it('should ignore an upload error after unmount', async () => {
+		const { user, input, first, unmount } = renderUploads();
+		await user.upload(input, firstFile);
+		unmount();
+		first.reject(new Error('Upload failed after unmount'));
+		await flushPromises();
+
+		expect(showError).not.toHaveBeenCalled();
+	});
+
+	it('should distinguish uploads with the same filename', async () => {
+		const { user, input, first, second, store, importButton } = renderUploads();
+		const replacement = new File(['name,age\nUpdated,2'], firstFile.name, { type: 'text/csv' });
+		await user.upload(input, firstFile);
+		await user.upload(input, replacement);
+		expect(store.uploadCsvFile).toHaveBeenCalledTimes(2);
+		second.resolve(uploadResponse('second'));
+		await flushPromises();
+		first.resolve(uploadResponse('first'));
+		await flushPromises();
+		await user.click(importButton);
+
+		expect(store.importCsvToDataTable).toHaveBeenCalledWith('dt-1', 'proj-1', 'second');
 	});
 });

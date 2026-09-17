@@ -1,3 +1,4 @@
+import type { Logger } from '@n8n/backend-common';
 import {
 	type Folder,
 	type Project,
@@ -6,6 +7,14 @@ import {
 	WorkflowEntity,
 } from '@n8n/db';
 import z from 'zod';
+
+import type { CredentialsService } from '@/credentials/credentials.service';
+import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service';
+import type { NodeTypes } from '@/node-types';
+import type { AiGatewayService } from '@/services/ai-gateway.service';
+import type { UrlService } from '@/services/url.service';
+import type { WorkflowCreationService } from '@/workflows/workflow-creation.service';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { buildInvalidAiToolSourceErrorResponse } from './connection-structure-check';
 import {
@@ -20,31 +29,27 @@ import {
 	trackAutoassignOutcomes,
 } from './credentials-auto-assign';
 import { validateDataTableReferencesForWorkflow } from './data-table-validation';
+import { getErrorCode } from './error-code.utils';
 import { sanitizeSkillsUsed, SKILLS_USED_PARAM_DESCRIPTION } from './skills-used';
+import { topLevelItemsWarning } from './top-level-items-warning';
 import {
 	buildCreateVersionMetadata,
 	resolveVersionMetadata,
 	versionDescriptionInputSchema,
 	versionNameInputSchema,
 } from './version-metadata';
+import type { McpPostSaveMetricsService } from '../../mcp-post-save-metrics.service';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
 import { getSdkReferenceHint } from '../workflow-validation.utils';
 
-import type { CredentialsService } from '@/credentials/credentials.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service';
-import type { NodeTypes } from '@/node-types';
-import type { AiGatewayService } from '@/services/ai-gateway.service';
-import type { UrlService } from '@/services/url.service';
 import type { Telemetry } from '@/telemetry';
 import {
 	dropInvalidWorkflowGroups,
 	makeGetNodeTypeForGrouping,
 	resolveNodeWebhookIds,
 } from '@/workflow-helpers';
-import type { WorkflowCreationService } from '@/workflows/workflow-creation.service';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 const MAX_WORKFLOW_DESCRIPTION_LENGTH = 255;
 
@@ -172,7 +177,9 @@ const outputSchema = {
 			}),
 		)
 		.optional()
-		.describe('Node groups that were invalid and skipped instead of failing the whole creation.'),
+		.describe(
+			'Node groups that were invalid and skipped instead of failing the whole creation. Repair them with update_workflow before you report the workflow as done.',
+		),
 	hint: z
 		.string()
 		.optional()
@@ -199,7 +206,109 @@ const outputSchema = {
 		.string()
 		.optional()
 		.describe('Error message explaining why the creation failed. Present only on failure.'),
+	errorCode: z
+		.string()
+		.optional()
+		.describe('Machine-readable error code. Present only on failure.'),
 } satisfies z.ZodRawShape;
+
+type RecoverPersistedCreateArgs = {
+	newWorkflow: WorkflowEntity | undefined;
+	landingProject: Project | null;
+	user: User;
+	workflowFinderService: WorkflowFinderService;
+	urlService: UrlService;
+	telemetry: Telemetry;
+	telemetryPayload: UserCalledMCPToolEventPayload;
+	error: unknown;
+	logger: Logger;
+	postSaveMetrics: McpPostSaveMetricsService;
+};
+
+async function recoverPersistedCreate({
+	newWorkflow,
+	landingProject,
+	user,
+	workflowFinderService,
+	urlService,
+	telemetry,
+	telemetryPayload,
+	error,
+	logger,
+	postSaveMetrics,
+}: RecoverPersistedCreateArgs) {
+	const errorMessage = error instanceof Error ? error.message : String(error);
+
+	// TypeORM sets the entity id during save(), even inside a transaction that
+	// may later roll back. A DB lookup confirms that the row exists.
+	if (!newWorkflow?.id) return undefined;
+
+	let persisted: Awaited<ReturnType<WorkflowFinderService['findWorkflowForUser']>> | null = null;
+	try {
+		persisted = await workflowFinderService.findWorkflowForUser(
+			newWorkflow.id,
+			user,
+			['workflow:read'],
+			// landingFolder is only assigned after createWorkflow returns, so a
+			// post-save failure inside it leaves the variable unset. Load the
+			// relation here so targetFolder still reflects where the row landed.
+			{ includeParentFolder: true },
+		);
+	} catch (lookupError) {
+		logger.warn('Post-create verification lookup failed', {
+			workflowId: newWorkflow.id,
+			error: lookupError,
+		});
+		// Verification lookup failed. Fall through and report the original error.
+	}
+
+	if (!persisted || !landingProject) return undefined;
+
+	const baseUrl = urlService.getInstanceBaseUrl();
+	const workflowUrl = `${baseUrl}/workflow/${persisted.id}`;
+
+	postSaveMetrics.incrementPostSaveFailure('create', error);
+
+	try {
+		telemetryPayload.results = {
+			success: true,
+			data: {
+				workflowId: persisted.id,
+				nodeCount: persisted.nodes.length,
+				postSaveError: errorMessage,
+			},
+		};
+		telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
+	} catch (telemetryError) {
+		logger.error('Post-save telemetry failed for create_workflow_from_code (recovery path)', {
+			workflowId: persisted.id,
+			error: telemetryError,
+		});
+		postSaveMetrics.incrementPostSaveFailure('create', telemetryError);
+	}
+
+	const output = {
+		workflowId: persisted.id,
+		name: persisted.name,
+		nodeCount: persisted.nodes.length,
+		url: workflowUrl,
+		autoAssignedCredentials: [],
+		targetProject: {
+			id: landingProject.id,
+			name: landingProject.name,
+			type: landingProject.type,
+		},
+		targetFolder: persisted.parentFolder
+			? { id: persisted.parentFolder.id, name: persisted.parentFolder.name }
+			: undefined,
+		note: `Workflow was created successfully, but a post-save operation failed: ${errorMessage}`,
+	};
+
+	return {
+		content: [{ type: 'text' as const, text: JSON.stringify(output, null, 2) }],
+		structuredContent: output,
+	};
+}
 
 /**
  * MCP tool that creates a workflow in n8n from validated SDK code.
@@ -217,6 +326,8 @@ export const createCreateWorkflowFromCodeTool = (
 	dataTableOps: DataTableUserOperations,
 	aiGatewayService: AiGatewayService,
 	options: CreateWorkflowFromCodeToolOptions = {},
+	logger: Logger,
+	postSaveMetrics: McpPostSaveMetricsService,
 ): ToolDefinition<typeof inputSchema> => ({
 	name: MCP_CREATE_WORKFLOW_FROM_CODE_TOOL.toolName,
 	config: {
@@ -231,6 +342,7 @@ export const createCreateWorkflowFromCodeTool = (
 			openWorldHint: false,
 		},
 	},
+
 	handler: async ({
 		code,
 		skillsUsed,
@@ -269,9 +381,10 @@ export const createCreateWorkflowFromCodeTool = (
 			const errorMessage = 'projectId is required when folderId is provided';
 			telemetryPayload.results = { success: false, error: errorMessage };
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
+			const output = { error: errorMessage, errorCode: 'MISSING_PROJECT_ID' };
 			return {
-				content: [{ type: 'text', text: JSON.stringify({ error: errorMessage }, null, 2) }],
-				structuredContent: { error: errorMessage },
+				content: [{ type: 'text', text: JSON.stringify(output, null, 2) }],
+				structuredContent: output,
 				isError: true,
 			};
 		}
@@ -396,32 +509,8 @@ export const createCreateWorkflowFromCodeTool = (
 			// back as targetFolder.
 			landingFolder = savedWorkflow.parentFolder ?? null;
 
-			const nodeTypesByName = new Map(savedWorkflow.nodes.map((n) => [n.name, n.type]));
-			trackAutoassignOutcomes(
-				telemetry,
-				user.id,
-				'create_workflow_from_code',
-				autoAssignOutcomes,
-				nodeTypesByName,
-				savedWorkflow.id,
-			);
-
 			const baseUrl = urlService.getInstanceBaseUrl();
 			const workflowUrl = `${baseUrl}/workflow/${savedWorkflow.id}`;
-
-			telemetryPayload.results = {
-				success: true,
-				data: {
-					workflowId: savedWorkflow.id,
-					nodeCount: savedWorkflow.nodes.length,
-					// Rollout monitoring for `102_mcp_canvas_groups`; absent when the
-					// flag is off so the payload stays identical across cohorts.
-					...(options.canvasGroupsEnabled
-						? { groupCount: workflowJson.nodeGroups?.length ?? 0 }
-						: {}),
-				},
-			};
-			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
 			const notes = [
 				descriptionTruncated
@@ -449,8 +538,49 @@ export const createCreateWorkflowFromCodeTool = (
 				note: notes.length ? notes.join(' ') : undefined,
 				skippedGroups: skippedGroups.length > 0 ? skippedGroups : undefined,
 			};
-			const output =
-				result.warnings.length > 0 ? { ...baseOutput, warnings: result.warnings } : baseOutput;
+
+			// Groups are dropped on save when the flag is off, so only warn when they can be kept.
+			const ceilingWarning = options.canvasGroupsEnabled
+				? topLevelItemsWarning(savedWorkflow)
+				: undefined;
+
+			const warnings = ceilingWarning ? [...result.warnings, ceilingWarning] : result.warnings;
+			const output = warnings.length > 0 ? { ...baseOutput, warnings } : baseOutput;
+
+			// The response is fully built above. Side effects below (telemetry,
+			// credential auto-assign tracking) must not turn a successful persist
+			// into a client-visible error — they are observability-only.
+			try {
+				const nodeTypesByName = new Map(savedWorkflow.nodes.map((n) => [n.name, n.type]));
+				trackAutoassignOutcomes(
+					telemetry,
+					user.id,
+					'create_workflow_from_code',
+					autoAssignOutcomes,
+					nodeTypesByName,
+					savedWorkflow.id,
+				);
+
+				telemetryPayload.results = {
+					success: true,
+					data: {
+						workflowId: savedWorkflow.id,
+						nodeCount: savedWorkflow.nodes.length,
+						// Rollout monitoring for `102_mcp_canvas_groups`; absent when the
+						// flag is off so the payload stays identical across cohorts.
+						...(options.canvasGroupsEnabled
+							? { groupCount: workflowJson.nodeGroups?.length ?? 0 }
+							: {}),
+					},
+				};
+				telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
+			} catch (sideEffectError) {
+				logger.error('Post-save side effect failed for create_workflow_from_code', {
+					workflowId: savedWorkflow.id,
+					error: sideEffectError,
+				});
+				postSaveMetrics.incrementPostSaveFailure('create', sideEffectError);
+			}
 
 			return {
 				content: [{ type: 'text', text: JSON.stringify(output, null, 2) }],
@@ -458,76 +588,42 @@ export const createCreateWorkflowFromCodeTool = (
 			};
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : String(error);
+			const errorCode = getErrorCode(error);
 
-			// Check whether the workflow was actually persisted despite the error.
-			// TypeORM sets the entity id during save(), even inside a transaction that
-			// may later roll back, so newWorkflow.id alone is not a reliable signal.
-			// A DB lookup confirms the row truly exists before we report success.
-			if (newWorkflow?.id) {
-				let persisted: Awaited<ReturnType<WorkflowFinderService['findWorkflowForUser']>> | null =
-					null;
-				try {
-					persisted = await workflowFinderService.findWorkflowForUser(
-						newWorkflow.id,
-						user,
-						['workflow:read'],
-						// landingFolder is only assigned after createWorkflow returns, so a
-						// post-save failure inside it leaves the variable unset — load the
-						// relation here so targetFolder still reflects where the row landed.
-						{ includeParentFolder: true },
-					);
-				} catch {
-					// Verification lookup failed — fall through and report the original error.
-				}
+			const recoveredCreate = await recoverPersistedCreate({
+				newWorkflow,
+				landingProject,
+				user,
+				workflowFinderService,
+				urlService,
+				telemetry,
+				telemetryPayload,
+				error,
+				logger,
+				postSaveMetrics,
+			});
+			if (recoveredCreate) return recoveredCreate;
 
-				if (persisted && landingProject) {
-					const baseUrl = urlService.getInstanceBaseUrl();
-					const workflowUrl = `${baseUrl}/workflow/${persisted.id}`;
-
-					telemetryPayload.results = {
-						success: true,
-						data: {
-							workflowId: persisted.id,
-							nodeCount: persisted.nodes.length,
-							postSaveError: errorMessage,
-						},
-					};
-					telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
-
-					const output = {
-						workflowId: persisted.id,
-						name: persisted.name,
-						nodeCount: persisted.nodes.length,
-						url: workflowUrl,
-						autoAssignedCredentials: [],
-						targetProject: {
-							id: landingProject.id,
-							name: landingProject.name,
-							type: landingProject.type,
-						},
-						targetFolder: persisted.parentFolder
-							? { id: persisted.parentFolder.id, name: persisted.parentFolder.name }
-							: undefined,
-						note: `Workflow was created successfully, but a post-save operation failed: ${errorMessage}`,
-					};
-
-					return {
-						content: [{ type: 'text', text: JSON.stringify(output, null, 2) }],
-						structuredContent: output,
-					};
-				}
+			try {
+				telemetryPayload.results = {
+					success: false,
+					error: errorMessage,
+				};
+				telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
+			} catch (telemetryError) {
+				logger.error('Telemetry failed for create_workflow_from_code (error path)', {
+					error: telemetryError,
+				});
 			}
-
-			telemetryPayload.results = {
-				success: false,
-				error: errorMessage,
-			};
-			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
 			const hint = getSdkReferenceHint(error, {
 				afterReference: `Rewrite the code, call ${CODE_BUILDER_VALIDATE_TOOL.toolName} until it returns valid=true, then call ${MCP_CREATE_WORKFLOW_FROM_CODE_TOOL.toolName} again.`,
 			});
-			const output = { error: errorMessage, ...(hint ? { hint } : {}) };
+			const output = {
+				error: errorMessage,
+				errorCode,
+				...(hint ? { hint } : {}),
+			};
 
 			return {
 				content: [{ type: 'text', text: JSON.stringify(output, null, 2) }],

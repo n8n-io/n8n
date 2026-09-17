@@ -30,17 +30,17 @@ const nodeDef: INode = {
 };
 
 /**
- * The lookup may travel to `proxyFetch` as a positional argument or as a field
+ * The filter may travel to `proxyFetch` as a positional argument or as a field
  * of an options object, so accept either shape.
  */
-function lookupReachedProxyFetch(lookup: unknown): boolean {
+function filterReachedProxyFetch(filter: unknown): boolean {
 	return mockedProxyFetch.mock.calls.some((call) =>
 		call.some(
 			(arg) =>
-				arg === lookup ||
+				arg === filter ||
 				(typeof arg === 'object' &&
 					arg !== null &&
-					(arg as { lookup?: unknown }).lookup === lookup),
+					(arg as { egressFilter?: unknown }).egressFilter === filter),
 		),
 	);
 }
@@ -67,10 +67,11 @@ describe('LmChatOllama', () => {
 		mockedProxyFetch.mockResolvedValue(new Response('ok', { status: 200 }));
 	});
 
-	it('routes requests through the egress filter lookup', async () => {
+	it('routes requests through the egress filter', async () => {
 		const secureLookup = vi.fn();
 		const egressFilter: NodeEgressFilter = {
 			validateUrl: vi.fn().mockResolvedValue(createResultOk(undefined)),
+			validateConnectionHost: vi.fn().mockReturnValue(createResultOk(undefined)),
 			createSecureLookup: vi.fn().mockReturnValue(secureLookup),
 			validateRedirectSync: vi.fn(),
 		};
@@ -78,20 +79,19 @@ describe('LmChatOllama', () => {
 
 		await node.supplyData.call(ctx, 0);
 
-		expect(egressFilter.createSecureLookup).toHaveBeenCalled();
-
 		const [modelOptions] = MockedChatOllama.mock.calls[0];
 		expect(modelOptions?.fetch).toBeTypeOf('function');
 
 		await modelOptions?.fetch?.('http://ollama.example.com:11434/api/chat', {});
 
 		expect(mockedProxyFetch).toHaveBeenCalled();
-		expect(lookupReachedProxyFetch(secureLookup)).toBe(true);
+		expect(filterReachedProxyFetch(egressFilter)).toBe(true);
 	});
 
 	it('rejects a base URL the credential does not allow', async () => {
 		const egressFilter: NodeEgressFilter = {
 			validateUrl: vi.fn().mockResolvedValue(createResultOk(undefined)),
+			validateConnectionHost: vi.fn().mockReturnValue(createResultOk(undefined)),
 			createSecureLookup: vi.fn().mockReturnValue(vi.fn()),
 			validateRedirectSync: vi.fn(),
 		};
@@ -111,6 +111,7 @@ describe('LmChatOllama', () => {
 	it('rejects a credential restricted from use in this node', async () => {
 		const egressFilter: NodeEgressFilter = {
 			validateUrl: vi.fn().mockResolvedValue(createResultOk(undefined)),
+			validateConnectionHost: vi.fn().mockReturnValue(createResultOk(undefined)),
 			createSecureLookup: vi.fn().mockReturnValue(vi.fn()),
 			validateRedirectSync: vi.fn(),
 		};

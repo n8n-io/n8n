@@ -67,7 +67,8 @@ export function validateMicrosoftGraphId(id: string, node: INode): string {
 		throw new NodeOperationError(node, 'A required ID is empty', {
 			// Teams wording; make it injectable (UserTargetMessages pattern in
 			// nodes/Microsoft/GenericFunctions.ts) when the second consumer (SharePoint v2) lands.
-			description: 'Set the team, channel, plan, bucket, task or meeting ID and try again.',
+			description:
+				'Set the chat, team, channel, plan, bucket, task, meeting, user or member ID and try again.',
 		});
 	}
 	let value: string;
@@ -137,6 +138,18 @@ function nodeResourceName(
 	return undefined;
 }
 
+export function rewriteNotFound(
+	this: IExecuteFunctions,
+	error: unknown,
+	message: string,
+	description: string,
+): unknown {
+	if (error instanceof NodeApiError && error.httpCode === '404') {
+		return new NodeOperationError(this.getNode(), message, { description });
+	}
+	return error;
+}
+
 /**
  * Binds the shared Microsoft Graph transport to a node's default credential type;
  * the node facade calls this once at module load and re-exports the returned
@@ -197,6 +210,44 @@ export function createMicrosoftGraphTransport<TDefault extends string>(config: {
 			: defaultCredentialType;
 	}
 
+	/**
+	 * Resolves the Graph host the node's credential is bound to (sovereign clouds
+	 * included), trailing slashes stripped. `microsoftApiRequest` must compute its
+	 * `baseUrl` ONLY through this: the same value feeds the same-origin guard below,
+	 * so a second copy of this logic would let an operation that builds an absolute
+	 * Graph URL (e.g. `user@odata.bind`) drift from the host the request goes to.
+	 */
+	async function getGraphBaseUrl(
+		this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
+	): Promise<string> {
+		const credentials = await this.getCredentials(getCredentialType.call(this));
+		const baseUrl = (
+			typeof credentials.graphApiBaseUrl === 'string' && credentials.graphApiBaseUrl !== ''
+				? credentials.graphApiBaseUrl
+				: 'https://graph.microsoft.com'
+		).replace(/\/+$/, '');
+		// Refuse a base URL that cannot carry a request. An opaque scheme (`data:`, `file:`,
+		// `foo:`) parses, but `URL.origin` is then the string "null", so the request-time
+		// same-origin check compares "null" to "null" and lets it through. The token stays
+		// put either way: a different host has a different origin and is refused, and no
+		// scheme is both origin-"null" and able to carry a bearer. What the caller gets
+		// without this clause is a late unsupported-protocol error, or for `data:` a
+		// fabricated 200 that axios resolves in process. Fail here instead, where the
+		// message can name the credential. Same refusal message as the request-time guard
+		// (one concept, one string); the description is what distinguishes them.
+		if (!URL.canParse(baseUrl) || new URL(baseUrl).origin === 'null') {
+			throw new NodeOperationError(
+				this.getNode(),
+				'Refusing to send credentials to an unexpected host',
+				{
+					description:
+						'The Graph API base URL on the credential is not a valid URL. Fix it on the credential and try again.',
+				},
+			);
+		}
+		return baseUrl;
+	}
+
 	async function microsoftApiRequest(
 		this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
 		method: IHttpRequestMethods,
@@ -208,18 +259,15 @@ export function createMicrosoftGraphTransport<TDefault extends string>(config: {
 	): Promise<any> {
 		const credentialType = getCredentialType.call(this);
 		const isServicePrincipal = credentialType === SERVICE_PRINCIPAL_AUTH;
-		const credentials = await this.getCredentials(credentialType);
-		const baseUrl = (
-			typeof credentials.graphApiBaseUrl === 'string' && credentials.graphApiBaseUrl !== ''
-				? credentials.graphApiBaseUrl
-				: 'https://graph.microsoft.com'
-		).replace(/\/+$/, '');
+		const baseUrl = await getGraphBaseUrl.call(this);
 		// An explicit `uri` (e.g. a next-page link from Graph) is used verbatim,
 		// but it must stay on the credential's Graph host: the bearer token must
 		// never travel to an unexpected origin. Graph's own @odata.nextLink is
-		// always same-origin, so nothing legitimate is refused.
+		// always same-origin, so nothing legitimate is refused. An unparseable
+		// `uri` is refused the same way, so a client-supplied pagination token
+		// cannot escape as a bare TypeError.
 		const target = uri || `${baseUrl}${resource}`;
-		if (new URL(target).origin !== new URL(baseUrl).origin) {
+		if (!URL.canParse(target) || new URL(target).origin !== new URL(baseUrl).origin) {
 			throw new NodeOperationError(
 				this.getNode(),
 				'Refusing to send credentials to an unexpected host',
@@ -342,10 +390,12 @@ export function createMicrosoftGraphTransport<TDefault extends string>(config: {
 			if (limit && returnData.length >= limit) {
 				return returnData.slice(0, limit);
 			}
-		} while (responseData['@odata.nextLink'] !== undefined);
+			// `uri`, not `responseData['@odata.nextLink']`: a literal `null` next link is not
+			// `undefined`, and with `uri` falsy the identical request would be re-sent forever.
+		} while (uri);
 
 		return returnData;
 	}
 
-	return { getCredentialType, microsoftApiRequest, microsoftApiRequestAllItems };
+	return { getCredentialType, getGraphBaseUrl, microsoftApiRequest, microsoftApiRequestAllItems };
 }

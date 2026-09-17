@@ -23,7 +23,6 @@ import type {
 	IBinaryData,
 	IDataObject,
 	IExecuteData,
-	IExecuteResponsePromiseData,
 	IN8nHttpFullResponse,
 	INode,
 	IPinData,
@@ -48,11 +47,14 @@ import {
 	ExecutionCancelledError,
 	FORM_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
+	getExecutableNodeNames,
 	MICROSOFT_AGENT365_TRIGGER_NODE_TYPE,
 	NodeOperationError,
 	OperationalError,
+	SEND_AND_WAIT_OPERATION,
 	tryToParseUrl,
 	UnexpectedError,
+	UserError,
 	WAIT_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
 	WorkflowConfigurationError,
@@ -64,8 +66,10 @@ import { ActiveExecutions } from '@/active-executions';
 import { AuthService } from '@/auth/auth.service';
 import { MCP_TRIGGER_NODE_TYPE } from '@/constants';
 import { ResponseError } from '@/errors/response-errors/abstract/response.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { UnsupportedMediaTypeError } from '@/errors/response-errors/unsupported-media-type.error';
 import { EventService } from '@/events/event.service';
 import { parseBody } from '@/middlewares';
 import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
@@ -83,14 +87,18 @@ import { WebhookExecutionContext } from '@/webhooks/webhook-execution-context';
 import { createMultiFormDataParser } from '@/webhooks/webhook-form-data';
 import { extractWebhookLastNodeResponse } from '@/webhooks/webhook-last-node-response-extractor';
 import { extractWebhookOnReceivedResponse } from '@/webhooks/webhook-on-received-response-extractor';
-import type { WebhookResponse } from '@/webhooks/webhook-response';
-import { createStaticResponse, createStreamResponse } from '@/webhooks/webhook-response';
+import {
+	createStaticResponse,
+	createStreamResponse,
+	type WebhookResponse,
+} from '@/webhooks/webhook-response';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import * as WorkflowHelpers from '@/workflow-helpers';
 import { WorkflowRunner } from '@/workflow-runner';
 
-import { applySandboxCSP } from './webhook-response-headers';
+import { EngineV2Webhooks } from './engine-v2-webhooks';
 import {
+	applySandboxCSP,
 	WebhookResponseHeaders,
 	type WebhookNodeResponseHeaders,
 } from './webhook-response-headers';
@@ -748,16 +756,52 @@ export async function executeWebhook(
 			return undefined;
 		}
 
-		return await credentialCheckProxy.checkCredentialStatus(workflow.id, executionContext);
+		// Check only the nodes the firing trigger can actually reach, taken from THIS
+		// executing workflow so the check is pinned to the running version (not a
+		// diverging draft re-read from the DB). A disjoint branch or a second trigger's
+		// chain isn't reachable, so it never demands accounts this run won't use.
+		const rootNodes = [
+			...getExecutableNodeNames(
+				workflow.connectionsBySourceNode,
+				workflow.connectionsByDestinationNode,
+				workflowStartNode.name,
+			),
+		]
+			.map((nodeName) => workflow.nodes[nodeName])
+			.filter((node): node is INode => node !== undefined);
+
+		return await credentialCheckProxy.checkCredentialStatus(workflow.id, executionContext, {
+			rootNodes,
+		});
 	};
 
 	let didSendResponse = false;
+	/** Whether this run goes to the engine 2.0 data plane instead of the v1 path. */
+	let routesToEngineV2 = false;
 	let runExecutionDataMerge = {};
+	const engineV2Webhooks = Container.get(EngineV2Webhooks);
 	let cleanupMultipartFiles: (() => Promise<void>) | undefined;
 	try {
 		// Run the webhook function to see what should be returned and if
 		// the workflow should be executed or not
 		let webhookResultData: IWebhookResponseData;
+
+		// Before the node runs: a streaming node, and the chat, MCP and Agent365
+		// triggers, answer the request themselves, so a later refusal could not send
+		// the 400. Also before the request body is parsed, so no file is stored for a
+		// run that will not start.
+		routesToEngineV2 = engineV2Webhooks.handles(workflowData, executionMode);
+		if (routesToEngineV2) {
+			engineV2Webhooks.assertSupported({ workflowStartNode, responseMode, executionId });
+		}
+
+		if (
+			req.method === 'POST' &&
+			requiresMultipartFormData(workflowStartNode) &&
+			req.contentType !== 'multipart/form-data'
+		) {
+			throw new UnsupportedMediaTypeError('Expected multipart/form-data');
+		}
 
 		cleanupMultipartFiles = await parseRequestBody(
 			req,
@@ -899,6 +943,10 @@ export async function executeWebhook(
 			return;
 		}
 
+		// The node's output is the only place a file shows up, so this cannot run with
+		// the checks above.
+		if (routesToEngineV2) engineV2Webhooks.assertPayloadSupported(webhookResultData);
+
 		// Reactive credential-status gate. Runs only once we know the workflow will
 		// execute (workflowData is defined), so a falsy "Only Run If" short-circuits
 		// above without surfacing a misleading 428. Once the webhook node has established
@@ -946,6 +994,10 @@ export async function executeWebhook(
 			projectName: project?.name,
 			userId: webhookData.userId,
 			encryptedRunnerIdentity: additionalData.encryptedRunnerIdentity,
+			// v1 reads this from `executionData.startData`, which `prepareExecutionData`
+			// sets, so carrying it here changes nothing for v1. Engine 2.0 has no way to
+			// stop at a node, and its dispatcher refuses the run on this field.
+			destinationNode,
 		};
 
 		// When resuming from a wait node, copy over the pushRef from the execution-data
@@ -1057,14 +1109,19 @@ export async function executeWebhook(
 			!didSendResponse && !shouldDeferOnReceivedResponse,
 			// An execution id here means we are resuming one that is waiting on this webhook
 			executionId ? { executionId, expectedStatus: 'waiting' } : undefined,
-			responsePromise as IDeferredPromise<IExecuteResponsePromiseData> | undefined,
+			responsePromise,
 		);
 
 		/**
 		 * We track the webhook response mode so that `WorkflowRunner` can decide whether it
 		 * needs to fetch full execution data from the DB when a job finishes in scaling mdoe.
+		 *
+		 * A v2 run has no control-plane execution to record it against, and the
+		 * `engine-v2` module refuses queue mode, so there is nothing to track.
 		 */
-		Container.get(ActiveExecutions).setResponseMode(executionId, responseMode);
+		if (!routesToEngineV2) {
+			Container.get(ActiveExecutions).setResponseMode(executionId, responseMode);
+		}
 
 		if (shouldDeferOnReceivedResponse) {
 			additionalKeys.$executionId = executionId;
@@ -1120,6 +1177,10 @@ export async function executeWebhook(
 			`Started execution of workflow "${workflow.name}" from webhook with execution ID ${executionId}`,
 			{ executionId },
 		);
+
+		// Engine 2.0 serves `onReceived` only, so the response is already out. Nothing
+		// below applies: the run has no control-plane execution to wait on.
+		if (routesToEngineV2) return executionId;
 
 		const activeExecutions = Container.get(ActiveExecutions);
 
@@ -1257,6 +1318,10 @@ export async function executeWebhook(
 		let error: Error;
 		if (e instanceof ResponseError && e.httpStatusCode < 500) {
 			error = e;
+		} else if (routesToEngineV2 && e instanceof UserError) {
+			// The v2 path never falls back to v1, so its reason is the answer. The
+			// branch below would replace it with a generic 500 and report it as a bug.
+			error = new BadRequestError(e.message);
 		} else {
 			Container.get(ErrorReporter).error(e, { executionId });
 			error = new OperationalError('There was a problem executing the workflow', { cause: e });
@@ -1323,6 +1388,17 @@ function evaluateResponseOptions(context: WebhookExecutionContext, req: WebhookR
 		responseContentType,
 		responseBinaryPropertyName,
 	};
+}
+
+function requiresMultipartFormData(node: INode): boolean {
+	if (node.type === FORM_TRIGGER_NODE_TYPE) return true;
+	if (node.type === FORM_NODE_TYPE) return node.parameters.operation !== 'completion';
+	if (node.type === WAIT_NODE_TYPE) return node.parameters.resume === 'form';
+
+	return (
+		node.parameters.operation === SEND_AND_WAIT_OPERATION &&
+		node.parameters.responseType === 'customForm'
+	);
 }
 
 /**

@@ -208,7 +208,7 @@ describe('WorkflowIndexService Integration', () => {
 						nodeId: 'node-1',
 						nodeVersion: 1,
 					},
-					indexVersionId: 1,
+					indexVersionId: 2,
 				});
 			});
 		});
@@ -335,6 +335,8 @@ describe('WorkflowIndexService Integration', () => {
 			eventService.emit('workflow-deleted', {
 				user: createUserPayload(owner),
 				workflowId: workflow.id,
+				workflowName: workflow.name,
+				projectId: undefined,
 				publicApi: false,
 			});
 

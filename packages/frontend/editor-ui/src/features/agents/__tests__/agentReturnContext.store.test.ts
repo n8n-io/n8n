@@ -19,4 +19,14 @@ describe('agentReturnContext.store', () => {
 		store.clear();
 		expect(store.context).toBeNull();
 	});
+
+	it('consumes an artifact return once', () => {
+		const store = useAgentReturnContextStore();
+		const pendingReturn = { workflowId: 'wf-1', nodeId: 'node-1' };
+
+		store.setPendingArtifactReturn(pendingReturn);
+
+		expect(store.consumePendingArtifactReturn()).toEqual(pendingReturn);
+		expect(store.consumePendingArtifactReturn()).toBeNull();
+	});
 });

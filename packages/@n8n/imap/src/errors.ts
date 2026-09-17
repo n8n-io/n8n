@@ -1,27 +1,15 @@
-export abstract class ImapError extends Error {}
-
-/** Error thrown when a connection attempt has timed out */
-export class ConnectionTimeoutError extends ImapError {
-	constructor(
-		/** timeout in milliseconds that the connection waited before timing out */
-		readonly timeout?: number,
-	) {
-		let message = 'connection timed out';
-		if (timeout) {
-			message += `. timeout = ${timeout} ms`;
-		}
-		super(message);
-	}
-}
-
-export class ConnectionClosedError extends ImapError {
+export class ConnectionLostError extends Error {
 	constructor() {
-		super('Connection closed unexpectedly');
+		super('Connection to the IMAP server was lost');
 	}
 }
 
-export class ConnectionEndedError extends ImapError {
+export class ReconnectTimeoutError extends Error {
 	constructor() {
-		super('Connection ended unexpectedly');
+		super('Reconnecting to the IMAP server timed out');
 	}
 }
+
+/** The IMAP error codes worth reacting to arrive on the Error itself, not in its message. */
+export const imapErrorCode = (error: Error): string =>
+	'code' in error && typeof error.code === 'string' ? error.code.toUpperCase() : 'UNKNOWN';

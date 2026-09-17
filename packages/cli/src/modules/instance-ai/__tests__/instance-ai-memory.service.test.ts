@@ -7,6 +7,7 @@ const mockDeleteThread = vi.fn();
 const mockDeleteThreadsByResourceIdPrefix = vi.fn();
 const mockDeleteThreadsByResourceId = vi.fn();
 const mockListThreads = vi.fn();
+const mockListThreadHistory = vi.fn();
 const mockSaveThreadWithProject = vi.fn();
 const mockGetThreadProjectId = vi.fn();
 const mockSaveMessages = vi.fn();
@@ -18,6 +19,7 @@ const mockAgentMemory = {
 	deleteThreadsByResourceIdPrefix: mockDeleteThreadsByResourceIdPrefix,
 	deleteThreadsByResourceId: mockDeleteThreadsByResourceId,
 	listThreads: mockListThreads,
+	listThreadHistory: mockListThreadHistory,
 	saveThreadWithProject: mockSaveThreadWithProject,
 	getThreadProjectId: mockGetThreadProjectId,
 	saveMessages: mockSaveMessages,
@@ -122,6 +124,48 @@ function makeThread(id: string, updatedAt: string) {
 		updatedAt: new Date(updatedAt),
 	};
 }
+
+describe('InstanceAiMemoryService.listThreadHistory', () => {
+	beforeEach(() => {
+		mockListThreadHistory.mockReset();
+	});
+
+	it('encodes the last returned row as the cursor and stops on the final page', async () => {
+		const rows = ['c', 'b', 'a'].map((id) => makeThread(id, '2026-02-01T00:00:00.000Z'));
+		mockListThreadHistory.mockResolvedValueOnce(rows).mockResolvedValueOnce([rows[2]]);
+		const service = createService();
+		const first = await service.listThreadHistory('user-1', { limit: 2, search: 'invoice' });
+		expect(first.threads.map((thread) => thread.id)).toEqual(['c', 'b']);
+		expect(first.hasMore).toBe(true);
+		expect(first.nextCursor).not.toBeNull();
+		const second = await service.listThreadHistory('user-1', {
+			limit: 2,
+			search: 'invoice',
+			cursor: first.nextCursor!,
+		});
+		expect(mockListThreadHistory).toHaveBeenNthCalledWith(1, 'user-1', 2, 'invoice', undefined);
+		expect(mockListThreadHistory).toHaveBeenNthCalledWith(2, 'user-1', 2, 'invoice', {
+			id: 'b',
+			updatedAt: rows[1].updatedAt,
+		});
+		expect(second).toMatchObject({ hasMore: false, nextCursor: null });
+		expect(second.threads.map((thread) => thread.id)).toEqual(['a']);
+	});
+
+	it('returns an empty final page for a search with no matches', async () => {
+		mockListThreadHistory.mockResolvedValueOnce([]);
+		expect(
+			await createService().listThreadHistory('user-1', { limit: 30, search: 'missing' }),
+		).toEqual({ threads: [], hasMore: false, nextCursor: null });
+	});
+
+	it('rejects a malformed cursor before querying storage', async () => {
+		await expect(
+			createService().listThreadHistory('user-1', { limit: 30, cursor: 'invalid' }),
+		).rejects.toThrow('Invalid thread history cursor');
+		expect(mockListThreadHistory).not.toHaveBeenCalled();
+	});
+});
 
 describe('InstanceAiMemoryService.getRichMessages', () => {
 	beforeEach(() => {
@@ -1279,5 +1323,86 @@ describe('InstanceAiMemoryService.cleanupExpiredThreads', () => {
 		expect(mockDeleteThread).not.toHaveBeenCalledWith(freshThread.id);
 
 		dateNow.mockRestore();
+	});
+
+	it('stops before the next thread once the signal is aborted', async () => {
+		const dateNow = vi
+			.spyOn(Date, 'now')
+			.mockReturnValue(new Date('2026-05-15T00:00:00.000Z').getTime());
+		const first = makeThread('expired-1', '2026-05-01T00:00:00.000Z');
+		const second = makeThread('expired-2', '2026-05-02T00:00:00.000Z');
+		const controller = new AbortController();
+
+		mockListThreads.mockResolvedValue({
+			threads: [first, second],
+			total: 2,
+			page: 0,
+			hasMore: false,
+		});
+		mockDeleteThread.mockImplementation(async () => controller.abort());
+
+		const service = createService({ threadTtlDays: 7 });
+		const deletedCount = await service.cleanupExpiredThreads(undefined, controller.signal);
+
+		expect(deletedCount).toBe(1);
+		expect(mockDeleteThread).toHaveBeenCalledTimes(1);
+		expect(mockDeleteThread).toHaveBeenCalledWith(first.id);
+		expect(mockListThreads).toHaveBeenCalledTimes(1);
+
+		dateNow.mockRestore();
+	});
+});
+
+describe('bindAgentBuilderTarget', () => {
+	const target = { agentId: 'aBcDeFgHiJkLmNoP', projectId: 'project-1', name: 'Support Triage' };
+
+	function seedThread(metadata: Record<string, unknown>, resourceId = 'user-1') {
+		mockGetThread.mockResolvedValue({
+			id: 'thread-1',
+			title: 'Chat',
+			resourceId,
+			metadata,
+			createdAt: new Date('2026-08-20T00:00:00.000Z'),
+			updatedAt: new Date('2026-08-20T00:00:00.000Z'),
+		});
+		mockSaveThread.mockImplementation(async (thread: unknown) => thread);
+	}
+
+	beforeEach(() => {
+		mockGetThread.mockReset();
+		mockSaveThread.mockReset();
+	});
+
+	// A merge-style update cannot delete a key, and a thread carrying both makes a
+	// reload show a phantom blank artifact next to the real agent.
+	it('replaces the pending marker with the bound target in one write', async () => {
+		seedThread({
+			instanceAiPendingAgentTarget: { agentId: target.agentId, projectId: target.projectId },
+			creditsUsed: 2,
+		});
+
+		const thread = await createService().bindAgentBuilderTarget('user-1', 'thread-1', target);
+
+		expect(mockSaveThread).toHaveBeenCalledTimes(1);
+		expect(thread.metadata?.instanceAiPendingAgentTarget).toBeUndefined();
+		expect(thread.metadata?.instanceAiAgentBuilderTarget).toEqual(target);
+		expect(thread.metadata?.creditsUsed).toBe(2);
+	});
+
+	it('refuses a thread owned by someone else instead of reporting success', async () => {
+		seedThread({}, 'someone-else');
+
+		await expect(
+			createService().bindAgentBuilderTarget('user-1', 'thread-1', target),
+		).rejects.toThrow('Not authorized for this thread');
+		expect(mockSaveThread).not.toHaveBeenCalled();
+	});
+
+	it('reports a missing thread', async () => {
+		mockGetThread.mockResolvedValue(null);
+
+		await expect(
+			createService().bindAgentBuilderTarget('user-1', 'thread-1', target),
+		).rejects.toThrow('Thread thread-1 not found');
 	});
 });

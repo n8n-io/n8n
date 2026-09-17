@@ -1,20 +1,32 @@
 import type { Repository, SelectQueryBuilder } from '@n8n/typeorm';
 
 import type { WorkflowExecution, WorkflowStepExecution } from './entities';
+import { UnexpectedError } from '../common';
 import { ExecutionNotFoundError } from '../execution/execution-store';
 import type {
 	ExecutionViewStore,
 	ExecutionView,
 	ExecutionWithStepsView,
 	StepView,
+	ExecutionListQuery,
+	ExecutionListItemView,
 } from '../execution/execution-view-store';
 
-type StepColumns = { [K in keyof StepView as `step_${K}`]: StepView[K] };
-/** What the left join yields for an execution that has no steps. */
-type NoStepColumns = { [K in keyof StepView as `step_${K}`]: null };
+/** The execution row, with its steps aggregated into one column. */
+type ExecutionWithStepsRow = ExecutionView & { steps: StepView[] };
 
-/** One joined row: the execution, plus one step of it or nothing. */
-type ExecutionStepRow = ExecutionView & (StepColumns | NoStepColumns);
+/**
+ * The cursor compares `(created_at, id)`, so it only walks that order. A
+ * status-bucket sort puts newer rows behind the top bucket, and the next page
+ * drops every one of them: they sort after the cursor row but were never
+ * reported. Callers pick one or the other. The API rejects the pair with a 400;
+ * this holds the rule for every other caller.
+ */
+function assertPageableOrder(query: ExecutionListQuery): void {
+	if (query.before && query.order?.top) {
+		throw new UnexpectedError('An execution cursor cannot page a status-first sort');
+	}
+}
 
 /**
  * TypeORM-backed `ExecutionViewStore` adapter. It spans both tables, since a
@@ -30,6 +42,48 @@ export class TypeOrmExecutionViewStore implements ExecutionViewStore {
 		private readonly steps: Repository<WorkflowStepExecution>,
 	) {}
 
+	async listExecutionViews(query: ExecutionListQuery): Promise<ExecutionListItemView[]> {
+		assertPageableOrder(query);
+
+		const qb = this.buildListQuery(query)
+			.select('execution.id', 'id')
+			.addSelect('execution.workflow_id', 'workflowId')
+			.addSelect('execution.status', 'status')
+			.addSelect('execution.mode', 'mode')
+			.addSelect('execution.created_at', 'createdAt')
+			.addSelect('execution.updated_at', 'updatedAt')
+			.addSelect('execution.finished_at', 'finishedAt');
+		if (query.before) {
+			qb.andWhere('(execution.created_at, execution.id) < (:createdAt, :id)', query.before);
+		}
+		if (query.order?.top) {
+			qb.orderBy(`(CASE WHEN execution.status = '${query.order.top}' THEN 0 ELSE 1 END)`);
+		}
+		return await qb
+			.addOrderBy('execution.created_at', 'DESC')
+			.addOrderBy('execution.id', 'DESC')
+			.limit(query.limit)
+			.getRawMany<ExecutionListItemView>();
+	}
+
+	async countExecutionViews(query: ExecutionListQuery): Promise<number> {
+		return await this.buildListQuery(query).getCount();
+	}
+
+	private buildListQuery(query: ExecutionListQuery): SelectQueryBuilder<WorkflowExecution> {
+		const qb = this.executions.createQueryBuilder('execution');
+		if (query.workflowIds !== 'all') {
+			qb.andWhere('execution.workflow_id = ANY(:workflowIds)', { workflowIds: query.workflowIds });
+		}
+		if (query.status) qb.andWhere('execution.status = ANY(:statuses)', { statuses: query.status });
+		if (query.mode) qb.andWhere('execution.mode = :mode', { mode: query.mode });
+		if (query.createdAfter)
+			qb.andWhere('execution.created_at >= :createdAfter', { createdAfter: query.createdAfter });
+		if (query.createdBefore)
+			qb.andWhere('execution.created_at <= :createdBefore', { createdBefore: query.createdBefore });
+		return qb;
+	}
+
 	async loadExecutionView(id: string): Promise<ExecutionView> {
 		const row: ExecutionView | undefined = await this.selectExecution(id).getRawOne();
 		if (!row) throw new ExecutionNotFoundError(id);
@@ -37,28 +91,39 @@ export class TypeOrmExecutionViewStore implements ExecutionViewStore {
 	}
 
 	/**
-	 * A left join, so an execution with no steps still returns its own row. The
-	 * execution columns repeat for each step, `graph` included; that is the price
-	 * of reading the status and the steps as of one point in time.
+	 * One query, so the status a caller reports cannot predate the steps beside
+	 * it. The steps are aggregated rather than joined row-per-step: a left join
+	 * repeats every execution column once per step, and both `graph` and
+	 * `workflow` are large enough that a long loop would ship them thousands of
+	 * times. Grouping by the primary key is what lets the execution columns
+	 * survive the aggregate.
 	 */
 	async loadExecutionWithStepsView(id: string): Promise<ExecutionWithStepsView> {
-		const rows: ExecutionStepRow[] = await this.selectExecution(id)
-			.addSelect('step.id', 'step_id')
-			.addSelect('step.node_id', 'step_nodeId')
-			.addSelect('step.iteration', 'step_iteration')
-			.addSelect('step.status', 'step_status')
-			.addSelect('step.outputs', 'step_outputs')
-			.addSelect('step.error', 'step_error')
-			.addSelect('step.created_at', 'step_createdAt')
-			.addSelect('step.updated_at', 'step_updatedAt')
+		const row: ExecutionWithStepsRow | undefined = await this.selectExecution(id)
+			.addSelect(
+				`COALESCE(
+					json_agg(
+						json_build_object(
+							'id', step.id,
+							'nodeId', step.node_id,
+							'iteration', step.iteration,
+							'status', step.status,
+							'outputs', step.outputs,
+							'error', step.error,
+							'createdAt', step.created_at,
+							'updatedAt', step.updated_at
+						)
+						ORDER BY step.created_at ASC, step.node_id ASC, step.iteration ASC
+					) FILTER (WHERE step.id IS NOT NULL),
+					'[]'
+				)`,
+				'steps',
+			)
 			.leftJoin(this.steps.metadata.tableName, 'step', 'step.execution_id = execution.id')
-			.orderBy('step.created_at', 'ASC')
-			.addOrderBy('step.node_id', 'ASC')
-			.addOrderBy('step.iteration', 'ASC')
-			.getRawMany();
-		if (rows.length === 0) throw new ExecutionNotFoundError(id);
-
-		return { ...toExecutionView(rows[0]), steps: rows.filter(hasStep).map(toStepView) };
+			.groupBy('execution.id')
+			.getRawOne();
+		if (!row) throw new ExecutionNotFoundError(id);
+		return row;
 	}
 
 	private selectExecution(id: string): SelectQueryBuilder<WorkflowExecution> {
@@ -69,31 +134,10 @@ export class TypeOrmExecutionViewStore implements ExecutionViewStore {
 			.addSelect('execution.status', 'status')
 			.addSelect('execution.mode', 'mode')
 			.addSelect('execution.graph', 'graph')
+			.addSelect('execution.workflow', 'workflow')
 			.addSelect('execution.created_at', 'createdAt')
 			.addSelect('execution.updated_at', 'updatedAt')
 			.addSelect('execution.finished_at', 'finishedAt')
 			.where('execution.id = :id', { id });
 	}
-}
-
-function hasStep(row: ExecutionStepRow): row is ExecutionView & StepColumns {
-	return row.step_id !== null;
-}
-
-function toExecutionView(row: ExecutionStepRow): ExecutionView {
-	const { id, workflowId, status, mode, graph, createdAt, updatedAt, finishedAt } = row;
-	return { id, workflowId, status, mode, graph, createdAt, updatedAt, finishedAt };
-}
-
-function toStepView(row: StepColumns): StepView {
-	return {
-		id: row.step_id,
-		nodeId: row.step_nodeId,
-		iteration: row.step_iteration,
-		status: row.step_status,
-		outputs: row.step_outputs,
-		error: row.step_error,
-		createdAt: row.step_createdAt,
-		updatedAt: row.step_updatedAt,
-	};
 }

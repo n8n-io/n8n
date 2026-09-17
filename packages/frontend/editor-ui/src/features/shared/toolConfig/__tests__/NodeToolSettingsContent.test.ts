@@ -125,7 +125,8 @@ const renderComponent = createComponentRenderer(NodeToolSettingsContent, {
 	global: {
 		stubs: {
 			ParameterInputList: {
-				template: '<div data-test-id="parameter-input-list"><slot /></div>',
+				template:
+					'<div data-test-id="parameter-input-list">{{ JSON.stringify(parameters) }}<slot /></div>',
 				props: ['parameters', 'nodeValues', 'isReadOnly', 'hideDelete', 'node', 'path'],
 			},
 			NodeCredentials: {
@@ -165,10 +166,21 @@ describe('NodeToolSettingsContent', () => {
 		projectsStore.fetchAndSetProject = vi.fn().mockResolvedValue(undefined);
 	});
 
-	it('should hide operations listed in hiddenOperations from the parameters form', () => {
-		const nodeTypeWithWaitingOperation: INodeTypeDescription = {
+	it('should hide resource and operation options listed in hiddenOperations', () => {
+		const nodeTypeWithHiddenOptions: INodeTypeDescription = {
 			...MOCK_NODE_TYPE,
 			properties: [
+				{
+					displayName: 'Resource',
+					name: 'resource',
+					type: 'options',
+					options: [
+						{ name: 'Row', value: 'row' },
+						{ name: 'Custom API Call', value: '__CUSTOM_API_CALL__' },
+					],
+					default: 'row',
+					noDataExpression: true,
+				},
 				{
 					displayName: 'Operation',
 					name: 'operation',
@@ -182,36 +194,22 @@ describe('NodeToolSettingsContent', () => {
 				},
 			],
 		};
-		nodeTypesStore.getNodeType = vi.fn().mockReturnValue(nodeTypeWithWaitingOperation);
+		nodeTypesStore.getNodeType = vi.fn().mockReturnValue(nodeTypeWithHiddenOptions);
 
-		const renderWithParameterCapture = createComponentRenderer(NodeToolSettingsContent, {
-			global: {
-				stubs: {
-					ParameterInputList: {
-						template:
-							'<div data-test-id="parameter-input-list">{{ JSON.stringify(parameters) }}</div>',
-						props: ['parameters', 'nodeValues', 'isReadOnly', 'hideDelete', 'node', 'path'],
-					},
-					NodeCredentials: {
-						template: '<div data-test-id="node-credentials" />',
-						props: ['node', 'readonly', 'showAll', 'hideIssues'],
-					},
-				},
-			},
-		});
-
-		const { getAllByTestId } = renderWithParameterCapture({
+		const { getAllByTestId } = renderComponent({
 			props: {
 				initialNode: createMockNode({ parameters: {} }),
-				hiddenOperations: ['sendAndWait'],
+				hiddenOperations: ['sendAndWait', '__CUSTOM_API_CALL__'],
 			},
 		});
 
 		const renderedParameters = getAllByTestId('parameter-input-list')
 			.map((element) => element.textContent ?? '')
 			.join('');
+		expect(renderedParameters).toContain('"value":"row"');
 		expect(renderedParameters).toContain('create');
 		expect(renderedParameters).not.toContain('sendAndWait');
+		expect(renderedParameters).not.toContain('__CUSTOM_API_CALL__');
 	});
 
 	it('should hide settings tab when there are no settings', () => {

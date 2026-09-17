@@ -56,7 +56,7 @@ function nodeCredentials(
 	nodeName: string,
 ): Record<string, unknown> | undefined {
 	const node = (workflow.nodes ?? []).find((candidate) => candidate.name === nodeName);
-	return node?.credentials ? (node.credentials as Record<string, unknown>) : undefined;
+	return node?.credentials ?? undefined;
 }
 
 /**

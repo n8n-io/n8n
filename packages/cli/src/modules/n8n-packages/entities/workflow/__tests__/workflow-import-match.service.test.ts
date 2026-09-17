@@ -36,12 +36,12 @@ function makeService(workflows: WorkflowEntity[] = []) {
 }
 
 describe('WorkflowImportMatchService', () => {
-	it('returns an empty map without hitting the finder when no source ids are requested', async () => {
+	it('returns no matches without hitting the finder when no source ids are requested', async () => {
 		const { service, finder } = makeService([]);
 
 		const result = await service.findBySourceWorkflowIds('project-1', []);
 
-		expect(result.size).toBe(0);
+		expect(result).toEqual({ matches: new Map(), lineageConflicts: [] });
 		expect(finder.findOwnedWorkflowsBySourceWorkflowIds).not.toHaveBeenCalled();
 	});
 
@@ -53,7 +53,7 @@ describe('WorkflowImportMatchService', () => {
 		expect(finder.findOwnedWorkflowsBySourceWorkflowIds).toHaveBeenCalledWith(
 			'project-1',
 			['wf-a', 'wf-b'],
-			{ includeActiveVersion: true, includeParentFolder: true },
+			{ includeActiveVersion: true, includeParentFolder: true, includeArchived: true },
 		);
 	});
 
@@ -63,8 +63,9 @@ describe('WorkflowImportMatchService', () => {
 
 		const result = await service.findBySourceWorkflowIds('project-1', ['wf-source']);
 
-		expect(result.get('wf-source')).toBe(imported);
-		expect(result.has('local-1')).toBe(false);
+		expect(result.matches.get('wf-source')).toBe(imported);
+		expect(result.matches.has('local-1')).toBe(false);
+		expect(result.lineageConflicts).toEqual([]);
 	});
 
 	it('prefers sourceWorkflowId over id so a foreign id collision is not a match', async () => {
@@ -78,19 +79,53 @@ describe('WorkflowImportMatchService', () => {
 			'other-source',
 		]);
 
-		expect(result.has('wf-source')).toBe(false);
-		expect(result.get('other-source')).toBe(imported);
+		expect(result.matches.has('wf-source')).toBe(false);
+		expect(result.matches.get('other-source')).toBe(imported);
 	});
 
-	it('fails fast when two workflows share the same sourceWorkflowId', async () => {
+	it('prefers one active workflow over an archived duplicate', async () => {
+		const archived = workflow({
+			id: 'local-1',
+			sourceWorkflowId: 'wf-dup',
+			name: 'Archived',
+			isArchived: true,
+		});
+		const active = workflow({ id: 'local-2', sourceWorkflowId: 'wf-dup', name: 'Active' });
+		const { service } = makeService([archived, active]);
+
+		const result = await service.findBySourceWorkflowIds('project-1', ['wf-dup']);
+
+		expect(result.matches.get('wf-dup')).toBe(active);
+		expect(result.lineageConflicts).toEqual([]);
+	});
+
+	it('reports a conflict when two active workflows share a source id', async () => {
 		const first = workflow({ id: 'local-1', sourceWorkflowId: 'wf-dup', name: 'First' });
 		const second = workflow({ id: 'local-2', sourceWorkflowId: 'wf-dup', name: 'Second' });
 		const { service } = makeService([first, second]);
 
-		await expect(service.findBySourceWorkflowIds('project-1', ['wf-dup'])).rejects.toMatchObject({
-			message: 'Multiple workflows in the target project share the same sourceWorkflowId',
-			extra: { projectId: 'project-1', sourceWorkflowId: 'wf-dup' },
-		});
+		const result = await service.findBySourceWorkflowIds('project-1', ['wf-dup']);
+
+		expect(result.lineageConflicts).toEqual([
+			{
+				sourceWorkflowId: 'wf-dup',
+				projectId: 'project-1',
+				existingWorkflows: [
+					{ id: 'local-1', name: 'First', isArchived: false },
+					{ id: 'local-2', name: 'Second', isArchived: false },
+				],
+			},
+		]);
+	});
+
+	it('reports a conflict when all matching workflows are archived', async () => {
+		const first = workflow({ id: 'local-1', sourceWorkflowId: 'wf-dup', isArchived: true });
+		const second = workflow({ id: 'local-2', sourceWorkflowId: 'wf-dup', isArchived: true });
+		const { service } = makeService([first, second]);
+
+		const result = await service.findBySourceWorkflowIds('project-1', ['wf-dup']);
+
+		expect(result.lineageConflicts).toHaveLength(1);
 	});
 
 	it('keeps distinct source ids in separate map entries', async () => {
@@ -100,9 +135,9 @@ describe('WorkflowImportMatchService', () => {
 
 		const result = await service.findBySourceWorkflowIds('project-1', ['wf-a', 'wf-b']);
 
-		expect(result.size).toBe(2);
-		expect(result.get('wf-a')).toBe(a);
-		expect(result.get('wf-b')).toBe(b);
+		expect(result.matches.size).toBe(2);
+		expect(result.matches.get('wf-a')).toBe(a);
+		expect(result.matches.get('wf-b')).toBe(b);
 	});
 
 	it('falls back to local id when no sourceWorkflowId match exists', async () => {
@@ -111,7 +146,7 @@ describe('WorkflowImportMatchService', () => {
 
 		const result = await service.findBySourceWorkflowIds('project-1', ['wf-authored']);
 
-		expect(result.get('wf-authored')).toBe(authored);
+		expect(result.matches.get('wf-authored')).toBe(authored);
 	});
 
 	it('resolves mixed package ids from a single finder response', async () => {
@@ -124,9 +159,9 @@ describe('WorkflowImportMatchService', () => {
 			'wf-authored',
 		]);
 
-		expect(result.size).toBe(2);
-		expect(result.get('wf-imported')).toBe(imported);
-		expect(result.get('wf-authored')).toBe(authored);
+		expect(result.matches.size).toBe(2);
+		expect(result.matches.get('wf-imported')).toBe(imported);
+		expect(result.matches.get('wf-authored')).toBe(authored);
 	});
 
 	describe('findOwningProjectsByWorkflowId', () => {

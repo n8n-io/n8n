@@ -1,3 +1,4 @@
+import { splitModelId } from '@n8n/ai-utilities/agent-config';
 import { z } from 'zod';
 
 const MODELS_DEV_URL = 'https://models.dev/api.json';
@@ -289,8 +290,7 @@ export async function getModelCost(modelId: string): Promise<ModelCost | undefin
 	const catalog = await getCachedCatalog();
 	if (!catalog) return undefined;
 
-	const [provider, ...rest] = modelId.split('/');
-	const modelName = rest.join('/');
+	const { provider, model: modelName } = splitModelId(modelId);
 
 	return catalog[provider]?.models[modelName]?.cost;
 }

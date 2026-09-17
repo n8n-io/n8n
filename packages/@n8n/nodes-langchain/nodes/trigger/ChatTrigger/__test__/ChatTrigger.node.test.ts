@@ -575,7 +575,6 @@ describe('ChatTrigger Node', () => {
 			(result.workflowData as INodeExecutionData[][])[0][0].json;
 
 		beforeEach(() => {
-			vi.stubEnv('N8N_ENV_FEAT_CHAT_TRIGGER_OAUTH2', 'true');
 			vi.mocked(validateAuth).mockResolvedValue(authedUser);
 		});
 
@@ -590,7 +589,6 @@ describe('ChatTrigger Node', () => {
 			expect(includeUserParams[0]).toMatchObject({
 				type: 'boolean',
 				default: true,
-				envFeatureFlag: 'CHAT_TRIGGER_OAUTH2',
 				displayOptions: {
 					show: {
 						authentication: ['n8nUserAuth'],
@@ -603,7 +601,6 @@ describe('ChatTrigger Node', () => {
 			expect(includeUserParams[1]).toMatchObject({
 				type: 'boolean',
 				default: false,
-				envFeatureFlag: 'CHAT_TRIGGER_OAUTH2',
 				displayOptions: {
 					show: {
 						authentication: ['n8nUserAuth'],
@@ -719,22 +716,6 @@ describe('ChatTrigger Node', () => {
 
 			expect(emittedJson(result)).toEqual({ message: 'Hello', user: authedUser });
 		});
-
-		// The flag gates writing the verified user, not ownership of the key. A claimed
-		// `user` is still dropped, so a workflow built while the flag was on cannot be
-		// spoofed if the flag is later turned off.
-		it('emits no user but still strips a claimed one when the feature flag is off', async () => {
-			vi.stubEnv('N8N_ENV_FEAT_CHAT_TRIGGER_OAUTH2', 'false');
-			mockContext.getBodyData.mockReturnValue({
-				message: 'Hello',
-				user: { email: 'ceo@acme.com' },
-			});
-			setParams();
-
-			const result = await chatTrigger.webhook(mockContext);
-
-			expect(emittedJson(result)).toEqual({ message: 'Hello' });
-		});
 	});
 
 	// The editor's canvas chat can't supply webhook credentials, so its session-scoped
@@ -768,7 +749,6 @@ describe('ChatTrigger Node', () => {
 			(result.workflowData as INodeExecutionData[][])[0][0].json;
 
 		beforeEach(() => {
-			vi.stubEnv('N8N_ENV_FEAT_CHAT_TRIGGER_OAUTH2', 'true');
 			mockContext.getMode.mockReturnValue('manual');
 			mockContext.isChatSessionTest.mockReturnValue(true);
 			getTestWebhookUser.mockResolvedValue(editorUser);
@@ -855,7 +835,6 @@ describe('ChatTrigger Node', () => {
 			(result.workflowData as INodeExecutionData[][])[0][0].json;
 
 		beforeEach(() => {
-			vi.stubEnv('N8N_ENV_FEAT_CHAT_TRIGGER_OAUTH2', 'true');
 			mockContext.getBodyData.mockReturnValue({ chatInput: 'hi', user: forgedUser });
 			vi.mocked(validateAuth).mockResolvedValue(authedUser);
 		});
@@ -888,17 +867,6 @@ describe('ChatTrigger Node', () => {
 
 		it('strips a caller-supplied user when the toggle is off', async () => {
 			setParams({ includeUserInOutput: false });
-
-			const result = await chatTrigger.webhook(mockContext);
-
-			expect(emittedJson(result)).toEqual({ chatInput: 'hi' });
-		});
-
-		// The key's owner is the auth mode, not the rollout flag. An instance that turns the
-		// flag off must not start trusting a claimed `user` in a workflow built while it was on.
-		it('strips a caller-supplied user with the feature flag off', async () => {
-			vi.stubEnv('N8N_ENV_FEAT_CHAT_TRIGGER_OAUTH2', 'false');
-			setParams();
 
 			const result = await chatTrigger.webhook(mockContext);
 
@@ -996,12 +964,6 @@ describe('ChatTrigger Node', () => {
 			};
 			mockRequest.query = {};
 			mockRequest.originalUrl = '/webhook/abc/chat';
-
-			vi.stubEnv('N8N_ENV_FEAT_CHAT_TRIGGER_OAUTH2', 'true');
-		});
-
-		afterEach(() => {
-			vi.unstubAllEnvs();
 		});
 
 		it('renders the shell with the author chat in a sandboxed frame', async () => {
@@ -1102,20 +1064,6 @@ describe('ChatTrigger Node', () => {
 			);
 			expect(mockContext.validateCookieAuth).not.toHaveBeenCalled();
 			expect(everySentResponse()).not.toContain('/signin');
-		});
-
-		it('renders the page unsplit when the flag is off', async () => {
-			vi.stubEnv('N8N_ENV_FEAT_CHAT_TRIGGER_OAUTH2', 'false');
-
-			await renderSetupPage();
-
-			expect(mockResponse.setHeader).not.toHaveBeenCalled();
-			expect(establishChatSessionIdentity).not.toHaveBeenCalled();
-			expect(renderedPage()).toContain('createChat');
-			expect(renderedPage()).not.toContain('n8nShellInner');
-			// The unsplit render is the page itself, not a shell around a frame.
-			expect(mockResponse.render).not.toHaveBeenCalled();
-			expect(renderedPage()).not.toContain('n8nChatRefresh');
 		});
 
 		it.each(['none', 'basicAuth'])(

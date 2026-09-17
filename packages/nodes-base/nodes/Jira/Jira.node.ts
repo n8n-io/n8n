@@ -918,10 +918,15 @@ export class Jira implements INodeType {
 						}
 						body.jql = options.jql as string;
 						if (options.expand) {
-							if (typeof options.expand === 'string') {
-								body.expand = options.expand.split(',');
+							const expand = Array.isArray(options.expand)
+								? options.expand.join(',')
+								: String(options.expand);
+							if (jiraVersion === 'server' || jiraVersion === 'serverPat') {
+								// The legacy search endpoint expects expand as an array
+								body.expand = expand.split(',');
 							} else {
-								body.expand = options.expand;
+								// The Jira Cloud enhanced search endpoint expects expand as a comma-separated string
+								body.expand = expand;
 							}
 						}
 						if (returnAll) {

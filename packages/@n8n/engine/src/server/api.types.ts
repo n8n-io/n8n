@@ -4,8 +4,25 @@ import type {
 	StepError,
 	StepSlots,
 	StepStatus,
+	WorkflowDocument,
 } from '../execution';
+import type { ExecutionListQuery } from '../execution/execution-view-store';
 import type { WorkflowGraph } from '../graph';
+
+/** A read-only search. The control plane supplies the visibility decision. */
+export type SearchExecutionsRequest = ExecutionListQuery;
+
+/** `T` without its `K` fields. */
+type Without<T, K extends keyof T> = Omit<T, K>;
+
+export type ExecutionListItem = Without<ExecutionSnapshot, 'graph' | 'workflow' | 'steps'>;
+
+export interface SearchExecutionsResponse {
+	items: ExecutionListItem[];
+	/** The `before` cursor for the next page, or `null` on the last page. */
+	nextCursor: { createdAt: string; id: string } | null;
+	total?: number;
+}
 
 /**
  * `GET /:id` response. Timestamps go out as ISO strings, since `Date` has no
@@ -21,6 +38,11 @@ export interface ExecutionSnapshot {
 	mode: ExecutionMode;
 	/** The graph captured at start, immutable for the execution's lifetime. */
 	graph: WorkflowGraph;
+	/**
+	 * The workflow the run came from, captured at start. Reported so a caller can
+	 * render the execution against the workflow that ran, not the current one.
+	 */
+	workflow: WorkflowDocument;
 	createdAt: string;
 	updatedAt: string;
 	finishedAt: string | null;

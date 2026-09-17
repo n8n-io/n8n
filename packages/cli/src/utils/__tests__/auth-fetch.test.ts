@@ -73,6 +73,7 @@ describe('createAuthFetch', () => {
 		const res = await fetchFn('https://example.test/mcp');
 
 		expect(res.status).toBe(200);
+		expect(onUnauthorized).toHaveBeenCalledWith({ authorization: 'Bearer A' });
 		expect(baseFetchMock).toHaveBeenCalledTimes(2);
 		const [, init2] = baseFetchMock.mock.calls[1] as [unknown, RequestInit];
 		expect(new Headers(init2.headers).get('authorization')).toBe('Bearer B');
@@ -162,20 +163,21 @@ describe('createAuthFetch — allowedDomains', () => {
 			allowedDomains: { mode: 'domains', domains: 'example.test' },
 		});
 
-		await expect(fetchFn('https://evil.test/mcp')).rejects.toThrow(UserError);
+		await expect(fetchFn('https://other.domain/mcp')).rejects.toThrow(UserError);
 		expect(baseFetchMock).not.toHaveBeenCalled();
 	});
 
-	it('blocks redirect hops to disallowed domains', async () => {
-		baseFetchMock.mockResolvedValueOnce(makeRedirect('https://evil.test/exfiltrate'));
+	it('blocks redirect hops to disallowed domains without sending the auth header there', async () => {
+		baseFetchMock.mockResolvedValueOnce(makeRedirect('https://other.domain/exfiltrate'));
 
 		const fetchFn = createAuthFetch({
 			baseFetch,
-			initialHeaders: {},
+			initialHeaders: { Authorization: 'Bearer token' },
 			allowedDomains: { mode: 'domains', domains: 'example.test' },
 		});
 
 		await expect(fetchFn('https://example.test/mcp')).rejects.toThrow(UserError);
+		expect(baseFetchMock).toHaveBeenCalledTimes(1);
 	});
 
 	it('follows redirect hops to allowed domains', async () => {

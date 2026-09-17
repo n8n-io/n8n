@@ -5,6 +5,7 @@ export type {
 } from './start-execution.service';
 export { stepKeyId } from './execution.types';
 export type {
+	CallerContext,
 	ExecutionMode,
 	ExecutionStatus,
 	StepError,
@@ -13,6 +14,7 @@ export type {
 	StepSlots,
 	StepStatus,
 	TriggerOutputs,
+	WorkflowDocument,
 } from './execution.types';
 export { ExecutionNotFoundError } from './execution-store';
 export type { ExecutionRecord, ExecutionStore, NewExecutionRecord } from './execution-store';

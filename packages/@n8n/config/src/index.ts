@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { ActivityLogConfig } from './configs/activity-log.config';
 import { AgentsConfig } from './configs/agents.config';
 import { AiAssistantConfig } from './configs/ai-assistant.config';
 import { AiBuilderConfig } from './configs/ai-builder.config';
@@ -97,6 +98,7 @@ export { NodesConfig } from './configs/nodes.config';
 export { CronLoggingConfig } from './configs/logging.config';
 export { WorkflowHistoryCompactionConfig } from './configs/workflow-history-compaction.config';
 export { ChatHubConfig } from './configs/chat-hub.config';
+export { ActivityLogConfig } from './configs/activity-log.config';
 export { ChatTriggerConfig } from './configs/chat-trigger.config';
 export { InstanceAiConfig } from './configs/instance-ai.config';
 export { ExpressionEngineConfig } from './configs/expression-engine.config';
@@ -330,4 +332,7 @@ export class GlobalConfig {
 
 	@Nested
 	featureFlags: FeatureFlagConfig;
+
+	@Nested
+	activityLog: ActivityLogConfig;
 }

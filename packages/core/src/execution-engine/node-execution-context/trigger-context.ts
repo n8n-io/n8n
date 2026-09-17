@@ -1,7 +1,6 @@
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type {
 	ICredentialDataDecryptedObject,
-	IExecuteData,
 	INode,
 	ITriggerFunctions,
 	IWorkflowExecuteAdditionalData,
@@ -65,11 +64,12 @@ export class TriggerContext extends NodeExecutionContext implements ITriggerFunc
 		return this.activation;
 	}
 
-	async getCredentials<T extends object = ICredentialDataDecryptedObject>(type: string) {
-		// No real task run backs a trigger, so this only exists to surface `node` to
-		// the credentials helper (e.g. for policy checks) — `data`/`source` are unused.
-		const executeData: IExecuteData = { data: {}, node: this.node, source: null };
+	override getExecutionContext() {
+		// Trigger contexts have no run data, so preserve context established by the entry point.
+		return super.getExecutionContext() ?? this.additionalData.executionContext;
+	}
 
-		return await this._getCredentials<T>(type, executeData);
+	async getCredentials<T extends object = ICredentialDataDecryptedObject>(type: string) {
+		return await this._getRunlessCredentials<T>(type, { credentialUsage: 'trigger' });
 	}
 }

@@ -5,7 +5,37 @@ import type {
 	StepError,
 	StepSlots,
 	StepStatus,
+	WorkflowDocument,
 } from './execution.types';
+
+/**
+ * Timestamps come back however the store's driver reports them: the only
+ * consumer serializes them to JSON, where `Date` and an ISO string are the
+ * same value, so there is no point parsing or formatting them in between.
+ */
+export interface ExecutionListItemView {
+	id: string;
+	workflowId: string;
+	status: ExecutionStatus;
+	mode: ExecutionMode;
+	createdAt: Date;
+	updatedAt: Date;
+	finishedAt: Date | null;
+}
+
+export interface ExecutionListQuery {
+	workflowIds: readonly string[] | 'all';
+	status?: ExecutionStatus[];
+	mode?: string;
+	createdAfter?: string;
+	createdBefore?: string;
+	before?: { createdAt: string; id: string };
+	/** Required at this layer; the API's default lives on the request schema. */
+	limit: number;
+	includeTotal?: boolean;
+	/** Same shape the control plane's `ExecutionSummaries.Query` uses. */
+	order?: { top?: ExecutionStatus; startedAt?: 'DESC' };
+}
 
 /**
  * Read view of an execution: what a caller is shown, which is not what running
@@ -19,6 +49,8 @@ export interface ExecutionView {
 	mode: ExecutionMode;
 	/** The graph captured at start, immutable for the execution's lifetime. */
 	graph: WorkflowGraph;
+	/** The workflow captured at start, alongside the graph and just as immutable. */
+	workflow: WorkflowDocument;
 	createdAt: Date;
 	updatedAt: Date;
 	finishedAt: Date | null;
@@ -28,6 +60,10 @@ export interface ExecutionView {
  * Read view of a step. It carries the timing and the error the execution path
  * writes but never reads back, and omits `executionId`: a step is only ever
  * read under the execution that owns it.
+ *
+ * `createdAt`/`updatedAt` are ISO 8601 strings, not `Date`: the store reads
+ * them out of a JSON aggregate, and the only consumer re-serializes them to
+ * JSON, so there is no point parsing them in between.
  */
 export interface StepView {
 	id: string;
@@ -38,8 +74,8 @@ export interface StepView {
 	outputs: StepSlots | null;
 	/** The error that failed the step; `null` unless it failed. */
 	error: StepError | null;
-	createdAt: Date;
-	updatedAt: Date;
+	createdAt: string;
+	updatedAt: string;
 }
 
 /** An execution with its steps, read as one query so the two cannot disagree. */
@@ -59,6 +95,8 @@ export interface ExecutionWithStepsView extends ExecutionView {
  * columns in the query.
  */
 export interface ExecutionViewStore {
+	listExecutionViews(query: ExecutionListQuery): Promise<ExecutionListItemView[]>;
+	countExecutionViews(query: ExecutionListQuery): Promise<number>;
 	/** Read view of one execution. Throws `ExecutionNotFoundError` if absent. */
 	loadExecutionView(id: string): Promise<ExecutionView>;
 

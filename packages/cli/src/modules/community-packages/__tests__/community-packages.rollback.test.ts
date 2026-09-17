@@ -42,6 +42,8 @@ const TARBALL_NAME = `${PACKAGE_NAME}-2.0.0.tgz`;
 describe('CommunityPackagesService install rollback (real filesystem)', () => {
 	const license = mock<License>();
 	const config = mock<CommunityPackagesConfig>({
+		enabled: true,
+		preventLoading: false,
 		reinstallMissing: false,
 		registry: 'https://registry.npmjs.org',
 		unverifiedEnabled: true,
@@ -334,6 +336,10 @@ describe('CommunityPackagesService install rollback (real filesystem)', () => {
 					version: '2.0.0',
 					n8n: { n8nNodesApiVersion: N8N_NODES_API_VERSION + 1 },
 				};
+				// The follower resolves the version to install from the leader's database record.
+				installedPackageRepository.findOne.mockResolvedValue(
+					mock<InstalledPackages>({ packageName: PACKAGE_NAME, installedVersion: '2.0.0' }),
+				);
 
 				await communityPackagesService.handleInstallEvent({
 					packageName: PACKAGE_NAME,
@@ -348,16 +354,13 @@ describe('CommunityPackagesService install rollback (real filesystem)', () => {
 				expect(loadNodesAndCredentials.loadPackage).not.toHaveBeenCalled();
 				expect(await nodeModulesEntries()).toEqual([PACKAGE_NAME]);
 				expect(logger.error).toHaveBeenCalledWith(
-					'Failed to install community package n8n-nodes-test from pubsub event',
+					'Failed to install community package',
 					expect.objectContaining({
 						packageName: PACKAGE_NAME,
-						packageVersion: '2.0.0',
+						reason: expect.stringContaining("isn't compatible with your version of n8n"),
 						// The operator log names both versions, unlike the user-facing message.
 						requiredNodesApiVersion: N8N_NODES_API_VERSION + 1,
 						supportedNodesApiVersion: N8N_NODES_API_VERSION,
-						error: expect.objectContaining({
-							message: expect.stringContaining("isn't compatible with your version of n8n"),
-						}),
 					}),
 				);
 			});
@@ -389,6 +392,13 @@ describe('CommunityPackagesService install rollback (real filesystem)', () => {
 	});
 
 	describe('pub/sub follower', () => {
+		// The follower installs the version the leader stored, so the record has to be there.
+		beforeEach(() => {
+			installedPackageRepository.findOne.mockResolvedValue(
+				mock<InstalledPackages>({ packageName: PACKAGE_NAME, installedVersion: '2.0.0' }),
+			);
+		});
+
 		test('keeps the existing package when the download fails', async () => {
 			vi.mocked(executeNpmCommand).mockRejectedValueOnce(new Error('download failed'));
 

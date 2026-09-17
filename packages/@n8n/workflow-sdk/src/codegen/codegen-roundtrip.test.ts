@@ -206,6 +206,12 @@ describe('parseWorkflowCode', () => {
 					notesInFlow: true,
 					notes: 'Keep execution settings',
 					extendsCredential: 'notionApi',
+					customTelemetryTags: {
+						tag: [
+							{ key: 'team', value: 'growth' },
+							{ key: "owner's rota", value: 'week — 42' },
+						],
+					},
 				},
 				{
 					id: 'success-id',
@@ -256,6 +262,12 @@ describe('parseWorkflowCode', () => {
 				notesInFlow: true,
 				notes: 'Keep execution settings',
 				extendsCredential: 'notionApi',
+				customTelemetryTags: {
+					tag: [
+						{ key: 'team', value: 'growth' },
+						{ key: "owner's rota", value: 'week — 42' },
+					],
+				},
 			}),
 		);
 	});

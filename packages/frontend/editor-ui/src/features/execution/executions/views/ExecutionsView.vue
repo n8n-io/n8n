@@ -8,7 +8,7 @@ import { useI18n } from '@n8n/i18n';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@n8n/composables/useToast';
-import { InsightsSummary, useInsightsStore } from '@/features/execution/insights';
+import { InsightsSummary, useInsightsStore } from '@n8n/frontend-module-insights';
 import { useExecutionsStore } from '../executions.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { storeToRefs } from 'pinia';
@@ -118,7 +118,7 @@ function onDocumentVisibilityChange() {
 
 async function onRefreshData() {
 	try {
-		await executionsStore.fetchExecutions();
+		await executionsStore.refreshExecutions();
 	} catch (error) {
 		toast.showError(error, i18n.baseText('executionsList.showError.refreshData.title'));
 	}

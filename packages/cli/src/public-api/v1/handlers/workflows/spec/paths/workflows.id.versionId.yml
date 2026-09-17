@@ -6,7 +6,8 @@ get:
     - Workflow
   summary: Retrieves a specific version of a workflow
   description: >-
-    Deprecated: use GET /workflows/{workflowId}/versions/{versionId} instead.
+    Deprecated: use GET /workflows/{workflowId}/versions/{workflowVersionId}
+    instead.
     Retrieves a specific version of a workflow from workflow history.
   deprecated: true
   parameters:

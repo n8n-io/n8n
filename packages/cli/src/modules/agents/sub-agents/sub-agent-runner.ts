@@ -23,6 +23,7 @@ import type {
 	SubAgentSpawnRequest,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { AiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
@@ -45,8 +46,10 @@ import type { MessageRecord } from '../execution-recorder';
 import { ExecutionRecorder } from '../execution-recorder';
 import { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import { buildProviderToolsForModel } from '../json-config/from-json-config';
+import { modelStreamStallOptions } from '../model-stream-stall-options';
 import type { WorkflowToolExecutionMode } from '../tools/workflow-tool-factory';
 import { streamAgentChunks } from '../utils/agent-stream';
+import { createAttributionTracker } from '../utils/mcp-attribution';
 import { SubAgentSourceResolver } from './sub-agent-source-resolver';
 
 export interface SubAgentRunContext {
@@ -121,6 +124,7 @@ export class SubAgentRunner {
 		private readonly agentExecutionService: AgentExecutionService,
 		private readonly checkpointStorage: N8NCheckpointStorage,
 		private readonly logger: Logger,
+		private readonly aiConfig: AiConfig,
 	) {}
 
 	async run(
@@ -202,30 +206,31 @@ export class SubAgentRunner {
 			context.instrumentation?.transformDelegatedAgentConfig?.(resolvedConfig, {
 				subAgentId: runtimeSource.source.sourceId,
 			}) ?? resolvedConfig;
-		const { agent } = await reconstructionService.reconstructFromResolvedSource({
-			config: childConfig,
-			memoryOwnerAgentId: runtimeSource.source.sourceId,
-			projectId: context.projectId,
-			credentialProvider: context.credentialProvider,
-			toolDescriptors: runtimeSource.toolDescriptors,
-			toolCodeByName: runtimeSource.toolCodeByName,
-			skills: runtimeSource.skills,
-			runtimeProfile: 'sub-agent',
-			runType: context.runType,
-			workflowToolExecutionMode: context.workflowToolExecutionMode,
-			parentAgentIdForDelegation: context.parentAgentId,
-			user: context.user,
-			instrumentation: context.instrumentation,
-			...(sandboxPrincipalHash !== undefined ? { sandboxPrincipalHash } : {}),
-			...(context.parentWorkspaceHandle !== undefined
-				? {
-						parentWorkspace: {
-							handle: context.parentWorkspaceHandle,
-							delegationThreadId: threadId,
-						},
-					}
-				: {}),
-		});
+		const { agent, mcpServerAttributions } =
+			await reconstructionService.reconstructFromResolvedSource({
+				config: childConfig,
+				memoryOwnerAgentId: runtimeSource.source.sourceId,
+				projectId: context.projectId,
+				credentialProvider: context.credentialProvider,
+				toolDescriptors: runtimeSource.toolDescriptors,
+				toolCodeByName: runtimeSource.toolCodeByName,
+				skills: runtimeSource.skills,
+				runtimeProfile: 'sub-agent',
+				runType: context.runType,
+				workflowToolExecutionMode: context.workflowToolExecutionMode,
+				parentAgentIdForDelegation: context.parentAgentId,
+				user: context.user,
+				instrumentation: context.instrumentation,
+				...(sandboxPrincipalHash !== undefined ? { sandboxPrincipalHash } : {}),
+				...(context.parentWorkspaceHandle !== undefined
+					? {
+							parentWorkspace: {
+								handle: context.parentWorkspaceHandle,
+								delegationThreadId: threadId,
+							},
+						}
+					: {}),
+			});
 
 		const telemetry = deriveSubAgentTelemetry(context.telemetry);
 		const userMessage =
@@ -248,6 +253,7 @@ export class SubAgentRunner {
 			const executionOptions = {
 				...(context.abortSignal !== undefined ? { abortSignal: context.abortSignal } : {}),
 				...(telemetry !== undefined ? { telemetry } : {}),
+				...modelStreamStallOptions(this.aiConfig),
 				executionCounter: context.executionCounter,
 			};
 			const resultStream =
@@ -293,6 +299,7 @@ export class SubAgentRunner {
 							parentAgentId: context.parentAgentId,
 						},
 						telemetry: {
+							userId: context.user?.id,
 							runType: context.runType,
 							configuration: buildAgentConfigurationTelemetryFromConfig(
 								runtimeSource.source.config,
@@ -312,6 +319,7 @@ export class SubAgentRunner {
 			const { messageRecord, result } = await consumeAgentStream(
 				resultStream,
 				recorder,
+				createAttributionTracker(mcpServerAttributions),
 				context.onChunk,
 			);
 			const suspended = result.pendingSuspend !== undefined && result.pendingSuspend.length > 0;
@@ -331,6 +339,7 @@ export class SubAgentRunner {
 				userMessage,
 				record: messageRecord,
 				executionId,
+				userId: context.user?.id,
 				...(hitlStatus !== undefined ? { hitlStatus } : {}),
 			});
 			recorded = true;
@@ -361,6 +370,7 @@ export class SubAgentRunner {
 					userMessage,
 					record: recorder.getMessageRecord(),
 					executionId,
+					userId: context.user?.id,
 					...(operation.type === 'resume' ? { hitlStatus: 'resumed' as const } : {}),
 				});
 			}
@@ -413,6 +423,7 @@ export class SubAgentRunner {
 		userMessage: string | null;
 		record: MessageRecord;
 		executionId?: string;
+		userId?: string;
 		hitlStatus?: 'suspended' | 'resumed';
 	}): Promise<void> {
 		const {
@@ -426,6 +437,7 @@ export class SubAgentRunner {
 			userMessage,
 			record,
 			executionId,
+			userId,
 			hitlStatus,
 		} = params;
 
@@ -445,6 +457,7 @@ export class SubAgentRunner {
 					...(parentAgentId !== undefined ? { parentAgentId } : {}),
 				},
 				telemetry: {
+					userId,
 					runType,
 					configuration: buildAgentConfigurationTelemetryFromConfig(runtimeSource.config),
 				},
@@ -475,6 +488,7 @@ async function getReconstructionService() {
 async function consumeAgentStream(
 	resultStream: StreamResult,
 	recorder: ExecutionRecorder,
+	attributionTracker: ReturnType<typeof createAttributionTracker>,
 	onChunk?: (chunk: StreamChunk) => void,
 ): Promise<{ messageRecord: MessageRecord; result: GenerateResult }> {
 	const pendingSuspend: NonNullable<GenerateResult['pendingSuspend']> = [];
@@ -482,6 +496,12 @@ async function consumeAgentStream(
 
 	for await (const value of streamAgentChunks(resultStream.stream)) {
 		recorder.record(value);
+		// Recorded before the record is read, so the label reaches the child's
+		// timeline, the parent's live stream, and the answer the parent model sees.
+		for (const attributionChunk of attributionTracker.observe(value)) {
+			recorder.record(attributionChunk);
+			onChunk?.(attributionChunk);
+		}
 		onChunk?.(value);
 		if (value.type === 'tool-call-suspended') {
 			pendingSuspend.push({

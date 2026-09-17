@@ -3,6 +3,7 @@ import type {
 	InstanceAiAgentNode,
 	InstanceAiTimelineEntry,
 	InstanceAiToolCallState,
+	InstanceAiWorkflowSetupNode,
 } from '@n8n/api-types';
 import {
 	buildTimelineBlocks,
@@ -98,6 +99,39 @@ describe('extractArtifacts', () => {
 	test('falls back to Untitled when targetResource has no name or subtitle', () => {
 		const node = makeAgentNode({
 			targetResource: { id: 'wf-1', type: 'workflow' },
+		});
+		expect(extractArtifacts(node)[0].name).toBe('Untitled');
+	});
+
+	test('falls back to Untitled when the name and subtitle are blank', () => {
+		const node = makeAgentNode({
+			subtitle: '   ',
+			targetResource: { id: 'wf-1', type: 'workflow', name: '' },
+		});
+		expect(extractArtifacts(node)[0].name).toBe('Untitled');
+	});
+
+	test('falls back to Untitled when a built workflow reports a blank name', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolName: 'build-workflow',
+					args: { name: '' },
+					result: { workflowId: 'wf-1', workflowName: '' },
+				}),
+			],
+		});
+		expect(extractArtifacts(node)[0].name).toBe('Untitled');
+	});
+
+	test('falls back to Untitled when a data table reports a blank name', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolName: 'data-tables',
+					result: { tableId: 'dt-1', name: '  ' },
+				}),
+			],
 		});
 		expect(extractArtifacts(node)[0].name).toBe('Untitled');
 	});
@@ -319,7 +353,17 @@ describe('buildTimelineBlocks', () => {
 						message: 'To search the web',
 						mcpConnectRequest: {
 							servers: [
-								{ serverSlug: 'brave', title: 'Brave', credentialType: 'braveMcpOAuth2Api' },
+								{
+									serverSlug: 'brave',
+									title: 'Brave',
+									usesCredentials: [
+										{
+											credentialType: 'braveMcpOAuth2Api',
+											name: 'OAuth2',
+											value: 'oAuth2',
+										},
+									],
+								},
 							],
 						},
 					},
@@ -370,6 +414,52 @@ describe('buildTimelineBlocks', () => {
 
 		expect(blocks).toHaveLength(1);
 		expect(blocks[0].type === 'thinking' && blocks[0].entries).toHaveLength(3);
+	});
+
+	test('text before a tool call that suspended on a setup card stays user-facing', () => {
+		const setupCard = makeToolCall({
+			toolCallId: 'tc-setup',
+			toolName: 'workflows',
+			args: { action: 'setup', workflowId: 'wf-1' },
+			isLoading: true,
+			confirmation: {
+				requestId: 'req-1',
+				severity: 'info',
+				message: 'Set up credentials',
+				setupRequests: [{ nodeName: 'Slack' } as unknown as InstanceAiWorkflowSetupNode],
+			},
+		});
+		const blocks = blocksOf(
+			[
+				reasoning('r1'),
+				text('This first version posts to Slack; Gmail comes next.', 'r1'),
+				toolEntry('tc-setup', 'r1'),
+			],
+			[setupCard],
+			'active',
+		);
+
+		expect(blocks.map((b) => b.type)).toEqual(['thinking', 'text', 'thinking']);
+	});
+
+	test('text before an approval-gated tool call stays user-facing', () => {
+		const approval = makeToolCall({
+			toolCallId: 'tc-run',
+			toolName: 'executions',
+			args: { action: 'run', workflowId: 'wf-1' },
+			confirmation: {
+				requestId: 'req-1',
+				severity: 'info',
+				message: 'Run?',
+				inputType: 'approval',
+			},
+		});
+		const blocks = blocksOf(
+			[reasoning('r1'), text('Running it live now.', 'r1'), toolEntry('tc-run', 'r1')],
+			[approval],
+		);
+
+		expect(blocks.map((b) => b.type)).toEqual(['thinking', 'text', 'thinking']);
 	});
 
 	test('trailing text of a response is user-facing and splits blocks', () => {
@@ -482,6 +572,27 @@ describe('buildTimelineBlocks', () => {
 
 		expect(blocks).toHaveLength(1);
 		expect(blocks[0].type === 'thinking' && blocks[0].entries).toHaveLength(2);
+	});
+
+	test('historical eval setup calls are hidden without splitting a thinking run', () => {
+		const blocks = blocksOf(
+			[toolEntry('tc-before', 'r1'), toolEntry('tc-eval', 'r1'), toolEntry('tc-after', 'r1')],
+			[
+				makeToolCall({ toolCallId: 'tc-before' }),
+				makeToolCall({
+					toolCallId: 'tc-eval',
+					toolName: 'eval-setup-with-agent',
+					renderHint: 'eval-setup',
+				}),
+				makeToolCall({ toolCallId: 'tc-after' }),
+			],
+		);
+
+		expect(blocks).toHaveLength(1);
+		expect(blocks[0].type === 'thinking' && blocks[0].entries).toEqual([
+			expect.objectContaining({ toolCallId: 'tc-before' }),
+			expect.objectContaining({ toolCallId: 'tc-after' }),
+		]);
 	});
 
 	test('in-thread build-workflow renders as a trace row; agent-delegated builds stay hidden', () => {

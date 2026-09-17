@@ -4,6 +4,9 @@ import {
 	MCP_APPS_VARIANT_CONTROL,
 	MCP_APPS_VARIANT_ENABLED,
 	MCP_CANVAS_GROUPS_FLAG,
+	MCP_INSTANCE_CONTEXT_FLAG,
+	CONTEXT_PREFERENCES_ENABLED_VARIANT,
+	CONTEXT_PREFERENCES_FLAG,
 } from '@n8n/api-types';
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
@@ -25,6 +28,7 @@ import { CollaborationService } from '@/collaboration/collaboration.service';
 import { N8N_VERSION } from '@/constants';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { EventService } from '@/events/event.service';
+import { ExecutionListService } from '@/executions/execution-list.service';
 import { ExecutionService } from '@/executions/execution.service';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
@@ -32,6 +36,7 @@ import { NodeCatalogService } from '@/node-catalog';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { AiGatewayService } from '@/services/ai-gateway.service';
+import { AiPreferenceService } from '@/services/ai-preference.service';
 import { FolderFinderService } from '@/services/folder-finder.service';
 import { FolderService } from '@/services/folder.service';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
@@ -47,7 +52,12 @@ import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-hi
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
-import { MCP_CREATE_AGENT_TOOL_NAME, MCP_PREVIEW_RENDER_REQUESTED_EVENT } from './mcp.constants';
+import { McpPostSaveMetricsService } from './mcp-post-save-metrics.service';
+import {
+	MCP_CREATE_AGENT_TOOL_NAME,
+	MCP_GET_USER_PREFERENCES_TOOL_NAME,
+	MCP_PREVIEW_RENDER_REQUESTED_EVENT,
+} from './mcp.constants';
 import { getAllowedToolNames } from './mcp-scopes';
 import { areAgentToolsAvailable } from './mcp-tool-availability';
 import type {
@@ -72,10 +82,16 @@ import {
 } from './tools/data-table';
 import { createExecuteWorkflowTool } from './tools/execute-workflow.tool';
 import { createGetExecutionTool } from './tools/get-execution.tool';
+import { createGetNodeUsageTool } from './tools/get-node-usage.tool';
+import { createGetUserPreferencesTool } from './tools/get-user-preferences.tool';
 import { createWorkflowDetailsTool } from './tools/get-workflow-details.tool';
 import { createGetWorkflowHistoryTool } from './tools/get-workflow-history.tool';
 import { createGetWorkflowVersionTool } from './tools/get-workflow-version.tool';
 import { createGetWorkflowVersionsDiffTool } from './tools/get-workflow-versions-diff.tool';
+import {
+	createExpandInstanceActivityTool,
+	createGetInstanceActivityTool,
+} from './tools/instance-activity.tool';
 import { createListCredentialsTool } from './tools/list-credentials.tool';
 import { createListN8nGatewayServicesTool } from './tools/list-n8n-gateway-services.tool';
 import { createListTagsTool } from './tools/list-tags.tool';
@@ -123,6 +139,10 @@ export type McpFeatureFlags = {
 	mcpApps: McpAppsResolution;
 	/** Canvas node-group support in the workflow-builder tools. */
 	canvasGroupsEnabled: boolean;
+	/** The instance-context read surface: the activity tools and node-usage. */
+	instanceContextEnabled: boolean;
+	/** The `get_user_preferences` tool. */
+	aiPreferencesEnabled: boolean;
 };
 
 type McpAppTelemetryResolution = {
@@ -174,7 +194,7 @@ function getToolCallOutcome(result: CallToolResult | undefined): {
  */
 function getWorkflowId(source: unknown): string | undefined {
 	if (!source || typeof source !== 'object' || !('workflowId' in source)) return undefined;
-	const workflowId = (source as { workflowId: unknown }).workflowId;
+	const workflowId = source.workflowId;
 	return typeof workflowId === 'string' ? workflowId : undefined;
 }
 
@@ -208,6 +228,7 @@ export class McpService {
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly executionService: ExecutionService,
+		private readonly executionListService: ExecutionListService,
 		private readonly dataTableProxyService: DataTableProxyService,
 		private readonly collaborationService: CollaborationService,
 		private readonly nodeResourceExplorerService: NodeResourceExplorerService,
@@ -219,37 +240,41 @@ export class McpService {
 		private readonly workflowPublishedDataService: WorkflowPublishedDataService,
 		private readonly subworkflowPolicyChecker: SubworkflowPolicyChecker,
 		private readonly aiGatewayService: AiGatewayService,
+		private readonly postSaveMetrics: McpPostSaveMetricsService,
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly eventService: EventService,
 		private readonly folderService: FolderService,
+		private readonly aiPreferenceService: AiPreferenceService,
 	) {}
 
 	/**
 	 * Resolves every PostHog-gated MCP feature for a user with a single flags
 	 * lookup. Env overrides are force-enable-only and take precedence over
-	 * PostHog; the lookup is skipped entirely when every feature is overridden.
+	 * PostHog.
 	 */
 	async resolveFeatureFlags(user: User): Promise<McpFeatureFlags> {
-		const { mcpAppsEnabled, mcpCanvasGroupsEnabled } = this.globalConfig.endpoints;
+		const { mcpAppsEnabled, mcpCanvasGroupsEnabled, mcpInstanceContextEnabled } =
+			this.globalConfig.endpoints;
 
 		// `PostHogClient.getFeatureFlags` swallows PostHog errors internally and
 		// returns `{}`, so a transient outage fails closed (feature off, MCP Apps
 		// surfacing as `unassigned`).
-		const flags =
-			mcpAppsEnabled && mcpCanvasGroupsEnabled
-				? undefined
-				: await this.postHogClient.getFeatureFlags(user);
+		const flags = await this.postHogClient.getFeatureFlags(user);
 
 		return {
 			mcpApps: this.resolveMcpApps(mcpAppsEnabled, flags),
-			canvasGroupsEnabled: mcpCanvasGroupsEnabled || flags?.[MCP_CANVAS_GROUPS_FLAG] === true,
+			canvasGroupsEnabled: mcpCanvasGroupsEnabled || flags[MCP_CANVAS_GROUPS_FLAG] === true,
+			instanceContextEnabled:
+				mcpInstanceContextEnabled || flags[MCP_INSTANCE_CONTEXT_FLAG] === true,
+			// Multivariate flag: only the `variant` arm enables the feature.
+			aiPreferencesEnabled: flags[CONTEXT_PREFERENCES_FLAG] === CONTEXT_PREFERENCES_ENABLED_VARIANT,
 		};
 	}
 
-	private resolveMcpApps(envOverride: boolean, flags?: FeatureFlags): McpAppsResolution {
+	private resolveMcpApps(envOverride: boolean, flags: FeatureFlags): McpAppsResolution {
 		if (envOverride) return { enabled: true, variant: 'env_override' };
 
-		const raw = flags?.[MCP_APPS_FLAG];
+		const raw = flags[MCP_APPS_FLAG];
 		if (raw === MCP_APPS_VARIANT_ENABLED) return { enabled: true, variant: 'variant' };
 		if (raw === MCP_APPS_VARIANT_CONTROL) return { enabled: false, variant: 'control' };
 		return { enabled: false, variant: 'unassigned' };
@@ -414,6 +439,12 @@ export class McpService {
 		// the agent tools gets no agent build walkthrough.
 		const agentInstructionsEnabled =
 			agentsEnabled && (allowedToolNames?.has(MCP_CREATE_AGENT_TOOL_NAME) ?? true);
+		// Same rationale again: never point a caller at a tool it cannot see. Gates the sentence
+		// only; registration below goes through `registerIfAllowed` like every other tool. No
+		// RBAC check: a user's own preferences need no scope.
+		const userPreferencesInstructionsEnabled =
+			featureFlags.aiPreferencesEnabled &&
+			(allowedToolNames?.has(MCP_GET_USER_PREFERENCES_TOOL_NAME) ?? true);
 		const server = new McpServer(
 			{
 				name: 'n8n MCP Server',
@@ -425,6 +456,7 @@ export class McpService {
 					isN8nConnectAvailable: n8nConnectAvailable,
 					canvasGroupsEnabled: featureFlags.canvasGroupsEnabled,
 					isAgentsEnabled: agentInstructionsEnabled,
+					isUserPreferencesEnabled: userPreferencesInstructionsEnabled,
 				}),
 			},
 		);
@@ -465,9 +497,12 @@ export class McpService {
 		);
 		registerIfAllowed(getExecutionTool);
 
+		// TODO(CAT-4510): the search lists engine 2.0 executions, but
+		// `get_workflow_execution` above still reads only the control plane, so an
+		// agent cannot fetch a v2 result it just found.
 		const searchExecutionsTool = createSearchExecutionsTool(
 			user,
-			this.executionService,
+			this.executionListService,
 			this.workflowFinderService,
 			this.telemetry,
 		);
@@ -573,6 +608,49 @@ export class McpService {
 			registerIfAllowed(listTagsTool);
 		}
 
+		if (featureFlags.instanceContextEnabled) {
+			// Whether the *token* carries `credential:read`. It narrows a token rather than proving a
+			// permission, so the reader treats it as one half of the credential gate and resolves the
+			// caller's real access for the other half.
+			const credentialGranted = allowedToolNames?.has('list_credentials') ?? true;
+
+			// The two activity tools also need the log to be *written*. `N8N_ACTIVITY_LOG_ENABLED`
+			// is off by default, and a tool that answers from a store nothing writes to reports an
+			// empty feed — which an agent reads as "nothing has happened here", the exact wrong
+			// conclusion. The inventory and run legs do not come from the log, so the context tool
+			// and node-usage stay available either way.
+			const activityLogWritten = this.globalConfig.activityLog.enabled;
+
+			// The activity reader belongs to the `instance-ai` module, so it is resolved lazily and
+			// only when that module is active — an instance with the surface off never builds it.
+			if (activityLogWritten && this.moduleRegistry.isActive('instance-ai')) {
+				const { InstanceContextService } = await import(
+					'@/modules/instance-ai/instance-context.service.js'
+				);
+				const instanceContext = Container.get(InstanceContextService);
+
+				registerIfAllowed(
+					createGetInstanceActivityTool(user, instanceContext, this.telemetry, {
+						credentialGranted,
+					}),
+				);
+				registerIfAllowed(
+					createExpandInstanceActivityTool(user, instanceContext, this.telemetry, {
+						credentialGranted,
+					}),
+				);
+			}
+
+			// Node usage reads the dependency index, which is not part of any module and is always
+			// available, so it is not gated on `instance-ai` the way the activity tools are.
+			const { WorkflowDependencyQueryService } = await import(
+				'@/modules/workflow-index/workflow-dependency-query.service.js'
+			);
+			registerIfAllowed(
+				createGetNodeUsageTool(user, Container.get(WorkflowDependencyQueryService), this.telemetry),
+			);
+		}
+
 		// Data table tools
 		const dataTableOps = this.dataTableProxyService.makeDataTableOperationsForUser(user);
 
@@ -607,6 +685,14 @@ export class McpService {
 
 		const getDataTableRowsTool = createGetDataTableRowsTool(user, dataTableOps, this.telemetry);
 		registerIfAllowed(getDataTableRowsTool);
+
+		// Not builder-gated: preferences apply to Agents, data tables and folders as well as
+		// workflows, so a caller without the builder still has changes to apply them to.
+		if (featureFlags.aiPreferencesEnabled) {
+			registerIfAllowed(
+				createGetUserPreferencesTool(user, this.aiPreferenceService, this.telemetry),
+			);
+		}
 
 		// Workflow builder tools (enabled via N8N_MCP_BUILDER_ENABLED)
 		if (builderEnabled) {
@@ -695,6 +781,8 @@ export class McpService {
 			dataTableOps,
 			this.aiGatewayService,
 			{ canvasGroupsEnabled: featureFlags.canvasGroupsEnabled },
+			this.logger,
+			this.postSaveMetrics,
 		);
 
 		// The preview app only accompanies the create tool, so both are gated
@@ -798,6 +886,8 @@ export class McpService {
 			this.workflowPublishedDataService,
 			this.aiGatewayService,
 			{ canvasGroupsEnabled: featureFlags.canvasGroupsEnabled },
+			this.logger,
+			this.postSaveMetrics,
 		);
 		registerIfAllowed(updateTool);
 

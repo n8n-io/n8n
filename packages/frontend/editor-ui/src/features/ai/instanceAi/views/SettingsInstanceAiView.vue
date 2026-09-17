@@ -402,7 +402,7 @@ async function handleEnable() {
 		if (
 			!(await testSavedCredential(
 				sandboxCredentialId.value,
-				'AI Assistant sandbox',
+				'n8n Assistant sandbox',
 				isDaytona ? 'daytonaApi' : 'httpHeaderAuth',
 			))
 		) {
@@ -899,7 +899,7 @@ function openAiUsageSettings() {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--3xs);
-	padding: 0 0 var(--spacing--2xs) var(--spacing--sm);
+	padding: var(--spacing--2xs) var(--spacing--sm);
 }
 
 .permissionRow {
