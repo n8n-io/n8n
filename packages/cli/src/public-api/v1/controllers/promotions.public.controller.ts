@@ -1,5 +1,6 @@
 import {
 	ApplyPackageResultDto,
+	ContinueApplyPackageDto,
 	CreatePromotionConnectionDto,
 	CreatePromotionProviderDto,
 	ListPromotionConnectionsQueryDto,
@@ -527,7 +528,7 @@ export class PromotionsPublicController {
 	@GlobalScope('gitConnection:pull')
 	@ApiSummary('Apply a package to the instance')
 	@ApiDescription(
-		'Resets the local checkout to the configured branch tip and imports the package, overwriting to match. Requires the Apply direction to be cloned first, and is available on the instance connection only.',
+		'Checks the full package at the configured branch tip. Returns status `blocked` before import writes if bindings need setup. Retain configId and git for Continue. Status `applied` includes counts and warnings. Inspect status before reading counts. Existing target variable values, including empty strings, are preserved. Requires a cloned Apply direction on an instance connection. The API key needs the gitConnection:pull scope. The importer checks user write permissions; granular API-key write scopes are not passed to it.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, ApplyPackageResultDto)
@@ -543,6 +544,34 @@ export class PromotionsPublicController {
 		promotionConnectionId: string,
 	): Promise<ApplyPackageResultDto> {
 		return await (await this.promotionsService()).apply(promotionConnectionId, req.user);
+	}
+
+	@Post('/connections/:promotionConnectionId/apply/continue')
+	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
+	@ApiKeyScope('gitConnection:pull')
+	@GlobalScope('gitConnection:pull')
+	@ApiSummary('Continue Apply after binding setup')
+	@ApiDescription(
+		'Rechecks the configured source and current target bindings. Send expectedSource with the configId, branchName, and full commitSha from the reviewed Apply result. Status `source-changed` requires a new Apply review. Status `blocked` returns fresh binding details without import writes. Status `applied` includes counts and warnings. Inspect status before reading counts. Existing target variable values are preserved. Requires the same cloned instance connection and permissions as Apply. The importer checks user write permissions; granular API-key write scopes are not passed to it. No server session or exactly-once guarantee is provided.',
+	)
+	@ApiTags(tags)
+	@ApiResponse(200, ApplyPackageResultDto)
+	@ApiErrorResponse(404)
+	@ApiErrorResponse(409)
+	@ApiErrorResponse(422)
+	@ApiErrorResponse(503)
+	async continueApplyPackage(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('promotionConnectionId', promotionConnectionIdParamSchema)
+		promotionConnectionId: string,
+		@Body input: ContinueApplyPackageDto,
+	): Promise<ApplyPackageResultDto> {
+		return await (await this.promotionsService()).continueApply(
+			promotionConnectionId,
+			req.user,
+			input,
+		);
 	}
 
 	// -- Module access -------------------------------------------------------

@@ -286,6 +286,9 @@
 		"POST /promotions/connections/{promotionConnectionId}/promote": {
 			"status": "gap"
 		},
+		"POST /promotions/connections/{promotionConnectionId}/apply/continue": {
+			"status": "gap"
+		},
 		"POST /promotions/connections/{promotionConnectionId}/apply": {
 			"status": "gap"
 		},
