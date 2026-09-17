@@ -17,6 +17,7 @@ import {
 } from 'n8n-workflow';
 
 import { MCP_TRIGGER_NODE_TYPE } from '@/constants';
+import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
 import { EngineV2Dispatcher } from '@/services/engine-v2-dispatcher.service';
 import { EngineV2PayloadGuard } from '@/services/engine-v2-payload-guard.service';
 
@@ -61,6 +62,7 @@ export class EngineV2Webhooks {
 	constructor(
 		private readonly dispatcher: EngineV2Dispatcher,
 		private readonly payloadGuard: EngineV2PayloadGuard,
+		private readonly proxy: EngineDataPlaneProxyService,
 	) {}
 
 	/** Whether this webhook run starts on the engine 2.0 data plane. */
@@ -84,6 +86,15 @@ export class EngineV2Webhooks {
 	 * Ordered so the user hears the most fundamental reason first.
 	 */
 	assertSupported({ workflowStartNode, responseMode, executionId }: EngineV2WebhookRequest): void {
+		// Checked first: `EngineV2WebhookResponder.waitForResponse` assumes the module
+		// registered its channel, and throws an internal error otherwise. Only a check
+		// that precedes that call can turn "module off" into a 400 instead of a 500.
+		if (!this.proxy.isAvailable()) {
+			throw new UserError(
+				'Engine 2.0 is not available. Enable the `engine-v2` module with N8N_ENABLED_MODULES.',
+			);
+		}
+
 		// A v2 run keeps no control-plane execution row, so there is nothing to resume.
 		if (executionId !== undefined) {
 			throw new UserError('Engine 2.0 cannot resume a waiting execution yet.');

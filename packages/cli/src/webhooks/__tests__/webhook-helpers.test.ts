@@ -59,6 +59,7 @@ import { AuthService } from '@/auth/auth.service';
 import type { ResponseError } from '@/errors/response-errors/abstract/response.error';
 import { EventService } from '@/events/event.service';
 import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
+import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
 import { EngineV2Dispatcher } from '@/services/engine-v2-dispatcher.service';
 import { EngineV2WebhookResponder } from '@/services/engine-v2-webhook-responder.service';
 import { OwnershipService } from '@/services/ownership.service';
@@ -1129,6 +1130,7 @@ const activeExecutions = mockInstance(ActiveExecutions);
 const resourceRegistry = mockInstance(ProtectedResourceRegistry);
 // Off by default: every block but the engine 2.0 one exercises the v1 path.
 const engineV2Dispatcher = mockInstance(EngineV2Dispatcher);
+const engineDataPlaneProxy = mockInstance(EngineDataPlaneProxyService);
 const executionContextService = mockInstance(ExecutionContextService);
 const userRepository = mockInstance(UserRepository);
 mockInstance(AuthService);
@@ -2038,6 +2040,7 @@ describe('executeWebhook on engine 2.0', () => {
 		// The webhook path asks before it can build the run data, so it goes through
 		// `handlesWorkflow`, not `routesToEngineV2`.
 		engineV2Dispatcher.handlesWorkflow.mockReturnValue(true);
+		engineDataPlaneProxy.isAvailable.mockReturnValue(true);
 		workflowRunner.run.mockResolvedValue(ENGINE_EXECUTION_ID);
 		// The host hands the responder its channel at boot. Keeping each run's
 		// handler is how a test plays the data plane answering.
@@ -2228,6 +2231,19 @@ describe('executeWebhook on engine 2.0', () => {
 			// A streaming node, and the chat/MCP/Agent365 triggers, answer the request
 			// themselves. Refusing after that could not send this 400.
 			expect(webhookService.runWebhook).not.toHaveBeenCalled();
+			expect(workflowRunner.run).not.toHaveBeenCalled();
+		});
+
+		it('answers 400, not 500, when the engine-v2 module is disabled', async () => {
+			engineDataPlaneProxy.isAvailable.mockReturnValue(false);
+
+			const { responseCallback } = await startWebhook();
+
+			expect(reasonFrom(responseCallback)).toEqual({
+				status: 400,
+				message:
+					'Engine 2.0 is not available. Enable the `engine-v2` module with N8N_ENABLED_MODULES.',
+			});
 			expect(workflowRunner.run).not.toHaveBeenCalled();
 		});
 
