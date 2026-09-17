@@ -173,6 +173,7 @@ erDiagram
   varchar createdById FK
   varchar id PK
   varchar_36_ projectId FK
+  varchar_16_ source
   datetime_3_ updatedAt
   varchar userId FK
 }
