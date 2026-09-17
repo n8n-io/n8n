@@ -2065,6 +2065,17 @@ describe('executeWebhook on engine 2.0', () => {
 		});
 	});
 
+	describe('lastNode', () => {
+		it('dispatches the run under the id the answer is waited on', async () => {
+			await startWebhook({ responseMode: 'lastNode' });
+
+			// The waiting request is recorded before the run starts, and the run
+			// has to use the id it was recorded under, so a fast answer is not lost.
+			expect(workflowRunner.run).toHaveBeenCalledTimes(1);
+			expect(workflowRunner.run.mock.calls[0][0].engineExecutionId).toEqual(expect.any(String));
+		});
+	});
+
 	describe('rejections', () => {
 		const reasonFrom = (responseCallback: ReturnType<typeof vi.fn>) => {
 			const error = responseCallback.mock.calls[0][0] as ResponseError;
@@ -2072,12 +2083,6 @@ describe('executeWebhook on engine 2.0', () => {
 		};
 
 		it.each([
-			{
-				name: 'the lastNode response mode',
-				options: { responseMode: 'lastNode' },
-				message:
-					"Engine 2.0 does not support the 'lastNode' response mode yet. Respond immediately instead.",
-			},
 			{
 				name: 'the responseNode response mode',
 				options: { responseMode: 'responseNode' },

@@ -1,6 +1,13 @@
 import { UnexpectedError } from '../common';
-import { deriveLoops, findTriggerNode, getDescendantNodeIds, getSuccessorNodeIds } from '../graph';
+import {
+	deriveLoops,
+	findTriggerNode,
+	getDescendantNodeIds,
+	getSuccessorNodeIds,
+	type GraphNode,
+} from '../graph';
 import type { LifecycleEventPublisher } from '../lifecycle-events';
+import { ExecutionResponseChannel } from '../response-channel';
 import type { OrchestrationMessage, StepMessage, StepSettledEvent, WorkQueue } from '../queue';
 import { countExpectedSettledSteps } from './completion';
 import type { ExecutionRecord, ExecutionStore } from './execution-store';
@@ -29,6 +36,7 @@ export class StepSettledHandler {
 		private readonly stepQueue: WorkQueue<StepMessage>,
 		private readonly orchestrationQueue: WorkQueue<OrchestrationMessage>,
 		private readonly lifecycleEventPublisher: LifecycleEventPublisher,
+		private readonly responseChannel: ExecutionResponseChannel = new ExecutionResponseChannel(),
 	) {}
 
 	async handle(event: StepSettledEvent): Promise<void> {
@@ -36,12 +44,12 @@ export class StepSettledHandler {
 			this.stepStore.loadStep(event.stepId),
 			this.executionStore.loadExecution(event.executionId),
 		]);
-		validateStepContext(step, execution);
+		const node = validateStepContext(step, execution);
 
 		// v1 parity: an error that escapes a node ends the whole execution, not
 		// just its branch.
 		if (step.status === 'failed') {
-			await this.failExecution(execution);
+			await this.failExecution(execution, step, node);
 			return;
 		}
 
@@ -52,7 +60,7 @@ export class StepSettledHandler {
 			// a failure elsewhere may still have its settled event queued behind
 			// this one, so it must end the execution here, before planning
 			if (await this.stepStore.hasFailedSteps(execution.id)) {
-				await this.failExecution(execution);
+				await this.failExecution(execution, step, node);
 				return;
 			}
 
@@ -63,10 +71,14 @@ export class StepSettledHandler {
 		// definitely don't need to mark it finished.
 		if (queued > 0) return;
 
-		await this.finishExecutionIfDone(execution);
+		await this.finishExecutionIfDone(execution, step, node);
 	}
 
-	private async failExecution(execution: ExecutionRecord): Promise<void> {
+	private async failExecution(
+		execution: ExecutionRecord,
+		step: StepRecord,
+		node: GraphNode,
+	): Promise<void> {
 		// Only the worker whose write won announces the outcome.
 		const finished = await this.executionStore.finishExecution(execution.id, 'failed');
 		if (finished) {
@@ -76,6 +88,7 @@ export class StepSettledHandler {
 				workflowId: execution.workflowId,
 				at: new Date().toISOString(),
 			});
+			this.announceEnd(execution, step, node, 'failed');
 		}
 
 		// TODO(CAT-3990): this sweep names no rows, so it announces nothing.
@@ -149,7 +162,11 @@ export class StepSettledHandler {
 	 * the count comparison cannot pass early — in-flight events and unplanned
 	 * successors both leave steps outstanding.
 	 */
-	private async finishExecutionIfDone(execution: ExecutionRecord): Promise<void> {
+	private async finishExecutionIfDone(
+		execution: ExecutionRecord,
+		step: StepRecord,
+		node: GraphNode,
+	): Promise<void> {
 		const reachable = this.reachableNodeIds(execution);
 		const loops = deriveLoops(execution.graph);
 		const terminalIterations = await loadTerminalIterations(
@@ -181,7 +198,39 @@ export class StepSettledHandler {
 				workflowId: execution.workflowId,
 				at: new Date().toISOString(),
 			});
+			this.announceEnd(execution, step, node, failed ? 'failed' : 'completed');
 		}
+	}
+
+	/**
+	 * Tells whoever started the execution that it is over.
+	 *
+	 * Only ever called where `finishExecution` won its CAS, so a run announces
+	 * its end exactly once however many workers raced for it.
+	 *
+	 * `lastStep` is the step whose settling ended the run, reported as it is. A
+	 * skip settles at birth and carries no outputs, so a caller that wants the
+	 * step which produced data has to look further; the engine has no opinion on
+	 * which step an answer should come from.
+	 */
+	private announceEnd(
+		execution: ExecutionRecord,
+		step: StepRecord,
+		node: GraphNode,
+		status: 'completed' | 'failed',
+	): void {
+		this.responseChannel.publish({
+			type: 'ended',
+			executionId: execution.id,
+			workflowId: execution.workflowId,
+			status,
+			lastStep: {
+				nodeId: step.nodeId,
+				nodeName: node.name,
+				status: step.status,
+				outputs: step.outputs,
+			},
+		});
 	}
 
 	private reachableNodeIds(execution: ExecutionRecord): Set<string> {

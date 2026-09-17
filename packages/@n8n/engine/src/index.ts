@@ -34,6 +34,18 @@ export type {
 	LifecycleEventBatch,
 } from './lifecycle-events';
 
+export {
+	ExecutionResponseChannel,
+	executionResponseSchema,
+	InMemoryResponseTransport,
+	noopResponseTransport,
+} from './response-channel';
+export type {
+	EndedMessage,
+	ExecutionResponse,
+	ResponseTransport,
+} from './response-channel';
+
 export { UnimplementedError } from './common';
 export type { JsonObject, JsonValue } from './common';
 

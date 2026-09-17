@@ -34,6 +34,13 @@ const UNSUPPORTED_TRIGGERS = new Set<string>([
 	WAIT_NODE_TYPE,
 ]);
 
+/**
+ * Response modes the v2 path serves. Each mode is added here as its support
+ * lands, so a mode that is not ready yet fails with a reason rather than
+ * answering wrongly.
+ */
+const SUPPORTED_RESPONSE_MODES = new Set<WebhookResponseMode>(['onReceived', 'lastNode']);
+
 /** What the request says about a run, before the webhook node has produced anything. */
 export type EngineV2WebhookRequest = {
 	workflowStartNode: INode;
@@ -99,8 +106,7 @@ export class EngineV2Webhooks {
 			);
 		}
 
-		// TODO(CAT-4313): support `lastNode`. TODO(CAT-4079): support `responseNode`.
-		if (responseMode !== 'onReceived') {
+		if (!SUPPORTED_RESPONSE_MODES.has(responseMode)) {
 			throw new UserError(
 				`Engine 2.0 does not support the '${responseMode}' response mode yet. Respond immediately instead.`,
 			);

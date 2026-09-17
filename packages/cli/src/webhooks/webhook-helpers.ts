@@ -27,6 +27,7 @@ import type {
 	INode,
 	IPinData,
 	IRunExecutionData,
+	ITaskData,
 	IWebhookData,
 	IWebhookResponseData,
 	IWorkflowDataProxyAdditionalKeys,
@@ -80,6 +81,8 @@ import {
 import { OAuth2FlowProxy } from '@/services/oauth2-flow-proxy.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
+import { EngineV2WebhookResponder } from '@/services/engine-v2-webhook-responder.service';
+import type { PendingWebhookResponse } from '@/services/engine-v2-webhook-responder.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { WaitTracker } from '@/wait-tracker';
 import { EXECUTION_ENDED_WITHOUT_RESPONSE } from '@/webhooks/constants';
@@ -417,6 +420,127 @@ export function setupResponseNodePromise(
 			);
 			responseCallback(error, {});
 		});
+}
+
+/** Everything answering an engine 2.0 webhook needs, beyond the run's outcome. */
+type DataPlaneResponseContext = {
+	/** Whether the request was already answered, at the moment the run started. */
+	alreadyAnswered: boolean;
+	responseCallback: (
+		error: Error | null,
+		data: IWebhookResponseCallbackData | WebhookResponse,
+	) => void;
+	responseMode: WebhookResponseMode;
+	responseCode: number;
+	responseHeaders: WebhookResponseHeaders;
+	responseData: WebhookResponseData | string | undefined;
+	checkAllMainOutputs: boolean;
+	responsePropertyName: string | undefined;
+	responseContentType: string | undefined;
+	responseBinaryPropertyName: string | undefined;
+	workflowId: string;
+};
+
+/**
+ * Answers a webhook request once its engine 2.0 run produces something.
+ *
+ * The v1 counterpart is the `getPostExecutePromise` handler further down. This
+ * one waits on the response channel instead, and is deliberately not awaited by
+ * `executeWebhook`: `TestWebhooks` reads that return value and sequences the
+ * editor push behind it.
+ */
+async function respondFromDataPlane(
+	pending: PendingWebhookResponse,
+	ctx: DataPlaneResponseContext,
+): Promise<void> {
+	const { executionId } = pending;
+
+	try {
+		const outcome = await pending.settled;
+
+		if (outcome.status === 'timeout') {
+			Container.get(Logger).warn('No answer arrived for an engine 2.0 webhook run', {
+				executionId,
+				workflowId: ctx.workflowId,
+			});
+			if (!ctx.alreadyAnswered) {
+				ctx.responseCallback(null, {
+					data: { message: 'The workflow did not answer in time' },
+					responseCode: 504,
+				});
+			}
+			return;
+		}
+
+		if (ctx.alreadyAnswered) return;
+
+		if (outcome.status === 'failed') {
+			// The node that failed is not named in the response, so log it here.
+			Container.get(Logger).warn('An engine 2.0 webhook run failed before it answered', {
+				executionId,
+				workflowId: ctx.workflowId,
+				responseMode: ctx.responseMode,
+			});
+			ctx.responseCallback(null, { data: { message: 'Error in workflow' }, responseCode: 500 });
+			return;
+		}
+
+		if (outcome.lastNode === undefined) {
+			ctx.responseCallback(null, {
+				data: {
+					message: 'Workflow executed successfully but the last node did not return any data',
+				},
+				responseCode: ctx.responseCode,
+			});
+			return;
+		}
+
+		const { fromStepInputs } = await import('@n8n/node-engine-compatibility');
+		const lastNodeTaskData: ITaskData = {
+			startTime: Date.now(),
+			executionIndex: 0,
+			source: [],
+			executionTime: 0,
+			executionStatus: 'success',
+			data: { main: fromStepInputs(outcome.lastNode.outputs) },
+		};
+
+		const result = await extractWebhookLastNodeResponse(
+			ctx.responseData as WebhookResponseData,
+			lastNodeTaskData,
+			ctx.checkAllMainOutputs,
+			{
+				responsePropertyName: ctx.responsePropertyName,
+				responseContentType: ctx.responseContentType,
+				responseBinaryPropertyName: ctx.responseBinaryPropertyName,
+			},
+		);
+
+		if (!result.ok) {
+			ctx.responseCallback(result.error, {});
+			return;
+		}
+
+		const response = result.result;
+		if (response.contentType) ctx.responseHeaders.set('content-type', response.contentType);
+
+		ctx.responseCallback(
+			null,
+			response.type === 'static'
+				? createStaticResponse(response.body, ctx.responseCode, ctx.responseHeaders)
+				: createStreamResponse(response.stream, ctx.responseCode, ctx.responseHeaders),
+		);
+	} catch (error) {
+		Container.get(ErrorReporter).error(error, { executionId });
+		if (!ctx.alreadyAnswered) {
+			ctx.responseCallback(
+				new OperationalError('There was a problem executing the workflow', { cause: error }),
+				{},
+			);
+		}
+	} finally {
+		pending.release();
+	}
 }
 
 /**
@@ -778,6 +902,8 @@ export async function executeWebhook(
 	let didSendResponse = false;
 	/** Whether this run goes to the engine 2.0 data plane instead of the v1 path. */
 	let routesToEngineV2 = false;
+	/** The engine 2.0 run's answer, once one is being waited for. */
+	let pending: PendingWebhookResponse | undefined;
 	let runExecutionDataMerge = {};
 	const engineV2Webhooks = Container.get(EngineV2Webhooks);
 	let cleanupMultipartFiles: (() => Promise<void>) | undefined;
@@ -1088,6 +1214,13 @@ export async function executeWebhook(
 			didSendResponse = true;
 		}
 
+		// Before the run, because a short workflow answers before `startExecution`
+		// returns and nothing replays a missed response.
+		if (routesToEngineV2) {
+			pending = Container.get(EngineV2WebhookResponder).expect();
+			runData.engineExecutionId = pending.executionId;
+		}
+
 		// Extract W3C trace context from webhook headers for OTEL propagation.
 		const traceparent = req.headers.traceparent;
 		if (
@@ -1178,9 +1311,24 @@ export async function executeWebhook(
 			{ executionId },
 		);
 
-		// Engine 2.0 serves `onReceived` only, so the response is already out. Nothing
-		// below applies: the run has no control-plane execution to wait on.
-		if (routesToEngineV2) return executionId;
+		// Engine 2.0 keeps no control-plane execution to wait on. Its answer arrives
+		// on the response channel, and the pending handle is what picks it up.
+		if (routesToEngineV2 && pending) {
+			void respondFromDataPlane(pending, {
+				alreadyAnswered: didSendResponse,
+				responseCallback,
+				responseMode,
+				responseCode,
+				responseHeaders,
+				responseData,
+				checkAllMainOutputs,
+				responsePropertyName,
+				responseContentType,
+				responseBinaryPropertyName,
+				workflowId: workflowData.id,
+			});
+			return executionId;
+		}
 
 		const activeExecutions = Container.get(ActiveExecutions);
 
@@ -1315,6 +1463,9 @@ export async function executeWebhook(
 		}
 		return executionId;
 	} catch (e) {
+		// Nothing will ever answer this one, so stop waiting for it.
+		pending?.release();
+
 		let error: Error;
 		if (e instanceof ResponseError && e.httpStatusCode < 500) {
 			error = e;

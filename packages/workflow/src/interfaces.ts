@@ -3761,6 +3761,12 @@ export interface IWorkflowExecutionDataProcess {
 	agentRequest?: AiAgentRequest;
 	httpResponse?: express.Response; // Used for streaming responses
 	streamingEnabled?: boolean;
+	/**
+	 * Only engine 2.0 reads this. The caller mints the data-plane execution id
+	 * when it has to wait for the run's answer, so it can subscribe before the
+	 * run starts.
+	 */
+	engineExecutionId?: string;
 	startedAt?: Date;
 
 	// MCP-specific fields for queue mode support
