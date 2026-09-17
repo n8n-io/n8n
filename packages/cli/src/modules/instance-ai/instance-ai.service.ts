@@ -2465,6 +2465,13 @@ export class InstanceAiService {
 		}
 	}
 
+	areMcpConnectionsAvailable(): boolean {
+		return (
+			Container.get(ModuleRegistry).isActive('mcp-registry') &&
+			this.settingsService.isMcpAccessEnabled()
+		);
+	}
+
 	private async createExecutionEnvironment(
 		user: User,
 		threadId: string,
@@ -2485,6 +2492,7 @@ export class InstanceAiService {
 		const adminSettings = await this.settingsService.getAdminSettings();
 		const localGatewayDisabledGlobally = adminSettings.localGatewayDisabled;
 		const browserUseEnabledGlobally = adminSettings.browserUseEnabled;
+		const mcpConnectionsAvailable = this.areMcpConnectionsAvailable();
 		const localGatewayDisabledForUser = await this.settingsService.isLocalGatewayDisabledForUser(
 			user.id,
 		);
@@ -2504,7 +2512,6 @@ export class InstanceAiService {
 
 		const {
 			configEvalsEnabled,
-			mcpConnectionsEnabled,
 			conversationHistoryEnabled,
 			progressiveBuildingEnabled,
 			nodeUsageEnabled,
@@ -2533,7 +2540,7 @@ export class InstanceAiService {
 			shouldBypassCredentialTest: (credentialId: string) =>
 				this.evalCredentialAllowlists.shouldBypassTest(threadId, credentialId),
 			configEvalsEnabled,
-			mcpConnectionsEnabled,
+			mcpConnectionsAvailable,
 			nodeUsageEnabled,
 			conversationHistory,
 			folderExplorationEnabled,
