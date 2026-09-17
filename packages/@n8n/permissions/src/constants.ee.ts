@@ -126,9 +126,7 @@ export const API_KEY_RESOURCES = {
 	role: ['manage', 'manageProject', 'list', 'read'] as const,
 	roleMappingRule: ['create', 'delete', 'list', 'update'] as const,
 	nodeTypePolicy: ['manage'] as const,
-	// credentialTypePolicy:manage is intentionally NOT an API key scope yet: no Public API
-	// endpoint consumes it (GOV-89 adds those), and scope-parity.test.ts rejects orphan
-	// API_KEY_RESOURCES entries. Add it here once GOV-89 lands.
+	// TODO: add credentialTypePolicy:manage once a Public API endpoint consumes it.
 } as const;
 
 export const GLOBAL_OWNER_ROLE_SLUG = 'global:owner';

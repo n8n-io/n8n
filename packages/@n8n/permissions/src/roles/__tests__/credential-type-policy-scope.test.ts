@@ -14,8 +14,8 @@ const principal = (slug: string, scopes: string[]): AuthPrincipal =>
 		role: { slug, scopes: scopes.map((scope) => ({ slug: scope })) },
 	}) as unknown as AuthPrincipal;
 
-describe('credentialTypePolicy:manage is a separate permission from nodeTypePolicy:manage', () => {
-	it('given a user with nodeTypePolicy:manage but not credentialTypePolicy:manage, denies a credential policy write', () => {
+describe('credentialTypePolicy:manage and nodeTypePolicy:manage are independent scopes', () => {
+	it('a user granted only nodeTypePolicy:manage does not also gain credentialTypePolicy:manage', () => {
 		expect(
 			hasGlobalScope(
 				principal('custom:node-policy-manager-only', ['nodeTypePolicy:manage']),
@@ -24,7 +24,7 @@ describe('credentialTypePolicy:manage is a separate permission from nodeTypePoli
 		).toBe(false);
 	});
 
-	it('given a user with credentialTypePolicy:manage but not nodeTypePolicy:manage, denies a node policy write', () => {
+	it('a user granted only credentialTypePolicy:manage does not also gain nodeTypePolicy:manage', () => {
 		expect(
 			hasGlobalScope(
 				principal('custom:credential-policy-manager-only', ['credentialTypePolicy:manage']),
@@ -52,7 +52,7 @@ describe('credentialTypePolicy:manage default grants', () => {
 });
 
 describe('credentialTypePolicy:manage as an API key scope', () => {
-	it('is not declared in API_KEY_RESOURCES yet, since no Public API endpoint consumes it (GOV-89)', () => {
+	it('is not declared in API_KEY_RESOURCES yet, since no Public API endpoint consumes it', () => {
 		expect(API_KEY_RESOURCES).not.toHaveProperty('credentialTypePolicy');
 	});
 });
