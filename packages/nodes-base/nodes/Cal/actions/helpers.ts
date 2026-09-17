@@ -44,6 +44,37 @@ export function requireResourceId(
 	return id;
 }
 
+/** Reads a resourceLocator for the endpoints that take the ID as a number. */
+export function requireResourceIdNumber(
+	this: IExecuteFunctions,
+	name: string,
+	itemIndex: number,
+	label: string,
+): number {
+	const raw = requireResourceId.call(this, name, itemIndex, label);
+	const id = Number(raw);
+	if (!Number.isInteger(id) || id < 1) {
+		throw new NodeOperationError(this.getNode(), `${label} must be a numeric ID`, { itemIndex });
+	}
+	return id;
+}
+
+/**
+ * Copies the filters that are set into a query object. An expression can hand
+ * back any key here, so the keys go through the safe-property helpers.
+ */
+export function toQuery(filters: IDataObject): IDataObject {
+	const query: IDataObject = {};
+
+	for (const [name, value] of Object.entries(filters)) {
+		if (value === undefined || value === '') continue;
+		if (!isSafeObjectProperty(name)) continue;
+		setSafeObjectProperty(query, name, value);
+	}
+
+	return query;
+}
+
 /** Reads a count parameter that an expression may hand back as a numeric string. */
 export function getPositiveInt(
 	this: IExecuteFunctions,

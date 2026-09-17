@@ -1,11 +1,12 @@
 import type { IDataObject, INodeProperties } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { returnAllOrLimit } from '@utils/descriptions';
 import { updateDisplayOptions } from '@utils/utilities';
 
 import { CAL_API_VERSION, calApiRequestV2Versioned } from '../../GenericFunctions';
 import type { CalApiResponse } from '../../helpers/interfaces';
-import { getLimit } from '../helpers';
+import { getLimit, toQuery } from '../helpers';
 import type { CalOperation } from '../router';
 
 const properties: INodeProperties[] = [
@@ -46,11 +47,11 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export const execute: CalOperation = async function (this, itemIndex) {
 	const limit = getLimit.call(this, itemIndex);
-	const filters = this.getNodeParameter('filters', itemIndex, {});
+	const query = toQuery(this.getNodeParameter('filters', itemIndex, {}));
 
-	const query: IDataObject = {};
-	for (const [name, value] of Object.entries(filters)) {
-		if (value !== undefined && value !== '') query[name] = value;
+	// Cal.com resolves a slug against one user only.
+	if (query.eventSlug !== undefined && query.username === undefined) {
+		throw new NodeOperationError(this.getNode(), 'Event Slug also needs a Username', { itemIndex });
 	}
 
 	// The endpoint answers with every event type at once, so the limit applies here.

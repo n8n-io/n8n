@@ -5,7 +5,7 @@ import { updateDisplayOptions } from '@utils/utilities';
 import { CAL_API_VERSION, calApiRequestV2Versioned } from '../../GenericFunctions';
 import type { CalApiResponse } from '../../helpers/interfaces';
 import { eventTypeRLC, timeZoneField } from '../common.descriptions';
-import { getString, requireResourceId, requireString, toKeyValueRecord } from '../helpers';
+import { getString, requireResourceIdNumber, requireString, toKeyValueRecord } from '../helpers';
 import type { CalOperation } from '../router';
 
 const properties: INodeProperties[] = [
@@ -171,7 +171,7 @@ const displayOptions = {
 export const description = updateDisplayOptions(displayOptions, properties);
 
 export const execute: CalOperation = async function (this, itemIndex) {
-	const eventTypeId = requireResourceId.call(this, 'eventType', itemIndex, 'Event Type');
+	const eventTypeId = requireResourceIdNumber.call(this, 'eventType', itemIndex, 'Event Type');
 	const start = requireString.call(this, 'start', itemIndex, 'Start');
 	const attendeeName = requireString.call(this, 'attendeeName', itemIndex, 'Attendee Name');
 	const attendeeEmail = getString.call(this, 'attendeeEmail', itemIndex);
@@ -192,7 +192,7 @@ export const execute: CalOperation = async function (this, itemIndex) {
 		attendee.language = additionalFields.language;
 	}
 
-	const body: IDataObject = { eventTypeId: Number(eventTypeId), start, attendee };
+	const body: IDataObject = { eventTypeId, start, attendee };
 
 	if (typeof additionalFields.guests === 'string' && additionalFields.guests) {
 		body.guests = additionalFields.guests

@@ -1,5 +1,5 @@
 import type { IDataObject, INodeProperties } from 'n8n-workflow';
-import { toPathSegment } from 'n8n-workflow';
+import { NodeOperationError, toPathSegment } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
@@ -72,6 +72,12 @@ export const execute: CalOperation = async function (this, itemIndex) {
 
 	const overrides = toOverrides(updateFields.overrides);
 	if (overrides !== undefined) body.overrides = overrides;
+
+	if (Object.keys(body).length === 0) {
+		throw new NodeOperationError(this.getNode(), 'Select at least one field to update', {
+			itemIndex,
+		});
+	}
 
 	const response = await (calApiRequestV2Versioned<CalApiResponse<IDataObject>>).call(
 		this,

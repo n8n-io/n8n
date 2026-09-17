@@ -1,3 +1,5 @@
+import { NodeOperationError } from 'n8n-workflow';
+
 import * as get from '../../actions/eventType/get.operation';
 import * as getMany from '../../actions/eventType/getMany.operation';
 import { calApiRequestV2Versioned } from '../../GenericFunctions';
@@ -74,6 +76,31 @@ describe('Cal.com eventType operations', () => {
 			const ctx = mockExecuteCtx({ returnAll: true });
 
 			expect(await getMany.execute.call(ctx, 0)).toEqual([]);
+		});
+
+		it('reports that a slug alone cannot be resolved', async () => {
+			const ctx = mockExecuteCtx({ returnAll: true, filters: { eventSlug: 'intro-call' } });
+
+			await expect(getMany.execute.call(ctx, 0)).rejects.toThrow(NodeOperationError);
+			expect(apiRequest).not.toHaveBeenCalled();
+		});
+
+		it('accepts a slug together with a username', async () => {
+			apiRequest.mockResolvedValue({ data: [] });
+			const ctx = mockExecuteCtx({
+				returnAll: true,
+				filters: { eventSlug: 'intro-call', username: 'jane' },
+			});
+
+			await getMany.execute.call(ctx, 0);
+
+			expect(apiRequest).toHaveBeenCalledWith(
+				'GET',
+				'/event-types',
+				'2024-06-14',
+				{},
+				{ eventSlug: 'intro-call', username: 'jane' },
+			);
 		});
 	});
 });

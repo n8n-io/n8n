@@ -4,7 +4,7 @@ import { returnAllOrLimit } from '@utils/descriptions';
 import { updateDisplayOptions } from '@utils/utilities';
 
 import { CAL_API_VERSION, calApiRequestV2AllItems } from '../../GenericFunctions';
-import { getLimit } from '../helpers';
+import { getLimit, toQuery } from '../helpers';
 import type { CalOperation } from '../router';
 
 const properties: INodeProperties[] = [
@@ -120,12 +120,7 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export const execute: CalOperation = async function (this, itemIndex) {
 	const limit = getLimit.call(this, itemIndex);
-	const filters = this.getNodeParameter('filters', itemIndex, {});
-
-	const query: IDataObject = {};
-	for (const [name, value] of Object.entries(filters)) {
-		if (value !== undefined && value !== '') query[name] = value;
-	}
+	const query = toQuery(this.getNodeParameter('filters', itemIndex, {}));
 
 	return await (calApiRequestV2AllItems<IDataObject>).call(
 		this,

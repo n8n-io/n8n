@@ -125,6 +125,16 @@ describe('Cal.com booking operations', () => {
 			await expect(create.execute.call(ctx, 0)).rejects.toThrow(NodeOperationError);
 			expect(apiRequest).not.toHaveBeenCalled();
 		});
+
+		it('rejects an event type ID that is not a number', async () => {
+			const ctx = mockExecuteCtx({
+				...baseParams,
+				eventType: { mode: 'id', value: 'intro-call' },
+			});
+
+			await expect(create.execute.call(ctx, 0)).rejects.toThrow(NodeOperationError);
+			expect(apiRequest).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('get', () => {
@@ -173,6 +183,20 @@ describe('Cal.com booking operations', () => {
 
 			await expect(getMany.execute.call(ctx, 0)).rejects.toThrow(NodeOperationError);
 			expect(apiRequestAllItems).not.toHaveBeenCalled();
+		});
+
+		it('drops a filter key that would pollute the prototype', async () => {
+			apiRequestAllItems.mockResolvedValue([]);
+			// JSON.parse keeps `__proto__` as an own key, the way an expression hands it over.
+			const filters: unknown = JSON.parse('{"__proto__":{"polluted":true},"status":"past"}');
+			const ctx = mockExecuteCtx({ returnAll: true, filters });
+
+			await getMany.execute.call(ctx, 0);
+
+			const [, , query] = apiRequestAllItems.mock.calls[0];
+			expect(query).toEqual({ status: 'past' });
+			// A plain assignment would swap the prototype of the query instead of adding a field.
+			expect(Object.getPrototypeOf(query)).toBe(Object.prototype);
 		});
 	});
 

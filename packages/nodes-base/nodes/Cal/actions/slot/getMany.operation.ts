@@ -5,7 +5,7 @@ import { updateDisplayOptions } from '@utils/utilities';
 import { CAL_API_VERSION, calApiRequestV2Versioned } from '../../GenericFunctions';
 import type { CalApiResponse, CalSlotsByDate } from '../../helpers/interfaces';
 import { eventTypeRLC } from '../common.descriptions';
-import { requireResourceId, requireString } from '../helpers';
+import { requireResourceIdNumber, requireString } from '../helpers';
 import type { CalOperation } from '../router';
 
 const properties: INodeProperties[] = [
@@ -89,13 +89,13 @@ function flattenSlots(data: CalSlotsByDate): IDataObject[] {
 }
 
 export const execute: CalOperation = async function (this, itemIndex) {
-	const eventTypeId = requireResourceId.call(this, 'eventType', itemIndex, 'Event Type');
+	const eventTypeId = requireResourceIdNumber.call(this, 'eventType', itemIndex, 'Event Type');
 	const start = requireString.call(this, 'start', itemIndex, 'Start');
 	const end = requireString.call(this, 'end', itemIndex, 'End');
 	const simple = this.getNodeParameter('simple', itemIndex, true);
 	const options = this.getNodeParameter('options', itemIndex, {});
 
-	const query: IDataObject = { eventTypeId: Number(eventTypeId), start, end };
+	const query: IDataObject = { eventTypeId, start, end };
 	if (typeof options.timeZone === 'string' && options.timeZone) query.timeZone = options.timeZone;
 	if (typeof options.duration === 'number') query.duration = options.duration;
 	if (typeof options.bookingUidToReschedule === 'string' && options.bookingUidToReschedule) {

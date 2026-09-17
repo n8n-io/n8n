@@ -1,3 +1,5 @@
+import { NodeOperationError } from 'n8n-workflow';
+
 import * as create from '../../actions/schedule/create.operation';
 import * as del from '../../actions/schedule/delete.operation';
 import * as get from '../../actions/schedule/get.operation';
@@ -116,6 +118,13 @@ describe('Cal.com schedule operations', () => {
 				isDefault: false,
 			});
 			expect(result).toEqual({ id: 42 });
+		});
+
+		it('reports an empty update instead of sending one', async () => {
+			const ctx = mockExecuteCtx({ schedule: { mode: 'id', value: '42' }, updateFields: {} });
+
+			await expect(update.execute.call(ctx, 0)).rejects.toThrow(NodeOperationError);
+			expect(apiRequest).not.toHaveBeenCalled();
 		});
 	});
 
