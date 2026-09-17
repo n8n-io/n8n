@@ -1,0 +1,60 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentBuilderSession.test.ts
+  s_8f0638df9beaf3::t_e9f1fccac65182 207,217-220
+  s_8f0638df9beaf3::t_531c81e8708250 319-340
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSessionHistoryDropdown.test.ts
+  s_8f0638df9beaf3::t_bc6eb8b97375f5 1-31,33-34,62
+  s_8f0638df9beaf3::t_b3bf4b75ab08b0 32
+  s_8f0638df9beaf3::t_80ced45221a7ea 35-61
+packages/frontend/editor-ui/src/features/agents/components/AgentSessionHistoryDropdown.vue
+  s_8f0638df9beaf3::t_23d917ce52914c 7,45,51
+  s_8f0638df9beaf3::t_aa817f79707f5b 9,36,80
+  s_8f0638df9beaf3::t_42d25699179973 59
+  s_8f0638df9beaf3::t_a04d7e5b9eefa4 8
+packages/frontend/editor-ui/src/features/ai/shared/components/ChatHistoryDropdown.vue
+  s_8f0638df9beaf3::t_cfcb31e9b5ec87 93-95
+  s_8f0638df9beaf3::t_9a33563ee7c8ca 7,31,41,63-64,104-130,204-205
+  s_8f0638df9beaf3::t_793e8dca7a6584 16
+  s_8f0638df9beaf3::t_2c099b33492875 140,142-146
+  s_8f0638df9beaf3::t_2314deb0c4d84a 141
+  s_8f0638df9beaf3::t_1da748b3bba9ab 17
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentPreviewDock.test.ts
+  s_8f0638df9beaf3::t_e2401184d66cbc 30-33
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/InstanceAiThreadList.test.ts
+  s_8f0638df9beaf3::t_80367ef2e35b94 229,231,233
+  s_8f0638df9beaf3::t_1dd87cf6b405dc 181-191
+packages/frontend/editor-ui/src/features/ai/shared/components/ChatHistoryDropdown.test.ts
+  s_8f0638df9beaf3::t_c61450bf7a5ee7 146,163-164,178,183-186
+  s_8f0638df9beaf3::t_1a74b57cce8924 30,33,37,42,97-107
+packages/frontend/editor-ui/src/features/agents/composables/useAgentBuilderSession.ts
+  s_8f0638df9beaf3::t_b272c8579facbc 179-180,193,196,202,207-209
+  s_8f0638df9beaf3::t_23d917ce52914c 139
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiThreadList.vue
+  s_8f0638df9beaf3::t_f32f188bd94450 239
+packages/testing/playwright/pages/components/InstanceAiSidebar.ts
+  s_8f0638df9beaf3::t_d3e622eb368634 40
+packages/testing/playwright/tests/e2e/instance-ai/instance-ai-sidebar.spec.ts
+  s_8f0638df9beaf3::t_d3e622eb368634 37-38,62
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSessionTimelineView.spec.ts
+  s_8f0638df9beaf3::t_714503c551f7e0 11-15,136-156
+  s_8f0638df9beaf3::t_6af3aa89a13219 28,89,91-99,112,133-135
+  s_8f0638df9beaf3::t_8e3e9b3e23d46f 7,90
+  s_8f0638df9beaf3::t_de4e159c1b06e3 157
+packages/frontend/editor-ui/src/features/agents/agentSessions.store.ts
+  s_8f0638df9beaf3::t_b272c8579facbc 159
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "0f3fecc2fcd68c67b6907c2afa73a5a0e4b82e94",
+  "prompts": {},
+  "sessions": {
+    "s_8f0638df9beaf3": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0af20-9e0e-70f1-b1e1-d44c39cb3ff5",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
