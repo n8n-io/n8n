@@ -3,6 +3,7 @@ import type { WorkflowEntity } from '@n8n/db';
 import { BreakingChangeRule } from '@n8n/decorators';
 import type { INode } from 'n8n-workflow';
 
+import { reportAffectedNodes } from '../../detection-report';
 import type {
 	BreakingChangeRuleMetadata,
 	IBreakingChangeWorkflowRule,
@@ -49,18 +50,11 @@ export class ExecuteWorkflowEachModeRule implements IBreakingChangeWorkflowRule 
 			(node) => node.parameters.mode === 'each',
 		);
 
-		if (affectedNodes.length === 0) return { isAffected: false, issues: [] };
-
-		return {
-			isAffected: true,
-			issues: affectedNodes.map((node) => ({
-				title: `Node '${node.name}' uses the removed "Run once for each item" mode`,
-				description:
-					'The "Run once for each item" mode is being removed. Add a Loop Over Items node before this node and switch it to "Run once with all items" to keep running the sub-workflow once per item.',
-				level: 'error',
-				nodeId: node.id,
-				nodeName: node.name,
-			})),
-		};
+		return reportAffectedNodes(affectedNodes, (node) => ({
+			title: `Node '${node.name}' uses the removed "Run once for each item" mode`,
+			description:
+				'The "Run once for each item" mode is being removed. Add a Loop Over Items node before this node and switch it to "Run once with all items" to keep running the sub-workflow once per item.',
+			level: 'error',
+		}));
 	}
 }

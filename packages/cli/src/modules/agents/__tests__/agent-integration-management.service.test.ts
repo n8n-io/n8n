@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests intentionally reference unbound methods */
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
@@ -9,6 +10,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { AgentIntegrationManagementService } from '../agent-integration-management.service';
 import type { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
+import type { AgentUpdateBroadcaster } from '../agent-update-broadcaster';
 import type { Agent } from '../entities/agent.entity';
 import type {
 	AgentChatIntegration,
@@ -42,6 +44,7 @@ describe('AgentIntegrationManagementService', () => {
 		const registry = mock<ChatIntegrationRegistry>();
 		const logger = mock<Logger>();
 		const agentRepository = mock<AgentRepository>();
+		const agentUpdateBroadcaster = mock<AgentUpdateBroadcaster>();
 		const implementation = mock<AgentChatIntegration>({
 			type: 'slack',
 			displayLabel: 'Slack',
@@ -64,12 +67,14 @@ describe('AgentIntegrationManagementService', () => {
 				registry,
 				logger,
 				agentRepository,
+				agentUpdateBroadcaster,
 			),
 			persistenceService,
 			credentialsService,
 			chatService,
 			implementation,
 			agentRepository,
+			agentUpdateBroadcaster,
 		};
 	}
 
@@ -104,10 +109,25 @@ describe('AgentIntegrationManagementService', () => {
 
 	describe('adding a channel', () => {
 		it('brings the connection up before the durable write, then broadcasts it', async () => {
-			const { service, persistenceService, chatService, implementation } = makeService();
+			const { service, persistenceService, chatService, implementation, agentUpdateBroadcaster } =
+				makeService();
 			const agent = makeAgent();
+			const persisted = createDeferredPromise();
+			persistenceService.applyIntegrationDelta.mockImplementationOnce(async () => {
+				await persisted.promise;
+				return { agent, changed: true };
+			});
 
-			await service.connect({ agent, user: user as never, integration });
+			const connecting = service.connect({
+				agent,
+				user: user as never,
+				integration,
+				pushRef: 'writer-push-ref',
+			});
+			await vi.waitFor(() => expect(persistenceService.applyIntegrationDelta).toHaveBeenCalled());
+			expect(agentUpdateBroadcaster.notify).not.toHaveBeenCalled();
+			persisted.resolve();
+			await connecting;
 
 			expect(implementation.validateConfig).toHaveBeenCalledWith(integration);
 			expect(chatService.connect).toHaveBeenCalledWith(agent.id, integration, agent.projectId);
@@ -127,10 +147,17 @@ describe('AgentIntegrationManagementService', () => {
 			expect(order(persistenceService.applyIntegrationDelta)).toBeLessThan(
 				order(chatService.broadcastIntegrationChange),
 			);
+			expect(agentUpdateBroadcaster.notify).toHaveBeenCalledWith(
+				{ projectId: agent.projectId, agentId: agent.id, source: 'user' },
+				'writer-push-ref',
+			);
+			expect(order(persistenceService.applyIntegrationDelta)).toBeLessThan(
+				order(agentUpdateBroadcaster.notify),
+			);
 		});
 
 		it('persists nothing when the connection fails to start', async () => {
-			const { service, persistenceService, chatService } = makeService();
+			const { service, persistenceService, chatService, agentUpdateBroadcaster } = makeService();
 			const startupError = new Error('Slack connect failed');
 			chatService.connect.mockRejectedValue(startupError);
 
@@ -139,11 +166,12 @@ describe('AgentIntegrationManagementService', () => {
 			).rejects.toBe(startupError);
 
 			expect(persistenceService.applyIntegrationDelta).not.toHaveBeenCalled();
+			expect(agentUpdateBroadcaster.notify).not.toHaveBeenCalled();
 			expect(chatService.broadcastIntegrationChange).not.toHaveBeenCalled();
 		});
 
 		it('releases the new connection when the durable write fails', async () => {
-			const { service, persistenceService, chatService } = makeService();
+			const { service, persistenceService, chatService, agentUpdateBroadcaster } = makeService();
 			const writeError = new Error('write failed');
 			persistenceService.applyIntegrationDelta.mockRejectedValue(writeError);
 			const agent = makeAgent();
@@ -153,6 +181,7 @@ describe('AgentIntegrationManagementService', () => {
 			);
 
 			expect(chatService.connect).toHaveBeenCalled();
+			expect(agentUpdateBroadcaster.notify).not.toHaveBeenCalled();
 			// Local teardown only: nothing durable changed, so a broadcast would have
 			// peers tear down runtimes that are still persisted and still healthy.
 			expect(chatService.disconnect).toHaveBeenCalledWith(agent.id, integration);
@@ -438,10 +467,10 @@ describe('AgentIntegrationManagementService', () => {
 		});
 
 		it('tears down the runtime when platform cleanup fails after durable removal', async () => {
-			const { service, persistenceService, chatService, implementation } = makeService();
+			const { service, persistenceService, chatService, implementation, agentUpdateBroadcaster } =
+				makeService();
 			const agent = makeAgent({ integrations: [integration] });
 			const cleanupError = new Error('Slack cleanup failed');
-			const onPersisted = vi.fn();
 			const removal = mock<Required<Pick<AgentChatIntegration, 'onRemove'>>>();
 			removal.onRemove.mockRejectedValue(cleanupError);
 			implementation.onRemove = removal.onRemove;
@@ -458,19 +487,25 @@ describe('AgentIntegrationManagementService', () => {
 					type: integration.type,
 					credentialId: integration.credentialId,
 					deleteExternalResource: true,
-					onPersisted,
+					modifiedBy: 'mcp',
 				}),
 			).rejects.toBe(cleanupError);
 
-			expect(onPersisted).toHaveBeenCalledOnce();
+			expect(agentUpdateBroadcaster.notify).toHaveBeenCalledExactlyOnceWith(
+				{ projectId: agent.projectId, agentId: agent.id, source: 'mcp' },
+				undefined,
+			);
 			expect(chatService.disconnectChannel).toHaveBeenCalledWith(agent.id, integration);
 			expect(order(persistenceService.applyIntegrationDelta)).toBeLessThan(order(removal.onRemove));
-			expect(order(onPersisted)).toBeLessThan(order(removal.onRemove));
+			expect(order(persistenceService.applyIntegrationDelta)).toBeLessThan(
+				order(agentUpdateBroadcaster.notify),
+			);
+			expect(order(agentUpdateBroadcaster.notify)).toBeLessThan(order(removal.onRemove));
 			expect(order(removal.onRemove)).toBeLessThan(order(chatService.disconnectChannel));
 		});
 
 		it('removes persistence before tearing down the runtime channel', async () => {
-			const { service, persistenceService, chatService } = makeService();
+			const { service, persistenceService, chatService, agentUpdateBroadcaster } = makeService();
 			const agent = makeAgent({ integrations: [integration] });
 			persistenceService.applyIntegrationDelta.mockResolvedValue({
 				agent,
@@ -492,16 +527,25 @@ describe('AgentIntegrationManagementService', () => {
 				{ user, modifiedBy: 'mcp' },
 			);
 			expect(chatService.disconnectChannel).toHaveBeenCalledWith(agent.id, integration);
+			expect(agentUpdateBroadcaster.notify).toHaveBeenCalledWith(
+				{ projectId: agent.projectId, agentId: agent.id, source: 'mcp' },
+				undefined,
+			);
 			expect(order(persistenceService.applyIntegrationDelta)).toBeLessThan(
 				order(chatService.disconnectChannel),
 			);
 		});
 
 		it('leaves the channel and its managed resources intact when durable removal fails', async () => {
-			const { service, persistenceService, chatService, implementation, agentRepository } =
-				makeService();
+			const {
+				service,
+				persistenceService,
+				chatService,
+				implementation,
+				agentRepository,
+				agentUpdateBroadcaster,
+			} = makeService();
 			const removalError = new Error('write failed');
-			const onPersisted = vi.fn();
 			persistenceService.applyIntegrationDelta.mockRejectedValue(removalError);
 			stubRow(agentRepository, [integration]);
 
@@ -512,18 +556,17 @@ describe('AgentIntegrationManagementService', () => {
 					type: integration.type,
 					credentialId: integration.credentialId,
 					deleteExternalResource: true,
-					onPersisted,
 				}),
 			).rejects.toBe(removalError);
 
-			expect(onPersisted).not.toHaveBeenCalled();
+			expect(agentUpdateBroadcaster.notify).not.toHaveBeenCalled();
 			expect(implementation.onRemove).not.toHaveBeenCalled();
 			expect(chatService.disconnectChannel).not.toHaveBeenCalled();
 			expect(chatService.disconnect).not.toHaveBeenCalled();
 		});
 
 		it('clears a stray runtime connection when nothing was persisted under that reference', async () => {
-			const { service, persistenceService, chatService } = makeService();
+			const { service, persistenceService, chatService, agentUpdateBroadcaster } = makeService();
 			const agent = makeAgent();
 			persistenceService.applyIntegrationDelta.mockResolvedValue({ agent, changed: false });
 
@@ -535,6 +578,7 @@ describe('AgentIntegrationManagementService', () => {
 			});
 
 			expect(chatService.disconnectChannel).not.toHaveBeenCalled();
+			expect(agentUpdateBroadcaster.notify).not.toHaveBeenCalled();
 			expect(chatService.disconnect).toHaveBeenCalledWith(agent.id, {
 				type: 'slack',
 				credentialId: '',

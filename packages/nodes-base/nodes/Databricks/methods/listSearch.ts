@@ -1,5 +1,4 @@
 import type {
-	IDataObject,
 	IHttpRequestOptions,
 	ILoadOptionsFunctions,
 	INodeListSearchResult,
@@ -8,10 +7,12 @@ import type {
 import {
 	databricksApiRequest,
 	extractResourceLocatorValue,
+	fetchDatabricksPage,
 	getActiveCredentialType,
 	getHost,
 	makePermissionErrorLegible,
 	sanitizeApiMessage,
+	type DatabricksCredentialType,
 } from '../actions/helpers';
 import type { DatabricksJobRun } from '../actions/interfaces';
 
@@ -19,7 +20,7 @@ import type { DatabricksJobRun } from '../actions/interfaces';
 // doesn't cover them — apply it here for every listSearch call site instead
 async function listRequest<T>(
 	context: ILoadOptionsFunctions,
-	credentialType: 'databricksApi' | 'databricksOAuth2Api',
+	credentialType: DatabricksCredentialType,
 	options: IHttpRequestOptions,
 ): Promise<T> {
 	try {
@@ -208,7 +209,7 @@ export async function getSchemas(
 
 async function fetchResourcesInSchema<T extends { name: string }>(
 	context: ILoadOptionsFunctions,
-	credentialType: 'databricksApi' | 'databricksOAuth2Api',
+	credentialType: DatabricksCredentialType,
 	host: string,
 	apiPath: string,
 	catalogName: string,
@@ -434,21 +435,18 @@ type JobsListPage = { jobs?: JobSummary[]; next_page_token?: string };
 
 async function fetchListPage<T>(
 	context: ILoadOptionsFunctions,
-	credentialType: 'databricksApi' | 'databricksOAuth2Api',
+	credentialType: DatabricksCredentialType,
 	host: string,
 	path: string,
 	limit: number,
 	pageToken?: string,
 ): Promise<T> {
-	const qs: IDataObject = { limit };
-	if (pageToken) qs.page_token = pageToken;
-	return await listRequest<T>(context, credentialType, {
-		method: 'GET',
-		url: `${host}${path}`,
-		qs,
-		headers: { Accept: 'application/json' },
-		json: true,
-	});
+	try {
+		return await fetchDatabricksPage<T>(context, credentialType, host, path, { limit }, pageToken);
+	} catch (error) {
+		makePermissionErrorLegible(error);
+		throw error;
+	}
 }
 
 export async function getJobs(

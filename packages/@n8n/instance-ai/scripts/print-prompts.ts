@@ -79,11 +79,13 @@ function collectAgents(): AgentEntry[] {
 					body: getSystemPrompt({
 						webhookBaseUrl: 'https://your-instance.example.com',
 						filesystemAccess: true,
-						localGateway: { status: 'connected', capabilities: ['filesystem', 'browser'] },
+						computerUseState: {
+							localComputer: { status: 'connected', toolCategories: ['filesystem'] },
+							browser: { status: 'connected', toolCategories: ['browser'] },
+						},
 						toolSearchEnabled: true,
 						licenseHints: ['<sample license hint — replace with real hint at runtime>'],
 						timeZone: 'UTC',
-						browserAvailable: true,
 						branchReadOnly: false,
 					}),
 				},
@@ -102,22 +104,26 @@ function collectAgents(): AgentEntry[] {
 				{
 					file: 'computer-use-prompting',
 					label:
-						"localGateway disconnected with filesystem + browser capabilities — renders the 'install Computer Use' pitch and 'Browser Automation (Unavailable)' note",
+						"both Computer Use channels available but neither connected — renders the 'install Computer Use' pitch for both + menu entries",
 					body: getSystemPrompt({
 						webhookBaseUrl: 'https://your-instance.example.com',
-						localGateway: { status: 'disconnected' },
-						browserAvailable: false,
+						computerUseState: {
+							localComputer: { status: 'disconnected' },
+							browser: { status: 'disconnected' },
+						},
 					}),
 				},
 				{
 					file: 'gateway-no-browser',
 					label:
-						"localGateway connected, filesystemAccess: true, browserAvailable: false — renders 'Project Filesystem Access' and 'Browser Automation (Disabled in Computer Use)'",
+						"local computer connected serving filesystem, browser channel available but not connected — renders 'Project Filesystem Access' and 'Browser Automation (Disabled in Computer Use)'",
 					body: getSystemPrompt({
 						webhookBaseUrl: 'https://your-instance.example.com',
 						filesystemAccess: true,
-						localGateway: { status: 'connected', capabilities: ['filesystem'] },
-						browserAvailable: false,
+						computerUseState: {
+							localComputer: { status: 'connected', toolCategories: ['filesystem'] },
+							browser: { status: 'disconnected' },
+						},
 					}),
 				},
 			],

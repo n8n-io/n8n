@@ -1,5 +1,11 @@
 import { Service } from '@n8n/di';
-import type { ExecutionSnapshot, StartExecutionRequest, StartExecutionResult } from '@n8n/engine';
+import type {
+	ExecutionSnapshot,
+	StartExecutionRequest,
+	StartExecutionResult,
+	SearchExecutionsRequest,
+	SearchExecutionsResponse,
+} from '@n8n/engine';
 import { UserError } from 'n8n-workflow';
 
 import type { ExecutionIdV2 } from '@/executions/execution-id';
@@ -11,6 +17,7 @@ import type { ExecutionIdV2 } from '@/executions/execution-id';
  * runs in the same process, so this stays a network-shaped contract.
  */
 export interface EngineDataPlaneProvider {
+	searchExecutions(request: SearchExecutionsRequest): Promise<SearchExecutionsResponse>;
 	startExecution(request: StartExecutionRequest): Promise<StartExecutionResult>;
 
 	/**
@@ -42,6 +49,11 @@ export class EngineDataPlaneProxyService implements EngineDataPlaneProvider {
 	/** Whether the `engine-v2` module is enabled and has registered itself. */
 	isAvailable(): boolean {
 		return this.provider !== null;
+	}
+
+	async searchExecutions(request: SearchExecutionsRequest): Promise<SearchExecutionsResponse> {
+		if (!this.provider) return { items: [], nextCursor: null, total: 0 };
+		return await this.provider.searchExecutions(request);
 	}
 
 	async startExecution(request: StartExecutionRequest): Promise<StartExecutionResult> {

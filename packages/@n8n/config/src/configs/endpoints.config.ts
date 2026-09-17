@@ -72,6 +72,10 @@ export class PrometheusMetricsConfig {
 	@Env('N8N_METRICS_INCLUDE_POLL_TRIGGER_METRICS')
 	includePollTriggerMetrics: boolean = false;
 
+	/** Whether to include system task metrics (run duration, skips, in-flight runs, last success, scheduling failures). */
+	@Env('N8N_METRICS_INCLUDE_SYSTEM_TASK_METRICS')
+	includeSystemTaskMetrics: boolean = false;
+
 	/** How often (in seconds) to update active workflow metric */
 	@Env('N8N_METRICS_ACTIVE_WORKFLOW_METRIC_INTERVAL')
 	activeWorkflowCountInterval: number = 60;
@@ -209,6 +213,20 @@ export class EndpointsConfig {
 	 */
 	@Env('N8N_MCP_CANVAS_GROUPS_ENABLED')
 	mcpCanvasGroupsEnabled: boolean = false;
+
+	/**
+	 * Force-enable the instance-context read surface on the MCP server: the
+	 * activity tools and the node-usage tool.
+	 *
+	 * Acts as an operator-level override of the PostHog rollout flag. Cannot
+	 * force-disable: setting this to `false` falls back to PostHog.
+	 *
+	 * The activity tools read what `N8N_ACTIVITY_LOG_ENABLED` writes, so with
+	 * only this flag on they answer from an empty log. The node-usage tool has
+	 * its own index and works either way.
+	 */
+	@Env('N8N_MCP_INSTANCE_CONTEXT_ENABLED')
+	mcpInstanceContextEnabled: boolean = false;
 
 	/** Maximum number of OAuth clients that can be registered for MCP. */
 	@Env('N8N_MCP_MAX_REGISTERED_CLIENTS')

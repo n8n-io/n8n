@@ -8,8 +8,11 @@ import { Service } from '@n8n/di';
 import { computeFirstRunAt, scheduleFromDefinition } from '@n8n/scheduler';
 import { ErrorReporter } from 'n8n-core';
 
+import { EventService } from '@/events/event.service';
+
 import { DurableJobProvisioner } from '../durable-job-provisioner';
 import type { ProvisionRequest } from '../durable-job-provisioner';
+import { emitSystemTaskMetric } from './emit-system-task-metric';
 import { SystemTaskScheduledJobOwner } from './system-task-scheduled-job-owner';
 import { systemTaskType } from './system-task-type';
 import { versionStamp } from './system-task-version-stamp';
@@ -59,6 +62,7 @@ export class SystemTaskJobRegistrar {
 		private readonly systemTaskOwner: SystemTaskScheduledJobOwner,
 		private readonly globalConfig: GlobalConfig,
 		private readonly errorReporter: ErrorReporter,
+		private readonly eventService: EventService,
 	) {
 		this.logger = logger.scoped('system-tasks');
 	}
@@ -87,6 +91,10 @@ export class SystemTaskJobRegistrar {
 				task.name,
 				error,
 			);
+			emitSystemTaskMetric(this.eventService, 'system-task-scheduling-failed', {
+				name: task.name,
+				mode: 'durable',
+			});
 		}
 	}
 
@@ -136,6 +144,9 @@ export class SystemTaskJobRegistrar {
 			this.logger.warn('Could not check for the durable job of a system task, so it runs', {
 				name: taskName,
 				error,
+			});
+			emitSystemTaskMetric(this.eventService, 'system-task-provision-check-failed', {
+				name: taskName,
 			});
 			return false;
 		}
