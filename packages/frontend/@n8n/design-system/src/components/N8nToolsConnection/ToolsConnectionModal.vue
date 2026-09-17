@@ -503,20 +503,11 @@ function toolRowIndex(row: FlattenedRow): number {
 					@click="emit('create-workflow')"
 				>
 					<span :class="$style.createWorkflowIcon" aria-hidden="true">
-						<N8nIcon
-							:icon="workflowCreationLoading ? 'loader-circle' : 'plus'"
-							:size="20"
-							:spin="workflowCreationLoading"
-						/>
+						<N8nIcon icon="plus" :size="20" />
 					</span>
-					<span :class="$style.createWorkflowText">
-						<N8nText tag="span" bold>
-							{{ i18n.baseText('generic.create.workflow') }}
-						</N8nText>
-						<N8nText tag="span" size="small" color="text-light">
-							{{ i18n.baseText('projectRoles.workflow:create.tooltip') }}
-						</N8nText>
-					</span>
+					<N8nText :class="$style.createWorkflowTitle" bold>
+						{{ i18n.baseText('generic.create.workflow') }}
+					</N8nText>
 				</button>
 
 				<div :class="$style.listWrapper">
@@ -567,6 +558,7 @@ function toolRowIndex(row: FlattenedRow): number {
 
 <style lang="scss" module>
 @use '../../css/mixins/mixins';
+@use '../../css/mixins/focus';
 
 .modal {
 	--n8n-dialog-content--padding: 0;
@@ -610,11 +602,11 @@ function toolRowIndex(row: FlattenedRow): number {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--xs);
-	width: 100%;
-	min-height: 58px;
-	padding: var(--spacing--2xs);
+	height: 64px;
+	padding: var(--spacing--2xs) var(--spacing--xs);
+	margin-inline: var(--spacing--2xs);
 	border: 0;
-	border-radius: var(--radius--2xs);
+	border-radius: var(--radius);
 	background: none;
 	color: inherit;
 	text-align: left;
@@ -622,12 +614,11 @@ function toolRowIndex(row: FlattenedRow): number {
 	flex-shrink: 0;
 
 	&:hover:not(:disabled) {
-		background: var(--color--background--light-1);
+		background: var(--background--hover);
 	}
 
 	&:focus-visible {
-		outline: var(--focus--border-width) solid var(--focus--border-color);
-		outline-offset: 2px;
+		@include focus.focus-ring-inset;
 	}
 
 	&:disabled {
@@ -637,19 +628,20 @@ function toolRowIndex(row: FlattenedRow): number {
 
 .createWorkflowIcon {
 	flex-shrink: 0;
-	width: 32px;
-	height: 32px;
+	width: var(--height--xl);
+	height: var(--height--xl);
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	color: var(--color--primary);
+	background-color: var(--color--orange-alpha-100);
+	border-radius: var(--radius--full);
 }
 
-.createWorkflowText {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--5xs);
+.createWorkflowTitle {
+	flex: 1 1 0;
 	min-width: 0;
+	font-weight: var(--font-weight--medium);
 }
 
 .listWrapper {
