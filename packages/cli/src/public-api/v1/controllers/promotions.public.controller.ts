@@ -210,7 +210,7 @@ export class PromotionsPublicController {
 	@GlobalScope('gitConnection:list')
 	@ApiSummary('List promotion connections')
 	@ApiDescription(
-		'Returns a cursor-paginated list of connections with their configurations. Filter by `scope` for the instance connection, or by `providerId` to see which connections a provider edit affects.',
+		'Returns a cursor-paginated list of connections with their stored configurations. Read one connection to get its local checkout state. Filter by `scope` for the instance connection, or by `providerId` to see which connections a provider edit affects.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, PromotionConnectionListPublicDto)

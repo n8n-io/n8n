@@ -3,6 +3,7 @@ import type {
 	PromotionApplyConfigPublicDto,
 	PromotionConfigCheckout,
 	PromotionConnectionConfigsPublic,
+	PromotionConnectionConfigsSummary,
 	PromotionConnectionProjectListPublicDto,
 	PromotionConnectionProjectPublicDto,
 	PromotionConnectionPublicDto,
@@ -131,13 +132,10 @@ export class PromotionConnectionsService {
 		const configs = await this.configRepository.findByConnectionIds(data.map(({ id }) => id));
 		return {
 			count,
-			data: await Promise.all(
-				data.map(
-					async (connection) =>
-						await this.toPublic(
-							connection,
-							configs.filter((config) => config.connectionId === connection.id),
-						),
+			data: data.map((connection) =>
+				this.toSummary(
+					connection,
+					configs.filter((config) => config.connectionId === connection.id),
 				),
 			),
 		};
@@ -287,6 +285,19 @@ export class PromotionConnectionsService {
 		};
 	}
 
+	private toSummary(connection: PromotionConnection, configs: PromotionConfig[]) {
+		return {
+			id: connection.id,
+			name: connection.name,
+			scope: connection.scope,
+			target: connection.target,
+			provider: this.providersService.toSummary(connection.provider),
+			configs: this.toConfigsSummary(configs),
+			createdAt: connection.createdAt.toISOString(),
+			updatedAt: connection.updatedAt.toISOString(),
+		};
+	}
+
 	private async toConfigsPublic(
 		connection: PromotionConnection,
 		configs: PromotionConfig[],
@@ -296,6 +307,21 @@ export class PromotionConnectionsService {
 			const resolved = resolveStoredConfig(config);
 			if (!resolved) continue;
 			const fields = await this.configFields(connection, config, resolved);
+			if (resolved.direction === 'apply') {
+				byDirection.apply = { ...fields, settings: resolved.settings };
+			} else {
+				byDirection.promote = { ...fields, settings: resolved.settings };
+			}
+		}
+		return byDirection;
+	}
+
+	private toConfigsSummary(configs: PromotionConfig[]): PromotionConnectionConfigsSummary {
+		const byDirection: PromotionConnectionConfigsSummary = {};
+		for (const config of configs) {
+			const resolved = resolveStoredConfig(config);
+			if (!resolved) continue;
+			const fields = this.configSummaryFields(config);
 			if (resolved.direction === 'apply') {
 				byDirection.apply = { ...fields, settings: resolved.settings };
 			} else {
@@ -326,11 +352,17 @@ export class PromotionConnectionsService {
 		resolved: ResolvedPromotionConfig,
 	) {
 		return {
+			...this.configSummaryFields(config),
+			checkout: await this.checkoutStateFor(connection, config, resolved),
+		};
+	}
+
+	private configSummaryFields(config: PromotionConfig) {
+		return {
 			id: config.id,
 			name: config.name,
 			createdAt: config.createdAt.toISOString(),
 			updatedAt: config.updatedAt.toISOString(),
-			checkout: await this.checkoutStateFor(connection, config, resolved),
 		};
 	}
 

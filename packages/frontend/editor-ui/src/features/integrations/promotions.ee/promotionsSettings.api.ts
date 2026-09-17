@@ -3,6 +3,7 @@ import type {
 	CreatePromotionProviderDto,
 	PromotionApplyConfigPublicDto,
 	PromotionCheckoutPublicDto,
+	PromotionConnectionListPublicDto,
 	PromotionConnectionPublicDto,
 	PromotionConnectionScope,
 	PromotionDirection,
@@ -25,6 +26,7 @@ export type PromotionProvider = PromotionProviderPublicDto;
 /** Omits the SSH public key. */
 export type PromotionProviderSummary = PromotionProviderListPublicDto['data'][number];
 export type PromotionConnection = PromotionConnectionPublicDto;
+export type PromotionConnectionSummary = PromotionConnectionListPublicDto['data'][number];
 
 const promotionsApiRoot = '/promotions';
 
@@ -104,7 +106,7 @@ export const deletePromotionProvider = async (
 export const fetchPromotionConnections = async (
 	context: PublicApiContext,
 	filter: { scope?: PromotionConnectionScope; providerId?: string } = {},
-): Promise<PromotionConnection[]> =>
+): Promise<PromotionConnectionSummary[]> =>
 	await fetchAllPages(
 		async (cursor) =>
 			await request({
@@ -114,6 +116,17 @@ export const fetchPromotionConnections = async (
 				data: { ...filter, cursor },
 			}),
 	);
+
+/** Fetches live checkout state with the stored connection fields. */
+export const fetchPromotionConnection = async (
+	context: PublicApiContext,
+	id: string,
+): Promise<PromotionConnection> =>
+	await request({
+		method: 'GET',
+		baseURL: context.baseUrl,
+		endpoint: `${promotionsApiRoot}/connections/${id}`,
+	});
 
 export const createPromotionConnection = async (
 	context: PublicApiContext,

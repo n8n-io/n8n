@@ -7,6 +7,7 @@ import {
 	UpsertPromotionApplyConfigDto,
 	UpsertPromotionPromoteConfigDto,
 	promotionConnectionConfigsPublicSchema,
+	promotionConnectionConfigsSummarySchema,
 } from './promotion-config.dto';
 import { promotionProviderSummarySchema } from './promotion-provider.dto';
 import { n8nIdSchema } from '../../schemas/id.schema';
@@ -119,9 +120,7 @@ export class ListPromotionConnectionsQueryDto extends Z.class({
  * by direction to match the request side.
  *
  * The provider is embedded as a summary, which names it but leaves out its public
- * config. Detail and list share this schema, so the full form would put the SSH
- * public key in every row of the connection list. Read the key from the provider
- * detail route.
+ * config. Read the key from the provider detail route.
  */
 export const promotionConnectionPublicSchema = z.object({
 	id: n8nIdSchema,
@@ -136,8 +135,16 @@ export const promotionConnectionPublicSchema = z.object({
 
 export class PromotionConnectionPublicDto extends Z.class(promotionConnectionPublicSchema.shape) {}
 
+/**
+ * Lists contain stored connection data only. Checkout state is local to the
+ * responding instance, so callers read it from the connection detail route.
+ */
+export const promotionConnectionSummarySchema = promotionConnectionPublicSchema.extend({
+	configs: promotionConnectionConfigsSummarySchema,
+});
+
 export class PromotionConnectionListPublicDto extends Z.class({
-	data: z.array(promotionConnectionPublicSchema),
+	data: z.array(promotionConnectionSummarySchema),
 	nextCursor: z.string().nullable(),
 }) {}
 
