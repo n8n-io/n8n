@@ -8,6 +8,11 @@ Use identified users on instances with the instrumentation enabled.
 Exclude events that do not have the new description properties.
 
 Use `User created credentials` and `User saved credentials`.
+For `User saved credentials`, require `credential_saved` to be `true`.
+Exclude saved events with a false or missing flag from both counts.
+An OAuth callback can describe a connection to an existing credential without
+saving it. Such callbacks set `credential_saved` to `false` and do not count as
+adoption, even when the existing credential has a description.
 Join the user identity from the event envelope with the instance identity.
 Count each user once in the numerator and once in the denominator.
 The server and editor can both emit the creation event.

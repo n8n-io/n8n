@@ -26,7 +26,12 @@ describe('credential description telemetry', () => {
 			has_description: true,
 			description_length: 18,
 			...(event === TELEMETRY_EVENT.CREDENTIALS.USER_SAVED_CREDENTIALS
-				? { is_complete: true, is_new: false, uses_external_secrets: false }
+				? {
+						credential_saved: true,
+						is_complete: true,
+						is_new: false,
+						uses_external_secrets: false,
+					}
 				: {}),
 		};
 		expect(getEventValidationError(event, properties)).toBeNull();

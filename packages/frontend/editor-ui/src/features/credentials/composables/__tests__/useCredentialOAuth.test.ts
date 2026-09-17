@@ -958,6 +958,9 @@ describe('useCredentialOAuth', () => {
 				expect(calls).toHaveLength(1);
 				expect(calls[0][1]).toMatchObject({ has_description: true, description_length: 18 });
 				expect(calls[0][1]).not.toHaveProperty('description');
+				if (event === TELEMETRY_EVENT.CREDENTIALS.USER_SAVED_CREDENTIALS) {
+					expect(calls[0][1]).toHaveProperty('credential_saved', true);
+				}
 			}
 		});
 
@@ -988,6 +991,7 @@ describe('useCredentialOAuth', () => {
 				credential_id: 'new-cred-123',
 				has_description: false,
 				description_length: 0,
+				credential_saved: true,
 				is_complete: true,
 				is_new: true,
 				is_valid: true,
@@ -1007,6 +1011,7 @@ describe('useCredentialOAuth', () => {
 				credential_id: 'new-cred-123',
 				has_description: false,
 				description_length: 0,
+				credential_saved: true,
 				is_complete: true,
 				is_new: true,
 				is_valid: false,

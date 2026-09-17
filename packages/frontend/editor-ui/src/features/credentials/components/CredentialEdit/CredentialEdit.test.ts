@@ -1295,6 +1295,7 @@ describe('CredentialEdit', () => {
 				scopes?: Scope[];
 				isResolvable?: boolean;
 				connectedByMe?: boolean;
+				description?: string | null;
 				data?: Record<string, string>;
 			} = {},
 		) => {
@@ -1333,6 +1334,7 @@ describe('CredentialEdit', () => {
 				isManaged: false,
 				isResolvable: dataOverrides.isResolvable ?? false,
 				connectedByMe: dataOverrides.connectedByMe,
+				description: dataOverrides.description,
 				sharedWithProjects: [],
 				scopes: dataOverrides.scopes ?? ['credential:update'],
 				oauthTokenData: false,
@@ -1394,6 +1396,9 @@ describe('CredentialEdit', () => {
 						description_length: description?.length ?? 0,
 					});
 					expect(calls[0][1]).not.toHaveProperty('description');
+					if (event === TELEMETRY_EVENT.CREDENTIALS.USER_SAVED_CREDENTIALS) {
+						expect(calls[0][1]).toHaveProperty('credential_saved', true);
+					}
 				}
 			},
 		);
@@ -1420,7 +1425,11 @@ describe('CredentialEdit', () => {
 				([event]) => event === TELEMETRY_EVENT.CREDENTIALS.USER_SAVED_CREDENTIALS,
 			);
 			expect(calls).toHaveLength(1);
-			expect(calls[0][1]).toMatchObject({ has_description: true, description_length: 18 });
+			expect(calls[0][1]).toMatchObject({
+				has_description: true,
+				description_length: 18,
+				credential_saved: true,
+			});
 			expect(calls[0][1]).not.toHaveProperty('description');
 		});
 
@@ -1448,6 +1457,7 @@ describe('CredentialEdit', () => {
 				expect(savedEvents()[0][1]).toMatchObject({
 					has_description: true,
 					description_length: 18,
+					credential_saved: true,
 					is_valid: result === 'success',
 				});
 				expect(savedEvents()[0][1]).not.toHaveProperty('description');
@@ -1753,24 +1763,41 @@ describe('CredentialEdit', () => {
 			expect(uiStore.closeModal).not.toHaveBeenCalled();
 		});
 
-		test('authorizes a private credential without saving for a connect-only user', async () => {
-			const { credentialsStore, getByTestId } = setupExistingOAuthCredential(
-				{},
-				{
-					scopes: ['credential:read', 'credential:connect'],
-					isResolvable: true,
-					connectedByMe: false,
-				},
-			);
+		test.each(['success', 'error'])(
+			'reports an OAuth %s callback without a save for a connect-only user',
+			async (result) => {
+				const { credentialsStore, getByTestId } = setupExistingOAuthCredential(
+					{},
+					{
+						scopes: ['credential:read', 'credential:connect'],
+						isResolvable: true,
+						connectedByMe: false,
+						description: 'Production reports',
+					},
+				);
 
-			await waitFor(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
-			await waitFor(() => expect(getByTestId('quick-connect-button')).toBeVisible());
-			await userEvent.click(getByTestId('quick-connect-button'));
+				await waitFor(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
+				await waitFor(() => expect(getByTestId('quick-connect-button')).toBeVisible());
+				await userEvent.click(getByTestId('quick-connect-button'));
 
-			await waitFor(() => expect(credentialsStore.oAuth2Authorize).toHaveBeenCalled());
-			// Connect-only users can't edit the blueprint, so it must not be re-saved.
-			expect(credentialsStore.updateCredential).not.toHaveBeenCalled();
-		});
+				await waitFor(() => expect(credentialsStore.oAuth2Authorize).toHaveBeenCalled());
+				// Connect-only users can't edit the blueprint, so it must not be re-saved.
+				expect(credentialsStore.updateCredential).not.toHaveBeenCalled();
+				broadcastMessageListener?.({ data: result } as MessageEvent);
+				const savedEvents = () =>
+					telemetryTrackMock.mock.calls.filter(
+						([event]) => event === TELEMETRY_EVENT.CREDENTIALS.USER_SAVED_CREDENTIALS,
+					);
+				await waitFor(() => expect(savedEvents()).toHaveLength(1));
+				expect(savedEvents()[0][1]).toMatchObject({
+					has_description: true,
+					description_length: 18,
+					credential_saved: false,
+					is_valid: result === 'success',
+				});
+				expect(savedEvents()[0][1]).not.toHaveProperty('description');
+			},
+		);
 
 		test('does not prompt to save again on a second connect click when nothing changed', async () => {
 			const { credentialsStore, getByTestId } = setupExistingOAuthCredential(

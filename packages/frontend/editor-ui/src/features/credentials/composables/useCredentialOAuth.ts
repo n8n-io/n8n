@@ -482,6 +482,7 @@ export function useCredentialOAuth() {
 			workflow_id: workflowsStore.workflowId ?? null,
 			credential_id: credential.id,
 			...getCredentialDescriptionTelemetry(credential.description),
+			credential_saved: true,
 			is_complete: true,
 			is_new: true,
 			is_valid: success,

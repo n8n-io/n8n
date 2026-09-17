@@ -41,6 +41,11 @@ export const CREDENTIALS_TELEMETRY = defineTelemetryEvents({
 			credential_id: z.string(),
 			credential_type: z.string(),
 			...descriptionProperties,
+			credential_saved: z
+				.boolean()
+				.describe(
+					'Whether this action created or updated the credential before the event. False when OAuth connects without saving the credential.',
+				),
 			workflow_id: z.string().nullable().optional(),
 			is_complete: z.boolean(),
 			is_new: z.boolean(),
