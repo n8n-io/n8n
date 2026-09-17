@@ -1733,6 +1733,26 @@ describe('Execution Lifecycle Hooks', () => {
 				);
 			});
 
+			it('should update execution data without a guard condition when the worker itself reports canceled', async () => {
+				const lifecycleHooks = createHooks('trigger');
+				executionPersistence.updateExistingExecution.mockResolvedValueOnce(true);
+
+				await lifecycleHooks.runHook('workflowExecuteAfter', [canceledRunWithMetadata, {}]);
+
+				expect(executionPersistence.updateExistingExecution).toHaveBeenCalledWith(
+					executionId,
+					expect.objectContaining({
+						finished: false,
+						status: 'canceled',
+					}),
+					undefined,
+				);
+				expect(workflowStatisticsService.emit).toHaveBeenCalledWith('workflowExecutionCompleted', {
+					workflowData,
+					fullRunData: canceledRunWithMetadata,
+				});
+			});
+
 			it('should not emit workflowExecutionCompleted when the guarded update is blocked', async () => {
 				const lifecycleHooks = createHooks('trigger');
 				executionPersistence.updateExistingExecution.mockResolvedValueOnce(false);
