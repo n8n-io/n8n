@@ -39,7 +39,14 @@ export type ResponseMessage = Extract<ExecutionResponse, { type: 'response' }>;
  */
 export interface ResponseEmitter {
 	send(payload: JsonValue): void;
+	chunk(payload: JsonValue): void;
 }
 
 /** For a step whose responses nobody wants. */
-export const noopResponseEmitter: ResponseEmitter = Object.freeze({ send: () => {} });
+export const noopResponseEmitter: ResponseEmitter = Object.freeze({
+	send: () => {},
+	chunk: () => {},
+});
+
+/** One piece of a streamed answer. */
+export type ChunkMessage = Extract<ExecutionResponse, { type: 'chunk' }>;

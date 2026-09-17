@@ -159,7 +159,7 @@ describe('StepReadyHandler', () => {
 				callerContext: {},
 			},
 			// The step can answer the caller while it runs.
-			respond: { send: expect.any(Function) },
+			respond: { send: expect.any(Function), chunk: expect.any(Function) },
 		});
 		expect(stepStore.completeStep).toHaveBeenCalledWith('step-a', [[{ json: { ok: true } }]]);
 		expect(stepStore.failStep).not.toHaveBeenCalled();

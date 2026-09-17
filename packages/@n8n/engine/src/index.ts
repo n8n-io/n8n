@@ -40,6 +40,7 @@ export {
 	noopResponseEmitter,
 } from './response-channel';
 export type {
+	ChunkMessage,
 	EndedMessage,
 	ExecutionResponse,
 	ExecutionResponseSender,
