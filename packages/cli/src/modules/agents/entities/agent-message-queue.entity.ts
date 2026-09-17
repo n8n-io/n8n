@@ -42,7 +42,7 @@ export class AgentMessageQueue extends WithTimestamps {
 	kind: AgentQueuePayload['kind'];
 
 	@Column({ type: 'varchar', length: 16 })
-	status: 'queued' | 'processing';
+	status: 'queued' | 'processing' | 'cancelling';
 
 	@JsonColumn()
 	payload: AgentQueuePayload;

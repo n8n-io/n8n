@@ -286,6 +286,7 @@ describe('N8NCheckpointStorage', () => {
 			const result = await service.findSuspendedForThread('agent-1', 'thread-target');
 
 			expect(result?.persistence?.threadId).toBe('thread-target');
+			expect(result?.runId).toBe('run-target');
 		});
 
 		// A delegated child suspends under its parent's thread; the parent run
