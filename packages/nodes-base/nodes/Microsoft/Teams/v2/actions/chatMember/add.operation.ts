@@ -16,7 +16,6 @@ import {
 	SP_HIDE,
 	validateTeamsId,
 } from '../../transport';
-import { throwIfChatMemberUnsupported } from './sharedGuard';
 
 const properties: INodeProperties[] = [
 	{
@@ -103,9 +102,6 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(this: IExecuteFunctions, i: number) {
 	// https://learn.microsoft.com/en-us/graph/api/chat-post-members?view=graph-rest-1.0
-
-	// The chat picker cannot list chats app-only; fail before any request.
-	throwIfChatMemberUnsupported.call(this);
 
 	const chatId = this.getNodeParameter('chatId', i, '', { extractValue: true }) as string;
 	// Direct validator call rather than buildTeamsPath: this id is interpolated into

@@ -8,7 +8,6 @@ import {
 import { escapeODataValue } from '@utils/query-escaping';
 import { updateDisplayOptions } from '@utils/utilities';
 
-import { throwIfChatUnsupported } from './sharedGuard';
 import { stampItemIndexOnError, validateUserTargetId } from '../../../../GenericFunctions';
 import { userRLC } from '../../descriptions';
 import { resolveUserTarget, userTargetMessages } from '../../helpers/utils';
@@ -115,9 +114,6 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(this: IExecuteFunctions, i: number) {
 	// https://learn.microsoft.com/en-us/graph/api/chat-post?view=graph-rest-1.0
-
-	// App-only Graph has no signed-in user to create a chat for; fail before any request.
-	throwIfChatUnsupported.call(this);
 
 	const node = this.getNode();
 	const chatType = this.getNodeParameter('chatType', i) as 'oneOnOne' | 'group';
