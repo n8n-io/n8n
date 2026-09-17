@@ -125,8 +125,10 @@ export type { FavoriteResourceType } from './schemas/favorites.schema';
 export { FAVORITE_RESOURCE_TYPES } from './schemas/favorites.schema';
 export {
 	AI_PREFERENCE_CONTENT_MAX_LENGTH,
+	AI_PREFERENCE_MAX_PER_SCOPE,
 	aiPreferenceContentSchema,
 	aiPreferenceScopeSchema,
+	aiPreferenceSourceSchema,
 	CONTEXT_PREFERENCES_CONTROL_VARIANT,
 	CONTEXT_PREFERENCES_ENABLED_VARIANT,
 	CONTEXT_PREFERENCES_FLAG,
@@ -141,6 +143,7 @@ export type {
 	AiPreferenceProjectDto,
 	AiPreferenceUserDto,
 	AiPreferenceScope,
+	AiPreferenceSource,
 } from './schemas/ai-preference.schema';
 
 export type { BannerName } from './schemas/banner-name.schema';
@@ -395,6 +398,7 @@ export {
 	workflowSetupNodeSchema,
 	setupItemSchema,
 	setupItemsPayloadSchema,
+	aiPreferencesAppliedPayloadSchema,
 	errorPayloadSchema,
 	filesystemRequestPayloadSchema,
 	mcpToolSchema,
@@ -556,6 +560,8 @@ export type {
 	InstanceAiConfirmationRequestEvent,
 	InstanceAiSetupItem,
 	InstanceAiSetupItemsEvent,
+	InstanceAiPreferencesAppliedEvent,
+	AiPreferencesAppliedPayload,
 	InstanceAiErrorEvent,
 	InstanceAiFilesystemRequestEvent,
 	InstanceAiFilesystemResponse,

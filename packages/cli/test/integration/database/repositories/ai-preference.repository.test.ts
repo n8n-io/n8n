@@ -36,11 +36,30 @@ describe('AiPreferenceRepository', () => {
 			id,
 			userId: null,
 			projectId: null,
+			// NOT NULL with no default: every write names the surface it came from.
+			source: 'ui',
 			createdById: owner.id,
 			...overrides,
 		});
 		return id;
 	}
+
+	describe('countForTarget', () => {
+		it('counts one scope at a time, so a cap applies per scope', async () => {
+			await insertPreference({ content: 'Instance A' });
+			await insertPreference({ content: 'Instance B' });
+			await insertPreference({ content: 'Mine', userId: member.id });
+			await insertPreference({ content: 'Marketing', projectId: marketing.id });
+
+			expect(await repository.countForTarget({ scope: 'instance' })).toBe(2);
+			expect(await repository.countForTarget({ scope: 'user', userId: member.id })).toBe(1);
+			expect(await repository.countForTarget({ scope: 'user', userId: owner.id })).toBe(0);
+			expect(await repository.countForTarget({ scope: 'project', projectId: marketing.id })).toBe(
+				1,
+			);
+			expect(await repository.countForTarget({ scope: 'project', projectId: sales.id })).toBe(0);
+		});
+	});
 
 	describe('findApplicable', () => {
 		it('returns the instance rows, the rows of the user, and the rows of the listed projects', async () => {

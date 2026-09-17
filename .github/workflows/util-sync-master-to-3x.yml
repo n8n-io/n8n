@@ -78,11 +78,22 @@ jobs:
           cache-dependency-path: .github/scripts/pnpm-lock.yaml
           build-command: ''
 
+      - name: Stage automation from triggering master SHA
+        id: stage-automation
+        env:
+          AUTOMATION_SHA: ${{ github.sha }}
+          STAGING_ROOT: ${{ runner.temp }}
+        run: |
+          staging_dir="$(mktemp -d "${STAGING_ROOT}/sync-master-to-3x.XXXXXX")"
+          git archive "${AUTOMATION_SHA}" .github/scripts | tar -x -C "${staging_dir}"
+          ln -s "${GITHUB_WORKSPACE}/.github/scripts/node_modules" "${staging_dir}/.github/scripts/node_modules"
+          echo "script=${staging_dir}/.github/scripts/sync-master-to-3x.mjs" >> "${GITHUB_OUTPUT}"
+
       - name: Sync master into 3.x
         id: sync
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
-        run: node .github/scripts/sync-master-to-3x.mjs
+        run: node "${{ steps.stage-automation.outputs.script }}"
 
   notify-conflict:
     name: Notify Slack about conflict PR
