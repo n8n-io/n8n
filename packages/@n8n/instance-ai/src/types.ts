@@ -154,6 +154,10 @@ export interface ExecutionResult {
 	 * Every node that ran, including those whose last run produced zero output
 	 * items (`data` omits those). Lets verification tell "ran and returned
 	 * nothing" apart from "never reached".
+	 *
+	 * On a `runStep` result this counts only what ran in *that* execution:
+	 * mocked and replayed nodes carry run data without having run, and are
+	 * excluded.
 	 */
 	executedNodeNames?: string[];
 	/**
@@ -173,9 +177,43 @@ export interface ExecutionResult {
 	 * unsaved workflow, absent when the record could not be read.
 	 */
 	workflowVersionId?: string | null;
+	/**
+	 * Set when the trigger did not fire from a real event: its output came from
+	 * injected `inputData` or verification pin data. Such a run proves nothing
+	 * about the trigger's ingress (auth, payload shape, response mode).
+	 */
+	injectedTriggerNodeName?: string;
 	error?: string;
 	startedAt?: string;
 	finishedAt?: string;
+}
+
+/** How a step run produced the target node's input. */
+export type StepRunInputMode = 'chain' | 'reused-execution' | 'mocked';
+
+export interface StepExecutionResult extends ExecutionResult {
+	/** The node the step targeted. */
+	nodeName: string;
+	/**
+	 * Where the target node's input came from. `mocked` is never evidence that
+	 * the workflow works: the items, and the placeholder items on the nodes
+	 * above them, are invented.
+	 */
+	inputMode: StepRunInputMode;
+	/**
+	 * Nodes whose output was invented so the run could reach the target. Empty
+	 * unless `inputMode` is `mocked`.
+	 */
+	mockedNodeNames: string[];
+	/**
+	 * Nodes whose output this run carried over from `reusedFromExecutionId`.
+	 * Absent unless `inputMode` is `reused-execution`. A node of the reused
+	 * execution that sits outside the trigger-to-target subgraph is not listed:
+	 * the run never carried it.
+	 */
+	replayedNodeNames?: string[];
+	/** Execution the replayed run data came from. */
+	reusedFromExecutionId?: string;
 }
 
 export interface NodeOutputBranch {
@@ -581,6 +619,43 @@ export interface InstanceAiExecutionService {
 			abortSignal?: AbortSignal;
 		},
 	): Promise<ExecutionResult>;
+	/**
+	 * Run one node of a saved workflow — the canvas "Execute step".
+	 *
+	 * The run happens on the real workflow, so expressions that reference other
+	 * nodes resolve, sub-nodes come along, and the execution lands in the
+	 * workflow's history where `getNodeOutput` and the user's canvas can see it.
+	 *
+	 * The target's input comes from one of three places:
+	 * - `reuseExecutionId` — replay a past run's data and re-run only the target.
+	 * - neither option — run every ancestor that has no data yet, then the target.
+	 * - `mockInput` — supply the input and skip the ancestors entirely.
+	 *
+	 * The first two say something about the workflow, because the input is data
+	 * the workflow really produced. `mockInput` says something about the node
+	 * alone, which is what you want when isolating it — but a caller must not
+	 * read a mocked result as evidence about the chain.
+	 */
+	runStep?(
+		workflowId: string,
+		nodeName: string,
+		options?: {
+			/**
+			 * Replay this execution's run data instead of running the ancestors
+			 * again. The execution must belong to the same workflow.
+			 */
+			reuseExecutionId?: string;
+			/**
+			 * Items to feed the target node, which skips every node above it.
+			 * Applied to each of the target's direct inputs.
+			 */
+			mockInput?: Array<Record<string, unknown>>;
+			/** Run a past version's graph instead of the current draft. */
+			versionId?: string;
+			timeout?: number;
+			abortSignal?: AbortSignal;
+		},
+	): Promise<StepExecutionResult>;
 	getStatus(executionId: string): Promise<ExecutionResult>;
 	getResult(executionId: string): Promise<ExecutionResult>;
 	stop(executionId: string): Promise<{ success: boolean; message: string }>;
@@ -1554,6 +1629,8 @@ export interface InstanceAiContext {
 		workflowTaskService?: WorkflowTaskService;
 		onBuildOutcome?: (outcome: WorkflowBuildOutcome) => void | Promise<void>;
 	};
+	/** Ask-user decisions waiting for the next successful Agent Builder handoff. */
+	resolvedUserDecisions?: ResolvedUserDecision[];
 }
 
 // ── Setup panel v2 ───────────────────────────────────────────────────────────
@@ -2105,3 +2182,9 @@ export interface CreateInstanceAgentOptions {
 	thinkingEnabled?: boolean;
 	onMemoryTaskEvent?: (event: ScopedMemoryTaskEvent) => void;
 }
+
+export type ResolvedUserDecision = {
+	question: string;
+	answer: string;
+	skipped?: boolean;
+};

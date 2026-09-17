@@ -16,7 +16,7 @@ import type {
 	UpdateLdapConfigurationDto,
 	LdapSyncDto,
 } from '@n8n/api-types';
-import type { AuthenticatedRequest, TagEntity } from '@n8n/db';
+import type { AuthenticatedRequest } from '@n8n/db';
 
 import type { AuthlessRequest } from '@/requests';
 import type { Risk } from '@/security-audit/types';
@@ -61,11 +61,6 @@ export declare namespace TestRunRequest {
 	>;
 	type Create = AuthenticatedRequest<{ id: string }>;
 	type Cancel = AuthenticatedRequest<{ id: string; runId: string }>;
-}
-
-export declare namespace TagRequest {
-	type Delete = AuthenticatedRequest<{ id: string }>;
-	type Update = AuthenticatedRequest<{ id: string }, {}, TagEntity>;
 }
 
 export declare namespace CredentialTypeRequest {

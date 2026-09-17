@@ -8,10 +8,15 @@ import type { UrlService } from '@/services/url.service';
 
 import { McpProtectedResource } from '../mcp-protected-resource';
 
-const makeGlobalConfig = ({ builderEnabled = true, tagsDisabled = false } = {}) =>
+const makeGlobalConfig = ({
+	builderEnabled = true,
+	tagsDisabled = false,
+	activityLogEnabled = true,
+} = {}) =>
 	({
 		endpoints: { mcpBuilderEnabled: builderEnabled },
 		tags: { disabled: tagsDisabled },
+		activityLog: { enabled: activityLogEnabled },
 	}) as unknown as GlobalConfig;
 
 describe('McpProtectedResource', () => {
@@ -46,6 +51,26 @@ describe('McpProtectedResource', () => {
 			expect(scopeTools['workflow:read']).toContain('search_nodes');
 			expect(scopeTools['agent:read']).toContain('search_agents');
 			expect(scopeTools['tag:read']).toContain('list_workflow_tags');
+		});
+
+		/** Consent must not advertise a tool that `tools/list` will not carry. */
+		it('withholds the activity tools from consent when nothing writes the log', () => {
+			moduleRegistry.isActive.mockReturnValue(true);
+			const resourceWithoutLog = new McpProtectedResource(
+				urlService,
+				mcpSettingsService,
+				mcpConfig,
+				makeGlobalConfig({ activityLogEnabled: false }),
+				moduleRegistry,
+				licenseState,
+			);
+
+			const scopeTools = resourceWithoutLog.getScopeTools();
+
+			expect(scopeTools['workflow:read']).not.toContain('get_instance_activity');
+			expect(scopeTools['workflow:read']).not.toContain('expand_instance_activity');
+			// Node usage reads its own index, so the log has no bearing on it.
+			expect(scopeTools['workflow:read']).toContain('get_node_usage');
 		});
 
 		it('should drop tools this instance does not expose', () => {
@@ -84,6 +109,26 @@ describe('McpProtectedResource', () => {
 			expect(scopeTools['project:write']).not.toContain('search_folders');
 			expect(scopeTools['project:read']).not.toContain('search_folders');
 			expect(scopeTools['project:read']).toContain('search_projects');
+		});
+
+		it('advertises the preferences scope with its one tool', () => {
+			expect(resource.scopes).toContain('aiPreference:read');
+			expect(resource.getScopeTools()['aiPreference:read']).toEqual(['get_user_preferences']);
+		});
+
+		// The flag is per-user PostHog and unreachable from the descriptor, so the scope is
+		// offered to everyone; granting it yields no tool until the flag is on.
+		it('keeps advertising the preferences scope regardless of the builder', () => {
+			const withoutBuilder = new McpProtectedResource(
+				urlService,
+				mcpSettingsService,
+				mcpConfig,
+				makeGlobalConfig({ builderEnabled: false }),
+				moduleRegistry,
+				licenseState,
+			);
+
+			expect(withoutBuilder.getScopeTools()['aiPreference:read']).toEqual(['get_user_preferences']);
 		});
 
 		it('should drop agent scopes and tools when the agents module is inactive', () => {

@@ -226,6 +226,9 @@ function getWorkflowName(workflowId: string): string | undefined {
 const loadMoreRef = useTemplateRef<ComponentPublicInstance>('loadMoreButton');
 useIntersectionObserver(loadMoreRef, ([entry]) => {
 	if (!entry?.isIntersecting) return;
+	// A viewport taller than one page keeps the anchor in view, so without this the
+	// observer would chain a page for every response that lands.
+	if (executionsStore.loading) return;
 	void loadMore();
 });
 
@@ -234,10 +237,8 @@ async function loadMore() {
 		return;
 	}
 
-	const lastItem = props.executions.at(-1);
-
 	try {
-		await executionsStore.fetchExecutions(executionsStore.executionsFilters, lastItem?.id);
+		await executionsStore.loadMoreExecutions();
 	} catch (error) {
 		toast.showError(error, i18n.baseText('executionsList.showError.loadMore.title'));
 	}

@@ -276,7 +276,7 @@ catalog:
   vite-plugin-singlefile: 2.3.3
   vitest: ^4.1.9
   vitest-mock-extended: ^3.1.0
-  vm2: 3.11.6
+  vm2: 3.12.2
   xml2js: 0.6.2
   xss: 1.0.15
   yaml: 2.8.3
@@ -351,7 +351,7 @@ catalogs:
   undici-v6:
     undici: ^6.28.0
   undici-v7:
-    undici: ^7.29.0
+    undici: ^7.29.1
   # knip needs zod 4 while the default catalog pins zod 3.
   zod-v4:
     zod: ^4.4.3
