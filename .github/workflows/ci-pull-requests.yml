@@ -163,11 +163,8 @@ jobs:
               packages/cli/src/workflows/triggers/**
               packages/cli/src/workflow-runner.ts
               packages/testing/containers/**
-              packages/testing/playwright/playwright.config.ts
-              packages/testing/playwright/playwright-projects.ts
-              packages/testing/playwright/fixtures/**
-              packages/testing/playwright/services/**
-              packages/testing/playwright/tests/**
+              packages/testing/playwright/**
+              .github/workflows/ci-pull-requests.yml
             instance-ai-workflow-eval:
               packages/@n8n/instance-ai/src/**
               packages/@n8n/instance-ai/evaluations/**
