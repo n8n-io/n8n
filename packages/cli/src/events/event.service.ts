@@ -8,16 +8,18 @@ import type { McpPostSaveMetricsEventMap } from './maps/mcp-post-save-metrics.ev
 import type { PollTriggerMetricsEventMap } from './maps/poll-trigger-metrics.event-map';
 import type { QueueMetricsEventMap } from './maps/queue-metrics.event-map';
 import type { RelayEventMap } from './maps/relay.event-map';
+import type { SystemTaskMetricsEventMap } from './maps/system-task-metrics.event-map';
 import type { WorkflowPublicationMetricsEventMap } from './maps/workflow-publication-metrics.event-map';
 
-type EventMap = RelayEventMap &
+export type EventMap = RelayEventMap &
 	QueueMetricsEventMap &
 	AiEventMap &
 	ExecutionDataEventMap &
 	InstanceAiEventMap &
 	McpPostSaveMetricsEventMap &
 	WorkflowPublicationMetricsEventMap &
-	PollTriggerMetricsEventMap;
+	PollTriggerMetricsEventMap &
+	SystemTaskMetricsEventMap;
 
 @Service()
 export class EventService extends TypedEmitter<EventMap> {}

@@ -71,7 +71,7 @@ export interface LoadTestOptions {
 export async function runLoadTest(options: LoadTestOptions): Promise<ExecutionMetrics> {
 	const { handle, api, services, testInfo, load, timeoutMs, trigger, resourceSummary, variant } =
 		options;
-	testInfo.setTimeout(timeoutMs + 120_000);
+	testInfo.setTimeout(testInfo.timeout + timeoutMs + 120_000);
 
 	const { nodeCount, nodeOutputSize } = handle.scenario;
 	const dimensions = buildLoadDimensions({ trigger, nodeCount, nodeOutputSize, load });
