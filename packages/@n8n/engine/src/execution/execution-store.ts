@@ -61,16 +61,17 @@ export interface ExecutionStore {
 	finishExecution(id: string, status: 'completed' | 'failed'): Promise<boolean>;
 
 	/**
-	 * Sets a live execution's status from the state of its steps: `waiting` when
-	 * every step it still owes is suspended, `running` when one can run. Call it
-	 * after any change to a step's state.
+	 * Sets a live execution's status from the state of its steps. The status is
+	 * `waiting` when every step the execution still owes is suspended. It is
+	 * `running` when one step can run. Call this after a step changes state.
 	 *
-	 * The step states and the write are one statement. A step row that changes
-	 * in between therefore cannot leave a stale status behind, which a read
-	 * followed by a write would allow.
+	 * One statement calculates the status and writes it. Two statements are not
+	 * enough. A step could change between the read and the write. The write
+	 * would then store the older status.
 	 *
 	 * Leaves an execution alone when no step of it is unsettled, because
-	 * `finishExecution` owns the end, and when it has already ended.
+	 * `finishExecution` owns the end. Leaves an execution that already ended
+	 * alone too.
 	 */
 	refreshLiveStatus(id: string): Promise<void>;
 }
