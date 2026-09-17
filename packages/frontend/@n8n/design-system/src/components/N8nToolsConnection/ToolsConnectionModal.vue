@@ -609,6 +609,7 @@ function toolRowIndex(row: FlattenedRow): number {
 
 <style lang="scss" module>
 @use '../../css/mixins/mixins';
+@use '../../css/mixins/focus';
 
 .modal {
 	--n8n-dialog-content--padding: 0;
@@ -671,11 +672,11 @@ function toolRowIndex(row: FlattenedRow): number {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--xs);
-	width: 100%;
-	min-height: 58px;
-	padding: var(--spacing--2xs);
+	height: 64px;
+	padding: var(--spacing--2xs) var(--spacing--xs);
+	margin-inline: var(--spacing--2xs);
 	border: 0;
-	border-radius: var(--radius--2xs);
+	border-radius: var(--radius);
 	background: none;
 	color: inherit;
 	text-align: left;
@@ -683,12 +684,11 @@ function toolRowIndex(row: FlattenedRow): number {
 	flex-shrink: 0;
 
 	&:hover:not(:disabled) {
-		background: var(--color--background--light-1);
+		background: var(--background--hover);
 	}
 
 	&:focus-visible {
-		outline: var(--focus--border-width) solid var(--focus--border-color);
-		outline-offset: 2px;
+		@include focus.focus-ring-inset;
 	}
 
 	&:disabled {
@@ -698,19 +698,23 @@ function toolRowIndex(row: FlattenedRow): number {
 
 .createIcon {
 	flex-shrink: 0;
-	width: 32px;
-	height: 32px;
+	width: var(--height--xl);
+	height: var(--height--xl);
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	color: var(--color--primary);
+	background-color: var(--color--orange-alpha-100);
+	border-radius: var(--radius--full);
 }
 
 .createText {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--5xs);
+	flex: 1 1 0;
 	min-width: 0;
+	font-weight: var(--font-weight--medium);
 }
 
 .listWrapper {
