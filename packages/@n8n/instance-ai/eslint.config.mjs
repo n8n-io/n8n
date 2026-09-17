@@ -23,6 +23,8 @@ export default defineConfig(
 		ignores: [
 			'scripts/**/*.cjs',
 			'skills/**/*.mjs',
+			// Use-case workflow templates are data for the agent, not package source.
+			'knowledge-base/**/*.ts',
 			// Local eval scratch output — never linted, never committed.
 			'.data/**',
 			'evaluations/.data/**',
