@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { Config, Env } from '../decorators';
+import { positiveIntSchema } from '../schemas';
 
 /**
  * Floor for the CP → DP shared secret. Kept in step with the engine's identity
@@ -68,6 +69,6 @@ export class EngineConfig {
 	 * answers the webhook request itself. The response channel is at-most-once,
 	 * so a lost answer must not hold the request open forever.
 	 */
-	@Env('N8N_ENGINE_WEBHOOK_RESPONSE_TIMEOUT')
+	@Env('N8N_ENGINE_WEBHOOK_RESPONSE_TIMEOUT', positiveIntSchema.max(2147483647))
 	webhookResponseTimeout: number = 2 * 60 * 1000;
 }
