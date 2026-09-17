@@ -2172,12 +2172,6 @@ describe('executeWebhook on engine 2.0', () => {
 
 		it.each([
 			{
-				name: 'the responseNode response mode',
-				options: { responseMode: 'responseNode' },
-				message:
-					"Engine 2.0 does not support the 'responseNode' response mode yet. Respond immediately instead.",
-			},
-			{
 				name: 'the streaming response mode',
 				options: { responseMode: 'streaming' },
 				message:

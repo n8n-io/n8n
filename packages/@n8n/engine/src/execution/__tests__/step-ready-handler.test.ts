@@ -3,6 +3,8 @@ import { describe, expect, it, vi } from 'vitest';
 import type { ExternalDependencies, IStepExecutor } from '../../dependencies';
 import { deriveLoops, type WorkflowGraph } from '../../graph';
 import type { LifecycleEventPublisher, LifecycleEvent } from '../../lifecycle-events';
+import { createConsoleLogger } from '../../logging';
+import { ExecutionResponseChannel, noopResponseTransport } from '../../response-channel';
 import type { OrchestrationMessage, WorkQueue } from '../../queue';
 import type { ExecutionRecord, ExecutionStore } from '../execution-store';
 import { stepKeyId, type StepSlots, type StepStatus } from '../execution.types';
@@ -49,6 +51,7 @@ function makeHandler(
 	queue: WorkQueue<OrchestrationMessage>,
 	dependencies: ExternalDependencies,
 	lifecycleEventPublisher: LifecycleEventPublisher = makeLifecycleEventPublisher(),
+	responseChannel: ExecutionResponseChannel = new ExecutionResponseChannel(noopResponseTransport, createConsoleLogger()),
 ): StepReadyHandler {
 	return new StepReadyHandler(
 		executionStore,
@@ -56,6 +59,7 @@ function makeHandler(
 		queue,
 		dependencies,
 		lifecycleEventPublisher,
+		responseChannel,
 	);
 }
 
@@ -155,6 +159,8 @@ describe('StepReadyHandler', () => {
 				iteration: 0,
 				callerContext: {},
 			},
+			// The step can answer the caller while it runs.
+			respond: { send: expect.any(Function) },
 		});
 		expect(stepStore.completeStep).toHaveBeenCalledWith('step-a', [[{ json: { ok: true } }]]);
 		expect(stepStore.failStep).not.toHaveBeenCalled();
