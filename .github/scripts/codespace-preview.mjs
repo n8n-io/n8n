@@ -25,6 +25,7 @@ export const PREVIEW_LABEL = 'codespace-preview';
 // so a reviewer knows how long the instance lasts without reading the script.
 const IDLE_TIMEOUT = '2 hours';
 const RETENTION_PERIOD = '24 hours';
+const CODESPACE_ENV_VARIABLE_URL = "https://internal.users.n8n.cloud/form/codespace-environments";
 // A slept box comes back with a private port, so every recovery hint points here.
 export const WORKFLOW_URL =
 	'https://github.com/n8n-io/n8n/actions/workflows/util-codespace-preview.yml';
@@ -132,6 +133,9 @@ export function readyComment({ url, codespace, sha, orgVisible, pr }) {
 		`### Preview instance for \`${sha.slice(0, 7)}\``,
 		'',
 		`**[Open the preview](${url}/preview-signin)** — one click signs you in.`,
+		'',
+		`If you need to modify the environment variables of this instance, navigate to ${CODESPACE_ENV_VARIABLE_URL} and submit them.`,
+		'The instance will refresh and apply your variables.',
 		'',
 		'| | |',
 		'| --- | --- |',
