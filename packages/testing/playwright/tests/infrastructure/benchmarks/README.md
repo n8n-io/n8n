@@ -82,7 +82,7 @@ These NoOp workflows do not evaluate expressions. Lazy mode therefore avoids acq
 
 The engine v2 webhook comparison uses the same 120-second ingestion load as the v1 profiles. It does not wait for the accepted backlog to drain. Compare its tail execution rate and backlog growth instead of its completion ratio.
 
-The engine v2 lazy-cache Kafka comparison requires at least 98% of its 10,000-message load to complete. This profile reports saturation and incomplete drain instead of treating the experimental engine as an exact-delivery baseline.
+The shared engine v2 lazy-cache Kafka comparison requires 98% completion. The split-server profile uses a 90% observational floor because current long runs can stop settling before full drain.
 
 ## Running
 

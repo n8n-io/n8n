@@ -85,9 +85,9 @@ export const enginePostgres: Service<PostgresResult> = {
 	},
 };
 
-export function createEnginePostgresHelper(ctx: HelperContext): PostgresHelper {
+export function createEnginePostgresHelper(ctx: HelperContext): PostgresHelper | undefined {
 	const result = ctx.serviceResults.enginePostgres as PostgresResult | undefined;
-	if (!result) throw new Error('Engine Postgres service not found in context');
+	if (!result) return undefined;
 	return new PostgresHelper(result.container, result.meta);
 }
 

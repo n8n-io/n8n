@@ -17,17 +17,23 @@ test.use({
 	),
 });
 
-test(`Async webhook + 1 noop, 1KB payload, ${SINGLE_INSTANCE_WEBHOOK_CONNECTIONS} connections × ${SINGLE_INSTANCE_WEBHOOK_DURATION_SECONDS}s (engine v2, split DB, VM lazy + cache) @bench:webhook`, async ({
-	api,
-	services,
-	backendUrl,
-}, testInfo) => {
-	await runSingleInstanceWebhookBenchmark({
-		api,
-		services,
-		testInfo,
-		baseUrl: backendUrl,
-		dimensions: ENGINE_V2_SPLIT_DB_LAZY_CACHE_BENCHMARK_PROFILE.dimensions,
-		drainTimeoutSeconds: 0,
-	});
-});
+test.describe(
+	'Engine v2 split database webhook throughput',
+	{ annotation: [{ type: 'owner', description: 'Catalysts' }] },
+	() => {
+		test(`Async webhook + 1 noop, 1KB payload, ${SINGLE_INSTANCE_WEBHOOK_CONNECTIONS} connections × ${SINGLE_INSTANCE_WEBHOOK_DURATION_SECONDS}s (engine v2, split DB, VM lazy + cache) @bench:webhook`, async ({
+			api,
+			services,
+			backendUrl,
+		}, testInfo) => {
+			await runSingleInstanceWebhookBenchmark({
+				api,
+				services,
+				testInfo,
+				baseUrl: backendUrl,
+				dimensions: ENGINE_V2_SPLIT_DB_LAZY_CACHE_BENCHMARK_PROFILE.dimensions,
+				drainTimeoutSeconds: 0,
+			});
+		});
+	},
+);

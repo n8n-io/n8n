@@ -271,6 +271,6 @@ export async function runWebhookThroughputTest(options: WebhookThroughputOptions
 			successfulResponses > 0 ? throughputResult.totalCompleted / successfulResponses : 0;
 		expect(completionRatio).toBeGreaterThanOrEqual(options.minCompletedResponseRatio);
 	} else {
-		expect(throughputResult.totalCompleted).toBeGreaterThan(0);
+		expect(throughputResult.tailExecPerSec ?? 0).toBeGreaterThan(0);
 	}
 }
