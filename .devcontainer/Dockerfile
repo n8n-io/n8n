@@ -3,13 +3,14 @@ ARG NODE_VERSION=24
 FROM node:${NODE_VERSION}-alpine
 
 ARG NODE_VERSION
+ARG PNPM_VERSION=12.3.4
 
 RUN apk add --no-cache \
     openssh sudo shadow bash libc-utils \
     git openssl graphicsmagick tini tzdata ca-certificates libc6-compat
 RUN echo node ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/node && chmod 0440 /etc/sudoers.d/node
 RUN mkdir /workspaces && chown node:node /workspaces
-RUN corepack enable
+RUN npm i -g "pnpm@${PNPM_VERSION}"
 
 ENV PNPM_HOME=/home/node/.local/share/pnpm
 ENV PATH=$PNPM_HOME/bin:$PATH

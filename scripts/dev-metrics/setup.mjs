@@ -254,7 +254,7 @@ function installOne(bin) {
 	// swap — so a crash never leaves the binary's path empty. If the final swap
 	// fails after the original was moved aside, roll it back so pnpm keeps working.
 	// `real` is genuine here (not our shim), so any existing saved sibling is stale
-	// — e.g. a corepack/pnpm upgrade dropped a fresh binary over the old shim. Move
+	// — e.g. a pnpm upgrade dropped a fresh binary over the old shim. Move
 	// the current binary aside unconditionally (overwriting the stale copy) so the
 	// shim runs today's binary, never a leftover older one.
 	const saved = real + SAVED_SUFFIX;
@@ -275,7 +275,7 @@ function installBinaries() {
 	syncTracker();
 	const results = SHADOWED_BINARIES.map(installOne);
 	// Remember where shims landed so --disable/--reset can restore them later even
-	// from a different node/corepack version whose bin dir isn't on PATH now.
+	// from a different node version whose bin dir isn't on PATH now.
 	const shims = results.filter((r) => r.action === 'in-place' || r.action === 'refreshed');
 	if (shims.length) {
 		const prev = readState()?.installedShims ?? [];

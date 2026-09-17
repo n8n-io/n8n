@@ -25,7 +25,7 @@ describe('parsePnpmVersion', () => {
 		assert.equal(parsePnpmVersion('pnpm@11.25.0'), '11.25.0');
 	});
 
-	it('drops the corepack integrity suffix', () => {
+	it('drops the any integrity suffix', () => {
 		assert.equal(parsePnpmVersion('pnpm@11.25.0+sha512.abc123'), '11.25.0');
 	});
 

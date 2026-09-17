@@ -3,6 +3,7 @@ ARG NODE_VERSION=24
 # Debian, not Alpine: Playwright browsers and the agent CLIs need glibc
 FROM node:${NODE_VERSION}-bookworm
 
+ARG PNPM_VERSION=12.3.4
 ARG PLAYWRIGHT_VERSION=1.62.1
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -31,7 +32,7 @@ COPY tmux.conf /etc/tmux.conf
 
 RUN echo node ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/node && chmod 0440 /etc/sudoers.d/node
 RUN mkdir -p /workspaces && chown node:node /workspaces
-RUN corepack enable
+RUN npm i -g "pnpm@${PNPM_VERSION}"
 
 ENV PNPM_HOME=/home/node/.local/share/pnpm
 ENV PATH=$PNPM_HOME/bin:$PATH

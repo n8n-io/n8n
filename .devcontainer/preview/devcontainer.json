@@ -29,7 +29,7 @@
 	// warm. Concurrency and heap are capped for the 2-core box, matching the
 	// reasoning in scripts/agent-setup.mjs. A failing onCreateCommand is fatal —
 	// Codespaces discards the container — so the build only ever tails its log.
-	"onCreateCommand": "corepack install && pnpm install && (NODE_OPTIONS=--max-old-space-size=6144 pnpm exec turbo run build --concurrency=2 > /tmp/build.log 2>&1 || tail -n 50 /tmp/build.log)",
+	"onCreateCommand": "pnpm install && (NODE_OPTIONS=--max-old-space-size=6144 pnpm exec turbo run build --concurrency=2 > /tmp/build.log 2>&1 || tail -n 50 /tmp/build.log)",
 	// Codespaces regenerates the managed /etc/gitconfig on each start, and the ssh
 	// command shells `pnpm preview` uses are neither login nor interactive, so
 	// profile.d and bashrc never fire for them. Register the helper here instead.
