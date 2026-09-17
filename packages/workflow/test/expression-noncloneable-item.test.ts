@@ -65,11 +65,7 @@ type Case = {
 
 const CASES: Case[] = [
 	{ name: 'a function', extra: () => ({ fn: () => 1 }), rejectedAt: { vm: 'json.fn' } },
-	{
-		name: 'a proxy',
-		extra: () => ({ px: new Proxy({ a: 1 }, {}) }),
-		rejectedAt: { vm: 'json.px' },
-	},
+	{ name: 'a proxy', extra: () => ({ px: new Proxy({ a: 1 }, {}) }), rejectedAt: {} },
 	{
 		name: 'an enumerable getter that throws',
 		extra: () => ({ g: throwingGetter() }),
@@ -150,6 +146,9 @@ const EAGER_ACCESSORS: Array<[string, string]> = [
 	['$input.first()', '={{ $input.first().json.plain_key }}'],
 	['$items()', '={{ $items("Upstream")[0].json.plain_key }}'],
 ];
+
+const readOf = (expr: string, path: string | undefined) =>
+	path === undefined ? expr : expr.replace('json.plain_key', path);
 
 const makeWorld = (extra: Record<string, unknown>) => {
 	const workflow = new Workflow({
@@ -246,14 +245,18 @@ describe('an upstream item holding a value the engine cannot transfer', () => {
 		});
 
 		it.each(EAGER_ACCESSORS)('reads a sibling key through %s', (_accessor, expr) => {
+			expect(world.evaluate(expr)).toBe('the-value');
+		});
+
+		it.each(EAGER_ACCESSORS)('raises on a read of the value itself through %s', (_a, expr) => {
 			if (path === undefined) {
-				expect(world.evaluate(expr)).toBe('the-value');
+				expect(() => world.evaluate(readOf(expr, path))).not.toThrow();
 				return;
 			}
 
 			let caught: unknown;
 			try {
-				world.evaluate(expr);
+				world.evaluate(readOf(expr, path));
 			} catch (error) {
 				caught = error;
 			}
@@ -265,7 +268,26 @@ describe('an upstream item holding a value the engine cannot transfer', () => {
 	});
 });
 
-describe.skipIf(ENGINE !== 'vm')('the message a rejected item produces', () => {
+describe.skipIf(ENGINE === 'legacy')(
+	'an item member the engine refuses to copy as it stands',
+	() => {
+		let world: ReturnType<typeof makeWorld>;
+
+		beforeAll(async () => {
+			world = makeWorld({ px: new Proxy({ a: 1 }, {}), fn: () => 1 });
+			await world.workflow.expression.acquireIsolate();
+		});
+		afterAll(async () => {
+			await world.workflow.expression.releaseIsolate();
+		});
+
+		it('crosses as its own data', () => {
+			expect(world.evaluate("={{ $('Upstream').item.json.px.a }}")).toBe(1);
+		});
+	},
+);
+
+describe.skipIf(ENGINE !== 'vm')('the message a rejected value produces', () => {
 	let world: ReturnType<typeof makeWorld>;
 
 	beforeAll(async () => {
@@ -279,7 +301,7 @@ describe.skipIf(ENGINE !== 'vm')('the message a rejected item produces', () => {
 	it('names the node, the key path and what the value is', () => {
 		let caught: unknown;
 		try {
-			world.evaluate("={{ $('Upstream').item.json.plain_key }}");
+			world.evaluate("={{ $('Upstream').item.json.fn }}");
 		} catch (error) {
 			caught = error;
 		}

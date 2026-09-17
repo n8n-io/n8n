@@ -14,7 +14,11 @@ import {
 	serializeError,
 } from './host-functions';
 import type { TransferProbe } from './transfer-diagnostics';
-import { MAX_DIAGNOSTIC_MS, untransferableItemError } from './transfer-diagnostics';
+import {
+	MAX_DIAGNOSTIC_MS,
+	sanitiseForTransfer,
+	untransferableItemError,
+} from './transfer-diagnostics';
 
 // Lazy-loaded isolated-vm — avoids loading the native binary when the barrel
 // file is statically imported (e.g. for error classes). The native module is
@@ -404,13 +408,24 @@ export class IsolatedVmBridge implements RuntimeBridge {
 			}
 			try {
 				return new (getIvm().ExternalCopy)(result);
-			} catch {
-				return copySentinel(
-					serializeError(
-						untransferableItemError(result, vmTransferProbe, rawMsg, data, MAX_DIAGNOSTIC_MS),
-					),
-				);
+			} catch {}
+			const sanitised = sanitiseForTransfer(
+				result,
+				vmTransferProbe,
+				rawMsg,
+				data,
+				MAX_DIAGNOSTIC_MS,
+			);
+			if (sanitised !== undefined) {
+				try {
+					return new (getIvm().ExternalCopy)(sanitised);
+				} catch {}
 			}
+			return copySentinel(
+				serializeError(
+					untransferableItemError(result, vmTransferProbe, rawMsg, data, MAX_DIAGNOSTIC_MS),
+				),
+			);
 		});
 	}
 

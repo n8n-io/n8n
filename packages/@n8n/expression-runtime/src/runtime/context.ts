@@ -11,6 +11,7 @@ import {
 	throwIfErrorSentinel,
 } from './lazy-proxy';
 import { jmesPath } from './jmespath';
+import { TRANSFER_SANITISED_KEY, TRANSFER_UNUSABLE_KEY } from './transfer';
 import { isKeyOf } from './utils';
 import type { BridgeMessage } from '../bridge/bridge-messages';
 
@@ -92,11 +93,59 @@ function isTransferredCopy(value: unknown): value is TransferredCopy {
 	return typeof value.copy === 'function';
 }
 
+const MAX_REVIVE_DEPTH = 128;
+
+interface UnusableMarker {
+	[TRANSFER_UNUSABLE_KEY]: true;
+	message: string;
+}
+
+function isUnusableMarker(value: unknown): value is UnusableMarker {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		TRANSFER_UNUSABLE_KEY in value &&
+		typeof (value as UnusableMarker).message === 'string'
+	);
+}
+
+function defineUnusable(owner: object, key: string, message: string): void {
+	Object.defineProperty(owner, key, {
+		enumerable: true,
+		configurable: true,
+		get() {
+			throw new ExpressionError(message);
+		},
+	});
+}
+
+function reviveUnusable(value: unknown, depth: number): void {
+	if (value === null || typeof value !== 'object' || depth >= MAX_REVIVE_DEPTH) return;
+	for (const key of Object.keys(value)) {
+		const member = (value as Record<string, unknown>)[key];
+		if (isUnusableMarker(member)) {
+			defineUnusable(value, key, member.message);
+			continue;
+		}
+		reviveUnusable(member, depth + 1);
+	}
+}
+
+function unwrapSanitised(result: unknown): unknown {
+	if (typeof result !== 'object' || result === null || !(TRANSFER_SANITISED_KEY in result)) {
+		return result;
+	}
+	const inner: unknown = (result as unknown as { value: unknown }).value;
+	if (isUnusableMarker(inner)) throw new ExpressionError(inner.message);
+	reviveUnusable(inner, 0);
+	return inner;
+}
+
 function sendHostCall(callbacks: BridgeCallbacks, message: unknown): unknown {
 	const raw = callbacks.callHost(message);
 	const result = isTransferredCopy(raw) ? raw.copy({ release: true }) : raw;
 	throwIfErrorSentinel(result);
-	return result;
+	return unwrapSanitised(result);
 }
 
 /**

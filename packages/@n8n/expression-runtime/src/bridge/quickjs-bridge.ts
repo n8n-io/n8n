@@ -23,7 +23,11 @@ import {
 	serializeError,
 } from './host-functions';
 import type { TransferProbe } from './transfer-diagnostics';
-import { diagnosticBudgetMs, untransferableItemError } from './transfer-diagnostics';
+import {
+	diagnosticBudgetMs,
+	sanitiseForTransfer,
+	untransferableItemError,
+} from './transfer-diagnostics';
 
 // Lazy-loaded quickjs-emscripten — avoids loading WASM when the barrel
 // file is statically imported (e.g. for error classes). The module is
@@ -1120,8 +1124,16 @@ export class QuickJsBridge implements RuntimeBridge {
 			const rawMsg = vm.dump(msgHandle);
 			try {
 				const result = dispatchHostCall(rawMsg, data);
-				return this.hostValueToQuickJSHandle(result, (rejected) =>
-					serializeError(
+				return this.hostValueToQuickJSHandle(result, (rejected) => {
+					const sanitised = sanitiseForTransfer(
+						rejected,
+						quickjsTransferProbe,
+						rawMsg,
+						data,
+						this.diagnosticBudget(),
+					);
+					if (sanitised !== undefined) return sanitised;
+					return serializeError(
 						untransferableItemError(
 							rejected,
 							quickjsTransferProbe,
@@ -1129,8 +1141,8 @@ export class QuickJsBridge implements RuntimeBridge {
 							data,
 							this.diagnosticBudget(),
 						),
-					),
-				);
+					);
+				});
 			} catch (err) {
 				return this.hostValueToQuickJSHandle(serializeError(err));
 			}
@@ -1147,7 +1159,7 @@ export class QuickJsBridge implements RuntimeBridge {
 	 */
 	private hostValueToQuickJSHandle(
 		value: unknown,
-		onTransferFailure?: (rejected: unknown) => ErrorSentinel,
+		onTransferFailure?: (rejected: unknown) => unknown,
 	): import('quickjs-emscripten').QuickJSHandle {
 		if (!this.vm) throw new Error('Context not initialized');
 
@@ -1193,7 +1205,7 @@ export class QuickJsBridge implements RuntimeBridge {
 
 	private transferFailureHandle(
 		value: unknown,
-		onTransferFailure?: (rejected: unknown) => ErrorSentinel,
+		onTransferFailure?: (rejected: unknown) => unknown,
 	): import('quickjs-emscripten').QuickJSHandle {
 		if (!this.vm) throw new Error('Context not initialized');
 		if (!onTransferFailure) return this.vm.undefined;

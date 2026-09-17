@@ -1,5 +1,6 @@
 import { types } from 'node:util';
 
+import { TRANSFER_SANITISED_KEY, TRANSFER_UNUSABLE_KEY } from '../runtime/transfer';
 import type { WorkflowData } from '../types';
 import { ExpressionError } from '../types';
 
@@ -206,11 +207,11 @@ function walk(
 	return { path, descriptor: describe(value) };
 }
 
-function buildError(
+function refusalMessage(
 	nodeName: string | undefined,
 	found: TransferRejection | undefined,
 	stopped: boolean,
-): ExpressionError {
+): string {
 	const source = nodeName === undefined ? 'an upstream node' : `node '${nodeName}'`;
 	let where: string;
 	let cause: string;
@@ -221,8 +222,16 @@ function buildError(
 		where = found.path === '' ? 'the item' : `the value at ${found.path}`;
 		cause = found.descriptor === undefined ? '' : ` (${found.descriptor})`;
 	}
+	return `Can't read item from ${source}: ${where} cannot be used in an expression${cause}`;
+}
+
+function buildError(
+	nodeName: string | undefined,
+	found: TransferRejection | undefined,
+	stopped: boolean,
+): ExpressionError {
 	return new ExpressionError(
-		`Can't read item from ${source}: ${where} cannot be used in an expression${cause}`,
+		refusalMessage(nodeName, found, stopped),
 		nodeName === undefined ? {} : { nodeCause: nodeName },
 	);
 }
@@ -276,5 +285,83 @@ export function untransferableItemError(
 		return buildError(nodeName, found, state.exhausted);
 	} catch {
 		return buildError(nodeName, undefined, false);
+	}
+}
+
+interface SanitiseState {
+	probe: TransferProbe;
+	deadline: number;
+	nodeName: string | undefined;
+}
+
+function marker(state: SanitiseState, path: string, descriptor: string | undefined): object {
+	return {
+		[TRANSFER_UNUSABLE_KEY]: true,
+		message: refusalMessage(state.nodeName, { path, descriptor }, false),
+	};
+}
+
+function sanitiseMembers(
+	state: SanitiseState,
+	value: object,
+	path: string,
+	depth: number,
+): unknown {
+	const members = ownMembers(value, path);
+	if (members === undefined) return marker(state, path, describe(value));
+
+	const copy: Record<string, unknown> = {};
+	for (const member of members) {
+		if (!('value' in member.descriptor)) {
+			copy[member.key] = marker(state, member.path, 'a getter');
+			continue;
+		}
+		copy[member.key] = sanitiseValue(state, member.descriptor.value, member.path, depth + 1);
+	}
+	return Array.isArray(value) ? Object.values(copy) : copy;
+}
+
+function sanitiseValue(state: SanitiseState, value: unknown, path: string, depth: number): unknown {
+	if (alwaysTransferable(value)) return value;
+	if (Date.now() > state.deadline) return marker(state, path, 'the search for it stopped early');
+	try {
+		if (state.probe(value)) return value;
+	} catch {}
+	if (value === null || typeof value !== 'object') return marker(state, path, describe(value));
+	if (depth >= MAX_RECURSION_DEPTH) return marker(state, path, 'the search for it stopped early');
+	// A proxy rebuilds from its keys; anything else with a kind of its own (a Map, a promise)
+	// would rebuild into the wrong thing, so it stays refused.
+	const kind = describe(value);
+	if (kind !== undefined && !types.isProxy(value)) return marker(state, path, kind);
+	return sanitiseMembers(state, value, path, depth);
+}
+
+/**
+ * Rebuild `value` with every member the engine refuses replaced by a marker the runtime
+ * turns into a throwing read, so a sibling key still crosses. Returns undefined when the
+ * rebuilt value is itself refused.
+ */
+export function sanitiseForTransfer(
+	value: unknown,
+	transferProbe: TransferProbe,
+	rawMsg: unknown,
+	data: WorkflowData,
+	budgetMs: number,
+): object | undefined {
+	let nodeName: string | undefined;
+	try {
+		nodeName = nodeNameForCall(rawMsg, data);
+	} catch {}
+	try {
+		const state: SanitiseState = {
+			probe: transferProbe,
+			deadline: Date.now() + budgetMs,
+			nodeName,
+		};
+		const sanitised = sanitiseValue(state, value, '', 0);
+		const envelope = { [TRANSFER_SANITISED_KEY]: true, value: sanitised };
+		return transferProbe(envelope) ? envelope : undefined;
+	} catch {
+		return undefined;
 	}
 }
