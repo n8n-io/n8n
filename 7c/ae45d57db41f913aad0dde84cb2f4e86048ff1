@@ -1,0 +1,31 @@
+packages/testing/playwright/README.md
+  s_6292f7a6ebb209::t_172814199a3269 208-211
+packages/testing/playwright/tests/e2e/api/manual-run-outcome.spec.ts
+  s_6292f7a6ebb209::t_53735413132586 29
+packages/testing/containers/services/engine.ts
+  s_6292f7a6ebb209::t_9284e3375d149b 15
+packages/testing/playwright/services/workflow-api-helper.ts
+  s_6292f7a6ebb209::t_f52881b328838c 145-147,154-157
+packages/testing/playwright/playwright-projects.ts
+  s_6292f7a6ebb209::t_35b4f7b475a5c6 243-244
+.github/workflows/ci-pull-requests.yml
+  s_6292f7a6ebb209::t_49f6c3c37f91fb 368-369
+packages/testing/playwright/fixtures/base.ts
+  s_6292f7a6ebb209::t_a51b12202980ca 111-112
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "7cae45d57db41f913aad0dde84cb2f4e86048ff1",
+  "prompts": {},
+  "sessions": {
+    "s_6292f7a6ebb209": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "79d76b24-efed-47cf-aba8-09fbf6fffd6a",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}
