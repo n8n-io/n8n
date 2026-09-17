@@ -83,6 +83,7 @@ function makeExecutionStore(overrides: Partial<ExecutionRecord> = {}): Execution
 		loadExecution: vi.fn().mockResolvedValue(execution),
 		transitionStatus: vi.fn().mockResolvedValue(true),
 		finishExecution: vi.fn().mockResolvedValue(true),
+		refreshLiveStatus: vi.fn(),
 	};
 }
 
@@ -751,7 +752,8 @@ describe('StepReadyHandler waits', () => {
 	it('suspends the step and announces no settlement when the executor declares a wait', async () => {
 		const stepStore = makeStepStore();
 		const queue = makeQueue();
-		const handler = makeHandler(makeExecutionStore(), stepStore, queue, {
+		const executionStore = makeExecutionStore();
+		const handler = makeHandler(executionStore, stepStore, queue, {
 			v1StepExecutor: makeExecutor({ wait: timeWait }),
 		});
 
@@ -763,6 +765,8 @@ describe('StepReadyHandler waits', () => {
 		expect(stepStore.completeStep).not.toHaveBeenCalled();
 		expect(stepStore.failStep).not.toHaveBeenCalled();
 		expect(queue.publish).not.toHaveBeenCalled();
+		// the execution reports `waiting` once this was its last runnable step
+		expect(executionStore.refreshLiveStatus).toHaveBeenCalledExactlyOnceWith('exec-1');
 	});
 
 	it('suspends a wait that only a resume request ends', async () => {

@@ -136,8 +136,13 @@ export class StepReadyHandler {
 		if (!recorded) return;
 
 		// A wait is no outcome: nothing settled, so nothing is announced and no
-		// planning follows. TODO(CAT-2928): publish `step:waiting` so the UI can show it.
-		if (run.kind === 'wait') return;
+		// planning follows. The execution's own status follows the step's, so it
+		// reports `waiting` once this was the last step that could run.
+		// TODO(CAT-2928): publish `step:waiting` so the UI can show it.
+		if (run.kind === 'wait') {
+			await this.executionStore.refreshLiveStatus(execution.id);
+			return;
+		}
 
 		// Before the settled event, or the execution could announce its end first.
 		// Outputs ride along so a consumer needs no read to render them.

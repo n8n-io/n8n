@@ -63,9 +63,12 @@ export class StepSettledHandler {
 
 		// If we've queued steps, we know the execution isn't done yet, so we
 		// definitely don't need to mark it finished.
-		if (queued > 0) return;
+		if (queued === 0) await this.finishExecutionIfDone(execution);
 
-		await this.finishExecutionIfDone(execution);
+		// The steps decide the execution's status, and this settlement changed
+		// one, so read it off them again. An execution this call just finished is
+		// no longer live, which leaves it alone.
+		await this.executionStore.refreshLiveStatus(execution.id);
 	}
 
 	private async failExecution(execution: ExecutionRecord): Promise<void> {
