@@ -33,6 +33,27 @@ export class CreateWorkflowStepExecution1784890100000 implements MigrationInterf
 						comment: 'Name and message of the error that failed this step.',
 					},
 					{
+						name: 'wait',
+						type: 'jsonb',
+						isNullable: true,
+						comment:
+							'What the step is waiting for, as its executor declared it. Persisted without inspection and read back on resume.',
+					},
+					{
+						name: 'wait_till',
+						type: 'timestamptz',
+						precision: 3,
+						isNullable: true,
+						comment: "The wait's deadline, lifted out of `wait` so the sweep can index it.",
+					},
+					{
+						name: 'resume',
+						type: 'jsonb',
+						isNullable: true,
+						comment:
+							"What ended the step's wait, recorded when it is resumed. Persisted without inspection.",
+					},
+					{
 						name: 'created_at',
 						type: 'timestamptz',
 						precision: 3,
@@ -61,6 +82,12 @@ export class CreateWorkflowStepExecution1784890100000 implements MigrationInterf
 						columnNames: ['execution_id'],
 						where: "status = 'failed'",
 					},
+					// The sweep reads waiting rows only, so the index is partial.
+					{
+						name: 'idx_workflow_step_execution_wait_till',
+						columnNames: ['wait_till'],
+						where: "status = 'waiting'",
+					},
 				],
 				foreignKeys: [
 					{
@@ -74,7 +101,7 @@ export class CreateWorkflowStepExecution1784890100000 implements MigrationInterf
 					{
 						name: 'chk_workflow_step_execution_status',
 						expression:
-							"status IN ('queued', 'running', 'completed', 'failed', 'skipped', 'cancelled')",
+							"status IN ('queued', 'running', 'waiting', 'completed', 'failed', 'skipped', 'cancelled')",
 					},
 				],
 			}),
