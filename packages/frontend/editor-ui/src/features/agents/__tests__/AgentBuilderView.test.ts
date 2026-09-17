@@ -359,7 +359,7 @@ const baseTextFn = (
 	options?: { adjustToNumber?: number; interpolate?: Record<string, string | number> },
 ) => {
 	const map: Record<string, string> = {
-		'agents.builder.preview.button': 'Test',
+		'agents.builder.preview.button': 'Test agent',
 		'agents.builder.preview.close.ariaLabel': 'Close test',
 		'projects.menu.personal': 'Personal',
 	};
