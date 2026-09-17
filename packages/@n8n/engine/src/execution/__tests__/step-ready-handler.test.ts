@@ -516,6 +516,27 @@ describe('StepReadyHandler', () => {
 		expect(queue.publish).not.toHaveBeenCalled();
 	});
 
+	it('runs the step when the execution is waiting', async () => {
+		// the step resumed, and the execution reads `waiting` until this run lands,
+		// so refusing here would strand the step it just claimed
+		const stepStore = makeStepStore();
+		const queue = makeQueue();
+		const executor = makeExecutor();
+		const handler = makeHandler(makeExecutionStore({ status: 'waiting' }), stepStore, queue, {
+			v1StepExecutor: executor,
+		});
+
+		await handler.handle(event);
+
+		expect(executor.execute).toHaveBeenCalledOnce();
+		expect(stepStore.completeStep).toHaveBeenCalledWith('step-a', [[{ json: { ok: true } }]]);
+		expect(queue.publish).toHaveBeenCalledExactlyOnceWith({
+			type: 'step:settled',
+			executionId: 'exec-1',
+			stepId: 'step-a',
+		});
+	});
+
 	it('does not report completion when the lifecycle event is not recorded', async () => {
 		const stepStore = makeStepStore({}, { completeStep: vi.fn().mockResolvedValue(false) });
 		const queue = makeQueue();

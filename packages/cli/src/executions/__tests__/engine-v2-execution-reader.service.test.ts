@@ -72,10 +72,11 @@ describe('EngineV2ExecutionReader', () => {
 		it('maps supported statuses and drops statuses that the DP cannot match', async () => {
 			await reader.findMany({ ...query, status: ['success', 'crashed', 'waiting'] }, 'all');
 			expect(dataPlane.searchExecutions).toHaveBeenCalledWith(
-				expect.objectContaining({ status: ['completed'] }),
+				expect.objectContaining({ status: ['waiting', 'completed'] }),
 			);
 			dataPlane.searchExecutions.mockClear();
-			await reader.findMany({ ...query, status: ['crashed', 'waiting'] }, 'all');
+			// `crashed` has no v2 counterpart, so nothing is left to search for
+			await reader.findMany({ ...query, status: ['crashed'] }, 'all');
 			expect(dataPlane.searchExecutions).not.toHaveBeenCalled();
 		});
 
@@ -223,6 +224,7 @@ describe('EngineV2ExecutionReader', () => {
 		it.each<[ExecutionStatus, ExecutionStatusV1, boolean]>([
 			['queued', 'new', false],
 			['running', 'running', false],
+			['waiting', 'waiting', false],
 			['completed', 'success', true],
 			['failed', 'error', false],
 			['cancelled', 'canceled', false],
