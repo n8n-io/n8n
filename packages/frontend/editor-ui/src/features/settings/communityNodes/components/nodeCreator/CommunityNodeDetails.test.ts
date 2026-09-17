@@ -49,6 +49,7 @@ vi.mock('@/features/credentials/credentials.store', () => ({
 vi.mock('@/features/shared/nodeCreator/nodeCreator.store', () => ({
 	useNodeCreatorStore: vi.fn(() => ({
 		actions: [],
+		mergedNodes: [],
 		removeNodeFromMergedNodes,
 	})),
 }));
