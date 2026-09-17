@@ -1396,10 +1396,10 @@ describe('TelemetryEventRelay', () => {
 	});
 
 	describe('credentials events', () => {
-		it('should track on `credentials-created` event', () => {
+		it.each([0, 18])('tracks description length %i on creation', (descriptionLength) => {
 			const event: RelayEventMap['credentials-created'] = {
 				credentialName: 'My GitHub account',
-				credentialDescriptionLength: 0,
+				credentialDescriptionLength: descriptionLength,
 				user: {
 					id: 'user123',
 					email: 'user@example.com',
@@ -1426,8 +1426,8 @@ describe('TelemetryEventRelay', () => {
 					user_role: GLOBAL_OWNER_ROLE.slug,
 					credential_type: 'github',
 					credential_id: 'cred123',
-					has_description: false,
-					description_length: 0,
+					has_description: descriptionLength > 0,
+					description_length: descriptionLength,
 					project_id: 'project123',
 					project_type: 'personal',
 					is_private: false,

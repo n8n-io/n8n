@@ -15,6 +15,28 @@ import {
 
 const BASE_URL = 'http://localhost:5678';
 
+describe('N8nClient.createCredential', () => {
+	afterEach(() => vi.unstubAllGlobals());
+
+	it.each([undefined, null, 'Production reports'])(
+		'sends description %s as optional credential metadata',
+		async (description) => {
+			const fetchMock = stubFetch({ data: { id: 'credential-1' } });
+			const data = { accessToken: 'placeholder' };
+			await new N8nClient(BASE_URL).createCredential('Account A', 'slackApi', data, description);
+			const [url, init] = fetchMock.mock.calls[0];
+			expect(url).toBe(`${BASE_URL}/rest/credentials`);
+			if (typeof init?.body !== 'string') throw new Error('Expected a JSON request body.');
+			expect(jsonParse(init.body)).toEqual({
+				name: 'Account A',
+				type: 'slackApi',
+				data,
+				...(description !== undefined ? { description } : {}),
+			});
+		},
+	);
+});
+
 describe('N8nClient.sendMessage', () => {
 	afterEach(() => vi.unstubAllGlobals());
 

@@ -942,6 +942,25 @@ describe('useCredentialOAuth', () => {
 			);
 		});
 
+		it('tracks saved description metadata through quick connect', async () => {
+			const credentialsStore = setupSuccessfulOAuthFlow();
+			credentialsStore.createNewCredential.mockResolvedValue({
+				...createdCredential,
+				description: 'Production reports',
+			});
+			await useCredentialOAuth().createAndAuthorize('slackOAuth2Api');
+
+			for (const event of [
+				TELEMETRY_EVENT.CREDENTIALS.USER_CREATED_CREDENTIALS,
+				TELEMETRY_EVENT.CREDENTIALS.USER_SAVED_CREDENTIALS,
+			]) {
+				const calls = mockTrack.mock.calls.filter(([name]) => name === event);
+				expect(calls).toHaveLength(1);
+				expect(calls[0][1]).toMatchObject({ has_description: true, description_length: 18 });
+				expect(calls[0][1]).not.toHaveProperty('description');
+			}
+		});
+
 		it('should track "User created credentials" after credential creation', async () => {
 			setupSuccessfulOAuthFlow();
 

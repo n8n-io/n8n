@@ -177,6 +177,28 @@ describe('CredentialsController', () => {
 			expect(newApiKey).toEqual(createdCredentials);
 		});
 
+		it.each([null, 'Production reports'])(
+			'emits the saved description length for %s',
+			async (description) => {
+				const payload = { ...createNewCredentialsPayload(), description: 'Draft description' };
+				const { data: _data, ...payloadWithoutData } = payload;
+				const created = { ...createdCredentialsWithScopes(payloadWithoutData), description };
+				createUnmanagedCredentialSpy.mockResolvedValue(created);
+				findCredentialOwningProjectSpy.mockResolvedValue(
+					mock<Project>({ id: 'project-1', type: 'team' }),
+				);
+
+				await credentialsController.createCredentials(req, res, payload);
+
+				const [, eventPayload] = emitSpy.mock.calls[0];
+				expect(eventPayload).toMatchObject({
+					credentialDescriptionLength: description?.length ?? 0,
+				});
+				expect(eventPayload).not.toHaveProperty('description');
+				expect(eventPayload).not.toHaveProperty('credentialDescription');
+			},
+		);
+
 		it('should emit "credentials-created" with jweEnabled true when payload enables JWE', async () => {
 			const newCredentialsPayload = createNewCredentialsPayload({
 				data: { clientId: 'cid', jweEnabled: true },

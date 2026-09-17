@@ -1360,6 +1360,100 @@ describe('CredentialEdit', () => {
 			return { credentialsStore, uiStore, ...renderResult };
 		};
 
+		test.each([null, 'Production reports'])(
+			'tracks the saved description %s on creation and save',
+			async (description) => {
+				const credentialType: ICredentialType = {
+					name: 'testApi',
+					displayName: 'Test API',
+					properties: [],
+				};
+				const { credentialsStore, pinia } = setupNewCredential(credentialType);
+				credentialsStore.createNewCredential.mockResolvedValue(
+					createCredentialResponse({ type: credentialType.name, description }),
+				);
+				const { getByTestId } = renderComponent({
+					props: {
+						activeId: credentialType.name,
+						modalName: CREDENTIAL_EDIT_MODAL_KEY,
+						mode: 'new',
+					},
+					pinia,
+				});
+				await waitFor(() => expect(credentialsStore.getNewCredentialName).toHaveBeenCalled());
+				await userEvent.click(within(getByTestId('credential-save-button')).getByRole('button'));
+
+				for (const event of [
+					TELEMETRY_EVENT.CREDENTIALS.USER_CREATED_CREDENTIALS,
+					TELEMETRY_EVENT.CREDENTIALS.USER_SAVED_CREDENTIALS,
+				]) {
+					const calls = telemetryTrackMock.mock.calls.filter(([name]) => name === event);
+					expect(calls).toHaveLength(1);
+					expect(calls[0][1]).toMatchObject({
+						has_description: description !== null,
+						description_length: description?.length ?? 0,
+					});
+					expect(calls[0][1]).not.toHaveProperty('description');
+				}
+			},
+		);
+
+		test('tracks a direct OAuth save with metadata from the saved response', async () => {
+			const { credentialsStore, getByTestId, getByDisplayValue } = setupExistingOAuthCredential();
+			credentialsStore.updateCredential.mockResolvedValue(
+				createCredentialResponse({
+					id: 'oauth-cred',
+					type: oAuth2Api.name,
+					description: 'Production reports',
+				}),
+			);
+			await waitFor(() => expect(getByDisplayValue('client')).toBeVisible());
+			const clientIdInput = getByDisplayValue('client');
+			await userEvent.clear(clientIdInput);
+			await userEvent.type(clientIdInput, 'updated-client');
+			await userEvent.tab();
+			const saveButton = within(getByTestId('credential-save-button')).getByRole('button');
+			await waitFor(() => expect(saveButton).not.toBeDisabled());
+			await userEvent.click(saveButton);
+			await waitFor(() => expect(credentialsStore.updateCredential).toHaveBeenCalled());
+			const calls = telemetryTrackMock.mock.calls.filter(
+				([event]) => event === TELEMETRY_EVENT.CREDENTIALS.USER_SAVED_CREDENTIALS,
+			);
+			expect(calls).toHaveLength(1);
+			expect(calls[0][1]).toMatchObject({ has_description: true, description_length: 18 });
+			expect(calls[0][1]).not.toHaveProperty('description');
+		});
+
+		test.each(['success', 'error'])(
+			'tracks one save after an OAuth %s callback',
+			async (result) => {
+				const { credentialsStore, getByTestId } = setupExistingOAuthCredential();
+				credentialsStore.updateCredential.mockResolvedValue(
+					createCredentialResponse({
+						id: 'oauth-cred',
+						type: oAuth2Api.name,
+						description: 'Production reports',
+					}),
+				);
+				await waitFor(() => expect(getByTestId('quick-connect-button')).toBeVisible());
+				await userEvent.click(getByTestId('quick-connect-button'));
+				await waitFor(() => expect(credentialsStore.oAuth2Authorize).toHaveBeenCalled());
+				const savedEvents = () =>
+					telemetryTrackMock.mock.calls.filter(
+						([event]) => event === TELEMETRY_EVENT.CREDENTIALS.USER_SAVED_CREDENTIALS,
+					);
+				expect(savedEvents()).toHaveLength(0);
+				broadcastMessageListener?.({ data: result } as MessageEvent);
+				await waitFor(() => expect(savedEvents()).toHaveLength(1));
+				expect(savedEvents()[0][1]).toMatchObject({
+					has_description: true,
+					description_length: 18,
+					is_valid: result === 'success',
+				});
+				expect(savedEvents()[0][1]).not.toHaveProperty('description');
+			},
+		);
+
 		test('closes the modal after saving credentials that cannot be tested when closeOnSave is enabled', async () => {
 			const credentialType = {
 				name: 'testApi',

@@ -25,8 +25,8 @@ It does not measure the share of all stored credentials that have a description.
 ## Correctness
 
 The correctness metric is the percentage of eval runs in which the assistant
-selects the intended credential from two credentials of the same type using
-their descriptions.
+selects the credential whose description matches the request when two
+credentials share one type.
 
 Use neutral credential names. Give the credentials different purposes in their
 descriptions. Ask for one purpose without naming the credential.
