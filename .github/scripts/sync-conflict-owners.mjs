@@ -254,7 +254,17 @@ export function buildOutputs({
 			? [
 					'',
 					'> [!NOTE]',
-					'> `pnpm-lock.yaml` still carries its conflict markers. Resolve the other conflicts first. Then regenerate it with `pnpm install --lockfile-only` and commit the result.',
+					'> `pnpm-lock.yaml` still carries conflict markers. Resolve the code and package manifests first.',
+					'> Then restore the `3.x` baseline and regenerate the lockfile:',
+					'>',
+					'> ```bash',
+					'> git show HEAD^1:pnpm-lock.yaml > pnpm-lock.yaml',
+					'> pnpm install --lockfile-only --no-frozen-lockfile',
+					'> pnpm install --frozen-lockfile --trust-lockfile',
+					'> ```',
+					'>',
+					'> `HEAD^1` is the `3.x` parent. This baseline prevents unrelated semver drift.',
+					'> Do not delete the lockfile. Do not ask pnpm to interpret conflict markers.',
 				]
 			: []),
 		'',

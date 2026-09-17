@@ -170,14 +170,28 @@ you see exactly what clashed — and the required checks stay red until they're 
 can't be merged half-resolved. Non-lockfile mechanical files arrive **pre-resolved** (listed
 in the PR under "Auto-resolved for you"), so only the code and lockfile conflicts need you:
 
+The `automation:v3-sync` label dispatches cat-bot once for each head SHA. Cat-bot updates
+the same draft PR and posts a result comment. It never merges the PR. A human reviews and
+merges the PR.
+
 ```bash
 git fetch origin sync/master-to-3x && git switch sync/master-to-3x
 # fix the conflict markers, then commit them in ONE commit of your own
 git push origin sync/master-to-3x
 ```
 
-If the PR says the lockfile was **deferred**, resolve the other conflicts first. Then
-regenerate it with `pnpm install --lockfile-only` and include the result in your fix commit.
+If the PR says the lockfile was **deferred**, resolve the code and package manifests first.
+Then restore the `3.x` lockfile baseline and regenerate it:
+
+```bash
+git show HEAD^1:pnpm-lock.yaml > pnpm-lock.yaml
+pnpm install --lockfile-only --no-frozen-lockfile
+pnpm install --frozen-lockfile --trust-lockfile
+```
+
+Before you create the resolution commit, `HEAD^1` is the `3.x` parent of the conflict merge.
+This baseline prevents unrelated semver drift. Do not delete the lockfile. Do not ask pnpm to
+interpret conflict markers. Include the regenerated lockfile in your fix commit.
 
 Watch for the **"Deleted on one side, changed on the other"** section. Git leaves no markers
 for a delete/modify, so the branch looks clean where it is not: the merge keeps `3.x`'s side

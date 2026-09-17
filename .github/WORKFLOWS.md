@@ -634,6 +634,16 @@ the conflict — the breaking-commit authors and the `master` commits that touch
 files — via `sync-conflict-owners.mjs`, posts to `#alerts-v3-sync`, and pauses further syncs
 until it is resolved and merged normally. Delete/modify conflicts have no markers to carry,
 so they are resolved toward `3.x` and listed as an explicit decision in the PR body.
+
+| Resolver property | Behavior |
+|-------------------|----------|
+| Trigger | The `automation:v3-sync` label dispatches cat-bot. |
+| Deduplication | Cat-bot runs once for each PR head SHA. |
+| Update target | Cat-bot updates the same draft PR. |
+| Lock validation | Cat-bot runs the CI-equivalent `pnpm install --frozen-lockfile --trust-lockfile` check. |
+| Result | Cat-bot posts a result comment on the PR. |
+| Merge authority | Cat-bot never merges. A human reviews and merges the PR. |
+
 `build-v3-nightly.yml` publishes `n8nio/n8n:v3-nightly[-<date>]` images from `3.x`
 by calling `docker-build-push.yml` with `ref: 3.x` + `date_tag`. On Mondays it also
 retags that run's n8n + runners manifests as a release candidate (by digest on GHCR, so

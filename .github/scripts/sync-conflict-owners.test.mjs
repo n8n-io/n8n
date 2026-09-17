@@ -225,8 +225,18 @@ test('buildOutputs carries the regen instruction when the lockfile was deferred'
 		owners: [],
 		lockfileDeferred: true,
 	});
-	assert.match(out.body, /still carries its conflict markers/);
-	assert.match(out.body, /pnpm install --lockfile-only/);
+	const baseline = 'git show HEAD^1:pnpm-lock.yaml > pnpm-lock.yaml';
+	const regenerate = 'pnpm install --lockfile-only --no-frozen-lockfile';
+	const validate = 'pnpm install --frozen-lockfile --trust-lockfile';
+
+	assert.match(out.body, /still carries conflict markers/);
+	assert.ok(out.body.includes(baseline));
+	assert.ok(out.body.includes(regenerate));
+	assert.ok(out.body.includes(validate));
+	assert.ok(out.body.indexOf(baseline) < out.body.indexOf(regenerate));
+	assert.ok(out.body.indexOf(regenerate) < out.body.indexOf(validate));
+	assert.match(out.body, /Do not delete the lockfile/);
+	assert.match(out.body, /Do not ask pnpm to interpret conflict markers/);
 });
 
 test('buildOutputs names the master commit behind each conflicted file', () => {
