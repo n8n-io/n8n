@@ -360,7 +360,7 @@ const baseTextFn = (
 ) => {
 	const map: Record<string, string> = {
 		'agents.builder.preview.button': 'Test agent',
-		'agents.builder.preview.close.ariaLabel': 'Close test',
+		'agents.builder.preview.close.ariaLabel': 'Hide test',
 		'projects.menu.personal': 'Personal',
 	};
 	if (key === 'agents.builder.externalUpdate.time') {
