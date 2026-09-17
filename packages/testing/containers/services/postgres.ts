@@ -159,7 +159,8 @@ export class PostgresHelper {
 
 	/** Run an arbitrary SQL statement and return the raw psql output. */
 	async exec(sql: string): Promise<string> {
-		return await this.execIn(this.meta.database, sql);
+		const { output } = await this.runIn(this.meta.database, sql);
+		return output;
 	}
 
 	/**
@@ -169,7 +170,7 @@ export class PostgresHelper {
 	 * needs no change here.
 	 */
 	async truncateEngineDatabase(): Promise<void> {
-		await this.execIn(
+		const result = await this.runIn(
 			ENGINE_DATABASE,
 			`DO $$
 			DECLARE target text;
@@ -182,10 +183,15 @@ export class PostgresHelper {
 				END LOOP;
 			END $$;`,
 		);
+
+		// The caller gets no rows back, so a failure has no other way to show.
+		if (result.exitCode !== 0) {
+			throw new Error(`Failed to empty the engine database: ${result.output}`);
+		}
 	}
 
-	private async execIn(database: string, sql: string): Promise<string> {
-		const result = await this.container.exec([
+	private async runIn(database: string, sql: string) {
+		return await this.container.exec([
 			'psql',
 			'-U',
 			this.meta.username,
@@ -198,7 +204,6 @@ export class PostgresHelper {
 			'-c',
 			sql,
 		]);
-		return result.output;
 	}
 
 	/** Reset pg_stat_statements counters — call before measuring. */
