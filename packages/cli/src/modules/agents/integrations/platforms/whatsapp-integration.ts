@@ -9,6 +9,7 @@ import type {
 	StreamChunk,
 	StreamOptions,
 } from 'chat';
+import { InstanceSettings } from 'n8n-core';
 import { UserError } from 'n8n-workflow';
 
 import type { WhatsAppRawMessage } from '@chat-adapter/whatsapp';
@@ -23,6 +24,7 @@ import {
 import type { SuspendComponent } from '../component-mapper';
 import { assertCredentialNotClaimed } from '../credential-claim';
 import { loadChatSdk, loadWhatsAppAdapter } from '../esm-loader';
+import { deriveWhatsAppVerifyToken } from '../integration-helpers';
 import { resolveIntegrationActionDefinitions } from '../integration-tool-definitions';
 
 type ChatSdk = Awaited<ReturnType<typeof loadChatSdk>>;
@@ -132,6 +134,7 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 	constructor(
 		private readonly logger: Logger,
 		private readonly agentRepository: AgentRepository,
+		private readonly instanceSettings: InstanceSettings,
 	) {
 		super();
 	}
@@ -149,7 +152,7 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 			accessToken: this.extractAccessToken(ctx.credential),
 			appSecret: this.extractAppSecret(ctx.credential),
 			phoneNumberId: this.extractPhoneNumberId(ctx.credential),
-			verifyToken: this.extractVerifyToken(ctx.credential),
+			verifyToken: this.deriveVerifyToken(ctx.agentId),
 			userName: WHATSAPP_BOT_USER_NAME,
 			logger: this.createAdapterLogger(),
 		};
@@ -275,12 +278,8 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 		);
 	}
 
-	private extractVerifyToken(credential: Record<string, unknown>): string {
-		return this.requireCredentialField(
-			credential,
-			'verifyToken',
-			'The WhatsApp credential is missing a Webhook Verify Token.',
-		);
+	private deriveVerifyToken(agentId: string): string {
+		return deriveWhatsAppVerifyToken(this.instanceSettings.encryptionKey, agentId);
 	}
 
 	private requireCredentialField(

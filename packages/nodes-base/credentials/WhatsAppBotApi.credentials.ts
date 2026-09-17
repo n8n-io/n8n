@@ -20,7 +20,8 @@ export class WhatsAppBotApi implements ICredentialType {
 			typeOptions: { password: true },
 			default: '',
 			required: true,
-			description: 'System User access token from the WhatsApp > API Setup page of the Meta app',
+			description:
+				'System User access token from the WhatsApp > API Setup page of the Meta app. The token shown there by default is temporary and expires in 24 hours. Use a permanent System User access token instead.',
 		},
 		{
 			displayName: 'Phone Number ID',
@@ -47,16 +48,6 @@ export class WhatsAppBotApi implements ICredentialType {
 			required: true,
 			description:
 				'From App Settings > Basic in the Meta app. Used to verify inbound webhook signatures.',
-		},
-		{
-			displayName: 'Webhook Verify Token',
-			name: 'verifyToken',
-			type: 'string',
-			typeOptions: { password: true },
-			default: '',
-			required: true,
-			description:
-				'A secret you choose. Enter the same value as the Verify Token when you configure this webhook URL in the Meta app.',
 		},
 	];
 

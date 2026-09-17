@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests intentionally reference unbound methods */
 import type { AgentIntegrationConfig } from '@n8n/api-types';
+import type { InstanceSettings } from 'n8n-core';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -28,6 +29,7 @@ function makeController({
 	channelStatusRepository = mock<AgentChannelStatusRepository>(),
 	statusReporter = mock<AgentChannelStatusReporter>(),
 	agentUpdateBroadcaster = mock<AgentUpdateBroadcaster>(),
+	instanceSettings = mock<InstanceSettings>(),
 }: {
 	managementService?: Mocked<AgentIntegrationManagementService>;
 	chatIntegrationService?: Mocked<ChatIntegrationService>;
@@ -36,6 +38,7 @@ function makeController({
 	channelStatusRepository?: Mocked<AgentChannelStatusRepository>;
 	statusReporter?: Mocked<AgentChannelStatusReporter>;
 	agentUpdateBroadcaster?: Mocked<AgentUpdateBroadcaster>;
+	instanceSettings?: Mocked<InstanceSettings>;
 } = {}) {
 	channelStatusRepository.findByAgentId.mockResolvedValue([]);
 	statusReporter.isLive.mockReturnValue(true);
@@ -49,6 +52,7 @@ function makeController({
 			channelStatusRepository,
 			statusReporter,
 			agentUpdateBroadcaster,
+			instanceSettings,
 		),
 		managementService,
 		chatIntegrationService,
