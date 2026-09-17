@@ -27,6 +27,7 @@ interface KafkaLoadOptions {
 	timeoutMs: number;
 	resourceSummary?: ResourceSummary;
 	requireComplete?: boolean;
+	minimumCompletionRatio?: number;
 	variant?: string;
 	minTailRateEfficiency?: number;
 	requireKeptUpStage?: boolean;
@@ -50,6 +51,7 @@ export async function runKafkaLoadTest(options: KafkaLoadOptions): Promise<Execu
 		timeoutMs: options.timeoutMs,
 		resourceSummary: options.resourceSummary,
 		requireComplete: options.requireComplete,
+		minimumCompletionRatio: options.minimumCompletionRatio,
 		variant: options.variant,
 		minTailRateEfficiency: options.minTailRateEfficiency,
 		requireKeptUpStage: options.requireKeptUpStage,

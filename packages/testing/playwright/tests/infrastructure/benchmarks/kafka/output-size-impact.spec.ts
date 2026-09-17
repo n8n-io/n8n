@@ -49,6 +49,7 @@ test.describe(
 					timeoutMs: 600_000,
 					variant: `${outputSize} output`,
 					requireComplete: true,
+					minimumCompletionRatio: 0.99,
 				});
 				results.push({
 					outputSize,

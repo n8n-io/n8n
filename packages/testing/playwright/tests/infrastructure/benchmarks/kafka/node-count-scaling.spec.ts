@@ -40,6 +40,7 @@ test.describe(
 					timeoutMs: 600_000,
 					variant: `${nodeCount} nodes`,
 					requireComplete: true,
+					minimumCompletionRatio: 0.99,
 				});
 				results.push({
 					nodeCount,

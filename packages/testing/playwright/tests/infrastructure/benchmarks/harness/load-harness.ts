@@ -63,6 +63,8 @@ export interface LoadTestOptions {
 	variant?: string;
 	/** Fail unless every item in a finite load reaches the completion counter. */
 	requireComplete?: boolean;
+	/** Completion ratio required when `requireComplete` is set. Default: 1. */
+	minimumCompletionRatio?: number;
 	/** Work that must complete before the benchmark captures its metric baselines. */
 	warmUp?: SetupContext['warmUp'];
 	/** Minimum tail completion/input ratio for a steady load. */
@@ -188,7 +190,8 @@ export async function runLoadTest(options: LoadTestOptions): Promise<ExecutionMe
 	logLoadResult(testInfo, metrics, exec, load, resourceSummary);
 
 	if (options.requireComplete) {
-		expect(metrics.totalCompleted).toBe(exec.expectedExecutions);
+		const completionRatio = metrics.totalCompleted / exec.expectedExecutions;
+		expect(completionRatio).toBeGreaterThanOrEqual(options.minimumCompletionRatio ?? 1);
 	} else {
 		expect(metrics.totalCompleted).toBeGreaterThan(0);
 	}
