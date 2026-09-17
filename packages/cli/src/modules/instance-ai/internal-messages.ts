@@ -439,14 +439,14 @@ export function buildThreadArtifactsBlock(
 
 	// Section 2: what the editor handed off that is not already a tab — a node
 	// selection is never a tab, so it always lands here.
-	const listedIds = new Set(previewArtifacts.map((artifact) => artifact.id));
+	const listedKeys = new Set(previewArtifacts.map((artifact) => `${artifact.type}:${artifact.id}`));
 	const handoffLines: string[] = [];
 	for (const attachment of resourceAttachments) {
 		if (attachment.type === 'nodes') {
 			handoffLines.push(buildNodesAttachmentLine(attachment));
 			continue;
 		}
-		if (listedIds.has(attachment.id)) continue;
+		if (listedKeys.has(`${attachment.type}:${attachment.id}`)) continue;
 		handoffLines.push(
 			formatThreadArtifactLine(
 				attachmentToThreadArtifact(attachment),

@@ -57,6 +57,9 @@ export function makeThread(): ThreadRuntime {
 		copyFullTrace: vi.fn(),
 		submitFeedback: vi.fn(),
 	});
+	thread.setActiveArtifactId = vi.fn((id) => {
+		thread.activeArtifactId = id;
+	});
 	thread.setPendingWorkflowAttachment = vi.fn((value) => {
 		thread.pendingWorkflowAttachment = value;
 	});

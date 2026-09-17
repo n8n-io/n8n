@@ -346,7 +346,7 @@ function isCurrentThreadRuntime(): boolean {
 	return store.getRuntime(thread.id) === thread;
 }
 
-function reconnectThreadAfterHydration(): void {
+function restorePendingHandoffAttachments(): void {
 	const agentAttachment = getPendingAgentAttachment(thread.id);
 	if (agentAttachment) {
 		pendingAgentAttachment.value = agentAttachment;
@@ -356,6 +356,9 @@ function reconnectThreadAfterHydration(): void {
 	if (workflowAttachment) {
 		thread.setPendingWorkflowAttachment(workflowAttachment);
 	}
+}
+
+function reconnectThreadAfterHydration(): void {
 	const draftAttachment = consumePendingDraftAttachment(thread.id);
 	if (draftAttachment) store.stageNodeSets(draftAttachment.workflowId, draftAttachment.sets);
 	void thread.loadHistoricalMessages().then(async (hydrationStatus) => {
@@ -403,6 +406,9 @@ async function syncThread() {
 	// submit cannot race past it while the thread list is still loading.
 	pendingComposerContext.value = getPendingHandoffContext(requestedThreadId);
 	pendingComposerDraft.value = getPendingComposerDraft(requestedThreadId);
+	// Apply editor hand-off attachments before any await so a first submit
+	// cannot race past them, including when SSE is already connected.
+	restorePendingHandoffAttachments();
 	// The history list is paginated, so an unknown id is resolved on its own
 	// rather than by loading the whole list.
 	if (!store.threads.some((t) => t.id === requestedThreadId)) {

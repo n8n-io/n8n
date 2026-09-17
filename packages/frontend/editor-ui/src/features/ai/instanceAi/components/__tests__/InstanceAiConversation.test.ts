@@ -141,8 +141,7 @@ describe('InstanceAiConversation', () => {
 		await vi.waitFor(() => expect(conversation.emitted('thread-missing')).toBeTruthy());
 	});
 
-	it('emits agent-attachment-restored when a pending attachment is restored on hydration', async () => {
-		thread.sseState = 'disconnected';
+	it('emits agent-attachment-restored when a pending attachment is restored', async () => {
 		stashPendingAgentAttachment('thread-1', {
 			type: 'agent',
 			id: 'agent-1',
@@ -276,7 +275,6 @@ describe('InstanceAiConversation', () => {
 
 	describe('workflow handoff without opening turn', () => {
 		it('restores a pending workflow attachment and shows the static greeting', async () => {
-			thread.sseState = 'disconnected';
 			stashPendingWorkflowAttachment('thread-1', {
 				type: 'workflow',
 				id: 'wf-1',
@@ -318,6 +316,40 @@ describe('InstanceAiConversation', () => {
 			expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('FAQ Responder');
 			expect(thread.sendMessage).not.toHaveBeenCalled();
 			expect(handleRedirectLandingSpy).not.toHaveBeenCalled();
+		});
+
+		it('restores a pending workflow attachment before loadThread resolves', async () => {
+			store.threads = [];
+			let resolveLoad!: () => void;
+			store.loadThread.mockReturnValue(
+				new Promise<void>((resolve) => {
+					resolveLoad = resolve;
+				}),
+			);
+			stashPendingWorkflowAttachment('thread-1', {
+				type: 'workflow',
+				id: 'wf-1',
+				name: 'FAQ Responder',
+			});
+
+			const renderer = createThreadComponentRenderer(
+				InstanceAiConversation,
+				{
+					global: { stubs: { InstanceAiInput: InstanceAiInputStub } },
+				},
+				() => thread,
+			);
+			renderer();
+
+			await vi.waitFor(() =>
+				expect(thread.setPendingWorkflowAttachment).toHaveBeenCalledWith({
+					type: 'workflow',
+					id: 'wf-1',
+					name: 'FAQ Responder',
+				}),
+			);
+			expect(store.loadThread).toHaveBeenCalledWith('thread-1');
+			resolveLoad();
 		});
 
 		it('fires the workflow-list auto landing handler once on hydration', async () => {

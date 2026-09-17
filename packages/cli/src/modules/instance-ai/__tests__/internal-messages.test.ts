@@ -645,6 +645,17 @@ describe('buildThreadArtifactsBlock', () => {
 		expect(block.indexOf('Digest')).toBeLessThan(block.indexOf('Agent "Triage"'));
 	});
 
+	it('lists a hand-off resource that shares an id with a preview tab of another type', () => {
+		const block = buildThreadArtifactsBlock(
+			{ artifacts: [{ type: 'workflow', id: 'shared-1', name: 'Digest' }], activeId: 'shared-1' },
+			[{ type: 'agent', id: 'shared-1', name: 'Triage', projectId: 'proj-1' }],
+		);
+
+		expect(block).toContain('opened this conversation from the editor');
+		expect(block).toContain('Agent "Triage" (id: `shared-1`');
+		expect(block).toContain('Workflow "Digest" (id: `shared-1`) [current]');
+	});
+
 	it('labels a pending agent id as pending', () => {
 		const block = buildThreadArtifactsBlock(undefined, [
 			{ type: 'agent', id: 'pending-1', name: 'New Agent', projectId: 'proj-1', pending: true },
