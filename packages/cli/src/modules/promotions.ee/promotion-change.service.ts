@@ -66,7 +66,18 @@ const REQUIRED_SCOPES = {
 type DesiredPackage = {
 	files: readonly PackageFile[];
 	manifest: PackageManifest;
-	isWorkflowArchived: (path: string) => Promise<boolean | undefined>;
+};
+
+type InstancePackage = DesiredPackage & { archiveState: ReadonlyMap<string, boolean> };
+
+type PackageDiff = {
+	changedIds: Set<string>;
+	renamedIds: Set<string>;
+	modifiedIds: Set<string>;
+	dependencyCounts: Map<string, number>;
+	desiredWorkflows: Map<string, ManifestEntry>;
+	desiredWorkflowPaths: Map<string, string>;
+	archiveCheckPaths: string[];
 };
 
 @Service()
@@ -95,15 +106,21 @@ export class PromotionChangeService {
 		await this.assertCanPreview(user, projectId, direction);
 		const branch = await this.promotionsService.readBranchPackage(projectId, direction);
 		const instance = await this.exportInstancePackage(user, projectId);
-		const rows =
+		const { base, desired } =
 			direction === 'promote'
-				? await this.buildRows({ projectId, direction, base: branch.files, desired: instance })
-				: await this.buildRows({
-						projectId,
-						direction,
-						base: instance.files,
-						desired: await this.readBranchDesired(branch, projectId),
-					});
+				? { base: branch.files, desired: instance }
+				: { base: instance.files, desired: await this.readBranchDesired(branch, projectId) };
+		const diff = this.diffPackages({ projectId, direction, base, desired });
+		// Archive state separates "archived" from "modified", so the branch is read only for those rows.
+		const archiveState =
+			direction === 'promote'
+				? instance.archiveState
+				: await readBranchArchiveState(branch, diff.archiveCheckPaths);
+		const metadata = await this.workflowRepository.findByIds(
+			[...diff.changedIds].filter((id) => diff.desiredWorkflows.has(id)),
+			{ fields: ['updatedAt', 'versionCounter'] },
+		);
+		const rows = buildPromotableResources({ ...diff, base, archiveState, metadata });
 
 		return { commitSha: branch.commitSha, changes: applyQuery(rows, query) };
 	}
@@ -120,7 +137,7 @@ export class PromotionChangeService {
 		}
 	}
 
-	private async buildRows({
+	private diffPackages({
 		projectId,
 		direction,
 		base,
@@ -130,7 +147,7 @@ export class PromotionChangeService {
 		direction: PromotionDirection;
 		base: readonly PackageFile[];
 		desired: DesiredPackage;
-	}): Promise<PromotableResource[]> {
+	}): PackageDiff {
 		const previewId = randomUUID();
 		const { manifest } = desired;
 		const changes = diffPackageFiles(base, desired.files);
@@ -176,23 +193,35 @@ export class PromotionChangeService {
 			fileChangeCount: changes.length,
 			workflowIds: [...changedIds],
 		});
-		const metadata = await this.workflowRepository.findByIds(
-			[...changedIds].filter((id) => desiredWorkflows.has(id)),
-			{ fields: ['updatedAt', 'versionCounter'] },
+		const baseWorkflowIds = new Set(
+			base.filter(({ type }) => type === 'workflow').map(({ entityId }) => entityId),
 		);
-		return await buildPromotableResources({
-			base,
-			desired,
-			desiredWorkflows,
+		const desiredWorkflowPaths = new Map(
+			desired.files
+				.filter(
+					({ type, fileName }) =>
+						type === 'workflow' && fileName === PACKAGE_ENTITY_LAYOUT.workflows.fileName,
+				)
+				.map(({ entityId, path }) => [entityId, path]),
+		);
+		const archiveCheckPaths = [...changedIds].flatMap((id) => {
+			const path = desiredWorkflowPaths.get(id);
+			return path !== undefined && desiredWorkflows.has(id) && baseWorkflowIds.has(id)
+				? [path]
+				: [];
+		});
+		return {
 			changedIds,
 			renamedIds,
 			modifiedIds,
-			metadata,
 			dependencyCounts,
-		});
+			desiredWorkflows,
+			desiredWorkflowPaths,
+			archiveCheckPaths,
+		};
 	}
 
-	private async exportInstancePackage(user: User, projectId: string): Promise<DesiredPackage> {
+	private async exportInstancePackage(user: User, projectId: string): Promise<InstancePackage> {
 		const writer = new HashingPackageWriter();
 		const archiveState = new Map<string, boolean>();
 		const { manifest } = await this.packagesService.exportPackageToWriter(
@@ -223,41 +252,43 @@ export class PromotionChangeService {
 			})),
 			{ exportRoot: PACKAGE_SUBFOLDER, projectId },
 		);
-		return { files, manifest, isWorkflowArchived: async (path) => archiveState.get(path) };
+		return { files, manifest, archiveState };
 	}
 
 	private async readBranchDesired(
 		branch: BranchPackage,
 		projectId: string,
 	): Promise<DesiredPackage> {
+		const manifestPath = `${PACKAGE_SUBFOLDER}/${MANIFEST_FILE}`;
 		const manifest = packageManifestSchema.safeParse(
-			parseBranchJson(await branch.readFile(`${PACKAGE_SUBFOLDER}/${MANIFEST_FILE}`)),
+			parseBranchJson((await branch.readFiles([manifestPath])).get(manifestPath) ?? ''),
 		);
 		if (!manifest.success) {
 			throw new BadRequestError('The package manifest on the branch cannot be read');
 		}
-		return {
-			files: branch.files,
-			manifest: scopeManifestToProject(manifest.data, projectId),
-			isWorkflowArchived: async (path) => {
-				// A workflow whose archive state cannot be read still lists as modified.
-				// Apply reports the real problem when it imports the file.
-				try {
-					return jsonParse<SerializedWorkflow>(await branch.readFile(path)).isArchived;
-				} catch {
-					return undefined;
-				}
-			},
-		};
+		return { files: branch.files, manifest: scopeManifestToProject(manifest.data, projectId) };
 	}
 }
 
-function parseBranchJson(raw: string): unknown {
+function parseBranchJson<T = unknown>(raw: string): T | undefined {
 	try {
-		return jsonParse<unknown>(raw);
+		return jsonParse<T>(raw);
 	} catch {
 		return undefined;
 	}
+}
+
+async function readBranchArchiveState(
+	branch: BranchPackage,
+	paths: readonly string[],
+): Promise<Map<string, boolean>> {
+	const files = await branch.readFiles(paths);
+	return new Map(
+		[...files].map(([path, raw]) => [
+			path,
+			parseBranchJson<SerializedWorkflow>(raw)?.isArchived ?? false,
+		]),
+	);
 }
 
 /**
@@ -367,10 +398,11 @@ function calculateDependencyImpact({
 	return { affectedWorkflowIds, dependencyCounts };
 }
 
-async function buildPromotableResources({
+function buildPromotableResources({
 	base,
-	desired,
 	desiredWorkflows,
+	desiredWorkflowPaths,
+	archiveState,
 	changedIds,
 	renamedIds,
 	modifiedIds,
@@ -378,39 +410,31 @@ async function buildPromotableResources({
 	dependencyCounts,
 }: {
 	base: readonly PackageFile[];
-	desired: DesiredPackage;
 	desiredWorkflows: ReadonlyMap<string, ManifestEntry>;
+	desiredWorkflowPaths: ReadonlyMap<string, string>;
+	archiveState: ReadonlyMap<string, boolean>;
 	changedIds: ReadonlySet<string>;
 	renamedIds: ReadonlySet<string>;
 	modifiedIds: ReadonlySet<string>;
 	metadata: ReadonlyArray<Pick<WorkflowEntity, 'id' | 'updatedAt' | 'versionCounter'>>;
 	dependencyCounts: ReadonlyMap<string, number>;
-}): Promise<PromotableResource[]> {
+}): PromotableResource[] {
 	const metadataById = new Map(metadata.map((workflow) => [workflow.id, workflow]));
 	const baseWorkflowSlugs = new Map(
 		base.filter(({ type }) => type === 'workflow').map(({ entityId, slug }) => [entityId, slug]),
 	);
-	const desiredWorkflowPaths = new Map(
-		desired.files
-			.filter(
-				({ type, fileName }) =>
-					type === 'workflow' && fileName === PACKAGE_ENTITY_LAYOUT.workflows.fileName,
-			)
-			.map(({ entityId, path }) => [entityId, path]),
-	);
-	const resources: PromotableResource[] = [];
-	for (const id of changedIds) {
+	return [...changedIds].map((id) => {
 		const entry = desiredWorkflows.get(id);
 		const workflow = metadataById.get(id);
 		const path = desiredWorkflowPaths.get(id);
 		let status: PromotableResource['status'] = 'modified';
 		if (!entry) status = 'deleted';
 		else if (!baseWorkflowSlugs.has(id)) status = 'new';
-		else if (path !== undefined && (await desired.isWorkflowArchived(path))) status = 'archived';
+		else if (path !== undefined && archiveState.get(path)) status = 'archived';
 		else if (renamedIds.has(id)) {
 			status = modifiedIds.has(id) ? 'renamed-and-modified' : 'renamed';
 		}
-		resources.push({
+		return {
 			id,
 			name: entry?.name ?? baseWorkflowSlugs.get(id) ?? id,
 			type: 'workflow',
@@ -419,7 +443,6 @@ async function buildPromotableResources({
 			updatedAt: workflow?.updatedAt.toISOString() ?? null,
 			updatedBy: null,
 			dependencyCount: dependencyCounts.get(id) ?? 0,
-		});
-	}
-	return resources;
+		};
+	});
 }

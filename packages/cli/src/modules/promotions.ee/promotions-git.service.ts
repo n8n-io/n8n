@@ -17,7 +17,11 @@ import {
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
 
-import { GIT_COMMAND_STALL_TIMEOUT_MS, PROMOTION_KEY_COMMENT } from './constants';
+import {
+	GIT_COMMAND_STALL_TIMEOUT_MS,
+	GIT_READ_CONCURRENCY,
+	PROMOTION_KEY_COMMENT,
+} from './constants';
 import { buildHttpsGitConfig, buildSshCommand, generateSshKeyPair } from './promotions-git.utils';
 import type { PromotionGitCredentials } from './promotions.types';
 
@@ -469,22 +473,34 @@ export class PromotionsGitService {
 		}
 	}
 
-	async readFileAtCommit({
+	async readFilesAtCommit({
 		paths,
 		branchName,
 		configId,
 		commitSha,
-		filePath,
+		filePaths,
 	}: Pick<GitOperation, 'paths' | 'branchName' | 'configId'> & {
 		commitSha: string;
-		filePath: string;
-	}): Promise<string> {
+		filePaths: readonly string[];
+	}): Promise<Map<string, string>> {
 		if (!COMMIT_SHA.test(commitSha)) {
 			throw new UnexpectedError('The commit SHA is not a Git object name');
 		}
+		if (filePaths.length === 0) return new Map();
 		try {
-			const git = simpleGit({ ...BASE_GIT_OPTIONS, baseDir: paths.repositoryFolder });
-			return await git.show([`${commitSha}:${filePath}`]);
+			return await this.lockCheckout(paths.repositoryFolder, async () => {
+				const git = simpleGit({
+					...BASE_GIT_OPTIONS,
+					baseDir: paths.repositoryFolder,
+					maxConcurrentProcesses: GIT_READ_CONCURRENCY,
+				});
+				const files = await Promise.all(
+					filePaths.map(
+						async (filePath) => [filePath, await git.show([`${commitSha}:${filePath}`])] as const,
+					),
+				);
+				return new Map(files);
+			});
 		} catch (error) {
 			throw this.mapGitError(error, { configId, branchName });
 		}

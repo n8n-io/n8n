@@ -914,7 +914,7 @@ describe('PromotionsService', () => {
 						'100644 blob x1\tn8n-export/projects/other-p2/project.json',
 					].join('\0') + '\0',
 			});
-			gitService.readFileAtCommit.mockResolvedValue('{"id":"w1"}');
+			gitService.readFilesAtCommit.mockResolvedValue(new Map([[workflowPath, '{"id":"w1"}']]));
 
 			const branch = await service.readBranchPackage('p1', 'apply');
 
@@ -939,13 +939,15 @@ describe('PromotionsService', () => {
 				{ entityId: 'p1', type: 'project' },
 				{ entityId: 'w1', type: 'workflow' },
 			]);
-			await expect(branch.readFile(workflowPath)).resolves.toBe('{"id":"w1"}');
-			expect(gitService.readFileAtCommit).toHaveBeenCalledWith(
+			await expect(branch.readFiles([workflowPath])).resolves.toEqual(
+				new Map([[workflowPath, '{"id":"w1"}']]),
+			);
+			expect(gitService.readFilesAtCommit).toHaveBeenCalledWith(
 				expect.objectContaining({
 					commitSha,
 					branchName: 'dev',
 					configId: CONFIG_ID,
-					filePath: workflowPath,
+					filePaths: [workflowPath],
 				}),
 			);
 		});
@@ -956,10 +958,10 @@ describe('PromotionsService', () => {
 			const branch = await service.readBranchPackage('p1', 'apply');
 
 			expect(branch).toMatchObject({ commitSha: null, files: [] });
-			await expect(branch.readFile('n8n-export/manifest.json')).rejects.toThrow(
+			await expect(branch.readFiles(['n8n-export/manifest.json'])).rejects.toThrow(
 				'no exported package',
 			);
-			expect(gitService.readFileAtCommit).not.toHaveBeenCalled();
+			expect(gitService.readFilesAtCommit).not.toHaveBeenCalled();
 		});
 
 		it('refuses to read before the direction is cloned', async () => {

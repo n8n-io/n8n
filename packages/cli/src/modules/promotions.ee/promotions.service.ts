@@ -478,18 +478,18 @@ export class PromotionsService {
 		return {
 			commitSha,
 			files: parseBaseBranchFiles(lsTreeOutput, { exportRoot: PACKAGE_SUBFOLDER, projectId }),
-			readFile: async (filePath) => {
+			readFiles: async (filePaths) => {
 				if (commitSha === null) {
 					throw new BadRequestError(
 						'The remote branch has no exported package to import. Promote to it first.',
 					);
 				}
-				return await this.gitService.readFileAtCommit({
+				return await this.gitService.readFilesAtCommit({
 					paths,
 					branchName,
 					configId: input.configId,
 					commitSha,
-					filePath,
+					filePaths,
 				});
 			},
 		};

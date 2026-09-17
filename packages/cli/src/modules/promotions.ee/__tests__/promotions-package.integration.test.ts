@@ -1416,9 +1416,11 @@ describe('Promotion base branch listing', () => {
 		expect(branch.files).toEqual([
 			expect.objectContaining({ entityId: project.id, path: projectPath }),
 		]);
-		await expect(branch.readFile(projectPath)).resolves.toBe('{"name":"Orders"}');
-		await expect(branch.readFile('n8n-export/manifest.json')).resolves.toBe(
-			'{"packageFormatVersion":"1"}',
+		await expect(branch.readFiles([projectPath, 'n8n-export/manifest.json'])).resolves.toEqual(
+			new Map([
+				[projectPath, '{"name":"Orders"}'],
+				['n8n-export/manifest.json', '{"packageFormatVersion":"1"}'],
+			]),
 		);
 
 		// A later push is read at its own commit, and the earlier commit stays readable.
@@ -1426,8 +1428,8 @@ describe('Promotion base branch listing', () => {
 		await commitAndPushRemote(remote, 'Rename');
 		const later = await service.readBranchPackage(project.id, 'apply');
 		expect(later.commitSha).not.toBe(branch.commitSha);
-		await expect(later.readFile(projectPath)).resolves.toBe('{"name":"Renamed"}');
-		await expect(branch.readFile(projectPath)).resolves.toBe('{"name":"Orders"}');
+		expect((await later.readFiles([projectPath])).get(projectPath)).toBe('{"name":"Renamed"}');
+		expect((await branch.readFiles([projectPath])).get(projectPath)).toBe('{"name":"Orders"}');
 	});
 
 	it('preserves files with matching IDs or variable slugs across collections and scopes', async () => {

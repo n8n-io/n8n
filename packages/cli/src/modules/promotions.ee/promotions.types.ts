@@ -73,7 +73,7 @@ export type PromotionOperationInput = Readonly<{
 export type BranchPackage = Readonly<{
 	commitSha: string | null;
 	files: PackageFile[];
-	readFile: (path: string) => Promise<string>;
+	readFiles: (paths: readonly string[]) => Promise<Map<string, string>>;
 }>;
 
 /**

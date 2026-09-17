@@ -584,26 +584,68 @@ describe('PromotionsGitService (git operations)', () => {
 		});
 	});
 
-	describe('readFileAtCommit', () => {
+	describe('readFilesAtCommit', () => {
 		const commitSha = 'c'.repeat(40);
+		const filePaths = [
+			'n8n-export/manifest.json',
+			'n8n-export/projects/a-p1/workflows/b-w1/workflow.json',
+		];
 		const read = async (over: Record<string, unknown> = {}) =>
-			await gitService.readFileAtCommit({
+			await gitService.readFilesAtCommit({
 				paths,
 				branchName: 'main',
 				configId,
 				commitSha,
-				filePath: 'n8n-export/manifest.json',
+				filePaths,
 				...over,
 			});
 
-		it('reads the file from the object store of the given commit', async () => {
-			mockGit.show.mockResolvedValueOnce('{"packageFormatVersion":"1"}');
+		it('reads the files of one commit in a batch with bounded concurrency', async () => {
+			mockGit.show.mockImplementation(async ([spec]: string[]) => `content of ${spec}`);
 
-			await expect(read()).resolves.toBe('{"packageFormatVersion":"1"}');
-			expect(mockGit.show).toHaveBeenCalledWith([`${commitSha}:n8n-export/manifest.json`]);
-			expect(simpleGitMock).toHaveBeenCalledWith(
-				expect.objectContaining({ baseDir: paths.repositoryFolder, trimmed: false }),
+			const files = await read();
+
+			expect([...files]).toEqual(
+				filePaths.map((filePath) => [filePath, `content of ${commitSha}:${filePath}`]),
 			);
+			expect(simpleGitMock).toHaveBeenCalledTimes(1);
+			expect(simpleGitMock).toHaveBeenCalledWith(
+				expect.objectContaining({
+					baseDir: paths.repositoryFolder,
+					trimmed: false,
+					maxConcurrentProcesses: 4,
+				}),
+			);
+		});
+
+		it('waits for the checkout lock, so a fetch in progress finishes first', async () => {
+			const fetching = createDeferredPromise();
+			mockGit.fetch.mockReturnValueOnce(fetching.promise);
+			mockGit.revparse.mockResolvedValue(`${commitSha}\n`);
+			mockGit.raw.mockResolvedValue('');
+			mockGit.show.mockResolvedValue('{}');
+			const listing = gitService.listBranchTree({
+				remoteUrl,
+				credentials,
+				paths,
+				branchName: 'main',
+				configId,
+				pathspecs: ['n8n-export/'],
+			});
+			await vi.waitFor(() => expect(mockGit.fetch).toHaveBeenCalledTimes(1));
+
+			const reading = read();
+			await new Promise((resolve) => setImmediate(resolve));
+			expect(mockGit.show).not.toHaveBeenCalled();
+
+			fetching.resolve();
+			await Promise.all([listing, reading]);
+			expect(mockGit.show).toHaveBeenCalledTimes(filePaths.length);
+		});
+
+		it('returns nothing without calling Git for an empty list', async () => {
+			await expect(read({ filePaths: [] })).resolves.toEqual(new Map());
+			expect(simpleGitMock).not.toHaveBeenCalled();
 		});
 
 		it('rejects a commit that is not an object name before calling Git', async () => {
@@ -614,7 +656,7 @@ describe('PromotionsGitService (git operations)', () => {
 		});
 
 		it('redacts a read failure', async () => {
-			mockGit.show.mockRejectedValueOnce(new Error("fatal: path 'secret' does not exist"));
+			mockGit.show.mockRejectedValue(new Error("fatal: path 'secret' does not exist"));
 
 			await expect(read()).rejects.toThrow('Could not complete the Git operation');
 			expect(JSON.stringify(logger.warn.mock.calls)).not.toContain('secret');
