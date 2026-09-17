@@ -737,6 +737,12 @@ defineExpose({
 </template>
 
 <style lang="scss" module>
+@property --instance-ai-artifacts-layout-width {
+	syntax: '<length>';
+	inherits: true;
+	initial-value: 0;
+}
+
 .chatContent {
 	flex: 1;
 	min-width: 0;
