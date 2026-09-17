@@ -70,9 +70,11 @@ export function createAskUserTool(context?: InstanceAiContext) {
 				'The UI adds a built-in "Something else" free-text input to every select question: NEVER include ' +
 				'catch-all options ("Something else", "Other", "None of the above") in the options array, and NEVER ' +
 				'add a follow-up question elaborating a previous "other" answer. Keep questions concise and independent ' +
-				"of each other's answers. A question is asked at most once — a skip or dismissal (answered: false, or " +
-				'skipped: true) means "proceed without this": assume a sensible default or leave the detail for setup, ' +
-				'and NEVER re-present an answered, deferred, or skipped question. ' +
+				"of each other's answers. A skip or dismissal (answered: false, or skipped: true) grants no additional permission. " +
+				'Choose defaults only for unspecified details within the requested task, or leave those details for setup. ' +
+				'If a skipped question seeks permission to change existing authentication, delete nodes, or expand scope, ' +
+				'preserve the existing state and report any remaining blocker. ' +
+				'NEVER re-present an answered, deferred, or skipped question. ' +
 				'NEVER ask the user to paste passwords, API keys, tokens, cookies, connection strings, or private keys here.',
 		)
 		.input(askUserInputSchema)

@@ -188,6 +188,145 @@ describe('downgradeUnchangedNodeBlockers', () => {
 		expect(result[0].severity).toBe('informational');
 	});
 
+	describe.each([
+		{
+			code: 'HARDCODED_CREDENTIALS',
+			node: makeNode({
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 4.2,
+				parameters: {
+					url: 'https://example.test/records',
+					authentication: 'genericCredentialType',
+					genericAuthType: 'httpHeaderAuth',
+					sendHeaders: true,
+					headerParameters: { parameters: [{ name: 'apikey', value: 'example-key' }] },
+					options: { timeout: 1000 },
+				},
+				credentials: { httpHeaderAuth: { id: 'header-1', name: 'Request header' } },
+			}),
+		},
+		{
+			code: 'SWITCH_NO_OUTPUT_CONNECTIONS',
+			node: makeNode({
+				type: 'n8n-nodes-base.switch',
+				typeVersion: 3.2,
+				parameters: { mode: 'rules', rules: { values: [] }, options: {} },
+			}),
+		},
+	])('$code on saved nodes', ({ code, node }) => {
+		const nodeName = 'Send a message';
+		const finding: ValidationWarning = {
+			code,
+			nodeName,
+			message: 'Existing node requires configuration.',
+			severity: 'warning',
+		};
+
+		it('allows an edit to a different node without hiding the existing finding', () => {
+			const connections: WorkflowJSON['connections'] = {
+				Compose: { main: [[{ node: nodeName, type: 'main', index: 0 }]] },
+			};
+			const saved = makeWorkflow([makeComposeNode(), node], connections);
+			const built = makeWorkflow(
+				[
+					makeComposeNode({ parameters: { jsCode: 'return [{ json: { updated: true } }];' } }),
+					node,
+				],
+				connections,
+			);
+
+			expect(downgradeUnchangedNodeBlockers([finding], built, saved)).toEqual([
+				{
+					...finding,
+					severity: 'informational',
+					message: expect.stringContaining('pre-existing node, unchanged by this build'),
+				},
+			]);
+		});
+
+		it.each([
+			['parameters', { parameters: { options: { timeout: 2000 } } }],
+			['type', { type: 'n8n-nodes-base.noOp' }],
+			['typeVersion', { typeVersion: 1 }],
+			[
+				'credentials',
+				{ credentials: { httpHeaderAuth: { id: 'header-2', name: 'Other header' } } },
+			],
+		])('keeps the finding blocking when %s changes', (_field, overrides) => {
+			const saved = makeWorkflow([node]);
+			const built = makeWorkflow([{ ...node, ...overrides }]);
+
+			expect(downgradeUnchangedNodeBlockers([finding], built, saved)).toEqual([finding]);
+		});
+
+		it('keeps the finding blocking when the node is enabled', () => {
+			const saved = makeWorkflow([{ ...node, disabled: true }]);
+			const built = makeWorkflow([{ ...node, disabled: false }]);
+
+			expect(downgradeUnchangedNodeBlockers([finding], built, saved)).toEqual([finding]);
+		});
+
+		it('keeps the finding blocking when an incoming connection is added', () => {
+			const nodes = [makeComposeNode(), node];
+			const saved = makeWorkflow(nodes);
+			const built = makeWorkflow(nodes, {
+				Compose: { main: [[{ node: nodeName, type: 'main', index: 0 }]] },
+			});
+
+			expect(downgradeUnchangedNodeBlockers([finding], built, saved)).toEqual([finding]);
+		});
+
+		it('keeps the finding blocking when an outgoing connection is removed', () => {
+			const nodes = [makeComposeNode(), node];
+			const saved = makeWorkflow(nodes, {
+				[nodeName]: { main: [[{ node: 'Compose', type: 'main', index: 0 }]] },
+			});
+			const built = makeWorkflow(nodes);
+
+			expect(downgradeUnchangedNodeBlockers([finding], built, saved)).toEqual([finding]);
+		});
+
+		it('keeps the finding blocking for a new node or a missing baseline', () => {
+			const built = makeWorkflow([node]);
+
+			expect(downgradeUnchangedNodeBlockers([finding], built, makeWorkflow([]))).toEqual([finding]);
+			expect(downgradeUnchangedNodeBlockers([finding], built, undefined)).toEqual([finding]);
+		});
+
+		it('allows a rename and position change when identity and configuration are preserved', () => {
+			const saved = makeWorkflow([node]);
+			const built = makeWorkflow([{ ...node, name: 'Renamed', position: [100, 200] }]);
+
+			expect(
+				downgradeUnchangedNodeBlockers([{ ...finding, nodeName: 'Renamed' }], built, saved)[0]
+					.severity,
+			).toBe('informational');
+		});
+
+		it('pairs a node without an ID by name but does not infer a rename', () => {
+			const saved = makeWorkflow([{ ...node, id: '' }]);
+			const built = makeWorkflow([{ ...node, id: '' }]);
+			expect(downgradeUnchangedNodeBlockers([finding], built, saved)[0].severity).toBe(
+				'informational',
+			);
+
+			const renamed = makeWorkflow([{ ...node, id: '', name: 'Renamed' }]);
+			const renamedFinding = { ...finding, nodeName: 'Renamed' };
+			expect(downgradeUnchangedNodeBlockers([renamedFinding], renamed, saved)).toEqual([
+				renamedFinding,
+			]);
+		});
+
+		it('keeps a finding without a node name blocking', () => {
+			const workflow = makeWorkflow([node]);
+			const unnamedFinding = { ...finding, nodeName: undefined };
+
+			expect(downgradeUnchangedNodeBlockers([unnamedFinding], workflow, workflow)).toEqual([
+				unnamedFinding,
+			]);
+		});
+	});
+
 	it('downgrades chat_model_validation on unchanged nodes and keeps it on changed nodes', () => {
 		const chatModelSaved = makeNode({
 			id: 'cm-1',

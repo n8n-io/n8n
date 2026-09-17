@@ -6,9 +6,8 @@
  * let the build pipeline tell touched nodes apart from pre-existing ones, so
  * validation and setup routing never punish a node for merely being present.
  *
- * Nodes are paired by id — stable across the edit round-trip since #36236 and
- * restored by `preserveExistingNodeIds` before the diff runs — with a name
- * fallback for nodes without a saved id counterpart. Connection changes count
+ * Nodes are paired by id, which get-as-code preserves across the edit round-trip,
+ * with a name fallback for nodes without a saved id counterpart. Connection changes count
  * as node changes: a node wired differently (e.g. a previously disconnected
  * node pulled into the flow) is no longer the node the user left there, even
  * when its parameters are byte-identical.
@@ -140,14 +139,11 @@ export function computeChangedNodeNames(
 }
 
 /**
- * Downgrade blocking `INVALID_PARAMETER` findings to informational when the
- * node's type/version/parameters AND its wiring are identical to the saved
- * workflow. The node already exists (and runs) in exactly this shape, so
- * failing the build on it only forces the agent to decorate nodes the user
- * never asked to touch — which is how unrelated nodes end up in the setup
- * flow (INS-997). A rewired node (e.g. a disconnected one pulled into the
- * flow) is NOT downgraded: it just became load-bearing, so its parameter
- * problems are real again.
+ * Keep selected findings informational on saved nodes this build did not change.
+ * This lets scoped edits preserve existing configuration and parked nodes.
+ * Parameter findings require unchanged type, version, parameters, and wiring.
+ * Credential, model, and routing findings also require unchanged credentials and
+ * disabled state, so enabling a node or changing its auth restores validation.
  */
 export function downgradeUnchangedNodeBlockers(
 	warnings: ValidationWarning[],
@@ -186,7 +182,11 @@ export function downgradeUnchangedNodeBlockers(
 
 		if (warning.code === 'INVALID_PARAMETER') {
 			if (!unchangedParameterNames.has(warning.nodeName)) return warning;
-		} else if (warning.code === 'chat_model_validation') {
+		} else if (
+			warning.code === 'chat_model_validation' ||
+			warning.code === 'HARDCODED_CREDENTIALS' ||
+			warning.code === 'SWITCH_NO_OUTPUT_CONNECTIONS'
+		) {
 			if (!fullyUnchangedNames.has(warning.nodeName)) return warning;
 		} else {
 			return warning;
