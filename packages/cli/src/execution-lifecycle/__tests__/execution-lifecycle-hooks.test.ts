@@ -1718,23 +1718,7 @@ describe('Execution Lifecycle Hooks', () => {
 				expect(executionMetadataService.save).not.toHaveBeenCalled();
 			});
 
-			it('should still update execution data in scaling worker mode', async () => {
-				const lifecycleHooks = createHooks('trigger');
-
-				await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRunWithMetadata, {}]);
-
-				// Worker should save execution data but not metadata
-				expect(executionPersistence.updateExistingExecution).toHaveBeenCalledWith(
-					executionId,
-					expect.objectContaining({
-						finished: true,
-						status: 'success',
-					}),
-					{ requireNotCanceled: true },
-				);
-			});
-
-			it('should require the execution to not be canceled when saving a successful completion', async () => {
+			it('should still update execution data in scaling worker mode, guarded against overwriting a canceled execution', async () => {
 				const lifecycleHooks = createHooks('trigger');
 
 				await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRunWithMetadata, {}]);
@@ -1750,6 +1734,7 @@ describe('Execution Lifecycle Hooks', () => {
 			});
 
 			it('should not emit workflowExecutionCompleted when the guarded update is blocked', async () => {
+				const lifecycleHooks = createHooks('trigger');
 				executionPersistence.updateExistingExecution.mockResolvedValueOnce(false);
 
 				await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRunWithMetadata, {}]);
@@ -1761,6 +1746,7 @@ describe('Execution Lifecycle Hooks', () => {
 			});
 
 			it('should still emit workflowExecutionCompleted when the update succeeds', async () => {
+				const lifecycleHooks = createHooks('trigger');
 				executionPersistence.updateExistingExecution.mockResolvedValueOnce(true);
 
 				await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRunWithMetadata, {}]);
