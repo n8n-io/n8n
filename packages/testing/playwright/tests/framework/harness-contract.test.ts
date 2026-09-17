@@ -1,4 +1,5 @@
 import type { JSONReport, JSONReportSuite, JSONReportTestResult } from '@playwright/test/reporter';
+import { chromium, type Page } from '@playwright/test';
 import { spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
@@ -12,6 +13,7 @@ import { expect, test } from 'vitest';
 /* eslint-disable playwright/no-standalone-expect */
 
 import type { Evidence } from './support';
+import { CanvasPage } from '../../pages/CanvasPage';
 
 const packageDir = resolve(__dirname, '../..');
 const cli = createRequire(__filename).resolve('@playwright/test/cli');
@@ -198,4 +200,57 @@ test.each(['api-only', 'ui-only', 'combined', 'service-only', 'body-failure', 'b
 		}
 	},
 	55_000,
+);
+
+const historyNavigationCases = [
+	{
+		action: 'openWorkflowHistory',
+		initialPath: '/workflow/example',
+		incompletePath: '/workflow/example/history',
+		targetPath: '/workflow/example/history/version',
+	},
+	{
+		action: 'closeWorkflowHistory',
+		initialPath: '/workflow/example/history/version',
+		incompletePath: '/workflow/example/history/version',
+		targetPath: '/workflow/example',
+	},
+] as const;
+
+async function withHistoryPage(
+	initialPath: string,
+	nextPath: string,
+	run: (canvas: CanvasPage, page: Page) => Promise<void>,
+) {
+	const browser = await chromium.launch();
+	try {
+		const page = await browser.newPage({ baseURL: 'http://history-navigation.test' });
+		await page.route('**/*', async (route) => {
+			await route.fulfill({
+				contentType: 'text/html',
+				body: `<button data-testid="workflow-menu">Menu</button>
+					<button data-testid="workflow-menu-item-version-history" onclick="history.pushState({}, '', '${nextPath}')">History</button>
+					<button data-testid="workflow-history-close-button" onclick="history.pushState({}, '', '${nextPath}')">Close</button>`,
+			});
+		});
+		await page.goto(initialPath);
+		page.setDefaultNavigationTimeout(500);
+		await run(new CanvasPage(page), page);
+	} finally {
+		await browser.close();
+	}
+}
+
+test.each(historyNavigationCases)(
+	'CanvasPage.$action waits for the target route',
+	async ({ action, initialPath, incompletePath, targetPath }) => {
+		await withHistoryPage(initialPath, incompletePath, async (canvas, page) => {
+			await expect(canvas[action]()).rejects.toThrow(/Timeout/);
+			expect(new URL(page.url()).pathname).toBe(incompletePath);
+		});
+		await withHistoryPage(initialPath, targetPath, async (canvas, page) => {
+			await canvas[action]();
+			expect(new URL(page.url()).pathname).toBe(targetPath);
+		});
+	},
 );
