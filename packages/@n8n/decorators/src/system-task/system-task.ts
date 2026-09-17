@@ -1,6 +1,7 @@
 import {
 	DEFAULT_MISFIRE_GRACE_SECONDS,
 	ScheduledJobMisfirePolicy,
+	type InstanceType,
 	type OneOffDefinition,
 	type ScheduleDefinition,
 } from '@n8n/constants';
@@ -9,6 +10,9 @@ import { UnexpectedError } from 'n8n-workflow';
 
 /** Whether a run is safe to repeat. */
 export type SystemTaskEffects = 'idempotent' | 'non-idempotent';
+
+/** How many processes run one occurrence of a task. */
+export type SystemTaskScope = 'cluster' | 'process';
 
 /** A system task always has a next run, so a one-off schedule is not allowed. */
 export type SystemTaskSchedule = Exclude<ScheduleDefinition, OneOffDefinition>;
@@ -28,6 +32,17 @@ export interface SystemTask {
 
 	/** What kind of effects a run has, which sets the defaults of the overrides below. */
 	readonly effects: SystemTaskEffects;
+
+	/**
+	 * How many processes run one occurrence. Defaults to `cluster`: one run for
+	 * the whole cluster, coordinated by leadership or by the durable scheduler.
+	 * `process` means every eligible process runs its own occurrence, for work
+	 * that reads state local to the process and that no other process could do.
+	 */
+	readonly scope?: SystemTaskScope;
+
+	/** Which kinds of process run the task. Defaults to `['main']`. */
+	readonly instanceTypes?: readonly InstanceType[];
 
 	/**
 	 * Migration status.
@@ -136,6 +151,45 @@ export function resolveSystemTaskRunOptions(task: SystemTask): SystemTaskRunOpti
 	assertInRange(task.name, 'misfireGraceSeconds', options.misfireGraceSeconds, 1);
 
 	return options;
+}
+
+/** Where a task's occurrences run: how many copies, and on which kinds of process. */
+export interface SystemTaskPlacement {
+	scope: SystemTaskScope;
+	instanceTypes: readonly InstanceType[];
+}
+
+const DEFAULT_SYSTEM_TASK_INSTANCE_TYPES: readonly InstanceType[] = ['main'];
+
+/**
+ * Resolves where a task runs, and rejects a placement the runner cannot honor.
+ *
+ * @throws {UnexpectedError} When a process-scoped task is durable or asks to run
+ * on leader takeover, or when it declares no instance type at all.
+ */
+export function resolveSystemTaskPlacement(task: SystemTask): SystemTaskPlacement {
+	const scope = task.scope ?? 'cluster';
+	const instanceTypes = task.instanceTypes ?? DEFAULT_SYSTEM_TASK_INSTANCE_TYPES;
+
+	if (scope === 'process' && task.durable) {
+		throw new UnexpectedError('A process-scoped system task cannot be durable', {
+			extra: { name: task.name },
+		});
+	}
+
+	if (scope === 'process' && task.runOnTakeover) {
+		throw new UnexpectedError('A process-scoped system task cannot run on leader takeover', {
+			extra: { name: task.name },
+		});
+	}
+
+	if (instanceTypes.length === 0) {
+		throw new UnexpectedError('A system task declares no instance type, so nothing runs it', {
+			extra: { name: task.name },
+		});
+	}
+
+	return { scope, instanceTypes };
 }
 
 /**

@@ -1,7 +1,6 @@
 import { PrometheusMetricsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
-import { InstanceSettings } from 'n8n-core';
 import promClient from 'prom-client';
 
 import { EventService } from '@/events/event.service';
@@ -11,17 +10,17 @@ import type { PrometheusMetricsCollector } from './base';
 import { DURATION_BUCKETS_SECONDS, LAG_BUCKETS_SECONDS } from './constant';
 
 /**
- * Collects Prometheus metrics for system tasks, on both of their paths: the
- * in-memory timers of the leader and the durable scheduler, told apart by the
- * `mode` label. Opt-in via `includeSystemTaskMetrics` and only active on a main
- * instance. Every value comes from `EventService`, so this is the only place
- * that touches `prom-client` for system tasks.
+ * Collects Prometheus metrics for system tasks, on all of their paths: the
+ * in-memory timers of the leader, the durable scheduler and the per-process
+ * timers, told apart by the `mode` label. Opt-in via
+ * `includeSystemTaskMetrics`. Every value comes from `EventService`, so this is
+ * the only place that touches `prom-client` for system tasks.
  *
- * The per-task gauges of a durable task are seeded when it is routed, so the
- * series exist before the first run and a restart shows as a reset rather than
- * a gap. Those of an in-memory task exist only while this instance leads:
- * seeded when the timers start, removed when they stop, so a former leader
- * does not export frozen series for runs it no longer makes.
+ * The per-task gauges of a durable or per-process task are seeded when it is
+ * routed, so the series exist before the first run and a restart shows as a
+ * reset rather than a gap. Those of an in-memory task exist only while this
+ * instance leads: seeded when the timers start, removed when they stop, so a
+ * former leader does not export frozen series for runs it no longer makes.
  *
  * Labels are bounded (task name, mode, result, reason): no instance label,
  * Prometheus adds one per scrape target.
@@ -30,12 +29,11 @@ import { DURATION_BUCKETS_SECONDS, LAG_BUCKETS_SECONDS } from './constant';
 export class PrometheusSystemTaskMetricsService implements PrometheusMetricsCollector {
 	constructor(
 		private readonly config: PrometheusMetricsConfig,
-		private readonly instanceSettings: InstanceSettings,
 		private readonly eventService: EventService,
 	) {}
 
 	get enabled(): boolean {
-		return this.config.includeSystemTaskMetrics && this.instanceSettings.instanceType === 'main';
+		return this.config.includeSystemTaskMetrics;
 	}
 
 	init() {
@@ -43,7 +41,7 @@ export class PrometheusSystemTaskMetricsService implements PrometheusMetricsColl
 
 		const runDuration = new promClient.Histogram({
 			name: `${prefix}system_task_run_duration_seconds`,
-			help: 'Duration in seconds of a system task run, by task, mode (in_memory, durable) and result (success, failure, aborted).',
+			help: 'Duration in seconds of a system task run, by task, mode (in_memory, durable, per_process) and result (success, failure, aborted).',
 			labelNames: ['task', 'mode', 'result'],
 			buckets: DURATION_BUCKETS_SECONDS,
 		});
@@ -68,7 +66,7 @@ export class PrometheusSystemTaskMetricsService implements PrometheusMetricsColl
 
 		const info = new promClient.Gauge({
 			name: `${prefix}system_task_info`,
-			help: 'Always 1 for every system task this instance can run, by task and mode: durable tasks on every main, in-memory tasks on the leader.',
+			help: 'Always 1 for every system task this instance can run, by task and mode: durable tasks on every main, in-memory tasks on the leader, per-process tasks in every process that runs them.',
 			labelNames: ['task', 'mode'],
 		});
 
@@ -134,7 +132,7 @@ export class PrometheusSystemTaskMetricsService implements PrometheusMetricsColl
 			if (mode === 'in_memory') {
 				inMemoryTasks.add(name);
 			}
-			if (mode === 'durable' || timersRunning) {
+			if (mode !== 'in_memory' || timersRunning) {
 				seed(name, mode);
 			}
 		});

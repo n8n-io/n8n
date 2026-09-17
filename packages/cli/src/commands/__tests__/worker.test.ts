@@ -30,6 +30,7 @@ import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { WorkerServer } from '@/scaling/worker-server';
 import { WorkerStatusService } from '@/scaling/worker-status.service.ee';
+import { SystemTaskRunner } from '@/scheduling/system-tasks/system-task-runner';
 import { JwtService } from '@/services/jwt.service';
 import { RedisClientService } from '@/services/redis-client.service';
 import { ShutdownService } from '@/shutdown/shutdown.service';
@@ -70,6 +71,7 @@ mockInstance(CommunityPackagesConfig, { enabled: false });
 mockInstance(JwtService);
 mockInstance(BinaryDataConfig);
 mockInstance(TaskRunnerModule);
+const systemTaskRunner = mockInstance(SystemTaskRunner);
 
 describe('Worker', () => {
 	beforeEach(() => {
@@ -213,6 +215,12 @@ describe('Worker', () => {
 				expect(worker.globalConfig.generic.gracefulShutdownTimeout).toBe(expected);
 			},
 		);
+
+		it('should start the per-process system tasks', async () => {
+			await createWorkerForInit().init();
+
+			expect(systemTaskRunner.initPerProcess).toHaveBeenCalledTimes(1);
+		});
 	});
 
 	describe('stopProcess', () => {
