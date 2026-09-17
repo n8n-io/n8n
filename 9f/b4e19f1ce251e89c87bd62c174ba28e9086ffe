@@ -1,0 +1,22 @@
+packages/frontend/editor-ui/src/app/views/NodeView.vue
+  s_8bfbf7a375b636::t_c0caba43004f8b 1784-1786
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.ts
+  s_8bfbf7a375b636::t_c0caba43004f8b 3499-3502
+  s_8bfbf7a375b636::t_070bac7e7b2477 3523-3525
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9fb4e19f1ce251e89c87bd62c174ba28e9086ffe",
+  "prompts": {},
+  "sessions": {
+    "s_8bfbf7a375b636": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "71c3c153-cff6-4553-b48e-985f97aec971",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Olivier de Jong <olivier.dejong@n8n.io>"
+    }
+  }
+}
