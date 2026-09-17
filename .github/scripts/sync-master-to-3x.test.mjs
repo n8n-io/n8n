@@ -185,10 +185,10 @@ test('resolveMechanicalPath regenerates and applies patches before staging the l
 	const git = makeStub();
 	const pnpm = makeStub();
 	resolveMechanicalPath({ git, pnpm, path: LOCKFILE, masterSha: MASTER, log: () => {} });
-	// Regeneration must override CI's frozen default. Validation must match CI and bypass imports.
+	// Regeneration must override CI's frozen default. Validation must use the exact CI command.
 	assert.deepEqual(pnpm.calls, [
 		['install', '--lockfile-only', '--no-frozen-lockfile'],
-		['install', '--frozen-lockfile', '--trust-lockfile', '--force'],
+		['install', '--frozen-lockfile', '--trust-lockfile'],
 	]);
 	assert.ok(git.calls.some((a) => a[0] === 'add' && a.includes(LOCKFILE)));
 });
@@ -421,7 +421,7 @@ test('reconcileLockfileAtTip folds an inconsistent lockfile into the tip commit,
 	reconcileLockfileAtTip({ git: inconsistent, pnpm, masterSha: MASTER, log: () => {} });
 	assert.deepEqual(pnpm.calls, [
 		['install', '--lockfile-only', '--no-frozen-lockfile'],
-		['install', '--frozen-lockfile', '--trust-lockfile', '--force'],
+		['install', '--frozen-lockfile', '--trust-lockfile'],
 	]);
 	assert.ok(inconsistent.calls.some((a) => a[0] === 'commit' && a.includes('--amend')));
 
@@ -684,20 +684,18 @@ test('sync auto-resolves a lockfile-only conflict during the replay — no PR, n
 
 	await sync({ git, gh, pnpm, env, log: () => {} });
 
-	// The stall regen and tip reconciliation each run regeneration and CI-equivalent validation.
+	// The stall regen and tip reconciliation each run regeneration and exact CI validation.
 	assert.deepEqual(pnpm.calls[0], ['install', '--lockfile-only', '--no-frozen-lockfile']);
 	assert.deepEqual(pnpm.calls[1], [
 		'install',
 		'--frozen-lockfile',
 		'--trust-lockfile',
-		'--force',
 	]);
 	assert.deepEqual(pnpm.calls[2], ['install', '--lockfile-only', '--no-frozen-lockfile']);
 	assert.deepEqual(pnpm.calls[3], [
 		'install',
 		'--frozen-lockfile',
 		'--trust-lockfile',
-		'--force',
 	]);
 	assert.equal(pnpm.calls.length, 4);
 	assert.ok(git.calls.some((a) => a[0] === 'add' && a.includes(LOCKFILE)));
@@ -848,7 +846,7 @@ test('buildConflictBranch pre-resolves mechanical files so only code conflicts r
 	assert.equal(lockfileDeferred, false);
 	assert.deepEqual(pnpm.calls, [
 		['install', '--lockfile-only', '--no-frozen-lockfile'],
-		['install', '--frozen-lockfile', '--trust-lockfile', '--force'],
+		['install', '--frozen-lockfile', '--trust-lockfile'],
 	]);
 	assert.ok(
 		git.calls.some((a) => a[0] === 'checkout' && a[1] === MASTER && a.includes(POPULARITY)),
@@ -896,7 +894,7 @@ test('buildConflictBranch restores and defers a lockfile when the patched instal
 	assert.equal(lockfileDeferred, true);
 	assert.deepEqual(pnpm.calls, [
 		['install', '--lockfile-only', '--no-frozen-lockfile'],
-		['install', '--frozen-lockfile', '--trust-lockfile', '--force'],
+		['install', '--frozen-lockfile', '--trust-lockfile'],
 	]);
 	assert.ok(
 		git.calls.some(
