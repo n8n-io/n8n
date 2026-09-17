@@ -33,7 +33,7 @@ describe('ActivityEventRepository', () => {
 
 		const [entry] = await repository.findFeed({
 			projectIds: [project.id],
-			categories: ['workflow', 'credential'],
+			allowedCategories: ['workflow', 'credential'],
 			limit: 10,
 		});
 
@@ -63,7 +63,7 @@ describe('ActivityEventRepository', () => {
 
 		const [entry] = await repository.findFeed({
 			projectIds: [project.id],
-			categories: ['workflow', 'credential'],
+			allowedCategories: ['workflow', 'credential'],
 			limit: 10,
 		});
 
@@ -80,18 +80,13 @@ describe('ActivityEventRepository', () => {
 
 		const [entry] = await repository.findFeed({
 			projectIds: [project.id],
-			categories: ['workflow', 'credential'],
+			allowedCategories: ['workflow', 'credential'],
 			limit: 10,
 		});
 
 		expect(entry.data).toEqual({ truncated: true });
 	});
 
-	/**
-	 * Read against a real database on purpose. What a reader needs from this is whether a stored
-	 * id is still plausible, and that depends on how the driver allocates ids after the table is
-	 * emptied — which a mocked entity manager cannot tell anyone.
-	 */
 	describe('findNewestEntry', () => {
 		let otherProject: Project;
 
@@ -107,7 +102,7 @@ describe('ActivityEventRepository', () => {
 			expect(
 				await repository.findNewestEntry({
 					projectIds: [otherProject.id],
-					categories: ['workflow', 'credential'],
+					allowedCategories: ['workflow', 'credential'],
 				}),
 			).toBeNull();
 		});
@@ -119,35 +114,28 @@ describe('ActivityEventRepository', () => {
 
 			const [newest] = await repository.findFeed({
 				projectIds: [project.id],
-				categories: ['workflow', 'credential'],
+				allowedCategories: ['workflow', 'credential'],
 				limit: 1,
 			});
 			const highest = await repository.findNewestEntry({
 				projectIds: [project.id],
-				categories: ['workflow', 'credential'],
+				allowedCategories: ['workflow', 'credential'],
 			});
 			expect(highest?.id).toBe(newest.id);
 
-			// A category out of scope is out of the answer too, or a reader would compare its mark
-			// against an id it was never allowed to be shown.
 			const workflowOnly = await repository.findNewestEntry({
 				projectIds: [project.id],
-				categories: ['workflow'],
+				allowedCategories: ['workflow'],
 			});
 			expect(workflowOnly?.id).toBeLessThan(newest.id);
 		});
 
-		/**
-		 * The case a stored mark cannot survive. Retention by age empties the table on an instance
-		 * quiet for longer than its window, and the id a reader remembers is then no longer a
-		 * bound anything new sits above — so the reader has to be able to notice.
-		 */
 		it('reports the refilled id space after the table is emptied', async () => {
 			await record(project.id);
 			await record(project.id);
 			const before = await repository.findNewestEntry({
 				projectIds: [project.id],
-				categories: ['workflow', 'credential'],
+				allowedCategories: ['workflow', 'credential'],
 			});
 			expect(before).not.toBeNull();
 
@@ -155,26 +143,21 @@ describe('ActivityEventRepository', () => {
 			expect(
 				await repository.findNewestEntry({
 					projectIds: [project.id],
-					categories: ['workflow', 'credential'],
+					allowedCategories: ['workflow', 'credential'],
 				}),
 			).toBeNull();
 
 			await record(project.id);
 			const after = await repository.findNewestEntry({
 				projectIds: [project.id],
-				categories: ['workflow', 'credential'],
+				allowedCategories: ['workflow', 'credential'],
 			});
 
-			// Whether `after` restarted below `before` is the driver's business, not this
-			// repository's. What has to hold either way is that the newest entry is reported as it
-			// now stands, so a reader comparing a stored mark against it sees the truth — and that
-			// it carries when it was written, which is what separates a renumbered feed from a
-			// quiet one when the ids alone cannot.
 			expect(after).not.toBeNull();
 			expect(after?.createdAt).toBeInstanceOf(Date);
 			const [newest] = await repository.findFeed({
 				projectIds: [project.id],
-				categories: ['workflow', 'credential'],
+				allowedCategories: ['workflow', 'credential'],
 				limit: 1,
 			});
 			expect(after?.id).toBe(newest.id);
@@ -196,14 +179,14 @@ describe('ActivityEventRepository', () => {
 			});
 			const [written] = await repository.findFeed({
 				projectIds: [project.id],
-				categories: ['workflow', 'credential'],
+				allowedCategories: ['workflow', 'credential'],
 				limit: 1,
 			});
 
 			const entry = await repository.findEntry({
 				id: written.id,
 				projectIds: [project.id],
-				categories: ['workflow', 'credential'],
+				allowedCategories: ['workflow', 'credential'],
 			});
 
 			expect(entry?.id).toBe(written.id);
@@ -223,19 +206,19 @@ describe('ActivityEventRepository', () => {
 			});
 			const [written] = await repository.findFeed({
 				projectIds: [otherProject.id],
-				categories: ['workflow', 'credential'],
+				allowedCategories: ['workflow', 'credential'],
 				limit: 1,
 			});
 
 			const outOfScope = await repository.findEntry({
 				id: written.id,
 				projectIds: [project.id],
-				categories: ['workflow', 'credential'],
+				allowedCategories: ['workflow', 'credential'],
 			});
 			const pruned = await repository.findEntry({
 				id: written.id + 10_000,
 				projectIds: [project.id],
-				categories: ['workflow', 'credential'],
+				allowedCategories: ['workflow', 'credential'],
 			});
 
 			expect(outOfScope).toBeNull();
@@ -299,7 +282,7 @@ describe('ActivityEventRepository', () => {
 			});
 			const [written] = await repository.findFeed({
 				projectIds: [project.id],
-				categories: ['workflow', 'credential'],
+				allowedCategories: ['workflow', 'credential'],
 				limit: 1,
 			});
 
@@ -307,7 +290,7 @@ describe('ActivityEventRepository', () => {
 				await repository.findEntry({
 					id: written.id,
 					projectIds: [],
-					categories: ['workflow', 'credential'],
+					allowedCategories: ['workflow', 'credential'],
 				}),
 			).toBeNull();
 			expect(
@@ -329,7 +312,7 @@ describe('ActivityEventRepository', () => {
 			// Newest first, so the second row is the one written first.
 			const [newest, oldest] = await repository.findFeed({
 				projectIds: [project.id],
-				categories: ['workflow', 'credential'],
+				allowedCategories: ['workflow', 'credential'],
 				limit: 10,
 			});
 			// `createdAt` defaults to now for both, so age one row explicitly rather than
@@ -342,7 +325,7 @@ describe('ActivityEventRepository', () => {
 			expect(deleted).toBe(1);
 			const remaining = await repository.findFeed({
 				projectIds: [project.id],
-				categories: ['workflow', 'credential'],
+				allowedCategories: ['workflow', 'credential'],
 				limit: 10,
 			});
 			expect(remaining.map((entry) => entry.id)).toEqual([newest.id]);
@@ -393,7 +376,7 @@ describe('ActivityEventRepository', () => {
 			expect(deleted).toBe(1);
 			const remaining = await repository.findFeed({
 				projectIds: [project.id],
-				categories: ['workflow', 'credential'],
+				allowedCategories: ['workflow', 'credential'],
 				limit: 10,
 			});
 			expect(remaining.map((entry) => entry.action)).toEqual(['third', 'second']);

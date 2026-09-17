@@ -42,14 +42,10 @@ export type ActivityFeedQuery = {
 	projectIds: string[];
 	userId?: string;
 	resourceId?: string;
-	category?: ActivityEvent['category'];
-	/**
-	 * The categories the caller may see. Required for the same reason as `projectIds`: a project
-	 * grants `workflow:read` and `credential:read` independently, so a project scope alone does
-	 * not answer whether credential entries — which carry a credential's name and type — belong
-	 * in this caller's feed.
-	 */
-	categories: Array<ActivityEvent['category']>;
+	/** Optional category filter. It must be in `allowedCategories`. */
+	filterCategory?: ActivityEvent['category'];
+	/** The categories the caller has permission to read. */
+	allowedCategories: Array<ActivityEvent['category']>;
 	/**
 	 * Exclusive lower bound — entries newer than an id a caller has already seen. Ids are not a
 	 * completeness watermark; see `ActivityEvent.id` before using this to tail the feed.
@@ -92,16 +88,17 @@ export class ActivityEventRepository extends Repository<ActivityEvent> {
 	 */
 	async findFeed(query: ActivityFeedQuery): Promise<ActivityEvent[]> {
 		if (isEmptyPage(query.limit)) return [];
-		// An empty allowance means nothing is visible, not everything — `In([])` would match no
-		// row on Postgres but is worth being explicit about rather than relying on it.
-		if (query.projectIds.length === 0 || query.categories.length === 0) return [];
-		// A narrowing request for a category the caller may not read matches nothing. Falling back
-		// to the whole allowance would answer a narrowing request by widening it.
-		if (query.category !== undefined && !query.categories.includes(query.category)) return [];
+		// Empty project or category permissions must not widen the query.
+		if (query.projectIds.length === 0 || query.allowedCategories.length === 0) return [];
+		if (
+			query.filterCategory !== undefined &&
+			!query.allowedCategories.includes(query.filterCategory)
+		)
+			return [];
 
 		const where: FindOptionsWhere<ActivityEvent> = {
 			projectId: In(query.projectIds),
-			category: query.category ?? In(query.categories),
+			category: query.filterCategory ?? In(query.allowedCategories),
 		};
 		if (query.userId !== undefined) where.userId = query.userId;
 		if (query.resourceId !== undefined) where.resourceId = query.resourceId;
@@ -118,26 +115,15 @@ export class ActivityEventRepository extends Repository<ActivityEvent> {
 		return await this.find({ where, order: { id: 'DESC' }, take: query.limit });
 	}
 
-	/**
-	 * The newest entry in scope by id, reduced to when it was written. Null when the scope holds
-	 * nothing.
-	 *
-	 * For a reader holding a stored id to ask whether that id still means what it did. `id` is an
-	 * ordering key, not a durable name: on SQLite the column is a rowid alias, so emptying the
-	 * table restarts the sequence and an id a reader remembers comes back on a different row. The
-	 * timestamp is what separates the two cases — a quiet feed and a renumbered one look identical
-	 * by id alone.
-	 *
-	 * Served by `IDX_activity_event_project` alone, since that index already trails `id`.
-	 */
+	/** Returns the newest entry in scope. Its timestamp detects reused SQLite row ids. */
 	async findNewestEntry(query: {
 		projectIds: string[];
-		categories: Array<ActivityEvent['category']>;
+		allowedCategories: Array<ActivityEvent['category']>;
 	}): Promise<Pick<ActivityEvent, 'id' | 'createdAt'> | null> {
-		if (query.projectIds.length === 0 || query.categories.length === 0) return null;
+		if (query.projectIds.length === 0 || query.allowedCategories.length === 0) return null;
 
 		return await this.findOne({
-			where: { projectId: In(query.projectIds), category: In(query.categories) },
+			where: { projectId: In(query.projectIds), category: In(query.allowedCategories) },
 			order: { id: 'DESC' },
 			select: { id: true, createdAt: true },
 		});
@@ -153,15 +139,15 @@ export class ActivityEventRepository extends Repository<ActivityEvent> {
 	async findEntry(query: {
 		id: number;
 		projectIds: string[];
-		categories: Array<ActivityEvent['category']>;
+		allowedCategories: Array<ActivityEvent['category']>;
 	}): Promise<ActivityEvent | null> {
-		if (query.projectIds.length === 0 || query.categories.length === 0) return null;
+		if (query.projectIds.length === 0 || query.allowedCategories.length === 0) return null;
 
 		return await this.findOne({
 			where: {
 				id: query.id,
 				projectId: In(query.projectIds),
-				category: In(query.categories),
+				category: In(query.allowedCategories),
 			},
 		});
 	}
