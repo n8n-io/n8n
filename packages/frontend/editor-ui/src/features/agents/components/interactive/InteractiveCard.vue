@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import { N8nText } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
 import { APPROVAL_TOOL_NAME, N8N_CHAT_ACTION_TOOL_NAME, WAIT_TOOL_NAME } from '@n8n/api-types';
 import type { AgentsChatInteractionRenderer } from '@/features/ai/shared/agentsChat/interactionRegistry';
 import InteractionRenderer from '@/features/ai/shared/agentsChat/components/InteractionRenderer.vue';
@@ -27,7 +29,10 @@ const emit = defineEmits<{
  * card from the open checkpoint can't be matched to a backend suspension —
  * normally an after-effect of expired or pruned checkpoint state.
  */
-const disabled = computed(() => !!props.payload.resolvedAt || !props.payload.runId);
+const locale = useI18n();
+const disabled = computed(
+	() => props.payload.pendingResponse || !!props.payload.resolvedAt || !props.payload.runId,
+);
 
 const interactiveRenderers = [
 	{
@@ -76,10 +81,15 @@ function onSubmit(resumeData: unknown) {
 </script>
 
 <template>
-	<InteractionRenderer
-		:payload="payload"
-		:renderers="interactiveRenderers"
-		:disabled="disabled"
-		@submit="onSubmit"
-	/>
+	<div>
+		<N8nText v-if="payload.pendingResponse" size="small" role="status">
+			{{ locale.baseText('agents.chat.queue.responseAccepted') }}
+		</N8nText>
+		<InteractionRenderer
+			:payload="payload"
+			:renderers="interactiveRenderers"
+			:disabled="disabled"
+			@submit="onSubmit"
+		/>
+	</div>
 </template>
