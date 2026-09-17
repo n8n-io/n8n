@@ -1,0 +1,50 @@
+packages/cli/src/credentials/__tests__/credentials.service.test.ts
+  s_beb5e38a8cd68a::t_7e1dde988d00fa 2822-2825
+  s_beb5e38a8cd68a::t_fdab58286dcb5f 2819-2821,2826-2837,2855
+packages/cli/src/modules/mcp/tools/workflow-builder/mcp-instructions.ts
+  s_beb5e38a8cd68a::t_958c8eb998df2f 135
+packages/@n8n/instance-ai/docs/tools.md
+  s_beb5e38a8cd68a::t_a6968df9067064 740-745,755-757
+packages/cli/src/modules/mcp/__tests__/list-credentials.tool.test.ts
+  s_beb5e38a8cd68a::t_da55ce8d7b6806 7,101-102,124,134,152-157,163-164,166-169,171-180,182-193
+  s_beb5e38a8cd68a::t_f00f7776f93a0f 158-162
+packages/@n8n/instance-ai/src/types.ts
+  s_beb5e38a8cd68a::t_a6968df9067064 340
+packages/@n8n/instance-ai/src/tools/credentials.tool.ts
+  s_beb5e38a8cd68a::t_da55ce8d7b6806 625
+  s_beb5e38a8cd68a::t_a6968df9067064 5,17,540-541,544-545,573,608,648-654,662-669
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_beb5e38a8cd68a::t_a6968df9067064 2401-2408,2430,2447,2458
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.security.test.ts
+  s_beb5e38a8cd68a::t_77648cc94f67b1 37,465-481,483-496,499-500,511-513,518,532,547,570-572,579-580,595-596,612-631,643-648
+  s_beb5e38a8cd68a::t_fdab58286dcb5f 482
+packages/@n8n/ai-utilities/src/utils/credential-description.ts
+  s_beb5e38a8cd68a::t_a6968df9067064 1-10,12-15,20
+  s_beb5e38a8cd68a::t_f00f7776f93a0f 16-19
+packages/cli/src/credentials/credentials.service.ts
+  s_beb5e38a8cd68a::t_de1915a986749d 687
+  s_beb5e38a8cd68a::t_72848112380a83 187
+packages/@n8n/ai-utilities/package.json
+  s_beb5e38a8cd68a::t_a6968df9067064 10-12,49-53
+packages/cli/src/modules/mcp/tools/list-credentials.tool.ts
+  s_beb5e38a8cd68a::t_a6968df9067064 1-4,75-81,106,124,226
+packages/@n8n/instance-ai/src/tools/__tests__/credentials.tool.test.ts
+  s_beb5e38a8cd68a::t_da55ce8d7b6806 208-213,219-220,222-225,227-244,247-249,260-262,270-272,300-301,327-329,343-344,368-370,416,418,427,438,464,467,482,519-524,549-554,626-653,660
+  s_beb5e38a8cd68a::t_f00f7776f93a0f 214-218
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "670f9ec6fe5ba050ad3034d7e0c0c2e5e733860f",
+  "prompts": {},
+  "sessions": {
+    "s_beb5e38a8cd68a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0af97-a9b5-7b41-8bf0-be4b1c2a8068",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

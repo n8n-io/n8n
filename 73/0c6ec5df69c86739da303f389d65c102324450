@@ -1,0 +1,62 @@
+packages/cli/src/webhooks/engine-v2-webhooks.ts
+  s_71c6da2ee47cd3::t_19b26356a490b4 37-43,109
+packages/@n8n/engine/src/index.ts
+  s_71c6da2ee47cd3::t_613cff5051c1db 37-48
+packages/@n8n/engine/src/response-channel/in-memory-transport.ts
+  s_71c6da2ee47cd3::t_1e866fe525a390 1-28
+packages/@n8n/engine/src/execution/step-settled-handler.ts
+  s_71c6da2ee47cd3::t_1e866fe525a390 2-8,10,39,47,52,63,74,77-81,91,165-169,201,205-233
+packages/cli/src/webhooks/__tests__/webhook-helpers.test.ts
+  s_71c6da2ee47cd3::t_d405134f94920e 2068-2078
+packages/@n8n/engine/src/response-channel/execution-response.types.ts
+  s_71c6da2ee47cd3::t_d67313882bd806 1-30
+packages/cli/src/modules/engine-v2/__tests__/engine-v2.runtime.test.ts
+  s_71c6da2ee47cd3::t_219e2dfcd3c658 3,106-108,152-154,160,171,177,201,218,230,238,246,270,278,287,298,305,316,331,341,368,383
+packages/cli/src/modules/engine-v2/engine-v2.module.ts
+  s_71c6da2ee47cd3::t_219e2dfcd3c658 5,21-22,39-49,51-53,69-70
+packages/@n8n/engine/src/response-channel/__tests__/execution-response-channel.test.ts
+  s_71c6da2ee47cd3::t_4c8a66733e8771 1-108
+packages/cli/src/modules/engine-v2/engine-v2.runtime.ts
+  s_71c6da2ee47cd3::t_219e2dfcd3c658 4,62,66,95,108-110
+packages/cli/src/webhooks/webhook-helpers.ts
+  s_71c6da2ee47cd3::t_22028249b03956 30,84-85,425-545,905-906,1217-1223,1314-1331,1466-1468
+packages/@n8n/engine/src/response-channel/response-transport.ts
+  s_71c6da2ee47cd3::t_1e866fe525a390 1-23
+packages/@n8n/engine/src/response-channel/execution-response-channel.ts
+  s_71c6da2ee47cd3::t_4d94f6f753024f 1-110
+packages/cli/src/services/__tests__/engine-v2-webhook-responder.service.test.ts
+  s_71c6da2ee47cd3::t_d405134f94920e 1-17,21-106,110-111
+  ai_agent 18-20,107-109
+packages/workflow/src/interfaces.ts
+  s_71c6da2ee47cd3::t_1e866fe525a390 3764-3769
+packages/cli/src/services/engine-v2-dispatcher.service.ts
+  s_71c6da2ee47cd3::t_11151294bf63cb 13,85-90,106
+packages/@n8n/engine/src/runtime/create-engine-runtime.ts
+  s_71c6da2ee47cd3::t_613cff5051c1db 23,34-39,75,102
+packages/@n8n/engine/src/response-channel/index.ts
+  s_71c6da2ee47cd3::t_d67313882bd806 1-6
+packages/@n8n/config/src/configs/engine.config.ts
+  s_71c6da2ee47cd3::t_11151294bf63cb 65-72
+packages/cli/src/services/engine-v2-webhook-responder.service.ts
+  s_71c6da2ee47cd3::t_11151294bf63cb 1-4,11-32,34-65,68-92,94-113,115-123,125-129,131-132,135-152
+  s_71c6da2ee47cd3::t_c470b0a9f3961f 33,66-67,93,114,124,130,133-134
+  ai_agent 5-10
+packages/@n8n/engine/src/response-channel/execution-response.schema.ts
+  s_71c6da2ee47cd3::t_d67313882bd806 1-24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "730c6ec5df69c86739da303f389d65c102324450",
+  "prompts": {},
+  "sessions": {
+    "s_71c6da2ee47cd3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "34058f20-f9c0-4c61-a303-3490fd47e9b8",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}
