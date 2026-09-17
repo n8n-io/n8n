@@ -23,6 +23,10 @@ packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
   s_00622278583879::t_1ff971fea304d2 201,286,321
 packages/cli/src/modules/git-connections.ee/git-connections.service.ts
   s_00622278583879::t_0719326fbb6d3e 11,153-154,161-190
+  s_0a768a26a35119::t_3adee7ba697f8c 17
+  h_9b272a633435fb 9,25,27,118-124
+  s_b3870ba058e6f8::t_873e35df2e9a61 116
+  s_0a768a26a35119::t_bd4b0ab3ddb752 117
 packages/cli/src/modules/n8n-packages/entities/workflow/workflow.exporter.ts
   s_00622278583879::t_eafac45b713b21 91-95
 packages/cli/src/modules/git-connections.ee/__tests__/git-connections.service.test.ts
@@ -48,6 +52,22 @@ packages/cli/src/modules/n8n-packages/entities/credential/credential.exporter.ts
       "agent_id": {
         "tool": "codex",
         "id": "01a020e2-d273-7b21-99f9-d7a110097bea",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_0a768a26a35119": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "beee2048-df87-463a-a325-65a293bb14f5",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_b3870ba058e6f8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a01c9d-04e1-71b1-bad6-f92565fc72f2",
         "model": "gpt-5.6-sol"
       },
       "human_author": "Irénée <irenee.ajeneza@n8n.io>"

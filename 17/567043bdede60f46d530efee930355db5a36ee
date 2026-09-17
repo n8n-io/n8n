@@ -40,6 +40,7 @@ packages/cli/src/modules/git-connections.ee/git-connections.service.ts
   s_7562978115634d::t_3e43ec157a957e 104,110
   s_677c6aba5d38ab::t_ae3e69b4103d98 112-113,122-165
   s_7562978115634d::t_705e7100060996 220-226
+  s_b85ce308d3a991::t_584df25bbb8e23 92
 packages/cli/src/modules/source-control.ee/source-control-helper.ee.ts
   s_cbb79750df051b::t_ac87510a0510a6 21
   s_cbb79750df051b::t_01eb2e9ad39eed 289-290
@@ -50,7 +51,7 @@ packages/cli/src/modules/git-connections.ee/git-connections-git.service.ts
   s_cbb79750df051b::t_d67a0aecd2f407 13-18
   s_7562978115634d::t_37004788c15186 62-68,72,78-81,91-92,94,103
   s_7562978115634d::t_fc779b0f8a852a 69-71,73,104
-  s_37ea2c10fb0e32::t_159d945e1a6b1c 74-76,88-89
+  s_37ea2c10fb0e32::t_159d945e1a6b1c 74-76,87-89,88-89
   ai_agent 77,90
   s_453e0bdd28d498::t_9c58d2412289c8 82-87,95-97,102
   s_cbb79750df051b::t_b9b5d03e345528 120
@@ -60,6 +61,7 @@ packages/cli/src/modules/git-connections.ee/git-connections-git.service.ts
   s_7562978115634d::t_806568d4ddde33 166
   s_a5246f8acb611f::t_4fb843b4e1ad50 215
   s_cbb79750df051b::t_46d70cad525a10 237-240
+  s_b85ce308d3a991::t_68349408984f31 123
 packages/cli/src/modules/git-connections.ee/database/entities/git-connection.entity.ts
   s_aeecfe178a9b3d::t_b4254cc5909fe6 1
   s_396d47bc47d872::t_33929b1851a526 5-6
@@ -74,7 +76,7 @@ packages/cli/src/modules/git-connections.ee/__tests__/git-connections-git.utils.
   s_a5246f8acb611f::t_0628c0599b464e 75-84
   s_a5246f8acb611f::t_986a2e0d2fa5f7 110-118
 packages/cli/src/modules/git-connections.ee/git-connections-git.utils.ts
-  s_cbb79750df051b::t_c4a7faebadafaf 1-4,14-16,21-26,33-38,40,44-45,47,49-69
+  s_cbb79750df051b::t_c4a7faebadafaf 1-4,12,14-16,21-26,33-38,40,44-45,47,49-69
   s_a5246f8acb611f::t_3aa28c4831de89 5-12
   s_7562978115634d::t_ad6b2e63eac650 18
   s_a5246f8acb611f::t_cb5d28b750d2e2 27-32
@@ -90,6 +92,7 @@ packages/cli/src/modules/git-connections.ee/__tests__/git-connections-git.servic
   s_453e0bdd28d498::t_36f36e1b091566 53-54
 packages/cli/src/modules/git-connections.ee/constants.ts
   s_a5246f8acb611f::t_1004d94c1fd8b7 1-20,22-23
+  s_b85ce308d3a991::t_3de9434ae475ef 21
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -178,6 +181,14 @@ packages/cli/src/modules/git-connections.ee/constants.ts
       "agent_id": {
         "tool": "claude",
         "id": "a1c3abc3-6b2a-413e-a33c-2c784b044f11",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_b85ce308d3a991": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "59291f68-813d-4934-bdab-ee78cdd99d69",
         "model": "claude-opus-4-8"
       },
       "human_author": "Irénée <irenee.ajeneza@n8n.io>"
