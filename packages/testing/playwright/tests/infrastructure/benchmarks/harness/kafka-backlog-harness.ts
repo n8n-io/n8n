@@ -9,6 +9,7 @@ import {
 	waitForThroughput,
 } from '../../../../utils/benchmark';
 import type {
+	BenchmarkDimensions,
 	ExecutionMetrics,
 	LoadProfile,
 	TriggerSetupContext,
@@ -29,6 +30,7 @@ interface KafkaLoadOptions {
 	variant?: string;
 	minTailRateEfficiency?: number;
 	requireKeptUpStage?: boolean;
+	dimensions?: BenchmarkDimensions;
 }
 
 export async function runKafkaLoadTest(options: KafkaLoadOptions): Promise<ExecutionMetrics> {
@@ -51,6 +53,7 @@ export async function runKafkaLoadTest(options: KafkaLoadOptions): Promise<Execu
 		variant: options.variant,
 		minTailRateEfficiency: options.minTailRateEfficiency,
 		requireKeptUpStage: options.requireKeptUpStage,
+		dimensions: options.dimensions,
 		warmUp: async () => {
 			const metrics = options.services.observability.metrics;
 			const metricQuery = resolveMetricQuery(options.testInfo);

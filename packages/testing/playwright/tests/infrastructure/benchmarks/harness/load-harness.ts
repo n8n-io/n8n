@@ -50,6 +50,8 @@ export interface LoadTestOptions {
 	trigger: TriggerType;
 	/** PromQL metric to track workflow completions. Defaults to resolveMetricQuery(testInfo). */
 	metricQuery?: string;
+	/** Additional dimensions attached to every metric and the run report. */
+	dimensions?: BenchmarkDimensions;
 	/** When provided, the result log includes a resource breakdown (mode/main/workers/total). */
 	resourceSummary?: ResourceSummary;
 	/**
@@ -83,7 +85,10 @@ export async function runLoadTest(options: LoadTestOptions): Promise<ExecutionMe
 	testInfo.setTimeout(testInfo.timeout + timeoutMs + 120_000);
 
 	const { nodeCount, nodeOutputSize } = handle.scenario;
-	const dimensions = buildLoadDimensions({ trigger, nodeCount, nodeOutputSize, load });
+	const dimensions = {
+		...options.dimensions,
+		...buildLoadDimensions({ trigger, nodeCount, nodeOutputSize, load }),
+	};
 	if (variant !== undefined) dimensions.variant = variant;
 
 	const setup = await setupBenchmarkRun({

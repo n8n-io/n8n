@@ -37,6 +37,8 @@ export interface WebhookThroughputOptions {
 	timeoutMs: number;
 	/** PromQL metric to track workflow completions. Defaults to resolveMetricQuery(testInfo). */
 	metricQuery?: string;
+	/** Additional dimensions attached to every metric and the run report. */
+	dimensions?: BenchmarkDimensions;
 	/**
 	 * Seconds of discarded load BEFORE the measurement window. Warms V8 JIT,
 	 * PG connection pool, webhook cache, and BullMQ worker hot paths so the
@@ -83,6 +85,7 @@ export async function runWebhookThroughputTest(options: WebhookThroughputOptions
 	testInfo.setTimeout(timeoutMs + 120_000);
 
 	const dimensions: BenchmarkDimensions = {
+		...options.dimensions,
 		trigger: 'webhook',
 		nodes: nodeCount,
 		connections,

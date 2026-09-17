@@ -1,10 +1,16 @@
 import { test } from '../../../../fixtures/base';
 import { BENCHMARK_MAIN_RESOURCES, benchConfig } from '../../../../playwright-projects';
+import { VM_EAGER_BENCHMARK_PROFILE } from '../../../../utils/benchmark';
 import { runKafkaBacklogTest } from '../harness/kafka-backlog-harness';
 
 const MESSAGE_COUNT = 2_000;
 
-test.use({ capability: benchConfig('single-instance-ceiling', { kafka: true }) });
+test.use({
+	capability: benchConfig(`single-instance-ceiling-${VM_EAGER_BENCHMARK_PROFILE.isolationSuffix}`, {
+		kafka: true,
+		env: VM_EAGER_BENCHMARK_PROFILE.env,
+	}),
+});
 
 test.describe(
 	'How much can we process on a single instance?',
@@ -25,6 +31,7 @@ test.describe(
 				timeoutMs: 180_000,
 				resourceSummary: { plan: BENCHMARK_MAIN_RESOURCES },
 				requireComplete: true,
+				dimensions: VM_EAGER_BENCHMARK_PROFILE.dimensions,
 			});
 		});
 	},

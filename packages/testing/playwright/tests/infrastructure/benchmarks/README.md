@@ -15,8 +15,10 @@ The architectural ceiling. No queue tax, no worker dispatch. What's the absolute
 | Trigger | Spec | Question |
 |---------|------|----------|
 | kafka | `single-instance-ceiling.spec.ts` | How much can we process on a single instance? |
+| kafka | `single-instance-ceiling-lazy-cache.spec.ts` | How much can lazy expression isolates process? |
 | kafka | `steady-rate-breaking-point.spec.ts` | At what input rate does the system fall behind? |
 | webhook | `webhook-single-instance.spec.ts` | What is the single-instance webhook ingestion ceiling? |
+| webhook | `webhook-single-instance-lazy-cache.spec.ts` | What is the lazy expression-isolate webhook ceiling? |
 
 ### Actual — `1m + 1wp + 1w queue mode`
 
@@ -25,7 +27,7 @@ The production-canonical queue-mode topology: dedicated `n8n webhook` proc front
 | Trigger | Spec | Question |
 |---------|------|----------|
 | webhook | `webhook-dedicated-proc-baseline.spec.ts` | What is the webhook ingestion ceiling with a dedicated webhook proc? |
-| kafka | `queue-mode-sustained-rate.spec.ts` | Can queue mode sustain 250 msg/s steady? |
+| kafka | `queue-mode-sustained-rate.spec.ts` | Can queue mode sustain 15 msg/s steady? |
 | kafka | `burst-drain-capacity.spec.ts` | How fast can we drain a backlog? |
 | kafka | `node-count-scaling.spec.ts` | How does throughput scale with workflow complexity? |
 | kafka | `output-size-impact.spec.ts` | What is the impact of node output size on throughput? |
@@ -62,13 +64,26 @@ Webhook-trigger specs in **Actual** and **Scaling** use the production-canonical
 
 All specs share a single env profile aligned with internal n8n production defaults — connection-pool, lock-duration, and Bull/Redis tuning from real deployments. See `BENCHMARK_CONFIG` in `playwright-projects.ts`.
 
+### Expression engine profiles
+
+The direct Kafka and webhook baselines run with two explicit VM expression-engine profiles:
+
+| Profile | Lazy acquisition | Compile cache | Purpose |
+|---------|------------------|---------------|---------|
+| `vm-eager` | Off | Off | Tracks the current default execution path. |
+| `vm-lazy-cache` | On | On | Tracks the optimized no-expression execution path. |
+
+Each metric records `expression_engine`, `expression_lazy_acquire`, `expression_compile_cache`, and `expression_profile` dimensions. The lazy comparison runs remain in benchmark telemetry and run-report artifacts, but do not feed the deployment sizing matrix while eager VM is the default runtime.
+
+These NoOp workflows do not evaluate expressions. Lazy mode therefore avoids acquiring an isolate, so these comparisons primarily measure lazy acquisition. Use the expression-engine microbenchmarks to measure compile-cache behavior directly.
+
 ## Running
 
 ```bash
 # Build n8n image first (skip if you only changed test code).
 pnpm build:docker
 
-# Full suite — all 14 specs sequentially (each spawns its own container).
+# Full suite — all 15 specs sequentially (each spawns its own container).
 pnpm --filter=n8n-playwright test:benchmark
 
 # One spec.
