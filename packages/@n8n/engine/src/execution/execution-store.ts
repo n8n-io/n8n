@@ -55,7 +55,22 @@ export interface ExecutionStore {
 
 	/**
 	 * Record an execution's outcome: writes the final status and the finish time
-	 * together, as a compare-and-set on `running`, so they can't be observed apart.
+	 * together, as a compare-and-set on the live statuses, so they can't be
+	 * observed apart.
 	 */
 	finishExecution(id: string, status: 'completed' | 'failed'): Promise<boolean>;
+
+	/**
+	 * Sets a live execution's status from the state of its steps: `waiting` when
+	 * every step it still owes is suspended, `running` when one can run. Call it
+	 * after any change to a step's state.
+	 *
+	 * The step states and the write are one statement. A step row that changes
+	 * in between therefore cannot leave a stale status behind, which a read
+	 * followed by a write would allow.
+	 *
+	 * Leaves an execution alone when no step of it is unsettled, because
+	 * `finishExecution` owns the end, and when it has already ended.
+	 */
+	refreshLiveStatus(id: string): Promise<void>;
 }
