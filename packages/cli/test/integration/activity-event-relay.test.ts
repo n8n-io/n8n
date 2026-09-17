@@ -71,7 +71,7 @@ describe('ActivityEventRelay', () => {
 		await vi.waitFor(async () => {
 			const entries = await repository.findFeed({
 				projectIds: [projectId],
-				categories: ['workflow', 'credential'],
+				allowedCategories: ['workflow', 'credential'],
 				limit: 10,
 			});
 			expect(entries).not.toHaveLength(0);
