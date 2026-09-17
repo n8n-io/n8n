@@ -8,21 +8,10 @@ import type { UrlService } from '@/services/url.service';
 
 import { McpProtectedResource } from '../mcp-protected-resource';
 
-<<<<<<< HEAD
-const makeGlobalConfig = ({ builderEnabled = true } = {}) =>
+const makeGlobalConfig = ({ builderEnabled = true, activityLogEnabled = true } = {}) =>
 	({
 		endpoints: { mcpBuilderEnabled: builderEnabled },
-=======
-const makeGlobalConfig = ({
-	builderEnabled = true,
-	tagsDisabled = false,
-	activityLogEnabled = true,
-} = {}) =>
-	({
-		endpoints: { mcpBuilderEnabled: builderEnabled },
-		tags: { disabled: tagsDisabled },
 		activityLog: { enabled: activityLogEnabled },
->>>>>>> 0b559b5ad0d13808fad2d67e24fb11629e6881ab
 	}) as unknown as GlobalConfig;
 
 describe('McpProtectedResource', () => {
