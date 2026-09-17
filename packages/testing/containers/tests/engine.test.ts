@@ -57,10 +57,11 @@ describe('applyEngineEnv', () => {
 	});
 
 	test('rejects an env that is missing Postgres connection values', () => {
-		const env: Record<string, string> = { DB_TYPE: 'postgresdb', DB_POSTGRESDB_HOST: 'postgres' };
+		// Every key the URL reads, so dropping one from the check fails here.
+		const env: Record<string, string> = { DB_TYPE: 'postgresdb' };
 
 		expect(() => applyEngineEnv(env, { engine: 'in-process', isQueueMode: false })).toThrow(
-			/missing DB_POSTGRESDB_USER, DB_POSTGRESDB_PASSWORD, DB_POSTGRESDB_PORT/,
+			/missing DB_POSTGRESDB_USER, DB_POSTGRESDB_PASSWORD, DB_POSTGRESDB_HOST, DB_POSTGRESDB_PORT/,
 		);
 	});
 
