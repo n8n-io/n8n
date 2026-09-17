@@ -1,3 +1,14 @@
+## [1.123.81](https://github.com/n8n-io/n8n/compare/n8n@1.123.80...n8n@1.123.81) (2026-09-17)
+
+
+### Bug Fixes
+
+* **core:** Allow a domain-restricted credential to work in its own node ([#38786](https://github.com/n8n-io/n8n/issues/38786)) ([7e98622](https://github.com/n8n-io/n8n/commit/7e9862219b2e8f4d72792090048b543fef82fd1a))
+* **core:** Update undici to 7.29.1 ([#38849](https://github.com/n8n-io/n8n/issues/38849)) ([3357ecc](https://github.com/n8n-io/n8n/commit/3357ecc57f319e945b307020c69b5362ab59509b))
+* **core:** Update vm2 to 3.12.2 ([#38846](https://github.com/n8n-io/n8n/issues/38846)) ([b3b77aa](https://github.com/n8n-io/n8n/commit/b3b77aa5baff272ef9f83775672cff163e4e4b20))
+* **Snowflake Node:** Update the Snowflake SDK to 3.3.0 ([#38831](https://github.com/n8n-io/n8n/issues/38831)) ([1281ee6](https://github.com/n8n-io/n8n/commit/1281ee644402441d9c59d4dd6dca8a54a12acaec))
+
+
 ## [1.123.80](https://github.com/n8n-io/n8n/compare/n8n@1.123.79...n8n@1.123.80) (2026-09-16)
 
 
