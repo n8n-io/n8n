@@ -1184,8 +1184,14 @@ export class CanvasPage extends BasePage {
 	async openWorkflowHistory(): Promise<void> {
 		await this.clickByTestId('workflow-menu');
 		await this.clickByTestId('workflow-menu-item-version-history');
-		// Wait for the initial version redirect before another navigation starts.
-		await this.page.waitForURL(/\/history\/[^/?#]+(?:[?#].*)?$/);
+		await this.page.waitForURL(/\/history(?:\/[^/?#]+)?(?:[?#].*)?$/);
+		const historyList = this.page.getByTestId('workflow-history-list');
+		await historyList.waitFor({ state: 'attached' });
+		await historyList.getByRole('status').waitFor({ state: 'hidden' });
+		// Empty history has no version redirect. Wait for it only when an entry exists.
+		if (await historyList.getByTestId('workflow-history-list-item').count()) {
+			await this.page.waitForURL(/\/history\/[^/?#]+(?:[?#].*)?$/);
+		}
 	}
 
 	async closeWorkflowHistory(): Promise<void> {
