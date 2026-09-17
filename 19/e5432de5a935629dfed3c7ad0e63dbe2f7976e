@@ -7,7 +7,7 @@ packages/cli/src/modules/n8n-packages/__tests__/export-project-to-directory.inte
 packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
   s_66f0116e999381::t_d77164df1547ab 30-31
   s_66f0116e999381::t_90d640a831b7c2 41
-  s_66f0116e999381::t_803280a0b1c331 84,98-101,104-106,108,111,113-117,59,87,96
+  s_66f0116e999381::t_803280a0b1c331 59,84,87,96,98-101,104-106,108,111,113-117
   s_b3870ba058e6f8::t_beae8ed26d5899 53-58,85-86,88-95,97,110,112,118,332,334-337
   s_b3870ba058e6f8::t_996781f05d7557 102-103,107,109
 packages/cli/src/modules/n8n-packages/io/__tests__/directory-package-writer.test.ts
