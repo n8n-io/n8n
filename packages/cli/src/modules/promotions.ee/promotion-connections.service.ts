@@ -275,14 +275,8 @@ export class PromotionConnectionsService {
 		configs: PromotionConfig[],
 	): Promise<PromotionConnectionPublicDto> {
 		return {
-			id: connection.id,
-			name: connection.name,
-			scope: connection.scope,
-			target: connection.target,
-			provider: this.providersService.toSummary(connection.provider),
+			...this.connectionFields(connection),
 			configs: await this.toConfigsPublic(connection, configs),
-			createdAt: connection.createdAt.toISOString(),
-			updatedAt: connection.updatedAt.toISOString(),
 		};
 	}
 
@@ -291,12 +285,18 @@ export class PromotionConnectionsService {
 		configs: PromotionConfig[],
 	): PromotionConnectionSummary {
 		return {
+			...this.connectionFields(connection),
+			configs: this.toConfigsSummary(configs),
+		};
+	}
+
+	private connectionFields(connection: PromotionConnection) {
+		return {
 			id: connection.id,
 			name: connection.name,
 			scope: connection.scope,
 			target: connection.target,
 			provider: this.providersService.toSummary(connection.provider),
-			configs: this.toConfigsSummary(configs),
 			createdAt: connection.createdAt.toISOString(),
 			updatedAt: connection.updatedAt.toISOString(),
 		};
