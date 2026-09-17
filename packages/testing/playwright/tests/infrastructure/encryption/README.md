@@ -1,6 +1,7 @@
 # Encryption-cycle tests
 
-Repeatable end-to-end tests for the encryption-key rollout, on the
+Repeatable end-to-end tests for the encryption-key rollout: an API-only
+Playwright suite (project `encryption:infrastructure`, no browser) on the
 `n8n-containers` Testcontainers stack. Both modes run on both supported
 databases: sqlite and postgres.
 
@@ -14,7 +15,8 @@ pnpm test:encryption:rotation    # standalone rotation test (the local image onl
 
 | File | Responsibility |
 |---|---|
-| `run.ts` | entry: parameters, mode dispatch, the loud FAIL path, exit codes |
+| `upgrade-cycle.spec.ts` / `rotation-cycle.spec.ts` | one test per backend; phases render as `test.step()` |
+| `spec-helpers.ts` | env parameters, docker/image skip gate, the loud FAIL path, attachments |
 | `harness.ts` | phase/step logging, metrics + summary, failure type |
 | `instances.ts` | stack boot and per-phase image swaps; log capture |
 | `api.ts` | REST client and the encryption assertions (`assertDecrypts`, `rotateKey`, …) |
@@ -87,13 +89,15 @@ samples land in `<work root>/<backend>/metrics.csv`.
 
 ## Failure behavior
 
-Any failed check throws, and the runner prints one loud block: the
-`FAIL: <spec> - <message>` line with the expected/actual details, the
-current container's docker log appended to `<backend>/n8n.log`, and the last
-40 log lines inline. The stack (n8n, database, network) is torn down, and the
-process exits 1. In CI the job summary shows **Result: FAIL** with the last
-80 run-log lines, the artifacts still upload, and a failed scheduled run
-notifies Slack.
+Any failed check throws and fails the Playwright test: a loud block prints
+the `FAIL` line with the expected/actual details, the current container's
+docker log is appended to `<backend>/n8n.log`, the last 40 log lines print
+inline, and the stack (n8n, database, network) is torn down. The log and
+`metrics.csv` are attached to the test. In CI the job summary shows
+**Result: FAIL** with the last 80 run-log lines, the artifacts still upload,
+and a failed scheduled run notifies Slack. Without docker (or without the
+locally built image) the tests skip — except in the encryption CI workflow,
+where `ENCRYPTION_CYCLE_REQUIRED=true` turns that into a failure.
 
 ## Parameters
 
@@ -105,9 +109,6 @@ notifies Slack.
 | `TO_IMAGE` | `n8nio/n8n:local` | the image under test (`pnpm build:docker` output) |
 | `TEST_IMAGE_POSTGRES` | stack default | the postgres container image |
 | `WORK_ROOT` | `mktemp -d` | where the home dirs, logs, and metrics land |
-
-Exit codes: `0` pass, `1` fail (loud, as above), `77` skip (docker
-unavailable).
 
 ## CI
 

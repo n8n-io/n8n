@@ -1,7 +1,7 @@
+import { test } from '@playwright/test';
 import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-
-import type { N8NStack } from '../stack';
+import type { N8NStack } from 'n8n-containers/stack';
 
 /** One backend run's mutable state: paths, metrics, and the current phase. */
 export interface CycleContext {
@@ -43,12 +43,18 @@ export function metric(ctx: CycleContext, kind: string, label: string, value: nu
 	appendFileSync(ctx.metricsFile, `${kind},${label},${value}\n`);
 }
 
-export function phase(ctx: CycleContext, name: string): void {
+/** Rolls the phase over for metrics/logging and runs the body as a test step. */
+export async function runPhase(
+	ctx: CycleContext,
+	name: string,
+	body: () => Promise<void>,
+): Promise<void> {
 	metric(ctx, 'phase_s', ctx.phase, Math.round((Date.now() - ctx.phaseStartedMs) / 1000));
 	ctx.phase = name;
 	ctx.phaseStartedMs = Date.now();
 	console.log('');
 	console.log(`[${ts()}] ================ [${ctx.backend}] ${name} ================`);
+	await test.step(name, body);
 }
 
 export function step(ctx: CycleContext, msg: string): void {

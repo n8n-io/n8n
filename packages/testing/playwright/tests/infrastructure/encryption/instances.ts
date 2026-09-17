@@ -3,8 +3,8 @@ import { appendFileSync, readFileSync } from 'node:fs';
 import { RestClient } from './api';
 import type { CycleContext } from './harness';
 import { fail, ok, step } from './harness';
-import { N8NStartupError } from '../services/n8n';
-import { createN8NStack } from '../stack';
+import { N8NStartupError } from 'n8n-containers/services/n8n';
+import { createN8NStack } from 'n8n-containers/stack';
 
 /** Env every phase shares; the rotation flag is the only per-phase change. */
 const CYCLE_ENV: Record<string, string> = {

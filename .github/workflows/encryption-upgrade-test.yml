@@ -29,7 +29,7 @@ on:
   # verify themselves (both modes) before the merge.
   pull_request:
     paths:
-      - 'packages/testing/containers/encryption-cycle/**'
+      - 'packages/testing/playwright/tests/infrastructure/encryption/**'
       - 'packages/testing/containers/services/n8n.ts'
       - 'packages/testing/containers/services/types.ts'
       - 'packages/testing/containers/stack.ts'
@@ -75,11 +75,13 @@ jobs:
       - name: Run the test cycle
         env:
           FROM_IMAGE_INPUT: ${{ inputs.from-image }}
+          ENCRYPTION_CYCLE_REQUIRED: 'true'
         run: |
           mkdir -p "$WORK_ROOT"
           if [ -n "$FROM_IMAGE_INPUT" ]; then export FROM_IMAGE="$FROM_IMAGE_INPUT"; fi
           set -o pipefail
-          pnpm --filter n8n-containers encryption-cycle 2>&1 | tee "$WORK_ROOT/run.log"
+          pnpm --filter=n8n-playwright test:encryption:"$MODE" 2>&1 | tee "$WORK_ROOT/run.log"
+          echo "PASS: ${MODE}-cycle — all requested backends green ($DB)" | tee -a "$WORK_ROOT/run.log"
 
       - name: Write run summary
         if: always()
