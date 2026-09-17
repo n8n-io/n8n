@@ -14,7 +14,6 @@ export interface WebhookSetupContext {
 		payloadSize: PayloadSize;
 		nodeOutputSize?: NodeOutputSize;
 		responseMode?: WebhookResponseMode;
-		engineType?: 'v2';
 	};
 }
 
@@ -36,7 +35,6 @@ export function setupWebhook(ctx: WebhookSetupContext): WebhookHandle {
 		payloadSize,
 		nodeOutputSize = 'noop',
 		responseMode = 'onReceived',
-		engineType,
 	} = ctx.scenario;
 
 	const webhookTrigger = trigger({
@@ -59,7 +57,6 @@ export function setupWebhook(ctx: WebhookSetupContext): WebhookHandle {
 		webhookTrigger,
 		nodeCount,
 		nodeOutputSize,
-		engineType,
 	);
 
 	const payload = generatePayload(PAYLOAD_PROFILES[payloadSize]);

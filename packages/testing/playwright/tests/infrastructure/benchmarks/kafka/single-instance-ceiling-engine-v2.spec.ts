@@ -39,7 +39,6 @@ test.describe(
 				resourceSummary: { plan: BENCHMARK_MAIN_RESOURCES },
 				minimumCompletionRatio: 1,
 				dimensions: ENGINE_V2_BENCHMARK_PROFILE.dimensions,
-				engineType: ENGINE_V2_BENCHMARK_PROFILE.engineType,
 			});
 		});
 	},

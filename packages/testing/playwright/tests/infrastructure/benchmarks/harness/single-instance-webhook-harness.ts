@@ -17,8 +17,6 @@ export async function runSingleInstanceWebhookBenchmark(options: {
 	testInfo: TestInfo;
 	baseUrl: string;
 	dimensions: BenchmarkDimensions;
-	engineType?: 'v2';
-	allowIncompleteDrain?: boolean;
 	drainTimeoutSeconds?: number;
 }): Promise<void> {
 	const drainTimeoutSeconds =
@@ -29,7 +27,6 @@ export async function runSingleInstanceWebhookBenchmark(options: {
 			payloadSize: '1KB',
 			nodeOutputSize: 'noop',
 			responseMode: 'onReceived',
-			engineType: options.engineType,
 		},
 	});
 
@@ -46,9 +43,9 @@ export async function runSingleInstanceWebhookBenchmark(options: {
 		timeoutMs: (SINGLE_INSTANCE_WEBHOOK_DURATION_SECONDS + drainTimeoutSeconds + 60) * 1000,
 		drainTimeoutSeconds,
 		maxErrorRatePct: 1,
-		minCompletedResponseRatio: options.allowIncompleteDrain ? undefined : 0.95,
+		minCompletedResponseRatio: drainTimeoutSeconds === 0 ? undefined : 0.95,
 		counterReader:
-			options.engineType === 'v2'
+			options.api.options.workflowSettings?.engineType === 'v2'
 				? undefined
 				: async () => await options.api.metrics.getCounter(WORKFLOW_SUCCESS_QUERY),
 		dimensions: options.dimensions,

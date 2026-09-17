@@ -27,6 +27,5 @@ test('Kafka trigger + 1 noop, 1KB payload, 10k msgs (engine v2, split DB, VM laz
 		resourceSummary: { plan: BENCHMARK_MAIN_RESOURCES },
 		minimumCompletionRatio: 0.98,
 		dimensions: ENGINE_V2_SPLIT_DB_LAZY_CACHE_BENCHMARK_PROFILE.dimensions,
-		engineType: ENGINE_V2_SPLIT_DB_LAZY_CACHE_BENCHMARK_PROFILE.engineType,
 	});
 });

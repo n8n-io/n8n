@@ -83,12 +83,10 @@ export async function runKafkaLoadTest(options: KafkaLoadOptions): Promise<Execu
 export async function runKafkaBacklogTest(
 	options: Omit<KafkaLoadOptions, 'scenario' | 'load'> & {
 		messageCount: number;
-		engineType?: 'v2';
 	},
 ): Promise<void> {
-	const { engineType, ...loadOptions } = options;
 	await runKafkaLoadTest({
-		...loadOptions,
+		...options,
 		counterReader:
 			options.dimensions?.execution_engine === 'v1'
 				? async () => await options.api.metrics.getCounter(WORKFLOW_SUCCESS_QUERY)
@@ -98,7 +96,6 @@ export async function runKafkaBacklogTest(
 			payloadSize: '1KB',
 			nodeOutputSize: 'noop',
 			partitions: 3,
-			engineType,
 		},
 		load: { type: 'preloaded', count: options.messageCount },
 	});

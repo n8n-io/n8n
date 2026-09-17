@@ -42,7 +42,6 @@ test.describe(
 				resourceSummary: { plan: BENCHMARK_MAIN_RESOURCES },
 				minimumCompletionRatio: 0.98,
 				dimensions: ENGINE_V2_LAZY_CACHE_BENCHMARK_PROFILE.dimensions,
-				engineType: ENGINE_V2_LAZY_CACHE_BENCHMARK_PROFILE.engineType,
 			});
 		});
 	},

@@ -28,8 +28,6 @@ test(`Async webhook + 1 noop, 1KB payload, ${SINGLE_INSTANCE_WEBHOOK_CONNECTIONS
 		testInfo,
 		baseUrl: backendUrl,
 		dimensions: ENGINE_V2_SPLIT_DB_LAZY_CACHE_BENCHMARK_PROFILE.dimensions,
-		engineType: ENGINE_V2_SPLIT_DB_LAZY_CACHE_BENCHMARK_PROFILE.engineType,
-		allowIncompleteDrain: true,
 		drainTimeoutSeconds: 0,
 	});
 });

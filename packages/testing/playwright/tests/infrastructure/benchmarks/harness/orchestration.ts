@@ -111,7 +111,7 @@ export async function setupBenchmarkRun(ctx: SetupContext): Promise<SetupResult>
 			webhookPrefix: ctx.createOptions?.webhookPrefix,
 		});
 	const counterReader =
-		ctx.handle.workflow.settings?.engineType === 'v2'
+		ctx.api.options.workflowSettings?.engineType === 'v2'
 			? async () =>
 					await (
 						ctx.services.enginePostgres ?? ctx.services.postgres

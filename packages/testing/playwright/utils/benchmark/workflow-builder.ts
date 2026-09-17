@@ -48,7 +48,6 @@ export function buildChainedWorkflow(
 	triggerNode: TriggerNode,
 	nodeCount: number,
 	nodeOutputSize: NodeOutputSize = 'noop',
-	engineType?: 'v2',
 ): Partial<IWorkflowBase> {
 	if (nodeCount <= 0) throw new Error(`nodeCount must be > 0, got ${nodeCount}`);
 
@@ -61,9 +60,5 @@ export function buildChainedWorkflow(
 		rest.reduce((chain, n) => chain.to(n), (triggerNode as ReturnType<typeof node>).to(first)),
 	);
 
-	const definition = wf.toJSON() as Partial<IWorkflowBase>;
-	if (engineType !== undefined) {
-		definition.settings = { ...definition.settings, engineType };
-	}
-	return definition;
+	return wf.toJSON() as Partial<IWorkflowBase>;
 }

@@ -41,8 +41,6 @@ test.describe(
 				testInfo,
 				baseUrl: backendUrl,
 				dimensions: ENGINE_V2_LAZY_CACHE_BENCHMARK_PROFILE.dimensions,
-				engineType: ENGINE_V2_LAZY_CACHE_BENCHMARK_PROFILE.engineType,
-				allowIncompleteDrain: true,
 				drainTimeoutSeconds: 0,
 			});
 		});

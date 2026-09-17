@@ -4,7 +4,6 @@ interface RuntimeBenchmarkProfile {
 	isolationSuffix: string;
 	env: Record<string, string>;
 	dimensions: BenchmarkDimensions;
-	engineType?: 'v2';
 	engineDatabase?: 'shared' | 'split';
 }
 
@@ -45,7 +44,6 @@ export const ENGINE_V2_BENCHMARK_PROFILE: RuntimeBenchmarkProfile = {
 	env: {
 		...VM_EAGER_BENCHMARK_PROFILE.env,
 	},
-	engineType: 'v2',
 	engineDatabase: 'shared',
 	dimensions: {
 		execution_engine: 'v2',
@@ -62,7 +60,6 @@ export const ENGINE_V2_LAZY_CACHE_BENCHMARK_PROFILE: RuntimeBenchmarkProfile = {
 	env: {
 		...VM_LAZY_CACHE_BENCHMARK_PROFILE.env,
 	},
-	engineType: 'v2',
 	engineDatabase: 'shared',
 	dimensions: {
 		...VM_LAZY_CACHE_BENCHMARK_PROFILE.dimensions,
