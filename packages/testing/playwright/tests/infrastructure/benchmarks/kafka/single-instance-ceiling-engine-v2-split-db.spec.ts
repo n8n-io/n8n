@@ -34,7 +34,6 @@ test.describe(
 				messageCount: 10_000,
 				timeoutMs: 600_000,
 				resourceSummary: { plan: BENCHMARK_MAIN_RESOURCES },
-				minimumCompletionRatio: 0.9,
 				dimensions: ENGINE_V2_SPLIT_DB_LAZY_CACHE_BENCHMARK_PROFILE.dimensions,
 			});
 		});

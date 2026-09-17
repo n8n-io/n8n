@@ -37,7 +37,6 @@ test.describe(
 				messageCount: MESSAGE_COUNT,
 				timeoutMs: 300_000,
 				resourceSummary: { plan: BENCHMARK_MAIN_RESOURCES },
-				minimumCompletionRatio: 0.95,
 				dimensions: ENGINE_V2_BENCHMARK_PROFILE.dimensions,
 			});
 		});
