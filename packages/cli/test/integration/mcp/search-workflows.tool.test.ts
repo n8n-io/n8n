@@ -64,10 +64,7 @@ describe('searchWorkflows folder filter', () => {
 		nested = await createFolder(ownerProject, { name: 'Nested', parentFolder: triggers });
 		const other = await createFolder(ownerProject, { name: 'Other' });
 
-		await createWorkflow(
-			{ name: 'Root flow', settings: { availableInMCP: true } },
-			ownerProject,
-		);
+		await createWorkflow({ name: 'Root flow', settings: { availableInMCP: true } }, ownerProject);
 		await createWorkflow(
 			{ name: 'Slack trigger', parentFolder: triggers, settings: { availableInMCP: true } },
 			ownerProject,
