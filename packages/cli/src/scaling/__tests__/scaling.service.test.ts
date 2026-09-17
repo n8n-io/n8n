@@ -898,7 +898,7 @@ describe('ScalingService', () => {
 
 			await scalingService.recoverFromQueue();
 
-			expect(executionCrashService.markAsCrashed).toHaveBeenCalledWith(['123']);
+			expect(executionCrashService.markAsCrashed).toHaveBeenCalledWith(['123'], 'queue-recovery');
 		});
 
 		it('should mark running executions as crashed if they are missing from the queue and queue is not empty', async () => {
@@ -908,7 +908,7 @@ describe('ScalingService', () => {
 
 			await scalingService.recoverFromQueue();
 
-			expect(executionCrashService.markAsCrashed).toHaveBeenCalledWith(['123']);
+			expect(executionCrashService.markAsCrashed).toHaveBeenCalledWith(['123'], 'queue-recovery');
 		});
 
 		it('should not mark running executions as crashed if they are present in the queue', async () => {

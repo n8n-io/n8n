@@ -405,7 +405,7 @@ describe('WorkflowExecutionService', () => {
 			const returned = await runPolledWorkflow();
 
 			expect(returned).toBe('exec-9');
-			expect(executionCrashService.markAsCrashed).toHaveBeenCalledWith('exec-9');
+			expect(executionCrashService.markAsCrashed).toHaveBeenCalledWith('exec-9', 'start-failure');
 			expect(responsePromise.reject).toHaveBeenCalledWith(runError);
 			expect(errorReporter.error).toHaveBeenCalledWith(runError, expect.anything());
 		});

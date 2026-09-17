@@ -4,9 +4,12 @@ import type { Context, Exception, Span } from '@opentelemetry/api';
 import { context, propagation, SpanStatusCode, trace } from '@opentelemetry/api';
 import type { ExecutionStatus } from 'n8n-workflow';
 
+import { WorkflowCrashedError } from '@/errors/workflow-crashed.error';
+
 import {
 	type StartWorkflowParams,
 	type EndWorkflowParams,
+	type EndCrashedWorkflowParams,
 	type StartNodeParams,
 	type EndNodeParams,
 	isEndNodeError,
@@ -120,6 +123,46 @@ export class ExecutionLevelTracer {
 		}
 	}
 
+	endCrashedWorkflow(params: EndCrashedWorkflowParams): void {
+		try {
+			const tracked = this.activeWorkflowSpans.get(params.executionId);
+			const span = tracked?.span ?? this.reconstructWorkflowSpan(params);
+			span.setAttributes({
+				[ATTR.EXECUTION_MODE]: params.mode,
+				[ATTR.EXECUTION_STATUS]: 'crashed',
+				[ATTR.EXECUTION_ERROR_TYPE]: WorkflowCrashedError.name,
+				[ATTR.EXECUTION_CRASH_DETECTOR]: params.detector,
+				[ATTR.EXECUTION_RECONSTRUCTED]: tracked === undefined,
+			});
+			span.setStatus({ code: SpanStatusCode.ERROR });
+			span.recordException(new WorkflowCrashedError());
+			this.endDanglingNodeSpans(params.executionId, 'workflow_crashed');
+			span.end(params.stoppedAt);
+		} catch (error) {
+			this.logger.warn('Failed to end crashed workflow span', {
+				executionId: params.executionId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		} finally {
+			this.activeWorkflowSpans.delete(params.executionId);
+		}
+	}
+
+	private reconstructWorkflowSpan(params: EndCrashedWorkflowParams) {
+		return this.tracer.startSpan(
+			'workflow.execute',
+			{
+				startTime: params.startedAt,
+				attributes: {
+					[ATTR.WORKFLOW_ID]: params.workflowId,
+					...(params.workflowName && { [ATTR.WORKFLOW_NAME]: params.workflowName }),
+					[ATTR.EXECUTION_ID]: params.executionId,
+				},
+			},
+			this.parseTraceParentHeaders(params.tracingContext),
+		);
+	}
+
 	startNode(params: StartNodeParams): void {
 		try {
 			//	We should always have the node running in a workflow so parentCtx should never be null
@@ -204,6 +247,10 @@ export class ExecutionLevelTracer {
 	 * disconnected trace. Undefined when neither span is active (e.g. otel
 	 * disabled, or the execution/node isn't tracked here).
 	 */
+	hasWorkflowSpan(executionId: string): boolean {
+		return this.activeWorkflowSpans.has(executionId);
+	}
+
 	getActiveContext(executionId: string, nodeName?: string): Context | undefined {
 		const span = this.findMostSpecificSpan(executionId, nodeName);
 		return span ? trace.setSpan(context.active(), span) : undefined;
@@ -262,12 +309,12 @@ export class ExecutionLevelTracer {
 		);
 	}
 
-	private endDanglingNodeSpans(executionId: string): void {
+	private endDanglingNodeSpans(executionId: string, reason = 'workflow_cancelled'): void {
 		const executionNodes = this.activeNodeSpansByExecutionId.get(executionId);
 		if (!executionNodes) return;
 
 		for (const tracked of executionNodes.values()) {
-			terminateSpan(tracked.span, 'workflow_cancelled');
+			terminateSpan(tracked.span, reason);
 		}
 
 		this.activeNodeSpansByExecutionId.delete(executionId);

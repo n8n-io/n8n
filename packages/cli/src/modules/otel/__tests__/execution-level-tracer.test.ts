@@ -1,5 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
 import { SpanStatusCode, trace } from '@opentelemetry/api';
+import { hrTimeToMilliseconds } from '@opentelemetry/core';
 import { mock } from 'vitest-mock-extended';
 
 import { ExecutionLevelTracer } from '../execution-level-tracer';
@@ -315,6 +316,82 @@ describe('ExecutionLevelTracer', () => {
 			).not.toThrow();
 
 			expect(otel.getFinishedSpans()).toHaveLength(0);
+		});
+	});
+
+	describe('endCrashedWorkflow', () => {
+		it('should end a tracked workflow span as crashed and stop tracking it', () => {
+			tracer.startWorkflow({
+				executionId: 'exec-crashed',
+				tracingContext: inboundTracingContext,
+				workflow: defaultWorkflow,
+			});
+			tracer.startNode({
+				executionId: 'exec-crashed',
+				node: { id: 'n1', name: 'Node1', type: 'n8n-nodes-base.set', typeVersion: 1 },
+			});
+
+			expect(tracer.hasWorkflowSpan('exec-crashed')).toBe(true);
+
+			tracer.endCrashedWorkflow({
+				executionId: 'exec-crashed',
+				workflowId: 'wf-1',
+				workflowName: 'Test',
+				mode: 'trigger',
+				detector: 'stall',
+				stoppedAt: new Date(),
+			});
+
+			expect(tracer.hasWorkflowSpan('exec-crashed')).toBe(false);
+
+			const spans = otel.getFinishedSpans();
+			expect(spans).toHaveLength(2);
+
+			const nodeSpan = spans.find((s) => s.name === 'node.execute')!;
+			expect(nodeSpan.attributes['n8n.node.termination_reason']).toBe('workflow_crashed');
+
+			const span = spans.find((s) => s.name === 'workflow.execute')!;
+			expect(span.name).toBe('workflow.execute');
+			expect(span.attributes['n8n.execution.status']).toBe('crashed');
+			expect(span.attributes['n8n.execution.error_type']).toBe('WorkflowCrashedError');
+			expect(span.attributes['n8n.execution.crash.detector']).toBe('stall');
+			expect(span.attributes['n8n.execution.reconstructed']).toBe(false);
+			expect(span.status.code).toBe(SpanStatusCode.ERROR);
+
+			const headers: Record<string, string> = {};
+			tracer.injectTraceHeaders('exec-crashed', undefined, headers);
+			expect(headers.traceparent).toBeUndefined();
+		});
+
+		it('should reconstruct the workflow span for an untracked execution', () => {
+			const startedAt = new Date('2025-01-01T00:00:00.000Z');
+			const stoppedAt = new Date('2025-01-01T00:01:00.000Z');
+
+			tracer.endCrashedWorkflow({
+				executionId: 'exec-untracked',
+				workflowId: 'wf-1',
+				workflowName: 'Test',
+				mode: 'trigger',
+				detector: 'queue-recovery',
+				startedAt,
+				stoppedAt,
+				tracingContext: inboundTracingContext,
+			});
+
+			const spans = otel.getFinishedSpans();
+			expect(spans).toHaveLength(1);
+
+			const span = spans[0];
+			expect(span.name).toBe('workflow.execute');
+			expect(span.attributes['n8n.workflow.id']).toBe('wf-1');
+			expect(span.attributes['n8n.workflow.name']).toBe('Test');
+			expect(span.attributes['n8n.execution.id']).toBe('exec-untracked');
+			expect(span.attributes['n8n.execution.status']).toBe('crashed');
+			expect(span.attributes['n8n.execution.crash.detector']).toBe('queue-recovery');
+			expect(span.attributes['n8n.execution.reconstructed']).toBe(true);
+			expect(hrTimeToMilliseconds(span.startTime)).toBe(startedAt.getTime());
+			expect(hrTimeToMilliseconds(span.endTime)).toBe(stoppedAt.getTime());
+			expect(span.spanContext().traceId).toBe('abcdef1234567890abcdef1234567890');
 		});
 	});
 

@@ -1,5 +1,7 @@
 import type { ExecutionStatus, WorkflowExecuteMode, INode } from 'n8n-workflow';
 
+import type { CrashDetector } from '@/events/maps/relay.event-map';
+
 import type { TracingContext } from './tracing-context';
 
 export type CustomAttributes = Record<string, string>;
@@ -32,6 +34,17 @@ export type EndWorkflowParams = {
 	error?: unknown;
 	isRetry: boolean;
 	retryOf?: string;
+};
+
+export type EndCrashedWorkflowParams = {
+	executionId: string;
+	workflowId: string;
+	workflowName?: string;
+	mode: WorkflowExecuteMode;
+	detector: CrashDetector;
+	startedAt?: Date;
+	stoppedAt: Date;
+	tracingContext?: TracingContext;
 };
 
 type NodeTracingParams = Pick<INode, 'id' | 'name' | 'type' | 'typeVersion'>;

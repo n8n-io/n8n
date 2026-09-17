@@ -309,7 +309,7 @@ export class MessageEventBus extends EventEmitter {
 
 		const recoveryAlreadyAttempted = this.logWriter?.isRecoveryProcessRunning();
 		if (recoveryAlreadyAttempted || this.globalConfig.eventBus.crashRecoveryMode === 'simple') {
-			await this.executionCrashService.markAsCrashed(unfinishedExecutionIds);
+			await this.executionCrashService.markAsCrashed(unfinishedExecutionIds, 'startup-recovery');
 			// if we end up here, it means that the previous recovery process did not finish
 			// a possible reason would be that recreating the workflow data itself caused e.g an OOM error
 			// in that case, we do not want to retry the recovery process, but rather mark the executions as crashed

@@ -780,7 +780,7 @@ export class ScalingService {
 			return waitMs;
 		}
 
-		await this.executionCrashService.markAsCrashed(danglingIds);
+		await this.executionCrashService.markAsCrashed(danglingIds, 'queue-recovery');
 
 		this.logger.info('Completed queue recovery check, recovered dangling executions', {
 			danglingIds,

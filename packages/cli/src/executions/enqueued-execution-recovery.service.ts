@@ -54,7 +54,7 @@ export class EnqueuedExecutionRecoveryService {
 			this.logger.warn('Crashing enqueued executions with unreadable data', {
 				executionIds: unreadableIds,
 			});
-			await this.executionCrashService.markAsCrashed(unreadableIds);
+			await this.executionCrashService.markAsCrashed(unreadableIds, 'start-failure');
 		}
 
 		if (executions.length === 0) return;
@@ -101,6 +101,6 @@ export class EnqueuedExecutionRecoveryService {
 		this.errorReporter.error(error, { executionId, shouldBeLogged: false });
 		this.logger.error('Failed to run enqueued execution', { executionId, error });
 
-		await this.executionCrashService.markAsCrashed(executionId);
+		await this.executionCrashService.markAsCrashed(executionId, 'start-failure');
 	}
 }
