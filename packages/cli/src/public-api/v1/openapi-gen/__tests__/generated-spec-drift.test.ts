@@ -37,7 +37,7 @@ describe('Apply response documentation', () => {
 				.routes.get(handler);
 			expect(route?.responseDto).toBe(ApplyPackageResultDto);
 			expect(route?.accessScope).toEqual({ scope: 'gitConnection:pull', globalOnly: true });
-			expect(route?.apiKeyScope).toEqual({ allOf: ['gitConnection:pull', 'variable:list'] });
+			expect(route?.apiKeyScope).toBe('gitConnection:pull');
 			expect(route?.licenseFeature).toBe('feat:gitConnections');
 			const artifacts = getGeneratedArtifacts();
 			const outputPath = `handlers/promotions/spec/paths/${handler}.generated.yml`;
