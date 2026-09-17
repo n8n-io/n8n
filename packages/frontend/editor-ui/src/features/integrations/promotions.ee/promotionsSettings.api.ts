@@ -2,6 +2,7 @@ import type {
 	CreatePromotionConnectionDto,
 	CreatePromotionProviderDto,
 	PromotionApplyConfigPublicDto,
+	PromotionCheckoutPublicDto,
 	PromotionConnectionPublicDto,
 	PromotionConnectionScope,
 	PromotionDirection,
@@ -172,6 +173,30 @@ export const deletePromotionConfig = async (
 		endpoint: `${promotionsApiRoot}/connections/${connectionId}/configs/${direction}`,
 	});
 };
+
+/** Clones one direction into local storage on the instance. Safe to repeat. */
+export const clonePromotionCheckout = async (
+	context: PublicApiContext,
+	connectionId: string,
+	direction: PromotionDirection,
+): Promise<PromotionCheckoutPublicDto> =>
+	await request({
+		method: 'POST',
+		baseURL: context.baseUrl,
+		endpoint: `${promotionsApiRoot}/connections/${connectionId}/${direction}/clone`,
+	});
+
+/** Removes one direction's local checkout. Keeps the config and its credentials. */
+export const disconnectPromotionCheckout = async (
+	context: PublicApiContext,
+	connectionId: string,
+	direction: PromotionDirection,
+): Promise<PromotionCheckoutPublicDto> =>
+	await request({
+		method: 'POST',
+		baseURL: context.baseUrl,
+		endpoint: `${promotionsApiRoot}/connections/${connectionId}/${direction}/disconnect`,
+	});
 
 /** Promotes the whole instance through its instance connection. */
 export const promotePackage = async (

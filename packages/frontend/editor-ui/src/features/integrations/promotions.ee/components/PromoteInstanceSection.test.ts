@@ -13,10 +13,15 @@ const timestamps = {
 	updatedAt: '2026-09-01T00:00:00.000Z',
 };
 
-const promoteConfig = (baseBranchName = 'main', createBranchOnPromotion = false) => ({
+const promoteConfig = (
+	baseBranchName = 'main',
+	createBranchOnPromotion = false,
+	checkout = { hasCheckout: true, matchesConfig: true },
+) => ({
 	id: 'config-promote',
 	name: 'Promote',
 	settings: { schemaVersion: 1 as const, baseBranchName, createBranchOnPromotion },
+	checkout,
 	...timestamps,
 });
 
@@ -50,11 +55,41 @@ describe('PromoteInstanceSection', () => {
 	});
 
 	it('shows the promote action when a promote config and push scope are present', () => {
-		const { getByTestId } = renderComponent({
+		const { getByTestId, queryByTestId } = renderComponent({
 			props: { connection: instanceConnection() },
 		});
 
-		expect(getByTestId('promote-instance-button')).toBeInTheDocument();
+		expect(getByTestId('promote-instance-button')).toBeEnabled();
+		expect(queryByTestId('promote-instance-not-connected')).toBeNull();
+	});
+
+	it('disables the promote action and explains why when the checkout is not connected', () => {
+		const { getByTestId } = renderComponent({
+			props: {
+				connection: instanceConnection({
+					configs: {
+						promote: promoteConfig('main', false, { hasCheckout: false, matchesConfig: false }),
+					},
+				}),
+			},
+		});
+
+		expect(getByTestId('promote-instance-button')).toBeDisabled();
+		expect(getByTestId('promote-instance-not-connected')).toBeInTheDocument();
+	});
+
+	it('disables the promote action when the checkout is stale', () => {
+		const { getByTestId } = renderComponent({
+			props: {
+				connection: instanceConnection({
+					configs: {
+						promote: promoteConfig('main', false, { hasCheckout: true, matchesConfig: false }),
+					},
+				}),
+			},
+		});
+
+		expect(getByTestId('promote-instance-button')).toBeDisabled();
 	});
 
 	it('shows nothing when the connection is not loaded yet', () => {

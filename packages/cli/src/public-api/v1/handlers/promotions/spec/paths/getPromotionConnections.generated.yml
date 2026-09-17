@@ -112,6 +112,16 @@ responses:
                           updatedAt:
                             type: string
                             format: date-time
+                          checkout:
+                            type: object
+                            properties:
+                              hasCheckout:
+                                type: boolean
+                              matchesConfig:
+                                type: boolean
+                            required:
+                              - hasCheckout
+                              - matchesConfig
                           settings:
                             type: object
                             properties:
@@ -132,6 +142,7 @@ responses:
                           - name
                           - createdAt
                           - updatedAt
+                          - checkout
                           - settings
                       promote:
                         type: object
@@ -148,6 +159,16 @@ responses:
                           updatedAt:
                             type: string
                             format: date-time
+                          checkout:
+                            type: object
+                            properties:
+                              hasCheckout:
+                                type: boolean
+                              matchesConfig:
+                                type: boolean
+                            required:
+                              - hasCheckout
+                              - matchesConfig
                           settings:
                             type: object
                             properties:
@@ -171,6 +192,7 @@ responses:
                           - name
                           - createdAt
                           - updatedAt
+                          - checkout
                           - settings
                   createdAt:
                     type: string

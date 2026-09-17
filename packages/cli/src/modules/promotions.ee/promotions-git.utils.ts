@@ -10,7 +10,11 @@ import {
 	SSH_SERVER_ALIVE_COUNT_MAX,
 	SSH_SERVER_ALIVE_INTERVAL_SECONDS,
 } from './constants';
-import type { PromotionOperationInput, ResolvedPromotionConfig } from './promotions.types';
+import type {
+	PromotionCacheDescriptor,
+	PromotionOperationInput,
+	ResolvedPromotionConfig,
+} from './promotions.types';
 
 /** Build a valid Git branch name for one promotion. */
 export function buildPromotionBranchName(now: Date): string {
@@ -91,4 +95,15 @@ export function checkoutBranchName(config: ResolvedPromotionConfig): string {
 /** Keep the repository URL consistent across Git operations and cache identity. */
 export function repositoryUrl(input: PromotionOperationInput): string {
 	return input.target.remoteUrl;
+}
+
+/**
+ * Build the cache descriptor written after a clone and compared on every later
+ * operation. One place owns the current schema version, so the writer and every
+ * reader agree on the shape.
+ */
+export function buildCacheDescriptor(
+	fields: Omit<PromotionCacheDescriptor, 'schemaVersion'>,
+): PromotionCacheDescriptor {
+	return { schemaVersion: 1, ...fields };
 }

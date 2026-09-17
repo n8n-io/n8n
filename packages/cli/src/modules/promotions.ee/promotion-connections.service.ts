@@ -1,6 +1,7 @@
 import type {
 	CreatePromotionConnectionDto,
 	PromotionApplyConfigPublicDto,
+	PromotionConfigCheckout,
 	PromotionConnectionConfigsPublic,
 	PromotionConnectionProjectListPublicDto,
 	PromotionConnectionProjectPublicDto,
@@ -35,7 +36,7 @@ import { mapPromotionConflicts } from './promotion-conflicts';
 import { PromotionProvidersService } from './promotion-providers.service';
 import { PromotionWorkingDirectoryService } from './promotion-working-directory.service';
 import { PromotionsGitService } from './promotions-git.service';
-import { checkoutBranchName } from './promotions-git.utils';
+import { buildCacheDescriptor, checkoutBranchName } from './promotions-git.utils';
 import type { ResolvedPromotionConfig } from './promotions.types';
 
 /**
@@ -112,13 +113,13 @@ export class PromotionConnectionsService {
 				}),
 		);
 
-		return this.toPublic({ ...created.connection, provider }, created.configs);
+		return await this.toPublic({ ...created.connection, provider }, created.configs);
 	}
 
 	async findOne(id: string): Promise<PromotionConnectionPublicDto> {
 		const connection = await this.getEntity(id);
 		const configs = await this.configRepository.findByConnectionIds([id]);
-		return this.toPublic(connection, configs);
+		return await this.toPublic(connection, configs);
 	}
 
 	async list(offset: number, limit: number, filter: PromotionConnectionFilter) {
@@ -130,10 +131,13 @@ export class PromotionConnectionsService {
 		const configs = await this.configRepository.findByConnectionIds(data.map(({ id }) => id));
 		return {
 			count,
-			data: data.map((connection) =>
-				this.toPublic(
-					connection,
-					configs.filter((config) => config.connectionId === connection.id),
+			data: await Promise.all(
+				data.map(
+					async (connection) =>
+						await this.toPublic(
+							connection,
+							configs.filter((config) => config.connectionId === connection.id),
+						),
 				),
 			),
 		};
@@ -196,7 +200,7 @@ export class PromotionConnectionsService {
 		connectionId: string,
 		write: PromotionConfigWrite,
 	): Promise<PromotionApplyConfigPublicDto | PromotionPromoteConfigPublicDto> {
-		await this.getEntity(connectionId);
+		const connection = await this.getEntity(connectionId);
 		await this.gitService.validateBranchName(checkoutBranchName(write.config));
 
 		const { direction } = write.config;
@@ -208,7 +212,7 @@ export class PromotionConnectionsService {
 			? await this.replaceConfig(existing.id, write)
 			: await mapPromotionConflicts(async () => await this.insertConfig(connectionId, write));
 
-		return this.toConfigPublic(stored);
+		return await this.toConfigPublic(connection, stored);
 	}
 
 	/** Removing a direction also drops its local checkout. */
@@ -267,56 +271,92 @@ export class PromotionConnectionsService {
 		return connection;
 	}
 
-	toPublic(
+	async toPublic(
 		connection: PromotionConnection,
 		configs: PromotionConfig[],
-	): PromotionConnectionPublicDto {
+	): Promise<PromotionConnectionPublicDto> {
 		return {
 			id: connection.id,
 			name: connection.name,
 			scope: connection.scope,
 			target: connection.target,
 			provider: this.providersService.toSummary(connection.provider),
-			configs: this.toConfigsPublic(configs),
+			configs: await this.toConfigsPublic(connection, configs),
 			createdAt: connection.createdAt.toISOString(),
 			updatedAt: connection.updatedAt.toISOString(),
 		};
 	}
 
-	private toConfigsPublic(configs: PromotionConfig[]): PromotionConnectionConfigsPublic {
+	private async toConfigsPublic(
+		connection: PromotionConnection,
+		configs: PromotionConfig[],
+	): Promise<PromotionConnectionConfigsPublic> {
 		const byDirection: PromotionConnectionConfigsPublic = {};
 		for (const config of configs) {
 			const resolved = resolveStoredConfig(config);
 			if (!resolved) continue;
+			const fields = await this.configFields(connection, config, resolved);
 			if (resolved.direction === 'apply') {
-				byDirection.apply = { ...this.configFields(config), settings: resolved.settings };
+				byDirection.apply = { ...fields, settings: resolved.settings };
 			} else {
-				byDirection.promote = { ...this.configFields(config), settings: resolved.settings };
+				byDirection.promote = { ...fields, settings: resolved.settings };
 			}
 		}
 		return byDirection;
 	}
 
-	private toConfigPublic(
+	private async toConfigPublic(
+		connection: PromotionConnection,
 		config: PromotionConfig,
-	): PromotionApplyConfigPublicDto | PromotionPromoteConfigPublicDto {
+	): Promise<PromotionApplyConfigPublicDto | PromotionPromoteConfigPublicDto> {
 		const resolved = resolveStoredConfig(config);
 		if (!resolved) {
 			throw new BadRequestError('The stored promotion configuration cannot be read');
 		}
+		const fields = await this.configFields(connection, config, resolved);
 		// Keep separate branches so TypeScript narrows the settings union by direction.
 		return resolved.direction === 'apply'
-			? { ...this.configFields(config), settings: resolved.settings }
-			: { ...this.configFields(config), settings: resolved.settings };
+			? { ...fields, settings: resolved.settings }
+			: { ...fields, settings: resolved.settings };
 	}
 
-	private configFields(config: PromotionConfig) {
+	private async configFields(
+		connection: PromotionConnection,
+		config: PromotionConfig,
+		resolved: ResolvedPromotionConfig,
+	) {
 		return {
 			id: config.id,
 			name: config.name,
 			createdAt: config.createdAt.toISOString(),
 			updatedAt: config.updatedAt.toISOString(),
+			checkout: await this.checkoutStateFor(connection, config, resolved),
 		};
+	}
+
+	/**
+	 * Reads whether this instance holds a usable checkout for one direction. A
+	 * package operation needs a checkout that was cloned from the current remote and
+	 * branch, so the flags let the UI show Connect, Reconnect, or Connected.
+	 */
+	private async checkoutStateFor(
+		connection: PromotionConnection,
+		config: PromotionConfig,
+		resolved: ResolvedPromotionConfig,
+	): Promise<PromotionConfigCheckout> {
+		const { repositoryFolder } = this.workingDirectory.paths(config.id);
+		const hasCheckout = await this.gitService.hasCheckout(repositoryFolder);
+		if (!hasCheckout) return { hasCheckout: false, matchesConfig: false };
+
+		const matchesConfig = await this.workingDirectory.matchesDescriptor(
+			buildCacheDescriptor({
+				connectionId: connection.id,
+				configId: config.id,
+				remoteUrl: connection.target.remoteUrl,
+				checkoutBranchName: checkoutBranchName(resolved),
+			}),
+		);
+		return { hasCheckout, matchesConfig };
 	}
 
 	private async insertConfig(

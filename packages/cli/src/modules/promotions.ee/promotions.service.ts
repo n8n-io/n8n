@@ -46,6 +46,7 @@ import { PromotionProvidersService } from './promotion-providers.service';
 import { PromotionWorkingDirectoryService } from './promotion-working-directory.service';
 import { PromotionsGitService } from './promotions-git.service';
 import {
+	buildCacheDescriptor,
 	buildPromotionBranchName,
 	checkoutBranchName,
 	repositoryUrl,
@@ -542,13 +543,12 @@ export class PromotionsService {
 	}
 
 	private descriptorFor(input: PromotionOperationInput): PromotionCacheDescriptor {
-		return {
-			schemaVersion: 1,
+		return buildCacheDescriptor({
 			configId: input.configId,
 			connectionId: input.connectionId,
 			remoteUrl: repositoryUrl(input),
 			checkoutBranchName: checkoutBranchName(input.config),
-		};
+		});
 	}
 
 	private checkoutIdentity(input: PromotionOperationInput) {

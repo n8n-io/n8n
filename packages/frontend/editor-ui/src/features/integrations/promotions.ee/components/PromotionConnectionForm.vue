@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { PromotionConfigCheckout, PromotionDirection } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import {
 	N8nButton,
@@ -19,10 +20,13 @@ import { computed, reactive, ref } from 'vue';
 
 import { usePromotionConnectionSave } from '../composables/usePromotionConnectionSave';
 import {
+	clonePromotionCheckout,
 	createPromotionConnection,
+	disconnectPromotionCheckout,
 	type PromotionConnection,
 	type PromotionProviderSummary,
 } from '../promotionsSettings.api';
+import PromotionCheckoutStatus from './PromotionCheckoutStatus.vue';
 import {
 	buildConnectionCreatePayload,
 	connectionFormFrom,
@@ -138,6 +142,90 @@ function discard() {
 	resetTo(current.value);
 }
 
+// A clone reads the saved config, so Connect stays blocked until the direction is
+// saved and the form has no unsaved edits.
+const connecting = reactive<Record<PromotionDirection, boolean>>({ apply: false, promote: false });
+
+const savedCheckout = (direction: PromotionDirection): PromotionConfigCheckout | undefined =>
+	current.value?.configs[direction]?.checkout;
+
+// The saved branch is the one the checkout was cloned from, so the status text
+// stays accurate while the form holds unsaved edits.
+const branchNameFor = (direction: PromotionDirection): string => {
+	const configs = current.value?.configs;
+	if (direction === 'apply') return configs?.apply?.settings.branchName ?? form.apply.branchName;
+	return configs?.promote?.settings.baseBranchName ?? form.promote.baseBranchName;
+};
+
+const connectDisabledReason = (direction: PromotionDirection): string | undefined => {
+	if (!current.value?.configs[direction])
+		return i18n.baseText('settings.promotions.connection.checkout.saveFirst');
+	if (isDirty.value)
+		return i18n.baseText('settings.promotions.connection.checkout.saveChangesFirst');
+	return undefined;
+};
+
+// Update the saved connection in place so the status and the Promote button react
+// without a full reload. A fresh clone matches the config it was cloned from.
+function applyCheckout(direction: PromotionDirection, checkout: PromotionConfigCheckout) {
+	const connection = current.value;
+	const config = connection?.configs[direction];
+	if (!connection || !config) return;
+	const updated: PromotionConnection = {
+		...connection,
+		configs: { ...connection.configs, [direction]: { ...config, checkout } },
+	};
+	current.value = updated;
+	emit('saved', updated);
+}
+
+async function connect(direction: PromotionDirection) {
+	if (!current.value || connectDisabledReason(direction) !== undefined) return;
+	connecting[direction] = true;
+	try {
+		const result = await clonePromotionCheckout(
+			rootStore.publicApiContext,
+			current.value.id,
+			direction,
+		);
+		applyCheckout(direction, {
+			hasCheckout: result.hasCheckout,
+			matchesConfig: result.hasCheckout,
+		});
+		toast.showMessage({
+			title: i18n.baseText('settings.promotions.connection.checkout.toast.connected'),
+			type: 'success',
+		});
+	} catch (error) {
+		toast.showError(
+			error,
+			i18n.baseText('settings.promotions.connection.checkout.toast.connectError'),
+		);
+	} finally {
+		connecting[direction] = false;
+	}
+}
+
+async function disconnect(direction: PromotionDirection) {
+	if (!current.value) return;
+	connecting[direction] = true;
+	try {
+		await disconnectPromotionCheckout(rootStore.publicApiContext, current.value.id, direction);
+		applyCheckout(direction, { hasCheckout: false, matchesConfig: false });
+		toast.showMessage({
+			title: i18n.baseText('settings.promotions.connection.checkout.toast.disconnected'),
+			type: 'success',
+		});
+	} catch (error) {
+		toast.showError(
+			error,
+			i18n.baseText('settings.promotions.connection.checkout.toast.disconnectError'),
+		);
+	} finally {
+		connecting[direction] = false;
+	}
+}
+
 function selectProvider(id: string) {
 	form.providerId = id;
 }
@@ -237,6 +325,14 @@ defineExpose({ selectProvider });
 								data-test-id="promotion-connection-apply-branch-input"
 							/>
 						</N8nInputLabel>
+						<PromotionCheckoutStatus
+							:checkout="savedCheckout('apply')"
+							:branch-name="branchNameFor('apply')"
+							:busy="connecting.apply"
+							:disabled-reason="connectDisabledReason('apply')"
+							@connect="connect('apply')"
+							@disconnect="disconnect('apply')"
+						/>
 					</div>
 				</template>
 			</N8nSettingsRow>
@@ -278,6 +374,14 @@ defineExpose({ selectProvider });
 						<N8nText size="small" color="text-light">
 							{{ i18n.baseText('settings.promotions.connection.promote.createBranch.description') }}
 						</N8nText>
+						<PromotionCheckoutStatus
+							:checkout="savedCheckout('promote')"
+							:branch-name="branchNameFor('promote')"
+							:busy="connecting.promote"
+							:disabled-reason="connectDisabledReason('promote')"
+							@connect="connect('promote')"
+							@disconnect="disconnect('promote')"
+						/>
 					</div>
 				</template>
 			</N8nSettingsRow>
