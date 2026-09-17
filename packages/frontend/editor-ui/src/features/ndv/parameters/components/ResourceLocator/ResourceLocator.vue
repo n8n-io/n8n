@@ -748,12 +748,9 @@ function onInputChange(value: INodeParameterResourceLocator['value']): void {
 			params.cachedResultUrl = resource.url;
 		}
 	} else {
-		// Same rule as ParameterInput: a full `{{ }}` entered into an empty field
-		// becomes an expression, otherwise it is stored and validated as a literal id.
-		params.value =
-			!props.modelValue?.value && shouldConvertToExpression(value)
-				? '=' + value
-				: completeExpressionSyntax(value);
+		// A literal `{{ }}` is never a valid id or url, so a pasted expression
+		// always switches to expression mode, even when it replaces a stored value.
+		params.value = shouldConvertToExpression(value) ? '=' + value : completeExpressionSyntax(value);
 	}
 	emit('update:modelValue', params);
 }
