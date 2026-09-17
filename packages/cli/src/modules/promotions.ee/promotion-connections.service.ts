@@ -14,6 +14,7 @@ import type {
 	PromotionPromoteConfigPublicDto,
 	UpdatePromotionConnectionDto,
 } from '@n8n/api-types';
+import { promotionConnectionTargetSchema } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { ProjectRepository, TransactionRunner, type OperationContext, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -384,12 +385,17 @@ export class PromotionConnectionsService {
 		const hasCheckout = await this.gitService.hasCheckout(repositoryFolder);
 		if (!hasCheckout) return { hasCheckout: false, matchesConfig: false };
 
+		// Read the target the same way an operation does, so the reported state and the
+		// enforced state cannot drift. A target this version cannot read is not usable.
+		const target = promotionConnectionTargetSchema.safeParse(connection.target);
+		if (!target.success) return { hasCheckout, matchesConfig: false };
+
 		const matchesConfig = await this.workingDirectory.matchesDescriptor(
 			buildCacheDescriptor({
 				connectionId: connection.id,
 				configId: config.id,
-				remoteUrl: connection.target.remoteUrl,
-				checkoutBranchName: checkoutBranchName(resolved),
+				target: target.data,
+				config: resolved,
 			}),
 		);
 		return { hasCheckout, matchesConfig };

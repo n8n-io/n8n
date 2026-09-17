@@ -1,4 +1,4 @@
-import type { PromotionSshKeyType } from '@n8n/api-types';
+import type { PromotionConnectionTarget, PromotionSshKeyType } from '@n8n/api-types';
 import { resolveProxyUrl } from '@n8n/backend-network';
 import { generateKeyPairSync } from 'node:crypto';
 
@@ -98,12 +98,22 @@ export function repositoryUrl(input: PromotionOperationInput): string {
 }
 
 /**
- * Build the cache descriptor written after a clone and compared on every later
- * operation. One place owns the current schema version, so the writer and every
- * reader agree on the shape.
+ * The cache descriptor written after a clone and compared on every later
+ * operation: the identity a checkout must match to count as usable. One function
+ * owns both the schema version and the field-derivation rule, so the writer, the
+ * enforcer, and the UI reader agree on the shape by construction.
  */
-export function buildCacheDescriptor(
-	fields: Omit<PromotionCacheDescriptor, 'schemaVersion'>,
-): PromotionCacheDescriptor {
-	return { schemaVersion: 1, ...fields };
+export function buildCacheDescriptor(source: {
+	connectionId: string;
+	configId: string;
+	target: PromotionConnectionTarget;
+	config: ResolvedPromotionConfig;
+}): PromotionCacheDescriptor {
+	return {
+		schemaVersion: 1,
+		connectionId: source.connectionId,
+		configId: source.configId,
+		remoteUrl: source.target.remoteUrl,
+		checkoutBranchName: checkoutBranchName(source.config),
+	};
 }

@@ -544,10 +544,10 @@ export class PromotionsService {
 
 	private descriptorFor(input: PromotionOperationInput): PromotionCacheDescriptor {
 		return buildCacheDescriptor({
-			configId: input.configId,
 			connectionId: input.connectionId,
-			remoteUrl: repositoryUrl(input),
-			checkoutBranchName: checkoutBranchName(input.config),
+			configId: input.configId,
+			target: input.target,
+			config: input.config,
 		});
 	}
 

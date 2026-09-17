@@ -185,6 +185,32 @@ describe('PromotionConnectionsService', () => {
 			});
 		});
 
+		it('normalizes the stored target the same way an operation does', async () => {
+			const config = promoteConfig();
+			connectionRepository.findByIdWithProvider.mockResolvedValue({
+				...connection(),
+				target: { schemaVersion: 1, remoteUrl: '  git@github.com:o/r.git  ' },
+			} as PromotionConnection);
+			configRepository.findByConnectionIds.mockResolvedValue([config]);
+			gitService.hasCheckout.mockResolvedValue(true);
+			await mkdir(workingDirectory.paths(config.id).repositoryFolder, { recursive: true });
+			// A clone writes the descriptor from the resolved (trimmed) remote URL.
+			await workingDirectory.writeDescriptor({
+				schemaVersion: 1,
+				connectionId: 'conn1',
+				configId: config.id,
+				remoteUrl: 'git@github.com:o/r.git',
+				checkoutBranchName: 'main',
+			});
+
+			const result = await service.findOne('conn1');
+
+			expect(result.configs.promote?.checkout).toEqual({
+				hasCheckout: true,
+				matchesConfig: true,
+			});
+		});
+
 		it.each([
 			{
 				changedField: 'branch',
