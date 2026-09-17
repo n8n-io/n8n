@@ -4,6 +4,8 @@ import type { AgentIntegrationSettings } from './agent-integration.schema';
 import type { AgentJsonConfig } from './agent-json-config.schema';
 import type { AgentBackgroundJobSignal } from './background-job';
 
+export type AgentActor = 'user' | 'builder' | 'mcp';
+
 export const SUPPORTED_WORKFLOW_TOOL_TRIGGERS = [EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE] as const;
 
 /** Display name of each supported trigger, keyed by node type so a rename is a one-line change. */

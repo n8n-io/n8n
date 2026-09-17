@@ -8,12 +8,14 @@
 //   pnpm preview down <pr>      delete the box
 //   pnpm preview ls             list preview boxes
 //
-//   --json       print {pr, sha, codespace, url} on stdout (progress goes to stderr)
+//   --json       print one phase line per step, then {pr, sha, codespace, url}, on
+//                stdout. Human progress and the in-box log go to stderr.
 //   --dry-run    resolve the PR and print the commands, touching nothing
-import { execFileSync, spawnSync } from 'node:child_process';
+import { execFileSync, spawn, spawnSync } from 'node:child_process';
 import { setTimeout as sleep } from 'node:timers/promises';
 
 import { previewSlugs } from './preview-labels.mjs';
+import { createPhaseScanner, shellPhaseEcho } from './preview-phases.mjs';
 import { shareWithOrg } from './serve-ready.mjs';
 
 const REPO = 'n8n-io/n8n';
@@ -56,6 +58,25 @@ const log = (...parts) => (options.json ? console.error(...parts) : console.log(
 // stdio, so the whole in-box build would otherwise land on the JSON channel.
 const ghTty = (...args) =>
 	spawnSync('gh', args, { stdio: ['inherit', options.json ? 2 : 'inherit', 'inherit'] });
+
+// What a caller has learned so far. Carried on every progress line, so a reader
+// that starts late still gets the sha and the box name.
+const reported = {};
+
+/**
+ * Tell whoever spawned us which phase we are in. Only in --json mode, where stdout
+ * is the machine channel: `parsePreviewJson` picks the final report out by its
+ * `url`, which a progress line never carries.
+ *
+ * @param {string} phase A key from `PREVIEW_PHASES`.
+ * @param {string} [detail] What this run is doing in that phase.
+ * @param {{sha?: string, codespace?: string}} [facts] Newly resolved values.
+ */
+function progress(phase, detail, facts = {}) {
+	Object.assign(reported, facts);
+	if (!options.json) return;
+	console.log(JSON.stringify({ ...reported, phase, detail }));
+}
 
 function fail(message) {
 	console.error(message);
@@ -109,6 +130,7 @@ const listPreviews = () =>
 const findPreview = (pr) => listPreviews().find((cs) => cs.displayName === displayNameFor(pr));
 
 function prHead(pr) {
+	progress('resolve');
 	const head = ghJson([
 		'pr',
 		'view',
@@ -128,14 +150,23 @@ function prHead(pr) {
 
 // Check out the exact head SHA, not the branch tip: the branch can move while this
 // runs, and the preview has to match the SHA the PR comment points at.
-const serveCommand = (head) => {
+const serveCommand = (pr, head) => {
 	// Pass the slugs, never the environment they stand for: this string reaches the
 	// box's process list, and preview:enterprise resolves to a licence key there.
+	// The PR number is not a secret, so the preview env webhook gets it directly.
 	const slugs = previewSlugs(head.labels);
 	const labelEnv = slugs.length ? `PREVIEW_LABELS=${slugs.join(',')} ` : '';
+	// Only a --json run has a reader for the markers. A laptop keeps plain output,
+	// in the chain and in the box. Not gated on --dry-run, so its printout is what
+	// CI would really run.
+	const phaseEnv = options.json ? 'PREVIEW_PHASES=1 ' : '';
+	const marker = (key, detail) => (options.json ? [shellPhaseEcho(key, detail)] : []);
 
 	return [
 		'cd /workspaces/n8n',
+		// `preview-serve.mjs` announces its own phases, but these two happen before it
+		// runs, so the chain has to say them itself.
+		...marker('checkout', head.headRefOid.slice(0, 7)),
 		`git fetch origin ${head.headRefName}`,
 		`git checkout --detach ${head.headRefOid}`,
 		// The serve script comes from the checked-out PR head, so a PR cut before this
@@ -144,10 +175,13 @@ const serveCommand = (head) => {
 		// An `||` here would also fire when an earlier step in this && chain failed,
 		// reporting the wrong cause. `if` keeps the test self-contained.
 		'if [ ! -f scripts/preview-serve.mjs ]; then echo "This PR predates the preview tooling. Rebase it on master and retry."; exit 1; fi',
+		// After the guard above: a PR that predates the tooling must not tick off
+		// "Install dependencies" and then stop.
+		...marker('install'),
 		// Cheap when nothing changed. Skipping it is how a preview ends up running
 		// against stale dependencies after a lockfile change.
 		'pnpm install --frozen-lockfile',
-		`${labelEnv}pnpm preview:serve`,
+		`PREVIEW_PR=${pr} ${labelEnv}${phaseEnv}pnpm preview:serve`,
 	].join(' && ');
 };
 
@@ -185,6 +219,7 @@ function report(pr, head, codespace, json, orgVisible = false) {
 // a connection, and sshd lags the Available state by a few seconds more. Probe with a
 // no-op so a connection problem never looks like a failed build.
 async function waitForSsh(name, timeoutMs = 600_000) {
+	progress('ssh');
 	const deadline = Date.now() + timeoutMs;
 	let attempt = 0;
 	let lastError = 'no attempt completed';
@@ -207,6 +242,7 @@ async function waitForSsh(name, timeoutMs = 600_000) {
 // Codespaces agent notices the listener and registers the forward. Sharing a port
 // that is not forwarded yet fails, so keep trying until it is.
 async function shareWhenForwarded(port, name, timeoutMs = 120_000) {
+	progress('share');
 	const deadline = Date.now() + timeoutMs;
 	let share = shareWithOrg(port, name);
 	let waited = false;
@@ -221,8 +257,40 @@ async function shareWhenForwarded(port, name, timeoutMs = 120_000) {
 	return share;
 }
 
+/**
+ * Run the serve chain in the box, forwarding its output to stderr as it arrives and
+ * turning the phase markers in it into progress. `ghTty` cannot do this: it hands
+ * fd 1 straight to fd 2, which puts the text in the right place but leaves nothing
+ * for a caller to report.
+ *
+ * @param {string} name
+ * @param {string} command
+ * @returns {Promise<number | null>} the exit status
+ */
+function sshServe(name, command) {
+	const args = ['codespace', 'ssh', '-c', name, '--', command];
+	// A developer keeps the raw passthrough: nothing reads the markers there.
+	if (!options.json) return Promise.resolve(ghTty(...args).status);
+
+	return new Promise((resolve) => {
+		const child = spawn('gh', args, { stdio: ['inherit', 'pipe', 'inherit'] });
+		const scan = createPhaseScanner();
+
+		child.stdout.on('data', (chunk) => {
+			// Relay the raw chunk and scan on a separate line buffer. Line-buffering
+			// the relay would hold the \r progress that pnpm and turbo write, and
+			// could reorder it against the `log()` writes on this same fd.
+			process.stderr.write(chunk);
+			for (const marker of scan(chunk)) progress(marker.key, marker.detail);
+		});
+
+		child.on('error', (error) => fail(`Could not run \`gh codespace ssh\`: ${error.message}`));
+		child.on('close', (status) => resolve(status));
+	});
+}
+
 async function serve(pr, cs, head, { json, dryRun }) {
-	const command = serveCommand(head);
+	const command = serveCommand(pr, head);
 	if (dryRun) {
 		log(`Would ssh to ${cs.name} and run:\n  ${command}`);
 		log(`Would then share port ${PORT} with the org.`);
@@ -233,7 +301,7 @@ async function serve(pr, cs, head, { json, dryRun }) {
 	await waitForSsh(cs.name);
 
 	log(`Serving ${head.headRefOid.slice(0, 7)} on ${cs.name}…`);
-	const { status } = ghTty('codespace', 'ssh', '-c', cs.name, '--', command);
+	const status = await sshServe(cs.name, command);
 	if (status !== 0) fail('Serving failed — see the output above.');
 
 	// Share from here rather than inside the box: this gh already held the codespace
@@ -255,11 +323,14 @@ async function up(pr, options) {
 		if (options.dryRun) {
 			log(`Would create a box for PR #${pr} (${head.headRefName}):`);
 			log(`  gh ${createArgs(pr, head).join(' ')}`);
-			log(`Then ssh to it and run:\n  ${serveCommand(head)}`);
+			log(`Then ssh to it and run:\n  ${serveCommand(pr, head)}`);
 			// No box yet, so there is no name and no URL to report.
 			log('The URL is only known once the box exists.');
 			return;
 		}
+		progress('box', `creating ${displayNameFor(pr)} from the prebuild`, {
+			sha: head.headRefOid,
+		});
 		log(`Creating a preview box for PR #${pr} (${head.headRefName})…`);
 		// Run interactive: the devcontainer asks for access to the private skills
 		// repo, so gh prints an authorization URL and waits for an answer.
@@ -270,7 +341,13 @@ async function up(pr, options) {
 		if (!cs) fail(`Created a box for PR #${pr} but could not find it — run \`pnpm preview ls\`.`);
 	} else if (cs.state !== 'Available') {
 		// There is no `gh codespace start`; ssh starts a stopped box.
+		progress('box', `starting ${cs.name}, which is ${cs.state}`, {
+			sha: head.headRefOid,
+			codespace: cs.name,
+		});
 		log(`${cs.name} is ${cs.state} — ssh will start it (~30-60 s)…`);
+	} else {
+		progress('box', `reusing ${cs.name}`, { sha: head.headRefOid, codespace: cs.name });
 	}
 
 	await serve(pr, cs, head, options);
@@ -279,7 +356,10 @@ async function up(pr, options) {
 async function refresh(pr, options) {
 	const cs = findPreview(pr);
 	if (!cs) fail(`No preview box for PR #${pr}. Run \`pnpm preview up ${pr}\` first.`);
-	await serve(pr, cs, prHead(pr), options);
+	// Resolve the head before announcing the box, so the phases stay in order.
+	const head = prHead(pr);
+	progress('box', `reusing ${cs.name}`, { sha: head.headRefOid, codespace: cs.name });
+	await serve(pr, cs, head, options);
 }
 
 function down(pr, { dryRun }) {
