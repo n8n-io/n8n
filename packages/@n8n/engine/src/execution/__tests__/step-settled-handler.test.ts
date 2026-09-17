@@ -474,6 +474,23 @@ describe('StepSettledHandler', () => {
 		expect(executionStore.finishExecution).not.toHaveBeenCalled();
 	});
 
+	it('plans successors for a waiting execution', async () => {
+		// a wait elsewhere does not end the execution, so this settlement still
+		// decides its own successors
+		const stepStore = makeStepStore();
+		const { handler, stepQueue } = makeHandler(stepStore, {
+			executionStore: makeExecutionStore({ status: 'waiting' }),
+		});
+
+		await handler.handle(event);
+
+		expect(stepStore.createSteps).toHaveBeenCalledExactlyOnceWith('exec-1', [
+			{ nodeId: 'b', iteration: 0, status: 'queued' },
+			{ nodeId: 'c', iteration: 0, status: 'queued' },
+		]);
+		expect(stepQueue.publish).toHaveBeenCalledTimes(2);
+	});
+
 	it('does not test for completion when it just queued work', async () => {
 		const stepStore = makeStepStore();
 		const { handler, executionStore } = makeHandler(stepStore);

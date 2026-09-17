@@ -14,6 +14,7 @@ import type { OrchestrationMessage, StepReadyEvent, WorkQueue } from '../queue';
 import type { ExecutionRecord, ExecutionStore } from './execution-store';
 import {
 	stepKeyId,
+	isLiveExecutionStatus,
 	isSettledStatus,
 	hasResumeCondition,
 	type ResumeCause,
@@ -75,10 +76,11 @@ export class StepReadyHandler {
 		const executor =
 			node.type === 'batch' || step.resumeCause !== null ? undefined : this.executorFor(step, node);
 
-		if (execution.status !== 'running') {
-			// The execution is no longer running, so we don't run the step.
-			// The step is left `running` for reconciliation (CAT-2938) or
-			// internal consistency checks (CAT-3930) to resolve.
+		if (!isLiveExecutionStatus(execution.status)) {
+			// The execution has ended, so we don't run the step. The step is left
+			// `running` for reconciliation (CAT-2938) or internal consistency
+			// checks (CAT-3930) to resolve. A `waiting` execution passes: this step
+			// resumed, and the status only catches up once it does.
 			return;
 		}
 
