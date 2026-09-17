@@ -58,7 +58,9 @@ export async function fetchRemoteEnv({
 	intervalMs = 3000,
 } = {}) {
 	const warnings = [];
-	if (!url) return { env: [], warnings };
+	if (!url) {
+		return { env: [], warnings };
+	}
 	if (!password) {
 		warnings.push(
 			'CODESPACE_ENV_URL is set but CODESPACE_ENV_PASSWORD is not. Serving without remote env.',
@@ -75,7 +77,9 @@ export async function fetchRemoteEnv({
 		return { env: [], warnings };
 	}
 	// Context for the webhook, so one endpoint can answer per PR.
-	if (pr) endpoint.searchParams.set('pr', pr);
+	if (pr) {
+		endpoint.searchParams.set('pr', pr);
+	}
 
 	const headers = {
 		accept: 'application/json',
