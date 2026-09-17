@@ -513,6 +513,35 @@ describe('buildWorkflow with an inline seed', () => {
 		expect(result.error).toMatch(/attaches seeded workflow "never-declared"/);
 	});
 
+	it('fails loudly when the attached seeded Agent is missing from the restore', async () => {
+		// The schema refuses an `attach` the seed does not declare, so a miss here means
+		// the restore/remap lost it. Running on would test an unattached conversation.
+		const restoreThread = vi.fn().mockResolvedValue({
+			restored: 0,
+			workflowIds: [],
+			dataTableIds: [],
+			agentIds: [],
+			folderIds: [],
+		});
+
+		const result = await buildWorkflow({
+			client: makeClient(restoreThread, { sendMessage: vi.fn().mockResolvedValue({ runId: 'r' }) }),
+			...baseConfig,
+			conversation: [
+				{
+					role: 'user' as const,
+					text: 'why can this Agent not use Notion?',
+					attach: { agent: SEED_AGENT_ID },
+				},
+			],
+			seed: { mode: 'inline' as const, ...inlineAgentSeed() },
+		});
+
+		expect(result.success).toBe(false);
+		expect(result.seedingFailed).toBe(true);
+		expect(result.error).toMatch(/attaches seeded Agent "AgentMcpRepairSeed01"/);
+	});
+
 	it('sends no attachments when the opening turn declares none', async () => {
 		const sendMessage = vi.fn().mockResolvedValue({ runId: 'run-1' });
 		await buildWorkflow({

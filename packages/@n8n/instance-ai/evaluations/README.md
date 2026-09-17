@@ -1003,7 +1003,7 @@ editor sends that resource by id. Declare the resource on the opening turn:
 
 ```json
 "conversation": [
-  { "role": "user", "text": "why can this Agent not use Notion?", "attach": { "agent": "AgentMcpRepairSeed01" } }
+  { "role": "user", "text": "find and fix why this Agent cannot use Notion", "attach": { "agent": "AgentMcpRepairSeed01" } }
 ]
 ```
 
@@ -1011,6 +1011,13 @@ Use the id that the inline seed declares. The harness substitutes the per-run re
 id. A workflow id must exist in `seed.workflows`. An Agent id must exist in
 `seed.agents`. Only the opening user turn can carry an attachment. The schema rejects
 an invalid attachment before the run starts.
+
+An Agent attachment supplies identity only. It does not copy the Agent configuration into
+the orchestrator prompt. To inspect or change the attached Agent, the assistant must pass
+the remapped id to `build-agent`. Agent Builder then reads the current configuration. An
+Agent-content case must use process and outcome expectations that verify this delegation
+and the resulting repair. The attachment checks only that the eval reproduces the editor
+handoff.
 
 Only workflow attachments can set `source` to `setup-panel-execute`. This value sends
 the setup panel handoff context with the workflow.

@@ -794,12 +794,6 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				seedWorkflowsBySeedId = new Map(
 					seed.workflows.map((workflow, index) => [workflow.id, remapped.workflows[index]]),
 				);
-				seedAgentsBySeedId = new Map(
-					seed.agents.map((agent, index) => {
-						const remappedAgent = remapped.agents[index];
-						return [agent.id, { id: remappedAgent.id, name: remappedAgent.config.name }];
-					}),
-				);
 				await evictLeftoverSeedWorkflows(
 					client,
 					remapped,
@@ -855,6 +849,15 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				restoredWorkflowIds = restoreResult.workflowIds;
 				restoredDataTableIds = restoreResult.dataTableIds;
 				restoredAgentIds = restoreResult.agentIds;
+				const restoredAgents: Array<[string, { id: string; name: string }]> = [];
+				for (const [index, agent] of seed.agents.entries()) {
+					const restoredId = restoredAgentIds[index];
+					const remappedAgent = remapped.agents[index];
+					if (restoredId !== undefined && remappedAgent !== undefined) {
+						restoredAgents.push([agent.id, { id: restoredId, name: remappedAgent.config.name }]);
+					}
+				}
+				seedAgentsBySeedId = new Map(restoredAgents);
 				// `folderIds` is positional to `folders`. Cleanup needs the ROOT folders
 				// only: n8n's folder delete cascades to the subfolders.
 				restoredFolderIds = remapped.folders.flatMap((folder, index) =>
