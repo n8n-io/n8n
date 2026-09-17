@@ -32,7 +32,7 @@ export class OAuthSessionService {
 	 * Create OAuth session token and set it as a cookie
 	 */
 	createSession(res: Response, payload: OAuthSessionPayload): void {
-		const sessionToken = this.jwtService.sign(payload, {
+		const sessionToken = this.jwtService.sign('oauthSession', payload, {
 			expiresIn: '10m',
 		});
 
@@ -52,7 +52,7 @@ export class OAuthSessionService {
 	 * here and reject anything that is not an authorization session.
 	 */
 	verifySession(sessionToken: string): OAuthSessionPayload {
-		const payload = this.jwtService.verify<unknown>(sessionToken);
+		const payload = this.jwtService.verify<unknown>('oauthSession', sessionToken);
 		return oauthSessionPayloadSchema.parse(payload);
 	}
 

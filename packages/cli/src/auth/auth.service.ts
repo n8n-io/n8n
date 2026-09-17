@@ -247,7 +247,7 @@ export class AuthService {
 		const token = req.cookies[AUTH_COOKIE_NAME];
 		if (!token) return;
 		try {
-			const { exp } = this.jwtService.decode(token);
+			const { exp } = this.jwtService.decodeUnverified(token);
 			if (exp) {
 				await this.invalidAuthTokenRepository.insert({
 					token,
@@ -292,7 +292,7 @@ export class AuthService {
 			usedMfa,
 			...(isEmbed && { isEmbed }),
 		};
-		return this.jwtService.sign(payload, {
+		return this.jwtService.sign('session', payload, {
 			expiresIn: this.jwtExpiration,
 		});
 	}
@@ -391,7 +391,7 @@ export class AuthService {
 		user: User;
 		jwtPayload: IssuedJWT;
 	}> {
-		const jwtPayload = this.jwtService.verify<unknown>(token, {
+		const jwtPayload = this.jwtService.verify<unknown>('session', token, {
 			algorithms: ['HS256'],
 		});
 
@@ -456,7 +456,7 @@ export class AuthService {
 			newEmail,
 			hash: this.createJWTHash(user),
 		};
-		const token = this.jwtService.sign(payload, { expiresIn: '20m', audience: 'n8n-email-change' });
+		const token = this.jwtService.sign('emailChange', payload, { expiresIn: '20m' });
 		const url = new URL(`${this.urlService.getInstanceBaseUrl()}/confirm-email-change`);
 		url.searchParams.append('token', token);
 		return url.toString();
@@ -467,9 +467,7 @@ export class AuthService {
 	): Promise<{ user: User; newEmail: string } | undefined> {
 		let decoded: EmailChangeToken;
 		try {
-			decoded = this.jwtService.verify(token, {
-				audience: 'n8n-email-change',
-			});
+			decoded = this.jwtService.verify('emailChange', token);
 		} catch {
 			return;
 		}
@@ -484,7 +482,7 @@ export class AuthService {
 
 	generatePasswordResetToken(user: User, expiresIn: TimeUnitValue = '20m') {
 		const payload: PasswordResetToken = { sub: user.id, hash: this.createJWTHash(user) };
-		return this.jwtService.sign(payload, { expiresIn, audience: 'n8n-password-reset' });
+		return this.jwtService.sign('passwordReset', payload, { expiresIn });
 	}
 
 	generatePasswordResetUrl(user: User) {
@@ -500,9 +498,7 @@ export class AuthService {
 	async resolvePasswordResetToken(token: string): Promise<User | undefined> {
 		let decodedToken: PasswordResetToken;
 		try {
-			decodedToken = this.jwtService.verify(token, {
-				audience: 'n8n-password-reset',
-			});
+			decodedToken = this.jwtService.verify('passwordReset', token);
 		} catch (e) {
 			if (e instanceof TokenExpiredError) {
 				this.logger.debug('Reset password token expired');

@@ -339,13 +339,14 @@ export class PublicApiKeyService {
 		const nowInSeconds = Math.floor(Date.now() / 1000);
 
 		return this.jwtService.sign(
-			{ sub: user.id, iss: API_KEY_ISSUER, aud: API_KEY_AUDIENCE, jti: randomUUID() },
+			'publicApiKey',
+			{ sub: user.id, iss: API_KEY_ISSUER, jti: randomUUID() },
 			{ ...(expiresAt && { expiresIn: expiresAt - nowInSeconds }) },
 		);
 	}
 
 	getApiKeyExpiration = (apiKey: string) => {
-		const decoded = this.jwtService.decode(apiKey);
+		const decoded = this.jwtService.decodeUnverified(apiKey);
 		return decoded?.exp ?? null;
 	};
 

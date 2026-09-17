@@ -76,21 +76,23 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 			);
 		}
 
-		const accessToken = this.jwtService.sign({
-			sub: userId,
-			aud: audience,
-			client_id: clientId,
-			jti: randomUUID(),
-			iat: Math.floor(Date.now() / 1000),
-			exp: Math.floor(Date.now() / 1000) + this.ACCESS_TOKEN_EXPIRY_SECONDS,
-			// RFC 9068 space-delimited scope claim. Always present on new tokens
-			// (empty string for scope-less grants), so an absent claim
-			// unambiguously identifies a token minted before scoping shipped.
-			scope: scopes.join(' '),
-			meta: {
-				isOAuth: true,
+		const accessToken = this.jwtService.signForResource(
+			{
+				sub: userId,
+				client_id: clientId,
+				jti: randomUUID(),
+				iat: Math.floor(Date.now() / 1000),
+				exp: Math.floor(Date.now() / 1000) + this.ACCESS_TOKEN_EXPIRY_SECONDS,
+				// RFC 9068 space-delimited scope claim. Always present on new tokens
+				// (empty string for scope-less grants), so an absent claim
+				// unambiguously identifies a token minted before scoping shipped.
+				scope: scopes.join(' '),
+				meta: {
+					isOAuth: true,
+				},
 			},
-		});
+			audience,
+		);
 
 		const refreshToken = randomBytes(32).toString('hex');
 
@@ -467,14 +469,12 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 	// tokens minted before n8n v2.19 have aged out (refresh-token lifespan).
 	private verifyJwtWithAllowedAudiences(token: string, audiences: string[]): unknown {
 		try {
-			return this.jwtService.verify(token, {
-				audience: audiences as [string, ...string[]],
-			});
+			return this.jwtService.verifyForResource(token, audiences as [string, ...string[]]);
 		} catch (error) {
 			// Some jsonwebtoken builds reject the array form for tokens signed with a single-string aud.
 			for (const audience of audiences) {
 				try {
-					return this.jwtService.verify(token, { audience });
+					return this.jwtService.verifyForResource(token, audience);
 				} catch {
 					continue;
 				}
