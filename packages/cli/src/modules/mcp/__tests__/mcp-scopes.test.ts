@@ -31,6 +31,11 @@ import { ExecutionService } from '@/executions/execution.service';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { InstanceContextService } from '@/modules/instance-ai/instance-context.service';
+import {
+	EMPTY_INSTANCE_CONTEXT_TEXT,
+	INSTANCE_CONTEXT_RESOURCE_URI,
+	NOTHING_EXPOSED_TEXT,
+} from '../tools/get-instance-context.tool';
 import { WorkflowDependencyQueryService } from '@/modules/workflow-index/workflow-dependency-query.service';
 import { NodeCatalogService } from '@/node-catalog';
 import { NodeTypes } from '@/node-types';
@@ -67,6 +72,22 @@ const mcpFeatureFlags = (overrides: Partial<McpFeatureFlags> = {}): McpFeatureFl
 	aiPreferencesEnabled: true,
 	...overrides,
 });
+
+/** Reaches the resource's own read callback, which registration assertions never touch. */
+const readResourceText = async (server: unknown, uri: string): Promise<string> => {
+	const registered = (
+		server as {
+			_registeredResources: Record<string, { readCallback: () => Promise<unknown> }>;
+		}
+	)._registeredResources[uri];
+	const result = (await registered.readCallback()) as { contents: Array<{ text: string }> };
+	return result.contents[0].text;
+};
+
+const getRegisteredResourceUris = (server: unknown): Set<string> =>
+	new Set(
+		Object.keys((server as { _registeredResources: Record<string, unknown> })._registeredResources),
+	);
 
 const getRegisteredToolNames = (server: unknown): Set<string> =>
 	new Set(Object.keys((server as { _registeredTools: Record<string, unknown> })._registeredTools));
@@ -249,9 +270,12 @@ describe('McpService scope enforcement', () => {
 		);
 
 		const registered = getRegisteredToolNames(server);
+		// Driven off the set so a fifth tool cannot be added without this case noticing.
+		const moduleBound = [...INSTANCE_CONTEXT_TOOLS].filter((name) => name !== 'get_node_usage');
+
 		expect(registered).toContain('get_node_usage');
-		expect(registered).not.toContain('get_instance_activity');
-		expect(registered).not.toContain('expand_instance_activity');
+		for (const name of moduleBound) expect(registered).not.toContain(name);
+		expect(getRegisteredResourceUris(server)).not.toContain(INSTANCE_CONTEXT_RESOURCE_URI);
 	});
 
 	/** They ride on `workflow:read`, so a grant without it must not reach them. */
@@ -268,6 +292,82 @@ describe('McpService scope enforcement', () => {
 
 		const registered = getRegisteredToolNames(server);
 		for (const name of INSTANCE_CONTEXT_TOOLS) expect(registered).not.toContain(name);
+	});
+
+	/** The resource is how a client that reads resources gets the opening context without asking. */
+	it('registers the instance-context resource alongside the tool', async () => {
+		mockInstance(InstanceContextService);
+		mockInstance(WorkflowDependencyQueryService);
+
+		const server = await buildService({ instanceAiActive: true }).getServer(
+			user,
+			mcpFeatureFlags({ instanceContextEnabled: true }),
+		);
+
+		expect(getRegisteredResourceUris(server)).toContain(INSTANCE_CONTEXT_RESOURCE_URI);
+		expect(getRegisteredToolNames(server)).toContain('get_instance_context');
+	});
+
+	it('registers no instance-context resource with the flag off', async () => {
+		const server = await buildService({ instanceAiActive: true }).getServer(
+			user,
+			mcpFeatureFlags({ instanceContextEnabled: false }),
+		);
+
+		expect(getRegisteredResourceUris(server)).not.toContain(INSTANCE_CONTEXT_RESOURCE_URI);
+	});
+
+	/**
+	 * The read callback, not just the registration. It is not a pass-through — it maps an empty
+	 * read to its own text and emits its own telemetry — so the two paths can drift silently.
+	 */
+	it('serves the block through the resource, and the withheld text when nothing is exposed', async () => {
+		const instanceContext = mockInstance(InstanceContextService);
+		mockInstance(WorkflowDependencyQueryService);
+
+		const server = await buildService({ instanceAiActive: true }).getServer(
+			user,
+			mcpFeatureFlags({ instanceContextEnabled: true }),
+		);
+
+		instanceContext.buildBlock.mockResolvedValue({
+			block: 'Workflows that already exist here: 2',
+			cursor: { activityMark: 1, activitySeen: [], runsThrough: '2026-09-16T00:00:00.000Z' },
+		});
+		expect(await readResourceText(server, INSTANCE_CONTEXT_RESOURCE_URI)).toBe(
+			'Workflows that already exist here: 2',
+		);
+
+		// Empty read plus an estate that exists: the client must not be told the instance is empty.
+		instanceContext.buildBlock.mockResolvedValue(null);
+		instanceContext.hasWithheldWorkflows.mockResolvedValue(true);
+		expect(await readResourceText(server, INSTANCE_CONTEXT_RESOURCE_URI)).toBe(
+			NOTHING_EXPOSED_TEXT,
+		);
+
+		instanceContext.hasWithheldWorkflows.mockResolvedValue(false);
+		expect(await readResourceText(server, INSTANCE_CONTEXT_RESOURCE_URI)).toBe(
+			EMPTY_INSTANCE_CONTEXT_TEXT,
+		);
+	});
+
+	/**
+	 * The resource carries the same instance data as the tool, so a grant that cannot call the
+	 * tool must not be able to read it instead. `registerResource` does no filtering of its own.
+	 */
+	it('withholds the resource from a grant that does not cover the tool', async () => {
+		mockInstance(InstanceContextService);
+		mockInstance(WorkflowDependencyQueryService);
+
+		const server = await buildService({ instanceAiActive: true }).getServer(
+			user,
+			mcpFeatureFlags({ instanceContextEnabled: true }),
+			undefined,
+			{ grantedScopes: ['execution:read'] },
+		);
+
+		expect(getRegisteredToolNames(server)).not.toContain('get_instance_context');
+		expect(getRegisteredResourceUris(server)).not.toContain(INSTANCE_CONTEXT_RESOURCE_URI);
 	});
 
 	/**
