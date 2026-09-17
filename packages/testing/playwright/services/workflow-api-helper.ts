@@ -440,9 +440,10 @@ export class WorkflowApiHelper {
 	}
 
 	/**
-	 * Polls one execution by id until it settles. Unlike {@link waitForExecution},
-	 * it never reads the executions list, so it also sees engine 2.0 runs, which
-	 * the list does not include yet.
+	 * Polls one execution by id until it settles. {@link waitForExecution} watches
+	 * the list for a row that was not there before and matches it by mode, which
+	 * needs the list to page and order the way it expects. This takes the id the
+	 * run already returned, so nothing about the list can mislead it.
 	 */
 	async waitForExecutionById(
 		executionId: string,
