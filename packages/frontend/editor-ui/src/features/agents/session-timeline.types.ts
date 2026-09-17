@@ -1,12 +1,16 @@
+import type { AgentBackgroundJobSignal } from '@n8n/api-types';
+
 export type EventKind =
 	| 'user'
 	| 'agent'
+	| 'skill'
 	| 'tool'
 	| 'node'
 	| 'workflow'
 	| 'execution-error'
 	| 'suspension'
-	| 'hitl-response';
+	| 'hitl-response'
+	| 'background-task-signal';
 
 export type ToolCallOutcome = 'success' | 'error';
 /**
@@ -23,9 +27,14 @@ export interface TimelineItem {
 	timestamp: number;
 	endTimestamp?: number;
 	content?: string;
+	backgroundJobSignal?: AgentBackgroundJobSignal;
+	/** Display name of the chat platform user who wrote the turn (only set for `kind: 'user'`). */
+	authorName?: string;
 	/** Files attached to the user turn (only set for `kind: 'user'`). */
 	attachments?: Array<{ id: string; fileName: string; mimeType: string; sizeBytes: number }>;
 	toolName?: string;
+	/** Display name of the skill loaded by a `load_skill` call. */
+	skillName?: string;
 	toolCallId?: string;
 	toolInput?: unknown;
 	toolOutput?: unknown;

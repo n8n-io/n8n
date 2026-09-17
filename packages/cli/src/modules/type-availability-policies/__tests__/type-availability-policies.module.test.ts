@@ -1,5 +1,5 @@
 import { LICENSE_FEATURES } from '@n8n/constants';
-import { ControllerRegistryMetadata, ModuleMetadata } from '@n8n/decorators';
+import { ControllerRegistryMetadata, ModuleMetadata, PolicyCheckMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
 // Importing the module runs the @BackendModule decorator, registering its metadata.
@@ -43,6 +43,24 @@ describe('TypeAvailabilityPoliciesModule', () => {
 		expect(
 			registry.getControllerMetadata(AvailableTypesController as never).routes.size,
 		).toBeGreaterThan(0);
+	}, 30_000);
+
+	// Registration is what makes the check run at all: the decision service reads the registry
+	// per decision, so a missing import here is silent enforcement loss.
+	//
+	// Asserted by class name, because importing the check to compare identities would run
+	// `@PolicyCheck()` here and register it, and reading `id` off an instance would construct
+	// its repositories. Either one would make this pass with `init()` no longer importing it.
+	it('registers the node type policy check on init', async () => {
+		const module = new TypeAvailabilityPoliciesModule();
+
+		await module.init();
+
+		const registered = Container.get(PolicyCheckMetadata)
+			.getClasses()
+			.map((checkClass) => checkClass.name);
+
+		expect(registered).toContain('NodeTypePolicyCheck');
 	}, 30_000);
 
 	it('exposes its entities so the datasource picks them up', async () => {

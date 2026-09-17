@@ -5,6 +5,8 @@ import type {
 	InstanceAiRichMessagesResponse,
 	InstanceAiThreadInfo,
 	InstanceAiThreadListResponse,
+	InstanceAiThreadHistoryQuery,
+	InstanceAiThreadHistoryResponse,
 	InstanceAiThreadMessagesResponse,
 	InstanceAiThreadOrigin,
 	InstanceAiThreadSource,
@@ -13,6 +15,7 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { InstanceAiConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
+import { z } from 'zod';
 import {
 	buildAgentTreeFromEvents,
 	createSubAgentResourceIdPrefix,
@@ -275,6 +278,48 @@ export class InstanceAiMemoryService {
 		this.instanceAiConfig = globalConfig.instanceAi;
 	}
 
+	async getThreadInfo(threadId: string): Promise<InstanceAiThreadInfo> {
+		const thread = await this.agentMemory.getThread(threadId);
+		if (!thread) throw new NotFoundError('Thread not found');
+		return this.toThreadInfo(thread);
+	}
+
+	async listThreadHistory(
+		userId: string,
+		query: InstanceAiThreadHistoryQuery,
+	): Promise<InstanceAiThreadHistoryResponse> {
+		let before: { updatedAt: Date; id: string } | undefined;
+		if (query.cursor) {
+			try {
+				const parsed = z
+					.object({ updatedAt: z.string().datetime(), id: z.string().min(1).max(256) })
+					.parse(JSON.parse(Buffer.from(query.cursor, 'base64url').toString('utf8')));
+				before = { updatedAt: new Date(parsed.updatedAt), id: parsed.id };
+			} catch {
+				throw new BadRequestError('Invalid thread history cursor');
+			}
+		}
+		const rows = await this.agentMemory.listThreadHistory(
+			userId,
+			query.limit,
+			query.search,
+			before,
+		);
+		const hasMore = rows.length > query.limit;
+		const threads = rows.slice(0, query.limit).map((thread) => this.toThreadInfo(thread));
+		const last = threads.at(-1);
+		return {
+			threads,
+			hasMore,
+			nextCursor:
+				hasMore && last
+					? Buffer.from(JSON.stringify({ updatedAt: last.updatedAt, id: last.id })).toString(
+							'base64url',
+						)
+					: null,
+		};
+	}
+
 	async listThreads(
 		userId: string,
 		page = 0,
@@ -492,9 +537,11 @@ export class InstanceAiMemoryService {
 	}
 
 	/** Cross-check every confirmation card against `instance_ai_pending_confirmations`
-	 *  and flip `confirmation.expired = true` on the ones with no live row. */
-	private async flagExpiredConfirmations(
-		messages: Awaited<ReturnType<typeof parseStoredMessages>>,
+	 *  and flip `confirmation.expired = true` on the ones with no live row. Shared
+	 *  by the history read and the SSE run-sync frame so both render a settled
+	 *  card the same way. */
+	async flagExpiredConfirmations(
+		messages: Parameters<typeof markExpiredConfirmations>[0],
 	): Promise<void> {
 		const requestIds = collectConfirmationRequestIds(messages);
 		if (requestIds.length === 0) return;
