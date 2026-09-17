@@ -32,6 +32,11 @@ This keeps the behaviour of engine v1. It also makes the timeout do what users
 expect. The timeout protects against an execution that cannot make progress. It
 does not protect against an execution that a workflow pauses on purpose.
 
+The bar this decision meets is parity, and no more. Engine v1 reaches the same
+behaviour by accident, so nobody has yet chosen what a timeout should mean
+around a wait. A later decision supersedes this one if we give the two limits
+separate names and separate defaults.
+
 ## Alternatives Considered
 
 - **Measure the clock time from the start of the execution.** This option is
@@ -46,9 +51,8 @@ does not protect against an execution that a workflow pauses on purpose.
 
 ## Consequences
 
-- No component applies this rule yet. The ADR records the rule for the work
-  that adds timeouts. The rule is about time accounting and not about waits, so
-  it belongs to that work.
+- The rule is about time accounting and not about waits, so it belongs to the
+  work that adds timeouts.
 - A single deadline that the engine calculates at the start cannot apply this
   rule. The work needs one of two other methods. It can add up the time of each
   period in which the execution can run. It can also calculate a new deadline
@@ -56,10 +60,10 @@ does not protect against an execution that a workflow pauses on purpose.
 - The timeout never stops an execution that waits without an end. No component
   can use the timeout to limit a wait. A wait that must end needs its own
   deadline.
-- The derived `waiting` status (ADR-20260902, decision 6) is the signal that the
-  time accounting reads. An execution with one waiting branch and one running
-  branch reports `running`. Its time therefore counts, which is correct, because
-  the execution can make progress.
+- The derived `waiting` status (ADR-20260902-steps-declare-waits, decision 6)
+  is the signal that the time accounting reads. An execution with one waiting
+  branch and one running branch reports `running`. Its time therefore counts,
+  which is correct, because the execution can make progress.
 
 ## Links
 
