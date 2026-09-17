@@ -59,11 +59,13 @@ export function requireResourceIdNumber(
 }
 
 /**
- * Copies the filters that are set into a query object. An expression can hand
- * back any key here, so the keys go through the safe-property helpers.
+ * Copies the filters that are set into a query object. An expression can bind
+ * the whole collection, and any key in it, so the value is checked before it is
+ * read and the keys go through the safe-property helpers.
  */
-export function toQuery(filters: IDataObject): IDataObject {
+export function toQuery(filters: unknown): IDataObject {
 	const query: IDataObject = {};
+	if (!isRecord(filters)) return query;
 
 	for (const [name, value] of Object.entries(filters)) {
 		if (value === undefined || value === '') continue;

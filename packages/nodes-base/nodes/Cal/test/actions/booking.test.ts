@@ -185,6 +185,18 @@ describe('Cal.com booking operations', () => {
 			expect(apiRequestAllItems).not.toHaveBeenCalled();
 		});
 
+		it.each([
+			['null', null],
+			['a string', 'upcoming'],
+		])('ignores filters that an expression resolves to %s', async (_label, filters) => {
+			apiRequestAllItems.mockResolvedValue([]);
+			const ctx = mockExecuteCtx({ returnAll: true, filters });
+
+			await getMany.execute.call(ctx, 0);
+
+			expect(apiRequestAllItems).toHaveBeenCalledWith('/bookings', '2026-05-01', {}, Infinity);
+		});
+
 		it('drops a filter key that would pollute the prototype', async () => {
 			apiRequestAllItems.mockResolvedValue([]);
 			// JSON.parse keeps `__proto__` as an own key, the way an expression hands it over.
