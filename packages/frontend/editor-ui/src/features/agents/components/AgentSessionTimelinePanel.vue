@@ -454,6 +454,10 @@ watch([() => props.projectId, () => props.agentId, () => props.threadId], loadTh
 	min-height: 0;
 	height: 100%;
 	overflow: hidden;
+	/* Keep the timeline's own stacking below the preview dock, which overlays
+	   this column as a sibling. Without it, a z-index inside the chart competes
+	   with the dock and paints over the chat. */
+	isolation: isolate;
 }
 .subHeader {
 	display: flex;
