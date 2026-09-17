@@ -1,5 +1,5 @@
 {
-	"description": "TRUST-569 / context eval: does observational memory preserve what the agent needs after it compacts? `requiresMemoryCompaction` makes the harness lower the observer threshold for THIS thread only and report the case NOT JUDGED if compaction never ran — uncompacted, the raw turns are still in the window and every expectation below passes for free. The harness also reports it NOT JUDGED when compaction ran but the seeded turns are still in the graded window, which is the same vacuous green by another route. Two anchors are stated BY THE USER at the very start, then never restated: posting goes through the HTTP Request node and NOT the native Slack node (legacy API pin), and the alert threshold is 4700 queued items. Live turn 1 is deliberately off-topic so its answer cannot re-surface the anchors into the post-cursor window; compaction happens at the end of it. Live turn 2 asks for both anchors back, so it runs against the compacted context. Forced antecedent: a lost anchor produces a CONFIDENT WRONG answer ('the Slack node') rather than a vague one, and a guess would reach for a rounder number than the one on record.",
+	"description": "TRUST-569 / context eval: does observational memory keep what the agent needs after it compacts? `requiresMemoryCompaction` makes the harness lower the observer threshold for THIS thread only, and report the case NOT JUDGED unless the observation cursor and rows are both there — uncompacted, the raw turns are still in the window and every expectation below passes for free. Two anchors are stated BY THE USER at the very start and never restated: posting goes through the HTTP Request node and NOT the native Slack node (legacy API pin), and the alert threshold is 4700 queued items. Live turn 1 is deliberately off-topic so its answer cannot re-surface the anchors into the post-cursor window; compaction happens at the end of it. Live turn 2 asks for both anchors back, so it runs against the compacted context. The expectations grade TWO layers: the observation rows themselves, which the judge now sees as ground truth (did MEMORY keep the anchors), and the agent's reply (did it use them). Grading only the reply would pass just as well on a lucky guess. Forced antecedent: a lost anchor produces a CONFIDENT WRONG answer ('the Slack node') rather than a vague one, and a guess reaches for a rounder number than the one on record.",
 	"requiresMemoryCompaction": true,
 	"seed": {
 		"mode": "inline",
@@ -565,18 +565,13 @@
 		}
 	],
 	"complexity": "medium",
-	"tags": [
-		"behaviour",
-		"context-consumption",
-		"observational-memory",
-		"compaction"
-	],
-	"datasets": [
-		"context"
-	],
+	"tags": ["behaviour", "context-consumption", "observational-memory", "compaction"],
+	"datasets": ["context"],
 	"processExpectations": [
-		"In its reply to the final turn, the agent names the HTTP Request node as the one chosen for posting the alert. Naming the native Slack node is the specific failure this case looks for: it is the obvious answer, and the user ruled it out at the start of the conversation.",
-		"In its reply to the final turn, the agent gives the alert threshold as 4700 queued items. A different number — especially a rounder one like 5000 — means the figure did not survive compaction.",
+		"The observational-memory block retains the posting decision: it records that the native Slack node was ruled out and that posting goes through the HTTP Request node. This grades the memory summary itself, not the agent's reply — a summary that dropped the decision has found the regression even if the agent happened to answer correctly.",
+		"The observational-memory block retains the alert threshold as 4700 queued items. A summary that keeps the topic but loses the number is the specific failure this looks for, because the number is the thing the user cannot re-derive.",
+		"In its reply to the final turn, the agent names the HTTP Request node as the one chosen for posting the alert. Naming the native Slack node is the specific failure: it is the obvious answer, and the user ruled it out at the start of the conversation.",
+		"In its reply to the final turn, the agent gives the alert threshold as 4700 queued items. A different number — especially a rounder one like 5000 — means the figure did not survive.",
 		"The agent answers both parts from what it already has, rather than asking the user to repeat the decision or the threshold."
 	]
 }
