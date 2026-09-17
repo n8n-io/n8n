@@ -673,6 +673,39 @@ describe('workflow_step_execution table (integration)', () => {
 		expect([...seeded(leftIds), ...seeded(rightIds)].sort()).toEqual([...backlog].sort());
 	});
 
+	/**
+	 * `nextWaitDeadline` reads every waiting row in the instance, and these cases
+	 * share a database. Deadlines sit in 2018, earlier than every other case's,
+	 * so the minimum is always a row seeded here.
+	 */
+	it('TypeOrmStepStore.nextWaitDeadline returns the earliest waiting deadline', async () => {
+		const executionId = await createExecution();
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const earliest = new Date('2018-01-01T00:00:00.000Z');
+		await seedWaitingStep(executionId, 'later', new Date('2018-06-01T00:00:00.000Z'));
+		await seedWaitingStep(executionId, 'earliest', earliest);
+
+		expect(await store.nextWaitDeadline()).toEqual(earliest);
+	});
+
+	it('TypeOrmStepStore.nextWaitDeadline ignores rows the sweep cannot fire', async () => {
+		const executionId = await createExecution();
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const waiting = new Date('2018-01-01T00:00:00.000Z');
+		await seedWaitingStep(executionId, 'waiting', waiting);
+		// a wait that only a request ends carries no deadline at all
+		await seedWaitingStep(executionId, 'no-deadline', null);
+		// a resumed row keeps an earlier deadline, but its status excludes it
+		const { id } = await seedWaitingStep(
+			executionId,
+			'resumed',
+			new Date('2017-01-01T00:00:00.000Z'),
+		);
+		await store.resumeStep(id, { kind: 'deadline' });
+
+		expect(await store.nextWaitDeadline()).toEqual(waiting);
+	});
+
 	it('TypeOrmStepStore.cancelPendingSteps cancels queued and waiting steps and nothing else', async () => {
 		const executionId = await createExecution();
 		const otherExecutionId = await createExecution();

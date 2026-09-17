@@ -98,6 +98,7 @@ function makeStepStore(
 		suspendStep: vi.fn(),
 		resumeStep: vi.fn(),
 		resumeDueSteps: vi.fn().mockResolvedValue([]),
+		nextWaitDeadline: vi.fn().mockResolvedValue(null),
 		failStep: vi.fn(),
 		cancelPendingSteps: vi.fn(),
 		// like the store: only requested keys that have rows appear

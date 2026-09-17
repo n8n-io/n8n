@@ -26,6 +26,9 @@ export class WaitSweeper {
 	/** The sweep in flight, so `stop` can wait for it to settle. */
 	private sweeping: Promise<void> | undefined;
 
+	/** The arm in flight, so `stop` can wait before it sets another timer. */
+	private arming: Promise<void> | undefined;
+
 	constructor(
 		private readonly stepStore: StepStore,
 		private readonly stepQueue: WorkQueue<StepMessage>,
@@ -35,26 +38,61 @@ export class WaitSweeper {
 	) {}
 
 	start(): void {
-		this.arm();
+		this.rearm();
 	}
 
 	async stop(): Promise<void> {
 		this.stopped = true;
 		clearTimeout(this.timer);
 		this.timer = undefined;
-		// A sweep mid-flight has already resumed rows; let it announce them.
+		// An arm mid-flight reads the database, so it outlives this call and would
+		// set a timer after it returned. A sweep mid-flight has already resumed
+		// rows; let it announce them.
+		await this.arming;
 		await this.sweeping;
 	}
 
-	private arm(): void {
+	private rearm(): void {
+		this.arming = this.arm().finally(() => {
+			this.arming = undefined;
+		});
+	}
+
+	/**
+	 * Schedules the next sweep, at the earlier of the interval and the next
+	 * deadline. A wait therefore fires at its deadline and not at the end of a
+	 * fixed interval, and an overdue deadline fires at once — which is what makes
+	 * a restart catch up instead of adding an interval to every wait it inherits.
+	 *
+	 * The interval stays as a ceiling, because it is what finds a wait that was
+	 * suspended after this timer was armed.
+	 *
+	 * Never throws. `start` cannot await this, so a failed read has to leave the
+	 * sweeper armed on its interval rather than not armed at all.
+	 */
+	private async arm(): Promise<void> {
 		if (this.stopped) return;
 
-		this.timer = setTimeout(() => {
-			this.sweeping = this.sweep().finally(() => {
-				this.sweeping = undefined;
-				this.arm();
-			});
-		}, this.intervalMs);
+		let delayMs = this.intervalMs;
+		try {
+			const next = await this.stepStore.nextWaitDeadline();
+			if (next !== null) delayMs = Math.min(delayMs, next.getTime() - Date.now());
+		} catch (error) {
+			this.logger.error('engine: wait sweep failed to read the next deadline', { error });
+		}
+
+		// The read above may have outlived a `stop`.
+		if (this.stopped) return;
+
+		this.timer = setTimeout(
+			() => {
+				this.sweeping = this.sweep().finally(() => {
+					this.sweeping = undefined;
+					this.rearm();
+				});
+			},
+			Math.max(delayMs, 0),
+		);
 		// Unref'd: a pending sweep must not hold the process open.
 		this.timer.unref();
 	}
