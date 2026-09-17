@@ -161,17 +161,16 @@ describe('N8nSendStopButton', () => {
 				global: {
 					stubs: {
 						N8nButton: {
-							props: ['variant', 'size', 'iconSize', 'iconOnly', 'icon', 'disabled'],
+							props: ['variant', 'size', 'iconSize', 'iconOnly', 'disabled'],
 							template: `
 								<button
 									:data-variant="variant"
 									:data-size="size"
 									:data-icon-size="iconSize"
 									:data-icon-only="iconOnly"
-									:data-icon="icon"
 									:disabled="disabled"
 									:class="{sendButton: true}"
-								></button>`,
+								><slot name="icon" /></button>`,
 						},
 					},
 				},
@@ -182,7 +181,7 @@ describe('N8nSendStopButton', () => {
 			expect(button).toHaveAttribute('data-size', 'medium');
 			expect(button).toHaveAttribute('data-icon-size', 'large');
 			expect(button).toHaveAttribute('data-icon-only', 'true');
-			expect(button).toHaveAttribute('data-icon', 'arrow-up');
+			expect(container.querySelector('[data-icon="arrow-up"]')).toBeTruthy();
 			expect(button).not.toHaveAttribute('disabled');
 		});
 
