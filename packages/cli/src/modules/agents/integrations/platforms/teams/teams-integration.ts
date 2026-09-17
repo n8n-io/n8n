@@ -93,12 +93,12 @@ export class TeamsIntegration extends AgentChatIntegration {
 	 * the reason this is on: it is an authorization boundary, not tidiness.
 	 *
 	 * Removing the answered card needs a patch on `@chat-adapter/teams`
-	 * (`patches/@chat-adapter__teams@4.37.0.patch`). Mutating a targeted activity
-	 * only works through `?isTargetedActivity=true`, which the adapter's
-	 * `editMessage`/`deleteMessage` never send, so Teams answers `400` and the
-	 * card keeps its buttons. Posting is unaffected: `app.send` does route a
-	 * recipient-targeted activity to `createTargeted`. Drop the patch once the
-	 * adapter sends the flag itself.
+	 * (`patches/@chat-adapter__teams@4.37.0.patch`, upstream vercel/chat#950).
+	 * Mutating a targeted activity only works through `?isTargetedActivity=true`,
+	 * which the adapter's `editMessage`/`deleteMessage` never send, so Teams
+	 * answers `400` and the card keeps its buttons. Posting is unaffected:
+	 * `app.send` does route a recipient-targeted activity to `createTargeted`.
+	 * Drop the patch once the adapter sends the flag itself.
 	 */
 	readonly targetSuspensionCardAtActingUser = true;
 

@@ -275,8 +275,10 @@ describe('Microsoft Teams integration scenarios', () => {
 			);
 
 			// Teams refuses an update that would make a targeted card public, so the
-			// card is deleted instead of being settled in place.
+			// card is deleted instead of being settled in place — through the
+			// targeted endpoint, which is the only one it accepts for such a card.
 			expect(ctx.lastDelete()?.body.uri).toContain(cardMessageId);
+			expect(ctx.lastDelete()?.body.uri).toContain('isTargetedActivity=true');
 			expect(ctx.lastEdit()).toBeUndefined();
 		} finally {
 			await ctx.shutdown();
