@@ -279,6 +279,20 @@ export function getProjects(): Project[] {
 			use: { containerConfig: BENCHMARKING_DEFAULT_CONFIG },
 		});
 
+		// API-only, no browser: the specs manage their own stack (they swap n8n
+		// images mid-test via stack.replaceN8N), so no containerConfig fixture.
+		projects.push({
+			name: 'encryption:infrastructure',
+			testDir: './tests/infrastructure/encryption',
+			workers: 1,
+			// One upgrade cycle boots four instances and pulls the old release.
+			timeout: 900_000,
+			retries: 0,
+			// No browser runs here — the global trace/video/screenshot capture
+			// only produces empty artifacts for these tests.
+			use: { trace: 'off', video: 'off', screenshot: 'off' },
+		});
+
 		for (const { name, config } of LOCAL_ONLY_BENCHMARK_PROFILES) {
 			projects.push({
 				name: `benchmark-${name}:infrastructure`,

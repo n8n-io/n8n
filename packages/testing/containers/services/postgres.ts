@@ -70,6 +70,7 @@ export const postgres: Service<PostgresResult> = {
 
 		try {
 			const container = await builder.start();
+			ctx?.registerContainer?.(container);
 
 			// shared_preload_libraries loads the C library; CREATE EXTENSION makes
 			// the view queryable. Idempotent — safe across container reuse.

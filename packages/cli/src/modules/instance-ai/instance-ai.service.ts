@@ -16,6 +16,7 @@ import {
 	instanceAiBuildModeSchema,
 	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
 	type InstanceAiAttachment,
+	type ComputerUseChannel,
 	type InstanceAiBuildMode,
 	type InstanceAiHandoffContext,
 	type InstanceAiAgentAttachment,
@@ -49,6 +50,9 @@ import {
 	resolvePromptProfile,
 	describePromptProfile,
 	setTracePromptVersion,
+	setTraceModelId,
+	modelConfigId,
+	modelIdTraceMetadata,
 	disabledInstanceAiSkillIds,
 	createInstanceAiTraceContext,
 	threadProvenanceMetadata,
@@ -138,9 +142,9 @@ import { EventService } from '@/events/event.service';
 import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
 import { modelStreamStallOptions } from '@/modules/agents/model-stream-stall-options';
 import { userHasScopes } from '@/permissions.ee/check-access';
+import { Push } from '@/push';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
-import { Push } from '@/push';
 import { AiPreferenceService, renderAiPreferencesBlock } from '@/services/ai-preference.service';
 import { AiService } from '@/services/ai.service';
 import { InstanceWriteAccessService } from '@/services/instance-write-access.service';
@@ -158,6 +162,7 @@ import {
 import { composeLocalMcpServers } from './browser/composite-local-mcp-server';
 import { InstanceAiBrowserSessionService } from './browser/instance-ai-browser-session.service';
 import { CanvasNodeContextFlagGate } from './canvas-node-context-flag-gate';
+import { enabledToolCategories, resolveComputerUseState } from './computer-use-availability';
 import { dropRejectedAttachmentsFromHistory } from './drop-rejected-attachments';
 import { EvalThreadCredentialAllowlistService } from './eval/thread-credential-allowlist.service';
 import { DurableEventLog } from './event-bus/durable-event-log';
@@ -170,7 +175,7 @@ import {
 	getAgentErrorSeverity,
 	InstanceAiErrorReporterService,
 } from './instance-ai-error-reporter.service';
-import { BROWSER_TOOL_CATEGORY, InstanceAiGatewayService } from './instance-ai-gateway.service';
+import { InstanceAiGatewayService } from './instance-ai-gateway.service';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiModelService } from './instance-ai-model.service';
 import { InstanceAiRunLimitError } from './instance-ai-run-limit.error';
@@ -643,7 +648,10 @@ type RunFinishErrorInfo = {
 	errorSource?: 'stream' | 'exception';
 };
 
-type RunFinishMetadata = RunFinishErrorInfo & { promptVersion?: string };
+type RunFinishMetadata = RunFinishErrorInfo & {
+	promptVersion?: string;
+	modelId?: ModelConfig;
+};
 
 type UnclaimedResumeContext = {
 	threadId: string;
@@ -653,6 +661,7 @@ type UnclaimedResumeContext = {
 	tracing?: InstanceAiTraceContext;
 	messageGroupId?: string;
 	unregisteredResumeTracing?: InstanceAiTraceContext;
+	modelId?: ModelConfig;
 };
 
 type UnclaimedResumeOutcome =
@@ -1462,6 +1471,7 @@ export class InstanceAiService {
 		pushRef?: string,
 		mode?: InstanceAiBuildMode,
 		promptVersion?: string,
+		computerUseChannels?: ComputerUseChannel[],
 	): string {
 		if (
 			promptVersion !== undefined &&
@@ -1482,6 +1492,10 @@ export class InstanceAiService {
 		if (timeZone) {
 			this.runState.setTimeZone(threadId, timeZone);
 		}
+
+		// Same reason: a resumed or background run has no request of its own to ask
+		// which + menu entries the client renders.
+		this.runState.setComputerUseChannels(threadId, computerUseChannels);
 
 		// A new user message resets selection. Explicit eval modes take precedence;
 		// otherwise environment creation selects and stores the backend assignment.
@@ -2624,34 +2638,19 @@ export class InstanceAiService {
 			createCredentialPermissionMode: context.permissions?.createCredential,
 		});
 
-		// Compute gateway status for the system prompt. The direct browser
-		// session contributes a `browser` capability even without the daemon.
-		if (gatewayMcpServer || browserMcpServer) {
-			const capabilities = new Set<string>();
-			if (gatewayMcpServer) {
-				// getStatus() already drops excluded categories (e.g. browser when disabled).
-				for (const { name, enabled } of gatewayMcpServer.getStatus().toolCategories) {
-					if (enabled) {
-						capabilities.add(name);
-					}
-				}
-			}
-
-			if (browserMcpServer) {
-				capabilities.add(BROWSER_TOOL_CATEGORY);
-			}
-
-			context.localGatewayStatus = {
-				status: 'connected',
-				capabilities: [...capabilities],
-			};
-		} else if (localGatewayDisabledGlobally && !browserUseEnabledGlobally) {
-			context.localGatewayStatus = { status: 'disabledGlobally' };
-		} else {
-			context.localGatewayStatus = {
-				status: localGatewayDisabledForUser ? 'disabled' : 'disconnected',
-			};
-		}
+		// The client reports which + menu entries it renders, because only it can see
+		// its own rollout and the device. The admin switches are still applied here,
+		// so the report can only narrow.
+		context.computerUseState = resolveComputerUseState({
+			localGatewayDisabledGlobally,
+			localGatewayDisabledForUser,
+			browserUseEnabledGlobally,
+			clientChannels: this.runState.getComputerUseChannels(threadId),
+			localComputerToolCategories: gatewayMcpServer
+				? enabledToolCategories(gatewayMcpServer.getStatus().toolCategories)
+				: undefined,
+			browserConnected: browserMcpServer !== undefined,
+		});
 
 		const taskStorage = new ThreadTaskStorage(memory);
 		const iterationLog = this.dbIterationLogStorage;
@@ -3736,6 +3735,7 @@ export class InstanceAiService {
 		const signal = abortController.signal;
 		let tracing: InstanceAiTraceContext | undefined;
 		let promptVersion: string | undefined;
+		let modelId: ModelConfig | undefined;
 		let messageTraceFinalization: MessageTraceFinalization | undefined;
 		let aiCreatedWorkflowIds: Set<string> | undefined;
 		let messageId = '';
@@ -3797,7 +3797,9 @@ export class InstanceAiService {
 			// spans that actually contain the work unattributable.
 			const threadProvenance = await this.readThreadProvenance(user.id, threadId);
 
-			// Create the trace before run-start so the SSE event carries traceId (modelId lands at finalization).
+			// Create the trace before run-start so the SSE event carries
+			// traceId. The model is resolved in createExecutionEnvironment
+			// below and stamped with setTraceModelId before the agent runs.
 			if (resumeReason) {
 				tracing = await this.tracing.createOrchestratorResumeTraceContext({
 					threadId,
@@ -3890,13 +3892,15 @@ export class InstanceAiService {
 				taskStorage,
 				workflowTasks,
 				plannedTaskService,
-				modelId,
+				modelId: resolvedModelId,
 				orchestrationContext,
 				conversationHistory,
 				aiPreferencesEnabled,
 			} = environment;
+			modelId = resolvedModelId;
 			promptVersion = orchestrationContext.promptConfiguration?.version;
 			setTracePromptVersion(tracing, promptVersion);
+			setTraceModelId(tracing, modelId);
 			aiCreatedWorkflowIds = context.aiCreatedWorkflowIds ??= new Set<string>();
 			const isPostPlanFollowUp = isReplanFollowUp || checkpoint?.isCheckpointFollowUp === true;
 			// Make the current user message available since memory history only
@@ -4582,7 +4586,7 @@ export class InstanceAiService {
 					cancellationReason,
 					archivedWorkflowIds,
 					user.id,
-					{ promptVersion },
+					{ promptVersion, ...(modelId !== undefined ? { modelId } : {}) },
 				);
 				return;
 			}
@@ -4655,7 +4659,12 @@ export class InstanceAiService {
 				userFacingErrorMessage,
 				archivedWorkflowIds,
 				user.id,
-				{ errorMessage, errorSource: 'exception', promptVersion },
+				{
+					errorMessage,
+					errorSource: 'exception',
+					promptVersion,
+					...(modelId !== undefined ? { modelId } : {}),
+				},
 			);
 		} finally {
 			this.runState.clearActiveRun(threadId);
@@ -5387,6 +5396,7 @@ export class InstanceAiService {
 					errorInfo: { errorMessage: rebuildFailure, errorSource: 'exception' },
 					messageGroupId,
 					user: activeUser,
+					...(modelId !== undefined ? { modelId } : {}),
 				});
 				this.runState.clearActiveRun(threadId, resumeExecutionToken);
 				return null;
@@ -5456,6 +5466,7 @@ export class InstanceAiService {
 			opts.orchestrationContext?.promptConfiguration?.version ??
 			this.runState.getPromptConfiguration(opts.threadId)?.version;
 		setTracePromptVersion(opts.tracing, promptVersion);
+		setTraceModelId(opts.tracing, opts.modelId);
 		let completedSetupWorkflowId: string | undefined;
 		let skipPostRunCleanup = false;
 		let resumeClaimed = false;
@@ -5759,10 +5770,12 @@ export class InstanceAiService {
 			await this.tracing.finalizeRunTracing(opts.runId, opts.tracing, {
 				status: finalStatus,
 				outputText,
+				...(opts.modelId !== undefined ? { modelId: opts.modelId } : {}),
 			});
 			messageTraceFinalization = {
 				status: finalStatus,
 				outputText,
+				...(opts.modelId !== undefined ? { modelId: opts.modelId } : {}),
 				metadata: await this.tracing.buildMessageTraceMetadata(opts.threadId, opts.runId, {
 					status: finalStatus,
 				}),
@@ -5872,7 +5885,7 @@ export class InstanceAiService {
 					cancellationReason,
 					archivedWorkflowIds,
 					opts.user.id,
-					{ promptVersion },
+					{ promptVersion, ...(opts.modelId !== undefined ? { modelId: opts.modelId } : {}) },
 				);
 				return;
 			}
@@ -5948,7 +5961,12 @@ export class InstanceAiService {
 				userFacingErrorMessage,
 				archivedWorkflowIds,
 				opts.user.id,
-				{ errorMessage, errorSource: 'exception', promptVersion },
+				{
+					errorMessage,
+					errorSource: 'exception',
+					promptVersion,
+					...(opts.modelId !== undefined ? { modelId: opts.modelId } : {}),
+				},
 			);
 		} finally {
 			this.runState.clearActiveRun(opts.threadId, opts.resumeExecutionToken);
@@ -6064,6 +6082,7 @@ export class InstanceAiService {
 					reason,
 					messageGroupId: opts.messageGroupId,
 					user: opts.user,
+					...(opts.modelId !== undefined ? { modelId: opts.modelId } : {}),
 				});
 				return;
 			}
@@ -6099,6 +6118,7 @@ export class InstanceAiService {
 					// message group has to come from the suspended run, not the trace registry.
 					messageGroupId: opts.messageGroupId,
 					user: opts.user,
+					...(opts.modelId !== undefined ? { modelId: opts.modelId } : {}),
 				});
 				return;
 
@@ -6116,6 +6136,7 @@ export class InstanceAiService {
 		threadId: string;
 		runId: string;
 		promptVersion?: string;
+		modelId?: ModelConfig;
 		status: 'cancelled' | 'errored';
 		reason: string;
 		errorCode?: TerminalErrorCode;
@@ -6152,6 +6173,7 @@ export class InstanceAiService {
 		this.publishRunFinish(threadId, runId, status, args.reason, archivedWorkflowIds, args.user.id, {
 			...args.errorInfo,
 			promptVersion: args.promptVersion,
+			...(args.modelId !== undefined ? { modelId: args.modelId } : {}),
 		});
 	}
 
@@ -6331,7 +6353,10 @@ export class InstanceAiService {
 			reason,
 			archivedWorkflowIds,
 			suspended.user.id,
-			{ promptVersion: suspended.orchestrationContext?.promptConfiguration?.version },
+			{
+				promptVersion: suspended.orchestrationContext?.promptConfiguration?.version,
+				...(suspended.modelId !== undefined ? { modelId: suspended.modelId } : {}),
+			},
 		);
 
 		await this.tracing.maybeFinalizeRunTraceRoot(suspended.runId, {
@@ -6377,6 +6402,7 @@ export class InstanceAiService {
 			thread_id: threadId,
 			run_id: runId,
 			...(metadata?.promptVersion ? { prompt_version: metadata.promptVersion } : {}),
+			...this.telemetryModelId(metadata?.modelId),
 			status: effectiveStatus,
 			...(userId ? { user_id: userId } : {}),
 		});
@@ -6386,11 +6412,19 @@ export class InstanceAiService {
 				thread_id: threadId,
 				run_id: runId,
 				...(metadata?.promptVersion ? { prompt_version: metadata.promptVersion } : {}),
+				...this.telemetryModelId(metadata?.modelId),
 				error_message: redactTelemetryText(metadata?.errorMessage ?? reason ?? 'unknown'),
 				...(metadata?.errorSource ? { error_source: metadata.errorSource } : {}),
 				...(userId ? { user_id: userId } : {}),
 			});
 		}
+	}
+
+	private telemetryModelId(
+		modelId: ModelConfig | undefined,
+	): { model_id: string } | Record<string, never> {
+		const id = modelConfigId(modelId);
+		return id ? { model_id: id } : {};
 	}
 
 	/**
@@ -6522,7 +6556,11 @@ export class InstanceAiService {
 			options?.errorReason,
 			options?.archivedWorkflowIds,
 			options?.userId,
-			{ ...options?.errorInfo, promptVersion: options?.promptVersion },
+			{
+				...options?.errorInfo,
+				promptVersion: options?.promptVersion,
+				...(options?.modelId !== undefined ? { modelId: options.modelId } : {}),
+			},
 		);
 		this.emitRunMetrics(threadId, status, options);
 		if (status === 'completed' && options?.userId && options?.modelId) {
@@ -6607,6 +6645,7 @@ export class InstanceAiService {
 				executionMode: 'internal',
 				metadata: {
 					operation_name: 'thread_title',
+					...modelIdTraceMetadata(modelId),
 				},
 			});
 			let llmTitle: string | null;

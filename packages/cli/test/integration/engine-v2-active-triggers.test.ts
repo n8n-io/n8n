@@ -33,6 +33,7 @@ const SET_NAME = 'Edit Fields';
 
 const startExecution = vi.fn();
 const getExecution = vi.fn();
+const searchExecutions = vi.fn();
 
 let builder: User;
 
@@ -87,7 +88,11 @@ const handOff = async (workflow: WorkflowEntity, items: INodeExecutionData[][]) 
 
 beforeAll(async () => {
 	await initNodeTypes();
-	Container.get(EngineDataPlaneProxyService).registerProvider({ startExecution, getExecution });
+	Container.get(EngineDataPlaneProxyService).registerProvider({
+		startExecution,
+		getExecution,
+		searchExecutions,
+	});
 });
 
 beforeEach(async () => {

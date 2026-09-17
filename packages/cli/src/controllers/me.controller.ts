@@ -21,7 +21,6 @@ import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
 import { MfaService } from '@/mfa/mfa.service';
 import { MeRequest } from '@/requests';
-import { EmailChangeService } from '@/services/email-change.service';
 import { PasswordUtility } from '@/services/password.utility';
 import { UserService } from '@/services/user.service';
 import { getCurrentAuthenticationMethod, isSamlLicensedAndEnabled } from '@/sso.ee/sso-helpers';
@@ -40,7 +39,6 @@ export class MeController {
 		private readonly eventService: EventService,
 		private readonly mfaService: MfaService,
 		private readonly globalConfig: GlobalConfig,
-		private readonly emailChangeService: EmailChangeService,
 	) {}
 
 	/**
@@ -49,7 +47,7 @@ export class MeController {
 	@Patch('/')
 	async updateCurrentUser(
 		req: AuthenticatedRequest,
-		res: Response,
+		_: Response,
 		@Body payload: UserUpdateRequestDto,
 	): Promise<PublicUser> {
 		const {
@@ -65,14 +63,12 @@ export class MeController {
 			);
 		}
 
-		const { currentPassword, ...payloadWithoutPassword } = payload;
-		const { email, firstName, lastName } = payload;
-		const isEmailBeingChanged = email !== currentEmail;
+		const { firstName, lastName } = payload;
 		const isFirstNameChanged = firstName !== currentFirstName;
 		const isLastNameChanged = lastName !== currentLastName;
 
 		// Check if the user is authenticated via SSO - they cannot change their profile info
-		if (isEmailBeingChanged || isFirstNameChanged || isLastNameChanged) {
+		if (isFirstNameChanged || isLastNameChanged) {
 			const ssoIdentity = await this.userService.findSsoIdentity(userId);
 
 			if (ssoIdentity && this.isAuthIdentityActive(ssoIdentity)) {
@@ -80,7 +76,7 @@ export class MeController {
 					`Request to update user failed because ${ssoIdentity.providerType} user may not change their profile information`,
 					{
 						userId,
-						payload: payloadWithoutPassword,
+						payload,
 					},
 				);
 				throw new BadRequestError(
@@ -89,28 +85,15 @@ export class MeController {
 			}
 		}
 
-		if (isEmailBeingChanged) {
-			await this.emailChangeService.assertMayRequestEmailChange(req.user, {
-				currentPassword,
-				mfaCode: payload.mfaCode,
-			});
-		}
-
-		await this.externalHooks.run('user.profile.beforeUpdate', [
-			userId,
-			currentEmail,
-			payloadWithoutPassword,
-		]);
+		await this.externalHooks.run('user.profile.beforeUpdate', [userId, currentEmail, payload]);
 
 		const preUpdateUser = await this.userRepository.findOneByOrFail({ id: userId });
-		await this.userService.update(userId, payloadWithoutPassword);
+		await this.userService.update(userId, payload);
 		const user = await this.userService.findUserWithAuthIdentities(userId);
 
 		this.logger.info('User updated successfully', { userId });
 
-		this.authService.issueCookie(res, user, req.authInfo?.usedMfa ?? false, req.browserId);
-
-		const changeableFields = ['email', 'firstName', 'lastName'] as const;
+		const changeableFields = ['firstName', 'lastName'] as const;
 		const fieldsChanged = changeableFields.filter(
 			(key) => key in payload && payload[key] !== preUpdateUser[key],
 		);

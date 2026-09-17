@@ -10,8 +10,6 @@ export default defineConfig({
 			'reporters/**/*.test.ts',
 			'services/**/*.test.ts',
 			'utils/**/*.test.ts',
-			'tests/framework/telemetry.test.ts',
-			'tests/framework/telemetry-integration.test.ts',
 			'*.test.ts',
 		],
 	},

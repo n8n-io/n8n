@@ -27,7 +27,7 @@ export const specFileOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
-						url: '=/spec-files/{{$parameter["projectId"]}}',
+						url: '=/spec-files/{{toPathSegment($parameter["projectId"])}}',
 					},
 					output: {
 						postReceive: [
