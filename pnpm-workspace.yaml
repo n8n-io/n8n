@@ -440,7 +440,7 @@ overrides:
   shell-quote: 1.9.0
   adm-zip: 0.6.0
   ip-address@10: 10.3.1
-  brace-expansion@5: 5.0.9
+  brace-expansion@5: 5.0.11
   '@tootallnate/once@2': 2.0.1
   '@vue/server-renderer@3.5.26': 3.5.40
   '@vue/shared@3.5.26': 3.5.40
