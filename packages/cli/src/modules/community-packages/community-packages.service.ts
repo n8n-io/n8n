@@ -378,6 +378,7 @@ export class CommunityPackagesService {
 						fields: ['packageName', 'npmVersion', 'checksum', 'nodeVersions'],
 					},
 					this.config.aiNodeSdkVersion,
+					this.config.nodesApiVersion,
 				);
 			} catch (error) {
 				this.logger.error(

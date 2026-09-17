@@ -1605,6 +1605,7 @@ describe('CommunityPackagesService', () => {
 					fields: ['packageName', 'npmVersion', 'checksum', 'nodeVersions'],
 				},
 				config.aiNodeSdkVersion,
+				config.nodesApiVersion,
 			);
 		});
 
@@ -1630,6 +1631,7 @@ describe('CommunityPackagesService', () => {
 						fields: ['packageName', 'npmVersion', 'checksum', 'nodeVersions'],
 					},
 					config.aiNodeSdkVersion,
+					config.nodesApiVersion,
 				);
 			} finally {
 				// Restore original environment
