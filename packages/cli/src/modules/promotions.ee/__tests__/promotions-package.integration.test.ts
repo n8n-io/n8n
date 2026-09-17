@@ -986,7 +986,6 @@ describe('Promote a project selection', () => {
 		const w3 = await createWorkflow({ name: 'w3', nodes: [], connections: {} }, project);
 		const result = await service.promoteProjectSelection(project.id, owner, {
 			workflowIds: [w3.id],
-			createBranch: false,
 			canExportVariableValues: true,
 		});
 
@@ -1015,7 +1014,6 @@ describe('Promote a project selection', () => {
 
 		await service.promoteProjectSelection(project.id, owner, {
 			workflowIds: [workflows[0].id],
-			createBranch: false,
 			canExportVariableValues: true,
 		});
 
@@ -1041,7 +1039,6 @@ describe('Promote a project selection', () => {
 		await expect(
 			service.promoteProjectSelection(orders.id, owner, {
 				workflowIds: [billingWorkflows[0].id],
-				createBranch: false,
 				canExportVariableValues: true,
 			}),
 		).rejects.toThrow('does not belong to project');

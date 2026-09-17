@@ -914,7 +914,6 @@ describe('PromotionsService', () => {
 
 			await service.promoteProjectSelection('p1', actor, {
 				workflowIds: ['w1', 'w2', 'w3', 'w4'],
-				createBranch: false,
 				canExportVariableValues: true,
 			});
 
@@ -936,7 +935,6 @@ describe('PromotionsService', () => {
 			await expect(
 				service.promoteProjectSelection('p1', actor, {
 					workflowIds: ['w1', 'w9'],
-					createBranch: false,
 					canExportVariableValues: false,
 				}),
 			).rejects.toThrow(BadRequestError);
@@ -949,7 +947,6 @@ describe('PromotionsService', () => {
 			await expect(
 				service.promoteProjectSelection('p1', actor, {
 					workflowIds: ['w1'],
-					createBranch: false,
 					canExportVariableValues: false,
 				}),
 			).rejects.toThrow(NotFoundError);
@@ -961,7 +958,6 @@ describe('PromotionsService', () => {
 			await expect(
 				service.promoteProjectSelection('p1', actor, {
 					workflowIds: ['w1'],
-					createBranch: false,
 					canExportVariableValues: false,
 				}),
 			).rejects.toThrow(BadRequestError);

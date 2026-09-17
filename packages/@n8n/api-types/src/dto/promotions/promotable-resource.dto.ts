@@ -39,7 +39,6 @@ export type PromotableResource = z.infer<typeof promotableResourceSchema>;
 
 export const promoteRequestSchema = z.object({
 	workflowIds: z.array(n8nIdSchema).min(1),
-	createBranch: z.boolean(),
 });
 
 export type PromoteRequest = z.infer<typeof promoteRequestSchema>;

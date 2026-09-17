@@ -378,10 +378,6 @@ export class PromotionsService {
 		actor: User,
 		request: PromoteRequest & { canExportVariableValues: boolean },
 	): Promise<PromotePackageResultDto> {
-		if (request.createBranch) {
-			throw new BadRequestError('Selective project promote does not support createBranch yet');
-		}
-
 		if (new Set(request.workflowIds).size !== request.workflowIds.length) {
 			throw new BadRequestError('workflowIds contains duplicates');
 		}

@@ -1,7 +1,7 @@
 import { PromoteSelectionRequestDto, type PromotePackageResultDto } from '@n8n/api-types';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import { AuthenticatedRequest } from '@n8n/db';
-import { Body, Licensed, Param, Post, ProjectScope, RestController } from '@n8n/decorators';
+import { Body, GlobalScope, Licensed, Param, Post, RestController } from '@n8n/decorators';
 import { hasGlobalScope } from '@n8n/permissions';
 import type { Response } from 'express';
 
@@ -12,7 +12,7 @@ export class PromotionsController {
 	constructor(private readonly promotionsService: PromotionsService) {}
 
 	@Post('/:projectId/promote')
-	@ProjectScope('project:export')
+	@GlobalScope('gitConnection:push')
 	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
 	async promote(
 		req: AuthenticatedRequest,

@@ -24,13 +24,13 @@ afterEach(async () => {
 });
 
 describe('POST /promotions/:projectId/promote', () => {
-	test('rejects a member without project export access with 403', async () => {
+	test('rejects a member without promote access with 403', async () => {
 		const project = await createTeamProject('Orders', owner);
 
 		const response = await testServer
 			.authAgentFor(member)
 			.post(`/promotions/${project.id}/promote`)
-			.send({ workflowIds: ['w1'], createBranch: false });
+			.send({ workflowIds: ['w1'] });
 
 		expect(response.statusCode).toBe(403);
 	});
@@ -41,7 +41,7 @@ describe('POST /promotions/:projectId/promote', () => {
 		const response = await testServer
 			.authAgentFor(owner)
 			.post(`/promotions/${project.id}/promote`)
-			.send({ workflowIds: [], createBranch: false });
+			.send({ workflowIds: [] });
 
 		expect(response.statusCode).toBe(400);
 	});
@@ -52,7 +52,7 @@ describe('POST /promotions/:projectId/promote', () => {
 		const response = await testServer
 			.authAgentFor(owner)
 			.post(`/promotions/${project.id}/promote`)
-			.send({ workflowIds: ['w1'], createBranch: false });
+			.send({ workflowIds: ['w1'] });
 
 		expect(response.statusCode).toBe(404);
 	});
