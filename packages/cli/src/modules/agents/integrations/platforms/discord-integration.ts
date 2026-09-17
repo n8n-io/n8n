@@ -28,6 +28,7 @@ import {
 } from '../agent-chat-integration';
 import type { ChatInstance } from '../chat-integration.service';
 import { createAdapterLogger } from '../adapter-logger';
+import { requireCredentialField } from '../credential-fields';
 import { expandSelectsToButtons, type SuspendComponent } from '../component-mapper';
 import { assertCredentialNotClaimed } from '../credential-claim';
 import { loadDiscordAdapter } from '../esm-loader';
@@ -470,7 +471,7 @@ export class DiscordIntegration extends AgentChatIntegration {
 	// ---------------------------------------------------------------------------
 
 	private extractBotToken(credential: Record<string, unknown>): string {
-		return this.requireCredentialField(
+		return requireCredentialField(
 			credential,
 			'botToken',
 			'The Discord credential is missing a Bot Token. Copy it from the Bot section of the Discord Developer Portal.',
@@ -484,7 +485,7 @@ export class DiscordIntegration extends AgentChatIntegration {
 	 * fields fails the connect before the agent is published.
 	 */
 	private extractPublicKey(credential: Record<string, unknown>): string {
-		return this.requireCredentialField(
+		return requireCredentialField(
 			credential,
 			'publicKey',
 			'The Discord credential is missing a Public Key. Copy it from the application General Information page in the Discord Developer Portal.',
@@ -492,21 +493,11 @@ export class DiscordIntegration extends AgentChatIntegration {
 	}
 
 	private extractApplicationId(credential: Record<string, unknown>): string {
-		return this.requireCredentialField(
+		return requireCredentialField(
 			credential,
 			'applicationId',
 			'The Discord credential is missing an Application ID. Copy it from the application General Information page in the Discord Developer Portal.',
 		);
-	}
-
-	private requireCredentialField(
-		credential: Record<string, unknown>,
-		field: string,
-		message: string,
-	): string {
-		const value = credential[field];
-		if (typeof value === 'string' && value.trim()) return value.trim();
-		throw new Error(message);
 	}
 
 	/**
