@@ -1069,7 +1069,6 @@ describe('PromotionsService', () => {
 				});
 				expect(bindingPreflight.checkDirectory).toHaveBeenCalledWith({
 					sourceDir: packageFolder,
-					user: actor,
 				});
 				expect(n8nPackagesService.importPackageFromDirectory).not.toHaveBeenCalled();
 				expect(projectRepository.findTeamProjectIds).not.toHaveBeenCalled();

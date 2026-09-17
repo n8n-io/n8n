@@ -4,6 +4,7 @@ export {
 	activityResourceNameMaxLength,
 	type ActivityEventInput,
 	type ActivityFeedQuery,
+	type ActivityProjectScope,
 } from './activity-event.repository';
 export { AgentEvalDatasetRepository } from './agent-eval-dataset.repository.ee';
 export { AgentEvalRunRepository } from './agent-eval-run.repository.ee';
@@ -38,6 +39,7 @@ export {
 export { EvaluationConfigRepository } from './evaluation-config.repository';
 export { ExecutionAnnotationRepository } from './execution-annotation.repository';
 export { ExecutionDataRepository } from './execution-data.repository';
+export { ExecutionListRepository } from './execution-list.repository';
 export { ExecutionMetadataRepository } from './execution-metadata.repository';
 export {
 	ExecutionRepository,

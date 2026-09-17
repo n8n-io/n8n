@@ -95,6 +95,9 @@ vi.mock('../../tracing/langsmith-tracing', () => ({
 	buildAgentTraceInputs: vi.fn().mockReturnValue({}),
 	mergeTraceRunInputs: vi.fn(),
 	setTracePromptVersion: vi.fn(),
+	setTraceModelId: vi.fn(),
+	modelIdTraceMetadata: (modelId: unknown) =>
+		typeof modelId === 'string' && modelId.length > 0 ? { model_id: modelId } : {},
 }));
 
 vi.mock('../system-prompt', () => ({
@@ -105,7 +108,7 @@ import { Agent as AgentImport, Memory as MemoryImport } from '@n8n/agents';
 
 import { createOrchestratorDomainTools as createOrchestratorDomainToolsImport } from '../../tools';
 import { createToolsFromLocalMcpServer as createToolsFromLocalMcpServerImport } from '../../tools/filesystem/create-tools-from-mcp-server';
-import { setTracePromptVersion } from '../../tracing/langsmith-tracing';
+import { setTraceModelId, setTracePromptVersion } from '../../tracing/langsmith-tracing';
 import { createInstanceAgent } from '../instance-agent';
 import { getSystemPrompt as getSystemPromptImport } from '../system-prompt';
 
@@ -205,6 +208,23 @@ describe('createInstanceAgent', () => {
 		});
 		expect(attachedTools['nodes-run-1']).toMatchObject({ name: 'nodes-run-1' });
 		expect(secondRunAttachedTools['nodes-run-2']).toMatchObject({ name: 'nodes-run-2' });
+	});
+
+	it('shares one domain context between domain and orchestration tools', async () => {
+		const orchestrationContext: { runId: string; domainContext?: unknown } = {
+			runId: 'shared-context',
+		};
+
+		await createInstanceAgent({
+			modelId: 'test-model',
+			context: { runLabel: 'shared-context' },
+			orchestrationContext,
+			memoryConfig: {},
+			mcpManager: createMcpManagerStub(),
+		} as never);
+
+		const domainToolContext = createOrchestratorDomainTools.mock.lastCall?.[0];
+		expect(orchestrationContext.domainContext).toBe(domainToolContext);
 	});
 
 	it('applies the selected profile exclusions to domain and orchestration tools', async () => {
@@ -414,6 +434,13 @@ describe('createInstanceAgent', () => {
 
 		expect(mockAgentInstances[0]?.telemetry).toHaveBeenCalledWith(telemetry);
 		expect(setTracePromptVersion).toHaveBeenCalledWith(tracing, 'default@1');
+		expect(setTraceModelId).toHaveBeenCalledWith(tracing, 'test-model');
+		expect(tracing.getTelemetry).toHaveBeenCalledWith({
+			agentRole: 'orchestrator',
+			functionId: 'instance-ai.orchestrator',
+			executionMode: 'foreground',
+			metadata: { model_id: 'test-model' },
+		});
 	});
 
 	it('attaches runtime skills to the orchestrator when provided by the context', async () => {

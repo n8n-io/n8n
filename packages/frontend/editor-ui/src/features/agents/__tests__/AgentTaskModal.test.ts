@@ -155,9 +155,9 @@ const stubs = {
 	FormInput: N8nFormInputStub,
 	// N8nMarkdownEditor uses a filename-inferred name (no N8n prefix).
 	MarkdownEditor: {
-		props: ['modelValue'],
+		props: ['modelValue', 'showToolbar'],
 		template:
-			'<textarea v-bind="$attrs" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" />',
+			'<textarea v-bind="$attrs" :value="modelValue" :data-show-toolbar="showToolbar" @input="$emit(\'update:modelValue\', $event.target.value)" />',
 	},
 	Select: {
 		props: ['modelValue'],
@@ -220,6 +220,10 @@ describe('AgentTaskModal', () => {
 		createAgentTaskSpy.mockResolvedValue({});
 		const { getByTestId, onSaved } = renderModal();
 
+		expect(getByTestId('agent-task-objective-input')).toHaveAttribute(
+			'data-show-toolbar',
+			'floating',
+		);
 		await fireEvent.update(getByTestId('agent-task-name-input'), 'My Task');
 		await fireEvent.update(getByTestId('agent-task-objective-input'), 'Do the thing');
 		await fireEvent.click(getByTestId('agent-task-save'));

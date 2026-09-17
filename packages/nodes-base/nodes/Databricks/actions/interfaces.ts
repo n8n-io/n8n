@@ -74,6 +74,7 @@ export type DatabricksJobRunTask = {
 	start_time?: number;
 	end_time?: number;
 	status?: DatabricksJobRunStatus;
+	/** @deprecated Jobs API 2.2 reports `status` instead */
 	state?: DatabricksJobRunLegacyState;
 };
 
@@ -90,7 +91,6 @@ export type DatabricksJobRun = {
 	queue_duration?: number;
 	run_duration?: number;
 	status?: DatabricksJobRunStatus;
-	/** @deprecated Jobs API 2.2 reports `status` instead */
 	state?: DatabricksJobRunLegacyState;
 	tasks?: DatabricksJobRunTask[];
 	has_more?: boolean;
@@ -112,4 +112,24 @@ export type DatabricksRunOutput = {
 	error?: string;
 	error_trace?: string;
 	info?: string;
+};
+
+export type DatabricksJobSettings = {
+	name?: string;
+	tasks?: Array<Record<string, unknown>>;
+	job_clusters?: Array<Record<string, unknown>>;
+	environments?: Array<Record<string, unknown>>;
+	parameters?: Array<Record<string, unknown>>;
+	[key: string]: unknown;
+};
+
+export type DatabricksJob = {
+	job_id?: number;
+	creator_user_name?: string;
+	run_as_user_name?: string;
+	created_time?: number;
+	settings?: DatabricksJobSettings;
+	trigger_state?: Record<string, unknown>;
+	has_more?: boolean;
+	next_page_token?: string;
 };

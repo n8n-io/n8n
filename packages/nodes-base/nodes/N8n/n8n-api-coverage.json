@@ -125,10 +125,10 @@
 		"GET /tags/{tagId}": {
 			"status": "gap"
 		},
-		"DELETE /tags/{id}": {
+		"DELETE /tags/{tagId}": {
 			"status": "gap"
 		},
-		"PUT /tags/{id}": {
+		"PUT /tags/{tagId}": {
 			"status": "gap"
 		},
 		"POST /workflows": {

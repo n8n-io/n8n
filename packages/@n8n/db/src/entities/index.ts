@@ -71,7 +71,10 @@ import { TestRun } from './test-run.ee';
 import { User } from './user';
 import { Variables } from './variables';
 import { WebhookEntity } from './webhook-entity';
-import { WorkflowDependency } from './workflow-dependency-entity';
+import {
+	WorkflowDependency,
+	WORKFLOW_DEPENDENCY_INDEX_VERSION,
+} from './workflow-dependency-entity';
 import { WorkflowEntity } from './workflow-entity';
 import { WorkflowHistory } from './workflow-history';
 import {
@@ -162,6 +165,7 @@ export {
 	TagEntity,
 	User,
 	WorkflowDependency,
+	WORKFLOW_DEPENDENCY_INDEX_VERSION,
 	WorkflowEntity,
 	WorkflowStatistics,
 	WorkflowTagMapping,

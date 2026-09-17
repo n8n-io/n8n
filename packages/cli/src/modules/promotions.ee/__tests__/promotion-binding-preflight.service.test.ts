@@ -1,5 +1,5 @@
 import { promotionBindingPreflightResultSchema } from '@n8n/api-types';
-import type { CredentialsRepository, ProjectRepository, User, VariablesRepository } from '@n8n/db';
+import type { CredentialsRepository, ProjectRepository, VariablesRepository } from '@n8n/db';
 import type { INode } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
@@ -15,8 +15,6 @@ import type {
 import type { PackageImportConfig } from '@/modules/n8n-packages/n8n-packages.config';
 
 import { PromotionBindingPreflightService } from '../promotion-binding-preflight.service';
-
-const user = mock<User>({ id: 'user-1' });
 
 const inventoryReader = mock<PackageDirectoryInventoryReader>();
 const credentialTypes = mock<CredentialTypes>();
@@ -127,7 +125,7 @@ const workflowRef = (id: string) => ({ id, name: `Workflow ${id}` });
 
 const emptyResult = { missingBindings: [], accessRequirements: [], conflicts: [], warnings: [] };
 const check = async () => {
-	const result = await service.checkDirectory({ sourceDir: '/checkout', user });
+	const result = await service.checkDirectory({ sourceDir: '/checkout' });
 	expect(promotionBindingPreflightResultSchema.parse(result)).toStrictEqual(result);
 	return result;
 };

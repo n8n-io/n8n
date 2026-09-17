@@ -524,12 +524,11 @@ export class PromotionsPublicController {
 
 	@Post('/connections/:promotionConnectionId/apply')
 	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
-	// Only owners and admins can pull; both roles have the required inspection scopes.
-	@ApiKeyScope({ allOf: ['gitConnection:pull', 'variable:list'] })
+	@ApiKeyScope('gitConnection:pull')
 	@GlobalScope('gitConnection:pull')
 	@ApiSummary('Apply a package to the instance')
 	@ApiDescription(
-		'Checks the full package at the configured branch tip. Returns status `blocked` before import writes if bindings need setup. Retain configId and git for Continue. Status `applied` includes counts and warnings. Inspect status before reading counts. Existing target variable values, including empty strings, are preserved. Requires a cloned Apply direction on an instance connection. The API key needs pull and variable-list scopes. The importer checks user write permissions; granular API-key write scopes are not passed to it.',
+		'Checks the full package at the configured branch tip. Returns status `blocked` before import writes if bindings need setup. Retain configId and git for Continue. Status `applied` includes counts and warnings. Inspect status before reading counts. Existing target variable values, including empty strings, are preserved. Requires a cloned Apply direction on an instance connection. The API key needs the gitConnection:pull scope. The importer checks user write permissions; granular API-key write scopes are not passed to it.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, ApplyPackageResultDto)
@@ -549,8 +548,7 @@ export class PromotionsPublicController {
 
 	@Post('/connections/:promotionConnectionId/apply/continue')
 	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
-	// Only owners and admins can pull; both roles have the required inspection scopes.
-	@ApiKeyScope({ allOf: ['gitConnection:pull', 'variable:list'] })
+	@ApiKeyScope('gitConnection:pull')
 	@GlobalScope('gitConnection:pull')
 	@ApiSummary('Continue Apply after binding setup')
 	@ApiDescription(

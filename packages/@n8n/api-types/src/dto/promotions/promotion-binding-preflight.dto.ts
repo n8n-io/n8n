@@ -132,7 +132,7 @@ export const promotionBindingWarningSchema = z.object({
 /**
  * Read-only check of package references. Source IDs define creation scope.
  * This result does not certify a complete mirror or authorize later writes.
- * Callers must enforce inspection permissions, including variable list permissions.
+ * Callers must enforce the permissions for their endpoint.
  */
 export const promotionBindingPreflightResultSchema = z.object({
 	missingBindings: z.array(

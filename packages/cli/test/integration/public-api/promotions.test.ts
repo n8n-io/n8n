@@ -699,15 +699,13 @@ describe('Promotions in Public API', () => {
 			expectedSource: { configId: 'config1', branchName: 'main', commitSha: 'a'.repeat(40) },
 		};
 
-		it.each(['apply', 'apply/continue'])('%s requires both API-key scopes', async (route) => {
-			for (const scopes of [['gitConnection:pull'], ['variable:list']] as const) {
-				const restrictedOwner = await createOwnerWithApiKey({ scopes: [...scopes] });
-				const response = await testServer
-					.publicApiAgentFor(restrictedOwner)
-					.post(`/promotions/connections/someId/${route}`)
-					.send(continueBody);
-				expect(response.status).toBe(403);
-			}
+		it.each(['apply', 'apply/continue'])('%s requires the pull API-key scope', async (route) => {
+			const restrictedOwner = await createOwnerWithApiKey({ scopes: ['variable:list'] });
+			const response = await testServer
+				.publicApiAgentFor(restrictedOwner)
+				.post(`/promotions/connections/someId/${route}`)
+				.send(continueBody);
+			expect(response.status).toBe(403);
 		});
 
 		it.each(['apply', 'apply/continue'])(
@@ -758,10 +756,11 @@ describe('Promotions in Public API', () => {
 		});
 
 		it.each(['blocked', 'applied', 'source-changed'] as const)(
-			'returns the %s contract through both Apply routes',
+			'returns the %s contract through both Apply routes with only the pull API-key scope',
 			async (status) => {
-				const agent = testServer.publicApiAgentFor(owner);
-				const id = await createConnection(agent);
+				const id = await createConnection(testServer.publicApiAgentFor(owner));
+				const restrictedOwner = await createOwnerWithApiKey({ scopes: ['gitConnection:pull'] });
+				const agent = testServer.publicApiAgentFor(restrictedOwner);
 				const consumers = [
 					{
 						project: { id: 'project1', name: 'Orders' },
@@ -826,10 +825,13 @@ describe('Promotions in Public API', () => {
 						expect(response.status, JSON.stringify(response.body)).toBe(200);
 						expect(response.body).toEqual(result);
 					}
-					expect(initial).toHaveBeenCalledWith(id, expect.objectContaining({ id: owner.id }));
+					expect(initial).toHaveBeenCalledWith(
+						id,
+						expect.objectContaining({ id: restrictedOwner.id }),
+					);
 					expect(continuation).toHaveBeenCalledWith(
 						id,
-						expect.objectContaining({ id: owner.id }),
+						expect.objectContaining({ id: restrictedOwner.id }),
 						continueBody,
 					);
 				} finally {
