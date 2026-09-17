@@ -57,8 +57,6 @@ describe('AddDescriptionToCredentials migration', () => {
 				 VALUES (:credentialId, 'Reporting DB', 'encrypted', 'testApi', :now, :now)`,
 				{ credentialId, now },
 			);
-			// The role is bound, not inlined: the helper reads `:owner` inside a
-			// 'credential:owner' literal as a named parameter.
 			await runQuery(
 				`INSERT INTO ${escape.tableName('shared_credentials')}
 				   ("credentialsId", "projectId", "role", "createdAt", "updatedAt")

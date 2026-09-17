@@ -1770,8 +1770,6 @@ describe('credential description', () => {
 	});
 
 	test('both verbs apply the cap to the same character count', async () => {
-		// zod counts UTF-16 units; the entity validator subtracts surrogate pairs.
-		// Routing both verbs through the shared schema keeps them in agreement.
 		const astral = '\u{1F600}'.repeat(CREDENTIAL_DESCRIPTION_MAX_LENGTH);
 		const saved = await saveOwned();
 

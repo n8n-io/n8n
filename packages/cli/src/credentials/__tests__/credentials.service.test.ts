@@ -377,7 +377,6 @@ describe('CredentialsService', () => {
 		});
 
 		it('rejects a non-string description with a 400, not a crash', async () => {
-			// The PATCH body has no request schema, so the value reaches the service raw.
 			const notAString = prepare(42 as unknown as string);
 
 			await expect(notAString).rejects.toThrow(BadRequestError);
@@ -1033,13 +1032,10 @@ describe('CredentialsService', () => {
 		});
 
 		it('should redact sensitive values by default', async () => {
-			// ARRANGE
 			vi.spyOn(Credentials.prototype, 'getData').mockResolvedValueOnce(data);
 
-			// ACT
 			const redactedData = await service.decrypt(credentialEntity);
 
-			// ASSERT
 			expect(redactedData).toEqual({
 				...data,
 				clientSecret: CREDENTIAL_BLANKING_VALUE,
@@ -3132,16 +3128,12 @@ describe('CredentialsService', () => {
 			['stores a blank description as null', '   ', null],
 			['stores an absent description as null', undefined, null],
 		])('%s', async (_label, description, expected) => {
-			// ARRANGE
 			const payload = { ...credentialData, description };
-			// The share row is saved after the credential, so index rather than overwrite.
 			const savedEntities: any[] = [];
 			mockTransactionManager({ onSave: (entity) => savedEntities.push(entity) });
 
-			// ACT
 			await service.createUnmanagedCredential(payload, ownerUser);
 
-			// ASSERT
 			expect(savedEntities[0].description).toBe(expected);
 		});
 

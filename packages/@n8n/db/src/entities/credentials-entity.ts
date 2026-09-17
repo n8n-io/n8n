@@ -17,10 +17,7 @@ export class CredentialsEntity extends WithTimestampsAndStringId implements ICre
 	})
 	name: string;
 
-	/**
-	 * User-supplied note on what the credential is for and where it belongs.
-	 * A blank value is stored as `null`.
-	 */
+	/** User-supplied note on what the credential is for. Blank is stored as `null`. */
 	@Column({ type: 'text', nullable: true })
 	@IsOptional()
 	@IsString({ message: 'Credential `description` must be of type string.' })

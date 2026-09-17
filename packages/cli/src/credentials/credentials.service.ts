@@ -1,4 +1,3 @@
-import { credentialDescriptionSchema } from '@n8n/api-types';
 import type { CreateCredentialDto, CredentialConnectionStatus } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import {
@@ -82,6 +81,7 @@ import { CredentialsFinderService } from './credentials-finder.service';
 import { getExternalSecretExpressionPaths } from './external-secrets.utils';
 import { InstanceCredentialUseRegistry } from './instance-credential-use.registry';
 import {
+	parseCredentialDescription,
 	validateAccessToReferencedSecretProviders,
 	validateExternalSecretsPermissions,
 } from './validation';
@@ -194,31 +194,6 @@ type WorkflowCredentialResult = {
 	sharedWithProjects: SlimProject[];
 	currentUserHasAccess: boolean;
 } & CredentialConnectionStatus;
-
-/** Stores a blank description as `null`, so reads have a single "unset" value. */
-export function normalizeCredentialDescription(
-	description: string | null | undefined,
-): string | null {
-	if (typeof description !== 'string') return null;
-
-	const trimmed = description.trim();
-	return trimmed === '' ? null : trimmed;
-}
-
-/**
- * Validates a written description, then normalizes it. `PATCH /credentials/:id`
- * has no request schema, so the shared schema runs here. That rejects a
- * non-string with a 400 and keeps one cap and one message across both verbs.
- */
-function parseCredentialDescription(description: unknown): string | null {
-	const result = credentialDescriptionSchema.safeParse(description);
-
-	if (!result.success) {
-		throw new BadRequestError(result.error.issues[0].message);
-	}
-
-	return normalizeCredentialDescription(result.data);
-}
 
 /** Codes an auth probe must not treat as rejection, stored as a JSON array in the credential. */
 function parseAcceptedStatusCodes(raw: unknown): number[] | undefined {
@@ -1120,6 +1095,11 @@ export class CredentialsService {
 				type: prepared.type,
 				data: decryptedData,
 			}));
+
+		if (data.description !== undefined) {
+			encrypted.description = prepared.description;
+		}
+
 		if (!options.skipExternalHooks) {
 			await this.externalHooks.run('credentials.update', [encrypted]);
 		}
@@ -2013,7 +1993,7 @@ export class CredentialsService {
 			data: opts.data as ICredentialDataDecryptedObject,
 		});
 
-		encryptedCredential.description = normalizeCredentialDescription(opts.description);
+		encryptedCredential.description = parseCredentialDescription(opts.description);
 
 		// Set isGlobal if provided in the payload and user has permission
 		const isGlobal = opts.isGlobal;
@@ -2086,7 +2066,7 @@ export class CredentialsService {
 		this.validateCredentialData(opts.type, hookedData);
 		const credentialEntity = this.credentialsRepository.create({
 			...encryptedCredential,
-			description: normalizeCredentialDescription(opts.description),
+			description: parseCredentialDescription(opts.description),
 			isManaged: false,
 			isResolvable: false,
 			usageScope: 'instance' as const,

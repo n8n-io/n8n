@@ -65,7 +65,6 @@ describe('CreateCredentialDto', () => {
 				},
 			},
 			{
-				// A read returns `null`, so posting back what was read must work.
 				name: 'null description',
 				request: {
 					name: 'My API Credentials',

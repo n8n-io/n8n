@@ -320,9 +320,6 @@ export class CredentialsController {
 			data: preparedCredentialData.data as unknown as ICredentialDataDecryptedObject,
 		});
 
-		// Write the key only when the payload sends it, so a PATCH that omits the
-		// field keeps the stored text. A blank value normalizes to `null`, so `??`
-		// would not tell "cleared" apart from "not sent".
 		if (body.description !== undefined) {
 			newCredentialData.description = preparedCredentialData.description;
 		}

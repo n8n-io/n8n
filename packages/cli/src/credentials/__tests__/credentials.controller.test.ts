@@ -521,11 +521,14 @@ describe('CredentialsController', () => {
 			});
 
 			it.each([
-				['writes a description the payload sends', 'Read-only reporting key.'],
-				['clears a description the payload blanks out', null],
-			])('%s', async (_label, prepared) => {
-				const req = updateRequest({ description: prepared ?? '  ' });
-				// The service normalizes; the controller only decides whether to write it.
+				[
+					'writes a description the payload sends',
+					'Read-only reporting key.',
+					'Read-only reporting key.',
+				],
+				['clears a description the payload blanks out', '  ', null],
+			])('%s', async (_label, sent, prepared) => {
+				const req = updateRequest({ description: sent });
 				prepareUpdateDataSpy.mockResolvedValue({ ...req.body, description: prepared });
 
 				await credentialsController.updateCredentials(req);
@@ -544,8 +547,6 @@ describe('CredentialsController', () => {
 
 				await credentialsController.updateCredentials(req);
 
-				// `not.objectContaining({ description: expect.anything() })` would also pass
-				// for an explicit `null`, which is the wipe this guard exists to prevent.
 				expect(updateSpy.mock.calls[0][1]).not.toHaveProperty('description');
 			});
 		});
