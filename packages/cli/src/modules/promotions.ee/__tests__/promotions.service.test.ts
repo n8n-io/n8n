@@ -7,11 +7,14 @@ import path from 'node:path';
 import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
 import type { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
 import {
 	MissingWorkflowDependencyPolicy,
 	WorkflowVersionPolicy,
 } from '@/modules/n8n-packages/n8n-packages.types';
+import { packageManifestSchema } from '@/modules/n8n-packages/spec/manifest.schema';
 import type { ProjectService } from '@/services/project.service.ee';
 
 import type { PromotionConfigResolver } from '../promotion-config.resolver';
@@ -20,9 +23,35 @@ import { PromotionWorkingDirectoryService } from '../promotion-working-directory
 import type { PromotionsGitService } from '../promotions-git.service';
 import { PromotionsService } from '../promotions.service';
 import type { PromotionOperationInput, ResolvedPromotionConfig } from '../promotions.types';
+import { WorkingCopyUpdater } from '../working-copy-updater';
+
+vi.mock('node:fs/promises', async (importOriginal) => {
+	const fs = await importOriginal<typeof import('node:fs/promises')>();
+	return { ...fs, rm: vi.fn(fs.rm) };
+});
 
 const CONFIG_ID = 'cfg1';
 const REMOTE_URL = 'git@github.com:o/r.git';
+
+const emptyManifest = packageManifestSchema.parse({
+	packageFormatVersion: '1',
+	exportedAt: '2026-01-01T00:00:00.000Z',
+	sourceN8nVersion: '1.0.0',
+	sourceId: 'inst-1',
+});
+
+/** What an export writes for a workflow, so the branch can be read back. */
+const branchWorkflowFile = (id: string, name: string) =>
+	JSON.stringify({
+		id,
+		name,
+		nodes: [],
+		connections: {},
+		versionId: `version-${id}`,
+		parentFolderId: null,
+		isPublished: false,
+		isArchived: false,
+	});
 
 describe('PromotionsService', () => {
 	const resolver = mock<PromotionConfigResolver>();
@@ -87,6 +116,10 @@ describe('PromotionsService', () => {
 			resolver,
 			providersService,
 			workingDirectory,
+			new WorkingCopyUpdater(
+				mock<InstanceSettings>({ n8nFolder, instanceId: 'inst-test' }),
+				logger,
+			),
 			gitService,
 			projectRepository,
 			projectService,
@@ -100,6 +133,7 @@ describe('PromotionsService', () => {
 	});
 
 	afterEach(async () => {
+		vi.mocked(rm).mockReset();
 		await rm(n8nFolder, { recursive: true, force: true });
 	});
 
@@ -181,6 +215,7 @@ describe('PromotionsService', () => {
 					await writeFile(path.join(targetDir, 'manifest.json'), '{"projects":[]}');
 					await writeFile(path.join(targetDir, 'projects', 'alpha', 'project.json'), '{}');
 					return {
+						manifest: emptyManifest,
 						counts: {
 							workflows: 0,
 							folders: 0,
@@ -451,6 +486,407 @@ describe('PromotionsService', () => {
 				expect.objectContaining({ includeVariableValues: true, canExportVariableValues: false }),
 				expect.any(Object),
 			);
+		});
+	});
+
+	describe('promoteSelection', () => {
+		const actor = mock<User>({
+			id: 'actor',
+			firstName: 'Ada',
+			lastName: 'Lovelace',
+			email: 'ada@example.com',
+		});
+		const selection = { projectId: 'p1', workflowIds: ['w1', 'w2'], deletedWorkflowIds: [] };
+
+		let packageFolder: string;
+		let repositoryFolder: string;
+
+		const writeExportTree = async (base: string, files: Record<string, string>) => {
+			for (const [filePath, content] of Object.entries(files)) {
+				const fullPath = path.join(base, filePath);
+				await mkdir(path.dirname(fullPath), { recursive: true });
+				await writeFile(fullPath, content);
+			}
+		};
+
+		const buildManifest = (overrides: Record<string, unknown> = {}) =>
+			JSON.stringify(
+				{
+					packageFormatVersion: '1',
+					exportedAt: '2026-01-01T00:00:00.000Z',
+					sourceN8nVersion: '1.0.0',
+					sourceId: 'inst-1',
+					...overrides,
+				},
+				null,
+				'\t',
+			);
+
+		const mockExport = (files: Record<string, string>) => {
+			n8nPackagesService.exportPackageToDirectory.mockImplementation(
+				async (_request, { targetDir }) => {
+					await writeExportTree(targetDir, files);
+					const manifest = packageManifestSchema.parse(JSON.parse(files['manifest.json']));
+					return {
+						manifest,
+						counts: {
+							workflows: manifest.workflows?.length ?? 0,
+							folders: manifest.folders?.length ?? 0,
+							credentials: manifest.credentials?.length ?? 0,
+							dataTables: manifest.dataTables?.length ?? 0,
+							variables: manifest.variables?.length ?? 0,
+							tags: manifest.tags?.length ?? 0,
+						},
+					};
+				},
+			);
+		};
+
+		const readExported = async (relative: string) =>
+			await readFile(path.join(packageFolder, relative), 'utf-8');
+
+		const alpha = { id: 'p1', name: 'Alpha', target: 'projects/alpha' };
+		const wf = (id: string, name = id.toUpperCase()) => ({
+			id,
+			name,
+			target: `projects/alpha/workflows/${id}`,
+		});
+		const workflowFile = (id: string) =>
+			JSON.stringify({
+				id,
+				name: id.toUpperCase(),
+				nodes: [],
+				connections: {},
+				versionId: `version-${id}`,
+				parentFolderId: null,
+				isPublished: false,
+				isArchived: false,
+			});
+
+		beforeEach(async () => {
+			const input = promoteInput();
+			resolver.resolveForConnection.mockResolvedValue(input);
+			await markCloned(input, 'staging');
+			repositoryFolder = workingDirectory.paths(CONFIG_ID).repositoryFolder;
+			packageFolder = path.join(repositoryFolder, 'n8n-export');
+			projectRepository.findOneBy.mockResolvedValue({ id: 'p1', type: 'team' } as never);
+			gitService.commitAndPush.mockResolvedValue({ commitSha: 'selsha' });
+		});
+
+		it('asks the exporter for the selected workflows of the project with reference-only dependencies', async () => {
+			await writeExportTree(packageFolder, {
+				'manifest.json': buildManifest({ projects: [alpha] }),
+				'projects/alpha/project.json': JSON.stringify({ id: alpha.id, name: alpha.name }),
+			});
+			mockExport({
+				'manifest.json': buildManifest({ projects: [alpha], workflows: [wf('w1'), wf('w2')] }),
+				'projects/alpha/project.json': JSON.stringify({ id: alpha.id, name: alpha.name }),
+				'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
+				'projects/alpha/workflows/w2/workflow.json': workflowFile('w2'),
+			});
+
+			await service.promoteSelection(
+				'conn1',
+				actor,
+				{ commitMessage: 'm', canExportVariableValues: true },
+				selection,
+			);
+
+			expect(n8nPackagesService.exportPackageToDirectory).toHaveBeenCalledWith(
+				expect.objectContaining({
+					projectIds: ['p1'],
+					projectWorkflowIds: ['w1', 'w2'],
+					includeArchivedWorkflows: true,
+					canExportVariableValues: true,
+					missingWorkflowDependencyPolicy: MissingWorkflowDependencyPolicy.ReferenceOnly,
+					workflowVersionPolicy: WorkflowVersionPolicy.Latest,
+				}),
+				expect.any(Object),
+			);
+		});
+
+		it('refuses a selection when the branch has no package', async () => {
+			await mkdir(repositoryFolder, { recursive: true });
+
+			await expect(
+				service.promoteSelection(
+					'conn1',
+					actor,
+					{ commitMessage: 'first selective', canExportVariableValues: true },
+					{ projectId: 'p1', workflowIds: ['w1'], deletedWorkflowIds: [] },
+				),
+			).rejects.toThrow('Promote the instance first');
+			expect(n8nPackagesService.exportPackageToDirectory).not.toHaveBeenCalled();
+			expect(gitService.commitAndPush).not.toHaveBeenCalled();
+		});
+
+		it('refuses a selection when the export does not match the selected workflows', async () => {
+			await writeExportTree(packageFolder, {
+				'manifest.json': buildManifest({ projects: [alpha], workflows: [wf('w1')] }),
+				'projects/alpha/project.json': JSON.stringify({ id: alpha.id, name: alpha.name }),
+				'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
+			});
+			mockExport({
+				'manifest.json': buildManifest({ projects: [alpha], workflows: [wf('w1')] }),
+				'projects/alpha/project.json': JSON.stringify({ id: alpha.id, name: alpha.name }),
+				'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
+			});
+
+			await expect(
+				service.promoteSelection(
+					'conn1',
+					actor,
+					{ commitMessage: 'm', canExportVariableValues: true },
+					{ projectId: 'p1', workflowIds: ['w1', 'w2'], deletedWorkflowIds: [] },
+				),
+			).rejects.toThrow('The export does not match the selection (missing w2)');
+			expect(gitService.commitAndPush).not.toHaveBeenCalled();
+			expect(await readExported('projects/alpha/workflows/w1/workflow.json')).toBe(
+				workflowFile('w1'),
+			);
+		});
+
+		it('cleans up the staging folder even when the export fails', async () => {
+			await writeExportTree(packageFolder, {
+				'manifest.json': buildManifest({ projects: [alpha] }),
+				'projects/alpha/project.json': JSON.stringify({ id: alpha.id, name: alpha.name }),
+			});
+			n8nPackagesService.exportPackageToDirectory.mockRejectedValueOnce(
+				new BadRequestError('export failed'),
+			);
+
+			await expect(
+				service.promoteSelection(
+					'conn1',
+					actor,
+					{ commitMessage: 'm', canExportVariableValues: true },
+					{ projectId: 'p1', workflowIds: ['w1'], deletedWorkflowIds: [] },
+				),
+			).rejects.toThrow(BadRequestError);
+
+			const stagingFolder = n8nPackagesService.exportPackageToDirectory.mock.calls[0][1].targetDir;
+			await expect(stat(stagingFolder)).rejects.toThrow();
+		});
+
+		it('refuses a deletion that is not on the branch before export', async () => {
+			await writeExportTree(packageFolder, {
+				'manifest.json': buildManifest({ projects: [alpha], workflows: [wf('w1')] }),
+				'projects/alpha/project.json': JSON.stringify(alpha),
+				'projects/alpha/workflows/w1/workflow.json': branchWorkflowFile('w1', 'W1'),
+			});
+
+			await expect(
+				service.promoteSelection(
+					'conn1',
+					actor,
+					{ commitMessage: 'm', canExportVariableValues: true },
+					{ projectId: 'p1', workflowIds: [], deletedWorkflowIds: ['w-unknown'] },
+				),
+			).rejects.toThrow('Deleted workflows not found on the branch: w-unknown');
+			expect(n8nPackagesService.exportPackageToDirectory).not.toHaveBeenCalled();
+			expect(gitService.commitAndPush).not.toHaveBeenCalled();
+			expect(await readExported('projects/alpha/workflows/w1/workflow.json')).toBe(
+				branchWorkflowFile('w1', 'W1'),
+			);
+		});
+
+		it('refuses a workflow that moved to another project before export', async () => {
+			const beta = { id: 'p2', name: 'Beta', target: 'projects/beta' };
+			await writeExportTree(packageFolder, {
+				'manifest.json': buildManifest({
+					projects: [alpha, beta],
+					workflows: [{ id: 'w1', name: 'W1', target: 'projects/beta/workflows/w1' }],
+				}),
+				'projects/alpha/project.json': JSON.stringify(alpha),
+				'projects/beta/project.json': JSON.stringify(beta),
+				'projects/beta/workflows/w1/workflow.json': branchWorkflowFile('w1', 'W1'),
+			});
+
+			await expect(
+				service.promoteSelection(
+					'conn1',
+					actor,
+					{ commitMessage: 'm', canExportVariableValues: true },
+					{ projectId: 'p1', workflowIds: ['w1'], deletedWorkflowIds: [] },
+				),
+			).rejects.toThrow('These workflows moved to another project: w1');
+			expect(n8nPackagesService.exportPackageToDirectory).not.toHaveBeenCalled();
+			expect(gitService.commitAndPush).not.toHaveBeenCalled();
+			expect(await readExported('projects/beta/workflows/w1/workflow.json')).toBe(
+				branchWorkflowFile('w1', 'W1'),
+			);
+		});
+
+		it('writes an import inventory that still lists unselected workflows', async () => {
+			await writeExportTree(packageFolder, {
+				'manifest.json': buildManifest({ projects: [alpha], workflows: [wf('w1')] }),
+				'projects/alpha/project.json': JSON.stringify({ id: alpha.id, name: alpha.name }),
+				'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
+			});
+			mockExport({
+				'manifest.json': buildManifest({ projects: [alpha], workflows: [wf('w2')] }),
+				'projects/alpha/project.json': JSON.stringify({ id: alpha.id, name: alpha.name }),
+				'projects/alpha/workflows/w2/workflow.json': workflowFile('w2'),
+			});
+
+			await service.promoteSelection(
+				'conn1',
+				actor,
+				{ commitMessage: 'add w2', canExportVariableValues: true },
+				{ projectId: 'p1', workflowIds: ['w2'], deletedWorkflowIds: [] },
+			);
+
+			const snapshot = JSON.parse(await readExported('manifest.json')) as {
+				workflows: Array<{ id: string }>;
+			};
+			expect(snapshot.workflows.map((w) => w.id).sort()).toEqual(['w1', 'w2']);
+		});
+
+		it('keeps the push result and removes staging when backup cleanup fails', async () => {
+			const files = {
+				'manifest.json': buildManifest({ projects: [alpha], workflows: [wf('w1')] }),
+				'projects/alpha/project.json': JSON.stringify(alpha),
+				'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
+			};
+			await writeExportTree(packageFolder, files);
+			mockExport(files);
+			const cleanupError = new Error('Backup cleanup failed');
+			gitService.commitAndPush.mockImplementationOnce(async () => {
+				vi.mocked(rm).mockRejectedValueOnce(cleanupError);
+				return { commitSha: 'selsha' };
+			});
+
+			await expect(
+				service.promoteSelection(
+					'conn1',
+					actor,
+					{ commitMessage: 'm', canExportVariableValues: true },
+					{ projectId: 'p1', workflowIds: ['w1'], deletedWorkflowIds: [] },
+				),
+			).resolves.toMatchObject({ git: { commitSha: 'selsha', branchName: 'staging' } });
+
+			const stagingFolder = n8nPackagesService.exportPackageToDirectory.mock.calls[0][1].targetDir;
+			await expect(stat(stagingFolder)).rejects.toMatchObject({ code: 'ENOENT' });
+			expect(logger.warn.mock.calls).toContainEqual([
+				'Failed to remove the selection backup',
+				{ prePushBackup: `${packageFolder}.pre-selection`, error: cleanupError },
+			]);
+		});
+
+		it('restores the package and keeps the push error when staging cleanup fails', async () => {
+			await writeExportTree(packageFolder, {
+				'manifest.json': buildManifest({ projects: [alpha], workflows: [wf('w1')] }),
+				'projects/alpha/project.json': JSON.stringify({ id: alpha.id, name: alpha.name }),
+				'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
+			});
+			mockExport({
+				'manifest.json': buildManifest({ projects: [alpha], workflows: [wf('w2')] }),
+				'projects/alpha/project.json': JSON.stringify({ id: alpha.id, name: alpha.name }),
+				'projects/alpha/workflows/w2/workflow.json': workflowFile('w2'),
+			});
+			const pushError = new ServiceUnavailableError('timed out');
+			const cleanupError = new Error('Staging cleanup failed');
+			const { rm: realRm } =
+				await vi.importActual<typeof import('node:fs/promises')>('node:fs/promises');
+			gitService.commitAndPush.mockImplementationOnce(async () => {
+				const stagingFolder =
+					n8nPackagesService.exportPackageToDirectory.mock.calls[0][1].targetDir;
+				vi.mocked(rm).mockImplementation(async (target, options) => {
+					if (target === stagingFolder) throw cleanupError;
+					await realRm(target, options);
+				});
+				throw pushError;
+			});
+
+			await expect(
+				service.promoteSelection(
+					'conn1',
+					actor,
+					{ commitMessage: 'm', canExportVariableValues: true },
+					{ projectId: 'p1', workflowIds: ['w2'], deletedWorkflowIds: [] },
+				),
+			).rejects.toBe(pushError);
+
+			const stagingFolder = n8nPackagesService.exportPackageToDirectory.mock.calls[0][1].targetDir;
+			expect(logger.warn.mock.calls).toContainEqual([
+				'Failed to remove the selection staging folder',
+				{ stagingFolder, error: cleanupError },
+			]);
+			expect(gitService.commitAndPush.mock.calls).toContainEqual([
+				expect.objectContaining({ rollbackOnFailure: true }),
+			]);
+			expect(await readExported('projects/alpha/workflows/w1/workflow.json')).toBe(
+				workflowFile('w1'),
+			);
+			await expect(readExported('projects/alpha/workflows/w2/workflow.json')).rejects.toThrow();
+		});
+
+		it('refuses to promote a selection before the direction is cloned', async () => {
+			gitService.hasCheckout.mockResolvedValueOnce(false);
+
+			await expect(
+				service.promoteSelection(
+					'conn1',
+					actor,
+					{ commitMessage: 'm', canExportVariableValues: true },
+					selection,
+				),
+			).rejects.toThrow('not cloned');
+			expect(n8nPackagesService.exportPackageToDirectory).not.toHaveBeenCalled();
+			expect(gitService.commitAndPush).not.toHaveBeenCalled();
+		});
+
+		it('refuses to promote a selection when the checkout was cloned from another branch', async () => {
+			resolver.resolveForConnection.mockResolvedValue(
+				operationInput({
+					direction: 'promote',
+					settings: {
+						schemaVersion: 1,
+						baseBranchName: 'release',
+						createBranchOnPromotion: false,
+					},
+				}),
+			);
+
+			await expect(
+				service.promoteSelection(
+					'conn1',
+					actor,
+					{ commitMessage: 'm', canExportVariableValues: true },
+					selection,
+				),
+			).rejects.toThrow('not cloned');
+			expect(n8nPackagesService.exportPackageToDirectory).not.toHaveBeenCalled();
+		});
+
+		it('refuses a project-scope connection', async () => {
+			resolver.resolveForConnection.mockResolvedValue(
+				promoteInput({ connectionScope: 'projects' }),
+			);
+
+			await expect(
+				service.promoteSelection(
+					'conn1',
+					actor,
+					{ commitMessage: 'm', canExportVariableValues: true },
+					selection,
+				),
+			).rejects.toThrow('instance connection');
+			expect(n8nPackagesService.exportPackageToDirectory).not.toHaveBeenCalled();
+		});
+
+		it('refuses a missing project', async () => {
+			projectRepository.findOneBy.mockResolvedValue(null);
+
+			await expect(
+				service.promoteSelection(
+					'conn1',
+					actor,
+					{ commitMessage: 'm', canExportVariableValues: true },
+					selection,
+				),
+			).rejects.toThrow(NotFoundError);
+			expect(n8nPackagesService.exportPackageToDirectory).not.toHaveBeenCalled();
 		});
 	});
 

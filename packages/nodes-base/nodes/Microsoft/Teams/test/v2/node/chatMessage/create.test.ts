@@ -5,7 +5,19 @@ import { credentials } from '../../../credentials';
 
 describe('Test MicrosoftTeamsV2, chatMessage => create', () => {
 	nock('https://graph.microsoft.com')
-		.post('/v1.0/chats/19:ebed9ad42c904d6c83adf0db360053ec@thread.v2/messages')
+		// The pinData below is Graph's normalised echo, so it is NOT what the node sends:
+		// the request carries `<br><br>` and a raw `&`. The href is machine-derived under the
+		// harness, so it is wildcarded; the byte-exact footer lives in `test/v2/utils.test.ts`.
+		.post('/v1.0/chats/19:ebed9ad42c904d6c83adf0db360053ec@thread.v2/messages', (body) => {
+			const { content } = (body as { body: { content: string } }).body;
+			return (
+				content.startsWith('Hello!<br><br><em> Powered by <a href="') &&
+				content.includes(
+					'utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=n8n-nodes-base.microsoftTeams',
+				) &&
+				content.endsWith('">this n8n workflow</a> </em>')
+			);
+		})
 		.reply(200, {
 			'@odata.context':
 				"https://graph.microsoft.com/v1.0/$metadata#chats('19%3Aebed9ad42c904d6c83adf0db360053ec%40thread.v2')/messages/$entity",

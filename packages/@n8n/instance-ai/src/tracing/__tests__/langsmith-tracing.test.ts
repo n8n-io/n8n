@@ -19,6 +19,7 @@ import {
 	redactLangSmithTelemetrySpan,
 	releaseTraceClient,
 	shutdownProductTelemetryProviders,
+	setTraceModelId,
 	setTracePromptVersion,
 	submitLangsmithUserFeedback,
 	withCurrentTraceSpan,
@@ -594,6 +595,44 @@ describe('createInstanceAiTraceContext', () => {
 		for (const run of [tracing!.rootRun, actorRun]) {
 			const span = agentsMock.getSpans().find((entry) => entry.id === run.otelSpanId);
 			expect(span?.attributes).toHaveProperty('langsmith.metadata.prompt_version', 'default@1');
+		}
+
+		await telemetry.provider?.shutdown();
+	});
+
+	it('stamps model_id on root and actor runs and native telemetry metadata', async () => {
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'thread-1',
+			conversationId: 'conversation-1',
+			messageId: 'message-1',
+			messageGroupId: 'group-1',
+			runId: 'run-1',
+			userId: 'user-1',
+			input: { message: 'What workflows do I have?' },
+		});
+		const actorRun = await startForegroundActor(tracing!);
+		setTraceModelId(tracing, {
+			modelId: 'kimi-k3',
+			config: { provider: 'moonshotai.chat' },
+		});
+
+		const telemetryOrBuilder = tracing!.getTelemetry!({
+			agentRole: 'orchestrator',
+			functionId: 'instance-ai.orchestrator',
+		});
+		const telemetry =
+			'build' in telemetryOrBuilder ? await telemetryOrBuilder.build() : telemetryOrBuilder;
+
+		expect(telemetry.metadata).toEqual(
+			expect.objectContaining({
+				model_id: 'moonshotai/kimi-k3',
+			}),
+		);
+		expect(tracing?.rootRun.metadata).toHaveProperty('model_id', 'moonshotai/kimi-k3');
+		expect(actorRun.metadata).toHaveProperty('model_id', 'moonshotai/kimi-k3');
+		for (const run of [tracing!.rootRun, actorRun]) {
+			const span = agentsMock.getSpans().find((entry) => entry.id === run.otelSpanId);
+			expect(span?.attributes).toHaveProperty('langsmith.metadata.model_id', 'moonshotai/kimi-k3');
 		}
 
 		await telemetry.provider?.shutdown();

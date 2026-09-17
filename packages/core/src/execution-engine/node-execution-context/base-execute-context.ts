@@ -35,7 +35,7 @@ import {
 	OperationalError,
 	NodeHelpers,
 	NodeConnectionTypes,
-	WAIT_INDEFINITELY,
+	WAIT_FOR_SUB_EXECUTION,
 	WorkflowDataProxy,
 	createEnvProviderState,
 	applyDynamicCredentialsUsage,
@@ -188,9 +188,15 @@ export class BaseExecuteContext extends NodeExecutionContext {
 
 		// If a sub-workflow execution goes into the waiting state
 		if (result.waitTill) {
+			this.setMetadata({
+				waitingChildExecutionIds: [
+					...(this.executeData.metadata?.waitingChildExecutionIds ?? []),
+					result.executionId,
+				],
+			});
 			// then put the parent workflow execution also into the waiting state,
 			// but do not use the sub-workflow `waitTill` to avoid WaitTracker resuming the parent execution at the same time as the sub-workflow
-			await this.putExecutionToWait(WAIT_INDEFINITELY);
+			await this.putExecutionToWait(WAIT_FOR_SUB_EXECUTION);
 		}
 
 		return result;

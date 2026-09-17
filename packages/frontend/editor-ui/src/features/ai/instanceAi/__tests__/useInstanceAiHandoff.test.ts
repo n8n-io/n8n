@@ -1,3 +1,4 @@
+import { INSTANCE_AI_PREFILL_TYPE_FALLBACK } from '../prefills';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
@@ -50,6 +51,7 @@ import {
 	getPendingComposerDraft,
 	getPendingHandoffContext,
 	provisionContextOnlyThread,
+	provisionSubjectThread,
 	stashPendingAgentAttachment,
 	stashPendingComposerDraft,
 	stashPendingFirstMessage,
@@ -155,11 +157,32 @@ describe('useInstanceAiHandoff', () => {
 		expect(getPendingHandoffContext('thread-1')).toBeNull();
 	});
 
-	it('keeps a pending composer draft until it is explicitly cleared', () => {
-		stashPendingComposerDraft('thread-1', 'Fix this tool failure');
+	// A raw string is what a previous deploy stashed. Both surfaces that stash a
+	// draft are hand-offs, so naming either one would mis-attribute the other --
+	// report the read-path fallback instead of guessing.
+	it('replays a composer draft stashed by a previous deploy under the fallback type', () => {
+		localStorage.setItem('n8n-instance-ai-composer-draft:thread-1', 'Fix the failed tool calls');
 
-		expect(getPendingComposerDraft('thread-1')).toBe('Fix this tool failure');
-		expect(getPendingComposerDraft('thread-1')).toBe('Fix this tool failure');
+		expect(getPendingComposerDraft('thread-1')).toEqual({
+			text: 'Fix the failed tool calls',
+			prefillType: INSTANCE_AI_PREFILL_TYPE_FALLBACK,
+		});
+	});
+
+	it('keeps a pending composer draft until it is explicitly cleared', () => {
+		stashPendingComposerDraft('thread-1', {
+			text: 'Fix this tool failure',
+			prefillType: 'handoff_credential_setup',
+		});
+
+		expect(getPendingComposerDraft('thread-1')).toEqual({
+			text: 'Fix this tool failure',
+			prefillType: 'handoff_credential_setup',
+		});
+		expect(getPendingComposerDraft('thread-1')).toEqual({
+			text: 'Fix this tool failure',
+			prefillType: 'handoff_credential_setup',
+		});
 		clearPendingComposerDraft('thread-1');
 		expect(getPendingComposerDraft('thread-1')).toBeNull();
 	});
@@ -175,17 +198,18 @@ describe('useInstanceAiHandoff', () => {
 			origin: 'internal' as const,
 		};
 
-		const threadId = await provisionContextOnlyThread(
-			'project-1',
-			context,
-			launch,
-			'Fix this tool failure',
-		);
+		const threadId = await provisionContextOnlyThread('project-1', context, launch, {
+			text: 'Fix this tool failure',
+			prefillType: 'handoff_credential_setup',
+		});
 
 		expect(threadId).toBe('thread-1');
 		expect(mocks.syncThread).toHaveBeenCalledWith('thread-1', 'project-1', launch);
 		expect(getPendingHandoffContext('thread-1')).toEqual(context);
-		expect(getPendingComposerDraft('thread-1')).toBe('Fix this tool failure');
+		expect(getPendingComposerDraft('thread-1')).toEqual({
+			text: 'Fix this tool failure',
+			prefillType: 'handoff_credential_setup',
+		});
 	});
 
 	it('keeps a pending agent attachment until it is explicitly cleared', () => {
@@ -210,14 +234,20 @@ describe('useInstanceAiHandoff', () => {
 			threadId: 'preview-thread-1',
 		});
 		stashPendingHandoffContext('thread-1', context);
-		stashPendingComposerDraft('thread-1', 'Fix the failed tool calls');
+		stashPendingComposerDraft('thread-1', {
+			text: 'Fix the failed tool calls',
+			prefillType: 'handoff_agent_change_request',
+		});
 		stashPendingAgentAttachment('thread-1', {
 			type: 'agent',
 			id: 'agent-1',
 			projectId: 'project-1',
 		});
 
-		stashPendingFirstMessage('thread-1', { message: 'Set up the credential' });
+		stashPendingFirstMessage('thread-1', {
+			message: 'Set up the credential',
+			authorship: { kind: 'prefill', prefillType: 'handoff_credential_setup' },
+		});
 
 		clearPendingThreadHandoff('thread-1');
 
@@ -229,8 +259,62 @@ describe('useInstanceAiHandoff', () => {
 		expect(consumePendingFirstMessage('thread-1')).toBeNull();
 	});
 
+	// A stashed opener is always n8n-authored -- every stash comes from a hand-off.
+	// Reporting it as user-typed would be the misclassification the type prevents.
+	it('replays an opening message stashed by a previous deploy as an untyped pre-fill', () => {
+		localStorage.setItem(
+			'n8n-instance-ai-first-message:thread-1',
+			JSON.stringify({ message: 'Set up the credential' }),
+		);
+
+		expect(consumePendingFirstMessage('thread-1')).toEqual({
+			message: 'Set up the credential',
+			authorship: { kind: 'prefill', prefillType: INSTANCE_AI_PREFILL_TYPE_FALLBACK },
+		});
+	});
+
+	// The draft is text the user is about to send, so an unreadable envelope must
+	// not discard it.
+	it('keeps a composer draft whose stored envelope is unusable', () => {
+		localStorage.setItem('n8n-instance-ai-composer-draft:thread-1', JSON.stringify({ nope: 1 }));
+
+		expect(getPendingComposerDraft('thread-1')).toEqual({
+			text: JSON.stringify({ nope: 1 }),
+			prefillType: INSTANCE_AI_PREFILL_TYPE_FALLBACK,
+		});
+	});
+
+	// A retired or mistyped value must not cost the user their draft text, and must
+	// certainly not put the raw envelope in the composer for them to send.
+	it('keeps the draft text when the stored pre-fill type is not recognised', () => {
+		localStorage.setItem(
+			'n8n-instance-ai-composer-draft:thread-1',
+			JSON.stringify({ text: 'Fix the failed tool calls', prefillType: 'retired_catalog' }),
+		);
+
+		expect(getPendingComposerDraft('thread-1')).toEqual({
+			text: 'Fix the failed tool calls',
+			prefillType: INSTANCE_AI_PREFILL_TYPE_FALLBACK,
+		});
+	});
+
+	it('round-trips a composer draft stashed under the fallback type', () => {
+		stashPendingComposerDraft('thread-1', {
+			text: 'Fix the failed tool calls',
+			prefillType: INSTANCE_AI_PREFILL_TYPE_FALLBACK,
+		});
+
+		expect(getPendingComposerDraft('thread-1')).toEqual({
+			text: 'Fix the failed tool calls',
+			prefillType: INSTANCE_AI_PREFILL_TYPE_FALLBACK,
+		});
+	});
+
 	it('drops a stashed opening message without consuming it', () => {
-		stashPendingFirstMessage('thread-1', { message: 'Set up the credential' });
+		stashPendingFirstMessage('thread-1', {
+			message: 'Set up the credential',
+			authorship: { kind: 'prefill', prefillType: 'handoff_credential_setup' },
+		});
 
 		clearPendingFirstMessage('thread-1');
 
@@ -240,6 +324,7 @@ describe('useInstanceAiHandoff', () => {
 	it('round-trips an opening message with its attachments so a refused send can requeue it', () => {
 		const payload: PendingFirstMessage = {
 			message: 'Fix this workflow',
+			authorship: { kind: 'prefill', prefillType: 'handoff_credential_setup' },
 			attachments: [{ type: 'agent', id: 'agent-1', projectId: 'project-1' }],
 			context: buildInstanceAiAgentPreviewHandoffContext({
 				agentId: 'agent-1',
@@ -256,6 +341,59 @@ describe('useInstanceAiHandoff', () => {
 		stashPendingFirstMessage('thread-1', consumed!);
 
 		expect(consumePendingFirstMessage('thread-1')).toEqual(payload);
+	});
+
+	it('mints a thread bound to a non-pending agent subject', async () => {
+		const threadId = await provisionSubjectThread(
+			{ type: 'agent', id: 'agent-1', projectId: 'project-1', name: 'Support agent' },
+			{ source: 'agent_builder_page', origin: 'internal' },
+		);
+
+		expect(threadId).toBe('thread-1');
+		expect(mocks.syncThread).toHaveBeenCalledWith('thread-1', 'project-1', {
+			source: 'agent_builder_page',
+			origin: 'internal',
+		});
+		expect(mocks.updateThreadMetadata).toHaveBeenCalledWith('thread-1', {
+			instanceAiAgentBuilderTarget: {
+				agentId: 'agent-1',
+				projectId: 'project-1',
+				name: 'Support agent',
+			},
+		});
+		expect(getPendingAgentAttachment('thread-1')).toEqual({
+			type: 'agent',
+			id: 'agent-1',
+			projectId: 'project-1',
+			name: 'Support agent',
+		});
+	});
+
+	it('mints a thread with a pending marker for a pending agent subject, merging extra metadata into the same write', async () => {
+		const threadId = await provisionSubjectThread(
+			{ type: 'agent', id: 'agent-1', projectId: 'project-1', pending: true },
+			{ source: 'agent_builder_page', origin: 'internal' },
+			{ instanceAiAgentPreviewView: { agentId: 'agent-1', threadId: 'preview-1' } },
+		);
+
+		expect(threadId).toBe('thread-1');
+		expect(mocks.updateThreadMetadata).toHaveBeenCalledExactlyOnceWith('thread-1', {
+			instanceAiPendingAgentTarget: { projectId: 'project-1', agentId: 'agent-1' },
+			instanceAiAgentPreviewView: { agentId: 'agent-1', threadId: 'preview-1' },
+		});
+	});
+
+	it('deletes the thread and rethrows when the target metadata write fails, without a second toast', async () => {
+		mocks.updateThreadMetadata.mockRejectedValueOnce(new Error('Save failed'));
+
+		await expect(
+			provisionSubjectThread(
+				{ type: 'agent', id: 'agent-1', projectId: 'project-1' },
+				{ source: 'agent_builder_page', origin: 'internal' },
+			),
+		).rejects.toThrow('Save failed');
+		expect(mocks.deleteThread).toHaveBeenCalledWith('thread-1', { silent: true });
+		expect(mocks.showError).not.toHaveBeenCalled();
 	});
 
 	it('opens an agent artifact thread without sending a message', async () => {
@@ -278,7 +416,13 @@ describe('useInstanceAiHandoff', () => {
 				origin: 'internal',
 				sourceContext: { agentId: 'agent-1' },
 			},
-			{ context, initialDraft: 'Fix the failed tool calls' },
+			{
+				context,
+				initialDraft: {
+					text: 'Fix the failed tool calls',
+					prefillType: 'handoff_agent_change_request',
+				},
+			},
 		);
 
 		expect(opened).toBe(true);
@@ -287,7 +431,9 @@ describe('useInstanceAiHandoff', () => {
 			origin: 'internal',
 			sourceContext: { agentId: 'agent-1' },
 		});
-		expect(mocks.updateThreadMetadata).toHaveBeenCalledWith('thread-1', {
+		// One merged write from `provisionSubjectThread`: the target plus this
+		// handoff's own agent-preview context, in a single round trip.
+		expect(mocks.updateThreadMetadata).toHaveBeenCalledExactlyOnceWith('thread-1', {
 			instanceAiAgentBuilderTarget: {
 				agentId: 'agent-1',
 				projectId: 'project-1',
@@ -305,7 +451,10 @@ describe('useInstanceAiHandoff', () => {
 			projectId: 'project-1',
 		});
 		expect(getPendingHandoffContext('thread-1')).toEqual(context);
-		expect(getPendingComposerDraft('thread-1')).toBe('Fix the failed tool calls');
+		expect(getPendingComposerDraft('thread-1')).toEqual({
+			text: 'Fix the failed tool calls',
+			prefillType: 'handoff_agent_change_request',
+		});
 		expect(mocks.getOrCreateRuntime).not.toHaveBeenCalled();
 		expect(mocks.sendMessage).not.toHaveBeenCalled();
 		expect(mocks.routerPush).toHaveBeenCalledWith({
@@ -325,7 +474,13 @@ describe('useInstanceAiHandoff', () => {
 		const opened = await openAgentArtifactThread(
 			{ type: 'agent', id: 'agent-1', projectId: 'project-1' },
 			{ source: 'agent_preview', origin: 'internal' },
-			{ context, initialDraft: 'Fix the failed tool calls' },
+			{
+				context,
+				initialDraft: {
+					text: 'Fix the failed tool calls',
+					prefillType: 'handoff_agent_change_request',
+				},
+			},
 		);
 
 		expect(opened).toBe(false);
@@ -346,7 +501,7 @@ describe('useInstanceAiHandoff', () => {
 		);
 
 		expect(opened).toBe(false);
-		expect(mocks.deleteThread).toHaveBeenCalledWith('thread-1');
+		expect(mocks.deleteThread).toHaveBeenCalledWith('thread-1', { silent: true });
 		expect(mocks.routerPush).not.toHaveBeenCalled();
 	});
 
@@ -358,10 +513,12 @@ describe('useInstanceAiHandoff', () => {
 		it('routes startThread to the assistant instead of sending the opening turn', async () => {
 			const { startThread } = useInstanceAiHandoff();
 
-			await startThread('project-1', 'Fix my workflow', {
-				source: 'canvas_action_button',
-				origin: 'internal',
-			});
+			await startThread(
+				'project-1',
+				'Fix my workflow',
+				{ kind: 'prefill', prefillType: 'handoff_execution_error' },
+				{ source: 'canvas_action_button', origin: 'internal' },
+			);
 
 			expect(mocks.syncThread).not.toHaveBeenCalled();
 			expect(mocks.sendMessage).not.toHaveBeenCalled();
