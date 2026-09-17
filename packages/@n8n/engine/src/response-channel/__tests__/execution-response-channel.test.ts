@@ -120,4 +120,14 @@ describe('ExecutionResponseChannel', () => {
 
 		expect(() => channel.publish(ended(null))).not.toThrow();
 	});
+
+	it('stops the underlying transport', async () => {
+		const transport = new RecordingTransport();
+		const stop = vi.spyOn(transport, 'stop');
+		const channel = new ExecutionResponseChannel(transport, silentLogger());
+
+		await channel.stop();
+
+		expect(stop).toHaveBeenCalledTimes(1);
+	});
 });
