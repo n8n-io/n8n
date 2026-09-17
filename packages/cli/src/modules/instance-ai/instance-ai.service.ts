@@ -101,6 +101,7 @@ import {
 	type McpServerConfig,
 	type ModelConfig,
 	type AgentSnapshotArtifact,
+	type AgentSessionSummary,
 	type OrchestrationContext,
 	type InstanceAiTraceContext,
 	type PlannedTaskGraph,
@@ -239,7 +240,11 @@ import {
 } from './tracing';
 import { WorkflowVerificationObligationService } from './workflow-verification-obligation-service';
 import { WorkflowVerificationTaskProjector } from './workflow-verification-task-projector';
-import { AgentExecutionService } from '../agents/agent-execution.service';
+import {
+	AgentExecutionService,
+	type ThreadDetail,
+	type ThreadListItem,
+} from '../agents/agent-execution.service';
 import { formatPreviewSessionContext } from '../agents/builder/format-preview-context';
 
 /** A resource attachment as the trace records it: the reference, not its contents. */
@@ -249,6 +254,55 @@ type TracedResourceAttachment = {
 	projectId?: string;
 	executionId?: string;
 };
+
+function toAgentSessionSummary(thread: ThreadListItem): AgentSessionSummary {
+	return {
+		threadId: thread.id,
+		agentId: thread.agentId,
+		agentName: thread.agentName,
+		title: thread.title?.trim() || `Session #${thread.sessionNumber}`,
+		sessionNumber: thread.sessionNumber,
+		createdAt: thread.createdAt.toISOString(),
+		updatedAt: thread.updatedAt.toISOString(),
+		status: thread.status,
+		origin: thread.source,
+		failureCount: thread.failureSummary?.count ?? 0,
+		totalPromptTokens: thread.totalPromptTokens,
+		totalCompletionTokens: thread.totalCompletionTokens,
+		totalDuration: thread.totalDuration,
+	};
+}
+
+function toAgentSessionDetailSummary(detail: ThreadDetail): AgentSessionSummary {
+	const failureCount = detail.executions.reduce(
+		(count, execution) => count + (execution.failureSummary?.count ?? 0),
+		0,
+	);
+	const latestStatus = detail.executions.at(-1)?.status;
+	const status: AgentSessionSummary['status'] =
+		latestStatus === 'success'
+			? failureCount > 0
+				? 'error'
+				: 'succeeded'
+			: (latestStatus ?? null);
+	const origin = detail.executions.find((execution) => execution.source)?.source ?? null;
+
+	return {
+		threadId: detail.thread.id,
+		agentId: detail.thread.agentId,
+		agentName: detail.thread.agentName,
+		title: detail.thread.title?.trim() || `Session #${detail.thread.sessionNumber}`,
+		sessionNumber: detail.thread.sessionNumber,
+		createdAt: detail.thread.createdAt.toISOString(),
+		updatedAt: detail.thread.updatedAt.toISOString(),
+		status,
+		origin,
+		failureCount,
+		totalPromptTokens: detail.thread.totalPromptTokens,
+		totalCompletionTokens: detail.thread.totalCompletionTokens,
+		totalDuration: detail.thread.totalDuration,
+	};
+}
 
 /** Root-run outputs for a suspended segment — keep the LangSmith turn readable (AGENT-371). */
 function buildSuspensionTraceOutputs(runId: string, suspension: SuspensionInfo | undefined) {
@@ -2853,6 +2907,49 @@ export class InstanceAiService {
 		}
 	}
 
+	/** Wire project-scoped, read-only Agent session access for the current user. */
+	private async bindAgentSessionReader(
+		context: Awaited<ReturnType<InstanceAiService['createExecutionEnvironment']>>['context'],
+		user: User,
+	): Promise<void> {
+		const projectId = context.projectId;
+		if (!projectId) return;
+		if (!(await userHasScopes(user, ['agent:read'], false, { projectId }))) return;
+
+		const service = this.getAgentExecutionService();
+		if (!service) return;
+
+		context.agentSessionService = {
+			list: async (params) => {
+				const { agentId, limit = 20, cursor, status, origin, updatedAfter, updatedBefore } = params;
+				const result = await service.getThreads(projectId, agentId, limit, cursor, {
+					...(status !== undefined ? { status } : {}),
+					...(origin !== undefined ? { origin } : {}),
+					...(updatedAfter !== undefined ? { updatedAfter: new Date(updatedAfter) } : {}),
+					...(updatedBefore !== undefined ? { updatedBefore: new Date(updatedBefore) } : {}),
+				});
+				return {
+					sessions: result.threads.map(toAgentSessionSummary),
+					nextCursor: result.nextCursor,
+				};
+			},
+			get: async ({ agentId, threadId, executionId }) => {
+				const detail = await service.getThreadDetail(threadId, projectId, agentId);
+				if (!detail) return null;
+				const transcript = formatPreviewSessionContext(
+					detail.thread,
+					detail.executions,
+					executionId,
+				);
+				if (transcript === null) return null;
+				return {
+					session: toAgentSessionDetailSummary(detail),
+					transcript,
+				};
+			},
+		};
+	}
+
 	/**
 	 * Hydrate the thread-persisted preview-session reference (if any) and wire
 	 * the on-demand transcript resolver. Must run before createInstanceAgent so
@@ -4942,6 +5039,7 @@ export class InstanceAiService {
 		if (tracing) {
 			environment.orchestrationContext.tracing = tracing;
 		}
+		await this.bindAgentSessionReader(environment.context, user);
 		await this.bindAgentPreviewSession(environment.context, user);
 		const mcpServers = await this.buildMcpServers(
 			user,

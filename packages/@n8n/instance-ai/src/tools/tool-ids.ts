@@ -14,6 +14,7 @@ export const DOMAIN_TOOL_IDS = {
 	BUILD_WORKFLOW: 'build-workflow',
 	PARSE_FILE: 'parse-file',
 	AGENTS: 'agents',
+	AGENT_SESSIONS: 'agent-sessions',
 	MCP_SERVERS: 'mcp-servers',
 	CONVERSATION_HISTORY: 'conversation-history',
 	ACTIVITY: 'activity',
@@ -70,6 +71,9 @@ export const ALWAYS_LOADED_TOOL_NAMES = new Set<string>([
 	// web-searched things the docs answer (INS-749).
 	DOMAIN_TOOL_IDS.N8N_DOCS,
 	DOMAIN_TOOL_IDS.AGENTS,
+	// Session diagnosis is a direct Agent operation. Deferring it causes the model
+	// to search integrations and conclude that no session capability exists.
+	DOMAIN_TOOL_IDS.AGENT_SESSIONS,
 	// Deferring this one defeats its purpose: it exists for the case where
 	// nothing is connected, which is exactly when `search_tools` has no MCP tool
 	// to surface and the agent concludes the integration is unavailable.

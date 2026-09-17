@@ -735,6 +735,10 @@ export type {
 	ConversationHistorySearchResult,
 	ConversationHistoryMessage,
 	ConversationHistoryMessagesResult,
+	AgentSessionSummary,
+	AgentSessionListResult,
+	AgentSessionDetail,
+	InstanceAiAgentSessionReader,
 	ComputerUseChannel,
 	ComputerUseChannelState,
 	ComputerUseState,
@@ -742,6 +746,7 @@ export type {
 export {
 	CONVERSATION_HISTORY_MAX_SEARCH_LIMIT,
 	CONVERSATION_HISTORY_MAX_WINDOW_SIDE,
+	AGENT_SESSION_MAX_LIST_LIMIT,
 } from './types';
 export { ASK_USER_TOOL_ID } from './tools/tool-ids';
 export type {

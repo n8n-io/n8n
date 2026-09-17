@@ -61,6 +61,7 @@ keep their explicit pattern. `like` matches case; `ilike` ignores case.
 | `eval-config` | 6 |
 | `n8n-docs` | 3 |
 | `agents` | 1 |
+| `agent-sessions` | 2 |
 | `build-workflow`, `ask-user`, `parse-file` | single-purpose |
 
 ## Orchestration Tools
@@ -1197,6 +1198,24 @@ active + project-bound conversation, `agent:read` scope enforced in the
 adapter). Use it to answer questions about existing agents and to find the
 `agentId` for `build-agent` when editing an agent not built in this
 conversation. Creation and editing stay on `build-agent`.
+
+### `agent-sessions` *(domain tool — requires the `agents` backend module)*
+
+Read-only access to Agent sessions in the conversation's bound project. The host
+registers the tool only when the user has `agent:read` scope. The tool is always
+loaded when it is registered. This prevents a session request from falling back
+to integration discovery.
+
+| Action | Purpose | Main output |
+|--------|---------|-------------|
+| `list` | List recent sessions for one Agent. It supports status, origin, date, and cursor filters. | `{ sessions, nextCursor }` |
+| `get` | Read one whole session or one execution. | `{ session, transcript }` or `{ notFound: true }` |
+
+The Agent id is optional when the conversation has a bound Agent target. Use
+`agents(action="list")` to resolve the id in other conversations. A session list
+includes status, origin, token totals, duration, and failure count. A transcript
+is limited by the Agent session formatter. The tool wraps the transcript as
+untrusted data before it returns it to the model.
 
 ## MCP Registry Tool
 

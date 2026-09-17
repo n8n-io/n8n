@@ -29,6 +29,10 @@ vi.mock('../data-tables.tool', () => ({
 	})),
 }));
 
+vi.mock('../agent-sessions.tool', () => ({
+	createAgentSessionsTool: vi.fn(() => ({ id: 'agent-sessions' })),
+}));
+
 vi.mock('../executions.tool', () => ({
 	createExecutionsTool: vi.fn(() => ({ id: 'executions' })),
 }));
@@ -227,6 +231,21 @@ describe('domain tool construction', () => {
 
 	it('never defers mcp-servers behind search_tools', () => {
 		expect(ALWAYS_LOADED_TOOL_NAMES.has('mcp-servers')).toBe(true);
+	});
+
+	it('gates Agent sessions on the project-scoped reader', () => {
+		const disabled = makeContext();
+		expect(createOrchestratorDomainTools(disabled).get('agent-sessions')).toBeUndefined();
+
+		const enabled = makeContext({
+			agentSessionService: {} as InstanceAiContext['agentSessionService'],
+		});
+		expect(createOrchestratorDomainTools(enabled).get('agent-sessions')).toBeDefined();
+		expect(getActiveOrchestratorDomainToolNames(enabled)).toContain('agent-sessions');
+	});
+
+	it('never defers Agent session lookup behind search_tools', () => {
+		expect(ALWAYS_LOADED_TOOL_NAMES.has('agent-sessions')).toBe(true);
 	});
 
 	it('pairs list-agent-capabilities with build-agent in the always-loaded set', () => {

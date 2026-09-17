@@ -15,6 +15,8 @@ import type {
 import type { AiGatewayNodeMeta } from '@n8n/ai-utilities/node-catalog';
 import type {
 	AgentJsonConfig,
+	AgentSessionOrigin,
+	AgentSessionStatus,
 	AgentSkill,
 	ChatIntegrationDescriptor,
 	EvaluationMetric,
@@ -1430,6 +1432,54 @@ export interface InstanceAiConversationHistoryReader {
 	}): Promise<ConversationHistoryMessagesResult>;
 }
 
+// ── Agent sessions ──────────────────────────────────────────────────────────
+
+export const AGENT_SESSION_MAX_LIST_LIMIT = 50;
+
+export interface AgentSessionSummary {
+	threadId: string;
+	agentId: string;
+	agentName: string;
+	title: string;
+	sessionNumber: number;
+	createdAt: string;
+	updatedAt: string;
+	status: AgentSessionStatus | null;
+	origin: string | null;
+	failureCount: number;
+	totalPromptTokens: number;
+	totalCompletionTokens: number;
+	totalDuration: number;
+}
+
+export interface AgentSessionListResult {
+	sessions: AgentSessionSummary[];
+	nextCursor: string | null;
+}
+
+export interface AgentSessionDetail {
+	session: AgentSessionSummary;
+	transcript: string;
+}
+
+/** Read-only Agent session access. The host binds this reader to one user and project. */
+export interface InstanceAiAgentSessionReader {
+	list(params: {
+		agentId: string;
+		limit?: number;
+		cursor?: string;
+		status?: AgentSessionStatus;
+		origin?: AgentSessionOrigin;
+		updatedAfter?: string;
+		updatedBefore?: string;
+	}): Promise<AgentSessionListResult>;
+	get(params: {
+		agentId: string;
+		threadId: string;
+		executionId?: string;
+	}): Promise<AgentSessionDetail | null>;
+}
+
 // ── Context bundle ───────────────────────────────────────────────────────────
 
 export interface InstanceAiContext {
@@ -1469,6 +1519,8 @@ export interface InstanceAiContext {
 	/** Optional — wired by the host when the run has a bound project. Presence
 	 *  gates the `conversation-history` tool (orchestrator only). */
 	conversationHistoryService?: InstanceAiConversationHistoryReader;
+	/** Present when the user can read Agent sessions in the bound project. */
+	agentSessionService?: InstanceAiAgentSessionReader;
 	/** Present only when the instance-context reader is enabled; its absence hides the tool. */
 	activityService?: InstanceAiActivityService;
 	/** Per-run inventory behind `mcp-servers`' `connected` action. Captured when the

@@ -40,6 +40,9 @@ const loadN8nDocsTool = lazyMod(
 	() => require('./n8n-docs.tool') as typeof import('./n8n-docs.tool'),
 );
 const loadAgentsTool = lazyMod(() => require('./agents.tool') as typeof import('./agents.tool'));
+const loadAgentSessionsTool = lazyMod(
+	() => require('./agent-sessions.tool') as typeof import('./agent-sessions.tool'),
+);
 const loadBuildAgentTool = lazyMod(
 	() =>
 		require('./orchestration/build-agent.tool') as typeof import('./orchestration/build-agent.tool'),
@@ -146,6 +149,13 @@ function getOrchestratorDomainToolFactories(
 	// block that hands the agent ids to expand rides the orchestrator's turn.
 	if (context.activityService) {
 		tools.push([DOMAIN_TOOL_IDS.ACTIVITY, () => loadActivityTool().createActivityTool(context)]);
+	}
+
+	if (context.agentSessionService) {
+		tools.push([
+			DOMAIN_TOOL_IDS.AGENT_SESSIONS,
+			() => loadAgentSessionsTool().createAgentSessionsTool(context),
+		]);
 	}
 
 	if (context.currentUserAttachments?.some(isParseableAttachment)) {
