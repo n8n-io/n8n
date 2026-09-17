@@ -79,6 +79,21 @@ const presetRoles = computed(() =>
 	),
 );
 
+// The preset whose options the form matches right now, if any. Derived from the
+// scopes, not from the click: the highlight drops on any change and comes back
+// once the form is toggled back to exactly the preset's set.
+const sameScopeSet = (a: readonly string[], b: readonly string[]) => {
+	const setA = new Set(a);
+	const setB = new Set(b);
+	return setA.size === setB.size && [...setA].every((scope) => setB.has(scope));
+};
+const activePresetSlug = computed(
+	() =>
+		presetRoles.value.find((preset) =>
+			sameScopeSet(getPresetScopes(preset.scopes), form.value.scopes),
+		)?.slug ?? null,
+);
+
 const reassignTargetRoles = computed(() =>
 	rolesStore.processedInstanceRoles.filter((r) => r.slug !== reassignState.value?.role.slug),
 );
@@ -248,7 +263,8 @@ async function deleteRole() {
 					<N8nButton
 						v-for="preset in presetRoles"
 						:key="preset.slug"
-						variant="subtle"
+						:variant="preset.slug === activePresetSlug ? 'solid' : 'subtle'"
+						:aria-pressed="preset.slug === activePresetSlug"
 						:data-test-id="`role-preset-${preset.slug}`"
 						@click="setPreset(preset.slug)"
 					>

@@ -233,6 +233,36 @@ describe('InstanceRoleView', () => {
 			).filter((el) => el.getAttribute('aria-checked') === 'mixed');
 			expect(halfChecked).toHaveLength(0);
 		});
+
+		it('highlights the preset the form matches and drops the highlight on any change', async () => {
+			const { getByTestId } = renderComponent();
+
+			await waitFor(() => expect(getByTestId('role-preset-global:member')).toBeInTheDocument());
+			// A new role starts with the mandatory scopes only: no preset matches yet.
+			expect(getByTestId('role-preset-global:member').getAttribute('aria-pressed')).toBe('false');
+			expect(getByTestId('role-preset-global:admin').getAttribute('aria-pressed')).toBe('false');
+
+			await userEvent.click(getByTestId('role-preset-global:member'));
+
+			await waitFor(() =>
+				expect(getByTestId('role-preset-global:member').getAttribute('aria-pressed')).toBe('true'),
+			);
+			expect(getByTestId('role-preset-global:admin').getAttribute('aria-pressed')).toBe('false');
+
+			// Any change to the form drops the highlight ...
+			await userEvent.click(getByTestId('scope-option-project-create'));
+
+			await waitFor(() =>
+				expect(getByTestId('role-preset-global:member').getAttribute('aria-pressed')).toBe('false'),
+			);
+
+			// ... and it returns once the form matches the preset again.
+			await userEvent.click(getByTestId('scope-option-project-create'));
+
+			await waitFor(() =>
+				expect(getByTestId('role-preset-global:member').getAttribute('aria-pressed')).toBe('true'),
+			);
+		});
 	});
 
 	describe('Edit', () => {
