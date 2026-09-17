@@ -24,7 +24,7 @@ test.describe(
 				testInfo,
 				messageCount: 2_000,
 				timeoutMs: 180_000,
-				requireComplete: true,
+				minimumCompletionRatio: 1,
 			});
 		});
 	},

@@ -48,8 +48,7 @@ test.describe(
 					load: { type: 'preloaded', count: MESSAGE_COUNT },
 					timeoutMs: 600_000,
 					variant: `${outputSize} output`,
-					requireComplete: true,
-					minimumCompletionRatio: 0.99,
+					minimumCompletionRatio: 0.995,
 				});
 				results.push({
 					outputSize,

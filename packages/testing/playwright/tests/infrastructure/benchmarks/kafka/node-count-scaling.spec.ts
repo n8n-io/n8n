@@ -8,7 +8,7 @@ const MESSAGE_COUNT = 500;
 test.use({ capability: benchConfig('node-count-scaling', { kafka: true, workers: 1 }) });
 
 test.describe(
-	'How does throughput scale with workflow complexity?',
+	'How does burst throughput scale with workflow complexity?',
 	{
 		tag: '@bench:kafka',
 		annotation: [
@@ -17,7 +17,7 @@ test.describe(
 		],
 	},
 	() => {
-		test(`Kafka trigger + noop, 1KB payload, ramp node count ${SHAPES.map((s) => s.nodeCount).join('→')} (1 main + 1 worker)`, async ({
+		test(`Kafka trigger + noop, 1KB payload, 500-message bursts, ramp node count ${SHAPES.map((s) => s.nodeCount).join('→')} (1 main + 1 worker)`, async ({
 			api,
 			services,
 		}, testInfo) => {
@@ -39,8 +39,7 @@ test.describe(
 					load: { type: 'preloaded', count: MESSAGE_COUNT },
 					timeoutMs: 600_000,
 					variant: `${nodeCount} nodes`,
-					requireComplete: true,
-					minimumCompletionRatio: 0.99,
+					minimumCompletionRatio: 0.995,
 				});
 				results.push({
 					nodeCount,
@@ -67,7 +66,7 @@ test.describe(
 				);
 			});
 			console.log(
-				`\n[NODE COUNT SCALING SUMMARY] ${testInfo.title}\n` +
+				`\n[NODE COUNT BURST SCALING SUMMARY] ${testInfo.title}\n` +
 					`  Baseline: ${baseline.nodeCount} nodes = ${baseline.throughputPerSecond.toFixed(1)} exec/s (${baseline.actionsPerSecond.toFixed(0)} actions/s)\n` +
 					lines.join('\n'),
 			);

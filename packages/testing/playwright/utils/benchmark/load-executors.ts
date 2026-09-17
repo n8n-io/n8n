@@ -10,7 +10,7 @@
  */
 import type { MetricsHelper } from 'n8n-containers';
 
-import { measureCounterWindow, measureStageWindows, waitForThroughput } from './throughput-measure';
+import { measureStageWindows, measureSteadyPhases, waitForThroughput } from './throughput-measure';
 import type { ThroughputResult } from './throughput-measure';
 import type { LoadProfile, TriggerHandle } from './types';
 
@@ -95,10 +95,10 @@ async function runSteady(load: SteadyLoad, ctx: ExecutorContext): Promise<Execut
 		}),
 	]);
 	const actualPublishEndAt = publishStart + publishRes.actualDurationMs;
-	throughputResult.inputPhaseTailExecPerSec = measureCounterWindow(throughputResult.samples, {
-		startTime: actualPublishEndAt - 60_000,
-		endTime: actualPublishEndAt,
-	})?.rate;
+	Object.assign(
+		throughputResult,
+		measureSteadyPhases(throughputResult.samples, publishStart, actualPublishEndAt),
+	);
 
 	console.log(
 		`[LOAD] Published ${publishRes.totalPublished} messages in ${publishRes.actualDurationMs}ms`,

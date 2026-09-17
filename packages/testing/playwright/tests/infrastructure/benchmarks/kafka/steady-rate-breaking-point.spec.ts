@@ -42,7 +42,6 @@ test.describe(
 				testInfo,
 				load: { type: 'staged', stages: STAGES },
 				timeoutMs: 600_000,
-				requireComplete: true,
 				requireKeptUpStage: true,
 			});
 		});

@@ -3,6 +3,7 @@ import { describe, expect, test } from 'vitest';
 import {
 	measureCounterWindow,
 	measureStageWindows,
+	measureSteadyPhases,
 	type ThroughputSample,
 } from './throughput-measure';
 
@@ -80,5 +81,22 @@ describe('measureStageWindows', () => {
 			tailExecPerSec: 10,
 		});
 		expect(measureStageWindows(samples, [0, 60_000])[0]?.tailExecPerSec).toBeUndefined();
+	});
+});
+
+describe('measureSteadyPhases', () => {
+	test('uses the actual publisher end for input and drain metrics', () => {
+		const samples = Array.from({ length: 16 }, (_, index) =>
+			sample(index * 10_000, index * 100, index === 0 ? 0 : 100),
+		);
+
+		expect(measureSteadyPhases(samples, 0, 120_000)).toMatchObject({
+			inputPhaseCompleted: 1_200,
+			inputPhaseDurationMs: 120_000,
+			inputPhaseExecPerSec: 10,
+			drainPhaseCompleted: 300,
+			drainPhaseDurationMs: 30_000,
+			drainPhaseExecPerSec: 10,
+		});
 	});
 });

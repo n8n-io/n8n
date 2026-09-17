@@ -61,9 +61,7 @@ export interface LoadTestOptions {
 	 * iteration so each shows as its own reporter row.
 	 */
 	variant?: string;
-	/** Fail unless every item in a finite load reaches the completion counter. */
-	requireComplete?: boolean;
-	/** Completion ratio required when `requireComplete` is set. Default: 1. */
+	/** Minimum share of a finite load that must reach the completion counter. */
 	minimumCompletionRatio?: number;
 	/** Work that must complete before the benchmark captures its metric baselines. */
 	warmUp?: SetupContext['warmUp'];
@@ -189,9 +187,9 @@ export async function runLoadTest(options: LoadTestOptions): Promise<ExecutionMe
 
 	logLoadResult(testInfo, metrics, exec, load, resourceSummary);
 
-	if (options.requireComplete) {
+	if (options.minimumCompletionRatio !== undefined) {
 		const completionRatio = metrics.totalCompleted / exec.expectedExecutions;
-		expect(completionRatio).toBeGreaterThanOrEqual(options.minimumCompletionRatio ?? 1);
+		expect(completionRatio).toBeGreaterThanOrEqual(options.minimumCompletionRatio);
 	} else {
 		expect(metrics.totalCompleted).toBeGreaterThan(0);
 	}
@@ -380,7 +378,7 @@ function formatStagedSummary(
 			` ${measured.tailExecPerSec.toFixed(1)} exec/s (${efficiency.toFixed(0)}% — ${symbol} ${verdict})`;
 
 		if (efficiency >= 95) lastKeptUp = stage.ratePerSecond;
-		else if (lastKeptUp !== undefined) firstFell ??= stage.ratePerSecond;
+		else firstFell ??= stage.ratePerSecond;
 	}
 
 	const breakingPoint =

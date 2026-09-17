@@ -25,7 +25,7 @@ test.describe(
 				testInfo,
 				load: { type: 'steady', ratePerSecond: 15, durationSeconds: 120 },
 				timeoutMs: 240_000,
-				requireComplete: true,
+				minimumCompletionRatio: 1,
 				minTailRateEfficiency: 0.95,
 			});
 		});

@@ -33,7 +33,7 @@ test.describe(
 				messageCount: MESSAGE_COUNT,
 				timeoutMs: 180_000,
 				resourceSummary: { plan: BENCHMARK_MAIN_RESOURCES },
-				requireComplete: true,
+				minimumCompletionRatio: 1,
 				dimensions: VM_LAZY_CACHE_BENCHMARK_PROFILE.dimensions,
 			});
 		});

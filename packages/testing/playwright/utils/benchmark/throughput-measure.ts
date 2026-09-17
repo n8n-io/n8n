@@ -150,6 +150,64 @@ export function measureStageWindows(
 	return stages;
 }
 
+type SteadyPhaseMeasurements = Pick<
+	ThroughputResult,
+	| 'inputPhaseExecPerSec'
+	| 'inputPhaseTailExecPerSec'
+	| 'inputPhaseCompleted'
+	| 'inputPhaseDurationMs'
+	| 'drainPhaseExecPerSec'
+	| 'drainPhaseCompleted'
+	| 'drainPhaseDurationMs'
+>;
+
+export function measureSteadyPhases(
+	samples: ThroughputSample[],
+	startTime: number,
+	publishEndAt: number,
+): SteadyPhaseMeasurements {
+	const result: SteadyPhaseMeasurements = {};
+	const inputSamples = samples.filter((sample) => sample.timestamp <= publishEndAt);
+	const drainSamples = samples.filter((sample) => sample.timestamp > publishEndAt);
+	const lastActiveOf = (phaseSamples: ThroughputSample[]) =>
+		phaseSamples.findLast((sample) => sample.delta > 0);
+
+	if (inputSamples.length > 0) {
+		const lastActive = lastActiveOf(inputSamples) ?? inputSamples.at(-1);
+		if (lastActive) {
+			result.inputPhaseCompleted = lastActive.completed;
+			result.inputPhaseDurationMs = lastActive.timestamp - startTime;
+			result.inputPhaseExecPerSec =
+				result.inputPhaseDurationMs > 0
+					? (result.inputPhaseCompleted / result.inputPhaseDurationMs) * 1000
+					: 0;
+			result.inputPhaseTailExecPerSec = measureCounterWindow(samples, {
+				startTime: publishEndAt - 60_000,
+				endTime: publishEndAt,
+			})?.rate;
+		}
+	}
+
+	if (drainSamples.length > 0) {
+		const lastActive = lastActiveOf(drainSamples);
+		const drainStart = inputSamples.at(-1)?.completed ?? 0;
+		if (lastActive) {
+			result.drainPhaseCompleted = lastActive.completed - drainStart;
+			result.drainPhaseDurationMs = lastActive.timestamp - publishEndAt;
+			result.drainPhaseExecPerSec =
+				result.drainPhaseDurationMs > 0
+					? (result.drainPhaseCompleted / result.drainPhaseDurationMs) * 1000
+					: 0;
+		} else {
+			result.drainPhaseCompleted = 0;
+			result.drainPhaseDurationMs = 0;
+			result.drainPhaseExecPerSec = 0;
+		}
+	}
+
+	return result;
+}
+
 // --- PromQL queries ---
 
 export const WORKFLOW_SUCCESS_QUERY = 'n8n_workflow_success_total';
@@ -384,55 +442,8 @@ function calculateThroughput(
 		endTime: lastActiveSample.timestamp,
 	})?.rate;
 
-	// Phase split: for steady-rate runs, separate "rate while publishing" from
-	// "rate while draining backlog". Each phase has different load characteristics
-	// so reporting one averaged number is misleading.
-	let inputPhaseExecPerSec: number | undefined;
-	let inputPhaseTailExecPerSec: number | undefined;
-	let inputPhaseCompleted: number | undefined;
-	let inputPhaseDurationMs: number | undefined;
-	let drainPhaseExecPerSec: number | undefined;
-	let drainPhaseCompleted: number | undefined;
-	let drainPhaseDurationMs: number | undefined;
-
-	if (publishEndAt !== undefined) {
-		const inputSamples = samples.filter((s) => s.timestamp <= publishEndAt);
-		const drainSamples = samples.filter((s) => s.timestamp > publishEndAt);
-
-		// Bound each phase by its LAST ACTIVE sample so post-completion stall
-		// padding doesn't dilute the rate (same trick the tail-rate calc above uses).
-		const lastActiveOf = (s: ThroughputSample[]) => s.findLast((x) => x.delta > 0);
-
-		if (inputSamples.length > 0) {
-			const lastActive = lastActiveOf(inputSamples) ?? inputSamples[inputSamples.length - 1];
-			inputPhaseCompleted = lastActive.completed;
-			inputPhaseDurationMs = lastActive.timestamp - startTime;
-			inputPhaseExecPerSec =
-				inputPhaseDurationMs > 0 ? (inputPhaseCompleted / inputPhaseDurationMs) * 1000 : 0;
-
-			inputPhaseTailExecPerSec = measureCounterWindow(samples, {
-				startTime: publishEndAt - 60_000,
-				endTime: publishEndAt,
-			})?.rate;
-		}
-
-		if (drainSamples.length > 0) {
-			const lastActive = lastActiveOf(drainSamples);
-			const drainStart = inputSamples[inputSamples.length - 1] ?? { completed: 0 };
-			if (lastActive !== undefined) {
-				drainPhaseCompleted = lastActive.completed - drainStart.completed;
-				drainPhaseDurationMs = lastActive.timestamp - publishEndAt;
-				drainPhaseExecPerSec =
-					drainPhaseDurationMs > 0 ? (drainPhaseCompleted / drainPhaseDurationMs) * 1000 : 0;
-			} else {
-				// No active drain samples — drain finished within input phase or counter
-				// never advanced after publish ended.
-				drainPhaseCompleted = 0;
-				drainPhaseDurationMs = 0;
-				drainPhaseExecPerSec = 0;
-			}
-		}
-	}
+	const phaseMeasurements =
+		publishEndAt === undefined ? {} : measureSteadyPhases(samples, startTime, publishEndAt);
 
 	// Per-stage split for staged-rate runs. boundaries[i] = stage i's start;
 	// boundaries[i+1] = stage i's end. Each stage's completion delta is the
@@ -452,13 +463,7 @@ function calculateThroughput(
 		tailActionsPerSec: tailExecPerSec === undefined ? undefined : tailExecPerSec * nodeCount,
 		peakActionsPerSec: 0,
 		samples,
-		inputPhaseExecPerSec,
-		inputPhaseTailExecPerSec,
-		inputPhaseCompleted,
-		inputPhaseDurationMs,
-		drainPhaseExecPerSec,
-		drainPhaseCompleted,
-		drainPhaseDurationMs,
+		...phaseMeasurements,
 		perStage,
 	};
 }

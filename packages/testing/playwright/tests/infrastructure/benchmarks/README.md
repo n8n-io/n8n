@@ -29,7 +29,7 @@ The production-canonical queue-mode topology: dedicated `n8n webhook` proc front
 | webhook | `webhook-dedicated-proc-baseline.spec.ts` | What is the webhook ingestion ceiling with a dedicated webhook proc? |
 | kafka | `queue-mode-sustained-rate.spec.ts` | Can queue mode sustain 15 msg/s steady? |
 | kafka | `burst-drain-capacity.spec.ts` | How fast can we drain a backlog? |
-| kafka | `node-count-scaling.spec.ts` | How does throughput scale with workflow complexity? |
+| kafka | `node-count-scaling.spec.ts` | How does burst throughput scale with workflow complexity? |
 | kafka | `output-size-impact.spec.ts` | What is the impact of node output size on throughput? |
 
 ### Scaling — proc-axis and worker-axis at production topology
