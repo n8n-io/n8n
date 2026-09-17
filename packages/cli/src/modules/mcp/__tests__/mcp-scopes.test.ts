@@ -139,11 +139,7 @@ describe('McpService scope enforcement', () => {
 					rest: 'rest',
 					mcpBuilderEnabled: builderEnabled,
 				},
-<<<<<<< HEAD
-=======
-				tags: { disabled: false },
 				activityLog: { enabled: activityLogEnabled },
->>>>>>> f6226f725200cbccb10ce16a01d74f4a480c9130
 				diagnostics: { enabled: false, frontendConfig: '' },
 			}),
 			mockInstance(Telemetry),

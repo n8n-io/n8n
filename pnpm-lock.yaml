@@ -3540,12 +3540,6 @@ importers:
       uuid:
         specifier: 'catalog:'
         version: 11.1.1
-<<<<<<< HEAD
-=======
-      vm2:
-        specifier: 'catalog:'
-        version: 3.12.2
->>>>>>> f6226f725200cbccb10ce16a01d74f4a480c9130
       weaviate-client:
         specifier: 3.9.0
         version: 3.9.0(encoding@0.1.13)
