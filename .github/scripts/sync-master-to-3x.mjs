@@ -152,8 +152,8 @@ export function resolveMechanicalPath({ git, pnpm, path, masterSha, log = consol
 		pnpm(['install', '--lockfile-only', '--no-frozen-lockfile']);
 		try {
 			// A lockfile-only install does not apply patches. Validate the regenerated lockfile
-			// with a real install before treating it as a mechanical resolution.
-			pnpm(['install', '--frozen-lockfile', '--ignore-scripts']);
+			// with a full install so pnpm applies patches before accepting the resolution.
+			pnpm(['install', '--frozen-lockfile']);
 		} catch (error) {
 			git(['checkout', '--conflict=merge', '--', path]);
 			throw error;
@@ -313,7 +313,7 @@ export function reconcileWithMergeTreeAtTip({
  */
 export function reconcileLockfileAtTip({ git, pnpm, masterSha, log = console.log }) {
 	pnpm(['install', '--lockfile-only', '--no-frozen-lockfile']);
-	pnpm(['install', '--frozen-lockfile', '--ignore-scripts']);
+	pnpm(['install', '--frozen-lockfile']);
 	if (attempt(git, ['diff', '--quiet', '--', LOCKFILE]).ok) return;
 	if (git(['rev-parse', 'HEAD']) === masterSha) {
 		throw new Error('Lockfile reconciliation would amend a master commit; refusing.');
