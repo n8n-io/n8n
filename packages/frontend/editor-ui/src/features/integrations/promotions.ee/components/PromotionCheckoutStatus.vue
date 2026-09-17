@@ -23,7 +23,7 @@ const i18n = useI18n();
 type Status = 'blocked' | 'not-connected' | 'connected' | 'stale';
 
 const status = computed<Status>(() => {
-	if (props.disabledReason || !props.checkout) return 'blocked';
+	if (!props.checkout) return 'blocked';
 	if (!props.checkout.hasCheckout) return 'not-connected';
 	return props.checkout.matchesConfig ? 'connected' : 'stale';
 });

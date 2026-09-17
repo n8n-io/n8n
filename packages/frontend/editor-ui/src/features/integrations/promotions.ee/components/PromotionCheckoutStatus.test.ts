@@ -42,6 +42,19 @@ describe('PromotionCheckoutStatus', () => {
 		expect(queryByTestId('promotion-checkout-connect')).toBeNull();
 	});
 
+	it('keeps the connected status visible when Reconnect is disabled', () => {
+		const { getByTestId } = renderComponent({
+			props: {
+				checkout: { hasCheckout: true, matchesConfig: true },
+				disabledReason: 'Save your changes before you connect.',
+			},
+		});
+
+		expect(getByTestId('promotion-checkout-status')).toHaveTextContent('Connected to main');
+		expect(getByTestId('promotion-checkout-reconnect')).toBeDisabled();
+		expect(getByTestId('promotion-checkout-disconnect')).toBeEnabled();
+	});
+
 	it('offers Reconnect when the checkout is stale', () => {
 		const { getByTestId } = renderComponent({
 			props: { checkout: { hasCheckout: true, matchesConfig: false } },
@@ -49,6 +62,21 @@ describe('PromotionCheckoutStatus', () => {
 
 		expect(getByTestId('promotion-checkout-reconnect')).toBeInTheDocument();
 		expect(getByTestId('promotion-checkout-disconnect')).toBeInTheDocument();
+	});
+
+	it('keeps the stale status visible when Reconnect is disabled', () => {
+		const { getByTestId } = renderComponent({
+			props: {
+				checkout: { hasCheckout: true, matchesConfig: false },
+				disabledReason: 'Save your changes before you connect.',
+			},
+		});
+
+		expect(getByTestId('promotion-checkout-status')).toHaveTextContent(
+			'The remote or branch changed. Reconnect to update the local copy.',
+		);
+		expect(getByTestId('promotion-checkout-reconnect')).toBeDisabled();
+		expect(getByTestId('promotion-checkout-disconnect')).toBeEnabled();
 	});
 
 	it('emits connect and disconnect on click', async () => {
