@@ -1,3 +1,5 @@
+import flatted from 'flatted';
+
 import { test, expect } from '../../../fixtures/base';
 
 // Manual Trigger -> Set (test = 'a') -> If (test == 'b') -> NoOp | Set (test2 = paired item's test)
@@ -19,9 +21,13 @@ test.describe(
 			const execution = await api.workflows.waitForExecutionById(executionId);
 
 			expect(execution.status).toBe('success');
-			// The false branch ran, and its Set read the paired item from two nodes upstream.
-			expect(execution.data).toContain('"test2"');
-			expect(execution.data).toContain('"a"');
+
+			// The false branch ran, and its Set read the paired item from two nodes
+			// upstream, so `test2` carries what `Init Data` put in `test`.
+			const { resultData } = flatted.parse(execution.data);
+			const output = resultData.runData['Test Expression'][0].data.main[0][0].json;
+			// The Set node assigns `test2` only, so the paired item is all it carries.
+			expect(output).toEqual({ test2: 'a' });
 		});
 	},
 );
