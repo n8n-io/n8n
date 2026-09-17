@@ -20,7 +20,7 @@ import { N8nLogo } from '@n8n/design-system';
 	position: absolute;
 	// These offsets are part of the API-317 prototype specification.
 	top: 20px;
-	left: 26px;
+	left: 18px;
 	z-index: 10;
 	display: flex;
 	align-items: center;

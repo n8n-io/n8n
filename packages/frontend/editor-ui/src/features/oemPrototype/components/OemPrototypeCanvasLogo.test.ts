@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { createComponentRenderer } from '@/__tests__/render';
 
+import canvasLogoSource from './OemPrototypeCanvasLogo.vue?raw';
 import OemPrototypeCanvasLogo from './OemPrototypeCanvasLogo.vue';
 
 const renderComponent = createComponentRenderer(OemPrototypeCanvasLogo);
@@ -20,5 +21,10 @@ describe('OemPrototypeCanvasLogo', () => {
 		expect(icon).toHaveAttribute('height', '26');
 		expect(wordmark).toHaveAttribute('width', '26');
 		expect(wordmark).toHaveAttribute('height', '26');
+	});
+
+	it('should keep the fixed canvas placement and dimensions', () => {
+		expect(canvasLogoSource).toContain('\ttop: 20px;\n\tleft: 18px;');
+		expect(canvasLogoSource).toContain('\twidth: 60px;\n\theight: 26px;');
 	});
 });
