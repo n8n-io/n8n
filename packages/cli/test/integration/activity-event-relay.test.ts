@@ -1,9 +1,9 @@
 import { INSTANCE_ACTIVITY_CONTEXT_FLAG } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { createTeamProject, createWorkflow, mockInstance, testDb } from '@n8n/backend-test-utils';
+import { createTeamProject, createWorkflow, testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import { ActivityEventRepository, UserRepository, WorkflowRepository } from '@n8n/db';
+import { ActivityEventRepository, WorkflowRepository } from '@n8n/db';
 import type { Project, User, WorkflowEntity, ActivityEvent } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { INode } from 'n8n-workflow';
@@ -36,8 +36,7 @@ describe('ActivityEventRelay', () => {
 	let project: Project;
 	let workflow: WorkflowEntity;
 	let owner: User;
-	/** Held from before `init()`: the relay keeps the instance it was constructed with. */
-	let postHogClient: ReturnType<typeof mockInstance<PostHogClient>>;
+	let postHogClient: PostHogClient;
 
 	/** `activity_event.userId` is a foreign key, so the acting user has to be a real row. */
 	const actor = () => ({
@@ -52,12 +51,14 @@ describe('ActivityEventRelay', () => {
 		await testDb.init();
 		repository = Container.get(ActivityEventRepository);
 		eventService = Container.get(EventService);
-		postHogClient = mockInstance(PostHogClient);
-		Container.get(GlobalConfig).activityLog.enabled = true;
+		postHogClient = Container.get(PostHogClient);
+		Container.get(GlobalConfig).featureFlags.override = { [INSTANCE_ACTIVITY_CONTEXT_FLAG]: true };
 		Container.get(ActivityEventRelay).init();
 	});
 
 	beforeEach(async () => {
+		Container.get(GlobalConfig).activityLog.enabled = false;
+		Container.get(GlobalConfig).featureFlags.override = { [INSTANCE_ACTIVITY_CONTEXT_FLAG]: true };
 		owner = await createOwner();
 		project = await createTeamProject();
 		workflow = await createWorkflow({ name: 'Lead enrichment' }, project);
@@ -119,37 +120,23 @@ describe('ActivityEventRelay', () => {
 		});
 	});
 
-	/**
-	 * The env var short-circuits the gate, so the rollout path is the only one that reads a
-	 * user from the database. It has to send the real signup date: the assistant evaluates
-	 * this same flag with it, and a rollout conditioned on it would otherwise record for a
-	 * user who cannot read the record back.
-	 */
-	it('gates on the signup date the database holds when only the rollout says yes', async () => {
-		Container.get(GlobalConfig).activityLog.enabled = false;
-		postHogClient.getFeatureFlags.mockResolvedValue({ [INSTANCE_ACTIVITY_CONTEXT_FLAG]: true });
+	it('stops recording when the override is off and the legacy setting is on', async () => {
+		Container.get(GlobalConfig).activityLog.enabled = true;
+		Container.get(GlobalConfig).featureFlags.override = { [INSTANCE_ACTIVITY_CONTEXT_FLAG]: false };
+		const readFlag = vi.spyOn(postHogClient, 'getFeatureFlagForInstance');
+		const record = vi.spyOn(repository, 'record');
 
-		try {
-			eventService.emit('workflow-saved', {
-				user: actor(),
-				workflow: { ...workflow, nodes: [] },
-				publicApi: false,
-				source: 'ui',
-			});
-			const [entry] = await waitForEntry(project.id);
+		eventService.emit('workflow-saved', {
+			user: actor(),
+			workflow: { ...workflow, nodes: [] },
+			publicApi: false,
+			source: 'ui',
+		});
+		await new Promise((resolve) => setImmediate(resolve));
 
-			expect(entry).toMatchObject({ action: 'saved', resourceId: workflow.id });
-
-			// Read back through the full entity, so the gate's single-column read is held to
-			// the same hydrated value rather than to itself.
-			const stored = await Container.get(UserRepository).findByIdWithRole(owner.id);
-			expect(postHogClient.getFeatureFlags).toHaveBeenCalledWith({
-				id: owner.id,
-				createdAt: stored?.createdAt,
-			});
-		} finally {
-			Container.get(GlobalConfig).activityLog.enabled = true;
-		}
+		expect(readFlag).toHaveBeenCalledWith(INSTANCE_ACTIVITY_CONTEXT_FLAG);
+		expect(record).not.toHaveBeenCalled();
+		expect(await repository.count()).toBe(0);
 	});
 
 	it('holds the table to its caps on an instance busy enough to need more than one batch', async () => {

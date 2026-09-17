@@ -1,4 +1,5 @@
 import { mockInstance } from '@n8n/backend-test-utils';
+import { INSTANCE_ACTIVITY_CONTEXT_FLAG } from '@n8n/api-types';
 import type { GlobalConfig } from '@n8n/config';
 import type { Application, Request, RequestHandler, Response } from 'express';
 import { InstanceSettings } from 'n8n-core';
@@ -60,6 +61,98 @@ describe('PostHog', () => {
 
 		expect(PostHog.prototype.constructor).not.toHaveBeenCalled();
 		expect(PostHog.prototype.capture).not.toHaveBeenCalled();
+	});
+
+	describe('getFeatureFlagForInstance', () => {
+		afterEach(() => {
+			globalConfig.activityLog.enabled = false;
+			globalConfig.featureFlags.override = {};
+		});
+
+		it('evaluates the flag with the instance group and no user properties', async () => {
+			(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(
+				mockEvaluatedFlags({ [INSTANCE_ACTIVITY_CONTEXT_FLAG]: true }),
+			);
+			const ph = new PostHogClient(instanceSettings, globalConfig);
+			await ph.init();
+
+			await expect(ph.getFeatureFlagForInstance(INSTANCE_ACTIVITY_CONTEXT_FLAG)).resolves.toBe(
+				true,
+			);
+			expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledWith(`company_${instanceId}`, {
+				flagKeys: [INSTANCE_ACTIVITY_CONTEXT_FLAG],
+				groups: { company: instanceId },
+			});
+		});
+
+		it('uses one evaluation for concurrent instance checks', async () => {
+			(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(
+				mockEvaluatedFlags({ [INSTANCE_ACTIVITY_CONTEXT_FLAG]: true }),
+			);
+			const ph = new PostHogClient(instanceSettings, globalConfig);
+			await ph.init();
+
+			const results = await Promise.all([
+				ph.getFeatureFlagForInstance(INSTANCE_ACTIVITY_CONTEXT_FLAG),
+				ph.getFeatureFlagForInstance(INSTANCE_ACTIVITY_CONTEXT_FLAG),
+			]);
+
+			expect(results).toEqual([true, true]);
+			expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledTimes(1);
+		});
+
+		it('fails closed when the instance flag cannot be read', async () => {
+			(PostHog.prototype.evaluateFlags as Mock).mockRejectedValue(new Error('PostHog failed'));
+			const ph = new PostHogClient(instanceSettings, globalConfig);
+			await ph.init();
+
+			await expect(
+				ph.getFeatureFlagForInstance(INSTANCE_ACTIVITY_CONTEXT_FLAG),
+			).resolves.toBeUndefined();
+		});
+
+		it('uses the activity log setting to enable the instance flag', async () => {
+			globalConfig.activityLog.enabled = true;
+			const ph = new PostHogClient(instanceSettings, globalConfig);
+			await ph.init();
+
+			await expect(ph.getFeatureFlagForInstance(INSTANCE_ACTIVITY_CONTEXT_FLAG)).resolves.toBe(
+				true,
+			);
+		});
+
+		it.each([true, false])(
+			'lets a feature flag override set the instance flag to %s',
+			async (enabled) => {
+				globalConfig.activityLog.enabled = true;
+				globalConfig.featureFlags.override = { [INSTANCE_ACTIVITY_CONTEXT_FLAG]: enabled };
+				(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(
+					mockEvaluatedFlags({ [INSTANCE_ACTIVITY_CONTEXT_FLAG]: !enabled }),
+				);
+				const ph = new PostHogClient(instanceSettings, globalConfig);
+				await ph.init();
+
+				await expect(ph.getFeatureFlagForInstance(INSTANCE_ACTIVITY_CONTEXT_FLAG)).resolves.toBe(
+					enabled,
+				);
+			},
+		);
+
+		it('applies local overrides when diagnostics are disabled', async () => {
+			globalConfig.diagnostics.enabled = false;
+			globalConfig.featureFlags.override = { [INSTANCE_ACTIVITY_CONTEXT_FLAG]: true };
+			const ph = new PostHogClient(instanceSettings, globalConfig);
+			await ph.init();
+
+			await expect(ph.getFeatureFlagForInstance(INSTANCE_ACTIVITY_CONTEXT_FLAG)).resolves.toBe(
+				true,
+			);
+			globalConfig.featureFlags.override = { [INSTANCE_ACTIVITY_CONTEXT_FLAG]: false };
+			await expect(ph.getFeatureFlagForInstance(INSTANCE_ACTIVITY_CONTEXT_FLAG)).resolves.toBe(
+				false,
+			);
+			expect(PostHog.prototype.evaluateFlags).not.toHaveBeenCalled();
+		});
 	});
 
 	it('captures PostHog events', async () => {
@@ -231,11 +324,6 @@ describe('PostHog', () => {
 			spy.mockRestore();
 		});
 
-		/**
-		 * Held briefly rather than not at all. A caller on a per-event path would otherwise
-		 * re-request on every event, and an unreachable PostHog makes each of those a full
-		 * timeout-and-retry cycle.
-		 */
 		it('holds an empty result only briefly, then asks again', async () => {
 			vi.useFakeTimers();
 			try {
@@ -258,10 +346,6 @@ describe('PostHog', () => {
 			}
 		});
 
-		/**
-		 * Two callers racing a cold key used to open an evaluation each, and a failure landing
-		 * second replaced the other's answer with a short-lived empty entry.
-		 */
 		it('makes one request for two callers racing the same key', async () => {
 			const requests: Array<{
 				resolve: (value: unknown) => void;
@@ -355,10 +439,6 @@ describe('PostHog', () => {
 				expect(flags).toMatchObject({ '089_instance_ai_mcp_connections': 'variant' });
 			});
 
-			/**
-			 * The activity log's write switch is also its read switch, so an instance cannot be
-			 * left reading a log that nothing writes. This override is what couples them.
-			 */
 			it('force-enables the instance-activity-context flag when N8N_ACTIVITY_LOG_ENABLED is set', async () => {
 				(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(mockEvaluatedFlags({}));
 				globalConfig.activityLog.enabled = true;
@@ -371,11 +451,6 @@ describe('PostHog', () => {
 				expect(flags).toMatchObject({ '114_instance_activity_context': true });
 			});
 
-			/**
-			 * The combination is the point: each setting alone passes whether or not the
-			 * precedence guard is there, so without this case the guard could be deleted and
-			 * the suite would stay green.
-			 */
 			it('lets an explicit override disable the flag while the record is on', async () => {
 				(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(mockEvaluatedFlags({}));
 				globalConfig.activityLog.enabled = true;
@@ -622,11 +697,6 @@ describe('PostHog', () => {
 		});
 	});
 
-	/**
-	 * A cache slot holds the whole flag map, so two evaluations of one user that disagree
-	 * about their person properties must not share one — the loser would be answered for a
-	 * different person across every flag, not only the one its caller came for.
-	 */
 	it('does not serve one signup date answer to an evaluation that sends another', async () => {
 		(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(
 			mockEvaluatedFlags({ 'test-flag': true }),
@@ -649,11 +719,6 @@ describe('PostHog', () => {
 		);
 	});
 
-	/**
-	 * The activity-log var force-enables its flag, but it is the one per-feature override that
-	 * yields to the generic map — that map is the only way to stop the read while the record keeps
-	 * accruing. Without this pair the guard could be deleted and the suite would stay green.
-	 */
 	describe('the activity-log override, which yields to the generic map', () => {
 		const createdAt = new Date();
 
@@ -684,16 +749,6 @@ describe('PostHog', () => {
 		});
 	});
 
-	/**
-	 * Expiry alone does not bound the cache: an expired slot is replaced only when that same user
-	 * is evaluated again, so an outage across many distinct users would otherwise leave one slot
-	 * per user for the process lifetime.
-	 *
-	 * Only eviction is covered. Refreshing a key that is already present is not observable from
-	 * out here — without the has-check, that path would evict the oldest key and then re-insert
-	 * the refreshed one, which leaves a map of the same size holding the same keys. A test for it
-	 * would pass with the guard deleted.
-	 */
 	describe('the cache ceiling', () => {
 		const createdAt = new Date();
 

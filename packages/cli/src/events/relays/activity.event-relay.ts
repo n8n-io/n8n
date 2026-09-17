@@ -6,7 +6,6 @@ import {
 	ActivityEventRepository,
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
-	UserRepository,
 } from '@n8n/db';
 import type { ActivityEventInput } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -23,29 +22,8 @@ const CORE_NODE_TYPE_PREFIX = 'n8n-nodes-base.';
 /** Enough distinct types to show what a user reached for, few enough to leave room for the rest. */
 const maxListedNodeTypes = 5;
 
-/**
- * Actors whose signup date is held. A signup date cannot change, so an entry is never stale and
- * age is the wrong thing to bound this by — what needs bounding is the count, on a long-lived
- * process that sees many actors.
- */
-const maxHeldSignupDates = 1_000;
-
 /** Ceiling for any single free-text value inside `data`, so one field cannot exhaust the budget. */
 const maxDetailStringLength = 64;
-
-/**
- * The acting user's id. `unknown` rather than `UserLike` because the generic handler map widens
- * to every payload, several of which carry no actor. An empty id would fail the row's own key.
- */
-function actingUserId(payload: unknown): string | undefined {
-	if (typeof payload !== 'object' || payload === null || !('user' in payload)) return undefined;
-
-	const { user } = payload;
-	if (typeof user !== 'object' || user === null || !('id' in user)) return undefined;
-
-	const { id } = user;
-	return typeof id === 'string' && id.length > 0 ? id : undefined;
-}
 
 /** An entry that resolves no project, since one written without a project could never be read. */
 type UnresolvedProject = { projectId: string | undefined };
@@ -76,7 +54,6 @@ export class ActivityEventRelay extends EventRelay {
 		private readonly activityEventRepository: ActivityEventRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
-		private readonly userRepository: UserRepository,
 		private readonly activityLogConfig: ActivityLogConfig,
 		private readonly globalConfig: GlobalConfig,
 		private readonly postHogClient: PostHogClient,
@@ -87,13 +64,7 @@ export class ActivityEventRelay extends EventRelay {
 	}
 
 	init() {
-		// The record and the assistant's read of it move together, and the rollout flag can
-		// turn both on for a user without a deploy — so this cannot be decided once here.
-		//
-		// It can still be ruled out. With diagnostics off there is no PostHog to consult, so the
-		// flag can only come from an explicit override that turns it ON — an override to `false`
-		// rules the relay out like any other, rather than registering listeners that can only
-		// answer no. A ruled-out instance registers nothing and pays nothing per event.
+		// Skip listeners when no local or remote control can enable recording.
 		if (
 			!this.activityLogConfig.enabled &&
 			!this.globalConfig.diagnostics.enabled &&
@@ -126,80 +97,29 @@ export class ActivityEventRelay extends EventRelay {
 		return value === true;
 	}
 
-	/** In-flight gate checks, keyed by user, so one burst asks PostHog once. */
-	private readonly gateChecks = new Map<string, Promise<boolean>>();
+	/** The active instance gate check. All events in a burst share it. */
+	private gateCheck?: Promise<boolean>;
 
-	/**
-	 * Whether this event's actor has the feature on.
-	 *
-	 * Per acting user, because that is the unit the rollout exposes. The env var short-
-	 * circuits it, so a local instance never consults PostHog, and `getFeatureFlags`
-	 * caches per user, so a busy user costs one evaluation rather than one per event, and
-	 * the signup date it needs is held for as long.
-	 *
-	 * Fails closed: an unreadable flag means no row, never a row written on a guess.
-	 */
-	private async shouldRecord(userId: string): Promise<boolean> {
-		if (this.activityLogConfig.enabled) return true;
+	/** Checks the instance gate and fails closed when its value is unreadable. */
+	private async shouldRecord(): Promise<boolean> {
+		if (this.gateCheck) return await this.gateCheck;
 
-		// Coalesced per user. Saving a workflow emits several of these events at once, and
-		// without this each one would open its own evaluation before the first resolved.
-		const inFlight = this.gateChecks.get(userId);
-		if (inFlight) return await inFlight;
-
-		const check = this.readGate(userId).finally(() => this.gateChecks.delete(userId));
-		this.gateChecks.set(userId, check);
+		const check = this.readGate().finally(() => {
+			this.gateCheck = undefined;
+		});
+		this.gateCheck = check;
 		return await check;
 	}
 
-	/**
-	 * Fails closed, so a user outside the rollout is never recorded on a guess.
-	 *
-	 * The cost is that a PostHog outage pauses recording rather than degrading it. Bounded
-	 * in practice: the client caches a user's flags for ten minutes and only replaces them
-	 * on a successful read, so an outage mid-window leaves an already-evaluated user alone
-	 * and reaches only users it has not seen yet.
-	 *
-	 * The signup date comes from the database, not the event, and has to be the real one: the
-	 * reader evaluates this flag with it, so a rollout conditioned on signup date would
-	 * otherwise split the two sides. An id that resolves to nobody records nothing.
-	 */
-	private async readGate(userId: string): Promise<boolean> {
+	private async readGate(): Promise<boolean> {
 		try {
-			const createdAt = await this.resolveSignupDate(userId);
-			if (!createdAt) return false;
-
-			const flags = await this.postHogClient.getFeatureFlags({ id: userId, createdAt });
-			return flags[INSTANCE_ACTIVITY_CONTEXT_FLAG] === true;
+			return (
+				(await this.postHogClient.getFeatureFlagForInstance(INSTANCE_ACTIVITY_CONTEXT_FLAG)) ===
+				true
+			);
 		} catch {
 			return false;
 		}
-	}
-
-	/** Resolved signup dates, so one user's events do not each re-read the same row. */
-	private readonly signupDates = new Map<string, Date>();
-
-	/**
-	 * Held because the flag answer behind it is: `gateChecks` only collapses the events of one
-	 * save, so without this every later event pays the read again while the evaluation it feeds
-	 * is still served from the client's own cache.
-	 *
-	 * Bounded by evicting the oldest, not by an expiry: a signup date cannot change, so only the
-	 * entry count needs a ceiling.
-	 */
-	private async resolveSignupDate(userId: string): Promise<Date | undefined> {
-		const held = this.signupDates.get(userId);
-		if (held) return held;
-
-		const createdAt = await this.userRepository.findCreatedAt(userId);
-		if (!createdAt) return undefined;
-
-		if (this.signupDates.size >= maxHeldSignupDates) {
-			const oldest = this.signupDates.keys().next();
-			if (!oldest.done) this.signupDates.delete(oldest.value);
-		}
-		this.signupDates.set(userId, createdAt);
-		return createdAt;
 	}
 
 	/**
@@ -220,8 +140,7 @@ export class ActivityEventRelay extends EventRelay {
 			event,
 			async (payload: RelayEventMap[EventNames]) => {
 				try {
-					const userId = actingUserId(payload);
-					if (!userId || !(await this.shouldRecord(userId))) return;
+					if (!(await this.shouldRecord())) return;
 					await handle(payload);
 				} catch (error) {
 					this.logger.warn('Failed to record activity for an event', { event, error });
