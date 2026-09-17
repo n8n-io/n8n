@@ -481,6 +481,7 @@ export class MemoryOrchestrator {
 
 	/** Reset per-run observation state on generate and resume entry. */
 	private resetRunState(): void {
+		this.midRunObserverTask = undefined;
 		this.midRunNonAdvancingAttempts = 0;
 		this.lastPersistedTurnKeyset = undefined;
 		this.visibleTokenEstimates.clear();

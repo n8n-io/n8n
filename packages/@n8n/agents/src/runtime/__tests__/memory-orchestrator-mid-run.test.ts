@@ -550,6 +550,30 @@ describe('MemoryOrchestrator.saveToMemory observer gating', () => {
 		expect(cursor?.lastObservedMessageId).toBe(list.messages().at(-1)?.id);
 	});
 
+	it('detaches a settled mid-run task before gating a new turn', async () => {
+		const store = new InMemoryMemory();
+		const observe = vi.fn(async () => await Promise.resolve('* CRITICAL (14:30) Observed.'));
+		const { orchestrator, tracker } = buildOrchestrator(store, {
+			observerThresholdTokens: 1000,
+			observe,
+			observationLogTailLimit: 20,
+		});
+		const list = new AgentMessageList();
+		list.addInput([userMsg('x'.repeat(750))]);
+
+		await orchestrator.maybeObserveMidRun(list, runOptions());
+		await tracker.flush();
+		expect(observe).toHaveBeenCalledTimes(1);
+
+		const nextList = new AgentMessageList();
+		await orchestrator.loadInto(nextList, runOptions());
+		nextList.addInput([userMsg('z'.repeat(100))]);
+		await orchestrator.saveToMemory(nextList, runOptions());
+		await tracker.flush();
+
+		expect(observe).toHaveBeenCalledTimes(1);
+	});
+
 	it('keeps the gate on the next turn when the previous mid-run task settles after it started', async () => {
 		const store = new InMemoryMemory();
 		const pendingObservation = deferred<string>();
