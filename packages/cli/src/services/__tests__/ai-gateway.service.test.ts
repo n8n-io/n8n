@@ -239,9 +239,10 @@ describe('AiGatewayService', () => {
 			).rejects.toThrow(UserError);
 		});
 
-		it('mints a token-only credential for a gateway-hosted MCP server', async () => {
+		it('mints a token pinned to the gateway host for a gateway-hosted MCP server', async () => {
 			// These carry no provider config — the endpoint comes from the registry
-			// entry on the node — so only the token is requested, not the config.
+			// entry on the node — so only the token is requested, not the config. The
+			// token's egress is pinned to the gateway host so it can't leak elsewhere.
 			requestMock.mockResolvedValueOnce(ok({ token: 'mock-jwt-token', expiresIn: 3600 }));
 			const service = makeService();
 
@@ -250,7 +251,22 @@ describe('AiGatewayService', () => {
 				userId: USER_ID,
 			});
 
-			expect(result).toEqual({ token: 'mock-jwt-token' });
+			expect(result).toEqual({
+				token: 'mock-jwt-token',
+				allowedHttpRequestDomains: 'domains',
+				allowedDomains: 'gateway.test',
+			});
+		});
+
+		it('refuses to mint for a made-up gateway credential type', async () => {
+			const service = makeService();
+
+			await expect(
+				service.getSyntheticCredential({
+					credentialType: 'notARealMcpGatewayApi',
+					userId: USER_ID,
+				}),
+			).rejects.toThrow(UserError);
 		});
 
 		it('still requires a licence for a gateway-hosted MCP server', async () => {

@@ -89,13 +89,28 @@ export class McpRegistryService {
 		// credential all resolve them uniformly. Still hide them when n8n Connect is
 		// off, so a row left over from a licensed period can't be selected on an
 		// instance that can no longer mint a token.
+		return this.filterGatewayEligibility(servers);
+	}
+
+	/**
+	 * Hide gateway-hosted rows when n8n Connect is off, so a row left over from a
+	 * licensed period can't be selected on an instance that can no longer mint a
+	 * token. Applied to every read, not just `getAll`.
+	 */
+	private filterGatewayEligibility(servers: McpRegistryServer[]): McpRegistryServer[] {
 		if (this.aiGatewayService.isEnabled()) return servers;
 		return servers.filter((server) => server.authType !== 'gateway');
 	}
 
+	private isGatewayEligible(server: McpRegistryServer): boolean {
+		return server.authType !== 'gateway' || this.aiGatewayService.isEnabled();
+	}
+
 	async get(slug: string): Promise<McpRegistryServer | undefined> {
 		const entity = await this.repository.findOneBy({ slug });
-		return entity ? fromEntity(entity) : undefined;
+		if (!entity) return undefined;
+		const server = fromEntity(entity);
+		return this.isGatewayEligible(server) ? server : undefined;
 	}
 
 	async getBySlugs(slugs: string[]): Promise<McpRegistryServer[]> {
@@ -104,7 +119,7 @@ export class McpRegistryService {
 		}
 
 		const entities = await this.repository.findBy(slugs.map((slug) => ({ slug })));
-		return entities.map(fromEntity);
+		return this.filterGatewayEligibility(entities.map(fromEntity));
 	}
 
 	/**

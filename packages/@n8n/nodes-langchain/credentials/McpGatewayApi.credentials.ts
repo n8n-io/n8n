@@ -13,6 +13,11 @@ export class McpGatewayApi implements ICredentialType {
 
 	displayName = 'MCP Gateway Credits';
 
+	// Never created by a user: it carries no editable field, so a manual entry is
+	// a blank, unusable row. Only the synthesized per-server types that extend it
+	// are used, and those are attached by the registry with the managed marker.
+	hidden = true;
+
 	documentationUrl = 'mcp';
 
 	properties: INodeProperties[] = [

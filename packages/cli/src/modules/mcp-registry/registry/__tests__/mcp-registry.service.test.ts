@@ -16,7 +16,7 @@ import type { McpRegistryServerRepository } from '../mcp-registry-server.reposit
 import { McpRegistryService } from '../mcp-registry.service';
 import type { McpRegistryServer } from '../mcp-registry.types';
 import { toEntity } from '../mcp-registry.types';
-import { firecrawlGatewayMockServer, linearMockServer, notionMockServer } from '../mock-servers';
+import { linearMockServer, notionMockServer } from '../mock-servers';
 
 function toMockEntity(server: McpRegistryServer): McpRegistryServerEntity {
 	const now = new Date();
@@ -42,6 +42,7 @@ function createService(options: CreateServiceOptions = {}) {
 	const publisher = mock<Publisher>({ publishCommand: vi.fn().mockResolvedValue(undefined) });
 	const aiGatewayService = mock<AiGatewayService>({
 		isEnabled: vi.fn().mockReturnValue(options.aiGatewayEnabled ?? true),
+		getHostedMcpServers: vi.fn().mockReturnValue([]),
 	});
 
 	if (options.storedServers === null) {
@@ -132,44 +133,6 @@ describe('McpRegistryService', () => {
 			const servers = await service.getAll({ includeDeprecated: true });
 
 			expect(servers).toEqual([notionMockServer, linearMockServer, deprecated]);
-		});
-
-		it('offers gateway-hosted servers when n8n Connect is enabled', async () => {
-			const { service } = createService({
-				storedServers: [notionMockServer, firecrawlGatewayMockServer],
-				aiGatewayEnabled: true,
-			});
-
-			await service.init();
-
-			expect(await service.getAll()).toEqual([notionMockServer, firecrawlGatewayMockServer]);
-		});
-
-		// Without n8n Connect there is no token to mint, so offering the server would
-		// fail at run time rather than at selection time.
-		it('withholds gateway-hosted servers when n8n Connect is disabled', async () => {
-			const { service } = createService({
-				storedServers: [notionMockServer, firecrawlGatewayMockServer],
-				aiGatewayEnabled: false,
-			});
-
-			await service.init();
-
-			expect(await service.getAll()).toEqual([notionMockServer]);
-			expect(await service.getAll({ includeDeprecated: true })).toEqual([notionMockServer]);
-		});
-
-		it('keeps gateway-hosted servers out of search and list when disabled', async () => {
-			const { service } = createService({
-				storedServers: [notionMockServer, firecrawlGatewayMockServer],
-				aiGatewayEnabled: false,
-			});
-
-			await service.init();
-
-			const slugs = (await service.list(10)).map((entry) => entry.slug);
-			expect(slugs).not.toContain('firecrawl');
-			expect(slugs).toContain('notion');
 		});
 
 		it('returns server by slug and undefined for unknown slug', async () => {

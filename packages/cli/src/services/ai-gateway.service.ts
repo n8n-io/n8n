@@ -18,6 +18,7 @@ import { N8N_VERSION, AI_ASSISTANT_SDK_VERSION } from '@/constants';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { License } from '@/license';
+import { getMcpRegistryGatewayCredentialTypeName } from '@/modules/mcp-registry/mcp-registry-connection';
 import type { McpRegistryServer } from '@/modules/mcp-registry/registry/mcp-registry.types';
 import { checkAiGatewayEligibility } from '@/services/ai-gateway-eligibility';
 import { OwnershipService } from '@/services/ownership.service';
@@ -250,8 +251,24 @@ export class AiGatewayService {
 		// bearer token. The token is not provider-scoped, so one mint serves any
 		// gateway path the entry points at.
 		if (isMcpGatewayAuthentication(credentialType)) {
+			// Only mint for a type a currently-hosted server issues; the suffix alone
+			// would accept a planted marker. Empty unless licensed+enabled.
+			const hostedGatewayTypes = new Set(
+				this.getHostedMcpServers().map(getMcpRegistryGatewayCredentialTypeName),
+			);
+			if (!hostedGatewayTypes.has(credentialType)) {
+				throw new UserError(
+					`Credential type "${credentialType}" is not a hosted Gateway credits MCP server.`,
+				);
+			}
 			const { jwt } = await this.resolveAndMintToken({ userId, workflowId, projectId });
-			return { token: jwt };
+			// Billed, non-provider-scoped token: pin its egress to the gateway host so
+			// no consumer can send it elsewhere, whatever URL the node carries.
+			return {
+				token: jwt,
+				allowedHttpRequestDomains: 'domains',
+				allowedDomains: new URL(baseUrl).hostname,
+			};
 		}
 
 		const config = await this.getGatewayConfig();
