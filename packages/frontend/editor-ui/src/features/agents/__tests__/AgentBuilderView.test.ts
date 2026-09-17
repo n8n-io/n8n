@@ -107,12 +107,6 @@ vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: vi.fn() }),
 }));
 
-vi.mock('@/features/ai/instanceAi/composables/useInstanceAiAgentPreviewHandoff', () => ({
-	useInstanceAiAgentPreviewHandoff: () => ({
-		canSendPreviewToInstanceAi: ref(true),
-	}),
-}));
-
 vi.mock('@/app/composables/useMessage', () => ({
 	useMessage: () => ({ confirm: vi.fn() }),
 }));
@@ -1025,6 +1019,39 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 			expect(getAgentMock).toHaveBeenCalledWith(expect.anything(), 'p1', 'a1'),
 		);
 		expect(editor.props('agentUnsaved')).toBe(false);
+	});
+
+	it('flushes a queued edit for an already-saved agent on an in-place switch to another agent', async () => {
+		instanceAiAvailableRef.value = false;
+		const wrapper = await renderView();
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+
+		editor.vm.$emit('update:config', { instructions: 'Answer support mail' });
+		await nextTick();
+		expect(routeGuards.update).toBeDefined();
+
+		await routeGuards.update?.({ params: { projectId: 'p1', agentId: 'a2' } });
+
+		expect(updateConfigMock).toHaveBeenCalledWith(
+			'p1',
+			'a1',
+			expect.objectContaining({ instructions: 'Answer support mail' }),
+			'hash-1',
+		);
+	});
+
+	it('cancels an in-place switch when flushing the queued edit fails', async () => {
+		instanceAiAvailableRef.value = false;
+		const wrapper = await renderView();
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+		updateConfigMock.mockRejectedValueOnce(new Error('save failed'));
+
+		editor.vm.$emit('update:config', { instructions: 'Answer support mail' });
+		await nextTick();
+
+		await expect(
+			routeGuards.update?.({ params: { projectId: 'p1', agentId: 'a2' } }),
+		).rejects.toThrow('save failed');
 	});
 
 	it('loads credentials through the workflow-scoped credentials endpoint for the agent project', async () => {
@@ -2591,6 +2618,27 @@ describe('AgentBuilderView — three-column shell', () => {
 		await flushPromises();
 
 		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(false);
+	});
+
+	it('opens the AI panel and skips the fetch when the switcher hands off a pending agent in place', async () => {
+		// Mounted on an existing, non-pending agent A.
+		const wrapper = await renderView();
+		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(false);
+		getAgentMock.mockClear();
+
+		// "New agent" from the switcher (`useCreateAgent`) writes the new pending
+		// marker to `history.state` and changes `agentId` in place — the same
+		// component instance keeps running, so `routePendingAgentId` (read once
+		// at setup) must be refreshed from the now-current `history.state`.
+		history.replaceState({ instanceAiPendingAgentId: 'b' }, '');
+		routeParams.agentId = 'b';
+		await flushPromises();
+
+		expect(getAgentMock).not.toHaveBeenCalledWith(expect.anything(), 'p1', 'b');
+		expect(wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('agentUnsaved')).toBe(
+			true,
+		);
+		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(true);
 	});
 
 	it('hides the embedded AI panel dock in artifact mode', async () => {
