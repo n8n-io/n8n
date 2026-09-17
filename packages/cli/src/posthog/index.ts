@@ -7,7 +7,6 @@ import {
 	EVAL_COLLECTIONS_FLAG,
 	INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
 	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
-	INSTANCE_ACTIVITY_CONTEXT_FLAG,
 	INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
 	INSTANCE_AI_MCP_CONNECTIONS_FLAG,
 } from '@n8n/api-types';
@@ -281,7 +280,7 @@ export class PostHogClient {
 		return { featureFlags, featureFlagPayloads };
 	}
 
-	/** Applies local settings after PostHog. The generic activity override can disable its setting. */
+	/** Applies local settings after PostHog. Dedicated feature settings take priority. */
 	private applyEnvOverrides(data: FeatureFlagData): FeatureFlagData {
 		const overrides = { ...this.globalConfig.featureFlags.override };
 
@@ -314,11 +313,6 @@ export class PostHogClient {
 		if (this.globalConfig.instanceAi.folderExplorationEnabled) {
 			overrides[INSTANCE_AI_FOLDER_EXPLORATION_FLAG] =
 				INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT;
-		}
-
-		// An explicit feature flag override takes priority over this legacy setting.
-		if (this.globalConfig.activityLog.enabled && !(INSTANCE_ACTIVITY_CONTEXT_FLAG in overrides)) {
-			overrides[INSTANCE_ACTIVITY_CONTEXT_FLAG] = true;
 		}
 
 		if (Object.keys(overrides).length === 0) {

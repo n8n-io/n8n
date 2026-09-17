@@ -965,6 +965,7 @@ describe('OAuthTokenService', () => {
 				mock<GlobalConfig>(),
 				mock<ModuleRegistry>(),
 				mock<LicenseState>(),
+				mock<PostHogClient>(),
 			);
 
 			const configuredRegistry = new ProtectedResourceRegistry(mock<Logger>());
@@ -1014,3 +1015,5 @@ describe('OAuthTokenService', () => {
 		});
 	});
 });
+
+import type { PostHogClient } from '@/posthog';

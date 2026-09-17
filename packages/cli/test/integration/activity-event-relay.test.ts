@@ -57,7 +57,6 @@ describe('ActivityEventRelay', () => {
 	});
 
 	beforeEach(async () => {
-		Container.get(GlobalConfig).activityLog.enabled = false;
 		Container.get(GlobalConfig).featureFlags.override = { [INSTANCE_ACTIVITY_CONTEXT_FLAG]: true };
 		owner = await createOwner();
 		project = await createTeamProject();
@@ -120,8 +119,7 @@ describe('ActivityEventRelay', () => {
 		});
 	});
 
-	it('stops recording when the override is off and the legacy setting is on', async () => {
-		Container.get(GlobalConfig).activityLog.enabled = true;
+	it('stops recording when the override is off', async () => {
 		Container.get(GlobalConfig).featureFlags.override = { [INSTANCE_ACTIVITY_CONTEXT_FLAG]: false };
 		const readFlag = vi.spyOn(postHogClient, 'getFeatureFlagForInstance');
 		const record = vi.spyOn(repository, 'record');

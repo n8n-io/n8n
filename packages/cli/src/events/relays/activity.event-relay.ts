@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { INSTANCE_ACTIVITY_CONTEXT_FLAG } from '@n8n/api-types';
-import { ActivityLogConfig, GlobalConfig } from '@n8n/config';
+import { GlobalConfig } from '@n8n/config';
 import {
 	activityDataMaxLength,
 	ActivityEventRepository,
@@ -54,7 +54,6 @@ export class ActivityEventRelay extends EventRelay {
 		private readonly activityEventRepository: ActivityEventRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
-		private readonly activityLogConfig: ActivityLogConfig,
 		private readonly globalConfig: GlobalConfig,
 		private readonly postHogClient: PostHogClient,
 		private readonly logger: Logger,
@@ -65,11 +64,7 @@ export class ActivityEventRelay extends EventRelay {
 
 	init() {
 		// Skip listeners when no local or remote control can enable recording.
-		if (
-			!this.activityLogConfig.enabled &&
-			!this.globalConfig.diagnostics.enabled &&
-			!this.overrideEnablesFlag()
-		) {
+		if (!this.globalConfig.diagnostics.enabled && !this.overrideEnablesFlag()) {
 			return;
 		}
 

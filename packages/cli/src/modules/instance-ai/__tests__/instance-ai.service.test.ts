@@ -6351,8 +6351,14 @@ describe('InstanceAiService — resolveAiPreferencesBlock', () => {
 		const service = createService();
 		service.aiPreferenceService.getApplicable.mockResolvedValue({
 			instance: [],
-			user: ['Keep replies short.'],
-			projects: [{ id: 'project-1', name: 'Marketing', items: ['Prefer HubSpot nodes.'] }],
+			user: [{ id: 'pref-1', content: 'Keep replies short.' }],
+			projects: [
+				{
+					id: 'project-1',
+					name: 'Marketing',
+					items: [{ id: 'pref-2', content: 'Prefer HubSpot nodes.' }],
+				},
+			],
 		});
 
 		const block = await service.resolveAiPreferencesBlock('user-1', {

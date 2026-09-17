@@ -65,7 +65,6 @@ describe('PostHog', () => {
 
 	describe('getFeatureFlagForInstance', () => {
 		afterEach(() => {
-			globalConfig.activityLog.enabled = false;
 			globalConfig.featureFlags.override = {};
 		});
 
@@ -111,20 +110,9 @@ describe('PostHog', () => {
 			).resolves.toBeUndefined();
 		});
 
-		it('uses the activity log setting to enable the instance flag', async () => {
-			globalConfig.activityLog.enabled = true;
-			const ph = new PostHogClient(instanceSettings, globalConfig);
-			await ph.init();
-
-			await expect(ph.getFeatureFlagForInstance(INSTANCE_ACTIVITY_CONTEXT_FLAG)).resolves.toBe(
-				true,
-			);
-		});
-
 		it.each([true, false])(
 			'lets a feature flag override set the instance flag to %s',
 			async (enabled) => {
-				globalConfig.activityLog.enabled = true;
 				globalConfig.featureFlags.override = { [INSTANCE_ACTIVITY_CONTEXT_FLAG]: enabled };
 				(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(
 					mockEvaluatedFlags({ [INSTANCE_ACTIVITY_CONTEXT_FLAG]: !enabled }),
@@ -399,7 +387,7 @@ describe('PostHog', () => {
 				globalConfig.instanceAi.mcpConnectionsEnabled = false;
 				globalConfig.instanceAi.canvasNodeContextEnabled = false;
 				globalConfig.instanceAi.folderExplorationEnabled = false;
-				globalConfig.activityLog.enabled = false;
+
 				globalConfig.featureFlags.override = {};
 			});
 
@@ -439,34 +427,8 @@ describe('PostHog', () => {
 				expect(flags).toMatchObject({ '089_instance_ai_mcp_connections': 'variant' });
 			});
 
-			it('force-enables the instance-activity-context flag when N8N_ACTIVITY_LOG_ENABLED is set', async () => {
+			it('leaves the instance activity flag unset when PostHog has no answer', async () => {
 				(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(mockEvaluatedFlags({}));
-				globalConfig.activityLog.enabled = true;
-
-				const ph = new PostHogClient(instanceSettings, globalConfig);
-				await ph.init();
-
-				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
-
-				expect(flags).toMatchObject({ '114_instance_activity_context': true });
-			});
-
-			it('lets an explicit override disable the flag while the record is on', async () => {
-				(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(mockEvaluatedFlags({}));
-				globalConfig.activityLog.enabled = true;
-				globalConfig.featureFlags.override = { '114_instance_activity_context': false };
-
-				const ph = new PostHogClient(instanceSettings, globalConfig);
-				await ph.init();
-
-				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
-
-				expect(flags).toMatchObject({ '114_instance_activity_context': false });
-			});
-
-			it('leaves the instance-activity-context flag to PostHog when the record is off', async () => {
-				(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(mockEvaluatedFlags({}));
-				globalConfig.activityLog.enabled = false;
 
 				const ph = new PostHogClient(instanceSettings, globalConfig);
 				await ph.init();
@@ -717,36 +679,6 @@ describe('PostHog', () => {
 				}),
 			}),
 		);
-	});
-
-	describe('the activity-log override, which yields to the generic map', () => {
-		const createdAt = new Date();
-
-		afterEach(() => {
-			globalConfig.activityLog.enabled = false;
-			globalConfig.featureFlags.override = {};
-		});
-
-		it('force-enables the flag when the record is on', async () => {
-			globalConfig.activityLog.enabled = true;
-			const ph = new PostHogClient(instanceSettings, globalConfig);
-			await ph.init();
-
-			const flags = await ph.getFeatureFlags({ id: userId, createdAt });
-
-			expect(flags['114_instance_activity_context']).toBe(true);
-		});
-
-		it('lets an explicit override switch the read off while the record is on', async () => {
-			globalConfig.activityLog.enabled = true;
-			globalConfig.featureFlags.override = { '114_instance_activity_context': false };
-			const ph = new PostHogClient(instanceSettings, globalConfig);
-			await ph.init();
-
-			const flags = await ph.getFeatureFlags({ id: userId, createdAt });
-
-			expect(flags['114_instance_activity_context']).toBe(false);
-		});
 	});
 
 	describe('the cache ceiling', () => {

@@ -285,6 +285,16 @@ if the original `workItemId` is not in context. For alternate deterministic
 scenarios, pass `fixtureOverrides` keyed by simulated node name instead of trying
 to force data through the trigger.
 
+**`executions(action="run-step")` is a debugging tool, not a verification
+tool.** It runs one node and tells you what that node returns. It says nothing
+about the rest of the chain, so it never settles a verification obligation and
+never turns "partial coverage" into "verified". Use it to inspect one node —
+most often with `reuseExecutionId` on a node that failed a real run — and keep
+verifying with `verify-built-workflow`. A step run with `mockInput` proves even
+less: the result names the nodes whose output it invented in
+`mockedNodeNames`, and you must repeat that limitation in what you tell the
+user.
+
 **Reserve `executions(action="run")` for runs the user explicitly asked for**
 (e.g. "run it now", "execute it against my real data"). Never call it on your own
 to re-test, expand coverage, or "prove the full chain" of a workflow you just

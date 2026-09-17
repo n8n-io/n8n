@@ -80,15 +80,27 @@ describe('type availability policy repositories', () => {
 
 			expect(policy.id).toEqual(expect.any(String));
 			expect(policy.version).toBe(1);
-			expect(await policyRepo.findById(policy.id, ROOT)).toMatchObject({ rules: [DENY_SLACK] });
+			expect(await policyRepo.findByIdAndKind(policy.id, KIND, ROOT)).toMatchObject({
+				rules: [DENY_SLACK],
+			});
 		});
 
 		it('round-trips the rules document', async () => {
 			const policy = await createPolicy([DENY_SLACK, ALLOW_BASE]);
 
-			const stored = await policyRepo.findById(policy.id, ROOT);
+			const stored = await policyRepo.findByIdAndKind(policy.id, KIND, ROOT);
 
 			expect(stored?.rules).toEqual([DENY_SLACK, ALLOW_BASE]);
+		});
+
+		it('does not find a document of another kind by id alone', async () => {
+			const other = await policyRepo.createPolicy(
+				{ kind: 'other-kind', rules: [DENY_SLACK], updatedBy: 'user-1' },
+				ROOT,
+			);
+
+			expect(await policyRepo.findByIdAndKind(other.id, KIND, ROOT)).toBeNull();
+			expect(await policyRepo.findByIdAndKind(other.id, 'other-kind', ROOT)).not.toBeNull();
 		});
 
 		it('bumps the version when the rules change', async () => {
@@ -191,7 +203,7 @@ describe('type availability policy repositories', () => {
 			);
 
 			await expect(policyRepo.deletePolicy(policy.id, ROOT)).rejects.toThrow();
-			expect(await policyRepo.findById(policy.id, ROOT)).not.toBeNull();
+			expect(await policyRepo.findByIdAndKind(policy.id, KIND, ROOT)).not.toBeNull();
 		});
 
 		it('deletes a policy once it is detached', async () => {
@@ -206,7 +218,7 @@ describe('type availability policy repositories', () => {
 			await attachmentRepo.replaceAttachmentsForScope(scope.id, [], ROOT);
 			await policyRepo.deletePolicy(policy.id, ROOT);
 
-			expect(await policyRepo.findById(policy.id, ROOT)).toBeNull();
+			expect(await policyRepo.findByIdAndKind(policy.id, KIND, ROOT)).toBeNull();
 		});
 	});
 

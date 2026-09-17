@@ -45,15 +45,16 @@ describe('searchModels', () => {
 	let mockContext: Mocked<ILoadOptionsFunctions>;
 	let fetchSpy: ReturnType<typeof vi.fn>;
 	const secureLookup = vi.fn();
+	const egressFilter = {
+		validateUrl: vi.fn(),
+		createSecureLookup: vi.fn().mockReturnValue(secureLookup),
+	};
 
 	beforeEach(() => {
 		mockContext = {
 			getCredentials: vi.fn().mockResolvedValue({ apiKey: 'test-api-key' }),
 			helpers: {
-				getSecureEgressFilter: vi.fn().mockReturnValue({
-					validateUrl: vi.fn(),
-					createSecureLookup: vi.fn().mockReturnValue(secureLookup),
-				}),
+				getSecureEgressFilter: vi.fn().mockReturnValue(egressFilter),
 			},
 		} as unknown as Mocked<ILoadOptionsFunctions>;
 
@@ -84,7 +85,7 @@ describe('searchModels', () => {
 					'anthropic-version': '2023-06-01',
 				}),
 			}),
-			lookup: secureLookup,
+			egressFilter,
 		});
 		expect(result.results).toHaveLength(5);
 	});
