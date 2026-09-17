@@ -1,0 +1,214 @@
+packages/cli/src/active-workflow-manager.ts
+  s_6e5e6dade5599e::t_0f34e73579fd98 61,98,638-640,644
+packages/frontend/editor-ui/src/features/credentials/composables/useNodeCredentialOptions.ts
+  s_6e5e6dade5599e::t_bd22deedea2e8d 23-29,31-40,42,45-48,50-61,95
+  s_6e5e6dade5599e::t_aa76c5525ce3b7 30,41,43-44,49,62-63,93-94,96
+packages/frontend/editor-ui/src/features/credentials/composables/__tests__/groupCredentialOptions.test.ts
+  s_6e5e6dade5599e::t_4515c1c4ac1e88 1-2,5-7,9-10,24-26,29-33,36,39-40,49-50
+  s_6e5e6dade5599e::t_b455e7e3f067f3 3-4,8,11-23,27-28,34-35,37-38,41-48
+packages/cli/src/webhooks/webhook.service.ts
+  s_6e5e6dade5599e::t_0f34e73579fd98 475-477
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_6e5e6dade5599e::t_0f34e73579fd98 2878-2880
+  s_6e5e6dade5599e::t_587d93261d1efd 2257-2258
+  s_6e5e6dade5599e::t_5261a325bac010 2412
+packages/workflow/src/node-helpers.ts
+  s_6e5e6dade5599e::t_0f34e73579fd98 515-534
+  s_6e5e6dade5599e::t_46f1b9c5f18f73 514
+packages/cli/src/workflows/triggers/trigger-execution-context.factory.ts
+  s_6e5e6dade5599e::t_0f34e73579fd98 50,89,526-527
+granular-credential-sharing.md
+  s_6e5e6dade5599e::t_0f34e73579fd98 1-499
+packages/@n8n/permissions/src/scope-information.ts
+  s_6e5e6dade5599e::t_0f34e73579fd98 110-114
+packages/cli/src/credentials/credentials.service.ee.ts
+  s_6e5e6dade5599e::t_0f34e73579fd98 11,44-47,53,97
+packages/cli/test/integration/credentials/credentials.api.ee.test.ts
+  s_6e5e6dade5599e::t_b3afef5106a5b3 290-294,298,301-307,309-313,316-355,400-418
+  s_6e5e6dade5599e::t_51162b858ebe28 527-530,541-544,563-566,578-581
+  s_6e5e6dade5599e::t_6eb7516f948cdf 356-399
+  s_6e5e6dade5599e::t_e5f8784e8e0412 1652-1746
+packages/cli/src/credentials/credentials.service.ts
+  s_6e5e6dade5599e::t_e271feb9e9bcbb 195-201,650,696-699
+  s_6e5e6dade5599e::t_e38ca7d3606ca7 651-663,676-679,682-683,686-690,692-693
+  s_6e5e6dade5599e::t_7ebdff0616890b 635-647
+  s_6e5e6dade5599e::t_0f34e73579fd98 700
+  s_6e5e6dade5599e::t_a6271c41f7125b 648-649
+  s_6e5e6dade5599e::t_e7ebe24da2ed29 701-703
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.ts
+  s_6e5e6dade5599e::t_0f34e73579fd98 3440
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.test.ts
+  s_6e5e6dade5599e::t_68b1ef5b6d237e 310-311,313-315,323-334,347-350,359
+  s_6e5e6dade5599e::t_6ae20d9c432ad4 156,290-308,312,318-322,335-336,338-346,362
+  s_6e5e6dade5599e::t_545a0625f46345 309,316-317,337,351-358,360-361
+  s_6e5e6dade5599e::t_29010a733b9b59 363-364
+packages/cli/src/modules/redaction/executions/__tests__/execution-redaction.service.test.ts
+  s_6e5e6dade5599e::t_0f34e73579fd98 4,42,1001-1019,1021-1030,1032-1060,1062-1073,1075-1076
+  s_6e5e6dade5599e::t_c20ca7202f6e2f 8,27,43,50,1020,1031,1061,1074
+  s_6e5e6dade5599e::t_3c21d3793c155b 1077
+granular-credential-sharing-showcases.md
+  s_6e5e6dade5599e::t_0f34e73579fd98 1-312
+packages/cli/src/modules/workflow-reviews.ee/__tests__/support/workflow-review-test-data.ts
+  s_6e5e6dade5599e::t_0f34e73579fd98 61-62
+packages/@n8n/db/src/entities/types-db.ts
+  s_6e5e6dade5599e::t_0f34e73579fd98 161,163-167
+packages/cli/src/scheduling/schedule-trigger-node/schedule-trigger-task-handler.ts
+  s_6e5e6dade5599e::t_0f34e73579fd98 16,46,85-86
+packages/cli/src/workflows/triggers/__tests__/trigger-execution-context.factory.test.ts
+  s_6e5e6dade5599e::t_0f34e73579fd98 121,1090
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.test.ts
+  s_6e5e6dade5599e::t_0f34e73579fd98 4817,4842
+packages/cli/src/workflows/workflow.service.ee.ts
+  s_6e5e6dade5599e::t_3795b04aa48c73 139,149-154
+  s_6e5e6dade5599e::t_0f34e73579fd98 140-141,155
+packages/cli/src/credentials/__tests__/credentials.service.ee.test.ts
+  s_6e5e6dade5599e::t_0f34e73579fd98 9,67-95
+  s_6e5e6dade5599e::t_e6801941b0a0a4 96
+packages/cli/src/credentials/__tests__/credentials.service.test.ts
+  s_6e5e6dade5599e::t_a84b4ba233741c 2705-2740,2756,2782
+packages/cli/src/scheduling/schedule-trigger-node/__tests__/schedule-trigger-task-handler.test.ts
+  s_6e5e6dade5599e::t_0f34e73579fd98 44
+packages/frontend/editor-ui/src/app/stores/workflowDocument/useWorkflowDocumentUsedCredentials.test.ts
+  s_6e5e6dade5599e::t_0f34e73579fd98 15
+packages/cli/src/services/__tests__/engine-v2-dispatcher.service.test.ts
+  s_6e5e6dade5599e::t_0f34e73579fd98 296-301
+packages/@n8n/permissions/src/roles/custom-role-scopes.ee.ts
+  s_6e5e6dade5599e::t_0f34e73579fd98 29
+packages/@n8n/db/src/repositories/workflow-publish-history.repository.ts
+  s_6e5e6dade5599e::t_0f34e73579fd98 50-77
+packages/cli/src/webhooks/__tests__/live-webhooks.test.ts
+  s_6e5e6dade5599e::t_0f34e73579fd98 71
+packages/cli/src/credentials/credentials.controller.ts
+  s_6e5e6dade5599e::t_0f34e73579fd98 494-495,497,499
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectMoveResourceModal.test.ts
+  s_6e5e6dade5599e::t_0f34e73579fd98 187,194
+packages/frontend/editor-ui/src/features/credentials/credentials.types.ts
+  s_6e5e6dade5599e::t_02953d4905f0eb 20-25
+  s_6e5e6dade5599e::t_0f34e73579fd98 42,44-48
+packages/@n8n/permissions/src/constants.ee.ts
+  s_6e5e6dade5599e::t_0f34e73579fd98 16-17,19
+packages/@n8n/permissions/src/roles/__tests__/credential-use-scope.test.ts
+  s_6e5e6dade5599e::t_0f34e73579fd98 1-58
+packages/cli/src/workflows/workflow.service.ts
+  s_6e5e6dade5599e::t_0f34e73579fd98 1831-1832,1834-1836,1838-1840,1842-1846,1848-1852,1854
+  s_6e5e6dade5599e::t_d315e8545e6568 43,133,991,1833,1837,1841,1847,1853
+  s_6e5e6dade5599e::t_8ee9f0ea04e255 1855-1856
+packages/cli/src/modules/agents/__tests__/agent-vector-stores.service.test.ts
+  s_6e5e6dade5599e::t_dfdf4a1bee336a 74
+granular-credential-sharing-tickets.md
+  s_6e5e6dade5599e::t_0f34e73579fd98 1-346
+packages/cli/test/integration/workflows/workflow.service.test.ts
+  s_6e5e6dade5599e::t_0f34e73579fd98 129-130,148
+packages/cli/src/workflows/workflow-creation.service.ts
+  s_6e5e6dade5599e::t_0f34e73579fd98 125-126,128,247,260
+packages/cli/test/integration/ai/ai.api.test.ts
+  s_6e5e6dade5599e::t_0f34e73579fd98 87
+packages/cli/src/modules/redaction/executions/execution-redaction.service.ts
+  s_6e5e6dade5599e::t_d315e8545e6568 12,51,336
+  s_6e5e6dade5599e::t_0f34e73579fd98 2,6,103-107,142-154,197,199-205,212,219,271-272,285-286,294,307-335,337-346
+  s_6e5e6dade5599e::t_3e611a89d01191 347-348
+packages/frontend/editor-ui/src/app/composables/useNodeHelpers.test.ts
+  s_6e5e6dade5599e::t_0f34e73579fd98 251,289,297,329,337,360-386
+packages/frontend/editor-ui/src/app/composables/useNodeHelpers.ts
+  s_6e5e6dade5599e::t_0f34e73579fd98 1,36-39,153-159,172-176
+  s_6e5e6dade5599e::t_9d0d923cec28ee 143-144,146-149
+packages/cli/src/executions/pre-execution-checks/__tests__/credentials-permission-checker.test.ts
+  s_6e5e6dade5599e::t_a781f50cf48099 706-707,710,720
+  s_6e5e6dade5599e::t_13d02c9516edc4 145-149,166-167
+  s_6e5e6dade5599e::t_0f34e73579fd98 629,663,665-668,673-675,680-682,684-685,688-690,692-696,698-705,708-709,711-712,714-717,730-731,733
+  s_6e5e6dade5599e::t_c20ca7202f6e2f 15,30,39,70,301,683,687,691,697,713
+  s_6e5e6dade5599e::t_65fb0cd11959d6 69,664,669-672,676-679,686,718-719,721-729,732,734-736
+  s_6e5e6dade5599e::t_03e33859aec86e 737
+packages/frontend/editor-ui/src/features/ndv/settings/components/NodeSettings.vue
+  s_6e5e6dade5599e::t_9d0d923cec28ee 168-170,172-173,715
+  s_6e5e6dade5599e::t_0f34e73579fd98 167,171
+packages/cli/test/integration/workflows/workflows.controller.test.ts
+  s_6e5e6dade5599e::t_0f34e73579fd98 148
+packages/cli/src/executions/pre-execution-checks/credentials-permission-checker.ts
+  s_6e5e6dade5599e::t_6933a8a690edfe 148,153-157,200-203,208,214-215,228,244
+  s_6e5e6dade5599e::t_a781f50cf48099 163-167
+  s_6e5e6dade5599e::t_0f34e73579fd98 32,34-35,37-45,48-50,109-111,113,126,141,173-176,180,182-183,186-190,192
+  s_6e5e6dade5599e::t_a9a373f337a34f 9,125,127-139,158-162,169-172,177-179,181,184-185,191,193
+  s_6e5e6dade5599e::t_6f06f5233409c2 10,33,36,46-47,75
+packages/cli/src/workflow-runner.ts
+  s_6e5e6dade5599e::t_0f34e73579fd98 273
+packages/cli/src/credentials/credentials-finder.service.ts
+  s_6e5e6dade5599e::t_0f34e73579fd98 42-45,48-50
+packages/cli/src/workflows/workflow-validation.service.ts
+  s_6e5e6dade5599e::t_0f34e73579fd98 8,431-432
+packages/cli/test/integration/credentials/credentials.api.test.ts
+  s_6e5e6dade5599e::t_0f34e73579fd98 203,213-215,237,252,283,303,367,377-379,388-394,449,469,492,908,1302
+packages/cli/src/webhooks/live-webhooks.ts
+  s_6e5e6dade5599e::t_0f34e73579fd98 23,53,142-144
+packages/cli/src/workflows/__tests__/workflow-creation.service.test.ts
+  s_6e5e6dade5599e::t_0f34e73579fd98 154,285
+packages/cli/src/__tests__/workflow-execute-additional-data.test.ts
+  s_6e5e6dade5599e::t_0f34e73579fd98 345-360
+packages/cli/src/modules/redaction/executions/strategies/full-item-redaction.strategy.ts
+  s_6e5e6dade5599e::t_0f34e73579fd98 31-35
+packages/cli/src/services/engine-v2-dispatcher.service.ts
+  s_6e5e6dade5599e::t_0f34e73579fd98 93
+packages/cli/src/workflow-execute-additional-data.ts
+  s_6e5e6dade5599e::t_0f34e73579fd98 585-593
+packages/@n8n/db/src/repositories/credentials.repository.ts
+  s_6e5e6dade5599e::t_0f34e73579fd98 74-82
+packages/@n8n/permissions/src/roles/scopes/project-scopes.ee.ts
+  s_6e5e6dade5599e::t_0f34e73579fd98 34,98,149,178
+packages/@n8n/db/src/repositories/shared-credentials.repository.ts
+  s_6e5e6dade5599e::t_4ccd88f5dccd5d 125-136
+  s_6e5e6dade5599e::t_0f34e73579fd98 261-262,266
+packages/@n8n/permissions/src/roles/scopes/global-scopes.ee.ts
+  s_6e5e6dade5599e::t_0f34e73579fd98 23
+packages/cli/src/modules/redaction/executions/strategies/__tests__/node-defined-field-redaction.strategy.test.ts
+  s_6e5e6dade5599e::t_0f34e73579fd98 16
+packages/frontend/editor-ui/src/app/stores/workflowDocument.store.test.ts
+  s_6e5e6dade5599e::t_0f34e73579fd98 329
+packages/cli/src/credentials/credential-usability.service.ts
+  s_6e5e6dade5599e::t_c9047d962e8455 1-65
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.vue
+  s_6e5e6dade5599e::t_68b1ef5b6d237e 1447
+  s_6e5e6dade5599e::t_587d93261d1efd 1064,1067,1070,1076-1078
+  s_6e5e6dade5599e::t_b455e7e3f067f3 1079,1757-1765
+  s_6e5e6dade5599e::t_148c4c970f682f 50,52,1065-1066,1068-1069,1071-1075,1443-1446,1448-1454,1456-1462,1466,1471,1473,1488,1492,1496,1502-1503
+  s_6e5e6dade5599e::t_b3a75a7d2df53c 1464-1465,1467-1470,1472,1474-1487,1489-1491,1493-1495,1497-1500
+  s_6e5e6dade5599e::t_850db489bbd000 1463,1501
+  s_6e5e6dade5599e::t_4642aaecee5362 1080
+packages/cli/src/modules/agents/__tests__/agents-credential-provider.test.ts
+  s_6e5e6dade5599e::t_dfdf4a1bee336a 58,218
+packages/cli/src/modules/redaction/executions/execution-redaction.interfaces.ts
+  s_6e5e6dade5599e::t_0f34e73579fd98 19-22
+packages/cli/src/__tests__/active-workflow-manager.test.ts
+  s_6e5e6dade5599e::t_0f34e73579fd98 97,236,449,709,896-897,921,1375,1564,1644
+packages/cli/src/modules/redaction/executions/strategies/__tests__/full-item-redaction.strategy.test.ts
+  s_6e5e6dade5599e::t_0f34e73579fd98 14
+packages/cli/src/workflows/workflow-publisher.service.ts
+  s_6e5e6dade5599e::t_0f34e73579fd98 1-48
+packages/@n8n/permissions/src/roles/scopes/credential-sharing-scopes.ee.ts
+  s_6e5e6dade5599e::t_0f34e73579fd98 5,17-21
+packages/frontend/editor-ui/src/features/core/folders/components/MoveToFolderModal.test.ts
+  s_6e5e6dade5599e::t_0f34e73579fd98 115,128
+packages/frontend/editor-ui/src/features/core/folders/folders.store.test.ts
+  s_6e5e6dade5599e::t_0f34e73579fd98 191
+packages/cli/src/workflows/__tests__/workflow.service.test.ts
+  s_6e5e6dade5599e::t_0f34e73579fd98 117,134-135,487,504-505,1272,1289-1290,1984-1986,2002-2003,2127-2129,2145-2146,2435,2452-2453,2606,2623-2624,2788-2790,2806-2807,2893-2895,2911-2912
+packages/@n8n/permissions/src/__tests__/__snapshots__/scope-information.test.ts.snap
+  s_6e5e6dade5599e::t_7b4d390e87bfb9 33
+packages/cli/test/integration/workflows/workflows.controller.ee.test.ts
+  s_6e5e6dade5599e::t_1a074e3fc50a76 814-815,825-827,832-833,1227-1261
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "067130b2cfe40ab3078fe6ba530a7ded6ddf75a3",
+  "prompts": {},
+  "sessions": {
+    "s_6e5e6dade5599e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "877ad200-a326-4a16-a593-edd12c995d4b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}
