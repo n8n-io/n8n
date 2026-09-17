@@ -79,4 +79,53 @@ describe('AgentIntegrationSchema', () => {
 		});
 		expect(result.success).toBe(false);
 	});
+
+	describe('action approval', () => {
+		it.each(['slack', 'telegram', 'discord', 'linear'])(
+			'accepts selected actions on a %s integration',
+			(type) => {
+				const result = AgentIntegrationSchema.safeParse({
+					type,
+					credentialId: 'cred-123',
+					approval: { mode: 'selected', tools: ['send_channel_message'] },
+				});
+				expect(result.success).toBe(true);
+			},
+		);
+
+		it('leaves approval undefined when it is absent', () => {
+			const result = AgentIntegrationSchema.safeParse({
+				type: 'slack',
+				credentialId: 'cred-123',
+			});
+			expect(result.success && result.data.approval).toBeUndefined();
+		});
+
+		it('accepts the global mode without a list', () => {
+			const result = AgentIntegrationSchema.safeParse({
+				type: 'slack',
+				credentialId: 'cred-123',
+				approval: { mode: 'global' },
+			});
+			expect(result.success).toBe(true);
+		});
+
+		it('rejects selected approval with nothing selected', () => {
+			const result = AgentIntegrationSchema.safeParse({
+				type: 'slack',
+				credentialId: 'cred-123',
+				approval: { mode: 'selected', tools: [] },
+			});
+			expect(result.success).toBe(false);
+		});
+
+		it('rejects an unknown approval mode', () => {
+			const result = AgentIntegrationSchema.safeParse({
+				type: 'slack',
+				credentialId: 'cred-123',
+				approval: { mode: 'always' },
+			});
+			expect(result.success).toBe(false);
+		});
+	});
 });

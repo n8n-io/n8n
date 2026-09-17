@@ -1,9 +1,17 @@
-import type { InterruptibleToolContext, ToolContext } from '@n8n/agents';
+import {
+	APPROVAL_RESUME_SCHEMA,
+	type InterruptibleToolContext,
+	type ToolContext,
+} from '@n8n/agents';
 import { isRecord } from '@n8n/utils/is-record';
 import type { z } from 'zod';
 
 import { isTaskRunMemoryResourceId } from '../utils/agent-memory-scope';
-import { messageSchema, type IntegrationCardComponent } from './integration-tool-definitions';
+import {
+	actionNeedsApproval,
+	messageSchema,
+	type IntegrationCardComponent,
+} from './integration-tool-definitions';
 import { INTEGRATION_ERROR_CODES } from './integration-error-codes';
 import type {
 	IntegrationAction,
@@ -149,6 +157,8 @@ export async function executeActionToolOperation(params: {
 	interruptCtx?: InterruptibleToolContext;
 	currentMessageContext?: IntegrationMessageContext;
 	allowSuspend: boolean;
+	/** Action the user just approved, so the gate below lets it through once. */
+	approvedAction?: string;
 }): Promise<unknown> {
 	const {
 		operation,
@@ -158,6 +168,7 @@ export async function executeActionToolOperation(params: {
 		ctx,
 		interruptCtx,
 		allowSuspend,
+		approvedAction,
 	} = params;
 	const persistence = ctx.persistence;
 	const message = parseMessage(operation.input.message);
@@ -173,6 +184,36 @@ export async function executeActionToolOperation(params: {
 					'Batch actions cannot include cards that wait for a user response. Send that action separately.',
 			},
 		};
+	}
+
+	const needsApproval =
+		operation.action !== approvedAction &&
+		actionNeedsApproval(descriptor.approval, operation.action);
+
+	if (needsApproval) {
+		// A batch cannot suspend, so a gated action inside one has to be refused
+		// rather than run — otherwise batching would be a way around the gate.
+		if (!allowSuspend || !interruptCtx) {
+			return {
+				ok: false,
+				error: {
+					code: INTEGRATION_ERROR_CODES.ACTION_NEEDS_APPROVAL,
+					message: `The action "${operation.action}" needs approval, which cannot be asked for here. Send that action on its own.`,
+				},
+			};
+		}
+
+		return await interruptCtx.suspend(
+			{
+				type: 'approval',
+				toolName: operation.action,
+				displayName: describeActionForApproval(operation),
+				args: actionInput,
+			},
+			// The card's buttons are shaped from this schema, so the decision comes
+			// back as `{ approved }` rather than the tool's own resume shape.
+			{ resumeSchema: APPROVAL_RESUME_SCHEMA },
+		);
 	}
 
 	let currentMessageContext = params.currentMessageContext;
@@ -241,6 +282,19 @@ export async function executeActionToolOperation(params: {
 		integrationConnectionId: descriptor.integrationConnectionId,
 		messageContext: actionResult.messageContext,
 	});
+}
+
+/**
+ * Label for the approval card. The card only shows this line, so it has to name
+ * the destination — approving a bare `send_channel_message` tells the user
+ * nothing about where the message goes.
+ */
+function describeActionForApproval(operation: RawActionToolOperation): string {
+	const { channelId, userId, messageId, issueId } = operation.input;
+	const target = [channelId, userId, messageId, issueId].find(
+		(value) => typeof value === 'string' && value.length > 0,
+	);
+	return target ? `${operation.action} → ${String(target)}` : operation.action;
 }
 
 function isCurrentContextQuery(query: IntegrationContextQuery): boolean {

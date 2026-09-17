@@ -1,6 +1,6 @@
 import { EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, getChildNodes, type IConnections } from 'n8n-workflow';
 
-import type { AgentIntegrationSettings } from './agent-integration.schema';
+import type { AgentApproval, AgentIntegrationSettings } from './agent-integration.schema';
 import type { AgentJsonConfig } from './agent-json-config.schema';
 import type { AgentBackgroundJobSignal } from './background-job';
 
@@ -118,6 +118,14 @@ export interface ChatIntegrationDescriptor {
 	capabilities?: string[];
 	useIntegrationWhen?: string[];
 	useNodeToolWhen?: string[];
+	/** Actions a user can hold for approval, in the order they should be listed. */
+	approvableActions?: ChatIntegrationApprovableAction[];
+}
+
+export interface ChatIntegrationApprovableAction {
+	name: string;
+	/** Pre-selected when a user turns approval on for this channel. */
+	sensitive: boolean;
 }
 
 /**
@@ -135,6 +143,8 @@ export interface AgentIntegrationStatusEntry {
 	type: string;
 	credentialId?: string;
 	settings?: AgentIntegrationSettings;
+	/** Channel actions that need approval before they run. */
+	approval?: AgentApproval;
 	/** Authoritative per-channel state; prefer this over the response rollup. */
 	status: AgentChannelRuntimeStatus;
 	/** Present only when `status` is `error`. */

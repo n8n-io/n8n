@@ -1,4 +1,8 @@
-import type { AgentIntegrationConfig, N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
+import type {
+	AgentApproval,
+	AgentIntegrationConfig,
+	N8N_CHAT_INTEGRATION_TYPE,
+} from '@n8n/api-types';
 import type { z } from 'zod';
 
 import type { IntegrationErrorCode } from './integration-error-codes';
@@ -108,7 +112,13 @@ export interface IntegrationToolOperationDefinition<Name extends string = string
 export type IntegrationContextQueryDefinition =
 	IntegrationToolOperationDefinition<IntegrationContextQuery>;
 
-export type IntegrationActionDefinition = IntegrationToolOperationDefinition<IntegrationAction>;
+export type IntegrationActionDefinition = IntegrationToolOperationDefinition<IntegrationAction> & {
+	/**
+	 * The action reaches outside the conversation the agent was addressed in.
+	 * These are the actions a channel pre-selects when approval is turned on.
+	 */
+	sensitive?: boolean;
+};
 
 export interface IntegrationToolConnectionDescriptor {
 	agentId?: string;
@@ -122,6 +132,8 @@ export interface IntegrationToolConnectionDescriptor {
 	actionToolDefinitions: IntegrationActionDefinition[];
 	contextToolGuidance?: string[];
 	actionToolGuidance?: string[];
+	/** Actions this channel gates behind human approval. Absent = none. */
+	approval?: AgentApproval;
 }
 
 export interface IntegrationMessageContextStore {

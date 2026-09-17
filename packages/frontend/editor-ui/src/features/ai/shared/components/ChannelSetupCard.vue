@@ -60,6 +60,7 @@ const {
 	fetchStatus,
 	connectedCredentials,
 	integrationSettings,
+	integrationApproval,
 	loadingMap,
 	errorMessages,
 	errorIsConflict,
@@ -207,7 +208,11 @@ async function saveChannelConfig() {
 	connectionInFlight.value = true;
 	try {
 		await channelViewRef.value?.beforeSave?.();
-		await connect(props.integrationType, credentialId, channelViewRef.value?.currentSettings);
+		// Connect replaces the whole entry, so an approval already on it must ride along.
+		const approval = integrationApproval.value[props.integrationType];
+		await connect(props.integrationType, credentialId, channelViewRef.value?.currentSettings, {
+			...(approval ? { approval } : {}),
+		});
 		notifyAgentUpdated();
 		finish(true);
 	} catch {
