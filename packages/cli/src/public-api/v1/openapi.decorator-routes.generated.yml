@@ -43,6 +43,9 @@ paths:
   /projects/{projectId}/folders:
     get:
       $ref: ./handlers/projects/spec/paths/listFolders.generated.yml
+  /projects/{projectId}/folders/{folderId}:
+    get:
+      $ref: ./handlers/projects/spec/paths/getFolder.generated.yml
   /node-type-policies/instance:
     get:
       $ref: ./handlers/node-type-policies/spec/paths/getInstancePolicy.generated.yml
@@ -185,6 +188,8 @@ paths:
       $ref: ./handlers/tags/spec/paths/getTag.generated.yml
     put:
       $ref: ./handlers/tags/spec/paths/updateTag.generated.yml
+    delete:
+      $ref: ./handlers/tags/spec/paths/deleteTag.generated.yml
   /variables:
     get:
       $ref: ./handlers/variables/spec/paths/getVariables.generated.yml
