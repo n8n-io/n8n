@@ -5,7 +5,6 @@ import { useToast } from '@n8n/composables/useToast';
 import { i18n } from '@n8n/i18n';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
-import { useInstanceAiMcpConnectionsExperiment } from '@/experiments/instanceAiMcpConnections';
 import DefaultDetailBody from '@/features/shared/toolsConnection/DefaultDetailBody.vue';
 import McpDetailBody from '@/features/shared/toolsConnection/McpDetailBody.vue';
 import McpToolSettingsContent from '@/features/shared/toolsConnection/McpToolSettingsContent.vue';
@@ -65,11 +64,8 @@ const browserUseTelemetry = useInstanceAiBrowserUseTelemetry();
 const computerUseTelemetry = useInstanceAiComputerUseTelemetry();
 const settingsStore = useInstanceAiSettingsStore();
 const toast = useToast();
-const { isFeatureEnabled: isMcpFeatureEnabled } = useInstanceAiMcpConnectionsExperiment();
 
-const isMcpEnabled = computed(
-	() => isMcpFeatureEnabled.value && settingsStore.settings?.mcpAccessEnabled,
-);
+const isMcpEnabled = computed(() => settingsStore.isMcpAvailable);
 // The store owns Computer Use availability, so every entry point and the message
 // payload report the same thing.
 const isComputerUseEnabled = computed(() => settingsStore.isComputerUseAvailable);

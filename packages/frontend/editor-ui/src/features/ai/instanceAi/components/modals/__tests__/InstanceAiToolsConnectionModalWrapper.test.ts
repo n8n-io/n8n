@@ -19,10 +19,6 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 	i18n: { baseText: (key: string) => key },
 }));
 
-vi.mock('@/experiments/instanceAiMcpConnections', () => ({
-	useInstanceAiMcpConnectionsExperiment: () => ({ isFeatureEnabled: { value: true } }),
-}));
-
 vi.mock('@/experiments/instanceAiComputerUse', () => ({
 	useInstanceAiComputerUseExperiment: () => ({
 		isFeatureEnabled: {
@@ -119,6 +115,7 @@ vi.mock('../../../composables/useMcpServerConnect', () => ({
 vi.mock('../../../instanceAiSettings.store', () => ({
 	useInstanceAiSettingsStore: () => ({
 		settings: { mcpAccessEnabled: true },
+		isMcpAvailable: true,
 		isComputerUseAvailable: true,
 		isBrowserUseAvailable: true,
 		isGatewayConnected: false,

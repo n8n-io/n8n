@@ -250,7 +250,6 @@ describe('PostHog', () => {
 				globalConfig.evaluation.collectionsEnabled = false;
 				globalConfig.evaluation.configEvalsEnabled = false;
 				globalConfig.evaluation.agentEvalsEnabled = false;
-				globalConfig.instanceAi.mcpConnectionsEnabled = false;
 				globalConfig.instanceAi.canvasNodeContextEnabled = false;
 				globalConfig.instanceAi.folderExplorationEnabled = false;
 				globalConfig.featureFlags.override = {};
@@ -278,18 +277,6 @@ describe('PostHog', () => {
 				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
 
 				expect(flags).toMatchObject({ '088_config_evaluations': 'variant' });
-			});
-
-			it('force-enables the MCP-connections variant when N8N_INSTANCE_AI_MCP_CONNECTIONS_ENABLED is set', async () => {
-				(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(mockEvaluatedFlags({}));
-				globalConfig.instanceAi.mcpConnectionsEnabled = true;
-
-				const ph = new PostHogClient(instanceSettings, globalConfig);
-				await ph.init();
-
-				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
-
-				expect(flags).toMatchObject({ '089_instance_ai_mcp_connections': 'variant' });
 			});
 
 			it('force-enables the folder-exploration flag when N8N_INSTANCE_AI_FOLDER_EXPLORATION_ENABLED is set', async () => {
@@ -494,7 +481,6 @@ describe('PostHog', () => {
 				globalConfig.evaluation.collectionsEnabled = true;
 				globalConfig.evaluation.configEvalsEnabled = true;
 				globalConfig.evaluation.agentEvalsEnabled = true;
-				globalConfig.instanceAi.mcpConnectionsEnabled = true;
 				globalConfig.instanceAi.canvasNodeContextEnabled = true;
 
 				const ph = new PostHogClient(instanceSettings, globalConfig);
@@ -506,7 +492,6 @@ describe('PostHog', () => {
 					'084_eval_collections': true,
 					'088_config_evaluations': 'variant',
 					'101_agent_evals': true,
-					'089_instance_ai_mcp_connections': 'variant',
 					'104_canvas_aia_node_context': true,
 				});
 			});

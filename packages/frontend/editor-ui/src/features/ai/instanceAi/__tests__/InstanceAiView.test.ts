@@ -132,6 +132,7 @@ describe('InstanceAiView', () => {
 		useSettingsStore().moduleSettings = {
 			'instance-ai': {
 				enabled: true,
+				mcpConnectionsAvailable: true,
 				localGatewayDisabled: false,
 				browserUseEnabled: true,
 				proxyEnabled: false,
@@ -162,6 +163,7 @@ describe('InstanceAiView', () => {
 		useSettingsStore().moduleSettings = {
 			'instance-ai': {
 				enabled: true,
+				mcpConnectionsAvailable: true,
 				localGatewayDisabled: false,
 				browserUseEnabled: true,
 				proxyEnabled: false,
@@ -187,6 +189,7 @@ describe('InstanceAiView', () => {
 		appSettingsStore.moduleSettings = {
 			'instance-ai': {
 				enabled: true,
+				mcpConnectionsAvailable: true,
 				localGatewayDisabled: false,
 				browserUseEnabled: true,
 				proxyEnabled: false,

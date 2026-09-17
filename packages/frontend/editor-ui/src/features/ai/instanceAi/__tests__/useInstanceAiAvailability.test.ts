@@ -25,6 +25,7 @@ function setModuleSettings(overrides: Partial<InstanceAiModuleSettings> = {}) {
 	settingsStore.moduleSettings = {
 		'instance-ai': {
 			enabled: true,
+			mcpConnectionsAvailable: true,
 			localGatewayDisabled: false,
 			browserUseEnabled: true,
 			proxyEnabled: false,
