@@ -969,6 +969,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				role: 'user',
 				content: text,
 				status: 'success',
+				createdAt: Date.now(),
 			});
 		}
 
@@ -1029,6 +1030,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			role: 'user',
 			content: trimmed,
 			status: 'success',
+			createdAt: Date.now(),
 			...(files?.length && {
 				attachments: files.map((file) => ({
 					fileName: file.name,

@@ -265,6 +265,7 @@ export type { BuiltFileStore } from './types/sdk/file-store';
 export type { HandlerExecutor } from './types/sdk/handler-executor';
 export {
 	filterLlmMessages,
+	getCreatedAt,
 	isLlmMessage,
 } from './sdk/message';
 export { fetchProviderCatalog } from './sdk/catalog';

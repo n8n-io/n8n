@@ -4,11 +4,14 @@ import {
 	executionsToMessagesDto,
 } from '../utils/execution-to-message-mapper';
 
+const FIXED_CREATED_AT = new Date('2024-01-15T10:00:00.000Z');
+
 function execution(overrides: Partial<AgentExecution> = {}): AgentExecution {
 	return {
 		id: 'execution-1',
 		userMessage: 'Hello',
 		timeline: null,
+		createdAt: FIXED_CREATED_AT,
 		...overrides,
 	} as unknown as AgentExecution;
 }
@@ -41,6 +44,7 @@ describe('execution-to-message-mapper', () => {
 					content: [],
 					executionStatus: status,
 					backgroundTaskSignal: signal,
+					createdAt: FIXED_CREATED_AT.toISOString(),
 				},
 			]);
 		},
@@ -189,6 +193,7 @@ describe('execution-to-message-mapper', () => {
 				role: 'user',
 				content: [{ type: 'text', text: 'Hello' }],
 				executionId: 'execution-1',
+				createdAt: FIXED_CREATED_AT.toISOString(),
 			},
 			{
 				id: 'execution-1:assistant',
@@ -208,6 +213,7 @@ describe('execution-to-message-mapper', () => {
 					{ type: 'text', text: 'Done.' },
 				],
 				executionId: 'execution-1',
+				createdAt: FIXED_CREATED_AT.toISOString(),
 			},
 		]);
 	});
@@ -276,6 +282,7 @@ describe('execution-to-message-mapper', () => {
 				role: 'user',
 				content: [{ type: 'text', text: 'Hello' }],
 				executionId: 'execution-1',
+				createdAt: FIXED_CREATED_AT.toISOString(),
 			},
 			{
 				id: 'execution-1:assistant',
@@ -293,6 +300,7 @@ describe('execution-to-message-mapper', () => {
 					},
 				],
 				executionId: 'execution-1',
+				createdAt: FIXED_CREATED_AT.toISOString(),
 			},
 		]);
 	});
@@ -318,6 +326,7 @@ describe('execution-to-message-mapper', () => {
 				},
 			],
 			executionId: 'execution-1',
+			createdAt: FIXED_CREATED_AT.toISOString(),
 		});
 	});
 
@@ -360,6 +369,7 @@ describe('execution-to-message-mapper', () => {
 			executionId: 'execution-1',
 			executionStatus: 'error',
 			executionError: 'Model request failed',
+			createdAt: FIXED_CREATED_AT.toISOString(),
 		});
 	});
 
@@ -441,6 +451,7 @@ describe('execution-to-message-mapper', () => {
 				role: 'user',
 				content: [{ type: 'text', text: 'Show me an action' }],
 				executionId: 'execution-suspended',
+				createdAt: FIXED_CREATED_AT.toISOString(),
 			},
 			{
 				id: 'execution-suspended:assistant',
@@ -469,12 +480,14 @@ describe('execution-to-message-mapper', () => {
 					},
 				],
 				executionId: 'execution-suspended',
+				createdAt: FIXED_CREATED_AT.toISOString(),
 			},
 			{
 				id: 'execution-resumed:assistant',
 				role: 'assistant',
 				content: [{ type: 'text', text: 'Approved.' }],
 				executionId: 'execution-resumed',
+				createdAt: FIXED_CREATED_AT.toISOString(),
 			},
 		]);
 	});
