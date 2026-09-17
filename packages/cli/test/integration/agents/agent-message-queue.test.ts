@@ -36,6 +36,7 @@ import type { ChatIntegrationService } from '@/modules/agents/integrations/chat-
 import type { N8NCheckpointStorage } from '@/modules/agents/integrations/n8n-checkpoint-storage';
 import { AgentExecutionRepository } from '@/modules/agents/repositories/agent-execution.repository';
 import { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
+import { AgentChatAttachmentRepository } from '@/modules/agents/repositories/agent-chat-attachment.repository';
 import { AgentMessageQueueRepository } from '@/modules/agents/repositories/agent-message-queue.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
@@ -47,6 +48,7 @@ import { retryUntil } from '../shared/retry-until';
 
 describe('agent message queue', () => {
 	let repository: AgentMessageQueueRepository;
+	let attachmentRepository: AgentChatAttachmentRepository;
 	let agents: AgentRepository;
 	let agentId: string;
 	let projectId: string;
@@ -172,6 +174,7 @@ describe('agent message queue', () => {
 		await testModules.loadModules(['agents']);
 		await testDb.init();
 		repository = Container.get(AgentMessageQueueRepository);
+		attachmentRepository = Container.get(AgentChatAttachmentRepository);
 		agents = Container.get(AgentRepository);
 		executions = new AgentExecutionService(
 			mock(),
@@ -804,7 +807,7 @@ describe('agent message queue', () => {
 		await main.recover();
 
 		expect(await repository.existsBy({ id: stale.id })).toBe(true);
-		expect(attachments.deleteByIds).not.toHaveBeenCalled();
+		expect(attachments.deleteStoredBytes).not.toHaveBeenCalled();
 		staleRead.mockRestore();
 	});
 
@@ -817,6 +820,20 @@ describe('agent message queue', () => {
 			preview('lost', 'lost-preview', [
 				{ id: 'unused-file', fileName: 'note.txt', mimeType: 'text/plain', sizeBytes: 1 },
 			]),
+		);
+		await attachmentRepository.save(
+			attachmentRepository.create({
+				id: 'unused-file',
+				agentId,
+				projectId,
+				threadId: 'lost-preview',
+				resourceId: 'user',
+				binaryDataId: 'filesystem-v2:unused-file',
+				fileName: 'note.txt',
+				mimeType: 'text/plain',
+				fileSizeBytes: 1,
+				source: 'preview',
+			}),
 		);
 		await repository.update(lostPreview.id, { updatedAt: new Date(Date.now() - 180_000) });
 		checkpoints.findSuspendedForThread.mockImplementation(async (_agentId, threadId) =>
@@ -832,7 +849,10 @@ describe('agent message queue', () => {
 		await (await makeMain()).recover();
 		await retryUntil(async () => expect(received).toEqual(['waiting']));
 		expect(await repository.countBy({ threadId: 'lost-preview' })).toBe(0);
-		expect(attachments.deleteByIds).toHaveBeenCalledWith(['unused-file']);
+		expect(await attachmentRepository.existsBy({ id: 'unused-file' })).toBe(false);
+		expect(attachments.deleteStoredBytes).toHaveBeenCalledWith([
+			{ id: 'unused-file', binaryDataId: 'filesystem-v2:unused-file' },
+		]);
 		expect(await repository.countBy({ threadId: 'live-preview' })).toBe(1);
 		controller.abort();
 		await cancelled;

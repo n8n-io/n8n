@@ -5,7 +5,7 @@ import { Equal, In, IsNull, LessThan, Like, MoreThan } from '@n8n/typeorm';
 import type { Mock, Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { AgentMemoryEntryCandidateEntity } from '../../entities/agent-memory-entry-candidate.entity';
+import { AgentMemoryEntryCandidateEntity } from '../../entities/agent-memory-entry-candidate.entity';
 import type { AgentMemoryEntryLockEntity } from '../../entities/agent-memory-entry-lock.entity';
 import { AgentMemoryEntrySourceEntity } from '../../entities/agent-memory-entry-source.entity';
 import { AgentMemoryEntryEntity } from '../../entities/agent-memory-entry.entity';
@@ -579,22 +579,26 @@ describe('N8nMemory', () => {
 
 			const observationScope = { agentId: 'agent-1', observationScopeId: 'thread-1' };
 			expect(runInTransaction).toHaveBeenCalledWith(expect.any(Function));
+			expect(transactionDelete).toHaveBeenNthCalledWith(1, AgentMemoryEntryCandidateEntity, {
+				agentId: 'agent-1',
+				threadId: 'thread-1',
+			});
 			expect(transactionDelete).toHaveBeenNthCalledWith(
-				1,
+				2,
 				AgentObservationEntity,
 				observationScope,
 			);
 			expect(transactionDelete).toHaveBeenNthCalledWith(
-				2,
+				3,
 				AgentObservationCursorEntity,
 				observationScope,
 			);
 			expect(transactionDelete).toHaveBeenNthCalledWith(
-				3,
+				4,
 				AgentObservationLockEntity,
 				observationScope,
 			);
-			expect(transactionDelete).toHaveBeenNthCalledWith(4, AgentThreadEntity, { id: 'thread-1' });
+			expect(transactionDelete).toHaveBeenNthCalledWith(5, AgentThreadEntity, { id: 'thread-1' });
 			expect(observationRepository.delete).not.toHaveBeenCalled();
 			expect(observationCursorRepository.delete).not.toHaveBeenCalled();
 			expect(observationLockRepository.delete).not.toHaveBeenCalled();
@@ -667,22 +671,26 @@ describe('N8nMemory', () => {
 				observationScopeId: Like('test-agent-1%'),
 			};
 			expect(runInTransaction).toHaveBeenCalledWith(expect.any(Function));
+			expect(transactionDelete).toHaveBeenNthCalledWith(1, AgentMemoryEntryCandidateEntity, {
+				agentId: 'agent-1',
+				threadId: Like('test-agent-1%'),
+			});
 			expect(transactionDelete).toHaveBeenNthCalledWith(
-				1,
+				2,
 				AgentObservationEntity,
 				observationScope,
 			);
 			expect(transactionDelete).toHaveBeenNthCalledWith(
-				2,
+				3,
 				AgentObservationCursorEntity,
 				observationScope,
 			);
 			expect(transactionDelete).toHaveBeenNthCalledWith(
-				3,
+				4,
 				AgentObservationLockEntity,
 				observationScope,
 			);
-			expect(transactionDelete).toHaveBeenNthCalledWith(4, AgentThreadEntity, {
+			expect(transactionDelete).toHaveBeenNthCalledWith(5, AgentThreadEntity, {
 				id: Like('test-agent-1%'),
 			});
 			expect(observationRepository.delete).not.toHaveBeenCalled();

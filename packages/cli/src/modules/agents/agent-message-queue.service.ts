@@ -322,22 +322,19 @@ export class AgentMessageQueueService {
 										continue;
 								}
 							}
-							if (
-								!(await this.leases.write(
-									owner,
-									async (ctx) => await this.repository.removeStale(entry.id, graceMs, ctx),
-								))
-							)
-								continue;
-							if (
+							const attachmentIds =
 								entry.status === 'queued' &&
 								entry.payload.source === 'preview' &&
 								entry.payload.kind === 'message'
-							) {
-								await this.attachments.deleteByIds(
-									entry.payload.attachments?.map(({ id }) => id) ?? [],
-								);
-							}
+									? (entry.payload.attachments?.map(({ id }) => id) ?? [])
+									: [];
+							const removedAttachments = await this.leases.write(
+								owner,
+								async (ctx) =>
+									await this.repository.removeStale(entry.id, graceMs, attachmentIds, ctx),
+							);
+							if (removedAttachments === null) continue;
+							await this.attachments.deleteStoredBytes(removedAttachments);
 							if (leaseSignal.aborted) return;
 							this.logger.info('Removed interrupted agent queue entry without replay', {
 								id: entry.id,

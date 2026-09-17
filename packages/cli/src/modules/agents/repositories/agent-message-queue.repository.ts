@@ -5,6 +5,7 @@ import { DataSource, In } from '@n8n/typeorm';
 import { conversationDbTime } from './agent-conversation-lease.repository';
 
 import type { AgentQueueInput } from '../agent-message-queue.types';
+import { AgentChatAttachment } from '../entities/agent-chat-attachment.entity';
 import { AgentMessageQueue } from '../entities/agent-message-queue.entity';
 
 @Service()
@@ -76,15 +77,29 @@ export class AgentMessageQueueRepository extends BaseRepository<AgentMessageQueu
 		await this.managerFor(ctx).delete(AgentMessageQueue, { id });
 	}
 
-	async removeStale(id: string, graceMs: number, ctx: OperationContext): Promise<boolean> {
-		const deleted = await this.managerFor(ctx)
+	async removeStale(
+		id: string,
+		graceMs: number,
+		attachmentIds: string[],
+		ctx: OperationContext,
+	): Promise<Array<Pick<AgentChatAttachment, 'id' | 'binaryDataId'>> | null> {
+		const manager = this.managerFor(ctx);
+		const deleted = await manager
 			.createQueryBuilder()
 			.delete()
 			.from(AgentMessageQueue)
 			.where({ id })
 			.andWhere(`"updatedAt" < ${this.time(-graceMs)}`)
 			.execute();
-		return deleted.affected === 1;
+		if (deleted.affected !== 1) return null;
+		if (attachmentIds.length === 0) return [];
+
+		const attachments = await manager.find(AgentChatAttachment, {
+			select: { id: true, binaryDataId: true },
+			where: { id: In(attachmentIds) },
+		});
+		await manager.delete(AgentChatAttachment, { id: In(attachmentIds) });
+		return attachments;
 	}
 
 	async cancelQueued(id: string): Promise<boolean> {

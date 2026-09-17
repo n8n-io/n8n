@@ -43,6 +43,7 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 
 	async findStaleRunning(graceMs: number): Promise<RunningAgentExecution[]> {
 		return await this.createQueryBuilder('execution')
+			.select(['execution.id', 'execution.threadId'])
 			.where({ status: 'running' })
 			.andWhere(`execution.updatedAt <= ${this.time(-graceMs)}`)
 			.getMany();

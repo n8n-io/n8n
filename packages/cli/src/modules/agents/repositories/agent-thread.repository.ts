@@ -4,6 +4,7 @@ import { Service } from '@n8n/di';
 import { DataSource, In, Like } from '@n8n/typeorm';
 
 import { AgentThreadEntity } from '../entities/agent-thread.entity';
+import { AgentMemoryEntryCandidateEntity } from '../entities/agent-memory-entry-candidate.entity';
 import { AgentMemoryEntrySourceEntity } from '../entities/agent-memory-entry-source.entity';
 import { AgentMemoryEntryEntity } from '../entities/agent-memory-entry.entity';
 import { AgentObservationEntity } from '../entities/agent-observation.entity';
@@ -46,6 +47,7 @@ export class AgentThreadRepository extends BaseRepository<AgentThreadEntity> {
 					);
 				}
 			}
+			await manager.delete(AgentMemoryEntryCandidateEntity, { agentId, threadId: scope });
 			const observationScope = { agentId, observationScopeId: scope };
 			await manager.delete(AgentObservationEntity, observationScope);
 			await manager.delete(AgentObservationCursorEntity, observationScope);
