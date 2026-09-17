@@ -67,6 +67,7 @@ describe('EmbeddingsDatabricks', () => {
 			return undefined;
 		});
 
+		mockTokenProvider.refreshAfterRejection.mockResolvedValue(null);
 		mockedGetProxyAgent.mockReturnValue({} as never);
 		mockedGetDatabricksTokenProvider.mockReturnValue(mockTokenProvider);
 		mockedCreateRefreshingAuthFetch.mockReturnValue(vi.fn() as unknown as typeof fetch);
@@ -160,6 +161,18 @@ describe('EmbeddingsDatabricks', () => {
 			const [fetchOptions] = mockedCreateRefreshingAuthFetch.mock.calls[0];
 			const headers = new Headers(await fetchOptions.resolveHeaders?.());
 			expect(headers.get('authorization')).toBe('Bearer test-token');
+			expect(headers.get('user-agent')).toBe(DATABRICKS_PARTNER_USER_AGENT);
+		});
+
+		it('should re-authorize with the rotated token after a rejection', async () => {
+			const ctx = setupMockContext();
+			mockTokenProvider.refreshAfterRejection.mockResolvedValue('rotated-token');
+
+			await node.supplyData.call(ctx, 0);
+
+			const [fetchOptions] = mockedCreateRefreshingAuthFetch.mock.calls[0];
+			const headers = new Headers((await fetchOptions.refreshHeaders?.(new Headers())) ?? {});
+			expect(headers.get('authorization')).toBe('Bearer rotated-token');
 			expect(headers.get('user-agent')).toBe(DATABRICKS_PARTNER_USER_AGENT);
 		});
 
