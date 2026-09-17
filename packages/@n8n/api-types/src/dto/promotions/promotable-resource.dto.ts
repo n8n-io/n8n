@@ -1,11 +1,9 @@
 import { z } from 'zod';
 
-import { promotionDirectionSchema } from './promotion-config.dto';
 import { n8nIdSchema } from '../../schemas/id.schema';
 import { Z } from '../../zod-class';
 
 export class PromotionChangesQueryDto extends Z.class({
-	direction: promotionDirectionSchema.default('promote'),
 	search: z.string().trim().optional(),
 	sort: z.enum(['name', 'updatedAt', 'status']).default('name'),
 	order: z.enum(['asc', 'desc']).default('asc'),

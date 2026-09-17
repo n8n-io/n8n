@@ -1,8 +1,8 @@
 operationId: getPromotionChanges
 tags:
   - Promotions
-summary: List the changes of a project
-description: Compares a team project on this instance with the branch of its promotion configuration and lists the workflows that differ. With `direction=promote` (the default) the rows are what a promotion sends to the branch, and the key needs the gitConnection:push scope. With `direction=apply` the rows are what applying the branch changes on this instance, and the key needs the gitConnection:pull scope. `commitSha` is the commit the rows were read from. Requires the direction to be cloned first.
+summary: List the changes of a project in one direction
+description: Compares a team project on this instance with the branch of its promotion configuration and lists the workflows that differ. For `promote` the rows are what a promotion sends to the branch, and the key needs the gitConnection:push scope. For `apply` the rows are what applying the branch changes on this instance, and the key needs the gitConnection:pull scope. `commitSha` is the commit the rows were read from. Requires the direction to be cloned first.
 x-required-scope: gitConnection:push,gitConnection:pull
 x-eov-operation-id: unreachable
 x-eov-operation-handler: v1/handlers/decorator-routed.handler
@@ -16,13 +16,10 @@ parameters:
     in: path
   - schema:
       type: string
-      enum:
-        - apply
-        - promote
-      default: promote
-    required: false
+    required: true
+    description: 'The direction of the promotion: apply or promote.'
     name: direction
-    in: query
+    in: path
   - schema:
       type: string
     required: false

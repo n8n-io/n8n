@@ -48,6 +48,7 @@ import {
 	Licensed,
 	Param,
 	Post,
+	ProjectScope,
 	PublicApiController,
 	Put,
 	Query,
@@ -579,12 +580,13 @@ export class PromotionsPublicController {
 
 	// -- Change preview ------------------------------------------------------
 
-	@Get('/projects/:projectId/changes')
+	@Get('/projects/:projectId/changes/:direction')
 	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
 	@ApiKeyScope({ anyOf: ['gitConnection:push', 'gitConnection:pull'] })
-	@ApiSummary('List the changes of a project')
+	@ProjectScope('project:export')
+	@ApiSummary('List the changes of a project in one direction')
 	@ApiDescription(
-		'Compares a team project on this instance with the branch of its promotion configuration and lists the workflows that differ. With `direction=promote` (the default) the rows are what a promotion sends to the branch, and the key needs the gitConnection:push scope. With `direction=apply` the rows are what applying the branch changes on this instance, and the key needs the gitConnection:pull scope. `commitSha` is the commit the rows were read from. Requires the direction to be cloned first.',
+		'Compares a team project on this instance with the branch of its promotion configuration and lists the workflows that differ. For `promote` the rows are what a promotion sends to the branch, and the key needs the gitConnection:push scope. For `apply` the rows are what applying the branch changes on this instance, and the key needs the gitConnection:pull scope. `commitSha` is the commit the rows were read from. Requires the direction to be cloned first.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, PromotionChangesDto)
@@ -595,16 +597,23 @@ export class PromotionsPublicController {
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('projectId', projectIdParamSchema) projectId: string,
+		@Param('direction', promotionDirectionParamSchema) direction: string,
 		@Query query: PromotionChangesQueryDto,
 	): Promise<PromotionChangesDto> {
+		const parsedDirection = parseDirection(direction);
 		// The route accepts a key with either scope. The direction decides which one this call needs.
-		const requiredScope = query.direction === 'apply' ? 'gitConnection:pull' : 'gitConnection:push';
+		const requiredScope = parsedDirection === 'apply' ? 'gitConnection:pull' : 'gitConnection:push';
 		if (!(req.tokenGrant?.apiKeyScopes?.includes(requiredScope) ?? false)) {
 			throw new ForbiddenError(
-				`The ${query.direction} direction requires the ${requiredScope} scope`,
+				`The ${parsedDirection} direction requires the ${requiredScope} scope`,
 			);
 		}
-		return await (await this.changeService()).getChanges(req.user, projectId, query);
+		return await (await this.changeService()).getChanges(
+			req.user,
+			projectId,
+			parsedDirection,
+			query,
+		);
 	}
 
 	// -- Module access -------------------------------------------------------

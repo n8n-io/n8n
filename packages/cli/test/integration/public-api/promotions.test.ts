@@ -708,33 +708,31 @@ describe('Promotions in Public API', () => {
 					await createOwnerWithApiKey({ scopes: ['gitConnection:pull'] }),
 				);
 
-				const promote = await pushOnly.get('/promotions/projects/proj1/changes');
+				const promote = await pushOnly.get('/promotions/projects/proj1/changes/promote');
 				expect(promote.status, JSON.stringify(promote.body)).toBe(200);
 				expect(promote.body).toEqual({ commitSha: 'a'.repeat(40), changes: [] });
 				expect(getChanges).toHaveBeenLastCalledWith(
 					expect.objectContaining({ id: expect.any(String) }),
 					'proj1',
-					expect.objectContaining({ direction: 'promote' }),
+					'promote',
+					expect.anything(),
 				);
 
-				expect(
-					(await pushOnly.get('/promotions/projects/proj1/changes?direction=apply')).status,
-				).toBe(403);
-				expect((await pullOnly.get('/promotions/projects/proj1/changes')).status).toBe(403);
+				expect((await pushOnly.get('/promotions/projects/proj1/changes/apply')).status).toBe(403);
+				expect((await pullOnly.get('/promotions/projects/proj1/changes/promote')).status).toBe(403);
 
-				const apply = await pullOnly.get(
-					'/promotions/projects/proj1/changes?direction=apply&search=order',
-				);
+				const apply = await pullOnly.get('/promotions/projects/proj1/changes/apply?search=order');
 				expect(apply.status, JSON.stringify(apply.body)).toBe(200);
 				expect(getChanges).toHaveBeenLastCalledWith(
 					expect.anything(),
 					'proj1',
-					expect.objectContaining({ direction: 'apply', search: 'order' }),
+					'apply',
+					expect.objectContaining({ search: 'order' }),
 				);
 
-				expect(
-					(await pullOnly.get('/promotions/projects/proj1/changes?direction=sideways')).status,
-				).toBe(400);
+				expect((await pullOnly.get('/promotions/projects/proj1/changes/sideways')).status).toBe(
+					404,
+				);
 				expect(getChanges).toHaveBeenCalledTimes(2);
 			} finally {
 				getChanges.mockRestore();
@@ -746,9 +744,7 @@ describe('Promotions in Public API', () => {
 			await createConnection(agent);
 			const project = await createTeamProject('Team project', owner);
 
-			const response = await agent.get(
-				`/promotions/projects/${project.id}/changes?direction=apply`,
-			);
+			const response = await agent.get(`/promotions/projects/${project.id}/changes/apply`);
 
 			expect(response.status).toBe(400);
 			expect(response.body.message).toContain('not cloned');

@@ -146,7 +146,7 @@ it('lists new, changed, moved, archived, restored and deleted workflows through 
 	const removed = await createWorkflow({ name: 'Removed', nodes: [], connections: {} }, project);
 	const connection = await createConnection();
 	const service = Container.get(PromotionsService);
-	const endpoint = `/promotions/${project.id}/changes`;
+	const endpoint = `/promotions/${project.id}/changes/promote`;
 	const agent = server.authAgentFor(owner);
 	const initial = await agent.get(endpoint).expect(200);
 	// The branch has no commit yet, so there is no commit to pin.
@@ -237,7 +237,7 @@ it('preserves workflow moves and changes across workflow files', async () => {
 		commitMessage: 'Baseline',
 		canExportVariableValues: true,
 	});
-	const endpoint = `/promotions/${project.id}/changes`;
+	const endpoint = `/promotions/${project.id}/changes/promote`;
 	const agent = server.authAgentFor(owner);
 	const workflows = Container.get(WorkflowRepository);
 	const folders = Container.get(FolderRepository);
@@ -311,7 +311,7 @@ it('logs file hashes without workflow content', async () => {
 	});
 	const variable = await createVariable('DIAGNOSTIC', 'fixture-variable-value');
 	await Container.get(VariablesService).updateCache();
-	const endpoint = `/promotions/${project.id}/changes`;
+	const endpoint = `/promotions/${project.id}/changes/promote`;
 	const agent = server.authAgentFor(owner);
 	const debug = vi.mocked(Container.get(Logger).scoped('promotions').debug);
 	const logging = Container.get(GlobalConfig).logging;
@@ -406,7 +406,7 @@ it('detects variable and data table changes without reporting shadowed or unrela
 		canExportVariableValues: true,
 	});
 	const agent = server.authAgentFor(owner);
-	const endpoint = `/promotions/${project.id}/changes`;
+	const endpoint = `/promotions/${project.id}/changes/promote`;
 	expect((await agent.get(endpoint).expect(200)).body.data.changes).toEqual([]);
 	await variables.update(global.id, { value: 'changed global' });
 	await Container.get(VariablesService).updateCache();
@@ -464,9 +464,10 @@ it('lists what applying the branch changes on this instance, named and archived 
 	});
 	const baseline = await remoteHead();
 	const agent = server.authAgentFor(owner);
-	const endpoint = `/promotions/${project.id}/changes`;
+	const endpoint = `/promotions/${project.id}/changes/promote`;
+	const applyEndpoint = `/promotions/${project.id}/changes/apply`;
 
-	const synced = await agent.get(endpoint).query({ direction: 'apply' }).expect(200);
+	const synced = await agent.get(applyEndpoint).expect(200);
 	expect(synced.body.data).toEqual({ commitSha: baseline, changes: [] });
 
 	await workflows.update(renamed.id, { name: 'Local name', settings: { executionOrder: 'v1' } });
@@ -478,7 +479,7 @@ it('lists what applying the branch changes on this instance, named and archived 
 	});
 	await Container.get(VariablesService).updateCache();
 
-	const response = await agent.get(endpoint).query({ direction: 'apply' }).expect(200);
+	const response = await agent.get(applyEndpoint).expect(200);
 	expect(response.body.data.commitSha).toBe(baseline);
 	expect(response.body.data.changes).toHaveLength(5);
 	expect(response.body.data.changes).toEqual(
@@ -521,7 +522,7 @@ it('lists what applying the branch changes on this instance, named and archived 
 		commitMessage: 'Sync',
 		canExportVariableValues: true,
 	});
-	const after = await agent.get(endpoint).query({ direction: 'apply' }).expect(200);
+	const after = await agent.get(applyEndpoint).expect(200);
 	expect(after.body.data).toEqual({ commitSha: await remoteHead(), changes: [] });
 	expect(after.body.data.commitSha).not.toBe(baseline);
 }, 30_000);
@@ -535,10 +536,11 @@ it('answers for a destination that has only an apply configuration', async () =>
 	);
 	const connection = await createConnection(['apply']);
 	const agent = server.authAgentFor(owner);
-	const endpoint = `/promotions/${project.id}/changes`;
+	const endpoint = `/promotions/${project.id}/changes/promote`;
+	const applyEndpoint = `/promotions/${project.id}/changes/apply`;
 
 	// The branch has no commit yet, so there is no package to read. Promote has no config here.
-	const empty = await agent.get(endpoint).query({ direction: 'apply' }).expect(400);
+	const empty = await agent.get(applyEndpoint).expect(400);
 	expect(empty.body.message).toContain('no exported package');
 	await agent.get(endpoint).expect(400);
 
@@ -555,7 +557,7 @@ it('answers for a destination that has only an apply configuration', async () =>
 	await configs.delete({ id: promoteConfig?.id });
 	await Container.get(WorkflowRepository).delete(workflow.id);
 
-	const response = await agent.get(endpoint).query({ direction: 'apply' }).expect(200);
+	const response = await agent.get(applyEndpoint).expect(200);
 	expect(response.body.data).toEqual({
 		commitSha: await remoteHead(),
 		changes: [expect.objectContaining({ id: workflow.id, name: 'Local only', status: 'new' })],
@@ -567,15 +569,16 @@ it('checks authentication, the scopes of each direction, and the promotions lice
 	const owner = await createOwner();
 	const member = await createMember();
 	const project = await createTeamProject('Private', owner);
-	const endpoint = `/promotions/${project.id}/changes`;
+	const endpoint = `/promotions/${project.id}/changes/promote`;
+	const applyEndpoint = `/promotions/${project.id}/changes/apply`;
 	await server.authlessAgent.get(endpoint).expect(401);
 	await server.authAgentFor(member).get(endpoint).expect(403);
-	await server.authAgentFor(member).get(endpoint).query({ direction: 'apply' }).expect(403);
+	await server.authAgentFor(member).get(applyEndpoint).expect(403);
 	// A project admin can export and update the project, but lacks the global push and pull scopes.
 	await linkUserToProject(member, project, 'project:admin');
 	await server.authAgentFor(member).get(endpoint).expect(403);
-	await server.authAgentFor(member).get(endpoint).query({ direction: 'apply' }).expect(403);
-	await server.authAgentFor(owner).get(endpoint).query({ direction: 'sideways' }).expect(400);
+	await server.authAgentFor(member).get(applyEndpoint).expect(403);
+	await server.authAgentFor(owner).get(`/promotions/${project.id}/changes/sideways`).expect(404);
 	server.license.disable('feat:gitConnections');
 	await server.authAgentFor(owner).get(endpoint).expect(403);
 });

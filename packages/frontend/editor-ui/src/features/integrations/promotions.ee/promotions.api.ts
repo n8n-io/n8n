@@ -7,7 +7,5 @@ export async function getPromotableChanges(
 	projectId: string,
 	direction: PromotionDirection = 'promote',
 ): Promise<PromotionChanges> {
-	return await makeRestApiRequest(context, 'GET', `/promotions/${projectId}/changes`, {
-		direction,
-	});
+	return await makeRestApiRequest(context, 'GET', `/promotions/${projectId}/changes/${direction}`);
 }

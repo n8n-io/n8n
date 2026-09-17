@@ -1,17 +1,9 @@
 import { PromotionChangesDto, PromotionChangesQueryDto } from '../promotable-resource.dto';
 
 describe('PromotionChangesQueryDto', () => {
-	it('defaults to the promote direction, so callers that predate the parameter keep working', () => {
-		expect(PromotionChangesQueryDto.parse({})).toEqual({
-			direction: 'promote',
-			sort: 'name',
-			order: 'asc',
-		});
-	});
-
-	it('accepts the apply direction and rejects an unknown one', () => {
-		expect(PromotionChangesQueryDto.parse({ direction: 'apply' }).direction).toBe('apply');
-		expect(PromotionChangesQueryDto.safeParse({ direction: 'sideways' }).success).toBe(false);
+	it('defaults the sort and the order', () => {
+		expect(PromotionChangesQueryDto.parse({})).toEqual({ sort: 'name', order: 'asc' });
+		expect(PromotionChangesQueryDto.safeParse({ order: 'sideways' }).success).toBe(false);
 	});
 });
 

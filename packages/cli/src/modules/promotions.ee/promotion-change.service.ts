@@ -50,18 +50,10 @@ const DEPENDENCY_COLLECTIONS = {
 	nodeTypes: null,
 } as const satisfies Record<keyof PackageRequirements, ManifestEntityCollection | null>;
 
-const REQUIRED_SCOPES = {
-	promote: {
-		global: 'gitConnection:push',
-		project: 'project:export',
-		label: 'project export and promotion push',
-	},
-	apply: {
-		global: 'gitConnection:pull',
-		project: 'project:update',
-		label: 'project update and promotion pull',
-	},
-} as const satisfies Record<PromotionDirection, { global: Scope; project: Scope; label: string }>;
+const GIT_SCOPES = {
+	promote: 'gitConnection:push',
+	apply: 'gitConnection:pull',
+} as const satisfies Record<PromotionDirection, Scope>;
 
 type DesiredPackage = {
 	files: readonly PackageFile[];
@@ -100,9 +92,9 @@ export class PromotionChangeService {
 	async getChanges(
 		user: User,
 		projectId: string,
+		direction: PromotionDirection,
 		query: PromotionChangesQueryDto,
 	): Promise<PromotionChanges> {
-		const { direction } = query;
 		await this.assertCanPreview(user, projectId, direction);
 		const branch = await this.promotionsService.readBranchPackage(projectId, direction);
 		const instance = await this.exportInstancePackage(user, projectId);
@@ -125,14 +117,15 @@ export class PromotionChangeService {
 		return { commitSha: branch.commitSha, changes: applyQuery(rows, query) };
 	}
 
+	/** The preview exports the project, so both directions need the export scope on it. */
 	private async assertCanPreview(user: User, projectId: string, direction: PromotionDirection) {
-		const required = REQUIRED_SCOPES[direction];
 		if (
-			!hasGlobalScope(user, required.global) ||
-			!(await userHasScopes(user, [required.project], false, { projectId }))
+			!hasGlobalScope(user, GIT_SCOPES[direction]) ||
+			!(await userHasScopes(user, ['project:export'], false, { projectId }))
 		) {
+			const operation = direction === 'promote' ? 'push' : 'pull';
 			throw new ForbiddenError(
-				`Change preview requires ${required.label} permissions. Ask an administrator for access.`,
+				`Change preview requires project export and promotion ${operation} permissions. Ask an administrator for access.`,
 			);
 		}
 	}

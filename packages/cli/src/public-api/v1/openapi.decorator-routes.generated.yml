@@ -147,7 +147,7 @@ paths:
   /promotions/connections/{promotionConnectionId}/apply/continue:
     post:
       $ref: ./handlers/promotions/spec/paths/continueApplyPackage.generated.yml
-  /promotions/projects/{projectId}/changes:
+  /promotions/projects/{projectId}/changes/{direction}:
     get:
       $ref: ./handlers/promotions/spec/paths/getPromotionChanges.generated.yml
   /role-mapping-rules:
