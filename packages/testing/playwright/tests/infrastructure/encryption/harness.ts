@@ -1,5 +1,5 @@
 import { test } from '@playwright/test';
-import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { appendFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { N8NStack } from 'n8n-containers/stack';
 
@@ -31,6 +31,9 @@ export function createCycleContext(
 		phase: 'setup',
 		phaseStartedMs: Date.now(),
 	};
+	// A reused WORK_ROOT must start clean: a leftover home dir would boot the
+	// seed phase on the previous run's database.
+	rmSync(backendDir, { recursive: true, force: true });
 	mkdirSync(ctx.homeDir, { recursive: true });
 	writeFileSync(ctx.metricsFile, '');
 	writeFileSync(ctx.logFile, '');
