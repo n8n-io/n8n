@@ -82,32 +82,31 @@ function handleThreadSelect(threadId: string) {
 			:content-class="$style.threadHistoryPopover"
 		>
 			<template #trigger>
-				<span>
-					<N8nTooltip
-						:content="i18n.baseText('instanceAi.sidebar.chatHistory')"
-						:disabled="props.showThreadHistoryLabel"
-						placement="bottom"
-						:show-after="TOOLTIP_DELAY_MS"
+				<N8nTooltip
+					as-child
+					:content="i18n.baseText('instanceAi.sidebar.chatHistory')"
+					:disabled="props.showThreadHistoryLabel"
+					placement="bottom"
+					:show-after="TOOLTIP_DELAY_MS"
+				>
+					<N8nButton
+						variant="ghost"
+						size="small"
+						:class="[
+							$style.threadHistoryButton,
+							{ [$style.threadHistoryButtonCollapsed]: !props.showThreadHistoryLabel },
+						]"
+						data-test-id="instance-ai-sidebar-toggle"
+						:aria-label="i18n.baseText('instanceAi.sidebar.chatHistory')"
 					>
-						<N8nButton
-							variant="ghost"
-							size="small"
-							:class="[
-								$style.threadHistoryButton,
-								{ [$style.threadHistoryButtonCollapsed]: !props.showThreadHistoryLabel },
-							]"
-							data-test-id="instance-ai-sidebar-toggle"
-							:aria-label="i18n.baseText('instanceAi.sidebar.chatHistory')"
-						>
-							<template #icon>
-								<N8nIcon icon="history" size="large" />
-							</template>
-							<span :class="$style.threadHistoryLabel" :aria-hidden="!props.showThreadHistoryLabel">
-								{{ i18n.baseText('instanceAi.sidebar.chatHistory') }}
-							</span>
-						</N8nButton>
-					</N8nTooltip>
-				</span>
+						<template #icon>
+							<N8nIcon icon="history" size="large" />
+						</template>
+						<span :class="$style.threadHistoryLabel" :aria-hidden="!props.showThreadHistoryLabel">
+							{{ i18n.baseText('instanceAi.sidebar.chatHistory') }}
+						</span>
+					</N8nButton>
+				</N8nTooltip>
 			</template>
 			<template #content>
 				<InstanceAiThreadList
