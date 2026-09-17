@@ -473,6 +473,7 @@ describe('CommunityPackagesService', () => {
 						dependencies: { [PACKAGE_NAME]: COMMUNITY_PACKAGE_VERSION.CURRENT },
 					}),
 				)
+				// The extracted package.json, which the download strips and writes back.
 				.mockResolvedValueOnce(
 					JSON.stringify({
 						name: PACKAGE_NAME,
@@ -481,6 +482,7 @@ describe('CommunityPackagesService', () => {
 						devDependencies: {},
 						peerDependencies: {},
 						optionalDependencies: {},
+						n8n: { n8nNodesApiVersion: N8N_NODES_API_VERSION },
 					}),
 				)
 				.mockResolvedValueOnce(
@@ -490,12 +492,13 @@ describe('CommunityPackagesService', () => {
 						dependencies: { [PACKAGE_NAME]: '2.0.0' },
 					}),
 				)
-				// The compatibility guard reads the extracted package.json after the download.
+				// The compatibility guard reads the same extracted package.json, now stripped.
 				.mockResolvedValueOnce(
 					JSON.stringify({
-						name: 'installed-nodes',
-						private: true,
-						dependencies: { [PACKAGE_NAME]: '2.0.0' },
+						name: PACKAGE_NAME,
+						version: '2.0.0',
+						dependencies: { 'some-actual-dep': '1.2.3' },
+						n8n: { n8nNodesApiVersion: N8N_NODES_API_VERSION },
 					}),
 				)
 				.mockResolvedValueOnce(
@@ -649,6 +652,7 @@ describe('CommunityPackagesService', () => {
 				.mockResolvedValueOnce(
 					JSON.stringify({ name: 'installed-nodes', private: true, dependencies: {} }),
 				)
+				// The extracted package.json, which the download strips and writes back.
 				.mockResolvedValueOnce(
 					JSON.stringify({
 						name: PACKAGE_NAME,
@@ -657,6 +661,7 @@ describe('CommunityPackagesService', () => {
 						devDependencies: {},
 						peerDependencies: {},
 						optionalDependencies: {},
+						n8n: { n8nNodesApiVersion: N8N_NODES_API_VERSION },
 					}),
 				)
 				.mockResolvedValueOnce(
@@ -666,12 +671,13 @@ describe('CommunityPackagesService', () => {
 						dependencies: { [PACKAGE_NAME]: '1.0.0' },
 					}),
 				)
-				// The compatibility guard reads the extracted package.json after the download.
+				// The compatibility guard reads the same extracted package.json, now stripped.
 				.mockResolvedValueOnce(
 					JSON.stringify({
-						name: 'installed-nodes',
-						private: true,
-						dependencies: { [PACKAGE_NAME]: '1.0.0' },
+						name: PACKAGE_NAME,
+						version: '1.0.0',
+						dependencies: {},
+						n8n: { n8nNodesApiVersion: N8N_NODES_API_VERSION },
 					}),
 				)
 				.mockResolvedValueOnce(

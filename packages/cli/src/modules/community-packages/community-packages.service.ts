@@ -636,6 +636,9 @@ export class CommunityPackagesService {
 				error: ensureError(error),
 				packageName,
 				packageVersion,
+				// The operator needs both node API versions to see why a leader's package
+				// is rejected here; the user-facing message deliberately omits them.
+				...(error instanceof IncompatibleNodesApiVersionError ? error.meta : {}),
 			});
 		}
 	}

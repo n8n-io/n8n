@@ -297,7 +297,7 @@ describe('CommunityPackagesService install rollback (real filesystem)', () => {
 		});
 
 		describe('pub/sub follower', () => {
-			test('keeps the existing package and logs both versions when the leader sends an incompatible one', async () => {
+			test('keeps the existing package and logs both node API versions when the leader sends an incompatible one', async () => {
 				downloadedPackageJson = {
 					name: PACKAGE_NAME,
 					version: '2.0.0',
@@ -321,6 +321,9 @@ describe('CommunityPackagesService install rollback (real filesystem)', () => {
 					expect.objectContaining({
 						packageName: PACKAGE_NAME,
 						packageVersion: '2.0.0',
+						// The operator log names both versions, unlike the user-facing message.
+						requiredNodesApiVersion: N8N_NODES_API_VERSION + 1,
+						supportedNodesApiVersion: N8N_NODES_API_VERSION,
 						error: expect.objectContaining({
 							message: expect.stringContaining("isn't compatible with your version of n8n"),
 						}),
