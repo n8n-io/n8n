@@ -7,11 +7,11 @@ import {
 	type GraphNode,
 } from '../graph';
 import type { LifecycleEventPublisher } from '../lifecycle-events';
-import type { ExecutionResponseChannel } from '../response-channel';
 import type { OrchestrationMessage, StepMessage, StepSettledEvent, WorkQueue } from '../queue';
 import { countExpectedSettledSteps } from './completion';
+import type { ExecutionFinishedAnnouncer } from './execution-finished-announcer';
 import type { ExecutionRecord, ExecutionStore } from './execution-store';
-import { isSettledStatus, stepKeyId, type StepKey, type StepKeyId } from './execution.types';
+import { stepKeyId, type StepKey, type StepKeyId } from './execution.types';
 import { exitSourcesInto, loadTerminalIterations } from './loop-ledger';
 import { decideSuccessors, decisionKeys } from './settlement';
 import type { StepRecord, StepStore } from './step-store';
@@ -36,7 +36,7 @@ export class StepSettledHandler {
 		private readonly stepQueue: WorkQueue<StepMessage>,
 		private readonly orchestrationQueue: WorkQueue<OrchestrationMessage>,
 		private readonly lifecycleEventPublisher: LifecycleEventPublisher,
-		private readonly responseChannel: ExecutionResponseChannel,
+		private readonly announcer: ExecutionFinishedAnnouncer,
 	) {}
 
 	async handle(event: StepSettledEvent): Promise<void> {
@@ -88,7 +88,7 @@ export class StepSettledHandler {
 				workflowId: execution.workflowId,
 				at: new Date().toISOString(),
 			});
-			this.announceEnd(execution, step, node, 'failed');
+			await this.announcer.announce(execution, step, node, 'failed');
 		}
 
 		// TODO(CAT-3990): this sweep names no rows, so it announces nothing.
@@ -198,50 +198,8 @@ export class StepSettledHandler {
 				workflowId: execution.workflowId,
 				at: new Date().toISOString(),
 			});
-			this.announceEnd(execution, step, node, failed ? 'failed' : 'completed');
+			await this.announcer.announce(execution, step, node, failed ? 'failed' : 'completed');
 		}
-	}
-
-	/**
-	 * Tells whoever started the execution that it is over.
-	 *
-	 * Only ever called where `finishExecution` won its CAS, so a run announces
-	 * its end exactly once however many workers raced for it.
-	 *
-	 * `lastStep` is the step whose settling ended the run, reported as it is. A
-	 * skip settles at birth and carries no outputs, so a caller that wants the
-	 * step which produced data has to look further; the engine has no opinion on
-	 * which step an answer should come from.
-	 */
-	private announceEnd(
-		execution: ExecutionRecord,
-		step: StepRecord,
-		node: GraphNode,
-		status: 'completed' | 'failed',
-	): void {
-		if (!isSettledStatus(step.status)) {
-			// Steps never unsettle, and this runs only once a step has settled, so
-			// this is a bug in the caller, not a state this step can reach.
-			throw new UnexpectedError(
-				`Step ${step.nodeId} announced its end from status '${step.status}'`,
-			);
-		}
-
-		this.responseChannel.publish({
-			type: 'ended',
-			executionId: execution.id,
-			workflowId: execution.workflowId,
-			status,
-			lastStep: {
-				nodeId: step.nodeId,
-				nodeName: node.name,
-				status: step.status,
-				outputs: step.outputs,
-				// Name and message only: the caller reports them, and the rest of the
-				// error stays on the step row.
-				error: step.error ? { name: step.error.name, message: step.error.message } : undefined,
-			},
-		});
 	}
 
 	private reachableNodeIds(execution: ExecutionRecord): Set<string> {

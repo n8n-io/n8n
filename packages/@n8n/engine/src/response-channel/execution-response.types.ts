@@ -18,9 +18,9 @@ export type FailureMessage = Extract<ExecutionResponse, { type: 'failure' }>;
 /**
  * The run is over. Always the last response an execution sends.
  *
- * `lastStep` is the step whose settling ended the run. Its `outputs` are `null`
- * when that step was skipped or failed, so a consumer that needs the data has
- * to look further. The engine reports what ended the run, not what a caller
- * would like to answer with.
+ * `lastStep` is the step the run answers from: the step that settled last with
+ * an outcome of its own, which is its outputs or its error. A skip carries
+ * neither, so it is never reported, and a consumer never has to look a second
+ * step up.
  */
 export type EndedMessage = Extract<ExecutionResponse, { type: 'ended' }>;

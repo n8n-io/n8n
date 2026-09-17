@@ -10,9 +10,7 @@ import type {
 import { OperationalError, UnexpectedError } from 'n8n-workflow';
 
 import type { ExecutionIdV2 } from '@/executions/execution-id';
-import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
 import { PendingWebhookResponse } from '@/services/pending-webhook-response';
-import type { LastNode } from '@/services/pending-webhook-response';
 
 /** A request that is still open, and the subscription that feeds its answer. */
 type PendingWebhook = { response: PendingWebhookResponse; unsubscribe: Unsubscribe };
@@ -38,7 +36,6 @@ export class EngineV2WebhookResponder {
 
 	constructor(
 		private readonly engineConfig: EngineConfig,
-		private readonly proxy: EngineDataPlaneProxyService,
 		private readonly logger: Logger,
 	) {
 		this.logger = this.logger.scoped('engine-v2');
@@ -93,7 +90,7 @@ export class EngineV2WebhookResponder {
 				return;
 			}
 
-			void this.onEnded(published, response);
+			this.onEnded(published, response);
 		} catch (error) {
 			this.logger.error('Failed to relay an engine 2.0 response', {
 				executionId: published.executionId,
@@ -103,11 +100,8 @@ export class EngineV2WebhookResponder {
 		}
 	}
 
-	private async onEnded(
-		published: EndedMessage,
-		response: PendingWebhookResponse,
-	): Promise<void> {
-		const { nodeName, error } = published.lastStep;
+	private onEnded(published: EndedMessage, response: PendingWebhookResponse): void {
+		const { nodeName, outputs, error } = published.lastStep;
 
 		if (published.status === 'failed') {
 			// The step that ended a failed run is the one that failed, so its name
@@ -116,52 +110,12 @@ export class EngineV2WebhookResponder {
 			return;
 		}
 
-		response.resolve({ status: 'completed', lastNode: await this.lastNode(published) });
-	}
-
-	/**
-	 * What the `lastNode` mode answers with.
-	 *
-	 * The engine reports the step whose settling ended the run. A skip settles at
-	 * birth and carries nothing, so in that case the step that actually produced
-	 * data has to be looked up. Only that case pays for the read.
-	 */
-	private async lastNode(published: EndedMessage): Promise<LastNode | undefined> {
-		const { nodeName, outputs } = published.lastStep;
-		if (outputs) return { nodeName, outputs };
-
-		try {
-			const snapshot = await this.proxy.getExecution(published.executionId as ExecutionIdV2, {
-				includeSteps: true,
-			});
-			return this.lastNodeThatRan(snapshot);
-		} catch (error) {
-			// A missing body beats a request that hangs until the timeout.
-			this.logger.warn('Could not read the last node of an engine 2.0 run', {
-				executionId: published.executionId,
-				error,
-			});
-			return undefined;
-		}
-	}
-
-	private lastNodeThatRan(
-		snapshot: Awaited<ReturnType<EngineDataPlaneProxyService['getExecution']>>,
-	): LastNode | undefined {
-		const ran = (snapshot?.steps ?? []).filter(
-			(step) => step.status === 'completed' && step.outputs,
-		);
-		// Run order is settle order, which is what v1 means by the last node.
-		const last = ran.reduce<(typeof ran)[number] | undefined>(
-			(newest, step) => (!newest || step.updatedAt > newest.updatedAt ? step : newest),
-			undefined,
-		);
-		if (!last) return undefined;
-
-		const nodeName = snapshot?.graph.nodes.find((node) => node.id === last.nodeId)?.name;
-		if (!nodeName) return undefined;
-
-		return { nodeName, outputs: last.outputs! };
+		response.resolve({
+			status: 'completed',
+			// The engine resolves which step the run answers from, so there is
+			// nothing to look up here: no outputs means the run produced none.
+			lastNode: outputs ? { nodeName, outputs } : undefined,
+		});
 	}
 
 	/** Ends the run's subscription: nothing more can arrive for it. */

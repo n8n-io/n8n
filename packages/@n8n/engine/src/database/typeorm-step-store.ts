@@ -282,9 +282,22 @@ export class TypeOrmStepStore implements StepStore {
 	async hasFailedSteps(executionId: string): Promise<boolean> {
 		return await this.repo.exists({ where: { executionId, status: 'failed' } });
 	}
+
+	async loadLastSettledStep(executionId: string): Promise<StepRecord | null> {
+		// `updated_at` is when the row settled: a step's outcome and its status are
+		// written in one statement. Two steps that settled within the same
+		// millisecond tie, and either one may answer.
+		return await this.repo.findOne({
+			where: { executionId, status: In(OUTCOME_STEP_STATUSES) },
+			order: { updatedAt: 'DESC', iteration: 'DESC' },
+		});
+	}
 }
 
 const CREATION_STATUSES: readonly StepStatus[] = ['queued', 'completed', 'skipped'];
+
+/** The settled statuses that carry an outcome; a skip or a cancellation carries none. */
+const OUTCOME_STEP_STATUSES: StepStatus[] = ['completed', 'failed'];
 
 /**
  * Re-checks `NewStepRecord`'s union at runtime for callers outside the type

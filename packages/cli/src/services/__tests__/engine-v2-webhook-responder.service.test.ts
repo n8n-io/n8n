@@ -1,10 +1,9 @@
 import type { Logger } from '@n8n/backend-common';
 import type { EngineConfig } from '@n8n/config';
-import type { ExecutionResponse, ExecutionResponseChannel, ExecutionSnapshot } from '@n8n/engine';
+import type { ExecutionResponse, ExecutionResponseChannel } from '@n8n/engine';
 import { mock } from 'vitest-mock-extended';
 
 import { createExecutionIdV2 } from '@/executions/execution-id';
-import type { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
 import {
 	EngineV2WebhookResponder,
 	MAX_PENDING_WEBHOOKS,
@@ -51,12 +50,9 @@ const endedResponse = (executionId: string, overrides: Record<string, unknown> =
 	...overrides,
 });
 
-let proxy: ReturnType<typeof mock<EngineDataPlaneProxyService>>;
-
 const newResponder = (timeoutMs = TIMEOUT_MS) =>
 	new EngineV2WebhookResponder(
 		mock<EngineConfig>({ webhookResponseTimeout: timeoutMs }),
-		proxy,
 		mock<Logger>({ scoped: () => mock<Logger>() }),
 	);
 
@@ -65,7 +61,6 @@ describe('EngineV2WebhookResponder', () => {
 	let responder: EngineV2WebhookResponder;
 
 	beforeEach(() => {
-		proxy = mock<EngineDataPlaneProxyService>();
 		const fake = fakeChannel();
 		channel = fake;
 		responder = newResponder();
@@ -128,25 +123,8 @@ describe('EngineV2WebhookResponder', () => {
 		});
 	});
 
-	it('answers with the step that ran when a skip ended the run', async () => {
+	it('reports no last node when that step produced nothing', async () => {
 		const pending = responder.waitForResponse(createExecutionIdV2());
-		proxy.getExecution.mockResolvedValue({
-			graph: { nodes: [{ id: 'a', name: 'A' }, { id: 'b', name: 'B' }] },
-			steps: [
-				{
-					nodeId: 'a',
-					status: 'completed',
-					outputs: [[{ json: 1 }]],
-					updatedAt: '2026-01-01T00:00:00.000Z',
-				},
-				{
-					nodeId: 'b',
-					status: 'completed',
-					outputs: [[{ json: 2 }]],
-					updatedAt: '2026-01-01T00:00:05.000Z',
-				},
-			],
-		} as unknown as ExecutionSnapshot);
 
 		channel.publish(
 			endedResponse(pending.executionId, {
@@ -154,34 +132,6 @@ describe('EngineV2WebhookResponder', () => {
 			}),
 		);
 
-		// A skip settles at birth and carries nothing, so the newest step that
-		// actually ran is the answer.
-		await expect(pending.settled).resolves.toEqual({
-			status: 'completed',
-			lastNode: { nodeName: 'B', outputs: [[{ json: 2 }]] },
-		});
-	});
-
-	it('does not read anything when the settling step produced data', async () => {
-		const pending = responder.waitForResponse(createExecutionIdV2());
-
-		channel.publish(endedResponse(pending.executionId));
-		await pending.settled;
-
-		expect(proxy.getExecution).not.toHaveBeenCalled();
-	});
-
-	it('still answers when that lookup fails', async () => {
-		const pending = responder.waitForResponse(createExecutionIdV2());
-		proxy.getExecution.mockRejectedValue(new Error('data plane is down'));
-
-		channel.publish(
-			endedResponse(pending.executionId, {
-				lastStep: { nodeId: 'c', nodeName: 'C', status: 'skipped', outputs: null },
-			}),
-		);
-
-		// A missing body beats a request that hangs until the timeout.
 		await expect(pending.settled).resolves.toEqual({ status: 'completed', lastNode: undefined });
 	});
 
