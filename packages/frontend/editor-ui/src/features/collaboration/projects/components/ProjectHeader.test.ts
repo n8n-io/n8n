@@ -118,8 +118,13 @@ describe('ProjectHeader', () => {
 
 	it('shows live promotion changes only with export and push access', async () => {
 		const server = createServer({ environment: 'test' });
-		server.get('/rest/promotions/project-1/changes', () => ({
-			data: [{ id: 'workflow-1', name: 'Changed workflow', type: 'workflow', status: 'modified' }],
+		server.get('/rest/promotions/project-1/changes/promote', () => ({
+			data: {
+				commitSha: 'a'.repeat(40),
+				changes: [
+					{ id: 'workflow-1', name: 'Changed workflow', type: 'workflow', status: 'modified' },
+				],
+			},
 		}));
 		try {
 			settingsStore.isModuleActive.mockReturnValue(true);

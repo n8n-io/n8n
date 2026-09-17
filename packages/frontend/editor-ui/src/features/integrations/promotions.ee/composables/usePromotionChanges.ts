@@ -1,12 +1,13 @@
 import { ref, computed } from 'vue';
-import type { PromotableResource } from '@n8n/api-types';
+import type { PromotableResource, PromotionDirection } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { getPromotableChanges } from '../promotions.api';
 
-export function usePromotionChanges(projectId: string) {
+export function usePromotionChanges(projectId: string, direction: PromotionDirection = 'promote') {
 	const rootStore = useRootStore();
 
 	const changes = ref<PromotableResource[]>([]);
+	const commitSha = ref<string | null>(null);
 	const isLoading = ref(false);
 	const error = ref<Error | null>(null);
 	const searchQuery = ref('');
@@ -44,7 +45,9 @@ export function usePromotionChanges(projectId: string) {
 		isLoading.value = true;
 		error.value = null;
 		try {
-			changes.value = await getPromotableChanges(rootStore.restApiContext, projectId);
+			const result = await getPromotableChanges(rootStore.restApiContext, projectId, direction);
+			changes.value = result.changes;
+			commitSha.value = result.commitSha;
 			reconcileSelection();
 		} catch (e) {
 			error.value = e instanceof Error ? e : new Error(String(e));
@@ -76,6 +79,7 @@ export function usePromotionChanges(projectId: string) {
 
 	return {
 		changes,
+		commitSha,
 		filteredChanges,
 		isLoading,
 		error,
