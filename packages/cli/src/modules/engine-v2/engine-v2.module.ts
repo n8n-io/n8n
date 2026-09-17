@@ -1,11 +1,13 @@
 import { Logger } from '@n8n/backend-common';
-import { EngineConfig, ExecutionsConfig } from '@n8n/config';
+import { EngineConfig, ExecutionsConfig, GlobalConfig } from '@n8n/config';
 import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule, OnShutdown } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { ExecutionResponseSender } from '@n8n/engine';
 import { UserError } from 'n8n-workflow';
 import { randomBytes } from 'node:crypto';
+
+import type { ExecutionResponseReceiver } from './response-channel/execution-response-receiver';
 
 /**
  * Runs the engine 2.0 data plane in-process.
@@ -21,7 +23,7 @@ import { randomBytes } from 'node:crypto';
 export class EngineV2Module implements ModuleInterface {
 	private responseSender?: ExecutionResponseSender;
 
-	private responseReceiver?: { stop(): Promise<void> };
+	private responseReceiver?: ExecutionResponseReceiver;
 
 	async init() {
 		if (Container.get(ExecutionsConfig).mode === 'queue') {
@@ -41,24 +43,55 @@ export class EngineV2Module implements ModuleInterface {
 
 		// Hand both endpoints over before the engine starts. A short run can answer
 		// before `startExecution` returns, and responses are not replayed.
-		const { InMemoryExecutionResponseChannel } = await import(
-			'./response-channel/in-memory-execution-response-channel.js'
-		);
-		const { InMemoryExecutionResponseSender } = await import(
-			'./response-channel/in-memory-execution-response-sender.js'
-		);
-		const { InMemoryExecutionResponseReceiver } = await import(
-			'./response-channel/in-memory-execution-response-receiver.js'
-		);
+		const logger = Container.get(Logger).scoped('engine-v2');
+		let responseSender: ExecutionResponseSender;
+		let responseReceiver: ExecutionResponseReceiver;
+		if (engineConfig.responseTransport === 'redis') {
+			const { RedisClientService } = await import('@/services/redis-client.service.js');
+			const { RedisExecutionResponseSender } = await import(
+				'./response-channel/redis-execution-response-sender.js'
+			);
+			const { RedisExecutionResponseReceiver } = await import(
+				'./response-channel/redis-execution-response-receiver.js'
+			);
+			const redisClientService = Container.get(RedisClientService);
+			const globalConfig = Container.get(GlobalConfig);
+			const channelPrefix = `${redisClientService.toValidPrefix(globalConfig.redis.prefix)}:engine-v2-responses`;
+			responseSender = new RedisExecutionResponseSender(
+				redisClientService.createClient({ type: 'publisher(n8n)' }),
+				channelPrefix,
+				logger,
+			);
+			const redisReceiver = new RedisExecutionResponseReceiver(
+				redisClientService.createClient({ type: 'subscriber(n8n)' }),
+				channelPrefix,
+				logger,
+			);
+			try {
+				await redisReceiver.start();
+			} catch (error) {
+				await responseSender.stop();
+				throw error;
+			}
+			responseReceiver = redisReceiver;
+		} else {
+			const { InMemoryExecutionResponseChannel } = await import(
+				'./response-channel/in-memory-execution-response-channel.js'
+			);
+			const { InMemoryExecutionResponseSender } = await import(
+				'./response-channel/in-memory-execution-response-sender.js'
+			);
+			const { InMemoryExecutionResponseReceiver } = await import(
+				'./response-channel/in-memory-execution-response-receiver.js'
+			);
+			const responseChannel = new InMemoryExecutionResponseChannel();
+			responseSender = new InMemoryExecutionResponseSender(responseChannel, logger);
+			responseReceiver = new InMemoryExecutionResponseReceiver(responseChannel, logger);
+		}
+
 		const { EngineV2WebhookResponder } = await import(
 			'@/services/engine-v2-webhook-responder.service.js'
 		);
-		// In-memory for now because both planes share this process. Redis endpoints
-		// can use the same response contracts when the planes run separately.
-		const responseChannel = new InMemoryExecutionResponseChannel();
-		const scopedLogger = Container.get(Logger).scoped('engine-v2');
-		const responseSender = new InMemoryExecutionResponseSender(responseChannel, scopedLogger);
-		const responseReceiver = new InMemoryExecutionResponseReceiver(responseChannel, scopedLogger);
 		Container.get(EngineV2WebhookResponder).useReceiver(responseReceiver);
 		this.responseSender = responseSender;
 		this.responseReceiver = responseReceiver;
