@@ -1,9 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import type { WorkflowGraph } from '../../graph';
+import type { EngineLogger } from '../../logging';
 import type { LifecycleEventPublisher } from '../../lifecycle-events';
 import type { OrchestrationMessage, StepMessage, WorkQueue } from '../../queue';
 import type { ExecutionResponseChannel } from '../../response-channel';
+import { ExecutionFinishedAnnouncer } from '../execution-finished-announcer';
 import type { ExecutionRecord, ExecutionStore } from '../execution-store';
 import { stepKeyId, type StepKey, type StepStatus } from '../execution.types';
 import { StepSettledHandler } from '../step-settled-handler';
@@ -111,6 +113,7 @@ function makeStepStore(
 		// far from settled, so finish tests opt in explicitly
 		countSettledSteps: vi.fn().mockResolvedValue(0),
 		hasFailedSteps: vi.fn().mockResolvedValue(false),
+		loadLastSettledStep: vi.fn().mockResolvedValue(null),
 		...overrides,
 	} satisfies StepStore;
 }
@@ -133,6 +136,13 @@ function makeResponseChannel() {
 	return { publish: vi.fn() } as unknown as ExecutionResponseChannel;
 }
 
+const silentLogger = (): EngineLogger => ({
+	error: vi.fn(),
+	warn: vi.fn(),
+	info: vi.fn(),
+	debug: vi.fn(),
+});
+
 function makeHandler(
 	stepStore: StepStore,
 	{
@@ -150,7 +160,9 @@ function makeHandler(
 			stepQueue,
 			orchestrationQueue,
 			lifecycleEventPublisher,
-			responseChannel,
+			// The real announcer over the fake channel: what reaches the channel is
+			// what the handler is asserted on.
+			new ExecutionFinishedAnnouncer(stepStore, responseChannel, silentLogger()),
 		),
 		executionStore,
 		stepQueue,

@@ -26,6 +26,7 @@ export type {
 } from './execution-view-store';
 export { StepNotFoundError } from './step-store';
 export type { NewStepRecord, StepRecord, StepStore, StepSummary } from './step-store';
+export { ExecutionFinishedAnnouncer } from './execution-finished-announcer';
 export { ExecutionStartHandler } from './execution-start-handler';
 export { ExecutionQueryService } from './execution-query.service';
 export { OrchestrationWorker } from './orchestration-worker';

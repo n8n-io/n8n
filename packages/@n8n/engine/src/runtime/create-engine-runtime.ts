@@ -7,6 +7,7 @@ import { createStores } from '../database';
 import type { EngineStores } from '../database';
 import type { ExternalDependencies } from '../dependencies';
 import {
+	ExecutionFinishedAnnouncer,
 	ExecutionQueryService,
 	ExecutionStartHandler,
 	OrchestrationWorker,
@@ -99,7 +100,7 @@ export function createEngineRuntime({
 			stepQueue,
 			orchestrationQueue,
 			lifecycleEventPublisher,
-			responseChannel,
+			new ExecutionFinishedAnnouncer(stepStore, responseChannel, logger),
 		),
 	);
 	const stepWorker = new StepWorker(

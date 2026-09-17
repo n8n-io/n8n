@@ -76,6 +76,16 @@ describe('workflow_step_execution table (integration)', () => {
 		return { id: row.id };
 	}
 
+	/** Fixture-only: settle order per node, since one insert batch shares its timestamp. */
+	async function setUpdatedAt(executionId: string, at: Record<string, string>): Promise<void> {
+		for (const [nodeId, timestamp] of Object.entries(at)) {
+			await dataSource.query(
+				'UPDATE workflow_step_execution SET updated_at = $1 WHERE execution_id = $2 AND node_id = $3',
+				[timestamp, executionId, nodeId],
+			);
+		}
+	}
+
 	it('persists and retrieves a step row', async () => {
 		const executionId = await createExecution();
 		const repo = dataSource.getRepository(WorkflowStepExecution);
@@ -711,6 +721,55 @@ describe('workflow_step_execution table (integration)', () => {
 		expect(latest.ghost).toBeUndefined();
 
 		expect(await store.loadLatestStepSummaries(executionId, [])).toEqual({});
+	});
+
+	it('TypeOrmStepStore.loadLastSettledStep returns the step that settled last with an outcome', async () => {
+		const executionId = await createExecution();
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		await store.createSteps(executionId, [
+			{ nodeId: 'a', iteration: 0, status: 'completed', outputs: [[{ json: { a: 1 } }]] },
+			{ nodeId: 'b', iteration: 0, status: 'completed', outputs: [[{ json: { b: 2 } }]] },
+			// A skip settles last and carries no outcome, which is what this read is for.
+			{ nodeId: 'c', iteration: 0, status: 'skipped' },
+		]);
+		// One batch shares its timestamp, so settle order is set explicitly here.
+		await setUpdatedAt(executionId, { a: '2026-01-01T00:00:00Z', b: '2026-01-01T00:00:05Z' });
+		// a sibling execution's later step must not leak in
+		const otherExecutionId = await createExecution();
+		await store.createSteps(otherExecutionId, [
+			{ nodeId: 'z', iteration: 0, status: 'completed', outputs: [[{ json: { z: 9 } }]] },
+		]);
+
+		const last = await store.loadLastSettledStep(executionId);
+
+		expect(last).toMatchObject({ nodeId: 'b', outputs: [[{ json: { b: 2 } }]] });
+	});
+
+	it('TypeOrmStepStore.loadLastSettledStep counts a failed step as an outcome', async () => {
+		const executionId = await createExecution();
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		await store.createSteps(executionId, [
+			{ nodeId: 'a', iteration: 0, status: 'completed', outputs: [[{ json: { a: 1 } }]] },
+		]);
+		await seedStep({ executionId, nodeId: 'b', status: 'failed' });
+		await setUpdatedAt(executionId, { a: '2026-01-01T00:00:00Z', b: '2026-01-01T00:00:05Z' });
+
+		expect(await store.loadLastSettledStep(executionId)).toMatchObject({
+			nodeId: 'b',
+			status: 'failed',
+		});
+	});
+
+	it('TypeOrmStepStore.loadLastSettledStep returns null when no step reached an outcome', async () => {
+		const executionId = await createExecution();
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		await store.createSteps(executionId, [
+			{ nodeId: 'a', iteration: 0, status: 'skipped' },
+			{ nodeId: 'b', iteration: 0, status: 'queued' },
+		]);
+		await seedStep({ executionId, nodeId: 'c', status: 'cancelled' });
+
+		expect(await store.loadLastSettledStep(executionId)).toBeNull();
 	});
 
 	it('carries the unique key and the failed-rows partial index in the schema', async () => {

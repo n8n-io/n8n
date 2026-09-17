@@ -22,6 +22,7 @@ import {
 	type WorkQueue,
 } from '../../queue';
 import { ExecutionResponseChannel, noopResponseTransport } from '../../response-channel';
+import { ExecutionFinishedAnnouncer } from '../execution-finished-announcer';
 import { ExecutionStartHandler } from '../execution-start-handler';
 import { OrchestrationWorker } from '../orchestration-worker';
 import { StartExecutionService } from '../start-execution.service';
@@ -76,7 +77,11 @@ describe('execution start (integration)', () => {
 				stepQueue,
 				orchestrationQueue,
 				noopLifecycleEventPublisher,
-				new ExecutionResponseChannel(noopResponseTransport, createConsoleLogger()),
+				new ExecutionFinishedAnnouncer(
+					stepStore,
+					new ExecutionResponseChannel(noopResponseTransport, createConsoleLogger()),
+					createConsoleLogger(),
+				),
 			),
 		);
 		worker.start();

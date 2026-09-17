@@ -161,4 +161,11 @@ export interface StepStore {
 
 	/** Whether any of the execution's steps failed. */
 	hasFailedSteps(executionId: string): Promise<boolean>;
+
+	/**
+	 * The execution's step that settled last with an outcome of its own —
+	 * `completed` or `failed` — or `null` if no step reached one. For answering a
+	 * run that a skip ended, since settle order is what v1 means by the last node.
+	 */
+	loadLastSettledStep(executionId: string): Promise<StepRecord | null>;
 }
