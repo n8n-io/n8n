@@ -12,7 +12,8 @@ message. That caller uses a URL. The URL travels through channels that the
 engine does not control. It stays available for the length of the wait, which
 can be several months.
 
-The data plane verifies the request (ADR-20260902, decision 5). The control
+The data plane verifies the request
+(ADR-20260902-steps-declare-waits, decision 5). The control
 plane forwards the request and reads none of its own tables. Therefore the
 token is the only control between an unknown caller and a paused workflow.
 
@@ -31,6 +32,12 @@ execution without a stored token accepts any caller.
 
 A **separate kind of capability token** authorizes a resume request. The engine
 derives the token and does not store it.
+
+The bar this decision meets is parity with engine v1: a resume URL is as hard to
+forge here as it is there, and no harder. It is not a claim that this is the
+final shape. A later decision supersedes this one when the trust layer between
+the planes settles, or when a requirement arrives that the derived form cannot
+meet — per-URL revocation is the most likely of those.
 
 1. **The token has its own spec.** A third `SharedSecretTokenSpec` holds its own
    issuer and audience. Therefore a caller cannot replay a resume token at the
@@ -60,7 +67,7 @@ derives the token and does not store it.
 - **Mint the token at suspension and store it on the step row.** This option
   can revoke one wait without a change to the secret. The derived token cannot
   do this. The option needs a column. It also makes the shim read the row again
-  to build a message URL. No requirement asks for this revocation path today.
+  to build a message URL. No requirement asks for this revocation path.
 - **Set the expiry to the deadline of the wait.** This option gives the
   shortest window for a wait that has a deadline. A wait that only a resume
   request ends has no deadline. Therefore the option needs a second rule for
@@ -87,7 +94,7 @@ derives the token and does not store it.
   declaration. The same token applies to each of those waits. To make a token
   apply to one wait only, the engine must add a suspension counter to the claims
   and to the compare-and-set. The counter must be on the step row, so this
-  changes decision 2 in part. No v1 node reaches this case today, because
+  changes decision 2 in part. No v1 node reaches this case, because
   `putExecutionToWait` is on `IExecuteFunctions` and not on
   `IWebhookFunctions`. Therefore the resume method of a node cannot suspend the
   step again.
@@ -103,8 +110,8 @@ derives the token and does not store it.
   always passes `maxAge`. Both values come from the spec. Therefore the change
   is to make the lifetime optional in the spec.
 - A resume request can still arrive before the engine records the suspension
-  (ADR-20260902). At this endpoint, that window appears as a valid token for a
-  step that does not yet hold the `waiting` status.
+  (ADR-20260902-steps-declare-waits). At this endpoint, that window appears as
+  a valid token for a step that does not yet hold the `waiting` status.
 
 ## Links
 

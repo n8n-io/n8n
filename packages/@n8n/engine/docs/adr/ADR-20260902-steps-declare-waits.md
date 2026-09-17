@@ -18,9 +18,13 @@ node types call `putExecutionToWait`. They include the Wait node and all
 send-and-wait nodes. Their wait parameters are frequently expressions. The node
 resolves those expressions at run time.
 
+Send-and-wait nodes also need credentials (CAT-2880). Time waits and webhook
+waits need none.
+
 In engine v2, an execution is a set of step rows. Events move each row from one
-status to the next. A step is one call that returns output (ADR-20260828).
-Therefore a step executor cannot stay blocked for the length of the wait. A
+status to the next. A step is one call that returns output
+(ADR-20260828-trigger-settlement-before-execution). Therefore a step executor
+cannot stay blocked for the length of the wait. A
 pause must be a status of the step row. It must not be a state of a process.
 
 ## Decision
@@ -61,9 +65,7 @@ deadline, or accept a resume request, or do both.
    `waiting` when one or more of its steps wait, and no step runs or can run. In
    all other cases the execution reports `running`. The engine calculates the
    status again at each step transition. A new `step:waiting` lifecycle event
-   shows the paused step in the UI. **The engine does not do this yet.** The
-   status projection, the `step:waiting` event and the control-plane mapping are
-   one later slice. The decision holds; only the code is absent.
+   shows the paused step in the UI.
 
 ## How the design doc's model maps onto this one
 
@@ -136,16 +138,26 @@ step result contract, so no node needs to convert to a different step type.
   handling as the step outputs.
 - A resolve request can arrive before the engine records the suspension. The
   resolve path must handle this window. It must not refuse the request.
-- The sweep interval sets the timer resolution. Engine v1 resolves waits on a
-  60-second poll, so the two are equivalent.
-- Short waits become durable. Engine v1 sleeps in the process for a wait below
-  65 seconds. Engine v2 suspends every wait. This changes the timing of short
-  waits.
+- A wait under 65 seconds does not reach the engine. The Wait node sleeps in the
+  process for those and returns normally, and the shim runs that node code
+  unchanged, so the engine never sees a declaration. Node-level waiting stays
+  node behaviour.
+- A wait with a `limitWaitTime` can fire up to one sweep interval after its
+  limit. That parameter has no minimum, so the limit can fall due before the
+  sweep's next pass, and the sweep then notices it only on that pass. Every
+  other wait fires at its deadline: the sweep schedules its next pass from the
+  earliest deadline it can see, and a `timeInterval` or `specificTime` wait
+  that reaches the engine is at least 65 seconds out. Engine v1 is late for the
+  same waits and no others, because the same node path sets `waitTill` without
+  a floor and v1's 60-second poll cannot adapt to it. Parity is the bar here,
+  so the engine keeps the same bound rather than a shorter interval.
+- A wait that sleeps in the process ignores execution cancellation. The node
+  registers a handler through `onExecutionCancellation`, which needs an abort
+  signal that the shim does not supply yet (CAT-4526). Nothing observes this
+  until an execution can be cancelled (CAT-3990).
 - The control plane maps the new status to the `waiting` status of v1. The
   executions list and its filters continue to work. An execution with one
   waiting branch and one running branch reports `running`.
-- Send-and-wait nodes need credentials in engine v2 to work end to end
-  (CAT-2880). Time waits and webhook waits do not need them.
 - A wait can outlive the control-plane state that it started with. A user can
   move the workflow, unshare a credential, or remove access. The resume path
   reads no control-plane state, so it cannot detect these changes. Whether a
