@@ -10,7 +10,7 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { v5 as uuidv5 } from 'uuid';
 
-import { sanitiseAppName } from '../../integration-helpers';
+import { sanitiseAppName, truncateToCodePoints } from '../../integration-helpers';
 
 const MANIFEST_VERSION = '1.16';
 const MANIFEST_SCHEMA = `https://developer.microsoft.com/json-schemas/teams/v${MANIFEST_VERSION}/MicrosoftTeams.schema.json`;
@@ -206,11 +206,10 @@ export class TeamsManifestService {
 	}
 
 	/**
-	 * Counted in code points, which is both what the manifest schema counts and
-	 * what keeps the cut from landing inside an emoji.
+	 * The same cut `sanitiseAppName` makes, so the shorter cap cannot halve an
+	 * emoji the longer one kept whole.
 	 */
 	private truncate(value: string, max: number): string {
-		const points = Array.from(value);
-		return points.length <= max ? value : points.slice(0, max).join('').trimEnd();
+		return truncateToCodePoints(value, max);
 	}
 }
