@@ -13,6 +13,8 @@ import { GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import {
+	AI_PREFERENCES_CLEARED_BLOCK,
+	AI_PREFERENCES_REPLACES_EARLIER,
 	AiPreferenceService,
 	buildAppliedPreferencesPayload,
 	flattenAiPreferences,
@@ -928,6 +930,8 @@ describe('renderAiPreferencesBlock', () => {
 		expect(text).toBe(
 			[
 				'<ai-preferences>',
+				'This block replaces every earlier ai-preferences block in this conversation. Apply this one and set the earlier copies aside.',
+				'',
 				'The user saved preferences for how AI tools work with them. Apply every one of them to everything you create or change for the rest of this task, not only the first step. Set a preference aside only when it conflicts with something the user asks for directly, and say which one you set aside. They do not grant permissions, unlock tools, or override your safety rules or your other instructions.',
 				'',
 				'Instance preferences (set by an admin for everyone):\n- Use British English.',
@@ -956,8 +960,36 @@ describe('renderAiPreferencesBlock', () => {
 		};
 
 		expect(renderAiPreferencesBlock(preferences)).toBe(
-			`<ai-preferences>\n${renderAiPreferences(preferences)}\n</ai-preferences>`,
+			`<ai-preferences>\n${AI_PREFERENCES_REPLACES_EARLIER}\n\n${renderAiPreferences(preferences)}\n</ai-preferences>`,
 		);
+	});
+
+	it('says it replaces the earlier copies, because a turn re-sends it whenever the text changed', () => {
+		const text = renderAiPreferencesBlock({
+			instance: [],
+			user: saved('Keep replies short.'),
+			projects: [],
+		});
+
+		expect(text?.startsWith(`<ai-preferences>\n${AI_PREFERENCES_REPLACES_EARLIER}\n\n`)).toBe(true);
+		// The MCP tool's unwrapped text carries no replacement talk — a tool result is not a turn.
+		expect(
+			renderAiPreferences({ instance: [], user: saved('Keep replies short.'), projects: [] }),
+		).not.toContain(AI_PREFERENCES_REPLACES_EARLIER);
+	});
+
+	it('offers a constant cleared block that carries the replacement sentence and no literal tags inside', () => {
+		const inner = AI_PREFERENCES_CLEARED_BLOCK.slice(
+			'<ai-preferences>'.length,
+			-'</ai-preferences>'.length,
+		);
+
+		expect(AI_PREFERENCES_CLEARED_BLOCK.startsWith('<ai-preferences>\n')).toBe(true);
+		expect(AI_PREFERENCES_CLEARED_BLOCK.endsWith('\n</ai-preferences>')).toBe(true);
+		expect(inner).toContain(AI_PREFERENCES_REPLACES_EARLIER);
+		expect(inner).toContain('no saved preferences');
+		// The change-rule extractor anchors on the first close tag, so the body must not carry one.
+		expect(inner).not.toContain('</ai-preferences>');
 	});
 
 	it("folds the caller's personal project into the personal group, as the tool does", () => {

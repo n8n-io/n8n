@@ -590,7 +590,7 @@ export class InstanceAiAdapterService {
 		 *  closed with every other gate: `getFeatureFlags` never throws, it
 		 *  returns `{}` on a PostHog outage. */
 		folderExplorationEnabled: boolean;
-		/** Saved AI preferences on the opening turn. */
+		/** Saved AI preferences on every user turn. */
 		aiPreferencesEnabled: boolean;
 	}> {
 		let flags: Awaited<ReturnType<PostHogClient['getFeatureFlags']>> = {};

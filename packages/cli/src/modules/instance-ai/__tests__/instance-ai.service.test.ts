@@ -235,7 +235,7 @@ vi.mock('@/permissions.ee/check-access', () => ({
 }));
 
 import type { MemoryTaskUsageReport, ScopedMemoryTaskEvent } from '@n8n/agents';
-import type { InstanceAiEvent } from '@n8n/api-types';
+import type { AiPreferencesAppliedPayload, InstanceAiEvent } from '@n8n/api-types';
 import type { InstanceAiHandoffContext } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import type { InstanceAiConfig } from '@n8n/config';
@@ -269,6 +269,10 @@ import type { Mock, MockedFunction } from 'vitest';
 
 import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
 import { userHasScopes } from '@/permissions.ee/check-access';
+import {
+	AI_PREFERENCES_CLEARED_BLOCK,
+	renderAiPreferencesBlock,
+} from '@/services/ai-preference.service';
 
 import { EvalThreadCredentialAllowlistService } from '../eval/thread-credential-allowlist.service';
 import {
@@ -278,6 +282,7 @@ import {
 import { INSTANCE_AI_RUN_TIMEOUT_REASON } from '../liveness/instance-ai-liveness.service';
 import { InstanceAiRunLimitError } from '../instance-ai-run-limit.error';
 import { InstanceAiService } from '../instance-ai.service';
+import { buildThreadContextBlock } from '../internal-messages';
 import { InstanceAiSandboxService } from '../sandbox';
 
 type StartRunServiceInternals = {
@@ -6245,75 +6250,198 @@ describe('InstanceAiService — internal follow-up failure streak', () => {
 	});
 });
 
-describe('InstanceAiService — resolveAiPreferencesBlock', () => {
+describe('InstanceAiService — resolveAiPreferencesTurn', () => {
+	type StoredMessage = { role: string; content: string };
 	type Internals = {
-		resolveAiPreferencesBlock: (
+		resolveAiPreferencesTurn: (
 			userId: string,
 			project: { id: string; name: string; type: 'team' } | undefined,
-		) => Promise<string | undefined>;
+			threadId: string,
+		) => Promise<{ block: string | undefined; payload: AiPreferencesAppliedPayload }>;
 		aiPreferenceService: { getApplicable: Mock };
+		agentMemory: { getMessages: Mock };
+		eventLog: { getLastPreferencesInjectionRunId: Mock };
 		logger: { warn: Mock };
 	};
 
 	function createService(): Internals {
 		const service = Object.create(InstanceAiService.prototype) as unknown as Internals;
 		service.aiPreferenceService = { getApplicable: vi.fn() };
+		service.agentMemory = { getMessages: vi.fn().mockResolvedValue([]) };
+		service.eventLog = { getLastPreferencesInjectionRunId: vi.fn().mockResolvedValue(undefined) };
 		service.logger = { warn: vi.fn() };
 		return service;
 	}
 
-	it('reads the preferences for the user and the bound project and renders the block', async () => {
-		const service = createService();
-		service.aiPreferenceService.getApplicable.mockResolvedValue({
-			instance: [],
-			user: [{ id: 'pref-1', content: 'Keep replies short.' }],
-			projects: [
-				{
-					id: 'project-1',
-					name: 'Marketing',
-					items: [{ id: 'pref-2', content: 'Prefer HubSpot nodes.' }],
-				},
-			],
-		});
+	const applicable = {
+		instance: [],
+		user: [{ id: 'pref-1', content: 'Keep replies short.' }],
+		projects: [
+			{
+				id: 'project-1',
+				name: 'Marketing',
+				items: [{ id: 'pref-2', content: 'Prefer HubSpot nodes.' }],
+			},
+		],
+	};
+	const none = { instance: [], user: [], projects: [] };
+	const boundProject = { id: 'project-1', name: 'Marketing', type: 'team' as const };
 
-		const block = await service.resolveAiPreferencesBlock('user-1', {
-			id: 'project-1',
-			name: 'Marketing',
-			type: 'team',
-		});
+	/** A persisted user turn whose leading thread-context carries `block`, as the service stores it. */
+	const storedUserTurn = (
+		block: string | undefined,
+		text = 'Build me a digest',
+	): StoredMessage => ({
+		role: 'user',
+		content: [buildThreadContextBlock(['Ambient context.', block]), text].join('\n\n'),
+	});
+
+	it('injects the block and reports it when the conversation never carried one', async () => {
+		const service = createService();
+		service.aiPreferenceService.getApplicable.mockResolvedValue(applicable);
+
+		const turn = await service.resolveAiPreferencesTurn('user-1', boundProject, 'thread-1');
 
 		expect(service.aiPreferenceService.getApplicable).toHaveBeenCalledWith('user-1', [
-			{ id: 'project-1', name: 'Marketing', type: 'team' },
+			boundProject,
 		]);
-		expect(block).toContain('<ai-preferences>');
-		expect(block).toContain('Preferences for project "Marketing":');
-		expect(block).toContain('- Keep replies short.');
-	});
-
-	it('reads only user and instance preferences when the project could not be resolved', async () => {
-		const service = createService();
-		service.aiPreferenceService.getApplicable.mockResolvedValue({
-			instance: [],
-			user: [],
-			projects: [],
+		expect(turn.block).toContain('<ai-preferences>');
+		expect(turn.block).toContain('Preferences for project "Marketing":');
+		expect(turn.block).toContain('- Keep replies short.');
+		expect(turn.payload).toEqual({
+			preferences: [
+				{ id: 'pref-1', scope: 'user' },
+				{ id: 'pref-2', scope: 'project', projectId: 'project-1', projectName: 'Marketing' },
+			],
+			renderedLength: turn.block?.length,
+			injectedThisTurn: true,
 		});
-
-		const block = await service.resolveAiPreferencesBlock('user-1', undefined);
-
-		expect(service.aiPreferenceService.getApplicable).toHaveBeenCalledWith('user-1', []);
-		expect(block).toBeUndefined();
 	});
 
-	it('warns and skips the block when the read fails', async () => {
+	it('re-uses the previous copy when the rendered text is unchanged, and names the run that sent it', async () => {
+		const service = createService();
+		service.aiPreferenceService.getApplicable.mockResolvedValue(applicable);
+		const block = renderAiPreferencesBlock(applicable);
+		if (!block) throw new Error('expected a block');
+		// A later user turn without a block must not stop the scan.
+		service.agentMemory.getMessages.mockResolvedValue([
+			storedUserTurn(block),
+			{ role: 'assistant', content: 'Done.' },
+			storedUserTurn(undefined, 'Thanks'),
+		]);
+		service.eventLog.getLastPreferencesInjectionRunId.mockResolvedValue('run-1');
+
+		const turn = await service.resolveAiPreferencesTurn('user-1', boundProject, 'thread-1');
+
+		expect(turn.block).toBeUndefined();
+		expect(turn.payload).toEqual({
+			preferences: [
+				{ id: 'pref-1', scope: 'user' },
+				{ id: 'pref-2', scope: 'project', projectId: 'project-1', projectName: 'Marketing' },
+			],
+			renderedLength: block.length,
+			injectedThisTurn: false,
+			carriedFromRunId: 'run-1',
+		});
+	});
+
+	it('re-sends the block when the rendered text differs from the previous copy', async () => {
+		const service = createService();
+		service.aiPreferenceService.getApplicable.mockResolvedValue(applicable);
+		const olderBlock = renderAiPreferencesBlock({
+			...none,
+			user: [{ id: 'pref-1', content: 'Write long replies.' }],
+		});
+		if (!olderBlock) throw new Error('expected a block');
+		service.agentMemory.getMessages.mockResolvedValue([storedUserTurn(olderBlock)]);
+
+		const turn = await service.resolveAiPreferencesTurn('user-1', boundProject, 'thread-1');
+
+		expect(turn.block).toContain('- Keep replies short.');
+		expect(turn.payload).toMatchObject({ injectedThisTurn: true });
+		expect(service.eventLog.getLastPreferencesInjectionRunId).not.toHaveBeenCalled();
+	});
+
+	it('publishes an empty payload when the read fails, without touching the history', async () => {
 		const service = createService();
 		service.aiPreferenceService.getApplicable.mockRejectedValue(new Error('db down'));
 
-		const block = await service.resolveAiPreferencesBlock('user-1', undefined);
+		const turn = await service.resolveAiPreferencesTurn('user-1', undefined, 'thread-1');
 
-		expect(block).toBeUndefined();
+		expect(turn.block).toBeUndefined();
+		expect(turn.payload).toEqual({ preferences: [], renderedLength: 0, injectedThisTurn: false });
+		expect(service.agentMemory.getMessages).not.toHaveBeenCalled();
 		expect(service.logger.warn).toHaveBeenCalledWith(
 			'Instance AI failed to read the AI preferences for this turn',
 			{ userId: 'user-1', error: 'db down' },
 		);
+	});
+
+	it('sends the cleared block once when every preference is gone but the thread carries one', async () => {
+		const service = createService();
+		service.aiPreferenceService.getApplicable.mockResolvedValue(none);
+		const block = renderAiPreferencesBlock(applicable);
+		if (!block) throw new Error('expected a block');
+		service.agentMemory.getMessages.mockResolvedValue([storedUserTurn(block)]);
+
+		const turn = await service.resolveAiPreferencesTurn('user-1', undefined, 'thread-1');
+
+		expect(turn.block).toBe(AI_PREFERENCES_CLEARED_BLOCK);
+		expect(turn.payload).toEqual({
+			preferences: [],
+			renderedLength: AI_PREFERENCES_CLEARED_BLOCK.length,
+			injectedThisTurn: true,
+		});
+
+		// The cleared block obeys the same change rule: a thread that stays empty carries it once.
+		service.agentMemory.getMessages.mockResolvedValue([
+			storedUserTurn(block),
+			storedUserTurn(AI_PREFERENCES_CLEARED_BLOCK),
+		]);
+		const nextTurn = await service.resolveAiPreferencesTurn('user-1', undefined, 'thread-1');
+
+		expect(nextTurn.block).toBeUndefined();
+		expect(nextTurn.payload).toMatchObject({ preferences: [], injectedThisTurn: false });
+	});
+
+	it('sends nothing and reports an empty payload when there are no preferences and never were', async () => {
+		const service = createService();
+		service.aiPreferenceService.getApplicable.mockResolvedValue(none);
+
+		const turn = await service.resolveAiPreferencesTurn('user-1', undefined, 'thread-1');
+
+		expect(turn.block).toBeUndefined();
+		expect(turn.payload).toEqual({ preferences: [], renderedLength: 0, injectedThisTurn: false });
+		expect(service.eventLog.getLastPreferencesInjectionRunId).not.toHaveBeenCalled();
+	});
+
+	it('injects when the history read fails, because re-sending is the safe direction', async () => {
+		const service = createService();
+		service.aiPreferenceService.getApplicable.mockResolvedValue(applicable);
+		service.agentMemory.getMessages.mockRejectedValue(new Error('history down'));
+
+		const turn = await service.resolveAiPreferencesTurn('user-1', boundProject, 'thread-1');
+
+		expect(turn.block).toContain('<ai-preferences>');
+		expect(turn.payload).toMatchObject({ injectedThisTurn: true });
+		expect(service.logger.warn).toHaveBeenCalledWith(
+			'Instance AI failed to read the last AI preferences block of this thread',
+			{ threadId: 'thread-1', error: 'history down' },
+		);
+	});
+
+	it('still skips an unchanged block when the run attribution lookup fails', async () => {
+		const service = createService();
+		service.aiPreferenceService.getApplicable.mockResolvedValue(applicable);
+		const block = renderAiPreferencesBlock(applicable);
+		if (!block) throw new Error('expected a block');
+		service.agentMemory.getMessages.mockResolvedValue([storedUserTurn(block)]);
+		service.eventLog.getLastPreferencesInjectionRunId.mockRejectedValue(new Error('log down'));
+
+		const turn = await service.resolveAiPreferencesTurn('user-1', boundProject, 'thread-1');
+
+		expect(turn.block).toBeUndefined();
+		expect(turn.payload).toMatchObject({ injectedThisTurn: false });
+		expect(turn.payload).not.toHaveProperty('carriedFromRunId');
 	});
 });
