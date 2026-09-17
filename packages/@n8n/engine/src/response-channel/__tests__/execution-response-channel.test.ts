@@ -181,9 +181,32 @@ describe('ExecutionResponseChannel', () => {
 		const seen: ExecutionResponse[] = [];
 		channel.subscribe('exec-1', (r) => seen.push(r));
 
-		channel.emitterFor('exec-1').send({ ok: true });
+		const respond = channel.emitterFor('exec-1');
+		respond.send({ ok: true });
+		respond.chunk({ part: 1 });
 
-		expect(seen).toEqual([{ type: 'response', executionId: 'exec-1', payload: { ok: true } }]);
+		expect(seen).toEqual([
+			{ type: 'response', executionId: 'exec-1', payload: { ok: true } },
+			{ type: 'chunk', executionId: 'exec-1', payload: { part: 1 } },
+		]);
+	});
+
+	it('reports an oversized chunk', () => {
+		const transport = new RecordingTransport();
+		const channel = new ExecutionResponseChannel(transport, silentLogger(), 64);
+		const seen: ExecutionResponse[] = [];
+		channel.subscribe('exec-1', (response) => seen.push(response));
+
+		channel.publish({ type: 'chunk', executionId: 'exec-1', payload: 'x'.repeat(200) });
+
+		expect(seen[0]).toEqual({
+			type: 'failure',
+			executionId: 'exec-1',
+			error: {
+				code: 'RESPONSE_TOO_LARGE',
+				message: 'The execution response exceeds the maximum size of 64 bytes.',
+			},
+		});
 	});
 
 	it('discards a frame that is not a response', () => {

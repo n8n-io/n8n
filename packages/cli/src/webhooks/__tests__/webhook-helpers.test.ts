@@ -2172,12 +2172,6 @@ describe('executeWebhook on engine 2.0', () => {
 
 		it.each([
 			{
-				name: 'the streaming response mode',
-				options: { responseMode: 'streaming' },
-				message:
-					"Engine 2.0 does not support the 'streaming' response mode yet. Respond immediately instead.",
-			},
-			{
 				name: 'the hostedChat response mode',
 				options: { responseMode: 'hostedChat' },
 				message:

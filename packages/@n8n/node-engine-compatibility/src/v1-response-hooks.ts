@@ -49,6 +49,14 @@ export function attachResponseHooks(
 
 	hooks.addHandler('sendResponse', (response) => respond.send(toJsonPayload(response)));
 
+	// Only when the caller waits for a stream. `isStreaming()` reads both this
+	// flag and the handler, and a node that streams never calls `sendResponse`,
+	// so setting it unconditionally would break the `responseNode` mode.
+	if (context.callerContext.streamingEnabled === true) {
+		additionalData.streamingEnabled = true;
+		hooks.addHandler('sendChunk', (chunk) => respond.chunk(toJsonPayload(chunk)));
+	}
+
 	additionalData.hooks = hooks;
 }
 
