@@ -711,7 +711,21 @@ describe('mapAgentChunkToEvent', () => {
 		});
 	});
 
-	it('drops a malformed testListener payload', () => {
+	it.each([
+		['without triggers', { workflowId: 'wf-1' }],
+		[
+			'with an empty triggers list',
+			{ workflowId: 'wf-1', triggers: [], deadlineAt: '2026-01-01T00:10:00.000Z' },
+		],
+		[
+			'with an empty trigger URL',
+			{
+				workflowId: 'wf-1',
+				triggers: [{ nodeName: 'Webhook', url: '', method: 'POST' }],
+				deadlineAt: '2026-01-01T00:10:00.000Z',
+			},
+		],
+	])('drops a malformed testListener payload %s', (_, testListener) => {
 		const event = map({
 			type: 'tool-call-suspended',
 			toolCallId: 'tc-1',
@@ -720,7 +734,7 @@ describe('mapAgentChunkToEvent', () => {
 				requestId: 'request-1',
 				severity: 'info',
 				message: 'Waiting for a test request to Intake',
-				testListener: { workflowId: 'wf-1' },
+				testListener,
 			},
 		});
 
