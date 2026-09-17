@@ -91,6 +91,7 @@ packages/frontend/@n8n/i18n/src/locales/en.json
   s_11813b9a5b77e2::t_321389c2530fcf 7729-7730
 packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiViewHeader.vue
   s_11813b9a5b77e2::t_304b32ec488e1e 2,18,66-73,102
+  s_8f0638df9beaf3::t_91abbf2f835143 4
 ---
 {
   "schema_version": "authorship/3.0.0",
