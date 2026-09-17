@@ -61,7 +61,7 @@ export async function fetchRemoteEnv({
 	if (!url) return { env: [], warnings };
 	if (!password) {
 		warnings.push(
-			'PREVIEW_ENV_URL is set but PREVIEW_ENV_PASSWORD is not. Serving without remote env.',
+			'CODESPACE_ENV_URL is set but CODESPACE_ENV_PASSWORD is not. Serving without remote env.',
 		);
 		return { env: [], warnings };
 	}
@@ -71,7 +71,7 @@ export async function fetchRemoteEnv({
 		// Never put the URL in a warning: it is a secret on this box.
 		endpoint = new URL(url);
 	} catch {
-		warnings.push('PREVIEW_ENV_URL is not a valid URL. Serving without remote env.');
+		warnings.push('CODESPACE_ENV_URL is not a valid URL. Serving without remote env.');
 		return { env: [], warnings };
 	}
 	// Context for the webhook, so one endpoint can answer per PR.
