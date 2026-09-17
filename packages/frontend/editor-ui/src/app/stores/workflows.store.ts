@@ -8,7 +8,6 @@ import type { INodeUi, IStartRunData, IWorkflowDb } from '@/Interface';
 import type {
 	IExecutionPushResponse,
 	IExecutionResponse,
-	IExecutionsListResponse,
 	IExecutionFlattedResponse,
 } from '@/features/execution/executions/executions.types';
 import type { IWorkflowTemplateNode } from '@n8n/rest-api-client/api/templates';
@@ -247,25 +246,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			newName = newWorkflow.name;
 		} catch (e) {}
 		return newName;
-	}
-
-	// TODO: For sure needs some kind of default filter like last day, with max 10 results, ...
-	async function getPastExecutions(
-		filter: IDataObject,
-		limit: number,
-		lastId?: string,
-		firstId?: string,
-	): Promise<IExecutionsListResponse> {
-		let sendData = {};
-		if (filter) {
-			sendData = {
-				filter,
-				firstId,
-				lastId,
-				limit,
-			};
-		}
-		return await makeRestApiRequest(rootStore.restApiContext, 'GET', '/executions', sendData);
 	}
 
 	async function getExecution(id: string): Promise<IExecutionResponse | undefined> {
@@ -533,7 +513,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		setWorkflowActive,
 		setWorkflowInactive,
 		getDuplicateCurrentWorkflowName,
-		getPastExecutions,
 		getExecution,
 		createNewWorkflow,
 		updateWorkflow,

@@ -695,6 +695,66 @@ describe('EphemeralNodeExecutor', () => {
 			expect(result).toBe(schema);
 		});
 
+		it('returns null without running supplyData when the credential is not shared with the project', async () => {
+			const supplyData = vi.fn();
+			nodeTypes.getByNameAndVersion.mockReturnValue(
+				mockNodeType({ description: toolDescription, supplyData }),
+			);
+			sharedCredentialsRepository.findOne.mockResolvedValue(null);
+
+			const result = await executor.introspectSupplyDataToolSchema({
+				projectId: 'p-1',
+				nodeType: '@n8n/n8n-nodes-langchain.toolWikipedia',
+				nodeTypeVersion: 1,
+				nodeParameters: {},
+				credentials: { slackApi: { id: 'c1', name: 'Prod Slack' } },
+			});
+
+			expect(result).toBeNull();
+			expect(supplyData).not.toHaveBeenCalled();
+			expect(logger.warn).toHaveBeenCalledWith('supplyData tool introspection failed', {
+				nodeType: '@n8n/n8n-nodes-langchain.toolWikipedia',
+				error: expect.stringMatching(/not accessible or does not exist/),
+			});
+		});
+
+		it('uses verified credentials when running supplyData', async () => {
+			const schema = { type: 'object', properties: { query: { type: 'string' } } };
+			let observedCredentials: Record<string, INodeCredentialsDetails> | undefined;
+			const supplyData = vi.fn(function (this: ISupplyDataFunctions) {
+				observedCredentials = this.getNode().credentials;
+				return { response: { invoke: vi.fn(), schema } };
+			});
+			nodeTypes.getByNameAndVersion.mockReturnValue(
+				mockNodeType({ description: toolDescription, supplyData }),
+			);
+			sharedCredentialsRepository.findOne.mockResolvedValue(
+				mock<SharedCredentials>({
+					credentials: mock<CredentialsEntity>({
+						id: 'c1',
+						name: 'Prod Slack',
+						type: 'slackApi',
+					}),
+				}),
+			);
+
+			const result = await executor.introspectSupplyDataToolSchema({
+				projectId: 'p-1',
+				nodeType: '@n8n/n8n-nodes-langchain.toolWikipedia',
+				nodeTypeVersion: 1,
+				nodeParameters: {},
+				credentials: {
+					slackApi: { id: 'c1', name: 'Prod Slack', __aiGatewayManaged: false },
+				},
+			});
+
+			expect(supplyData).toHaveBeenCalledTimes(1);
+			expect(observedCredentials).toEqual({
+				slackApi: { id: 'c1', name: 'Prod Slack' },
+			});
+			expect(result).toBe(schema);
+		});
+
 		it('returns null when the tool has no structured schema (base Tool/DynamicTool)', async () => {
 			const dynamicTool = new DynamicTool({
 				name: 'thinking_tool',

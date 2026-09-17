@@ -10,6 +10,7 @@ import {
 	GLOBAL_CHAT_USER_SCOPES,
 	GLOBAL_MEMBER_SCOPES,
 } from '@n8n/permissions';
+import { getTooltip } from '@/__tests__/utils';
 
 const totalOptions = INSTANCE_SCOPE_GROUP_LIST.reduce((sum, g) => sum + g.options.length, 0);
 
@@ -58,7 +59,7 @@ describe('ScopeGroupSelector', () => {
 		expect(scopes).toHaveLength(5);
 	});
 
-	it('emits the option scopes removed when toggling a checked option off', async () => {
+	it('downgrades to "View" when toggling a checked option off', async () => {
 		const { getByTestId, emitted } = renderComponent(ScopeGroupSelector, {
 			props: {
 				modelValue: ['tag:read', 'tag:list', 'tag:create', 'tag:update', 'tag:delete', 'user:read'],
@@ -69,7 +70,7 @@ describe('ScopeGroupSelector', () => {
 
 		await waitFor(() => expect(emitted()['update:modelValue']).toBeTruthy());
 		const [scopes] = emitted()['update:modelValue'][0] as [string[]];
-		expect(scopes).toEqual(['user:read']);
+		expect(scopes).toEqual(['user:read', 'tag:read', 'tag:list']);
 	});
 
 	it('completes the full resolved set when toggling an indeterminate option', async () => {
@@ -345,27 +346,28 @@ describe('ScopeGroupSelector', () => {
 		});
 	});
 
-	describe('mandatory "Users: View" option', () => {
-		// The caller (InstanceRoleView's `withMandatoryInstanceScopes`) is what
-		// guarantees these scopes are always in `modelValue` — the selector itself
-		// stays a pure function of its props, same as every other option.
-		const withUserView = [...INSTANCE_SCOPE_GROUPS.user.View];
-
+	// The caller (InstanceRoleView's `withMandatoryInstanceScopes`) is what
+	// guarantees these scopes are always in `modelValue` — the selector itself
+	// stays a pure function of its props, same as every other option.
+	describe.each([
+		['Users: View', 'scope-option-user-view', [...INSTANCE_SCOPE_GROUPS.user.View]],
+		['Tags: View', 'scope-option-tag-view', [...INSTANCE_SCOPE_GROUPS.tag.View]],
+	])('mandatory "%s" option', (_label, testId, scopes) => {
 		it('renders checked and disabled', () => {
 			const { getByTestId } = renderComponent(ScopeGroupSelector, {
-				props: { modelValue: withUserView },
+				props: { modelValue: scopes },
 			});
-			const userView = getByTestId('scope-option-user-view');
-			expect(userView.getAttribute('aria-checked')).toBe('true');
-			expect(userView.hasAttribute('disabled')).toBe(true);
+			const option = getByTestId(testId);
+			expect(option.getAttribute('aria-checked')).toBe('true');
+			expect(option.hasAttribute('disabled')).toBe(true);
 		});
 
 		it('does not emit an update when clicked', async () => {
 			const { getByTestId, emitted } = renderComponent(ScopeGroupSelector, {
-				props: { modelValue: withUserView },
+				props: { modelValue: scopes },
 			});
 
-			await userEvent.click(getByTestId('scope-option-user-view'));
+			await userEvent.click(getByTestId(testId));
 
 			expect(emitted()['update:modelValue']).toBeFalsy();
 		});
@@ -415,6 +417,7 @@ describe('ScopeGroupSelector', () => {
 				'scope-option-settings-aiassistant-use',
 				'scope-option-user-view',
 				'scope-option-apiKey-manage-own',
+				'scope-option-tag-view',
 			]) {
 				expect(getByTestId(testId).getAttribute('aria-checked')).toBe('true');
 			}
@@ -425,6 +428,36 @@ describe('ScopeGroupSelector', () => {
 			]) {
 				expect(getByTestId(testId).getAttribute('aria-checked')).toBe('false');
 			}
+		});
+	});
+
+	describe('tag View/Manage tiering', () => {
+		it('keeps the mandatory tooltip on "Tags: View" even when "Manage" is checked', async () => {
+			// Without the mandatory-first ordering in `optionTooltip`, this reads
+			// "Included in Manage" — which implies unchecking Manage would remove
+			// View, and View can never be removed.
+			const { getByTestId } = renderComponent(ScopeGroupSelector, {
+				props: { modelValue: [...INSTANCE_SCOPE_GROUPS.tag.Manage] },
+			});
+
+			await userEvent.hover(getByTestId('scope-option-tag-view'));
+
+			await waitFor(() =>
+				expect(getTooltip()).toHaveTextContent(
+					'Users always see and can select any tags associated with workflows they have access to.',
+				),
+			);
+		});
+
+		it('shows the built-in Member role as Tags View checked and Tags Manage mixed', () => {
+			// Member holds 4 of the 5 tag scopes (no tag:delete), so Manage stays
+			// half-checked. That gap is IAM-1383's, not this View split's — pinned
+			// here so nobody closes it by accident.
+			const { getByTestId } = renderComponent(ScopeGroupSelector, {
+				props: { modelValue: [...GLOBAL_MEMBER_SCOPES] },
+			});
+			expect(getByTestId('scope-option-tag-view').getAttribute('aria-checked')).toBe('true');
+			expect(getByTestId('scope-option-tag-manage').getAttribute('aria-checked')).toBe('mixed');
 		});
 	});
 });

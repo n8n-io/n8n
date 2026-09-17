@@ -40,4 +40,41 @@ describe('AiPreferenceRepository', () => {
 			});
 		});
 	});
+
+	/**
+	 * Counts the target of a write, not what the caller may see: the cap belongs to the
+	 * scope, so an admin writing into somebody else's scope fills the same bucket.
+	 */
+	describe('countForTarget', () => {
+		it('counts one project', async () => {
+			entityManager.count.mockResolvedValueOnce(3);
+
+			const count = await repository.countForTarget({ scope: 'project', projectId: 'p-1' });
+
+			expect(count).toBe(3);
+			expect(entityManager.count).toHaveBeenCalledWith(AiPreference, {
+				where: { projectId: 'p-1' },
+			});
+		});
+
+		it('counts one user', async () => {
+			entityManager.count.mockResolvedValueOnce(1);
+
+			await repository.countForTarget({ scope: 'user', userId: 'user-1' });
+
+			expect(entityManager.count).toHaveBeenCalledWith(AiPreference, {
+				where: { userId: 'user-1' },
+			});
+		});
+
+		it('counts the instance rows, which are the rows with neither target', async () => {
+			entityManager.count.mockResolvedValueOnce(0);
+
+			await repository.countForTarget({ scope: 'instance' });
+
+			expect(entityManager.count).toHaveBeenCalledWith(AiPreference, {
+				where: { userId: IsNull(), projectId: IsNull() },
+			});
+		});
+	});
 });

@@ -69,6 +69,14 @@ vi.mock('@n8n/i18n', () => ({
 	}),
 }));
 
+vi.mock('../components/AgentWebSearchSection.vue', () => ({
+	default: {
+		name: 'AgentWebSearchSection',
+		emits: ['update:config'],
+		template: '<div data-testid="agent-web-search-section" />',
+	},
+}));
+
 function mountSection(
 	tools: AgentJsonToolRef[],
 	customTools: Record<string, CustomToolEntry> = {},
@@ -99,6 +107,7 @@ function mountSection(
 				NodeIcon: { template: '<span />' },
 				N8nButton: {
 					props: ['disabled'],
+					emits: ['click'],
 					template:
 						'<button v-bind="$attrs" :disabled="disabled" @click="$emit(\'click\')"><slot name="icon" /><slot /></button>',
 				},
@@ -155,6 +164,16 @@ describe('AgentCapabilitiesSection', () => {
 		ensureProjectAgentsLoadedSpy.mockImplementation(async () => projectAgentsListRef.value ?? []);
 		refreshProjectAgentsSpy.mockImplementation(async () => projectAgentsListRef.value ?? []);
 		integrationsCatalogRef.value = [];
+	});
+
+	it('renders web search and forwards its config updates', () => {
+		const wrapper = mountSection([]);
+		const webSearchSection = wrapper.getComponent({ name: 'AgentWebSearchSection' });
+		const update = { config: { webSearch: { enabled: false } } };
+
+		webSearchSection.vm.$emit('update:config', update);
+
+		expect(wrapper.emitted('update:config')?.[0]).toEqual([update]);
 	});
 
 	it('formats node and custom tool chip labels for display', () => {
@@ -821,8 +840,8 @@ describe('AgentCapabilitiesSection', () => {
 			});
 			await flushPromises();
 
-			const toolChip = wrapper.find('[data-testid="agent-capabilities-tool-row"]');
-			expect(toolChip.find('[data-testid="stub-tooltip-content"]').text()).toContain(
+			const workflowChip = wrapper.find('[data-testid="agent-capabilities-workflow-row"]');
+			expect(workflowChip.find('[data-testid="stub-tooltip-content"]').text()).toContain(
 				'agents.builder.validation.issue.tool.workflow.missingReference',
 			);
 
@@ -859,13 +878,13 @@ describe('AgentCapabilitiesSection', () => {
 			});
 			await flushPromises();
 
-			const toolChips = wrapper.findAll('[data-testid="agent-capabilities-tool-row"]');
-			expect(toolChips).toHaveLength(2);
+			const workflowChips = wrapper.findAll('[data-testid="agent-capabilities-workflow-row"]');
+			expect(workflowChips).toHaveLength(2);
 
-			expect(toolChips[0].find('[data-testid="stub-tooltip-content"]').text()).toContain(
+			expect(workflowChips[0].find('[data-testid="stub-tooltip-content"]').text()).toContain(
 				'agents.builder.validation.issue.tool.workflow.incompatibleNodes',
 			);
-			expect(toolChips[1].find('[data-testid="stub-tooltip-content"]').text()).toContain(
+			expect(workflowChips[1].find('[data-testid="stub-tooltip-content"]').text()).toContain(
 				'agents.builder.validation.issue.tool.workflow.noSupportedTrigger',
 			);
 		});
@@ -896,12 +915,12 @@ describe('AgentCapabilitiesSection', () => {
 			});
 			await flushPromises();
 
-			const toolChips = wrapper.findAll('[data-testid="agent-capabilities-tool-row"]');
-			expect(toolChips).toHaveLength(2);
-			expect(toolChips[0].find('[data-testid="stub-tooltip-content"]').text()).toContain(
+			const workflowChips = wrapper.findAll('[data-testid="agent-capabilities-workflow-row"]');
+			expect(workflowChips).toHaveLength(2);
+			expect(workflowChips[0].find('[data-testid="stub-tooltip-content"]').text()).toContain(
 				'agents.builder.validation.issue.tool.workflow.incompatibleReference',
 			);
-			expect(toolChips[1].find('[data-testid="stub-tooltip-content"]').text()).toContain(
+			expect(workflowChips[1].find('[data-testid="stub-tooltip-content"]').text()).toContain(
 				'agents.builder.validation.issue.tool.workflow.incompatibleReference',
 			);
 		});
@@ -923,7 +942,7 @@ describe('AgentCapabilitiesSection', () => {
 			});
 			await flushPromises();
 
-			const chip = wrapper.find('[data-testid="agent-capabilities-tool-row"]');
+			const chip = wrapper.find('[data-testid="agent-capabilities-workflow-row"]');
 			expect(chip.classes().some((c) => c.includes('warning'))).toBe(true);
 			expect(chip.classes().some((c) => c.includes('invalid'))).toBe(false);
 			expect(wrapper.find('[data-testid="agent-chip-warning-icon"]').exists()).toBe(true);
@@ -954,6 +973,38 @@ describe('AgentCapabilitiesSection', () => {
 		});
 	});
 
+	describe('capability rows', () => {
+		it('renders workflow tools in a separate row and opens the selected workflow', async () => {
+			const wrapper = mountSection([
+				{
+					type: 'node',
+					name: 'search',
+					node: { nodeType: 'toolSearch', nodeTypeVersion: 1, nodeParameters: {} },
+				},
+				{ type: 'workflow', workflowId: 'wf-1', workflow: 'Handle refund' },
+			]);
+
+			expect(wrapper.findAll('[data-testid="agent-capabilities-tool-row"]')).toHaveLength(1);
+			const workflowChip = wrapper.find('[data-testid="agent-capabilities-workflow-row"]');
+			expect(workflowChip.exists()).toBe(true);
+
+			await workflowChip.trigger('click');
+
+			expect(wrapper.emitted('open-tool')).toEqual([
+				[{ kind: 'tool', toolType: 'workflow', id: 'Handle refund' }],
+			]);
+		});
+
+		it('emits the picker mode from each add button', async () => {
+			const wrapper = mountSection([]);
+
+			await wrapper.find('[data-testid="agent-capabilities-add-tool"]').trigger('click');
+			await wrapper.find('[data-testid="agent-capabilities-add-workflow"]').trigger('click');
+
+			expect(wrapper.emitted('add-tool')).toEqual([['tools'], ['workflows']]);
+		});
+	});
+
 	describe('sections allowlist', () => {
 		it('renders every capability section by default', () => {
 			const wrapper = mountSection([]);
@@ -964,41 +1015,17 @@ describe('AgentCapabilitiesSection', () => {
 		});
 
 		it('renders only the allowlisted sections and skips sub-agents', async () => {
-			const wrapper = mount(AgentCapabilitiesSection, {
-				props: {
-					config: null,
-					tools: [],
-					customTools: {},
-					skills: [],
-					projectId: 'project-id',
-					agentId: 'agent-id',
-					isPublished: false,
-					sections: ['tools', 'skills'],
-				},
-				global: {
-					stubs: {
-						NodeIcon: { template: '<span />' },
-						N8nButton: {
-							props: ['disabled'],
-							template:
-								'<button v-bind="$attrs" :disabled="disabled" @click="$emit(\'click\')"><slot name="icon" /><slot /></button>',
-						},
-						N8nIcon: { template: '<span />' },
-						N8nText: { template: '<span><slot /></span>' },
-						N8nTooltip: { template: '<span><slot /></span>' },
-					},
-				},
-			});
+			const wrapper = mountSection([], {}, null, [], [], { sections: ['tools', 'skills'] });
 			await flushPromises();
 
-			// Allowlisted rows present.
+			/** Allowlisted rows are present. */
 			expect(wrapper.find('[data-testid="agent-capabilities-add-tool"]').exists()).toBe(true);
 			expect(wrapper.find('[data-testid="agent-capabilities-add-skill"]').exists()).toBe(true);
 
-			// Suppressed rows absent.
+			/** Suppressed rows are absent. */
 			expect(wrapper.find('[data-testid="agent-capabilities-add-sub-agent"]').exists()).toBe(false);
 
-			// The project-agents list (only needed for sub-agents) is not fetched.
+			/** The project-agent list is not needed for hidden sub-agents. */
 			expect(ensureProjectAgentsLoadedSpy).not.toHaveBeenCalled();
 		});
 	});
