@@ -91,7 +91,7 @@ export const promotionConfigCheckoutSchema = z.object({
 });
 export type PromotionConfigCheckout = z.infer<typeof promotionConfigCheckoutSchema>;
 
-const configSummaryFields = {
+const configPublicFields = {
 	/**
 	 * Also names the local checkout directory. Stable while the config exists, and
 	 * replaced by a new one if the direction is deleted and set up again.
@@ -100,10 +100,6 @@ const configSummaryFields = {
 	name: z.string(),
 	createdAt: z.string().datetime(),
 	updatedAt: z.string().datetime(),
-};
-
-const configPublicFields = {
-	...configSummaryFields,
 	checkout: promotionConfigCheckoutSchema,
 };
 
@@ -143,14 +139,12 @@ export type PromotionConnectionConfigsPublic = z.infer<
 >;
 
 /** List responses contain stored config fields only. */
-export const promotionApplyConfigSummarySchema = z.object({
-	...configSummaryFields,
-	settings: promotionGitApplySettingsSchema,
+export const promotionApplyConfigSummarySchema = promotionApplyConfigPublicSchema.omit({
+	checkout: true,
 });
 
-export const promotionPromoteConfigSummarySchema = z.object({
-	...configSummaryFields,
-	settings: promotionGitPromoteSettingsSchema,
+export const promotionPromoteConfigSummarySchema = promotionPromoteConfigPublicSchema.omit({
+	checkout: true,
 });
 
 export const promotionConnectionConfigsSummarySchema = z.object({

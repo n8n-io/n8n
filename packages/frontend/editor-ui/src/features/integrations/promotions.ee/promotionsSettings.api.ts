@@ -3,9 +3,9 @@ import type {
 	CreatePromotionProviderDto,
 	PromotionApplyConfigPublicDto,
 	PromotionCheckoutPublicDto,
-	PromotionConnectionListPublicDto,
 	PromotionConnectionPublicDto,
 	PromotionConnectionScope,
+	PromotionConnectionSummary,
 	PromotionDirection,
 	PromotePackageDto,
 	PromotePackageResultDto,
@@ -26,7 +26,7 @@ export type PromotionProvider = PromotionProviderPublicDto;
 /** Omits the SSH public key. */
 export type PromotionProviderSummary = PromotionProviderListPublicDto['data'][number];
 export type PromotionConnection = PromotionConnectionPublicDto;
-export type PromotionConnectionSummary = PromotionConnectionListPublicDto['data'][number];
+export type { PromotionConnectionSummary };
 
 const promotionsApiRoot = '/promotions';
 

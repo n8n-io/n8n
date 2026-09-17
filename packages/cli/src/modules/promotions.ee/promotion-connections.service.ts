@@ -7,6 +7,7 @@ import type {
 	PromotionConnectionProjectListPublicDto,
 	PromotionConnectionProjectPublicDto,
 	PromotionConnectionPublicDto,
+	PromotionConnectionSummary,
 	PromotionConnectionScope,
 	PromotionConnectionTarget,
 	PromotionDirection,
@@ -285,7 +286,10 @@ export class PromotionConnectionsService {
 		};
 	}
 
-	private toSummary(connection: PromotionConnection, configs: PromotionConfig[]) {
+	private toSummary(
+		connection: PromotionConnection,
+		configs: PromotionConfig[],
+	): PromotionConnectionSummary {
 		return {
 			id: connection.id,
 			name: connection.name,

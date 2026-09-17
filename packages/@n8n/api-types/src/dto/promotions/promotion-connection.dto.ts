@@ -142,6 +142,7 @@ export class PromotionConnectionPublicDto extends Z.class(promotionConnectionPub
 export const promotionConnectionSummarySchema = promotionConnectionPublicSchema.extend({
 	configs: promotionConnectionConfigsSummarySchema,
 });
+export type PromotionConnectionSummary = z.infer<typeof promotionConnectionSummarySchema>;
 
 export class PromotionConnectionListPublicDto extends Z.class({
 	data: z.array(promotionConnectionSummarySchema),
