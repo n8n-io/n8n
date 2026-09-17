@@ -14,6 +14,7 @@ import {
 	type IN8nHttpFullResponse,
 	type INodeProperties,
 } from 'n8n-workflow';
+import pLimit from 'p-limit';
 
 import { DOCS_HELP_NOTICE } from '../constants';
 import {
@@ -104,6 +105,12 @@ type VaultAppRoleResp = VaultUserPassLoginResp;
 interface VaultSecretList {
 	keys: string[];
 }
+
+type KvReadLimit = ReturnType<typeof pLimit>;
+
+// A KV pull issues one request per folder and per secret. Bounded so a large store streams
+// instead of opening every socket at once.
+const KV_READ_CONCURRENCY = 50;
 
 interface KvMount {
 	path: string;
@@ -493,13 +500,19 @@ export class VaultProvider extends SecretsProvider {
 		return [body.data, resp];
 	}
 
-	private async getKVSecrets(mount: KvMount, path: string): Promise<IDataObject | null> {
+	private async getKVSecrets(
+		mount: KvMount,
+		path: string,
+		limit: KvReadLimit,
+	): Promise<IDataObject | null> {
 		const { path: mountPath, version: kvVersion, subPath } = mount;
 		this.logger.debug(`Getting kv secrets from ${mountPath}${path} (version ${kvVersion})`);
 		const listRequest = this.kvListRequest(this.kvApiPath(mountPath, kvVersion, 'metadata', path));
 		let listBody: VaultResponse<VaultSecretList>;
 		try {
-			listBody = await this.#http.request<VaultResponse<VaultSecretList>>(listRequest);
+			listBody = await limit(
+				async () => await this.#http.request<VaultResponse<VaultSecretList>>(listRequest),
+			);
 		} catch (error) {
 			// A broken or timed-out request fails the whole pull, so the last complete snapshot
 			// stays. Only a denied or missing path is skipped.
@@ -520,16 +533,19 @@ export class VaultProvider extends SecretsProvider {
 				await Promise.allSettled(
 					listBody.data.keys.map(async (key): Promise<[string, IDataObject] | null> => {
 						if (key.endsWith('/')) {
-							const folder = await this.getKVSecrets(mount, path + key);
+							const folder = await this.getKVSecrets(mount, path + key, limit);
 							const folderKey = (path + key).slice(subPath.length, -1);
 							return folder === null ? null : [folderKey, folder];
 						}
 						const secretPath = this.kvApiPath(mountPath, kvVersion, 'data', path + key);
 						try {
-							const secretBody = await this.#http.request<VaultResponse<IDataObject>>({
-								url: secretPath,
-								method: 'GET',
-							});
+							const secretBody = await limit(
+								async () =>
+									await this.#http.request<VaultResponse<IDataObject>>({
+										url: secretPath,
+										method: 'GET',
+									}),
+							);
 							this.logger.debug(`Vault provider retrieved secrets from ${secretPath}`);
 							return [
 								key,
@@ -673,12 +689,13 @@ export class VaultProvider extends SecretsProvider {
 	async update(): Promise<void> {
 		try {
 			const kvMounts = await this.discoverKvMounts();
+			const limit = pLimit(KV_READ_CONCURRENCY);
 
 			const secrets = Object.fromEntries(
 				(
-					await Promise.all(
+					await Promise.allSettled(
 						kvMounts.map(async (mount): Promise<[string, IDataObject] | null> => {
-							const value = await this.getKVSecrets(mount, mount.subPath);
+							const value = await this.getKVSecrets(mount, mount.subPath, limit);
 							if (value === null) {
 								return null;
 							}
@@ -689,7 +706,14 @@ export class VaultProvider extends SecretsProvider {
 							return [mount.path.substring(0, mount.path.length - 1), nested];
 						}),
 					)
-				).filter((entry): entry is [string, IDataObject] => entry !== null),
+				)
+					.map((result) => {
+						// Every mount drains before the first failure propagates, so a rejected pull
+						// leaves no reads behind to overlap with the next one.
+						if (result.status === 'rejected') throw result.reason;
+						return result.value;
+					})
+					.filter((entry): entry is [string, IDataObject] => entry !== null),
 			);
 			this.cachedSecrets = secrets;
 

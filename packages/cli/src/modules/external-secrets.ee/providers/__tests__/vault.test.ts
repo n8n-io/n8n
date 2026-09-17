@@ -1,6 +1,8 @@
 import { Logger } from '@n8n/backend-common';
+import type { OutboundHttp } from '@n8n/backend-network';
 import { createFakeOutboundHttp, type Route } from '@n8n/backend-network/testing';
 import { mockInstance } from '@n8n/backend-test-utils';
+import type { IHttpRequestOptions } from 'n8n-workflow';
 
 import { ExternalSecretsConfig } from '../../external-secrets.config';
 import { VaultProvider } from '../vault';
@@ -307,6 +309,68 @@ describe('VaultProvider', () => {
 
 			await expect(provider.update()).rejects.toThrow();
 			expect(provider.hasSecret('secret')).toBe(false);
+		});
+
+		it('should drain every mount before a broken mount fails the pull', async () => {
+			let releaseSlowRead!: () => void;
+			const slowRead = new Promise<void>((resolve) => {
+				releaseSlowRead = resolve;
+			});
+			const request = vi.fn(async (options: IHttpRequestOptions) => {
+				if (options.url === 'sys/mounts') {
+					return mountsResponse({
+						'a/': { type: 'kv', options: { version: '2' } },
+						'b/': { type: 'kv', options: { version: '2' } },
+					});
+				}
+				if (options.url.includes('/metadata/')) return { data: { keys: ['x'] } };
+				if (options.url.startsWith('a/')) {
+					const error = new Error('connect ECONNREFUSED') as Error & { code: string };
+					error.code = 'ECONNREFUSED';
+					throw error;
+				}
+				await slowRead;
+				return kvV2SecretResponse({ password: 'hunter2' });
+			});
+			const outboundHttp = { requests: () => ({ request }) } as unknown as OutboundHttp;
+			const provider = new VaultProvider(logger, outboundHttp);
+			await provider.init(vaultSettings);
+
+			let settled = false;
+			const pull = provider.update();
+			pull.then(
+				() => (settled = true),
+				() => (settled = true),
+			);
+			await new Promise((resolve) => setImmediate(resolve));
+			expect(settled).toBe(false);
+
+			releaseSlowRead();
+			await expect(pull).rejects.toThrow('connect ECONNREFUSED');
+		});
+
+		it('should read at most 50 secrets at a time', async () => {
+			let inFlight = 0;
+			let maxInFlight = 0;
+			const request = vi.fn(async (options: IHttpRequestOptions) => {
+				if (options.url.includes('/metadata/')) {
+					return { data: { keys: Array.from({ length: 120 }, (_, i) => `s${i}`) } };
+				}
+				inFlight++;
+				maxInFlight = Math.max(maxInFlight, inFlight);
+				await new Promise((resolve) => setImmediate(resolve));
+				inFlight--;
+				return kvV2SecretResponse({ password: 'hunter2' });
+			});
+			const outboundHttp = { requests: () => ({ request }) } as unknown as OutboundHttp;
+			const settings = vaultSettingsWithKvPath('secret/', '2');
+			const provider = new VaultProvider(logger, outboundHttp);
+			await provider.init(settings);
+
+			await provider.update();
+
+			expect(maxInFlight).toBe(50);
+			expect(provider.getSecretNames()).toHaveLength(120);
 		});
 
 		it('should keep the existing key shape for nested folders', async () => {
