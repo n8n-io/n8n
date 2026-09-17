@@ -69,6 +69,13 @@ export class BrowserLocalMcpServer implements LocalMcpServer {
 
 	setDomainGate(gate: BrowserDomainGate | undefined): void {
 		this.gate = gate;
+		// `browser_act` drives the adapter directly, so its actions never pass
+		// through callTool and never meet the gate below. Hand it the same
+		// approval check as a read-only predicate so it can stop before acting
+		// on an unapproved host instead of needing a mid-run confirmation.
+		this.toolContext.isHostAllowed = gate
+			? (host: string) => gate.tracker.isHostAllowed(host, gate.runId)
+			: undefined;
 	}
 
 	getAvailableTools(): McpTool[] {

@@ -3,6 +3,7 @@ import { z } from 'zod';
 
 import type { BrowserConnection as BrowserConnectionType } from './connection';
 import type { ConnectionLostReason } from './errors';
+import type { SystemOneFn } from './typesafe/types';
 
 // ---------------------------------------------------------------------------
 // Browser names
@@ -275,6 +276,8 @@ export interface WaitOptions {
 
 export type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 
+export type { SystemOneFn } from './typesafe/types';
+
 export interface SecretsBuffer {
 	capture(credentialsKey: string, field: string, value: string): void;
 	getFields(credentialsKey: string): Map<string, string> | undefined;
@@ -293,6 +296,18 @@ export interface ToolContext {
 	dir: string;
 	secretsBuffer?: SecretsBuffer;
 	createCredential?: (payload: CreateCredentialPayload) => Promise<{ credentialId: string }>;
+	/**
+	 * Fast structured-decision model used by `browser_act`. Injected by the host
+	 * so the API key and HTTP client stay where configuration lives. Absent when
+	 * no key is configured, which disables `browser_act`.
+	 */
+	systemOne?: SystemOneFn;
+	/**
+	 * Whether a host is already approved for this session. `browser_act` refuses
+	 * to act on a host this rejects, which keeps the loop from having to suspend
+	 * for a confirmation mid-run.
+	 */
+	isHostAllowed?: (host: string) => boolean;
 }
 
 export interface ToolDefinition<TSchema extends z.ZodType = z.ZodType> {

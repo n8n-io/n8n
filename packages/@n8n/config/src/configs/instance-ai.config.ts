@@ -158,6 +158,10 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_SEARXNG_URL')
 	searxngUrl: string = '';
 
+	/** TypeSafe API key for the `browser_act` fast loop. No key = browser_act disabled. */
+	@Env('N8N_INSTANCE_AI_TYPESAFE_API_KEY')
+	typesafeApiKey: string = '';
+
 	/** Optional static API key for the filesystem gateway. When set, accepted alongside per-user pairing/session keys. */
 	@Env('N8N_INSTANCE_AI_GATEWAY_API_KEY')
 	gatewayApiKey: string = '';

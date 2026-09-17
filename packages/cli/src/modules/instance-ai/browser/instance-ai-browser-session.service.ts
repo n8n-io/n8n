@@ -165,7 +165,9 @@ export class InstanceAiBrowserSessionService {
 	}
 
 	private async createSession(userId: string): Promise<BrowserSession> {
-		const { CDPRelayServer, createBrowserTools } = await import('@n8n/mcp-browser');
+		const { CDPRelayServer, createBrowserTools, createSystemOneFn } = await import(
+			'@n8n/mcp-browser'
+		);
 
 		const sessionId = nanoid();
 		const cdpToken = `cdp_${nanoid(32)}`;
@@ -184,11 +186,26 @@ export class InstanceAiBrowserSessionService {
 		);
 		const workDir = join(tmpdir(), 'n8n-instance-ai-browser', userId);
 		await mkdir(workDir, { recursive: true });
+		// An unset key leaves `systemOne` undefined, which is what disables
+		// `browser_act` — the tool then reports itself unavailable rather than
+		// failing mid-run.
+		const systemOne = createSystemOneFn(this.globalConfig.instanceAi.typesafeApiKey, {
+			onError: ({ status, statusText, body }) =>
+				// Truncated: the body is the vendor's reason for rejecting the request,
+				// which is what makes a 400 diagnosable, but it is not a place to let
+				// page content into the logs unbounded.
+				this.logger.warn('Fast model request failed', {
+					status,
+					statusText,
+					detail: body.slice(0, 200),
+				}),
+		});
 		const toolContext: ToolContext = {
 			dir: workDir,
 			secretsBuffer: createInMemorySecretsBuffer(),
 			createCredential: async (payload: CreateCredentialPayload) =>
 				await this.createCredential(userId, payload),
+			...(systemOne ? { systemOne } : {}),
 		};
 
 		const session: BrowserSession = {
