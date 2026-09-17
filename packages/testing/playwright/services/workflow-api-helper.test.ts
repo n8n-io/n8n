@@ -31,7 +31,17 @@ describe('WorkflowApiHelper workflow settings defaults', () => {
 
 		await new WorkflowApiHelper(api).createWorkflow({ name: 'wf' });
 
+		expect(post).toHaveBeenCalledWith('/rest/workflows', expect.anything());
 		expect(postedSettings(post)).toEqual({ engineType: 'v2' });
+	});
+
+	test('puts a created workflow in the project the caller names', async () => {
+		const { api, post } = apiWith({});
+
+		await new WorkflowApiHelper(api).createWorkflow({ name: 'wf' }, 'project-1');
+
+		const [, { data }] = post.mock.calls[0] as [string, { data: unknown }];
+		expect(data).toMatchObject({ name: 'wf', projectId: 'project-1' });
 	});
 
 	test('lets the defaults win over the settings in the definition', async () => {
@@ -113,7 +123,10 @@ describe('WorkflowApiHelper.runManually engine routing', () => {
 	test('rejects a legacy execution id when the stack routes to engine 2.0', async () => {
 		const { api } = apiReturningExecutionId('1783', { workflowSettings: { engineType: 'v2' } });
 
-		await expect(new WorkflowApiHelper(api).runManually('wf-1', 'Trigger')).rejects.toThrow(/1783/);
+		// Also the half that tells the reader what to do about it.
+		await expect(new WorkflowApiHelper(api).runManually('wf-1', 'Trigger')).rejects.toThrow(
+			/1783[\s\S]*settings\.engineType[\s\S]*api\.workflows/,
+		);
 	});
 
 	test('accepts a legacy execution id on a stack without engine 2.0', async () => {
