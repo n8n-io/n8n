@@ -191,6 +191,10 @@ function walk(
 	const receiverFor = () => (receiver ??= dataReceiver(members));
 
 	for (const member of members) {
+		if (Date.now() > state.deadline) {
+			state.exhausted = true;
+			return undefined;
+		}
 		const accepted = acceptsMember(state, member, receiverFor);
 		if (state.exhausted) return undefined;
 		if (accepted) continue;
