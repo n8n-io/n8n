@@ -1492,8 +1492,10 @@ describe('verify-built-workflow tool — node simulation plan', () => {
 		expect(result.coverageNote).toContain('UNVERIFIED');
 		expect(result.coverageNote).toContain('Look Up Order');
 		expect(result.coverageNote).toContain('Agent tool calls');
-		expect(result.coverageNote).toContain('if a lookup or query returned no items');
-		expect(result.coverageNote).toContain('seed matching test data and re-run verification');
+		expect(result.coverageNote).toContain('If a live lookup or query returned no matching records');
+		expect(result.coverageNote).toContain(
+			'seed matching test data only when the user has authorized that write',
+		);
 	});
 
 	it('reports incomplete coverage without assuming why a collection stopped', async () => {

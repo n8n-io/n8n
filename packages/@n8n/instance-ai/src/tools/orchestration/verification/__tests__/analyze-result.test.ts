@@ -65,6 +65,7 @@ describe('analyzeVerificationResult — halted wait gates', () => {
 		expect(analysis.coverageNote).toContain('Other unreached nodes remain unverified');
 		expect(analysis.coverageNote).toContain('not behind a wait gate');
 		expect(analysis.coverageNote).toContain('seed matching test data');
+		expect(analysis.coverageNote).toContain('only when the user has authorized that write');
 	});
 
 	it('keeps the generic partial-coverage guidance when no gate halted the run', () => {
@@ -455,6 +456,7 @@ describe('analyzeVerificationResult — uncalled tools', () => {
 			'A tool can remain uncalled even when its Agent succeeds',
 		);
 		expect(analysis.coverageNote).not.toContain('because it produced no output items');
-		expect(analysis.coverageNote).toContain('if a lookup or query returned no items');
+		expect(analysis.coverageNote).toContain('if a simulated or pinned lookup returned no items');
+		expect(analysis.coverageNote).toContain('inspect its fixture');
 	});
 });

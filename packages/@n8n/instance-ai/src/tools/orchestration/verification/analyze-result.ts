@@ -359,7 +359,9 @@ function buildCoverageNote(
 		? ' Check branch selection, input items, Agent tool calls, and simulated parents. ' +
 			'A tool can remain uncalled even when its Agent succeeds. ' +
 			'For unreached main-flow nodes on this branch that are not behind a wait gate: ' +
-			'if a lookup or query returned no items, seed matching test data and re-run verification. ' +
+			'if a simulated or pinned lookup returned no items, inspect its fixture and use ' +
+			'representative test input. If a live lookup or query returned no matching records, ' +
+			'seed matching test data only when the user has authorized that write, then re-run verification. ' +
 			'If a Code node dropped a collection, inspect `$input.first().json`; use ' +
 			'`$input.all().map(i => i.json)` when it needs all items. ' +
 			'HTTP Request splits a top-level array into separate items. ' +
