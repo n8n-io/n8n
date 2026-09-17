@@ -47,9 +47,9 @@ function createService() {
 		conversationHistoryEnabled: false,
 		progressiveBuildingEnabled: false,
 		nodeUsageEnabled: false,
-		instanceContextEnabled: false,
 		folderExplorationEnabled: false,
 		aiPreferencesEnabled: false,
+		instanceContextEnabled: false,
 	});
 
 	const service = new InstanceAiTemporaryWorkflowService(

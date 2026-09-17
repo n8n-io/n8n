@@ -138,7 +138,7 @@ describe('InstanceContextService', () => {
 			});
 			const [entry] = await activity.findFeed({
 				projectIds: [otherProject.id],
-				categories: ['workflow', 'credential'],
+				allowedCategories: ['workflow', 'credential'],
 				limit: 1,
 			});
 
@@ -152,16 +152,6 @@ describe('InstanceContextService', () => {
 	});
 
 	describe('deltas', () => {
-		/**
-		 * The correctness property behind the delta cursor. Ids are allocated outside the
-		 * surrounding transaction on Postgres, so a lower id can commit after a higher one has
-		 * already been shown. The reader therefore re-reads a band below its mark and drops what it
-		 * has already shown, rather than asking for "everything above the highest id seen" — which
-		 * would skip the straggler for good, and deletions are written by whichever request happens
-		 * to be committing.
-		 *
-		 * The mark below stands for that state: an entry sitting under it that no block has shown.
-		 */
 		it('shows an entry that sits behind the high-water mark and was never shown', async () => {
 			for (const name of ['Committed late', 'Also late', 'Seen already']) {
 				await record({
@@ -175,7 +165,7 @@ describe('InstanceContextService', () => {
 			}
 			const [newest] = await activity.findFeed({
 				projectIds: [project.id],
-				categories: ['workflow', 'credential'],
+				allowedCategories: ['workflow', 'credential'],
 				limit: 1,
 			});
 
@@ -184,7 +174,6 @@ describe('InstanceContextService', () => {
 				projectId: project.id,
 				cursor: {
 					activityMark: newest.id,
-					// No turn has cut anything yet, so every id below the mark is still offerable.
 					activityFloor: 0,
 					activityCategories: ['workflow', 'credential'],
 					activitySeen: [newest.id],
@@ -260,7 +249,7 @@ describe('InstanceContextService', () => {
 			// Newest first, so index 0 is the high-water mark.
 			const seeded = await activity.findFeed({
 				projectIds: [project.id],
-				categories: ['workflow', 'credential'],
+				allowedCategories: ['workflow', 'credential'],
 				limit: 50,
 			});
 			const straggler = seeded[5];
@@ -397,7 +386,7 @@ describe('InstanceContextService', () => {
 		}
 		const [newest] = await activity.findFeed({
 			projectIds: [project.id],
-			categories: ['workflow', 'credential'],
+			allowedCategories: ['workflow', 'credential'],
 			limit: 1,
 		});
 
@@ -428,13 +417,6 @@ describe('InstanceContextService', () => {
 		});
 	});
 
-	/**
-	 * The same renumbering, but with rows still inside the band. `activityFloor` only leaves 0 when
-	 * a single turn cut more than a window, so a quiet instance — the one retention empties — reads
-	 * a band of `(0, mark)`. A recycled id then lands inside it and comes back from the band read
-	 * rather than being missed by both legs, and the shown ids suppress it because an id from the
-	 * old sequence is sitting in the list.
-	 */
 	it('carries a refilled entry whose id was reused from one already shown', async () => {
 		for (const name of ['First', 'Second', 'Third']) {
 			await record({
@@ -447,10 +429,6 @@ describe('InstanceContextService', () => {
 			});
 		}
 
-		// An explicit, past `now`, so the block's own timestamp sits clearly before the row written
-		// below. The recovery compares the two, and only a test compresses into one millisecond a
-		// gap the product measures in minutes — racing the clock here would make it flaky, not
-		// realistic.
 		const opening = await service.buildBlock({
 			user,
 			projectId: project.id,
@@ -483,16 +461,6 @@ describe('InstanceContextService', () => {
 		expect(blockOf(next)).toContain('Written after the sweep');
 	});
 
-	/**
-	 * Emptying the table is what age-based retention does to an instance quiet for longer than its
-	 * window, and on SQLite the entry id is a rowid alias, so the sequence restarts and new rows
-	 * land below a mark a live thread still holds.
-	 *
-	 * Driven through the real database rather than a stubbed id, because the behaviour under test
-	 * belongs to the driver: stubbing the reader would assert our own assumption about how ids are
-	 * allocated instead of what actually happens. The assertion holds either way — where ids
-	 * restart the recovery surfaces the rows, and where they keep climbing the ordinary read does.
-	 */
 	it('still carries what changed after the feed was emptied and refilled', async () => {
 		await record({
 			category: 'workflow',
@@ -503,7 +471,6 @@ describe('InstanceContextService', () => {
 			resourceName: 'Before the sweep',
 		});
 
-		// Past `now` for the same reason as above: the block has to predate the refilled row.
 		const first = await service.buildBlock({
 			user,
 			projectId: project.id,
@@ -515,7 +482,6 @@ describe('InstanceContextService', () => {
 		const carried = cursorOf(first);
 		expect(carried.activityMark).toBeGreaterThan(0);
 
-		// Retention takes everything, since every row is older than the window it was given.
 		await testDb.truncate(['ActivityEvent']);
 		await record({
 			category: 'workflow',
@@ -537,7 +503,7 @@ describe('InstanceContextService', () => {
 		// The mark tracks the surviving id space rather than staying stranded above it.
 		const newest = await activity.findNewestEntry({
 			projectIds: [project.id],
-			categories: ['workflow', 'credential'],
+			allowedCategories: ['workflow', 'credential'],
 		});
 		expect(cursorOf(second).activityMark).toBe(newest?.id);
 	});

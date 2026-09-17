@@ -2506,11 +2506,7 @@ export const INSTANCE_AI_FOLDER_EXPLORATION_FLAG = '110_instance_ai_folder_explo
  */
 export const INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT = 'test';
 
-/**
- * Rollout flag for the instance-activity read: the per-turn block, the `activity` tool and its
- * skill. `N8N_ACTIVITY_LOG_ENABLED` force-enables it, so the record and the read move together;
- * an explicit `N8N_FEATURE_FLAG_OVERRIDES` entry is the kill switch for the read alone.
- */
+/** Instance rollout gate for shared activity recording and retrieval. */
 export const INSTANCE_ACTIVITY_CONTEXT_FLAG = '114_instance_activity_context';
 
 /**

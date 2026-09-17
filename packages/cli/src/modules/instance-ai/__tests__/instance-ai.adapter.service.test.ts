@@ -69,6 +69,7 @@ import {
 	CONFIG_EVALUATIONS_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_FLAG,
 	INSTANCE_AI_NODE_USAGE_FLAG,
+	INSTANCE_ACTIVITY_CONTEXT_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
 	INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG,
 	INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
@@ -80,7 +81,6 @@ import {
 	CONTEXT_PREFERENCES_FLAG,
 	CONTEXT_PREFERENCES_CONTROL_VARIANT,
 	CONTEXT_PREFERENCES_ENABLED_VARIANT,
-	INSTANCE_ACTIVITY_CONTEXT_FLAG,
 } from '@n8n/api-types';
 
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
@@ -5466,12 +5466,19 @@ describe('createNodeAdapter — n8n Connect annotations', () => {
 
 describe('resolveExperimentGates', () => {
 	const user = { id: 'user-1', createdAt: new Date() } as unknown as User;
+	const secondUser = mock<User>({ id: 'user-2', createdAt: new Date() });
+	const getFeatureFlagForInstance = vi.fn();
 
 	/** Route `Container.get` by token: PostHog for the flags, ModuleRegistry for the MCP precondition. */
-	function stubContainer(flags: Record<string, string | boolean>, mcpModuleActive = true) {
+	function stubContainer(
+		flags: Record<string, string | boolean>,
+		mcpModuleActive = true,
+		instanceFlag = false,
+	) {
 		const getFeatureFlags = vi.fn().mockResolvedValue(flags);
+		getFeatureFlagForInstance.mockReset().mockResolvedValue(instanceFlag);
 		vi.spyOn(Container, 'get').mockImplementation((token: unknown) => {
-			if (token === PostHogClient) return { getFeatureFlags };
+			if (token === PostHogClient) return { getFeatureFlags, getFeatureFlagForInstance };
 			return { isActive: (name: string) => mcpModuleActive && name === 'mcp-registry' };
 		});
 		return getFeatureFlags;
@@ -5498,7 +5505,7 @@ describe('resolveExperimentGates', () => {
 		[INSTANCE_ACTIVITY_CONTEXT_FLAG]: true,
 	};
 
-	it('resolves every gate, including folder exploration, from one flag fetch', async () => {
+	it('resolves per-user gates with one user flag fetch', async () => {
 		const getFeatureFlags = stubContainer(allEnabled);
 
 		await expect(createAdapter().resolveExperimentGates(user)).resolves.toEqual({
@@ -5507,34 +5514,62 @@ describe('resolveExperimentGates', () => {
 			conversationHistoryEnabled: true,
 			progressiveBuildingEnabled: true,
 			nodeUsageEnabled: true,
-			instanceContextEnabled: true,
 			folderExplorationEnabled: true,
 			aiPreferencesEnabled: true,
+			instanceContextEnabled: false,
 		});
 		expect(getFeatureFlags).toHaveBeenCalledTimes(1);
 		expect(getFeatureFlags).toHaveBeenCalledWith(user);
 	});
 
-	/**
-	 * The rollout turns the read on by itself, with no deploy. The record then holds only
-	 * what accrued before, so the block's edit leg is thin — its other two legs read the
-	 * workflows and the executions directly and are unaffected.
-	 */
-	it('turns the instance-context read on from the rollout alone', async () => {
-		stubContainer(allEnabled);
+	it.each([true, false])(
+		'returns instance activity %s for users with different user flags',
+		async (instanceFlag) => {
+			const getFeatureFlags = stubContainer({}, true, instanceFlag);
+			getFeatureFlags
+				.mockResolvedValueOnce({
+					[INSTANCE_ACTIVITY_CONTEXT_FLAG]: true,
+					[INSTANCE_AI_NODE_USAGE_FLAG]: true,
+				})
+				.mockResolvedValueOnce({
+					[INSTANCE_ACTIVITY_CONTEXT_FLAG]: false,
+					[INSTANCE_AI_NODE_USAGE_FLAG]: false,
+				});
+			const adapter = createAdapter();
 
-		await expect(createAdapter(true, false).resolveExperimentGates(user)).resolves.toMatchObject({
-			instanceContextEnabled: true,
+			const [first, second] = await Promise.all([
+				adapter.resolveExperimentGates(user),
+				adapter.resolveExperimentGates(secondUser),
+			]);
+
+			expect(first.instanceContextEnabled).toBe(instanceFlag);
+			expect(second.instanceContextEnabled).toBe(instanceFlag);
+			expect(first.nodeUsageEnabled).toBe(true);
+			expect(second.nodeUsageEnabled).toBe(false);
+			expect(getFeatureFlagForInstance.mock.calls).toEqual([
+				[INSTANCE_ACTIVITY_CONTEXT_FLAG],
+				[INSTANCE_ACTIVITY_CONTEXT_FLAG],
+			]);
+		},
+	);
+
+	it('keeps instance activity off when its evaluation fails', async () => {
+		stubContainer(allEnabled, true, true);
+		getFeatureFlagForInstance.mockRejectedValue(new Error('PostHog failed'));
+
+		await expect(createAdapter().resolveExperimentGates(user)).resolves.toMatchObject({
+			instanceContextEnabled: false,
 			nodeUsageEnabled: true,
 		});
 	});
 
-	/** Neither control on means nothing is written and nothing is read. */
-	it('keeps the instance-context read off when neither control is on', async () => {
-		stubContainer({});
+	it('keeps the instance answer when user flag evaluation fails', async () => {
+		const getFeatureFlags = stubContainer(allEnabled, true, true);
+		getFeatureFlags.mockRejectedValue(new Error('PostHog failed'));
 
-		await expect(createAdapter(true, false).resolveExperimentGates(user)).resolves.toMatchObject({
-			instanceContextEnabled: false,
+		await expect(createAdapter().resolveExperimentGates(user)).resolves.toMatchObject({
+			instanceContextEnabled: true,
+			nodeUsageEnabled: false,
 		});
 	});
 
@@ -5556,9 +5591,9 @@ describe('resolveExperimentGates', () => {
 			conversationHistoryEnabled: false,
 			progressiveBuildingEnabled: false,
 			nodeUsageEnabled: false,
-			instanceContextEnabled: false,
 			folderExplorationEnabled: false,
 			aiPreferencesEnabled: false,
+			instanceContextEnabled: false,
 		});
 	});
 
@@ -5592,9 +5627,9 @@ describe('resolveExperimentGates', () => {
 			conversationHistoryEnabled: false,
 			progressiveBuildingEnabled: false,
 			nodeUsageEnabled: false,
-			instanceContextEnabled: false,
 			folderExplorationEnabled: false,
 			aiPreferencesEnabled: false,
+			instanceContextEnabled: false,
 		});
 	});
 
@@ -5608,9 +5643,9 @@ describe('resolveExperimentGates', () => {
 			conversationHistoryEnabled: false,
 			progressiveBuildingEnabled: false,
 			nodeUsageEnabled: false,
-			instanceContextEnabled: false,
 			folderExplorationEnabled: false,
 			aiPreferencesEnabled: false,
+			instanceContextEnabled: false,
 		});
 	});
 

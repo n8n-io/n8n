@@ -436,8 +436,7 @@ export class InstanceAiAdapterService {
 			/** Per-user node-usage gate (via `resolveExperimentGates`). Falsy → neither the
 			 *  `node-usage` action nor the `nodeTypes` filter on `list` is offered. */
 			nodeUsageEnabled?: boolean;
-			/** Per-user instance-context gate (via `resolveExperimentGates`). Falsy → no
-			 *  `activity` tool, whatever the reader service itself thinks. */
+			/** Instance activity gate. False disables the activity tool. */
 			instanceContextEnabled?: boolean;
 			/** Past-conversation recall, already bound to the run's user, project and
 			 *  thread by the caller. Absent → conversation-history tool not wired. */
@@ -502,9 +501,7 @@ export class InstanceAiAdapterService {
 				: {}),
 			mcpService: mcpConnectionsEnabled ? this.createMcpAdapter(user) : undefined,
 			conversationHistoryService: conversationHistory,
-			// Presence is the gate, as with the services above: no reader, no `activity` tool.
-			// Resolved per user rather than read off config, because the rollout is per user —
-			// the env var reaches this through the flag, not around it.
+			// The tool and context block use the same instance gate result.
 			...(instanceContextEnabled === true && this.instanceContext
 				? { activityService: this.createActivityAdapter(user, projectId) }
 				: {}),
@@ -572,13 +569,7 @@ export class InstanceAiAdapterService {
 		}
 	}
 
-	/**
-	 * Every experiment gate from one PostHog fetch, so a caller wires its context
-	 * from one call. `mcpConnectionsEnabled` also folds in two instance-wide
-	 * preconditions. Fails closed: `getFeatureFlags` returns `{}` on a PostHog
-	 * outage, and an unexpected throw here still fails every gate closed rather
-	 * than failing the whole context build.
-	 */
+	/** Resolves user experience flags and the shared activity gate. Unreadable flags stay off. */
 	async resolveExperimentGates(user: User): Promise<{
 		/** Config-based evals: never create evals the user can't run. */
 		configEvalsEnabled: boolean;
@@ -590,21 +581,27 @@ export class InstanceAiAdapterService {
 		progressiveBuildingEnabled: boolean;
 		/** Node-usage context surface: the `node-usage` action and the `nodeTypes` filter on `list`. */
 		nodeUsageEnabled: boolean;
-		/** Instance-activity context: the per-turn block, the `activity` tool and its skill. */
-		instanceContextEnabled: boolean;
 		/** Per-user folder-exploration gate, passed into `createContext`. Fails
 		 *  closed with every other gate: `getFeatureFlags` never throws, it
 		 *  returns `{}` on a PostHog outage. */
 		folderExplorationEnabled: boolean;
 		/** Saved AI preferences on the opening turn. */
 		aiPreferencesEnabled: boolean;
+		/** Shared activity recording and retrieval use the same instance gate. */
+		instanceContextEnabled: boolean;
 	}> {
 		let flags: Awaited<ReturnType<PostHogClient['getFeatureFlags']>> = {};
+		let instanceContextEnabled = false;
 		try {
-			flags = await Container.get(PostHogClient).getFeatureFlags(user);
+			const postHog = Container.get(PostHogClient);
+			const [userFlags, instanceFlag] = await Promise.allSettled([
+				postHog.getFeatureFlags(user),
+				postHog.getFeatureFlagForInstance(INSTANCE_ACTIVITY_CONTEXT_FLAG),
+			]);
+			if (userFlags.status === 'fulfilled') flags = userFlags.value;
+			instanceContextEnabled = instanceFlag.status === 'fulfilled' && instanceFlag.value === true;
 		} catch {
-			// getFeatureFlags already swallows PostHog errors and returns {}; this
-			// second layer is for an unexpected throw elsewhere in the call.
+			// Keep the gates closed if the client cannot start an evaluation.
 		}
 		return {
 			configEvalsEnabled: flags[CONFIG_EVALUATIONS_FLAG] === CONFIG_EVALUATIONS_ENABLED_VARIANT,
@@ -618,17 +615,11 @@ export class InstanceAiAdapterService {
 				flags[INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG] ===
 				INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
 			nodeUsageEnabled: flags[INSTANCE_AI_NODE_USAGE_FLAG] === true,
-			// Multivariate on master since this branch forked, so it compares against the
-			// variant rather than `true`.
 			folderExplorationEnabled:
 				flags[INSTANCE_AI_FOLDER_EXPLORATION_FLAG] ===
 				INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
 			aiPreferencesEnabled: flags[CONTEXT_PREFERENCES_FLAG] === CONTEXT_PREFERENCES_ENABLED_VARIANT,
-			// The flag alone, because it already answers for both controls:
-			// `N8N_ACTIVITY_LOG_ENABLED` force-enables it unless an explicit override says
-			// otherwise, so this reads on when either the env var or the rollout says so, off
-			// when neither does, and off when an operator kills it while the record accrues.
-			instanceContextEnabled: flags[INSTANCE_ACTIVITY_CONTEXT_FLAG] === true,
+			instanceContextEnabled,
 		};
 	}
 

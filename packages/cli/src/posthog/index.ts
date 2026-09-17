@@ -17,7 +17,7 @@ import { Service } from '@n8n/di';
 import type { Application } from 'express';
 import { InstanceSettings } from 'n8n-core';
 import type { FeatureFlagPayloads, FeatureFlags, ITelemetryTrackProperties } from 'n8n-workflow';
-import type { PostHog, FeatureFlagEvaluations } from 'posthog-node';
+import type { AllFlagsOptions, FeatureFlagEvaluations, PostHog } from 'posthog-node';
 
 import { N8N_VERSION } from '@/constants';
 
@@ -29,16 +29,10 @@ const POSTHOG_GROUP_TYPE_INSTANCE = 'company';
 
 const FLAGS_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
-/**
- * How long an evaluation that answered nothing is held. Short, because it is not an answer — but
- * not zero, or a per-event caller re-requests on every event while PostHog is unreachable.
- */
+/** Empty results expire quickly but still prevent retries for each event. */
 const EMPTY_FLAGS_CACHE_TTL_MS = 30 * 1000; // 30 seconds
 
-/**
- * Slots the flag cache keeps. Expiry alone does not bound it: an expired entry is replaced only
- * when that user is evaluated again, so an outage would leave one slot per user for good.
- */
+/** Maximum number of flag evaluations kept in memory. */
 export const FLAGS_CACHE_MAX_ENTRIES = 5_000;
 
 const SESSION_ID_MAX_LENGTH = 1000;
@@ -63,7 +57,7 @@ export class PostHogClient {
 
 	private readonly flagsCache = new Map<string, CachedFlags>();
 
-	/** Evaluations still outstanding, keyed as the cache is, so callers join rather than race. */
+	/** Active evaluations. Callers with the same cache key share one request. */
 	private readonly inFlightEvaluations = new Map<string, Promise<FeatureFlagData>>();
 
 	constructor(
@@ -158,50 +152,78 @@ export class PostHogClient {
 		return (await this.getFeatureFlagsAndPayloads(user)).featureFlags;
 	}
 
+	async getFeatureFlagForInstance(flagName: string): Promise<FeatureFlags[string]> {
+		const { instanceId } = this.instanceSettings;
+		let data: FeatureFlagData = { featureFlags: {}, featureFlagPayloads: {} };
+
+		try {
+			data = await this.fetchFlagsFromPostHog({
+				cacheKey: ['instance', instanceId, flagName].join('#'),
+				distinctId: `${POSTHOG_GROUP_TYPE_INSTANCE}_${instanceId}`,
+				options: {
+					flagKeys: [flagName],
+					groups: { [POSTHOG_GROUP_TYPE_INSTANCE]: instanceId },
+				},
+			});
+		} catch {
+			// Apply local overrides when PostHog is not available.
+		}
+
+		return this.applyEnvOverrides(data).featureFlags[flagName];
+	}
+
 	async getFeatureFlagsAndPayloads(
 		user: Pick<PublicUser, 'id' | 'createdAt'>,
 	): Promise<FeatureFlagData> {
-		// Catch PostHog errors here (rather than letting them propagate) so
-		// env-var overrides still apply when PostHog is unreachable. Without
-		// this, a transient PostHog outage would short-circuit the override
-		// path and leave operators without an escape hatch.
+		// Apply local overrides when PostHog is not available.
 		let data: FeatureFlagData = { featureFlags: {}, featureFlagPayloads: {} };
 		try {
-			data = await this.fetchFlagsFromPostHog(user);
+			const { instanceId } = this.instanceSettings;
+			const distinctId = [instanceId, user.id].join('#');
+			data = await this.fetchFlagsFromPostHog({
+				cacheKey: [distinctId, user.createdAt.getTime()].join('#'),
+				distinctId,
+				options: {
+					personProperties: {
+						created_at_timestamp: user.createdAt.getTime().toString(),
+						instance_id: instanceId,
+						version_cli: N8N_VERSION,
+					},
+					...(instanceId && { groups: { [POSTHOG_GROUP_TYPE_INSTANCE]: instanceId } }),
+				},
+			});
 		} catch {
-			// fall through to env overrides
+			// Apply local overrides when PostHog is not available.
 		}
 		return this.applyEnvOverrides(data);
 	}
 
-	private async fetchFlagsFromPostHog(
-		user: Pick<PublicUser, 'id' | 'createdAt'>,
-	): Promise<FeatureFlagData> {
+	private async fetchFlagsFromPostHog({
+		cacheKey,
+		distinctId,
+		options,
+	}: {
+		cacheKey: string;
+		distinctId: string;
+		options: AllFlagsOptions;
+	}): Promise<FeatureFlagData> {
 		if (!this.postHog) return { featureFlags: {}, featureFlagPayloads: {} };
-
-		const { instanceId } = this.instanceSettings;
-		const fullId = [instanceId, user.id].join('#');
-
-		// Keyed on every input the evaluation reads, not just the id. A slot holds the whole
-		// flag map, so two evaluations of one user that disagree about their signup date must
-		// not share one — the loser would be answered for a different person across every
-		// flag, not only the one the caller came for.
-		const cacheKey = [fullId, user.createdAt.getTime()].join('#');
 
 		const cached = this.flagsCache.get(cacheKey);
 		if (cached && cached.expiresAt > Date.now()) {
 			return cached;
 		}
 
-		// One evaluation per key at a time. Two callers racing an expired key would otherwise both
-		// request, and a failing one landing second would replace the other's answer with an empty
-		// short-lived entry — enrolled users failing closed until it expired.
+		// Share an active request so a later failure cannot replace a successful result.
 		const inFlight = this.inFlightEvaluations.get(cacheKey);
 		if (inFlight) return await inFlight;
 
-		const evaluation = this.evaluateAndRemember(this.postHog, cacheKey, fullId, user).finally(() =>
-			this.inFlightEvaluations.delete(cacheKey),
-		);
+		const evaluation = this.evaluateAndRemember(
+			this.postHog,
+			cacheKey,
+			distinctId,
+			options,
+		).finally(() => this.inFlightEvaluations.delete(cacheKey));
 		this.inFlightEvaluations.set(cacheKey, evaluation);
 		return await evaluation;
 	}
@@ -209,30 +231,19 @@ export class PostHogClient {
 	private async evaluateAndRemember(
 		postHog: PostHog,
 		cacheKey: string,
-		fullId: string,
-		user: Pick<PublicUser, 'id' | 'createdAt'>,
+		distinctId: string,
+		options: AllFlagsOptions,
 	): Promise<FeatureFlagData> {
-		const { instanceId } = this.instanceSettings;
-
-		// Cached like an empty one rather than propagating uncached, or a per-event caller sends
-		// one request per event for as long as PostHog is unreachable.
+		// Cache failures briefly so event bursts do not retry each event.
 		let data: FeatureFlagData;
 		try {
-			const evaluatedFlags = await postHog.evaluateFlags(fullId, {
-				personProperties: {
-					created_at_timestamp: user.createdAt.getTime().toString(),
-					instance_id: instanceId,
-					version_cli: N8N_VERSION,
-				},
-				...(instanceId && { groups: { [POSTHOG_GROUP_TYPE_INSTANCE]: instanceId } }),
-			});
+			const evaluatedFlags = await postHog.evaluateFlags(distinctId, options);
 			data = this.resolveFeatureFlagData(evaluatedFlags);
 		} catch {
 			data = { featureFlags: {}, featureFlagPayloads: {} };
 		}
 
-		// An answer is held for the full window; nothing-at-all only briefly, so a transient
-		// failure is not remembered as though PostHog had said "no flags".
+		// Cache empty results briefly because they can indicate a temporary failure.
 		const ttl =
 			Object.keys(data.featureFlags).length > 0 ? FLAGS_CACHE_TTL_MS : EMPTY_FLAGS_CACHE_TTL_MS;
 		this.rememberFlags(cacheKey, { ...data, expiresAt: Date.now() + ttl });
@@ -270,23 +281,7 @@ export class PostHogClient {
 		return { featureFlags, featureFlagPayloads };
 	}
 
-	/**
-	 * Applies env-var overrides on top of PostHog-resolved flags. Cached PostHog
-	 * data is stored without overrides so changing an env var (across restarts)
-	 * doesn't poison the cache.
-	 *
-	 * Both tiers win over PostHog. Between themselves, the generic map goes
-	 * first so a dedicated per-feature env var always has the final say:
-	 * 1. The generic map (`N8N_FEATURE_FLAG_OVERRIDES`) — sets a flag to any
-	 *    value, so unlike tier 2 it can force a flag *off* as well as on.
-	 * 2. Per-feature booleans (`N8N_CONFIG_EVALS_ENABLED`, …) — force-enable
-	 *    only; `false` defers to PostHog. Applied last so the generic map
-	 *    cannot undo a feature an operator enabled explicitly.
-	 *
-	 * One deliberate exception: `N8N_ACTIVITY_LOG_ENABLED` yields to the generic
-	 * map, which is the only way to stop the read while the record accrues. Do
-	 * not copy that shape for a flag with no such kill switch.
-	 */
+	/** Applies local settings after PostHog. The generic activity override can disable its setting. */
 	private applyEnvOverrides(data: FeatureFlagData): FeatureFlagData {
 		const overrides = { ...this.globalConfig.featureFlags.override };
 
@@ -321,12 +316,7 @@ export class PostHogClient {
 				INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT;
 		}
 
-		// One flag over both sides of instance-activity context, so the env var that turns the
-		// record on is also the one that turns reading it back on.
-		//
-		// Yields to an explicit override. Without the guard, setting this flag to `false`
-		// through `N8N_FEATURE_FLAG_OVERRIDES` would be silently ignored on any instance with
-		// the record on, which takes away the operator's only way to stop the read.
+		// An explicit feature flag override takes priority over this legacy setting.
 		if (this.globalConfig.activityLog.enabled && !(INSTANCE_ACTIVITY_CONTEXT_FLAG in overrides)) {
 			overrides[INSTANCE_ACTIVITY_CONTEXT_FLAG] = true;
 		}
