@@ -1,7 +1,25 @@
 packages/cli/src/modules/n8n-packages/io/directory/directory-package-writer.ts
   s_95fc14a059ff3b::t_b8c5063ea07897 23
+  s_66f0116e999381::t_a2054d5401fe1c 1-2,1-65,4-17,22,24-25,30-39,41,44-45,47-65
 packages/cli/src/modules/n8n-packages/io/package-writer.ts
   s_95fc14a059ff3b::t_3921e3ce2d31c1 8
+  s_66f0116e999381::t_b95539ed95e7a7 1-2,1-7,7
+packages/cli/src/modules/n8n-packages/io/__tests__/directory-package-writer.test.ts
+  s_66f0116e999381::t_3218f9f7f983c4 1-42,1-50,54-84,59-84
+  ai_agent 51-53
+packages/cli/src/modules/n8n-packages/__tests__/export-project-to-directory.integration.test.ts
+  s_66f0116e999381::t_992f62357d987c 1-3,1-79,5-68,83-105,105
+  s_4201f3747fb456::t_5c56cc38837f1b 72,76-77,83-84
+  s_b3870ba058e6f8::t_beae8ed26d5899 90-91,98-99
+  s_b3870ba058e6f8::t_705b7ad36bad41 104
+  ai_agent 80-82
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_66f0116e999381::t_d77164df1547ab 30-31
+  s_66f0116e999381::t_90d640a831b7c2 41
+  s_66f0116e999381::t_803280a0b1c331 77,77-102,80-83,88-90,92,95,97-101
+  s_66f0116e999381::t_f57d57ee8ff6da 326
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_66f0116e999381::t_3f4bb4ab659dc2 344-350
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -9,11 +27,35 @@ packages/cli/src/modules/n8n-packages/io/package-writer.ts
   "base_commit_sha": "eab5cb25a7418c60495e4c35f23a00c789012865",
   "prompts": {},
   "sessions": {
+    "s_4201f3747fb456": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a01c68-6715-7023-974d-f39a0c6286fe",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_66f0116e999381": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6f6cac33-b59a-4fee-80a7-87c2e3cd7288",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
     "s_95fc14a059ff3b": {
       "agent_id": {
         "tool": "claude",
         "id": "1c3153ff-cc6c-4158-b275-0661e3c1f575",
         "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_b3870ba058e6f8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a01c9d-04e1-71b1-bad6-f92565fc72f2",
+        "model": "gpt-5.6-sol"
       },
       "human_author": "Irénée <irenee.ajeneza@n8n.io>"
     }
