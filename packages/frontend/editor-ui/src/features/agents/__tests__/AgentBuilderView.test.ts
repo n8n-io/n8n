@@ -1040,6 +1040,20 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		);
 	});
 
+	it('cancels an in-place switch when flushing the queued edit fails', async () => {
+		instanceAiAvailableRef.value = false;
+		const wrapper = await renderView();
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+		updateConfigMock.mockRejectedValueOnce(new Error('save failed'));
+
+		editor.vm.$emit('update:config', { instructions: 'Answer support mail' });
+		await nextTick();
+
+		await expect(
+			routeGuards.update?.({ params: { projectId: 'p1', agentId: 'a2' } }),
+		).rejects.toThrow('save failed');
+	});
+
 	it('loads credentials through the workflow-scoped credentials endpoint for the agent project', async () => {
 		await renderView();
 

@@ -427,7 +427,7 @@ describe('AgentsListView — create agent', () => {
 		mocks.routeProjectId = 'project-1';
 	});
 
-	it('routes create-agent clicks to Instance AI with the project context', async () => {
+	it('opens the builder for a new pending agent in the current project', async () => {
 		mocks.listAgentsPage.mockResolvedValueOnce({ count: 0, data: [] });
 		const wrapper = await mountView();
 

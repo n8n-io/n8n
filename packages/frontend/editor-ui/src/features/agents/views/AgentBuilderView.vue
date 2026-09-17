@@ -1307,7 +1307,8 @@ onBeforeRouteUpdate(async (to) => {
 		return;
 	}
 	// An in-place switch skips the unmount flush, so persist queued edits here.
-	await flushAutosave().catch(() => {});
+	// A failed save rejects and cancels the switch, so the edit stays for a retry.
+	await flushAutosave();
 });
 
 async function beforePreviewSend() {
