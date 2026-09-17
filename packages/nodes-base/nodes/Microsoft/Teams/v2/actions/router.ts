@@ -7,6 +7,7 @@ import {
 	SEND_AND_WAIT_OPERATION,
 } from 'n8n-workflow';
 
+import * as activityNotification from './activityNotification';
 import * as channel from './channel';
 import * as channelMessage from './channelMessage';
 import * as chat from './chat';
@@ -78,6 +79,12 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 	for (let i = 0; i < items.length; i++) {
 		try {
 			switch (microsoftTeamsTypeData.resource) {
+				case 'activityNotification':
+					responseData = await activityNotification[microsoftTeamsTypeData.operation].execute.call(
+						this,
+						i,
+					);
+					break;
 				case 'channel':
 					responseData = await channel[microsoftTeamsTypeData.operation].execute.call(this, i);
 					break;

@@ -916,4 +916,121 @@ describe('Microsoft Graph transport kernel', () => {
 			).toThrow('must be a delegated OAuth2 credential');
 		});
 	});
+
+	describe('forbiddenHints (Service Principal 403 allowlist)', () => {
+		const hinted = createMicrosoftGraphTransport({
+			defaultCredentialType: 'microsoftTeamsOAuth2Api',
+			forbiddenHints: [
+				{
+					match: 'custom text notifications',
+					message: 'Static hint message',
+					description: 'Static hint description',
+				},
+			],
+		});
+		const rawLeak =
+			'request-id: 11111111-2222-3333-4444-555555555555; token=eyJ0eParrotedSecret; resource /users/19:injected@thread.tacv2';
+		const matchingText = `App x is not authorized to generate custom text notifications about y. ${rawLeak}`;
+		const wrappedGraphError = (statusCode: number, code: string, message: string) => {
+			const underlying = Object.assign(
+				new Error(`${statusCode} - ${JSON.stringify({ error: { code, message } })}`),
+				{
+					statusCode,
+					status: statusCode,
+					error: { error: { code, message } },
+					response: { status: statusCode, statusText: code, headers: {} },
+				},
+			);
+			return new NodeApiError(mockNode, underlying as unknown as JsonObject);
+		};
+		const send = async (request: typeof microsoftApiRequest) =>
+			(await request
+				.call(mockExecuteFunctions, 'POST', '/v1.0/users/x/teamwork/sendActivityNotification')
+				.catch((e: Error) => e)) as NodeApiError;
+
+		beforeEach(() => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation((name: string) =>
+				name === 'authentication' ? SERVICE_PRINCIPAL_AUTH : undefined,
+			);
+			mockExecuteFunctions.getCredentials.mockResolvedValue({ graphApiBaseUrl: '' });
+		});
+
+		it('maps a 403 whose Graph message contains a hint match to the hint copy and leaks nothing', async () => {
+			mockRequestWithAuthentication.mockRejectedValue(
+				wrappedGraphError(403, 'Forbidden', matchingText),
+			);
+
+			const error = await send(hinted.microsoftApiRequest);
+
+			expect(error).toBeInstanceOf(NodeApiError);
+			expect(error.httpCode).toBe('403');
+			expect(error.message).toBe('Static hint message');
+			expect(error.description).toBe('Static hint description');
+			for (const text of [
+				error.message,
+				error.description,
+				...error.messages,
+				JSON.stringify(error),
+			]) {
+				expect(text).not.toContain('request-id');
+				expect(text).not.toContain('token=');
+				expect(text).not.toContain('injected');
+			}
+		});
+
+		it('keeps the generic 403 copy when no hint matches', async () => {
+			mockRequestWithAuthentication.mockRejectedValue(
+				wrappedGraphError(403, 'Forbidden', `Insufficient privileges. ${rawLeak}`),
+			);
+
+			const error = await send(hinted.microsoftApiRequest);
+
+			expect(error.message).toBe(
+				'The app registration is missing a consented application permission for this operation. Grant the required Graph application permission and admin consent, then retry.',
+			);
+			expect(error.description).toBeUndefined();
+			expect(JSON.stringify(error)).not.toContain('request-id');
+		});
+
+		it('ignores a hint match on a status other than 403', async () => {
+			mockRequestWithAuthentication.mockRejectedValue(
+				wrappedGraphError(400, 'BadRequest', matchingText),
+			);
+
+			const error = await send(hinted.microsoftApiRequest);
+
+			expect(error.httpCode).toBe('400');
+			expect(error.message).toBe(
+				"Microsoft Graph rejected the request (HTTP 400). Check the operation's inputs and the app registration's permissions.",
+			);
+			expect(error.description).toBeUndefined();
+		});
+
+		it('leaves the delegated OAuth2 branch unchanged', async () => {
+			mockExecuteFunctions.getNodeParameter.mockReturnValue('microsoftTeamsOAuth2Api');
+			mockRequestOAuth2.mockRejectedValue({
+				statusCode: 403,
+				error: { error: { code: 'Forbidden', message: 'x custom text notifications y' } },
+			});
+
+			const error = await send(hinted.microsoftApiRequest);
+
+			expect(error.httpCode).toBe('403');
+			expect(error.message).toBe('x custom text notifications y');
+			expect(mockRequestWithAuthentication).not.toHaveBeenCalled();
+		});
+
+		it('the module-scope instance without hints keeps the generic 403', async () => {
+			mockRequestWithAuthentication.mockRejectedValue(
+				wrappedGraphError(403, 'Forbidden', matchingText),
+			);
+
+			const error = await send(microsoftApiRequest);
+
+			expect(error.message).toBe(
+				'The app registration is missing a consented application permission for this operation. Grant the required Graph application permission and admin consent, then retry.',
+			);
+			expect(error.description).toBeUndefined();
+		});
+	});
 });
