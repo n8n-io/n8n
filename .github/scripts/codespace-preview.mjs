@@ -134,7 +134,7 @@ export function readyComment({ url, codespace, sha, orgVisible, pr }) {
 		'',
 		`**[Open the preview](${url}/preview-signin)** — one click signs you in.`,
 		'',
-		`If you need to modify the environment variables of this instance, navigate to ${CODESPACE_ENV_VARIABLE_URL} and submit them.`,
+		`If you need to modify the environment variables of this instance, navigate to ${CODESPACE_ENV_VARIABLE_URL}?pr=${pr} and submit them.`,
 		'The instance will refresh and apply your variables.',
 		'',
 		'| | |',
