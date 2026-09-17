@@ -111,6 +111,7 @@ export function createEngineRuntime({
 			orchestrationQueue,
 			dependencies,
 			lifecycleEventPublisher,
+			responseChannel,
 		),
 	);
 
