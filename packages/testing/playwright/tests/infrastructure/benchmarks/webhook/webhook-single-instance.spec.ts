@@ -1,10 +1,11 @@
 import { test } from '../../../../fixtures/base';
 import { benchConfig } from '../../../../playwright-projects';
-import { setupWebhook } from '../../../../utils/benchmark/webhook-driver';
-import { runWebhookThroughputTest } from '../harness/webhook-throughput-harness';
-
-const CONNECTIONS = 250;
-const DURATION_SECONDS = 120;
+import { VM_EAGER_BENCHMARK_PROFILE } from '../../../../utils/benchmark';
+import {
+	runSingleInstanceWebhookBenchmark,
+	SINGLE_INSTANCE_WEBHOOK_CONNECTIONS,
+	SINGLE_INSTANCE_WEBHOOK_DURATION_SECONDS,
+} from '../harness/single-instance-webhook-harness';
 
 // Direct mode: no Bull, no workers. Webhook receives → workflow runs inline on
 // the same Node.js process → respond. Async (`onReceived`) returns the 200
@@ -12,7 +13,11 @@ const DURATION_SECONDS = 120;
 // same event loop. This is the canonical single-instance direct-mode ceiling
 // — the community-edition / single-container deployment shape. For queue-mode
 // shapes, see the `webhook-dedicated-proc-*` specs.
-test.use({ capability: benchConfig('webhook-single-instance') });
+test.use({
+	capability: benchConfig(`webhook-single-instance-${VM_EAGER_BENCHMARK_PROFILE.isolationSuffix}`, {
+		env: VM_EAGER_BENCHMARK_PROFILE.env,
+	}),
+});
 
 test.describe(
 	'What is the single-instance webhook ingestion ceiling?',
@@ -24,28 +29,17 @@ test.describe(
 		],
 	},
 	() => {
-		test(`Async webhook + 1 noop, 1KB payload, ${CONNECTIONS} connections × ${DURATION_SECONDS}s (1 main, no workers)`, async ({
+		test(`Async webhook + 1 noop, 1KB payload, ${SINGLE_INSTANCE_WEBHOOK_CONNECTIONS} connections × ${SINGLE_INSTANCE_WEBHOOK_DURATION_SECONDS}s (1 main, no workers)`, async ({
 			api,
 			services,
 			backendUrl,
 		}, testInfo) => {
-			const handle = setupWebhook({
-				scenario: {
-					nodeCount: 1,
-					payloadSize: '1KB',
-					nodeOutputSize: 'noop',
-					responseMode: 'onReceived',
-				},
-			});
-			await runWebhookThroughputTest({
-				handle,
+			await runSingleInstanceWebhookBenchmark({
 				api,
 				services,
 				testInfo,
 				baseUrl: backendUrl,
-				connections: CONNECTIONS,
-				durationSeconds: DURATION_SECONDS,
-				timeoutMs: (DURATION_SECONDS + 60) * 1000,
+				dimensions: VM_EAGER_BENCHMARK_PROFILE.dimensions,
 			});
 		});
 	},

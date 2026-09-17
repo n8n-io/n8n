@@ -15,8 +15,10 @@ The architectural ceiling. No queue tax, no worker dispatch. What's the absolute
 | Trigger | Spec | Question |
 |---------|------|----------|
 | kafka | `single-instance-ceiling.spec.ts` | How much can we process on a single instance? |
+| kafka | `single-instance-ceiling-lazy-cache.spec.ts` | How much can lazy expression isolates process? |
 | kafka | `steady-rate-breaking-point.spec.ts` | At what input rate does the system fall behind? |
 | webhook | `webhook-single-instance.spec.ts` | What is the single-instance webhook ingestion ceiling? |
+| webhook | `webhook-single-instance-lazy-cache.spec.ts` | What is the lazy expression-isolate webhook ceiling? |
 
 ### Actual — `1m + 1wp + 1w queue mode`
 
@@ -25,9 +27,9 @@ The production-canonical queue-mode topology: dedicated `n8n webhook` proc front
 | Trigger | Spec | Question |
 |---------|------|----------|
 | webhook | `webhook-dedicated-proc-baseline.spec.ts` | What is the webhook ingestion ceiling with a dedicated webhook proc? |
-| kafka | `queue-mode-sustained-rate.spec.ts` | Can queue mode sustain 250 msg/s steady? |
+| kafka | `queue-mode-sustained-rate.spec.ts` | Can queue mode sustain 15 msg/s steady? |
 | kafka | `burst-drain-capacity.spec.ts` | How fast can we drain a backlog? |
-| kafka | `node-count-scaling.spec.ts` | How does throughput scale with workflow complexity? |
+| kafka | `node-count-scaling.spec.ts` | How does burst throughput scale with workflow complexity? |
 | kafka | `output-size-impact.spec.ts` | What is the impact of node output size on throughput? |
 
 ### Scaling — proc-axis and worker-axis at production topology
@@ -45,10 +47,9 @@ What does turning on configuration X cost vs the baseline?
 
 | Trigger | Spec | Question |
 |---------|------|----------|
-| webhook | `webhook-otel-overhead.spec.ts` | What is the runtime cost of enabling OTEL? |
 | webhook | `webhook-save-data-overhead.spec.ts` | What is the runtime cost of saving execution data on success? |
 
-Cost specs run the same workload as the `Actual` baseline with one config knob flipped. Compare the `exec/s`/`p50` of a Cost spec against `webhook-dedicated-proc-baseline` from the same CI run to read the cost. OTEL specs also attach `jaeger-traces.json` as a test artifact — replay locally for flamegraph inspection.
+Cost specs run the same workload as the `Actual` baseline with one config knob flipped. Compare the `exec/s`/`p50` of a Cost spec against `webhook-dedicated-proc-baseline` from the same CI run to read the cost.
 
 ## Standard topology
 
@@ -63,13 +64,26 @@ Webhook-trigger specs in **Actual** and **Scaling** use the production-canonical
 
 All specs share a single env profile aligned with internal n8n production defaults — connection-pool, lock-duration, and Bull/Redis tuning from real deployments. See `BENCHMARK_CONFIG` in `playwright-projects.ts`.
 
+### Expression engine profiles
+
+The direct Kafka and webhook baselines run with two explicit VM expression-engine profiles:
+
+| Profile | Lazy acquisition | Compile cache | Purpose |
+|---------|------------------|---------------|---------|
+| `vm-eager` | Off | Off | Tracks the current default execution path. |
+| `vm-lazy-cache` | On | On | Tracks the optimized no-expression execution path. |
+
+Each metric records `expression_engine`, `expression_lazy_acquire`, `expression_compile_cache`, and `expression_profile` dimensions. The lazy comparison runs remain in benchmark telemetry and run-report artifacts, but do not feed the deployment sizing matrix while eager VM is the default runtime.
+
+These NoOp workflows do not evaluate expressions. Lazy mode therefore avoids acquiring an isolate, so these comparisons primarily measure lazy acquisition. Use the expression-engine microbenchmarks to measure compile-cache behavior directly.
+
 ## Running
 
 ```bash
 # Build n8n image first (skip if you only changed test code).
 pnpm build:docker
 
-# Full suite — all 14 specs sequentially (each spawns its own container).
+# Full suite — all 15 specs sequentially (each spawns its own container).
 pnpm --filter=n8n-playwright test:benchmark
 
 # One spec.
@@ -96,8 +110,8 @@ Every run prints a per-test `[DIAG]` block and emits a Benchmark Summary table a
 ```
 │ Trigger │ Suite │ Scenario                           │ exec/s │ tail/s │ p50   │ p99    │ req/s │ ev lag │ pg tx/s │
 ├─────────┼───────┼────────────────────────────────────┼────────┼────────┼───────┼────────┼───────┼────────┼─────────┤
-│ kafka   │ other │ Kafka trigger + 1 noop, 1KB, 150k  │ 1336.0 │ 1391.5 │ —     │ —      │ —     │ 18ms   │ 11430   │
-│ webhook │ other │ Async webhook + 1 noop, 1KB, 250c  │  442.0 │  453.2 │ 558ms │ 674ms  │ 442.0 │ 8ms    │ 6692    │
+│ kafka   │ other │ Kafka trigger + 1 noop, 1KB, 2k    │   27.0 │   33.8 │ —     │ —      │ —     │ 1ms    │ 530     │
+│ webhook │ other │ Async webhook + 1 noop, 1KB, 5c    │   54.5 │   56.8 │ 95ms  │ 185ms  │  54.1 │ 1ms    │ 1103    │
 ```
 
 | Column | Meaning |
@@ -110,6 +124,8 @@ Every run prints a per-test `[DIAG]` block and emits a Benchmark Summary table a
 | `ev lag` | Node.js event loop lag (sum across mains/workers) |
 | `pg tx/s` | Postgres `xact_commit` rate from postgres-exporter |
 | `queue` | Bull jobs waiting (queue specs only) |
+
+Tail and staged rates require at least three distinct counter samples and 80% coverage of the requested window. Duplicate polls between VictoriaMetrics scrapes do not count as samples. A short or incomplete window omits the tail metric instead of reporting a whole-run fallback or zero. Kafka stage rates use the publisher's actual boundaries.
 
 For deeper PG analysis, every spec also logs a top-N `pg_stat_statements` breakdown ranked by total ms/s of work (calls/s × avg ms), plus a `[PG SATURATION]` block (total query CPU including planner overhead and the long tail, buffer hit ratio, bgwriter / WAL pressure, `pg_stat_io` per-backend-type IO) and a `[CONTAINERS]` block (per-container CPU/memory/IO from cAdvisor or `docker stats` sampler). Each run also attaches a `run-report.json` artifact with the full structured report — feedable directly to an LLM for bottleneck analysis.
 
