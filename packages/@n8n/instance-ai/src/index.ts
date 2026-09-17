@@ -526,6 +526,7 @@ export const RunStateRegistry: typeof RunStateRegistryMod.RunStateRegistry = laz
 	() => loadRunStateRegistry().RunStateRegistry,
 );
 export { orchestratorAgentId } from './runtime/orchestrator-identity';
+export { suspendedInstanceContextSchema } from './runtime/instance-context-state';
 export { createSetupItemsEmitter, isSetupPanelEnabled } from './tools/workflows/setup-items';
 export {
 	formatWorkflowSetupStateNote,

@@ -118,7 +118,8 @@ describe('InstanceContextStep', () => {
 		).textContent;
 
 		expect(label).toContain('listed more activity');
-		expect(label).toContain('read a workflow in full');
+		expect(label).toContain('inspected a workflow');
+		expect(label).not.toContain('in full');
 	});
 
 	it('says nothing about reach on a turn that only used the block', () => {

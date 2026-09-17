@@ -297,7 +297,7 @@
 	"aiAssistant.instanceContext.trace.surface.activity-list": "listed more activity",
 	"aiAssistant.instanceContext.trace.surface.activity-expand": "opened an entry",
 	"aiAssistant.instanceContext.trace.surface.node-usage": "checked node usage",
-	"aiAssistant.instanceContext.trace.surface.workflow-read": "read a workflow in full",
+	"aiAssistant.instanceContext.trace.surface.workflow-read": "inspected a workflow",
 	"aiAssistant.builder.planMode.answers.skipped": "Skipped",
 	"aiAssistant.builder.planMode.plan.title": "Proposed plan",
 	"aiAssistant.builder.planMode.plan.triggerLabel": "Trigger",

@@ -32,6 +32,7 @@ vi.mock('@n8n/instance-ai', async () => {
 		orchestratorAgentId: (runId: string) => `orchestrator-${runId}`,
 		deriveInstanceContextReach: profiles.deriveInstanceContextReach,
 		mergeInstanceContextReach: profiles.mergeInstanceContextReach,
+		suspendedInstanceContextSchema: profiles.suspendedInstanceContextSchema,
 		isSetupPanelEnabled: (context: { setupItemsEmitter?: unknown }) =>
 			context.setupItemsEmitter !== undefined,
 		createSetupItemsEmitter: vi.fn(() => ({
@@ -236,7 +237,11 @@ vi.mock('@/permissions.ee/check-access', () => ({
 	userHasScopes: vi.fn(),
 }));
 
-import type { MemoryTaskUsageReport, ScopedMemoryTaskEvent } from '@n8n/agents';
+import type {
+	MemoryTaskUsageReport,
+	ScopedMemoryTaskEvent,
+	SerializableAgentState,
+} from '@n8n/agents';
 import type {
 	InstanceAiEvent,
 	InstanceContextInjection,
@@ -288,6 +293,10 @@ import { INSTANCE_AI_RUN_TIMEOUT_REASON } from '../liveness/instance-ai-liveness
 import { InstanceAiRunLimitError } from '../instance-ai-run-limit.error';
 import { InstanceAiService } from '../instance-ai.service';
 import { InstanceAiSandboxService } from '../sandbox';
+import type {
+	RebuildSuspendedRunOutcome,
+	ResumableOrphan,
+} from '../suspended-run-restorer.service';
 
 type StartRunServiceInternals = {
 	startRun: InstanceAiService['startRun'];
@@ -490,7 +499,17 @@ type ShutdownServiceInternals = {
 
 type TerminalGuardOrderServiceInternals = {
 	terminalOutcome: InstanceAiTerminalOutcomeService;
+	checkpointStore: {
+		load: Mock<(key: string) => Promise<SerializableAgentState | undefined>>;
+		save: Mock<(key: string, state: SerializableAgentState) => Promise<void>>;
+	};
+	rebuildSuspendedRunFromCheckpoint: (
+		orphan: ResumableOrphan,
+	) => Promise<RebuildSuspendedRunOutcome>;
+	finalizeCancelledSuspendedRun: (run: SuspendedRunState<User>, reason?: string) => Promise<void>;
 	runState: {
+		setBuildMode: Mock;
+		setPromptVersion: Mock;
 		getBuildMode: Mock;
 		getPromptVersion: Mock;
 		getPromptConfiguration: Mock;
@@ -509,9 +528,13 @@ type TerminalGuardOrderServiceInternals = {
 		getEventsForRuns: Mock;
 		publish: Mock;
 	};
-	liveness: { consumeRunTimeout: Mock };
+	liveness: { consumeRunTimeout: Mock; publishRunTimeoutNotice: Mock };
 	telemetry: { track: Mock };
-	suspendedThreads: { dropPendingConfirmationsForThread: Mock; persistPendingConfirmation: Mock };
+	suspendedThreads: {
+		dropPendingConfirmationsForThread: Mock;
+		dropPendingConfirmation: Mock;
+		persistPendingConfirmation: Mock;
+	};
 	logger: { warn: Mock; error: Mock };
 	instanceAiErrorReporter: ReturnType<typeof createInstanceAiErrorReporterMock>;
 	instanceAiConfig: {};
@@ -610,6 +633,8 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 		InstanceAiService.prototype,
 	) as unknown as TerminalGuardOrderServiceInternals;
 	service.runState = {
+		setBuildMode: vi.fn(),
+		setPromptVersion: vi.fn(),
 		getBuildMode: vi.fn(() => undefined),
 		getPromptVersion: vi.fn(),
 		getPromptConfiguration: vi.fn(),
@@ -630,10 +655,15 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 			events.push(event);
 		}),
 	};
-	service.liveness = { consumeRunTimeout: vi.fn(() => ({ timedOut: false })) };
+	service.checkpointStore = { load: vi.fn(async () => undefined), save: vi.fn(async () => {}) };
+	service.liveness = {
+		consumeRunTimeout: vi.fn(() => ({ timedOut: false })),
+		publishRunTimeoutNotice: vi.fn(),
+	};
 	service.telemetry = { track: vi.fn() };
 	service.suspendedThreads = {
 		dropPendingConfirmationsForThread: vi.fn(async () => {}),
+		dropPendingConfirmation: vi.fn(async () => {}),
 		persistPendingConfirmation: vi.fn(async () => {}),
 	};
 	service.logger = { warn: vi.fn(), error: vi.fn() };
@@ -3665,6 +3695,8 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			isRunDebugEnabled: vi.fn(() => false),
 			createExecutionEnvironment: vi.fn(async () => ({
 				context: {},
+				instanceContextEnabled: false,
+				nodeUsageEnabled: false,
 				memory: { getThread: vi.fn(async () => ({ title: 'Existing conversation' })) },
 				taskStorage: { get: vi.fn(async () => undefined) },
 				orchestrationContext: {},
@@ -3684,6 +3716,36 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 		});
 		vi.mocked(createInstanceAiTraceContext).mockResolvedValueOnce(undefined);
 	}
+
+	it('stores the first suspended segment context in the checkpoint', async () => {
+		const service = createTerminalGuardOrderService();
+		stubInitialRunSurface(service);
+		service.checkpointStore.load.mockResolvedValue({
+			status: 'suspended',
+			messageList: { messages: [], historyIds: [], inputIds: [], responseIds: [] },
+			pendingToolCalls: {},
+			persistence: { threadId: 'thread-a', resourceId: fakeUser.id },
+		});
+		vi.mocked(streamAgentRun).mockResolvedValueOnce(suspendedWithCard());
+
+		await service.executeRun(fakeUser, 'thread-a', 'run-1', 'Hello', new AbortController());
+
+		expect(service.checkpointStore.save).toHaveBeenCalledWith(
+			'agent-run-1',
+			expect.objectContaining({
+				persistence: expect.objectContaining({
+					hostMetadata: {
+						instanceContext: {
+							injection: { state: 'absent', reason: 'disabled' },
+							instanceContextEnabled: false,
+							nodeUsageEnabled: false,
+							reachSoFar: { surfaces: [] },
+						},
+					},
+				}),
+			}),
+		);
+	});
 
 	/** The shutdown() surface: one suspended run, nothing else in flight. */
 	function stubShutdownSurface(
@@ -6384,25 +6446,53 @@ describe('InstanceAiService — instance-context turn event', () => {
 				block_run_rows: 1,
 				block_chars: 400,
 				context_surfaces: ['activity-list', 'workflow-read'],
-				// The deepest surface, not the count: a full workflow read is rung 3.
+				// Depth records the requested surface, not the amount of returned data.
 				context_depth: 3,
 			}),
 		]);
 	});
 
-	it('carries context reads through another suspension and the final resume', async () => {
-		const service = createTerminalGuardOrderService();
-		vi.spyOn(service.terminalOutcome, 'evaluateWaitingResponse').mockResolvedValue(undefined);
-		const finalizeRun = vi.spyOn(service, 'finalizeRun').mockResolvedValue(undefined);
+	it.each([false, true])('carries context across a restart with the gate %s', async (enabled) => {
+		let checkpoint: SerializableAgentState = {
+			status: 'suspended',
+			messageList: { messages: [], historyIds: [], inputIds: [], responseIds: [] },
+			pendingToolCalls: {},
+			persistence: {
+				threadId: 'thread-1',
+				resourceId: fakeUser.id,
+				hostMetadata: { buildMode: 'default' },
+			},
+		};
+		function createRecoveryService() {
+			const service = Object.assign(createTerminalGuardOrderService(), {
+				revalidateActiveUser: vi.fn(async () => fakeUser),
+				createExecutionEnvironment: vi.fn(async () => ({ orchestrationContext: {} })),
+				createAgentFromEnvironment: vi.fn(async () => ({})),
+			});
+			service.checkpointStore.load.mockImplementation(async () => structuredClone(checkpoint));
+			service.checkpointStore.save.mockImplementation(async (_key, state) => {
+				checkpoint = structuredClone(state);
+			});
+			vi.spyOn(service.terminalOutcome, 'evaluateWaitingResponse').mockResolvedValue(undefined);
+			vi.spyOn(service, 'finalizeRun').mockResolvedValue(undefined);
+			return service;
+		}
+		let service = createRecoveryService();
+		const services = [service];
 		const abortController = new AbortController();
 		let instanceContext: NonNullable<SuspendedRunState<User>['instanceContext']> = {
-			injection: binding().injection,
-			instanceContextEnabled: true,
-			nodeUsageEnabled: false,
-			reachSoFar: { surfaces: ['activity-list'] },
+			injection: enabled ? binding().injection : { state: 'absent', reason: 'disabled' },
+			instanceContextEnabled: enabled,
+			nodeUsageEnabled: !enabled,
+			reachSoFar: { surfaces: enabled ? ['activity-list'] : ['node-usage'] },
 		};
 		const segments = [
-			{ status: 'suspended', toolName: 'activity', action: 'expand', tokens: 12 },
+			{
+				status: 'suspended',
+				toolName: enabled ? 'activity' : 'workflows',
+				action: enabled ? 'expand' : 'get-as-code',
+				tokens: 12,
+			},
 			{ status: 'completed', toolName: 'workflows', action: 'get', tokens: 34 },
 		] as const;
 
@@ -6440,30 +6530,91 @@ describe('InstanceAiService — instance-context turn event', () => {
 				const saved = service.runState.suspendRun.mock.lastCall?.[1] as SuspendedRunState<User>;
 				expect(saved.instanceContext).toEqual({
 					...instanceContext,
-					reachSoFar: { surfaces: ['activity-list', 'activity-expand'] },
+					reachSoFar: {
+						surfaces: enabled
+							? ['activity-list', 'activity-expand']
+							: ['node-usage', 'workflow-read'],
+					},
 				});
-				instanceContext = saved.instanceContext!;
+				service = createRecoveryService();
+				services.push(service);
+				const restored = await service.rebuildSuspendedRunFromCheckpoint({
+					userId: fakeUser.id,
+					threadId: 'thread-1',
+					runId: 'run-1',
+					checkpointKey: 'agent-run-1',
+					toolCallId: 'call-1',
+					requestId: 'req-1',
+				} as ResumableOrphan);
+				expect(restored.kind).toBe('ready');
+				if (restored.kind !== 'ready') throw new Error('Expected a restored run');
+				expect(restored.state.instanceContext).toEqual(saved.instanceContext);
+				expect(checkpoint.persistence?.hostMetadata?.buildMode).toBe('default');
+				instanceContext = restored.state.instanceContext!;
 			}
 		}
 
-		const rows = service.telemetry.track.mock.calls
+		const rows = services
+			.flatMap((segmentService) => segmentService.telemetry.track.mock.calls)
 			.filter(([event]) => event === TELEMETRY_EVENT.INSTANCE_AI.INSTANCE_CONTEXT_TURN)
 			.map(([, properties]) => properties);
 		expect(rows.map((row) => row.run_id)).toEqual(['run-1', 'run-1']);
 		expect(rows.map((row) => row.segment)).toEqual(['suspended', 'resumed']);
 		expect(rows.map((row) => row.context_surfaces)).toEqual([
-			['activity-expand'],
+			enabled ? ['activity-expand'] : ['workflow-read'],
 			['workflow-read'],
 		]);
 		expect(rows.map((row) => row.turn_total_tokens)).toEqual([12, 34]);
 		expect(rows.map((row) => row.asked_clarifying_question)).toEqual([true, false]);
-		expect(finalizeRun).toHaveBeenCalledWith(
+		expect(service.finalizeRun).toHaveBeenCalledWith(
 			'thread-1',
 			'run-1',
 			'completed',
 			expect.objectContaining({
-				contextReach: { surfaces: ['activity-list', 'activity-expand', 'workflow-read'] },
+				contextReach: {
+					surfaces: enabled
+						? ['activity-list', 'activity-expand', 'workflow-read']
+						: ['node-usage', 'workflow-read'],
+				},
 			}),
 		);
 	});
+
+	it.each(['user_cancelled', INSTANCE_AI_RUN_TIMEOUT_REASON])(
+		'keeps context reads when a suspended run ends with %s',
+		async (reason) => {
+			const service = createTerminalGuardOrderService();
+			await service.finalizeCancelledSuspendedRun(
+				{
+					runId: 'run-1',
+					agentRunId: 'agent-run-1',
+					threadId: 'thread-1',
+					user: fakeUser,
+					agent: {},
+					toolCallId: 'call-1',
+					requestId: 'req-1',
+					abortController: new AbortController(),
+					createdAt: Date.now(),
+					instanceContext: {
+						injection: binding().injection,
+						instanceContextEnabled: true,
+						nodeUsageEnabled: false,
+						reachSoFar: { surfaces: ['activity-list', 'workflow-read'] },
+					},
+				},
+				reason,
+			);
+
+			expect(service.eventBus.events).toContainEqual(
+				expect.objectContaining({
+					type: 'run-finish',
+					payload: {
+						status: 'cancelled',
+						reason,
+						contextReach: { surfaces: ['activity-list', 'workflow-read'] },
+					},
+				}),
+			);
+		},
+	);
 });

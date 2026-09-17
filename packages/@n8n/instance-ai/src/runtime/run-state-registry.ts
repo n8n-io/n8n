@@ -4,8 +4,6 @@ import type {
 	InstanceAiPromptConfiguration,
 	InstanceAiCredentialDestinationDecision,
 	InstanceAiThreadStatusResponse,
-	InstanceContextInjection,
-	InstanceContextReach,
 } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 
@@ -17,6 +15,7 @@ import type {
 } from './liveness-policy';
 import type { OrchestratorRunHandoffState } from './orchestrator-run-control';
 import type { WorkflowBuildOutcome } from '../workflow-loop/workflow-loop-state';
+import type { SuspendedInstanceContext } from './instance-context-state';
 
 export interface ActiveRunState {
 	runId: string;
@@ -62,13 +61,7 @@ export interface SuspendedRunState<TUser = unknown> extends ActiveRunState {
 	/** Shared signal used to stop resumed orchestration after durable work is handed off. */
 	runHandoff?: OrchestratorRunHandoffState;
 	/** Keep the injection and gate results across suspension. Resumed segments build no new block. */
-	instanceContext?: {
-		injection: InstanceContextInjection;
-		instanceContextEnabled: boolean;
-		nodeUsageEnabled: boolean;
-		/** Keep earlier reads because each resumed segment starts a new work summary. */
-		reachSoFar: InstanceContextReach;
-	};
+	instanceContext?: SuspendedInstanceContext;
 }
 
 /**

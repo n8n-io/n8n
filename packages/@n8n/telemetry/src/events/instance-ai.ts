@@ -446,7 +446,7 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 				.number()
 				.int()
 				.describe(
-					'Deepest read: 0 none, 1 activity list, 2 activity expand or node usage, 3 full workflow',
+					'Deepest attempted read: 0 none, 1 activity list, 2 activity expand or node usage, 3 workflow inspection',
 				),
 			context_surfaces: z
 				.array(z.enum(instanceContextSurfaceSchema.options))

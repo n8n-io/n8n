@@ -33,7 +33,7 @@ describe('deriveInstanceContextReach', () => {
 		});
 	});
 
-	it.each(['get', 'get-as-code'])('reports a full workflow read (%s)', (action) => {
+	it.each(['get', 'get-as-code'])('reports a workflow inspection (%s)', (action) => {
 		expect(deriveInstanceContextReach([call('workflows', action)])).toEqual({
 			surfaces: ['workflow-read'],
 		});

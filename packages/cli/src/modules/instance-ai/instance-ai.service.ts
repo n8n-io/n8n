@@ -79,6 +79,7 @@ import {
 	releaseTraceClient,
 	resumeAgentRun,
 	RunStateRegistry,
+	suspendedInstanceContextSchema,
 	shutdownProductTelemetryProviders,
 	tokenUsageToBuilderUsageItems,
 	RunDebugBuffer,
@@ -4350,6 +4351,12 @@ export class InstanceAiService {
 					usage: result.usage,
 				});
 				if (result.suspension) {
+					const suspendedContext = {
+						injection: contextInjection,
+						instanceContextEnabled,
+						nodeUsageEnabled,
+						reachSoFar: suspendedReach,
+					};
 					this.runState.suspendRun(threadId, {
 						runId,
 						agentRunId: result.agentRunId,
@@ -4372,13 +4379,9 @@ export class InstanceAiService {
 						plannedBuild,
 						runHandoff: runControl.state,
 						// Resumed segments reuse this block and add their reads to the trace.
-						instanceContext: {
-							injection: contextInjection,
-							instanceContextEnabled,
-							nodeUsageEnabled,
-							reachSoFar: suspendedReach,
-						},
+						instanceContext: suspendedContext,
 					});
+					await this.persistSuspendedInstanceContext(result.agentRunId, suspendedContext);
 					// Awaited: the card event is published below, and a client that reconnects
 					// settles any card whose row is missing (run-sync frame + history read).
 					await this.suspendedThreads.persistPendingConfirmation({
@@ -5123,6 +5126,7 @@ export class InstanceAiService {
 	): Promise<RebuildSuspendedRunOutcome> {
 		const user = await this.revalidateActiveUser(orphan.userId);
 		if (!user) return { kind: 'no-user' };
+		let instanceContext: SuspendedRunState<User>['instanceContext'];
 
 		// Bail early if the checkpoint store doesn't have a usable snapshot —
 		// `load()` throws UserError for expired tombstones and returns
@@ -5131,6 +5135,10 @@ export class InstanceAiService {
 		try {
 			const state = await this.checkpointStore.load(orphan.checkpointKey);
 			if (!state) return { kind: 'no-checkpoint' };
+			const storedContext = suspendedInstanceContextSchema.safeParse(
+				state.persistence?.hostMetadata?.instanceContext,
+			);
+			if (storedContext.success) instanceContext = storedContext.data;
 			// Restore before rebuilding the prompt and tools. Older checkpoints use control.
 			const mode = instanceAiBuildModeSchema.safeParse(state.persistence?.hostMetadata?.buildMode);
 			this.runState.setBuildMode(orphan.threadId, mode.success ? mode.data : 'default');
@@ -5177,6 +5185,7 @@ export class InstanceAiService {
 			state: {
 				runId: orphan.runId,
 				agentRunId: orphan.checkpointKey,
+				instanceContext,
 				agent,
 				orchestrationContext: environment.orchestrationContext,
 				threadId: orphan.threadId,
@@ -5675,6 +5684,9 @@ export class InstanceAiService {
 				}
 				if (result.suspension) {
 					const resumeMessageGroupId = this.tracing.getMessageGroupId(opts.runId);
+					const suspendedContext = opts.instanceContext
+						? { ...opts.instanceContext, reachSoFar: resumedSuspendedReach }
+						: undefined;
 					this.runState.suspendRun(opts.threadId, {
 						runId: opts.runId,
 						agentRunId: result.agentRunId,
@@ -5696,10 +5708,9 @@ export class InstanceAiService {
 						checkpoint: opts.checkpoint,
 						plannedBuild: opts.plannedBuild,
 						runHandoff: runControl.state,
-						...(opts.instanceContext
-							? { instanceContext: { ...opts.instanceContext, reachSoFar: resumedSuspendedReach } }
-							: {}),
+						instanceContext: suspendedContext,
 					});
+					await this.persistSuspendedInstanceContext(result.agentRunId, suspendedContext);
 					// Awaited: the card event is published below, and a client that reconnects
 					// settles any card whose row is missing (run-sync frame + history read).
 					await this.suspendedThreads.persistPendingConfirmation({
@@ -6471,6 +6482,7 @@ export class InstanceAiService {
 			suspended.user.id,
 			{
 				promptVersion: suspended.orchestrationContext?.promptConfiguration?.version,
+				contextReach: suspended.instanceContext?.reachSoFar,
 				...(suspended.modelId !== undefined ? { modelId: suspended.modelId } : {}),
 			},
 		);
@@ -6690,6 +6702,30 @@ export class InstanceAiService {
 
 	/** Use a fixed estimate to avoid loading a tokenizer on every turn. */
 	private static readonly BLOCK_CHARS_PER_TOKEN = 4;
+
+	/** Save the summary before the confirmation card is visible. */
+	private async persistSuspendedInstanceContext(
+		checkpointKey: string,
+		instanceContext: SuspendedRunState<User>['instanceContext'],
+	): Promise<void> {
+		if (!instanceContext) return;
+		try {
+			const state = await this.checkpointStore.load(checkpointKey);
+			if (!state?.persistence) return;
+			await this.checkpointStore.save(checkpointKey, {
+				...state,
+				persistence: {
+					...state.persistence,
+					hostMetadata: { ...state.persistence.hostMetadata, instanceContext },
+				},
+			});
+		} catch (error) {
+			this.logger.warn('Failed to store context for the suspended run', {
+				checkpointKey,
+				error: getErrorMessage(error),
+			});
+		}
+	}
 
 	/** Restore the original turn binding for resumed segments. */
 	private instanceContextTurnBinding(opts: {

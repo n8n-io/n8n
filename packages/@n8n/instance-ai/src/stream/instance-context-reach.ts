@@ -3,7 +3,7 @@ import type { InstanceContextReach, InstanceContextSurface } from '@n8n/api-type
 import type { ToolCallSummary } from './work-summary-accumulator';
 import { DOMAIN_TOOL_IDS } from '../tools/tool-ids';
 
-/** Both workflow read formats expose the full workflow. */
+/** Workflow inspection can return a summary or a file index instead of full content. */
 const SURFACE_BY_CALL: Record<string, Record<string, InstanceContextSurface>> = {
 	[DOMAIN_TOOL_IDS.ACTIVITY]: {
 		list: 'activity-list',
