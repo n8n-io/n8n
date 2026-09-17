@@ -19,6 +19,7 @@ const routerPush = vi.fn();
 const routerReplace = vi.fn();
 const sessionThreads = reactive<SessionThread[]>([]);
 const pushListeners = new Set<(event: PushMessage) => void>();
+const agentPermissions = vi.hoisted(() => ({ canUpdate: { value: true } }));
 
 vi.mock('vue-router', () => ({
 	useRoute: () => ({ params: routeParams, query: {} }),
@@ -75,6 +76,10 @@ vi.mock('@/features/agents/composables/useAgentConfig', () => ({
 	}),
 }));
 
+vi.mock('@/features/agents/composables/useAgentPermissions', () => ({
+	useAgentPermissions: () => agentPermissions,
+}));
+
 /** Mimic the backend recording a turn for `threadId`. */
 function emitExecutionUpdate(threadId: string) {
 	const event: PushMessage = {
@@ -86,6 +91,7 @@ function emitExecutionUpdate(threadId: string) {
 
 describe('AgentSessionTimelineView', () => {
 	beforeEach(() => {
+		agentPermissions.canUpdate.value = true;
 		routeParams.threadId = 'thread-a';
 		sessionThreads.splice(
 			0,
@@ -96,6 +102,14 @@ describe('AgentSessionTimelineView', () => {
 		vi.spyOn(globalThis.crypto, 'randomUUID').mockReturnValue(
 			'thread-b' as unknown as ReturnType<typeof globalThis.crypto.randomUUID>,
 		);
+	});
+
+	it('uses update permission for preview session deletion', async () => {
+		agentPermissions.canUpdate.value = false;
+		const wrapper = shallowMount(AgentSessionTimelineView);
+		await flushPromises();
+
+		expect(wrapper.findComponent(AgentPreviewDock).props('canDeleteSession')).toBe(false);
 	});
 
 	afterEach(() => {
