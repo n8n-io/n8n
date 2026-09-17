@@ -19,6 +19,7 @@ import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import PromoteInstanceSection from '../components/PromoteInstanceSection.vue';
 import PromotionConnectionForm from '../components/PromotionConnectionForm.vue';
 import PromotionProviderDialog from '../components/PromotionProviderDialog.vue';
+import { invalidatePromotionConnection } from '../composables/usePromotionConnection';
 import {
 	fetchPromotionConnection,
 	fetchPromotionConnections,
@@ -117,6 +118,12 @@ function onProviderDeleted() {
 	pendingLoad = load();
 }
 
+function onConnectionSaved(saved: PromotionConnection) {
+	connection.value = saved;
+	// The project header caches the instance connection per page load.
+	invalidatePromotionConnection();
+}
+
 async function focusProvider(id: string | undefined) {
 	await nextTick();
 	const row = id ? list.value?.querySelector<HTMLElement>(`[data-provider-id="${id}"]`) : undefined;
@@ -207,7 +214,7 @@ async function onDialogOpenChange(open: boolean) {
 				ref="connectionForm"
 				:providers="providers"
 				:connection="connection"
-				@saved="connection = $event"
+				@saved="onConnectionSaved"
 				@add-provider="openCreateDialog(true)"
 			/>
 		</N8nSettingsSection>

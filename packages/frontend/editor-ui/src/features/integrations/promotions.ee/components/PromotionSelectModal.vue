@@ -1,19 +1,27 @@
 <script lang="ts" setup>
-import { computed, onMounted } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useUsersStore } from '@n8n/stores/users.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { createEventBus } from '@n8n/utils/event-bus';
+import { useMessage } from '@/app/composables/useMessage';
+import { useToast } from '@n8n/composables/useToast';
+import { MODAL_CONFIRM } from '@/app/constants/modals';
 import Modal from '@/app/components/Modal.vue';
 import TimeAgo from '@/app/components/TimeAgo.vue';
 import { N8nButton, N8nCheckbox, N8nInput, N8nText } from '@n8n/design-system';
-import type { PromotableResourceStatus } from '@n8n/api-types';
+import type { PromotableResourceStatus, PromotionDirection } from '@n8n/api-types';
 import { usePromotionChanges } from '../composables/usePromotionChanges';
+import { applyPromotion } from '../promotionsSettings.api';
 
 interface Props {
 	modalName: string;
 	data: {
 		projectId: string;
+		direction?: PromotionDirection;
+		/** The instance connection and its Apply config. Only the `apply` direction needs it. */
+		apply?: { connectionId: string; configId: string; branchName: string };
 	};
 }
 
@@ -22,10 +30,18 @@ const props = defineProps<Props>();
 const i18n = useI18n();
 const uiStore = useUIStore();
 const usersStore = useUsersStore();
+const rootStore = useRootStore();
+const message = useMessage();
+const toast = useToast();
 const modalBus = createEventBus();
+
+const direction = props.data.direction ?? 'promote';
+const isIncoming = direction === 'apply';
+const isApplying = ref(false);
 
 const {
 	changes,
+	commitSha,
 	filteredChanges,
 	isLoading,
 	error,
@@ -37,7 +53,17 @@ const {
 	fetchChanges,
 	toggleSelected,
 	toggleSelectAll,
-} = usePromotionChanges(props.data.projectId);
+} = usePromotionChanges(props.data.projectId, direction);
+
+const title = i18n.baseText(
+	isIncoming ? 'promotions.modal.incoming.title' : 'promotions.modal.title',
+);
+const emptyTitle = i18n.baseText(
+	isIncoming ? 'promotions.modal.incoming.empty' : 'promotions.modal.empty',
+);
+const emptyDescription = i18n.baseText(
+	isIncoming ? 'promotions.modal.incoming.empty.description' : 'promotions.modal.empty.description',
+);
 
 // No visible rows despite a loaded, non-empty change set means the search excluded everything.
 const hasNoSearchResults = computed(
@@ -92,6 +118,62 @@ async function onRefresh() {
 	await fetchChanges();
 }
 
+/** Applies the whole branch. The selection is kept for the selective apply that follows. */
+async function onApplyAll() {
+	const { apply } = props.data;
+	if (!apply) return;
+	const confirmed = await message.confirm(
+		i18n.baseText('promotions.modal.incoming.confirm.message'),
+		i18n.baseText('promotions.modal.incoming.confirm.title'),
+		{
+			type: 'warning',
+			confirmButtonText: i18n.baseText('promotions.modal.incoming.confirm.confirmButtonText'),
+			cancelButtonText: i18n.baseText('promotions.modal.close'),
+		},
+	);
+	if (confirmed !== MODAL_CONFIRM) return;
+	isApplying.value = true;
+	try {
+		// Pin the reviewed commit: a branch that moved since the preview is reported, not applied.
+		const expectedSource = commitSha.value
+			? { configId: apply.configId, branchName: apply.branchName, commitSha: commitSha.value }
+			: undefined;
+		const result = await applyPromotion(
+			rootStore.publicApiContext,
+			apply.connectionId,
+			expectedSource && { expectedSource },
+		);
+		if (result.status !== 'applied') {
+			// Apply pauses on unresolved bindings or a moved source. The binding screen comes with LIGO-1058.
+			toast.showMessage({
+				title: i18n.baseText('promotions.modal.incoming.paused.title'),
+				message: i18n.baseText(`promotions.modal.incoming.paused.${result.status}`),
+				type: 'warning',
+			});
+			return;
+		}
+		const { counts } = result;
+		toast.showMessage({
+			title: i18n.baseText('promotions.modal.incoming.applied.title'),
+			message: i18n.baseText('promotions.modal.incoming.applied.message', {
+				interpolate: {
+					created: String(counts.workflows.created),
+					updated: String(counts.workflows.updated),
+					archived: String(counts.workflows.archived),
+					deleted: String(counts.workflows.deleted),
+				},
+			}),
+			type: 'success',
+		});
+	} catch (applyError) {
+		toast.showError(applyError, i18n.baseText('promotions.modal.incoming.applyError'));
+	} finally {
+		// The list must show what apply did, whether it finished or stopped halfway.
+		isApplying.value = false;
+		await fetchChanges();
+	}
+}
+
 onMounted(async () => {
 	await fetchChanges();
 });
@@ -100,7 +182,7 @@ onMounted(async () => {
 <template>
 	<Modal
 		:name="modalName"
-		:title="i18n.baseText('promotions.modal.title')"
+		:title="title"
 		:event-bus="modalBus"
 		width="640px"
 		height="80vh"
@@ -162,10 +244,10 @@ onMounted(async () => {
 				<template v-else-if="changes.length === 0">
 					<div :class="$style.empty">
 						<N8nText size="medium" bold>
-							{{ i18n.baseText('promotions.modal.empty') }}
+							{{ emptyTitle }}
 						</N8nText>
 						<N8nText size="small" color="text-light">
-							{{ i18n.baseText('promotions.modal.empty.description') }}
+							{{ emptyDescription }}
 						</N8nText>
 					</div>
 				</template>
@@ -248,7 +330,14 @@ onMounted(async () => {
 		<template #footer>
 			<div :class="$style.footer">
 				<div :class="$style.footerLeft">
-					<N8nText size="small" color="text-light">
+					<N8nText v-if="isIncoming && selectedCount > 0" size="small" color="text-light">
+						{{
+							i18n.baseText('promotions.modal.incoming.selected', {
+								interpolate: { count: String(selectedCount) },
+							})
+						}}
+					</N8nText>
+					<N8nText v-else-if="!isIncoming" size="small" color="text-light">
 						{{ i18n.baseText('promotions.modal.previewOnly') }}
 					</N8nText>
 				</div>
@@ -256,7 +345,16 @@ onMounted(async () => {
 					<N8nButton variant="subtle" @click="onClose">
 						{{ i18n.baseText('promotions.modal.close') }}
 					</N8nButton>
-					<N8nButton disabled data-test-id="promotion-submit">
+					<N8nButton
+						v-if="isIncoming"
+						:loading="isApplying"
+						:disabled="isLoading || !!error"
+						data-test-id="promotion-apply-all"
+						@click="onApplyAll"
+					>
+						{{ i18n.baseText('promotions.modal.incoming.applyAll') }}
+					</N8nButton>
+					<N8nButton v-else disabled data-test-id="promotion-submit">
 						{{ getPromoteButtonLabel() }}
 					</N8nButton>
 				</div>

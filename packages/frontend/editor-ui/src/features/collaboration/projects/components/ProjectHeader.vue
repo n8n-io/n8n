@@ -12,7 +12,6 @@ import { getResourcePermissions } from '@n8n/permissions';
 import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import ProjectCreateResource from './ProjectCreateResource.vue';
-import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
 import { truncateTextToFitWidth } from '@/app/utils/formatters/textFormatter';
@@ -25,7 +24,8 @@ import { useAgentPermissions } from '@/features/agents/composables/useAgentPermi
 import ReadyToRunButton from '@/features/workflows/readyToRun/components/ReadyToRunButton.vue';
 import { usePromotionsEnabled } from '@/features/shared/promotions/usePromotionsEnabled';
 import { PROMOTION_SELECT_MODAL_KEY } from '@/features/integrations/promotions.ee/promotions.constants';
-import { getPromotableChanges } from '@/features/integrations/promotions.ee/promotions.api';
+import { usePromotionConnection } from '@/features/integrations/promotions.ee/composables/usePromotionConnection';
+import { usePromotionChangeCount } from '@/features/integrations/promotions.ee/composables/usePromotionChangeCount';
 
 import {
 	N8nButton,
@@ -54,38 +54,38 @@ const { createAgent } = useCreateAgent();
 const usersStore = useUsersStore();
 const favoritesStore = useFavoritesStore();
 const { isEnabled: isPromotionsEnabled } = usePromotionsEnabled();
-const rootStore = useRootStore();
 
 const currentProjectId = computed(() => projectsStore.currentProject?.id);
 
 const isTeamProject = computed(() => projectsStore.currentProject?.type === ProjectTypes.Team);
 
-const promotableChangeCount = ref(0);
-const showPromoteButton = computed(
+// Each banner needs the direction configured on the instance connection, so a
+// source never asks for incoming changes and a destination never asks for outgoing ones.
+const {
+	connection: promotionConnection,
+	hasPromoteConfig,
+	hasApplyConfig,
+	load: loadPromotionConnection,
+} = usePromotionConnection();
+const gitConnectionPermissions = computed(
+	() => getResourcePermissions(usersStore.currentUser?.globalScopes).gitConnection,
+);
+// Reading the instance connection needs the list scope on top of the direction scope.
+const canPreviewChanges = computed(
 	() =>
 		isTeamProject.value &&
 		isPromotionsEnabled.value &&
 		!!projectPermissions.value.export &&
-		!!getResourcePermissions(usersStore.currentUser?.globalScopes).gitConnection.push,
+		!!gitConnectionPermissions.value.list &&
+		(!!gitConnectionPermissions.value.push || !!gitConnectionPermissions.value.pull),
 );
-
-async function fetchPromotableChangeCount() {
-	// Capture the project this request is for, so a slow response for a project the
-	// user already navigated away from cannot overwrite the current count.
-	const requestedProjectId = currentProjectId.value;
-	promotableChangeCount.value = 0;
-	if (!showPromoteButton.value || !requestedProjectId) {
-		return;
-	}
-	try {
-		const { changes } = await getPromotableChanges(rootStore.restApiContext, requestedProjectId);
-		if (currentProjectId.value !== requestedProjectId) return;
-		promotableChangeCount.value = changes.length;
-	} catch {
-		if (currentProjectId.value !== requestedProjectId) return;
-		promotableChangeCount.value = 0;
-	}
-}
+const showPromoteBanner = computed(
+	() => canPreviewChanges.value && hasPromoteConfig.value && !!gitConnectionPermissions.value.push,
+);
+// Incoming changes: what applying the branch would change on this instance.
+const showIncomingBanner = computed(
+	() => canPreviewChanges.value && hasApplyConfig.value && !!gitConnectionPermissions.value.pull,
+);
 
 const isProjectFavorited = computed(() =>
 	currentProjectId.value ? favoritesStore.isFavorite(currentProjectId.value, 'project') : false,
@@ -503,6 +503,24 @@ const projectDescriptionTruncated = computed(() => {
 	return truncateTextToFitWidth(projectDescription.value, availableTextWidth, fontSizeInPixels);
 });
 
+watch(
+	canPreviewChanges,
+	async (canPreview) => {
+		if (canPreview) await loadPromotionConnection();
+	},
+	{ immediate: true },
+);
+const { count: promotableChangeCount } = usePromotionChangeCount(
+	currentProjectId,
+	'promote',
+	showPromoteBanner,
+);
+const { count: incomingChangeCount } = usePromotionChangeCount(
+	currentProjectId,
+	'apply',
+	showIncomingBanner,
+);
+
 const promotionBannerText = computed(() => {
 	if (promotableChangeCount.value === 1) {
 		return i18n.baseText('promotions.banner.singleChangeAvailable');
@@ -512,13 +530,37 @@ const promotionBannerText = computed(() => {
 	});
 });
 
-watch([currentProjectId, showPromoteButton], fetchPromotableChangeCount, { immediate: true });
+const incomingBannerText = computed(() => {
+	if (incomingChangeCount.value === 1) {
+		return i18n.baseText('promotions.banner.incoming.singleChangeAvailable');
+	}
+	return i18n.baseText('promotions.banner.incoming.changesAvailable', {
+		interpolate: { count: String(incomingChangeCount.value) },
+	});
+});
 
 function onOpenPromotionModal() {
 	if (!currentProjectId.value) return;
 	uiStore.openModalWithData({
 		name: PROMOTION_SELECT_MODAL_KEY,
 		data: { projectId: currentProjectId.value },
+	});
+}
+
+function onOpenIncomingModal() {
+	const applyConfig = promotionConnection.value?.configs.apply;
+	if (!currentProjectId.value || !promotionConnection.value || !applyConfig) return;
+	uiStore.openModalWithData({
+		name: PROMOTION_SELECT_MODAL_KEY,
+		data: {
+			projectId: currentProjectId.value,
+			direction: 'apply',
+			apply: {
+				connectionId: promotionConnection.value.id,
+				configId: applyConfig.id,
+				branchName: applyConfig.settings.branchName,
+			},
+		},
 	});
 }
 
@@ -604,7 +646,7 @@ const onSelect = (action: string, source: CreateSource) => {
 			/>
 		</div>
 		<div
-			v-if="showPromoteButton && promotableChangeCount > 0"
+			v-if="showPromoteBanner && promotableChangeCount > 0"
 			:class="$style.promotionBanner"
 			data-test-id="promotion-banner"
 		>
@@ -613,6 +655,23 @@ const onSelect = (action: string, source: CreateSource) => {
 				{{ promotionBannerText }}
 			</N8nText>
 			<N8nLink size="small" data-test-id="promotion-banner-link" @click="onOpenPromotionModal">
+				{{ i18n.baseText('promotions.banner.viewChanges') }}
+			</N8nLink>
+		</div>
+		<div
+			v-if="showIncomingBanner && incomingChangeCount > 0"
+			:class="$style.promotionBanner"
+			data-test-id="promotion-incoming-banner"
+		>
+			<N8nIcon icon="download" size="small" />
+			<N8nText size="small">
+				{{ incomingBannerText }}
+			</N8nText>
+			<N8nLink
+				size="small"
+				data-test-id="promotion-incoming-banner-link"
+				@click="onOpenIncomingModal"
+			>
 				{{ i18n.baseText('promotions.banner.viewChanges') }}
 			</N8nLink>
 		</div>

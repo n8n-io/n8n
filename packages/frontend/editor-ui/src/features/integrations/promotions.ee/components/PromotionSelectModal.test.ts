@@ -3,10 +3,25 @@ import { createComponentRenderer } from '@/__tests__/render';
 import PromotionSelectModal from './PromotionSelectModal.vue';
 import { PROMOTION_SELECT_MODAL_KEY } from '../promotions.constants';
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { createServer, Response } from 'miragejs';
+import { createServer, Response, type Request } from 'miragejs';
 import { useUsersStore } from '@n8n/stores/users.store';
 import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
+import { MODAL_CANCEL, MODAL_CONFIRM } from '@/app/constants/modals';
+
+const { confirm, showMessage, showError } = vi.hoisted(() => ({
+	confirm: vi.fn(),
+	showMessage: vi.fn(),
+	showError: vi.fn(),
+}));
+
+vi.mock('@/app/composables/useMessage', () => ({
+	useMessage: () => ({ confirm }),
+}));
+
+vi.mock('@n8n/composables/useToast', () => ({
+	useToast: () => ({ showMessage, showError }),
+}));
 
 const mockChanges = [
 	{
@@ -263,6 +278,113 @@ describe('PromotionSelectModal', () => {
 		await waitFor(() => {
 			const statuses = getAllByTestId('promotion-change-status').map((el) => el.textContent);
 			expect(statuses).toEqual(['Will be archived', 'Will be deleted']);
+		});
+	});
+
+	describe('apply direction', () => {
+		const applyProps = {
+			modalName: PROMOTION_SELECT_MODAL_KEY,
+			data: {
+				projectId: 'project-1',
+				direction: 'apply' as const,
+				apply: { connectionId: 'connection-1', configId: 'config-1', branchName: 'main' },
+			},
+		};
+		const applyChanges = vi.fn(() => ({ data: changesBody(mockChanges) }));
+		const applyPackage = vi.fn((_schema: unknown, request: Request) => ({
+			receivedBody: JSON.parse(request.requestBody),
+			connectionId: 'connection-1',
+			configId: 'config-1',
+			status: 'applied',
+			counts: { workflows: { created: 1, updated: 1, archived: 0, deleted: 0 } },
+			warnings: [],
+			git: { commitSha: 'a'.repeat(40), branchName: 'main' },
+		}));
+
+		beforeEach(() => {
+			server.get('/rest/promotions/project-1/changes/apply', applyChanges);
+			server.post('/api/v1/promotions/connections/connection-1/apply', applyPackage);
+			confirm.mockResolvedValue(MODAL_CONFIRM);
+		});
+
+		it('should offer to apply all changes instead of promoting', async () => {
+			const { findByTestId, queryByTestId } = renderComponent({ pinia, props: applyProps });
+
+			expect(await findByTestId('promotion-apply-all')).toHaveTextContent('Apply all changes');
+			expect(queryByTestId('promotion-submit')).not.toBeInTheDocument();
+			expect(applyChanges).toHaveBeenCalledTimes(1);
+		});
+
+		it('should not apply when the user cancels the confirmation', async () => {
+			confirm.mockResolvedValue(MODAL_CANCEL);
+			const { findByTestId, findByText } = renderComponent({ pinia, props: applyProps });
+			await findByText('Payment Handler');
+
+			await userEvent.click(await findByTestId('promotion-apply-all'));
+
+			expect(confirm).toHaveBeenCalledTimes(1);
+			expect(applyPackage).not.toHaveBeenCalled();
+		});
+
+		it('should apply the branch, report the counts and refetch the changes', async () => {
+			const { findByTestId, findByText } = renderComponent({ pinia, props: applyProps });
+			await findByText('Payment Handler');
+
+			await userEvent.click(await findByTestId('promotion-apply-all'));
+
+			await waitFor(() => expect(applyPackage).toHaveBeenCalledTimes(1));
+			// The reviewed commit travels with the request, so a moved branch is not applied blindly.
+			expect(applyPackage.mock.results[0].value.receivedBody).toEqual({
+				expectedSource: { configId: 'config-1', branchName: 'main', commitSha: 'a'.repeat(40) },
+			});
+			await waitFor(() =>
+				expect(showMessage).toHaveBeenCalledWith(
+					expect.objectContaining({
+						type: 'success',
+						message: '1 created, 1 updated, 0 archived, 0 deleted.',
+					}),
+				),
+			);
+			await waitFor(() => expect(applyChanges).toHaveBeenCalledTimes(2));
+		});
+
+		it('should warn instead of reporting counts when apply pauses on bindings', async () => {
+			server.post('/api/v1/promotions/connections/connection-1/apply', () => ({
+				connectionId: 'connection-1',
+				configId: 'config-1',
+				status: 'blocked',
+				preflight: {},
+				git: { commitSha: 'a'.repeat(40), branchName: 'main' },
+			}));
+			const { findByTestId, findByText } = renderComponent({ pinia, props: applyProps });
+			await findByText('Payment Handler');
+
+			await userEvent.click(await findByTestId('promotion-apply-all'));
+
+			await waitFor(() =>
+				expect(showMessage).toHaveBeenCalledWith(
+					expect.objectContaining({ type: 'warning', title: 'Apply paused' }),
+				),
+			);
+			expect(showMessage).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
+			await waitFor(() => expect(applyChanges).toHaveBeenCalledTimes(2));
+		});
+
+		it('should show the error and still refetch the changes when apply fails', async () => {
+			server.post(
+				'/api/v1/promotions/connections/connection-1/apply',
+				() => new Response(409, {}, { message: 'Bindings unresolved' }),
+			);
+			const { findByTestId, findByText } = renderComponent({ pinia, props: applyProps });
+			await findByText('Payment Handler');
+
+			await userEvent.click(await findByTestId('promotion-apply-all'));
+
+			await waitFor(() =>
+				expect(showError).toHaveBeenCalledWith(expect.anything(), 'Could not apply the changes'),
+			);
+			await waitFor(() => expect(applyChanges).toHaveBeenCalledTimes(2));
+			expect(showMessage).not.toHaveBeenCalled();
 		});
 	});
 });
