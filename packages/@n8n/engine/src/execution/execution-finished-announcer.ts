@@ -106,7 +106,7 @@ export class ExecutionFinishedAnnouncer {
 
 		try {
 			// Settle order is what v1 means by the last node.
-			const last = await this.stepStore.loadLastSettledStep(execution.id);
+			const last = await this.stepStore.loadLastOutcomeStep(execution.id);
 			if (!last) {
 				// A run ends with its trigger completed at the least, so this is a bug
 				// in the engine, not a state a run reaches.

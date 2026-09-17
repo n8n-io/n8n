@@ -167,5 +167,5 @@ export interface StepStore {
 	 * `completed` or `failed` — or `null` if no step reached one. For answering a
 	 * run that a skip ended, since settle order is what v1 means by the last node.
 	 */
-	loadLastSettledStep(executionId: string): Promise<StepRecord | null>;
+	loadLastOutcomeStep(executionId: string): Promise<StepRecord | null>;
 }

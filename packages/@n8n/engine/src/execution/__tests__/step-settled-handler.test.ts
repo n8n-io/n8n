@@ -113,7 +113,7 @@ function makeStepStore(
 		// far from settled, so finish tests opt in explicitly
 		countSettledSteps: vi.fn().mockResolvedValue(0),
 		hasFailedSteps: vi.fn().mockResolvedValue(false),
-		loadLastSettledStep: vi.fn().mockResolvedValue(null),
+		loadLastOutcomeStep: vi.fn().mockResolvedValue(null),
 		...overrides,
 	} satisfies StepStore;
 }

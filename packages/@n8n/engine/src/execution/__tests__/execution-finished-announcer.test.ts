@@ -38,7 +38,7 @@ const silentLogger = (): EngineLogger => ({
 
 function makeAnnouncer(store: Partial<StepStore> = {}) {
 	const stepStore = {
-		loadLastSettledStep: vi.fn().mockResolvedValue(null),
+		loadLastOutcomeStep: vi.fn().mockResolvedValue(null),
 		...store,
 	} as unknown as StepStore;
 	const responseChannel = { publish: vi.fn() } as unknown as ExecutionResponseChannel;
@@ -72,12 +72,12 @@ describe('ExecutionFinishedAnnouncer', () => {
 			},
 		});
 		// A completed step carries its own outputs, so nothing is read.
-		expect(stepStore.loadLastSettledStep).not.toHaveBeenCalled();
+		expect(stepStore.loadLastOutcomeStep).not.toHaveBeenCalled();
 	});
 
 	it('answers from the step that ran when a skip ended the run', async () => {
 		const { announcer, responseChannel } = makeAnnouncer({
-			loadLastSettledStep: vi
+			loadLastOutcomeStep: vi
 				.fn()
 				.mockResolvedValue(step({ id: 'step-b', nodeId: 'b', outputs: [[{ json: { b: 2 } }]] })),
 		});
@@ -124,14 +124,14 @@ describe('ExecutionFinishedAnnouncer', () => {
 				},
 			}),
 		);
-		expect(stepStore.loadLastSettledStep).not.toHaveBeenCalled();
+		expect(stepStore.loadLastOutcomeStep).not.toHaveBeenCalled();
 	});
 
 	it('answers from the step that failed when a skip ended a failed run', async () => {
 		// A failure elsewhere ends the run, so the step that settles last is not
 		// the one that failed.
 		const { announcer, responseChannel } = makeAnnouncer({
-			loadLastSettledStep: vi.fn().mockResolvedValue(
+			loadLastOutcomeStep: vi.fn().mockResolvedValue(
 				step({
 					id: 'step-b',
 					nodeId: 'b',
@@ -187,7 +187,7 @@ describe('ExecutionFinishedAnnouncer', () => {
 
 	it('publishes a failure when the step that answers names no node in the graph', async () => {
 		const { announcer, responseChannel } = makeAnnouncer({
-			loadLastSettledStep: vi.fn().mockResolvedValue(step({ nodeId: 'ghost' })),
+			loadLastOutcomeStep: vi.fn().mockResolvedValue(step({ nodeId: 'ghost' })),
 		});
 
 		await announcer.announce(
@@ -204,7 +204,7 @@ describe('ExecutionFinishedAnnouncer', () => {
 
 	it('publishes a failure when the read fails', async () => {
 		const { announcer, responseChannel, logger } = makeAnnouncer({
-			loadLastSettledStep: vi.fn().mockRejectedValue(new Error('the database is down')),
+			loadLastOutcomeStep: vi.fn().mockRejectedValue(new Error('the database is down')),
 		});
 
 		await announcer.announce(

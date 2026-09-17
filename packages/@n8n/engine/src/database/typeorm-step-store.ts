@@ -283,7 +283,7 @@ export class TypeOrmStepStore implements StepStore {
 		return await this.repo.exists({ where: { executionId, status: 'failed' } });
 	}
 
-	async loadLastSettledStep(executionId: string): Promise<StepRecord | null> {
+	async loadLastOutcomeStep(executionId: string): Promise<StepRecord | null> {
 		// `updated_at` is when the row settled: a step's outcome and its status are
 		// written in one statement. Two steps that settled within the same
 		// millisecond tie, and either one may answer.

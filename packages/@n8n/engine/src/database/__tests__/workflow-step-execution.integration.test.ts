@@ -723,7 +723,7 @@ describe('workflow_step_execution table (integration)', () => {
 		expect(await store.loadLatestStepSummaries(executionId, [])).toEqual({});
 	});
 
-	it('TypeOrmStepStore.loadLastSettledStep returns the step that settled last with an outcome', async () => {
+	it('TypeOrmStepStore.loadLastOutcomeStep returns the step that settled last with an outcome', async () => {
 		const executionId = await createExecution();
 		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
 		await store.createSteps(executionId, [
@@ -740,12 +740,12 @@ describe('workflow_step_execution table (integration)', () => {
 			{ nodeId: 'z', iteration: 0, status: 'completed', outputs: [[{ json: { z: 9 } }]] },
 		]);
 
-		const last = await store.loadLastSettledStep(executionId);
+		const last = await store.loadLastOutcomeStep(executionId);
 
 		expect(last).toMatchObject({ nodeId: 'b', outputs: [[{ json: { b: 2 } }]] });
 	});
 
-	it('TypeOrmStepStore.loadLastSettledStep counts a failed step as an outcome', async () => {
+	it('TypeOrmStepStore.loadLastOutcomeStep counts a failed step as an outcome', async () => {
 		const executionId = await createExecution();
 		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
 		await store.createSteps(executionId, [
@@ -754,13 +754,13 @@ describe('workflow_step_execution table (integration)', () => {
 		await seedStep({ executionId, nodeId: 'b', status: 'failed' });
 		await setUpdatedAt(executionId, { a: '2026-01-01T00:00:00Z', b: '2026-01-01T00:00:05Z' });
 
-		expect(await store.loadLastSettledStep(executionId)).toMatchObject({
+		expect(await store.loadLastOutcomeStep(executionId)).toMatchObject({
 			nodeId: 'b',
 			status: 'failed',
 		});
 	});
 
-	it('TypeOrmStepStore.loadLastSettledStep returns null when no step reached an outcome', async () => {
+	it('TypeOrmStepStore.loadLastOutcomeStep returns null when no step reached an outcome', async () => {
 		const executionId = await createExecution();
 		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
 		await store.createSteps(executionId, [
@@ -769,7 +769,7 @@ describe('workflow_step_execution table (integration)', () => {
 		]);
 		await seedStep({ executionId, nodeId: 'c', status: 'cancelled' });
 
-		expect(await store.loadLastSettledStep(executionId)).toBeNull();
+		expect(await store.loadLastOutcomeStep(executionId)).toBeNull();
 	});
 
 	it('carries the unique key and the failed-rows partial index in the schema', async () => {
