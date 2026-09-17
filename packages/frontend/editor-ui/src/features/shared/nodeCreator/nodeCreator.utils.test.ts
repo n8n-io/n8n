@@ -68,6 +68,7 @@ vi.mock('@/app/stores/aiGateway.store', async (importOriginal) => ({
 	useAiGatewayStore: vi.fn(() => ({
 		isNodeSupported: vi.fn(() => false),
 		isNodeTypeVersionSupported: vi.fn(() => true),
+		creditsLabelKey: 'generic.freeCredits',
 	})),
 }));
 
@@ -790,6 +791,7 @@ describe('NodeCreator - utils', () => {
 			vi.mocked(useAiGatewayStore).mockReturnValue({
 				isNodeSupported: vi.fn(() => true),
 				isNodeTypeVersionSupported: vi.fn(() => true),
+				creditsLabelKey: 'generic.freeCredits',
 			} as unknown as ReturnType<typeof useAiGatewayStore>);
 			vi.mocked(useNodeTypesStore).mockReturnValue({
 				getNodeVersions: vi.fn(() => [1, 1.1]),
@@ -799,6 +801,32 @@ describe('NodeCreator - utils', () => {
 		it('should show Free credits badge when latest version meets the minimum', () => {
 			const [result] = finalizeItems([makeGatewayNode()]) as NodeCreateElement[];
 			expect(result.properties.tag).toEqual({ text: 'Free credits', pill: true });
+		});
+
+		it('should show n8n credits badge after a top-up or depleted allowance', () => {
+			vi.mocked(useAiGatewayStore).mockReturnValue({
+				isNodeSupported: vi.fn(() => true),
+				isNodeTypeVersionSupported: vi.fn(() => true),
+				creditsLabelKey: 'generic.n8nCredits',
+			} as unknown as ReturnType<typeof useAiGatewayStore>);
+
+			const [result] = finalizeItems([makeGatewayNode()]) as NodeCreateElement[];
+			expect(result.properties.tag).toEqual({ text: 'Gateway credits', pill: true, type: 'info' });
+		});
+
+		it('should retag credits when the wallet arrives after the first finalize', () => {
+			const items = [makeGatewayNode()];
+			const [first] = finalizeItems(items) as NodeCreateElement[];
+			expect(first.properties.tag).toEqual({ text: 'Free credits', pill: true });
+
+			vi.mocked(useAiGatewayStore).mockReturnValue({
+				isNodeSupported: vi.fn(() => true),
+				isNodeTypeVersionSupported: vi.fn(() => true),
+				creditsLabelKey: 'generic.n8nCredits',
+			} as unknown as ReturnType<typeof useAiGatewayStore>);
+
+			const [second] = finalizeItems(items) as NodeCreateElement[];
+			expect(second.properties.tag).toEqual({ text: 'Gateway credits', pill: true, type: 'info' });
 		});
 
 		it('should suppress Free credits badge when latest version is below the minimum', () => {
@@ -828,6 +856,7 @@ describe('NodeCreator - utils', () => {
 			vi.mocked(useAiGatewayStore).mockReturnValue({
 				isNodeSupported: vi.fn(() => true),
 				isNodeTypeVersionSupported,
+				creditsLabelKey: 'generic.freeCredits',
 			} as unknown as ReturnType<typeof useAiGatewayStore>);
 
 			finalizeItems([makeGatewayNode('my-node')]);
@@ -843,6 +872,7 @@ describe('NodeCreator - utils', () => {
 			vi.mocked(useAiGatewayStore).mockReturnValue({
 				isNodeSupported: vi.fn(() => true),
 				isNodeTypeVersionSupported,
+				creditsLabelKey: 'generic.freeCredits',
 			} as unknown as ReturnType<typeof useAiGatewayStore>);
 
 			finalizeItems([makeGatewayNode('my-node')]);
@@ -860,6 +890,7 @@ describe('NodeCreator - utils', () => {
 			vi.mocked(useAiGatewayStore).mockReturnValue({
 				isNodeSupported: vi.fn(() => true),
 				isNodeTypeVersionSupported,
+				creditsLabelKey: 'generic.freeCredits',
 			} as unknown as ReturnType<typeof useAiGatewayStore>);
 
 			finalizeItems([makeGatewayNode('my-node')]);
@@ -871,6 +902,7 @@ describe('NodeCreator - utils', () => {
 			vi.mocked(useAiGatewayStore).mockReturnValue({
 				isNodeSupported: vi.fn((name: string) => name === 'llamaParsePlatform'),
 				isNodeTypeVersionSupported: vi.fn(() => true),
+				creditsLabelKey: 'generic.freeCredits',
 			} as unknown as ReturnType<typeof useAiGatewayStore>);
 
 			const [result] = finalizeItems([
@@ -885,6 +917,7 @@ describe('NodeCreator - utils', () => {
 			vi.mocked(useAiGatewayStore).mockReturnValue({
 				isNodeSupported: vi.fn((name: string) => name === '@vendor/n8n-nodes-connect.connect'),
 				isNodeTypeVersionSupported: vi.fn(() => true),
+				creditsLabelKey: 'generic.freeCredits',
 			} as unknown as ReturnType<typeof useAiGatewayStore>);
 
 			const [result] = finalizeItems([
@@ -1011,6 +1044,7 @@ describe('NodeCreator - utils', () => {
 			vi.mocked(useAiGatewayStore).mockReturnValue({
 				isNodeSupported: vi.fn((name: string) => name.startsWith('supported')),
 				isNodeTypeVersionSupported: vi.fn(() => true),
+				creditsLabelKey: 'generic.freeCredits',
 			} as unknown as ReturnType<typeof useAiGatewayStore>);
 			vi.mocked(useNodeTypesStore).mockReturnValue({
 				getNodeVersions: vi.fn(() => [1]),

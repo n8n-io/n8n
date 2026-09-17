@@ -762,6 +762,60 @@ describe('useAgentEvalsStore', () => {
 			store.stopPollingRun();
 		});
 
+		// A dropped poll is a blip worth retrying, but a sustained run of them means the
+		// counts on screen have stopped tracking the run — say so rather than retry
+		// forever while looking live.
+		it('gives up and reports lost track after a sustained run of failed polls', async () => {
+			const store = await openInFlight();
+			getRunSummary.mockRejectedValue(new Error('offline'));
+
+			store.startPollingRun(PROJECT_ID, AGENT_ID, RUN_ID);
+			await vi.advanceTimersByTimeAsync(0);
+			expect(store.hasLostTrackOfRun(RUN_ID)).toBe(false);
+
+			await vi.advanceTimersByTimeAsync(5_000);
+			await vi.advanceTimersByTimeAsync(5_000);
+
+			expect(store.hasLostTrackOfRun(RUN_ID)).toBe(true);
+
+			// Given up means given up — no further reads.
+			const reads = getRunSummary.mock.calls.length;
+			await vi.advanceTimersByTimeAsync(30_000);
+			expect(getRunSummary.mock.calls.length).toBe(reads);
+		});
+
+		it('recovers its error budget when a poll succeeds again', async () => {
+			const store = await openInFlight();
+			getRunSummary
+				.mockRejectedValueOnce(new Error('offline'))
+				.mockRejectedValueOnce(new Error('offline'))
+				.mockResolvedValue(summary('running'));
+
+			store.startPollingRun(PROJECT_ID, AGENT_ID, RUN_ID);
+			await vi.advanceTimersByTimeAsync(0);
+			await vi.advanceTimersByTimeAsync(5_000);
+			await vi.advanceTimersByTimeAsync(5_000);
+			await vi.advanceTimersByTimeAsync(5_000);
+
+			expect(store.hasLostTrackOfRun(RUN_ID)).toBe(false);
+			store.stopPollingRun();
+		});
+
+		// Without a deadline a forgotten tab polls a wedged run for as long as it is open.
+		it('gives up on a run that never settles', async () => {
+			const store = await openInFlight();
+			getRunSummary.mockResolvedValue(summary('running'));
+
+			store.startPollingRun(PROJECT_ID, AGENT_ID, RUN_ID);
+			await vi.advanceTimersByTimeAsync(10 * 60_000 + 5_000);
+
+			expect(store.hasLostTrackOfRun(RUN_ID)).toBe(true);
+
+			const reads = getRunSummary.mock.calls.length;
+			await vi.advanceTimersByTimeAsync(30_000);
+			expect(getRunSummary.mock.calls.length).toBe(reads);
+		});
+
 		// `openRun` has just read them, so the first tick has nothing to refresh.
 		it('does not re-read the cases on the very first tick', async () => {
 			const store = await openInFlight();

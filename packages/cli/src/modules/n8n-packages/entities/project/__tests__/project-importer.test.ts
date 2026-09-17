@@ -54,6 +54,7 @@ describe('ProjectImporter.apply — custom span attributes', () => {
 		await importer.apply(user, [item]);
 
 		expect(projectService.updateProject).toHaveBeenCalledWith(
+			user,
 			'proj-1',
 			expect.objectContaining({ customTelemetryTags: tags }),
 		);
@@ -70,6 +71,7 @@ describe('ProjectImporter.apply — custom span attributes', () => {
 		await importer.apply(user, [item]);
 
 		expect(projectService.updateProject).toHaveBeenCalledWith(
+			user,
 			'proj-1',
 			expect.objectContaining({ customTelemetryTags: undefined }),
 		);

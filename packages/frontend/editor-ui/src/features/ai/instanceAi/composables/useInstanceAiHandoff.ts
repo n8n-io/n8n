@@ -2,23 +2,41 @@ import { useRouter } from 'vue-router';
 import { v4 as uuidv4 } from 'uuid';
 import {
 	instanceAiAgentAttachmentSchema,
+	instanceAiNodesAttachmentSchema,
 	type InstanceAiAgentAttachment,
 	type InstanceAiHandoffContext,
+	type InstanceAiNodesAttachment,
 	type InstanceAiThreadOrigin,
 	type InstanceAiThreadSource,
 	type InstanceAiResourceAttachment,
+	type InstanceAiWorkflowAttachment,
 } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { jsonParse } from 'n8n-workflow';
 
 import type { InstanceAiCredentialContext } from '@/app/composables/useInstanceAiEditorCapability';
+import type { IWorkflowDb } from '@/Interface';
 import { useToast } from '@n8n/composables/useToast';
+import { useI18n } from '@n8n/i18n';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 
 import {
 	INSTANCE_AI_AGENT_BUILDER_TARGET_METADATA_KEY,
+	INSTANCE_AI_AGENT_PREVIEW_VIEW_METADATA_KEY,
+	INSTANCE_AI_PENDING_AGENT_METADATA_KEY,
 	INSTANCE_AI_THREAD_VIEW,
+	INSTANCE_AI_VIEW,
 } from '../constants';
+import type { InstanceAiEmbedSubject } from '../embed/instanceAiEmbed.types';
 import { useInstanceAiStore } from '../instanceAi.store';
+import { useInstanceAiReady } from './useInstanceAiAvailability';
+import {
+	INSTANCE_AI_PREFILL_TYPE_FALLBACK,
+	isInstanceAiPrefillTypeReported,
+	isMessageAuthorship,
+	type InstanceAiMessageAuthorship,
+	type InstanceAiPrefillTypeReported,
+} from '../prefills';
 
 /** The existing credential id, when known, so the agent can act on it directly. */
 function existingCredentialNote(credential: InstanceAiCredentialContext): string {
@@ -69,6 +87,7 @@ export function buildInstanceAiArtifactCredentialQuestion(
 const pendingFirstMessageKey = (threadId: string) => `n8n-instance-ai-first-message:${threadId}`;
 const pendingHandoffContextKey = (threadId: string) =>
 	`n8n-instance-ai-handoff-context:${threadId}`;
+const pendingComposerDraftKey = (threadId: string) => `n8n-instance-ai-composer-draft:${threadId}`;
 const pendingAgentAttachmentKey = (threadId: string) =>
 	`n8n-instance-ai-agent-attachment:${threadId}`;
 
@@ -76,6 +95,12 @@ export interface PendingFirstMessage {
 	message: string;
 	attachments?: InstanceAiResourceAttachment[];
 	context?: InstanceAiHandoffContext;
+	/**
+	 * Required so a new hand-off cannot stash an opener that reports as
+	 * user-typed. Optional on the read path only, for stashes a previous
+	 * deploy wrote — see `consumePendingFirstMessage`.
+	 */
+	authorship: InstanceAiMessageAuthorship;
 }
 
 export function buildInstanceAiCredentialHandoffContext(
@@ -143,7 +168,20 @@ export function consumePendingFirstMessage(threadId: string): PendingFirstMessag
 	if (!raw) return null;
 	localStorage.removeItem(pendingFirstMessageKey(threadId));
 	try {
-		return JSON.parse(raw) as PendingFirstMessage;
+		const parsed = JSON.parse(raw) as Partial<PendingFirstMessage>;
+		if (typeof parsed?.message !== 'string') return null;
+		return {
+			...parsed,
+			message: parsed.message,
+			// A stash written before openers were typed still has to replay: dropping it
+			// would lose a message the user sent from another tab across a deploy. Every
+			// stash comes from a hand-off, so an absent authorship is a pre-fill of an
+			// unrecoverable type -- reporting it as user-typed would be the exact
+			// misclassification the type exists to prevent.
+			authorship: isMessageAuthorship(parsed.authorship)
+				? parsed.authorship
+				: { kind: 'prefill', prefillType: INSTANCE_AI_PREFILL_TYPE_FALLBACK },
+		};
 	} catch {
 		return null;
 	}
@@ -156,15 +194,64 @@ export function stashPendingHandoffContext(
 	localStorage.setItem(pendingHandoffContextKey(threadId), JSON.stringify(context));
 }
 
-export function consumePendingHandoffContext(threadId: string): InstanceAiHandoffContext | null {
+export function getPendingHandoffContext(threadId: string): InstanceAiHandoffContext | null {
 	const raw = localStorage.getItem(pendingHandoffContextKey(threadId));
 	if (!raw) return null;
-	localStorage.removeItem(pendingHandoffContextKey(threadId));
 	try {
 		return JSON.parse(raw) as InstanceAiHandoffContext;
 	} catch {
+		clearPendingHandoffContext(threadId);
 		return null;
 	}
+}
+
+export function clearPendingHandoffContext(threadId: string): void {
+	localStorage.removeItem(pendingHandoffContextKey(threadId));
+}
+
+export interface PendingComposerDraft {
+	text: string;
+	prefillType: InstanceAiPrefillTypeReported;
+}
+
+export function stashPendingComposerDraft(threadId: string, draft: PendingComposerDraft): void {
+	localStorage.setItem(pendingComposerDraftKey(threadId), JSON.stringify(draft));
+}
+
+/**
+ * A draft is text the user is about to send, so it is never dropped for being
+ * unreadable: anything that is not a recognisable envelope is treated as the
+ * bare string a previous deploy stashed. Both surfaces that stash a draft are
+ * hand-offs, so naming either would mis-attribute the other -- keep the text
+ * and report the fallback type.
+ */
+export function getPendingComposerDraft(threadId: string): PendingComposerDraft | null {
+	const raw = localStorage.getItem(pendingComposerDraftKey(threadId));
+	if (!raw) return null;
+	const legacy: PendingComposerDraft = {
+		text: raw,
+		prefillType: INSTANCE_AI_PREFILL_TYPE_FALLBACK,
+	};
+	try {
+		const parsed = JSON.parse(raw) as Partial<PendingComposerDraft>;
+		// Only the type falls back. Rejecting the whole envelope over an
+		// unrecognised type would put the raw JSON in the composer for the user to
+		// send. The guard is the reported one, not the declarable one, so a draft
+		// stashed under the fallback round-trips.
+		if (typeof parsed?.text !== 'string') return legacy;
+		return {
+			text: parsed.text,
+			prefillType: isInstanceAiPrefillTypeReported(parsed.prefillType)
+				? parsed.prefillType
+				: INSTANCE_AI_PREFILL_TYPE_FALLBACK,
+		};
+	} catch {
+		return legacy;
+	}
+}
+
+export function clearPendingComposerDraft(threadId: string): void {
+	localStorage.removeItem(pendingComposerDraftKey(threadId));
 }
 
 export function stashPendingAgentAttachment(
@@ -187,6 +274,47 @@ export function getPendingAgentAttachment(threadId: string): InstanceAiAgentAtta
 
 export function clearPendingAgentAttachment(threadId: string): void {
 	localStorage.removeItem(pendingAgentAttachmentKey(threadId));
+}
+
+/** Drop a stashed opening message without sending it (e.g. its thread is gone). */
+export function clearPendingFirstMessage(threadId: string): void {
+	localStorage.removeItem(pendingFirstMessageKey(threadId));
+}
+
+const pendingDraftAttachmentKey = (threadId: string) =>
+	`n8n-instance-ai-draft-attachment:${threadId}`;
+
+export function stashPendingDraftAttachment(
+	threadId: string,
+	sets: InstanceAiNodesAttachment['sets'],
+	workflowId: string,
+): void {
+	const attachment: InstanceAiNodesAttachment = { type: 'nodes', workflowId, sets };
+
+	localStorage.setItem(pendingDraftAttachmentKey(threadId), JSON.stringify(attachment));
+}
+
+export function clearPendingDraftAttachment(threadId: string): void {
+	localStorage.removeItem(pendingDraftAttachmentKey(threadId));
+}
+
+export function consumePendingDraftAttachment(threadId: string): InstanceAiNodesAttachment | null {
+	const raw = localStorage.getItem(pendingDraftAttachmentKey(threadId));
+	if (!raw) return null;
+	localStorage.removeItem(pendingDraftAttachmentKey(threadId));
+
+	const parsed = instanceAiNodesAttachmentSchema.safeParse(
+		jsonParse(raw, { fallbackValue: undefined }),
+	);
+	return parsed.success ? parsed.data : null;
+}
+
+export function clearPendingThreadHandoff(threadId: string): void {
+	clearPendingHandoffContext(threadId);
+	clearPendingComposerDraft(threadId);
+	clearPendingAgentAttachment(threadId);
+	clearPendingFirstMessage(threadId);
+	clearPendingDraftAttachment(threadId);
 }
 
 /** Resolve the personal project a launched thread binds to, loading it on first use. */
@@ -223,10 +351,63 @@ export async function provisionLaunchedThread(
 	return threadId;
 }
 
+/**
+ * Mint a thread bound to a subject: the id, the target metadata (a pending
+ * marker or a bound target), and — for the agent variant — the stashed
+ * attachment the destination view resolves it with. `extraMetadata` merges
+ * into the same write so binding a subject and recording where it opened from
+ * (e.g. the agent-preview view) costs one round trip, not two.
+ *
+ * Shared by `InstanceAiChatPanel` (embed/) and `openAgentArtifactThread` below,
+ * which used to run this in two separate steps.
+ */
+export async function provisionSubjectThread(
+	subject: InstanceAiEmbedSubject,
+	launch: InstanceAiThreadLaunch,
+	extraMetadata?: Record<string, unknown>,
+): Promise<string> {
+	const store = useInstanceAiStore();
+	const threadId = uuidv4();
+	await store.syncThread(threadId, subject.projectId, launch);
+
+	const targetMetadata =
+		subject.type === 'agent'
+			? subject.pending
+				? {
+						[INSTANCE_AI_PENDING_AGENT_METADATA_KEY]: {
+							projectId: subject.projectId,
+							agentId: subject.id,
+						},
+					}
+				: {
+						[INSTANCE_AI_AGENT_BUILDER_TARGET_METADATA_KEY]: {
+							agentId: subject.id,
+							projectId: subject.projectId,
+							...(subject.name ? { name: subject.name } : {}),
+						},
+					}
+			: {}; // workflow: no target metadata yet — see instanceAiEmbed.types.ts.
+
+	try {
+		await store.updateThreadMetadata(threadId, { ...targetMetadata, ...extraMetadata });
+	} catch (error) {
+		// The thread now exists server-side — leaving it target-less would strand
+		// an unbound conversation the user never asked to start. Silent: the
+		// caller already surfaces its own failure toast.
+		await store.deleteThread(threadId, { silent: true });
+		throw error;
+	}
+
+	if (subject.type === 'agent') stashPendingAgentAttachment(threadId, subject);
+
+	return threadId;
+}
+
 export async function provisionContextOnlyThread(
 	projectId: string,
 	context: InstanceAiHandoffContext,
 	launch: InstanceAiThreadLaunch,
+	initialDraft?: PendingComposerDraft,
 ): Promise<string | null> {
 	const threadId = uuidv4();
 	try {
@@ -235,6 +416,7 @@ export async function provisionContextOnlyThread(
 		return null;
 	}
 	stashPendingHandoffContext(threadId, context);
+	if (initialDraft) stashPendingComposerDraft(threadId, initialDraft);
 	return threadId;
 }
 
@@ -250,30 +432,77 @@ export function useInstanceAiHandoff() {
 	const rootStore = useRootStore();
 	const router = useRouter();
 	const toast = useToast();
+	const i18n = useI18n();
+	const instanceAiReady = useInstanceAiReady();
+
+	/**
+	 * Setup isn't finished yet. An admin reaches these entry points before it is
+	 * (they need the way in to complete it), so opening a thread here would send
+	 * a turn no model can answer. Take them to the assistant instead, where
+	 * onboarding takes over. Every hand-off funnels through here, so a new entry
+	 * point inherits the gate instead of having to remember it.
+	 */
+	async function routeToSetup(): Promise<void> {
+		await router.push({ name: INSTANCE_AI_VIEW });
+	}
+
+	function showOpenFailed() {
+		toast.showError(
+			new Error(i18n.baseText('instanceAi.handoff.openFailed.message')),
+			i18n.baseText('instanceAi.handoff.openFailed.title'),
+		);
+	}
 
 	async function openAgentArtifactThread(
 		attachment: InstanceAiAgentAttachment,
 		launch: InstanceAiThreadLaunch,
+		options?: {
+			context?: InstanceAiHandoffContext;
+			initialDraft?: PendingComposerDraft;
+		},
 	): Promise<boolean> {
+		if (!instanceAiReady.value) {
+			await routeToSetup();
+			return false;
+		}
 		if (handoffInFlight) return false;
 		handoffInFlight = true;
 		try {
-			const threadId = uuidv4();
+			let threadId: string;
 			try {
-				await instanceAiStore.syncThread(threadId, attachment.projectId, launch);
-				await instanceAiStore.updateThreadMetadata(threadId, {
-					[INSTANCE_AI_AGENT_BUILDER_TARGET_METADATA_KEY]: {
-						agentId: attachment.id,
-						projectId: attachment.projectId,
-						...(attachment.name ? { name: attachment.name } : {}),
-					},
-				});
+				// Mints the thread, binds it to the agent, and stashes the attachment —
+				// the agent-preview view metadata rides along as extra metadata so this
+				// is one merged write, not two. Same primitive `InstanceAiChatPanel` uses.
+				threadId = await provisionSubjectThread(
+					attachment,
+					launch,
+					options?.context?.source === 'agent-preview'
+						? {
+								[INSTANCE_AI_AGENT_PREVIEW_VIEW_METADATA_KEY]: {
+									agentId: options.context.agentId,
+									threadId: options.context.threadId,
+								},
+							}
+						: undefined,
+				);
 			} catch {
-				toast.showError(new Error('Failed to start a new thread. Try again.'), 'Open failed');
+				showOpenFailed();
 				return false;
 			}
-			stashPendingAgentAttachment(threadId, attachment);
-			await router.push({ name: INSTANCE_AI_THREAD_VIEW, params: { threadId } });
+			if (options?.context) stashPendingHandoffContext(threadId, options.context);
+			if (options?.initialDraft) stashPendingComposerDraft(threadId, options.initialDraft);
+			try {
+				const failure = await router.push({
+					name: INSTANCE_AI_THREAD_VIEW,
+					params: { threadId },
+				});
+				if (failure) throw new Error('Navigation failed');
+			} catch {
+				clearPendingThreadHandoff(threadId);
+				await instanceAiStore.deleteThread(threadId);
+				showOpenFailed();
+				return false;
+			}
 			return true;
 		} finally {
 			handoffInFlight = false;
@@ -286,16 +515,26 @@ export function useInstanceAiHandoff() {
 		launch: InstanceAiThreadLaunch,
 		options?: {
 			newTab?: boolean;
+			initialDraft?: PendingComposerDraft;
 		},
 	): Promise<boolean> {
+		if (!instanceAiReady.value) {
+			await routeToSetup();
+			return false;
+		}
 		if (handoffInFlight) return false;
 		handoffInFlight = true;
 		try {
 			const tab = options?.newTab ? window.open('', '_blank') : null;
-			const threadId = await provisionContextOnlyThread(projectId, context, launch);
+			const threadId = await provisionContextOnlyThread(
+				projectId,
+				context,
+				launch,
+				options?.initialDraft,
+			);
 			if (!threadId) {
 				tab?.close();
-				toast.showError(new Error('Failed to start a new thread. Try again.'), 'Open failed');
+				showOpenFailed();
 				return false;
 			}
 			const route = { name: INSTANCE_AI_THREAD_VIEW, params: { threadId } };
@@ -313,6 +552,7 @@ export function useInstanceAiHandoff() {
 	async function startThread(
 		projectId: string,
 		message: string,
+		authorship: InstanceAiMessageAuthorship,
 		launch: InstanceAiThreadLaunch,
 		attachments?: InstanceAiResourceAttachment[],
 		prepare?: (threadId: string) => void,
@@ -321,6 +561,10 @@ export function useInstanceAiHandoff() {
 			context?: InstanceAiHandoffContext;
 		},
 	): Promise<void> {
+		if (!instanceAiReady.value) {
+			await routeToSetup();
+			return;
+		}
 		// Drop re-entrant clicks — each call mints a fresh thread, so spam would duplicate.
 		if (handoffInFlight) return;
 		handoffInFlight = true;
@@ -332,12 +576,12 @@ export function useInstanceAiHandoff() {
 				const tab = window.open('', '_blank');
 				const threadId = await provisionLaunchedThread(
 					projectId,
-					{ message, attachments, context: options?.context },
+					{ message, attachments, context: options?.context, authorship },
 					launch,
 				);
 				if (!threadId) {
 					tab?.close();
-					toast.showError(new Error('Failed to start a new thread. Try again.'), 'Open failed');
+					showOpenFailed();
 					return;
 				}
 				const route = { name: INSTANCE_AI_THREAD_VIEW, params: { threadId } };
@@ -350,17 +594,68 @@ export function useInstanceAiHandoff() {
 			try {
 				await instanceAiStore.syncThread(threadId, projectId, launch);
 			} catch {
-				toast.showError(new Error('Failed to start a new thread. Try again.'), 'Open failed');
+				showOpenFailed();
 				return;
 			}
 			const thread = instanceAiStore.getOrCreateRuntime(threadId, projectId);
 			prepare?.(threadId);
-			void thread.sendMessage(message, attachments, rootStore.pushRef, options?.context);
+			void thread.sendMessage(message, {
+				authorship,
+				attachments,
+				pushRef: rootStore.pushRef,
+				handoffContext: options?.context,
+			});
 			await router.push({ name: INSTANCE_AI_THREAD_VIEW, params: { threadId } });
 		} finally {
 			handoffInFlight = false;
 		}
 	}
 
-	return { startThread, openThreadWithContext, openAgentArtifactThread };
+	async function openThreadForDraft(workflow?: {
+		id: string;
+		name?: string;
+		snapshot?: IWorkflowDb;
+	}): Promise<string | null> {
+		if (handoffInFlight) return null;
+		handoffInFlight = true;
+		try {
+			const projectId = await ensurePersonalProjectId();
+			if (!projectId) return null;
+			const threadId = uuidv4();
+			const launch: InstanceAiThreadLaunch = { source: 'canvas_action_button', origin: 'internal' };
+			try {
+				await instanceAiStore.syncThread(threadId, projectId, launch);
+			} catch {
+				toast.showError(
+					new Error(i18n.baseText('instanceAi.handoff.openFailed.message')),
+					i18n.baseText('instanceAi.handoff.openFailed.title'),
+				);
+				return null;
+			}
+			if (workflow) {
+				const attachment: InstanceAiWorkflowAttachment = {
+					type: 'workflow',
+					id: workflow.id,
+					name: workflow.name || undefined,
+				};
+				// Empty message → the editor-context block just greets; the attachment
+				// opens the canvas preview via the thread view's firstAttachedArtifactId.
+				stashPendingFirstMessage(threadId, {
+					message: '',
+					attachments: [attachment],
+					authorship: { kind: 'prefill', prefillType: 'workflow_attachment_opener' },
+				});
+				if (workflow.snapshot) {
+					instanceAiStore
+						.getOrCreateRuntime(threadId, projectId)
+						.setPendingHandoff({ workflowId: workflow.id, workflow: workflow.snapshot });
+				}
+			}
+			return threadId;
+		} finally {
+			handoffInFlight = false;
+		}
+	}
+
+	return { startThread, openThreadWithContext, openAgentArtifactThread, openThreadForDraft };
 }

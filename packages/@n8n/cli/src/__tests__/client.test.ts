@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest';
 
 import { ApiError, N8nClient } from '../client';
 
@@ -12,6 +12,13 @@ function jsonResponse(status: number, body: unknown): Response {
 		text: vi.fn().mockResolvedValue(JSON.stringify(body)),
 		arrayBuffer: vi.fn().mockResolvedValue(new ArrayBuffer(0)),
 	} as unknown as Response;
+}
+
+/** The method and URL of each request the client made, in order. */
+function requestLines(mock: Mock): string[] {
+	return (mock.mock.calls as Array<[string, RequestInit]>).map(
+		([url, init]) => `${init.method} ${url}`,
+	);
 }
 
 function binaryResponse(status: number, bytes: Uint8Array): Response {
@@ -40,6 +47,131 @@ describe('N8nClient packages', () => {
 
 	afterEach(() => {
 		vi.unstubAllGlobals();
+	});
+
+	describe('promotions', () => {
+		it('promotes and applies on the connection, not on one of its directions', async () => {
+			const promoted = {
+				connectionId: 'conn-1',
+				configId: 'cfg-1',
+				counts: { workflows: 2, folders: 0, credentials: 0, dataTables: 0, variables: 0, tags: 0 },
+				git: { commitSha: 'abc123', branchName: 'main' },
+			};
+			fetchMock.mockResolvedValue(jsonResponse(200, promoted));
+
+			await expect(
+				client.promotePackage('conn-1', { commitMessage: 'promote projects', force: true }),
+			).resolves.toEqual(promoted);
+
+			fetchMock.mockResolvedValue(jsonResponse(200, { connectionId: 'conn-1' }));
+			await client.applyPackage('conn-1');
+
+			expect(requestLines(fetchMock)).toEqual([
+				'POST https://n8n.example.com/api/v1/promotions/connections/conn-1/promote',
+				'POST https://n8n.example.com/api/v1/promotions/connections/conn-1/apply',
+			]);
+
+			const [, promoteInit] = fetchMock.mock.calls[0] as [string, RequestInit];
+			expect(JSON.parse(promoteInit.body as string)).toEqual({
+				commitMessage: 'promote projects',
+				force: true,
+			});
+		});
+
+		it('clones and disconnects one direction of a connection', async () => {
+			const checkout = {
+				connectionId: 'conn-1',
+				configId: 'cfg-1',
+				direction: 'promote',
+				branchName: 'main',
+				hasCheckout: true,
+			};
+			fetchMock.mockResolvedValue(jsonResponse(200, checkout));
+
+			await expect(client.clonePromotionCheckout('conn-1', 'promote')).resolves.toEqual(checkout);
+
+			fetchMock.mockResolvedValue(jsonResponse(200, { ...checkout, hasCheckout: false }));
+			await client.disconnectPromotionCheckout('conn-1', 'apply');
+
+			expect(requestLines(fetchMock)).toEqual([
+				'POST https://n8n.example.com/api/v1/promotions/connections/conn-1/promote/clone',
+				'POST https://n8n.example.com/api/v1/promotions/connections/conn-1/apply/disconnect',
+			]);
+		});
+
+		it('writes and removes the settings of one direction', async () => {
+			const promoteConfig = {
+				settings: { schemaVersion: 1, baseBranchName: 'main', createBranchOnPromotion: false },
+			};
+			fetchMock.mockResolvedValue(jsonResponse(200, { id: 'cfg-1', ...promoteConfig }));
+			await client.setPromotionConfig('conn-1', 'promote', promoteConfig);
+
+			fetchMock.mockResolvedValue(jsonResponse(200, { id: 'cfg-2' }));
+			await client.setPromotionConfig('conn-1', 'apply', {
+				settings: { schemaVersion: 1, branchName: 'main' },
+			});
+
+			fetchMock.mockResolvedValue(jsonResponse(204, undefined));
+			await client.deletePromotionConfig('conn-1', 'apply');
+
+			expect(requestLines(fetchMock)).toEqual([
+				'PUT https://n8n.example.com/api/v1/promotions/connections/conn-1/configs/promote',
+				'PUT https://n8n.example.com/api/v1/promotions/connections/conn-1/configs/apply',
+				'DELETE https://n8n.example.com/api/v1/promotions/connections/conn-1/configs/apply',
+			]);
+
+			// A write replaces the whole config, so every setting has to reach the API.
+			const [, promoteInit] = fetchMock.mock.calls[0] as [string, RequestInit];
+			expect(JSON.parse(promoteInit.body as string)).toEqual(promoteConfig);
+		});
+
+		it('follows the cursor to read every page of a list', async () => {
+			fetchMock
+				.mockResolvedValueOnce(
+					jsonResponse(200, { data: [{ id: 'prov-1' }], nextCursor: 'page-2' }),
+				)
+				.mockResolvedValueOnce(jsonResponse(200, { data: [{ id: 'prov-2' }] }));
+
+			await expect(client.listPromotionProviders()).resolves.toEqual([
+				{ id: 'prov-1' },
+				{ id: 'prov-2' },
+			]);
+
+			expect(requestLines(fetchMock)).toEqual([
+				'GET https://n8n.example.com/api/v1/promotions/providers',
+				'GET https://n8n.example.com/api/v1/promotions/providers?cursor=page-2',
+			]);
+		});
+
+		it('stops at the requested number of results and asks only for what is missing', async () => {
+			fetchMock
+				.mockResolvedValueOnce(
+					jsonResponse(200, { data: [{ id: 'p1' }, { id: 'p2' }], nextCursor: 'page-2' }),
+				)
+				.mockResolvedValueOnce(jsonResponse(200, { data: [{ id: 'p3' }, { id: 'p4' }] }));
+
+			// A server may answer with more rows than asked for, so the extra is dropped.
+			await expect(client.listPromotionProviders(3)).resolves.toEqual([
+				{ id: 'p1' },
+				{ id: 'p2' },
+				{ id: 'p3' },
+			]);
+
+			expect(requestLines(fetchMock)).toEqual([
+				'GET https://n8n.example.com/api/v1/promotions/providers?limit=3',
+				'GET https://n8n.example.com/api/v1/promotions/providers?cursor=page-2&limit=1',
+			]);
+		});
+
+		it('narrows the connection list by scope and provider', async () => {
+			fetchMock.mockResolvedValue(jsonResponse(200, { data: [], nextCursor: null }));
+
+			await client.listPromotionConnections({ scope: 'instance', providerId: 'prov-1' });
+
+			expect(requestLines(fetchMock)).toEqual([
+				'GET https://n8n.example.com/api/v1/promotions/connections?scope=instance&providerId=prov-1',
+			]);
+		});
 	});
 
 	describe('exportPackage', () => {
@@ -109,6 +241,23 @@ describe('N8nClient packages', () => {
 			);
 		});
 
+		it('includes the credential export policy when provided', async () => {
+			fetchMock.mockResolvedValue(binaryResponse(200, new Uint8Array([1])));
+
+			await client.exportPackage({
+				workflowIds: ['a'],
+				credentialExportPolicy: 'no-values',
+			});
+
+			const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+			expect(init.body).toBe(
+				JSON.stringify({
+					workflowIds: ['a'],
+					credentialExportPolicy: 'no-values',
+				}),
+			);
+		});
+
 		it('omits an empty collection from the body', async () => {
 			fetchMock.mockResolvedValue(binaryResponse(200, new Uint8Array([1])));
 
@@ -152,6 +301,34 @@ describe('N8nClient packages', () => {
 
 			const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
 			expect(init.body).toBe(JSON.stringify({ workflowIds: ['a'], includeTags: false }));
+		});
+
+		it('includes the workflow version policy when provided', async () => {
+			fetchMock.mockResolvedValue(binaryResponse(200, new Uint8Array([1])));
+
+			await client.exportPackage({
+				workflowIds: ['a'],
+				workflowVersionPolicy: 'published-strict',
+			});
+
+			const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+			expect(init.body).toBe(
+				JSON.stringify({ workflowIds: ['a'], workflowVersionPolicy: 'published-strict' }),
+			);
+		});
+
+		it('sends includeArchivedWorkflows only when true', async () => {
+			fetchMock.mockResolvedValue(binaryResponse(200, new Uint8Array([1])));
+
+			await client.exportPackage({ workflowIds: ['a'], includeArchivedWorkflows: false });
+			await client.exportPackage({ workflowIds: ['a'], includeArchivedWorkflows: true });
+
+			const [, first] = fetchMock.mock.calls[0] as [string, RequestInit];
+			const [, second] = fetchMock.mock.calls[1] as [string, RequestInit];
+			expect(first.body).toBe(JSON.stringify({ workflowIds: ['a'] }));
+			expect(second.body).toBe(
+				JSON.stringify({ workflowIds: ['a'], includeArchivedWorkflows: true }),
+			);
 		});
 	});
 

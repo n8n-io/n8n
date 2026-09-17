@@ -49,18 +49,43 @@ describe('modalRegistry', () => {
 			expect(modalRegistry.getKeys()).toHaveLength(2);
 		});
 
-		it('should warn and skip registration if modal key already exists', () => {
+		it('should warn and skip registration if a different modal claims the key', () => {
 			const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
 			modalRegistry.register(mockModal1);
-			modalRegistry.register(mockModal1);
+			modalRegistry.register({ ...mockModal1, component: mockComponent2 });
 
 			expect(consoleSpy).toHaveBeenCalledWith(
 				'Modal with key "test-modal-1" is already registered. Skipping.',
 			);
 			expect(modalRegistry.getKeys()).toHaveLength(1);
+			expect(modalRegistry.get('test-modal-1')?.component).toBe(mockComponent1);
 
 			consoleSpy.mockRestore();
+		});
+
+		// A re-login replays the manifest, so the same definitions arrive twice.
+		it('should re-register the same definition silently', () => {
+			const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+			modalRegistry.register(mockModal1);
+			modalRegistry.register(mockModal1);
+
+			expect(consoleSpy).not.toHaveBeenCalled();
+			expect(modalRegistry.get('test-modal-1')).toBe(mockModal1);
+			expect(modalRegistry.getKeys()).toHaveLength(1);
+
+			consoleSpy.mockRestore();
+		});
+
+		it('should not notify listeners when the same definition is re-registered', () => {
+			modalRegistry.register(mockModal1);
+			const listener = vi.fn();
+			modalRegistry.subscribe(listener);
+
+			modalRegistry.register(mockModal1);
+
+			expect(listener).not.toHaveBeenCalled();
 		});
 
 		it('should notify listeners when a modal is registered', () => {
@@ -371,6 +396,37 @@ describe('modalRegistry', () => {
 			// breaks identity checks — the registry is shallow for this reason.
 			expect(isReactive(modalRegistry.get('test-modal-1')?.component)).toBe(false);
 			expect(modalRegistry.get('test-modal-1')?.component).toBe(mockComponent1);
+		});
+	});
+	describe('ad-hoc key prefixes', () => {
+		it('should report a key built from a declared prefix as ad-hoc', () => {
+			modalRegistry.declareAdHocKeyPrefix('downloadDataTableModal');
+
+			expect(modalRegistry.isAdHocKey('downloadDataTableModal-42')).toBe(true);
+			expect(modalRegistry.isAdHocKey('downloadDataTableModal')).toBe(true);
+		});
+
+		it('should not report an undeclared key as ad-hoc', () => {
+			modalRegistry.declareAdHocKeyPrefix('downloadDataTableModal');
+
+			expect(modalRegistry.isAdHocKey('someOtherModal')).toBe(false);
+			expect(modalRegistry.isAdHocKey('someOtherModal-42')).toBe(false);
+		});
+
+		it('should not treat a prefix as a match for an unrelated key that merely starts with it', () => {
+			modalRegistry.declareAdHocKeyPrefix('importCsvModal');
+
+			// Only the bare prefix and the `<prefix>-<id>` form count, so a longer
+			// camelCase name starting with the same letters is still a real key.
+			expect(modalRegistry.isAdHocKey('importCsvModalSettings')).toBe(false);
+		});
+
+		it('should survive clear(), which empties registrations and not declarations', () => {
+			modalRegistry.declareAdHocKeyPrefix('importCsvModal');
+
+			modalRegistry.clear();
+
+			expect(modalRegistry.isAdHocKey('importCsvModal-7')).toBe(true);
 		});
 	});
 });

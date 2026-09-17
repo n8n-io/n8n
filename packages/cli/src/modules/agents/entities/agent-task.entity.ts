@@ -46,7 +46,16 @@ export class AgentTask extends WithTimestamps {
 	@Column({
 		type: 'varchar',
 		length: AGENT_TASK_CRON_EXPRESSION_MAX_LENGTH,
-		comment: 'Cron schedule evaluated using the instance timezone',
+		comment: 'Cron schedule evaluated in the timezone of this task',
 	})
 	cronExpression: string;
+
+	// Same shape as `scheduled_job.timezone`.
+	@Column({
+		type: 'varchar',
+		length: 64,
+		nullable: true,
+		comment: 'IANA timezone the cron is evaluated in; null falls back to the instance timezone',
+	})
+	timezone: string | null;
 }

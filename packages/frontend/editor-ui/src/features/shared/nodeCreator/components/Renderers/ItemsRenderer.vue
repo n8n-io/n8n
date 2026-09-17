@@ -234,6 +234,8 @@ watch(
 </template>
 
 <style lang="scss" module>
+@use '@/app/css/variables' as *;
+
 .itemSkeleton {
 	height: 50px;
 }

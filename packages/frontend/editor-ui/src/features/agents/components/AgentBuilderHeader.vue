@@ -6,25 +6,27 @@
  * Navigation intents are emitted as events, except for the project breadcrumb
  * which links back to the owning project/personal page.
  */
-import { computed, onMounted } from 'vue';
+import { computed, onMounted, useCssModule } from 'vue';
 import { useRouter, type RouteLocationRaw } from 'vue-router';
+import type { AgentConfigValidationIssue } from '@n8n/api-types';
 import {
-	N8nActionDropdown,
+	N8nAssistantIcon,
 	N8nBreadcrumbs,
 	N8nButton,
 	N8nDropdownMenu,
 	N8nDropdownMenuItem,
 	N8nIcon,
-	N8nTooltip,
+	N8nToggle,
 } from '@n8n/design-system';
 import type { PathItem } from '@n8n/design-system';
 import type { DropdownMenuItemProps } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system';
-import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import { AGENT_PREVIEW_VIEW, PROJECT_AGENTS } from '@/features/agents/constants';
+import { useI18n } from '@n8n/i18n';
+import { PROJECT_AGENTS } from '@/features/agents/constants';
 import { instanceAiCreateAgentRoute } from '@/features/ai/instanceAi/createAgentRoute';
 
 import AgentPublishButton from './AgentPublishButton.vue';
+import AgentPreviewButton from './AgentPreviewButton.vue';
 import { useProjectAgentsList } from '../composables/useProjectAgentsList';
 import type { AgentResource } from '../types';
 
@@ -36,12 +38,16 @@ const props = defineProps<{
 	headerActions: Array<ActionDropdownItem<string>>;
 	saveStatus?: 'idle' | 'saving' | 'saved';
 	beforeRevertToPublished?: () => Promise<void> | void;
-	isVersionHistoryOpen?: boolean;
 	artifactMode?: boolean;
 	isPreviewOpen?: boolean;
+	/** Whether the embedded n8n Assistant panel toggle is available at all. */
+	instanceAiAvailable?: boolean;
+	/** Whether the embedded n8n Assistant panel is currently open. */
+	isAiPanelOpen?: boolean;
 	/** True while the AI is actively building/mutating this agent in artifact mode — disables publish/revert/unpublish without hiding them. */
 	editingLocked?: boolean;
 	configValidationStatus?: 'valid' | 'invalid' | null;
+	configValidationIssues?: AgentConfigValidationIssue[];
 	beforePublish?: () => Promise<boolean>;
 }>();
 
@@ -54,10 +60,12 @@ const emit = defineEmits<{
 	reverted: [agent: AgentResource];
 	'switch-agent': [agentId: string];
 	'toggle-version-history': [];
+	'toggle-instance-ai': [];
 }>();
 
 const i18n = useI18n();
 const router = useRouter();
+const $style = useCssModule();
 
 const { list: agentsList, ensureLoaded } = useProjectAgentsList(computed(() => props.projectId));
 onMounted(() => {
@@ -68,11 +76,6 @@ onMounted(() => {
 const projectRoute = computed<RouteLocationRaw>(() => ({
 	name: PROJECT_AGENTS,
 	params: { projectId: props.projectId },
-}));
-
-const previewRoute = computed<RouteLocationRaw>(() => ({
-	name: AGENT_PREVIEW_VIEW,
-	params: { projectId: props.projectId, agentId: props.agentId },
 }));
 
 const breadcrumbItems = computed<PathItem[]>(() => [
@@ -86,17 +89,6 @@ const breadcrumbItems = computed<PathItem[]>(() => [
 
 const agentDisplayName = computed(() => props.agent?.name ?? '…');
 
-const isPreviewDisabled = computed(() => !props.isPreviewOpen && props.agent?.isRunnable !== true);
-// Standalone keeps href for Cmd/Ctrl-click new-tab. Artifact mode is embedded
-// in Instance AI — plain button so a left-click cannot fall through to a link.
-const previewHref = computed(() =>
-	props.artifactMode || props.isPreviewOpen || isPreviewDisabled.value
-		? undefined
-		: router.resolve(previewRoute.value).href,
-);
-const previewDisabledTooltip = computed(() =>
-	i18n.baseText('agents.builder.preview.disabledTooltip' as BaseTextKey),
-);
 const switcherOptions = computed<Array<DropdownMenuItemProps<string>>>(() => {
 	const list = agentsList.value ?? [];
 	const others = list.filter((a) => a.id !== props.agentId);
@@ -129,38 +121,50 @@ function onBreadcrumbSelect(item: PathItem) {
 	void router.push(projectRoute.value);
 }
 
-function onPreviewClick(event: MouseEvent) {
-	if (props.isPreviewOpen) {
-		event.preventDefault();
-		emit('close-preview');
-		return;
-	}
-	if (isPreviewDisabled.value) {
-		event.preventDefault();
-		return;
-	}
-	if (
-		event.defaultPrevented ||
-		event.button !== 0 ||
-		event.metaKey ||
-		event.ctrlKey ||
-		event.shiftKey
-	) {
-		return;
-	}
-	event.preventDefault();
-	emit('open-preview');
+/**
+ * Converts an action item and its children to the dropdown menu format.
+ */
+function toMenuItem(
+	action: ActionDropdownItem<string>,
+): DropdownMenuItemProps<string, ActionDropdownItem<string>> {
+	return {
+		id: action.id,
+		label: action.label,
+		testId: action.testId,
+		icon: { type: 'icon', value: action.icon ?? 'file' },
+		disabled: action.disabled,
+		divided: action.divided,
+		checked: action.checked,
+		class: action.id === 'delete' ? $style.destructiveItem : undefined,
+		data: action,
+		children: action.children?.map(toMenuItem),
+	};
 }
 
-// Disabled until the agent has at least one publish history row. The flag
-// is set by the backend (see AgentsService.hasPublishHistory) so it stays
-// true after an unpublish, when activeVersionId is null but rows persist.
-const isVersionHistoryDisabled = computed(() => !props.agent?.hasPublishHistory);
+const menuItems = computed<Array<DropdownMenuItemProps<string, ActionDropdownItem<string>>>>(() =>
+	props.headerActions.map(toMenuItem),
+);
+
+function onMenuSelect(id: string) {
+	emit('header-action', id);
+}
 </script>
 
 <template>
 	<header :class="$style.header" data-testid="agent-builder-header">
 		<div :class="$style.left">
+			<N8nToggle
+				v-if="!props.artifactMode && props.instanceAiAvailable"
+				:model-value="props.isAiPanelOpen"
+				variant="ghost"
+				size="medium"
+				:label="i18n.baseText('agents.builder.header.editWithAi')"
+				:disabled="!props.agent"
+				data-testid="agent-builder-instance-ai-btn"
+				@click="emit('toggle-instance-ai')"
+			>
+				<N8nAssistantIcon size="large" />
+			</N8nToggle>
 			<N8nBreadcrumbs
 				v-if="!props.artifactMode"
 				:items="breadcrumbItems"
@@ -200,6 +204,24 @@ const isVersionHistoryDisabled = computed(() => !props.agent?.hasPublishHistory)
 							</div>
 						</template>
 					</N8nDropdownMenu>
+					<N8nDropdownMenu
+						v-if="!props.artifactMode && menuItems.length > 0"
+						:items="menuItems"
+						placement="bottom-start"
+						:extra-popper-class="$style.headerActionsMenu"
+						data-testid="agent-header-actions"
+						@select="onMenuSelect"
+					>
+						<template #trigger>
+							<N8nButton
+								variant="ghost"
+								size="medium"
+								icon="ellipsis"
+								icon-only
+								:aria-label="i18n.baseText('node.moreActions')"
+							/>
+						</template>
+					</N8nDropdownMenu>
 				</template>
 			</N8nBreadcrumbs>
 		</div>
@@ -215,23 +237,15 @@ const isVersionHistoryDisabled = computed(() => !props.agent?.hasPublishHistory)
 						: i18n.baseText('agents.builder.header.saved')
 				}}
 			</span>
-			<N8nTooltip :disabled="!isPreviewDisabled" :content="previewDisabledTooltip">
-				<N8nButton
-					variant="ghost"
-					size="medium"
-					:icon="props.isPreviewOpen ? 'x' : 'play'"
-					:href="previewHref"
-					:disabled="isPreviewDisabled"
-					data-testid="agent-header-preview-btn"
-					@click="onPreviewClick"
-				>
-					{{
-						props.isPreviewOpen
-							? i18n.baseText('agents.builder.preview.close.ariaLabel' as BaseTextKey)
-							: i18n.baseText('agents.builder.preview.button' as BaseTextKey)
-					}}
-				</N8nButton>
-			</N8nTooltip>
+			<AgentPreviewButton
+				:is-runnable="props.agent?.isRunnable === true"
+				:is-preview-open="props.isPreviewOpen"
+				:validation-issues="props.configValidationIssues ?? []"
+				icon-only
+				test-id="agent-header-preview-btn"
+				@open-preview="emit('open-preview')"
+				@close-preview="emit('close-preview')"
+			/>
 			<AgentPublishButton
 				:agent="agent"
 				:project-id="projectId"
@@ -239,38 +253,11 @@ const isVersionHistoryDisabled = computed(() => !props.agent?.hasPublishHistory)
 				:is-saving="saveStatus === 'saving' || editingLocked"
 				:before-revert-to-published="beforeRevertToPublished"
 				:config-validation-status="configValidationStatus"
+				:config-validation-issues="props.configValidationIssues ?? []"
 				:before-publish="beforePublish"
 				@published="(a: AgentResource) => emit('published', a)"
 				@unpublished="(a: AgentResource) => emit('unpublished', a)"
 				@reverted="(a: AgentResource) => emit('reverted', a)"
-			/>
-			<N8nTooltip v-if="!props.artifactMode" placement="bottom">
-				<template #content>
-					<span v-if="isVersionHistoryDisabled">{{
-						i18n.baseText('agents.versionHistory.button.tooltip.empty')
-					}}</span>
-					<span v-else>{{ i18n.baseText('agents.versionHistory.title') }}</span>
-				</template>
-				<N8nButton
-					variant="ghost"
-					size="medium"
-					icon="history"
-					icon-only
-					:class="{ [$style.activeButton]: isVersionHistoryOpen }"
-					:disabled="isVersionHistoryDisabled"
-					:aria-label="i18n.baseText('agents.versionHistory.button.ariaLabel')"
-					data-testid="agent-header-version-history-btn"
-					@click="emit('toggle-version-history')"
-				/>
-			</N8nTooltip>
-			<N8nActionDropdown
-				v-if="!props.artifactMode && headerActions.length > 0"
-				:items="headerActions"
-				activator-icon="ellipsis"
-				activator-size="medium"
-				:extra-popper-class="$style.headerActionsMenu"
-				data-testid="agent-header-actions"
-				@select="(item: string) => emit('header-action', item)"
 			/>
 		</div>
 	</header>
@@ -359,11 +346,12 @@ const isVersionHistoryDisabled = computed(() => !props.agent?.hasPublishHistory)
 	user-select: none;
 }
 
-.activeButton {
-	background-color: var(--background--active);
-}
-
 .headerActionsMenu {
 	--n8n--dropdown-menu-width: var(--spacing--5xl);
+}
+
+.destructiveItem,
+.destructiveItem * {
+	color: var(--text-color--danger) !important;
 }
 </style>

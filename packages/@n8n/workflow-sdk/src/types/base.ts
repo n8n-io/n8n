@@ -87,6 +87,11 @@ export interface NewCredentialValue {
  */
 export type OnError = 'stopWorkflow' | 'continueRegularOutput' | 'continueErrorOutput';
 
+/** Custom OpenTelemetry span attributes, set for each node in the node's Settings tab. */
+export interface CustomTelemetryTags {
+	tag?: Array<{ key: string; value: string }>;
+}
+
 // =============================================================================
 // Workflow Settings (with extensibility)
 // =============================================================================
@@ -296,6 +301,11 @@ export function generateUniqueName(baseName: string, exists: (name: string) => b
 // Internal: Serialization types
 // =============================================================================
 
+/** Persisted managed references use a null ID with the managed marker. */
+type NodeJSONCredential =
+	| { id?: string; name: string; __aiGatewayManaged?: boolean }
+	| { id: null; name: string; __aiGatewayManaged?: boolean };
+
 /**
  * Node JSON representation (for serialization)
  */
@@ -306,7 +316,7 @@ export interface NodeJSON {
 	typeVersion: number;
 	position: [number, number];
 	parameters?: IDataObject;
-	credentials?: Record<string, { id?: string; name: string }>;
+	credentials?: Record<string, NodeJSONCredential>;
 	webhookId?: string;
 	disabled?: boolean;
 	notes?: string;
@@ -318,6 +328,7 @@ export interface NodeJSON {
 	alwaysOutputData?: boolean;
 	onError?: OnError;
 	extendsCredential?: string;
+	customTelemetryTags?: CustomTelemetryTags;
 }
 
 /**
@@ -433,6 +444,12 @@ export interface WorkflowContext {
  * Configuration options for creating a node
  */
 export interface NodeConfig<TParams = IDataObject> {
+	/**
+	 * Stable n8n node id. Keep it verbatim when editing an existing node — execution
+	 * logs, poll cursors, dedupe state and the version diff are all keyed on it, and a
+	 * rename does not change it. Omit it for a node you are adding; one is assigned on save.
+	 */
+	id?: string;
 	parameters?: TParams;
 	credentials?: Record<
 		string,
@@ -451,6 +468,7 @@ export interface NodeConfig<TParams = IDataObject> {
 	alwaysOutputData?: boolean;
 	onError?: OnError;
 	extendsCredential?: string;
+	customTelemetryTags?: CustomTelemetryTags;
 	pinData?: IDataObject[];
 	/**
 	 * Declared output shape for data flow validation.
@@ -465,6 +483,8 @@ export interface NodeConfig<TParams = IDataObject> {
  * Configuration for sticky notes
  */
 export interface StickyNoteConfig {
+	/** Stable n8n node id — see {@link NodeConfig.id}. */
+	id?: string;
 	color?: number;
 	position?: [number, number];
 	width?: number;
@@ -480,6 +500,17 @@ export interface StickyNoteConfig {
  * Subnode configuration for AI nodes
  */
 export interface SubnodeConfig {
+	/**
+	 * Language model(s) for the parent node.
+	 *
+	 * - single instance, or `[m]` — the primary model, on input index 0.
+	 * - flat `[primary, fallback]` — sequential input indices (0, 1, …). On an Agent
+	 *   or Basic LLM Chain, index 1 is the Fallback Model input, which the node only
+	 *   declares when its `needsFallback` parameter is `true` — set that alongside,
+	 *   or the fallback never runs. Model Selector takes many models this way and
+	 *   has no such toggle.
+	 * - nested `[[m1, m2]]` — every model on the SAME input index; not a fallback.
+	 */
 	model?: LanguageModelInstance | LanguageModelInstance[] | LanguageModelInstance[][];
 	memory?: MemoryInstance;
 	tools?: ToolInstance[];
@@ -659,6 +690,27 @@ export function isNodeInstance(value: unknown): value is NodeInstance<string, st
 	// After 'in' checks, safely access the to property
 	const toProp = (value as Record<string, unknown>).to;
 	return typeof toProp === 'function';
+}
+
+/**
+ * A sticky note that was asked to wrap a set of nodes.
+ *
+ * Only the anchor node IDs are recorded at construction time: node positions do not
+ * exist yet when `sticky()` runs, so the box is resolved during serialization from
+ * wherever the anchors ended up. IDs rather than names, because a node can be
+ * auto-renamed on its way into the workflow.
+ */
+export interface AnchoredStickyNote {
+	readonly stickyAnchorIds: readonly string[];
+}
+
+/** Type guard for {@link AnchoredStickyNote}. */
+export function isAnchoredStickyNote(value: object): value is AnchoredStickyNote {
+	return (
+		'stickyAnchorIds' in value &&
+		Array.isArray(value.stickyAnchorIds) &&
+		value.stickyAnchorIds.every((id) => typeof id === 'string')
+	);
 }
 
 // =============================================================================
@@ -1080,6 +1132,13 @@ export interface WorkflowBuilder {
 	 * `.to(switchNode).onCase(0, a).onCase(1, b)`. Throws if the current node is not a Switch.
 	 */
 	onCase(index: number, target: SwitchCaseTarget): WorkflowBuilder;
+	/**
+	 * Route the error output of the node the cursor is on to `handler`, e.g.
+	 * `.to(httpNode).onError(notifyFailure).to(next)`. The cursor stays on that node,
+	 * so a following `.to()` continues the main branch. Equivalent to
+	 * `.to(httpNode.onError(notifyFailure))`.
+	 */
+	onError(handler: NodeInstance<string, string, unknown> | InputTarget): WorkflowBuilder;
 
 	settings(settings: WorkflowSettings): WorkflowBuilder;
 

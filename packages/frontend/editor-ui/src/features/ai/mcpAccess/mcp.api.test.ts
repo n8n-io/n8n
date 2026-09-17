@@ -1,7 +1,7 @@
 import type { IRestApiContext } from '@n8n/rest-api-client';
-import { getFullApiResponse } from '@n8n/rest-api-client';
+import { getFullApiResponse, makeRestApiRequest } from '@n8n/rest-api-client';
 
-import { fetchMcpAgents } from './mcp.api';
+import { fetchMcpAgents, updateMcpSettings } from './mcp.api';
 
 vi.mock('@n8n/rest-api-client', () => ({
 	getFullApiResponse: vi.fn(),
@@ -37,6 +37,24 @@ describe('fetchMcpAgents', () => {
 
 		expect(getFullApiResponse).toHaveBeenCalledWith(context, 'GET', '/mcp/agents', {
 			filter: JSON.stringify({ availableInMCP: true }),
+		});
+	});
+});
+
+describe('updateMcpSettings', () => {
+	const context = {} as IRestApiContext;
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it('sends the given settings as the PATCH body', async () => {
+		vi.mocked(makeRestApiRequest).mockResolvedValue({ mcpAccessEnabled: true });
+
+		await updateMcpSettings(context, { mcpAccessEnabled: true });
+
+		expect(makeRestApiRequest).toHaveBeenCalledWith(context, 'PATCH', '/mcp/settings', {
+			mcpAccessEnabled: true,
 		});
 	});
 });

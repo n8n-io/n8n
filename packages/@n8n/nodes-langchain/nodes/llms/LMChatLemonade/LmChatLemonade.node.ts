@@ -104,7 +104,11 @@ export class LmChatLemonade implements INodeType {
 		}
 
 		configuration.fetchOptions = {
-			dispatcher: getProxyAgent(configuration.baseURL ?? '', {}),
+			dispatcher: getProxyAgent(
+				configuration.baseURL ?? '',
+				{},
+				this.helpers.getSecureEgressFilter(),
+			),
 		};
 
 		const model = new ChatOpenAI({

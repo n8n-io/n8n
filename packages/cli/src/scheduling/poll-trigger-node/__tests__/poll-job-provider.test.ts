@@ -58,7 +58,11 @@ describe('PollJobProvider', () => {
 		] as const)(
 			'binds $active for scheduler=$schedulerEnabled publication=$publicationEnabled pollTriggers=$enabledForPollTriggers',
 			({ schedulerEnabled, publicationEnabled, enabledForPollTriggers, active }) => {
-				makeProvider({ schedulerEnabled, publicationEnabled, enabledForPollTriggers }).init();
+				makeProvider({
+					schedulerEnabled,
+					publicationEnabled,
+					enabledForPollTriggers,
+				}).init();
 
 				const bound = Container.get(PollJobManager);
 				if (active) {

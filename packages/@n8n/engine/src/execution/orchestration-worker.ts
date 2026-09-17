@@ -1,7 +1,7 @@
 import { UnimplementedError } from '../common';
 import type { OrchestrationMessage, WorkQueue } from '../queue';
 import type { ExecutionStartHandler } from './execution-start-handler';
-import type { StepCompletedHandler } from './step-completed-handler';
+import type { StepSettledHandler } from './step-settled-handler';
 
 /**
  * Consumes the orchestration queue and routes each message to its handler.
@@ -10,7 +10,7 @@ export class OrchestrationWorker {
 	constructor(
 		private readonly orchestrationQueue: WorkQueue<OrchestrationMessage>,
 		private readonly startHandler: ExecutionStartHandler,
-		private readonly completedHandler: StepCompletedHandler,
+		private readonly settledHandler: StepSettledHandler,
 	) {}
 
 	start(): void {
@@ -19,8 +19,8 @@ export class OrchestrationWorker {
 				case 'execution:enqueued':
 					await this.startHandler.handle(message);
 					break;
-				case 'step:completed':
-					await this.completedHandler.handle(message);
+				case 'step:settled':
+					await this.settledHandler.handle(message);
 					break;
 				default: {
 					// Exhaustive today; the throw guards an off-contract message at runtime.

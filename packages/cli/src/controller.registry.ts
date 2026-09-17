@@ -12,25 +12,24 @@ import type {
 	KeyedRateLimiterConfig,
 } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { Router } from 'express';
-
 import type { Application, Request, Response, RequestHandler } from 'express';
-import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { UnexpectedError } from 'n8n-workflow';
 import assert from 'node:assert';
 
+import { AuthService } from '@/auth/auth.service';
+import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.error';
 import { License } from '@/license';
 import { userHasScopes } from '@/permissions.ee/check-access';
-import { send } from '@/response-helper';
+import { reportError, send, sendErrorResponse } from '@/response-helper';
 
 import { AbstractServer } from './abstract-server';
 import { NotFoundError } from './errors/response-errors/not-found.error';
 import { CorsService } from './services/cors-service';
 import { LastActiveAtService } from './services/last-active-at.service';
 import { RateLimitService } from './services/rate-limit.service';
-
-import { AuthService } from '@/auth/auth.service';
 
 @Service()
 export class ControllerRegistry {
@@ -121,7 +120,18 @@ export class ControllerRegistry {
 			const middlewares = this.buildMiddlewares(route, controllerMiddlewares, bodyArgType);
 			const finalHandler = route.usesTemplates
 				? async (req: Request, res: Response) => {
-						await handler(req, res);
+						try {
+							await handler(req, res);
+						} catch (e) {
+							// Template routes skip `send()`, so without this a thrown error
+							// reaches Express's default handler, which cannot read
+							// `httpStatusCode` off a ResponseError and answers 500 — and in
+							// production with a body of just "Internal Server Error".
+							const error = ensureError(e);
+							reportError(error, { extra: { method: req.method, path: req.path } });
+							if (res.headersSent) throw error;
+							sendErrorResponse(res, error);
+						}
 					}
 				: send(handler);
 

@@ -4,6 +4,7 @@ import { setActivePinia, createPinia } from 'pinia';
 import * as mcpApi from './mcp.api';
 import { useMCPStore } from './mcp.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { createOAuthClient, createWorkflow } from './mcp.test.utils';
 
 const { mockWorkflowDocumentStore } = vi.hoisted(() => ({
@@ -514,6 +515,85 @@ describe('mcp.store', () => {
 				skippedCount: 0,
 				failedCount: 100,
 			});
+		});
+	});
+
+	describe('setMcpAccessEnabled', () => {
+		it.each([
+			{
+				desc: 'syncs both values from the response when enabling (auto-expose surfaced)',
+				response: { mcpAccessEnabled: true, autoExposeNewWorkflows: true },
+			},
+			{
+				desc: 'syncs both values from the response when disabling (auto-expose gated to false)',
+				response: { mcpAccessEnabled: false, autoExposeNewWorkflows: false },
+			},
+		])('$desc', async ({ response }) => {
+			const updateSpy = vi.spyOn(mcpApi, 'updateMcpSettings').mockResolvedValue(response);
+			const settingsStore = useSettingsStore();
+			const getModuleSettings = vi.spyOn(settingsStore, 'getModuleSettings').mockResolvedValue();
+			settingsStore.moduleSettings.mcp = {
+				mcpAccessEnabled: !response.mcpAccessEnabled,
+				mcpManagedByEnv: false,
+				autoExposeNewWorkflows: !response.autoExposeNewWorkflows,
+				serverUrl: 'https://example.com/mcp',
+			};
+
+			const result = await useMCPStore().setMcpAccessEnabled(response.mcpAccessEnabled);
+
+			expect(updateSpy).toHaveBeenCalledWith(expect.anything(), {
+				mcpAccessEnabled: response.mcpAccessEnabled,
+			});
+			expect(result).toBe(response.mcpAccessEnabled);
+			expect(settingsStore.moduleSettings.mcp).toEqual({
+				mcpAccessEnabled: response.mcpAccessEnabled,
+				mcpManagedByEnv: false,
+				autoExposeNewWorkflows: response.autoExposeNewWorkflows,
+				serverUrl: 'https://example.com/mcp',
+			});
+			// The response carries both values, so no follow-up module-settings fetch.
+			expect(getModuleSettings).not.toHaveBeenCalled();
+		});
+
+		it('defaults sibling fields when no local settings exist yet', async () => {
+			vi.spyOn(mcpApi, 'updateMcpSettings').mockResolvedValue({
+				mcpAccessEnabled: true,
+				autoExposeNewWorkflows: false,
+			});
+			const settingsStore = useSettingsStore();
+			settingsStore.moduleSettings.mcp = undefined;
+
+			const result = await useMCPStore().setMcpAccessEnabled(true);
+
+			expect(result).toBe(true);
+			expect(settingsStore.moduleSettings.mcp).toEqual({
+				mcpAccessEnabled: true,
+				mcpManagedByEnv: false,
+				autoExposeNewWorkflows: false,
+			});
+		});
+	});
+
+	describe('autoExposeNewWorkflows', () => {
+		it('patches only autoExposeNewWorkflows and syncs both values from the response', async () => {
+			const updateSpy = vi
+				.spyOn(mcpApi, 'updateMcpSettings')
+				.mockResolvedValue({ mcpAccessEnabled: true, autoExposeNewWorkflows: true });
+			const settingsStore = useSettingsStore();
+			settingsStore.moduleSettings.mcp = {
+				mcpAccessEnabled: true,
+				mcpManagedByEnv: false,
+				autoExposeNewWorkflows: false,
+			};
+
+			const result = await useMCPStore().setAutoExposeNewWorkflows(true);
+
+			expect(updateSpy).toHaveBeenCalledWith(expect.anything(), {
+				autoExposeNewWorkflows: true,
+			});
+			expect(result).toBe(true);
+			expect(settingsStore.moduleSettings.mcp?.autoExposeNewWorkflows).toBe(true);
+			expect(settingsStore.moduleSettings.mcp?.mcpAccessEnabled).toBe(true);
 		});
 	});
 });

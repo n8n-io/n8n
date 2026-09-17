@@ -9,9 +9,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
-export function tolerateTrailingSlash(baseUrl: string) {
-	return baseUrl.endsWith('/') ? baseUrl.substr(0, baseUrl.length - 1) : baseUrl;
-}
+import { removeTrailingSlash } from '@utils/utilities';
 
 export async function jenkinsApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
@@ -32,7 +30,7 @@ export async function jenkinsApiRequest(
 			username: credentials.username as string,
 			password: credentials.apiKey as string,
 		},
-		uri: `${tolerateTrailingSlash(credentials.baseUrl as string)}${uri}`,
+		uri: `${removeTrailingSlash(credentials.baseUrl as string)}${uri}`,
 		json: true,
 		qs,
 		body,

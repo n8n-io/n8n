@@ -61,15 +61,15 @@ export class DataTableView extends BasePage {
 	}
 
 	getDataTablePageSizeSelect() {
-		return this.page.getByTestId('resources-list-pagination').locator('.el-pagination__sizes');
+		return this.page.getByTestId('resources-list-pagination').getByTestId('pagination-sizes');
 	}
 
 	getDataTablePageOption(pageSize: string) {
-		return this.page.locator('.el-select-dropdown__item').filter({ hasText: `${pageSize}/page` });
+		return this.getVisiblePopoverOption(`${pageSize}/page`, { exact: true });
 	}
 
 	getPaginationNextButton() {
-		return this.page.getByTestId('resources-list-pagination').locator('button.btn-next');
+		return this.page.getByTestId('resources-list-pagination').getByTestId('pagination-next');
 	}
 
 	async clickDataTableProjectTab() {

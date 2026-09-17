@@ -37,7 +37,7 @@ const effectiveVariant = computed(() => {
 const computedIconSize = computed((): IconSize | undefined => {
 	if (props.iconSize) return props.iconSize;
 	if (effectiveSize.value === 'xsmall') return 'xsmall';
-	return effectiveSize.value as IconSize;
+	return effectiveSize.value;
 });
 
 const componentTag = computed(() => {
@@ -95,10 +95,10 @@ const handleClick = (event: MouseEvent) => {
 		:disabled="componentTag === 'button' ? isDisabled || undefined : undefined"
 		:aria-disabled="isDisabled || undefined"
 		:aria-busy="loading || undefined"
-		:tabindex="componentTag === 'a' && isDisabled ? -1 : undefined"
+		:tabindex="componentTag === 'a' && isDisabled ? -1 : attrs.tabindex"
 		:class="classes"
 		:data-icon-only="iconOnly ? 'true' : undefined"
-		aria-live="polite"
+		:aria-live="attrs['aria-live'] ?? 'polite'"
 		@click="handleClick"
 	>
 		<Transition name="n8n-button-fade">

@@ -38,5 +38,6 @@ withDefaults(defineProps<Props>(), { placement: 'top', shortcut: undefined });
 
 .label {
 	min-width: 0;
+	font-size: var(--font-size--xs);
 }
 </style>

@@ -3,6 +3,7 @@ import {
 	CredentialsGetManyRequestQuery,
 	CredentialsGetOneRequestQuery,
 	GenerateCredentialNameRequestQuery,
+	TestCredentialRequestDto,
 } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
@@ -144,9 +145,16 @@ export class CredentialsController {
 
 	// TODO: Write at least test cases for the failure paths.
 	@Post('/test')
-	async testCredentials(req: CredentialRequest.Test) {
+	async testCredentials(
+		req: AuthenticatedRequest,
+		_res: unknown,
+		@Body payload: TestCredentialRequestDto,
+	) {
 		try {
-			return await this.credentialsService.testWithCredentials(req.user, req.body.credentials);
+			return await this.credentialsService.testWithCredentials(req.user, {
+				...payload.credentials,
+				data: payload.credentials.data as ICredentialDataDecryptedObject,
+			});
 		} catch (error) {
 			if (error instanceof CredentialNotFoundError) {
 				throw new ForbiddenError();
@@ -207,6 +215,7 @@ export class CredentialsController {
 			user: req.user,
 			credentialType: newCredential.type,
 			credentialId: newCredential.id,
+			credentialName: newCredential.name,
 			publicApi: false,
 			projectId: project?.id,
 			projectType: project?.type,
@@ -289,6 +298,9 @@ export class CredentialsController {
 		if (isTogglingToPrivate || isTogglingToStatic) {
 			const owningProject =
 				await this.sharedCredentialsRepository.findCredentialOwningProject(credentialId);
+			if (isTogglingToPrivate) {
+				this.credentialsService.ensureEndUserCredentialAllowedInProject(owningProject);
+			}
 			await this.credentialsService.ensureCanManageEndUserCredential(req.user, owningProject?.id);
 		}
 
@@ -365,6 +377,8 @@ export class CredentialsController {
 			user: req.user,
 			credentialType: credential.type,
 			credentialId: credential.id,
+			// The updated entity, so a rename records the new name rather than the one it replaced.
+			credentialName: responseData.name,
 			isDynamic: newCredentialData.isResolvable ?? false,
 			usesExternalSecrets: getExternalSecretExpressionPaths(preparedCredentialData.data).length > 0,
 			jweEnabled: updatedData.jweEnabled === true,
@@ -458,20 +472,6 @@ export class CredentialsController {
 		await this.credentialsService.delete(req.user, credential.id, {
 			includeInstanceCredentials: true,
 		});
-
-		this.eventService.emit('credentials-deleted', {
-			user: req.user,
-			credentialType: credential.type,
-			credentialId: credential.id,
-		});
-
-		if (credential.isResolvable) {
-			this.eventService.emit('private-credential-deleted', {
-				user: req.user,
-				credentialType: credential.type,
-				credentialId: credential.id,
-			});
-		}
 
 		return true;
 	}

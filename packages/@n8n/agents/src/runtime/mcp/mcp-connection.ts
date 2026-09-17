@@ -192,11 +192,13 @@ export class McpConnection {
 		if (!this.client) throw new Error('MCP client not initialized; connect() must be called first');
 		const { CallToolResultSchema } = await loadMcpSdk();
 		try {
-			const result = (await this.client.callTool(
-				{ name, arguments: args },
-				CallToolResultSchema,
-				options?.abortSignal ? { signal: options.abortSignal } : undefined,
-			)) as McpCallToolResult;
+			const result = (await this.client.callTool({ name, arguments: args }, CallToolResultSchema, {
+				...(options?.abortSignal ? { signal: options.abortSignal } : {}),
+				// Reset the SDK's 60s idle timeout on progress notifications so a
+				// long-running MCP call that streams progress stays alive, while
+				// a stalled call (no progress) dies at the idle deadline.
+				resetTimeoutOnProgress: true,
+			})) as McpCallToolResult;
 			await this.notifyToolCallSettled({
 				toolName: name,
 				...(options?.modelToolName !== undefined && { modelToolName: options.modelToolName }),

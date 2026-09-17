@@ -126,10 +126,6 @@ beforeEach(async () => {
 	await Container.get(TrustedKeyService).initialize();
 });
 
-afterEach(() => {
-	Container.get(TrustedKeyService).stopRefresh();
-});
-
 const postToken = (body: Record<string, string>) =>
 	testServer.authlessAgent.post('/auth/oauth/token').send(body);
 

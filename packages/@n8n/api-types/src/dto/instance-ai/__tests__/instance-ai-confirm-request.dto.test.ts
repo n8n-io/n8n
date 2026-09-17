@@ -63,6 +63,14 @@ describe('InstanceAiConfirmRequestDto', () => {
 				'credentialAutoSetup with attempt id',
 				{ kind: 'credentialAutoSetup', credentialType: 'firecrawlApi', attemptId: 'attempt-1' },
 			],
+			[
+				'credential destination approval',
+				{
+					kind: 'credentialDestination',
+					approved: true,
+					origin: 'https://api.example.com',
+				},
+			],
 			// DomainAccessApproval: handleAction (primary path — with action)
 			[
 				'domainAccessApprove with allow_domain',
@@ -112,6 +120,9 @@ describe('InstanceAiConfirmRequestDto', () => {
 				'setupWorkflowTestTrigger (minimal)',
 				{ kind: 'setupWorkflowTestTrigger', testTriggerNode: 'Webhook' },
 			],
+			['mcpConnect (connected)', { kind: 'mcpConnect', approved: true, connectedSlugs: ['brave'] }],
+			['mcpConnect (skipped)', { kind: 'mcpConnect', approved: false, connectedSlugs: [] }],
+			['mcpConnect (minimal)', { kind: 'mcpConnect', approved: false }],
 		];
 
 		test.each(cases)('%s', (_label, payload) => {
@@ -162,6 +173,11 @@ describe('InstanceAiConfirmRequestDto', () => {
 				credentialType: 'slackApi',
 				attemptId: '  ',
 			});
+			expect(result.success).toBe(false);
+		});
+
+		test('mcpConnect without approved', () => {
+			const result = InstanceAiConfirmRequestDto.safeParse({ kind: 'mcpConnect' });
 			expect(result.success).toBe(false);
 		});
 

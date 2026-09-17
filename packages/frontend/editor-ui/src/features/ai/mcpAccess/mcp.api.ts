@@ -13,6 +13,7 @@ import { makeRestApiRequest, getFullApiResponse } from '@n8n/rest-api-client';
 
 export type McpSettingsResponse = {
 	mcpAccessEnabled: boolean;
+	autoExposeNewWorkflows: boolean;
 };
 
 export type ToggleWorkflowsMcpAccessTarget =
@@ -28,6 +29,7 @@ export type ToggleWorkflowsMcpAccessResponse = {
 	failedCount: number;
 	updatedIds?: string[];
 	unchangedIds?: string[];
+	autoExposeNewWorkflows?: boolean;
 };
 
 export type ToggleAgentsMcpAccessTarget =
@@ -41,17 +43,11 @@ export type ToggleAgentsMcpAccessResponse = {
 	unchangedIds?: string[];
 };
 
-export async function getMcpSettings(context: IRestApiContext): Promise<McpSettingsResponse> {
-	return await makeRestApiRequest(context, 'GET', '/mcp/settings');
-}
-
 export async function updateMcpSettings(
 	context: IRestApiContext,
-	enabled: boolean,
+	settings: { mcpAccessEnabled?: boolean; autoExposeNewWorkflows?: boolean },
 ): Promise<McpSettingsResponse> {
-	return await makeRestApiRequest(context, 'PATCH', '/mcp/settings', {
-		mcpAccessEnabled: enabled,
-	});
+	return await makeRestApiRequest(context, 'PATCH', '/mcp/settings', settings);
 }
 
 export async function fetchApiKey(context: IRestApiContext): Promise<ApiKey> {

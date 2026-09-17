@@ -5,6 +5,7 @@ import { mock } from 'vitest-mock-extended';
 import type { CredentialsService } from '@/credentials/credentials.service';
 
 import { AgentsCredentialProvider } from '../adapters/agents-credential-provider';
+import type { AgentDefaultModelResolverService } from '../agent-default-model-resolver.service';
 import type { AgentPublishService } from '../agent-publish.service';
 import { AgentRunnableStateService } from '../agent-runnable-state.service';
 import type { AgentsService } from '../agents.service';
@@ -25,6 +26,7 @@ function makeController({
 	agentPublishService = mock<AgentPublishService>(),
 	agentValidationService = mock<AgentValidationService>(),
 	credentialsService = mock<CredentialsService>(),
+	agentDefaultModelResolverService = mock<AgentDefaultModelResolverService>(),
 }: {
 	agentsService?: Mocked<
 		Pick<
@@ -35,6 +37,7 @@ function makeController({
 	agentPublishService?: Mocked<AgentPublishService>;
 	agentValidationService?: Mocked<AgentValidationService>;
 	credentialsService?: Mocked<CredentialsService>;
+	agentDefaultModelResolverService?: Mocked<AgentDefaultModelResolverService>;
 } = {}) {
 	const agentRunnableStateService = new AgentRunnableStateService(
 		credentialsService,
@@ -46,6 +49,7 @@ function makeController({
 		controller: new AgentsController(
 			agentsService as unknown as AgentsService,
 			agentRunnableStateService,
+			agentDefaultModelResolverService,
 		),
 		agentsService,
 		agentPublishService,
@@ -75,7 +79,9 @@ describe('AgentsController create', () => {
 		const agentPublishService = mock<AgentPublishService>();
 		const agentValidationService = mock<AgentValidationService>();
 		const agentsService = mock<Pick<AgentsService, 'create'>>();
+		const agentDefaultModelResolverService = mock<AgentDefaultModelResolverService>();
 		agentsService.create.mockResolvedValue({ id: createdId, projectId: 'project-1' } as never);
+		agentDefaultModelResolverService.resolve.mockResolvedValue(null);
 		agentValidationService.validateLoadedAgentConfiguration.mockResolvedValue({
 			status: 'valid',
 			issues: [],
@@ -86,8 +92,9 @@ describe('AgentsController create', () => {
 			agentsService: agentsService as never,
 			agentPublishService,
 			agentValidationService,
+			agentDefaultModelResolverService,
 		});
-		return { controller, agentsService };
+		return { controller, agentsService, agentDefaultModelResolverService };
 	}
 
 	it('creates the agent under the id the client minted', async () => {
@@ -111,6 +118,89 @@ describe('AgentsController create', () => {
 		expect(agentsService.create).toHaveBeenCalledWith('project-1', 'Support Agent', {
 			id: undefined,
 		});
+	});
+
+	it('passes a resolved default model to the service', async () => {
+		const { controller, agentsService, agentDefaultModelResolverService } =
+			makeCreateController('server-minted');
+		agentDefaultModelResolverService.resolve.mockResolvedValue({
+			model: 'openai/gpt-5-mini',
+			credential: 'managed',
+		});
+
+		await controller.create(req, mock<Response>(), { name: 'Support Agent' } as never);
+
+		expect(agentsService.create).toHaveBeenCalledWith('project-1', 'Support Agent', {
+			id: undefined,
+			defaultModel: { model: 'openai/gpt-5-mini', credential: 'managed' },
+		});
+	});
+
+	it('seeds the schema, skills, and tools for a duplicate and skips default-model resolution', async () => {
+		const { controller, agentsService, agentDefaultModelResolverService } =
+			makeCreateController('agent-copy');
+		const skills = { skill1: { name: 'Triage', instructions: 'Sort tickets.' } };
+		const tools = { tool1: { code: 'return []', descriptor: { name: 'Lookup' } } };
+		const schema = {
+			name: 'Source Agent',
+			model: 'anthropic/claude-sonnet-4-5',
+			instructions: 'Triage tickets.',
+			integrations: [{ type: 'slack', credentialId: 'cred-slack-1' }],
+		};
+
+		await controller.create(req, mock<Response>(), {
+			name: 'Source Agent Copy',
+			schema,
+			skills,
+			tools,
+		} as never);
+
+		// A duplicate carries its own model, so the resolver is never called.
+		expect(agentDefaultModelResolverService.resolve).not.toHaveBeenCalled();
+		// The duplicate is a user-driven write, so the controller threads the
+		// user through — the service blanks inaccessible credentials and copies
+		// channels as drafts off that flag.
+		expect(agentsService.create).toHaveBeenCalledWith(
+			'project-1',
+			'Source Agent Copy',
+			expect.objectContaining({
+				schema: expect.objectContaining({ model: 'anthropic/claude-sonnet-4-5' }),
+				skills,
+				tools,
+				user: { id: 'user-1' },
+			}),
+		);
+		// No default model is resolved for a duplicate.
+		const [, , options] = agentsService.create.mock.calls[0] as [
+			string,
+			string,
+			Record<string, unknown>,
+		];
+		expect(options).not.toHaveProperty('defaultModel');
+	});
+
+	it('overrides the schema name with the entity name on a duplicate', async () => {
+		const { controller, agentsService } = makeCreateController('agent-copy');
+		const schema = {
+			name: 'Source Agent',
+			model: 'anthropic/claude-sonnet-4-5',
+			instructions: 'Triage tickets.',
+		};
+
+		await controller.create(req, mock<Response>(), {
+			name: 'Source Agent Copy',
+			schema,
+		} as never);
+
+		// The config name is kept in sync with the entity name so the list and
+		// the builder never disagree on a directly-seeded create.
+		expect(agentsService.create).toHaveBeenCalledWith(
+			'project-1',
+			'Source Agent Copy',
+			expect.objectContaining({
+				schema: { ...schema, name: 'Source Agent Copy' },
+			}),
+		);
 	});
 });
 
@@ -168,6 +258,13 @@ describe('AgentsController agent resource', () => {
 		agentsService.findById.mockResolvedValue({
 			id: 'agent-1',
 			projectId: 'project-1',
+			skills: {
+				triage: {
+					name: 'Triage',
+					description: 'Triage requests',
+					instructions: 'Route each request.',
+				},
+			},
 		} as never);
 		agentValidationService.validateLoadedAgentConfiguration.mockResolvedValue({
 			status: 'valid',
@@ -196,6 +293,7 @@ describe('AgentsController agent resource', () => {
 				isRunnable: true,
 			}),
 		);
+		expect(result.skillHashes.triage).toMatch(/^[a-f0-9]{64}$/);
 		expect(agentValidationService.validateLoadedAgentConfiguration).toHaveBeenCalledWith(
 			expect.objectContaining({ id: 'agent-1' }),
 			'project-1',

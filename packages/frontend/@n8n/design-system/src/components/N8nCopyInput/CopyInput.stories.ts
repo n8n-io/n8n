@@ -44,8 +44,15 @@ TruncatedSecret.args = {
 	displayValue: 'n8n_api_3f9d2c1b8a7e...6d5c4b3a291',
 };
 
-export const Medium = Template.bind({});
-Medium.args = {
-	value: 'https://example.n8n.cloud/webhook/abcd-1234',
-	size: 'medium',
-};
+export const Sizes: StoryFn = () => ({
+	components: { N8nCopyInput },
+	template: `
+		<div style="display: flex; flex-direction: column; gap: 12px; max-width: 420px;">
+			<n8n-copy-input value="https://example.n8n.cloud/webhook/abcd-1234" size="mini" />
+			<n8n-copy-input value="https://example.n8n.cloud/webhook/abcd-1234" size="small" />
+			<n8n-copy-input value="https://example.n8n.cloud/webhook/abcd-1234" size="medium" />
+			<n8n-copy-input value="https://example.n8n.cloud/webhook/abcd-1234" size="large" />
+			<n8n-copy-input value="https://example.n8n.cloud/webhook/abcd-1234" size="xlarge" />
+		</div>
+	`,
+});

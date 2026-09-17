@@ -291,6 +291,9 @@ function createBuilderDelegate(
 
 		listAgents: async () => await Promise.resolve([]),
 
+		listAgentCapabilities: async () =>
+			await Promise.resolve({ channels: [], agentCapabilities: [], limitations: [] }),
+
 		resolveAgentName: async () => await Promise.resolve(undefined),
 	};
 }
@@ -314,10 +317,6 @@ function createEventBusStub(): InstanceAiEventBus {
 	return {
 		publish: () => {},
 		subscribe: () => () => {},
-		getEventsAfter: () => [],
-		getEventsForRun: () => [],
-		getEventsForRuns: () => [],
-		getNextEventId: async () => await Promise.resolve(1),
 	};
 }
 
@@ -340,6 +339,9 @@ function createOrchestrationContext(params: {
 	domainContext.threadId = 'thread-1';
 	domainContext.threadMemory = createThreadMemoryStub(params.threadRecords);
 	domainContext.agentBuilderTarget = params.agentBuilderTarget;
+	domainContext.agentPreviewSession = undefined;
+	domainContext.currentUserAttachments = undefined;
+	domainContext.resolvedUserDecisions = undefined;
 	domainContext.logger = createLoggerStub();
 
 	const context = mock<OrchestrationContext>();
@@ -353,6 +355,7 @@ function createOrchestrationContext(params: {
 	context.modelId = 'anthropic/test-model';
 	// Tracing-off is the default; tracing tests set their own stub.
 	context.tracing = undefined;
+	context.currentUserMessage = undefined;
 
 	return context;
 }

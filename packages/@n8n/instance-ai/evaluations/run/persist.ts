@@ -15,13 +15,22 @@ import { roundRobinCaseRows } from './rows';
 import { aggregateWorkflowChecks, statusMap } from '../binaryChecks/aggregate';
 import type { CliArgs } from '../cli/args';
 import type { ComparisonOutcome, ComparisonResult } from '../comparison/compare';
-import { formatComparisonMarkdown, type RerunHint } from '../comparison/format';
+import {
+	formatComparisonMarkdown,
+	type EvaluationSubject,
+	type RerunHint,
+} from '../comparison/format';
 import { evaluateGate, isGatedTier, type GateResult } from '../comparison/gate';
 import type { WorkflowTestCaseWithFile } from '../data/workflows';
+import {
+	AGENT_ARTIFACT_CASE_CAP_BYTES,
+	sanitizeAgentArtifact,
+} from '../harness/artifacts/agent-artifact';
 import type { EvalLogger } from '../harness/logger';
 import { extractErrorMessage } from '../harness/transient-error';
 import { rollupCaseVerification } from '../summary';
 import type {
+	AgentArtifact,
 	BuildExpectationResult,
 	MultiRunEvaluation,
 	WorkflowTestCase,
@@ -301,6 +310,7 @@ export async function runEvalAndPersist(
 			gate,
 			config.mcpBuildSpend,
 			out.experimentUrl,
+			config.tier === 'agents' ? 'agent' : 'workflow',
 		);
 		persisted = true;
 		return { ...out, gate, jsonPath, prCommentPath };
@@ -334,6 +344,7 @@ export async function runEvalAndPersist(
 					undefined,
 					config.mcpBuildSpend,
 					undefined,
+					config.tier === 'agents' ? 'agent' : 'workflow',
 				);
 				config.logger.error(
 					`Eval run did not finish cleanly — wrote partial results (${String(runResults.length)} iteration(s)) to ${jsonPath}`,
@@ -345,6 +356,58 @@ export async function runEvalAndPersist(
 			}
 		}
 	}
+}
+
+type SerializedAgentArtifacts = {
+	agentArtifact?: AgentArtifact;
+	agentArtifactPerRun: Array<AgentArtifact | null>;
+};
+
+const artifactPayloadEncoder = new TextEncoder();
+const artifactPayloadBaselineBytes = artifactPayloadEncoder.encode(
+	JSON.stringify({ testCases: [{ before: null, after: null }] }, null, 2),
+).byteLength;
+
+/** Measure these fields with the same indentation they receive in eval-results.json. */
+function formattedAgentArtifactFieldsBytes(fields: SerializedAgentArtifacts): number {
+	const embeddedFields = {
+		testCases: [{ before: null, ...fields, after: null }],
+	};
+	return (
+		artifactPayloadEncoder.encode(JSON.stringify(embeddedFields, null, 2)).byteLength -
+		artifactPayloadBaselineBytes
+	);
+}
+
+function serializeAgentArtifacts(runs: WorkflowTestCaseResult[]): {
+	agentArtifact?: AgentArtifact;
+	agentArtifactPerRun?: Array<AgentArtifact | null>;
+} {
+	const agentAnchored = runs.some(
+		(run) => run.agentId !== undefined || run.agentArtifact !== undefined,
+	);
+	if (!agentAnchored) return {};
+
+	const agentArtifactPerRun = runs.map((): AgentArtifact | null => null);
+	for (const [index, run] of runs.entries()) {
+		const artifact = sanitizeAgentArtifact(run.agentArtifact);
+		if (!artifact) continue;
+
+		agentArtifactPerRun[index] = artifact;
+		if (
+			formattedAgentArtifactFieldsBytes({ agentArtifactPerRun }) > AGENT_ARTIFACT_CASE_CAP_BYTES
+		) {
+			agentArtifactPerRun[index] = null;
+		}
+	}
+
+	const agentArtifact = agentArtifactPerRun.find((artifact) => artifact !== null);
+	if (!agentArtifact) return { agentArtifactPerRun };
+
+	const withCompatibility = { agentArtifact, agentArtifactPerRun };
+	return formattedAgentArtifactFieldsBytes(withCompatibility) <= AGENT_ARTIFACT_CASE_CAP_BYTES
+		? withCompatibility
+		: { agentArtifactPerRun };
 }
 
 export function writeEvalResults(
@@ -359,6 +422,7 @@ export function writeEvalResults(
 	gate: GateResult | undefined,
 	mcpBuildSpend?: McpBuildSpend[],
 	experimentUrl?: string,
+	subject: EvaluationSubject = 'workflow',
 ): { jsonPath: string; prCommentPath: string } {
 	const { totalRuns, testCases } = evaluation;
 	const metrics = computeAggregateMetrics(evaluation);
@@ -416,6 +480,9 @@ export function writeEvalResults(
 			// it (its Dockerfile used to sed-inject this exact field; keep the
 			// expression verbatim so that patch detects upstream support and no-ops).
 			workflowJson: tc.runs[0]?.workflowJson,
+			// Keep the single-artifact field for one-run and legacy consumers.
+			// The positional array preserves missing artifacts between iterations.
+			...serializeAgentArtifacts(tc.runs),
 			totalRuns,
 			workflowChecksPerRun: tc.runs.map((run) =>
 				run.workflowChecks ? statusMap(run.workflowChecks) : null,
@@ -484,6 +551,7 @@ export function writeEvalResults(
 	writeFileSync(
 		prCommentPath,
 		formatComparisonMarkdown(evaluation, outcome, {
+			subject,
 			commitSha,
 			slugByTestCase,
 			rerun,

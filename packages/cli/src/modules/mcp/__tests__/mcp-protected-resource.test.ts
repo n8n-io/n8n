@@ -1,4 +1,4 @@
-import type { ModuleRegistry } from '@n8n/backend-common';
+import type { LicenseState, ModuleRegistry } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import { mock } from 'vitest-mock-extended';
 
@@ -8,10 +8,15 @@ import type { UrlService } from '@/services/url.service';
 
 import { McpProtectedResource } from '../mcp-protected-resource';
 
-const makeGlobalConfig = ({ builderEnabled = true, tagsDisabled = false } = {}) =>
+const makeGlobalConfig = ({
+	builderEnabled = true,
+	tagsDisabled = false,
+	activityLogEnabled = true,
+} = {}) =>
 	({
 		endpoints: { mcpBuilderEnabled: builderEnabled },
 		tags: { disabled: tagsDisabled },
+		activityLog: { enabled: activityLogEnabled },
 	}) as unknown as GlobalConfig;
 
 describe('McpProtectedResource', () => {
@@ -19,18 +24,21 @@ describe('McpProtectedResource', () => {
 	const mcpSettingsService = mock<McpSettingsService>();
 	const mcpConfig = mock<McpConfig>();
 	const moduleRegistry = mock<ModuleRegistry>();
+	const licenseState = mock<LicenseState>();
 	const resource = new McpProtectedResource(
 		urlService,
 		mcpSettingsService,
 		mcpConfig,
 		makeGlobalConfig(),
 		moduleRegistry,
+		licenseState,
 	);
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mcpConfig.baseUrl = '';
 		moduleRegistry.isActive.mockReturnValue(true);
+		licenseState.isFoldersLicensed.mockReturnValue(true);
 	});
 
 	describe('getScopeTools', () => {
@@ -45,6 +53,26 @@ describe('McpProtectedResource', () => {
 			expect(scopeTools['tag:read']).toContain('list_workflow_tags');
 		});
 
+		/** Consent must not advertise a tool that `tools/list` will not carry. */
+		it('withholds the activity tools from consent when nothing writes the log', () => {
+			moduleRegistry.isActive.mockReturnValue(true);
+			const resourceWithoutLog = new McpProtectedResource(
+				urlService,
+				mcpSettingsService,
+				mcpConfig,
+				makeGlobalConfig({ activityLogEnabled: false }),
+				moduleRegistry,
+				licenseState,
+			);
+
+			const scopeTools = resourceWithoutLog.getScopeTools();
+
+			expect(scopeTools['workflow:read']).not.toContain('get_instance_activity');
+			expect(scopeTools['workflow:read']).not.toContain('expand_instance_activity');
+			// Node usage reads its own index, so the log has no bearing on it.
+			expect(scopeTools['workflow:read']).toContain('get_node_usage');
+		});
+
 		it('should drop tools this instance does not expose', () => {
 			const limitedResource = new McpProtectedResource(
 				urlService,
@@ -52,6 +80,7 @@ describe('McpProtectedResource', () => {
 				mcpConfig,
 				makeGlobalConfig({ builderEnabled: false, tagsDisabled: true }),
 				moduleRegistry,
+				licenseState,
 			);
 
 			const scopeTools = limitedResource.getScopeTools();
@@ -67,6 +96,39 @@ describe('McpProtectedResource', () => {
 			expect(scopeTools['agent:write']).toBeUndefined();
 			// list_workflow_tags is hidden when tags are disabled
 			expect(scopeTools['tag:read']).toEqual([]);
+		});
+
+		it('should drop folder tools when folders are not licensed', () => {
+			licenseState.isFoldersLicensed.mockReturnValue(false);
+
+			const scopeTools = resource.getScopeTools();
+
+			expect(scopeTools['project:write']).not.toContain('create_folder');
+			expect(scopeTools['project:write']).not.toContain('update_folder');
+			expect(scopeTools['workflow:write']).not.toContain('move_workflows_to_folder');
+			expect(scopeTools['project:write']).not.toContain('search_folders');
+			expect(scopeTools['project:read']).not.toContain('search_folders');
+			expect(scopeTools['project:read']).toContain('search_projects');
+		});
+
+		it('advertises the preferences scope with its one tool', () => {
+			expect(resource.scopes).toContain('aiPreference:read');
+			expect(resource.getScopeTools()['aiPreference:read']).toEqual(['get_user_preferences']);
+		});
+
+		// The flag is per-user PostHog and unreachable from the descriptor, so the scope is
+		// offered to everyone; granting it yields no tool until the flag is on.
+		it('keeps advertising the preferences scope regardless of the builder', () => {
+			const withoutBuilder = new McpProtectedResource(
+				urlService,
+				mcpSettingsService,
+				mcpConfig,
+				makeGlobalConfig({ builderEnabled: false }),
+				moduleRegistry,
+				licenseState,
+			);
+
+			expect(withoutBuilder.getScopeTools()['aiPreference:read']).toEqual(['get_user_preferences']);
 		});
 
 		it('should drop agent scopes and tools when the agents module is inactive', () => {
@@ -128,6 +190,18 @@ describe('McpProtectedResource', () => {
 				'mcp-server-api',
 			]);
 		});
+	});
+
+	describe('isAvailable', () => {
+		it.each([true, false])(
+			'should follow the instance MCP access setting (%s)',
+			async (enabled) => {
+				mcpSettingsService.getEnabled.mockResolvedValue(enabled);
+
+				await expect(resource.isAvailable()).resolves.toBe(enabled);
+				await expect(resource.authorize(mock())).resolves.toBe(enabled);
+			},
+		);
 	});
 
 	describe('getAllowedRedirectUris', () => {

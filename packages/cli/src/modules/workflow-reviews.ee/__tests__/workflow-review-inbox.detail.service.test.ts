@@ -1,12 +1,10 @@
 import type { LicenseState } from '@n8n/backend-common';
 import type {
 	User,
-	UserRepository,
 	WorkflowHistory,
-	WorkflowPublishedVersionRepository,
+	WorkflowReviewInboxRepository,
 	WorkflowReviewRequest,
-	WorkflowReviewRequestRepository,
-	WorkflowReviewRequestReviewerRepository,
+	WorkflowReviewRequestState,
 	WorkflowReviewRequestWorkflowDetailRow,
 	WorkflowReviewRequestWorkflowRepository,
 } from '@n8n/db';
@@ -16,10 +14,13 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import type { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 
-import type { WorkflowReviewAccessService } from '../workflow-review-access.service';
-import type { WorkflowReviewEligibilityService } from '../workflow-review-eligibility.service';
+import type { WorkflowReviewAuthorizationService } from '../workflow-review-authorization.service';
 import { WorkflowReviewFeatureGate } from '../workflow-review-feature-gate.service';
 import { WorkflowReviewInboxService } from '../workflow-review-inbox.service';
+import type {
+	WorkflowReviewParticipantResolver,
+	WorkflowReviewParticipants,
+} from '../workflow-review-participant.resolver';
 
 const requestId = 'req-1';
 const workflowId = 'wf-1';
@@ -59,51 +60,52 @@ function historyVersion(versionId: string) {
 
 describe('WorkflowReviewInboxService.getDetail', () => {
 	const workflowReviewPolicyService = mock<WorkflowReviewPolicyService>();
-	const accessService = mock<WorkflowReviewAccessService>();
+	const authorizationService = mock<WorkflowReviewAuthorizationService>();
 	const workflowHistoryService = mock<WorkflowHistoryService>();
-	const publishedVersionRepository = mock<WorkflowPublishedVersionRepository>();
-	const requestRepository = mock<WorkflowReviewRequestRepository>();
+	const inboxRepository = mock<WorkflowReviewInboxRepository>();
 	const workflowRepository = mock<WorkflowReviewRequestWorkflowRepository>();
-	const reviewerRepository = mock<WorkflowReviewRequestReviewerRepository>();
-	const userRepository = mock<UserRepository>();
-	const eligibilityService = mock<WorkflowReviewEligibilityService>();
+	const participantResolver = mock<WorkflowReviewParticipantResolver>();
 	const licenseState = mock<LicenseState>();
 
 	const service = new WorkflowReviewInboxService(
 		new WorkflowReviewFeatureGate(licenseState, workflowReviewPolicyService),
-		accessService,
+		authorizationService,
 		workflowHistoryService,
-		publishedVersionRepository,
-		requestRepository,
+		inboxRepository,
 		workflowRepository,
-		reviewerRepository,
-		userRepository,
-		eligibilityService,
+		participantResolver,
 	);
 
-	/** The read gate resolved: `readableWorkflowRows` are what the caller may still read. */
-	function mockGate(readableWorkflowRows: WorkflowReviewRequestWorkflowDetailRow[] = []) {
-		accessService.findReadableRequestOrFail.mockResolvedValue({
-			request: reviewRequest(),
-			readableWorkflowRows,
-			pinnedWorkflowId: readableWorkflowRows.at(0)?.workflowId ?? null,
-			canReadPinnedWorkflow: readableWorkflowRows.length > 0,
+	/** The resolver is exercised in its own test; here it only has to answer. */
+	function mockParticipants(participants: Partial<WorkflowReviewParticipants> = {}) {
+		participantResolver.resolve.mockResolvedValue({
+			for: () => ({ requester: null, authors: [], reviewers: [], ...participants }),
+		});
+	}
+
+	/** The read gate resolved: the caller may read everything the review covers. */
+	function mockGate(
+		workflowRows: WorkflowReviewRequestWorkflowDetailRow[] = [],
+		request = reviewRequest(),
+	) {
+		authorizationService.findReadableRequestOrFail.mockResolvedValue({
+			request,
+			workflowRows,
+			readableWorkflowRows: workflowRows,
 		});
 	}
 
 	beforeEach(() => {
 		vi.resetAllMocks();
-		process.env.N8N_ENV_FEAT_WORKFLOW_REVIEWS = 'true';
 		licenseState.isWorkflowReviewsLicensed.mockReturnValue(true);
 		workflowReviewPolicyService.get.mockResolvedValue({ enabled: true });
 		mockGate();
-		reviewerRepository.findByRequestIds.mockResolvedValue([]);
-		userRepository.findManyByIds.mockResolvedValue([]);
-		publishedVersionRepository.getPublishedVersionId.mockResolvedValue(null);
+		mockParticipants();
 		workflowHistoryService.findVersion.mockResolvedValue(null);
-		eligibilityService.resolveViewerEligibility.mockResolvedValue({
+		authorizationService.resolveViewerEligibility.mockResolvedValue({
 			canDecide: true,
 			decisionIneligibilityReason: null,
+			canComment: true,
 		});
 	});
 
@@ -111,8 +113,20 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 	function mockChildRow(
 		pinnedVersionId: string | null = 'ver-pinned',
 		workflowName = 'My workflow',
+		baselineVersionId: string | null = null,
+		requestState: WorkflowReviewRequestState = 'open',
+		activeVersionId: string | null = null,
 	) {
-		mockGate([{ workflowId, workflowName, workflowVersionId: pinnedVersionId }]);
+		mockGate([
+			{
+				workflowId,
+				workflowName,
+				workflowVersionId: pinnedVersionId,
+				activeVersionId,
+				baselineVersionId,
+				requestState,
+			},
+		]);
 	}
 
 	describe('when reviews are unavailable', () => {
@@ -120,14 +134,14 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 			licenseState.isWorkflowReviewsLicensed.mockReturnValue(false);
 
 			await expect(service.getDetail(requester, requestId)).rejects.toThrow(ForbiddenError);
-			expect(accessService.findReadableRequestOrFail).not.toHaveBeenCalled();
+			expect(authorizationService.findReadableRequestOrFail).not.toHaveBeenCalled();
 		});
 
 		it('refuses to open a review when an admin has turned reviews off', async () => {
 			workflowReviewPolicyService.get.mockResolvedValue({ enabled: false });
 
 			await expect(service.getDetail(requester, requestId)).rejects.toThrow(ForbiddenError);
-			expect(accessService.findReadableRequestOrFail).not.toHaveBeenCalled();
+			expect(authorizationService.findReadableRequestOrFail).not.toHaveBeenCalled();
 		});
 	});
 
@@ -145,105 +159,127 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 				decision: 'pending',
 				title: 'Please review',
 				description: 'Some context',
-				workflowName: 'My workflow',
-				workflowVersionId: 'ver-pinned',
 				createdAt: '2026-07-01T00:00:00.000Z',
 				updatedAt: '2026-07-02T00:00:00.000Z',
 			});
 			expect(detail.workflows).toHaveLength(1);
 			expect(detail.workflows[0]).toMatchObject({ workflowId, workflowName: 'My workflow' });
+			// The covered workflows live only in `workflows` — the inbox card's flat
+			// summary fields are not part of the detail response.
+			expect(detail).not.toHaveProperty('workflowName');
+			expect(detail).not.toHaveProperty('workflowVersionId');
 		});
 
 		// A covered workflow is removed along with the workflow itself, so a closed
 		// review — history of a deleted workflow — can legitimately cover none
 		it('returns a closed review with no workflows when its workflow was deleted', async () => {
-			requestRepository.findById.mockResolvedValue(reviewRequest({ state: 'closed' }));
-			workflowRepository.findLinkedWorkflowDetailsByRequestId.mockResolvedValue([]);
+			mockGate([], reviewRequest({ state: 'closed' }));
 
 			const detail = await service.getDetail(requester, requestId);
 
+			expect(detail.state).toBe('closed');
 			expect(detail.workflows).toEqual([]);
-			expect(detail.workflowName).toBeNull();
-			expect(detail.workflowVersionId).toBeNull();
 		});
 
 		// An open review can transiently cover no workflow when a delete orphaned
 		// it and the sweep hasn't closed it yet — it stays readable until then
 		it('returns an open review with no workflows when its workflow was deleted', async () => {
-			workflowRepository.findLinkedWorkflowDetailsByRequestId.mockResolvedValue([]);
-
 			const detail = await service.getDetail(requester, requestId);
 
 			expect(detail.state).toBe('open');
 			expect(detail.workflows).toEqual([]);
-			expect(detail.workflowName).toBeNull();
+		});
+	});
+
+	describe('the people on the review', () => {
+		it('carries the resolved participants onto the detail', async () => {
+			mockParticipants({
+				requester: mock({ id: requester.id }),
+				authors: [mock({ id: requester.id }), mock({ id: 'author-2' })],
+				reviewers: [mock({ id: 'reviewer-1' })],
+			});
+
+			const detail = await service.getDetail(requester, requestId);
+
+			expect(participantResolver.resolve).toHaveBeenCalledWith([
+				expect.objectContaining({ id: requestId }),
+			]);
+			expect(detail.requester).toMatchObject({ id: requester.id });
+			expect(detail.authors.map((author) => author.id)).toEqual([requester.id, 'author-2']);
+			expect(detail.reviewers.map((reviewer) => reviewer.id)).toEqual(['reviewer-1']);
 		});
 	});
 
 	describe('viewer eligibility', () => {
-		it('tells the client the viewer may decide', async () => {
+		it('tells the client the viewer may both decide and comment', async () => {
 			const detail = await service.getDetail(requester, requestId);
 
 			expect(detail.viewerCanDecide).toBe(true);
 			expect(detail.viewerDecisionIneligibilityReason).toBeNull();
+			expect(detail.viewerCanComment).toBe(true);
 		});
 
-		it('tells an author why they cannot decide', async () => {
-			eligibilityService.resolveViewerEligibility.mockResolvedValue({
+		it('tells an author why they cannot decide while still letting them comment', async () => {
+			authorizationService.resolveViewerEligibility.mockResolvedValue({
 				canDecide: false,
 				decisionIneligibilityReason: 'author',
+				canComment: true,
 			});
 
 			const detail = await service.getDetail(requester, requestId);
 
 			expect(detail.viewerCanDecide).toBe(false);
 			expect(detail.viewerDecisionIneligibilityReason).toBe('author');
+			expect(detail.viewerCanComment).toBe(true);
 		});
 
-		it('checks what the viewer may do against the workflow under review, even one they cannot open', async () => {
-			// The requester keeps their record after losing read access to the covered
-			// workflow — eligibility must still be checked against that pinned row.
-			accessService.findReadableRequestOrFail.mockResolvedValue({
+		it('checks what the viewer may do against every covered workflow, even ones they cannot open', async () => {
+			// The requester keeps their record after losing view access to the covered
+			// workflow — eligibility must still see the full coverage.
+			const coveredRow = mock<WorkflowReviewRequestWorkflowDetailRow>({ workflowId });
+			authorizationService.findReadableRequestOrFail.mockResolvedValue({
 				request: reviewRequest(),
+				workflowRows: [coveredRow],
 				readableWorkflowRows: [],
-				pinnedWorkflowId: workflowId,
-				canReadPinnedWorkflow: false,
 			});
-			eligibilityService.resolveViewerEligibility.mockResolvedValue({
+			authorizationService.resolveViewerEligibility.mockResolvedValue({
 				canDecide: false,
-				decisionIneligibilityReason: 'missing_publish_permission',
+				decisionIneligibilityReason: 'missing_permission',
+				canComment: false,
 			});
 
 			const detail = await service.getDetail(requester, requestId);
 
-			expect(eligibilityService.resolveViewerEligibility).toHaveBeenCalledWith(
-				requester,
-				expect.objectContaining({ id: requestId }),
-				workflowId,
-			);
+			expect(authorizationService.resolveViewerEligibility).toHaveBeenCalledWith(requester, {
+				request: expect.objectContaining({ id: requestId }),
+				workflowRows: [coveredRow],
+				readableWorkflowRows: [],
+			});
 			expect(detail.workflows).toEqual([]);
 			expect(detail.viewerCanDecide).toBe(false);
-			expect(detail.viewerDecisionIneligibilityReason).toBe('missing_publish_permission');
+			expect(detail.viewerDecisionIneligibilityReason).toBe('missing_permission');
+			expect(detail.viewerCanComment).toBe(false);
 		});
 
-		it('passes no workflow id when a closed review no longer covers any workflow', async () => {
-			requestRepository.findById.mockResolvedValue(reviewRequest({ state: 'closed' }));
-			workflowRepository.findLinkedWorkflowDetailsByRequestId.mockResolvedValue([]);
+		it('passes the closed review and its empty coverage to the eligibility check', async () => {
+			mockGate([], reviewRequest({ state: 'closed' }));
 
 			await service.getDetail(requester, requestId);
 
-			expect(eligibilityService.resolveViewerEligibility).toHaveBeenCalledWith(
+			expect(authorizationService.resolveViewerEligibility).toHaveBeenCalledWith(
 				requester,
-				expect.objectContaining({ id: requestId }),
-				null,
+				expect.objectContaining({
+					request: expect.objectContaining({ state: 'closed' }),
+					workflowRows: [],
+					readableWorkflowRows: [],
+				}),
 			);
 		});
 	});
 
 	describe('the two versions to compare', () => {
 		it('returns the version under review and the published version to compare it against', async () => {
-			mockChildRow('ver-pinned');
-			publishedVersionRepository.getPublishedVersionId.mockResolvedValue('ver-published');
+			mockChildRow('ver-pinned', 'My workflow', null, 'open', 'ver-published');
 			workflowHistoryService.findVersion.mockImplementation(async (_workflowId, versionId) =>
 				historyVersion(versionId),
 			);
@@ -258,12 +294,12 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 				nodeGroups: [],
 				createdAt: '2026-06-01T00:00:00.000Z',
 			});
+			expect(detail.workflows[0]?.publishedVersionId).toBe('ver-published');
 			expect(detail.workflows[0]?.baselineVersion).toMatchObject({ versionId: 'ver-published' });
 		});
 
 		it('has nothing to compare against when the workflow was never published', async () => {
 			mockChildRow('ver-pinned');
-			publishedVersionRepository.getPublishedVersionId.mockResolvedValue(null);
 			workflowHistoryService.findVersion.mockResolvedValue(historyVersion('ver-pinned'));
 
 			const detail = await service.getDetail(requester, requestId);
@@ -273,8 +309,7 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 		});
 
 		it('has nothing to compare against when the published version is no longer stored', async () => {
-			mockChildRow('ver-pinned');
-			publishedVersionRepository.getPublishedVersionId.mockResolvedValue('ver-published');
+			mockChildRow('ver-pinned', 'My workflow', null, 'open', 'ver-published');
 			workflowHistoryService.findVersion.mockImplementation(async (_workflowId, versionId) =>
 				versionId === 'ver-pinned' ? historyVersion(versionId) : null,
 			);
@@ -312,6 +347,85 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 			const detail = await service.getDetail(requester, requestId);
 
 			expect(detail.workflows[0]?.pinnedVersion).not.toHaveProperty('authors');
+		});
+
+		it('uses the frozen baseline on a closed review, not the live published pointer', async () => {
+			mockGate(
+				[
+					{
+						workflowId,
+						workflowName: 'My workflow',
+						workflowVersionId: 'ver-pinned',
+						activeVersionId: 'ver-live-now',
+						baselineVersionId: 'ver-frozen',
+						requestState: 'closed',
+					},
+				],
+				reviewRequest({ state: 'closed', decision: 'approved' }),
+			);
+			workflowHistoryService.findVersion.mockImplementation(async (_workflowId, versionId) =>
+				historyVersion(versionId),
+			);
+
+			const detail = await service.getDetail(requester, requestId);
+
+			expect(detail.workflows[0]?.baselineVersion).toMatchObject({ versionId: 'ver-frozen' });
+			expect(detail.workflows[0]?.publishedVersionId).toBe('ver-live-now');
+		});
+
+		it('uses a frozen baseline whatever state accompanies it', async () => {
+			// Only an approval ever writes a baseline, so a frozen one can be trusted alone.
+			mockGate(
+				[
+					{
+						workflowId,
+						workflowName: 'My workflow',
+						workflowVersionId: 'ver-pinned',
+						activeVersionId: 'ver-live-now',
+						baselineVersionId: 'ver-frozen',
+						requestState: 'open',
+					},
+				],
+				reviewRequest({ state: 'open', decision: 'pending' }),
+			);
+			workflowHistoryService.findVersion.mockImplementation(async (_workflowId, versionId) =>
+				historyVersion(versionId),
+			);
+
+			const detail = await service.getDetail(requester, requestId);
+
+			expect(detail.workflows[0]?.baselineVersion).toMatchObject({ versionId: 'ver-frozen' });
+		});
+
+		/**
+		 * The row's own state decides, not the request's: the request is read before its
+		 * rows, so an approval landing in between leaves the request looking open. A
+		 * frozen null would otherwise read as "still open" and resolve the live version,
+		 * showing a diff nobody approved. Null on a closed row can mean never published,
+		 * approved while unpublished, or closed without an approval — callers tell those
+		 * apart via `state` + `decision`, which is why none of them is an input here.
+		 */
+		it('has nothing to compare against on a closed row, whatever the request says', async () => {
+			mockGate(
+				[
+					{
+						workflowId,
+						workflowName: 'My workflow',
+						workflowVersionId: 'ver-pinned',
+						activeVersionId: 'ver-live-now',
+						baselineVersionId: null,
+						requestState: 'closed',
+					},
+				],
+				reviewRequest({ state: 'closed', decision: 'approved' }),
+			);
+			workflowHistoryService.findVersion.mockImplementation(async (_workflowId, versionId) =>
+				historyVersion(versionId),
+			);
+
+			const detail = await service.getDetail(requester, requestId);
+
+			expect(detail.workflows[0]?.baselineVersion).toBeNull();
 		});
 	});
 });

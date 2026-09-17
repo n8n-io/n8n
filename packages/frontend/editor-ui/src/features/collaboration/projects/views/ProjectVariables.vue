@@ -33,8 +33,7 @@ import {
 import { useAsyncState } from '@vueuse/core';
 import pickBy from 'lodash/pickBy';
 import type { ComponentExposed } from 'vue-component-type-helpers';
-import { useInsightsStore } from '@/features/execution/insights/insights.store';
-import InsightsSummary from '@/features/execution/insights/components/InsightsSummary.vue';
+import { InsightsSummary, useInsightsStore } from '@n8n/frontend-module-insights';
 import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
 import type { EnvironmentVariable } from '@/features/settings/environments.ee/environments.types';
 import VariablesUsageBadge from '@/features/settings/environments.ee/components/VariablesUsageBadge.vue';
@@ -474,6 +473,8 @@ onMounted(() => {
 </template>
 
 <style lang="scss" scoped>
+@use '@/app/css/variables' as *;
+
 .scope-badge {
 	text-transform: none;
 	display: flex;

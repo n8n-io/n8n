@@ -1,18 +1,44 @@
 import {
 	AI_GATEWAY_MANAGED_TAG,
+	base64EncodedSize,
+	exceedsAttachmentSizeLimit,
+	formatAttachmentSizeLimit,
+	formatTotalAttachmentSizeLimit,
+	MAX_ATTACHMENT_DECODED_BYTES,
+	MAX_TOTAL_ATTACHMENT_BASE64_BYTES,
+	MAX_TOTAL_ATTACHMENT_DECODED_BYTES,
+	instanceAiFileAttachmentSchema,
+	MAX_ATTACHMENT_BASE64_BYTES,
 	applyBranchReadOnlyOverrides,
+	buildCredentialDestinationGrantKey,
 	buildDataTablesSessionGrantKey,
+	buildUpdateWorkflowSessionGrantKey,
+	buildSetupSkipGrantKey,
+	parseSetupSkipGrants,
 	buildFetchUrlGrantKey,
+	confirmationRequestPayloadSchema,
 	DEFAULT_INSTANCE_AI_PERMISSIONS,
 	errorPayloadSchema,
 	FETCH_URL_ALLOW_ALL_GRANT_KEY,
 	InstanceAiAdminSettingsUpdateRequest,
+	InstanceAiSendMessageRequest,
 	instanceAiEventSchema,
+	INSTANCE_AI_EPHEMERAL_EVENT_TYPES,
 	isDisplayableConfirmationRequest,
 	InstanceAiEnsureThreadRequest,
 	findUnbackedSeedWorkflowTools,
+	findSeedFolderIssues,
+	instanceAiEvalSeedFolderSchema,
 	InstanceAiEvalRestoreThreadRequest,
+	InstanceAiThreadHistoryQuery,
+	InstanceAiThreadMessagesQuery,
+	INSTANCE_AI_THREAD_MESSAGES_DEFAULT_LIMIT,
+	INSTANCE_AI_THREAD_MESSAGES_MAX_LIMIT,
+	INSTANCE_AI_THREAD_MESSAGES_MAX_PAGE,
 	instanceAiEvalSeedAgentSchema,
+	instanceAiAttachmentSchema,
+	instanceAiHandoffContextSchema,
+	instanceAiResourceAttachmentSchema,
 	INSTANCE_AI_THREAD_SOURCES,
 	isInstanceAiSandboxProvider,
 	isKnownInstanceAiErrorCode,
@@ -23,6 +49,22 @@ import {
 	type InstanceAiConfirmationRequestPayload,
 	type InstanceAiPermissions,
 } from '../instance-ai.schema';
+
+describe('Instance AI prompt version requests', () => {
+	it('accepts an optional version pin and rejects empty or oversized pins', () => {
+		const base = { message: 'Build a workflow', timeZone: 'UTC' };
+		expect(InstanceAiSendMessageRequest.safeParse(base).success).toBe(true);
+		expect(
+			InstanceAiSendMessageRequest.parse({ ...base, promptVersion: ' progressive@1 ' })
+				.promptVersion,
+		).toBe('progressive@1');
+		for (const promptVersion of ['', '   ', 'x'.repeat(129)]) {
+			expect(InstanceAiSendMessageRequest.safeParse({ ...base, promptVersion }).success).toBe(
+				false,
+			);
+		}
+	});
+});
 
 describe('sandbox provider', () => {
 	it('accepts supported providers', () => {
@@ -56,6 +98,84 @@ describe('instanceAiEventSchema', () => {
 		};
 
 		expect(instanceAiEventSchema.parse(event)).toEqual(event);
+	});
+
+	it('parses setup-items events (the FE drops any type failing this parse)', () => {
+		const event = {
+			type: 'setup-items',
+			runId: 'run-1',
+			agentId: 'agent-1',
+			payload: {
+				workflowId: 'wf-1',
+				items: [
+					{
+						id: 'wf-1:credential:slackApi',
+						kind: 'credential',
+						credentialType: 'slackApi',
+						nodeBindings: [{ nodeName: 'Send message' }],
+					},
+				],
+			},
+		};
+
+		expect(instanceAiEventSchema.parse(event)).toEqual(event);
+	});
+
+	it('parses historical eval-setup agent events', () => {
+		const event = {
+			type: 'agent-spawned',
+			runId: 'run-legacy-eval',
+			agentId: 'agent-legacy-eval',
+			payload: {
+				parentId: 'agent-root',
+				role: 'evaluation setup',
+				tools: ['workflows'],
+				taskId: 'task-legacy-eval',
+				kind: 'eval-setup',
+				title: 'Setting up evaluations',
+				targetResource: { type: 'workflow', id: 'workflow-1' },
+			},
+		};
+
+		expect(instanceAiEventSchema.parse(event)).toEqual(event);
+	});
+
+	it('keeps setup-items durable (not ephemeral) so snapshots survive refresh', () => {
+		expect(INSTANCE_AI_EPHEMERAL_EVENT_TYPES.has('setup-items')).toBe(false);
+	});
+
+	it('drops malformed or unknown-kind items individually instead of failing the event', () => {
+		const event = {
+			type: 'setup-items',
+			runId: 'run-1',
+			agentId: 'agent-1',
+			payload: {
+				workflowId: 'wf-1',
+				items: [
+					// Missing credentialType.
+					{ id: 'wf-1:credential:slackApi', kind: 'credential' },
+					// A kind this client predates.
+					{ id: 'wf-1:question:q-1', kind: 'question', prompt: 'Region?' },
+					{
+						id: 'wf-1:credential:notionApi',
+						kind: 'credential',
+						credentialType: 'notionApi',
+					},
+				],
+			},
+		};
+
+		const result = instanceAiEventSchema.safeParse(event);
+		expect(result.success).toBe(true);
+		if (result.success && result.data.type === 'setup-items') {
+			expect(result.data.payload.items).toEqual([
+				{
+					id: 'wf-1:credential:notionApi',
+					kind: 'credential',
+					credentialType: 'notionApi',
+				},
+			]);
+		}
 	});
 });
 
@@ -156,6 +276,7 @@ describe('applyBranchReadOnlyOverrides', () => {
 		expect(result.readFilesystem).toBe('require_approval');
 		expect(result.fetchUrl).toBe('require_approval');
 		expect(result.publishWorkflow).toBe('require_approval');
+		expect(result.createCredential).toBe('require_approval');
 		expect(result.deleteCredential).toBe('require_approval');
 		expect(result.restoreWorkflowVersion).toBe('require_approval');
 
@@ -179,6 +300,7 @@ describe('applyBranchReadOnlyOverrides', () => {
 		const permissions: InstanceAiPermissions = {
 			...DEFAULT_INSTANCE_AI_PERMISSIONS,
 			publishWorkflow: 'always_allow',
+			createCredential: 'always_allow',
 			deleteCredential: 'always_allow',
 			readFilesystem: 'always_allow',
 		};
@@ -186,6 +308,7 @@ describe('applyBranchReadOnlyOverrides', () => {
 		const result = applyBranchReadOnlyOverrides(permissions);
 
 		expect(result.publishWorkflow).toBe('always_allow');
+		expect(result.createCredential).toBe('always_allow');
 		expect(result.deleteCredential).toBe('always_allow');
 		expect(result.readFilesystem).toBe('always_allow');
 	});
@@ -211,6 +334,38 @@ function makeConfirmation(
 		...overrides,
 	};
 }
+
+describe('confirmationRequestPayloadSchema', () => {
+	it('preserves an explicit credential selection requirement', () => {
+		const payload = makeConfirmation({ requireUserSelection: true });
+
+		expect(confirmationRequestPayloadSchema.parse(payload)).toEqual(payload);
+	});
+
+	it('preserves a credential destination requiring approval', () => {
+		const payload = makeConfirmation({
+			credentialDestination: {
+				origin: 'https://api.example.com',
+				nodeNames: ['Fetch account'],
+			},
+		});
+
+		expect(confirmationRequestPayloadSchema.parse(payload)).toEqual(payload);
+	});
+
+	it('requires a credential destination to be an exact HTTP origin', () => {
+		const result = confirmationRequestPayloadSchema.safeParse(
+			makeConfirmation({
+				credentialDestination: {
+					origin: 'https://api.example.com/v1',
+					nodeNames: ['Fetch account'],
+				},
+			}),
+		);
+
+		expect(result.success).toBe(false);
+	});
+});
 
 describe('isDisplayableConfirmationRequest', () => {
 	it('treats approval and text messages as displayable', () => {
@@ -439,6 +594,39 @@ describe('data-tables session grant keys', () => {
 	});
 });
 
+describe('workflow update session grant keys', () => {
+	it('builds per-workflow keys matching the frontend always-allow format', () => {
+		expect(buildUpdateWorkflowSessionGrantKey('wf-1')).toBe('workflows:update:wf-1');
+	});
+});
+
+describe('credential destination session grant keys', () => {
+	it('encodes the workflow and exact origin', () => {
+		expect(buildCredentialDestinationGrantKey('workflow:1', 'https://api.example.com:8443')).toBe(
+			'credential-destination:workflow%3A1:https%3A%2F%2Fapi.example.com%3A8443',
+		);
+	});
+});
+
+describe('workflow-setup skip keys', () => {
+	it('round-trips credential types and ignores unrelated keys', () => {
+		const keys = new Set([
+			buildSetupSkipGrantKey('slackApi'),
+			buildSetupSkipGrantKey('Wait for Form'),
+			'executions:run:wf-1',
+		]);
+
+		expect(buildSetupSkipGrantKey('slackApi')).toBe('workflows:setup-skip:slackApi');
+		expect(parseSetupSkipGrants(keys)).toEqual(new Set(['slackApi', 'Wait for Form']));
+	});
+
+	it('does not collide with the workflow-update namespace', () => {
+		expect(parseSetupSkipGrants(new Set([buildUpdateWorkflowSessionGrantKey('wf-1')])).size).toBe(
+			0,
+		);
+	});
+});
+
 describe('domain-access grant keys', () => {
 	it('builds and parses per-host grant keys round-trip', () => {
 		const key = buildFetchUrlGrantKey('example.com');
@@ -545,7 +733,7 @@ describe('instanceAiEvalSeedAgentSchema resource references', () => {
 		expect(errorOf(result)).toContain('Duplicate seed agent id');
 	});
 
-	it('rejects sub-agent delegation outright — seeded agents restore unpublished', () => {
+	it('accepts a sub-agent relationship backed by another seeded agent', () => {
 		const result = InstanceAiEvalRestoreThreadRequest.safeParse({
 			threadId: '11111111-1111-4111-8111-111111111111',
 			messages: [],
@@ -554,8 +742,34 @@ describe('instanceAiEvalSeedAgentSchema resource references', () => {
 				agent({ id: 'AgEnT99999999999', config: { ...config, name: 'Helper' } }),
 			],
 		});
+
+		expect(result.success).toBe(true);
+	});
+
+	it.each([
+		{
+			name: 'self reference',
+			referencedAgentId: 'AgEnT12345678901',
+			expectedError: 'cannot use itself as a sub-agent',
+		},
+		{
+			name: 'unbacked reference',
+			referencedAgentId: 'AgEnT99999999999',
+			expectedError: 'is not included in the seed',
+		},
+	])('rejects a $name', ({ referencedAgentId, expectedError }) => {
+		const result = InstanceAiEvalRestoreThreadRequest.safeParse({
+			threadId: '11111111-1111-4111-8111-111111111111',
+			messages: [],
+			agents: [
+				agent({
+					config: { ...config, subAgents: { agents: [{ agentId: referencedAgentId }] } },
+				}),
+			],
+		});
+
 		expect(result.success).toBe(false);
-		expect(errorOf(result)).toContain('unpublished draft');
+		expect(errorOf(result)).toContain(expectedError);
 	});
 
 	it('rejects an inherited property name as a backed skill body', () => {
@@ -589,5 +803,510 @@ describe('instanceAiEvalSeedAgentSchema resource references', () => {
 			],
 		});
 		expect(backed).toEqual([]);
+	});
+});
+
+describe('instanceAiFileAttachmentSchema size bound', () => {
+	function attachmentWithEncodedSize(bytes: number) {
+		return {
+			type: 'file' as const,
+			data: 'A'.repeat(bytes),
+			mimeType: 'image/png',
+			fileName: 'pasted.png',
+		};
+	}
+
+	it('accepts a payload exactly at the base64 limit', () => {
+		const result = instanceAiFileAttachmentSchema.safeParse(
+			attachmentWithEncodedSize(MAX_ATTACHMENT_BASE64_BYTES),
+		);
+		expect(result.success).toBe(true);
+	});
+
+	it('rejects a payload one byte over the base64 limit', () => {
+		const result = instanceAiFileAttachmentSchema.safeParse(
+			attachmentWithEncodedSize(MAX_ATTACHMENT_BASE64_BYTES + 1),
+		);
+		expect(result.success).toBe(false);
+	});
+
+	it('bounds the base64-encoded size, not the decoded size', () => {
+		// The provider limit applies to the encoded payload. A bound expressed in
+		// decoded bytes would be ~4/3 larger and admit payloads it rejects.
+		const decodedUnitBound = Math.ceil((MAX_ATTACHMENT_BASE64_BYTES * 4) / 3);
+		const result = instanceAiFileAttachmentSchema.safeParse(
+			attachmentWithEncodedSize(decodedUnitBound),
+		);
+		expect(result.success).toBe(false);
+	});
+
+	it('states the limit as the raw file size the user sees, not the encoded one', () => {
+		const result = instanceAiFileAttachmentSchema.safeParse(
+			attachmentWithEncodedSize(MAX_ATTACHMENT_BASE64_BYTES + 1),
+		);
+		expect(result.success).toBe(false);
+		if (!result.success) {
+			expect(result.error.issues[0].message).toContain(formatAttachmentSizeLimit());
+		}
+	});
+});
+
+describe('base64EncodedSize', () => {
+	it.each([
+		[0, 0],
+		[1, 4],
+		[2, 4],
+		[3, 4],
+		[4, 8],
+	])('encodes %i raw bytes as %i base64 bytes', (raw, encoded) => {
+		expect(base64EncodedSize(raw)).toBe(encoded);
+	});
+
+	it('inflates by roughly 4/3', () => {
+		expect(base64EncodedSize(3 * 1024 * 1024)).toBe(4 * 1024 * 1024);
+	});
+});
+
+describe('exceedsAttachmentSizeLimit', () => {
+	// A file is measured by its *encoded* size, so the largest file that fits is
+	// three quarters of the limit — not the limit itself.
+	const largestAllowedRawBytes = (MAX_ATTACHMENT_BASE64_BYTES / 4) * 3;
+
+	it('accepts a file whose encoded form lands exactly on the limit', () => {
+		expect(exceedsAttachmentSizeLimit(largestAllowedRawBytes)).toBe(false);
+	});
+
+	it('rejects a file whose encoded form crosses the limit', () => {
+		expect(exceedsAttachmentSizeLimit(largestAllowedRawBytes + 1)).toBe(true);
+	});
+
+	it('rejects a raw size that only fits when the 4/3 inflation is ignored', () => {
+		// This is the case a naive `file.size > limit` check lets through.
+		expect(largestAllowedRawBytes + 1).toBeLessThan(MAX_ATTACHMENT_BASE64_BYTES);
+		expect(exceedsAttachmentSizeLimit(MAX_ATTACHMENT_BASE64_BYTES)).toBe(true);
+	});
+});
+
+describe('MAX_ATTACHMENT_DECODED_BYTES', () => {
+	it('is the largest raw file whose encoded form still fits', () => {
+		expect(exceedsAttachmentSizeLimit(MAX_ATTACHMENT_DECODED_BYTES)).toBe(false);
+		expect(exceedsAttachmentSizeLimit(MAX_ATTACHMENT_DECODED_BYTES + 1)).toBe(true);
+	});
+
+	it('is smaller than the encoded limit, because base64 inflates', () => {
+		expect(MAX_ATTACHMENT_DECODED_BYTES).toBeLessThan(MAX_ATTACHMENT_BASE64_BYTES);
+	});
+});
+
+describe('formatAttachmentSizeLimit', () => {
+	// Users compare against the file on their disk, which is the decoded size. Quoting
+	// the encoded limit would tell someone with an 8 MB file that it "exceeds 10 MB".
+	it('describes the limit as the raw file size a user would see', () => {
+		expect(formatAttachmentSizeLimit()).toBe('7.5 MB');
+	});
+});
+
+describe('instanceAiFileAttachmentSchema rejection message', () => {
+	it('quotes the raw-file limit, not the encoded one', () => {
+		const result = instanceAiFileAttachmentSchema.safeParse({
+			type: 'file',
+			data: 'A'.repeat(MAX_ATTACHMENT_BASE64_BYTES + 1),
+			mimeType: 'image/png',
+			fileName: 'pasted.png',
+		});
+
+		expect(result.success).toBe(false);
+		if (!result.success) {
+			const { message } = result.error.issues[0];
+			expect(message).toContain('7.5 MB');
+			expect(message).not.toContain('10 MB');
+		}
+	});
+
+	it('tells the user what to do about it', () => {
+		const result = instanceAiFileAttachmentSchema.safeParse({
+			type: 'file',
+			data: 'A'.repeat(MAX_ATTACHMENT_BASE64_BYTES + 1),
+			mimeType: 'image/png',
+			fileName: 'pasted.png',
+		});
+
+		expect(result.success).toBe(false);
+		if (!result.success) {
+			expect(result.error.issues[0].message.toLowerCase()).toContain('smaller');
+		}
+	});
+});
+
+describe('total attachment budget', () => {
+	it('exposes the combined ceiling as a raw file size', () => {
+		expect(MAX_TOTAL_ATTACHMENT_DECODED_BYTES).toBe((MAX_TOTAL_ATTACHMENT_BASE64_BYTES / 4) * 3);
+	});
+
+	it('describes the combined limit for user-facing copy', () => {
+		expect(formatTotalAttachmentSizeLimit()).toBe('12.0 MB');
+	});
+
+	it('leaves room for more than one max-size file', () => {
+		expect(MAX_TOTAL_ATTACHMENT_DECODED_BYTES).toBeGreaterThan(MAX_ATTACHMENT_DECODED_BYTES);
+	});
+});
+
+describe('instanceAiAttachmentSchema — nodes attachment', () => {
+	const nodesAttachment = (overrides: Record<string, unknown> = {}) => ({
+		type: 'nodes',
+		workflowId: 'wf-1',
+		sets: [{ nodes: [{ id: 'n1', name: 'HTTP Request' }] }],
+		...overrides,
+	});
+
+	it('accepts a single set with one loose node and no optional fields', () => {
+		const result = instanceAiAttachmentSchema.safeParse(nodesAttachment());
+		expect(result.success).toBe(true);
+	});
+
+	it('accepts a chain set with inputNode, outputNode, and canvasGroupId', () => {
+		const result = instanceAiAttachmentSchema.safeParse(
+			nodesAttachment({
+				sets: [
+					{
+						nodes: [
+							{ id: 'n1', name: 'HTTP Request' },
+							{ id: 'n2', name: 'Set' },
+							{ id: 'n3', name: 'IF' },
+						],
+						inputNode: { id: 'n0', name: 'Webhook' },
+						outputNode: { id: 'n4', name: 'Slack' },
+						canvasGroupId: 'g1',
+						canvasGroupName: 'My Group 1',
+					},
+				],
+			}),
+		);
+		expect(result.success).toBe(true);
+	});
+
+	it('accepts two sets at once', () => {
+		const result = instanceAiAttachmentSchema.safeParse(
+			nodesAttachment({
+				sets: [
+					{ nodes: [{ id: 'n1' }] },
+					{ nodes: [{ id: 'n2' }, { id: 'n3' }], inputNode: { id: 'n1' } },
+				],
+			}),
+		);
+		expect(result.success).toBe(true);
+	});
+
+	it('rejects a missing workflowId', () => {
+		const result = instanceAiAttachmentSchema.safeParse(nodesAttachment({ workflowId: undefined }));
+		expect(result.success).toBe(false);
+	});
+
+	it('rejects an empty sets array', () => {
+		const result = instanceAiAttachmentSchema.safeParse(nodesAttachment({ sets: [] }));
+		expect(result.success).toBe(false);
+	});
+
+	it('rejects a set with an empty nodes array', () => {
+		const result = instanceAiAttachmentSchema.safeParse(nodesAttachment({ sets: [{ nodes: [] }] }));
+		expect(result.success).toBe(false);
+	});
+
+	it('rejects more than 50 sets', () => {
+		const sets = Array.from({ length: 51 }, (_, i) => ({ nodes: [{ id: `n${i}` }] }));
+		const result = instanceAiAttachmentSchema.safeParse(nodesAttachment({ sets }));
+		expect(result.success).toBe(false);
+	});
+
+	it('rejects more than 50 nodes in a single set', () => {
+		const nodes = Array.from({ length: 51 }, (_, i) => ({ id: `n${i}` }));
+		const result = instanceAiAttachmentSchema.safeParse(nodesAttachment({ sets: [{ nodes }] }));
+		expect(result.success).toBe(false);
+	});
+
+	it('accepts node refs without a name', () => {
+		const result = instanceAiAttachmentSchema.safeParse(
+			nodesAttachment({
+				sets: [
+					{
+						nodes: [{ id: 'n1' }],
+						inputNode: { id: 'n0' },
+						outputNode: { id: 'n2' },
+					},
+				],
+			}),
+		);
+		expect(result.success).toBe(true);
+	});
+
+	it('still accepts file, workflow, and agent attachments unchanged', () => {
+		expect(
+			instanceAiAttachmentSchema.safeParse({
+				type: 'file',
+				data: 'YQ==',
+				mimeType: 'text/plain',
+				fileName: 'a.txt',
+			}).success,
+		).toBe(true);
+		expect(instanceAiAttachmentSchema.safeParse({ type: 'workflow', id: 'wf-1' }).success).toBe(
+			true,
+		);
+		expect(
+			instanceAiAttachmentSchema.safeParse({ type: 'agent', id: 'agent-1', projectId: 'proj-1' })
+				.success,
+		).toBe(true);
+	});
+
+	it('is also accepted by instanceAiResourceAttachmentSchema', () => {
+		const result = instanceAiResourceAttachmentSchema.safeParse(nodesAttachment());
+		expect(result.success).toBe(true);
+	});
+});
+
+describe('InstanceAiThreadMessagesQuery', () => {
+	it('defaults to the first page at the default limit', () => {
+		expect(InstanceAiThreadMessagesQuery.parse({})).toEqual({
+			limit: INSTANCE_AI_THREAD_MESSAGES_DEFAULT_LIMIT,
+			page: 0,
+		});
+	});
+
+	it('coerces the string query params a URL carries', () => {
+		expect(InstanceAiThreadMessagesQuery.parse({ limit: '25', page: '2', raw: 'true' })).toEqual({
+			limit: 25,
+			page: 2,
+			raw: 'true',
+		});
+	});
+
+	it('accepts the ceilings', () => {
+		const result = InstanceAiThreadMessagesQuery.safeParse({
+			limit: INSTANCE_AI_THREAD_MESSAGES_MAX_LIMIT,
+			page: INSTANCE_AI_THREAD_MESSAGES_MAX_PAGE,
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it.each([
+		{ limit: INSTANCE_AI_THREAD_MESSAGES_MAX_LIMIT + 1 },
+		{ limit: 0 },
+		{ limit: -1 },
+		{ limit: 1.5 },
+		{ page: INSTANCE_AI_THREAD_MESSAGES_MAX_PAGE + 1 },
+		{ page: -1 },
+	])('rejects out-of-range paging (%o)', (query) => {
+		expect(InstanceAiThreadMessagesQuery.safeParse(query).success).toBe(false);
+	});
+});
+
+describe('instanceAiHandoffContextSchema', () => {
+	it('accepts the setup panel execute context', () => {
+		const result = instanceAiHandoffContextSchema.safeParse({
+			source: 'setup-panel-execute',
+			workflowId: 'wf-1',
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it('rejects a setup panel execute context without a workflowId', () => {
+		expect(
+			instanceAiHandoffContextSchema.safeParse({ source: 'setup-panel-execute' }).success,
+		).toBe(false);
+		expect(
+			instanceAiHandoffContextSchema.safeParse({ source: 'setup-panel-execute', workflowId: '' })
+				.success,
+		).toBe(false);
+	});
+
+	it('rejects an unknown source', () => {
+		expect(
+			instanceAiHandoffContextSchema.safeParse({ source: 'setup-panel', workflowId: 'wf-1' })
+				.success,
+		).toBe(false);
+	});
+});
+
+describe('instanceAiEvalSeedFolderSchema', () => {
+	const errorOf = (result: { success: boolean; error?: { issues: unknown[] } }) =>
+		result.success ? '' : JSON.stringify(result.error?.issues);
+	const folder = (overrides: Record<string, unknown> = {}) => ({
+		id: 'odwFolder0001',
+		name: 'ODW',
+		...overrides,
+	});
+
+	it('accepts a root folder and a nested folder', () => {
+		expect(instanceAiEvalSeedFolderSchema.safeParse(folder()).success).toBe(true);
+		expect(
+			instanceAiEvalSeedFolderSchema.safeParse(
+				folder({ id: 'odwArchive001', parentFolderId: 'odwFolder0001' }),
+			).success,
+		).toBe(true);
+	});
+
+	it('rejects an id under 8 characters, like a seed data table id', () => {
+		expect(instanceAiEvalSeedFolderSchema.safeParse(folder({ id: 'odw1' })).success).toBe(false);
+	});
+
+	it('rejects a name that is not already trimmed', () => {
+		// The live turn names the folder the way a user would, so the created name
+		// must match the authored one verbatim. A silent trim would hide the mismatch.
+		expect(instanceAiEvalSeedFolderSchema.safeParse(folder({ name: ' ODW' })).success).toBe(false);
+		expect(instanceAiEvalSeedFolderSchema.safeParse(folder({ name: 'ODW ' })).success).toBe(false);
+	});
+
+	it('rejects a name with a slash, the folderPath separator', () => {
+		const result = instanceAiEvalSeedFolderSchema.safeParse(folder({ name: 'ODW/Archive' }));
+		expect(result.success).toBe(false);
+		expect(errorOf(result)).toContain('/');
+	});
+
+	it("applies n8n's own folder name rules", () => {
+		expect(instanceAiEvalSeedFolderSchema.safeParse(folder({ name: '' })).success).toBe(false);
+		expect(instanceAiEvalSeedFolderSchema.safeParse(folder({ name: '...' })).success).toBe(false);
+		expect(instanceAiEvalSeedFolderSchema.safeParse(folder({ name: '.hidden' })).success).toBe(
+			false,
+		);
+		expect(
+			instanceAiEvalSeedFolderSchema.safeParse(folder({ name: 'O'.repeat(129) })).success,
+		).toBe(false);
+	});
+});
+
+describe('findSeedFolderIssues', () => {
+	it('returns nothing for a valid tree with workflows placed in declared folders', () => {
+		expect(
+			findSeedFolderIssues({
+				folders: [
+					{ id: 'odwFolder0001' },
+					{ id: 'odwArchive001', parentFolderId: 'odwFolder0001' },
+				],
+				workflows: [{ id: 'odwSignal1Wf', parentFolderId: 'odwArchive001' }, { id: 'rootWf00001' }],
+			}),
+		).toEqual([]);
+	});
+
+	it('flags a duplicate folder id', () => {
+		const issues = findSeedFolderIssues({
+			folders: [{ id: 'odwFolder0001' }, { id: 'odwFolder0001' }],
+		});
+		expect(issues).toEqual([expect.stringContaining('Duplicate seed folder id "odwFolder0001"')]);
+	});
+
+	it('flags a folder whose parent is not declared', () => {
+		const issues = findSeedFolderIssues({
+			folders: [{ id: 'odwArchive001', parentFolderId: 'missingFolder1' }],
+		});
+		expect(issues).toEqual([expect.stringContaining('"missingFolder1"')]);
+	});
+
+	it('flags a folder that is its own parent as a cycle', () => {
+		const issues = findSeedFolderIssues({
+			folders: [{ id: 'odwFolder0001', parentFolderId: 'odwFolder0001' }],
+		});
+		expect(issues).toEqual(['Seed folder "odwFolder0001" is in a parent cycle']);
+	});
+
+	it('flags every member of a parent cycle, and every folder that descends from it', () => {
+		const issues = findSeedFolderIssues({
+			folders: [
+				{ id: 'folderAaaaaa', parentFolderId: 'folderBbbbbb' },
+				{ id: 'folderBbbbbb', parentFolderId: 'folderAaaaaa' },
+				{ id: 'folderCccccc', parentFolderId: 'folderAaaaaa' },
+			],
+		});
+		expect(issues).toEqual([
+			'Seed folder "folderAaaaaa" is in a parent cycle',
+			'Seed folder "folderBbbbbb" is in a parent cycle',
+			'Seed folder "folderCccccc" descends from a parent cycle',
+		]);
+	});
+
+	it('flags a workflow placed in a folder the seed does not declare', () => {
+		const issues = findSeedFolderIssues({
+			folders: [{ id: 'odwFolder0001' }],
+			workflows: [{ id: 'odwSignal1Wf', parentFolderId: 'nopeFolder001' }],
+		});
+		expect(issues).toEqual([
+			expect.stringContaining('Seed workflow "odwSignal1Wf" is placed in folder "nopeFolder001"'),
+		]);
+	});
+});
+
+describe('InstanceAiEvalRestoreThreadRequest folders', () => {
+	const threadId = '11111111-1111-4111-8111-111111111111';
+
+	it('accepts folders and a workflow with a parentFolderId', () => {
+		const result = InstanceAiEvalRestoreThreadRequest.safeParse({
+			threadId,
+			messages: [],
+			folders: [{ id: 'odwFolder0001', name: 'ODW' }],
+			workflows: [
+				{
+					id: 'odwSignal1Wf',
+					name: 'Odds Watch - 1',
+					nodes: [],
+					connections: {},
+					parentFolderId: 'odwFolder0001',
+				},
+			],
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it('rejects a duplicate id and a parent cycle in the request itself', () => {
+		// A caller that validates with the schema alone must not accept a graph the
+		// restore cannot create.
+		const duplicate = InstanceAiEvalRestoreThreadRequest.safeParse({
+			threadId,
+			messages: [],
+			folders: [
+				{ id: 'odwFolder0001', name: 'ODW' },
+				{ id: 'odwFolder0001', name: 'ODW 2' },
+			],
+		});
+		expect(duplicate.success).toBe(false);
+
+		const cycle = InstanceAiEvalRestoreThreadRequest.safeParse({
+			threadId,
+			messages: [],
+			folders: [
+				{ id: 'folderAaaaaa', name: 'A', parentFolderId: 'folderBbbbbb' },
+				{ id: 'folderBbbbbb', name: 'B', parentFolderId: 'folderAaaaaa' },
+			],
+		});
+		expect(cycle.success).toBe(false);
+	});
+
+	it('caps folders at 20', () => {
+		const result = InstanceAiEvalRestoreThreadRequest.safeParse({
+			threadId,
+			messages: [],
+			folders: Array.from({ length: 21 }, (_, i) => ({
+				id: `folder${String(i).padStart(8, '0')}`,
+				name: `Folder ${String(i)}`,
+			})),
+		});
+		expect(result.success).toBe(false);
+	});
+});
+
+describe('InstanceAiThreadHistoryQuery', () => {
+	it('defaults the page size and trims the search text', () => {
+		expect(InstanceAiThreadHistoryQuery.parse({ search: ' Invoice ' })).toEqual({
+			limit: 30,
+			search: 'Invoice',
+		});
+	});
+
+	it.each([
+		{ limit: 0 },
+		{ limit: 101 },
+		{ search: 'x'.repeat(501) },
+		{ search: 'invoice\u0000draft' },
+		{ cursor: '' },
+	])('rejects %o', (query) => {
+		expect(InstanceAiThreadHistoryQuery.safeParse(query).success).toBe(false);
 	});
 });

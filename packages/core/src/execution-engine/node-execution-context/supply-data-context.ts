@@ -260,7 +260,8 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 		type: 'input' | 'output',
 		data: INodeExecutionData[][] | ExecutionBaseError,
 		connectionType: AINodeConnectionType,
-		sourceNodeName: string,
+		/** Node whose run the `subRun` entry attaches to; `undefined` when there is none. */
+		sourceNodeName: string | undefined,
 		currentNodeRunIndex: number,
 		metadata?: ITaskMetadata,
 		sourceNodeRunIndex?: number,
@@ -324,7 +325,7 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 			}
 			taskData.data = {
 				[connectionType]: data,
-			} as ITaskDataConnections;
+			};
 		}
 
 		if (type === 'output') {
@@ -337,7 +338,7 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 				// TODO: remove inputOverride
 				taskData.inputOverride = {
 					[connectionType]: data,
-				} as ITaskDataConnections;
+				};
 			}
 
 			if (!runExecutionData.resultData.runData.hasOwnProperty(nodeName)) {
@@ -360,6 +361,8 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 				taskData,
 				this.runExecutionData,
 			]);
+
+			if (sourceNodeName === undefined) return;
 
 			if (get(runExecutionData, 'executionData.metadata', undefined) === undefined) {
 				runExecutionData.executionData!.metadata = {};

@@ -385,7 +385,29 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		patchModalState(payload.name, { data: payload.data });
 	};
 
+	/**
+	 * An unknown key resolves to a closed state instead of throwing, so a forgotten
+	 * registration reads as "it just doesn't open". This makes that visible, and it
+	 * belongs on the open path: by then the key has no `<ModalRoot>` and
+	 * `DynamicModalLoader` only walks registered keys, so nothing reads it. Needs
+	 * the click, so a modal nobody opens in dev stays silent.
+	 */
+	const warnIfUnknownModalKey = (name: ModalKey): void => {
+		if (!import.meta.env.DEV) return;
+
+		const key = String(name);
+		if (key in shellModalDefaults || modalRegistry.has(key) || modalRegistry.isAdHocKey(key)) {
+			return;
+		}
+
+		console.warn(
+			`[modals] Opening "${key}", which nothing defines — no shell catalogue entry and no registry entry, so it will not render.\n` +
+				"Register it from the owning feature's `modals.ts`, or declare its prefix with `modalRegistry.declareAdHocKeyPrefix()` if the key is minted at runtime.",
+		);
+	};
+
 	const openModal = (name: ModalKey) => {
+		warnIfUnknownModalKey(name);
 		patchModalState(name, { open: true });
 		modalStack.value = [name].concat(modalStack.value) as string[];
 	};
@@ -400,6 +422,16 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		modalStack.value = modalStack.value.filter((openModalName) => name !== openModalName);
 	};
 
+	const closeAllModals = () => {
+		for (const name of modalStack.value) {
+			modalsById.value[name] = {
+				...modalsById.value[name],
+				open: false,
+			};
+		}
+		modalStack.value = [];
+	};
+
 	const openDeleteUserModal = (id: string) => {
 		setActiveId(DELETE_USER_MODAL_KEY, id);
 		openModal(DELETE_USER_MODAL_KEY);
@@ -411,6 +443,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			hideAskAssistant?: boolean;
 			appendToBody?: boolean;
 			instanceAiCredentialHelp?: NewCredentialsModal['instanceAiCredentialHelp'];
+			workflowId?: string;
 		} = {},
 	) => {
 		setActiveId(CREDENTIAL_EDIT_MODAL_KEY, id);
@@ -419,6 +452,8 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			projectId: undefined,
 			contextNode: undefined,
 			closeOnSave: false,
+			workflowId: options.workflowId,
+			onCredentialCreated: undefined,
 			hideAskAssistant: options.hideAskAssistant,
 			appendToBody: options.appendToBody,
 			instanceAiCredentialHelp: options.instanceAiCredentialHelp,
@@ -438,9 +473,11 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			hideAskAssistant?: boolean;
 			appendToBody?: boolean;
 			closeOnSave?: boolean;
+			onCredentialCreated?: NewCredentialsModal['onCredentialCreated'];
 			instanceAiCredentialHelp?: NewCredentialsModal['instanceAiCredentialHelp'];
 			usageScope?: NewCredentialsModal['usageScope'];
 			credentialSetupHint?: NewCredentialsModal['credentialSetupHint'];
+			workflowId?: string;
 		} = {},
 	) => {
 		setActiveId(CREDENTIAL_EDIT_MODAL_KEY, type);
@@ -448,8 +485,10 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		patchModalState(CREDENTIAL_EDIT_MODAL_KEY, {
 			forceManualMode,
 			closeOnSave: options.closeOnSave ?? false,
+			onCredentialCreated: options.onCredentialCreated,
 			projectId,
 			suggestedName,
+			workflowId: options.workflowId,
 			nodeName,
 			contextNode,
 			hideAskAssistant: options.hideAskAssistant,
@@ -605,6 +644,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		openModalWithData,
 		openModal,
 		closeModal,
+		closeAllModals,
 		openDeleteUserModal,
 		openExistingCredential,
 		openNewCredential,

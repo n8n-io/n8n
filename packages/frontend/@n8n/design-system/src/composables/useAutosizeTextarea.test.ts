@@ -102,6 +102,7 @@ describe('useAutosizeTextarea', () => {
 		const TestComponent = defineComponent({
 			props: {
 				enabled: { type: Boolean, default: true },
+				content: { type: String, default: 'one\ntwo\nthree' },
 			},
 			setup(props) {
 				const textarea = ref<HTMLTextAreaElement>();
@@ -114,7 +115,7 @@ describe('useAutosizeTextarea', () => {
 
 				return { textarea, textareaStyles, calculateTextareaHeight, clearTextareaHeight };
 			},
-			template: '<textarea ref="textarea" value="one\ntwo\nthree" />',
+			template: '<textarea ref="textarea" :value="content" />',
 		});
 
 		it('recalculates height into reactive styles', () => {
@@ -149,6 +150,23 @@ describe('useAutosizeTextarea', () => {
 			await nextTick();
 
 			expect(textarea.scrollTop).toBe(textarea.scrollHeight);
+		});
+
+		it('does not scroll a textarea whose content still fits within maxRows', async () => {
+			const wrapper = mount(TestComponent, {
+				attachTo: document.body,
+				props: { content: 'one\ntwo' },
+			});
+			const textarea = wrapper.vm.textarea as HTMLTextAreaElement;
+			textarea.focus();
+			textarea.selectionStart = textarea.selectionEnd = textarea.value.length;
+			textarea.scrollTop = 0;
+
+			wrapper.vm.calculateTextareaHeight();
+			await nextTick();
+
+			expect(wrapper.vm.textareaStyles.overflowY).toBe('hidden');
+			expect(textarea.scrollTop).toBe(0);
 		});
 
 		it('preserves the scroll position when the caret is mid-content', async () => {

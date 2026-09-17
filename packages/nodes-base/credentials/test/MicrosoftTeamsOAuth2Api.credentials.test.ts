@@ -9,9 +9,12 @@ describe('MicrosoftTeamsOAuth2Api Credential', () => {
 		'openid',
 		'offline_access',
 		'User.Read.All',
-		'Group.Read.All',
+		'Group.ReadWrite.All',
 		'Chat.ReadWrite',
 		'ChannelMessage.Read.All',
+		'OnlineMeetings.ReadWrite',
+		'ChannelMessage.ReadWrite',
+		'TeamworkTag.Read',
 	];
 
 	// Shared OAuth2 configuration
@@ -70,7 +73,16 @@ describe('MicrosoftTeamsOAuth2Api Credential', () => {
 			(p) => p.name === 'enabledScopes',
 		);
 		expect(enabledScopesProperty?.default).toBe(
-			'openid offline_access User.Read.All Group.Read.All Chat.ReadWrite ChannelMessage.Read.All',
+			'openid offline_access User.Read.All Group.ReadWrite.All Chat.ReadWrite ChannelMessage.Read.All OnlineMeetings.ReadWrite ChannelMessage.ReadWrite TeamworkTag.Read',
+		);
+	});
+
+	it('asks for the default scopes unless the user turned on custom scopes', () => {
+		const scopeProperty = microsoftTeamsOAuth2Api.properties.find((p) => p.name === 'scope');
+
+		// This expression, not `enabledScopes`, is what the authorize URL is built from.
+		expect(scopeProperty?.default).toBe(
+			'={{$self["customScopes"] ? $self["enabledScopes"] : "openid offline_access User.Read.All Group.ReadWrite.All Chat.ReadWrite ChannelMessage.Read.All OnlineMeetings.ReadWrite ChannelMessage.ReadWrite TeamworkTag.Read"}}',
 		);
 	});
 
@@ -84,9 +96,11 @@ describe('MicrosoftTeamsOAuth2Api Credential', () => {
 			expect(authUri).toContain('openid');
 			expect(authUri).toContain('offline_access');
 			expect(authUri).toContain('User.Read.All');
-			expect(authUri).toContain('Group.Read.All');
+			expect(authUri).toContain('Group.ReadWrite.All');
 			expect(authUri).toContain('Chat.ReadWrite');
 			expect(authUri).toContain('ChannelMessage.Read.All');
+			expect(authUri).toContain('OnlineMeetings.ReadWrite');
+			expect(authUri).toContain('ChannelMessage.ReadWrite');
 			expect(authUri).toContain(`client_id=${clientId}`);
 			expect(authUri).toContain('response_type=code');
 		});
@@ -101,9 +115,11 @@ describe('MicrosoftTeamsOAuth2Api Credential', () => {
 			expect(token.data.scope).toContain('openid');
 			expect(token.data.scope).toContain('offline_access');
 			expect(token.data.scope).toContain('User.Read.All');
-			expect(token.data.scope).toContain('Group.Read.All');
+			expect(token.data.scope).toContain('Group.ReadWrite.All');
 			expect(token.data.scope).toContain('Chat.ReadWrite');
 			expect(token.data.scope).toContain('ChannelMessage.Read.All');
+			expect(token.data.scope).toContain('OnlineMeetings.ReadWrite');
+			expect(token.data.scope).toContain('ChannelMessage.ReadWrite');
 		});
 	});
 
@@ -112,7 +128,7 @@ describe('MicrosoftTeamsOAuth2Api Credential', () => {
 			'openid',
 			'offline_access',
 			'User.Read.All',
-			'Group.Read.All',
+			'Group.ReadWrite.All',
 			'Chat.ReadWrite',
 			'ChannelMessage.Read.All',
 			'Chat.Read.All',

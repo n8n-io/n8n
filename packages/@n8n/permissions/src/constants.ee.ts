@@ -3,6 +3,10 @@ export const DEFAULT_OPERATIONS = ['create', 'read', 'update', 'delete', 'list']
 export const RESOURCES = {
 	agent: [...DEFAULT_OPERATIONS, 'execute', 'publish', 'unpublish', 'manage'] as const,
 	aiAssistant: ['manage'] as const,
+	// AI prompt preferences. `aiPreference`: instance-wide rows and other users' rows.
+	// `projectAiPreference`: rows of a project. A user's own rows need no scope.
+	aiPreference: [...DEFAULT_OPERATIONS] as const,
+	projectAiPreference: [...DEFAULT_OPERATIONS] as const,
 	annotationTag: [...DEFAULT_OPERATIONS] as const,
 	auditLogs: ['manage'] as const,
 	banner: ['dismiss'] as const,
@@ -24,12 +28,18 @@ export const RESOURCES = {
 	ldap: ['sync', 'manage'] as const,
 	license: ['manage'] as const,
 	logStreaming: ['manage'] as const,
-	orchestration: ['read', 'list'] as const,
-	project: [...DEFAULT_OPERATIONS, 'export'] as const,
+	nodeTypePolicy: ['manage'] as const,
+	orchestration: ['read', 'list', 'manage'] as const,
+	// `manageMembers` gates changes to a project's membership list: adding a member
+	// with a role, changing a member's role, and removing a member. Kept separate
+	// from `update` so a role can edit project details without being able to
+	// hand out project roles.
+	project: [...DEFAULT_OPERATIONS, 'export', 'manageMembers'] as const,
 	saml: ['manage'] as const,
 	securityAudit: ['generate'] as const,
 	securitySettings: ['manage'] as const,
-	sourceControl: ['pull', 'push', 'manage'] as const,
+	sourceControl: ['pull', 'push', 'manage', 'read'] as const,
+	gitConnection: [...DEFAULT_OPERATIONS, 'clone', 'push', 'manageProjects', 'pull'] as const,
 	tag: [...DEFAULT_OPERATIONS] as const,
 	user: [
 		'resetPassword',
@@ -96,13 +106,14 @@ export const API_KEY_RESOURCES = {
 	oidc: ['manage'] as const,
 	otel: ['manage'] as const,
 	ldap: ['manage', 'sync'] as const,
-	project: ['create', 'update', 'delete', 'list', 'export'] as const,
+	project: ['create', 'update', 'delete', 'list', 'export', 'manageMembers'] as const,
 	user: ['read', 'list', 'create', 'changeRole', 'delete'] as const,
 	execution: ['delete', 'read', 'retry', 'list', 'stop'] as const,
 	testRun: ['read', 'list', 'create', 'cancel'] as const,
 	credential: ['create', 'read', 'update', 'move', 'delete', 'list'] as const,
 	eventBusDestination: ['test', 'create', 'read', 'update', 'delete', 'list'] as const,
-	sourceControl: ['pull'] as const,
+	sourceControl: ['pull', 'push', 'read'] as const,
+	gitConnection: [...DEFAULT_OPERATIONS, 'clone', 'push', 'manageProjects', 'pull'] as const,
 	workflowTags: ['update', 'list'] as const,
 	executionTags: ['update', 'list'] as const,
 	communityPackage: ['install', 'uninstall', 'update', 'list'] as const,
@@ -111,7 +122,9 @@ export const API_KEY_RESOURCES = {
 	dataTableColumn: ['create', 'read', 'delete', 'update'] as const,
 	folder: ['create', 'delete', 'read', 'update', 'list'] as const,
 	insights: ['read'] as const,
-	role: ['manage', 'manageProject', 'list'] as const,
+	role: ['manage', 'manageProject', 'list', 'read'] as const,
+	roleMappingRule: ['create', 'delete', 'list', 'update'] as const,
+	nodeTypePolicy: ['manage'] as const,
 } as const;
 
 export const GLOBAL_OWNER_ROLE_SLUG = 'global:owner';

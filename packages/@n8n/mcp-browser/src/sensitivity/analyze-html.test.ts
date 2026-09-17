@@ -1,26 +1,67 @@
 import { analyzeHtmlSensitivity } from './analyze-html';
-import type { HtmlProbeResult } from '../types';
+import { ASSIGNMENT_NAME, CONCATENATED_ONLY, PARTIAL_TOKEN } from '../redaction/redact';
+import { htmlProbe as probe } from '../tools/test-helpers';
 
 const ANTHROPIC = `sk-ant-api03-${'a'.repeat(93)}AA`;
 const OPAQUE = 'notreal-IMzLaCKsU6ZxAbt2qFc9XYdRpQ7vNtBmKL';
-
-function probe(
-	html: string,
-	children = [] as NonNullable<HtmlProbeResult['root']>['children'],
-): HtmlProbeResult {
-	return {
-		ok: true,
-		root: {
-			kind: 'document',
-			html,
-			url: 'http://test.com',
-			children,
-			errors: [],
-		},
-	};
-}
+const HEX_SECRET = 'notreal7c1de9a04bf28e6d3a91f0b5c7e2d84a6';
+const DOTTED_SECRET = 'AQI.notrealuhfuehfiaSkdjLmQpWoEiRuTyZxCvBnMaGh';
 
 describe('analyzeHtmlSensitivity', () => {
+	// The same key often appears in the page and again in an embedded frame; the
+	// bare occurrence is the span that can safely become a credential.
+	it('keeps the narrowest capture span when a key appears in several documents', () => {
+		const key = `AIza${'B'.repeat(35)}`;
+		const result = analyzeHtmlSensitivity(
+			probe(`<p>${key}</p>`, [
+				{ kind: 'iframe', html: `<p>id.${key}</p>`, children: [], errors: [] },
+			]),
+		);
+
+		expect(result.ok && result.hits).toContainEqual({ type: 'google_api_key', value: key });
+	});
+
+	// One document delimits the key unambiguously, another cannot. Whichever is
+	// merged last, the delimited occurrence is the one that knows the extent.
+	it('lets a delimited occurrence override a blocked one from another document', () => {
+		const key = `ghp_${'B'.repeat(36)}`;
+		const run = 'x'.repeat(600);
+		const result = analyzeHtmlSensitivity(
+			probe(`<p>${run}${key}${run}</p>`, [
+				{ kind: 'iframe', html: `<p>${key}</p>`, children: [], errors: [] },
+			]),
+		);
+		const hit = result.ok && result.hits.find((candidate) => candidate.value === key);
+
+		expect(hit).toBeTruthy();
+		expect(hit && hit.captureBlocked).toBeUndefined();
+	});
+
+	// The entropy pass needs the same fail-closed rule as the pattern pass: inside
+	// an undelimitable run its candidate is a fragment of the real token.
+	it('blocks capture of an entropy candidate whose token could not be delimited', () => {
+		const blob = 'aB3xY9zQ7wE2rT5yU8iO1pL4kJ6hG0fD'.repeat(20);
+		const key = `AQ.${'Zt7vLpQ9mKdW4xR2bNfH3jEuXaGoT5wPqYs1Bc'}`;
+		const result = analyzeHtmlSensitivity(
+			probe(`<div data-testid="api-key">${blob}${key}${blob}</div>`),
+		);
+		const hit = result.ok && result.hits.find((candidate) => candidate.type === 'secret');
+
+		expect(hit).toBeTruthy();
+		expect(hit && hit.captureBlocked).toBeTruthy();
+	});
+
+	// A key split across siblings is only visible in concatenated `textContent`,
+	// and redaction cannot replace it there — but the page must still count as
+	// sensitive, which is what gates screenshots.
+	it('still flags a page whose key only appears in concatenated markup', () => {
+		const result = analyzeHtmlSensitivity(
+			probe(`<p><span>AQ.</span><span>${'AbCdEfGhIj'.repeat(3)}Ab</span></p>`),
+		);
+
+		expect(result.ok && result.sensitive).toBe(true);
+	});
+
 	it('finds regex hits in plain DOM text', () => {
 		const result = analyzeHtmlSensitivity(probe(`<p>${ANTHROPIC}</p>`));
 		expect(result.ok && result.sensitive).toBe(true);
@@ -78,7 +119,7 @@ describe('analyzeHtmlSensitivity', () => {
 	});
 
 	it('finds a secret held in a data-* attribute behind a placeholder value', () => {
-		const secret = 'notreal7c1de9a04bf28e6d3a91f0b5c7e2d84a6';
+		const secret = HEX_SECRET;
 		const result = analyzeHtmlSensitivity(
 			probe(
 				`<label for="c">Client Secret</label><input id="c" type="password" readonly value="1234567890" data-password="${secret}" data-qa="client_secret">`,
@@ -107,7 +148,7 @@ describe('analyzeHtmlSensitivity', () => {
 	});
 
 	it('harvests only data-* attributes whose name reads as a secret', () => {
-		const secret = 'notreal7c1de9a04bf28e6d3a91f0b5c7e2d84a6';
+		const secret = HEX_SECRET;
 		const tracking = 'trackingId0123456789abcdef';
 		const result = analyzeHtmlSensitivity(
 			probe(
@@ -202,6 +243,153 @@ describe('analyzeHtmlSensitivity', () => {
 		expect(result.ok && result.hits).toEqual([]);
 	});
 
+	// A console issues a credential as static text beside its label, with no input
+	// to key off. These shapes clear no entropy bar, so the label is the evidence.
+	it.each([
+		{
+			named: 'a dt label',
+			value: HEX_SECRET,
+			html: `<dl><dt>Client Secret</dt><dd>${HEX_SECRET}</dd></dl>`,
+		},
+		{
+			named: 'its own test id, below the entropy bar the test-id pass applies',
+			value: HEX_SECRET,
+			html: `<dl><dt>Issued</dt><dd data-testid="client-secret">${HEX_SECRET}</dd></dl>`,
+		},
+		{
+			named: 'a two-word label ending in a different credential noun',
+			value: HEX_SECRET,
+			html: `<dl><dt>Secret Key</dt><dd>${HEX_SECRET}</dd></dl>`,
+		},
+		{
+			named: 'a label, sharing the cell with a copy button',
+			value: DOTTED_SECRET,
+			html: `<dl><dt>Client Secret</dt><dd>${DOTTED_SECRET} <button>Copy</button></dd></dl>`,
+		},
+	])('finds a static value named as a secret by $named', ({ html, value }) => {
+		const result = analyzeHtmlSensitivity(probe(html));
+
+		expect(result.ok && result.hits).toContainEqual({ type: 'password', value });
+	});
+
+	// Neither spelling of a split value may become a credential: the joined form
+	// appears nowhere in what the model reads, and the rendered form is a fragment
+	// of it. Asserted exactly — `toContainEqual` would hide the second hit.
+	it('blocks capture of a secret split across inline elements', () => {
+		const result = analyzeHtmlSensitivity(
+			probe(
+				'<dl><dt>Client Secret</dt><dd><span>AQI.</span>' +
+					`<span>${DOTTED_SECRET.slice(4)}</span></dd></dl>`,
+			),
+		);
+
+		expect(result.ok && result.hits).toEqual([
+			{ type: 'password', value: DOTTED_SECRET.slice(4), captureBlocked: PARTIAL_TOKEN },
+			{ type: 'password', value: DOTTED_SECRET, captureBlocked: CONCATENATED_ONLY },
+		]);
+	});
+
+	// Inline children run together into a token that exists nowhere on the page.
+	it('blocks capture of a token only the concatenated markup produces', () => {
+		const result = analyzeHtmlSensitivity(
+			probe(
+				'<dl><dt>Client Secret</dt><dd><span>Rotated</span>' +
+					'<span>quarterly</span><span>by ops</span></dd></dl>',
+			),
+		);
+
+		expect(result.ok && result.hits).toEqual([
+			{ type: 'password', value: 'Rotatedquarterlyby', captureBlocked: CONCATENATED_ONLY },
+		]);
+	});
+
+	// A field name long enough to clear the length floor is masked with the value,
+	// but capturing it would store the name as the credential. The name must be
+	// long enough here or the length floor hides the rule being tested.
+	it('blocks capture of the name side of an assignment', () => {
+		const result = analyzeHtmlSensitivity(
+			probe(`<dl><dt>Client Secret</dt><dd>GOOGLE_CLIENT_SECRET=${HEX_SECRET}</dd></dl>`),
+		);
+
+		expect(result.ok && result.hits).toEqual([
+			{ type: 'password', value: 'GOOGLE_CLIENT_SECRET=', captureBlocked: ASSIGNMENT_NAME },
+			{ type: 'password', value: HEX_SECRET },
+		]);
+	});
+
+	it('blocks capture of an assignment name separated by whitespace', () => {
+		const result = analyzeHtmlSensitivity(
+			probe(`<dl><dt>Client Secret</dt><dd>GOOGLE_CLIENT_SECRET = ${HEX_SECRET}</dd></dl>`),
+		);
+
+		expect(result.ok && result.hits).toEqual([
+			{ type: 'password', value: 'GOOGLE_CLIENT_SECRET', captureBlocked: ASSIGNMENT_NAME },
+			{ type: 'password', value: HEX_SECRET },
+		]);
+	});
+
+	// Base64 padding also ends on `=` but separates nothing, so it stays capturable.
+	it('still captures a padded base64 value sharing the cell with other text', () => {
+		const value = 'dGhpc2lzbm90YXJlYWxzZWNyZXQ==';
+		const result = analyzeHtmlSensitivity(
+			probe(`<dl><dt>Client Secret</dt><dd>${value} copy</dd></dl>`),
+		);
+
+		expect(result.ok && result.hits).toEqual([{ type: 'password', value }]);
+	});
+
+	// The credential flow needs the public identifier that sits beside the
+	// secret; redacting the whole block would break the thing this protects.
+	it('does not flag the public identifier beside a secret in the same list', () => {
+		const clientId = '553213193971.11823370532599';
+		const result = analyzeHtmlSensitivity(
+			probe(
+				`<dl><dt>Client ID</dt><dd>${clientId}</dd>` +
+					`<dt>Client Secret</dt><dd>${HEX_SECRET}</dd></dl>`,
+			),
+		);
+
+		expect(result.ok && result.hits).toEqual([{ type: 'password', value: HEX_SECRET }]);
+	});
+
+	// A credential noun trailed by a qualifier describes the credential rather
+	// than being it, and a commit SHA is entropy-identical to a hex secret — so
+	// only the label can tell them apart. Masks carry nothing to leak.
+	it.each([
+		{
+			named: 'a qualifier turns the label into a description (timestamp)',
+			html: '<dl><dt>Token expiry</dt><dd>Expires 2026-01-01T00:00:00.000Z</dd></dl>',
+		},
+		{
+			named: 'a qualifier turns the label into a description (docs link)',
+			html: '<dl><dt>API key docs</dt><dd>https://docs.example.com/api-keys</dd></dl>',
+		},
+		{
+			named: 'a qualifier turns the label into a description (commit sha)',
+			html: '<dl><dt>Token commit</dt><dd>9f4e2a1c8b7d6e5f0a3b2c1d4e5f6a7b8c9d0e1f</dd></dl>',
+		},
+		{
+			named: 'the value is a mask rather than a secret',
+			html: '<dl><dt>Client Secret</dt><dd>••••••••••••••••••••</dd></dl>',
+		},
+	])('does not flag a cell where $named', ({ html }) => {
+		const result = analyzeHtmlSensitivity(probe(html));
+
+		expect(result.ok && result.hits).toEqual([]);
+	});
+
+	// One reject case stays at pipeline level: it is the only proof that the label
+	// sources are judged separately rather than joined.
+	it('does not treat an id qualified by another attribute as naming a secret', () => {
+		const result = analyzeHtmlSensitivity(
+			probe(
+				'<dl><dt>Issued</dt><dd id="token-expiry" data-testid="row">2026-01-01T00:00:00.000Z</dd></dl>',
+			),
+		);
+
+		expect(result.ok && result.hits).toEqual([]);
+	});
+
 	it('finds high-entropy values in reveal dialogs', () => {
 		const result = analyzeHtmlSensitivity(
 			probe(`<div role="dialog"><p>You won't see it again.</p><code>${OPAQUE}</code></div>`),
@@ -210,6 +398,191 @@ describe('analyzeHtmlSensitivity', () => {
 			type: 'secret',
 			value: OPAQUE,
 		});
+	});
+
+	// A console renders the issued value into a readonly textbox, so the dialog's
+	// own text carries no token. `elementText` walks text nodes only, and the field
+	// is unnamed, so neither of the other passes reaches the value either.
+	it('finds an unlabelled input value in a reveal dialog', () => {
+		const result = analyzeHtmlSensitivity(
+			probe(
+				`<div role="dialog"><h2>Save your key</h2><p>You won't be able to view it again.</p><input type="text" readonly value="${OPAQUE}"><button type="button">Copy</button></div>`,
+			),
+		);
+
+		expect(result.ok && result.hits).toContainEqual({ type: 'password', value: OPAQUE });
+	});
+
+	// A dialog that presents nothing but the field and an icon-only copy control
+	// has no text of its own, and the copy control's label lives in `aria-label`.
+	// The copy signal alone confirms the dialog, so the field pass must not be
+	// gated on the dialog having text.
+	it('finds an unlabelled input value in a reveal dialog whose only signal is an icon-only copy control', () => {
+		const result = analyzeHtmlSensitivity(
+			probe(
+				`<div role="dialog"><input type="text" readonly value="${OPAQUE}"><button type="button" aria-label="Copy key"><svg></svg></button></div>`,
+			),
+		);
+
+		expect(result.ok && result.hits).toContainEqual({ type: 'password', value: OPAQUE });
+	});
+
+	// A reveal control that flips `type=password` to `type=text` leaves an editable
+	// field holding the secret. The exclusion below is on the field being editable
+	// AND unnamed: any of the usual credential signals still carries it, through the
+	// input pass rather than the container pass.
+	it.each([
+		['an associated label', '<label for="k">API key</label><input id="k" type="text"'],
+		['an aria-label', '<input type="text" aria-label="Secret key"'],
+		['a password autocomplete', '<input type="text" autocomplete="new-password"'],
+		['a sensitive test id', '<input type="text" data-testid="api-key-input"'],
+	])('finds a revealed editable field carrying %s', (_signal, markup) => {
+		const result = analyzeHtmlSensitivity(
+			probe(
+				`<div role="dialog"><h2>Save your key</h2><p>You won't be able to view it again.</p>${markup} value="${OPAQUE}"><button type="button">Copy</button></div>`,
+			),
+		);
+
+		expect(result.ok && result.hits).toContainEqual({ type: 'password', value: OPAQUE });
+	});
+
+	// A name the agent types is not a value the page issued. It can clear the
+	// opaque floor on length and entropy alone, so the field being editable is what
+	// keeps it out.
+	it('leaves an editable field in a reveal dialog alone', () => {
+		const typed = 'n8n-credential-prod-2026';
+		const result = analyzeHtmlSensitivity(
+			probe(
+				`<div role="dialog"><h2>Save your key</h2><p>You won't be able to view it again.</p><input type="text" value="${typed}"><input type="text" readonly value="${OPAQUE}"><button type="button">Copy</button></div>`,
+			),
+		);
+
+		expect(result.ok && result.hits).toContainEqual({ type: 'password', value: OPAQUE });
+		expect(result.ok && result.hits.some((hit) => hit.value === typed)).toBe(false);
+	});
+
+	// A console often presents the issued value ready to paste into a header, so
+	// the field holds a prefix as well as the token. The prefix is a word the page
+	// wrote, not part of the secret, so the token inside the value is the target.
+	it('finds a prefixed input value in a reveal dialog', () => {
+		const result = analyzeHtmlSensitivity(
+			probe(
+				`<div role="dialog"><h2>Save your key</h2><p>You won't be able to view it again.</p><input type="text" readonly value="Bearer ${OPAQUE}"><button type="button">Copy</button></div>`,
+			),
+		);
+
+		expect(result.ok && result.hits).toContainEqual({ type: 'password', value: OPAQUE });
+	});
+
+	// A console commonly presents the value as a `.env` line to paste. The name
+	// side clears the length floor, so it is masked with the value — but capturing
+	// it would store the name as the credential, exactly as in a labelled cell.
+	it('blocks capture of the name side of an assignment in a presented field', () => {
+		const result = analyzeHtmlSensitivity(
+			probe(
+				`<div role="dialog"><h2>Save your key</h2><input type="text" readonly value="GOOGLE_CLIENT_SECRET=${OPAQUE}"><button type="button">Copy</button></div>`,
+			),
+		);
+
+		expect(result.ok && result.hits).toEqual([
+			{ type: 'password', value: 'GOOGLE_CLIENT_SECRET=', captureBlocked: ASSIGNMENT_NAME },
+			{ type: 'password', value: OPAQUE },
+		]);
+	});
+
+	// `NAME= value` is not an assignment to `assignmentNames`, because in prose it
+	// is `dGhpcw== copy` — a padded value with a button label merged after it. A
+	// field's value carries no merged label, so the shape can only be an assignment.
+	it('blocks capture of an assignment name spaced after the equals in a presented field', () => {
+		const result = analyzeHtmlSensitivity(
+			probe(
+				`<div role="dialog"><h2>Save your key</h2><input type="text" readonly value="GOOGLE_CLIENT_SECRET= ${OPAQUE}"><button type="button">Copy</button></div>`,
+			),
+		);
+
+		expect(result.ok && result.hits).toEqual([
+			{ type: 'password', value: 'GOOGLE_CLIENT_SECRET=', captureBlocked: ASSIGNMENT_NAME },
+			{ type: 'password', value: OPAQUE },
+		]);
+	});
+
+	// The other side of the rule above: trailing `=` is base64 padding, not an
+	// assignment, so a padded value stays capturable.
+	it('keeps a padded base64 value in a presented field capturable', () => {
+		const padded = 'notrealZGVtb1NlY3JldFZhbHVlMTIzNDU2Nzg5MA==';
+		const result = analyzeHtmlSensitivity(
+			probe(
+				`<div role="dialog"><h2>Save your key</h2><input type="text" readonly value="${padded}"><button type="button">Copy</button></div>`,
+			),
+		);
+
+		expect(result.ok && result.hits).toEqual([{ type: 'password', value: padded }]);
+	});
+
+	// `readonly` plus `spellcheck=false` plus a long value is enough for the input
+	// pass to call the field sensitive on its own, so both passes read it. Read at
+	// two granularities the field yields overlapping hits, the longer one takes the
+	// span in `buildReplacements`, and the marker the model sees resolves back to
+	// the framing — so one field must be read at one granularity.
+	it('reads a prefixed field the input pass also reaches token by token', () => {
+		const result = analyzeHtmlSensitivity(
+			probe(
+				`<div role="dialog"><h2>Save your key</h2><input type="text" readonly spellcheck="false" value="Bearer ${OPAQUE}"><button type="button">Copy</button></div>`,
+			),
+		);
+
+		expect(result.ok && result.hits).toEqual([{ type: 'password', value: OPAQUE }]);
+	});
+
+	// The same overlap on an assignment: a whole-value hit would carry the name
+	// side into a capturable hit, which is what `ASSIGNMENT_NAME` exists to stop.
+	it('reads an assignment field the input pass also reaches token by token', () => {
+		const result = analyzeHtmlSensitivity(
+			probe(
+				`<div role="dialog"><h2>Save your key</h2><input type="text" readonly spellcheck="false" value="GOOGLE_CLIENT_SECRET=${OPAQUE}"><button type="button">Copy</button></div>`,
+			),
+		);
+
+		expect(result.ok && result.hits).toEqual([
+			{ type: 'password', value: 'GOOGLE_CLIENT_SECRET=', captureBlocked: ASSIGNMENT_NAME },
+			{ type: 'password', value: OPAQUE },
+		]);
+	});
+
+	// A name can clear the opaque floor when the value beside it does not, which
+	// leaves the name as the only token — and a name is never the hit. The field's
+	// own signals already confirmed it holds a secret, so the value has to stand as
+	// the hit, and it carries the name with it so it must not be capturable.
+	it('keeps the whole value of a presented field whose only opaque run is a name', () => {
+		const assignment = 'GOOGLE_CLIENT_SECRET=nyk7Qp2';
+		const result = analyzeHtmlSensitivity(
+			probe(`<input type="text" readonly spellcheck="false" value="${assignment}">`),
+		);
+
+		expect(result.ok && result.hits).toEqual([
+			{ type: 'password', value: assignment, captureBlocked: ASSIGNMENT_NAME },
+		]);
+	});
+
+	// Tokens are the hits only when the value has one. A presented value with no
+	// opaque run is a secret only as a whole, so it stays one hit rather than none.
+	it('keeps the whole value of a presented field with no opaque run', () => {
+		const phrase = 'please contact support';
+		const result = analyzeHtmlSensitivity(
+			probe(`<input type="text" readonly spellcheck="false" value="${phrase}">`),
+		);
+
+		expect(result.ok && result.hits).toEqual([{ type: 'password', value: phrase }]);
+	});
+
+	// An editable field holds what the caller typed, not what the page wrote, so
+	// there is no framing to strip and the value is the secret whole.
+	it('keeps the whole value of an editable sensitive field', () => {
+		const result = analyzeHtmlSensitivity(
+			probe(`<input type="password" value="Bearer ${OPAQUE}">`),
+		);
+
+		expect(result.ok && result.hits).toEqual([{ type: 'password', value: `Bearer ${OPAQUE}` }]);
 	});
 
 	it('walks same-origin iframe and shadow-root bundle children', () => {
@@ -273,6 +646,21 @@ describe('analyzeHtmlSensitivity', () => {
 		);
 
 		expect(result.ok && result.hits).toContainEqual({ type: 'secret', value: OPAQUE });
+	});
+
+	it('finds an unlabelled input value in a reveal-button plus copy-button container', () => {
+		const result = analyzeHtmlSensitivity(
+			probe(`
+				<section>
+					<h2>API keys</h2>
+					<input type="text" readonly value="${OPAQUE}">
+					<button>Reveal key</button>
+					<button>Copy</button>
+				</section>
+			`),
+		);
+
+		expect(result.ok && result.hits).toContainEqual({ type: 'password', value: OPAQUE });
 	});
 
 	it('finds sensitive aria-label containers', () => {

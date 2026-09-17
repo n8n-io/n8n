@@ -1,7 +1,7 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { modalRegistry } from '@n8n/frontend-module-sdk';
 
-import type { ModalState } from '@/Interface';
+import type { ModalState, NewCredentialsModal } from '@/Interface';
 import { IMPORT_CURL_MODAL_KEY } from '@/app/constants';
 import { listenForModalChanges, useUIStore } from '@/app/stores/ui.store';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
@@ -284,6 +284,68 @@ describe('UI Store', () => {
 		});
 	});
 
+	describe('openNewCredential / openExistingCredential', () => {
+		beforeEach(() => {
+			modalRegistry.register({
+				key: CREDENTIAL_EDIT_MODAL_KEY,
+				component: {},
+				initialState: { open: false },
+			});
+		});
+
+		const credentialModalState = () =>
+			useUIStore().modalsById[CREDENTIAL_EDIT_MODAL_KEY] as NewCredentialsModal;
+
+		it('should store the workflowId option in the modal state', () => {
+			const uiStore = useUIStore();
+
+			uiStore.openNewCredential(
+				'slackApi',
+				false,
+				false,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				{
+					workflowId: 'wf-1',
+				},
+			);
+
+			expect(credentialModalState().workflowId).toBe('wf-1');
+		});
+
+		it('should clear a stale workflowId when reopened without one', () => {
+			const uiStore = useUIStore();
+
+			uiStore.openNewCredential(
+				'slackApi',
+				false,
+				false,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				{
+					workflowId: 'wf-1',
+				},
+			);
+			uiStore.openNewCredential('slackApi');
+
+			expect(credentialModalState().workflowId).toBeUndefined();
+		});
+
+		it('should carry and clear workflowId through openExistingCredential', () => {
+			const uiStore = useUIStore();
+
+			uiStore.openExistingCredential('cred-1', { workflowId: 'wf-1' });
+			expect(credentialModalState().workflowId).toBe('wf-1');
+
+			uiStore.openExistingCredential('cred-1');
+			expect(credentialModalState().workflowId).toBeUndefined();
+		});
+	});
+
 	describe('isModalActiveById', () => {
 		const MODAL_KEY = 'someFeatureModal';
 
@@ -363,6 +425,61 @@ describe('UI Store', () => {
 			uiStore.openModal(MODAL_KEY);
 
 			expect(onModalOpened).not.toHaveBeenCalled();
+		});
+	});
+	describe('unknown-key warning', () => {
+		const MODAL_KEY = 'someFeatureModal';
+		let warn: ReturnType<typeof vi.spyOn>;
+
+		beforeEach(() => {
+			warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+		});
+
+		afterEach(() => {
+			warn.mockRestore();
+		});
+
+		it('should warn when opening a key neither the catalogue nor the registry defines', () => {
+			const uiStore = useUIStore();
+
+			uiStore.openModal('aModalNobodyRegistered');
+
+			expect(warn).toHaveBeenCalledWith(expect.stringContaining('aModalNobodyRegistered'));
+		});
+
+		it('should warn through openModalWithData too', () => {
+			const uiStore = useUIStore();
+
+			uiStore.openModalWithData({ name: 'aModalNobodyRegistered', data: {} });
+
+			expect(warn).toHaveBeenCalledWith(expect.stringContaining('aModalNobodyRegistered'));
+		});
+
+		it('should stay quiet for a shell-catalogue key', () => {
+			const uiStore = useUIStore();
+
+			uiStore.openModal(CREDENTIAL_EDIT_MODAL_KEY);
+
+			expect(warn).not.toHaveBeenCalled();
+		});
+
+		it('should stay quiet for a registered key', () => {
+			const uiStore = useUIStore();
+			modalRegistry.register({ key: MODAL_KEY, component: {} });
+
+			uiStore.openModal(MODAL_KEY);
+
+			expect(warn).not.toHaveBeenCalled();
+		});
+
+		it('should stay quiet for a key built from a declared ad-hoc prefix', () => {
+			const uiStore = useUIStore();
+			// dataTable mints one key per row and registers none of them.
+			modalRegistry.declareAdHocKeyPrefix('downloadDataTableModal');
+
+			uiStore.openModal('downloadDataTableModal-42');
+
+			expect(warn).not.toHaveBeenCalled();
 		});
 	});
 });

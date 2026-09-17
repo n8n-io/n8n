@@ -8,6 +8,7 @@
 | errorMessage | text |  | true |  |  | Error details for surfacing failed publications to the user. |
 | id | integer |  | false |  |  |  |
 | publishedVersionId | varchar(36) |  | false |  |  | References workflow_history.versionId. |
+| reason | varchar(20) | 'publish'::character varying | false |  |  | Why this publication was enqueued: user publish/unpublish, leader startup pass, leadership takeover, or reconciler drift-heal |
 | status | varchar(20) |  | false |  |  |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | workflowId | varchar(36) |  | false |  |  | References workflow_entity.id. |
@@ -16,11 +17,13 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| CHK_workflow_publication_outbox_reason | CHECK | CHECK (((reason)::text = ANY ((ARRAY['publish'::character varying, 'startup'::character varying, 'leadership-takeover'::character varying, 'reconcile'::character varying])::text[]))) |
 | CHK_workflow_publication_outbox_status | CHECK | CHECK (((status)::text = ANY ((ARRAY['pending'::character varying, 'in_progress'::character varying, 'completed'::character varying, 'partial_success'::character varying, 'failed'::character varying])::text[]))) |
 | PK_b3e2eeee36a4bd044d56468d311 | PRIMARY KEY | PRIMARY KEY (id) |
 | workflow_publication_outbox_createdAt_not_null | n | NOT NULL "createdAt" |
 | workflow_publication_outbox_id_not_null | n | NOT NULL id |
 | workflow_publication_outbox_publishedVersionId_not_null | n | NOT NULL "publishedVersionId" |
+| workflow_publication_outbox_reason_not_null | n | NOT NULL reason |
 | workflow_publication_outbox_status_not_null | n | NOT NULL status |
 | workflow_publication_outbox_updatedAt_not_null | n | NOT NULL "updatedAt" |
 | workflow_publication_outbox_workflowId_not_null | n | NOT NULL "workflowId" |
@@ -43,6 +46,7 @@ erDiagram
   text errorMessage
   integer id
   varchar_36_ publishedVersionId
+  varchar_20_ reason
   varchar_20_ status
   timestamp_3__with_time_zone updatedAt
   varchar_36_ workflowId

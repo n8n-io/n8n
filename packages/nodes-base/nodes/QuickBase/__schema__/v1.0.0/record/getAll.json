@@ -13,6 +13,9 @@
         "NSN": {
             "type": "string"
         },
+        "Record ID#": {
+            "type": "integer"
+        },
         "Site Location": {
             "type": "string"
         },
@@ -20,5 +23,5 @@
             "type": "string"
         }
     },
-    "version": 3
+    "version": 4
 }

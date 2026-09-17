@@ -309,9 +309,9 @@
 	--easing--ease-out-expo: cubic-bezier(0.19, 1, 0.22, 1);
 
 	--shadow-color: var(--color--black-alpha-100);
+	--shadow-color--outline: var(--color--black-alpha-100);
 
-	/* box-shadow: var(--shadow--xs), inset var(--shadow--outline); */
-	--shadow--outline: 0 0 0 1px light-dark(var(--shadow-color), var(--color--white-alpha-100));
+	--shadow--outline: 0 0 0 1px var(--shadow-color--outline);
 	--shadow--2xs: 0 1px var(--shadow-color);
 	--shadow--xs: 0 1px 3px -1px var(--shadow-color);
 	--shadow--sm: 0 4px 6px -1px var(--shadow-color), 0 2px 4px -2px var(--shadow-color);
@@ -319,6 +319,23 @@
 	--shadow--xl: 0 20px 25px -5px var(--shadow-color), 0 8px 10px -6px var(--shadow-color);
 }
 
+/** Redefine this primitive overrides here because Lightning CSS doesnt like light-dark in .scss files **/
+@mixin dark-theme-overrides {
+	--shadow-color: var(--color--black-alpha-250);
+	--shadow-color--outline: var(--color--white-alpha-100);
+}
+
 :root {
 	@include primitives;
+
+	/** Make sure that media query preceeds [data-theme] as MacOS theme can override attribute specificity **/
+	@media (prefers-color-scheme: dark) {
+		body:not([data-theme]) {
+			@include dark-theme-overrides;
+		}
+	}
+
+	[data-theme='dark'] {
+		@include dark-theme-overrides;
+	}
 }

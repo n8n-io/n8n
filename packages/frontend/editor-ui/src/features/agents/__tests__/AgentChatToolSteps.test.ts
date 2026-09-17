@@ -60,6 +60,7 @@ vi.mock('@n8n/i18n', () => {
 	const i18n = {
 		translations: {
 			'agents.chat.toolNames.webSearch': 'Web search',
+			'agents.chat.toolNames.flagMemory': 'Memory noted',
 			'instanceAi.tools.search_nodes': 'Search nodes',
 			'agents.chat.difficulty.low': 'Low',
 			'agents.chat.difficulty.medium': 'Medium',
@@ -181,12 +182,51 @@ describe('AgentChatToolSteps', () => {
 		expect(wrapper.find('button').exists()).toBe(false);
 	});
 
-	it('shows Fix with Assistant only for errored tools when handoff is enabled', async () => {
+	it('shows a completed memory flag as a compact acknowledgement', () => {
+		const running = mountSteps([
+			{
+				tool: 'flag_memory',
+				toolCallId: 'tc-memory-running',
+				state: TOOL_CALL_STATE.RUNNING,
+				input: { content: 'Remember this.' },
+			},
+		]);
+		expect(running.text()).toContain('Flag memory');
+		expect(running.text()).not.toContain('Memory noted');
+
+		const missingResult = mountSteps([
+			{
+				tool: 'flag_memory',
+				toolCallId: 'tc-memory-no-result',
+				state: TOOL_CALL_STATE.DONE,
+				input: { content: 'Remember this.' },
+			},
+		]);
+		expect(missingResult.text()).toContain('Flag memory');
+		expect(missingResult.text()).not.toContain('Memory noted');
+
+		const completed = mountSteps([
+			{
+				tool: 'flag_memory',
+				toolCallId: 'tc-memory-done',
+				state: TOOL_CALL_STATE.DONE,
+				input: { content: 'Remember this.' },
+				output: { status: 'noted' },
+			},
+		]);
+		expect(completed.text()).toContain('Memory noted');
+		expect(completed.find('button').exists()).toBe(false);
+		expect(completed.find('[data-test-id="tool-step-details"]').exists()).toBe(false);
+	});
+
+	it('shows one Fix with Assistant callout with deduplicated failures', async () => {
 		const errored: ToolCall = {
 			tool: 'search_nodes',
 			toolCallId: 'tc-err',
 			state: TOOL_CALL_STATE.ERROR,
-			output: 'Tool failed',
+			output: 'Repeated failure',
+			startTime: 1_000,
+			endTime: 1_250,
 		};
 
 		const withoutFix = mountSteps([errored]);
@@ -207,15 +247,61 @@ describe('AgentChatToolSteps', () => {
 			false,
 		);
 
-		const withFix = mountSteps([errored], {
-			canFixWithAssistant: true,
-			executionId: 'exec-1',
-		});
-		expect(
-			withFix.find('[data-test-id="agent-chat-tool-fix-with-assistant-callout"]').exists(),
-		).toBe(true);
-		await withFix.find('[data-test-id="agent-chat-tool-fix-with-assistant"]').trigger('click');
-		expect(withFix.emitted('fixWithAssistant')?.length).toBeGreaterThanOrEqual(1);
+		const withFix = mountSteps(
+			[
+				errored,
+				{
+					tool: 'list_credentials',
+					toolCallId: 'tc-err-2',
+					state: TOOL_CALL_STATE.ERROR,
+					output: '  Repeated failure  ',
+				},
+				{
+					tool: 'http_request',
+					toolCallId: 'tc-err-3',
+					state: TOOL_CALL_STATE.ERROR,
+					output: 'Different failure',
+				},
+			],
+			{
+				canFixWithAssistant: true,
+				executionId: 'exec-1',
+			},
+		);
+		const callouts = withFix.findAll('[data-test-id="agent-chat-tool-fix-with-assistant-callout"]');
+		expect(callouts).toHaveLength(1);
+		expect(callouts[0].findAll('li')).toHaveLength(2);
+		expect(callouts[0].text().match(/Repeated failure/g)).toHaveLength(1);
+		expect(callouts[0].text().match(/Different failure/g)).toHaveLength(1);
+		const fixButtons = withFix.findAll('[data-test-id="agent-chat-tool-fix-with-assistant"]');
+		expect(fixButtons).toHaveLength(1);
+		await fixButtons[0].trigger('click');
+		expect(withFix.emitted('fixWithAssistant')).toEqual([
+			[
+				[
+					{
+						toolCallId: 'tc-err',
+						toolName: 'search_nodes',
+						toolDisplayName: 'Search nodes',
+						error: 'Repeated failure',
+						startedAt: 1_000,
+						endedAt: 1_250,
+					},
+					{
+						toolCallId: 'tc-err-2',
+						toolName: 'list_credentials',
+						toolDisplayName: 'List credentials',
+						error: 'Repeated failure',
+					},
+					{
+						toolCallId: 'tc-err-3',
+						toolName: 'http_request',
+						toolDisplayName: 'Http request',
+						error: 'Different failure',
+					},
+				],
+			],
+		]);
 	});
 
 	it('shows a generic error when the failed tool output is empty', () => {
@@ -254,6 +340,9 @@ describe('AgentChatToolSteps', () => {
 		);
 
 		expect(wrapper.find('[data-test-id="agent-chat-tool-fix-with-assistant"]').exists()).toBe(true);
+		const callout = wrapper.find('[data-test-id="agent-chat-tool-fix-with-assistant-callout"]');
+		expect(callout.find('ul').exists()).toBe(false);
+		expect(callout.text()).toContain('Tool failed');
 
 		const group = wrapper.find('[data-test-id="n8n-ai-activity-step-group"]');
 		expect(group.exists()).toBe(true);

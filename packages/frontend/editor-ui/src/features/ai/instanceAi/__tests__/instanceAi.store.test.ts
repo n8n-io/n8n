@@ -1,10 +1,18 @@
 import { setActivePinia, createPinia } from 'pinia';
 import { beforeAll, afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ensureThread } from '../instanceAi.api';
-import { deleteThread as deleteThreadApi } from '../instanceAi.memory.api';
+import {
+	deleteThread as deleteThreadApi,
+	fetchThreadHistory,
+	fetchThread,
+	renameThread as renameThreadApi,
+} from '../instanceAi.memory.api';
 import { useInstanceAiStore } from '../instanceAi.store';
-import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
-import { UNLIMITED_CREDITS, type InstanceAiThreadSummary } from '@n8n/api-types';
+import {
+	UNLIMITED_CREDITS,
+	type InstanceAiThreadHistoryResponse,
+	type InstanceAiThreadSummary,
+} from '@n8n/api-types';
 
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: vi.fn().mockReturnValue({
@@ -49,6 +57,8 @@ vi.mock('../instanceAi.api', () => ({
 
 vi.mock('../instanceAi.memory.api', () => ({
 	fetchThreads: vi.fn().mockResolvedValue({ threads: [], total: 0, page: 1, hasMore: false }),
+	fetchThread: vi.fn(),
+	fetchThreadHistory: vi.fn().mockResolvedValue({ threads: [], nextCursor: null, hasMore: false }),
 	fetchThreadMessages: vi
 		.fn()
 		.mockResolvedValue({ threadId: 'thread-1', messages: [], nextEventId: 0 }),
@@ -90,6 +100,73 @@ describe('useInstanceAiStore - runtime registry', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia());
 		vi.clearAllMocks();
+	});
+
+	function historyThread(id: string) {
+		return { id, title: id, resourceId: 'user', createdAt: '2026-01-01', updatedAt: '2026-01-01' };
+	}
+
+	it('pages the chat history once per row and drops a response that predates a reset', async () => {
+		const store = useInstanceAiStore();
+		vi.mocked(fetchThreadHistory)
+			.mockResolvedValueOnce({
+				threads: [historyThread('a'), historyThread('b')],
+				nextCursor: 'cursor-1',
+				hasMore: true,
+			})
+			.mockResolvedValueOnce({
+				threads: [historyThread('b'), historyThread('c')],
+				nextCursor: null,
+				hasMore: false,
+			});
+		await store.loadThreadHistoryPage();
+		await store.loadThreadHistoryPage();
+		expect(fetchThreadHistory).toHaveBeenLastCalledWith(expect.anything(), {
+			limit: 30,
+			search: undefined,
+			cursor: 'cursor-1',
+		});
+		expect(store.threadHistory.threads.map((thread) => thread.id)).toEqual(['a', 'b', 'c']);
+		expect(store.threadHistory.hasMore).toBe(false);
+
+		const late = Promise.withResolvers<InstanceAiThreadHistoryResponse>();
+		vi.mocked(fetchThreadHistory).mockReturnValueOnce(late.promise);
+		store.resetThreadHistory('old');
+		const pending = store.loadThreadHistoryPage();
+		store.resetThreadHistory('new');
+		late.resolve({ threads: [historyThread('late')], nextCursor: null, hasMore: false });
+		await pending;
+		expect(store.threadHistory).toMatchObject({ search: 'new', threads: [], loading: false });
+	});
+
+	it('renames and deletes threads on the history page and rolls back a failed rename', async () => {
+		const store = useInstanceAiStore();
+		vi.mocked(fetchThreadHistory).mockResolvedValueOnce({
+			threads: [historyThread('a'), historyThread('b')],
+			nextCursor: null,
+			hasMore: false,
+		});
+		await store.loadThreadHistoryPage();
+
+		await store.renameThread('a', 'Renamed');
+		expect(renameThreadApi).toHaveBeenCalledWith(expect.anything(), 'a', 'Renamed');
+		expect(store.threadHistory.threads[0].title).toBe('Renamed');
+
+		vi.mocked(renameThreadApi).mockRejectedValueOnce(new Error('offline'));
+		await expect(store.renameThread('a', 'Rejected')).rejects.toThrow('offline');
+		expect(store.threadHistory.threads[0].title).toBe('Renamed');
+
+		await store.deleteThread('b');
+		expect(mockDeleteThread).toHaveBeenCalledWith(expect.anything(), 'b');
+		expect(store.threadHistory.threads.map((thread) => thread.id)).toEqual(['a']);
+	});
+
+	it('loadThread adds a thread the sidebar list does not hold, once', async () => {
+		const store = useInstanceAiStore();
+		vi.mocked(fetchThread).mockResolvedValue({ thread: historyThread('old') });
+		await store.loadThread('old');
+		await store.loadThread('old');
+		expect(store.threads.map((thread) => thread.id)).toEqual(['old']);
 	});
 
 	it('returns the same runtime for the same thread id', () => {
@@ -191,33 +268,15 @@ describe('useInstanceAiStore - credits', () => {
 		});
 	});
 
-	describe('credits push listener', () => {
-		/** Registers the store's push listener and hands back the callback the store subscribed with. */
-		function startListening() {
-			let pushCb: (m: unknown) => void = () => {};
-			vi.mocked(usePushConnectionStore).mockReturnValue({
-				addEventListener: vi.fn((cb: (m: unknown) => void) => {
-					pushCb = cb;
-					return () => {};
-				}),
-			} as unknown as ReturnType<typeof usePushConnectionStore>);
-
-			return (message: unknown) => pushCb(message);
-		}
-
+	describe('credits push handling', () => {
 		it('writes creditsUsed onto the matching thread from the push payload', () => {
-			const pushCb = startListening();
 			const store = useInstanceAiStore();
 			store.threads.push(makeThread('t1', {}));
-			store.startCreditsPushListener();
 
-			pushCb({
-				type: 'updateInstanceAiCredits',
-				data: {
-					creditsQuota: 100,
-					creditsClaimed: 5,
-					creditsPerThread: { threadId: 't1', totalCreditsUsed: 2.5 },
-				},
+			store.handleCreditsPush({
+				creditsQuota: 100,
+				creditsClaimed: 5,
+				creditsPerThread: { threadId: 't1', totalCreditsUsed: 2.5 },
 			});
 
 			expect(store.creditsClaimed).toBe(5);
@@ -225,14 +284,13 @@ describe('useInstanceAiStore - credits', () => {
 		});
 
 		it('picks up the quota lock from the push payload', () => {
-			const pushCb = startListening();
 			const store = useInstanceAiStore();
-			store.startCreditsPushListener();
 
-			pushCb({
-				type: 'updateInstanceAiCredits',
-				// What the activation-capped cohort receives: no usable figures, just the lock.
-				data: { creditsQuota: UNLIMITED_CREDITS, creditsClaimed: 0, quotaLocked: true },
+			// What the activation-capped cohort receives: no usable figures, just the lock.
+			store.handleCreditsPush({
+				creditsQuota: UNLIMITED_CREDITS,
+				creditsClaimed: 0,
+				quotaLocked: true,
 			});
 
 			expect(store.quotaLocked).toBe(true);
@@ -243,21 +301,17 @@ describe('useInstanceAiStore - credits', () => {
 		// memory task, or a fire-and-forget HITL segment claim from an earlier run. Treating the
 		// absent field as `false` would clear the warning the lock had just raised.
 		it('keeps the quota lock when a later push omits it', () => {
-			const pushCb = startListening();
 			const store = useInstanceAiStore();
-			store.startCreditsPushListener();
 
-			pushCb({
-				type: 'updateInstanceAiCredits',
-				data: { creditsQuota: UNLIMITED_CREDITS, creditsClaimed: 0, quotaLocked: true },
+			store.handleCreditsPush({
+				creditsQuota: UNLIMITED_CREDITS,
+				creditsClaimed: 0,
+				quotaLocked: true,
 			});
 			expect(store.showCreditWarning).toBe(true);
 
 			// What a claim pushes: figures only, no lock state.
-			pushCb({
-				type: 'updateInstanceAiCredits',
-				data: { creditsQuota: UNLIMITED_CREDITS, creditsClaimed: 0 },
-			});
+			store.handleCreditsPush({ creditsQuota: UNLIMITED_CREDITS, creditsClaimed: 0 });
 
 			expect(store.quotaLocked).toBe(true);
 			expect(store.showCreditWarning).toBe(true);
@@ -266,18 +320,14 @@ describe('useInstanceAiStore - credits', () => {
 		// Absence means "no opinion", but an explicit false is still an answer — an upgraded
 		// account must be able to get its balance back.
 		it('clears the quota lock when a push says so explicitly', () => {
-			const pushCb = startListening();
 			const store = useInstanceAiStore();
-			store.startCreditsPushListener();
 
-			pushCb({
-				type: 'updateInstanceAiCredits',
-				data: { creditsQuota: UNLIMITED_CREDITS, creditsClaimed: 0, quotaLocked: true },
+			store.handleCreditsPush({
+				creditsQuota: UNLIMITED_CREDITS,
+				creditsClaimed: 0,
+				quotaLocked: true,
 			});
-			pushCb({
-				type: 'updateInstanceAiCredits',
-				data: { creditsQuota: 800, creditsClaimed: 12.5, quotaLocked: false },
-			});
+			store.handleCreditsPush({ creditsQuota: 800, creditsClaimed: 12.5, quotaLocked: false });
 
 			expect(store.quotaLocked).toBe(false);
 			expect(store.showCreditWarning).toBe(false);

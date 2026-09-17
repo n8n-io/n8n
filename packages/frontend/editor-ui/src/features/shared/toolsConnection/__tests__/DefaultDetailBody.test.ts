@@ -20,7 +20,7 @@ const workflowItem: WorkflowConnectionItem = {
 	id: 'wf-1',
 	kind: 'workflow',
 	title: 'Summariser',
-	isConnected: false,
+	status: 'none',
 	workflowId: 'wf-1',
 };
 
@@ -28,7 +28,7 @@ const agentItem: AgentConnectionItem = {
 	id: 'ag-1',
 	kind: 'agent',
 	title: 'Code Reviewer',
-	isConnected: false,
+	status: 'none',
 	agentId: 'ag-1',
 };
 
@@ -36,7 +36,7 @@ const dataStoreItem: DataStoreConnectionItem = {
 	id: 'ds-1',
 	kind: 'data-store',
 	title: 'Customers',
-	isConnected: false,
+	status: 'none',
 	dataStoreId: 'ds-1',
 };
 

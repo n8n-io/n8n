@@ -1,3 +1,5 @@
+import { z } from 'zod';
+
 import { n8nIdSchema } from '../../schemas/id.schema';
 import {
 	requiredWorkflowVersionNameSchema,
@@ -11,4 +13,6 @@ export class UpdateWorkflowReviewRequestVersionDto extends Z.class({
 	workflowVersionName: requiredWorkflowVersionNameSchema,
 	// When present, an empty/whitespace string clears the version description
 	workflowVersionDescription: workflowVersionDescriptionSchema,
+	// When present, an empty/whitespace string clears the review description
+	description: z.string().max(512).optional(),
 }) {}

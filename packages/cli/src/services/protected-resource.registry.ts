@@ -1,3 +1,4 @@
+import type { ConsentUiHints } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -18,6 +19,9 @@ export interface ProtectedResource {
 
 	/** Human readable name, for consent screen */
 	displayName?: string;
+
+	/** Presentational hints for the consent screen; omit for the default client-brand treatment. */
+	uiHints?: ConsentUiHints;
 
 	/**
 	 * Canonical RFC 8707 resource URL used as the JWT `aud` claim and advertised
@@ -67,6 +71,18 @@ export interface ProtectedResource {
 	getAllowedRedirectUris?(): Promise<string[]>;
 
 	isFirstParty?: boolean;
+
+	/**
+	 * Whether the resource currently serves requests. An unavailable resource is
+	 * hidden from RFC 9728 discovery, so clients see no authorization server to
+	 * authenticate against. Treated as always available when not implemented.
+	 *
+	 * Discovery and the token/consent gates apply this automatically (the latter
+	 * via {@link ProtectedResource.authorize}); answering 404 on the resource's
+	 * own endpoint, rather than an authentication challenge, remains up to
+	 * whoever serves it.
+	 */
+	isAvailable?(): Promise<boolean>;
 
 	/**
 	 * Determine whether the given user is authorized to access this resource.

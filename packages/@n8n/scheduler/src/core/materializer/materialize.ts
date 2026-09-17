@@ -1,6 +1,7 @@
 import { Time } from '@n8n/constants';
 
 import type { ScheduledJob } from '../types';
+import { applyCoalesceOwnerPolicy } from './coalesce-group';
 import { countMisfires, type MisfireCount } from './misfire';
 import { DEFAULT_MATERIALIZER_OPTIONS, type MaterializerOptions } from './options';
 import { planOccurrences } from './plan';
@@ -115,11 +116,12 @@ export async function materialize(
 				retiredOccurrences: 0,
 			};
 		}
-		const { occurrencesPlanned, numberOfJobsDeferred } = planOrDeferJobs(
+		const { occurrencesPlanned: jobsPlanned, numberOfJobsDeferred } = planOrDeferJobs(
 			claimed,
 			options,
 			hooks.onPlanError,
 		);
+		const occurrencesPlanned = applyCoalesceOwnerPolicy(jobsPlanned);
 		const rows = toNewOccurrences(occurrencesPlanned, claimed.now);
 		const { recorded, created } = await tx.recordOccurrences(rows);
 		signal?.throwIfAborted();
@@ -169,10 +171,14 @@ function toNewOccurrences(planned: PlannedJob[], now: Date): NewOccurrence[] {
 	);
 }
 
-/** The jobs whose plan recorded a catch-up run, paired with that instant. */
+/**
+ * Jobs whose plan set `retireBefore`: normally the instant of their own late
+ * run, but also a group's loser, whose dropped late run still leaves an
+ * already-recorded pending occurrence that needs retiring.
+ */
 function toSuperseded(planned: PlannedJob[]): SupersededOccurrences[] {
 	return planned.flatMap(({ job, plan }) =>
-		plan.catchUpAt === null ? [] : [{ jobId: job.id, before: plan.catchUpAt }],
+		plan.retireBefore === null ? [] : [{ jobId: job.id, before: plan.retireBefore }],
 	);
 }
 
@@ -228,6 +234,7 @@ function planOrDeferJob(
 					occurrences: [],
 					skippedOccurrences: 0,
 					catchUpAt: null,
+					retireBefore: null,
 					nextRunAt: retryAt,
 					lastFiredAt: job.lastFiredAt,
 				},

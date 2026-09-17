@@ -2,24 +2,19 @@ import type {
 	GetWorkflowReviewInboxSummaryResponse,
 	ListWorkflowReviewInboxQueryDto,
 	ListWorkflowReviewInboxResponse,
-	WorkflowReviewEligibleReviewer,
 	WorkflowReviewInboxItem,
 	WorkflowReviewRequestDetail,
 	WorkflowReviewRequestWorkflowDetail,
 	WorkflowReviewVersionSnapshot,
 } from '@n8n/api-types';
 import {
-	UserRepository,
-	WorkflowPublishedVersionRepository,
-	WorkflowReviewRequestRepository,
-	WorkflowReviewRequestReviewerRepository,
+	WorkflowReviewInboxRepository,
 	WorkflowReviewRequestWorkflowRepository,
 	type InboxCursor,
 	type User,
 	type WorkflowHistory,
 	type WorkflowReviewRequest,
 	type WorkflowReviewRequestLinkedWorkflow,
-	type WorkflowReviewRequestReviewer,
 	type WorkflowReviewRequestWorkflowDetailRow,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -27,10 +22,12 @@ import { Service } from '@n8n/di';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 
-import { WorkflowReviewAccessService } from './workflow-review-access.service';
-import { WorkflowReviewEligibilityService } from './workflow-review-eligibility.service';
+import { WorkflowReviewAuthorizationService } from './workflow-review-authorization.service';
 import { WorkflowReviewFeatureGate } from './workflow-review-feature-gate.service';
-import { toEligibleReviewer } from './workflow-review.mapper';
+import {
+	WorkflowReviewParticipantResolver,
+	type WorkflowReviewParticipants,
+} from './workflow-review-participant.resolver';
 
 /**
  * The reviewer-facing read side of workflow reviews: the cross-project inbox, its
@@ -42,14 +39,11 @@ import { toEligibleReviewer } from './workflow-review.mapper';
 export class WorkflowReviewInboxService {
 	constructor(
 		private readonly featureGate: WorkflowReviewFeatureGate,
-		private readonly accessService: WorkflowReviewAccessService,
+		private readonly authorizationService: WorkflowReviewAuthorizationService,
 		private readonly workflowHistoryService: WorkflowHistoryService,
-		private readonly workflowPublishedVersionRepository: WorkflowPublishedVersionRepository,
-		private readonly workflowReviewRequestRepository: WorkflowReviewRequestRepository,
+		private readonly workflowReviewInboxRepository: WorkflowReviewInboxRepository,
 		private readonly workflowReviewRequestWorkflowRepository: WorkflowReviewRequestWorkflowRepository,
-		private readonly workflowReviewRequestReviewerRepository: WorkflowReviewRequestReviewerRepository,
-		private readonly userRepository: UserRepository,
-		private readonly eligibilityService: WorkflowReviewEligibilityService,
+		private readonly participantResolver: WorkflowReviewParticipantResolver,
 	) {}
 
 	async listForInbox(
@@ -58,12 +52,13 @@ export class WorkflowReviewInboxService {
 	): Promise<ListWorkflowReviewInboxResponse> {
 		await this.featureGate.assertAvailable();
 
-		const projectIds = await this.accessService.resolveAccessibleProjectIds(user);
+		const visibility = await this.authorizationService.resolveInboxVisibility(user);
 		const { limit } = query;
-		const rows = await this.workflowReviewRequestRepository.findManyForInbox({
-			projectIds,
-			requesterId: user.id,
+		const rows = await this.workflowReviewInboxRepository.findRequests({
+			visibility,
 			state: query.state ?? 'open',
+			category:
+				query.category === undefined ? undefined : { userId: user.id, category: query.category },
 			limit: limit + 1,
 			cursor: query.cursor ? this.decodeInboxCursor(query.cursor) : undefined,
 		});
@@ -72,27 +67,21 @@ export class WorkflowReviewInboxService {
 		const data = rows.slice(0, limit);
 		const lastRow = data.at(-1);
 		const nextCursor = hasMore && lastRow ? this.encodeInboxCursor(lastRow) : null;
-		const requestIds = data.map((row) => row.id);
-		const [linkedWorkflowByRequestId, reviewerRows] = await Promise.all([
-			this.workflowReviewRequestWorkflowRepository.findLinkedWorkflowsByRequestIds(requestIds),
-			this.workflowReviewRequestReviewerRepository.findByRequestIds(requestIds),
+		const [linkedWorkflowByRequestId, participants] = await Promise.all([
+			this.workflowReviewRequestWorkflowRepository.findLinkedWorkflowsByRequestIds(
+				data.map((row) => row.id),
+			),
+			this.participantResolver.resolve(data),
 		]);
 
-		const participantsByRequestId = await this.hydrateParticipants(data, reviewerRows);
-
 		return {
-			data: data.map((row) => {
-				const { requester, reviewers } = participantsByRequestId.get(row.id) ?? {
-					requester: null,
-					reviewers: [],
-				};
-				return this.toInboxItem(
+			data: data.map((row) =>
+				this.toInboxItem(
 					row,
 					linkedWorkflowByRequestId.get(row.id) ?? null,
-					requester,
-					reviewers,
-				);
-			}),
+					participants.for(row.id),
+				),
+			),
 			nextCursor,
 			hasMore,
 		};
@@ -101,11 +90,8 @@ export class WorkflowReviewInboxService {
 	async getInboxSummaryForUser(user: User): Promise<GetWorkflowReviewInboxSummaryResponse> {
 		await this.featureGate.assertAvailable();
 
-		const projectIds = await this.accessService.resolveAccessibleProjectIds(user);
-		return await this.workflowReviewRequestRepository.countByStateForInbox({
-			projectIds,
-			requesterId: user.id,
-		});
+		const visibility = await this.authorizationService.resolveInboxVisibility(user);
+		return await this.workflowReviewInboxRepository.countRequestsByState(visibility);
 	}
 
 	async getDetail(
@@ -114,55 +100,63 @@ export class WorkflowReviewInboxService {
 	): Promise<WorkflowReviewRequestDetail> {
 		await this.featureGate.assertAvailable();
 
-		const access = await this.accessService.findReadableRequestOrFail(
+		const access = await this.authorizationService.findReadableRequestOrFail(
 			user,
 			workflowReviewRequestId,
 		);
 		const { request, readableWorkflowRows } = access;
 
-		const [workflows, participantsByRequestId, eligibility] = await Promise.all([
+		const [workflows, participants, eligibility] = await Promise.all([
 			Promise.all(readableWorkflowRows.map(async (row) => await this.toWorkflowDetail(row))),
-			this.resolveParticipants(request),
-			// Resolved against the pinned (pre-read-filter) row, matching the row
-			// decide() authorizes against — not against what the caller can read.
-			this.eligibilityService.resolveViewerEligibility(user, request, access.pinnedWorkflowId),
+			this.participantResolver.resolve([request]),
+			// Reuses the snapshot above: capabilities are resolved against every covered
+			// row, matching what decide() authorizes against.
+			this.authorizationService.resolveViewerEligibility(user, access),
 		]);
 
-		const { requester, reviewers } = participantsByRequestId.get(request.id) ?? {
-			requester: null,
-			reviewers: [],
-		};
 		return {
-			// One workflow per review for now, so the summary fields mirror the first row
-			...this.toInboxItem(request, workflows.at(0) ?? null, requester, reviewers),
+			...this.toReviewSummary(request, participants.for(request.id)),
 			description: request.description,
 			workflows,
 			viewerCanDecide: eligibility.canDecide,
 			viewerDecisionIneligibilityReason: eligibility.decisionIneligibilityReason,
+			viewerCanComment: eligibility.canComment,
 		};
 	}
 
-	private async resolveParticipants(request: WorkflowReviewRequest) {
-		const reviewerRows = await this.workflowReviewRequestReviewerRepository.findByRequestIds([
-			request.id,
-		]);
-		return await this.hydrateParticipants([request], reviewerRows);
-	}
-
 	/**
-	 * Both diff sides for one child row. The baseline is resolved at read time, so
-	 * a publish during an open review moves what reviewers are diffing against.
+	 * Both sides of the diff for one child row: the version under review, and the
+	 * baseline to compare it against.
+	 *
+	 * While a review is open the baseline is the live published version, so a publish
+	 * during the review moves what reviewers see. Approval freezes it onto the row, and
+	 * a closed review reads only that frozen value.
+	 *
+	 * A closed review without one returns null, meaning "nothing to compare against".
+	 * It never falls back to the live version, which would show a diff nobody approved.
 	 */
 	private async toWorkflowDetail(
 		row: WorkflowReviewRequestWorkflowDetailRow,
 	): Promise<WorkflowReviewRequestWorkflowDetail> {
-		const publishedVersionId = await this.workflowPublishedVersionRepository.getPublishedVersionId(
-			row.workflowId,
-		);
+		// State and baseline come from the same row, so they cannot disagree. That
+		// matters here: approving a never-published workflow freezes a null baseline,
+		// which looks exactly like "nothing frozen yet", and only the state tells the
+		// two apart.
+		//
+		// A frozen baseline always wins, whatever state sits next to it, because only
+		// approval writes one. Null on a closed review can mean never published,
+		// approved while unpublished, or closed without an approval — callers tell those
+		// apart via `state` + `decision`.
+		//
+		// The live baseline comes from the workflow row: both publication paths maintain
+		// `activeVersionId`, while the publication-service table exists only on the
+		// outbox path — reading it there left the baseline empty on the default path.
+		const baselineVersionId =
+			row.baselineVersionId ?? (row.requestState === 'closed' ? null : row.activeVersionId);
 
 		const [pinnedVersion, baselineVersion] = await Promise.all([
 			this.findVersionSnapshot(row.workflowId, row.workflowVersionId),
-			this.findVersionSnapshot(row.workflowId, publishedVersionId),
+			this.findVersionSnapshot(row.workflowId, baselineVersionId),
 		]);
 
 		return {
@@ -170,6 +164,7 @@ export class WorkflowReviewInboxService {
 			workflowName: row.workflowName,
 			workflowVersionId: row.workflowVersionId,
 			pinnedVersion,
+			publishedVersionId: row.activeVersionId,
 			baselineVersion,
 		};
 	}
@@ -199,54 +194,6 @@ export class WorkflowReviewInboxService {
 	}
 
 	/**
-	 * Batch-resolve the requester and requested reviewers for each request row,
-	 * keyed by request id. Deleted users simply drop out of the result.
-	 */
-	private async hydrateParticipants(
-		rows: WorkflowReviewRequest[],
-		reviewerRows: WorkflowReviewRequestReviewer[],
-	): Promise<
-		Map<
-			string,
-			{
-				requester: WorkflowReviewEligibleReviewer | null;
-				reviewers: WorkflowReviewEligibleReviewer[];
-			}
-		>
-	> {
-		const reviewerIdsByRequestId = new Map<string, string[]>();
-		for (const { workflowReviewRequestId, userId } of reviewerRows) {
-			const ids = reviewerIdsByRequestId.get(workflowReviewRequestId) ?? [];
-			ids.push(userId);
-			reviewerIdsByRequestId.set(workflowReviewRequestId, ids);
-		}
-
-		const userIds = new Set([
-			...rows.map((row) => row.createdById).filter((id) => id !== null),
-			...reviewerRows.map((row) => row.userId),
-		]);
-
-		const usersById = new Map<string, WorkflowReviewEligibleReviewer>();
-		if (userIds.size > 0) {
-			for (const user of await this.userRepository.findManyByIds([...userIds])) {
-				usersById.set(user.id, toEligibleReviewer(user));
-			}
-		}
-
-		return new Map(
-			rows.map((row) => [
-				row.id,
-				{
-					requester: row.createdById ? (usersById.get(row.createdById) ?? null) : null,
-					reviewers: (reviewerIdsByRequestId.get(row.id) ?? [])
-						.map((userId) => usersById.get(userId))
-						.filter((reviewer) => reviewer !== undefined),
-				},
-			]),
-		);
-	}
-
-	/**
 	 * Encode the keyset boundary (createdAt + id) into an opaque cursor so the
 	 * next page is resolved without re-reading the anchor row — a review deleted
 	 * between requests no longer truncates the rest of the inbox.
@@ -271,24 +218,34 @@ export class WorkflowReviewInboxService {
 		return { createdAt, id };
 	}
 
-	private toInboxItem(
+	/** The review fields shared by the inbox card and the detail response. */
+	private toReviewSummary(
 		entity: WorkflowReviewRequest,
-		linkedWorkflow: WorkflowReviewRequestLinkedWorkflow | null,
-		requester: WorkflowReviewEligibleReviewer | null,
-		reviewers: WorkflowReviewEligibleReviewer[],
-	): WorkflowReviewInboxItem {
+		{ requester, authors, reviewers }: WorkflowReviewParticipants,
+	): Omit<WorkflowReviewInboxItem, 'workflowName' | 'workflowVersionId'> {
 		return {
 			id: entity.id,
 			projectId: entity.projectId,
 			title: entity.title,
-			workflowName: linkedWorkflow?.workflowName ?? null,
-			workflowVersionId: linkedWorkflow?.workflowVersionId ?? null,
 			decision: entity.decision,
 			state: entity.state,
 			createdAt: entity.createdAt.toISOString(),
 			updatedAt: entity.updatedAt.toISOString(),
 			requester,
+			authors,
 			reviewers,
+		};
+	}
+
+	private toInboxItem(
+		entity: WorkflowReviewRequest,
+		linkedWorkflow: WorkflowReviewRequestLinkedWorkflow | null,
+		participants: WorkflowReviewParticipants,
+	): WorkflowReviewInboxItem {
+		return {
+			...this.toReviewSummary(entity, participants),
+			workflowName: linkedWorkflow?.workflowName ?? null,
+			workflowVersionId: linkedWorkflow?.workflowVersionId ?? null,
 		};
 	}
 }

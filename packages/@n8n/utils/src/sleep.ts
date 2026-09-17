@@ -1,25 +1,29 @@
+import { ensureError } from './errors/ensure-error';
+
 async function sleepWithAbort(ms: number, abortSignal: AbortSignal): Promise<void> {
 	return await new Promise((resolve, reject) => {
 		if (abortSignal.aborted) {
-			reject(new Error('Aborted'));
+			reject(ensureError(abortSignal.reason));
 			return;
 		}
 
-		const timeout = setTimeout(resolve, ms);
+		const onAbort = () => {
+			clearTimeout(timeout);
+			reject(ensureError(abortSignal.reason));
+		};
 
-		abortSignal.addEventListener(
-			'abort',
-			() => {
-				clearTimeout(timeout);
-				reject(new Error('Aborted'));
-			},
-			{ once: true },
-		);
+		const timeout = setTimeout(() => {
+			abortSignal.removeEventListener('abort', onAbort);
+			resolve();
+		}, ms);
+
+		abortSignal.addEventListener('abort', onAbort, { once: true });
 	});
 }
 
 /**
- * Resolves after `ms` milliseconds, or rejects early if `abortSignal` is aborted.
+ * Resolves after `ms` milliseconds, or rejects with the signal's abort reason
+ * if `abortSignal` fires first.
  */
 export async function sleep(ms: number, abortSignal?: AbortSignal): Promise<void> {
 	if (!abortSignal) {

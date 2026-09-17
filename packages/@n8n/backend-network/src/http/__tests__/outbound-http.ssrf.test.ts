@@ -1,17 +1,23 @@
 import type { Logger } from '@n8n/backend-common';
+import type { SsrfProtectionConfig } from '@n8n/config';
 import dns from 'node:dns';
 import type { LookupFunction } from 'node:net';
 import type { Dispatcher } from 'undici';
 import { mock } from 'vitest-mock-extended';
 
 import type { SsrfBridge, SsrfProtectionService } from '../../ssrf';
-import { makeLookupFn, makeSsrfBridge } from '../../ssrf/__tests__/mock-ssrf-bridge';
+import {
+	makeDenyingLookup,
+	makeSsrfBridge,
+	useCleanProxyEnv,
+} from '../../ssrf/__tests__/mock-ssrf-bridge';
 import { type LocalServer, startServer } from '../local-server';
 import { OutboundHttp } from '../outbound-http';
 import { createSsrfInterceptor } from '../undici/transport';
 
-// SSRF enforcement lives in a single place: the dispatcher interceptor.
-// This file proves it at two levels:
+// SSRF enforcement on the dispatch path lives in the dispatcher interceptor
+// (an explicit proxy URI is additionally checked when the dispatcher is built).
+// This file proves the interceptor at two levels:
 //   (a) a direct unit test of `createSsrfInterceptor`, and
 //   (b) end-to-end tests against a real local server (no mocked `fetch`), so the
 //       interceptor actually runs and we assert that a 30x cannot smuggle a
@@ -48,6 +54,8 @@ function makeHandler() {
 function makeOpts(path: string, origin?: string) {
 	return { path, origin } as unknown as Dispatcher.DispatchOptions;
 }
+
+useCleanProxyEnv();
 
 describe('createSsrfInterceptor', () => {
 	it('validates the reconstructed target URL and dispatches when allowed', async () => {
@@ -89,7 +97,7 @@ describe('createSsrfInterceptor', () => {
 
 		expect(bridge.validateUrl).not.toHaveBeenCalled();
 		expect(innerDispatch).not.toHaveBeenCalled();
-		expect(handler.onResponseError).toHaveBeenCalled();
+		expect(handler.onResponseError).toHaveBeenCalledWith(null, expect.any(TypeError));
 	});
 
 	it('falls back to onError when onResponseError is unavailable', async () => {
@@ -143,8 +151,22 @@ function makeBridge(blockedPath: string): { bridge: SsrfBridge; error: Error } {
 	return { bridge, error };
 }
 
-function makeTransport(options?: Parameters<OutboundHttp['transport']>[0]) {
-	return new OutboundHttp(mock<SsrfProtectionService>(), mock<Logger>()).transport(options);
+// `ssrf` installs the scripted bridge as the instance's protection service, so
+// the transport picks it up through the default safe mode. `enabled` sets the
+// instance flag (default true).
+function makeTransport(
+	options?: NonNullable<Parameters<OutboundHttp['transport']>[0]> & {
+		ssrf?: SsrfBridge;
+		enabled?: boolean;
+	},
+) {
+	const { ssrf, enabled = true, ...transportOptions } = options ?? {};
+	const service = ssrf ? mock<SsrfProtectionService>(ssrf) : mock<SsrfProtectionService>();
+	return new OutboundHttp(
+		service,
+		mock<SsrfProtectionConfig>({ enabled }),
+		mock<Logger>(),
+	).transport(transportOptions);
 }
 
 // Walk the `cause` chain to the deepest error message. undici wraps a
@@ -214,7 +236,10 @@ describe('SSRF end-to-end', () => {
 
 		it('follows the redirect without validation when SSRF is disabled', async () => {
 			const { bridge } = makeBridge('/internal');
-			const fetchFn = makeTransport({ ssrf: 'disabled', proxy: false }).asCustomFetch();
+			const fetchFn = makeTransport({
+				useDefaultSsrfPolicy: 'unsafe',
+				proxy: false,
+			}).asCustomFetch();
 
 			const res = await fetchFn(`${server.url}/start`);
 
@@ -222,6 +247,34 @@ describe('SSRF end-to-end', () => {
 			await expect(res.text()).resolves.toBe('reached:/internal');
 			expect(bridge.validateUrl).not.toHaveBeenCalled();
 			expect(server.captured).toEqual(['/start', '/internal']);
+		});
+	});
+
+	describe('instance flag (SsrfProtectionConfig.enabled)', () => {
+		it('does not validate a safe transport when the instance disables protection', async () => {
+			const { bridge } = makeBridge('/internal');
+			const fetchFn = makeTransport({ ssrf: bridge, enabled: false, proxy: false }).asCustomFetch();
+
+			const res = await fetchFn(`${server.url}/start`);
+
+			expect(res.status).toBe(200);
+			await expect(res.text()).resolves.toBe('reached:/internal');
+			expect(bridge.validateUrl).not.toHaveBeenCalled();
+		});
+
+		it('validates an enforced transport even when the instance disables protection', async () => {
+			const { bridge } = makeBridge('/internal');
+			const fetchFn = makeTransport({
+				ssrf: bridge,
+				enabled: false,
+				useDefaultSsrfPolicy: 'enforced',
+				proxy: false,
+			}).asCustomFetch();
+
+			await expect(fetchFn(`${server.url}/start`)).rejects.toThrow();
+
+			expect(bridge.validateUrl).toHaveBeenCalledWith(validatedUrl(`${server.url}/internal`));
+			expect(server.captured).not.toContain('/internal');
 		});
 	});
 
@@ -244,7 +297,7 @@ describe('SSRF end-to-end', () => {
 
 		it('does not validate when SSRF is disabled (bare dispatcher)', async () => {
 			const { bridge } = makeBridge('/internal');
-			const client = makeTransport({ ssrf: 'disabled', proxy: false });
+			const client = makeTransport({ useDefaultSsrfPolicy: 'unsafe', proxy: false });
 			const dispatcher = client.getDispatcher();
 
 			const { fetch: undiciFetch } = await import('undici');
@@ -309,14 +362,126 @@ describe('connect-time secure lookup (DNS rebinding)', () => {
 		await expect(fetchFn('http://rebind.example/')).rejects.toThrow();
 	});
 
-	it('does not derive a connect-time lookup behind an explicit proxy', () => {
-		const createSecureLookup = vi.fn(makeLookupFn);
-		const bridge = makeSsrfBridge({ createSecureLookup });
+	it('resolves the proxy host through the secure lookup behind an explicit proxy', async () => {
+		const denied = new Error('blocked: restricted IP address');
+		const lookupSpy = makeDenyingLookup(denied);
+		const bridge = makeSsrfBridge({ createSecureLookup: () => lookupSpy });
+		const fetchFn = makeTransport({
+			ssrf: bridge,
+			proxy: 'http://proxy.internal:3128',
+		}).asCustomFetch();
 
-		// Forces the lazy dispatcher to build. The proxy resolves the target, so
-		// the secure lookup must not be consulted on our side.
-		makeTransport({ ssrf: bridge, proxy: 'http://proxy.invalid:3128' }).getDispatcher();
+		const rejection = await fetchFn('http://target.invalid/x').catch((e: unknown) => e);
 
-		expect(createSecureLookup).not.toHaveBeenCalled();
+		expect(lookupSpy).toHaveBeenCalledWith('proxy.internal', expect.anything(), expect.anything());
+		expect(rootCauseMessage(rejection)).toBe(denied.message);
+	});
+});
+
+describe('proxy host validation', () => {
+	const realLookup = () => dns.lookup as unknown as LookupFunction;
+
+	function denyingBridge(error: Error) {
+		return makeSsrfBridge({
+			createSecureLookup: realLookup,
+			validateConnectionHost: vi.fn().mockReturnValue({ ok: false, error }),
+		});
+	}
+
+	function bridgeDenyingProxyHost(deniedHostname: string) {
+		const error = new Error('The proxy host is not permitted by policy');
+		const bridge = makeSsrfBridge({
+			createSecureLookup: realLookup,
+			validateUrl: vi.fn(async (url: string | URL) => {
+				const hostname = typeof url === 'string' ? new URL(url).hostname : url.hostname;
+				return await Promise.resolve(
+					hostname === deniedHostname
+						? { ok: false as const, error }
+						: { ok: true as const, result: undefined },
+				);
+			}),
+		});
+		return { bridge, error };
+	}
+
+	it('rejects an explicit proxy host the policy denies', () => {
+		const error = new Error('The proxy host is not permitted by policy');
+		const bridge = denyingBridge(error);
+
+		expect(() =>
+			makeTransport({ ssrf: bridge, proxy: 'http://127.0.0.1:3128' }).getDispatcher(),
+		).toThrow(error.message);
+		expect(bridge.validateConnectionHost).toHaveBeenCalledWith('127.0.0.1');
+	});
+
+	it('surfaces the rejection of an explicit proxy host through fetch', async () => {
+		const error = new Error('The proxy host is not permitted by policy');
+		const fetchFn = makeTransport({
+			ssrf: denyingBridge(error),
+			proxy: 'http://127.0.0.1:3128',
+		}).asCustomFetch();
+
+		await expect(fetchFn('http://target.invalid/x')).rejects.toThrow(error.message);
+	});
+
+	// The environment's proxies describe the deployment, so the policy that decides
+	// which targets a workflow may reach does not decide them.
+	it.each([
+		['HTTP_PROXY', 'http://target.invalid/x'],
+		['HTTPS_PROXY', 'https://target.invalid/x'],
+	] as const)('leaves a proxy configured through %s unchecked', async (envKey, target) => {
+		process.env[envKey] = 'http://127.0.0.1:3128';
+		const lookupSpy = makeDenyingLookup(new Error('blocked: restricted IP address'));
+		const { bridge } = bridgeDenyingProxyHost('127.0.0.1');
+		bridge.createSecureLookup = () => lookupSpy;
+		const transport = makeTransport({ ssrf: bridge, proxy: 'env' });
+
+		expect(() => transport.getDispatcher()).not.toThrow();
+		await transport
+			.asCustomFetch()(target)
+			.catch(() => undefined);
+
+		const validated = vi.mocked(bridge.validateUrl).mock.calls.map(([url]) => String(url));
+		expect(validated).toEqual([target]);
+		expect(bridge.validateConnectionHost).not.toHaveBeenCalled();
+		expect(lookupSpy).not.toHaveBeenCalled();
+	});
+
+	it('leaves an explicit proxy unchecked when SSRF protection is disabled', () => {
+		const bridge = denyingBridge(new Error('The proxy host is not permitted by policy'));
+
+		expect(() =>
+			makeTransport({
+				useDefaultSsrfPolicy: 'unsafe',
+				proxy: 'http://127.0.0.1:3128',
+			}).getDispatcher(),
+		).not.toThrow();
+		expect(bridge.validateConnectionHost).not.toHaveBeenCalled();
+	});
+
+	it('serves a target the environment exempts from the direct path', async () => {
+		const server = await startServer((_req, res) => {
+			res.writeHead(200, { 'content-type': 'text/plain' });
+			res.end('ok');
+		});
+		process.env.HTTP_PROXY = 'http://proxy.internal:3128';
+		process.env.NO_PROXY = '127.0.0.1';
+		const { bridge } = bridgeDenyingProxyHost('proxy.internal');
+		const fetchFn = makeTransport({ ssrf: bridge, proxy: 'env' }).asCustomFetch();
+
+		try {
+			const res = await fetchFn(`${server.url}/x`);
+
+			expect(res.status).toBe(200);
+		} finally {
+			await server.close();
+		}
+	});
+
+	it('leaves the dispatcher untouched when no proxy is configured in the environment', () => {
+		const bridge = makeSsrfBridge({ createSecureLookup: realLookup });
+
+		expect(() => makeTransport({ ssrf: bridge, proxy: 'env' }).getDispatcher()).not.toThrow();
+		expect(bridge.validateConnectionHost).not.toHaveBeenCalled();
 	});
 });

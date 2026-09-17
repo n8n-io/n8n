@@ -282,12 +282,28 @@ export function extractSetupWizardOutcome(result: Record<string, unknown>): Tool
 	const completed = Array.isArray(result.completedNodes)
 		? extractCompletedNodes(result.completedNodes)
 		: [];
-	const skipped = Array.isArray(result.skippedNodes)
-		? extractSkippedNodes(result.skippedNodes)
+	// `skippedNodes` was this list's name before it split into "still unconfigured" and
+	// "declined by the user"; traces and seeded fixtures recorded then still carry it.
+	const stillNeedingSetupRaw = Array.isArray(result.nodesStillNeedingSetup)
+		? result.nodesStillNeedingSetup
+		: Array.isArray(result.skippedNodes)
+			? result.skippedNodes
+			: undefined;
+	const stillNeedingSetup = stillNeedingSetupRaw ? extractSkippedNodes(stillNeedingSetupRaw) : [];
+	const skippedByUser = Array.isArray(result.skippedByUser)
+		? extractSkippedNodes(result.skippedByUser)
 		: [];
-	if (completed.length === 0 && skipped.length === 0) return null;
+	if (completed.length === 0 && stillNeedingSetup.length === 0 && skippedByUser.length === 0) {
+		return null;
+	}
 	const reason = typeof result.reason === 'string' ? result.reason : undefined;
-	return { kind: 'setup-wizard', completedNodes: completed, skippedNodes: skipped, reason };
+	return {
+		kind: 'setup-wizard',
+		completedNodes: completed,
+		nodesStillNeedingSetup: stillNeedingSetup,
+		...(skippedByUser.length > 0 ? { skippedByUser } : {}),
+		reason,
+	};
 }
 
 /**
@@ -430,10 +446,14 @@ export function extractAskUserQuestions(raw: unknown[]): AskUserQuestion[] {
 		if (!isRecord(item)) continue;
 		const id = typeof item.id === 'string' ? item.id : '';
 		const question = typeof item.question === 'string' ? item.question : '';
+		const type =
+			item.type === 'single' || item.type === 'multi' || item.type === 'text'
+				? item.type
+				: undefined;
 		const options = Array.isArray(item.options)
 			? item.options.filter((o): o is string => typeof o === 'string')
 			: undefined;
-		if (id || question) questions.push({ id, question, options });
+		if (id || question) questions.push({ id, question, type, options });
 	}
 	return questions;
 }

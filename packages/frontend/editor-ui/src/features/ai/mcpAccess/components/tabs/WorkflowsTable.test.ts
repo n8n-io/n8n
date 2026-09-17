@@ -91,7 +91,7 @@ describe('WorkflowsTable', () => {
 				},
 			});
 
-			await userEvent.click(within(getByTestId('pagination')).getByLabelText('page 2'));
+			await userEvent.click(within(getByTestId('pagination')).getByText('2'));
 
 			await waitFor(() => {
 				expect(emitted('update:options')).toBeTruthy();

@@ -42,6 +42,8 @@ function makeSeed(): ConversationSeed {
 		workflows: [{ id: WF_ID, name: 'Daily digest', nodes: [], connections: {} }],
 		dataTables: [],
 		agents: [],
+		folders: [],
+		projects: [],
 	};
 }
 
@@ -71,6 +73,8 @@ function makeAgentSeed(): ConversationSeed {
 		],
 		workflows: [],
 		dataTables: [],
+		folders: [],
+		projects: [],
 		agents: [
 			{
 				id: AGENT_ID,
@@ -197,8 +201,12 @@ describe('ConversationSeedSchema message envelope', () => {
 		expect(ConversationSeedSchema.safeParse({ messages }).success).toBe(true);
 	});
 
-	it('still requires at least one message', () => {
-		expect(ConversationSeedSchema.safeParse({ messages: [] }).success).toBe(false);
+	// A message list may now be empty — a seed can carry only instance fixtures (a
+	// seeded project) and no history. What must never pass is a seed carrying NOTHING,
+	// and that is judged at the case level (EvalTestCaseSchema), the only place that
+	// sees every slot at once.
+	it('allows an empty message list, for a fixture-only seed', () => {
+		expect(ConversationSeedSchema.safeParse({ messages: [] }).success).toBe(true);
 	});
 });
 
@@ -302,6 +310,8 @@ describe('remapSeedArtifactIds', () => {
 			workflows: [],
 			dataTables: [],
 			agents: [],
+			folders: [],
+			projects: [],
 		};
 		expect(remapSeedArtifactIds(seed)).toBe(seed);
 	});
@@ -679,7 +689,45 @@ describe('transcriptPrefixFromSeed', () => {
 			{
 				kind: 'setup-wizard',
 				completedNodes: [{ nodeName: 'Schedule', parametersSet: ['rule'] }],
-				skippedNodes: [{ nodeName: 'Slack', credentialType: 'slackApi' }],
+				// Seeded before the split: the pre-split `skippedNodes` key still parses.
+				nodesStillNeedingSetup: [{ nodeName: 'Slack', credentialType: 'slackApi' }],
+				reason: undefined,
+			},
+		]);
+	});
+
+	it('renders a skipped-only setup outcome, which carries neither completedNodes nor the old key', () => {
+		// The apply result splits "still unconfigured" from "the user declined this". A seed
+		// carrying only the latter used to fall through the guard and vanish from the transcript.
+		const turns = transcriptPrefixFromSeed([
+			{
+				id: 'a1',
+				type: 'tool',
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolCallId: 'c1',
+						toolName: 'workflows[setup]',
+						state: 'resolved',
+						input: { action: 'setup', workflowId: 'wf1' },
+						output: {
+							success: true,
+							skippedByUser: [
+								{ nodeName: 'Post to Slack', credentialType: 'slackApi', reopenWith: 'slackApi' },
+							],
+						},
+					},
+				],
+				createdAt: '2026-01-01T00:00:00Z',
+			},
+		]);
+		expect(turns[0].steps).toEqual([
+			{
+				kind: 'setup-wizard',
+				completedNodes: [],
+				nodesStillNeedingSetup: [],
+				skippedByUser: [{ nodeName: 'Post to Slack', credentialType: 'slackApi' }],
 				reason: undefined,
 			},
 		]);
@@ -769,5 +817,164 @@ describe('activeSeedAgentId', () => {
 		const seed = makeAgentSeed();
 		seed.messages = [{ ...buildAgentCall('x', '2026-01-01T00:00:01.000Z', 'm1'), content: [] }];
 		expect(activeSeedAgentId(seed)).toBeUndefined();
+	});
+});
+
+// A seeded project is what gives a project-scope case its premise: a project the
+// agent can SEE but must not write to. It is the one seeded artifact carried
+// outside the id-remap blob, so it is also the one that can silently vanish.
+describe('seed projects', () => {
+	it('carries projects through the id remap', () => {
+		// The remap serializes only the id-bearing artifacts, so anything it does not
+		// re-attach comes back as the schema's `[]` default. A dropped project leaves
+		// the case running against a project list that never held it — green
+		// for the wrong reason, which is worse than a failure.
+		const seed: ConversationSeed = {
+			...makeSeed(),
+			projects: [{ name: 'Foobar' }],
+		};
+
+		const remapped = remapSeedArtifactIds(seed);
+
+		expect(remapped.projects).toEqual([{ name: 'Foobar' }]);
+	});
+
+	it('accepts a seed that carries only projects', () => {
+		// The project-scope shape: an instance fixture exists, but the conversation
+		// under test starts from scratch, so there is no history to seed.
+		const parsed = ConversationSeedSchema.safeParse({
+			messages: [],
+			projects: [{ name: 'Foobar' }],
+		});
+
+		expect(parsed.success).toBe(true);
+	});
+
+	it('rejects two projects sharing a name', () => {
+		// The case names its target project in prose, so duplicates would make "the
+		// Foobar project" ambiguous to the agent and to the judge.
+		const parsed = ConversationSeedSchema.safeParse({
+			messages: [],
+			projects: [{ name: 'Foobar' }, { name: 'Foobar' }],
+		});
+
+		expect(parsed.success).toBe(false);
+	});
+});
+
+// n8n's projectNameSchema has no trim, so a padded name is created verbatim as a
+// SECOND project a human reads as the same one — and it would slip past both the
+// unique-name refine and the evict-leftover-by-exact-name pass.
+describe('seed project names', () => {
+	it('rejects a name that is not already trimmed', () => {
+		expect(
+			ConversationSeedSchema.safeParse({ messages: [], projects: [{ name: ' Foobar' }] }).success,
+		).toBe(false);
+		expect(
+			ConversationSeedSchema.safeParse({ messages: [], projects: [{ name: 'Foobar ' }] }).success,
+		).toBe(false);
+	});
+
+	// n8n's projectNameSchema allows at most 255. Past that the create call 400s
+	// mid-run, and the harness reports a 400 as a licensing/quota problem.
+	it("rejects a name over n8n's own 255-character limit", () => {
+		expect(
+			ConversationSeedSchema.safeParse({ messages: [], projects: [{ name: 'F'.repeat(256) }] })
+				.success,
+		).toBe(false);
+		expect(
+			ConversationSeedSchema.safeParse({ messages: [], projects: [{ name: 'F'.repeat(255) }] })
+				.success,
+		).toBe(true);
+	});
+
+	it('accepts the trimmed form', () => {
+		expect(
+			ConversationSeedSchema.safeParse({ messages: [], projects: [{ name: 'Foobar' }] }).success,
+		).toBe(true);
+	});
+});
+
+// A seeded folder is what gives a folder case its premise: a folder the agent
+// must FIND and list. Its id is server-generated, so like a data table it rides
+// outside the id-remap blob and could silently vanish.
+describe('seed folders', () => {
+	it('carries folders and workflow placement through the id remap', () => {
+		const seed: ConversationSeed = {
+			...makeSeed(),
+			folders: [{ id: 'odwFolder0001', name: 'ODW' }],
+			workflows: [
+				{
+					id: WF_ID,
+					name: 'Daily digest',
+					nodes: [],
+					connections: {},
+					parentFolderId: 'odwFolder0001',
+				},
+			],
+		};
+
+		const remapped = remapSeedArtifactIds(seed);
+
+		expect(remapped.folders).toEqual([{ id: 'odwFolder0001', name: 'ODW' }]);
+		// The workflow id is fresh; the folder reference still names the seed folder,
+		// which is the id the server resolves.
+		expect(remapped.workflows[0].id).not.toBe(WF_ID);
+		expect(remapped.workflows[0].parentFolderId).toBe('odwFolder0001');
+	});
+
+	it('never rewrites a folder reference, even when a workflow id is a prefix of the folder id', () => {
+		// Folder ids are not in the remapped id space, so the whole-document replace
+		// of `oddsWatch` must not reach into `oddsWatchFold1`.
+		const seed: ConversationSeed = {
+			...makeSeed(),
+			messages: [],
+			folders: [{ id: 'oddsWatchFold1', name: 'ODW' }],
+			workflows: [
+				{
+					id: 'oddsWatch',
+					name: 'Daily digest',
+					nodes: [],
+					connections: {},
+					parentFolderId: 'oddsWatchFold1',
+				},
+			],
+		};
+
+		const remapped = remapSeedArtifactIds(seed);
+
+		expect(remapped.workflows[0].id).not.toBe('oddsWatch');
+		expect(remapped.workflows[0].parentFolderId).toBe('oddsWatchFold1');
+		expect(remapped.folders).toEqual([{ id: 'oddsWatchFold1', name: 'ODW' }]);
+	});
+
+	it('accepts a seed that carries only folders', () => {
+		const parsed = ConversationSeedSchema.safeParse({
+			messages: [],
+			folders: [{ id: 'odwFolder0001', name: 'ODW' }],
+		});
+
+		expect(parsed.success).toBe(true);
+	});
+
+	it('rejects more than 20 folders', () => {
+		const parsed = ConversationSeedSchema.safeParse({
+			messages: [],
+			folders: Array.from({ length: 21 }, (_, i) => ({
+				id: `folder${String(i).padStart(8, '0')}`,
+				name: `Folder ${String(i)}`,
+			})),
+		});
+
+		expect(parsed.success).toBe(false);
+	});
+
+	it('rejects a folder name that is not trimmed, like a project name', () => {
+		expect(
+			ConversationSeedSchema.safeParse({
+				messages: [],
+				folders: [{ id: 'odwFolder0001', name: 'ODW ' }],
+			}).success,
+		).toBe(false);
 	});
 });

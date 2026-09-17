@@ -108,6 +108,53 @@ describe('AgentExecutionService', () => {
 	}
 
 	describe('startExecutionRecording', () => {
+		it('stores the signal before publishing the execution update', async () => {
+			agentExecutionThreadRepository.findOrCreate.mockResolvedValue({
+				thread: makeThread(),
+				created: false,
+			});
+			const execution = mock<AgentExecution>({ id: 'execution-1' });
+			agentExecutionRepository.create.mockReturnValue(execution);
+			agentExecutionRepository.save.mockResolvedValue(execution);
+			const initialTimeline: TimelineEvent[] = [
+				{
+					type: 'background-task-signal',
+					timestamp: 100,
+					signal: {
+						tasks: [{ id: 'job-1', title: 'Research', kind: 'subagent', status: 'completed' }],
+					},
+				},
+			];
+			const params = {
+				threadId: 'thread-1',
+				agentId: 'agent-1',
+				agentName: 'Agent',
+				projectId: 'project-1',
+				userMessage: null,
+				initialTimeline,
+			};
+			executionUpdateBroadcaster.notify.mockImplementation(() => {
+				expect(agentExecutionRepository.save).toHaveBeenCalled();
+				expect(agentExecutionRepository.create).toHaveBeenCalledWith(
+					expect.objectContaining({
+						timeline: initialTimeline,
+						userMessage: null,
+						status: 'running',
+					}),
+				);
+			});
+			const id = await service.startExecutionRecording(params, new Date(100));
+			expect(executionUpdateBroadcaster.notify).toHaveBeenCalledOnce();
+			await service.finalizeExecution(id, {
+				...params,
+				record: makeMessageRecord({ timeline: initialTimeline }),
+			});
+			expect(agentExecutionRepository.updateIfRunning).toHaveBeenCalledWith(
+				id,
+				expect.objectContaining({ timeline: initialTimeline }),
+			);
+		});
+
 		it('keeps a running execution alive until it is finalized', async () => {
 			vi.useFakeTimers();
 			try {
@@ -294,7 +341,7 @@ describe('AgentExecutionService', () => {
 						output: {},
 						startTime: 0,
 						endTime: 123,
-						success: true,
+						success: false,
 					},
 				],
 			});
@@ -316,7 +363,19 @@ describe('AgentExecutionService', () => {
 
 			expect(agentExecutionRepository.updateIfRunning).toHaveBeenCalledWith(
 				'execution-1',
-				expect.objectContaining({ timeline: null, storedAt: 'fs' }),
+				expect.objectContaining({
+					timeline: null,
+					storedAt: 'fs',
+					failureSummary: {
+						count: 1,
+						latest: {
+							kind: 'tool',
+							name: 'lookup',
+							message: null,
+							occurredAt: 123,
+						},
+					},
+				}),
 			);
 			expect(agentExecutionLogStore.write).toHaveBeenCalledWith(
 				{ agentId: 'agent-1', threadId: 'thread-1', executionId: 'execution-1' },
@@ -385,6 +444,7 @@ describe('AgentExecutionService', () => {
 					status: 'success',
 					timeline: record.timeline,
 					storedAt: 'db',
+					failureSummary: null,
 				}),
 			);
 		});
@@ -738,6 +798,7 @@ describe('AgentExecutionService', () => {
 					status: 'cancelled',
 					timeline: record.timeline,
 					storedAt: 'db',
+					failureSummary: null,
 				}),
 			);
 			expect(telemetry.trackAgentTurnFinished).toHaveBeenCalledWith(
@@ -786,9 +847,70 @@ describe('AgentExecutionService', () => {
 					timeline: partial,
 					storedAt: 'db',
 					error: expect.stringContaining('interrupted'),
+					failureSummary: {
+						count: 1,
+						latest: {
+							kind: 'execution',
+							name: null,
+							message: expect.stringContaining('interrupted'),
+							occurredAt: expect.any(Number),
+						},
+					},
 				}),
 			);
 			expect(agentExecutionLogStore.write).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('getThreads', () => {
+		it('returns composite statuses and aggregated failure summaries', async () => {
+			const failedThread = makeThread({ id: 'thread-failed' });
+			const cleanThread = makeThread({ id: 'thread-clean' });
+			const runningThread = makeThread({ id: 'thread-running' });
+			const emptyThread = makeThread({ id: 'thread-empty' });
+			const failureSummary = {
+				count: 2,
+				latest: {
+					kind: 'tool' as const,
+					name: 'lookup',
+					message: 'request failed',
+					occurredAt: 20,
+					executionId: 'execution-2',
+				},
+			};
+			agentExecutionThreadRepository.findByProjectIdPaginated.mockResolvedValue({
+				threads: [failedThread, cleanThread, runningThread, emptyThread],
+				nextCursor: null,
+			});
+			agentExecutionRepository.findFirstUserMessageByThreadIds.mockResolvedValue(new Map());
+			agentExecutionRepository.findFirstSourceByThreadIds.mockResolvedValue(new Map());
+			agentExecutionRepository.findFailureSummariesByThreadIds.mockResolvedValue(
+				new Map([[failedThread.id, failureSummary]]),
+			);
+			agentExecutionRepository.findLatestStatusesByThreadIds.mockResolvedValue(
+				new Map([
+					[failedThread.id, 'success'],
+					[cleanThread.id, 'success'],
+					[runningThread.id, 'running'],
+				]),
+			);
+
+			const result = await service.getThreads('project-1', 'agent-1', 20);
+
+			expect(result.threads).toEqual([
+				expect.objectContaining({ id: failedThread.id, failureSummary, status: 'error' }),
+				expect.objectContaining({
+					id: cleanThread.id,
+					failureSummary: null,
+					status: 'succeeded',
+				}),
+				expect.objectContaining({
+					id: runningThread.id,
+					failureSummary: null,
+					status: 'running',
+				}),
+				expect.objectContaining({ id: emptyThread.id, failureSummary: null, status: null }),
+			]);
 		});
 	});
 
@@ -917,8 +1039,17 @@ describe('AgentExecutionService', () => {
 		});
 	});
 
+	describe('hasSuspendedRun', () => {
+		it.each([true, false])('delegates to the repository and returns %s', async (expected) => {
+			agentExecutionRepository.hasSuspendedRun.mockResolvedValue(expected);
+
+			await expect(service.hasSuspendedRun('thread-1')).resolves.toBe(expected);
+			expect(agentExecutionRepository.hasSuspendedRun).toHaveBeenCalledWith('thread-1');
+		});
+	});
+
 	describe('deleteThread', () => {
-		it('cleans SDK memory before deleting the execution thread', async () => {
+		it('deletes thread memory, attachments, and the execution thread', async () => {
 			agentExecutionThreadRepository.findOneBy.mockResolvedValue({
 				id: 'thread-1',
 				agentId: 'agent-1',

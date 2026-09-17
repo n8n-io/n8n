@@ -3,7 +3,6 @@ import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { WEBHOOK_NODE_TYPE } from 'n8n-workflow';
 
-import { isWebhookOAuth2Enabled } from '@/constants/oauth2-triggers';
 import type {
 	ProtectedResource,
 	ProtectedResourceResolver,
@@ -19,9 +18,9 @@ import {
 	WEBHOOK_TRIGGER_SCOPES,
 	methodQueryString,
 	parseMethodParam,
-	resourceUrlToWebhookPath,
 	trimSlashes,
 	trimTrailingSlash,
+	webhookPathFromResourceUrl,
 	webhookResourcePath,
 } from './utils';
 
@@ -51,20 +50,17 @@ export class WorkflowWebhookTestTriggerResourceResolver implements ProtectedReso
 	readonly scopes = WEBHOOK_TRIGGER_SCOPES;
 
 	async resolveByUrl(resourceUrl: string) {
-		const pathname = resourceUrlToWebhookPath(resourceUrl, this.urlService.getTestWebhookBaseUrl());
-		if (pathname === undefined) {
-			this.logger.debug(`Resource URL is not under the test webhook base URL: ${resourceUrl}`);
-			return undefined;
-		}
-		// Can't throw — `resourceUrlToWebhookPath` already parsed the URL.
+		const pathname = webhookPathFromResourceUrl(
+			resourceUrl,
+			this.urlService.getTestWebhookBaseUrl(),
+			this.logger,
+		);
+		if (pathname === undefined) return undefined;
+		// Can't throw — `webhookPathFromResourceUrl` already parsed the URL.
 		return await this.resolveByPath(pathname, new URL(resourceUrl).search);
 	}
 
 	async resolveByPath(pathname: string, search?: string) {
-		if (!isWebhookOAuth2Enabled()) {
-			return undefined;
-		}
-
 		if (!pathname.startsWith(`/${this.config.endpoints.webhookTest}/`)) {
 			// we can quickly rule out non-test-webhook paths without doing any cache work
 			return undefined;

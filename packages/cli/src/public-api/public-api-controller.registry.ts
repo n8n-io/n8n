@@ -5,21 +5,43 @@ import type { AccessScope, ApiKeyScopeRequirement, Controller } from '@n8n/decor
 import { Container, Service } from '@n8n/di';
 import type { Request, RequestHandler, Response, Router } from 'express';
 import { Router as createRouter } from 'express';
+import { z } from 'zod';
+import type { ZodTypeAny } from 'zod';
 
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { EventService } from '@/events/event.service';
 import { License } from '@/license';
 import { userHasScopes } from '@/permissions.ee/check-access';
+import { assertJsonContentType } from '@/public-api/public-api-media-type';
 import {
 	apiKeyScopesSatisfy,
+	findBodyArg,
+	isRequestBodyRequired,
 	resolveRouteArgs,
 	resolveSuccessStatus,
 } from '@/public-api/public-api-route-resolver';
+import { formatValidationError } from '@/public-api/public-api-validation-error';
 import { deprecated } from '@/public-api/v1/shared/middlewares/global.middleware';
 import { sendPublicApiErrorResponse } from '@/public-api/v1/public-api-error-response';
 import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
 import { LastActiveAtService } from '@/services/last-active-at.service';
+
+function parsePathParam(key: string, schema: ZodTypeAny, params: Request['params']): unknown {
+	const output = z.object({ [key]: schema }).safeParse(params);
+
+	if (!output.success) {
+		throw new BadRequestError(formatValidationError('params', output.error));
+	}
+
+	return output.data[key];
+}
+
+// Match the legacy version-less route. req.path drops the prefix, req.baseUrl adds /api/v1
+function routePath(prefix: string, req: Request): string {
+	const path = (prefix === '/' ? '' : prefix) + req.path;
+	return path.length > 1 && path.endsWith('/') ? path.slice(0, -1) : path;
+}
 
 @Service()
 export class PublicApiControllerRegistry {
@@ -58,17 +80,25 @@ export class PublicApiControllerRegistry {
 				route.successStatus,
 			);
 
+			const bodyArg = findBodyArg(resolvedArgs);
+			const bodyDto = bodyArg?.dto;
+			const bodyRequired = bodyDto ? (bodyArg?.required ?? isRequestBodyRequired(bodyDto)) : false;
+
 			const handler = async (req: Request, res: Response) => {
+				if (bodyDto) assertJsonContentType(req.headers['content-type'], bodyRequired);
+
 				const args: unknown[] = [req, res];
 				for (const arg of resolvedArgs) {
 					if (arg.type === 'param') {
-						args.push(req.params[arg.key]);
+						args.push(
+							arg.schema ? parsePathParam(arg.key, arg.schema, req.params) : req.params[arg.key],
+						);
 					} else {
 						const output = arg.dto.safeParse(req[arg.type]);
 						if (output.success) {
 							args.push(output.data);
 						} else {
-							throw new BadRequestError(output.error.errors[0]?.message ?? 'Invalid request');
+							throw new BadRequestError(formatValidationError(arg.type, output.error));
 						}
 					}
 				}
@@ -77,17 +107,14 @@ export class PublicApiControllerRegistry {
 
 				if (res.headersSent) return;
 
-				if (successStatus === 204) {
-					res.status(204).send();
+				if (successStatus === 204 || (!route.responseDto && result === undefined)) {
+					res.status(successStatus).send();
 					return;
 				}
 
-				if (route.responseDto) {
-					res.status(successStatus).json(route.responseDto.parse(result));
-					return;
-				}
-
-				res.status(successStatus).json(result);
+				res
+					.status(successStatus)
+					.json(route.responseDto ? route.responseDto.parse(result) : result);
 			};
 
 			const middlewares: RequestHandler[] = [];
@@ -96,7 +123,7 @@ export class PublicApiControllerRegistry {
 				middlewares.push(deprecated(route.deprecated));
 			}
 
-			middlewares.push(this.createAuthMiddleware(apiVersion));
+			middlewares.push(this.createAuthMiddleware(apiVersion, prefix));
 
 			if (route.apiKeyScope) {
 				middlewares.push(this.createApiKeyScopeMiddleware(route.apiKeyScope));
@@ -131,7 +158,7 @@ export class PublicApiControllerRegistry {
 		}
 	}
 
-	private createAuthMiddleware(apiVersion: string): RequestHandler {
+	private createAuthMiddleware(apiVersion: string, prefix: string): RequestHandler {
 		return async (req, res, next) => {
 			const authenticated = await this.authStrategyRegistry.authenticate(
 				req as AuthenticatedRequest,
@@ -147,7 +174,7 @@ export class PublicApiControllerRegistry {
 				this.lastActiveAtService.updateLastActiveIfStale(userId).catch(() => undefined);
 				this.eventService.emit('public-api-invoked', {
 					userId,
-					path: req.path,
+					path: routePath(prefix, req),
 					method: req.method,
 					apiVersion,
 					userAgent: req.headers['user-agent'],

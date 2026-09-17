@@ -6,6 +6,7 @@ import type { AgentEventBus } from '../../runtime/state/event-bus';
 import { AgentEvent } from '../../runtime/state/event-bus';
 import type { StreamChunk } from '../../types';
 import { Agent } from '../agent';
+import { McpClient } from '../mcp-client';
 
 vi.mock('@ai-sdk/openai', () => ({
 	createOpenAI: () => () => ({ provider: 'openai', modelId: 'mock', specificationVersion: 'v3' }),
@@ -85,6 +86,45 @@ describe('Agent isolated runtimes', () => {
 				}),
 			]),
 		);
+	});
+
+	it('rebuilds before the next run after an MCP connection failure', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess('ok'));
+		const client = new McpClient([]);
+		const listTools = vi.spyOn(client, 'listTools').mockResolvedValue([]);
+		vi.spyOn(client, 'getConnectionFailures')
+			.mockReturnValueOnce([{ server: 'linear', error: 'temporary failure' }])
+			.mockReturnValue([]);
+		const agent = new Agent('agent').model('openai/gpt-4o-mini').instructions('test').mcp(client);
+
+		await agent.generate('first');
+		await agent.generate('second');
+
+		expect(listTools).toHaveBeenCalledTimes(2);
+	});
+
+	it('keeps in-memory checkpoints when an MCP connection failure triggers a rebuild', async () => {
+		const client = new McpClient([]);
+		const listTools = vi.spyOn(client, 'listTools').mockResolvedValue([]);
+		vi.spyOn(client, 'getConnectionFailures')
+			.mockReturnValueOnce([{ server: 'linear', error: 'temporary failure' }])
+			.mockReturnValue([]);
+		const agent = new Agent('agent')
+			.model('openai/gpt-4o-mini')
+			.instructions('test')
+			.mcp(client)
+			.checkpoint('memory');
+		const internals = agent as unknown as AgentInternals;
+
+		const firstConfig = await internals.ensureBuilt();
+		await firstConfig.runState?.suspend('run-1', { status: 'suspended' } as never);
+		const secondConfig = await internals.ensureBuilt();
+
+		expect(await secondConfig.runState?.resume('run-1')).toEqual(
+			expect.objectContaining({ status: 'suspended' }),
+		);
+		expect(secondConfig.runState).toBe(firstConfig.runState);
+		expect(listTools).toHaveBeenCalledTimes(2);
 	});
 
 	it('applies event handler changes to active runtimes', async () => {

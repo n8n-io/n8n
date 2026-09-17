@@ -6,12 +6,11 @@
 # docker-node Alpine recipe with one added configure flag.
 #
 # Two published targets:
-#   runtime (default) - drop-in sibling of n8nio/base, layered on the same DHI
-#                       base with our compiled Node swapped in
+#   runtime (default) - n8nio/base with our compiled Node swapped in
 #   dev               - plain Alpine with apk usable, for the n8n builder
 #                       stage, which must compile native addons against this
 #                       Node's headers
-ARG NODE_VERSION=26.5.1
+ARG NODE_VERSION=26.7.0
 # Compiling V8 needs 1.5-2 GB of memory per parallel job. Lower this on
 # builders whose memory-to-core ratio cannot cover all cores.
 ARG MAKE_JOBS=
@@ -87,44 +86,18 @@ ENV npm_config_nodedir=/usr/local
 
 # ---------------------------------------------------------------------------
 
-# Runtime layers on the same DHI base as n8n-base, so both siblings share
-# Docker's OS-layer patching and attestations. Only the Node binary is ours:
-# DHI's stock Node (at /usr/bin on Alpine) is removed and replaced by the
-# pointer-compressed build.
+# `n8nio/base:26.x` with one change, namely the stock Node files (node, npm,
+# npx, corepack) are swapped for the pointer-compressed build's files.
 # Pinned to a multi-arch index digest (linux/amd64 + linux/arm64) for reproducible builds.
 # Bump the tag and digest together when updating.
-FROM dhi.io/node:26.5.1-alpine3.24-dev@sha256:c4062f85acd1ca91ffb7d15048dcc5f15a922d630e65eb3c3c0dcdcef6ea36d8 AS runtime
+FROM n8nio/base:26.7.0@sha256:33687300c4e94dc00f42ec79ae15082ae07330ecd82ae1167125905b65908ff8 AS runtime
 
-RUN rm -f /usr/bin/node /usr/bin/nodejs /usr/bin/npm /usr/bin/npx /usr/bin/corepack
+RUN rm -f /usr/bin/node /usr/bin/nodejs /usr/bin/npm /usr/bin/npx /usr/bin/corepack /usr/local/bin/node
 COPY --from=builder /node-install/usr/local /usr/local
 RUN node --version \
     && node -e "if (!process.config.variables.v8_enable_pointer_compression) { throw new Error('pointer compression is not enabled') }"
-
-# Mirrors docker/images/n8n-base/Dockerfile so the n8n runtime stage can swap
-# between the two.
-RUN apk add --no-cache busybox-binsh && \
-    apk --no-cache add --virtual .build-deps-fonts msttcorefonts-installer fontconfig && \
-    update-ms-fonts && \
-    fc-cache -f && \
-    apk del .build-deps-fonts && \
-    find /usr/share/fonts/truetype/msttcorefonts/ -type l -exec unlink {} \; && \
-    # No blanket `apk upgrade` — patched bytes come from bumping the pinned
-    # DHI digest instead, same policy as n8n-base.
-    apk add --no-cache \
-        openssh \
-        graphicsmagick \
-        tini \
-        tzdata \
-        ca-certificates \
-        libc6-compat && \
-    rm -rf /tmp/* /root/.npm /root/.cache/node /opt/yarn* && \
-    apk del apk-tools
 
 # The compiled build lives at /usr/local/bin, which is what the cloud launch
 # and AppArmor profile expect. Keep the stock /usr/bin path working for
 # anything that references it.
 RUN ln -sf /usr/local/bin/node /usr/bin/node
-
-WORKDIR /home/node
-ENV NODE_PATH=/usr/local/lib/node_modules
-EXPOSE 5678/tcp

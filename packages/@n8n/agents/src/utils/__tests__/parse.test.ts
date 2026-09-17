@@ -2,6 +2,7 @@ import type { JSONSchema7 } from 'json-schema';
 import { z } from 'zod';
 
 import { parseWithSchema } from '../parse';
+import { zodToJsonSchema } from '../zod';
 
 // ---------------------------------------------------------------------------
 // parseWithSchema — Zod schemas
@@ -477,5 +478,26 @@ describe('parseWithSchema — stripUnknown', () => {
 
 		expect(result.success).toBe(true);
 		if (result.success) expect(result.data).toEqual({ approved: true, answers: ['a'] });
+	});
+});
+
+describe('parseWithSchema — Zod→JSON Schema approval envelope round-trip', () => {
+	it('accepts envelope fields from zodToJsonSchema without stripUnknown', async () => {
+		const resumeSchema = z.object({
+			approved: z.boolean(),
+			userInput: z.string().optional(),
+			scope: z.enum(['once', 'session']).optional(),
+		});
+		const jsonSchema = zodToJsonSchema(resumeSchema);
+		expect(jsonSchema).not.toBeNull();
+
+		const envelope = {
+			approved: true,
+			userInput: 'rename it first',
+			scope: 'session' as const,
+		};
+		const result = await parseWithSchema(jsonSchema!, envelope);
+		expect(result.success).toBe(true);
+		if (result.success) expect(result.data).toEqual(envelope);
 	});
 });
