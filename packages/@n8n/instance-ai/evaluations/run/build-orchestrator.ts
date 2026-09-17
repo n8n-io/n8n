@@ -508,7 +508,12 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 		// and reshape's side band) then carry the same verdict (TRUST-375).
 		const infraFailed = buildFailedOnInfra(build);
 		const attribute = (verdicts: BuildExpectationResult[]): BuildExpectationResult[] =>
-			verdicts.map((v) => ({ ...v, attribution: attributionForExpectation(v, infraFailed) }));
+			verdicts.map((v) => ({
+				// An attribution already set is a decision the caller made with more
+				// context than this closure has; don't overwrite it.
+				...v,
+				attribution: v.attribution ?? attributionForExpectation(v, infraFailed),
+			}));
 		// The lane's deterministic verdicts ride along on EVERY path, including the
 		// unjudged one: they describe what the run actually did to the provider and
 		// to n8n, which stays true whether or not the author expectations got judged.
@@ -538,10 +543,14 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 					const threadMemory = build.threadId
 						? await threadMemoryByThreadId.get(build.threadId)
 						: undefined;
-					// Premise, not an expectation — unjudged, so a misconfigured lane never
-					// reads as an agent regression.
+					// Premise, not an expectation. `framework_issue`, not `verification_gap`:
+					// the judge was fine, the harness failed to set the scenario up, and
+					// that distinction is what tells triage where to look.
 					if (testCase.requiresMemoryCompaction && !memoryWasCompacted(threadMemory)) {
-						return allFailVerdicts(expectations, NOT_COMPACTED_REASON);
+						return allFailVerdicts(expectations, NOT_COMPACTED_REASON).map((verdict) => ({
+							...verdict,
+							attribution: 'framework_issue' as const,
+						}));
 					}
 					return await verifyBuildExpectations(expectations, {
 						transcript,

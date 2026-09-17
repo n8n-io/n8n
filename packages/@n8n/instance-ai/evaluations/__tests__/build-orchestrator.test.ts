@@ -258,6 +258,9 @@ describe('createBuildOrchestrator', () => {
 			const verdicts = await deps.buildExpectationsByKey.get('0:case-a');
 			expect(verdicts?.[0].incomplete).toBe(true);
 			expect(verdicts?.[0].reason).toContain('never compacted');
+			// framework_issue, not verification_gap: the judge was fine, our setup was
+			// not. LangTracer stores this verbatim, so the wrong label misdirects triage.
+			expect(verdicts?.[0].attribution).toBe('framework_issue');
 		});
 
 		it('reports it unjudged when it compacted but kept nothing', async () => {
@@ -268,6 +271,7 @@ describe('createBuildOrchestrator', () => {
 
 			const verdicts = await deps.buildExpectationsByKey.get('0:case-a');
 			expect(verdicts?.[0].incomplete).toBe(true);
+			expect(verdicts?.[0].attribution).toBe('framework_issue');
 		});
 
 		it('reports it unjudged when the memory read failed', async () => {
@@ -285,6 +289,7 @@ describe('createBuildOrchestrator', () => {
 			const verdicts = await deps.buildExpectationsByKey.get('0:case-a');
 			expect(verdicts?.[0].incomplete).toBeUndefined();
 			expect(verdicts?.[0].pass).toBe(true);
+			expect(verdicts?.[0].attribution).toBeUndefined();
 		});
 	});
 
