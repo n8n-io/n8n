@@ -144,6 +144,7 @@ export async function runWebhookThroughputTest(options: WebhookThroughputOptions
 			`  Workflow: ${nodeCount} nodes (${nodeOutputSize})`,
 	);
 
+	const loadEndAt = Date.now() + durationSeconds * 1000;
 	const [cannonResult, throughputResult] = await Promise.all([
 		autocannon({
 			url: webhookUrl,
@@ -272,5 +273,7 @@ export async function runWebhookThroughputTest(options: WebhookThroughputOptions
 		expect(completionRatio).toBeGreaterThanOrEqual(options.minCompletedResponseRatio);
 	} else {
 		expect(throughputResult.tailExecPerSec ?? 0).toBeGreaterThan(0);
+		const lastActive = throughputResult.samples.findLast((sample) => sample.delta > 0);
+		expect(lastActive?.timestamp ?? 0).toBeGreaterThanOrEqual(loadEndAt - 10_000);
 	}
 }

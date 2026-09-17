@@ -16,7 +16,12 @@ test.use({
 
 test.describe(
 	'Engine v2 split database Kafka throughput',
-	{ annotation: [{ type: 'owner', description: 'Catalysts' }] },
+	{
+		annotation: [
+			{ type: 'owner', description: 'Catalysts' },
+			{ type: 'question', description: 'engine-v2-split-db-kafka' },
+		],
+	},
 	() => {
 		test('Kafka trigger + 1 noop, 1KB payload, 10k msgs (engine v2, split DB, VM lazy + cache) @bench:kafka', async ({
 			api,

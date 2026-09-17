@@ -48,6 +48,7 @@ export const ENGINE_V2_BENCHMARK_PROFILE: RuntimeBenchmarkProfile = {
 	dimensions: {
 		execution_engine: 'v2',
 		database_topology: 'shared-postgres',
+		database_metrics_scope: 'combined',
 		expression_engine: 'vm',
 		expression_lazy_acquire: 0,
 		expression_compile_cache: 0,
@@ -65,6 +66,7 @@ export const ENGINE_V2_LAZY_CACHE_BENCHMARK_PROFILE: RuntimeBenchmarkProfile = {
 		...VM_LAZY_CACHE_BENCHMARK_PROFILE.dimensions,
 		execution_engine: 'v2',
 		database_topology: 'shared-postgres',
+		database_metrics_scope: 'combined',
 	},
 };
 
@@ -75,5 +77,6 @@ export const ENGINE_V2_SPLIT_DB_LAZY_CACHE_BENCHMARK_PROFILE: RuntimeBenchmarkPr
 	dimensions: {
 		...ENGINE_V2_LAZY_CACHE_BENCHMARK_PROFILE.dimensions,
 		database_topology: 'split-postgres',
+		database_metrics_scope: 'control-plane',
 	},
 };

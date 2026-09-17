@@ -19,7 +19,12 @@ test.use({
 
 test.describe(
 	'Engine v2 split database webhook throughput',
-	{ annotation: [{ type: 'owner', description: 'Catalysts' }] },
+	{
+		annotation: [
+			{ type: 'owner', description: 'Catalysts' },
+			{ type: 'question', description: 'engine-v2-split-db-webhook' },
+		],
+	},
 	() => {
 		test(`Async webhook + 1 noop, 1KB payload, ${SINGLE_INSTANCE_WEBHOOK_CONNECTIONS} connections × ${SINGLE_INSTANCE_WEBHOOK_DURATION_SECONDS}s (engine v2, split DB, VM lazy + cache) @bench:webhook`, async ({
 			api,
