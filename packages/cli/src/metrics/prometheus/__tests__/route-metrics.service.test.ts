@@ -1,10 +1,12 @@
 import type { Mock } from 'vitest';
 import { mockInstance } from '@n8n/backend-test-utils';
-import { EndpointsConfig, PrometheusMetricsConfig } from '@n8n/config';
+import { PrometheusMetricsConfig } from '@n8n/config';
 import type express from 'express';
 import promBundle from 'express-prom-bundle';
 import { mock } from 'vitest-mock-extended';
 import promClient from 'prom-client';
+
+import type { PathResolvingService } from '@/services/path-resolving.service';
 
 import { PrometheusRouteMetricsService } from '../route-metrics.service';
 
@@ -21,14 +23,15 @@ describe('PrometheusRouteMetricsService', () => {
 		includeApiMethodLabel: false,
 		includeApiStatusCodeLabel: false,
 	});
-	const endpointsConfig = mockInstance(EndpointsConfig, {
-		rest: 'rest',
-		webhook: 'webhook',
-		webhookWaiting: 'webhook-waiting',
-		webhookTest: 'webhook-test',
-		form: 'form',
-		formWaiting: 'form-waiting',
-		formTest: 'form-test',
+	const pathResolvingService = mock<PathResolvingService>({
+		getBasePath: () => '/',
+		resolveRestEndpoint: () => '/rest',
+		resolveWebhookEndpoint: () => '/webhook',
+		resolveWebhookWaitingEndpoint: () => '/webhook-waiting',
+		resolveWebhookTestEndpoint: () => '/webhook-test',
+		resolveFormEndpoint: () => '/form',
+		resolveFormWaitingEndpoint: () => '/form-waiting',
+		resolveFormTestEndpoint: () => '/form-test',
 	});
 	const app = mock<express.Application>();
 	let service: PrometheusRouteMetricsService;
@@ -42,7 +45,7 @@ describe('PrometheusRouteMetricsService', () => {
 			includeApiMethodLabel: false,
 			includeApiStatusCodeLabel: false,
 		});
-		service = new PrometheusRouteMetricsService(config, endpointsConfig);
+		service = new PrometheusRouteMetricsService(config, pathResolvingService);
 		mockGaugeSet = vi.fn();
 		promClient.Gauge.prototype.set = mockGaugeSet;
 	});
@@ -142,6 +145,36 @@ describe('PrometheusRouteMetricsService', () => {
 					'/form/',
 					'/form-waiting/',
 					'/form-test/',
+				],
+				expect.any(Function),
+			);
+		});
+
+		it('should register route paths with a non-root base path', () => {
+			const prefixedPathResolvingService = mock<PathResolvingService>({
+				getBasePath: () => '/my-n8n',
+				resolveRestEndpoint: () => '/my-n8n/rest',
+				resolveWebhookEndpoint: () => '/my-n8n/webhook',
+				resolveWebhookWaitingEndpoint: () => '/my-n8n/webhook-waiting',
+				resolveWebhookTestEndpoint: () => '/my-n8n/webhook-test',
+				resolveFormEndpoint: () => '/my-n8n/form',
+				resolveFormWaitingEndpoint: () => '/my-n8n/form-waiting',
+				resolveFormTestEndpoint: () => '/my-n8n/form-test',
+			});
+			service = new PrometheusRouteMetricsService(config, prefixedPathResolvingService);
+
+			service.init(app);
+
+			expect(app.use).toHaveBeenCalledWith(
+				[
+					'/my-n8n/api/',
+					'/my-n8n/rest/',
+					'/my-n8n/webhook/',
+					'/my-n8n/webhook-waiting/',
+					'/my-n8n/webhook-test/',
+					'/my-n8n/form/',
+					'/my-n8n/form-waiting/',
+					'/my-n8n/form-test/',
 				],
 				expect.any(Function),
 			);

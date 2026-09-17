@@ -13,6 +13,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import { CreateCsrfStateData, OauthService } from '@/oauth/oauth.service';
+import { PathResolvingService } from '@/services/path-resolving.service';
 import { UrlService } from '@/services/url.service';
 
 import { carriesN8nIdentity } from './credential-resolvers/identifiers/n8n-identifier';
@@ -49,6 +50,7 @@ export class DynamicCredentialsController {
 		private readonly authorizeIntentService: AuthorizeIntentService,
 		private readonly dynamicCredentialService: DynamicCredentialService,
 		private readonly urlService: UrlService,
+		private readonly pathResolvingService: PathResolvingService,
 	) {}
 
 	private async findCredentialToUse(credentialId: string): Promise<CredentialsEntity> {
@@ -269,9 +271,26 @@ export class DynamicCredentialsController {
 					credentialId: intent.credentialId,
 				});
 				// Absolute, same-origin http(s) URL so SigninView returns here after login.
-				const returnUrl = `${this.urlService.getInstanceBaseUrl()}${req.originalUrl}`;
+				// req.originalUrl includes the mount base path. Strip it only when the
+				// configured editor URL already carries that same suffix.
+				const basePath = this.pathResolvingService.getBasePath();
+				const instanceBaseUrl = this.urlService.getInstanceBaseUrl();
+				const instanceBaseUrlHasBasePath =
+					basePath !== '/' &&
+					(instanceBaseUrl.endsWith(basePath) || instanceBaseUrl.endsWith(`${basePath}/`));
+				const requestPath =
+					instanceBaseUrlHasBasePath && req.originalUrl.startsWith(`${basePath}/`)
+						? req.originalUrl.slice(basePath.length)
+						: req.originalUrl;
+				const returnUrl = `${instanceBaseUrl}${requestPath}`;
+				// The editor is served under the base path. Add it when the configured
+				// editor URL does not include it, so /signin resolves.
+				const signinBaseUrl =
+					basePath !== '/' && !instanceBaseUrlHasBasePath
+						? `${instanceBaseUrl}${basePath}`
+						: instanceBaseUrl;
 				res.redirect(
-					`${this.urlService.getInstanceBaseUrl()}/signin?redirect=${encodeURIComponent(returnUrl)}`,
+					`${signinBaseUrl}/signin?redirect=${encodeURIComponent(returnUrl)}`,
 				);
 				return;
 			}

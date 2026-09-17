@@ -18,6 +18,13 @@ export function createElapsedLogger(prefix: string) {
 	};
 }
 
+export function normalizeStackBasePath(basePath: string | undefined): string {
+	if (!basePath) return '';
+
+	const normalized = `/${basePath.replace(/^\/+|\/+$/g, '')}`;
+	return normalized === '/' ? '' : normalized;
+}
+
 /**
  * Create a log consumer that does not log to the console.
  * Logs are collected in memory and can be output on error.

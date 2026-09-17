@@ -8,6 +8,7 @@ import {
 	createElapsedLogger,
 	createReadinessProbe,
 	createSilentLogConsumer,
+	normalizeStackBasePath,
 } from '../helpers/utils';
 import { N8nImagePullPolicy } from '../n8n-image-pull-policy';
 import type { StartupDeadline } from '../startup-deadline';
@@ -213,8 +214,10 @@ async function createContainer(
 		startupTimeoutMs,
 	} = shared;
 	const { consumer, throwWithLogs, getLogs } = createSilentLogConsumer();
+	const basePath = normalizeStackBasePath(environment.N8N_BASE_PATH);
+	const readinessBasePath = role === 'worker' ? '' : basePath;
 	const { strategy: waitStrategy, getLastBody: getLastReadinessBody } = createReadinessProbe(
-		'/healthz/readiness',
+		`${readinessBasePath}/healthz/readiness`,
 		N8N_READINESS_PORT,
 		{
 			startupTimeoutMs: Math.min(
