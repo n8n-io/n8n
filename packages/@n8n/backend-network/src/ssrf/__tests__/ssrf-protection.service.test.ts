@@ -108,6 +108,35 @@ describe('SsrfProtectionService', () => {
 			);
 		});
 
+		describe('blocked shared address space', () => {
+			it.each([
+				['100.64.0.1', '100.64.0.0/10'],
+				['100.127.255.255', '100.64.0.0/10'],
+			])('should block %s (in %s)', (ip) => {
+				const { service } = createService();
+				expectBlocked(service.validateIp(ip));
+			});
+
+			it.each(['100.63.255.255', '100.128.0.0'])(
+				'should allow the neighbouring address %s',
+				(ip) => {
+					const { service } = createService();
+					expectAllowed(service.validateIp(ip));
+				},
+			);
+		});
+
+		describe('blocked IPv6 special-purpose addresses', () => {
+			it.each([
+				['::', '::/128'],
+				['2002:7f00:1::', '2002::/16'],
+				['64:ff9b::7f00:1', '64:ff9b::/96'],
+			])('should block %s (in %s)', (ip) => {
+				const { service } = createService();
+				expectBlocked(service.validateIp(ip));
+			});
+		});
+
 		describe('allowed public addresses', () => {
 			it.each(['8.8.8.8', '1.1.1.1', '93.184.216.34', '2606:4700::6810:85e5'])(
 				'should allow public IP %s',
@@ -135,6 +164,14 @@ describe('SsrfProtectionService', () => {
 				expectAllowed(service.validateIp('127.0.0.1'));
 				// Other loopback IPs should still be blocked
 				expectBlocked(service.validateIp('127.0.0.2'));
+			});
+
+			it('should allow an address in shared address space when it is explicitly allowed', () => {
+				const { service } = createService({
+					allowedIpRanges: ['100.64.0.0/10'] as unknown as SsrfProtectionConfig['allowedIpRanges'],
+				});
+
+				expectAllowed(service.validateIp('100.64.0.1'));
 			});
 		});
 
