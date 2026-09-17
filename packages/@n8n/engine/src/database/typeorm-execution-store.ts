@@ -62,10 +62,9 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 	}
 
 	async refreshLiveStatus(id: string): Promise<void> {
-		// One statement, so the step states this decides on cannot change between
-		// the decision and the write. The last predicate skips the write when the
-		// status already holds, which keeps a settling step from taking the
-		// execution row's lock for nothing.
+		// One statement, so no step can change between the decision and the write.
+		// The last predicate skips the write when the status already holds. A
+		// settling step then does not take the execution row's lock for nothing.
 		await this.repo.query(
 			`WITH live AS (
 				SELECT

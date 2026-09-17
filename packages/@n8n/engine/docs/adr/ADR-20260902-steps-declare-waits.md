@@ -61,11 +61,14 @@ deadline, or accept a resume request, or do both.
    endpoint that always accepts it, and the data plane validates the request
    against the waiting step. How a request authorizes itself is a separate
    decision.
-6. **The execution reports a derived `waiting` status.** The execution reports
-   `waiting` when one or more of its steps wait, and no step runs or can run. In
-   all other cases the execution reports `running`. The engine calculates the
-   status again at each step transition. A new `step:waiting` lifecycle event
-   shows the paused step in the UI.
+6. **The execution stores a `waiting` status.** An execution reports `waiting`
+   when every step it still owes is suspended. It reports `running` when one of
+   its steps can still run. The step rows decide the status, and the execution
+   row records it. After a step changes state, the engine calculates the status
+   from the steps again. One statement calculates the status and writes it. Two
+   statements are not enough. A step could change between the read and the
+   write. The write would then store the older status. A new `step:waiting`
+   lifecycle event shows the paused step in the UI.
 
 ## How the design doc's model maps onto this one
 
@@ -118,6 +121,10 @@ step result contract, so no node needs to convert to a different step type.
 - **Delegate the time waits to the control plane.** This option breaks
   standalone mode. It also adds cross-plane requests for a timer that the data
   plane can fire against its own database.
+- **Derive the `waiting` status on read.** This option stores nothing and
+  cannot go stale. Every list query must then join the step rows to learn the
+  status of each execution. `queued` and `running` are stored, so this option
+  also makes `waiting` the one status a reader computes for itself.
 - **Register the wait channels with the control plane at suspension.** This
   option adds a cross-plane API. It also adds a deregistration step to every
   cancel path and every timeout path. It keeps a second copy of the wait state.
@@ -159,6 +166,10 @@ step result contract, so no node needs to convert to a different step type.
   registers a handler through `onExecutionCancellation`, which needs an abort
   signal that the shim does not supply yet (CAT-4526). Nothing observes this
   until an execution can be cancelled (CAT-3990).
+- `running` and `waiting` are both live statuses. Only an execution that ended
+  stops a step transition. A waiting execution continues when one of its steps
+  runs again, so the engine must let that step run. The execution keeps the
+  `waiting` status until the resumed step settles.
 - The control plane maps the new status to the `waiting` status of v1. The
   executions list and its filters continue to work. An execution with one
   waiting branch and one running branch reports `running`.
