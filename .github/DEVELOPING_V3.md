@@ -124,6 +124,9 @@ of the breaking removal on `3.x`.
 
 ## How the daily sync works
 
+The sync runs automation code from the triggering `master` SHA while its working checkout
+stays on `3.x`.
+
 [`util-sync-master-to-3x.yml`](./workflows/util-sync-master-to-3x.yml) runs daily and
 **replays the `3.x`-only commits on top of `master`** (a rebase), then force-pushes `3.x`:
 
