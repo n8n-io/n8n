@@ -47,7 +47,9 @@ import { isEmpty } from '@/app/utils/typesUtils';
 import { getResourcePermissions } from '@n8n/permissions';
 import {
 	useNodeCredentialOptions,
+	buildCredentialRows,
 	type CredentialDropdownOption,
+	type CredentialDropdownRow,
 } from '../composables/useNodeCredentialOptions';
 import { getAutoSelectedCredential } from '../credentials.utils';
 import { usePrivateCredentials } from '@/features/resolvers/composables/usePrivateCredentials';
@@ -1059,6 +1061,23 @@ function matches(needle: string, haystack: string) {
 	return haystack.toLocaleLowerCase().includes(needle.toLocaleLowerCase());
 }
 
+/**
+ * The dropdown rows for a credential type: the type-ahead filter runs first, so
+ * a heading is only built for a group that still has matches.
+ */
+function credentialRows(
+	options: CredentialDropdownOption[],
+	needle: string,
+): CredentialDropdownRow[] {
+	return buildCredentialRows(options.filter((option) => matches(needle, option.name)));
+}
+
+function credentialGroupLabel(route: 'personal' | 'project'): string {
+	return route === 'personal'
+		? i18n.baseText('nodeCredentials.group.personal')
+		: i18n.baseText('nodeCredentials.group.project');
+}
+
 // The n8n credits option's value is UI-only select state: selecting it routes
 // to the managed-slot path, which owns the persisted
 // `{ id: null, name: '', __aiGatewayManaged: true }` shape.
@@ -1421,52 +1440,67 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 									/>
 								</div>
 							</N8nOption>
-							<N8nOption
-								v-for="item in options.filter((o) => matches(filter, o.name))"
-								:key="item.id"
-								:data-test-id="`node-credentials-select-item-${item.id}`"
-								:label="item.name"
-								:value="item.id"
-							>
-								<div :class="$style.credentialOption">
-									<N8nIcon
-										:icon="item.isResolvable ? 'user-round' : 'key-round'"
-										size="large"
-										:class="$style.optionIcon"
-									/>
-									<div :class="$style.credentialOptionName">
-										<N8nText :class="$style.optionName">{{ item.name }}</N8nText>
-										<N8nTooltip
-											v-if="isPrivateCredentialsEnabled && item.isResolvable"
-											placement="top"
-										>
-											<template #content>{{
-												i18n.baseText('credentials.private.tooltip')
-											}}</template>
-											<N8nIcon
-												icon="user-round-key"
-												size="small"
-												data-test-id="credential-option-private-badge"
-											/>
-										</N8nTooltip>
-									</div>
-									<N8nText size="small" color="text-light" :class="$style.optionMeta">
-										{{
-											item.isResolvable
-												? i18n.baseText(
-														'credentialEdit.credentialConfig.credentialType.endUser.title',
-													)
-												: item.typeDisplayName
-										}}
+							<template v-for="row in credentialRows(options, filter)">
+								<N8nOption
+									v-if="row.kind === 'header'"
+									:key="row.value"
+									:data-test-id="`node-credentials-select-group-${row.route}`"
+									:value="row.value"
+									:label="credentialGroupLabel(row.route)"
+									disabled
+									:class="$style.groupHeader"
+								>
+									<N8nText size="small" color="text-light" bold>
+										{{ credentialGroupLabel(row.route) }}
 									</N8nText>
-									<N8nIcon
-										v-if="getSelectedId(type) === item.id"
-										icon="check"
-										size="large"
-										:class="$style.checkIcon"
-									/>
-								</div>
-							</N8nOption>
+								</N8nOption>
+								<N8nOption
+									v-else
+									:key="row.option.id"
+									:data-test-id="`node-credentials-select-item-${row.option.id}`"
+									:label="row.option.name"
+									:value="row.option.id"
+								>
+									<div :class="$style.credentialOption">
+										<N8nIcon
+											:icon="row.option.isResolvable ? 'user-round' : 'key-round'"
+											size="large"
+											:class="$style.optionIcon"
+										/>
+										<div :class="$style.credentialOptionName">
+											<N8nText :class="$style.optionName">{{ row.option.name }}</N8nText>
+											<N8nTooltip
+												v-if="isPrivateCredentialsEnabled && row.option.isResolvable"
+												placement="top"
+											>
+												<template #content>{{
+													i18n.baseText('credentials.private.tooltip')
+												}}</template>
+												<N8nIcon
+													icon="user-round-key"
+													size="small"
+													data-test-id="credential-option-private-badge"
+												/>
+											</N8nTooltip>
+										</div>
+										<N8nText size="small" color="text-light" :class="$style.optionMeta">
+											{{
+												row.option.isResolvable
+													? i18n.baseText(
+															'credentialEdit.credentialConfig.credentialType.endUser.title',
+														)
+													: row.option.typeDisplayName
+											}}
+										</N8nText>
+										<N8nIcon
+											v-if="getSelectedId(type) === row.option.id"
+											icon="check"
+											size="large"
+											:class="$style.checkIcon"
+										/>
+									</div>
+								</N8nOption>
+							</template>
 							<template #empty> </template>
 							<template #footer>
 								<button
@@ -1718,6 +1752,15 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 .hasIssues {
 	composes: input;
 	--input--border-color: var(--color--danger);
+}
+
+.groupHeader {
+	// A heading, not a choice: element-plus skips disabled options for keyboard
+	// nav, and this drops the hover/pointer affordances too.
+	cursor: default;
+	padding-top: var(--spacing--2xs);
+	padding-bottom: var(--spacing--4xs);
+	opacity: 1;
 }
 
 .credentialOption {

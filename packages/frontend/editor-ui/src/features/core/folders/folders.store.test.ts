@@ -188,6 +188,7 @@ describe('folders.store', () => {
 				name: faker.lorem.words(2),
 				credentialType: faker.lorem.word(),
 				currentUserHasAccess: true,
+				currentUserCanUse: true,
 				sharedWithProjects: [],
 			};
 

@@ -136,7 +136,9 @@ export class EnterpriseWorkflowService {
 			Array.from(credentialIdsUsedByWorkflow),
 			{ withSharings: true },
 		);
-		const userCredentialIds = userCredentials.map((credential) => credential.id);
+		// `getCredentialsAUserCanUseInAWorkflow` answers "can use".
+		const usableCredentialIds = new Set(userCredentials.map((credential) => credential.id));
+
 		workflowCredentials.forEach((credential) => {
 			const credentialId = credential.id;
 			const filledCred = this.ownershipService.addOwnedByAndSharedWith(credential);
@@ -144,7 +146,13 @@ export class EnterpriseWorkflowService {
 				id: credentialId,
 				name: credential.name,
 				type: credential.type,
-				currentUserHasAccess: userCredentialIds.includes(credentialId),
+				// Visibility follows the reference, capability follows the grant.
+				// Anyone who may read this workflow sees the name and type of the
+				// credentials its nodes are bound to — so a colleague can diagnose a
+				// failure and knows who to ask — without that telling them anything
+				// about whether they may run it. The secret is never exposed here.
+				currentUserHasAccess: true,
+				currentUserCanUse: usableCredentialIds.has(credentialId),
 				homeProject: filledCred.homeProject,
 				sharedWithProjects: filledCred.sharedWithProjects,
 			});

@@ -17,6 +17,12 @@ export interface ICredentialsResponse extends ICredentialsEncrypted {
 	isGlobal?: boolean;
 	isResolvable?: boolean;
 	usageScope?: 'project' | 'instance';
+	/**
+	 * Which route makes this credential available in the current project:
+	 * `'personal'` for your own, which follow you everywhere, `'project'` for what
+	 * the project itself carries. Set by the credential-picker endpoint only.
+	 */
+	accessRoute?: 'personal' | 'project';
 	/** Whether the current user has personally connected this credential. Set on resolvable credentials only. */
 	connectedByMe?: boolean;
 	/**
@@ -33,7 +39,13 @@ export interface IUsedCredential {
 	id: string;
 	name: string;
 	credentialType: string;
+	/** The user may see the credential: its name, its type, and where it is used. */
 	currentUserHasAccess: boolean;
+	/**
+	 * The user may bind the credential to a node that executes. False on a
+	 * credential restricted to its owner, which the user can still see.
+	 */
+	currentUserCanUse: boolean;
 	homeProject?: ProjectSharingData;
 	sharedWithProjects?: ProjectSharingData[];
 }

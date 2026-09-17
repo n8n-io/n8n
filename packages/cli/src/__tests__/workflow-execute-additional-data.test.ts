@@ -342,6 +342,22 @@ describe('WorkflowExecuteAdditionalData', () => {
 				expect(credentialsPermissionChecker.checkForUser).not.toHaveBeenCalled();
 			});
 
+			// The project check ignores who is acting, so without the acting user a
+			// credential restricted to its owner would be laundered through a stored
+			// sub-workflow: the parent refuses the run, the child would not.
+			it('passes the acting user to the project check so a restricted credential survives the sub-workflow boundary', async () => {
+				await executeWorkflow(
+					mock<IExecuteWorkflowInfo>({ id: 'db-id', code: undefined }),
+					mock<IWorkflowExecuteAdditionalData>({ userId: 'user-1' }),
+					mock<ExecuteWorkflowOptions>({
+						loadedWorkflowData: subWorkflowData(),
+						doNotWaitToFinish: false,
+					}),
+				);
+
+				expect(vi.mocked(credentialsPermissionChecker.check).mock.calls[0][2]).toBe('user-1');
+			});
+
 			it('falls back to the project check for an inline sub-workflow without a triggering user', async () => {
 				await executeWorkflow(
 					mock<IExecuteWorkflowInfo>({ id: undefined, code: subWorkflowData() }),

@@ -1,4 +1,4 @@
-import { computed, ref } from 'vue';
+import { computed, ref, type DeepReadonly } from 'vue';
 import { SYSTEM_RESOLVER_ID } from '@n8n/api-types';
 import { useHistoryStore } from '@/app/stores/history.store';
 import { CUSTOM_API_CALL_KEY, EnterpriseEditionFeature } from '@/app/constants';
@@ -33,7 +33,10 @@ import type {
 	INodeCredentials,
 } from 'n8n-workflow';
 
-import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
+import type {
+	ICredentialsResponse,
+	IUsedCredential,
+} from '@/features/credentials/credentials.types';
 import type { AddedNode, INodeUi, INodeUpdatePropertiesInformation } from '@/Interface';
 import type { NodePanelType } from '@/features/ndv/shared/ndv.types';
 import type { WorkflowObjectAccessors } from '@/app/types/workflow';
@@ -137,14 +140,23 @@ export function useNodeHelpers() {
 	}
 
 	/**
-	 * Returns a list of credential IDs that the current user does not have access to,
-	 * if the Sharing feature is enabled.
+	 * Returns a list of credential IDs that the current user cannot use, if the
+	 * Sharing feature is enabled.
 	 *
-	 * These are considered "foreign" credentials: the user can't view or manage them,
-	 * but can still execute workflows that use them.
+	 * These are "foreign" credentials: the user sees the name and owner on the
+	 * node, and can still edit the rest of the workflow, but cannot bind them to
+	 * a node or run them. Visibility follows the reference, so being unable to use
+	 * a credential is the only distinction the editor needs.
 	 */
 	function getForeignCredentialsIfSharingEnabled(
 		credentials: INodeCredentials | undefined,
+	): string[] {
+		return filterUsedCredentials(credentials, (used) => !used.currentUserCanUse);
+	}
+
+	function filterUsedCredentials(
+		credentials: INodeCredentials | undefined,
+		predicate: (used: DeepReadonly<IUsedCredential>) => boolean,
 	): string[] {
 		if (
 			!credentials ||
@@ -157,8 +169,11 @@ export function useNodeHelpers() {
 
 		return Object.values(credentials)
 			.map(({ id }) => id)
-			.filter((id) => id !== null)
-			.filter((id) => id in usedCredentials && !usedCredentials[id]?.currentUserHasAccess);
+			.filter((id): id is string => id !== null)
+			.filter((id) => {
+				const used = usedCredentials[id];
+				return used !== undefined && predicate(used);
+			});
 	}
 
 	// Returns if the given parameter should be displayed or not

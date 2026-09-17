@@ -153,6 +153,7 @@ function createCredential(
 		isManaged: boolean;
 		isResolvable: boolean;
 		scopes: Scope[];
+		accessRoute: 'personal' | 'project';
 	}> = {},
 ) {
 	return {
@@ -284,6 +285,81 @@ describe('NodeCredentials', () => {
 
 		expect(screen.queryByText('OpenAi account')).toBeInTheDocument();
 		expect(screen.queryByText('Personal OpenAi account')).not.toBeInTheDocument();
+	});
+
+	describe('grouping by access route', () => {
+		const setUpGroups = () => {
+			stopCredentialsMirror();
+			ndvStore.activeNode = httpNode;
+			const mine = createCredential({
+				id: 'mine',
+				name: 'My OpenAi account',
+				accessRoute: 'personal',
+			});
+			const theirs = createCredential({
+				id: 'project-cred',
+				name: 'Marketing OpenAi key',
+				accessRoute: 'project',
+			});
+			credentialsStore.state.credentials = { mine, 'project-cred': theirs };
+			credentialsStore.usableCredentials = { mine, 'project-cred': theirs };
+		};
+
+		/**
+		 * jsdom cannot see through the teleported popper, so `toBeVisible` fails even
+		 * for a working option. Assert DOM order instead — that is the part this
+		 * component owns.
+		 */
+		const isBefore = (a: HTMLElement, b: HTMLElement) =>
+			// eslint-disable-next-line no-bitwise
+			Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+
+		it('labels each group and lists the caller-owned credentials first', async () => {
+			setUpGroups();
+			renderComponent();
+
+			await userEvent.click(screen.getByTestId('node-credentials-select'));
+
+			const personalHeading = screen.getByTestId('node-credentials-select-group-personal');
+			const projectHeading = screen.getByTestId('node-credentials-select-group-project');
+			const mine = screen.getByTestId('node-credentials-select-item-mine');
+			const theirs = screen.getByTestId('node-credentials-select-item-project-cred');
+
+			expect(personalHeading).toHaveTextContent('Personal');
+			expect(projectHeading).toHaveTextContent('Project');
+
+			// Personal heading → own credential → Project heading → project credential
+			expect(isBefore(personalHeading, mine)).toBe(true);
+			expect(isBefore(mine, projectHeading)).toBe(true);
+			expect(isBefore(projectHeading, theirs)).toBe(true);
+		});
+
+		it('omits the heading of a group with no options', async () => {
+			stopCredentialsMirror();
+			ndvStore.activeNode = httpNode;
+			const theirs = createCredential({ id: 'project-cred', accessRoute: 'project' });
+			credentialsStore.state.credentials = { 'project-cred': theirs };
+			credentialsStore.usableCredentials = { 'project-cred': theirs };
+			renderComponent();
+
+			await userEvent.click(screen.getByTestId('node-credentials-select'));
+
+			expect(
+				screen.queryByTestId('node-credentials-select-group-personal'),
+			).not.toBeInTheDocument();
+			expect(screen.queryByTestId('node-credentials-select-group-project')).toBeInTheDocument();
+		});
+
+		// The heading must never become a selection.
+		it('does not emit a selection when the heading row is clicked', async () => {
+			setUpGroups();
+			const { emitted } = renderComponent();
+
+			await userEvent.click(screen.getByTestId('node-credentials-select'));
+			await userEvent.click(screen.getByTestId('node-credentials-select-group-personal'));
+
+			expect(emitted().credentialSelected).toBeUndefined();
+		});
 	});
 
 	it('replaces the type-derived field label when credentialsFieldLabel is set', () => {

@@ -13,7 +13,10 @@ export const RESOURCES = {
 		'unshare',
 		'shareGlobally',
 		'move',
+		// `connect` attaches the caller's own account to an end-user credential.
+		// `use` binds the credential to a node that executes. They are unrelated.
 		'connect',
+		'use',
 		'createEndUser',
 		'manageInstance',
 		...DEFAULT_OPERATIONS,

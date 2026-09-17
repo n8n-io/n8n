@@ -284,39 +284,138 @@ describe('GET /credentials/for-workflow', () => {
 			['workflowId', 'owner', () => owner],
 			['projectId', 'owner', () => owner],
 		])(
-			'it will only return the credentials in that project if "%s" is used as the query parameter and the actor is a "%s"',
+			'it offers the actor\'s own personal credentials if "%s" is used as the query parameter and the actor is a "%s"',
 			async (_, queryParam, actorGetter) => {
 				const actor = actorGetter();
-				// Credential in personal project that should not be returned
-				await saveCredential(randomCredentialPayload(), { user: actor });
+				// A personal credential travels with its owner into any project they
+				// have access to, without being shared into it.
+				const personalCredential = await saveCredential(randomCredentialPayload(), {
+					user: actor,
+				});
 
 				const teamProject = await createTeamProject();
 				await linkUserToProject(actor, teamProject, 'project:viewer');
-				const savedCredential = await saveCredential(randomCredentialPayload(), {
-					project: teamProject,
-				});
+				await saveCredential(randomCredentialPayload(), { project: teamProject });
 				const savedWorkflow = await createWorkflow({}, teamProject);
 
-				{
-					const response = await testServer
-						.authAgentFor(actor)
-						.get('/credentials/for-workflow')
-						.query(
-							queryParam === 'workflowId'
-								? { workflowId: savedWorkflow.id }
-								: { projectId: teamProject.id },
-						);
-					expect(response.statusCode).toBe(200);
-					expect(response.body.data).toHaveLength(1);
-					expect(response.body.data).toContainEqual(
-						expect.objectContaining({
-							id: savedCredential.id,
-							scopes: expect.arrayContaining(['credential:read']),
-						}),
+				const response = await testServer
+					.authAgentFor(actor)
+					.get('/credentials/for-workflow')
+					.query(
+						queryParam === 'workflowId'
+							? { workflowId: savedWorkflow.id }
+							: { projectId: teamProject.id },
 					);
-				}
+
+				expect(response.statusCode).toBe(200);
+				expect(response.body.data).toContainEqual(
+					expect.objectContaining({ id: personalCredential.id }),
+				);
 			},
 		);
+
+		test('offers a project viewer nothing from the project, since they cannot use it', async () => {
+			const teamProject = await createTeamProject();
+			await linkUserToProject(member, teamProject, 'project:viewer');
+			const projectCredential = await saveCredential(randomCredentialPayload(), {
+				project: teamProject,
+			});
+			const savedWorkflow = await createWorkflow({}, teamProject);
+
+			const response = await authMemberAgent
+				.get('/credentials/for-workflow')
+				.query({ workflowId: savedWorkflow.id });
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.data.map((c: { id: string }) => c.id)).not.toContain(
+				projectCredential.id,
+			);
+		});
+
+		test('offers a project admin both the project credentials and their own', async () => {
+			const personalCredential = await saveCredential(randomCredentialPayload(), { user: member });
+
+			const teamProject = await createTeamProject();
+			await linkUserToProject(member, teamProject, 'project:admin');
+			const projectCredential = await saveCredential(randomCredentialPayload(), {
+				project: teamProject,
+			});
+			const savedWorkflow = await createWorkflow({}, teamProject);
+
+			const response = await authMemberAgent
+				.get('/credentials/for-workflow')
+				.query({ workflowId: savedWorkflow.id });
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.data).toHaveLength(2);
+			expect(response.body.data.map((c: { id: string }) => c.id)).toEqual(
+				expect.arrayContaining([projectCredential.id, personalCredential.id]),
+			);
+		});
+
+		// The picker groups by this, so the endpoint has to say which route made each
+		// credential available here.
+		test('labels each credential with the route that makes it available', async () => {
+			const personalCredential = await saveCredential(randomCredentialPayload(), { user: member });
+
+			const teamProject = await createTeamProject();
+			await linkUserToProject(member, teamProject, 'project:admin');
+			const projectCredential = await saveCredential(randomCredentialPayload(), {
+				project: teamProject,
+			});
+			const savedWorkflow = await createWorkflow({}, teamProject);
+
+			const response = await authMemberAgent
+				.get('/credentials/for-workflow')
+				.query({ workflowId: savedWorkflow.id });
+
+			expect(response.statusCode).toBe(200);
+			const byId = new Map(
+				response.body.data.map((c: { id: string; accessRoute: string }) => [c.id, c.accessRoute]),
+			);
+			expect(byId.get(personalCredential.id)).toBe('personal');
+			expect(byId.get(projectCredential.id)).toBe('project');
+		});
+
+		// Once shared into the project it is the project's, so it must not show up
+		// under the caller's own name as well.
+		test('labels a credential shared into the project as a project credential', async () => {
+			const credential = await saveCredential(randomCredentialPayload(), { user: member });
+
+			const teamProject = await createTeamProject();
+			await linkUserToProject(member, teamProject, 'project:admin');
+			await shareCredentialWithProjects(credential, [teamProject]);
+			const savedWorkflow = await createWorkflow({}, teamProject);
+
+			const response = await authMemberAgent
+				.get('/credentials/for-workflow')
+				.query({ workflowId: savedWorkflow.id });
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.data).toContainEqual(
+				expect.objectContaining({ id: credential.id, accessRoute: 'project' }),
+			);
+		});
+
+		test('does not offer a credential belonging to an unrelated team project', async () => {
+			const teamProject = await createTeamProject();
+			await linkUserToProject(member, teamProject, 'project:admin');
+			const savedWorkflow = await createWorkflow({}, teamProject);
+
+			const otherTeam = await createTeamProject(undefined, member);
+			const otherTeamCredential = await saveCredential(randomCredentialPayload(), {
+				project: otherTeam,
+			});
+
+			const response = await authMemberAgent
+				.get('/credentials/for-workflow')
+				.query({ workflowId: savedWorkflow.id });
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.data.map((c: { id: string }) => c.id)).not.toContain(
+				otherTeamCredential.id,
+			);
+		});
 	});
 
 	describe('for personal projects', () => {
@@ -425,8 +524,11 @@ describe('GET /credentials/for-workflow', () => {
 				user: anotherMember,
 			});
 
+			// The actor's own personal credential travels with them into any project
+			// they have access to, so it is offered here too.
+			const ownerCredential = await saveCredential(randomCredentialPayload(), { user: owner });
+
 			// should not be returned
-			await saveCredential(randomCredentialPayload(), { user: owner });
 			const teamProject = await createTeamProject();
 			await saveCredential(randomCredentialPayload(), { project: teamProject });
 
@@ -436,7 +538,10 @@ describe('GET /credentials/for-workflow', () => {
 				.query({ workflowId: memberWorkflow.id });
 
 			expect(response.statusCode).toBe(200);
-			expect(response.body.data).toHaveLength(2);
+			expect(response.body.data).toHaveLength(3);
+			expect(response.body.data).toContainEqual(
+				expect.objectContaining({ id: ownerCredential.id }),
+			);
 			expect(response.body.data).toContainEqual(
 				expect.objectContaining({
 					id: memberCredential.id,
@@ -455,9 +560,12 @@ describe('GET /credentials/for-workflow', () => {
 			// should be returned
 			const memberCredential = await saveCredential(randomCredentialPayload(), { user: member });
 
+			// The actor's own personal credential travels with them, so it is offered
+			// here too.
+			const ownerCredential = await saveCredential(randomCredentialPayload(), { user: owner });
+
 			// should not be returned
 			await saveCredential(randomCredentialPayload(), { user: anotherMember });
-			await saveCredential(randomCredentialPayload(), { user: owner });
 			const teamProject = await createTeamProject();
 			await saveCredential(randomCredentialPayload(), { project: teamProject });
 
@@ -467,7 +575,10 @@ describe('GET /credentials/for-workflow', () => {
 				.query({ projectId: memberPersonalProject.id });
 
 			expect(response.statusCode).toBe(200);
-			expect(response.body.data).toHaveLength(1);
+			expect(response.body.data).toHaveLength(2);
+			expect(response.body.data).toContainEqual(
+				expect.objectContaining({ id: ownerCredential.id }),
+			);
 			expect(response.body.data).toContainEqual(
 				expect.objectContaining({
 					id: memberCredential.id,
@@ -1538,3 +1649,98 @@ function validateMainCredentialData(credential: ListQueryDb.Credentials.WithOwne
 	expect(credential.homeProject).toBeDefined();
 	expect(Array.isArray(credential.sharedWithProjects)).toBe(true);
 }
+
+describe('personal credentials inside team projects', () => {
+	/**
+	 * The model: a credential in your personal space is yours to use in every
+	 * project you have access to, without being shared into any of them.
+	 * Colleagues in those projects see it on the nodes it is bound to, but cannot
+	 * use it.
+	 */
+	const setUpPersonalCredentialInTeamProject = async () => {
+		const teamProject = await createTeamProject(undefined, member);
+		await linkUserToProject(anotherMember, teamProject, 'project:admin');
+
+		const { body } = await authMemberAgent.post('/credentials').send(randomCredentialPayload()); // no projectId → member's personal space
+
+		return { teamProject, credentialId: body.data.id as string };
+	};
+
+	test('stays owned by the personal project and is shared with nobody', async () => {
+		const { credentialId } = await setUpPersonalCredentialInTeamProject();
+
+		const sharings = await getCredentialSharings({ id: credentialId } as never);
+		expect(sharings).toEqual([
+			expect.objectContaining({ projectId: memberPersonalProject.id, role: 'credential:owner' }),
+		]);
+	});
+
+	test('is offered to its owner inside a team project it was never shared into', async () => {
+		const { teamProject, credentialId } = await setUpPersonalCredentialInTeamProject();
+
+		const picker = await authMemberAgent
+			.get('/credentials/for-workflow')
+			.query({ projectId: teamProject.id });
+
+		expect(picker.body.data.map((c: { id: string }) => c.id)).toContain(credentialId);
+	});
+
+	test('is not offered to a colleague in that team project', async () => {
+		const { teamProject, credentialId } = await setUpPersonalCredentialInTeamProject();
+
+		const picker = await authAnotherMemberAgent
+			.get('/credentials/for-workflow')
+			.query({ projectId: teamProject.id });
+
+		expect(picker.body.data.map((c: { id: string }) => c.id)).not.toContain(credentialId);
+	});
+
+	test('the owner can use it; the colleague cannot', async () => {
+		const { credentialId } = await setUpPersonalCredentialInTeamProject();
+
+		const ownerView = await authMemberAgent.get(`/credentials/${credentialId}`);
+		expect(ownerView.statusCode).toBe(200);
+		expect(ownerView.body.data.scopes).toContain('credential:use');
+
+		// The colleague has no grant at all, so the credential is not readable
+		// through the credentials API. What they see is the name and type on the
+		// node, which the workflow payload carries.
+		const colleagueView = await authAnotherMemberAgent.get(`/credentials/${credentialId}`);
+		expect(colleagueView.statusCode).toBe(403);
+	});
+
+	// Sharing with a person, not a project: the recipient can then use it in any
+	// project *they* have access to.
+	test('sharing it with another user lets them use it in their own projects', async () => {
+		const { credentialId } = await setUpPersonalCredentialInTeamProject();
+		const theirTeamProject = await createTeamProject(undefined, anotherMember);
+
+		const shared = await authMemberAgent
+			.put(`/credentials/${credentialId}/share`)
+			.send({ shareWithIds: [anotherMemberPersonalProject.id] });
+		expect(shared.statusCode).toBe(200);
+
+		const picker = await authAnotherMemberAgent
+			.get('/credentials/for-workflow')
+			.query({ projectId: theirTeamProject.id });
+
+		expect(picker.body.data.map((c: { id: string }) => c.id)).toContain(credentialId);
+	});
+
+	// Sharing into a project keeps working exactly as before: available to
+	// everyone in it.
+	test('sharing it into the team project makes it usable by the whole project', async () => {
+		const { teamProject, credentialId } = await setUpPersonalCredentialInTeamProject();
+
+		const shared = await authMemberAgent
+			.put(`/credentials/${credentialId}/share`)
+			.send({ shareWithIds: [teamProject.id] });
+		expect(shared.statusCode).toBe(200);
+
+		const picker = await authAnotherMemberAgent
+			.get('/credentials/for-workflow')
+			.query({ projectId: teamProject.id });
+
+		expect(picker.body.data.map((c: { id: string }) => c.id)).toContain(credentialId);
+	});
+});

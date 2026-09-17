@@ -151,7 +151,7 @@ describe('WorkflowCreationService', () => {
 			expect(credentialsFinderServiceMock.findCredentialIdsWithScopeForUser).toHaveBeenCalledWith(
 				[],
 				user,
-				['credential:read'],
+				['credential:use'],
 			);
 			expect(context.allowedCredentialIds).toEqual(new Set(['target-credential']));
 		});
@@ -282,7 +282,7 @@ describe('WorkflowCreationService', () => {
 				expect(credentialsFinderServiceMock.findCredentialIdsWithScopeForUser).toHaveBeenCalledWith(
 					['credential-1'],
 					user,
-					['credential:read'],
+					['credential:use'],
 				);
 			});
 

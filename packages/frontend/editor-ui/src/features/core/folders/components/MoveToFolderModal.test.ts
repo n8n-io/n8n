@@ -112,6 +112,7 @@ const readableUsedCredential: IUsedCredential = {
 	name: readableCredential.name,
 	credentialType: readableCredential.type,
 	currentUserHasAccess: true,
+	currentUserCanUse: true,
 	homeProject,
 	sharedWithProjects: [],
 };
@@ -124,6 +125,7 @@ const shareableUsedCredential: IUsedCredential = {
 	name: shareableCredential.name,
 	credentialType: shareableCredential.type,
 	currentUserHasAccess: true,
+	currentUserCanUse: true,
 	homeProject,
 	sharedWithProjects: [],
 };

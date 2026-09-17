@@ -5,6 +5,7 @@ import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { FULL_ACCESS_NODE_TYPES } from 'n8n-core';
 import {
 	validateWorkflowHasTriggerLikeNode,
+	collectNodeCredentialIds,
 	NodeHelpers,
 	mapConnectionsByDestination,
 	validateNodeCredentials,
@@ -427,18 +428,8 @@ export class WorkflowValidationService {
 	}
 
 	/** Collects the ids of all credentials referenced by enabled nodes. */
-	private collectCredentialIds(nodes: INode[]): Set<string> {
-		const credentialIds = new Set<string>();
-		for (const node of nodes) {
-			if (node.disabled) continue;
-			for (const credName of Object.keys(node.credentials ?? {})) {
-				const credId = node.credentials?.[credName]?.id;
-				if (credId) {
-					credentialIds.add(credId);
-				}
-			}
-		}
-		return credentialIds;
+	collectCredentialIds(nodes: INode[]): Set<string> {
+		return new Set(collectNodeCredentialIds(nodes));
 	}
 
 	/**

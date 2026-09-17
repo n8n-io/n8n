@@ -8,6 +8,7 @@ import {
 	SharedCredentialsRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
+import type { CredentialSharingRole } from '@n8n/permissions';
 import { hasGlobalScope } from '@n8n/permissions';
 import { In, type EntityManager } from '@n8n/typeorm';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
@@ -40,11 +41,16 @@ export class EnterpriseCredentialsService {
 		private readonly connectionStatusProxy: CredentialConnectionStatusProxy,
 	) {}
 
+	/**
+	 * @param role - the level the new grants carry. Defaults to `credential:user`,
+	 * the only level sharing wrote before restricted credentials existed.
+	 */
 	async shareWithProjects(
 		user: User,
 		credentialId: string,
 		shareWithIds: string[],
 		entityManager?: EntityManager,
+		role: CredentialSharingRole = 'credential:user',
 	) {
 		const em = entityManager ?? this.sharedCredentialsRepository.manager;
 		const canShare = await em.exists(CredentialsEntity, {
@@ -88,7 +94,7 @@ export class EnterpriseCredentialsService {
 		const newSharedCredentials = projects.map((project) =>
 			this.sharedCredentialsRepository.create({
 				credentialsId: credentialId,
-				role: 'credential:user',
+				role,
 				projectId: project.id,
 			}),
 		);

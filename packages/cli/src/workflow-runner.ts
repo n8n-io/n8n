@@ -270,6 +270,7 @@ export class WorkflowRunner {
 				await this.credentialsPermissionChecker.check(
 					data.workflowData.id,
 					data.workflowData.nodes,
+					data.userId,
 				);
 			} catch (error) {
 				const executionId = await this.activeExecutions.add(data, existingExecution);

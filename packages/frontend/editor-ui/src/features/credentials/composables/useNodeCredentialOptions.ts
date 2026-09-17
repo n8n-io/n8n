@@ -20,6 +20,47 @@ export interface CredentialDropdownOption extends ICredentialsResponse {
 	typeDisplayName: string;
 }
 
+/** Sentinel prefix for the non-selectable group heading rows. */
+export const CREDENTIAL_GROUP_HEADER_PREFIX = '__credentialGroup:';
+
+export type CredentialDropdownRow =
+	| { kind: 'header'; route: 'personal' | 'project'; value: string }
+	| { kind: 'option'; option: CredentialDropdownOption };
+
+/**
+ * Flattens the options into rows with a heading before each group, so the
+ * picker can label where a credential comes from: your own credentials first,
+ * then what the project carries.
+ *
+ * Deliberately not `ElOptionGroup`: it collects its options once in
+ * `onMounted` and hides itself when it finds none, so a group populated after
+ * mount — which ours always is, the credentials arrive from a fetch — stays
+ * hidden forever. A disabled option is a heading we control.
+ *
+ * A group with no options contributes no heading.
+ */
+export function buildCredentialRows(options: CredentialDropdownOption[]): CredentialDropdownRow[] {
+	// Anything without a route is project-scoped: hosts that supply their own
+	// list (e.g. the Instance AI setup card) do not set it.
+	const groups = [
+		{ route: 'personal' as const, options: options.filter((o) => o.accessRoute === 'personal') },
+		{ route: 'project' as const, options: options.filter((o) => o.accessRoute !== 'personal') },
+	];
+
+	return groups.flatMap<CredentialDropdownRow>((group) =>
+		group.options.length === 0
+			? []
+			: [
+					{
+						kind: 'header',
+						route: group.route,
+						value: `${CREDENTIAL_GROUP_HEADER_PREFIX}${group.route}`,
+					},
+					...group.options.map((option) => ({ kind: 'option' as const, option })),
+				],
+	);
+}
+
 export function useNodeCredentialOptions(
 	node: MaybeRefOrGetter<INodeUi | null>,
 	nodeType: MaybeRefOrGetter<INodeTypeDescription | null>,
@@ -49,10 +90,10 @@ export function useNodeCredentialOptions(
 	);
 
 	const credentialTypesNodeDescriptionDisplayed = computed(() =>
-		credentialTypesNodeDescriptions.value.filter(displayCredentials).map((type) => ({
-			type,
-			options: getCredentialOptions(getAllRelatedCredentialTypes(type)),
-		})),
+		credentialTypesNodeDescriptions.value.filter(displayCredentials).map((type) => {
+			const options = getCredentialOptions(getAllRelatedCredentialTypes(type));
+			return { type, options };
+		}),
 	);
 
 	const areAllCredentialsSet = computed(() =>

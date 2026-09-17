@@ -1,10 +1,11 @@
 import { LicenseState, Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
-import type { IRunExecutionData, ITaskData, WorkflowExecuteMode } from 'n8n-workflow';
+import type { INode, IRunExecutionData, ITaskData, WorkflowExecuteMode } from 'n8n-workflow';
 import { shouldRedactConsoleOutput } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
+import { CredentialUsabilityService } from '@/credentials/credential-usability.service';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { ScopeForbiddenError } from '@/errors/response-errors/scope-forbidden.error';
 import type { EventService } from '@/events/event.service';
@@ -23,6 +24,7 @@ describe('ExecutionRedactionService', () => {
 	const workflowFinderService = mockInstance(WorkflowFinderService);
 	const eventService = mock<EventService>();
 	const fullItemRedactionStrategy = mockInstance(FullItemRedactionStrategy);
+	const credentialUsabilityService = mockInstance(CredentialUsabilityService);
 
 	let service: ExecutionRedactionService;
 
@@ -37,12 +39,15 @@ describe('ExecutionRedactionService', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		licenseState.isDataRedactionLicensed.mockReturnValue(true);
+		// Default: no credential the viewer is barred from using.
+		credentialUsabilityService.findUnusableByUser.mockResolvedValue([]);
 		service = new ExecutionRedactionService(
 			logger,
 			licenseState,
 			workflowFinderService,
 			eventService,
 			fullItemRedactionStrategy,
+			credentialUsabilityService,
 		);
 		// Default: user lacks execution:reveal scope
 		workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(new Set());
@@ -991,6 +996,83 @@ describe('ExecutionRedactionService', () => {
 			const dataPipelineRedacts = fullItemRedactionStrategy.apply.mock.calls.length > 0;
 
 			expect(shouldRedactConsoleOutput(redaction, undefined, mode)).toBe(dataPipelineRedacts);
+		});
+	});
+	describe('restricted credentials forced redaction', () => {
+		const restrictedCredentialId = 'cred-restricted';
+
+		/** A run whose stored workflow snapshot references `restrictedCredentialId`. */
+		const makeExecutionWithCredential = (
+			overrides: Parameters<typeof makeExecution>[0] = {},
+		): RedactableExecution => {
+			const execution = makeExecution(overrides);
+			execution.workflowData.nodes = [
+				mock<INode>({
+					name: 'Gmail',
+					disabled: false,
+					credentials: { gmailOAuth2: { id: restrictedCredentialId, name: 'CEO Gmail' } },
+				}),
+			];
+			return execution;
+		};
+
+		beforeEach(() => {
+			credentialUsabilityService.findUnusableByUser.mockResolvedValue([
+				{ id: restrictedCredentialId, name: 'CEO Gmail' },
+			]);
+		});
+
+		it('clears everything even when the policy would allow a reveal', async () => {
+			const execution = makeExecutionWithCredential({ policy: 'none', mode: 'manual' });
+
+			await service.processExecution(execution, { user: mockUser });
+
+			expect(fullItemRedactionStrategy.apply).toHaveBeenCalledTimes(1);
+			expect(credentialUsabilityService.findUnusableByUser).toHaveBeenCalledWith(mockUser, [
+				restrictedCredentialId,
+			]);
+		});
+
+		it('passes userCanReveal: false even to a user holding execution:reveal', async () => {
+			workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(
+				new Set(['workflow-123']),
+			);
+			const execution = makeExecutionWithCredential({ policy: 'all', mode: 'manual' });
+
+			await service.processExecution(execution, { user: mockUser });
+
+			const [, context] = fullItemRedactionStrategy.apply.mock.calls[0];
+			expect(context.userCanReveal).toBe(false);
+			expect(context.enforceRestrictedCredRedaction).toBe(true);
+		});
+
+		it('refuses an explicit reveal, and the reveal permission does not override it', async () => {
+			workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(
+				new Set(['workflow-123']),
+			);
+			const execution = makeExecutionWithCredential({ policy: 'all', mode: 'manual' });
+
+			await expect(
+				service.processExecution(execution, { user: mockUser, redactExecutionData: false }),
+			).rejects.toThrow(ForbiddenError);
+		});
+
+		it('leaves a run alone when the viewer can use every credential it touched', async () => {
+			credentialUsabilityService.findUnusableByUser.mockResolvedValue([]);
+			const execution = makeExecutionWithCredential({ policy: 'none', mode: 'manual' });
+
+			await service.processExecution(execution, { user: mockUser });
+
+			expect(fullItemRedactionStrategy.apply).not.toHaveBeenCalled();
+		});
+
+		it('does not look up permissions for a run that references no credential', async () => {
+			const execution = makeExecution({ policy: 'none', mode: 'manual' });
+
+			await service.processExecution(execution, { user: mockUser });
+
+			expect(credentialUsabilityService.findUnusableByUser).not.toHaveBeenCalled();
+			expect(fullItemRedactionStrategy.apply).not.toHaveBeenCalled();
 		});
 	});
 });

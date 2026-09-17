@@ -491,9 +491,12 @@ export class CredentialsController {
 			throw new ForbiddenError();
 		}
 
+		// Every non-owner grant is a share, whatever level it carries. Matching a
+		// single role name would leave the others unlistable and unrevocable.
 		const currentProjectIds = credential.shared
-			.filter((sc) => sc.role === 'credential:user')
+			.filter((sc) => sc.role !== 'credential:owner')
 			.map((sc) => sc.projectId);
+
 		const newProjectIds = shareWithIds;
 
 		const toShare = utils.rightDiff([currentProjectIds, (id) => id], [newProjectIds, (id) => id]);

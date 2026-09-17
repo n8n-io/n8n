@@ -12,6 +12,7 @@ import type { INode } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import type { CredentialUsabilityService } from '@/credentials/credential-usability.service';
 import type { NodeTypes } from '@/node-types';
 import type { OwnershipService } from '@/services/ownership.service';
 import type { ProjectService } from '@/services/project.service.ee';
@@ -26,6 +27,7 @@ describe('CredentialsPermissionChecker', () => {
 	const nodeTypes = mock<NodeTypes>();
 	const userRepository = mock<UserRepository>();
 	const credentialsFinderService = mock<CredentialsFinderService>();
+	const credentialUsabilityService = mock<CredentialUsabilityService>();
 	const permissionChecker = new CredentialsPermissionChecker(
 		sharedCredentialsRepository,
 		credentialsRepository,
@@ -34,6 +36,7 @@ describe('CredentialsPermissionChecker', () => {
 		nodeTypes,
 		userRepository,
 		credentialsFinderService,
+		credentialUsabilityService,
 	);
 
 	const workflowId = 'workflow123';
@@ -63,6 +66,8 @@ describe('CredentialsPermissionChecker', () => {
 		projectService.findProjectsWorkflowIsIn.mockResolvedValueOnce([personalProject.id]);
 		credentialsRepository.findGlobalProjectCredentialIds.mockResolvedValue([]);
 		credentialsRepository.findNonProjectCredentialsByIds.mockResolvedValue([]);
+		// Default: the acting user may use anything the project route rejects.
+		credentialUsabilityService.findUnusableByUser.mockResolvedValue([]);
 	});
 
 	it('should throw if a node has a credential without an id', async () => {
@@ -137,7 +142,11 @@ describe('CredentialsPermissionChecker', () => {
 
 			const result = await permissionChecker.findInaccessible(workflowId, ['a', 'b', 'c', 'd']);
 
-			expect(result).toEqual({ homeProject: personalProject, inaccessibleIds: ['a', 'c'] });
+			expect(result).toEqual({
+				homeProject: personalProject,
+				inaccessibleIds: ['a', 'c'],
+				unavailableIds: [],
+			});
 			expect(credentialsRepository.findGlobalProjectCredentialIds).toHaveBeenCalledWith([
 				'a',
 				'b',
@@ -154,6 +163,8 @@ describe('CredentialsPermissionChecker', () => {
 			const result = await permissionChecker.findInaccessible(workflowId, ['a', 'b']);
 
 			expect(result.inaccessibleIds).toEqual(['b']);
+			// Never usable, whoever is acting.
+			expect(result.unavailableIds).toEqual(['b']);
 			// Decided before any sharing is read.
 			expect(sharedCredentialsRepository.getFilteredAccessibleCredentials).not.toHaveBeenCalled();
 		});
@@ -287,6 +298,7 @@ describe('CredentialsPermissionChecker', () => {
 			ownershipService.getPersonalProjectOwnerCached.mockResolvedValue(null);
 			projectService.findProjectsWorkflowIsIn.mockResolvedValue([teamProject.id]);
 			credentialsRepository.findNonProjectCredentialsByIds.mockResolvedValue([]);
+			credentialUsabilityService.findUnusableByUser.mockResolvedValue([]);
 		});
 
 		it('should only check the active credential type for nodes with nodeCredentialType', async () => {
@@ -614,7 +626,7 @@ describe('CredentialsPermissionChecker', () => {
 			);
 			expect(credentialsFinderService.findCredentialsForUser).toHaveBeenCalledWith(
 				expect.objectContaining({ id: userId }),
-				['credential:read'],
+				['credential:use'],
 			);
 		});
 
@@ -646,6 +658,81 @@ describe('CredentialsPermissionChecker', () => {
 				'Node "Test Node" uses a credential you do not have access to',
 			);
 			expect(credentialsFinderService.findCredentialsForUser).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('the acting-user route', () => {
+		const userId = 'user-123';
+		const user = mock<User>({ id: userId, role: GLOBAL_MEMBER_ROLE });
+
+		beforeEach(() => {
+			// The project route rejects the credential: it is not shared into any
+			// project the workflow belongs to. This is the shape of a personal
+			// credential used inside a team project.
+			sharedCredentialsRepository.getFilteredAccessibleCredentials.mockResolvedValue([]);
+			userRepository.findOne.mockResolvedValue(user);
+		});
+
+		it('never consults the acting user when the project route already passes', async () => {
+			sharedCredentialsRepository.getFilteredAccessibleCredentials.mockResolvedValue([
+				credentialId,
+			]);
+
+			await expect(permissionChecker.check(workflowId, [node], userId)).resolves.not.toThrow();
+
+			expect(credentialUsabilityService.findUnusableByUser).not.toHaveBeenCalled();
+		});
+
+		it('lets the run through when the acting user may use the credential themselves', async () => {
+			credentialUsabilityService.findUnusableByUser.mockResolvedValue([]);
+
+			await expect(permissionChecker.check(workflowId, [node], userId)).resolves.not.toThrow();
+
+			expect(credentialUsabilityService.findUnusableByUser).toHaveBeenCalledWith(user, [
+				credentialId,
+			]);
+		});
+
+		it('blocks the run and names the credential, node and owner', async () => {
+			credentialUsabilityService.findUnusableByUser.mockResolvedValue([
+				{ id: credentialId, name: 'CEO Gmail', ownerName: 'Alice' },
+			]);
+
+			await expect(permissionChecker.check(workflowId, [node], userId)).rejects.toThrow(
+				'Node "Test Node" uses the credential "CEO Gmail", which you cannot use',
+			);
+		});
+
+		// Fails closed, and keeps the project-route message: with no identity we
+		// cannot tell a colleague's personal credential from one never shared here.
+		it('fails closed when the run has no user to act as', async () => {
+			await expect(permissionChecker.check(workflowId, [node])).rejects.toThrow(
+				'Node "Test Node" does not have access to the credential',
+			);
+
+			expect(credentialUsabilityService.findUnusableByUser).not.toHaveBeenCalled();
+		});
+
+		it('fails closed when the acting user no longer exists', async () => {
+			userRepository.findOne.mockResolvedValue(null);
+
+			await expect(permissionChecker.check(workflowId, [node], userId)).rejects.toThrow(
+				'Node "Test Node" does not have access to the credential',
+			);
+		});
+
+		// An instance-scoped provider connection is not available to workflows at
+		// all, so no acting user can unlock it.
+		it('rejects a credential that is not available to workflows, whoever is acting', async () => {
+			credentialsRepository.findNonProjectCredentialsByIds.mockResolvedValue([
+				mock<CredentialsEntity>({ id: credentialId, usageScope: 'instance' }),
+			]);
+
+			await expect(permissionChecker.check(workflowId, [node], userId)).rejects.toThrow(
+				'Node "Test Node" does not have access to the credential',
+			);
+
+			expect(credentialUsabilityService.findUnusableByUser).not.toHaveBeenCalled();
 		});
 	});
 });

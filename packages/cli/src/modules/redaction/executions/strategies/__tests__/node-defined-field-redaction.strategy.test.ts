@@ -13,6 +13,7 @@ const makeContext = (overrides: Partial<RedactionContext> = {}): RedactionContex
 	redactExecutionData: undefined,
 	userCanReveal: false,
 	enforceDynCredRedaction: false,
+	enforceRestrictedCredRedaction: false,
 	memo: new Map(),
 	...overrides,
 });

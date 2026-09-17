@@ -114,6 +114,7 @@ describe('WorkflowService', () => {
 				mock(), // outboxRepository
 				Object.assign(mock<WorkflowValidationService>(), {
 					validateCredentialNodeRestrictions: () => ({ isValid: true }),
+					collectCredentialIds: () => new Set<string>(),
 				}), // workflowValidationService
 				mock(), // nodeTypes
 				webhookServiceMock, // webhookService
@@ -130,7 +131,8 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublishGuard
 				mock(), // workflowMutationHooks
 				mock(), // policyEnforcementService
-				workflowPublicationStatusServiceMock, // workflowPublicationStatusService
+				workflowPublicationStatusServiceMock, // workflowPublicationStatusService,
+				mock(),
 			);
 		});
 
@@ -482,6 +484,7 @@ describe('WorkflowService', () => {
 				mock(), // outboxRepository
 				Object.assign(mock<WorkflowValidationService>(), {
 					validateCredentialNodeRestrictions: () => ({ isValid: true }),
+					collectCredentialIds: () => new Set<string>(),
 				}), // workflowValidationService
 				mock(), // nodeTypes
 				mock(), // webhookService
@@ -498,7 +501,8 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublishGuard
 				mock(), // workflowMutationHooks
 				mock(), // policyEnforcementService
-				mock(), // workflowPublicationStatusService
+				mock(), // workflowPublicationStatusService,
+				mock(),
 			);
 
 			vi.clearAllMocks();
@@ -1265,6 +1269,7 @@ describe('WorkflowService', () => {
 				outboxRepositoryMock, // outboxRepository
 				Object.assign(mock<WorkflowValidationService>(), {
 					validateCredentialNodeRestrictions: () => ({ isValid: true }),
+					collectCredentialIds: () => new Set<string>(),
 				}), // workflowValidationService
 				mock(), // nodeTypes
 				mock(), // webhookService
@@ -1281,7 +1286,8 @@ describe('WorkflowService', () => {
 				workflowPublishGuardMock, // workflowPublishGuard
 				workflowMutationHooksMock, // workflowMutationHooks
 				policyEnforcementServiceMock, // policyEnforcementService
-				mock(), // workflowPublicationStatusService
+				mock(), // workflowPublicationStatusService,
+				mock(),
 			);
 
 			// Bypass validation internals
@@ -1975,7 +1981,9 @@ describe('WorkflowService', () => {
 				mock(), // workflowFinderService
 				workflowPublishHistoryRepositoryMock, // workflowPublishHistoryRepository
 				mock(), // outboxRepository
-				mock(), // workflowValidationService
+				Object.assign(mock<WorkflowValidationService>(), {
+					collectCredentialIds: () => new Set<string>(),
+				}), // workflowValidationService
 				mock(), // nodeTypes
 				mock(), // webhookService
 				mock(), // licenseState
@@ -1991,7 +1999,8 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublishGuard
 				mock(), // workflowMutationHooks
 				mock(), // policyEnforcementService
-				mock(), // workflowPublicationStatusService
+				mock(), // workflowPublicationStatusService,
+				mock(),
 			);
 		});
 
@@ -2115,7 +2124,9 @@ describe('WorkflowService', () => {
 				workflowFinderServiceMock, // workflowFinderService
 				mock(), // workflowPublishHistoryRepository
 				mock(), // outboxRepository
-				mock(), // workflowValidationService
+				Object.assign(mock<WorkflowValidationService>(), {
+					collectCredentialIds: () => new Set<string>(),
+				}), // workflowValidationService
 				mock(), // nodeTypes
 				mock(), // webhookService
 				mock(), // licenseState
@@ -2131,7 +2142,8 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublishGuard
 				workflowMutationHooksMock, // workflowMutationHooks
 				mock(), // policyEnforcementService
-				mock(), // workflowPublicationStatusService
+				mock(), // workflowPublicationStatusService,
+				mock(),
 			);
 		});
 
@@ -2420,6 +2432,7 @@ describe('WorkflowService', () => {
 				mock(), // outboxRepository
 				Object.assign(mock<WorkflowValidationService>(), {
 					validateCredentialNodeRestrictions: () => ({ isValid: true }),
+					collectCredentialIds: () => new Set<string>(),
 				}), // workflowValidationService
 				mock(), // nodeTypes
 				mock(), // webhookService
@@ -2436,7 +2449,8 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublishGuard
 				mock(), // workflowMutationHooks
 				mock(), // policyEnforcementService
-				mock(), // workflowPublicationStatusService
+				mock(), // workflowPublicationStatusService,
+				mock(),
 			);
 		});
 
@@ -2589,6 +2603,7 @@ describe('WorkflowService', () => {
 				mock(), // outboxRepository
 				Object.assign(mock<WorkflowValidationService>(), {
 					validateCredentialNodeRestrictions: () => ({ isValid: true }),
+					collectCredentialIds: () => new Set<string>(),
 				}), // workflowValidationService
 				mock(), // nodeTypes
 				mock(), // webhookService
@@ -2605,7 +2620,8 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublishGuard
 				mock(), // workflowMutationHooks
 				policyEnforcementServiceMock, // policyEnforcementService
-				mock(), // workflowPublicationStatusService
+				mock(), // workflowPublicationStatusService,
+				mock(),
 			);
 		});
 
@@ -2769,7 +2785,9 @@ describe('WorkflowService', () => {
 				workflowFinderServiceMock, // workflowFinderService
 				mock(), // workflowPublishHistoryRepository
 				mock(), // outboxRepository
-				mock(), // workflowValidationService
+				Object.assign(mock<WorkflowValidationService>(), {
+					collectCredentialIds: () => new Set<string>(),
+				}), // workflowValidationService
 				mock(), // nodeTypes
 				mock(), // webhookService
 				mock(), // licenseState
@@ -2785,7 +2803,8 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublishGuard
 				workflowMutationHooksMock, // workflowMutationHooks
 				mock(), // policyEnforcementService
-				mock(), // workflowPublicationStatusService
+				mock(), // workflowPublicationStatusService,
+				mock(),
 			);
 		});
 
@@ -2871,7 +2890,9 @@ describe('WorkflowService', () => {
 				workflowFinderServiceMock, // workflowFinderService
 				mock(), // workflowPublishHistoryRepository
 				mock(), // outboxRepository
-				mock(), // workflowValidationService
+				Object.assign(mock<WorkflowValidationService>(), {
+					collectCredentialIds: () => new Set<string>(),
+				}), // workflowValidationService
 				mock(), // nodeTypes
 				mock(), // webhookService
 				mock(), // licenseState
@@ -2887,7 +2908,8 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublishGuard
 				mock(), // workflowMutationHooks
 				mock(), // policyEnforcementService
-				mock(), // workflowPublicationStatusService
+				mock(), // workflowPublicationStatusService,
+				mock(),
 			);
 		});
 

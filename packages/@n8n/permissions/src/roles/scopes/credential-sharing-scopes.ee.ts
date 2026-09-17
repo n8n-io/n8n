@@ -2,6 +2,7 @@ import type { Scope } from '../../types.ee';
 
 export const CREDENTIALS_SHARING_OWNER_SCOPES: Scope[] = [
 	'credential:read',
+	'credential:use',
 	'credential:update',
 	'credential:delete',
 	'credential:share',
@@ -13,4 +14,8 @@ export const CREDENTIALS_SHARING_OWNER_SCOPES: Scope[] = [
 	'credential:createEndUser',
 ];
 
-export const CREDENTIALS_SHARING_USER_SCOPES: Scope[] = ['credential:read', 'credential:connect'];
+export const CREDENTIALS_SHARING_USER_SCOPES: Scope[] = [
+	'credential:read',
+	'credential:use',
+	'credential:connect',
+];

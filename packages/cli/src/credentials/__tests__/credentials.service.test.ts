@@ -2702,6 +2702,42 @@ describe('CredentialsService', () => {
 			expect(sharedCredentialsRepository.getAllRelationsForCredentials).not.toHaveBeenCalled();
 		});
 
+		// Route 2: a credential granted to the user's own personal project travels
+		// with them into any project they have access to, without being shared
+		// into it.
+		it('offers a personal credential that the project itself does not carry', async () => {
+			credentialsFinderService.findCredentialsForUser.mockResolvedValue([regularCredential]);
+			credentialsRepository.findAllCredentialsForWorkflow.mockResolvedValue([]);
+			projectRepository.getPersonalProjectForUser.mockResolvedValue({ id: 'personal-1' } as any);
+			sharedCredentialsRepository.findCredentialIdsForProject.mockResolvedValue(
+				new Set(['cred-1']),
+			);
+
+			const result = await service.getCredentialsAUserCanUseInAWorkflow(user, {
+				workflowId: 'workflow-1',
+			});
+
+			expect(result).toEqual([expect.objectContaining({ id: 'cred-1' })]);
+			expect(sharedCredentialsRepository.findCredentialIdsForProject).toHaveBeenCalledWith(
+				'personal-1',
+			);
+		});
+
+		// Route 2 is deliberately personal: a credential belonging to an unrelated
+		// team project must not leak sideways into this one.
+		it('does not offer a credential that is neither in the project nor personal', async () => {
+			credentialsFinderService.findCredentialsForUser.mockResolvedValue([regularCredential]);
+			credentialsRepository.findAllCredentialsForWorkflow.mockResolvedValue([]);
+			projectRepository.getPersonalProjectForUser.mockResolvedValue({ id: 'personal-1' } as any);
+			sharedCredentialsRepository.findCredentialIdsForProject.mockResolvedValue(new Set());
+
+			const result = await service.getCredentialsAUserCanUseInAWorkflow(user, {
+				workflowId: 'workflow-1',
+			});
+
+			expect(result).toEqual([]);
+		});
+
 		it('should include global credentials for workflows', async () => {
 			// ARRANGE
 			credentialsFinderService.findCredentialsForUser.mockResolvedValue([
@@ -2717,7 +2753,7 @@ describe('CredentialsService', () => {
 
 			// ASSERT
 			expect(credentialsFinderService.findCredentialsForUser).toHaveBeenCalledWith(user, [
-				'credential:read',
+				'credential:use',
 			]);
 			expect(result).toHaveLength(2);
 			expect(result).toEqual(
@@ -2743,7 +2779,7 @@ describe('CredentialsService', () => {
 
 			// ASSERT
 			expect(credentialsFinderService.findCredentialsForUser).toHaveBeenCalledWith(user, [
-				'credential:read',
+				'credential:use',
 			]);
 			expect(result).toHaveLength(2);
 			expect(result).toEqual(

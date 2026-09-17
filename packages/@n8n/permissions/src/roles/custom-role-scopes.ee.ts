@@ -26,6 +26,7 @@ export const PROJECT_CUSTOM_ROLE_OPERATIONS = {
 	agent: ['read', 'execute', 'list', 'create', 'update', 'delete', 'publish', 'unpublish'],
 	credential: [
 		'read',
+		'use',
 		'connect',
 		'createEndUser',
 		'update',

@@ -6,6 +6,8 @@ import type { INode, INodeTypeDescription } from 'n8n-workflow';
 import { getActiveCredentialTypes, UserError } from 'n8n-workflow';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import type { CredentialRef } from '@/credentials/credential-usability.service';
+import { CredentialUsabilityService } from '@/credentials/credential-usability.service';
 import { NodeTypes } from '@/node-types';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
@@ -24,6 +26,25 @@ class InaccessibleCredentialForUserError extends UserError {
 
 	constructor(readonly node: INode) {
 		super(`Node "${node.name}" uses a credential you do not have access to`);
+	}
+}
+
+/**
+ * A credential that belongs to someone personally, reached by somebody else.
+ * Names the credential and the node, and says who to ask.
+ */
+class UnusableCredentialError extends UserError {
+	override description: string;
+
+	constructor(
+		readonly node: INode,
+		credentialName: string,
+		ownerName?: string,
+	) {
+		super(`Node "${node.name}" uses the credential "${credentialName}", which you cannot use`);
+		this.description = ownerName
+			? `"${credentialName}" belongs to ${ownerName}. Ask them to run or publish this workflow, or to share the credential with you.`
+			: `"${credentialName}" belongs to someone else. Ask them to run or publish this workflow, or to share the credential with you.`;
 	}
 }
 
@@ -51,6 +72,7 @@ export class CredentialsPermissionChecker {
 		private readonly nodeTypes: NodeTypes,
 		private readonly userRepository: UserRepository,
 		private readonly credentialsFinderService: CredentialsFinderService,
+		private readonly credentialUsabilityService: CredentialUsabilityService,
 	) {}
 
 	/**
@@ -84,8 +106,11 @@ export class CredentialsPermissionChecker {
 		// A user with instance-wide credential listing can use any credential.
 		if (hasGlobalScope(user, 'credential:list')) return;
 
+		// `use`, not `read`: a credential restricted to its owner is readable by
+		// the whole project but runnable by nobody else. Identical for every other
+		// credential, since both pre-existing sharing roles carry `credential:use`.
 		const accessibleCredentials = await this.credentialsFinderService.findCredentialsForUser(user, [
-			'credential:read',
+			'credential:use',
 		]);
 		const accessibleSet = new Set(accessibleCredentials.map((cred) => cred.id));
 
@@ -97,41 +122,97 @@ export class CredentialsPermissionChecker {
 	}
 
 	/**
-	 * Check if a workflow has the ability to execute based on the projects it's apart of.
+	 * Check that a workflow may execute.
+	 *
+	 * Two routes, and either is enough:
+	 * 1. the credential is shared with a project the workflow belongs to, so
+	 *    everyone in that project may use it — the long-standing rule; or
+	 * 2. the acting user may use the credential themselves, wherever it lives.
+	 *
+	 * Route 2 is what makes a personal credential work in every project its owner
+	 * has access to without being shared into any of them. It only ever *adds*
+	 * permitted runs, so no workflow that runs today stops running.
+	 *
+	 * @param actingUserId - who the run acts as: the session user for a manual
+	 * run, the workflow's publisher for a triggered one. Only consulted for
+	 * credentials route 1 already rejected, so a fully project-shared workflow
+	 * behaves exactly as before whether or not a user is attached.
 	 */
-	async check(workflowId: string, nodes: INode[]) {
+	async check(workflowId: string, nodes: INode[], actingUserId?: string) {
 		const credIdsToNodes = this.mapCredIdsToNodes(nodes);
 
 		const workflowCredIds = Object.keys(credIdsToNodes);
 
 		if (workflowCredIds.length === 0) return;
 
-		const { homeProject, inaccessibleIds } = await this.findInaccessible(
+		const { homeProject, inaccessibleIds, unavailableIds } = await this.findInaccessible(
 			workflowId,
 			workflowCredIds,
 		);
 
-		if (inaccessibleIds.length > 0) {
-			const nodeToFlag = credIdsToNodes[inaccessibleIds[0]][0];
-			throw new InaccessibleCredentialError(nodeToFlag, homeProject);
+		// Not available to workflows at all, so no acting user can unlock it.
+		if (unavailableIds.length > 0) {
+			throw new InaccessibleCredentialError(credIdsToNodes[unavailableIds[0]][0], homeProject);
 		}
+
+		if (inaccessibleIds.length === 0) return;
+
+		const unusable = await this.findUnusableByActingUser(inaccessibleIds, actingUserId);
+
+		if (unusable === 'no-acting-user') {
+			// Nothing to evaluate route 2 against. Fail closed with the project-route
+			// message: without an identity we cannot tell a colleague's personal
+			// credential from one simply never shared here, and the sharing hint is
+			// the accurate one for the common case.
+			throw new InaccessibleCredentialError(credIdsToNodes[inaccessibleIds[0]][0], homeProject);
+		}
+
+		if (unusable.length > 0) {
+			const [{ id, name, ownerName }] = unusable;
+			throw new UnusableCredentialError(credIdsToNodes[id][0], name, ownerName);
+		}
+	}
+
+	/**
+	 * Of the credentials the project route rejected, the ones the acting user
+	 * cannot use either. `'no-acting-user'` when there is no identity to ask
+	 * about, which fails the run closed.
+	 */
+	private async findUnusableByActingUser(
+		credentialIds: string[],
+		actingUserId?: string,
+	): Promise<CredentialRef[] | 'no-acting-user'> {
+		if (!actingUserId) return 'no-acting-user';
+
+		const user = await this.userRepository.findOne({
+			where: { id: actingUserId },
+			relations: ['role'],
+		});
+		if (!user) return 'no-acting-user';
+
+		return await this.credentialUsabilityService.findUnusableByUser(user, credentialIds);
 	}
 
 	/**
 	 * The credentials among `credentialIds` that the workflow's projects cannot
 	 * use, in the order the check finds them. The same rule as `check`, for a
 	 * caller that has credential ids but no nodes.
+	 *
+	 * `unavailableIds` is the subset that is not available to workflows at all
+	 * (instance-scoped provider connections). It is always part of
+	 * `inaccessibleIds`, and no acting user can unlock it.
 	 */
 	async findInaccessible(
 		workflowId: string,
 		credentialIds: string[],
-	): Promise<{ homeProject: Project; inaccessibleIds: string[] }> {
+	): Promise<{ homeProject: Project; inaccessibleIds: string[]; unavailableIds: string[] }> {
 		const homeProject = await this.ownershipService.getWorkflowProjectCached(workflowId);
 
 		const unavailableCredentials =
 			await this.credentialsRepository.findNonProjectCredentialsByIds(credentialIds);
 		if (unavailableCredentials.length > 0) {
-			return { homeProject, inaccessibleIds: unavailableCredentials.map((c) => c.id) };
+			const unavailableIds = unavailableCredentials.map((c) => c.id);
+			return { homeProject, inaccessibleIds: unavailableIds, unavailableIds };
 		}
 
 		const homeProjectOwner = await this.ownershipService.getPersonalProjectOwnerCached(
@@ -144,7 +225,7 @@ export class CredentialsPermissionChecker {
 		) {
 			// Workflow belongs to a project by a user with privileges
 			// so all credentials are usable. Skip credential checks.
-			return { homeProject, inaccessibleIds: [] };
+			return { homeProject, inaccessibleIds: [], unavailableIds: [] };
 		}
 		const projectIds = await this.projectService.findProjectsWorkflowIsIn(workflowId);
 
@@ -160,6 +241,7 @@ export class CredentialsPermissionChecker {
 		return {
 			homeProject,
 			inaccessibleIds: credentialIds.filter((id) => !accessibleSet.has(id)),
+			unavailableIds: [],
 		};
 	}
 

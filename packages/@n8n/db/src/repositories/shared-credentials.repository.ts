@@ -122,6 +122,18 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 			.getCount();
 	}
 
+	/**
+	 * The ids of every credential granted to `projectId`, at any level.
+	 *
+	 * Used for the personal route: a grant to someone's personal project is how
+	 * "this credential is mine" and "this credential was shared with me as a
+	 * person" are both written.
+	 */
+	async findCredentialIdsForProject(projectId: string): Promise<Set<string>> {
+		const rows = await this.find({ where: { projectId }, select: ['credentialsId'] });
+		return new Set(rows.map((row) => row.credentialsId));
+	}
+
 	async findCredentialsWithOptions(
 		where: FindOptionsWhere<SharedCredentials> = {},
 		trx?: EntityManager,
@@ -246,11 +258,12 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 				subquery.andWhere('sc.projectId = :subqueryProjectId', { subqueryProjectId: projectId });
 			}
 		} else if (onlySharedWithMe) {
-			// Shared with me - credentials shared (as user) to user's personal project
+			// Shared with me - credentials shared to the user's personal project at any
+			// non-owner level, so a restricted credential still lists as shared.
 			subquery
 				.innerJoin(Project, 'p', 'sc.projectId = p.id')
 				.innerJoin(ProjectRelation, 'pr', 'pr.projectId = p.id')
-				.where('sc.role = :userRole', { userRole: 'credential:user' })
+				.where('sc.role != :ownerRole', { ownerRole: 'credential:owner' })
 				.andWhere('pr.userId = :subqueryUserId', { subqueryUserId: user.id })
 				.andWhere('pr.role = :projectOwnerRole', { projectOwnerRole: PROJECT_OWNER_ROLE_SLUG });
 		} else if (hasGlobalScope(user, 'credential:read')) {

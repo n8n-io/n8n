@@ -68,6 +68,7 @@ describe('LiveWebhooks', () => {
 			workflowsConfig,
 			workflowPublishedDataService,
 			expressionEngineConfig,
+			mock(),
 		);
 
 		// Mock WorkflowExecuteAdditionalData.getBase to avoid DI issues

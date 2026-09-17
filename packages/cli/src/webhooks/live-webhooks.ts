@@ -20,6 +20,7 @@ import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import { WebhookService } from '@/webhooks/webhook.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
+import { WorkflowPublisherService } from '@/workflows/workflow-publisher.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 import { authAllowlistedNodes } from './constants';
@@ -49,6 +50,7 @@ export class LiveWebhooks implements IWebhookManager {
 		private readonly workflowsConfig: WorkflowsConfig,
 		private readonly workflowPublishedDataService: WorkflowPublishedDataService,
 		private readonly expressionEngineConfig: ExpressionEngineConfig,
+		private readonly workflowPublisherService: WorkflowPublisherService,
 	) {}
 
 	async getWebhookMethods(path: string) {
@@ -137,6 +139,9 @@ export class LiveWebhooks implements IWebhookManager {
 		)?.projectId;
 		const additionalData = await WorkflowExecuteAdditionalData.getBase({
 			projectId: ownerProjectId,
+			// A production webhook is fired by a third party, so the run acts as
+			// whoever published the workflow.
+			userId: await this.workflowPublisherService.findPublisherUserId(webhook.workflowId),
 		});
 
 		const startNode = workflow.getNode(webhook.node);

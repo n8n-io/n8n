@@ -122,8 +122,10 @@ export class WorkflowCreationService {
 		const [redactionFloor, autoExposeNewWorkflows, accessibleCredentialIds] = await Promise.all([
 			this.readActiveRedactionFloor(),
 			this.readAutoExposeNewWorkflows(),
+			// `use`, not `read`: a credential you can see but not use must not be
+			// bindable to a node you are saving.
 			this.credentialsFinderService.findCredentialIdsWithScopeForUser(credentialIdsToCheck, user, [
-				'credential:read',
+				'credential:use',
 			]),
 		]);
 		const allowedCredentialIds = new Set([...validatedCredentialIds, ...accessibleCredentialIds]);
@@ -242,7 +244,7 @@ export class WorkflowCreationService {
 						await this.credentialsFinderService.findCredentialIdsWithScopeForUser(
 							uncheckedIds,
 							user,
-							['credential:read'],
+							['credential:use'],
 						);
 					for (const id of uncheckedIds) batchContext.checkedCredentialIds.add(id);
 					for (const id of accessibleIds) batchContext.allowedCredentialIds.add(id);
@@ -255,7 +257,7 @@ export class WorkflowCreationService {
 					: await this.credentialsFinderService.findCredentialIdsWithScopeForUser(
 							[...credentialIds],
 							user,
-							['credential:read'],
+							['credential:use'],
 						));
 
 			try {

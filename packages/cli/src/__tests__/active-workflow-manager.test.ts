@@ -94,6 +94,7 @@ describe('ActiveWorkflowManager', () => {
 			mock(), // workflowPushNotifier
 			policyEnforcementService,
 			ownershipService,
+			mock(), // workflowPublisherService
 		);
 	});
 
@@ -232,6 +233,7 @@ describe('ActiveWorkflowManager', () => {
 				mock(), // pollTriggerJobRegistrar
 				policyEnforcementService,
 				ownershipService,
+				mock(), // workflowPublisherService
 			);
 
 		const makeWorkflow = (overrides: Partial<WorkflowEntity> = {}) =>
@@ -444,6 +446,7 @@ describe('ActiveWorkflowManager', () => {
 				workflowPushNotifier,
 				policyEnforcementService,
 				ownershipService,
+				mock(), // workflowPublisherService
 			);
 		});
 
@@ -703,6 +706,7 @@ describe('ActiveWorkflowManager', () => {
 				workflowPushNotifier,
 				policyEnforcementService,
 				ownershipService,
+				mock(), // workflowPublisherService
 			);
 		});
 
@@ -889,7 +893,8 @@ describe('ActiveWorkflowManager', () => {
 				mock(), // nodeTypes
 				pollCursorService,
 				mock<GlobalConfig>({ scheduler: { pollTimeoutSeconds: 45, leaseDurationSeconds: 60 } }),
-				mock(), // engineV2ActiveTriggers
+				mock(), // engineV2ActiveTriggers,
+				mock(),
 			);
 
 			activeWorkflowManager = new ActiveWorkflowManager(
@@ -913,6 +918,7 @@ describe('ActiveWorkflowManager', () => {
 				mock(), // workflowPushNotifier
 				policyEnforcementService,
 				ownershipService,
+				mock(), // workflowPublisherService
 			);
 		});
 
@@ -1366,6 +1372,7 @@ describe('ActiveWorkflowManager', () => {
 				mock(), // workflowPushNotifier
 				policyEnforcementService,
 				ownershipService,
+				mock(), // workflowPublisherService
 			);
 		});
 
@@ -1554,6 +1561,7 @@ describe('ActiveWorkflowManager', () => {
 				mock(), // workflowPushNotifier
 				policyEnforcementService,
 				ownershipService,
+				mock(), // workflowPublisherService
 			);
 
 		beforeEach(() => vi.clearAllMocks());
@@ -1633,6 +1641,7 @@ describe('ActiveWorkflowManager', () => {
 				mock(), // workflowPushNotifier
 				policyEnforcementService,
 				ownershipService,
+				mock(), // workflowPublisherService
 			);
 
 		const makeWorkflow = () => {

@@ -31,6 +31,7 @@ export const REGULAR_PROJECT_ADMIN_SCOPES: Scope[] = [
 	'workflow:disableRedaction',
 	'credential:create',
 	'credential:read',
+	'credential:use',
 	'credential:update',
 	'credential:delete',
 	'credential:list',
@@ -94,6 +95,7 @@ export const PERSONAL_PROJECT_OWNER_SCOPES: Scope[] = [
 	'workflow:disableRedaction',
 	'credential:create',
 	'credential:read',
+	'credential:use',
 	'credential:update',
 	'credential:delete',
 	'credential:list',
@@ -144,6 +146,7 @@ export const PROJECT_EDITOR_SCOPES: Scope[] = [
 	'workflow:execute-chat',
 	'credential:create',
 	'credential:read',
+	'credential:use',
 	'credential:update',
 	'credential:delete',
 	'credential:list',
@@ -172,6 +175,7 @@ export const PROJECT_EDITOR_SCOPES: Scope[] = [
 	'projectVariable:delete',
 ];
 
+// No `credential:use` here on purpose: project viewers cannot execute workflows.
 export const PROJECT_VIEWER_SCOPES: Scope[] = [
 	'agent:read',
 	'agent:list',

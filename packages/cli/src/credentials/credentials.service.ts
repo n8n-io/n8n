@@ -192,6 +192,13 @@ type WorkflowCredentialResult = {
 	homeProject: SlimProject | null;
 	sharedWithProjects: SlimProject[];
 	currentUserHasAccess: boolean;
+	/**
+	 * Which route makes this credential available here, so the credential picker
+	 * can group by it: `'personal'` for the caller's own credentials, which follow
+	 * them into every project they work in, `'project'` for what the project
+	 * itself carries.
+	 */
+	accessRoute: 'personal' | 'project';
 } & CredentialConnectionStatus;
 
 /** Codes an auth probe must not treat as rejection, stored as a JSON array in the credential. */
@@ -625,8 +632,35 @@ export class CredentialsService {
 	}
 
 	/**
-	 * Returns credentials that are both accessible to the user AND accessible to the project.
-	 * A credential shared with the project but not with the requesting user would be excluded.
+	 * The credentials granted directly to the user's own personal project —
+	 * theirs by ownership, or shared with them as a person rather than with a
+	 * project. These are the ones that travel with them into every project they
+	 * have access to.
+	 *
+	 * Returns an empty set when the user has no personal project (e.g. a pending
+	 * invite), which simply leaves them with the project route.
+	 */
+	private async findPersonalCredentialIds(user: User): Promise<Set<string>> {
+		const personalProject = await this.projectRepository.getPersonalProjectForUser(user.id);
+		if (!personalProject) return new Set();
+
+		return await this.sharedCredentialsRepository.findCredentialIdsForProject(personalProject.id);
+	}
+
+	/**
+	 * The credentials the user may bind to a node in this workflow or project.
+	 *
+	 * Two routes, matching the execution gate:
+	 * 1. the credential is available to the project (shared into it, or global); or
+	 * 2. it is the user's own personal credential — theirs by ownership or shared
+	 *    with them personally — which travels with them into every project they
+	 *    have access to, without being shared into any of them.
+	 *
+	 * A credential belonging to an unrelated *team* project stays out: route 2 is
+	 * deliberately personal, so a team's credential does not leak sideways.
+	 *
+	 * Either route still requires `credential:use` on the credential.
+	 *
 	 * @param user The user making the request
 	 * @param options.workflowId The workflow that is being edited
 	 * @param options.projectId The project owning the workflow This is useful
@@ -639,22 +673,34 @@ export class CredentialsService {
 		// necessary to get the scopes
 		const projectRelations = await this.projectService.getProjectRelationsForUser(user);
 
-		// get all credentials the user has access to (including global credentials)
-		const allCredentials = await this.credentialsFinderService.findCredentialsForUser(user, [
-			'credential:read',
+		// Everything the user may actually use, wherever it lives. `use`, not
+		// `read`: visibility no longer implies capability.
+		const usableByUser = await this.credentialsFinderService.findCredentialsForUser(user, [
+			'credential:use',
 		]);
 
-		// get all credentials the workflow or project has access to
-		const allCredentialsForWorkflow =
+		// Route 1: what the workflow's project itself carries.
+		const projectCredentialIds = new Set(
 			'workflowId' in options
 				? (await this.findAllCredentialIdsForWorkflow(options.workflowId)).map((c) => c.id)
-				: (await this.findAllCredentialIdsForProject(options.projectId)).map((c) => c.id);
-
-		// the intersection of both is all credentials the user can use in this
-		// workflow or project
-		const intersection = allCredentials.filter(
-			(c) => allCredentialsForWorkflow.includes(c.id) || c.isGlobal,
+				: (await this.findAllCredentialIdsForProject(options.projectId)).map((c) => c.id),
 		);
+
+		// Route 2: the user's own personal credentials, which follow them around.
+		const personalCredentialIds = await this.findPersonalCredentialIds(user);
+
+		const intersection = usableByUser.filter(
+			(c) => projectCredentialIds.has(c.id) || personalCredentialIds.has(c.id) || c.isGlobal,
+		);
+
+		// A credential the project also carries reads as a project credential, so a
+		// shared one does not show up under the caller's own name.
+		const accessRouteOf = (id: string): 'personal' | 'project' =>
+			projectCredentialIds.has(id)
+				? 'project'
+				: personalCredentialIds.has(id)
+					? 'personal'
+					: 'project';
 
 		if (intersection.length > 0) {
 			const relations = await this.sharedCredentialsRepository.getAllRelationsForCredentials(
@@ -684,6 +730,7 @@ export class CredentialsService {
 			homeProject: c.homeProject,
 			sharedWithProjects: c.sharedWithProjects,
 			currentUserHasAccess: true,
+			accessRoute: accessRouteOf(c.id),
 		}));
 
 		await this.populateConnectedByMe(result, user);

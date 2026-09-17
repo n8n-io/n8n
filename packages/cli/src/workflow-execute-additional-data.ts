@@ -582,7 +582,15 @@ async function startExecution(
 				workflowData.nodes,
 			);
 		} else {
-			await Container.get(CredentialsPermissionChecker).check(workflowData.id, workflowData.nodes);
+			// A stored sub-workflow keeps its project-based check, but a credential
+			// restricted to its owner is still evaluated against whoever the run acts
+			// as — the parent's acting user, so the restriction survives the
+			// sub-workflow boundary instead of being laundered through it.
+			await Container.get(CredentialsPermissionChecker).check(
+				workflowData.id,
+				workflowData.nodes,
+				additionalData.userId,
+			);
 		}
 		await Container.get(SubworkflowPolicyChecker).check(
 			workflow,

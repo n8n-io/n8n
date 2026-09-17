@@ -71,6 +71,15 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 		return rows.map((row) => row.id);
 	}
 
+	/** Ids and names of the given credentials that are end-user (resolvable) ones. */
+	async findResolvableByIds(ids: string[]): Promise<Array<Pick<CredentialsEntity, 'id' | 'name'>>> {
+		if (ids.length === 0) return [];
+		return await this.find({
+			where: { id: In(ids), isResolvable: true },
+			select: ['id', 'name'],
+		});
+	}
+
 	/** True when any of the given credentials is a private (resolvable) credential. */
 	async hasResolvableCredential(ids: string[]): Promise<boolean> {
 		if (ids.length === 0) return false;

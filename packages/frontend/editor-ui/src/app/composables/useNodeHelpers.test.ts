@@ -248,6 +248,7 @@ describe('useNodeHelpers()', () => {
 				credentialType: 'generic',
 				name: faker.lorem.words(2),
 				currentUserHasAccess: false,
+				currentUserCanUse: false,
 			};
 
 			mockedStore(useSettingsStore).isEnterpriseFeatureEnabled = createMockEnterpriseSettings({
@@ -285,6 +286,7 @@ describe('useNodeHelpers()', () => {
 				credentialType: 'generic',
 				name: faker.lorem.words(2),
 				currentUserHasAccess: true,
+				currentUserCanUse: true,
 			};
 
 			const credentialWithAccess2: IUsedCredential = {
@@ -292,6 +294,7 @@ describe('useNodeHelpers()', () => {
 				credentialType: 'generic',
 				name: faker.lorem.words(2),
 				currentUserHasAccess: true,
+				currentUserCanUse: true,
 			};
 
 			mockedStore(useSettingsStore).isEnterpriseFeatureEnabled = createMockEnterpriseSettings({
@@ -323,6 +326,7 @@ describe('useNodeHelpers()', () => {
 				credentialType: 'generic',
 				name: faker.lorem.words(2),
 				currentUserHasAccess: true,
+				currentUserCanUse: true,
 			};
 
 			const credentialWithoutAccess: IUsedCredential = {
@@ -330,6 +334,7 @@ describe('useNodeHelpers()', () => {
 				credentialType: 'generic',
 				name: faker.lorem.words(2),
 				currentUserHasAccess: false,
+				currentUserCanUse: false,
 			};
 
 			mockedStore(useSettingsStore).isEnterpriseFeatureEnabled = createMockEnterpriseSettings({
@@ -351,6 +356,33 @@ describe('useNodeHelpers()', () => {
 				},
 			});
 			expect(result).toEqual([credentialWithoutAccess.id]);
+		});
+
+		it('should include a credential the user can see but not use', () => {
+			const { getForeignCredentialsIfSharingEnabled } = useNodeHelpers();
+
+			const restrictedCredential: IUsedCredential = {
+				id: faker.string.alphanumeric(10),
+				credentialType: 'generic',
+				name: faker.lorem.words(2),
+				currentUserHasAccess: true,
+				currentUserCanUse: false,
+			};
+
+			mockedStore(useSettingsStore).isEnterpriseFeatureEnabled = createMockEnterpriseSettings({
+				[EnterpriseEditionFeature.Sharing]: true,
+			});
+			Object.assign(mockDocumentStoreUsedCredentials, {
+				[restrictedCredential.id]: restrictedCredential,
+			});
+
+			const result = getForeignCredentialsIfSharingEnabled({
+				[restrictedCredential.id]: {
+					id: restrictedCredential.id,
+					name: restrictedCredential.name,
+				},
+			});
+			expect(result).toEqual([restrictedCredential.id]);
 		});
 	});
 

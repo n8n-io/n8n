@@ -6,6 +6,7 @@ import type {
 	SharedCredentials,
 	SharedCredentialsRepository,
 } from '@n8n/db';
+import { GLOBAL_MEMBER_ROLE } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialConnectionStatusProxy } from '@/credentials/credential-connection-status-proxy';
@@ -63,6 +64,36 @@ describe('EnterpriseCredentialsService', () => {
 			).rejects.toThrow('Credential not found');
 			expect(manager.find).not.toHaveBeenCalled();
 		});
+
+		it.each([['defaults to the level sharing has always written', undefined, 'credential:user']])(
+			'%s',
+			async (_name, role, expectedRole) => {
+				const project = mock<Project>({ id: 'project-id', sharedCredentials: [] });
+				const manager = {
+					exists: vi.fn().mockResolvedValue(true),
+					find: vi.fn().mockResolvedValue([project]),
+					save: vi.fn().mockImplementation(async (entities) => entities),
+				};
+				// @ts-expect-error - Mocking manager for testing
+				sharedCredentialsRepository.manager = manager;
+				sharedCredentialsRepository.create.mockImplementation((data) => data as never);
+				roleService.rolesWithScope.mockResolvedValue(['project:admin']);
+
+				await service.shareWithProjects(
+					mock<User>({ role: GLOBAL_MEMBER_ROLE }),
+					'credential-id',
+					['project-id'],
+					undefined,
+					role,
+				);
+
+				expect(sharedCredentialsRepository.create).toHaveBeenCalledWith({
+					credentialsId: 'credential-id',
+					role: expectedRole,
+					projectId: 'project-id',
+				});
+			},
+		);
 	});
 
 	/**

@@ -3437,7 +3437,7 @@ export function useCanvasOperations() {
 			Object.entries(credentials).filter(([, credential]) => {
 				if (!credential.id) return Boolean(credential.__aiGatewayManaged);
 				const used = usedCredentials[credential.id];
-				return !used || used.currentUserHasAccess;
+				return !used || used.currentUserCanUse;
 			}),
 		);
 	}

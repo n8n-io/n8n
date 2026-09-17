@@ -811,7 +811,8 @@ describe('GET /workflows/:workflowId', () => {
 			{
 				id: savedCredential.id,
 				name: savedCredential.name,
-				currentUserHasAccess: true, // one user has access
+				currentUserHasAccess: true,
+				currentUserCanUse: true, // it is their own credential
 			},
 		]);
 		expect(member1Workflow.sharedWithProjects).toHaveLength(1);
@@ -821,11 +822,15 @@ describe('GET /workflows/:workflowId', () => {
 			.expect(200);
 		const member2Workflow: WorkflowWithSharingsMetaDataAndCredentials = responseMember2.body.data;
 
+		// Visibility follows the reference, capability follows the grant: the
+		// colleague sees which credential the node is bound to, so they can
+		// diagnose a failure, but cannot run it.
 		expect(member2Workflow.usedCredentials).toMatchObject([
 			{
 				id: savedCredential.id,
 				name: savedCredential.name,
-				currentUserHasAccess: false, // the other one doesn't
+				currentUserHasAccess: true,
+				currentUserCanUse: false,
 			},
 		]);
 		expect(member2Workflow.sharedWithProjects).toHaveLength(1);
@@ -1146,17 +1151,6 @@ describe('PATCH /workflows/:workflowId', () => {
 			],
 			[
 				'team 1',
-				'the member',
-				async function creteWorkflow() {
-					const team = await createTeamProject('Team 1', member);
-					return await createWorkflow({}, team);
-				},
-				async function createCredential() {
-					return await saveCredential(randomCredentialPayload(), { user: member });
-				},
-			],
-			[
-				'team 1',
 				'team 2',
 				async function creteWorkflow() {
 					const team1 = await createTeamProject('Team 1', member);
@@ -1229,6 +1223,41 @@ describe('PATCH /workflows/:workflowId', () => {
 				);
 			},
 		);
+
+		/**
+		 * The counterpart to the table above: your own personal credential travels
+		 * with you into any project you have access to, so binding it to a node in
+		 * a team workflow is allowed and needs no share into that project.
+		 */
+		it('lets a member bind their own personal credential in a team workflow', async () => {
+			const team = await createTeamProject('Team 1', member);
+			const workflow = await createWorkflow({}, team);
+			const credential = await saveCredential(randomCredentialPayload(), { user: member });
+
+			const response = await authMemberAgent.patch(`/workflows/${workflow.id}`).send({
+				versionId: workflow.versionId,
+				nodes: [
+					{
+						id: 'uuid-12345',
+						name: 'Start',
+						parameters: {},
+						position: [-20, 260],
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						credentials: { default: { id: credential.id, name: credential.name } },
+					},
+				],
+			});
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.data.nodes[0].credentials.default.id).toBe(credential.id);
+
+			// The credential is still shared with nobody: it works through the
+			// personal route, not through a grant to the team project.
+			const sharings = await getCredentialSharings(credential);
+			expect(sharings).toHaveLength(1);
+			expect(sharings[0].role).toBe('credential:owner');
+		});
 
 		it('Should succeed but prevent modifying node attributes other than position, name and disabled', async () => {
 			const savedCredential = await saveCredential(randomCredentialPayload(), { user: member });

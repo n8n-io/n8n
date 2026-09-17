@@ -39,9 +39,15 @@ export class CredentialsFinderService {
 	/**
 	 * Checks if the scopes allow read-only access to global credentials.
 	 * Global credentials can be accessed with credential:read scope only.
+	 *
+	 * `credential:use` counts too: a globally shared credential is offered to
+	 * everyone on the instance, and no project grant can narrow that, so being
+	 * able to see one is being able to use it.
 	 */
 	hasGlobalReadOnlyAccess(scopes: Scope[]): boolean {
-		return this.isExactScope(scopes, 'credential:read');
+		return (
+			this.isExactScope(scopes, 'credential:read') || this.isExactScope(scopes, 'credential:use')
+		);
 	}
 
 	/**

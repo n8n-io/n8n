@@ -512,6 +512,27 @@ export function displayParameterPath(
 }
 
 /**
+ * Collects the ids of every credential the enabled nodes reference.
+ *
+ * Deliberately does not narrow to the actively used credential types: callers
+ * that gate access want every reference a node carries, not only the ones its
+ * current configuration would reach. Use {@link getActiveCredentialTypes} when
+ * the active subset is what matters.
+ */
+export function collectNodeCredentialIds(nodes: INode[]): string[] {
+	const credentialIds = new Set<string>();
+
+	for (const node of nodes) {
+		if (node.disabled) continue;
+		for (const credential of Object.values(node.credentials ?? {})) {
+			if (credential?.id) credentialIds.add(credential.id);
+		}
+	}
+
+	return [...credentialIds];
+}
+
+/**
  * Returns the credential types a node actively uses given its current configuration,
  * or `null` when the active set cannot be determined statically. A credential type is
  * active when:

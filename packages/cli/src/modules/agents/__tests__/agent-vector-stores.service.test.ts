@@ -71,6 +71,7 @@ function makeService(
 			isGlobal: false,
 			isResolvable: true,
 			currentUserHasAccess: true,
+			accessRoute: 'project' as const,
 			homeProject: null,
 			sharedWithProjects: [],
 		},

@@ -1,12 +1,15 @@
 import { LicenseState, Logger } from '@n8n/backend-common';
+import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
 	channelsToPolicy,
+	collectNodeCredentialIds,
 	runDataUsedDynamicCredentials,
 	WorkflowExecuteMode,
 	WorkflowSettings,
 } from 'n8n-workflow';
 
+import { CredentialUsabilityService } from '@/credentials/credential-usability.service';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { ScopeForbiddenError } from '@/errors/response-errors/scope-forbidden.error';
 import { EventService } from '@/events/event.service';
@@ -45,6 +48,7 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly eventService: EventService,
 		private readonly fullItemRedactionStrategy: FullItemRedactionStrategy,
+		private readonly credentialUsabilityService: CredentialUsabilityService,
 	) {}
 
 	async init(): Promise<void> {
@@ -96,6 +100,11 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 		);
 		if (processable.length === 0) return;
 
+		// Resolved for the whole batch: which executions touched a credential the
+		// viewer cannot use. Same shape as the dynamic-credential rule below —
+		// `execution:reveal` deliberately does not override it.
+		const restrictedExecutionIds = await this.findRestrictedForUser(processable, options.user);
+
 		// Single DB call shared by both the reveal and redact paths.
 		// Only executions where policy doesn't already grant access need a scope check.
 		const needsCheck = processable.filter((e) => !this.policyAllowsReveal(e));
@@ -127,6 +136,19 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 						userAgent: options.userAgent ?? '',
 						redactionPolicy: this.resolvePolicy(execution),
 						rejectionReason: 'Not the executing user of a private-credential execution',
+					});
+					throw new ForbiddenError();
+				}
+
+				if (restrictedExecutionIds.has(execution)) {
+					this.eventService.emit('execution-data-reveal-failure', {
+						user: options.user,
+						executionId: execution.id ?? '',
+						workflowId: execution.workflowId,
+						ipAddress: options.ipAddress ?? '',
+						userAgent: options.userAgent ?? '',
+						redactionPolicy: this.resolvePolicy(execution),
+						rejectionReason: 'Cannot use a credential this execution touched',
 					});
 					throw new ForbiddenError();
 				}
@@ -172,24 +194,29 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 			const isOwnDynCreds =
 				hasDynCreds && this.isOwnDynamicCredentialsExecution(execution, options.user.id);
 			const policyAllowsReveal = this.policyAllowsReveal(execution);
+			const enforceRestrictedCredRedaction = restrictedExecutionIds.has(execution);
 			// On dyncred executions, only the executing user may see unredacted data,
-			// and the `execution:reveal` scope does not grant a bypass.
-			const userCanReveal = hasDynCreds
-				? isOwnDynCreds
-				: policyAllowsReveal || revealableIds.has(execution.workflowId);
+			// and the `execution:reveal` scope does not grant a bypass. The same holds
+			// for a run that touched a credential the viewer cannot use.
+			const userCanReveal =
+				!enforceRestrictedCredRedaction &&
+				(hasDynCreds
+					? isOwnDynCreds
+					: policyAllowsReveal || revealableIds.has(execution.workflowId));
 			const enforceDynCredRedaction = hasDynCreds && !isOwnDynCreds;
 			const context: RedactionContext = {
 				user: options.user,
 				redactExecutionData: options.redactExecutionData,
 				userCanReveal,
 				enforceDynCredRedaction,
+				enforceRestrictedCredRedaction,
 				memo: new Map(),
 			};
 			const pipeline = this.buildPipeline(
 				execution,
 				context,
 				policyAllowsReveal,
-				enforceDynCredRedaction,
+				enforceDynCredRedaction || enforceRestrictedCredRedaction,
 			);
 
 			// `runtimeData.credentials` carries encrypted credential context that
@@ -241,7 +268,8 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 	 *
 	 * - `FullItemRedactionStrategy` is included when items should be cleared:
 	 *   explicit redact (`redactExecutionData === true`), policy=all, or
-	 *   policy=non-manual on a non-manual execution mode, or dynamic credentials.
+	 *   policy=non-manual on a non-manual execution mode, or an ownership rule
+	 *   (dynamic credentials, restricted credentials) that forces it.
 	 *   It is never included on the reveal path (`redactExecutionData === false`).
 	 *
 	 * Note: `NodeDefinedFieldRedactionStrategy` (node-declared `sensitiveOutputFields`)
@@ -254,7 +282,8 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 		execution: RedactableExecution,
 		context: RedactionContext,
 		policyAllowsReveal: boolean,
-		enforceDynCredRedaction: boolean,
+		/** An ownership rule forces redaction whatever the policy says. */
+		enforceOwnershipRedaction: boolean,
 	): IExecutionRedactionStrategy[] {
 		const pipeline: IExecutionRedactionStrategy[] = [];
 
@@ -262,7 +291,7 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 		const shouldClearItems =
 			context.redactExecutionData !== false &&
 			(context.redactExecutionData === true ||
-				enforceDynCredRedaction ||
+				enforceOwnershipRedaction ||
 				(!policyAllowsReveal &&
 					(policy === 'all' ||
 						(policy === 'non-manual' && !MANUAL_MODES.has(execution.mode)) ||
@@ -273,6 +302,48 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 		}
 
 		return pipeline;
+	}
+
+	/**
+	 * Which of these executions touched a credential restricted to its owner
+	 * that `user` cannot use.
+	 *
+	 * Somebody who cannot use a credential should not see what came back through
+	 * it. Coarse on purpose — the whole run is hidden, not the node that used the
+	 * credential: a Gmail node's output is the next node's input, so hiding one
+	 * node hides nothing.
+	 *
+	 * Reads the workflow snapshot stored with the execution, so the rule applies
+	 * to the credentials the run actually referenced.
+	 */
+	private async findRestrictedForUser(
+		executions: RedactableExecution[],
+		user: User,
+	): Promise<Set<RedactableExecution>> {
+		const credentialIdsByExecution = new Map<RedactableExecution, string[]>();
+		const allCredentialIds = new Set<string>();
+
+		for (const execution of executions) {
+			const ids = collectNodeCredentialIds(execution.workflowData.nodes ?? []);
+			if (ids.length === 0) continue;
+			credentialIdsByExecution.set(execution, ids);
+			for (const id of ids) allCredentialIds.add(id);
+		}
+
+		if (allCredentialIds.size === 0) return new Set();
+
+		const unusable = new Set(
+			(await this.credentialUsabilityService.findUnusableByUser(user, [...allCredentialIds])).map(
+				(c) => c.id,
+			),
+		);
+		if (unusable.size === 0) return new Set();
+
+		const restricted = new Set<RedactableExecution>();
+		for (const [execution, ids] of credentialIdsByExecution) {
+			if (ids.some((id) => unusable.has(id))) restricted.add(execution);
+		}
+		return restricted;
 	}
 
 	/**

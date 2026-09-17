@@ -40,6 +40,7 @@ import { WorkflowPublishGuardProxy } from './workflow-publish-guard-proxy.servic
 import { WorkflowValidationService } from './workflow-validation.service';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { CredentialUsabilityService } from '@/credentials/credential-usability.service';
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
@@ -129,6 +130,7 @@ export class WorkflowService {
 		private readonly workflowMutationHooks: WorkflowMutationHooksProxy,
 		private readonly policyEnforcementService: PolicyEnforcementService,
 		private readonly workflowPublicationStatusService: WorkflowPublicationStatusService,
+		private readonly credentialUsabilityService: CredentialUsabilityService,
 	) {}
 
 	async getMany(
@@ -986,6 +988,7 @@ export class WorkflowService {
 
 		this._validateNodes(workflowId, versionToActivate.nodes, versionToActivate.connections);
 		await this._validateDynamicCredentials(workflowId, versionToActivate.nodes, workflow.settings);
+		await this._validateCredentialUsability(user, workflowId, versionToActivate.nodes);
 		await this._validateSubWorkflowReferences(workflowId, versionToActivate.nodes);
 		if (this.globalConfig.workflows.useWorkflowPublicationService) {
 			this._validateTriggerNodeIds(workflowId, versionToActivate);
@@ -1823,6 +1826,32 @@ export class WorkflowService {
 				validation.error ?? 'Dynamic credentials validation failed',
 			);
 		}
+	}
+
+	/**
+	 * Publishing is its own permission, and a published workflow runs as its
+	 * publisher. Without this gate the whole model is one click away from being
+	 * bypassed: someone who cannot run the workflow could publish it and let the
+	 * schedule run it for them.
+	 */
+	private async _validateCredentialUsability(user: User, workflowId: string, nodes: INode[]) {
+		const credentialIds = this.workflowValidationService.collectCredentialIds(nodes);
+		if (credentialIds.size === 0) return;
+
+		const unusable = await this.credentialUsabilityService.findUnusableByUser(user, [
+			...credentialIds,
+		]);
+		if (unusable.length === 0) return;
+
+		const names = unusable.map((c) => `"${c.name}"`).join(', ');
+		this.logger.warn('Workflow activation blocked by an unusable credential', {
+			workflowId,
+			userId: user.id,
+			credentialIds: unusable.map((c) => c.id),
+		});
+		throw new WorkflowValidationError(
+			`Cannot publish workflow: you cannot use the credentials (${names}) it references. A published workflow runs as its publisher, so ask their owner to publish it or to share the credentials with you.`,
+		);
 	}
 
 	/**

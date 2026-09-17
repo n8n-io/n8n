@@ -46,7 +46,6 @@ import { useHistoryStore } from '@/app/stores/history.store';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUsersStore } from '@n8n/stores/users.store';
-import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import type { NodeSettingsTab } from '@/app/types/nodeSettings';
 import {
 	collectParametersByTab,
@@ -67,7 +66,6 @@ import { N8nBlockUi, N8nIcon, N8nNotice, N8nText } from '@n8n/design-system';
 import { useRoute } from 'vue-router';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
-import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import { useEditorContext } from '@/app/composables/useEditorContext';
 
 const props = withDefaults(
@@ -121,7 +119,6 @@ const nodeValues = ref<INodeParameters>(getNodeSettingsInitialValues());
 
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = injectNDVStore();
-const workflowsListStore = useWorkflowsListStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const credentialsStore = useCredentialsStore();
 const historyStore = useHistoryStore();
@@ -164,17 +161,15 @@ const isDemoRoute = computed(() => route?.name === VIEWS.DEMO);
 const settingsStore = useSettingsStore();
 const { isPreviewMode } = settingsStore;
 const isDemoPreview = computed(() => isDemoRoute.value && isPreviewMode);
-const currentWorkflow = computed(() =>
-	workflowsListStore.getWorkflowById(workflowDocumentStore.value.workflowId),
-);
 const hasForeignCredential = computed(() => props.foreignCredentials.length > 0);
-const isHomeProjectTeam = computed(
-	() => currentWorkflow.value?.homeProject?.type === ProjectTypes.Team,
-);
-const isReadOnly = computed(
-	() => props.readOnly || (hasForeignCredential.value && !isHomeProjectTeam.value),
-);
 const node = computed(() => props.activeNode ?? ndvStore.value.activeNode);
+
+/**
+ * A credential you cannot use makes the node read-only whichever project the
+ * workflow lives in: a personal credential is visible inside a team project but
+ * still unusable there, so the project type says nothing about capability.
+ */
+const isReadOnly = computed(() => props.readOnly || hasForeignCredential.value);
 
 const nodeType = computed(() =>
 	node.value ? nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion) : null,
@@ -717,7 +712,7 @@ function handleSelectAction(params: INodeParameters) {
 			@wheel.capture="emit('captureWheelBody', $event)"
 		>
 			<N8nNotice
-				v-if="hasForeignCredential && !isHomeProjectTeam"
+				v-if="hasForeignCredential"
 				:content="
 					i18n.baseText('nodeSettings.hasForeignCredential', {
 						interpolate: { owner: credentialOwnerName },

@@ -90,7 +90,7 @@ export class EngineV2Dispatcher {
 
 		const { workflowData } = data;
 
-		await this.credentialsPermissionChecker.check(workflowData.id, workflowData.nodes);
+		await this.credentialsPermissionChecker.check(workflowData.id, workflowData.nodes, data.userId);
 
 		// Lazily imported: a top-level import would pull the v1 step executor and
 		// its dependencies into every n8n process, including ones with the module off.

@@ -158,7 +158,13 @@ export interface CredentialUsedByWorkflow {
 	id: string;
 	name: string;
 	type?: string;
+	/** The user may see the credential: its name, its type, and where it is used. */
 	currentUserHasAccess: boolean;
+	/**
+	 * The user may bind the credential to a node that executes. False on a
+	 * credential restricted to its owner, which the user can still see.
+	 */
+	currentUserCanUse: boolean;
 	homeProject: SlimProject | null;
 	sharedWithProjects: SlimProject[];
 }

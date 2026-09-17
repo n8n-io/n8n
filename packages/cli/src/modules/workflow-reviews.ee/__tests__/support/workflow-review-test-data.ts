@@ -58,6 +58,8 @@ export function stubWorkflowValidation(
 	workflowValidationService.validateDynamicCredentials.mockResolvedValue({ isValid: true });
 	workflowValidationService.validateSubWorkflowReferences.mockResolvedValue({ isValid: true });
 	workflowValidationService.validateTriggerNodeIds.mockReturnValue({ isValid: true });
+	// No credentials to check, so the restricted-credential publish gate no-ops.
+	workflowValidationService.collectCredentialIds.mockReturnValue(new Set());
 }
 
 export interface ReviewActors {

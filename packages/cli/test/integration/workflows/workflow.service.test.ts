@@ -126,7 +126,8 @@ beforeAll(async () => {
 		// Real service on purpose: with no backend registered it clears every save and
 		// publish, so these tests also prove behavior is unchanged with the module off.
 		Container.get(PolicyEnforcementService), // policyEnforcementService
-		Container.get(WorkflowPublicationStatusService), // workflowPublicationStatusService
+		Container.get(WorkflowPublicationStatusService), // workflowPublicationStatusService,
+		mock(),
 	);
 });
 
@@ -144,6 +145,7 @@ beforeEach(() => {
 	workflowValidationService.validateDynamicCredentials.mockResolvedValue({ isValid: true });
 	workflowValidationService.validateSubWorkflowReferences.mockResolvedValue({ isValid: true });
 	workflowValidationService.validateCredentialNodeRestrictions.mockReturnValue({ isValid: true });
+	workflowValidationService.collectCredentialIds.mockReturnValue(new Set());
 	webhookServiceMock.findWebhookConflicts.mockReset();
 	webhookServiceMock.findWebhookConflicts.mockResolvedValue([]);
 });
