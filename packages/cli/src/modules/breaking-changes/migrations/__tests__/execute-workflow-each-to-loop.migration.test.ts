@@ -5,7 +5,6 @@ import { executeWorkflowEachToLoop } from '../execute-workflow-each-to-loop.migr
 
 const EXECUTE_WORKFLOW = 'n8n-nodes-base.executeWorkflow';
 const LOOP = 'n8n-nodes-base.splitInBatches';
-const FILTER = 'n8n-nodes-base.filter';
 const NO_WAIT = { options: { waitForSubWorkflow: false } };
 
 const edge = (node: string, index = 0) => ({ node, type: 'main' as const, index });
@@ -22,7 +21,7 @@ describe('executeWorkflowEachToLoop migration', () => {
 		expect(executeWorkflowEachToLoop.ruleId).toBe('execute-workflow-each-mode-v3');
 	});
 
-	it('wraps a waiting node in a loop with an empty-result filter after done', () => {
+	it('wraps a waiting node in a loop and warns about extra empty items', () => {
 		const trigger = createNode('Trigger', 'n8n-nodes-base.manualTrigger');
 		const sub = createNode('Sub', EXECUTE_WORKFLOW, { mode: 'each', workflowId: 'abc' });
 		sub.position = [400, 200];
@@ -34,39 +33,19 @@ describe('executeWorkflowEachToLoop migration', () => {
 
 		const result = migrate([trigger, sub, set], connections, [sub]);
 
-		// Loop and filter are inserted right before the node they wrap.
-		expect(result.nodes.map((n) => n.name)).toEqual([
-			'Trigger',
-			'Loop Over Items',
-			'Drop empty results',
-			'Sub',
-			'Set',
-		]);
-		const [, loop, filter, migratedSub] = result.nodes;
+		// The loop is inserted before the node it wraps.
+		expect(result.nodes.map((n) => n.name)).toEqual(['Trigger', 'Loop Over Items', 'Sub', 'Set']);
+		const [, loop, migratedSub] = result.nodes;
 		expect(loop).toMatchObject({
 			type: LOOP,
 			typeVersion: 3,
-			parameters: { batchSize: 1, options: {} },
+			parameters: {
+				batchSize: 1,
+				options: { reset: '={{ $node["Loop Over Items"].context["done"] ?? false }}' },
+			},
 			position: [400, 200],
 		});
 		expect(loop.id).toEqual(expect.any(String));
-		expect(filter).toMatchObject({
-			type: FILTER,
-			typeVersion: 2.2,
-			position: [640, 200],
-			parameters: {
-				conditions: {
-					combinator: 'and',
-					conditions: [
-						{
-							leftValue: '={{ Object.keys($json).length + Object.keys($binary ?? {}).length }}',
-							rightValue: 0,
-							operator: { type: 'number', operation: 'gt' },
-						},
-					],
-				},
-			},
-		});
 		// The sub-workflow node switches mode, keeps its identity, moves into the loop
 		// body, and always emits an item so the loop cannot stall.
 		expect(migratedSub).toMatchObject({
@@ -80,12 +59,16 @@ describe('executeWorkflowEachToLoop migration', () => {
 
 		expect(result.connections).toEqual({
 			Trigger: { main: [[edge('Loop Over Items')]] },
-			'Loop Over Items': { main: [[edge('Drop empty results')], [edge('Sub')]] },
+			'Loop Over Items': { main: [[edge('Set')], [edge('Sub')]] },
 			Sub: { main: [[edge('Loop Over Items')]] },
-			'Drop empty results': { main: [[edge('Set')]] },
 		});
 		expect(result.migratedNodeIds).toEqual([sub.id]);
-		expect(result.notes).toBeUndefined();
+		expect(result.notes).toEqual([
+			expect.stringContaining('Review and test the migrated workflow before publishing'),
+			expect.stringContaining(
+				'Each sub-workflow call that returns no items produces an empty item',
+			),
+		]);
 		expect(result.unmapped).toBeUndefined();
 	});
 
@@ -102,6 +85,9 @@ describe('executeWorkflowEachToLoop migration', () => {
 
 		expect(result.nodes.map((n) => n.name)).toEqual(['Trigger', 'Loop Over Items', 'Sub', 'Set']);
 		expect(result.nodes[2].alwaysOutputData).toBeUndefined();
+		expect(result.notes).toEqual([
+			expect.stringContaining('Review and test the migrated workflow before publishing'),
+		]);
 		expect(result.connections).toEqual({
 			Trigger: { main: [[edge('Loop Over Items')]] },
 			'Loop Over Items': { main: [[edge('Set')], [edge('Sub')]] },
@@ -141,10 +127,8 @@ describe('executeWorkflowEachToLoop migration', () => {
 			A: { main: [[edge('Loop Over Items')]] },
 			// B's edge to C is unrelated and stays.
 			B: { main: [[edge('Loop Over Items'), edge('C')]] },
-			'Loop Over Items': { main: [[edge('Drop empty results')], [edge('Sub')]] },
+			'Loop Over Items': { main: [[edge('C'), edge('D', 1)], [edge('Sub')]] },
 			Sub: { main: [[edge('Loop Over Items')]] },
-			// All former successors, with their input indexes, hang off the filter.
-			'Drop empty results': { main: [[edge('C'), edge('D', 1)]] },
 		});
 	});
 
@@ -171,9 +155,8 @@ describe('executeWorkflowEachToLoop migration', () => {
 
 		expect(result.connections).toEqual({
 			Trigger: { main: [[edge('Loop Over Items')]] },
-			'Loop Over Items': { main: [[edge('Drop empty results')], [edge('Sub')]] },
+			'Loop Over Items': { main: [[], [edge('Sub')]] },
 			Sub: { main: [[edge('Loop Over Items')]] },
-			'Drop empty results': { main: [[]] },
 		});
 	});
 
@@ -193,22 +176,23 @@ describe('executeWorkflowEachToLoop migration', () => {
 		expect(result.nodes.map((n) => n.name)).toEqual([
 			'Loop Over Items',
 			'Loop Over Items1',
-			'Drop empty results',
 			'First',
 			'Loop Over Items2',
-			'Drop empty results1',
 			'Second',
 			'Untouched',
 		]);
 		expect(result.nodes.find((n) => n.name === 'Untouched')).toBe(untouched);
 		expect(result.connections).toEqual({
-			'Loop Over Items1': { main: [[edge('Drop empty results')], [edge('First')]] },
+			'Loop Over Items1': { main: [[edge('Loop Over Items2')], [edge('First')]] },
 			First: { main: [[edge('Loop Over Items1')]] },
-			'Drop empty results': { main: [[edge('Loop Over Items2')]] },
-			'Loop Over Items2': { main: [[edge('Drop empty results1')], [edge('Second')]] },
+			'Loop Over Items2': { main: [[edge('Untouched')], [edge('Second')]] },
 			Second: { main: [[edge('Loop Over Items2')]] },
-			'Drop empty results1': { main: [[edge('Untouched')]] },
 		});
+		for (const name of ['Loop Over Items1', 'Loop Over Items2']) {
+			expect(result.nodes.find((node) => node.name === name)?.parameters.options).toEqual({
+				reset: `={{ $node["${name}"].context["done"] ?? false }}`,
+			});
+		}
 		expect(result.migratedNodeIds).toEqual([first.id, second.id]);
 	});
 
@@ -227,7 +211,7 @@ describe('executeWorkflowEachToLoop migration', () => {
 			main: [[edge('Loop Over Items')], [edge('Failed')]],
 		});
 		expect(result.connections['Loop Over Items']).toEqual({ main: [[edge('Ok')], [edge('Sub')]] });
-		expect(result.notes).toEqual([expect.stringContaining('error output')]);
+		expect(result.notes).toContainEqual(expect.stringContaining('error output'));
 	});
 
 	it('warns when "Execute Once" is enabled on the wrapped node', () => {
@@ -236,7 +220,7 @@ describe('executeWorkflowEachToLoop migration', () => {
 
 		const result = migrate([sub], {}, [sub]);
 
-		expect(result.notes).toEqual([expect.stringContaining('Execute Once')]);
+		expect(result.notes).toContainEqual(expect.stringContaining('Execute Once'));
 	});
 
 	it('warns when "Retry On Fail" is enabled on the wrapped node', () => {
@@ -245,7 +229,7 @@ describe('executeWorkflowEachToLoop migration', () => {
 
 		const result = migrate([sub], {}, [sub]);
 
-		expect(result.notes).toEqual([expect.stringContaining('Retry On Fail')]);
+		expect(result.notes).toContainEqual(expect.stringContaining('Retry On Fail'));
 	});
 
 	it('warns when other nodes read the wrapped node by name in expressions', () => {
@@ -262,11 +246,11 @@ describe('executeWorkflowEachToLoop migration', () => {
 
 		const result = migrate([sub, reader, legacyReader, unrelated], {}, [sub]);
 
-		expect(result.notes).toEqual([
+		expect(result.notes).toContainEqual(
 			expect.stringContaining('"Reader", "Legacy" reference "Sub WF"'),
-		]);
+		);
 		// Points at the node that now carries the aggregated output.
-		expect(result.notes?.[0]).toContain('read from "Drop empty results"');
+		expect(result.notes).toContainEqual(expect.stringContaining('read from "Loop Over Items"'));
 	});
 
 	it('detects dot-notation references for identifier-like node names only', () => {
@@ -278,9 +262,11 @@ describe('executeWorkflowEachToLoop migration', () => {
 			value: '={{ $node.Sub2.json.x }}',
 		});
 
-		expect(migrate([sub, dotted], {}, [sub]).notes).toEqual([
+		expect(migrate([sub, dotted], {}, [sub]).notes).toContainEqual(
 			expect.stringContaining('"Dotted" reference "Sub"'),
-		]);
-		expect(migrate([sub, longerName], {}, [sub]).notes).toBeUndefined();
+		);
+		expect(migrate([sub, longerName], {}, [sub]).notes).not.toContainEqual(
+			expect.stringContaining('reference "Sub"'),
+		);
 	});
 });

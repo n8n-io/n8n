@@ -12,10 +12,6 @@ const LOOP_NODE_DEFAULT_NAME = 'Loop Over Items';
 const LOOP_DONE_OUTPUT = 0;
 const LOOP_BATCH_OUTPUT = 1;
 
-const FILTER_NODE_TYPE = 'n8n-nodes-base.filter';
-const FILTER_NODE_VERSION = 2.2;
-const FILTER_NODE_DEFAULT_NAME = 'Drop empty results';
-
 // One canvas column to the right; one row down puts a node inside the loop body.
 const COLUMN_OFFSET = 240;
 const ROW_OFFSET = 180;
@@ -83,55 +79,29 @@ const makeLoopNode = (name: string, position: INode['position']): INode => ({
 	type: LOOP_NODE_TYPE,
 	typeVersion: LOOP_NODE_VERSION,
 	position,
-	parameters: { batchSize: 1, options: {} },
-});
-
-/**
- * Drops the `alwaysOutputData` placeholders: items with neither JSON fields nor
- * binary data. A file returned by the sub-workflow has empty JSON but binary
- * data, so it passes.
- *
- * A real item with empty JSON and no binary is indistinguishable from the
- * placeholder and is dropped too. This is deliberate: the engine fixes the
- * placeholder shape, and no downstream node runs when the wrapped node emits
- * nothing, so there is no way to tag the placeholder. We also do not report it
- * as a drift note, because nearly every each-mode node waits for the
- * sub-workflow and a note would block one-click publish for almost all
- * migrations to protect an item that carries no data.
- */
-const makeFilterNode = (name: string, position: INode['position']): INode => ({
-	id: randomUUID(),
-	name,
-	type: FILTER_NODE_TYPE,
-	typeVersion: FILTER_NODE_VERSION,
-	position,
 	parameters: {
-		conditions: {
-			options: { caseSensitive: true, leftValue: '', typeValidation: 'strict', version: 2 },
-			conditions: [
-				{
-					id: randomUUID(),
-					leftValue: '={{ Object.keys($json).length + Object.keys($binary ?? {}).length }}',
-					rightValue: 0,
-					operator: { type: 'number', operation: 'gt' },
-				},
-			],
-			combinator: 'and',
-		},
-		options: {},
+		batchSize: 1,
+		// Start a new batch when an outer loop reaches this node again.
+		options: { reset: `={{ $node[${JSON.stringify(name)}].context["done"] ?? false }}` },
 	},
 });
 
 /**
- * Behavior the loop form cannot reproduce exactly. Any note blocks the one-click
- * re-publish, so the user reviews the workflow first. `tailName` is the node that
- * now carries the aggregated output.
+ * Every rewrite needs review. Specific notes help users find known changes.
+ * `tailName` is the node that now carries the aggregated output.
  */
 const driftNotes = (node: INode, allNodes: INode[], tailName: string): string[] => {
-	const notes: string[] = [];
+	const notes: string[] = [
+		`Review and test the migrated workflow before publishing. The loop around "${node.name}" preserves the common execution pattern, but it can change behavior. Check expressions, item and run indexes, error handling, retry settings, and pinned data.`,
+	];
+	if (waitsForSubWorkflow(node)) {
+		notes.push(
+			`"${node.name}" now uses "Always Output Data" to keep the loop running. Each sub-workflow call that returns no items produces an empty item instead. These extra items can trigger downstream actions. Review how the workflow handles empty items.`,
+		);
+	}
 	if (node.onError === 'continueErrorOutput') {
 		notes.push(
-			`"${node.name}" routes failed items to its error output. Inside the loop those items no longer flow back, so the loop's "done" output only carries the items that succeeded.`,
+			`"${node.name}" routes failed items to its error output. These items do not return to the loop. An error can stop the loop before it processes all inputs. Review the error path.`,
 		);
 	}
 	if (node.executeOnce) {
@@ -159,23 +129,20 @@ const driftNotes = (node: INode, allNodes: INode[], tailName: string): string[] 
  * Execute Sub-workflow "Run once for each item" → Loop Over Items (batch size 1)
  * wrapped around the same node in "Run once with all items" mode.
  *
- * Runtime equivalence: `each` ran the sub-workflow once per input item with
- * `[item]` and concatenated the results; the loop feeds one item per iteration
- * to the same node in `once` mode, and the loop's done output emits every item
- * that came back, in order.
+ * This is a suggested workflow, not an equivalent replacement. Every migration
+ * reports a note so the user must review and test it before publishing.
  *
  * The rewiring for one flagged node E with predecessors P and successors S:
- *   P → E → S   becomes   P → Loop ─done→ [Filter →] S
+ *   P → E → S   becomes   P → Loop ─done→ S
  *                               └─loop→ E → Loop
  * Other outputs of E (for example an error output) keep their edges.
  *
  * The engine only continues past a node that produced at least one item. When E
  * waits for the sub-workflow and that run returns nothing for an item, the loop
  * would stall and never reach done. So in that mode E gets `alwaysOutputData`,
- * which emits one `{}` placeholder instead, and a Filter after done drops items
- * whose JSON is empty. A sub-workflow that legitimately returns `{}` items loses
- * them; that is the one known drift of this construct. In fire-and-forget mode E
- * echoes its input item, so neither is needed.
+ * which emits one empty item instead. The loop returns this item along with
+ * actual results, including real empty items. The migration reports this change.
+ * In fire-and-forget mode E echoes its input item, so the setting is not needed.
  */
 export const executeWorkflowEachToLoop: WorkflowMigration = {
 	ruleId: 'execute-workflow-each-mode-v3',
@@ -201,9 +168,6 @@ export const executeWorkflowEachToLoop: WorkflowMigration = {
 			const waits = waitsForSubWorkflow(original);
 
 			const loopNode = makeLoopNode(claimName(LOOP_NODE_DEFAULT_NAME), [x, y]);
-			const filterNode = waits
-				? makeFilterNode(claimName(FILTER_NODE_DEFAULT_NAME), [x + COLUMN_OFFSET, y])
-				: undefined;
 			const node: INode = {
 				...original,
 				position: [x + COLUMN_OFFSET, y + ROW_OFFSET],
@@ -221,7 +185,7 @@ export const executeWorkflowEachToLoop: WorkflowMigration = {
 			}
 
 			// 2. The node's main output goes back into the loop; its old successors hang
-			//    off "done", behind the filter when there is one.
+			//    off "done".
 			const nodeOutputs = nextConnections[node.name] ?? {};
 			const mainOutputs: NodeInputConnections = [...(nodeOutputs[NodeConnectionTypes.Main] ?? [])];
 			const successors = mainOutputs[0] ?? [];
@@ -229,17 +193,12 @@ export const executeWorkflowEachToLoop: WorkflowMigration = {
 			nextConnections[node.name] = { ...nodeOutputs, [NodeConnectionTypes.Main]: mainOutputs };
 
 			const loopOutputs: NodeInputConnections = [];
-			loopOutputs[LOOP_DONE_OUTPUT] = filterNode ? [mainConnection(filterNode.name)] : successors;
+			loopOutputs[LOOP_DONE_OUTPUT] = successors;
 			loopOutputs[LOOP_BATCH_OUTPUT] = [mainConnection(node.name)];
 			nextConnections[loopNode.name] = { [NodeConnectionTypes.Main]: loopOutputs };
-			if (filterNode) {
-				nextConnections[filterNode.name] = { [NodeConnectionTypes.Main]: [successors] };
-			}
-
-			notes.push(...driftNotes(node, nodes, (filterNode ?? loopNode).name));
+			notes.push(...driftNotes(node, nodes, loopNode.name));
 
 			nextNodes.push(loopNode);
-			if (filterNode) nextNodes.push(filterNode);
 			nextNodes.push(node);
 			migratedNodeIds.push(node.id);
 		}
