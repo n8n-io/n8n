@@ -155,7 +155,11 @@ describe('McpRegistryClientTool', () => {
 			);
 			loadMcpToolOptionsMock.mockResolvedValue([]);
 
-			const node = new McpRegistryClientTool();
+			// Gateway servers ride the same registry-credential path as OAuth2 ones;
+			// the binding carries the minted gateway credential type.
+			const node = createRegisteredNode('https://gw.example.com/mcp', 'httpStreamable', [
+				{ credentialType: 'firecrawlMcpGatewayApi', selector: 'gateway' },
+			]);
 			await node.methods.loadOptions.getTools.call(ctx);
 
 			expect(loadMcpToolOptionsMock).toHaveBeenCalledWith(

@@ -30,14 +30,12 @@ interface GatewayTokenResponse {
 }
 
 /**
- * Builds the gateway-hosted Firecrawl MCP server entry. The remote URL is derived
- * from the configured gateway base so it follows feature/staging/prod instead of
- * hardcoding one host. `authType: 'gateway'` means the user connects it with
- * Gateway credits rather than their own credential.
+ * Builds the gateway-hosted Firecrawl MCP server entry, its remote URL derived
+ * from the gateway base so it tracks feature/staging/prod. `authType: 'gateway'`
+ * means Gateway credits, not a user credential.
  *
- * POC note: this is a static definition. The intended shape is to drive the
- * hosted-server list off the gateway's own `/v1/gateway/config` response so new
- * providers surface without an n8n release.
+ * TODO: drive the hosted-server list off the gateway `/v1/gateway/config`
+ * response so new providers surface without an n8n release.
  */
 function buildFirecrawlGatewayServer(baseUrl: string): McpRegistryServer {
 	return {

@@ -8,9 +8,8 @@ import type {
 	ICredentialDataDecryptedObject,
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
-	McpGatewayCredentialType,
-	McpOAuth2CredentialType,
 	McpRegistryConnection,
+	McpRegistryCredentialType,
 	INode,
 	ISupplyDataFunctions,
 	NodeEgressFilter,
@@ -331,19 +330,14 @@ export async function getAuthHeaders(
 }> {
 	if (authentication === 'none') return {};
 
-	// Minted per execution rather than stored, so there is no refresh to manage:
-	// the token is already current by the time it reaches here.
+	// Minted per execution, so no refresh to manage: the token is already current.
 	if (isMcpGatewayAuthentication(authentication)) {
 		const credentials = await ctx
-			.getCredentials<{ token: string }>(authentication)
+			.getCredentials<ICredentialDataDecryptedObject>(authentication)
 			.catch(() => null);
-
-		if (!credentials?.token) return {};
-
-		return {
-			headers: { Authorization: `Bearer ${credentials.token}` },
-			credentials,
-		};
+		if (!credentials) return {};
+		const headers = getMcpAuthHeaders(authentication, credentials);
+		return Object.keys(headers).length > 0 ? { headers, credentials } : {};
 	}
 
 	let credentialType: string;
@@ -434,7 +428,7 @@ export async function connectMcpClientForCredential(
 		endpointUrl: string;
 		registryCredential?: {
 			connection: McpRegistryConnection;
-			credentialType: McpOAuth2CredentialType | McpGatewayCredentialType;
+			credentialType: McpRegistryCredentialType;
 			prepareConnection(
 				input: PrepareMcpRegistryConnectionInput,
 			): PrepareMcpRegistryConnectionResult;

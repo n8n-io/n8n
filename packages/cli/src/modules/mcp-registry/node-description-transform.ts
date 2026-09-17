@@ -4,12 +4,12 @@ import type {
 	INodeCredentialDescription,
 	INodeProperties,
 	INodeTypeDescription,
-	McpGatewayCredentialType,
 	Themed,
 } from 'n8n-workflow';
 
 import {
 	getMcpRegistryCredentialTypeName,
+	getMcpRegistryGatewayCredentialTypeName,
 	MCP_BASE_OAUTH2_CREDENTIAL_NAME,
 	MCP_REGISTRY_PACKAGE_NAME,
 	getConfiguredEndpointUrl,
@@ -50,16 +50,6 @@ export type IsKnownCredentialType = (name: string) => boolean;
  */
 function getMcpRegistryNodeTypeName(server: McpRegistryServer): string {
 	return camelCase(server.slug);
-}
-
-/**
- * Credential type name for a gateway-hosted server. Its `McpGatewayApi` suffix
- * is what `isMcpGatewayAuthentication` matches at runtime.
- */
-function getMcpRegistryGatewayCredentialTypeName(
-	server: McpRegistryServer,
-): McpGatewayCredentialType {
-	return `${camelCase(server.slug)}McpGatewayApi`;
 }
 
 /**

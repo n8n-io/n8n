@@ -8,7 +8,6 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
-	type McpOAuth2CredentialType,
 	type McpRegistryRuntime,
 	type PrepareMcpRegistryConnectionInput,
 	type PrepareMcpRegistryConnectionResult,
@@ -24,7 +23,7 @@ import {
 	loadMcpToolOptions,
 	type ResolvedMcpConfig,
 } from '../shared/runtime';
-import { isMcpGatewayAuthentication, type McpGatewayCredentialType } from '../shared/types';
+import type { McpRegistryCredentialType } from '../shared/types';
 
 /**
  * Nodes from the MCP registry are saved as `@n8n/mcp-registry.<slug>`
@@ -183,21 +182,8 @@ export class McpRegistryClientTool implements INodeType {
 	methods = {
 		loadOptions: {
 			async getTools(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const node = this.getNode();
 				const selector = this.getNodeParameter('authentication', '') as string;
-				const resolved = McpRegistryClientTool.getConnection(node, selector);
-				const timeout = this.getNodeParameter('options.timeout', 60000) as number;
-
-				const gatewayCredentialType = getGatewayCredentialType(node);
-				if (gatewayCredentialType) {
-					return await loadMcpToolOptions(this, {
-						authentication: gatewayCredentialType,
-						transport: resolved.connection.transport,
-						endpointUrl: getConfiguredEndpointUrl(resolved.connection),
-						timeout,
-					});
-				}
-
+				const resolved = McpRegistryClientTool.getConnection(this.getNode(), selector);
 				const authentication = getCredentialType(this, resolved);
 				return await loadMcpToolOptions(this, {
 					authentication,
@@ -208,7 +194,7 @@ export class McpRegistryClientTool implements INodeType {
 						credentialType: authentication,
 						prepareConnection: (input) => McpRegistryClientTool.prepareConnection(input),
 					},
-					timeout,
+					timeout: this.getNodeParameter('options.timeout', 60000) as number,
 				});
 			},
 		},
@@ -230,30 +216,9 @@ function resolveConfig(
 	ctx: ISupplyDataFunctions | IExecuteFunctions,
 	itemIndex: number,
 ): ResolvedMcpConfig {
-	const node = ctx.getNode();
 	// credential type selector when nodes are generated on startup in serverToNodeDescription
 	const selector = ctx.getNodeParameter('authentication', itemIndex, '') as string;
-	const resolved = McpRegistryClientTool.getConnection(node, selector);
-	const toolFilter = {
-		mode: ctx.getNodeParameter('include', itemIndex) as McpToolIncludeMode,
-		includeTools: ctx.getNodeParameter('includeTools', itemIndex, []) as string[],
-		excludeTools: ctx.getNodeParameter('excludeTools', itemIndex, []) as string[],
-	};
-	const timeout = ctx.getNodeParameter('options.timeout', itemIndex, 60000) as number;
-
-	const gatewayCredentialType = getGatewayCredentialType(node);
-	if (gatewayCredentialType) {
-		// A gateway-hosted server's minted credential is not part of the OAuth2
-		// binding pipeline, so connect straight from its bearer token.
-		return {
-			authentication: gatewayCredentialType,
-			transport: resolved.connection.transport,
-			endpointUrl: getConfiguredEndpointUrl(resolved.connection),
-			timeout,
-			toolFilter,
-		};
-	}
-
+	const resolved = McpRegistryClientTool.getConnection(ctx.getNode(), selector);
 	const authentication = getCredentialType(ctx, resolved);
 	return {
 		authentication,
@@ -264,30 +229,23 @@ function resolveConfig(
 			credentialType: authentication,
 			prepareConnection: (input) => McpRegistryClientTool.prepareConnection(input),
 		},
-		timeout,
-		toolFilter,
+		timeout: ctx.getNodeParameter('options.timeout', itemIndex, 60000) as number,
+		toolFilter: {
+			mode: ctx.getNodeParameter('include', itemIndex) as McpToolIncludeMode,
+			includeTools: ctx.getNodeParameter('includeTools', itemIndex, []) as string[],
+			excludeTools: ctx.getNodeParameter('excludeTools', itemIndex, []) as string[],
+		},
 	};
 }
 
 function getCredentialType(
 	ctx: Pick<ILoadOptionsFunctions | ISupplyDataFunctions | IExecuteFunctions, 'getNode'>,
 	resolved: ResolvedMcpRegistryConnection,
-): McpOAuth2CredentialType | McpGatewayCredentialType {
+): McpRegistryCredentialType {
 	const node = ctx.getNode();
 	const { credentialType } = resolved.binding;
 	if (!Object.hasOwn(node.credentials ?? {}, credentialType)) {
 		throw new NodeOperationError(node, 'No MCP credential found');
 	}
 	return credentialType;
-}
-
-/**
- * A gateway-hosted server carries a single minted credential whose type ends in
- * `McpGatewayApi`. It is billed to Gateway credits and sits outside the OAuth2
- * binding pipeline, so the node connects with it directly when present.
- */
-function getGatewayCredentialType(
-	node: ReturnType<IExecuteFunctions['getNode']>,
-): McpGatewayCredentialType | undefined {
-	return Object.keys(node.credentials ?? {}).find(isMcpGatewayAuthentication);
 }

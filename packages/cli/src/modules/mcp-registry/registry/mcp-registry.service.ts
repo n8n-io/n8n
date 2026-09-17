@@ -52,16 +52,10 @@ export class McpRegistryService {
 	}
 
 	/**
-	 * Persist the gateway-hosted servers the gateway service owns as real registry
-	 * rows. This is what makes them work at run time: every process's node loader,
-	 * connection map and synthetic credential resolve them from the DB exactly like
-	 * a remote server, instead of depending on a live in-memory injection that a
-	 * loader refresh in another process or before enablement would miss.
-	 *
-	 * License-gated at the source: `getHostedMcpServers()` returns `[]` when n8n
-	 * Connect is off, so nothing is seeded there. Rows from a previously licensed
-	 * period are left in place (never deleted, like every registry row) and hidden
-	 * by `getAll`'s filter until the license returns.
+	 * Persist gateway-hosted servers as real registry rows so every process
+	 * resolves them from the DB like any remote server, not from a live in-memory
+	 * injection a loader refresh could miss. `getHostedMcpServers()` is empty when
+	 * n8n Connect is off, so nothing is seeded then.
 	 */
 	private async seedGatewayServers(): Promise<void> {
 		const hosted = this.aiGatewayService.getHostedMcpServers();
@@ -69,27 +63,13 @@ export class McpRegistryService {
 		await this.saveServers(hosted);
 	}
 
-	/**
-	 * The single funnel for every registry read — search, list, and node-type
-	 * registration all go through here, so withholding an entry here withholds it
-	 * everywhere: no synthetic node type, no synthetic credential type, no search
-	 * hit. That is what makes a `gateway` entry's mere existence a reliable signal
-	 * that the instance can use it.
-	 */
 	async getAll({
 		includeDeprecated = false,
 	}: { includeDeprecated?: boolean } = {}): Promise<McpRegistryServer[]> {
 		const entities = includeDeprecated
 			? await this.repository.find()
 			: await this.repository.findBy({ status: 'active' });
-		const servers = entities.map(fromEntity);
-
-		// Gateway-hosted servers are seeded into the repository by
-		// `seedGatewayServers` so the node loader, connection map and synthetic
-		// credential all resolve them uniformly. Still hide them when n8n Connect is
-		// off, so a row left over from a licensed period can't be selected on an
-		// instance that can no longer mint a token.
-		return this.filterGatewayEligibility(servers);
+		return this.filterGatewayEligibility(entities.map(fromEntity));
 	}
 
 	/**
@@ -102,15 +82,12 @@ export class McpRegistryService {
 		return servers.filter((server) => server.authType !== 'gateway');
 	}
 
-	private isGatewayEligible(server: McpRegistryServer): boolean {
-		return server.authType !== 'gateway' || this.aiGatewayService.isEnabled();
-	}
-
 	async get(slug: string): Promise<McpRegistryServer | undefined> {
 		const entity = await this.repository.findOneBy({ slug });
 		if (!entity) return undefined;
 		const server = fromEntity(entity);
-		return this.isGatewayEligible(server) ? server : undefined;
+		if (server.authType === 'gateway' && !this.aiGatewayService.isEnabled()) return undefined;
+		return server;
 	}
 
 	async getBySlugs(slugs: string[]): Promise<McpRegistryServer[]> {

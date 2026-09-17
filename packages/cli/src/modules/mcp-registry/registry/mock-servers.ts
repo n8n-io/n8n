@@ -188,4 +188,4 @@ export const linearMockServer: McpRegistryServer = {
 	origin: 'registry',
 	status: 'active',
 	tags: ['issue-tracking', 'project-management'],
-};
+} satisfies McpRegistryServer;

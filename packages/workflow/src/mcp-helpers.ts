@@ -8,6 +8,9 @@ const OAUTH2_REFRESH_BUFFER_RATIO = 0.1;
 /** Covers MCP-specific and existing native OAuth2 credential type names. */
 export type McpOAuth2CredentialType = 'oAuth2Api' | `${string}OAuth2Api` | `${string}OAuth2`;
 
+/** Either credential kind an MCP registry binding can carry: user OAuth2 or gateway-managed. */
+export type McpRegistryCredentialType = McpOAuth2CredentialType | McpGatewayCredentialType;
+
 interface McpRegistryConnectionBase {
 	nodeTypeName: string;
 	transport: 'httpStreamable' | 'sse';
@@ -19,7 +22,7 @@ interface McpRegistryConnectionBase {
 }
 
 export interface McpRegistryCredentialBinding {
-	credentialType: McpOAuth2CredentialType | McpGatewayCredentialType;
+	credentialType: McpRegistryCredentialType;
 	selector: string;
 }
 
@@ -60,7 +63,7 @@ export function getConfiguredEndpointUrl(connection: McpRegistryConnection): str
 
 export interface PrepareMcpRegistryConnectionInput {
 	connection: McpRegistryConnection;
-	credentialType: McpOAuth2CredentialType | McpGatewayCredentialType;
+	credentialType: McpRegistryCredentialType;
 	credentialData: ICredentialDataDecryptedObject;
 	headers?: Record<string, string>;
 }
@@ -70,7 +73,7 @@ export type PrepareMcpRegistryConnectionResult =
 			ok: true;
 			value: {
 				nodeTypeName: string;
-				credentialType: McpOAuth2CredentialType | McpGatewayCredentialType;
+				credentialType: McpRegistryCredentialType;
 				transport: 'httpStreamable' | 'sse';
 				/** Always a literal URL, templated or not. */
 				endpointUrl: string;
@@ -179,14 +182,10 @@ export function getMcpAuthHeaders(
 export type McpGatewayCredentialType = 'mcpGatewayApi' | `${string}McpGatewayApi`;
 
 /**
- * Returns `true` for `mcpGatewayApi` and any credential type ending in
- * `McpGatewayApi` (e.g. `firecrawlMcpGatewayApi`).
- *
- * These credentials are billed to n8n credits and never stored: the credential
- * entry under `node.credentials` carries the `__aiGatewayManaged` marker, and
- * the token is minted per execution when that entry is decrypted. This predicate
- * is only how the MCP runtime knows to read a bearer token out of the result —
- * the marker on the entry is what decides that it is minted rather than loaded.
+ * Returns `true` for `mcpGatewayApi` and any type ending in `McpGatewayApi`
+ * (e.g. `firecrawlMcpGatewayApi`). Tells the MCP runtime to read a bearer token
+ * from the credential; the `__aiGatewayManaged` marker on the entry is what
+ * decides the token is minted per execution rather than loaded.
  */
 export function isMcpGatewayAuthentication(
 	authentication: string,
