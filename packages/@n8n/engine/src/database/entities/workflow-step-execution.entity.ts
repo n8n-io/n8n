@@ -54,6 +54,12 @@ export class WorkflowStepExecution {
 	@Column({ name: 'wait_till', type: 'timestamptz', precision: 3, nullable: true })
 	waitTill!: Date | null;
 
+	/**
+	 * What ended the wait: a deadline, or a request and its payload. It holds no
+	 * output. A deadline resume emits `wait.outputsAtDeadline`. A request resume
+	 * hands the payload to the node's resume path, and what that returns lands
+	 * in `outputs`, as it does for every step.
+	 */
 	@Column('jsonb', { nullable: true })
 	resume!: StepResume | null;
 
