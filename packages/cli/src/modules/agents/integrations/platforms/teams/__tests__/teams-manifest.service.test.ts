@@ -336,6 +336,26 @@ describe('TeamsManifestService', () => {
 			expect(service.buildManifest(options({ agentName: joined })).name.short).toBe(joined);
 		});
 
+		it('leaves every character whole when the cap lands mid-flag', () => {
+			// The leading letter shifts the boundary, so a cut counted in code
+			// points would end on half a flag. Asserting the property rather than
+			// a fixed string: an exact-value test passes whenever the arithmetic
+			// happens to line up.
+			const graphemes = (value: string) =>
+				[...new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(value)].map(
+					(entry) => entry.segment,
+				);
+
+			const name = 'A' + '🇺🇸'.repeat(20);
+			const short = service.buildManifest(options({ agentName: name })).name.short;
+
+			// The cut has to land on a boundary of the input, so the output is a
+			// whole-grapheme prefix of it. Half a flag is itself a valid grapheme, so
+			// counting graphemes in the output alone proves nothing.
+			expect(graphemes(name).slice(0, graphemes(short).length).join('')).toBe(short);
+			expect(Array.from(short).length).toBeLessThanOrEqual(30);
+		});
+
 		it('does not cut a flag in half at the length cap', () => {
 			// Each flag is one grapheme of two code points, so an odd cap has to
 			// stop short rather than leave half a flag.

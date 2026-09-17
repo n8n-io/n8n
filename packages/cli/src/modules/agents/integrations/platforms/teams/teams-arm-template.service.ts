@@ -29,8 +29,18 @@ const BOT_DISPLAY_NAME_MAX = 42;
 const DEFAULT_BOT_DISPLAY_NAME = 'n8n Agent';
 
 export interface TeamsArmTemplateOptions {
+	/**
+	 * Names the Azure resource, which is why it is the agent's own name and not
+	 * the Teams display name: the resource name cannot change once the bot
+	 * exists, or a second deployment creates a second bot.
+	 */
 	agentName: string;
 	agentId: string;
+	/**
+	 * What the bot is called in the Azure portal. Follows the name chosen for
+	 * Teams when there is one, so the two listings agree.
+	 */
+	displayName?: string;
 	/** Application (client) ID of the Entra app backing the bot. */
 	msaAppId: string;
 	/** Directory (tenant) ID, so the bot is registered single-tenant. */
@@ -105,7 +115,7 @@ export class TeamsArmTemplateService {
 					kind: 'azurebot',
 					properties: {
 						displayName: sanitiseAppName(
-							options.agentName,
+							options.displayName ?? options.agentName,
 							BOT_DISPLAY_NAME_MAX,
 							DEFAULT_BOT_DISPLAY_NAME,
 						),

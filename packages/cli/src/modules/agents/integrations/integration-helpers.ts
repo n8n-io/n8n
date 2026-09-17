@@ -143,15 +143,28 @@ export function sanitiseAppName(raw: string, maxLength: number, fallback: string
 		.replace(/\s+/g, ' ')
 		.trim();
 
+	const out = truncateToCodePoints(cleaned, maxLength);
+	return out.length > 0 ? out : fallback;
+}
+
+/**
+ * Cuts to a budget of `max` code points -- what a JSON Schema `maxLength`
+ * counts -- but only on a grapheme boundary, so a flag or a joined emoji is
+ * never left half-written.
+ *
+ * Every cap on a vendor field goes through here. Capping twice with two rules
+ * is how a value that one step kept whole gets halved by the next.
+ */
+export function truncateToCodePoints(value: string, max: number): string {
+	if (Array.from(value).length <= max) return value.trim();
+
 	let out = '';
 	let points = 0;
-	for (const { segment } of GRAPHEMES.segment(cleaned)) {
+	for (const { segment } of GRAPHEMES.segment(value)) {
 		const size = Array.from(segment).length;
-		if (points + size > maxLength) break;
+		if (points + size > max) break;
 		out += segment;
 		points += size;
 	}
-
-	out = out.trim();
-	return out.length > 0 ? out : fallback;
+	return out.trim();
 }

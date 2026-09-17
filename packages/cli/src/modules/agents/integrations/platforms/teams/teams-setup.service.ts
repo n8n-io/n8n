@@ -149,6 +149,7 @@ export class TeamsSetupService {
 		return this.armTemplateService.buildTemplate({
 			agentName: agent.name,
 			agentId: agent.id,
+			displayName: this.teamsSettingsOf(agent)?.displayName,
 			msaAppId: identity.clientId,
 			msaAppTenantId: identity.tenantId,
 			messagingEndpoint: this.messagingEndpointUrl(scope),

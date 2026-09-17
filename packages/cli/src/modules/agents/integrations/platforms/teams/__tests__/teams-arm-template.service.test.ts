@@ -36,6 +36,27 @@ describe('TeamsArmTemplateService', () => {
 		template.parameters as Record<string, { defaultValue: unknown }>;
 
 	describe('buildTemplate', () => {
+		it('labels the bot with the name chosen for Teams when there is one', () => {
+			const [bot] = resourcesOf(service.buildTemplate({ ...options, displayName: 'Helpdesk' }));
+
+			expect((bot.properties as { displayName: string }).displayName).toBe('Helpdesk');
+		});
+
+		it('falls back to the agent name when no Teams name is set', () => {
+			const [bot] = resourcesOf(service.buildTemplate(options));
+
+			expect((bot.properties as { displayName: string }).displayName).toBe('Support Bot');
+		});
+
+		it('keeps the resource name on the agent, so a Teams rename cannot move it', () => {
+			const withName = parametersOf(service.buildTemplate({ ...options, displayName: 'Helpdesk' }));
+			const without = parametersOf(service.buildTemplate(options));
+
+			// The resource name cannot change once the bot exists: a second
+			// deployment under a new name creates a second bot instead.
+			expect(withName.botName.defaultValue).toBe(without.botName.defaultValue);
+		});
+
 		it('refuses a plain-http endpoint, which Azure will not accept', () => {
 			expect(() =>
 				service.buildTemplate({ ...options, messagingEndpoint: 'http://n8n.example.com/hook' }),
