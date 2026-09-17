@@ -35,6 +35,8 @@ export interface WebhookThroughputOptions {
 	connections: number;
 	durationSeconds: number;
 	timeoutMs: number;
+	/** Maximum post-load observation window for queued executions. Default: 30s. */
+	drainTimeoutSeconds?: number;
 	/** PromQL metric to track workflow completions. Defaults to resolveMetricQuery(testInfo). */
 	metricQuery?: string;
 	/** Additional dimensions attached to every metric and the run report. */
@@ -77,6 +79,7 @@ export async function runWebhookThroughputTest(options: WebhookThroughputOptions
 		connections,
 		durationSeconds,
 		timeoutMs,
+		drainTimeoutSeconds = 30,
 		warmupSeconds = 10,
 		pipelining = DEFAULT_PIPELINING,
 	} = options;
@@ -155,7 +158,7 @@ export async function runWebhookThroughputTest(options: WebhookThroughputOptions
 		waitForThroughput(services.observability.metrics, {
 			expectedCount: Infinity,
 			nodeCount,
-			timeoutMs: (durationSeconds + 30) * 1000,
+			timeoutMs: (durationSeconds + drainTimeoutSeconds) * 1000,
 			baselineValue: setup.baselineCounter,
 			metricQuery,
 		}),
@@ -164,7 +167,7 @@ export async function runWebhookThroughputTest(options: WebhookThroughputOptions
 	// Backlog growth rate: ingestion exceeding processing accumulates queue depth.
 	// For async webhooks at saturation, this is THE key indicator of sustainability.
 	const httpReqPerSec = cannonResult.requests.average;
-	const n8nExecPerSec = throughputResult.tailExecPerSec || throughputResult.avgExecPerSec;
+	const n8nExecPerSec = throughputResult.tailExecPerSec ?? throughputResult.avgExecPerSec;
 	const backlogGrowthPerSec = httpReqPerSec - n8nExecPerSec;
 	const ingestionVsExecutionRatio = n8nExecPerSec > 0 ? httpReqPerSec / n8nExecPerSec : 0;
 	const totalErrors = cannonResult.errors + cannonResult.non2xx;

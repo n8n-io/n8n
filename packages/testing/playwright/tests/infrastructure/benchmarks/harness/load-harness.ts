@@ -134,13 +134,15 @@ export async function runLoadTest(options: LoadTestOptions): Promise<ExecutionMe
 		// Tail rate (last 60s) — closest to the architectural ceiling. Reporter
 		// surfaces this as the `tail/s` column. Skipped for staged runs where the
 		// per-stage rates already convey the same information.
-		await attachMetric(
-			testInfo,
-			'tail-exec-per-sec',
-			exec.throughputResult.tailExecPerSec,
-			'exec/s',
-			dimensions,
-		);
+		if (exec.throughputResult.tailExecPerSec !== undefined) {
+			await attachMetric(
+				testInfo,
+				'tail-exec-per-sec',
+				exec.throughputResult.tailExecPerSec,
+				'exec/s',
+				dimensions,
+			);
+		}
 	}
 	// Diagnostics are whole-run aggregates; tag with variant `whole run` for staged
 	// tests so they don't render as an unlabeled row alongside per-stage rows.
@@ -203,7 +205,11 @@ export async function runLoadTest(options: LoadTestOptions): Promise<ExecutionMe
 		}
 		const keptUp = exec.throughputResult.perStage.some((stage, index) => {
 			const requestedRate = load.stages[index]?.ratePerSecond;
-			return requestedRate !== undefined && stage.tailExecPerSec / requestedRate >= 0.95;
+			return (
+				requestedRate !== undefined &&
+				stage.tailExecPerSec !== undefined &&
+				stage.tailExecPerSec / requestedRate >= 0.95
+			);
 		});
 		expect(keptUp).toBe(true);
 	}
@@ -227,6 +233,10 @@ async function attachStagedResults(
 		const stage = load.stages[i];
 		const measured = tp.perStage[i];
 		if (!stage) continue;
+		if (measured.tailExecPerSec === undefined) {
+			console.warn(`[LOAD] Stage ${i + 1} has insufficient tail samples; metric omitted`);
+			continue;
+		}
 		const efficiency = (measured.tailExecPerSec / stage.ratePerSecond) * 100;
 		const dimensions: BenchmarkDimensions = {
 			...baseDimensions,
@@ -355,6 +365,10 @@ function formatStagedSummary(
 		const stage = load.stages[i];
 		const measured = tp.perStage[i];
 		if (!stage) continue;
+		if (measured.tailExecPerSec === undefined) {
+			out += `\n    Stage ${i + 1} (${stage.ratePerSecond}/sec × ${stage.durationSeconds}s): insufficient measurement`;
+			continue;
+		}
 		const efficiency = (measured.tailExecPerSec / stage.ratePerSecond) * 100;
 		const verdict = verdictFor(efficiency);
 		const symbol = efficiency >= 95 ? '✓' : '✗';

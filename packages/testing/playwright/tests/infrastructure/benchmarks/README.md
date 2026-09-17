@@ -125,6 +125,8 @@ Every run prints a per-test `[DIAG]` block and emits a Benchmark Summary table a
 | `pg tx/s` | Postgres `xact_commit` rate from postgres-exporter |
 | `queue` | Bull jobs waiting (queue specs only) |
 
+Tail and staged rates require at least three distinct counter samples and 80% coverage of the requested window. Duplicate polls between VictoriaMetrics scrapes do not count as samples. A short or incomplete window omits the tail metric instead of reporting a whole-run fallback or zero. Kafka stage rates use the publisher's actual boundaries.
+
 For deeper PG analysis, every spec also logs a top-N `pg_stat_statements` breakdown ranked by total ms/s of work (calls/s × avg ms), plus a `[PG SATURATION]` block (total query CPU including planner overhead and the long tail, buffer hit ratio, bgwriter / WAL pressure, `pg_stat_io` per-backend-type IO) and a `[CONTAINERS]` block (per-container CPU/memory/IO from cAdvisor or `docker stats` sampler). Each run also attaches a `run-report.json` artifact with the full structured report — feedable directly to an LLM for bottleneck analysis.
 
 ## CI

@@ -8,6 +8,7 @@ import { runWebhookThroughputTest } from './webhook-throughput-harness';
 
 export const SINGLE_INSTANCE_WEBHOOK_CONNECTIONS = 5;
 export const SINGLE_INSTANCE_WEBHOOK_DURATION_SECONDS = 120;
+const SINGLE_INSTANCE_WEBHOOK_DRAIN_TIMEOUT_SECONDS = 120;
 
 export async function runSingleInstanceWebhookBenchmark(options: {
 	api: ApiHelpers;
@@ -35,7 +36,12 @@ export async function runSingleInstanceWebhookBenchmark(options: {
 		pipelining: 1,
 		warmupSeconds: 0,
 		durationSeconds: SINGLE_INSTANCE_WEBHOOK_DURATION_SECONDS,
-		timeoutMs: (SINGLE_INSTANCE_WEBHOOK_DURATION_SECONDS + 60) * 1000,
+		timeoutMs:
+			(SINGLE_INSTANCE_WEBHOOK_DURATION_SECONDS +
+				SINGLE_INSTANCE_WEBHOOK_DRAIN_TIMEOUT_SECONDS +
+				60) *
+			1000,
+		drainTimeoutSeconds: SINGLE_INSTANCE_WEBHOOK_DRAIN_TIMEOUT_SECONDS,
 		maxErrorRatePct: 1,
 		minCompletedResponseRatio: 0.95,
 		dimensions: options.dimensions,
