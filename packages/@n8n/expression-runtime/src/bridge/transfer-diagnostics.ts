@@ -28,6 +28,7 @@ interface WalkState {
 }
 
 const ARRAY_INDEX = /^(?:0|[1-9]\d*)$/;
+const IDENTIFIER_KEY = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
 
 export function diagnosticBudgetMs(msLeft: number): number {
 	if (!Number.isFinite(msLeft)) return MAX_DIAGNOSTIC_MS;
@@ -35,6 +36,10 @@ export function diagnosticBudgetMs(msLeft: number): number {
 }
 
 function childPath(path: string, key: string): string {
+	if (!IDENTIFIER_KEY.test(key)) {
+		// A key holding a dot or a quote would read as nesting in dotted form.
+		return `${path}['${key.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}']`;
+	}
 	return path === '' ? key : `${path}.${key}`;
 }
 

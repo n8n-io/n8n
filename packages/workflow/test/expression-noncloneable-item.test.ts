@@ -109,6 +109,11 @@ const CASES: Case[] = [
 	{ name: 'a WeakMap', extra: () => ({ wm: new WeakMap() }), rejectedAt: { vm: 'json.wm' } },
 	{ name: 'a bigint', extra: () => ({ big: 1n }), rejectedAt: {} },
 	{
+		name: 'a function under a key holding a dot',
+		extra: () => ({ 'a.b': () => 1 }),
+		rejectedAt: { vm: "json['a.b']" },
+	},
+	{
 		name: 'a throwing toJSON',
 		extra: () => ({
 			tj: {
