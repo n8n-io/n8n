@@ -44,6 +44,13 @@ separate names and separate defaults.
   incompatible with a wait that is longer than the timeout. A workflow with a
   timeout of one hour and a wait of one day could never finish. The result
   would look like a timeout and not like a configuration error.
+- **Give the two limits separate names and separate defaults.** One limit
+  measures the time in which an execution can run. A second limit measures the
+  time in which it can stay paused. Two names remove the question of whether
+  the clock pauses, because the limits share no clock. Each wait already has
+  its own deadline, so the second limit is an execution-level budget for all
+  the pauses of one execution. That budget needs a default, and the default is
+  a product decision. The work that adds timeouts is where this option belongs.
 - **Let the timeout also limit the wait.** This option treats two questions as
   one. The first question is how long an execution can work. The second is how
   long an execution can stay paused. The two questions have different answers.
