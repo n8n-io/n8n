@@ -1,5 +1,5 @@
 ARG NODE_VERSION=26.7.0
-ARG PNPM_VERSION=12.3.4
+ARG PNPM_VERSION=12.4.2
 ARG PYTHON_VERSION=3.13
 
 # ==============================================================================
@@ -91,7 +91,7 @@ RUN uv pip install . && rm -rf /app/task-runner-python/src
 # ==============================================================================
 FROM alpine:3.22 AS launcher-downloader
 ARG TARGETPLATFORM
-ARG LAUNCHER_VERSION=1.4.7
+ARG LAUNCHER_VERSION=1.5.0
 
 RUN set -e; \
     case "$TARGETPLATFORM" in \

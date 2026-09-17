@@ -3,6 +3,9 @@ import {
 	AI_GATEWAY_MANAGED_TAG,
 	CONFIG_EVALUATIONS_FLAG,
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
+	CONTEXT_PREFERENCES_FLAG,
+	CONTEXT_PREFERENCES_ENABLED_VARIANT,
+	INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
 	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
 	INSTANCE_AI_MCP_CONNECTIONS_FLAG,
 	INSTANCE_AI_NODE_USAGE_FLAG,
@@ -11,6 +14,8 @@ import {
 	INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
 	INSTANCE_AI_CONVERSATION_HISTORY_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
+	INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG,
+	INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
 } from '@n8n/api-types';
 import type { AiGatewayConfigDto } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
@@ -51,6 +56,7 @@ import type {
 	WorkflowVersionSummary,
 	WorkflowVersionDetail,
 	ExecutionResult,
+	StepExecutionResult,
 	ExecutionDebugInfo,
 	NodeOutputResult,
 	ResolvedNodeParametersResult,
@@ -101,9 +107,9 @@ import {
 	type INodeProperties,
 	type INodeTypeDescription,
 	type IConnections,
+	type IWorkflowBase,
 	type IWorkflowSettings,
 	type IWorkflowExecutionDataProcess,
-	type DataTableFilter,
 	type DataTableRow,
 	type DataTableRows,
 	type WorkflowExecuteMode,
@@ -116,7 +122,6 @@ import {
 	FORM_TRIGGER_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
 	SCHEDULE_TRIGGER_NODE_TYPE,
-	ManualExecutionCancelledError,
 	TimeoutExecutionCancelledError,
 	UnexpectedError,
 	UserError,
@@ -179,6 +184,7 @@ import { WorkflowService } from '@/workflows/workflow.service';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
 import { extractResolvedNodeParameters } from './extract-resolved-node-parameters';
+import { waitForInstanceAiExecution } from './instance-ai-execution-wait';
 import {
 	FOLDER_SCAN_LIMIT,
 	FOLDER_SCAN_PROJECT_LIMIT,
@@ -193,7 +199,9 @@ import {
 	sdkPinDataToRuntime,
 } from './instance-ai-run-pin-data';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
+import { pinDataForStepRun, planStepRun, toExecutionItems } from './instance-ai-step-run';
 import { InstanceContextService } from './instance-context.service';
+import type { InstanceContextScope } from './instance-context.service';
 import { InstanceAiMcpRegistryService } from './mcp';
 import { listNodeDiscriminators } from './node-definition-resolver';
 import { fetchAndExtract, maybeSummarize, LRUCache } from './web-research';
@@ -233,6 +241,16 @@ function resolveDisplayedDefaults(
 		desc,
 	);
 	return resolved ?? (parameters as INodeParameters);
+}
+
+/**
+ * A credential class's `documentationUrl` is normally a docs slug ("slack"), but a
+ * few declare a full URL. Normalizes both to a URL.
+ */
+function credentialDocsUrl(documentationUrl: string | undefined): string | undefined {
+	if (!documentationUrl) return undefined;
+	if (documentationUrl.startsWith('http')) return documentationUrl;
+	return `https://docs.n8n.io/integrations/builtin/credentials/${documentationUrl}/`;
 }
 
 /**
@@ -507,6 +525,7 @@ export class InstanceAiAdapterService {
 							projectId,
 							new AgentsCredentialProvider(this.credentialsService, projectId, user),
 							credentialService,
+							{ useEvalModelCatalog: credentialIdAllowlist !== undefined },
 						),
 					}
 				: {}),
@@ -563,12 +582,16 @@ export class InstanceAiAdapterService {
 		mcpConnectionsEnabled: boolean;
 		/** Past-conversation recall: tool, prompt section and first-turn hint. */
 		conversationHistoryEnabled: boolean;
+		/** Progressive workflow policy and planning-tool selection. */
+		progressiveBuildingEnabled: boolean;
 		/** Node-usage context surface: the `node-usage` action and the `nodeTypes` filter on `list`. */
 		nodeUsageEnabled: boolean;
 		/** Per-user folder-exploration gate, passed into `createContext`. Fails
 		 *  closed with every other gate: `getFeatureFlags` never throws, it
 		 *  returns `{}` on a PostHog outage. */
 		folderExplorationEnabled: boolean;
+		/** Saved AI preferences on the opening turn. */
+		aiPreferencesEnabled: boolean;
 	}> {
 		let flags: Awaited<ReturnType<PostHogClient['getFeatureFlags']>> = {};
 		try {
@@ -585,8 +608,14 @@ export class InstanceAiAdapterService {
 			conversationHistoryEnabled:
 				flags[INSTANCE_AI_CONVERSATION_HISTORY_FLAG] ===
 				INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
+			progressiveBuildingEnabled:
+				flags[INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG] ===
+				INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
 			nodeUsageEnabled: flags[INSTANCE_AI_NODE_USAGE_FLAG] === true,
-			folderExplorationEnabled: flags[INSTANCE_AI_FOLDER_EXPLORATION_FLAG] === true,
+			folderExplorationEnabled:
+				flags[INSTANCE_AI_FOLDER_EXPLORATION_FLAG] ===
+				INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
+			aiPreferencesEnabled: flags[CONTEXT_PREFERENCES_FLAG] === CONTEXT_PREFERENCES_ENABLED_VARIANT,
 		};
 	}
 
@@ -605,22 +634,22 @@ export class InstanceAiAdapterService {
 		const instanceContext = this.instanceContext;
 		if (!instanceContext) throw new UnexpectedError('Instance context service is not available');
 
+		const scope: InstanceContextScope = {
+			surface: 'conversation',
+			...(projectId !== undefined ? { projectId } : {}),
+		};
+
 		return {
 			list: async (input) =>
 				await instanceContext.list({
 					user,
-					...(projectId !== undefined ? { projectId } : {}),
+					scope,
 					limit: input.limit,
 					...(input.category !== undefined ? { category: input.category } : {}),
 					...(input.resourceId !== undefined ? { resourceId: input.resourceId } : {}),
 					...(input.beforeId !== undefined ? { beforeId: input.beforeId } : {}),
 				}),
-			expand: async (id) =>
-				await instanceContext.expand({
-					id,
-					user,
-					...(projectId !== undefined ? { projectId } : {}),
-				}),
+			expand: async (id) => await instanceContext.expand({ id, user, scope }),
 		};
 	}
 
@@ -1341,7 +1370,11 @@ export class InstanceAiAdapterService {
 					'workflow:read',
 				]);
 				if (!head) throw new WorkflowNotFoundError(workflowId);
-				return { versionId: head.versionId, updatedAt: head.updatedAt.getTime() };
+				return {
+					versionId: head.versionId,
+					activeVersionId: head.activeVersionId,
+					updatedAt: head.updatedAt.getTime(),
+				};
 			},
 
 			async getWorkflowSnapshot(workflowId: string) {
@@ -1438,7 +1471,7 @@ export class InstanceAiAdapterService {
 				const newWorkflow = workflowRepository.create({
 					name: json.name,
 					nodes: [] as INode[],
-					connections: {} as IConnections,
+					connections: {},
 					settings,
 					active: false,
 					versionId: randomUUID(),
@@ -1730,6 +1763,8 @@ export class InstanceAiAdapterService {
 			workflowRunner,
 			activeExecutions,
 			executionRepository,
+			executionPersistence,
+			workflowHistoryService,
 			nodeTypes,
 			allowSendingParameterValues,
 			roleService,
@@ -1783,7 +1818,7 @@ export class InstanceAiAdapterService {
 
 				const query: ExecutionSummaries.RangeQuery = {
 					kind: 'range' as const,
-					range: { limit: options?.limit ?? 20, lastId: undefined, firstId: undefined },
+					range: { limit: options?.limit ?? 20 },
 					order: { startedAt: 'DESC' as const },
 					user,
 					sharingOptions,
@@ -1815,6 +1850,7 @@ export class InstanceAiAdapterService {
 						startedAt: String(e.startedAt ?? ''),
 						finishedAt: e.stoppedAt ? String(e.stoppedAt) : undefined,
 						mode: e.mode,
+						workflowVersionId: e.workflowVersionId ?? null,
 					}),
 				);
 			},
@@ -1854,9 +1890,7 @@ export class InstanceAiAdapterService {
 				// `saveManualExecutions`; trigger modes (webhook, chat, trigger) are
 				// gated by the success/error settings — override all three.
 				const runData: IWorkflowExecutionDataProcess = {
-					executionMode: triggerNode
-						? getExecutionModeForTrigger(triggerNode)
-						: ('manual' as WorkflowExecuteMode),
+					executionMode: triggerNode ? getExecutionModeForTrigger(triggerNode) : 'manual',
 					workflowData: {
 						...workflow,
 						connections,
@@ -1986,91 +2020,46 @@ export class InstanceAiAdapterService {
 					};
 
 					// Wait for completion with timeout / abort protection
-					const abortSignal = options?.abortSignal;
+					const waitOutcome = await waitForInstanceAiExecution({
+						activeExecutions,
+						executionId,
+						timeoutMs,
+						abortSignal: options?.abortSignal,
+					});
 
-					if (activeExecutions.has(executionId)) {
-						let timeoutId: NodeJS.Timeout | undefined;
-						const timeoutPromise = new Promise<never>((_, reject) => {
-							timeoutId = setTimeout(() => {
-								reject(new Error(`Execution timed out after ${timeoutMs}ms`));
-							}, timeoutMs);
-						});
-
-						let onAbort: (() => void) | undefined;
-						const abortPromise =
-							abortSignal === undefined
-								? undefined
-								: new Promise<never>((_, reject) => {
-										onAbort = () => {
-											const error = new Error(
-												typeof abortSignal.reason === 'string'
-													? abortSignal.reason
-													: 'This operation was aborted',
-											);
-											error.name = 'AbortError';
-											reject(error);
-										};
-										if (abortSignal.aborted) {
-											onAbort();
-											return;
-										}
-										abortSignal.addEventListener('abort', onAbort, { once: true });
-									});
-
-						try {
-							await Promise.race([
-								activeExecutions.getPostExecutePromise(executionId),
-								timeoutPromise,
-								...(abortPromise ? [abortPromise] : []),
-							]);
-							clearTimeout(timeoutId);
-							if (onAbort) abortSignal?.removeEventListener('abort', onAbort);
-						} catch (error) {
-							clearTimeout(timeoutId);
-							if (onAbort) abortSignal?.removeEventListener('abort', onAbort);
-							const isTimeout = error instanceof Error && error.message.includes('timed out');
-							const isAbort =
-								error instanceof Error &&
-								(error.name === 'AbortError' || abortSignal?.aborted === true);
-							// On timeout or abort, cancel the execution with the matching reason
-							if (isTimeout || isAbort) {
-								try {
-									activeExecutions.stopExecution(
-										executionId,
-										isAbort
-											? new ManualExecutionCancelledError(executionId)
-											: new TimeoutExecutionCancelledError(executionId),
-									);
-								} catch {
-									// Execution may have completed between timeout/abort and cancel
-								}
-								const result = {
-									executionId,
-									status: 'error',
-									error: isAbort
-										? 'Execution was cancelled'
-										: `Execution timed out after ${timeoutMs}ms and was cancelled`,
-								} satisfies ExecutionResult;
-								await pruneVerificationPins();
-								trackBuilderExecutedWorkflow(result.status, result.error);
-								return result;
-							}
-							throw error;
-						}
+					if (waitOutcome.kind === 'cancelled') {
+						const result = {
+							executionId,
+							status: 'error',
+							error: waitOutcome.message,
+						} satisfies ExecutionResult;
+						await pruneVerificationPins();
+						trackBuilderExecutedWorkflow(result.status, result.error);
+						return result;
 					}
 
 					const { result, telemetryError } = await extractExecutionOutcome(
 						executionId,
 						allowSendingParameterValues,
+						nodeTypes,
 					);
 					await pruneVerificationPins(result.executedNodeNames);
 					trackBuilderExecutedWorkflow(result.status, telemetryError);
 					// Saved workflow pins fed this run (they ride every instance-ai run) —
 					// report them so callers don't mistake pin-fed nodes for live ones.
 					const workflowPinnedNodeNames = Object.keys(workflow.pinData ?? {});
-					return workflowPinnedNodeNames.length > 0
-						? { ...result, workflowPinnedNodeNames }
-						: result;
+					// The trigger did not fire when the assistant supplied its output.
+					const injectedTriggerNodeName =
+						triggerNode &&
+						(pinDataPlan.mockDataSources.includes('trigger_input') ||
+							Object.hasOwn(pinDataPlan.verificationPinData, triggerNode.name))
+							? triggerNode.name
+							: undefined;
+					return {
+						...result,
+						...(workflowPinnedNodeNames.length > 0 ? { workflowPinnedNodeNames } : {}),
+						...(injectedTriggerNodeName ? { injectedTriggerNodeName } : {}),
+					};
 				} catch (error) {
 					// A failure to launch (or any other unsettled error) is still an
 					// errored builder run — track it before rethrowing so it isn't
@@ -2083,13 +2072,227 @@ export class InstanceAiAdapterService {
 				}
 			},
 
+			async runStep(workflowId: string, nodeName: string, options) {
+				assertNotReadOnly();
+				const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, [
+					'workflow:execute',
+				]);
+
+				if (!workflow) {
+					throw new WorkflowNotFoundError(workflowId);
+				}
+
+				// The draft is the default. A named version runs that graph instead,
+				// while the execution still belongs to the workflow.
+				let nodes: INode[] = workflow.nodes ?? [];
+				let connections: IConnections = workflow.connections ?? {};
+				const versionId = options?.versionId;
+				if (versionId !== undefined && versionId !== workflow.versionId) {
+					const version = await workflowHistoryService.getVersion(user, workflowId, versionId);
+					nodes = version.nodes ?? [];
+					connections = version.connections ?? {};
+				}
+
+				const target = nodes.find((node) => node.name === nodeName);
+				if (!target) {
+					throw new UserError(
+						`The workflow has no node named "${nodeName}". Use workflows(action="get-as-code") to see the node names.`,
+					);
+				}
+				if (target.disabled) {
+					throw new UserError(`Node "${nodeName}" is disabled. Enable it before you run it.`);
+				}
+
+				// Read the run data to replay on the server. A run data payload is far
+				// too large to route through the agent's context.
+				let priorRunData: IRunData | undefined;
+				let reusedFromExecutionId: string | undefined;
+				if (options?.reuseExecutionId !== undefined) {
+					const execution = await assertExecutionAccess(options.reuseExecutionId);
+					if (execution.workflowId !== workflowId) {
+						throw new UserError(
+							`Execution ${options.reuseExecutionId} belongs to a different workflow.`,
+						);
+					}
+					const stored = await executionPersistence.findSingleExecution(options.reuseExecutionId, {
+						includeData: true,
+						unflattenData: true,
+					});
+					priorRunData = stored?.data?.resultData?.runData;
+					reusedFromExecutionId = options.reuseExecutionId;
+				}
+
+				const plan = planStepRun({
+					nodes,
+					connections,
+					targetName: nodeName,
+					mockItems: options?.mockInput ? toExecutionItems(options.mockInput) : undefined,
+					priorRunData,
+				});
+
+				// A pinned node never executes, so the target's own pin — and any pin on
+				// a node whose output we just mocked — has to come off this run's
+				// copy. The saved workflow keeps them.
+				const stepPinData = pinDataForStepRun(workflow.pinData, {
+					targetName: nodeName,
+					mockedNodeNames: plan.mockedNodeNames,
+				});
+
+				const timeoutMs = Math.min(options?.timeout ?? DEFAULT_TIMEOUT_MS, MAX_TIMEOUT_MS);
+
+				// A step run is always manual. `WorkflowRunner.resolvePinData` returns pin
+				// data only for manual and evaluation mode, so any other mode would drop
+				// the workflow's pins and the mocked path with them.
+				const runData: IWorkflowExecutionDataProcess = {
+					executionMode: 'manual',
+					workflowData: {
+						...workflow,
+						nodes,
+						connections,
+						settings: {
+							...workflow.settings,
+							saveManualExecutions: true,
+							saveDataSuccessExecution: 'all',
+							saveDataErrorExecution: 'all',
+							executionTimeout: Math.ceil(timeoutMs / 1000),
+						},
+					},
+					userId: user.id,
+					pushRef,
+					destinationNode: { nodeName, mode: 'inclusive' },
+					pinData: stepPinData,
+					runData: plan.runData,
+					dirtyNodeNames: plan.dirtyNodeNames,
+					source: 'instance_ai',
+				};
+
+				// A trigger has no upstream to run, so the chain and the partial paths
+				// are the same thing. Naming it keeps the engine from auto-detecting a
+				// different trigger in a multi-trigger workflow.
+				if (isTriggerNodeType(target.type)) {
+					runData.triggerToStartFrom = { name: nodeName };
+				}
+
+				// In queue mode the worker rebuilds the run from `execution.data`, where
+				// the transient top-level fields do not survive. Mirror the shape
+				// `workflow-execution.service` persists. `runData` stays `null` when the
+				// plan has none, so `createRunExecutionData` does not initialize it and
+				// turn a chain run into a partial one.
+				const offloadingManualExecutionsInQueueMode =
+					globalConfig.executions?.mode === 'queue' &&
+					process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true';
+				if (offloadingManualExecutionsInQueueMode) {
+					runData.executionData = createRunExecutionData({
+						startData: { destinationNode: runData.destinationNode },
+						resultData: { pinData: stepPinData, runData: plan.runData ?? null },
+						manualData: {
+							userId: user.id,
+							dirtyNodeNames: plan.dirtyNodeNames,
+							triggerToStartFrom: runData.triggerToStartFrom,
+							source: 'instance_ai',
+						},
+						executionData: null,
+					});
+				}
+
+				const trackStepRun = (status: ExecutionResult['status'], error?: string) => {
+					if (!threadId) return;
+
+					telemetry.track('Builder executed workflow', {
+						user_id: user.id,
+						thread_id: threadId,
+						workflow_id: workflowId,
+						executed_by: 'ai',
+						pinned_node_count: Object.keys(stepPinData ?? {}).length,
+						exec_type: 'step',
+						input_mode: plan.inputMode,
+						status,
+						...(error ? { error: redactTelemetryText(error) } : {}),
+					});
+				};
+
+				// Nodes the reused execution could contribute. The target is excluded:
+				// `dirtyNodeNames` forces it to re-run, and a step run stops there, so
+				// it is the only node of the reused set that executes again.
+				const offeredForReplay = priorRunData
+					? Object.keys(priorRunData).filter((name) => name !== nodeName)
+					: [];
+
+				const describe = (result: ExecutionResult): StepExecutionResult => {
+					// `findSubgraph` keeps only the nodes between the trigger and the
+					// target, so a sibling branch of the reused execution never enters
+					// this run. Report what the run really carried, not what was offered.
+					const inRunData = new Set(result.executedNodeNames ?? []);
+					const replayedNodeNames = offeredForReplay.filter((name) => inRunData.has(name));
+
+					// `extractExecutionOutcome` derives `executedNodeNames` from the run
+					// data keys, and both a mocked stub and a replayed entry carry run
+					// data without having run in *this* execution. Leaving them in reports
+					// a whole chain as executed when one node was — the false-coverage
+					// signal this tool must never emit.
+					const notExecutedHere = new Set([...plan.mockedNodeNames, ...replayedNodeNames]);
+
+					return {
+						...result,
+						...(result.executedNodeNames
+							? {
+									executedNodeNames: result.executedNodeNames.filter(
+										(name) => !notExecutedHere.has(name),
+									),
+								}
+							: {}),
+						nodeName,
+						inputMode: plan.inputMode,
+						mockedNodeNames: plan.mockedNodeNames,
+						...(replayedNodeNames.length > 0 ? { replayedNodeNames } : {}),
+						...(reusedFromExecutionId ? { reusedFromExecutionId } : {}),
+						// Report the pins that actually fed this run, not every pin the
+						// workflow carries: the ones this run dropped never applied.
+						...(Object.keys(stepPinData ?? {}).length > 0
+							? { workflowPinnedNodeNames: Object.keys(stepPinData ?? {}) }
+							: {}),
+					};
+				};
+
+				try {
+					const executionId = await workflowRunner.run(runData);
+
+					const waitOutcome = await waitForInstanceAiExecution({
+						activeExecutions,
+						executionId,
+						timeoutMs,
+						abortSignal: options?.abortSignal,
+					});
+
+					if (waitOutcome.kind === 'cancelled') {
+						trackStepRun('error', waitOutcome.message);
+						return describe({
+							executionId,
+							status: 'error',
+							error: waitOutcome.message,
+						});
+					}
+
+					const { result, telemetryError } = await extractExecutionOutcome(
+						executionId,
+						allowSendingParameterValues,
+						nodeTypes,
+					);
+					trackStepRun(result.status, telemetryError);
+					return describe(result);
+				} catch (error) {
+					trackStepRun('error', error instanceof Error ? error.message : String(error));
+					throw error;
+				}
+			},
+
 			async getStatus(executionId: string) {
 				await assertExecutionAccess(executionId);
 				const isRunning = activeExecutions.has(executionId);
 				if (isRunning) {
 					return { executionId, status: 'running' } satisfies ExecutionResult;
 				}
-				return await extractExecutionResult(executionId, allowSendingParameterValues);
+				return await extractExecutionResult(executionId, allowSendingParameterValues, nodeTypes);
 			},
 
 			async getResult(executionId: string) {
@@ -2098,7 +2301,7 @@ export class InstanceAiAdapterService {
 				if (activeExecutions.has(executionId)) {
 					await activeExecutions.getPostExecutePromise(executionId);
 				}
-				return await extractExecutionResult(executionId, allowSendingParameterValues);
+				return await extractExecutionResult(executionId, allowSendingParameterValues, nodeTypes);
 			},
 
 			async stop(executionId: string) {
@@ -2136,13 +2339,13 @@ export class InstanceAiAdapterService {
 				if (!allowSendingParameterValues) {
 					return {
 						nodeName,
-						items: [],
+						outputs: [],
 						totalItems: 0,
 						returned: { from: 0, to: 0 },
 					} satisfies NodeOutputResult;
 				}
 
-				return await extractNodeOutput(executionId, nodeName, options);
+				return await extractNodeOutput(executionId, nodeName, options, nodeTypes);
 			},
 
 			getResolvedNodeParameters: async (
@@ -2368,10 +2571,7 @@ export class InstanceAiAdapterService {
 			async getDocumentationUrl(credentialType: string) {
 				try {
 					const credClass = loadNodesAndCredentials.getCredential(credentialType);
-					const slug = credClass.type.documentationUrl;
-					if (!slug) return null;
-					if (slug.startsWith('http')) return slug;
-					return `https://docs.n8n.io/integrations/builtin/credentials/${slug}/`;
+					return credentialDocsUrl(credClass.type.documentationUrl) ?? null;
 				} catch {
 					return null;
 				}
@@ -2443,9 +2643,11 @@ export class InstanceAiAdapterService {
 					if (typeName.toLowerCase().includes(q)) {
 						try {
 							const credClass = loadNodesAndCredentials.getCredential(typeName);
+							const docsUrl = credentialDocsUrl(credClass.type.documentationUrl);
 							results.push({
 								type: typeName,
 								displayName: credClass.type.displayName,
+								...(docsUrl ? { documentationUrl: docsUrl } : {}),
 							});
 						} catch {
 							// Type not loadable — include with type name as display name
@@ -2458,9 +2660,11 @@ export class InstanceAiAdapterService {
 					try {
 						const credClass = loadNodesAndCredentials.getCredential(typeName);
 						if (credClass.type.displayName.toLowerCase().includes(q)) {
+							const docsUrl = credentialDocsUrl(credClass.type.documentationUrl);
 							results.push({
 								type: typeName,
 								displayName: credClass.type.displayName,
+								...(docsUrl ? { documentationUrl: docsUrl } : {}),
 							});
 						}
 					} catch {
@@ -2881,7 +3085,7 @@ export class InstanceAiAdapterService {
 				return await dataTableService.getManyRowsAndCount(resolvedId, projectId, {
 					take: options?.limit ?? 50,
 					skip: options?.offset ?? 0,
-					filter: options?.filter as DataTableFilter | undefined,
+					filter: options?.filter,
 				});
 			},
 
@@ -2916,7 +3120,7 @@ export class InstanceAiAdapterService {
 				const result = await dataTableService.updateRows(
 					resolvedId,
 					projectId,
-					{ filter: filter as DataTableFilter, data: data as DataTableRow },
+					{ filter, data: data as DataTableRow },
 					true,
 				);
 				return {
@@ -2934,12 +3138,7 @@ export class InstanceAiAdapterService {
 					dataTableId,
 					options,
 				);
-				const result = await dataTableService.deleteRows(
-					resolvedId,
-					projectId,
-					{ filter: filter as DataTableFilter },
-					true,
-				);
+				const result = await dataTableService.deleteRows(resolvedId, projectId, { filter }, true);
 				return {
 					deletedCount: Array.isArray(result) ? result.length : 0,
 					dataTableId: resolvedId,
@@ -3324,7 +3523,7 @@ export class InstanceAiAdapterService {
 					})),
 					inputs: Array.isArray(desc.inputs) ? desc.inputs.map(String) : [],
 					outputs: Array.isArray(desc.outputs) ? desc.outputs.map(String) : [],
-					...(desc.webhooks ? { webhooks: desc.webhooks as unknown[] } : {}),
+					...(desc.webhooks ? { webhooks: desc.webhooks } : {}),
 					...(desc.polling ? { polling: desc.polling } : {}),
 					...(desc.triggerPanel !== undefined ? { triggerPanel: desc.triggerPanel } : {}),
 					...(meta ? { aiGateway: meta } : {}),
@@ -3368,7 +3567,7 @@ export class InstanceAiAdapterService {
 					parameters,
 					nodeType,
 					typeVersion,
-					desc as unknown as INodeTypeDescription,
+					desc,
 				);
 
 				const minimalNode: INode = {
@@ -3380,11 +3579,7 @@ export class InstanceAiAdapterService {
 					position: [0, 0],
 				};
 
-				const issues = NodeHelpers.getNodeParametersIssues(
-					nodeProperties,
-					minimalNode,
-					desc as unknown as INodeTypeDescription,
-				);
+				const issues = NodeHelpers.getNodeParametersIssues(nodeProperties, minimalNode, desc);
 				const allIssues = issues?.parameters ?? {};
 
 				// Filter to top-level visible parameters only (mirrors setupPanel.utils.ts logic)
@@ -3407,12 +3602,7 @@ export class InstanceAiAdapterService {
 						if (prop.type === 'hidden') return false;
 						if (
 							prop.displayOptions &&
-							!NodeHelpers.displayParameter(
-								paramsWithDefaults,
-								prop,
-								minimalNode,
-								desc as unknown as INodeTypeDescription,
-							)
+							!NodeHelpers.displayParameter(paramsWithDefaults, prop, minimalNode, desc)
 						) {
 							return false;
 						}
@@ -3437,7 +3627,7 @@ export class InstanceAiAdapterService {
 					parameters,
 					nodeType,
 					typeVersion,
-					desc as unknown as INodeTypeDescription,
+					desc,
 				);
 				const minimalNode: INode = {
 					id: '',
@@ -3453,14 +3643,7 @@ export class InstanceAiAdapterService {
 				for (const cred of nodeCredentials) {
 					// Check if credential is displayable given current parameters
 					if (cred.displayOptions) {
-						if (
-							!NodeHelpers.displayParameter(
-								paramsWithDefaults,
-								cred,
-								minimalNode,
-								desc as unknown as INodeTypeDescription,
-							)
-						) {
+						if (!NodeHelpers.displayParameter(paramsWithDefaults, cred, minimalNode, desc)) {
 							continue;
 						}
 					}
@@ -3468,11 +3651,7 @@ export class InstanceAiAdapterService {
 				}
 
 				// 2. Node issues for dynamic credentials (e.g. HTTP Request missing auth)
-				const issues = NodeHelpers.getNodeParametersIssues(
-					desc.properties,
-					minimalNode,
-					desc as unknown as INodeTypeDescription,
-				);
+				const issues = NodeHelpers.getNodeParametersIssues(desc.properties, minimalNode, desc);
 				const credentialIssues = issues?.credentials ?? {};
 				for (const credType of Object.keys(credentialIssues)) {
 					credentialTypes.add(credType);
@@ -3961,25 +4140,50 @@ export function truncateResultData(resultData: Record<string, unknown>): Record<
 	if (serialized.length <= MAX_RESULT_CHARS) return resultData;
 
 	const truncated: Record<string, unknown> = {};
-	for (const [nodeName, items] of Object.entries(resultData)) {
-		if (!Array.isArray(items) || items.length === 0) {
-			truncated[nodeName] = items;
-			continue;
-		}
-
-		const itemStr = JSON.stringify(items[0]);
-		const preview =
-			itemStr.length > MAX_NODE_OUTPUT_CHARS
-				? `${itemStr.slice(0, MAX_NODE_OUTPUT_CHARS)}…`
-				: items[0];
-
-		truncated[nodeName] = {
-			_itemCount: items.length,
-			_truncated: true,
-			_firstItemPreview: preview,
-		};
+	for (const [nodeName, value] of Object.entries(resultData)) {
+		truncated[nodeName] = isBranchedNodeOutput(value)
+			? {
+					...value,
+					outputs: value.outputs.map((output) => ({
+						...output,
+						items: collapseItems(output.items),
+					})),
+				}
+			: collapseItems(value);
 	}
 	return truncated;
+}
+
+/** Replaces an item array with its count and a capped first-item preview. */
+function collapseItems(items: unknown): unknown {
+	if (!Array.isArray(items) || items.length === 0) return items;
+
+	const itemStr = JSON.stringify(items[0]);
+	const preview =
+		itemStr.length > MAX_NODE_OUTPUT_CHARS
+			? `${itemStr.slice(0, MAX_NODE_OUTPUT_CHARS)}…`
+			: items[0];
+
+	return {
+		_itemCount: items.length,
+		_truncated: true,
+		_firstItemPreview: preview,
+	};
+}
+
+/** `data[nodeName]` of a multi-output node: items grouped per output. */
+interface BranchedNodeOutput {
+	outputs: Array<{ index: number; name?: string; items: unknown }>;
+	totalItems: number;
+}
+
+function isBranchedNodeOutput(value: unknown): value is BranchedNodeOutput {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		'outputs' in value &&
+		Array.isArray(value.outputs)
+	);
 }
 
 /**
@@ -4051,8 +4255,9 @@ function extractNodeErrors(
 export async function extractExecutionResult(
 	executionId: string,
 	includeOutputData = true,
+	nodeTypes?: NodeTypes,
 ): Promise<ExecutionResult> {
-	return (await extractExecutionOutcome(executionId, includeOutputData)).result;
+	return (await extractExecutionOutcome(executionId, includeOutputData, nodeTypes)).result;
 }
 
 /**
@@ -4066,6 +4271,7 @@ export async function extractExecutionResult(
 export async function extractExecutionOutcome(
 	executionId: string,
 	includeOutputData = true,
+	nodeTypes?: NodeTypes,
 ): Promise<{ result: ExecutionResult; telemetryError?: string }> {
 	const execution = await Container.get(ExecutionPersistence).findSingleExecution(executionId, {
 		includeData: true,
@@ -4094,20 +4300,34 @@ export async function extractExecutionOutcome(
 	// parameter-values privacy setting.
 	const runData = execution.data?.resultData?.runData;
 	const executedNodeNames = Object.keys(runData ?? {});
-	if (includeOutputData) {
-		if (runData) {
+	if (includeOutputData && runData) {
+		const workflow = buildExecutionWorkflow(execution.workflowData, nodeTypes);
+		await workflow?.expression.acquireIsolate();
+		try {
 			for (const [nodeName, nodeRuns] of Object.entries(runData)) {
 				const lastRun = nodeRuns[nodeRuns.length - 1];
-				if (lastRun?.data?.main) {
-					const outputItems = lastRun.data.main
-						.flat()
-						.filter((item): item is NonNullable<typeof item> => item !== null && item !== undefined)
-						.map((item) => item.json);
-					if (outputItems.length > 0) {
-						resultData[nodeName] = truncateNodeOutput(outputItems);
-					}
+				if (!lastRun?.data?.main) continue;
+				const branches = lastRun.data.main.map((items) => (items ?? []).map((item) => item.json));
+				const totalItems = branches.reduce((sum, items) => sum + items.length, 0);
+				if (totalItems === 0) continue;
+				if (branches.length === 1) {
+					resultData[nodeName] = truncateNodeOutput(branches[0]);
+					continue;
 				}
+				// Multi-output nodes (Filter, IF, Switch) keep each output separate, so
+				// their items are reported per output, never as one list.
+				const names = resolveOutputNames(workflow, nodeName);
+				resultData[nodeName] = {
+					outputs: branches.map((items, index) => ({
+						index,
+						...(names[index] ? { name: names[index] } : {}),
+						items: truncateNodeOutput(items),
+					})),
+					totalItems,
+				} satisfies BranchedNodeOutput;
 			}
+		} finally {
+			await workflow?.expression.releaseIsolate();
 		}
 	}
 
@@ -4127,6 +4347,7 @@ export async function extractExecutionOutcome(
 			executedNodeNames: executedNodeNames.length > 0 ? executedNodeNames : undefined,
 			nodeErrors: nodeErrors.length > 0 ? nodeErrors : undefined,
 			lastNodeExecuted: execution.data?.resultData?.lastNodeExecuted,
+			workflowVersionId: execution.workflowVersionId,
 			error: errorMessage,
 			startedAt: execution.startedAt?.toISOString(),
 			finishedAt: execution.stoppedAt?.toISOString(),
@@ -4213,6 +4434,62 @@ export function truncateNodeOutput(items: unknown[]): unknown[] | unknown {
 /** Maximum characters for a single item returned by get-node-output. */
 const MAX_ITEM_CHARS = 50_000;
 
+/** Caps one item so a single giant JSON blob cannot flood the context. */
+function capItem(item: unknown): unknown {
+	const str = JSON.stringify(item);
+	return str.length > MAX_ITEM_CHARS
+		? { _truncatedItem: true, preview: str.slice(0, MAX_ITEM_CHARS), originalLength: str.length }
+		: item;
+}
+
+/**
+ * Transient Workflow over the execution's workflow so `getNodeOutputs` can
+ * resolve dynamic `outputs` expressions (Switch). Same pattern as the
+ * `getNodeInputs` call above. `undefined` when node types are missing or a
+ * node type is not installed; outputs are then index-only.
+ */
+function buildExecutionWorkflow(
+	workflowData: IWorkflowBase | undefined,
+	nodeTypes?: NodeTypes,
+): Workflow | undefined {
+	if (!workflowData || !nodeTypes) return undefined;
+	try {
+		// The constructor fills default parameters on the passed node objects.
+		// Nothing downstream reads raw parameters, so no copy is needed.
+		return new Workflow({
+			nodes: workflowData.nodes,
+			connections: workflowData.connections,
+			active: false,
+			nodeTypes,
+		});
+	} catch {
+		return undefined;
+	}
+}
+
+/**
+ * Output labels as the node's output pane shows them: the resolved output's
+ * `displayName` (Switch rules, Success / Error), else the node type's
+ * `outputNames[i]` (Filter: Kept / Discarded). An empty string means no label.
+ */
+function resolveOutputNames(workflow: Workflow | undefined, nodeName: string): string[] {
+	const node = workflow?.getNode(nodeName);
+	if (!workflow || !node) return [];
+	try {
+		const { description } = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+		const outputs = NodeHelpers.getNodeOutputs(workflow, node, description);
+		// Filter declares one output but names two, so count both sources.
+		const count = Math.max(outputs.length, description.outputNames?.length ?? 0);
+		return Array.from({ length: count }, (_, i) => {
+			const output = outputs[i];
+			const displayName = typeof output === 'object' ? output.displayName : undefined;
+			return displayName ?? description.outputNames?.[i] ?? '';
+		});
+	} catch {
+		return [];
+	}
+}
+
 /**
  * Extract paginated raw output for a specific node from an execution.
  * Each item is capped at MAX_ITEM_CHARS to prevent a single giant JSON blob from flooding context.
@@ -4221,6 +4498,7 @@ export async function extractNodeOutput(
 	executionId: string,
 	nodeName: string,
 	options?: { startIndex?: number; maxItems?: number },
+	nodeTypes?: NodeTypes,
 ): Promise<NodeOutputResult> {
 	const execution = await Container.get(ExecutionPersistence).findSingleExecution(executionId, {
 		includeData: true,
@@ -4241,46 +4519,50 @@ export async function extractNodeOutput(
 
 	const startIndex = options?.startIndex ?? 0;
 	const maxItems = Math.min(options?.maxItems ?? 10, 50);
+	const workflow = buildExecutionWorkflow(execution.workflowData, nodeTypes);
+	await workflow?.expression.acquireIsolate();
+	let names: string[];
+	try {
+		names = resolveOutputNames(workflow, nodeName);
+	} finally {
+		await workflow?.expression.releaseIsolate();
+	}
 
-	// Walk the nested output arrays without materializing all items into memory.
-	// Only collect the slice we need — avoids OOM on nodes with huge result sets.
+	// One page over the items of all outputs (first output first), reported per
+	// output so a Filter's Kept and Discarded items never read as one list.
+	// Only the requested slice is materialized — avoids OOM on huge result sets.
 	let index = 0;
-	let totalItems = 0;
-	const collected: unknown[] = [];
-	for (const output of lastRun?.data?.main ?? []) {
-		for (const item of output ?? []) {
-			totalItems++;
-			if (index >= startIndex && collected.length < maxItems) {
+	let returnedCount = 0;
+	const outputs = (lastRun?.data?.main ?? []).map((output, outputIndex) => {
+		const items = output ?? [];
+		const firstInPage = Math.max(startIndex - index, 0);
+		const collected: unknown[] = [];
+		for (const item of items) {
+			if (index >= startIndex && returnedCount < maxItems) {
 				collected.push(item.json);
+				returnedCount++;
 			}
 			index++;
 		}
-	}
-
-	// Per-item char cap
-	const capped = collected.map((item) => {
-		const str = JSON.stringify(item);
-		if (str.length > MAX_ITEM_CHARS) {
-			return {
-				_truncatedItem: true,
-				preview: str.slice(0, MAX_ITEM_CHARS),
-				originalLength: str.length,
-			};
-		}
-		return item;
+		return {
+			index: outputIndex,
+			...(names[outputIndex] ? { name: names[outputIndex] } : {}),
+			totalItems: items.length,
+			items: collected.map((item, i) =>
+				wrapUntrustedData(
+					JSON.stringify(capItem(item), null, 2),
+					'execution-output',
+					`node:${nodeName}[${outputIndex}][${firstInPage + i}]`,
+				),
+			),
+		};
 	});
 
 	return {
 		nodeName,
-		items: capped.map((item, i) =>
-			wrapUntrustedData(
-				JSON.stringify(item, null, 2),
-				'execution-output',
-				`node:${nodeName}[${startIndex + i}]`,
-			),
-		),
-		totalItems,
-		returned: { from: startIndex, to: startIndex + capped.length },
+		outputs,
+		totalItems: index,
+		returned: { from: startIndex, to: startIndex + returnedCount },
 	};
 }
 
@@ -4400,7 +4682,7 @@ export async function extractExecutionDebugInfo(
 		};
 	}
 
-	const baseResult = await extractExecutionResult(executionId, includeOutputData);
+	const baseResult = await extractExecutionResult(executionId, includeOutputData, nodeTypes);
 
 	const runData = execution.data?.resultData?.runData;
 	const nodeTrace: ExecutionDebugInfo['nodeTrace'] = [];
@@ -4643,7 +4925,7 @@ function toWorkflowJSON(
 			extendsCredential: n.extendsCredential,
 			customTelemetryTags: n.customTelemetryTags,
 		})),
-		connections: source.connections as WorkflowJSON['connections'],
+		connections: source.connections,
 		settings: workflow.settings as WorkflowJSON['settings'],
 		...(source.nodeGroups ? { nodeGroups: source.nodeGroups } : {}),
 	};
@@ -4672,7 +4954,7 @@ function toWorkflowDetail(
 				webhookId: n.webhookId,
 			}),
 		),
-		connections: workflow.connections as Record<string, unknown>,
+		connections: workflow.connections,
 		settings: workflow.settings as Record<string, unknown> | undefined,
 	};
 }

@@ -1,7 +1,7 @@
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtemp, rm, readFile, copyFile } from 'node:fs/promises';
+import { mkdtemp, rm, readFile, copyFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -14,9 +14,14 @@ import { fileURLToPath } from 'node:url';
 // change that makes a downstream stage mis-parse. (render-licenses-md is a
 // full-closure renderer covered end-to-end by its own suite; it intentionally
 // rejects a subset fixture via its unused-override check, so it's excluded here.)
+//
+// Both fixtures are frozen: the SBOM and the override config it needs are a
+// matched pair, so the chain runs strict and no dependency change can break it.
+// The *shipped* license-overrides.json is validated by render-licenses-md.test.mjs.
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURE = path.join(scriptDir, '__fixtures__', 'sample.cdx.json');
+const FIXTURE_OVERRIDES = path.join(scriptDir, '__fixtures__', 'license-overrides.json');
 const ENRICH = path.join(scriptDir, 'enrich-sbom.mjs');
 const CHECK = path.join(scriptDir, 'check-sbom-licenses.mjs');
 const ALLOW_REFS = [
@@ -45,9 +50,9 @@ describe('license-generation chain (real CLIs end-to-end)', () => {
 	});
 
 	it('enriches the SBOM (exit 0) and writes valid JSON resolving every path', async () => {
-		// --lenient-config: the fixture is a representative subset, so overrides for
-		// packages not in it are expected-absent, not stale pins (same as an image scan).
-		const r = run(ENRICH, [raw, enriched, '--lenient-config']);
+		// No --lenient-config: every entry in the fixture config matches a fixture
+		// component, so the strict stale-config gate must stay quiet.
+		const r = run(ENRICH, [raw, enriched, `--overrides=${FIXTURE_OVERRIDES}`]);
 		assert.equal(r.status, 0, r.stderr);
 
 		const sbom = JSON.parse(await readFile(enriched, 'utf-8'));
@@ -72,5 +77,20 @@ describe('license-generation chain (real CLIs end-to-end)', () => {
 		const r = run(CHECK, [enriched, ...ALLOW_REFS]);
 		assert.equal(r.status, 0, r.stderr);
 		assert.match(r.stderr, /jszip/); // surfaced as a dual-license warning, not a failure
+	});
+
+	it('fails on a stale override pin (exit 3) unless --lenient-config', async () => {
+		const stale = path.join(dir, 'stale-overrides.json');
+		await writeFile(
+			stale,
+			JSON.stringify({ overrides: { 'pkg:npm/not-in-the-sbom@1.0.0': { license: 'MIT' } } }),
+		);
+		const args = [raw, path.join(dir, 'stale.cdx.json'), `--overrides=${stale}`];
+
+		const strict = run(ENRICH, args);
+		assert.equal(strict.status, 3, strict.stderr);
+		assert.match(strict.stderr, /not-in-the-sbom/);
+
+		assert.equal(run(ENRICH, [...args, '--lenient-config']).status, 0);
 	});
 });

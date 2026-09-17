@@ -126,6 +126,9 @@ const chooseCredentialSetupOptionDecisionSchema = z.object({
 	existingCredentialId: z.string().optional(),
 });
 
+const RUN_WORKFLOW_DESCRIPTION =
+	'Workflow to run before sending this message. Set only when the director says the user runs it. Select the intended workflow, not a prerequisite or cleanup workflow. This runs normally, without mocks, and supports credential-free manual or schedule workflows only.';
+
 const sendFollowUpMessageDecisionSchema = z.object({
 	action: z.literal('send_follow_up_message'),
 	message: z.string(),
@@ -147,6 +150,7 @@ const sendFollowUpMessageDecisionSchema = z.object({
 	 * that workflow already carries this name.
 	 */
 	renameWorkflowTo: z.string().min(1).optional(),
+	runWorkflowId: z.string().min(1).optional().describe(RUN_WORKFLOW_DESCRIPTION),
 });
 
 const declareDoneDecisionSchema = z.object({
@@ -162,6 +166,11 @@ const declareDoneDecisionSchema = z.object({
  * The schema handed to the model per mode IS the action menu — actions that
  * cannot function at that moment are not offered at all.
  */
+export const userTurnWithoutExecutionSchema = z.discriminatedUnion('action', [
+	sendFollowUpMessageDecisionSchema.omit({ runWorkflowId: true }).strict(),
+	declareDoneDecisionSchema,
+]);
+
 export type ProxyDecisionMode = 'confirmation' | 'user-turn';
 
 export const confirmationDecisionSchema = z.discriminatedUnion('action', [
@@ -173,10 +182,20 @@ export const confirmationDecisionSchema = z.discriminatedUnion('action', [
 	chooseCredentialSetupOptionDecisionSchema,
 ]);
 
-export const userTurnDecisionSchema = z.discriminatedUnion('action', [
-	sendFollowUpMessageDecisionSchema,
-	declareDoneDecisionSchema,
-]);
+export function createUserTurnDecisionSchema(savedWorkflowIds: string[]) {
+	const [firstId, ...remainingIds] = savedWorkflowIds;
+	if (firstId === undefined) return userTurnWithoutExecutionSchema;
+
+	return z.discriminatedUnion('action', [
+		sendFollowUpMessageDecisionSchema.extend({
+			runWorkflowId: z
+				.enum([firstId, ...remainingIds])
+				.optional()
+				.describe(RUN_WORKFLOW_DESCRIPTION),
+		}),
+		declareDoneDecisionSchema,
+	]);
+}
 
 /** Full union — the type every decision consumer handles. Agents are only ever
  *  offered the mode-scoped subsets above. */
@@ -422,7 +441,7 @@ async function resolveManualCredentialSelection(
 ): Promise<InstanceAiConfirmRequest> {
 	const credentialType = request?.credentialType ?? decision.credentialType;
 
-	if (request && request.existingCredentials.length === 0) {
+	if (request?.existingCredentials.length === 0) {
 		const created = await tryCreateCredential(
 			createCredential,
 			request.credentialType,

@@ -1,6 +1,7 @@
 import { BreakingChangeRule } from '@n8n/decorators';
 import { BinaryDataConfig } from 'n8n-core';
 
+import { NOT_AFFECTED_INSTANCE } from '../../detection-report';
 import type {
 	BreakingChangeRuleMetadata,
 	IBreakingChangeInstanceRule,
@@ -27,7 +28,7 @@ export class InMemoryBinaryDataRule implements IBreakingChangeInstanceRule {
 
 	async detect(): Promise<InstanceDetectionReport> {
 		if (this.binaryDataConfig.mode !== 'default') {
-			return { isAffected: false, instanceIssues: [], recommendations: [] };
+			return NOT_AFFECTED_INSTANCE;
 		}
 
 		return {

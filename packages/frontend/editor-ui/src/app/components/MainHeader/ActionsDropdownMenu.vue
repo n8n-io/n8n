@@ -1,5 +1,13 @@
 <script lang="ts" setup>
-import { computed, onBeforeUnmount, onMounted, ref, useCssModule, useTemplateRef } from 'vue';
+import {
+	computed,
+	onBeforeUnmount,
+	onMounted,
+	ref,
+	useCssModule,
+	useTemplateRef,
+	watch,
+} from 'vue';
 import { N8nDropdownMenu, N8nIconButton, type DropdownMenuItemProps } from '@n8n/design-system';
 import WorkflowProductionChecklist from '@/app/components/WorkflowProductionChecklist.vue';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client';
@@ -42,6 +50,11 @@ import { ResourceType } from '@/features/collaboration/projects/projects.utils';
 import { useMoveResourceToProjectToast } from '@/features/collaboration/projects/composables/useMoveResourceToProjectToast';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useMcpJsonNudgeTrigger } from '@/experiments/mcpJsonNudge/composables/useMcpJsonNudgeTrigger';
+import { useDependencies } from '@/app/composables/useDependencies';
+import { useDependencyMenu } from '@/app/composables/useDependencyMenu';
+
+// Dependency submenu ids (`<type>:<id>`) share the menu with the fixed actions.
+type WorkflowMenuItem = DropdownMenuItemProps<WORKFLOW_MENU_ACTIONS | string>;
 
 const props = defineProps<{
 	workflowPermissions: PermissionsRecord['workflow'];
@@ -75,6 +88,44 @@ const workflowTelemetry = useTelemetry();
 const favoritesStore = useFavoritesStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const mcpJsonNudgeTrigger = useMcpJsonNudgeTrigger();
+const { getDependencies, fetchDependencies, fetchDependencyCounts, hasDependencies } =
+	useDependencies();
+const { buildDependencyMenuItems, resolveDependencyMenuId, openDependency } = useDependencyMenu();
+
+// Prefetch the lightweight counts so the menu knows whether to show the entry.
+watch(
+	() => props.id,
+	(id) => {
+		if (!id || props.isNewWorkflow) return;
+		void fetchDependencyCounts([id], 'workflow');
+	},
+	{ immediate: true },
+);
+
+const dependencyMenuChildren = computed<WorkflowMenuItem[]>(() => {
+	const result = getDependencies(props.id, 'workflow');
+	const items: WorkflowMenuItem[] = buildDependencyMenuItems(result?.dependencies ?? []);
+	if (result && result.inaccessibleCount > 0) {
+		items.push({
+			id: 'dependency-inaccessible',
+			label: locale.baseText('workflows.dependencies.hiddenNotice', {
+				adjustToNumber: result.inaccessibleCount,
+				interpolate: { count: String(result.inaccessibleCount) },
+			}),
+			disabled: true,
+			divided: items.length > 0,
+		});
+	}
+	// Details load when the menu opens; show a placeholder until they arrive
+	if (items.length === 0) {
+		items.push({
+			id: 'dependency-loading',
+			label: locale.baseText('generic.loading'),
+			disabled: true,
+		});
+	}
+	return items;
+});
 
 const onExecutionsTab = computed(() => {
 	return [
@@ -90,9 +141,7 @@ const isSharingEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing],
 );
 
-function addWorkflowMenuTestIds(
-	item: DropdownMenuItemProps<WORKFLOW_MENU_ACTIONS>,
-): DropdownMenuItemProps<WORKFLOW_MENU_ACTIONS> {
+function addWorkflowMenuTestIds(item: WorkflowMenuItem): WorkflowMenuItem {
 	return {
 		...item,
 		testId: `workflow-menu-item-${item.id}`,
@@ -131,7 +180,7 @@ function handleFileImport() {
 	}
 }
 
-const workflowMenuItems = computed<Array<DropdownMenuItemProps<WORKFLOW_MENU_ACTIONS>>>(() => {
+const workflowMenuItems = computed<WorkflowMenuItem[]>(() => {
 	const canEdit =
 		(props.workflowPermissions.update === true &&
 			!collaborationReadOnly.value &&
@@ -139,7 +188,7 @@ const workflowMenuItems = computed<Array<DropdownMenuItemProps<WORKFLOW_MENU_ACT
 			!sourceControlStore.preferences.branchReadOnly) ||
 		props.isNewWorkflow;
 
-	const nameAndMetadata: Array<DropdownMenuItemProps<WORKFLOW_MENU_ACTIONS>> = [];
+	const nameAndMetadata: WorkflowMenuItem[] = [];
 
 	if (
 		!collaborationReadOnly.value &&
@@ -172,7 +221,16 @@ const workflowMenuItems = computed<Array<DropdownMenuItemProps<WORKFLOW_MENU_ACT
 		disabled: props.isNewWorkflow,
 	});
 
-	const organization: Array<DropdownMenuItemProps<WORKFLOW_MENU_ACTIONS>> = [];
+	if (!props.isNewWorkflow && hasDependencies(props.id, 'workflow')) {
+		nameAndMetadata.push({
+			id: WORKFLOW_MENU_ACTIONS.DEPENDENCIES,
+			label: locale.baseText('menuActions.dependencies'),
+			icon: { type: 'icon', value: 'link' },
+			children: dependencyMenuChildren.value,
+		});
+	}
+
+	const organization: WorkflowMenuItem[] = [];
 
 	if (props.workflowPermissions.move && projectsStore.isTeamProjectFeatureEnabled) {
 		organization.push({
@@ -200,7 +258,7 @@ const workflowMenuItems = computed<Array<DropdownMenuItemProps<WORKFLOW_MENU_ACT
 		});
 	}
 
-	const importExport: Array<DropdownMenuItemProps<WORKFLOW_MENU_ACTIONS>> = [
+	const importExport: WorkflowMenuItem[] = [
 		{
 			id: WORKFLOW_MENU_ACTIONS.DOWNLOAD,
 			label: locale.baseText('menuActions.exportJson'),
@@ -243,7 +301,7 @@ const workflowMenuItems = computed<Array<DropdownMenuItemProps<WORKFLOW_MENU_ACT
 		});
 	}
 
-	const workflowTools: Array<DropdownMenuItemProps<WORKFLOW_MENU_ACTIONS>> = [
+	const workflowTools: WorkflowMenuItem[] = [
 		{
 			id: WORKFLOW_MENU_ACTIONS.VERSION_HISTORY,
 			label: locale.baseText('menuActions.versionHistory'),
@@ -266,7 +324,7 @@ const workflowMenuItems = computed<Array<DropdownMenuItemProps<WORKFLOW_MENU_ACT
 		});
 	}
 
-	const lifecycle: Array<DropdownMenuItemProps<WORKFLOW_MENU_ACTIONS>> = [];
+	const lifecycle: WorkflowMenuItem[] = [];
 
 	if (
 		(props.workflowPermissions.delete === true &&
@@ -330,7 +388,27 @@ function openDescriptionAndTagsModal(): void {
 	});
 }
 
-async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void> {
+// Always refetch on open — cached entries may be stale (e.g. a credential
+// deleted since the last fetch)
+function onWorkflowMenuToggle(open: boolean): void {
+	if (!open || !props.id || props.isNewWorkflow) return;
+	void fetchDependencies([props.id], 'workflow');
+}
+
+async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS | string): Promise<void> {
+	const dependency = resolveDependencyMenuId(
+		getDependencies(props.id, 'workflow')?.dependencies ?? [],
+		action,
+	);
+	if (dependency) {
+		workflowTelemetry.track('User clicked dependency pill item', {
+			source: 'workflow_menu',
+			dependency_type: dependency.type,
+		});
+		openDependency(dependency);
+		return;
+	}
+
 	switch (action) {
 		case WORKFLOW_MENU_ACTIONS.EDIT_DESCRIPTION: {
 			openDescriptionAndTagsModal();
@@ -532,13 +610,16 @@ defineExpose({
 		<span :class="$style.checklistAnchor">
 			<WorkflowProductionChecklist v-if="!isNewWorkflow" ref="productionChecklist" hide-trigger />
 		</span>
+		<!-- sub-menu-max-height: ~12 rows of 32px; a longer submenu (e.g. dependencies) scrolls -->
 		<N8nDropdownMenu
 			:items="workflowMenuItems"
 			data-test-id="workflow-menu"
 			content-test-id="workflow-menu"
 			placement="bottom-start"
 			max-height="var(--reka-dropdown-menu-content-available-height)"
+			:sub-menu-max-height="384"
 			@select="onWorkflowMenuSelect"
+			@update:model-value="onWorkflowMenuToggle"
 		>
 			<template #trigger>
 				<N8nIconButton

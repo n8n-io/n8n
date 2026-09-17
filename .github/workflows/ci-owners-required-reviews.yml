@@ -16,6 +16,8 @@ run-name: "${{ github.event_name == 'workflow_dispatch' && format('CI: Owners Re
 #   - pull_request_review (submitted/dismissed): re-evaluates when approvals
 #     change. A privileged event (base repo context, secrets), so it covers
 #     fork PRs too — and approvals can only change through review events.
+#     Comment-only reviews are skipped: they cannot change approvals, and
+#     review bots submit one after every push.
 #   - merge_group: reports success on the queue head without re-evaluating.
 #     A PR cannot enter the queue unless this status is green on its head,
 #     and the queue does not change approvals.
@@ -53,14 +55,6 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: >-
-    owners-required-reviews-${{ github.event.pull_request.number
-      || github.event.merge_group.head_sha
-      || inputs.pr_number
-      || github.ref }}
-  cancel-in-progress: true
-
 jobs:
   # The queue requires this status on the merge-group head, but there is
   # nothing new to evaluate there: entering the queue already required the
@@ -73,8 +67,20 @@ jobs:
     permissions:
       statuses: write
     steps:
+      - name: Generate App Token
+        id: app-token
+        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
+        with:
+          app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
+          private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
+          # Scope the token to what the script needs; without these inputs it
+          # would inherit every permission of the app installation.
+          permission-members: read
+          permission-pull-requests: read
+          permission-statuses: write
+
       - env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
           SHA: ${{ github.event.merge_group.head_sha }}
         run: |
           gh api "repos/${GITHUB_REPOSITORY}/statuses/${SHA}" \
@@ -93,31 +99,22 @@ jobs:
       (github.event_name != 'pull_request' ||
        github.event.pull_request.head.repo.full_name == github.repository) &&
       (github.event_name != 'pull_request_review' ||
-       github.event.pull_request.base.ref == 'master')
+       (github.event.pull_request.base.ref == 'master' &&
+        github.event.review.state != 'commented'))
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    # Job-level, not workflow-level: a run whose job is skipped must not
+    # cancel an in-flight evaluation, or the status stays pending.
+    concurrency:
+      group: >-
+        owners-required-reviews-${{ github.event.pull_request.number
+          || inputs.pr_number
+          || github.ref }}
+      cancel-in-progress: true
     permissions:
       contents: read
       statuses: write
     steps:
-      # Fail closed before any fallible step: replace a possibly-green status
-      # with pending, so a failure in token generation, checkout, or setup
-      # cannot leave a stale verdict in effect. The script sets the verdict.
-      # Skipped for workflow_dispatch (no SHA in the event); there the script
-      # sets pending itself.
-      - name: Set pending status
-        if: github.event_name != 'workflow_dispatch'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          SHA: ${{ github.event.pull_request.head.sha }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-        run: |
-          gh api "repos/${GITHUB_REPOSITORY}/statuses/${SHA}" \
-            -f state=pending \
-            -f context='Required Reviews' \
-            -f description='Evaluating required reviews' \
-            -f "target_url=${RUN_URL}"
-
       - name: Generate App Token
         id: app-token
         uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
@@ -129,42 +126,66 @@ jobs:
           permission-members: read
           permission-pull-requests: read
           permission-statuses: write
+      # Fail closed before any fallible step: replace a possibly-green status
+      # with pending, so a failure in token generation, checkout, or setup
+      # cannot leave a stale verdict in effect. The script sets the verdict.
+      # Skipped for workflow_dispatch (no SHA in the event); there the script
+      # sets pending itself.
+      - name: Set pending status
+        if: github.event_name != 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh api "repos/${GITHUB_REPOSITORY}/statuses/${SHA}" \
+            -f state=pending \
+            -f context='Required Reviews' \
+            -f description='Evaluating required reviews' \
+            -f "target_url=${RUN_URL}"
 
       # Always check out the base branch, never the PR merge ref: the OWNERS
       # file and the scripts must be trusted input. The 'master' fallback
       # covers workflow_dispatch, so a dispatch from another branch cannot
-      # run that branch's policy.
+      # run that branch's policy. The script reads only `.github/` and the
+      # root files, which cone mode always includes.
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ github.event.pull_request.base.ref || 'master' }}
           persist-credentials: false
+          sparse-checkout: .github
 
-      - name: Setup Node.js
-        uses: ./.github/actions/setup-nodejs
-        with:
-          build-command: ''
-          # pnpm 11 and 12 resolve a relative lockfile directory from different locations.
-          # Use the checkout path because this workflow can run new workflow code against the old base.
-          install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --lockfile-dir ${{ github.workspace }}/.github/scripts --ignore-workspace
-          cache-dependency-path: .github/scripts/pnpm-lock.yaml
+      # Bootstrap: the checkout is the trusted base branch. Until the action
+      # exists there, there is nothing to run. Report success so the PR that
+      # introduces it can merge; the check is enforced again from the next PR.
+      - name: Check for the enforcement action on the base branch
+        id: bootstrap
+        shell: bash
+        run: |
+          if [ -f .github/actions/run-workflow-script/action.yml ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "No enforcement action on the base branch; nothing to enforce."
+          fi
+
+      - name: Report the bootstrap state
+        if: steps.bootstrap.outputs.ready != 'true' && github.event.pull_request.head.sha != ''
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          gh api "repos/${GITHUB_REPOSITORY}/statuses/${SHA}" \
+            -f state=success \
+            -f context='Required Reviews' \
+            -f description='Owners enforcement is not on the base branch yet'
 
       - name: Evaluate required reviews
+        if: steps.bootstrap.outputs.ready == 'true'
+        uses: ./.github/actions/run-workflow-script
         env:
-          # App token: reading org team membership is beyond GITHUB_TOKEN.
-          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
           PULL_REQUEST_NUMBER: ${{ inputs.pr_number || '' }}
-          STATUS_SHA: ${{ github.event.pull_request.head.sha }}
-        run: |
-          # Bootstrap: the checkout is the trusted base branch. Until the
-          # enforcement script exists there, there is no policy to enforce.
-          if [ ! -f .github/scripts/owners/required-reviews.mjs ]; then
-            echo "No enforcement script on the base branch; nothing to enforce."
-            if [ -n "$STATUS_SHA" ]; then
-              gh api "repos/${GITHUB_REPOSITORY}/statuses/${STATUS_SHA}" \
-                -f state=success \
-                -f context='Required Reviews' \
-                -f description='Owners enforcement is not on the base branch yet'
-            fi
-            exit 0
-          fi
-          node .github/scripts/owners/required-reviews.mjs
+        with:
+          script: .github/scripts/owners/required-reviews.mjs
+          # App token: reading org team membership is beyond GITHUB_TOKEN.
+          github-token: ${{ steps.app-token.outputs.token }}

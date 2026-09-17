@@ -1,4 +1,4 @@
-import { instanceAiEvalSeedDataTableSchema } from '@n8n/api-types';
+import { findSeedFolderIssues, instanceAiEvalSeedDataTableSchema } from '@n8n/api-types';
 import { z } from 'zod';
 
 import {
@@ -164,6 +164,10 @@ const evalTestCaseObjectSchema = z
 		triggerType: z.enum(['manual', 'webhook', 'schedule', 'form']).optional(),
 		executionScenarios: z.array(ExecutionScenarioSchema).optional(),
 		messageBudget: z.number().int().positive().optional(),
+		/** Optional case override. Unset cases use the suite mode or control. */
+		buildMode: z.enum(['progressive', 'default']).optional(),
+		promptVersion: z.string().trim().min(1).max(128).optional(),
+		allowUserExecution: z.boolean().optional(),
 		/** Optional NL assertions about the build CONVERSATION (process: clarifications, push-back,
 		 *  ordering). LLM-judged from the transcript, so skipped in prebuilt/MCP runs. Counted as units. */
 		processExpectations: z.array(z.string().min(1)).optional(),
@@ -261,12 +265,22 @@ export const EvalTestCaseSchema = evalTestCaseObjectSchema
 			c.seed.workflows.length > 0 ||
 			c.seed.dataTables.length > 0 ||
 			c.seed.agents.length > 0 ||
+			c.seed.folders.length > 0 ||
 			c.seed.projects.length > 0,
 		{
 			message:
-				'an inline seed must carry something — messages, workflows, dataTables, agents, or projects',
+				'an inline seed must carry something — messages, workflows, dataTables, agents, folders, or projects',
 		},
 	)
+	// Folder references span two arrays (a workflow's `parentFolderId` names a
+	// `folders[].id`), so only the case can check them. Fails at load, with every
+	// fault named, rather than mid-run where the restore would reject the seed.
+	.superRefine((c, ctx) => {
+		if (c.seed?.mode !== 'inline') return;
+		for (const message of findSeedFolderIssues(c.seed)) {
+			ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['seed', 'folders'], message });
+		}
+	})
 	// Rejected rather than ignored on a later turn, so a misplaced one can't silently
 	// do nothing.
 	.refine((c) => (c.conversation ?? []).slice(1).every((turn) => turn.attach === undefined), {

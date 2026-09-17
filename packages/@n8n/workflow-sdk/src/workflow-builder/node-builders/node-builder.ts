@@ -194,7 +194,7 @@ export function normalizeNodeConfig(config: NodeConfig): NodeConfig {
 	}
 
 	if (!normalizedCreds) return { ...config, id };
-	return { ...config, id, credentials: normalizedCreds } as NodeConfig;
+	return { ...config, id, credentials: normalizedCreds };
 }
 
 /**
@@ -577,11 +577,7 @@ class NodeChainImpl<
 	output(index: number): OutputSelector<TTail['type'], TTail['version'], TTail['_outputType']> {
 		const compositeNode = getCompositeOutputNode(this.tail);
 		if (compositeNode) {
-			return compositeNode.output(index) as OutputSelector<
-				TTail['type'],
-				TTail['version'],
-				TTail['_outputType']
-			>;
+			return compositeNode.output(index);
 		}
 		return this.tail.output(index);
 	}

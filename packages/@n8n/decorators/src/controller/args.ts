@@ -32,11 +32,7 @@ export function Body(
 ): ParameterDecorator | void {
 	// Bare form e.g. `@Body body: MyDto`
 	if (parameterIndex !== undefined) {
-		return ArgDecorator({ type: 'body' })(
-			targetOrOptions as object,
-			propertyKey as string | symbol,
-			parameterIndex,
-		);
+		return ArgDecorator({ type: 'body' })(targetOrOptions as object, propertyKey, parameterIndex);
 	}
 
 	// Factory form e.g. `@Body() body: MyDto` or `@Body({ required: true }) body: MyDto`

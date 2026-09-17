@@ -17,7 +17,6 @@ import type {
 	INodeExecutionData,
 	INodeType,
 	IVersionedNodeType,
-	WorkflowExecuteMode,
 	ITaskDataConnections,
 	ICredentialTestFunctions,
 	IExecuteData,
@@ -202,7 +201,7 @@ export class CredentialsTester {
 				baseAdditionalData,
 				credentialsDecrypted.data,
 				credentialType,
-				'internal' as WorkflowExecuteMode,
+				'internal',
 				undefined,
 				undefined,
 			);

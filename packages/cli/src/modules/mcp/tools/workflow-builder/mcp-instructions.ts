@@ -18,7 +18,11 @@ import {
 	CODE_BUILDER_VALIDATE_TOOL,
 	CODE_BUILDER_VALIDATE_NODE_TOOL,
 } from './constants';
-import { LIST_N8N_GATEWAY_SERVICES_TOOL_NAME } from '../../mcp.constants';
+import {
+	LIST_N8N_GATEWAY_SERVICES_TOOL_NAME,
+	MCP_GET_USER_PREFERENCES_TOOL_NAME,
+	MCP_USER_PREFERENCES_TRIGGER_CLAUSE,
+} from '../../mcp.constants';
 
 export type McpInstructionsOptions = {
 	/**
@@ -34,39 +38,36 @@ export type McpInstructionsOptions = {
 	isN8nConnectAvailable?: boolean;
 
 	/**
-	 * Whether canvas node groups are enabled for this user.
-	 * If true, the builder instructions point the client at the groups docs.
-	 */
-	canvasGroupsEnabled?: boolean;
-
-	/**
 	 * Whether first-class Agent tools are enabled on this MCP server.
 	 * If true, the instructions include Agent build guidance and artifact routing.
 	 */
 	isAgentsEnabled?: boolean;
 
 	/**
-	 * The caller's saved AI preferences, already rendered as a tagged block by
-	 * `AiPreferenceService`. Appended as the last section when set.
+	 * Whether the `get_user_preferences` tool is registered for this caller. If true, one
+	 * sentence points the client at it: clients that load tool descriptions on demand never
+	 * read the tool's own description before building. Identical for every caller.
 	 */
-	aiPreferences?: string;
+	isUserPreferencesEnabled?: boolean;
 };
 export function getMcpInstructions(options: McpInstructionsOptions): string {
 	const {
 		isBuilderEnabled,
 		isN8nConnectAvailable = false,
-		canvasGroupsEnabled = false,
 		isAgentsEnabled = false,
-		aiPreferences,
+		isUserPreferencesEnabled = false,
 	} = options;
 	const INTRO = 'This is the official MCP server for n8n, a workflow automation platform.';
 
-	// Only appended when the flag is on; keeps the paid-per-session string short.
-	const GROUPS_HINT = canvasGroupsEnabled
-		? `
-
-Node groups: when a workflow has several distinct stages, organise it into named groups so it is readable on the canvas. Before creating groups, call ${MCP_GET_SDK_REFERENCE_TOOL.toolName} with section "groups" for the rules, and ${MCP_GET_WORKFLOW_BEST_PRACTICES_TOOL.toolName} (technique "list") for when to group.`
+	// One sentence, placed right after the intro: some clients keep only the first 2048
+	// characters of the instructions, and a test pins the sentence inside that budget.
+	const USER_PREFERENCES_HINT = isUserPreferencesEnabled
+		? `Before ${MCP_USER_PREFERENCES_TRIGGER_CLAUSE} call ${MCP_GET_USER_PREFERENCES_TOOL_NAME} first and apply what it returns for the remainder of the task.`
 		: '';
+
+	const GROUPS_HINT = `
+
+Node groups: when a workflow has several distinct stages, organise it into named groups so it is readable on the canvas. Before creating groups, call ${MCP_GET_SDK_REFERENCE_TOOL.toolName} with section "groups" for the rules, and ${MCP_GET_WORKFLOW_BEST_PRACTICES_TOOL.toolName} (technique "list") for when to group. The save never fails because of groups, so read its result: when it reports TOP_LEVEL_ITEMS_OVER_CEILING, skippedGroups or removedGroups, repair the groups with ${MCP_UPDATE_WORKFLOW_TOOL.toolName} before you tell the user the workflow is done. A warning marked [pre-existing] describes a canvas that was already like that before your update; you do not need to repair it before you report done.`;
 
 	const N8N_CONNECT_HINT = isN8nConnectAvailable
 		? `
@@ -107,13 +108,13 @@ To build n8n workflows${WORKFLOWS_ONLY_CLAUSE}, follow these steps in order:
 
 9. Create: Call ${MCP_CREATE_WORKFLOW_FROM_CODE_TOOL.toolName} with the validated code to save the workflow to n8n. Include a short \`description\` (1-2 sentences, max 255 chars) summarizing what the workflow does — this helps users find and understand their workflows.
 
-10. Update: Call ${MCP_UPDATE_WORKFLOW_TOOL.toolName} with the workflow ID and a list of operations (addNode, removeNode, updateNodeParameters, setNodeParameter, renameNode, addConnection, removeConnection, setNodeCredential, setNodePosition, setNodeDisabled, setNodeSettings, setWorkflowMetadata, setWorkflowSettings). The whole batch is atomic: if any op fails the workflow is unchanged. To modify an existing node's configuration, use updateNodeParameters or setNodeParameter — do NOT use removeNode followed by addNode for the same node, as this disconnects any attached sub-nodes (LLM models, memory, tools) and they will not be re-attached automatically. Use setNodeSettings to change a node's execution behavior (onError, retryOnFail, maxTries, waitBetweenTries, alwaysOutputData, executeOnce); for sub-nodes (LLM model, memory, tools) this is the only way to set onError, because the canvas UI does not expose that setting for them.
+10. Update: Call ${MCP_UPDATE_WORKFLOW_TOOL.toolName} with the workflow ID and a list of operations (addNode, removeNode, updateNodeParameters, setNodeParameter, renameNode, addConnection, removeConnection, setNodeCredential, setNodePosition, setNodeDisabled, setNodeSettings, setWorkflowMetadata, setWorkflowSettings, setNodeGroups, addNodeGroup, removeNodeGroup, updateNodeGroup). The whole batch is atomic: if any op fails the workflow is unchanged, except node-group operations, which are skipped and reported in skippedOperations. To modify an existing node's configuration, use updateNodeParameters or setNodeParameter — do NOT use removeNode followed by addNode for the same node, as this disconnects any attached sub-nodes (LLM models, memory, tools) and they will not be re-attached automatically. Use setNodeSettings to change a node's execution behavior (onError, retryOnFail, maxTries, waitBetweenTries, alwaysOutputData, executeOnce); for sub-nodes (LLM model, memory, tools) this is the only way to set onError, because the canvas UI does not expose that setting for them.
 
 11. Archive: Call ${MCP_ARCHIVE_WORKFLOW_TOOL.toolName} with the workflow ID.
 
 Credentials: when a node needs a credential and another node in the workflow already uses a credential of the same type (e.g. adding a second Slack node next to an existing Slack trigger), reuse that credential — get_workflow_details (with detailLevel 'full', the default) and get_workflow_version include each node's credentials as { id, name } per credential type. Only pick from list_credentials when the workflow does not yet use that credential type, and if more than one credential of that type is available, ask the user which one to use rather than picking one yourself.
 
-Error handling has two complementary layers. (1) Per-node: set onError ("continueRegularOutput" / "continueErrorOutput"), retryOnFail, and maxTries via setNodeSettings on ${MCP_UPDATE_WORKFLOW_TOOL.toolName}. (2) Failure notifications via an Error Trigger node, which can be wired two ways: (a) Dedicated/shared error workflow — point settings.errorWorkflow (via the setWorkflowSettings operation) at a SEPARATE workflow whose first node is an Error Trigger; this is the common best practice and lets one handler cover many workflows. (b) Same-workflow — add an Error Trigger node (→ a notification node such as Send Email or Slack) INTO this workflow; n8n runs it automatically when the workflow fails, with no settings change needed. Caveats: both fire only for production executions (not manual/test runs), and a configured settings.errorWorkflow takes precedence over a same-workflow Error Trigger for the failing run. When a user asks to "add error handling", "get notified on failure", or "make this reliable", briefly explain both patterns — most users do not know Error Triggers exist — and ask which they prefer before setting one up; do not enable error handling silently. For the shared pattern, reuse an existing handler (find its ID with search_workflows) or create a new one — but a dedicated error workflow must be PUBLISHED before it can be linked, in this order: (1) create it (${MCP_CREATE_WORKFLOW_FROM_CODE_TOOL.toolName}, first node = Error Trigger → a notification node), (2) publish it (publish_workflow), (3) set settings.errorWorkflow via ${MCP_UPDATE_WORKFLOW_TOOL.toolName}. Setting settings.errorWorkflow is rejected if the target has no published version, or no Error Trigger in that published version.${GROUPS_HINT}`;
+Error handling has two complementary layers. (1) Per-node: set onError ("continueRegularOutput" / "continueErrorOutput"), retryOnFail, and maxTries via setNodeSettings on ${MCP_UPDATE_WORKFLOW_TOOL.toolName}. "continueErrorOutput" adds an error output after the node's regular outputs: to send failed items somewhere (a log, a data table, an alert), add the target node and connect it with an addConnection operation whose sourceIndex is that output — 1 for a single-output node such as HTTP Request, 2 for an If node. (2) Failure notifications via an Error Trigger node, which can be wired two ways: (a) Dedicated/shared error workflow — point settings.errorWorkflow (via the setWorkflowSettings operation) at a SEPARATE workflow whose first node is an Error Trigger; this is the common best practice and lets one handler cover many workflows. (b) Same-workflow — add an Error Trigger node (→ a notification node such as Send Email or Slack) INTO this workflow; n8n runs it automatically when the workflow fails, with no settings change needed. Caveats: both fire only for production executions (not manual/test runs), and a configured settings.errorWorkflow takes precedence over a same-workflow Error Trigger for the failing run. When a user asks to "add error handling", "get notified on failure", or "make this reliable", briefly explain both patterns — most users do not know Error Triggers exist — and ask which they prefer before setting one up; do not enable error handling silently. For the shared pattern, reuse an existing handler (find its ID with search_workflows) or create a new one — but a dedicated error workflow must be PUBLISHED before it can be linked, in this order: (1) create it (${MCP_CREATE_WORKFLOW_FROM_CODE_TOOL.toolName}, first node = Error Trigger → a notification node), (2) publish it (publish_workflow), (3) set settings.errorWorkflow via ${MCP_UPDATE_WORKFLOW_TOOL.toolName}. Setting settings.errorWorkflow is rejected if the target has no published version, or no Error Trigger in that published version.${GROUPS_HINT}`;
 
 	const AGENT_INSTRUCTIONS = `This MCP server provides tools to build and manage n8n Agents.
 
@@ -125,10 +126,10 @@ Agent conversations and runs are not workflow executions: get_workflow_execution
 
 	return [
 		INTRO,
+		USER_PREFERENCES_HINT,
 		isBuilderEnabled && isAgentsEnabled ? ARTIFACT_ROUTING_INSTRUCTIONS : '',
 		isAgentsEnabled ? AGENT_INSTRUCTIONS : '',
 		isBuilderEnabled ? BUILDER_INSTRUCTIONS : '',
-		aiPreferences,
 	]
 		.filter(Boolean)
 		.join('\n\n');

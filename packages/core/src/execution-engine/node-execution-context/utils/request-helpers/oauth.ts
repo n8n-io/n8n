@@ -201,7 +201,7 @@ async function refreshOrFetchToken(ctx: RefreshOAuth2TokenContext): Promise<Clie
 				client_id: credentials.clientId,
 				...(credentials.grantType === 'authorizationCode' &&
 					credentials.clientCredentialType !== 'certificate' && {
-						client_secret: credentials.clientSecret as string,
+						client_secret: credentials.clientSecret,
 					}),
 			};
 			tokenRefreshOptions.body = body;
@@ -311,7 +311,14 @@ function resolveTokenExpiredStatusCode(
 	oAuth2Options?: IOAuth2Options,
 	credentials?: OAuth2CredentialData,
 ): number | number[] {
-	return credentials?.tokenExpiredStatusCode ?? oAuth2Options?.tokenExpiredStatusCode ?? 401;
+	const credentialStatusCode = credentials?.tokenExpiredStatusCode;
+	if (credentialStatusCode === undefined) {
+		return oAuth2Options?.tokenExpiredStatusCode ?? 401;
+	}
+
+	return Array.isArray(credentialStatusCode)
+		? credentialStatusCode.map((statusCode) => Number(statusCode))
+		: Number(credentialStatusCode);
 }
 
 // Some gateways signal an expired token with different codes on different endpoints
@@ -565,7 +572,7 @@ export async function requestOAuth2(
 		.catch(async (error: IResponseError) => {
 			if (shouldRefreshToken(error.statusCode)) {
 				return await retryWithNewToken(
-					async (opts) => await this.helpers.request(opts as IRequestOptions),
+					async (opts) => await this.helpers.request(opts),
 					() => {
 						// Under simple:false the "error" is the full 401 response thrown above;
 						// hand it back resolved, matching what the caller gets without a retry
