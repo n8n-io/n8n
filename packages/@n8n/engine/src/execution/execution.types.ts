@@ -54,7 +54,7 @@ export const SETTLED_STEP_STATUSES = ['completed', 'failed', 'skipped', 'cancell
 export type SettledStepStatus = (typeof SETTLED_STEP_STATUSES)[number];
 
 export function isSettledStatus(status: StepStatus): status is SettledStepStatus {
-	return SETTLED_STEP_STATUSES.some((settled) => settled === status);
+	return (SETTLED_STEP_STATUSES as readonly StepStatus[]).includes(status);
 }
 
 /**
