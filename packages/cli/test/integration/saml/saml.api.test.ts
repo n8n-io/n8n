@@ -65,7 +65,7 @@ async function attachSamlIdentity(user: User, providerId: string) {
 }
 
 const testServer = utils.setupTestServer({
-	endpointGroups: ['me', 'saml'],
+	endpointGroups: ['me', 'saml', 'changeEmail'],
 	enabledFeatures: ['feat:saml'],
 });
 
@@ -98,17 +98,30 @@ describe('Instance owner', () => {
 				})
 				.expect(200);
 		});
+	});
 
+	describe('POST /change-email', () => {
 		test('should throw BadRequestError if email is changed when SAML is enabled', async () => {
 			await enableSaml(true);
 			await authOwnerAgent
-				.patch('/me')
-				.send({
-					email: randomEmail(),
-					firstName: randomName(),
-					lastName: randomName(),
-				})
+				.post('/change-email')
+				.send({ email: randomEmail() })
 				.expect(400, { code: 400, message: 'SAML user may not change their email' });
+		});
+
+		test('should allow a user with a SAML auth_identity to change email once SAML is disabled', async () => {
+			// The SAML identity is still attached but inactive, so the SSO guard must pass.
+			await enableSaml(false);
+			const newEmail = randomEmail();
+
+			await authSamlUserAgent
+				.post('/change-email')
+				.send({ email: newEmail, currentPassword: samlUserPassword })
+				.expect(200);
+
+			const refreshed = await Container.get(UserRepository).findOneByOrFail({ id: samlUser.id });
+			expect(refreshed.email).toBe(newEmail);
+			samlUser.email = newEmail;
 		});
 	});
 
@@ -147,25 +160,6 @@ describe('Instance owner', () => {
 			expect(refreshed.lastName).toBe(newLastName);
 			samlUser.firstName = newFirstName;
 			samlUser.lastName = newLastName;
-		});
-
-		test('should allow email change once SAML is disabled', async () => {
-			await enableSaml(false);
-			const newEmail = randomEmail();
-
-			await authSamlUserAgent
-				.patch('/me')
-				.send({
-					email: newEmail,
-					firstName: samlUser.firstName,
-					lastName: samlUser.lastName,
-					currentPassword: samlUserPassword,
-				})
-				.expect(200);
-
-			const refreshed = await Container.get(UserRepository).findOneByOrFail({ id: samlUser.id });
-			expect(refreshed.email).toBe(newEmail);
-			samlUser.email = newEmail;
 		});
 	});
 
@@ -1083,6 +1077,26 @@ describe('SAML SSO provisioning', () => {
 			relations: ['role'],
 		});
 		expect(userFromDB.role.slug).toBe('global:admin');
+	});
+
+	it('should redirect a blocked login to the sign-in page instead of answering with an error', async () => {
+		const provisioningService = Container.get(ProvisioningService);
+		// @ts-expect-error - provisioningConfig is private
+		provisioningService.provisioningConfig.defaultInstanceRole = BLOCK_ACCESS_ASSIGNMENT;
+
+		vi.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
+			mapped: {
+				email: 'saml-blocked-over-http@example.com',
+				firstName: 'SAML',
+				lastName: 'User',
+				userPrincipalName: 'saml-blocked-over-http',
+			},
+			raw: { email: 'saml-blocked-over-http@example.com', department: 'sales' },
+		});
+
+		const response = await authOwnerAgent.post('/sso/saml/acs').expect(302);
+
+		expect(response.headers.location).toContain('/signin?ssoError=access-denied');
 	});
 
 	it('should provision project role via expression mapping', async () => {

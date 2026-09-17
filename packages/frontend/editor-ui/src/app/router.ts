@@ -26,7 +26,6 @@ import { useRecentResources } from '@/features/shared/commandBar/composables/use
 import { usePostHog } from '@/app/stores/posthog.store';
 import { RESOURCE_CENTER_EXPERIMENT, TEMPLATE_SETUP_EXPERIENCE } from '@/app/constants/experiments';
 import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
-import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
 import {
 	canManageInstanceAi,
@@ -35,6 +34,8 @@ import {
 
 const ChangePasswordView = async () =>
 	await import('@/features/core/auth/views/ChangePasswordView.vue');
+const ConfirmEmailChangeView = async () =>
+	await import('@/features/core/auth/views/ConfirmEmailChangeView.vue');
 const ErrorView = async () => await import('@/app/views/ErrorView.vue');
 const EntityNotFound = async () => await import('@/app/views/EntityNotFound.vue');
 const EntityUnAuthorised = async () => await import('@/app/views/EntityUnAuthorised.vue');
@@ -602,6 +603,19 @@ export const routes: RouteRecordRaw[] = [
 		},
 	},
 	{
+		path: '/confirm-email-change',
+		name: VIEWS.CONFIRM_EMAIL_CHANGE,
+		component: ConfirmEmailChangeView,
+		// No auth middleware: the token authorizes the change, so the link works
+		// whether the user is signed in or not (the confirm endpoint is skipAuth).
+		meta: {
+			layout: 'auth',
+			telemetry: {
+				pageCategory: 'auth',
+			},
+		},
+	},
+	{
 		path: '/settings',
 		name: VIEWS.SETTINGS,
 		props: true,
@@ -762,7 +776,13 @@ export const routes: RouteRecordRaw[] = [
 				},
 			},
 			{
+				// Old path from before the feature was renamed to Gateway credits;
+				// redirect old deep links to the renamed route.
 				path: 'n8n-connect',
+				redirect: () => ({ name: VIEWS.AI_GATEWAY_SETTINGS }),
+			},
+			{
+				path: 'gateway-credits',
 				name: VIEWS.AI_GATEWAY_SETTINGS,
 				component: SettingsAiGatewayView,
 				meta: {
@@ -1036,8 +1056,10 @@ export const routes: RouteRecordRaw[] = [
 							scope: 'encryptionKey:manage',
 						},
 						custom: () => {
-							const { check } = useEnvFeatureFlag();
-							return check.value('ENCRYPTION_KEY_ROTATION');
+							const settingsStore = useSettingsStore();
+							return (
+								settingsStore.moduleSettings['encryption-key-manager']?.rotationEnabled === true
+							);
 						},
 					},
 					telemetry: {

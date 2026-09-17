@@ -39,6 +39,21 @@ describe('useWorkflowSetupSections', () => {
 		expect(sections.value[0].credentialType).toBe('httpBasicAuth');
 	});
 
+	it('carries preferNewCredential from the setup request onto the section', () => {
+		const setupRequests = ref([
+			makeSetupRequest({ credentialType: 'slackApi', preferNewCredential: true }),
+			makeSetupRequest({
+				credentialType: 'telegramApi',
+				node: { id: 'telegram', name: 'Telegram' },
+			}),
+		]);
+
+		const { sections } = useWorkflowSetupSections(setupRequests);
+
+		expect(sections.value[0].preferNewCredential).toBe(true);
+		expect(sections.value[1].preferNewCredential).toBeUndefined();
+	});
+
 	it('creates sections for editable parameter-only setup requests', () => {
 		const setupRequests = ref([
 			makeSetupRequest({
@@ -188,6 +203,26 @@ describe('useWorkflowSetupSections', () => {
 		const { sections } = useWorkflowSetupSections(setupRequests);
 
 		expect(sections.value[0].currentCredentialId).toBe('node-cred');
+	});
+
+	it('does not seed the existing credential when the request prefers a new one', () => {
+		// preferNewCredential reopens the card to replace the current credential;
+		// seeding it would make the step read as complete and resubmit the old one.
+		const setupRequests = ref([
+			makeSetupRequest({
+				credentialType: 'httpBasicAuth',
+				preferNewCredential: true,
+				node: {
+					credentials: {
+						httpBasicAuth: { id: 'node-cred', name: 'Node credential' },
+					},
+				},
+			}),
+		]);
+
+		const { sections } = useWorkflowSetupSections(setupRequests);
+
+		expect(sections.value[0].currentCredentialId).toBeNull();
 	});
 
 	it('seeds the AI Gateway-managed tag for gateway-managed node credentials', () => {
@@ -423,78 +458,5 @@ describe('useWorkflowSetupSections', () => {
 			'First',
 			'Second',
 		]);
-	});
-
-	describe('subnode-root-aware credential merging', () => {
-		const agentA = { name: 'Agent A', type: 'agent', typeVersion: 1, id: 'a' };
-		const agentB = { name: 'Agent B', type: 'agent', typeVersion: 1, id: 'b' };
-
-		it('keeps two agents with HTTP-credential sub-nodes in separate sections', () => {
-			const setupRequests = ref([
-				makeSetupRequest({
-					subnodeRootNode: agentA,
-					node: { id: 'tool-a', name: 'Tool A', type: 'n8n-nodes-base.httpRequestTool' },
-				}),
-				makeSetupRequest({
-					subnodeRootNode: agentB,
-					node: { id: 'tool-b', name: 'Tool B', type: 'n8n-nodes-base.httpRequestTool' },
-				}),
-			]);
-
-			const { sections } = useWorkflowSetupSections(setupRequests);
-
-			expect(sections.value).toHaveLength(2);
-			expect(sections.value[0].credentialTargetNodes.map((target) => target.name)).toEqual([
-				'Tool A',
-			]);
-			expect(sections.value[1].credentialTargetNodes.map((target) => target.name)).toEqual([
-				'Tool B',
-			]);
-		});
-
-		it('merges sub-nodes of the same agent that share a credential type', () => {
-			const setupRequests = ref([
-				makeSetupRequest({
-					subnodeRootNode: agentA,
-					node: { id: 'tool-1', name: 'Tool 1', type: 'n8n-nodes-base.slack' },
-					credentialType: 'slackApi',
-				}),
-				makeSetupRequest({
-					subnodeRootNode: agentA,
-					node: { id: 'tool-2', name: 'Tool 2', type: 'n8n-nodes-base.slack' },
-					credentialType: 'slackApi',
-				}),
-			]);
-
-			const { sections } = useWorkflowSetupSections(setupRequests);
-
-			expect(sections.value).toHaveLength(1);
-			expect(sections.value[0].credentialTargetNodes.map((target) => target.name)).toEqual([
-				'Tool 1',
-				'Tool 2',
-			]);
-		});
-
-		it('keeps a standalone HTTP node and an agent sub-node in separate sections', () => {
-			const setupRequests = ref([
-				makeSetupRequest({
-					node: { id: 'standalone', name: 'Standalone' },
-				}),
-				makeSetupRequest({
-					subnodeRootNode: agentA,
-					node: { id: 'tool-a', name: 'Tool A', type: 'n8n-nodes-base.httpRequestTool' },
-				}),
-			]);
-
-			const { sections } = useWorkflowSetupSections(setupRequests);
-
-			expect(sections.value).toHaveLength(2);
-			expect(sections.value[0].credentialTargetNodes.map((target) => target.name)).toEqual([
-				'Standalone',
-			]);
-			expect(sections.value[1].credentialTargetNodes.map((target) => target.name)).toEqual([
-				'Tool A',
-			]);
-		});
 	});
 });

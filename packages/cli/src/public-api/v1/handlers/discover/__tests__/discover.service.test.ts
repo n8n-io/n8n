@@ -194,6 +194,19 @@ describe('buildDiscoverResponse', () => {
 		expect(createEndpoint?.requestSchema).toHaveProperty('type');
 	});
 
+	it('should include requestSchema for a decorator route when includeSchemas is true', async () => {
+		const result = await buildDiscoverResponse(['role:manage'] as ApiKeyScope[], {
+			includeSchemas: true,
+		});
+
+		const createEndpoint = result.resources.role?.endpoints.find(
+			(e) => e.operationId === 'createRole',
+		);
+		expect(createEndpoint).toBeDefined();
+		expect(createEndpoint?.requestSchema).toBeDefined();
+		expect(createEndpoint?.requestSchema).toHaveProperty('properties');
+	});
+
 	it('should not include requestSchema on GET endpoints even with includeSchemas', async () => {
 		const result = await buildDiscoverResponse(['tag:list'] as ApiKeyScope[], {
 			includeSchemas: true,

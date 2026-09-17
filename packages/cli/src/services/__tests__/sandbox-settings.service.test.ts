@@ -46,6 +46,20 @@ describe('SandboxSettingsService', () => {
 		service = new SandboxSettingsService(globalConfig as never, instanceCredentialBroker, logger);
 	});
 
+	it.each([
+		{ agentsEnabled: true, instanceAiEnabled: false, expected: true },
+		{ agentsEnabled: false, instanceAiEnabled: true, expected: true },
+		{ agentsEnabled: false, instanceAiEnabled: false, expected: false },
+	])(
+		'enables Agent sandboxes=$expected for Agents=$agentsEnabled and Instance AI=$instanceAiEnabled',
+		({ agentsEnabled, instanceAiEnabled, expected }) => {
+			globalConfig.agents.sandboxEnabled = agentsEnabled;
+			globalConfig.instanceAi.sandboxEnabled = instanceAiEnabled;
+
+			expect(service.isAgentSandboxEnabled()).toBe(expected);
+		},
+	);
+
 	it('uses environment config when no credentials are assigned', async () => {
 		Object.assign(globalConfig.instanceAi, {
 			daytonaApiUrl: 'https://env.daytona.example.com',

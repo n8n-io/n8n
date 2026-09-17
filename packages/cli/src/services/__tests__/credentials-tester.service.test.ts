@@ -1,7 +1,7 @@
 import { OutboundHttp } from '@n8n/backend-network';
-import type { HttpRequestClient, SsrfBridge } from '@n8n/backend-network';
+import type { HttpRequestClient } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
-import { RoutingNode } from 'n8n-core';
+import { RoutingNode, UnrecognizedNodeTypeError } from 'n8n-core';
 import type {
 	ICredentialTestFunctions,
 	ICredentialType,
@@ -58,6 +58,48 @@ describe('CredentialsTester', () => {
 		if (typeof testFn !== 'function') expect.fail();
 
 		expect(testFn.name).toBe('oauth2CredTest');
+	});
+
+	it('should keep resolving supported nodes past one the registry cannot load', () => {
+		credentialTypes.getByName.mockReturnValue(mock<ICredentialType>({ test: undefined }));
+		// `graphqlTool` is a synthetic tool variant appended to `supportedNodes` by
+		// tool generation; `getByName` does not fabricate those, so it throws.
+		credentialTypes.getSupportedNodes.mockReturnValue(['graphqlTool', 'graphql']);
+		credentialTypes.getParentTypes.mockReturnValue([]);
+		const testRequest = { request: { url: '/me' } };
+		nodeTypes.getByName.mockImplementation((nodeName: string) => {
+			if (nodeName === 'graphqlTool') {
+				throw new UnrecognizedNodeTypeError('n8n-nodes-base', 'graphqlTool');
+			}
+			return mock<INodeType>({
+				description: { credentials: [{ name: 'httpHeaderAuth', testedBy: testRequest }] },
+			});
+		});
+
+		const testFn = credentialsTester.getCredentialTestFunction('httpHeaderAuth');
+
+		expect(testFn).toEqual(expect.objectContaining({ testRequest }));
+	});
+
+	it('should report no testing function when every supported node fails to load', async () => {
+		credentialTypes.getByName.mockReturnValue(mock<ICredentialType>({ test: undefined }));
+		credentialTypes.getSupportedNodes.mockReturnValue(['graphqlTool']);
+		credentialTypes.getParentTypes.mockReturnValue([]);
+		nodeTypes.getByName.mockImplementation(() => {
+			throw new UnrecognizedNodeTypeError('n8n-nodes-base', 'graphqlTool');
+		});
+
+		const result = await credentialsTester.testCredentials('user-1', 'httpHeaderAuth', {
+			id: 'cred-1',
+			name: 'Header Auth account',
+			type: 'httpHeaderAuth',
+			data: {},
+		});
+
+		expect(result).toEqual({
+			status: 'Error',
+			message: 'No testing function found for this credential.',
+		});
 	});
 
 	describe('testCredentials', () => {
@@ -166,20 +208,17 @@ describe('CredentialsTester', () => {
 		});
 
 		// A node-defined credential test function may issue an outbound request to
-		// a credential-supplied host. `testCredentials` must hand it a context
-		// carrying the execution's egress policy, so that when SSRF protection is
-		// enabled the test honours the same restrictions as node execution. The
-		// legacy `this.helpers.request` helper routes through
-		// `OutboundHttp.requests({ ssrf })`; asserting that argument proves the
-		// bridge reaches the test function.
-		it('forwards the SSRF bridge from getBase to a function-based credential test', async () => {
+		// a credential-supplied host. `testCredentials` must hand it a context whose
+		// legacy `this.helpers.request` helper routes through the default (safe)
+		// `OutboundHttp.requests()` client, so the test honours the same egress
+		// policy as node execution.
+		it('routes a function-based credential test through the default safe client', async () => {
 			const requestLegacy = vi.fn().mockResolvedValue('ok');
 			const requests = vi.fn().mockReturnValue(mock<HttpRequestClient>({ requestLegacy }));
 			Container.set(OutboundHttp, mock<OutboundHttp>({ requests }));
 
-			const ssrfBridge = mock<SsrfBridge>();
 			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
-				mock<IWorkflowExecuteAdditionalData>({ ssrfBridge }),
+				mock<IWorkflowExecuteAdditionalData>(),
 			);
 
 			mockTestFunction.mockImplementation(async function (this: ICredentialTestFunctions) {
@@ -196,7 +235,7 @@ describe('CredentialsTester', () => {
 			});
 
 			expect(mockTestFunction).toHaveBeenCalled();
-			expect(requests).toHaveBeenCalledWith({ ssrf: ssrfBridge });
+			expect(requests).toHaveBeenCalledWith();
 		});
 
 		it('should keep function-based tests working with the real routing engine untouched', async () => {
@@ -312,6 +351,25 @@ describe('CredentialsTester', () => {
 			expect(nodeTypeArg.description.properties[0].routing?.request).toEqual({
 				url: targetUrl,
 				method: 'GET',
+			});
+		});
+
+		it('pins the probe request to the target host', async () => {
+			mockRoutingNodeResult({ resolve: [[{ json: {} }]] });
+
+			await credentialsTester.probeCredentialAuth(
+				'user-id',
+				'httpHeaderAuth',
+				credentials(),
+				targetUrl,
+				{ allowedDomains: 'fal.run' },
+			);
+
+			const nodeTypeArg = (RoutingNode as unknown as Mock).mock.calls[0][1] as INodeType;
+			expect(nodeTypeArg.description.properties[0].routing?.request).toEqual({
+				url: targetUrl,
+				method: 'GET',
+				allowedDomains: 'fal.run',
 			});
 		});
 

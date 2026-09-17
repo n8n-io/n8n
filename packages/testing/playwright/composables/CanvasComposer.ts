@@ -42,11 +42,8 @@ export class CanvasComposer {
 		nodes: Array<{ credentials?: Record<string, unknown> }>;
 		meta?: Record<string, unknown>;
 	}> {
-		await this.n8n.clipboard.grant();
-		await this.n8n.canvas.selectAll();
-		await this.n8n.canvas.copyNodes();
-		const workflowJSON = await this.n8n.clipboard.readText();
-		return JSON.parse(workflowJSON);
+		await this.selectAllAndCopy();
+		return JSON.parse(await this.n8n.clipboard.readText());
 	}
 
 	/**
@@ -56,6 +53,9 @@ export class CanvasComposer {
 		await this.n8n.canvas.openWorkflowHistory();
 		await this.n8n.canvas.closeWorkflowHistory();
 		await this.n8n.page.waitForLoadState();
+		// Wait for the editor's loading overlay to clear before subsequent header
+		// interactions; nodes can report visible while the overlay still blocks clicks.
+		await this.n8n.canvas.waitForCanvasReady();
 		await expect(this.n8n.canvas.getCanvasNodes().first()).toBeVisible();
 		await expect(this.n8n.canvas.getCanvasNodes().last()).toBeVisible();
 	}
@@ -66,6 +66,9 @@ export class CanvasComposer {
 	async switchBetweenEditorAndWorkflowList(): Promise<void> {
 		await this.n8n.sideBar.clickHomeButton();
 		await this.n8n.workflows.cards.getWorkflows().first().click();
+		// Wait for the editor's loading overlay to clear before subsequent header
+		// interactions; nodes can report visible while the overlay still blocks clicks.
+		await this.n8n.canvas.waitForCanvasReady();
 		await expect(this.n8n.canvas.getCanvasNodes().first()).toBeVisible();
 		await expect(this.n8n.canvas.getCanvasNodes().last()).toBeVisible();
 	}
@@ -76,40 +79,24 @@ export class CanvasComposer {
 	async zoomInAndCheckNodes(): Promise<void> {
 		await this.n8n.canvas.getCanvasNodes().first().waitFor();
 
-		const measureFirstNodeWidth = async () =>
-			await this.n8n.page.evaluate(() => {
-				const firstNode = document.querySelector('[data-test-id="canvas-node"]');
-				if (!firstNode) {
-					throw new Error('Canvas node not found during measurement');
-				}
-				return firstNode.getBoundingClientRect().width;
-			});
-
-		// Wait for the animated fit-to-view to settle before capturing the baseline.
-		let previousWidth = Number.NaN;
-		await expect
-			.poll(async () => {
-				const width = await measureFirstNodeWidth();
-				const settled = width === previousWidth;
-				previousWidth = width;
-				return settled;
-			})
-			.toBe(true);
-
-		const initialNodeSize = await measureFirstNodeWidth();
+		// After a route change the editor runs an animated fit-to-view. Wait for the
+		// viewport transform to stop moving before capturing the baseline zoom, so we
+		// don't measure against a pre-animation value.
+		await this.n8n.canvas.waitForCanvasZoomSettled();
+		const initialZoom = await this.n8n.canvas.getCanvasZoomLevel();
 
 		for (let i = 0; i < 4; i++) {
 			await this.n8n.canvas.clickZoomInButton();
 		}
 
-		// Poll the width until the animated zoom transition settles.
+		// Poll the zoom scale until the animated zoom-in transition settles.
 		await expect
-			.poll(measureFirstNodeWidth, {
+			.poll(async () => await this.n8n.canvas.getCanvasZoomLevel(), {
 				message:
-					"Zoom functionality not working: nodes didn't scale properly. " +
-					`Initial: ${initialNodeSize.toFixed(1)}px`,
+					"Zoom functionality not working: canvas didn't scale in. " +
+					`Initial zoom: ${initialZoom.toFixed(3)}`,
 			})
-			.toBeGreaterThan(initialNodeSize * 1.5);
+			.toBeGreaterThan(initialZoom * 1.5);
 	}
 
 	/**

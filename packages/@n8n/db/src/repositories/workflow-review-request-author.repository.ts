@@ -52,13 +52,6 @@ export class WorkflowReviewRequestAuthorRepository extends BaseRepository<Workfl
 		});
 	}
 
-	async findByRequestId(requestId: string): Promise<WorkflowReviewRequestAuthor[]> {
-		return await this.find({
-			where: { workflowReviewRequestId: requestId },
-			order: { userId: 'ASC' },
-		});
-	}
-
 	async findByRequestIds(requestIds: string[]): Promise<WorkflowReviewRequestAuthor[]> {
 		if (requestIds.length === 0) {
 			return [];
@@ -68,5 +61,19 @@ export class WorkflowReviewRequestAuthorRepository extends BaseRepository<Workfl
 			where: { workflowReviewRequestId: In(requestIds) },
 			order: { userId: 'ASC' },
 		});
+	}
+
+	/** Of the given requests, the ones this user authored — batched `isAuthor`. */
+	async findRequestIdsForUser(requestIds: string[], userId: string): Promise<Set<string>> {
+		if (requestIds.length === 0) {
+			return new Set();
+		}
+
+		const rows = await this.find({
+			select: { workflowReviewRequestId: true },
+			where: { workflowReviewRequestId: In(requestIds), userId },
+		});
+
+		return new Set(rows.map((row) => row.workflowReviewRequestId));
 	}
 }

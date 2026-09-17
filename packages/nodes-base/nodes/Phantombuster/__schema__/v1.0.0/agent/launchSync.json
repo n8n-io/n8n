@@ -10,10 +10,10 @@
         "exitCode": {
             "type": "integer"
         },
-        "resultObject": {},
         "output": {
-            "type": ["string", "null"]
-        }
+            "type": "string"
+        },
+        "resultObject": {}
     },
-    "version": 1
+    "version": 2
 }

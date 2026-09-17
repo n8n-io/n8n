@@ -57,6 +57,7 @@ import QuickConnectButton from '../../quickConnect/components/QuickConnectButton
 import QuickConnectBanner from '../../quickConnect/components/QuickConnectBanner.vue';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
+import type { ProjectType } from '@/features/collaboration/projects/projects.types';
 
 type Props = {
 	mode: string;
@@ -80,6 +81,8 @@ type Props = {
 	/** Provider account of the caller's own connection, for end-user credentials. */
 	connectedAccountIdentifier?: string;
 	isNewCredential?: boolean;
+	/** Type of the project a new credential will be created in. */
+	newCredentialProjectType?: ProjectType;
 	managedOauthAvailable?: boolean;
 	useCustomOauth?: boolean;
 	isQuickConnectMode?: boolean;
@@ -290,6 +293,14 @@ const canWrite = computed(() => {
 const canSelectEndUserType = computed(
 	() => canWrite.value && !!props.credentialPermissions.createEndUser,
 );
+
+// Only in team projects; an existing end-user credential keeps the selector
+// so it can be switched back to fixed.
+const isEndUserTypeAvailable = computed(() => {
+	if (props.isResolvable) return true;
+	if (props.isNewCredential) return props.newCredentialProjectType === ProjectTypes.Team;
+	return isHomeTeamProject.value;
+});
 
 // Connecting an existing private credential only needs the `connect` capability
 // (no edit rights); shared/static credentials store the token on the shared
@@ -584,7 +595,9 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 						isOAuthType &&
 						// Only users who can manage end-user credentials see the selector at all;
 						// it's disabled for them when they lack edit access to the credential.
-						!!credentialPermissions.createEndUser
+						!!credentialPermissions.createEndUser &&
+						// End-user credentials are not available in personal projects.
+						isEndUserTypeAvailable
 					"
 					:model-value="Boolean(isResolvable)"
 					:disabled="!canSelectEndUserType"

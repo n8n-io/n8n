@@ -22,7 +22,13 @@ export function throwIfDomainNotAllowed(
 	configOrUrl: AxiosRequestConfig | string,
 	allowedDomains?: string,
 ): void {
-	const url = typeof configOrUrl === 'string' ? configOrUrl : axios.getUri(configOrUrl);
+	// Resolve the bare target rather than `axios.getUri()`, which also serializes
+	// `config.params` onto the string. The allowlist check only needs the hostname,
+	// and this URL is what the thrown message embeds.
+	const url =
+		typeof configOrUrl === 'string'
+			? configOrUrl
+			: (buildTargetUrl(configOrUrl.url, configOrUrl.baseURL) ?? configOrUrl.url ?? '');
 	assertUrlAllowed({ url, allowedDomains });
 }
 
@@ -139,8 +145,6 @@ export const getBeforeRedirectFn =
 		const customProxyUrl = proxyConfig ? getUrlFromProxyConfig(proxyConfig) : null;
 		const proxy = resolveProxyOption(customProxyUrl);
 
-		// SSRF lookup is applied to direct connections only; behind a proxy the
-		// proxy validates the final target.
 		const targetUrl = redirectedRequest.href;
 		const { httpAgent, httpsAgent } = buildNodeAgents(proxy, ssrf, redirectAgentOptions);
 
@@ -256,7 +260,7 @@ export function isFormDataInstance(data: unknown): data is FormData {
 		(typeof data === 'object' &&
 			data !== null &&
 			'getHeaders' in data &&
-			typeof (data as { getHeaders: unknown }).getHeaders === 'function' &&
+			typeof data.getHeaders === 'function' &&
 			'append' in data &&
 			typeof (data as { append: unknown }).append === 'function')
 	);
@@ -397,8 +401,6 @@ export function setAxiosAgents(
 	const customProxyUrl = proxyConfig ? getUrlFromProxyConfig(proxyConfig) : null;
 	const proxy = resolveProxyOption(customProxyUrl);
 
-	// SSRF lookup is applied to direct connections only; behind a proxy the
-	// proxy validates the final target.
 	const { httpAgent, httpsAgent } = buildNodeAgents(proxy, ssrf, agentOptions);
 	config.httpAgent = httpAgent;
 	config.httpsAgent = httpsAgent;
@@ -418,6 +420,16 @@ export async function validateUrlSsrf(
 	if (!result.ok) {
 		throw result.error;
 	}
+}
+
+export async function validateProxySsrf(
+	proxyConfig: IHttpRequestOptions['proxy'] | string | undefined,
+	ssrfBridge?: SsrfBridge,
+): Promise<void> {
+	const proxyUrl = getUrlFromProxyConfig(proxyConfig);
+	if (!isSupportedProxyUrl(proxyUrl)) return;
+
+	await validateUrlSsrf(proxyUrl, ssrfBridge);
 }
 
 /**

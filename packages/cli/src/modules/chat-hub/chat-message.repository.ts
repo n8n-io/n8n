@@ -4,9 +4,9 @@ import type {
 	ChatMessageId,
 	ChatSessionId,
 } from '@n8n/api-types';
-import { User, withTransaction } from '@n8n/db';
+import { BaseRepository, TransactionRunner, User, withTransaction } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, EntityManager, Repository } from '@n8n/typeorm';
+import { DataSource, EntityManager } from '@n8n/typeorm';
 import { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import { UnexpectedError, type IBinaryData } from 'n8n-workflow';
 
@@ -15,12 +15,13 @@ import { EditMessagePayload, HumanMessagePayload } from './chat-hub.types';
 import { ChatHubSessionRepository } from './chat-session.repository';
 
 @Service()
-export class ChatHubMessageRepository extends Repository<ChatHubMessage> {
+export class ChatHubMessageRepository extends BaseRepository<ChatHubMessage> {
 	constructor(
 		dataSource: DataSource,
 		private chatSessionRepository: ChatHubSessionRepository,
+		transactionRunner: TransactionRunner,
 	) {
-		super(ChatHubMessage, dataSource.manager);
+		super(ChatHubMessage, dataSource.manager, transactionRunner);
 	}
 
 	async createChatMessage(message: QueryDeepPartialEntity<ChatHubMessage>, trx?: EntityManager) {

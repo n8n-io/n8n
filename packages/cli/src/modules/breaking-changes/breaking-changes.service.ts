@@ -23,6 +23,7 @@ import type {
 	IBreakingChangeInstanceRule,
 	IBreakingChangeRule,
 	IBreakingChangeWorkflowRule,
+	WorkflowDetectionReport,
 } from './types';
 import { N8N_VERSION } from '../../constants';
 
@@ -84,7 +85,6 @@ export class BreakingChangeService {
 					});
 				}
 			} catch (error) {
-				console.log('error', error);
 				this.errorReporter.error(error, { shouldBeLogged: true });
 			}
 		}
@@ -185,7 +185,7 @@ export class BreakingChangeService {
 
 		for (let skip = 0; skip < totalWorkflows; skip += this.batchSize) {
 			const workflows = await this.workflowRepository.find({
-				select: ['id', 'name', 'active', 'activeVersionId', 'nodes', 'updatedAt'],
+				select: ['id', 'name', 'active', 'activeVersionId', 'nodes', 'settings', 'updatedAt'],
 				skip,
 				take: this.batchSize,
 				order: { id: 'ASC' },
@@ -227,7 +227,13 @@ export class BreakingChangeService {
 				workflowMetadataMap.set(workflow.id, workflowMetadata);
 
 				for (const rule of workflowLevelRules) {
-					const result = await rule.detectWorkflow(workflow, nodesGroupedByType);
+					let result: WorkflowDetectionReport;
+					try {
+						result = await rule.detectWorkflow(workflow, nodesGroupedByType);
+					} catch (error) {
+						this.reportRuleError(error, rule.id, workflow.id);
+						continue;
+					}
 					if (result.isAffected) {
 						const affectedWorkflow: BreakingChangeAffectedWorkflow = {
 							id: workflow.id,
@@ -244,7 +250,11 @@ export class BreakingChangeService {
 				}
 
 				for (const rule of batchRules) {
-					await rule.collectWorkflowData(workflow, nodesGroupedByType);
+					try {
+						await rule.collectWorkflowData(workflow, nodesGroupedByType);
+					} catch (error) {
+						this.reportRuleError(error, rule.id, workflow.id);
+					}
 				}
 			}
 		}
@@ -275,38 +285,37 @@ export class BreakingChangeService {
 			return await existingDetection;
 		}
 
-		const cacheKey = `${BreakingChangeService.CACHE_KEY_PREFIX}_${targetVersion}`;
-
-		// Start a new detection and store the promise
-		const detectionPromise: Promise<BreakingChangeReportResult> = new Promise((resolve) => {
-			void (async () => {
-				// Check cache first
-				const cachedResult = await this.cacheService.get<BreakingChangeReportResult>(cacheKey);
-				if (cachedResult) {
-					this.logger.debug('Using cached breaking change detection results', {
-						targetVersion,
-					});
-					return resolve(cachedResult);
-				}
-
-				// Perform detection
-				const detectionResult = await this.detect(targetVersion);
-				return resolve(detectionResult);
-			})();
-		});
+		const detectionPromise = this.detectWithCache(targetVersion);
 		this.ongoingDetections.set(targetVersion, detectionPromise);
 
 		try {
-			const result = await detectionPromise;
-			// Store in cache if detection took significant time
-			if (result.shouldCache) {
-				await this.cacheService.set(cacheKey, result);
-			}
-			return result;
+			return await detectionPromise;
 		} finally {
-			// Clean up the promise after completion (success or failure)
 			this.ongoingDetections.delete(targetVersion);
 		}
+	}
+
+	private async detectWithCache(
+		targetVersion: BreakingChangeVersion,
+	): Promise<BreakingChangeReportResult> {
+		const cacheKey = `${BreakingChangeService.CACHE_KEY_PREFIX}_${targetVersion}`;
+
+		const cachedResult = await this.cacheService.get<BreakingChangeReportResult>(cacheKey);
+		if (cachedResult) {
+			this.logger.debug('Using cached breaking change detection results', { targetVersion });
+			return cachedResult;
+		}
+
+		const result = await this.detect(targetVersion);
+		if (result.shouldCache) {
+			await this.cacheService.set(cacheKey, result);
+		}
+		return result;
+	}
+
+	private reportRuleError(error: unknown, ruleId: string, workflowId: string) {
+		this.logger.warn('Breaking change rule failed for workflow, skipping', { ruleId, workflowId });
+		this.errorReporter.error(error, { extra: { ruleId, workflowId } });
 	}
 
 	private shouldCacheDetection(durationMs: number): boolean {

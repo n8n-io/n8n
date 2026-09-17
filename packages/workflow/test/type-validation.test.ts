@@ -372,6 +372,41 @@ describe('Type Validation', () => {
 			const fields = tryToParseJsonToFormFields(json);
 			expect(fields).toEqual([{ fieldType: 'html', html: '<div>test</div>' }]);
 		});
+
+		it('should include the parse error detail for invalid JSON', () => {
+			const json = '[{"fieldLabel": }]';
+			expect(() => tryToParseJsonToFormFields(json)).toThrowError(/^Value is not valid JSON: .+/);
+		});
+
+		it('should reject valid JSON that is not an array', () => {
+			const json = '{"fieldLabel": "Name"}';
+			expect(() => tryToParseJsonToFormFields(json)).toThrowError(
+				'Form fields must be an array of objects, but we got object',
+			);
+		});
+
+		it('should reject array entries that are not objects', () => {
+			const json = '[null]';
+			expect(() => tryToParseJsonToFormFields(json)).toThrowError(
+				"Field 0 must be an object, but we got 'null'",
+			);
+		});
+
+		it('should reject fieldOptions without a values array', () => {
+			const json =
+				'[{"fieldLabel": "Choice", "fieldType": "dropdown", "fieldOptions": {"values": "not an array"}}]';
+			expect(() => tryToParseJsonToFormFields(json)).toThrowError(
+				"Field dropdown in field 0 has no 'values' property that contains an array of options",
+			);
+		});
+
+		it('should reject dropdown options that are not objects', () => {
+			const json =
+				'[{"fieldLabel": "Choice", "fieldType": "dropdown", "fieldOptions": {"values": [null]}}]';
+			expect(() => tryToParseJsonToFormFields(json)).toThrowError(
+				'Field dropdown in field 0 has an invalid option 0',
+			);
+		});
 	});
 
 	describe('binary', () => {

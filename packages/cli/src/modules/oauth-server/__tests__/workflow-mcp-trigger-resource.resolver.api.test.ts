@@ -303,13 +303,13 @@ describe('token audience', () => {
 		const clientId = await registerOAuthClient();
 		const tokenService = Container.get(OAuthTokenService);
 
-		const { accessToken, refreshToken } = tokenService.generateTokenPair(
+		const { accessToken, refreshToken, audience } = tokenService.generateTokenPair(
 			owner.id,
 			clientId,
 			resourceUrlFor(pathA),
 			[],
 		);
-		await tokenService.saveTokenPair(accessToken, refreshToken, clientId, owner.id, []);
+		await tokenService.saveTokenPair(accessToken, refreshToken, clientId, owner.id, [], audience);
 
 		expect(decodeJwtPayload(accessToken).aud).toBe(resourceUrlFor(pathA));
 
@@ -330,13 +330,13 @@ describe('token audience', () => {
 		const tokenService = Container.get(OAuthTokenService);
 
 		// no resource indicator -> falls back to the default resource (instance MCP)
-		const { accessToken, refreshToken } = tokenService.generateTokenPair(
+		const { accessToken, refreshToken, audience } = tokenService.generateTokenPair(
 			owner.id,
 			clientId,
 			undefined,
 			[],
 		);
-		await tokenService.saveTokenPair(accessToken, refreshToken, clientId, owner.id, []);
+		await tokenService.saveTokenPair(accessToken, refreshToken, clientId, owner.id, [], audience);
 
 		expect(decodeJwtPayload(accessToken).aud).not.toBe(resourceUrlFor(webhookPath));
 		await expect(

@@ -11,6 +11,10 @@ describe('resolveCustomModelExperimentDefaults', () => {
 			reasoningEffort: 'low',
 			supportsStructuredOutputs: true,
 		});
+		expect(resolveCustomModelExperimentDefaults('moonshotai/kimi-k3')).toEqual({
+			reasoningEffort: 'low',
+			supportsStructuredOutputs: true,
+		});
 	});
 
 	it('maps GLM 5.2 models to medium effort', () => {

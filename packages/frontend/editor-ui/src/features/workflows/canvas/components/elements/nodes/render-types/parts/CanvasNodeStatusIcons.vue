@@ -26,6 +26,7 @@ const i18n = useI18n();
 const $style = useCssModule();
 
 const {
+	id,
 	name,
 	validationErrors,
 	hasValidationErrors,
@@ -38,7 +39,7 @@ const {
 } = useCanvasNode();
 const renderData = injectCanvasRenderData();
 const executionErrors = computed(
-	() => renderData.value.executionIssuesByNodeName.get(name.value)?.value ?? [],
+	() => renderData.value.executionIssuesByNodeId.get(id.value)?.value ?? [],
 );
 const hasExecutionErrors = computed(() => executionErrors.value.length > 0);
 const hasPinnedData = computed(
@@ -49,7 +50,7 @@ const hasPinnedData = computed(
 const hasExecutionPinData = computed(
 	() =>
 		renderData.value.isExecutionDataDisplayed &&
-		!!renderData.value.executionPinDataByNodeName[name.value],
+		!!renderData.value.executionPinDataByNodeId.get(id.value)?.value,
 );
 const hasVisiblePinData = computed(() => hasPinnedData.value || hasExecutionPinData.value);
 const route = useRoute();

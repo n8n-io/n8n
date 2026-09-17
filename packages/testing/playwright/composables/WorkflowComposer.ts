@@ -16,7 +16,6 @@ export class WorkflowComposer {
 		notificationMessage: string,
 		options: { timeout?: number } = {},
 	) {
-		const { timeout = 3000 } = options;
 		const responsePromise = this.n8n.page.waitForResponse(
 			(response) =>
 				response.url().includes('/rest/workflows/') &&
@@ -26,7 +25,7 @@ export class WorkflowComposer {
 
 		await this.n8n.canvas.clickExecuteWorkflowButton();
 		await responsePromise;
-		await this.n8n.notifications.waitForNotificationAndClose(notificationMessage, { timeout });
+		await this.n8n.notifications.waitForNotificationAndClose(notificationMessage, options);
 	}
 
 	/**
@@ -120,6 +119,7 @@ export class WorkflowComposer {
 		await this.n8n.page.keyboard.press('ControlOrMeta+a');
 		await this.n8n.page.keyboard.press('Backspace');
 		await this.n8n.page.keyboard.type(projectNameOrEmail, { delay: 50 });
+		await this.n8n.resourceMoveModal.waitForDebounce();
 
 		const projectOption = this.n8n.page
 			.getByTestId('project-sharing-info')

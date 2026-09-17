@@ -37,6 +37,12 @@ const mocks = vi.hoisted(() => {
 		isConfigured: vi.fn(),
 		getAgent: vi.fn(),
 		createSlackAgentApp: vi.fn(),
+		createSlackManagerCredential: vi.fn(),
+		finalizeSlackManagerCredential: vi.fn(),
+		getSlackManagedSetup: vi.fn(),
+		installSlackManagedApp: vi.fn(),
+		authorizeNewCredential: vi.fn(),
+		fetchCredentials: vi.fn(),
 	};
 });
 
@@ -90,8 +96,27 @@ vi.mock('@/features/agents/composables/useAgentApi', () => ({
 	getAgent: mocks.getAgent,
 }));
 
+vi.mock('@/features/credentials/credentials.store', () => ({
+	useCredentialsStore: () => ({
+		setCredentials: vi.fn(),
+		fetchUsableCredentials: mocks.fetchCredentials,
+		deleteCredential: vi.fn(),
+	}),
+}));
+
+vi.mock('@/features/credentials/composables/useCredentialOAuth', () => ({
+	useCredentialOAuth: () => ({
+		authorize: vi.fn(),
+		authorizeNewCredential: mocks.authorizeNewCredential,
+	}),
+}));
+
 vi.mock('@/features/agents/channels/slack/api', () => ({
 	createSlackAgentApp: mocks.createSlackAgentApp,
+	createSlackManagerCredential: mocks.createSlackManagerCredential,
+	finalizeSlackManagerCredential: mocks.finalizeSlackManagerCredential,
+	getSlackManagedSetup: mocks.getSlackManagedSetup,
+	installSlackManagedApp: mocks.installSlackManagedApp,
 }));
 
 vi.mock('@/features/agents/components/AgentChannelSlackSetup.vue', () => ({
@@ -131,6 +156,28 @@ vi.mock('@/features/agents/components/AgentChannelSlackSetup.vue', () => ({
 				>Install Slack app</button>
 			</div>
 		`,
+	},
+}));
+
+vi.mock('@/features/agents/components/AgentChannelSlackManagedSetup.vue', () => ({
+	default: {
+		props: ['setup', 'connectManager', 'installApp'],
+		setup(props: {
+			connectManager?: (credentialId?: string) => Promise<boolean>;
+			installApp?: (managerCredentialId: string, workspaceId: string) => Promise<boolean>;
+		}) {
+			async function connectManager() {
+				await props.connectManager?.();
+			}
+			async function install() {
+				await props.installApp?.('manager-credential', 'T123');
+			}
+			return { connectManager, install };
+		},
+		template: `<div data-testid="mock-slack-managed-setup">
+			<button data-testid="mock-slack-manager-connect" @click="connectManager">Connect manager</button>
+			<button data-testid="mock-slack-managed-install" @click="install">Install</button>
+		</div>`,
 	},
 }));
 
@@ -187,6 +234,30 @@ describe('ChannelSetupCard', () => {
 		mocks.isConfigured.mockReturnValue(false);
 		mocks.getAgent.mockResolvedValue({ name: 'Agent', id: 'agent-1' });
 		mocks.createSlackAgentApp.mockResolvedValue({ installUrl: 'https://slack.com/oauth/install' });
+		mocks.createSlackManagerCredential.mockResolvedValue({
+			id: 'manager-credential',
+			name: 'Slack manager',
+			type: 'slackManagerOAuth2Api',
+			isResolvable: false,
+		});
+		mocks.fetchCredentials.mockResolvedValue([
+			{
+				id: 'manager-credential',
+				name: 'Slack manager',
+				type: 'slackManagerOAuth2Api',
+			},
+		]);
+		mocks.authorizeNewCredential.mockResolvedValue(true);
+		mocks.finalizeSlackManagerCredential.mockResolvedValue(undefined);
+		mocks.getSlackManagedSetup.mockResolvedValue({
+			managedSetupAvailable: false,
+			managerCredentials: [],
+		});
+		mocks.installSlackManagedApp.mockResolvedValue({
+			status: 'connected',
+			appId: 'A123',
+			credentialId: 'slack-credential',
+		});
 	});
 
 	it('renders the setup UI for the requested integration type', async () => {
@@ -196,6 +267,30 @@ describe('ChannelSetupCard', () => {
 		expect(wrapper.find('[data-testid="mock-slack-setup"]').attributes('data-setup-mode')).toBe(
 			'simple',
 		);
+	});
+
+	it('renders a loading skeleton until managed Slack setup availability is known', async () => {
+		let resolveManagedSetup: (value: {
+			managedSetupAvailable: boolean;
+			managerCredentials: [];
+		}) => void = () => {};
+		mocks.getSlackManagedSetup.mockReturnValueOnce(
+			new Promise((resolve) => {
+				resolveManagedSetup = resolve;
+			}),
+		);
+		const wrapper = mountCard();
+		await flushPromises();
+
+		expect(wrapper.find('[data-testid="channel-setup-catalog-loading"]').exists()).toBe(true);
+		expect(wrapper.find('[data-testid="mock-slack-setup"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="mock-slack-managed-setup"]').exists()).toBe(false);
+
+		resolveManagedSetup({ managedSetupAvailable: false, managerCredentials: [] });
+		await flushPromises();
+
+		expect(wrapper.find('[data-testid="channel-setup-catalog-loading"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="mock-slack-setup"]').exists()).toBe(true);
 	});
 
 	it('does not describe a configured draft integration as connected', async () => {
@@ -216,6 +311,110 @@ describe('ChannelSetupCard', () => {
 		await flushPromises();
 
 		expect(mocks.connect).toHaveBeenCalledWith('slack', 'cred-1', undefined);
+		expect(wrapper.emitted('resolve')).toEqual([[{ approved: true }]]);
+	});
+
+	it('uses managed Slack setup and resolves after the app installs', async () => {
+		mocks.getSlackManagedSetup.mockResolvedValueOnce({
+			managedSetupAvailable: true,
+			managerCredentials: [
+				{
+					id: 'manager-credential',
+					name: 'Slack manager',
+					connected: true,
+					reconnectRequired: false,
+					workspaces: [{ id: 'T123', name: 'Workspace', connected: false }],
+				},
+			],
+		});
+		const wrapper = mountCard();
+		await flushPromises();
+
+		expect(wrapper.find('[data-testid="mock-slack-managed-setup"]').exists()).toBe(true);
+		expect(wrapper.find('[data-testid="mock-slack-setup"]').exists()).toBe(false);
+
+		await wrapper.find('[data-testid="mock-slack-managed-install"]').trigger('click');
+		await flushPromises();
+
+		expect(mocks.installSlackManagedApp).toHaveBeenCalledWith(
+			expect.anything(),
+			'project-1',
+			'agent-1',
+			'manager-credential',
+			'T123',
+		);
+		expect(wrapper.emitted('resolve')).toEqual([[{ approved: true }]]);
+	});
+
+	it('keeps skip disabled while managed Slack authorization is in flight', async () => {
+		let resolveAuthorization: (connected: boolean) => void = () => {};
+		mocks.authorizeNewCredential.mockReturnValueOnce(
+			new Promise((resolve) => {
+				resolveAuthorization = resolve;
+			}),
+		);
+		mocks.getSlackManagedSetup.mockResolvedValue({
+			managedSetupAvailable: true,
+			managerCredentials: [],
+		});
+		const wrapper = mountCard();
+		await flushPromises();
+
+		await wrapper.get('[data-testid="mock-slack-manager-connect"]').trigger('click');
+		await flushPromises();
+
+		const skipButton = wrapper.get('[data-testid="channel-setup-card-skip"]');
+		expect(skipButton.attributes('disabled')).toBeDefined();
+		await skipButton.trigger('click');
+		expect(wrapper.emitted('resolve')).toBeUndefined();
+
+		resolveAuthorization(true);
+		await flushPromises();
+
+		expect(skipButton.attributes('disabled')).toBeUndefined();
+	});
+
+	it('keeps skip disabled while managed Slack installation is in flight', async () => {
+		let resolveInstall: (result: {
+			status: 'connected';
+			appId: string;
+			credentialId: string;
+		}) => void = () => {};
+		mocks.installSlackManagedApp.mockReturnValueOnce(
+			new Promise((resolve) => {
+				resolveInstall = resolve;
+			}),
+		);
+		mocks.getSlackManagedSetup.mockResolvedValue({
+			managedSetupAvailable: true,
+			managerCredentials: [
+				{
+					id: 'manager-credential',
+					name: 'Slack manager',
+					connected: true,
+					reconnectRequired: false,
+					workspaces: [{ id: 'T123', name: 'Workspace', connected: false }],
+				},
+			],
+		});
+		const wrapper = mountCard();
+		await flushPromises();
+
+		await wrapper.get('[data-testid="mock-slack-managed-install"]').trigger('click');
+		await flushPromises();
+
+		const skipButton = wrapper.get('[data-testid="channel-setup-card-skip"]');
+		expect(skipButton.attributes('disabled')).toBeDefined();
+		await skipButton.trigger('click');
+		expect(wrapper.emitted('resolve')).toBeUndefined();
+
+		resolveInstall({
+			status: 'connected',
+			appId: 'A123',
+			credentialId: 'slack-credential',
+		});
+		await flushPromises();
+
 		expect(wrapper.emitted('resolve')).toEqual([[{ approved: true }]]);
 	});
 

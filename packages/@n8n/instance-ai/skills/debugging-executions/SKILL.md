@@ -27,6 +27,30 @@ empty node, or a missing node is a real defect to investigate, not something to
 explain away. If you genuinely cannot re-run the failing path, say so plainly and
 name what is unconfirmed instead of repeating a success claim.
 
+## Draft versus live
+
+A published workflow runs the version that was published, not the draft you
+edit. Your save creates a draft, and the draft is not live until somebody
+publishes it. So a fix to a live workflow changes nothing in production on its
+own.
+
+Two consequences when the user reports a live workflow failing:
+
+- **Read the version each execution ran.** `executions(action="list", workflowId)`
+  returns `workflowVersionId` on every row, plus `workflow.activeVersionId`
+  (the published version) and `workflow.draftVersionId`. Only a row whose
+  `workflowVersionId` equals `workflow.activeVersionId` ran the published code.
+  A run of a draft proves nothing about production. A `workflow.draftVersionId`
+  different from `workflow.activeVersionId` means the latest changes, including
+  any fix you just made, are not live.
+- **Name the version when you invite a retest.** Say whether the user tests the
+  draft or the published version. "Try it again" after a draft-only fix sends
+  the user to the broken published version, and the fix looks like it failed.
+
+Do not report a fix as live until the published version is the fixed one. Ask
+whether to publish it instead. After a publish, a new live run is what confirms
+the fix — an earlier execution ran the old version.
+
 ## Testing event-triggered workflows
 
 Use `executions(action="run")` with `inputData` matching the trigger's output
@@ -46,6 +70,77 @@ either list tagged with `reason: "unreconstructable-context"` are NOT real bugs 
 they reference variables we don't reconstruct in replay (`$vars`, `$secrets`,
 `$response`, `$request`, `$pageCount`, `$ai`). The value existed at execution
 time; we just don't have it here.
+
+## Confirming a fix on the node that failed
+
+`executions(action="debug")` tells you what the node received. It does not tell
+you whether your fix works. To learn that, run the node itself:
+
+```
+executions(action="run-step", workflowId, nodeName, reuseExecutionId=<the failed execution>)
+```
+
+`reuseExecutionId` replays the data the node really received and re-runs only
+that node, so the fix meets the same input that broke it. This is the right
+first move whenever the user is debugging a **read** node that already failed a
+real execution: the node ran for real once already, and a mock-only check is
+what sends the user back for a second session.
+
+### Decide whether the node is safe to run first
+
+A step run is a real run. The node uses the user's real credentials and reaches
+the user's real systems, on the user's real data. Check what the node does
+before you reach for `run-step`:
+
+- **Safe to run.** A read (`get`, `getAll`, `search`, `list`, `download`, a GET
+  HTTP Request), or a transform that touches nothing outside the workflow (Set,
+  IF, Filter, Code without network or filesystem access). Run these.
+- **Do not run for real.** A write (`create`, `update`, `upsert`, `delete`,
+  `send`, `append`, a non-GET HTTP Request). Running one sends the message,
+  charges the card, or deletes the row — again, and for real. The user asked
+  you to debug the node, not to perform its effect.
+- **Unsure?** Treat it as a write. Losing a debugging shortcut is recoverable;
+  an un-asked write to the user's data is not.
+
+For a write node, debug without running it: read the failed execution with
+`debug`, inspect the resolved parameters with
+`get-resolved-node-parameters`, and explain the fix. That is usually enough,
+because a write node's failures are nearly always in its input or its
+parameters, both of which you can see without sending anything.
+
+If you genuinely cannot resolve it without a real run, say plainly what the
+node will do to the user's data, and let the user choose. The approval prompt
+alone is not consent: the user sees a node name, not "this posts to your
+#general channel".
+
+**"It already ran anyway" is not a reason.** It holds only for a node that
+errored outright and changed nothing. A node that partly succeeded before it
+failed — a send that delivered some messages and then hit a rate limit — will
+deliver them again.
+
+### Studying a node on its own with `mockInput`
+
+`mockInput` runs the node on items you supply and skips everything above it.
+This is a good way to study one node by itself, and a normal thing to do while
+debugging:
+
+- probe an edge case the workflow rarely produces — an empty list, a missing
+  field, a zero or negative amount;
+- hold the input still when the upstream data changes between runs, so two
+  attempts are comparable;
+- separate "this node is wrong" from "this node gets the wrong input".
+
+Reach for it whenever the question is about the node. Use `reuseExecutionId` or
+a chain run when the question is about the workflow.
+
+Keep the claim at the level of the evidence. A mocked run shows the node
+handles the input you gave it; it shows nothing about what the chain really
+produces. The result carries `inputMode: "mocked"` and a `mockedNodeNames`
+list — report the node's behaviour, not the workflow's.
+
+Mocked input does **not** make a write node safe. The node still runs for real
+against the user's systems; only its input is invented, which makes the effect
+less predictable, not more.
 
 ## Successful execution with wrong or empty value
 

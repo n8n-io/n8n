@@ -2,6 +2,7 @@ import { isDeepStrictEqual } from 'node:util';
 
 import {
 	DEFAULT_INSTANCE_AI_PERMISSIONS,
+	deriveInstanceAiSetupState,
 	INSTANCE_AI_MODEL_CREDENTIAL_TYPES,
 	INSTANCE_AI_SEARCH_CREDENTIAL_TYPES,
 } from '@n8n/api-types';
@@ -15,6 +16,7 @@ import type {
 	InstanceAiProviderConnection,
 	InstanceAiPermissions,
 	InstanceAiSandboxProvider,
+	InstanceAiSetupState,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
@@ -82,7 +84,7 @@ export interface InstanceAiSandboxStatus {
 }
 
 /** Credential types we support and their model provider mapping. */
-const CREDENTIAL_TO_MODEL_PROVIDER: Record<string, string> = {
+export const CREDENTIAL_TO_MODEL_PROVIDER: Record<string, string> = {
 	openAiApi: 'openai',
 	anthropicApi: 'anthropic',
 	googlePalmApi: 'google',
@@ -261,12 +263,12 @@ interface PreparedConnection {
 	encryptedData?: ICredentialsDb;
 }
 
-interface AdminModelSelection {
+export interface AdminModelSelection {
 	modelCredentialId: string | null;
 	modelName: string | null;
 }
 
-interface AdminCredentialSelection extends AdminModelSelection {
+export interface AdminCredentialSelection extends AdminModelSelection {
 	daytonaCredentialId: string | null;
 	n8nSandboxCredentialId: string | null;
 	searchCredentialId: string | null;
@@ -285,7 +287,7 @@ export class InstanceAiSettingsService {
 	/** Whether n8n Agent is enabled for this instance. */
 	private enabled = true;
 
-	/** Whether users may connect the AI Assistant to MCP servers from the registry. */
+	/** Whether users may connect the n8n Assistant to MCP servers from the registry. */
 	private mcpAccessEnabled = true;
 
 	/** Per-action HITL permission overrides. */
@@ -577,12 +579,12 @@ export class InstanceAiSettingsService {
 			? await Promise.all([
 					this.prepareConnection(
 						INSTANCE_AI_MODEL_CREDENTIAL_POLICY,
-						'AI Assistant model',
+						'n8n Assistant model',
 						modelConnection,
 					),
 					this.prepareConnection(
 						INSTANCE_AI_SEARCH_CREDENTIAL_POLICY,
-						'AI Assistant web search',
+						'n8n Assistant web search',
 						searchConnection,
 					),
 					this.prepareSandboxConnection(sandboxConnection),
@@ -600,14 +602,13 @@ export class InstanceAiSettingsService {
 						: settingsUpdate.sandboxProvider,
 		);
 		await this.runConnectionHooks([modelPrepared, searchPrepared, sandboxPrepared]);
-		const { previous, next, credentialSelection } = await this.dbLockService.withLockContext(
-			DbLock.INSTANCE_AI_SETTINGS,
-			async (ctx) => {
+		const { previous, next, credentialSelection, previousSelection } =
+			await this.dbLockService.withLockContext(DbLock.INSTANCE_AI_SETTINGS, async (ctx) => {
 				if (user && modelConnection !== undefined) {
 					modelCredentialId = await this.upsertConnection(
 						user,
 						INSTANCE_AI_MODEL_CREDENTIAL_POLICY,
-						'AI Assistant model',
+						'n8n Assistant model',
 						modelConnection,
 						ctx,
 						modelPrepared,
@@ -617,7 +618,7 @@ export class InstanceAiSettingsService {
 					searchCredentialId = await this.upsertConnection(
 						user,
 						INSTANCE_AI_SEARCH_CREDENTIAL_POLICY,
-						'AI Assistant web search',
+						'n8n Assistant web search',
 						searchConnection,
 						ctx,
 						searchPrepared,
@@ -767,11 +768,25 @@ export class InstanceAiSettingsService {
 						n8nSandboxCredentialId: nextN8nCredentialId,
 						searchCredentialId: nextSearchCredentialId,
 					} satisfies AdminCredentialSelection,
+					previousSelection: {
+						modelCredentialId: currentModelCredentialId,
+						modelName: current.modelName ?? null,
+						daytonaCredentialId: currentDaytonaCredentialId,
+						n8nSandboxCredentialId: currentN8nCredentialId,
+						searchCredentialId: currentSearchCredentialId,
+					} satisfies AdminCredentialSelection,
 				};
-			},
-		);
+			});
 		this.applyAdminSettings(next);
-		this.emitSettingsUpdated(previous, next);
+		this.emitSettingsUpdated(previous, next, {
+			previous: previousSelection,
+			next: credentialSelection,
+			connectionsUpdated: {
+				model: modelConnection !== undefined && modelConnection !== null,
+				sandbox: sandboxConnection !== undefined && sandboxConnection !== null,
+				search: searchConnection !== undefined && searchConnection !== null,
+			},
+		});
 
 		return this.buildAdminSettingsResponse(credentialSelection);
 	}
@@ -918,7 +933,7 @@ export class InstanceAiSettingsService {
 				`Connection type "${connection.type}" is not supported for the sandbox`,
 			);
 		}
-		return await this.prepareConnection(policy, 'AI Assistant sandbox', connection);
+		return await this.prepareConnection(policy, 'n8n Assistant sandbox', connection);
 	}
 
 	private async runConnectionHooks(
@@ -945,7 +960,7 @@ export class InstanceAiSettingsService {
 		n8nSandboxCredentialId: string | null;
 		sandboxProvider?: InstanceAiSandboxProvider;
 	}> {
-		const name = 'AI Assistant sandbox';
+		const name = 'n8n Assistant sandbox';
 		if (connection === null) {
 			return {
 				daytonaCredentialId: await this.upsertConnection(
@@ -1071,7 +1086,7 @@ export class InstanceAiSettingsService {
 	): Promise<InstanceAiConnectionUpdate> {
 		const prepared = await this.prepareConnection(
 			INSTANCE_AI_MODEL_CREDENTIAL_POLICY,
-			'AI Assistant model',
+			'n8n Assistant model',
 			connection,
 		);
 		return this.connectionForVerification(prepared);
@@ -1089,7 +1104,7 @@ export class InstanceAiSettingsService {
 	): Promise<InstanceAiConnectionUpdate> {
 		const prepared = await this.prepareConnection(
 			INSTANCE_AI_SEARCH_CREDENTIAL_POLICY,
-			'AI Assistant web search',
+			'n8n Assistant web search',
 			connection,
 		);
 		return this.connectionForVerification(prepared);
@@ -1233,7 +1248,7 @@ export class InstanceAiSettingsService {
 		return { ...this.permissions };
 	}
 
-	/** Whether users may connect the AI Assistant to MCP servers from the registry. */
+	/** Whether users may connect the n8n Assistant to MCP servers from the registry. */
 	isMcpAccessEnabled(): boolean {
 		return this.mcpAccessEnabled;
 	}
@@ -1259,6 +1274,11 @@ export class InstanceAiSettingsService {
 
 	isBrowserUseEnabled(): boolean {
 		return this.config.browserUseEnabled;
+	}
+
+	/** Whether the non-blocking setup panel replaces the suspending setup wizard. */
+	isInstanceAiSetupPanelEnabled(): boolean {
+		return this.config.instanceAiSetupPanelEnabled;
 	}
 
 	/** Whether this instance is in the activation-capped trial cohort. */
@@ -1294,8 +1314,22 @@ export class InstanceAiSettingsService {
 
 	/** Public, detail-free setup state used to gate member-facing entry points. */
 	async isSetupCompleted(): Promise<boolean> {
-		if (this.isCloud || this.aiService.isProxyEnabled()) return true;
+		if (!this.isDirectSelfManaged()) return true;
+		return (await this.resolveSetupState()).setupCompleted;
+	}
 
+	/**
+	 * Whether a model is available to answer a run. Narrower than
+	 * `isSetupCompleted` on purpose: sandbox and web search are optional for a
+	 * conversation, a model is not, so this is what the chat endpoint enforces.
+	 */
+	async isModelConfigured(): Promise<boolean> {
+		if (!this.isDirectSelfManaged()) return true;
+		return (await this.resolveSetupState()).modelSource !== 'none';
+	}
+
+	/** Setup state of a direct self-managed instance, from the shared derivation. */
+	private async resolveSetupState(): Promise<InstanceAiSetupState> {
 		const [modelSelection, daytonaCredentialId, n8nSandboxCredentialId, searchCredentialId] =
 			await Promise.all([
 				this.readAdminModelSelection(),
@@ -1313,21 +1347,11 @@ export class InstanceAiSettingsService {
 			n8nSandboxCredentialId,
 			searchCredentialId,
 		});
-		const modelConfigured = Boolean(
-			response.modelEnvConfigured || (response.modelCredentialId && response.modelName),
-		);
-		const sandboxCredentialId =
-			response.sandboxProvider === 'daytona'
-				? response.daytonaCredentialId
-				: response.n8nSandboxCredentialId;
-		const sandboxConfigured = Boolean(
-			response.sandboxEnabled && (response.sandboxEnvConfigured || sandboxCredentialId),
-		);
-		const searchDecided = Boolean(
-			response.searchEnvConfigured || response.searchCredentialId || response.searchDisabled,
-		);
+		return deriveInstanceAiSetupState(response);
+	}
 
-		return modelConfigured && sandboxConfigured && searchDecided;
+	getConfiguredModelId(): string {
+		return this.config.model.trim();
 	}
 
 	/** Resolve just the model name (e.g. 'claude-sonnet-4-20250514') for proxy routing. */
@@ -1826,12 +1850,18 @@ export class InstanceAiSettingsService {
 	private emitSettingsUpdated(
 		previous: PersistedAdminSettings,
 		current: PersistedAdminSettings,
+		credentialSelections?: {
+			previous: AdminCredentialSelection;
+			next: AdminCredentialSelection;
+			connectionsUpdated: { model: boolean; sandbox: boolean; search: boolean };
+		},
 	): void {
 		try {
 			this.eventService.emit('instance-ai-settings-updated', {
 				mcpSettingsChanged:
 					current.mcpServers !== previous.mcpServers ||
 					current.mcpAccessEnabled !== previous.mcpAccessEnabled,
+				credentialSelections,
 			});
 		} catch (error) {
 			Container.get(Logger)

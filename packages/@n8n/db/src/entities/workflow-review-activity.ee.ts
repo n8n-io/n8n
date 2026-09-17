@@ -24,6 +24,10 @@ export class WorkflowReviewActivity extends WithCreatedAt {
 	@Column({ type: 'varchar', length: 36 })
 	workflowReviewRequestId: string;
 
+	/**
+	 * Constrained here and nowhere else: the database has no CHECK on it, because the vocabulary
+	 * grows with every review feature and each widening would be another table recreation.
+	 */
 	@Column({ type: 'varchar', length: 64 })
 	type: WorkflowReviewActivityType;
 
@@ -31,8 +35,10 @@ export class WorkflowReviewActivity extends WithCreatedAt {
 	typeVersion: number;
 
 	/**
-	 * Immutable per-type detail. Ids only: a user id stored here would survive user deletion,
-	 * unlike `createdById`, so a type needing another actor gets its own `SET NULL` column.
+	 * Immutable per-type detail: ids, plus a reviewer's note on a decision. Nothing redacts it —
+	 * unlike a comment body, which is nulled on delete, it is frozen once written. No user ids: one
+	 * stored here would survive user deletion, unlike `createdById`, so a type needing another actor
+	 * gets its own `SET NULL` column.
 	 */
 	@JsonColumn({ nullable: true })
 	data: IDataObject | null;
@@ -40,12 +46,4 @@ export class WorkflowReviewActivity extends WithCreatedAt {
 	/** Who produced this entry. For a comment thread, whoever opened it. */
 	@Column({ type: 'uuid', nullable: true })
 	createdById: string | null;
-
-	/**
-	 * Scopes an entry to one workflow; `null` for review-level entries such as comments. A column
-	 * rather than a key in `data` so the feed can query and filter on it directly, for instance to
-	 * leave out entries about workflows the reader may not open. Nothing writes it yet.
-	 */
-	@Column({ type: 'varchar', length: 36, nullable: true })
-	workflowId: string | null;
 }

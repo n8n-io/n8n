@@ -2,7 +2,6 @@ import { mock } from 'vitest-mock-extended';
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import { AgentTestChatService, chatThreadId } from '../agent-test-chat.service';
-import type { AgentWorkspaceService } from '../agent-workspace.service';
 import type { N8nMemory } from '../integrations/n8n-memory';
 
 const agentId = 'agent-1';
@@ -13,15 +12,13 @@ function makeService() {
 	const n8nMemory = mock<N8nMemory>();
 	const memory = mock<MemoryImplementation>();
 	const attachmentService = mock<AgentChatAttachmentService>();
-	const workspaceService = mock<AgentWorkspaceService>();
 	n8nMemory.getImplementation.mockReturnValue(memory);
 
 	return {
-		service: new AgentTestChatService(n8nMemory, attachmentService, workspaceService),
+		service: new AgentTestChatService(n8nMemory, attachmentService),
 		n8nMemory,
 		memory,
 		attachmentService,
-		workspaceService,
 	};
 }
 
@@ -36,22 +33,45 @@ describe('AgentTestChatService', () => {
 		const messages = [{ id: 'message-1' }];
 		memory.getMessages.mockResolvedValue(messages as never);
 
-		await expect(service.getTestChatMessages(agentId, userId)).resolves.toBe(messages);
+		await expect(service.getTestChatMessages(agentId, userId)).resolves.toEqual(messages);
 		expect(memory.getMessages).toHaveBeenCalledWith(`test-${agentId}:${userId}`, {
 			resourceId: `draft-chat:${userId}`,
 		});
 	});
 
-	it('performs workspace cleanup for one user thread without changing all-agent cleanup', async () => {
-		const { service, memory, workspaceService } = makeService();
+	it('hides the internal wake input and keeps the assistant response', async () => {
+		const { service, memory } = makeService();
+		memory.getMessages.mockResolvedValue([
+			{
+				role: 'user',
+				content: [
+					{ type: 'text', text: '<background-jobs-settled>mail</background-jobs-settled>' },
+				],
+			},
+			{ role: 'assistant', content: [{ type: 'text', text: 'I handled the result.' }] },
+		] as never);
 
-		await service.clearTestChatMessages('project-1', agentId, userId);
+		await expect(service.getTestChatMessages(agentId, userId)).resolves.toEqual([
+			{ role: 'assistant', content: [{ type: 'text', text: 'I handled the result.' }] },
+		]);
+	});
+
+	it('keeps a user message whose content is not an array', async () => {
+		const { service, memory } = makeService();
+		const malformed = { role: 'user', content: 'plain text' };
+		memory.getMessages.mockResolvedValue([malformed] as never);
+
+		await expect(service.getTestChatMessages(agentId, userId)).resolves.toEqual([malformed]);
+	});
+
+	it('clears one user thread without changing all-agent cleanup', async () => {
+		const { service, memory, attachmentService } = makeService();
+
+		await service.clearTestChatMessages(agentId, userId);
 		expect(memory.deleteThread).toHaveBeenCalledWith(`test-${agentId}:${userId}`);
-		expect(workspaceService.cleanupThreadWorkspace).toHaveBeenCalledWith(
-			'project-1',
+		expect(attachmentService.deleteByThread).toHaveBeenCalledWith(`test-${agentId}:${userId}`, {
 			agentId,
-			`test-${agentId}:${userId}`,
-		);
+		});
 
 		await service.clearAllTestChatMessages(agentId);
 		expect(memory.deleteThreadsByPrefix).toHaveBeenCalledWith(`test-${agentId}`);

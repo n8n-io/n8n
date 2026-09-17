@@ -1038,7 +1038,11 @@ describe('RoleService', () => {
 			//
 			// ACT
 			//
-			const result = await roleService.updateCustomRole(existingRole.slug, updateRoleDto);
+			const result = await roleService.updateCustomRole({
+				slug: existingRole.slug,
+				newRole: updateRoleDto,
+				userId: 'test-user-id',
+			});
 
 			//
 			// ASSERT
@@ -1077,7 +1081,11 @@ describe('RoleService', () => {
 			//
 			// ACT
 			//
-			const result = await roleService.updateCustomRole(existingRole.slug, updateRoleDto);
+			const result = await roleService.updateCustomRole({
+				slug: existingRole.slug,
+				newRole: updateRoleDto,
+				userId: 'test-user-id',
+			});
 
 			//
 			// ASSERT
@@ -1111,12 +1119,20 @@ describe('RoleService', () => {
 			//
 			// ACT & ASSERT
 			//
-			await expect(roleService.updateCustomRole(systemRole.slug, updateRoleDto)).rejects.toThrow(
-				BadRequestError,
-			);
-			await expect(roleService.updateCustomRole(systemRole.slug, updateRoleDto)).rejects.toThrow(
-				'Cannot update system roles',
-			);
+			await expect(
+				roleService.updateCustomRole({
+					slug: systemRole.slug,
+					newRole: updateRoleDto,
+					userId: 'test-user-id',
+				}),
+			).rejects.toThrow(BadRequestError);
+			await expect(
+				roleService.updateCustomRole({
+					slug: systemRole.slug,
+					newRole: updateRoleDto,
+					userId: 'test-user-id',
+				}),
+			).rejects.toThrow('Cannot update system roles');
 		});
 
 		it('should update displayName when provided', async () => {
@@ -1136,7 +1152,11 @@ describe('RoleService', () => {
 			//
 			// ACT
 			//
-			const result = await roleService.updateCustomRole(existingRole.slug, updateRoleDto);
+			const result = await roleService.updateCustomRole({
+				slug: existingRole.slug,
+				newRole: updateRoleDto,
+				userId: 'test-user-id',
+			});
 
 			//
 			// ASSERT
@@ -1161,7 +1181,11 @@ describe('RoleService', () => {
 			//
 			// ACT
 			//
-			const result = await roleService.updateCustomRole(existingRole.slug, updateRoleDto);
+			const result = await roleService.updateCustomRole({
+				slug: existingRole.slug,
+				newRole: updateRoleDto,
+				userId: 'test-user-id',
+			});
 
 			//
 			// ASSERT
@@ -1181,9 +1205,13 @@ describe('RoleService', () => {
 			//
 			// ACT & ASSERT
 			//
-			await expect(roleService.updateCustomRole(nonExistentSlug, updateRoleDto)).rejects.toThrow(
-				'Role not found',
-			);
+			await expect(
+				roleService.updateCustomRole({
+					slug: nonExistentSlug,
+					newRole: updateRoleDto,
+					userId: 'test-user-id',
+				}),
+			).rejects.toThrow('Role not found');
 		});
 
 		it('should throw error when invalid scopes are provided', async () => {
@@ -1198,9 +1226,13 @@ describe('RoleService', () => {
 			//
 			// ACT & ASSERT
 			//
-			await expect(roleService.updateCustomRole(existingRole.slug, updateRoleDto)).rejects.toThrow(
-				'The following scopes are invalid: invalid:scope',
-			);
+			await expect(
+				roleService.updateCustomRole({
+					slug: existingRole.slug,
+					newRole: updateRoleDto,
+					userId: 'test-user-id',
+				}),
+			).rejects.toThrow('The following scopes are invalid: invalid:scope');
 		});
 
 		it('should throw error when a role with the same display name already exists', async () => {
@@ -1218,7 +1250,11 @@ describe('RoleService', () => {
 			// ACT & ASSERT
 			//
 			await expect(
-				roleService.updateCustomRole(otherExistingRole.slug, updateRoleDto),
+				roleService.updateCustomRole({
+					slug: otherExistingRole.slug,
+					newRole: updateRoleDto,
+					userId: 'test-user-id',
+				}),
 			).rejects.toThrow(`A role with the name "${existingRole.displayName}" already exists`);
 		});
 	});
@@ -1236,7 +1272,10 @@ describe('RoleService', () => {
 			//
 			// ACT
 			//
-			const result = await roleService.removeCustomRole(customRole.slug);
+			const result = await roleService.removeCustomRole({
+				slug: customRole.slug,
+				userId: 'test-user-id',
+			});
 
 			//
 			// ASSERT
@@ -1265,7 +1304,10 @@ describe('RoleService', () => {
 			//
 			// ACT
 			//
-			const result = await roleService.removeCustomRole(customRole.slug);
+			const result = await roleService.removeCustomRole({
+				slug: customRole.slug,
+				userId: 'test-user-id',
+			});
 
 			//
 			// ASSERT
@@ -1290,8 +1332,12 @@ describe('RoleService', () => {
 			//
 			// ACT & ASSERT
 			//
-			await expect(roleService.removeCustomRole(nonExistentSlug)).rejects.toThrow(NotFoundError);
-			await expect(roleService.removeCustomRole(nonExistentSlug)).rejects.toThrow('Role not found');
+			await expect(
+				roleService.removeCustomRole({ slug: nonExistentSlug, userId: 'test-user-id' }),
+			).rejects.toThrow(NotFoundError);
+			await expect(
+				roleService.removeCustomRole({ slug: nonExistentSlug, userId: 'test-user-id' }),
+			).rejects.toThrow('Role not found');
 		});
 
 		it('should throw BadRequestError when trying to delete system role', async () => {
@@ -1305,10 +1351,12 @@ describe('RoleService', () => {
 			//
 			// ACT & ASSERT
 			//
-			await expect(roleService.removeCustomRole(systemRole.slug)).rejects.toThrow(BadRequestError);
-			await expect(roleService.removeCustomRole(systemRole.slug)).rejects.toThrow(
-				'Cannot delete system roles',
-			);
+			await expect(
+				roleService.removeCustomRole({ slug: systemRole.slug, userId: 'test-user-id' }),
+			).rejects.toThrow(BadRequestError);
+			await expect(
+				roleService.removeCustomRole({ slug: systemRole.slug, userId: 'test-user-id' }),
+			).rejects.toThrow('Cannot delete system roles');
 
 			// Verify system role still exists
 			const stillExistsRole = await roleRepository.findBySlug(systemRole.slug);
@@ -1334,10 +1382,12 @@ describe('RoleService', () => {
 			//
 			// ACT & ASSERT
 			//
-			await expect(roleService.removeCustomRole(roleInUse.slug)).rejects.toThrow(BadRequestError);
-			await expect(roleService.removeCustomRole(roleInUse.slug)).rejects.toThrow(
-				'Cannot delete role assigned to users',
-			);
+			await expect(
+				roleService.removeCustomRole({ slug: roleInUse.slug, userId: 'test-user-id' }),
+			).rejects.toThrow(BadRequestError);
+			await expect(
+				roleService.removeCustomRole({ slug: roleInUse.slug, userId: 'test-user-id' }),
+			).rejects.toThrow('Cannot delete role assigned to users');
 		});
 
 		it('should throw error when trying to delete role assigned to users on project', async () => {
@@ -1365,10 +1415,12 @@ describe('RoleService', () => {
 			//
 			// ACT & ASSERT
 			//
-			await expect(roleService.removeCustomRole(roleInUse.slug)).rejects.toThrow(BadRequestError);
-			await expect(roleService.removeCustomRole(roleInUse.slug)).rejects.toThrow(
-				'Cannot delete role assigned to users',
-			);
+			await expect(
+				roleService.removeCustomRole({ slug: roleInUse.slug, userId: 'test-user-id' }),
+			).rejects.toThrow(BadRequestError);
+			await expect(
+				roleService.removeCustomRole({ slug: roleInUse.slug, userId: 'test-user-id' }),
+			).rejects.toThrow('Cannot delete role assigned to users');
 		});
 
 		it('should reassign globally assigned users to another role, then delete', async () => {
@@ -1393,7 +1445,11 @@ describe('RoleService', () => {
 			//
 			// ACT
 			//
-			const result = await roleService.removeCustomRole(roleInUse.slug, targetRole.slug);
+			const result = await roleService.removeCustomRole({
+				slug: roleInUse.slug,
+				reassignRoleSlug: targetRole.slug,
+				userId: 'test-user-id',
+			});
 
 			//
 			// ASSERT
@@ -1419,7 +1475,11 @@ describe('RoleService', () => {
 			await userRepository.save(user);
 
 			await expect(
-				roleService.removeCustomRole(roleInUse.slug, 'global:does-not-exist'),
+				roleService.removeCustomRole({
+					slug: roleInUse.slug,
+					reassignRoleSlug: 'global:does-not-exist',
+					userId: 'test-user-id',
+				}),
 			).rejects.toThrow('Reassignment role "global:does-not-exist" does not exist');
 
 			// Role is preserved when reassignment fails.
@@ -1441,7 +1501,11 @@ describe('RoleService', () => {
 			await userRepository.save(user);
 
 			await expect(
-				roleService.removeCustomRole(roleInUse.slug, projectTarget.slug),
+				roleService.removeCustomRole({
+					slug: roleInUse.slug,
+					reassignRoleSlug: projectTarget.slug,
+					userId: 'test-user-id',
+				}),
 			).rejects.toThrow('Reassignment role must be of the same type as the deleted role');
 		});
 
@@ -1455,9 +1519,13 @@ describe('RoleService', () => {
 			user.role = roleInUse;
 			await userRepository.save(user);
 
-			await expect(roleService.removeCustomRole(roleInUse.slug, roleInUse.slug)).rejects.toThrow(
-				'Cannot reassign users to the role being deleted',
-			);
+			await expect(
+				roleService.removeCustomRole({
+					slug: roleInUse.slug,
+					reassignRoleSlug: roleInUse.slug,
+					userId: 'test-user-id',
+				}),
+			).rejects.toThrow('Cannot reassign users to the role being deleted');
 		});
 
 		it('should ignore the reassignment role when no users are assigned', async () => {
@@ -1472,7 +1540,11 @@ describe('RoleService', () => {
 				systemRole: false,
 			});
 
-			const result = await roleService.removeCustomRole(unusedRole.slug, targetRole.slug);
+			const result = await roleService.removeCustomRole({
+				slug: unusedRole.slug,
+				reassignRoleSlug: targetRole.slug,
+				userId: 'test-user-id',
+			});
 
 			expect(result.slug).toBe(unusedRole.slug);
 			expect(await roleRepository.findBySlug(unusedRole.slug)).toBeNull();
@@ -1515,10 +1587,12 @@ describe('RoleService', () => {
 				//
 				// ACT & ASSERT
 				//
-				await expect(roleService.removeCustomRole(role.slug)).rejects.toThrow(BadRequestError);
-				await expect(roleService.removeCustomRole(role.slug)).rejects.toThrow(
-					'Cannot delete role: referenced by 1 role mapping rule',
-				);
+				await expect(
+					roleService.removeCustomRole({ slug: role.slug, userId: 'test-user-id' }),
+				).rejects.toThrow(BadRequestError);
+				await expect(
+					roleService.removeCustomRole({ slug: role.slug, userId: 'test-user-id' }),
+				).rejects.toThrow('Cannot delete role: referenced by 1 role mapping rule');
 
 				// Role is preserved, not silently orphaned.
 				const stillExists = await roleRepository.findBySlug(role.slug);
@@ -1532,7 +1606,10 @@ describe('RoleService', () => {
 					systemRole: false,
 				});
 
-				const result = await roleService.removeCustomRole(role.slug);
+				const result = await roleService.removeCustomRole({
+					slug: role.slug,
+					userId: 'test-user-id',
+				});
 
 				expect(result.slug).toEqual(role.slug);
 				const deletedRole = await roleRepository.findBySlug(role.slug);
@@ -1846,6 +1923,7 @@ describe('RoleService', () => {
 				name: 'Global Test Credential',
 				type: 'testCredential',
 				isGlobal: true,
+				isResolvable: false,
 				shared: [
 					{
 						projectId: 'project-1',
@@ -1877,6 +1955,7 @@ describe('RoleService', () => {
 				name: 'Global Test Credential 2',
 				type: 'testCredential',
 				isGlobal: true,
+				isResolvable: false,
 				shared: [],
 			} as any;
 			const userProjectRelations = [] as any[];
@@ -1903,6 +1982,7 @@ describe('RoleService', () => {
 				name: 'Global Test Credential 3',
 				type: 'testCredential',
 				isGlobal: true,
+				isResolvable: false,
 				shared: [
 					{
 						projectId: 'project-1',

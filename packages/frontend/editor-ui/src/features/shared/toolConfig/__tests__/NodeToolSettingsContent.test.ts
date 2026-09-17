@@ -8,6 +8,8 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import useEnvironmentsStore from '@/features/settings/environments.ee/environments.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { ToolConfigCredentialSelectedKey } from '@/app/constants';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import NodeToolSettingsContent from '../NodeToolSettingsContent.vue';
 import { NodeHelpers, type INode, type INodeTypeDescription } from 'n8n-workflow';
 import { waitFor } from '@testing-library/vue';
@@ -123,7 +125,8 @@ const renderComponent = createComponentRenderer(NodeToolSettingsContent, {
 	global: {
 		stubs: {
 			ParameterInputList: {
-				template: '<div data-test-id="parameter-input-list"><slot /></div>',
+				template:
+					'<div data-test-id="parameter-input-list">{{ JSON.stringify(parameters) }}<slot /></div>',
 				props: ['parameters', 'nodeValues', 'isReadOnly', 'hideDelete', 'node', 'path'],
 			},
 			NodeCredentials: {
@@ -157,16 +160,27 @@ describe('NodeToolSettingsContent', () => {
 		credentialsStore.allCredentials = [];
 		credentialsStore.setCredentials = vi.fn();
 		credentialsStore.fetchCredentialTypes = vi.fn().mockResolvedValue(undefined);
-		credentialsStore.fetchAllCredentialsForWorkflow = vi.fn().mockResolvedValue(undefined);
+		credentialsStore.fetchUsableCredentials = vi.fn().mockResolvedValue(undefined);
 		projectsStore.personalProject = { id: 'personal-project', name: 'Personal' } as never;
 		projectsStore.setCurrentProject = vi.fn();
 		projectsStore.fetchAndSetProject = vi.fn().mockResolvedValue(undefined);
 	});
 
-	it('should hide operations listed in hiddenOperations from the parameters form', () => {
-		const nodeTypeWithWaitingOperation: INodeTypeDescription = {
+	it('should hide resource and operation options listed in hiddenOperations', () => {
+		const nodeTypeWithHiddenOptions: INodeTypeDescription = {
 			...MOCK_NODE_TYPE,
 			properties: [
+				{
+					displayName: 'Resource',
+					name: 'resource',
+					type: 'options',
+					options: [
+						{ name: 'Row', value: 'row' },
+						{ name: 'Custom API Call', value: '__CUSTOM_API_CALL__' },
+					],
+					default: 'row',
+					noDataExpression: true,
+				},
 				{
 					displayName: 'Operation',
 					name: 'operation',
@@ -180,36 +194,22 @@ describe('NodeToolSettingsContent', () => {
 				},
 			],
 		};
-		nodeTypesStore.getNodeType = vi.fn().mockReturnValue(nodeTypeWithWaitingOperation);
+		nodeTypesStore.getNodeType = vi.fn().mockReturnValue(nodeTypeWithHiddenOptions);
 
-		const renderWithParameterCapture = createComponentRenderer(NodeToolSettingsContent, {
-			global: {
-				stubs: {
-					ParameterInputList: {
-						template:
-							'<div data-test-id="parameter-input-list">{{ JSON.stringify(parameters) }}</div>',
-						props: ['parameters', 'nodeValues', 'isReadOnly', 'hideDelete', 'node', 'path'],
-					},
-					NodeCredentials: {
-						template: '<div data-test-id="node-credentials" />',
-						props: ['node', 'readonly', 'showAll', 'hideIssues'],
-					},
-				},
-			},
-		});
-
-		const { getAllByTestId } = renderWithParameterCapture({
+		const { getAllByTestId } = renderComponent({
 			props: {
 				initialNode: createMockNode({ parameters: {} }),
-				hiddenOperations: ['sendAndWait'],
+				hiddenOperations: ['sendAndWait', '__CUSTOM_API_CALL__'],
 			},
 		});
 
 		const renderedParameters = getAllByTestId('parameter-input-list')
 			.map((element) => element.textContent ?? '')
 			.join('');
+		expect(renderedParameters).toContain('"value":"row"');
 		expect(renderedParameters).toContain('create');
 		expect(renderedParameters).not.toContain('sendAndWait');
+		expect(renderedParameters).not.toContain('__CUSTOM_API_CALL__');
 	});
 
 	it('should hide settings tab when there are no settings', () => {
@@ -251,6 +251,25 @@ describe('NodeToolSettingsContent', () => {
 		});
 
 		expect(getAllByTestId('parameter-input-list').length).toBeGreaterThan(0);
+	});
+
+	it('syncs parameter changes to the scoped NDV when enabled', async () => {
+		const initialNode = createMockNode();
+		const { rerender } = renderComponent({
+			props: { initialNode, syncNodeToNdv: true },
+		});
+		const toolNdvStore = useNDVStore(createWorkflowDocumentId('node-tool-workflow'));
+
+		expect(toolNdvStore.activeNode?.parameters).toEqual(initialNode.parameters);
+
+		const updatedNode = createMockNode({
+			parameters: { ...initialNode.parameters, nameField: 'updated-value' },
+		});
+		await rerender({ initialNode: updatedNode });
+
+		await waitFor(() =>
+			expect(toolNdvStore.activeNode?.parameters).toEqual(updatedNode.parameters),
+		);
 	});
 
 	it('should render NodeCredentials inside the parameters tab', () => {
@@ -323,7 +342,7 @@ describe('NodeToolSettingsContent', () => {
 
 		await waitFor(() => {
 			expect(credentialsStore.fetchCredentialTypes).toHaveBeenCalledWith(false);
-			expect(credentialsStore.fetchAllCredentialsForWorkflow).toHaveBeenCalledWith({
+			expect(credentialsStore.fetchUsableCredentials).toHaveBeenCalledWith({
 				projectId: 'personal-project',
 			});
 		});
@@ -337,7 +356,7 @@ describe('NodeToolSettingsContent', () => {
 		});
 
 		await waitFor(() => {
-			expect(credentialsStore.fetchAllCredentialsForWorkflow).toHaveBeenCalledWith({
+			expect(credentialsStore.fetchUsableCredentials).toHaveBeenCalledWith({
 				projectId: 'personal-project',
 			});
 		});
@@ -355,7 +374,7 @@ describe('NodeToolSettingsContent', () => {
 
 		await waitFor(() => {
 			expect(projectsStore.getPersonalProject).toHaveBeenCalled();
-			expect(credentialsStore.fetchAllCredentialsForWorkflow).toHaveBeenCalledWith({
+			expect(credentialsStore.fetchUsableCredentials).toHaveBeenCalledWith({
 				projectId: 'personal-project',
 			});
 		});
@@ -379,7 +398,7 @@ describe('NodeToolSettingsContent', () => {
 		});
 
 		await waitFor(() => {
-			expect(credentialsStore.fetchAllCredentialsForWorkflow).toHaveBeenCalledWith({
+			expect(credentialsStore.fetchUsableCredentials).toHaveBeenCalledWith({
 				projectId: 'personal-project',
 			});
 		});
@@ -406,7 +425,7 @@ describe('NodeToolSettingsContent', () => {
 		});
 
 		await waitFor(() => {
-			expect(credentialsStore.fetchAllCredentialsForWorkflow).toHaveBeenCalledWith({
+			expect(credentialsStore.fetchUsableCredentials).toHaveBeenCalledWith({
 				projectId: 'team-project',
 			});
 		});

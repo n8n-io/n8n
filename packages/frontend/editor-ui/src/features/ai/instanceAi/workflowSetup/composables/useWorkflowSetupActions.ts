@@ -1,11 +1,6 @@
 import { computed, ref, type ComputedRef, type Ref } from 'vue';
 import type { ThreadRuntime } from '../../instanceAi.store';
-import type {
-	WorkflowSetupApplyPayload,
-	WorkflowSetupSection,
-	WorkflowSetupStep,
-} from '../workflowSetup.types';
-import { getStepSections } from '../workflowSetup.helpers';
+import type { WorkflowSetupApplyPayload, WorkflowSetupSection } from '../workflowSetup.types';
 import type { CredentialSelectionsMap } from './useWorkflowSetupInputs';
 import { useWorkflowSetupTelemetry } from './useWorkflowSetupTelemetry';
 
@@ -13,6 +8,7 @@ interface WorkflowSetupInputAccessors {
 	credentialSelections: Ref<CredentialSelectionsMap>;
 	isSectionComplete: (section: WorkflowSetupSection) => boolean;
 	isSectionSkipped: (section: WorkflowSetupSection) => boolean;
+	isSectionHandled: (section: WorkflowSetupSection) => boolean;
 	markSectionSkipped: (section: WorkflowSetupSection) => void;
 	buildCompletedSetupPayload: () => WorkflowSetupApplyPayload;
 }
@@ -26,7 +22,6 @@ export interface WorkflowSetupActions {
 	nextUnhandledIndex: ComputedRef<number>;
 	hasOtherUnhandledSteps: ComputedRef<boolean>;
 	canAdvanceToNextIncomplete: ComputedRef<boolean>;
-	isStepHandled: (step: WorkflowSetupStep) => boolean;
 	isActionPending: Ref<boolean>;
 	apply: () => Promise<void>;
 	skipCurrentStep: () => Promise<void>;
@@ -36,8 +31,7 @@ export interface WorkflowSetupActions {
 export function useWorkflowSetupActions(deps: {
 	requestId: Ref<string>;
 	sections: ComputedRef<WorkflowSetupSection[]>;
-	steps: ComputedRef<WorkflowSetupStep[]>;
-	activeStep: ComputedRef<WorkflowSetupStep | undefined>;
+	activeSection: ComputedRef<WorkflowSetupSection | undefined>;
 	currentStepIndex: Ref<number>;
 	isReady: Ref<boolean>;
 	goToStep: (index: number) => void;
@@ -49,9 +43,7 @@ export function useWorkflowSetupActions(deps: {
 	const workflowSetupTelemetry = useWorkflowSetupTelemetry({
 		requestId: deps.requestId,
 		sections: deps.sections,
-		steps: deps.steps,
-		activeStep: deps.activeStep,
-		currentStepIndex: deps.currentStepIndex,
+		activeSection: deps.activeSection,
 		isReady: deps.isReady,
 		inputs: {
 			isSectionComplete: deps.inputs.isSectionComplete,
@@ -60,26 +52,19 @@ export function useWorkflowSetupActions(deps: {
 		thread: deps.thread,
 	});
 
-	function isStepHandled(step: WorkflowSetupStep): boolean {
-		const sections = getStepSections(step);
-		if (sections.length === 0) return true;
-		return sections.every(
-			(section) => deps.inputs.isSectionComplete(section) || deps.inputs.isSectionSkipped(section),
-		);
-	}
-
 	/**
 	 * Globally find the first unhandled step. Prefer indices after the current
 	 * step; fall back to indices before. Returns -1 if every step is handled.
 	 */
 	const nextUnhandledIndex = computed(() => {
-		const steps = deps.steps.value;
+		const sections = deps.sections.value;
+		const { isSectionHandled } = deps.inputs;
 		const current = deps.currentStepIndex.value;
-		for (let i = current + 1; i < steps.length; i++) {
-			if (!isStepHandled(steps[i])) return i;
+		for (let i = current + 1; i < sections.length; i++) {
+			if (!isSectionHandled(sections[i])) return i;
 		}
-		for (let i = 0; i < Math.min(current, steps.length); i++) {
-			if (!isStepHandled(steps[i])) return i;
+		for (let i = 0; i < Math.min(current, sections.length); i++) {
+			if (!isSectionHandled(sections[i])) return i;
 		}
 		return -1;
 	});
@@ -87,41 +72,42 @@ export function useWorkflowSetupActions(deps: {
 	const hasOtherUnhandledSteps = computed(() => nextUnhandledIndex.value >= 0);
 
 	const canAdvanceToNextIncomplete = computed(() => {
-		const step = deps.activeStep.value;
-		return step !== undefined && isStepHandled(step) && nextUnhandledIndex.value >= 0;
+		const section = deps.activeSection.value;
+		return (
+			section !== undefined &&
+			deps.inputs.isSectionHandled(section) &&
+			nextUnhandledIndex.value >= 0
+		);
 	});
 
 	function goToNextIncomplete(): void {
 		if (canAdvanceToNextIncomplete.value) {
-			const step = deps.activeStep.value;
-			if (step) workflowSetupTelemetry.trackStepHandled(step);
+			const section = deps.activeSection.value;
+			if (section) workflowSetupTelemetry.trackStepHandled(section);
 			deps.goToStep(nextUnhandledIndex.value);
 		}
 	}
 
 	async function apply(): Promise<void> {
-		const step = deps.activeStep.value;
-		if (step) workflowSetupTelemetry.trackStepHandled(step);
+		const section = deps.activeSection.value;
+		if (section) workflowSetupTelemetry.trackStepHandled(section);
 		workflowSetupTelemetry.trackSetupInput();
 		await deps.applyMachine.apply(deps.inputs.buildCompletedSetupPayload());
 	}
 
 	async function skipCurrentStep(): Promise<void> {
 		if (isActionPending.value) return;
-		const step = deps.activeStep.value;
-		if (!step) return;
+		const section = deps.activeSection.value;
+		if (!section) return;
 
 		isActionPending.value = true;
 		try {
-			// Skipping the active step only marks its incomplete sections — already-
-			// complete sections still contribute to the apply payload.
-			const stepSections = getStepSections(step);
-			for (const section of stepSections) {
-				if (!deps.inputs.isSectionComplete(section)) {
-					deps.inputs.markSectionSkipped(section);
-				}
+			// Skipping only marks an incomplete section — an already-complete one
+			// still contributes to the apply payload.
+			if (!deps.inputs.isSectionComplete(section)) {
+				deps.inputs.markSectionSkipped(section);
 			}
-			workflowSetupTelemetry.trackStepHandled(step);
+			workflowSetupTelemetry.trackStepHandled(section);
 
 			const next = nextUnhandledIndex.value;
 			if (next >= 0) {
@@ -148,7 +134,6 @@ export function useWorkflowSetupActions(deps: {
 		nextUnhandledIndex,
 		hasOtherUnhandledSteps,
 		canAdvanceToNextIncomplete,
-		isStepHandled,
 		isActionPending,
 		apply,
 		skipCurrentStep,

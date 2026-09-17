@@ -33,6 +33,7 @@ function makeWorkflowDetail(
 		workflowName: 'Payment Handler',
 		workflowVersionId: 'version-1',
 		pinnedVersion: null,
+		publishedVersionId: null,
 		baselineVersion: null,
 		...overrides,
 	};
@@ -59,8 +60,6 @@ function makeDetail(
 		id: 'req-1',
 		projectId: 'proj-1',
 		title: 'Update Payment Handler',
-		workflowName: 'Payment Handler',
-		workflowVersionId: 'version-1',
 		requester,
 		// The backend always carries the requester in `authors` too.
 		authors: [{ ...requester }, laterAuthor],
@@ -96,7 +95,7 @@ describe('WorkflowReviewDetailMetadata', () => {
 		});
 
 		expect(getByTestId('workflow-review-detail-status-card')).toHaveTextContent(
-			'Open • Waiting for review',
+			'Open | Waiting for review',
 		);
 		expect(getByText('Riley Reviewer')).toBeInTheDocument();
 		expect(queryByText('reviewer@example.com')).not.toBeInTheDocument();
@@ -148,17 +147,38 @@ describe('WorkflowReviewDetailMetadata', () => {
 		});
 
 		expect(getByTestId('workflow-review-detail-status-card')).toHaveTextContent(
-			'Closed • Approved',
+			'Closed | Approved',
 		);
 	});
 
-	it('pairs the closed state with a pending decision', () => {
+	// Nobody is waiting on a closed review, so an undecided close reads "No decision".
+	it('pairs the closed state with a pending decision as No decision', () => {
 		const { getByTestId } = renderComponent({
 			props: { review: makeDetail({ state: 'closed', decision: 'pending' }) },
 		});
 
 		expect(getByTestId('workflow-review-detail-status-card')).toHaveTextContent(
-			'Closed • Waiting for review',
+			'Closed | No decision',
+		);
+	});
+
+	it('pairs the closed state with a changes-requested decision', () => {
+		const { getByTestId } = renderComponent({
+			props: { review: makeDetail({ state: 'closed', decision: 'changes_requested' }) },
+		});
+
+		expect(getByTestId('workflow-review-detail-status-card')).toHaveTextContent(
+			'Closed | Changes requested',
+		);
+	});
+
+	it('pairs the open state with a changes-requested decision', () => {
+		const { getByTestId } = renderComponent({
+			props: { review: makeDetail({ state: 'open', decision: 'changes_requested' }) },
+		});
+
+		expect(getByTestId('workflow-review-detail-status-card')).toHaveTextContent(
+			'Open | Changes requested',
 		);
 	});
 

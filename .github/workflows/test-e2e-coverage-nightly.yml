@@ -48,12 +48,12 @@ jobs:
       - name: Setup
         uses: ./.github/actions/setup-nodejs
         with:
-          build-command: pnpm turbo run build --filter=@n8n/playwright-janitor
+          build-command: pnpm turbo run build --filter=@n8n/playwright-janitor --filter=@n8n/workflow-sdk...
 
-      - name: Generate matrix (16 shards, duration-weighted)
+      - name: Generate matrix (up to 20 shards, duration-weighted)
         id: gen
         run: |
-          MATRIX=$(node packages/testing/playwright/scripts/distribute-tests.mjs --matrix 16 --orchestrate)
+          MATRIX=$(node packages/testing/playwright/scripts/distribute-tests.mjs --matrix 20 --orchestrate --project=coverage)
           echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
 
   e2e:
@@ -323,16 +323,15 @@ jobs:
         run: |
           MAP=/tmp/coverage-report/impact-map.json
           # Completeness guard. This, not the job's e2e result, is what keeps a
-          # degraded map out: a lost shard shows up as a drop in spec count against
-          # the map we already trust. 5% absorbs legitimately deleted specs while
-          # still catching a missing shard (16 shards, so ~6% of specs each).
+          # degraded map out. A 4% margin allows valid spec deletions. It also
+          # detects a missing shard if that shard contains more than 4% of the specs.
           node -e '
             const fs = require("fs");
             const m = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
             const n = Array.isArray(m.specs) ? m.specs.length : 0;
             if (!n) { console.error("impact map has no specs — refusing to commit"); process.exit(1); }
             const current = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
-            const floor = Math.floor((Array.isArray(current.specs) ? current.specs.length : 0) * 0.95);
+            const floor = Math.floor((Array.isArray(current.specs) ? current.specs.length : 0) * 0.96);
             if (n < floor) {
               console.error("impact map has " + n + " specs, expected at least " + floor + " — refusing to commit a degraded map");
               process.exit(1);
@@ -387,3 +386,31 @@ jobs:
     secrets: inherit
     with:
       pull-request-number: ${{ needs.commit-impact-map.outputs.pull-request-number }}
+
+  notify-on-failure:
+    name: Notify Slack on failure
+    runs-on: ubuntu-latest
+    needs:
+      [
+        build,
+        prepare-docker,
+        generate-matrix,
+        e2e,
+        unit-coverage,
+        python-coverage,
+        aggregate,
+        commit-impact-map,
+      ]
+    if: ${{ always() && contains(needs.*.result, 'failure') }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          sparse-checkout: .github/scripts/slack
+          sparse-checkout-cone-mode: false
+      - name: Notify Slack
+        env:
+          SLACK_TOKEN: ${{ secrets.QBOT_SLACK_TOKEN }}
+        run: |
+          node .github/scripts/slack/notify.mjs \
+            --channel C04BBTDJAP5 \
+            --text "E2E coverage nightly failed - ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"

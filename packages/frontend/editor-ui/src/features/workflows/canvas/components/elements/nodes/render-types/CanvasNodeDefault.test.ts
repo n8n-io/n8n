@@ -31,7 +31,7 @@ vi.mock('vue-router', async (importOriginal) => {
 const renderNodeInputsMap = new Map<string, ComputedRef<CanvasConnectionPort[]>>();
 const renderNodeOutputsMap = new Map<string, ComputedRef<CanvasConnectionPort[]>>();
 const pinnedDataByNodeName: IPinData = {};
-const executionPinDataByNodeName: IPinData = {};
+const executionPinDataByNodeId = new Map<string, ComputedRef<IPinData[string] | undefined>>();
 let isExecutionDataDisplayed = false;
 
 vi.mock('@/features/workflows/canvas/canvas.utils', async (importOriginal) => {
@@ -43,7 +43,7 @@ vi.mock('@/features/workflows/canvas/canvas.utils', async (importOriginal) => {
 				nodeInputsByNodeId: renderNodeInputsMap,
 				nodeOutputsByNodeId: renderNodeOutputsMap,
 				pinnedDataByNodeName,
-				executionPinDataByNodeName,
+				executionPinDataByNodeId,
 				isExecutionDataDisplayed,
 			}),
 		})),
@@ -83,9 +83,7 @@ beforeEach(() => {
 	for (const key of Object.keys(pinnedDataByNodeName)) {
 		delete pinnedDataByNodeName[key];
 	}
-	for (const key of Object.keys(executionPinDataByNodeName)) {
-		delete executionPinDataByNodeName[key];
-	}
+	executionPinDataByNodeId.clear();
 	isExecutionDataDisplayed = false;
 	const pinia = createTestingPinia();
 	setActivePinia(pinia);
@@ -343,7 +341,10 @@ describe('CanvasNodeDefault', () => {
 
 	describe('execution pin data', () => {
 		it('should apply pinned styling instead of success styling when node output used execution pin data', () => {
-			executionPinDataByNodeName['Test Node'] = [{ json: { ok: true } }];
+			executionPinDataByNodeId.set(
+				'node',
+				computed(() => [{ json: { ok: true } }]),
+			);
 			isExecutionDataDisplayed = true;
 
 			const { getByText } = renderComponent({
@@ -389,7 +390,10 @@ describe('CanvasNodeDefault', () => {
 		});
 
 		it('should ignore execution pin data outside execution preview mode', () => {
-			executionPinDataByNodeName['Test Node'] = [{ json: { ok: true } }];
+			executionPinDataByNodeId.set(
+				'node',
+				computed(() => [{ json: { ok: true } }]),
+			);
 
 			const { getByText } = renderComponent({
 				global: {

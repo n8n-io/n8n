@@ -3,6 +3,7 @@ import type { BooleanLicenseFeature } from '@n8n/constants';
 import type { Constructable } from '@n8n/di';
 import type { ApiKeyScope, Scope } from '@n8n/permissions';
 import type { RequestHandler, Router } from 'express';
+import type { ZodTypeAny } from 'zod';
 
 import type { KeyedRateLimiterConfig, RateLimiterLimits } from './rate-limit';
 
@@ -15,9 +16,18 @@ export type ResponseDtoClass = Pick<ZodClass, 'parse'>;
 
 export type SuccessStatus = 200 | 201 | 202 | 204;
 
+export interface ErrorResponse {
+	status: number;
+	dto?: ResponseDtoClass;
+	description?: string;
+}
+
 export type Method = 'get' | 'post' | 'put' | 'patch' | 'delete' | 'head' | 'options';
 
-export type Arg = { type: 'body' | 'query' } | { type: 'param'; key: string };
+export type Arg =
+	| { type: 'body'; required?: boolean }
+	| { type: 'query' }
+	| { type: 'param'; key: string; schema?: ZodTypeAny };
 
 export interface CorsOptions {
 	allowedOrigins: string[];
@@ -69,7 +79,7 @@ export interface RouteMetadata {
 	/** OpenAPI operation tags. */
 	tags?: string[];
 	/** OpenAPI error responses. */
-	errorResponses?: number[];
+	errorResponses?: ErrorResponse[];
 	/** OpenAPI deprecation; also emits an RFC 9745 `Deprecation` header at request time. */
 	deprecated?: DeprecationInfo;
 	args: Arg[];

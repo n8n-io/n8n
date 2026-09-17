@@ -567,11 +567,35 @@ describe('NodeCatalogService', () => {
 				nodeId: 'n8n-nodes-base.messageAnAgent',
 			});
 
-			expect(result).toEqual({ content: 'synth-result', version: '2' });
+			// `deprecated` tells the caller the node is retired. The definition is
+			// still returned, so a caller that really wants the node can use it.
+			expect(result).toEqual({ content: 'synth-result', version: '2', deprecated: true });
 			expect(mockGenerateNodeTypeFile).toHaveBeenCalledWith(
 				expect.objectContaining({ name: 'n8n-nodes-base.messageAnAgent' }),
 			);
 			expect(mockGetNodeTypeDefinition).not.toHaveBeenCalled();
+		});
+
+		test('does not flag a visible node as deprecated', async () => {
+			loadNodesAndCredentials.collectTypes.mockResolvedValue({
+				nodes: [
+					{
+						name: 'n8n-nodes-base.messageAnAgent',
+						version: 2,
+						group: ['transform'],
+						properties: [],
+						inputs: ['main'],
+						outputs: ['main'],
+					},
+				],
+			} as never);
+			await service.initialize();
+
+			const result = await service.getNodeTypeDefinition({
+				nodeId: 'n8n-nodes-base.messageAnAgent',
+			});
+
+			expect(result.deprecated).toBeUndefined();
 		});
 
 		test('synthesizes type definitions for a community node', async () => {

@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, useTemplateRef } from 'vue';
 
 import { deriveAgentStatus } from '../composables/agentTelemetry.utils';
 import type {
 	AgentContinueLoadedEvent,
-	AgentFixWithAssistantEvent,
+	AgentSendToAssistantEvent,
 	AgentJsonConfig,
 	AgentResource,
 } from '../types';
@@ -12,6 +12,7 @@ import AgentChatPanel from './AgentChatPanel.vue';
 
 withDefaults(
 	defineProps<{
+		visible?: boolean;
 		initialized: boolean;
 		projectId: string;
 		agentId: string;
@@ -24,31 +25,45 @@ withDefaults(
 		beforeSend?: () => Promise<void> | void;
 		layout?: 'page' | 'dock';
 	}>(),
-	{ layout: 'page' },
+	{ visible: true, layout: 'dock' },
 );
 
 const emit = defineEmits<{
 	'continue-loaded': [event: AgentContinueLoadedEvent];
 	'open-build': [];
-	'send-to-assistant': [event?: AgentFixWithAssistantEvent];
+	'send-to-assistant': [event?: AgentSendToAssistantEvent];
 }>();
 
 const inputDraft = ref('');
+const chatPanel = useTemplateRef<InstanceType<typeof AgentChatPanel>>('chatPanel');
+
+function focusInput(options?: FocusOptions) {
+	chatPanel.value?.focusInput(options);
+}
+
+function getConversationMarkdown(): string {
+	return chatPanel.value?.getConversationMarkdown() ?? '';
+}
+
+defineExpose({ focusInput, getConversationMarkdown });
 </script>
 
 <template>
 	<component
-		:is="layout === 'dock' ? 'div' : 'main'"
-		:class="[$style.previewPage, { [$style.dockLayout]: layout === 'dock' }]"
+		:is="layout === 'page' ? 'main' : 'div'"
+		:class="[$style.previewPage, { [$style.pageLayout]: layout === 'page' }]"
 		data-testid="agent-preview-chat-page"
 	>
-		<div :class="[$style.chatFrame, { [$style.dockChatFrame]: layout === 'dock' }]">
+		<div :class="$style.chatFrame">
 			<AgentChatPanel
 				v-if="initialized && effectiveSessionId"
 				:key="`preview-${effectiveSessionId}`"
+				ref="chatPanel"
 				v-model:input-draft="inputDraft"
 				:project-id="projectId"
 				:agent-id="agentId"
+				:visible="visible"
+				:background-jobs-active="visible"
 				mode="inline"
 				:continue-session-id="effectiveSessionId"
 				:agent-config="localConfig"
@@ -70,22 +85,17 @@ const inputDraft = ref('');
 	min-height: 0;
 	display: flex;
 	justify-content: center;
-	background-color: var(--background--surface);
+	background-color: transparent;
 	overflow: hidden;
+}
+
+.pageLayout {
+	background-color: var(--background--surface);
 }
 
 .chatFrame {
 	width: 100%;
-	max-width: 45rem;
 	min-height: 0;
 	display: flex;
-}
-
-.dockLayout {
-	background-color: transparent;
-}
-
-.dockChatFrame {
-	max-width: none;
 }
 </style>

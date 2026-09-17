@@ -33,6 +33,9 @@ export interface IDynamicCredentialStorageProvider {
 	 * @param credentialContext Identity and metadata for scoping storage
 	 * @param staticData Static credential data from database (e.g., clientId, clientSecret)
 	 * @param workflowSettings Workflow settings with fallback resolver ID
+	 * @param executionId The current execution, so a context sealed and bound to an
+	 * execution (see `ExecutionContextService.maybeBindExecutionId`) can pass the
+	 * resolver's replay check the same way `resolveIfNeeded` already does.
 	 */
 	storeIfNeeded(
 		credentialStoreMetadata: CredentialStoreMetadata,
@@ -40,5 +43,6 @@ export interface IDynamicCredentialStorageProvider {
 		credentialContext: ICredentialContext,
 		staticData?: ICredentialDataDecryptedObject,
 		workflowSettings?: IWorkflowSettings,
+		executionId?: string,
 	): Promise<void>;
 }

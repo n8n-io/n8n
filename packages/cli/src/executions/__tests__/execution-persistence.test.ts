@@ -22,6 +22,8 @@ import { CorruptedExecutionDataError } from '@/executions/execution-data/corrupt
 import type { DbStore } from '@/executions/execution-data/db-store';
 import type { ExecutionDataJsonStore } from '@/executions/execution-data/execution-data-json-store';
 import { MissingExecutionDataError } from '@/executions/execution-data/missing-execution-data.error';
+import type { ExecutionDataPayload } from '@/executions/execution-data/types';
+import { UnreadableRunDataError } from '@/executions/execution-data/unreadable-run-data.error';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 
 describe('ExecutionPersistence', () => {
@@ -747,7 +749,7 @@ describe('ExecutionPersistence', () => {
 			it('should preserve fields not supplied in a partial payload', async () => {
 				const executionPersistence = createPersistenceService('db');
 				mockEntity('db');
-				dbStore.read.mockResolvedValue(existingBundle);
+				dbStore.readWorkflowData.mockResolvedValue(existingBundle);
 
 				const mockTx = createMockTransaction();
 				executionRepository.manager.transaction = createMockTx(mockTx);
@@ -763,6 +765,38 @@ describe('ExecutionPersistence', () => {
 					}),
 					mockTx,
 				);
+			});
+
+			it('should not read the run data it is about to overwrite', async () => {
+				const executionPersistence = createPersistenceService('db');
+				mockEntity('db');
+				dbStore.readWorkflowData.mockResolvedValue(existingBundle);
+
+				const mockTx = createMockTransaction();
+				executionRepository.manager.transaction = createMockTx(mockTx);
+
+				await executionPersistence.updateExistingExecution(executionId, { data: runData });
+
+				// The merge only needs the workflow snapshot, so the (often far larger) `data` column
+				// stays unread - it would otherwise be loaded while the transaction holds the write lock.
+				expect(dbStore.readWorkflowData).toHaveBeenCalledWith({ workflowId, executionId }, mockTx);
+				expect(dbStore.read).not.toHaveBeenCalled();
+			});
+
+			it('should read the full bundle on a workflowData-only update', async () => {
+				const executionPersistence = createPersistenceService('db');
+				mockEntity('db');
+				dbStore.read.mockResolvedValue(existingBundle);
+
+				const mockTx = createMockTransaction();
+				executionRepository.manager.transaction = createMockTx(mockTx);
+
+				await executionPersistence.updateExistingExecution(executionId, { workflowData });
+
+				// No `data` was supplied, so the stored run data has to be carried over. The snapshot
+				// read would not return it, so this update reads the whole bundle.
+				expect(dbStore.read).toHaveBeenCalledWith({ workflowId, executionId }, mockTx);
+				expect(dbStore.readWorkflowData).not.toHaveBeenCalled();
 			});
 
 			it('should apply requireStatus condition and skip the db write when no rows match', async () => {
@@ -787,7 +821,7 @@ describe('ExecutionPersistence', () => {
 			it('should throw MissingExecutionDataError when the db row is missing', async () => {
 				const executionPersistence = createPersistenceService('db');
 				mockEntity('db');
-				dbStore.read.mockResolvedValue(null);
+				dbStore.readWorkflowData.mockResolvedValue(null);
 
 				const mockTx = createMockTransaction();
 				executionRepository.manager.transaction = createMockTx(mockTx);
@@ -795,6 +829,26 @@ describe('ExecutionPersistence', () => {
 				await expect(
 					executionPersistence.updateExistingExecution(executionId, { data: runData }),
 				).rejects.toBeInstanceOf(MissingExecutionDataError);
+
+				expect(dbStore.write).not.toHaveBeenCalled();
+			});
+
+			it('should throw UnreadableRunDataError when the db row carries no run data', async () => {
+				const executionPersistence = createPersistenceService('db');
+				mockEntity('db');
+				// The row exists, so the read returns it, but its `data` column holds nothing usable.
+				// Distinct from the case above, where there is no row at all.
+				dbStore.read.mockResolvedValue({
+					workflowData: existingBundle.workflowData,
+					workflowVersionId: existingBundle.workflowVersionId,
+				} as unknown as ExecutionDataPayload);
+
+				const mockTx = createMockTransaction();
+				executionRepository.manager.transaction = createMockTx(mockTx);
+
+				await expect(
+					executionPersistence.updateExistingExecution(executionId, { workflowData }),
+				).rejects.toBeInstanceOf(UnreadableRunDataError);
 
 				expect(dbStore.write).not.toHaveBeenCalled();
 			});
@@ -925,6 +979,22 @@ describe('ExecutionPersistence', () => {
 					}),
 					'fs',
 				);
+			});
+
+			it('should read the full bundle on a data-only update', async () => {
+				const executionPersistence = createPersistenceService('fs');
+				mockEntity('fs');
+				jsonStore.read.mockResolvedValue(existingBundle);
+
+				const mockTx = createMockTransaction();
+				executionRepository.manager.transaction = createMockTx(mockTx);
+
+				await executionPersistence.updateExistingExecution(executionId, { data: runData });
+
+				// Only db mode can select a subset of columns. A blob store fetches whole bundles, so
+				// there is no narrower read to route this to.
+				expect(jsonStore.read).toHaveBeenCalledWith({ workflowId, executionId }, 'fs');
+				expect(dbStore.readWorkflowData).not.toHaveBeenCalled();
 			});
 
 			it('should apply requireStatus condition and skip the fs write when no rows match', async () => {
@@ -2201,7 +2271,7 @@ describe('ExecutionPersistence', () => {
 			const executionPersistence = createPersistenceService('db');
 			executionRepository.findOne.mockResolvedValue(entity('db'));
 			executionRepository.manager.transaction = createMockTx(createMockTransaction());
-			dbStore.read.mockResolvedValue(null);
+			dbStore.readWorkflowData.mockResolvedValue(null);
 
 			await expect(
 				executionPersistence.updateExistingExecution('exec-1', { data: runData }),
@@ -2284,7 +2354,7 @@ describe('ExecutionPersistence', () => {
 			const executionPersistence = createPersistenceService('db');
 			executionRepository.findOne.mockResolvedValue(entity('db'));
 			executionRepository.manager.transaction = createMockTx(createMockTransaction());
-			dbStore.read.mockRejectedValueOnce(
+			dbStore.readWorkflowData.mockRejectedValueOnce(
 				new CorruptedExecutionDataError(
 					{ workflowId: 'wf-1', executionId: 'exec-1' },
 					new Error('x'),

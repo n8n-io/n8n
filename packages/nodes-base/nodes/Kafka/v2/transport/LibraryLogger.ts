@@ -17,8 +17,22 @@ import { UserError } from 'n8n-workflow';
  * no error code by the time it reaches a logger (`_consumer.js` builds the entry
  * from `err.message` alone) and exposes no error event, so this is the only hook
  * there is. v1 does the same thing in `toUserFacingConsumerError`.
+ *
+ * Not everything permanent is even visible here: a join loop rejected with
+ * `UNKNOWN_MEMBER_ID` is `ERR_ACTION_IGNORE`d by librdkafka and logs nothing, so
+ * no pattern can catch it.
  */
-const NON_RECOVERABLE = [/authorization failed/i, /authentication fail/i];
+const NON_RECOVERABLE = [
+	/authorization failed/i,
+	/authentication fail/i,
+	// Group members advertise incompatible partition-assignment strategies
+	// (e.g. kafkajs and librdkafka sharing a group); no retry can succeed.
+	/inconsistent group protocol/i,
+	// A Session Timeout inside librdkafka's own range but outside the broker's
+	// [group.min, group.max] window: the broker refuses every JoinGroup, and
+	// librdkafka masks retry off as permanent (`rdkafka_request.c:173`).
+	/invalid session timeout/i,
+];
 
 function isNonRecoverable(message: string): boolean {
 	return NON_RECOVERABLE.some((pattern) => pattern.test(message));

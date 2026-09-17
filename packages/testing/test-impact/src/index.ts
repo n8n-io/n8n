@@ -13,6 +13,8 @@ export {
 	isNonImpactful,
 	filterImpactfulChanges,
 	forcesBroad,
+	isBackendConfig,
+	isTsconfig,
 	classifyManifestChange,
 	dropDevDepOnlyDeps,
 	changedRuntimeDeps,

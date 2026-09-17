@@ -3,7 +3,7 @@ import type { EntityManager, SelectQueryBuilder } from '@n8n/typeorm';
 import { In, Not, QueryFailedError } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
-import { CredentialsEntity } from '../../entities';
+import { CredentialsEntity, SharedCredentials } from '../../entities';
 import { TypeOrmTransaction } from '../../services/typeorm-transaction';
 import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
 import { CredentialsRepository } from '../credentials.repository';
@@ -27,6 +27,77 @@ describe('CredentialsRepository', () => {
 			where: { id: In(['credential-id']), usageScope: Not('project') },
 			select: ['id'],
 		});
+	});
+
+	it('filters ids down to global project credentials', async () => {
+		entityManager.find.mockResolvedValueOnce([mock<CredentialsEntity>({ id: 'global-id' })]);
+
+		const ids = await credentialsRepository.findGlobalProjectCredentialIds(['global-id', 'other']);
+
+		expect(ids).toEqual(['global-id']);
+		expect(entityManager.find).toHaveBeenCalledWith(CredentialsEntity, {
+			where: { id: In(['global-id', 'other']), isGlobal: true, usageScope: 'project' },
+			select: ['id'],
+		});
+	});
+
+	it('does not query for an empty id list', async () => {
+		await expect(credentialsRepository.findGlobalProjectCredentialIds([])).resolves.toEqual([]);
+
+		expect(entityManager.find).not.toHaveBeenCalled();
+	});
+
+	it('loads only binding metadata and preserves credential and project pairs', async () => {
+		entityManager.find
+			.mockResolvedValueOnce([
+				{ id: 'cred-a', type: 'githubApi', usageScope: 'project', isGlobal: false },
+				{ id: 'cred-b', type: 'slackApi', usageScope: 'project', isGlobal: true },
+			])
+			.mockResolvedValueOnce([
+				{ credentialsId: 'cred-a', projectId: 'alpha' },
+				{ credentialsId: 'cred-b', projectId: 'beta' },
+			]);
+		expect(
+			await credentialsRepository.findPromotionBindingAccess(
+				['cred-a', 'cred-b'],
+				['alpha', 'beta'],
+			),
+		).toEqual([
+			{
+				id: 'cred-a',
+				type: 'githubApi',
+				usageScope: 'project',
+				isGlobal: false,
+				projectIds: ['alpha'],
+			},
+			{
+				id: 'cred-b',
+				type: 'slackApi',
+				usageScope: 'project',
+				isGlobal: true,
+				projectIds: ['beta'],
+			},
+		]);
+		expect(entityManager.find).toHaveBeenCalledTimes(2);
+		expect(entityManager.find).toHaveBeenNthCalledWith(1, CredentialsEntity, {
+			where: { id: In(['cred-a', 'cred-b']) },
+			select: ['id', 'type', 'usageScope', 'isGlobal'],
+		});
+		expect(entityManager.find).toHaveBeenNthCalledWith(2, SharedCredentials, {
+			where: { credentialsId: In(['cred-a', 'cred-b']), projectId: In(['alpha', 'beta']) },
+			select: ['credentialsId', 'projectId'],
+		});
+	});
+
+	it('reads binding metadata without target projects and skips an empty credential list', async () => {
+		entityManager.find.mockResolvedValueOnce([
+			{ id: 'cred-a', type: 'githubApi', usageScope: 'project', isGlobal: true },
+		]);
+		expect(await credentialsRepository.findPromotionBindingAccess(['cred-a'], [])).toEqual([
+			{ id: 'cred-a', type: 'githubApi', usageScope: 'project', isGlobal: true, projectIds: [] },
+		]);
+		expect(await credentialsRepository.findPromotionBindingAccess([], ['alpha'])).toEqual([]);
+		expect(entityManager.find).toHaveBeenCalledTimes(1);
 	});
 
 	it('finds only dangling project credentials', async () => {
@@ -146,6 +217,19 @@ describe('CredentialsRepository', () => {
 			expect(callArg!.order).toBeUndefined();
 		});
 
+		it('should honor a caller-provided relations array', async () => {
+			entityManager.findAndCount.mockResolvedValueOnce([[], 0]);
+
+			await credentialsRepository.findManyAndCount({
+				take: 10,
+				skip: 0,
+				relations: ['shared', 'shared.project'],
+			});
+
+			const callArg = entityManager.findAndCount.mock.calls[0]?.[1];
+			expect(callArg?.relations).toEqual(['shared', 'shared.project']);
+		});
+
 		it('should apply credentialIds filter when provided', async () => {
 			entityManager.findAndCount.mockResolvedValueOnce([[], 0]);
 
@@ -155,6 +239,37 @@ describe('CredentialsRepository', () => {
 			const callArg = entityManager.findAndCount.mock.calls[0]?.[1];
 			expect(callArg).toBeDefined();
 			expect(callArg!.where).toEqual(expect.objectContaining({ id: In(['id1', 'id2']) }));
+		});
+
+		it('should apply sortBy as TypeORM order', async () => {
+			entityManager.findAndCount.mockResolvedValueOnce([[], 0]);
+
+			await credentialsRepository.findManyAndCount({
+				take: 10,
+				skip: 0,
+				sortBy: 'createdAt:desc',
+			});
+
+			const callArg = entityManager.findAndCount.mock.calls[0]?.[1];
+			expect(callArg?.order).toEqual({ createdAt: 'DESC' });
+		});
+
+		it('should default sort direction to ASC when omitted', async () => {
+			entityManager.findAndCount.mockResolvedValueOnce([[], 0]);
+
+			await credentialsRepository.findManyAndCount({ sortBy: 'name' });
+
+			const callArg = entityManager.findAndCount.mock.calls[0]?.[1];
+			expect(callArg?.order).toEqual({ name: 'ASC' });
+		});
+
+		it('should ignore unknown sortBy columns', async () => {
+			entityManager.findAndCount.mockResolvedValueOnce([[], 0]);
+
+			await credentialsRepository.findManyAndCount({ sortBy: 'data:desc' });
+
+			const callArg = entityManager.findAndCount.mock.calls[0]?.[1];
+			expect(callArg?.order).toBeUndefined();
 		});
 	});
 

@@ -13,9 +13,18 @@ import type {
 import { NodeConnectionTypes, NodeHelpers, UserError, TelemetryHelpers } from 'n8n-workflow';
 import type { CanvasConnection, CanvasNode } from '@/features/workflows/canvas/canvas.types';
 import { CanvasConnectionMode } from '@/features/workflows/canvas/canvas.types';
-import type { AddedNode, INodeUi, IWorkflowDb, WorkflowDataWithTemplateId } from '@/Interface';
+import type {
+	AddedNode,
+	INodeUi,
+	IWorkflowDb,
+	WorkflowDataWithTemplateId,
+	XYPosition,
+} from '@/Interface';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
-import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
+import type {
+	ICredentialsResponse,
+	IUsedCredential,
+} from '@/features/credentials/credentials.types';
 import type { IWorkflowTemplate, IWorkflowTemplateNode } from '@n8n/rest-api-client/api/templates';
 import {
 	AddConnectionCommand,
@@ -32,6 +41,7 @@ import { useHistoryStore } from '@/app/stores/history.store';
 import { useAgentNodeCanvasGeometryStore } from '@/features/agents/agentNodeCanvasGeometry.store';
 import { getNDVStoreId, useNDVStore } from '@/features/ndv/shared/ndv.store';
 import {
+	createMockEnterpriseSettings,
 	createMockNodeTypes,
 	createTestNode,
 	createTestNodeProperties,
@@ -65,9 +75,11 @@ import {
 	UPDATE_WEBHOOK_ID_NODE_TYPES,
 	VIEWS,
 	WEBHOOK_NODE_TYPE,
+	EnterpriseEditionFeature,
 } from '@/app/constants';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { STORES } from '@n8n/stores';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { Connection } from '@vue-flow/core';
 import { useClipboard } from '@vueuse/core';
 import { createCanvasConnectionHandleString } from '@/features/workflows/canvas/canvas.utils';
@@ -117,12 +129,8 @@ vi.mock('@n8n/rest-api-client/api/workflowHistory', () => ({
 
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import * as workflowHelpersModule from '@/app/composables/useWorkflowHelpers';
-import {
-	AGENT_NODE_SIZE,
-	DEFAULT_NODE_SIZE,
-	GRID_SIZE,
-	HORIZONTAL_NODE_STEP,
-} from '@/app/utils/nodeViewUtils';
+import { DEFAULT_NODE_SIZE, GRID_SIZE, HORIZONTAL_NODE_STEP } from '@/app/utils/nodeViewUtils';
+import { AGENT_NODE_SIZE } from '@/features/agents/utils/agentNode';
 
 vi.mock('n8n-workflow', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('n8n-workflow')>();
@@ -263,6 +271,18 @@ describe('useCanvasOperations', () => {
 			getParentNodesByDepth: workflowDocumentStoreInstance.getParentNodesByDepth,
 		});
 	});
+
+	function mockStoreNodePositions(positionsByNodeId: Record<string, XYPosition>) {
+		const nodesById = new Map(
+			Object.entries(positionsByNodeId).map(([id, position]) => [
+				id,
+				createTestNode({ id, position }),
+			]),
+		);
+		vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockImplementation((id: string) =>
+			nodesById.get(id),
+		);
+	}
 
 	describe('requireNodeTypeDescription', () => {
 		it('should return node type description when type and version match', () => {
@@ -692,30 +712,38 @@ describe('useCanvasOperations', () => {
 			]);
 		});
 
-		it('centers a node after an agent using the agent measured height', () => {
-			const uiStore = mockedStore(useUIStore);
-			const geometryStore = mockedStore(useAgentNodeCanvasGeometryStore);
-			const nodeTypesStore = mockedStore(useNodeTypesStore);
-			const node = createTestNode({ id: 'target', type: SET_NODE_TYPE, typeVersion: 1 });
-			const nodeTypeDescription = mockNodeTypeDescription({ name: SET_NODE_TYPE, version: 1 });
-			const agent = createTestNode({
-				id: 'agent',
-				position: [112, 57],
-				type: MESSAGE_AN_AGENT_NODE_TYPE,
-				typeVersion: 2,
-			});
+		it.each([
+			['measured', 206, 96],
+			['unmeasured', undefined, 64],
+		])(
+			'centers a node after an agent using the %s height (%s) with handle offset %s',
+			(_measurement, measuredHeight, expectedHandleOffset) => {
+				const uiStore = mockedStore(useUIStore);
+				const geometryStore = mockedStore(useAgentNodeCanvasGeometryStore);
+				const nodeTypesStore = mockedStore(useNodeTypesStore);
+				const node = createTestNode({ id: 'target', type: SET_NODE_TYPE, typeVersion: 1 });
+				const nodeTypeDescription = mockNodeTypeDescription({ name: SET_NODE_TYPE, version: 1 });
+				const agent = createTestNode({
+					id: 'agent',
+					position: [112, 64],
+					type: MESSAGE_AN_AGENT_NODE_TYPE,
+					typeVersion: 2,
+				});
 
-			uiStore.lastInteractedWithNodeId = agent.id;
-			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockReturnValue(agent as INodeUi);
-			vi.spyOn(workflowDocumentStoreInstance, 'getNodeByName').mockReturnValue(agent as INodeUi);
-			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(nodeTypeDescription);
-			geometryStore.getNodeHeight.mockReturnValue(206);
+				uiStore.lastInteractedWithNodeId = agent.id;
+				vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockReturnValue(agent as INodeUi);
+				vi.spyOn(workflowDocumentStoreInstance, 'getNodeByName').mockReturnValue(agent as INodeUi);
+				nodeTypesStore.getNodeType = vi.fn().mockReturnValue(nodeTypeDescription);
+				geometryStore.getNodeHeight.mockReturnValue(measuredHeight);
 
-			const { resolveNodePosition } = useCanvasOperations();
-			const position = resolveNodePosition({ ...node, position: undefined }, nodeTypeDescription);
+				const { resolveNodePosition } = useCanvasOperations();
+				const position = resolveNodePosition({ ...node, position: undefined }, nodeTypeDescription);
 
-			expect(position[1] + DEFAULT_NODE_SIZE[1] / 2).toBe(agent.position[1] + 206 / 2);
-		});
+				expect(position[1] + DEFAULT_NODE_SIZE[1] / 2).toBe(
+					agent.position[1] + expectedHandleOffset,
+				);
+			},
+		);
 
 		it('should place the node below the last interacted with node if it has non-main outputs', () => {
 			const uiStore = mockedStore(useUIStore);
@@ -1162,6 +1190,7 @@ describe('useCanvasOperations', () => {
 			];
 			const startRecordingUndoSpy = vi.spyOn(historyStore, 'startRecordingUndo');
 			const stopRecordingUndoSpy = vi.spyOn(historyStore, 'stopRecordingUndo');
+			mockStoreNodePositions({ node1: [0, 0], node2: [0, 0] });
 
 			const { updateNodesPosition } = useCanvasOperations();
 			updateNodesPosition(events, { trackHistory: true, trackBulk: true });
@@ -1176,17 +1205,7 @@ describe('useCanvasOperations', () => {
 				{ id: 'node2', position: { x: 208, y: 208 } },
 			];
 			const setNodePositionByIdSpy = vi.spyOn(workflowDocumentStoreInstance, 'setNodePositionById');
-			const node0 = createTestNode({
-				id: events[0].id,
-				position: [events[0].position.x, events[0].position.y],
-			});
-			const node1 = createTestNode({
-				id: events[1].id,
-				position: [events[1].position.x, events[1].position.y],
-			});
-			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById')
-				.mockReturnValueOnce(node0)
-				.mockReturnValueOnce(node1);
+			mockStoreNodePositions({ node1: [0, 0], node2: [0, 0] });
 
 			const { updateNodesPosition } = useCanvasOperations();
 			updateNodesPosition(events);
@@ -1194,6 +1213,25 @@ describe('useCanvasOperations', () => {
 			expect(setNodePositionByIdSpy).toHaveBeenCalledTimes(2);
 			expect(setNodePositionByIdSpy).toHaveBeenCalledWith('node1', [96, 96]);
 			expect(setNodePositionByIdSpy).toHaveBeenCalledWith('node2', [208, 208]);
+		});
+
+		it('does not update or record history when positions are unchanged', () => {
+			const historyStore = useHistoryStore();
+			const events = [
+				{ id: 'node1', position: { x: 96, y: 96 } },
+				{ id: 'node2', position: { x: 208, y: 208 } },
+			];
+			const startRecordingUndoSpy = vi.spyOn(historyStore, 'startRecordingUndo');
+			const stopRecordingUndoSpy = vi.spyOn(historyStore, 'stopRecordingUndo');
+			const setNodePositionByIdSpy = vi.spyOn(workflowDocumentStoreInstance, 'setNodePositionById');
+			mockStoreNodePositions({ node1: [96, 96], node2: [208, 208] });
+
+			const { updateNodesPosition } = useCanvasOperations();
+			updateNodesPosition(events, { trackHistory: true, trackBulk: true });
+
+			expect(startRecordingUndoSpy).not.toHaveBeenCalled();
+			expect(stopRecordingUndoSpy).not.toHaveBeenCalled();
+			expect(setNodePositionByIdSpy).not.toHaveBeenCalled();
 		});
 
 		it('does not record history when trackHistory is false', () => {
@@ -1226,6 +1264,7 @@ describe('useCanvasOperations', () => {
 			};
 			const startRecordingUndoSpy = vi.spyOn(historyStore, 'startRecordingUndo');
 			const stopRecordingUndoSpy = vi.spyOn(historyStore, 'stopRecordingUndo');
+			mockStoreNodePositions({ node1: [0, 0], node2: [0, 0] });
 
 			const { tidyUp } = useCanvasOperations();
 			tidyUp(event);
@@ -1247,17 +1286,7 @@ describe('useCanvasOperations', () => {
 				},
 			};
 			const setNodePositionByIdSpy = vi.spyOn(workflowDocumentStoreInstance, 'setNodePositionById');
-			const tidyNode0 = createTestNode({
-				id: event.result.nodes[0].id,
-				position: [event.result.nodes[0].x, event.result.nodes[0].y],
-			});
-			const tidyNode1 = createTestNode({
-				id: event.result.nodes[1].id,
-				position: [event.result.nodes[1].x, event.result.nodes[1].y],
-			});
-			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById')
-				.mockReturnValueOnce(tidyNode0)
-				.mockReturnValueOnce(tidyNode1);
+			mockStoreNodePositions({ node1: [0, 0], node2: [0, 0] });
 
 			const { tidyUp } = useCanvasOperations();
 			tidyUp(event);
@@ -1265,6 +1294,71 @@ describe('useCanvasOperations', () => {
 			expect(setNodePositionByIdSpy).toHaveBeenCalledTimes(2);
 			expect(setNodePositionByIdSpy).toHaveBeenCalledWith('node1', [96, 96]);
 			expect(setNodePositionByIdSpy).toHaveBeenCalledWith('node2', [208, 208]);
+		});
+
+		it('updates sticky note dimensions from the layout result', () => {
+			const sticky = createTestNode({
+				id: 'sticky',
+				name: 'Sticky',
+				type: STICKY_NODE_TYPE,
+				position: [0, 0],
+				parameters: { content: 'Note', width: 300, height: 200 },
+			});
+			const node = createTestNode({ id: 'node', position: [0, 0] });
+			const nodesById = new Map([
+				[sticky.id, sticky],
+				[node.id, node],
+			]);
+			const event: CanvasLayoutEvent = {
+				source: 'canvas-button',
+				target: 'all',
+				result: {
+					nodes: [
+						{ id: 'sticky', x: 96, y: 96, width: 520, height: 360 },
+						{ id: 'node', x: 0, y: 0, width: 999, height: 999 },
+					],
+					boundingBox: { height: 96, width: 96, x: 0, y: 0 },
+				},
+			};
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockImplementation((id: string) =>
+				nodesById.get(id),
+			);
+			const setNodeParametersSpy = vi.spyOn(workflowDocumentStoreInstance, 'setNodeParameters');
+
+			const { tidyUp } = useCanvasOperations();
+			tidyUp(event, { trackHistory: false });
+
+			expect(setNodeParametersSpy).toHaveBeenCalledTimes(1);
+			expect(setNodeParametersSpy).toHaveBeenCalledWith({
+				name: 'Sticky',
+				value: { content: 'Note', width: 520, height: 360 },
+			});
+		});
+
+		it('does not update or record history when tidy positions are unchanged', () => {
+			const historyStore = useHistoryStore();
+			const event: CanvasLayoutEvent = {
+				source: 'canvas-button',
+				target: 'all',
+				result: {
+					nodes: [
+						{ id: 'node1', x: 96, y: 96 },
+						{ id: 'node2', x: 208, y: 208 },
+					],
+					boundingBox: { height: 96, width: 96, x: 0, y: 0 },
+				},
+			};
+			const startRecordingUndoSpy = vi.spyOn(historyStore, 'startRecordingUndo');
+			const stopRecordingUndoSpy = vi.spyOn(historyStore, 'stopRecordingUndo');
+			const setNodePositionByIdSpy = vi.spyOn(workflowDocumentStoreInstance, 'setNodePositionById');
+			mockStoreNodePositions({ node1: [96, 96], node2: [208, 208] });
+
+			const { tidyUp } = useCanvasOperations();
+			tidyUp(event);
+
+			expect(startRecordingUndoSpy).not.toHaveBeenCalled();
+			expect(stopRecordingUndoSpy).not.toHaveBeenCalled();
+			expect(setNodePositionByIdSpy).not.toHaveBeenCalled();
 		});
 
 		it('should send a "User tidied up workflow" telemetry event', () => {
@@ -1287,6 +1381,31 @@ describe('useCanvasOperations', () => {
 				nodes_count: 2,
 				source: 'canvas-button',
 				target: 'all',
+			});
+		});
+
+		it('tracks the target node count when the layout result includes baked positions', () => {
+			const event: CanvasLayoutEvent = {
+				source: 'canvas-button',
+				target: 'selection',
+				targetNodeCount: 2,
+				result: {
+					nodes: [
+						{ id: 'node1', x: 96, y: 96 },
+						{ id: 'node2', x: 208, y: 208 },
+						{ id: 'node3', x: 320, y: 320 },
+					],
+					boundingBox: { height: 96, width: 96, x: 0, y: 0 },
+				},
+			};
+
+			const { tidyUp } = useCanvasOperations();
+			tidyUp(event, { trackHistory: false });
+
+			expect(useTelemetry().track).toHaveBeenCalledWith('User tidied up canvas', {
+				nodes_count: 2,
+				source: 'canvas-button',
+				target: 'selection',
 			});
 		});
 
@@ -1360,20 +1479,28 @@ describe('useCanvasOperations', () => {
 		it('should update node position', () => {
 			const id = 'node1';
 			const position: CanvasNode['position'] = { x: 10, y: 20 };
-			const node = createTestNode({
-				id,
-				type: 'node',
-				position: [0, 0],
-				name: 'Node 1',
-			});
 			const setNodePositionByIdSpy = vi.spyOn(workflowDocumentStoreInstance, 'setNodePositionById');
-
-			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockReturnValueOnce(node);
+			mockStoreNodePositions({ node1: [0, 0] });
 
 			const { updateNodePosition } = useCanvasOperations();
 			updateNodePosition(id, position);
 
 			expect(setNodePositionByIdSpy).toHaveBeenCalledWith(id, [position.x, position.y]);
+		});
+
+		it('does not update or record history when the position is unchanged', () => {
+			const id = 'node1';
+			const position: CanvasNode['position'] = { x: 10, y: 20 };
+			const historyStore = useHistoryStore();
+			const setNodePositionByIdSpy = vi.spyOn(workflowDocumentStoreInstance, 'setNodePositionById');
+			const pushCommandToUndoSpy = vi.spyOn(historyStore, 'pushCommandToUndo');
+			mockStoreNodePositions({ node1: [position.x, position.y] });
+
+			const { updateNodePosition } = useCanvasOperations();
+			updateNodePosition(id, position, { trackHistory: true });
+
+			expect(setNodePositionByIdSpy).not.toHaveBeenCalled();
+			expect(pushCommandToUndoSpy).not.toHaveBeenCalled();
 		});
 	});
 
@@ -4576,6 +4703,146 @@ describe('useCanvasOperations', () => {
 
 			expect(copiedData.nodeGroups).toBeUndefined();
 		});
+
+		it('keeps n8n credits credentials when copying nodes', () => {
+			const nodeTypesStore = useNodeTypesStore();
+			nodeTypesStore.nodeTypes = {
+				[SET_NODE_TYPE]: {
+					1: mockNodeTypeDescription({
+						name: SET_NODE_TYPE,
+						credentials: [{ name: 'openAiApi', required: true }],
+					}),
+				},
+			};
+
+			const gatewayCredential = { id: null, name: '', __aiGatewayManaged: true as const };
+			const node = mockNode({ id: '1', name: 'Node 1', type: SET_NODE_TYPE });
+			node.position = [40, 40];
+			node.credentials = { openAiApi: gatewayCredential };
+
+			workflowDocumentStoreInstance.allNodes = [node];
+			vi.mocked(workflowDocumentStoreInstance.outgoingConnectionsByNodeName).mockReturnValue({});
+
+			const { getNodesToSave } = useCanvasOperations();
+			const copiedData = getNodesToSave([node]);
+
+			expect(copiedData.nodes[0].credentials).toEqual({ openAiApi: gatewayCredential });
+		});
+
+		function copyNodeCredentialsWithSharing({
+			credentials,
+			usedCredentials = {},
+			usableCredentials = [],
+		}: {
+			credentials: INodeUi['credentials'];
+			usedCredentials?: Record<string, IUsedCredential>;
+			usableCredentials?: ICredentialsResponse[];
+		}) {
+			mockedStore(useSettingsStore).isEnterpriseFeatureEnabled = createMockEnterpriseSettings({
+				[EnterpriseEditionFeature.Sharing]: true,
+			});
+
+			const credentialsStore = useCredentialsStore();
+			vi.spyOn(credentialsStore, 'allCredentials', 'get').mockReturnValue(usableCredentials);
+
+			const nodeTypesStore = useNodeTypesStore();
+			nodeTypesStore.nodeTypes = {
+				[SET_NODE_TYPE]: {
+					1: mockNodeTypeDescription({
+						name: SET_NODE_TYPE,
+						credentials: [{ name: 'openAiApi', required: true }],
+					}),
+				},
+			};
+
+			const node = mockNode({ id: '1', name: 'Node 1', type: SET_NODE_TYPE });
+			node.position = [40, 40];
+			node.credentials = credentials;
+
+			workflowDocumentStoreInstance.allNodes = [node];
+			vi.spyOn(workflowDocumentStoreInstance, 'usedCredentials', 'get').mockReturnValue(
+				usedCredentials,
+			);
+			vi.mocked(workflowDocumentStoreInstance.outgoingConnectionsByNodeName).mockReturnValue({});
+
+			return useCanvasOperations().getNodesToSave([node]).nodes[0].credentials;
+		}
+
+		it('keeps n8n credits credentials when sharing is enabled', () => {
+			const gatewayCredential = { id: null, name: '', __aiGatewayManaged: true as const };
+
+			expect(
+				copyNodeCredentialsWithSharing({
+					credentials: { openAiApi: gatewayCredential },
+				}),
+			).toEqual({ openAiApi: gatewayCredential });
+		});
+
+		it('drops id-less credentials that are not n8n credits when sharing is enabled', () => {
+			const orphanCredential = { id: null, name: 'Orphan' };
+
+			expect(
+				copyNodeCredentialsWithSharing({
+					credentials: { openAiApi: orphanCredential },
+				}),
+			).toEqual({});
+		});
+
+		it('keeps stored credentials that are not in usedCredentials when sharing is enabled', () => {
+			const ownedCredential = mock<ICredentialsResponse>({ id: 'cred-1', name: 'Mine' });
+			const storedCredential = { id: ownedCredential.id, name: ownedCredential.name };
+
+			expect(
+				copyNodeCredentialsWithSharing({
+					credentials: { openAiApi: storedCredential },
+					usableCredentials: [ownedCredential],
+				}),
+			).toEqual({ openAiApi: storedCredential });
+		});
+
+		it('keeps stored credentials the current user can access when sharing is enabled', () => {
+			const ownedCredential = mock<ICredentialsResponse>({ id: 'cred-1', name: 'Mine' });
+			const storedCredential = { id: ownedCredential.id, name: ownedCredential.name };
+
+			expect(
+				copyNodeCredentialsWithSharing({
+					credentials: { openAiApi: storedCredential },
+					usableCredentials: [ownedCredential],
+					usedCredentials: {
+						[ownedCredential.id]: {
+							id: ownedCredential.id,
+							name: ownedCredential.name,
+							credentialType: 'openAiApi',
+							currentUserHasAccess: true,
+						},
+					},
+				}),
+			).toEqual({ openAiApi: storedCredential });
+		});
+
+		it('drops stored credentials the current user cannot access when sharing is enabled', () => {
+			const foreignCredential = mock<ICredentialsResponse>({
+				id: 'cred-foreign',
+				name: 'Someone else',
+			});
+
+			expect(
+				copyNodeCredentialsWithSharing({
+					credentials: {
+						openAiApi: { id: foreignCredential.id, name: foreignCredential.name },
+					},
+					usableCredentials: [foreignCredential],
+					usedCredentials: {
+						[foreignCredential.id]: {
+							id: foreignCredential.id,
+							name: foreignCredential.name,
+							credentialType: 'openAiApi',
+							currentUserHasAccess: false,
+						},
+					},
+				}),
+			).toEqual({});
+		});
 	});
 
 	describe('cutNodes', () => {
@@ -4663,6 +4930,29 @@ describe('useCanvasOperations', () => {
 
 			expect(setNodesSpy).toHaveBeenCalled();
 			expect(workflowDocumentStoreInstance.setConnections).toHaveBeenCalled();
+		});
+
+		it('marks the document hydrated after nodes and connections are set', async () => {
+			const workflow = createTestWorkflow({
+				id: workflowId,
+				nodes: [createTestNode()],
+				connections: {},
+			});
+
+			const setNodesSpy = vi.spyOn(workflowDocumentStoreInstance, 'setNodes');
+			const setConnectionsSpy = vi.spyOn(workflowDocumentStoreInstance, 'setConnections');
+			const setHydratedSpy = vi.spyOn(workflowDocumentStoreInstance, 'setHydrated');
+			const { initializeWorkspace } = useCanvasOperations();
+
+			await initializeWorkspace(workflow);
+
+			expect(setHydratedSpy).toHaveBeenCalledWith(true);
+			expect(setHydratedSpy.mock.invocationCallOrder[0]).toBeGreaterThan(
+				setNodesSpy.mock.invocationCallOrder[0],
+			);
+			expect(setHydratedSpy.mock.invocationCallOrder[0]).toBeGreaterThan(
+				setConnectionsSpy.mock.invocationCallOrder[0],
+			);
 		});
 
 		it('should set connections even when workflowId is initially empty', async () => {

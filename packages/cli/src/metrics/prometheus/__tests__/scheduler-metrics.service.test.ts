@@ -124,6 +124,10 @@ describe('PrometheusSchedulerMetricsService', () => {
 					'n8n_scheduler_tasks_reclaimed_total',
 					'n8n_scheduler_tasks_dead_lettered_total',
 					'n8n_scheduler_tasks_pruned_total',
+					'n8n_scheduler_jobs_quarantined_total',
+					'n8n_scheduler_orphaned_jobs_deleted_total',
+					'n8n_scheduler_jobs_revived_total',
+					'n8n_scheduler_tasks_lease_lost_total',
 				]),
 			);
 
@@ -162,6 +166,9 @@ describe('PrometheusSchedulerMetricsService', () => {
 				'n8n_scheduler_tasks_reclaimed_total',
 				'n8n_scheduler_tasks_dead_lettered_total',
 				'n8n_scheduler_tasks_pruned_total',
+				'n8n_scheduler_jobs_quarantined_total',
+				'n8n_scheduler_orphaned_jobs_deleted_total',
+				'n8n_scheduler_jobs_revived_total',
 			]) {
 				expect(counterIncFor(name)).toHaveBeenCalledWith(0);
 			}
@@ -315,6 +322,22 @@ describe('PrometheusSchedulerMetricsService', () => {
 			expect(inc).toHaveBeenCalledWith(5);
 			expect(inc).toHaveBeenCalledTimes(1);
 		});
+
+		it('counts reconciliation outcomes on their own counters', () => {
+			service.recordReconciled(3, 2, 1);
+
+			expect(counterIncFor('n8n_scheduler_jobs_quarantined_total')).toHaveBeenCalledWith(3);
+			expect(counterIncFor('n8n_scheduler_orphaned_jobs_deleted_total')).toHaveBeenCalledWith(2);
+			expect(counterIncFor('n8n_scheduler_jobs_revived_total')).toHaveBeenCalledWith(1);
+		});
+
+		it('increments the lease-lost counter by task type', () => {
+			service.recordLeaseLost('workflow:poll-trigger');
+
+			const inc = counterIncFor('n8n_scheduler_tasks_lease_lost_total');
+			expect(inc).toHaveBeenCalledWith({ task_type: 'workflow:poll-trigger' }, 1);
+			expect(inc).toHaveBeenCalledTimes(1);
+		});
 	});
 
 	describe('push metrics before init', () => {
@@ -332,6 +355,8 @@ describe('PrometheusSchedulerMetricsService', () => {
 			service.recordReaped(1, 1, 1);
 			service.recordDeadLettered();
 			service.recordPruned(1);
+			service.recordReconciled(1, 1, 1);
+			service.recordLeaseLost('workflow');
 
 			expect(sharedCounterInc).not.toHaveBeenCalled();
 			expect(mockHistogramObserve).not.toHaveBeenCalled();

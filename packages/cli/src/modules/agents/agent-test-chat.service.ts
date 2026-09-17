@@ -1,7 +1,7 @@
 import { Service } from '@n8n/di';
 
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
-import { AgentWorkspaceService } from './agent-workspace.service';
+import { AGENT_BACKGROUND_WAKE_OPEN_TAG } from './background/background-job-messages';
 import { AGENT_THREAD_PREFIX } from './builder/builder-tool-names';
 import { N8nMemory } from './integrations/n8n-memory';
 import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
@@ -17,7 +17,6 @@ export class AgentTestChatService {
 	constructor(
 		private readonly n8nMemory: N8nMemory,
 		private readonly agentChatAttachmentService: AgentChatAttachmentService,
-		private readonly agentWorkspaceService: AgentWorkspaceService,
 	) {}
 
 	/**
@@ -25,21 +24,32 @@ export class AgentTestChatService {
 	 * user. Test-chat threads are keyed by agent and user so memory stays isolated.
 	 */
 	async getTestChatMessages(agentId: string, userId: string) {
-		return await this.n8nMemory
+		const messages = await this.n8nMemory
 			.getImplementation(agentId)
 			.getMessages(chatThreadId(agentId, userId), {
 				resourceId: draftChatMemoryResourceId(userId),
 			});
+		return messages.filter(
+			(message) =>
+				!('role' in message) ||
+				message.role !== 'user' ||
+				!Array.isArray(message.content) ||
+				!message.content.some(
+					(part) =>
+						part.type === 'text' &&
+						typeof part.text === 'string' &&
+						part.text.startsWith(AGENT_BACKGROUND_WAKE_OPEN_TAG),
+				),
+		);
 	}
 
 	/**
 	 * Clear the current user's test-chat messages for an agent.
 	 */
-	async clearTestChatMessages(projectId: string, agentId: string, userId: string) {
+	async clearTestChatMessages(agentId: string, userId: string) {
 		const threadId = chatThreadId(agentId, userId);
 		await this.n8nMemory.getImplementation(agentId).deleteThread(threadId);
 		await this.agentChatAttachmentService.deleteByThread(threadId, { agentId });
-		await this.agentWorkspaceService.cleanupThreadWorkspace(projectId, agentId, threadId);
 	}
 
 	/** Delete all test-chat messages + the thread row — used when the agent itself is deleted. */

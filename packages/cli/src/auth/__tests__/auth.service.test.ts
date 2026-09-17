@@ -846,7 +846,7 @@ describe('AuthService', () => {
 			urlService.getInstanceBaseUrl.mockReturnValue('https://n8n.instance');
 			const url = authService.generatePasswordResetUrl(user);
 			expect(url).toEqual(
-				'https://n8n.instance/change-password?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjMiLCJoYXNoIjoibUpBWXg0V2I3ayIsImlhdCI6MTcwNjc1MDYyNSwiZXhwIjoxNzA2NzUxODI1fQ.rg90I7MKjc_KC77mov59XYAeRc-CoW9ka4mt1dCfrnk&mfaEnabled=false',
+				'https://n8n.instance/change-password?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjMiLCJoYXNoIjoibUpBWXg0V2I3ayIsImlhdCI6MTcwNjc1MDYyNSwiZXhwIjoxNzA2NzUxODI1LCJhdWQiOiJuOG4tcGFzc3dvcmQtcmVzZXQifQ.zUcoIN2QmmzU0EAT0QfEosnud3Q-bDf_tmIuXCZU_CE&mfaEnabled=false',
 			);
 		});
 	});
@@ -944,6 +944,60 @@ describe('AuthService', () => {
 		});
 	});
 
+	describe('email change token', () => {
+		const newEmail = 'new@example.com';
+		const tokenFromUrl = (url: string) => new URL(url).searchParams.get('token') ?? '';
+
+		beforeEach(() => {
+			urlService.getInstanceBaseUrl.mockReturnValue('https://n8n.instance');
+		});
+
+		it('should resolve a token it generated', async () => {
+			const token = tokenFromUrl(authService.generateEmailChangeUrl(user, newEmail));
+			userRepository.findOne.mockResolvedValueOnce(user);
+
+			const resolved = await authService.resolveEmailChangeToken(token);
+
+			expect(resolved).toEqual({ user, newEmail });
+		});
+
+		it('should not resolve a password-reset token as an email change token', async () => {
+			const passwordResetToken = authService.generatePasswordResetToken(user);
+			userRepository.findOne.mockResolvedValueOnce(user);
+
+			const resolved = await authService.resolveEmailChangeToken(passwordResetToken);
+
+			expect(resolved).toBeUndefined();
+		});
+
+		it('should not resolve after the current email changed', async () => {
+			const token = tokenFromUrl(authService.generateEmailChangeUrl(user, newEmail));
+			const userWithChangedEmail = Object.assign(mockUser(), {
+				email: 'already-changed@example.com',
+			});
+			userRepository.findOne.mockResolvedValueOnce(userWithChangedEmail);
+
+			const resolved = await authService.resolveEmailChangeToken(token);
+
+			expect(resolved).toBeUndefined();
+		});
+
+		it('should not resolve an expired token', async () => {
+			const token = tokenFromUrl(authService.generateEmailChangeUrl(user, newEmail));
+			vi.setSystemTime(new Date(now.getTime() + 21 * 60 * 1000));
+
+			const resolved = await authService.resolveEmailChangeToken(token);
+
+			expect(resolved).toBeUndefined();
+		});
+
+		it('should not resolve a malformed token', async () => {
+			const resolved = await authService.resolveEmailChangeToken('not-a-jwt');
+
+			expect(resolved).toBeUndefined();
+		});
+	});
+
 	describe('invalidateToken', () => {
 		const req = mock<AuthenticatedRequest>({
 			cookies: {
@@ -958,6 +1012,19 @@ describe('AuthService', () => {
 				token: validToken,
 				expiresAt: new Date('2024-02-08T01:23:45.000Z'),
 			});
+		});
+	});
+
+	describe('clearCookie', () => {
+		it('should clear the session cookie', () => {
+			const res = mock<Response>();
+
+			authService.clearCookie(res);
+
+			expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME);
+			// The form page cookies are not clearable from here: their names embed the
+			// workflow/execution they were minted for, unknown to this response.
+			expect(res.clearCookie).toHaveBeenCalledTimes(1);
 		});
 	});
 

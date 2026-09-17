@@ -194,8 +194,9 @@ export class LmChatMistralCloud implements INodeType {
 			randomSeed: undefined,
 		}) as Partial<ChatMistralAIInput>;
 
+		const egressFilter = this.helpers.getSecureEgressFilter();
 		const fetchWithTimeout = async (input: RequestInfo | URL, init?: RequestInit) =>
-			await proxyFetch(input, init, {});
+			await proxyFetch({ input, init, timeoutOptions: {}, egressFilter });
 		const httpClient = new HTTPClient({ fetcher: fetchWithTimeout });
 
 		const model = new ChatMistralAI({

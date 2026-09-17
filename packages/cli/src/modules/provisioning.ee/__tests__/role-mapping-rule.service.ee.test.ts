@@ -621,12 +621,26 @@ describe('RoleMappingRuleService', () => {
 
 		it('should return 404 when rule id is unknown', async () => {
 			await expect(
-				service.patch('00000000-0000-4000-8000-000000000000', { expression: 'true' }),
+				service.patch({
+					id: '00000000-0000-4000-8000-000000000000',
+					dto: { expression: 'true' },
+					userId: testUser.id,
+					userEmail: testUser.email,
+				}),
 			).rejects.toThrow(NotFoundError);
+
+			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 
 		it('should reject an empty patch payload', async () => {
-			await expect(service.patch(existingInstanceRule.id, {})).rejects.toThrow(BadRequestError);
+			await expect(
+				service.patch({
+					id: existingInstanceRule.id,
+					dto: {},
+					userId: testUser.id,
+					userEmail: testUser.email,
+				}),
+			).rejects.toThrow(BadRequestError);
 		});
 
 		it('should update expression and return loaded rule', async () => {
@@ -641,13 +655,22 @@ describe('RoleMappingRuleService', () => {
 			roleMappingRuleRepository.save.mockImplementation(async (r) => r as RoleMappingRule);
 			roleMappingRuleRepository.findOneOrFail.mockResolvedValue(updatedRule);
 
-			const result = await service.patch(existingInstanceRule.id, {
-				expression: 'claims.new === 1',
+			const result = await service.patch({
+				id: existingInstanceRule.id,
+				dto: { expression: 'claims.new === 1' },
+				userId: testUser.id,
+				userEmail: testUser.email,
 			});
 
 			expect(result.expression).toBe('claims.new === 1');
 			expect(result.role).toBe(globalRole.slug);
 			expect(roleMappingRuleRepository.save).toHaveBeenCalledTimes(1);
+			expect(eventService.emit).toHaveBeenCalledWith('role-mapping-rule-updated', {
+				user: { id: testUser.id, email: testUser.email },
+				ruleId: existingInstanceRule.id,
+				ruleType: 'instance',
+				patchedFields: ['expression'],
+			});
 		});
 
 		it('should return 409 when order collides with another rule', async () => {
@@ -675,9 +698,16 @@ describe('RoleMappingRuleService', () => {
 				return null;
 			});
 
-			await expect(service.patch(existingInstanceRule.id, { order: 5 })).rejects.toThrow(
-				ConflictError,
-			);
+			await expect(
+				service.patch({
+					id: existingInstanceRule.id,
+					dto: { order: 5 },
+					userId: testUser.id,
+					userEmail: testUser.email,
+				}),
+			).rejects.toThrow(ConflictError);
+
+			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 
 		it('should allow patch that keeps the same type and order', async () => {
@@ -716,7 +746,12 @@ describe('RoleMappingRuleService', () => {
 			roleMappingRuleRepository.findOneOrFail.mockResolvedValue(updatedRule);
 
 			await expect(
-				service.patch(existingInstanceRule.id, { expression: 'true' }),
+				service.patch({
+					id: existingInstanceRule.id,
+					dto: { expression: 'true' },
+					userId: testUser.id,
+					userEmail: testUser.email,
+				}),
 			).resolves.toMatchObject({ order: 0, type: 'instance' });
 		});
 	});
@@ -734,25 +769,57 @@ describe('RoleMappingRuleService', () => {
 		} as unknown as RoleMappingRule;
 
 		it('should reject an empty id', async () => {
-			await expect(service.delete('')).rejects.toThrow(BadRequestError);
+			await expect(
+				service.delete({ id: '', userId: testUser.id, userEmail: testUser.email }),
+			).rejects.toThrow(BadRequestError);
+
+			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 
 		it('should return 404 when rule id is unknown', async () => {
 			roleMappingRuleRepository.findOne.mockResolvedValue(null);
 
-			await expect(service.delete('00000000-0000-4000-8000-000000000000')).rejects.toThrow(
-				NotFoundError,
-			);
+			await expect(
+				service.delete({
+					id: '00000000-0000-4000-8000-000000000000',
+					userId: testUser.id,
+					userEmail: testUser.email,
+				}),
+			).rejects.toThrow(NotFoundError);
 			expect(roleMappingRuleRepository.remove).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 
-		it('should remove the rule when it exists', async () => {
+		it('should remove the rule and emit the deleted event when it exists', async () => {
 			roleMappingRuleRepository.findOne.mockResolvedValue(rule);
 			roleMappingRuleRepository.remove.mockResolvedValue(rule);
 
-			await service.delete(rule.id);
+			const result = await service.delete({
+				id: rule.id,
+				userId: testUser.id,
+				userEmail: testUser.email,
+			});
 
+			expect(result).toEqual({
+				id: rule.id,
+				expression: rule.expression,
+				role: rule.role.slug,
+				type: rule.type,
+				order: rule.order,
+				projectIds: rule.projects.map((p) => p.id),
+				createdAt: '2025-01-01T00:00:00.000Z',
+				updatedAt: '2025-01-01T00:00:00.000Z',
+			});
+			expect(roleMappingRuleRepository.findOne).toHaveBeenCalledWith({
+				where: { id: rule.id },
+				relations: ['projects', 'role'],
+			});
 			expect(roleMappingRuleRepository.remove).toHaveBeenCalledWith(rule);
+			expect(eventService.emit).toHaveBeenCalledWith('role-mapping-rule-deleted', {
+				user: { id: testUser.id, email: testUser.email },
+				ruleId: rule.id,
+				ruleType: 'instance',
+			});
 		});
 	});
 
@@ -823,7 +890,16 @@ describe('RoleMappingRuleService', () => {
 		it('should throw NotFoundError when rule does not exist', async () => {
 			roleMappingRuleRepository.findOne.mockResolvedValue(null);
 
-			await expect(service.move('nonexistent', 0)).rejects.toThrow(NotFoundError);
+			await expect(
+				service.move({
+					id: 'nonexistent',
+					targetIndex: 0,
+					userId: testUser.id,
+					userEmail: testUser.email,
+				}),
+			).rejects.toThrow(NotFoundError);
+
+			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 
 		it('should move first rule to last position', async () => {
@@ -837,10 +913,21 @@ describe('RoleMappingRuleService', () => {
 				updatedAt: new Date(),
 			} as unknown as RoleMappingRule);
 
-			await service.move('a', 2);
+			await service.move({
+				id: 'a',
+				targetIndex: 2,
+				userId: testUser.id,
+				userEmail: testUser.email,
+			});
 
 			// Verify applyOrder called with correct sequence: b, c, a
 			expect(transactionSpy).toHaveBeenCalledTimes(1);
+			expect(eventService.emit).toHaveBeenCalledWith('role-mapping-rule-updated', {
+				user: { id: testUser.id, email: testUser.email },
+				ruleId: 'a',
+				ruleType: 'instance',
+				patchedFields: ['order'],
+			});
 		});
 
 		it('should move last rule to first position', async () => {
@@ -854,9 +941,20 @@ describe('RoleMappingRuleService', () => {
 				updatedAt: new Date(),
 			} as unknown as RoleMappingRule);
 
-			await service.move('c', 0);
+			await service.move({
+				id: 'c',
+				targetIndex: 0,
+				userId: testUser.id,
+				userEmail: testUser.email,
+			});
 
 			expect(transactionSpy).toHaveBeenCalledTimes(1);
+			expect(eventService.emit).toHaveBeenCalledWith('role-mapping-rule-updated', {
+				user: { id: testUser.id, email: testUser.email },
+				ruleId: 'c',
+				ruleType: 'instance',
+				patchedFields: ['order'],
+			});
 		});
 
 		it('should clamp targetIndex to last position when out of bounds', async () => {
@@ -871,15 +969,35 @@ describe('RoleMappingRuleService', () => {
 			} as unknown as RoleMappingRule);
 
 			// targetIndex 999 should clamp to 1 (last valid index)
-			await service.move('a', 999);
+			await service.move({
+				id: 'a',
+				targetIndex: 999,
+				userId: testUser.id,
+				userEmail: testUser.email,
+			});
 
 			expect(transactionSpy).toHaveBeenCalledTimes(1);
+			expect(eventService.emit).toHaveBeenCalledWith('role-mapping-rule-updated', {
+				user: { id: testUser.id, email: testUser.email },
+				ruleId: 'a',
+				ruleType: 'instance',
+				patchedFields: ['order'],
+			});
 		});
 	});
 
 	describe('normalizeOrderForType', () => {
 		const makeRule = (id: string, order: number, type = 'instance') =>
-			({ id, order, type }) as unknown as RoleMappingRule;
+			({
+				id,
+				order,
+				type,
+				expression: 'true',
+				role: globalRole,
+				projects: [],
+				createdAt: new Date('2025-01-01T00:00:00.000Z'),
+				updatedAt: new Date('2025-01-01T00:00:00.000Z'),
+			}) as unknown as RoleMappingRule;
 
 		const updateSpy = vi.fn().mockResolvedValue(undefined);
 		const transactionSpy = vi.fn();
@@ -908,7 +1026,7 @@ describe('RoleMappingRuleService', () => {
 			roleMappingRuleRepository.findOne.mockResolvedValue(makeRule('a', 0));
 			roleMappingRuleRepository.remove.mockResolvedValue(makeRule('a', 0));
 
-			await service.delete('a');
+			await service.delete({ id: 'a', userId: testUser.id, userEmail: testUser.email });
 
 			expect(transactionSpy).not.toHaveBeenCalled();
 		});
@@ -921,10 +1039,10 @@ describe('RoleMappingRuleService', () => {
 				makeRule('c', 3),
 			]);
 
-			roleMappingRuleRepository.findOne.mockResolvedValue(makeRule('x', 0));
-			roleMappingRuleRepository.remove.mockResolvedValue(makeRule('x', 0));
+			roleMappingRuleRepository.findOne.mockResolvedValue(makeRule('x', 1));
+			roleMappingRuleRepository.remove.mockResolvedValue(makeRule('x', 1));
 
-			await service.delete('x');
+			await service.delete({ id: 'x', userId: testUser.id, userEmail: testUser.email });
 
 			expect(transactionSpy).toHaveBeenCalledTimes(1);
 
@@ -967,11 +1085,16 @@ describe('RoleMappingRuleService', () => {
 					makeRule('rule-3', 2, 'instance'),
 				]); // old type: instance has gap
 
-			await service.patch('rule-1', {
-				type: 'project',
-				role: projectRole.slug,
-				projectIds: ['p1'],
-				order: 0,
+			await service.patch({
+				id: 'rule-1',
+				dto: {
+					type: 'project',
+					role: projectRole.slug,
+					projectIds: ['p1'],
+					order: 0,
+				},
+				userId: testUser.id,
+				userEmail: testUser.email,
 			});
 
 			// Called twice: once for new type (project), once for old type (instance)

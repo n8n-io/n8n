@@ -13,13 +13,10 @@ import { test, expect } from '../../../fixtures/base';
  * Requires:
  *   - capability: 'dynamic-credentials' (Keycloak container + env vars)
  */
-test.use({
-	capability: 'dynamic-credentials',
-	ignoreHTTPSErrors: true,
-});
+test.use({ capability: 'dynamic-credentials' });
 
 test.describe(
-	'Dynamic Credentials: resolver deletion cleanup @capability:dynamic-credentials @licensed',
+	'Dynamic Credentials: resolver deletion cleanup @licensed',
 	{
 		annotation: [{ type: 'owner', description: 'Identity & Access' }],
 	},
@@ -33,6 +30,7 @@ test.describe(
 				config: {
 					metadataUri: keycloak.internalDiscoveryUrl,
 					validation: 'oauth2-userinfo',
+					expectedAudience: keycloak.audience,
 				},
 			});
 
@@ -69,6 +67,7 @@ test.describe(
 				config: {
 					metadataUri: keycloak.internalDiscoveryUrl,
 					validation: 'oauth2-userinfo',
+					expectedAudience: keycloak.audience,
 				},
 			});
 
@@ -107,6 +106,7 @@ test.describe(
 				config: {
 					metadataUri: keycloak.internalDiscoveryUrl,
 					validation: 'oauth2-userinfo',
+					expectedAudience: keycloak.audience,
 				},
 			});
 
