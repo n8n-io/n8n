@@ -47,6 +47,7 @@ packages/cli/test/integration/agents/agent-message-queue.test.ts
   s_d27d09d94cc9ff::t_bb2cf313c4322d 10,25-26,36,65,109,126-130,160-162,167-176,192-193,197,320,363,502-503,505-507,515-584,586-649,651,663,675,677,679-690,692-693,698-699,705-709,712-725,727-728,732-812,830-832,951-955,957-958,960-987,992-996,1045,1084-1129,1181,1184,1196
   s_d27d09d94cc9ff::t_aa4ebf1b06b4a6 3-4,132,153,194,956,959
   s_d27d09d94cc9ff::t_89a7d3bb63cd20 136-138
+  s_d27d09d94cc9ff::t_23250bcc27e576 585,710-711,726,729-731
 packages/@n8n/api-types/src/agents/__tests__/agent-chat-message.dto.test.ts
   s_d27d09d94cc9ff::t_bb2cf313c4322d 5,14,22-26,30-36,38-42,47,56,69,76
 packages/cli/src/modules/agents/integrations/n8n-checkpoint-storage.ts
