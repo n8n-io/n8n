@@ -8,10 +8,12 @@ const props = withDefaults(
 		addLabel: string;
 		addButtonTestId?: string;
 		disabled?: boolean;
+		showLabel?: boolean;
 	}>(),
 	{
 		addButtonTestId: undefined,
 		disabled: false,
+		showLabel: true,
 	},
 );
 
@@ -27,7 +29,7 @@ const emit = defineEmits<{
 
 <template>
 	<div :class="$style.row" :inert="props.disabled || undefined">
-		<N8nText v-if="props.itemCount > 0" bold :class="$style.label">
+		<N8nText v-if="props.showLabel && props.itemCount > 0" bold :class="$style.label">
 			{{ props.label }}
 		</N8nText>
 
