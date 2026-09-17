@@ -1,5 +1,12 @@
 # @n8n/engine — structure & modularity intent
 
+## Naming
+
+Refer to this project as **engine v2** (lowercase `v2`). Do not use "Engine
+2.0", "engine 2.0", or "v2.0". In code, use `engine-v2` for filenames and
+`engineV2` for identifiers, as appropriate. Do not confuse engine v2 with n8n
+v2 (the product version) or workflow execution order versions.
+
 ## The blueprint we're following
 
 We structure this package after the **Durable Scheduler modularity blueprint**
