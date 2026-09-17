@@ -9,7 +9,10 @@ import type { Project, User } from '@n8n/db';
 import { ActivityEventRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import type { InstanceContextScope } from '@/modules/instance-ai/instance-context.service';
+import type {
+	InstanceContextCursor,
+	InstanceContextScope,
+} from '@/modules/instance-ai/instance-context.service';
 import { InstanceContextService } from '@/modules/instance-ai/instance-context.service';
 import { createExecution } from '@test-integration/db/executions';
 import { createMember } from '@test-integration/db/users';
@@ -755,6 +758,26 @@ describe('InstanceContextService', () => {
 			expect(await service.list({ user, scope: mcp(false), limit: 20 })).toEqual([]);
 			expect(await service.list({ user, scope: mcp(), limit: 20 })).toHaveLength(1);
 		});
+	});
+
+	it('does not repeat stored activity after the seen-id limit is reached', async () => {
+		let cursor: InstanceContextCursor | null = null;
+		for (let batch = 0; batch < 7; batch++) {
+			for (let index = 0; index < 30; index++) {
+				await record({
+					category: 'workflow',
+					action: 'saved',
+					projectId: project.id,
+					resourceName: `Batch ${batch}`,
+				});
+			}
+			const built = await service.buildBlock({ user, scope: bound(project.id), cursor });
+			expect(built?.block.match(/^\[\d+\]/gm)).toHaveLength(30);
+			cursor = built!.cursor;
+		}
+		for (let turn = 0; turn < 2; turn++) {
+			expect(await service.buildBlock({ user, scope: bound(project.id), cursor })).toBeNull();
+		}
 	});
 
 	it('carries a refilled entry whose id was reused from one already shown', async () => {

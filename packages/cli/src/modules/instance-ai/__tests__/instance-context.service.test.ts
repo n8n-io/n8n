@@ -345,6 +345,97 @@ describe('InstanceContextService', () => {
 		});
 
 		describe('deltas', () => {
+			it('does not repeat entries after the seen-id limit is reached', async () => {
+				const service = serviceWith();
+				const table: ActivityEvent[] = [];
+				activityEventRepository.findFeed.mockImplementation(async (query) =>
+					table
+						.filter((row) => row.id > (query.afterId ?? 0))
+						.filter((row) => query.beforeId === undefined || row.id < query.beforeId)
+						.slice(0, query.limit),
+				);
+				let carried: InstanceContextCursor | null = null;
+				for (let id = 1; id <= 201; id++) {
+					table.unshift(entry({ id }));
+					const built = await service.buildBlock({
+						user: USER,
+						scope: BOUND,
+						cursor: carried,
+						now: NOW,
+					});
+					expect(built?.block.match(/^\[\d+\]/gm)).toEqual([`[${id}]`]);
+					carried = built!.cursor;
+				}
+
+				for (let turn = 0; turn < 2; turn++) {
+					expect(
+						await service.buildBlock({ user: USER, scope: BOUND, cursor: carried, now: NOW }),
+					).toBeNull();
+				}
+			});
+
+			it.each([1, 2])(
+				'keeps the cursor when %s entries arrive during block construction',
+				async (count) => {
+					const service = serviceWith();
+					const table = Array.from({ length: count }, (_, index) =>
+						entry({ id: count - index, createdAt: new Date(NOW.getTime() + 1_000) }),
+					);
+					activityEventRepository.findFeed.mockImplementation(async (query) =>
+						table
+							.filter((row) => row.id > (query.afterId ?? 0))
+							.filter((row) => query.beforeId === undefined || row.id < query.beforeId),
+					);
+					activityEventRepository.findEntry.mockImplementation(
+						async ({ id }) => table.find((row) => row.id === id) ?? null,
+					);
+					activityEventRepository.findNewestEntry.mockResolvedValue(table[0]);
+					const opening = await service.buildBlock({
+						user: USER,
+						scope: BOUND,
+						cursor: null,
+						now: NOW,
+					});
+
+					expect(
+						await service.buildBlock({
+							user: USER,
+							scope: BOUND,
+							cursor: opening!.cursor,
+							now: new Date(NOW.getTime() + 2_000),
+						}),
+					).toBeNull();
+				},
+			);
+
+			it('does not reset for an insert between the delta queries', async () => {
+				const service = serviceWith();
+				const previous = entry({ id: 10 });
+				const arrival = entry({ id: 11, createdAt: new Date(NOW.getTime() + 1_000) });
+				activityEventRepository.findFeed.mockResolvedValueOnce([previous]);
+				const opening = await service.buildBlock({
+					user: USER,
+					scope: BOUND,
+					cursor: null,
+					now: NOW,
+				});
+				activityEventRepository.findEntry.mockResolvedValue(previous);
+				activityEventRepository.findNewestEntry.mockResolvedValue(arrival);
+				activityEventRepository.findFeed
+					.mockResolvedValueOnce([])
+					.mockResolvedValueOnce([])
+					.mockResolvedValue([arrival, previous]);
+
+				const next = await service.buildBlock({
+					user: USER,
+					scope: BOUND,
+					cursor: opening!.cursor,
+					now: NOW,
+				});
+				expect(next).toBeNull();
+				expect(activityEventRepository.findFeed).toHaveBeenCalledTimes(3);
+			});
+
 			const cursor: InstanceContextCursor = {
 				activityMark: 500,
 				activityFloor: 400,
@@ -583,6 +674,11 @@ describe('InstanceContextService', () => {
 					scope: BOUND,
 					cursor: {
 						activityMark: 5_000,
+						activityAnchor: {
+							id: 5_000,
+							createdAt: new Date(NOW.getTime() - 60_000).toISOString(),
+							category: 'workflow',
+						},
 						activityFloor: 4_900,
 						activityCategories: ['workflow', 'credential'],
 						activitySeen: [5_000, 4_999],
@@ -1334,6 +1430,8 @@ describe('readInstanceContextCursor', () => {
 	it('reads a stored cursor', () => {
 		const stored = {
 			activityMark: 12,
+			activitySeenFloor: 1,
+			activityAnchor: { id: 12, createdAt: NOW.toISOString(), category: 'workflow' },
 			activityFloor: 4,
 			activityCategories: ['workflow'],
 			activitySeen: [12, 11],
