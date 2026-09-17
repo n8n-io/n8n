@@ -144,7 +144,10 @@ function discard() {
 
 // A clone reads the saved config, so Connect stays blocked until the direction is
 // saved and the form has no unsaved edits.
-const connecting = reactive<Record<PromotionDirection, boolean>>({ apply: false, promote: false });
+const connecting = reactive<Record<PromotionDirection, 'connect' | 'disconnect' | false>>({
+	apply: false,
+	promote: false,
+});
 
 const savedCheckout = (direction: PromotionDirection): PromotionConfigCheckout | undefined =>
 	current.value?.configs[direction]?.checkout;
@@ -181,7 +184,7 @@ function applyCheckout(direction: PromotionDirection, checkout: PromotionConfigC
 
 async function connect(direction: PromotionDirection) {
 	if (!current.value || connectDisabledReason(direction) !== undefined) return;
-	connecting[direction] = true;
+	connecting[direction] = 'connect';
 	try {
 		const result = await clonePromotionCheckout(
 			rootStore.publicApiContext,
@@ -208,7 +211,7 @@ async function connect(direction: PromotionDirection) {
 
 async function disconnect(direction: PromotionDirection) {
 	if (!current.value) return;
-	connecting[direction] = true;
+	connecting[direction] = 'disconnect';
 	try {
 		await disconnectPromotionCheckout(rootStore.publicApiContext, current.value.id, direction);
 		applyCheckout(direction, { hasCheckout: false, matchesConfig: false });

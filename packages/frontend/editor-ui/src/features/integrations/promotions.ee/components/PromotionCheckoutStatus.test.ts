@@ -79,6 +79,26 @@ describe('PromotionCheckoutStatus', () => {
 		expect(getByTestId('promotion-checkout-disconnect')).toBeEnabled();
 	});
 
+	it('shows the spinner on Reconnect while connecting', () => {
+		const { getByTestId } = renderComponent({
+			props: { checkout: { hasCheckout: true, matchesConfig: true }, busy: 'connect' },
+		});
+
+		expect(getByTestId('promotion-checkout-reconnect')).toHaveAttribute('aria-busy', 'true');
+		expect(getByTestId('promotion-checkout-disconnect')).not.toHaveAttribute('aria-busy', 'true');
+		expect(getByTestId('promotion-checkout-disconnect')).toBeDisabled();
+	});
+
+	it('shows the spinner on Disconnect while disconnecting', () => {
+		const { getByTestId } = renderComponent({
+			props: { checkout: { hasCheckout: true, matchesConfig: true }, busy: 'disconnect' },
+		});
+
+		expect(getByTestId('promotion-checkout-disconnect')).toHaveAttribute('aria-busy', 'true');
+		expect(getByTestId('promotion-checkout-reconnect')).not.toHaveAttribute('aria-busy', 'true');
+		expect(getByTestId('promotion-checkout-reconnect')).toBeDisabled();
+	});
+
 	it('emits connect and disconnect on click', async () => {
 		const { getByTestId, emitted } = renderComponent({
 			props: { checkout: { hasCheckout: true, matchesConfig: true } },

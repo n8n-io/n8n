@@ -8,7 +8,8 @@ const props = defineProps<{
 	/** Undefined until the direction is saved on the server. */
 	checkout: PromotionConfigCheckout | undefined;
 	branchName: string;
-	busy: boolean;
+	/** Which action is in flight, so the spinner lands on the clicked button. */
+	busy: 'connect' | 'disconnect' | false;
 	/** When set, Connect is blocked and this explains why (e.g. unsaved changes). */
 	disabledReason?: string;
 }>();
@@ -62,8 +63,8 @@ const isConnected = computed(() => props.checkout?.hasCheckout ?? false);
 				type="button"
 				variant="outline"
 				size="small"
-				:disabled="!!disabledReason"
-				:loading="busy"
+				:disabled="!!disabledReason || busy === 'disconnect'"
+				:loading="busy === 'connect'"
 				data-test-id="promotion-checkout-reconnect"
 				@click="emit('connect')"
 			>
@@ -73,8 +74,8 @@ const isConnected = computed(() => props.checkout?.hasCheckout ?? false);
 				v-else
 				type="button"
 				size="small"
-				:disabled="!!disabledReason"
-				:loading="busy"
+				:disabled="!!disabledReason || busy === 'disconnect'"
+				:loading="busy === 'connect'"
 				data-test-id="promotion-checkout-connect"
 				@click="emit('connect')"
 			>
@@ -85,7 +86,8 @@ const isConnected = computed(() => props.checkout?.hasCheckout ?? false);
 				type="button"
 				variant="outline"
 				size="small"
-				:disabled="busy"
+				:disabled="busy === 'connect'"
+				:loading="busy === 'disconnect'"
 				data-test-id="promotion-checkout-disconnect"
 				@click="emit('disconnect')"
 			>
