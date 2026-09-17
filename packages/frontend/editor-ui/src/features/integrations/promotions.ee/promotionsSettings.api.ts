@@ -5,6 +5,8 @@ import type {
 	PromotionConnectionPublicDto,
 	PromotionConnectionScope,
 	PromotionDirection,
+	PromotePackageDto,
+	PromotePackageResultDto,
 	PromotionProviderCreatedPublicDto,
 	PromotionProviderListPublicDto,
 	PromotionProviderPublicDto,
@@ -170,3 +172,16 @@ export const deletePromotionConfig = async (
 		endpoint: `${promotionsApiRoot}/connections/${connectionId}/configs/${direction}`,
 	});
 };
+
+/** Promotes the whole instance through its instance connection. */
+export const promotePackage = async (
+	context: PublicApiContext,
+	connectionId: string,
+	payload: PromotePackageDto,
+): Promise<PromotePackageResultDto> =>
+	await request({
+		method: 'POST',
+		baseURL: context.baseUrl,
+		endpoint: `${promotionsApiRoot}/connections/${connectionId}/promote`,
+		data: payload,
+	});
