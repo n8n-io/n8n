@@ -454,6 +454,8 @@ export class WorkflowApiHelper {
 
 		let execution = await this.getExecution(executionId);
 		while (!isTerminalExecutionStatus(execution.status)) {
+			// Stryker disable next-line EqualityOperator: `>` differs only on the exact
+			// deadline millisecond, which costs fake timers to reach and proves nothing.
 			if (Date.now() >= deadline) {
 				throw new TestError(
 					`Execution ${executionId} did not settle within ${timeoutMs}ms (status: ${execution.status})`,
