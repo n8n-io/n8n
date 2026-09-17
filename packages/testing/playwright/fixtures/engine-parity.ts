@@ -29,9 +29,10 @@ function assertKnownTags(tags: readonly string[]): void {
 	const unknown = tags.filter((tag) => tag.startsWith(ENGINE_TAG_PREFIX) && !known.includes(tag));
 
 	if (unknown.length > 0) {
-		// Stryker disable next-line StringLiteral: the separator carries no behaviour,
-		// and pinning the whole sentence to catch it breaks on any rewording.
+		// The separator carries no behaviour, and pinning the whole sentence to catch
+		// it breaks on any rewording.
 		throw new Error(
+			// Stryker disable next-line StringLiteral
 			`Unknown engine 2.0 tag: ${unknown.join(', ')}. Use one of: ${known.join(', ')}.`,
 		);
 	}

@@ -123,7 +123,7 @@ describe('WorkflowApiHelper.runManually engine routing', () => {
 	test('rejects a legacy execution id when the stack routes to engine 2.0', async () => {
 		const { api } = apiReturningExecutionId('1783', { workflowSettings: { engineType: 'v2' } });
 
-		// Also the half that tells the reader what to do about it.
+		// The guidance half of the message is part of the contract, so match it too.
 		await expect(new WorkflowApiHelper(api).runManually('wf-1', 'Trigger')).rejects.toThrow(
 			/1783[\s\S]*settings\.engineType[\s\S]*api\.workflows/,
 		);
