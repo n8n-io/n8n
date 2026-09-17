@@ -1,0 +1,40 @@
+packages/@n8n/ai-workflow-builder.ee/src/workflow-builder-agent.ts
+  s_bc63a262ac8b3b::t_92fbed5c761505 209
+  s_bc63a262ac8b3b::t_df127821b6a00d 206-208,210-212
+  s_bc63a262ac8b3b::t_c926944868b997 43
+packages/@n8n/ai-workflow-builder.ee/src/validation/auto-fix/__tests__/auto-fix-connections.test.ts
+  s_bc63a262ac8b3b::t_1955c43188dc8d 605-676
+packages/@n8n/ai-workflow-builder.ee/src/utils/workflow-sanitization.ts
+  s_bc63a262ac8b3b::t_a861a3f6565858 35-36,40,46-47
+  s_bc63a262ac8b3b::t_d4750f03e7b3a5 1-34,37-39,41-45,48-55
+packages/@n8n/ai-workflow-builder.ee/src/utils/test/operations-processor.test.ts
+  s_bc63a262ac8b3b::t_d6ebaa0b52471a 1131-1183,1187-1215,1233-1252,1260-1273,1277-1322
+  s_bc63a262ac8b3b::t_2667933aecc2ca 1184-1186,1253-1259,1274-1276
+  s_bc63a262ac8b3b::t_dfd10ccfe4c831 1216-1232
+packages/@n8n/ai-workflow-builder.ee/src/tools/utils/test/connection.utils.test.ts
+  s_bc63a262ac8b3b::t_3b79ca08ee01d1 1004-1016,1018-1052
+  s_bc63a262ac8b3b::t_29673ccb4f0090 1017
+packages/@n8n/ai-workflow-builder.ee/src/utils/operations-processor.ts
+  s_bc63a262ac8b3b::t_e5416661513a8c 2,66-67,72-73,139,151-160,162-170,182,199-202,208-209,266-268
+  s_bc63a262ac8b3b::t_369161f58dd8bf 140-150,161,204
+packages/@n8n/ai-workflow-builder.ee/src/utils/test/workflow-sanitization.test.ts
+  s_bc63a262ac8b3b::t_5a2d5d63a9d981 1-124
+packages/@n8n/ai-workflow-builder.ee/src/tools/utils/connection.utils.ts
+  s_bc63a262ac8b3b::t_e5416661513a8c 8,140-146,204-207
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "29477f1e90da4c1508a6b8c0a37eab739f3874d6",
+  "prompts": {},
+  "sessions": {
+    "s_bc63a262ac8b3b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "333c9079-31ea-4739-a3e4-941d76e5eacf",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}
