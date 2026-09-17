@@ -326,6 +326,8 @@ describe('flushEvents with an insight that has no shared workflow', () => {
 	});
 
 	test('does not re-buffer the event on the next flush', async () => {
+		sharedWorkflowRepository.find.mockResolvedValue([]);
+		insightsMetadataRepository.findBy.mockResolvedValue([]);
 		bufferEvent('gone-workflow');
 
 		await service.flushEvents();
