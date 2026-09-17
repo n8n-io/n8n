@@ -302,7 +302,7 @@ describe('Anthropic Node', () => {
 		};
 
 		it('should send a top-level cache breakpoint when prompt caching is enabled', async () => {
-			mockNodeParameters({ enablePromptCaching: true, system: 'You are a helpful assistant.' });
+			mockNodeParameters({ promptCaching: '5m', system: 'You are a helpful assistant.' });
 			apiRequestMock.mockResolvedValue({
 				content: [{ type: 'text', text: 'Hi!' }],
 				stop_reason: 'end_turn',
@@ -317,14 +317,35 @@ describe('Anthropic Node', () => {
 					system: 'You are a helpful assistant.',
 					messages: [{ role: 'user', content: 'Hello, world!' }],
 					tools: [],
-					cache_control: { type: 'ephemeral' },
+					cache_control: { type: 'ephemeral', ttl: '5m' },
+				},
+				enableAnthropicBetas: {},
+			});
+		});
+
+		it('should send a one hour cache breakpoint when the 1h option is selected', async () => {
+			mockNodeParameters({ promptCaching: '1h' });
+			apiRequestMock.mockResolvedValue({
+				content: [{ type: 'text', text: 'Hi!' }],
+				stop_reason: 'end_turn',
+			});
+
+			await text.message.execute.call(executeFunctionsMock, 0);
+
+			expect(apiRequestMock).toHaveBeenCalledWith('POST', '/v1/messages', {
+				body: {
+					model: 'claude-sonnet-4-20250514',
+					max_tokens: 1024,
+					messages: [{ role: 'user', content: 'Hello, world!' }],
+					tools: [],
+					cache_control: { type: 'ephemeral', ttl: '1h' },
 				},
 				enableAnthropicBetas: {},
 			});
 		});
 
 		it('should not send a cache breakpoint when prompt caching is disabled', async () => {
-			mockNodeParameters({ system: 'You are a helpful assistant.' });
+			mockNodeParameters({ promptCaching: 'disabled', system: 'You are a helpful assistant.' });
 			apiRequestMock.mockResolvedValue({
 				content: [{ type: 'text', text: 'Hi!' }],
 				stop_reason: 'end_turn',
@@ -346,7 +367,7 @@ describe('Anthropic Node', () => {
 		});
 
 		it('should keep the cache breakpoint on follow-up requests in the tool call loop', async () => {
-			mockNodeParameters({ enablePromptCaching: true });
+			mockNodeParameters({ promptCaching: '5m' });
 
 			// Every call receives the same mutable body object, so the recorded arguments
 			// all point at its final state. Snapshot each payload as it is sent, otherwise
@@ -376,7 +397,7 @@ describe('Anthropic Node', () => {
 				max_tokens: 1024,
 				messages: [{ role: 'user', content: 'Hello, world!' }],
 				tools: [],
-				cache_control: { type: 'ephemeral' },
+				cache_control: { type: 'ephemeral', ttl: '5m' },
 			});
 
 			// Follow-up request: the conversation has grown by the tool exchange, and the
@@ -393,12 +414,12 @@ describe('Anthropic Node', () => {
 					{ role: 'user', content: [{ type: 'tool_result', tool_use_id: 'toolu_1', content: '' }] },
 				],
 				tools: [],
-				cache_control: { type: 'ephemeral' },
+				cache_control: { type: 'ephemeral', ttl: '5m' },
 			});
 		});
 
 		it('should count cached tokens towards the reported token usage', async () => {
-			mockNodeParameters({ enablePromptCaching: true });
+			mockNodeParameters({ promptCaching: '5m' });
 			executeFunctionsMock.getExecuteData.mockReturnValue(
 				undefined as unknown as ReturnType<IExecuteFunctions['getExecuteData']>,
 			);

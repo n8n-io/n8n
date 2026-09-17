@@ -167,12 +167,17 @@ const properties: INodeProperties[] = [
 				placeholder: 'e.g. You are a helpful assistant',
 			},
 			{
-				displayName: 'Enable Prompt Caching',
-				name: 'enablePromptCaching',
-				type: 'boolean',
-				default: false,
+				displayName: 'Prompt Caching',
+				name: 'promptCaching',
+				type: 'options',
+				default: 'disabled',
 				description:
-					"Whether to let Anthropic cache the reusable prefix of the request (tools, system message and earlier messages) so that repeat requests are cheaper and faster. Only takes effect once the prefix reaches the model's minimum cacheable length, which ranges from 512 to 4096 tokens depending on the model; shorter prefixes are sent uncached and no error is returned. Cached tokens are reported separately by the API and are still counted in this node's token usage.",
+					'Whether to cache the prompt so that repeat calls are cheaper and faster. Do not enable for one-off calls: in this case writing the cache costs more than it saves. The value sets how long cached content stays valid before it has to be written again. <a href="https://platform.claude.com/docs/en/build-with-claude/prompt-caching" target="_blank">Learn more</a>.',
+				options: [
+					{ name: 'Disabled', value: 'disabled' },
+					{ name: '5 Minutes', value: '5m' },
+					{ name: '1 Hour', value: '1h' },
+				],
 			},
 			{
 				displayName: 'Code Execution',
@@ -278,6 +283,18 @@ const properties: INodeProperties[] = [
 			},
 		],
 	},
+	{
+		displayName:
+			'Cache reads and writes are billed at different rates than regular input tokens, so reported prompt/total tokens are only an approximation of actual billable usage',
+		name: 'promptCachingNotice',
+		type: 'notice',
+		default: '',
+		displayOptions: {
+			show: {
+				'/options.promptCaching': ['5m', '1h'],
+			},
+		},
+	},
 ];
 
 const displayOptions = {
@@ -291,7 +308,7 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 interface MessageOptions {
 	includeMergedResponse?: boolean;
-	enablePromptCaching?: boolean;
+	promptCaching?: 'disabled' | '5m' | '1h';
 	codeExecution?: boolean;
 	webSearch?: boolean;
 	allowedDomains?: string;
@@ -355,10 +372,9 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		temperature: options.temperature,
 		top_p: options.topP,
 		top_k: options.topK,
-		// A top-level breakpoint caches the longest reusable prefix across tools,
-		// system and messages, so the tool-call loop below re-reads it each turn
-		// instead of paying for it again.
-		...(options.enablePromptCaching ? { cache_control: { type: 'ephemeral' } } : {}),
+		...(options.promptCaching && options.promptCaching !== 'disabled'
+			? { cache_control: { type: 'ephemeral', ttl: options.promptCaching } }
+			: {}),
 	};
 
 	let response = (await apiRequest.call(this, 'POST', '/v1/messages', {
