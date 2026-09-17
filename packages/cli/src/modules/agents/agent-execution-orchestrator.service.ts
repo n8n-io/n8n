@@ -443,20 +443,24 @@ export class AgentExecutionOrchestratorService {
 	 * Used by chat integration handlers to continue an agent run after
 	 * a human-in-the-loop action (button click, modal submission).
 	 */
-	async *resumeForChat(config: ResumeForChatConfig): AsyncGenerator<StreamChunk> {
-		const initial = await this.n8nCheckpointStorage.getStatus(config.runId, config.agentId);
-		if (initial.status === 'expired') {
-			throw new UserError(`Checkpoint ${config.runId} is expired and cannot be resumed`);
-		}
-		if (initial.status === 'not-found') {
-			throw new UserError(`Checkpoint ${config.runId} not found and cannot be resumed`);
-		}
-		const threadId = initial.checkpoint.persistence?.threadId;
-		if (!threadId)
-			throw new UserError(`Checkpoint ${config.runId} has no memory data and cannot be resumed`);
-		yield* this.leases.stream(
+	resumeForChat(config: ResumeForChatConfig): AsyncGenerator<StreamChunk> {
+		return this.leases.stream(
 			config.agentId,
-			threadId,
+			async () => {
+				const initial = await this.n8nCheckpointStorage.getStatus(config.runId, config.agentId);
+				if (initial.status === 'expired') {
+					throw new UserError(`Checkpoint ${config.runId} is expired and cannot be resumed`);
+				}
+				if (initial.status === 'not-found') {
+					throw new UserError(`Checkpoint ${config.runId} not found and cannot be resumed`);
+				}
+				const threadId = initial.checkpoint.persistence?.threadId;
+				if (!threadId)
+					throw new UserError(
+						`Checkpoint ${config.runId} has no memory data and cannot be resumed`,
+					);
+				return threadId;
+			},
 			(signal) => this.resumeForChatOwned({ ...config, abortSignal: signal }),
 			{ signal: config.abortSignal },
 		);

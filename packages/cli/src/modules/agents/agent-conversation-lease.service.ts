@@ -81,7 +81,7 @@ export class AgentConversationLeaseService {
 
 	stream<T>(
 		agentId: string,
-		threadId: string,
+		threadId: string | (() => Promise<string>),
 		create: (signal: AbortSignal) => AsyncGenerator<T>,
 		options: { signal?: AbortSignal } = {},
 	): AsyncGenerator<T> {
@@ -91,11 +91,12 @@ export class AgentConversationLeaseService {
 
 	private async *consumeStream<T>(
 		agentId: string,
-		threadId: string,
+		conversation: string | (() => Promise<string>),
 		create: (signal: AbortSignal) => AsyncGenerator<T>,
 		options: { signal?: AbortSignal },
 		current: AgentConversationOwner | undefined,
 	): AsyncGenerator<T> {
+		const threadId = typeof conversation === 'string' ? conversation : await conversation();
 		const borrowed = current?.lease.threadId === threadId && current.lease.agentId === agentId;
 		const acquired = borrowed ? undefined : await this.acquire(agentId, threadId, options);
 		const owner = borrowed ? current : acquired!.owner;

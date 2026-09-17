@@ -244,9 +244,13 @@ describe('agent conversation ownership', () => {
 			delayed = releaseCallback.promise.then(
 				async () => await memory.deleteMessagesByThread('one'),
 			);
-			return leases.stream(agentId, 'one', async function* () {
-				yield 'Must not run';
-			});
+			return leases.stream(
+				agentId,
+				async () => 'one',
+				async function* () {
+					yield 'Must not run';
+				},
+			);
 		});
 		await leases.withLease(agentId, 'one', async () => {
 			releaseCallback.resolve();
