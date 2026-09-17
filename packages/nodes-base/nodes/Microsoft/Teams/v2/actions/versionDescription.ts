@@ -3,6 +3,7 @@ import { NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
 
 import * as channel from './channel';
 import * as channelMessage from './channelMessage';
+import * as chat from './chat';
 import * as chatMember from './chatMember';
 import * as chatMessage from './chatMessage';
 import * as onlineMeeting from './onlineMeeting';
@@ -96,6 +97,10 @@ export const versionDescription: INodeTypeDescription = {
 					value: 'channelMessage',
 				},
 				{
+					name: 'Chat',
+					value: 'chat',
+				},
+				{
 					name: 'Chat Member',
 					value: 'chatMember',
 				},
@@ -117,6 +122,7 @@ export const versionDescription: INodeTypeDescription = {
 
 		...channel.description,
 		...channelMessage.description,
+		...chat.description,
 		...chatMember.description,
 		...chatMessage.description,
 		...onlineMeeting.description,

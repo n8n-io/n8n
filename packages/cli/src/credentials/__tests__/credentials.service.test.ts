@@ -1,3 +1,4 @@
+import { CREDENTIAL_DESCRIPTION_MAX_LENGTH } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type {
 	CredentialsRepository,
@@ -311,6 +312,82 @@ describe('CredentialsService', () => {
 
 			const preparedData = prepared.data as unknown as ICredentialDataDecryptedObject;
 			expect(preparedData.authentication).toBeUndefined();
+		});
+	});
+
+	describe('prepareUpdateData description handling', () => {
+		const storedCredential = () => {
+			vi.spyOn(Credentials.prototype, 'getData').mockResolvedValue({});
+			return mock<CredentialsEntity>({
+				id: 'cred-1',
+				name: 'Reporting DB',
+				description: 'Existing text',
+				type: 'apiKey',
+				usageScope: 'project',
+				shared: [{ role: 'credential:owner', projectId: 'project-1' }],
+			});
+		};
+
+		const prepare = async (description?: string | null) =>
+			await service.prepareUpdateData(
+				ownerUser,
+				{ name: 'Reporting DB', type: 'apiKey', data: {}, description },
+				storedCredential(),
+			);
+
+		beforeEach(() => {
+			credentialTypes.getByName.mockReturnValue(
+				mock<ICredentialType>({ extends: [], properties: [] }),
+			);
+			credentialsRepository.create.mockImplementation(
+				(data) => Object.assign(new CredentialsEntity(), data) as CredentialsEntity,
+			);
+			credentialsHelper.getCredentialsProperties.mockReturnValue([]);
+		});
+
+		it('trims the written description', async () => {
+			const prepared = await prepare('  Read-only key for reporting.  ');
+
+			expect(prepared.description).toBe('Read-only key for reporting.');
+		});
+
+		it.each([
+			['an empty string', ''],
+			['a whitespace-only string', '   '],
+			['an explicit null', null],
+		])('stores %s as null', async (_label, input) => {
+			const prepared = await prepare(input);
+
+			expect(prepared.description).toBeNull();
+		});
+
+		it('leaves the description untouched when the field is absent', async () => {
+			const prepared = await prepare(undefined);
+
+			expect(prepared.description).toBeUndefined();
+		});
+
+		it('rejects a description over the cap', async () => {
+			const tooLong = prepare('a'.repeat(CREDENTIAL_DESCRIPTION_MAX_LENGTH + 1));
+
+			await expect(tooLong).rejects.toThrow(BadRequestError);
+			await expect(tooLong).rejects.toThrow(
+				`Credential description cannot be longer than ${CREDENTIAL_DESCRIPTION_MAX_LENGTH} characters`,
+			);
+		});
+
+		it('rejects a non-string description with a 400, not a crash', async () => {
+			const notAString = prepare(42 as unknown as string);
+
+			await expect(notAString).rejects.toThrow(BadRequestError);
+			await expect(notAString).rejects.toThrow('Expected string, received number');
+		});
+
+		it('accepts a description that only exceeds the cap before trimming', async () => {
+			const atCap = 'a'.repeat(CREDENTIAL_DESCRIPTION_MAX_LENGTH);
+			const prepared = await prepare(`   ${atCap}   `);
+
+			expect(prepared.description).toBe(atCap);
 		});
 	});
 
@@ -955,13 +1032,10 @@ describe('CredentialsService', () => {
 		});
 
 		it('should redact sensitive values by default', async () => {
-			// ARRANGE
 			vi.spyOn(Credentials.prototype, 'getData').mockResolvedValueOnce(data);
 
-			// ACT
 			const redactedData = await service.decrypt(credentialEntity);
 
-			// ASSERT
 			expect(redactedData).toEqual({
 				...data,
 				clientSecret: CREDENTIAL_BLANKING_VALUE,
@@ -3047,6 +3121,20 @@ describe('CredentialsService', () => {
 			expect(savedEntities[0]).toMatchObject({
 				isGlobal: true,
 			});
+		});
+
+		it.each([
+			['trims a written description', '  Read-only key.  ', 'Read-only key.'],
+			['stores a blank description as null', '   ', null],
+			['stores an absent description as null', undefined, null],
+		])('%s', async (_label, description, expected) => {
+			const payload = { ...credentialData, description };
+			const savedEntities: any[] = [];
+			mockTransactionManager({ onSave: (entity) => savedEntities.push(entity) });
+
+			await service.createUnmanagedCredential(payload, ownerUser);
+
+			expect(savedEntities[0].description).toBe(expected);
 		});
 
 		it('should throw error when non-owner tries to create global credential', async () => {

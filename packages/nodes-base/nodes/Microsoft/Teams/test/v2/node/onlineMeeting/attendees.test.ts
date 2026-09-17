@@ -179,18 +179,17 @@ describe('Microsoft Teams V2, onlineMeeting attendees', () => {
 		expect(sentAttendees('POST')[0]).toStrictEqual(entry('guid-guest', guestUpn, 'attendee'));
 	});
 
-	it.each<[string, IDataObject]>([
+	it.each<[string, IDataObject, string]>([
 		[
 			'two people share the address',
 			{ value: [graphUser('guid-a', 'A', 'a@x.com'), graphUser('guid-b', 'B', 'b@x.com')] },
+			'More than one user has that email address for attendee 1',
 		],
-		['nobody has the address', { value: [] }],
-	])('reports the row as not found when %s', async (_label, byMail) => {
+		['nobody has the address', { value: [] }, 'Could not find the user for attendee 1'],
+	])('rejects the row without a meeting call when %s', async (_label, byMail, message) => {
 		apiRequest.mockRejectedValueOnce(notFound()).mockResolvedValueOnce(byMail);
 
-		await expect(runCreate([{ userId: 'alex@contoso.com' }])).rejects.toThrow(
-			'Could not find the user for attendee 1',
-		);
+		await expect(runCreate([{ userId: 'alex@contoso.com' }])).rejects.toThrow(message);
 		expect(apiRequest).toHaveBeenCalledTimes(2);
 	});
 

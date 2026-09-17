@@ -431,6 +431,16 @@ function extractObservationsFromBlock(block: ReadableContentBlock): {
 	};
 }
 
+/**
+ * The step's system prompt, wherever the SDK put it. AI SDK v7 standardizes it as
+ * `instructions` (`StandardizedPrompt`); `system` is the pre-v7 name, kept as a
+ * fallback so snapshots captured before the rename still render. Without this the
+ * System section — and the `<observations>` block inside it — reads as empty.
+ */
+export function stepInstructions(input: Record<string, unknown> | undefined): unknown {
+	return input?.instructions ?? input?.system;
+}
+
 export function parseSystemPromptForDisplay(system: unknown): ParsedSystemPromptDisplay {
 	const blocks = parseSystemBlocks(system);
 	const observationsParts: string[] = [];
@@ -588,7 +598,15 @@ export function parseInputExtras(input: Record<string, unknown> | undefined): un
 	if (!input) return undefined;
 
 	const extras: Record<string, unknown> = {};
-	const primaryKeys = new Set(['system', 'messages', 'stepNumber', 'sdkStepNumber']);
+	// `instructions` is the v7 name for `system` — both are rendered as the System
+	// section, so neither belongs in the extras dump.
+	const primaryKeys = new Set([
+		'system',
+		'instructions',
+		'messages',
+		'stepNumber',
+		'sdkStepNumber',
+	]);
 
 	for (const [key, value] of Object.entries(input)) {
 		if (!primaryKeys.has(key)) {
@@ -753,11 +771,15 @@ export function parseStepSummary(
 		}
 	}
 
+	// Same field move as the System section: read through `stepInstructions`, or
+	// this silently stays undefined for every v7 snapshot. `parseSystemBlocks`
+	// handles the string, array and single-object forms alike.
+	const instructions = stepInstructions(input);
 	let systemCharCount: number | undefined;
-	if (typeof input?.system === 'string') {
-		systemCharCount = input.system.length;
-	} else if (Array.isArray(input?.system)) {
-		systemCharCount = parseSystemBlocks(input.system).reduce(
+	if (typeof instructions === 'string') {
+		systemCharCount = instructions.length;
+	} else if (instructions !== undefined && instructions !== null) {
+		systemCharCount = parseSystemBlocks(instructions).reduce(
 			(total, block) => total + block.content.length,
 			0,
 		);

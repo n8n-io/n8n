@@ -2,7 +2,7 @@ import type { StartedNetwork, StartedTestContainer } from 'testcontainers';
 import { GenericContainer, Wait } from 'testcontainers';
 
 import { TEST_CONTAINER_IMAGES } from '../test-containers';
-import type { HelperContext, Service, ServiceResult } from './types';
+import type { HelperContext, Service, ServiceResult, StartContext } from './types';
 
 const JAEGER_OTLP_PORT = 4318;
 const JAEGER_UI_PORT = 16686;
@@ -44,6 +44,7 @@ export const tracing: Service<TracingResult> = {
 		network: StartedNetwork,
 		projectName: string,
 		config?: unknown,
+		ctx?: StartContext,
 	): Promise<TracingResult> {
 		const { deploymentMode = 'scaling' } = (config as TracingConfig) ?? {};
 
@@ -66,6 +67,7 @@ export const tracing: Service<TracingResult> = {
 			)
 			.withReuse()
 			.start();
+		ctx?.registerContainer?.(jaegerContainer);
 
 		const jaegerUiPort = jaegerContainer.getMappedPort(JAEGER_UI_PORT);
 		const internalOtlpEndpoint = `http://${JAEGER_HOSTNAME}:${JAEGER_OTLP_PORT}`;
@@ -93,6 +95,7 @@ export const tracing: Service<TracingResult> = {
 			)
 			.withReuse()
 			.start();
+		ctx?.registerContainer?.(tracerContainer);
 
 		const internalIngestEndpoint = `http://${N8N_TRACER_HOSTNAME}:${N8N_TRACER_INGEST_PORT}`;
 

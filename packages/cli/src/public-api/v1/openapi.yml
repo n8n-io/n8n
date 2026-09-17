@@ -97,8 +97,6 @@ paths:
     $ref: './handlers/credentials/spec/paths/credentials.id.test.yml'
   /credentials/schema/{credentialTypeName}:
     $ref: './handlers/credentials/spec/paths/credentials.schema.id.yml'
-  /tags/{id}:
-    $ref: './handlers/tags/spec/paths/tags.id.yml'
   /workflows/{id}/{versionId}:
     $ref: './handlers/workflows/spec/paths/workflows.id.versionId.yml'
   /workflows/{id}/test-runs:

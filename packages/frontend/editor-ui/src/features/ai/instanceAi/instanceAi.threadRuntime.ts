@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { ResponseError } from '@n8n/rest-api-client';
 import {
 	buildDataTablesSessionGrantKey,
+	buildRunStepSessionGrantKey,
 	buildRunWorkflowSessionGrantKey,
 	buildUpdateWorkflowSessionGrantKey,
 	INSTANCE_AI_EPHEMERAL_EVENT_TYPES,
@@ -16,6 +17,7 @@ import {
 	type InstanceAiAttachment,
 	type InstanceAiEvent,
 	type InstanceAiMessage,
+	type InstanceAiThreadSummary,
 	type InstanceAiAgentNode,
 	type InstanceAiToolCallState,
 	type InstanceAiSSEConnectionState,
@@ -27,7 +29,7 @@ import {
 } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
-import { redactTelemetryProperties } from '@n8n/telemetry';
+import { redactTelemetryProperties, TELEMETRY_EVENT } from '@n8n/telemetry';
 import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
@@ -45,6 +47,7 @@ import {
 	fetchThreadMessages as fetchThreadMessagesApi,
 	fetchThreadStatus as fetchThreadStatusApi,
 } from './instanceAi.memory.api';
+import type { InstanceAiMessageAuthorship } from './prefills';
 import { handleEvent as reduceEvent, createRunStateFromTree } from './instanceAi.reducer';
 import { getLatestBuildResult, type RememberedManualExecution } from './canvasPreview.utils';
 import { useResourceRegistry } from './useResourceRegistry';
@@ -54,6 +57,7 @@ import {
 	INSTANCE_AI_AGENT_PREVIEW_SESSION_METADATA_KEY,
 	INSTANCE_AI_AGENT_PREVIEW_VIEW_METADATA_KEY,
 	INSTANCE_AI_PENDING_AGENT_METADATA_KEY,
+	NEW_CONVERSATION_TITLE,
 } from './constants';
 import {
 	findToolCallInTree,
@@ -113,6 +117,25 @@ export interface ThreadRuntimeHooks {
 	onRunFinish: () => void;
 	/** Thread-list metadata, used to enrich historical artifacts. */
 	getThreadMetadata?: (threadId: string) => Record<string, unknown> | undefined;
+}
+
+/**
+ * The title a thread shows in a header: the summary title once the server has
+ * generated one, else the first user message (truncated), else undefined —
+ * rendering only on a defined value avoids a "New conversation" → real title
+ * flash. Shared by `InstanceAiThreadView` and the embedded `InstanceAiChatPanel`.
+ */
+export function getThreadDisplayTitle(
+	summary: InstanceAiThreadSummary | undefined,
+	messages: InstanceAiMessage[],
+): string | undefined {
+	if (summary?.title && summary.title !== NEW_CONVERSATION_TITLE) return summary.title;
+	const firstUserMessage = messages.find((message) => message.role === 'user');
+	if (firstUserMessage?.content) {
+		const text = firstUserMessage.content.trim();
+		return text.length > 60 ? text.slice(0, 60) + '…' : text;
+	}
+	return undefined;
 }
 
 export function getAgentBuilderTargetFromThreadMetadata(
@@ -683,7 +706,8 @@ export function createThreadRuntime(
 	// Thread-scoped: cleared by `resetState()` so grants don't leak when the
 	// runtime is disposed and recreated. Prefer shared builders from
 	// `@n8n/api-types` so UI keys match persisted thread grants:
-	// `executions:run:<id>`, `workflows:update:<id>`, `data-tables:<action>`.
+	// `executions:run:<id>`, `executions:run-step:<id>:<node>`,
+	// `workflows:update:<id>`, `data-tables:<action>`.
 	// Fallback for other tools: `${toolName}:${args.action ?? ''}`.
 	// `submit-workflow` is keyed on `workflowId` presence so a create grant
 	// doesn't silently auto-approve later updates.
@@ -721,6 +745,14 @@ export function createThreadRuntime(
 		// workflow the user approved.
 		if (toolName === 'executions' && action === 'run') {
 			return buildRunWorkflowSessionGrantKey(workflowId);
+		}
+		// Running one node grants "always allow" per node, so a debug loop on one
+		// node stops prompting while the rest of the workflow still asks. Without
+		// a node name the key cannot be scoped — refuse to store one (fail closed).
+		if (toolName === 'executions' && action === 'run-step') {
+			const nodeName = typeof args.nodeName === 'string' ? args.nodeName : '';
+			if (!workflowId || !nodeName) return null;
+			return buildRunStepSessionGrantKey(workflowId, nodeName);
 		}
 		// Editing a workflow (build-workflow save or workflows update) is also per-workflow,
 		// matching the backend `workflows:update:<id>` thread grant. Bound build-workflow
@@ -1228,7 +1260,10 @@ export function createThreadRuntime(
 		}
 	}
 
-	function trackUserMessageSent(isFirstMessage: boolean): void {
+	function trackUserMessageSent(
+		isFirstMessage: boolean,
+		authorship: InstanceAiMessageAuthorship,
+	): void {
 		const rawSource = hooks.getThreadMetadata?.(threadId)?.source;
 		const actionSource = isInstanceAiThreadSource(rawSource)
 			? rawSource
@@ -1245,11 +1280,17 @@ export function createThreadRuntime(
 			);
 		}
 
-		telemetry.track('User sent builder message', {
+		const isPrefill = authorship.kind === 'prefill';
+		telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE, {
 			thread_id: threadId,
 			instance_id: rootStore.instanceId,
 			is_first_message: isFirstMessage,
 			action_source: actionSource,
+			// Explicit nulls, not omissions: the warehouse needs the column present on
+			// organic messages so `prefill_type IS NULL` is a usable predicate.
+			prefill_type: isPrefill ? authorship.prefillType : null,
+			prefill_id: isPrefill ? (authorship.prefillId ?? null) : null,
+			prompt_modified: isPrefill ? (authorship.promptModified ?? false) : null,
 		});
 	}
 
@@ -1308,19 +1349,27 @@ export function createThreadRuntime(
 		}
 	}
 
+	/**
+	 * `authorship` is required so a new pre-fill surface cannot ship untagged:
+	 * omitting it fails typecheck rather than reporting the opener as user-typed.
+	 */
 	async function sendMessage(
 		message: string,
-		attachments?: InstanceAiAttachment[],
-		pushRef?: string,
-		handoffContext?: InstanceAiHandoffContext,
+		opts: {
+			authorship: InstanceAiMessageAuthorship;
+			attachments?: InstanceAiAttachment[];
+			pushRef?: string;
+			handoffContext?: InstanceAiHandoffContext;
+		},
 	): Promise<boolean> {
+		const { authorship, attachments, pushRef, handoffContext } = opts;
 		amendContext.value = null;
 		pendingMessageCount.value += 1;
 		try {
 			ensureSSEConnected();
 			const isFirstMessage = !messages.value.some((m) => m.role === 'user');
 			const optimistic = pushOptimisticUserMessage(message, attachments, handoffContext);
-			trackUserMessageSent(isFirstMessage);
+			trackUserMessageSent(isFirstMessage, authorship);
 
 			if (!(await dispatchUserMessage(message, attachments, handoffContext, pushRef))) {
 				removeOptimisticMessage(optimistic);

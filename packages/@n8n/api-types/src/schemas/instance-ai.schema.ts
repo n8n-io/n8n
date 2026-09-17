@@ -1,6 +1,7 @@
 import { instanceAiApprovalDetailsSchema } from './instance-ai-approval.schema';
 import { z } from 'zod';
 
+import { aiPreferenceScopeSchema } from './ai-preference.schema';
 import { folderNameSchema } from './folder.schema';
 import type { McpRegistryServerIconResponse } from './mcp-registry.schema';
 import { TimeZoneSchema } from './timezone.schema';
@@ -53,6 +54,19 @@ export const AI_GATEWAY_MANAGED_TAG = '__AI_GATEWAY_MANAGED__';
  */
 export function buildRunWorkflowSessionGrantKey(workflowId: string): string {
 	return `executions:run:${workflowId}`;
+}
+
+/**
+ * Builds the thread-level "always allow" grant key for running one node of a
+ * workflow ("execute step").
+ *
+ * Scoped per node, so a debug loop on one node stops re-prompting while the
+ * other nodes of the same workflow still need approval. A whole-workflow run
+ * grant covers a step of that workflow too — running everything is strictly
+ * more than running one node — so the executions tool checks both keys.
+ */
+export function buildRunStepSessionGrantKey(workflowId: string, nodeName: string): string {
+	return `executions:run-step:${workflowId}:${nodeName}`;
 }
 
 /**
@@ -186,6 +200,7 @@ export const instanceAiEventTypeSchema = z.enum([
 	'confirmation-request',
 	'tasks-update',
 	'setup-items',
+	'preferences-applied',
 	'filesystem-request',
 	'thread-title-updated',
 	'status',
@@ -574,17 +589,6 @@ export const workflowSetupNodeSchema = z.object({
 			'Whether the credential slot itself is what needs intervention. False when the node has a ' +
 				'resolvable credential and only a parameter is missing — that card asks about a parameter, ' +
 				'not about the service, so a skip of it must not be generalised to the credential type.',
-		),
-	subnodeRootNode: z
-		.object({
-			name: z.string(),
-			type: z.string(),
-			typeVersion: z.number(),
-			id: z.string(),
-		})
-		.optional()
-		.describe(
-			'Snapshot of the root node for this sub-node connected via a non-Main port (e.g. ai_languageModel, ai_memory, ai_tool). Carries the metadata needed to render the group header even when the root node itself has no setup request.',
 		),
 });
 export type InstanceAiWorkflowSetupNode = z.infer<typeof workflowSetupNodeSchema>;
@@ -1063,6 +1067,60 @@ export const threadTitleUpdatedPayloadSchema = z.object({
 	title: z.string(),
 });
 
+/**
+ * What the saved AI preferences contributed to one turn.
+ *
+ * The turn is the only place that knows this. The settings endpoint lists every row the
+ * user can see, which is a different question and a different answer: the turn reads a
+ * bound project rather than all projects, the read is best effort, the feature flag can be
+ * off, and a row can change between the turn and the moment somebody looks. So the chat
+ * and the plus menu report this payload instead of deriving one of their own.
+ *
+ * An empty `preferences` array says that the turn applied none. No event at all says that
+ * the code path never ran, which is a different fact.
+ *
+ * CONTEXT-137 defines the shape. CONTEXT-139 publishes the event on every turn.
+ */
+const appliedPreferenceSchema = z.object({
+	/** Stable row id, so a reader can link to the preference or edit it. */
+	id: z.string(),
+	scope: aiPreferenceScopeSchema,
+	/** Set only for a team project. A personal project reports as `user`. */
+	projectId: z.string().optional(),
+	projectName: z.string().optional(),
+});
+
+const appliedPreferencesBase = {
+	preferences: z
+		.array(appliedPreferenceSchema)
+		.describe('Every preference the request carried, instance first, then personal, then projects'),
+	/** Characters in the rendered block. Reviews the caps against real conversations. */
+	renderedLength: z.number(),
+};
+
+/**
+ * Two arms, because a turn either sent the block or it did not, and only the second case has a
+ * run to name. `injectedThisTurn: false` means the text was unchanged, so an earlier block in
+ * the same conversation still carries it and `carriedFromRunId` says which run sent it. A
+ * payload that claims both is refused here as well as in the type.
+ */
+export const aiPreferencesAppliedPayloadSchema = z.discriminatedUnion('injectedThisTurn', [
+	// `z.undefined().optional()` rather than a strict object: a present `carriedFromRunId`
+	// fails, an absent one passes, and a field a newer server adds is still ignored.
+	z.object({
+		...appliedPreferencesBase,
+		injectedThisTurn: z.literal(true),
+		carriedFromRunId: z.undefined().optional(),
+	}),
+	z.object({
+		...appliedPreferencesBase,
+		injectedThisTurn: z.literal(false),
+		carriedFromRunId: z.string().optional(),
+	}),
+]);
+
+export type AiPreferencesAppliedPayload = z.infer<typeof aiPreferencesAppliedPayloadSchema>;
+
 // ---------------------------------------------------------------------------
 // Event schema (Zod discriminated union — single source of truth)
 // ---------------------------------------------------------------------------
@@ -1126,6 +1184,11 @@ export const instanceAiEventSchema = z.discriminatedUnion('type', [
 	}),
 	z.object({ type: z.literal('tasks-update'), ...eventBase, payload: tasksUpdatePayloadSchema }),
 	z.object({ type: z.literal('setup-items'), ...eventBase, payload: setupItemsPayloadSchema }),
+	z.object({
+		type: z.literal('preferences-applied'),
+		...eventBase,
+		payload: aiPreferencesAppliedPayloadSchema,
+	}),
 	z.object({ type: z.literal('status'), ...eventBase, payload: statusPayloadSchema }),
 	z.object({ type: z.literal('error'), ...eventBase, payload: errorPayloadSchema }),
 	z.object({
@@ -1163,6 +1226,10 @@ export type InstanceAiConfirmationRequestEvent = Extract<
 >;
 export type InstanceAiTasksUpdateEvent = Extract<InstanceAiEvent, { type: 'tasks-update' }>;
 export type InstanceAiSetupItemsEvent = Extract<InstanceAiEvent, { type: 'setup-items' }>;
+export type InstanceAiPreferencesAppliedEvent = Extract<
+	InstanceAiEvent,
+	{ type: 'preferences-applied' }
+>;
 export type InstanceAiStatusEvent = Extract<InstanceAiEvent, { type: 'status' }>;
 export type InstanceAiErrorEvent = Extract<InstanceAiEvent, { type: 'error' }>;
 export type InstanceAiFilesystemRequestEvent = Extract<
@@ -1489,6 +1556,64 @@ export const INSTANCE_AI_THREAD_SOURCE_FALLBACK = 'unknown';
 export type InstanceAiThreadSourcePersisted =
 	| InstanceAiThreadSource
 	| typeof INSTANCE_AI_THREAD_SOURCE_FALLBACK;
+
+/**
+ * Pre-fill taxonomy for Instance AI messages. A pre-fill is message text n8n
+ * wrote, not text the user typed: the opener a failed execution, a credential
+ * modal, a template card or a suggestion chip puts in the composer. Analytics
+ * used to recover the type by string-matching the message body, which broke
+ * silently every time a catalog was reworded, so the client states it instead.
+ *
+ * Every new pre-fill surface must register a value here. The editor's send
+ * boundary requires an authorship and its catalogs must declare a type, so a
+ * surface that skips this fails typecheck rather than reporting untagged
+ * messages. Reported on `User sent builder message` as `prefill_type`.
+ *
+ * - `handoff_execution_error` — "Ask AI" on a failed execution or node error
+ * - `handoff_credential_setup` — credential help from the editor, credentials
+ *   list, or the workflow artifact in a live thread
+ * - `handoff_fix_with_ai` — the in-thread fix-with-AI offer after a failed run
+ * - `handoff_setup_panel_execute` — the setup panel's Execute button; lands
+ *   mid-thread rather than as a first message
+ * - `handoff_agent_change_request` — agent builder hand-off: a fix request or a
+ *   change request, dropped into the composer
+ * - `template_adjustment` — "start from this template and help me adapt it",
+ *   from the in-app template preview or an n8n.io deep link
+ * - `template_example` — a featured example card on the empty state
+ * - `suggestion_catalog` — a suggestion chip from any catalog; the entry id
+ *   travels separately and is already catalog-prefixed
+ * - `v1_opener` — the original empty-state openers ("I want to build a new
+ *   workflow…")
+ * - `workflow_attachment_opener` — a workflow opened in the assistant, which
+ *   sends an empty message and lets the editor context greet
+ * - `contextual_followup` — the follow-up the composer offers as a placeholder
+ *   after a build, accepted with Tab; lands mid-thread
+ */
+export const INSTANCE_AI_PREFILL_TYPES = [
+	'handoff_execution_error',
+	'handoff_credential_setup',
+	'handoff_fix_with_ai',
+	'handoff_setup_panel_execute',
+	'handoff_agent_change_request',
+	'template_adjustment',
+	'template_example',
+	'suggestion_catalog',
+	'v1_opener',
+	'workflow_attachment_opener',
+	'contextual_followup',
+] as const;
+export type InstanceAiPrefillType = (typeof INSTANCE_AI_PREFILL_TYPES)[number];
+
+/**
+ * Read-path fallback, mirroring `INSTANCE_AI_THREAD_SOURCE_FALLBACK`. Only
+ * reachable for a pre-fill a previous deploy stashed in the browser, which
+ * carries no type. Deliberately outside `INSTANCE_AI_PREFILL_TYPES` so a new
+ * surface cannot declare it.
+ */
+export const INSTANCE_AI_PREFILL_TYPE_FALLBACK = 'unknown';
+export type InstanceAiPrefillTypeReported =
+	| InstanceAiPrefillType
+	| typeof INSTANCE_AI_PREFILL_TYPE_FALLBACK;
 
 export const INSTANCE_AI_THREAD_ORIGINS = ['internal', 'external'] as const;
 export type InstanceAiThreadOrigin = (typeof INSTANCE_AI_THREAD_ORIGINS)[number];

@@ -9,7 +9,7 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import { isSet } from './meetingSettings';
 import { userRLC } from '../../descriptions';
-import { resolveUser, rlcValue } from '../../helpers/utils';
+import { resolveUserTarget, rlcValue } from '../../helpers/utils';
 import { rewriteForbiddenUnderSp } from '../../transport';
 
 const ROLE_DESCRIPTION =
@@ -92,6 +92,10 @@ const FORBIDDEN_MESSAGE = 'Resolving attendees needs the User.Read.All applicati
 const FORBIDDEN_DESCRIPTION =
 	'Grant it to the app registration with admin consent. The node looks every attendee up to get the ID and the principal name.';
 
+// One lookup per distinct value for the whole run, like `resolvedPerRun` in the helpers: keyed
+// on the execute context, successes only, so a throttled row is retried on the next item.
+const attendeesPerRun = new WeakMap<IExecuteFunctions, Map<string, { id: string; upn?: string }>>();
+
 /**
  * Resolves the Attendees rows to Graph `meetingParticipantInfo` entries. Graph stores
  * `participants.attendees[].identity.user.id` verbatim, so every row is looked up first.
@@ -137,17 +141,31 @@ export async function resolveAttendees(
 		roles.push(role);
 	}
 
+	let cache = attendeesPerRun.get(this);
+	if (!cache) {
+		cache = new Map();
+		attendeesPerRun.set(this, cache);
+	}
+
 	// Insertion order keeps the first row's position.
 	const byId = new Map<string, MeetingAttendee>();
 	for (let index = 0; index < rows.length; index++) {
 		const row: IDataObject = rows[index] ?? {};
-		// Every attendee mode is looked up, so under SP even a GUID needs the permission. No-op
-		// for a delegated credential and for every status but 403; the router stamps itemIndex.
-		const user = await resolveUser
-			.call(this, rlcValue(row.userId), itemIndex, 'attendee', index + 1)
-			.catch((error: unknown) => {
-				throw rewriteForbiddenUnderSp.call(this, error, FORBIDDEN_MESSAGE, FORBIDDEN_DESCRIPTION);
-			});
+		const value = rlcValue(row.userId);
+		let user = cache.get(value);
+		if (!user) {
+			// Every attendee mode is looked up, so under SP even a GUID needs the permission. No-op
+			// for a delegated credential and for every status but 403; the router stamps itemIndex.
+			const found = await resolveUserTarget
+				.call(this, value, itemIndex, `attendee ${index + 1}`)
+				.catch((error: unknown) => {
+					throw rewriteForbiddenUnderSp.call(this, error, FORBIDDEN_MESSAGE, FORBIDDEN_DESCRIPTION);
+				});
+			const upn = found.userPrincipalName;
+			// Omit the key rather than send an empty string when Graph returns no principal name.
+			user = typeof upn === 'string' && upn ? { id: found.id, upn } : { id: found.id };
+			cache.set(value, user);
+		}
 
 		const existing = byId.get(user.id);
 		if (existing) {
@@ -156,8 +174,7 @@ export async function resolveAttendees(
 		}
 		byId.set(user.id, {
 			identity: { user: { id: user.id } },
-			// Omit the key rather than send an empty string when Graph returns no principal name.
-			...(user.userPrincipalName ? { upn: user.userPrincipalName } : {}),
+			...(user.upn ? { upn: user.upn } : {}),
 			role: roles[index],
 		});
 	}

@@ -41,31 +41,22 @@ function escapeMentionText(text: string): string {
 	return text.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
 }
 
-export type ResolvedUser = { id: string; displayName: string; userPrincipalName: string };
-
-type LookupNoun = 'mention' | 'attendee';
-type LookupMessages = UserTargetMessages & { notFound: { message: string; description: string } };
-
-// `row` is the node-generated row number (loop index + 1), never a user-supplied value, so
-// these stay static in the sense that matters: they cannot echo the id back.
-const lookupMessages = (noun: LookupNoun, row: number): LookupMessages => ({
+// `label` is a node-generated row label (e.g. `mention 2`, `participant 1`), never a
+// user-supplied value. Callers must never pass an id or any parameter value: these messages
+// are surfaced verbatim and must not echo input back.
+export const userTargetMessages = (label: string): UserTargetMessages => ({
 	required: {
-		message: `No user selected for ${noun} ${row}`,
+		message: `No user selected for ${label}`,
 		description: 'Pick the user from the list, or enter a user ID or email address.',
 	},
 	dotsOnly: {
-		message: `The user for ${noun} ${row} is not valid`,
+		message: `The user for ${label} is not valid`,
 		description: 'A user ID cannot consist only of dots.',
 	},
 	invalid: {
-		message: `The user for ${noun} ${row} is not valid`,
+		message: `The user for ${label} is not valid`,
 		description:
 			'Enter a plain email address or user ID. Remove any slashes, backslashes, colons, commas, spaces, or encoded characters and try again.',
-	},
-	notFound: {
-		message: `Could not find the user for ${noun} ${row}`,
-		description:
-			'Pick the user from the list, or check that the user ID or email address is correct and that the user exists in this Microsoft 365 tenant.',
 	},
 });
 
@@ -104,22 +95,21 @@ export function tagPermissionError(
  * against `mail` before we give up, which keeps By Email agreeing with From List, whose `$search`
  * already matches on mail.
  */
-async function findUserByMail(
-	this: IExecuteFunctions,
-	address: string,
-): Promise<IDataObject | undefined> {
-	const literal = escapeODataValue(address);
+async function findUsersByMail(this: IExecuteFunctions, address: string): Promise<IDataObject[]> {
 	const response = (await microsoftApiRequest.call(
 		this,
 		'GET',
 		'/v1.0/users',
 		{},
-		{ $filter: `mail eq '${literal}'`, $select: 'id,displayName,userPrincipalName', $top: 2 },
+		{
+			$filter: `mail eq '${escapeODataValue(address)}'`,
+			$select: 'id,displayName,userPrincipalName',
+			$top: 2,
+		},
 	)) as IDataObject;
-	const found = Array.isArray(response.value) ? (response.value as IDataObject[]) : [];
-	// Exactly one match only: an ambiguous address should fall through to the not-found error
-	// rather than silently mentioning the wrong person.
-	return found.length === 1 ? found[0] : undefined;
+	// The matches, not a single winner: the caller has to tell an ambiguous address apart from
+	// an unknown one, because "the user does not exist" is the wrong answer for two matches.
+	return Array.isArray(response.value) ? (response.value as IDataObject[]) : [];
 }
 
 /**
@@ -140,86 +130,6 @@ export const rlcValue = (value: unknown): string => {
 	if (typeof raw === 'string') return raw.trim();
 	return typeof raw === 'number' || typeof raw === 'boolean' ? String(raw) : '';
 };
-
-// Same scope and rules as `resolvedPerRun` below, for the user lookup that mentions and attendees share.
-const usersPerRun = new WeakMap<IExecuteFunctions, Map<string, ResolvedUser>>();
-
-/**
- * Looks one user up by object ID or principal name, with a `mail` retry for guests. `value` is
- * already unwrapped and trimmed by the caller; `noun` and `row` only shape the error copy.
- */
-export async function resolveUser(
-	this: IExecuteFunctions,
-	value: string,
-	itemIndex: number,
-	noun: LookupNoun,
-	row: number,
-): Promise<ResolvedUser> {
-	let cache = usersPerRun.get(this);
-	if (!cache) {
-		cache = new Map<string, ResolvedUser>();
-		usersPerRun.set(this, cache);
-	}
-	const cached = cache.get(value);
-	if (cached) return cached;
-
-	const node = this.getNode();
-	const messages = lookupMessages(noun, row);
-	let user: IDataObject;
-	try {
-		// Validate the shape before encoding (`encodeURIComponent` leaves `..` intact) and encode
-		// the same trimmed string, since the validator is anchored and callers trim.
-		validateUserTargetId(value, node, messages);
-
-		user = (await microsoftApiRequest.call(
-			this,
-			'GET',
-			`/v1.0/users/${encodeURIComponent(value)}`,
-			{},
-			{ $select: 'id,displayName,userPrincipalName' },
-		)) as IDataObject;
-	} catch (error) {
-		if (error instanceof NodeApiError && error.httpCode === '404') {
-			// Only an address can be a `mail` value, so a GUID goes straight to the error.
-			// The fallback runs inside this catch, so its own 403/429/5xx would otherwise
-			// escape without the row index the primary lookup stamps on.
-			const byMail = value.includes('@')
-				? await findUserByMail.call(this, value).catch((mailError) => {
-						throw stampItemIndexOnError(mailError, itemIndex);
-					})
-				: undefined;
-			if (!byMail) {
-				throw new NodeOperationError(node, messages.notFound.message, {
-					itemIndex,
-					description: messages.notFound.description,
-				});
-			}
-			user = byMail;
-		} else {
-			// A validation failure and 403 (missing User.Read.All), 429 or 5xx all keep their
-			// own message; only the item index is added.
-			throw stampItemIndexOnError(error, itemIndex);
-		}
-	}
-
-	if (typeof user.id !== 'string' || !user.id) {
-		throw new NodeOperationError(node, messages.notFound.message, {
-			itemIndex,
-			description: 'Microsoft Graph returned a user without an ID.',
-		});
-	}
-
-	// Directory objects with no display name exist (some guests, some service accounts);
-	// without a fallback the mention renders as a blank chip. `||`, so `''` falls through.
-	const displayName = (user.displayName as string) || (user.userPrincipalName as string) || user.id;
-	const resolved: ResolvedUser = {
-		id: user.id,
-		displayName,
-		userPrincipalName: (user.userPrincipalName as string) || '',
-	};
-	cache.set(value, resolved);
-	return resolved;
-}
 
 /**
  * Looks a team tag up under the team that owns it. A foreign tag ID 404s under
@@ -297,10 +207,80 @@ async function resolveTagMention(
  * the context object, so the cache is collected with the execution and never crosses runs or
  * tenants. Only successes are stored, so a throttled row is retried on the next item.
  *
- * Tag mentions only (user rows go through `usersPerRun`). A tag key carries its team, because a
- * tag only resolves under the team that owns it.
+ * Keys are namespaced by mention type, and a tag key carries its team: the same ID string means
+ * different things in the two arms, and a tag only resolves under the team that owns it.
  */
 const resolvedPerRun = new WeakMap<IExecuteFunctions, Map<string, Mention>>();
+
+/**
+ * Resolves one user-picker row to the Graph user it names. Graph stores
+ * `mentions[].mentioned.user` verbatim and resolves nothing: a UPN or a well-formed but
+ * nonexistent GUID is accepted with a 200 and a mention that notifies nobody. So each row goes
+ * through `GET /users/{idOrUpn}` first, which also yields the authoritative display name.
+ *
+ * `label` names the row in every error (`mention 2`, `participant 1`) and must never carry a
+ * parameter value. Shared by the mention rows and by `chat:create`'s participant rows.
+ */
+export async function resolveUserTarget(
+	this: IExecuteFunctions,
+	raw: unknown,
+	itemIndex: number,
+	label: string,
+): Promise<IDataObject & { id: string }> {
+	const node = this.getNode();
+	// Validate the shape before encoding (`encodeURIComponent` leaves `..` intact) and encode
+	// the same trimmed string, since the validator is anchored and callers trim.
+	const value = String(raw ?? '').trim();
+
+	let user: IDataObject;
+	try {
+		validateUserTargetId(value, node, userTargetMessages(label));
+
+		user = (await microsoftApiRequest.call(
+			this,
+			'GET',
+			`/v1.0/users/${encodeURIComponent(value)}`,
+			{},
+			{ $select: 'id,displayName,userPrincipalName' },
+		)) as IDataObject;
+	} catch (error) {
+		if (!(error instanceof NodeApiError && error.httpCode === '404')) {
+			// A validation failure and 403 (missing User.Read.All), 429 or 5xx all keep their
+			// own message; only the item index is added.
+			throw stampItemIndexOnError(error, itemIndex);
+		}
+		// Only an address can be a `mail` value, so a GUID goes straight to the error.
+		const matches = value.includes('@')
+			? await findUsersByMail.call(this, value).catch((mailError) => {
+					throw stampItemIndexOnError(mailError, itemIndex);
+				})
+			: [];
+		if (matches.length > 1) {
+			throw new NodeOperationError(node, `More than one user has that email address for ${label}`, {
+				itemIndex,
+				description:
+					'Two or more users in this Microsoft 365 tenant share that email address. Pick the user from the list, or enter their user ID instead.',
+			});
+		}
+		if (matches.length === 0) {
+			throw new NodeOperationError(node, `Could not find the user for ${label}`, {
+				itemIndex,
+				description:
+					'Pick the user from the list, or check that the user ID or email address is correct and that the user exists in this Microsoft 365 tenant.',
+			});
+		}
+		user = matches[0];
+	}
+
+	const { id } = user;
+	if (typeof id !== 'string' || !id) {
+		throw new NodeOperationError(node, `Could not find the user for ${label}`, {
+			itemIndex,
+			description: 'Microsoft Graph returned a user without an ID.',
+		});
+	}
+	return { ...user, id };
+}
 
 /**
  * Resolves every mention row to a Graph user or team tag. Graph stores `mentions[].mentioned`
@@ -308,8 +288,7 @@ const resolvedPerRun = new WeakMap<IExecuteFunctions, Map<string, Mention>>();
  * accepted with a 200 and a mention that notifies nobody. So each row is looked up first, which
  * also yields the authoritative display name.
  *
- * Rows are walked in order, one request each: a realistic list is 1-3 entries, and sequential
- * keeps a failing row unambiguous and the resolved array in row order.
+ * Rows are walked in order, one request each: sequential keeps a failing row unambiguous.
  */
 export async function resolveMentions(
 	this: IExecuteFunctions,
@@ -383,19 +362,33 @@ export async function resolveMentions(
 			});
 		}
 
-		const user = await resolveUser.call(
-			this,
-			rlcValue(row.userId),
-			itemIndex,
-			'mention',
-			index + 1,
-		);
-		mentions.push({
-			mentionText: user.displayName,
+		// Validate the shape before encoding (`encodeURIComponent` leaves `..` intact) and encode
+		// the same trimmed string, since the validator is anchored and callers trim.
+		const value = rlcValue(row.userId);
+
+		const userKey = `user:${value}`;
+		const cached = cache.get(userKey);
+		if (cached) {
+			// Safe to share by reference: `prepareMessage` spreads rather than mutates.
+			mentions.push(cached);
+			continue;
+		}
+
+		const user = await resolveUserTarget.call(this, value, itemIndex, `mention ${index + 1}`);
+
+		// Directory objects with no display name exist (some guests, some service accounts);
+		// without a fallback the mention renders as a blank chip. `||`, so `''` falls through.
+		const label =
+			(user.displayName as string) || (user.userPrincipalName as string) || (user.id as string);
+
+		const mention: Mention = {
+			mentionText: label,
 			mentioned: {
-				user: { id: user.id, displayName: user.displayName, userIdentityType: 'aadUser' },
+				user: { id: user.id as string, displayName: label, userIdentityType: 'aadUser' },
 			},
-		});
+		};
+		cache.set(userKey, mention);
+		mentions.push(mention);
 	}
 
 	return mentions;
