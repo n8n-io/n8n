@@ -26,7 +26,7 @@ test.describe(
 			// upstream, so `test2` carries what `Init Data` put in `test`.
 			const { resultData } = flatted.parse(execution.data);
 			const output = resultData.runData['Test Expression'][0].data.main[0][0].json;
-			// The Set node assigns `test2` only, so the paired item is all it carries.
+			// "Include Other Input Fields" is off, so test2 is the only key.
 			expect(output).toEqual({ test2: 'a' });
 		});
 	},

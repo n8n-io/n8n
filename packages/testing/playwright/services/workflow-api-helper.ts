@@ -142,15 +142,19 @@ export class WorkflowApiHelper {
 	 * which plane ran it. Without this a workflow that missed `engineType` runs
 	 * on v1 and the spec still passes, which is parity evidence that proves
 	 * nothing.
+	 *
+	 * Only the manual-run entry point is checked. A spec that starts a run
+	 * through a webhook or a trigger gets no such guard yet.
 	 */
 	private assertRoutedToEngine(executionId: string): void {
 		if (this.api.options.workflowSettings?.engineType !== 'v2') return;
 		if (UUID.test(executionId)) return;
 
 		throw new TestError(
-			`Expected an engine 2.0 execution id, got "${executionId}". The workflow did not carry ` +
-				'`settings.engineType`, so the run stayed on the legacy engine. Create it through ' +
-				'`api.workflows`, which applies the stack default.',
+			`Expected an engine 2.0 execution id, got "${executionId}", so the run stayed on the ` +
+				'legacy engine. Either the workflow missed `settings.engineType`, which ' +
+				'`api.workflows` applies from the stack, or this main does not run the `engine-v2` ' +
+				'module.',
 		);
 	}
 

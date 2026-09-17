@@ -12,7 +12,7 @@ export const ENGINE_MODULE = 'engine-v2';
 /** The data plane keeps its own database on the stack Postgres. */
 export const ENGINE_DATABASE = 'n8n_engine';
 
-/** The values the Postgres service contributes, and the URL is built from. */
+/** Every value the URL interpolates, so a missing one is named, not printed. */
 const CONNECTION_KEYS = [
 	'DB_POSTGRESDB_USER',
 	'DB_POSTGRESDB_PASSWORD',

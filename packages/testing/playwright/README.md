@@ -205,6 +205,10 @@ that runs engine 2.0 in the main process (`containerConfig.engine:
 helpers create gets `settings.engineType = 'v2'`, so a spec proves parity
 without changes.
 
+`@db:reset` clears the control plane only, so data plane execution rows live
+on inside a worker. The engine database is emptied once, when the worker takes
+its container.
+
 A workflow built in the UI does not get the setting, and a workflow without it
 runs on the legacy engine. A tagged spec must therefore create its workflow
 through `api.workflows` and run it through `api.workflows.runManually`, which

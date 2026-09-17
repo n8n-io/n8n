@@ -108,7 +108,8 @@ export const test = base.extend<
 	// Option for test.use({ capability: 'proxy' }) - transformed into N8NStack by n8nContainer
 	capability: [undefined, { scope: 'worker', option: true }],
 
-	// Only acts on a stack that runs engine 2.0; see fixtures/engine-parity.ts for the tags.
+	// Rejects an unknown @engine:* tag anywhere; only an engine 2.0 stack skips or
+	// expects failure. See fixtures/engine-parity.ts for the tags.
 	engineParity: [
 		async ({ n8nStackConfig }, use, testInfo) => {
 			const disposition = engineParityDisposition(testInfo.tags, n8nStackConfig.engine);
