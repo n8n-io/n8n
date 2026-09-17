@@ -16,12 +16,6 @@
 			},
 			{
 				"rule": "catalog-violations",
-				"line": 74,
-				"message": "jsdom appears in 4 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
-				"hash": "9c770d66baf2"
-			},
-			{
-				"rule": "catalog-violations",
 				"line": 80,
 				"message": "turndown appears in 3 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "85c311d87491"
@@ -74,12 +68,6 @@
 			},
 			{
 				"rule": "catalog-violations",
-				"line": 307,
-				"message": "tmp-promise appears in 4 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
-				"hash": "88d67e2ef747"
-			},
-			{
-				"rule": "catalog-violations",
 				"line": 265,
 				"message": "@mozilla/readability appears in 5 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "69d6fa7e46f9"
@@ -89,12 +77,6 @@
 				"line": 283,
 				"message": "cheerio appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "8cd029bb871e"
-			},
-			{
-				"rule": "catalog-violations",
-				"line": 293,
-				"message": "jsdom appears in 4 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
-				"hash": "26f20ebea4b1"
 			},
 			{
 				"rule": "catalog-violations",
@@ -239,12 +221,6 @@
 				"line": 48,
 				"message": "@oclif/core appears in 4 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "da9b64834300"
-			},
-			{
-				"rule": "catalog-violations",
-				"line": 55,
-				"message": "tmp-promise appears in 4 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
-				"hash": "632a744e397e"
 			}
 		],
 		"packages/nodes-base/package.json": [
@@ -253,12 +229,6 @@
 				"line": 920,
 				"message": "change-case appears in 5 packages with 3 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "2d1fab7a5b05"
-			},
-			{
-				"rule": "catalog-violations",
-				"line": 976,
-				"message": "tmp-promise appears in 4 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
-				"hash": "3f93c404ae9c"
 			},
 			{
 				"rule": "catalog-violations",
@@ -277,12 +247,6 @@
 				"line": 926,
 				"message": "eventsource appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "9795e6c6d9e9"
-			},
-			{
-				"rule": "catalog-violations",
-				"line": 940,
-				"message": "jsdom appears in 4 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
-				"hash": "02341f2b5e3e"
 			},
 			{
 				"rule": "catalog-violations",
@@ -376,12 +340,6 @@
 			},
 			{
 				"rule": "catalog-violations",
-				"line": 102,
-				"message": "tmp-promise appears in 4 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
-				"hash": "884a45bdbcf2"
-			},
-			{
-				"rule": "catalog-violations",
 				"line": 110,
 				"message": "n8n-workflow appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "ea4fbfff30ba"
@@ -411,12 +369,6 @@
 				"line": 29,
 				"message": "@mozilla/readability appears in 5 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "0c97891a24f4"
-			},
-			{
-				"rule": "catalog-violations",
-				"line": 31,
-				"message": "jsdom appears in 4 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
-				"hash": "8466b03b1044"
 			},
 			{
 				"rule": "catalog-violations",
