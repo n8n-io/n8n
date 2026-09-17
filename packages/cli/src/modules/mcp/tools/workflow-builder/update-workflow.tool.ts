@@ -723,45 +723,6 @@ const isTagOperation = (op: PartialUpdateOperation) =>
 const isSettingsOperation = (op: PartialUpdateOperation) => op.type === 'setWorkflowSettings';
 
 /**
- * Operations that cannot leave a required subnode input unsatisfied: they touch
- * neither connections nor the parameters a conditional `inputs` expression reads.
- * Node-level execution settings qualify, since `inputs` only sees `$parameter`.
- */
-const GRAPH_NEUTRAL_OPERATIONS = new Set<PartialUpdateOperation['type']>([
-	'addTags',
-	'removeTags',
-	'setNodeSettings',
-	'setWorkflowSettings',
-	'setWorkflowMetadata',
-	'addNodeGroup',
-	'removeNodeGroup',
-	'updateNodeGroup',
-	'setNodeGroups',
-	'setNodePosition',
-]);
-
-const touchesGraph = (op: PartialUpdateOperation) => !GRAPH_NEUTRAL_OPERATIONS.has(op.type);
-
-/**
- * Rejects operations this instance cannot serve, before anything is loaded or
- * applied.
- */
-function assertOperationsSupported(
-	strictOperations: PartialUpdateOperation[],
-	{ canvasGroupsEnabled }: { canvasGroupsEnabled: boolean },
-): void {
-	// Defense in depth: with the flag off, the published schema already
-	// rejects these op types at the enum level; this guards against the
-	// loose and strict schemas drifting apart. Flag first so the scan only
-	// runs on instances where it can actually reject something.
-	if (!canvasGroupsEnabled && strictOperations.some((op) => GATED_GROUP_OP_TYPES.has(op.type))) {
-		throw new Error(
-			'Node group operations (addNodeGroup, removeNodeGroup, updateNodeGroup) are not available on this instance.',
-		);
-	}
-}
-
-/**
  * Group rules depend on how the workflow looks after the whole batch, so they
  * are checked once here rather than per operation. A broken group is dropped
  * and reported; the update still goes through.
@@ -1155,8 +1116,6 @@ export const createUpdateWorkflowTool = (
 				const hasNonTagOperations = strictOperations.some((op) => !isTagOperation(op));
 				const hasSettingsOperations = strictOperations.some(isSettingsOperation);
 				hasGraphOps = strictOperations.some((op) => GRAPH_OPERATION_TYPES.has(op.type));
-
-				assertOperationsSupported(strictOperations, { canvasGroupsEnabled });
 
 				existingWorkflow = await getMcpWorkflow(
 					workflowId,
