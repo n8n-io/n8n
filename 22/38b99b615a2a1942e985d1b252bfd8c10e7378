@@ -2,6 +2,18 @@ packages/cli/src/modules/source-control.ee/__tests__/source-control-git.service.
   s_a5246f8acb611f::t_91c4daa66dec84 395
   s_a5246f8acb611f::t_ba777840d2ea96 335-340
   s_a5246f8acb611f::t_ea2efcbfc06358 367-372
+packages/cli/src/modules/git-connections.ee/git-connections-git.service.ts
+  s_7562978115634d::t_b0d76f9c05e088 165,167-170,175-183
+  s_7562978115634d::t_806568d4ddde33 166
+  ai_agent 90
+  s_37ea2c10fb0e32::t_159d945e1a6b1c 87-89
+  s_453e0bdd28d498::t_9c58d2412289c8 95-97,102
+packages/cli/src/modules/git-connections.ee/git-connections.service.ts
+  s_7562978115634d::t_51bcbad1f893a9 64-67,70,83
+  s_7562978115634d::t_705e7100060996 220-226
+  s_7562978115634d::t_3e43ec157a957e 104,110
+packages/cli/src/modules/git-connections.ee/__tests__/git-connections-git.service.test.ts
+  s_37ea2c10fb0e32::t_6ee13a54bf658a 70
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -9,6 +21,30 @@ packages/cli/src/modules/source-control.ee/__tests__/source-control-git.service.
   "base_commit_sha": "2238b99b615a2a1942e985d1b252bfd8c10e7378",
   "prompts": {},
   "sessions": {
+    "s_37ea2c10fb0e32": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "55d4e710-b67f-4069-939d-8d9aacc0d279",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_453e0bdd28d498": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9f7a1199-ba0e-4f9e-b114-8c40f48b7636",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_7562978115634d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7789a6a0-eacd-4f54-97a9-3f6d2b2fb4c8",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
     "s_a5246f8acb611f": {
       "agent_id": {
         "tool": "claude",
