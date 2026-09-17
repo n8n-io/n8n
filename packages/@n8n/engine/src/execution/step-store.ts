@@ -155,6 +155,17 @@ export interface StepStore {
 	 */
 	resumeDueSteps(due: Date, limit: number): Promise<DueStep[]>;
 
+	/**
+	 * The earliest deadline any waiting step still holds, or `null` when no step
+	 * waits on one.
+	 *
+	 * The sweep reads this to decide when to look next, so that a wait fires at
+	 * its deadline rather than at the end of a fixed interval. The answer is a
+	 * hint and never an authority: `resumeDueSteps` still decides what may
+	 * resume, so a stale or lost answer costs precision and nothing else.
+	 */
+	nextWaitDeadline(): Promise<Date | null>;
+
 	/** Record a failed run: persist `error` and mark the step failed. As `completeStep`. */
 	failStep(id: string, error: StepError): Promise<boolean>;
 

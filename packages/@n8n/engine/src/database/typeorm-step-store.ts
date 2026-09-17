@@ -233,6 +233,19 @@ export class TypeOrmStepStore implements StepStore {
 		}));
 	}
 
+	async nextWaitDeadline(): Promise<Date | null> {
+		// Served by the partial index on `wait_till`, so this stays a cheap read
+		// even with a large backlog.
+		const [row] = await this.repo
+			.createQueryBuilder('step')
+			.select('MIN(step.wait_till)', 'next')
+			.where("step.status = 'waiting'")
+			.andWhere('step.wait_till IS NOT NULL')
+			.getRawMany<{ next: Date | null }>();
+
+		return row?.next ?? null;
+	}
+
 	async cancelPendingSteps(executionId: string): Promise<void> {
 		await this.repo.update(
 			{ executionId, status: In(['queued', 'waiting'] satisfies StepStatus[]) },

@@ -25,6 +25,7 @@ function makeStepStore(resumeDueSteps = vi.fn().mockResolvedValue([])): StepStor
 		suspendStep: vi.fn(),
 		resumeStep: vi.fn(),
 		resumeDueSteps,
+		nextWaitDeadline: vi.fn().mockResolvedValue(null),
 		failStep: vi.fn(),
 		cancelPendingSteps: vi.fn(),
 		loadStepsByKeys: vi.fn().mockResolvedValue({}),
@@ -200,6 +201,8 @@ describe('WaitSweeper', () => {
 		const sweeper = new WaitSweeper(makeStepStore(), makeStepQueue(), makeLogger(), SWEEP_MS);
 
 		sweeper.start();
+		// arming reads the next deadline first, so the timer is set a tick later
+		await vi.advanceTimersByTimeAsync(0);
 
 		const timer = setTimeoutSpy.mock.results[0].value as NodeJS.Timeout;
 		expect(timer.hasRef()).toBe(false);
@@ -221,6 +224,135 @@ describe('WaitSweeper', () => {
 		expect(stepStore.resumeDueSteps).toHaveBeenCalledTimes(1);
 
 		await sweeper.stop();
+	});
+
+	describe('when it knows the next deadline', () => {
+		/** A store whose earliest waiting deadline is `deadline`. */
+		function storeDueAt(deadline: Date | null): StepStore {
+			const stepStore = makeStepStore();
+			vi.mocked(stepStore.nextWaitDeadline).mockResolvedValue(deadline);
+			return stepStore;
+		}
+
+		it('sweeps at the deadline when it falls inside the interval', async () => {
+			// Otherwise a wait due in 200ms waits out the whole interval, which is
+			// the precision engine v1 gets from its per-execution timers.
+			const stepStore = storeDueAt(new Date(Date.now() + 200));
+			const sweeper = new WaitSweeper(stepStore, makeStepQueue(), makeLogger(), SWEEP_MS);
+
+			sweeper.start();
+			await vi.advanceTimersByTimeAsync(200);
+
+			expect(stepStore.resumeDueSteps).toHaveBeenCalledTimes(1);
+
+			await sweeper.stop();
+		});
+
+		it('sweeps immediately when a deadline has already passed', async () => {
+			// A restart must not add an interval to every overdue wait.
+			const stepStore = storeDueAt(new Date(Date.now() - 60_000));
+			const sweeper = new WaitSweeper(stepStore, makeStepQueue(), makeLogger(), SWEEP_MS);
+
+			sweeper.start();
+			// the arm reads the deadline first, then schedules with no delay
+			await vi.advanceTimersByTimeAsync(0);
+			await vi.advanceTimersByTimeAsync(0);
+
+			expect(stepStore.resumeDueSteps).toHaveBeenCalledTimes(1);
+
+			await sweeper.stop();
+		});
+
+		it('keeps the interval as a ceiling when the deadline is further out', async () => {
+			// The interval is what finds a wait suspended after this timer was armed.
+			const stepStore = storeDueAt(new Date(Date.now() + SWEEP_MS * 5));
+			const sweeper = new WaitSweeper(stepStore, makeStepQueue(), makeLogger(), SWEEP_MS);
+
+			sweeper.start();
+			await vi.advanceTimersByTimeAsync(SWEEP_MS);
+
+			expect(stepStore.resumeDueSteps).toHaveBeenCalledTimes(1);
+
+			await sweeper.stop();
+		});
+
+		it('falls back to the interval when no step is waiting', async () => {
+			const stepStore = storeDueAt(null);
+			const sweeper = new WaitSweeper(stepStore, makeStepQueue(), makeLogger(), SWEEP_MS);
+
+			sweeper.start();
+			await vi.advanceTimersByTimeAsync(SWEEP_MS - 1);
+			expect(stepStore.resumeDueSteps).not.toHaveBeenCalled();
+
+			await vi.advanceTimersByTimeAsync(1);
+			expect(stepStore.resumeDueSteps).toHaveBeenCalledTimes(1);
+
+			await sweeper.stop();
+		});
+
+		it('arms no timer when it is stopped while reading the deadline', async () => {
+			// `stop()` cannot clear a timer that does not exist yet, because the arm
+			// is still reading. The arm has to notice the stop after its read.
+			let releaseRead!: (deadline: Date | null) => void;
+			const stepStore = makeStepStore();
+			vi.mocked(stepStore.nextWaitDeadline).mockReturnValue(
+				new Promise((resolve) => {
+					releaseRead = resolve;
+				}),
+			);
+			const sweeper = new WaitSweeper(stepStore, makeStepQueue(), makeLogger(), SWEEP_MS);
+
+			sweeper.start();
+			const stopped = sweeper.stop();
+			releaseRead(null);
+			await stopped;
+			await vi.advanceTimersByTimeAsync(SWEEP_MS * 5);
+
+			expect(stepStore.resumeDueSteps).not.toHaveBeenCalled();
+		});
+
+		it('does not finish stopping until an in-flight read settles', async () => {
+			// The host destroys its data source after `stop`, so a read still in
+			// flight there fails against a closed connection.
+			const order: string[] = [];
+			let releaseRead!: () => void;
+			const stepStore = makeStepStore();
+			vi.mocked(stepStore.nextWaitDeadline).mockImplementation(async () => {
+				await new Promise<void>((resolve) => {
+					releaseRead = resolve;
+				});
+				order.push('read');
+				return null;
+			});
+			const sweeper = new WaitSweeper(stepStore, makeStepQueue(), makeLogger(), SWEEP_MS);
+
+			sweeper.start();
+			await vi.advanceTimersByTimeAsync(0);
+			const stopped = sweeper.stop().then(() => order.push('stopped'));
+			// room for `stop` to resolve early if it does not wait for the read
+			await vi.advanceTimersByTimeAsync(10);
+			releaseRead();
+			await stopped;
+
+			expect(order).toEqual(['read', 'stopped']);
+		});
+
+		it('falls back to the interval when the deadline cannot be read', async () => {
+			// `start()` cannot await the read, so a failure here must not stop the
+			// sweeper from ever running.
+			const stepStore = makeStepStore();
+			vi.mocked(stepStore.nextWaitDeadline).mockRejectedValue(new Error('connection reset'));
+			const logger = makeLogger();
+			const sweeper = new WaitSweeper(stepStore, makeStepQueue(), logger, SWEEP_MS);
+
+			sweeper.start();
+			await vi.advanceTimersByTimeAsync(SWEEP_MS);
+
+			expect(stepStore.resumeDueSteps).toHaveBeenCalledTimes(1);
+			expect(logger.error).toHaveBeenCalled();
+
+			await sweeper.stop();
+		});
 	});
 
 	it('sweeps no more once stopped', async () => {
