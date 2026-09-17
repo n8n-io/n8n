@@ -184,6 +184,7 @@ type WorkflowCredentialResult = {
 	id: string;
 	name: string;
 	type: string;
+	description?: string | null;
 	createdAt: string;
 	updatedAt: string;
 	scopes: Scope[];
@@ -683,6 +684,7 @@ export class CredentialsService {
 			id: c.id,
 			name: c.name,
 			type: c.type,
+			description: c.description ?? null,
 			createdAt: c.createdAt.toISOString(),
 			updatedAt: c.updatedAt.toISOString(),
 			scopes: c.scopes,

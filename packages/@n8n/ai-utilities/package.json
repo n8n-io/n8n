@@ -7,6 +7,9 @@
   "main": "dist/cjs/index.js",
   "typesVersions": {
     "*": {
+      "credential-description": [
+        "dist/esm/utils/credential-description.d.ts"
+      ],
       "text-editor": [
         "dist/esm/utils/workflow-text-editor.d.ts"
       ],
@@ -43,6 +46,11 @@
     }
   },
   "exports": {
+    "./credential-description": {
+      "types": "./dist/esm/utils/credential-description.d.ts",
+      "import": "./dist/esm/utils/credential-description.js",
+      "require": "./dist/cjs/utils/credential-description.js"
+    },
     ".": {
       "types": "./dist/esm/index.d.ts",
       "import": "./dist/esm/index.js",

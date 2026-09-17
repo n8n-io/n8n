@@ -2816,6 +2816,25 @@ describe('CredentialsService', () => {
 			);
 		});
 
+		it.each([null, 'x'.repeat(CREDENTIAL_DESCRIPTION_MAX_LENGTH)])(
+			'returns the stored description in a workflow-scoped list',
+			async (description) => {
+				const credential = Object.assign(new CredentialsEntity(), regularCredential, {
+					description,
+					data: 'encrypted-test-value',
+				});
+				credentialsFinderService.findCredentialsForUser.mockResolvedValue([credential]);
+				credentialsRepository.findAllCredentialsForWorkflow.mockResolvedValue([credential]);
+
+				const result = await service.getCredentialsAUserCanUseInAWorkflow(user, {
+					workflowId: 'workflow-1',
+				});
+
+				expect(result[0].description).toBe(description);
+				expect(result[0]).not.toHaveProperty('data');
+			},
+		);
+
 		it('should return a payload matching the ICredentialsResponse shape', async () => {
 			credentialsFinderService.findCredentialsForUser.mockResolvedValue([regularCredential]);
 			credentialsRepository.findAllCredentialsForWorkflow.mockResolvedValue([regularCredential]);
@@ -2833,6 +2852,7 @@ describe('CredentialsService', () => {
 					id: 'cred-1',
 					name: 'Regular Credential',
 					type: 'apiKey',
+					description: null,
 					createdAt: credentialCreatedAt.toISOString(),
 					updatedAt: credentialUpdatedAt.toISOString(),
 					scopes: ['credential:read'],
