@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { tmpdir } from 'node:os';
 import { test } from 'node:test';
 
 import {
@@ -6,6 +7,7 @@ import {
 	mergeTree,
 	classifyPaths,
 	blocksLockfileRegen,
+	validateLockfile,
 	resolveMechanicalPath,
 	resolveQueueSidePath,
 	deleteModifyConflicts,
@@ -87,6 +89,22 @@ const baseGitRoutes = [
 const env = { GH_TOKEN: 'tok', GITHUB_REPOSITORY: 'n8n-io/n8n' };
 const noOpenPr = [[(a) => a[0] === 'pr' && a[1] === 'list', '[]']];
 
+function isolatedValidationPaths(args) {
+	assert.deepEqual(args.slice(0, 3), ['install', '--frozen-lockfile', '--trust-lockfile']);
+	assert.equal(args.includes('--force'), false);
+	assert.equal(args.length, 7);
+	const storeDirIndex = args.indexOf('--store-dir');
+	const virtualStoreDirIndex = args.indexOf('--virtual-store-dir');
+	assert.ok(storeDirIndex >= 3);
+	assert.ok(virtualStoreDirIndex >= 3);
+	const storeDir = args[storeDirIndex + 1];
+	const virtualStoreDir = args[virtualStoreDirIndex + 1];
+	assert.ok(storeDir);
+	assert.ok(virtualStoreDir);
+	assert.notEqual(storeDir, virtualStoreDir);
+	return { storeDir, virtualStoreDir };
+}
+
 test('targetBranch defaults to 3.x and honours the rehearsal override', () => {
 	assert.equal(targetBranch({}), TARGET_BRANCH);
 	assert.equal(targetBranch({ SYNC_TARGET_BRANCH: '3x-sync-test' }), '3x-sync-test');
@@ -155,6 +173,23 @@ test('classifyPaths and blocksLockfileRegen split mechanical from code conflicts
 	assert.equal(blocksLockfileRegen(['packages/cli/x.ts']), false);
 });
 
+test('validateLockfile uses fresh stores under the configured temporary directory', () => {
+	const pnpm = makeStub();
+	validateLockfile(pnpm, { RUNNER_TEMP: '/runner-temp' });
+	validateLockfile(pnpm, { RUNNER_TEMP: '/runner-temp' });
+	validateLockfile(pnpm, {});
+
+	const first = isolatedValidationPaths(pnpm.calls[0]);
+	const second = isolatedValidationPaths(pnpm.calls[1]);
+	const fallback = isolatedValidationPaths(pnpm.calls[2]);
+	assert.ok(first.storeDir.startsWith('/runner-temp/'));
+	assert.ok(first.virtualStoreDir.startsWith('/runner-temp/'));
+	assert.notEqual(first.storeDir, second.storeDir);
+	assert.notEqual(first.virtualStoreDir, second.virtualStoreDir);
+	assert.ok(fallback.storeDir.startsWith(`${tmpdir()}/`));
+	assert.ok(fallback.virtualStoreDir.startsWith(`${tmpdir()}/`));
+});
+
 test('resolveMechanicalPath takes the blob from master, or the deletion when master removed the file', () => {
 	const present = makeStub([[(a) => a[0] === 'cat-file', '']]);
 	resolveMechanicalPath({
@@ -185,11 +220,10 @@ test('resolveMechanicalPath regenerates and applies patches before staging the l
 	const git = makeStub();
 	const pnpm = makeStub();
 	resolveMechanicalPath({ git, pnpm, path: LOCKFILE, masterSha: MASTER, log: () => {} });
-	// Regeneration must override CI's frozen default. Validation must use the exact CI command.
-	assert.deepEqual(pnpm.calls, [
-		['install', '--lockfile-only', '--no-frozen-lockfile'],
-		['install', '--frozen-lockfile', '--trust-lockfile'],
-	]);
+	// Regeneration must override CI's frozen default. Validation must use isolated stores.
+	assert.deepEqual(pnpm.calls[0], ['install', '--lockfile-only', '--no-frozen-lockfile']);
+	isolatedValidationPaths(pnpm.calls[1]);
+	assert.equal(pnpm.calls.length, 2);
 	assert.ok(git.calls.some((a) => a[0] === 'add' && a.includes(LOCKFILE)));
 });
 
@@ -419,10 +453,9 @@ test('reconcileLockfileAtTip folds an inconsistent lockfile into the tip commit,
 	]);
 	const pnpm = makeStub();
 	reconcileLockfileAtTip({ git: inconsistent, pnpm, masterSha: MASTER, log: () => {} });
-	assert.deepEqual(pnpm.calls, [
-		['install', '--lockfile-only', '--no-frozen-lockfile'],
-		['install', '--frozen-lockfile', '--trust-lockfile'],
-	]);
+	assert.deepEqual(pnpm.calls[0], ['install', '--lockfile-only', '--no-frozen-lockfile']);
+	isolatedValidationPaths(pnpm.calls[1]);
+	assert.equal(pnpm.calls.length, 2);
 	assert.ok(inconsistent.calls.some((a) => a[0] === 'commit' && a.includes('--amend')));
 
 	const validationGit = makeStub();
@@ -686,17 +719,11 @@ test('sync auto-resolves a lockfile-only conflict during the replay — no PR, n
 
 	// The stall regen and tip reconciliation each run regeneration and exact CI validation.
 	assert.deepEqual(pnpm.calls[0], ['install', '--lockfile-only', '--no-frozen-lockfile']);
-	assert.deepEqual(pnpm.calls[1], [
-		'install',
-		'--frozen-lockfile',
-		'--trust-lockfile',
-	]);
+	const stallValidation = isolatedValidationPaths(pnpm.calls[1]);
 	assert.deepEqual(pnpm.calls[2], ['install', '--lockfile-only', '--no-frozen-lockfile']);
-	assert.deepEqual(pnpm.calls[3], [
-		'install',
-		'--frozen-lockfile',
-		'--trust-lockfile',
-	]);
+	const tipValidation = isolatedValidationPaths(pnpm.calls[3]);
+	assert.notEqual(stallValidation.storeDir, tipValidation.storeDir);
+	assert.notEqual(stallValidation.virtualStoreDir, tipValidation.virtualStoreDir);
 	assert.equal(pnpm.calls.length, 4);
 	assert.ok(git.calls.some((a) => a[0] === 'add' && a.includes(LOCKFILE)));
 	assert.ok(git.calls.some((a) => a[0] === 'rebase' && a[1] === '--continue'));
@@ -844,10 +871,9 @@ test('buildConflictBranch pre-resolves mechanical files so only code conflicts r
 	assert.deepEqual(files, ['packages/cli/x.ts']);
 	assert.deepEqual(preResolved, [LOCKFILE, POPULARITY]);
 	assert.equal(lockfileDeferred, false);
-	assert.deepEqual(pnpm.calls, [
-		['install', '--lockfile-only', '--no-frozen-lockfile'],
-		['install', '--frozen-lockfile', '--trust-lockfile'],
-	]);
+	assert.deepEqual(pnpm.calls[0], ['install', '--lockfile-only', '--no-frozen-lockfile']);
+	isolatedValidationPaths(pnpm.calls[1]);
+	assert.equal(pnpm.calls.length, 2);
 	assert.ok(
 		git.calls.some((a) => a[0] === 'checkout' && a[1] === MASTER && a.includes(POPULARITY)),
 	);
@@ -892,10 +918,9 @@ test('buildConflictBranch restores and defers a lockfile when the patched instal
 	assert.deepEqual(files, ['packages/cli/x.ts']);
 	assert.deepEqual(preResolved, []);
 	assert.equal(lockfileDeferred, true);
-	assert.deepEqual(pnpm.calls, [
-		['install', '--lockfile-only', '--no-frozen-lockfile'],
-		['install', '--frozen-lockfile', '--trust-lockfile'],
-	]);
+	assert.deepEqual(pnpm.calls[0], ['install', '--lockfile-only', '--no-frozen-lockfile']);
+	isolatedValidationPaths(pnpm.calls[1]);
+	assert.equal(pnpm.calls.length, 2);
 	assert.ok(
 		git.calls.some(
 			(a) =>
