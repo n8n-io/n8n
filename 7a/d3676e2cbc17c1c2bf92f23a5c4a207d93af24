@@ -3,7 +3,7 @@ packages/cli/src/public-api/v1/shared/spec/responses/serviceUnavailable.yml
 packages/cli/src/public-api/v1/openapi-gen/decorator-routes.ts
   s_b3870ba058e6f8::t_4fa5603cb8c7bf 39
 packages/cli/src/public-api/v1/controllers/git-connections.public.controller.ts
-  h_9b272a633435fb 10-14,16-19,23-27,30-33,35,37-53,55,169,174-175,216-217,203
+  h_9b272a633435fb 10-14,16-19,23-27,30-33,35,37-53,55,169,174-175,203,216-217
   s_b3870ba058e6f8::t_4fa5603cb8c7bf 15,171,207-209
   s_b3870ba058e6f8::t_dab091ddbe0add 166,168,202,204
   s_4201f3747fb456::t_ba478f303aa3ef 170,176,206,214
