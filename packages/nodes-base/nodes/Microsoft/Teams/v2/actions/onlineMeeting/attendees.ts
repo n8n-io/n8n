@@ -1,21 +1,16 @@
 import { isRecord } from '@n8n/utils/is-record';
-import type {
-	IDataObject,
-	IExecuteFunctions,
-	INodeProperties,
-	INodePropertyCollection,
-} from 'n8n-workflow';
+import type { IExecuteFunctions, INodeProperties, INodePropertyCollection } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { isSet } from './meetingSettings';
+import { isSet } from './shared';
 import { userRLC } from '../../descriptions';
 import { resolveUserTarget, rlcValue } from '../../helpers/utils';
 import { rewriteForbiddenUnderSp } from '../../transport';
 
-const ROLE_DESCRIPTION =
-	'Presenter takes effect only when Allowed Presenters is set to Specific People';
-const CREATE_OR_GET_NOTE = 'Applies only when a new meeting is created.';
-const UPDATE_NOTE = 'Replaces the current attendees. An empty list removes them all.';
+const INVITE = 'The people to invite to the meeting';
+const CREATE_OR_GET_NOTE =
+	'Attendees apply only when a new meeting is created. The node still looks up every attendee on every run.';
+const UPDATE_NOTE = 'The Attendees list replaces the current attendees.';
 
 const roleField: INodeProperties = {
 	displayName: 'Role',
@@ -26,18 +21,20 @@ const roleField: INodeProperties = {
 		{ name: 'Attendee', value: 'attendee' },
 		{ name: 'Presenter', value: 'presenter' },
 	],
-	description: ROLE_DESCRIPTION,
+	description: 'Presenter takes effect only when Allowed Presenters is set to Specific People',
 };
 
-// The collection UI does not render a fixedCollection's own description, so the note is repeated
-// on the row fields, which always show.
+// The collection-overhaul UI renders only the title of a fixedCollection, not its description, so
+// the note is repeated on the row fields, which show in both UIs.
 const rowsWithNote = (note: string, withRole = true): INodePropertyCollection[] => [
 	{
 		displayName: 'Attendee',
 		name: 'attendee',
 		values: [
 			{ ...userRLC, description: [userRLC.description, note].join(' ') },
-			...(withRole ? [{ ...roleField, description: `${ROLE_DESCRIPTION}. ${note}` }] : []),
+			...(withRole
+				? [{ ...roleField, description: [roleField.description, note].join('. ') }]
+				: []),
 		],
 	},
 ];
@@ -53,7 +50,7 @@ export const attendeesField: INodeProperties = {
 		multipleValues: true,
 		sortable: true,
 	},
-	description: 'The people to invite to the meeting',
+	description: INVITE,
 	options: [
 		{
 			displayName: 'Attendee',
@@ -66,19 +63,22 @@ export const attendeesField: INodeProperties = {
 /** Create or Get: inside Options. Graph ignores the body when the meeting already exists. */
 export const createOrGetAttendeesField: INodeProperties = {
 	...attendeesField,
-	description: `The people to invite. ${CREATE_OR_GET_NOTE}`,
+	description: `${INVITE}. ${CREATE_OR_GET_NOTE}`,
 	// No role: the createOrGet body has no Allowed Presenters, so a Presenter row could not take effect.
 	options: rowsWithNote(CREATE_OR_GET_NOTE, false),
 };
 
-/** Update: inside Update Fields. */
+/**
+ * Update: inside Update Fields. An empty list clears the attendees, but the two editor UIs save an
+ * emptied list differently (one drops it, one keeps it), so the copy does not promise the clear.
+ */
 export const updateAttendeesField: INodeProperties = {
 	...attendeesField,
-	description: UPDATE_NOTE,
+	description: `${INVITE}. ${UPDATE_NOTE}`,
 	options: rowsWithNote(UPDATE_NOTE),
 };
 
-export type MeetingAttendee = {
+type MeetingAttendee = {
 	identity: { user: { id: string } };
 	upn?: string;
 	role: 'attendee' | 'presenter';
@@ -87,14 +87,25 @@ export type MeetingAttendee = {
 const isRole = (value: unknown): value is MeetingAttendee['role'] =>
 	value === 'attendee' || value === 'presenter';
 
-// Module-private on purpose: tests assert the literal, so a silent rewording fails them.
+// `{}` or `{ attendee: rows }`, the two shapes the editor stores. Anything else (a string, a bare
+// list, an unknown key, `null` rows, rows that are not objects) can only come from the API,
+// imported JSON or an expression. The spread copy matters: `every` skips the holes of a sparse list.
+const isAttendeeRows = (value: unknown): value is { attendee?: Array<Record<string, unknown>> } =>
+	isRecord(value) &&
+	Object.keys(value).every((key) => key === 'attendee') &&
+	(value.attendee === undefined ||
+		(Array.isArray(value.attendee) && [...value.attendee].every(isRecord)));
+
 const FORBIDDEN_MESSAGE = 'Resolving attendees needs the User.Read.All application permission';
 const FORBIDDEN_DESCRIPTION =
 	'Grant it to the app registration with admin consent. The node looks every attendee up to get the ID and the principal name.';
 
 // One lookup per distinct value for the whole run, like `resolvedPerRun` in the helpers: keyed
 // on the execute context, successes only, so a throttled row is retried on the next item.
-const attendeesPerRun = new WeakMap<IExecuteFunctions, Map<string, { id: string; upn?: string }>>();
+const attendeesPerRun = new WeakMap<
+	IExecuteFunctions,
+	Map<string, Omit<MeetingAttendee, 'role'>>
+>();
 
 /**
  * Resolves the Attendees rows to Graph `meetingParticipantInfo` entries. Graph stores
@@ -107,39 +118,26 @@ export async function resolveAttendees(
 	field: unknown,
 ): Promise<MeetingAttendee[]> {
 	const node = this.getNode();
-	// `field` is the whole fixedCollection value, `{}` or `{ attendee: rows }` from the editor. Any
-	// other container shape (a string, a bare list, an unknown key, rows that are not a list) can
-	// only come from the API, imported JSON or an expression. It is rejected before any request
-	// instead of being read as an empty list, which on Update would clear the roster.
+	// An unknown shape is rejected before any request instead of being read as an empty list,
+	// which on Update would clear the roster.
 	if (!isSet(field)) return [];
-	if (
-		!isRecord(field) ||
-		Object.keys(field).some((key) => key !== 'attendee') ||
-		(field.attendee !== undefined && !Array.isArray(field.attendee))
-	) {
+	if (!isAttendeeRows(field)) {
 		throw new NodeOperationError(node, 'The Attendees field is not valid', {
 			itemIndex,
 			description: 'Attendees must be a list of rows.',
 		});
 	}
-	const rows: IDataObject[] = Array.isArray(field.attendee)
-		? (field.attendee as IDataObject[])
-		: [];
+	const rows = field.attendee ?? [];
 
 	// Every role is checked before the first request, so a bad role on any row costs no lookup.
 	// Only a missing key defaults; `null`, `''` and unknown strings are rejected.
-	const roles: Array<MeetingAttendee['role']> = [];
-	for (let index = 0; index < rows.length; index++) {
-		const row: IDataObject = rows[index] ?? {};
-		const { role = 'attendee' } = row;
-		if (!isRole(role)) {
-			throw new NodeOperationError(node, `The role for attendee ${index + 1} is not valid`, {
-				itemIndex,
-				description: 'Set the role to either Attendee or Presenter.',
-			});
-		}
-		roles.push(role);
-	}
+	const roles = rows.map(({ role = 'attendee' }, index) => {
+		if (isRole(role)) return role;
+		throw new NodeOperationError(node, `The role for attendee ${index + 1} is not valid`, {
+			itemIndex,
+			description: 'Set the role to either Attendee or Presenter.',
+		});
+	});
 
 	let cache = attendeesPerRun.get(this);
 	if (!cache) {
@@ -149,8 +147,7 @@ export async function resolveAttendees(
 
 	// Insertion order keeps the first row's position.
 	const byId = new Map<string, MeetingAttendee>();
-	for (let index = 0; index < rows.length; index++) {
-		const row: IDataObject = rows[index] ?? {};
+	for (const [index, row] of rows.entries()) {
 		const value = rlcValue(row.userId);
 		let user = cache.get(value);
 		if (!user) {
@@ -163,20 +160,21 @@ export async function resolveAttendees(
 				});
 			const upn = found.userPrincipalName;
 			// Omit the key rather than send an empty string when Graph returns no principal name.
-			user = typeof upn === 'string' && upn ? { id: found.id, upn } : { id: found.id };
+			user = {
+				identity: { user: { id: found.id } },
+				...(typeof upn === 'string' && upn ? { upn } : {}),
+			};
 			cache.set(value, user);
 		}
 
-		const existing = byId.get(user.id);
+		const id = user.identity.user.id;
+		const existing = byId.get(id);
 		if (existing) {
 			if (roles[index] === 'presenter') existing.role = 'presenter';
 			continue;
 		}
-		byId.set(user.id, {
-			identity: { user: { id: user.id } },
-			...(user.upn ? { upn: user.upn } : {}),
-			role: roles[index],
-		});
+		// A copy, so a later promotion to Presenter never touches the cached entry.
+		byId.set(id, { ...user, role: roles[index] });
 	}
 
 	return [...byId.values()];

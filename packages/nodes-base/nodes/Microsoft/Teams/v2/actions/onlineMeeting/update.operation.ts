@@ -9,8 +9,15 @@ import { updateDisplayOptions } from '@utils/utilities';
 
 import { resolveAttendees, updateAttendeesField } from './attendees';
 import { resolveMeetingId } from './meetingLocator';
-import { applyMeetingSettings, isSet, withMeetingSettings } from './meetingSettings';
-import { meetingHint, meetingRequest, meetingsPath, optionalText, toGraphUtc } from './shared';
+import { applyMeetingSettings, withMeetingSettings } from './meetingSettings';
+import {
+	isSet,
+	meetingHint,
+	meetingRequest,
+	meetingsPath,
+	optionalText,
+	toGraphUtc,
+} from './shared';
 import { meetingRLC } from '../../descriptions';
 import { rewriteNotFound } from '../../transport';
 

@@ -10,6 +10,10 @@ import type {
 import { NodeApiError } from 'n8n-workflow';
 
 import { createExecuteContext, meetingHeaders, setParams } from '../helpers';
+import {
+	createOrGetAttendeesField,
+	updateAttendeesField,
+} from '../../../../v2/actions/onlineMeeting/attendees';
 import { versionDescription } from '../../../../v2/actions/versionDescription';
 import { MicrosoftTeamsV2 } from '../../../../v2/MicrosoftTeamsV2.node';
 import { SERVICE_PRINCIPAL_AUTH } from '../../../../v2/transport';
@@ -78,12 +82,21 @@ describe('Microsoft Teams V2, onlineMeeting attendees', () => {
 		new NodeApiError(ctx.getNode(), { message: 'Not Found' }, { httpCode: '404' });
 	const forbidden = () =>
 		new NodeApiError(ctx.getNode(), { message: 'Forbidden' }, { httpCode: '403' });
+	const throttled = () =>
+		new NodeApiError(ctx.getNode(), { message: 'Too Many Requests' }, { httpCode: '429' });
 
-	/** Answers user lookups from a directory and every meeting call with a stub meeting. */
+	/**
+	 * Answers user lookups from a directory and every meeting call with a stub meeting. An unknown
+	 * user answers like Graph (404 by ID or UPN, an empty page from the mail filter) instead of
+	 * returning the stub, which has an `id` and would pass as a user.
+	 */
 	const graph = (users: Record<string, IDataObject>) => {
-		apiRequest.mockImplementation(async (_method: string, path: string) =>
-			path in users ? users[path] : { id: MEETING },
-		);
+		apiRequest.mockImplementation(async (_method: string, path: string) => {
+			if (path in users) return users[path];
+			if (path === '/v1.0/users') return { value: [] };
+			if (/^\/v1\.0\/users\/[^/]+$/.test(path)) throw notFound();
+			return { id: MEETING };
+		});
 	};
 
 	const runCreate = async (rows: unknown[], extra: Record<string, unknown> = {}) => {
@@ -207,18 +220,33 @@ describe('Microsoft Teams V2, onlineMeeting attendees', () => {
 		expect(apiRequest).not.toHaveBeenCalled();
 	});
 
-	it('does not cache a user that came back without an ID', async () => {
+	it.each<[string, () => unknown, string]>([
+		[
+			'a user without an ID',
+			() => apiRequest.mockResolvedValue({ displayName: 'Ghost' }),
+			'Could not find the user for attendee 1',
+		],
+		// The 429 text is n8n-workflow's status-code copy, not the node's, so only its presence is pinned.
+		['a throttled lookup', () => apiRequest.mockRejectedValue(throttled()), expect.any(String)],
+	])('does not cache %s, so the next item retries it', async (_label, arrange, message) => {
 		ctx.getInputData.mockReturnValue([{ json: {} }, { json: {} }]);
 		ctx.continueOnFail.mockReturnValue(true);
-		apiRequest.mockResolvedValue({ displayName: 'Ghost' });
+		arrange();
 
 		const [output] = await runCreate([{ userId: JANE }]);
 
-		expect(output.map((item) => item.json)).toEqual([
-			{ error: 'Could not find the user for attendee 1' },
-			{ error: 'Could not find the user for attendee 1' },
-		]);
+		expect(output.map((item) => item.json)).toEqual([{ error: message }, { error: message }]);
 		expect(apiRequest.mock.calls.map((call) => call[0])).toEqual(['GET', 'GET']);
+	});
+
+	it.each<[string, unknown[]]>([
+		['a null row', [null]],
+		['a string row', ['jane@example.com']],
+		// A hole, which `every` would skip; only an expression can produce one.
+		['a sparse list', Object.assign([], { 1: { userId: JANE } })],
+	])('rejects %s as an invalid field before any request', async (_label, rows) => {
+		await expect(runCreate(rows)).rejects.toThrow('The Attendees field is not valid');
+		expect(apiRequest).not.toHaveBeenCalled();
 	});
 
 	it.each(['coorganizer', null, ''])('rejects the role %j before any request', async (role) => {
@@ -246,25 +274,14 @@ describe('Microsoft Teams V2, onlineMeeting attendees', () => {
 		expect(sentAttendees('POST')).toEqual([entry(JANE, 'jane@example.com', 'attendee')]);
 	});
 
-	it.each<[string, IDataObject[]]>([
-		[
-			'the presenter row comes second',
-			[
-				{ userId: JANE, role: 'attendee' },
-				{ userId: 'jane@example.com', role: 'presenter' },
-			],
-		],
-		[
-			'the presenter row comes first',
-			[
-				{ userId: 'jane@example.com', role: 'presenter' },
-				{ userId: JANE, role: 'attendee' },
-			],
-		],
-	])('collapses two rows for one person into a presenter when %s', async (_label, rows) => {
+	// The "presenter row comes second" case is covered by "keeps the first position" below.
+	it('collapses two rows for one person into a presenter when the presenter row comes first', async () => {
 		graph(USERS);
 
-		await runCreate(rows);
+		await runCreate([
+			{ userId: 'jane@example.com', role: 'presenter' },
+			{ userId: JANE, role: 'attendee' },
+		]);
 
 		expect(sentAttendees('POST')).toEqual([entry(JANE, 'jane@example.com', 'presenter')]);
 	});
@@ -320,6 +337,8 @@ describe('Microsoft Teams V2, onlineMeeting attendees', () => {
 		);
 	});
 
+	// No roleIsPresenter guard by design: Graph accepts Specific People without presenter rows, and
+	// the presenters can be added later with Update.
 	it('sends Specific People without any attendees', async () => {
 		graph(USERS);
 
@@ -376,6 +395,18 @@ describe('Microsoft Teams V2, onlineMeeting attendees', () => {
 		expect(rowNames(field('create', 'attendees'))).toEqual(['userId', 'role']);
 		expect(rowNames(inside(field('update', 'updateFields')))).toEqual(['userId', 'role']);
 		expect(rowNames(inside(field('createOrGet', 'options')))).toEqual(['userId']);
+	});
+
+	// The collection-overhaul UI shows no description on the list itself, so the row fields carry
+	// the note. A substring, so a rewording that keeps the promise survives.
+	it.each<[string, INodeProperties, string]>([
+		['Update', updateAttendeesField, 'replaces the current attendees'],
+		['Create or Get', createOrGetAttendeesField, 'only when a new meeting is created'],
+	])('repeats the %s note on every row field', (_label, attendees, note) => {
+		const rows = (attendees.options as INodePropertyCollection[])[0].values;
+
+		expect(rows.length).toBeGreaterThan(0);
+		for (const row of rows) expect(row.description).toContain(note);
 	});
 
 	describe('update', () => {
@@ -472,6 +503,15 @@ describe('Microsoft Teams V2, onlineMeeting attendees', () => {
 			expect(thrown).toBeInstanceOf(NodeApiError);
 			expect((thrown as NodeApiError).message).toBe(FORBIDDEN_MESSAGE);
 			expect((thrown as NodeApiError).description).toContain('admin consent');
+			expect(apiRequest).toHaveBeenCalledTimes(1);
+		});
+
+		it('keeps an unknown user as not found, only a 403 is rewritten', async () => {
+			apiRequest.mockRejectedValue(notFound());
+
+			await expect(runCreate([{ userId: JANE }], spParams)).rejects.toThrow(
+				'Could not find the user for attendee 1',
+			);
 			expect(apiRequest).toHaveBeenCalledTimes(1);
 		});
 

@@ -378,13 +378,12 @@ export async function resolveMentions(
 
 		// Directory objects with no display name exist (some guests, some service accounts);
 		// without a fallback the mention renders as a blank chip. `||`, so `''` falls through.
-		const label =
-			(user.displayName as string) || (user.userPrincipalName as string) || (user.id as string);
+		const label = String(user.displayName ?? '') || String(user.userPrincipalName ?? '') || user.id;
 
 		const mention: Mention = {
 			mentionText: label,
 			mentioned: {
-				user: { id: user.id as string, displayName: label, userIdentityType: 'aadUser' },
+				user: { id: user.id, displayName: label, userIdentityType: 'aadUser' },
 			},
 		};
 		cache.set(userKey, mention);

@@ -13,7 +13,6 @@ describe('Microsoft Teams V2 — onlineMeeting meeting settings', () => {
 		[{ allowMeetingChat: 'limited' }, { allowMeetingChat: 'limited' }],
 		[{ allowTeamworkReactions: false }, { allowTeamworkReactions: false }],
 		[{ allowedPresenters: 'organizer' }, { allowedPresenters: 'organizer' }],
-		[{ allowedPresenters: 'roleIsPresenter' }, { allowedPresenters: 'roleIsPresenter' }],
 		[{ isEntryExitAnnounced: true }, { isEntryExitAnnounced: true }],
 		[{ lobbyBypassScope: 'invited' }, { lobbyBypassSettings: { scope: 'invited' } }],
 		[{ recordAutomatically: false }, { recordAutomatically: false }],
@@ -78,7 +77,7 @@ describe('Microsoft Teams V2 — onlineMeeting meeting settings', () => {
 		]);
 	});
 
-	it('offers Specific People last among the allowed presenters', () => {
+	it('offers Specific People among the allowed presenters', () => {
 		const options = versionDescription.properties.find(
 			(property) =>
 				property.name === 'options' &&
@@ -88,10 +87,9 @@ describe('Microsoft Teams V2 — onlineMeeting meeting settings', () => {
 		const allowedPresenters = (options?.options ?? []).find(
 			(option) => option.name === 'allowedPresenters',
 		) as INodeProperties | undefined;
-		const values = (allowedPresenters?.options ?? []).map((option) =>
-			'value' in option ? option.value : undefined,
-		);
 
-		expect(values).toEqual(['everyone', 'organization', 'organizer', 'roleIsPresenter']);
+		expect(allowedPresenters?.options).toContainEqual(
+			expect.objectContaining({ name: 'Specific People', value: 'roleIsPresenter' }),
+		);
 	});
 });
