@@ -9,7 +9,7 @@ export type LastNode = { nodeName: string; outputs: StepSlots };
 /** What a data-plane run produced, from the open request's point of view. */
 export type WebhookRunOutcome =
 	| { status: 'completed'; lastNode?: LastNode }
-	| { status: 'failed'; nodeName: string; error?: { name: string; message: string } }
+	| { status: 'failed'; nodeName?: string; error?: { name: string; message: string } }
 	| { status: 'timeout' };
 
 export type PendingWebhookResponseOptions = {

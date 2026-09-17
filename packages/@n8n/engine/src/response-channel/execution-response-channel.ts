@@ -1,7 +1,12 @@
+import { toResult } from '@n8n/utils/result';
+
 import type { EngineLogger } from '../logging';
 import { executionResponseSchema } from './execution-response.schema';
-import type { ExecutionResponse } from './execution-response.types';
+import type { ExecutionResponse, FailureMessage } from './execution-response.types';
 import type { ResponseTransport, Unsubscribe } from './response-transport';
+
+/** A transport must be able to carry every frame the channel accepts. */
+const MAX_FRAME_BYTES = 5 * 1024 * 1024;
 
 /**
  * Sends responses from an execution back to its caller.
@@ -9,17 +14,19 @@ import type { ResponseTransport, Unsubscribe } from './response-transport';
  * The engine publishes a response with an execution ID. A caller subscribes
  * with the same ID and receives only responses for that execution.
  *
- * This class serializes outgoing responses and validates incoming responses.
- * The transport delivers them in-process or across process boundaries.
+ * This class serializes outgoing responses, limits their size, and validates
+ * incoming responses. The transport delivers them in-process or across process
+ * boundaries.
  */
 export class ExecutionResponseChannel {
 	constructor(
 		private readonly transport: ResponseTransport,
 		private readonly logger: EngineLogger,
+		private readonly maxFrameBytes: number = MAX_FRAME_BYTES,
 	) {}
 
 	publish(response: ExecutionResponse): void {
-		this.transport.publish(response.executionId, JSON.stringify(response));
+		this.transport.publish(response.executionId, this.toFrame(response));
 	}
 
 	/** Listens to one execution. Call the returned function once the run is answered. */
@@ -43,6 +50,38 @@ export class ExecutionResponseChannel {
 
 	async stop(): Promise<void> {
 		await this.transport.stop();
+	}
+
+	private toFrame(response: ExecutionResponse): string {
+		const serialized = toResult(() => JSON.stringify(response));
+		if (!serialized.ok) {
+			this.logger.warn('Could not serialize an execution response', {
+				executionId: response.executionId,
+				type: response.type,
+				error: serialized.error,
+			});
+			return this.failureFrame(response.executionId, {
+				code: 'RESPONSE_SERIALIZATION_FAILED',
+				message: 'The execution response could not be serialized.',
+			});
+		}
+
+		if (Buffer.byteLength(serialized.result) > this.maxFrameBytes) {
+			this.logger.warn('Execution response exceeds the frame size limit', {
+				executionId: response.executionId,
+				type: response.type,
+			});
+			return this.failureFrame(response.executionId, {
+				code: 'RESPONSE_TOO_LARGE',
+				message: `The execution response exceeds the maximum size of ${this.maxFrameBytes} bytes.`,
+			});
+		}
+
+		return serialized.result;
+	}
+
+	private failureFrame(executionId: string, error: FailureMessage['error']): string {
+		return JSON.stringify({ type: 'failure', executionId, error } satisfies FailureMessage);
 	}
 
 	private fromFrame(frame: string): ExecutionResponse | undefined {
