@@ -1,0 +1,19 @@
+scripts/licenses/__fixtures__/license-overrides.json
+  s_842a1b7936cd7b::t_0da8c51a0e6d6f 1-25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ed29bf5d3e387c69eab5b08e5a0c2b1756254cc3",
+  "prompts": {},
+  "sessions": {
+    "s_842a1b7936cd7b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1f270ce8-490e-43b2-82d1-15b487f5c786",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}
