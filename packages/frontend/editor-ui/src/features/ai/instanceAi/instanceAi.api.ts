@@ -13,6 +13,7 @@ import type {
 	InstanceAiHandoffContext,
 	InstanceAiThreadOrigin,
 	InstanceAiThreadSource,
+	InstanceAiThreadArtifactsContext,
 } from '@n8n/api-types';
 
 export interface InstanceAiThreadLaunchInput {
@@ -34,6 +35,7 @@ export async function postMessage(
 	timeZone?: string,
 	pushRef?: string,
 	computerUseChannels?: ComputerUseChannel[],
+	threadArtifacts?: InstanceAiThreadArtifactsContext,
 ): Promise<InstanceAiSendMessageResponse> {
 	return await makeRestApiRequest<InstanceAiSendMessageResponse>(
 		context,
@@ -46,6 +48,7 @@ export async function postMessage(
 			...(timeZone ? { timeZone } : {}),
 			...(pushRef ? { pushRef } : {}),
 			...(computerUseChannels ? { computerUseChannels } : {}),
+			...(threadArtifacts ? { threadArtifacts } : {}),
 		},
 	);
 }

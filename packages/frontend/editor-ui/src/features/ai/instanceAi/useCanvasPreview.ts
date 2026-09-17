@@ -198,7 +198,11 @@ export function useCanvasPreview({
 	});
 
 	const initialArtifactId = computed(
-		() => firstAttachedArtifactId.value ?? pendingAgentTabId.value ?? initialAgentTabId.value,
+		() =>
+			firstAttachedArtifactId.value ??
+			pendingAgentTabId.value ??
+			initialAgentTabId.value ??
+			thread.pendingWorkflowAttachment?.id,
 	);
 
 	// Open the arriving resource. Only when nothing is open, so it never steals

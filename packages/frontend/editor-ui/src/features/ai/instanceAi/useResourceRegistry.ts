@@ -3,6 +3,7 @@ import type {
 	InstanceAiMessage,
 	InstanceAiAgentNode,
 	InstanceAiToolCallState,
+	InstanceAiWorkflowAttachment,
 } from '@n8n/api-types';
 
 export type ResourceEntry = {
@@ -406,6 +407,29 @@ function enrichWorkflowNames(
 }
 
 /**
+ * Surface a workflow the editor handed off before any message carries it, so
+ * the canvas tab opens on arrival. Skipped once a message attachment (or any
+ * other producer) already knows this id.
+ */
+function enrichWorkflowFromPendingAttachment(
+	col: Collections,
+	pending: InstanceAiWorkflowAttachment | undefined,
+): void {
+	if (!pending) return;
+	if (col.produced.has(pending.id)) return;
+
+	recordProduced(
+		col,
+		{
+			type: 'workflow',
+			id: pending.id,
+			name: optionalString(pending.name) ?? 'Untitled',
+		},
+		{ linkable: true },
+	);
+}
+
+/**
  * Surface a new-agent artifact the user opened but has not configured yet, so
  * the panel can show it before any agent row exists.
  *
@@ -463,6 +487,7 @@ export function useResourceRegistry(
 	archivedWorkflowIds?: () => ReadonlySet<string>,
 	agentBuilderTarget?: () => AgentBuilderTargetMetadata | undefined,
 	pendingAgentTarget?: () => PendingAgentTargetMetadata | undefined,
+	pendingWorkflowAttachment?: () => InstanceAiWorkflowAttachment | undefined,
 ) {
 	// Long-lived reactive maps, reconciled in place: rebuilds that change
 	// nothing trigger nothing.
@@ -489,6 +514,7 @@ export function useResourceRegistry(
 			const boundTarget = agentBuilderTarget?.();
 			enrichAgentFromBuilderTarget(col, boundTarget);
 			enrichAgentFromPendingTarget(col, pendingAgentTarget?.(), boundTarget);
+			enrichWorkflowFromPendingAttachment(col, pendingWorkflowAttachment?.());
 
 			if (workflowNameLookup) {
 				enrichWorkflowNames(col, workflowNameLookup);
