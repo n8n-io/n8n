@@ -7,11 +7,9 @@ import {
 	CONTEXT_PREFERENCES_ENABLED_VARIANT,
 	INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
 	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
-	INSTANCE_AI_MCP_CONNECTIONS_FLAG,
 	INSTANCE_AI_NODE_USAGE_FLAG,
 	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
 	upsertEvaluationConfigSchema,
-	INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
 	INSTANCE_AI_CONVERSATION_HISTORY_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
 	INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG,
@@ -569,16 +567,14 @@ export class InstanceAiAdapterService {
 	}
 
 	/**
-	 * Every experiment gate from one PostHog fetch, so a caller wires its context
-	 * from one call. `mcpConnectionsEnabled` also folds in two instance-wide
-	 * preconditions. Fails closed: `getFeatureFlags` returns `{}` on a PostHog
-	 * outage, and an unexpected throw here still fails every gate closed rather
-	 * than failing the whole context build.
+	 * Resolve feature availability in one call. Experiment gates use one PostHog
+	 * fetch. MCP connections depend only on instance-wide preconditions. Other
+	 * gates fail closed if PostHog is unavailable.
 	 */
 	async resolveExperimentGates(user: User): Promise<{
 		/** Config-based evals: never create evals the user can't run. */
 		configEvalsEnabled: boolean;
-		/** MCP registry discovery: module active, MCP access allowed, user in the experiment. */
+		/** MCP registry discovery: module active and MCP access allowed. */
 		mcpConnectionsEnabled: boolean;
 		/** Past-conversation recall: tool, prompt section and first-turn hint. */
 		conversationHistoryEnabled: boolean;
@@ -602,9 +598,7 @@ export class InstanceAiAdapterService {
 		}
 		return {
 			configEvalsEnabled: flags[CONFIG_EVALUATIONS_FLAG] === CONFIG_EVALUATIONS_ENABLED_VARIANT,
-			mcpConnectionsEnabled:
-				this.mcpPreconditionsHold() &&
-				flags[INSTANCE_AI_MCP_CONNECTIONS_FLAG] === INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
+			mcpConnectionsEnabled: this.mcpPreconditionsHold(),
 			conversationHistoryEnabled:
 				flags[INSTANCE_AI_CONVERSATION_HISTORY_FLAG] ===
 				INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,

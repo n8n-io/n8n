@@ -73,8 +73,6 @@ import {
 	INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG,
 	INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
-	INSTANCE_AI_MCP_CONNECTIONS_FLAG,
-	INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
 	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
 	INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
 	CONTEXT_PREFERENCES_FLAG,
@@ -5881,7 +5879,6 @@ describe('resolveExperimentGates', () => {
 
 	const allEnabled = {
 		[CONFIG_EVALUATIONS_FLAG]: CONFIG_EVALUATIONS_ENABLED_VARIANT,
-		[INSTANCE_AI_MCP_CONNECTIONS_FLAG]: INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
 		[INSTANCE_AI_CONVERSATION_HISTORY_FLAG]: INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
 		[INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG]: INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
 		[INSTANCE_AI_NODE_USAGE_FLAG]: true,
@@ -5905,10 +5902,9 @@ describe('resolveExperimentGates', () => {
 		expect(getFeatureFlags).toHaveBeenCalledWith(user);
 	});
 
-	it('is off for flags on the control variant', async () => {
+	it('disables experiment gates for control variants', async () => {
 		stubContainer({
 			[CONFIG_EVALUATIONS_FLAG]: 'control',
-			[INSTANCE_AI_MCP_CONNECTIONS_FLAG]: 'control',
 			[INSTANCE_AI_CONVERSATION_HISTORY_FLAG]: 'control',
 			[INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG]: 'control',
 			[INSTANCE_AI_NODE_USAGE_FLAG]: false,
@@ -5918,7 +5914,7 @@ describe('resolveExperimentGates', () => {
 
 		await expect(createAdapter().resolveExperimentGates(user)).resolves.toEqual({
 			configEvalsEnabled: false,
-			mcpConnectionsEnabled: false,
+			mcpConnectionsEnabled: true,
 			conversationHistoryEnabled: false,
 			progressiveBuildingEnabled: false,
 			nodeUsageEnabled: false,
@@ -5948,12 +5944,12 @@ describe('resolveExperimentGates', () => {
 		});
 	});
 
-	it('fails closed when no flags resolve (PostHog outage returns {})', async () => {
+	it('keeps MCP connections available when no flags resolve', async () => {
 		stubContainer({});
 
 		await expect(createAdapter().resolveExperimentGates(user)).resolves.toEqual({
 			configEvalsEnabled: false,
-			mcpConnectionsEnabled: false,
+			mcpConnectionsEnabled: true,
 			conversationHistoryEnabled: false,
 			progressiveBuildingEnabled: false,
 			nodeUsageEnabled: false,
@@ -5962,13 +5958,13 @@ describe('resolveExperimentGates', () => {
 		});
 	});
 
-	it('fails every gate closed, rather than rejecting, if getFeatureFlags rejects unexpectedly', async () => {
+	it('keeps MCP connections available if flag resolution rejects unexpectedly', async () => {
 		const getFeatureFlags = stubContainer(allEnabled);
 		getFeatureFlags.mockRejectedValueOnce(new Error('PostHog unreachable'));
 
 		await expect(createAdapter().resolveExperimentGates(user)).resolves.toEqual({
 			configEvalsEnabled: false,
-			mcpConnectionsEnabled: false,
+			mcpConnectionsEnabled: true,
 			conversationHistoryEnabled: false,
 			progressiveBuildingEnabled: false,
 			nodeUsageEnabled: false,
