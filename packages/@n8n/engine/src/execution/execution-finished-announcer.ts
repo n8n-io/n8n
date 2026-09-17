@@ -1,12 +1,16 @@
+import { createResultError, createResultOk, type Result } from '@n8n/utils/result';
+
 import { UnexpectedError } from '../common';
 import type { GraphNode } from '../graph';
 import type { EngineLogger } from '../logging';
-import type { EndedMessage, ExecutionResponseChannel } from '../response-channel';
+import type { EndedMessage, ExecutionResponseChannel, FailureMessage } from '../response-channel';
 import type { ExecutionRecord } from './execution-store';
 import { isSettledStatus, type SettledStepStatus } from './execution.types';
 import type { StepRecord, StepStore } from './step-store';
 
 type LastStep = EndedMessage['lastStep'];
+
+type ResponseError = FailureMessage['error'];
 
 type SettledStepRecord = StepRecord & { status: SettledStepStatus };
 
@@ -42,7 +46,9 @@ function toLastStep(step: SettledStepRecord, node: GraphNode): LastStep {
  * The step whose settling ends a run is not always the step that produced the
  * run's outcome: a skip settles at birth and carries none, and it can be the
  * last step to settle. This resolves which step the run answers from, so a
- * caller takes `lastStep` as it is and never looks a second step up.
+ * caller takes `lastStep` as it is and never looks a second step up. A run whose
+ * answering step cannot be resolved is answered with a failure, not with a step
+ * that carries nothing.
  */
 export class ExecutionFinishedAnnouncer {
 	constructor(
@@ -63,12 +69,22 @@ export class ExecutionFinishedAnnouncer {
 		node: GraphNode,
 		executionStatus: 'completed' | 'failed',
 	): Promise<void> {
+		const lastStep = await this.resolveLastStep(execution, step, node);
+		if (!lastStep.ok) {
+			this.responseChannel.publish({
+				type: 'failure',
+				executionId: execution.id,
+				error: lastStep.error,
+			});
+			return;
+		}
+
 		this.responseChannel.publish({
 			type: 'ended',
 			executionId: execution.id,
 			workflowId: execution.workflowId,
 			status: executionStatus,
-			lastStep: await this.resolveLastStep(execution, step, node),
+			lastStep: lastStep.result,
 		});
 	}
 
@@ -81,29 +97,41 @@ export class ExecutionFinishedAnnouncer {
 		execution: ExecutionRecord,
 		step: StepRecord,
 		node: GraphNode,
-	): Promise<LastStep> {
+	): Promise<Result<LastStep, ResponseError>> {
 		assertSettled(step);
 
-		const settling = toLastStep(step, node);
-		if (step.status === 'completed' || step.status === 'failed') return settling;
+		if (step.status === 'completed' || step.status === 'failed') {
+			return createResultOk(toLastStep(step, node));
+		}
 
 		try {
 			// Settle order is what v1 means by the last node.
 			const last = await this.stepStore.loadLastSettledStep(execution.id);
-			if (!last) return settling;
+			if (!last) {
+				// A run ends with its trigger completed at the least, so this is a bug
+				// in the engine, not a state a run reaches.
+				throw new UnexpectedError(`Execution ${execution.id} has no step that carries an outcome`);
+			}
 			assertSettled(last);
 
 			const lastNode = execution.graph.nodes.find((candidate) => candidate.id === last.nodeId);
-			if (!lastNode) return settling;
+			if (!lastNode) {
+				throw new UnexpectedError(
+					`Step ${last.nodeId} references a node that is absent from the execution graph`,
+				);
+			}
 
-			return toLastStep(last, lastNode);
+			return createResultOk(toLastStep(last, lastNode));
 		} catch (error) {
-			// An answer without an outcome beats a caller that waits for its timeout.
-			this.logger.warn('could not resolve the last step that settled', {
+			this.logger.error('Could not resolve the step that answers an execution', {
 				executionId: execution.id,
 				error,
 			});
-			return settling;
+			// The caller hears why, rather than waiting out its response timeout.
+			return createResultError({
+				code: 'LAST_STEP_UNRESOLVED',
+				message: 'The step that answers the execution could not be resolved.',
+			});
 		}
 	}
 }

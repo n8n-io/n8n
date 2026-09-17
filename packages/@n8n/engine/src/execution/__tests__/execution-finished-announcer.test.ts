@@ -163,8 +163,32 @@ describe('ExecutionFinishedAnnouncer', () => {
 		);
 	});
 
-	it('answers with the settling step when no step reached an outcome', async () => {
-		const { announcer, responseChannel } = makeAnnouncer();
+	it('publishes a failure when no step reached an outcome', async () => {
+		const { announcer, responseChannel, logger } = makeAnnouncer();
+
+		await announcer.announce(
+			execution,
+			step({ status: 'skipped', outputs: null }),
+			node('a'),
+			'completed',
+		);
+
+		// The caller hears why, rather than waiting out its response timeout.
+		expect(responseChannel.publish).toHaveBeenCalledExactlyOnceWith({
+			type: 'failure',
+			executionId: 'exec-1',
+			error: {
+				code: 'LAST_STEP_UNRESOLVED',
+				message: 'The step that answers the execution could not be resolved.',
+			},
+		});
+		expect(logger.error).toHaveBeenCalled();
+	});
+
+	it('publishes a failure when the step that answers names no node in the graph', async () => {
+		const { announcer, responseChannel } = makeAnnouncer({
+			loadLastSettledStep: vi.fn().mockResolvedValue(step({ nodeId: 'ghost' })),
+		});
 
 		await announcer.announce(
 			execution,
@@ -174,19 +198,11 @@ describe('ExecutionFinishedAnnouncer', () => {
 		);
 
 		expect(responseChannel.publish).toHaveBeenCalledExactlyOnceWith(
-			expect.objectContaining({
-				lastStep: {
-					nodeId: 'a',
-					nodeName: 'A',
-					status: 'skipped',
-					outputs: null,
-					error: undefined,
-				},
-			}),
+			expect.objectContaining({ type: 'failure' }),
 		);
 	});
 
-	it('still answers when the read fails', async () => {
+	it('publishes a failure when the read fails', async () => {
 		const { announcer, responseChannel, logger } = makeAnnouncer({
 			loadLastSettledStep: vi.fn().mockRejectedValue(new Error('the database is down')),
 		});
@@ -198,11 +214,10 @@ describe('ExecutionFinishedAnnouncer', () => {
 			'completed',
 		);
 
-		// An answer without data beats a caller that waits for its timeout.
 		expect(responseChannel.publish).toHaveBeenCalledExactlyOnceWith(
-			expect.objectContaining({ lastStep: expect.objectContaining({ outputs: null }) }),
+			expect.objectContaining({ type: 'failure' }),
 		);
-		expect(logger.warn).toHaveBeenCalled();
+		expect(logger.error).toHaveBeenCalled();
 	});
 
 	it('refuses to announce a step that has not settled', async () => {
