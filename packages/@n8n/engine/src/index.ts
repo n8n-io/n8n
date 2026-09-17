@@ -40,11 +40,14 @@ export {
 	InMemoryResponseTransport,
 	noopResponseEmitter,
 	noopResponseTransport,
+	RedisResponseTransport,
 } from './response-channel';
 export type {
 	ChunkMessage,
 	EndedMessage,
 	ExecutionResponse,
+	RedisPubSub,
+	RedisResponseTransportOptions,
 	ResponseEmitter,
 	ResponseMessage,
 	ResponseTransport,

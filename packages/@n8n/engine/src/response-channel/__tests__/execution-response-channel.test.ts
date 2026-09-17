@@ -4,6 +4,8 @@ import type { EngineLogger } from '../../logging';
 import { ExecutionResponseChannel } from '../execution-response-channel';
 import type { ExecutionResponse } from '../execution-response.types';
 import { InMemoryResponseTransport } from '../in-memory-transport';
+import { RedisResponseTransport } from '../redis-transport';
+import type { RedisPubSub } from '../redis-transport';
 import type { ResponseTransport, Unsubscribe } from '../response-transport';
 
 const silentLogger = (): EngineLogger => ({
@@ -43,9 +45,55 @@ class RecordingTransport implements ResponseTransport {
 	async stop(): Promise<void> {}
 }
 
-describe('ExecutionResponseChannel', () => {
-	const newChannel = () =>
-		new ExecutionResponseChannel(new InMemoryResponseTransport(), silentLogger());
+/** An ioredis stand-in: a pattern subscription fed by its own publishes. */
+function fakeRedis(): { publisher: RedisPubSub; subscriber: RedisPubSub } {
+	let listener: ((pattern: string, channel: string, message: string) => void) | undefined;
+	let pattern: string | undefined;
+
+	const matches = (channel: string) =>
+		pattern !== undefined && channel.startsWith(pattern.replace(/\*$/, ''));
+
+	const subscriber: RedisPubSub = {
+		publish: async () => await Promise.resolve(),
+		psubscribe: async (p) => {
+			pattern = p;
+			return await Promise.resolve();
+		},
+		punsubscribe: async () => {
+			pattern = undefined;
+			return await Promise.resolve();
+		},
+		on: (_event, handler) => (listener = handler),
+	};
+
+	const publisher: RedisPubSub = {
+		...subscriber,
+		publish: async (channel, message) => {
+			if (matches(channel)) listener?.(pattern!, channel, message);
+			return await Promise.resolve();
+		},
+	};
+
+	return { publisher, subscriber };
+}
+
+/**
+ * What a subscriber sees must not depend on which transport carried it. That
+ * is why the transport is held apart from the channel, so both run one suite.
+ */
+describe.each([
+	['in-memory', () => new InMemoryResponseTransport()],
+	[
+		'redis',
+		() =>
+			new RedisResponseTransport({
+				...fakeRedis(),
+				channelPrefix: 'n8n:responses',
+				logger: silentLogger(),
+			}),
+	],
+])('ExecutionResponseChannel over the %s transport', (_name, makeTransport) => {
+	const newChannel = () => new ExecutionResponseChannel(makeTransport(), silentLogger());
 
 	it('delivers a response to every subscriber of that execution', () => {
 		const channel = newChannel();

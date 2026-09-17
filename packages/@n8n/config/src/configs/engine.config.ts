@@ -65,6 +65,16 @@ export class EngineConfig {
 	controlPlaneBaseUrl: string = '';
 
 	/**
+	 * How an execution's responses travel from the data plane to whoever waits
+	 * for them.
+	 *
+	 * `memory` works only while both planes share a process, which is the case
+	 * today. Set `redis` once they do not.
+	 */
+	@Env('N8N_ENGINE_RESPONSE_TRANSPORT')
+	responseTransport: 'memory' | 'redis' = 'memory';
+
+	/**
 	 * How long (in ms) the control plane waits for a run to answer before it
 	 * answers the webhook request itself. The response channel is at-most-once,
 	 * so a lost answer must not hold the request open forever.
