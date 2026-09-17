@@ -5,6 +5,7 @@ import { UserError } from 'n8n-workflow';
 
 import { AgentRepository } from '../../repositories/agent.repository';
 import { createAdapterLogger } from '../adapter-logger';
+import { credentialField, requireCredentialField } from '../credential-fields';
 import {
 	AgentChatIntegration,
 	type AgentChannelPreconditionContext,
@@ -161,14 +162,14 @@ export class TeamsIntegration extends AgentChatIntegration {
 		appPassword: string;
 		appTenantId: string;
 	} {
-		if (this.readField(credential, 'authentication') === 'certificate') {
+		if (credentialField(credential, 'authentication') === 'certificate') {
 			throw new UserError(
 				'Microsoft Teams channels cannot use certificate authentication. ' +
 					'Switch the credential to Client Secret, or create a credential that uses one.',
 			);
 		}
 
-		const graphApiBaseUrl = this.readField(credential, 'graphApiBaseUrl');
+		const graphApiBaseUrl = credentialField(credential, 'graphApiBaseUrl');
 		if (graphApiBaseUrl && graphApiBaseUrl.replace(/\/+$/, '') !== GLOBAL_GRAPH_API_BASE_URL) {
 			throw new UserError(
 				'Microsoft Teams channels only reach the global Microsoft cloud. ' +
@@ -176,10 +177,10 @@ export class TeamsIntegration extends AgentChatIntegration {
 			);
 		}
 
-		const appTenantId = this.requireField(
+		const appTenantId = requireCredentialField(
 			credential,
 			'tenantId',
-			'a Directory (tenant) ID. Copy it from the app registration overview in the Microsoft Entra admin center.',
+			'The Microsoft Teams credential is missing a Directory (tenant) ID. Copy it from the app registration overview in the Microsoft Entra admin center.',
 		);
 		if (!TENANT_ID_GUID.test(appTenantId) && !TENANT_ID_DOMAIN.test(appTenantId)) {
 			throw new UserError(
@@ -189,34 +190,17 @@ export class TeamsIntegration extends AgentChatIntegration {
 		}
 
 		return {
-			appId: this.requireField(
+			appId: requireCredentialField(
 				credential,
 				'clientId',
-				'an Application (client) ID. Copy it from the app registration overview in the Microsoft Entra admin center.',
+				'The Microsoft Teams credential is missing an Application (client) ID. Copy it from the app registration overview in the Microsoft Entra admin center.',
 			),
-			appPassword: this.requireField(
+			appPassword: requireCredentialField(
 				credential,
 				'clientSecret',
-				'a Client Secret. Create one under Certificates & secrets on the app registration.',
+				'The Microsoft Teams credential is missing a Client Secret. Create one under Certificates & secrets on the app registration.',
 			),
 			appTenantId,
 		};
-	}
-
-	private readField(credential: Record<string, unknown>, field: string): string {
-		const value = credential[field];
-		return typeof value === 'string' ? value.trim() : '';
-	}
-
-	private requireField(
-		credential: Record<string, unknown>,
-		field: string,
-		requirement: string,
-	): string {
-		const value = this.readField(credential, field);
-		if (!value) {
-			throw new UserError(`The Microsoft Teams credential is missing ${requirement}`);
-		}
-		return value;
 	}
 }
