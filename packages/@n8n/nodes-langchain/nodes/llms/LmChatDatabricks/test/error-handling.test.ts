@@ -1,5 +1,6 @@
 import type { INode } from 'n8n-workflow';
 import { OperationalError } from 'n8n-workflow';
+import { RateLimitError } from 'openai';
 
 import { OAuth2SessionExpiredError } from '../../../../utils/oauth2-token-provider';
 import { makeDatabricksFailedAttemptHandler, wrapDatabricksErrorFetch } from '../error-handling';
@@ -13,7 +14,10 @@ const mockNode: INode = {
 	parameters: {},
 };
 
-const handle = makeDatabricksFailedAttemptHandler(403);
+const handle = makeDatabricksFailedAttemptHandler(403, 'main.default.llama');
+
+const RATE_LIMIT_HINT =
+	"Databricks is throttling requests to this model service. Wait and retry, reduce concurrent requests, or ask your workspace admin to raise the endpoint's rate limit.";
 
 /** Shaped like the OpenAI client's APIError for a rejected request. */
 function apiError(status: number, message: string) {
@@ -24,6 +28,7 @@ describe('makeDatabricksFailedAttemptHandler', () => {
 	it('should ask the user to reconnect when the token was rejected', () => {
 		expect(() => handle(apiError(403, '403 Invalid Token'))).toThrow(OperationalError);
 		expect(() => handle(apiError(403, '403 Invalid Token'))).toThrow(/sign in again/i);
+		expect(() => handle(apiError(403, '403 Invalid Token'))).not.toThrow(/rate limit/i);
 	});
 
 	it('should leave a permission failure alone', () => {
@@ -48,20 +53,69 @@ describe('makeDatabricksFailedAttemptHandler', () => {
 		expect(() => handle(wrapped)).toThrow(OAuth2SessionExpiredError);
 	});
 
-	it('should pass other errors to the OpenAI handler', () => {
+	it('should leave other errors alone', () => {
 		expect(() => handle(new Error('socket hang up'))).not.toThrow();
+		// The OpenAI handler's "Use Responses API" advice names an option this node
+		// does not have, so its 404 branch must stay out of the Databricks path
+		expect(() =>
+			handle(
+				Object.assign(new Error('x is not a chat model'), {
+					status: 404,
+					type: 'invalid_request_error',
+					param: 'model',
+				}),
+			),
+		).not.toThrow();
 	});
 
 	it('should honour a non-Databricks expiry status', () => {
 		expect(() =>
-			makeDatabricksFailedAttemptHandler(401)(apiError(401, '401 Invalid Token')),
+			makeDatabricksFailedAttemptHandler(
+				401,
+				'main.default.llama',
+			)(apiError(401, '401 Invalid Token')),
 		).toThrow(OperationalError);
+	});
+
+	it('should name Databricks and keep its message when the endpoint is rate limited', () => {
+		const databricksText =
+			'REQUEST_LIMIT_EXCEEDED: Exceeded workspace QPS rate limit for databricks-meta-llama-3-3-70b-instruct. Please use a provisioned throughput Foundation Model endpoint';
+		const rateLimited = new RateLimitError(
+			429,
+			{ message: databricksText, code: 'REQUEST_LIMIT_EXCEEDED' },
+			undefined,
+			new Headers(),
+		);
+
+		expect(() => handle(rateLimited)).toThrow(OperationalError);
+		expect(() => handle(rateLimited)).toThrow(
+			expect.objectContaining({
+				message: `Databricks rate limit reached for main.default.llama: ${databricksText}`,
+				description: RATE_LIMIT_HINT,
+				cause: rateLimited,
+			}),
+		);
+		expect(() => handle(rateLimited)).not.toThrow(/OpenAI/);
+	});
+
+	it('should still explain a rate limit when the response has no body', () => {
+		const rateLimited = apiError(429, '429 status code (no body)');
+
+		expect(() => handle(rateLimited)).toThrow(
+			expect.objectContaining({
+				message: 'Databricks rate limit reached for main.default.llama',
+				description: RATE_LIMIT_HINT,
+			}),
+		);
 	});
 
 	it('should not tell a service principal to sign in again', () => {
 		// A service principal has no sign-in session to reconnect, so it keeps the
 		// generic "check your credentials" advice
-		const handleWithoutRefresh = makeDatabricksFailedAttemptHandler(undefined);
+		const handleWithoutRefresh = makeDatabricksFailedAttemptHandler(
+			undefined,
+			'main.default.llama',
+		);
 
 		expect(() => handleWithoutRefresh(apiError(403, '403 Invalid Token'))).not.toThrow();
 	});

@@ -54,6 +54,11 @@ interface DependencyRef {
 	target: string;
 }
 
+export type ScannedBranch = {
+	state: BranchLayout;
+	dependencies: DependencyRef[];
+};
+
 /**
  * Applies a selective export to the exported working copy of a branch. It reads
  * the branch, runs the guards, then overlays. The caller resolves the
@@ -95,6 +100,24 @@ export class WorkingCopyUpdater {
 	}
 
 	/**
+	 * The exporter must write exactly the selected workflows. Extra or missing
+	 * ids mean the overlay would change the branch in a way the caller did not
+	 * ask for, so stop before any file work.
+	 */
+	assertStagingMatchesSelection(staging: PackageManifest, selection: SelectivePushOptions): void {
+		const stagedIds = new Set((staging.workflows ?? []).map((workflow) => workflow.id));
+		const selectedIds = new Set(selection.workflowIds);
+		const missing = selection.workflowIds.filter((id) => !stagedIds.has(id));
+		const extra = [...stagedIds].filter((id) => !selectedIds.has(id));
+		if (missing.length === 0 && extra.length === 0) return;
+
+		const parts: string[] = [];
+		if (missing.length > 0) parts.push(`missing ${missing.join(', ')}`);
+		if (extra.length > 0) parts.push(`extra ${extra.join(', ')}`);
+		throw new BadRequestError(`The export does not match the selection (${parts.join('; ')})`);
+	}
+
+	/**
 	 * What the branch holds, from `project.json`, `folder.json` and
 	 * `workflow.json`. Placement and guards only need those collections.
 	 */
@@ -102,13 +125,11 @@ export class WorkingCopyUpdater {
 		return (await this.scanBranch(exportFolder)).state;
 	}
 
-	private async scanBranch(
-		exportFolder: string,
-	): Promise<{ state: BranchLayout; dependencies: DependencyRef[] }> {
+	private async scanBranch(exportFolder: string): Promise<ScannedBranch> {
 		const resolvedBase = await this.resolveContained(exportFolder, '.');
 		// A fresh branch holds no export yet, so a first push has nothing to read.
 		const rootInfo = await fs.stat(resolvedBase).catch(() => null);
-		if (rootInfo === null || !rootInfo.isDirectory()) return { state: {}, dependencies: [] };
+		if (!rootInfo?.isDirectory()) return { state: {}, dependencies: [] };
 
 		const collected: Required<BranchLayout> = { projects: [], folders: [], workflows: [] };
 		const dependencies: DependencyRef[] = [];
@@ -232,6 +253,24 @@ export class WorkingCopyUpdater {
 		return { id: (parsed as { id: string }).id, name: (parsed as { name: string }).name, target };
 	}
 
+	async assertSelectionFitsBranch(
+		exportFolder: string,
+		selection: SelectivePushOptions,
+	): Promise<ScannedBranch> {
+		try {
+			const branch = await this.scanBranch(exportFolder);
+			this.assertDeletionsOnBranch(branch.state, selection);
+			this.assertNoCrossProjectMoves(branch.state, selection);
+			return branch;
+		} catch (error) {
+			if (error instanceof BadRequestError) throw error;
+			this.logger.error('Failed to scan the selective push working copy', { error });
+			throw new InternalServerError(
+				'Failed to apply the selection to the branch. Check the server logs for details.',
+			);
+		}
+	}
+
 	/**
 	 * Every deleted workflow must be on the branch and belong to the selected
 	 * project. Membership is judged by the project's directory on the branch,
@@ -279,8 +318,9 @@ export class WorkingCopyUpdater {
 	}
 
 	/**
-	 * Overlay the staging export onto `exportFolder`. Reads the branch, then
-	 * runs the guards. File work runs on a copy, then the copy replaces the
+	 * Overlay the staging export onto `exportFolder`. Pass `branch` from
+	 * `assertSelectionFitsBranch` for the same folder and selection.
+	 * File work runs on a copy, then the copy replaces the
 	 * export, so a failed write leaves the working copy untouched. After overlay,
 	 * write an import inventory of the remaining files. Delete that write with
 	 * import-manifest-bridge when import walks entity files.
@@ -290,8 +330,10 @@ export class WorkingCopyUpdater {
 		stagingFolder: string,
 		staging: PackageManifest,
 		selection: SelectivePushOptions,
+		branch: ScannedBranch,
 	): Promise<void> {
 		this.validateSelection(selection);
+		this.assertStagingMatchesSelection(staging, selection);
 		const parent = path.dirname(exportFolder);
 		// Keep the temp and backup dirs one level above the git clone (`parent`),
 		// so a crash never leaves them inside the working tree for a commit to pick
@@ -303,9 +345,7 @@ export class WorkingCopyUpdater {
 		let createdExport = false;
 
 		try {
-			const { state: existing, dependencies } = await this.scanBranch(exportFolder);
-			this.assertDeletionsOnBranch(existing, selection);
-			this.assertNoCrossProjectMoves(existing, selection);
+			const { state: existing, dependencies } = branch;
 
 			const placement = containerPlacement(existing, staging);
 			const otherProjectTargets = (existing.projects ?? [])
@@ -323,8 +363,7 @@ export class WorkingCopyUpdater {
 			// filesystem (e.g. a container mount) and are left alone.
 			await this.resolveContained(parent, path.basename(exportFolder));
 
-			// A first push meets a branch with no export yet; create it so the temp
-			// copy and the later swap have a directory to work with.
+			// Ensure the export directory exists before copying and replacing it.
 			// mkdir returns the first path it created, or undefined when it existed.
 			const firstCreated = await fs.mkdir(exportFolder, { recursive: true });
 			createdExport = firstCreated !== undefined;

@@ -4,12 +4,14 @@ export {
 	activityResourceNameMaxLength,
 	type ActivityEventInput,
 	type ActivityFeedQuery,
+	type ActivityProjectScope,
 } from './activity-event.repository';
 export { AgentEvalDatasetRepository } from './agent-eval-dataset.repository.ee';
 export { AgentEvalRunRepository } from './agent-eval-run.repository.ee';
 export { AgentEvalResultRepository } from './agent-eval-result.repository.ee';
 export { AgentEvalRatingRepository } from './agent-eval-rating.repository.ee';
 export { AiPreferenceRepository } from './ai-preference.repository';
+export type { ReadableProjects } from './ai-preference.repository';
 export { AnnotationTagMappingRepository } from './annotation-tag-mapping.repository.ee';
 export { AnnotationTagRepository } from './annotation-tag.repository.ee';
 export { AiBuilderTemporaryWorkflowRepository } from './ai-builder-temporary-workflow.repository';
@@ -33,6 +35,7 @@ export {
 export { EvaluationConfigRepository } from './evaluation-config.repository';
 export { ExecutionAnnotationRepository } from './execution-annotation.repository';
 export { ExecutionDataRepository } from './execution-data.repository';
+export { ExecutionListRepository } from './execution-list.repository';
 export { ExecutionMetadataRepository } from './execution-metadata.repository';
 export {
 	ExecutionRepository,
@@ -76,7 +79,7 @@ export { SettingsRepository } from './settings.repository';
 export { TagRepository } from './tag.repository';
 export { TestCaseExecutionRepository } from './test-case-execution.repository.ee';
 export { TestRunRepository, type TestRunSummary } from './test-run.repository.ee';
-export { VariablesRepository } from './variables.repository';
+export { VariablesRepository, type VariableKeyScope } from './variables.repository';
 export { WorkflowHistoryRepository } from './workflow-history.repository';
 export { WorkflowStatisticsRepository } from './workflow-statistics.repository';
 export { WorkflowTagMappingRepository } from './workflow-tag-mapping.repository';
