@@ -156,6 +156,10 @@ export type InstanceContextCursor = {
 	activityCategories: ActivityEventCategory[];
 	/** Entry ids already shown, including ids below the current floor. */
 	activitySeen: number[];
+	/** The deduplication limit excludes forgotten ids, even after a scope change. */
+	activitySeenFloor?: number;
+	/** Compare the stored row identity, not the application clock, after pruning. */
+	activityAnchor?: { id: number; createdAt: string; category: ActivityEventCategory };
 	/** ISO timestamp runs were summarised up to. */
 	runsThrough: string;
 };
@@ -183,6 +187,24 @@ export function readInstanceContextCursor(
 		activitySeen: Array.isArray(activitySeen)
 			? activitySeen.filter((id): id is number => typeof id === 'number' && Number.isFinite(id))
 			: [],
+		...(typeof value.activitySeenFloor === 'number' && Number.isFinite(value.activitySeenFloor)
+			? { activitySeenFloor: value.activitySeenFloor }
+			: {}),
+		...(isRecord(value.activityAnchor) &&
+		typeof value.activityAnchor.id === 'number' &&
+		Number.isFinite(value.activityAnchor.id) &&
+		typeof value.activityAnchor.createdAt === 'string' &&
+		!Number.isNaN(Date.parse(value.activityAnchor.createdAt)) &&
+		typeof value.activityAnchor.category === 'string' &&
+		isKnownCategory(value.activityAnchor.category)
+			? {
+					activityAnchor: {
+						id: value.activityAnchor.id,
+						createdAt: value.activityAnchor.createdAt,
+						category: value.activityAnchor.category,
+					},
+				}
+			: {}),
 		runsThrough,
 	};
 }
@@ -359,6 +381,8 @@ export class InstanceContextService {
 					activityFloor: entries.floor,
 					activityCategories: resolved.allowedCategories,
 					activitySeen: entries.seen,
+					activitySeenFloor: entries.seenFloor,
+					activityAnchor: entries.anchor,
 					runsThrough: now.toISOString(),
 				},
 				// Count rendered rows. Query totals can include rows removed by the limits.
@@ -541,6 +565,8 @@ export class InstanceContextService {
 		mark: number;
 		floor: number;
 		seen: number[];
+		seenFloor: number;
+		anchor: InstanceContextCursor['activityAnchor'];
 		truncated: boolean;
 	}> {
 		const fetchLimit =
@@ -561,12 +587,12 @@ export class InstanceContextService {
 					limit: seenIdsCap,
 					projectIds: input.scope.projectIds,
 					allowedCategories: input.scope.allowedCategories,
-					afterId: cursor.activityFloor,
+					afterId: Math.max(cursor.activityFloor, cursor.activitySeenFloor ?? 0),
 					beforeId: cursor.activityMark,
 				})
 			: [];
 
-		if (cursor !== null && (await this.idSpaceRestarted(cursor, input.scope, arrivals, band))) {
+		if (cursor !== null && (await this.idSpaceRestarted(cursor, input.scope))) {
 			// Reset only id-based state because SQLite reused ids from the old sequence.
 			cursor = null;
 			band = [];
@@ -609,15 +635,19 @@ export class InstanceContextService {
 		const floor = cut ? cut.id : (cursor?.activityFloor ?? 0);
 
 		// Keep shown ids across scope changes so reopened rows do not repeat.
-		const seen = [...alreadyShown, ...shown.map((row) => row.id)]
-			.sort((a, b) => b - a)
-			.slice(0, seenIdsCap);
+		const seen = [...alreadyShown, ...shown.map((row) => row.id)].sort((a, b) => b - a);
+		const seenFloor = Math.max(cursor?.activitySeenFloor ?? 0, seen[seenIdsCap] ?? 0);
+		const anchor = read.find((row) => row.id === mark);
 
 		return {
 			rows: shown,
 			mark,
 			floor,
-			seen,
+			seen: seen.filter((id) => id > seenFloor).slice(0, seenIdsCap),
+			seenFloor,
+			anchor: anchor
+				? { id: anchor.id, createdAt: anchor.createdAt.toISOString(), category: anchor.category }
+				: cursor?.activityAnchor,
 			// Said out loud rather than left to inference. A cut list that does not say it is cut
 			// reads as the whole story, and the agent would draw conclusions from it.
 			truncated: fresh.length > windowSize || arrivals.length === fetchLimit,
@@ -628,23 +658,26 @@ export class InstanceContextService {
 	private async idSpaceRestarted(
 		cursor: InstanceContextCursor,
 		scope: ResolvedScope,
-		arrivals: ActivityEvent[],
-		band: ActivityEvent[],
 	): Promise<boolean> {
-		const lastBlock = Date.parse(cursor.runsThrough);
+		const anchor = cursor.activityAnchor;
+		if (!anchor || !scope.allowedCategories.includes(anchor.category)) return false;
+		const current = await this.activityEventRepository.findEntry({
+			id: anchor.id,
+			projectIds: scope.projectIds,
+			allowedCategories: scope.allowedCategories,
+		});
+		if (current) return current.createdAt.toISOString() !== anchor.createdAt;
 
-		// A shown id with a newer timestamp belongs to the restarted sequence.
-		const shown = new Set(cursor.activitySeen);
-		if (band.some((row) => shown.has(row.id) && row.createdAt.getTime() > lastBlock)) return true;
-
-		// An empty delta needs one indexed lookup to detect a reused id between both bounds.
-		if (arrivals.length > 0 || band.length > 0) return false;
-
+		// A higher id is a normal arrival, not a restarted sequence.
 		const newest = await this.activityEventRepository.findNewestEntry({
 			projectIds: scope.projectIds,
 			allowedCategories: scope.allowedCategories,
 		});
-		return newest !== null && newest.createdAt.getTime() > lastBlock;
+		return (
+			newest !== null &&
+			newest.id <= anchor.id &&
+			newest.createdAt.getTime() > Date.parse(anchor.createdAt)
+		);
 	}
 
 	private async readRuns(input: {

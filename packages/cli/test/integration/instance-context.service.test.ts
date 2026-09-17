@@ -804,6 +804,33 @@ describe('InstanceContextService', () => {
 		});
 	});
 
+	it('does not repeat stored activity after the seen-id limit is reached', async () => {
+		let cursor: InstanceContextCursor | null = null;
+		for (let batch = 0; batch < 7; batch++) {
+			for (let index = 0; index < 30; index++) {
+				await record({
+					category: 'workflow',
+					action: 'saved',
+					projectId: project.id,
+					resourceName: `Batch ${batch}`,
+				});
+			}
+			const built = await service.buildBlock({
+				enabled: true,
+				user,
+				scope: bound(project.id),
+				cursor,
+			});
+			expect(blockOf(built).match(/^\[\d+\]/gm)).toHaveLength(30);
+			cursor = cursorOf(built);
+		}
+		for (let turn = 0; turn < 2; turn++) {
+			expect(
+				await service.buildBlock({ enabled: true, user, scope: bound(project.id), cursor }),
+			).toMatchObject({ state: 'absent', reason: 'empty' });
+		}
+	});
+
 	it('carries a refilled entry whose id was reused from one already shown', async () => {
 		for (const name of ['First', 'Second', 'Third']) {
 			await record({
