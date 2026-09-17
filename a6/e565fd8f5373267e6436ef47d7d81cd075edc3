@@ -1,0 +1,35 @@
+packages/cli/src/credentials/credentials.service.ts
+  s_736cafcf249461::t_c200cddbc998ea 1996,2069
+packages/cli/test/integration/commands/credentials.cmd.test.ts
+  s_736cafcf249461::t_8e5a13ebd5c7f3 229-249,251-253
+  ai_agent 250
+packages/@n8n/db/src/migrations/common/1789558029357-AddDescriptionToCredentials.ts
+  s_736cafcf249461::t_525c264c652360 7-8
+packages/cli/src/credentials/validation.ts
+  s_736cafcf249461::t_0a9a98a52d9b98 181-184
+  s_736cafcf249461::t_ea3b8a30a7cc97 191
+packages/@n8n/api-types/src/schemas/credential-description.schema.ts
+  s_736cafcf249461::t_79435776660121 3,6,13-14
+packages/cli/src/commands/import/credentials.ts
+  s_736cafcf249461::t_1f5355a8b013b2 176-180
+packages/@n8n/db/src/entities/credentials-entity.ts
+  s_736cafcf249461::t_525c264c652360 20
+packages/cli/test/integration/commands/import-credentials/credentials-description-omitted.json
+  s_736cafcf249461::t_e2dd263fe30b6f 1-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a6e565fd8f5373267e6436ef47d7d81cd075edc3",
+  "prompts": {},
+  "sessions": {
+    "s_736cafcf249461": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "202136a6-c3f7-4896-86e1-b17c7270ea67",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}
