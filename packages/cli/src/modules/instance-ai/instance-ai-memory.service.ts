@@ -16,6 +16,7 @@ import { GlobalConfig } from '@n8n/config';
 import type { InstanceAiConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { z } from 'zod';
+import { randomUUID } from 'node:crypto';
 import {
 	buildAgentTreeFromEvents,
 	createSubAgentResourceIdPrefix,
@@ -31,6 +32,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import type { InstanceAiCheckpoint } from './entities/instance-ai-checkpoint.entity';
 import { DurableLogMetrics } from './event-bus/durable-log-metrics';
+import { AUTO_FOLLOW_UP_MESSAGE } from './internal-messages';
 import {
 	collectConfirmationRequestIds,
 	markExpiredConfirmations,
@@ -375,6 +377,44 @@ export class InstanceAiMemoryService {
 			thread: this.toThreadInfo(created),
 			created: true,
 		};
+	}
+
+	/**
+	 * Store an assistant greeting before any user turn (onboarding). The model API
+	 * needs a user message first, so a hidden auto-follow-up turn precedes the
+	 * greeting; the message parser drops that turn from the UI. Returns the id of
+	 * that hidden turn.
+	 */
+	async seedOpeningMessages(
+		threadId: string,
+		userId: string,
+		greeting: string,
+	): Promise<{ userMessageId: string }> {
+		// Both stamps stay in the past: event rows written right after this must
+		// not sort before the greeting, or the fold shows the greeting twice.
+		const now = Date.now();
+		const userMessageId = randomUUID();
+		await this.agentMemory.saveMessages({
+			threadId,
+			resourceId: userId,
+			messages: [
+				{
+					id: userMessageId,
+					createdAt: new Date(now - 1),
+					type: 'llm',
+					role: 'user',
+					content: [{ type: 'text', text: AUTO_FOLLOW_UP_MESSAGE }],
+				},
+				{
+					id: randomUUID(),
+					createdAt: new Date(now),
+					type: 'llm',
+					role: 'assistant',
+					content: [{ type: 'text', text: greeting }],
+				},
+			],
+		});
+		return { userMessageId };
 	}
 
 	/** Eval-only: seed a thread with a native message log (id/role/content/createdAt

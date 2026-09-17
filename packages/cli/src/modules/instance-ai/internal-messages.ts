@@ -108,6 +108,8 @@ const TRAILING_CONTEXT_BLOCKS = [
 	'project-context',
 	'past-conversations',
 	'ai-preferences',
+	'onboarding-skill',
+	'onboarding-answer',
 ].map(trailingBlockRegex);
 
 /** Strip each trailing block once, in whatever order they were composed. */
@@ -176,6 +178,23 @@ export function escapePastConversationsDelimiters(value: string): string {
  *  this project", "check it before you build") lives in the system prompt, which is
  *  CACHED — restating it here would pay for the same sentence in uncached tokens on
  *  every turn of every conversation. Measured: the fact alone is enough. */
+/**
+ * The onboarding SKILL.md body, preloaded on an onboarding thread's opening turn so the flow
+ * runs without a `load_skill` call. Stripped from the displayed message.
+ */
+export function withOnboardingSkill(message: string, instructions: string): string {
+	return `${message}\n\n<onboarding-skill>\n${instructions}\n</onboarding-skill>`;
+}
+
+/**
+ * The answer to an onboarding thread's opening card, in the `ask-user` result shape. The card
+ * is not in the LLM history (it lives in the event log), so the answer rides a hidden user
+ * turn; the parser drops that turn from the UI.
+ */
+export function buildOnboardingAnswerMessage(result: unknown, roleId: string): string {
+	return `${AUTO_FOLLOW_UP_MESSAGE}\n\n<onboarding-answer>\nThe user answered the opening question card:\n${JSON.stringify(result)}\nUse-case corpus role id: ${roleId}\n</onboarding-answer>`;
+}
+
 export function getProjectContextSection(project: { name: string; type: string }): string {
 	return `This conversation is scoped to the project "${project.name}" (${project.type}).`;
 }

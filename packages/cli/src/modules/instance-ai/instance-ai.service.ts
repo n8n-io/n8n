@@ -195,11 +195,13 @@ import {
 	withAiPreferences,
 	withPastConversations,
 	withProjectContext,
+	withOnboardingSkill,
 	getProjectContextSection,
 	WORKFLOW_SETUP_STATE_OPEN_TAG,
 	WORKFLOW_SETUP_STATE_CLOSE_TAG,
 	buildWorkflowTestRequestBlock,
 } from './internal-messages';
+import { loadOnboardingSkill } from './onboarding';
 import { INSTANCE_AI_RUN_TIMEOUT_REASON, InstanceAiLivenessService } from './liveness';
 import { InstanceAiMcpRegistryService } from './mcp';
 import {
@@ -4034,10 +4036,17 @@ export class InstanceAiService {
 			const thread = await memory.getThread(threadId);
 			// The heuristic title lands on the opening turn, so "no title yet" marks it.
 			const isOpeningTurn = Boolean(thread && !thread.title);
+			// An onboarding thread opens with a seeded greeting; its first user turn answers it.
+			const onboarding =
+				isOpeningTurn && thread?.metadata?.source === 'onboarding'
+					? await loadOnboardingSkill()
+					: undefined;
 
 			if (isOpeningTurn) {
 				const handoffTitle =
-					contextAttachments.find(isNamedResourceAttachment)?.name ?? agentPreviewTitleFallback;
+					onboarding?.opening.title ??
+					contextAttachments.find(isNamedResourceAttachment)?.name ??
+					agentPreviewTitleFallback;
 
 				await patchThread(memory, {
 					threadId,
@@ -4131,9 +4140,14 @@ export class InstanceAiService {
 				isOpeningTurn && aiPreferencesEnabled
 					? await this.resolveAiPreferencesBlock(user.id, boundProject)
 					: undefined;
-			const messageWithProject = projectSection
-				? withProjectContext(messageWithContext, projectSection)
+			// The onboarding skill rides the opening turn as a context block, so it fires
+			// without a `load_skill` call and stays in the history for the later turns.
+			const messageWithOnboarding = onboarding
+				? withOnboardingSkill(messageWithContext, onboarding.instructions)
 				: messageWithContext;
+			const messageWithProject = projectSection
+				? withProjectContext(messageWithOnboarding, projectSection)
+				: messageWithOnboarding;
 			const messageWithPastConversations = pastConversationsSection
 				? withPastConversations(messageWithProject, pastConversationsSection)
 				: messageWithProject;
