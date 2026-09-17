@@ -262,6 +262,25 @@ label, or closing the PR, deletes the box.
 Only a PR from a branch in this repository is eligible: a codespace token is
 scoped to `n8n-io/n8n` and cannot check out a fork head.
 
+#### Live progress on the PR
+
+`up` and `refresh` take minutes, and an absent comment looks the same as a broken
+preview. So the comment goes up before the box work starts, as a checklist of the
+phases in `scripts/preview-phases.mjs`, and is edited for each phase and once a
+minute after that. The final URL replaces it in place.
+
+A comment **edit sends no notification** — only a create does. That is what makes a
+heartbeat on a sticky comment acceptable at all.
+
+A `refresh` keeps the URL of the previous run in the checklist. The URL does not
+change between runs, and taking a working link off the PR for several minutes is
+worse than saying it is briefly down.
+
+A cancelled job — including the 45-minute `timeout-minutes` — kills the script while
+its checklist is up, so a last `if: cancelled()` step writes the outcome instead. It
+writes **only over a checklist**: a run cancelled while it was queued never started
+work, and must leave the previous run's URL alone.
+
 #### Running it by hand
 
 A box sleeps after 2 hours of no use, and GitHub makes every forwarded port
@@ -295,9 +314,11 @@ The vocabulary lives in `scripts/preview-labels.mjs`, which both ends import:
 `preview.mjs` turns the PR's labels into slugs, and `preview-serve.mjs` turns
 those slugs into environment inside the box. Add a toggle there, in one place.
 
-Only slugs cross the gap. The `gh codespace ssh` command is a shell string that
-appears in the box's process list, so a value is never passed through it —
-`preview:enterprise` resolves to a licence key inside the box, not on the runner.
+Two things cross the gap, and both are shape-checked rather than trusted: a
+`preview:*` slug, and a phase key from `scripts/preview-phases.mjs`. The `gh
+codespace ssh` command is a shell string that appears in the box's process list, so
+a value is never passed through it — `preview:enterprise` resolves to a licence key
+inside the box, not on the runner.
 
 `preview:enterprise` needs a **Codespaces** secret named
 `N8N_LICENSE_ACTIVATION_KEY`, scoped to `n8n-io/n8n`. That is a Codespaces
@@ -780,10 +801,13 @@ Scripts in `.github/scripts/`:
 | `codespace-preview.mjs`         | Map a `pull_request` event or a manual operation onto a preview operation, comment the result | `util-codespace-preview.yml` |
 | `../../scripts/preview.mjs`     | One codespace for each PR: `up`, `refresh`, `down`, `ls`. `--json` for CI | `codespace-preview.mjs`, developers |
 | `../../scripts/preview-remote-env.mjs` | Fetch extra environment for a preview from the webhook, inside the box | `../../scripts/preview-serve.mjs` |
+| `../../scripts/preview-phases.mjs` | The phase vocabulary and its one-line marker, so the runner, the box and the comment cannot drift | `codespace-preview.mjs`, `../../scripts/preview.mjs`, `../../scripts/preview-serve.mjs` |
 
 `scripts/preview.mjs` is also the developer entry point (`pnpm preview up <pr>`).
-In `--json` mode it prints one object on stdout and sends all progress to stderr,
-so a workflow can read the URL from a run that also streams an in-box build log.
+In `--json` mode stdout carries one line for each phase and then the report object,
+and all human progress goes to stderr. So a workflow can follow a run that also
+streams an in-box build log. The reader tells the two apart by the `url` field: the
+report has one, a phase line never does.
 
 ### Branch Replay Scripts
 
