@@ -94,11 +94,11 @@ describe('LmChatDatabricks', () => {
 				name: 'lmChatDatabricks',
 				group: ['transform'],
 				version: [1],
-				hidden: true,
 				credentials: [{ name: 'databricksOAuth2Api', required: true }],
 				outputs: ['ai_languageModel'],
 				outputNames: ['Model'],
 			});
+			expect(node.description.hidden).toBeUndefined();
 		});
 	});
 
