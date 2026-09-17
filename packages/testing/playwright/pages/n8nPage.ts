@@ -71,7 +71,7 @@ import { TestEntryComposer } from '../composables/TestEntryComposer';
 import { WorkflowComposer } from '../composables/WorkflowComposer';
 import { ClipboardHelper } from '../helpers/ClipboardHelper';
 import { NavigationHelper } from '../helpers/NavigationHelper';
-import { ApiHelpers } from '../services/api-helper';
+import type { ApiHelpers } from '../services/api-helper';
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export class n8nPage {
@@ -161,9 +161,9 @@ export class n8nPage {
 	readonly breadcrumbs: Breadcrumbs;
 	readonly clipboard: ClipboardHelper;
 
-	constructor(page: Page, api?: ApiHelpers) {
+	constructor(page: Page, api: ApiHelpers) {
 		this.page = page;
-		this.api = api ?? new ApiHelpers(page.context().request);
+		this.api = api;
 
 		// Pages
 		this.aiAssistant = new AIAssistantPage(page);

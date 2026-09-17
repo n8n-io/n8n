@@ -2,6 +2,7 @@ import type { Page } from '@playwright/test';
 
 import { setupDefaultInterceptors } from '../config/intercepts';
 import type { n8nPage } from '../pages/n8nPage';
+import { ApiHelpers } from '../services/api-helper';
 import type { TestUser } from '../services/user-api-helper';
 
 /**
@@ -91,9 +92,7 @@ export class TestEntryComposer {
 		await action();
 		const newPage = await newPagePromise;
 		await newPage.waitForLoadState('domcontentloaded');
-		// Use the constructor from the current instance to avoid circular dependency
-		const n8nPageConstructor = this.n8n.constructor as new (page: Page) => n8nPage;
-		return new n8nPageConstructor(newPage);
+		return this.wrapPage(newPage);
 	}
 
 	/**
@@ -104,8 +103,17 @@ export class TestEntryComposer {
 	 */
 	async newTab(): Promise<n8nPage> {
 		const newPage = await this.n8n.page.context().newPage();
-		const n8nPageConstructor = this.n8n.constructor as new (page: Page) => n8nPage;
-		return new n8nPageConstructor(newPage);
+		return this.wrapPage(newPage);
+	}
+
+	/**
+	 * Wrap a page in an n8nPage facade with an API helper bound to that page's
+	 * request context. Use it for any page this fixture did not create.
+	 * Uses the constructor from the current instance to avoid a circular import.
+	 */
+	wrapPage(page: Page): n8nPage {
+		const n8nPageConstructor = this.n8n.constructor as new (page: Page, api: ApiHelpers) => n8nPage;
+		return new n8nPageConstructor(page, new ApiHelpers(page.context().request));
 	}
 
 	/**
@@ -133,7 +141,7 @@ export class TestEntryComposer {
 		const context = await browser.newContext();
 		await setupDefaultInterceptors(context);
 		const page = await context.newPage();
-		const newN8n = new (this.n8n.constructor as new (page: Page) => n8nPage)(page);
+		const newN8n = this.wrapPage(page);
 		await newN8n.api.login({ email: user.email, password: user.password });
 		return newN8n;
 	}

@@ -291,7 +291,7 @@ export const test = base.extend<
 			await use(n8nInstance);
 			await apiContext.dispose();
 		} else {
-			const n8nInstance = new n8nPage(page);
+			const n8nInstance = new n8nPage(page, new ApiHelpers(page.context().request));
 			await n8nInstance.api.setupFromTags(testInfo.tags);
 			await n8nInstance.start.withProjectFeatures();
 			await use(n8nInstance);
