@@ -8,11 +8,11 @@ import {
 	parseSystemBlocks,
 	parseSystemPromptForDisplay,
 	parseToolCallBlocks,
-	resolveLlmStepSystemPrompt,
 	parseToolResultBlocks,
 	parseUsageSummary,
 	summarizeJsonValue,
 	extractObservationsBlock,
+	stepInstructions,
 } from '../llm-step-display';
 
 describe('llm-step-display', () => {
@@ -234,17 +234,7 @@ describe('llm-step-display', () => {
 		});
 	});
 
-	it('reads the system prompt from AI SDK instructions when system is absent', () => {
-		expect(resolveLlmStepSystemPrompt({ instructions: 'You are helpful' })).toBe('You are helpful');
-		expect(
-			parseStepSummary(
-				{
-					instructions: { role: 'system', content: 'You are helpful' },
-					messages: [{ role: 'user', content: 'hello' }],
-				},
-				{},
-			).systemCharCount,
-		).toBe('You are helpful'.length);
+	it('excludes AI SDK instructions from input extras', () => {
 		expect(
 			parseInputExtras({
 				instructions: 'You are helpful',
@@ -254,15 +244,6 @@ describe('llm-step-display', () => {
 		).toEqual({
 			tools: { search: { description: 'search' } },
 		});
-	});
-
-	it('prefers a legacy system field over instructions', () => {
-		expect(
-			resolveLlmStepSystemPrompt({
-				system: 'legacy prompt',
-				instructions: 'sdk prompt',
-			}),
-		).toBe('legacy prompt');
 	});
 
 	it('includes full tools and config in input extras', () => {
@@ -318,5 +299,37 @@ describe('llm-step-display', () => {
 		expect(parsed.systemBlocks[0]?.segments).toEqual([
 			{ type: 'text', text: 'Skill loading protocol' },
 		]);
+	});
+
+	describe('stepInstructions', () => {
+		it('reads the v7 `instructions` field', () => {
+			expect(stepInstructions({ instructions: 'You are helpful.' })).toBe('You are helpful.');
+		});
+
+		it('falls back to the pre-v7 `system` field for older snapshots', () => {
+			expect(stepInstructions({ system: 'You are helpful.' })).toBe('You are helpful.');
+		});
+
+		it('prefers `instructions` when a snapshot somehow carries both', () => {
+			expect(stepInstructions({ instructions: 'new', system: 'old' })).toBe('new');
+		});
+
+		it('returns undefined for a missing input', () => {
+			expect(stepInstructions(undefined)).toBeUndefined();
+		});
+
+		// The shape real captures carry: `{ role, content, providerOptions }`.
+		it('lets parseStepSummary size a v7 instructions object', () => {
+			const summary = parseStepSummary(
+				{ instructions: { role: 'system', content: 'x'.repeat(120) } },
+				{ finishReason: 'stop' },
+			);
+			expect(summary.systemCharCount).toBe(120);
+		});
+
+		it('still sizes a pre-v7 string system prompt', () => {
+			const summary = parseStepSummary({ system: 'x'.repeat(42) }, { finishReason: 'stop' });
+			expect(summary.systemCharCount).toBe(42);
+		});
 	});
 });

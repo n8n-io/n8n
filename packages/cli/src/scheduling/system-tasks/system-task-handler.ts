@@ -1,6 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 import type { SystemTask } from '@n8n/decorators';
 import type { ClaimedTask, DispatchDecision, DispatchReporter, TaskHandler } from '@n8n/scheduler';
+import type { Tracing } from 'n8n-core';
 
 import type { EventService } from '@/events/event.service';
 
@@ -19,6 +20,7 @@ export class SystemTaskHandler implements TaskHandler {
 		private readonly shutdownSignal: AbortSignal,
 		private readonly logger: Logger,
 		private readonly eventService: EventService,
+		private readonly tracing: Tracing,
 		private readonly onRunError: (error: unknown) => void,
 	) {}
 
@@ -28,6 +30,7 @@ export class SystemTaskHandler implements TaskHandler {
 
 		const outcome = await observeSystemTaskRun(
 			this.eventService,
+			this.tracing,
 			this.systemTask,
 			'durable',
 			this.shutdownSignal,

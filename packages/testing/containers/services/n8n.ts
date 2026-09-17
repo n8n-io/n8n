@@ -10,6 +10,7 @@ import {
 	createSilentLogConsumer,
 } from '../helpers/utils';
 import { N8nImagePullPolicy } from '../n8n-image-pull-policy';
+import type { StartupDeadline } from '../startup-deadline';
 import { TEST_CONTAINER_IMAGES } from '../test-containers';
 import type { FileToMount } from './types';
 
@@ -83,6 +84,7 @@ export interface N8NInstancesOptions {
 	filesToMount?: FileToMount[];
 	coverageHostDir?: string;
 	registerContainer?: (container: StartedTestContainer) => void;
+	startupDeadline: StartupDeadline;
 	/**
 	 * Override the n8n image for these instances (default: the process-wide
 	 * TEST_IMAGE_N8N resolution). Lets one process boot different releases in
@@ -171,6 +173,7 @@ interface SharedConfig {
 	filesToMount?: FileToMount[];
 	coverageHostDir?: string;
 	registerContainer?: (container: StartedTestContainer) => void;
+	startupDeadline: StartupDeadline;
 	image?: string;
 	userHomeHostDir?: string;
 	user?: string;
@@ -203,6 +206,7 @@ async function createContainer(
 		filesToMount,
 		coverageHostDir,
 		registerContainer,
+		startupDeadline,
 		image,
 		userHomeHostDir,
 		user,
@@ -213,7 +217,10 @@ async function createContainer(
 		'/healthz/readiness',
 		N8N_READINESS_PORT,
 		{
-			startupTimeoutMs: startupTimeoutMs ?? N8N_STARTUP_TIMEOUT_MS,
+			startupTimeoutMs: Math.min(
+				startupTimeoutMs ?? N8N_STARTUP_TIMEOUT_MS,
+				startupDeadline.remainingMs,
+			),
 			readTimeoutMs: N8N_READ_TIMEOUT_MS,
 		},
 	);
@@ -300,6 +307,7 @@ async function createContainer(
 	}
 
 	try {
+		startupDeadline.throwIfAborted();
 		const started = await container.start();
 		registerContainer?.(started);
 		return { container: started, getLogs, getLastReadinessBody };
@@ -335,6 +343,7 @@ export async function createN8NInstances(
 		filesToMount,
 		coverageHostDir,
 		registerContainer,
+		startupDeadline,
 		image,
 		userHomeHostDir,
 		user,
@@ -354,6 +363,7 @@ export async function createN8NInstances(
 		filesToMount,
 		coverageHostDir,
 		registerContainer,
+		startupDeadline,
 		image,
 		userHomeHostDir,
 		user,
@@ -368,6 +378,7 @@ export async function createN8NInstances(
 		filesToMount,
 		coverageHostDir,
 		registerContainer,
+		startupDeadline,
 		image,
 		user,
 		startupTimeoutMs,
@@ -380,6 +391,7 @@ export async function createN8NInstances(
 		resourceQuota: webhookResourceQuota ?? resourceQuota,
 		filesToMount,
 		registerContainer,
+		startupDeadline,
 		image,
 		user,
 		startupTimeoutMs,
@@ -432,6 +444,7 @@ export async function createN8NInstances(
 		diagnostics.logs[instance.name] = result.getLogs();
 		diagnostics.readinessPayloads[instance.name] = result.getLastReadinessBody();
 	};
+	options.startupDeadline.throwIfAborted();
 
 	const rethrowWithDiagnostics = (error: unknown): never => {
 		const message =

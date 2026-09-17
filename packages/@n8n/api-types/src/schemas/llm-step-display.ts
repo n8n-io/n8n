@@ -346,18 +346,6 @@ function parseContentBlock(
 	};
 }
 
-/**
- * AI SDK v7 stores the system prompt on `instructions`. Older captures still
- * use `system`. Prefer `system` so a mixed payload does not drop the legacy field.
- */
-export function resolveLlmStepSystemPrompt(input: Record<string, unknown> | undefined): unknown {
-	if (!input) return undefined;
-	if (input.system !== undefined && input.system !== null) {
-		return input.system;
-	}
-	return input.instructions;
-}
-
 export function parseSystemBlocks(system: unknown): ReadableContentBlock[] {
 	if (system === undefined || system === null) {
 		return [];
@@ -441,6 +429,16 @@ function extractObservationsFromBlock(block: ReadableContentBlock): {
 		},
 		observations: extracted.observations,
 	};
+}
+
+/**
+ * The step's system prompt, wherever the SDK put it. AI SDK v7 standardizes it as
+ * `instructions` (`StandardizedPrompt`); `system` is the pre-v7 name, kept as a
+ * fallback so snapshots captured before the rename still render. Without this the
+ * System section — and the `<observations>` block inside it — reads as empty.
+ */
+export function stepInstructions(input: Record<string, unknown> | undefined): unknown {
+	return input?.instructions ?? input?.system;
 }
 
 export function parseSystemPromptForDisplay(system: unknown): ParsedSystemPromptDisplay {
@@ -600,6 +598,8 @@ export function parseInputExtras(input: Record<string, unknown> | undefined): un
 	if (!input) return undefined;
 
 	const extras: Record<string, unknown> = {};
+	// `instructions` is the v7 name for `system` — both are rendered as the System
+	// section, so neither belongs in the extras dump.
 	const primaryKeys = new Set([
 		'system',
 		'instructions',
@@ -771,11 +771,19 @@ export function parseStepSummary(
 		}
 	}
 
-	const systemBlocks = parseSystemBlocks(resolveLlmStepSystemPrompt(input));
-	const systemCharCount =
-		systemBlocks.length > 0
-			? systemBlocks.reduce((total, block) => total + block.content.length, 0)
-			: undefined;
+	// Same field move as the System section: read through `stepInstructions`, or
+	// this silently stays undefined for every v7 snapshot. `parseSystemBlocks`
+	// handles the string, array and single-object forms alike.
+	const instructions = stepInstructions(input);
+	let systemCharCount: number | undefined;
+	if (typeof instructions === 'string') {
+		systemCharCount = instructions.length;
+	} else if (instructions !== undefined && instructions !== null) {
+		systemCharCount = parseSystemBlocks(instructions).reduce(
+			(total, block) => total + block.content.length,
+			0,
+		);
+	}
 
 	return {
 		finishReason: typeof output?.finishReason === 'string' ? output.finishReason : undefined,

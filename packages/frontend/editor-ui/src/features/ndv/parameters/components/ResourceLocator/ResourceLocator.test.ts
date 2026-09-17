@@ -440,6 +440,49 @@ describe('ResourceLocator', () => {
 		]);
 	});
 
+	it('switches to expression when user pastes a complete "{{ }}" expression', async () => {
+		const { getByTestId, emitted } = renderComponent({
+			props: { modelValue: { ...TEST_MODEL_VALUE, value: '', mode: 'id' } },
+		});
+
+		const input = getByTestId('rlc-input');
+		await userEvent.click(input);
+		const expression = new DataTransfer();
+		expression.setData('text', '{{ $json.fileId }}');
+		await userEvent.paste(expression);
+
+		expect(emitted('update:modelValue')).toEqual([
+			[
+				{
+					__rl: true,
+					mode: 'id',
+					value: '={{ $json.fileId }}',
+				},
+			],
+		]);
+	});
+
+	it('switches to expression when user pastes an expression over a stored id', async () => {
+		const { getByTestId, emitted } = renderComponent({
+			props: { modelValue: { ...TEST_MODEL_VALUE, value: 'stored-id', mode: 'id' } },
+		});
+
+		const input = getByTestId('rlc-input');
+		await userEvent.click(input);
+		await userEvent.clear(input);
+		const expression = new DataTransfer();
+		expression.setData('text', '{{ $json.fileId }}');
+		await userEvent.paste(expression);
+
+		expect(emitted('update:modelValue')?.at(-1)).toEqual([
+			{
+				__rl: true,
+				mode: 'id',
+				value: '={{ $json.fileId }}',
+			},
+		]);
+	});
+
 	it('can switch between modes', async () => {
 		const { getByTestId, emitted } = renderComponent();
 

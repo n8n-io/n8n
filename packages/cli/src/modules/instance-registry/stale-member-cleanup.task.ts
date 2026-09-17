@@ -21,7 +21,7 @@ export class StaleMemberCleanupTask implements SystemTask {
 
 	readonly effects: SystemTaskEffects = 'idempotent';
 
-	readonly durable = false;
+	readonly durable = true;
 
 	private readonly logger: Logger;
 

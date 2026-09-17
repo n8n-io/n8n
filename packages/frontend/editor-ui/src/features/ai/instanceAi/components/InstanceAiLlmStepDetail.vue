@@ -8,7 +8,7 @@ import {
 	parseOutputExtras,
 	parseSystemPromptForDisplay,
 	parseUsageSummary,
-	resolveLlmStepSystemPrompt,
+	stepInstructions,
 } from '@n8n/api-types';
 import { N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -28,7 +28,7 @@ const i18n = useI18n();
 const outputSectionRef = ref<HTMLElement | null>(null);
 
 const parsedSystemPrompt = computed(() =>
-	parseSystemPromptForDisplay(resolveLlmStepSystemPrompt(props.input)),
+	parseSystemPromptForDisplay(stepInstructions(props.input)),
 );
 const systemBlocks = computed(() => parsedSystemPrompt.value.systemBlocks);
 const systemObservations = computed(() => parsedSystemPrompt.value.observations);

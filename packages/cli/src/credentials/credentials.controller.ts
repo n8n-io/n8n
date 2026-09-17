@@ -320,6 +320,10 @@ export class CredentialsController {
 			data: preparedCredentialData.data as unknown as ICredentialDataDecryptedObject,
 		});
 
+		if (body.description !== undefined) {
+			newCredentialData.description = preparedCredentialData.description;
+		}
+
 		// Update isGlobal if provided in the payload and user has permission
 		const isGlobal = body.isGlobal;
 		if (isGlobal !== undefined && isGlobal !== credential.isGlobal) {

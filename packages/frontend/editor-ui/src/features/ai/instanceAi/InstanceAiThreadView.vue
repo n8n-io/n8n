@@ -966,12 +966,6 @@ async function persistTestAgentOfferDismissal(agentId: string) {
 <style lang="scss" module>
 @use '@n8n/design-system/css/mixins/motion' as motion;
 
-@property --instance-ai-artifacts-layout-width {
-	syntax: '<length>';
-	inherits: true;
-	initial-value: 0;
-}
-
 .threadArea {
 	--instance-ai-artifacts-panel-width: 280px;
 	--instance-ai-panel-transition-duration: calc(var(--duration--snappy) + 80ms);
