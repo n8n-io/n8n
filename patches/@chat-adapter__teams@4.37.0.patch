@@ -1,0 +1,44 @@
+diff --git a/dist/index.js b/dist/index.js
+index 5278d648103068f1f3875c27e42c775ab02238ed..4b7c400db8031305564a36090ee9ec822fb13e35 100644
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -2513,6 +2513,18 @@ var TeamsAdapter = class {
+       try {
+         await this.app.api.conversations.activities(conversationId).update(messageId, activity2);
+       } catch (error) {
++        // n8n patch: see deleteMessage — a targeted activity needs
++        // ?isTargetedActivity=true on update too.
++        try {
++          await this.app.api.conversations.activities(conversationId).updateTargeted(messageId, activity2);
++          return { id: messageId, threadId, raw: activity2 };
++        } catch (targetedError) {
++          this.logger.error("Teams API: updateActivity failed (targeted retry)", {
++            conversationId,
++            messageId,
++            error: targetedError
++          });
++        }
+         this.logger.error("Teams API: updateActivity failed", {
+           conversationId,
+           messageId,
+@@ -2555,6 +2567,20 @@ var TeamsAdapter = class {
+     try {
+       await this.app.api.conversations.activities(conversationId).delete(messageId);
+     } catch (error) {
++      // n8n patch: a targeted ("only you can see this") activity can only be
++      // mutated through ?isTargetedActivity=true, which the plain delete above
++      // does not send, so Teams answers 400. Retry on the targeted endpoint.
++      try {
++        await this.app.api.conversations.activities(conversationId).deleteTargeted(messageId);
++        this.logger.debug("Teams API: deleteActivity response (targeted)", { ok: true });
++        return;
++      } catch (targetedError) {
++        this.logger.error("Teams API: deleteActivity failed (targeted retry)", {
++          conversationId,
++          messageId,
++          error: targetedError
++        });
++      }
+       this.logger.error("Teams API: deleteActivity failed", {
+         conversationId,
+         messageId,

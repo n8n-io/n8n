@@ -92,19 +92,13 @@ export class TeamsIntegration extends AgentChatIntegration {
 	 * public card would let any channel member approve on their behalf, which is
 	 * the reason this is on: it is an authorization boundary, not tidiness.
 	 *
-	 * The cost today is that an answered card is not cleaned up: it stays visible
-	 * with live-looking buttons. Mutating a targeted activity needs the
-	 * `isTargetedActivity=true` flag that `@microsoft/teams.api` sends from
-	 * `updateTargeted`/`deleteTargeted`, and `@chat-adapter/teams` calls the
-	 * plain `update`/`delete` instead, so Teams answers `400`. Posting works
-	 * because `app.send` does route a recipient-targeted activity to
-	 * `createTargeted`. An upstream adapter fix, not a Teams limitation — a
-	 * public card in the same channel deletes cleanly.
-	 *
-	 * What covers the gap meanwhile: Teams marks the card "Your response was
-	 * sent to the app" itself, and a second click is refused by the resumable
-	 * check in `AgentChatHitlResumeHandler`, which answers the clicker privately
-	 * instead of resuming twice.
+	 * Removing the answered card needs a patch on `@chat-adapter/teams`
+	 * (`patches/@chat-adapter__teams@4.37.0.patch`). Mutating a targeted activity
+	 * only works through `?isTargetedActivity=true`, which the adapter's
+	 * `editMessage`/`deleteMessage` never send, so Teams answers `400` and the
+	 * card keeps its buttons. Posting is unaffected: `app.send` does route a
+	 * recipient-targeted activity to `createTargeted`. Drop the patch once the
+	 * adapter sends the flag itself.
 	 */
 	readonly targetSuspensionCardAtActingUser = true;
 
