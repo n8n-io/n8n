@@ -5,6 +5,14 @@ import { createRouter, createMemoryHistory, type Router } from 'vue-router';
 import SessionTimelineTable from '../components/SessionTimelineTable.vue';
 import type { TimelineItem } from '../session-timeline.types';
 
+vi.mock('@/app/stores/nodeTypes.store', function () {
+	return {
+		useNodeTypesStore() {
+			return { getNodeType() {} };
+		},
+	};
+});
+
 vi.mock('@n8n/design-system', async (importOriginal) => ({
 	...(await importOriginal()),
 	N8nRecycleScroller: {
