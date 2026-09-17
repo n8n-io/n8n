@@ -726,6 +726,8 @@ function hookFunctionsSaveWorker(
 
 		const isManualMode = this.mode === 'manual';
 
+		let wasUpdated = true;
+
 		try {
 			if (!isManualMode && isWorkflowIdValid(this.workflowData.id) && newStaticData) {
 				// Workflow is saved so update in database
@@ -782,18 +784,20 @@ function hookFunctionsSaveWorker(
 
 			// In scaling mode, worker saves execution without metadata
 			// Main process will save metadata after deletion decisions to avoid FK violations
-			await updateExistingExecution({
+			wasUpdated = await updateExistingExecution({
 				executionId: this.executionId,
 				workflowId: this.workflowData.id,
 				executionData,
 				conditions: fullRunData.status === 'canceled' ? undefined : { requireNotCanceled: true },
 			});
 		} finally {
-			workflowStatisticsService.emit('workflowExecutionCompleted', {
-				workflowData: this.workflowData,
-				fullRunData,
-				source,
-			});
+			if (wasUpdated) {
+				workflowStatisticsService.emit('workflowExecutionCompleted', {
+					workflowData: this.workflowData,
+					fullRunData,
+					source,
+				});
+			}
 		}
 	});
 }
