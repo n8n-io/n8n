@@ -37,7 +37,6 @@ const isConnected = computed(() => promoteConfig.value?.checkout.matchesConfig ?
 		:description="i18n.baseText('settings.promotions.promote.description')"
 	>
 		<N8nButton
-			type="primary"
 			:disabled="!isConnected"
 			data-test-id="promote-instance-button"
 			@click="dialogOpen = true"
