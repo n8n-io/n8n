@@ -3,7 +3,7 @@ import {
 	MCP_APPS_FLAG,
 	MCP_APPS_VARIANT_CONTROL,
 	MCP_APPS_VARIANT_ENABLED,
-	MCP_CANVAS_GROUPS_FLAG,
+	MCP_INSTANCE_CONTEXT_FLAG,
 	CONTEXT_PREFERENCES_ENABLED_VARIANT,
 	CONTEXT_PREFERENCES_FLAG,
 } from '@n8n/api-types';
@@ -81,11 +81,16 @@ import {
 } from './tools/data-table';
 import { createExecuteWorkflowTool } from './tools/execute-workflow.tool';
 import { createGetExecutionTool } from './tools/get-execution.tool';
+import { createGetNodeUsageTool } from './tools/get-node-usage.tool';
 import { createGetUserPreferencesTool } from './tools/get-user-preferences.tool';
 import { createWorkflowDetailsTool } from './tools/get-workflow-details.tool';
 import { createGetWorkflowHistoryTool } from './tools/get-workflow-history.tool';
 import { createGetWorkflowVersionTool } from './tools/get-workflow-version.tool';
 import { createGetWorkflowVersionsDiffTool } from './tools/get-workflow-versions-diff.tool';
+import {
+	createExpandInstanceActivityTool,
+	createGetInstanceActivityTool,
+} from './tools/instance-activity.tool';
 import { createListCredentialsTool } from './tools/list-credentials.tool';
 import { createListN8nGatewayServicesTool } from './tools/list-n8n-gateway-services.tool';
 import { createListTagsTool } from './tools/list-tags.tool';
@@ -131,8 +136,8 @@ export type McpAppsResolution = {
 /** Per-user resolution of every PostHog-gated MCP feature. */
 export type McpFeatureFlags = {
 	mcpApps: McpAppsResolution;
-	/** Canvas node-group support in the workflow-builder tools. */
-	canvasGroupsEnabled: boolean;
+	/** The instance-context read surface: the activity tools and node-usage. */
+	instanceContextEnabled: boolean;
 	/** The `get_user_preferences` tool. */
 	aiPreferencesEnabled: boolean;
 };
@@ -245,7 +250,7 @@ export class McpService {
 	 * PostHog.
 	 */
 	async resolveFeatureFlags(user: User): Promise<McpFeatureFlags> {
-		const { mcpAppsEnabled, mcpCanvasGroupsEnabled } = this.globalConfig.endpoints;
+		const { mcpAppsEnabled, mcpInstanceContextEnabled } = this.globalConfig.endpoints;
 
 		// `PostHogClient.getFeatureFlags` swallows PostHog errors internally and
 		// returns `{}`, so a transient outage fails closed (feature off, MCP Apps
@@ -254,7 +259,8 @@ export class McpService {
 
 		return {
 			mcpApps: this.resolveMcpApps(mcpAppsEnabled, flags),
-			canvasGroupsEnabled: mcpCanvasGroupsEnabled || flags[MCP_CANVAS_GROUPS_FLAG] === true,
+			instanceContextEnabled:
+				mcpInstanceContextEnabled || flags[MCP_INSTANCE_CONTEXT_FLAG] === true,
 			// Multivariate flag: only the `variant` arm enables the feature.
 			aiPreferencesEnabled: flags[CONTEXT_PREFERENCES_FLAG] === CONTEXT_PREFERENCES_ENABLED_VARIANT,
 		};
@@ -443,7 +449,6 @@ export class McpService {
 				instructions: getMcpInstructions({
 					isBuilderEnabled: builderInstructionsEnabled,
 					isN8nConnectAvailable: n8nConnectAvailable,
-					canvasGroupsEnabled: featureFlags.canvasGroupsEnabled,
 					isAgentsEnabled: agentInstructionsEnabled,
 					isUserPreferencesEnabled: userPreferencesInstructionsEnabled,
 				}),
@@ -597,6 +602,49 @@ export class McpService {
 			registerIfAllowed(listTagsTool);
 		}
 
+		if (featureFlags.instanceContextEnabled) {
+			// Whether the *token* carries `credential:read`. It narrows a token rather than proving a
+			// permission, so the reader treats it as one half of the credential gate and resolves the
+			// caller's real access for the other half.
+			const credentialGranted = allowedToolNames?.has('list_credentials') ?? true;
+
+			// The two activity tools also need the log to be *written*. `N8N_ACTIVITY_LOG_ENABLED`
+			// is off by default, and a tool that answers from a store nothing writes to reports an
+			// empty feed — which an agent reads as "nothing has happened here", the exact wrong
+			// conclusion. The inventory and run legs do not come from the log, so the context tool
+			// and node-usage stay available either way.
+			const activityLogWritten = this.globalConfig.activityLog.enabled;
+
+			// The activity reader belongs to the `instance-ai` module, so it is resolved lazily and
+			// only when that module is active — an instance with the surface off never builds it.
+			if (activityLogWritten && this.moduleRegistry.isActive('instance-ai')) {
+				const { InstanceContextService } = await import(
+					'@/modules/instance-ai/instance-context.service.js'
+				);
+				const instanceContext = Container.get(InstanceContextService);
+
+				registerIfAllowed(
+					createGetInstanceActivityTool(user, instanceContext, this.telemetry, {
+						credentialGranted,
+					}),
+				);
+				registerIfAllowed(
+					createExpandInstanceActivityTool(user, instanceContext, this.telemetry, {
+						credentialGranted,
+					}),
+				);
+			}
+
+			// Node usage reads the dependency index, which is not part of any module and is always
+			// available, so it is not gated on `instance-ai` the way the activity tools are.
+			const { WorkflowDependencyQueryService } = await import(
+				'@/modules/workflow-index/workflow-dependency-query.service.js'
+			);
+			registerIfAllowed(
+				createGetNodeUsageTool(user, Container.get(WorkflowDependencyQueryService), this.telemetry),
+			);
+		}
+
 		// Data table tools
 		const dataTableOps = this.dataTableProxyService.makeDataTableOperationsForUser(user);
 
@@ -695,9 +743,7 @@ export class McpService {
 		);
 		registerIfAllowed(getNodeTypesTool);
 
-		const bestPracticesTool = createGetWorkflowBestPracticesTool(user, this.telemetry, {
-			canvasGroupsEnabled: featureFlags.canvasGroupsEnabled,
-		});
+		const bestPracticesTool = createGetWorkflowBestPracticesTool(user, this.telemetry);
 		registerIfAllowed(bestPracticesTool);
 
 		const exploreNodeResourcesTool = createExploreNodeResourcesTool(
@@ -707,9 +753,7 @@ export class McpService {
 		);
 		registerIfAllowed(exploreNodeResourcesTool);
 
-		const validateTool = createValidateWorkflowCodeTool(user, this.telemetry, this.nodeTypes, {
-			canvasGroupsEnabled: featureFlags.canvasGroupsEnabled,
-		});
+		const validateTool = createValidateWorkflowCodeTool(user, this.telemetry, this.nodeTypes);
 		registerIfAllowed(validateTool);
 
 		const validateNodeTool = createValidateNodeTool(user, this.telemetry);
@@ -726,7 +770,6 @@ export class McpService {
 			this.projectRepository,
 			dataTableOps,
 			this.aiGatewayService,
-			{ canvasGroupsEnabled: featureFlags.canvasGroupsEnabled },
 			this.logger,
 			this.postSaveMetrics,
 		);
@@ -831,7 +874,6 @@ export class McpService {
 			this.subworkflowPolicyChecker,
 			this.workflowPublishedDataService,
 			this.aiGatewayService,
-			{ canvasGroupsEnabled: featureFlags.canvasGroupsEnabled },
 			this.logger,
 			this.postSaveMetrics,
 		);
@@ -860,9 +902,7 @@ export class McpService {
 					{
 						uri: 'n8n://workflow-sdk/reference',
 						mimeType: 'text/plain',
-						text: getSdkReferenceContent(undefined, {
-							includeGroups: featureFlags.canvasGroupsEnabled,
-						}),
+						text: getSdkReferenceContent(),
 					},
 				],
 			}),
@@ -870,9 +910,7 @@ export class McpService {
 
 		// SDK reference tool — always registered alongside the MCP resource above,
 		// so all clients can access the SDK reference regardless of resource support.
-		const sdkRefTool = createGetWorkflowSdkReferenceTool(user, this.telemetry, {
-			canvasGroupsEnabled: featureFlags.canvasGroupsEnabled,
-		});
+		const sdkRefTool = createGetWorkflowSdkReferenceTool(user, this.telemetry);
 		registerIfAllowed(sdkRefTool);
 	}
 

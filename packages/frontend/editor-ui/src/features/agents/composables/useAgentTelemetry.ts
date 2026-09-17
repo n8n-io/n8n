@@ -23,15 +23,10 @@ export function useAgentTelemetry() {
 		}
 	}
 
-	function trackClickedNewAgent(
-		source: AgentCreateSource,
-		agentId: string,
-		options?: { manual?: boolean },
-	) {
+	function trackClickedNewAgent(source: AgentCreateSource, agentId: string) {
 		safeTrack(TELEMETRY_EVENT.AGENTS.USER_CLICKED_NEW_AGENT, {
 			source,
 			agent_id: agentId,
-			...(options?.manual ? { manual: true } : {}),
 			...common(),
 		});
 	}

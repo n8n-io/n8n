@@ -396,115 +396,6 @@ describe('useInstanceAiHandoff', () => {
 		expect(mocks.showError).not.toHaveBeenCalled();
 	});
 
-	it('opens an agent artifact thread without sending a message', async () => {
-		const { openAgentArtifactThread } = useInstanceAiHandoff();
-		const context = buildInstanceAiAgentPreviewHandoffContext({
-			agentId: 'agent-1',
-			threadId: 'preview-thread-1',
-			executionId: 'execution-1',
-		});
-
-		const opened = await openAgentArtifactThread(
-			{
-				type: 'agent',
-				id: 'agent-1',
-				name: 'Agent One',
-				projectId: 'project-1',
-			},
-			{
-				source: 'agent_builder_page',
-				origin: 'internal',
-				sourceContext: { agentId: 'agent-1' },
-			},
-			{
-				context,
-				initialDraft: {
-					text: 'Fix the failed tool calls',
-					prefillType: 'handoff_agent_change_request',
-				},
-			},
-		);
-
-		expect(opened).toBe(true);
-		expect(mocks.syncThread).toHaveBeenCalledWith('thread-1', 'project-1', {
-			source: 'agent_builder_page',
-			origin: 'internal',
-			sourceContext: { agentId: 'agent-1' },
-		});
-		// One merged write from `provisionSubjectThread`: the target plus this
-		// handoff's own agent-preview context, in a single round trip.
-		expect(mocks.updateThreadMetadata).toHaveBeenCalledExactlyOnceWith('thread-1', {
-			instanceAiAgentBuilderTarget: {
-				agentId: 'agent-1',
-				projectId: 'project-1',
-				name: 'Agent One',
-			},
-			instanceAiAgentPreviewView: {
-				agentId: 'agent-1',
-				threadId: 'preview-thread-1',
-			},
-		});
-		expect(getPendingAgentAttachment('thread-1')).toEqual({
-			type: 'agent',
-			id: 'agent-1',
-			name: 'Agent One',
-			projectId: 'project-1',
-		});
-		expect(getPendingHandoffContext('thread-1')).toEqual(context);
-		expect(getPendingComposerDraft('thread-1')).toEqual({
-			text: 'Fix the failed tool calls',
-			prefillType: 'handoff_agent_change_request',
-		});
-		expect(mocks.getOrCreateRuntime).not.toHaveBeenCalled();
-		expect(mocks.sendMessage).not.toHaveBeenCalled();
-		expect(mocks.routerPush).toHaveBeenCalledWith({
-			name: 'InstanceAiThread',
-			params: { threadId: 'thread-1' },
-		});
-	});
-
-	it('clears pending agent handoff state when navigation fails', async () => {
-		mocks.routerPush.mockRejectedValueOnce(new Error('Navigation failed'));
-		const context = buildInstanceAiAgentPreviewHandoffContext({
-			agentId: 'agent-1',
-			threadId: 'preview-thread-1',
-		});
-		const { openAgentArtifactThread } = useInstanceAiHandoff();
-
-		const opened = await openAgentArtifactThread(
-			{ type: 'agent', id: 'agent-1', projectId: 'project-1' },
-			{ source: 'agent_preview', origin: 'internal' },
-			{
-				context,
-				initialDraft: {
-					text: 'Fix the failed tool calls',
-					prefillType: 'handoff_agent_change_request',
-				},
-			},
-		);
-
-		expect(opened).toBe(false);
-		expect(getPendingAgentAttachment('thread-1')).toBeNull();
-		expect(getPendingHandoffContext('thread-1')).toBeNull();
-		expect(getPendingComposerDraft('thread-1')).toBeNull();
-		expect(mocks.deleteThread).toHaveBeenCalledWith('thread-1');
-		expect(mocks.showError).toHaveBeenCalled();
-	});
-
-	it('removes the new thread when artifact metadata cannot be saved', async () => {
-		mocks.updateThreadMetadata.mockRejectedValueOnce(new Error('Save failed'));
-		const { openAgentArtifactThread } = useInstanceAiHandoff();
-
-		const opened = await openAgentArtifactThread(
-			{ type: 'agent', id: 'agent-1', projectId: 'project-1' },
-			{ source: 'agent_preview', origin: 'internal' },
-		);
-
-		expect(opened).toBe(false);
-		expect(mocks.deleteThread).toHaveBeenCalledWith('thread-1', { silent: true });
-		expect(mocks.routerPush).not.toHaveBeenCalled();
-	});
-
 	describe('before setup is finished', () => {
 		beforeEach(() => {
 			mocks.instanceAiReady.value = false;
@@ -536,19 +427,6 @@ describe('useInstanceAiHandoff', () => {
 				}),
 				{ source: 'credential_edit', origin: 'internal' },
 				{ newTab: true },
-			);
-
-			expect(opened).toBe(false);
-			expect(mocks.syncThread).not.toHaveBeenCalled();
-			expect(mocks.routerPush).toHaveBeenCalledWith({ name: 'InstanceAi' });
-		});
-
-		it('routes openAgentArtifactThread to the assistant without minting a thread', async () => {
-			const { openAgentArtifactThread } = useInstanceAiHandoff();
-
-			const opened = await openAgentArtifactThread(
-				{ type: 'agent', id: 'agent-1', projectId: 'project-1' },
-				{ source: 'agent_preview', origin: 'internal' },
 			);
 
 			expect(opened).toBe(false);
