@@ -2,7 +2,7 @@ operationId: getPromotionConnections
 tags:
   - Promotions
 summary: List promotion connections
-description: Returns a cursor-paginated list of connections with their stored configurations. Read one connection to get its local checkout state. Filter by `scope` for the instance connection, or by `providerId` to see which connections a provider edit affects.
+description: Returns a cursor-paginated list of connections with their configurations. Filter by `scope` for the instance connection, or by `providerId` to see which connections a provider edit affects.
 x-required-scope: gitConnection:list
 parameters:
   - $ref: ../../../../shared/spec/parameters/limit.yml
