@@ -129,10 +129,11 @@ type ExpandParams = { id: number; projectId?: string };
  */
 const buildScope = (
 	projectId: string | undefined,
-	credentialGranted: boolean,
+	options: { credentialGranted: boolean; executionGranted: boolean },
 ): InstanceContextScope => ({
 	surface: 'mcp',
-	credentialGranted,
+	credentialGranted: options.credentialGranted,
+	executionGranted: options.executionGranted,
 	...(projectId !== undefined ? { projectId } : {}),
 });
 
@@ -140,7 +141,7 @@ export const createGetInstanceActivityTool = (
 	user: User,
 	instanceContext: InstanceContextService,
 	telemetry: Telemetry,
-	options: { credentialGranted: boolean },
+	options: { credentialGranted: boolean; executionGranted: boolean },
 ): ToolDefinition<typeof listInputSchema> => ({
 	name: GET_INSTANCE_ACTIVITY_TOOL_NAME,
 	config: {
@@ -174,7 +175,7 @@ export const createGetInstanceActivityTool = (
 			// this figure sizes a database read, so it should not depend on validation upstream.
 			const { entries, hasMore, nextBeforeId } = await instanceContext.listPage({
 				user,
-				scope: buildScope(projectId, options.credentialGranted),
+				scope: buildScope(projectId, options),
 				limit: Math.min(Math.max(1, limit ?? DEFAULT_LIMIT), MAX_RESULTS),
 				...(category !== undefined ? { category } : {}),
 				...(resourceId !== undefined ? { resourceId } : {}),
@@ -210,7 +211,7 @@ export const createExpandInstanceActivityTool = (
 	user: User,
 	instanceContext: InstanceContextService,
 	telemetry: Telemetry,
-	options: { credentialGranted: boolean },
+	options: { credentialGranted: boolean; executionGranted: boolean },
 ): ToolDefinition<typeof expandInputSchema> => ({
 	name: EXPAND_INSTANCE_ACTIVITY_TOOL_NAME,
 	config: {
@@ -239,7 +240,7 @@ export const createExpandInstanceActivityTool = (
 			const expansion = await instanceContext.expand({
 				id,
 				user,
-				scope: buildScope(projectId, options.credentialGranted),
+				scope: buildScope(projectId, options),
 			});
 
 			// A pruned id and one the caller may not see answer the same way, so the tool cannot be

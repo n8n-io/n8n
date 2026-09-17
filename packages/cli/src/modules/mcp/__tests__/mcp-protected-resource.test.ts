@@ -6,6 +6,7 @@ import type { McpConfig } from '../mcp.config';
 import type { McpSettingsService } from '../mcp.settings.service';
 import type { UrlService } from '@/services/url.service';
 
+import { INSTANCE_CONTEXT_TOOLS } from '../mcp-scopes';
 import { McpProtectedResource } from '../mcp-protected-resource';
 
 const makeGlobalConfig = ({
@@ -54,6 +55,28 @@ describe('McpProtectedResource', () => {
 		});
 
 		/** Consent must not advertise a tool that `tools/list` will not carry. */
+		it('advertises the instance-context tools while the module is active', () => {
+			moduleRegistry.isActive.mockReturnValue(true);
+
+			const scopeTools = resource.getScopeTools();
+
+			for (const tool of INSTANCE_CONTEXT_TOOLS) {
+				expect(scopeTools['workflow:read']).toContain(tool);
+			}
+		});
+
+		it('withholds them from consent when the module is inactive', () => {
+			moduleRegistry.isActive.mockImplementation((name) => name !== 'instance-ai');
+
+			const scopeTools = resource.getScopeTools();
+
+			for (const tool of INSTANCE_CONTEXT_TOOLS) {
+				expect(scopeTools['workflow:read']).not.toContain(tool);
+			}
+			// Unrelated entries under the same scope are untouched.
+			expect(scopeTools['workflow:read']).toContain('search_workflows');
+		});
+
 		it('withholds the activity tools from consent when nothing writes the log', () => {
 			moduleRegistry.isActive.mockReturnValue(true);
 			const resourceWithoutLog = new McpProtectedResource(
