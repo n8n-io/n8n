@@ -163,7 +163,7 @@ export interface IDependency {
 }
 
 export interface IJsonSchema {
-	additionalProperties: boolean;
+	additionalProperties: false;
 	type: 'object';
 	properties: { [key: string]: { type: string } };
 	allOf?: IDependency[];

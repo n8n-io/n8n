@@ -3,7 +3,6 @@ import type { CredentialsEntity } from '@n8n/db';
 import { validate } from 'jsonschema';
 import {
 	type DisplayCondition,
-	type IDataObject,
 	type INodeProperties,
 	type INodePropertyOptions,
 } from 'n8n-workflow';
@@ -69,7 +68,7 @@ export function validateCredentialData(
 	const schema = toJsonSchema(properties);
 
 	if (options?.partialData) {
-		delete schema.required;
+		schema.required = [];
 		delete schema.allOf;
 	}
 
@@ -111,7 +110,7 @@ export function assertValidUpdateProperties(
  * the JSON Schema definition we can validate the credential's shape
  * @param properties - Credentials properties
  */
-export function toJsonSchema(properties: INodeProperties[]): IDataObject {
+export function toJsonSchema(properties: INodeProperties[]): IJsonSchema {
 	const jsonSchema: IJsonSchema = {
 		additionalProperties: false,
 		type: 'object',
@@ -296,5 +295,5 @@ export function toJsonSchema(properties: INodeProperties[]): IDataObject {
 		delete jsonSchema.allOf;
 	}
 
-	return jsonSchema as unknown as IDataObject;
+	return jsonSchema;
 }

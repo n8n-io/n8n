@@ -478,6 +478,6 @@ export class CredentialsPublicController {
 			.getCredentialsProperties(credentialTypeName)
 			.filter((property) => property.type !== 'hidden');
 
-		return CredentialSchemaPublicDto.parse(toJsonSchema(properties));
+		return toJsonSchema(properties);
 	}
 }
