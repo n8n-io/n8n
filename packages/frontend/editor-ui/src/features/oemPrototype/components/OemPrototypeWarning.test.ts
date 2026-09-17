@@ -20,8 +20,10 @@ describe('OemPrototypeWarning', () => {
 	it('should show the usage reporting warning in an N8nAlert', () => {
 		const { getByRole, getByText } = renderComponent();
 
+		const dismissButton = getByRole('button', { name: 'Dismiss' });
 		expect(getByRole('alert')).toHaveClass('n8n-alert');
-		expect(getByRole('button', { name: 'Dismiss' })).toBeVisible();
+		expect(dismissButton).toBeVisible();
+		expect(dismissButton).toHaveClass('subtle', 'xsmall');
 		expect(getByText("Usage reporting isn't reaching n8n")).toBeVisible();
 		expect(
 			getByText(

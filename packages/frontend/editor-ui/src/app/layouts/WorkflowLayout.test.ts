@@ -97,9 +97,6 @@ const defaultStubs = {
 	OemPrototypeWarning: {
 		template: '<div data-test-id="oem-prototype-warning">Prototype Warning</div>',
 	},
-	OemPrototypeCanvasLogo: {
-		template: '<div data-test-id="oem-prototype-canvas-logo">Prototype Logo</div>',
-	},
 	RouterView: {
 		template: '<div>Workflow Content</div>',
 	},
@@ -193,7 +190,6 @@ describe('WorkflowLayout', () => {
 		expect(topBar.compareDocumentPosition(warning)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
 		expect(warning.compareDocumentPosition(appHeader)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
 		expect(appHeader).toHaveAttribute('data-force-full-header');
-		expect(getByTestId('oem-prototype-canvas-logo')).toBeInTheDocument();
 		expect(queryByTestId('app-sidebar')).not.toBeInTheDocument();
 		expect(getByText('Workflow Content')).toBeInTheDocument();
 	});

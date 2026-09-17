@@ -17,7 +17,6 @@ import AppSidebar from '@/app/components/app/AppSidebar.vue';
 import LogsPanel from '@/features/execution/logs/components/LogsPanel.vue';
 import LoadingView from '@/app/views/LoadingView.vue';
 import { useSettingsStore } from '@n8n/stores/settings.store';
-import OemPrototypeCanvasLogo from '@/features/oemPrototype/components/OemPrototypeCanvasLogo.vue';
 import OemPrototypeTopBar from '@/features/oemPrototype/components/OemPrototypeTopBar.vue';
 import OemPrototypeWarning from '@/features/oemPrototype/components/OemPrototypeWarning.vue';
 import { isOemPrototypeTicket } from '@/features/oemPrototype/oemPrototype.constants';
@@ -114,7 +113,6 @@ onBeforeUnmount(() => {
 			<div :class="$style.prototypeCanvas">
 				<LoadingView v-if="isLoading || (!currentWorkflowDocumentStore && !isOnboardingRoute)" />
 				<RouterView v-else />
-				<OemPrototypeCanvasLogo v-if="isCanvasOnly" />
 			</div>
 		</div>
 		<template v-else>

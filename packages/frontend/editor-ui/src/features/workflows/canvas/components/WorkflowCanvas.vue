@@ -37,6 +37,9 @@ import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store
 import { useWorkflowDocumentRenderData } from '@/app/stores/workflowDocument/useWorkflowDocumentRenderData';
 import { useExperimentalNdvStore } from '../experimental/experimentalNdv.store';
 import { useAgentNodeCanvasGeometryStore } from '@/features/agents/agentNodeCanvasGeometry.store';
+import { useRoute } from 'vue-router';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import OemPrototypeCanvasLogo from '@/features/oemPrototype/components/OemPrototypeCanvasLogo.vue';
 
 defineOptions({
 	inheritAttrs: false,
@@ -70,6 +73,11 @@ const props = withDefaults(
 const canvasRef = useTemplateRef('canvas');
 const $style = useCssModule();
 const workflowDocumentStore = injectWorkflowDocumentStore();
+const route = useRoute();
+const settingsStore = useSettingsStore();
+const showOemPrototypeLogo = computed(
+	() => route?.meta.oemPrototype === true && settingsStore.isCanvasOnly,
+);
 
 // `useWorkflowDocumentRenderData` is side-effectful (subscribes to the document
 // store and creates per-node effect scopes), so it must run once per document
@@ -318,6 +326,7 @@ defineExpose({
 				v-bind="$attrs"
 			/>
 		</div>
+		<OemPrototypeCanvasLogo v-if="showOemPrototypeLogo" />
 		<slot />
 	</div>
 </template>
