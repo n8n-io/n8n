@@ -49,8 +49,10 @@ describe('applyEngineEnv', () => {
 	test('rejects a stack without Postgres', () => {
 		const env: Record<string, string> = { DB_TYPE: 'sqlite' };
 
+		// The connection-env error also says "Postgres", so match what only this
+		// error says. Otherwise the test passes when the guard is gone.
 		expect(() => applyEngineEnv(env, { engine: 'in-process', isQueueMode: false })).toThrow(
-			/Postgres/,
+			/set `postgres: true`/,
 		);
 	});
 
