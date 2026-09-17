@@ -1,0 +1,14 @@
+packages/workflow/src/constants.ts
+  h_2f80f0e06f710c 129
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4be3f0d320eb8da6177b83606cc65ad4da5bf585",
+  "prompts": {},
+  "humans": {
+    "h_2f80f0e06f710c": {
+      "author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}
