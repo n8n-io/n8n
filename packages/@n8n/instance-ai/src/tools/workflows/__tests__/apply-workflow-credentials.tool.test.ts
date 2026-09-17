@@ -184,6 +184,49 @@ describe('createApplyWorkflowCredentialsTool', () => {
 		expect(context.domainContext!.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
 	});
 
+	it.each([{}, { slackApi: 'unrelated' }])(
+		'does not save when supplied credentials do not match the mocked node: %j',
+		async (credentials) => {
+			const context = makeContext();
+			const result = await executeTool(createApplyWorkflowCredentialsTool(context), {
+				workItemId: 'wi_test',
+				workflowId: 'wf-1',
+				credentials,
+			});
+
+			expect(result).toEqual({ success: true, appliedNodes: [] });
+			expect(context.domainContext!.credentialService.get).not.toHaveBeenCalled();
+			expect(context.domainContext!.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
+		},
+	);
+
+	it('reports only nodes that receive a credential and leaves unmatched nodes unchanged', async () => {
+		const workflowJson = {
+			nodes: [
+				{ name: 'Gemini', type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini', parameters: {} },
+				{ name: 'Slack', type: 'n8n-nodes-base.slack', parameters: {} },
+			],
+			connections: {},
+		};
+		const context = makeContext({
+			workflowJson,
+			buildOutcome: { mockedCredentialsByNode: { Gemini: ['googlePalmApi'], Slack: ['slackApi'] } },
+		});
+		const result = await executeTool(createApplyWorkflowCredentialsTool(context), {
+			workItemId: 'wi_test',
+			workflowId: 'wf-1',
+			credentials: { googlePalmApi: 'cred-1' },
+		});
+
+		expect(result).toMatchObject({
+			success: true,
+			appliedNodes: ['Gemini'],
+			publishState: { savedVersionId: 'v-1' },
+		});
+		expect(workflowJson.nodes[1]).not.toHaveProperty('credentials');
+		expect(context.domainContext!.workflowService.updateFromWorkflowJSON).toHaveBeenCalledTimes(1);
+	});
+
 	it('returns no saved revision when the credential save fails', async () => {
 		const context = makeContext();
 		vi.mocked(context.domainContext!.workflowService.updateFromWorkflowJSON).mockRejectedValue(

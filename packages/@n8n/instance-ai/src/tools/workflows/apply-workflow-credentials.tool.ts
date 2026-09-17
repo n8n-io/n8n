@@ -72,7 +72,7 @@ export function createApplyWorkflowCredentialsTool(context: OrchestrationContext
 				const mockedTypes = mockedCredentialsByNode[nodeName];
 				if (!mockedTypes?.length) continue;
 
-				node.credentials ??= {};
+				let credentialApplied = false;
 
 				for (const credType of mockedTypes) {
 					const credId = input.credentials[credType];
@@ -81,8 +81,9 @@ export function createApplyWorkflowCredentialsTool(context: OrchestrationContext
 					const resolved = await resolveCredentialForApply(credType, credId, context.domainContext);
 					if (!resolved.resolved) return { success: false, error: resolved.error };
 					assignCredentialToNode(node, credType, resolved.credential);
+					credentialApplied = true;
 				}
-				appliedNodes.push(nodeName);
+				if (credentialApplied) appliedNodes.push(nodeName);
 			}
 
 			if (appliedNodes.length === 0) {
