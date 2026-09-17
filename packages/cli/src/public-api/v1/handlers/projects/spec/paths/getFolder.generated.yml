@@ -1,0 +1,69 @@
+operationId: getFolder
+tags:
+  - Folders
+summary: Get folder details
+description: Get folder details including sub-folder and workflow counts.
+x-required-scope: folder:read
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+parameters:
+  - schema:
+      type: string
+    required: true
+    description: The ID of the project.
+    name: projectId
+    in: path
+  - schema:
+      type: string
+    required: true
+    description: The ID of the folder.
+    name: folderId
+    in: path
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            id:
+              type: string
+              readOnly: true
+              example: zLXWgYyZrZ4Gn1Vk
+            name:
+              type: string
+              example: My Folder
+            parentFolderId:
+              type: string
+              nullable: true
+              example: kRZ0ewrAEAhCkTBd
+            createdAt:
+              type: string
+              format: date-time
+              readOnly: true
+            updatedAt:
+              type: string
+              format: date-time
+              readOnly: true
+            totalSubFolders:
+              type: integer
+              description: Total number of sub-folders (recursive).
+            totalWorkflows:
+              type: integer
+              description: Total number of workflows (recursive).
+          required:
+            - id
+            - name
+            - parentFolderId
+            - createdAt
+            - updatedAt
+            - totalSubFolders
+            - totalWorkflows
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml

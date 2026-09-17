@@ -173,7 +173,7 @@ async function onRefreshData() {
 	}
 
 	try {
-		await executionsStore.fetchExecutions({
+		await executionsStore.refreshExecutions({
 			...executionsStore.executionsFilters,
 			workflowId: workflowId.value,
 		});
@@ -317,14 +317,8 @@ async function loadMore(): Promise<void> {
 
 	loadingMore.value = true;
 
-	let lastId: string | undefined;
-	if (executions.value.length !== 0) {
-		const lastItem = executions.value.slice(-1)[0];
-		lastId = lastItem.id;
-	}
-
 	try {
-		await executionsStore.fetchExecutions(executionsStore.executionsFilters, lastId);
+		await executionsStore.loadMoreExecutions();
 	} catch (error) {
 		loadingMore.value = false;
 		toast.showError(error, i18n.baseText('executionsList.showError.loadMore.title'));

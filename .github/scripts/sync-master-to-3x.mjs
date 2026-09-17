@@ -64,6 +64,9 @@
  */
 
 import { execFileSync } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 import {
 	attempt,
@@ -139,6 +142,20 @@ export function blocksLockfileRegen(codePaths) {
 	);
 }
 
+/** Run the trusted frozen install without using a store restored by the sync job. */
+export function validateLockfile(pnpm, env = process.env) {
+	const validationDir = join(env.RUNNER_TEMP || tmpdir(), `n8n-sync-lockfile-${randomUUID()}`);
+	pnpm([
+		'install',
+		'--frozen-lockfile',
+		'--trust-lockfile',
+		'--store-dir',
+		join(validationDir, 'store'),
+		'--virtual-store-dir',
+		join(validationDir, 'virtual-store'),
+	]);
+}
+
 /**
  * Resolve one mechanical path in the working tree (valid mid-merge and mid-rebase alike)
  * and stage the result.
@@ -150,6 +167,12 @@ export function resolveMechanicalPath({ git, pnpm, path, masterSha, log = consol
 		// is required: pnpm flips `--frozen-lockfile` on by default when CI=true.
 		log(`Regenerating ${path} with pnpm...`);
 		pnpm(['install', '--lockfile-only', '--no-frozen-lockfile']);
+		try {
+			validateLockfile(pnpm);
+		} catch (error) {
+			git(['checkout', '--conflict=merge', '--', path]);
+			throw error;
+		}
 		git(['add', '--', path]);
 		return;
 	}
@@ -305,6 +328,7 @@ export function reconcileWithMergeTreeAtTip({
  */
 export function reconcileLockfileAtTip({ git, pnpm, masterSha, log = console.log }) {
 	pnpm(['install', '--lockfile-only', '--no-frozen-lockfile']);
+	validateLockfile(pnpm);
 	if (attempt(git, ['diff', '--quiet', '--', LOCKFILE]).ok) return;
 	if (git(['rev-parse', 'HEAD']) === masterSha) {
 		throw new Error('Lockfile reconciliation would amend a master commit; refusing.');
@@ -328,8 +352,9 @@ export function reconcileLockfileAtTip({ git, pnpm, masterSha, log = console.log
  * nothing in the diff to suggest a decision was made.
  *
  * The lockfile is left with its markers when a manifest is among the code conflicts
- * (regenerating is meaningless until the manifests are resolved) or when the regen fails
- * transiently — flagged via `lockfileDeferred` so the PR body carries the instruction.
+ * (regenerating is meaningless until the manifests are resolved) or when regeneration or
+ * frozen-install validation fails — flagged via `lockfileDeferred` so the PR body carries
+ * the instruction.
  *
  * 3.x never carries the markers at its tip, and not for long in its history either: this
  * merge commit is dropped by the next replay, which takes the queue's commits only.

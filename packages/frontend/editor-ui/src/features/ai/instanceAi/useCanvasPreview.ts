@@ -1,6 +1,5 @@
 import { computed, ref, watch } from 'vue';
 import type { IconName } from '@n8n/design-system';
-import { agentsEventBus } from '@/features/agents/agents.eventBus';
 import {
 	getLatestBuildResult,
 	getLatestBuilderTarget,
@@ -8,11 +7,11 @@ import {
 	getLatestWorkflowUpdateResult,
 	getLatestDataTableResult,
 	getLatestDeletedDataTableId,
-	getLatestAgentConfigMutation,
 	getLatestAgentBuilderTarget,
 	getExecutionResultsByWorkflow,
 	type ExecutionResult,
 } from './canvasPreview.utils';
+import { useAgentMutationRefresh } from './composables/useAgentMutationRefresh';
 import { useBuildingArtifactIds } from './composables/useBuildingArtifactIds';
 import { useIsAgentWorking } from './composables/useIsAgentWorking';
 import type { ThreadRuntime } from './instanceAi.store';
@@ -508,33 +507,7 @@ export function useCanvasPreview({
 	});
 
 	// --- Signal persisted builder config mutations onto the agents event bus ---
-	// Every successful config-mutating builder tool call (stamped configMutated
-	// by the backend) notifies any mounted AgentBuilderView for that agent —
-	// the artifact panel, or a full-page builder in another route.
-
-	const latestAgentConfigMutation = computed(() => {
-		for (let i = thread.messages.length - 1; i >= 0; i--) {
-			const msg = thread.messages[i];
-			if (msg.agentTree) {
-				const result = getLatestAgentConfigMutation(msg.agentTree);
-				if (result) return result;
-			}
-		}
-		return null;
-	});
-
-	watch(
-		() => latestAgentConfigMutation.value?.toolCallId,
-		(toolCallId) => {
-			if (!toolCallId || !latestAgentConfigMutation.value) return;
-			if (thread.isHydratingThread) return;
-			agentsEventBus.emit('agentUpdated', {
-				agentId: latestAgentConfigMutation.value.agentId,
-				source: 'instance-ai',
-			});
-		},
-		{ flush: 'sync' },
-	);
+	useAgentMutationRefresh(thread);
 
 	return {
 		activeTabId,
