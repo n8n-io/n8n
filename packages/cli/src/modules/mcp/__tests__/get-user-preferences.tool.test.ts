@@ -175,7 +175,6 @@ describe('get-user-preferences MCP tool', () => {
 
 				expect(aiPreferenceService.getApplicableForProject).toHaveBeenCalledWith(user, 'p-1');
 				expect(aiPreferenceService.getApplicableAcrossProjects).not.toHaveBeenCalled();
-				// The instance and personal rows still ride along; only other projects are left out.
 				expect(
 					(result.structuredContent as { preferences: Array<{ scope: string }> }).preferences.map(
 						(item) => item.scope,
@@ -408,7 +407,6 @@ describe('get-user-preferences MCP tool', () => {
 			});
 		});
 
-		// CONTEXT-144 reads this to see how often a caller narrows the read.
 		test('reports the projectId a narrowed call passed', async () => {
 			const { aiPreferenceService, telemetry } = createMocks(empty);
 			const tool = createGetUserPreferencesTool(user, aiPreferenceService, telemetry);

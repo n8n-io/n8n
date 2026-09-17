@@ -133,18 +133,10 @@ export class AiPreferenceService {
 		return groupAiPreferences(rows, projects);
 	}
 
-	/**
-	 * For a caller working in one project: that project's preferences plus the instance and
-	 * personal rows, and nothing from the caller's other projects. The access rule is the one
-	 * `getApplicableAcrossProjects` applies to each project, so narrowing the read can never
-	 * widen it. A project the caller may not read answers like a missing one, the same as
-	 * `requireVisible`.
-	 */
 	async getApplicableForProject(user: User, projectId: string): Promise<ApplicableAiPreferences> {
 		const readable = await this.projectAccess(user).has(projectId, 'read');
 		const project = readable ? await this.projectRepository.findOneBy({ id: projectId }) : null;
-		// A global scope covers every team project but never another user's personal project.
-		// The caller's own passes, and its rows fold into their personal preferences.
+		// Global access does not include another user's personal project.
 		const foreignPersonal =
 			project?.type === 'personal' &&
 			(await this.projectRepository.getPersonalProjectForUser(user.id))?.id !== project.id;

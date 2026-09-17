@@ -261,7 +261,6 @@ describe('AiPreferenceService', () => {
 			await expect(service.getApplicableForProject(owner, 'gone')).rejects.toThrow(NotFoundError);
 		});
 
-		// The across-projects read never includes them either; the narrowed read must not widen it.
 		it("rejects another user's personal project, even for an owner", async () => {
 			const owner = mock<User>({ id: 'owner-1', role: GLOBAL_OWNER_ROLE });
 			const othersPersonal = mock<Project>({

@@ -25,7 +25,6 @@ const DESCRIPTION = [
 /** A definite answer, so the assistant does not call again looking for one. */
 const NOTHING_SAVED = 'No preferences are saved for this instance, for you, or for your projects.';
 
-/** The single-project read answers about that project, not about projects it never read. */
 const NOTHING_SAVED_FOR_PROJECT =
 	'No preferences are saved for this instance, for you, or for this project.';
 
@@ -108,15 +107,12 @@ export const createGetUserPreferencesTool = (
 		const telemetryPayload: UserCalledMCPToolEventPayload = {
 			user_id: user.id,
 			tool_name: MCP_GET_USER_PREFERENCES_TOOL_NAME,
-			// Reported so CONTEXT-144 can see how often a caller narrows the read.
 			parameters: { projectId },
 		};
 
 		try {
 			// The OAuth grant decides whether this client may call the tool. No RBAC check: the
 			// service only returns rows the user may see, and their own rows need no scope.
-			// A projectId the caller may not read throws and answers as an error result below,
-			// never as an empty success.
 			const preferences = projectId
 				? await aiPreferenceService.getApplicableForProject(user, projectId)
 				: await aiPreferenceService.getApplicableAcrossProjects(user);
