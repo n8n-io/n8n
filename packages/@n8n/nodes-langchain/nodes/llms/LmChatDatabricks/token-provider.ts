@@ -13,7 +13,7 @@ import { createRefreshingOAuth2TokenProvider } from '../../../utils/oauth2-token
 
 export const DATABRICKS_CREDENTIAL_TYPE = 'databricksOAuth2Api';
 
-export interface DatabricksOAuth2Credential {
+export type DatabricksOAuth2Credential = {
 	host: string;
 	grantType: 'clientCredentials' | 'authorizationCode';
 	clientId: string;
@@ -22,7 +22,7 @@ export interface DatabricksOAuth2Credential {
 	authentication?: 'header' | 'body';
 	oauthTokenData?: OAuth2TokenData;
 	tokenExpiredStatusCode?: number;
-}
+};
 
 /**
  * A service principal re-mints from its permanent secret; a user login spends a

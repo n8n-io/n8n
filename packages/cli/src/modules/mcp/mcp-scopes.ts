@@ -1,6 +1,8 @@
 import type { McpScope } from '@n8n/api-types';
 import { MCP_INSTANCE_SCOPES } from '@n8n/api-types';
 
+import { MCP_GET_USER_PREFERENCES_TOOL_NAME } from './mcp.constants';
+
 /**
  * Maps each grantable OAuth scope to the MCP tools it unlocks. A tool is
  * available if ANY granted scope covers it, so support tools (node search,
@@ -24,6 +26,11 @@ export const TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = {
 		'get_workflow_sdk_reference',
 		'validate_workflow',
 		'validate_node_config',
+		// Instance-context reads. Both describe workflows, so `workflow:read` is the bar; the
+		// activity tools drop credential entries for a grant that lacks `credential:read`.
+		'get_instance_activity',
+		'expand_instance_activity',
+		'get_node_usage',
 	],
 	'workflow:write': [
 		'create_workflow_from_code',
@@ -90,6 +97,10 @@ export const TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = {
 	// so the search tools ride along on a write-only grant.
 	'project:write': ['create_folder', 'update_folder', 'search_projects', 'search_folders'],
 	'tag:read': ['list_workflow_tags'],
+	// `ai_preference` is a first-class resource, so reading it rides on a normal scope rather
+	// than an MCP-only string. Not builder-gated: preferences apply to Agents, data tables and
+	// folders too, none of which need the builder.
+	'aiPreference:read': [MCP_GET_USER_PREFERENCES_TOOL_NAME],
 };
 
 /**
@@ -125,6 +136,28 @@ export const BUILDER_TOOLS: ReadonlySet<string> = new Set([
 	'search_projects',
 	'search_folders',
 	...FOLDER_FEATURE_TOOLS,
+]);
+
+/**
+ * Tools only registered when the instance-context read surface is on
+ * (`N8N_MCP_INSTANCE_CONTEXT_ENABLED` or its rollout flag) and the `instance-ai`
+ * module is active. Same role as BUILDER_TOOLS and AGENT_TOOLS: it lets the
+ * scope-map drift guard tell "not mapped" from "not registered here".
+ */
+/**
+ * Of those, the ones that read the activity log itself, so they also need
+ * `N8N_ACTIVITY_LOG_ENABLED`. The others draw on the workflow and execution tables and work
+ * whether or not anything is writing the log.
+ */
+export const ACTIVITY_LOG_TOOLS: ReadonlySet<string> = new Set([
+	'get_instance_activity',
+	'expand_instance_activity',
+]);
+
+export const INSTANCE_CONTEXT_TOOLS: ReadonlySet<string> = new Set([
+	'get_instance_activity',
+	'expand_instance_activity',
+	'get_node_usage',
 ]);
 
 export const AGENT_TOOLS: ReadonlySet<string> = new Set([
