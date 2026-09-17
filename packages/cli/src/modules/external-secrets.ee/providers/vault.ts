@@ -2,8 +2,10 @@ import { Logger } from '@n8n/backend-common';
 import {
 	type HttpRequestClient,
 	isConnectionRefusedError,
+	isTransportFailure,
 	OutboundHttp,
 } from '@n8n/backend-network';
+import { Time } from '@n8n/constants';
 import { Container } from '@n8n/di';
 import {
 	type IDataObject,
@@ -288,7 +290,7 @@ export class VaultProvider extends SecretsProvider {
 
 	#http: HttpRequestClient;
 
-	private refreshTimeout: NodeJS.Timeout | null;
+	private refreshTimeout: NodeJS.Timeout | null = null;
 
 	private refreshAbort = new AbortController();
 
@@ -302,11 +304,15 @@ export class VaultProvider extends SecretsProvider {
 
 	async init(settings: SecretsProviderSettings): Promise<void> {
 		this.settings = settings.settings as unknown as VaultSettings;
+		const config = Container.get(ExternalSecretsConfig);
 
 		this.#http = this.outboundHttp.requests({
 			baseURL: new URL(this.settings.url).toString(), // Normalize here so a malformed URL fails at init time rather than on the first request.
 			headers: () => this.buildAuthHeaders(),
 			useDefaultSsrfPolicy: 'unsafe', // admin-configured infrastructure
+			// Aborts the socket, so a request a caller stopped waiting for does not stay open. The
+			// larger bound, so no single request is cut before its operation's own deadline.
+			timeout: Math.max(config.connectTimeout, config.refreshTimeout) * Time.seconds.toMilliseconds,
 		});
 
 		this.logger.debug('Vault provider initialized');
@@ -357,16 +363,23 @@ export class VaultProvider extends SecretsProvider {
 	}
 
 	async disconnect(): Promise<void> {
-		if (this.refreshTimeout !== null) {
-			clearTimeout(this.refreshTimeout);
-		}
+		this.clearTokenRefresh();
 		this.refreshAbort.abort();
 	}
 
+	private clearTokenRefresh() {
+		if (this.refreshTimeout !== null) {
+			clearTimeout(this.refreshTimeout);
+			this.refreshTimeout = null;
+		}
+	}
+
 	private setupTokenRefresh() {
+		// A failed lookup keeps the chain that exists. A token that is not renewable drops it.
 		if (!this.#tokenInfo) {
 			return;
 		}
+		this.clearTokenRefresh();
 		// Token never expires
 		if (this.#tokenInfo.expire_time === null) {
 			return;
@@ -377,10 +390,11 @@ export class VaultProvider extends SecretsProvider {
 		}
 
 		const expireDate = new Date(this.#tokenInfo.expire_time);
-		setTimeout(this.tokenRefresh, (expireDate.valueOf() - Date.now()) / 2);
+		this.refreshTimeout = setTimeout(this.tokenRefresh, (expireDate.valueOf() - Date.now()) / 2);
 	}
 
 	private tokenRefresh = async () => {
+		this.refreshTimeout = null;
 		if (this.refreshAbort.signal.aborted) {
 			return;
 		}
@@ -487,6 +501,9 @@ export class VaultProvider extends SecretsProvider {
 		try {
 			listBody = await this.#http.request<VaultResponse<VaultSecretList>>(listRequest);
 		} catch (error) {
+			// A broken or timed-out request fails the whole pull, so the last complete snapshot
+			// stays. Only a denied or missing path is skipped.
+			if (isTransportFailure(error)) throw error;
 			const errorContext = buildHttpProviderErrorContext(error);
 			this.logger.debug('Vault provider failed to list KV secrets', {
 				providerName: this.name,
@@ -519,6 +536,7 @@ export class VaultProvider extends SecretsProvider {
 								kvVersion === '2' ? (secretBody.data.data as IDataObject) : secretBody.data,
 							];
 						} catch (error) {
+							if (isTransportFailure(error)) throw error;
 							const errorContext = buildHttpProviderErrorContext(error);
 							this.logger.debug('Vault provider failed to read KV secret', {
 								providerName: this.name,
@@ -533,7 +551,11 @@ export class VaultProvider extends SecretsProvider {
 					}),
 				)
 			)
-				.map((i) => (i.status === 'rejected' ? null : i.value))
+				.map((i) => {
+					// Only a transport failure rejects here; every other read error was already skipped.
+					if (i.status === 'rejected') throw i.reason;
+					return i.value;
+				})
 				.filter((v): v is [string, IDataObject] => v !== null),
 		);
 		this.logger.debug(`Vault provider retrieved kv secrets from ${mountPath}${path}`);

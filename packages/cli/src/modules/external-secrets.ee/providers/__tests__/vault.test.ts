@@ -73,12 +73,16 @@ describe('VaultProvider', () => {
 	logger.scoped.mockReturnValue(logger);
 
 	// Use preferGet so list requests are plain GETs with `?list=true`.
-	mockInstance(ExternalSecretsConfig, { preferGet: true });
+	mockInstance(ExternalSecretsConfig, { preferGet: true, connectTimeout: 20, refreshTimeout: 45 });
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 		logger.scoped.mockReturnValue(logger);
-		mockInstance(ExternalSecretsConfig, { preferGet: true });
+		mockInstance(ExternalSecretsConfig, {
+			preferGet: true,
+			connectTimeout: 20,
+			refreshTimeout: 45,
+		});
 	});
 
 	function createProvider(routes: Route[], settings = vaultSettings) {
@@ -104,6 +108,7 @@ describe('VaultProvider', () => {
 				baseURL: VAULT_URL,
 				headers: expect.any(Function),
 				useDefaultSsrfPolicy: 'unsafe',
+				timeout: 45_000,
 			});
 		});
 
@@ -287,6 +292,21 @@ describe('VaultProvider', () => {
 			expect(provider.getSecret('secret')).toEqual({ myapp: { password: 'hunter2' } });
 			expect(provider.hasSecret('secret')).toBe(true);
 			expect(provider.getSecretNames()).toContain('secret.myapp.password');
+		});
+
+		it('should fail the pull when a secret read breaks at the transport', async () => {
+			const { provider } = await initProvider([
+				{
+					method: 'GET',
+					pathname: '/v1/sys/mounts',
+					body: mountsResponse({ 'secret/': { type: 'kv', options: { version: '2' } } }),
+				},
+				{ method: 'GET', pathname: '/v1/secret/metadata/', body: { data: { keys: ['myapp'] } } },
+				{ method: 'GET', pathname: '/v1/secret/data/myapp', networkError: 'ECONNREFUSED' },
+			]);
+
+			await expect(provider.update()).rejects.toThrow();
+			expect(provider.hasSecret('secret')).toBe(false);
 		});
 
 		it('should keep the existing key shape for nested folders', async () => {
@@ -643,6 +663,46 @@ describe('VaultProvider', () => {
 					providerName: 'vault',
 				}),
 			);
+		});
+	});
+
+	describe('token refresh', () => {
+		it('keeps one renewal timer across reconnects and drops it once the token is not renewable', async () => {
+			const renewable = {
+				data: {
+					...tokenLookupResponse().data,
+					renewable: true,
+					expire_time: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+				},
+			};
+			const { provider } = await initProvider([
+				{ method: 'GET', pathname: '/v1/auth/token/lookup-self', body: renewable },
+				{
+					method: 'GET',
+					pathname: '/v1/sys/mounts',
+					body: mountsResponse({ 'secret/': { type: 'kv', options: { version: '2' } } }),
+				},
+			]);
+
+			vi.useFakeTimers();
+			try {
+				await provider.connect();
+				await provider.connect();
+				expect(vi.getTimerCount()).toBe(1);
+
+				renewable.data.renewable = false;
+				await provider.connect();
+				expect(vi.getTimerCount()).toBe(0);
+
+				renewable.data.renewable = true;
+				await provider.connect();
+				expect(vi.getTimerCount()).toBe(1);
+
+				await provider.disconnect();
+				expect(vi.getTimerCount()).toBe(0);
+			} finally {
+				vi.useRealTimers();
+			}
 		});
 	});
 

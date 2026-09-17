@@ -36,6 +36,7 @@ export { default as N8nButtonList } from './N8nButtonList';
 export type { ButtonListOrientation, ButtonListProps } from './N8nButtonList';
 export { default as N8nCallout } from './N8nCallout';
 export { default as N8nCanvasThinkingPill } from './CanvasThinkingPill';
+export { default as N8nCanvasPill } from './CanvasPill';
 export { default as N8nCanvasCollaborationPill } from './CanvasCollaborationPill';
 export { default as N8nCard } from './N8nCard';
 export { default as N8nCircleLoader } from './N8nCircleLoader';

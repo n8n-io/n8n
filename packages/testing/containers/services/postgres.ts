@@ -3,7 +3,7 @@ import type { StartedNetwork, StartedTestContainer } from 'testcontainers';
 
 import { createSilentLogConsumer } from '../helpers/utils';
 import { TEST_CONTAINER_IMAGES } from '../test-containers';
-import type { HelperContext, Service, ServiceResult } from './types';
+import type { HelperContext, Service, ServiceResult, StartContext } from './types';
 
 const HOSTNAME = 'postgres';
 
@@ -19,7 +19,12 @@ export const postgres: Service<PostgresResult> = {
 	description: 'PostgreSQL database',
 	shouldStart: (ctx) => ctx.usePostgres,
 
-	async start(network: StartedNetwork, projectName: string): Promise<PostgresResult> {
+	async start(
+		network: StartedNetwork,
+		projectName: string,
+		_options?: unknown,
+		ctx?: StartContext,
+	): Promise<PostgresResult> {
 		const { consumer, throwWithLogs } = createSilentLogConsumer();
 
 		const builder = new PostgreSqlContainer(TEST_CONTAINER_IMAGES.postgres)
@@ -64,6 +69,7 @@ export const postgres: Service<PostgresResult> = {
 
 		try {
 			const container = await builder.start();
+			ctx?.registerContainer?.(container);
 
 			// shared_preload_libraries loads the C library; CREATE EXTENSION makes
 			// the view queryable. Idempotent — safe across container reuse.

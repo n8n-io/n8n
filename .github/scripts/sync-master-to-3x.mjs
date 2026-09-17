@@ -150,6 +150,14 @@ export function resolveMechanicalPath({ git, pnpm, path, masterSha, log = consol
 		// is required: pnpm flips `--frozen-lockfile` on by default when CI=true.
 		log(`Regenerating ${path} with pnpm...`);
 		pnpm(['install', '--lockfile-only', '--no-frozen-lockfile']);
+		try {
+			// A lockfile-only install does not apply patches. Validate the regenerated lockfile
+			// with a full install so pnpm applies patches before accepting the resolution.
+			pnpm(['install', '--frozen-lockfile']);
+		} catch (error) {
+			git(['checkout', '--conflict=merge', '--', path]);
+			throw error;
+		}
 		git(['add', '--', path]);
 		return;
 	}
@@ -305,6 +313,7 @@ export function reconcileWithMergeTreeAtTip({
  */
 export function reconcileLockfileAtTip({ git, pnpm, masterSha, log = console.log }) {
 	pnpm(['install', '--lockfile-only', '--no-frozen-lockfile']);
+	pnpm(['install', '--frozen-lockfile']);
 	if (attempt(git, ['diff', '--quiet', '--', LOCKFILE]).ok) return;
 	if (git(['rev-parse', 'HEAD']) === masterSha) {
 		throw new Error('Lockfile reconciliation would amend a master commit; refusing.');
@@ -328,8 +337,9 @@ export function reconcileLockfileAtTip({ git, pnpm, masterSha, log = console.log
  * nothing in the diff to suggest a decision was made.
  *
  * The lockfile is left with its markers when a manifest is among the code conflicts
- * (regenerating is meaningless until the manifests are resolved) or when the regen fails
- * transiently — flagged via `lockfileDeferred` so the PR body carries the instruction.
+ * (regenerating is meaningless until the manifests are resolved) or when regeneration or
+ * frozen-install validation fails — flagged via `lockfileDeferred` so the PR body carries
+ * the instruction.
  *
  * 3.x never carries the markers at its tip, and not for long in its history either: this
  * merge commit is dropped by the next replay, which takes the queue's commits only.

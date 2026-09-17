@@ -8,6 +8,8 @@ import {
 } from '@n8n/ai-utilities';
 import { DATABRICKS_PARTNER_USER_AGENT } from 'n8n-nodes-base/dist/nodes/Databricks/constants';
 import {
+	assertUrlAllowed,
+	getCredentialAllowedDomains,
 	NodeApiError,
 	NodeConnectionTypes,
 	NodeOperationError,
@@ -314,6 +316,15 @@ export class LmChatDatabricks implements INodeType {
 
 		const baseURL = `${credential.host.replace(/\/$/, '')}/ai-gateway/openai/v1`;
 
+		const node = this.getNode();
+		// baseURL derives from the credential's own host, so credentialOwnedSurface joins it to the allowlist
+		const allowedDomains = getCredentialAllowedDomains({
+			node,
+			credentialData: credential,
+			credentialOwnedSurface: true,
+			nodeEndpointUrl: baseURL,
+		});
+
 		const modelName = this.getNodeParameter('model', itemIndex, '', {
 			extractValue: true,
 		}) as string;
@@ -352,6 +363,7 @@ export class LmChatDatabricks implements INodeType {
 						},
 					}),
 					assertAllowedUrl: async (hopUrl) => {
+						assertUrlAllowed({ url: hopUrl, allowedDomains, node });
 						if (!egressFilter) return;
 						const result = await egressFilter.validateUrl(hopUrl);
 						if (!result.ok) throw result.error;
@@ -387,7 +399,7 @@ export class LmChatDatabricks implements INodeType {
 			modelKwargs: Object.keys(modelKwargs).length > 0 ? modelKwargs : undefined,
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(
 				this,
-				makeDatabricksFailedAttemptHandler(tokenSource.expiredStatus),
+				makeDatabricksFailedAttemptHandler(tokenSource.expiredStatus, modelName),
 			),
 		});
 
