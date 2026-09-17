@@ -1,3 +1,4 @@
+import { CREDENTIAL_DESCRIPTION_MAX_LENGTH } from '@n8n/api-types';
 import { getPersonalProject, mockInstance, testDb } from '@n8n/backend-test-utils';
 import { CredentialsEntity, DbLock, DbLockService, InstanceCredentialAssignment } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -208,18 +209,6 @@ test('import:credentials should trim a description and store a blank one as null
 	expect(byId.get('desc-blank')).toBeNull();
 });
 
-test('import:credentials should reject a description over the cap and store nothing', async () => {
-	await createOwner();
-
-	await expect(
-		command.run([
-			'--input=./test/integration/commands/import-credentials/credentials-description-over-cap.json',
-		]),
-	).rejects.toThrow(/description/);
-
-	expect(await getAllCredentials()).toHaveLength(0);
-});
-
 test('import:credentials should keep a stored description when the file omits it', async () => {
 	await createOwner();
 	await command.run([
@@ -235,26 +224,44 @@ test('import:credentials should keep a stored description when the file omits it
 	expect(byId.get('desc-untrimmed')?.description).toBe('Read-only key for reporting.');
 });
 
-test('import:credentials should reject a non-string description and keep the stored one', async () => {
-	await createOwner();
-	await command.run([
-		'--input=./test/integration/commands/import-credentials/credentials-description.json',
-	]);
+test.each([
+	['a non-string', 42],
+	['an over-cap', 'x'.repeat(CREDENTIAL_DESCRIPTION_MAX_LENGTH + 1)],
+])(
+	'import:credentials should reject %s description and keep the stored one',
+	async (_label, description) => {
+		await createOwner();
+		await command.run([
+			'--input=./test/integration/commands/import-credentials/credentials-description.json',
+		]);
 
-	const inputPath = path.join(
-		fs.mkdtempSync(path.join(os.tmpdir(), 'n8n-credential-import-')),
-		'credentials.json',
-	);
-	fs.writeFileSync(
-		inputPath,
-		JSON.stringify([{ id: 'desc-untrimmed', name: 'x', type: 'aws', data: {}, description: 42 }]),
-	);
+		const temporaryDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'n8n-credential-import-'));
+		const inputPath = path.join(temporaryDirectory, 'credentials.json');
+		fs.writeFileSync(
+			inputPath,
+			JSON.stringify([
+				{
+					id: 'desc-untrimmed',
+					name: 'cred-untrimmed-description',
+					type: 'aws',
+					data: { region: 'eu-west-1' },
+					description,
+				},
+			]),
+		);
 
-	await expect(command.run([`--input=${inputPath}`])).rejects.toThrow('desc-untrimmed');
+		try {
+			await expect(command.run([`--input=${inputPath}`])).rejects.toThrow(
+				'Credential "desc-untrimmed"',
+			);
+		} finally {
+			fs.rmSync(temporaryDirectory, { recursive: true, force: true });
+		}
 
-	const byId = new Map((await getAllCredentials()).map((c) => [c.id, c.description]));
-	expect(byId.get('desc-untrimmed')).toBe('Read-only key for reporting.');
-});
+		const byId = new Map((await getAllCredentials()).map((c) => [c.id, c.description]));
+		expect(byId.get('desc-untrimmed')).toBe('Read-only key for reporting.');
+	},
+);
 
 test('import:credentials should exclude selected credential properties', async () => {
 	const owner = await createOwner();

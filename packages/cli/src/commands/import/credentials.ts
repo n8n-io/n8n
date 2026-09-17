@@ -173,7 +173,7 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 
 			if (!parsed.success) {
 				throw new UserError(
-					`Credential "${credential.id ?? credential.name}": ${parsed.error.issues[0].message}`,
+					`Credential "${credential.id ?? credential.name ?? 'unknown'}": ${parsed.error.issues[0].message}`,
 				);
 			}
 
