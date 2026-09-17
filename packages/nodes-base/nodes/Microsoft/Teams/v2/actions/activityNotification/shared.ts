@@ -12,7 +12,8 @@ import {
 } from '../../transport';
 
 const TEAMS_LINK_EXAMPLE = 'https://teams.microsoft.com/l/chat/0/0?users=someone@contoso.com';
-const TEAMS_HOST = /^(?:[a-z0-9-]+\.)*teams\.(?:microsoft\.com|cloud\.microsoft|microsoft\.us)$/;
+const TEAMS_HOST =
+	/^(?:[a-z0-9-]+\.)*teams\.(?:microsoft\.com|cloud\.microsoft|microsoft\.us|microsoftonline\.cn)$/;
 
 const RECIPIENT_MESSAGES: UserTargetMessages = {
 	required: {
@@ -87,11 +88,20 @@ export function topicLink(this: IExecuteFunctions, i: number): string {
 }
 
 export function chainId(this: IExecuteFunctions, i: number): number | undefined {
-	const options = this.getNodeParameter('options', i, {});
-	if (!('chainId' in options)) return undefined;
-	const raw = options.chainId;
-	const parsed = typeof raw === 'string' && raw.trim() !== '' ? Number(raw) : raw;
-	if (typeof parsed === 'number' && Number.isInteger(parsed) && parsed >= 0) return parsed;
+	const raw = this.getNodeParameter('options', i, {}).chainId;
+	if (raw === undefined || raw === null || (typeof raw === 'string' && raw.trim() === '')) {
+		return undefined;
+	}
+	const parsed = typeof raw === 'string' ? Number(raw) : raw;
+	if (typeof parsed === 'number' && Number.isSafeInteger(parsed) && parsed >= 0) {
+		return parsed === 0 ? undefined : parsed;
+	}
+	if (typeof parsed === 'number' && Number.isInteger(parsed) && parsed > Number.MAX_SAFE_INTEGER) {
+		throw new NodeOperationError(this.getNode(), 'The Chain ID is too large to send exactly', {
+			description: `Use a whole number up to ${Number.MAX_SAFE_INTEGER}`,
+			itemIndex: i,
+		});
+	}
 	throw new NodeOperationError(this.getNode(), 'The Chain ID must be a whole number of 0 or more', {
 		description: "Check that the 'Chain ID' option is a whole number",
 		itemIndex: i,

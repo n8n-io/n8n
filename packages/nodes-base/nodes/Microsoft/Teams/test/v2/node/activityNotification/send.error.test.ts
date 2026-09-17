@@ -83,57 +83,87 @@ describe('Microsoft Teams V2 - activityNotification:send error surfacing', () =>
 		ctx.helpers.requestWithAuthentication = requestWithAuthentication;
 	});
 
-	describe('under the Teams OAuth2 credential', () => {
-		beforeEach(() => {
-			configure('microsoftTeamsOAuth2Api');
-		});
+	describe.each(['microsoftTeamsOAuth2Api', 'microsoftOAuth2Api'])(
+		'under the %s credential',
+		(authentication) => {
+			beforeEach(() => {
+				configure(authentication);
+			});
 
-		it('maps the companion-app 403 to the install message with the setup description', async () => {
-			requestOAuth2.mockRejectedValue(graphError(403, 'Forbidden', COMPANION_TEXT));
+			it('maps the companion-app 403 to the install message with the setup description', async () => {
+				requestOAuth2.mockRejectedValue(graphError(403, 'Forbidden', COMPANION_TEXT));
 
-			const error = await executeAndCatch();
+				const error = await executeAndCatch();
 
-			expect(error).toBeInstanceOf(NodeApiError);
-			expect((error as NodeApiError).httpCode).toBe('403');
-			expect(error.message).toBe(COMPANION_APP_FORBIDDEN.message);
-			expect(error.description).toBe(COMPANION_APP_FORBIDDEN.description);
-			expect(error.messages.join(' ')).toContain(COMPANION_TEXT);
-			expect(error.context.itemIndex).toBe(0);
-			expect(requestWithAuthentication).not.toHaveBeenCalled();
-		});
+				expect(error).toBeInstanceOf(NodeApiError);
+				expect((error as NodeApiError).httpCode).toBe('403');
+				expect(error.message).toBe(COMPANION_APP_FORBIDDEN.message);
+				expect(error.description).toBe(COMPANION_APP_FORBIDDEN.description);
+				expect(error.messages.join(' ')).toContain(COMPANION_TEXT);
+				expect(error.context.itemIndex).toBe(0);
+				expect(requestWithAuthentication).not.toHaveBeenCalled();
+			});
 
-		it('maps the missing-permission 403 to the reconnect message', async () => {
-			requestOAuth2.mockRejectedValue(graphError(403, 'Forbidden', PERMISSION_TEXT));
+			it('maps the missing-permission 403 to the reconnect message', async () => {
+				requestOAuth2.mockRejectedValue(graphError(403, 'Forbidden', PERMISSION_TEXT));
 
-			const error = await executeAndCatch();
+				const error = await executeAndCatch();
 
-			expect(error).toBeInstanceOf(NodeApiError);
-			expect(error.message).toBe(ACTIVITY_PERMISSION_FORBIDDEN_DELEGATED.message);
-			expect(error.description).toBe(ACTIVITY_PERMISSION_FORBIDDEN_DELEGATED.description);
-			expect(error.messages.join(' ')).toContain(PERMISSION_TEXT);
-		});
+				expect(error).toBeInstanceOf(NodeApiError);
+				expect(error.message).toBe(ACTIVITY_PERMISSION_FORBIDDEN_DELEGATED.message);
+				expect(error.description).toBe(ACTIVITY_PERMISSION_FORBIDDEN_DELEGATED.description);
+				expect(error.messages.join(' ')).toContain(PERMISSION_TEXT);
+			});
 
-		it('keeps any other 403 text unchanged', async () => {
-			requestOAuth2.mockRejectedValue(graphError(403, 'Forbidden', OTHER_TEXT));
+			it('keeps any other 403 text unchanged', async () => {
+				requestOAuth2.mockRejectedValue(graphError(403, 'Forbidden', OTHER_TEXT));
 
-			const error = await executeAndCatch();
+				const error = await executeAndCatch();
 
-			expect(error).toBeInstanceOf(NodeApiError);
-			expect(error.message).toBe(OTHER_TEXT);
-		});
+				expect(error).toBeInstanceOf(NodeApiError);
+				expect(error.message).toBe(OTHER_TEXT);
+			});
 
-		it('rewrites a 404 to the recipient-not-found message', async () => {
-			requestOAuth2.mockRejectedValue(
-				graphError(404, 'Request_ResourceNotFound', 'Resource does not exist.'),
-			);
+			it('rewrites a 404 to the recipient-not-found message', async () => {
+				requestOAuth2.mockRejectedValue(
+					graphError(404, 'Request_ResourceNotFound', 'Resource does not exist.'),
+				);
 
-			const error = await executeAndCatch();
+				const error = await executeAndCatch();
 
-			expect(error).toBeInstanceOf(NodeOperationError);
-			expect(error.message).toBe('The recipient was not found');
-			expect(error.context.itemIndex).toBe(0);
-		});
-	});
+				expect(error).toBeInstanceOf(NodeOperationError);
+				expect(error.message).toBe('The recipient was not found');
+				expect(error.context.itemIndex).toBe(0);
+			});
+
+			it('stamps the failing item index on a 403 in a multi-item run', async () => {
+				ctx.getInputData.mockReturnValue([{ json: {} }, { json: {} }]);
+				requestOAuth2
+					.mockResolvedValueOnce(undefined)
+					.mockRejectedValueOnce(graphError(403, 'Forbidden', COMPANION_TEXT));
+
+				const error = await executeAndCatch();
+
+				expect(error.message).toBe(COMPANION_APP_FORBIDDEN.message);
+				expect(error.context.itemIndex).toBe(1);
+				expect(requestOAuth2).toHaveBeenCalledTimes(2);
+			});
+
+			it('stamps the failing item index on a 404 in a multi-item run', async () => {
+				ctx.getInputData.mockReturnValue([{ json: {} }, { json: {} }]);
+				requestOAuth2
+					.mockResolvedValueOnce(undefined)
+					.mockRejectedValueOnce(
+						graphError(404, 'Request_ResourceNotFound', 'Resource does not exist.'),
+					);
+
+				const error = await executeAndCatch();
+
+				expect(error.message).toBe('The recipient was not found');
+				expect(error.context.itemIndex).toBe(1);
+			});
+		},
+	);
 
 	describe('under the Service Principal credential', () => {
 		const wrapped = (statusCode: number, code: string, message: string) =>

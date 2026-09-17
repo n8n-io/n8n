@@ -173,7 +173,9 @@ export function rewriteNotFound(
  *
  * Known SharePoint v2 deltas to fold in via factory config (not per-node forks)
  * when it adopts the kernel: injectable static messages (UserTargetMessages
- * pattern in nodes/Microsoft/GenericFunctions.ts), per-page headers and a
+ * pattern in nodes/Microsoft/GenericFunctions.ts), operation-keyed 403 permission
+ * naming on both auth branches (`forbiddenHints` is text-keyed and app-only, so it
+ * does not cover it), the non-403 safe-message allowlist, per-page headers and a
  * negative-limit guard on `microsoftApiRequestAllItems`.
  */
 export function createMicrosoftGraphTransport<TDefault extends string>(config: {

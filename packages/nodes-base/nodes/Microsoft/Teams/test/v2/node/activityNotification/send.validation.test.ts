@@ -58,7 +58,7 @@ describe('Microsoft Teams V2 - activityNotification:send validation', () => {
 		return await node.execute.call(ctx);
 	};
 
-	it.each(['microsoftTeamsOAuth2Api', transport.SERVICE_PRINCIPAL_AUTH])(
+	it.each(['microsoftTeamsOAuth2Api', 'microsoftOAuth2Api', transport.SERVICE_PRINCIPAL_AUTH])(
 		"sends the notification body to the recipient's teamwork endpoint under %s",
 		async (authentication) => {
 			const result = await run({ authentication });
@@ -79,12 +79,26 @@ describe('Microsoft Teams V2 - activityNotification:send validation', () => {
 		);
 	});
 
-	it('sends chainId only when the option is set', async () => {
-		await run({ options: { chainId: 4711 } });
-		expect(request).toHaveBeenLastCalledWith('POST', PATH, { ...BODY, chainId: 4711 });
+	it.each([
+		[{ chainId: 4711 }, 4711],
+		[{ chainId: '4711' }, 4711],
+	])('sends the Chain ID from the options %p as a number', async (options, chainId) => {
+		await run({ options });
 
-		await run({ options: {} });
-		expect(request).toHaveBeenLastCalledWith('POST', PATH, BODY);
+		expect(request).toHaveBeenCalledWith('POST', PATH, { ...BODY, chainId });
+	});
+
+	it.each([
+		{},
+		{ chainId: 0 },
+		{ chainId: '' },
+		{ chainId: '  ' },
+		{ chainId: null },
+		{ chainId: undefined },
+	])('omits chainId for the options %p', async (options) => {
+		await run({ options });
+
+		expect(request).toHaveBeenCalledWith('POST', PATH, BODY);
 		expect(request.mock.lastCall?.[2]).not.toHaveProperty('chainId');
 	});
 
@@ -93,6 +107,16 @@ describe('Microsoft Teams V2 - activityNotification:send validation', () => {
 		async (chainId) => {
 			await expect(run({ options: { chainId } })).rejects.toThrow(
 				'The Chain ID must be a whole number of 0 or more',
+			);
+			expect(request).not.toHaveBeenCalled();
+		},
+	);
+
+	it.each(['12345678901234567890', 1e19, Number.MAX_SAFE_INTEGER + 1])(
+		'rejects a Chain ID above the safe integer range (%p) before any request',
+		async (chainId) => {
+			await expect(run({ options: { chainId } })).rejects.toThrow(
+				'The Chain ID is too large to send exactly',
 			);
 			expect(request).not.toHaveBeenCalled();
 		},
@@ -123,6 +147,7 @@ describe('Microsoft Teams V2 - activityNotification:send validation', () => {
 		'https://teams.cloud.microsoft/l/chat/0/0',
 		'https://gov.teams.microsoft.us/l/chat/0/0',
 		'https://dod.teams.microsoft.us/l/chat/0/0',
+		'https://teams.microsoftonline.cn/l/chat/0/0',
 	])('accepts the Teams deep link %s', async (topicLink) => {
 		await run({ topicLink });
 

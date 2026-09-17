@@ -21,7 +21,7 @@ export const ACTIVITY_PERMISSION_FORBIDDEN_APP_ONLY: MicrosoftGraphForbiddenHint
 export const ACTIVITY_PERMISSION_FORBIDDEN_DELEGATED = {
 	message: 'The credential is missing the TeamsActivity.Send permission',
 	description:
-		'Add TeamsActivity.Send to the scopes of the credential: turn on Custom Scopes and add it to Enabled Scopes on the Microsoft Teams credential, or add it to the Scope field on a generic Microsoft credential. Then reconnect the credential so Microsoft asks for the new permission.',
+		'Reconnect the credential so Microsoft asks for the TeamsActivity.Send permission. If the credential uses Custom Scopes, add TeamsActivity.Send to Enabled Scopes first. On a generic Microsoft credential, add it to the Scope field.',
 };
 
 export const TEAMS_FORBIDDEN_HINTS: readonly MicrosoftGraphForbiddenHint[] = [

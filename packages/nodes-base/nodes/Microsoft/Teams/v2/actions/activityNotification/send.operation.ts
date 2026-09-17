@@ -68,7 +68,7 @@ const properties: INodeProperties[] = [
 					minValue: 0,
 				},
 				description:
-					'A number that links related notifications. A new notification with the same Chain ID replaces the earlier one in the activity feed.',
+					'A number that links related notifications. A new notification with the same Chain ID replaces the earlier one in the activity feed. Leave at 0 to send the notification without a chain.',
 			},
 		],
 	},

@@ -435,6 +435,8 @@ describe('Microsoft Teams Service Principal displayOptions contract', () => {
 			const notice = fields.find((p) => p.name === 'activityNotificationSetupNotice');
 			expect(notice?.type).toBe('notice');
 			expect(notice?.displayOptions?.show?.authentication).toBeUndefined();
+			expect(notice?.displayOptions?.show?.['/authentication']).toBeUndefined();
+			expect(isSpHidden(notice)).toBe(false);
 			expect(notice?.displayName).toContain(`href="${ACTIVITY_NOTIFICATION_SETUP_URL}"`);
 		});
 	});
