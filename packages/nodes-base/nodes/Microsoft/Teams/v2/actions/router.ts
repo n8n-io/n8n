@@ -24,12 +24,11 @@ import { getTeamsCredentialType, SERVICE_PRINCIPAL_AUTH } from '../transport';
  *
  * `Workflow` drops a hidden parameter before execution, so `operation` is absent for these
  * and the read below fails with `Could not get parameter "operation"`. Guard on the resource
- * first, so the user gets the real reason. Each entry holds the message for one resource, so
- * the execution-time message has one source.
+ * first, so the user gets the real reason. Each entry holds the error for one resource.
  *
  * A `Map`, not an object: `resource` is a stored parameter, and a plain object walks
- * `Object.prototype`, so a resource of `__proto__` returns a non-nullish value and fails
- * with a raw `TypeError` instead of the node's own unsupported-operation error.
+ * `Object.prototype`, so a resource of `__proto__` would match the guard, and the error
+ * constructor would fail with a raw `TypeError` on the `undefined` message.
  */
 const SERVICE_PRINCIPAL_RESOURCE_GUARDS = new Map([
 	[

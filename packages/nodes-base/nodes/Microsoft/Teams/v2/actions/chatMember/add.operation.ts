@@ -107,7 +107,8 @@ export async function execute(this: IExecuteFunctions, i: number) {
 	const chatId = this.getNodeParameter('chatId', i, '', { extractValue: true }) as string;
 	// Direct validator call rather than buildTeamsPath: this id is interpolated into
 	// the body, and RLC `validation` is UI-only, so an expression can still supply
-	// anything. The returned value (trimmed, decoded) is what must be interpolated.
+	// anything. The returned value (trimmed, decoded) is what must be interpolated:
+	// `aadUserConversationMember` encodes it once, so it has to arrive decoded.
 	const userId = validateTeamsId(
 		this.getNodeParameter('userId', i, '', { extractValue: true }) as string,
 		this.getNode(),

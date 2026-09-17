@@ -273,7 +273,8 @@ export async function resolveUserTarget(
 }
 
 /**
- * Two escaping layers hold the bind: percent-encode the id for the URL (a B2B guest UPN
+ * Builds one `aadUserConversationMember` entry for `POST /chats` and `POST /chats/{id}/members`.
+ * The bind has two escaping layers: percent-encode the id for the URL (a B2B guest UPN
  * truncates at its `#` otherwise), then double any quote for the OData literal.
  */
 export const aadUserConversationMember = (baseUrl: string, id: string, role: string) => ({
