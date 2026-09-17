@@ -1,0 +1,84 @@
+packages/workflow/src/interfaces.ts
+  s_71c6da2ee47cd3::t_1e866fe525a390 3764-3769
+packages/cli/src/modules/engine-v2/engine-v2.module.ts
+  s_4c46dcfe1ba789::t_b5320423cf528d 40,48-49,51-52
+  s_71c6da2ee47cd3::t_219e2dfcd3c658 22,41-47,53
+packages/@n8n/engine/src/response-channel/execution-response-channel.ts
+  s_4c46dcfe1ba789::t_1e1da3f2d7a8d1 1,4,15-19,21-23,30-31,33,37,40,42,74-76,78,103-108,110
+  s_4c46dcfe1ba789::t_e86cea15aea75d 41
+  s_71c6da2ee47cd3::t_4d94f6f753024f 2-3,5-14,20,24-29,32,34-36,38-39,43-73,77,79-102,109
+packages/@n8n/engine/src/response-channel/__tests__/execution-response-channel.test.ts
+  s_4c46dcfe1ba789::t_bb90bdbd5b7cc4 7,16,18,30,35,37-40,50,54-55,67-87,91,105
+  s_71c6da2ee47cd3::t_4c8a66733e8771 1-6,8-15,17,19-29,31-34,36,41-49,51-53,56-66,88-90,92-104,106-108
+packages/@n8n/engine/src/execution/step-settled-handler.ts
+  s_71c6da2ee47cd3::t_1e866fe525a390 2-8,47,52,63,74,77-81,91,165-169,201,205-231,235
+  s_4c46dcfe1ba789::t_6c72c81609f986 10,39,232-233
+  s_4c46dcfe1ba789::t_e86cea15aea75d 234
+packages/@n8n/engine/src/response-channel/index.ts
+  s_71c6da2ee47cd3::t_d67313882bd806 1-5
+  s_4c46dcfe1ba789::t_1e1da3f2d7a8d1 6
+packages/cli/src/modules/engine-v2/engine-v2.runtime.ts
+  s_71c6da2ee47cd3::t_219e2dfcd3c658 4,62,66,95,108-110
+packages/@n8n/engine/src/runtime/create-engine-runtime.ts
+  s_4c46dcfe1ba789::t_d5b292306ede0a 23,36-37,39,75
+  s_71c6da2ee47cd3::t_613cff5051c1db 34-35,38,102
+packages/@n8n/engine/src/response-channel/execution-response.types.ts
+  s_4c46dcfe1ba789::t_c619cb6a6da3d5 1-3,10-11,13,15-23
+  s_71c6da2ee47cd3::t_d67313882bd806 4-9,12,14
+packages/cli/src/modules/engine-v2/__tests__/engine-v2.runtime.test.ts
+  s_71c6da2ee47cd3::t_219e2dfcd3c658 3,106-108,152-154,160,171,177,201,218,230,238,246,270,278,287,298,305,316,331,341,368,383
+packages/@n8n/config/src/configs/engine.config.ts
+  s_71c6da2ee47cd3::t_11151294bf63cb 65-72
+packages/@n8n/engine/src/response-channel/in-memory-transport.ts
+  s_4c46dcfe1ba789::t_946e879a98e68f 1-3,9-11,18,20-21,24-27
+  s_71c6da2ee47cd3::t_1e866fe525a390 4-8,12-17,19,22-23,28
+packages/@n8n/engine/src/response-channel/response-transport.ts
+  s_4c46dcfe1ba789::t_946e879a98e68f 1-3,5-9,20-21
+  s_71c6da2ee47cd3::t_1e866fe525a390 4,10-19,22-23
+packages/@n8n/engine/src/response-channel/execution-response.schema.ts
+  s_71c6da2ee47cd3::t_d67313882bd806 1-3,7-21,23
+  s_4c46dcfe1ba789::t_c619cb6a6da3d5 4-6,22,24
+packages/cli/src/services/__tests__/engine-v2-webhook-responder.service.test.ts
+  s_71c6da2ee47cd3::t_d405134f94920e 1-13,17-18,21,32-48,55-61,64-69,74-100,102-103
+  s_4c46dcfe1ba789::t_533d342b8bac27 14-16,19-20,23-31,49-54,62-63,70-73,101,104-111
+packages/cli/src/webhooks/webhook-helpers.ts
+  s_71c6da2ee47cd3::t_22028249b03956 430,432,436,443,445,448,455,457,476-477
+  s_4c46dcfe1ba789::t_eeeb14c5513318 30
+  s_4c46dcfe1ba789::t_d973a62943d7dd 431,433-435,437-442,444,446-447,449-454,456,458-475
+packages/cli/src/webhooks/engine-v2-webhooks.ts
+  s_71c6da2ee47cd3::t_19b26356a490b4 37-43,109
+packages/cli/src/services/engine-v2-dispatcher.service.ts
+  s_71c6da2ee47cd3::t_11151294bf63cb 86-90
+packages/@n8n/engine/src/index.ts
+  s_71c6da2ee47cd3::t_613cff5051c1db 37-46,48
+  s_4c46dcfe1ba789::t_eed36ddb86f263 47
+packages/cli/src/services/engine-v2-webhook-responder.service.ts
+  s_71c6da2ee47cd3::t_11151294bf63cb 1-4,12,18-20,22-25,29-31,35-42,46-53,60-64,69,71-74,76-78,80-88,92,96-100,103-105,112-114,116-119,121-122,127-128
+  s_4c46dcfe1ba789::t_9317a33118b923 11,13-15,21,26-28,32-33,43-45,55-59,65-68,75,90-91,93-95,106-107
+  s_71c6da2ee47cd3::t_c470b0a9f3961f 54,79,89,101-102
+  s_4c46dcfe1ba789::t_16f6ec4d91ae85 9,16-17,34,70,108-111,115,120,123-126
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9f0cc5f3a430557f113d09ad0fdeaf0794146759",
+  "prompts": {},
+  "sessions": {
+    "s_4c46dcfe1ba789": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c1251ab8-7233-47da-89f9-16babffdf579",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_71c6da2ee47cd3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "34058f20-f9c0-4c61-a303-3490fd47e9b8",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}
