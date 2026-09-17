@@ -15,7 +15,9 @@ import {
 import InstanceAiConversation from '../InstanceAiConversation.vue';
 import { provideThread, useInstanceAiStore, type ThreadRuntime } from '../../instanceAi.store';
 import {
+	getPendingWorkflowAttachment,
 	stashPendingAgentAttachment,
+	stashPendingRedirectLanding,
 	stashPendingWorkflowAttachment,
 } from '../../composables/useInstanceAiHandoff';
 import type { InstanceAiHandoffContext, InstanceAiMessage } from '@n8n/api-types';
@@ -25,6 +27,7 @@ import { USER_TYPED_MESSAGE } from '../../prefills';
 const telemetryTrackSpy = vi.hoisted(() => vi.fn());
 const showMessageSpy = vi.hoisted(() => vi.fn());
 const showErrorSpy = vi.hoisted(() => vi.fn());
+const handleRedirectLandingSpy = vi.hoisted(() => vi.fn());
 
 vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: telemetryTrackSpy }),
@@ -32,6 +35,12 @@ vi.mock('@n8n/composables/useTelemetry', () => ({
 
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError: showErrorSpy, showMessage: showMessageSpy }),
+}));
+
+vi.mock('@/experiments/openWorkflowInAssistant/stores/openWorkflowInAssistant.store', () => ({
+	useOpenWorkflowInAssistantStore: () => ({
+		handleRedirectLanding: handleRedirectLandingSpy,
+	}),
 }));
 
 vi.mock('@/app/composables/usePageRedirectionHelper', () => ({
@@ -308,6 +317,29 @@ describe('InstanceAiConversation', () => {
 			);
 			expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('FAQ Responder');
 			expect(thread.sendMessage).not.toHaveBeenCalled();
+			expect(handleRedirectLandingSpy).not.toHaveBeenCalled();
+		});
+
+		it('fires the workflow-list auto landing handler once on hydration', async () => {
+			thread.sseState = 'disconnected';
+			stashPendingWorkflowAttachment('thread-1', {
+				type: 'workflow',
+				id: 'wf-1',
+				name: 'FAQ Responder',
+			});
+			stashPendingRedirectLanding('thread-1');
+
+			const renderer = createThreadComponentRenderer(
+				InstanceAiConversation,
+				{
+					global: { stubs: { InstanceAiInput: InstanceAiInputStub } },
+				},
+				() => thread,
+			);
+			renderer();
+
+			await vi.waitFor(() => expect(handleRedirectLandingSpy).toHaveBeenCalledWith('thread-1'));
+			expect(thread.sendMessage).not.toHaveBeenCalled();
 		});
 
 		it('appends the pending workflow attachment on first submit and clears it', async () => {
@@ -337,6 +369,40 @@ describe('InstanceAiConversation', () => {
 			);
 			await vi.waitFor(() => expect(thread.clearPendingWorkflowAttachment).toHaveBeenCalled());
 			expect(thread.pendingWorkflowAttachment).toBeNull();
+		});
+
+		it('clears the workflow hand-off stash after send even if the runtime already dropped it', async () => {
+			stashPendingWorkflowAttachment('thread-1', {
+				type: 'workflow',
+				id: 'wf-1',
+				name: 'FAQ Responder',
+			});
+			thread.pendingWorkflowAttachment = {
+				type: 'workflow',
+				id: 'wf-1',
+				name: 'FAQ Responder',
+			};
+			let resolveSend!: (value: boolean) => void;
+			vi.mocked(thread.sendMessage).mockReturnValueOnce(
+				new Promise((resolve) => {
+					resolveSend = resolve;
+				}),
+			);
+			const renderer = createThreadComponentRenderer(
+				InstanceAiConversation,
+				{
+					global: { stubs: { InstanceAiInput: InstanceAiInputStub } },
+				},
+				() => thread,
+			);
+			const { getByTestId } = renderer();
+
+			await fireEvent.click(getByTestId('instance-ai-input-submit'));
+			await vi.waitFor(() => expect(thread.sendMessage).toHaveBeenCalled());
+			thread.pendingWorkflowAttachment = null;
+
+			resolveSend(true);
+			await vi.waitFor(() => expect(getPendingWorkflowAttachment('thread-1')).toBeNull());
 		});
 
 		it('clears the pending workflow attachment when the context chip is dismissed', async () => {

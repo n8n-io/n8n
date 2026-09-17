@@ -54,6 +54,7 @@ import {
 	clearPendingThreadHandoff,
 	clearPendingWorkflowAttachment,
 	consumePendingFirstMessage,
+	consumePendingRedirectLanding,
 	getPendingAgentAttachment,
 	getPendingComposerDraft,
 	getPendingHandoffContext,
@@ -65,6 +66,7 @@ import {
 	stashPendingComposerDraft,
 	stashPendingFirstMessage,
 	stashPendingHandoffContext,
+	stashPendingRedirectLanding,
 	stashPendingWorkflowAttachment,
 	useInstanceAiHandoff,
 } from '../composables/useInstanceAiHandoff';
@@ -263,6 +265,7 @@ describe('useInstanceAiHandoff', () => {
 			message: 'Set up the credential',
 			authorship: { kind: 'prefill', prefillType: 'handoff_credential_setup' },
 		});
+		stashPendingRedirectLanding('thread-1');
 
 		clearPendingThreadHandoff('thread-1');
 
@@ -273,6 +276,7 @@ describe('useInstanceAiHandoff', () => {
 		// A thread that disappears before its opening message is replayed must not leave the
 		// payload behind: nothing would ever consume it again.
 		expect(consumePendingFirstMessage('thread-1')).toBeNull();
+		expect(consumePendingRedirectLanding('thread-1')).toBe(false);
 	});
 
 	it('round-trips a pending workflow attachment', () => {
@@ -312,6 +316,19 @@ describe('useInstanceAiHandoff', () => {
 			name: 'My Workflow',
 		});
 		expect(consumePendingFirstMessage('thread-1')).toBeNull();
+		expect(consumePendingRedirectLanding('thread-1')).toBe(false);
+	});
+
+	it('stashes a one-shot landing marker for a workflow-list auto redirect', async () => {
+		const threadId = await provisionWorkflowThread(
+			'project-1',
+			{ type: 'workflow', id: 'wf-1', name: 'My Workflow' },
+			{ source: 'workflow_list_auto', origin: 'internal', sourceContext: { workflowId: 'wf-1' } },
+		);
+
+		expect(threadId).toBe('thread-1');
+		expect(consumePendingRedirectLanding('thread-1')).toBe(true);
+		expect(consumePendingRedirectLanding('thread-1')).toBe(false);
 	});
 
 	it('opens a workflow thread without sending a message', async () => {

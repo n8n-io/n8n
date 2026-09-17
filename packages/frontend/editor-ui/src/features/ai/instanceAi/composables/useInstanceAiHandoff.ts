@@ -93,6 +93,8 @@ const pendingAgentAttachmentKey = (threadId: string) =>
 	`n8n-instance-ai-agent-attachment:${threadId}`;
 const pendingWorkflowAttachmentKey = (threadId: string) =>
 	`n8n-instance-ai-workflow-attachment:${threadId}`;
+const pendingRedirectLandingKey = (threadId: string) =>
+	`n8n-instance-ai-redirect-landing:${threadId}`;
 
 export interface PendingFirstMessage {
 	message: string;
@@ -308,6 +310,27 @@ export function clearPendingWorkflowAttachment(threadId: string): void {
 	localStorage.removeItem(pendingWorkflowAttachmentKey(threadId));
 }
 
+/**
+ * One-shot marker for a workflow-list auto redirect. The destination view
+ * consumes it after hydration so the experiment can collapse the sidebar and
+ * show its callout once. Thread metadata source persists forever, so it cannot
+ * be the landing signal.
+ */
+export function stashPendingRedirectLanding(threadId: string): void {
+	localStorage.setItem(pendingRedirectLandingKey(threadId), '1');
+}
+
+export function consumePendingRedirectLanding(threadId: string): boolean {
+	const raw = localStorage.getItem(pendingRedirectLandingKey(threadId));
+	if (!raw) return false;
+	localStorage.removeItem(pendingRedirectLandingKey(threadId));
+	return true;
+}
+
+export function clearPendingRedirectLanding(threadId: string): void {
+	localStorage.removeItem(pendingRedirectLandingKey(threadId));
+}
+
 /** Drop a stashed opening message without sending it (e.g. its thread is gone). */
 export function clearPendingFirstMessage(threadId: string): void {
 	localStorage.removeItem(pendingFirstMessageKey(threadId));
@@ -346,6 +369,7 @@ export function clearPendingThreadHandoff(threadId: string): void {
 	clearPendingComposerDraft(threadId);
 	clearPendingAgentAttachment(threadId);
 	clearPendingWorkflowAttachment(threadId);
+	clearPendingRedirectLanding(threadId);
 	clearPendingFirstMessage(threadId);
 	clearPendingDraftAttachment(threadId);
 }
@@ -401,6 +425,9 @@ export async function provisionWorkflowThread(
 		return null;
 	}
 	stashPendingWorkflowAttachment(threadId, attachment);
+	if (launch.source === 'workflow_list_auto') {
+		stashPendingRedirectLanding(threadId);
+	}
 	return threadId;
 }
 

@@ -41,6 +41,7 @@ import {
 	clearPendingHandoffContext,
 	clearPendingThreadHandoff,
 	consumePendingFirstMessage,
+	consumePendingRedirectLanding,
 	getPendingAgentAttachment,
 	getPendingComposerDraft,
 	getPendingHandoffContext,
@@ -383,7 +384,11 @@ function reconnectThreadAfterHydration(): void {
 					if (!store.threads.some((t) => t.id === thread.id)) return;
 					stashPendingFirstMessage(thread.id, pending);
 				});
-			// Experiment cleanup: remove with openWorkflowInAssistant.
+		}
+		// Experiment cleanup: remove with openWorkflowInAssistant. A stashed first
+		// message or a workflow-list auto marker is the one-shot landing signal.
+		const landedFromRedirect = consumePendingRedirectLanding(thread.id);
+		if (pending || landedFromRedirect) {
 			useOpenWorkflowInAssistantStore().handleRedirectLanding(thread.id);
 		}
 	});
@@ -573,12 +578,15 @@ async function handleSubmit(
 				clearPendingAgentAttachment(thread.id);
 				pendingAgentAttachment.value = null;
 			}
-			if (
-				queuedWorkflowAttachment &&
-				thread.pendingWorkflowAttachment?.id === queuedWorkflowAttachment.id
-			) {
-				clearStashedWorkflowAttachment(thread.id);
-				thread.clearPendingWorkflowAttachment();
+			if (queuedWorkflowAttachment) {
+				// Clear the stash by id even if leaving the thread disposed the runtime
+				// (and its pending attachment) before this callback ran.
+				if (getPendingWorkflowAttachment(thread.id)?.id === queuedWorkflowAttachment.id) {
+					clearStashedWorkflowAttachment(thread.id);
+				}
+				if (thread.pendingWorkflowAttachment?.id === queuedWorkflowAttachment.id) {
+					thread.clearPendingWorkflowAttachment();
+				}
 			}
 		});
 }
