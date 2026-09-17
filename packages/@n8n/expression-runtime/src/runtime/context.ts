@@ -104,8 +104,24 @@ function isUnusableMarker(value: unknown): value is UnusableMarker {
 	return (
 		typeof value === 'object' &&
 		value !== null &&
-		TRANSFER_UNUSABLE_KEY in value &&
-		typeof (value as UnusableMarker).message === 'string'
+		(value as UnusableMarker)[TRANSFER_UNUSABLE_KEY] === true &&
+		typeof (value as UnusableMarker).message === 'string' &&
+		Object.keys(value).length === 2
+	);
+}
+
+interface SanitisedEnvelope {
+	[TRANSFER_SANITISED_KEY]: true;
+	value: unknown;
+}
+
+function isSanitisedEnvelope(value: unknown): value is SanitisedEnvelope {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		(value as SanitisedEnvelope)[TRANSFER_SANITISED_KEY] === true &&
+		'value' in value &&
+		Object.keys(value).length === 2
 	);
 }
 
@@ -132,10 +148,9 @@ function reviveUnusable(value: unknown, depth: number): void {
 }
 
 function unwrapSanitised(result: unknown): unknown {
-	if (typeof result !== 'object' || result === null || !(TRANSFER_SANITISED_KEY in result)) {
-		return result;
-	}
-	const inner: unknown = (result as unknown as { value: unknown }).value;
+	if (!isSanitisedEnvelope(result)) return result;
+
+	const inner: unknown = result.value;
 	if (isUnusableMarker(inner)) throw new ExpressionError(inner.message);
 	reviveUnusable(inner, 0);
 	return inner;

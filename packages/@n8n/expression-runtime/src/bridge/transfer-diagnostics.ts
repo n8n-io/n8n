@@ -318,7 +318,15 @@ function sanitiseMembers(
 		}
 		copy[member.key] = sanitiseValue(state, member.descriptor.value, member.path, depth + 1);
 	}
-	return Array.isArray(value) ? Object.values(copy) : copy;
+	if (!Array.isArray(value)) return copy;
+
+	// Assigning by index keeps the length and the holes; a structured clone drops the
+	// non-index keys of an array too.
+	const indexed = new Array<unknown>(value.length);
+	for (const key of Object.keys(copy)) {
+		if (ARRAY_INDEX.test(key)) indexed[Number(key)] = copy[key];
+	}
+	return indexed;
 }
 
 function sanitiseValue(state: SanitiseState, value: unknown, path: string, depth: number): unknown {
