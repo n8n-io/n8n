@@ -146,21 +146,28 @@ jobs:
               packages/testing/playwright/utils/performance-helper.ts
               packages/testing/containers/**
               .github/workflows/test-e2e-performance-reusable.yml
+            # Whole directories, not the `engine-*` files alone. Engine 2.0
+            # routing lives in ordinary control plane code: `workflow-runner.ts`
+            # and the webhook and trigger paths decide whether a run reaches the
+            # data plane, and the executions code merges v1 and v2 rows. A path
+            # this list misses skips `e2e-engine`, and `required-checks` counts
+            # a skipped job as a pass, so the gap would be silent.
             engine-e2e:
               packages/@n8n/engine/**
               packages/@n8n/node-engine-compatibility/**
               packages/@n8n/config/src/configs/engine.config.ts
               packages/cli/src/modules/engine-v2/**
               packages/cli/src/services/engine-*
-              packages/cli/src/executions/engine-v2-*
-              packages/cli/src/executions/execution-id.ts
-              packages/cli/src/webhooks/engine-v2-*
-              packages/cli/src/workflows/triggers/engine-v2-*
+              packages/cli/src/executions/**
+              packages/cli/src/webhooks/**
+              packages/cli/src/workflows/triggers/**
+              packages/cli/src/workflow-runner.ts
               packages/testing/containers/**
               packages/testing/playwright/playwright.config.ts
               packages/testing/playwright/playwright-projects.ts
               packages/testing/playwright/fixtures/**
               packages/testing/playwright/services/**
+              packages/testing/playwright/tests/**
             instance-ai-workflow-eval:
               packages/@n8n/instance-ai/src/**
               packages/@n8n/instance-ai/evaluations/**
