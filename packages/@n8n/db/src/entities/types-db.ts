@@ -101,6 +101,7 @@ export interface IWorkflowDb extends IWorkflowBase {
 export interface ICredentialsDb extends ICredentialsBase, ICredentialsEncrypted {
 	id: string;
 	name: string;
+	description?: string | null;
 	shared?: SharedCredentials[];
 	isGlobal?: boolean;
 	isResolvable?: boolean;
@@ -339,7 +340,7 @@ export function isAuthProviderType(value: string): value is AuthProviderType {
 }
 
 export type FolderWithWorkflowAndSubFolderCount = Folder & {
-	workflowCount?: boolean;
+	workflowCount?: number;
 	subFolderCount?: number;
 };
 

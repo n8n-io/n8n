@@ -37,6 +37,15 @@ export const promotableResourceSchema = z.object({
 
 export type PromotableResource = z.infer<typeof promotableResourceSchema>;
 
+export const promotionChangesSchema = z.object({
+	commitSha: z.string().nullable(),
+	changes: promotableResourceSchema.array(),
+});
+
+export type PromotionChanges = z.infer<typeof promotionChangesSchema>;
+
+export class PromotionChangesDto extends Z.class(promotionChangesSchema.shape) {}
+
 export const promoteRequestSchema = z.object({
 	workflowIds: z.array(n8nIdSchema).min(1),
 	createBranch: z.boolean(),

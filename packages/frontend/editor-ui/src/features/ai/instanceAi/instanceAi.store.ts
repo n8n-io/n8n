@@ -1,5 +1,14 @@
 import { defineStore } from 'pinia';
-import { ref, computed, inject, provide, shallowReactive, type InjectionKey } from 'vue';
+import {
+	ref,
+	computed,
+	effectScope,
+	inject,
+	provide,
+	shallowReactive,
+	type EffectScope,
+	type InjectionKey,
+} from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@n8n/composables/useToast';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
@@ -66,6 +75,11 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 
 	// --- Thread runtimes ---
 	const runtimes = shallowReactive(new Map<string, ThreadRuntime>());
+	// Detached scopes owning each runtime's watchers. The runtime must outlive the
+	// component that created it: a Suspense duplicate of the thread view can create
+	// it in setup and be discarded, and a component scope would take the watchers
+	// (e.g. the resource registry) down with it.
+	const runtimeScopes = new Map<string, EffectScope>();
 	const runtimeHooks = {
 		onTitleUpdated: (threadId, title) => {
 			for (const thread of localThreadEntries(threadId)) thread.title = title;
@@ -81,8 +95,11 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		const existingRuntime = runtimes.get(threadId);
 		if (existingRuntime) return existingRuntime;
 
-		const runtime = createThreadRuntime(threadId, runtimeHooks, projectId);
+		const scope = effectScope(true);
+		const runtime = scope.run(() => createThreadRuntime(threadId, runtimeHooks, projectId));
+		if (!runtime) throw new Error('Failed to create thread runtime');
 		runtimes.set(threadId, runtime);
+		runtimeScopes.set(threadId, scope);
 		return runtime;
 	}
 
@@ -95,6 +112,8 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		if (!runtime) return;
 
 		runtime.dispose();
+		runtimeScopes.get(threadId)?.stop();
+		runtimeScopes.delete(threadId);
 		runtimes.delete(threadId);
 	}
 

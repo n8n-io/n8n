@@ -21,9 +21,6 @@ import type { IUser } from 'n8n-workflow';
 import { type IconOrEmoji, isIconOrEmoji } from '@n8n/design-system';
 import { useUIStore } from '@/app/stores/ui.store';
 import { PROJECT_DATA_TABLES } from '@/features/core/dataTable/constants';
-import { instanceAiCreateAgentRoute } from '@/features/ai/instanceAi/createAgentRoute';
-import { useInstanceAiReady } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
-import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { useAgentPermissions } from '@/features/agents/composables/useAgentPermissions';
 import ReadyToRunButton from '@/features/workflows/readyToRun/components/ReadyToRunButton.vue';
 import { usePromotionsEnabled } from '@/features/shared/promotions/usePromotionsEnabled';
@@ -41,7 +38,7 @@ import {
 } from '@n8n/design-system';
 import { VARIABLE_MODAL_KEY } from '@/features/settings/environments.ee/environments.constants';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
-import { useAgentTelemetry } from '@/features/agents/composables/useAgentTelemetry';
+import { useCreateAgent } from '@/features/agents/composables/useCreateAgent';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 
@@ -53,7 +50,7 @@ const sourceControlStore = useSourceControlStore();
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
 const telemetry = useTelemetry();
-const agentTelemetry = useAgentTelemetry();
+const { createAgent } = useCreateAgent();
 const usersStore = useUsersStore();
 const favoritesStore = useFavoritesStore();
 const { isEnabled: isPromotionsEnabled } = usePromotionsEnabled();
@@ -81,7 +78,7 @@ async function fetchPromotableChangeCount() {
 		return;
 	}
 	try {
-		const changes = await getPromotableChanges(rootStore.restApiContext, requestedProjectId);
+		const { changes } = await getPromotableChanges(rootStore.restApiContext, requestedProjectId);
 		if (currentProjectId.value !== requestedProjectId) return;
 		promotableChangeCount.value = changes.length;
 	} catch {
@@ -125,7 +122,6 @@ const headerIcon = computed((): IconOrEmoji => {
 const homeProject = computed(() => projectsStore.currentProject ?? projectsStore.personalProject);
 
 const { canCreate: canCreateAgent } = useAgentPermissions(() => homeProject.value?.id);
-const instanceAiReady = useInstanceAiReady();
 
 const isPersonalProject = computed(() => {
 	return homeProject.value?.type === ProjectTypes.Personal;
@@ -204,7 +200,6 @@ const ACTION_TYPES = {
 	DATA_TABLE: 'dataTable',
 	VARIABLE: 'variable',
 	AGENT: 'agent',
-	AGENT_MANUAL: 'agentManual',
 } as const;
 type ActionTypes = (typeof ACTION_TYPES)[keyof typeof ACTION_TYPES];
 
@@ -341,23 +336,15 @@ const menu = computed(() => {
 		});
 	}
 
-	if (settingsStore.isModuleActive('agents')) {
-		if (selectedMainButtonType.value !== ACTION_TYPES.AGENT) {
-			items.push({
-				value: ACTION_TYPES.AGENT,
-				label: i18n.baseText('projects.header.create.agent'),
-				disabled: !canCreateAgent.value,
-			});
-		} else if (instanceAiReady.value) {
-			// Escape hatch on the agents pages for users who want to skip the
-			// Instance AI creation flow. Only offered while Instance AI is ready —
-			// otherwise the main create-agent button already opens the manual builder.
-			items.push({
-				value: ACTION_TYPES.AGENT_MANUAL,
-				label: i18n.baseText('projects.header.create.agentManually'),
-				disabled: !canCreateAgent.value,
-			});
-		}
+	if (
+		settingsStore.isModuleActive('agents') &&
+		selectedMainButtonType.value !== ACTION_TYPES.AGENT
+	) {
+		items.push({
+			value: ACTION_TYPES.AGENT,
+			label: i18n.baseText('projects.header.create.agent'),
+			disabled: !canCreateAgent.value,
+		});
 	}
 
 	return items;
@@ -439,14 +426,7 @@ const actions: Record<ActionTypes, (projectId: string, source: CreateSource) => 
 		telemetry.track('User clicked header add variable button');
 	},
 	[ACTION_TYPES.AGENT]: (projectId, source) => {
-		const agentId = generateNanoId();
-		agentTelemetry.trackClickedNewAgent(source, agentId);
-		void router.push(instanceAiCreateAgentRoute(projectId, agentId));
-	},
-	[ACTION_TYPES.AGENT_MANUAL]: (projectId, source) => {
-		const agentId = generateNanoId();
-		agentTelemetry.trackClickedNewAgent(source, agentId, { manual: true });
-		void router.push(instanceAiCreateAgentRoute(projectId, agentId, { manual: true }));
+		createAgent(source, projectId);
 	},
 } as const;
 

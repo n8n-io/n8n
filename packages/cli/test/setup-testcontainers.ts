@@ -1,7 +1,7 @@
 /**
  * Vitest global setup for integration/migration tests using testcontainers.
- * Starts a postgres container via n8n-containers and exposes its connection
- * details through `process.env`, which the forked test workers inherit.
+ * Starts postgres and redis containers via n8n-containers and exposes their
+ * connection details through `process.env`, which the forked test workers inherit.
  *
  * Note: Ryuk handles container cleanup on process exit (crashes/timeouts);
  * `teardown` is the secondary cleanup path.
@@ -14,7 +14,7 @@ let stack: Awaited<ReturnType<typeof createServiceStack>> | undefined;
 export async function setup() {
 	const suffix = randomBytes(4).toString('hex');
 	stack = await createServiceStack({
-		services: ['postgres'],
+		services: ['postgres', 'redis'],
 		projectName: `n8n-integration-test-${suffix}`,
 	});
 
@@ -38,6 +38,16 @@ export async function setup() {
 
 	console.log(
 		`\n✓ Postgres ready at ${process.env.DB_POSTGRESDB_HOST}:${process.env.DB_POSTGRESDB_PORT}\n`,
+	);
+
+	const redisResult = stack.serviceResults.redis;
+	if (!redisResult) {
+		throw new Error('Failed to start redis container');
+	}
+	process.env.N8N_TEST_REDIS_HOST = redisResult.container.getHost();
+	process.env.N8N_TEST_REDIS_PORT = String(redisResult.container.getMappedPort(6379));
+	console.log(
+		`✓ Redis ready at ${process.env.N8N_TEST_REDIS_HOST}:${process.env.N8N_TEST_REDIS_PORT}\n`,
 	);
 
 	// Build a template DB once, then each test file's testDb.init() clones it via
