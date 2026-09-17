@@ -130,6 +130,8 @@ the most likely of those.
 
 ## Links
 
-RFC: https://app.notion.com/p/n8n/34b5b6e0c94f81feba4bdb59a65d55dc (§3.3)
+RFC: -
+Documentation: Engine 2.0 — Detailed Design, §3.3
+https://app.notion.com/p/n8n/34b5b6e0c94f81feba4bdb59a65d55dc
 Tickets: CAT-2928
 Related ADRs: ADR-20260902-steps-declare-waits
