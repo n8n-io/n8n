@@ -215,7 +215,7 @@ describe('ExecutionFinishedAnnouncer', () => {
 				node('a'),
 				'completed',
 			),
-		).rejects.toThrow("announced its end from status 'running'");
+		).rejects.toThrow("is reported as settled from status 'running'");
 		expect(responseChannel.publish).not.toHaveBeenCalled();
 	});
 });

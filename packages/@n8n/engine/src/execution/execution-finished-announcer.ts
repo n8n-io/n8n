@@ -8,12 +8,27 @@ import type { StepRecord, StepStore } from './step-store';
 
 type LastStep = EndedMessage['lastStep'];
 
+type SettledStepRecord = StepRecord & { status: SettledStepStatus };
+
+/**
+ * Steps never unsettle, and every row here is read as one that has settled, so
+ * a row that has not is a bug in the caller or the store, not a state it can
+ * reach.
+ */
+function assertSettled(step: StepRecord): asserts step is SettledStepRecord {
+	if (!isSettledStatus(step.status)) {
+		throw new UnexpectedError(
+			`Step ${step.nodeId} is reported as settled from status '${step.status}'`,
+		);
+	}
+}
+
 /** A step row as a response carries it. */
-function toLastStep(step: StepRecord, status: SettledStepStatus, node: GraphNode): LastStep {
+function toLastStep(step: SettledStepRecord, node: GraphNode): LastStep {
 	return {
 		nodeId: step.nodeId,
 		nodeName: node.name,
-		status,
+		status: step.status,
 		outputs: step.outputs,
 		// Name and message only: the caller reports them, and the rest of the
 		// error stays on the step row.
@@ -46,13 +61,13 @@ export class ExecutionFinishedAnnouncer {
 		execution: ExecutionRecord,
 		step: StepRecord,
 		node: GraphNode,
-		status: 'completed' | 'failed',
+		executionStatus: 'completed' | 'failed',
 	): Promise<void> {
 		this.responseChannel.publish({
 			type: 'ended',
 			executionId: execution.id,
 			workflowId: execution.workflowId,
-			status,
+			status: executionStatus,
 			lastStep: await this.resolveLastStep(execution, step, node),
 		});
 	}
@@ -67,28 +82,21 @@ export class ExecutionFinishedAnnouncer {
 		step: StepRecord,
 		node: GraphNode,
 	): Promise<LastStep> {
-		if (!isSettledStatus(step.status)) {
-			// Steps never unsettle, and this runs only once a step has settled, so
-			// this is a bug in the caller, not a state this step can reach.
-			throw new UnexpectedError(
-				`Step ${step.nodeId} announced its end from status '${step.status}'`,
-			);
-		}
+		assertSettled(step);
 
-		const settling = toLastStep(step, step.status, node);
+		const settling = toLastStep(step, node);
 		if (step.status === 'completed' || step.status === 'failed') return settling;
 
 		try {
 			// Settle order is what v1 means by the last node.
 			const last = await this.stepStore.loadLastSettledStep(execution.id);
-			// The store answers with settled rows only; the check is what makes that
-			// a type.
-			if (!last || !isSettledStatus(last.status)) return settling;
+			if (!last) return settling;
+			assertSettled(last);
 
 			const lastNode = execution.graph.nodes.find((candidate) => candidate.id === last.nodeId);
 			if (!lastNode) return settling;
 
-			return toLastStep(last, last.status, lastNode);
+			return toLastStep(last, lastNode);
 		} catch (error) {
 			// An answer without an outcome beats a caller that waits for its timeout.
 			this.logger.warn('could not resolve the last step that settled', {
