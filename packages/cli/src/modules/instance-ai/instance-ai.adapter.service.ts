@@ -439,6 +439,8 @@ export class InstanceAiAdapterService {
 			/** Per-user node-usage gate (via `resolveExperimentGates`). Falsy → neither the
 			 *  `node-usage` action nor the `nodeTypes` filter on `list` is offered. */
 			nodeUsageEnabled?: boolean;
+			/** Instance activity gate. False disables the activity tool. */
+			instanceContextEnabled?: boolean;
 			/** Past-conversation recall, already bound to the run's user, project and
 			 *  thread by the caller. Absent → conversation-history tool not wired. */
 			conversationHistory?: InstanceAiConversationHistoryReader;
@@ -462,6 +464,7 @@ export class InstanceAiAdapterService {
 			configEvalsEnabled,
 			mcpConnectionsEnabled,
 			nodeUsageEnabled,
+			instanceContextEnabled,
 			conversationHistory,
 			folderExplorationEnabled,
 			modelId,
@@ -501,8 +504,8 @@ export class InstanceAiAdapterService {
 				: {}),
 			mcpService: mcpConnectionsEnabled ? this.createMcpAdapter(user) : undefined,
 			conversationHistoryService: conversationHistory,
-			// Presence is the gate, as with the services above: no reader, no `activity` tool.
-			...(this.instanceContext?.enabled
+			// The tool and context block use the same instance gate result.
+			...(instanceContextEnabled === true && this.instanceContext
 				? { activityService: this.createActivityAdapter(user, projectId) }
 				: {}),
 			webResearchService: this.createWebResearchAdapter(user, searchProxyConfig),

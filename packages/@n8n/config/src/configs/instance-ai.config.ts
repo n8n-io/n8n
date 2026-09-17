@@ -291,8 +291,4 @@ export class InstanceAiConfig {
 	 */
 	@Env('N8N_INSTANCE_AI_MAX_CONCURRENT_SUB_AGENTS', concurrencyLimitSchema)
 	maxConcurrentSubAgents: number = -1;
-
-	/** Enables the assistant context reader. Activity recording uses its instance feature flag. */
-	@Env('N8N_INSTANCE_AI_INSTANCE_CONTEXT_ENABLED')
-	instanceContextEnabled: boolean = false;
 }

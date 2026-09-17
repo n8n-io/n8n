@@ -46,6 +46,7 @@ describe('get_instance_context', () => {
 				scope: { surface: 'mcp', credentialGranted: false, executionGranted: true },
 				// Stateless server, no thread to track against, so every read is a full snapshot.
 				cursor: null,
+				enabled: true,
 			}),
 		);
 	});
