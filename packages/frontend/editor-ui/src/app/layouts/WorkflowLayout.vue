@@ -1,5 +1,6 @@
 <script lang="ts" setup>
-import { watch, onMounted, onBeforeUnmount, provide } from 'vue';
+import { computed, watch, onMounted, onBeforeUnmount, provide } from 'vue';
+import { useRoute } from 'vue-router';
 import BaseLayout from './BaseLayout.vue';
 import { useLayoutProps } from '@/app/composables/useLayoutProps';
 import { InstanceAiEditorCapabilityKey } from '@/app/composables/useInstanceAiEditorCapability';
@@ -16,6 +17,10 @@ import AppSidebar from '@/app/components/app/AppSidebar.vue';
 import LogsPanel from '@/features/execution/logs/components/LogsPanel.vue';
 import LoadingView from '@/app/views/LoadingView.vue';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+import OemPrototypeCanvasLogo from '@/features/oemPrototype/components/OemPrototypeCanvasLogo.vue';
+import OemPrototypeTopBar from '@/features/oemPrototype/components/OemPrototypeTopBar.vue';
+import OemPrototypeWarning from '@/features/oemPrototype/components/OemPrototypeWarning.vue';
+import { isOemPrototypeTicket } from '@/features/oemPrototype/oemPrototype.constants';
 
 const { layoutProps } = useLayoutProps();
 const assistantStore = useAssistantStore();
@@ -23,6 +28,11 @@ const chatHubPanelStore = useChatHubPanelStore();
 const pushConnectionStore = usePushConnectionStore();
 const settingsStore = useSettingsStore();
 const isCanvasOnly = settingsStore.isCanvasOnly;
+const route = useRoute();
+const isOemPrototype = computed(() => route.meta.oemPrototype === true);
+const oemPrototypeTicket = computed(() =>
+	isOemPrototypeTicket(route.params.ticket) ? route.params.ticket : undefined,
+);
 
 const {
 	isLoading,
@@ -85,9 +95,13 @@ onBeforeUnmount(() => {
 <template>
 	<BaseLayout>
 		<template #header>
-			<AppHeader />
+			<div v-if="isOemPrototype" :class="$style.prototypeHeader">
+				<OemPrototypeTopBar />
+				<AppHeader force-full-header />
+			</div>
+			<AppHeader v-else />
 		</template>
-		<template v-if="!isCanvasOnly" #sidebar>
+		<template v-if="!isCanvasOnly && !isOemPrototype" #sidebar>
 			<AppSidebar />
 		</template>
 		<!-- Gate on a non-null document store, not just isLoading: during a load/switch the
@@ -95,8 +109,18 @@ onBeforeUnmount(() => {
 		strict injectNDVStore() reads throw if it mounts in that window. Mirrors WorkflowCanvasHostBody's isReady.
 		Exclude the onboarding route: it renders a redirect-only view that never provides a
 		document store and must mount so its onMounted redirect can fire. -->
-		<LoadingView v-if="isLoading || (!currentWorkflowDocumentStore && !isOnboardingRoute)" />
-		<RouterView v-else />
+		<div v-if="isOemPrototype" :class="$style.prototype">
+			<OemPrototypeWarning v-if="oemPrototypeTicket === 'API-305'" />
+			<div :class="$style.prototypeCanvas">
+				<LoadingView v-if="isLoading || (!currentWorkflowDocumentStore && !isOnboardingRoute)" />
+				<RouterView v-else />
+				<OemPrototypeCanvasLogo v-if="oemPrototypeTicket === 'API-317' && isCanvasOnly" />
+			</div>
+		</div>
+		<template v-else>
+			<LoadingView v-if="isLoading || (!currentWorkflowDocumentStore && !isOnboardingRoute)" />
+			<RouterView v-else />
+		</template>
 		<template v-if="layoutProps.logs" #footer>
 			<LogsPanel />
 		</template>
@@ -106,3 +130,27 @@ onBeforeUnmount(() => {
 		</template>
 	</BaseLayout>
 </template>
+
+<style lang="scss" module>
+.prototypeHeader {
+	display: flex;
+	flex-direction: column;
+	width: 100%;
+}
+
+.prototype {
+	display: flex;
+	flex: 1;
+	min-width: 0;
+	min-height: 0;
+	flex-direction: column;
+}
+
+.prototypeCanvas {
+	position: relative;
+	display: flex;
+	flex: 1;
+	min-width: 0;
+	min-height: 0;
+}
+</style>

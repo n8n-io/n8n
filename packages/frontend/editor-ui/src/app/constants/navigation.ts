@@ -4,7 +4,12 @@ import { VIEWS } from '@n8n/frontend-constants/views';
 
 export { VIEWS };
 
-export const EDITABLE_CANVAS_VIEWS = [VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW, VIEWS.EXECUTION_DEBUG];
+export const EDITABLE_CANVAS_VIEWS = [
+	VIEWS.WORKFLOW,
+	VIEWS.NEW_WORKFLOW,
+	VIEWS.EXECUTION_DEBUG,
+	VIEWS.OEM_PROTOTYPE_WORKFLOW,
+];
 
 export const enum MAIN_HEADER_TABS {
 	WORKFLOW = 'workflow',

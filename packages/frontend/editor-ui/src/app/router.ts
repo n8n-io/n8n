@@ -31,6 +31,7 @@ import {
 	canManageInstanceAi,
 	canMessageInstanceAi,
 } from '@/features/ai/instanceAi/instanceAiPermissions';
+import { isOemPrototypeTicket } from '@/features/oemPrototype/oemPrototype.constants';
 
 const ChangePasswordView = async () =>
 	await import('@/features/core/auth/views/ChangePasswordView.vue');
@@ -40,6 +41,8 @@ const EntityUnAuthorised = async () => await import('@/app/views/EntityUnAuthori
 const OAuthConsentView = async () => await import('@/app/views/OAuthConsentView.vue');
 const ForgotMyPasswordView = async () =>
 	await import('@/features/core/auth/views/ForgotMyPasswordView.vue');
+const OemPrototypeHubView = async () =>
+	await import('@/features/oemPrototype/views/OemPrototypeHubView.vue');
 
 const NodeView = async () => await import('@/app/views/NodeView.vue');
 const WorkflowExecutionsView = async () =>
@@ -171,6 +174,51 @@ const allowResourceCenterRoute = (
 };
 
 export const routes: RouteRecordRaw[] = [
+	{
+		path: '/oem-prototypes',
+		name: VIEWS.OEM_PROTOTYPE_HUB,
+		component: OemPrototypeHubView,
+		meta: {
+			layout: 'oemPrototypeHub',
+			oemPrototype: true,
+			middleware: ['authenticated'],
+		},
+	},
+	{
+		path: '/oem-prototypes/:ticket',
+		name: VIEWS.OEM_PROTOTYPE_LAUNCH,
+		component: { render: () => null },
+		meta: {
+			oemPrototype: true,
+			middleware: ['authenticated'],
+		},
+		beforeEnter: (to) => {
+			if (!isOemPrototypeTicket(to.params.ticket)) {
+				return { name: VIEWS.OEM_PROTOTYPE_HUB };
+			}
+
+			return {
+				name: VIEWS.OEM_PROTOTYPE_WORKFLOW,
+				params: { ticket: to.params.ticket, workflowId: generateNanoId() },
+				query: { new: 'true' },
+			};
+		},
+	},
+	{
+		path: '/oem-prototypes/:ticket/:workflowId/:nodeId?',
+		name: VIEWS.OEM_PROTOTYPE_WORKFLOW,
+		component: NodeView,
+		meta: {
+			layout: 'workflow',
+			layoutProps: { logs: true },
+			nodeView: true,
+			keepWorkflowAlive: true,
+			oemPrototype: true,
+			middleware: ['authenticated'],
+		},
+		beforeEnter: (to) =>
+			isOemPrototypeTicket(to.params.ticket) ? true : { name: VIEWS.OEM_PROTOTYPE_HUB },
+	},
 	{
 		path: '/',
 		// Stub component — beforeEnter always navigates away, so it is never rendered.

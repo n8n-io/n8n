@@ -131,7 +131,7 @@ useExposeCssVar('--ask-assistant--floating-button--margin-bottom', askAiFloating
 	<LoadingView v-if="loading" />
 	<BaseLayout v-else id="n8n-app" :class="$style.app">
 		<template #banners>
-			<AppBanners />
+			<AppBanners v-if="!route.meta.oemPrototype" />
 		</template>
 		<AppLayout @mounted="setLayoutRef">
 			<RouterView />

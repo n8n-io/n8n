@@ -17,6 +17,9 @@ const ChatLayout = defineAsyncComponent(async () => await import('@/app/layouts/
 const InstanceAiLayout = defineAsyncComponent(
 	async () => await import('@/app/layouts/InstanceAiLayout.vue'),
 );
+const OemPrototypeHubLayout = defineAsyncComponent(
+	async () => await import('@/app/layouts/OemPrototypeHubLayout.vue'),
+);
 
 const route = useRoute();
 const router = useRouter();
@@ -46,6 +49,10 @@ function onMounted(element: Element) {
 		<DemoLayout v-else-if="route.meta.layout === 'demo'" @mounted="onMounted" />
 		<ChatLayout v-else-if="route.meta.layout === 'chat'" @mounted="onMounted" />
 		<InstanceAiLayout v-else-if="route.meta.layout === 'instanceAi'" @mounted="onMounted" />
+		<OemPrototypeHubLayout
+			v-else-if="route.meta.layout === 'oemPrototypeHub'"
+			@mounted="onMounted"
+		/>
 		<DefaultLayout v-else @mounted="onMounted" />
 	</Suspense>
 </template>

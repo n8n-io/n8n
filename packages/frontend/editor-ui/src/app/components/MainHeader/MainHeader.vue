@@ -18,6 +18,11 @@ import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import type { FolderShortInfo } from '@/features/core/folders/folders.types';
 
 import { useToast } from '@n8n/composables/useToast';
+
+const props = defineProps<{
+	forceFullHeader?: boolean;
+}>();
+
 const router = useRouter();
 const route = useRoute();
 const locale = useI18n();
@@ -30,6 +35,9 @@ const uiStore = useUIStore();
 const workflowsListStore = useWorkflowsListStore();
 const executionsStore = useExecutionsStore();
 const settingsStore = useSettingsStore();
+const useCompactCanvasOnlyHeader = computed(
+	() => settingsStore.isCanvasOnly && !props.forceFullHeader,
+);
 
 const activeHeaderTab = ref(MAIN_HEADER_TABS.WORKFLOW);
 const workflowToReturnTo = ref('');
@@ -256,10 +264,10 @@ async function onWorkflowDeactivated() {
 			:class="{
 				[$style['main-header']]: true,
 				[$style.expanded]: !uiStore.sidebarMenuCollapsed,
-				[$style['canvas-only']]: settingsStore.isCanvasOnly,
+				[$style['canvas-only']]: useCompactCanvasOnlyHeader,
 			}"
 		>
-			<template v-if="!settingsStore.isCanvasOnly">
+			<template v-if="!useCompactCanvasOnlyHeader">
 				<div v-show="!hideMenuBar" :class="$style['top-menu']">
 					<WorkflowDetails
 						v-if="workflowName"
@@ -277,7 +285,7 @@ async function onWorkflowDeactivated() {
 				v-if="onWorkflowPage"
 				:items="tabBarItems"
 				:model-value="activeHeaderTab"
-				:floating="settingsStore.isCanvasOnly"
+				:floating="useCompactCanvasOnlyHeader"
 				@update:model-value="onTabSelected"
 			/>
 		</div>

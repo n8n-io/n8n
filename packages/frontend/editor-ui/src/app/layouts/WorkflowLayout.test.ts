@@ -4,16 +4,18 @@ import WorkflowLayout from './WorkflowLayout.vue';
 import { computed, ref, shallowRef } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 
+const mockRoute = vi.hoisted(() => ({
+	params: { workflowId: 'test-workflow-id', ticket: '' },
+	query: {},
+	meta: { oemPrototype: false },
+	name: 'workflow',
+}));
+
 vi.mock('vue-router', async (importOriginal) => {
 	const actual = (await importOriginal()) as object;
 	return {
 		...actual,
-		useRoute: () => ({
-			params: { workflowId: 'test-workflow-id' },
-			query: {},
-			meta: {},
-			name: 'workflow',
-		}),
+		useRoute: () => mockRoute,
 		useRouter: () => ({
 			replace: vi.fn(),
 			push: vi.fn(),
@@ -66,7 +68,9 @@ vi.mock('@/app/stores/pushConnection.store', () => ({
 
 const defaultStubs = {
 	AppHeader: {
-		template: '<div data-test-id="app-header">App Header</div>',
+		props: ['forceFullHeader'],
+		template:
+			'<div data-test-id="app-header" :data-force-full-header="forceFullHeader">App Header</div>',
 	},
 	AppSidebar: {
 		template: '<div data-test-id="app-sidebar">App Sidebar</div>',
@@ -86,6 +90,12 @@ const defaultStubs = {
 	LoadingView: {
 		template: '<div data-test-id="loading-view">Loading...</div>',
 	},
+	OemPrototypeTopBar: {
+		template: '<div data-test-id="oem-prototype-top-bar">Prototype Top Bar</div>',
+	},
+	OemPrototypeWarning: {
+		template: '<div data-test-id="oem-prototype-warning">Prototype Warning</div>',
+	},
 	RouterView: {
 		template: '<div>Workflow Content</div>',
 	},
@@ -104,6 +114,8 @@ describe('WorkflowLayout', () => {
 	beforeEach(() => {
 		createTestingPinia();
 		vi.clearAllMocks();
+		mockRoute.params.ticket = '';
+		mockRoute.meta.oemPrototype = false;
 	});
 
 	it('should render the layout without throwing', () => {
@@ -160,6 +172,19 @@ describe('WorkflowLayout', () => {
 		const { getByText, getByTestId } = renderComponent();
 		expect(getByTestId('app-header')).toBeInTheDocument();
 		expect(getByTestId('app-sidebar')).toBeInTheDocument();
+		expect(getByText('Workflow Content')).toBeInTheDocument();
+	});
+
+	it('should preserve the full editor header on an OEM prototype', () => {
+		mockRoute.params.ticket = 'API-305';
+		mockRoute.meta.oemPrototype = true;
+
+		const { getByTestId, getByText, queryByTestId } = renderComponent();
+
+		expect(getByTestId('oem-prototype-top-bar')).toBeInTheDocument();
+		expect(getByTestId('app-header')).toHaveAttribute('data-force-full-header');
+		expect(getByTestId('oem-prototype-warning')).toBeInTheDocument();
+		expect(queryByTestId('app-sidebar')).not.toBeInTheDocument();
 		expect(getByText('Workflow Content')).toBeInTheDocument();
 	});
 

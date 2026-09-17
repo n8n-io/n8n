@@ -77,6 +77,9 @@ describe('router', () => {
 		['/workflow/R9JFXwkUCL1jZBuw/executions/29021', VIEWS.EXECUTION_PREVIEW],
 		['/workflows/templates/R9JFXwkUCL1jZBuw', VIEWS.TEMPLATE_IMPORT],
 		['/workflows/demo', VIEWS.DEMO],
+		['/oem-prototypes', VIEWS.OEM_PROTOTYPE_HUB],
+		['/oem-prototypes/API-317', VIEWS.OEM_PROTOTYPE_WORKFLOW],
+		['/oem-prototypes/API-305', VIEWS.OEM_PROTOTYPE_WORKFLOW],
 	])(
 		'should resolve %s to %s',
 		async (path, name) => {

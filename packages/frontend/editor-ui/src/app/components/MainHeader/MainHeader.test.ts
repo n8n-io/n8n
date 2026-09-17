@@ -146,6 +146,14 @@ describe('MainHeader', () => {
 		expect(queryByTestId('workflow-details-stub')).not.toBeInTheDocument();
 	});
 
+	it('should mount WorkflowDetails when the full canvas-only header is required', () => {
+		settingsStore.settings.canvasOnly = true;
+
+		const { getByTestId } = renderComponent({ props: { forceFullHeader: true } });
+
+		expect(getByTestId('workflow-details-stub')).toBeInTheDocument();
+	});
+
 	// Regression: the header renders before the workflow document store is set
 	// (e.g. the blank-canvas boot window). It must not throw when no NDV store is
 	// available — it uses injectNDVStoreIfProvided() and guards the access.

@@ -98,4 +98,7 @@ export enum VIEWS {
 	SETTINGS_CONTEXT = 'SettingsContext',
 	SETTINGS_CONTEXT_PREFERENCES = 'SettingsContextPreferences',
 	RESOURCE_CENTER = 'ResourceCenter',
+	OEM_PROTOTYPE_HUB = 'OemPrototypeHub',
+	OEM_PROTOTYPE_LAUNCH = 'OemPrototypeLaunch',
+	OEM_PROTOTYPE_WORKFLOW = 'OemPrototypeWorkflow',
 }
