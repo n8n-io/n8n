@@ -237,6 +237,7 @@ function goToUpgrade() {
 					{{ i18n.baseText('settings.secretsProviderConnections.title') }}
 				</N8nHeading>
 				<p>I like enterprise features</p>
+				<p>Like. Alot!</p>
 				<N8nText
 					v-if="secretsProviders.isEnterpriseExternalSecretsEnabled.value && hasActiveProviders"
 					color="text-base"
