@@ -16,6 +16,8 @@ run-name: "${{ github.event_name == 'workflow_dispatch' && format('CI: Owners Re
 #   - pull_request_review (submitted/dismissed): re-evaluates when approvals
 #     change. A privileged event (base repo context, secrets), so it covers
 #     fork PRs too — and approvals can only change through review events.
+#     Comment-only reviews are skipped: they cannot change approvals, and
+#     review bots submit one after every push.
 #   - merge_group: reports success on the queue head without re-evaluating.
 #     A PR cannot enter the queue unless this status is green on its head,
 #     and the queue does not change approvals.
@@ -52,14 +54,6 @@ on:
 
 permissions:
   contents: read
-
-concurrency:
-  group: >-
-    owners-required-reviews-${{ github.event.pull_request.number
-      || github.event.merge_group.head_sha
-      || inputs.pr_number
-      || github.ref }}
-  cancel-in-progress: true
 
 jobs:
   # The queue requires this status on the merge-group head, but there is
@@ -105,9 +99,18 @@ jobs:
       (github.event_name != 'pull_request' ||
        github.event.pull_request.head.repo.full_name == github.repository) &&
       (github.event_name != 'pull_request_review' ||
-       github.event.pull_request.base.ref == 'master')
+       (github.event.pull_request.base.ref == 'master' &&
+        github.event.review.state != 'commented'))
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    # Job-level, not workflow-level: a run whose job is skipped must not
+    # cancel an in-flight evaluation, or the status stays pending.
+    concurrency:
+      group: >-
+        owners-required-reviews-${{ github.event.pull_request.number
+          || inputs.pr_number
+          || github.ref }}
+      cancel-in-progress: true
     permissions:
       contents: read
       statuses: write

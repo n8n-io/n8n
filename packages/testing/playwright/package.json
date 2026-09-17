@@ -16,6 +16,8 @@
     "bench:canvas:sentinels": "node scripts/canvas-perf-sentinels.mjs test-results.json",
     "bench:canvas:report": "playwright show-report",
     "test:infrastructure": "playwright test --project='*:infrastructure'",
+    "test:encryption:upgrade": "playwright test --project='encryption:infrastructure' tests/infrastructure/encryption/upgrade-cycle.spec.ts",
+    "test:encryption:rotation": "playwright test --project='encryption:infrastructure' tests/infrastructure/encryption/rotation-cycle.spec.ts",
     "test:benchmark": "playwright test --project='benchmarking:infrastructure'",
     "benchmark:sizing-matrix": "tsx scripts/sizing-matrix-aggregate.ts",
     "test:container:sqlite": "playwright test --project='sqlite:*'",

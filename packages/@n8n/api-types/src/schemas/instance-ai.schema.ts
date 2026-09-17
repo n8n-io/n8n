@@ -588,17 +588,6 @@ export const workflowSetupNodeSchema = z.object({
 				'resolvable credential and only a parameter is missing — that card asks about a parameter, ' +
 				'not about the service, so a skip of it must not be generalised to the credential type.',
 		),
-	subnodeRootNode: z
-		.object({
-			name: z.string(),
-			type: z.string(),
-			typeVersion: z.number(),
-			id: z.string(),
-		})
-		.optional()
-		.describe(
-			'Snapshot of the root node for this sub-node connected via a non-Main port (e.g. ai_languageModel, ai_memory, ai_tool). Carries the metadata needed to render the group header even when the root node itself has no setup request.',
-		),
 });
 export type InstanceAiWorkflowSetupNode = z.infer<typeof workflowSetupNodeSchema>;
 
