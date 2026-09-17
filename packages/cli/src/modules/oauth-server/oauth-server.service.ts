@@ -790,8 +790,8 @@ export class OAuthServerService implements OAuthServerProvider {
 	}
 
 	/** Tool names each scope unlocks on this instance, for the clients list UI. */
-	getInstanceScopeTools(): Record<string, string[]> | undefined {
-		return this.resourceRegistry.getDefaultResource()?.getScopeTools?.();
+	async getInstanceScopeTools(): Promise<Record<string, string[]> | undefined> {
+		return await this.resourceRegistry.getDefaultResource()?.getScopeTools?.();
 	}
 
 	/**

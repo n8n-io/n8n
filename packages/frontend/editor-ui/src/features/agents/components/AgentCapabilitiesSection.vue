@@ -27,6 +27,7 @@ import type {
 import { buildToolRows } from './AgentCapabilitiesSection.utils';
 import AgentChipButton from './AgentChipButton.vue';
 import AgentChipRow from './AgentChipRow.vue';
+import AgentWebSearchSection from './AgentWebSearchSection.vue';
 
 export type AgentCapabilitySection = 'tools' | 'tasks' | 'skills' | 'subAgents';
 type CapabilityRow = Exclude<AgentCapabilitySection, 'tasks'> | 'workflows';
@@ -669,7 +670,7 @@ function openExistingSubAgentModal(subAgent: {
 				>
 					<div v-for="{ id, skill } in skills" :key="id" :class="$style.chipGroup">
 						<AgentChipButton
-							icon="sparkles"
+							icon="book-open"
 							:invalid="(skillIssueMessages.get(id) ?? []).length > 0"
 							:invalid-reasons="skillIssueMessages.get(id) ?? []"
 							:disabled="props.disabled"
@@ -706,6 +707,13 @@ function openExistingSubAgentModal(subAgent: {
 					</div>
 				</AgentChipRow>
 			</template>
+			<div :class="$style.divider" aria-hidden="true" />
+			<AgentWebSearchSection
+				:config="props.config"
+				:disabled="props.disabled"
+				:project-id="props.projectId"
+				@update:config="emit('update:config', $event)"
+			/>
 		</div>
 	</div>
 </template>
@@ -736,5 +744,12 @@ function openExistingSubAgentModal(subAgent: {
 	display: inline-flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
+}
+
+.divider {
+	flex: initial;
+	height: 1px;
+	background-color: var(--border-color--subtle);
+	margin-inline: calc(var(--spacing--sm) * -1);
 }
 </style>

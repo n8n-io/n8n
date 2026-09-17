@@ -24,7 +24,7 @@ export const taskOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'POST',
-						url: '=/contacts/{{$parameter.contactId}}/tasks/',
+						url: '=/contacts/{{toPathSegment($parameter.contactId)}}/tasks/',
 					},
 					output: {
 						postReceive: [taskPostReceiceAction],
@@ -38,7 +38,7 @@ export const taskOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'DELETE',
-						url: '=/contacts/{{$parameter.contactId}}/tasks/{{$parameter.taskId}}/',
+						url: '=/contacts/{{toPathSegment($parameter.contactId)}}/tasks/{{toPathSegment($parameter.taskId)}}/',
 					},
 					output: {
 						postReceive: [
@@ -59,7 +59,7 @@ export const taskOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
-						url: '=/contacts/{{$parameter.contactId}}/tasks/{{$parameter.taskId}}/',
+						url: '=/contacts/{{toPathSegment($parameter.contactId)}}/tasks/{{toPathSegment($parameter.taskId)}}/',
 					},
 					output: {
 						postReceive: [taskPostReceiceAction],
@@ -73,7 +73,7 @@ export const taskOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
-						url: '=/contacts/{{$parameter.contactId}}/tasks/',
+						url: '=/contacts/{{toPathSegment($parameter.contactId)}}/tasks/',
 					},
 					output: {
 						postReceive: [
@@ -95,7 +95,7 @@ export const taskOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'PUT',
-						url: '=/contacts/{{$parameter.contactId}}/tasks/{{$parameter.taskId}}/',
+						url: '=/contacts/{{toPathSegment($parameter.contactId)}}/tasks/{{toPathSegment($parameter.taskId)}}/',
 					},
 					send: {
 						preSend: [taskUpdatePreSendAction],
