@@ -2546,41 +2546,19 @@ function onSwitchAgent(nextAgentId: string) {
 	transition: padding-right var(--duration--snappy) var(--easing--ease-out);
 	scrollbar-width: thin;
 	scrollbar-color: var(--border-color) transparent;
+	transition:
+		padding-left var(--duration--snappy) var(--easing--ease-out),
+		padding-right var(--duration--snappy) var(--easing--ease-out);
 
 	&.previewOpen {
 		padding-right: var(--agent-preview-chat-column-width, 30rem);
 	}
 
 	&.aiPanelOpen {
-		// Keep the content next to the docked assistant instead of centering it.
-		--agent-builder-content-margin-inline: 0;
-
 		padding-left: var(--agent-ai-panel-width);
-		transition:
-			padding-left var(--duration--snappy) var(--easing--ease-out),
-			padding-right var(--duration--snappy) var(--easing--ease-out);
-	}
-
-	&.previewResizing {
-		transition: none;
 	}
 
 	@include motion.reduced-motion;
-}
-
-.previewResizeWrapper {
-	position: absolute;
-	top: 0;
-	right: 0;
-	bottom: 0;
-	width: var(--agent-preview-chat-column-width);
-	max-width: 100%;
-	z-index: 1;
-	pointer-events: none;
-}
-
-.previewResizeOpen {
-	pointer-events: auto;
 }
 
 .loading {

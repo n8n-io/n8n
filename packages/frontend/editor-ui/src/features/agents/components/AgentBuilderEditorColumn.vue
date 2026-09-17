@@ -390,7 +390,7 @@ const i18n = useI18n();
 	max-width: var(--agent-builder-content-max-width);
 	width: 100%;
 	padding: var(--spacing--lg) var(--agent-builder-content-padding-inline);
-	margin: 0 var(--agent-builder-content-margin-inline, auto);
+	margin: 0 auto;
 }
 
 .settingsCards {
@@ -417,7 +417,7 @@ const i18n = useI18n();
 	box-sizing: border-box;
 	width: 100%;
 	max-width: var(--agent-builder-content-max-width);
-	margin: 0 var(--agent-builder-content-margin-inline, auto);
+	margin: 0 auto;
 	padding: var(--spacing--2xl) var(--agent-builder-content-padding-inline) var(--spacing--xl);
 }
 
@@ -432,7 +432,7 @@ const i18n = useI18n();
 	box-sizing: border-box;
 	width: 100%;
 	max-width: var(--agent-builder-content-max-width);
-	margin: 0 var(--agent-builder-content-margin-inline, auto);
+	margin: 0 auto;
 	padding: 0 var(--agent-builder-content-padding-inline);
 }
 
