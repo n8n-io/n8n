@@ -50,11 +50,10 @@ export class EngineV2Module implements ModuleInterface {
 			Container.get(Logger).scoped('engine-v2'),
 		);
 		Container.get(EngineV2WebhookResponder).useChannel(responseChannel);
+		this.responseChannel = responseChannel;
 
 		const { EngineV2Runtime } = await import('./engine-v2.runtime.js');
 		await Container.get(EngineV2Runtime).init(responseChannel);
-
-		this.responseChannel = responseChannel;
 
 		const { EngineDataPlaneClient } = await import('./engine-data-plane-client.js');
 		const { EngineDataPlaneProxyService } = await import(
@@ -68,10 +67,13 @@ export class EngineV2Module implements ModuleInterface {
 	@OnShutdown()
 	async shutdown() {
 		const { EngineV2Runtime } = await import('./engine-v2.runtime.js');
-		await Container.get(EngineV2Runtime).shutdown();
-
-		// After the engine, so a final response still has somewhere to go.
-		await this.responseChannel?.stop();
+		try {
+			await Container.get(EngineV2Runtime).shutdown();
+		} finally {
+			// After the engine, so a final response still has somewhere to go.
+			// In a `finally`, so a failed runtime shutdown still releases the channel.
+			await this.responseChannel?.stop();
+		}
 
 		// After the engine, so its final flush still has somewhere to land.
 		const { EngineControlPlaneServer } = await import('./engine-control-plane-server.js');
