@@ -1,5 +1,6 @@
 import { AgentEvent, createScopedWorkspace, filterRuntimeSkillSource } from '@n8n/agents';
 import type {
+	AgentDbMessage,
 	Message,
 	Workspace,
 	ScopedMemoryTaskEvent,
@@ -5208,12 +5209,15 @@ export class InstanceAiService {
 	}
 
 	/**
-	 * The ai-preferences block the persisted conversation still carries, from its newest
-	 * user message that has one. The SDK persists the turn input on receipt, so what the
-	 * stored messages hold is exactly what the model reads again on the next request.
+	 * The ai-preferences block the model can still see this turn, from the newest replayed
+	 * user message that carries one. Scanned over the replay window, not the whole table:
+	 * a message the observation cursor has compacted survives only as lossy observation
+	 * bullets, so a block behind the cursor is gone from the model's context and must
+	 * count as absent — re-injection is what brings the preferences back. This also bounds
+	 * the scan to the same messages the runtime is about to load for the turn anyway.
 	 */
 	private async findLastAiPreferencesBlock(threadId: string): Promise<string | undefined> {
-		const history = await this.agentMemory.getMessages(threadId);
+		const history = await this.getReplayedMessages(threadId);
 		for (let i = history.length - 1; i >= 0; i--) {
 			const m = history[i];
 			if (!('role' in m) || m.role !== 'user') continue;
@@ -5221,6 +5225,34 @@ export class InstanceAiService {
 			if (block !== undefined) return block;
 		}
 		return undefined;
+	}
+
+	/**
+	 * The persisted messages the runtime replays to the model on the next turn. Mirrors
+	 * `MemoryOrchestrator.loadHistoryMessages`, including its desync guard: the post-cursor
+	 * window applies only when the cursor AND at least one active observation exist,
+	 * otherwise the runtime falls back to the full history. Diverging in the other
+	 * direction is safe — a needless re-injection costs one duplicate block, while
+	 * trusting a compacted copy silently drops the preferences.
+	 */
+	private async getReplayedMessages(threadId: string): Promise<AgentDbMessage[]> {
+		const cursor = await this.agentMemory.getCursor(threadId);
+		if (cursor) {
+			const observations = await this.agentMemory.getActiveObservationLog({
+				observationScopeId: threadId,
+				limit: 1,
+				order: 'desc',
+			});
+			if (observations.length > 0) {
+				return await this.agentMemory.getMessagesForObservationScope(threadId, {
+					since: {
+						sinceCreatedAt: cursor.lastObservedAt,
+						sinceMessageId: cursor.lastObservedMessageId,
+					},
+				});
+			}
+		}
+		return await this.agentMemory.getMessages(threadId);
 	}
 
 	private async canAccessAgentPreviewHandoff(user: User, projectId: string): Promise<boolean> {

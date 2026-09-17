@@ -6259,7 +6259,12 @@ describe('InstanceAiService — resolveAiPreferencesTurn', () => {
 			threadId: string,
 		) => Promise<{ block: string | undefined; payload: AiPreferencesAppliedPayload }>;
 		aiPreferenceService: { getApplicable: Mock };
-		agentMemory: { getMessages: Mock };
+		agentMemory: {
+			getMessages: Mock;
+			getCursor: Mock;
+			getActiveObservationLog: Mock;
+			getMessagesForObservationScope: Mock;
+		};
 		eventLog: { getLastPreferencesInjectionRunId: Mock };
 		logger: { warn: Mock };
 	};
@@ -6267,7 +6272,12 @@ describe('InstanceAiService — resolveAiPreferencesTurn', () => {
 	function createService(): Internals {
 		const service = Object.create(InstanceAiService.prototype) as unknown as Internals;
 		service.aiPreferenceService = { getApplicable: vi.fn() };
-		service.agentMemory = { getMessages: vi.fn().mockResolvedValue([]) };
+		service.agentMemory = {
+			getMessages: vi.fn().mockResolvedValue([]),
+			getCursor: vi.fn().mockResolvedValue(null),
+			getActiveObservationLog: vi.fn().mockResolvedValue([]),
+			getMessagesForObservationScope: vi.fn().mockResolvedValue([]),
+		};
 		service.eventLog = { getLastPreferencesInjectionRunId: vi.fn().mockResolvedValue(undefined) };
 		service.logger = { warn: vi.fn() };
 		return service;
@@ -6428,6 +6438,59 @@ describe('InstanceAiService — resolveAiPreferencesTurn', () => {
 			'Instance AI failed to read the last AI preferences block of this thread',
 			{ threadId: 'thread-1', error: 'history down' },
 		);
+	});
+
+	it('re-injects when the observation cursor has compacted the turn that carried the block', async () => {
+		const service = createService();
+		service.aiPreferenceService.getApplicable.mockResolvedValue(applicable);
+		const block = renderAiPreferencesBlock(applicable);
+		if (!block) throw new Error('expected a block');
+		// The full table still holds the block, but the model only replays the post-cursor
+		// tail, where the block does not appear — so it must count as absent.
+		const cursor = {
+			observationScopeId: 'thread-1',
+			lastObservedMessageId: 'msg-9',
+			lastObservedAt: new Date('2026-09-01T00:00:00.000Z'),
+		};
+		service.agentMemory.getMessages.mockResolvedValue([storedUserTurn(block)]);
+		service.agentMemory.getCursor.mockResolvedValue(cursor);
+		service.agentMemory.getActiveObservationLog.mockResolvedValue([{ id: 'obs-1' }]);
+		service.agentMemory.getMessagesForObservationScope.mockResolvedValue([
+			storedUserTurn(undefined, 'Thanks'),
+		]);
+
+		const turn = await service.resolveAiPreferencesTurn('user-1', boundProject, 'thread-1');
+
+		expect(turn.block).toContain('<ai-preferences>');
+		expect(turn.payload).toMatchObject({ injectedThisTurn: true });
+		expect(service.agentMemory.getMessages).not.toHaveBeenCalled();
+		expect(service.agentMemory.getMessagesForObservationScope).toHaveBeenCalledWith('thread-1', {
+			since: {
+				sinceCreatedAt: cursor.lastObservedAt,
+				sinceMessageId: cursor.lastObservedMessageId,
+			},
+		});
+	});
+
+	it('reads the full history when a cursor exists without an active observation, like the runtime', async () => {
+		const service = createService();
+		service.aiPreferenceService.getApplicable.mockResolvedValue(applicable);
+		const block = renderAiPreferencesBlock(applicable);
+		if (!block) throw new Error('expected a block');
+		service.agentMemory.getCursor.mockResolvedValue({
+			observationScopeId: 'thread-1',
+			lastObservedMessageId: 'msg-9',
+			lastObservedAt: new Date('2026-09-01T00:00:00.000Z'),
+		});
+		service.agentMemory.getActiveObservationLog.mockResolvedValue([]);
+		service.agentMemory.getMessages.mockResolvedValue([storedUserTurn(block)]);
+		service.eventLog.getLastPreferencesInjectionRunId.mockResolvedValue('run-1');
+
+		const turn = await service.resolveAiPreferencesTurn('user-1', boundProject, 'thread-1');
+
+		expect(turn.block).toBeUndefined();
+		expect(turn.payload).toMatchObject({ injectedThisTurn: false, carriedFromRunId: 'run-1' });
+		expect(service.agentMemory.getMessagesForObservationScope).not.toHaveBeenCalled();
 	});
 
 	it('still skips an unchanged block when the run attribution lookup fails', async () => {
