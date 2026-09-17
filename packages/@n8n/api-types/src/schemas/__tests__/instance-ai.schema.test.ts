@@ -27,6 +27,8 @@ import {
 	isDisplayableConfirmationRequest,
 	InstanceAiEnsureThreadRequest,
 	findUnbackedSeedWorkflowTools,
+	findSeedFolderIssues,
+	instanceAiEvalSeedFolderSchema,
 	InstanceAiEvalRestoreThreadRequest,
 	InstanceAiThreadHistoryQuery,
 	InstanceAiThreadMessagesQuery,
@@ -1122,6 +1124,171 @@ describe('instanceAiHandoffContextSchema', () => {
 			instanceAiHandoffContextSchema.safeParse({ source: 'setup-panel', workflowId: 'wf-1' })
 				.success,
 		).toBe(false);
+	});
+});
+
+describe('instanceAiEvalSeedFolderSchema', () => {
+	const errorOf = (result: { success: boolean; error?: { issues: unknown[] } }) =>
+		result.success ? '' : JSON.stringify(result.error?.issues);
+	const folder = (overrides: Record<string, unknown> = {}) => ({
+		id: 'odwFolder0001',
+		name: 'ODW',
+		...overrides,
+	});
+
+	it('accepts a root folder and a nested folder', () => {
+		expect(instanceAiEvalSeedFolderSchema.safeParse(folder()).success).toBe(true);
+		expect(
+			instanceAiEvalSeedFolderSchema.safeParse(
+				folder({ id: 'odwArchive001', parentFolderId: 'odwFolder0001' }),
+			).success,
+		).toBe(true);
+	});
+
+	it('rejects an id under 8 characters, like a seed data table id', () => {
+		expect(instanceAiEvalSeedFolderSchema.safeParse(folder({ id: 'odw1' })).success).toBe(false);
+	});
+
+	it('rejects a name that is not already trimmed', () => {
+		// The live turn names the folder the way a user would, so the created name
+		// must match the authored one verbatim. A silent trim would hide the mismatch.
+		expect(instanceAiEvalSeedFolderSchema.safeParse(folder({ name: ' ODW' })).success).toBe(false);
+		expect(instanceAiEvalSeedFolderSchema.safeParse(folder({ name: 'ODW ' })).success).toBe(false);
+	});
+
+	it('rejects a name with a slash, the folderPath separator', () => {
+		const result = instanceAiEvalSeedFolderSchema.safeParse(folder({ name: 'ODW/Archive' }));
+		expect(result.success).toBe(false);
+		expect(errorOf(result)).toContain('/');
+	});
+
+	it("applies n8n's own folder name rules", () => {
+		expect(instanceAiEvalSeedFolderSchema.safeParse(folder({ name: '' })).success).toBe(false);
+		expect(instanceAiEvalSeedFolderSchema.safeParse(folder({ name: '...' })).success).toBe(false);
+		expect(instanceAiEvalSeedFolderSchema.safeParse(folder({ name: '.hidden' })).success).toBe(
+			false,
+		);
+		expect(
+			instanceAiEvalSeedFolderSchema.safeParse(folder({ name: 'O'.repeat(129) })).success,
+		).toBe(false);
+	});
+});
+
+describe('findSeedFolderIssues', () => {
+	it('returns nothing for a valid tree with workflows placed in declared folders', () => {
+		expect(
+			findSeedFolderIssues({
+				folders: [
+					{ id: 'odwFolder0001' },
+					{ id: 'odwArchive001', parentFolderId: 'odwFolder0001' },
+				],
+				workflows: [{ id: 'odwSignal1Wf', parentFolderId: 'odwArchive001' }, { id: 'rootWf00001' }],
+			}),
+		).toEqual([]);
+	});
+
+	it('flags a duplicate folder id', () => {
+		const issues = findSeedFolderIssues({
+			folders: [{ id: 'odwFolder0001' }, { id: 'odwFolder0001' }],
+		});
+		expect(issues).toEqual([expect.stringContaining('Duplicate seed folder id "odwFolder0001"')]);
+	});
+
+	it('flags a folder whose parent is not declared', () => {
+		const issues = findSeedFolderIssues({
+			folders: [{ id: 'odwArchive001', parentFolderId: 'missingFolder1' }],
+		});
+		expect(issues).toEqual([expect.stringContaining('"missingFolder1"')]);
+	});
+
+	it('flags a folder that is its own parent as a cycle', () => {
+		const issues = findSeedFolderIssues({
+			folders: [{ id: 'odwFolder0001', parentFolderId: 'odwFolder0001' }],
+		});
+		expect(issues).toEqual(['Seed folder "odwFolder0001" is in a parent cycle']);
+	});
+
+	it('flags every member of a parent cycle, and every folder that descends from it', () => {
+		const issues = findSeedFolderIssues({
+			folders: [
+				{ id: 'folderAaaaaa', parentFolderId: 'folderBbbbbb' },
+				{ id: 'folderBbbbbb', parentFolderId: 'folderAaaaaa' },
+				{ id: 'folderCccccc', parentFolderId: 'folderAaaaaa' },
+			],
+		});
+		expect(issues).toEqual([
+			'Seed folder "folderAaaaaa" is in a parent cycle',
+			'Seed folder "folderBbbbbb" is in a parent cycle',
+			'Seed folder "folderCccccc" descends from a parent cycle',
+		]);
+	});
+
+	it('flags a workflow placed in a folder the seed does not declare', () => {
+		const issues = findSeedFolderIssues({
+			folders: [{ id: 'odwFolder0001' }],
+			workflows: [{ id: 'odwSignal1Wf', parentFolderId: 'nopeFolder001' }],
+		});
+		expect(issues).toEqual([
+			expect.stringContaining('Seed workflow "odwSignal1Wf" is placed in folder "nopeFolder001"'),
+		]);
+	});
+});
+
+describe('InstanceAiEvalRestoreThreadRequest folders', () => {
+	const threadId = '11111111-1111-4111-8111-111111111111';
+
+	it('accepts folders and a workflow with a parentFolderId', () => {
+		const result = InstanceAiEvalRestoreThreadRequest.safeParse({
+			threadId,
+			messages: [],
+			folders: [{ id: 'odwFolder0001', name: 'ODW' }],
+			workflows: [
+				{
+					id: 'odwSignal1Wf',
+					name: 'Odds Watch - 1',
+					nodes: [],
+					connections: {},
+					parentFolderId: 'odwFolder0001',
+				},
+			],
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it('rejects a duplicate id and a parent cycle in the request itself', () => {
+		// A caller that validates with the schema alone must not accept a graph the
+		// restore cannot create.
+		const duplicate = InstanceAiEvalRestoreThreadRequest.safeParse({
+			threadId,
+			messages: [],
+			folders: [
+				{ id: 'odwFolder0001', name: 'ODW' },
+				{ id: 'odwFolder0001', name: 'ODW 2' },
+			],
+		});
+		expect(duplicate.success).toBe(false);
+
+		const cycle = InstanceAiEvalRestoreThreadRequest.safeParse({
+			threadId,
+			messages: [],
+			folders: [
+				{ id: 'folderAaaaaa', name: 'A', parentFolderId: 'folderBbbbbb' },
+				{ id: 'folderBbbbbb', name: 'B', parentFolderId: 'folderAaaaaa' },
+			],
+		});
+		expect(cycle.success).toBe(false);
+	});
+
+	it('caps folders at 20', () => {
+		const result = InstanceAiEvalRestoreThreadRequest.safeParse({
+			threadId,
+			messages: [],
+			folders: Array.from({ length: 21 }, (_, i) => ({
+				id: `folder${String(i).padStart(8, '0')}`,
+				name: `Folder ${String(i)}`,
+			})),
+		});
+		expect(result.success).toBe(false);
 	});
 });
 

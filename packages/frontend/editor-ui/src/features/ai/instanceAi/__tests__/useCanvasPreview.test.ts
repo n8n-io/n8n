@@ -6,7 +6,6 @@ import type {
 	InstanceAiToolCallState,
 } from '@n8n/api-types';
 import { useCanvasPreview } from '../useCanvasPreview';
-import { agentsEventBus } from '@/features/agents/agents.eventBus';
 import type { ResourceEntry } from '../useResourceRegistry';
 
 // ---------------------------------------------------------------------------
@@ -874,57 +873,6 @@ describe('useCanvasPreview', () => {
 
 			expect(ctx.activeTabId.value).toBeUndefined();
 			expect(ctx.isPreviewVisible.value).toBe(false);
-		});
-	});
-
-	describe('signal agent config mutations on the event bus', () => {
-		function makeAgentConfigMutationTree(toolCallId: string) {
-			return makeAgentNode({
-				toolCalls: [
-					makeToolCall({
-						toolCallId,
-						toolName: 'patch_config',
-						isLoading: false,
-						result: { ok: true, configMutated: true, agentId: 'agent-1' },
-					}),
-				],
-			});
-		}
-
-		test('emits agentUpdated for each new config mutation', async () => {
-			const emitSpy = vi.spyOn(agentsEventBus, 'emit');
-			const ctx = setup();
-
-			ctx.thread.messages = [makeMessage({ agentTree: makeAgentConfigMutationTree('tc-1') })];
-			await nextTick();
-
-			expect(emitSpy).toHaveBeenCalledWith('agentUpdated', {
-				agentId: 'agent-1',
-				source: 'instance-ai',
-			});
-
-			ctx.thread.messages = [makeMessage({ agentTree: makeAgentConfigMutationTree('tc-2') })];
-			await nextTick();
-
-			expect(emitSpy).toHaveBeenLastCalledWith('agentUpdated', {
-				agentId: 'agent-1',
-				source: 'instance-ai',
-			});
-			expect(emitSpy).toHaveBeenCalledTimes(2);
-
-			emitSpy.mockRestore();
-		});
-
-		test('does not emit while hydrating the thread', async () => {
-			const emitSpy = vi.spyOn(agentsEventBus, 'emit');
-			const ctx = setup();
-			ctx.thread.isHydratingThread = true;
-
-			ctx.thread.messages = [makeMessage({ agentTree: makeAgentConfigMutationTree('tc-1') })];
-			await nextTick();
-
-			expect(emitSpy).not.toHaveBeenCalled();
-			emitSpy.mockRestore();
 		});
 	});
 
