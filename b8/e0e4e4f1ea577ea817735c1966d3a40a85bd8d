@@ -1,0 +1,38 @@
+packages/@n8n/instance-ai/docs/architecture.md
+  s_ef1105a184535e::t_b041cecef7264b 197
+  s_ef1105a184535e::t_bc039b7c51258a 225-227
+packages/@n8n/instance-ai/docs/memory.md
+  s_ef1105a184535e::t_9b14730646a4b3 29-30
+packages/@n8n/instance-ai/docs/streaming-protocol.md
+  s_ef1105a184535e::t_2816a4a9b73c73 563,565-568,572
+packages/cli/src/modules/instance-ai/repositories/instance-ai-event-log.repository.ts
+  s_ef1105a184535e::t_243e7a3082fbe8 114
+packages/cli/src/modules/instance-ai/storage/typeorm-agent-memory.ts
+  s_ef1105a184535e::t_11655deef1c412 368
+packages/@n8n/api-types/src/schemas/agent-run-reducer.ts
+  s_ef1105a184535e::t_c6c37e0da5b5e1 551
+  s_ef1105a184535e::t_f7e28fcb3c7162 459
+  s_ef1105a184535e::t_5bb80e89ba366e 4
+packages/@n8n/instance-ai/docs/configuration.md
+  s_ef1105a184535e::t_6a994186c5aa84 213
+packages/cli/src/modules/instance-ai/event-bus/in-process-event-bus.ts
+  s_ef1105a184535e::t_1eea3aade3bcec 45
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_ef1105a184535e::t_32c5690eb7cbeb 969-970
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "b8e0e4e4f1ea577ea817735c1966d3a40a85bd8d",
+  "prompts": {},
+  "sessions": {
+    "s_ef1105a184535e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a9d6b5b5-949d-423d-a866-9b30325ee660",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

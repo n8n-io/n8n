@@ -1,0 +1,38 @@
+packages/@n8n/ai-utilities/src/llm-output/extract-json.test.ts
+  s_1c45d18cf14868::t_d1a8dd404f6087 1-25
+packages/@n8n/instance-ai/src/utils/generate-validated-json.ts
+  s_1c45d18cf14868::t_a6075fbea9cc4d 12,55
+packages/@n8n/ai-utilities/src/llm-output/index.ts
+  s_1c45d18cf14868::t_eb9c35423d9d56 1
+packages/@n8n/instance-ai/evaluations/utils/llm-judge.ts
+  s_1c45d18cf14868::t_754235b858736d 9-10,85-87
+packages/@n8n/ai-utilities/src/llm-output/extract-json.ts
+  s_1c45d18cf14868::t_fe1e20a785e909 1-15
+packages/@n8n/agents/src/evals/parse-judge-response.ts
+  s_1c45d18cf14868::t_4eab110564c5ce 1-2,10
+packages/@n8n/agents/src/runtime/memory/observation-log-reflector.ts
+  s_1c45d18cf14868::t_1ce7e3edbd8c2d 1,68
+packages/@n8n/ai-utilities/package.json
+  s_1c45d18cf14868::t_44b29f10ff730e 88-92
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "1082dba38b6ce681f5cbf33dd295376946a85a17",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_1c45d18cf14868": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "1f8b129e-d118-4a7d-af9b-a0c6cc1cd1f3",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

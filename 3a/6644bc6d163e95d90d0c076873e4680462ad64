@@ -1,0 +1,22 @@
+packages/@n8n/utils/src/scrub-secrets.ts
+  s_9adafc3db8ef6c::t_469d2b191ae7dd 43
+  s_9adafc3db8ef6c::t_f78bdea7e8360c 42
+packages/@n8n/utils/src/scrub-secrets.test.ts
+  s_9adafc3db8ef6c::t_24e9e5f376e3a2 24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "3a6644bc6d163e95d90d0c076873e4680462ad64",
+  "prompts": {},
+  "sessions": {
+    "s_9adafc3db8ef6c": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "6a91069e-bccb-43a9-b548-db0f7860aae9",
+        "model": "gpt-5.6-sol-max-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

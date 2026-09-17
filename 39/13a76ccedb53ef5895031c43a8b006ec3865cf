@@ -1,0 +1,80 @@
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/__tests__/oauth.test.ts
+  s_24615e7b7bf287::t_c194fa3a6ffddc 711-764
+packages/@n8n/client-oauth2/src/types.ts
+  s_24615e7b7bf287::t_78f5ee5909a8d4 37
+packages/nodes-base/nodes/Jira/GenericFunctions.ts
+  s_24615e7b7bf287::t_6f4999c2fd17ba 2
+  s_24615e7b7bf287::t_b9cf65fe8d3fbd 98-106
+  s_24615e7b7bf287::t_c1b349a388e76a 109-116
+packages/nodes-base/nodes/Confluence/test/transport/index.test.ts
+  s_24615e7b7bf287::t_2f66a8b47025e1 117
+  s_24615e7b7bf287::t_4be41860b359d9 144
+  s_24615e7b7bf287::t_0c67efc9c63975 342
+  s_24615e7b7bf287::t_7f5b62cea78dd3 22-25
+  s_24615e7b7bf287::t_c2e00cc68ddab5 168
+  s_24615e7b7bf287::t_170516d54a9fa7 386
+  s_24615e7b7bf287::t_8e1b108c46e37d 481-482,645-658,661
+  s_24615e7b7bf287::t_7499941aaf009a 157
+  s_24615e7b7bf287::t_8aa5181b55e659 194-200,203,205-206
+  s_24615e7b7bf287::t_69163dc93d9104 293
+  s_24615e7b7bf287::t_38e68dbe095bf0 311
+  s_24615e7b7bf287::t_72650f3bcb10ee 468-470,473-474,476,478-480
+  s_24615e7b7bf287::t_be1f7fba08ea44 483
+  s_24615e7b7bf287::t_81742d7b5d3c31 659-660
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/authentication.ts
+  s_24615e7b7bf287::t_385313a56ee277 114-117
+  s_24615e7b7bf287::t_f3304486925f2a 21
+packages/workflow/src/interfaces.ts
+  s_24615e7b7bf287::t_b8a2c326b8c9cd 52-57
+  s_24615e7b7bf287::t_5934602d6a2a52 95
+packages/nodes-base/nodes/Jira/__test__/GenericFunctions.test.ts
+  s_24615e7b7bf287::t_de432d7d889f4a 137
+  s_24615e7b7bf287::t_4ce7df20c3e167 238-246,251-255,257-261,264-265,272,274-276,280
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/oauth.ts
+  s_24615e7b7bf287::t_546cca9f6e995e 533
+  s_24615e7b7bf287::t_acfe4fbea1746d 340
+  s_24615e7b7bf287::t_9c9f806954a045 563
+  s_24615e7b7bf287::t_76d17d70a875e7 333,337-339,341-343
+  s_24615e7b7bf287::t_16061cae9a7a22 344-346
+  s_24615e7b7bf287::t_d2a45c13c86570 534-536
+  s_24615e7b7bf287::t_2eef30900caf38 564-566
+packages/nodes-base/nodes/Confluence/transport/index.ts
+  s_24615e7b7bf287::t_59b8b6601d44c9 3
+  s_24615e7b7bf287::t_086fd6dbaafe2e 14,20-26
+  s_24615e7b7bf287::t_b5f8c004557155 167-172
+  s_24615e7b7bf287::t_d28495536a67ba 201-206
+  s_24615e7b7bf287::t_08f80a9ee0463f 19,27-28
+  s_24615e7b7bf287::t_90b5660ab4d9b2 225,228
+packages/nodes-base/nodes/Jira/__test__/JiraTrigger.node.test.ts
+  s_24615e7b7bf287::t_7985827f909f4f 245
+  s_24615e7b7bf287::t_0e71d66bb8b132 292
+  s_24615e7b7bf287::t_633f596e26619c 271
+  s_24615e7b7bf287::t_94d967d5b465fd 353
+  s_24615e7b7bf287::t_4555c17a97e2f6 442
+  s_24615e7b7bf287::t_3ffea8786b8778 528
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/__tests__/authentication.test.ts
+  s_24615e7b7bf287::t_2e127e9a310d3b 128-132
+  s_24615e7b7bf287::t_34136b034475e6 168-198
+  s_24615e7b7bf287::t_e9523fa53b9be2 159-164
+  s_24615e7b7bf287::t_3661f60c3c994e 141,143-151,156
+  s_24615e7b7bf287::t_3a9c4d14423747 157-158,165
+  s_24615e7b7bf287::t_f6686dbd9d8c30 152-154
+  s_24615e7b7bf287::t_a9adacfd5c9157 133-140,142,155,166-167
+  s_24615e7b7bf287::t_44f3a8571026a3 367-402
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "3913a76ccedb53ef5895031c43a8b006ec3865cf",
+  "prompts": {},
+  "sessions": {
+    "s_24615e7b7bf287": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d94b6d6a-e08c-4f8a-9905-70591c8aed8a",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

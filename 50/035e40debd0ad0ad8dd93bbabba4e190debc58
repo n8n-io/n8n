@@ -1,0 +1,22 @@
+docs/workflow-test-spike-architecture.json
+  ai_agent 1-358
+docs/workflow-test-spike-architecture.html
+  s_eacdc52767c0a6::t_24f40bdd4ee184 1-5006,5008-14877
+  s_eacdc52767c0a6::t_a288da463d7166 5007
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "50035e40debd0ad0ad8dd93bbabba4e190debc58",
+  "prompts": {},
+  "sessions": {
+    "s_eacdc52767c0a6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "65b31ebd-7a46-4c17-b87d-bd447dae3f24",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

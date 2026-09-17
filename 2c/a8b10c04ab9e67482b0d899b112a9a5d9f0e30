@@ -1,0 +1,19 @@
+packages/cli/src/modules/git-connections.ee/__tests__/git-connections-push-pull.integration.test.ts
+  s_e76e3906c41cd0::t_28c8b41b073bda 172,181-189
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2ca8b10c04ab9e67482b0d899b112a9a5d9f0e30",
+  "prompts": {},
+  "sessions": {
+    "s_e76e3906c41cd0": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "9568943c-ef8c-4f78-8e63-8cca829c1182",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  }
+}

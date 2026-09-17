@@ -1,0 +1,59 @@
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_7992ce551c0761::t_e53232cb4b3a8f 229,234,237,242,249-251,253,255-260
+  s_7992ce551c0761::t_76994d592821ce 1-2
+  s_7992ce551c0761::t_8cb76549fe67f7 173,195-198,230,233,238-241,243-247,254
+  s_7992ce551c0761::t_4b6c6e5eed2922 10
+  s_7992ce551c0761::t_7ca6777a90ab21 341,358-361,364-393,396-397,400-404,407-413,415,417-447,450-451,454-462,464-473,475
+  s_7992ce551c0761::t_a175d8400df06b 199-228
+  s_7992ce551c0761::t_de9e969941c35c 45,54,62
+  s_7992ce551c0761::t_8c9732947e25d8 231-232,235-236,248,252,345-346,349-350,356,362,394-395,398-399,405,416,448-449,452-453,463,474
+  s_7992ce551c0761::t_da3753fe5c3324 106
+packages/cli/src/modules/agents/agent-active-chat-run.registry.ts
+  s_7992ce551c0761::t_91f00a2f6077e0 1-10,17-43,45-53
+  s_7992ce551c0761::t_b291bc294493f6 11-16,44
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_7992ce551c0761::t_8d8fb1e89a6706 15
+  s_7992ce551c0761::t_67bb6c70743cad 996-999,1002-1011
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_7992ce551c0761::t_32c3d310ea892c 49
+  s_7992ce551c0761::t_d7ca9b1f75d933 23
+  s_7992ce551c0761::t_5c328b5c39481e 253-260,262-275
+  s_7992ce551c0761::t_669a302ead04b1 196
+  s_7992ce551c0761::t_8833c710d688f0 121-123
+  s_7992ce551c0761::t_55bc01723fc4be 125-131
+  s_7992ce551c0761::t_09e7eb7e4617f8 213,215-219
+  s_7992ce551c0761::t_748fd30823ce86 248
+  s_7992ce551c0761::t_51b9c6f217ed20 261
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_7992ce551c0761::t_51b9c6f217ed20 202-210
+  s_7992ce551c0761::t_d12fd513047285 201,211
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_7992ce551c0761::t_6ccd0ad6691b0b 2410,2428
+  s_7992ce551c0761::t_08c77fe8bb1455 2409,2427
+  s_7992ce551c0761::t_1ff5bd6f5063bc 2420
+  s_7992ce551c0761::t_84840f42d170bf 2400-2401,2403-2408,2411-2419,2421-2426,2429-2439
+  s_7992ce551c0761::t_48574920517dbe 22,47,169-170,2324-2325
+packages/cli/src/modules/agents/agent-sse-stream.ts
+  s_7992ce551c0761::t_ba821aca1b9b4a 46-47,49
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  s_7992ce551c0761::t_fd234777c9d80a 523-534,536-538
+  s_7992ce551c0761::t_51b9c6f217ed20 535
+packages/cli/src/modules/agents/__tests__/agent-active-chat-run.registry.test.ts
+  s_7992ce551c0761::t_5caffd9627746d 1-59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2e382fe05572861eeb8e14747915ecea4c8373ac",
+  "prompts": {},
+  "sessions": {
+    "s_7992ce551c0761": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "97b9d2e0-9d03-4d3f-aca8-b5997f18a690",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

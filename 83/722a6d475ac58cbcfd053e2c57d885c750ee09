@@ -1,0 +1,61 @@
+packages/nodes-base/nodes/Jira/GenericFunctions.ts
+  s_24615e7b7bf287::t_b9cf65fe8d3fbd 102-103,105
+  s_13cf415df802d6::t_3129db3f9e8307 104
+  s_13cf415df802d6::t_75515ac06479d2 98-101,108-113
+  s_b8f823bc996164::t_a3958a3b2efb9e 97,106
+  s_24615e7b7bf287::t_6f4999c2fd17ba 2
+packages/nodes-base/nodes/Jira/__test__/GenericFunctions.test.ts
+  s_13cf415df802d6::t_3129db3f9e8307 11,13
+  s_109f6edacd6e91::t_3abe2e3923b43f 10,15,146,259,273
+  s_24615e7b7bf287::t_4ce7df20c3e167 251-258,264-268,270-272,274,277-278,285,287-289,294
+  s_13cf415df802d6::t_b77aa58eb26d46 64,99,114,172,195,212,232,290,340,356
+  s_109f6edacd6e91::t_e215cf811e2654 12,14
+  s_b8f823bc996164::t_6922b7eff29794 250,260-263,269,275-276,279-284,286,291-293,295-310
+  s_13cf415df802d6::t_4c8e2f6e7955a1 311-312
+packages/nodes-base/nodes/Jira/__test__/JiraTrigger.node.test.ts
+  s_109f6edacd6e91::t_e215cf811e2654 23,25
+  s_13cf415df802d6::t_c9a0684ca1037b 89,94,136,156,161,203,770,775,817
+  s_13cf415df802d6::t_3129db3f9e8307 22,24
+  s_13cf415df802d6::t_fa91e76bdcdd18 119,186,800
+  s_109f6edacd6e91::t_3abe2e3923b43f 21,26,259,285,306,367,456,542
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "83722a6d475ac58cbcfd053e2c57d885c750ee09",
+  "prompts": {},
+  "sessions": {
+    "s_109f6edacd6e91": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "90123c0f-d96c-40f3-aaa9-ea9842ae92a4",
+        "model": "unknown"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    },
+    "s_13cf415df802d6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6c0ec642-e533-422b-82bc-34688614dc2c",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    },
+    "s_24615e7b7bf287": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d94b6d6a-e08c-4f8a-9905-70591c8aed8a",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    },
+    "s_b8f823bc996164": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3947b1dd-3fa6-4086-8d76-1fdb5a78f989",
+        "model": "unknown"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

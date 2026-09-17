@@ -1,0 +1,24 @@
+packages/nodes-base/nodes/Google/Gmail/types.ts
+  s_7441894e657aa7::t_d1c9d755fa1a49 63
+packages/nodes-base/nodes/Google/Gmail/GmailTrigger.node.ts
+  s_7441894e657aa7::t_e18bebdc2ac8e8 700,704-705
+  s_7441894e657aa7::t_c9733cabfe9ac8 701-703,706
+packages/nodes-base/nodes/Google/Gmail/test/GmailTrigger.test.ts
+  s_7441894e657aa7::t_d3302877ca4a49 2681-2709
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "1d012c95dc78c8816336b1ec70b4b370efd36cc0",
+  "prompts": {},
+  "sessions": {
+    "s_7441894e657aa7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77be2a35-c44a-4e8c-936c-3ffa4e9573c9",
+        "model": "claude-opus-5"
+      },
+      "human_author": null
+    }
+  }
+}

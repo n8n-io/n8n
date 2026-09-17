@@ -1,0 +1,34 @@
+packages/cli/src/modules/encryption-key-manager/key-manager.service.ts
+  s_165cd2c55d4274::t_47677ebdb330b1 97-102
+  s_165cd2c55d4274::t_208aee6ba9ddb5 2
+  h_435b1d7d3e52c0 10,19-20,24-25,60,65-71,74,103-109
+  s_165cd2c55d4274::t_8ec87f935ba0df 50-58
+  s_165cd2c55d4274::t_26539d89a84753 61-64,72,110-111
+packages/cli/src/modules/encryption-key-manager/__tests__/key-manager.service.test.ts
+  s_165cd2c55d4274::t_4130ba76751283 80,90,93,95,97-110
+  s_165cd2c55d4274::t_cd7681947beaf1 111-138
+  s_165cd2c55d4274::t_11a426d5b86526 27-28
+  s_165cd2c55d4274::t_ac3e2456cce8b8 7
+  s_165cd2c55d4274::t_ab65cc44df4675 1,6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "a018e249dc9d8fa86971094b3bf66aeebc84edd0",
+  "prompts": {},
+  "humans": {
+    "h_435b1d7d3e52c0": {
+      "author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_165cd2c55d4274": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1e33ac07-567d-4458-a42d-ba09b753b7db",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

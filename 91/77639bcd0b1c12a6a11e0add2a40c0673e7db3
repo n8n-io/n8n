@@ -1,0 +1,21 @@
+packages/cli/src/modules/mcp-registry/node-description-transform.ts
+  s_1b995c2a71c1af::t_1ce449cec2382e 186-192
+packages/cli/src/modules/mcp-registry/__tests__/node-description-transform.test.ts
+  s_1b995c2a71c1af::t_fd5b0c5b7474f5 741
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "9177639bcd0b1c12a6a11e0add2a40c0673e7db3",
+  "prompts": {},
+  "sessions": {
+    "s_1b995c2a71c1af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "db82b089-8508-49c4-99ee-6e3df49f7230",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

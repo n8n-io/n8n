@@ -1,0 +1,50 @@
+packages/@n8n/engine/src/database/typeorm-step-store.ts
+  s_77655ca8fe3a59::t_501c78acb2fc37 207-210
+  s_77655ca8fe3a59::t_56e4caac351c39 19,53,203-206,211-233
+packages/@n8n/engine/src/index.ts
+  s_77655ca8fe3a59::t_501c78acb2fc37 75
+packages/@n8n/engine/src/execution/__tests__/wait-sweeper.test.ts
+  s_77655ca8fe3a59::t_c9c08fb5cd8fbe 1-160
+packages/@n8n/engine/src/database/__tests__/workflow-step-execution.integration.test.ts
+  s_77655ca8fe3a59::t_d364794131f188 388,491
+  s_77655ca8fe3a59::t_cc8ad89cf3a131 78,517-575,581-615,620
+  s_77655ca8fe3a59::t_6aa5072812dc38 576-580,616-619
+  s_77655ca8fe3a59::t_72ad0d21d1fc64 621
+packages/@n8n/engine/src/execution/__tests__/step-settled-handler.test.ts
+  s_77655ca8fe3a59::t_cc8ad89cf3a131 97
+packages/@n8n/engine/src/execution/__tests__/step-execution.integration.test.ts
+  s_77655ca8fe3a59::t_59f71e31b0df56 273-323
+  s_77655ca8fe3a59::t_0d21260073fa3c 68-69,74-81,94,99,105,257
+  s_77655ca8fe3a59::t_d364794131f188 241,243
+packages/@n8n/engine/src/execution/__tests__/execution-start-handler.test.ts
+  s_77655ca8fe3a59::t_cc8ad89cf3a131 48
+packages/@n8n/engine/src/execution/__tests__/step-ready-handler.test.ts
+  s_77655ca8fe3a59::t_cc8ad89cf3a131 116
+  s_77655ca8fe3a59::t_d364794131f188 704,768
+packages/@n8n/engine/src/execution/index.ts
+  s_77655ca8fe3a59::t_501c78acb2fc37 28
+  s_77655ca8fe3a59::t_02d2ceec59d420 35-39
+packages/@n8n/engine/src/execution/wait-sweeper.ts
+  s_77655ca8fe3a59::t_3573e521e235af 62-70
+  s_77655ca8fe3a59::t_40239a488961d2 1-61,71-94
+packages/@n8n/engine/src/execution/step-store.ts
+  s_77655ca8fe3a59::t_16a1410184b3db 67-72,139-153
+packages/@n8n/engine/src/runtime/create-engine-runtime.ts
+  s_77655ca8fe3a59::t_164c3994451250 17,44-45,72,110,125,132-134
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "c259f330e8db8996960ade35ba2ad290788fd187",
+  "prompts": {},
+  "sessions": {
+    "s_77655ca8fe3a59": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d2c5a11b-62c7-4839-ab99-8421196be4d4",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

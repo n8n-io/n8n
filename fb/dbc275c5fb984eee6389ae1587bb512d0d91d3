@@ -1,0 +1,24 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiInput.vue
+  s_8bfe20127b58c0::t_3b2aae9d8e61d0 584-589,597-599,691-695,699,705-707,709
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "fbdbc275c5fb984eee6389ae1587bb512d0d91d3",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_8bfe20127b58c0": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "af646264-e086-49ff-b062-c199976097f2",
+        "model": "gpt-5.6-sol-max-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

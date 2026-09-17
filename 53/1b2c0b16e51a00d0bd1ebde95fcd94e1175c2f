@@ -1,0 +1,21 @@
+packages/@n8n/instance-ai/evaluations/clients/n8n-client.ts
+  s_fd94dc50435c4d::t_c0bd4c07ea14ab 10,537-538
+packages/@n8n/instance-ai/evaluations/clients/__tests__/n8n-client.test.ts
+  s_fd94dc50435c4d::t_c4973b240b4e28 49,51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "531b2c0b16e51a00d0bd1ebde95fcd94e1175c2f",
+  "prompts": {},
+  "sessions": {
+    "s_fd94dc50435c4d": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "443c989e-537f-4532-9cb5-637b9f0d6221",
+        "model": "gpt-5.6-sol-max-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

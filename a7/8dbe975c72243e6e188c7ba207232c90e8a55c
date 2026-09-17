@@ -1,0 +1,43 @@
+packages/cli/src/modules/agents/agent-dependency-index.service.ts
+  s_8cd1a0d19700c3::t_ffea7b11e36432 5,20,38-44
+  s_8cd1a0d19700c3::t_4aaf0910dc0306 45-46
+packages/cli/src/workflows/publication/__tests__/workflow-publication-applier.test.ts
+  s_8cd1a0d19700c3::t_0bc04e10d96cc3 242
+  s_8cd1a0d19700c3::t_b2becf62f7fcf0 17
+  s_8cd1a0d19700c3::t_fa41b3b493100c 66
+  s_8cd1a0d19700c3::t_0d7ccc5d1db809 206-209
+  s_8cd1a0d19700c3::t_4e9f9912787832 50
+  s_8cd1a0d19700c3::t_fed8d1e2b320b9 448-469
+packages/cli/src/modules/agents/agent-dependency-index.listener.ts
+  s_8cd1a0d19700c3::t_24e702ee93b83e 34-49
+packages/cli/src/modules/agents/__tests__/agent-dependency-index.listener.test.ts
+  s_8cd1a0d19700c3::t_ebe35166753af5 1-76
+  s_8cd1a0d19700c3::t_11400b2356ea18 77-79
+packages/cli/src/workflows/publication/workflow-publication-applier.ts
+  s_8cd1a0d19700c3::t_edc08fcc97a0ed 183
+  s_8cd1a0d19700c3::t_53441ba3d12396 223
+  s_8cd1a0d19700c3::t_716a8f9f61c3f8 17
+  s_8cd1a0d19700c3::t_b605884eb09c5a 384-391
+  s_8cd1a0d19700c3::t_f8d11188c7352c 83
+  s_8cd1a0d19700c3::t_cd239a242bcbfc 558-561,571-579
+packages/cli/src/events/maps/relay.event-map.ts
+  s_8cd1a0d19700c3::t_f1355785c5e411 186-195
+packages/cli/src/modules/agents/__tests__/agent-dependency-index.service.test.ts
+  s_8cd1a0d19700c3::t_7f98547720975c 7,23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "a78dbe975c72243e6e188c7ba207232c90e8a55c",
+  "prompts": {},
+  "sessions": {
+    "s_8cd1a0d19700c3": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "aa4d6b3b-305d-40d9-a0aa-5c144e99d387",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

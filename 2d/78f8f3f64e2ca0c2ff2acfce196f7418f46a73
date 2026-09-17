@@ -1,0 +1,19 @@
+packages/cli/src/scheduling/system-tasks/system-task-runner.ts
+  s_7b3df05fbd26c3::t_8739a7d3368114 204-207
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2d78f8f3f64e2ca0c2ff2acfce196f7418f46a73",
+  "prompts": {},
+  "sessions": {
+    "s_7b3df05fbd26c3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8559d623-b294-4580-ae54-a41df7694d50",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,41 @@
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectHeader.test.ts
+  s_7b09b175312274::t_856ee2e677de94 519
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectHeader.vue
+  s_7b09b175312274::t_005cc81ebebda1 513-518
+  s_21e387ba6c8e82::t_1c3c35415450d9 69-73,77-78,81
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionSelectModal.test.ts
+  s_21e387ba6c8e82::t_1d4b58eab42b14 143,157-197
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_21e387ba6c8e82::t_d3cadc2e134531 8377-8380
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionChanges.test.ts
+  s_21e387ba6c8e82::t_ca89287298f194 76-118
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionChanges.ts
+  s_21e387ba6c8e82::t_968b0b67520b71 12,16-22,25,27-29,33,36-41,49,67,69,71,73,75,87,90
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionSelectModal.vue
+  s_21e387ba6c8e82::t_7d8ca2251d04bc 167-185,197-200
+  s_21e387ba6c8e82::t_6d01a20bf9c1c9 34,36-37,48-55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "17e7c07a8985c08512ad3aacaa3dfc8d947de1ff",
+  "prompts": {},
+  "sessions": {
+    "s_21e387ba6c8e82": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a359f928-298d-4de1-af4c-4ef43cb73a68",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    },
+    "s_7b09b175312274": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "e8e52209-0e49-47bc-9835-2ee73f0edfbb",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": null
+    }
+  }
+}

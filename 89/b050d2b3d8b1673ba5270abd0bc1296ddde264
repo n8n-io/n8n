@@ -1,0 +1,9 @@
+packages/cli/src/public-api/v1/handlers/git-connections/spec/paths/pullGitConnectionProjects.generated.yml
+  ai_agent 54-56,60,73-78,107-108
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "89b050d2b3d8b1673ba5270abd0bc1296ddde264",
+  "prompts": {}
+}

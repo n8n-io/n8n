@@ -1,0 +1,23 @@
+.devcontainer/preview/preview-signin-hook.cjs
+  s_4554a797ecf2fb::t_e67c3e9b31627f 1-81
+scripts/preview-serve.mjs
+  s_4554a797ecf2fb::t_d536072a755d2c 23-31,101-133
+  s_4554a797ecf2fb::t_7ae2b621b94c1f 134
+  s_4554a797ecf2fb::t_18f1097e62df9c 64-80,87
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0c9111c7aaf37821fbea0ebc0c19c02adcc39f5f",
+  "prompts": {},
+  "sessions": {
+    "s_4554a797ecf2fb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "40b3b796-6891-474f-9a70-edd3ae8f62be",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

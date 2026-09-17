@@ -1,0 +1,477 @@
+packages/frontend/editor-ui/src/features/apps/__tests__/AppDetailsView.test.ts
+  s_8fed88675c1307::t_4f1b82ef720986 52
+  s_8fed88675c1307::t_1c8e4d0383d2b3 38
+  s_8fed88675c1307::t_b1686bda79b475 74
+packages/cli/templates/partials/app-block-form.handlebars
+  s_8fed88675c1307::t_6b07874cb96786 5-19,23,25-28,33-35,47-53
+packages/cli/src/modules/apps/serving/__tests__/app-serving.service.test.ts
+  s_8fed88675c1307::t_9788d944a13427 46-52
+  s_8fed88675c1307::t_22aae3b656416f 86
+  s_8fed88675c1307::t_1c8e4d0383d2b3 28,83-85,87-88
+  s_8fed88675c1307::t_6ffee7ab89da79 6-7,10-11,17-18,20,43-45,53-54,57,62-63,66,79,91,112-136
+packages/frontend/editor-ui/src/features/shared/editors/plugins/codemirror/typescript/client/useAppTypescript.ts
+  s_8fed88675c1307::t_1c8e4d0383d2b3 25,46
+packages/cli/src/modules/apps/rendering/types.ts
+  s_8fed88675c1307::t_1c8e4d0383d2b3 12-19
+  s_8fed88675c1307::t_2f894d20763117 49,54-55
+  s_5381879ec63c09::t_05765f709db89d 7-9,33-34,43-45,58
+packages/cli/templates/app-chat.js
+  s_8fed88675c1307::t_88cc476f51b22e 1-117
+packages/cli/src/modules/apps/serving/app-agent-chat.controller.ts
+  s_8fed88675c1307::t_9788d944a13427 10-14,120-125
+  s_8fed88675c1307::t_88cc476f51b22e 1-9,15-119,126-134
+packages/cli/src/modules/apps/rendering/block-context.ts
+  s_8fed88675c1307::t_1c8e4d0383d2b3 5-19
+packages/frontend/editor-ui/src/features/apps/components/__tests__/AppBasicsForm.test.ts
+  s_8fed88675c1307::t_1c8e4d0383d2b3 16
+packages/frontend/editor-ui/src/features/apps/apps.api.ts
+  s_8fed88675c1307::t_6d9f552bce5d60 1,30,35,39-48,78,84
+  s_8fed88675c1307::t_f7695641045179 163,170-171,191,195
+packages/cli/test/migration/1789042652437-add-title-to-page.test.ts
+  s_8fed88675c1307::t_8050725199228b 1-161
+packages/cli/src/modules/apps/serving/__tests__/app-token.service.test.ts
+  s_8fed88675c1307::t_9788d944a13427 108-110
+  s_8fed88675c1307::t_8e43f6a6fd699a 107,111-116
+packages/@n8n/instance-ai/src/tools/__tests__/apps.tool.test.ts
+  s_8fed88675c1307::t_1c8e4d0383d2b3 275-278,297,323,335-350
+  s_8fed88675c1307::t_bbe61cec64251a 768-816,978,985-986,988
+  s_8fed88675c1307::t_4050222505cd49 243,251-252,351,858-878,982,984,1001-1002
+  s_8fed88675c1307::t_83d2ad316b04ee 989,991-995
+  s_8fed88675c1307::t_0de266203a2a3d 411-437
+  s_8fed88675c1307::t_b52cef239102a1 32,239-242,244-250,253,352,974-977,979-981,983,987,990,996-1000,1003-1004
+packages/frontend/editor-ui/src/features/apps/components/blocks/AgentChatBlockConfig.vue
+  s_8fed88675c1307::t_88cc476f51b22e 1-115
+packages/cli/src/modules/apps/actions/app-actions.controller.ts
+  s_8fed88675c1307::t_6b07874cb96786 1,17-23,25,28-30,40-64,131,199-200,204,225,241,261-294,296-297
+  s_8fed88675c1307::t_1c8e4d0383d2b3 163,182-189
+packages/nodes-base/nodes/Form/test/formNodeUtils.test.ts
+  s_8fed88675c1307::t_6b07874cb96786 136-174
+packages/@n8n/instance-ai/skills/app-builder/references/forms.md
+  s_8fed88675c1307::t_6b07874cb96786 1-66
+packages/cli/src/modules/apps/__tests__/apps.service.test.ts
+  s_8fed88675c1307::t_75f2d262088caa 76,97-100,102,104,114,116-147,149-160
+  s_8fed88675c1307::t_1c8e4d0383d2b3 12,16,53,60-61,67,78,85,105,113,183-203
+  s_8fed88675c1307::t_331ce83cd77751 40-47
+  s_8fed88675c1307::t_8d3b6b3bed1aab 1,4,73-75,77,79-84,86-96,101,103,106-112,115
+packages/frontend/editor-ui/src/features/apps/components/blocks/CodeBlockConfig.vue
+  s_8fed88675c1307::t_1c8e4d0383d2b3 4,17-18,24-28
+packages/nodes-base/nodes/Form/utils/utils.ts
+  s_8fed88675c1307::t_6b07874cb96786 249-265,695-699
+packages/frontend/editor-ui/src/features/apps/__tests__/apps.api.test.ts
+  s_8fed88675c1307::t_9d1c32f4150b05 69
+  s_8fed88675c1307::t_4f1b82ef720986 1,3,20,22-25,35-54
+  s_8fed88675c1307::t_23dd78101b637d 55-66,74
+packages/cli/src/modules/apps/runtime/__tests__/app-layout-presets.test.ts
+  s_8fed88675c1307::t_446838c40e1dd0 27
+  s_8fed88675c1307::t_0d3ec2394c4b4a 24-26
+  s_8fed88675c1307::t_ca1f5e3b358926 28-30
+  s_8fed88675c1307::t_a1a11ea498dddf 1-23,31-69
+packages/frontend/editor-ui/src/features/apps/AppDetailsView.vue
+  s_8fed88675c1307::t_1c8e4d0383d2b3 21,33,92,422,428-433
+  s_8fed88675c1307::t_127fe7e161fed9 434
+packages/cli/src/modules/apps/runtime/page-context.factory.ts
+  s_8fed88675c1307::t_6b07874cb96786 111,369
+packages/cli/src/modules/apps/page.entity.ts
+  s_8fed88675c1307::t_dad14088baef2d 15-18
+packages/frontend/editor-ui/src/features/apps/components/AppPreview.vue
+  s_8fed88675c1307::t_09cf4c8237abb1 58
+packages/frontend/editor-ui/src/features/apps/components/AppCodeEditor.vue
+  s_8fed88675c1307::t_1c8e4d0383d2b3 25-28,59
+packages/cli/src/modules/apps/errors/app-components-invalid.error.ts
+  s_8fed88675c1307::t_1c8e4d0383d2b3 1-9
+packages/cli/src/modules/apps/rendering/blocks/__tests__/agent-chat.renderer.test.ts
+  s_8fed88675c1307::t_9788d944a13427 52
+  s_8fed88675c1307::t_88cc476f51b22e 1-10,19-51,53-86
+  s_8fed88675c1307::t_859bf90adac9b0 11-18
+packages/@n8n/instance-ai/src/tools/apps.tool.ts
+  s_8fed88675c1307::t_1c8e4d0383d2b3 11,178-179,182,191,200-205,275,277,282-283,285,394,407
+  s_8fed88675c1307::t_73d2f5538adb55 528-530,532-542
+  s_8fed88675c1307::t_fd9b11a1ae9568 254
+  s_8fed88675c1307::t_f949232eda25ca 471
+  s_8fed88675c1307::t_88726bea1249f0 248-250,253,273
+  s_8fed88675c1307::t_8d9a52cf397727 158
+  s_8fed88675c1307::t_cd1109a7a824f1 566
+  s_8fed88675c1307::t_f3a196201037f0 156-157
+  s_8fed88675c1307::t_7f2b38c11de3e9 224
+  s_8fed88675c1307::t_00f0b20b2d0a84 444,454
+  s_8fed88675c1307::t_890afb416dcb0c 18
+  s_8fed88675c1307::t_0f6780c4a5e2e9 217
+  s_8fed88675c1307::t_baacf0c6081f94 176-177
+  s_8fed88675c1307::t_0389435453bb36 180-181
+  s_8fed88675c1307::t_36b7b6a0dce17c 272
+  s_8fed88675c1307::t_0ccf558fad95df 274
+  s_8fed88675c1307::t_ccc4f48d523c9a 276
+  s_8fed88675c1307::t_9fbd7f6e855cfa 278-281
+  s_8fed88675c1307::t_8b455c0e8b3295 284
+  s_8fed88675c1307::t_69dce10dfc0398 286-287
+  s_5381879ec63c09::t_a65d3486b8cc27 8-9,308,357-362,622-629,648-649,678-679
+packages/frontend/editor-ui/src/features/apps/components/__tests__/PageEditor.test.ts
+  s_8fed88675c1307::t_1c8e4d0383d2b3 50
+  s_8fed88675c1307::t_e9f47c15559cf8 120-123
+  s_8fed88675c1307::t_4f1b82ef720986 59,64,95,115,119,124-132,149-177
+  s_8fed88675c1307::t_af1bbf3cd20fe0 178
+packages/@n8n/instance-ai/skills/app-builder/SKILL.md
+  s_8fed88675c1307::t_c16a822340f80a 158-165
+  s_8fed88675c1307::t_b484405676d444 79-85
+  s_8fed88675c1307::t_fe55519742583e 106-119
+  s_8fed88675c1307::t_bb76d847a6e451 169-173,175-178
+  s_8fed88675c1307::t_22f6feaa7220be 57-58
+  s_8fed88675c1307::t_d486dc8fcaef44 61-67
+  s_8fed88675c1307::t_56cbd9f3f082b9 14-15
+  s_8fed88675c1307::t_f9a78f2391a1f7 182-184
+packages/@n8n/api-types/src/schemas/app.schema.ts
+  s_8fed88675c1307::t_a79c5859c77dd5 30-32
+packages/cli/src/modules/apps/runtime/__tests__/form-json.test.ts
+  s_8fed88675c1307::t_6b07874cb96786 1-10,25-43,49-50,57-72,75-77
+  s_8fed88675c1307::t_9788d944a13427 11-24,44-48,51-56,73-74
+packages/@n8n/api-types/src/dto/app/update-page.dto.ts
+  s_8fed88675c1307::t_e0effe7bfbccac 2,7-8
+packages/@n8n/instance-ai/skills/app-builder/references/block-catalog.md
+  s_8fed88675c1307::t_2f5ed2a84facc0 186-187
+  s_8fed88675c1307::t_97483124eea467 184-185,188-206
+  s_8fed88675c1307::t_988ec32dbc731a 122-124
+packages/@n8n/instance-ai/skills/app-builder/references/agent-chat.md
+  s_8fed88675c1307::t_88cc476f51b22e 1-52
+packages/cli/src/modules/apps/runtime/form-steps.ts
+  s_8fed88675c1307::t_6b07874cb96786 1-77,79-155
+  s_8fed88675c1307::t_9788d944a13427 78
+packages/frontend/editor-ui/src/features/apps/components/__tests__/AppPreview.test.ts
+  s_8fed88675c1307::t_4f1b82ef720986 30
+  s_8fed88675c1307::t_1c8e4d0383d2b3 16
+  s_8fed88675c1307::t_e24a255ac4e8ed 49,97,108
+packages/frontend/editor-ui/src/features/apps/components/blocks/__tests__/AgentChatBlockConfig.test.ts
+  s_8fed88675c1307::t_88cc476f51b22e 1-79
+packages/cli/src/modules/apps/rendering/blocks/__tests__/button.renderer.test.ts
+  s_8fed88675c1307::t_1c8e4d0383d2b3 12-19
+packages/frontend/editor-ui/src/features/apps/components/__tests__/AppThemeForm.test.ts
+  s_8fed88675c1307::t_1c8e4d0383d2b3 16
+  s_8fed88675c1307::t_30bd1a3e1e4bc9 65-81
+packages/frontend/editor-ui/src/features/apps/components/blocks/__tests__/tools.test.ts
+  s_8fed88675c1307::t_88cc476f51b22e 14,27-30,138-150,170
+packages/cli/src/modules/apps/apps.module.ts
+  s_8fed88675c1307::t_88cc476f51b22e 17
+packages/frontend/editor-ui/src/features/apps/apps.store.ts
+  s_8fed88675c1307::t_1c8e4d0383d2b3 36-37,46-47,74-76,153
+  s_8fed88675c1307::t_6d9f552bce5d60 1,16,39,50-62,67-70,93,101,155,159
+  s_8fed88675c1307::t_f367949a0493bc 71-72
+packages/@n8n/instance-ai/skills/app-builder/references/code-examples.md
+  s_8fed88675c1307::t_05457706222270 184-187
+packages/frontend/editor-ui/src/features/apps/AppBreadcrumbs.vue
+  s_8fed88675c1307::t_09cf4c8237abb1 9-10,24,47,55
+packages/cli/src/modules/apps/apps.service.ts
+  s_8fed88675c1307::t_d9f105dccade87 205
+  s_8fed88675c1307::t_a6088c77624326 302
+  s_8fed88675c1307::t_1c8e4d0383d2b3 10,22,27,36-37,40,57-61,70,73-80,212,243-247,283-288,297
+  s_8fed88675c1307::t_3d770f2394e06a 142
+  s_8fed88675c1307::t_498fbe4b558053 81
+  s_8fed88675c1307::t_c835db316b9cfd 303-304
+  s_5381879ec63c09::t_ebbcc1d90cd31d 8,83-91,307-308,319-320,326
+packages/@n8n/api-types/src/index.ts
+  s_8fed88675c1307::t_44c7451b50507c 765
+  s_8fed88675c1307::t_c5034abab6ea65 772-777
+packages/cli/templates/app.js
+  s_8fed88675c1307::t_dcf5da2f2720f6 151-155,159-177,181-182
+  s_8fed88675c1307::t_7c2ca7aafd011a 15-18
+  s_8fed88675c1307::t_88cc476f51b22e 42-46,180
+  s_8fed88675c1307::t_3c0405605fe2e3 148-150
+  s_8fed88675c1307::t_3471465c9e6b7b 141-147
+packages/cli/src/modules/apps/serving/app-serving.service.ts
+  s_8fed88675c1307::t_ec59b36a4262a8 91
+  s_8fed88675c1307::t_3af11c52c95727 32-55,65-66,69
+  s_766636dc171bdc::t_a140de50efe295 1,6,8-9,17-20,26,71-72,78,84,101
+packages/frontend/editor-ui/src/features/apps/components/__tests__/PageTree.test.ts
+  s_8fed88675c1307::t_4f1b82ef720986 16-21,26,63-77,94-119,133-139,158-159,177,182-208
+  s_8fed88675c1307::t_d313e8b41f764d 209
+packages/cli/src/modules/apps/runtime/__tests__/page-context.factory.test.ts
+  s_8fed88675c1307::t_6b07874cb96786 218,231
+packages/cli/test/integration/apps/app-actions.controller.integration.test.ts
+  s_8fed88675c1307::t_f98a1a7415918a 11,72-77,85-94,162-177,319-326,459-466,582-585
+  s_8fed88675c1307::t_6b07874cb96786 3,6,350,353,355,361,519-581,586-619
+  s_8fed88675c1307::t_7f0e118fe618ac 161,318,458
+  s_8fed88675c1307::t_047ffed5ca26f8 470
+  s_8fed88675c1307::t_a30d6c81fc773b 101-102,346-349,351-352,354,356-360,362-376,620
+packages/cli/src/modules/apps/runtime/form-json.ts
+  s_8fed88675c1307::t_6b07874cb96786 1-61
+packages/frontend/editor-ui/src/features/apps/components/blocks/AgentChatBlockTool.tool.ts
+  s_8fed88675c1307::t_9788d944a13427 1-5
+  s_8fed88675c1307::t_88cc476f51b22e 6-53
+packages/frontend/editor-ui/src/features/apps/components/AppComponentsForm.vue
+  s_8fed88675c1307::t_1c8e4d0383d2b3 1-80
+packages/@n8n/api-types/src/schemas/app-page-api.ts
+  s_8fed88675c1307::t_6b07874cb96786 110-111
+packages/@n8n/db/src/migrations/common/1789042652437-AddTitleToPage.ts
+  s_8fed88675c1307::t_93acf3bf5f9133 3-4,6-15,18-19
+  s_8fed88675c1307::t_0f9192ba84d2f6 1-2,5,16-17,20-21
+packages/@n8n/db/src/migrations/sqlite/1789042652437-AddTitleToPage.ts
+  s_8fed88675c1307::t_b1a75e84ef313c 1-10
+packages/cli/src/modules/apps/page.repository.ts
+  s_8fed88675c1307::t_4dda8e6213a89f 18,20
+  s_8fed88675c1307::t_2ea6ef23b7c803 48-51
+packages/frontend/editor-ui/src/features/apps/components/__tests__/LayoutPanel.test.ts
+  s_8fed88675c1307::t_4f1b82ef720986 4,13-17,44-49,54,93-107,215-270
+  s_8fed88675c1307::t_05a972b420f9b7 271-272
+packages/cli/src/modules/apps/serving/__tests__/app-request-auth.test.ts
+  s_8fed88675c1307::t_f98a1a7415918a 29-44
+  s_8fed88675c1307::t_7f0e118fe618ac 22,92-93
+  s_8fed88675c1307::t_3320511fc72495 1-21,23-28,45-91,94-127
+packages/cli/test/integration/apps/app-agent-chat.controller.integration.test.ts
+  s_8fed88675c1307::t_f98a1a7415918a 87-89
+  s_8fed88675c1307::t_88cc476f51b22e 1-86,90-268
+packages/frontend/editor-ui/src/features/shared/editors/plugins/codemirror/typescript/worker/constants.ts
+  s_8fed88675c1307::t_1c8e4d0383d2b3 20,26-27
+packages/cli/src/modules/apps/rendering/__tests__/page-renderer.test.ts
+  s_8fed88675c1307::t_1c8e4d0383d2b3 3,17-24,37-55,143-150
+  s_8fed88675c1307::t_86647d9917b982 63-74,167
+  s_8fed88675c1307::t_d5d36bb9cdeacd 25
+  s_8fed88675c1307::t_dc1a65ed6346ca 163-166,168
+packages/cli/test/integration/apps/app-serving.controller.integration.test.ts
+  s_8fed88675c1307::t_f98a1a7415918a 9,174
+  s_8fed88675c1307::t_1c8e4d0383d2b3 45-48,62,70-94,328
+  s_8fed88675c1307::t_154cd8c9b785f5 56
+  s_8fed88675c1307::t_74d3039c3c5d6e 165-173,175-191,335-337,354,363,366,377
+  s_8fed88675c1307::t_bcd6930bee1d2e 323-327,329-334,338-353,355-362,364-365,367-376,378-379
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_8fed88675c1307::t_88cc476f51b22e 5243-5246
+  s_8fed88675c1307::t_09cf4c8237abb1 5153,5197,5214-5217,5257-5258
+  s_8fed88675c1307::t_1c8e4d0383d2b3 5167,5262-5264
+packages/cli/src/modules/apps/actions/__tests__/table-actions.test.ts
+  s_8fed88675c1307::t_1c8e4d0383d2b3 18-25
+packages/cli/src/modules/apps/runtime/__tests__/app-code-runtime.test.ts
+  s_8fed88675c1307::t_1c8e4d0383d2b3 3-8,21,342-404
+  s_8fed88675c1307::t_a14d3dd3cbf910 405-406
+packages/frontend/editor-ui/src/features/apps/components/PageEditor.vue
+  s_8fed88675c1307::t_09cf4c8237abb1 14-20,58,72,76-81,83,155-163,208,213-215,219-237,239-265,315-316,318-319,324
+packages/frontend/editor-ui/src/features/apps/apps.types.ts
+  s_8fed88675c1307::t_1c8e4d0383d2b3 8-9,36
+  s_8fed88675c1307::t_6d9f552bce5d60 24,42
+  s_8fed88675c1307::t_ffd8446605e308 65-66
+packages/@n8n/instance-ai/docs/tools.md
+  s_8fed88675c1307::t_ac42503b7b14e6 846-847,849
+  s_8fed88675c1307::t_f58ffc783237fd 852
+packages/frontend/editor-ui/src/features/apps/__tests__/apps.store.test.ts
+  s_8fed88675c1307::t_4f1b82ef720986 62,67-68,72,75,79,87,154-181,188
+  s_8fed88675c1307::t_1c8e4d0383d2b3 30,45-57
+  s_8fed88675c1307::t_63ef74c8edfb48 58-59
+  s_8fed88675c1307::t_2a9f309805e733 22,60-61,63-66,69-71,73-74,76-78,80-86,88,122
+packages/cli/src/modules/apps/rendering/styles/app-chat.css
+  s_8fed88675c1307::t_88cc476f51b22e 1-65
+packages/nodes-base/nodes/Form/utils/formCompletionUtils.ts
+  s_8fed88675c1307::t_6b07874cb96786 23,125-135
+  s_8fed88675c1307::t_ff452b52350048 136
+packages/frontend/editor-ui/src/features/apps/components/AddAppModal.vue
+  s_8fed88675c1307::t_19422fa013648c 228-277
+  s_8fed88675c1307::t_15e8597ebe3f22 162-186
+  s_8fed88675c1307::t_13b1661c08a5e3 2,5,11-14,19-25
+  s_8fed88675c1307::t_03428952853b81 120-127
+  s_8fed88675c1307::t_9c901a2fa828f6 74-89
+  s_8fed88675c1307::t_1bcb01df0c3cb9 26
+  s_8fed88675c1307::t_8fa25bdbbdfa17 73
+  s_8fed88675c1307::t_0ef716f9fe71e5 161
+  s_8fed88675c1307::t_ba3f6f94ca920b 187-189
+  s_8fed88675c1307::t_d38ba2ab87b239 278-280
+packages/cli/src/modules/apps/serving/page-menu.ts
+  s_8fed88675c1307::t_57b28968db731f 37-46
+  s_8fed88675c1307::t_5999461ecafcb0 85
+packages/cli/src/modules/apps/runtime/__tests__/form-steps.test.ts
+  s_8fed88675c1307::t_9788d944a13427 27-30,118-120,132-134,166-168
+  s_8fed88675c1307::t_6b07874cb96786 1-26,31-117,121-131,135-165,169-219
+packages/frontend/editor-ui/src/features/apps/pageTree.utils.ts
+  s_8fed88675c1307::t_6d9f552bce5d60 67-69,102,106
+packages/cli/test/integration/apps/app-auth.integration.test.ts
+  s_8fed88675c1307::t_f98a1a7415918a 68-70
+packages/frontend/editor-ui/src/features/shared/editors/plugins/codemirror/typescript/worker/app-api.worker.ts
+  s_8fed88675c1307::t_1c8e4d0383d2b3 11,23-24,55
+packages/cli/src/modules/apps/rendering/blocks/__tests__/table.renderer.test.ts
+  s_8fed88675c1307::t_1c8e4d0383d2b3 17-24
+packages/cli/src/modules/apps/serving/__tests__/page-menu.test.ts
+  s_8fed88675c1307::t_7df4b6067a1293 4-9
+  s_8fed88675c1307::t_383fd8a5063aee 113-136
+  s_8fed88675c1307::t_e4febe487b2b0c 19-24,27-28,31-32,35-39
+packages/cli/src/modules/apps/serving/resolve-page-path.ts
+  s_8fed88675c1307::t_37c9f63dcd6957 6
+packages/nodes-base/nodes/Form/test/formCompletionUtils.test.ts
+  s_8fed88675c1307::t_6b07874cb96786 152-179
+  s_8fed88675c1307::t_73f9a7fc5c911c 150-151
+packages/cli/src/modules/apps/runtime/app-code-runtime.ts
+  s_8fed88675c1307::t_1c8e4d0383d2b3 4,15-17,132-133,204-212,270-271,276-285,294,322,354,356,382,384,405-407,445-451,463,479,487-491
+  s_8fed88675c1307::t_83aced5737d279 492-494
+packages/frontend/editor-ui/src/features/apps/components/__tests__/AppComponentsForm.test.ts
+  s_8fed88675c1307::t_9788d944a13427 15-23
+  s_8fed88675c1307::t_1c8e4d0383d2b3 1-14,24-98
+packages/cli/src/modules/apps/rendering/blocks/__tests__/form.renderer.test.ts
+  s_8fed88675c1307::t_6b07874cb96786 2,7,13-14,44-62,64-67,78-89,93,95,99-228
+  s_8fed88675c1307::t_1c8e4d0383d2b3 17-24
+packages/cli/src/modules/apps/rendering/blocks/__tests__/code.renderer.test.ts
+  s_8fed88675c1307::t_1c8e4d0383d2b3 14-21,59-69
+  s_8fed88675c1307::t_b4ccf0207ca52f 70-71
+  s_8fed88675c1307::t_646cd4833a8887 93-107
+packages/cli/templates/partials/app-block-agent-chat.handlebars
+  s_8fed88675c1307::t_88cc476f51b22e 1-14
+packages/@n8n/api-types/src/schemas/app-version.schema.ts
+  s_8fed88675c1307::t_e429a975a7f1f4 4-9
+  s_8fed88675c1307::t_cdba829520ef87 17
+packages/frontend/editor-ui/src/features/apps/components/LayoutPanel.vue
+  s_8fed88675c1307::t_09cf4c8237abb1 2,6,10-12,17,33,44,85-105,119-136,207
+  s_8fed88675c1307::t_4d498c6783eb82 208-210
+packages/@n8n/instance-ai/src/types.ts
+  s_8fed88675c1307::t_ccd8afbdf5e9d3 1056
+  s_8fed88675c1307::t_66c7c63906eb86 1086-1092,1097-1102
+  s_8fed88675c1307::t_1c8e4d0383d2b3 1072-1073,1076
+  s_5381879ec63c09::t_556b940d836a4c 1069-1070,1106-1111
+packages/cli/src/modules/apps/rendering/page-renderer.ts
+  s_8fed88675c1307::t_5e5787313fd695 15-21
+  s_8fed88675c1307::t_b0ec70462a040b 155
+  s_8fed88675c1307::t_1c8e4d0383d2b3 5,11,14,79-82,100
+  s_5381879ec63c09::t_00a98c501c7d35 62-64,74,131,141,146-147,165,173-175
+packages/frontend/editor-ui/src/features/apps/__tests__/pageTree.utils.test.ts
+  s_8fed88675c1307::t_4f1b82ef720986 2-7,9-14,19,31,45-57
+packages/frontend/editor-ui/src/features/shared/editors/plugins/codemirror/typescript/worker/app-api.worker.test.ts
+  s_8fed88675c1307::t_1c8e4d0383d2b3 6,33-34,38-54
+  s_8fed88675c1307::t_ffd8f6943e2d41 55
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_8fed88675c1307::t_8d814d4deef06b 5041,5046
+  s_8fed88675c1307::t_dfb9502ca204b4 5068
+  s_8fed88675c1307::t_907588bb105634 5142-5143
+  s_8fed88675c1307::t_972f7aac1593ce 5063
+  s_8fed88675c1307::t_460f5418dca6d6 5155,5163
+  s_5381879ec63c09::t_0499c5604f3a49 5190-5211
+packages/frontend/editor-ui/src/features/apps/useAppDeletion.ts
+  s_8fed88675c1307::t_09cf4c8237abb1 8,56
+packages/cli/src/modules/apps/rendering/blocks/agent-chat.renderer.ts
+  s_8fed88675c1307::t_88cc476f51b22e 1-19
+packages/frontend/editor-ui/src/features/apps/components/__tests__/AddAppModal.test.ts
+  s_8fed88675c1307::t_32365acbc21f74 50,54,56-71,73-80,83,99
+  s_8fed88675c1307::t_cf18ac7d50345b 25
+  s_8fed88675c1307::t_2e2eec4e6d1c97 72
+  s_8fed88675c1307::t_04e87ec3382cdc 22-24
+  s_8fed88675c1307::t_73980f8129aed0 26-28,47-49
+  s_8fed88675c1307::t_5676d26d34f674 51-53
+  s_8fed88675c1307::t_04d67f93aedb73 55
+  s_8fed88675c1307::t_b9cba0d1462971 81-82
+  s_8fed88675c1307::t_7271ebca96cadb 84-86,96-98
+  s_8fed88675c1307::t_af41af1e621832 100
+  s_8fed88675c1307::t_9f4b43874499de 1-21,29-46,87-95
+packages/cli/src/modules/apps/serving/app-serving.controller.ts
+  s_8fed88675c1307::t_88cc476f51b22e 86-91,126
+  s_8fed88675c1307::t_c217d727ab3a14 123-125
+  s_8fed88675c1307::t_3d7173ffdbb288 127
+  s_8fed88675c1307::t_404ebbd1e2408e 15,121-122,129-131,168-171,177-179
+packages/frontend/editor-ui/src/features/apps/components/PageContentEditor.vue
+  s_8fed88675c1307::t_88cc476f51b22e 9,13,46,105-111
+packages/cli/src/modules/apps/rendering/__tests__/interpolate.test.ts
+  s_8fed88675c1307::t_1c8e4d0383d2b3 5-12
+packages/cli/src/modules/apps/rendering/blocks/form.renderer.ts
+  s_8fed88675c1307::t_9788d944a13427 79-80,84-85,117-120
+  s_8fed88675c1307::t_6b07874cb96786 2-3,6,8,10-12,16,18-44,47,69-78,81-83,86-116,121-151,155-158,165-166,171-172
+packages/frontend/editor-ui/src/features/apps/components/PageTree.vue
+  s_8fed88675c1307::t_09cf4c8237abb1 21,42-47,59,82,90,93-98,106-107,109-113,122,125-128,143-151,179,181,184-199,207-217,280-289
+  s_8fed88675c1307::t_53a8ee3a266f2b 290
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_8fed88675c1307::t_2b3303dee6a418 3426
+  s_8fed88675c1307::t_1c8e4d0383d2b3 3465
+  s_5381879ec63c09::t_f40e66b6be5973 3452,3529-3534
+packages/@n8n/api-types/src/dto/app/create-page.dto.ts
+  s_8fed88675c1307::t_61ad9176a028bf 4,9
+packages/cli/src/modules/apps/rendering/__tests__/sanitize-html.test.ts
+  s_8fed88675c1307::t_9788d944a13427 66-75
+packages/@n8n/instance-ai/skills/app-builder/references/components.md
+  s_8fed88675c1307::t_1c8e4d0383d2b3 1-94
+packages/cli/test/integration/apps/apps.controller.integration.test.ts
+  s_8fed88675c1307::t_f98a1a7415918a 258-274,298-346
+  s_8fed88675c1307::t_41e7b1879591a9 252,350,488-537
+  s_8fed88675c1307::t_fdfa4d7082bf5a 8,10-11,251,253-257,347-349
+packages/cli/src/modules/apps/serving/draft-pages.ts
+  s_8fed88675c1307::t_93794713ea4342 17
+  s_8fed88675c1307::t_9bfd0418a6fe52 14-16
+  s_8fed88675c1307::t_da3f308b97293f 18-20
+  s_5381879ec63c09::t_c89694e1cfc276 1-13,21
+packages/cli/src/modules/apps/rendering/register-static-renderers.ts
+  s_8fed88675c1307::t_88cc476f51b22e 1,18
+packages/cli/src/modules/apps/rendering/styles/app.css
+  s_8fed88675c1307::t_002b0b0ad35558 23,25-26,233-248,252-313,315-334,338-390,392,394-416
+docs/generated/postgres-schema/README.md
+  s_8fed88675c1307::t_6494f392ede5d7 101,1294
+docs/generated/postgres-schema/public.app.md
+  s_8fed88675c1307::t_93822b190e976c 79
+docs/generated/postgres-schema/public.page.md
+  s_8fed88675c1307::t_7a14dcb12ec471 14,54
+docs/generated/sqlite-schema/README.md
+  s_8fed88675c1307::t_5a5c7e6a612b1b 101,1281
+docs/generated/sqlite-schema/app.md
+  s_8fed88675c1307::t_543b4af6098824 84
+docs/generated/sqlite-schema/page.md
+  s_8fed88675c1307::t_7a14b82de5329b 9,25,61
+packages/@n8n/api-types/src/schemas/__tests__/app-layout-presets.test.ts
+  s_8fed88675c1307::t_264db30851c061 1-28
+packages/@n8n/api-types/src/schemas/app-layout-presets.ts
+  s_8fed88675c1307::t_0b1325407adff2 4-7,10,17-169
+packages/@n8n/instance-ai/skills/app-builder/references/layouts.md
+  s_8fed88675c1307::t_c5d5948e30015a 7-34,46,48,78-82,87,89-90,96,98,100-101
+packages/@n8n/instance-ai/skills/app-builder/references/styling.md
+  s_8fed88675c1307::t_75f367b4559c62 3-76,78,80-88,90-116,118-138,141-142,144,146,148,150,152-166,169,171-180,182-184,186-188,192,200,202,206-241,245-248,268,270,272-276,281-282,284-285
+packages/cli/src/modules/apps/app.repository.ts
+  s_8fed88675c1307::t_85631d0a156143 13,18
+packages/cli/src/modules/apps/rendering/sanitize-html.ts
+  s_8fed88675c1307::t_bcc97a4626593a 4
+packages/frontend/editor-ui/src/features/apps/components/AppThemeForm.vue
+  s_8fed88675c1307::t_247af1926d68c1 42,56,75,143-153
+packages/cli/src/modules/apps/apps.controller.ts
+  s_8fed88675c1307::t_4d930137415b72 16,25,46,61-62,257-262,282-287,289-290
+packages/cli/src/modules/apps/rendering/blocks/code.renderer.ts
+  s_8fed88675c1307::t_f3554fb2467167 39-40
+packages/cli/src/modules/apps/serving/app-request-auth.ts
+  s_8fed88675c1307::t_5e6d778bb6e5c2 7,9,16,26-27,35,53-57
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/agentTimeline.utils.test.ts
+  s_8fed88675c1307::t_6d099574801240 289
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/canvasPreview.utils.test.ts
+  s_8fed88675c1307::t_eb7dc1272d91c6 1471-1485
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useResourceRegistry.test.ts
+  s_8fed88675c1307::t_bc8c8528220651 710,735-740,750
+packages/frontend/editor-ui/src/features/ai/instanceAi/agentTimeline.utils.ts
+  s_8fed88675c1307::t_0f27b261d8f971 301,383
+packages/frontend/editor-ui/src/features/ai/instanceAi/canvasPreview.utils.ts
+  s_8fed88675c1307::t_240ef384ce4b62 324
+packages/frontend/editor-ui/src/features/ai/instanceAi/useResourceRegistry.ts
+  s_8fed88675c1307::t_a84915202704af 246-249,252-253
+packages/frontend/editor-ui/src/features/apps/components/AppPreviewFrame.vue
+  s_8fed88675c1307::t_b05f191747668d 4,6,10-11,16,20-30,46,55
+packages/frontend/editor-ui/src/features/apps/components/__tests__/AppPreviewFrame.test.ts
+  s_8fed88675c1307::t_239613b1c4c933 1-2,8-14,40-62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "3253e7fefb825c1538936fb3fa200d34f5697a3e",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_5381879ec63c09": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a5ddb387864894461",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_766636dc171bdc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9477d701-73d0-426f-ba21-91d4ca0057de",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_8fed88675c1307": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4a96b2f2-c9aa-4ec0-94bd-4ee430cd7c07",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

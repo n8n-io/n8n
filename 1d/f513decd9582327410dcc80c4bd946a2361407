@@ -1,0 +1,35 @@
+packages/cli/src/modules/agents/background/agent-background-job.service.ts
+  s_061bb86aeb5509::t_3cb9d1aea47cb6 379-385,387-388,390-397
+packages/cli/src/modules/agents/agent-workflow-tool-resume.service.ts
+  s_061bb86aeb5509::t_60cce3bd84b6b9 94-97,102-104,113
+packages/cli/src/modules/agents/background/__tests__/agent-background-job.service.test.ts
+  s_061bb86aeb5509::t_0292b2b24e6250 507-524
+  s_061bb86aeb5509::t_654ad373a9ed14 359-362
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_061bb86aeb5509::t_e31700f28e875b 470-474
+  s_061bb86aeb5509::t_22844f82d0113d 486-491,493-495
+packages/cli/src/modules/agents/__tests__/agent-workflow-tool-resume.service.test.ts
+  s_061bb86aeb5509::t_d75acae11eb3ec 348,355,360-367
+  s_061bb86aeb5509::t_4191b1f51574d0 94-95
+packages/cli/src/modules/agents/tools/__tests__/workflow-tool-factory.test.ts
+  s_061bb86aeb5509::t_c534ae05847c37 922-939
+  s_061bb86aeb5509::t_1650c7c898c320 993-1008
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  s_061bb86aeb5509::t_b01544a0185f50 784-788,793-795,811-813,816-820
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1df513decd9582327410dcc80c4bd946a2361407",
+  "prompts": {},
+  "sessions": {
+    "s_061bb86aeb5509": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "96bcba15-ce6a-434a-85a9-43582fe49f67",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

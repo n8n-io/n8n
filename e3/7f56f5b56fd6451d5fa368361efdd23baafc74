@@ -1,0 +1,27 @@
+.github/scripts/codespace-preview.mjs
+  s_2d5001c145ca37::t_a7cf12a6e7296d 11-12,23-26,28-32,60-72,145-147,168,180-181,203-205,208-217,220
+.github/WORKFLOWS.md
+  s_2d5001c145ca37::t_fffe14b08ea253 265-287,360-361,367,721
+.devcontainer/codespaces/README.md
+  s_2d5001c145ca37::t_07949547c42b24 62-63,80-85
+.github/workflows/util-codespace-preview.yml
+  s_2d5001c145ca37::t_ac6a95bc969647 2,13-16,29-43,51,61-65,69-81,91-93,96,114,117-118
+.github/scripts/codespace-preview.test.mjs
+  s_2d5001c145ca37::t_d609615e833700 6-7,16,62-85,189-198
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e37f56f5b56fd6451d5fa368361efdd23baafc74",
+  "prompts": {},
+  "sessions": {
+    "s_2d5001c145ca37": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bd6cc154-d995-4f22-8cb9-a5253e63d2d2",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

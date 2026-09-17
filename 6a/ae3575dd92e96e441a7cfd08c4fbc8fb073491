@@ -1,0 +1,49 @@
+packages/cli/src/modules/agents/agent-message-queue.service.ts
+  s_d27d09d94cc9ff::t_eac241ec0f33c5 107-131
+  s_d27d09d94cc9ff::t_ec78dee24f460f 52
+  s_d27d09d94cc9ff::t_955b8ec3a3d8ee 103,132
+  s_d27d09d94cc9ff::t_fb65def2c5fc6a 285-292
+  s_d27d09d94cc9ff::t_0af911286dd233 9,481
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_d27d09d94cc9ff::t_3e50cd9e707603 337-351,359
+  s_d27d09d94cc9ff::t_955b8ec3a3d8ee 152,187-189,193-197
+packages/cli/src/modules/agents/agent-execution-update-broadcaster.ts
+  s_d27d09d94cc9ff::t_93abef1f6b83bd 50-51
+  s_d27d09d94cc9ff::t_db405d3937cbc3 49
+  s_d27d09d94cc9ff::t_d2d1c2018307a9 18,53-54,59,61
+  s_d27d09d94cc9ff::t_7f6f312a556a3e 19,52,55-58,60,62-63
+packages/cli/test/integration/agents/agent-message-queue.test.ts
+  s_d27d09d94cc9ff::t_723f2964dbf001 878
+  s_d27d09d94cc9ff::t_eac241ec0f33c5 542
+  s_d27d09d94cc9ff::t_f6b2c829be763f 834-835,842-845,847,849
+  s_d27d09d94cc9ff::t_fae834f6585120 512-541,543-545
+  s_d27d09d94cc9ff::t_5f7cd1deaf5da6 830-833,836-841,846,848,850-859
+  s_d27d09d94cc9ff::t_80bd04bb9f9f85 860-877,879-880
+packages/cli/src/modules/agents/__tests__/agent-execution-update-broadcaster.test.ts
+  s_d27d09d94cc9ff::t_93abef1f6b83bd 34
+  s_d27d09d94cc9ff::t_2ced8289039e37 96
+  s_d27d09d94cc9ff::t_27ac0db6c8c56b 90-94,99-100,102,104,107,109
+  s_d27d09d94cc9ff::t_e8d14e87cc40ed 137-152
+  s_d27d09d94cc9ff::t_dc524361bbab9a 88,95,97,101,103,106,108
+  s_d27d09d94cc9ff::t_0c0c2e271076ba 112,116,119-129,132-134
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_d27d09d94cc9ff::t_955b8ec3a3d8ee 510-527,529
+  s_d27d09d94cc9ff::t_5f829fd95d20e1 463-484
+  s_d27d09d94cc9ff::t_b033bdcfc69634 528
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "6aae3575dd92e96e441a7cfd08c4fbc8fb073491",
+  "prompts": {},
+  "sessions": {
+    "s_d27d09d94cc9ff": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0a974-d93e-7a81-998f-70beb9ade7da",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

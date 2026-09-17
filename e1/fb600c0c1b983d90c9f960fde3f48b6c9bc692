@@ -1,0 +1,40 @@
+scripts/instance-seeding/seedHistory.mjs
+  s_d6594e4cfdf1a3::t_3f6683df1b59ce 1,5,8-16,18,22,26-27,29,59,63-77,84-87,89-94,97-103,151-153,156-167,169-171,175-176,178-182,184-187,189-208,230,246,254,256-260,265-267,269-271,273-293,297-308,310-335,337-362,373-375,377-451
+  s_d6594e4cfdf1a3::t_551fa3d4691983 2-4,6-7,79-82,95-96,104-105,209-211
+  s_d6594e4cfdf1a3::t_94b28cecdd9456 17,88,376
+  s_d6594e4cfdf1a3::t_04364f7112a9e2 19-21,188,363-372
+  s_d6594e4cfdf1a3::t_925e0b3aaa74e2 23-25,28
+  s_d6594e4cfdf1a3::t_fd75a0bcd163e8 30-58
+  s_d6594e4cfdf1a3::t_5cf738d734c4f0 60-62
+  s_d6594e4cfdf1a3::t_af52d7408cbbaf 78,83
+  s_d6594e4cfdf1a3::t_c7f0a487bf1e75 106-150,154-155,168,172-174,177
+  s_d6594e4cfdf1a3::t_5f929b4942ef08 183
+  s_d6594e4cfdf1a3::t_c3dd74a8aa1be0 212-216
+  s_d6594e4cfdf1a3::t_354e0e050e3be8 217,220-229,238,241-245,248,251-253,255,261-264,268,272
+  s_d6594e4cfdf1a3::t_acea0aedd1840c 218-219
+  s_d6594e4cfdf1a3::t_ee7a71d4d54d61 231-237,239-240,247,249-250
+  s_d6594e4cfdf1a3::t_51c957444a5839 294-296
+  s_d6594e4cfdf1a3::t_ada609ea988107 309
+  s_d6594e4cfdf1a3::t_64a90e6f6fddfc 336
+scripts/instance-seeding/seedHistory.test.mjs
+  s_d6594e4cfdf1a3::t_d8c822857ff9cf 1-70,77-119,131-158,164-232,260-266,302-309
+  s_d6594e4cfdf1a3::t_30fe15a547d8f4 71-76,120-130,159-163
+  s_d6594e4cfdf1a3::t_4864e061f51ec8 233-259
+  s_d6594e4cfdf1a3::t_95e12e50d3442d 267-301
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e1fb600c0c1b983d90c9f960fde3f48b6c9bc692",
+  "prompts": {},
+  "sessions": {
+    "s_d6594e4cfdf1a3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4df11345-03b4-4c0a-b65a-4a0bf36e6cfa",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}
