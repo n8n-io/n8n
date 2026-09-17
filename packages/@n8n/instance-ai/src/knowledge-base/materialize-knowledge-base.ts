@@ -291,6 +291,31 @@ async function addUseCaseFilesToKnowledgeBase(
 	return entries;
 }
 
+/**
+ * The options of the onboarding "Which tools do you use?" card for one role: the example tools
+ * in brackets on the `- Tools:` lines of `use-cases/<roleId>.md`, most frequent first, ties in
+ * corpus order. Built-in nodes (no brackets) are not options. Read on the host, so the card
+ * needs no sandbox and the agent copies the options instead of writing its own.
+ */
+export async function loadUseCaseToolOptions(roleId: string): Promise<string[]> {
+	const content = await readFile(
+		join(INSTANCE_AI_KNOWLEDGE_BASE_SOURCE_DIR, KNOWLEDGE_BASE_USE_CASES_DIR, `${roleId}.md`),
+		'utf-8',
+	);
+	const counts = new Map<string, number>();
+	for (const [, tools] of content.matchAll(/^- Tools: (.*)$/gm)) {
+		for (const item of tools.split(', ')) {
+			const example = /\(([^()]*)\)$/.exec(item.trim())?.[1];
+			if (example) counts.set(example, (counts.get(example) ?? 0) + 1);
+		}
+	}
+	// ponytail: ten options fit the card; the free-text field takes the rest.
+	return [...counts.entries()]
+		.sort(([, a], [, b]) => b - a)
+		.slice(0, 10)
+		.map(([example]) => example);
+}
+
 export async function buildKnowledgeBaseWorkspaceBundle(
 	options: BuildKnowledgeBaseWorkspaceBundleOptions,
 ): Promise<KnowledgeBaseWorkspaceBundle> {

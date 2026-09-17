@@ -9,6 +9,7 @@ import { Service } from '@n8n/di';
 import {
 	ASK_USER_TOOL_ID,
 	loadInstanceAiRuntimeSkillSource,
+	loadUseCaseToolOptions,
 	orchestratorAgentId,
 } from '@n8n/instance-ai';
 import { UnexpectedError } from 'n8n-workflow';
@@ -33,6 +34,8 @@ export const ONBOARDING_SKILL_ID = 'probe-user';
  * has a run behind it. Fits the 36-char `requestId` column together with a nanoid.
  */
 const OPENING_REQUEST_ID_PREFIX = 'onboarding-';
+/** Start of the `${N8N_*}` placeholders the sandbox materializer substitutes; split so the lint rule for interpolation does not fire. */
+const PRELOAD_FORBIDDEN_PLACEHOLDER_PREFIX = '$' + '{N8N_';
 /** `id` of the role question in the skill's `metadata.opening.questions`. */
 const ROLE_QUESTION_ID = 'role';
 
@@ -51,9 +54,19 @@ interface OnboardingSkill {
 	opening: z.infer<typeof openingSchema>;
 }
 
+/**
+ * The body goes to the model as is. The sandbox materializer substitutes `${N8N_*}` placeholders
+ * only in the skills it writes to the workspace, so a placeholder here would reach the shell as
+ * an unset variable. Fail here, at thread creation, instead of in the agent's first command.
+ */
 export async function loadOnboardingSkill(): Promise<OnboardingSkill> {
 	const skill = await loadInstanceAiRuntimeSkillSource().loadSkill(ONBOARDING_SKILL_ID);
 	if (!skill) throw new UnexpectedError(`Runtime skill "${ONBOARDING_SKILL_ID}" not found`);
+	if (skill.instructions.includes(PRELOAD_FORBIDDEN_PLACEHOLDER_PREFIX)) {
+		throw new UnexpectedError(
+			`Runtime skill "${ONBOARDING_SKILL_ID}" is preloaded and must not use \${N8N_*} placeholders`,
+		);
+	}
 	return {
 		instructions: skill.instructions,
 		opening: openingSchema.parse(skill.metadata?.opening),
@@ -202,6 +215,9 @@ export class InstanceAiOnboardingService {
 		// Committed before the first turn writes its rows, so the fold keeps pairing the card
 		// with the greeting.
 		await this.eventLog.flush(row.threadId);
-		return { threadId: row.threadId, message: buildOnboardingAnswerMessage(result, roleId) };
+		return {
+			threadId: row.threadId,
+			message: buildOnboardingAnswerMessage(result, roleId, await loadUseCaseToolOptions(roleId)),
+		};
 	}
 }

@@ -84,15 +84,17 @@ the answer with this table. Free text that fits no row maps to `other`.
 ## Step 2: the tools
 
 1. Acknowledge the role in one sentence. Do not list n8n features.
-2. Collect the example tools of the role file:
-   `grep -h "^- Tools:" ${N8N_WORKSPACE_DIR}/knowledge-base/use-cases/<role id>.md`.
-   Each tool is written as `family (example)`.
-3. In the same turn, ONE `ask-user` call with a `multi` question "Which tools
-   do you use?". Options: the distinct example tools, most common entries
-   first, plus Microsoft Outlook when Gmail is listed, Microsoft Teams when
-   Slack is listed, and Microsoft Excel 365 when Google Sheets is listed. Ten
-   options at most. The card has a built-in free-text field for other tools;
-   never add "Other" or "None of these" as an option.
+2. In the same turn, ONE `ask-user` call with a `multi` question "Which tools
+   do you use?". Options: the `Tools card options` line of the
+   `<onboarding-answer>` block, verbatim and in that order. Do not add, drop,
+   merge or reword an option, and do not add a family or a note in brackets:
+   `suggest-automations` matches the selected options against the corpus by
+   name. The card has a built-in free-text field for other tools; never add
+   "Other" or "None of these" as an option.
+3. No `Tools card options` line, or an empty one (another thread, or a role
+   without options): ask a `text` question "Which tools do you use? For
+   example Slack, Gmail or Google Sheets." Never write options yourself, and
+   never run a command to find them.
 
 ## Step 3: hand over
 
