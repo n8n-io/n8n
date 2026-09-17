@@ -28,16 +28,25 @@ Engine v1 holds a random `resumeToken` in the data of the execution. It
 compares the token with a timing-safe equality check. The check is optional. An
 execution without a stored token accepts any caller.
 
+Engine v1 also signs the resume URL itself. `getSignedResumeUrl` builds a path
+from the execution id and the node id, adds the parameters that the node needs,
+and then signs the path and the parameters together. It signs with a separate
+HMAC secret. The signature therefore covers the parameters that a node puts in
+an approval URL, and a holder of the cross-plane secret cannot build a URL.
+
 ## Decision
 
 A **separate kind of capability token** authorizes a resume request. The engine
 derives the token and does not store it.
 
-The bar this decision meets is parity with engine v1: a resume URL is as hard to
-forge here as it is there, and no harder. It is not a claim that this is the
-final shape. A later decision supersedes this one when the trust layer between
-the planes settles, or when a requirement arrives that the derived form cannot
-meet — per-URL revocation is the most likely of those.
+The bar this decision must meet is parity with engine v1: a resume URL is as
+hard to forge here as it is there, and no harder. The derived token in the form
+below does not meet that bar. The consequences name the two gaps.
+
+The decision is also not a claim that this is the final shape. A later decision
+supersedes this one when the trust layer between the planes settles, or when a
+requirement arrives that the derived form cannot meet. Per-URL revocation is
+the most likely of those.
 
 1. **The token has its own spec.** A third `SharedSecretTokenSpec` holds its own
    issuer and audience. Therefore a caller cannot replay a resume token at the
@@ -83,6 +92,13 @@ meet — per-URL revocation is the most likely of those.
 
 ## Consequences
 
+- The claims name the two ids and no request parameters. Engine v1 signs the
+  parameters of a resume URL as well, so a node can put a value in the URL and
+  then trust that value when the request returns. To reach the parity bar, the
+  claims must cover the parameters that the resolve endpoint accepts.
+- The resume token uses the shared secret of the two planes. Engine v1 signs a
+  resume URL with a secret that the data plane holds alone. To reach the parity
+  bar, the resume token needs its own secret.
 - The engine cannot revoke one resume URL. A URL stops working when the step
   leaves the `waiting` status, and not before. A change of the shared secret
   makes all open resume URLs invalid at the same time.
@@ -102,9 +118,8 @@ meet — per-URL revocation is the most likely of those.
   show that the step still waits. Therefore the resolve path reads the step row
   in all cases. The token does not remove a database read. It decides if the
   request can continue.
-- The shared secret now protects three kinds of token. A separate secret for
-  the resume tokens would limit a rotation to those tokens. This is available
-  later and does not change this decision.
+- The shared secret now protects three kinds of token. A rotation of that
+  secret therefore also invalidates every open resume URL.
 - A derived token without an expiry needs a change to the token primitive.
   `signSharedSecretToken` always sets `expiresIn`, and `verifySharedSecretToken`
   always passes `maxAge`. Both values come from the spec. Therefore the change
