@@ -1,5 +1,7 @@
 import type { StartedTestContainer, StartedNetwork } from 'testcontainers';
 
+import type { EngineMode } from './engine';
+
 /** Hostname that containers use to reach the host machine (Docker Desktop built-in) */
 export const EXTERNAL_HOST = 'host.docker.internal';
 
@@ -77,6 +79,8 @@ export interface StackConfig {
 	/** Dedicated `n8n webhook` procs. Forces queue mode when > 0. */
 	webhooks?: number;
 	postgres?: boolean;
+	/** Runs engine 2.0. Needs `postgres: true`, one main, no workers, no webhook procs. */
+	engine?: EngineMode;
 	env?: Record<string, string>;
 	projectName?: string;
 	resourceQuota?: { memory?: number; cpu?: number };
