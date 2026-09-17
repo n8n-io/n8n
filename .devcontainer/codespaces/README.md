@@ -90,6 +90,12 @@ needs `gh` with the codespace scope, the same as `pnpm session`.
   re-serves the box; it never creates or deletes one. From a laptop the labels
   apply the same way — `pnpm preview refresh <pr>` reads them from the PR. The
   toggles are defined in `scripts/preview-labels.mjs`; add new ones there.
+- **Configure the instance from a webhook.** A preview also reads extra
+  environment from an n8n webhook, so a value can change without a commit. It
+  needs the `CODESPACE_ENV_URL`, `CODESPACE_ENV_USER` and `CODESPACE_ENV_PASSWORD`
+  codespace secrets. Every key the webhook returns becomes an environment
+  variable, so editing that workflow runs code in the box. Without the secrets
+  the preview serves as usual. See [WORKFLOWS.md](../../.github/WORKFLOWS.md).
 - **A preview sleeps after 2 hours** of no use and GitHub deletes it after 24
   hours. A box that slept serves nothing and its port is private again, so wake
   it with `pnpm preview up <pr>` or a manual run of
