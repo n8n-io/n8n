@@ -32,6 +32,19 @@ export type ActivityEventInput = Pick<ActivityEvent, 'category' | 'action' | 'pr
 		data?: IDataObject | null;
 	};
 
+/**
+ * The projects whose entries a caller may see.
+ *
+ * A list, or the explicit `'all-projects'` for a reader whose scope is genuinely the whole
+ * instance. Spelling that case out beats enumerating every project id and binding them: a global
+ * reader on a large estate would otherwise bind one parameter per project — one exists per user —
+ * which crosses sqlite's ceiling and pushes Postgres off the `(projectId, id)` index.
+ *
+ * It is a literal rather than an optional field on purpose. An omitted scope reading everything is
+ * the failure this type exists to prevent, so the widest scope has to be asked for by name.
+ */
+export type ActivityProjectScope = string[] | 'all-projects';
+
 export type ActivityFeedQuery = {
 	limit: number;
 	/**
@@ -39,7 +52,7 @@ export type ActivityFeedQuery = {
 	 * would read every project on the instance, including ones the user cannot open. Entries
 	 * with no project are excluded, since there is no way to prove they are in scope.
 	 */
-	projectIds: string[];
+	projectIds: ActivityProjectScope;
 	userId?: string;
 	resourceId?: string;
 	/** Optional category filter. It must be in `allowedCategories`. */
@@ -54,6 +67,16 @@ export type ActivityFeedQuery = {
 	/** Exclusive upper bound, for paging backwards through older entries. */
 	beforeId?: number;
 };
+
+/** Nothing in scope means nothing is visible, which is not the same as no filter. */
+function isEmptyScope(scope: ActivityProjectScope): boolean {
+	return scope !== 'all-projects' && scope.length === 0;
+}
+
+/** No project predicate at all for a whole-instance reader, so the scope costs no bind parameters. */
+function projectScopeWhere(scope: ActivityProjectScope): FindOptionsWhere<ActivityEvent> {
+	return scope === 'all-projects' ? {} : { projectId: In(scope) };
+}
 
 @Service()
 export class ActivityEventRepository extends Repository<ActivityEvent> {
@@ -89,7 +112,7 @@ export class ActivityEventRepository extends Repository<ActivityEvent> {
 	async findFeed(query: ActivityFeedQuery): Promise<ActivityEvent[]> {
 		if (isEmptyPage(query.limit)) return [];
 		// Empty project or category permissions must not widen the query.
-		if (query.projectIds.length === 0 || query.allowedCategories.length === 0) return [];
+		if (isEmptyScope(query.projectIds) || query.allowedCategories.length === 0) return [];
 		if (
 			query.filterCategory !== undefined &&
 			!query.allowedCategories.includes(query.filterCategory)
@@ -97,7 +120,7 @@ export class ActivityEventRepository extends Repository<ActivityEvent> {
 			return [];
 
 		const where: FindOptionsWhere<ActivityEvent> = {
-			projectId: In(query.projectIds),
+			...projectScopeWhere(query.projectIds),
 			category: query.filterCategory ?? In(query.allowedCategories),
 		};
 		if (query.userId !== undefined) where.userId = query.userId;
@@ -117,13 +140,13 @@ export class ActivityEventRepository extends Repository<ActivityEvent> {
 
 	/** Returns the newest entry in scope. Its timestamp detects reused SQLite row ids. */
 	async findNewestEntry(query: {
-		projectIds: string[];
+		projectIds: ActivityProjectScope;
 		allowedCategories: Array<ActivityEvent['category']>;
 	}): Promise<Pick<ActivityEvent, 'id' | 'createdAt'> | null> {
-		if (query.projectIds.length === 0 || query.allowedCategories.length === 0) return null;
+		if (isEmptyScope(query.projectIds) || query.allowedCategories.length === 0) return null;
 
 		return await this.findOne({
-			where: { projectId: In(query.projectIds), category: In(query.allowedCategories) },
+			where: { ...projectScopeWhere(query.projectIds), category: In(query.allowedCategories) },
 			order: { id: 'DESC' },
 			select: { id: true, createdAt: true },
 		});
@@ -138,15 +161,15 @@ export class ActivityEventRepository extends Repository<ActivityEvent> {
 	 */
 	async findEntry(query: {
 		id: number;
-		projectIds: string[];
+		projectIds: ActivityProjectScope;
 		allowedCategories: Array<ActivityEvent['category']>;
 	}): Promise<ActivityEvent | null> {
-		if (query.projectIds.length === 0 || query.allowedCategories.length === 0) return null;
+		if (isEmptyScope(query.projectIds) || query.allowedCategories.length === 0) return null;
 
 		return await this.findOne({
 			where: {
 				id: query.id,
-				projectId: In(query.projectIds),
+				...projectScopeWhere(query.projectIds),
 				category: In(query.allowedCategories),
 			},
 		});
@@ -157,10 +180,16 @@ export class ActivityEventRepository extends Repository<ActivityEvent> {
 	 * expands a single entry.
 	 *
 	 * There is no `(resourceType, resourceId, id)` index yet, so this walks the project index and
-	 * filters. That is affordable because it runs only when a reader expands an entry, never on the
-	 * per-turn path, and the scan is bounded by one project's entries. A dedicated index is worth
-	 * adding if expansion becomes common; this is the highest-write table in the schema, so the
-	 * insert cost of a third index should be paid for by a read that needs it.
+	 * filters. That was affordable while the only caller was a reader expanding an entry by hand,
+	 * bounded by one project's entries. It no longer is: an agent calls this once per entry it
+	 * finds interesting, and a whole-instance reader is not bounded by one project at all. This is
+	 * the highest-write table in the schema, so the index is a deliberate follow-up rather than a
+	 * free add — but the read that has to pay for it now exists.
+	 *
+	 * In practice the scan stays small: `N8N_ACTIVITY_LOG_MAX_ENTRIES` defaults to 1,000
+	 * instance-wide with an hourly sweep. The case that needs the index is an instance that sets
+	 * that cap to `0`, which removes the only bound this read has left now that `'all-projects'`
+	 * removes the project one.
 	 *
 	 * `resourceType` is part of the query, not just the index prefix: ids are unique per resource
 	 * kind but nothing in the schema says so, and an entry is a dangling pointer by design.
@@ -168,17 +197,17 @@ export class ActivityEventRepository extends Repository<ActivityEvent> {
 	async findByResource(query: {
 		resourceType: ActivityResourceType;
 		resourceId: string;
-		projectIds: string[];
+		projectIds: ActivityProjectScope;
 		limit: number;
 	}): Promise<ActivityEvent[]> {
 		if (isEmptyPage(query.limit)) return [];
-		if (query.projectIds.length === 0) return [];
+		if (isEmptyScope(query.projectIds)) return [];
 
 		return await this.find({
 			where: {
 				resourceType: query.resourceType,
 				resourceId: query.resourceId,
-				projectId: In(query.projectIds),
+				...projectScopeWhere(query.projectIds),
 			},
 			order: { id: 'DESC' },
 			take: query.limit,

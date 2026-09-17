@@ -838,6 +838,7 @@ export class Git implements INodeType {
 						logOptions.file = options.file as string;
 					}
 
+					await validateGitConfig();
 					const log = await git.log(logOptions);
 
 					returnItems.push(
@@ -944,6 +945,7 @@ export class Git implements INodeType {
 						reference = options.reference;
 					}
 
+					await validateGitConfig();
 					const reflogResult = await git.raw(['reflog', reference]);
 
 					const reflogEntries = reflogResult

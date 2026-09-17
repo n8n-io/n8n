@@ -1089,6 +1089,25 @@ describe('ChatHubWorkflowService', () => {
 			});
 		});
 
+		it('should normalize the legacy wildcard mime type', () => {
+			const nodes = [
+				makeNode({
+					options: {
+						allowFileUploads: true,
+						allowedFilesMimeTypes: '*',
+					},
+				}),
+			];
+
+			expect(service.resolveWorkflowAttachmentPolicy(nodes)).toEqual({
+				allowFileUploads: true,
+				allowedFilesMimeTypes: '*/*',
+			});
+			expect(
+				service.parseInputModalities({ allowFileUploads: true, allowedFilesMimeTypes: '*' }),
+			).toEqual(['text', 'image', 'audio', 'video', 'file']);
+		});
+
 		it('should return wildcard mime types when allowFileUploads is true and mime types is not set', () => {
 			const nodes = [
 				makeNode({

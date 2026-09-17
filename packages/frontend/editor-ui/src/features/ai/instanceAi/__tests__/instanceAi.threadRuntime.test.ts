@@ -12,6 +12,8 @@ import {
 	type InstanceAiCredentialDestination,
 	type InstanceAiTargetApproval,
 } from '@n8n/api-types';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { USER_TYPED_MESSAGE } from '../prefills';
 import {
 	createThreadRuntime,
 	getAgentBuilderTargetFromThreadMetadata,
@@ -1083,7 +1085,9 @@ describe('createThreadRuntime - SSE and hydration', () => {
 	test('sendMessage pushes the optimistic user message synchronously and posts without syncing the thread', async () => {
 		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
 
-		const sendPromise = activeRuntime(registry).sendMessage('first');
+		const sendPromise = activeRuntime(registry).sendMessage('first', {
+			authorship: USER_TYPED_MESSAGE,
+		});
 
 		expect(activeRuntime(registry).messages).toHaveLength(1);
 		expect(activeRuntime(registry).messages[0]).toMatchObject({
@@ -1102,21 +1106,35 @@ describe('createThreadRuntime - SSE and hydration', () => {
 		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
 		const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-		await activeRuntime(registry).sendMessage('first');
-		await activeRuntime(registry).sendMessage('second');
+		await activeRuntime(registry).sendMessage('first', { authorship: USER_TYPED_MESSAGE });
+		await activeRuntime(registry).sendMessage('second', { authorship: USER_TYPED_MESSAGE });
 
-		expect(mockTelemetryTrack).toHaveBeenNthCalledWith(1, 'User sent builder message', {
-			thread_id: activeThreadId,
-			instance_id: 'instance-1',
-			is_first_message: true,
-			action_source: INSTANCE_AI_THREAD_SOURCE_FALLBACK,
-		});
-		expect(mockTelemetryTrack).toHaveBeenNthCalledWith(2, 'User sent builder message', {
-			thread_id: activeThreadId,
-			instance_id: 'instance-1',
-			is_first_message: false,
-			action_source: INSTANCE_AI_THREAD_SOURCE_FALLBACK,
-		});
+		expect(mockTelemetryTrack).toHaveBeenNthCalledWith(
+			1,
+			TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE,
+			{
+				thread_id: activeThreadId,
+				instance_id: 'instance-1',
+				is_first_message: true,
+				action_source: INSTANCE_AI_THREAD_SOURCE_FALLBACK,
+				prefill_type: null,
+				prefill_id: null,
+				prompt_modified: null,
+			},
+		);
+		expect(mockTelemetryTrack).toHaveBeenNthCalledWith(
+			2,
+			TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE,
+			{
+				thread_id: activeThreadId,
+				instance_id: 'instance-1',
+				is_first_message: false,
+				action_source: INSTANCE_AI_THREAD_SOURCE_FALLBACK,
+				prefill_type: null,
+				prefill_id: null,
+				prompt_modified: null,
+			},
+		);
 		expect(warnSpy).toHaveBeenCalledWith(
 			expect.stringContaining(
 				`Missing or invalid thread source for message telemetry (thread ${activeThreadId})`,
@@ -1135,14 +1153,20 @@ describe('createThreadRuntime - SSE and hydration', () => {
 		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
 		const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-		await runtime.sendMessage('hello');
+		await runtime.sendMessage('hello', { authorship: USER_TYPED_MESSAGE });
 
-		expect(mockTelemetryTrack).toHaveBeenCalledWith('User sent builder message', {
-			thread_id: activeThreadId,
-			instance_id: 'instance-1',
-			is_first_message: true,
-			action_source: 'canvas_action_button',
-		});
+		expect(mockTelemetryTrack).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE,
+			{
+				thread_id: activeThreadId,
+				instance_id: 'instance-1',
+				is_first_message: true,
+				action_source: 'canvas_action_button',
+				prefill_type: null,
+				prefill_id: null,
+				prompt_modified: null,
+			},
+		);
 		expect(warnSpy).not.toHaveBeenCalled();
 		warnSpy.mockRestore();
 	});
@@ -1157,14 +1181,20 @@ describe('createThreadRuntime - SSE and hydration', () => {
 		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
 		const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-		await runtime.sendMessage('hello');
+		await runtime.sendMessage('hello', { authorship: USER_TYPED_MESSAGE });
 
-		expect(mockTelemetryTrack).toHaveBeenCalledWith('User sent builder message', {
-			thread_id: activeThreadId,
-			instance_id: 'instance-1',
-			is_first_message: true,
-			action_source: INSTANCE_AI_THREAD_SOURCE_FALLBACK,
-		});
+		expect(mockTelemetryTrack).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE,
+			{
+				thread_id: activeThreadId,
+				instance_id: 'instance-1',
+				is_first_message: true,
+				action_source: INSTANCE_AI_THREAD_SOURCE_FALLBACK,
+				prefill_type: null,
+				prefill_id: null,
+				prompt_modified: null,
+			},
+		);
 		expect(warnSpy).toHaveBeenCalledWith(
 			expect.stringContaining(
 				`Missing or invalid thread source for message telemetry (thread ${activeThreadId})`,
@@ -1173,10 +1203,77 @@ describe('createThreadRuntime - SSE and hydration', () => {
 		warnSpy.mockRestore();
 	});
 
+	test('sendMessage reports the pre-fill type and id on the message event', async () => {
+		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
+		const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+		await activeRuntime(registry).sendMessage('Build a workflow that scrapes a page', {
+			authorship: {
+				kind: 'prefill',
+				prefillType: 'suggestion_catalog',
+				prefillId: 'v4-engineering-data-management-1',
+				promptModified: true,
+			},
+		});
+
+		expect(mockTelemetryTrack).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE,
+			{
+				thread_id: activeThreadId,
+				instance_id: 'instance-1',
+				is_first_message: true,
+				action_source: INSTANCE_AI_THREAD_SOURCE_FALLBACK,
+				prefill_type: 'suggestion_catalog',
+				prefill_id: 'v4-engineering-data-management-1',
+				prompt_modified: true,
+			},
+		);
+		warnSpy.mockRestore();
+	});
+
+	test('sendMessage treats an auto-sent pre-fill as unmodified', async () => {
+		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
+		const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+		await activeRuntime(registry).sendMessage('The execution failed.', {
+			authorship: { kind: 'prefill', prefillType: 'handoff_execution_error' },
+		});
+
+		expect(mockTelemetryTrack).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE,
+			expect.objectContaining({
+				prefill_type: 'handoff_execution_error',
+				prefill_id: null,
+				prompt_modified: false,
+			}),
+		);
+		warnSpy.mockRestore();
+	});
+
+	test('sendMessage nulls every pre-fill property for a message the user typed', async () => {
+		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
+		const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+		await activeRuntime(registry).sendMessage('hello', { authorship: USER_TYPED_MESSAGE });
+
+		expect(mockTelemetryTrack).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE,
+			expect.objectContaining({
+				prefill_type: null,
+				prefill_id: null,
+				prompt_modified: null,
+			}),
+		);
+		warnSpy.mockRestore();
+	});
+
 	test('sendMessage forwards pushRef to postMessage', async () => {
 		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
 
-		await activeRuntime(registry).sendMessage('hello', undefined, 'iframe-push-ref-123');
+		await activeRuntime(registry).sendMessage('hello', {
+			authorship: USER_TYPED_MESSAGE,
+			pushRef: 'iframe-push-ref-123',
+		});
 
 		expect(mockPostMessage).toHaveBeenCalledWith(
 			expect.anything(),
@@ -1202,7 +1299,10 @@ describe('createThreadRuntime - SSE and hydration', () => {
 			},
 		};
 
-		await activeRuntime(registry).sendMessage('hello', undefined, undefined, context);
+		await activeRuntime(registry).sendMessage('hello', {
+			authorship: USER_TYPED_MESSAGE,
+			handoffContext: context,
+		});
 
 		expect(activeRuntime(registry).messages[0]).toMatchObject({
 			role: 'user',
@@ -1225,7 +1325,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 	test('sendMessage omits pushRef when not provided', async () => {
 		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
 
-		await activeRuntime(registry).sendMessage('hello');
+		await activeRuntime(registry).sendMessage('hello', { authorship: USER_TYPED_MESSAGE });
 
 		expect(mockPostMessage).toHaveBeenCalledWith(
 			expect.anything(),
@@ -1250,7 +1350,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 		// Clear capturedInstance so we can verify a *new* EventSource is created
 		capturedInstance = null;
 
-		await activeRuntime(registry).sendMessage('hello');
+		await activeRuntime(registry).sendMessage('hello', { authorship: USER_TYPED_MESSAGE });
 
 		// sendMessage should have re-opened an EventSource before posting
 		expect(capturedInstance).not.toBeNull();
@@ -1260,7 +1360,9 @@ describe('createThreadRuntime - SSE and hydration', () => {
 	test('sendMessage rolls back the optimistic message when postMessage fails', async () => {
 		mockPostMessage.mockRejectedValueOnce(new Error('post failed'));
 
-		const sendPromise = activeRuntime(registry).sendMessage('first');
+		const sendPromise = activeRuntime(registry).sendMessage('first', {
+			authorship: USER_TYPED_MESSAGE,
+		});
 
 		expect(activeRuntime(registry).isSendingMessage).toBe(true);
 		expect(activeRuntime(registry).messages).toHaveLength(1);
@@ -1279,7 +1381,9 @@ describe('createThreadRuntime - SSE and hydration', () => {
 	test('sendMessage sets activeRunId from postMessage response before run-start', async () => {
 		mockPostMessage.mockResolvedValue({ runId: 'run-from-post' });
 
-		const sendPromise = activeRuntime(registry).sendMessage('hello');
+		const sendPromise = activeRuntime(registry).sendMessage('hello', {
+			authorship: USER_TYPED_MESSAGE,
+		});
 		await vi.waitFor(() => {
 			expect(activeRuntime(registry).activeRunId).toBe('run-from-post');
 		});
@@ -1525,7 +1629,7 @@ describe('createThreadRuntime - loadThreadStatus and HITL reconnect', () => {
 			},
 		];
 		mockPostMessage.mockResolvedValueOnce({ runId: 'run-live-elsewhere' });
-		await runtime.sendMessage('go');
+		await runtime.sendMessage('go', { authorship: USER_TYPED_MESSAGE });
 		expect(runtime.activeRunId).toBe('run-live-elsewhere');
 		mockFetchThreadStatus.mockResolvedValue({
 			hasActiveRun: false,
@@ -1621,7 +1725,7 @@ describe('createThreadRuntime - loadThreadStatus and HITL reconnect', () => {
 		const statusPromise = runtime.loadThreadStatus();
 
 		mockPostMessage.mockResolvedValueOnce({ runId: 'run-new' });
-		await runtime.sendMessage('new request');
+		await runtime.sendMessage('new request', { authorship: USER_TYPED_MESSAGE });
 		expect(runtime.activeRunId).toBe('run-new');
 
 		resolveStatus?.({ hasActiveRun: false, isSuspended: false, backgroundTasks: [] });
@@ -2494,7 +2598,9 @@ describe('createThreadRuntime - "Builder generation stalled" telemetry', () => {
 	test('arms when a message send starts a run while the stream stays silent', async () => {
 		mockPostMessage.mockResolvedValueOnce({ runId: 'run-silent' });
 
-		await activeRuntime(registry).sendMessage('build me a workflow');
+		await activeRuntime(registry).sendMessage('build me a workflow', {
+			authorship: USER_TYPED_MESSAGE,
+		});
 		// Let the isGenerationPending watcher observe the new run id.
 		await nextTick();
 
@@ -2574,5 +2680,301 @@ describe('getAgentPreviewSessionFromThreadMetadata', () => {
 				instanceAiAgentPreviewSession: { threadId: 'preview-thread-1' },
 			}),
 		).toBeUndefined();
+	});
+});
+
+describe('createThreadRuntime - pending plan review', () => {
+	let registry: RuntimeRegistry;
+
+	beforeEach(() => {
+		setupRuntimePinia();
+		registry = createRuntimeRegistry();
+		activeThreadId = 'thread-plan-review';
+		mockPostConfirmation.mockReset();
+		mockPostConfirmation.mockResolvedValue({ ok: true });
+	});
+
+	/**
+	 * Seed one assistant message whose root agent holds the given create-tasks
+	 * calls, optionally followed by later messages from a newer turn.
+	 */
+	function seedPlanCards(
+		toolCalls: Array<Record<string, unknown>>,
+		laterMessages: Array<Record<string, unknown>> = [],
+	) {
+		const runtime = activeRuntime(registry);
+		runtime.messages = [
+			{
+				id: 'msg-1',
+				role: 'assistant',
+				runId: 'run-1',
+				content: '',
+				reasoning: '',
+				isStreaming: false,
+				createdAt: '2026-01-01T00:00:00.000Z',
+				agentTree: {
+					agentId: 'agent-root',
+					role: 'orchestrator',
+					status: 'active',
+					textContent: '',
+					reasoning: '',
+					toolCalls,
+					children: [],
+					timeline: [],
+				},
+			},
+			...laterMessages,
+		] as unknown as typeof runtime.messages;
+		return runtime;
+	}
+
+	function planCard(overrides: Record<string, unknown> = {}) {
+		const { confirmation, ...rest } = overrides;
+		return {
+			toolCallId: 'tc-plan',
+			toolName: 'create-tasks',
+			args: { tasks: [{ id: 't1', title: 'Ingest orders', kind: '', spec: '', deps: [] }] },
+			isLoading: true,
+			confirmation: {
+				requestId: 'req-plan',
+				severity: 'info',
+				message: 'Review the plan',
+				inputType: 'plan-review',
+				inputThreadId: 'input-thread-1',
+				...(confirmation as Record<string, unknown> | undefined),
+			},
+			...rest,
+		};
+	}
+
+	it('exposes a pending plan review while keeping it out of the confirmation panel', () => {
+		const runtime = seedPlanCards([planCard()]);
+
+		expect(runtime.pendingConfirmations).toHaveLength(0);
+		expect(runtime.isAwaitingConfirmation).toBe(false);
+		expect(runtime.pendingPlanReview).toEqual({
+			requestId: 'req-plan',
+			inputThreadId: 'input-thread-1',
+			taskCount: 1,
+		});
+	});
+
+	// planItems is never populated by the create-tasks suspend payload, so the
+	// count has to come off args.tasks or `num_tasks` telemetry reports zero.
+	it('counts tasks from args.tasks when planItems is absent', () => {
+		const runtime = seedPlanCards([
+			planCard({
+				args: {
+					tasks: [
+						{ id: 't1', title: 'Ingest', kind: '', spec: '', deps: [] },
+						{ id: 't2', title: 'Digest', kind: '', spec: '', deps: [] },
+						{ id: 't3', title: 'Reconcile', kind: '', spec: '', deps: [] },
+					],
+				},
+			}),
+		]);
+
+		expect(runtime.pendingPlanReview?.taskCount).toBe(3);
+	});
+
+	it('ignores an expired plan review so the composer falls back to its streaming state', () => {
+		const runtime = seedPlanCards([planCard({ confirmation: { expired: true } })]);
+
+		expect(runtime.pendingPlanReview).toBeNull();
+	});
+
+	it('ignores a plan review already resolved client-side', () => {
+		const runtime = seedPlanCards([planCard()]);
+		runtime.resolveConfirmation('req-plan', 'changes-requested');
+
+		expect(runtime.pendingPlanReview).toBeNull();
+	});
+
+	it.each(['approved', 'denied'] as const)(
+		'ignores a plan review whose tool call is already %s',
+		(confirmationStatus) => {
+			const runtime = seedPlanCards([planCard({ confirmationStatus })]);
+
+			expect(runtime.pendingPlanReview).toBeNull();
+		},
+	);
+
+	it('ignores a plan review whose tool call has settled', () => {
+		const runtime = seedPlanCards([planCard({ isLoading: false })]);
+
+		expect(runtime.pendingPlanReview).toBeNull();
+	});
+
+	// A revised plan stacks a fresh card on top of the superseded one.
+	it('picks the newest card when two plan reviews are pending', () => {
+		const runtime = seedPlanCards([
+			planCard(),
+			planCard({
+				toolCallId: 'tc-plan-2',
+				confirmation: { requestId: 'req-plan-revised' },
+			}),
+		]);
+
+		expect(runtime.pendingPlanReview?.requestId).toBe('req-plan-revised');
+	});
+
+	// A later turn strands the older card: its run was left behind, so routing
+	// composer feedback into its requestId would resume an abandoned run.
+	it('ignores a plan review stranded by a newer turn', () => {
+		const runtime = seedPlanCards(
+			[planCard()],
+			[
+				{
+					id: 'msg-2',
+					role: 'assistant',
+					runId: 'run-2',
+					content: 'Working on something else',
+					reasoning: '',
+					isStreaming: false,
+					createdAt: '2026-01-01T00:01:00.000Z',
+				},
+			],
+		);
+
+		expect(runtime.pendingPlanReview).toBeNull();
+	});
+
+	it('ignores a plan review once a new turn is optimistically appended', () => {
+		const runtime = seedPlanCards(
+			[planCard()],
+			[
+				{
+					id: 'msg-2',
+					role: 'user',
+					content: 'Actually, do this instead',
+					createdAt: '2026-01-01T00:01:00.000Z',
+				},
+			],
+		);
+
+		expect(runtime.pendingPlanReview).toBeNull();
+	});
+
+	it('still surfaces non-plan confirmations on the same tool call to the panel', () => {
+		const runtime = seedPlanCards([
+			planCard({ confirmation: { requestId: 'req-plain', inputType: undefined } }),
+		]);
+
+		expect(runtime.pendingConfirmations).toHaveLength(1);
+		expect(runtime.pendingPlanReview).toBeNull();
+	});
+
+	// Nothing else retires the marker: request-changes never re-arms the run, so
+	// `isStreaming` stays true across the whole revision and its fallback clear
+	// never fires. The superseded card would shimmer "Updating plan..." forever.
+	it('retires the updating marker of the card a revised plan supersedes', async () => {
+		const runtime = seedPlanCards([planCard()]);
+		await runtime.requestPlanChanges('req-plan', 'Simplify it');
+		expect(runtime.updatingPlanRequestIds.has('req-plan')).toBe(true);
+
+		// The backend settles the suspended call, then suspends a revised card.
+		seedPlanCards([
+			planCard({ isLoading: false }),
+			planCard({ toolCallId: 'tc-plan-2', confirmation: { requestId: 'req-plan-revised' } }),
+		]);
+		await nextTick();
+
+		expect(runtime.updatingPlanRequestIds.has('req-plan')).toBe(false);
+	});
+
+	// The superseded call settles before the revised card suspends, so there is a
+	// gap with no pending plan review at all — and that gap is exactly the wait.
+	it('keeps the updating marker while the revised plan is still being written', async () => {
+		const runtime = seedPlanCards([planCard()]);
+		await runtime.requestPlanChanges('req-plan', 'Simplify it');
+
+		seedPlanCards([planCard({ isLoading: false })]);
+		await nextTick();
+
+		expect(runtime.updatingPlanRequestIds.has('req-plan')).toBe(true);
+	});
+});
+
+describe('createThreadRuntime - requestPlanChanges', () => {
+	let registry: RuntimeRegistry;
+
+	beforeEach(() => {
+		setupRuntimePinia();
+		registry = createRuntimeRegistry();
+		activeThreadId = 'thread-plan-changes';
+		mockPostConfirmation.mockReset();
+		mockPostConfirmation.mockResolvedValue({ ok: true });
+	});
+
+	it('sends the raw feedback as a change request and resolves the card', async () => {
+		const runtime = activeRuntime(registry);
+
+		const ok = await runtime.requestPlanChanges('req-plan', 'Drop the third workflow');
+
+		expect(ok).toBe(true);
+		expect(mockPostConfirmation).toHaveBeenCalledWith(expect.anything(), 'req-plan', {
+			kind: 'approval',
+			approved: false,
+			userInput: 'Drop the third workflow',
+		});
+		expect(runtime.resolvedConfirmationIds.get('req-plan')).toBe('changes-requested');
+	});
+
+	// The revised plan card merges into the assistant message ABOVE the transcript
+	// tail, so a user bubble appended here would read after the revision it caused.
+	it('does not add a message to the transcript', async () => {
+		const runtime = activeRuntime(registry);
+
+		await runtime.requestPlanChanges('req-plan', 'Drop the third workflow');
+
+		expect(runtime.messages).toHaveLength(0);
+	});
+
+	it('marks the plan card as updating while the request is in flight', async () => {
+		const runtime = activeRuntime(registry);
+		let updatingDuringFlight = false;
+		mockPostConfirmation.mockImplementationOnce(async () => {
+			updatingDuringFlight = runtime.updatingPlanRequestIds.has('req-plan');
+			return { ok: true };
+		});
+
+		await runtime.requestPlanChanges('req-plan', 'Simplify it');
+
+		expect(updatingDuringFlight).toBe(true);
+	});
+
+	// A second submit landing mid-flight would POST the same requestId again; the
+	// rejection then wipes the "Updating plan..." state of the revision that was
+	// accepted, so the in-flight request owns the card until it settles.
+	it('ignores a second change request while the first is still in flight', async () => {
+		const runtime = activeRuntime(registry);
+		let releaseFirst: (() => void) | undefined;
+		mockPostConfirmation.mockImplementationOnce(
+			async () =>
+				await new Promise<{ ok: true }>((resolve) => {
+					releaseFirst = () => resolve({ ok: true });
+				}),
+		);
+
+		const first = runtime.requestPlanChanges('req-plan', 'Simplify it');
+		const second = await runtime.requestPlanChanges('req-plan', 'And add logging');
+
+		expect(second).toBe(false);
+		expect(mockPostConfirmation).toHaveBeenCalledTimes(1);
+
+		releaseFirst?.();
+		expect(await first).toBe(true);
+		expect(runtime.resolvedConfirmationIds.get('req-plan')).toBe('changes-requested');
+	});
+
+	it('clears the updating marker and leaves the card unresolved when the request fails', async () => {
+		const runtime = activeRuntime(registry);
+		mockPostConfirmation.mockRejectedValueOnce(new Error('network error'));
+
+		const ok = await runtime.requestPlanChanges('req-plan', 'Drop the third workflow');
+
+		expect(ok).toBe(false);
+		expect(runtime.updatingPlanRequestIds.has('req-plan')).toBe(false);
+		expect(runtime.resolvedConfirmationIds.has('req-plan')).toBe(false);
 	});
 });

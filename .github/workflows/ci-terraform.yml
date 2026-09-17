@@ -1,0 +1,38 @@
+name: 'CI: Terraform'
+
+on:
+  pull_request:
+    paths:
+      - packages/@n8n/benchmark/infra/**
+      - .github/workflows/ci-terraform.yml
+
+# The job only reads the repo and runs terraform. It writes nothing.
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: Checks
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/@n8n/benchmark/infra
+    steps:
+      - name: Check out project
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Keep this version in sync with test-benchmark-nightly.yml
+      - uses: hashicorp/setup-terraform@5e8dbf3c6d9deaf4193ca7a8fb23f2ac83bb6c85 # v4.0.0
+        with:
+          terraform_version: '1.16.2'
+
+      - name: Format check
+        run: terraform fmt -check -recursive
+
+      - name: Init
+        run: terraform init -backend=false
+
+      - name: Validate
+        run: terraform validate

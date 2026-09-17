@@ -33,7 +33,7 @@ export const actionOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'DELETE',
-						url: '=/actions/{{$parameter["actionId"]}}',
+						url: '=/actions/{{toPathSegment($parameter["actionId"])}}',
 					},
 					output: {
 						postReceive: [
@@ -55,7 +55,7 @@ export const actionOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'PUT',
-						url: '=/actions/{{$parameter["actionId"]}}/disable',
+						url: '=/actions/{{toPathSegment($parameter["actionId"])}}/disable',
 					},
 				},
 				action: 'Disable an action',
@@ -67,7 +67,7 @@ export const actionOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'PUT',
-						url: '=/actions/{{$parameter["actionId"]}}/enable',
+						url: '=/actions/{{toPathSegment($parameter["actionId"])}}/enable',
 					},
 				},
 				action: 'Enable an action',
@@ -79,7 +79,7 @@ export const actionOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
-						url: '=/actions/{{$parameter["actionId"]}}',
+						url: '=/actions/{{toPathSegment($parameter["actionId"])}}',
 					},
 					output: {
 						postReceive: [
@@ -123,7 +123,7 @@ export const actionOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'PUT',
-						url: '=/actions/{{$parameter["actionId"]}}',
+						url: '=/actions/{{toPathSegment($parameter["actionId"])}}',
 					},
 				},
 				action: 'Update an action',

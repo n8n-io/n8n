@@ -63,6 +63,8 @@ export interface StartContext {
 	serviceResults: Partial<Record<ServiceName, ServiceResult>>;
 	allocatedPorts: { main?: number; loadBalancer?: number };
 	baseUrl?: string;
+	registerContainer?(container: StartedTestContainer): void;
+	registerPath?(path: string): void;
 }
 
 export type LoadBalancerPolicy = 'first' | 'round_robin' | 'random' | 'least_conn' | 'ip_hash';
@@ -98,6 +100,23 @@ export interface StackConfig {
 	 * Opt-in capability for the coverage pipeline; off by default.
 	 */
 	coverageHostDir?: string;
+	/**
+	 * Override the n8n image for this stack (default: the process-wide
+	 * TEST_IMAGE_N8N resolution). `stack.replaceN8N()` can then swap to a
+	 * different image on the same data — the upgrade/downgrade cycles.
+	 */
+	image?: string;
+	/**
+	 * Host dir bind-mounted as the n8n container's home (`/home/node`), so the
+	 * user folder (settings file, sqlite database) outlives the container and
+	 * `replaceN8N()` can boot another image on the same data. Single-main
+	 * stacks only. Pair with `user` so the files stay owned by the host user.
+	 */
+	userHomeHostDir?: string;
+	/** Run the n8n containers as this uid:gid (e.g. the host user for bind mounts). */
+	user?: string;
+	/** n8n readiness timeout override; an old release migrating a fresh DB can exceed the default. */
+	startupTimeoutMs?: number;
 }
 
 export interface Service<TResult extends ServiceResult = ServiceResult> {
