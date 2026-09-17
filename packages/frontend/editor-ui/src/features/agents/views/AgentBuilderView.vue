@@ -2503,6 +2503,8 @@ function onSwitchAgent(nextAgentId: string) {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
+
 .root {
 	position: relative;
 	display: flex;
@@ -2520,23 +2522,19 @@ function onSwitchAgent(nextAgentId: string) {
 	padding-right: 0;
 	scrollbar-width: thin;
 	scrollbar-color: var(--border-color) transparent;
+	transition:
+		padding-left var(--duration--snappy) var(--easing--ease-out),
+		padding-right var(--duration--snappy) var(--easing--ease-out);
 
 	&.previewOpen {
 		padding-right: var(--agent-preview-chat-column-width, 30rem);
-		transition: padding-right var(--duration--snappy) var(--easing--ease-out);
 	}
 
 	&.aiPanelOpen {
-		// Keep the content next to the docked assistant instead of centering it.
-		--agent-builder-content-margin-inline: 0;
-
 		padding-left: var(--agent-ai-panel-width);
-		transition: padding-left var(--duration--snappy) var(--easing--ease-out);
 	}
 
-	@media (prefers-reduced-motion: reduce) {
-		transition: none;
-	}
+	@include motion.reduced-motion;
 }
 
 .loading {
