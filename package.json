@@ -4,9 +4,9 @@
   "private": true,
   "engines": {
     "node": ">=24.0.0",
-    "pnpm": ">=12.3.4"
+    "pnpm": ">=12.4.2"
   },
-  "packageManager": "pnpm@12.3.4",
+  "packageManager": "pnpm@12.4.2",
   "scripts": {
     "prepare": "node scripts/prepare.mjs",
     "preinstall": "node scripts/block-npm-install.js",
