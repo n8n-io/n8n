@@ -786,6 +786,7 @@ function hookFunctionsSaveWorker(
 				executionId: this.executionId,
 				workflowId: this.workflowData.id,
 				executionData,
+				conditions: fullRunData.status === 'canceled' ? undefined : { requireNotCanceled: true },
 			});
 		} finally {
 			workflowStatisticsService.emit('workflowExecutionCompleted', {

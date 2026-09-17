@@ -1721,14 +1721,14 @@ describe('Execution Lifecycle Hooks', () => {
 
 				await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRunWithMetadata, {}]);
 
-				// Worker should save execution data but not metadata, and without update conditions
+				// Worker should save execution data but not metadata
 				expect(executionPersistence.updateExistingExecution).toHaveBeenCalledWith(
 					executionId,
 					expect.objectContaining({
 						finished: true,
 						status: 'success',
 					}),
-					undefined,
+					{ requireNotCanceled: true },
 				);
 			});
 
