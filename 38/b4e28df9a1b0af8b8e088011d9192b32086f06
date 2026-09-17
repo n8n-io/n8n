@@ -1,0 +1,23 @@
+packages/cli/src/modules/favorites/__tests__/favorites.service.test.ts
+  s_7868a35f94af69::t_67c78a77ca3530 561,574-589
+  s_7868a35f94af69::t_ad4f90d70c3e8f 449-452
+  ai_agent 562-573
+packages/cli/src/modules/favorites/favorites.service.ts
+  s_7868a35f94af69::t_efdb2292384705 235-236,238-240,243-245,248-250
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "38b4e28df9a1b0af8b8e088011d9192b32086f06",
+  "prompts": {},
+  "sessions": {
+    "s_7868a35f94af69": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8c99f314-7839-462d-bc07-95f404313740",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

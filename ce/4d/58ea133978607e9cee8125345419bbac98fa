@@ -1,0 +1,204 @@
+packages/nodes-base/nodes/N8n/n8n-api-coverage.json
+  s_909fa6f565ea9a::t_0fd020292f5d35 4-18,20-24,25-45
+  s_661b64ab4b414e::t_523a66b1d71695 19
+packages/@n8n/permissions/src/scope-information.ts
+  s_c49a2c9eccdc63::t_c00d5840547114 136-155,158-159,160
+  s_91222aac31d016::t_f77667c5f26f80 159
+  s_661b64ab4b414e::t_5166e7c95cedb6 156-157
+packages/@n8n/permissions/src/__tests__/__snapshots__/scope-information.test.ts.snap
+  ai_agent 72-76,77,78-83
+packages/@n8n/api-types/src/dto/index.ts
+  s_aeecfe178a9b3d::t_c9994138f82526 101,103,106-112
+  s_677c6aba5d38ab::t_1bff40479a7636 104-105
+  s_661b64ab4b414e::t_4738e1c175dfed 102
+packages/@n8n/api-types/src/dto/git-connections/git-connections.dto.ts
+  s_aeecfe178a9b3d::t_b805497a554994 1-11,16-22,25-32,35-36,38-66
+  s_41061fdec7ba5e::t_42b326398e51e7 12,23-24,33-34
+  s_7562978115634d::t_8deb080811fa6b 13-15
+  s_661b64ab4b414e::t_3300914b9e1d2b 37
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  ai_agent 6-7,8,9,10,11-12,13,14,15,16,17,18,19,20,21-22,23,24-49
+packages/@n8n/permissions/src/constants.ee.ts
+  s_c49a2c9eccdc63::t_9a343eef7f0c10 38
+  s_c49a2c9eccdc63::t_7099ab71df13a2 113
+  s_661b64ab4b414e::t_de69bf7836804a 37,111
+packages/@n8n/permissions/src/public-api-permissions.ee.ts
+  s_c49a2c9eccdc63::t_721c3a134620fd 16-20,22-27
+  s_661b64ab4b414e::t_509f4269641698 21
+packages/cli/src/public-api/v1/controllers/index.ts
+  s_909fa6f565ea9a::t_0fd020292f5d35 6,7
+  s_91222aac31d016::t_2a43d6f3ef4407 6
+packages/@n8n/permissions/src/roles/scopes/global-scopes.ee.ts
+  s_c49a2c9eccdc63::t_09c2be5278355f 62-66,68-73
+  s_661b64ab4b414e::t_97be7ebd353167 67
+packages/cli/src/modules/git-connections.ee/git-connections.service.ts
+  s_aeecfe178a9b3d::t_e8d218d4a78e36 1-2,5-7,9-13,15-16,18,20-23,25-26,29-49,52-55,63,74,79,81,85-86,100-102,106-108,114-121,166-219,227-249
+  s_677c6aba5d38ab::t_f6d54091595311 3-4,8,14,17,19,27-28
+  s_cde07e4490f40c::t_072ed4eeea4362 24
+  s_086a0479eaeb4e::t_0aea6e7976731c 50
+  s_9c782a75089598::t_a469b35443f67e 51
+  s_cde07e4490f40c::t_a05a4961f6826a 56-62,68-69,71-73,75-78,80,82,84,88-89,91,98-99,103,105,109,111
+  s_7562978115634d::t_51bcbad1f893a9 64-67,70,83
+  s_c99dd4ad746340::t_593315fe7ec5ee 93-97
+  s_7562978115634d::t_3e43ec157a957e 104,110
+  s_677c6aba5d38ab::t_ae3e69b4103d98 112-113,122-165
+  s_7562978115634d::t_705e7100060996 220-226
+  s_661b64ab4b414e::t_7d13e991e452d5 87,90
+packages/cli/src/public-api/v1/openapi.yml
+  s_c49a2c9eccdc63::t_0fb0a482b6e41d 42-43,44-45
+packages/cli/test/integration/shared/types.ts
+  s_909fa6f565ea9a::t_0fd020292f5d35 73,74
+packages/@n8n/permissions/src/utilities/__tests__/get-resource-permissions.test.ts
+  s_c49a2c9eccdc63::t_bca9a08eee7d5a 33,34,133,135
+  s_91222aac31d016::t_30b32d8b4cfb2c 33,133
+packages/cli/test/integration/public-api/git-connections.test.ts
+  s_909fa6f565ea9a::t_0fd020292f5d35 1-140
+packages/cli/src/public-api/v1/controllers/git-connections.public.controller.ts
+  ai_agent 166-168
+  s_909fa6f565ea9a::t_0fd020292f5d35 1,3-6,8-9,11-30,32-34,36-37,39-41,53-54,55,58-61,63-66,68-70,71,74-77,79-94,101,103-109,110,113-116,118-121,123-125,126,129-133,135-139,141-142,144,148-151,153-155,157,159-161,162,165,169-171,173-176,178-180,181,184-188,195-196
+  h_9b272a633435fb 10-14,16-19,23-27,30-33,35,37-53,181,186,190-193,195-196
+  s_c49a2c9eccdc63::t_fe3734805d802d 182-183
+  s_c49a2c9eccdc63::t_275da9d6b6432d 7,38,62,78,95-100,117,134,172,189-193
+  s_c49a2c9eccdc63::t_cb82e837aabe5d 111-112
+  s_c49a2c9eccdc63::t_37f169bea3b072 56-57
+  s_c49a2c9eccdc63::t_1d54fd027fbbe2 72-73
+  s_c49a2c9eccdc63::t_491ce724b8d345 127-128
+  s_661b64ab4b414e::t_f3a7a52e7e696a 163-164
+  s_661b64ab4b414e::t_be4d67d4f38dea 143,145-147,152,156
+  s_661b64ab4b414e::t_5d3a71f0a3bd0e 2
+packages/cli/src/public-api/v1/handlers/git-connections/spec/paths/getGitConnections.generated.yml
+  ai_agent 2,4-5,7-76
+packages/cli/src/public-api/v1/shared/spec/schemas/gitConnectionPublicDto.generated.yml
+  ai_agent 1-45
+packages/cli/src/public-api/v1/handlers/git-connections/spec/paths/disconnectGitConnection.generated.yml
+  ai_agent 2,4-5,6,7-28
+packages/cli/src/public-api/v1/handlers/git-connections/spec/paths/cloneGitConnection.generated.yml
+  ai_agent 2,5,7-24,25,26-40
+packages/cli/src/public-api/v1/handlers/git-connections/spec/paths/createGitConnection.generated.yml
+  ai_agent 2,4-5,7-25,26,27-59
+packages/cli/src/public-api/v1/handlers/git-connections/spec/paths/getGitConnection.generated.yml
+  ai_agent 2,4,6-27
+packages/cli/src/public-api/v1/handlers/git-connections/spec/paths/deleteGitConnection.generated.yml
+  ai_agent 2,4-5,7-24
+packages/cli/src/public-api/v1/handlers/git-connections/spec/paths/updateGitConnection.generated.yml
+  ai_agent 2,4-5,7-31,32,33-63
+packages/frontend/@n8n/stores/src/rbac.store.ts
+  s_7f3ea117753e57::t_320e3efcac7e56 26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ce4d58ea133978607e9cee8125345419bbac98fa",
+  "prompts": {},
+  "humans": {
+    "h_9b272a633435fb": {
+      "author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_086a0479eaeb4e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1542716d-5651-44c2-8497-002755dfa5e5",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_41061fdec7ba5e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "61f1414e-b826-4947-a27e-5fa60f13739f",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_661b64ab4b414e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d20e8a32-04c1-4301-baa9-24488d49337b",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_677c6aba5d38ab": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "65836050-cd82-42db-a51e-69a4641dabf9",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_7562978115634d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7789a6a0-eacd-4f54-97a9-3f6d2b2fb4c8",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_7f3ea117753e57": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cb79cd5a-d9cc-4c1a-8814-9b0cef6f6307",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_909fa6f565ea9a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8ff7411a-ff0e-4742-bbd8-41ee448e0c30",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_91222aac31d016": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8683da72-3c4c-49be-8a2f-d9949b95271c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_9c782a75089598": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e00744d1-d8d4-4c51-afc6-6871d15ae4d6",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_aeecfe178a9b3d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a1c3abc3-6b2a-413e-a33c-2c784b044f11",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_c49a2c9eccdc63": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4438d6f2-9586-4cae-a94e-42a967f048af",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_c99dd4ad746340": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "573dbfcf-6518-4e1d-b9a1-0978f01bfbd9",
+        "model": "default"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_cde07e4490f40c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7eeea650-8cd3-4efb-9b4c-d9f9d39dcfc1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

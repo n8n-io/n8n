@@ -1,0 +1,39 @@
+packages/cli/src/modules/otel/__tests__/support/otel-integration-utils.ts
+  s_1bd727763f3453::t_04984cfdcc203e 27,56,87-91
+packages/cli/src/modules/otel/__tests__/otel-lifecycle-handler.test.ts
+  s_1bd727763f3453::t_04984cfdcc203e 1022
+packages/cli/src/modules/otel/otel.service.ts
+  s_1bd727763f3453::t_9c30d7e1e1f6b2 5-7,9-15,18,23,39-47,51-52,72-75,135,137,146,150-152,154,157,163,166-167,169,171-196,198-199,321,333-334
+  s_1bd727763f3453::t_34d5928793e115 78
+packages/cli/src/modules/otel/execution-level-tracer.ts
+  s_1bd727763f3453::t_9c30d7e1e1f6b2 4-12,24,28,44,49-52,228,238-240,245,304
+packages/cli/src/modules/otel/__tests__/execution-level-tracer.test.ts
+  s_1bd727763f3453::t_04984cfdcc203e 2-3,24,33,787,834-883
+packages/cli/src/modules/otel/__tests__/otel.service.test.ts
+  s_1bd727763f3453::t_fd561f4b77faff 3,7,16,18,118,133-137,144-146,151,156-167,214,219,222,227,254,272,421,440,449,460,463,472,476,489,498,500,521,532,538-539,546,555-620,882
+packages/cli/src/modules/agents/__tests__/agent-run-tracing.service.test.ts
+  s_1bd727763f3453::t_04984cfdcc203e 2,5-6,9,14,36,41,46,51-52,57,67,100,155,165,189
+  s_1bd727763f3453::t_11deea9d88f8e7 25-31
+packages/cli/src/modules/otel/__tests__/support/otel-test-provider.ts
+  s_1bd727763f3453::t_04984cfdcc203e 2,5,9-11,51-54,58,70,77,87-89
+packages/cli/src/modules/agents/__tests__/agent-run-tracing.service.otel.test.ts
+  s_1bd727763f3453::t_04984cfdcc203e 2,6,11,15,17,19,32,63,77,125,127-133,138-139,150
+packages/cli/src/modules/agents/agent-run-tracing.service.ts
+  s_1bd727763f3453::t_9c30d7e1e1f6b2 6,53-55,59-62,74-75,97
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8b072a1ec4746739758f9ffffe317928d8bf6f78",
+  "prompts": {},
+  "sessions": {
+    "s_1bd727763f3453": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "12d88707-ccda-4ade-b0fd-d47223df735f",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Olivier de Jong <olivier.dejong@n8n.io>"
+    }
+  }
+}
