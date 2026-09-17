@@ -255,12 +255,12 @@ describe('N8NCheckpointStorage', () => {
 		);
 	});
 
-	describe('findSuspendedForThread', () => {
-		const row = (runId: string, state: SerializableAgentState) =>
+	describe('checkpoint lookup by thread', () => {
+		const row = (runId: string, state: SerializableAgentState, expired = false) =>
 			({
 				runId,
 				agentId: 'agent-1',
-				expired: false,
+				expired,
 				state: JSON.stringify(state),
 			}) as AgentCheckpoint;
 
@@ -286,6 +286,18 @@ describe('N8NCheckpointStorage', () => {
 			const result = await service.findSuspendedForThread('agent-1', 'thread-target');
 
 			expect(result?.persistence?.threadId).toBe('thread-target');
+			expect(result?.runId).toBe('run-target');
+		});
+
+		it('returns retained checkpoint state while cancellation cleanup is pending', async () => {
+			const { service, repository } = makeService();
+			repository.findRetainedForAgent.mockResolvedValue([
+				row('run-target', suspendedFor('thread-target'), true),
+			]);
+
+			await expect(
+				service.findCancellableForThread('agent-1', 'thread-target'),
+			).resolves.toMatchObject({ runId: 'run-target' });
 		});
 
 		// A delegated child suspends under its parent's thread; the parent run

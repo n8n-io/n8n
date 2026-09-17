@@ -259,6 +259,7 @@ describe('AgentExecutionOrchestratorService', () => {
 
 		await collect(
 			service.streamChatResponse({
+				queueEntryId: 'queue-1',
 				agentInstance: runtime.agent,
 				toolRegistry: runtime.toolRegistry,
 				mcpServerAttributions: runtime.mcpServerAttributions,
@@ -273,7 +274,11 @@ describe('AgentExecutionOrchestratorService', () => {
 		);
 
 		expect(executionService.startExecutionRecording).toHaveBeenCalledWith(
-			expect.objectContaining({ threadId: 'thread-1', userMessage: 'hello' }),
+			expect.objectContaining({
+				queueEntryId: 'queue-1',
+				threadId: 'thread-1',
+				userMessage: 'hello',
+			}),
 			expect.any(Date),
 		);
 		expect(executionService.startExecutionRecording.mock.invocationCallOrder[0]).toBeLessThan(
@@ -290,12 +295,59 @@ describe('AgentExecutionOrchestratorService', () => {
 		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
 			'execution-running',
 			expect.objectContaining({
+				queueEntryId: 'queue-1',
 				record: expect.objectContaining({ assistantResponse: 'Working' }),
 			}),
 		);
 		const startedAt = executionService.startExecutionRecording.mock.calls[0][1];
 		const finalizedRecord = executionService.finalizeExecution.mock.calls[0][1].record;
 		expect(startedAt.getTime()).toBe(finalizedRecord.startTime);
+	});
+
+	it.each([
+		['message', 'start'],
+		['message', 'finish'],
+		['hitl', 'start'],
+		['hitl', 'finish'],
+	] as const)('propagates queued %s recording failure at %s', async (kind, phase) => {
+		const { service, executionService, checkpointStorage, runtimeCacheService } = makeService();
+		const error = new Error('Execution storage unavailable');
+		const runtime = makeRuntime();
+		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+		checkpointStorage.getStatus.mockResolvedValue({
+			status: 'active',
+			checkpoint: makeCheckpoint(),
+		});
+		if (phase === 'start') executionService.startExecutionRecording.mockRejectedValue(error);
+		else executionService.finalizeExecution.mockRejectedValue(error);
+		const common = { agentId, projectId, user, queueEntryId: 'queue-1', previewChat: true };
+		const stream =
+			kind === 'message'
+				? service.executeForChat({
+						...common,
+						message: 'hello',
+						memory: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
+					})
+				: service.resumeForChat({
+						...common,
+						runId: 'run-1',
+						toolCallId: 'tc-1',
+						resumeData: { approved: true },
+						usePublishedVersion: false,
+					});
+
+		await expect(collect(stream)).rejects.toMatchObject({ cause: error });
+
+		if (phase === 'start') {
+			expect(runtime.agent.stream).not.toHaveBeenCalled();
+			expect(runtime.agent.resume).not.toHaveBeenCalled();
+			expect(executionService.finalizeExecution).not.toHaveBeenCalled();
+		}
+		expect(executionService.startExecutionRecording).toHaveBeenCalledWith(
+			expect.objectContaining({ queueEntryId: 'queue-1' }),
+			expect.any(Date),
+		);
+		expect(runtimeCacheService.releaseRuntimeLease).toHaveBeenCalledWith(runtime.agent);
 	});
 
 	const genieResult: StreamChunk = {

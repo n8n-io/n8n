@@ -1,16 +1,27 @@
 import {
 	type AgentBackgroundJobsResponse,
 	type AgentChatAttachmentPayload,
+	type AgentChatAdmissionResponse,
+	type AgentChatQueueResponse,
+	AgentChatQueueEditDto,
 	AgentChatMessageDto,
 	type AgentChatMessagesResponse,
 	AgentChatResumeDto,
 	MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES,
 	MAX_AGENT_CHAT_ATTACHMENT_SIZE_MB,
-	N8N_CHAT_INTEGRATION_TYPE,
 	ViewableMimeTypes,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
-import { Body, Delete, Get, Param, Post, ProjectScope, RestController } from '@n8n/decorators';
+import {
+	Body,
+	Delete,
+	Get,
+	Param,
+	Patch,
+	Post,
+	ProjectScope,
+	RestController,
+} from '@n8n/decorators';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import { sanitizeFilename } from '@n8n/utils/files/sanitize-filename';
 import type { Response } from 'express';
@@ -30,7 +41,7 @@ import { AgentExecutionOrchestratorService } from './agent-execution-orchestrato
 import { AgentExecutionService, threadBelongsTo } from './agent-execution.service';
 import { AgentMessageQueueService } from './agent-message-queue.service';
 import { messagesToDto } from './agent-message-mapper';
-import { type FlushableResponse, initSseStream, pumpChunks } from './agent-sse-stream';
+import type { PreviewQueueScope } from './agent-message-queue.types';
 import { AgentTestChatService, chatThreadId } from './agent-test-chat.service';
 import { AgentTestRunService } from './agent-test-run.service';
 import { AgentsService } from './agents.service';
@@ -105,62 +116,40 @@ export class AgentChatController {
 		return stored;
 	}
 
-	@Post('/:agentId/chat', { usesTemplates: true })
+	@Post('/:agentId/chat')
 	@ProjectScope('agent:execute')
 	async chat(
 		req: AuthenticatedRequest<{ projectId: string }>,
-		res: FlushableResponse,
+		_res: Response,
 		@Param('agentId') agentId: string,
 		@Body payload: AgentChatMessageDto,
-	) {
+	): Promise<AgentChatAdmissionResponse> {
 		const { projectId } = req.params;
-		// The text-or-attachment invariant is enforced by the DTO schema.
-		const { message, sessionId, attachments } = payload;
-
+		const user = req.user;
 		const credentialProvider = new AgentsCredentialProvider(
 			this.credentialsService,
 			projectId,
-			req.user,
+			user,
 		);
-
-		const { send } = initSseStream(res);
-		const abortController = new AbortController();
-		const abortOnClose = () => abortController.abort();
-		res.once('close', abortOnClose);
-		let executionId: string | undefined;
-		let storedAttachments: StoredAttachmentRef[] | undefined;
+		const prepared = await this.agentTestRunService.prepareDraftRun({
+			agentId,
+			projectId,
+			sessionId: payload.sessionId,
+			credentialProvider,
+		});
+		if (prepared.status === 'session_not_found') throw new NotFoundError('Session not found');
+		if (prepared.status === 'agent_misconfigured') return prepared;
+		const threadId = prepared.sessionId;
+		const storedAttachments = await this.storeChatAttachments({
+			attachments: payload.attachments,
+			agentId,
+			projectId,
+			threadId,
+			resourceId: draftChatMemoryResourceId(user.id),
+		});
+		let attachmentsOwnedByQueue = false;
 		try {
-			const prepared = await this.agentTestRunService.prepareDraftRun({
-				agentId,
-				projectId,
-				sessionId,
-				credentialProvider,
-			});
-			if (abortController.signal.aborted) return;
-			if (prepared.status === 'session_not_found') {
-				send({ type: 'error', message: 'Session not found' });
-				return;
-			}
-			if (prepared.status === 'agent_misconfigured') {
-				send({
-					type: 'error',
-					message: 'This agent is not ready to run yet.',
-					errorCode: 'agent_misconfigured',
-					missing: prepared.missing,
-				});
-				return;
-			}
-
-			const threadId = prepared.sessionId;
-			storedAttachments = await this.storeChatAttachments({
-				attachments,
-				agentId,
-				projectId,
-				threadId,
-				resourceId: draftChatMemoryResourceId(req.user.id),
-			});
-
-			await this.messageQueue.enqueuePreview(
+			const item = await this.messageQueue.enqueuePreview(
 				{
 					agentId,
 					threadId,
@@ -168,128 +157,128 @@ export class AgentChatController {
 						source: 'preview',
 						kind: 'message',
 						projectId,
-						userId: req.user.id,
-						resourceId: draftChatMemoryResourceId(req.user.id),
-						message,
+						userId: user.id,
+						resourceId: draftChatMemoryResourceId(user.id),
+						message: payload.message,
 						attachments: storedAttachments,
 					},
 				},
-				async ({ abortSignal, onExecutionStarted }) => {
-					const suspended = await pumpChunks(
-						this.agentTestRunService.streamDraftRun({
-							agentId,
-							projectId,
-							message,
-							attachments: storedAttachments,
-							user: req.user,
-							sessionId: threadId,
-							previewChat: true,
-							onExecutionRecorded: (id) => {
-								executionId = id;
-							},
-							abortSignal,
-							onExecutionStarted,
-						}),
-						send,
-					);
-					if (!suspended) {
-						send({ type: 'done', sessionId: threadId, ...(executionId ? { executionId } : {}) });
-					}
+				payload.clientRequestId,
+				() => {
+					attachmentsOwnedByQueue = true;
 				},
-				abortController.signal,
 			);
+			return { status: 'queued', sessionId: threadId, item };
 		} catch (error) {
-			// No execution recorded means nothing references this turn's attachments —
-			// remove them so failed turns can't accumulate orphans. Best-effort, and
-			// deliberately also on aborted turns.
-			if (!executionId && storedAttachments?.length) {
-				await this.agentChatAttachmentService
-					.deleteByIds(storedAttachments.map((ref) => ref.id))
-					.catch(() => {});
+			if (!attachmentsOwnedByQueue) {
+				await this.agentChatAttachmentService.deleteByIds(
+					storedAttachments?.map(({ id }) => id) ?? [],
+				);
 			}
-			if (!abortController.signal.aborted) {
-				const errorMessage = error instanceof Error ? error.message : 'Chat failed';
-				send({ type: 'error', message: errorMessage });
-			}
-		} finally {
-			res.off('close', abortOnClose);
-			res.end();
+			throw error;
 		}
 	}
 
-	@Post('/:agentId/chat/resume', { usesTemplates: true })
+	@Post('/:agentId/chat/resume')
 	@ProjectScope('agent:execute')
 	async chatResume(
 		req: AuthenticatedRequest<{ projectId: string }>,
-		res: FlushableResponse,
+		_res: Response,
 		@Param('agentId') agentId: string,
 		@Body payload: AgentChatResumeDto,
-	) {
+	): Promise<AgentChatAdmissionResponse> {
 		const { projectId } = req.params;
-		const { runId, toolCallId, resumeData } = payload;
-		const { send } = initSseStream(res);
-
-		const abortController = new AbortController();
-		const abortOnClose = () => abortController.abort();
-		res.once('close', abortOnClose);
-		try {
-			let executionId: string | undefined;
-			const memory = await this.messageQueue.getResumeScope(
+		const user = req.user;
+		const agent = await this.agentsService.findById(agentId, projectId);
+		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
+		const memory = await this.messageQueue.getResumeScope(
+			agentId,
+			payload.runId,
+			draftChatMemoryResourceId(user.id),
+		);
+		const item = await this.messageQueue.enqueuePreview(
+			{
 				agentId,
-				runId,
-				draftChatMemoryResourceId(req.user.id),
-			);
-			await this.messageQueue.enqueuePreview(
-				{
-					agentId,
-					threadId: memory.threadId,
-					payload: {
-						source: 'preview',
-						kind: 'hitl',
-						projectId,
-						userId: req.user.id,
-						resourceId: memory.resourceId,
-						runId,
-						toolCallId,
-						resumeData,
-					},
+				threadId: memory.threadId,
+				payload: {
+					source: 'preview',
+					kind: 'hitl',
+					projectId,
+					userId: user.id,
+					resourceId: memory.resourceId,
+					runId: payload.runId,
+					toolCallId: payload.toolCallId,
+					resumeData: payload.resumeData,
 				},
-				async ({ abortSignal, onExecutionStarted }) => {
-					const suspended = await pumpChunks(
-						this.agentExecutionOrchestratorService.resumeForChat({
-							agentId,
-							projectId,
-							runId,
-							toolCallId,
-							resumeData,
-							user: req.user,
-							usePublishedVersion: false,
-							integrationType: N8N_CHAT_INTEGRATION_TYPE,
-							previewChat: true,
-							onExecutionRecorded: (id) => {
-								executionId = id;
-							},
-							abortSignal,
-							onExecutionStarted,
-							expectedMemory: memory,
-						}),
-						send,
-					);
-					if (!suspended) {
-						send({ type: 'done', ...(executionId ? { executionId } : {}) });
-					}
-				},
-				abortController.signal,
-			);
-		} catch (error) {
-			if (!abortController.signal.aborted) {
-				const errorMessage = error instanceof Error ? error.message : 'Resume failed';
-				send({ type: 'error', message: errorMessage });
-			}
-		} finally {
-			res.off('close', abortOnClose);
-			res.end();
+			},
+			payload.clientRequestId,
+		);
+		return { status: 'queued', sessionId: memory.threadId, item };
+	}
+
+	private async previewQueueScope(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
+	): Promise<PreviewQueueScope> {
+		const { projectId, agentId, threadId } = req.params;
+		const agent = await this.agentsService.findById(agentId, projectId);
+		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
+		const thread = await this.agentExecutionService.findThreadById(threadId);
+		if (thread && !threadBelongsTo(thread, projectId, agentId)) {
+			throw new NotFoundError(`Thread "${threadId}" not found`);
 		}
+		return {
+			projectId,
+			agentId,
+			threadId,
+			userId: req.user.id,
+			resourceId: draftChatMemoryResourceId(req.user.id),
+		};
+	}
+
+	@Get('/:agentId/chat/:threadId/queue')
+	@ProjectScope('agent:read')
+	async getQueue(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
+	): Promise<AgentChatQueueResponse> {
+		return { items: await this.messageQueue.listPreview(await this.previewQueueScope(req)) };
+	}
+
+	@Patch('/:agentId/chat/:threadId/queue/:queueId')
+	@ProjectScope('agent:execute')
+	async editQueuedMessage(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
+		_res: Response,
+		@Param('queueId') queueId: string,
+		@Body payload: AgentChatQueueEditDto,
+	) {
+		return await this.messageQueue.editPreview(
+			await this.previewQueueScope(req),
+			queueId,
+			payload.message,
+		);
+	}
+
+	@Delete('/:agentId/chat/:threadId/queue/:queueId')
+	@ProjectScope('agent:execute')
+	async removeQueuedMessage(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
+		_res: Response,
+		@Param('queueId') queueId: string,
+	) {
+		await this.messageQueue.removePreview(await this.previewQueueScope(req), queueId);
+		return { removed: true };
+	}
+
+	@Post('/:agentId/chat/:threadId/queue/:queueId/stop')
+	@ProjectScope('agent:execute')
+	async stopQueuedMessage(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
+		_res: Response,
+		@Param('queueId') queueId: string,
+	) {
+		return {
+			cancelled: await this.messageQueue.stopPreview(await this.previewQueueScope(req), queueId),
+		};
 	}
 
 	@Delete('/:agentId/chat/runs/:runId')
@@ -304,13 +293,27 @@ export class AgentChatController {
 		const agent = await this.agentsService.findById(agentId, projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
 
-		const cancelled = await this.agentExecutionOrchestratorService.cancelChatRun({
-			agentId,
-			runId,
-			resourceId: draftChatMemoryResourceId(req.user.id),
-			onCancelled: (threadId) => this.messageQueue.notify(threadId),
-		});
-		return { cancelled };
+		let resumeCancelled = false;
+		let cancelled = false;
+		try {
+			resumeCancelled = await this.messageQueue.cancelPreviewResumes(
+				{
+					agentId,
+					projectId,
+					userId: req.user.id,
+					resourceId: draftChatMemoryResourceId(req.user.id),
+				},
+				runId,
+			);
+		} finally {
+			cancelled = await this.agentExecutionOrchestratorService.cancelChatRun({
+				agentId,
+				runId,
+				resourceId: draftChatMemoryResourceId(req.user.id),
+				onCancelled: (threadId) => this.messageQueue.notify(threadId),
+			});
+		}
+		return { cancelled: cancelled || resumeCancelled };
 	}
 
 	@Get('/:agentId/chat/:threadId/background-tasks')

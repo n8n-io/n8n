@@ -8,7 +8,7 @@ import type { StorageLocation } from '@n8n/blob-storage';
 import { Service } from '@n8n/di';
 import chunk from 'lodash/chunk';
 import { ErrorReporter, StorageConfig } from 'n8n-core';
-import { UnexpectedError } from 'n8n-workflow';
+import { OperationalError, UnexpectedError } from 'n8n-workflow';
 
 import type { AgentRunTelemetryType, IAgentConfigurationTelemetryProperties } from '@/interfaces';
 import { Telemetry } from '@/telemetry';
@@ -41,6 +41,8 @@ import {
 } from './utils/execution-failure-summary';
 
 export interface RecordMessageParams {
+	/** Link preview execution and queue state in the same transaction. */
+	queueEntryId?: string;
 	threadId: string;
 	agentId: string;
 	agentName: string;
@@ -73,6 +75,12 @@ export interface StartExecutionParams extends Omit<RecordMessageParams, 'record'
 	initialTimeline?: TimelineEvent[];
 }
 
+export class AgentExecutionRecordingError extends OperationalError {
+	constructor(cause: unknown) {
+		super('Failed to record agent execution', { cause });
+	}
+}
+
 interface TimelineSnapshotParams {
 	executionId: string;
 	projectId: string;
@@ -95,6 +103,7 @@ export interface ThreadListItem extends Omit<AgentExecutionThread, 'generateId' 
 }
 
 const TIMELINE_SNAPSHOT_RETRY_DELAY_MS = 1_000;
+const INTERRUPTED_EXECUTION_ERROR = 'Agent execution was interrupted by a process restart.';
 
 @Service()
 export class AgentExecutionService {
@@ -133,35 +142,55 @@ export class AgentExecutionService {
 	async startExecutionRecording(params: StartExecutionParams, startedAt: Date): Promise<string> {
 		const owner = this.leases.requireOwner(params.threadId, params.agentId);
 		const { userMessage, created } = await this.prepareThread(params);
-		const inserted = await this.leases.write(
-			owner,
-			async (ctx) =>
-				await this.agentExecutionRepository.createExecution(
-					{
-						threadId: params.threadId,
-						status: 'running',
-						startedAt,
-						stoppedAt: null,
-						duration: 0,
-						userMessage,
-						author: params.author ?? null,
-						model: null,
-						promptTokens: null,
-						completionTokens: null,
-						totalTokens: null,
-						cost: null,
-						// Save the background job signal before notifying clients that the execution started.
-						timeline: params.initialTimeline?.length ? params.initialTimeline : null,
-						storedAt: 'db',
-						error: null,
-						failureSummary: null,
-						hitlStatus: null,
-						source: params.source ?? null,
-						attachments: params.attachments?.length ? params.attachments : null,
-					},
+		const inserted = await this.leases.write(owner, async (ctx) => {
+			if (params.queueEntryId) {
+				const entry = await this.agentMessageQueueRepository.findById(params.queueEntryId, ctx);
+				if (
+					!entry ||
+					entry.agentId !== params.agentId ||
+					entry.threadId !== params.threadId ||
+					entry.executionId
+				) {
+					throw new UnexpectedError('Queued execution is no longer current');
+				}
+			}
+			const execution = await this.agentExecutionRepository.createExecution(
+				{
+					threadId: params.threadId,
+					status: 'running',
+					startedAt,
+					stoppedAt: null,
+					duration: 0,
+					userMessage,
+					author: params.author ?? null,
+					model: null,
+					promptTokens: null,
+					completionTokens: null,
+					totalTokens: null,
+					cost: null,
+					// Save the background job signal before notifying clients that the execution started.
+					timeline: params.initialTimeline?.length ? params.initialTimeline : null,
+					storedAt: 'db',
+					error: null,
+					failureSummary: null,
+					hitlStatus: null,
+					source: params.source ?? null,
+					attachments: params.attachments?.length ? params.attachments : null,
+				},
+				ctx,
+			);
+			if (
+				params.queueEntryId &&
+				!(await this.agentMessageQueueRepository.linkExecution(
+					params.queueEntryId,
+					execution.id,
 					ctx,
-				),
-		);
+				))
+			) {
+				throw new UnexpectedError('Queued execution is no longer active');
+			}
+			return execution;
+		});
 		this.recordingOwners.set(inserted.id, owner);
 		if (created) this.executionsNeedingTitleSync.add(inserted.id);
 		this.startHeartbeat(inserted.id, owner);
@@ -259,7 +288,7 @@ export class AgentExecutionService {
 	): Promise<boolean> {
 		const timeline = execution.timeline ?? [];
 		const stoppedAt = new Date();
-		const error = 'Agent execution was interrupted by a process restart.';
+		const error = INTERRUPTED_EXECUTION_ERROR;
 		const duration = execution.startedAt
 			? Math.max(0, stoppedAt.getTime() - execution.startedAt.getTime())
 			: 0;
@@ -289,6 +318,50 @@ export class AgentExecutionService {
 		);
 		if (finalized) void this.notifyInterruptedExecution(execution);
 		return finalized;
+	}
+
+	async recordInterruptedQueuedPreview(
+		params: StartExecutionParams & { queueEntryId: string },
+		graceMs: number,
+	): Promise<string | undefined> {
+		const owner = this.leases.requireOwner(params.threadId, params.agentId);
+		const { userMessage } = await this.prepareThread(params);
+		return await this.leases.write(owner, async (ctx) => {
+			const entry = await this.agentMessageQueueRepository.findById(params.queueEntryId, ctx);
+			if (
+				!entry ||
+				entry.executionId ||
+				entry.agentId !== params.agentId ||
+				entry.threadId !== params.threadId ||
+				entry.source !== 'preview' ||
+				!(await this.agentMessageQueueRepository.removeStale(entry.id, graceMs, ctx))
+			) {
+				return undefined;
+			}
+			const stoppedAt = new Date();
+			const execution = await this.agentExecutionRepository.createExecution(
+				{
+					threadId: params.threadId,
+					status: 'interrupted',
+					startedAt: null,
+					stoppedAt,
+					duration: 0,
+					userMessage,
+					attachments: params.attachments?.length ? params.attachments : null,
+					source: params.source ?? null,
+					storedAt: 'db',
+					error: INTERRUPTED_EXECUTION_ERROR,
+					failureSummary: computeExecutionFailureSummary({
+						timeline: [],
+						status: 'interrupted',
+						error: INTERRUPTED_EXECUTION_ERROR,
+						stoppedAt: stoppedAt.getTime(),
+					}),
+				},
+				ctx,
+			);
+			return execution.id;
+		});
 	}
 
 	private async notifyInterruptedExecution(execution: RunningAgentExecution): Promise<void> {
@@ -559,10 +632,12 @@ export class AgentExecutionService {
 		);
 
 		await this.n8nMemory.getImplementation(agentId, false).deleteThread(threadId);
+		for (const entry of await this.agentMessageQueueRepository.cancelWaiting(threadId)) {
+			this.executionUpdateBroadcaster.sendQueuedChatEvent(entry, { type: 'cancelled' });
+		}
 		await this.agentChatAttachmentService.deleteByThread(threadId, { projectId });
 		await Promise.all([
 			this.agentExecutionThreadRepository.delete({ id: threadId }),
-			this.agentMessageQueueRepository.cancelWaiting(threadId),
 			this.agentExecutionLogStore.delete(
 				blobRefs.map((r) => ({ agentId, threadId, executionId: r.id, storedAt: r.storedAt })),
 			),

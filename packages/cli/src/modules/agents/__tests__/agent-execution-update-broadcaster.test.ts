@@ -31,6 +31,7 @@ describe('AgentExecutionUpdateBroadcaster', () => {
 		vi.clearAllMocks();
 		logger.scoped.mockReturnValue(logger);
 		projectRelationRepository.findUserIdsByProjectId.mockResolvedValue(['user-1', 'user-2']);
+		publisher.publishCommand.mockResolvedValue();
 		threadRepository.findOneBy.mockResolvedValue(thread);
 		Object.defineProperties(instanceSettings, {
 			isWorker: { value: false, configurable: true },
@@ -44,6 +45,134 @@ describe('AgentExecutionUpdateBroadcaster', () => {
 			instanceSettings,
 			threadRepository,
 		);
+	});
+
+	it.each(['isWorker', 'isMultiMain'] as const)(
+		'delivers preview events only to their owner and relays them with %s',
+		async (mode) => {
+			Object.defineProperty(instanceSettings, mode, { value: true, configurable: true });
+			const data = {
+				...update,
+				queueId: '1',
+				clientRequestId: 'request-1',
+				event: { type: 'text-delta' as const, id: 'text', delta: 'Hello' },
+			};
+			await broadcaster.sendChatEvent(data, 'user-1');
+			expect(push.sendToUsers).toHaveBeenCalledWith({ type: 'agentChatEvent', data }, ['user-1']);
+			expect(publisher.publishCommand).toHaveBeenCalledWith({
+				command: 'relay-agent-chat-event',
+				payload: { data, userId: 'user-1' },
+			});
+			expect(projectRelationRepository.findUserIdsByProjectId).not.toHaveBeenCalled();
+			publisher.publishCommand.mockClear();
+			broadcaster.handleChatEvent({ data, userId: 'user-1' });
+			expect(push.sendToUsers).toHaveBeenCalledTimes(2);
+			expect(publisher.publishCommand).not.toHaveBeenCalled();
+		},
+	);
+
+	it('delivers preview events only locally on a single main', async () => {
+		const data = {
+			...update,
+			queueId: '1',
+			clientRequestId: 'request-1',
+			event: { type: 'done' as const },
+		};
+
+		await broadcaster.sendChatEvent(data, 'user-1');
+
+		expect(push.sendToUsers).toHaveBeenCalledWith({ type: 'agentChatEvent', data }, ['user-1']);
+		expect(publisher.publishCommand).not.toHaveBeenCalled();
+	});
+
+	it('logs one warning per preview relay outage and resets after any successful relay', async () => {
+		Object.defineProperty(instanceSettings, 'isMultiMain', { value: true, configurable: true });
+		publisher.publishCommand
+			.mockRejectedValueOnce(new Error('Relay unavailable'))
+			.mockRejectedValueOnce(new Error('Relay unavailable'))
+			.mockResolvedValueOnce()
+			.mockRejectedValueOnce(new Error('Relay unavailable'));
+		const send = async (queueId: string) =>
+			await broadcaster.sendChatEvent(
+				{ ...update, queueId, clientRequestId: 'request-1', event: { type: 'done' } },
+				'user-1',
+			);
+
+		await send('1');
+		await vi.waitFor(() => expect(logger.warn).toHaveBeenCalledOnce());
+		await send('2');
+		await vi.waitFor(() => expect(publisher.publishCommand).toHaveBeenCalledTimes(2));
+		expect(logger.warn).toHaveBeenCalledOnce();
+		await send('3');
+		await vi.waitFor(() => expect(logger.info).toHaveBeenCalledOnce());
+		await send('4');
+		await vi.waitFor(() => expect(logger.warn).toHaveBeenCalledTimes(2));
+	});
+
+	it('does not wait for stalled preview relays and starts them in order', async () => {
+		vi.useFakeTimers();
+		try {
+			Object.defineProperty(instanceSettings, 'isMultiMain', { value: true, configurable: true });
+			publisher.publishCommand.mockReturnValue(new Promise(() => {}));
+			let delivered = false;
+
+			void Promise.all([
+				broadcaster.sendChatEvent(
+					{
+						...update,
+						queueId: '1',
+						clientRequestId: 'request-1',
+						event: { type: 'text-delta', id: 'text', delta: 'Hello' },
+					},
+					'user-1',
+				),
+				broadcaster.sendChatEvent(
+					{ ...update, queueId: '1', clientRequestId: 'request-1', event: { type: 'done' } },
+					'user-1',
+				),
+			]).then(() => (delivered = true));
+			await vi.advanceTimersByTimeAsync(0);
+
+			expect(delivered).toBe(true);
+			expect(publisher.publishCommand).toHaveBeenNthCalledWith(1, {
+				command: 'relay-agent-chat-event',
+				payload: {
+					data: expect.objectContaining({
+						event: { type: 'text-delta', id: 'text', delta: 'Hello' },
+					}),
+					userId: 'user-1',
+				},
+			});
+			expect(publisher.publishCommand).toHaveBeenNthCalledWith(2, {
+				command: 'relay-agent-chat-event',
+				payload: {
+					data: expect.objectContaining({ event: { type: 'done' } }),
+					userId: 'user-1',
+				},
+			});
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('relays preview events when local delivery fails', async () => {
+		Object.defineProperty(instanceSettings, 'isMultiMain', { value: true, configurable: true });
+		push.sendToUsers.mockImplementationOnce(() => {
+			throw new Error('Local delivery unavailable');
+		});
+		const data = {
+			...update,
+			queueId: '1',
+			clientRequestId: 'request-1',
+			event: { type: 'done' as const },
+		};
+
+		await broadcaster.sendChatEvent(data, 'user-1');
+
+		expect(publisher.publishCommand).toHaveBeenCalledWith({
+			command: 'relay-agent-chat-event',
+			payload: { data, userId: 'user-1' },
+		});
 	});
 
 	it('sends project-scoped invalidations locally and relays them from workers', async () => {

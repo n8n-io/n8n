@@ -133,6 +133,11 @@ export type PubSubCommandMap = {
 		userIds: string[];
 	};
 
+	'relay-agent-chat-event': {
+		data: PushPayload<'agentChatEvent'>;
+		userId: string;
+	};
+
 	'relay-agent-background-tasks-update': {
 		data: PushPayload<'agentBackgroundTasksUpdated'>;
 		userIds: string[];

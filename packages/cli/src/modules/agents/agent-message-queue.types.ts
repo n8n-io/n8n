@@ -1,10 +1,23 @@
 import type { ActionEvent, SerializedMessage, SerializedThread } from 'chat';
+import type { AgentSseEvent } from '@n8n/api-types';
 
 import type { StoredAttachmentRef } from './agent-chat-attachment.service';
 
 export interface QueueExecutionContext {
 	abortSignal: AbortSignal;
 	onExecutionStarted: (executionId: string) => Promise<void>;
+}
+
+export interface PreviewQueueExecutionContext extends QueueExecutionContext {
+	send: (event: AgentSseEvent) => void;
+}
+
+export interface PreviewQueueScope {
+	projectId: string;
+	agentId: string;
+	threadId: string;
+	userId: string;
+	resourceId: string;
 }
 
 interface QueuePayloadBase {
@@ -15,6 +28,8 @@ interface QueuePayloadBase {
 interface PreviewQueueBase extends QueuePayloadBase {
 	source: 'preview';
 	userId: string;
+	/** Older queue entries have no live-event correlation ID. */
+	clientRequestId?: string;
 }
 
 interface IntegrationQueueBase extends QueuePayloadBase {
@@ -65,4 +80,8 @@ export interface AgentQueueInput {
 	agentId: string;
 	threadId: string;
 	payload: AgentQueuePayload;
+}
+
+export interface AgentPreviewQueueInput extends AgentQueueInput {
+	payload: PreviewQueuePayload;
 }
