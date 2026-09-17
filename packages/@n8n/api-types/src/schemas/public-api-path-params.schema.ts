@@ -19,6 +19,7 @@ export const workflowIdParamSchema = stringIdParamSchema('The ID of the workflow
 export const workflowVersionIdParamSchema = stringIdParamSchema('The ID of the workflow version.');
 export const projectIdParamSchema = stringIdParamSchema('The ID of the project.');
 export const tagIdParamSchema = stringIdParamSchema('The ID of the tag.');
+export const folderIdParamSchema = stringIdParamSchema('The ID of the folder.');
 export const userIdParamSchema = stringIdParamSchema('The ID of the user.');
 export const roleSlugParamSchema = stringIdParamSchema('The slug of the role.');
 export const roleMappingRuleIdParamSchema = stringIdParamSchema('The ID of the role mapping rule.');
@@ -36,3 +37,9 @@ export const credentialTypeNameParamSchema = stringIdParamSchema(
 	'The credential type name that you want to get the schema for',
 );
 export const variableIdParamSchema = stringIdParamSchema('The ID of the variable.');
+export const nodeTypePolicyIdParamSchema = stringIdParamSchema(
+	'The ID of the node type policy document.',
+);
+export const nodeTypePolicyScopeIdParamSchema = stringIdParamSchema(
+	'The ID of the node type policy scope.',
+);

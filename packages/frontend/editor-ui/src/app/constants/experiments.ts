@@ -124,9 +124,6 @@ export const INSTANCE_AI_BROWSER_USE_EXPERIMENT = createExperiment('090_instance
 
 export const INSTANCE_AI_COMPUTER_USE_EXPERIMENT = createExperiment('091_instance_ai_computer_use');
 
-export const INSTANCE_AI_TEMPLATE_EXAMPLES_EXPERIMENT = createExperiment(
-	'092_instance_ai_template_examples',
-);
 export const INSTANCE_AI_BROWSER_CREDENTIAL_SETUP_EXPERIMENT = createExperiment(
 	'094_instance_ai_browser_credential_setup',
 );
@@ -144,6 +141,10 @@ export const INSTANCE_AI_FREE_NUDGE_EXPERIMENT = createExperiment('105_instance_
 
 export const OPEN_WORKFLOW_IN_ASSISTANT_EXPERIMENT = createExperiment(
 	'108_open_workflow_in_assistant',
+);
+
+export const INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT = createExperiment(
+	'112_aia_inspiration_from_taxonomy',
 );
 
 export const INSTANCE_AI_PROGRESSIVE_BUILDING_EXPERIMENT = createExperiment(
@@ -189,12 +190,12 @@ export const EXPERIMENTS_TO_TRACK = [
 	INSTANCE_AI_SPLIT_EMPTY_STATE_EXPERIMENT.name,
 	INSTANCE_AI_BROWSER_USE_EXPERIMENT.name,
 	INSTANCE_AI_COMPUTER_USE_EXPERIMENT.name,
-	INSTANCE_AI_TEMPLATE_EXAMPLES_EXPERIMENT.name,
 	INSTANCE_AI_BROWSER_CREDENTIAL_SETUP_EXPERIMENT.name,
 	EXPOSE_ALL_WORKFLOWS_TO_MCP_EXPERIMENT.name,
 	TRIAL_INTRO_MODAL_EXPERIMENT.name,
 	INLINE_AGENTS_EXPERIMENT.name,
 	INSTANCE_AI_FREE_NUDGE_EXPERIMENT.name,
 	OPEN_WORKFLOW_IN_ASSISTANT_EXPERIMENT.name,
+	INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT.name,
 	MCP_JSON_NUDGE_EXPERIMENT.name,
 ];

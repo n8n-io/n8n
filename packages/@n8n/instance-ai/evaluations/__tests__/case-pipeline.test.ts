@@ -57,6 +57,7 @@ function makeLane(): LaneState {
 			baseUrl: 'http://lane1.test',
 			preRunWorkflowIds: new Set<string>(),
 			preRunDataTableIds: new Set<string>(),
+			preRunFolderIds: new Set<string>(),
 			claimedWorkflowIds: new Set<string>(),
 			createdCredentialIds: new Set<string>(),
 			workflowIdsToDelete: new Set<string>(),

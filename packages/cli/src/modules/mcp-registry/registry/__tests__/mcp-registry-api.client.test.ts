@@ -143,7 +143,7 @@ describe('McpRegistryApiClient', () => {
 			expect(mockPaginatedRequest).toHaveBeenCalledWith(
 				PRODUCTION_URL,
 				{
-					version: 2,
+					version: 3,
 					pagination: { page: 1, pageSize: 25 },
 				},
 				{ throwOnError: true },
@@ -178,6 +178,7 @@ describe('McpRegistryApiClient', () => {
 			['a data envelope', { data: ['docs'] }, ['docs']],
 			['an empty envelope', {}, undefined],
 			['a null envelope', { data: null }, undefined],
+			['null', null, undefined],
 			['a missing value', undefined, undefined],
 		])('should keep a server whose tags come back as %s', async (_, tags, expected) => {
 			mockPaginatedRequest.mockResolvedValue([{ ...notionMockServer, tags }]);
@@ -186,6 +187,62 @@ describe('McpRegistryApiClient', () => {
 
 			expect(result).toHaveLength(1);
 			expect(result[0].tags).toEqual(expected);
+		});
+
+		it.each([
+			['a headers object', { 'User-Agent': 'n8n' }, { 'User-Agent': 'n8n' }],
+			['null', null, undefined],
+			['a missing value', undefined, undefined],
+		])(
+			'should keep a server whose remote headers come back as %s',
+			async (_, headers, expected) => {
+				mockPaginatedRequest.mockResolvedValue([
+					{
+						...notionMockServer,
+						remotes: [{ type: 'streamable-http', url: 'https://mcp.notion.com/mcp', headers }],
+					},
+				]);
+
+				const result = await client.fetchAllServers();
+
+				expect(result).toHaveLength(1);
+				expect(result[0].remotes[0].headers).toEqual(expected);
+			},
+		);
+
+		it('should normalize null optional fields to undefined', async () => {
+			mockPaginatedRequest.mockResolvedValue([
+				{
+					...notionMockServer,
+					icons: [{ src: 'https://mcp.notion.com/icon.svg', mimeType: null, theme: null }],
+					websiteUrl: null,
+					remotes: [{ type: 'streamable-http', url: 'https://mcp.notion.com/mcp', headers: null }],
+					tools: [
+						{
+							name: 'notion-search',
+							title: null,
+							annotations: { readOnlyHint: null },
+						},
+						{ name: 'notion-fetch', annotations: null },
+					],
+				},
+			]);
+
+			const result = await client.fetchAllServers();
+
+			expect(result).toHaveLength(1);
+			expect(result[0]).toMatchObject({
+				icons: [{ src: 'https://mcp.notion.com/icon.svg' }],
+				remotes: [{ type: 'streamable-http', url: 'https://mcp.notion.com/mcp' }],
+				tools: [{ name: 'notion-search', annotations: {} }, { name: 'notion-fetch' }],
+			});
+			expect(result[0].websiteUrl).toBeUndefined();
+			expect(result[0].icons[0].mimeType).toBeUndefined();
+			expect(result[0].icons[0].theme).toBeUndefined();
+			expect(result[0].remotes[0].headers).toBeUndefined();
+			expect(result[0].tools[0].title).toBeUndefined();
+			expect(result[0].tools[0].annotations?.readOnlyHint).toBeUndefined();
+			expect(result[0].tools[1].annotations).toBeUndefined();
 		});
 
 		it('should keep only OAuth2 credential options', async () => {
@@ -240,7 +297,7 @@ describe('McpRegistryApiClient', () => {
 			expect(mockPaginatedRequest).toHaveBeenCalledWith(
 				PRODUCTION_URL,
 				{
-					version: 2,
+					version: 3,
 					fields: ['slug', 'version', 'updatedAt'],
 					pagination: { page: 1, pageSize: 500 },
 				},
@@ -282,7 +339,7 @@ describe('McpRegistryApiClient', () => {
 			expect(mockPaginatedRequest).toHaveBeenCalledWith(
 				PRODUCTION_URL,
 				{
-					version: 2,
+					version: 3,
 					filters: {
 						slug: {
 							$in: ['server-a', 'server-b', 'server-c'],
@@ -335,7 +392,7 @@ describe('McpRegistryApiClient', () => {
 				1,
 				PRODUCTION_URL,
 				{
-					version: 2,
+					version: 3,
 					filters: {
 						slug: {
 							$in: slugs.slice(0, 100),
@@ -351,7 +408,7 @@ describe('McpRegistryApiClient', () => {
 				2,
 				PRODUCTION_URL,
 				{
-					version: 2,
+					version: 3,
 					filters: {
 						slug: {
 							$in: slugs.slice(100, 200),
@@ -367,7 +424,7 @@ describe('McpRegistryApiClient', () => {
 				3,
 				PRODUCTION_URL,
 				{
-					version: 2,
+					version: 3,
 					filters: {
 						slug: {
 							$in: slugs.slice(200, 250),

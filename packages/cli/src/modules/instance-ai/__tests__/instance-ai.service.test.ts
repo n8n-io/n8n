@@ -18,6 +18,11 @@ vi.mock('@n8n/instance-ai', async () => {
 		assertInstanceAiPromptVersion: profiles.assertInstanceAiPromptVersion,
 		describePromptProfile: profiles.describePromptProfile,
 		setTracePromptVersion: vi.fn(),
+		setTraceModelId: vi.fn(),
+		modelIdTraceMetadata: (modelId: unknown) =>
+			typeof modelId === 'string' && modelId.length > 0 ? { model_id: modelId } : {},
+		modelConfigId: (config: unknown) =>
+			typeof config === 'string' && config.length > 0 ? config : undefined,
 		// Wiring-only stub: the real mapping has its own unit tests
 		// (instance-ai/src/tracing/__tests__/thread-provenance.test.ts). What the
 		// service tests pin is that its OUTPUT reaches the trace — spreading an
@@ -254,6 +259,7 @@ import {
 	type BuilderUsageItem,
 	type ManagedBackgroundTask,
 	type InstanceAiTraceContext,
+	type ModelConfig,
 	type TraceStatus,
 	type WorkflowVerificationObligation,
 } from '@n8n/instance-ai';
@@ -288,6 +294,8 @@ type StartRunServiceInternals = {
 			}
 		>;
 		setTimeZone: MockedFunction<(threadId: string, timeZone: string) => void>;
+		setComputerUseChannels: Mock;
+		getComputerUseChannels: Mock;
 		setBuildMode: MockedFunction<(threadId: string, mode: string | undefined) => void>;
 		setPromptVersion: Mock;
 		activeRunCount: MockedFunction<() => number>;
@@ -313,6 +321,8 @@ function createStartRunService(): StartRunServiceInternals {
 			messageGroupId: 'group-1',
 		})),
 		setTimeZone: vi.fn(),
+		setComputerUseChannels: vi.fn(),
+		getComputerUseChannels: vi.fn(() => undefined),
 		setBuildMode: vi.fn(),
 		setPromptVersion: vi.fn(),
 		activeRunCount: vi.fn(() => 0),
@@ -575,6 +585,7 @@ type TerminalGuardOrderServiceInternals = {
 			messageGroupId?: string;
 			resumeTracing?: InstanceAiTraceContext;
 			unregisteredResumeTracing?: InstanceAiTraceContext;
+			modelId?: ModelConfig;
 		},
 	) => Promise<void>;
 };
@@ -748,6 +759,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				setPromptConfiguration: Mock;
 				setBuildMode: Mock;
 				setPromptVersion: Mock;
+				getComputerUseChannels: Mock;
 			};
 			cancelBackgroundTask: Mock;
 			backgroundTasks: { touchTask: Mock };
@@ -819,6 +831,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			setPromptConfiguration: vi.fn(),
 			setBuildMode: vi.fn(),
 			setPromptVersion: vi.fn(),
+			getComputerUseChannels: vi.fn(() => undefined),
 		};
 		service.cancelBackgroundTask = vi.fn();
 		service.backgroundTasks = { touchTask: vi.fn() };
@@ -1066,6 +1079,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				setPromptConfiguration: Mock;
 				setBuildMode: Mock;
 				setPromptVersion: Mock;
+				getComputerUseChannels: Mock;
 			};
 			cancelBackgroundTask: Mock;
 			backgroundTasks: { touchTask: Mock };
@@ -1134,6 +1148,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			setPromptConfiguration: vi.fn(),
 			setBuildMode: vi.fn(),
 			setPromptVersion: vi.fn(),
+			getComputerUseChannels: vi.fn(() => undefined),
 		};
 		service.cancelBackgroundTask = vi.fn();
 		service.backgroundTasks = { touchTask: vi.fn() };
@@ -1408,6 +1423,29 @@ describe('InstanceAiService — run start', () => {
 
 		expect(service.liveness.clearThreadState).toHaveBeenCalledWith('thread-a');
 		expect(service.executeRun).toHaveBeenCalled();
+	});
+
+	it('records the reported Computer Use channels so resumed runs reuse them', () => {
+		const service = createStartRunService();
+		service.startRun(
+			fakeUser,
+			'thread-a',
+			'build',
+			undefined,
+			undefined,
+			'UTC',
+			undefined,
+			undefined,
+			undefined,
+			['browser'],
+		);
+		expect(service.runState.setComputerUseChannels).toHaveBeenLastCalledWith('thread-a', [
+			'browser',
+		]);
+
+		// A client that stops reporting clears it, so nothing is advertised.
+		service.startRun(fakeUser, 'thread-a', 'continue');
+		expect(service.runState.setComputerUseChannels).toHaveBeenLastCalledWith('thread-a', undefined);
 	});
 
 	it('records each request mode for later internal runs', () => {
@@ -2990,6 +3028,42 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			error_source: 'exception',
 			user_id: 'user-1',
 			prompt_version: 'progressive@1',
+		});
+	});
+
+	it('includes the resolved model id on resumed-run telemetry', async () => {
+		const service = createTerminalGuardOrderService();
+		service.runState.getPromptConfiguration.mockReturnValue({ version: 'progressive@1' });
+		const abortController = new AbortController();
+		mockClaimedResumeResult({
+			status: 'completed',
+			agentRunId: 'agent-run-1',
+			text: Promise.resolve('done'),
+			workSummary: { toolCalls: [], totalToolCalls: 0, totalToolErrors: 0 },
+		});
+
+		await service.processResumedStream(
+			{},
+			{},
+			{
+				runId: 'run-1',
+				agentRunId: 'agent-run-1',
+				threadId: 'thread-a',
+				user: fakeUser,
+				toolCallId: 'tool-call-1',
+				signal: abortController.signal,
+				abortController,
+				modelId: 'anthropic/claude-sonnet-4-6',
+			},
+		);
+
+		expect(service.telemetry.track).toHaveBeenCalledWith('instance_ai_run_finished', {
+			thread_id: 'thread-a',
+			prompt_version: 'progressive@1',
+			run_id: 'run-1',
+			status: 'completed',
+			user_id: 'user-1',
+			model_id: 'anthropic/claude-sonnet-4-6',
 		});
 	});
 
@@ -6005,6 +6079,7 @@ type FollowUpStreakServiceInternals = {
 		hasLiveRun: Mock;
 		startRun: Mock;
 		getTimeZone: Mock;
+		getComputerUseChannels: Mock;
 	};
 	logger: { warn: Mock; debug: Mock; error: Mock };
 };
@@ -6023,6 +6098,7 @@ function createFollowUpStreakService(): FollowUpStreakServiceInternals {
 		hasLiveRun: vi.fn(() => false),
 		startRun: vi.fn(() => ({ runId: 'follow-up-run', abortController: new AbortController() })),
 		getTimeZone: vi.fn(() => undefined),
+		getComputerUseChannels: vi.fn(() => undefined),
 	};
 	service.logger = { warn: vi.fn(), debug: vi.fn(), error: vi.fn() };
 

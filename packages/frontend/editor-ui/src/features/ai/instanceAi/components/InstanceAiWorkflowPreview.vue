@@ -187,12 +187,11 @@ const instanceAiCapability: InstanceAiEditorCapability = {
 		// The handoff context carries the recipe's verified key page and the
 		// paste-only steering; without it the agent re-researches or suggests
 		// editing the pre-filled form.
-		void thread.sendMessage(
-			buildInstanceAiArtifactCredentialQuestion(credential),
-			undefined,
-			rootStore.pushRef,
-			buildInstanceAiCredentialHandoffContext(credential),
-		);
+		void thread.sendMessage(buildInstanceAiArtifactCredentialQuestion(credential), {
+			authorship: { kind: 'prefill', prefillType: 'handoff_credential_setup' },
+			pushRef: rootStore.pushRef,
+			handoffContext: buildInstanceAiCredentialHandoffContext(credential),
+		});
 		// Appends to the current thread → close the modal so the conversation shows.
 		return true;
 	},

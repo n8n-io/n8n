@@ -38,10 +38,10 @@ const PARAMETER_ISSUE_WORKFLOW_NAME = 'B3 Workflow Setup Required Parameter';
 const PARAMETER_APPLY_WORKFLOW_NAME = 'B3 Full Wizard Apply';
 const PARAMETER_CREDENTIAL_NAME = 'B3 Parameter Header Auth';
 
-const GROUPING_WORKFLOW_NAME = 'B3 Workflow Setup Subnode Grouping';
-const GROUPING_OPENAI_CREDENTIAL_NAME = 'B3 Grouping OpenAI';
-const GROUPING_LINEAR_CREDENTIAL_NAME = 'B3 Grouping Linear';
-const GROUPING_TELEGRAM_CREDENTIAL_NAME = 'B3 Grouping Telegram';
+const AGENT_SUBNODES_WORKFLOW_NAME = 'B3 Workflow Setup Subnode Grouping';
+const AGENT_SUBNODES_OPENAI_CREDENTIAL_NAME = 'B3 Grouping OpenAI';
+const AGENT_SUBNODES_LINEAR_CREDENTIAL_NAME = 'B3 Grouping Linear';
+const AGENT_SUBNODES_TELEGRAM_CREDENTIAL_NAME = 'B3 Grouping Telegram';
 
 function createParameterOnlyWorkflow(name: string): Partial<IWorkflowBase> {
 	return {
@@ -952,81 +952,65 @@ test.describe(
 			);
 		});
 
-		test('should render AI agent subnodes as one group step with separate sections', async ({
-			n8n,
-		}) => {
+		test('should render each AI agent subnode as its own setup step', async ({ n8n }) => {
 			await n8n.api.credentials.createCredential({
-				name: GROUPING_OPENAI_CREDENTIAL_NAME,
+				name: AGENT_SUBNODES_OPENAI_CREDENTIAL_NAME,
 				type: 'openAiApi',
 				data: { apiKey: 'sk-grouping-test' },
 			});
 			await n8n.api.credentials.createCredential({
-				name: GROUPING_LINEAR_CREDENTIAL_NAME,
+				name: AGENT_SUBNODES_LINEAR_CREDENTIAL_NAME,
 				type: 'linearApi',
 				data: { apiKey: 'lin-grouping-test' },
 			});
 			await n8n.api.credentials.createCredential({
-				name: GROUPING_TELEGRAM_CREDENTIAL_NAME,
+				name: AGENT_SUBNODES_TELEGRAM_CREDENTIAL_NAME,
 				type: 'telegramApi',
 				data: { accessToken: 'tg-grouping-test' },
 			});
 
 			const workflow = await n8n.api.workflows.createWorkflow(
-				createAgentWithSubnodesWorkflow(GROUPING_WORKFLOW_NAME),
+				createAgentWithSubnodesWorkflow(AGENT_SUBNODES_WORKFLOW_NAME),
 			);
 
 			await n8n.navigate.toInstanceAi();
-			await n8n.instanceAi.sendMessage(`Set up the workflow named "${GROUPING_WORKFLOW_NAME}".`);
-
-			// === Step 1: AI Agent group step ===
-			await expect(n8n.instanceAi.workflowSetup.getGroupCard()).toBeVisible({ timeout: 120_000 });
-			await expect(n8n.instanceAi.workflowSetup.getStepText('1 of 2')).toBeVisible();
-			await expect(n8n.instanceAi.workflowSetup.getGroupCard()).toContainText('AI Agent');
-
-			// All three subnode sections render separately because the Linear tools
-			// each have parameter issues, so they are not merged into a single
-			// credential-only section.
-			await expect(n8n.instanceAi.workflowSetup.getSection('OpenAI Chat Model')).toBeVisible();
-			await expect(n8n.instanceAi.workflowSetup.getSection('Get an issue in Linear')).toBeVisible();
-			await expect(
-				n8n.instanceAi.workflowSetup.getSection('Update an issue in Linear'),
-			).toBeVisible();
-
-			await expect(n8n.instanceAi.workflowSetup.getGroupCheck()).toBeHidden();
-
-			// Fill each section independently — the per-section helpers expand the
-			// section if it isn't already open.
-			await n8n.instanceAi.workflowSetup.selectSectionCredential(
-				'OpenAI Chat Model',
-				GROUPING_OPENAI_CREDENTIAL_NAME,
-			);
-			await n8n.instanceAi.workflowSetup.selectSectionCredential(
-				'Get an issue in Linear',
-				GROUPING_LINEAR_CREDENTIAL_NAME,
-			);
-			await n8n.instanceAi.workflowSetup.fillSectionParameter(
-				'Get an issue in Linear',
-				'issueId',
-				'IS-123',
-			);
-			await n8n.instanceAi.workflowSetup.selectSectionCredential(
-				'Update an issue in Linear',
-				GROUPING_LINEAR_CREDENTIAL_NAME,
-			);
-			await n8n.instanceAi.workflowSetup.fillSectionParameter(
-				'Update an issue in Linear',
-				'issueId',
-				'IS-456',
+			await n8n.instanceAi.sendMessage(
+				`Set up the workflow named "${AGENT_SUBNODES_WORKFLOW_NAME}".`,
 			);
 
-			await expect(n8n.instanceAi.workflowSetup.getGroupCheck()).toBeVisible();
-
+			// Sub-nodes are not nested under the agent: every node that needs setup
+			// is its own step, in execution order (sub-nodes before their agent,
+			// then the nodes after it). The Linear tools each have a parameter
+			// issue, so they are not merged into one credential-only step.
+			// === Step 1: OpenAI Chat Model ===
+			await expect(n8n.instanceAi.workflowSetup.getCard()).toBeVisible({ timeout: 120_000 });
+			await expect(n8n.instanceAi.workflowSetup.getStepText('1 of 4')).toBeVisible();
+			await expect(n8n.instanceAi.workflowSetup.getCard()).not.toContainText('AI Agent');
+			await n8n.instanceAi.workflowSetup.selectCredential(AGENT_SUBNODES_OPENAI_CREDENTIAL_NAME);
+			await expect(n8n.instanceAi.workflowSetup.getCardCheck()).toBeVisible();
 			await n8n.instanceAi.workflowSetup.getApplyButton().click();
 
-			// === Step 2: Telegram (single, non-grouped card) ===
-			await expect(n8n.instanceAi.workflowSetup.getStepText('2 of 2')).toBeVisible();
-			await expect(n8n.instanceAi.workflowSetup.getGroupCard()).toBeHidden();
-			await n8n.instanceAi.workflowSetup.selectCredential(GROUPING_TELEGRAM_CREDENTIAL_NAME);
+			// === Step 2: Get an issue in Linear ===
+			await expect(n8n.instanceAi.workflowSetup.getStepText('2 of 4')).toBeVisible();
+			await expect(n8n.instanceAi.workflowSetup.getCard()).toContainText('Get an issue in Linear');
+			await n8n.instanceAi.workflowSetup.selectCredential(AGENT_SUBNODES_LINEAR_CREDENTIAL_NAME);
+			await n8n.instanceAi.workflowSetup.fillParameter('issueId', 'IS-123');
+			await expect(n8n.instanceAi.workflowSetup.getCardCheck()).toBeVisible();
+			await n8n.instanceAi.workflowSetup.getApplyButton().click();
+
+			// === Step 3: Update an issue in Linear ===
+			await expect(n8n.instanceAi.workflowSetup.getStepText('3 of 4')).toBeVisible();
+			await expect(n8n.instanceAi.workflowSetup.getCard()).toContainText(
+				'Update an issue in Linear',
+			);
+			await n8n.instanceAi.workflowSetup.selectCredential(AGENT_SUBNODES_LINEAR_CREDENTIAL_NAME);
+			await n8n.instanceAi.workflowSetup.fillParameter('issueId', 'IS-456');
+			await expect(n8n.instanceAi.workflowSetup.getCardCheck()).toBeVisible();
+			await n8n.instanceAi.workflowSetup.getApplyButton().click();
+
+			// === Step 4: Telegram ===
+			await expect(n8n.instanceAi.workflowSetup.getStepText('4 of 4')).toBeVisible();
+			await n8n.instanceAi.workflowSetup.selectCredential(AGENT_SUBNODES_TELEGRAM_CREDENTIAL_NAME);
 			await expect(n8n.instanceAi.workflowSetup.getCardCheck()).toBeVisible();
 			await n8n.instanceAi.workflowSetup.getApplyButton().click();
 			await n8n.instanceAi.waitForResponseComplete();
@@ -1036,25 +1020,25 @@ test.describe(
 				persisted,
 				'OpenAI Chat Model',
 				'openAiApi',
-				GROUPING_OPENAI_CREDENTIAL_NAME,
+				AGENT_SUBNODES_OPENAI_CREDENTIAL_NAME,
 			);
 			expectAssignedCredentialName(
 				persisted,
 				'Get an issue in Linear',
 				'linearApi',
-				GROUPING_LINEAR_CREDENTIAL_NAME,
+				AGENT_SUBNODES_LINEAR_CREDENTIAL_NAME,
 			);
 			expectAssignedCredentialName(
 				persisted,
 				'Update an issue in Linear',
 				'linearApi',
-				GROUPING_LINEAR_CREDENTIAL_NAME,
+				AGENT_SUBNODES_LINEAR_CREDENTIAL_NAME,
 			);
 			expectAssignedCredentialName(
 				persisted,
 				'Send a text message',
 				'telegramApi',
-				GROUPING_TELEGRAM_CREDENTIAL_NAME,
+				AGENT_SUBNODES_TELEGRAM_CREDENTIAL_NAME,
 			);
 			expectNodeParameter(persisted, 'Get an issue in Linear', 'issueId', 'IS-123');
 			expectNodeParameter(persisted, 'Update an issue in Linear', 'issueId', 'IS-456');
