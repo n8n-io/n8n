@@ -719,7 +719,10 @@ function renderPerTestCaseDetails(
 	lines.push('');
 	const renderName = (tc: TestCaseAggregation): string => {
 		const slug = slugByTestCase?.get(tc.testCase);
-		return slug ? `\`${slug}\`` : `\`${caseDisplayPrompt(tc.testCase).slice(0, 70)}\``;
+		const name = slug ? `\`${slug}\`` : `\`${caseDisplayPrompt(tc.testCase).slice(0, 70)}\``;
+		// Which artifact the builder chose is a result, not a given: a case routed to
+		// an Agent one night and a workflow the next shows up here, not as a crash.
+		return tc.runs.some((run) => run.agentId !== undefined) ? `${name} (agent)` : name;
 	};
 	if (totalRuns > 1) {
 		lines.push(`| Test case | Status | pass@${totalRuns} | pass^${totalRuns} |`);
