@@ -1,13 +1,9 @@
 import {
-	credentialIdParamSchema,
 	CreateCredentialPublicDto,
 	CredentialListPublicDto,
 	CredentialPublicDto,
 	ListCredentialsQueryDto,
-<<<<<<< HEAD
-=======
 	UpdateCredentialPublicDto,
->>>>>>> e9860b34 (refactor(API): Migrate POST /credentials and PATCH /credentials/{id} to the decorator pattern (no-changelog) (#37985))
 } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
 import type { AuthenticatedRequest, CredentialsEntity, ICredentialsDb, User } from '@n8n/db';
@@ -219,7 +215,7 @@ export class CredentialsPublicController {
 	async updateCredential(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('credentialId', credentialIdParamSchema) credentialId: string,
+		@Param('credentialId') credentialId: string,
 		@Body({ required: true }) body: UpdateCredentialPublicDto,
 	): Promise<CredentialPublicDto> {
 		if (body.type !== undefined) {
