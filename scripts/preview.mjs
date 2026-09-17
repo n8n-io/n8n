@@ -128,9 +128,10 @@ function prHead(pr) {
 
 // Check out the exact head SHA, not the branch tip: the branch can move while this
 // runs, and the preview has to match the SHA the PR comment points at.
-const serveCommand = (head) => {
+const serveCommand = (pr, head) => {
 	// Pass the slugs, never the environment they stand for: this string reaches the
 	// box's process list, and preview:enterprise resolves to a licence key there.
+	// The PR number is not a secret, so the preview env webhook gets it directly.
 	const slugs = previewSlugs(head.labels);
 	const labelEnv = slugs.length ? `PREVIEW_LABELS=${slugs.join(',')} ` : '';
 
@@ -147,7 +148,7 @@ const serveCommand = (head) => {
 		// Cheap when nothing changed. Skipping it is how a preview ends up running
 		// against stale dependencies after a lockfile change.
 		'pnpm install --frozen-lockfile',
-		`${labelEnv}pnpm preview:serve`,
+		`PREVIEW_PR=${pr} ${labelEnv}pnpm preview:serve`,
 	].join(' && ');
 };
 
@@ -222,7 +223,7 @@ async function shareWhenForwarded(port, name, timeoutMs = 120_000) {
 }
 
 async function serve(pr, cs, head, { json, dryRun }) {
-	const command = serveCommand(head);
+	const command = serveCommand(pr, head);
 	if (dryRun) {
 		log(`Would ssh to ${cs.name} and run:\n  ${command}`);
 		log(`Would then share port ${PORT} with the org.`);
@@ -255,7 +256,7 @@ async function up(pr, options) {
 		if (options.dryRun) {
 			log(`Would create a box for PR #${pr} (${head.headRefName}):`);
 			log(`  gh ${createArgs(pr, head).join(' ')}`);
-			log(`Then ssh to it and run:\n  ${serveCommand(head)}`);
+			log(`Then ssh to it and run:\n  ${serveCommand(pr, head)}`);
 			// No box yet, so there is no name and no URL to report.
 			log('The URL is only known once the box exists.');
 			return;

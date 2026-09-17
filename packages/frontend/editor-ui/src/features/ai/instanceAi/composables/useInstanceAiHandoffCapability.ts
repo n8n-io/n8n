@@ -26,6 +26,7 @@ import {
 	buildInstanceAiCredentialQuestion,
 	useInstanceAiHandoff,
 } from './useInstanceAiHandoff';
+import type { InstanceAiMessageAuthorship } from '../prefills';
 
 /**
  * The standalone editor's `InstanceAiEditorCapability` (behavior; visibility is the
@@ -117,6 +118,11 @@ export function useInstanceAiHandoffCapability(): InstanceAiEditorCapability {
 			(executionFailed
 				? 'The execution failed. Look into what went wrong and help me fix it.'
 				: '');
+		// Derived next to the text it describes, so the two cannot drift.
+		const authorship: InstanceAiMessageAuthorship = {
+			kind: 'prefill',
+			prefillType: executionFailed ? 'handoff_execution_error' : 'workflow_attachment_opener',
+		};
 		// Close any open NDV before navigating. Otherwise its children unmount during
 		// the route change — after the workflow document store is gone — and throw via
 		// injectNDVStore(), aborting the navigation and leaving a blank screen. No-op
@@ -129,6 +135,7 @@ export function useInstanceAiHandoffCapability(): InstanceAiEditorCapability {
 		await startThread(
 			projectId,
 			openingMessage,
+			authorship,
 			{
 				source,
 				origin: 'internal',
@@ -195,10 +202,18 @@ export function useInstanceAiHandoffCapability(): InstanceAiEditorCapability {
 			});
 			return false;
 		}
-		await startThread(projectId, question, { source, origin: 'internal' }, undefined, undefined, {
-			newTab: true,
-			context: buildInstanceAiCredentialHandoffContext(credential),
-		});
+		await startThread(
+			projectId,
+			question,
+			{ kind: 'prefill', prefillType: 'handoff_credential_setup' },
+			{ source, origin: 'internal' },
+			undefined,
+			undefined,
+			{
+				newTab: true,
+				context: buildInstanceAiCredentialHandoffContext(credential),
+			},
+		);
 		telemetry.track('Instance AI opened from editor', {
 			source,
 			workflow_id: null,

@@ -149,7 +149,9 @@ describe('KeyManagerService', () => {
 				algorithm: key.algorithm,
 				format: 'prefixed',
 			});
-			expect(repo.findOne).toHaveBeenCalledWith({ where: { id: 'key-1' } });
+			expect(repo.findOne).toHaveBeenCalledWith({
+				where: { id: 'key-1', type: 'data_encryption' },
+			});
 		});
 
 		it('returns null when key not found', async () => {
@@ -678,6 +680,19 @@ describe('KeyManagerService', () => {
 			expect(active.id).toBe('old-active');
 			expect(repo.find).toHaveBeenCalledTimes(1);
 		});
+
+		it('never deletes the key row', async () => {
+			const { service, repo } = makeFreshService();
+			repo.find.mockResolvedValue([makeKey({ id: 'old-active' })]);
+
+			await service.markInactive('old-active');
+
+			expect(repo.delete).not.toHaveBeenCalled();
+			expect(repo.remove).not.toHaveBeenCalled();
+			expect(repo.softDelete).not.toHaveBeenCalled();
+			expect(repo.softRemove).not.toHaveBeenCalled();
+			expect(repo.update).toHaveBeenCalledWith('old-active', { status: 'inactive' });
+		});
 	});
 
 	describe('repairLegacyDataEncryptionKeys()', () => {
@@ -694,13 +709,14 @@ describe('KeyManagerService', () => {
 		const makeRepairService = (encryptionKey = randomBytes(24).toString('base64')) => {
 			const repo = mock<DeploymentKeyRepository>();
 			const cipher = realCipher(encryptionKey);
+			const logger = mock<Logger>();
 			const service = new KeyManagerService(
 				repo,
 				cipher,
 				mock<InstanceSettings>({ encryptionKey }),
-				mock<Logger>(),
+				logger,
 			);
-			return { service, repo, cipher };
+			return { service, repo, cipher, logger };
 		};
 
 		// A real, freshly generated DEK — never a hand-built constant.
@@ -721,6 +737,18 @@ describe('KeyManagerService', () => {
 			expect(cipher.decryptDEKWithInstanceKey(wrapped)).toBe(rawKey);
 		});
 
+		it('recovers a raw instance key stored verbatim and re-wraps it as GCM', async () => {
+			const encryptionKey = randomBytes(24).toString('base64');
+			const { service, repo, cipher } = makeRepairService(encryptionKey);
+			repo.findDataEncryptionKeys.mockResolvedValue([makeKey({ id: 'k', value: encryptionKey })]);
+
+			await service.repairLegacyDataEncryptionKeys();
+
+			const [id, , wrapped] = repo.rewrapLegacyDataEncryptionValue.mock.calls[0];
+			expect(id).toBe('k');
+			expect(cipher.decryptDEKWithInstanceKey(wrapped)).toBe(encryptionKey);
+		});
+
 		it.each<[string, (cipher: Cipher, other: Cipher) => string]>([
 			['already GCM-wrapped', (cipher) => cipher.encryptDEKWithInstanceKey(rawKey)],
 			[
@@ -738,6 +766,32 @@ describe('KeyManagerService', () => {
 			await service.repairLegacyDataEncryptionKeys();
 
 			expect(repo.rewrapLegacyDataEncryptionValue).not.toHaveBeenCalled();
+		});
+
+		it('warns about an unrecognized value it cannot re-wrap', async () => {
+			const { service, repo, logger } = makeRepairService();
+			repo.findDataEncryptionKeys.mockResolvedValue([
+				makeKey({ id: 'k', value: randomBytes(48).toString('base64') }),
+			]);
+
+			await service.repairLegacyDataEncryptionKeys();
+
+			expect(repo.rewrapLegacyDataEncryptionValue).not.toHaveBeenCalled();
+			expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('unrecognized format'), {
+				error: expect.any(Error),
+			});
+		});
+
+		it('does not warn about an already GCM-wrapped value', async () => {
+			const { service, repo, cipher, logger } = makeRepairService();
+			repo.findDataEncryptionKeys.mockResolvedValue([
+				makeKey({ id: 'k', value: cipher.encryptDEKWithInstanceKey(rawKey) }),
+			]);
+
+			await service.repairLegacyDataEncryptionKeys();
+
+			expect(repo.rewrapLegacyDataEncryptionValue).not.toHaveBeenCalled();
+			expect(logger.warn).not.toHaveBeenCalled();
 		});
 
 		it('is a no-op when there are no data-encryption keys', async () => {

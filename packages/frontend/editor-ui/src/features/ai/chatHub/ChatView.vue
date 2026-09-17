@@ -40,7 +40,7 @@ import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useChatCredentials } from '@/features/ai/chatHub/composables/useChatCredentials';
 import ChatLayout from '@/features/ai/chatHub/components/ChatLayout.vue';
-import { useFileDrop } from '@/features/ai/chatHub/composables/useFileDrop';
+import { useFileDrop } from '@/features/ai/shared/composables/useFileDrop';
 import {
 	type ChatHubConversationModelWithCachedDisplayName,
 	chatHubConversationModelWithCachedDisplayNameSchema,

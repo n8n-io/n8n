@@ -312,6 +312,39 @@ whether the key reaches the box. Anyone who can run PR-head code can read
 `/workspaces/.codespaces/shared/.env-secrets`. Previews are limited to branches
 in this repository, so that is the set of people who already have write access.
 
+#### Preview environment from a webhook
+
+A preview can also take environment from an n8n webhook we control, so a value
+can change without a commit and a merge. `scripts/preview-remote-env.mjs` fetches
+it, and `preview-serve.mjs` hands the result to the backend.
+
+It needs three **Codespaces** secrets on `n8n-io/n8n`, again not Actions secrets:
+
+| Secret | Purpose |
+| ------------------------ | ------------------------------------------------- |
+| `CODESPACE_ENV_URL`        | The webhook URL |
+| `CODESPACE_ENV_USER`       | Basic auth user. Optional, defaults to `preview`. |
+| `CODESPACE_ENV_PASSWORD`   | Basic auth password |
+
+The webhook answers with a flat JSON object. Its keys become environment
+variables and its values are used as-is, so a number or a boolean is stringified
+and a nested object is dropped. The request carries the PR number and the head
+SHA as query parameters, so one endpoint can answer per PR.
+
+The fetch runs in the box, not on the runner. Codespaces secrets are unreadable
+from Actions, so neither the password nor a returned value can reach a CI log.
+The log prints key names only.
+
+**Every key is passed through.** A response containing `NODE_OPTIONS`,
+`EXTERNAL_HOOK_FILES` or `PATH` runs code inside the preview box, so whoever can
+edit that workflow can run code there. The one exception is the preview's own
+wiring — the sign-in hook and the owner credentials — which is applied last and
+wins. The `.env-secrets` note above applies to these secrets too.
+
+Nothing here is required. Without the secrets, an unreachable webhook or a
+rejected password, the preview serves as usual and says so in the log. A wrong
+password is not retried: it cannot fix itself.
+
 #### The `CODESPACE_PREVIEW_TOKEN` secret
 
 The job needs `CODESPACE_PREVIEW_TOKEN`, a **fine-grained** personal access token,
@@ -597,6 +630,7 @@ Composite actions in `.github/actions/`:
 | Action                   | Purpose                                      | Used By            |
 |--------------------------|----------------------------------------------|--------------------|
 | `setup-nodejs`           | pnpm + Node.js + Turbo cache + Docker (opt)  | Most CI workflows  |
+| `run-workflow-script`    | Run a `.github/scripts` module with no setup or install | Owners and PR quality checks |
 | `docker-registry-login`  | GHCR + DockerHub + DHI authentication        | Docker workflows   |
 
 ### setup-nodejs
@@ -632,6 +666,30 @@ newly created sticky disk - it stays at 0 bytes however many runs commit to it,
 while the build reports a successful commit. Every job therefore shares the
 `n8n-io/n8n` key, which is the only disk that actually retains layers. Revisit
 once new-disk retention works.
+
+### run-workflow-script
+
+```yaml
+inputs:
+  script:        # path of the module, relative to the repository root
+  github-token:  # token for the Octokit client, also exported as GITHUB_TOKEN
+```
+
+Runs one `.github/scripts` module through `actions/github-script`. That action
+brings its own Node.js and an Octokit client, so the job needs no
+`setup-nodejs` step and no dependency install. The action loads
+`github-helpers.mjs`, hands the client to `setOctokit`, then imports the module
+and awaits its exported `main()`.
+
+Use it for a module that imports only node builtins and other `.github/scripts`
+modules. `github-helpers.mjs` loads `@actions/github` and `semver` only when
+they are present, so it works in both modes. A module that needs an npm
+package (`semver`, `yaml`, `minimatch`, ...) keeps the `setup-nodejs` path with
+the `.github/scripts` install command.
+
+Pair it with a sparse checkout of `.github` when the module reads nothing else
+from the tree. Cone mode always includes the root files, so `OWNERS` and
+`package.json` stay available.
 
 ### docker-registry-login
 
@@ -712,6 +770,7 @@ Scripts in `.github/scripts/`:
 | `nightly-sbom-context.mjs` | Resolve the source SHA and image tag for nightly SBOM validation | `test-sbom-nightly.yml` |
 | `db-test-matrix.mjs`    | DB test matrix from `postgres-versions.json` | `ci-pull-requests.yml` |
 | `quality/check-cubic-config.mjs` | Validate `cubic.yaml` against the vendored cubic schema; enforce its silent agent/character limits. `--refresh` re-pulls the schema | `test-workflow-scripts-reusable.yml`, `util-refresh-cubic-schema.yml` |
+| `glob.mjs`              | Builtin-only glob matcher for changed-file paths (`**`, `*`, dot segments) | `quality/check-pr-size.mjs` |
 | `probe-registry.mjs`    | Registry path throughput probe (temporary) | `util-probe-registry.yml` |
 
 ### Preview Scripts
@@ -720,6 +779,7 @@ Scripts in `.github/scripts/`:
 |---------------------------------|-------------------------------------------------------------------------|--------------------------------|
 | `codespace-preview.mjs`         | Map a `pull_request` event or a manual operation onto a preview operation, comment the result | `util-codespace-preview.yml` |
 | `../../scripts/preview.mjs`     | One codespace for each PR: `up`, `refresh`, `down`, `ls`. `--json` for CI | `codespace-preview.mjs`, developers |
+| `../../scripts/preview-remote-env.mjs` | Fetch extra environment for a preview from the webhook, inside the box | `../../scripts/preview-serve.mjs` |
 
 `scripts/preview.mjs` is also the developer entry point (`pnpm preview up <pr>`).
 In `--json` mode it prints one object on stdout and sends all progress to stderr,

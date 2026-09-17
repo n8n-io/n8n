@@ -72,9 +72,38 @@ describe('SDK_LANGUAGE_REFERENCE rendering', () => {
 		}
 	});
 
-	it('steers runtime logic to a Code node or expression', () => {
-		expect(SDK_LANGUAGE_REFERENCE).toContain('Code node');
-		expect(SDK_LANGUAGE_REFERENCE).toContain("expr('{{ ... }}')");
+	it('steers runtime logic to a native node first and reserves the Code node', () => {
+		const section = SDK_LANGUAGE_REFERENCE.slice(
+			SDK_LANGUAGE_REFERENCE.indexOf('## Where to put runtime logic'),
+		);
+		for (const node of [
+			'Edit Fields (Set)',
+			'Filter',
+			'IF',
+			'Switch',
+			'Sort',
+			'Remove Duplicates',
+			'Aggregate',
+			'Summarize',
+			'Split Out',
+			'Limit',
+			'Merge',
+		]) {
+			expect(section).toContain(`**${node}**`);
+		}
+		expect(section.indexOf('Edit Fields (Set)')).toBeLessThan(section.indexOf('Code node'));
+		expect(section).toContain("expr('{{ ... }}')");
+		expect(section).toContain("{{ [$json.title, $json.category].filter(Boolean).join(' ') }}");
+		expect(section).toContain('Use a **Code node** only for');
+		expect(section).toContain('$getWorkflowStaticData');
+		expect(section).toContain('three or more native nodes');
+	});
+
+	it('scopes the method restriction to builder code, not expressions', () => {
+		expect(SDK_LANGUAGE_REFERENCE).toContain('are NOT available in builder code');
+		expect(SDK_LANGUAGE_REFERENCE).toContain(
+			'n8n expressions (`{{ ... }}`) run full JavaScript at runtime',
+		);
 	});
 });
 
@@ -118,6 +147,13 @@ describe('NODE_GROUPS_REFERENCE', () => {
 
 	it('tells an editing agent to keep existing descriptions', () => {
 		expect(NODE_GROUPS_REFERENCE).toMatch(/keep the .+ and their descriptions\s+intact/is);
+	});
+
+	it('names the two shapes that are cut wrong most often', () => {
+		// Case 8 (gates in a row) and case 3 (two-node stages) failed on every eval run
+		// while the abstract rule was present, so the guidance names the shape.
+		expect(GROUPING_GUIDANCE).toMatch(/first node of the next group, never loose/i);
+		expect(GROUPING_GUIDANCE).toMatch(/merge the small stage into its neighbour/i);
 	});
 
 	it('tells agents to fix what a dropped-group warning reports, not the boundary', () => {

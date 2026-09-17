@@ -7,6 +7,7 @@ import {
 	INSTANCE_AI_THREAD_VIEW,
 	INSTANCE_AI_SETTINGS_VIEW,
 	INSTANCE_AI_NEW_VIEW,
+	INSTANCE_AI_THREADS_VIEW,
 } from './constants';
 import {
 	ensurePersonalProjectId,
@@ -47,6 +48,7 @@ function hasInstanceAiSettingsContent(): boolean {
 const InstanceAiView = async () => await import('./InstanceAiView.vue');
 const InstanceAiEmptyView = async () => await import('./InstanceAiEmptyView.vue');
 const InstanceAiThreadView = async () => await import('./InstanceAiThreadView.vue');
+const InstanceAiThreadsView = async () => await import('./InstanceAiThreadsView.vue');
 const SettingsInstanceAiView = async () => await import('./views/SettingsInstanceAiView.vue');
 
 export const InstanceAiModule = defineFrontendModule({
@@ -103,6 +105,7 @@ export const InstanceAiModule = defineFrontendModule({
 								message: i18n.baseText('instanceAi.launch.templateById.message', {
 									interpolate: { id: templateId },
 								}),
+								authorship: { kind: 'prefill', prefillType: 'template_adjustment' },
 							},
 							{ source: 'website-template', origin: 'external', sourceContext: { templateId } },
 						);
@@ -118,6 +121,11 @@ export const InstanceAiModule = defineFrontendModule({
 					name: INSTANCE_AI_VIEW,
 					path: '',
 					component: InstanceAiEmptyView,
+				},
+				{
+					name: INSTANCE_AI_THREADS_VIEW,
+					path: 'history',
+					component: InstanceAiThreadsView,
 				},
 				{
 					name: INSTANCE_AI_THREAD_VIEW,

@@ -1,6 +1,7 @@
 import { BreakingChangeRule } from '@n8n/decorators';
 import { InstanceSettings } from 'n8n-core';
 
+import { NOT_AFFECTED_INSTANCE } from '../../detection-report';
 import type {
 	BreakingChangeRuleMetadata,
 	IBreakingChangeInstanceRule,
@@ -28,7 +29,7 @@ export class DockerOnlyDeploymentRule implements IBreakingChangeInstanceRule {
 
 	async detect(): Promise<InstanceDetectionReport> {
 		if (this.instanceSettings.isDocker) {
-			return { isAffected: false, instanceIssues: [], recommendations: [] };
+			return NOT_AFFECTED_INSTANCE;
 		}
 
 		return {

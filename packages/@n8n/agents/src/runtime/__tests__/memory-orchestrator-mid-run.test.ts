@@ -75,6 +75,28 @@ describe('MemoryOrchestrator.maybeObserveMidRun', () => {
 		expect(list.forLlm('base').messages).toHaveLength(1);
 	});
 
+	it('does nothing when midRunObservation is disabled, even past the threshold', async () => {
+		const store = new InMemoryMemory();
+		const observe = vi.fn(
+			async () => await Promise.resolve('* CRITICAL (14:30) Should not appear.'),
+		);
+		const { orchestrator } = buildOrchestrator(store, {
+			observerThresholdTokens: 10,
+			midRunObservation: false,
+			observe,
+			observationLogTailLimit: 20,
+		});
+		const list = new AgentMessageList();
+		list.addInput([userMsg('a user message crossing the threshold')]);
+		list.addResponse([assistantMsg('an assistant reply with more work')]);
+
+		await orchestrator.maybeObserveMidRun(list, runOptions());
+
+		expect(observe).not.toHaveBeenCalled();
+		expect(await store.getMessagesForObservationScope(THREAD_ID)).toHaveLength(0);
+		expect(list.forLlm('base').messages).toHaveLength(2);
+	});
+
 	it('persists the turn, writes observations, advances the cursor, and masks the window on crossing', async () => {
 		const store = new InMemoryMemory();
 		const { orchestrator } = buildOrchestrator(store, {

@@ -77,6 +77,9 @@ import {
 	INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
 	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
 	INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
+	CONTEXT_PREFERENCES_FLAG,
+	CONTEXT_PREFERENCES_CONTROL_VARIANT,
+	CONTEXT_PREFERENCES_ENABLED_VARIANT,
 } from '@n8n/api-types';
 
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
@@ -134,7 +137,9 @@ function createMockCollaborationService() {
 }
 
 function createMockExecutionRepository(
-	execution?: ReturnType<typeof makeExecution>,
+	// `workflowId` is optional here: the failed-execution builders further down
+	// predate it and only the step-run tests read it.
+	execution?: Omit<ReturnType<typeof makeExecution>, 'workflowId'> & { workflowId?: string },
 ): Mocked<Pick<ExecutionRepository, 'findSingleExecution'>> {
 	const executionPersistence = mock<ExecutionPersistence>();
 	executionPersistence.findSingleExecution.mockResolvedValue(execution as never);
@@ -163,6 +168,7 @@ function makeExecution(
 	const runData = overrides.runData ?? {};
 	return {
 		id: 'exec-1',
+		workflowId: 'wf-1',
 		status: overrides.status ?? 'success',
 		startedAt: overrides.startedAt ?? new Date('2026-01-01T00:00:00Z'),
 		stoppedAt: overrides.stoppedAt ?? new Date('2026-01-01T00:01:00Z'),
@@ -4438,6 +4444,7 @@ function createRunAdapterForTests(
 	const mockExecutionPersistence = mock<ExecutionPersistence>();
 	mockExecutionPersistence.findSingleExecution.mockResolvedValue(options?.execution as never);
 	vi.spyOn(Container, 'get').mockReturnValue(mockExecutionPersistence);
+	const mockWorkflowHistoryService = { getVersion: vi.fn() };
 	const mockTelemetry = { track: vi.fn() };
 
 	const mockUser = { id: 'user-1', role: { slug: 'global:member' } } as unknown as User;
@@ -4476,12 +4483,16 @@ function createRunAdapterForTests(
 			isReadOnly: vi.fn().mockReturnValue(false),
 		} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[21],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[22],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[23],
+		mockWorkflowHistoryService as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[23],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[24],
 		{ isLicensed: vi.fn().mockReturnValue(false) } as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
 		>[25],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[26],
+		mockExecutionPersistence as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[26],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[27],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[28],
 		mockTelemetry as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[29],
@@ -4507,12 +4518,42 @@ function createRunAdapterForTests(
 		mockExecutionPersistence,
 		mockTelemetry,
 		mockWorkflowRunner,
+		mockWorkflowHistoryService,
 	};
 }
 
 describe('createExecutionAdapter run()', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+	});
+
+	it('names the trigger whose output the caller injected', async () => {
+		const { adapter } = createRunAdapterForTests(
+			{
+				id: 'wf-1',
+				nodes: [
+					{
+						id: 'n1',
+						name: 'Webhook',
+						type: 'n8n-nodes-base.webhook',
+						typeVersion: 2,
+						position: [0, 0],
+					},
+				],
+				connections: {},
+			},
+			{ execution: makeExecution({ status: 'success' }) },
+		);
+
+		const injected = await adapter.run('wf-1', { body: { name: 'Ada' } });
+		const pinned = await adapter.run('wf-1', undefined, {
+			verificationPinData: { Webhook: [{ body: { name: 'Ada' } }] },
+		});
+		const live = await adapter.run('wf-1');
+
+		expect(injected.injectedTriggerNodeName).toBe('Webhook');
+		expect(pinned.injectedTriggerNodeName).toBe('Webhook');
+		expect(live).not.toHaveProperty('injectedTriggerNodeName');
 	});
 
 	it('reports workflow-pinned nodes on the run result', async () => {
@@ -5199,6 +5240,373 @@ function createAdapterWithGatewayMock(
 	);
 }
 
+describe('createExecutionAdapter runStep()', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	const chainWorkflow = {
+		id: 'wf-1',
+		versionId: 'v-current',
+		nodes: [
+			{ name: 'Trigger', type: 'n8n-nodes-base.manualTrigger', typeVersion: 1, position: [0, 0] },
+			{ name: 'Fetch', type: 'n8n-nodes-base.httpRequest', typeVersion: 1, position: [1, 0] },
+			{ name: 'Send', type: 'n8n-nodes-base.slack', typeVersion: 1, position: [2, 0] },
+		],
+		connections: {
+			Trigger: { main: [[{ node: 'Fetch', type: 'main', index: 0 }]] },
+			Fetch: { main: [[{ node: 'Send', type: 'main', index: 0 }]] },
+		},
+	};
+
+	type StepOptions = {
+		reuseExecutionId?: string;
+		mockInput?: Array<Record<string, unknown>>;
+		versionId?: string;
+		timeout?: number;
+	};
+
+	async function runStepOn(
+		workflow: Record<string, unknown>,
+		nodeName: string,
+		options?: StepOptions,
+		harnessOptions?: Parameters<typeof createRunAdapterForTests>[1],
+	) {
+		const harness = createRunAdapterForTests(workflow, {
+			execution: makeExecution({ status: 'success' }),
+			...harnessOptions,
+		});
+		const runStep = harness.adapter.runStep as NonNullable<typeof harness.adapter.runStep>;
+		const result = await runStep('wf-1', nodeName, options);
+		return { ...harness, result, runData: harness.mockWorkflowRunner.run.mock.calls[0]?.[0] };
+	}
+
+	it('runs the chain up to the target when given no input', async () => {
+		const { runData, result } = await runStepOn(chainWorkflow, 'Send');
+
+		expect(runData.destinationNode).toEqual({ nodeName: 'Send', mode: 'inclusive' });
+		// `runManually` routes a partial execution on `runData` being set, so the
+		// chain path depends on it staying undefined.
+		expect(runData.runData).toBeUndefined();
+		expect(result.inputMode).toBe('chain');
+		expect(result.mockedNodeNames).toEqual([]);
+	});
+
+	it('always runs in manual mode, because pin data is dropped in any other mode', async () => {
+		const { runData } = await runStepOn(chainWorkflow, 'Send');
+
+		expect(runData.executionMode).toBe('manual');
+	});
+
+	it('forces save settings and bounds the engine with the wait budget', async () => {
+		const { runData } = await runStepOn(chainWorkflow, 'Send', { timeout: 60_000 });
+
+		expect(runData.workflowData.settings).toMatchObject({
+			saveManualExecutions: true,
+			saveDataSuccessExecution: 'all',
+			saveDataErrorExecution: 'all',
+			executionTimeout: 60,
+		});
+	});
+
+	it('mocks the path above the target when given mock input', async () => {
+		const { runData, result } = await runStepOn(chainWorkflow, 'Send', {
+			mockInput: [{ text: 'hello' }],
+		});
+
+		expect(runData.runData.Fetch[0].data.main[0]).toEqual([{ json: { text: 'hello' } }]);
+		expect(runData.runData.Trigger[0].data.main[0]).toEqual([{ json: {} }]);
+		expect(runData.runData.Send).toBeUndefined();
+		expect(runData.dirtyNodeNames).toEqual(['Send']);
+		expect(result.inputMode).toBe('mocked');
+		expect(result.mockedNodeNames.sort()).toEqual(['Fetch', 'Trigger']);
+	});
+
+	it('replays a past execution and re-runs only the target', async () => {
+		const priorRunData = { Trigger: [makeTaskData([{}])], Fetch: [makeTaskData([{ id: 9 }])] };
+		const { runData, result, mockExecutionPersistence } = await runStepOn(
+			chainWorkflow,
+			'Send',
+			{ reuseExecutionId: 'exec-past' },
+			{ execution: makeExecution({ status: 'success', runData: priorRunData }) },
+		);
+
+		expect(mockExecutionPersistence.findSingleExecution).toHaveBeenCalledWith('exec-past', {
+			includeData: true,
+			unflattenData: true,
+		});
+		expect(runData.runData).toEqual(priorRunData);
+		// Without this the engine walks past a target that already has run data.
+		expect(runData.dirtyNodeNames).toEqual(['Send']);
+		expect(result.inputMode).toBe('reused-execution');
+		expect(result.reusedFromExecutionId).toBe('exec-past');
+	});
+
+	it('refuses an execution that belongs to another workflow', async () => {
+		const harness = createRunAdapterForTests(chainWorkflow, {
+			execution: { ...makeExecution({ status: 'success' }), workflowId: 'wf-other' },
+		});
+		const runStep = harness.adapter.runStep as NonNullable<typeof harness.adapter.runStep>;
+
+		await expect(runStep('wf-1', 'Send', { reuseExecutionId: 'exec-past' })).rejects.toThrow(
+			'belongs to a different workflow',
+		);
+		expect(harness.mockWorkflowRunner.run).not.toHaveBeenCalled();
+	});
+
+	it('rejects a node that is not in the workflow', async () => {
+		const harness = createRunAdapterForTests(chainWorkflow);
+		const runStep = harness.adapter.runStep as NonNullable<typeof harness.adapter.runStep>;
+
+		await expect(runStep('wf-1', 'Nope', undefined)).rejects.toThrow('has no node named "Nope"');
+		expect(harness.mockWorkflowRunner.run).not.toHaveBeenCalled();
+	});
+
+	it('rejects a disabled node instead of starting a run the engine would refuse', async () => {
+		const workflow = {
+			...chainWorkflow,
+			nodes: chainWorkflow.nodes.map((node) =>
+				node.name === 'Send' ? { ...node, disabled: true } : node,
+			),
+		};
+		const harness = createRunAdapterForTests(workflow);
+		const runStep = harness.adapter.runStep as NonNullable<typeof harness.adapter.runStep>;
+
+		await expect(runStep('wf-1', 'Send', undefined)).rejects.toThrow('is disabled');
+	});
+
+	it('names the trigger when the target is one, so a sibling trigger is not auto-detected', async () => {
+		const { runData } = await runStepOn(chainWorkflow, 'Trigger');
+
+		expect(runData.triggerToStartFrom).toEqual({ name: 'Trigger' });
+		expect(runData.destinationNode).toEqual({ nodeName: 'Trigger', mode: 'inclusive' });
+	});
+
+	it('leaves the trigger unset for a normal node', async () => {
+		const { runData } = await runStepOn(chainWorkflow, 'Send');
+
+		expect(runData.triggerToStartFrom).toBeUndefined();
+	});
+
+	it('runs a past version graph when asked, without changing the workflow it belongs to', async () => {
+		const harness = createRunAdapterForTests(chainWorkflow);
+		harness.mockWorkflowHistoryService.getVersion.mockResolvedValue({
+			versionId: 'v-old',
+			nodes: [
+				{ name: 'Trigger', type: 'n8n-nodes-base.manualTrigger', typeVersion: 1, position: [0, 0] },
+				{ name: 'Send', type: 'n8n-nodes-base.slack', typeVersion: 1, position: [1, 0] },
+			],
+			connections: { Trigger: { main: [[{ node: 'Send', type: 'main', index: 0 }]] } },
+		});
+		const runStep = harness.adapter.runStep as NonNullable<typeof harness.adapter.runStep>;
+
+		await runStep('wf-1', 'Send', { versionId: 'v-old' });
+
+		const runData = harness.mockWorkflowRunner.run.mock.calls[0][0];
+		expect(runData.workflowData.id).toBe('wf-1');
+		expect(runData.workflowData.nodes.map((node: { name: string }) => node.name)).toEqual([
+			'Trigger',
+			'Send',
+		]);
+	});
+
+	it('reads the draft without touching history when no version is named', async () => {
+		const harness = createRunAdapterForTests(chainWorkflow);
+		const runStep = harness.adapter.runStep as NonNullable<typeof harness.adapter.runStep>;
+
+		await runStep('wf-1', 'Send', undefined);
+
+		expect(harness.mockWorkflowHistoryService.getVersion).not.toHaveBeenCalled();
+	});
+
+	it('persists the partial-run shape the worker rebuilds from in queue mode', async () => {
+		const previous = process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS;
+		process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = 'true';
+		try {
+			const { runData } = await runStepOn(
+				chainWorkflow,
+				'Send',
+				{ mockInput: [{ a: 1 }] },
+				{ queueMode: true },
+			);
+
+			// The worker takes the `runManually` branch only when `executionData`
+			// carries no node execution stack, and reads these three fields.
+			expect(runData.executionData.startData.destinationNode).toEqual({
+				nodeName: 'Send',
+				mode: 'inclusive',
+			});
+			expect(runData.executionData.resultData.runData.Fetch).toBeDefined();
+			expect(runData.executionData.manualData.dirtyNodeNames).toEqual(['Send']);
+			expect(runData.executionData.manualData.source).toBe('instance_ai');
+		} finally {
+			process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = previous;
+		}
+	});
+
+	it('leaves run data unset in queue mode for a chain run, so the worker runs the chain', async () => {
+		const previous = process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS;
+		process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = 'true';
+		try {
+			const { runData } = await runStepOn(chainWorkflow, 'Send', undefined, { queueMode: true });
+
+			// `createRunExecutionData` turns the explicit null into undefined, and
+			// the worker's `runManually` routes a chain run on exactly that.
+			expect(runData.executionData.resultData.runData).toBeUndefined();
+			// No node execution stack, so `job-processor` rebuilds through
+			// `runManually` instead of replaying a prepared stack.
+			expect(runData.executionData.executionData).toBeUndefined();
+		} finally {
+			process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = previous;
+		}
+	});
+
+	it("drops the target's pin so the step actually executes the node", async () => {
+		const { runData, result } = await runStepOn(
+			{ ...chainWorkflow, pinData: { Send: [{ json: { stale: true } }], Fetch: [{ json: {} }] } },
+			'Send',
+		);
+
+		// A pinned node never executes, so leaving the pin on would make the step
+		// replay stale output and report success.
+		expect(runData.pinData).toEqual({ Fetch: [{ json: {} }] });
+		expect(result.workflowPinnedNodeNames).toEqual(['Fetch']);
+	});
+
+	it('drops a pin that would beat the caller mock input', async () => {
+		const { runData } = await runStepOn(
+			{ ...chainWorkflow, pinData: { Fetch: [{ json: { pinned: true } }] } },
+			'Send',
+			{ mockInput: [{ text: 'hi' }] },
+		);
+
+		expect(runData.pinData).toEqual({});
+		expect(runData.runData.Fetch[0].data.main[0]).toEqual([{ json: { text: 'hi' } }]);
+	});
+
+	it('does not report a mocked node as executed', async () => {
+		const harness = createRunAdapterForTests(chainWorkflow, {
+			execution: makeExecution({
+				status: 'success',
+				// The engine persists run data for the mocked nodes too, because
+				// that is how it feeds the target. Only the target really ran.
+				runData: {
+					Trigger: [makeTaskData([{}])],
+					Fetch: [makeTaskData([{}])],
+					Send: [makeTaskData([{ ok: true }])],
+				},
+			}),
+			allowSendingParameterValues: true,
+		});
+		const runStep = harness.adapter.runStep as NonNullable<typeof harness.adapter.runStep>;
+
+		const result = await runStep('wf-1', 'Send', { mockInput: [{ a: 1 }] });
+
+		expect(result.mockedNodeNames.sort()).toEqual(['Fetch', 'Trigger']);
+		expect(result.executedNodeNames).toEqual(['Send']);
+	});
+
+	it('keeps every executed node for a chain run', async () => {
+		const harness = createRunAdapterForTests(chainWorkflow, {
+			execution: makeExecution({
+				status: 'success',
+				runData: {
+					Trigger: [makeTaskData([{}])],
+					Fetch: [makeTaskData([{}])],
+					Send: [makeTaskData([{ ok: true }])],
+				},
+			}),
+			allowSendingParameterValues: true,
+		});
+		const runStep = harness.adapter.runStep as NonNullable<typeof harness.adapter.runStep>;
+
+		const result = await runStep('wf-1', 'Send', undefined);
+
+		expect(result.executedNodeNames).toEqual(['Trigger', 'Fetch', 'Send']);
+	});
+
+	it('does not report a replayed node as executed', async () => {
+		const priorRunData = {
+			Trigger: [makeTaskData([{}])],
+			Fetch: [makeTaskData([{ id: 9 }])],
+			Send: [makeTaskData([{ old: true }])],
+		};
+		const harness = createRunAdapterForTests(chainWorkflow, {
+			// The engine keeps the replayed entries in the final run data, so the
+			// execution looks like the whole chain ran.
+			execution: makeExecution({ status: 'success', runData: priorRunData }),
+			allowSendingParameterValues: true,
+		});
+		const runStep = harness.adapter.runStep as NonNullable<typeof harness.adapter.runStep>;
+
+		const result = await runStep('wf-1', 'Send', { reuseExecutionId: 'exec-past' });
+
+		// Only the target re-runs: `dirtyNodeNames` drops its stale data and the
+		// run stops there.
+		expect(result.executedNodeNames).toEqual(['Send']);
+		expect(result.replayedNodeNames?.sort()).toEqual(['Fetch', 'Trigger']);
+		expect(result.mockedNodeNames).toEqual([]);
+	});
+
+	it('omits a reused node the subgraph never carried', async () => {
+		// Execution 97 covered the whole workflow, but a step on `Send` only pulls
+		// in the nodes between the trigger and `Send`. `findSubgraph` drops the
+		// rest, so they were offered for replay but never carried.
+		const priorRunData = {
+			Trigger: [makeTaskData([{}])],
+			Fetch: [makeTaskData([{ id: 9 }])],
+			Send: [makeTaskData([{ old: true }])],
+			'Sibling Branch': [makeTaskData([{ unrelated: true }])],
+		};
+		const harness = createRunAdapterForTests(chainWorkflow, {
+			execution: makeExecution({
+				status: 'success',
+				runData: {
+					Trigger: [makeTaskData([{}])],
+					Fetch: [makeTaskData([{ id: 9 }])],
+					Send: [makeTaskData([{ ok: true }])],
+				},
+			}),
+			allowSendingParameterValues: true,
+		});
+		harness.mockExecutionPersistence.findSingleExecution.mockResolvedValueOnce({
+			...makeExecution({ status: 'success', runData: priorRunData }),
+		} as never);
+		const runStep = harness.adapter.runStep as NonNullable<typeof harness.adapter.runStep>;
+
+		const result = await runStep('wf-1', 'Send', { reuseExecutionId: 'exec-past' });
+
+		expect(result.replayedNodeNames?.sort()).toEqual(['Fetch', 'Trigger']);
+		expect(result.executedNodeNames).toEqual(['Send']);
+	});
+
+	it('omits the replayed list for a chain run', async () => {
+		const { result } = await runStepOn(chainWorkflow, 'Send');
+
+		expect(result).not.toHaveProperty('replayedNodeNames');
+	});
+
+	it('reports the step in telemetry', async () => {
+		const { mockTelemetry } = await runStepOn(
+			chainWorkflow,
+			'Send',
+			{ mockInput: [{ a: 1 }] },
+			{
+				threadId: 'thread-1',
+			},
+		);
+
+		expect(mockTelemetry.track).toHaveBeenCalledWith(
+			'Builder executed workflow',
+			expect.objectContaining({
+				workflow_id: 'wf-1',
+				exec_type: 'step',
+				input_mode: 'mocked',
+			}),
+		);
+	});
+});
+
 describe('getGatewayConfigOrNull', () => {
 	async function callGet(adapter: InstanceAiAdapterService) {
 		return await (
@@ -5478,6 +5886,7 @@ describe('resolveExperimentGates', () => {
 		[INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG]: INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
 		[INSTANCE_AI_NODE_USAGE_FLAG]: true,
 		[INSTANCE_AI_FOLDER_EXPLORATION_FLAG]: INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
+		[CONTEXT_PREFERENCES_FLAG]: CONTEXT_PREFERENCES_ENABLED_VARIANT,
 	};
 
 	it('resolves every gate, including folder exploration, from one flag fetch', async () => {
@@ -5490,6 +5899,7 @@ describe('resolveExperimentGates', () => {
 			progressiveBuildingEnabled: true,
 			nodeUsageEnabled: true,
 			folderExplorationEnabled: true,
+			aiPreferencesEnabled: true,
 		});
 		expect(getFeatureFlags).toHaveBeenCalledTimes(1);
 		expect(getFeatureFlags).toHaveBeenCalledWith(user);
@@ -5503,6 +5913,7 @@ describe('resolveExperimentGates', () => {
 			[INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG]: 'control',
 			[INSTANCE_AI_NODE_USAGE_FLAG]: false,
 			[INSTANCE_AI_FOLDER_EXPLORATION_FLAG]: 'control',
+			[CONTEXT_PREFERENCES_FLAG]: CONTEXT_PREFERENCES_CONTROL_VARIANT,
 		});
 
 		await expect(createAdapter().resolveExperimentGates(user)).resolves.toEqual({
@@ -5512,6 +5923,7 @@ describe('resolveExperimentGates', () => {
 			progressiveBuildingEnabled: false,
 			nodeUsageEnabled: false,
 			folderExplorationEnabled: false,
+			aiPreferencesEnabled: false,
 		});
 	});
 
@@ -5526,6 +5938,16 @@ describe('resolveExperimentGates', () => {
 		});
 	});
 
+	// The preferences flag is multivariate too, so a boolean `true` must not
+	// open the gate.
+	it('does not open the AI preferences gate on a boolean true', async () => {
+		stubContainer({ ...allEnabled, [CONTEXT_PREFERENCES_FLAG]: true });
+
+		await expect(createAdapter().resolveExperimentGates(user)).resolves.toMatchObject({
+			aiPreferencesEnabled: false,
+		});
+	});
+
 	it('fails closed when no flags resolve (PostHog outage returns {})', async () => {
 		stubContainer({});
 
@@ -5536,6 +5958,7 @@ describe('resolveExperimentGates', () => {
 			progressiveBuildingEnabled: false,
 			nodeUsageEnabled: false,
 			folderExplorationEnabled: false,
+			aiPreferencesEnabled: false,
 		});
 	});
 
@@ -5550,6 +5973,7 @@ describe('resolveExperimentGates', () => {
 			progressiveBuildingEnabled: false,
 			nodeUsageEnabled: false,
 			folderExplorationEnabled: false,
+			aiPreferencesEnabled: false,
 		});
 	});
 
@@ -5902,7 +6326,28 @@ describe('createContext — builder delegate wiring', () => {
 			if (token === InstanceAiBuilderDelegateAdapterService) return builderDelegateAdapter;
 			throw new Error(`Unexpected Container.get call in test: ${String(token)}`);
 		});
+		return builderDelegateAdapter;
 	}
+
+	it('enables deterministic Agent Builder model catalogs for eval threads', () => {
+		const service = createAdapterWithGatewayMock(vi.fn(), { telemetry: { track: vi.fn() } });
+		const delegate = mock<InstanceAiBuilderDelegate>();
+		const builderDelegateAdapter = mockBuilderModuleActive(delegate);
+
+		service.createContext(mockUser, {
+			threadId: 'thread-1',
+			projectId: 'proj-1',
+			credentialIdAllowlist: [],
+		});
+
+		expect(builderDelegateAdapter.createDelegate).toHaveBeenCalledWith(
+			mockUser,
+			'proj-1',
+			expect.anything(),
+			expect.anything(),
+			{ useEvalModelCatalog: true },
+		);
+	});
 
 	it('exposes the delegate unwrapped, so creation telemetry stays in AgentsService', async () => {
 		const mockTelemetry = { track: vi.fn() };

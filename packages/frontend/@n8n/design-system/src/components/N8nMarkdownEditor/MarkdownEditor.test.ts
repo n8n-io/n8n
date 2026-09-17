@@ -95,6 +95,18 @@ describe('components/N8nMarkdownEditorToolbar', () => {
 		expect(wrapper.getByRole('button', { name: 'Text' })).toBeInTheDocument();
 	});
 
+	it('reserves content space for the hover toolbar', async () => {
+		const wrapper = render(N8nMarkdownEditor, {
+			props: {
+				modelValue: 'Content',
+				showToolbar: 'hover',
+			},
+		});
+
+		await waitFor(() => expect(wrapper.getByTestId('markdown-editor-toolbar')).toBeInTheDocument());
+		expect(wrapper.getByTestId('n8n-markdown-editor-content').parentElement).toHaveClass('padTop');
+	});
+
 	it('renders the floating toolbar in a TipTap bubble menu', async () => {
 		const wrapper = render(N8nMarkdownEditor, {
 			props: {

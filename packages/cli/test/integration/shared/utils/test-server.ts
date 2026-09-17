@@ -230,6 +230,10 @@ export const setupTestServer = ({
 						await import('@/environments.ee/variables/variables.controller.ee.js');
 						break;
 
+					case 'ai-preferences':
+						await import('@/controllers/ai-preference.controller.js');
+						break;
+
 					case 'license':
 						await import('@/license/license.controller.js');
 						break;
@@ -310,6 +314,10 @@ export const setupTestServer = ({
 
 					case 'passwordReset':
 						await import('@/controllers/password-reset.controller.js');
+						break;
+
+					case 'changeEmail':
+						await import('@/controllers/change-email.controller.js');
 						break;
 
 					case 'owner':

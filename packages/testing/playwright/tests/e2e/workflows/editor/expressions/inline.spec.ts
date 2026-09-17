@@ -103,6 +103,23 @@ test.describe(
 				await n8n.ndv.typeInExpressionEditor('{{ [1, 2, 3][0]');
 				await expect(n8n.ndv.getInlineExpressionEditorOutput()).toHaveText('1');
 			});
+
+			test('should resolve bare identifiers through the workflow data context', async ({ n8n }) => {
+				// `origin` is declared inside the nested block only, so the read after
+				// it is a free read and resolves through the data context.
+				await n8n.ndv.clearExpressionEditor();
+				await n8n.ndv.typeInExpressionEditor(
+					"{{ (() => { { let origin = 'inner'; } return origin; })()",
+				);
+				await expect(n8n.ndv.getInlineExpressionEditorOutput()).toHaveText('[undefined]');
+
+				// Same expression with the read inside the block, so the name is in scope.
+				await n8n.ndv.clearExpressionEditor();
+				await n8n.ndv.typeInExpressionEditor(
+					"{{ (() => { { let origin = 'inner'; return origin; } })()",
+				);
+				await expect(n8n.ndv.getInlineExpressionEditorOutput()).toHaveText('inner');
+			});
 		});
 
 		test.describe('Dynamic data', () => {
