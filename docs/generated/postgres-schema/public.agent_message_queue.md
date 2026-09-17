@@ -40,9 +40,9 @@
 | Name | Definition |
 | ---- | ---------- |
 | IDX_0d7ab2b181c282217497591502 | CREATE INDEX "IDX_0d7ab2b181c282217497591502" ON public.agent_message_queue USING btree ("threadId", status, kind, id) |
-| IDX_2349d84b4f2a660fc264f38fef | CREATE INDEX "IDX_2349d84b4f2a660fc264f38fef" ON public.agent_message_queue USING btree ("executionId") |
 | IDX_832d536d7954194b88e0edb5bd | CREATE INDEX "IDX_832d536d7954194b88e0edb5bd" ON public.agent_message_queue USING btree (status, "updatedAt") |
 | IDX_8a5699c954416a2172688ff39f | CREATE INDEX "IDX_8a5699c954416a2172688ff39f" ON public.agent_message_queue USING btree ("agentId") |
+| IDX_agent_message_queue_executionId | CREATE UNIQUE INDEX "IDX_agent_message_queue_executionId" ON public.agent_message_queue USING btree ("executionId") WHERE ("executionId" IS NOT NULL) |
 | PK_733d8c959a6057f04f4da5ab721 | CREATE UNIQUE INDEX "PK_733d8c959a6057f04f4da5ab721" ON public.agent_message_queue USING btree (id) |
 
 ## Relations

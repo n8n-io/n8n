@@ -42,9 +42,9 @@ CREATE TABLE "agent_message_queue" ("id" integer PRIMARY KEY AUTOINCREMENT NOT N
 | Name | Definition |
 | ---- | ---------- |
 | IDX_0d7ab2b181c282217497591502 | CREATE INDEX "IDX_0d7ab2b181c282217497591502" ON "agent_message_queue" ("threadId", "status", "kind", "id")  |
-| IDX_2349d84b4f2a660fc264f38fef | CREATE INDEX "IDX_2349d84b4f2a660fc264f38fef" ON "agent_message_queue" ("executionId")  |
 | IDX_832d536d7954194b88e0edb5bd | CREATE INDEX "IDX_832d536d7954194b88e0edb5bd" ON "agent_message_queue" ("status", "updatedAt")  |
 | IDX_8a5699c954416a2172688ff39f | CREATE INDEX "IDX_8a5699c954416a2172688ff39f" ON "agent_message_queue" ("agentId")  |
+| IDX_agent_message_queue_executionId | CREATE UNIQUE INDEX "IDX_agent_message_queue_executionId" ON "agent_message_queue" ("executionId") WHERE "executionId" IS NOT NULL |
 
 ## Relations
 

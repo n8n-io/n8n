@@ -30,7 +30,7 @@ export class AgentConversationLeaseRepository extends BaseRepository<AgentConver
 	async acquire(agentId: string, threadId: string): Promise<AgentConversationLeaseHandle | null> {
 		const handle = { agentId, threadId, ownerToken: randomUUID() };
 		return await this.runInTransaction({}, async (manager) => {
-			await manager
+			const updated = await manager
 				.createQueryBuilder()
 				.update(AgentConversationLease)
 				.set({
@@ -40,6 +40,8 @@ export class AgentConversationLeaseRepository extends BaseRepository<AgentConver
 				.where({ agentId, threadId })
 				.andWhere(`"expiresAt" <= ${this.time()}`)
 				.execute();
+			if (updated.affected === 1) return handle;
+
 			await manager
 				.createQueryBuilder()
 				.insert()

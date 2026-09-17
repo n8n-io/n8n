@@ -147,16 +147,19 @@ export class AgentMessageQueueRepository extends BaseRepository<AgentMessageQueu
 			.getMany();
 	}
 
-	async findStaleThreads(graceMs: number): Promise<string[]> {
-		const rows = await this.createQueryBuilder('item')
-			.select('DISTINCT item.threadId', 'threadId')
+	async findStaleConversations(
+		graceMs: number,
+	): Promise<Array<{ agentId: string; threadId: string }>> {
+		return await this.createQueryBuilder('item')
+			.select('item.agentId', 'agentId')
+			.addSelect('item.threadId', 'threadId')
+			.distinct(true)
 			.where(`item.updatedAt < ${this.time(-graceMs)}`)
 			.andWhere('(item.status = :processing OR item.source = :preview)', {
 				processing: 'processing',
 				preview: 'preview',
 			})
-			.getRawMany<{ threadId: string }>();
-		return rows.map(({ threadId }) => threadId);
+			.getRawMany<{ agentId: string; threadId: string }>();
 	}
 
 	async findWaitingThreads(agentId?: string): Promise<string[]> {

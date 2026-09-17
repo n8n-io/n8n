@@ -1,7 +1,11 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
 export class CreateAgentMessageQueue1789499956927 implements ReversibleMigration {
-	async up({ isSqlite, schemaBuilder: { createTable, column } }: MigrationContext) {
+	async up({
+		isSqlite,
+		escape,
+		schemaBuilder: { createTable, createIndex, column },
+	}: MigrationContext) {
 		// SQLite needs AUTOINCREMENT so a stale Stop cannot target a reused queue ID.
 		const id = isSqlite
 			? column('id').int.primary.autoGenerate
@@ -34,13 +38,19 @@ export class CreateAgentMessageQueue1789499956927 implements ReversibleMigration
 			.withTimestamps.withIndexOn(['threadId', 'status', 'kind', 'id'])
 			.withIndexOn(['status', 'updatedAt'])
 			.withIndexOn(['agentId'])
-			.withIndexOn(['executionId'])
 			.withForeignKey('agentId', { tableName: 'agents', columnName: 'id', onDelete: 'CASCADE' })
 			.withForeignKey('executionId', {
 				tableName: 'agent_execution',
 				columnName: 'id',
 				onDelete: 'SET NULL',
 			});
+		await createIndex(
+			'agent_message_queue',
+			['executionId'],
+			true,
+			undefined,
+			`${escape.columnName('executionId')} IS NOT NULL`,
+		);
 		await createTable('agent_conversation_lease')
 			.withColumns(
 				// Ownership must work before the first execution thread exists.

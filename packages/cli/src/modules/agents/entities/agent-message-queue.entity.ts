@@ -6,6 +6,7 @@ import {
 	Index,
 	JoinColumn,
 	ManyToOne,
+	OneToOne,
 	PrimaryColumn,
 	type Relation,
 } from '@n8n/typeorm';
@@ -18,7 +19,7 @@ import type { AgentQueuePayload } from '../agent-message-queue.types';
 @Index(['threadId', 'status', 'kind', 'id'])
 @Index(['status', 'updatedAt'])
 @Index(['agentId'])
-@Index(['executionId'])
+@Index(['executionId'], { unique: true, where: '"executionId" IS NOT NULL' })
 export class AgentMessageQueue extends WithTimestamps {
 	@Generated()
 	@PrimaryColumn({ type: dbType === 'sqlite' ? 'integer' : 'bigint', transformer: idStringifier })
@@ -50,7 +51,7 @@ export class AgentMessageQueue extends WithTimestamps {
 	@Column({ type: 'varchar', length: 36, nullable: true })
 	executionId: string | null;
 
-	@ManyToOne(() => AgentExecution, { onDelete: 'SET NULL', nullable: true })
+	@OneToOne(() => AgentExecution, { onDelete: 'SET NULL', nullable: true })
 	@JoinColumn({ name: 'executionId' })
 	execution: Relation<AgentExecution> | null;
 }

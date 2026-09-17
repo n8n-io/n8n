@@ -703,7 +703,9 @@ describe('agent message queue', () => {
 			await repository.update({}, { updatedAt: new Date(Date.now() - 180_000) });
 			const heartbeat = vi.spyOn(repository, 'touchLiveEntries');
 			await vi.advanceTimersByTimeAsync(30_000);
-			await retryUntil(async () => expect(await repository.findStaleThreads(120_000)).toEqual([]));
+			await retryUntil(async () =>
+				expect(await repository.findStaleConversations(120_000)).toEqual([]),
+			);
 			expect(heartbeat.mock.calls.filter(([ids]) => ids.length > 0)).toHaveLength(1);
 			expect(heartbeat.mock.calls.find(([ids]) => ids.length > 0)?.[0]).toHaveLength(2);
 			await peer.recover();
@@ -784,6 +786,59 @@ describe('agent message queue', () => {
 		expect(await repository.countBy({ threadId: 'healthy', status: 'processing' })).toBe(1);
 		expect(await repository.countBy({ threadId: 'refreshed', status: 'processing' })).toBe(1);
 		expect(await repository.countBy({ threadId: 'suspended', status: 'queued' })).toBe(1);
+	});
+
+	it('preserves a preview and its attachment when it becomes live before recovery acquires ownership', async () => {
+		const threadId = 'refreshed-preview';
+		const entry = await repository.enqueue(
+			preview('waiting', threadId, [
+				{ id: 'live-file', fileName: 'note.txt', mimeType: 'text/plain', sizeBytes: 1 },
+			]),
+		);
+		await attachmentRepository.save(
+			attachmentRepository.create({
+				id: 'live-file',
+				agentId,
+				projectId,
+				threadId,
+				resourceId: 'user',
+				binaryDataId: 'filesystem-v2:live-file',
+				fileName: 'note.txt',
+				mimeType: 'text/plain',
+				fileSizeBytes: 1,
+				source: 'preview',
+			}),
+		);
+		await repository.update(entry.id, { updatedAt: new Date(0) });
+		checkpoints.findSuspendedForThread.mockResolvedValue(mock<SerializableAgentState>());
+		const leaseRepository = Container.get(AgentConversationLeaseRepository);
+		const acquire = leaseRepository.acquire.bind(leaseRepository);
+		const acquiring = createDeferredPromise();
+		const refreshed = createDeferredPromise();
+		const acquisition = vi
+			.spyOn(leaseRepository, 'acquire')
+			.mockImplementationOnce(async (...args) => {
+				acquiring.resolve();
+				await refreshed.promise;
+				return await acquire(...args);
+			});
+		const main = await makeMain();
+		const recovery = main.recover();
+		try {
+			await acquiring.promise;
+			await repository.touchLiveEntries([entry.id]);
+			refreshed.resolve();
+			await recovery;
+			expect(await repository.findOneByOrFail({ id: entry.id })).toMatchObject({
+				status: 'queued',
+			});
+			expect(await attachmentRepository.existsBy({ id: 'live-file' })).toBe(true);
+			expect(attachments.deleteStoredBytes).not.toHaveBeenCalled();
+		} finally {
+			refreshed.resolve();
+			await recovery;
+			acquisition.mockRestore();
+		}
 	});
 
 	it('stops recovery when its conversation lease is lost', async () => {

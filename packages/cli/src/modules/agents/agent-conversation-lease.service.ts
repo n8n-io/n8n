@@ -19,6 +19,14 @@ export type AgentConversationOwner = Readonly<{
 	lose: (error: unknown) => void;
 }>;
 
+type ActiveLease = {
+	owner: AgentConversationOwner;
+	signal: AbortSignal;
+	release: () => Promise<void>;
+};
+
+// Carry the immutable owner through stream creation, consumption, and cleanup.
+// Fenced writes use this context so cached runtimes do not retain ownership tokens.
 const executionOwner = new AsyncLocalStorage<AgentConversationOwner>();
 
 @Service()
@@ -97,9 +105,14 @@ export class AgentConversationLeaseService {
 		current: AgentConversationOwner | undefined,
 	): AsyncGenerator<T> {
 		const threadId = typeof conversation === 'string' ? conversation : await conversation();
-		const borrowed = current?.lease.threadId === threadId && current.lease.agentId === agentId;
-		const acquired = borrowed ? undefined : await this.acquire(agentId, threadId, options);
-		const owner = borrowed ? current : acquired!.owner;
+		let acquired: ActiveLease | undefined;
+		let owner: AgentConversationOwner;
+		if (current?.lease.threadId === threadId && current.lease.agentId === agentId) {
+			owner = current;
+		} else {
+			acquired = await this.acquire(agentId, threadId, options);
+			owner = acquired.owner;
+		}
 		const signal = options.signal ? AbortSignal.any([owner.signal, options.signal]) : owner.signal;
 		let iterator: AsyncGenerator<T> | undefined;
 		try {
@@ -129,18 +142,29 @@ export class AgentConversationLeaseService {
 		agentId: string,
 		threadId: string,
 		options: { signal?: AbortSignal; waitTimeoutMs?: number },
-	) {
+	): Promise<ActiveLease> {
+		const handle = await this.waitForLease(agentId, threadId, options);
+		return this.startLease(handle, options.signal);
+	}
+
+	private async waitForLease(
+		agentId: string,
+		threadId: string,
+		options: { signal?: AbortSignal; waitTimeoutMs?: number },
+	): Promise<AgentConversationLeaseHandle> {
 		const started = performance.now();
-		let handle: AgentConversationLeaseHandle | null;
-		do {
+		while (true) {
 			options.signal?.throwIfAborted();
-			handle = await this.repository.acquire(agentId, threadId);
-			if (handle) break;
+			const handle = await this.repository.acquire(agentId, threadId);
+			if (handle) return handle;
 			const remaining = (options.waitTimeoutMs ?? Infinity) - (performance.now() - started);
 			if (remaining <= 0) throw new AgentConversationLeaseTimeoutError(threadId);
 			await delay(Math.min(250, remaining), undefined, { signal: options.signal });
-		} while (!handle);
+		}
+	}
 
+	private startLease(handle: AgentConversationLeaseHandle, signal?: AbortSignal): ActiveLease {
+		const { threadId } = handle;
 		const controller = new AbortController();
 		const owner: AgentConversationOwner = {
 			lease: handle,
@@ -167,9 +191,7 @@ export class AgentConversationLeaseService {
 		controller.signal.addEventListener('abort', () => clearInterval(timer), { once: true });
 		return {
 			owner,
-			signal: options.signal
-				? AbortSignal.any([controller.signal, options.signal])
-				: controller.signal,
+			signal: signal ? AbortSignal.any([controller.signal, signal]) : controller.signal,
 			release: async () => {
 				clearInterval(timer);
 				await renewing;

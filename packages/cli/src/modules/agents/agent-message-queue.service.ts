@@ -301,12 +301,10 @@ export class AgentMessageQueueService {
 
 	async recover(): Promise<void> {
 		const graceMs = AgentMessageQueueService.LIVENESS_GRACE_MS;
-		for (const threadId of await this.repository.findStaleThreads(graceMs)) {
+		for (const { agentId, threadId } of await this.repository.findStaleConversations(graceMs)) {
 			try {
-				const [candidate] = await this.repository.findStale(threadId, graceMs);
-				if (!candidate) continue;
 				await this.leases.withLease(
-					candidate.agentId,
+					agentId,
 					threadId,
 					async (leaseSignal) => {
 						const owner = this.leases.requireOwner(threadId);

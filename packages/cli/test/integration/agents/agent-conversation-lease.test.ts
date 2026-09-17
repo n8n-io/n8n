@@ -18,7 +18,10 @@ import { Container } from '@n8n/di';
 import { randomUUID } from 'node:crypto';
 
 import { AgentConversationLeaseService } from '@/modules/agents/agent-conversation-lease.service';
-import { AgentConversationLeaseLostError } from '@/modules/agents/agent-conversation-lease.types';
+import {
+	AgentConversationLeaseLostError,
+	AgentConversationLeaseTimeoutError,
+} from '@/modules/agents/agent-conversation-lease.types';
 import { AgentConversationLeaseRepository } from '@/modules/agents/repositories/agent-conversation-lease.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 
@@ -59,6 +62,44 @@ describe('agent conversation ownership', () => {
 		expect(await repository.acquire(agentId, 'second')).not.toBeNull();
 		expect(await repository.count()).toBe(2);
 	});
+
+	it.each(['abort', 'timeout'])(
+		'stops waiting on %s without changing the current owner',
+		async (mode) => {
+			await leases.withLease(agentId, 'busy', async () => {
+				const owner = leases.requireOwner('busy');
+				const controller = new AbortController();
+				const attempted = createDeferredPromise();
+				const acquire = repository.acquire.bind(repository);
+				const acquisition = vi
+					.spyOn(repository, 'acquire')
+					.mockImplementationOnce(async (...args) => {
+						const handle = await acquire(...args);
+						attempted.resolve();
+						return handle;
+					});
+				const run = vi.fn(async () => undefined);
+				try {
+					const waiting = leases.withLease(agentId, 'busy', run, {
+						signal: controller.signal,
+						waitTimeoutMs: mode === 'timeout' ? 0 : undefined,
+					});
+					const rejected =
+						mode === 'timeout'
+							? expect(waiting).rejects.toBeInstanceOf(AgentConversationLeaseTimeoutError)
+							: expect(waiting).rejects.toMatchObject({ name: 'AbortError' });
+					await attempted.promise;
+					if (mode === 'abort') controller.abort();
+					await rejected;
+					expect(run).not.toHaveBeenCalled();
+					expect(await leases.write(owner, async () => true)).toBe(true);
+				} finally {
+					controller.abort();
+					acquisition.mockRestore();
+				}
+			});
+		},
+	);
 
 	it('rejects expired renewal and release without changing a successor', async () => {
 		const former = await repository.acquire(agentId, 'conversation');
@@ -258,6 +299,33 @@ describe('agent conversation ownership', () => {
 			await expect(oldStream.next()).rejects.toBeInstanceOf(AgentConversationLeaseLostError);
 			expect(await memory.getMessages('one')).toHaveLength(1);
 		});
+	});
+
+	it.each([false, true])('closes a stream in its owner context; borrowed=%s', async (borrowed) => {
+		let closed = false;
+		const consume = async () => {
+			const parent = leases.currentOwner();
+			const stream = leases.stream(agentId, 'closing', async function* () {
+				const owner = leases.requireOwner('closing');
+				try {
+					yield 'first';
+					yield 'second';
+				} finally {
+					expect(leases.requireOwner('closing')).toBe(owner);
+					await leases.write(owner, async () => {
+						closed = true;
+					});
+				}
+			});
+			await expect(stream.next()).resolves.toMatchObject({ value: 'first', done: false });
+			await stream.return(undefined);
+			expect(closed).toBe(true);
+			expect(await repository.isHeld('closing')).toBe(borrowed);
+			if (parent) expect(await leases.write(parent, async () => true)).toBe(true);
+		};
+		if (borrowed) await leases.withLease(agentId, 'closing', consume);
+		else await consume();
+		expect(await repository.isHeld('closing')).toBe(false);
 	});
 
 	it('lets a detached child finish after parent ownership ends', async () => {

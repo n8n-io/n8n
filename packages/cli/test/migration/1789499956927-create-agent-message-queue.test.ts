@@ -80,6 +80,37 @@ describe('CreateAgentMessageQueue migration', () => {
 			);
 			expect(BigInt(replacement.id)).toBeGreaterThan(BigInt(rows[1].id));
 			expect(replacement.status).toBe('cancelling');
+			const executionId = randomUUID();
+			await runQuery(
+				`INSERT INTO ${escape.tableName('agent_execution_threads')} ("id", "agentId", "agentName", "projectId")
+				 VALUES ('future-thread', :agentId, 'Agent', :projectId)`,
+				{ agentId, projectId },
+			);
+			await runQuery(
+				`INSERT INTO ${escape.tableName('agent_execution')} ("id", "threadId", "status")
+				 VALUES (:executionId, 'future-thread', 'running')`,
+				{ executionId },
+			);
+			await runQuery(`UPDATE ${table} SET "executionId" = :executionId WHERE "id" = :id`, {
+				executionId,
+				id: rows[0].id,
+			});
+			await expect(
+				runQuery(`UPDATE ${table} SET "executionId" = :executionId WHERE "id" = :id`, {
+					executionId,
+					id: replacement.id,
+				}),
+			).rejects.toThrow();
+			await runQuery(
+				`DELETE FROM ${escape.tableName('agent_execution')} WHERE "id" = :executionId`,
+				{
+					executionId,
+				},
+			);
+			expect(await runQuery(`SELECT "executionId" FROM ${table}`)).toEqual([
+				{ executionId: null },
+				{ executionId: null },
+			]);
 			const schema = await queryRunner.getTable(`${tablePrefix}agent_message_queue`);
 			// The PostgreSQL driver returns index columns in name order.
 			expect(schema?.indices.map(({ columnNames }) => columnNames.toSorted())).toEqual(
@@ -90,6 +121,9 @@ describe('CreateAgentMessageQueue migration', () => {
 					['executionId'],
 				]),
 			);
+			expect(
+				schema?.indices.find(({ columnNames }) => columnNames.includes('executionId')),
+			).toMatchObject({ isUnique: true });
 			expect(
 				schema?.foreignKeys.map(({ columnNames, onDelete }) => ({ columnNames, onDelete })),
 			).toEqual(
