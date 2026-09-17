@@ -87,18 +87,15 @@ export class TeamsIntegration extends AgentChatIntegration {
 	];
 
 	/**
-	 * A channel or group chat card goes out as a Teams targeted message, so the
-	 * approval reaches only the user who asked — and only they can answer it. A
-	 * public card would let any channel member approve on their behalf, which is
-	 * the reason this is on: it is an authorization boundary, not tidiness.
+	 * A channel or group chat card goes out as a Teams targeted message, so only
+	 * the user who asked can answer it. A public card would let any channel
+	 * member approve on their behalf: this is an authorization boundary, not
+	 * tidiness.
 	 *
-	 * Removing the answered card needs a patch on `@chat-adapter/teams`
-	 * (`patches/@chat-adapter__teams@4.37.0.patch`, upstream vercel/chat#950).
-	 * Mutating a targeted activity only works through `?isTargetedActivity=true`,
-	 * which the adapter's `editMessage`/`deleteMessage` never send, so Teams
-	 * answers `400` and the card keeps its buttons. Posting is unaffected:
-	 * `app.send` does route a recipient-targeted activity to `createTargeted`.
-	 * Drop the patch once the adapter sends the flag itself.
+	 * Deleting the answered card relies on
+	 * `patches/@chat-adapter__teams@4.37.0.patch`, because the adapter mutates a
+	 * targeted activity without `?isTargetedActivity=true` and Teams answers
+	 * 400. Drop the patch once upstream sends the flag (vercel/chat#950).
 	 */
 	readonly targetSuspensionCardAtActingUser = true;
 

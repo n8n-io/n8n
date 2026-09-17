@@ -104,6 +104,30 @@ export function onceStatusHandle(
 	};
 }
 
+/**
+ * What an ephemeral post accepts — text and cards, but not a stream. Narrower
+ * than `Thread.post`, which also takes an `AsyncIterable` for streamed replies.
+ */
+type EphemeralPostable = Parameters<Thread<unknown, unknown>['postEphemeral']>[1];
+
+/**
+ * Deliver `payload` to `user` alone where the platform can, and to the whole
+ * thread where it cannot. Slack and Teams post natively; the SDK returns `null`
+ * for an adapter with no ephemeral support, and the payload reaches the thread
+ * rather than being dropped.
+ *
+ * `fallbackToDM: false` is deliberate: the SDK's own DM fallback would turn an
+ * in-channel message into an unsolicited direct message on Discord and Telegram.
+ */
+export async function postToUserOrThread(
+	thread: Thread<unknown, unknown>,
+	user: string | Author,
+	payload: EphemeralPostable,
+): Promise<void> {
+	const sent = await thread.postEphemeral(user, payload, { fallbackToDM: false });
+	if (!sent) await thread.post(payload);
+}
+
 export interface BridgeExecutionContext {
 	platformAgentContext: PlatformAgentContext;
 	slackThreadContext?: SlackThreadContext;

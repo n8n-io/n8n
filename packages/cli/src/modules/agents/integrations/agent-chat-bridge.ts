@@ -38,7 +38,11 @@ import type {
 	BridgeExecutionContext,
 	PlatformAgentContext,
 } from './agent-chat-integration';
-import { ChatIntegrationRegistry, onceStatusHandle } from './agent-chat-integration';
+import {
+	ChatIntegrationRegistry,
+	onceStatusHandle,
+	postToUserOrThread,
+} from './agent-chat-integration';
 import { AgentChatHitlResumeHandler } from './agent-chat-hitl-resume-handler';
 import { AgentChatMessageContextBridge } from './agent-chat-message-context';
 import {
@@ -1066,8 +1070,8 @@ export class AgentChatBridge {
 		actingUserId?: string,
 	): Promise<void> {
 		if (this.integrationImpl?.targetSuspensionCardAtActingUser && actingUserId) {
-			const sent = await thread.postEphemeral(actingUserId, { card }, { fallbackToDM: false });
-			if (sent) return;
+			await postToUserOrThread(thread, actingUserId, { card });
+			return;
 		}
 		await thread.post({ card });
 	}

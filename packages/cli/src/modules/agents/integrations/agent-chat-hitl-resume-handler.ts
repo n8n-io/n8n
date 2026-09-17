@@ -8,7 +8,7 @@ import type {
 	PlatformAgentContext,
 	SettleActionMessage,
 } from './agent-chat-integration';
-import { onceStatusHandle } from './agent-chat-integration';
+import { onceStatusHandle, postToUserOrThread } from './agent-chat-integration';
 import type { AgentChatMessageContextBridge } from './agent-chat-message-context';
 import type { AgentChatStreamConsumer } from './agent-chat-stream-consumer';
 import type { CallbackStore } from './callback-store';
@@ -32,24 +32,6 @@ type ResumeExecutor = Pick<AgentExecutionOrchestratorService, 'resumeForChat'> &
  */
 const STALE_ACTION_NOTICE =
 	'This action is no longer available. The link may have expired or already been used.';
-
-/**
- * Answer one person's card click where only they can see it. Slack and Teams
- * post it natively; the SDK returns `null` for an adapter that cannot, and the
- * notice falls back to the thread rather than being dropped.
- *
- * `fallbackToDM: false` is deliberate — the SDK's DM fallback would turn an
- * in-channel notice into an unsolicited direct message on Discord and Telegram.
- */
-async function postPrivateNotice(
-	thread: Thread<unknown, unknown>,
-	user: Author,
-	text: string,
-): Promise<void> {
-	const sent = await thread.postEphemeral(user, text, { fallbackToDM: false });
-	if (!sent) await thread.post(text);
-}
-
 
 interface AgentChatHitlResumeHandlerOptions {
 	agentId: string;
@@ -110,7 +92,7 @@ export class AgentChatHitlResumeHandler {
 		// never took effect, and so a card that outlived its run (a failed delete,
 		// or a click that races the cleanup) is answered rather than retried.
 		if (!(await this.isRunResumable(parsed.runId))) {
-			await postPrivateNotice(thread, event.user, STALE_ACTION_NOTICE);
+			await postToUserOrThread(thread, event.user, STALE_ACTION_NOTICE);
 			return;
 		}
 		// Persist the interacting user / messageId into the thread's message
@@ -188,7 +170,7 @@ export class AgentChatHitlResumeHandler {
 		const resolved = await this.options.callbackStore.resolve(actionId);
 		if (!resolved) {
 			this.options.logger.warn('[AgentChatBridge] Callback key not found or expired', { actionId });
-			await postPrivateNotice(thread, user, STALE_ACTION_NOTICE);
+			await postToUserOrThread(thread, user, STALE_ACTION_NOTICE);
 			return null;
 		}
 		return {
@@ -302,7 +284,7 @@ export class AgentChatHitlResumeHandler {
 		if (this.activeResumedRuns.has(runId)) {
 			this.options.logger.warn('[AgentChatBridge] Run is already active', { runId, toolCallId });
 			if (actingUser) {
-				await postPrivateNotice(thread, actingUser, 'This action has already been handled');
+				await postToUserOrThread(thread, actingUser, 'This action has already been handled');
 			}
 			return;
 		}
