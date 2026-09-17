@@ -181,7 +181,6 @@ export type UserConnectedToMCPEventPayload = {
 	http_status?: number;
 	mcp_apps_enabled?: boolean;
 	mcp_apps_variant?: McpAppsTelemetryVariant;
-	mcp_canvas_groups_enabled?: boolean;
 	error?: string;
 };
 

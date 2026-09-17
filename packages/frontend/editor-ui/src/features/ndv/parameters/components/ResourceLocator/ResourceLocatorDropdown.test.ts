@@ -179,6 +179,62 @@ describe('ResourceLocatorDropdown', () => {
 		});
 	});
 
+	describe('opening a result link', () => {
+		async function clickCachedResultLink(cachedResultUrl: string) {
+			vi.useFakeTimers();
+
+			const cachedModelValue: INodeParameterResourceLocator = {
+				__rl: true,
+				value: 'workflow-cached',
+				mode: 'list',
+				cachedResultName: 'Cached Workflow',
+				cachedResultUrl,
+			};
+
+			renderComponent({
+				props: {
+					show: true,
+					resources: mockResources, // doesn't contain workflow-cached
+					modelValue: cachedModelValue,
+				},
+			});
+
+			const cachedItem = screen.getByText('Cached Workflow').closest('[data-test-id="rlc-item"]');
+
+			await fireEvent.mouseEnter(cachedItem as Element);
+			await vi.advanceTimersByTimeAsync(250);
+
+			const linkIcon = cachedItem?.querySelector('svg[data-icon="external-link"]');
+			expect(linkIcon).toBeInTheDocument();
+
+			await fireEvent.click(linkIcon as Element);
+		}
+
+		it('should open an http(s) result url with noopener,noreferrer', async () => {
+			const windowOpenSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
+
+			await clickCachedResultLink('https://example.com/resource');
+
+			expect(windowOpenSpy).toHaveBeenCalledWith(
+				'https://example.com/resource',
+				'_blank',
+				'noopener,noreferrer',
+			);
+
+			windowOpenSpy.mockRestore();
+		});
+
+		it('should not open a result url with a disallowed scheme', async () => {
+			const windowOpenSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
+
+			await clickCachedResultLink('javascript:alert(document.domain)');
+
+			expect(windowOpenSpy).not.toHaveBeenCalled();
+
+			windowOpenSpy.mockRestore();
+		});
+	});
+
 	describe('model value handling', () => {
 		it('should compare values correctly for selection highlighting', () => {
 			const modelValue: INodeParameterResourceLocator = {

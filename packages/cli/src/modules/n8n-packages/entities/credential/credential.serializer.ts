@@ -13,6 +13,7 @@ type CredentialPackageKeyHandling = {
 	createdAt: 'exclude';
 	updatedAt: 'exclude';
 	name: 'copy';
+	description: 'exclude';
 	data: 'transform';
 	type: 'copy';
 	shared: 'exclude';

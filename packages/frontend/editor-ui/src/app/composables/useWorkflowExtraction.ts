@@ -129,7 +129,7 @@ export function useWorkflowExtraction() {
 				options: {},
 			},
 			type: EXECUTE_WORKFLOW_NODE_TYPE,
-			typeVersion: 1.2,
+			typeVersion: 1.4,
 			position,
 			name,
 		};

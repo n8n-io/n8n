@@ -1,8 +1,22 @@
 import { z } from 'zod';
 
 import { n8nIdSchema } from '../../schemas/id.schema';
+import { Z } from '../../zod-class';
 
-export const promotableResourceStatusSchema = z.enum(['new', 'modified', 'archived', 'deleted']);
+export class PromotionChangesQueryDto extends Z.class({
+	search: z.string().trim().optional(),
+	sort: z.enum(['name', 'updatedAt', 'status']).default('name'),
+	order: z.enum(['asc', 'desc']).default('asc'),
+}) {}
+
+export const promotableResourceStatusSchema = z.enum([
+	'new',
+	'modified',
+	'renamed',
+	'renamed-and-modified',
+	'archived',
+	'deleted',
+]);
 
 export type PromotableResourceStatus = z.infer<typeof promotableResourceStatusSchema>;
 
@@ -16,12 +30,21 @@ export const promotableResourceSchema = z.object({
 	type: promotableResourceTypeSchema,
 	status: promotableResourceStatusSchema,
 	version: z.number().int().nonnegative().nullable(),
-	updatedAt: z.string(),
+	updatedAt: z.string().nullable(),
 	updatedBy: z.string().nullable(),
 	dependencyCount: z.number().int().nonnegative(),
 });
 
 export type PromotableResource = z.infer<typeof promotableResourceSchema>;
+
+export const promotionChangesSchema = z.object({
+	commitSha: z.string().nullable(),
+	changes: promotableResourceSchema.array(),
+});
+
+export type PromotionChanges = z.infer<typeof promotionChangesSchema>;
+
+export class PromotionChangesDto extends Z.class(promotionChangesSchema.shape) {}
 
 export const promoteRequestSchema = z.object({
 	workflowIds: z.array(n8nIdSchema).min(1),

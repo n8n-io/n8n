@@ -101,6 +101,7 @@ export interface IWorkflowDb extends IWorkflowBase {
 export interface ICredentialsDb extends ICredentialsBase, ICredentialsEncrypted {
 	id: string;
 	name: string;
+	description?: string | null;
 	shared?: SharedCredentials[];
 	isGlobal?: boolean;
 	isResolvable?: boolean;
@@ -212,14 +213,9 @@ export namespace ExecutionSummaries {
 	export type CountQuery = { kind: 'count' } & FilterFields & AccessFields;
 
 	export type FilterFields = Partial<{
-		id: string;
-		finished: boolean;
 		mode: WorkflowExecuteMode;
-		retryOf: string;
-		retrySuccessId: string;
 		status: ExecutionStatus[];
 		workflowId: string;
-		waitTill: boolean;
 		metadata: Array<{ key: string; value: string; exactMatch?: boolean }>;
 		startedAfter: string;
 		startedBefore: string;
@@ -248,8 +244,8 @@ export namespace ExecutionSummaries {
 	type RangeFields = {
 		range: {
 			limit: number;
-			firstId?: string;
-			lastId?: string;
+			/** ID of the last row of the previous page. The page continues below it. */
+			beforeId?: string;
 		};
 	};
 
@@ -344,7 +340,7 @@ export function isAuthProviderType(value: string): value is AuthProviderType {
 }
 
 export type FolderWithWorkflowAndSubFolderCount = Folder & {
-	workflowCount?: boolean;
+	workflowCount?: number;
 	subFolderCount?: number;
 };
 

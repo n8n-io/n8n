@@ -585,6 +585,12 @@ describe('serverToCredentialDescription', () => {
 						default: '',
 					},
 					{
+						displayName: 'customScopes',
+						name: 'customScopes',
+						type: 'hidden',
+						default: false,
+					},
+					{
 						displayName: 'Allowed HTTP Request Domains',
 						name: 'allowedHttpRequestDomains',
 						type: 'hidden',

@@ -3,6 +3,7 @@ import { ExecutionDataRepository, ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { stringify } from 'flatted';
 import type { ExecutionStatus, IRunExecutionData, IRunExecutionDataAll } from 'n8n-workflow';
+import { WAIT_FOR_SUB_EXECUTION, WAIT_INDEFINITELY } from 'n8n-workflow';
 
 describe('ExecutionRepository', () => {
 	beforeAll(async () => {
@@ -370,6 +371,34 @@ describe('ExecutionRepository', () => {
 			expect(waitingExec?.status).toBe('waiting');
 			expect(waitingExec?.waitTill?.getTime()).toBe(waitTill.getTime());
 			expect(successExec?.status).toBe('success');
+		});
+	});
+
+	describe('findParkedOnSubExecution', () => {
+		const createExecution = async (status: ExecutionStatus, waitTill: Date | null) => {
+			const workflow = await createWorkflow();
+			const { identifiers } = await Container.get(ExecutionRepository).insert({
+				workflowId: workflow.id,
+				mode: 'manual',
+				startedAt: new Date(),
+				status,
+				finished: false,
+				createdAt: new Date(),
+				waitTill,
+			});
+			return String(identifiers[0].id);
+		};
+
+		it('returns only waiting executions parked on a sub-execution', async () => {
+			const parkedOnChild = await createExecution('waiting', WAIT_FOR_SUB_EXECUTION);
+			await createExecution('waiting', WAIT_INDEFINITELY);
+			await createExecution('waiting', new Date(Date.now() + 60_000));
+			await createExecution('running', WAIT_FOR_SUB_EXECUTION);
+			await createExecution('success', WAIT_FOR_SUB_EXECUTION);
+
+			const ids = await Container.get(ExecutionRepository).findParkedOnSubExecution();
+
+			expect(ids).toEqual([parkedOnChild]);
 		});
 	});
 

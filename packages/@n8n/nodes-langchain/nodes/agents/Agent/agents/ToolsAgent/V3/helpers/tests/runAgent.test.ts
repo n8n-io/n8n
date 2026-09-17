@@ -616,4 +616,9 @@ describe('appendToolAttributions', () => {
 		const output = 'See link\n\n(Powered by Genie)';
 		expect(appendToolAttributions(output, [step('Genie_ask')], [genie])).toBe(output);
 	});
+
+	it('leaves a reply without text alone, so the label never shows up on its own', () => {
+		expect(appendToolAttributions('', [step('Genie_ask')], [genie])).toBe('');
+		expect(appendToolAttributions(' \n', [step('Genie_ask')], [genie])).toBe(' \n');
+	});
 });

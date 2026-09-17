@@ -165,8 +165,10 @@ jobs:
               packages/@n8n/backend-test-utils/**
               packages/@n8n/scheduler/src/**
               packages/cli/src/**/*.integration.test.ts
+              packages/cli/src/modules/instance-registry/**
               packages/cli/vitest.*
               packages/testing/containers/services/postgres.ts
+              packages/testing/containers/services/redis.ts
               packages/testing/containers/postgres-versions.json
               packages/testing/containers/test-containers.ts
               .github/workflows/test-db-reusable.yml
@@ -187,6 +189,7 @@ jobs:
               packages/cli/vitest.config.migration.ts
               packages/cli/vitest.config.migration.testcontainers.ts
               packages/testing/containers/services/postgres.ts
+              packages/testing/containers/services/redis.ts
               packages/testing/containers/postgres-versions.json
               packages/testing/containers/test-containers.ts
               .github/workflows/test-db-reusable.yml
