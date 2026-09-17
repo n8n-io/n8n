@@ -488,7 +488,7 @@ describe('StepSettledHandler lifecycle events', () => {
 			{ id: 'step-m', nodeId: 'm' },
 			{ countSettledSteps: vi.fn().mockResolvedValue(5) },
 		);
-		const { handler, lifecycleEventPublisher } = makeHandler(stepStore);
+		const { handler, lifecycleEventPublisher, responseChannel } = makeHandler(stepStore);
 
 		await handler.handle({ ...event, stepId: 'step-m' });
 
@@ -496,16 +496,47 @@ describe('StepSettledHandler lifecycle events', () => {
 			type: 'execution:completed',
 			...finished,
 		});
+		expect(responseChannel.publish).toHaveBeenCalledExactlyOnceWith({
+			type: 'ended',
+			executionId: 'exec-1',
+			workflowId: 'wf-1',
+			status: 'completed',
+			lastStep: {
+				nodeId: 'm',
+				nodeName: 'M',
+				status: 'completed',
+				outputs: null,
+				error: undefined,
+			},
+		});
 	});
 
 	it('announces execution:failed when a step failed', async () => {
-		const { handler, lifecycleEventPublisher } = makeHandler(makeStepStore({ status: 'failed' }));
+		const stepStore = makeStepStore({
+			status: 'failed',
+			error: { name: 'NodeOperationError', message: 'it broke', stack: 'at trace' },
+		});
+		const { handler, lifecycleEventPublisher, responseChannel } = makeHandler(stepStore);
 
 		await handler.handle(event);
 
 		expect(lifecycleEventPublisher.publish).toHaveBeenCalledExactlyOnceWith({
 			type: 'execution:failed',
 			...finished,
+		});
+		expect(responseChannel.publish).toHaveBeenCalledExactlyOnceWith({
+			type: 'ended',
+			executionId: 'exec-1',
+			workflowId: 'wf-1',
+			status: 'failed',
+			lastStep: {
+				nodeId: 'a',
+				nodeName: 'A',
+				status: 'failed',
+				outputs: null,
+				// Only name/message cross the seam; the stack does not.
+				error: { name: 'NodeOperationError', message: 'it broke' },
+			},
 		});
 	});
 
@@ -515,13 +546,15 @@ describe('StepSettledHandler lifecycle events', () => {
 			{},
 			{ finishExecution: vi.fn().mockResolvedValue(false) },
 		);
-		const { handler, lifecycleEventPublisher } = makeHandler(makeStepStore({ status: 'failed' }), {
-			executionStore,
-		});
+		const { handler, lifecycleEventPublisher, responseChannel } = makeHandler(
+			makeStepStore({ status: 'failed' }),
+			{ executionStore },
+		);
 
 		await handler.handle(event);
 
 		expect(lifecycleEventPublisher.publish).not.toHaveBeenCalled();
+		expect(responseChannel.publish).not.toHaveBeenCalled();
 	});
 
 	it('announces nothing while any reachable node is unsettled', async () => {
