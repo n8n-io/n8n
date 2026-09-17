@@ -1,7 +1,9 @@
 import type { User } from '@n8n/db';
+import { beforeEach, vi } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
+import { userHasScopes } from '@/permissions.ee/check-access';
 
 import type { AgentExecutionService, ThreadListItem } from '../agent-execution.service';
 import type { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
@@ -13,9 +15,13 @@ import type { AttachableWorkflowsService } from '../attachable-workflows.service
 import type { Agent } from '../entities/agent.entity';
 import { InstanceAiAgentContextAdapterService } from '../instance-ai-agent-context.adapter';
 
+vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));
+
 function makeService() {
 	const agentsService = mock<AgentsService>();
 	const agentExecutionService = mock<AgentExecutionService>();
+	const mcpRegistryService = mock<McpRegistryService>();
+	const agentsToolsService = mock<AgentsToolsService>();
 	const service = new InstanceAiAgentContextAdapterService(
 		agentsService,
 		mock<AgentSkillsService>(),
@@ -23,10 +29,16 @@ function makeService() {
 		agentExecutionService,
 		mock<AgentIntegrationPersistenceService>(),
 		mock<AttachableWorkflowsService>(),
-		mock<McpRegistryService>(),
-		mock<AgentsToolsService>(),
+		mcpRegistryService,
+		agentsToolsService,
 	);
-	return { service, agentsService, agentExecutionService };
+	return {
+		service,
+		agentsService,
+		agentExecutionService,
+		mcpRegistryService,
+		agentsToolsService,
+	};
 }
 
 const user = mock<User>();
@@ -44,6 +56,11 @@ const agent = {
 } as unknown as Agent;
 
 describe('InstanceAiAgentContextAdapterService', () => {
+	beforeEach(() => {
+		vi.mocked(userHasScopes).mockReset();
+		vi.mocked(userHasScopes).mockResolvedValue(true);
+	});
+
 	it('labels config as the current draft and includes publication state', async () => {
 		const { service, agentsService } = makeService();
 		agentsService.findById.mockResolvedValue(agent);
@@ -53,6 +70,7 @@ describe('InstanceAiAgentContextAdapterService', () => {
 			agentId: 'agent-1',
 		});
 
+		expect(agentsService.findById).toHaveBeenCalledWith('agent-1', 'project-1');
 		expect(result).toMatchObject({
 			configState: 'current-draft',
 			agent: {
@@ -103,5 +121,49 @@ describe('InstanceAiAgentContextAdapterService', () => {
 			{ status: 'error' },
 		);
 		expect(result).toMatchObject({ sessions: [{ threadId: 'thread-1', status: 'error' }] });
+	});
+
+	it('does not read context when the user lacks Agent read access', async () => {
+		const { service, agentsService } = makeService();
+		vi.mocked(userHasScopes).mockResolvedValue(false);
+
+		await expect(
+			service.createReader(user, 'project-1').lookup({ type: 'agents' }),
+		).rejects.toThrow("You don't have permission to read Agents in this project.");
+		expect(agentsService.findByProjectId).not.toHaveBeenCalled();
+	});
+
+	it('ignores templated MCP results and falls back to node tools', async () => {
+		const { service, mcpRegistryService, agentsToolsService } = makeService();
+		mcpRegistryService.search.mockResolvedValue([
+			{
+				slug: 'templated-server',
+				name: 'templatedServer',
+				title: 'Templated server',
+				description: 'Requires a credential value in its endpoint.',
+				url: '={{$self["host"]}}/mcp',
+				transport: 'streamableHttp',
+				authentication: 'templatedApi',
+				credentialType: 'templatedApi',
+				tools: [],
+				metadata: { nodeTypeName: '@n8n/mcp.templatedServer' },
+				isTemplated: true,
+			},
+		]);
+		agentsToolsService.searchAgentToolNodes.mockResolvedValue({
+			results: '## HTTP Request',
+			queriesWithNoResults: [],
+		});
+
+		const result = await service.createReader(user, 'project-1').lookup({
+			type: 'integrations',
+			queries: ['HTTP'],
+		});
+
+		expect(result).toEqual({
+			kind: 'node',
+			results: '## HTTP Request',
+			queriesWithNoResults: [],
+		});
 	});
 });

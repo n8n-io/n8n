@@ -2,12 +2,15 @@ import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type {
 	AgentContextLookup,
+	AgentContextResult,
 	AgentSessionSummary,
 	InstanceAiAgentContextReader,
 } from '@n8n/instance-ai';
 import { UserError } from 'n8n-workflow';
 
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
+import { userHasScopes } from '@/permissions.ee/check-access';
 
 import {
 	AgentExecutionService,
@@ -85,10 +88,23 @@ export class InstanceAiAgentContextAdapterService {
 	) {}
 
 	createReader(user: User, projectId: string): InstanceAiAgentContextReader {
-		return { lookup: async (input) => await this.lookup(user, projectId, input) };
+		let canReadAgents: Promise<boolean> | undefined;
+		return {
+			lookup: async (input) => {
+				canReadAgents ??= userHasScopes(user, ['agent:read'], false, { projectId });
+				if (!(await canReadAgents)) {
+					throw new ForbiddenError("You don't have permission to read Agents in this project.");
+				}
+				return await this.lookup(user, projectId, input);
+			},
+		};
 	}
 
-	private async lookup(user: User, projectId: string, input: AgentContextLookup): Promise<unknown> {
+	private async lookup(
+		user: User,
+		projectId: string,
+		input: AgentContextLookup,
+	): Promise<AgentContextResult> {
 		if (input.type === 'agents') {
 			const agents = await this.agentsService.findByProjectId(projectId);
 			return {
@@ -113,7 +129,9 @@ export class InstanceAiAgentContextAdapterService {
 			if (!input.queries) {
 				return { channels: this.agentIntegrationService.listChatIntegrations() };
 			}
-			const mcpResults = await this.mcpRegistryService.search(input.queries);
+			const mcpResults = (await this.mcpRegistryService.search(input.queries)).filter(
+				(result) => !result.isTemplated,
+			);
 			if (mcpResults.length > 0) return { kind: 'mcp', results: mcpResults };
 			const nodeResults = await this.agentsToolsService.searchAgentToolNodes(input.queries);
 			return {

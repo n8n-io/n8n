@@ -150,6 +150,7 @@ describe('useToolLabel', () => {
 		expect(getToolLabel('resolve_integration')).toBe('Adding integration');
 		expect(getToolLabel('build-agent')).toBe('Working with agent');
 		expect(getToolLabel('build-agent', { operation: 'exploring' })).toBe('Exploring agent');
+		expect(getToolLabel('build-agent', { operation: 'creating' })).toBe('Working with agent');
 		expect(getToolLabel('nodes')).toBe('Search nodes');
 		expect(getToolLabel('workspace_execute_command')).toBe('Running command');
 		expect(getToolLabel('list_skills')).toBe('Checking available skills');

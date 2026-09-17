@@ -744,6 +744,7 @@ export type {
 	ConversationHistoryMessagesResult,
 	AgentSessionSummary,
 	AgentContextLookup,
+	AgentContextResult,
 	InstanceAiAgentContextReader,
 	ComputerUseChannel,
 	ComputerUseChannelState,
