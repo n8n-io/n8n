@@ -340,6 +340,7 @@ describe('agent message queue', () => {
 		closeRedis = [];
 		received.length = 0;
 		checkpoints.findSuspendedForThread.mockResolvedValue(null);
+		checkpoints.findCancellableForThread.mockResolvedValue(null);
 		orchestrator.executeForChat.mockImplementation(recordPreview);
 		orchestrator.resumeForChat.mockImplementation(recordPreview);
 		orchestrator.cancelChatRun.mockResolvedValue(true);
@@ -1076,10 +1077,12 @@ describe('agent message queue', () => {
 				expect(received).toEqual([]);
 				expect(await repository.countBy({ status: 'cancelling' })).toBe(1);
 				checkpoints.findSuspendedForThread.mockResolvedValue(null);
+				checkpoints.findCancellableForThread.mockResolvedValue(null);
 				return true;
 			});
 		previewChunks.mockImplementationOnce(async function* () {
 			checkpoints.findSuspendedForThread.mockResolvedValue(checkpoint);
+			checkpoints.findCancellableForThread.mockResolvedValue(checkpoint);
 			reachedFinish.resolve();
 			await finish.promise;
 			yield { type: 'finish', finishReason: 'stop' };
@@ -1592,7 +1595,7 @@ describe('agent message queue', () => {
 		await repository.requestCancellation(stale.id);
 		await repository.update(stale.id, { updatedAt: new Date(Date.now() - 180_000) });
 		await repository.enqueue(message('successor'));
-		checkpoints.findSuspendedForThread.mockResolvedValue(
+		checkpoints.findCancellableForThread.mockResolvedValue(
 			mock<SerializableAgentState & { runId: string }>({
 				runId: 'stopped-run',
 				status: 'suspended',
@@ -1603,6 +1606,7 @@ describe('agent message queue', () => {
 		orchestrator.cancelChatRun.mockImplementation(async () => {
 			await cancelled.promise;
 			checkpoints.findSuspendedForThread.mockResolvedValue(null);
+			checkpoints.findCancellableForThread.mockResolvedValue(null);
 			return true;
 		});
 		const main = await makeMain();

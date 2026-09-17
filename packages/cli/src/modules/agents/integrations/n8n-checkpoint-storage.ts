@@ -192,6 +192,21 @@ export class N8NCheckpointStorage {
 		threadId: string,
 	): Promise<(SerializableAgentState & { runId: string }) | null> {
 		const rows = await this.agentCheckpointRepository.findActiveForAgent(agentId);
+		return this.findSuspendedInRows(rows, threadId);
+	}
+
+	async findCancellableForThread(
+		agentId: string,
+		threadId: string,
+	): Promise<(SerializableAgentState & { runId: string }) | null> {
+		const rows = await this.agentCheckpointRepository.findRetainedForAgent(agentId);
+		return this.findSuspendedInRows(rows, threadId);
+	}
+
+	private findSuspendedInRows(
+		rows: Array<{ runId: string; state: string | null }>,
+		threadId: string,
+	): (SerializableAgentState & { runId: string }) | null {
 		for (const row of rows) {
 			const checkpoint = this.parseSuspendedState(row.state, threadId);
 			if (checkpoint) return { ...checkpoint, runId: row.runId };

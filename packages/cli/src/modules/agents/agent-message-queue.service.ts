@@ -649,7 +649,10 @@ export class AgentMessageQueueService {
 	}
 
 	private async cancelSuspendedPreview(entry: AgentMessageQueue): Promise<void> {
-		const checkpoint = await this.checkpoints.findSuspendedForThread(entry.agentId, entry.threadId);
+		const checkpoint = await this.checkpoints.findCancellableForThread(
+			entry.agentId,
+			entry.threadId,
+		);
 		if (
 			checkpoint?.persistence?.resourceId === entry.payload.resourceId &&
 			!(await this.orchestrator.cancelChatRun({

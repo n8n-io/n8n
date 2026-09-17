@@ -1,6 +1,6 @@
 import { BaseRepository, TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource } from '@n8n/typeorm';
+import { DataSource, IsNull, Not } from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
 
 import { AgentCheckpoint } from '../entities/agent-checkpoint.entity';
@@ -41,6 +41,13 @@ export class AgentCheckpointRepository extends BaseRepository<AgentCheckpoint> {
 	async findActiveForAgent(agentId: string): Promise<AgentCheckpoint[]> {
 		return await this.find({
 			where: { agentId, expired: false },
+			order: { updatedAt: 'DESC' },
+		});
+	}
+
+	async findRetainedForAgent(agentId: string): Promise<AgentCheckpoint[]> {
+		return await this.find({
+			where: { agentId, state: Not(IsNull()) },
 			order: { updatedAt: 'DESC' },
 		});
 	}
