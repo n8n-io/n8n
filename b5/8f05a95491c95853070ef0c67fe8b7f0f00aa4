@@ -1,0 +1,35 @@
+packages/@n8n/nodes-langchain/utils/databricks/gateway-config.ts
+  s_7383ee4106ddca::t_d877f151a892b2 9-14,25-26,31-32,35-36,80-81,88
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsDatabricks/EmbeddingsDatabricks.node.ts
+  s_7383ee4106ddca::t_d877f151a892b2 150-154
+packages/@n8n/nodes-langchain/nodes/llms/LmChatDatabricks/LmChatDatabricks.node.ts
+  s_7383ee4106ddca::t_d877f151a892b2 214-215,222-226
+packages/@n8n/nodes-langchain/nodes/llms/LmChatDatabricks/test/LmChatDatabricks.test.ts
+  s_7383ee4106ddca::t_7851c55d1dc939 116
+packages/@n8n/nodes-langchain/utils/databricks/constants.ts
+  s_23aea899fcc5f6::t_29ee4a3ed2203b 28-30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "b58f05a95491c95853070ef0c67fe8b7f0f00aa4",
+  "prompts": {},
+  "sessions": {
+    "s_23aea899fcc5f6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e35f8be0-c5a6-4d2b-b92a-37f35601463c",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    },
+    "s_7383ee4106ddca": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f219b89b-3ec7-4972-9e54-e4dac4de28f2",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}
