@@ -7,6 +7,7 @@ import {
 	buildIntegrationConnectionId,
 	type IntegrationMessageContext,
 	type IntegrationMessageSubject,
+	type IntegrationPlatformMessageContext,
 	type ReplyExpectation,
 	type SessionBinding,
 } from './integration-tools';
@@ -15,6 +16,7 @@ interface UpdateLatestMessageContextOptions {
 	messageId?: string;
 	interactingUserId?: string;
 	agentUserId?: string;
+	platformMessage?: IntegrationPlatformMessageContext;
 	subject?: IntegrationMessageSubject;
 	replyExpectation?: ReplyExpectation;
 }
@@ -50,6 +52,7 @@ export class AgentChatMessageContextBridge {
 			...(options.messageId ? { messageId: options.messageId } : {}),
 			...(options.interactingUserId ? { interactingUserId: options.interactingUserId } : {}),
 			...(agentUserId ? { agentUserId } : {}),
+			...(options.platformMessage ? { platformMessage: options.platformMessage } : {}),
 			...(options.subject ? { subject: options.subject } : {}),
 			...(!options.subject && previousContext?.subject ? { subject: previousContext.subject } : {}),
 			...(options.replyExpectation

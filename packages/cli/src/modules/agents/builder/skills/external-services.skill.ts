@@ -82,7 +82,10 @@ Examples:
   respond in Discord threads or DMs, or render approval buttons there.
 - Telegram integration: the agent should receive or send Telegram messages,
   continue conversations there, render supported interactive messages, or use
-  \`send_dm\` to initiate a scheduled message to a known Telegram user ID.
+  \`send_dm\` to initiate a scheduled message to a known Telegram user ID. The
+  native integration sends incoming photos to the Agent. It also provides
+  \`chat_id\` and attachment \`file_id\` values in the message context. Do not
+  create an agent-entrypoint workflow only to access these values.
 - Linear integration: the agent should be triggered from Linear issues/comments,
   understand the current Linear subject, or reply in the same Linear
   conversation.

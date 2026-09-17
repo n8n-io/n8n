@@ -21,6 +21,7 @@ import type {
 	IntegrationContextQuery,
 	IntegrationContextQueryDefinition,
 	IntegrationMessageContext,
+	IntegrationPlatformMessageContext,
 	IntegrationToolConnectionDescriptor,
 	ReplyExpectation,
 } from './integration-tools';
@@ -104,6 +105,8 @@ export function onceStatusHandle(
 
 export interface BridgeExecutionContext {
 	platformAgentContext: PlatformAgentContext;
+	/** Allow-listed metadata from the current platform message. */
+	platformMessage?: IntegrationPlatformMessageContext;
 	forceBuffered?: boolean;
 	statusHandle?: BridgeStatusHandle;
 	/**
