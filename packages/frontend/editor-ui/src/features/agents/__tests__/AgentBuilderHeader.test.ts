@@ -373,7 +373,7 @@ describe('AgentBuilderHeader', () => {
 		async ({ isPreviewOpen, event, accessibleLabel }) => {
 			const wrapper = mountHeader({ isPreviewOpen });
 			const previewButton = wrapper.find('[data-testid="agent-header-preview-btn"]');
-			expect(previewButton.attributes('data-icon')).toBe('play');
+			expect(previewButton.attributes('data-icon')).toBe('flask-conical');
 			expect(previewButton.attributes('aria-label')).toBe(accessibleLabel);
 			expect(previewButton.attributes('aria-pressed')).toBe(String(isPreviewOpen));
 
