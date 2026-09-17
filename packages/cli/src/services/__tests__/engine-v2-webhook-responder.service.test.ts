@@ -2,6 +2,7 @@ import type { Logger } from '@n8n/backend-common';
 import type { EngineConfig } from '@n8n/config';
 import type { ExecutionResponse, ExecutionResponseChannel } from '@n8n/engine';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import type express from 'express';
 import type { IExecuteResponsePromiseData } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
@@ -73,37 +74,37 @@ describe('EngineV2WebhookResponder', () => {
 	it('listens under the id the run is started with', () => {
 		const executionId = createExecutionIdV2();
 
-		expect(responder.waitForResponse(executionId).executionId).toBe(executionId);
+		expect(responder.waitForResponse(executionId, { responseMode: 'lastNode' }).executionId).toBe(executionId);
 	});
 
 	it('refuses to listen before the host hands over a channel', () => {
-		expect(() => newResponder().waitForResponse(createExecutionIdV2())).toThrow(
+		expect(() => newResponder().waitForResponse(createExecutionIdV2(), { responseMode: 'lastNode' })).toThrow(
 			'without a channel',
 		);
 	});
 
 	it('refuses a run once it listens for as many as it can hold', () => {
 		for (let i = 0; i < MAX_PENDING_WEBHOOKS; i++) {
-			responder.waitForResponse(createExecutionIdV2());
+			responder.waitForResponse(createExecutionIdV2(), { responseMode: 'lastNode' });
 		}
 
 		// Refused before dispatch, so no run starts that nothing can answer.
-		expect(() => responder.waitForResponse(createExecutionIdV2())).toThrow('Try again later');
+		expect(() => responder.waitForResponse(createExecutionIdV2(), { responseMode: 'lastNode' })).toThrow('Try again later');
 	});
 
 	it('listens again once an answered run releases its slot', () => {
 		const pending = Array.from({ length: MAX_PENDING_WEBHOOKS }, () =>
-			responder.waitForResponse(createExecutionIdV2()),
+			responder.waitForResponse(createExecutionIdV2(), { responseMode: 'lastNode' }),
 		);
 
 		pending[0].release();
 
-		expect(() => responder.waitForResponse(createExecutionIdV2())).not.toThrow();
+		expect(() => responder.waitForResponse(createExecutionIdV2(), { responseMode: 'lastNode' })).not.toThrow();
 	});
 
 	it('leaves an unrelated pending run unaffected', async () => {
-		const other = responder.waitForResponse(createExecutionIdV2());
-		const pending = responder.waitForResponse(createExecutionIdV2());
+		const other = responder.waitForResponse(createExecutionIdV2(), { responseMode: 'lastNode' });
+		const pending = responder.waitForResponse(createExecutionIdV2(), { responseMode: 'lastNode' });
 
 		channel.publish(endedResponse(pending.executionId));
 
@@ -116,7 +117,7 @@ describe('EngineV2WebhookResponder', () => {
 	});
 
 	it('reports the step the run ended with', async () => {
-		const pending = responder.waitForResponse(createExecutionIdV2());
+		const pending = responder.waitForResponse(createExecutionIdV2(), { responseMode: 'lastNode' });
 
 		channel.publish(endedResponse(pending.executionId));
 
@@ -127,20 +128,19 @@ describe('EngineV2WebhookResponder', () => {
 	});
 
 	it('reports no last node when that step produced nothing', async () => {
-		const pending = responder.waitForResponse(createExecutionIdV2());
+		const pending = responder.waitForResponse(createExecutionIdV2(), { responseMode: 'lastNode' });
 
 		channel.publish(
 			endedResponse(pending.executionId, {
 				lastStep: { nodeId: 'c', nodeName: 'C', status: 'skipped', outputs: null },
 			}),
 		);
-
 		await expect(pending.settled).resolves.toEqual({ status: 'completed', lastNode: undefined });
 	});
 
 	it('resolves the response promise when the Respond node answers', async () => {
 		const responsePromise = createDeferredPromise<IExecuteResponsePromiseData>();
-		const pending = responder.waitForResponse(createExecutionIdV2(), responsePromise);
+		const pending = responder.waitForResponse(createExecutionIdV2(), { responseMode: 'responseNode', responsePromise });
 
 		channel.publish({
 			type: 'response',
@@ -153,7 +153,7 @@ describe('EngineV2WebhookResponder', () => {
 
 	it('rejects the response promise when the response fails', async () => {
 		const responsePromise = createDeferredPromise<IExecuteResponsePromiseData>();
-		const pending = responder.waitForResponse(createExecutionIdV2(), responsePromise);
+		const pending = responder.waitForResponse(createExecutionIdV2(), { responseMode: 'responseNode', responsePromise });
 
 		channel.publish({
 			type: 'failure',
@@ -166,15 +166,41 @@ describe('EngineV2WebhookResponder', () => {
 
 	it('stands the response promise down when the Respond node never ran', async () => {
 		const responsePromise = createDeferredPromise<IExecuteResponsePromiseData>();
-		const pending = responder.waitForResponse(createExecutionIdV2(), responsePromise);
+		const pending = responder.waitForResponse(createExecutionIdV2(), { responseMode: 'responseNode', responsePromise });
 
 		channel.publish(endedResponse(pending.executionId));
 
 		await expect(responsePromise.promise).resolves.toBe(EXECUTION_ENDED_WITHOUT_RESPONSE);
 	});
 
+	it('writes a chunk to the open response as one NDJSON line', () => {
+		const httpResponse = mock<express.Response>();
+		const pending = responder.waitForResponse(createExecutionIdV2(), {
+			responseMode: 'streaming',
+			httpResponse,
+		});
+
+		const chunk = { type: 'item', content: 'hi' };
+		channel.publish({ type: 'chunk', executionId: pending.executionId, payload: chunk });
+
+		expect(httpResponse.write).toHaveBeenCalledWith(JSON.stringify(chunk) + '\n');
+	});
+
+	it('ends an open stream when the run ends', async () => {
+		const httpResponse = mock<express.Response>();
+		const pending = responder.waitForResponse(createExecutionIdV2(), {
+			responseMode: 'streaming',
+			httpResponse,
+		});
+
+		channel.publish(endedResponse(pending.executionId));
+		await pending.settled;
+
+		expect(httpResponse.end).toHaveBeenCalled();
+	});
+
 	it('reports a failure with the node that caused it', async () => {
-		const pending = responder.waitForResponse(createExecutionIdV2());
+		const pending = responder.waitForResponse(createExecutionIdV2(), { responseMode: 'lastNode' });
 
 		channel.publish(
 			endedResponse(pending.executionId, {
@@ -197,7 +223,7 @@ describe('EngineV2WebhookResponder', () => {
 	});
 
 	it('reports a response failure without attributing it to a node', async () => {
-		const pending = responder.waitForResponse(createExecutionIdV2());
+		const pending = responder.waitForResponse(createExecutionIdV2(), { responseMode: 'lastNode' });
 
 		channel.publish({
 			type: 'failure',
@@ -215,13 +241,13 @@ describe('EngineV2WebhookResponder', () => {
 		const impatient = newResponder(1);
 		impatient.useChannel(fakeChannel().channel);
 
-		await expect(impatient.waitForResponse(createExecutionIdV2()).settled).resolves.toEqual({
+		await expect(impatient.waitForResponse(createExecutionIdV2(), { responseMode: 'lastNode' }).settled).resolves.toEqual({
 			status: 'timeout',
 		});
 	});
 
 	it('drops later responses for a released run', async () => {
-		const pending = responder.waitForResponse(createExecutionIdV2());
+		const pending = responder.waitForResponse(createExecutionIdV2(), { responseMode: 'lastNode' });
 		pending.release();
 
 		channel.publish(endedResponse(pending.executionId));

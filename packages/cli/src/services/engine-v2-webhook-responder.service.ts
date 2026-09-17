@@ -8,12 +8,32 @@ import type {
 	Unsubscribe,
 } from '@n8n/engine';
 import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
-import type { IExecuteResponsePromiseData, IN8nHttpFullResponse } from 'n8n-workflow';
+import type express from 'express';
+import type {
+	IExecuteResponsePromiseData,
+	IN8nHttpFullResponse,
+	StructuredChunk,
+	WebhookResponseMode,
+} from 'n8n-workflow';
 import { OperationalError, UnexpectedError } from 'n8n-workflow';
 
 import type { ExecutionIdV2 } from '@/executions/execution-id';
 import { PendingWebhookResponse } from '@/services/pending-webhook-response';
 import { EXECUTION_ENDED_WITHOUT_RESPONSE } from '@/webhooks/constants';
+
+/** `flush` is added at runtime by the Express `compression` middleware. */
+function flushResponse(res: { flush?: () => void }): void {
+	if (typeof res.flush === 'function') res.flush();
+}
+
+/** What the request waiting on a run needs, beyond the run's own answer. */
+export interface WaitOptions {
+	responseMode: WebhookResponseMode;
+	/** Set for `responseNode`: what the Respond node's answer resolves. */
+	responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>;
+	/** Set for `streaming`: chunks are written to it as they arrive. */
+	httpResponse?: express.Response;
+}
 
 /** A request that is still open, and the subscription that feeds its answer. */
 type PendingWebhook = { response: PendingWebhookResponse; unsubscribe: Unsubscribe };
@@ -58,11 +78,7 @@ export class EngineV2WebhookResponder {
 	 * instead would hold its request open until the response timeout, and the
 	 * answer it was waiting for would arrive with nobody to take it.
 	 */
-	waitForResponse(
-		executionId: ExecutionIdV2,
-		/** Set for `responseNode`: what the Respond node's answer resolves. */
-		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
-	): PendingWebhookResponse {
+	waitForResponse(executionId: ExecutionIdV2, options: WaitOptions): PendingWebhookResponse {
 		const { channel } = this;
 		if (!channel) {
 			throw new UnexpectedError('Engine 2.0 cannot wait for a response without a channel');
@@ -80,7 +96,7 @@ export class EngineV2WebhookResponder {
 			onRelease: (id) => this.release(id),
 		});
 		const unsubscribe = channel.subscribe(executionId, (published) =>
-			this.handle(published, response, responsePromise),
+			this.handle(published, response, options),
 		);
 		this.pendingWebhooks.set(executionId, { response, unsubscribe });
 
@@ -90,10 +106,10 @@ export class EngineV2WebhookResponder {
 	private handle(
 		published: ExecutionResponse,
 		response: PendingWebhookResponse,
-		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
+		options: WaitOptions,
 	): void {
 		try {
-			this.route(published, response, responsePromise);
+			this.route(published, response, options);
 		} catch (error) {
 			this.logger.error('Failed to relay an engine 2.0 response', {
 				executionId: published.executionId,
@@ -102,14 +118,18 @@ export class EngineV2WebhookResponder {
 			});
 		}
 	}
+
 	private route(
 		published: ExecutionResponse,
 		response: PendingWebhookResponse,
-		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
+		options: WaitOptions,
 	): void {
+		const { responsePromise, httpResponse, responseMode } = options;
+
 		switch (published.type) {
 			case 'failure':
 				responsePromise?.reject(new Error(published.error.message));
+				if (responseMode === 'streaming') httpResponse?.end();
 				response.resolve({
 					status: 'failed',
 					error: { name: published.error.code, message: published.error.message },
@@ -121,11 +141,20 @@ export class EngineV2WebhookResponder {
 				responsePromise?.resolve(published.payload as unknown as IN8nHttpFullResponse);
 				return;
 
+			case 'chunk':
+				if (!httpResponse) return;
+				httpResponse.write(JSON.stringify(published.payload as unknown as StructuredChunk) + '\n');
+				flushResponse(httpResponse);
+				return;
+
 			case 'ended':
 				// A run that never reached the Respond node still has to answer. The
 				// sentinel tells `setupResponseNodePromise` to stand down, so the
 				// handler decides instead. Resolving a settled promise is a no-op.
 				responsePromise?.resolve(EXECUTION_ENDED_WITHOUT_RESPONSE);
+				// v1 closes the stream in `ActiveExecutions.finalizeExecution`, which a
+				// v2 run has no entry in.
+				if (responseMode === 'streaming') httpResponse?.end();
 				this.onEnded(published, response);
 				return;
 		}
