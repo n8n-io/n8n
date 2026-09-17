@@ -22,7 +22,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { simpleGit } from 'simple-git';
-import { onTestFinished } from 'vitest';
+import { onTestFinished, vi } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
@@ -33,6 +33,7 @@ import {
 	buildWorkflowReferencingDataTables,
 	buildWorkflowReferencingVariables,
 } from '@/modules/n8n-packages/__tests__/utils/test-builders';
+import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
 import { createMember, createOwner } from '@test-integration/db/users';
 import { createFolder } from '@test-integration/db/folders';
 import { createVariable } from '@test-integration/db/variables';
@@ -497,7 +498,13 @@ it('lists what applying the branch changes on this instance, named and archived 
 				version: null,
 				updatedAt: null,
 			}),
-			expect.objectContaining({ id: outgoing.id, name: 'outgoing', status: 'deleted' }),
+			// A deleted row is a local workflow, so it keeps its name and version instead of a slug.
+			expect.objectContaining({
+				id: outgoing.id,
+				name: 'Outgoing',
+				status: 'deleted',
+				version: expect.any(Number),
+			}),
 			expect.objectContaining({ id: dependent.id, status: 'modified', dependencyCount: 1 }),
 		]),
 	);
@@ -540,8 +547,12 @@ it('answers for a destination that has only an apply configuration', async () =>
 	const applyEndpoint = `/promotions/${project.id}/changes/apply`;
 
 	// The branch has no commit yet, so there is no package to read. Promote has no config here.
+	const exportSpy = vi.spyOn(Container.get(N8nPackagesService), 'exportPackageToWriter');
 	const empty = await agent.get(applyEndpoint).expect(400);
 	expect(empty.body.message).toContain('no exported package');
+	// The branch is read before the export, so an empty branch costs no project export.
+	expect(exportSpy).not.toHaveBeenCalled();
+	exportSpy.mockRestore();
 	await agent.get(endpoint).expect(400);
 
 	// A source instance promotes the project, then the destination is left with Apply only.
@@ -563,6 +574,37 @@ it('answers for a destination that has only an apply configuration', async () =>
 		changes: [expect.objectContaining({ id: workflow.id, name: 'Local only', status: 'new' })],
 	});
 	await agent.get(endpoint).expect(400);
+}, 30_000);
+
+it('lists every local workflow as deleted when a valid branch manifest has no entry for the project', async () => {
+	const owner = await createOwner();
+	const otherProject = await createTeamProject('Other', owner);
+	await createWorkflow({ name: 'Elsewhere', nodes: [], connections: {} }, otherProject);
+	const connection = await createConnection(['promote', 'apply']);
+	await Container.get(PromotionsService).promote(connection.id, owner, {
+		commitMessage: 'Without the project',
+		canExportVariableValues: true,
+	});
+	// The project appears after the promotion, so the branch manifest does not know it.
+	const project = await createTeamProject('Destination', owner);
+	const workflow = await createWorkflow(
+		{ name: 'Local only', nodes: [], connections: {} },
+		project,
+	);
+
+	const response = await server
+		.authAgentFor(owner)
+		.get(`/promotions/${project.id}/changes/apply`)
+		.expect(200);
+	expect(response.body.data.changes).toEqual([
+		expect.objectContaining({
+			id: workflow.id,
+			name: 'Local only',
+			status: 'deleted',
+			version: expect.any(Number),
+			updatedAt: expect.any(String),
+		}),
+	]);
 }, 30_000);
 
 it('checks authentication, the scopes of each direction, and the promotions license before reading Git', async () => {

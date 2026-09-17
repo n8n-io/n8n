@@ -97,20 +97,24 @@ export class PromotionChangeService {
 	): Promise<PromotionChanges> {
 		await this.assertCanPreview(user, projectId, direction);
 		const branch = await this.promotionsService.readBranchPackage(projectId, direction);
+		// Apply reads the branch manifest before the export, so an empty branch fails without one.
+		const branchDesired =
+			direction === 'apply' ? await this.readBranchDesired(branch, projectId) : null;
 		const instance = await this.exportInstancePackage(user, projectId);
 		const { base, desired } =
-			direction === 'promote'
+			branchDesired === null
 				? { base: branch.files, desired: instance }
-				: { base: instance.files, desired: await this.readBranchDesired(branch, projectId) };
+				: { base: instance.files, desired: branchDesired };
 		const diff = this.diffPackages({ projectId, direction, base, desired });
 		// Archive state separates "archived" from "modified", so the branch is read only for those rows.
 		const archiveState =
 			direction === 'promote'
 				? instance.archiveState
 				: await readBranchArchiveState(branch, diff.archiveCheckPaths);
+		// A deleted row in apply is a local workflow, so its name and version come from the database.
 		const metadata = await this.workflowRepository.findByIds(
-			[...diff.changedIds].filter((id) => diff.desiredWorkflows.has(id)),
-			{ fields: ['updatedAt', 'versionCounter'] },
+			[...diff.changedIds].filter((id) => direction === 'apply' || diff.desiredWorkflows.has(id)),
+			{ fields: ['name', 'updatedAt', 'versionCounter'] },
 		);
 		const rows = buildPromotableResources({ ...diff, base, archiveState, metadata });
 
@@ -285,16 +289,27 @@ async function readBranchArchiveState(
 }
 
 /**
- * Keeps only this project's workflows and the requirement rows they use, so a
- * dependency change on the branch cannot list another project's workflows.
+ * Keeps only this project's workflows, the requirement rows they use, and the
+ * variables they can see, so a dependency change on the branch cannot list
+ * another project's workflows or resolve a name to another project's variable.
  */
-function scopeManifestToProject(manifest: PackageManifest, projectId: string): PackageManifest {
+export function scopeManifestToProject(
+	manifest: PackageManifest,
+	projectId: string,
+): PackageManifest {
 	const projectTarget = manifest.projects?.find(({ id }) => id === projectId)?.target;
-	const workflows =
-		projectTarget === undefined
-			? []
-			: (manifest.workflows ?? []).filter(({ target }) => target.startsWith(`${projectTarget}/`));
+	const inProject = ({ target }: ManifestEntry) =>
+		projectTarget !== undefined && target.startsWith(`${projectTarget}/`);
+	const workflows = (manifest.workflows ?? []).filter(inProject);
 	const workflowIds = new Set(workflows.map(({ id }) => id));
+	// Variables resolve by name, and the project's own variable shadows the global one.
+	const variables = new Map<string, ManifestEntry>();
+	for (const entry of manifest.variables ?? []) {
+		const isGlobal = !entry.target.startsWith(`${PACKAGE_ENTITY_LAYOUT.projects.directory}/`);
+		if (inProject(entry) || (isGlobal && !variables.has(entry.name))) {
+			variables.set(entry.name, entry);
+		}
+	}
 	const scopeRows = <T extends { usedByWorkflows: string[] }>(rows: T[] | undefined) => {
 		const kept = rows
 			?.map((row) => ({
@@ -308,6 +323,7 @@ function scopeManifestToProject(manifest: PackageManifest, projectId: string): P
 	return {
 		...manifest,
 		workflows,
+		variables: [...variables.values()],
 		requirements: requirements && {
 			credentials: scopeRows(requirements.credentials),
 			dataTables: scopeRows(requirements.dataTables),
@@ -409,7 +425,7 @@ function buildPromotableResources({
 	changedIds: ReadonlySet<string>;
 	renamedIds: ReadonlySet<string>;
 	modifiedIds: ReadonlySet<string>;
-	metadata: ReadonlyArray<Pick<WorkflowEntity, 'id' | 'updatedAt' | 'versionCounter'>>;
+	metadata: ReadonlyArray<Pick<WorkflowEntity, 'id' | 'name' | 'updatedAt' | 'versionCounter'>>;
 	dependencyCounts: ReadonlyMap<string, number>;
 }): PromotableResource[] {
 	const metadataById = new Map(metadata.map((workflow) => [workflow.id, workflow]));
@@ -429,7 +445,7 @@ function buildPromotableResources({
 		}
 		return {
 			id,
-			name: entry?.name ?? baseWorkflowSlugs.get(id) ?? id,
+			name: entry?.name ?? workflow?.name ?? baseWorkflowSlugs.get(id) ?? id,
 			type: 'workflow',
 			status,
 			version: workflow?.versionCounter ?? null,
