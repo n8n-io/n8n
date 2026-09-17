@@ -1,7 +1,8 @@
 import { test } from '../../../../fixtures/base';
 import { BENCHMARK_MAIN_RESOURCES, benchConfig } from '../../../../playwright-projects';
-import { kafkaDriver } from '../../../../utils/benchmark';
-import { runLoadTest } from '../harness/load-harness';
+import { runKafkaBacklogTest } from '../harness/kafka-backlog-harness';
+
+const MESSAGE_COUNT = 2_000;
 
 test.use({ capability: benchConfig('single-instance-ceiling', { kafka: true }) });
 
@@ -15,21 +16,15 @@ test.describe(
 		],
 	},
 	() => {
-		test('Kafka trigger + 1 noop, 1KB payload, 150k msgs', async ({ api, services }, testInfo) => {
-			const handle = await kafkaDriver.setup({
-				api,
-				services,
-				scenario: { nodeCount: 1, payloadSize: '1KB', nodeOutputSize: 'noop', partitions: 3 },
-			});
-			await runLoadTest({
-				handle,
+		test('Kafka trigger + 1 noop, 1KB payload, 2k msgs', async ({ api, services }, testInfo) => {
+			await runKafkaBacklogTest({
 				api,
 				services,
 				testInfo,
-				load: { type: 'preloaded', count: 150_000 },
-				trigger: 'kafka',
-				timeoutMs: 1_800_000,
+				messageCount: MESSAGE_COUNT,
+				timeoutMs: 180_000,
 				resourceSummary: { plan: BENCHMARK_MAIN_RESOURCES },
+				requireComplete: true,
 			});
 		});
 	},

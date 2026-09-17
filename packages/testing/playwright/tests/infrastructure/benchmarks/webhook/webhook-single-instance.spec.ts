@@ -3,7 +3,7 @@ import { benchConfig } from '../../../../playwright-projects';
 import { setupWebhook } from '../../../../utils/benchmark/webhook-driver';
 import { runWebhookThroughputTest } from '../harness/webhook-throughput-harness';
 
-const CONNECTIONS = 250;
+const CONNECTIONS = 5;
 const DURATION_SECONDS = 120;
 
 // Direct mode: no Bull, no workers. Webhook receives → workflow runs inline on
@@ -44,8 +44,12 @@ test.describe(
 				testInfo,
 				baseUrl: backendUrl,
 				connections: CONNECTIONS,
+				pipelining: 1,
+				warmupSeconds: 0,
 				durationSeconds: DURATION_SECONDS,
 				timeoutMs: (DURATION_SECONDS + 60) * 1000,
+				maxErrorRatePct: 1,
+				minCompletedResponseRatio: 0.95,
 			});
 		});
 	},

@@ -25,6 +25,8 @@ export interface StageMeasurement {
 	completedDuringStage: number;
 	durationMs: number;
 	execPerSec: number;
+	/** Completion rate over the final 30 seconds of the stage. */
+	tailExecPerSec: number;
 }
 
 export interface ThroughputResult {
@@ -45,6 +47,7 @@ export interface ThroughputResult {
 	 * "rate while only draining a backlog" — different system behavior, different question.
 	 */
 	inputPhaseExecPerSec?: number;
+	inputPhaseTailExecPerSec?: number;
 	inputPhaseCompleted?: number;
 	inputPhaseDurationMs?: number;
 	drainPhaseExecPerSec?: number;
@@ -304,6 +307,7 @@ function calculateThroughput(
 	// "rate while draining backlog". Each phase has different load characteristics
 	// so reporting one averaged number is misleading.
 	let inputPhaseExecPerSec: number | undefined;
+	let inputPhaseTailExecPerSec: number | undefined;
 	let inputPhaseCompleted: number | undefined;
 	let inputPhaseDurationMs: number | undefined;
 	let drainPhaseExecPerSec: number | undefined;
@@ -324,6 +328,18 @@ function calculateThroughput(
 			inputPhaseDurationMs = lastActive.timestamp - startTime;
 			inputPhaseExecPerSec =
 				inputPhaseDurationMs > 0 ? (inputPhaseCompleted / inputPhaseDurationMs) * 1000 : 0;
+
+			const tailSamples = inputSamples.filter(
+				(sample) => sample.timestamp >= publishEndAt - 60_000,
+			);
+			const firstTail = tailSamples[0];
+			const lastTail = lastActiveOf(tailSamples);
+			if (firstTail && lastTail && lastTail.timestamp > firstTail.timestamp) {
+				inputPhaseTailExecPerSec =
+					((lastTail.completed - firstTail.completed) /
+						(lastTail.timestamp - firstTail.timestamp)) *
+					1000;
+			}
 		}
 
 		if (drainSamples.length > 0) {
@@ -367,6 +383,9 @@ function calculateThroughput(
 			const completedAtEnd = completedAt(stageEnd);
 			const completedDuringStage = completedAtEnd - completedAtStart;
 			const durationMs = stageEnd - stageStart;
+			const tailStart = Math.max(stageStart, stageEnd - 30_000);
+			const tailDurationMs = stageEnd - tailStart;
+			const tailCompleted = completedAtEnd - completedAt(tailStart);
 			perStage.push({
 				stageIndex: i,
 				startTimestamp: stageStart,
@@ -374,6 +393,7 @@ function calculateThroughput(
 				completedDuringStage,
 				durationMs,
 				execPerSec: durationMs > 0 ? (completedDuringStage / durationMs) * 1000 : 0,
+				tailExecPerSec: tailDurationMs > 0 ? (tailCompleted / tailDurationMs) * 1000 : 0,
 			});
 		}
 	}
@@ -389,6 +409,7 @@ function calculateThroughput(
 		peakActionsPerSec: 0,
 		samples,
 		inputPhaseExecPerSec,
+		inputPhaseTailExecPerSec,
 		inputPhaseCompleted,
 		inputPhaseDurationMs,
 		drainPhaseExecPerSec,

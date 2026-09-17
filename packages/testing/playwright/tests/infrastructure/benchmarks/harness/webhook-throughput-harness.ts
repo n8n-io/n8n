@@ -51,6 +51,10 @@ export interface WebhookThroughputOptions {
 	 * by overlapping requests on the same socket.
 	 */
 	pipelining?: number;
+	/** Fail when transport and non-2xx errors exceed this percentage. */
+	maxErrorRatePct?: number;
+	/** Fail unless this share of successful HTTP responses reaches workflow completion. */
+	minCompletedResponseRatio?: number;
 }
 
 /**
@@ -247,5 +251,16 @@ export async function runWebhookThroughputTest(options: WebhookThroughputOptions
 	await attachReportMetrics(testInfo, report, dimensions);
 	renderRunReport(report);
 
-	expect(throughputResult.totalCompleted).toBeGreaterThan(0);
+	expect(cannonResult.requests.total).toBeGreaterThan(0);
+	if (options.maxErrorRatePct !== undefined) {
+		expect(errorRatePct).toBeLessThanOrEqual(options.maxErrorRatePct);
+	}
+	if (options.minCompletedResponseRatio !== undefined) {
+		const successfulResponses = cannonResult.requests.total - cannonResult.non2xx;
+		const completionRatio =
+			successfulResponses > 0 ? throughputResult.totalCompleted / successfulResponses : 0;
+		expect(completionRatio).toBeGreaterThanOrEqual(options.minCompletedResponseRatio);
+	} else {
+		expect(throughputResult.totalCompleted).toBeGreaterThan(0);
+	}
 }

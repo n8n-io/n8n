@@ -45,10 +45,9 @@ What does turning on configuration X cost vs the baseline?
 
 | Trigger | Spec | Question |
 |---------|------|----------|
-| webhook | `webhook-otel-overhead.spec.ts` | What is the runtime cost of enabling OTEL? |
 | webhook | `webhook-save-data-overhead.spec.ts` | What is the runtime cost of saving execution data on success? |
 
-Cost specs run the same workload as the `Actual` baseline with one config knob flipped. Compare the `exec/s`/`p50` of a Cost spec against `webhook-dedicated-proc-baseline` from the same CI run to read the cost. OTEL specs also attach `jaeger-traces.json` as a test artifact — replay locally for flamegraph inspection.
+Cost specs run the same workload as the `Actual` baseline with one config knob flipped. Compare the `exec/s`/`p50` of a Cost spec against `webhook-dedicated-proc-baseline` from the same CI run to read the cost.
 
 ## Standard topology
 
@@ -96,8 +95,8 @@ Every run prints a per-test `[DIAG]` block and emits a Benchmark Summary table a
 ```
 │ Trigger │ Suite │ Scenario                           │ exec/s │ tail/s │ p50   │ p99    │ req/s │ ev lag │ pg tx/s │
 ├─────────┼───────┼────────────────────────────────────┼────────┼────────┼───────┼────────┼───────┼────────┼─────────┤
-│ kafka   │ other │ Kafka trigger + 1 noop, 1KB, 150k  │ 1336.0 │ 1391.5 │ —     │ —      │ —     │ 18ms   │ 11430   │
-│ webhook │ other │ Async webhook + 1 noop, 1KB, 250c  │  442.0 │  453.2 │ 558ms │ 674ms  │ 442.0 │ 8ms    │ 6692    │
+│ kafka   │ other │ Kafka trigger + 1 noop, 1KB, 2k    │   27.0 │   33.8 │ —     │ —      │ —     │ 1ms    │ 530     │
+│ webhook │ other │ Async webhook + 1 noop, 1KB, 5c    │   54.5 │   56.8 │ 95ms  │ 185ms  │  54.1 │ 1ms    │ 1103    │
 ```
 
 | Column | Meaning |

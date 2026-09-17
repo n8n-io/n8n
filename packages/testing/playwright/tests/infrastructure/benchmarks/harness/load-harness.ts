@@ -13,6 +13,7 @@ import {
 	reportPgSaturation,
 	setupBenchmarkRun,
 } from './orchestration';
+import type { SetupContext } from './orchestration';
 import type { ApiHelpers } from '../../../../services/api-helper';
 import {
 	attachLoadTestResults,
@@ -58,6 +59,14 @@ export interface LoadTestOptions {
 	 * iteration so each shows as its own reporter row.
 	 */
 	variant?: string;
+	/** Fail unless every item in a finite load reaches the completion counter. */
+	requireComplete?: boolean;
+	/** Work that must complete before the benchmark captures its metric baselines. */
+	warmUp?: SetupContext['warmUp'];
+	/** Minimum tail completion/input ratio for a steady load. */
+	minTailRateEfficiency?: number;
+	/** Fail unless one stage keeps up with at least 95% of its requested rate. */
+	requireKeptUpStage?: boolean;
 }
 
 /**
@@ -83,6 +92,7 @@ export async function runLoadTest(options: LoadTestOptions): Promise<ExecutionMe
 		testInfo,
 		handle,
 		metricQuery: options.metricQuery,
+		warmUp: options.warmUp,
 	});
 
 	const exec = await executeLoad(load, {
@@ -170,7 +180,28 @@ export async function runLoadTest(options: LoadTestOptions): Promise<ExecutionMe
 
 	logLoadResult(testInfo, metrics, exec, load, resourceSummary);
 
-	expect(metrics.totalCompleted).toBeGreaterThan(0);
+	if (options.requireComplete) {
+		expect(metrics.totalCompleted).toBe(exec.expectedExecutions);
+	} else {
+		expect(metrics.totalCompleted).toBeGreaterThan(0);
+	}
+	if (options.minTailRateEfficiency !== undefined) {
+		if (load.type !== 'steady' || exec.throughputResult.inputPhaseTailExecPerSec === undefined) {
+			throw new Error('minTailRateEfficiency requires a steady load with input tail metrics');
+		}
+		const efficiency = exec.throughputResult.inputPhaseTailExecPerSec / load.ratePerSecond;
+		expect(efficiency).toBeGreaterThanOrEqual(options.minTailRateEfficiency);
+	}
+	if (options.requireKeptUpStage) {
+		if (load.type !== 'staged' || !exec.throughputResult.perStage) {
+			throw new Error('requireKeptUpStage requires a staged load with per-stage metrics');
+		}
+		const keptUp = exec.throughputResult.perStage.some((stage, index) => {
+			const requestedRate = load.stages[index]?.ratePerSecond;
+			return requestedRate !== undefined && stage.tailExecPerSec / requestedRate >= 0.95;
+		});
+		expect(keptUp).toBe(true);
+	}
 
 	return metrics;
 }
@@ -191,7 +222,7 @@ async function attachStagedResults(
 		const stage = load.stages[i];
 		const measured = tp.perStage[i];
 		if (!stage) continue;
-		const efficiency = (measured.execPerSec / stage.ratePerSecond) * 100;
+		const efficiency = (measured.tailExecPerSec / stage.ratePerSecond) * 100;
 		const dimensions: BenchmarkDimensions = {
 			...baseDimensions,
 			variant: `${stage.ratePerSecond} msg/s`,
@@ -199,7 +230,7 @@ async function attachStagedResults(
 			rate: stage.ratePerSecond,
 			efficiency_pct: Math.round(efficiency),
 		};
-		await attachMetric(testInfo, 'exec-per-sec', measured.execPerSec, 'exec/s', dimensions);
+		await attachMetric(testInfo, 'exec-per-sec', measured.tailExecPerSec, 'exec/s', dimensions);
 		await attachMetric(
 			testInfo,
 			'total-completed',
@@ -319,15 +350,15 @@ function formatStagedSummary(
 		const stage = load.stages[i];
 		const measured = tp.perStage[i];
 		if (!stage) continue;
-		const efficiency = (measured.execPerSec / stage.ratePerSecond) * 100;
+		const efficiency = (measured.tailExecPerSec / stage.ratePerSecond) * 100;
 		const verdict = verdictFor(efficiency);
 		const symbol = efficiency >= 95 ? '✓' : '✗';
 		out +=
 			`\n    Stage ${i + 1} (${stage.ratePerSecond}/sec × ${stage.durationSeconds}s):` +
-			` ${measured.execPerSec.toFixed(1)} exec/s (${efficiency.toFixed(0)}% — ${symbol} ${verdict})`;
+			` ${measured.tailExecPerSec.toFixed(1)} exec/s (${efficiency.toFixed(0)}% — ${symbol} ${verdict})`;
 
 		if (efficiency >= 95) lastKeptUp = stage.ratePerSecond;
-		else firstFell ??= stage.ratePerSecond;
+		else if (lastKeptUp !== undefined) firstFell ??= stage.ratePerSecond;
 	}
 
 	const breakingPoint =
@@ -344,6 +375,8 @@ function formatPhaseSummary(tp: ThroughputResult, load: LoadProfile): string {
 
 	const observed = tp.inputPhaseExecPerSec;
 	const efficiency = (observed / load.ratePerSecond) * 100;
+	const tail = tp.inputPhaseTailExecPerSec;
+	const tailEfficiency = tail === undefined ? undefined : (tail / load.ratePerSecond) * 100;
 	const inputCompleted = tp.inputPhaseCompleted ?? 0;
 	const expectedDuringInput = load.ratePerSecond * load.durationSeconds;
 	const backlogAtPublishEnd = Math.max(0, expectedDuringInput - inputCompleted);
@@ -356,6 +389,9 @@ function formatPhaseSummary(tp: ThroughputResult, load: LoadProfile): string {
 		`\n  Input phase (${load.ratePerSecond}/sec × ${load.durationSeconds}s):\n` +
 		`    Sustained:     ${observed.toFixed(1)} exec/s (${efficiency.toFixed(0)}% of input — ${verdict})\n` +
 		`    Backlog at end: ${backlogAtPublishEnd.toFixed(0)} messages`;
+	if (tail !== undefined && tailEfficiency !== undefined) {
+		out += `\n    Final 60s:     ${tail.toFixed(1)} exec/s (${tailEfficiency.toFixed(0)}% of input)`;
+	}
 
 	if (tp.drainPhaseExecPerSec !== undefined) {
 		const drainDurMs = tp.drainPhaseDurationMs ?? 0;
