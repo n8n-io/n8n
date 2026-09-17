@@ -44,6 +44,11 @@ import { buildAgentConfigurationTelemetry } from './agent-telemetry';
 import { buildToolCallDetails, ExecutionRecorder, type MessageRecord } from './execution-recorder';
 import { IntegrationMessageContextService } from './integrations/integration-message-context.service';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
+import { AgentConversationLeaseService } from './agent-conversation-lease.service';
+import {
+	AgentConversationLeaseLostError,
+	AgentConversationLeaseTimeoutError,
+} from './agent-conversation-lease.types';
 import { modelStreamStallOptions } from './model-stream-stall-options';
 import { AgentRepository } from './repositories/agent.repository';
 import type { ToolRegistry } from './tool-registry';
@@ -152,6 +157,7 @@ export interface ResumeForChatConfig {
 }
 
 export interface ExecuteForTaskPublishedConfig {
+	abortSignal?: AbortSignal;
 	agentId: string;
 	projectId: string;
 	message: string;
@@ -164,6 +170,7 @@ export interface ExecuteForTaskPublishedConfig {
 }
 
 export interface ExecuteForTaskNowConfig {
+	abortSignal?: AbortSignal;
 	agentId: string;
 	projectId: string;
 	/**
@@ -336,6 +343,7 @@ export class AgentExecutionOrchestratorService {
 		private readonly agentSandboxRuntimeService: AgentSandboxRuntimeService,
 		private readonly agentRepository: AgentRepository,
 		private readonly aiConfig: AiConfig,
+		private readonly leases: AgentConversationLeaseService,
 	) {}
 
 	/**
@@ -357,6 +365,36 @@ export class AgentExecutionOrchestratorService {
 	}
 
 	async cancelChatRun(params: {
+		agentId: string;
+		runId: string;
+		resourceId: string;
+		onCancelled?: (threadId: string) => void;
+	}): Promise<boolean> {
+		const initial = await this.n8nCheckpointStorage.getStatus(params.runId, params.agentId);
+		const memory = initial.status !== 'not-found' ? initial.checkpoint?.persistence : undefined;
+		if (!memory || memory.delegated || memory.resourceId !== params.resourceId) return false;
+		const current = this.leases.currentOwner();
+		try {
+			if (current?.lease.threadId === memory.threadId && current.lease.agentId === params.agentId) {
+				return await this.cancelChatRunInsideLease(params);
+			}
+			return await this.leases.withLease(
+				params.agentId,
+				memory.threadId,
+				async () => await this.cancelChatRunInsideLease(params),
+				{ waitTimeoutMs: 250 },
+			);
+		} catch (error) {
+			if (
+				error instanceof AgentConversationLeaseTimeoutError ||
+				error instanceof AgentConversationLeaseLostError
+			)
+				return false;
+			throw error;
+		}
+	}
+
+	private async cancelChatRunInsideLease(params: {
 		agentId: string;
 		runId: string;
 		resourceId: string;
@@ -391,7 +429,8 @@ export class AgentExecutionOrchestratorService {
 
 		await Promise.all(
 			childCheckpoints.map(
-				async ({ runId, agentId }) => await this.n8nCheckpointStorage.delete(runId, agentId),
+				async ({ runId, agentId }) =>
+					await this.n8nCheckpointStorage.deleteSuspended(runId, agentId),
 			),
 		);
 		await this.n8nCheckpointStorage.delete(params.runId, params.agentId);
@@ -405,6 +444,25 @@ export class AgentExecutionOrchestratorService {
 	 * a human-in-the-loop action (button click, modal submission).
 	 */
 	async *resumeForChat(config: ResumeForChatConfig): AsyncGenerator<StreamChunk> {
+		const initial = await this.n8nCheckpointStorage.getStatus(config.runId, config.agentId);
+		if (initial.status === 'expired') {
+			throw new UserError(`Checkpoint ${config.runId} is expired and cannot be resumed`);
+		}
+		if (initial.status === 'not-found') {
+			throw new UserError(`Checkpoint ${config.runId} not found and cannot be resumed`);
+		}
+		const threadId = initial.checkpoint.persistence?.threadId;
+		if (!threadId)
+			throw new UserError(`Checkpoint ${config.runId} has no memory data and cannot be resumed`);
+		yield* this.leases.stream(
+			config.agentId,
+			threadId,
+			(signal) => this.resumeForChatOwned({ ...config, abortSignal: signal }),
+			{ signal: config.abortSignal },
+		);
+	}
+
+	private async *resumeForChatOwned(config: ResumeForChatConfig): AsyncGenerator<StreamChunk> {
 		const {
 			agentId,
 			projectId,
@@ -605,7 +663,16 @@ export class AgentExecutionOrchestratorService {
 	/**
 	 * Execute an agent for the in-app test chat and yield stream chunks.
 	 */
-	async *executeForChat(config: ExecuteForChatConfig): AsyncGenerator<StreamChunk> {
+	executeForChat(config: ExecuteForChatConfig): AsyncGenerator<StreamChunk> {
+		return this.leases.stream(
+			config.agentId,
+			config.memory.threadId,
+			(signal) => this.executeForChatOwned({ ...config, abortSignal: signal }),
+			{ signal: config.abortSignal },
+		);
+	}
+
+	private async *executeForChatOwned(config: ExecuteForChatConfig): AsyncGenerator<StreamChunk> {
 		const {
 			agentId,
 			projectId,
@@ -674,7 +741,16 @@ export class AgentExecutionOrchestratorService {
 	 *
 	 * Loads the published snapshot — never the draft.
 	 */
-	async *executeForChatPublished(
+	executeForChatPublished(config: ExecuteForChatPublishedConfig): AsyncGenerator<StreamChunk> {
+		return this.leases.stream(
+			config.agentId,
+			config.memory.threadId,
+			(signal) => this.executeForChatPublishedOwned({ ...config, abortSignal: signal }),
+			{ signal: config.abortSignal },
+		);
+	}
+
+	private async *executeForChatPublishedOwned(
 		config: ExecuteForChatPublishedConfig,
 	): AsyncGenerator<StreamChunk> {
 		const {
@@ -739,7 +815,16 @@ export class AgentExecutionOrchestratorService {
 	 * Execute a published agent for a scheduled task, stamping `source='task'`
 	 * and the originating `taskId` on the recorded session for traceability.
 	 */
-	async *executeForTaskPublished(
+	executeForTaskPublished(config: ExecuteForTaskPublishedConfig): AsyncGenerator<StreamChunk> {
+		return this.leases.stream(
+			config.agentId,
+			config.memory.threadId,
+			(signal) => this.executeForTaskPublishedOwned({ ...config, abortSignal: signal }),
+			{ signal: config.abortSignal },
+		);
+	}
+
+	private async *executeForTaskPublishedOwned(
 		config: ExecuteForTaskPublishedConfig,
 	): AsyncGenerator<StreamChunk> {
 		const { agentId, projectId, message, memory, taskId, taskVersionId } = config;
@@ -761,6 +846,7 @@ export class AgentExecutionOrchestratorService {
 
 		try {
 			yield* this.streamChatResponse({
+				abortSignal: config.abortSignal,
 				agentInstance: runtime.agent,
 				toolRegistry: runtime.toolRegistry,
 				mcpServerAttributions: runtime.mcpServerAttributions,
@@ -786,7 +872,18 @@ export class AgentExecutionOrchestratorService {
 	 * Execute a task on demand against the current (draft) config as the
 	 * requesting user.
 	 */
-	async *executeForTaskNow(config: ExecuteForTaskNowConfig): AsyncGenerator<StreamChunk> {
+	executeForTaskNow(config: ExecuteForTaskNowConfig): AsyncGenerator<StreamChunk> {
+		return this.leases.stream(
+			config.agentId,
+			config.memory.threadId,
+			(signal) => this.executeForTaskNowOwned({ ...config, abortSignal: signal }),
+			{ signal: config.abortSignal },
+		);
+	}
+
+	private async *executeForTaskNowOwned(
+		config: ExecuteForTaskNowConfig,
+	): AsyncGenerator<StreamChunk> {
 		const { agentId, projectId, user, message, memory, taskId } = config;
 
 		// `user` is always set (see ExecuteForTaskNowConfig) — manual "Run now"
@@ -806,6 +903,7 @@ export class AgentExecutionOrchestratorService {
 
 		try {
 			yield* this.streamChatResponse({
+				abortSignal: config.abortSignal,
 				agentInstance: runtime.agent,
 				toolRegistry: runtime.toolRegistry,
 				mcpServerAttributions: runtime.mcpServerAttributions,
@@ -1168,6 +1266,7 @@ export class AgentExecutionOrchestratorService {
 		try {
 			return await this.agentExecutionService.startExecutionRecording(params, startedAt);
 		} catch (error) {
+			if (error instanceof AgentConversationLeaseLostError) throw error;
 			this.logger.warn(failureMessage, {
 				agentId: params.agentId,
 				threadId: params.threadId,
@@ -1189,6 +1288,7 @@ export class AgentExecutionOrchestratorService {
 			const recordedId = await this.agentExecutionService.finalizeExecution(executionId, params);
 			onExecutionRecorded?.(recordedId);
 		} catch (error) {
+			if (error instanceof AgentConversationLeaseLostError) throw error;
 			this.logger.warn(failureMessage, {
 				agentId: params.agentId,
 				threadId: params.threadId,

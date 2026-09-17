@@ -40,11 +40,12 @@ import {
 	type ObservationLogTaskLockHandle,
 	type RetrievedEpisodicMemoryEntry,
 	type Thread,
-	stripHydratedFileData,
 } from '@n8n/agents';
 import { Service } from '@n8n/di';
-import type { EntityManager, FindOperator, FindOptionsWhere } from '@n8n/typeorm';
-import { Equal, In, IsNull, LessThan, Like, MoreThan } from '@n8n/typeorm';
+import type { OperationContext } from '@n8n/db';
+import { AgentConversationLeaseService } from '../agent-conversation-lease.service';
+import type { FindOptionsWhere } from '@n8n/typeorm';
+import { Equal, In, IsNull, LessThan, MoreThan } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import { UnexpectedError } from 'n8n-workflow';
 
@@ -55,7 +56,6 @@ import { AgentMemoryEntryLockEntity } from '../entities/agent-memory-entry-lock.
 import { AgentMemoryEntrySourceEntity } from '../entities/agent-memory-entry-source.entity';
 import { AgentMemoryEntryEntity } from '../entities/agent-memory-entry.entity';
 import type { AgentMessageEntity } from '../entities/agent-message.entity';
-import { AgentObservationCursorEntity } from '../entities/agent-observation-cursor.entity';
 import { AgentObservationLockEntity } from '../entities/agent-observation-lock.entity';
 import { AgentObservationEntity } from '../entities/agent-observation.entity';
 import { AgentResourceEntity } from '../entities/agent-resource.entity';
@@ -92,9 +92,10 @@ export class N8nMemory {
 		private readonly memoryEntryCandidateRepository: AgentMemoryEntryCandidateRepository,
 		private readonly memoryEntryLockRepository: AgentMemoryEntryLockRepository,
 		private readonly memoryEntrySourceRepository: AgentMemoryEntrySourceRepository,
+		private readonly leases: AgentConversationLeaseService,
 	) {}
 
-	getImplementation(agentId: string) {
+	getImplementation(agentId: string, requireOwnership = true) {
 		return new N8nMemoryImpl(
 			agentId,
 			this.threadRepository,
@@ -107,6 +108,8 @@ export class N8nMemory {
 			this.memoryEntryCandidateRepository,
 			this.memoryEntryLockRepository,
 			this.memoryEntrySourceRepository,
+			this.leases,
+			requireOwnership,
 		);
 	}
 }
@@ -131,6 +134,8 @@ export class N8nMemoryImpl
 		private readonly memoryEntryCandidateRepository: AgentMemoryEntryCandidateRepository,
 		private readonly memoryEntryLockRepository: AgentMemoryEntryLockRepository,
 		private readonly memoryEntrySourceRepository: AgentMemoryEntrySourceRepository,
+		private readonly leases: AgentConversationLeaseService,
+		private readonly requireOwnership = true,
 	) {}
 
 	readonly episodic: BuiltEpisodicMemoryCaptureStore['episodic'] = {
@@ -204,59 +209,25 @@ export class N8nMemoryImpl
 			.execute();
 	}
 
+	private async writeConversation<T>(
+		threadId: string,
+		write: (ctx: OperationContext) => Promise<T>,
+	): Promise<T> {
+		if (!this.requireOwnership) return await write({});
+		return await this.leases.write(this.leases.requireOwner(threadId, this.agentId), write);
+	}
+
 	async deleteThread(threadId: string): Promise<void> {
-		await this.threadRepository.manager.transaction(async (trx) => {
-			await this.dropEpisodicEntriesWithoutSources(trx, threadId);
-			const observationScope = { agentId: this.agentId, observationScopeId: threadId };
-			await trx.delete(AgentObservationEntity, observationScope);
-			await trx.delete(AgentObservationCursorEntity, observationScope);
-			await trx.delete(AgentObservationLockEntity, observationScope);
-			await trx.delete(AgentThreadEntity, { id: threadId });
-		});
+		await this.writeConversation(
+			threadId,
+			async (ctx) => await this.threadRepository.deleteWithMemory(this.agentId, threadId, ctx),
+		);
 	}
 
 	async deleteThreadsByPrefix(threadIdPrefix: string): Promise<void> {
-		const observationScopeId = Like(`${threadIdPrefix}%`);
-		await this.threadRepository.manager.transaction(async (trx) => {
-			await this.dropEpisodicEntriesWithoutSources(trx, observationScopeId);
-			const observationScope = { agentId: this.agentId, observationScopeId };
-			await trx.delete(AgentObservationEntity, observationScope);
-			await trx.delete(AgentObservationCursorEntity, observationScope);
-			await trx.delete(AgentObservationLockEntity, observationScope);
-			await trx.delete(AgentThreadEntity, { id: observationScopeId });
-		});
-	}
-
-	private async dropEpisodicEntriesWithoutSources(
-		trx: EntityManager,
-		threadId: string | FindOperator<string>,
-	): Promise<void> {
-		const sourceRepo = trx.getRepository(AgentMemoryEntrySourceEntity);
-		const entryRepo = trx.getRepository(AgentMemoryEntryEntity);
-		const affectedSources = await sourceRepo.find({
-			select: { memoryEntryId: true },
-			where: { agentId: this.agentId, threadId },
-		});
-		const affectedEntryIds = uniqueStrings(affectedSources.map((source) => source.memoryEntryId));
-		if (affectedEntryIds.length === 0) return;
-
-		await trx.delete(AgentMemoryEntrySourceEntity, {
-			agentId: this.agentId,
-			threadId,
-		});
-
-		const remainingSources = await sourceRepo.find({
-			select: { memoryEntryId: true },
-			where: { agentId: this.agentId, memoryEntryId: In(affectedEntryIds) },
-		});
-		const entriesWithSources = new Set(remainingSources.map((source) => source.memoryEntryId));
-		const orphanedEntryIds = affectedEntryIds.filter((id) => !entriesWithSources.has(id));
-		if (orphanedEntryIds.length === 0) return;
-
-		await entryRepo.update(
-			{ agentId: this.agentId, id: In(orphanedEntryIds), status: 'active' },
-			droppedLifecycleState(),
-		);
+		if (this.requireOwnership)
+			throw new UnexpectedError('A conversation cannot delete other threads');
+		await this.threadRepository.deleteWithMemory(this.agentId, threadIdPrefix, {}, true);
 	}
 
 	// ── Message persistence ──────────────────────────────────────────────
@@ -293,44 +264,33 @@ export class N8nMemoryImpl
 		messages: AgentDbMessage[];
 	}): Promise<void> {
 		if (args.messages.length === 0) return;
-
-		// Upsert by id — bulk INSERT … ON CONFLICT (id) DO UPDATE avoids the
-		// per-row SELECT that save() performs. createdAt is passed explicitly so
-		// the column is preserved on conflict; updatedAt is set manually because
-		// the @BeforeUpdate hook does not fire during upsert.
-		const now = new Date();
-		const entities = args.messages.map((message) => {
-			const dbMsg = stripHydratedFileData(message);
-			const role = 'role' in dbMsg ? (dbMsg.role as string) : 'custom';
-			const type = 'type' in dbMsg ? (dbMsg.type as string) : null;
-			return {
-				id: dbMsg.id,
-				threadId: args.threadId,
-				resourceId: args.resourceId,
-				role,
-				type: type ?? null,
-				content: dbMsg as unknown as Record<string, unknown>,
-				createdAt: dbMsg.createdAt,
-				updatedAt: now,
-			} as QueryDeepPartialEntity<AgentMessageEntity>;
-		});
-
-		await this.messageRepository.upsert(entities, ['id']);
+		await this.writeConversation(
+			args.threadId,
+			async (ctx) => await this.messageRepository.saveMessages(args, ctx),
+		);
 	}
 
 	async deleteMessages(messageIds: string[]): Promise<void> {
 		if (messageIds.length === 0) return;
-		await this.messageRepository.delete(messageIds);
+		if (!this.requireOwnership) {
+			await this.messageRepository.deleteMessages(messageIds, {});
+			return;
+		}
+		const owner = this.leases.currentOwner();
+		if (!owner || owner.lease.agentId !== this.agentId)
+			throw new UnexpectedError('Agent message deletion has no conversation owner');
+		await this.leases.write(
+			owner,
+			async (ctx) =>
+				await this.messageRepository.deleteMessages(messageIds, ctx, owner.lease.threadId),
+		);
 	}
 
 	async deleteMessagesByThread(threadId: string, resourceId?: string): Promise<void> {
-		// Mirrors `getMessages`: explicit `!== undefined` check so that a falsy
-		// (empty-string) `resourceId` cannot accidentally delete every user's
-		// messages on a shared thread.
-		await this.messageRepository.delete({
+		await this.writeConversation(
 			threadId,
-			...(resourceId !== undefined && { resourceId }),
-		});
+			async (ctx) => await this.messageRepository.deleteMessagesByThread(threadId, resourceId, ctx),
+		);
 	}
 
 	// ── Observation log ──────────────────────────────────────────────────

@@ -1,5 +1,6 @@
+import { mockConversationLeases } from './mock-conversation-lease';
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
-import type { LockService, Logger } from '@n8n/backend-common';
+import type { Logger } from '@n8n/backend-common';
 import type { User, UserRepository } from '@n8n/db';
 import type { WorkflowExecuteAfterContext } from '@n8n/decorators';
 import type { InstanceSettings } from 'n8n-core';
@@ -54,8 +55,8 @@ function setup() {
 		checkpoint: { status: 'suspended' },
 	} as never);
 	const backgroundJobService = mock<AgentBackgroundJobService>();
-	const lockService = mock<LockService>();
-	lockService.withLease.mockImplementation(
+	const leases = mockConversationLeases();
+	leases.withLease.mockImplementation(
 		async (_ns, _key, execute) => await execute(new AbortController().signal),
 	);
 	const messageQueue = mock<AgentMessageQueueService>();
@@ -70,7 +71,7 @@ function setup() {
 		instanceSettings,
 		publisher,
 		backgroundJobService,
-		lockService,
+		leases,
 		messageQueue,
 	);
 	return {

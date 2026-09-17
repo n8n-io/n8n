@@ -7,7 +7,7 @@ import {
 	type AgentIntegrationConfig,
 	type AgentMessageAuthor,
 } from '@n8n/api-types';
-import { LockAcquisitionTimeoutError, LockNamespace, LockService } from '@n8n/backend-common';
+import { LockNamespace, LockService } from '@n8n/backend-common';
 import { type HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import { Time } from '@n8n/constants';
 import { Container } from '@n8n/di';
@@ -25,9 +25,9 @@ import type {
 	ResumeForChatConfig,
 } from '../agent-execution-orchestrator.service';
 import { AgentExecutionService } from '../agent-execution.service';
+import { AgentConversationLeaseService } from '../agent-conversation-lease.service';
 import type { AgentMessageQueueService } from '../agent-message-queue.service';
 import {
-	agentConversationLockKey,
 	type IntegrationMessageQueuePayload,
 	type IntegrationQueuePayload,
 	type QueueExecutionContext,
@@ -564,18 +564,7 @@ export class AgentChatBridge {
 		) {
 			return true;
 		}
-		try {
-			await Container.get(LockService).withLease(
-				LockNamespace.KNOWN_LOCKS,
-				agentConversationLockKey(threadId),
-				async () => {},
-				{ waitTimeoutMs: 1 },
-			);
-			return false;
-		} catch (error) {
-			if (error instanceof LockAcquisitionTimeoutError) return true;
-			throw error;
-		}
+		return await Container.get(AgentConversationLeaseService).isHeld(threadId);
 	}
 
 	private async hasOpenSuspension(threadId: string): Promise<boolean> {

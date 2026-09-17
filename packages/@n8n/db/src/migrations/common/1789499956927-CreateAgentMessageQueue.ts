@@ -41,9 +41,24 @@ export class CreateAgentMessageQueue1789499956927 implements ReversibleMigration
 				columnName: 'id',
 				onDelete: 'SET NULL',
 			});
+		await createTable('agent_conversation_lease')
+			.withColumns(
+				// Ownership must work before the first execution thread exists.
+				column('threadId')
+					.varchar(128)
+					.primary.comment('Conversation routing ID.'),
+				column('agentId').varchar(36).notNull,
+				column('ownerToken').uuid.notNull.comment('Fresh identity for one execution owner.'),
+				column('expiresAt')
+					.timestampTimezone()
+					.notNull.comment('Lease expiry on the database clock.'),
+			)
+			.withIndexOn(['agentId'])
+			.withForeignKey('agentId', { tableName: 'agents', columnName: 'id', onDelete: 'CASCADE' });
 	}
 
 	async down({ schemaBuilder: { dropTable } }: MigrationContext) {
+		await dropTable('agent_conversation_lease');
 		await dropTable('agent_message_queue');
 	}
 }

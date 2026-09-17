@@ -1,9 +1,4 @@
-import {
-	LockAcquisitionTimeoutError,
-	LockNamespace,
-	LockService,
-	Logger,
-} from '@n8n/backend-common';
+import { Logger } from '@n8n/backend-common';
 import { OnPubSubEvent, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { createDeferredPromise, type IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
@@ -13,12 +8,13 @@ import { UserError } from 'n8n-workflow';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
-import { AgentExecutionService } from './agent-execution.service';
 import {
-	agentConversationLockKey,
-	type AgentQueueInput,
-	type QueueExecutionContext,
-} from './agent-message-queue.types';
+	AgentConversationLeaseService,
+	type AgentConversationOwner,
+} from './agent-conversation-lease.service';
+import { AgentConversationLeaseTimeoutError } from './agent-conversation-lease.types';
+import { AgentExecutionService } from './agent-execution.service';
+import { type AgentQueueInput, type QueueExecutionContext } from './agent-message-queue.types';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { AgentExecutionRepository } from './repositories/agent-execution.repository';
@@ -36,7 +32,7 @@ type PreviewWaiter = {
 export class AgentMessageQueueService {
 	static readonly LIVENESS_GRACE_MS = 2 * 60_000;
 	private readonly previews = new Map<string, PreviewWaiter>();
-	private readonly processing = new Set<string>();
+	private readonly processing = new Map<string, AgentConversationOwner>();
 	private readonly drains = new Map<string, Promise<void>>();
 	private readonly requested = new Set<string>();
 	private readonly stopping = new AbortController();
@@ -45,7 +41,7 @@ export class AgentMessageQueueService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly repository: AgentMessageQueueRepository,
-		private readonly lockService: LockService,
+		private readonly leases: AgentConversationLeaseService,
 		private readonly checkpoints: N8NCheckpointStorage,
 		private readonly integrations: ChatIntegrationService,
 		private readonly agents: AgentRepository,
@@ -163,11 +159,15 @@ export class AgentMessageQueueService {
 		this.requested.add(threadId);
 		const existing = this.drains.get(threadId);
 		if (existing) return await existing;
-		const drain = this.drainThread(threadId).finally(() => {
-			this.drains.delete(threadId);
-			// An enqueue can arrive after the loop's last check but before this cleanup.
-			if (this.requested.has(threadId)) this.handleDrainRequest({ threadId });
-		});
+		const drain = this.drainThread(threadId)
+			.catch((error: unknown) => {
+				if (!this.stopping.signal.aborted) throw error;
+			})
+			.finally(() => {
+				this.drains.delete(threadId);
+				// An enqueue can arrive after the loop's last check but before this cleanup.
+				if (this.requested.has(threadId)) this.handleDrainRequest({ threadId });
+			});
 		this.drains.set(threadId, drain);
 		await drain;
 	}
@@ -176,10 +176,13 @@ export class AgentMessageQueueService {
 		do {
 			this.requested.delete(threadId);
 			await this.settleRemovedPreviews(threadId);
-			const processed = await this.lockService.withLease(
-				LockNamespace.KNOWN_LOCKS,
-				agentConversationLockKey(threadId),
+			const next = await this.repository.findNext(threadId);
+			if (!next) break;
+			const processed = await this.leases.withLease(
+				next.agentId,
+				threadId,
 				async (signal) => await this.processNext(threadId, signal),
+				{ signal: this.stopping.signal },
 			);
 			if (processed) this.requested.add(threadId);
 		} while (this.requested.has(threadId) && !this.stopping.signal.aborted);
@@ -189,8 +192,10 @@ export class AgentMessageQueueService {
 		if (this.stopping.signal.aborted || leaseSignal.aborted) return false;
 		if (await this.repository.hasProcessing(threadId)) return false;
 		if (await this.executionRepository.existsRunningByThread(threadId)) return false;
-		const entry = await this.repository.findNext(threadId);
+		let entry = await this.repository.findNext(threadId);
 		if (!entry) return false;
+		const owner = this.leases.requireOwner(threadId);
+		if (owner.lease.agentId !== entry.agentId) return true;
 
 		const payload = entry.payload;
 		const preview = this.previews.get(entry.id);
@@ -214,7 +219,8 @@ export class AgentMessageQueueService {
 					id: entry.id,
 					threadId,
 				});
-				await this.repository.removeEntry(entry.id);
+				const id = entry.id;
+				await this.leases.write(owner, async (ctx) => await this.repository.removeEntry(id, ctx));
 				return true;
 			}
 			const bridge = this.integrations.getBridge(
@@ -223,15 +229,25 @@ export class AgentMessageQueueService {
 				payload.credentialId,
 			);
 			if (!bridge) return false;
-			execute = async (context) => await bridge.processQueuedInput(payload, threadId, context);
+			execute = async (context) => {
+				if (entry?.payload.source === 'integration') {
+					await bridge.processQueuedInput(entry.payload, threadId, context);
+				}
+			};
 		}
 		if (
 			entry.kind === 'message' &&
 			(await this.checkpoints.findSuspendedForThread(entry.agentId, threadId))
 		)
 			return false;
-		if (!(await this.repository.markProcessing(entry.id))) return true;
-		this.processing.add(entry.id);
+		const selectedId = entry.id;
+		entry = await this.leases.write(owner, async (ctx) => {
+			if (!(await this.repository.markProcessing(selectedId, ctx))) return null;
+			return await this.repository.findById(selectedId, ctx);
+		});
+		if (!entry) return true;
+		const id = entry.id;
+		this.processing.set(id, owner);
 		const abortSignal = AbortSignal.any([
 			leaseSignal,
 			this.stopping.signal,
@@ -241,15 +257,19 @@ export class AgentMessageQueueService {
 			abortSignal.throwIfAborted();
 			await execute({
 				abortSignal,
-				onExecutionStarted: async (id) => await this.repository.linkExecution(entry.id, id),
+				onExecutionStarted: async (executionId) =>
+					await this.leases.write(
+						owner,
+						async (ctx) => await this.repository.linkExecution(id, executionId, ctx),
+					),
 			});
 			preview?.done.resolve();
 		} catch (error) {
 			preview?.done.reject(ensureError(error));
 			this.logger.warn('Queued agent input ended with an error', { id: entry.id, threadId, error });
 		} finally {
-			this.processing.delete(entry.id);
-			await this.repository.removeEntry(entry.id);
+			this.processing.delete(id);
+			await this.leases.write(owner, async (ctx) => await this.repository.removeEntry(id, ctx));
 			this.notifyPeers(threadId);
 		}
 		return true;
@@ -267,7 +287,11 @@ export class AgentMessageQueueService {
 	}
 
 	private async heartbeat(): Promise<void> {
-		const ids = [...new Set([...this.processing, ...this.previews.keys()])];
+		for (const [id, owner] of this.processing) {
+			if (owner.signal.aborted) continue;
+			await this.leases.write(owner, async (ctx) => await this.repository.touchProcessing(id, ctx));
+		}
+		const ids = [...new Set([...this.processing.keys(), ...this.previews.keys()])];
 		const present = new Set(await this.repository.touchLiveEntries(ids));
 		for (const id of ids) {
 			if (!present.has(id))
@@ -276,51 +300,55 @@ export class AgentMessageQueueService {
 	}
 
 	async recover(): Promise<void> {
-		const staleBefore = new Date(Date.now() - AgentMessageQueueService.LIVENESS_GRACE_MS);
-		for (const threadId of await this.repository.findStaleThreads(staleBefore)) {
+		const graceMs = AgentMessageQueueService.LIVENESS_GRACE_MS;
+		for (const threadId of await this.repository.findStaleThreads(graceMs)) {
 			try {
-				await this.lockService.withLease(
-					LockNamespace.KNOWN_LOCKS,
-					agentConversationLockKey(threadId),
+				const [candidate] = await this.repository.findStale(threadId, graceMs);
+				if (!candidate) continue;
+				await this.leases.withLease(
+					candidate.agentId,
+					threadId,
 					async (leaseSignal) => {
-						for (const entry of await this.repository.findStale(threadId, staleBefore)) {
+						const owner = this.leases.requireOwner(threadId);
+						for (const entry of await this.repository.findStale(threadId, graceMs)) {
 							if (leaseSignal.aborted) return;
 							if (entry.executionId) {
 								const execution = await this.executionRepository.findRunningById(entry.executionId);
-								if (execution && execution.updatedAt > staleBefore) continue;
 								if (execution) {
 									if (leaseSignal.aborted) return;
 									if (
-										!(await this.executionService.finalizeInterruptedExecution(
-											execution,
-											staleBefore,
-										))
+										!(await this.executionService.finalizeInterruptedExecution(execution, graceMs))
 									)
 										continue;
 								}
 							}
 							if (
+								!(await this.leases.write(
+									owner,
+									async (ctx) => await this.repository.removeStale(entry.id, graceMs, ctx),
+								))
+							)
+								continue;
+							if (
 								entry.status === 'queued' &&
 								entry.payload.source === 'preview' &&
 								entry.payload.kind === 'message'
 							) {
-								if (leaseSignal.aborted) return;
 								await this.attachments.deleteByIds(
 									entry.payload.attachments?.map(({ id }) => id) ?? [],
 								);
 							}
 							if (leaseSignal.aborted) return;
-							await this.repository.removeEntry(entry.id);
 							this.logger.info('Removed interrupted agent queue entry without replay', {
 								id: entry.id,
 								threadId,
 							});
 						}
 					},
-					{ waitTimeoutMs: 250 },
+					{ waitTimeoutMs: 250, signal: this.stopping.signal },
 				);
 			} catch (error) {
-				if (!(error instanceof LockAcquisitionTimeoutError))
+				if (!(error instanceof AgentConversationLeaseTimeoutError))
 					this.logger.warn('Agent queue recovery failed', { threadId, error });
 			}
 		}

@@ -1,15 +1,12 @@
-import {
-	LockAcquisitionTimeoutError,
-	LockNamespace,
-	LockService,
-	Logger,
-} from '@n8n/backend-common';
+import { Logger } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 
 import { AgentExecutionService } from './agent-execution.service';
 import { AgentMessageQueueService } from './agent-message-queue.service';
-import { agentConversationLockKey } from './agent-message-queue.types';
+import { AgentConversationLeaseService } from './agent-conversation-lease.service';
+import { AgentConversationLeaseTimeoutError } from './agent-conversation-lease.types';
+import { AgentExecutionThreadRepository } from './repositories/agent-execution-thread.repository';
 import { AgentBackgroundJobService } from './background/agent-background-job.service';
 import { AgentWakeService } from './background/agent-wake.service';
 import { AgentExecutionRepository } from './repositories/agent-execution.repository';
@@ -26,16 +23,17 @@ export class AgentInterruptedExecutionSweeper {
 		private readonly agentWakeService: AgentWakeService,
 		private readonly agentsConfig: AgentsConfig,
 		private readonly messageQueue: AgentMessageQueueService,
-		private readonly lockService: LockService,
+		private readonly leases: AgentConversationLeaseService,
+		private readonly threadRepository: AgentExecutionThreadRepository,
 	) {
 		this.logger = this.logger.scoped('agents');
 	}
 
 	async sweep(): Promise<void> {
-		const staleBefore = new Date(Date.now() - AgentInterruptedExecutionSweeper.LIVENESS_GRACE_MS);
+		const graceMs = AgentInterruptedExecutionSweeper.LIVENESS_GRACE_MS;
 		let running;
 		try {
-			running = await this.executionRepository.findRunning();
+			running = await this.executionRepository.findStaleRunning(graceMs);
 		} catch (error) {
 			this.logger.error('Failed to query running agent executions', { error });
 			return;
@@ -43,16 +41,15 @@ export class AgentInterruptedExecutionSweeper {
 
 		for (const execution of running) {
 			try {
-				if (execution.updatedAt > staleBefore) {
-					continue;
-				}
-				await this.lockService.withLease(
-					LockNamespace.KNOWN_LOCKS,
-					agentConversationLockKey(execution.threadId),
+				const thread = await this.threadRepository.findOneBy({ id: execution.threadId });
+				if (!thread) continue;
+				await this.leases.withLease(
+					thread.agentId,
+					execution.threadId,
 					async () => {
 						const current = await this.executionRepository.findRunningById(execution.id);
-						if (!current || current.updatedAt > staleBefore) return;
-						if (await this.executionService.finalizeInterruptedExecution(current, staleBefore)) {
+						if (!current) return;
+						if (await this.executionService.finalizeInterruptedExecution(current, graceMs)) {
 							this.logger.info('Marked abandoned agent execution as interrupted', {
 								executionId: execution.id,
 								threadId: execution.threadId,
@@ -62,7 +59,7 @@ export class AgentInterruptedExecutionSweeper {
 					{ waitTimeoutMs: 250 },
 				);
 			} catch (error) {
-				if (error instanceof LockAcquisitionTimeoutError) continue;
+				if (error instanceof AgentConversationLeaseTimeoutError) continue;
 				this.logger.error('Failed to finalize interrupted agent execution', {
 					executionId: execution.id,
 					threadId: execution.threadId,

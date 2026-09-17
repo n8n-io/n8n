@@ -14,6 +14,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [agent_chat_attachments](agent_chat_attachments.md) | 12 |  | table |
 | [agent_chat_subscriptions](agent_chat_subscriptions.md) | 6 |  | table |
 | [agent_checkpoints](agent_checkpoints.md) | 6 |  | table |
+| [agent_conversation_lease](agent_conversation_lease.md) | 4 |  | table |
 | [agent_credential_dependency](agent_credential_dependency.md) | 3 |  | table |
 | [agent_eval_dataset](agent_eval_dataset.md) | 10 |  | table |
 | [agent_eval_rating](agent_eval_rating.md) | 8 |  | table |
@@ -163,6 +164,7 @@ erDiagram
 "agent_chat_attachments" }o--o| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_chat_subscriptions" |o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_checkpoints" }o--o| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"agent_conversation_lease" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_credential_dependency" |o--|| "credentials_entity" : "FOREIGN KEY (credentialId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_credential_dependency" |o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_eval_dataset" }o--o| "user" : "FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
@@ -440,6 +442,12 @@ erDiagram
   varchar_255_ runId PK
   TEXT state
   datetime_3_ updatedAt
+}
+"agent_conversation_lease" {
+  varchar_36_ agentId FK
+  datetime_3_ expiresAt
+  varchar ownerToken
+  varchar_128_ threadId PK
 }
 "agent_credential_dependency" {
   varchar_36_ agentId PK

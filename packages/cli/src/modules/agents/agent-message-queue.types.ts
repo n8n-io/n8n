@@ -2,8 +2,6 @@ import type { ActionEvent, SerializedMessage, SerializedThread } from 'chat';
 
 import type { StoredAttachmentRef } from './agent-chat-attachment.service';
 
-export const agentConversationLockKey = (threadId: string) => `agent-conversation:${threadId}`;
-
 export interface QueueExecutionContext {
 	abortSignal: AbortSignal;
 	onExecutionStarted: (executionId: string) => Promise<void>;

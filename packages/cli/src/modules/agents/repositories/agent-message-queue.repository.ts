@@ -1,13 +1,24 @@
+import { BaseRepository, TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, In, LessThan, Repository } from '@n8n/typeorm';
+import { DataSource, In } from '@n8n/typeorm';
+
+import { conversationDbTime } from './agent-conversation-lease.repository';
 
 import type { AgentQueueInput } from '../agent-message-queue.types';
 import { AgentMessageQueue } from '../entities/agent-message-queue.entity';
 
 @Service()
-export class AgentMessageQueueRepository extends Repository<AgentMessageQueue> {
-	constructor(dataSource: DataSource) {
-		super(AgentMessageQueue, dataSource.manager);
+export class AgentMessageQueueRepository extends BaseRepository<AgentMessageQueue> {
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(AgentMessageQueue, dataSource.manager, transactionRunner);
+	}
+
+	private time(offsetMs = 0): string {
+		return conversationDbTime(this.manager.connection.options.type === 'postgres', offsetMs);
+	}
+
+	async findById(id: string, ctx: OperationContext): Promise<AgentMessageQueue | null> {
+		return await this.managerFor(ctx).findOneBy(AgentMessageQueue, { id });
 	}
 
 	async enqueue(input: AgentQueueInput): Promise<AgentMessageQueue> {
@@ -38,16 +49,42 @@ export class AgentMessageQueueRepository extends Repository<AgentMessageQueue> {
 		return await this.existsBy({ threadId });
 	}
 
-	async markProcessing(id: string): Promise<boolean> {
-		return (await this.update({ id, status: 'queued' }, { status: 'processing' })).affected === 1;
+	async markProcessing(id: string, ctx: OperationContext): Promise<boolean> {
+		return (
+			(
+				await this.managerFor(ctx).update(
+					AgentMessageQueue,
+					{ id, status: 'queued' },
+					{
+						status: 'processing',
+						updatedAt: () => this.time(),
+					},
+				)
+			).affected === 1
+		);
 	}
 
-	async linkExecution(id: string, executionId: string): Promise<void> {
-		await this.update({ id, status: 'processing' }, { executionId });
+	async linkExecution(id: string, executionId: string, ctx: OperationContext): Promise<void> {
+		await this.managerFor(ctx).update(
+			AgentMessageQueue,
+			{ id, status: 'processing' },
+			{ executionId },
+		);
 	}
 
-	async removeEntry(id: string): Promise<void> {
-		await this.delete({ id });
+	async removeEntry(id: string, ctx: OperationContext): Promise<void> {
+		await this.managerFor(ctx).delete(AgentMessageQueue, { id });
+	}
+
+	async removeStale(id: string, graceMs: number, ctx: OperationContext): Promise<boolean> {
+		const deleted = await this.managerFor(ctx)
+			.createQueryBuilder()
+			.delete()
+			.from(AgentMessageQueue)
+			.where({ id })
+			.andWhere(`"updatedAt" < ${this.time(-graceMs)}`)
+			.execute();
+		return deleted.affected === 1;
 	}
 
 	async cancelQueued(id: string): Promise<boolean> {
@@ -60,8 +97,18 @@ export class AgentMessageQueueRepository extends Repository<AgentMessageQueue> {
 
 	async touchLiveEntries(ids: string[]): Promise<string[]> {
 		if (ids.length === 0) return [];
-		await this.update({ id: In(ids) }, { updatedAt: new Date() });
+		await this.update({ id: In(ids), status: 'queued' }, { updatedAt: () => this.time() });
 		return await this.findExistingIds(ids);
+	}
+
+	async touchProcessing(id: string, ctx: OperationContext): Promise<void> {
+		await this.managerFor(ctx).update(
+			AgentMessageQueue,
+			{ id, status: 'processing' },
+			{
+				updatedAt: () => this.time(),
+			},
+		);
 	}
 
 	async findExistingIds(ids: string[]): Promise<string[]> {
@@ -70,19 +117,25 @@ export class AgentMessageQueueRepository extends Repository<AgentMessageQueue> {
 		return rows.map(({ id }) => id);
 	}
 
-	async findStale(threadId: string, cutoff: Date): Promise<AgentMessageQueue[]> {
-		return await this.find({
-			where: [
-				{ threadId, status: 'processing', updatedAt: LessThan(cutoff) },
-				{ threadId, status: 'queued', source: 'preview', updatedAt: LessThan(cutoff) },
-			],
-		});
+	async findStale(threadId: string, graceMs: number): Promise<AgentMessageQueue[]> {
+		return await this.createQueryBuilder('item')
+			.where({ threadId })
+			.andWhere(`item.updatedAt < ${this.time(-graceMs)}`)
+			.andWhere(
+				'(item.status = :processing OR (item.status = :queued AND item.source = :preview))',
+				{
+					processing: 'processing',
+					queued: 'queued',
+					preview: 'preview',
+				},
+			)
+			.getMany();
 	}
 
-	async findStaleThreads(cutoff: Date): Promise<string[]> {
+	async findStaleThreads(graceMs: number): Promise<string[]> {
 		const rows = await this.createQueryBuilder('item')
 			.select('DISTINCT item.threadId', 'threadId')
-			.where('item.updatedAt < :cutoff', { cutoff })
+			.where(`item.updatedAt < ${this.time(-graceMs)}`)
 			.andWhere('(item.status = :processing OR item.source = :preview)', {
 				processing: 'processing',
 				preview: 'preview',

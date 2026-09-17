@@ -1,7 +1,9 @@
 import type { Mock } from 'vitest';
 import type { SerializableAgentState, StreamChunk } from '@n8n/agents';
 import { MAX_AGENT_CHAT_ATTACHMENT_FILENAME_LENGTH } from '@n8n/api-types';
-import { LockAcquisitionTimeoutError, LockService } from '@n8n/backend-common';
+import { LockService } from '@n8n/backend-common';
+import { AgentConversationLeaseService } from '../../agent-conversation-lease.service';
+import { mockConversationLeases } from '../../__tests__/mock-conversation-lease';
 import type { HttpRequestClient } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
 import type { Adapter, Author, Message, Thread } from 'chat';
@@ -336,6 +338,7 @@ describe('AgentChatBridge — consumeStream', () => {
 		registry.register(new RestrictedTestIntegration());
 		registry.register(new SlackIntegration(mock<AgentRepository>()));
 		Container.set(ChatIntegrationRegistry, registry);
+		Container.set(AgentConversationLeaseService, mockConversationLeases());
 	});
 
 	afterEach(() => {
@@ -1234,14 +1237,9 @@ describe('AgentChatBridge — consumeStream', () => {
 				sessionGenerationKey('agent-1:thread-1'),
 				{ generation: 0, lastActivityAt: Date.now() - 31 * 60_000 },
 			]);
-			const lockService = mock<LockService>();
-			lockService.withLease.mockImplementation(async (_namespace, key, callback) => {
-				if (key === 'agent-conversation:agent-1:thread-1') {
-					throw new LockAcquisitionTimeoutError('Conversation is busy');
-				}
-				return await callback(new AbortController().signal);
-			});
-			Container.set(LockService, lockService);
+			const leases = mockConversationLeases();
+			leases.isHeld.mockResolvedValue(true);
+			Container.set(AgentConversationLeaseService, leases);
 			const { bot, handlers } = makeBot();
 			const agentExecutor = makeAgentExecutor([finishChunk]);
 			const bridge = createBridge(
@@ -3430,6 +3428,7 @@ describe('AgentChatBridge — Slack thread history', () => {
 		const registry = new ChatIntegrationRegistry();
 		registry.register(new SlackIntegration(mock<AgentRepository>()));
 		Container.set(ChatIntegrationRegistry, registry);
+		Container.set(AgentConversationLeaseService, mockConversationLeases());
 	});
 
 	afterEach(() => {

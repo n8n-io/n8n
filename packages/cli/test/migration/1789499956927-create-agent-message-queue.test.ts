@@ -45,6 +45,17 @@ describe('CreateAgentMessageQueue migration', () => {
 				 VALUES (:agentId, 'Agent', :projectId, '[]', '{}', '{}', :now, :now)`,
 				{ agentId, projectId, now },
 			);
+			const leaseTable = escape.tableName('agent_conversation_lease');
+			await runQuery(
+				`INSERT INTO ${leaseTable} ("threadId", "agentId", "ownerToken", "expiresAt")
+				 VALUES ('future-thread', :agentId, :ownerToken, :now)`,
+				{ agentId, ownerToken: randomUUID(), now },
+			);
+			const leaseSchema = await queryRunner.getTable(`${tablePrefix}agent_conversation_lease`);
+			expect(leaseSchema?.primaryColumns.map(({ name }) => name)).toEqual(['threadId']);
+			expect(
+				leaseSchema?.foreignKeys.map(({ columnNames, onDelete }) => ({ columnNames, onDelete })),
+			).toEqual([{ columnNames: ['agentId'], onDelete: 'CASCADE' }]);
 			const table = escape.tableName('agent_message_queue');
 			for (const text of ['one', 'two']) {
 				await runQuery(
@@ -91,16 +102,19 @@ describe('CreateAgentMessageQueue migration', () => {
 				agentId,
 			});
 			expect(await runQuery(`SELECT "id" FROM ${table}`)).toEqual([]);
+			expect(await runQuery(`SELECT "threadId" FROM ${leaseTable}`)).toEqual([]);
 		});
 
 		await undoLastSingleMigration();
 		await withContext(async ({ queryRunner, tablePrefix }) => {
 			expect(await queryRunner.hasTable(`${tablePrefix}agent_message_queue`)).toBe(false);
+			expect(await queryRunner.hasTable(`${tablePrefix}agent_conversation_lease`)).toBe(false);
 			expect(await queryRunner.hasTable(`${tablePrefix}agents`)).toBe(true);
 		});
 		await runSingleMigration(MIGRATION);
 		await withContext(async ({ queryRunner, tablePrefix }) => {
 			expect(await queryRunner.hasTable(`${tablePrefix}agent_message_queue`)).toBe(true);
+			expect(await queryRunner.hasTable(`${tablePrefix}agent_conversation_lease`)).toBe(true);
 		});
 	});
 });

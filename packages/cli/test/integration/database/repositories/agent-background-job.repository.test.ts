@@ -1,4 +1,5 @@
-import { LockService, type Logger } from '@n8n/backend-common';
+import { AgentConversationLeaseService } from '@/modules/agents/agent-conversation-lease.service';
+import { type Logger } from '@n8n/backend-common';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import type { AgentsConfig } from '@n8n/config';
 import type { UserRepository } from '@n8n/db';
@@ -220,7 +221,7 @@ describe('AgentBackgroundJobRepository', () => {
 				firstWakeStarted();
 				throw new Error('model unavailable');
 			});
-			const lockService = Container.get(LockService);
+			const lockService = Container.get(AgentConversationLeaseService);
 			const publisher = mock<Publisher>();
 			const agentsConfig = mock<AgentsConfig>({ backgroundTasksEnabled: true });
 			const logger = mock<Logger>();

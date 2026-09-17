@@ -1,5 +1,9 @@
+import { AgentConversationLeaseLostError } from '@/modules/agents/agent-conversation-lease.types';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
-import { LockService, type Logger } from '@n8n/backend-common';
+import type { Logger } from '@n8n/backend-common';
+import { TransactionRunner } from '@n8n/db';
+import { AgentConversationLeaseService } from '@/modules/agents/agent-conversation-lease.service';
+import { AgentConversationLeaseRepository } from '@/modules/agents/repositories/agent-conversation-lease.repository';
 import { Container } from '@n8n/di';
 import { GlobalConfig } from '@n8n/config';
 import type { InstanceSettings } from 'n8n-core';
@@ -24,6 +28,7 @@ import { AgentExecutionService } from '@/modules/agents/agent-execution.service'
 import { AgentMessageQueueService } from '@/modules/agents/agent-message-queue.service';
 import type {
 	AgentQueueInput,
+	QueueExecutionContext,
 	IntegrationMessageQueuePayload,
 } from '@/modules/agents/agent-message-queue.types';
 import type { AgentChatBridge } from '@/modules/agents/integrations/agent-chat-bridge';
@@ -36,7 +41,6 @@ import { AgentRepository } from '@/modules/agents/repositories/agent.repository'
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { PubSubEventBus } from '@/scaling/pubsub/pubsub.eventbus';
-import { RedisLockService } from '@/scaling/redis-lock.service';
 import { RedisClientService } from '@/services/redis-client.service';
 
 import { retryUntil } from '../shared/retry-until';
@@ -47,7 +51,6 @@ describe('agent message queue', () => {
 	let agentId: string;
 	let projectId: string;
 	let mains: AgentMessageQueueService[];
-	let locks: LockService;
 	let redisStack: Awaited<ReturnType<typeof createServiceStack>> | undefined;
 	let redisConfig: GlobalConfig | undefined;
 	let closeRedis: Array<() => void>;
@@ -113,13 +116,9 @@ describe('agent message queue', () => {
 		const logger = mock<Logger>();
 		logger.scoped.mockReturnValue(logger);
 		let publisher: Publisher;
-		let consumerLocks = locks;
 		let eventBus: PubSubEventBus | undefined;
 		if (redisConfig) {
 			const clients = new RedisClientService(logger, redisConfig);
-			const redisLocks = new RedisLockService(logger, redisConfig, clients);
-			consumerLocks = new LockService(mock<ConstructorParameters<typeof LockService>[0]>());
-			consumerLocks.setProvider(redisLocks);
 			const instance = mock<InstanceSettings>({ hostId: randomUUID(), isWorker: false });
 			publisher = new Publisher(logger, clients, instance, redisConfig.executions, redisConfig);
 			eventBus = new PubSubEventBus();
@@ -135,7 +134,6 @@ describe('agent message queue', () => {
 			closeRedis.push(() => {
 				publisher.shutdown();
 				subscriber.shutdown();
-				redisLocks.destroy();
 			});
 		} else {
 			const localPublisher = mock<Publisher>();
@@ -149,7 +147,11 @@ describe('agent message queue', () => {
 		const main = new AgentMessageQueueService(
 			logger,
 			repository,
-			consumerLocks,
+			new AgentConversationLeaseService(
+				Container.get(AgentConversationLeaseRepository),
+				Container.get(TransactionRunner),
+				logger,
+			),
 			checkpoints,
 			integrations,
 			agents,
@@ -165,6 +167,8 @@ describe('agent message queue', () => {
 	};
 
 	beforeAll(async () => {
+		// These races require independent database connections.
+		Container.get(GlobalConfig).database.postgresdb.poolSize = 4;
 		await testModules.loadModules(['agents']);
 		await testDb.init();
 		repository = Container.get(AgentMessageQueueRepository);
@@ -181,6 +185,7 @@ describe('agent message queue', () => {
 			mock(),
 			mock(),
 			repository,
+			Container.get(AgentConversationLeaseService),
 		);
 		if (process.env.DB_TYPE === 'postgresdb') {
 			redisStack = await createServiceStack({
@@ -214,7 +219,6 @@ describe('agent message queue', () => {
 		);
 		mains = [];
 		closeRedis = [];
-		locks = Container.get(LockService);
 		received.length = 0;
 		checkpoints.findSuspendedForThread.mockResolvedValue(null);
 		integrations.getBridge.mockReturnValue(bridge);
@@ -357,11 +361,11 @@ describe('agent message queue', () => {
 			mock(),
 			mock(),
 			mock(),
-			mainB['lockService'],
+			mainB['leases'],
 			mainB,
 		);
 		const jobs = mock<AgentBackgroundJobRepository>();
-		jobs.findWakeableUnconsumedSettled.mockResolvedValue([]).mockResolvedValueOnce([
+		jobs.findWakeableUnconsumedSettled.mockResolvedValue([
 			mock<AgentBackgroundJob>({
 				id: 'job',
 				parentAgentId: agentId,
@@ -398,7 +402,7 @@ describe('agent message queue', () => {
 			checkpoints,
 			registry,
 			orchestrator,
-			mainB['lockService'],
+			mainB['leases'],
 			mock(),
 			mock(),
 			mock({ backgroundTasksEnabled: true }),
@@ -598,13 +602,12 @@ describe('agent message queue', () => {
 	it('does not start an input removed after selection and before its claim', async () => {
 		const selected = createDeferredPromise();
 		const finishClaim = createDeferredPromise();
-		const claim = repository.markProcessing.bind(repository);
 		const delayedClaim = vi
-			.spyOn(repository, 'markProcessing')
-			.mockImplementationOnce(async (id) => {
+			.spyOn(checkpoints, 'findSuspendedForThread')
+			.mockImplementationOnce(async () => {
 				selected.resolve();
 				await finishClaim.promise;
-				return await claim(id);
+				return null;
 			});
 		const main = await makeMain();
 		try {
@@ -618,6 +621,67 @@ describe('agent message queue', () => {
 		} finally {
 			finishClaim.resolve();
 			delayedClaim.mockRestore();
+		}
+	});
+
+	it('uses an edit saved after selection and before the fenced claim', async () => {
+		const selected = createDeferredPromise();
+		const finish = createDeferredPromise();
+		checkpoints.findSuspendedForThread.mockImplementationOnce(async () => {
+			selected.resolve();
+			await finish.promise;
+			return null;
+		});
+		const main = await makeMain();
+		const id = await main.enqueue(message('Original'));
+		try {
+			await selected.promise;
+			const saved = await repository.update(
+				{ id, status: 'queued' },
+				{ payload: message('Edited').payload as never },
+			);
+			expect(saved.affected).toBe(1);
+			finish.resolve();
+			await main.drain('conversation');
+			expect(received).toEqual(['Edited']);
+		} finally {
+			finish.resolve();
+		}
+	});
+
+	it('rejects a former processor link, heartbeat, and cleanup without touching a successor', async () => {
+		const started = createDeferredPromise<QueueExecutionContext>();
+		const finish = createDeferredPromise();
+		bridge.processQueuedInput.mockImplementation(async (_payload, _threadId, context) => {
+			started.resolve(context);
+			await finish.promise;
+		});
+		const main = await makeMain();
+		const id = await main.enqueue(message('Old turn'));
+		const context = await started.promise;
+		const oldDrain = main['drains'].get('conversation')?.catch((error: unknown) => error);
+		const leaseRepository = Container.get(AgentConversationLeaseRepository);
+		try {
+			await leaseRepository.update({ threadId: 'conversation' }, { expiresAt: new Date(0) });
+			const successor = await leaseRepository.acquire(agentId, 'conversation');
+			expect(successor).not.toBeNull();
+			await repository.update({ id }, { updatedAt: new Date(0) });
+			await expect(context.onExecutionStarted(randomUUID())).rejects.toBeInstanceOf(
+				AgentConversationLeaseLostError,
+			);
+			await main['heartbeat']();
+			finish.resolve();
+			expect(await oldDrain).toBeInstanceOf(AgentConversationLeaseLostError);
+			expect(await repository.findOneByOrFail({ id })).toMatchObject({
+				status: 'processing',
+				executionId: null,
+				updatedAt: new Date(0),
+			});
+			expect(await leaseRepository.findOneByOrFail({ threadId: 'conversation' })).toMatchObject(
+				successor!,
+			);
+		} finally {
+			finish.resolve();
 		}
 	});
 
@@ -636,9 +700,7 @@ describe('agent message queue', () => {
 			await repository.update({}, { updatedAt: new Date(Date.now() - 180_000) });
 			const heartbeat = vi.spyOn(repository, 'touchLiveEntries');
 			await vi.advanceTimersByTimeAsync(30_000);
-			await retryUntil(async () =>
-				expect(await repository.findStaleThreads(new Date(Date.now() - 120_000))).toEqual([]),
-			);
+			await retryUntil(async () => expect(await repository.findStaleThreads(120_000)).toEqual([]));
 			expect(heartbeat.mock.calls.filter(([ids]) => ids.length > 0)).toHaveLength(1);
 			expect(heartbeat.mock.calls.find(([ids]) => ids.length > 0)?.[0]).toHaveLength(2);
 			await peer.recover();
@@ -678,8 +740,8 @@ describe('agent message queue', () => {
 			);
 			ids[threadId] = execution.id;
 			const entry = await repository.enqueue(message('do not replay', threadId));
-			await repository.markProcessing(entry.id);
-			await repository.linkExecution(entry.id, execution.id);
+			await repository.markProcessing(entry.id, {});
+			await repository.linkExecution(entry.id, execution.id, {});
 			await repository.update(entry.id, { updatedAt: old });
 		}
 		const suspension = mock<SerializableAgentState>({ status: 'suspended' });
@@ -692,7 +754,7 @@ describe('agent message queue', () => {
 		vi.spyOn(executions, 'finalizeInterruptedExecution').mockImplementation(
 			async (execution, staleBefore) => {
 				if (execution.threadId === 'refreshed') {
-					await executionRepository.touchRunning(execution.id);
+					await executionRepository.touchRunning(execution.id, {});
 				}
 				return await finalize(execution, staleBefore);
 			},
@@ -722,7 +784,6 @@ describe('agent message queue', () => {
 	});
 
 	it('stops recovery when its conversation lease is lost', async () => {
-		const lease = new AbortController();
 		const stale = await repository.enqueue(
 			preview('lost', 'lost-preview', [
 				{ id: 'unused-file', fileName: 'note.txt', mimeType: 'text/plain', sizeBytes: 1 },
@@ -730,25 +791,26 @@ describe('agent message queue', () => {
 		);
 		await repository.update(stale.id, { updatedAt: new Date(Date.now() - 180_000) });
 		const findStale = repository.findStale.bind(repository);
-		vi.spyOn(repository, 'findStale').mockImplementationOnce(async (...args) => {
+		const staleRead = vi.spyOn(repository, 'findStale').mockImplementation(async (...args) => {
 			const entries = await findStale(...args);
-			lease.abort();
+			await Container.get(AgentConversationLeaseRepository).update(
+				{ threadId: 'lost-preview' },
+				{ expiresAt: new Date(0) },
+			);
 			return entries;
 		});
 		const main = await makeMain();
-		vi.spyOn(main['lockService'], 'withLease').mockImplementationOnce(
-			async (_namespace, _key, run) => await run(lease.signal),
-		);
 
 		await main.recover();
 
 		expect(await repository.existsBy({ id: stale.id })).toBe(true);
 		expect(attachments.deleteByIds).not.toHaveBeenCalled();
+		staleRead.mockRestore();
 	});
 
 	it('recovers waiting integrations, abandons interrupted inputs, and keeps live preview waiters', async () => {
 		const abandoned = await repository.enqueue(message('interrupted'));
-		await repository.markProcessing(abandoned.id);
+		await repository.markProcessing(abandoned.id, {});
 		await repository.update(abandoned.id, { updatedAt: new Date(Date.now() - 180_000) });
 		await repository.enqueue(message('waiting'));
 		const lostPreview = await repository.enqueue(

@@ -1,9 +1,4 @@
-import {
-	LockAcquisitionTimeoutError,
-	LockNamespace,
-	LockService,
-	Logger,
-} from '@n8n/backend-common';
+import { Logger } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
 import { UserRepository } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
@@ -40,10 +35,10 @@ export const WAKE_DEBOUNCE_MS = 5_000;
 export const MAX_CONSECUTIVE_FAILED_WAKES = 3;
 
 import { AgentMessageQueueService } from '../agent-message-queue.service';
-import { agentConversationLockKey } from '../agent-message-queue.types';
+import { AgentConversationLeaseService } from '../agent-conversation-lease.service';
+import { AgentConversationLeaseTimeoutError } from '../agent-conversation-lease.types';
 
 const WAKE_LOCK_WAIT_MS = 250;
-const WAKE_LOCK_TTL_MS = 30_000;
 const HINT_TITLE_MAX_CHARS = 80;
 
 type FailureState = { generation: string; count: number };
@@ -65,7 +60,7 @@ export class AgentWakeService {
 		private readonly checkpointStorage: N8NCheckpointStorage,
 		private readonly integrationRegistry: ChatIntegrationRegistry,
 		private readonly orchestrator: AgentExecutionOrchestratorService,
-		private readonly lockService: LockService,
+		private readonly leases: AgentConversationLeaseService,
 		private readonly publisher: Publisher,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly agentsConfig: AgentsConfig,
@@ -148,9 +143,11 @@ export class AgentWakeService {
 		if (!this.agentsConfig.backgroundTasksEnabled) return;
 
 		try {
-			await this.lockService.withLease(
-				LockNamespace.KNOWN_LOCKS,
-				agentConversationLockKey(threadId),
+			const [first] = await this.jobRepository.findWakeableUnconsumedSettled(threadId);
+			if (!first) return;
+			await this.leases.withLease(
+				first.parentAgentId,
+				threadId,
 				async (signal) => {
 					try {
 						await this.deliverInsideLease(threadId, signal);
@@ -158,10 +155,10 @@ export class AgentWakeService {
 						this.messageQueue.notify(threadId);
 					}
 				},
-				{ waitTimeoutMs: WAKE_LOCK_WAIT_MS, leaseTtlMs: WAKE_LOCK_TTL_MS },
+				{ waitTimeoutMs: WAKE_LOCK_WAIT_MS },
 			);
 		} catch (error) {
-			if (error instanceof LockAcquisitionTimeoutError) {
+			if (error instanceof AgentConversationLeaseTimeoutError) {
 				this.logger.debug('Skipped background job wake because the conversation lease is busy', {
 					threadId,
 				});

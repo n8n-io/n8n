@@ -1,3 +1,5 @@
+import { AgentConversationLeaseService } from './agent-conversation-lease.service';
+import { AgentConversationLeaseLostError } from './agent-conversation-lease.types';
 import type { Agent as RuntimeAgent, BuiltAgent, BuiltTool, CredentialProvider } from '@n8n/agents';
 import type { AgentJsonConfig, AgentSkill } from '@n8n/api-types';
 import {
@@ -101,6 +103,7 @@ export class AgentWorkflowExecutionService {
 		private readonly executionLevelTracer: ExecutionLevelTracer,
 		private readonly nodeToolAiGatewayService: NodeToolAiGatewayService,
 		private readonly aiConfig: AiConfig,
+		private readonly leases: AgentConversationLeaseService,
 	) {}
 
 	private normalizeWorkflowStreamError(error: unknown, outputSchema?: JSONSchema7): Error {
@@ -232,6 +235,7 @@ export class AgentWorkflowExecutionService {
 					toolCodeByName: {},
 					skills,
 					runtimeProfile: 'inline',
+					requireConversationOwnership: false,
 					runType,
 				});
 			return this.applyPerCallAgentExtras(reconstructed, outputSchema, extraTools);
@@ -258,6 +262,7 @@ export class AgentWorkflowExecutionService {
 
 	/** Stream one workflow-invoked agent run and collect its outcome. */
 	private async streamWorkflowAgent(params: {
+		abortSignal?: AbortSignal;
 		agentInstance: BuiltAgent;
 		message: string;
 		threadId: string;
@@ -278,6 +283,7 @@ export class AgentWorkflowExecutionService {
 	}): Promise<WorkflowAgentRunOutcome> {
 		const {
 			agentInstance,
+			abortSignal,
 			message,
 			threadId,
 			telemetryAgentId,
@@ -337,6 +343,7 @@ export class AgentWorkflowExecutionService {
 				});
 
 				const resultStream = await agentInstance.stream(message, {
+					abortSignal,
 					// The memory store scopes message reads by `resourceId` (the
 					// "per-user scope"; chat integrations pass the chat user id there).
 					// Workflow runs have no user, so key the scope by the thread
@@ -365,6 +372,8 @@ export class AgentWorkflowExecutionService {
 							startedAt,
 						);
 					} catch (error) {
+						if (error instanceof AgentConversationLeaseLostError || abortSignal?.aborted)
+							throw error;
 						this.logger.warn('Failed to start agent execution recording from workflow', {
 							agentId: recordingParams.agentId,
 							threadId,
@@ -392,6 +401,7 @@ export class AgentWorkflowExecutionService {
 					}
 				}
 			} catch (error) {
+				if (error instanceof AgentConversationLeaseLostError || abortSignal?.aborted) throw error;
 				const normalizedError = this.normalizeWorkflowStreamError(error, outputSchema);
 				recorder.record({ type: 'error', error: normalizedError });
 				recorder.record({ type: 'finish', finishReason: 'error' });
@@ -406,6 +416,7 @@ export class AgentWorkflowExecutionService {
 			await run();
 		}
 
+		abortSignal?.throwIfAborted();
 		if (streamError && recordingParams && !agentExecutionId) {
 			try {
 				agentExecutionId = await this.agentExecutionService.startExecutionRecording(
@@ -540,100 +551,104 @@ export class AgentWorkflowExecutionService {
 			throw new OperationalError('Agent not found or not accessible.');
 		}
 
-		const credentialProvider = createAgentCredentialProvider(this.credentialsService, projectId);
+		return await this.leases.withLease(agentId, threadId, async (abortSignal) => {
+			const credentialProvider = createAgentCredentialProvider(this.credentialsService, projectId);
 
-		let agentData: Agent = agentEntity;
+			let agentData: Agent = agentEntity;
 
-		if (!useDraftVersion) {
-			agentData = getPublishedAgentSnapshot(agentEntity);
-		}
-		const telemetryConfiguration = buildAgentConfigurationTelemetry(agentData);
-		const runType: AgentRunTelemetryType = useDraftVersion ? 'test' : 'production';
+			if (!useDraftVersion) {
+				agentData = getPublishedAgentSnapshot(agentEntity);
+			}
+			const telemetryConfiguration = buildAgentConfigurationTelemetry(agentData);
+			const runType: AgentRunTelemetryType = useDraftVersion ? 'test' : 'production';
 
-		const extraTools = this.buildWorkflowExtraTools(workflowContext);
-		const compiled = await this.compileIsolated(
-			agentData,
-			credentialProvider,
-			runType,
-			outputSchema,
-			extraTools?.length ? extraTools : undefined,
-			sandboxScope?.principalHash,
-		);
-		if (!compiled.ok || !compiled.agent) {
-			throw new OperationalError(`Failed to compile agent: ${compiled.error ?? 'unknown error'}`);
-		}
+			const extraTools = this.buildWorkflowExtraTools(workflowContext);
+			const compiled = await this.compileIsolated(
+				agentData,
+				credentialProvider,
+				runType,
+				outputSchema,
+				extraTools?.length ? extraTools : undefined,
+				sandboxScope?.principalHash,
+			);
+			if (!compiled.ok || !compiled.agent) {
+				throw new OperationalError(`Failed to compile agent: ${compiled.error ?? 'unknown error'}`);
+			}
 
-		const agentInstance = compiled.agent;
-		const run = await this.streamWorkflowAgent({
-			agentInstance,
-			message,
-			threadId,
-			telemetryAgentId: agentId,
-			telemetryUserId,
-			runType,
-			outputSchema,
-			tracing: {
-				projectId,
-				executionId,
-				workflowId: workflowContext?.workflowId,
-				nodeId: workflowContext?.callingNodeId,
-				nodeName: workflowContext?.callingNodeName,
-			},
-			recordingParams: {
+			const agentInstance = compiled.agent;
+			const run = await this.streamWorkflowAgent({
+				agentInstance,
+				abortSignal,
+				message,
 				threadId,
-				agentId,
-				agentName: agentInstance.name,
-				projectId,
-				userMessage: message,
-				source: AGENT_WORKFLOW_TRIGGER_TYPE,
-				telemetry: {
-					userId: telemetryUserId,
-					runType,
-					configuration: telemetryConfiguration,
+				telemetryAgentId: agentId,
+				telemetryUserId,
+				runType,
+				outputSchema,
+				tracing: {
+					projectId,
+					executionId,
+					workflowId: workflowContext?.workflowId,
+					nodeId: workflowContext?.callingNodeId,
+					nodeName: workflowContext?.callingNodeName,
 				},
-			},
-			streamObserver,
-			...(sandboxScope
-				? {
-						sandboxScope: {
-							projectId,
-							principalHash: sandboxScope.principalHash,
-						},
-					}
-				: {}),
-		});
-
-		if (run.agentExecutionId) {
-			try {
-				await this.agentExecutionService.finalizeExecution(run.agentExecutionId, {
+				recordingParams: {
 					threadId,
 					agentId,
 					agentName: agentInstance.name,
 					projectId,
 					userMessage: message,
-					record: run.messageRecord,
 					source: AGENT_WORKFLOW_TRIGGER_TYPE,
 					telemetry: {
 						userId: telemetryUserId,
 						runType,
 						configuration: telemetryConfiguration,
 					},
-				});
-			} catch (error) {
-				this.logger.warn('Failed to record agent execution from workflow', {
-					agentId,
-					threadId,
-					error: error instanceof Error ? error.message : String(error),
-				});
-			}
-		}
+				},
+				streamObserver,
+				...(sandboxScope
+					? {
+							sandboxScope: {
+								projectId,
+								principalHash: sandboxScope.principalHash,
+							},
+						}
+					: {}),
+			});
 
-		return this.buildWorkflowResult({
-			run,
-			// sessionId here is still the scoped thread key — executeAgent remaps it
-			// to the caller-facing id; this method never sees the unscoped one.
-			session: { agentId, projectId, sessionId: threadId, threadId },
-			outputSchema,
+			if (run.agentExecutionId) {
+				try {
+					await this.agentExecutionService.finalizeExecution(run.agentExecutionId, {
+						threadId,
+						agentId,
+						agentName: agentInstance.name,
+						projectId,
+						userMessage: message,
+						record: run.messageRecord,
+						source: AGENT_WORKFLOW_TRIGGER_TYPE,
+						telemetry: {
+							userId: telemetryUserId,
+							runType,
+							configuration: telemetryConfiguration,
+						},
+					});
+				} catch (error) {
+					if (error instanceof AgentConversationLeaseLostError || abortSignal.aborted) throw error;
+					this.logger.warn('Failed to record agent execution from workflow', {
+						agentId,
+						threadId,
+						error: error instanceof Error ? error.message : String(error),
+					});
+				}
+			}
+
+			return this.buildWorkflowResult({
+				run,
+				// sessionId here is still the scoped thread key — executeAgent remaps it
+				// to the caller-facing id; this method never sees the unscoped one.
+				session: { agentId, projectId, sessionId: threadId, threadId },
+				outputSchema,
+			});
 		});
 	}
 

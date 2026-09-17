@@ -290,7 +290,7 @@ export class AgentsBuilderService {
 		};
 
 		const builderMemory = new Memory()
-			.storage(this.n8nMemory.getImplementation(agentId))
+			.storage(this.n8nMemory.getImplementation(agentId, false))
 			.observationalMemory({
 				observe: createObservationLogObserveFn(modelConfig, { onUsage: onMemoryUsage }),
 				reflect: createObservationLogReflectFn(modelConfig, { onUsage: onMemoryUsage }),
@@ -301,7 +301,7 @@ export class AgentsBuilderService {
 			.instructions(finalInstructions)
 			.skills(runtimeSkills)
 			.memory(builderMemory)
-			.checkpoint(this.n8nCheckpointStorage.getStorage(agentId))
+			.checkpoint(this.n8nCheckpointStorage.getStorage(agentId, false))
 			.configuration({ maxIterations: 30 });
 		const promptCaching = resolveAIAPromptCaching(modelConfig);
 		if (promptCaching) {

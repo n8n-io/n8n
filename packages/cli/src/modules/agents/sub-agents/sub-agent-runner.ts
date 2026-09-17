@@ -50,7 +50,12 @@ import { modelStreamStallOptions } from '../model-stream-stall-options';
 import type { WorkflowToolExecutionMode } from '../tools/workflow-tool-factory';
 import { streamAgentChunks } from '../utils/agent-stream';
 import { createAttributionTracker } from '../utils/mcp-attribution';
-import { SubAgentSourceResolver } from './sub-agent-source-resolver';
+import {
+	SubAgentSourceResolver,
+	type ResolvedSubAgentRuntimeSource,
+} from './sub-agent-source-resolver';
+import { AgentConversationLeaseService } from '../agent-conversation-lease.service';
+import { AgentConversationLeaseLostError } from '../agent-conversation-lease.types';
 
 export interface SubAgentRunContext {
 	projectId: string;
@@ -125,6 +130,7 @@ export class SubAgentRunner {
 		private readonly checkpointStorage: N8NCheckpointStorage,
 		private readonly logger: Logger,
 		private readonly aiConfig: AiConfig,
+		private readonly leases: AgentConversationLeaseService,
 	) {}
 
 	async run(
@@ -170,7 +176,7 @@ export class SubAgentRunner {
 			throw new UserError('Configured sub-agent checkpoint metadata is missing or invalid');
 		}
 		const pinnedSource = parseResumeContext(request.resumeContext, expectedSourceAgentId);
-		await this.checkpointStorage.delete(request.childRunId, pinnedSource.agentId);
+		await this.checkpointStorage.deleteSuspended(request.childRunId, pinnedSource.agentId);
 	}
 
 	private async executeForeground(
@@ -190,6 +196,26 @@ export class SubAgentRunner {
 		// can reference the child before the run starts.
 		const threadId =
 			operation.type === 'run' ? (operation.request.childThreadId ?? uuid()) : operation.threadId;
+		return await this.leases.withLease(
+			runtimeSource.source.sourceId,
+			threadId,
+			async (signal) =>
+				await this.executeOwnedForeground(
+					operation,
+					{ ...context, abortSignal: signal },
+					runtimeSource,
+					threadId,
+				),
+			{ signal: context.abortSignal },
+		);
+	}
+
+	private async executeOwnedForeground(
+		operation: ForegroundOperation,
+		context: SubAgentRunContext,
+		runtimeSource: ResolvedSubAgentRuntimeSource,
+		threadId: string,
+	): Promise<SubAgentRunResult> {
 		const resourceId =
 			operation.type === 'run' ? (operation.request.parentResourceId ?? threadId) : threadId;
 		const sandboxPrincipalHash = await this.resolveSandboxPrincipalHash(
@@ -310,6 +336,7 @@ export class SubAgentRunner {
 				);
 				executionId = currentExecutionId;
 			} catch (error) {
+				if (error instanceof AgentConversationLeaseLostError) throw error;
 				this.logger.warn('Failed to start subagent execution recording', {
 					agentId: runtimeSource.source.sourceId,
 					taskPath: operation.taskPath,
@@ -356,6 +383,7 @@ export class SubAgentRunner {
 				...(suspended ? { resumeContext: createResumeContext(runtimeSource.source) } : {}),
 			};
 		} catch (error) {
+			if (this.leases.requireOwner(threadId).signal.aborted) throw error;
 			if (!recorded) {
 				recorder.record({ type: 'error', error });
 				recorder.record({ type: 'finish', finishReason: 'error' });

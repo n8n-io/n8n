@@ -1,5 +1,5 @@
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
-import { LockNamespace, LockService, Logger } from '@n8n/backend-common';
+import { Logger } from '@n8n/backend-common';
 import { UserRepository } from '@n8n/db';
 import { OnLifecycleEvent, OnPubSubEvent, type WorkflowExecuteAfterContext } from '@n8n/decorators';
 import { Service } from '@n8n/di';
@@ -12,7 +12,7 @@ import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { AgentExecutionUpdateBroadcaster } from './agent-execution-update-broadcaster';
 import { AgentTestRunService } from './agent-test-run.service';
 import { AgentMessageQueueService } from './agent-message-queue.service';
-import { agentConversationLockKey } from './agent-message-queue.types';
+import { AgentConversationLeaseService } from './agent-conversation-lease.service';
 import {
 	AgentBackgroundJobService,
 	collectResultData,
@@ -42,7 +42,7 @@ export class AgentWorkflowToolResumeService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly publisher: Publisher,
 		private readonly backgroundJobService: AgentBackgroundJobService,
-		private readonly lockService: LockService,
+		private readonly leases: AgentConversationLeaseService,
 		private readonly messageQueue: AgentMessageQueueService,
 	) {
 		this.logger = this.logger.scoped('agents');
@@ -142,20 +142,12 @@ export class AgentWorkflowToolResumeService {
 	/** The tool handler re-reads the execution, so this payload only says why it woke. */
 	async resume(agentRun: RelatedAgentRun, status: string): Promise<void> {
 		try {
-			await this.lockService.withLease(
-				LockNamespace.KNOWN_LOCKS,
-				agentConversationLockKey(agentRun.threadId),
-				async (signal) => {
-					const checkpoint = await this.checkpointStorage.getStatus(
-						agentRun.runId,
-						agentRun.agentId,
-					);
-					if (checkpoint.status !== 'active' || checkpoint.checkpoint.status !== 'suspended')
-						return;
-					signal.throwIfAborted();
-					await this.resumeInsideLease(agentRun, status, signal);
-				},
-			);
+			await this.leases.withLease(agentRun.agentId, agentRun.threadId, async (signal) => {
+				const checkpoint = await this.checkpointStorage.getStatus(agentRun.runId, agentRun.agentId);
+				if (checkpoint.status !== 'active' || checkpoint.checkpoint.status !== 'suspended') return;
+				signal.throwIfAborted();
+				await this.resumeInsideLease(agentRun, status, signal);
+			});
 		} finally {
 			this.messageQueue.notify(agentRun.threadId);
 		}

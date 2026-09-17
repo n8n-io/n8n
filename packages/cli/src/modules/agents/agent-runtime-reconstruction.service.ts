@@ -102,6 +102,7 @@ export interface SubAgentDelegationConfig {
 }
 
 export interface ReconstructAgentRuntimeParams {
+	requireConversationOwnership?: boolean;
 	config: AgentJsonConfig;
 	memoryOwnerAgentId: string;
 	projectId: string;
@@ -239,7 +240,9 @@ export class AgentRuntimeReconstructionService {
 			supportsHitl,
 			previewChat,
 			allowBackgroundTasks = true,
+			requireConversationOwnership = true,
 		}: {
+			requireConversationOwnership?: boolean;
 			/** Pass false when the caller cannot resume a suspended run (workflow executions). */
 			supportsHitl?: boolean;
 			/** Set by the in-app preview chat only — see `BuildFromJsonOptions.previewChat`. */
@@ -293,6 +296,7 @@ export class AgentRuntimeReconstructionService {
 			toolCodeByName: toolsByName,
 			skills: agentEntity.skills ?? {},
 			runtimeProfile: 'top-level',
+			requireConversationOwnership,
 			supportsHitl,
 			runType,
 			workflowToolExecutionMode,
@@ -484,6 +488,7 @@ export class AgentRuntimeReconstructionService {
 	}
 
 	private async reconstructRuntime(options: {
+		requireConversationOwnership?: boolean;
 		config: AgentJsonConfig;
 		memoryOwnerAgentId: string;
 		projectId: string;
@@ -539,6 +544,7 @@ export class AgentRuntimeReconstructionService {
 			parentWorkspace,
 			allowBackgroundTasks = true,
 			previewChat,
+			requireConversationOwnership = true,
 		} = options;
 		const unavailable = [...(options.unavailableTools ?? [])];
 		const backgroundTasksEnabled =
@@ -626,7 +632,7 @@ export class AgentRuntimeReconstructionService {
 				return resolved;
 			},
 			skills,
-			memoryFactory: this.getMemoryFactory(memoryOwnerAgentId),
+			memoryFactory: this.getMemoryFactory(memoryOwnerAgentId, requireConversationOwnership),
 			buildMcpClient,
 			resolveManagedEmbeddingProviderOptions: async () =>
 				await this.resolveManagedEmbeddingProviderOptions(projectId),
@@ -647,6 +653,7 @@ export class AgentRuntimeReconstructionService {
 		}
 
 		await this.injectRuntimeDependencies({
+			requireConversationOwnership,
 			agent: reconstructed,
 			agentId: memoryOwnerAgentId,
 			projectId,
@@ -705,8 +712,9 @@ export class AgentRuntimeReconstructionService {
 		return { sourcesById, availableSubAgents };
 	}
 
-	private getMemoryFactory(agentId: string): MemoryFactory {
-		return (_params: AgentJsonMemoryConfig) => this.n8nMemory.getImplementation(agentId);
+	private getMemoryFactory(agentId: string, requireOwnership: boolean): MemoryFactory {
+		return (_params: AgentJsonMemoryConfig) =>
+			this.n8nMemory.getImplementation(agentId, requireOwnership);
 	}
 
 	/**
@@ -824,6 +832,7 @@ export class AgentRuntimeReconstructionService {
 	}
 
 	private async injectRuntimeDependencies(params: {
+		requireConversationOwnership: boolean;
 		agent: RuntimeAgent;
 		agentId: string;
 		projectId: string;
@@ -1019,7 +1028,9 @@ export class AgentRuntimeReconstructionService {
 		// Inline agents get no checkpoint storage: `agent_checkpoints.agentId`
 		// is an FK to `agents`, and a synthetic inline id has no entity row.
 		if (runtimeProfile !== 'inline' && !agent.hasCheckpointStorage()) {
-			agent.checkpoint(this.n8nCheckpointStorage.getStorage(agentId));
+			agent.checkpoint(
+				this.n8nCheckpointStorage.getStorage(agentId, params.requireConversationOwnership),
+			);
 		}
 
 		// Attachment lookups are agent-scoped, so a synthetic inline id would

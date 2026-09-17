@@ -1,3 +1,4 @@
+import { mockConversationLeases } from './mock-conversation-lease';
 import type { Mocked } from 'vitest';
 import { type AgentJsonConfig } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
@@ -283,6 +284,8 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			agentSandboxRuntimeService,
 			agentRepository,
 			mock<AiConfig>(),
+
+			mockConversationLeases(),
 		);
 		agentIntegrationPersistenceService = new AgentIntegrationPersistenceService(
 			agentRepository,
