@@ -617,6 +617,9 @@ Push to master/1.x
 
 ## v3 development (master + 3.x)
 
+The sync runs automation code from the triggering `master` SHA while its working checkout
+stays on `3.x`.
+
 During the v3 release window, `master` carries normal feature work (behind opt-in
 flags) and the long-lived `3.x` branch carries breaking changes. `util-sync-master-to-3x.yml`
 syncs daily by **replaying the `3.x`-only commits onto `master` and force-pushing `3.x`**, so a
