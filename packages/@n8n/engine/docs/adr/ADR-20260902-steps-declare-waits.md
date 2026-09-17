@@ -145,10 +145,12 @@ step result contract, so no node needs to convert to a different step type.
   handling as the step outputs.
 - A resolve request can arrive before the engine records the suspension. The
   resolve path must handle this window. It must not refuse the request.
-- A wait under 65 seconds does not reach the engine. The Wait node sleeps in the
-  process for those and returns normally, and the shim runs that node code
-  unchanged, so the engine never sees a declaration. Node-level waiting stays
-  node behaviour.
+- A time wait under 65 seconds does not reach the engine. The Wait node sleeps
+  in the process for those waits and then returns normally. The shim runs that
+  node code unchanged, so the engine never sees a declaration. Node-level
+  waiting stays node behaviour. The floor applies to the `timeInterval` and
+  `specificTime` modes only. A `webhook` wait and a `form` wait return earlier
+  in the node, and no floor applies to them.
 - A wait with a `limitWaitTime` can fire up to one sweep interval after its
   limit. That parameter has no minimum, so the limit can fall due before the
   sweep's next pass, and the sweep then notices it only on that pass. Every
