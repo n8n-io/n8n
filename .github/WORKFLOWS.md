@@ -312,6 +312,39 @@ whether the key reaches the box. Anyone who can run PR-head code can read
 `/workspaces/.codespaces/shared/.env-secrets`. Previews are limited to branches
 in this repository, so that is the set of people who already have write access.
 
+#### Preview environment from a webhook
+
+A preview can also take environment from an n8n webhook we control, so a value
+can change without a commit and a merge. `scripts/preview-remote-env.mjs` fetches
+it, and `preview-serve.mjs` hands the result to the backend.
+
+It needs three **Codespaces** secrets on `n8n-io/n8n`, again not Actions secrets:
+
+| Secret | Purpose |
+| ------------------------ | ------------------------------------------------- |
+| `PREVIEW_ENV_URL`        | The webhook URL |
+| `PREVIEW_ENV_USER`       | Basic auth user. Optional, defaults to `preview`. |
+| `PREVIEW_ENV_PASSWORD`   | Basic auth password |
+
+The webhook answers with a flat JSON object. Its keys become environment
+variables and its values are used as-is, so a number or a boolean is stringified
+and a nested object is dropped. The request carries the PR number and the head
+SHA as query parameters, so one endpoint can answer per PR.
+
+The fetch runs in the box, not on the runner. Codespaces secrets are unreadable
+from Actions, so neither the password nor a returned value can reach a CI log.
+The log prints key names only.
+
+**Every key is passed through.** A response containing `NODE_OPTIONS`,
+`EXTERNAL_HOOK_FILES` or `PATH` runs code inside the preview box, so whoever can
+edit that workflow can run code there. The one exception is the preview's own
+wiring — the sign-in hook and the owner credentials — which is applied last and
+wins. The `.env-secrets` note above applies to these secrets too.
+
+Nothing here is required. Without the secrets, an unreachable webhook or a
+rejected password, the preview serves as usual and says so in the log. A wrong
+password is not retried: it cannot fix itself.
+
 #### The `CODESPACE_PREVIEW_TOKEN` secret
 
 The job needs `CODESPACE_PREVIEW_TOKEN`, a **fine-grained** personal access token,
@@ -746,6 +779,7 @@ Scripts in `.github/scripts/`:
 |---------------------------------|-------------------------------------------------------------------------|--------------------------------|
 | `codespace-preview.mjs`         | Map a `pull_request` event or a manual operation onto a preview operation, comment the result | `util-codespace-preview.yml` |
 | `../../scripts/preview.mjs`     | One codespace for each PR: `up`, `refresh`, `down`, `ls`. `--json` for CI | `codespace-preview.mjs`, developers |
+| `../../scripts/preview-remote-env.mjs` | Fetch extra environment for a preview from the webhook, inside the box | `../../scripts/preview-serve.mjs` |
 
 `scripts/preview.mjs` is also the developer entry point (`pnpm preview up <pr>`).
 In `--json` mode it prints one object on stdout and sends all progress to stderr,

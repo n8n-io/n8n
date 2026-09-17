@@ -15,6 +15,7 @@ import { fileURLToPath } from 'node:url';
 
 import { codespaceSecret } from './codespace-env.mjs';
 import { envForSlugs } from './preview-labels.mjs';
+import { fetchRemoteEnv } from './preview-remote-env.mjs';
 import { serveHealthPath, servePort, waitForHealth, waitForReady } from './serve-ready.mjs';
 
 const SESSION = 'n8n-preview';
@@ -39,6 +40,15 @@ const port = servePort();
 const healthPath = serveHealthPath();
 
 const tmux = (...args) => spawnSync('tmux', args, { stdio: 'ignore' });
+
+// Identifies the build to the preview env webhook: the box serves a detached head.
+const gitHead = () => {
+	try {
+		return execFileSync('git', ['rev-parse', 'HEAD'], { cwd: repoRoot, encoding: 'utf8' }).trim();
+	} catch {
+		return undefined;
+	}
+};
 
 // Stop the old backend before rebuilding: it frees the port, and it stops the
 // previous build being served alongside newly written assets.
@@ -93,12 +103,32 @@ if (labelEnv.length)
 		`Applying preview labels: ${slugs.join(', ')} → ${labelEnv.map((pair) => pair.split('=')[0]).join(', ')}`,
 	);
 
+// Extra environment from a webhook we control, so a preview can be reconfigured
+// without a commit. Its credentials are codespace secrets, so it resolves here and
+// never on the runner. Whatever it returns becomes environment, so anyone who can
+// edit that workflow can run code in this box.
+const { env: remoteEnv, warnings: remoteWarnings } = await fetchRemoteEnv({
+	url: codespaceSecret('PREVIEW_ENV_URL'),
+	user: codespaceSecret('PREVIEW_ENV_USER'),
+	password: codespaceSecret('PREVIEW_ENV_PASSWORD'),
+	pr: process.env.PREVIEW_PR,
+	sha: gitHead(),
+});
+for (const warning of remoteWarnings) console.warn(warning);
+if (remoteEnv.length)
+	// Names only: the webhook can return a secret.
+	console.log(
+		`Applying remote preview env: ${remoteEnv.map((pair) => pair.split('=')[0]).join(', ')}`,
+	);
+
 console.log(`Starting backend in tmux session '${SESSION}' (log: ${BE_LOG})…`);
 const started = tmux(
 	'new',
 	'-d',
 	'-s',
 	SESSION,
+	// First, so the preview's own wiring below it wins: tmux takes the last -e for a key.
+	...remoteEnv.flatMap((pair) => ['-e', pair]),
 	...labelEnv.flatMap((pair) => ['-e', pair]),
 	...signinEnv,
 	`cd ${repoRoot} && exec pnpm dev:be > ${BE_LOG} 2>&1`,
