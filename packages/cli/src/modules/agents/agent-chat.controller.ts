@@ -188,7 +188,10 @@ export class AgentChatController {
 								executionId = id;
 							},
 							abortSignal,
-							onExecutionStarted,
+							onExecutionStarted: async (id) => {
+								executionId = id;
+								await onExecutionStarted(id);
+							},
 						}),
 						send,
 					);

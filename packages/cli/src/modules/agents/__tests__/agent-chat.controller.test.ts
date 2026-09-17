@@ -538,7 +538,7 @@ describe('AgentChatController attachment cleanup on failed turns', () => {
 		expect(agentChatAttachmentService.deleteByIds).toHaveBeenCalledWith(['att-1']);
 	});
 
-	it('keeps stored attachments when the run fails after an execution was recorded', async () => {
+	it('keeps stored attachments when the run fails after an execution starts', async () => {
 		const { controller, agentExecutionOrchestratorService, agentChatAttachmentService } =
 			makeController();
 		agentChatAttachmentService.storeInbound.mockResolvedValue({
@@ -547,11 +547,10 @@ describe('AgentChatController attachment cleanup on failed turns', () => {
 			mimeType: 'text/plain',
 			fileSizeBytes: 5,
 		} as never);
-		// eslint-disable-next-line @typescript-eslint/require-await
 		agentExecutionOrchestratorService.executeForChat.mockImplementation(async function* (config) {
-			config.onExecutionRecorded?.('exec-1');
+			await config.onExecutionStarted?.('exec-1');
 			yield* [];
-			throw new Error('flaky post-persist failure');
+			throw new Error('execution finalization failed');
 		});
 		const { res } = makeCleanupSseResponse();
 

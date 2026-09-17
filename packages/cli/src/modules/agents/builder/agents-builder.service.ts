@@ -200,7 +200,7 @@ export class AgentsBuilderService {
 
 	/** Expire a suspended builder checkpoint (e.g. when a host cannot render its question), scoped to the agent that owns it. */
 	async cancelCheckpoint(agentId: string, runId: string): Promise<void> {
-		await this.n8nCheckpointStorage.delete(runId, agentId);
+		await this.n8nCheckpointStorage.delete(runId, agentId, false);
 	}
 
 	// ---------------------------------------------------------------------------

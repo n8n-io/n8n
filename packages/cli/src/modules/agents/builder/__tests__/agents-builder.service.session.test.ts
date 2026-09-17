@@ -481,7 +481,7 @@ describe('AgentsBuilderService session isolation', () => {
 
 		await service.cancelCheckpoint('agent-1', 'run-1');
 
-		expect(n8nCheckpointStorage.delete).toHaveBeenCalledWith('run-1', 'agent-1');
+		expect(n8nCheckpointStorage.delete).toHaveBeenCalledWith('run-1', 'agent-1', false);
 	});
 
 	it('uses session.modelConfig directly for the builder model', async () => {
