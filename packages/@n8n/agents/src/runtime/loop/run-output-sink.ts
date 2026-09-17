@@ -74,6 +74,8 @@ export interface ModelCallContext {
 		telemetry?: TelemetryOptions;
 		repairToolCall?: ToolCallRepairFunction<NoInfer<ToolSet>>;
 	};
+	/** True while the host has interrupted this step (see `AgentAbortScope.interrupt`). */
+	interrupted?: () => boolean;
 }
 
 /** Data needed to emit a terminal suspension result. */

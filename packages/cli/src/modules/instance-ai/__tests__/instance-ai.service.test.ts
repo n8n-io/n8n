@@ -234,9 +234,9 @@ vi.mock('@/permissions.ee/check-access', () => ({
 	userHasScopes: vi.fn(),
 }));
 
-import type { MemoryTaskUsageReport, ScopedMemoryTaskEvent } from '@n8n/agents';
+import type { MemoryTaskUsageReport, ScopedMemoryTaskEvent, SteeringInput } from '@n8n/agents';
 import type { InstanceAiEvent } from '@n8n/api-types';
-import type { InstanceAiHandoffContext } from '@n8n/api-types';
+import type { InstanceAiHandoffContext, InstanceAiQueuedMessage } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import type { InstanceAiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
@@ -263,6 +263,7 @@ import {
 	type TraceStatus,
 	type WorkflowVerificationObligation,
 } from '@n8n/instance-ai';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { ErrorReporter } from 'n8n-core';
 import { UserError } from 'n8n-workflow';
 import type { Mock, MockedFunction } from 'vitest';
@@ -278,6 +279,7 @@ import {
 import { INSTANCE_AI_RUN_TIMEOUT_REASON } from '../liveness/instance-ai-liveness.service';
 import { InstanceAiRunLimitError } from '../instance-ai-run-limit.error';
 import { InstanceAiService } from '../instance-ai.service';
+import { QUEUED_MESSAGES_METADATA_KEY, readQueuedMessages } from '../storage/queued-messages';
 import { InstanceAiSandboxService } from '../sandbox';
 
 type StartRunServiceInternals = {
@@ -307,6 +309,7 @@ type StartRunServiceInternals = {
 	threadPushRef: Map<string, string>;
 	executeRun: Mock;
 	trackInFlightExecution: Mock;
+	runInterrupts: Map<string, AbortController>;
 };
 
 function createStartRunService(): StartRunServiceInternals {
@@ -335,6 +338,8 @@ function createStartRunService(): StartRunServiceInternals {
 	service.logger = { warn: vi.fn() };
 	service.eventService = { emit: vi.fn() };
 	service.threadPushRef = new Map();
+	// startRun arms the thread's step-interrupt signal for the next Send now.
+	service.runInterrupts = new Map();
 	service.executeRun = vi.fn();
 	service.trackInFlightExecution = vi.fn();
 	return service;
@@ -588,6 +593,7 @@ type TerminalGuardOrderServiceInternals = {
 			modelId?: ModelConfig;
 		},
 	) => Promise<void>;
+	runInterrupts: Map<string, AbortController>;
 };
 
 function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
@@ -636,6 +642,7 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 		registerTraceContext: vi.fn(),
 	};
 	service.threadPushRef = new Map();
+	service.runInterrupts = new Map();
 	service.pendingBrowserCredentialSetups = new Map();
 	service.backgroundTasks = { getRunningTasks: vi.fn(() => []) };
 	service.temporaryWorkflowService = { reapForRun: vi.fn(async () => []) };
@@ -4803,7 +4810,12 @@ describe('InstanceAiService setup panel Execute input', () => {
 				createAgentFromEnvironment: vi.fn(async () => ({})),
 				buildOrchestratorAgentStreamOptions: vi.fn(() => ({})),
 				shouldPreserveHitlOnShutdown: vi.fn(() => true),
-				runState: { clearActiveRun: vi.fn(), hasSuspendedRun: vi.fn(() => true) },
+				runState: {
+					clearActiveRun: vi.fn(),
+					hasSuspendedRun: vi.fn(() => true),
+					hasLiveRun: vi.fn(() => false),
+				},
+				runInterrupts: new Map(),
 				domainAccessTrackersByThread: new Map(),
 				updateInternalFollowUpFailureStreak: vi.fn(),
 			}) as {
@@ -5878,6 +5890,7 @@ describe('InstanceAiService — clearThreadState agent-builder cleanup', () => {
 		suspendedThreads: { dropPendingConfirmationsForThread: Mock };
 		logger: { warn: Mock };
 		clearThreadState: (threadId: string) => Promise<void>;
+		runInterrupts: Map<string, AbortController>;
 	};
 
 	function buildService(): Internals {
@@ -5887,6 +5900,7 @@ describe('InstanceAiService — clearThreadState agent-builder cleanup', () => {
 		service.planRequestsByThread = new Map();
 		service.runState = { clearThread: vi.fn(() => ({ active: undefined, suspended: undefined })) };
 		service.backgroundTasks = { cancelThread: vi.fn(() => []) };
+		service.runInterrupts = new Map([['thread-1', new AbortController()]]);
 		service.schedulerLocks = new Map();
 		service.failedInternalFollowUpStreaks = new Map();
 		service.liveness = { clearThreadState: vi.fn() };
@@ -6254,5 +6268,417 @@ describe('InstanceAiService — resolveAiPreferencesBlock', () => {
 			'Instance AI failed to read the AI preferences for this turn',
 			{ userId: 'user-1', error: 'db down' },
 		);
+	});
+});
+
+describe('InstanceAiService — queued messages', () => {
+	const USER = { id: 'user-1' } as User;
+
+	type ThreadPatchArgs = {
+		threadId: string;
+		update: (current: {
+			id: string;
+			metadata?: Record<string, unknown>;
+		}) => { metadata?: Record<string, unknown> } | null | undefined;
+	};
+
+	type QueueService = {
+		agentMemory: { getThread: Mock; patchThread: Mock; saveMessages: Mock };
+		eventBus: { publish: Mock };
+		telemetry: { track: Mock };
+		runState: { hasLiveRun: Mock; getThreadUser: Mock; getTimeZone: Mock; startRun: Mock };
+		backgroundTasks: { cancelThread: Mock };
+		runInterrupts: Map<string, AbortController>;
+		startExecuteRun: Mock;
+		defaultTimeZone: string;
+		logger: { warn: Mock; debug: Mock };
+		listQueuedMessages: (threadId: string) => Promise<InstanceAiQueuedMessage[]>;
+		queueMessage: (threadId: string, text: string) => Promise<InstanceAiQueuedMessage[]>;
+		updateQueuedMessage: (
+			threadId: string,
+			messageId: string,
+			text: string,
+		) => Promise<InstanceAiQueuedMessage[]>;
+		removeQueuedMessage: (
+			threadId: string,
+			messageId: string,
+		) => Promise<InstanceAiQueuedMessage[]>;
+		requestSteer: (
+			user: User,
+			threadId: string,
+			messageId: string,
+		) => Promise<{ queuedMessages: InstanceAiQueuedMessage[] }>;
+		claimSteeringInput: (
+			threadId: string,
+			runId: string,
+			step: number,
+			force?: boolean,
+		) => Promise<SteeringInput[]>;
+		flushQueuedMessage: (user: User, threadId: string) => Promise<void>;
+	};
+
+	function createService({ includeThread = true }: { includeThread?: boolean } = {}) {
+		const thread = {
+			id: 'thread-1',
+			resourceId: 'user-1',
+			createdAt: new Date('2026-01-01T00:00:00.000Z'),
+			updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+			metadata: {} as Record<string, unknown>,
+		};
+
+		const service = Object.create(InstanceAiService.prototype) as unknown as QueueService;
+		service.agentMemory = {
+			getThread: vi.fn(async () =>
+				includeThread ? { ...thread, metadata: { ...thread.metadata } } : null,
+			),
+			// Mirrors TypeORMAgentMemory.patchThread: run the update against a copy
+			// and commit its metadata, or return null when the row is gone.
+			patchThread: vi.fn(async ({ threadId, update }: ThreadPatchArgs) => {
+				if (!includeThread || threadId !== thread.id) return null;
+				const current = { ...thread, metadata: { ...thread.metadata } };
+				const patch = update(current);
+				if (!patch) return current;
+				if (patch.metadata !== undefined) thread.metadata = patch.metadata;
+				return { ...current, ...patch };
+			}),
+			saveMessages: vi.fn(async () => await Promise.resolve()),
+		};
+		service.eventBus = { publish: vi.fn() };
+		service.telemetry = { track: vi.fn() };
+		service.backgroundTasks = { cancelThread: vi.fn(() => []) };
+		service.runInterrupts = new Map([['thread-1', new AbortController()]]);
+		service.startExecuteRun = vi.fn();
+		service.defaultTimeZone = 'UTC';
+		service.logger = { warn: vi.fn(), debug: vi.fn() };
+		service.runState = {
+			hasLiveRun: vi.fn(() => false),
+			getThreadUser: vi.fn(() => USER),
+			getTimeZone: vi.fn(() => 'Europe/Berlin'),
+			startRun: vi.fn(() => ({ runId: 'run-new', abortController: new AbortController() })),
+		};
+
+		return { service, thread };
+	}
+
+	describe('queue CRUD', () => {
+		it('appends a message with a queue id and returns the queue', async () => {
+			const { service, thread } = createService();
+
+			const queue = await service.queueMessage('thread-1', 'Use the Slack node');
+
+			expect(queue).toHaveLength(1);
+			expect(queue[0]).toMatchObject({ text: 'Use the Slack node' });
+			expect(queue[0].id).toMatch(/^qm_/);
+			expect(readQueuedMessages(thread.metadata)).toEqual(queue);
+		});
+
+		it('keeps the order of the queue', async () => {
+			const { service } = createService();
+
+			await service.queueMessage('thread-1', 'first');
+			const queue = await service.queueMessage('thread-1', 'second');
+
+			expect(queue.map((item) => item.text)).toEqual(['first', 'second']);
+		});
+
+		it('edits a queued message in place', async () => {
+			const { service } = createService();
+			const [item] = await service.queueMessage('thread-1', 'old text');
+
+			const queue = await service.updateQueuedMessage('thread-1', item.id, 'new text');
+
+			expect(queue).toEqual([{ ...item, text: 'new text' }]);
+		});
+
+		it('removes a queued message', async () => {
+			const { service } = createService();
+			const [first] = await service.queueMessage('thread-1', 'first');
+			await service.queueMessage('thread-1', 'second');
+
+			const queue = await service.removeQueuedMessage('thread-1', first.id);
+
+			expect(queue.map((item) => item.text)).toEqual(['second']);
+		});
+
+		it('refuses an edit of a message that is not queued', async () => {
+			const { service } = createService();
+
+			await expect(service.updateQueuedMessage('thread-1', 'qm_missing', 'text')).rejects.toThrow(
+				UserError,
+			);
+		});
+
+		it('refuses a removal of a message that is not queued', async () => {
+			const { service } = createService();
+
+			await expect(service.removeQueuedMessage('thread-1', 'qm_missing')).rejects.toThrow(
+				UserError,
+			);
+		});
+
+		it('refuses when the thread does not exist', async () => {
+			const { service } = createService({ includeThread: false });
+
+			await expect(service.listQueuedMessages('thread-1')).rejects.toThrow(UserError);
+		});
+
+		it('drops the metadata key once the queue is empty', async () => {
+			const { service, thread } = createService();
+			const [item] = await service.queueMessage('thread-1', 'only one');
+
+			await service.removeQueuedMessage('thread-1', item.id);
+
+			expect(thread.metadata).not.toHaveProperty(QUEUED_MESSAGES_METADATA_KEY);
+		});
+	});
+
+	describe('requestSteer', () => {
+		it('marks the item and stops background work while a run is live', async () => {
+			const { service, thread } = createService();
+			const [item] = await service.queueMessage('thread-1', 'stop and use Slack');
+			service.runState.hasLiveRun.mockReturnValue(true);
+
+			const { queuedMessages } = await service.requestSteer(USER, 'thread-1', item.id);
+
+			expect(queuedMessages[0].steerRequestedAt).toBeDefined();
+			expect(readQueuedMessages(thread.metadata)[0].steerRequestedAt).toBeDefined();
+			expect(service.backgroundTasks.cancelThread).toHaveBeenCalledWith('thread-1');
+			// The step in flight is stopped now; the drain that follows is what puts
+			// the message in front of the next one.
+			expect(service.runInterrupts.get('thread-1')?.signal.aborted).toBe(true);
+			// The steer must not replace the run it steers.
+			expect(service.startExecuteRun).not.toHaveBeenCalled();
+		});
+
+		it('keeps the first request timestamp when the user presses Send now twice', async () => {
+			const { service } = createService();
+			const [item] = await service.queueMessage('thread-1', 'steer me');
+			service.runState.hasLiveRun.mockReturnValue(true);
+
+			const first = await service.requestSteer(USER, 'thread-1', item.id);
+			const second = await service.requestSteer(USER, 'thread-1', item.id);
+
+			expect(second.queuedMessages[0].steerRequestedAt).toBe(
+				first.queuedMessages[0].steerRequestedAt,
+			);
+		});
+
+		it('delivers immediately as a new run when the thread is idle', async () => {
+			const { service, thread } = createService();
+			const [item] = await service.queueMessage('thread-1', 'send me now');
+			service.runState.hasLiveRun.mockReturnValue(false);
+
+			const { queuedMessages } = await service.requestSteer(USER, 'thread-1', item.id);
+
+			expect(queuedMessages).toEqual([]);
+			expect(readQueuedMessages(thread.metadata)).toEqual([]);
+			expect(service.startExecuteRun).toHaveBeenCalledWith(
+				USER,
+				'thread-1',
+				'run-new',
+				'send me now',
+				expect.anything(),
+				undefined,
+				undefined,
+				undefined,
+				'Europe/Berlin',
+			);
+			expect(service.eventBus.publish).toHaveBeenCalledWith(
+				'thread-1',
+				expect.objectContaining({
+					type: 'user-message',
+					runId: 'run-new',
+					payload: expect.objectContaining({
+						messageId: item.id,
+						source: 'queued',
+					}),
+				}),
+			);
+			// The run's own input persistence owns the row; a second write would
+			// render the message twice.
+			expect(service.agentMemory.saveMessages).not.toHaveBeenCalled();
+		});
+
+		it('refuses to steer a message that is not queued', async () => {
+			const { service } = createService();
+			service.runState.hasLiveRun.mockReturnValue(true);
+
+			await expect(service.requestSteer(USER, 'thread-1', 'qm_missing')).rejects.toThrow(UserError);
+		});
+	});
+
+	describe('claimSteeringInput', () => {
+		it('claims a marked item, persists it and reports the step', async () => {
+			const { service, thread } = createService();
+			const [item] = await service.queueMessage('thread-1', 'use the Slack node');
+			service.runState.hasLiveRun.mockReturnValue(true);
+			await service.requestSteer(USER, 'thread-1', item.id);
+			service.startExecuteRun.mockClear();
+
+			const inputs = await service.claimSteeringInput('thread-1', 'run-1', 3);
+
+			expect(inputs).toEqual([{ id: item.id, text: 'use the Slack node' }]);
+			expect(readQueuedMessages(thread.metadata)).toEqual([]);
+			expect(service.agentMemory.saveMessages).toHaveBeenCalledWith({
+				threadId: 'thread-1',
+				resourceId: 'user-1',
+				messages: [
+					expect.objectContaining({
+						id: item.id,
+						role: 'user',
+						type: 'llm',
+						content: [{ type: 'text', text: 'use the Slack node' }],
+					}),
+				],
+			});
+			expect(service.eventBus.publish).toHaveBeenCalledWith(
+				'thread-1',
+				expect.objectContaining({
+					type: 'user-message',
+					runId: 'run-1',
+					agentId: 'orchestrator-run-1',
+					payload: expect.objectContaining({
+						messageId: item.id,
+						source: 'steered',
+						step: 3,
+					}),
+				}),
+			);
+			expect(service.telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.INSTANCE_AI.USER_STEERED_MESSAGE,
+				{ thread_id: 'thread-1', step: 3 },
+			);
+		});
+
+		it('leaves unmarked items queued', async () => {
+			const { service, thread } = createService();
+			await service.queueMessage('thread-1', 'just a queue entry');
+
+			const inputs = await service.claimSteeringInput('thread-1', 'run-1', 1);
+
+			expect(inputs).toEqual([]);
+			expect(readQueuedMessages(thread.metadata)).toHaveLength(1);
+			expect(service.agentMemory.saveMessages).not.toHaveBeenCalled();
+		});
+
+		it('does not claim when the thread has no remembered user', async () => {
+			const { service, thread } = createService();
+			const [item] = await service.queueMessage('thread-1', 'steer me');
+			service.runState.hasLiveRun.mockReturnValue(true);
+			await service.requestSteer(USER, 'thread-1', item.id);
+			service.runState.getThreadUser.mockReturnValue(undefined);
+
+			const inputs = await service.claimSteeringInput('thread-1', 'run-1', 2);
+
+			expect(inputs).toEqual([]);
+			expect(readQueuedMessages(thread.metadata)).toHaveLength(1);
+		});
+
+		it('claims the head item on the boundary an interrupt synthesised', async () => {
+			const { service, thread } = createService();
+			const [item] = await service.queueMessage('thread-1', 'stop and do this instead');
+
+			// No steerRequestedAt yet: the interrupt cancelled the step before the
+			// stamp landed, and the boundary must still pick the message up.
+			const inputs = await service.claimSteeringInput('thread-1', 'run-1', 2, true);
+
+			expect(inputs).toEqual([{ id: item.id, text: 'stop and do this instead' }]);
+			expect(readQueuedMessages(thread.metadata)).toEqual([]);
+			expect(service.eventBus.publish).toHaveBeenCalledWith(
+				'thread-1',
+				expect.objectContaining({
+					payload: expect.objectContaining({ messageId: item.id, source: 'steered', step: 2 }),
+				}),
+			);
+		});
+
+		it('forces only the head item and leaves the rest queued', async () => {
+			const { service, thread } = createService();
+			const [head] = await service.queueMessage('thread-1', 'steer me');
+			await service.queueMessage('thread-1', 'second');
+
+			const inputs = await service.claimSteeringInput('thread-1', 'run-1', 2, true);
+
+			// One interrupt stops one step, so it consumes one message. The rest of
+			// the queue waits for the run's end, as it does without an interrupt.
+			expect(inputs).toEqual([{ id: head.id, text: 'steer me' }]);
+			expect(readQueuedMessages(thread.metadata).map((item) => item.text)).toEqual(['second']);
+		});
+
+		it('never throws — the run keeps going without the input', async () => {
+			const { service } = createService();
+			const [item] = await service.queueMessage('thread-1', 'steer me');
+			service.runState.hasLiveRun.mockReturnValue(true);
+			await service.requestSteer(USER, 'thread-1', item.id);
+			service.agentMemory.saveMessages.mockRejectedValue(new Error('db down'));
+
+			await expect(service.claimSteeringInput('thread-1', 'run-1', 2)).resolves.toEqual([]);
+			expect(service.logger.warn).toHaveBeenCalled();
+		});
+	});
+
+	describe('flushQueuedMessage', () => {
+		it('delivers the head item as a new run and publishes it', async () => {
+			const { service, thread } = createService();
+			const [first] = await service.queueMessage('thread-1', 'first');
+			await service.queueMessage('thread-1', 'second');
+
+			await service.flushQueuedMessage(USER, 'thread-1');
+
+			expect(service.startExecuteRun).toHaveBeenCalledWith(
+				USER,
+				'thread-1',
+				'run-new',
+				'first',
+				expect.anything(),
+				undefined,
+				undefined,
+				undefined,
+				'Europe/Berlin',
+			);
+			expect(service.eventBus.publish).toHaveBeenCalledWith(
+				'thread-1',
+				expect.objectContaining({
+					type: 'user-message',
+					runId: 'run-new',
+					payload: expect.objectContaining({ messageId: first.id, source: 'queued' }),
+				}),
+			);
+			expect(readQueuedMessages(thread.metadata).map((item) => item.text)).toEqual(['second']);
+		});
+
+		it('does nothing while a run is live', async () => {
+			const { service, thread } = createService();
+			await service.queueMessage('thread-1', 'later');
+			service.runState.hasLiveRun.mockReturnValue(true);
+
+			await service.flushQueuedMessage(USER, 'thread-1');
+
+			expect(service.startExecuteRun).not.toHaveBeenCalled();
+			expect(readQueuedMessages(thread.metadata)).toHaveLength(1);
+		});
+
+		it('puts the item back when no run can be started', async () => {
+			const { service, thread } = createService();
+			await service.queueMessage('thread-1', 'keep me');
+			// Idle at the flush guard, busy by the time the run would start.
+			service.runState.hasLiveRun.mockReturnValueOnce(false).mockReturnValueOnce(true);
+
+			await service.flushQueuedMessage(USER, 'thread-1');
+
+			expect(service.startExecuteRun).not.toHaveBeenCalled();
+			expect(readQueuedMessages(thread.metadata).map((item) => item.text)).toEqual(['keep me']);
+			expect(service.eventBus.publish).not.toHaveBeenCalled();
+		});
+
+		it('never throws, so run finalization cannot fail on a queue write', async () => {
+			const { service, thread } = createService();
+			await service.queueMessage('thread-1', 'later');
+			service.agentMemory.patchThread.mockRejectedValue(new Error('db down'));
+
+			await expect(service.flushQueuedMessage(USER, 'thread-1')).resolves.toBeUndefined();
+			expect(service.logger.warn).toHaveBeenCalled();
+			expect(readQueuedMessages(thread.metadata)).toHaveLength(1);
+		});
 	});
 });

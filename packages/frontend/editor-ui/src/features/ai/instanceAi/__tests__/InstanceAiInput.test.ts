@@ -21,6 +21,7 @@ type InputTestProps = {
 	isSubmitting: boolean;
 	isAwaitingConfirmation: boolean;
 	isAwaitingPlanReview: boolean;
+	queueWhileStreaming: boolean;
 	currentThreadId: string;
 	amendContext: { agentId: string; role: string } | null;
 	contextualSuggestion: string | null;
@@ -39,6 +40,7 @@ const defaultProps = (): InputTestProps => ({
 	isSubmitting: false,
 	isAwaitingConfirmation: false,
 	isAwaitingPlanReview: false,
+	queueWhileStreaming: false,
 	currentThreadId: 'thread-1',
 	amendContext: null,
 	contextualSuggestion: null,
@@ -401,6 +403,36 @@ describe('InstanceAiInput', () => {
 		await waitFor(() => {
 			expect(textbox).toHaveValue('Summarize the last workflow error for me');
 		});
+	});
+
+	it('queues a typed message on Enter while a run is active when the host allows it', async () => {
+		const { emitted, getByRole } = renderComponent({
+			props: {
+				isStreaming: true,
+				queueWhileStreaming: true,
+			},
+		});
+
+		const textbox = getByRole('textbox');
+		await userEvent.type(textbox, 'Use the Slack node');
+		await fireEvent.keyDown(textbox, { key: 'Enter' });
+
+		await waitFor(() => expect(emitted().submit?.[0]).toBeDefined());
+		expect(emittedArgument(emitted().submit?.[0], 0)).toBe('Use the Slack node');
+	});
+
+	it('still blocks a streaming submit when the host does not queue', async () => {
+		const { emitted, getByRole } = renderComponent({
+			props: {
+				isStreaming: true,
+			},
+		});
+
+		const textbox = getByRole('textbox');
+		await userEvent.type(textbox, 'Use the Slack node');
+		await fireEvent.keyDown(textbox, { key: 'Enter' });
+
+		expect(emitted().submit).toBeUndefined();
 	});
 
 	it('does not submit when Enter is pressed on an empty draft', async () => {

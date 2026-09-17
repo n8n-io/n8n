@@ -197,6 +197,58 @@ function expectReducerMapsNotPolluted(state: InstanceAiReducerState): void {
 // ---------------------------------------------------------------------------
 
 describe('instanceAi.reducer', () => {
+	describe('user-message', () => {
+		test.each(['queued', 'steered'] as const)(
+			'%s places the user message without run routing fields',
+			(source) => {
+				const state = stateWithRun('run-1', 'agent-root');
+				const event: InstanceAiEvent = {
+					type: 'user-message',
+					runId: 'run-1',
+					agentId: 'agent-root',
+					payload: { messageId: 'queued-1', text: 'Next instruction', source },
+				};
+
+				expect(handleEvent(state, event)).toBe('run-1');
+				expect(state.messages.map((message) => message.id)).toEqual(
+					source === 'queued' ? ['queued-1', 'run-1'] : ['run-1', 'queued-1'],
+				);
+				const message = state.messages.find((item) => item.id === 'queued-1');
+				expect(message).toEqual({
+					id: 'queued-1',
+					role: 'user',
+					createdAt: expect.any(String),
+					content: 'Next instruction',
+					reasoning: '',
+					isStreaming: false,
+				});
+				expect(message).not.toHaveProperty('runId');
+				expect(message).not.toHaveProperty('messageGroupId');
+
+				handleEvent(state, event);
+				expect(state.messages).toHaveLength(2);
+			},
+		);
+
+		test.each(['queued', 'steered'] as const)(
+			'%s appends without creating an assistant message before run-start',
+			(source) => {
+				const state = makeState();
+				expect(
+					handleEvent(state, {
+						type: 'user-message',
+						runId: 'run-1',
+						agentId: 'agent-root',
+						payload: { messageId: 'queued-1', text: 'Next instruction', source },
+					}),
+				).toBeNull();
+				expect(state.messages).toHaveLength(1);
+				expect(state.messages[0]).toMatchObject({ id: 'queued-1', role: 'user' });
+				expect(state.runStateByGroupId.size).toBe(0);
+				expect(state.groupIdByRunId.size).toBe(0);
+			},
+		);
+	});
 	// -----------------------------------------------------------------------
 	// Run lifecycle
 	// -----------------------------------------------------------------------

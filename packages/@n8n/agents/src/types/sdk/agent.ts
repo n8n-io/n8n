@@ -184,9 +184,24 @@ export interface AgentExecutionCounter {
 	incrementTokenCount(tokenCount: number): void;
 }
 
+/** One host-supplied mid-run user input. */
+export interface SteeringInput {
+	/** Host-owned id, so the host's eager row and the end-of-run save collapse into one. */
+	id?: string;
+	text: string;
+}
+
 export interface ExecutionOptions {
 	maxIterations?: number;
 	abortSignal?: AbortSignal;
+	/**
+	 * Stops the in-flight step without ending the run. The provider request is
+	 * cancelled, tool calls that have not started are skipped, and the loop settles
+	 * the step — so a host can use this to cut a step short and put its own user
+	 * input in front of the next one (via `steeringInput`) while keeping everything
+	 * the run already produced. Distinct from `abortSignal`, which ends the run.
+	 */
+	interruptSignal?: AbortSignal;
 	providerOptions?: ProviderOptions;
 	/**
 	 * Cap on completion tokens for each model call (`max_tokens` /
@@ -226,6 +241,24 @@ export interface ExecutionOptions {
 	executionCounter?: AgentExecutionCounter;
 	onStepStart?: (event: GenerateTextStepStartEvent) => void | Promise<void>;
 	onStepEnd?: (event: GenerateTextStepEndEvent) => void | Promise<void>;
+	/**
+	 * Host-drained mid-run user input ("steering"). Called at each clean step
+	 * boundary — after a tool batch settles, before the next model call — and the
+	 * returned text is appended as user input so the next step accounts for it.
+	 *
+	 * `force` marks the boundary the loop synthesised because the host called
+	 * `interrupt()` mid-step. Pass the same drain for it as for a natural boundary:
+	 * that call is what turns "stop this step" into "stop this step and start a new
+	 * one with my message", instead of leaving the interrupt to wait for a
+	 * boundary the current step may never reach.
+	 *
+	 * The host owns durability of the text: it must persist the message before
+	 * returning it. Must not throw; a failed drain must never fail the run.
+	 */
+	steeringInput?: (context: {
+		step: number;
+		force?: boolean;
+	}) => SteeringInput[] | Promise<SteeringInput[]>;
 	/** @deprecated Use `onStepEnd` instead. */
 	onStepFinish?: (event: GenerateTextStepEndEvent) => void | Promise<void>;
 	/**

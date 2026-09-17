@@ -33,7 +33,9 @@ export {
 	type InstanceAiResourceDecision,
 } from './instance-ai/instance-ai-confirm-request.dto';
 export { InstanceAiFeedbackRequestDto } from './instance-ai/instance-ai-feedback-request.dto';
+export { InstanceAiQueueMessageRequest } from './instance-ai/instance-ai-queue-message-request.dto';
 export { InstanceAiRenameThreadRequestDto } from './instance-ai/instance-ai-rename-thread-request.dto';
+export { InstanceAiUpdateQueuedMessageRequest } from './instance-ai/instance-ai-update-queued-message-request.dto';
 export { InstanceAiMcpCreateConnectionRequestDto } from './instance-ai/instance-ai-mcp-create-connection-request.dto';
 export { InstanceAiMcpUpdateConnectionRequestDto } from './instance-ai/instance-ai-mcp-update-connection-request.dto';
 

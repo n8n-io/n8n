@@ -1,4 +1,4 @@
-import type { InstanceAiEvent } from '@n8n/api-types';
+import type { InstanceAiEvent, InstanceAiUserMessageEvent } from '@n8n/api-types';
 import type { InstanceAiLivenessTimeoutReason } from '@n8n/instance-ai';
 
 import type { InstanceAiRunTimeoutDetails } from './run-timeout-details';
@@ -103,6 +103,19 @@ export function buildInstanceAiRunTraceMetadata(
 
 	if (firstVisible.firstToolName) {
 		metadata.first_tool_name = firstVisible.firstToolName;
+	}
+
+	const steers = events.filter(
+		(event): event is InstanceAiUserMessageEvent =>
+			event.type === 'user-message' && event.payload.source === 'steered',
+	);
+	if (steers.length > 0) {
+		metadata.steered = true;
+		metadata.steer_count = steers.length;
+		const steps = steers
+			.map((event) => event.payload.step)
+			.filter((step): step is number => typeof step === 'number');
+		if (steps.length > 0) metadata.steered_at_steps = steps;
 	}
 
 	const cancellationType = getCancellationType(options);

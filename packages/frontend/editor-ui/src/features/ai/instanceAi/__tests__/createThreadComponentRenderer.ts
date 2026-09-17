@@ -2,7 +2,11 @@ import { vi } from 'vitest';
 import { defineComponent, h, reactive, ref, type Component } from 'vue';
 import { createComponentRenderer, type RenderOptions } from '@/__tests__/render';
 import { provideThread, useInstanceAiStore, type ThreadRuntime } from '../instanceAi.store';
-import type { FrontendModuleSettings, InstanceAiMessage } from '@n8n/api-types';
+import type {
+	FrontendModuleSettings,
+	InstanceAiMessage,
+	InstanceAiQueuedMessage,
+} from '@n8n/api-types';
 import {
 	USER_TYPED_MESSAGE,
 	type InstanceAiMessageAuthorship,
@@ -16,6 +20,7 @@ export function makeThread(): ThreadRuntime {
 	return reactive({
 		id: 'thread-1',
 		messages: [] as InstanceAiMessage[],
+		queuedMessages: [] as InstanceAiQueuedMessage[],
 		hasMessages: false,
 		sseState: 'connected',
 		isStreaming: false,
@@ -37,6 +42,11 @@ export function makeThread(): ThreadRuntime {
 		debugEvents: [],
 		loadHistoricalMessages: vi.fn().mockResolvedValue('applied'),
 		loadThreadStatus: vi.fn().mockResolvedValue(undefined),
+		loadQueuedMessages: vi.fn().mockResolvedValue(undefined),
+		queueMessage: vi.fn().mockResolvedValue(true),
+		removeQueuedMessage: vi.fn().mockResolvedValue(undefined),
+		steerQueuedMessage: vi.fn().mockResolvedValue(undefined),
+		takeQueuedMessageForEdit: vi.fn().mockResolvedValue(null),
 		connectSSE: vi.fn(),
 		closeSSE: vi.fn(),
 		sendMessage: vi.fn().mockResolvedValue(true),
@@ -76,6 +86,7 @@ export const InstanceAiInputStub = defineComponent({
 		isStreaming: { type: Boolean, required: false },
 		isAwaitingPlanReview: { type: Boolean, required: false },
 		isSubmitting: { type: Boolean, required: false },
+		queueWhileStreaming: { type: Boolean, required: false },
 		isWorkflowBuilderAvailable: { type: Boolean, required: false },
 		contextChip: { type: Object, required: false },
 	},

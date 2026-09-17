@@ -139,6 +139,13 @@ export interface ToolBatchContext {
 	executionCounter?: AgentExecutionCounter;
 	abortSignal: AbortSignal;
 	isAborted: () => boolean;
+	/**
+	 * True while the host stopped the current step without ending the run. An
+	 * interrupted batch settles like an aborted one — calls that have not started
+	 * are skipped — but it is not a cancellation: the loop continues with the
+	 * next step instead of throwing.
+	 */
+	isInterrupted?: () => boolean;
 }
 
 /** A tool-call content block that has already been settled by the AI SDK. */
@@ -195,6 +202,8 @@ export interface ToolCallExecutorDeps {
 	concurrency: number;
 	/** Invoked when a run is aborted mid-batch so the runtime can set cancelled state. */
 	onCancelled: () => void;
+	/** Invoked when a step is interrupted mid-batch; the run itself is still alive. */
+	onInterrupted?: () => void;
 	tokenCounter: TokenCounter;
 	workspaceFilesystem?: WorkspaceFilesystem;
 }
@@ -339,11 +348,16 @@ export class ToolCallExecutor {
 		const pending: Record<string, PendingToolCall> = {};
 
 		for (let batchStart = 0; batchStart < executableCalls.length; ) {
-			if (ctx.isAborted()) {
-				this.deps.onCancelled();
+			if (ctx.isAborted() || ctx.isInterrupted?.() === true) {
+				const interruptedOnly = !ctx.isAborted();
+				if (interruptedOnly) this.deps.onInterrupted?.();
+				else this.deps.onCancelled();
 				for (const id of unexecutedIds) {
 					const tc = executableCallsById.get(id)!;
-					const modelOutput = '[Skipped: run was aborted]';
+					// The model reads this; "aborted" is reserved for a cancelled run.
+					const modelOutput = interruptedOnly
+						? '[Skipped: the user sent a new instruction]'
+						: '[Skipped: run was aborted]';
 					list.setToolCallResult(tc.toolCallId, modelOutput, { canceled: true });
 					results.push({
 						toolCallId: tc.toolCallId,
@@ -456,11 +470,16 @@ export class ToolCallExecutor {
 				}
 			}
 
-			if (ctx.isAborted()) {
-				this.deps.onCancelled();
+			if (ctx.isAborted() || ctx.isInterrupted?.() === true) {
+				const interruptedOnly = !ctx.isAborted();
+				if (interruptedOnly) this.deps.onInterrupted?.();
+				else this.deps.onCancelled();
 				for (const id of unexecutedIds) {
 					const tc = executableCallsById.get(id)!;
-					const modelOutput = '[Skipped: run was aborted]';
+					// The model reads this; "aborted" is reserved for a cancelled run.
+					const modelOutput = interruptedOnly
+						? '[Skipped: the user sent a new instruction]'
+						: '[Skipped: run was aborted]';
 					list.setToolCallResult(tc.toolCallId, modelOutput, { canceled: true });
 					results.push({
 						toolCallId: tc.toolCallId,

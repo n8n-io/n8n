@@ -5,6 +5,7 @@ import type {
 	ScopedMemoryTaskEvent,
 	AgentEventData,
 	MemoryTaskUsageReport,
+	SteeringInput,
 } from '@n8n/agents';
 import { getPromptWorkspaceRoot, getWorkspaceRoot } from '@n8n/agents/sandbox';
 import {
@@ -29,6 +30,7 @@ import {
 	type InstanceAiConfirmResponse,
 	type InstanceAiEvent,
 	type InstanceAiThreadStatusResponse,
+	type InstanceAiQueuedMessage,
 } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { SsrfProtectionService } from '@n8n/backend-network';
@@ -223,6 +225,12 @@ import { InstanceAiPendingConfirmationRepository } from './repositories/instance
 import { InstanceAiThreadGrantRepository } from './repositories/instance-ai-thread-grant.repository';
 import { InstanceAiSandboxService, type RuntimeSandboxEntry } from './sandbox';
 import { DbIterationLogStorage } from './storage/db-iteration-log-storage';
+import {
+	readQueuedMessages,
+	withQueuedMessages,
+	toQueuedMessageList,
+	type QueuedMessage,
+} from './storage/queued-messages';
 import { TypeORMAgentCheckpointStore } from './storage/typeorm-agent-checkpoint-store';
 import { TypeORMAgentMemory } from './storage/typeorm-agent-memory';
 import { isStreamTransportError } from './stream-transport-error';
@@ -751,6 +759,14 @@ export class InstanceAiService {
 
 	/** Tracks the iframe pushRef per thread for live execution push events. */
 	private readonly threadPushRef = new Map<string, string>();
+
+	/**
+	 * Per-thread "stop this step, keep the run" signal — the Send-now path fires it so
+	 * the loop settles the step in flight and injects the message as the next one.
+	 * Replaced on every `startRun`, because a controller that has already fired
+	 * stays aborted and would stop each later step too.
+	 */
+	private readonly runInterrupts = new Map<string, AbortController>();
 
 	/**
 	 * Runs where the credentials tool handed off to browser-assisted credential
@@ -1310,6 +1326,9 @@ export class InstanceAiService {
 		return {
 			maxIterations: MAX_STEPS.ORCHESTRATOR,
 			abortSignal: signal,
+			interruptSignal: this.runInterrupts.get(threadId)?.signal,
+			steeringInput: async ({ step, force }: { step: number; force?: boolean }) =>
+				await this.claimSteeringInput(threadId, runId, step, force),
 			// Recover token usage from raw provider events so a stopped/errored run
 			// is still billed for the tokens consumed before the stop.
 			recoverUsageOnAbort: true,
@@ -1349,6 +1368,11 @@ export class InstanceAiService {
 			runId: agentRunId,
 			toolCallId,
 			abortSignal: signal,
+			// A steer that arrived while the run was parked is drained at the next
+			// clean step boundary of the resumed loop, like any other steer.
+			interruptSignal: this.runInterrupts.get(threadId)?.signal,
+			steeringInput: async ({ step, force }: { step: number; force?: boolean }) =>
+				await this.claimSteeringInput(threadId, runId, step, force),
 			// Keep billing stopped/errored resumed runs (see stream-options builder).
 			recoverUsageOnAbort: true,
 			...modelStreamStallOptions(this.aiConfig),
@@ -1485,6 +1509,7 @@ export class InstanceAiService {
 			threadId,
 			user,
 		});
+		this.runInterrupts.set(threadId, new AbortController());
 
 		// Persist the user's time zone so checkpoint / replan / synthesize
 		// follow-up runs can reinject it into the system prompt
@@ -1550,7 +1575,99 @@ export class InstanceAiService {
 		return this.runState.getActiveRunId(threadId);
 	}
 
-	cancelRun(threadId: string, reason = 'user_cancelled'): void {
+	async listQueuedMessages(threadId: string): Promise<InstanceAiQueuedMessage[]> {
+		const thread = await this.agentMemory.getThread(threadId);
+		if (!thread) throw new UserError('Thread not found');
+		return toQueuedMessageList(readQueuedMessages(thread.metadata));
+	}
+
+	/**
+	 * Locked read-modify-write of the thread's queue. Sibling mains can stamp a
+	 * steer at the same time the driving main drains it, so every change goes
+	 * through the repository's row lock instead of a read followed by a write.
+	 */
+	private async mutateQueuedMessages(
+		threadId: string,
+		update: (messages: QueuedMessage[]) => QueuedMessage[],
+	): Promise<InstanceAiQueuedMessage[]> {
+		let messages: QueuedMessage[] = [];
+		const thread = await this.agentMemory.patchThread({
+			threadId,
+			update: (current) => {
+				messages = update(readQueuedMessages(current.metadata));
+				return { metadata: withQueuedMessages(current.metadata, messages) };
+			},
+		});
+		if (!thread) throw new UserError('Thread not found');
+		return toQueuedMessageList(messages);
+	}
+
+	async queueMessage(threadId: string, text: string): Promise<InstanceAiQueuedMessage[]> {
+		return await this.mutateQueuedMessages(threadId, (messages) => [
+			...messages,
+			{ id: `qm_${nanoid()}`, text, createdAt: new Date().toISOString() },
+		]);
+	}
+
+	async updateQueuedMessage(
+		threadId: string,
+		messageId: string,
+		text: string,
+	): Promise<InstanceAiQueuedMessage[]> {
+		return await this.mutateQueuedMessages(threadId, (messages) => {
+			if (!messages.some((item) => item.id === messageId)) {
+				throw new UserError('Queued message not found');
+			}
+			return messages.map((item) => (item.id === messageId ? { ...item, text } : item));
+		});
+	}
+
+	async removeQueuedMessage(
+		threadId: string,
+		messageId: string,
+	): Promise<InstanceAiQueuedMessage[]> {
+		return await this.mutateQueuedMessages(threadId, (messages) => {
+			if (!messages.some((item) => item.id === messageId)) {
+				throw new UserError('Queued message not found');
+			}
+			return messages.filter((item) => item.id !== messageId);
+		});
+	}
+
+	async requestSteer(
+		user: User,
+		threadId: string,
+		messageId: string,
+	): Promise<{ queuedMessages: InstanceAiQueuedMessage[] }> {
+		const live = this.runState.hasLiveRun(threadId);
+		const queuedMessages = await this.mutateQueuedMessages(threadId, (messages) => {
+			const item = messages.find((message) => message.id === messageId);
+			if (!item) throw new UserError('Queued message not found');
+			if (!live) {
+				// Send the selected item first when the thread is idle.
+				return [item, ...messages.filter((message) => message.id !== messageId)];
+			}
+			return messages.map((message) =>
+				message.id === messageId
+					? { ...message, steerRequestedAt: message.steerRequestedAt ?? new Date().toISOString() }
+					: message,
+			);
+		});
+		if (live) {
+			this.cancelThreadBackgroundTasks(threadId);
+			// Stop the step in flight. The drain that follows injects the message, so
+			// the run keeps its history and starts the next step from it instead of
+			// waiting for this step to reach a boundary on its own.
+			const interruptions = this.runInterrupts;
+			if (interruptions) interruptions.get(threadId)?.abort();
+			return { queuedMessages };
+		}
+		await this.flushQueuedMessage(user, threadId);
+		return { queuedMessages: await this.listQueuedMessages(threadId) };
+	}
+
+	/** Cancel this thread's background tasks and settle each one. */
+	private cancelThreadBackgroundTasks(threadId: string): void {
 		const cancelledTasks = this.backgroundTasks.cancelThread(threadId);
 		const user = this.runState.getThreadUser(threadId);
 		for (const task of cancelledTasks) {
@@ -1570,6 +1687,10 @@ export class InstanceAiService {
 				void this.handlePlannedTaskSettlement(user, task, 'cancelled', { reschedule: false });
 			}
 		}
+	}
+
+	cancelRun(threadId: string, reason = 'user_cancelled'): void {
+		this.cancelThreadBackgroundTasks(threadId);
 
 		// Clean up any awaiting_approval plan graph for this thread. The user
 		// cancelled before approving, so leaving the graph persisted would (a)
@@ -3330,6 +3451,175 @@ export class InstanceAiService {
 		}
 	}
 
+	/** Claim marked items before the next agent step. */
+	private async claimSteeringInput(
+		threadId: string,
+		runId: string,
+		step: number,
+		force = false,
+	): Promise<SteeringInput[]> {
+		const inputs: SteeringInput[] = [];
+		let claimed: QueuedMessage[] = [];
+		try {
+			const user = this.runState.getThreadUser(threadId);
+			if (!user) {
+				this.logger.warn('Cannot claim queued messages without a thread user', { threadId, runId });
+				return [];
+			}
+			await this.mutateQueuedMessages(threadId, (messages) => {
+				const steerRequested = messages.filter((item) => item.steerRequestedAt !== undefined);
+				// `force` marks the boundary the loop synthesised for an interrupt. Take
+				// the head item too: the interrupt already stopped the step, and Send now
+				// is the only caller of it — waiting for a `steerRequestedAt` stamp that
+				// this same request is racing to write would leave the step stopped with
+				// nothing to show for it.
+				const [forced] = messages;
+				claimed =
+					force && forced && forced.steerRequestedAt === undefined
+						? [forced, ...steerRequested]
+						: steerRequested;
+				const claimedIds = new Set(claimed.map((item) => item.id));
+				return messages.filter((item) => !claimedIds.has(item.id));
+			});
+			for (const item of claimed) {
+				await this.agentMemory.saveMessages({
+					threadId,
+					resourceId: user.id,
+					messages: [
+						{
+							id: item.id,
+							createdAt: new Date(item.createdAt),
+							type: 'llm',
+							role: 'user',
+							content: [{ type: 'text', text: item.text }],
+						},
+					],
+				});
+				inputs.push({ id: item.id, text: item.text });
+				await this.publishQueuedMessage({ user, threadId, runId, item, source: 'steered', step });
+				this.telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.USER_STEERED_MESSAGE, {
+					thread_id: threadId,
+					step,
+				});
+			}
+		} catch (error) {
+			this.logger.warn('Failed to deliver steering input', {
+				threadId,
+				runId,
+				error: getErrorMessage(error),
+			});
+			const pending = claimed.slice(inputs.length);
+			if (pending.length > 0) {
+				try {
+					await this.mutateQueuedMessages(threadId, (messages) => [...pending, ...messages]);
+				} catch (restoreError) {
+					this.logger.warn('Failed to restore queued messages', {
+						threadId,
+						error: getErrorMessage(restoreError),
+					});
+				}
+			}
+		}
+		return inputs;
+	}
+
+	/**
+	 * Run-finish flush: claim the head item, start a run, then publish it.
+	 *
+	 * Never throws: it runs at the end of a finished run and from the Send-now
+	 * path, where an exception would either reject an unawaited run promise or
+	 * fail a request over a message that is still safely queued.
+	 */
+	private async flushQueuedMessage(user: User, threadId: string): Promise<void> {
+		let claimed: QueuedMessage | undefined;
+		// A started run owns the message from the moment it is handed over, so a
+		// later failure must not queue it a second time.
+		let handedOver = false;
+		try {
+			if (this.runState.hasLiveRun(threadId)) return;
+			await this.mutateQueuedMessages(threadId, (messages) => {
+				[claimed] = messages;
+				return messages.slice(1);
+			});
+			if (!claimed) return;
+			const claimedMessage = claimed;
+			const runId = await this.startQueuedMessageRun(user, threadId, claimedMessage.text);
+			if (!runId) {
+				await this.restoreQueuedHead(threadId, claimedMessage);
+				claimed = undefined;
+				return;
+			}
+			handedOver = true;
+			await this.publishQueuedMessage({
+				user,
+				threadId,
+				runId,
+				item: claimedMessage,
+				source: 'queued',
+			});
+		} catch (error) {
+			this.logger.warn('Failed to deliver a queued message', {
+				threadId,
+				error: getErrorMessage(error),
+			});
+			if (claimed && !handedOver) await this.restoreQueuedHead(threadId, claimed);
+		}
+	}
+
+	/** Put a claimed item back at the front of the queue; best-effort. */
+	private async restoreQueuedHead(threadId: string, item: QueuedMessage): Promise<void> {
+		try {
+			await this.mutateQueuedMessages(threadId, (messages) => [item, ...messages]);
+		} catch (error) {
+			this.logger.warn('Failed to restore a queued message', {
+				threadId,
+				error: getErrorMessage(error),
+			});
+		}
+	}
+
+	private async startQueuedMessageRun(user: User, threadId: string, text: string): Promise<string> {
+		if (this.runState.hasLiveRun(threadId)) return '';
+		const { runId, abortController } = this.runState.startRun({ threadId, user });
+		const timeZone = this.runState.getTimeZone(threadId) ?? this.defaultTimeZone;
+		this.startExecuteRun(
+			user,
+			threadId,
+			runId,
+			text,
+			abortController,
+			undefined,
+			undefined,
+			undefined,
+			timeZone,
+		);
+		return runId;
+	}
+
+	/** Publish the durable user-message fact for a claimed item. */
+	private async publishQueuedMessage(args: {
+		user: User;
+		threadId: string;
+		runId: string;
+		item: QueuedMessage;
+		source: 'steered' | 'queued';
+		step?: number;
+	}): Promise<void> {
+		const { user, threadId, runId, item, source, step } = args;
+		this.eventBus.publish(threadId, {
+			type: 'user-message',
+			runId,
+			agentId: orchestratorAgentId(runId),
+			userId: user.id,
+			payload: {
+				messageId: item.id,
+				text: item.text,
+				source,
+				...(step !== undefined ? { step } : {}),
+			},
+		});
+	}
+
 	private async startInternalFollowUpRun(
 		user: User,
 		threadId: string,
@@ -4722,6 +5012,17 @@ export class InstanceAiService {
 				if (reschedule) {
 					await this.maybeStartWorkflowSetupFollowUp(user, threadId);
 				}
+			}
+			// Queued messages are user turns, so they only start once nothing else
+			// owns the thread: a parked run (suspended or waiting on a card) waits for
+			// its answer, and a stop must not start a new run.
+			if (
+				!segmentSuspended &&
+				!signal.aborted &&
+				!this.runState.hasSuspendedRun(threadId) &&
+				!this.runState.hasLiveRun(threadId)
+			) {
+				await this.flushQueuedMessage(user, threadId);
 			}
 			if (errorReporterExecutionToken) {
 				this.instanceAiErrorReporter.endRun(runId, errorReporterExecutionToken);

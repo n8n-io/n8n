@@ -6,7 +6,16 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { mockedStore } from '@/__tests__/utils';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { fetchThreadMessages, fetchThreadStatus } from '../instanceAi.memory.api';
-import { ensureThread, postMessage, postConfirmation, postCancel } from '../instanceAi.api';
+import {
+	ensureThread,
+	postMessage,
+	postConfirmation,
+	postCancel,
+	fetchQueuedMessages,
+	postQueuedMessage,
+	deleteQueuedMessage,
+	postSteerQueuedMessage,
+} from '../instanceAi.api';
 import {
 	INSTANCE_AI_THREAD_SOURCE_FALLBACK,
 	type InstanceAiCredentialDestination,
@@ -61,6 +70,10 @@ vi.mock('../instanceAi.api', () => ({
 	postCancel: vi.fn(),
 	postCancelTask: vi.fn(),
 	postConfirmation: vi.fn(),
+	fetchQueuedMessages: vi.fn(),
+	postQueuedMessage: vi.fn(),
+	deleteQueuedMessage: vi.fn(),
+	postSteerQueuedMessage: vi.fn(),
 }));
 
 vi.mock('../instanceAi.memory.api', () => ({
@@ -2976,5 +2989,133 @@ describe('createThreadRuntime - requestPlanChanges', () => {
 		expect(ok).toBe(false);
 		expect(runtime.updatingPlanRequestIds.has('req-plan')).toBe(false);
 		expect(runtime.resolvedConfirmationIds.has('req-plan')).toBe(false);
+	});
+});
+
+describe('Instance AI thread runtime — queued messages', () => {
+	const queued = (id: string, text: string) => ({
+		id,
+		text,
+		createdAt: '2026-04-01T00:00:00.000Z',
+	});
+
+	beforeEach(async () => {
+		setupRuntimePinia();
+		vi.clearAllMocks();
+		capturedOnMessage = null;
+		vi.mocked(fetchQueuedMessages).mockResolvedValue({ queuedMessages: [] });
+		vi.mocked(postQueuedMessage).mockResolvedValue({ queuedMessages: [queued('qm-1', 'queued')] });
+		vi.mocked(deleteQueuedMessage).mockResolvedValue({ queuedMessages: [] });
+		vi.mocked(postSteerQueuedMessage).mockResolvedValue({
+			queuedMessages: [queued('qm-1', 'queued')],
+		});
+	});
+
+	it('replaces the local queue with the server list', async () => {
+		vi.mocked(fetchQueuedMessages).mockResolvedValue({
+			queuedMessages: [queued('qm-1', 'Use the Slack node')],
+		});
+		const runtime = createThreadRuntime('thread-queue-load', {
+			onTitleUpdated: vi.fn(),
+			onRunFinish: vi.fn(),
+		});
+
+		await runtime.loadQueuedMessages();
+
+		expect(runtime.queuedMessages).toEqual([queued('qm-1', 'Use the Slack node')]);
+	});
+
+	it('queues a message and applies the server queue', async () => {
+		const runtime = createThreadRuntime('thread-queue-add', {
+			onTitleUpdated: vi.fn(),
+			onRunFinish: vi.fn(),
+		});
+
+		const queuedOk = await runtime.queueMessage('Use the Slack node');
+
+		expect(queuedOk).toBe(true);
+		expect(postQueuedMessage).toHaveBeenCalledWith(
+			expect.anything(),
+			'thread-queue-add',
+			'Use the Slack node',
+		);
+		expect(runtime.queuedMessages).toEqual([queued('qm-1', 'queued')]);
+	});
+
+	it('reports a refused queue write so the caller can restore the draft', async () => {
+		vi.mocked(postQueuedMessage).mockRejectedValueOnce(new Error('network error'));
+		const runtime = createThreadRuntime('thread-queue-refused', {
+			onTitleUpdated: vi.fn(),
+			onRunFinish: vi.fn(),
+		});
+
+		expect(await runtime.queueMessage('Use the Slack node')).toBe(false);
+		expect(runtime.queuedMessages).toEqual([]);
+	});
+
+	it('requests immediate delivery and still shows the item as queued until it lands', async () => {
+		const runtime = createThreadRuntime('thread-queue-steer', {
+			onTitleUpdated: vi.fn(),
+			onRunFinish: vi.fn(),
+		});
+
+		await runtime.steerQueuedMessage('qm-1');
+
+		expect(postSteerQueuedMessage).toHaveBeenCalledWith(
+			expect.anything(),
+			'thread-queue-steer',
+			'qm-1',
+		);
+		expect(runtime.queuedMessages).toEqual([queued('qm-1', 'queued')]);
+	});
+
+	it('takes an item out of the queue for editing and returns its text', async () => {
+		const runtime = createThreadRuntime('thread-queue-edit', {
+			onTitleUpdated: vi.fn(),
+			onRunFinish: vi.fn(),
+		});
+		await runtime.queueMessage('Use the Slack node');
+
+		const text = await runtime.takeQueuedMessageForEdit('qm-1');
+
+		expect(text).toBe('queued');
+		expect(deleteQueuedMessage).toHaveBeenCalledWith(
+			expect.anything(),
+			'thread-queue-edit',
+			'qm-1',
+		);
+		expect(runtime.queuedMessages).toEqual([]);
+	});
+
+	it('returns null for an item the queue does not hold', async () => {
+		const runtime = createThreadRuntime('thread-queue-missing', {
+			onTitleUpdated: vi.fn(),
+			onRunFinish: vi.fn(),
+		});
+
+		expect(await runtime.takeQueuedMessageForEdit('qm-missing')).toBeNull();
+		expect(deleteQueuedMessage).not.toHaveBeenCalled();
+	});
+
+	it('drops a queued item when the server reports it delivered', async () => {
+		const runtime = createThreadRuntime('thread-queue-delivered', {
+			onTitleUpdated: vi.fn(),
+			onRunFinish: vi.fn(),
+		});
+		await runtime.queueMessage('Use the Slack node');
+		runtime.connectSSE();
+		// MockEventSource publishes its handler on the next tick.
+		await vi.waitFor(() => expect(capturedOnMessage).not.toBeNull());
+
+		capturedOnMessage!(
+			makeSSEEvent({
+				type: 'user-message',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				payload: { messageId: 'qm-1', text: 'Use the Slack node', source: 'steered', step: 2 },
+			}),
+		);
+
+		expect(runtime.queuedMessages).toEqual([]);
 	});
 });

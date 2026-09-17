@@ -17,6 +17,7 @@ import {
 	type InstanceAiAttachment,
 	type InstanceAiEvent,
 	type InstanceAiMessage,
+	type InstanceAiQueuedMessage,
 	type InstanceAiThreadSummary,
 	type InstanceAiAgentNode,
 	type InstanceAiToolCallState,
@@ -42,6 +43,10 @@ import {
 	postCancelTask,
 	postConfirmation,
 	postFeedback,
+	fetchQueuedMessages,
+	postQueuedMessage,
+	deleteQueuedMessage,
+	postSteerQueuedMessage,
 } from './instanceAi.api';
 import {
 	fetchThreadMessages as fetchThreadMessagesApi,
@@ -419,6 +424,7 @@ export function createThreadRuntime(
 
 	// --- Reactive state ---
 	const messages = ref<InstanceAiMessage[]>([]);
+	const queuedMessages = ref<InstanceAiQueuedMessage[]>([]);
 	const projectId = ref<string | undefined>(initialProjectId);
 	const activeRunId = ref<string | null>(null);
 	const archivedWorkflowIds = ref<Set<string>>(new Set());
@@ -924,6 +930,10 @@ export function createThreadRuntime(
 				},
 				parsed.data,
 			);
+			if (parsed.data.type === 'user-message') {
+				const { messageId } = parsed.data.payload;
+				queuedMessages.value = queuedMessages.value.filter((message) => message.id !== messageId);
+			}
 			// Anything received on the stream means generation isn't stalled.
 			resetGenerationStallWatchdog();
 			if (parsed.data.type === 'tasks-update') {
@@ -1117,6 +1127,7 @@ export function createThreadRuntime(
 		hydrationPromise = null;
 		hydrationStatus.value = 'idle';
 		messages.value = [];
+		queuedMessages.value = [];
 		archivedWorkflowIds.value = new Set();
 		latestTasks.value = null;
 		latestSetupItems.value = null;
@@ -1381,6 +1392,63 @@ export function createThreadRuntime(
 		}
 	}
 
+	async function loadQueuedMessages(): Promise<void> {
+		const response = await fetchQueuedMessages(rootStore.restApiContext, threadId);
+		queuedMessages.value = response.queuedMessages;
+	}
+
+	async function queueMessage(text: string): Promise<boolean> {
+		try {
+			const response = await postQueuedMessage(rootStore.restApiContext, threadId, text);
+			queuedMessages.value = response.queuedMessages;
+			return true;
+		} catch {
+			return false;
+		}
+	}
+
+	async function removeQueuedMessage(messageId: string): Promise<void> {
+		try {
+			const response = await deleteQueuedMessage(rootStore.restApiContext, threadId, messageId);
+			queuedMessages.value = response.queuedMessages;
+		} catch {
+			toast.showError(
+				new Error(i18n.baseText('instanceAi.queue.removeError.message')),
+				i18n.baseText('instanceAi.queue.removeError.title'),
+			);
+		}
+	}
+
+	async function steerQueuedMessage(messageId: string): Promise<void> {
+		try {
+			const response = await postSteerQueuedMessage(rootStore.restApiContext, threadId, messageId);
+			queuedMessages.value = response.queuedMessages;
+		} catch {
+			toast.showError(
+				new Error(i18n.baseText('instanceAi.queue.steerError.message')),
+				i18n.baseText('instanceAi.queue.steerError.title'),
+			);
+		}
+	}
+
+	async function takeQueuedMessageForEdit(messageId: string): Promise<string | null> {
+		const message = queuedMessages.value.find((item) => item.id === messageId);
+		if (!message) return null;
+
+		try {
+			const response = await deleteQueuedMessage(rootStore.restApiContext, threadId, messageId);
+			queuedMessages.value = response.queuedMessages;
+		} catch {
+			// Refresh the queue after an uncertain delete, but keep the user's edit text.
+			try {
+				await loadQueuedMessages();
+			} catch {
+				// Keep the last confirmed queue when the refresh also fails.
+			}
+		}
+		return message.text;
+	}
+
 	async function cancelRun(): Promise<void> {
 		// Thread-scoped and idempotent server-side, so it works after a reload
 		// that lost the local run id. Don't clear activeRunId or settle any
@@ -1552,6 +1620,7 @@ export function createThreadRuntime(
 
 		// state refs
 		messages,
+		queuedMessages,
 		projectId,
 		activeRunId,
 		archivedWorkflowIds,
@@ -1596,6 +1665,11 @@ export function createThreadRuntime(
 		loadHistoricalMessages,
 		loadThreadStatus,
 		sendMessage,
+		loadQueuedMessages,
+		queueMessage,
+		removeQueuedMessage,
+		steerQueuedMessage,
+		takeQueuedMessageForEdit,
 		cancelRun,
 		cancelBackgroundTask,
 		amendAgent,

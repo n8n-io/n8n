@@ -58,6 +58,7 @@ import {
 } from '../instanceAi.handoffContext';
 import InstanceAiMessage from './InstanceAiMessage.vue';
 import InstanceAiInput from './InstanceAiInput.vue';
+import InstanceAiQueuedMessages from './InstanceAiQueuedMessages.vue';
 import InstanceAiStatusBar from './InstanceAiStatusBar.vue';
 import InstanceAiConfirmationPanel from './InstanceAiConfirmationPanel.vue';
 import WorkflowBuilderUnavailableNotice from './WorkflowBuilderUnavailableNotice.vue';
@@ -312,6 +313,28 @@ function isCurrentThreadRuntime(): boolean {
 	return store.getRuntime(thread.id) === thread;
 }
 
+/**
+ * A queue can outlive the process that would have delivered it: a restart, or a
+ * run that died before its flush. Nothing picks it up while the thread is idle,
+ * so hand the head item over — the server treats a Send now with no live run as
+ * a plain delivery.
+ */
+function deliverStrandedQueue(): void {
+	void thread
+		.loadQueuedMessages()
+		.then(() => {
+			if (!isCurrentThreadRuntime()) return;
+			const head = thread.queuedMessages[0];
+			// A parked run owns the interaction; its queue waits, as it does while paused.
+			if (!head || thread.isStreaming || thread.isAwaitingConfirmation) return;
+			if (thread.pendingPlanReview) return;
+			void thread.steerQueuedMessage(head.id);
+		})
+		.catch(() => {
+			// Queue state is display-only here; a failed read must not break the mount.
+		});
+}
+
 function reconnectThreadAfterHydration(): void {
 	const agentAttachment = getPendingAgentAttachment(thread.id);
 	if (agentAttachment) {
@@ -325,6 +348,7 @@ function reconnectThreadAfterHydration(): void {
 		await thread.loadThreadStatus();
 		if (!isCurrentThreadRuntime()) return;
 		thread.connectSSE();
+		deliverStrandedQueue();
 		// Replay an opening message handed off from another tab (e.g. credential help
 		// opened in a new tab) as if typed here, so it shows and streams in this runtime.
 		const pending = consumePendingFirstMessage(thread.id);
@@ -444,6 +468,16 @@ async function handleSubmit(
 	// Reset scroll on new user message
 	userScrolledUp.value = false;
 
+	// A live run cannot take another turn, so the message joins the queue and
+	// goes in at a step boundary (Send now) or when the run ends. A pending plan
+	// review keeps the message: there every message is feedback on the plan.
+	if (thread.isStreaming && !thread.pendingPlanReview) {
+		void thread.queueMessage(message).then((queued) => {
+			if (!queued) restoreFailedSubmission(restoreDraft);
+		});
+		return;
+	}
+
 	// While a plan review is pending every message is feedback on that plan —
 	// the user does not have to click "Ask for edits" first.
 	const planReview = thread.pendingPlanReview;
@@ -528,6 +562,17 @@ async function handleSubmit(
 
 function handleStop() {
 	void thread.cancelRun();
+}
+
+/** Put a recalled queued message back in the composer so the user can change it. */
+function handleRecallQueued(text: string): void {
+	const input = chatInputRef.value;
+	if (!input) return;
+	// A draft in the box is not ours to throw away, so the recalled text is added
+	// to it rather than replacing it.
+	if (input.isDirty()) input.appendText(`\n${text}`);
+	else input.setText(text);
+	input.focus();
 }
 
 function clearGeneratedDraft() {
@@ -699,6 +744,13 @@ defineExpose({
 								@dismiss="creditBanner.dismiss()"
 							/>
 							<slot name="above-input" />
+							<!-- Hidden while an approval or plan review owns the interaction: Send
+								 now cannot reach a parked run, and the message stays queued for
+								 when the run finishes. -->
+							<InstanceAiQueuedMessages
+								v-if="!thread.isAwaitingConfirmation && !thread.pendingPlanReview"
+								@recall="handleRecallQueued"
+							/>
 							<div :class="$style.inputSwap">
 								<Transition name="input-swap">
 									<InstanceAiConfirmationPanel
@@ -714,6 +766,7 @@ defineExpose({
 										:is-submitting="thread.isSendingMessage || isPlanChangeInFlight"
 										:is-awaiting-confirmation="thread.isAwaitingConfirmation"
 										:is-awaiting-plan-review="thread.pendingPlanReview !== null"
+										queue-while-streaming
 										:is-workflow-builder-available="settingsStore.isWorkflowBuilderAvailable"
 										:current-thread-id="thread.id"
 										:amend-context="thread.amendContext"

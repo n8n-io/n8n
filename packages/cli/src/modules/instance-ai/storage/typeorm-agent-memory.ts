@@ -165,6 +165,7 @@ const PATCH_ONLY_METADATA_KEYS = new Set([
 	'activeSkillStates',
 	'instanceAiIterationLog',
 	'instanceAiPlannedTasks',
+	'instanceAiQueuedMessages',
 	'instanceAiTasks',
 	'instanceAiTerminalOutcomes',
 	'instanceAiWorkflowLoop',

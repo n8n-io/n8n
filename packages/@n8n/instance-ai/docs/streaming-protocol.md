@@ -431,6 +431,53 @@ When a run's process died mid-flight, the startup sweep appends:
 
 The four statuses are `completed`, `cancelled`, `error` and `interrupted`.
 
+### `user-message`
+
+A user message that was queued while a run was active is now delivered. The
+event is the durable fact for both delivery paths, and the frontend renders it as
+a normal user bubble.
+
+```json
+{"type":"user-message","runId":"run_abc123","agentId":"agent-001","payload":{"messageId":"qm_xyz","text":"Use the Slack node","source":"steered","step":3}}
+```
+
+- `source: "steered"` — the user pressed Send now. The message was injected into
+the live run at the clean step boundary that `step` names, so the next model call
+accounts for it. The run keeps the work it already did.
+- `source: "queued"` — the run finished and the message started its own run. The
+SDK persists that run's input row, so the service does not write one.
+
+A steered delivery also marks the run's LangSmith root metadata with `steered`,
+`steer_count` and `steered_at_steps`, which tells a forced step apart from a step
+the agent reached on its own. A flushed `queued` message does not mark the run.
+
+## Queued Messages
+
+A user message that arrives while a run is active is held per thread instead of
+being refused. The queue is stored in the thread's metadata under
+`instanceAiQueuedMessages`.
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| `GET` | `/instance-ai/threads/:threadId/queued-messages` | Read the queue |
+| `POST` | `/instance-ai/threads/:threadId/queued-messages` | Add `{ text }` |
+| `PATCH` | `/instance-ai/threads/:threadId/queued-messages/:messageId` | Edit `{ text }` |
+| `DELETE` | `/instance-ai/threads/:threadId/queued-messages/:messageId` | Remove |
+| `POST` | `/instance-ai/threads/:threadId/queued-messages/:messageId/steer` | Send now |
+
+Every response is `{ queuedMessages }` — the full queue after the change. So a
+client always renders the server's view of the queue.
+
+The service delivers the queue in two ways:
+
+1. **Send now** stamps `steerRequestedAt` on the item. The run drains the stamped
+   items at its next clean step boundary (all tool calls settled), persists them
+   as user messages and publishes `user-message`. Send now also cancels the
+   thread's background tasks, because the user redirects the whole thread.
+2. **Run finish** delivers the head item as a new run. The guard is the same as
+   the cancel path: no flush while a run is suspended on a confirmation or plan
+   review. A `409 Conflict` stays for a plain `POST /chat/:threadId`.
+
 ## Typical Event Sequence
 
 ### Simple Query (No Sub-Agents)

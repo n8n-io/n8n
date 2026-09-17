@@ -185,6 +185,7 @@ export type ToolCallId = string & { readonly __brand: 'ToolCallId' };
 export const instanceAiEventTypeSchema = z.enum([
 	'run-start',
 	'run-finish',
+	'user-message',
 	'agent-spawned',
 	'agent-completed',
 	'text-delta',
@@ -328,6 +329,15 @@ export const runFinishPayloadSchema = z.object({
 	 * entries and label them as archived.
 	 */
 	archivedWorkflowIds: z.array(z.string()).optional(),
+});
+
+export const userMessagePayloadSchema = z.object({
+	messageId: z.string(),
+	text: z.string(),
+	/** 'steered' enters the active run. 'queued' starts after the run finishes. */
+	source: z.enum(['steered', 'queued']),
+	/** The agent-loop step that follows the message. Only set for 'steered'. */
+	step: z.number().int().nonnegative().optional(),
 });
 
 export const agentSpawnedTargetResourceSchema = z.object({
@@ -1083,6 +1093,7 @@ const eventBase = {
 export const instanceAiEventSchema = z.discriminatedUnion('type', [
 	z.object({ type: z.literal('run-start'), ...eventBase, payload: runStartPayloadSchema }),
 	z.object({ type: z.literal('run-finish'), ...eventBase, payload: runFinishPayloadSchema }),
+	z.object({ type: z.literal('user-message'), ...eventBase, payload: userMessagePayloadSchema }),
 	z.object({ type: z.literal('agent-spawned'), ...eventBase, payload: agentSpawnedPayloadSchema }),
 	z.object({
 		type: z.literal('agent-completed'),
@@ -1151,6 +1162,7 @@ export type InstanceAiEvent = z.infer<typeof instanceAiEventSchema>;
 // Named event types as Extract aliases for consumers that need specific types
 export type InstanceAiRunStartEvent = Extract<InstanceAiEvent, { type: 'run-start' }>;
 export type InstanceAiRunFinishEvent = Extract<InstanceAiEvent, { type: 'run-finish' }>;
+export type InstanceAiUserMessageEvent = Extract<InstanceAiEvent, { type: 'user-message' }>;
 export type InstanceAiAgentSpawnedEvent = Extract<InstanceAiEvent, { type: 'agent-spawned' }>;
 export type InstanceAiAgentCompletedEvent = Extract<InstanceAiEvent, { type: 'agent-completed' }>;
 export type InstanceAiTextDeltaEvent = Extract<InstanceAiEvent, { type: 'text-delta' }>;
@@ -1607,6 +1619,19 @@ export class InstanceAiThreadMessagesQuery extends Z.class({
 	page: z.coerce.number().int().nonnegative().max(INSTANCE_AI_THREAD_MESSAGES_MAX_PAGE).default(0),
 	raw: z.enum(['true', 'false']).optional(),
 }) {}
+
+export const instanceAiQueuedMessageSchema = z.object({
+	id: z.string(),
+	text: z.string(),
+	createdAt: z.string(),
+	/** Set when the user requests delivery into the active run. */
+	steerRequestedAt: z.string().optional(),
+});
+export type InstanceAiQueuedMessage = z.infer<typeof instanceAiQueuedMessageSchema>;
+
+export interface InstanceAiQueuedMessagesResponse {
+	queuedMessages: InstanceAiQueuedMessage[];
+}
 
 export interface InstanceAiSendMessageResponse {
 	runId: string;

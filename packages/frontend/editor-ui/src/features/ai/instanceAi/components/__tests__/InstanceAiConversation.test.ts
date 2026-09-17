@@ -145,6 +145,94 @@ describe('InstanceAiConversation', () => {
 		]);
 	});
 
+	describe('queued messages', () => {
+		const queued = (id: string, text: string) => ({
+			id,
+			text,
+			createdAt: '2026-04-01T00:00:00.000Z',
+		});
+
+		function renderWithQueue() {
+			return createThreadComponentRenderer(
+				InstanceAiConversation,
+				{ global: { stubs: { InstanceAiInput: InstanceAiInputStub } } },
+				() => thread,
+			);
+		}
+
+		it('queues the submitted message while a run is active instead of sending it', async () => {
+			thread.isStreaming = true;
+			const { getByTestId } = renderWithQueue()();
+
+			await fireEvent.click(getByTestId('instance-ai-input-submit'));
+
+			await vi.waitFor(() => expect(thread.queueMessage).toHaveBeenCalledWith('Normal message'));
+			expect(thread.sendMessage).not.toHaveBeenCalled();
+		});
+
+		it('restores the draft when the queue write is refused', async () => {
+			thread.isStreaming = true;
+			vi.mocked(thread.queueMessage).mockResolvedValue(false);
+			const { getByTestId } = renderWithQueue()();
+
+			await fireEvent.click(getByTestId('instance-ai-input-submit'));
+
+			await vi.waitFor(() =>
+				expect(getByTestId('instance-ai-input-draft').textContent).toBe('Normal message'),
+			);
+		});
+
+		it('sends a recall back into the composer', async () => {
+			thread.queuedMessages = [queued('qm-1', 'Use the Slack node')];
+			vi.mocked(thread.takeQueuedMessageForEdit).mockResolvedValue('Use the Slack node');
+			const { getByTestId } = renderWithQueue()();
+
+			await fireEvent.click(getByTestId('instance-ai-queued-message-edit'));
+
+			await vi.waitFor(() =>
+				expect(getByTestId('instance-ai-input-draft').textContent).toBe('Use the Slack node'),
+			);
+		});
+
+		it('asks for immediate delivery and removal from the queue item', async () => {
+			thread.isStreaming = true;
+			thread.queuedMessages = [queued('qm-1', 'Use the Slack node')];
+			const { getByTestId } = renderWithQueue()();
+
+			await fireEvent.click(getByTestId('instance-ai-queued-message-send-now'));
+			await fireEvent.click(getByTestId('instance-ai-queued-message-remove'));
+
+			await vi.waitFor(() => expect(thread.steerQueuedMessage).toHaveBeenCalledWith('qm-1'));
+			await vi.waitFor(() => expect(thread.removeQueuedMessage).toHaveBeenCalledWith('qm-1'));
+		});
+
+		it('still offers Send now on an idle thread, for a queue left by a shutdown', async () => {
+			thread.isStreaming = false;
+			thread.queuedMessages = [queued('qm-1', 'Use the Slack node')];
+			const { getByTestId } = renderWithQueue()();
+
+			await fireEvent.click(getByTestId('instance-ai-queued-message-send-now'));
+
+			await vi.waitFor(() => expect(thread.steerQueuedMessage).toHaveBeenCalledWith('qm-1'));
+		});
+
+		it('hides the queue while an approval card owns the interaction', () => {
+			thread.isAwaitingConfirmation = true;
+			thread.queuedMessages = [queued('qm-1', 'Use the Slack node')];
+			const { queryByTestId } = renderWithQueue()();
+
+			expect(queryByTestId('instance-ai-queued-messages')).not.toBeInTheDocument();
+		});
+
+		it('hides the queue while a plan review owns the interaction', () => {
+			thread.pendingPlanReview = { requestId: 'req-1', taskCount: 2 };
+			thread.queuedMessages = [queued('qm-1', 'Use the Slack node')];
+			const { queryByTestId } = renderWithQueue()();
+
+			expect(queryByTestId('instance-ai-queued-messages')).not.toBeInTheDocument();
+		});
+	});
+
 	it('awaits beforeSend before sending, restoring the draft if it rejects', async () => {
 		const beforeSend = vi.fn().mockRejectedValueOnce(new Error('flush failed'));
 		const renderer = createThreadComponentRenderer(

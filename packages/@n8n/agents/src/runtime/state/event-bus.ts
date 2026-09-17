@@ -6,10 +6,34 @@ export interface AgentAbortScope {
 	readonly isAborted: boolean;
 	abort(): void;
 	dispose(): void;
+	/**
+	 * Stop the in-flight step without ending the run: the provider request is
+	 * cancelled, tool calls that have not started are settled as skipped, and the
+	 * loop reaches the next step boundary instead of throwing. Unlike `abort()`,
+	 * `isAborted` stays false, so callers that translate an abort into a terminal
+	 * run status do not treat an interrupt as a cancellation.
+	 */
+	interrupt(): void;
+	/** True from `interrupt()` until the loop consumes it at the step boundary. */
+	readonly isInterrupted: boolean;
+	/** One-shot per interrupt: true only for the step that the interrupt stopped. */
+	consumeInterrupt(): boolean;
 }
 
 class EventBusAbortScope implements AgentAbortScope {
 	private readonly controller = new AbortController();
+
+	/** Controller for the in-flight step only; `interrupt()` replaces it. */
+	private stepController = new AbortController();
+
+	/**
+	 * What dependents get: the run signal plus the in-flight step's signal, so an
+	 * interrupt cancels a request or a tool call exactly as a run abort does. The
+	 * loop tells the two apart from `isInterrupted`, not from the signal.
+	 */
+	private stepSignal: AbortSignal = this.mergeStepSignal();
+
+	private interruptPending = false;
 
 	private externalCleanup?: () => void;
 
@@ -17,22 +41,38 @@ class EventBusAbortScope implements AgentAbortScope {
 
 	constructor(
 		externalSignal: AbortSignal | undefined,
+		interruptSignal: AbortSignal | undefined,
 		private readonly onDispose: (scope: EventBusAbortScope) => void,
 	) {
-		if (!externalSignal) return;
+		const listeners: Array<() => void> = [];
 
-		if (externalSignal.aborted) {
-			this.controller.abort(externalSignal.reason);
-			return;
+		if (externalSignal) {
+			const onAbort = () => {
+				this.controller.abort(externalSignal.reason);
+				this.stepController.abort(externalSignal.reason);
+			};
+			if (externalSignal.aborted) onAbort();
+			else externalSignal.addEventListener('abort', onAbort, { once: true });
+			listeners.push(() => externalSignal.removeEventListener('abort', onAbort));
 		}
 
-		const onAbort = () => this.controller.abort(externalSignal.reason);
-		externalSignal.addEventListener('abort', onAbort, { once: true });
-		this.externalCleanup = () => externalSignal.removeEventListener('abort', onAbort);
+		if (interruptSignal) {
+			const onInterrupt = () => this.interrupt();
+			// An interrupt fired before the run registered its scope still counts:
+			// the host asked to stop, and the boundary is the first place the loop
+			// can honour it.
+			if (interruptSignal.aborted) onInterrupt();
+			else interruptSignal.addEventListener('abort', onInterrupt, { once: true });
+			listeners.push(() => interruptSignal.removeEventListener('abort', onInterrupt));
+		}
+
+		this.externalCleanup = () => {
+			for (const remove of listeners) remove();
+		};
 	}
 
 	get signal(): AbortSignal {
-		return this.controller.signal;
+		return this.stepSignal;
 	}
 
 	get isAborted(): boolean {
@@ -41,6 +81,32 @@ class EventBusAbortScope implements AgentAbortScope {
 
 	abort(): void {
 		this.controller.abort();
+		this.stepController.abort();
+	}
+
+	interrupt(): void {
+		if (this.disposed) return;
+		this.interruptPending = true;
+		this.stepController.abort();
+	}
+
+	/** One signal that fires on either a step interrupt or a run abort. */
+	private mergeStepSignal(): AbortSignal {
+		return AbortSignal.any([this.controller.signal, this.stepController.signal]);
+	}
+
+	get isInterrupted(): boolean {
+		return this.interruptPending;
+	}
+
+	consumeInterrupt(): boolean {
+		if (!this.interruptPending) return false;
+		this.interruptPending = false;
+		// The interrupted step is over. Arm a fresh controller so the next step runs
+		// normally and a later interrupt stops that one instead.
+		this.stepController = new AbortController();
+		this.stepSignal = this.mergeStepSignal();
+		return true;
 	}
 
 	dispose(): void {
@@ -104,10 +170,27 @@ export class AgentEventBus {
 		}
 	}
 
-	createAbortScope(externalSignal?: AbortSignal): AgentAbortScope {
-		const scope = new EventBusAbortScope(externalSignal, (disposed) => {
-			this.abortScopes.delete(disposed);
-		});
+	/**
+	 * Stop the in-flight step of the current run without ending it. See
+	 * `AgentAbortScope.interrupt`.
+	 */
+	interrupt(): void {
+		for (const scope of this.abortScopes) {
+			scope.interrupt();
+		}
+	}
+
+	createAbortScope(signals?: {
+		externalSignal?: AbortSignal;
+		interruptSignal?: AbortSignal;
+	}): AgentAbortScope {
+		const scope = new EventBusAbortScope(
+			signals?.externalSignal,
+			signals?.interruptSignal,
+			(disposed) => {
+				this.abortScopes.delete(disposed);
+			},
+		);
 		this.abortScopes.add(scope);
 		return scope;
 	}

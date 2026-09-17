@@ -7,6 +7,7 @@ import type {
 	InstanceAiBrowserStatusResponse,
 	InstanceAiEnsureThreadResponse,
 	InstanceAiSendMessageResponse,
+	InstanceAiQueuedMessagesResponse,
 	InstanceAiConfirmRequest,
 	InstanceAiConfirmResponse,
 	InstanceAiCredits,
@@ -47,6 +48,58 @@ export async function postMessage(
 			...(pushRef ? { pushRef } : {}),
 			...(computerUseChannels ? { computerUseChannels } : {}),
 		},
+	);
+}
+
+/** Fetch the queued messages for a thread. */
+export async function fetchQueuedMessages(
+	context: IRestApiContext,
+	threadId: string,
+): Promise<InstanceAiQueuedMessagesResponse> {
+	return await makeRestApiRequest<InstanceAiQueuedMessagesResponse>(
+		context,
+		'GET',
+		`/instance-ai/threads/${threadId}/queued-messages`,
+	);
+}
+
+/** Add a message to the thread queue. */
+export async function postQueuedMessage(
+	context: IRestApiContext,
+	threadId: string,
+	text: string,
+): Promise<InstanceAiQueuedMessagesResponse> {
+	return await makeRestApiRequest<InstanceAiQueuedMessagesResponse>(
+		context,
+		'POST',
+		`/instance-ai/threads/${threadId}/queued-messages`,
+		{ text },
+	);
+}
+
+/** Remove a message from the thread queue. */
+export async function deleteQueuedMessage(
+	context: IRestApiContext,
+	threadId: string,
+	messageId: string,
+): Promise<InstanceAiQueuedMessagesResponse> {
+	return await makeRestApiRequest<InstanceAiQueuedMessagesResponse>(
+		context,
+		'DELETE',
+		`/instance-ai/threads/${threadId}/queued-messages/${messageId}`,
+	);
+}
+
+/** Request immediate delivery of a queued message. */
+export async function postSteerQueuedMessage(
+	context: IRestApiContext,
+	threadId: string,
+	messageId: string,
+): Promise<InstanceAiQueuedMessagesResponse> {
+	return await makeRestApiRequest<InstanceAiQueuedMessagesResponse>(
+		context,
+		'POST',
+		`/instance-ai/threads/${threadId}/queued-messages/${messageId}/steer`,
 	);
 }
 

@@ -52,12 +52,15 @@ import type {
 	InstanceAiThreadInfo,
 	InstanceAiRichMessagesResponse,
 	InstanceAiThreadMessagesResponse,
+	InstanceAiQueuedMessage,
 } from '@n8n/api-types';
 import type { ModuleRegistry } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import { buildAgentTreeFromEvents, seedAgentBuilderTargetMetadata } from '@n8n/instance-ai';
 import {
 	InstanceAiPersistPendingAgentRequest,
+	InstanceAiQueueMessageRequest,
+	InstanceAiUpdateQueuedMessageRequest,
 	MAX_ATTACHMENT_BASE64_BYTES,
 	MAX_TOTAL_ATTACHMENT_BASE64_BYTES,
 } from '@n8n/api-types';
@@ -1797,6 +1800,76 @@ describe('InstanceAiController', () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('not_found');
 
 			await expect(controller.deleteThread(req, res, THREAD_ID)).rejects.toThrow(NotFoundError);
+		});
+	});
+
+	describe('queued messages', () => {
+		const messageId = 'qm-1';
+		const queuedMessages: InstanceAiQueuedMessage[] = [
+			{ id: messageId, text: 'Use the Slack node', createdAt: '2026-01-01T00:00:00.000Z' },
+		];
+		const queuePayload = new InstanceAiQueueMessageRequest({ text: 'Use the Slack node' });
+		const updatePayload = new InstanceAiUpdateQueuedMessageRequest({ text: 'Use the Slack node' });
+
+		describe.each([
+			{
+				handler: 'listQueuedMessages',
+				serviceMethod: 'listQueuedMessages',
+				invoke: async () => await controller.listQueuedMessages(req, res, THREAD_ID),
+				args: [THREAD_ID],
+			},
+			{
+				handler: 'queueMessage',
+				serviceMethod: 'queueMessage',
+				invoke: async () => await controller.queueMessage(req, res, THREAD_ID, queuePayload),
+				args: [THREAD_ID, queuePayload.text],
+			},
+			{
+				handler: 'updateQueuedMessage',
+				serviceMethod: 'updateQueuedMessage',
+				invoke: async () =>
+					await controller.updateQueuedMessage(req, res, THREAD_ID, messageId, updatePayload),
+				args: [THREAD_ID, messageId, updatePayload.text],
+			},
+			{
+				handler: 'removeQueuedMessage',
+				serviceMethod: 'removeQueuedMessage',
+				invoke: async () => await controller.removeQueuedMessage(req, res, THREAD_ID, messageId),
+				args: [THREAD_ID, messageId],
+			},
+			{
+				handler: 'steerQueuedMessage',
+				serviceMethod: 'requestSteer',
+				invoke: async () => await controller.steerQueuedMessage(req, res, THREAD_ID, messageId),
+				args: [req.user, THREAD_ID, messageId],
+			},
+		] as const)('$handler', ({ handler, serviceMethod, invoke, args }) => {
+			it('should require instanceAi:message scope', () => {
+				expect(scopeOf(handler)).toEqual({ scope: 'instanceAi:message', globalOnly: true });
+			});
+
+			it('should throw ForbiddenError for other user thread', async () => {
+				memoryService.checkThreadOwnership.mockResolvedValue('other_user');
+
+				await expect(invoke()).rejects.toThrow(ForbiddenError);
+
+				expect(memoryService.checkThreadOwnership).toHaveBeenCalledWith(USER_ID, THREAD_ID);
+				expect(instanceAiService[serviceMethod]).not.toHaveBeenCalled();
+			});
+
+			it('should forward the arguments and return queued messages', async () => {
+				memoryService.checkThreadOwnership.mockResolvedValue('owned');
+				if (serviceMethod === 'requestSteer') {
+					instanceAiService.requestSteer.mockResolvedValue({ queuedMessages });
+				} else {
+					instanceAiService[serviceMethod].mockResolvedValue(queuedMessages);
+				}
+
+				await expect(invoke()).resolves.toEqual({ queuedMessages });
+
+				expect(memoryService.checkThreadOwnership).toHaveBeenCalledWith(USER_ID, THREAD_ID);
+				expect(instanceAiService[serviceMethod]).toHaveBeenCalledWith(...args);
+			});
 		});
 	});
 

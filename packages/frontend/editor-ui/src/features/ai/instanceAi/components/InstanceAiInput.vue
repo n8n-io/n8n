@@ -70,6 +70,8 @@ const props = withDefaults(
 		isSubmitting?: boolean;
 		isAwaitingConfirmation?: boolean;
 		isAwaitingPlanReview?: boolean;
+		/** While a run is active, submit joins the queue instead of starting a run. */
+		queueWhileStreaming?: boolean;
 		currentThreadId?: string;
 		amendContext?: AmendContext;
 		contextualSuggestion?: string | null;
@@ -95,6 +97,7 @@ const props = withDefaults(
 		isSubmitting: false,
 		isAwaitingConfirmation: false,
 		isAwaitingPlanReview: false,
+		queueWhileStreaming: false,
 		currentThreadId: '',
 		amendContext: null,
 		contextualSuggestion: null,
@@ -369,9 +372,16 @@ function resetDraftComposer({ keepAttachments = false } = {}) {
 
 /** The single submission gate — `canSubmit` is this predicate over the draft. */
 function canSubmitMessage(message: string, attachmentCount = 0) {
-	if (isBusy.value || isGatedBySetup.value) return false;
+	if (isGatedBySetup.value || props.isSubmitting) return false;
 	// Plan feedback travels as a plain string, so an attachment cannot carry it.
 	if (props.isAwaitingPlanReview) return message.length > 0;
+	// While the assistant works, a text-only draft is still submittable: it joins
+	// the queue instead of starting a run. Staged attachments wait for the run to
+	// end, because the queue holds text only.
+	if (props.isStreaming && props.queueWhileStreaming) {
+		return message.length > 0 && attachmentCount === 0;
+	}
+	if (isBusy.value) return false;
 	return message.length > 0 || attachmentCount > 0;
 }
 

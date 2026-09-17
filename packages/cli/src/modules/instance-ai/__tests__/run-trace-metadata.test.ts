@@ -119,4 +119,41 @@ describe('buildInstanceAiRunTraceMetadata', () => {
 			idle_tail_ms: 606_400,
 		});
 	});
+	it('marks a run the user steered and records the step it landed on', () => {
+		const events: InstanceAiEvent[] = [
+			{
+				type: 'user-message',
+				...baseEvent,
+				payload: { messageId: 'qm-1', text: 'use Slack instead', source: 'steered', step: 4 },
+			},
+			{
+				type: 'user-message',
+				...baseEvent,
+				payload: { messageId: 'qm-2', text: 'and again', source: 'steered' },
+			},
+		];
+
+		const metadata = buildInstanceAiRunTraceMetadata(events, { status: 'completed' });
+
+		expect(metadata).toEqual({
+			first_visible_state: 'empty',
+			steered: true,
+			steer_count: 2,
+			steered_at_steps: [4],
+		});
+	});
+
+	it('does not mark a run when only a flushed queued message was delivered', () => {
+		const events: InstanceAiEvent[] = [
+			{
+				type: 'user-message',
+				...baseEvent,
+				payload: { messageId: 'qm-1', text: 'next turn', source: 'queued' },
+			},
+		];
+
+		const metadata = buildInstanceAiRunTraceMetadata(events, { status: 'completed' });
+
+		expect(metadata).toEqual({ first_visible_state: 'empty' });
+	});
 });
