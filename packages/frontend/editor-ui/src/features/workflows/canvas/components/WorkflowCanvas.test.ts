@@ -127,6 +127,29 @@ describe('WorkflowCanvas', () => {
 		await waitFor(() => expect(container.querySelector('[data-id="1"]')).toBeInTheDocument());
 	});
 
+	it('updates an expanded group frame when a rendered node joins the group', async () => {
+		const workflow = createTestWorkflow({
+			id: '1',
+			nodes: [createTestNode({ id: '1', name: 'Node 1', position: [0, 0] })],
+			connections: {},
+			nodeGroups: [{ id: 'g1', name: 'Group 1', nodeIds: ['1'] }],
+		});
+		setupWorkflow(workflow);
+		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id));
+		const { getByTestId } = renderComponent({ props: { groupExpansionMode: 'all' } });
+
+		await waitFor(() => expect(getByTestId('canvas-node-group-frame')).toBeInTheDocument());
+		const groupNode = getByTestId('canvas-node-group').closest('.vue-flow__node') as HTMLElement;
+		await waitFor(() => expect(groupNode.style.width).not.toBe(''));
+		const initialWidth = groupNode.style.width;
+		const addedNode = createTestNode({ id: '2', name: 'Node 2', position: [400, 0] });
+		workflowDocumentStore.addNode(addedNode);
+		workflowDocumentStore.addNodesToGroup('g1', [addedNode.id]);
+
+		await waitFor(() => expect(document.querySelector('[data-id="2"]')).toBeInTheDocument());
+		await waitFor(() => expect(groupNode.style.width).not.toBe(initialWidth));
+	});
+
 	it('keeps groups without an errored node collapsed when groupExpansionMode is "errored"', async () => {
 		const workflow = createTestWorkflow({
 			nodes: [createTestNode({ id: '1', name: 'Node 1' })],

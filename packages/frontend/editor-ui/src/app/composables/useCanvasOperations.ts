@@ -163,6 +163,7 @@ import uniq from 'lodash/uniq';
 import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import { useCanvasNodeGroupOperationGuards } from '@/features/workflows/canvas/composables/useCanvasNodeGroupOperationGuards';
+import { useSelectionValidation } from '@/app/composables/useSelectionValidation';
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
 import type { TelemetryNdvSource, TelemetryNdvType } from '@/app/types/telemetry';
 import { useRoute, useRouter } from 'vue-router';
@@ -200,6 +201,11 @@ type AddNodesBaseOptions = {
 type AddNodesOptions = AddNodesBaseOptions & {
 	position?: XYPosition;
 	trackBulk?: boolean;
+};
+
+type AddNodesAndConnectionsOptions = AddNodesOptions & {
+	nodeGroupId?: string;
+	replaceNodeId?: string;
 };
 
 type AddNodeOptions = AddNodesBaseOptions & {
@@ -281,6 +287,7 @@ export function useCanvasOperations() {
 		isNodeReplacementAllowedForNodeGroups,
 		applyNodeGroupAutoExtend,
 	} = useCanvasNodeGroupOperationGuards();
+	const { isSelectionGroupable } = useSelectionValidation();
 
 	const router = useRouter();
 	const route = useRoute();
@@ -1206,6 +1213,44 @@ export function useCanvasOperations() {
 		}
 
 		return addedNodes;
+	}
+
+	function extendRequestedNodeGroup(
+		groupId: string | undefined,
+		nodes: INodeUi[],
+		trackHistory = false,
+	) {
+		if (!groupId) return;
+
+		const group = workflowDocumentStore.value.getGroupById(groupId);
+		if (!group) return;
+
+		const nodeIds = nodes.flatMap((node) => {
+			const existingGroup = workflowDocumentStore.value.getGroupForNode(node.id);
+			return !existingGroup || existingGroup.id === group.id ? node.id : [];
+		});
+		const addedNodeIds = nodeIds.filter((nodeId) => !group.nodeIds.includes(nodeId));
+		if (addedNodeIds.length === 0) return;
+
+		// Validate the complete creator result after its helper connections exist.
+		const result = isSelectionGroupable(
+			[...group.nodeIds, ...addedNodeIds],
+			workflowDocumentStore.value.connectionsBySourceNode,
+			{ ignoredNodeGroupIds: [group.id] },
+		);
+		if (!result.valid) return;
+
+		const before = { ...group, nodeIds: [...group.nodeIds] };
+		workflowDocumentStore.value.addNodesToGroup(group.id, addedNodeIds);
+		if (!trackHistory) return;
+
+		// Keep the membership change in the caller's node-and-connection undo bulk.
+		const after = workflowDocumentStore.value.getGroupById(group.id);
+		if (after && addedNodeIds.every((nodeId) => after.nodeIds.includes(nodeId))) {
+			historyStore.pushCommandToUndo(
+				new UpdateNodeGroupCommand(before, { ...after, nodeIds: [...after.nodeIds] }, Date.now()),
+			);
+		}
 	}
 
 	function updatePositionForNodeWithMultipleInputs(node: INodeUi) {
@@ -3751,15 +3796,31 @@ export function useCanvasOperations() {
 		{
 			trackBulk = true,
 			trackHistory = true,
+			nodeGroupId,
+			replaceNodeId,
 			...options
-		}: AddNodesOptions & {
-			replaceNodeId?: string;
-			trackHistory?: boolean;
-			trackBulk?: boolean;
-		},
+		}: AddNodesAndConnectionsOptions,
 	) {
+		// An empty group contains only its internal anchor, which the selected node must replace.
+		const requestedGroup = nodeGroupId
+			? workflowDocumentStore.value.getGroupById(nodeGroupId)
+			: undefined;
+		const requestedGroupOnlyMember =
+			requestedGroup?.nodeIds.length === 1
+				? workflowDocumentStore.value.getNodeById(requestedGroup.nodeIds[0])
+				: undefined;
+		const emptyGroupAnchorId =
+			requestedGroupOnlyMember && isEmptyGroupAnchor(requestedGroupOnlyMember)
+				? requestedGroupOnlyMember.id
+				: undefined;
+		const replacementTargetId = emptyGroupAnchorId ?? replaceNodeId;
+
 		if (trackHistory && trackBulk) {
 			historyStore.startRecordingUndo();
+		}
+		if (emptyGroupAnchorId) {
+			// Avoid connecting to the anchor before replaceNode transfers its group membership and edges.
+			uiStore.resetLastInteractedWith();
 		}
 
 		const addedNodes = await addNodes(nodes, {
@@ -3770,14 +3831,14 @@ export function useCanvasOperations() {
 		});
 
 		let replacementGroupId: string | undefined;
-		if (addedNodes.length > 0 && options.replaceNodeId) {
+		if (addedNodes.length > 0 && replacementTargetId) {
 			// Auto-added helpers can follow the node that the user selected, so they
 			// must not become the replacement target.
 			const replacementNodeIndex = nodes.findLastIndex((node) => !node.isAutoAdd);
 			const replacementNode =
 				replacementNodeIndex === -1 ? addedNodes.at(-1) : addedNodes[replacementNodeIndex];
 			if (replacementNode) {
-				const didReplace = replaceNode(options.replaceNodeId, replacementNode.id, {
+				const didReplace = replaceNode(replacementTargetId, replacementNode.id, {
 					trackHistory,
 					trackBulk: false,
 				});
@@ -3822,32 +3883,8 @@ export function useCanvasOperations() {
 
 		await addConnections(connections, { trackHistory, trackBulk: false });
 
-		if (replacementGroupId) {
-			const groupBeforeExtend = workflowDocumentStore.value.getGroupById(replacementGroupId);
-			if (groupBeforeExtend) {
-				// A creator result can include helpers for the selected node. Keep the
-				// connected batch together when it replaces a grouped node.
-				const beforeSnapshot = { ...groupBeforeExtend, nodeIds: [...groupBeforeExtend.nodeIds] };
-				workflowDocumentStore.value.addNodesToGroup(
-					replacementGroupId,
-					addedNodes.map((node) => node.id),
-				);
-				const groupAfterExtend = workflowDocumentStore.value.getGroupById(replacementGroupId);
-				if (
-					trackHistory &&
-					groupAfterExtend &&
-					groupAfterExtend.nodeIds.length !== beforeSnapshot.nodeIds.length
-				) {
-					historyStore.pushCommandToUndo(
-						new UpdateNodeGroupCommand(
-							beforeSnapshot,
-							{ ...groupAfterExtend, nodeIds: [...groupAfterExtend.nodeIds] },
-							Date.now(),
-						),
-					);
-				}
-			}
-		}
+		const nodeGroupToExtendId = replacementTargetId ? replacementGroupId : nodeGroupId;
+		extendRequestedNodeGroup(nodeGroupToExtendId, addedNodes, trackHistory);
 
 		uiStore.resetLastInteractedWith();
 
