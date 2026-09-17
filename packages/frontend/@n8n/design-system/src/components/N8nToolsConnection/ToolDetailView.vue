@@ -123,6 +123,8 @@ const resolvedIcon = computed(() => resolveToolItemIcon(props.item));
 	justify-content: space-between;
 	gap: var(--spacing--sm);
 	padding: var(--spacing--md);
+	padding-block-start: calc(var(--spacing--md) - var(--spacing--4xs));
+	padding-block-end: var(--spacing--lg);
 
 	button:last-child {
 		flex-shrink: 0;
