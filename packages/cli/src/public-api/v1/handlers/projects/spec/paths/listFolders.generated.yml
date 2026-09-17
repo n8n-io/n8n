@@ -1,0 +1,189 @@
+operationId: listFolders
+tags:
+  - Folders
+summary: Retrieve folders
+description: Retrieve folders within a project. Supports filtering, sorting, field selection, and pagination.
+x-required-scope: folder:list
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+parameters:
+  - schema:
+      type: string
+    required: true
+    description: The ID of the project.
+    name: projectId
+    in: path
+  - schema:
+      type: string
+      description: JSON-encoded filter object. Supported fields — parentFolderId, name, tags (array of tag names), excludeFolderIdAndDescendants.
+      example: '{"parentFolderId":"abc123","name":"My Folder"}'
+    required: false
+    name: filter
+    in: query
+  - schema:
+      type: string
+      description: JSON-encoded array of fields to include. Valid fields — id, name, createdAt, updatedAt, project, tags, parentFolder, workflowCount, subFolderCount, path.
+      example: '["id","name","tags","workflowCount"]'
+    required: false
+    name: select
+    in: query
+  - schema:
+      type: string
+      enum:
+        - name:asc
+        - name:desc
+        - createdAt:asc
+        - createdAt:desc
+        - updatedAt:asc
+        - updatedAt:desc
+      description: Sort order for results.
+    required: false
+    name: sortBy
+    in: query
+  - schema:
+      type: string
+      description: Number of items to skip for pagination. Defaults to 0.
+    required: false
+    name: skip
+    in: query
+  - schema:
+      type: string
+      description: Number of items to return. Defaults to 10.
+    required: false
+    name: take
+    in: query
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            count:
+              type: integer
+              description: Total number of folders matching the query.
+            data:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    readOnly: true
+                    example: zLXWgYyZrZ4Gn1Vk
+                  name:
+                    type: string
+                    example: My Folder
+                  parentFolderId:
+                    type: string
+                    nullable: true
+                    example: kRZ0ewrAEAhCkTBd
+                  createdAt:
+                    type: string
+                    format: date-time
+                    readOnly: true
+                  updatedAt:
+                    type: string
+                    format: date-time
+                    readOnly: true
+                  homeProject:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        readOnly: true
+                        example: VmwOO9HeTEj20kxM
+                      name:
+                        type: string
+                        example: Marketing
+                      type:
+                        type: string
+                        readOnly: true
+                        example: team
+                        enum:
+                          - personal
+                          - team
+                      icon:
+                        type: object
+                        description: Icon of the project, or null when the project has none
+                        properties:
+                          type:
+                            type: string
+                            enum:
+                              - emoji
+                              - icon
+                          value:
+                            type: string
+                          color:
+                            type: string
+                        required:
+                          - type
+                          - value
+                        nullable: true
+                    required:
+                      - id
+                      - name
+                      - type
+                      - icon
+                  parentFolder:
+                    type: object
+                    nullable: true
+                    properties:
+                      id:
+                        type: string
+                        readOnly: true
+                        example: zLXWgYyZrZ4Gn1Vk
+                      name:
+                        type: string
+                        example: My Folder
+                      parentFolderId:
+                        type: string
+                        nullable: true
+                    required:
+                      - id
+                      - name
+                      - parentFolderId
+                  tags:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        name:
+                          type: string
+                      required:
+                        - id
+                        - name
+                  workflowCount:
+                    type: number
+                    description: Number of workflows the folder holds.
+                    readOnly: true
+                  subFolderCount:
+                    type: number
+                    description: Number of folders the folder holds.
+                    readOnly: true
+                  path:
+                    type: array
+                    items:
+                      type: string
+                    description: Names of every folder from the project root down to this folder.
+                    readOnly: true
+                    example:
+                      - Marketing
+                      - Campaigns
+                required:
+                  - id
+          required:
+            - count
+            - data
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml

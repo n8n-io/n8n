@@ -1,7 +1,7 @@
 import { computed, ref } from 'vue';
 import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
 import { AGENTS_MODULE_NAME } from '@/features/agents/constants';
-import { instanceAiCreateAgentRoute } from '@/features/ai/instanceAi/createAgentRoute';
+import { useCreateAgent } from '@/features/agents/composables/useCreateAgent';
 import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
 import { useInstanceAiAvailable } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
 import { useRouter } from 'vue-router';
@@ -70,6 +70,7 @@ export const useGlobalEntityCreation = () => {
 	const i18n = useI18n();
 	const toast = useToast();
 	const telemetry = useTelemetry();
+	const { createAgent } = useCreateAgent();
 
 	const isCreatingProject = ref(false);
 
@@ -235,7 +236,6 @@ export const useGlobalEntityCreation = () => {
 							{
 								id: AGENTS_MENU_ID,
 								title: agentTitle,
-								route: instanceAiCreateAgentRoute(projectsStore.personalProject?.id ?? ''),
 							},
 						]
 					: []),
@@ -281,7 +281,6 @@ export const useGlobalEntityCreation = () => {
 								id: AGENTS_MENU_ID,
 								title: agentTitle,
 								disabled: disabledAgent(projectsStore.personalProject?.scopes),
-								route: instanceAiCreateAgentRoute(projectsStore.personalProject?.id ?? ''),
 							},
 						]
 					: []),
@@ -386,14 +385,12 @@ export const useGlobalEntityCreation = () => {
 										title: i18n.baseText('projects.menu.personal'),
 										icon: 'user' as const,
 										disabled: disabledAgent(projectsStore.personalProject?.scopes),
-										route: instanceAiCreateAgentRoute(projectsStore.personalProject?.id ?? ''),
 									},
 									...displayProjects.value.map((project) => ({
 										id: `agent-${project.id}`,
 										title: project.name as string,
 										icon: isProjectIcon(project.icon) ? project.icon : DEFAULT_ICON,
 										disabled: disabledAgent(project.scopes),
-										route: instanceAiCreateAgentRoute(project.id),
 									})),
 								],
 							}),
@@ -447,6 +444,17 @@ export const useGlobalEntityCreation = () => {
 
 		if (id.startsWith(DATA_TABLE_MENU_ID) && id !== 'data-table-title') {
 			telemetry.track('User clicked sidebar add data table button');
+			return;
+		}
+
+		// Agent items carry no `route` — the id is minted here, at click time,
+		// instead of once when the (long-lived) menu computed re-evaluates.
+		if (id === AGENTS_MENU_ID || (id.startsWith('agent-') && id !== 'agent-title')) {
+			const projectId =
+				id === AGENTS_MENU_ID || id === 'agent-personal'
+					? (projectsStore.personalProject?.id ?? '')
+					: id.slice('agent-'.length);
+			createAgent('dropdown', projectId);
 			return;
 		}
 

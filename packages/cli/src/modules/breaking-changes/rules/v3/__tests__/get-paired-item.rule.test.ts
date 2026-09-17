@@ -1,3 +1,5 @@
+import type { INode } from 'n8n-workflow';
+
 import { createNode, createWorkflow } from '../../../__tests__/test-helpers';
 import { GetPairedItemRule } from '../get-paired-item.rule';
 
@@ -9,6 +11,20 @@ describe('GetPairedItemRule', () => {
 	});
 
 	describe('detectWorkflow()', () => {
+		it('should not be affected by a node that has no parameters', async () => {
+			const node = {
+				...createNode('Start', 'n8n-nodes-base.manualTrigger'),
+				parameters: undefined,
+			};
+			const { workflow, nodesGroupedByType } = createWorkflow('wf-1', 'Test Workflow', [
+				node as unknown as INode,
+			]);
+
+			const result = await rule.detectWorkflow(workflow, nodesGroupedByType);
+
+			expect(result.isAffected).toBe(false);
+		});
+
 		it('should not be affected when no node uses $getPairedItem', async () => {
 			const { workflow, nodesGroupedByType } = createWorkflow('wf-1', 'Test Workflow', [
 				createNode('Set', 'n8n-nodes-base.set', { value: '={{ $json.name }}' }),
