@@ -64,6 +64,9 @@
  */
 
 import { execFileSync } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 import {
 	attempt,
@@ -139,6 +142,20 @@ export function blocksLockfileRegen(codePaths) {
 	);
 }
 
+/** Run the trusted frozen install without using a store restored by the sync job. */
+export function validateLockfile(pnpm, env = process.env) {
+	const validationDir = join(env.RUNNER_TEMP || tmpdir(), `n8n-sync-lockfile-${randomUUID()}`);
+	pnpm([
+		'install',
+		'--frozen-lockfile',
+		'--trust-lockfile',
+		'--store-dir',
+		join(validationDir, 'store'),
+		'--virtual-store-dir',
+		join(validationDir, 'virtual-store'),
+	]);
+}
+
 /**
  * Resolve one mechanical path in the working tree (valid mid-merge and mid-rebase alike)
  * and stage the result.
@@ -151,9 +168,7 @@ export function resolveMechanicalPath({ git, pnpm, path, masterSha, log = consol
 		log(`Regenerating ${path} with pnpm...`);
 		pnpm(['install', '--lockfile-only', '--no-frozen-lockfile']);
 		try {
-			// Match CI's trusted lockfile validation. Force a full install so pnpm does not
-			// accept cached dependencies without applying the regenerated patches.
-			pnpm(['install', '--frozen-lockfile', '--trust-lockfile', '--force']);
+			validateLockfile(pnpm);
 		} catch (error) {
 			git(['checkout', '--conflict=merge', '--', path]);
 			throw error;
@@ -313,8 +328,7 @@ export function reconcileWithMergeTreeAtTip({
  */
 export function reconcileLockfileAtTip({ git, pnpm, masterSha, log = console.log }) {
 	pnpm(['install', '--lockfile-only', '--no-frozen-lockfile']);
-	// Match CI's trusted lockfile validation and force pnpm to bypass warm imports.
-	pnpm(['install', '--frozen-lockfile', '--trust-lockfile', '--force']);
+	validateLockfile(pnpm);
 	if (attempt(git, ['diff', '--quiet', '--', LOCKFILE]).ok) return;
 	if (git(['rev-parse', 'HEAD']) === masterSha) {
 		throw new Error('Lockfile reconciliation would amend a master commit; refusing.');
