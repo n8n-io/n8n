@@ -236,6 +236,7 @@ function handleThreadAction(action: string, threadId: string) {
 		:action-button-label="i18n.baseText('instanceAi.threads.actions')"
 		:editing-item-id="editingThreadId ?? undefined"
 		:actions-disabled="disabled"
+		item-double-click-enabled
 		content-test-id="instance-ai-thread-list"
 		@search="search = $event"
 		@select="handleThreadSelect"

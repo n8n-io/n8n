@@ -27,6 +27,10 @@ vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({ baseText: (key: string) => key }),
 }));
 
+vi.mock('../agentSessions.store', () => ({
+	useAgentSessionsStore: () => ({ loading: false }),
+}));
+
 vi.mock('@n8n/design-system', async (importOriginal) => ({
 	useDropdownSearch: (await importOriginal<typeof import('@n8n/design-system')>())
 		.useDropdownSearch,

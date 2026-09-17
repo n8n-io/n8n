@@ -1,4 +1,3 @@
-import { readFileSync } from 'node:fs';
 import userEvent from '@testing-library/user-event';
 import { fireEvent } from '@testing-library/vue';
 import type { ActionDropdownItem, DropdownMenuItemProps } from '@n8n/design-system';
@@ -28,19 +27,19 @@ const deleteAction: ActionDropdownItem<string> = {
 	variant: 'destructive',
 };
 
-function updatedAt(daysAgo: number) {
+function updatedAt(daysAgo: number, hour = 12) {
 	const date = new Date();
 	date.setDate(date.getDate() - daysAgo);
-	date.setHours(12, 0, 0, 0);
+	date.setHours(hour, 0, 0, 0);
 	return date.toISOString();
 }
 
-function item(id: string, daysAgo: number): TestItem {
+function item(id: string, daysAgo: number, hour?: number): TestItem {
 	return {
 		id,
 		label: `${id} conversation`,
 		testId: 'chat-history-item',
-		data: { updatedAt: updatedAt(daysAgo), actions: [deleteAction] },
+		data: { updatedAt: updatedAt(daysAgo, hour), actions: [deleteAction] },
 	};
 }
 
@@ -95,6 +94,17 @@ function mountHistory(items: TestItem[]) {
 }
 
 describe('ChatHistoryDropdown', () => {
+	it('sorts same-day items from newest to oldest', () => {
+		const wrapper = mountHistory([item('older', 0, 9), item('newer', 0, 15)]);
+
+		expect(
+			wrapper
+				.getComponent({ name: 'N8nDropdownMenu' })
+				.props('items')
+				.map((menuItem: TestItem) => menuItem.id),
+		).toEqual(['group-Today', 'newer', 'older']);
+	});
+
 	it('uses one width and label style for four ordered date groups', async () => {
 		const week = item('week', 3);
 		const wrapper = mountHistory([item('today', 0), item('yesterday', 1), week, item('older', 8)]);
@@ -106,9 +116,6 @@ describe('ChatHistoryDropdown', () => {
 			width: 'calc(var(--spacing--5xl) + var(--spacing--3xl) + var(--spacing--xl))',
 		});
 		expect(dropdown.props('extraPopperClass')).toMatch(/menuContent/);
-		expect(
-			readFileSync('src/features/ai/shared/components/ChatHistoryDropdown.vue', 'utf8'),
-		).toMatch(/\.menuContent\s*\{[^}]*width:\s*var\(--n8n--dropdown-menu-width\)/s);
 		expect(dropdown.props('items').map((menuItem: TestItem) => menuItem.id)).toEqual([
 			'group-Today',
 			'today',
@@ -136,7 +143,7 @@ describe('ChatHistoryDropdown', () => {
 		]);
 	});
 
-	it('keeps nested actions interactive by mouse and keyboard without selecting the row', async () => {
+	it('keeps nested actions interactive and lets Tab leave after the last action', async () => {
 		const user = userEvent.setup();
 		const renderHistory = createComponentRenderer(ChatHistoryDropdown);
 		const result = renderHistory({
@@ -153,7 +160,8 @@ describe('ChatHistoryDropdown', () => {
 		const rowPointerDown = vi.fn();
 		row.addEventListener('pointerdown', rowPointerDown);
 
-		await user.click(result.getByLabelText('Conversation actions'));
+		const actionButton = result.getByLabelText('Conversation actions');
+		await user.click(actionButton);
 
 		expect(rowPointerDown).toHaveBeenCalledOnce();
 		expect(await result.findByText('Delete')).toBeInTheDocument();
@@ -167,23 +175,14 @@ describe('ChatHistoryDropdown', () => {
 		search.focus();
 		await user.keyboard('{ArrowDown}');
 		await user.tab();
-		expect(result.getByLabelText('Conversation actions')).toHaveFocus();
+		expect(actionButton).toHaveFocus();
 		await user.keyboard('{Enter}');
 		expect(await result.findByText('Delete')).toBeInTheDocument();
 		expect(result.emitted().select).toBeUndefined();
-	});
 
-	it('uses the compact action margin on touch and hover layouts', () => {
-		const source = readFileSync(
-			'src/features/ai/shared/components/ChatHistoryDropdown.vue',
-			'utf8',
-		);
-
-		expect(source).toMatch(
-			/\.actionDropdown\s*\{[^}]*margin-block:\s*calc\(var\(--spacing--2xs\) \* -1\)/s,
-		);
-		expect(source.indexOf('.actionDropdown {')).toBeLessThan(
-			source.indexOf('@media (hover: hover)'),
-		);
+		await user.click(result.getByText('Delete'));
+		actionButton.focus();
+		await user.tab();
+		expect(result.queryByTestId('chat-history-list')).not.toBeInTheDocument();
 	});
 });

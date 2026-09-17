@@ -136,7 +136,7 @@ export function useAgentBuilderSession({
 		const threads = sessionsStore.threads ?? [];
 		return threads.map((thread) => ({
 			id: thread.id,
-			title: '',
+			title: threadTitleOf(thread),
 			label: truncate(threadTitleOf(thread), SESSION_TITLE_MAX_CHARS),
 			updatedAt: thread.updatedAt,
 		}));
@@ -176,6 +176,8 @@ export function useAgentBuilderSession({
 		const targetProjectId = projectId.value;
 		const targetAgentId = agentId.value;
 		if (!targetProjectId || !targetAgentId) return false;
+		const isTargetCurrent = () =>
+			projectId.value === targetProjectId && agentId.value === targetAgentId;
 
 		isDeletingSession.value = true;
 		try {
@@ -188,24 +190,23 @@ export function useAgentBuilderSession({
 					cancelButtonText: '',
 				},
 			);
-			if (confirmed !== MODAL_CONFIRM) return false;
+			if (confirmed !== MODAL_CONFIRM || !isTargetCurrent()) return false;
 
 			await sessionsStore.deleteThread(targetProjectId, targetAgentId, sessionId);
+			if (!isTargetCurrent()) return false;
 			toast.showMessage({
 				title: i18n.baseText('agentSessions.showMessage.deleted'),
 				type: 'success',
 			});
 
-			if (
-				projectId.value === targetProjectId &&
-				agentId.value === targetAgentId &&
-				effectiveSessionId.value === sessionId
-			) {
+			if (effectiveSessionId.value === sessionId) {
 				onNewChat();
 			}
 			return true;
 		} catch (error) {
-			toast.showError(error, i18n.baseText('agentSessions.showError.delete'));
+			if (isTargetCurrent()) {
+				toast.showError(error, i18n.baseText('agentSessions.showError.delete'));
+			}
 			return false;
 		} finally {
 			isDeletingSession.value = false;

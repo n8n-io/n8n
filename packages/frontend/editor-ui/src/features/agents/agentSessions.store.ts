@@ -156,6 +156,7 @@ export const useAgentSessionsStore = defineStore('agentSessions', () => {
 	async function deleteThread(projectId: string, agentId: string, threadId: string) {
 		const rootStore = useRootStore();
 		await deleteThreadApi(rootStore.restApiContext, projectId, agentId, threadId);
+		if (currentProjectId !== projectId || currentAgentId !== agentId) return;
 		threads.value = threads.value.filter((t) => t.id !== threadId);
 	}
 

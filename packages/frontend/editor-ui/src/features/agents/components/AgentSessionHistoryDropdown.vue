@@ -4,9 +4,9 @@ import { useDropdownSearch } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 
-import ChatHistoryDropdown, {
-	type ChatHistoryItem,
-} from '@/features/ai/shared/components/ChatHistoryDropdown.vue';
+import ChatHistoryDropdown from '@/features/ai/shared/components/ChatHistoryDropdown.vue';
+
+import { useAgentSessionsStore } from '../agentSessions.store';
 
 interface SessionOption {
 	id: string;
@@ -33,6 +33,7 @@ const emit = defineEmits<{
 defineSlots<{ trigger: () => unknown }>();
 
 const i18n = useI18n();
+const sessionsStore = useAgentSessionsStore();
 const deleteActions: Array<ActionDropdownItem<string>> = [
 	{
 		id: 'delete',
@@ -41,12 +42,13 @@ const deleteActions: Array<ActionDropdownItem<string>> = [
 		variant: 'destructive',
 	},
 ];
-const items = computed<ChatHistoryItem[]>(() =>
+const items = computed(() =>
 	props.sessionOptions.map((option) => ({
 		id: option.id,
 		label: option.label ?? option.title,
 		disabled: option.disabled,
 		data: {
+			fullTitle: option.title,
 			updatedAt: option.updatedAt,
 			actions: !option.disabled && props.canDeleteSession ? deleteActions : undefined,
 		},
@@ -54,6 +56,7 @@ const items = computed<ChatHistoryItem[]>(() =>
 );
 const { search, filteredItems, handleSearch } = useDropdownSearch(items, {
 	isSearchable: (item) => !item.disabled,
+	searchFields: (item) => [item.label, item.data?.fullTitle],
 });
 const emptyText = computed(() =>
 	i18n.baseText(
@@ -74,6 +77,7 @@ function requestDeletion(actionId: string, sessionId: string) {
 		:items="filteredItems"
 		:search-placeholder="i18n.baseText('agents.builder.chat.sessionPicker.searchPlaceholder')"
 		:empty-text="emptyText"
+		:loading="sessionsStore.loading"
 		:action-button-label="i18n.baseText('agentSessions.actions')"
 		:actions-disabled="props.isDeletingSession"
 		content-test-id="agent-preview-session-list"

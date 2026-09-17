@@ -178,6 +178,17 @@ describe('InstanceAiThreadList', () => {
 		expect(emitted().select).toBeUndefined();
 	});
 
+	it('starts renaming on double-click without selecting the thread first', async () => {
+		const { emitted, findByLabelText, getByText } = await renderList({
+			props: { navigate: false },
+		});
+
+		await userEvent.dblClick(getByText('Thread a'));
+
+		expect(await findByLabelText('Rename conversation')).toHaveFocus();
+		expect(emitted().select).toBeUndefined();
+	});
+
 	it('returns focus to the history trigger after Escape closes the menu', async () => {
 		const user = userEvent.setup();
 		const { getByPlaceholderText, getByTestId } = await renderList();
@@ -215,12 +226,11 @@ describe('InstanceAiThreadList', () => {
 	});
 
 	it('emits select instead of navigating when a row is clicked with navigate false', async () => {
-		const { getAllByTestId, emitted } = await renderList({ props: { navigate: false } });
+		const { emitted, getByText } = await renderList({ props: { navigate: false } });
 
-		const [row] = getAllByTestId('instance-ai-thread-item');
-		await userEvent.click(row);
+		await userEvent.click(getByText('Thread a'));
 
-		expect(emitted().select).toEqual([['a']]);
+		await vi.waitFor(() => expect(emitted().select).toEqual([['a']]));
 	});
 
 	it('disables rows and the action dropdown, and ignores select while disabled', async () => {

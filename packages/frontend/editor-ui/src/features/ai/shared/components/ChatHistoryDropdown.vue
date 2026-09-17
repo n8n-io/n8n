@@ -4,7 +4,7 @@ import { N8nActionDropdown, N8nDropdownMenu, N8nIconButton, N8nText } from '@n8n
 import type { ActionDropdownItem, DropdownMenuItemProps } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useEventListener } from '@vueuse/core';
-import { computed, ref } from 'vue';
+import { computed, onBeforeUnmount, ref } from 'vue';
 
 export interface ChatHistoryItemData {
 	updatedAt?: string;
@@ -12,6 +12,8 @@ export interface ChatHistoryItemData {
 }
 
 export type ChatHistoryItem = DropdownMenuItemProps<string, ChatHistoryItemData>;
+
+const DOUBLE_CLICK_DELAY = 300;
 
 const props = withDefaults(
 	defineProps<{
@@ -26,6 +28,7 @@ const props = withDefaults(
 		emptyText?: string;
 		editingItemId?: string;
 		actionsDisabled?: boolean;
+		itemDoubleClickEnabled?: boolean;
 	}>(),
 	{
 		modelValue: undefined,
@@ -35,6 +38,7 @@ const props = withDefaults(
 		emptyText: undefined,
 		editingItemId: undefined,
 		actionsDisabled: false,
+		itemDoubleClickEnabled: false,
 	},
 );
 
@@ -56,7 +60,8 @@ const slots = defineSlots<{
 }>();
 
 const i18n = useI18n();
-const dropdownRef = ref<{ highlightFirstItem: () => void } | null>(null);
+const dropdownRef = ref<{ close: () => void; highlightFirstItem: () => void } | null>(null);
+let pendingItemClick: ReturnType<typeof setTimeout> | undefined;
 const groupOrder = ['Today', 'Yesterday', 'This week', 'Older'] as const;
 const groupLabels = {
 	Today: i18n.baseText('userActivity.today'),
@@ -85,7 +90,9 @@ const groupedItems = computed<ChatHistoryItem[]>(() => {
 
 	return [
 		...groupOrder.flatMap((group) => {
-			const items = groups.get(group) ?? [];
+			const items = (groups.get(group) ?? []).sort(
+				(a, b) => Date.parse(b.data?.updatedAt ?? '') - Date.parse(a.data?.updatedAt ?? ''),
+			);
 			return items.length > 0
 				? [{ id: `group-${group}`, label: groupLabels[group], header: true }, ...items]
 				: [];
@@ -93,6 +100,33 @@ const groupedItems = computed<ChatHistoryItem[]>(() => {
 		...undated,
 	];
 });
+
+const cancelPendingItemClick = () => {
+	if (pendingItemClick) clearTimeout(pendingItemClick);
+	pendingItemClick = undefined;
+};
+
+const handleItemClick = (event: MouseEvent, item: ChatHistoryItem) => {
+	if (!props.itemDoubleClickEnabled || item.disabled) return;
+
+	event.stopPropagation();
+	cancelPendingItemClick();
+	if (event.detail > 1) return;
+
+	pendingItemClick = setTimeout(() => {
+		pendingItemClick = undefined;
+		emit('select', item.id);
+		dropdownRef.value?.close();
+	}, DOUBLE_CLICK_DELAY);
+};
+
+const handleItemDoubleClick = (item: ChatHistoryItem) => {
+	if (item.disabled) return;
+	cancelPendingItemClick();
+	emit('item-dblclick', item.id);
+};
+
+onBeforeUnmount(cancelPendingItemClick);
 
 useEventListener(
 	document,
@@ -103,7 +137,13 @@ useEventListener(
 		if (menu?.getAttribute('data-test-id') !== props.contentTestId) return;
 
 		if (event.key === 'Tab') {
-			event.stopPropagation();
+			const focusableElements = [...menu.querySelectorAll<HTMLElement>('*')].filter(
+				(element) => element.tabIndex >= 0 && !element.matches(':disabled, [aria-disabled="true"]'),
+			);
+			const currentIndex = focusableElements.indexOf(event.target);
+			const nextIndex = currentIndex + (event.shiftKey ? -1 : 1);
+
+			if (currentIndex >= 0 && focusableElements[nextIndex]) event.stopPropagation();
 			return;
 		}
 
@@ -161,7 +201,8 @@ defineExpose({ highlightFirstItem });
 				:title="item.label"
 				size="medium"
 				:color="item.disabled ? 'text-xlight' : 'text-dark'"
-				@dblclick.stop="!item.disabled && emit('item-dblclick', item.id)"
+				@click="handleItemClick($event, item)"
+				@dblclick.stop="handleItemDoubleClick(item)"
 			>
 				{{ item.label }}
 			</N8nText>
@@ -186,7 +227,6 @@ defineExpose({ highlightFirstItem });
 						<N8nIconButton
 							variant="ghost"
 							icon="ellipsis-vertical"
-							:class="$style.actionTrigger"
 							:disabled="props.actionsDisabled || item.disabled"
 							:aria-label="props.actionButtonLabel"
 						/>
@@ -218,11 +258,6 @@ defineExpose({ highlightFirstItem });
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
-}
-
-.actionTrigger {
-	box-shadow: none !important;
-	outline: none !important;
 }
 
 .actionDropdown {

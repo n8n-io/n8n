@@ -204,7 +204,7 @@ describe('useAgentBuilderSession', () => {
 		expect(session.currentSessionTitle.value).toBe('Session title');
 	});
 
-	it('exposes each session update time to the history menu', () => {
+	it('exposes each session title and update time to the history menu', () => {
 		sessionsStore.threads = [
 			{
 				id: 'thread-1',
@@ -214,7 +214,10 @@ describe('useAgentBuilderSession', () => {
 		];
 		const { session } = createSession();
 
-		expect(session.sessionMenu.value[0]?.updatedAt).toBe('2026-09-17T10:00:00.000Z');
+		expect(session.sessionMenu.value[0]).toMatchObject({
+			title: 'Session title',
+			updatedAt: '2026-09-17T10:00:00.000Z',
+		});
 	});
 
 	it('deletes the active session and starts a new one', async () => {
@@ -312,5 +315,27 @@ describe('useAgentBuilderSession', () => {
 
 		await expect(deletionResult).resolves.toBe(true);
 		expect(session.effectiveSessionId.value).toBe('thread-2');
+	});
+
+	it('ignores delete completion after switching agents', async () => {
+		const deletion = Promise.withResolvers<void>();
+		sessionsStore.deleteThread.mockReturnValueOnce(deletion.promise);
+		const { agentId, session } = createSession();
+		session.onSessionPick('thread-1');
+
+		const deletionResult = session.deleteSession('thread-1');
+		await vi.waitFor(() => {
+			expect(sessionsStore.deleteThread).toHaveBeenCalledExactlyOnceWith(
+				'project-1',
+				'agent-1',
+				'thread-1',
+			);
+		});
+		agentId.value = 'agent-2';
+		deletion.resolve();
+
+		await expect(deletionResult).resolves.toBe(false);
+		expect(showMessage).not.toHaveBeenCalled();
+		expect(showError).not.toHaveBeenCalled();
 	});
 });
