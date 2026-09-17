@@ -30,14 +30,8 @@ vi.mock('@n8n/instance-ai', async () => {
 		// passing test with silently empty metadata.
 		threadProvenanceMetadata: vi.fn(() => ({ thread_source: 'evals' })),
 		orchestratorAgentId: (runId: string) => `orchestrator-${runId}`,
-		// Wiring-only stub, as above: the derivation has its own unit tests
-		// (instance-ai/src/stream/__tests__/instance-context-reach.test.ts). These tests pin
-		// that a resumed segment still reaches its terminal, not what it derived.
-		deriveInstanceContextReach: vi.fn(() => ({ surfaces: [] })),
-		mergeInstanceContextReach: vi.fn(
-			(earlier?: { surfaces: string[] }, later?: { surfaces: string[] }) =>
-				later ?? earlier ?? { surfaces: [] },
-		),
+		deriveInstanceContextReach: profiles.deriveInstanceContextReach,
+		mergeInstanceContextReach: profiles.mergeInstanceContextReach,
 		isSetupPanelEnabled: (context: { setupItemsEmitter?: unknown }) =>
 			context.setupItemsEmitter !== undefined,
 		createSetupItemsEmitter: vi.fn(() => ({
@@ -253,6 +247,7 @@ import { ModuleRegistry } from '@n8n/backend-common';
 import type { InstanceAiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import {
 	createLazyRuntimeWorkspace,
 	createLazyWorkspaceRuntimeSkillSource,
@@ -269,6 +264,8 @@ import {
 	emitAgentSnapshotTraceEvent,
 	threadProvenanceMetadata,
 	type BuilderUsageItem,
+	type WorkSummary,
+	type SuspendedRunState,
 	type ManagedBackgroundTask,
 	type InstanceAiTraceContext,
 	type ModelConfig,
@@ -425,6 +422,10 @@ function queuedMemoryTaskEvent(): ScopedMemoryTaskEvent {
 }
 
 const fakeUser = { id: 'user-1' } as User;
+
+function emptyWorkSummary(): WorkSummary {
+	return { toolCalls: [], totalToolCalls: 0, totalToolErrors: 0, askedClarifyingQuestion: false };
+}
 
 function mockClaimedResumeResult(result: Awaited<ReturnType<typeof resumeAgentRun>>): void {
 	vi.mocked(resumeAgentRun).mockImplementationOnce(async (_agent, _data, resumeOptions) => {
@@ -598,6 +599,7 @@ type TerminalGuardOrderServiceInternals = {
 			resumeTracing?: InstanceAiTraceContext;
 			unregisteredResumeTracing?: InstanceAiTraceContext;
 			modelId?: ModelConfig;
+			instanceContext?: SuspendedRunState<User>['instanceContext'];
 		},
 	) => Promise<void>;
 };
@@ -709,8 +711,11 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		}));
 	});
 
-	const snapshotModes = ['off', 'seeded', 'read failure'];
-	it.each(snapshotModes)('starts with snapshots %s', async (snapshotMode) => {
+	const environmentGates = ['off', 'seeded', 'read failure'].flatMap((snapshotMode) =>
+		[true, false].map((instanceContextEnabled) => ({ snapshotMode, instanceContextEnabled })),
+	);
+	it.each(environmentGates)('starts with gates %j', async (gates) => {
+		const { snapshotMode, instanceContextEnabled } = gates;
 		const service = Object.create(InstanceAiService.prototype) as unknown as {
 			createExecutionEnvironment: (
 				user: User,
@@ -718,6 +723,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				runId: string,
 				abortSignal: AbortSignal,
 			) => Promise<{
+				instanceContextEnabled: boolean;
 				orchestrationContext: {
 					setupPanelEnabled?: boolean;
 					workspace?: unknown;
@@ -809,6 +815,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				nodeUsageEnabled: false,
 				folderExplorationEnabled: false,
 				aiPreferencesEnabled: false,
+				instanceContextEnabled,
 			}),
 		};
 		service.instanceWriteAccess = { isReadOnly: vi.fn(() => false) };
@@ -887,6 +894,11 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			'thread-1',
 			'run-1',
 			new AbortController().signal,
+		);
+		expect(environment.instanceContextEnabled).toBe(instanceContextEnabled);
+		expect(service.adapterService.createContext).toHaveBeenCalledWith(
+			fakeUser,
+			expect.objectContaining({ instanceContextEnabled }),
 		);
 		expect(environment.orchestrationContext.setupPanelEnabled).toBe(snapshotMode !== 'off');
 		if (snapshotMode === 'off') {
@@ -3051,12 +3063,7 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			status: 'completed',
 			agentRunId: 'agent-run-1',
 			text: Promise.resolve('done'),
-			workSummary: {
-				toolCalls: [],
-				totalToolCalls: 0,
-				totalToolErrors: 0,
-				askedClarifyingQuestion: false,
-			},
+			workSummary: emptyWorkSummary(),
 		});
 
 		await service.processResumedStream(
@@ -3154,12 +3161,7 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			agentRunId: 'agent-run-1',
 			text: Promise.resolve(''),
 			error: new Error('model overloaded'),
-			workSummary: {
-				toolCalls: [],
-				totalToolCalls: 0,
-				totalToolErrors: 0,
-				askedClarifyingQuestion: false,
-			},
+			workSummary: emptyWorkSummary(),
 		});
 
 		await service.processResumedStream(
@@ -3196,12 +3198,7 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			error: new Error(
 				'provider rejected key sk-ant-api03-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
 			),
-			workSummary: {
-				toolCalls: [],
-				totalToolCalls: 0,
-				totalToolErrors: 0,
-				askedClarifyingQuestion: false,
-			},
+			workSummary: emptyWorkSummary(),
 		});
 
 		await service.processResumedStream(
@@ -3237,12 +3234,7 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			status: 'completed',
 			agentRunId: 'agent-run-1',
 			text: Promise.resolve('done'),
-			workSummary: {
-				toolCalls: [],
-				totalToolCalls: 0,
-				totalToolErrors: 0,
-				askedClarifyingQuestion: false,
-			},
+			workSummary: emptyWorkSummary(),
 		});
 
 		await service.processResumedStream(
@@ -3292,12 +3284,7 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			status: 'completed',
 			agentRunId: 'agent-run-1',
 			text: Promise.resolve('done'),
-			workSummary: {
-				toolCalls: [],
-				totalToolCalls: 0,
-				totalToolErrors: 0,
-				askedClarifyingQuestion: false,
-			},
+			workSummary: emptyWorkSummary(),
 		});
 		service.pendingBrowserCredentialSetups.set('run-1', {
 			userId: 'user-1',
@@ -3398,12 +3385,7 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			status: 'cancelled',
 			agentRunId: 'agent-run-1',
 			text: Promise.resolve(''),
-			workSummary: {
-				toolCalls: [],
-				totalToolCalls: 0,
-				totalToolErrors: 0,
-				askedClarifyingQuestion: false,
-			},
+			workSummary: emptyWorkSummary(),
 		});
 		service.pendingBrowserCredentialSetups.set('run-1', {
 			userId: 'user-1',
@@ -3449,12 +3431,7 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			status: 'completed',
 			agentRunId: 'agent-run-1',
 			text: Promise.resolve('done'),
-			workSummary: {
-				toolCalls: [],
-				totalToolCalls: 0,
-				totalToolErrors: 0,
-				askedClarifyingQuestion: false,
-			},
+			workSummary: emptyWorkSummary(),
 		});
 
 		const tracker = service.createBrowserCredentialSetupTracker('run-1', 'user-1');
@@ -3519,12 +3496,7 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			status: 'suspended',
 			agentRunId: 'agent-run-1',
 			text: Promise.resolve(''),
-			workSummary: {
-				toolCalls: [],
-				totalToolCalls: 0,
-				totalToolErrors: 0,
-				askedClarifyingQuestion: false,
-			},
+			workSummary: emptyWorkSummary(),
 			usage: {
 				promptTokens: 10,
 				completionTokens: 5,
@@ -3575,12 +3547,7 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			status: 'suspended',
 			agentRunId: 'agent-run-1',
 			text: Promise.resolve(''),
-			workSummary: {
-				toolCalls: [],
-				totalToolCalls: 0,
-				totalToolErrors: 0,
-				askedClarifyingQuestion: false,
-			},
+			workSummary: emptyWorkSummary(),
 			suspension: {
 				toolCallId: 'tool-call-1',
 				requestId: 'req-1',
@@ -3648,12 +3615,7 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			status: 'suspended',
 			agentRunId: 'agent-run-1',
 			text: Promise.resolve(''),
-			workSummary: {
-				toolCalls: [],
-				totalToolCalls: 0,
-				totalToolErrors: 0,
-				askedClarifyingQuestion: false,
-			},
+			workSummary: emptyWorkSummary(),
 			suspension: {
 				toolCallId: 'tool-call-1',
 				requestId: 'req-1',
@@ -3908,12 +3870,7 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			status: 'suspended',
 			agentRunId: 'agent-run-1',
 			text: Promise.resolve(''),
-			workSummary: {
-				toolCalls: [],
-				totalToolCalls: 0,
-				totalToolErrors: 0,
-				askedClarifyingQuestion: false,
-			},
+			workSummary: emptyWorkSummary(),
 			suspension: {
 				toolCallId: 'tool-call-2',
 				requestId: 'req-2',
@@ -3984,12 +3941,7 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			status: 'suspended',
 			agentRunId: 'agent-run-1',
 			text: Promise.resolve(''),
-			workSummary: {
-				toolCalls: [],
-				totalToolCalls: 0,
-				totalToolErrors: 0,
-				askedClarifyingQuestion: false,
-			},
+			workSummary: emptyWorkSummary(),
 			usage: {
 				promptTokens: 10,
 				completionTokens: 5,
@@ -4006,12 +3958,7 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			status: 'completed',
 			agentRunId: 'agent-run-1',
 			text: Promise.resolve('done'),
-			workSummary: {
-				toolCalls: [],
-				totalToolCalls: 0,
-				totalToolErrors: 0,
-				askedClarifyingQuestion: false,
-			},
+			workSummary: emptyWorkSummary(),
 			usage: {
 				promptTokens: 20,
 				completionTokens: 8,
@@ -4079,12 +4026,7 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			status: 'suspended',
 			agentRunId: 'agent-run-1',
 			text: Promise.resolve(''),
-			workSummary: {
-				toolCalls: [],
-				totalToolCalls: 0,
-				totalToolErrors: 0,
-				askedClarifyingQuestion: false,
-			},
+			workSummary: emptyWorkSummary(),
 			usage: {
 				promptTokens: 10,
 				completionTokens: 5,
@@ -4102,12 +4044,7 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			status: 'cancelled',
 			agentRunId: 'agent-run-1',
 			text: Promise.resolve(''),
-			workSummary: {
-				toolCalls: [],
-				totalToolCalls: 0,
-				totalToolErrors: 0,
-				askedClarifyingQuestion: false,
-			},
+			workSummary: emptyWorkSummary(),
 			usage: {
 				promptTokens: 20,
 				completionTokens: 8,
@@ -4154,12 +4091,7 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			status: 'completed',
 			agentRunId: 'agent-run-1',
 			text: Promise.resolve('done'),
-			workSummary: {
-				toolCalls: [],
-				totalToolCalls: 0,
-				totalToolErrors: 0,
-				askedClarifyingQuestion: false,
-			},
+			workSummary: emptyWorkSummary(),
 		});
 
 		await service.processResumedStream(
@@ -4466,12 +4398,7 @@ describe('InstanceAiService — run error reporter lifecycle', () => {
 			agentRunId: 'agent-run-1',
 			text: Promise.resolve(''),
 			error: claimError,
-			workSummary: {
-				toolCalls: [],
-				totalToolCalls: 0,
-				totalToolErrors: 0,
-				askedClarifyingQuestion: false,
-			},
+			workSummary: emptyWorkSummary(),
 		});
 
 		await service.processResumedStream({}, {}, opts);
@@ -4537,12 +4464,7 @@ describe('InstanceAiService — run error reporter lifecycle', () => {
 			agentRunId: 'agent-run-1',
 			text: Promise.resolve(''),
 			error: staleError,
-			workSummary: {
-				toolCalls: [],
-				totalToolCalls: 0,
-				totalToolErrors: 0,
-				askedClarifyingQuestion: false,
-			},
+			workSummary: emptyWorkSummary(),
 		});
 
 		await service.processResumedStream({}, {}, opts);
@@ -4718,12 +4640,7 @@ describe('InstanceAiService — run error reporter lifecycle', () => {
 			agentRunId: 'agent-run-1',
 			text: Promise.resolve(''),
 			error: staleNamedError,
-			workSummary: {
-				toolCalls: [],
-				totalToolCalls: 0,
-				totalToolErrors: 0,
-				askedClarifyingQuestion: false,
-			},
+			workSummary: emptyWorkSummary(),
 		});
 
 		await service.processResumedStream({}, {}, resumedStreamOpts(abortController));
@@ -4752,12 +4669,7 @@ describe('InstanceAiService — run error reporter lifecycle', () => {
 			status: 'completed',
 			agentRunId: 'agent-run-1',
 			text: Promise.resolve('done'),
-			workSummary: {
-				toolCalls: [],
-				totalToolCalls: 0,
-				totalToolErrors: 0,
-				askedClarifyingQuestion: false,
-			},
+			workSummary: emptyWorkSummary(),
 		});
 
 		await service.processResumedStream({}, {}, resumedStreamOpts(abortController));
@@ -4799,12 +4711,7 @@ describe('InstanceAiService — run error reporter lifecycle', () => {
 			status: 'completed',
 			agentRunId: 'agent-run-1',
 			text: Promise.resolve('done'),
-			workSummary: {
-				toolCalls: [],
-				totalToolCalls: 0,
-				totalToolErrors: 0,
-				askedClarifyingQuestion: false,
-			},
+			workSummary: emptyWorkSummary(),
 		});
 
 		await service.processResumedStream({}, {}, resumedStreamOpts(abortController));
@@ -4829,12 +4736,7 @@ describe('InstanceAiService — run error reporter lifecycle', () => {
 			status: 'cancelled',
 			agentRunId: 'agent-run-1',
 			text: Promise.resolve(''),
-			workSummary: {
-				toolCalls: [],
-				totalToolCalls: 0,
-				totalToolErrors: 0,
-				askedClarifyingQuestion: false,
-			},
+			workSummary: emptyWorkSummary(),
 		});
 		abortController.abort();
 
@@ -4868,12 +4770,7 @@ describe('InstanceAiService — run error reporter lifecycle', () => {
 			status: 'cancelled',
 			agentRunId: 'agent-run-1',
 			text: Promise.resolve(''),
-			workSummary: {
-				toolCalls: [],
-				totalToolCalls: 0,
-				totalToolErrors: 0,
-				askedClarifyingQuestion: false,
-			},
+			workSummary: emptyWorkSummary(),
 		});
 		abortController.abort();
 
@@ -4896,23 +4793,20 @@ describe('InstanceAiService — run error reporter lifecycle', () => {
 	});
 });
 
-describe('InstanceAiService setup panel Execute input', () => {
+describe('InstanceAiService run input gates', () => {
 	it.each([true, false])(
-		'forwards the Execute target only with the panel enabled: %s',
+		'forwards the setup panel target and the shared instance gate: %s',
 		async (enabled) => {
 			vi.mocked(createInstanceAiTraceContext).mockResolvedValueOnce(undefined);
 			vi.mocked(streamAgentRun).mockResolvedValueOnce({
 				status: 'cancelled',
 				agentRunId: 'agent-run-1',
 				text: Promise.resolve(''),
-				workSummary: {
-					toolCalls: [],
-					totalToolCalls: 0,
-					totalToolErrors: 0,
-					askedClarifyingQuestion: false,
-				},
+				workSummary: emptyWorkSummary(),
 			});
+			const buildBlock = vi.fn().mockResolvedValue({ state: 'absent', reason: 'disabled' });
 			const environment = {
+				instanceContextEnabled: enabled,
 				context: { setupItemsEmitter: enabled ? {} : undefined },
 				memory: { getThread: vi.fn(async () => ({ title: 'Existing conversation' })) },
 				taskStorage: { get: vi.fn(async () => undefined) },
@@ -4924,11 +4818,7 @@ describe('InstanceAiService setup panel Execute input', () => {
 				createProxyRunConfig: vi.fn(async () => ({})),
 				browserSessionService: { getExtensionTraceContext: vi.fn() },
 				readThreadProvenance: vi.fn(async () => ({})),
-				// `buildBlock` always answers with a result now, never a nullish value: the
-				// absent branch is what carries the reason a turn got no block.
-				instanceContext: {
-					buildBlock: vi.fn().mockResolvedValue({ state: 'absent', reason: 'disabled' }),
-				},
+				instanceContext: { buildBlock },
 				reclassifyMaskedStreamFailure: vi.fn(async (error: unknown) => {
 					throw error;
 				}),
@@ -4968,6 +4858,7 @@ describe('InstanceAiService setup panel Execute input', () => {
 				{ source: 'setup-panel-execute', workflowId: 'wf-target' },
 			);
 
+			expect(buildBlock).toHaveBeenCalledWith(expect.objectContaining({ enabled }));
 			expect(streamAgentRun).toHaveBeenCalled();
 			const input = vi.mocked(streamAgentRun).mock.lastCall?.[1];
 			expect(input).toEqual(expect.any(String));
@@ -6404,8 +6295,6 @@ describe('InstanceAiService — resolveAiPreferencesBlock', () => {
 });
 
 describe('InstanceAiService — instance-context turn event', () => {
-	const TURN_EVENT = 'Instance AI instance-context turn completed';
-
 	type TurnBinding = {
 		userId: string;
 		threadId: string;
@@ -6429,10 +6318,9 @@ describe('InstanceAiService — instance-context turn event', () => {
 		};
 	}
 
-	/** The registry entry is what reaches `track`, so the name is read off it. */
 	function trackedRows(service: { telemetry: { track: Mock } }) {
 		return service.telemetry.track.mock.calls.map(([event, properties]) => {
-			expect((event as { name: string }).name).toBe(TURN_EVENT);
+			expect(event).toBe(TELEMETRY_EVENT.INSTANCE_AI.INSTANCE_CONTEXT_TURN);
 			return properties as Record<string, unknown>;
 		});
 	}
@@ -6459,11 +6347,7 @@ describe('InstanceAiService — instance-context turn event', () => {
 		...overrides,
 	});
 
-	/**
-	 * The reason the event exists at all: the rate it measures is only meaningful against the
-	 * turns that carried no block. A guard that skipped those would leave the read-out with a
-	 * numerator and no denominator.
-	 */
+	// Include turns without a block so rollout comparisons have a baseline.
 	it('reports a turn in the arm that got no block', () => {
 		const service = createService();
 
@@ -6506,39 +6390,80 @@ describe('InstanceAiService — instance-context turn event', () => {
 		]);
 	});
 
-	/**
-	 * A turn that stops twice reports three segments. Each carries only its own reads and its own
-	 * spend, so a reader aggregates over the shared `run_id` rather than trusting any one row.
-	 */
-	it('reports every segment of one turn under a shared run id', () => {
-		const service = createService();
-		const turn = binding();
+	it('carries context reads through another suspension and the final resume', async () => {
+		const service = createTerminalGuardOrderService();
+		vi.spyOn(service.terminalOutcome, 'evaluateWaitingResponse').mockResolvedValue(undefined);
+		const finalizeRun = vi.spyOn(service, 'finalizeRun').mockResolvedValue(undefined);
+		const abortController = new AbortController();
+		let instanceContext: NonNullable<SuspendedRunState<User>['instanceContext']> = {
+			injection: binding().injection,
+			instanceContextEnabled: true,
+			nodeUsageEnabled: false,
+			reachSoFar: { surfaces: ['activity-list'] },
+		};
+		const segments = [
+			{ status: 'suspended', toolName: 'activity', action: 'expand', tokens: 12 },
+			{ status: 'completed', toolName: 'workflows', action: 'get', tokens: 34 },
+		] as const;
 
-		service.emitInstanceContextTurn(turn, {
-			...segment({ segment: 'suspended', status: 'suspended' }),
-			reach: { surfaces: ['activity-list'] },
-			usage: { promptTokens: 10, completionTokens: 2, totalTokens: 12 },
-		});
-		service.emitInstanceContextTurn(turn, {
-			...segment({ segment: 'suspended', status: 'suspended' }),
-			reach: { surfaces: ['activity-expand'] },
-		});
-		service.emitInstanceContextTurn(turn, {
-			...segment({ segment: 'resumed' }),
-			reach: { surfaces: ['workflow-read'] },
-			usage: { promptTokens: 30, completionTokens: 4, totalTokens: 34 },
-		});
+		for (const { status, toolName, action, tokens } of segments) {
+			mockClaimedResumeResult({
+				status,
+				agentRunId: 'agent-run-1',
+				text: Promise.resolve(''),
+				workSummary: {
+					...emptyWorkSummary(),
+					toolCalls: [{ toolCallId: 'call-1', toolName, action, succeeded: true }],
+					totalToolCalls: 1,
+					askedClarifyingQuestion: status === 'suspended',
+				},
+				usage: { promptTokens: tokens, completionTokens: 0, totalTokens: tokens, costUsd: 0 },
+				...(status === 'suspended'
+					? { suspension: { toolCallId: 'call-1', requestId: 'req-1', suspendPayload: {} } }
+					: {}),
+			});
+			await service.processResumedStream(
+				{},
+				{},
+				{
+					runId: 'run-1',
+					agentRunId: 'agent-run-1',
+					threadId: 'thread-1',
+					user: fakeUser,
+					toolCallId: 'call-1',
+					signal: abortController.signal,
+					abortController,
+					instanceContext,
+				},
+			);
+			if (status === 'suspended') {
+				const saved = service.runState.suspendRun.mock.lastCall?.[1] as SuspendedRunState<User>;
+				expect(saved.instanceContext).toEqual({
+					...instanceContext,
+					reachSoFar: { surfaces: ['activity-list', 'activity-expand'] },
+				});
+				instanceContext = saved.instanceContext!;
+			}
+		}
 
-		const rows = trackedRows(service);
-		expect(rows).toHaveLength(3);
-		expect(rows.map((row) => row.run_id)).toEqual(['run-1', 'run-1', 'run-1']);
-		expect(rows.map((row) => row.segment)).toEqual(['suspended', 'suspended', 'resumed']);
-		// Per segment, so summing them over the run gives the turn.
+		const rows = service.telemetry.track.mock.calls
+			.filter(([event]) => event === TELEMETRY_EVENT.INSTANCE_AI.INSTANCE_CONTEXT_TURN)
+			.map(([, properties]) => properties);
+		expect(rows.map((row) => row.run_id)).toEqual(['run-1', 'run-1']);
+		expect(rows.map((row) => row.segment)).toEqual(['suspended', 'resumed']);
 		expect(rows.map((row) => row.context_surfaces)).toEqual([
-			['activity-list'],
 			['activity-expand'],
 			['workflow-read'],
 		]);
-		expect(rows.map((row) => row.turn_total_tokens)).toEqual([12, undefined, 34]);
+		expect(rows.map((row) => row.turn_total_tokens)).toEqual([12, 34]);
+		expect(rows.map((row) => row.asked_clarifying_question)).toEqual([true, false]);
+		expect(finalizeRun).toHaveBeenCalledWith(
+			'thread-1',
+			'run-1',
+			'completed',
+			expect.objectContaining({
+				contextReach: { surfaces: ['activity-list', 'activity-expand', 'workflow-read'] },
+			}),
+		);
 	});
 });

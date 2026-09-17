@@ -3,13 +3,7 @@ import type { InstanceContextReach, InstanceContextSurface } from '@n8n/api-type
 import type { ToolCallSummary } from './work-summary-accumulator';
 import { DOMAIN_TOOL_IDS } from '../tools/tool-ids';
 
-/**
- * Which tool call means which surface. Data rather than a chain of conditionals, so a
- * new surface is one entry here plus its depth and its label.
- *
- * `get-as-code` is the same rung as `get`: both return the whole workflow, and the
- * difference is the shape it arrives in, not how much was read.
- */
+/** Both workflow read formats expose the full workflow. */
 const SURFACE_BY_CALL: Record<string, Record<string, InstanceContextSurface>> = {
 	[DOMAIN_TOOL_IDS.ACTIVITY]: {
 		list: 'activity-list',
@@ -23,16 +17,14 @@ const SURFACE_BY_CALL: Record<string, Record<string, InstanceContextSurface>> = 
 };
 
 function surfaceFor(call: ToolCallSummary): InstanceContextSurface | undefined {
-	// The index has two entrances: the `node-usage` action and the `nodeTypes` filter on `list`.
-	// Checked before the action guard, since the filter is recorded without one.
+	// A node-type filter uses the same index as the node-usage action.
 	if (call.toolName === DOMAIN_TOOL_IDS.WORKFLOWS && call.filteredByNodeTypes === true) {
 		return 'node-usage';
 	}
 
 	if (call.action === undefined) return undefined;
 
-	// Both come off the model's own tool call, so a plain index could return an inherited
-	// member — `action: "constructor"` would put a function in `surfaces`.
+	// Model input must not select inherited object properties.
 	const byAction = Object.hasOwn(SURFACE_BY_CALL, call.toolName)
 		? SURFACE_BY_CALL[call.toolName]
 		: undefined;
@@ -41,10 +33,7 @@ function surfaceFor(call: ToolCallSummary): InstanceContextSurface | undefined {
 	return byAction[call.action];
 }
 
-/**
- * Which context surfaces a turn used. Attempts count, not just successes — a turn that tried
- * and failed still went looking. Derived once, because the trace and telemetry must agree.
- */
+/** Count attempted reads, including failures. Share this result with trace and telemetry. */
 export function deriveInstanceContextReach(toolCalls: ToolCallSummary[]): InstanceContextReach {
 	const surfaces: InstanceContextSurface[] = [];
 
@@ -56,13 +45,7 @@ export function deriveInstanceContextReach(toolCalls: ToolCallSummary[]): Instan
 	return { surfaces };
 }
 
-/**
- * Combines what two segments of one turn each used.
- *
- * A turn that stops for a confirmation runs in segments, and each gets its own work
- * summary, so neither knows what the other read. The reads that follow an approval are
- * often the deepest, so the segments accumulate rather than the later one winning.
- */
+/** Combine segment reads so a resumed turn retains its earlier reads. */
 export function mergeInstanceContextReach(
 	earlier: InstanceContextReach | undefined,
 	later: InstanceContextReach,

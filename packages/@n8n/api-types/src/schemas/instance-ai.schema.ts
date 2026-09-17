@@ -298,9 +298,7 @@ export function isSafeObjectKey(key: string): boolean {
 	return !UNSAFE_OBJECT_KEYS.has(key);
 }
 
-// ---------------------------------------------------------------------------
-// Instance context: what a turn was handed, and how far it then went
-// ---------------------------------------------------------------------------
+// Instance context summary and later reads.
 
 export const instanceContextSurfaceSchema = z.enum([
 	'activity-list',
@@ -311,14 +309,7 @@ export const instanceContextSurfaceSchema = z.enum([
 
 export type InstanceContextSurface = z.infer<typeof instanceContextSurfaceSchema>;
 
-/**
- * How deep a read each surface is. Typed against the schema above, so adding a surface
- * to one and not the other fails to compile rather than silently going uncounted.
- *
- * The two surfaces at 2 genuinely tie. Opening one entry's history and summarising a
- * project's node types are different questions asked at the same remove from the block,
- * so a turn reports which surfaces it used and the depth is derived from them.
- */
+/** Each surface has a depth. The map must cover every surface in the schema. */
 export const INSTANCE_CONTEXT_SURFACE_DEPTH: Record<InstanceContextSurface, 0 | 1 | 2 | 3> = {
 	'activity-list': 1,
 	'activity-expand': 2,
@@ -332,12 +323,7 @@ export const instanceContextReachSchema = z.object({
 		.describe('Surfaces called this turn, de-duplicated, in first-call order. Empty if none.'),
 });
 
-/**
- * How far a turn went for instance context, beyond the block it was handed.
- *
- * Surfaces only. A depth is `max(INSTANCE_CONTEXT_SURFACE_DEPTH)` over them, so carrying
- * it here would ship derived data next to its source and let the two disagree.
- */
+/** Store the surfaces only. Derive depth from the shared map. */
 export type InstanceContextReach = z.infer<typeof instanceContextReachSchema>;
 
 export const instanceContextLegsSchema = z.object({
@@ -351,16 +337,7 @@ export const instanceContextLegsSchema = z.object({
 
 export type InstanceContextLegs = z.infer<typeof instanceContextLegsSchema>;
 
-/**
- * Why a turn got no block. Kept distinct because they mean different things to a
- * reader: `disabled` says the feature was not in play, `empty` says it was and found
- * nothing worth sending — the case where an agent that guessed was not withholding
- * anything — and `failed` says the read broke, which is neither of those.
- *
- * `failed` is separate from `empty` on purpose. Reporting a broken read as "nothing
- * happened here" sends someone debugging a bad answer to look at a quiet instance
- * rather than at the warning in the log.
- */
+/** Keep a failed read distinct from a disabled feature or an empty result. */
 export const instanceContextAbsenceReasonSchema = z.enum([
 	'disabled',
 	'machine-follow-up',
@@ -385,17 +362,7 @@ export const instanceContextInjectionSchema = z.discriminatedUnion('state', [
 /** What a turn was handed, or why it was handed nothing. */
 export type InstanceContextInjection = z.infer<typeof instanceContextInjectionSchema>;
 
-/**
- * Sent once per turn, right after the block is built and before the agent runs, so a
- * reader can tell a turn that knew about prior work from one that guessed. `reach`
- * is not known yet at that point and arrives on `run-finish`.
- */
-/**
- * Deliberately only the shape of the injection, not the block itself. The trace names what a turn
- * was handed and how far it then read; it does not reproduce the text. Sending the block would put
- * a copy of it on every turn's stream and in the durable log, for something nothing renders.
- * `block_chars` on the turn event still records the size, which is what the rollout reads.
- */
+/** Send the summary only. The raw context block stays on the server. */
 export const instanceContextPayloadSchema = z.object({
 	injection: instanceContextInjectionSchema,
 });
@@ -426,11 +393,7 @@ export const runStartPayloadSchema = z.object({
 export const runFinishPayloadSchema = z.object({
 	status: instanceAiRunStatusSchema,
 	reason: z.string().optional(),
-	/**
-	 * How far this turn went for instance context. Rides the terminal event because it
-	 * is only knowable once every tool call is in — the same reason the run's duration
-	 * and tool counts are reported here.
-	 */
+	/** Report all context reads when the turn ends. */
 	contextReach: instanceContextReachSchema.optional(),
 	/**
 	 * Workflow IDs the run-finish reap soft-deleted — intermediate
@@ -1842,19 +1805,10 @@ export type InstanceAiTimelineEntry =
 	| { type: 'reasoning'; content: string; responseId?: string }
 	| { type: 'tool-call'; toolCallId: string; responseId?: string }
 	| { type: 'child'; agentId: string; responseId?: string }
-	/**
-	 * What the turn was handed before it started. Sits in the timeline rather than
-	 * beside the message so it lands inside the trace the user expands, and so it
-	 * persists with the rest of the tree — `AgentTreeSnapshot` stores `timeline`
-	 * verbatim, which is what makes it survive a reload without its own restore path.
-	 */
+	/** Store the context summary in the timeline so normal history replay restores it. */
 	| {
 			type: 'instance-context';
-			/**
-			 * The run this entry describes. A message group accumulates several runs, so an
-			 * entry has to say which turn it belongs to — otherwise a follow-up turn's entry
-			 * looks like a duplicate of the first, and its reach lands on the wrong row.
-			 */
+			/** Match by run ID so each follow-up updates its own row. */
 			runId: string;
 			injection: InstanceContextInjection;
 			/** Absent until the run finishes. */
@@ -2624,6 +2578,9 @@ export const INSTANCE_AI_NODE_USAGE_FLAG = '109_instance_ai_node_usage';
  */
 export const INSTANCE_AI_FOLDER_EXPLORATION_FLAG = '110_instance_ai_folder_exploration';
 
+/** Instance rollout gate for shared activity recording and retrieval. */
+export const INSTANCE_ACTIVITY_CONTEXT_FLAG = '114_instance_activity_context';
+
 /**
  * `110_instance_ai_folder_exploration` is multivariate — the enabled arm is a
  * variant string, not a boolean. The flag names its on-arm `test` rather than
@@ -2631,9 +2588,6 @@ export const INSTANCE_AI_FOLDER_EXPLORATION_FLAG = '110_instance_ai_folder_explo
  * the flag's own spelling.
  */
 export const INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT = 'test';
-
-/** Instance rollout gate for shared activity recording and retrieval. */
-export const INSTANCE_ACTIVITY_CONTEXT_FLAG = '114_instance_activity_context';
 
 /**
  * Records a credential field that was rewritten (e.g. routed to the eval wire

@@ -308,20 +308,17 @@ progress indicator from this data.
 
 ### `instance-context`
 
-What the turn was handed as instance context, published once before the agent
-starts. `injection` is `{ state: 'injected', isUpdate, legs, chars }` or
-`{ state: 'absent', reason }` — the shape of the injection only. The rendered
-block stays server-side: the trace names which legs carried something and how far
-the turn then read, and nothing renders the text, so sending it would put a copy
-on every turn's stream and in its durable log entry. An `absent` outcome is
-published too, because a turn told nothing must be distinguishable from one that
-was told and ignored it: `empty` when the read found nothing, and `failed` when
-the read itself broke, so a turn that ran without context it should have had is
-not filed as a quiet instance. Nothing is published at all when the feature is off
-for the user or on a machine follow-up, since neither has a reader to inform.
-Durable; the reducer appends one `instance-context` timeline entry onto the ROOT
-agent node regardless of the emitting agent. How far the turn then read arrives
-later, on `run-finish`.
+The server publishes a context summary before the agent starts. The raw block
+stays on the server. An injected block has
+`{ state: 'injected', isUpdate, legs, chars }`. A failed read has
+`{ state: 'absent', reason: 'failed' }`.
+
+Empty results, disabled instance gates, and machine follow-ups emit no trace row.
+Telemetry still records these outcomes for comparison.
+
+The reducer stores one row per run on the root agent timeline. History replay
+restores it. The `contextReach` field on `run-finish` adds reads from all segments,
+including reads before a suspension.
 
 ### `setup-items`
 

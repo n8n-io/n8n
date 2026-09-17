@@ -90,6 +90,7 @@ import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry
 import { PostHogClient } from '@/posthog';
 
 import { InstanceAiMcpRegistryService } from '../mcp';
+import type { InstanceContextService } from '../instance-context.service';
 
 import {
 	extractExecutionResult,
@@ -114,11 +115,7 @@ import { LlmJudgeProviderRegistry } from '@/evaluation.ee/llm-judge-provider-reg
  * from whatever the test was actually about.
  */
 function globalConfigStub(
-	overrides: {
-		allowSendingParameterValues?: boolean;
-		queueMode?: boolean;
-		activityLogEnabled?: boolean;
-	} = {},
+	overrides: { allowSendingParameterValues?: boolean; queueMode?: boolean } = {},
 ): ConstructorParameters<typeof InstanceAiAdapterService>[1] {
 	return {
 		ai: { allowSendingParameterValues: overrides.allowSendingParameterValues ?? false },
@@ -126,9 +123,6 @@ function globalConfigStub(
 		// Node usage is gated on the dependency index being wired too, which these tests do not
 		// pass, so the value here only has to exist. See instance-ai.adapter.node-usage.test.ts.
 		instanceAi: { nodeUsageEnabled: false },
-		// The instance-context read needs the record to be accruing as well as the flag, so
-		// gate resolution reads this.
-		activityLog: { enabled: overrides.activityLogEnabled ?? false },
 	} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[1];
 }
 
@@ -5194,7 +5188,7 @@ function createAdapterWithGatewayMock(
 		enabled?: boolean;
 		settingsService?: unknown;
 		getWallet?: Mock;
-		activityLogEnabled?: boolean;
+		instanceContext?: InstanceContextService;
 	},
 ): InstanceAiAdapterService {
 	const aiGatewayService = {
@@ -5214,7 +5208,7 @@ function createAdapterWithGatewayMock(
 		warn: vi.fn(),
 		scoped: vi.fn().mockReturnThis(),
 	} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[0];
-	args[1] = globalConfigStub({ activityLogEnabled: overrides?.activityLogEnabled ?? false });
+	args[1] = globalConfigStub();
 	if (overrides?.credentialsService) {
 		args[8] = overrides.credentialsService as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
@@ -5244,10 +5238,23 @@ function createAdapterWithGatewayMock(
 	args[32] = aiGatewayService as unknown as ConstructorParameters<
 		typeof InstanceAiAdapterService
 	>[32];
+	args[42] = overrides?.instanceContext;
 	return new InstanceAiAdapterService(
 		...(args as ConstructorParameters<typeof InstanceAiAdapterService>),
 	);
 }
+
+describe('createContext activity gate', () => {
+	const user = mock<User>({ id: 'user-1' });
+	const instanceContext = mock<InstanceContextService>();
+
+	it.each([true, false, undefined])('uses the shared instance gate: %s', (enabled) => {
+		const service = createAdapterWithGatewayMock(vi.fn(), { instanceContext });
+		const context = service.createContext(user, { instanceContextEnabled: enabled });
+
+		expect(context.activityService !== undefined).toBe(enabled === true);
+	});
+});
 
 describe('createExecutionAdapter runStep()', () => {
 	beforeEach(() => {
@@ -5889,13 +5896,9 @@ describe('resolveExperimentGates', () => {
 		return getFeatureFlags;
 	}
 
-	function createAdapter(
-		mcpAccessEnabled = true,
-		activityLogEnabled = true,
-	): InstanceAiAdapterService {
+	function createAdapter(mcpAccessEnabled = true): InstanceAiAdapterService {
 		return createAdapterWithGatewayMock(vi.fn(), {
 			settingsService: { isMcpAccessEnabled: vi.fn().mockReturnValue(mcpAccessEnabled) },
-			activityLogEnabled,
 		});
 	}
 
@@ -5907,7 +5910,6 @@ describe('resolveExperimentGates', () => {
 		[INSTANCE_AI_NODE_USAGE_FLAG]: true,
 		[INSTANCE_AI_FOLDER_EXPLORATION_FLAG]: INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
 		[CONTEXT_PREFERENCES_FLAG]: CONTEXT_PREFERENCES_ENABLED_VARIANT,
-		[INSTANCE_ACTIVITY_CONTEXT_FLAG]: true,
 	};
 
 	it('resolves per-user gates with one user flag fetch', async () => {
@@ -5987,7 +5989,6 @@ describe('resolveExperimentGates', () => {
 			[INSTANCE_AI_NODE_USAGE_FLAG]: false,
 			[INSTANCE_AI_FOLDER_EXPLORATION_FLAG]: 'control',
 			[CONTEXT_PREFERENCES_FLAG]: CONTEXT_PREFERENCES_CONTROL_VARIANT,
-			[INSTANCE_ACTIVITY_CONTEXT_FLAG]: false,
 		});
 
 		await expect(createAdapter().resolveExperimentGates(user)).resolves.toEqual({

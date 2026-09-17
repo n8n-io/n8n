@@ -135,11 +135,11 @@ describe('InstanceContextService', () => {
 
 			expect(
 				await service.buildBlock({
+					enabled: false,
 					user: USER,
 					scope: BOUND,
 					cursor: null,
 					now: NOW,
-					enabled: false,
 				}),
 			).toMatchObject({ state: 'absent', reason: 'disabled' });
 			expect(activityEventRepository.findFeed).not.toHaveBeenCalled();
@@ -154,110 +154,18 @@ describe('InstanceContextService', () => {
 			});
 
 			const built = await service.buildBlock({
+				enabled: true,
 				user: USER,
 				scope: BOUND,
 				cursor: null,
 				isMachineFollowUp: true,
 				now: NOW,
-				enabled: true,
 			});
 
 			expect(built).toMatchObject({ state: 'absent', reason: 'machine-follow-up' });
 			expect(activityEventRepository.findFeed).not.toHaveBeenCalled();
 			expect(executionRepository.summariseRunsForProjects).not.toHaveBeenCalled();
 			expect(workflowRepository.findRecentForProjects).not.toHaveBeenCalled();
-		});
-
-		/**
-		 * Project is the only boundary the run leg has — a run has no acting user — so a
-		 * conversation without one reads nothing rather than falling back to something wider.
-		 */
-		/**
-		 * A thread outlives the membership that authorised it, and thread access proves ownership
-		 * rather than project access, so the scope is re-checked rather than trusted.
-		 */
-		/**
-		 * A project grants `workflow:read` and `credential:read` separately, and a credential entry
-		 * carries the credential's name and type. A role denied credential access everywhere else
-		 * must not be handed an inventory of them here — the block is rendered to the user now, not
-		 * only to the model.
-		 */
-		it('withholds credential entries from a caller without credential:read', async () => {
-			// Every scope but the credential one, which is the shape of a custom project role.
-			userHasScopes.mockImplementation(async (...args: unknown[]) => {
-				const scopes = args[1];
-				return !(Array.isArray(scopes) && scopes.includes('credential:read'));
-			});
-			const service = serviceWith();
-
-			await service.buildBlock({
-				user: USER,
-				scope: { surface: 'conversation', projectId: PROJECT_ID },
-				cursor: null,
-				now: NOW,
-				enabled: true,
-			});
-
-			expect(activityEventRepository.findFeed).toHaveBeenCalledWith(
-				expect.objectContaining({ allowedCategories: ['workflow'] }),
-			);
-		});
-
-		/**
-		 * The floor a narrower scope set must not outlive that scope. A thread that ran without
-		 * credential access advanced the floor past rows it was never allowed to see, so granting
-		 * access afterwards has to lower the floor again.
-		 *
-		 * Only the floor. Resetting the whole cursor would also drop `runsThrough` and bring the
-		 * inventory back, repeating a week of run summaries and the estate listing for a change
-		 * that says nothing about either.
-		 */
-		it('reopens the entry window when the scope widens, without repeating the rest', async () => {
-			const service = serviceWith();
-			const narrowCursor = {
-				activityMark: 500,
-				activityFloor: 400,
-				activityCategories: ['workflow' as const],
-				activitySeen: [500],
-				runsThrough: new Date(NOW.getTime() - 60_000).toISOString(),
-			};
-			// Arrivals first, and empty: `afterId: 500` cannot return a row below the mark, so
-			// answering both reads from one page would let the arrival leg supply the entry and
-			// the assertion below would hold even if the reopened band read nothing.
-			activityEventRepository.findFeed.mockResolvedValueOnce([]);
-			// A credential row below the old floor: readable now, and never shown before. Only
-			// the reopened band can reach it.
-			activityEventRepository.findFeed.mockResolvedValueOnce([
-				entry({
-					id: 320,
-					category: 'credential',
-					resourceType: 'credential',
-					resourceId: 'cred-1',
-					resourceName: 'Slack account',
-				}),
-			]);
-
-			const built = await service.buildBlock({
-				user: USER,
-				scope: { surface: 'conversation', projectId: PROJECT_ID },
-				cursor: narrowCursor,
-				now: NOW,
-				enabled: true,
-			});
-
-			expect(blockOf(built)).toContain('Slack account');
-			// Once. The two reads cover disjoint id ranges, so a row cannot arrive down both.
-			expect(blockOf(built).match(/^\[320\]/gm)).toHaveLength(1);
-
-			// Still a delta: the inventory and the run window are untouched, because a scope
-			// change says nothing about what exists or what has run.
-			expect(built).toMatchObject({ state: 'injected', isUpdate: true });
-			expect(workflowRepository.findRecentForProjects).not.toHaveBeenCalled();
-			// Only the floor moved, so the rows the narrower scope hid are eligible again while
-			// the mark and the shown ids still suppress everything already in the conversation.
-			expect(activityEventRepository.findFeed).toHaveBeenCalledWith(
-				expect.objectContaining({ afterId: 0, beforeId: 500 }),
-			);
 		});
 
 		/** A narrowed scope keeps its cursor: it reads less than the cursor accounted for. */
@@ -270,6 +178,7 @@ describe('InstanceContextService', () => {
 			activityEventRepository.findFeed.mockResolvedValue([entry({ id: 501 })]);
 
 			const built = await service.buildBlock({
+				enabled: true,
 				user: USER,
 				scope: { surface: 'conversation', projectId: PROJECT_ID },
 				cursor: {
@@ -280,27 +189,9 @@ describe('InstanceContextService', () => {
 					runsThrough: new Date(NOW.getTime() - 60_000).toISOString(),
 				},
 				now: NOW,
-				enabled: true,
 			});
 
 			expect(built).toMatchObject({ state: 'injected', isUpdate: true });
-		});
-
-		/** With both scopes the feed carries everything the project recorded. */
-		it('allows credential entries for a caller that may read them', async () => {
-			const service = serviceWith();
-
-			await service.buildBlock({
-				user: USER,
-				scope: { surface: 'conversation', projectId: PROJECT_ID },
-				cursor: null,
-				now: NOW,
-				enabled: true,
-			});
-
-			expect(activityEventRepository.findFeed).toHaveBeenCalledWith(
-				expect.objectContaining({ allowedCategories: ['workflow', 'credential'] }),
-			);
 		});
 
 		it('builds nothing once the user can no longer read the bound project', async () => {
@@ -312,11 +203,11 @@ describe('InstanceContextService', () => {
 			userHasScopes.mockResolvedValue(false);
 
 			const built = await service.buildBlock({
+				enabled: true,
 				user: USER,
 				scope: BOUND,
 				cursor: null,
 				now: NOW,
-				enabled: true,
 			});
 
 			expect(built).toMatchObject({ state: 'absent', reason: 'empty' });
@@ -341,11 +232,11 @@ describe('InstanceContextService', () => {
 
 			expect(
 				await service.buildBlock({
+					enabled: true,
 					user: USER,
 					scope: { surface: 'conversation' },
 					cursor: null,
 					now: NOW,
-					enabled: true,
 				}),
 			).toMatchObject({ state: 'absent', reason: 'empty' });
 			expect(activityEventRepository.findFeed).not.toHaveBeenCalled();
@@ -358,11 +249,11 @@ describe('InstanceContextService', () => {
 
 			expect(
 				await service.buildBlock({
+					enabled: true,
 					user: USER,
 					scope: BOUND,
 					cursor: null,
 					now: NOW,
-					enabled: true,
 				}),
 			).toMatchObject({ state: 'absent', reason: 'empty' });
 		});
@@ -376,11 +267,11 @@ describe('InstanceContextService', () => {
 			});
 
 			const built = await service.buildBlock({
+				enabled: true,
 				user: USER,
 				scope: BOUND,
 				cursor: null,
 				now: NOW,
-				enabled: true,
 			});
 
 			expect(blockOf(built)).toContain('<instance-context>');
@@ -389,11 +280,7 @@ describe('InstanceContextService', () => {
 			expect(blockOf(built)).toContain('... and 2 more');
 		});
 
-		/**
-		 * The pairing a reader meets whenever work left a project: the feed records where the work
-		 * happened and keeps the entry, while the inventory reports what is there now. The empty
-		 * line has to read as a state, or it contradicts the section directly under it.
-		 */
+		// Inventory describes the current project. Activity can describe work that has moved.
 		it('says the inventory is empty now rather than never written, beside a feed that shows work', async () => {
 			const service = serviceWith();
 			workflowRepository.findRecentForProjects.mockResolvedValue({ total: 0, workflows: [] });
@@ -401,11 +288,11 @@ describe('InstanceContextService', () => {
 
 			const block = blockOf(
 				await service.buildBlock({
+					enabled: true,
 					user: USER,
 					scope: { surface: 'conversation', projectId: PROJECT_ID },
 					cursor: null,
 					now: NOW,
-					enabled: true,
 				}),
 			);
 
@@ -423,11 +310,11 @@ describe('InstanceContextService', () => {
 			]);
 
 			const built = await service.buildBlock({
+				enabled: true,
 				user: USER,
 				scope: BOUND,
 				cursor: null,
 				now: NOW,
-				enabled: true,
 			});
 
 			expect(blockOf(built)).toContain('ran 43×, 2 failed');
@@ -441,11 +328,11 @@ describe('InstanceContextService', () => {
 			]);
 
 			const built = await service.buildBlock({
+				enabled: true,
 				user: USER,
 				scope: BOUND,
 				cursor: null,
 				now: NOW,
-				enabled: true,
 			});
 
 			expect(blockOf(built)).toContain('+1 slack');
@@ -459,11 +346,11 @@ describe('InstanceContextService', () => {
 			);
 
 			const built = await service.buildBlock({
+				enabled: true,
 				user: USER,
 				scope: BOUND,
 				cursor: null,
 				now: NOW,
-				enabled: true,
 			});
 
 			expect(blockOf(built)).toContain('and more than these');
@@ -476,11 +363,11 @@ describe('InstanceContextService', () => {
 			activityEventRepository.findFeed.mockResolvedValue([entry({ id: 1 }), entry({ id: 2 })]);
 
 			const built = await service.buildBlock({
+				enabled: true,
 				user: USER,
 				scope: BOUND,
 				cursor: null,
 				now: NOW,
-				enabled: true,
 			});
 
 			expect(blockOf(built)).not.toContain('and more than these');
@@ -494,11 +381,11 @@ describe('InstanceContextService', () => {
 
 			expect(
 				await service.buildBlock({
+					enabled: true,
 					user: USER,
 					scope: BOUND,
 					cursor: null,
 					now: NOW,
-					enabled: true,
 				}),
 			).toMatchObject({ state: 'absent', reason: 'empty' });
 		});
@@ -511,11 +398,11 @@ describe('InstanceContextService', () => {
 			});
 
 			await service.buildBlock({
+				enabled: true,
 				user: USER,
 				scope: BOUND,
 				cursor: null,
 				now: NOW,
-				enabled: true,
 			});
 
 			expect(activityEventRepository.findFeed).toHaveBeenCalledWith(
@@ -543,11 +430,11 @@ describe('InstanceContextService', () => {
 				activityEventRepository.findFeed.mockResolvedValue([entry({ id: 501 })]);
 
 				const built = await service.buildBlock({
+					enabled: true,
 					user: USER,
 					scope: BOUND,
 					cursor,
 					now: NOW,
-					enabled: true,
 				});
 
 				expect(blockOf(built)).toContain('since the list earlier in this conversation');
@@ -569,11 +456,11 @@ describe('InstanceContextService', () => {
 					]);
 
 				const built = await service.buildBlock({
+					enabled: true,
 					user: USER,
 					scope: BOUND,
 					cursor,
 					now: NOW,
-					enabled: true,
 				});
 
 				expect(activityEventRepository.findFeed).toHaveBeenNthCalledWith(
@@ -672,6 +559,7 @@ describe('InstanceContextService', () => {
 
 				expect(blockOf(built)).toContain('Slack account');
 				expect(blockOf(built).match(/^\[320\]/gm)).toHaveLength(1);
+				expect(built).toMatchObject({ state: 'injected', isUpdate: true });
 				expect(workflowRepository.findRecentForProjects).not.toHaveBeenCalled();
 				expect(activityEventRepository.findFeed).toHaveBeenCalledWith(
 					expect.objectContaining({ afterId: 0, beforeId: 500 }),
@@ -696,31 +584,31 @@ describe('InstanceContextService', () => {
 				});
 
 				const first = await service.buildBlock({
+					enabled: true,
 					user: USER,
 					scope: BOUND,
 					cursor: null,
 					now: NOW,
-					enabled: true,
 				});
 				expect(idsIn(blockOf(first))).toEqual(['[3]', '[2]', '[1]']);
 
 				table = [...Array.from({ length: 41 }, (_, index) => 44 - index), 3, 2, 1];
 				const second = await service.buildBlock({
+					enabled: true,
 					user: USER,
 					scope: BOUND,
 					cursor: cursorOf(first),
 					now: NOW,
-					enabled: true,
 				});
 				expect(cursorOf(second).activityFloor).toBe(4);
 
 				userHasScopes.mockResolvedValue(true);
 				const third = await service.buildBlock({
+					enabled: true,
 					user: USER,
 					scope: BOUND,
 					cursor: cursorOf(second),
 					now: NOW,
-					enabled: true,
 				});
 
 				// Id 4 alone: cut by the second turn and never shown, so it is genuinely owed.
@@ -742,6 +630,7 @@ describe('InstanceContextService', () => {
 				});
 
 				const built = await service.buildBlock({
+					enabled: true,
 					user: USER,
 					scope: BOUND,
 					cursor: {
@@ -752,7 +641,6 @@ describe('InstanceContextService', () => {
 						runsThrough: new Date(NOW.getTime() - 60_000).toISOString(),
 					},
 					now: NOW,
-					enabled: true,
 				});
 
 				expect(blockOf(built)).toContain('[10]');
@@ -776,6 +664,7 @@ describe('InstanceContextService', () => {
 				});
 
 				const built = await service.buildBlock({
+					enabled: true,
 					user: USER,
 					scope: BOUND,
 					cursor: {
@@ -786,7 +675,6 @@ describe('InstanceContextService', () => {
 						runsThrough: new Date(NOW.getTime() - 60_000).toISOString(),
 					},
 					now: NOW,
-					enabled: true,
 				});
 
 				expect(blockOf(built)).toContain('[3]');
@@ -806,11 +694,11 @@ describe('InstanceContextService', () => {
 				});
 
 				await service.buildBlock({
+					enabled: true,
 					user: USER,
 					scope: BOUND,
 					cursor,
 					now: NOW,
-					enabled: true,
 				});
 
 				expect(activityEventRepository.findFeed).toHaveBeenCalledTimes(2);
@@ -842,11 +730,11 @@ describe('InstanceContextService', () => {
 				);
 
 				const wide = await service.buildBlock({
+					enabled: true,
 					user: USER,
 					scope: BOUND,
 					cursor: null,
 					now: NOW,
-					enabled: true,
 				});
 				expect(blockOf(wide).match(/^\[\d+\]/gm)).toEqual(['[20]', '[10]']);
 
@@ -855,11 +743,11 @@ describe('InstanceContextService', () => {
 					return !(Array.isArray(scopes) && scopes.includes('credential:read'));
 				});
 				const narrowed = await service.buildBlock({
+					enabled: true,
 					user: USER,
 					scope: BOUND,
 					cursor: cursorOf(wide),
 					now: NOW,
-					enabled: true,
 				});
 
 				// Nothing new is readable, so there is nothing to say — and in particular id 10,
@@ -883,11 +771,11 @@ describe('InstanceContextService', () => {
 					.mockResolvedValueOnce([entry({ id: 498, resourceName: 'Committed late' })]);
 
 				const built = await service.buildBlock({
+					enabled: true,
 					user: USER,
 					scope: BOUND,
 					cursor,
 					now: NOW,
-					enabled: true,
 				});
 
 				expect(activityEventRepository.findFeed).toHaveBeenCalledTimes(2);
@@ -900,11 +788,11 @@ describe('InstanceContextService', () => {
 				activityEventRepository.findFeed.mockResolvedValue([entry({ id: 501 })]);
 
 				await service.buildBlock({
+					enabled: true,
 					user: USER,
 					scope: BOUND,
 					cursor,
 					now: NOW,
-					enabled: true,
 				});
 
 				const { stoppedAfter, stoppedBefore } = vi.mocked(
@@ -923,11 +811,11 @@ describe('InstanceContextService', () => {
 					.mockResolvedValueOnce([entry({ id: 450 })]);
 
 				const built = await service.buildBlock({
+					enabled: true,
 					user: USER,
 					scope: BOUND,
 					cursor,
 					now: NOW,
-					enabled: true,
 				});
 
 				expect(cursorOf(built).activityMark).toBe(600);
@@ -936,61 +824,33 @@ describe('InstanceContextService', () => {
 				expect(cursorOf(built).activitySeen).toEqual([600, 500, 499, 450]);
 			});
 
-			/**
-			 * The floor is what stops a backlog draining a window per turn: rows the window trimmed
-			 * are decided against, and a later delta must not read back down to them.
-			 */
-			it('floors the next delta at the highest entry this turn cut', async () => {
-				const service = serviceWith();
-				activityEventRepository.findFeed.mockResolvedValueOnce(
-					// One more than a window's worth (40), newest first.
-					Array.from({ length: 41 }, (_, index) => entry({ id: 900 - index })),
-				);
-
-				const built = await service.buildBlock({
-					user: USER,
-					scope: { surface: 'conversation', projectId: PROJECT_ID },
-					cursor: null,
-					now: NOW,
-					enabled: true,
-				});
-
-				// 900 down to 861 were shown; 860 was cut, and is the boundary from now on.
-				expect(cursorOf(built).activityFloor).toBe(860);
-				expect(cursorOf(built).activitySeen).not.toContain(860);
-			});
-
 			it('builds nothing when the delta is empty', async () => {
 				const service = serviceWith();
 
 				expect(
 					await service.buildBlock({
+						enabled: true,
 						user: USER,
 						scope: BOUND,
 						cursor,
 						now: NOW,
-						enabled: true,
 					}),
 				).toMatchObject({ state: 'absent', reason: 'empty' });
 			});
 		});
 
-		/**
-		 * Reported as `failed`, not `empty`. A broken read and a quiet instance are
-		 * different findings, and calling the first one the second sends whoever is
-		 * debugging a bad answer to the wrong place.
-		 */
+		// Keep failed reads distinct from empty results.
 		it('reports a failed read as such rather than failing the turn', async () => {
 			const service = serviceWith();
 			activityEventRepository.findFeed.mockRejectedValue(new Error('db is down'));
 
 			expect(
 				await service.buildBlock({
+					enabled: true,
 					user: USER,
 					scope: BOUND,
 					cursor: null,
 					now: NOW,
-					enabled: true,
 				}),
 			).toMatchObject({ state: 'absent', reason: 'failed' });
 		});
@@ -1011,11 +871,11 @@ describe('InstanceContextService', () => {
 			});
 
 			const built = await service.buildBlock({
+				enabled: true,
 				user: USER,
 				scope: BOUND,
 				cursor: null,
 				now: NOW,
-				enabled: true,
 			});
 
 			// Exactly one opening and one closing tag: the name cannot forge either.
@@ -1031,11 +891,11 @@ describe('InstanceContextService', () => {
 			activityEventRepository.findFeed.mockResolvedValue([entry({ resourceName: hostile })]);
 
 			const built = await service.buildBlock({
+				enabled: true,
 				user: USER,
 				scope: BOUND,
 				cursor: null,
 				now: NOW,
-				enabled: true,
 			});
 
 			expect(blockOf(built).match(/<\/?instance-context>/g)).toEqual([
@@ -1051,11 +911,11 @@ describe('InstanceContextService', () => {
 			]);
 
 			const built = await service.buildBlock({
+				enabled: true,
 				user: USER,
 				scope: BOUND,
 				cursor: null,
 				now: NOW,
-				enabled: true,
 			});
 
 			expect(blockOf(built).match(/^\[\d+\]/gm)).toEqual(['[5]']);
@@ -1069,11 +929,11 @@ describe('InstanceContextService', () => {
 				workflows: [{ id: 'wf-1', name: hostile, active: false }],
 			});
 			const built = await service.buildBlock({
+				enabled: true,
 				user: USER,
 				scope: BOUND,
 				cursor: null,
 				now: NOW,
-				enabled: true,
 			});
 
 			const stored = `${blockOf(built)}\n\nhello there`;

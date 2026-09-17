@@ -715,12 +715,7 @@ const MAX_CONSECUTIVE_FAILED_INTERNAL_FOLLOW_UPS = 3;
 
 const TITLE_REFINE_HISTORY_LIMIT = 50;
 
-/** The built orchestrator agent type returned by `createInstanceAgent`. */
-/**
- * The half of the instance-context turn event that is fixed once the block is built. Bound once
- * per turn so every segment of it reports the same identity, arm and injection — four call sites
- * assembling that themselves is four places for one added property to be forgotten.
- */
+/** Bind identity, gate results, and injection once for all segments of a turn. */
 type InstanceContextTurnBinding = {
 	userId: string;
 	threadId: string;
@@ -730,6 +725,7 @@ type InstanceContextTurnBinding = {
 	nodeUsageEnabled: boolean;
 };
 
+/** The built orchestrator agent type returned by `createInstanceAgent`. */
 type InstanceAgent = Awaited<ReturnType<typeof createInstanceAgent>>['agent'];
 
 @Service()
@@ -2693,8 +2689,7 @@ export class InstanceAiService {
 			setSchemaBaseDirs(nodeDefDirs);
 		}
 
-		// Per-user skill gate: hide flag-gated skills (filtered copy, cache
-		// preserved) so every derived skill source inherits the exclusion.
+		// Hide disabled skills in each derived source. Keep the cached source unchanged.
 		const flagDisabledSkillIds = disabledInstanceAiSkillIds({
 			configEvalsEnabled,
 			instanceContextEnabled,
@@ -2861,9 +2856,7 @@ export class InstanceAiService {
 			orchestrationContext,
 			conversationHistory,
 			aiPreferencesEnabled,
-			// Returned rather than re-resolved downstream: the block, the `activity` tool and the
-			// turn's telemetry all have to agree about which arm the user is in, and a second
-			// PostHog read could land either side of a rollout change.
+			// Reuse the gate results so a rollout change cannot split this turn.
 			instanceContextEnabled,
 			nodeUsageEnabled,
 		};
@@ -4106,8 +4099,7 @@ export class InstanceAiService {
 				enabled: instanceContextEnabled,
 			});
 
-			// Reused by the trace event below and by the turn's telemetry, so both describe the
-			// same injection rather than each deriving its own view of it.
+			// Share the same injection summary with trace and telemetry.
 			const contextInjection = toContextInjection(instanceContext);
 			const contextTurn: InstanceContextTurnBinding = {
 				userId: user.id,
@@ -4118,9 +4110,7 @@ export class InstanceAiService {
 				nodeUsageEnabled,
 			};
 
-			// Published before the agent runs, so the trace records what the turn was handed
-			// rather than what it did with it. The shape only — the block text stays server-side,
-			// since the row names what was handed over rather than reproducing it.
+			// Publish the summary before the agent starts. Keep the raw block on the server.
 			if (shouldTraceContextInjection(contextInjection)) {
 				this.eventBus.publish(threadId, {
 					type: 'instance-context',
@@ -4350,8 +4340,7 @@ export class InstanceAiService {
 					workSummary: result.workSummary,
 					usage: result.usage,
 				});
-				// A turn that suspended to ask something is a finished turn for this event's
-				// purposes — the question is the outcome being measured, not an interruption of it.
+				// Record the question even if the user never resumes the turn.
 				const suspendedReach = deriveInstanceContextReach(result.workSummary?.toolCalls ?? []);
 				this.emitInstanceContextTurn(contextTurn, {
 					segment: 'suspended',
@@ -4382,8 +4371,7 @@ export class InstanceAiService {
 						checkpoint,
 						plannedBuild,
 						runHandoff: runControl.state,
-						// The resumed segment builds no block of its own, so it inherits this turn's
-						// to finish the trace entry and report the rungs reached after approval.
+						// Resumed segments reuse this block and add their reads to the trace.
 						instanceContext: {
 							injection: contextInjection,
 							instanceContextEnabled,
@@ -5669,12 +5657,8 @@ export class InstanceAiService {
 					workSummary: result.workSummary,
 					usage: result.usage,
 				});
-				// A turn can stop to ask more than once, so the running total has to survive each
-				// stop. Dropping it here would lose every read before the last question.
-				// This segment's own reads, reported as such: every row carries one segment, so a
-				// consumer can sum them over the shared `run_id` without double-counting.
+				// Telemetry reports this segment only. The trace retains reads across all suspensions.
 				const resumedSegmentReach = deriveInstanceContextReach(result.workSummary?.toolCalls ?? []);
-				// The running total, carried on so the next stop inherits it.
 				const resumedSuspendedReach = mergeInstanceContextReach(
 					opts.instanceContext?.reachSoFar,
 					resumedSegmentReach,
@@ -5901,11 +5885,7 @@ export class InstanceAiService {
 				undefined,
 				this.backgroundTasks.getRunningTasks(opts.threadId).length,
 			);
-			// Two different things, deliberately. The telemetry row reports this segment alone,
-			// so rows stay summable over the shared `run_id`. The trace gets the total across
-			// the suspension, because the resumed stream has a fresh work summary and a
-			// suspension publishes no `run-finish` — without it the reads taken before the
-			// question would never reach the trace at all.
+			// Telemetry reports this segment only. The trace combines reads from all segments.
 			const resumedSegmentReach = deriveInstanceContextReach(result.workSummary?.toolCalls ?? []);
 			const resumedContextReach = mergeInstanceContextReach(
 				opts.instanceContext?.reachSoFar,
@@ -6708,28 +6688,10 @@ export class InstanceAiService {
 		}
 	}
 
-	/**
-	 * Characters per token for the block-size estimate.
-	 *
-	 * Deliberately not `estimateTokensByCharCount` from `@n8n/ai-utilities`, which has a
-	 * per-model ratio table: that module imports `js-tiktoken` at load time, and this runs
-	 * on every turn. A ratio is not worth pulling a tokenizer onto that path.
-	 */
+	/** Use a fixed estimate to avoid loading a tokenizer on every turn. */
 	private static readonly BLOCK_CHARS_PER_TOKEN = 4;
 
-	/**
-	 * One event per turn that could have carried instance context.
-	 *
-	 * Emitted in both arms, including turns that got no block, because the read-out is a
-	 * rate: clarifying questions falling only means something against the turns where
-	 * nothing was injected. `reach` comes from the same derivation the trace shows the
-	 * user, so the two read-outs of this feature cannot disagree about what happened.
-	 */
-	/**
-	 * The turn binding a resumed segment reports under. `undefined` when the suspension carried no
-	 * context, which is a turn that never built a block — there is nothing to attribute a segment
-	 * of it to.
-	 */
+	/** Restore the original turn binding for resumed segments. */
 	private instanceContextTurnBinding(opts: {
 		user: User;
 		threadId: string;
@@ -6751,19 +6713,12 @@ export class InstanceAiService {
 	private emitInstanceContextTurn(
 		turn: InstanceContextTurnBinding,
 		input: {
-			/**
-			 * Which segment of the turn this is. A turn that stops to ask something reports each
-			 * stop as `suspended`, so segments are not unique within a `runId` — every row carries
-			 * one segment's own reads and a reader aggregates them over the shared `runId`.
-			 */
+			/** A turn can suspend more than once. Aggregate segments by run ID. */
 			segment: 'whole' | 'suspended' | 'resumed';
 			status: string;
 			reach: InstanceContextReach;
 			workSummary?: WorkSummary;
-			/**
-			 * What this segment actually spent. Measured, unlike the block-size estimate — the
-			 * rollback threshold on turn cost is read from here.
-			 */
+			/** Measured usage for this segment, not the estimated block size. */
 			usage?: RunTokenUsage;
 		},
 	): void {
@@ -6784,9 +6739,7 @@ export class InstanceAiService {
 						block_event_rows: injection.legs.events,
 						block_run_rows: injection.legs.runs,
 						block_chars: injection.chars,
-						// An estimate, not a measurement: the block is concatenated into the turn
-						// before anything tokenises it, so no exact figure exists for the block
-						// alone. The exact character count sits beside it.
+						// The block is not tokenized separately. Report an estimate beside its exact length.
 						block_tokens_estimated: Math.ceil(
 							injection.chars / InstanceAiService.BLOCK_CHARS_PER_TOKEN,
 						),

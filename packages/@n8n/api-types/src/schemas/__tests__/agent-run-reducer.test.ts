@@ -15,6 +15,7 @@ import type {
 	InstanceAiEvent,
 	InstanceAiTimelineEntry,
 	InstanceAiToolCallState,
+	InstanceContextReach,
 } from '../instance-ai.schema';
 
 // ---------------------------------------------------------------------------
@@ -228,9 +229,7 @@ describe('agent-run-reducer', () => {
 
 			reduceEvent(state, makeInstanceContext('run-1', 'root', INJECTED_PAYLOAD));
 
-			// The shape of the injection, not the block text: the row names what the turn was
-			// handed and nothing renders the text, so sending it would cost every turn's stream
-			// and its durable log entry for nothing.
+			// The event carries a summary, not the raw block.
 			expect(state.agentsById.root.timeline).toEqual([
 				{
 					type: 'instance-context',
@@ -317,7 +316,11 @@ describe('agent-run-reducer', () => {
 			expect(state.agentsById['sub-1'].timeline).toEqual([]);
 		});
 
-		it('completes the entry with how far the turn went, on run-finish', () => {
+		// The terminal event contains the combined reads from all segments.
+		it.each<InstanceContextReach>([
+			{ surfaces: ['activity-expand'] },
+			{ surfaces: ['activity-list', 'workflow-read'] },
+		])('completes the entry on run-finish: %j', ({ surfaces }) => {
 			const state = stateWithRun('run-1', 'root');
 			reduceEvent(state, makeInstanceContext('run-1', 'root', INJECTED_PAYLOAD));
 
@@ -327,39 +330,14 @@ describe('agent-run-reducer', () => {
 				agentId: 'root',
 				payload: {
 					status: 'completed',
-					contextReach: { surfaces: ['activity-expand'] },
+					contextReach: { surfaces },
 				},
 			});
 
 			const entry = state.agentsById.root.timeline[0];
 			expect(entry.type).toBe('instance-context');
 			if (entry.type !== 'instance-context') throw new Error('unreachable');
-			expect(entry.reach).toEqual({ surfaces: ['activity-expand'] });
-		});
-
-		/**
-		 * A suspension emits no `run-finish`, so this arrives once per turn with every
-		 * segment's surfaces already accumulated. Accumulation is tested where it happens:
-		 * `mergeInstanceContextReach` in instance-ai.
-		 */
-		it('completes the entry with the surfaces the turn used, on run-finish', () => {
-			const state = stateWithRun('run-1', 'root');
-			reduceEvent(state, makeInstanceContext('run-1', 'root', INJECTED_PAYLOAD));
-
-			reduceEvent(state, {
-				type: 'run-finish',
-				runId: 'run-1',
-				agentId: 'root',
-				payload: {
-					status: 'completed',
-					contextReach: { surfaces: ['activity-list', 'workflow-read'] },
-				},
-			});
-
-			const entry = state.agentsById.root.timeline[0];
-			expect(entry.type).toBe('instance-context');
-			if (entry.type !== 'instance-context') throw new Error('unreachable');
-			expect(entry.reach).toEqual({ surfaces: ['activity-list', 'workflow-read'] });
+			expect(entry.reach).toEqual({ surfaces });
 		});
 
 		it('leaves the reach unset when the run reported none', () => {

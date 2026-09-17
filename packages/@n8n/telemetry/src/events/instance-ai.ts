@@ -1,5 +1,6 @@
 import {
 	INSTANCE_AI_PREFILL_TYPES,
+	instanceContextSurfaceSchema,
 	INSTANCE_AI_PREFILL_TYPE_FALLBACK,
 	INSTANCE_AI_THREAD_SOURCES,
 	INSTANCE_AI_THREAD_SOURCE_FALLBACK,
@@ -414,89 +415,63 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 	INSTANCE_CONTEXT_TURN: {
 		name: 'Instance AI instance-context turn completed',
 		description:
-			'One turn segment that could have carried instance context. Emitted whether or not a block rode the turn, so the arm without one is the denominator. Carries what the turn was handed, how far it then read, whether it still had to ask the user something, and what it cost — the two numbers the rollout is judged on are the clarifying-question rate and median turn tokens, and both are answerable from this event alone. A turn that stops for a confirmation emits a row per segment, all sharing a `run_id`. Every per-turn figure is therefore an aggregate over the `run_id` — count distinct for turns, sum for tokens, OR for the question flag. Do not reduce a turn to a single row: a turn the user never answers has only its suspended segment, and those are the turns that asked.',
+			'One context result per turn segment, including turns without a block. Group by run_id. Count distinct runs, sum segment tokens, and count a question if any segment asked one.',
 		properties: z.object({
 			user_id: z.string(),
 			thread_id: z.string().optional(),
-			run_id: z.string().describe('One turn. Shared by every segment of a turn that suspended'),
+			run_id: z.string().describe('Turn ID shared by all segments'),
 			segment: z
 				.enum(['whole', 'suspended', 'resumed'])
 				.describe(
-					'`whole` is a turn that ran start to finish. `suspended` stopped to ask the user something — a turn that stops more than once reports every stop as `suspended`, so these are not unique within a `run_id`. `resumed` is the final segment, after the last answer. Each segment carries only its own reads, so aggregate over the `run_id` rather than picking a segment',
+					'Whole turn, pause for input, or final resumed segment. A turn can pause more than once.',
 				),
-			instance_context_enabled: z
-				.boolean()
-				.describe('Whether this user had the instance-context read flag on'),
-			node_usage_enabled: z
-				.boolean()
-				.describe('Whether this user had the node-usage surface on, which is a separate rung'),
-			block_state: z.enum(['injected', 'absent']).describe('Whether a block rode this turn at all'),
+			instance_context_enabled: z.boolean().describe('Instance activity gate result'),
+			node_usage_enabled: z.boolean().describe('Per-user node usage gate result'),
+			block_state: z.enum(['injected', 'absent']),
 			absence_reason: z
 				.enum(['disabled', 'machine-follow-up', 'empty', 'failed'])
 				.optional()
-				.describe(
-					'Only when absent. `disabled` means the feature was not in play; `empty` means it was and found nothing, so an agent that guessed on such a turn was not withholding anything; `failed` means the read broke and the turn ran without context it should have had',
-				),
-			block_is_update: z
-				.boolean()
-				.optional()
-				.describe('Only when injected. An addition rather than the opening window'),
+				.describe('Why this turn received no block'),
+			block_is_update: z.boolean().optional().describe('The block adds to an earlier window'),
 			block_inventory_rows: z.number().int().optional(),
 			block_event_rows: z.number().int().optional(),
 			block_run_rows: z.number().int().optional(),
-			block_chars: z
-				.number()
-				.int()
-				.optional()
-				.describe('Rendered block length. Exact, unlike the token estimate beside it'),
+			block_chars: z.number().int().optional().describe('Exact rendered block length'),
 			block_tokens_estimated: z
 				.number()
 				.int()
 				.optional()
-				.describe(
-					'Block length in tokens, estimated at 4 characters each. An estimate because the block is never tokenised on its own — it is concatenated into the turn before the model sees it',
-				),
+				.describe('Block token estimate at four characters per token'),
 			context_depth: z
 				.number()
 				.int()
 				.describe(
-					'Deepest context surface the turn reached: 0 block only, 1 activity list, 2 activity expand or node-usage, 3 full workflow read. This is the "does it go deep?" measure',
+					'Deepest read: 0 none, 1 activity list, 2 activity expand or node usage, 3 full workflow',
 				),
-			// Mirrors `instanceContextSurfaceSchema` in `@n8n/api-types`, which this package
-			// cannot import. Keep the two lists equal.
 			context_surfaces: z
-				.array(z.enum(['activity-list', 'activity-expand', 'node-usage', 'workflow-read']))
-				.describe(
-					'Every context surface called this turn, de-duplicated. Carried alongside the depth because the two depth-2 surfaces answer different questions and neither stands in for the other',
-				),
+				.array(z.enum(instanceContextSurfaceSchema.options))
+				.describe('Distinct context surfaces called in this segment'),
 			asked_clarifying_question: z
 				.boolean()
-				.describe(
-					'Whether THIS SEGMENT put a question back to the user rather than proceeding. Per segment, like the token counts: the segment that asks is the one that suspends, and the segment that resumes afterwards reports `false`. OR this over a `run_id` to get the turn — do not read it off one row, and in particular do not take the last row, because a turn the user never answers has only the suspended one',
-				),
-			tool_calls: z.number().int().describe('Total tool calls in the turn, as a denominator'),
+				.describe('This segment asked for missing information. Combine segments with OR.'),
+			tool_calls: z.number().int().describe('Total tool calls in this segment'),
 			turn_prompt_tokens: z
 				.number()
 				.int()
 				.optional()
-				.describe('Prompt tokens this segment spent. Sum over a `run_id` for the whole turn'),
+				.describe('Measured prompt tokens for this segment'),
 			turn_completion_tokens: z
 				.number()
 				.int()
 				.optional()
-				.describe('Completion tokens this segment spent. Sum over a `run_id` for the whole turn'),
+				.describe('Measured completion tokens for this segment'),
 			turn_total_tokens: z
 				.number()
 				.int()
 				.optional()
-				.describe(
-					'Tokens this segment spent, measured rather than estimated. This is what the rollback threshold on turn cost reads, so sum it over a `run_id` and compare medians between the two arms — `block_tokens_estimated` is only the block, and a fraction of this',
-				),
-			turn_cost_usd: z
-				.number()
-				.optional()
-				.describe('Estimated cost of this segment in USD, from per-step model pricing'),
-			status: z.string().describe('How the run ended'),
+				.describe('Measured total tokens for this segment'),
+			turn_cost_usd: z.number().optional().describe('Estimated segment cost from model prices'),
+			status: z.string().describe('How this segment ended'),
 		}),
 	},
 });

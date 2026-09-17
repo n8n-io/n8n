@@ -1,3 +1,5 @@
+import type { InstanceContextReach } from '@n8n/api-types';
+
 import { deriveInstanceContextReach, mergeInstanceContextReach } from '../instance-context-reach';
 import type { ToolCallSummary } from '../work-summary-accumulator';
 
@@ -151,8 +153,8 @@ describe('mergeInstanceContextReach', () => {
 	});
 
 	it('leaves the earlier segment untouched', () => {
-		const earlier = { surfaces: ['activity-list'] as const };
-		mergeInstanceContextReach({ surfaces: [...earlier.surfaces] }, { surfaces: ['node-usage'] });
+		const earlier: InstanceContextReach = { surfaces: ['activity-list'] };
+		mergeInstanceContextReach(earlier, { surfaces: ['node-usage'] });
 
 		expect(earlier.surfaces).toEqual(['activity-list']);
 	});

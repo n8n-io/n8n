@@ -191,9 +191,7 @@ export function buildTimelineBlocks(
 			return;
 		}
 
-		// Joins the trace rather than standing alone: what the turn was handed is
-		// background to how it answered, and standalone it would read as a message of
-		// its own. Expanding the trace is what reveals it.
+		// Keep the context summary inside the trace, not in a separate message.
 		if (entry.type === 'instance-context') {
 			pushTrace(entry, idx);
 			return;

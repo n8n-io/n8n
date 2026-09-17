@@ -471,14 +471,7 @@ describe('instanceAi.reducer', () => {
 		});
 	});
 
-	// -----------------------------------------------------------------------
-	// Confirmation
-	// -----------------------------------------------------------------------
-	/**
-	 * These go through `handleEvent`, not the shared reducer directly. The shared
-	 * reducer already had coverage and passed while the row still only appeared after a
-	 * reload — the gap was this layer's dispatch, which forwards an allowlist of types.
-	 */
+	// Test live event dispatch, not only shared history replay.
 	describe('instance context', () => {
 		const injected = {
 			injection: {
@@ -530,6 +523,9 @@ describe('instanceAi.reducer', () => {
 		});
 	});
 
+	// -----------------------------------------------------------------------
+	// Confirmation
+	// -----------------------------------------------------------------------
 	describe('confirmation', () => {
 		test('confirmation-request sets confirmation on matching toolCallId', () => {
 			const state = stateWithRun('run-1', 'agent-root');

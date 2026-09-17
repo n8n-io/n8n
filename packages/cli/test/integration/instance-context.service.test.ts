@@ -81,10 +81,10 @@ describe('InstanceContextService', () => {
 		await createExecution({ status: 'error', stoppedAt: recently() }, workflow);
 
 		const built = await service.buildBlock({
+			enabled: true,
 			user,
 			scope: bound(project.id),
 			cursor: null,
-			enabled: true,
 		});
 
 		expect(blockOf(built)).toContain('Workflows in this project: 1');
@@ -99,7 +99,7 @@ describe('InstanceContextService', () => {
 		await createWorkflow({ name: 'Lead enrichment' }, project);
 
 		expect(
-			await service.buildBlock({ user, scope: bound(project.id), cursor: null, enabled: false }),
+			await service.buildBlock({ enabled: false, user, scope: bound(project.id), cursor: null }),
 		).toMatchObject({ state: 'absent', reason: 'disabled' });
 	});
 
@@ -120,10 +120,10 @@ describe('InstanceContextService', () => {
 			await createWorkflow({ name: 'Ours' }, project);
 
 			const built = await service.buildBlock({
+				enabled: true,
 				user,
 				scope: bound(project.id),
 				cursor: null,
-				enabled: true,
 			});
 
 			expect(blockOf(built)).toContain('Ours');
@@ -174,6 +174,7 @@ describe('InstanceContextService', () => {
 			});
 
 			const delta = await service.buildBlock({
+				enabled: true,
 				user,
 				scope: bound(project.id),
 				cursor: {
@@ -183,7 +184,6 @@ describe('InstanceContextService', () => {
 					activitySeen: [newest.id],
 					runsThrough: new Date().toISOString(),
 				},
-				enabled: true,
 			});
 
 			expect(blockOf(delta)).toContain('Committed late');
@@ -192,12 +192,7 @@ describe('InstanceContextService', () => {
 			expect(blockOf(delta)).not.toContain('Seen already');
 		});
 
-		/**
-		 * A backlog deeper than one window used to drain a window per turn: the delta re-read a fixed
-		 * span below the mark, which holds the rows the window trimmed as well as the late commits it
-		 * is there for. Each turn then presented forty entries older than the last batch under a
-		 * preamble that calls them additions, and it did so whatever the conversation was about.
-		 */
+		// Later turns must not report entries removed by the opening window limit.
 		it('does not re-offer the entries a full window already cut', async () => {
 			const backlog = 90;
 			for (let i = 1; i <= backlog; i++) {
@@ -212,33 +207,27 @@ describe('InstanceContextService', () => {
 			}
 
 			const opening = await service.buildBlock({
+				enabled: true,
 				user,
 				scope: bound(project.id),
 				cursor: null,
-				enabled: true,
 			});
 			// The window's worth, newest first, and it says there is more behind it.
 			expect(shownIds(blockOf(opening))).toHaveLength(40);
 			expect(blockOf(opening)).toContain('and more than these');
 
 			const next = await service.buildBlock({
+				enabled: true,
 				user,
 				scope: bound(project.id),
 				cursor: cursorOf(opening),
-				enabled: true,
 			});
 
 			// Nothing happened in between, so there is nothing to add — not the next forty down.
 			expect(next).toMatchObject({ state: 'absent', reason: 'empty' });
 		});
 
-		/**
-		 * A late commit is a row that was invisible when a turn read, sits below that turn's mark,
-		 * and was therefore never shown. Built by handing `buildBlock` a cursor that accounts for
-		 * every row in the band except one, rather than by inserting a row at a chosen id —
-		 * an explicit primary key is honoured on sqlite and ignored on Postgres, so seeding the
-		 * hole that way proves the mechanism on one driver and something else on the other.
-		 */
+		// Omit one real row from the cursor. Explicit IDs behave differently across database drivers.
 		it('still recovers a late commit that lands above the cut', async () => {
 			for (let i = 1; i <= 45; i++) {
 				await record({
@@ -260,6 +249,7 @@ describe('InstanceContextService', () => {
 			const floor = seeded[10];
 
 			const delta = await service.buildBlock({
+				enabled: true,
 				user,
 				scope: bound(project.id),
 				cursor: {
@@ -273,7 +263,6 @@ describe('InstanceContextService', () => {
 						.filter((id) => id !== straggler.id),
 					runsThrough: new Date().toISOString(),
 				},
-				enabled: true,
 			});
 
 			// Only the straggler: the rows below the floor were cut and must not come back.
@@ -293,10 +282,10 @@ describe('InstanceContextService', () => {
 			});
 
 			const first = await service.buildBlock({
+				enabled: true,
 				user,
 				scope: bound(project.id),
 				cursor: null,
-				enabled: true,
 			});
 			const firstCursor = cursorOf(first);
 			await record({
@@ -310,10 +299,10 @@ describe('InstanceContextService', () => {
 			});
 
 			const delta = await service.buildBlock({
+				enabled: true,
 				user,
 				scope: bound(project.id),
 				cursor: firstCursor,
-				enabled: true,
 			});
 
 			expect(blockOf(delta)).toContain('Slack account');
@@ -325,18 +314,18 @@ describe('InstanceContextService', () => {
 			await createWorkflow({ name: 'Lead enrichment' }, project);
 
 			const opening = await service.buildBlock({
+				enabled: true,
 				user,
 				scope: bound(project.id),
 				cursor: null,
-				enabled: true,
 			});
 
 			expect(
 				await service.buildBlock({
+					enabled: true,
 					user,
 					scope: bound(project.id),
 					cursor: cursorOf(opening),
-					enabled: true,
 				}),
 			).toMatchObject({ state: 'absent', reason: 'empty' });
 		});
@@ -351,15 +340,13 @@ describe('InstanceContextService', () => {
 		await createWorkflow({ name: 'Theirs' }, otherProject);
 
 		const built = await service.buildBlock({
+			enabled: true,
 			user,
 			scope: bound(otherProject.id),
 			cursor: null,
-			enabled: true,
 		});
 
-		// `empty` rather than a scope-specific reason on purpose: an out-of-scope project has
-		// to be indistinguishable from one that simply holds nothing, or the absence itself
-		// answers whether a project the caller cannot read has work in it.
+		// An unreadable project must give the same result as an empty project.
 		expect(built).toMatchObject({ state: 'absent', reason: 'empty' });
 	});
 
@@ -368,10 +355,10 @@ describe('InstanceContextService', () => {
 		await createExecution({ status: 'error', mode: 'evaluation', stoppedAt: recently() }, workflow);
 
 		const built = await service.buildBlock({
+			enabled: true,
 			user,
 			scope: bound(project.id),
 			cursor: null,
-			enabled: true,
 		});
 
 		expect(blockOf(built)).not.toContain('ran ');
@@ -830,11 +817,11 @@ describe('InstanceContextService', () => {
 		}
 
 		const opening = await service.buildBlock({
+			enabled: true,
 			user,
 			scope: bound(project.id),
 			cursor: null,
 			now: recently(),
-			enabled: true,
 		});
 		expect(blockOf(opening)).toContain('Third');
 		// Nothing was cut, so the floor stays at 0 and the band will span the whole id space.
@@ -852,10 +839,10 @@ describe('InstanceContextService', () => {
 		});
 
 		const next = await service.buildBlock({
+			enabled: true,
 			user,
 			scope: bound(project.id),
 			cursor: cursorOf(opening),
-			enabled: true,
 		});
 
 		expect(blockOf(next)).toContain('Written after the sweep');
@@ -872,11 +859,11 @@ describe('InstanceContextService', () => {
 		});
 
 		const first = await service.buildBlock({
+			enabled: true,
 			user,
 			scope: bound(project.id),
 			cursor: null,
 			now: recently(),
-			enabled: true,
 		});
 		expect(blockOf(first)).toContain('Before the sweep');
 		const carried = cursorOf(first);
@@ -893,10 +880,10 @@ describe('InstanceContextService', () => {
 		});
 
 		const second = await service.buildBlock({
+			enabled: true,
 			user,
 			scope: bound(project.id),
 			cursor: carried,
-			enabled: true,
 		});
 
 		expect(blockOf(second)).toContain('After the sweep');

@@ -49,17 +49,7 @@ const tailToolCall = computed<InstanceAiToolCallState | undefined>(() => {
 	return toolCallsById.value[last.toolCallId];
 });
 
-/**
- * The collapsed subline's label. Without one it falls back to `ai.thinking.active`,
- * which is the same "Thinking" string the header already shows — so the row reads as a
- * duplicate of the header rather than as the current activity.
- *
- * The context row is the tail for the whole first leg of a turn, before any tool runs, so
- * it has to carry the subline the way a running tool call does. It carries the row's own
- * label rather than a wording of its own: the states worth telling apart are "told
- * nothing", "the read failed" and "told this much", and a second wording would have to
- * pick one of them — so a turn handed nothing would read as a read in flight.
- */
+/** Reuse the context row label while it is the latest active entry. */
 const activityLabel = computed<string | undefined>(() => {
 	const toolCall = tailToolCall.value;
 	if (toolCall) return getToolLabel(toolCall.toolName, toolCall.args);

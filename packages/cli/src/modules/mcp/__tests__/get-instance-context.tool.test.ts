@@ -43,10 +43,10 @@ describe('get_instance_context', () => {
 
 		expect(instanceContext.buildBlock).toHaveBeenCalledWith(
 			expect.objectContaining({
-				enabled: true,
 				scope: { surface: 'mcp', credentialGranted: false, executionGranted: true },
 				// Stateless server, no thread to track against, so every read is a full snapshot.
 				cursor: null,
+				enabled: true,
 			}),
 		);
 	});

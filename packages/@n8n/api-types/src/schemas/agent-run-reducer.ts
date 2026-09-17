@@ -483,16 +483,9 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 		}
 
 		case 'instance-context': {
-			// Folds onto the ROOT node, like `setup-items`: it describes the turn, not the
-			// agent that happened to emit it, and history restore reads only the tree root.
-			//
-			// Appended once per run. The event is published before the agent starts, so it
-			// leads the timeline and the trace reads in the order things happened — what the
-			// turn was handed, then what it did with it.
+			// Store the row on the root so history replay restores it.
 			const root = ensureAgent(state, state.rootAgentId);
-			// Keyed by run, not by type. A message group accumulates several runs, so a
-			// follow-up turn in the same group would otherwise look like a duplicate of the
-			// first and be dropped — while a replayed segment of the same run still is one.
+			// Match by run ID. A message group can contain several turns.
 			const alreadyShown = root?.timeline.some(
 				(entry) => entry.type === 'instance-context' && entry.runId === event.runId,
 			);
@@ -570,11 +563,7 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 				if (state.status === 'cancelled') {
 					root.cancellationReason = categorizeCancellation(event.payload.reason);
 				}
-				// Completes the entry the turn opened with. Assigned, not merged: a suspension
-				// emits no `run-finish`, so this arrives once per turn, already carrying every
-				// segment's surfaces — the server accumulates them across a confirmation.
-				// Matched on the run, so a group holding several turns attaches each turn's
-				// reach to its own row rather than to the first one.
+				// The terminal event contains reads from all segments. Match it to this run's row.
 				const { contextReach } = event.payload;
 				const contextEntry = root.timeline.find(
 					(entry) => entry.type === 'instance-context' && entry.runId === event.runId,

@@ -213,14 +213,7 @@ type RunSummary = {
 
 type Inventory = { total: number; workflows: Array<{ id: string; name: string; active: boolean }> };
 
-/**
- * What a turn was handed, or why it was handed nothing.
- *
- * A bare `null` cannot answer that second half, and the difference is the whole point of
- * showing this to anyone: an agent that was told nothing because the feature was off did
- * not ignore anything, while one that was told nothing because there was nothing to tell
- * was working with all there was. Those read identically until the reason is carried.
- */
+/** Keep the absence reason so the trace can distinguish a failed read. */
 export type InstanceContextResult =
 	| {
 			state: 'injected';
@@ -232,10 +225,7 @@ export type InstanceContextResult =
 	  }
 	| { state: 'absent'; reason: InstanceContextAbsenceReason };
 
-/**
- * Restates a build result as the shape the trace and telemetry both report, so neither
- * derives its own view of what the turn was handed.
- */
+/** Share one injection summary with the trace and telemetry. */
 export function toContextInjection(result: InstanceContextResult): InstanceContextInjection {
 	if (result.state === 'absent') return { state: 'absent', reason: result.reason };
 
@@ -247,12 +237,7 @@ export function toContextInjection(result: InstanceContextResult): InstanceConte
 	};
 }
 
-/**
- * Whether an outcome is worth a row in the trace. Only a turn that was handed something, plus a
- * read that broke: a row saying nothing was read is noise on every turn of a quiet project. Every
- * arm still reaches telemetry, which is where the comparison lives. Typed against the reason union
- * so a reason added later has to decide rather than default to untraced.
- */
+/** Show injected blocks and failed reads. Require a decision for each absence reason. */
 const TRACED_ABSENCE_REASONS: Record<InstanceContextAbsenceReason, boolean> = {
 	failed: true,
 	empty: false,
@@ -376,8 +361,7 @@ export class InstanceContextService {
 					activitySeen: entries.seen,
 					runsThrough: now.toISOString(),
 				},
-				// Counted from what was rendered, not from what was read: the caps and the age
-				// filter both discard rows, so the fetched totals would overstate the block.
+				// Count rendered rows. Query totals can include rows removed by the limits.
 				legs: {
 					inventory: inventory?.workflows.length ?? 0,
 					events: entries.rows.length,
