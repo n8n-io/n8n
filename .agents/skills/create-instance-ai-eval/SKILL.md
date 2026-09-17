@@ -140,7 +140,7 @@ discover → verify → encode workflow.
 
 ## Pick the case shape first
 
-The corpus is four archetypes. Decide which you're writing before you draft — it
+The corpus is five archetypes. Decide which you're writing before you draft — it
 determines the fields, the grading, and how you validate. They compose (a seeded
 case can still assert outcome), but the primary shape drives the work.
 

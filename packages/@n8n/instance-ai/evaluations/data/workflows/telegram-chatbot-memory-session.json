@@ -1,0 +1,32 @@
+{
+	"description": "Regression guard for per-chat memory scoping in a Telegram chatbot workflow: the memory node must key the session on the trigger's chat id through an explicit source-node reference, not $json. The user asks for a workflow explicitly. Since 2026-09 the assistant routes open-ended chat plus memory requests to Agent Builder by policy, so the director script holds the user to a workflow and an outcome expectation asserts the artifact kind. A route deviation then reads as such instead of as 'Agent requires a model'.",
+	"complexity": "medium",
+	"tags": ["build", "telegram", "chatbot", "ai-agent", "memory", "expressions"],
+	"conversation": [
+		{
+			"role": "user",
+			"text": "I want to build a workflow for a Telegram chatbot for my family. It should use an AI assistant step with an OpenAI chat model that answers their questions in the chat. It must remember the last few messages, but the memory needs to be separate per Telegram chat, so that if my sister and my mum both talk to it, they each get their own thread."
+		},
+		{
+			"role": "assistant",
+			"text": "Plan: Telegram Trigger → AI Agent (OpenAI chat model + memory) → Telegram send back to the same chat. Memory will be scoped by the trigger's chat id. Good?"
+		},
+		{
+			"role": "user",
+			"text": "[Approve the plan or setup card when it is a workflow that starts from a Telegram trigger and answers through an AI step with memory. If the assistant proposes a standalone Agent instead of a workflow, say you want this built as a workflow, not an Agent, and then approve the workflow plan. Do not ask for anything else.]"
+		}
+	],
+	"messageBudget": 6,
+	"datasets": ["mcp", "pr", "full"],
+	"outcomeExpectations": [
+		"The deliverable is a workflow with a Telegram trigger, an AI Agent node, a chat model and a memory node. No standalone n8n Agent was created as the deliverable."
+	],
+	"executionScenarios": [
+		{
+			"name": "distinct-telegram-chat",
+			"description": "A Telegram message from one chat is answered with memory scoped to that chat id",
+			"dataSetup": "The Telegram Trigger receives a text message from chat id 123456 with text 'What is on the family calendar today?' from user 'Alex'. The AI Agent returns a short helpful answer. The Telegram sendMessage call returns a success response.",
+			"successCriteria": "The workflow executes without errors. It contains a Telegram Trigger, an AI Agent, a chat model, and a memory node connected to the agent. The memory node scopes conversation history by Telegram chat id using an explicit source-node reference to the Telegram Trigger chat id, not $json. The final Telegram response is sent back to chat id 123456 and contains the AI Agent answer."
+		}
+	]
+}

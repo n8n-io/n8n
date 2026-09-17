@@ -101,12 +101,16 @@ function makeLane(
 	num: number,
 	tracedBuild: LaneState['tracedBuild'],
 	// stashThreadMemory calls this on every build, so the stub must answer it.
+	// An Error makes the read reject, the way a failed request does.
 	threadMemory: unknown = { observations: [], cursor: null },
 ): LaneState {
 	return {
 		runner: {
 			client: {
-				getThreadMemory: vi.fn().mockResolvedValue(threadMemory),
+				getThreadMemory:
+					threadMemory instanceof Error
+						? vi.fn().mockRejectedValue(threadMemory)
+						: vi.fn().mockResolvedValue(threadMemory),
 			} as unknown as N8nClient,
 			baseUrl: `http://lane${String(num)}.test`,
 			preRunWorkflowIds: new Set<string>(),
@@ -276,10 +280,13 @@ describe('createBuildOrchestrator', () => {
 
 		it('reports it unjudged when the memory read failed', async () => {
 			// The stash swallows the error into undefined: "no evidence", never "it compacted".
-			const deps = depsWithMemory(undefined);
+			const deps = depsWithMemory(new Error('memory read failed'));
 			await createBuildOrchestrator(deps).getOrBuild(0, 'case-a');
 
-			expect((await deps.buildExpectationsByKey.get('0:case-a'))?.[0].incomplete).toBe(true);
+			const verdicts = await deps.buildExpectationsByKey.get('0:case-a');
+			expect(verdicts?.[0].incomplete).toBe(true);
+			expect(verdicts?.[0].attribution).toBe('framework_issue');
+			expect(vi.mocked(verifyBuildExpectations)).not.toHaveBeenCalled();
 		});
 
 		it('judges it normally once the cursor and the observations are both there', async () => {
@@ -290,6 +297,52 @@ describe('createBuildOrchestrator', () => {
 			expect(verdicts?.[0].incomplete).toBeUndefined();
 			expect(verdicts?.[0].pass).toBe(true);
 			expect(verdicts?.[0].attribution).toBeUndefined();
+			// The rows reach the judge: a dropped `threadMemory` would still pass above.
+			expect(vi.mocked(verifyBuildExpectations)).toHaveBeenCalledWith(
+				['recalls the decision'],
+				expect.objectContaining({
+					threadMemory: { observations: [OBSERVATION], cursor: CURSOR },
+				}),
+			);
+		});
+
+		it('skips the premise check for a prebuilt workflow', async () => {
+			// No conversation ran, so there is nothing to compact; the outcome
+			// expectations grade the workflow and are judged as for any prebuilt case.
+			vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true }));
+			const lane = makeLane(1, vi.fn().mockResolvedValue(okBuild()));
+			lane.runner.client = {
+				getWorkflow: vi.fn().mockResolvedValue({
+					id: 'wf-123',
+					name: 'Prebuilt',
+					active: false,
+					versionId: 'v1',
+					nodes: [],
+					connections: {},
+				}),
+			} as unknown as N8nClient;
+			const deps = makeDeps([lane], {
+				prebuiltManifest: { 'case-a': ['wf-123'] },
+				testCaseByFileSlug: new Map([
+					[
+						'case-a',
+						baseCase({
+							requiresMemoryCompaction: true,
+							processExpectations: ['recalls the decision'],
+							outcomeExpectations: ['sends a digest'],
+						}),
+					],
+				]),
+			});
+			await createBuildOrchestrator(deps).getOrBuild(0, 'case-a');
+
+			const verdicts = await deps.buildExpectationsByKey.get('0:case-a');
+			expect(verdicts?.[0].incomplete).toBeUndefined();
+			expect(verdicts?.[0].pass).toBe(true);
+			expect(vi.mocked(verifyBuildExpectations)).toHaveBeenCalledWith(
+				['sends a digest'],
+				expect.anything(),
+			);
 		});
 	});
 

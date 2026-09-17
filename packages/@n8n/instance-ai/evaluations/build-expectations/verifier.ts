@@ -172,12 +172,13 @@ function tokenUsageTotals(runDebug: InstanceAiRunDebugResponse[] | undefined): s
 		}
 	}
 
-	// Instructions + tool schemas + one message: the floor cost of any turn here.
+	// Instructions + tool schemas + the first message. A seeded case also carries
+	// its restored history here, so this is the first call, not a history-free floor.
 	const opening = usageTokens(runDebug[0]?.steps[0]?.output?.usage).input;
 	const runWord = runDebug.length === 1 ? 'run' : 'runs';
 	return [
 		`Total: ${String(input)} tokens in / ${String(output)} tokens out across ${String(stepCount)} LLM steps, ${String(runDebug.length)} ${runWord}`,
 		`Cache: ${String(cacheRead)} tokens read / ${String(cacheWrite)} tokens written`,
-		`Fixed overhead: ${String(opening)} tokens on the opening step, before the conversation had any history`,
+		`Opening step: ${String(opening)} input tokens on the first LLM call (instructions, tool schemas and the first message; a seeded case also carries its restored history here)`,
 	].join('\n');
 }

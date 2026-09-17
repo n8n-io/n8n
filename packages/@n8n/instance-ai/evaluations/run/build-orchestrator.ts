@@ -546,7 +546,13 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 					// Premise, not an expectation. `framework_issue`, not `verification_gap`:
 					// the judge was fine, the harness failed to set the scenario up, and
 					// that distinction is what tells triage where to look.
-					if (testCase.requiresMemoryCompaction && !memoryWasCompacted(threadMemory)) {
+					// A prebuilt run has no conversation to compact: only its outcome
+					// expectations are judged, and those grade the workflow, not memory.
+					if (
+						testCase.requiresMemoryCompaction &&
+						!isPrebuilt &&
+						!memoryWasCompacted(threadMemory)
+					) {
 						return allFailVerdicts(expectations, NOT_COMPACTED_REASON).map((verdict) => ({
 							...verdict,
 							attribution: 'framework_issue' as const,

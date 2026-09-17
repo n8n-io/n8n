@@ -1,0 +1,38 @@
+{
+	"description": "Sourced from lang-tracer thread 115f924b-1777-4ffa-a999-3ab6861542d1, turn 5 (run 00000000-0000-0000-5d93-0643db5ed458, n8n 2.37.7). The user asked for a scheduled X watcher that alerts ONLY on posts mentioning a cashtag. The agent inserted a Filter node and rewrote its condition twice (a regex operator, then a boolean expression compared to true) because its own executions[get-node-output] on the filter kept returning both items of a mixed batch ('$DOGE to the moon' + 'plain rocket update no cashtag') — exec 49 and again exec 50. It then ran a batch where NO post had a cashtag, saw zero output, and declared the filter fixed on that basis. Two dimensions are graded: OUTCOME (the condition must actually drop non-matching posts, so the alert node only sees matching ones) and PROCESS (a claim that the filter works must rest on evidence that tells kept items from discarded ones, not on the Filter node's raw item dump or on a run where nothing matched). The source thread opens on an unrelated token-rotation question and builds the watcher over several turns; distilled to one self-contained request, since the insert-into-existing-chain step is not what fails. Calibrated 2026-09-09 on n8n master (4a7cc0b0f6): REGRESSION GUARD, not a capability gap. The builder gets the condition right and both scenarios pass — the non-matching post is dropped and the alert node never sees it. The source thread's premise does not survive checking: n8n-nodes-base.filter (FilterV2) returns [keptItems, discardedItems] with outputNames ['Kept','Discarded'], so executions[get-node-output] on a Filter lists the discarded items too. 'The filter's output still contains the non-cashtag post' is therefore an artifact of that tool view, not proof the filter passed everything. The calibration build hit the same view, said it looked wrong, then corroborated with the resolved condition (false for the non-matching item) and the downstream node's input, and concluded correctly.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Every 5 minutes, check the public X account @elonmusk for recent posts and ping me on Telegram — but only when a post mentions a stock ticker or crypto cashtag like $TSLA or $DOGE. Posts without one should be ignored completely, I don't want a message for those. My Telegram chat id is 123456789."
+		}
+	],
+	"complexity": "medium",
+	"tags": ["build", "filter", "condition-semantics", "schedule", "twitter", "telegram"],
+	"triggerType": "schedule",
+	"datasets": ["full"],
+	"outcomeExpectations": [
+		"A Schedule Trigger runs the workflow on a recurring few-minute cadence.",
+		"Recent posts from the named public X account are fetched (an X/Twitter node or an HTTP Request to the X API).",
+		"A gating step sits between the fetch and the Telegram message, so the message is only reachable for posts that pass the gate.",
+		"The gate's condition tests the post's own text for a cashtag pattern ($ followed by letters), not a constant, an unrelated field, or anything else that cannot tell a post with a cashtag apart from one without.",
+		"The Telegram message is sent to the chat id the user gave and carries the matching post's text or link."
+	],
+	"processExpectations": [
+		"Any claim the agent makes that the cashtag filter works rests on evidence that distinguishes kept items from discarded ones — the resolved condition per item, what the next node received, or what was sent to Telegram — and not on the Filter node's raw item list, which includes discarded items and so cannot show exclusion on its own.",
+		"The agent did not present a run in which no post contained a cashtag as evidence that the filter excludes non-matching posts — a filter emitting nothing when nothing matches does not show selective exclusion."
+	],
+	"executionScenarios": [
+		{
+			"name": "happy-path-mixed-batch-only-cashtags-alert",
+			"description": "A mixed batch: two posts carry a cashtag, one does not. Only the two should reach Telegram.",
+			"dataSetup": "The X/Twitter request returns three recent posts from the account: 'Bought more $TSLA today, huge upside', 'plain rocket update no cashtag here', and 'Watching $DOGE closely'. The Telegram sendMessage call returns { \"ok\": true, \"result\": { \"message_id\": 101 } }.",
+			"successCriteria": "The run completes without errors. The gating step passes the $TSLA and $DOGE posts and drops 'plain rocket update no cashtag here'. Telegram is notified about the two cashtag posts and never about the non-cashtag post (one message per post and one combined message are both acceptable)."
+		},
+		{
+			"name": "all-non-matching-no-alert",
+			"description": "No post carries a cashtag, so nothing should be sent.",
+			"dataSetup": "The X/Twitter request returns two recent posts from the account, neither containing a cashtag: 'Starship static fire went great' and 'Good morning everyone'.",
+			"successCriteria": "The run completes without errors, the gating step passes zero items, and no Telegram message is sent. A run that simply ends after the gate is the expected outcome."
+		}
+	]
+}

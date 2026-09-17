@@ -741,9 +741,12 @@ Set the flag and the harness handles it:
 Two things happen, both per-thread, so no other case in the run is affected:
 
 1. The harness sends a low observer threshold with every turn of that thread
-   only. The flag means "compact as soon as there is anything to compact" —
-   you do **not** have to size the seed to a token number. The Observer's
-   prompt, masking and cursor logic are the production ones at any threshold.
+   only: **1,000 tokens** of visible message content, the request field's floor.
+   The seed plus the live turns must cross it, or the observer never runs — a
+   short seed does not test memory, it reports **not judged** (below). Size the
+   seed generously; a few real turns of tool output cross 1,000 tokens easily.
+   The Observer's prompt, masking and cursor logic are the production ones at
+   any threshold.
 2. After the build, the harness checks the premise actually held. If it did
    not, every expectation on the case is reported **not judged** — an
    `incomplete` verdict, excluded from scoring, not a red.

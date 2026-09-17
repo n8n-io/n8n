@@ -198,8 +198,8 @@ describe('verifyBuildExpectations', () => {
 			'Total: 400 tokens in / 60 tokens out across 2 LLM steps, 1 run',
 		);
 		expect(sentMessages).toContain('Cache: 0 tokens read / 0 tokens written');
-		// The opening step alone: fixed overhead, separable from what the turns added.
-		expect(sentMessages).toContain('Fixed overhead: 100 tokens on the opening step');
+		// The opening step alone, separable from what the turns added.
+		expect(sentMessages).toContain('Opening step: 100 input tokens on the first LLM call');
 	});
 
 	it('sums cache read/write tokens across steps, from the nested inputTokenDetails shape', async () => {
