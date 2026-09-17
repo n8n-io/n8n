@@ -136,6 +136,12 @@ export class KeyManagerService implements IEncryptionKeyProvider {
 	 */
 	private recoverLegacyDek(keyInfo: DeploymentKey): string | null {
 		const { value } = keyInfo;
+		// Older seed: the DEK stored as the instance key verbatim, unwrapped. Checked
+		// first so a value equal to the instance key is recovered whatever its shape.
+		if (value === this.instanceSettings.encryptionKey) {
+			return value;
+		}
+
 		// 2.18.x: raw key material, used directly. Re-wrap as-is, no decrypt needed.
 		if (RAW_DEK_PATTERN.test(value)) {
 			return value;
@@ -161,7 +167,17 @@ export class KeyManagerService implements IEncryptionKeyProvider {
 			return recovered;
 		}
 
-		// Already GCM-wrapped or an unknown format: leave untouched.
+		// A value that already unwraps is current-format and needs no repair. Warn
+		// about anything else. A silent skip leaves every no-prefix read failing
+		// with a message that blames the instance key.
+		try {
+			this.cipher.decryptDEKWithInstanceKey(value);
+		} catch (error) {
+			this.logger.warn(
+				`DEK ${keyInfo.id} is in an unrecognized format. n8n cannot re-wrap it with this instance key, so reads of data without a key-id prefix will fail.`,
+				{ error },
+			);
+		}
 		return null;
 	}
 

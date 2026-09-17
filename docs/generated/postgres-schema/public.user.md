@@ -167,6 +167,7 @@ erDiagram
   uuid createdById FK
   uuid id
   varchar_36_ projectId FK
+  varchar_16_ source
   timestamp_3__with_time_zone updatedAt
   uuid userId FK
 }

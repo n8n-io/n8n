@@ -1,5 +1,6 @@
 import type {
 	ApplyPackageResultDto,
+	ContinueApplyPackageDto,
 	PromotePackageDto,
 	PromotePackageResultDto,
 	PromoteRequest,
@@ -50,6 +51,7 @@ import {
 	PROMOTE_SELECTION_COMMIT_MESSAGE,
 } from './constants';
 import { PromotionConnectionRepository } from './database/repositories/promotion-connection.repository';
+import { PromotionBindingPreflightService } from './promotion-binding-preflight.service';
 import { PromotionConfigResolver } from './promotion-config.resolver';
 import { PromotionProvidersService } from './promotion-providers.service';
 import { PromotionWorkingDirectoryService } from './promotion-working-directory.service';
@@ -72,14 +74,14 @@ const IMPORT_POLICY: Omit<ImportRequest, 'user'> = {
 	workflowPublishingPolicy: WorkflowPublishingPolicy.MatchSource,
 	missingNodeTypeMode: MissingNodeTypeMode.Fail,
 	credentialMatchingMode: 'id-only',
-	credentialMissingMode: 'create-stub',
+	credentialMissingMode: 'must-preexist',
 	folderConflictPolicy: FolderConflictPolicy.Overwrite,
 	overwriteDeletionPolicy: OverwriteDeletionPolicy.HardDelete,
 	dataTableMatchingMode: 'by-id',
 	dataTableMissingMode: DataTableMissingMode.Create,
 	dataTableSchemaConflictPolicy: DataTableSchemaConflictPolicy.Fail,
-	variableMissingMode: VariableMissingMode.CreateWithValue,
-	variableConflictPolicy: VariableConflictPolicy.Overwrite,
+	variableMissingMode: VariableMissingMode.MustPreexist,
+	variableConflictPolicy: VariableConflictPolicy.KeepExisting,
 	tagMissingMode: TagMissingMode.Create,
 	tagConflictPolicy: TagConflictPolicy.Rename,
 };
@@ -101,6 +103,7 @@ export class PromotionsService {
 		private readonly connectionRepository: PromotionConnectionRepository,
 		private readonly projectService: ProjectService,
 		private readonly n8nPackagesService: N8nPackagesService,
+		private readonly bindingPreflight: PromotionBindingPreflightService,
 		private readonly logger: Logger,
 	) {
 		this.logger = this.logger.scoped('promotions');
@@ -438,8 +441,24 @@ export class PromotionsService {
 		return { projectId, workflowIds: live, deletedWorkflowIds: deleted };
 	}
 
-	/** Imports the package from the configured branch and replaces instance content. */
+	/** Checks package bindings and imports only when no blocking issues remain. */
 	async apply(connectionId: string, actor: User): Promise<ApplyPackageResultDto> {
+		return await this.applyFromSource(connectionId, actor);
+	}
+
+	async continueApply(
+		connectionId: string,
+		actor: User,
+		request: ContinueApplyPackageDto,
+	): Promise<ApplyPackageResultDto> {
+		return await this.applyFromSource(connectionId, actor, request.expectedSource);
+	}
+
+	private async applyFromSource(
+		connectionId: string,
+		actor: User,
+		expectedSource?: ContinueApplyPackageDto['expectedSource'],
+	): Promise<ApplyPackageResultDto> {
 		const input = await this.resolver.resolveForConnection(connectionId, 'apply');
 		this.assertInstanceScope(input, 'Apply');
 		await this.assertCheckoutReady(input, 'applying');
@@ -455,11 +474,50 @@ export class PromotionsService {
 			configId: input.configId,
 		});
 
+		const identity = {
+			connectionId: input.connectionId,
+			configId: input.configId,
+			git: { commitSha, branchName },
+		};
+		if (
+			expectedSource &&
+			(expectedSource.configId !== input.configId ||
+				expectedSource.branchName !== branchName ||
+				expectedSource.commitSha !== commitSha)
+		) {
+			this.logger.info('Apply stopped because the source changed', {
+				status: 'source-changed',
+				...identity,
+			});
+			return { status: 'source-changed', ...identity };
+		}
+
 		const packageFolder = path.join(paths.repositoryFolder, PACKAGE_SUBFOLDER);
 		if (!(await isDirectory(packageFolder))) {
 			throw new BadRequestError(
 				'The remote branch has no exported package to import. Promote to it first.',
 			);
+		}
+
+		const preflight = await this.bindingPreflight.checkDirectory({
+			sourceDir: packageFolder,
+		});
+		if (
+			preflight.missingBindings.length > 0 ||
+			preflight.accessRequirements.length > 0 ||
+			preflight.conflicts.length > 0
+		) {
+			this.logger.info('Apply blocked by unresolved bindings', {
+				status: 'blocked',
+				...identity,
+				bindingCounts: {
+					missingBindings: preflight.missingBindings.length,
+					accessRequirements: preflight.accessRequirements.length,
+					conflicts: preflight.conflicts.length,
+					warnings: preflight.warnings.length,
+				},
+			});
+			return { status: 'blocked', ...identity, preflight };
 		}
 
 		this.logger.info('Importing a package', { connectionId, configId: input.configId });
@@ -472,10 +530,10 @@ export class PromotionsService {
 		const projectReconciliation = await this.reconcileTeamProjects(actor, importedProjectIds);
 
 		return {
-			connectionId: input.connectionId,
-			configId: input.configId,
+			status: 'applied',
+			...identity,
 			counts: this.toApplyCounts({ importResult: result, projectReconciliation }),
-			git: { commitSha, branchName },
+			warnings: preflight.warnings,
 		};
 	}
 
@@ -594,7 +652,7 @@ export class PromotionsService {
 	}: {
 		importResult: ImportResult;
 		projectReconciliation: ProjectReconciliationResult;
-	}): ApplyPackageResultDto['counts'] {
+	}): Extract<ApplyPackageResultDto, { status: 'applied' }>['counts'] {
 		const tally = <S extends string>(rows: Array<{ status: S }>, statuses: readonly S[]) => {
 			const counts = Object.fromEntries(statuses.map((status) => [status, 0])) as Record<S, number>;
 			for (const { status } of rows) counts[status] += 1;

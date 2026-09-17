@@ -606,6 +606,7 @@ export {
 } from './promotions/promotion-connection.dto';
 export {
 	ApplyPackageResultDto,
+	ContinueApplyPackageDto,
 	PromotePackageDto,
 	PromotePackageResultDto,
 	applyPackageCountsSchema,

@@ -207,14 +207,6 @@ export class EndpointsConfig {
 	mcpAppsEnabled: boolean = false;
 
 	/**
-	 * Force-enable Canvas node-group support in the MCP workflow-builder tools.
-	 * Acts as an operator-level override of the PostHog rollout flag.
-	 * Cannot force-disable: setting this to `false` falls back to PostHog.
-	 */
-	@Env('N8N_MCP_CANVAS_GROUPS_ENABLED')
-	mcpCanvasGroupsEnabled: boolean = false;
-
-	/**
 	 * Force-enable the instance-context read surface on the MCP server: the
 	 * activity tools and the node-usage tool.
 	 *

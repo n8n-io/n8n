@@ -1,3 +1,4 @@
+import type { PromotionBindingPreflightResult } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { ProjectRepository, User, WorkflowRepository } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
@@ -18,6 +19,7 @@ import { packageManifestSchema } from '@/modules/n8n-packages/spec/manifest.sche
 import type { ProjectService } from '@/services/project.service.ee';
 
 import type { PromotionConnectionRepository } from '../database/repositories/promotion-connection.repository';
+import type { PromotionBindingPreflightService } from '../promotion-binding-preflight.service';
 import type { PromotionConfigResolver } from '../promotion-config.resolver';
 import type { PromotionProvidersService } from '../promotion-providers.service';
 import { PromotionWorkingDirectoryService } from '../promotion-working-directory.service';
@@ -63,6 +65,7 @@ describe('PromotionsService', () => {
 	const connectionRepository = mock<PromotionConnectionRepository>();
 	const projectService = mock<ProjectService>();
 	const n8nPackagesService = mock<N8nPackagesService>();
+	const bindingPreflight = mock<PromotionBindingPreflightService>();
 	const logger = mock<Logger>();
 	logger.scoped.mockReturnValue(logger);
 
@@ -129,6 +132,7 @@ describe('PromotionsService', () => {
 			connectionRepository,
 			projectService,
 			n8nPackagesService,
+			bindingPreflight,
 			logger,
 		);
 		providersService.decryptCredentials.mockResolvedValue({
@@ -996,6 +1000,12 @@ describe('PromotionsService', () => {
 		let packageFolder: string;
 
 		beforeEach(async () => {
+			bindingPreflight.checkDirectory.mockResolvedValue({
+				missingBindings: [],
+				accessRequirements: [],
+				conflicts: [],
+				warnings: [],
+			});
 			const input = applyInput();
 			resolver.resolveForConnection.mockResolvedValue(input);
 			await markCloned(input, 'dev');
@@ -1019,14 +1029,14 @@ describe('PromotionsService', () => {
 					workflowPublishingPolicy: 'match-source',
 					missingNodeTypeMode: 'fail',
 					credentialMatchingMode: 'id-only',
-					credentialMissingMode: 'create-stub',
+					credentialMissingMode: 'must-preexist',
 					folderConflictPolicy: 'overwrite',
 					overwriteDeletionPolicy: 'hard-delete',
 					dataTableMatchingMode: 'by-id',
 					dataTableMissingMode: 'create',
 					dataTableSchemaConflictPolicy: 'fail',
-					variableMissingMode: 'create-with-value',
-					variableConflictPolicy: 'overwrite',
+					variableMissingMode: 'must-preexist',
+					variableConflictPolicy: 'keep-existing',
 					tagMissingMode: 'create',
 					tagConflictPolicy: 'rename',
 				},
@@ -1060,7 +1070,165 @@ describe('PromotionsService', () => {
 					tags: { matched: 0, created: 1, renamed: 1, reconciled: 0, skipped: 0 },
 				},
 				git: { commitSha: 'remotesha', branchName: 'dev' },
+				status: 'applied',
+				warnings: [],
 			});
+		});
+
+		const consumers = [
+			{ project: { id: 'p1', name: 'Orders' }, workflows: [{ id: 'w1', name: 'Process order' }] },
+		];
+		const unresolved: PromotionBindingPreflightResult = {
+			missingBindings: [
+				{
+					kind: 'variable',
+					name: 'API_URL',
+					variableType: 'string',
+					scope: { kind: 'global' },
+					sourceValue: '',
+					consumers,
+				},
+			],
+			accessRequirements: [
+				{
+					kind: 'credential',
+					code: 'access-required',
+					sourceId: 'c1',
+					name: 'Header',
+					credentialType: 'httpHeaderAuth',
+					consumers,
+				},
+			],
+			conflicts: [
+				{
+					kind: 'variable',
+					code: 'missing-definition',
+					name: 'REGION',
+					referenceFiles: ['workflow.json'],
+					consumers,
+				},
+			],
+			warnings: [
+				{
+					kind: 'variable',
+					code: 'variable-shadowed',
+					name: 'API_URL',
+					scope: { kind: 'global' },
+					consumers,
+				},
+			],
+		};
+		const request = {
+			expectedSource: { configId: CONFIG_ID, branchName: 'dev', commitSha: 'remotesha' },
+		};
+
+		it.each(['missingBindings', 'accessRequirements', 'conflicts'] as const)(
+			'blocks on %s before import or reconciliation',
+			async (group) => {
+				await mkdir(packageFolder, { recursive: true });
+				const preflight = {
+					missingBindings: [],
+					accessRequirements: [],
+					conflicts: [],
+					warnings: [],
+					[group]: unresolved[group],
+				};
+				bindingPreflight.checkDirectory.mockResolvedValueOnce(preflight);
+				expect(await service.apply('conn1', actor)).toEqual({
+					status: 'blocked',
+					connectionId: 'conn1',
+					configId: CONFIG_ID,
+					git: { commitSha: 'remotesha', branchName: 'dev' },
+					preflight,
+				});
+				expect(bindingPreflight.checkDirectory).toHaveBeenCalledWith({
+					sourceDir: packageFolder,
+				});
+				expect(n8nPackagesService.importPackageFromDirectory).not.toHaveBeenCalled();
+				expect(projectRepository.findTeamProjectIds).not.toHaveBeenCalled();
+				expect(projectService.deleteProject).not.toHaveBeenCalled();
+			},
+		);
+
+		it('returns fresh groups on Continue and imports only after they clear', async () => {
+			await mkdir(packageFolder, { recursive: true });
+			bindingPreflight.checkDirectory.mockResolvedValueOnce(unresolved);
+			expect(await service.apply('conn1', actor)).toMatchObject({
+				status: 'blocked',
+				preflight: unresolved,
+			});
+			const fresh = { ...unresolved, missingBindings: [] };
+			bindingPreflight.checkDirectory.mockResolvedValueOnce(fresh);
+			expect(await service.continueApply('conn1', actor, request)).toMatchObject({
+				status: 'blocked',
+				preflight: fresh,
+			});
+			expect(n8nPackagesService.importPackageFromDirectory).not.toHaveBeenCalled();
+			bindingPreflight.checkDirectory.mockResolvedValueOnce({
+				missingBindings: [],
+				accessRequirements: [],
+				conflicts: [],
+				warnings: unresolved.warnings,
+			});
+			expect(await service.continueApply('conn1', actor, request)).toMatchObject({
+				status: 'applied',
+				warnings: unresolved.warnings,
+			});
+			expect(bindingPreflight.checkDirectory).toHaveBeenCalledTimes(3);
+			expect(n8nPackagesService.importPackageFromDirectory).toHaveBeenCalledWith(
+				expect.objectContaining({
+					credentialMissingMode: 'must-preexist',
+					variableMissingMode: 'must-preexist',
+					variableConflictPolicy: 'keep-existing',
+				}),
+				{ sourceDir: packageFolder },
+			);
+		});
+
+		it('imports with warnings on initial Apply', async () => {
+			await mkdir(packageFolder, { recursive: true });
+			bindingPreflight.checkDirectory.mockResolvedValueOnce({
+				missingBindings: [],
+				accessRequirements: [],
+				conflicts: [],
+				warnings: unresolved.warnings,
+			});
+			expect(await service.apply('conn1', actor)).toMatchObject({
+				status: 'applied',
+				warnings: unresolved.warnings,
+			});
+		});
+
+		it.each([{ commitSha: 'older' }, { branchName: 'older' }, { configId: 'older' }])(
+			'stops Continue before preflight when source differs: %j',
+			async (change) => {
+				expect(
+					await service.continueApply('conn1', actor, {
+						expectedSource: { ...request.expectedSource, ...change },
+					}),
+				).toEqual({
+					status: 'source-changed',
+					connectionId: 'conn1',
+					configId: CONFIG_ID,
+					git: { branchName: 'dev', commitSha: 'remotesha' },
+				});
+				expect(gitService.refreshCheckout).toHaveBeenCalledOnce();
+				expect(bindingPreflight.checkDirectory).not.toHaveBeenCalled();
+				expect(n8nPackagesService.importPackageFromDirectory).not.toHaveBeenCalled();
+				expect(projectRepository.findTeamProjectIds).not.toHaveBeenCalled();
+			},
+		);
+
+		it('keeps importer errors and does not reconcile projects after failure', async () => {
+			await mkdir(packageFolder, { recursive: true });
+			n8nPackagesService.importPackageFromDirectory.mockRejectedValueOnce(
+				new BadRequestError('Import blocked'),
+			);
+			await expect(service.continueApply('conn1', actor, request)).rejects.toThrow(
+				'Import blocked',
+			);
+			expect(projectRepository.findTeamProjectIds).not.toHaveBeenCalled();
+			expect(projectService.deleteProject).not.toHaveBeenCalled();
 		});
 
 		it('explains that the branch holds no package to import', async () => {

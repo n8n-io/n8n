@@ -1,8 +1,8 @@
 import { EventMessageTypeNames } from 'n8n-workflow';
-import type { JsonObject, JsonValue, WorkflowSettings } from 'n8n-workflow';
+import type { JsonValue, WorkflowSettings } from 'n8n-workflow';
 
 import type { EventNamesAuditType } from '.';
-import { AbstractEventMessage, isEventMessageOptionsWithType } from './abstract-event-message';
+import { AbstractEventMessage } from './abstract-event-message';
 import type { AbstractEventMessageOptions } from './abstract-event-message-options';
 import type { AbstractEventPayload } from './abstract-event-payload';
 
@@ -66,14 +66,6 @@ export class EventMessageAudit extends AbstractEventMessage {
 
 	setPayload(payload: EventPayloadAudit): this {
 		this.payload = payload;
-		return this;
-	}
-
-	deserialize(data: JsonObject): this {
-		if (isEventMessageOptionsWithType(data, this.__type)) {
-			this.setOptionsOrDefault(data);
-			if (data.payload) this.setPayload(data.payload);
-		}
 		return this;
 	}
 }

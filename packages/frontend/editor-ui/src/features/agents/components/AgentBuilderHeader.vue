@@ -23,10 +23,10 @@ import type { DropdownMenuItemProps } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { PROJECT_AGENTS } from '@/features/agents/constants';
-import { instanceAiCreateAgentRoute } from '@/features/ai/instanceAi/createAgentRoute';
 
 import AgentPublishButton from './AgentPublishButton.vue';
 import AgentPreviewButton from './AgentPreviewButton.vue';
+import { useCreateAgent } from '../composables/useCreateAgent';
 import { useProjectAgentsList } from '../composables/useProjectAgentsList';
 import type { AgentResource } from '../types';
 
@@ -67,6 +67,7 @@ const i18n = useI18n();
 const router = useRouter();
 const $style = useCssModule();
 
+const { createAgent } = useCreateAgent();
 const { list: agentsList, ensureLoaded } = useProjectAgentsList(computed(() => props.projectId));
 onMounted(() => {
 	if (props.artifactMode) return;
@@ -113,7 +114,7 @@ function onSwitcherSelect(id: string) {
 }
 
 function onCreateAgent() {
-	void router.push(instanceAiCreateAgentRoute(props.projectId));
+	createAgent('dropdown', props.projectId);
 }
 
 function onBreadcrumbSelect(item: PathItem) {
