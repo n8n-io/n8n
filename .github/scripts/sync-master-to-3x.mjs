@@ -151,9 +151,9 @@ export function resolveMechanicalPath({ git, pnpm, path, masterSha, log = consol
 		log(`Regenerating ${path} with pnpm...`);
 		pnpm(['install', '--lockfile-only', '--no-frozen-lockfile']);
 		try {
-			// A lockfile-only install does not apply patches. Force a full install so pnpm
-			// does not accept cached dependencies without applying the regenerated patches.
-			pnpm(['install', '--frozen-lockfile', '--force']);
+			// Match CI's trusted lockfile validation. Force a full install so pnpm does not
+			// accept cached dependencies without applying the regenerated patches.
+			pnpm(['install', '--frozen-lockfile', '--trust-lockfile', '--force']);
 		} catch (error) {
 			git(['checkout', '--conflict=merge', '--', path]);
 			throw error;
@@ -313,8 +313,8 @@ export function reconcileWithMergeTreeAtTip({
  */
 export function reconcileLockfileAtTip({ git, pnpm, masterSha, log = console.log }) {
 	pnpm(['install', '--lockfile-only', '--no-frozen-lockfile']);
-	// Force pnpm to reimport cached dependencies and apply the regenerated patches.
-	pnpm(['install', '--frozen-lockfile', '--force']);
+	// Match CI's trusted lockfile validation and force pnpm to bypass warm imports.
+	pnpm(['install', '--frozen-lockfile', '--trust-lockfile', '--force']);
 	if (attempt(git, ['diff', '--quiet', '--', LOCKFILE]).ok) return;
 	if (git(['rev-parse', 'HEAD']) === masterSha) {
 		throw new Error('Lockfile reconciliation would amend a master commit; refusing.');
