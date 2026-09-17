@@ -11,7 +11,7 @@ import {
 } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
-import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { POLICY_KINDS, TELEMETRY_EVENT, type PolicyKind } from '@n8n/telemetry';
 import { snakeCase } from 'change-case';
 import { BinaryDataConfig, InstanceSettings } from 'n8n-core';
 import type {
@@ -84,13 +84,11 @@ function policyScope(projectId: string | null): {
 /**
  * The domain event keeps `kind` as a plain string, so a later ticket can add controllers for a
  * new kind (e.g. credential types) without changing the service or event map. Telemetry still
- * wants a closed set, so this is the one place that checks it — an unrecognized kind is a bug in
- * the caller (a new kind landed without registering it here), not something to crash telemetry
- * over, so it is dropped rather than reported.
+ * wants a closed set, so this narrows against the same `POLICY_KINDS` the schema validates
+ * against — an unrecognized kind is a bug in the caller (a new kind landed without registering
+ * it in the telemetry package), not something to crash telemetry over, so it is dropped rather
+ * than reported.
  */
-const POLICY_KINDS = ['node-types', 'credential-types'] as const;
-type PolicyKind = (typeof POLICY_KINDS)[number];
-
 function isPolicyKind(kind: string): kind is PolicyKind {
 	return (POLICY_KINDS as readonly string[]).includes(kind);
 }
