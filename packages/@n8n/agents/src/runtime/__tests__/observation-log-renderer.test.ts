@@ -194,6 +194,29 @@ describe('renderObservationLog', () => {
 		expect(rendered).not.toContain(child.text);
 	});
 
+	it('does not repeatedly read token counts for rejected deep ancestor chains', () => {
+		let tokenCountReads = 0;
+		const observations = Array.from({ length: 128 }, (_, index) => {
+			const observation = entry({
+				id: `entry-${String(index).padStart(3, '0')}`,
+				parentId: index === 0 ? null : `entry-${String(index - 1).padStart(3, '0')}`,
+				marker: 'critical',
+				createdAt: new Date(2026, 4, 12, 14, 30, index),
+			});
+			Object.defineProperty(observation, 'tokenCount', {
+				get: () => {
+					tokenCountReads += 1;
+					return 1;
+				},
+			});
+			return observation;
+		});
+
+		renderObservationLog(observations, { renderTokenBudget: 64 });
+
+		expect(tokenCountReads).toBeLessThanOrEqual(observations.length * 4);
+	});
+
 	it('skips missing and cyclic ancestor chains without consuming the budget', () => {
 		const invalid = [
 			entry({ id: 'orphan', parentId: 'missing', marker: 'critical' }),
