@@ -1547,12 +1547,14 @@ describe('AgentExecutionOrchestratorService', () => {
 
 	it('maps persisted execution history to chat DTOs', async () => {
 		const { service, executionService } = makeService();
+		const createdAt = new Date('2026-04-26T10:00:00.000Z');
 		executionService.getThreadDetail.mockResolvedValue({
 			thread: { id: 'thread-1' },
 			executions: [
 				{
 					id: 'execution-1',
 					userMessage: 'Hi',
+					createdAt,
 					timeline: [{ type: 'text', content: 'Hello', timestamp: 100 }],
 				},
 			],
@@ -1566,12 +1568,14 @@ describe('AgentExecutionOrchestratorService', () => {
 				executionId: 'execution-1',
 				role: 'user',
 				content: [{ type: 'text', text: 'Hi' }],
+				createdAt: createdAt.toISOString(),
 			},
 			{
 				id: 'execution-1:assistant',
 				executionId: 'execution-1',
 				role: 'assistant',
 				content: [{ type: 'text', text: 'Hello' }],
+				createdAt: createdAt.toISOString(),
 			},
 		]);
 	});
