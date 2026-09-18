@@ -103,12 +103,6 @@ paths:
     $ref: './handlers/evaluations/spec/paths/workflows.id.test-runs.runId.cancel.yml'
   /workflows/{id}/test-runs/{runId}/test-cases:
     $ref: './handlers/evaluations/spec/paths/workflows.id.test-runs.runId.test-cases.yml'
-  /users:
-    $ref: './handlers/users/spec/paths/users.yml'
-  /users/{id}:
-    $ref: './handlers/users/spec/paths/users.id.yml'
-  /users/{id}/role:
-    $ref: './handlers/users/spec/paths/users.id.role.yml'
   /data-tables:
     $ref: './handlers/data-tables/spec/paths/data-tables.yml'
   /data-tables/{dataTableId}:

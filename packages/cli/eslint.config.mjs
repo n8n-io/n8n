@@ -161,7 +161,7 @@ export default defineConfig(
 			'./src/public-api/v1/handlers/security-policy/security-policy.handler.ts',
 			'./src/public-api/v1/handlers/sso-oidc/sso-oidc.handler.ts',
 			'./src/public-api/v1/handlers/sso-saml/sso-saml.handler.ts',
-			'./src/public-api/v1/handlers/users/users.handler.ee.ts',
+			'./src/public-api/v1/handlers/tags/tags.handler.ts',
 			'./src/public-api/v1/handlers/workflows/workflows.handler.ts',
 		],
 		rules: {
