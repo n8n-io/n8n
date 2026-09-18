@@ -171,21 +171,28 @@ export class AgentWorkflowToolResumeService {
 			}
 		}
 		const [platform, storedCredentialId] = messageContext?.integrationConnectionId.split(':') ?? [];
-		const matchesPlatform =
-			messageContext?.platform === agentRun.integrationType &&
-			platform === agentRun.integrationType &&
-			!!storedCredentialId;
-		if (!allowLegacyThreadId && !matchesPlatform) {
-			this.logger.warn('Agent resume has no integration reply context', {
-				agentId: agentRun.agentId,
-				runId: agentRun.runId,
-			});
-			return;
+		let integrationType = agentRun.integrationType;
+		let credentialId: string | undefined;
+		if (allowLegacyThreadId) {
+			if (messageContext?.platform === integrationType && platform === integrationType) {
+				credentialId = storedCredentialId;
+			} else {
+				messageContext = null;
+			}
+		} else {
+			if (!messageContext || messageContext.platform !== platform || !storedCredentialId) {
+				this.logger.warn('Agent resume has no integration reply context', {
+					agentId: agentRun.agentId,
+					runId: agentRun.runId,
+				});
+				return;
+			}
+			integrationType = messageContext.platform;
+			credentialId = storedCredentialId;
 		}
-		const credentialId = matchesPlatform ? storedCredentialId : undefined;
 		const bridge = this.chatIntegrationService.getBridge(
 			agentRun.agentId,
-			agentRun.integrationType,
+			integrationType,
 			credentialId,
 		);
 		if (!bridge) {
@@ -193,7 +200,7 @@ export class AgentWorkflowToolResumeService {
 			// so the run is recoverable once the integration reconnects.
 			this.logger.warn('No live chat bridge to resume the agent run into', {
 				agentId: agentRun.agentId,
-				integrationType: agentRun.integrationType,
+				integrationType,
 				credentialId,
 				runId: agentRun.runId,
 			});
