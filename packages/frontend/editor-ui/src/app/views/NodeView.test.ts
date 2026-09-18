@@ -6,6 +6,7 @@ import {
 	EVALUATION_TRIGGER_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
 	NodeConnectionTypes,
+	isEmptyGroupAnchor,
 } from 'n8n-workflow';
 import {
 	createWorkflowDocumentId,
@@ -16,10 +17,17 @@ import { useWorkflowsStore } from '../stores/workflows.store';
 import { useWorkflowsListStore } from '../stores/workflowsList.store';
 import { useWorkflowExecutionStateStore } from '../stores/workflowExecutionState.store';
 import { useNodeTypesStore } from '../stores/nodeTypes.store';
+import { useUIStore } from '../stores/ui.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { renderComponent } from '@/__tests__/render';
 import NodeView from './NodeView.vue';
-import { NO_OP_NODE_TYPE, SPLIT_IN_BATCHES_NODE_TYPE, VIEWS } from '../constants';
+import {
+	NODE_CREATOR_OPEN_SOURCES,
+	NO_OP_NODE_TYPE,
+	SET_NODE_TYPE,
+	SPLIT_IN_BATCHES_NODE_TYPE,
+	VIEWS,
+} from '../constants';
 import { WorkflowIdKey, WorkflowDocumentStoreKey } from '../constants/injectionKeys';
 import { computed, defineComponent, nextTick, shallowRef } from 'vue';
 import { nodeViewEventBus } from '@/app/event-bus';
@@ -27,6 +35,7 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import type { Project } from '@/features/collaboration/projects/projects.types';
 import { useHistoryStore } from '@/app/stores/history.store';
 import { AddNodeCommand, AddNodeGroupCommand, BulkCommand } from '@/app/models/history';
+import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 
 const mockMcpJsonNudgeGate = vi.hoisted(() => vi.fn());
 
@@ -123,7 +132,7 @@ describe('NodeView', () => {
 					// test here needs it, and on a writable canvas the import can still be in
 					// flight when the environment tears down, which fails the whole run.
 					LazyNodeCreation: defineComponent({
-						emits: ['addEmptyGroup', 'addNodes'],
+						emits: ['addEmptyGroup', 'addNodes', 'toggleNodeCreator', 'close'],
 						setup(_, { emit }) {
 							return {
 								addLoopReplacement: () => emit('addNodes', loopReplacementBatch),
@@ -132,15 +141,19 @@ describe('NodeView', () => {
 						template: `<>
 							<button
 								data-test-id="node-creation-stub-add-empty-group"
-								@click="$emit('addEmptyGroup', [320, 240])"
+								@click="$emit('addEmptyGroup', false)"
 							/>
 							<button
 								data-test-id="node-creation-stub-add-empty-groups"
-								@click="$emit('addEmptyGroup', [320, 240]); $emit('addEmptyGroup', [640, 480])"
+								@click="$emit('addEmptyGroup', false); $emit('addEmptyGroup', false)"
 							/>
 							<button
 								data-test-id="node-creation-stub-add-loop-replacement"
 								@click="addLoopReplacement"
+							/>
+							<button
+								data-test-id="node-creation-stub-add-node"
+								@click="$emit('addNodes', { nodes: [{ type: '${SET_NODE_TYPE}', name: 'Added' }], connections: [] }); $emit('toggleNodeCreator', { createNodeActive: false, hasAddedNodes: true }); $emit('close')"
 							/>
 						</>`,
 					}),
@@ -148,7 +161,7 @@ describe('NodeView', () => {
 					// ready-to-run stores and their bundled workflow fixtures.
 					LazySetupWorkflowCredentialsButton: true,
 					WorkflowCanvas: defineComponent({
-						emits: ['copy:nodes', 'replace:node'],
+						emits: ['copy:nodes', 'replace:node', 'viewport:change'],
 						setup(_, { emit, expose }) {
 							expose({ ensureNodesAreVisible });
 							return {
@@ -162,6 +175,10 @@ describe('NodeView', () => {
 						template: `<div>
 							<button data-test-id="canvas-stub-copy" @click="$emit('copy:nodes', copyNodeIds)" />
 							<button data-test-id="canvas-stub-replace-first" @click="replaceFirstNode" />
+							<button
+								data-test-id="canvas-stub-set-viewport"
+								@click="$emit('viewport:change', { x: 0, y: 0, zoom: 1 }, { width: 1000, height: 1000 })"
+							/>
 							<slot />
 						</div>`,
 					}),
@@ -170,7 +187,7 @@ describe('NodeView', () => {
 		});
 	}
 
-	describe('Empty group creation', () => {
+	describe('Node group creation and extension', () => {
 		function addReplacementNodeTypes() {
 			useNodeTypesStore().setNodeTypes([
 				mockNodeTypeDescription({
@@ -196,7 +213,6 @@ describe('NodeView', () => {
 				}),
 			]);
 		}
-
 		it('creates a marked NoOp and its group as one undoable action', async () => {
 			routeMock.meta = { nodeView: true };
 			useWorkflowsListStore().addWorkflow(
@@ -226,7 +242,6 @@ describe('NodeView', () => {
 			expect(anchor).toMatchObject({
 				type: NO_OP_NODE_TYPE,
 				name: 'No Operation, do nothing',
-				position: [320, 240],
 				parameters: { emptyGroupAnchor: true },
 				placeholder: true,
 			});
@@ -272,6 +287,252 @@ describe('NodeView', () => {
 			await waitFor(() => expect(workflowDocumentStore.allGroups).toHaveLength(1));
 			expect(workflowDocumentStore.allNodes).toHaveLength(1);
 			expect(useHistoryStore().undoStack).toHaveLength(1);
+		});
+
+		it('places sequential empty groups at different positions', async () => {
+			routeMock.meta = { nodeView: true };
+			useWorkflowsListStore().addWorkflow(
+				createTestWorkflow({ id: 'w0', scopes: ['workflow:read', 'workflow:update'] }),
+			);
+			useNodeTypesStore().setNodeTypes([
+				mockNodeTypeDescription({
+					name: NO_OP_NODE_TYPE,
+					displayName: 'No Operation, do nothing',
+					properties: [],
+				}),
+			]);
+			const { findByTestId } = renderNodeView();
+			await userEvent.click(await findByTestId('canvas-stub-set-viewport'));
+			const addEmptyGroup = await findByTestId('node-creation-stub-add-empty-group');
+
+			await userEvent.click(addEmptyGroup);
+			await waitFor(() => expect(workflowDocumentStore.allGroups).toHaveLength(1));
+			const firstPosition = workflowDocumentStore.allNodes[0].position;
+
+			await userEvent.click(addEmptyGroup);
+			await waitFor(() => expect(workflowDocumentStore.allGroups).toHaveLength(2));
+
+			expect(workflowDocumentStore.allNodes[1].position).not.toEqual(firstPosition);
+		});
+
+		it('adds a node to a regular group through the output plus', async () => {
+			routeMock.meta = { nodeView: true };
+			useWorkflowsListStore().addWorkflow(
+				createTestWorkflow({ id: 'w0', scopes: ['workflow:read', 'workflow:update'] }),
+			);
+			useNodeTypesStore().setNodeTypes([
+				mockNodeTypeDescription({
+					name: SET_NODE_TYPE,
+					inputs: [NodeConnectionTypes.Main],
+					outputs: [NodeConnectionTypes.Main],
+				}),
+			]);
+			const { findByTestId } = renderNodeView();
+			const source = createTestNode({
+				id: 'source',
+				name: 'Source',
+				type: SET_NODE_TYPE,
+				position: [0, 0],
+			});
+			workflowDocumentStore.addNode(source);
+			const group = workflowDocumentStore.createGroup([source.id], 'Group 1');
+
+			useNodeCreatorStore().openNodeCreatorForConnectingNode({
+				workflowId: workflowDocumentStore.workflowId,
+				connection: {
+					source: source.id,
+					sourceHandle: `outputs/${NodeConnectionTypes.Main}/0`,
+				},
+				eventSource: NODE_CREATOR_OPEN_SOURCES.PLUS_ENDPOINT,
+			});
+			await userEvent.click(await findByTestId('node-creation-stub-add-node'));
+
+			await waitFor(() =>
+				expect(workflowDocumentStore.getGroupById(group.id)?.nodeIds).toHaveLength(2),
+			);
+			const addedNode = workflowDocumentStore.allNodes.find(({ id }) => id !== source.id);
+			expect(addedNode).toBeDefined();
+			expect(workflowDocumentStore.getGroupById(group.id)?.nodeIds).toContain(addedNode?.id);
+		});
+
+		it('does not extend a group from stale selection state when the general creator is used', async () => {
+			routeMock.meta = { nodeView: true };
+			useWorkflowsListStore().addWorkflow(
+				createTestWorkflow({ id: 'w0', scopes: ['workflow:read', 'workflow:update'] }),
+			);
+			useNodeTypesStore().setNodeTypes([
+				mockNodeTypeDescription({
+					name: SET_NODE_TYPE,
+					inputs: [NodeConnectionTypes.Main],
+					outputs: [NodeConnectionTypes.Main],
+				}),
+			]);
+			const { findByTestId } = renderNodeView();
+			const source = createTestNode({
+				id: 'source',
+				name: 'Source',
+				type: SET_NODE_TYPE,
+				position: [0, 0],
+			});
+			workflowDocumentStore.addNode(source);
+			const group = workflowDocumentStore.createGroup([source.id], 'Group 1');
+			const uiStore = useUIStore();
+			uiStore.lastInteractedWithNodeId = source.id;
+			uiStore.lastInteractedWithNodeHandle = `outputs/${NodeConnectionTypes.Main}/0`;
+			useNodeCreatorStore().setNodeCreatorState({
+				workflowId: workflowDocumentStore.workflowId,
+				createNodeActive: true,
+				source: NODE_CREATOR_OPEN_SOURCES.ADD_NODE_BUTTON,
+			});
+
+			await userEvent.click(await findByTestId('node-creation-stub-add-node'));
+
+			await waitFor(() => expect(workflowDocumentStore.allNodes).toHaveLength(2));
+			expect(workflowDocumentStore.getGroupById(group.id)?.nodeIds).toEqual([source.id]);
+		});
+
+		it('adds a node to a loaded group through its outgoing edge action', async () => {
+			routeMock.meta = { nodeView: true };
+			useWorkflowsListStore().addWorkflow(
+				createTestWorkflow({ id: 'w0', scopes: ['workflow:read', 'workflow:update'] }),
+			);
+			useNodeTypesStore().setNodeTypes([
+				mockNodeTypeDescription({
+					name: SET_NODE_TYPE,
+					inputs: [NodeConnectionTypes.Main],
+					outputs: [NodeConnectionTypes.Main],
+				}),
+			]);
+			const { findByTestId } = renderNodeView();
+			const source = createTestNode({
+				id: 'source',
+				name: 'Source',
+				type: SET_NODE_TYPE,
+				position: [0, 0],
+			});
+			const target = createTestNode({
+				id: 'target',
+				name: 'Target',
+				type: SET_NODE_TYPE,
+				position: [500, 0],
+			});
+			workflowDocumentStore.setNodes([source, target]);
+			workflowDocumentStore.setConnections({
+				[source.name]: {
+					[NodeConnectionTypes.Main]: [
+						[{ node: target.name, type: NodeConnectionTypes.Main, index: 0 }],
+					],
+				},
+			});
+			workflowDocumentStore.setNodeGroups([
+				{ id: 'loaded-group', name: 'Loaded group', nodeIds: [source.id] },
+			]);
+
+			useNodeCreatorStore().openNodeCreatorForConnectingNode({
+				workflowId: workflowDocumentStore.workflowId,
+				connection: {
+					source: source.id,
+					sourceHandle: `outputs/${NodeConnectionTypes.Main}/0`,
+					target: target.id,
+					targetHandle: `inputs/${NodeConnectionTypes.Main}/0`,
+				},
+				eventSource: NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_ACTION,
+			});
+			await userEvent.click(await findByTestId('node-creation-stub-add-node'));
+
+			await waitFor(() =>
+				expect(workflowDocumentStore.getGroupById('loaded-group')?.nodeIds).toHaveLength(2),
+			);
+			const addedNode = workflowDocumentStore.getNodeByName('Added');
+			expect(addedNode).toBeDefined();
+			expect(workflowDocumentStore.getGroupById('loaded-group')?.nodeIds).toContain(addedNode?.id);
+			expect(workflowDocumentStore.connectionsBySourceNode).toMatchObject({
+				[source.name]: {
+					[NodeConnectionTypes.Main]: [
+						[{ node: addedNode?.name, type: NodeConnectionTypes.Main, index: 0 }],
+					],
+				},
+				[addedNode?.name ?? '']: {
+					[NodeConnectionTypes.Main]: [
+						[{ node: target.name, type: NodeConnectionTypes.Main, index: 0 }],
+					],
+				},
+			});
+		});
+
+		it('replaces the empty-group anchor and restores it with undo', async () => {
+			routeMock.meta = { nodeView: true };
+			useWorkflowsListStore().addWorkflow(
+				createTestWorkflow({ id: 'w0', scopes: ['workflow:read', 'workflow:update'] }),
+			);
+			useNodeTypesStore().setNodeTypes([
+				mockNodeTypeDescription({
+					name: NO_OP_NODE_TYPE,
+					displayName: 'No Operation, do nothing',
+					inputs: [NodeConnectionTypes.Main],
+					outputs: [NodeConnectionTypes.Main],
+					properties: [
+						{
+							displayName: 'Empty Group Anchor',
+							name: 'emptyGroupAnchor',
+							type: 'hidden',
+							default: false,
+							validateType: undefined,
+						},
+					],
+				}),
+				mockNodeTypeDescription({
+					name: SET_NODE_TYPE,
+					inputs: [NodeConnectionTypes.Main],
+					outputs: [NodeConnectionTypes.Main],
+				}),
+			]);
+			const { findByTestId } = renderNodeView();
+
+			await userEvent.click(await findByTestId('node-creation-stub-add-empty-group'));
+			await waitFor(() => expect(workflowDocumentStore.allGroups).toHaveLength(1));
+			const group = workflowDocumentStore.allGroups[0];
+			const anchor = workflowDocumentStore.allNodes[0];
+
+			useNodeCreatorStore().openNodeCreatorForConnectingNode({
+				workflowId: workflowDocumentStore.workflowId,
+				connection: {
+					source: anchor.id,
+					sourceHandle: `outputs/${NodeConnectionTypes.Main}/0`,
+				},
+				eventSource: NODE_CREATOR_OPEN_SOURCES.PLUS_ENDPOINT,
+			});
+			await userEvent.click(await findByTestId('node-creation-stub-add-node'));
+
+			await waitFor(() => expect(workflowDocumentStore.allNodes[0]?.id).not.toBe(anchor.id));
+			expect(workflowDocumentStore.allNodes).toHaveLength(1);
+			const addedNode = workflowDocumentStore.allNodes[0];
+			expect(addedNode.id).not.toBe(anchor.id);
+			expect(isEmptyGroupAnchor(addedNode)).toBe(false);
+			expect(workflowDocumentStore.getGroupById(group.id)?.nodeIds).toEqual([addedNode.id]);
+
+			const historyStore = useHistoryStore();
+			expect(historyStore.undoStack).toHaveLength(2);
+			const transition = historyStore.undoStack[1];
+			expect(transition).toBeInstanceOf(BulkCommand);
+			if (!(transition instanceof BulkCommand)) throw new Error('Expected a bulk history action');
+
+			const redoCommands = [];
+			for (let index = transition.commands.length - 1; index >= 0; index--) {
+				const command = transition.commands[index];
+				await command.revert();
+				redoCommands.push(command.getReverseCommand(Date.now()));
+			}
+
+			await waitFor(() => expect(workflowDocumentStore.allNodes).toEqual([anchor]));
+			expect(workflowDocumentStore.getGroupById(group.id)?.nodeIds).toEqual([anchor.id]);
+
+			for (let index = redoCommands.length - 1; index >= 0; index--) {
+				await redoCommands[index].revert();
+			}
+
+			await waitFor(() => expect(workflowDocumentStore.allNodes).toEqual([addedNode]));
+			expect(workflowDocumentStore.getGroupById(group.id)?.nodeIds).toEqual([addedNode.id]);
 		});
 
 		it('replaces the empty-group anchor with the selected batch and restores it on undo', async () => {

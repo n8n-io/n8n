@@ -15,7 +15,7 @@ import { CANVAS_NODE_CONTEXT_FLAG } from '@n8n/api-types';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { INode, INodeTypeDescription } from 'n8n-workflow';
-import { NodeHelpers, WEBHOOK_NODE_TYPE } from 'n8n-workflow';
+import { getEmptyGroupAnchor, NodeHelpers, WEBHOOK_NODE_TYPE } from 'n8n-workflow';
 import { computed, type ComputedRef } from 'vue';
 import { isPresent } from '@/app/utils/typesUtils';
 import { useEditorContext } from '@/app/composables/useEditorContext';
@@ -132,6 +132,14 @@ export function useContextMenuItems(
 			.map((nodeId) => workflowDocumentStore?.value?.getNodeById(nodeId))
 			.filter(isPresent),
 	);
+
+	const isEmptyGroupTarget = computed(() => {
+		const groupId = targetGroupId?.value;
+		if (!groupId) return false;
+
+		const group = workflowDocumentStore?.value?.getGroupById(groupId);
+		return group !== undefined && getEmptyGroupAnchor(group, targetNodes.value) !== undefined;
+	});
 
 	// Mirrors the Cmd+G eligibility — the same resolver also produces the
 	// member ids at execution time, so enablement can't diverge from it.
@@ -252,12 +260,16 @@ export function useContextMenuItems(
 						shortcut: { keys: ['Space'] },
 						disabled: isReadOnly.value,
 					},
-					{
-						id: 'ungroup_nodes',
-						label: i18n.baseText('contextMenu.ungroupNodes'),
-						shortcut: { metaKey: true, shiftKey: true, keys: ['G'] },
-						disabled: isReadOnly.value,
-					},
+					...(!isEmptyGroupTarget.value
+						? [
+								{
+									id: 'ungroup_nodes' as const,
+									label: i18n.baseText('contextMenu.ungroupNodes'),
+									shortcut: { metaKey: true, shiftKey: true, keys: ['G'] },
+									disabled: isReadOnly.value,
+								},
+							]
+						: []),
 					...groupDescriptionActions,
 				]
 			: [];
@@ -308,15 +320,17 @@ export function useContextMenuItems(
 			},
 		];
 
-		const extractionActions: Item[] = [
-			{
-				id: 'extract_sub_workflow',
-				divided: true,
-				label: i18n.baseText('contextMenu.extract', i18nOptions),
-				shortcut: { altKey: true, keys: ['X'] },
-				disabled: isReadOnly.value,
-			},
-		];
+		const extractionActions: Item[] = isEmptyGroupTarget.value
+			? []
+			: [
+					{
+						id: 'extract_sub_workflow',
+						divided: true,
+						label: i18n.baseText('contextMenu.extract', i18nOptions),
+						shortcut: { altKey: true, keys: ['X'] },
+						disabled: isReadOnly.value,
+					},
+				];
 
 		// Grouping doesn't apply to an existing group — it offers ungroup instead.
 		const groupingActions: Item[] = !isGroupTarget

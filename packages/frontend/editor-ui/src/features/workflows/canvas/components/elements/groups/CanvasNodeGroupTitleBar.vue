@@ -105,6 +105,7 @@ const markStatus = computed(() => MARK_STATUSES.find((status) => status === exec
 const wrapperClasses = computed(() => [
 	$style.wrapper,
 	{
+		[$style.emptyGroup]: isEmptyGroup.value,
 		[$style.collapsed]: isCollapsed.value,
 		[$style.selected]: props.selected,
 		[$style.deactivated]: allNodesDisabled.value,
@@ -463,6 +464,7 @@ function onWrapperPointerDown(event: PointerEvent) {
 			>
 				<div :class="$style.toolbarItems">
 					<KeyboardShortcutTooltip
+						v-if="!isEmptyGroup"
 						:label="i18n.baseText('canvas.selection.toolbar.ungroup')"
 						:shortcut="UNGROUP_NODES_SHORTCUT"
 					>
@@ -477,7 +479,7 @@ function onWrapperPointerDown(event: PointerEvent) {
 						/>
 					</KeyboardShortcutTooltip>
 					<KeyboardShortcutTooltip
-						v-if="canExtract"
+						v-if="canExtract && !isEmptyGroup"
 						:label="extractLabel"
 						:shortcut="EXTRACT_WORKFLOW_SHORTCUT"
 					>
@@ -786,6 +788,11 @@ function onWrapperPointerDown(event: PointerEvent) {
 	}
 }
 
+.wrapper.emptyGroup .titleBar {
+	background: var(--background--hover);
+	@include styles.canvas-node-border(dashed);
+}
+
 /* stylelint-disable */
 .wrapper.collapsed.running .titleBar::after,
 .wrapper.collapsed.waiting .titleBar::after {
@@ -956,6 +963,12 @@ function onWrapperPointerDown(event: PointerEvent) {
 	pointer-events: none;
 	box-sizing: border-box;
 	z-index: 0;
+}
+
+.wrapper.emptyGroup .frame {
+	background: var(--background--hover);
+	@include styles.canvas-node-border(dashed);
+	border-top: none;
 }
 
 .selectionRing {
