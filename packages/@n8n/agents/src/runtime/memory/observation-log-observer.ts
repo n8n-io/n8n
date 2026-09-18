@@ -283,6 +283,8 @@ export async function runObservationLogObserver(
 	}
 
 	const lastMessage = observable[observable.length - 1];
+	// A matching marker proves that an empty log is intentional. Without it,
+	// later runs must ignore the cursor and review the full history again.
 	await memory.setCursor({
 		observationScopeId,
 		lastObservedMessageId: lastMessage.id,
