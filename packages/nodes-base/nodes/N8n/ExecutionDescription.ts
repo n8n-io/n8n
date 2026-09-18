@@ -20,12 +20,6 @@ export const executionOperations: INodeProperties[] = [
 				name: 'Get',
 				value: 'get',
 				action: 'Get an execution',
-				routing: {
-					request: {
-						method: 'GET',
-						url: '=/executions/{{ toPathSegment($parameter.executionId) }}',
-					},
-				},
 			},
 			{
 				name: 'Get Many',
@@ -48,12 +42,6 @@ export const executionOperations: INodeProperties[] = [
 				name: 'Delete',
 				value: 'delete',
 				action: 'Delete an execution',
-				routing: {
-					request: {
-						method: 'DELETE',
-						url: '=/executions/{{ toPathSegment($parameter.executionId) }}',
-					},
-				},
 			},
 		],
 	},
@@ -72,6 +60,16 @@ const deleteOperation: INodeProperties[] = [
 			},
 		},
 		default: '',
+		// Path IDs must be routed from the field that holds them. Option-level
+		// routing evaluates $parameter.executionId as undefined and overwrites
+		// $value with the operation name, so toPathSegment throws
+		// "Invalid identifier: a value is required".
+		routing: {
+			request: {
+				method: 'DELETE',
+				url: '=/executions/{{ toPathSegment($value) }}',
+			},
+		},
 	},
 ];
 
@@ -211,6 +209,12 @@ const getOperation: INodeProperties[] = [
 			show: {
 				resource: ['execution'],
 				operation: ['get'],
+			},
+		},
+		routing: {
+			request: {
+				method: 'GET',
+				url: '=/executions/{{ toPathSegment($value) }}',
 			},
 		},
 	},
