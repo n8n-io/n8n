@@ -6,10 +6,15 @@ Decision Owner: Catalysts
 
 ## Context
 
-Workflows can pause and then resume. There are three kinds of pause. A
-time-based wait ends at a given time. A webhook wait ends when a caller sends a
-request. A human-in-the-loop approval sends a message and then waits for a
-response. Engine v2 must support all three kinds.
+Workflows can pause and then resume. Two things end a pause. A deadline ends a
+time-based wait. An incoming request ends a webhook wait, a form wait, or a
+human-in-the-loop approval. An approval differs by sending a message first, not
+by how it resumes. Engine v2 must support both.
+
+A third kind of pause ends by neither. A parent execution that waits for a
+sub-workflow parks on a sentinel date that the poller never fires, and the
+child's completion resumes it. That pause is out of scope here, because a
+sub-workflow is its own step type.
 
 In engine v1, the node starts the pause. The node calls `putExecutionToWait`.
 The engine then writes the full execution to the database. A poller or a
@@ -18,14 +23,17 @@ node types call `putExecutionToWait`. They include the Wait node and all
 send-and-wait nodes. Their wait parameters are frequently expressions. The node
 resolves those expressions at run time.
 
-Send-and-wait nodes also need credentials (CAT-2880). Time waits and webhook
-waits need none.
+Send-and-wait nodes need credentials to send their message (CAT-2880). A
+webhook wait can need them too: the Wait node accepts basic or header
+authentication on the resume request. A time wait needs none.
 
 In engine v2, an execution is a set of step rows. Events move each row from one
 status to the next. A step is one call that returns output
 (ADR-20260828-trigger-settlement-before-execution). Therefore a step executor
-cannot stay blocked for the length of the wait. A pause must be a status of the
-step row. It must not be a state of a process.
+cannot stay blocked for the length of a wait that reaches the engine. A pause
+must be a status of the step row. It must not be a state of a process. A wait
+that the Wait node sleeps through never reaches the engine, and stays a state of
+a process for that reason.
 
 ## Decision
 
@@ -44,23 +52,28 @@ deadline, or accept a resume request, or do both.
    existing settlement rules stop the engine from planning the steps behind it.
    The steps in other branches continue to run.
 3. **A resume re-dispatches the step.** A resume moves the step back to
-   `queued`. The engine stores the resume payload on the row. The step then
-   takes the normal worker path. For a channel resume, the shim runs the node's
-   resume method with the payload. For a deadline resume, the engine emits the
-   outputs that the declaration holds. Those outputs are the node's pass-through
-   output, as in v1. The engine never runs the node's execute method again. No
-   component completes a waiting step directly.
-4. **An engine-internal sweep fires the time waits.** A periodic scan finds the
-   waiting steps whose deadline is in the past. The scan resumes them with the
-   same status-conditioned update that every other transition uses. Only the
-   firing mechanism belongs to the sweep. The step row holds the deadline in all
-   cases.
-5. **The engine does not register wait channels with the control plane.** A
-   waiting step is discoverable from its own row, so the control plane needs no
-   copy of the wait state. A resume request therefore reaches a data-plane
-   endpoint that always accepts it, and the data plane validates the request
-   against the waiting step. How a request authorizes itself is a separate
-   decision.
+   `queued`. The engine records what ended the wait on the row, with the
+   payload when a request ended it. The step then takes the normal worker path.
+   For a request resume, the shim runs the node's resume method with the
+   payload. For a deadline resume, the engine emits the outputs that the
+   declaration holds. Those outputs are the node's pass-through output, as in
+   v1. The engine never runs the node's execute method again. No component
+   completes a waiting step directly.
+4. **An engine-internal sweep fires the time waits.** The sweep resumes the
+   waiting steps whose deadline has passed, with the same status-conditioned
+   update that every other transition uses. It selects no deadline that is still
+   in the future. A wait still fires at its deadline, because the sweep sleeps
+   until the earliest deadline it can see rather than to the end of a fixed
+   interval. The step row holds the deadline in every case, so only the firing
+   belongs to the sweep, and another mechanism could replace the sweep without
+   moving the deadline off the row.
+5. **The engine does not register wait channels with the control plane.** The
+   design doc gives the control plane a `wait-channels` endpoint, for the engine
+   to register a pause with. A waiting step is discoverable from its own row, so
+   the control plane needs no copy of the wait state. A resume request therefore
+   reaches a data-plane endpoint that always accepts it, and the data plane
+   validates the request against the waiting step. How a request authorizes
+   itself is a separate decision.
 6. **The execution reports a derived `waiting` status.** The execution reports
    `waiting` when one or more of its steps wait, and no step runs or can run. In
    all other cases the execution reports `running`. The engine calculates the
