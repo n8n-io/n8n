@@ -2,18 +2,14 @@
 export type Unsubscribe = () => void;
 
 /**
- * Moves opaque frames from a publisher to the subscribers of one execution.
+ * Delivers serialized responses to subscribers for a specific execution.
  *
- * Every frame is addressed to an execution, so a transport can give each run a
- * channel of its own — a subscriber then receives nothing but its own run's
- * responses, however many runs are in flight.
+ * A subscriber receives only frames published for its execution ID. The
+ * transport treats each frame as an opaque string. `ExecutionResponseChannel`
+ * handles serialization and validation.
  *
- * A transport knows nothing about what a frame means. Everything that must not
- * vary between deployments — the envelope, the size cap, validation — lives in
- * `ExecutionResponseChannel`, above this.
- *
- * Delivery is at-most-once: a subscriber that is not listening when a frame is
- * published never receives it. That is what makes this option K1.
+ * Frames are not buffered. Only active subscribers receive them, and each
+ * frame is delivered at most once.
  */
 export interface ResponseTransport {
 	/** Never throws and never blocks: a step must not wait on the response path. */

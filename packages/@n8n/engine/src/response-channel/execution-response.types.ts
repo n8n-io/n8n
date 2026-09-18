@@ -3,12 +3,17 @@ import type { z } from 'zod';
 import type { executionResponseSchema } from './execution-response.schema';
 
 /**
- * A response an execution produces for whoever started it.
+ * A response that an execution sends to its caller.
  *
- * Distinct from a lifecycle event, which reports that something happened. This
- * is the answer itself, and something is waiting for it.
+ * Unlike a lifecycle event, which reports that something happened, a response
+ * provides information that the caller is waiting for.
  *
- * Inferred from the schema, so the wire shape and the type cannot drift.
+ * A response can:
+ * 1. Notify a trigger node when an execution ends.
+ * 2. Send data from a node back to a trigger node.
+ *
+ * For example, the Respond to Webhook node sends a response back to the
+ * Webhook node.
  */
 export type ExecutionResponse = z.infer<typeof executionResponseSchema>;
 

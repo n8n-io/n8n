@@ -4,17 +4,13 @@ import type { ExecutionResponse } from './execution-response.types';
 import type { ResponseTransport, Unsubscribe } from './response-transport';
 
 /**
- * Where an execution's responses go, and where a caller picks them up.
+ * Sends responses from an execution back to its caller.
  *
- * Every call names one execution: a publish is addressed to the run that
- * produced it, and a subscriber asks for one run and hears nothing else. The
- * transport below decides how that is carried — one channel per execution, or
- * one shared bus — and no caller can tell the difference.
+ * The engine publishes a response with an execution ID. A caller subscribes
+ * with the same ID and receives only responses for that execution.
  *
- * One class over any `ResponseTransport`. Everything that must not vary
- * between deployments lives here — the envelope and validation on receive — so
- * an in-process deployment cannot accept a response that a networked one
- * mangles.
+ * This class serializes outgoing responses and validates incoming responses.
+ * The transport delivers them in-process or across process boundaries.
  */
 export class ExecutionResponseChannel {
 	constructor(
