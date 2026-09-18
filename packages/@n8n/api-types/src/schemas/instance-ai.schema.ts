@@ -56,6 +56,43 @@ export function buildRunWorkflowSessionGrantKey(workflowId: string): string {
 	return `executions:run:${workflowId}`;
 }
 
+/** Used to determine resource for nodes that have no resource and operation, like http request node*/
+export const NODE_RESOURCE_GRANT_FALLBACK_KEYS = ['mode', 'url', 'query', 'command', 'action'];
+
+/** Width of `instance_ai_thread_grants.grantKey`. */
+const MAX_GRANT_KEY_LENGTH = 512;
+
+/**
+ * Builds the thread-level grant key for `nodes(action="execute")`. Scoped per
+ * node type + resource + operation (the split the generated node TS types use).
+ * Extracts the discriminators from the parameters itself so backend and
+ * frontend cannot build diverging keys.
+ *
+ * Null when a fallback discriminator (a long URL, GraphQL query or command) pushes the key
+ * past the column width: the call then needs approval every time. Truncating instead would
+ * let one approved URL stand for every other URL sharing its prefix.
+ */
+export function buildExecuteNodeSessionGrantKey(
+	nodeType: string,
+	parameters?: Record<string, unknown>,
+): string | null {
+	const resourceParts = [
+		nodeType,
+		typeof parameters?.resource === 'string' ? parameters.resource : '',
+		typeof parameters?.operation === 'string' ? parameters.operation : '',
+	].filter(Boolean);
+	if (resourceParts.length === 1) {
+		for (const name of NODE_RESOURCE_GRANT_FALLBACK_KEYS) {
+			if (typeof parameters?.[name] === 'string' && parameters?.[name]) {
+				resourceParts.push(parameters?.[name]);
+				break;
+			}
+		}
+	}
+	const key = `nodes:execute:${resourceParts.join(':')}`;
+	return key.length <= MAX_GRANT_KEY_LENGTH ? key : null;
+}
+
 /**
  * Builds the thread-level "always allow" grant key for running one node of a
  * workflow ("execute step").

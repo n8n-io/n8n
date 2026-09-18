@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { ResponseError } from '@n8n/rest-api-client';
 import {
 	buildDataTablesSessionGrantKey,
+	buildExecuteNodeSessionGrantKey,
 	buildRunStepSessionGrantKey,
 	buildRunWorkflowSessionGrantKey,
 	buildUpdateWorkflowSessionGrantKey,
@@ -29,6 +30,7 @@ import {
 	type AgentRunState,
 	type InstanceAiRunLimitReason,
 } from '@n8n/api-types';
+import { isRecord } from '@n8n/utils/is-record';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import { redactTelemetryProperties, TELEMETRY_EVENT } from '@n8n/telemetry';
@@ -898,6 +900,15 @@ export function createThreadRuntime(
 		}
 		if (toolName === 'data-tables') {
 			return buildDataTablesSessionGrantKey(action);
+		}
+		// Executing a node grants "always allow" per node type + resource + operation,
+		// mirroring the backend thread grant. Without a type, fail closed.
+		if (toolName === 'nodes' && action === 'execute') {
+			const nodeType = typeof args.type === 'string' ? args.type : '';
+			if (!nodeType) return null;
+			const config = isRecord(args.config) ? args.config : undefined;
+			const parameters = isRecord(config?.parameters) ? config.parameters : undefined;
+			return buildExecuteNodeSessionGrantKey(nodeType, parameters);
 		}
 		return `${toolName}:${action}`;
 	}
