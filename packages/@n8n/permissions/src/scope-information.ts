@@ -22,6 +22,11 @@ export const ALL_SCOPES = buildResourceScopes();
 export const ALL_API_KEY_SCOPES = buildApiKeyScopes();
 
 export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
+	'aiPreference:read': {
+		displayName: 'Read AI Preferences',
+		description:
+			'Allows reading the AI preferences saved for the instance, the user, and their projects.',
+	},
 	'agent:create': {
 		displayName: 'Create Agent',
 		description: 'Allows creating new agents in a project.',

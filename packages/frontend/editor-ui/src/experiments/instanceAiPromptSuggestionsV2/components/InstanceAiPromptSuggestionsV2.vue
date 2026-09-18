@@ -2,6 +2,7 @@
 import { N8nIcon, N8nTooltip, type IconName } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { computed, onUnmounted, ref } from 'vue';
+import type { InstanceAiPrefillDeclaration } from '@/features/ai/instanceAi/prefills';
 
 const VISIBLE_SUGGESTION_COUNT = 4;
 const PREVIEW_HOVER_DELAY_MS = 300;
@@ -20,7 +21,7 @@ const props = defineProps<{
 	disabled: boolean;
 }>();
 
-interface InsertSuggestionPayload {
+interface InsertSuggestionPayload extends InstanceAiPrefillDeclaration {
 	promptKey: BaseTextKey;
 	suggestionId: string;
 	suggestionKind: 'prompt';
@@ -136,6 +137,7 @@ function handleSuggestionClick(suggestion: InstanceAiPromptSuggestionV2) {
 		suggestionId: suggestion.id,
 		suggestionKind: 'prompt',
 		position: getSuggestionPosition(suggestion.id),
+		prefillType: 'suggestion_catalog',
 	});
 }
 

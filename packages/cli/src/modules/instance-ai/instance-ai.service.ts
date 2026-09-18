@@ -16,6 +16,7 @@ import {
 	instanceAiBuildModeSchema,
 	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
 	type InstanceAiAttachment,
+	type ComputerUseChannel,
 	type InstanceAiBuildMode,
 	type InstanceAiHandoffContext,
 	type InstanceAiAgentAttachment,
@@ -28,6 +29,7 @@ import {
 	type InstanceAiConfirmResponse,
 	type InstanceAiEvent,
 	type InstanceAiThreadStatusResponse,
+	type InstanceAiThreadArtifactsContext,
 } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { SsrfProtectionService } from '@n8n/backend-network';
@@ -49,6 +51,9 @@ import {
 	resolvePromptProfile,
 	describePromptProfile,
 	setTracePromptVersion,
+	setTraceModelId,
+	modelConfigId,
+	modelIdTraceMetadata,
 	disabledInstanceAiSkillIds,
 	createInstanceAiTraceContext,
 	threadProvenanceMetadata,
@@ -138,9 +143,9 @@ import { EventService } from '@/events/event.service';
 import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
 import { modelStreamStallOptions } from '@/modules/agents/model-stream-stall-options';
 import { userHasScopes } from '@/permissions.ee/check-access';
+import { Push } from '@/push';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
-import { Push } from '@/push';
 import { AiPreferenceService, renderAiPreferencesBlock } from '@/services/ai-preference.service';
 import { AiService } from '@/services/ai.service';
 import { InstanceWriteAccessService } from '@/services/instance-write-access.service';
@@ -158,6 +163,7 @@ import {
 import { composeLocalMcpServers } from './browser/composite-local-mcp-server';
 import { InstanceAiBrowserSessionService } from './browser/instance-ai-browser-session.service';
 import { CanvasNodeContextFlagGate } from './canvas-node-context-flag-gate';
+import { enabledToolCategories, resolveComputerUseState } from './computer-use-availability';
 import { dropRejectedAttachmentsFromHistory } from './drop-rejected-attachments';
 import { EvalThreadCredentialAllowlistService } from './eval/thread-credential-allowlist.service';
 import { DurableEventLog } from './event-bus/durable-event-log';
@@ -170,7 +176,7 @@ import {
 	getAgentErrorSeverity,
 	InstanceAiErrorReporterService,
 } from './instance-ai-error-reporter.service';
-import { BROWSER_TOOL_CATEGORY, InstanceAiGatewayService } from './instance-ai-gateway.service';
+import { InstanceAiGatewayService } from './instance-ai-gateway.service';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiModelService } from './instance-ai-model.service';
 import { InstanceAiRunLimitError } from './instance-ai-run-limit.error';
@@ -181,19 +187,18 @@ import { InstanceAiTerminalOutcomeService } from './instance-ai-terminal-outcome
 import { InstanceAiAdapterService } from './instance-ai.adapter.service';
 import {
 	AUTO_FOLLOW_UP_MESSAGE,
-	EDITOR_CONTEXT_OPEN_TAG,
-	EDITOR_CONTEXT_CLOSE_TAG,
 	CREDENTIAL_CONTEXT_OPEN_TAG,
 	CREDENTIAL_CONTEXT_CLOSE_TAG,
 	cleanStoredUserMessage,
-	withCurrentDateTime,
-	withAiPreferences,
-	withPastConversations,
-	withProjectContext,
-	getProjectContextSection,
-	WORKFLOW_SETUP_STATE_OPEN_TAG,
-	WORKFLOW_SETUP_STATE_CLOSE_TAG,
+	buildCurrentDateTimeBlock,
+	buildPastConversationsBlock,
+	buildProjectContextBlock,
+	buildThreadArtifactsBlock,
+	buildThreadContextBlock,
 	buildWorkflowTestRequestBlock,
+	getProjectContextSection,
+	WORKFLOW_SETUP_STATE_CLOSE_TAG,
+	WORKFLOW_SETUP_STATE_OPEN_TAG,
 } from './internal-messages';
 import { INSTANCE_AI_RUN_TIMEOUT_REASON, InstanceAiLivenessService } from './liveness';
 import { InstanceAiMcpRegistryService } from './mcp';
@@ -237,7 +242,9 @@ import { WorkflowVerificationTaskProjector } from './workflow-verification-task-
 import { AgentExecutionService } from '../agents/agent-execution.service';
 import { formatPreviewSessionContext } from '../agents/builder/format-preview-context';
 
-/** A resource attachment as the trace records it: the reference, not its contents. */
+/**
+ * A resource attachment as the trace records it: the reference, not its contents.
+ */
 type TracedResourceAttachment = {
 	type: InstanceAiResourceAttachment['type'];
 	id: string;
@@ -257,104 +264,6 @@ function buildSuspensionTraceOutputs(runId: string, suspension: SuspensionInfo |
 		...(suspension?.toolName ? { toolName: suspension.toolName } : {}),
 		...(message ? { message } : {}),
 	};
-}
-
-/**
- * Renders a message's resource attachments (e.g. a workflow + execution, or an
- * agent, handed off from the editor) as a context block telling the agent what
- * the user is looking at. Informative only: the agent should greet the user and ask how it
- * can help rather than inspecting the resources up front. The ids stay in the
- * block so they're available once the user actually asks for something.
- * Returns an empty string when there are none.
- */
-/** Renders one canvas node-selection attachment as one line per set. */
-function buildNodesAttachmentLine(attachment: InstanceAiNodesAttachment): string {
-	const setLines = attachment.sets.map((set) => {
-		const names = set.nodes.map((node) => node.name ?? node.id);
-
-		const label =
-			names.length === 1
-				? `Node "${names[0]}"`
-				: `A chain of connected nodes: ${names.join(' → ')}`;
-
-		const input = set.inputNode
-			? `, receiving input from "${set.inputNode.name ?? set.inputNode.id}"`
-			: '';
-
-		const output = set.outputNode
-			? `, sending output to "${set.outputNode.name ?? set.outputNode.id}"`
-			: '';
-
-		const group = set.canvasGroupName
-			? `, part of canvas group "${set.canvasGroupName}"`
-			: set.canvasGroupId
-				? `, part of canvas group \`${set.canvasGroupId}\``
-				: '';
-
-		return `  - ${label}${input}${output}${group}.`;
-	});
-
-	const hasBoundary = attachment.sets.some((set) => set.inputNode ?? set.outputNode);
-	const boundaryNote = hasBoundary
-		? '\n  The "receiving input from"/"sending output to" nodes show only where the selection connects; they are not part of the selection. Do not describe, inspect, or make claims about them — scope your answer to the selected nodes.'
-		: '';
-
-	return `- Selected nodes in workflow \`${attachment.workflowId}\`:\n${setLines.join('\n')}${boundaryNote}`;
-}
-
-export function buildContextResourcesBlock(
-	contextAttachments: InstanceAiResourceAttachment[],
-): string {
-	if (contextAttachments.length === 0) {
-		return '';
-	}
-
-	const lines = contextAttachments.map((attachment) => {
-		if (attachment.type === 'nodes') {
-			return buildNodesAttachmentLine(attachment);
-		}
-
-		const name = attachment.name ? ` "${attachment.name}"` : '';
-
-		if (attachment.type === 'agent') {
-			if (attachment.pending) {
-				return `- New unsaved Agent artifact${name} (pending id: \`${attachment.id}\`, in project \`${attachment.projectId}\`).`;
-			}
-			return `- Agent${name} (id: \`${attachment.id}\`, in project \`${attachment.projectId}\`).`;
-		}
-
-		// Attachment type must be workflow at this point
-		// Only mention the execution when one was actually handed off.
-		const execution = attachment.executionId
-			? `, currently viewing its execution \`${attachment.executionId}\``
-			: '';
-
-		return `- Workflow${name} (id: \`${attachment.id}\`)${execution}.`;
-	});
-
-	const header = contextAttachments.some((attachment) => attachment.type === 'agent')
-		? 'The user opened this conversation from the agent editor, where they are looking at:'
-		: 'The user opened this conversation from the workflow editor, where they are looking at:';
-
-	const pendingAgentGuidance = contextAttachments.some(
-		(attachment) => attachment.type === 'agent' && attachment.pending,
-	)
-		? "Treat references such as “the agent” as this pending artifact. It has no persisted agent row yet. When the user asks to build or change it, use `build-agent`'s new-agent path with a name; do not pass its pending id as an existing `agentId`. The thread's pending target will make creation reuse that id."
-		: '';
-
-	const prose = [
-		header,
-		...lines,
-		pendingAgentGuidance,
-		"Treat this purely as context. Until the user tells you what they need, don't read, inspect, run, or otherwise call tools on these resources, and don't make claims about their contents — just briefly acknowledge what they're working on and ask how you can help.",
-	]
-		.filter(Boolean)
-		.join('\n');
-	// Wrap in EDITOR_CONTEXT_BLOCK so the UI strips it from the visible message
-	// (cleanStoredUserMessage) and the parser can reconstruct the attachments on
-	// reload from the leading JSON line — keeping the resource durable without
-	// persisting it as visible text.
-	return `${EDITOR_CONTEXT_OPEN_TAG}\n${JSON.stringify(contextAttachments)}\n\n${prose}\n${EDITOR_CONTEXT_CLOSE_TAG}`;
 }
 
 /** Workflow/agent attachments carry a display name; a nodes attachment doesn't. */
@@ -643,7 +552,10 @@ type RunFinishErrorInfo = {
 	errorSource?: 'stream' | 'exception';
 };
 
-type RunFinishMetadata = RunFinishErrorInfo & { promptVersion?: string };
+type RunFinishMetadata = RunFinishErrorInfo & {
+	promptVersion?: string;
+	modelId?: ModelConfig;
+};
 
 type UnclaimedResumeContext = {
 	threadId: string;
@@ -653,6 +565,7 @@ type UnclaimedResumeContext = {
 	tracing?: InstanceAiTraceContext;
 	messageGroupId?: string;
 	unregisteredResumeTracing?: InstanceAiTraceContext;
+	modelId?: ModelConfig;
 };
 
 type UnclaimedResumeOutcome =
@@ -1462,6 +1375,8 @@ export class InstanceAiService {
 		pushRef?: string,
 		mode?: InstanceAiBuildMode,
 		promptVersion?: string,
+		computerUseChannels?: ComputerUseChannel[],
+		threadArtifacts?: InstanceAiThreadArtifactsContext,
 	): string {
 		if (
 			promptVersion !== undefined &&
@@ -1483,6 +1398,10 @@ export class InstanceAiService {
 			this.runState.setTimeZone(threadId, timeZone);
 		}
 
+		// Same reason: a resumed or background run has no request of its own to ask
+		// which + menu entries the client renders.
+		this.runState.setComputerUseChannels(threadId, computerUseChannels);
+
 		// A new user message resets selection. Explicit eval modes take precedence;
 		// otherwise environment creation selects and stores the backend assignment.
 		this.runState.setBuildMode(threadId, mode);
@@ -1502,6 +1421,11 @@ export class InstanceAiService {
 			context,
 			messageGroupId,
 			timeZone,
+			false,
+			undefined,
+			undefined,
+			undefined,
+			threadArtifacts,
 		);
 
 		return runId;
@@ -2624,34 +2548,19 @@ export class InstanceAiService {
 			createCredentialPermissionMode: context.permissions?.createCredential,
 		});
 
-		// Compute gateway status for the system prompt. The direct browser
-		// session contributes a `browser` capability even without the daemon.
-		if (gatewayMcpServer || browserMcpServer) {
-			const capabilities = new Set<string>();
-			if (gatewayMcpServer) {
-				// getStatus() already drops excluded categories (e.g. browser when disabled).
-				for (const { name, enabled } of gatewayMcpServer.getStatus().toolCategories) {
-					if (enabled) {
-						capabilities.add(name);
-					}
-				}
-			}
-
-			if (browserMcpServer) {
-				capabilities.add(BROWSER_TOOL_CATEGORY);
-			}
-
-			context.localGatewayStatus = {
-				status: 'connected',
-				capabilities: [...capabilities],
-			};
-		} else if (localGatewayDisabledGlobally && !browserUseEnabledGlobally) {
-			context.localGatewayStatus = { status: 'disabledGlobally' };
-		} else {
-			context.localGatewayStatus = {
-				status: localGatewayDisabledForUser ? 'disabled' : 'disconnected',
-			};
-		}
+		// The client reports which + menu entries it renders, because only it can see
+		// its own rollout and the device. The admin switches are still applied here,
+		// so the report can only narrow.
+		context.computerUseState = resolveComputerUseState({
+			localGatewayDisabledGlobally,
+			localGatewayDisabledForUser,
+			browserUseEnabledGlobally,
+			clientChannels: this.runState.getComputerUseChannels(threadId),
+			localComputerToolCategories: gatewayMcpServer
+				? enabledToolCategories(gatewayMcpServer.getStatus().toolCategories)
+				: undefined,
+			browserConnected: browserMcpServer !== undefined,
+		});
 
 		const taskStorage = new ThreadTaskStorage(memory);
 		const iterationLog = this.dbIterationLogStorage;
@@ -3722,6 +3631,7 @@ export class InstanceAiService {
 		checkpoint?: { isCheckpointFollowUp: true; checkpointTaskId: string },
 		resumeReason?: OrchestratorResumeReason,
 		plannedBuild?: PlannedBuildFollowUp,
+		threadArtifacts?: InstanceAiThreadArtifactsContext,
 	): Promise<void> {
 		// Split the message's attachments by kind once, here at the agent
 		// boundary: files feed the parse-file / content-block path, workflow
@@ -3736,6 +3646,7 @@ export class InstanceAiService {
 		const signal = abortController.signal;
 		let tracing: InstanceAiTraceContext | undefined;
 		let promptVersion: string | undefined;
+		let modelId: ModelConfig | undefined;
 		let messageTraceFinalization: MessageTraceFinalization | undefined;
 		let aiCreatedWorkflowIds: Set<string> | undefined;
 		let messageId = '';
@@ -3781,6 +3692,9 @@ export class InstanceAiService {
 					return resource;
 				});
 			}
+			if (threadArtifacts?.artifacts.length) {
+				traceInput.threadArtifacts = threadArtifacts;
+			}
 			if (messageGroupId) {
 				traceInput.messageGroupId = messageGroupId;
 			}
@@ -3797,7 +3711,9 @@ export class InstanceAiService {
 			// spans that actually contain the work unattributable.
 			const threadProvenance = await this.readThreadProvenance(user.id, threadId);
 
-			// Create the trace before run-start so the SSE event carries traceId (modelId lands at finalization).
+			// Create the trace before run-start so the SSE event carries
+			// traceId. The model is resolved in createExecutionEnvironment
+			// below and stamped with setTraceModelId before the agent runs.
 			if (resumeReason) {
 				tracing = await this.tracing.createOrchestratorResumeTraceContext({
 					threadId,
@@ -3890,13 +3806,15 @@ export class InstanceAiService {
 				taskStorage,
 				workflowTasks,
 				plannedTaskService,
-				modelId,
+				modelId: resolvedModelId,
 				orchestrationContext,
 				conversationHistory,
 				aiPreferencesEnabled,
 			} = environment;
+			modelId = resolvedModelId;
 			promptVersion = orchestrationContext.promptConfiguration?.version;
 			setTracePromptVersion(tracing, promptVersion);
+			setTraceModelId(tracing, modelId);
 			aiCreatedWorkflowIds = context.aiCreatedWorkflowIds ??= new Set<string>();
 			const isPostPlanFollowUp = isReplanFollowUp || checkpoint?.isCheckpointFollowUp === true;
 			// Make the current user message available since memory history only
@@ -3980,7 +3898,6 @@ export class InstanceAiService {
 			await this.snapshotAttachedAgents(contextAttachments, orchestrationContext, tracing);
 
 			const enrichedMessage = await this.buildMessageWithRunningTasks(threadId, message);
-			const contextResourcesBlock = buildContextResourcesBlock(contextAttachments);
 
 			let handoffContextBlock = '';
 			let agentPreviewTitleFallback: string | undefined;
@@ -4059,7 +3976,10 @@ export class InstanceAiService {
 			// block would be paid for unread.
 			const instanceContext = await this.instanceContext.buildBlock({
 				user,
-				...(context.projectId !== undefined ? { projectId: context.projectId } : {}),
+				scope: {
+					surface: 'conversation',
+					...(context.projectId !== undefined ? { projectId: context.projectId } : {}),
+				},
 				cursor: readInstanceContextCursor(thread?.metadata),
 				isMachineFollowUp:
 					checkpoint?.isCheckpointFollowUp === true ||
@@ -4098,51 +4018,35 @@ export class InstanceAiService {
 						? `${enrichedMessage}\n\n${attachmentManifest}`
 						: enrichedMessage;
 
-			// The context block (an editor hand-off) leads the message so the agent
-			// knows what the user is looking at. On an empty-text hand-off it is the
-			// entire prompt, and the agent greets rather than investigating.
-			// Instance context sits last of the leading blocks, nearest the user's own words: it is
-			// background for reading their intent, not a statement of what they are looking at now.
-			const messageWithContext = [
-				contextResourcesBlock,
-				handoffContextBlock,
-				setupStateBlock,
-				instanceContext?.block ?? '',
-				messageBody,
-			]
-				.filter(Boolean)
-				.join('\n\n');
-			// The bound project's NAME rides turn for the same reason as the clock: it is per-thread,
-			// so putting it in the cached system prefix would break caching.
-			//
-			// The opening turn names the project's recent conversations; otherwise the
-			// agent has no reason to believe the conversation-history tool holds anything.
+			// Setup / credential handoff blocks lead. Ambient context (instance,
+			// preview tabs + editor resource hand-off, project, clock) is one
+			// `<thread-context>` wrapper. The user's own words stay last.
+			const threadArtifactsBlock =
+				resumeReason === undefined
+					? buildThreadArtifactsBlock(threadArtifacts, contextAttachments)
+					: '';
 			const [boundProject, pastConversationsSection] = await Promise.all([
 				this.resolveBoundProject(context),
 				isOpeningTurn ? conversationHistory?.getPastConversationsSection() : undefined,
 			]);
 			const projectSection = boundProject ? getProjectContextSection(boundProject) : undefined;
-			// Saved preferences ride the opening turn too, under the same project name.
 			const aiPreferencesBlock =
 				isOpeningTurn && aiPreferencesEnabled
 					? await this.resolveAiPreferencesBlock(user.id, boundProject)
 					: undefined;
-			const messageWithProject = projectSection
-				? withProjectContext(messageWithContext, projectSection)
-				: messageWithContext;
-			const messageWithPastConversations = pastConversationsSection
-				? withPastConversations(messageWithProject, pastConversationsSection)
-				: messageWithProject;
-			const messageWithPreferences = aiPreferencesBlock
-				? withAiPreferences(messageWithPastConversations, aiPreferencesBlock)
-				: messageWithPastConversations;
-
-			// Carry "now" on the per-turn input, not the cached system prefix, so the prefix stays cacheable.
-			// Wrapped so the parser strips it from the displayed user message on history reload.
-			const fullMessage = withCurrentDateTime(
-				messageWithPreferences,
-				getDateTimeSection(timeZone ?? this.defaultTimeZone),
-			);
+			const threadContextBlock = buildThreadContextBlock([
+				instanceContext?.block ?? '',
+				threadArtifactsBlock,
+				projectSection ? buildProjectContextBlock(projectSection) : undefined,
+				pastConversationsSection
+					? buildPastConversationsBlock(pastConversationsSection)
+					: undefined,
+				aiPreferencesBlock,
+				buildCurrentDateTimeBlock(getDateTimeSection(timeZone ?? this.defaultTimeZone)),
+			]);
+			const fullMessage = [handoffContextBlock, setupStateBlock, threadContextBlock, messageBody]
+				.filter(Boolean)
+				.join('\n\n');
 
 			const promptBuildRun = tracing
 				? await tracing.startChildRun(tracing.messageRun, {
@@ -4582,7 +4486,7 @@ export class InstanceAiService {
 					cancellationReason,
 					archivedWorkflowIds,
 					user.id,
-					{ promptVersion },
+					{ promptVersion, ...(modelId !== undefined ? { modelId } : {}) },
 				);
 				return;
 			}
@@ -4655,7 +4559,12 @@ export class InstanceAiService {
 				userFacingErrorMessage,
 				archivedWorkflowIds,
 				user.id,
-				{ errorMessage, errorSource: 'exception', promptVersion },
+				{
+					errorMessage,
+					errorSource: 'exception',
+					promptVersion,
+					...(modelId !== undefined ? { modelId } : {}),
+				},
 			);
 		} finally {
 			this.runState.clearActiveRun(threadId);
@@ -5387,6 +5296,7 @@ export class InstanceAiService {
 					errorInfo: { errorMessage: rebuildFailure, errorSource: 'exception' },
 					messageGroupId,
 					user: activeUser,
+					...(modelId !== undefined ? { modelId } : {}),
 				});
 				this.runState.clearActiveRun(threadId, resumeExecutionToken);
 				return null;
@@ -5456,6 +5366,7 @@ export class InstanceAiService {
 			opts.orchestrationContext?.promptConfiguration?.version ??
 			this.runState.getPromptConfiguration(opts.threadId)?.version;
 		setTracePromptVersion(opts.tracing, promptVersion);
+		setTraceModelId(opts.tracing, opts.modelId);
 		let completedSetupWorkflowId: string | undefined;
 		let skipPostRunCleanup = false;
 		let resumeClaimed = false;
@@ -5759,10 +5670,12 @@ export class InstanceAiService {
 			await this.tracing.finalizeRunTracing(opts.runId, opts.tracing, {
 				status: finalStatus,
 				outputText,
+				...(opts.modelId !== undefined ? { modelId: opts.modelId } : {}),
 			});
 			messageTraceFinalization = {
 				status: finalStatus,
 				outputText,
+				...(opts.modelId !== undefined ? { modelId: opts.modelId } : {}),
 				metadata: await this.tracing.buildMessageTraceMetadata(opts.threadId, opts.runId, {
 					status: finalStatus,
 				}),
@@ -5872,7 +5785,7 @@ export class InstanceAiService {
 					cancellationReason,
 					archivedWorkflowIds,
 					opts.user.id,
-					{ promptVersion },
+					{ promptVersion, ...(opts.modelId !== undefined ? { modelId: opts.modelId } : {}) },
 				);
 				return;
 			}
@@ -5948,7 +5861,12 @@ export class InstanceAiService {
 				userFacingErrorMessage,
 				archivedWorkflowIds,
 				opts.user.id,
-				{ errorMessage, errorSource: 'exception', promptVersion },
+				{
+					errorMessage,
+					errorSource: 'exception',
+					promptVersion,
+					...(opts.modelId !== undefined ? { modelId: opts.modelId } : {}),
+				},
 			);
 		} finally {
 			this.runState.clearActiveRun(opts.threadId, opts.resumeExecutionToken);
@@ -6064,6 +5982,7 @@ export class InstanceAiService {
 					reason,
 					messageGroupId: opts.messageGroupId,
 					user: opts.user,
+					...(opts.modelId !== undefined ? { modelId: opts.modelId } : {}),
 				});
 				return;
 			}
@@ -6099,6 +6018,7 @@ export class InstanceAiService {
 					// message group has to come from the suspended run, not the trace registry.
 					messageGroupId: opts.messageGroupId,
 					user: opts.user,
+					...(opts.modelId !== undefined ? { modelId: opts.modelId } : {}),
 				});
 				return;
 
@@ -6116,6 +6036,7 @@ export class InstanceAiService {
 		threadId: string;
 		runId: string;
 		promptVersion?: string;
+		modelId?: ModelConfig;
 		status: 'cancelled' | 'errored';
 		reason: string;
 		errorCode?: TerminalErrorCode;
@@ -6152,6 +6073,7 @@ export class InstanceAiService {
 		this.publishRunFinish(threadId, runId, status, args.reason, archivedWorkflowIds, args.user.id, {
 			...args.errorInfo,
 			promptVersion: args.promptVersion,
+			...(args.modelId !== undefined ? { modelId: args.modelId } : {}),
 		});
 	}
 
@@ -6331,7 +6253,10 @@ export class InstanceAiService {
 			reason,
 			archivedWorkflowIds,
 			suspended.user.id,
-			{ promptVersion: suspended.orchestrationContext?.promptConfiguration?.version },
+			{
+				promptVersion: suspended.orchestrationContext?.promptConfiguration?.version,
+				...(suspended.modelId !== undefined ? { modelId: suspended.modelId } : {}),
+			},
 		);
 
 		await this.tracing.maybeFinalizeRunTraceRoot(suspended.runId, {
@@ -6377,6 +6302,7 @@ export class InstanceAiService {
 			thread_id: threadId,
 			run_id: runId,
 			...(metadata?.promptVersion ? { prompt_version: metadata.promptVersion } : {}),
+			...this.telemetryModelId(metadata?.modelId),
 			status: effectiveStatus,
 			...(userId ? { user_id: userId } : {}),
 		});
@@ -6386,11 +6312,19 @@ export class InstanceAiService {
 				thread_id: threadId,
 				run_id: runId,
 				...(metadata?.promptVersion ? { prompt_version: metadata.promptVersion } : {}),
+				...this.telemetryModelId(metadata?.modelId),
 				error_message: redactTelemetryText(metadata?.errorMessage ?? reason ?? 'unknown'),
 				...(metadata?.errorSource ? { error_source: metadata.errorSource } : {}),
 				...(userId ? { user_id: userId } : {}),
 			});
 		}
+	}
+
+	private telemetryModelId(
+		modelId: ModelConfig | undefined,
+	): { model_id: string } | Record<string, never> {
+		const id = modelConfigId(modelId);
+		return id ? { model_id: id } : {};
 	}
 
 	/**
@@ -6522,7 +6456,11 @@ export class InstanceAiService {
 			options?.errorReason,
 			options?.archivedWorkflowIds,
 			options?.userId,
-			{ ...options?.errorInfo, promptVersion: options?.promptVersion },
+			{
+				...options?.errorInfo,
+				promptVersion: options?.promptVersion,
+				...(options?.modelId !== undefined ? { modelId: options.modelId } : {}),
+			},
 		);
 		this.emitRunMetrics(threadId, status, options);
 		if (status === 'completed' && options?.userId && options?.modelId) {
@@ -6571,7 +6509,7 @@ export class InstanceAiService {
 			const userTexts: string[] = [];
 			for (const m of history) {
 				if (!('role' in m) || m.role !== 'user') continue;
-				// Stored user messages carry service-injected blocks (<current-date-time>,
+				// Stored user messages carry service-injected blocks (<thread-context>,
 				// task context). Strip them or a trivial "hey" looks substantial enough to
 				// title, and the injected blocks leak into the title prompt.
 				const text = cleanStoredUserMessage(this.extractStoredMessageText(m.content));
@@ -6607,6 +6545,7 @@ export class InstanceAiService {
 				executionMode: 'internal',
 				metadata: {
 					operation_name: 'thread_title',
+					...modelIdTraceMetadata(modelId),
 				},
 			});
 			let llmTitle: string | null;

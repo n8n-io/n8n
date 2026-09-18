@@ -30,17 +30,16 @@ const renderComponent = createComponentRenderer(WorkflowSetupWizardFooter, {
 function makeContext(
 	section: WorkflowSetupSection,
 	overrides: {
-		isStepHandled?: boolean;
+		isSectionHandled?: boolean;
 		isCredentialTestFailed?: boolean;
 	} = {},
 ): WorkflowSetupContext {
-	const { isStepHandled = false, isCredentialTestFailed = false } = overrides;
+	const { isSectionHandled = false, isCredentialTestFailed = false } = overrides;
 
 	return {
 		sections: computed(() => [section]),
-		steps: computed(() => [{ kind: 'section', section }]),
 		currentStepIndex: ref(0),
-		activeStep: computed(() => ({ kind: 'section', section })),
+		activeSection: computed(() => section),
 		hasOtherUnhandledSteps: computed(() => false),
 		canAdvanceToNextIncomplete: computed(() => false),
 		credentialSelections: ref({}),
@@ -53,12 +52,10 @@ function makeContext(
 		setCredential: vi.fn(),
 		setParameterValue: vi.fn(),
 		getDisplayNode: (setupSection) => setupSection.node as INodeUi,
-		isSectionComplete: () => isStepHandled,
+		isSectionComplete: () => isSectionHandled,
 		isCredentialTestFailed: () => isCredentialTestFailed,
 		isSectionSkipped: () => false,
-		isStepComplete: () => isStepHandled,
-		isStepSkipped: () => false,
-		isStepHandled: () => isStepHandled,
+		isSectionHandled: () => isSectionHandled,
 		goToStep: vi.fn(),
 		goToNext: vi.fn(),
 		goToPrev: vi.fn(),
@@ -99,7 +96,7 @@ describe('WorkflowSetupWizardFooter', () => {
 
 	it('shows no tooltip when the primary action is enabled', () => {
 		const section = makeWorkflowSetupSection();
-		workflowSetupContext.current = makeContext(section, { isStepHandled: true });
+		workflowSetupContext.current = makeContext(section, { isSectionHandled: true });
 
 		const { getByTestId } = renderComponent();
 

@@ -267,7 +267,7 @@ export class NodeTypePoliciesPublicController {
 		_res: Response,
 		@Param('policyId', nodeTypePolicyIdParamSchema) policyId: string,
 	): Promise<NodeTypePolicyDocumentPublicDto> {
-		const policy = await (await this.service()).getPolicyDocument(policyId);
+		const policy = await (await this.service()).getPolicyDocument(NODE_TYPES_KIND, policyId);
 		if (!policy) {
 			throw new NotFoundError(`Policy document not found: ${policyId}`);
 		}
@@ -295,6 +295,7 @@ export class NodeTypePoliciesPublicController {
 		@Body dto: UpdatePolicyDocumentDto,
 	): Promise<NodeTypePolicyDocumentWriteResultPublicDto> {
 		const { policy, warnings } = await (await this.service()).updatePolicyDocument(
+			NODE_TYPES_KIND,
 			policyId,
 			dto.rules,
 			dto.version,
@@ -322,7 +323,7 @@ export class NodeTypePoliciesPublicController {
 		_res: Response,
 		@Param('policyId', nodeTypePolicyIdParamSchema) policyId: string,
 	): Promise<void> {
-		await (await this.service()).deletePolicyDocument(policyId, req.user.id);
+		await (await this.service()).deletePolicyDocument(NODE_TYPES_KIND, policyId, req.user.id);
 	}
 
 	@Put('/scopes/:scopeId/attachments')

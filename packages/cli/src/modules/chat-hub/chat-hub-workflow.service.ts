@@ -279,7 +279,7 @@ export class ChatHubWorkflowService {
 			return ['text'];
 		}
 
-		if (!allowedFilesMimeTypes || allowedFilesMimeTypes === '*/*') {
+		if (!allowedFilesMimeTypes || this.allowsAllMimeTypes(allowedFilesMimeTypes)) {
 			return ['text', 'image', 'audio', 'video', 'file'];
 		}
 
@@ -306,11 +306,17 @@ export class ChatHubWorkflowService {
 		}
 
 		const allowedFilesMimeTypes = options.allowedFilesMimeTypes;
-		if (!allowedFilesMimeTypes || allowedFilesMimeTypes === '*/*') {
+		if (!allowedFilesMimeTypes || this.allowsAllMimeTypes(allowedFilesMimeTypes)) {
 			return '*/*';
 		}
 
 		return allowedFilesMimeTypes;
+	}
+
+	private allowsAllMimeTypes(allowedFilesMimeTypes: string): boolean {
+		return allowedFilesMimeTypes
+			.split(',')
+			.some((mimeType) => mimeType.trim() === '*' || mimeType.trim() === '*/*');
 	}
 
 	/**

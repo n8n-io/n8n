@@ -6,6 +6,7 @@ import type {
 	InstanceAiHandoffContext,
 	InstanceAiSetupItem,
 } from '@n8n/api-types';
+import type { InstanceAiMessageAuthorship } from '../prefills';
 import { useI18n } from '@n8n/i18n';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -59,9 +60,12 @@ export type SetupPanelApplyResult =
 export interface SetupPanelThreadActions {
 	sendMessage: (
 		message: string,
-		attachments?: InstanceAiAttachment[],
-		pushRef?: string,
-		handoffContext?: InstanceAiHandoffContext,
+		opts: {
+			authorship: InstanceAiMessageAuthorship;
+			attachments?: InstanceAiAttachment[];
+			pushRef?: string;
+			handoffContext?: InstanceAiHandoffContext;
+		},
 	) => Promise<boolean>;
 }
 
@@ -453,12 +457,11 @@ export function useSetupPanelActions(options: {
 	async function executeWorkflow(): Promise<boolean> {
 		const workflowId = toValue(options.workflowId);
 		if (!workflowId) return false;
-		return await options.thread.sendMessage(
-			i18n.baseText('instanceAi.setupPanel.executeMessage'),
-			undefined,
-			rootStore.pushRef,
-			{ source: 'setup-panel-execute', workflowId },
-		);
+		return await options.thread.sendMessage(i18n.baseText('instanceAi.setupPanel.executeMessage'), {
+			authorship: { kind: 'prefill', prefillType: 'handoff_setup_panel_execute' },
+			pushRef: rootStore.pushRef,
+			handoffContext: { source: 'setup-panel-execute', workflowId },
+		});
 	}
 
 	return {

@@ -14,6 +14,10 @@ describe('ExpressionEngineConfig', () => {
 			expect(Container.get(ExpressionEngineConfig).engine).toBe('vm');
 		});
 
+		test('frontendEngine defaults to legacy', () => {
+			expect(Container.get(ExpressionEngineConfig).frontendEngine).toBe('legacy');
+		});
+
 		test('bridgeTimeout defaults to 5000', () => {
 			expect(Container.get(ExpressionEngineConfig).bridgeTimeout).toBe(5000);
 		});
@@ -35,6 +39,38 @@ describe('ExpressionEngineConfig', () => {
 			vi.stubEnv('N8N_EXPRESSION_ENGINE', 'not-an-engine');
 			expect(Container.get(ExpressionEngineConfig).engine).toBe('vm');
 			expect(consoleWarnSpy).toHaveBeenCalled();
+		});
+	});
+
+	describe('N8N_EXPRESSION_ENGINE_FRONTEND', () => {
+		test('overrides frontendEngine to quickjs', () => {
+			vi.stubEnv('N8N_EXPRESSION_ENGINE_FRONTEND', 'quickjs');
+			expect(Container.get(ExpressionEngineConfig).frontendEngine).toBe('quickjs');
+		});
+
+		// isolated-vm is a native module, so the editor can never run it.
+		test('rejects vm and falls back to legacy', () => {
+			const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+			vi.stubEnv('N8N_EXPRESSION_ENGINE_FRONTEND', 'vm');
+			expect(Container.get(ExpressionEngineConfig).frontendEngine).toBe('legacy');
+			expect(consoleWarnSpy).toHaveBeenCalled();
+		});
+
+		test('falls back to default on invalid value', () => {
+			const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+			vi.stubEnv('N8N_EXPRESSION_ENGINE_FRONTEND', 'not-an-engine');
+			expect(Container.get(ExpressionEngineConfig).frontendEngine).toBe('legacy');
+			expect(consoleWarnSpy).toHaveBeenCalled();
+		});
+
+		test('is independent of the backend engine', () => {
+			vi.stubEnv('N8N_EXPRESSION_ENGINE', 'vm');
+			vi.stubEnv('N8N_EXPRESSION_ENGINE_FRONTEND', 'quickjs');
+			const config = Container.get(ExpressionEngineConfig);
+			expect(config.engine).toBe('vm');
+			expect(config.frontendEngine).toBe('quickjs');
 		});
 	});
 

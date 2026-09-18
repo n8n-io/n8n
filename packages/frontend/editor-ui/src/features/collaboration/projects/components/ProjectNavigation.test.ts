@@ -8,6 +8,8 @@ import { useProjectsStore } from '../projects.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useRBACStore } from '@n8n/stores/rbac.store';
+import { useInstanceAiStore } from '@/features/ai/instanceAi/instanceAi.store';
+import { INSTANCE_AI_THREAD_VIEW } from '@/features/ai/instanceAi/constants';
 
 vi.mock('vue-router', async () => {
 	const actual = await vi.importActual('vue-router');
@@ -58,6 +60,22 @@ const renderComponent = createComponentRenderer(ProjectsNavigation, {
 			}),
 		],
 	},
+});
+
+// A router that can sit on a chat route; the default renderer only knows `home`.
+const threadRouter = createRouter({
+	history: createMemoryHistory(),
+	routes: [
+		{ path: '/', name: 'home', component: { template: '<div>Home</div>' } },
+		{
+			path: '/instance-ai/:threadId',
+			name: INSTANCE_AI_THREAD_VIEW,
+			component: { template: '<div>Thread</div>' },
+		},
+	],
+});
+const renderOnThreadRoute = createComponentRenderer(ProjectsNavigation, {
+	global: { plugins: [threadRouter] },
 });
 
 let projectsStore: ReturnType<typeof mockedStore<typeof useProjectsStore>>;
@@ -150,6 +168,25 @@ describe('ProjectsNavigation', () => {
 				getByTestId('project-home-menu-item'),
 			) & Node.DOCUMENT_POSITION_FOLLOWING,
 		).toBeTruthy();
+	});
+
+	it('should keep the open chat listed when it is older than the five most recent', async () => {
+		projectsStore.teamProjectsLimit = -1;
+		configureInstanceAiScopes({ canManage: false });
+		configureInstanceAi(true);
+		const instanceAiStore = mockedStore(useInstanceAiStore);
+		instanceAiStore.threads = Array.from({ length: 7 }, (_, index) => ({
+			id: `thread-${index}`,
+			title: `Chat ${index}`,
+			createdAt: '2026-01-01T00:00:00.000Z',
+			updatedAt: '2026-01-01T00:00:00.000Z',
+		}));
+		await threadRouter.push({ name: INSTANCE_AI_THREAD_VIEW, params: { threadId: 'thread-6' } });
+
+		const { getByTestId } = renderOnThreadRoute({ props: { collapsed: false } });
+
+		const chats = getByTestId('instance-ai-sidebar-chats').textContent ?? '';
+		expect(chats.match(/Chat \d/g)).toEqual(['Chat 0', 'Chat 1', 'Chat 2', 'Chat 3', 'Chat 6']);
 	});
 
 	it('should hide Instance AI from a member until setup is complete', () => {

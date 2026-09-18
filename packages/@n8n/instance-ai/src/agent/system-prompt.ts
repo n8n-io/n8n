@@ -11,17 +11,16 @@ import {
 	getSandboxWorkspaceSection,
 	UNTRUSTED_CONTENT_DOCTRINE,
 } from './shared-prompts';
-import type { LocalGatewayStatus } from '../types';
+import type { ComputerUseState } from '../types';
 
 interface SystemPromptOptions {
 	webhookBaseUrl?: string;
 	formBaseUrl?: string;
-	localGateway?: LocalGatewayStatus;
+	computerUseState?: ComputerUseState;
 	toolSearchEnabled?: boolean;
 	mcpToolSearchEnabled?: boolean;
 	/** Human-readable hints about licensed features that are NOT available on this instance. */
 	licenseHints?: string[];
-	browserAvailable?: boolean;
 	/** When true, the instance is in read-only mode (source control branchReadOnly). */
 	branchReadOnly?: boolean;
 	projectId?: string;
@@ -81,8 +80,8 @@ For questions about n8n itself — how a node behaves, the shape of its output, 
  * (or any other per-thread value) into the text. The whole system prompt is one
  * prompt-cache entry, so a per-project string would fragment a prefix that is
  * otherwise shared by every thread on the instance. The project's NAME reaches the
- * agent on the per-turn input instead (`<project-context>`, the same position as the
- * clock), so it can tell "this project" from a project the user names without
+ * agent on the per-turn input instead (`<project-context>` inside `<thread-context>`,
+ * the same wrapper as the clock), so it can tell "this project" from a project the user names without
  * spending a tool call — and can notice the difference BEFORE it builds.
  *
  * That block is best-effort, and resume paths compose no new turn at all, so the text
@@ -220,11 +219,10 @@ export function getSystemPrompt(options: SystemPromptOptions = {}): string {
 	const {
 		webhookBaseUrl,
 		formBaseUrl,
-		localGateway,
+		computerUseState,
 		toolSearchEnabled,
 		mcpToolSearchEnabled,
 		licenseHints,
-		browserAvailable,
 		branchReadOnly,
 		projectId,
 		workspaceRoot,
@@ -283,7 +281,7 @@ Don't fabricate provider setup mechanics (credential field names, secret values,
 
 ${UNTRUSTED_CONTENT_DOCTRINE}
 
-${getComputerUsePrompt({ browserAvailable, localGateway })}
+${getComputerUsePrompt({ state: computerUseState })}
 ${getLicenseLimitationsSection(licenseHints)}
 ${getReadOnlySection(branchReadOnly)}`;
 }

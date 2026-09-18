@@ -114,6 +114,8 @@ function popoverLabel(item: TimelineItem): string {
 			return i18n.baseText('agentSessions.timeline.user');
 		case 'agent':
 			return i18n.baseText('agentSessions.timeline.agent');
+		case 'skill':
+			return i18n.baseText('agentSessions.timeline.skill');
 		case 'tool':
 			return i18n.baseText('agentSessions.timeline.tool');
 		case 'workflow':
@@ -141,6 +143,8 @@ function popoverName(item: TimelineItem): string {
 		case 'user':
 		case 'agent':
 			return truncate(item.content ?? '', 80);
+		case 'skill':
+			return item.skillName ?? resolveToolNameForDisplay(item.toolName, i18n, item.toolOutput);
 		case 'tool': {
 			return resolveToolNameForDisplay(item.toolName, i18n, item.toolOutput);
 		}
@@ -471,7 +475,8 @@ onBeforeUnmount(() => {
 	border-radius: var(--radius--sm);
 	background-color: var(--color--danger);
 	content: '';
-	z-index: 10;
+	/* Only needs to clear the block inside this cell. */
+	z-index: 1;
 }
 
 .chart:has(.block:hover, .block.selected) .block:not(:hover):not(.selected) {

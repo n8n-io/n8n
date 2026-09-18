@@ -94,7 +94,8 @@ export class IdleScalingPool implements IPool {
 		if (this.idleTimeoutMs === undefined) return;
 		if (this.idleTimer) clearTimeout(this.idleTimer);
 		this.idleTimer = setTimeout(() => this.triggerScaleDown(), this.idleTimeoutMs);
-		this.idleTimer.unref();
+		// In a browser `setTimeout` returns a number, which has no `unref`.
+		if (typeof this.idleTimer === 'object') this.idleTimer.unref();
 	}
 
 	private triggerScaleUp(): void {

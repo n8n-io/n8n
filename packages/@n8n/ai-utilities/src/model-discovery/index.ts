@@ -61,11 +61,11 @@ export {
 	classifyChatModelFailure,
 	type ChatModelFailureKind,
 } from './chat-model-errors';
-export { listAlibabaModels } from './providers/alibaba';
+export { listAlibabaModels, shouldIncludeAlibabaModel } from './providers/alibaba';
 export { listAnthropicModels } from './providers/anthropic';
 export { listCohereModels } from './providers/cohere';
 export { listDeepSeekModels } from './providers/deepseek';
-export { listGoogleModels } from './providers/google';
+export { listGoogleModels, shouldIncludeGoogleModel } from './providers/google';
 export { listGroqModels } from './providers/groq';
 export { listMiniMaxModels } from './providers/minimax';
 export { listMistralModels } from './providers/mistral';

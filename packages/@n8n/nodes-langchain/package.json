@@ -228,6 +228,7 @@
     "@types/temp": "^0.9.1",
     "@vitest/coverage-v8": "catalog:",
     "@typescript/native": "catalog:typescript-tooling",
+    "nock": "catalog:",
     "typescript": "catalog:typescript-tooling",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:"
@@ -300,7 +301,7 @@
     "html-to-text": "9.0.5",
     "ignore": "^5.2.0",
     "js-tiktoken": "catalog:",
-    "jsdom": "23.0.1",
+    "jsdom": "catalog:",
     "jsonwebtoken": "catalog:",
     "langchain": "catalog:",
     "lodash": "catalog:",
