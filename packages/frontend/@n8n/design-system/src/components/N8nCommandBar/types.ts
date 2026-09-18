@@ -11,4 +11,6 @@ export interface CommandBarItem {
 	placeholder?: string;
 	hasMoreChildren?: boolean;
 	matchAnySearchTerm?: boolean;
+	/** Shown faded; click and Enter do nothing. For an entry the user must see but cannot run. */
+	disabled?: boolean;
 }
