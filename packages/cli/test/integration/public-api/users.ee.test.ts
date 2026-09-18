@@ -3,7 +3,7 @@ import { GLOBAL_MEMBER_ROLE, type User } from '@n8n/db';
 import { v4 as uuid } from 'uuid';
 import validator from 'validator';
 
-import { USER_QUOTA_FORBIDDEN_MESSAGE } from '@/public-api/v1/shared/middlewares/global.middleware';
+import { USER_QUOTA_FORBIDDEN_MESSAGE } from '@/public-api/constants';
 
 import {
 	createMember,
