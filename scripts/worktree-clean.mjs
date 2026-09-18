@@ -12,11 +12,18 @@
 // The main worktree is never touched. `pnpm session` worktrees (/workspaces/wt-*)
 // and Claude Code worktrees (.claude/worktrees/*) are both plain git worktrees,
 // so one pass covers both.
-import { execFileSync, spawnSync } from 'node:child_process';
-import { existsSync, readdirSync, readlinkSync, rmSync, statSync } from 'node:fs';
-import { basename, join, relative, resolve, sep } from 'node:path';
+//
+// Removal is a rename into a sibling `.worktree-trash/` directory plus
+// `git worktree prune`, which takes milliseconds. A detached process deletes the
+// trash afterwards: unlinking 250k files takes ~20 s, and that must not hold up
+// the Codespace start.
+import { execFile, execFileSync, spawn, spawnSync } from 'node:child_process';
+import { existsSync, mkdirSync, readdirSync, readlinkSync, renameSync, statSync } from 'node:fs';
+import { basename, dirname, join, relative, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { parseArgs } from 'node:util';
+import { parseArgs, promisify } from 'node:util';
+
+const execFileAsync = promisify(execFile);
 
 const USAGE = `Usage: pnpm worktree:clean [flags]
 
@@ -38,6 +45,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const DEPS_DIRS = new Set(['node_modules', 'dist', '.turbo']);
 // A hung network call keeps the worktree (lookup failed); it must not hang the run.
 const GH_TIMEOUT_MS = 20_000;
+const TRASH_DIR = '.worktree-trash';
 
 // ---------------------------------------------------------------------------
 // Pure helpers. Exported for tests.
@@ -106,6 +114,11 @@ export function decide(info, { olderThanDays }) {
 		};
 	}
 	return keep(`active ${info.idleDays} day${info.idleDays === 1 ? '' : 's'} ago`);
+}
+
+/** Where a removed worktree is renamed to before the background delete. */
+export function trashPathFor(path, now = Date.now()) {
+	return join(dirname(path), TRASH_DIR, `${basename(path)}-${now}`);
 }
 
 export function formatSize(kb) {
@@ -217,36 +230,44 @@ function repoSlug(root) {
 	return match ? match[1] : null;
 }
 
-/** Most recent PR for the branch: { number, state } or null. `undefined` when the lookup failed. */
-function lookupPr(slug, branch) {
-	const res = spawnSync(
-		'gh',
-		[
-			'pr',
-			'list',
-			'-R',
-			slug,
-			'--head',
-			branch,
-			'--state',
-			'all',
-			'--limit',
-			'1',
-			'--json',
-			'number,state',
-		],
-		{ encoding: 'utf8', timeout: GH_TIMEOUT_MS },
+/**
+ * Most recent PR per branch, looked up concurrently: Map<branch, { number, state } | null>.
+ * A branch is missing from the map when its lookup failed or timed out.
+ */
+async function lookupPrs(slug, branches) {
+	const prs = new Map();
+	await Promise.all(
+		branches.map(async (branch) => {
+			try {
+				const { stdout } = await execFileAsync(
+					'gh',
+					[
+						'pr',
+						'list',
+						'-R',
+						slug,
+						'--head',
+						branch,
+						'--state',
+						'all',
+						'--limit',
+						'1',
+						'--json',
+						'number,state',
+					],
+					{ encoding: 'utf8', timeout: GH_TIMEOUT_MS },
+				);
+				const [pr] = JSON.parse(stdout);
+				prs.set(branch, pr ? { number: pr.number, state: pr.state } : null);
+			} catch {
+				// Left out of the map: the caller keeps the worktree.
+			}
+		}),
 	);
-	if (res.status !== 0) return undefined;
-	try {
-		const [pr] = JSON.parse(res.stdout);
-		return pr ? { number: pr.number, state: pr.state } : null;
-	} catch {
-		return undefined;
-	}
+	return prs;
 }
 
-function gather(wt, { root, slug, cwds, useGh, now }) {
+function gather(wt, { root, prs, cwds, measureSize, now }) {
 	const info = {
 		...wt,
 		name: isInside(wt.path, root) ? relative(root, wt.path) : wt.path,
@@ -269,17 +290,16 @@ function gather(wt, { root, slug, cwds, useGh, now }) {
 	);
 	// `git status` above refreshes the index, so clamp: activity is never in the future.
 	info.idleDays = Math.max(0, Math.floor((now - lastActivityMs(wt)) / DAY_MS));
-	info.sizeKb = dirSizeKb(wt.path);
-	if (useGh && slug && wt.branch) {
-		const pr = lookupPr(slug, wt.branch);
-		if (pr === undefined) {
-			info.prNote = 'gh failed';
-			info.prLookupFailed = true;
-		} else {
-			info.pr = pr;
-		}
-	} else if (wt.branch) {
+	// `du` over an installed worktree costs ~2 s; only the report needs it.
+	if (measureSize) info.sizeKb = dirSizeKb(wt.path);
+	if (!wt.branch) return info;
+	if (!prs) {
 		info.prNote = 'not checked';
+	} else if (prs.has(wt.branch)) {
+		info.pr = prs.get(wt.branch);
+	} else {
+		info.prNote = 'gh failed';
+		info.prLookupFailed = true;
 	}
 	return info;
 }
@@ -287,47 +307,89 @@ function gather(wt, { root, slug, cwds, useGh, now }) {
 // ---------------------------------------------------------------------------
 // Actions.
 
+/** Moves a path into the trash directory next to it. Returns the trash path. */
+function moveToTrash(path) {
+	const dest = trashPathFor(path);
+	mkdirSync(dirname(dest), { recursive: true });
+	renameSync(path, dest);
+	return dest;
+}
+
+/** Deletes the given paths in a detached process so this run can exit at once. */
+function deleteInBackground(paths) {
+	if (paths.length === 0) return;
+	const script =
+		'for (const p of process.argv.slice(1)) require("node:fs").rmSync(p, { recursive: true, force: true })';
+	spawn(process.execPath, ['-e', script, ...paths], { detached: true, stdio: 'ignore' }).unref();
+}
+
+/** Trash left behind by an earlier run whose background delete did not finish. */
+function leftoverTrash(worktrees) {
+	const dirs = new Set(worktrees.map((wt) => join(dirname(wt.path), TRASH_DIR)));
+	const paths = [];
+	for (const dir of dirs) {
+		if (!existsSync(dir)) continue;
+		for (const entry of readdirSync(dir)) paths.push(join(dir, entry));
+	}
+	return paths;
+}
+
+/** Removes one worktree. Returns { message, trash } where trash is the path to delete. */
 function removeWorktree(row, root) {
-	// No --force: git re-checks that the tree is clean at this moment, so work that
-	// appeared since the report stays. Ignored build outputs do not block removal.
-	const res = spawnSync('git', ['worktree', 'remove', row.path], { cwd: root, encoding: 'utf8' });
-	if (res.status !== 0) throw new Error(res.stderr.trim() || 'git worktree remove failed');
+	// The report may be minutes old: re-check right before acting.
+	if ((tryGit(['status', '--porcelain'], row.path) ?? 'unknown') !== '') {
+		throw new Error('changed since the report, kept');
+	}
+	let trash = null;
+	try {
+		trash = moveToTrash(row.path);
+	} catch (error) {
+		if (error.code !== 'EXDEV') throw error;
+		// No same-filesystem trash location: let git delete in place.
+		const res = spawnSync('git', ['worktree', 'remove', row.path], { cwd: root, encoding: 'utf8' });
+		if (res.status !== 0) throw new Error(res.stderr.trim() || 'git worktree remove failed');
+	}
+	tryGit(['worktree', 'prune', '--expire', 'now'], root);
+	let message = 'removed';
 	if (row.branch && row.deleteBranch) {
 		const flag = row.deleteBranch === 'force' ? '-D' : '-d';
 		const del = spawnSync('git', ['branch', flag, row.branch], { cwd: root, encoding: 'utf8' });
-		return del.status === 0 ? `removed, branch ${row.branch} deleted` : 'removed, branch kept';
+		message = del.status === 0 ? `removed, branch ${row.branch} deleted` : 'removed, branch kept';
 	}
-	return 'removed';
+	return { message, trash };
 }
 
-/** Deletes ignored node_modules, dist and .turbo directories inside a kept worktree. */
+/**
+ * Moves ignored node_modules, dist and .turbo directories of a kept worktree to
+ * the trash. Returns { message, trash: [paths] }.
+ */
 function pruneDeps(row) {
 	const listed = tryGit(
 		['ls-files', '--others', '--ignored', '--exclude-standard', '--directory', '-z'],
 		row.path,
 	);
-	if (listed === null) return 'deps: skipped';
+	if (listed === null) return { message: 'deps: skipped', trash: [] };
 	const targets = listed
 		.split('\0')
 		.filter((p) => p && DEPS_DIRS.has(basename(p.replace(/\/$/, ''))))
 		.map((p) => join(row.path, p));
+	const trash = [];
 	let failed = 0;
 	for (const target of targets) {
 		try {
-			rmSync(target, { recursive: true, force: true });
+			trash.push(moveToTrash(target));
 		} catch (error) {
 			failed++;
 			console.error(`${target}: ${error.message}`);
 		}
 	}
-	const removed = targets.length - failed;
-	const summary = `deps: removed ${removed} director${removed === 1 ? 'y' : 'ies'}`;
-	return failed ? `${summary}, ${failed} failed` : summary;
+	const summary = `deps: removed ${trash.length} director${trash.length === 1 ? 'y' : 'ies'}`;
+	return { message: failed ? `${summary}, ${failed} failed` : summary, trash };
 }
 
 // ---------------------------------------------------------------------------
 
-export function main(argv = process.argv.slice(2)) {
+export async function main(argv = process.argv.slice(2)) {
 	let values;
 	try {
 		({ values } = parseArgs({
@@ -363,11 +425,13 @@ export function main(argv = process.argv.slice(2)) {
 	}
 	const [main, ...others] = parsePorcelain(porcelain);
 	const root = main.path;
+	const slug = values.gh ? repoSlug(root) : null;
+	const branches = others.map((wt) => wt.branch).filter(Boolean);
 	const ctx = {
 		root,
-		slug: values.gh ? repoSlug(root) : null,
+		prs: slug ? await lookupPrs(slug, branches) : null,
 		cwds: processCwds(),
-		useGh: values.gh,
+		measureSize: !values.yes,
 		now: Date.now(),
 	};
 
@@ -388,9 +452,8 @@ export function main(argv = process.argv.slice(2)) {
 		console.log(formatTable(rows));
 		const removable = rows.filter((r) => r.action === 'remove');
 		const reclaim = removable.reduce((sum, r) => sum + (r.sizeKb ?? 0), 0);
-		console.log(
-			`\n${removable.length} of ${rows.length} worktrees removable, ${formatSize(reclaim)} reclaimable.`,
-		);
+		const reclaimNote = ctx.measureSize ? `, ${formatSize(reclaim)} reclaimable` : '';
+		console.log(`\n${removable.length} of ${rows.length} worktrees removable${reclaimNote}.`);
 		if (ctx.cwds === null)
 			console.log('Process check unavailable on this platform: nothing is removed.');
 	}
@@ -403,18 +466,32 @@ export function main(argv = process.argv.slice(2)) {
 	}
 
 	const results = [];
+	const trash = leftoverTrash(others);
 	for (const row of rows) {
 		try {
-			if (row.action === 'remove') results.push(`${row.name}: ${removeWorktree(row, root)}`);
-			else if (values.deps && row.depsCandidate) results.push(`${row.name}: ${pruneDeps(row)}`);
+			if (row.action === 'remove') {
+				const res = removeWorktree(row, root);
+				results.push(`${row.name}: ${res.message}`);
+				if (res.trash) trash.push(res.trash);
+			} else if (values.deps && row.depsCandidate) {
+				const res = pruneDeps(row);
+				results.push(`${row.name}: ${res.message}`);
+				trash.push(...res.trash);
+			}
 		} catch (error) {
 			results.push(`${row.name}: failed, ${error.message}`);
 			process.exitCode = 1;
 		}
 	}
 	if (rows.some((r) => r.action === 'prune')) {
-		tryGit(['worktree', 'prune'], root);
+		tryGit(['worktree', 'prune', '--expire', 'now'], root);
 		results.push('pruned stale worktree entries');
+	}
+	if (trash.length > 0) {
+		deleteInBackground(trash);
+		results.push(
+			`deleting ${trash.length} director${trash.length === 1 ? 'y' : 'ies'} in the background`,
+		);
 	}
 	if (!values.json) {
 		console.log(results.length ? `\n${results.join('\n')}` : '\nNothing to do.');
@@ -422,5 +499,8 @@ export function main(argv = process.argv.slice(2)) {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-	main();
+	main().catch((error) => {
+		process.stderr.write(`worktree-clean: ${error.message}\n`);
+		process.exit(1);
+	});
 }

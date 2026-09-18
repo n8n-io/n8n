@@ -1,7 +1,13 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { decide, formatSize, formatTable, parsePorcelain } from './worktree-clean.mjs';
+import {
+	decide,
+	formatSize,
+	formatTable,
+	parsePorcelain,
+	trashPathFor,
+} from './worktree-clean.mjs';
 
 const clean = {
 	missing: false,
@@ -115,6 +121,16 @@ describe('parsePorcelain', () => {
 		assert.equal(b.branch, undefined);
 		assert.equal(b.detached, true);
 		assert.equal(b.prunable, true);
+	});
+});
+
+describe('trashPathFor', () => {
+	it('places the trash next to the worktree, on the same filesystem', () => {
+		assert.equal(
+			trashPathFor('/workspaces/n8n/.claude/worktrees/foo-1a2b3c', 1700000000000),
+			'/workspaces/n8n/.claude/worktrees/.worktree-trash/foo-1a2b3c-1700000000000',
+		);
+		assert.equal(trashPathFor('/workspaces/wt-fix', 5), '/workspaces/.worktree-trash/wt-fix-5');
 	});
 });
 
