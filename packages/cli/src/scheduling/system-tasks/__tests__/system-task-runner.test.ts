@@ -1326,6 +1326,72 @@ describe('SystemTaskRunner', () => {
 			);
 		});
 
+		it('reports a failing instance-scoped run and retries it on the instance timer', async () => {
+			const { runner, metadata, eventService, errorReporter } = setup({
+				isLeader: false,
+				instanceRole: 'unset',
+				instanceType: 'worker',
+			});
+			const error = new Error('failed');
+			perInstance.retryDelaySeconds = 5;
+			perInstance.onRun = async () => {
+				throw error;
+			};
+			metadata.register(PerInstanceDummySystemTask);
+			runner.initPerInstance();
+
+			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS);
+
+			expect(perInstance.runCount).toBe(1);
+			expect(errorReporter.error).toHaveBeenCalledWith(error, {
+				extra: { systemTask: 'per-instance-dummy' },
+				shouldBeLogged: false,
+				shouldIsolate: true,
+			});
+			expect(eventService.emit).toHaveBeenCalledWith('system-task-retry-scheduled', {
+				name: 'per-instance-dummy',
+			});
+
+			await vi.advanceTimersByTimeAsync(5 * Time.seconds.toMilliseconds);
+
+			expect(perInstance.runCount).toBe(2);
+		});
+
+		it('aborts the signal of an instance-scoped run in flight on shutdown, and awaits it', async () => {
+			const { runner, metadata } = setup({
+				isLeader: false,
+				instanceRole: 'unset',
+				instanceType: 'worker',
+			});
+			let runSignal: AbortSignal | undefined;
+			let releaseRun = () => {};
+			perInstance.onRun = async (signal) => {
+				runSignal = signal;
+				await new Promise<void>((resolve) => {
+					releaseRun = resolve;
+				});
+			};
+			metadata.register(PerInstanceDummySystemTask);
+			runner.initPerInstance();
+			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS);
+			expect(runSignal?.aborted).toBe(false);
+
+			const shuttingDown = runner.shutdown();
+			let shutDown = false;
+			void shuttingDown.then(() => {
+				shutDown = true;
+			});
+			await Promise.resolve();
+
+			expect(runSignal?.aborted).toBe(true);
+			expect(shutDown).toBe(false);
+
+			releaseRun();
+			await shuttingDown;
+
+			expect(shutDown).toBe(true);
+		});
+
 		it('emits the runs of an instance-scoped task as instance_timer', async () => {
 			const { runner, metadata, eventService } = setup();
 			metadata.register(PerInstanceDummySystemTask);
