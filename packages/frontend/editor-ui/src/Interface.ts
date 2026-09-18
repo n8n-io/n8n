@@ -623,6 +623,11 @@ export interface ViewCreateElement extends CreateElementBase {
 	properties: ViewItemProps;
 }
 
+export interface CommandCreateElement extends CreateElementBase {
+	type: 'command';
+	properties: ViewItemProps;
+}
+
 export interface LabelCreateElement extends CreateElementBase {
 	type: 'label';
 	subcategory: string;
@@ -656,6 +661,7 @@ export type INodeCreateElement =
 	| SubcategoryCreateElement
 	| SectionCreateElement
 	| ViewCreateElement
+	| CommandCreateElement
 	| LabelCreateElement
 	| ActionCreateElement
 	| AgentCreateElement

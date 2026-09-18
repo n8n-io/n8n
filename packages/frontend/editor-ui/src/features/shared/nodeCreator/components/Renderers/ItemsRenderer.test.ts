@@ -6,6 +6,7 @@ import {
 	mockLabelCreateElement,
 	mockNodeCreateElement,
 	mockActionCreateElement,
+	mockCommandCreateElement,
 	mockViewCreateElement,
 	mockSectionCreateElement,
 } from '../../__tests__/utils';
@@ -112,6 +113,7 @@ describe('ItemsRenderer', () => {
 			mockNodeCreateElement(),
 			mockActionCreateElement(),
 			mockViewCreateElement(),
+			mockCommandCreateElement(),
 		];
 		const { container, emitted } = renderComponent({
 			pinia: createTestingPinia(),
@@ -125,6 +127,7 @@ describe('ItemsRenderer', () => {
 			subcategory: container.querySelector('.iteratorItem .subCategory'),
 			action: container.querySelector('.iteratorItem .action'),
 			view: container.querySelector('.iteratorItem .view'),
+			command: container.querySelector('.iteratorItem .command'),
 		};
 
 		for (const [index, itemType] of Object.keys(itemTypes).entries()) {

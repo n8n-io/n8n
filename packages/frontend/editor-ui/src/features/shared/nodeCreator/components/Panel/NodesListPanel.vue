@@ -13,6 +13,11 @@ import {
 import { computed, onMounted, onUnmounted, watch } from 'vue';
 
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
 
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { getNodeIconSize } from '@/app/utils/nodeIcon';
@@ -28,6 +33,7 @@ import {
 	TriggerView,
 	type NodeView,
 } from '../../views/viewsData';
+import { getNodeCreatorSearchItems } from '../../nodeCreator.utils';
 import ActionsRenderer from '../Modes/ActionsMode.vue';
 import AgentsRenderer from '../Modes/AgentsMode.vue';
 import NodesRenderer from '../Modes/NodesMode.vue';
@@ -44,6 +50,11 @@ const i18n = useI18n();
 const { callDebounced, debounce } = useDebounce();
 
 const { mergedNodes } = useNodeCreatorStore();
+const workflowId = useWorkflowId();
+const workflowDocumentStore = computed(() =>
+	useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)),
+);
+const isEmptyWorkflow = computed(() => workflowDocumentStore.value.allNodes.length === 0);
 const { pushViewStack, popViewStack, updateCurrentViewStack } = useViewStacks();
 const { setActiveItemIndex, attachKeydownEvent, detachKeydownEvent } = useKeyboardNavigation();
 const nodeCreatorStore = useNodeCreatorStore();
@@ -192,7 +203,7 @@ watch(
 	() => nodeCreatorView.value,
 	(selectedView) => {
 		const views: Record<NodeFilterType, (nodes: SimplifiedNodeType[]) => NodeView> = {
-			[TRIGGER_NODE_CREATOR_VIEW]: TriggerView,
+			[TRIGGER_NODE_CREATOR_VIEW]: (nodes) => TriggerView(nodes, isEmptyWorkflow.value),
 			[REGULAR_NODE_CREATOR_VIEW]: RegularView,
 			[AI_NODE_CREATOR_VIEW]: AIView,
 			[AI_OTHERS_NODE_CREATOR_VIEW]: AINodesView,
@@ -224,8 +235,8 @@ watch(
 			hasSearch: true,
 			mode: 'nodes',
 			rootView: selectedView,
-			// Root search should include all nodes
-			searchItems: mergedNodes,
+			// Root search should include all nodes and command items.
+			searchItems: getNodeCreatorSearchItems(mergedNodes, view.items),
 			...additionalOptions[selectedView],
 		};
 		pushViewStack(viewStack);

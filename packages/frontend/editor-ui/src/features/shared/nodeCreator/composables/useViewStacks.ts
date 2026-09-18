@@ -4,7 +4,6 @@ import type {
 	NodeCreateElement,
 	NodeFilterType,
 	SectionCreateElement,
-	SimplifiedNodeType,
 	SubcategoryCreateElement,
 } from '@/Interface';
 import {
@@ -46,7 +45,7 @@ import {
 	transformNodeType,
 } from '../nodeCreator.utils';
 
-import type { NodeViewItem, NodeViewItemSection } from '../views/viewsData';
+import { isNodeViewItem, type NodeViewItem, type NodeViewItemSection } from '../views/viewsData';
 import { AINodesView } from '../views/viewsData';
 import { useI18n } from '@n8n/i18n';
 import { useKeyboardNavigation } from './useKeyboardNavigation';
@@ -92,7 +91,7 @@ export interface ViewStack {
 	preventBack?: boolean;
 	items?: INodeCreateElement[];
 	baselineItems?: INodeCreateElement[];
-	searchItems?: SimplifiedNodeType[];
+	searchItems?: INodeCreateElement[];
 	forceIncludeNodes?: string[];
 	mode?: 'actions' | 'nodes' | 'community-node' | 'agents';
 	hideActions?: boolean;
@@ -127,10 +126,10 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 			return stack.items ? finalizeItems(stack.items) : [];
 		}
 
-		if (stack.search && searchBaseItems.value) {
-			let searchBase: INodeCreateElement[] = searchBaseItems.value;
+		if (stack.search) {
+			let searchBase: INodeCreateElement[] = stack.searchItems ?? [];
 			const canvasHasAINodes = workflowDocumentStore.value.aiNodes.length > 0;
-			if (searchBaseItems.value.length === 0) {
+			if (searchBase.length === 0) {
 				searchBase = flattenCreateElements(stack.baselineItems ?? []);
 			}
 
@@ -194,13 +193,6 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 	const activeViewStackMode = computed(
 		() => activeViewStack.value.mode ?? TRIGGER_NODE_CREATOR_VIEW,
 	);
-
-	const searchBaseItems = computed<INodeCreateElement[]>(() => {
-		const stack = getLastActiveStack();
-		if (!stack?.searchItems) return [];
-
-		return stack.searchItems.map((item) => transformNodeType(item, stack.subcategory));
-	});
 
 	function isAiSubcategoryView(stack: ViewStack) {
 		return stack.rootView === AI_OTHERS_NODE_CREATOR_VIEW;
@@ -468,9 +460,12 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		} else {
 			nodesByConnectionType = useNodeTypesStore().visibleNodeTypesByOutputConnectionTypeNames;
 
-			relatedAIView = AINodesView([]).items.find(
-				(item) => item.properties.connectionType === connectionType,
+			const compatibleAIView = AINodesView([]).items.find(
+				(item) => isNodeViewItem(item) && item.properties.connectionType === connectionType,
 			);
+			if (compatibleAIView && isNodeViewItem(compatibleAIView)) {
+				relatedAIView = compatibleAIView;
+			}
 		}
 
 		// Only add info field if the view does not have any filters (e.g.
