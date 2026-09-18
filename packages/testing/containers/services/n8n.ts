@@ -12,7 +12,13 @@ import {
 import { N8nImagePullPolicy } from '../n8n-image-pull-policy';
 import type { StartupDeadline } from '../startup-deadline';
 import { TEST_CONTAINER_IMAGES } from '../test-containers';
-import { applyEngineEnv, type EngineMode } from './engine';
+import {
+	applyEngineEnv,
+	ENGINE_PORT,
+	engineContainerEnv,
+	engineHostname,
+	type EngineMode,
+} from './engine';
 import type { FileToMount } from './types';
 
 const N8N_IMAGE = TEST_CONTAINER_IMAGES.n8n;
@@ -112,7 +118,14 @@ export interface N8NInstancesResult {
 	diagnostics: N8NStartupDiagnostics;
 }
 
-function computeEnvironment(options: N8NInstancesOptions): Record<string, string> {
+interface ComputedEnvironment {
+	/** Env of the mains, webhooks and workers. */
+	environment: Record<string, string>;
+	/** Env of the engine container. Set only in `container` engine mode. */
+	engineEnvironment?: Record<string, string>;
+}
+
+function computeEnvironment(options: N8NInstancesOptions): ComputedEnvironment {
 	const {
 		mains,
 		workers,
@@ -120,6 +133,7 @@ function computeEnvironment(options: N8NInstancesOptions): Record<string, string
 		usePostgres,
 		engine,
 		baseUrl,
+		projectName,
 		serviceEnvironment,
 		userEnvironment = {},
 	} = options;
@@ -136,7 +150,11 @@ function computeEnvironment(options: N8NInstancesOptions): Record<string, string
 		env.DB_TYPE = 'sqlite';
 	}
 
-	applyEngineEnv(env, { engine, isQueueMode });
+	// Before `applyEngineEnv`: it drops the values the engine URL is built from.
+	const engineEnvironment =
+		engine === 'container' ? engineContainerEnv(env, { projectName }) : undefined;
+
+	applyEngineEnv(env, { engine, isQueueMode, projectName });
 
 	if (isQueueMode) {
 		env.EXECUTIONS_MODE = 'queue';
@@ -157,10 +175,15 @@ function computeEnvironment(options: N8NInstancesOptions): Record<string, string
 		env.N8N_PORT = '5678';
 	}
 
-	return env;
+	if (engineEnvironment && env.WEBHOOK_URL) {
+		// The engine builds the same webhook URLs the main hands to nodes.
+		engineEnvironment.WEBHOOK_URL = env.WEBHOOK_URL;
+	}
+
+	return { environment: env, engineEnvironment };
 }
 
-type InstanceRole = 'main' | 'webhook' | 'worker';
+type InstanceRole = 'main' | 'webhook' | 'worker' | 'engine';
 
 interface InstanceConfig {
 	name: string;
@@ -195,6 +218,7 @@ const SERVICE_LABEL: Record<InstanceRole, string> = {
 	main: 'n8n-main',
 	webhook: 'n8n-webhook',
 	worker: 'n8n-worker',
+	engine: 'n8n-engine',
 };
 
 async function createContainer(
@@ -218,9 +242,14 @@ async function createContainer(
 		startupTimeoutMs,
 	} = shared;
 	const { consumer, throwWithLogs, getLogs } = createSilentLogConsumer();
+	// The engine serves no REST API; its health route lives on the engine port.
+	const readiness =
+		role === 'engine'
+			? { path: '/healthz', port: ENGINE_PORT }
+			: { path: '/healthz/readiness', port: N8N_READINESS_PORT };
 	const { strategy: waitStrategy, getLastBody: getLastReadinessBody } = createReadinessProbe(
-		'/healthz/readiness',
-		N8N_READINESS_PORT,
+		readiness.path,
+		readiness.port,
 		{
 			startupTimeoutMs: Math.min(
 				startupTimeoutMs ?? N8N_STARTUP_TIMEOUT_MS,
@@ -297,8 +326,8 @@ async function createContainer(
 	}
 
 	const ports: PortWithOptionalBinding[] = hostPort
-		? [{ container: N8N_READINESS_PORT, host: hostPort }]
-		: [N8N_READINESS_PORT];
+		? [{ container: readiness.port, host: hostPort }]
+		: [readiness.port];
 	if (role === 'worker') {
 		ports.push(5679);
 	}
@@ -309,6 +338,8 @@ async function createContainer(
 		container = container.withCommand(['worker']);
 	} else if (role === 'webhook') {
 		container = container.withCommand(['webhook']);
+	} else if (role === 'engine') {
+		container = container.withCommand(['engine']);
 	}
 
 	try {
@@ -353,10 +384,11 @@ export async function createN8NInstances(
 		userHomeHostDir,
 		user,
 		startupTimeoutMs,
+		engine,
 	} = options;
 
 	const log = createElapsedLogger('n8n-instances');
-	const environment = computeEnvironment(options);
+	const { environment, engineEnvironment } = computeEnvironment(options);
 	const containers: StartedTestContainer[] = [];
 	const diagnostics: N8NStartupDiagnostics = { attemptId, logs: {}, readinessPayloads: {} };
 
@@ -402,10 +434,24 @@ export async function createN8NInstances(
 		startupTimeoutMs,
 	};
 
+	const engineShared: SharedConfig = {
+		projectName,
+		environment: engineEnvironment ?? {},
+		network,
+		resourceQuota,
+		filesToMount,
+		registerContainer,
+		startupDeadline,
+		image,
+		user,
+		startupTimeoutMs,
+	};
+
 	const sharedByRole: Record<InstanceRole, SharedConfig> = {
 		main: mainShared,
 		webhook: webhookShared,
 		worker: workerShared,
+		engine: engineShared,
 	};
 
 	const instances: InstanceConfig[] = [
@@ -438,6 +484,16 @@ export async function createN8NInstances(
 				instanceNumber: i + 1,
 			}),
 		),
+		...(engine === 'container'
+			? [
+					{
+						name: engineHostname(projectName),
+						role: 'engine' as const,
+						instanceNumber: 1,
+						networkAlias: engineHostname(projectName),
+					},
+				]
+			: []),
 	];
 
 	if (instances.length === 0) {
