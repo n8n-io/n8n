@@ -262,6 +262,25 @@ label, or closing the PR, deletes the box.
 Only a PR from a branch in this repository is eligible: a codespace token is
 scoped to `n8n-io/n8n` and cannot check out a fork head.
 
+#### Live progress on the PR
+
+`up` and `refresh` take minutes, and an absent comment looks the same as a broken
+preview. So the comment goes up before the box work starts, as a checklist of the
+phases in `scripts/preview-phases.mjs`, and is edited for each phase and once a
+minute after that. The final URL replaces it in place.
+
+A comment **edit sends no notification** — only a create does. That is what makes a
+heartbeat on a sticky comment acceptable at all.
+
+A `refresh` keeps the URL of the previous run in the checklist. The URL does not
+change between runs, and taking a working link off the PR for several minutes is
+worse than saying it is briefly down.
+
+A cancelled job — including the 45-minute `timeout-minutes` — kills the script while
+its checklist is up, so a last `if: cancelled()` step writes the outcome instead. It
+writes **only over a checklist**: a run cancelled while it was queued never started
+work, and must leave the previous run's URL alone.
+
 #### Running it by hand
 
 A box sleeps after 2 hours of no use, and GitHub makes every forwarded port
@@ -295,9 +314,11 @@ The vocabulary lives in `scripts/preview-labels.mjs`, which both ends import:
 `preview.mjs` turns the PR's labels into slugs, and `preview-serve.mjs` turns
 those slugs into environment inside the box. Add a toggle there, in one place.
 
-Only slugs cross the gap. The `gh codespace ssh` command is a shell string that
-appears in the box's process list, so a value is never passed through it —
-`preview:enterprise` resolves to a licence key inside the box, not on the runner.
+Two things cross the gap, and both are shape-checked rather than trusted: a
+`preview:*` slug, and a phase key from `scripts/preview-phases.mjs`. The `gh
+codespace ssh` command is a shell string that appears in the box's process list, so
+a value is never passed through it — `preview:enterprise` resolves to a licence key
+inside the box, not on the runner.
 
 `preview:enterprise` needs a **Codespaces** secret named
 `N8N_LICENSE_ACTIVATION_KEY`, scoped to `n8n-io/n8n`. That is a Codespaces
@@ -596,18 +617,21 @@ Push to master/1.x
 
 ## v3 development (master + 3.x)
 
+The sync runs automation code from the triggering `master` SHA while its working checkout
+stays on `3.x`.
+
 During the v3 release window, `master` carries normal feature work (behind opt-in
 flags) and the long-lived `3.x` branch carries breaking changes. `util-sync-master-to-3x.yml`
 syncs daily by **replaying the `3.x`-only commits onto `master` and force-pushing `3.x`**, so a
 clean sync adds no commit and nothing is squashed. What it pushes is always verified to be
 exactly the tree a merge of `3.x` and `master` produces, and marker-free. Conflicts confined
-to mechanical, tool-generated files (the pnpm lockfile, bot-maintained data files — see
-`MECHANICAL_PATHS` in `sync-master-to-3x.mjs`) are auto-resolved during the replay; the tree
-check then applies to every path except those files. On a real code conflict `3.x` is left
-untouched and a draft PR carrying the conflict markers (labeled `automation:v3-sync`, with
-mechanical files pre-resolved) is opened on `sync/master-to-3x`, naming both ends of the
-conflict — the breaking-commit authors and the `master` commits that touched the same files
-— via `sync-conflict-owners.mjs`, posting to `#alerts-v3-sync` and pausing further syncs
+to non-lockfile mechanical files (bot-maintained data files — see `MECHANICAL_PATHS` in
+`sync-master-to-3x.mjs`) are auto-resolved during the replay. On a code or `pnpm-lock.yaml`
+conflict, `3.x` is left untouched and a draft PR carrying the conflict markers (labeled
+`automation:v3-sync`, with other mechanical files pre-resolved) is opened on
+`sync/master-to-3x`. The lockfile is always left for the resolver. The PR names both ends of
+the conflict — the breaking-commit authors and the `master` commits that touched the same
+files — via `sync-conflict-owners.mjs`, posts to `#alerts-v3-sync`, and pauses further syncs
 until it is resolved and merged normally. Delete/modify conflicts have no markers to carry,
 so they are resolved toward `3.x` and listed as an explicit decision in the PR body.
 `build-v3-nightly.yml` publishes `n8nio/n8n:v3-nightly[-<date>]` images from `3.x`
@@ -780,10 +804,13 @@ Scripts in `.github/scripts/`:
 | `codespace-preview.mjs`         | Map a `pull_request` event or a manual operation onto a preview operation, comment the result | `util-codespace-preview.yml` |
 | `../../scripts/preview.mjs`     | One codespace for each PR: `up`, `refresh`, `down`, `ls`. `--json` for CI | `codespace-preview.mjs`, developers |
 | `../../scripts/preview-remote-env.mjs` | Fetch extra environment for a preview from the webhook, inside the box | `../../scripts/preview-serve.mjs` |
+| `../../scripts/preview-phases.mjs` | The phase vocabulary and its one-line marker, so the runner, the box and the comment cannot drift | `codespace-preview.mjs`, `../../scripts/preview.mjs`, `../../scripts/preview-serve.mjs` |
 
 `scripts/preview.mjs` is also the developer entry point (`pnpm preview up <pr>`).
-In `--json` mode it prints one object on stdout and sends all progress to stderr,
-so a workflow can read the URL from a run that also streams an in-box build log.
+In `--json` mode stdout carries one line for each phase and then the report object,
+and all human progress goes to stderr. So a workflow can follow a run that also
+streams an in-box build log. The reader tells the two apart by the `url` field: the
+report has one, a phase line never does.
 
 ### Branch Replay Scripts
 

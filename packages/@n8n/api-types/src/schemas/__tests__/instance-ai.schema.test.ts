@@ -66,6 +66,36 @@ describe('Instance AI prompt version requests', () => {
 			);
 		}
 	});
+
+	it('accepts a thread artifact index and rejects an empty or oversized list', () => {
+		const base = { message: 'Change this', timeZone: 'UTC' };
+		expect(
+			InstanceAiSendMessageRequest.safeParse({
+				...base,
+				threadArtifacts: {
+					artifacts: [{ type: 'workflow', id: 'wf-1', name: 'WhatsApp FAQ Auto-Responder' }],
+					activeId: 'wf-1',
+				},
+			}).success,
+		).toBe(true);
+		expect(
+			InstanceAiSendMessageRequest.safeParse({
+				...base,
+				threadArtifacts: { artifacts: [] },
+			}).success,
+		).toBe(false);
+		expect(
+			InstanceAiSendMessageRequest.safeParse({
+				...base,
+				threadArtifacts: {
+					artifacts: Array.from({ length: 21 }, (_, index) => ({
+						type: 'workflow' as const,
+						id: `wf-${index}`,
+					})),
+				},
+			}).success,
+		).toBe(false);
+	});
 });
 
 describe('sandbox provider', () => {
@@ -175,6 +205,90 @@ describe('instanceAiEventSchema', () => {
 
 	it('keeps setup-items durable (not ephemeral) so snapshots survive refresh', () => {
 		expect(INSTANCE_AI_EPHEMERAL_EVENT_TYPES.has('setup-items')).toBe(false);
+	});
+
+	it('parses a preferences-applied event that names the rows the turn carried', () => {
+		const event = {
+			type: 'preferences-applied',
+			runId: 'run-1',
+			agentId: 'agent-1',
+			payload: {
+				preferences: [
+					{ id: 'pref-1', scope: 'user' },
+					{ id: 'pref-2', scope: 'project', projectId: 'p-1', projectName: 'Marketing' },
+				],
+				renderedLength: 240,
+				injectedThisTurn: true,
+			},
+		};
+
+		expect(instanceAiEventSchema.parse(event)).toEqual(event);
+	});
+
+	it('parses a turn that reused an earlier block, naming the run that sent it', () => {
+		const event = {
+			type: 'preferences-applied',
+			runId: 'run-2',
+			agentId: 'agent-1',
+			payload: {
+				preferences: [{ id: 'pref-1', scope: 'instance' }],
+				renderedLength: 240,
+				injectedThisTurn: false,
+				carriedFromRunId: 'run-1',
+			},
+		};
+
+		expect(instanceAiEventSchema.parse(event)).toEqual(event);
+	});
+
+	it('parses a reused block with no carrying run named', () => {
+		const event = {
+			type: 'preferences-applied',
+			runId: 'run-2',
+			agentId: 'agent-1',
+			payload: {
+				preferences: [{ id: 'pref-1', scope: 'instance' }],
+				renderedLength: 240,
+				injectedThisTurn: false,
+			},
+		};
+
+		expect(instanceAiEventSchema.parse(event)).toEqual(event);
+	});
+
+	it('parses an empty payload, which says the turn applied no preferences', () => {
+		const event = {
+			type: 'preferences-applied',
+			runId: 'run-1',
+			agentId: 'agent-1',
+			payload: { preferences: [], renderedLength: 0, injectedThisTurn: true },
+		};
+
+		expect(instanceAiEventSchema.parse(event)).toEqual(event);
+	});
+
+	it('refuses a turn that claims both a fresh injection and a carrying run', () => {
+		// The pair says the block was sent now and also comes from an earlier run. A client
+		// cannot discriminate on `injectedThisTurn` if both can be true at once.
+		const result = instanceAiEventSchema.safeParse({
+			type: 'preferences-applied',
+			runId: 'run-2',
+			agentId: 'agent-1',
+			payload: {
+				preferences: [{ id: 'pref-1', scope: 'user' }],
+				renderedLength: 240,
+				injectedThisTurn: true,
+				carriedFromRunId: 'run-1',
+			},
+		});
+
+		expect(result.success).toBe(false);
+	});
+
+	it('keeps preferences-applied durable, so a reload still reports the turn', () => {
+		// A live-only frame would leave the plus menu blank for every turn a client
+		// missed, and a week-old thread could never answer the question at all.
+		expect(INSTANCE_AI_EPHEMERAL_EVENT_TYPES.has('preferences-applied')).toBe(false);
 	});
 
 	it('drops malformed or unknown-kind items individually instead of failing the event', () => {

@@ -12,6 +12,7 @@ import {
 	extractSettledToolCalls,
 	formatMcpConnectionNote,
 	isEmptyModelTurn,
+	isReasoningOnlyStop,
 	makeErrorStream,
 	mergeUsage,
 	normalizeInput,
@@ -1021,7 +1022,7 @@ export class AgentRuntime {
 			this.assertNotAborted(abortScope);
 
 			lastFinishReason = turn.finishReason;
-			list.addResponse(turn.newMessages);
+			if (!isReasoningOnlyStop(turn)) list.addResponse(turn.newMessages);
 			// The turn is now in the list; drop any retained streamed text so a later
 			// abort's snapshot can't duplicate it (a stop before this point recovers it).
 			sink.onTurnFolded?.();

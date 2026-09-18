@@ -10,7 +10,7 @@ import {
 	watch,
 } from 'vue';
 import { storeToRefs } from 'pinia';
-import { N8nIconButton, N8nScrollArea } from '@n8n/design-system';
+import { N8nChatMessage, N8nIconButton, N8nScrollArea, N8nText } from '@n8n/design-system';
 import { useScroll } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 import type {
@@ -35,14 +35,17 @@ import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import { useCreditWarningBanner } from '../composables/useCreditWarningBanner';
 import {
 	clearPendingAgentAttachment,
+	clearPendingWorkflowAttachment as clearStashedWorkflowAttachment,
 	consumePendingDraftAttachment,
 	clearPendingComposerDraft,
 	clearPendingHandoffContext,
 	clearPendingThreadHandoff,
 	consumePendingFirstMessage,
+	consumePendingRedirectLanding,
 	getPendingAgentAttachment,
 	getPendingComposerDraft,
 	getPendingHandoffContext,
+	getPendingWorkflowAttachment,
 	stashPendingComposerDraft,
 	stashPendingFirstMessage,
 	stashPendingHandoffContext,
@@ -60,6 +63,8 @@ import InstanceAiMessage from './InstanceAiMessage.vue';
 import InstanceAiInput from './InstanceAiInput.vue';
 import InstanceAiQueuedMessages from './InstanceAiQueuedMessages.vue';
 import { INSTANCE_AI_MAX_QUEUED_MESSAGES } from '@n8n/api-types';
+import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
+import AttachmentPreview from './AttachmentPreview.vue';
 import InstanceAiStatusBar from './InstanceAiStatusBar.vue';
 import InstanceAiConfirmationPanel from './InstanceAiConfirmationPanel.vue';
 import WorkflowBuilderUnavailableNotice from './WorkflowBuilderUnavailableNotice.vue';
@@ -174,6 +179,19 @@ const composerContextChip = computed(() => {
 		};
 	}
 
+	const workflowAttachment = thread.pendingWorkflowAttachment;
+	if (workflowAttachment) {
+		return {
+			type: 'workflow-artifact' as const,
+			workflowId: workflowAttachment.id,
+			key: `pending-workflow:${workflowAttachment.id}`,
+			label:
+				workflowAttachment.name ?? i18n.baseText('instanceAi.workflowHandoff.untitledWorkflow'),
+			icon: 'workflow',
+			isPending: true,
+		};
+	}
+
 	if (pendingComposerContext.value?.source === 'agent-preview') {
 		return {
 			type: 'agent-preview-session' as const,
@@ -215,6 +233,22 @@ const composerContextChip = computed(() => {
 	}
 
 	return null;
+});
+
+const workflowHandoffGreeting = computed(() => {
+	const attachment = thread.pendingWorkflowAttachment;
+	if (!attachment || thread.isHydratingThread || thread.hasMessages) return null;
+	// Plain name: the pending attachment is registered as linkable, so the
+	// markdown renderer turns it into a resource chip.
+	const name = attachment.name ?? i18n.baseText('instanceAi.workflowHandoff.untitledWorkflow');
+	return i18n.baseText('instanceAi.workflowHandoff.greeting', {
+		interpolate: { workflow: name },
+	});
+});
+
+const workflowHandoffAttachment = computed(() => {
+	if (!workflowHandoffGreeting.value) return null;
+	return thread.pendingWorkflowAttachment;
 });
 
 // --- Scroll management ---
@@ -334,12 +368,19 @@ function loadQueuedMessagesQuietly(): void {
 	});
 }
 
-function reconnectThreadAfterHydration(): void {
+function restorePendingHandoffAttachments(): void {
 	const agentAttachment = getPendingAgentAttachment(thread.id);
 	if (agentAttachment) {
 		pendingAgentAttachment.value = agentAttachment;
 		emit('agent-attachment-restored', agentAttachment);
 	}
+	const workflowAttachment = getPendingWorkflowAttachment(thread.id);
+	if (workflowAttachment) {
+		thread.setPendingWorkflowAttachment(workflowAttachment);
+	}
+}
+
+function reconnectThreadAfterHydration(): void {
 	const draftAttachment = consumePendingDraftAttachment(thread.id);
 	if (draftAttachment) store.stageNodeSets(draftAttachment.workflowId, draftAttachment.sets);
 	void thread.loadHistoricalMessages().then(async (hydrationStatus) => {
@@ -369,7 +410,11 @@ function reconnectThreadAfterHydration(): void {
 					if (!store.threads.some((t) => t.id === thread.id)) return;
 					stashPendingFirstMessage(thread.id, pending);
 				});
-			// Experiment cleanup: remove with openWorkflowInAssistant.
+		}
+		// Experiment cleanup: remove with openWorkflowInAssistant. A stashed first
+		// message or a workflow-list auto marker is the one-shot landing signal.
+		const landedFromRedirect = consumePendingRedirectLanding(thread.id);
+		if (pending || landedFromRedirect) {
 			useOpenWorkflowInAssistantStore().handleRedirectLanding(thread.id);
 		}
 	});
@@ -384,6 +429,9 @@ async function syncThread() {
 	// submit cannot race past it while the thread list is still loading.
 	pendingComposerContext.value = getPendingHandoffContext(requestedThreadId);
 	pendingComposerDraft.value = getPendingComposerDraft(requestedThreadId);
+	// Apply editor hand-off attachments before any await so a first submit
+	// cannot race past them, including when SSE is already connected.
+	restorePendingHandoffAttachments();
 	// The history list is paginated, so an unknown id is resolved on its own
 	// rather than by loading the whole list.
 	if (!store.threads.some((t) => t.id === requestedThreadId)) {
@@ -513,9 +561,22 @@ async function handleSubmit(
 	const submittedGeneratedDraft = generatedComposerDraft.value;
 	const queuedAgentAttachment = pendingAgentAttachment.value;
 	const agentAttachment = currentAgentAttachment.value;
-	const submittedAttachments = agentAttachment
-		? [...(attachments ?? []), agentAttachment]
-		: attachments;
+	const queuedWorkflowAttachment = thread.pendingWorkflowAttachment;
+	// The queued hand-off resources ride the first real prompt. A workflow the
+	// composer already attached is not added twice.
+	const extraAttachments: InstanceAiAttachment[] = [];
+	if (agentAttachment) extraAttachments.push(agentAttachment);
+	if (
+		queuedWorkflowAttachment &&
+		!attachments?.some(
+			(attachment) =>
+				attachment.type === 'workflow' && attachment.id === queuedWorkflowAttachment.id,
+		)
+	) {
+		extraAttachments.push(queuedWorkflowAttachment);
+	}
+	const submittedAttachments =
+		extraAttachments.length > 0 ? [...(attachments ?? []), ...extraAttachments] : attachments;
 
 	const nodeCount = countAttachedNodes(attachments);
 
@@ -555,6 +616,16 @@ async function handleSubmit(
 			if (queuedAgentAttachment && pendingAgentAttachment.value === queuedAgentAttachment) {
 				clearPendingAgentAttachment(thread.id);
 				pendingAgentAttachment.value = null;
+			}
+			if (queuedWorkflowAttachment) {
+				// Clear the stash by id even if leaving the thread disposed the runtime
+				// (and its pending attachment) before this callback ran.
+				if (getPendingWorkflowAttachment(thread.id)?.id === queuedWorkflowAttachment.id) {
+					clearStashedWorkflowAttachment(thread.id);
+				}
+				if (thread.pendingWorkflowAttachment?.id === queuedWorkflowAttachment.id) {
+					thread.clearPendingWorkflowAttachment();
+				}
 			}
 		});
 }
@@ -639,6 +710,12 @@ async function dismissComposerContextChip() {
 		return;
 	}
 
+	if (composerContextChip.value.type === 'workflow-artifact') {
+		clearStashedWorkflowAttachment(thread.id);
+		thread.clearPendingWorkflowAttachment();
+		return;
+	}
+
 	if (composerContextChip.value.isPending) {
 		clearPendingComposerHandoff();
 		return;
@@ -675,6 +752,24 @@ defineExpose({
 		<N8nScrollArea as-child type="auto" :class="$style.scrollArea">
 			<div ref="scrollable" :class="$style.scrollContent">
 				<div :class="$style.messageList">
+					<!-- Mirrors the old empty opener: a user bubble with only the
+					     workflow chip, then the static assistant greeting. -->
+					<N8nChatMessage
+						v-if="workflowHandoffAttachment"
+						role="user"
+						data-test-id="instance-ai-workflow-handoff-attachment"
+					>
+						<AttachmentPreview :attachment="workflowHandoffAttachment" :is-removable="false" />
+					</N8nChatMessage>
+					<N8nChatMessage
+						v-if="workflowHandoffGreeting"
+						role="assistant"
+						data-test-id="instance-ai-workflow-handoff-greeting"
+					>
+						<N8nText size="large">
+							<InstanceAiMarkdown :content="workflowHandoffGreeting" />
+						</N8nText>
+					</N8nChatMessage>
 					<TransitionGroup name="message-slide">
 						<InstanceAiMessage
 							v-for="message in displayedMessages"
@@ -790,6 +885,12 @@ defineExpose({
 </template>
 
 <style lang="scss" module>
+@property --instance-ai-artifacts-layout-width {
+	syntax: '<length>';
+	inherits: true;
+	initial-value: 0;
+}
+
 .chatContent {
 	flex: 1;
 	min-width: 0;

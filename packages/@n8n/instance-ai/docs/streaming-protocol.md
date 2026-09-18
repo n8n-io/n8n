@@ -370,6 +370,30 @@ A transient status message. Empty string clears the indicator.
 {"type":"status","runId":"run_abc123","agentId":"agent-001","payload":{"message":"Searching nodes..."}}
 ```
 
+### `preferences-applied`
+
+Which saved AI preferences the turn carried. One frame for each turn, published after
+the service renders the preferences block.
+
+The turn is the only place that knows this. `GET /rest/ai-preferences` lists every row
+the user can see, which answers a different question: the turn reads the bound project
+rather than every project, the read is best effort, the feature flag can be off, and a
+row can change between the turn and the moment somebody looks. The chat and the plus
+menu read this frame instead of deriving an answer of their own.
+
+An empty `preferences` array says that the turn applied none. No frame at all says that
+the code path did not run.
+
+`injectedThisTurn` is false when the block text has not changed, so the turn sent no new
+block. The thread history travels with every request, so an earlier block still reaches
+the model, and `carriedFromRunId` names the run that sent it.
+
+CONTEXT-137 defines the event. CONTEXT-139 publishes it.
+
+```json
+{"type":"preferences-applied","runId":"run_abc123","agentId":"agent-001","payload":{"preferences":[{"id":"9f1c…","scope":"user"},{"id":"3c7a…","scope":"project","projectId":"pr_1","projectName":"Marketing"}],"renderedLength":1240,"injectedThisTurn":true}}
+```
+
 ### `thread-title-updated`
 
 The thread title has been updated (e.g., auto-generated from conversation).
@@ -745,6 +769,7 @@ creating duplicate messages.
 | `status` | `message` | Transient status indicator |
 | `error` | `content`, `statusCode?`, `provider?` | System-level error |
 | `thread-title-updated` | `title` | Thread title changed |
+| `preferences-applied` | `preferences`, `renderedLength`, `injectedThisTurn`, `carriedFromRunId?` | Which saved preferences the turn carried |
 | `filesystem-request` | `requestId`, `toolCall` | Local gateway MCP tool request (internal) |
 | `tool-input-start` | `toolCallId`, `toolName` | Tool arguments began streaming |
 | `text-block` | `text` (`responseId` is on the event) | Completed text segment, coalesced |

@@ -120,6 +120,7 @@
     "n8n-containers": "workspace:*",
     "nock": "catalog:",
     "openai": "catalog:",
+    "openapi-types": "catalog:",
     "oxlint": "catalog:",
     "oxlint-tsgolint": "catalog:",
     "supertest": "^7.1.1",

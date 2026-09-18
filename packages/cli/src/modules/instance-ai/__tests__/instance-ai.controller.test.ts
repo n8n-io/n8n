@@ -213,6 +213,38 @@ describe('InstanceAiController', () => {
 				payload.mode,
 				payload.promptVersion,
 				payload.computerUseChannels,
+				payload.threadArtifacts,
+			);
+		});
+
+		it('should forward thread artifacts to startRun', async () => {
+			const payloadWithArtifacts = mock<InstanceAiSendMessageRequest>({
+				message: 'Change this',
+				timeZone: 'UTC',
+				attachments: undefined,
+				threadArtifacts: {
+					artifacts: [{ type: 'workflow', id: 'wf-1', name: 'WhatsApp FAQ Auto-Responder' }],
+					activeId: 'wf-1',
+				},
+			});
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			instanceAiService.hasActiveRun.mockReturnValue(false);
+			instanceAiService.startRun.mockReturnValue('run-6');
+
+			await controller.chat(req, res, THREAD_ID, payloadWithArtifacts);
+
+			expect(instanceAiService.startRun).toHaveBeenCalledWith(
+				req.user,
+				THREAD_ID,
+				payloadWithArtifacts.message,
+				payloadWithArtifacts.attachments,
+				payloadWithArtifacts.context,
+				payloadWithArtifacts.timeZone,
+				payloadWithArtifacts.pushRef,
+				payloadWithArtifacts.mode,
+				payloadWithArtifacts.promptVersion,
+				payloadWithArtifacts.computerUseChannels,
+				payloadWithArtifacts.threadArtifacts,
 			);
 		});
 
@@ -250,6 +282,7 @@ describe('InstanceAiController', () => {
 				payloadWithPushRef.mode,
 				payloadWithPushRef.promptVersion,
 				payloadWithPushRef.computerUseChannels,
+				payloadWithPushRef.threadArtifacts,
 			);
 		});
 
@@ -278,6 +311,7 @@ describe('InstanceAiController', () => {
 				'progressive',
 				'progressive@1',
 				payloadWithMode.computerUseChannels,
+				payloadWithMode.threadArtifacts,
 			);
 		});
 
@@ -313,6 +347,7 @@ describe('InstanceAiController', () => {
 				payloadWithContext.mode,
 				payloadWithContext.promptVersion,
 				payloadWithContext.computerUseChannels,
+				payloadWithContext.threadArtifacts,
 			);
 		});
 
@@ -414,6 +449,7 @@ describe('InstanceAiController', () => {
 				nodesPayload.mode,
 				nodesPayload.promptVersion,
 				nodesPayload.computerUseChannels,
+				nodesPayload.threadArtifacts,
 			);
 		});
 

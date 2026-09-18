@@ -79,6 +79,10 @@ the Actions tab: give it a PR number and `up`, `refresh` or `down`.
 `pnpm preview refresh <pr>`, `pnpm preview down <pr>` and `pnpm preview ls`. It
 needs `gh` with the codespace scope, the same as `pnpm session`.
 
+- **Watch it come up on the PR.** The comment appears before the box work starts
+  and updates about once a minute with a checklist of the phases, so you can see
+  which step a slow preview is on. `pnpm preview up <pr>` prints the same phases as
+  plain progress — the markers the comment reads are `--json` only.
 - **Sign in with one click** at `<url>/preview-signin`. It logs you in as the
   seeded owner and sends you to the editor. The credentials are
   `preview@n8n.io` / `PreviewInstance1`. They are not secrets: the boundary is

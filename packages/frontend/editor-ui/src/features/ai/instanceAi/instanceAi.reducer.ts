@@ -336,8 +336,11 @@ export function handleEvent(state: InstanceAiReducerState, event: InstanceAiEven
 			return state.activeRunId;
 		}
 
+		// `preferences-applied` names the saved preferences the turn carried. A later
+		// ticket renders it from the event log. It changes no run state.
 		case 'filesystem-request':
 		case 'thread-title-updated':
+		case 'preferences-applied':
 			return state.activeRunId;
 
 		case 'run-finish': {
