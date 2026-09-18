@@ -14,7 +14,7 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 import { assertJsonContentType } from '@/public-api/public-api-media-type';
 import {
 	apiKeyScopesSatisfy,
-	isDtoArg,
+	findBodyArg,
 	isRequestBodyRequired,
 	resolveRouteArgs,
 	resolveSuccessStatus,
@@ -68,8 +68,9 @@ export class PublicApiControllerRegistry {
 				route.successStatus,
 			);
 
-			const bodyDto = resolvedArgs.find((arg) => isDtoArg(arg, 'body'))?.dto;
-			const bodyRequired = bodyDto ? isRequestBodyRequired(bodyDto) : false;
+			const bodyArg = findBodyArg(resolvedArgs);
+			const bodyDto = bodyArg?.dto;
+			const bodyRequired = bodyDto ? (bodyArg?.required ?? isRequestBodyRequired(bodyDto)) : false;
 
 			const handler = async (req: Request, res: Response) => {
 				if (bodyDto) assertJsonContentType(req.headers['content-type'], bodyRequired);
