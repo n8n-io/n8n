@@ -716,11 +716,7 @@ describe('expectation judging context', () => {
 });
 
 describe('credential-setup check wiring', () => {
-	// This file has no global mock reset; without it the second test counts the
-	// first test's call.
-	beforeEach(() => {
-		vi.mocked(runCredentialSetupChecks).mockClear();
-	});
+	// Call counts between tests are reset by the file-level afterEach.
 
 	const SECRET = 'sk-ant-api03-LEAKED-abcdefghijklmnop';
 

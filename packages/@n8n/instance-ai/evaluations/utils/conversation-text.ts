@@ -115,15 +115,24 @@ function numberOr0(value: unknown): number {
  *  out here, not at the individual tool-call/message level. `inputTokens`/`promptTokens`
  *  naming varies by SDK version, matching `parseUsageSummary`'s own fallback; cache
  *  fields nest under `inputTokenDetails` per the AI SDK's `LanguageModelUsage` shape. */
-export function usageTokens(usage: unknown): UsageTokens {
+export function usageTokens(usage: unknown, providerMetadata?: unknown): UsageTokens {
 	if (!isRecord(usage)) return { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
 	const details = isRecord(usage.inputTokenDetails) ? usage.inputTokenDetails : undefined;
+	const cacheRead = numberOr0(details?.cacheReadTokens);
+	const cacheWrite = numberOr0(details?.cacheWriteTokens);
 	return {
 		input: numberOr0(usage.inputTokens ?? usage.promptTokens),
 		output: numberOr0(usage.outputTokens ?? usage.completionTokens),
-		cacheRead: numberOr0(details?.cacheReadTokens),
-		cacheWrite: numberOr0(details?.cacheWriteTokens),
+		// OpenAI reports cache hits only in provider metadata — the same fallback
+		// the runtime's `toTokenUsage` applies.
+		cacheRead: cacheRead || cacheWrite ? cacheRead : openAiCachedPromptTokens(providerMetadata),
+		cacheWrite,
 	};
+}
+
+function openAiCachedPromptTokens(providerMetadata: unknown): number {
+	if (!isRecord(providerMetadata) || !isRecord(providerMetadata.openai)) return 0;
+	return numberOr0(providerMetadata.openai.cachedPromptTokens);
 }
 
 /** A run's usage plus its step count — totals sum ACROSS steps, so without the count
@@ -136,7 +145,7 @@ function usageByRunId(runDebug: InstanceAiRunDebugResponse[] | undefined): Map<s
 	for (const run of runDebug ?? []) {
 		const total: RunUsage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, steps: 0 };
 		for (const step of run.steps) {
-			const usage = usageTokens(step.output?.usage);
+			const usage = usageTokens(step.output?.usage, step.output?.providerMetadata);
 			total.input += usage.input;
 			total.output += usage.output;
 			total.cacheRead += usage.cacheRead;

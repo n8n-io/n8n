@@ -163,7 +163,7 @@ function tokenUsageTotals(runDebug: InstanceAiRunDebugResponse[] | undefined): s
 	let stepCount = 0;
 	for (const run of runDebug) {
 		for (const step of run.steps) {
-			const usage = usageTokens(step.output?.usage);
+			const usage = usageTokens(step.output?.usage, step.output?.providerMetadata);
 			input += usage.input;
 			output += usage.output;
 			cacheRead += usage.cacheRead;

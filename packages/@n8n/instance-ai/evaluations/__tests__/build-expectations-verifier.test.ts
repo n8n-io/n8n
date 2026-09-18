@@ -202,6 +202,35 @@ describe('verifyBuildExpectations', () => {
 		expect(sentMessages).toContain('Opening step: 100 input tokens on the first LLM call');
 	});
 
+	it('counts OpenAI cache hits reported only through provider metadata', async () => {
+		const generate: GenerateMock = vi.fn<GenerateFn>().mockResolvedValue({
+			structuredOutput: { results: [{ index: 0, pass: true, reason: 'ok' }] },
+		});
+		mockJudge(generate);
+
+		const runDebug: InstanceAiRunDebugResponse[] = [
+			{
+				threadId: 't1',
+				runId: 'run-1',
+				startedAt: 0,
+				workflowCode: [],
+				steps: [
+					{
+						stepNumber: 0,
+						output: {
+							usage: { inputTokens: 100, outputTokens: 20 },
+							providerMetadata: { openai: { cachedPromptTokens: 80 } },
+						},
+					},
+				],
+			},
+		];
+		await verifyBuildExpectations(['expectation zero'], { transcript: TRANSCRIPT, runDebug });
+
+		const sentMessages = JSON.stringify(generate.mock.calls[0]?.[0]);
+		expect(sentMessages).toContain('Cache: 80 tokens read / 0 tokens written');
+	});
+
 	it('sums cache read/write tokens across steps, from the nested inputTokenDetails shape', async () => {
 		const generate: GenerateMock = vi.fn<GenerateFn>().mockResolvedValue({
 			structuredOutput: { results: [{ index: 0, pass: true, reason: 'ok' }] },

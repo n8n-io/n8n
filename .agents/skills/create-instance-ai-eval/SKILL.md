@@ -155,11 +155,13 @@ case can still assert outcome), but the primary shape drives the work.
 **Build** is documented in full below. The other four, the director-script
 vocabulary, and the seeding modes are in [`case-shapes.md`](case-shapes.md).
 
-The judge also sees **token ground truth** for every case: per-turn input and
-output tokens inline in each transcript turn header, a build-wide total, a
-cache read/write split, and the opening step's fixed overhead. So an expectation
+The judge also sees **token ground truth** for workflow-build cases: per-turn
+input and output tokens inline in each transcript turn header, a build-wide
+total, a cache read/write split, and the opening step's cost. So an expectation
 may reference cost or consumption directly ("does not re-read the same node's
-schema in turn 2"). Those numbers come from run-debug snapshots, so they need
+schema in turn 2"). The numbers cover the orchestrator's own LLM steps only. A
+delegated Agent build runs in a sub-agent whose steps are not in the snapshot,
+so do not write cost expectations on an Agent case. Those numbers come from run-debug snapshots, so they need
 `N8N_INSTANCE_AI_RUN_DEBUG_ENABLED=true` on the instance under test; without it
 the judge reads `(no run debug captured)` and cost expectations are ungradeable.
 

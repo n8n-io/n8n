@@ -10,6 +10,7 @@ import {
 	perTurnToolCallCounts,
 	transcriptAsText,
 	userTurnsAsText,
+	usageTokens,
 } from '../utils/conversation-text';
 
 describe('userTurnsAsText', () => {
@@ -402,5 +403,34 @@ describe('lastAgentText', () => {
 		expect(text).toContain('SO WHICH ONE SHOULD I BUILD?');
 		expect(text).toContain('more chars');
 		expect(text.length).toBeLessThan(answer.length + 6000);
+	});
+});
+
+describe('usageTokens', () => {
+	it('reads cache tokens from the AI SDK details when present', () => {
+		expect(
+			usageTokens({
+				inputTokens: 100,
+				outputTokens: 5,
+				inputTokenDetails: { cacheReadTokens: 80, cacheWriteTokens: 10 },
+			}),
+		).toEqual({ input: 100, output: 5, cacheRead: 80, cacheWrite: 10 });
+	});
+
+	it("falls back to OpenAI's cachedPromptTokens, the way toTokenUsage does", () => {
+		// OpenAI reports cache hits only through provider metadata; without this the
+		// judge reads "0 tokens read" on a run that cached most of its prompt.
+		expect(
+			usageTokens({ inputTokens: 100, outputTokens: 5 }, { openai: { cachedPromptTokens: 80 } }),
+		).toEqual({ input: 100, output: 5, cacheRead: 80, cacheWrite: 0 });
+	});
+
+	it('prefers the SDK details over the provider fallback', () => {
+		expect(
+			usageTokens(
+				{ inputTokens: 100, outputTokens: 5, inputTokenDetails: { cacheReadTokens: 30 } },
+				{ openai: { cachedPromptTokens: 80 } },
+			).cacheRead,
+		).toBe(30);
 	});
 });
