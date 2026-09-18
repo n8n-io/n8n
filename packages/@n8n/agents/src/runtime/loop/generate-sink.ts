@@ -9,6 +9,7 @@ import type {
 import { classifyModelTurnError } from './runtime-helpers';
 import type { GenerateResult } from '../../types';
 import type { ToolResultEntry } from '../../types/sdk/agent';
+import { isAttachmentValidationError } from '../model/attachment-validation-error';
 import { loadAi } from '../model/lazy-ai';
 import { fromAiFinishReason, fromAiMessages } from '../model/messages';
 import { toTokenUsage } from '../streaming/stream';
@@ -42,7 +43,7 @@ export class GenerateSink implements RunOutputSink<GenerateResult> {
 			...(ctx.maxOutputTokens !== undefined ? { maxOutputTokens: ctx.maxOutputTokens } : {}),
 			...ctx.aiSdkOptions,
 		}).catch(async (error: unknown) => {
-			await ctx.onInputRejected?.(error);
+			if (isAttachmentValidationError(error)) await ctx.onInputRejected?.(error);
 			throw error;
 		});
 

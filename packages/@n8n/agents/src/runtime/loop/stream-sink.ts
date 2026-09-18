@@ -192,12 +192,12 @@ export class StreamSink implements RunOutputSink<void> {
 			// fetch (releasing the socket the 1h network timeout would otherwise
 			// hold) without touching the run-level signal.
 			const turnAbort = new AbortController();
-			const attemptState = { streamedContent: false, modelActivity: false };
+			const attemptState = { streamedContent: false };
 			try {
 				return await this.streamModelTurn(ctx, turnAbort, { idleMs, firstOutputMs }, attemptState);
 			} catch (error) {
 				if (isAttachmentValidationError(error)) {
-					if (!attemptState.modelActivity) await ctx.onInputRejected?.(error);
+					if (!attemptState.streamedContent) await ctx.onInputRejected?.(error);
 					throw error;
 				}
 				// A stalled or empty stream before any content is invisible to the user
@@ -223,7 +223,7 @@ export class StreamSink implements RunOutputSink<void> {
 		ctx: ModelCallContext,
 		turnAbort: AbortController,
 		deadlines: { idleMs: number; firstOutputMs: number },
-		attemptState: { streamedContent: boolean; modelActivity: boolean },
+		attemptState: { streamedContent: boolean },
 	): Promise<ModelTurnResult> {
 		const { idleMs, firstOutputMs } = deadlines;
 		const { NoOutputGeneratedError, streamText } = loadAi();
@@ -304,9 +304,6 @@ export class StreamSink implements RunOutputSink<void> {
 			// Anything beyond transport bookkeeping counts as content: once seen,
 			// a stalled attempt is no longer silently retryable (see callModel).
 			if (!STALL_RETRY_SAFE_CHUNK_TYPES.has(chunk.type)) attemptState.streamedContent = true;
-			if (chunk.type !== 'error' && !STALL_RETRY_SAFE_CHUNK_TYPES.has(chunk.type)) {
-				attemptState.modelActivity = true;
-			}
 			// Filter only the SDK's terminal `finish` chunk — the runtime emits its
 			// own consolidated `finish` after the loop completes. `start-step` /
 			// `finish-step` are passed through as LLM-iteration boundaries.

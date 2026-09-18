@@ -28,19 +28,9 @@ const ATTACHMENT_ERROR_MESSAGES = [
 	/\bimage\.source\.[^\n]*media_type:[^\n]*Input should be /i,
 ];
 
-function parseErrorBody(body: unknown): unknown {
-	if (typeof body !== 'string') return undefined;
-	try {
-		const parsed: unknown = JSON.parse(body);
-		return parsed;
-	} catch {
-		return undefined;
-	}
-}
-
 function errorDetails(error: unknown): Array<Readonly<Record<string, unknown>>> {
 	return errorChain(error).flatMap((entry) =>
-		[entry, entry.data, parseErrorBody(entry.responseBody)]
+		[entry, entry.data]
 			.filter(isRecord)
 			.flatMap((detail) => (isRecord(detail.error) ? [detail, detail.error] : [detail])),
 	);

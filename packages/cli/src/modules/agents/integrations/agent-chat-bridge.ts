@@ -128,6 +128,18 @@ interface OpenSuspension {
 	suspendPayload?: unknown;
 }
 
+function errorText(error: unknown): string {
+	const rateLimitMessage = rateLimitMessageFromError(error);
+	if (rateLimitMessage !== undefined) return `⚠️ ${rateLimitMessage}`;
+	if (isAttachmentValidationError(error)) {
+		return '⚠️ The model rejected an attachment. Resend your message without attachments, or try a different file.';
+	}
+	if (error instanceof UserError) {
+		return `⚠️ This agent is misconfigured: ${error.message} An agent owner has to fix this in n8n.`;
+	}
+	return '⚠️ Something went wrong while processing your request. Please try again.';
+}
+
 /**
  * Bridges Chat SDK events to the agent execution pipeline.
  *
@@ -1017,8 +1029,6 @@ export class AgentChatBridge {
 		throwOnDeliveryError = false,
 	): Promise<void> {
 		const message = error instanceof Error ? error.message : 'An unexpected error occurred';
-		// Resolve a rate-limit message if the error is a rate-limit error, otherwise undefined.
-		const rateLimitMessage = rateLimitMessageFromError(error);
 		this.logger.error('[AgentChatBridge] Error in handler', {
 			agentId: this.agentId,
 			threadId: thread?.id,
@@ -1036,17 +1046,7 @@ export class AgentChatBridge {
 				);
 				return;
 			}
-			// A `UserError` is written for people and names the misconfiguration,
-			// which lets an agent owner fix it without reading server logs.
-			const text =
-				rateLimitMessage !== undefined
-					? `⚠️ ${rateLimitMessage}`
-					: isAttachmentValidationError(error)
-						? '⚠️ The model rejected an attachment. Resend your message without attachments, or try a different file.'
-						: error instanceof UserError
-							? `⚠️ This agent is misconfigured: ${error.message} An agent owner has to fix this in n8n.`
-							: '⚠️ Something went wrong while processing your request. Please try again.';
-			await thread.post(text);
+			await thread.post(errorText(error));
 		} catch (postError) {
 			this.logger.error('[AgentChatBridge] Failed to post error message', {
 				agentId: this.agentId,

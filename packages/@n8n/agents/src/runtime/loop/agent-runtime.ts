@@ -6,7 +6,7 @@ import type { z } from 'zod';
 import { incrementMessageCount, incrementTokenCountFromUsage } from './execution-counter';
 import { GenerateSink } from './generate-sink';
 import { hydrateFileParts } from './hydrate-file-parts';
-import type { RunOutputSink, RunServices } from './run-output-sink';
+import type { ModelCallContext, RunOutputSink, RunServices } from './run-output-sink';
 import { RuntimeContextBuilder } from './runtime-context';
 import {
 	extractSettledToolCalls,
@@ -60,7 +60,6 @@ import { createFilteredLogger } from '../logger';
 import { MemoryOrchestrator } from '../memory/memory-orchestrator';
 import type { ScopedMemoryTaskEvent } from '../memory/scoped-memory-task-runner';
 import { generateThreadTitle } from '../memory/title-generation';
-import { isAttachmentValidationError } from '../model/attachment-validation-error';
 import { AgentMessageList, type SerializedMessageList } from '../model/message-list';
 import { supportsSplitSystemMessages, type FetchFn } from '../model/model-factory';
 import { createModelTokenCounter } from '../model/model-token-counter';
@@ -944,7 +943,7 @@ export class AgentRuntime {
 				staticToolCacheName,
 			});
 
-			const modelCallContext = {
+			const modelCallContext: ModelCallContext = {
 				model: staticLoopContext.model,
 				system,
 				messages: cached.messages,
@@ -956,15 +955,14 @@ export class AgentRuntime {
 				outputSpec: staticLoopContext.outputSpec,
 				maxOutputTokens: staticLoopContext.maxOutputTokens,
 				aiSdkOptions: this.buildAiSdkOptions(toolMap, options),
-				...(canDiscardInput && iterationCount === 0
-					? {
-							onInputRejected: async (error: unknown) => {
-								if (abortScope.isAborted || !isAttachmentValidationError(error)) return;
+				onInputRejected:
+					canDiscardInput && iterationCount === 0
+						? async () => {
+								if (abortScope.isAborted) return;
 								await this.memory.discardRejectedInput(list, options);
 								this.updateState({ messageList: list.serialize() });
-							},
-						}
-					: {}),
+							}
+						: undefined,
 			};
 			let turn = await sink.callModel(modelCallContext);
 			delete modelCallContext.onInputRejected;

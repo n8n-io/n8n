@@ -25,7 +25,7 @@ describe('isAttachmentValidationError', () => {
 		expect(
 			isAttachmentValidationError({
 				statusCode: 400,
-				responseBody: JSON.stringify({ error: { code, message: 'Invalid request' } }),
+				data: { error: { code, message: 'Invalid request' } },
 			}),
 		).toBe(true);
 	});
