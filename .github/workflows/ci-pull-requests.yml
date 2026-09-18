@@ -156,6 +156,8 @@ jobs:
               packages/@n8n/node-engine-compatibility/**
               packages/@n8n/config/src/configs/engine.config.ts
               packages/cli/src/modules/engine-v2/**
+              packages/cli/src/commands/engine.ts
+              packages/cli/src/commands/base-command.ts
               packages/cli/src/services/engine-*
               packages/cli/src/executions/**
               packages/cli/src/webhooks/**
