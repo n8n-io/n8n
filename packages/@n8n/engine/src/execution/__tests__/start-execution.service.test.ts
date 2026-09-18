@@ -29,7 +29,6 @@ function makeStore(overrides: Partial<ExecutionStore> = {}): ExecutionStore {
 		loadExecution: vi.fn(),
 		transitionStatus: vi.fn().mockResolvedValue(true),
 		finishExecution: vi.fn().mockResolvedValue(true),
-		refreshLiveStatus: vi.fn(),
 		...overrides,
 	};
 }

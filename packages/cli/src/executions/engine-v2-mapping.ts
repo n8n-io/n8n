@@ -10,7 +10,6 @@ import {
 const V1_STATUS_BY_V2_STATUS = new Map<ExecutionStatus, ExecutionStatusV1>([
 	['queued', 'new'],
 	['running', 'running'],
-	['waiting', 'waiting'],
 	['completed', 'success'],
 	['failed', 'error'],
 	['cancelled', 'canceled'],

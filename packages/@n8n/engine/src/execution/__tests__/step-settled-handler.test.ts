@@ -65,7 +65,6 @@ function makeExecutionStore(
 		loadExecution: vi.fn().mockResolvedValue(execution),
 		transitionStatus: vi.fn().mockResolvedValue(true),
 		finishExecution: vi.fn().mockResolvedValue(true),
-		refreshLiveStatus: vi.fn(),
 		...storeOverrides,
 	};
 }
@@ -473,34 +472,6 @@ describe('StepSettledHandler', () => {
 		expect(stepStore.createSteps).not.toHaveBeenCalled();
 		expect(stepQueue.publish).not.toHaveBeenCalled();
 		expect(executionStore.finishExecution).not.toHaveBeenCalled();
-	});
-
-	it('reads the execution status off the steps again after every settlement', async () => {
-		// the settlement may have been what left only waiting steps behind, or what
-		// gave a waiting execution runnable work again
-		const stepStore = makeStepStore();
-		const { handler, executionStore } = makeHandler(stepStore);
-
-		await handler.handle(event);
-
-		expect(executionStore.refreshLiveStatus).toHaveBeenCalledExactlyOnceWith('exec-1');
-	});
-
-	it('plans successors for a waiting execution', async () => {
-		// a wait elsewhere does not end the execution, so this settlement still
-		// decides its own successors
-		const stepStore = makeStepStore();
-		const { handler, stepQueue } = makeHandler(stepStore, {
-			executionStore: makeExecutionStore({ status: 'waiting' }),
-		});
-
-		await handler.handle(event);
-
-		expect(stepStore.createSteps).toHaveBeenCalledExactlyOnceWith('exec-1', [
-			{ nodeId: 'b', iteration: 0, status: 'queued' },
-			{ nodeId: 'c', iteration: 0, status: 'queued' },
-		]);
-		expect(stepQueue.publish).toHaveBeenCalledTimes(2);
 	});
 
 	it('does not test for completion when it just queued work', async () => {

@@ -83,7 +83,6 @@ function makeExecutionStore(overrides: Partial<ExecutionRecord> = {}): Execution
 		loadExecution: vi.fn().mockResolvedValue(execution),
 		transitionStatus: vi.fn().mockResolvedValue(true),
 		finishExecution: vi.fn().mockResolvedValue(true),
-		refreshLiveStatus: vi.fn(),
 	};
 }
 
@@ -517,27 +516,6 @@ describe('StepReadyHandler', () => {
 		expect(queue.publish).not.toHaveBeenCalled();
 	});
 
-	it('runs the step when the execution is waiting', async () => {
-		// the step resumed, and the execution reads `waiting` until this run lands,
-		// so refusing here would strand the step it just claimed
-		const stepStore = makeStepStore();
-		const queue = makeQueue();
-		const executor = makeExecutor();
-		const handler = makeHandler(makeExecutionStore({ status: 'waiting' }), stepStore, queue, {
-			v1StepExecutor: executor,
-		});
-
-		await handler.handle(event);
-
-		expect(executor.execute).toHaveBeenCalledOnce();
-		expect(stepStore.completeStep).toHaveBeenCalledWith('step-a', [[{ json: { ok: true } }]]);
-		expect(queue.publish).toHaveBeenCalledExactlyOnceWith({
-			type: 'step:settled',
-			executionId: 'exec-1',
-			stepId: 'step-a',
-		});
-	});
-
 	it('does not report completion when the lifecycle event is not recorded', async () => {
 		const stepStore = makeStepStore({}, { completeStep: vi.fn().mockResolvedValue(false) });
 		const queue = makeQueue();
@@ -752,8 +730,7 @@ describe('StepReadyHandler waits', () => {
 	it('suspends the step and announces no settlement when the executor declares a wait', async () => {
 		const stepStore = makeStepStore();
 		const queue = makeQueue();
-		const executionStore = makeExecutionStore();
-		const handler = makeHandler(executionStore, stepStore, queue, {
+		const handler = makeHandler(makeExecutionStore(), stepStore, queue, {
 			v1StepExecutor: makeExecutor({ wait: timeWait }),
 		});
 
@@ -765,8 +742,6 @@ describe('StepReadyHandler waits', () => {
 		expect(stepStore.completeStep).not.toHaveBeenCalled();
 		expect(stepStore.failStep).not.toHaveBeenCalled();
 		expect(queue.publish).not.toHaveBeenCalled();
-		// the execution reports `waiting` once this was its last runnable step
-		expect(executionStore.refreshLiveStatus).toHaveBeenCalledExactlyOnceWith('exec-1');
 	});
 
 	it('suspends a wait that only a resume request ends', async () => {

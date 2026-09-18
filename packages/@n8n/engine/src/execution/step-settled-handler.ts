@@ -11,13 +11,7 @@ import type { ExecutionResponseSender } from '../response-channel';
 import type { OrchestrationMessage, StepMessage, StepSettledEvent, WorkQueue } from '../queue';
 import { countExpectedSettledSteps } from './completion';
 import type { ExecutionRecord, ExecutionStore } from './execution-store';
-import {
-	isLiveExecutionStatus,
-	isSettledStatus,
-	stepKeyId,
-	type StepKey,
-	type StepKeyId,
-} from './execution.types';
+import { isSettledStatus, stepKeyId, type StepKey, type StepKeyId } from './execution.types';
 import { exitSourcesInto, loadTerminalIterations } from './loop-ledger';
 import { decideSuccessors, decisionKeys } from './settlement';
 import type { StepRecord, StepStore } from './step-store';
@@ -59,9 +53,7 @@ export class StepSettledHandler {
 			return;
 		}
 
-		// A `waiting` execution is live, and this settlement may be what lets it
-		// move on, so only an ended one stops here.
-		if (!isLiveExecutionStatus(execution.status)) return;
+		if (execution.status !== 'running') return;
 
 		let queued = 0;
 		if (step.status === 'completed' || step.status === 'skipped') {
@@ -77,12 +69,9 @@ export class StepSettledHandler {
 
 		// If we've queued steps, we know the execution isn't done yet, so we
 		// definitely don't need to mark it finished.
-		if (queued === 0) await this.finishExecutionIfDone(execution, step, node);
+		if (queued > 0) return;
 
-		// The steps decide the execution's status, and this settlement changed
-		// one, so read it off them again. An execution this call just finished is
-		// no longer live, which leaves it alone.
-		await this.executionStore.refreshLiveStatus(execution.id);
+		await this.finishExecutionIfDone(execution, step, node);
 	}
 
 	private async failExecution(
