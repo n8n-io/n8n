@@ -1,0 +1,14 @@
+packages/@n8n/instance-ai/src/tools/__tests__/nodes.tool.test.ts
+  h_44f8d1c0f2f8c4 972
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "e38b96ea212ca2a1ddc5e1cf20a01b999c9cbd9d",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
