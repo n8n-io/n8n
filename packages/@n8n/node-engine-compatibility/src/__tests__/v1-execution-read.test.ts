@@ -57,15 +57,16 @@ describe('toV1RunExecutionData', () => {
 		['completed', 'success'],
 		['failed', 'error'],
 		['running', 'running'],
+		['waiting', 'waiting'],
 	])('maps step status %j to %j', (status, expected) => {
 		const data = toV1RunExecutionData(graph, [step({ status })]);
 
 		expect(data.resultData.runData.Trigger[0].executionStatus).toBe(expected);
 	});
 
-	// A cancelled step reports no run. `cancelPendingSteps` cancels a waiting step
-	// too, and that step did run, so this case also covers a run that the map
-	// hides. The status mapping work decides what the canvas shows for it.
+	// A cancelled step reports no run, but `cancelPendingSteps` cancels a waiting
+	// step too, and that step did run. TODO(CAT-2928): decide what the canvas
+	// shows for one.
 	it.each<StepStatus>(['queued', 'skipped', 'cancelled'])(
 		'reports no run for a %j step, the way v1 reports a node that did not run',
 		(status) => {
@@ -74,6 +75,25 @@ describe('toV1RunExecutionData', () => {
 			expect(data.resultData.runData).toEqual({});
 		},
 	);
+
+	it('reports a suspended step, and names it as the last node executed', async () => {
+		const data = toV1RunExecutionData(graph, [
+			step(),
+			step({
+				id: 'step-2',
+				nodeId: 's',
+				status: 'waiting',
+				outputs: null,
+				updatedAt: '2026-08-25T10:00:01.000Z',
+			}),
+		]);
+
+		expect(data.resultData.runData.Set[0].executionStatus).toBe('waiting');
+		// v1 carries the node's pass-through data here. The step has none until it
+		// resumes, and the read path is not given the declaration that holds it.
+		expect(data.resultData.runData.Set[0].data).toBeUndefined();
+		expect(data.resultData.lastNodeExecuted).toBe('Set');
+	});
 
 	it('takes timing from the row timestamps', () => {
 		const data = toV1RunExecutionData(graph, [step()]);
