@@ -215,12 +215,6 @@ describe('Worker', () => {
 				expect(worker.globalConfig.generic.gracefulShutdownTimeout).toBe(expected);
 			},
 		);
-
-		it('should start the per-instance system tasks', async () => {
-			await createWorkerForInit().init();
-
-			expect(systemTaskRunner.initPerInstance).toHaveBeenCalledTimes(1);
-		});
 	});
 
 	describe('stopProcess', () => {
@@ -324,6 +318,24 @@ describe('Worker', () => {
 			expect(mockWorkerServer.markAsReady).not.toHaveBeenCalled();
 			// The job processor is registered regardless of whether endpoints are enabled.
 			expect(mockScalingService.setupWorker).toHaveBeenCalledWith(10);
+		});
+
+		it('should start the per-instance system tasks once the server is up, and never the cluster ones', async () => {
+			Container.get(GlobalConfig).queue.health.active = true;
+
+			await createWorkerForRun().run();
+
+			expect(systemTaskRunner.initPerInstance).toHaveBeenCalledTimes(1);
+			expect(systemTaskRunner.initCluster).not.toHaveBeenCalled();
+			expect(mockWorkerServer.init.mock.invocationCallOrder[0]).toBeLessThan(
+				systemTaskRunner.initPerInstance.mock.invocationCallOrder[0],
+			);
+		});
+
+		it('should start the per-instance system tasks without a server', async () => {
+			await createWorkerForRun().run();
+
+			expect(systemTaskRunner.initPerInstance).toHaveBeenCalledTimes(1);
 		});
 	});
 });

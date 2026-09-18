@@ -31,7 +31,6 @@ import { CommunityPackagesService } from '@/modules/community-packages/community
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { PollJobProvider } from '@/scheduling/poll-trigger-node/poll-job-provider';
-import { SystemTaskRunner } from '@/scheduling/system-tasks/system-task-runner';
 import { JwtService } from '@/services/jwt.service';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { TaskRunnerModule } from '@/task-runners/task-runner-module';
@@ -79,7 +78,6 @@ communityPackagesService.init.mockResolvedValue(undefined);
 const taskRunnerModule = mockInstance(TaskRunnerModule);
 taskRunnerModule.start.mockResolvedValue(undefined);
 const pollJobProvider = mockInstance(PollJobProvider);
-const systemTaskRunner = mockInstance(SystemTaskRunner);
 
 const instanceSettings = Container.get(InstanceSettings);
 
@@ -143,7 +141,6 @@ describe('Start - AuthRolesService initialization', () => {
 			mockInstance(BinaryDataConfig, { initialize: vi.fn().mockResolvedValue(undefined) }),
 		);
 		Container.set(PollJobProvider, pollJobProvider);
-		Container.set(SystemTaskRunner, systemTaskRunner);
 
 		start = new Start();
 		// @ts-expect-error - Accessing protected property for testing

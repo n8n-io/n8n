@@ -21,6 +21,7 @@ import { resolveQueueName, resolveWorkerPoolName } from '@/scaling/queue-name';
 import type { ScalingService } from '@/scaling/scaling.service';
 import type { WorkerServer, WorkerServerEndpointsConfig } from '@/scaling/worker-server';
 import { WorkerStatusService } from '@/scaling/worker-status.service.ee';
+import { SystemTaskRunner } from '@/scheduling/system-tasks/system-task-runner';
 import { JwtService } from '@/services/jwt.service';
 
 import { BaseCommand } from './base-command';
@@ -49,8 +50,6 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 	override needsCommunityPackages = true;
 
 	override needsExpressionEngine = true;
-
-	override needsSystemTasks = true;
 
 	override needsTaskRunner = true;
 
@@ -227,6 +226,9 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 			workerServer = Container.get(WorkerServer);
 			await workerServer.init(endpointsConfig);
 		}
+
+		// After the server started, so the metrics collector is subscribed before the tasks are routed.
+		Container.get(SystemTaskRunner).initPerInstance();
 
 		// Register the job processor only after `init()` has fully completed,
 		// so that jobs cannot be pulled before all modules and their

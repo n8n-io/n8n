@@ -11,6 +11,7 @@ import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
+import { SystemTaskRunner } from '@/scheduling/system-tasks/system-task-runner';
 import { JwtService } from '@/services/jwt.service';
 import { WebhookServer } from '@/webhooks/webhook-server';
 
@@ -26,8 +27,6 @@ export class Webhook extends BaseCommand {
 	override needsCommunityPackages = true;
 
 	override needsExpressionEngine = true;
-
-	override needsSystemTasks = true;
 
 	override seedsInstanceIdentity = true;
 
@@ -106,6 +105,8 @@ export class Webhook extends BaseCommand {
 		const { ScalingService } = await import('@/scaling/scaling.service.js');
 		await Container.get(ScalingService).setupQueue();
 		await this.server.start();
+		// After the server started, so the metrics collector is subscribed before the tasks are routed.
+		Container.get(SystemTaskRunner).initPerInstance();
 		this.server.markAsReady();
 		this.logger.info('Webhook listener waiting for requests.');
 

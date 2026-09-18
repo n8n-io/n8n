@@ -46,7 +46,6 @@ import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
-import { SystemTaskRunner } from '@/scheduling/system-tasks/system-task-runner';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { resolveBackendHealthEndpointPath } from '@/utils/health-endpoint.util';
 import { WorkflowHistoryManager } from '@/workflows/workflow-history/workflow-history-manager';
@@ -94,13 +93,6 @@ export abstract class BaseCommand<F = never> {
 
 	/** Whether to init the expression engine. Only commands that evaluate workflow expressions need it. */
 	protected needsExpressionEngine = false;
-
-	/**
-	 * Whether the process is long-lived enough for a periodic system task to
-	 * reach its cadence. A short-lived command exits long before the first
-	 * occurrence, so it does not start the timers at all.
-	 */
-	protected needsSystemTasks = false;
 
 	/**
 	 * Whether to seed missing `instance.id` / `signing.hmac` deployment-key rows.
@@ -251,10 +243,6 @@ export abstract class BaseCommand<F = never> {
 
 		await Container.get(PostHogClient).init();
 		await Container.get(TelemetryEventRelay).init();
-
-		if (this.needsSystemTasks) {
-			Container.get(SystemTaskRunner).initPerInstance();
-		}
 
 		Container.get(ActivityEventRelay).init();
 		Container.get(WorkflowFailureNotificationEventRelay).init();
