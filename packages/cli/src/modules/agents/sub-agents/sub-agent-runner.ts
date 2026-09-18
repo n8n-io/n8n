@@ -211,6 +211,8 @@ export class SubAgentRunner {
 		const userMessage =
 			operation.type === 'run' ? renderDelegateSubAgentPrompt(operation.request) : null;
 		const recording: StartExecutionParams = {
+			// Saved parents supply access in the thread creation transaction.
+			access: { accessScope: context.parentAgentId ? 'user' : 'project', ownerId: null },
 			threadId,
 			agentId: runtimeSource.source.sourceId,
 			agentName: runtimeSource.source.config.name,

@@ -172,6 +172,25 @@ export class N8NCheckpointStorage {
 		return null;
 	}
 
+	async hasMatchingThreadResource(
+		agentId: string,
+		threadId: string,
+		resourceId: string,
+	): Promise<boolean> {
+		const rows = await this.agentCheckpointRepository.findRetainedByThreadId(threadId);
+		for (const row of rows) {
+			if (!row.state) continue;
+			const state = jsonParse<SerializableAgentState | null>(row.state, { fallbackValue: null });
+			if (
+				state?.persistence?.threadId === threadId &&
+				(row.agentId !== agentId || state.persistence.resourceId !== resourceId)
+			) {
+				return false;
+			}
+		}
+		return true;
+	}
+
 	private parseSuspendedState(
 		state: string | null,
 		threadId: string,

@@ -11,6 +11,7 @@ import { ErrorReporter, StorageConfig } from 'n8n-core';
 import { OperationalError, UnexpectedError } from 'n8n-workflow';
 
 import type { AgentRunTelemetryType, IAgentConfigurationTelemetryProperties } from '@/interfaces';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { Telemetry } from '@/telemetry';
 
 import {
@@ -18,11 +19,17 @@ import {
 	type StoredAttachmentRef,
 } from './agent-chat-attachment.service';
 import { AgentExecutionUpdateBroadcaster } from './agent-execution-update-broadcaster';
-import { AgentExecutionThread } from './entities/agent-execution-thread.entity';
+import {
+	AgentExecutionThread,
+	type AgentThreadAccess,
+} from './entities/agent-execution-thread.entity';
 import { AgentExecution, type AgentExecutionStatus } from './entities/agent-execution.entity';
 import type { MessageRecord, TimelineEvent } from './execution-recorder';
 import { AgentExecutionLogStore } from './execution-log/agent-execution-log-store';
 import { N8nMemory } from './integrations/n8n-memory';
+import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
+import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
+import { threadBelongsTo } from './utils/agent-thread-access';
 import { AgentExecutionThreadRepository } from './repositories/agent-execution-thread.repository';
 import type { AgentExecutionThreadMetadata } from './repositories/agent-execution-thread.repository';
 import {
@@ -64,6 +71,7 @@ export interface RecordMessageParams {
 }
 
 export interface StartExecutionParams extends Omit<RecordMessageParams, 'record' | 'hitlStatus'> {
+	access: AgentThreadAccess;
 	initialTimeline?: TimelineEvent[];
 }
 
@@ -80,7 +88,11 @@ export interface ThreadDetail {
 	executions: AgentExecution[];
 }
 
-export interface ThreadListItem extends Omit<AgentExecutionThread, 'generateId' | 'setUpdateDate'> {
+export interface ThreadListItem
+	extends Omit<
+		AgentExecutionThread,
+		'generateId' | 'setUpdateDate' | 'ownerId' | 'accessScope' | 'owner'
+	> {
 	firstMessage: string | null;
 	/** Earliest non-null execution source for the thread (e.g. slack, telegram). */
 	source: string | null;
@@ -119,6 +131,7 @@ export class AgentExecutionService {
 		private readonly storageConfig: StorageConfig,
 		private readonly errorReporter: ErrorReporter,
 		private readonly executionUpdateBroadcaster: AgentExecutionUpdateBroadcaster,
+		private readonly checkpointStorage: N8NCheckpointStorage,
 	) {}
 
 	async startExecutionRecording(params: StartExecutionParams, startedAt: Date): Promise<string> {
@@ -373,6 +386,7 @@ export class AgentExecutionService {
 			params.agentId,
 			params.agentName,
 			params.projectId,
+			params.access,
 			params.threadMetadata,
 			params.taskId,
 			params.taskVersionId,
@@ -508,14 +522,19 @@ export class AgentExecutionService {
 	 * cascades, so deleting the thread removes the runs in one statement.
 	 * Blob-stored timelines are deleted in parallel with the thread row.
 	 */
-	async deleteThread(projectId: string, agentId: string, threadId: string): Promise<boolean> {
+	async deleteThread(
+		projectId: string,
+		agentId: string,
+		threadId: string,
+		userId: string,
+	): Promise<boolean> {
 		// Verify ownership before deleting anything
 		const thread = await this.agentExecutionThreadRepository.findOneBy({
 			id: threadId,
 			projectId,
 			agentId,
 		});
-		if (!thread) return false;
+		if (!thread || !threadBelongsTo(thread, projectId, agentId, userId)) return false;
 
 		const blobRefs = this.toBlobRefs(
 			await this.agentExecutionRepository.findBlobRefsByThreadId(threadId),
@@ -560,6 +579,7 @@ export class AgentExecutionService {
 	async getThreads(
 		projectId: string,
 		agentId: string,
+		userId: string,
 		limit: number,
 		cursor?: string,
 		filters: AgentSessionQueryFilters = {},
@@ -567,6 +587,7 @@ export class AgentExecutionService {
 		const page = await this.agentExecutionThreadRepository.findByProjectIdPaginated(
 			projectId,
 			agentId,
+			userId,
 			limit,
 			cursor,
 			filters,
@@ -586,13 +607,15 @@ export class AgentExecutionService {
 
 		return {
 			...page,
-			threads: page.threads.map((t) => ({
-				...t,
-				firstMessage: messageMap.get(t.id) ?? null,
-				source: sourceMap.get(t.id) ?? null,
-				failureSummary: failureSummaryMap.get(t.id) ?? null,
-				status: toSessionStatus(latestStatusMap.get(t.id), failureSummaryMap.has(t.id)),
-			})),
+			threads: page.threads.map(
+				({ ownerId: _ownerId, accessScope: _accessScope, owner: _owner, ...t }) => ({
+					...t,
+					firstMessage: messageMap.get(t.id) ?? null,
+					source: sourceMap.get(t.id) ?? null,
+					failureSummary: failureSummaryMap.get(t.id) ?? null,
+					status: toSessionStatus(latestStatusMap.get(t.id), failureSummaryMap.has(t.id)),
+				}),
+			),
 		};
 	}
 
@@ -604,9 +627,13 @@ export class AgentExecutionService {
 		threadId: string,
 		projectId: string,
 		agentId: string,
+		userId: string,
 	): Promise<ThreadDetail | null> {
 		const thread = await this.agentExecutionThreadRepository.findOneBy({ id: threadId });
-		if (!thread || !threadBelongsTo(thread, projectId, agentId)) return null;
+		if (!thread) return null;
+		if (!threadBelongsTo(thread, projectId, agentId, userId)) {
+			throw new NotFoundError(`Thread "${threadId}" not found`);
+		}
 
 		const executions = await this.agentExecutionRepository.findByThreadIdOrdered(threadId);
 		await this.hydrateTimelines(agentId, threadId, executions);
@@ -665,6 +692,23 @@ export class AgentExecutionService {
 		return await this.agentExecutionThreadRepository.findOneBy({ id: threadId });
 	}
 
+	async canUsePreviewThread(
+		threadId: string,
+		projectId: string,
+		agentId: string,
+		userId: string,
+	): Promise<boolean> {
+		if (threadId.startsWith('test-') && threadId !== `test-${agentId}:${userId}`) return false;
+		const thread = await this.findThreadById(threadId);
+		if (thread) {
+			return thread.accessScope === 'user' && threadBelongsTo(thread, projectId, agentId, userId);
+		}
+		const resourceId = draftChatMemoryResourceId(userId);
+		const memory = await this.n8nMemory.getImplementation(agentId).getThread(threadId);
+		if (memory && memory.resourceId !== resourceId) return false;
+		return await this.checkpointStorage.hasMatchingThreadResource(agentId, threadId, resourceId);
+	}
+
 	/** Narrow refs to those whose data lives in a blob store, i.e. all but `db`. */
 	private toBlobRefs<T extends { storedAt: AgentExecution['storedAt'] }>(refs: T[]) {
 		return refs.filter((r): r is T & { storedAt: StorageLocation } => r.storedAt !== 'db');
@@ -693,19 +737,4 @@ function executionStatus(record: MessageRecord): AgentExecution['status'] {
 	if (record.error !== null || record.finishReason === 'error') return 'error';
 	if (record.finishReason === 'cancelled') return 'cancelled';
 	return 'success';
-}
-
-/**
- * True if `thread` belongs to the given project and agent.
- * Returns false for threads from a different project/agent so the caller can
- * reject the request instead of leaking/modifying unrelated thread data.
- */
-export function threadBelongsTo(
-	thread: AgentExecutionThread,
-	projectId: string,
-	agentId: string,
-): boolean {
-	if (thread.projectId !== projectId) return false;
-	if (thread.agentId !== agentId) return false;
-	return true;
 }
