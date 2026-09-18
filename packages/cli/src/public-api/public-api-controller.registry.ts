@@ -25,10 +25,7 @@ import {
 	resolveSuccessStatus,
 } from '@/public-api/public-api-route-resolver';
 import { formatValidationError } from '@/public-api/public-api-validation-error';
-import {
-	deprecated,
-	USER_QUOTA_FORBIDDEN_MESSAGE,
-} from '@/public-api/v1/shared/middlewares/global.middleware';
+import { deprecated } from '@/public-api/v1/shared/middlewares/global.middleware';
 import { sendPublicApiErrorResponse } from '@/public-api/v1/public-api-error-response';
 import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
 import { LastActiveAtService } from '@/services/last-active-at.service';
