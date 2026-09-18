@@ -23,9 +23,9 @@ const MARKETPLACE_STAGING = join(
 process.env.CLAUDE_CODE_PLUGIN_PREFER_HTTPS = '1';
 process.env.CLAUDE_CODE_PLUGIN_KEEP_MARKETPLACE_ON_FAILURE = '1';
 
-function tryRun(label, cmd, args) {
+function tryRun(label, cmd, args, options = {}) {
 	try {
-		execFileSync(cmd, args, { stdio: 'inherit' });
+		execFileSync(cmd, args, { stdio: 'inherit', ...options });
 		return true;
 	} catch (error) {
 		console.error(`${label}: ${error.message}`);
@@ -72,10 +72,13 @@ if (failed.length > 0) {
 // worktrees. Nothing else runs in them at container start, so this is the moment to
 // drop the ones whose PR is merged or closed, or that idled for a week untouched.
 // Dirty trees, unpushed commits and open PRs are kept. Report: /tmp/post-start.log.
-const worktreesCleaned = tryRun('worktree cleanup', 'node', [
-	'/workspaces/n8n/scripts/worktree-clean.mjs',
-	'--yes',
-]);
+// Best effort with a deadline: a stalled git or gh call must not hold up the worker.
+const worktreesCleaned = tryRun(
+	'worktree cleanup',
+	'node',
+	['/workspaces/n8n/scripts/worktree-clean.mjs', '--yes'],
+	{ timeout: 120_000 },
+);
 
 let harness;
 try {
