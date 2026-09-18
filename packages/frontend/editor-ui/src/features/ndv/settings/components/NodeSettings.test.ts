@@ -15,6 +15,7 @@ import type { UseNdvAgentConfigReturn } from '@/features/ndv/agents/composables/
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	createWorkflowDocumentId,
@@ -112,6 +113,8 @@ interface RenderOptions {
 	provide?: Record<symbol, unknown>;
 	stubs?: Record<string, unknown>;
 	canvasOnly?: boolean;
+	props?: Record<string, unknown>;
+	restrictedNodeTypes?: string[];
 }
 
 const renderNodeSettings = (options: RenderOptions = {}) => {
@@ -122,6 +125,8 @@ const renderNodeSettings = (options: RenderOptions = {}) => {
 		provide = {},
 		stubs = {},
 		canvasOnly = false,
+		props = {},
+		restrictedNodeTypes = [],
 	} = options;
 	const pinia = createTestingPinia({ stubActions: false });
 	setActivePinia(pinia);
@@ -138,6 +143,12 @@ const renderNodeSettings = (options: RenderOptions = {}) => {
 	workflowDocumentStore.hydrate(workflow);
 	nodeTypesStore.setNodeTypes([nodeType]);
 	ndvStore.activeNodeName = node.name;
+	vi.spyOn(useTypeAvailabilityPoliciesStore(), 'getNodeTypeAvailability').mockImplementation(
+		(name) =>
+			restrictedNodeTypes.includes(name)
+				? { name, available: false, scope: 'instance' }
+				: { name, available: true },
+	);
 
 	if (runData) {
 		useWorkflowExecutionStateStore(createWorkflowDocumentId(workflow.id)).setWorkflowExecutionData({
@@ -194,6 +205,7 @@ const renderNodeSettings = (options: RenderOptions = {}) => {
 			foreignCredentials: [],
 			blockUI: false,
 			executable: false,
+			...props,
 		},
 	});
 
@@ -307,6 +319,32 @@ describe('NodeSettings', () => {
 
 			await findByTestId('tab-params');
 			expect(container.querySelector('agent-ndv-referenced-summary-stub')).toBeNull();
+		});
+	});
+
+	describe('restricted node type', () => {
+		const restricted = { restrictedNodeTypes: [httpNode.type], props: { readOnly: false } };
+
+		it('replaces the header and the parameters with the restricted panel', async () => {
+			const { findByTestId, queryByTestId } = renderNodeSettings({
+				...restricted,
+				props: { readOnly: false, executable: true },
+			});
+
+			expect(await findByTestId('node-restricted-panel')).toHaveTextContent(
+				"An administrator blocked 'HTTP Request' on this instance.",
+			);
+			expect(queryByTestId('node-parameters')).not.toBeInTheDocument();
+			expect(queryByTestId('tab-params')).not.toBeInTheDocument();
+			expect(queryByTestId('node-execute-button')).not.toBeInTheDocument();
+		});
+
+		it('re-emits the replace action with the node id', async () => {
+			const { findByTestId, emitted } = renderNodeSettings(restricted);
+
+			await fireEvent.click(await findByTestId('node-restricted-replace'));
+
+			expect(emitted('replaceNode')).toEqual([[httpNode.id]]);
 		});
 	});
 });
