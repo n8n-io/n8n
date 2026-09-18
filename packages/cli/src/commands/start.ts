@@ -43,6 +43,7 @@ import { Server } from '@/server';
 import { JwtService } from '@/services/jwt.service';
 import { ExecutionsPruningService } from '@/services/pruning/executions-pruning.service';
 import { WorkflowHistoryCompactionService } from '@/services/pruning/workflow-history-compaction.service';
+import { RoleCacheService } from '@/services/role-cache.service';
 import { UrlService } from '@/services/url.service';
 import { WorkflowStatisticsRollupService } from '@/services/workflow-statistics-rollup.service';
 import { WaitTracker } from '@/wait-tracker';
@@ -269,6 +270,9 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		// serializes concurrent callers to prevent duplicate-key crashes.
 		if (this.instanceSettings.instanceType === 'main') {
 			await Container.get(AuthRolesService).init();
+			// The sync can change role scopes (e.g. through settings or the canvas-only
+			// deny list). A Redis-backed cache outlives the restart, so drop the stale map.
+			await Container.get(RoleCacheService).invalidateCache();
 			this.logger.debug('Auth roles service init complete');
 
 			await this.initInstanceSettingsLoader();
