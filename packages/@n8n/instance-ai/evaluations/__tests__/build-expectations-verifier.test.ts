@@ -137,6 +137,8 @@ describe('verifyBuildExpectations', () => {
 		const metrics: ConversationMetrics = {
 			turnCount: 2,
 			perTurn: [],
+			staleStateConflictTotal: 0,
+			externalEdits: [],
 			confirmationAskedTotal: 0,
 			confirmationAskedByKind: {},
 			reachedRunFinishCleanly: true,

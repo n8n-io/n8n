@@ -2601,6 +2601,12 @@ describe('createBuildWorkflowTool', () => {
 		});
 		expect(outcome?.simulationFixtures).toEqual({ 'Get Berlin Weather': rainyOutput });
 		expect(outcome?.verificationPinData).toBeUndefined();
+		// Kept on the binding so get-as-code can re-emit it; the saved workflow has no copy.
+		await expect(getWorkflowSourceFileBinding(context, filePath)).resolves.toMatchObject({
+			declaredOutputFixtures: {
+				'Get Berlin Weather': { nodeType: 'n8n-nodes-base.httpRequest', items: rainyOutput },
+			},
+		});
 	});
 
 	it('warns when a chat-model node uses a provider without a stored credential while another LLM credential exists', async () => {

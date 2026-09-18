@@ -906,12 +906,15 @@ describe('mergeSeededConversationMetrics', () => {
 				confirmationAskedByKind: { questions: 2 },
 				replanAfterErrorCount: 0,
 				repeatQuestionCount: 0,
+				staleStateConflictCount: 0,
 				runFinishStatus: 'completed',
 			},
 		],
 		confirmationAskedTotal: 2,
 		confirmationAskedByKind: { questions: 2 },
 		reachedRunFinishCleanly: true,
+		staleStateConflictTotal: 0,
+		externalEdits: [],
 	};
 
 	it('prepends seeded turns, renumbers, sums aggregates, and preserves the live finish status', () => {
@@ -953,5 +956,134 @@ describe('mergeSeededConversationMetrics', () => {
 		expect(live.perTurn[0].turn).toBe(1);
 		expect(live.confirmationAskedByKind).toEqual({ questions: 2 });
 		expect(live.turnCount).toBe(1);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// buildConversationMetrics — stale-state conflicts and external edits
+// ---------------------------------------------------------------------------
+
+describe('buildConversationMetrics stale-state and external-edit facts', () => {
+	const runStart = (t: number): CapturedEvent => ({
+		timestamp: t,
+		type: 'run-start',
+		data: { type: 'run-start' },
+	});
+	const runFinish = (t: number): CapturedEvent => ({
+		timestamp: t,
+		type: 'run-finish',
+		data: { type: 'run-finish', payload: { status: 'completed' } },
+	});
+	const toolCall = (t: number, toolCallId: string, toolName: string): CapturedEvent => ({
+		timestamp: t,
+		type: 'tool-call',
+		data: { type: 'tool-call', payload: { toolCallId, toolName } },
+	});
+	const toolResult = (t: number, toolCallId: string, result: unknown): CapturedEvent => ({
+		timestamp: t,
+		type: 'tool-result',
+		data: { type: 'tool-result', payload: { toolCallId, result } },
+	});
+	const externalEdit = (t: number, payload: Record<string, unknown>): CapturedEvent => ({
+		timestamp: t,
+		type: 'eval-external-edit',
+		data: { type: 'eval-external-edit', payload },
+	});
+
+	it('counts a build-workflow save the instance rejected as modified externally', () => {
+		const events = [
+			runStart(1),
+			toolCall(2, 'c1', 'build-workflow'),
+			toolResult(3, 'c1', {
+				success: false,
+				errors: ['Workflow wf-1 was modified outside this conversation since the last save.'],
+				remediation: { reason: 'workflow_modified_externally' },
+			}),
+			toolCall(4, 'c2', 'build-workflow'),
+			toolResult(5, 'c2', { success: true, workflowId: 'wf-1' }),
+			runFinish(6),
+		];
+
+		const metrics = buildConversationMetrics(events);
+		expect(metrics.perTurn[0].staleStateConflictCount).toBe(1);
+		expect(metrics.staleStateConflictTotal).toBe(1);
+		expect(metrics.externalEdits).toEqual([]);
+	});
+
+	it('falls back to the error text when the remediation reason is absent', () => {
+		const events = [
+			runStart(1),
+			toolCall(2, 'c1', 'build-workflow'),
+			toolResult(3, 'c1', {
+				success: false,
+				errors: 'Workflow wf-1 was modified outside this conversation since the last save.',
+			}),
+			runFinish(4),
+		];
+		expect(buildConversationMetrics(events).staleStateConflictTotal).toBe(1);
+	});
+
+	it('does not count failed saves for other reasons or other tools', () => {
+		const events = [
+			runStart(1),
+			toolCall(2, 'c1', 'build-workflow'),
+			toolResult(3, 'c1', { success: false, errors: ['Type error in source'] }),
+			toolCall(4, 'c2', 'workflows'),
+			toolResult(5, 'c2', {
+				success: false,
+				remediation: { reason: 'workflow_modified_externally' },
+			}),
+			runFinish(6),
+		];
+		expect(buildConversationMetrics(events).staleStateConflictTotal).toBe(0);
+	});
+
+	it('records an external edit in the turn it followed, applied or not', () => {
+		const events = [
+			runStart(1),
+			runFinish(2),
+			externalEdit(3, {
+				kind: 'rename',
+				workflowId: 'wf-1',
+				from: 'Daily digest',
+				to: 'Daily digest (renamed in another tab)',
+				applied: true,
+			}),
+			runStart(4),
+			runFinish(5),
+			externalEdit(6, { kind: 'rename', to: 'Again', applied: false, reason: 'already named' }),
+		];
+
+		const metrics = buildConversationMetrics(events);
+		expect(metrics.externalEdits).toEqual([
+			{
+				turn: 1,
+				kind: 'rename',
+				workflowId: 'wf-1',
+				from: 'Daily digest',
+				to: 'Daily digest (renamed in another tab)',
+				applied: true,
+			},
+			{ turn: 2, kind: 'rename', to: 'Again', applied: false, reason: 'already named' },
+		]);
+	});
+
+	it('shifts external-edit turns past the seeded prefix when merging', () => {
+		const live = buildConversationMetrics([
+			runStart(1),
+			runFinish(2),
+			externalEdit(3, { kind: 'rename', workflowId: 'wf-1', to: 'New', applied: true }),
+		]);
+		const seeded: TranscriptTurn[] = [
+			{ userMessage: 'build it', steps: [] },
+			{ userMessage: 'tweak it', steps: [] },
+		];
+
+		const merged = mergeSeededConversationMetrics(seeded, live);
+		expect(merged.externalEdits).toEqual([
+			{ turn: 3, kind: 'rename', workflowId: 'wf-1', to: 'New', applied: true },
+		]);
+		expect(merged.staleStateConflictTotal).toBe(0);
+		expect(merged.perTurn.every((c) => c.staleStateConflictCount === 0)).toBe(true);
 	});
 });
