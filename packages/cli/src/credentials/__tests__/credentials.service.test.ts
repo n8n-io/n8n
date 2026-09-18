@@ -1599,6 +1599,36 @@ describe('CredentialsService', () => {
 			expect(credentialsRepository.updateInstanceCredential).not.toHaveBeenCalled();
 		});
 
+		it('gates the update on a policy clearance for the stored type, with no project', async () => {
+			vi.spyOn(service, 'prepareUpdateData').mockResolvedValue(preparedCredential);
+			credentialsRepository.updateInstanceCredential.mockResolvedValue(
+				mock<CredentialsEntity>({ id: 'instance-credential' }),
+			);
+
+			await service.updateInstanceCredential(ownerUser, 'instance-credential', payload, ctx);
+
+			expect(policyEnforcementService.enforceCredentialSave).toHaveBeenCalledExactlyOnceWith({
+				credential: { id: 'instance-credential', type: 'openAiApi' },
+				storedCredential: { id: 'instance-credential', type: 'openAiApi' },
+				projectId: null,
+			});
+		});
+
+		it('writes nothing when policy refuses the update', async () => {
+			vi.spyOn(service, 'prepareUpdateData').mockResolvedValue(preparedCredential);
+			policyEnforcementService.enforceCredentialSave.mockRejectedValue(
+				new PolicyViolationError([
+					{ kind: 'test', checkId: 'test', message: 'Blocked by the test policy' },
+				]),
+			);
+
+			await expect(
+				service.updateInstanceCredential(ownerUser, 'instance-credential', payload, ctx),
+			).rejects.toThrow(PolicyViolationError);
+
+			expect(credentialsRepository.updateInstanceCredential).not.toHaveBeenCalled();
+		});
+
 		it('runs the update hook unless the caller already ran it', async () => {
 			const encrypted = await service.createEncryptedData({
 				id: 'instance-credential',
@@ -1705,6 +1735,49 @@ describe('CredentialsService', () => {
 				}),
 			).rejects.toThrow(`Provider connection hooks cannot change the credential ${invariant}`);
 			expect(credentialsRepository.updateInstanceCredential).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('createInstanceCredential', () => {
+		const dto = {
+			name: 'Instance Credential',
+			type: 'apiKey',
+			data: { apiKey: 'valid' },
+			usageScope: 'instance' as const,
+		};
+
+		beforeEach(() => {
+			credentialsHelper.getCredentialsProperties.mockReturnValue([]);
+			credentialsRepository.create.mockImplementation((data) => data as CredentialsEntity);
+			credentialsRepository.saveInstanceCredential.mockImplementation(async (entity) => entity);
+		});
+
+		it('gates the create on a policy clearance for its type, with no project', async () => {
+			await service.createInstanceCredential(dto, ownerUser, {});
+
+			expect(policyEnforcementService.enforceCredentialSave).toHaveBeenCalledExactlyOnceWith({
+				credential: { id: null, type: 'apiKey' },
+				storedCredential: null,
+				projectId: null,
+			});
+			expect(credentialsRepository.saveInstanceCredential).toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'apiKey', usageScope: 'instance' }),
+				{ policyCleared: cleared },
+			);
+		});
+
+		it('writes nothing when policy refuses the create', async () => {
+			policyEnforcementService.enforceCredentialSave.mockRejectedValue(
+				new PolicyViolationError([
+					{ kind: 'test', checkId: 'test', message: 'Blocked by the test policy' },
+				]),
+			);
+
+			await expect(service.createInstanceCredential(dto, ownerUser, {})).rejects.toThrow(
+				PolicyViolationError,
+			);
+
+			expect(credentialsRepository.saveInstanceCredential).not.toHaveBeenCalled();
 		});
 	});
 
@@ -3263,6 +3336,22 @@ describe('CredentialsService', () => {
 				expect.objectContaining({ type: credentialData.type }),
 				{ policyCleared: cleared },
 			);
+		});
+
+		it('authorizes the project before asking policy, so a denied caller never sees the verdict', async () => {
+			mockTransactionManager();
+			projectService.getProjectWithScope.mockResolvedValue(null);
+			projectRepository.existsBy.mockResolvedValue(true);
+
+			await expect(
+				service.createUnmanagedCredential(
+					{ ...credentialData, projectId: 'project-1' },
+					memberUser,
+				),
+			).rejects.toThrow(ForbiddenError);
+
+			expect(policyEnforcementService.enforceCredentialSave).not.toHaveBeenCalled();
+			expect(credentialsRepository.runInTransaction).not.toHaveBeenCalled();
 		});
 
 		it('writes nothing when policy refuses the create', async () => {

@@ -90,8 +90,9 @@ const credentialCreateContext: CredentialSaveContext = {
 	projectId: 'proj-1',
 };
 
+/** Distinct ids, so the audit test proves the line records the stored row, not the payload. */
 const credentialUpdateContext: CredentialSaveContext = {
-	credential: { id: 'cred-1', type: 'slackApi' },
+	credential: { id: 'payload-cred', type: 'slackApi' },
 	storedCredential: { id: 'cred-1', type: 'slackApi' },
 	projectId: 'proj-1',
 };
@@ -443,6 +444,7 @@ describe('PolicyDecisionService', () => {
 				credentialId: 'cred-1',
 				credentialType: 'slackApi',
 			});
+			expect(JSON.stringify(audit.mock.calls[0][1])).not.toContain('payload-cred');
 		});
 
 		it('records the credential and the node asking for it', async () => {

@@ -1176,29 +1176,26 @@ export class CredentialsService {
 
 		await this.externalHooks.run('credentials.create', [encryptedData]);
 
+		// Authorize first: a caller without access to the project must not learn its policy verdict.
+		const project = await this.projectService.getProjectWithScope(user, projectId, [
+			'credential:create',
+		]);
+		if (project === null) {
+			if (!(await this.projectRepository.existsBy({ id: projectId }))) {
+				throw new NotFoundError('Project not found');
+			}
+			throw new ForbiddenError(
+				"You don't have the permissions to save the credential in this project.",
+			);
+		}
+
 		// Gate the save on policy before persisting, so the author learns about a blocked type
 		// while setting the credential up rather than at run time. No stored credential: this one is new.
-		const cleared = await this.enforceCredentialCreate(newCredential.type, projectId);
+		const cleared = await this.enforceCredentialCreate(newCredential.type, project.id);
 
 		const result = await this.credentialsRepository.runInTransaction(
 			{ policyCleared: cleared },
 			async (transactionManager, ctx) => {
-				const project = await this.projectService.getProjectWithScope(
-					user,
-					projectId,
-					['credential:create'],
-					transactionManager,
-				);
-
-				if (project === null) {
-					if (!(await transactionManager.existsBy(Project, { id: projectId }))) {
-						throw new NotFoundError('Project not found');
-					}
-					throw new ForbiddenError(
-						"You don't have the permissions to save the credential in this project.",
-					);
-				}
-
 				const savedCredential = await this.credentialsRepository.createContent(newCredential, ctx);
 
 				savedCredential.data = newCredential.data;

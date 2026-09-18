@@ -2,9 +2,13 @@ import { credentialContentSubject } from '@n8n/decorators';
 import { mintPolicyCleared } from '@n8n/decorators/policy-internal';
 import type { EnforcementPoint, PolicySubject } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import { mock } from 'vitest-mock-extended';
 
-import { CredentialsEntity } from '../../entities';
+import { CredentialsEntity, SharedCredentials } from '../../entities';
+import { TransactionRunner } from '../../services/transaction';
 import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
+import { mockInstance } from '../../utils/test-utils/mock-instance';
+import { CredentialDependencyRepository } from '../credential-dependency.repository';
 import { CredentialsRepository } from '../credentials.repository';
 
 const newCredential = (type: string) => {
@@ -25,10 +29,15 @@ const forId = (id: string) => clearance({ type: 'credential', id });
 
 describe('CredentialsRepository sealed writes', () => {
 	const entityManager = mockEntityManager(CredentialsEntity);
+	// The container has no runner of its own here, and the insert path opens a transaction.
+	const transactionRunner = mock<TransactionRunner>();
+	Container.set(TransactionRunner, transactionRunner);
+	const dependencyRepository = mockInstance(CredentialDependencyRepository);
 	const repository = Container.get(CredentialsRepository);
 
 	beforeEach(() => {
 		vi.resetAllMocks();
+		transactionRunner.run.mockImplementation(async (ctx, fn) => await fn(ctx));
 	});
 
 	describe('createContent', () => {
@@ -121,11 +130,42 @@ describe('CredentialsRepository sealed writes', () => {
 			await expect(repository.updateInstanceCredential('cred-1', data, {})).rejects.toThrow();
 			await repository.updateInstanceCredential('cred-1', data, { policyCleared: forId('cred-1') });
 
-			expect(entityManager.update).toHaveBeenCalledTimes(1);
+			expect(entityManager.update).toHaveBeenCalledExactlyOnceWith(
+				CredentialsEntity,
+				{ id: 'cred-1', usageScope: 'instance' },
+				data,
+			);
 		});
 	});
 
 	describe('insertProjectCredentialWithOwner', () => {
+		it('inserts the row and its owner sharing when the clearance matches the type', async () => {
+			const credential = newCredential('slackApi');
+			credential.id = 'cred-1';
+			// `repository.create` delegates to the mocked manager, which would otherwise return nothing.
+			entityManager.create.mockImplementation((_target, data) =>
+				Object.assign(new CredentialsEntity(), data),
+			);
+			entityManager.findOneByOrFail.mockResolvedValue(credential);
+
+			await repository.insertProjectCredentialWithOwner(credential, 'proj-1', ['provider-1'], {
+				policyCleared: forContent(credential),
+			});
+
+			expect(entityManager.insert).toHaveBeenCalledWith(
+				CredentialsEntity,
+				expect.objectContaining({ id: 'cred-1', type: 'slackApi', usageScope: 'project' }),
+			);
+			expect(entityManager.insert).toHaveBeenCalledWith(SharedCredentials, {
+				credentialsId: 'cred-1',
+				projectId: 'proj-1',
+				role: 'credential:owner',
+			});
+			expect(dependencyRepository.upsertDependenciesForCredential).toHaveBeenCalledWith(
+				expect.objectContaining({ credentialId: 'cred-1', dependencyIds: ['provider-1'] }),
+			);
+		});
+
 		it('throws and writes nothing without a clearance for the type', async () => {
 			const credential = newCredential('slackApi');
 
