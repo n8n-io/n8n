@@ -560,6 +560,8 @@ export interface MockHints {
 	triggerContent: Record<string, unknown>;
 	/** For multi-trigger workflows: the trigger node the scenario targets (Phase-1 LLM's pick). */
 	startNodeName?: string;
+	/** The scenario says the trigger has nothing to emit; the harness pins it to zero items. */
+	triggerEmitsNoItems?: boolean;
 	/** Errors encountered during hint generation or mock execution */
 	warnings: string[];
 	/** Pin data for nodes that bypass the HTTP mock layer (AI roots, protocol nodes) */
@@ -582,7 +584,7 @@ RULES:
    - For service-specific triggers (Gmail Trigger, Slack Trigger, etc.): match the service's real event/message output format
    - For schedule triggers: include timestamp fields
    - For manual triggers: include the fields that downstream nodes reference
-   - CRITICAL: triggerContent must NEVER be an empty object ({}). Even for scenarios that test empty payloads ("empty submission", "no data", "missing fields"), emit the trigger envelope with empty *nested* fields — an empty webhook is { headers: {}, query: {}, body: {} }, a schedule with no context is { timestamp: "..." }. The workflow cannot execute without trigger output.
+   - CRITICAL: triggerContent must NEVER be an empty object ({}). Even for scenarios that test empty payloads ("empty submission", "no data", "missing fields"), emit the trigger envelope with empty *nested* fields — an empty webhook is { headers: {}, query: {}, body: {} }, a schedule with no context is { timestamp: "..." }. The workflow cannot execute without trigger output. The one exception is a polling or event trigger that the scenario says has NOTHING to emit ("no new emails", "no new rows", "no results"): then set "triggerEmitsNoItems": true and omit triggerContent — the harness pins the trigger to zero items so downstream nodes do not run.
    - CRITICAL: check what downstream nodes reference (e.g., $json.body.email, $json.subject, $json.text) and ensure those paths exist in triggerContent
    - CRITICAL: when the workflow has MULTIPLE trigger nodes, pick the ONE the Test Scenario targets (the trigger whose firing the scenario describes, e.g. "The weekly Schedule Trigger fires") and return its exact node name in a "startNodeName" field. triggerContent must be THAT trigger's output.
    - CRITICAL: triggerContent must NEVER contain binary file CONTENT — no base64 blobs, no fake file-bytes placeholders. When the trigger carries a file (form upload, email attachment, incoming media), declare it with a METADATA-ONLY binary map instead: "binary": { "<propertyKey>": { "mimeType": "<real MIME>", "fileName": "<name.ext>" } } — the harness synthesizes real file bytes from that metadata and attaches them at the item level. The MIME type and file name MUST match the scenario: an image/png upload scenario needs mimeType "image/png" and a .png fileName, never a generic application/octet-stream. Use "data" as the propertyKey unless downstream nodes reference a different binary property name.
@@ -639,6 +641,9 @@ function buildUserPrompt(
 		'  "startNodeName": "exact trigger node name the scenario targets (only when the workflow has multiple triggers)",',
 	);
 	sections.push('  "triggerContent": { "...exact output the trigger node would produce..." },');
+	sections.push(
+		'  "triggerEmitsNoItems": "true only when the scenario says the trigger emits nothing; then omit triggerContent",',
+	);
 	sections.push('  "nodeHints": {');
 	for (let i = 0; i < Math.min(nodeNames.length, 3); i++) {
 		const comma = i < Math.min(nodeNames.length, 3) - 1 ? ',' : '';
@@ -724,7 +729,10 @@ export async function generateMockHints(options: GenerateMockHintsOptions): Prom
 					!Array.isArray(parsed.triggerContent)
 						? parsed.triggerContent
 						: {};
-				if (Object.keys(triggerContent).length === 0) {
+				// The model answers a bool as a word often enough to read both spellings.
+				const triggerEmitsNoItems =
+					parsed.triggerEmitsNoItems === true || parsed.triggerEmitsNoItems === 'true';
+				if (Object.keys(triggerContent).length === 0 && !triggerEmitsNoItems) {
 					reason = 'empty triggerContent';
 				} else {
 					// Coerce nodeHints values to strings — LLM may return objects instead of strings
@@ -739,6 +747,7 @@ export async function generateMockHints(options: GenerateMockHintsOptions): Prom
 						...(typeof parsed.startNodeName === 'string' && parsed.startNodeName.length > 0
 							? { startNodeName: parsed.startNodeName }
 							: {}),
+						...(triggerEmitsNoItems ? { triggerEmitsNoItems: true } : {}),
 						warnings,
 						bypassPinData: {},
 					};
