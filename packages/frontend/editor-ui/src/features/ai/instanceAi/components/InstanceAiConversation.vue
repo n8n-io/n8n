@@ -383,6 +383,7 @@ function reconnectThreadAfterHydration(): void {
 					attachments: pending.attachments,
 					pushRef: rootStore.pushRef,
 					handoffContext: pending.context,
+					responseStartedAtEpochMs: pending.responseStartedAtEpochMs,
 				})
 				.then((sent) => {
 					if (sent) return;
@@ -439,6 +440,10 @@ async function syncThread() {
 	if (!isCurrentThreadRuntime()) return;
 	if (thread.sseState === 'disconnected') {
 		reconnectThreadAfterHydration();
+	} else if (thread.hydrationStatus === 'idle') {
+		// A newly created thread starts streaming before this view mounts. Settle
+		// hydration without replacing its live SSE connection.
+		void thread.loadHistoricalMessages();
 	}
 }
 
@@ -477,6 +482,7 @@ async function handleSubmit(
 	attachments: InstanceAiAttachment[] | undefined,
 	restoreDraft: () => boolean,
 	authorship: InstanceAiMessageAuthorship,
+	responseStartedAtEpochMs?: number,
 ) {
 	if (!settingsStore.isWorkflowBuilderAvailable) {
 		return;
@@ -560,6 +566,7 @@ async function handleSubmit(
 			attachments: submittedAttachments,
 			pushRef: rootStore.pushRef,
 			handoffContext,
+			responseStartedAtEpochMs,
 		})
 		.then((sent) => {
 			if (!sent) {
@@ -822,7 +829,12 @@ defineExpose({
 										ref="chatInputRef"
 										key="chat-input"
 										:is-streaming="thread.isStreaming"
-										:is-submitting="thread.isSendingMessage || isPlanChangeInFlight"
+										:is-submitting="
+											thread.isSendingMessage ||
+											isPlanChangeInFlight ||
+											thread.hydrationStatus === 'idle' ||
+											thread.isHydratingThread
+										"
 										:is-awaiting-confirmation="thread.isAwaitingConfirmation"
 										:is-awaiting-plan-review="thread.pendingPlanReview !== null"
 										:is-workflow-builder-available="settingsStore.isWorkflowBuilderAvailable"
