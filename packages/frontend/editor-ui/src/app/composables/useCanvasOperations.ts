@@ -3769,6 +3769,24 @@ export function useCanvasOperations() {
 			telemetry: true,
 		});
 
+		let replacementGroupId: string | undefined;
+		if (addedNodes.length > 0 && options.replaceNodeId) {
+			// Auto-added helpers can follow the node that the user selected, so they
+			// must not become the replacement target.
+			const replacementNodeIndex = nodes.findLastIndex((node) => !node.isAutoAdd);
+			const replacementNode =
+				replacementNodeIndex === -1 ? addedNodes.at(-1) : addedNodes[replacementNodeIndex];
+			if (replacementNode) {
+				const didReplace = replaceNode(options.replaceNodeId, replacementNode.id, {
+					trackHistory,
+					trackBulk: false,
+				});
+				if (didReplace) {
+					replacementGroupId = workflowDocumentStore.value.getGroupForNode(replacementNode.id)?.id;
+				}
+			}
+		}
+
 		const allNodes = workflowDocumentStore.value.allNodes;
 		const offsetIndex = allNodes.length - nodes.length;
 		const connections: CanvasConnectionCreateData[] = addedConnections.map(({ from, to }) => {
@@ -3804,15 +3822,34 @@ export function useCanvasOperations() {
 
 		await addConnections(connections, { trackHistory, trackBulk: false });
 
-		uiStore.resetLastInteractedWith();
-
-		if (addedNodes.length > 0 && options.replaceNodeId) {
-			const lastAddedNodeId = addedNodes[addedNodes.length - 1].id;
-			replaceNode(options.replaceNodeId, lastAddedNodeId, {
-				trackHistory,
-				trackBulk: false,
-			});
+		if (replacementGroupId) {
+			const groupBeforeExtend = workflowDocumentStore.value.getGroupById(replacementGroupId);
+			if (groupBeforeExtend) {
+				// A creator result can include helpers for the selected node. Keep the
+				// connected batch together when it replaces a grouped node.
+				const beforeSnapshot = { ...groupBeforeExtend, nodeIds: [...groupBeforeExtend.nodeIds] };
+				workflowDocumentStore.value.addNodesToGroup(
+					replacementGroupId,
+					addedNodes.map((node) => node.id),
+				);
+				const groupAfterExtend = workflowDocumentStore.value.getGroupById(replacementGroupId);
+				if (
+					trackHistory &&
+					groupAfterExtend &&
+					groupAfterExtend.nodeIds.length !== beforeSnapshot.nodeIds.length
+				) {
+					historyStore.pushCommandToUndo(
+						new UpdateNodeGroupCommand(
+							beforeSnapshot,
+							{ ...groupAfterExtend, nodeIds: [...groupAfterExtend.nodeIds] },
+							Date.now(),
+						),
+					);
+				}
+			}
 		}
+
+		uiStore.resetLastInteractedWith();
 
 		if (trackHistory && trackBulk) {
 			historyStore.stopRecordingUndo();
