@@ -9,45 +9,45 @@ codebase facts behind each decision and `DESIGN.md` for the write-up.
 - [x] Read `CONTRIBUTING.md`, `AGENTS.md`, frontend `AGENTS.md`, backend module guide, migration guide
 - [x] Write `EXPLORATION.md`
 - [x] Write this plan
-- [ ] Commit docs
+- [x] Commit docs
 
 ## 1. Shared types (`packages/@n8n/api-types`, `packages/workflow`)
 
-- [ ] `packages/@n8n/api-types/src/custom-nodes/` — definition schema
+- [x] `packages/@n8n/api-types/src/custom-nodes/` — definition schema
       (`CustomOperationDefinition`, `CustomOperationVersion`,
       `CustomNodeDefinition`, `CustomNodeAuth`, `CustomOperationInput`) as
       zod schemas with inferred types, plus request DTOs
       (`CreateCustomOperationDto`, `UpdateCustomOperationDto`,
       `CreateCustomNodeDto`, `UpdateCustomNodeDto`, `SetActiveVersionDto`,
       `UploadIconDto`) and the list response shape
-- [ ] `FrontendModuleSettings['custom-nodes']: { enabled: boolean }`
-- [ ] `packages/workflow/src/interfaces.ts` — optional
+- [x] `FrontendModuleSettings['custom-nodes']: { enabled: boolean }`
+- [x] `packages/workflow/src/interfaces.ts` — optional
       `INodeTypeDescription.customOperation` marker
       (`{ definitionId, parentNodeType, customNodeId }`) so the nodes panel
       can find custom operations and their parent without a second request
 
 ## 2. Persistence (`packages/@n8n/db`, `packages/cli`)
 
-- [ ] Migration `CreateCustomNodeDefinitionTable` in
+- [x] Migration `CreateCustomNodeDefinitionTable` in
       `packages/@n8n/db/src/migrations/common/` via
       `pnpm --filter=@n8n/db migration:new`: table `custom_node_definition`
       with `id` varchar(36) PK, `name` varchar(255), `type` varchar(16)
       enum-checked (`operation` | `node`), `definition` json, timestamps
-- [ ] Entity `CustomNodeDefinitionEntity` in
+- [x] Entity `CustomNodeDefinitionEntity` in
       `packages/cli/src/modules/custom-nodes/database/` extending
       `WithTimestampsAndStringId` with `@JsonColumn() definition`
-- [ ] Repository `CustomNodeDefinitionRepository`
-- [ ] Regenerate `docs/generated/` schema docs if tooling is available
-      (tbls/Docker); otherwise note in DESIGN.md
+- [x] Repository `CustomNodeDefinitionRepository`
+- [x] Regenerate `docs/generated/` schema docs — skipped (needs tbls/Docker),
+      noted in DESIGN.md
 
 ## 3. Backend module `custom-nodes` (`packages/cli/src/modules/custom-nodes/`)
 
-- [ ] `custom-nodes.config.ts` — `@Env('N8N_CUSTOM_NODES_MOCKUP') enabled`
-- [ ] `custom-nodes.module.ts` — `@BackendModule({ name: 'custom-nodes' })`;
+- [x] `custom-nodes.config.ts` — `@Env('N8N_CUSTOM_NODES_MOCKUP') enabled`
+- [x] `custom-nodes.module.ts` — `@BackendModule({ name: 'custom-nodes' })`;
       `init()` returns early when disabled; `entities()`, `settings()`,
       `nodeLoaders()` (empty when disabled)
-- [ ] Register `custom-nodes` in `MODULE_NAMES` and `defaultModules`
-- [ ] `node-description.generator.ts` — pure function
+- [x] Register `custom-nodes` in `MODULE_NAMES` and `defaultModules`
+- [x] `node-description.generator.ts` — pure function
       `definition -> IVersionedNodeType description(s)`:
       `requestDefaults` (baseURL + method-agnostic defaults), `credentials`
       (predefined or generic HTTP credential), `properties` with `routing`
@@ -56,39 +56,39 @@ codebase facts behind each decision and `DESIGN.md` for the write-up.
       `Additional Fields` collection, one description per stored version,
       `defaultVersion = activeVersion`, `customOperation` marker, `hidden`
       for operations, parent icon for operations, `iconUrl` route for nodes
-- [ ] `__tests__/node-description.generator.test.ts` — two focused tests
-- [ ] `custom-nodes-node-loader.ts` — `NodeLoader` for package `n8n-custom`,
+- [x] `__tests__/node-description.generator.test.ts` — two focused tests
+- [x] `custom-nodes-node-loader.ts` — `NodeLoader` for package `n8n-custom`,
       modelled on `McpRegistryNodeLoader`
-- [ ] `custom-nodes.service.ts` — list/get/create/update (new version)/set
+- [x] `custom-nodes.service.ts` — list/get/create/update (new version)/set
       active version/delete/set icon; `refreshNodeTypes()` =
       `loader.setDefinitions` → `loadAll` → `postProcessLoaders` →
       `releaseTypes` → push `nodeDescriptionUpdated`; `seed()` on first run
-- [ ] `custom-nodes.seed.ts` — Stripe "Create Payment Link" operation and
+- [x] `custom-nodes.seed.ts` — Stripe "Create Payment Link" operation and
       "Acme Billing" custom node with two operations and an SVG logo
-- [ ] `custom-nodes.controller.ts` — `@RestController('/custom-nodes')`:
+- [x] `custom-nodes.controller.ts` — `@RestController('/custom-nodes')`:
       `GET /`, `GET /:id`, `POST /`, `PATCH /:id`, `POST /:id/active-version`,
       `DELETE /:id`, `POST /:id/icon`, `GET /:id/icon`
 - [ ] Build `workflow`, `api-types`, `db`, `cli`; typecheck; lint touched files
 
 ## 4. Frontend: API client, store, settings page
 
-- [ ] `packages/frontend/@n8n/rest-api-client/src/api/customNodes.ts`
-- [ ] `features/customNodes/customNodes.constants.ts` (view names, modal keys)
-- [ ] `features/customNodes/customNodes.store.ts` (Pinia)
-- [ ] `features/customNodes/module.descriptor.ts` — settings route
+- [x] `packages/frontend/@n8n/rest-api-client/src/api/customNodes.ts`
+- [x] `features/customNodes/customNodes.constants.ts` (view names, modal keys)
+- [x] `features/customNodes/customNodes.store.ts` (Pinia)
+- [x] `features/customNodes/module.descriptor.ts` — settings route
       `/settings/custom-nodes`, sidebar entry next to Community Nodes,
       modals (wizard, versions); register in `app/modules.manifest.ts`
-- [ ] `features/customNodes/views/SettingsCustomNodesView.vue` — list with
+- [x] `features/customNodes/views/SettingsCustomNodesView.vue` — list with
       name, kind, parent node, active version, version count; actions edit,
       versions, delete, replace logo
-- [ ] `features/customNodes/components/CustomNodeVersionsModal.vue` —
+- [x] `features/customNodes/components/CustomNodeVersionsModal.vue` —
       version history with "Set active"
-- [ ] `settings.store.ts` — `isCustomNodesMockupEnabled`
-- [ ] i18n keys in `en.json`
+- [x] `settings.store.ts` — `isCustomNodesMockupEnabled`
+- [x] i18n keys in `en.json`
 
 ## 5. Frontend: creation wizard and entry points
 
-- [ ] `features/customNodes/components/CustomNodeWizardModal.vue` with four
+- [x] `features/customNodes/components/CustomNodeWizardModal.vue` with four
       steps: Choose (add to existing node with searchable picker, or new
       node with name/description/logo/base URL/auth), Request (method, URL,
       headers, query, body, "Import cURL" if the existing converter is
@@ -96,17 +96,17 @@ codebase facts behind each decision and `DESIGN.md` for the write-up.
       fixed / required / optional, display name, type, default), Review
       (generated parameters preview through `ParameterInputList` if
       feasible, otherwise static)
-- [ ] `composables/useHttpRequestNodeDefinition.ts` — map HTTP Request node
+- [x] `composables/useCustomNodeDraft.ts` — map HTTP Request node
       parameters to a wizard draft
-- [ ] Header button "Create custom node" in
+- [x] Header button "Create custom node" in
       `app/components/MainHeader/WorkflowDetails.vue` (flag-gated)
-- [ ] NDV button "Save as custom operation…" in
+- [x] NDV button "Save as custom operation…" in
       `features/ndv/settings/components/NodeSettings.vue` for HTTP Request
       nodes (flag-gated), opens the wizard pre-filled
 
 ## 6. Frontend: nodes panel integration
 
-- [ ] `useActionsGeneration.ts` — read hidden node types with the
+- [x] `useActionsGeneration.ts` — read hidden node types with the
       `customOperation` marker and push `ActionTypeDescription`s with
       `codex.label = 'Custom operations'` into `actions[parentNodeType]`;
       the action `name` is the virtual node type so selection adds it
@@ -116,11 +116,11 @@ codebase facts behind each decision and `DESIGN.md` for the write-up.
 
 ## 7. Demo data, docs, verification
 
-- [ ] `docs/custom-nodes-mockup/fixtures/mock-stripe-workflow.json` —
+- [x] `docs/custom-nodes-mockup/fixtures/mock-stripe-workflow.json` —
       Webhook + Respond to Webhook workflow that mocks
       `POST /v1/payment_links`
-- [ ] `docs/custom-nodes-mockup/DEMO.md` — click-by-click script
-- [ ] `docs/custom-nodes-mockup/DESIGN.md` — problem, concepts,
+- [x] `docs/custom-nodes-mockup/DEMO.md` — click-by-click script
+- [x] `docs/custom-nodes-mockup/DESIGN.md` — problem, concepts,
       architecture (Mermaid), mocked vs production, deviations, open questions
 - [ ] `pnpm build` for touched packages, `pnpm typecheck`, lint touched files
 - [ ] Boot with `N8N_CUSTOM_NODES_MOCKUP=true pnpm start`, walk the demo

@@ -1,0 +1,67 @@
+{
+  "name": "Mock Stripe API (custom nodes demo)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "mock-stripe/v1/payment_links",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "5e1b1c8e-7a0e-4a6c-9c8c-0d5d2b1a1001",
+      "name": "Stripe: create payment link",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "9f1e9c2c-4a55-4c33-9c1d-mockstripe01"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({\n  id: 'plink_' + Math.random().toString(36).slice(2, 12),\n  object: 'payment_link',\n  active: true,\n  url: 'https://buy.stripe.com/test_' + Math.random().toString(36).slice(2, 10),\n  livemode: false,\n  received_authorization: $json.headers.authorization ?? null,\n  received_content_type: $json.headers['content-type'] ?? null,\n  received_body: $json.body\n}) }}",
+        "options": {}
+      },
+      "id": "5e1b1c8e-7a0e-4a6c-9c8c-0d5d2b1a1002",
+      "name": "Respond like Stripe",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [260, 0]
+    },
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "mock-acme/api/v2/invoices/:invoiceId",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "5e1b1c8e-7a0e-4a6c-9c8c-0d5d2b1a1003",
+      "name": "Acme: get invoice",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 220],
+      "webhookId": "9f1e9c2c-4a55-4c33-9c1d-mockacme0001"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({\n  id: $json.params.invoiceId,\n  object: 'invoice',\n  status: 'open',\n  amount_due: 4200,\n  currency: 'eur',\n  expand: $json.query.expand ?? null,\n  received_headers: $json.headers\n}) }}",
+        "options": {}
+      },
+      "id": "5e1b1c8e-7a0e-4a6c-9c8c-0d5d2b1a1004",
+      "name": "Respond like Acme",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [260, 220]
+    }
+  ],
+  "connections": {
+    "Stripe: create payment link": {
+      "main": [[{ "node": "Respond like Stripe", "type": "main", "index": 0 }]]
+    },
+    "Acme: get invoice": {
+      "main": [[{ "node": "Respond like Acme", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "pinData": {}
+}
