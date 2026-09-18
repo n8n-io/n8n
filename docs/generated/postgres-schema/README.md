@@ -78,7 +78,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.instance_ai_iteration_logs](public.instance_ai_iteration_logs.md) | 6 |  | BASE TABLE |
 | [public.instance_ai_mcp_registry_connections](public.instance_ai_mcp_registry_connections.md) | 7 |  | BASE TABLE |
 | [public.instance_ai_messages](public.instance_ai_messages.md) | 8 |  | BASE TABLE |
-| [public.instance_ai_observation_cursors](public.instance_ai_observation_cursors.md) | 5 |  | BASE TABLE |
+| [public.instance_ai_observation_cursors](public.instance_ai_observation_cursors.md) | 6 |  | BASE TABLE |
 | [public.instance_ai_observation_locks](public.instance_ai_observation_locks.md) | 6 |  | BASE TABLE |
 | [public.instance_ai_observational_memory](public.instance_ai_observational_memory.md) | 32 |  | BASE TABLE |
 | [public.instance_ai_observations](public.instance_ai_observations.md) | 10 |  | BASE TABLE |
@@ -1098,6 +1098,7 @@ erDiagram
 }
 "public.instance_ai_observation_cursors" {
   timestamp_3__with_time_zone createdAt
+  varchar_36_ emptyLogThroughMessageId
   timestamp_3__with_time_zone lastObservedAt
   varchar_36_ lastObservedMessageId
   uuid observationScopeId FK

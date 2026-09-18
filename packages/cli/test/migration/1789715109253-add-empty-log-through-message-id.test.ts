@@ -45,12 +45,24 @@ describe('Empty observation log cursor migration', () => {
 		const threadId = randomUUID();
 		const resourceId = randomUUID();
 		const messageId = randomUUID();
+		const instanceThreadId = randomUUID();
+		const instanceMessageId = randomUUID();
 		const now = new Date('2026-09-18T07:00:00.000Z');
 		await withContext(async ({ escape, runQuery }) => {
 			await runQuery(
 				`INSERT INTO ${escape.tableName('project')} ("id", "name", "type", "createdAt", "updatedAt")
 				 VALUES (:projectId, 'Test project', 'team', :now, :now)`,
 				{ projectId, now },
+			);
+			await runQuery(
+				`INSERT INTO ${escape.tableName('instance_ai_threads')} ("id", "resourceId", "projectId", "createdAt", "updatedAt")
+				 VALUES (:instanceThreadId, 'instance-ai-test', :projectId, :now, :now)`,
+				{ instanceThreadId, projectId, now },
+			);
+			await runQuery(
+				`INSERT INTO ${escape.tableName('instance_ai_observation_cursors')} ("observationScopeId", "lastObservedMessageId", "lastObservedAt", "createdAt", "updatedAt")
+				 VALUES (:instanceThreadId, :instanceMessageId, :now, :now, :now)`,
+				{ instanceThreadId, instanceMessageId, now },
 			);
 			await runQuery(
 				`INSERT INTO ${escape.tableName('agents')} ("id", "name", "projectId", "integrations", "tools", "skills", "createdAt", "updatedAt")
@@ -87,8 +99,21 @@ describe('Empty observation log cursor migration', () => {
 			...legacyCursor,
 			emptyLogThroughMessageId: null,
 		});
+		await withContext(async ({ escape, runQuery }) => {
+			expect(
+				await runQuery(
+					`SELECT "lastObservedMessageId", "emptyLogThroughMessageId" FROM ${escape.tableName('instance_ai_observation_cursors')}`,
+				),
+			).toEqual([
+				{
+					lastObservedMessageId: instanceMessageId,
+					emptyLogThroughMessageId: null,
+				},
+			]);
+		});
 
 		const nextId = randomUUID();
+		const nextInstanceMessageId = randomUUID();
 		const nextCursor = { ...legacyCursor, lastObservedMessageId: nextId };
 		await memory.setCursor({ ...nextCursor, emptyLogThroughMessageId: nextId });
 		expect(await memory.getCursor(threadId)).toMatchObject({
@@ -98,6 +123,13 @@ describe('Empty observation log cursor migration', () => {
 		await memory.setCursor(nextCursor);
 		expect(await memory.getCursor(threadId)).toMatchObject({ emptyLogThroughMessageId: null });
 		await memory.setCursor({ ...nextCursor, emptyLogThroughMessageId: nextId });
+		await withContext(async ({ escape, runQuery }) => {
+			await runQuery(
+				`UPDATE ${escape.tableName('instance_ai_observation_cursors')}
+				 SET "lastObservedMessageId" = :nextInstanceMessageId, "emptyLogThroughMessageId" = :nextInstanceMessageId`,
+				{ nextInstanceMessageId },
+			);
+		});
 
 		await undoLastSingleMigration();
 		dataSource = Container.get(DataSource);
@@ -109,16 +141,39 @@ describe('Empty observation log cursor migration', () => {
 				),
 			).toBe(false);
 			expect(
+				await queryRunner.hasColumn(
+					`${tablePrefix}instance_ai_observation_cursors`,
+					'emptyLogThroughMessageId',
+				),
+			).toBe(false);
+			expect(
 				await runQuery(
 					`SELECT "lastObservedMessageId" FROM ${escape.tableName('agents_observation_cursors')}`,
 				),
 			).toEqual([{ lastObservedMessageId: nextId }]);
+			expect(
+				await runQuery(
+					`SELECT "lastObservedMessageId" FROM ${escape.tableName('instance_ai_observation_cursors')}`,
+				),
+			).toEqual([{ lastObservedMessageId: nextInstanceMessageId }]);
 		});
 		await runSingleMigration(MIGRATION_NAME);
 		dataSource = Container.get(DataSource);
 		expect(await memory.getCursor(threadId)).toMatchObject({
 			...nextCursor,
 			emptyLogThroughMessageId: null,
+		});
+		await withContext(async ({ escape, runQuery }) => {
+			expect(
+				await runQuery(
+					`SELECT "lastObservedMessageId", "emptyLogThroughMessageId" FROM ${escape.tableName('instance_ai_observation_cursors')}`,
+				),
+			).toEqual([
+				{
+					lastObservedMessageId: nextInstanceMessageId,
+					emptyLogThroughMessageId: null,
+				},
+			]);
 		});
 	});
 });

@@ -78,7 +78,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [instance_ai_iteration_logs](instance_ai_iteration_logs.md) | 6 |  | table |
 | [instance_ai_mcp_registry_connections](instance_ai_mcp_registry_connections.md) | 7 |  | table |
 | [instance_ai_messages](instance_ai_messages.md) | 8 |  | table |
-| [instance_ai_observation_cursors](instance_ai_observation_cursors.md) | 5 |  | table |
+| [instance_ai_observation_cursors](instance_ai_observation_cursors.md) | 6 |  | table |
 | [instance_ai_observation_locks](instance_ai_observation_locks.md) | 6 |  | table |
 | [instance_ai_observational_memory](instance_ai_observational_memory.md) | 32 |  | table |
 | [instance_ai_observations](instance_ai_observations.md) | 10 |  | table |
@@ -1085,6 +1085,7 @@ erDiagram
 }
 "instance_ai_observation_cursors" {
   datetime_3_ createdAt
+  varchar_36_ emptyLogThroughMessageId
   datetime_3_ lastObservedAt
   varchar_36_ lastObservedMessageId
   varchar observationScopeId PK
