@@ -72,7 +72,7 @@ export class ERPNext implements INodeType {
 				return processNames(docTypes);
 			},
 			async getDocFilters(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const docType = this.getCurrentNodeParameter('docType') as string;
+				const docType = decodeURIComponent(this.getCurrentNodeParameter('docType') as string);
 				const qs = {
 					filters: JSON.stringify([['parent', '=', docType]]),
 					fields: JSON.stringify(['fieldname', 'label']),
@@ -91,7 +91,7 @@ export class ERPNext implements INodeType {
 				return processNames(docFields);
 			},
 			async getDocFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const docType = this.getCurrentNodeParameter('docType') as string;
+				const docType = decodeURIComponent(this.getCurrentNodeParameter('docType') as string);
 				const qs = {
 					filters: JSON.stringify([['parent', '=', docType]]),
 					fields: JSON.stringify(['fieldname', 'label']),
