@@ -230,6 +230,26 @@ describe('instanceAi.reducer', () => {
 			},
 		);
 
+		test('a re-announced turn updates the bubble text in place', () => {
+			const state = stateWithRun('run-1', 'agent-root');
+			const first: InstanceAiEvent = {
+				type: 'user-message',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				payload: { messageId: 'queued-1', text: 'First part', source: 'steered' },
+			};
+			handleEvent(state, first);
+
+			handleEvent(state, {
+				...first,
+				payload: { ...first.payload, text: 'First part\nSecond part' },
+			});
+
+			expect(state.messages.filter((message) => message.id === 'queued-1')).toEqual([
+				expect.objectContaining({ role: 'user', content: 'First part\nSecond part' }),
+			]);
+		});
+
 		test.each(['queued', 'steered'] as const)(
 			'%s appends without creating an assistant message before run-start',
 			(source) => {

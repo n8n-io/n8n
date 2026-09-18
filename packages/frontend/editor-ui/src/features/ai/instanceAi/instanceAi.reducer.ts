@@ -369,7 +369,11 @@ export function handleEvent(state: InstanceAiReducerState, event: InstanceAiEven
 		// assistant message.
 		case 'user-message': {
 			const { messageId, text, source } = event.payload;
-			if (state.messages.some((message) => message.id === messageId)) {
+			// The queue goes as one turn under its head's id; a part queued after the
+			// first announcement re-announces the turn with the longer text.
+			const existing = state.messages.find((message) => message.id === messageId);
+			if (existing) {
+				if (existing.role === 'user') existing.content = text;
 				return state.activeRunId;
 			}
 			const userMessage: InstanceAiMessage = {

@@ -6,6 +6,7 @@ import { InstanceAiService } from '../instance-ai.service';
 type RunDebugGatingInternals = {
 	instanceAiConfig: { runDebugEnabled: boolean };
 	aiConfig: { modelStreamIdleTimeoutMs: number; modelStreamFirstOutputTimeoutMs: number };
+	steerInterrupts: Map<string, AbortController>;
 	runDebugBuffer: RunDebugBuffer;
 	runState: RunStateRegistry<User>;
 	buildOrchestratorAgentStreamOptions: (
@@ -29,6 +30,8 @@ function createRunDebugGatingService(runDebugEnabled: boolean): RunDebugGatingIn
 	const service = Object.create(InstanceAiService.prototype) as RunDebugGatingInternals;
 	service.instanceAiConfig = { runDebugEnabled };
 	service.aiConfig = { modelStreamIdleTimeoutMs: 90_000, modelStreamFirstOutputTimeoutMs: 180_000 };
+	// The stream options read the thread's interrupt signal; no live run means no entry.
+	service.steerInterrupts = new Map();
 	service.runDebugBuffer = new RunDebugBuffer();
 	service.runState = new RunStateRegistry((user: User) => user.id);
 	return service;

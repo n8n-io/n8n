@@ -1817,12 +1817,16 @@ describe('InstanceAiController', () => {
 				serviceMethod: 'listQueuedMessages',
 				invoke: async () => await controller.listQueuedMessages(req, res, THREAD_ID),
 				args: [THREAD_ID],
+				response: queuedMessages,
+				expected: { queuedMessages },
 			},
 			{
 				handler: 'queueMessage',
 				serviceMethod: 'queueMessage',
 				invoke: async () => await controller.queueMessage(req, res, THREAD_ID, queuePayload),
 				args: [THREAD_ID, queuePayload.text],
+				response: queuedMessages,
+				expected: { queuedMessages },
 			},
 			{
 				handler: 'updateQueuedMessage',
@@ -1830,20 +1834,34 @@ describe('InstanceAiController', () => {
 				invoke: async () =>
 					await controller.updateQueuedMessage(req, res, THREAD_ID, messageId, updatePayload),
 				args: [THREAD_ID, messageId, updatePayload.text],
+				response: queuedMessages,
+				expected: { queuedMessages },
 			},
 			{
 				handler: 'removeQueuedMessage',
 				serviceMethod: 'removeQueuedMessage',
 				invoke: async () => await controller.removeQueuedMessage(req, res, THREAD_ID, messageId),
 				args: [THREAD_ID, messageId],
+				response: queuedMessages,
+				expected: { queuedMessages },
 			},
 			{
-				handler: 'steerQueuedMessage',
-				serviceMethod: 'requestSteer',
-				invoke: async () => await controller.steerQueuedMessage(req, res, THREAD_ID, messageId),
-				args: [req.user, THREAD_ID, messageId],
+				handler: 'sendQueueNow',
+				serviceMethod: 'sendQueueNow',
+				invoke: async () => await controller.sendQueueNow(req, res, THREAD_ID),
+				args: [req.user, THREAD_ID],
+				response: { queuedMessages },
+				expected: { queuedMessages },
 			},
-		] as const)('$handler', ({ handler, serviceMethod, invoke, args }) => {
+			{
+				handler: 'recallQueuedMessages',
+				serviceMethod: 'recallQueuedMessages',
+				invoke: async () => await controller.recallQueuedMessages(req, res, THREAD_ID, messageId),
+				args: [THREAD_ID, messageId],
+				response: { queuedMessages: [], text: 'Use the Slack node' },
+				expected: { queuedMessages: [], text: 'Use the Slack node' },
+			},
+		] as const)('$handler', ({ handler, serviceMethod, invoke, args, response, expected }) => {
 			it('should require instanceAi:message scope', () => {
 				expect(scopeOf(handler)).toEqual({ scope: 'instanceAi:message', globalOnly: true });
 			});
@@ -1857,15 +1875,11 @@ describe('InstanceAiController', () => {
 				expect(instanceAiService[serviceMethod]).not.toHaveBeenCalled();
 			});
 
-			it('should forward the arguments and return queued messages', async () => {
+			it('should forward the arguments and return the queue', async () => {
 				memoryService.checkThreadOwnership.mockResolvedValue('owned');
-				if (serviceMethod === 'requestSteer') {
-					instanceAiService.requestSteer.mockResolvedValue({ queuedMessages });
-				} else {
-					instanceAiService[serviceMethod].mockResolvedValue(queuedMessages);
-				}
+				(instanceAiService[serviceMethod] as Mock).mockResolvedValue(response);
 
-				await expect(invoke()).resolves.toEqual({ queuedMessages });
+				await expect(invoke()).resolves.toEqual(expected);
 
 				expect(memoryService.checkThreadOwnership).toHaveBeenCalledWith(USER_ID, THREAD_ID);
 				expect(instanceAiService[serviceMethod]).toHaveBeenCalledWith(...args);

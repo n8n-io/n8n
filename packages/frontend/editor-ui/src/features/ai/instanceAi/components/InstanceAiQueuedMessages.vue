@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
+import { INSTANCE_AI_MAX_QUEUED_MESSAGES } from '@n8n/api-types';
+import { N8nButton, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
 import { computed, ref } from 'vue';
 
 import { useI18n } from '@n8n/i18n';
@@ -8,34 +9,34 @@ import { useThread } from '../instanceAi.store';
 
 /**
  * Messages the user submitted while the assistant was working. The server owns
- * the queue; this only renders it and asks for changes. An item leaves the list
- * when the server reports it delivered (`user-message`), so nothing here removes
- * an item optimistically.
+ * the queue; this only renders it and asks for changes. The queue is one turn:
+ * it goes as a whole, joined with newlines, after the next tool call — or at
+ * once with Send now. An item leaves the list when the server reports it sent
+ * (`user-message`), so nothing here removes an item optimistically.
  */
 const emit = defineEmits<{ recall: [text: string] }>();
 
 const thread = useThread();
 const i18n = useI18n();
 
-// A message sent now is already in the transcript and no longer the user's to
-// edit or withdraw, so it leaves the list even while the server still holds it
-// for the run it is about to start.
+// A sent turn is already in the transcript and no longer the user's to edit or
+// withdraw, so it leaves the list even while the server still holds it for the
+// run it is about to start.
 const pendingMessages = computed(() =>
-	thread.queuedMessages.filter((message) => message.steerRequestedAt === undefined),
+	thread.queuedMessages.filter((message) => message.sentAt === undefined),
 );
+const isFull = computed(() => pendingMessages.value.length >= INSTANCE_AI_MAX_QUEUED_MESSAGES);
 
-// Per-item pending state: a steer lands at the next tool boundary, which can be
-// a while away, so the button must not invite a second press meanwhile.
-const steeringIds = ref(new Set<string>());
+// Send now cancels the tool call in flight, which can take a moment to settle,
+// so the button must not invite a second press meanwhile.
+const isSending = ref(false);
 
-async function onSteer(messageId: string): Promise<void> {
-	steeringIds.value = new Set([...steeringIds.value, messageId]);
+async function onSendNow(): Promise<void> {
+	isSending.value = true;
 	try {
-		await thread.steerQueuedMessage(messageId);
+		await thread.sendQueueNow();
 	} finally {
-		const next = new Set(steeringIds.value);
-		next.delete(messageId);
-		steeringIds.value = next;
+		isSending.value = false;
 	}
 }
 
@@ -56,6 +57,27 @@ function onRemove(messageId: string): void {
 		:aria-label="i18n.baseText('instanceAi.queue.title')"
 		data-test-id="instance-ai-queued-messages"
 	>
+		<div :class="$style.header">
+			<N8nText size="small" color="text-light" data-test-id="instance-ai-queued-messages-count">
+				{{
+					i18n.baseText('instanceAi.queue.count', {
+						interpolate: {
+							count: String(pendingMessages.length),
+							max: String(INSTANCE_AI_MAX_QUEUED_MESSAGES),
+						},
+					})
+				}}
+			</N8nText>
+			<N8nButton
+				size="mini"
+				variant="subtle"
+				icon="send"
+				:loading="isSending"
+				:label="i18n.baseText(isSending ? 'instanceAi.queue.sending' : 'instanceAi.queue.sendNow')"
+				data-test-id="instance-ai-queued-message-send-now"
+				@click="onSendNow"
+			/>
+		</div>
 		<div
 			v-for="message in pendingMessages"
 			:key="message.id"
@@ -66,19 +88,6 @@ function onRemove(messageId: string): void {
 				{{ message.text }}
 			</N8nText>
 			<div :class="$style.actions">
-				<N8nText v-if="steeringIds.has(message.id)" size="small" color="text-light">
-					{{ i18n.baseText('instanceAi.queue.sending') }}
-				</N8nText>
-				<N8nTooltip v-else :content="i18n.baseText('instanceAi.queue.sendNow')" placement="top">
-					<N8nIconButton
-						icon="send"
-						size="xsmall"
-						variant="ghost"
-						:aria-label="i18n.baseText('instanceAi.queue.sendNow')"
-						data-test-id="instance-ai-queued-message-send-now"
-						@click="onSteer(message.id)"
-					/>
-				</N8nTooltip>
 				<N8nTooltip :content="i18n.baseText('instanceAi.queue.edit')" placement="top">
 					<N8nIconButton
 						icon="pencil"
@@ -101,6 +110,14 @@ function onRemove(messageId: string): void {
 				</N8nTooltip>
 			</div>
 		</div>
+		<N8nText
+			v-if="isFull"
+			size="small"
+			color="text-light"
+			data-test-id="instance-ai-queued-messages-full"
+		>
+			{{ i18n.baseText('instanceAi.queue.full') }}
+		</N8nText>
 	</div>
 </template>
 
@@ -110,6 +127,14 @@ function onRemove(messageId: string): void {
 	flex-direction: column;
 	gap: var(--spacing--4xs);
 	margin-bottom: var(--spacing--2xs);
+}
+
+.header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--2xs);
+	padding: 0 var(--spacing--2xs);
 }
 
 .item {

@@ -95,13 +95,13 @@ describe('InstanceAiService — threadPushRef lifetime', () => {
 			sandboxService: { destroySandbox: Mock };
 			temporaryWorkflowService: { reapForThreadCleanup: Mock };
 			suspendedThreads: { dropPendingConfirmationsForThread: Mock };
-			steerStops: Map<string, AbortController>;
+			steerInterrupts: Map<string, AbortController>;
 			clearThreadState: (threadId: string) => Promise<void>;
 		};
 		const service = Object.create(InstanceAiService.prototype) as unknown as Internals;
 
 		service.threadPushRef = new Map<string, string>([['thread-a', 'push-ref-a']]);
-		service.steerStops = new Map([['thread-a', new AbortController()]]);
+		service.steerInterrupts = new Map([['thread-a', new AbortController()]]);
 		service.planRequestsByThread = new Map<string, number>([['thread-a', 2]]);
 		service.runState = {
 			clearThread: vi.fn(() => ({ active: undefined, suspended: undefined })),

@@ -458,11 +458,12 @@ own run.
 - `source: "queued"` — a run started with the message. The SDK persists that
 run's input row, so the service does not write one.
 
-A steered message gets both events: `steered` on the run it stopped, then
-`queued` on the run it started. The frontend keys user bubbles by `messageId`, so
-the second one is a no-op there; it is what makes the message durable on its own
-run's log. The queue list hides an item from the moment it is sent now, since it
-is no longer the user's to edit or withdraw.
+A steered turn gets both events: `steered` on the run it stopped, then
+`queued` on the run it started. The frontend keys user bubbles by `messageId`
+and updates the text of a bubble it already has, so the second one only makes
+the turn durable on its own run's log, and a part queued after the first
+announcement reaches the bubble. The queue list hides an item from the moment
+it is sent, since it is no longer the user's to edit or withdraw.
 
 A stopped run's LangSmith root metadata carries `steered`, `steer_count` (the
 Send now presses made during the run) and `steered_at_step` (the boundary the
@@ -473,43 +474,43 @@ a run the agent ended on its own. A `queued` event does not mark the run.
 
 A user message that arrives while a run is active is held per thread instead of
 being refused. The queue is stored in the thread's metadata under
-`instanceAiQueuedMessages`.
+`instanceAiQueuedMessages` and holds at most five messages. It is one turn: it
+goes as a whole, in order, joined with newlines.
 
 | Method | Endpoint | Purpose |
 |---|---|---|
 | `GET` | `/instance-ai/threads/:threadId/queued-messages` | Read the queue |
-| `POST` | `/instance-ai/threads/:threadId/queued-messages` | Add `{ text }` |
+| `POST` | `/instance-ai/threads/:threadId/queued-messages` | Add `{ text }` (refused at five) |
 | `PATCH` | `/instance-ai/threads/:threadId/queued-messages/:messageId` | Edit `{ text }` |
 | `DELETE` | `/instance-ai/threads/:threadId/queued-messages/:messageId` | Remove |
-| `POST` | `/instance-ai/threads/:threadId/queued-messages/:messageId/steer` | Send now |
+| `POST` | `/instance-ai/threads/:threadId/queued-messages/:messageId/recall` | Take the item and everything after it back out; returns `{ queuedMessages, text }` |
+| `POST` | `/instance-ai/threads/:threadId/queued-messages/send-now` | Send the queue now |
 
-Every response is `{ queuedMessages }` — the full queue after the change. So a
-client always renders the server's view of the queue.
+Every response carries `{ queuedMessages }` — the full queue after the change.
+So a client always renders the server's view of the queue. An item with
+`sentAt` is on its way and hidden from the list.
 
-The service delivers the queue in two ways:
+The service delivers the queue in three ways:
 
-1. **Send now** stamps `steerRequestedAt` on the item and publishes
-   `user-message` with `source: "steered"` on the live run right away. The
-   agent runtime asks the service's graceful-stop check before every tool call
-   and at every clean step boundary; the first check that finds the stamp
-   moves the item to the head of the queue, clears every stamp, and answers
-   `true`. The tool call in flight finishes, the tool calls that have not
-   started are settled as skipped, no further model call is made, and the run
-   ends as `steered`. A delegated sub-agent loop (the agent builder) is the one
-   exception to "finishes": Send now aborts it at once through the orchestration
-   context's `subAgentAbortSignal`, and its tool call settles as stopped without
-   cancelling the run. Send now also cancels the thread's background tasks,
-   because the user redirects the whole thread. Both of those stops are
-   in-process; on another main the queue stamp still ends the run at its next
-   tool call.
-2. **Run finish** delivers the next item as a new run: a stamped item first (the
-   run ended before a check could claim it), else the head. It runs before the
+1. **Next tool call.** The agent runtime asks the service's graceful-stop check
+   before every tool call and at every clean step boundary. A non-empty queue
+   makes the check merge it into one sent item, publish `user-message` with
+   `source: "steered"` on the live run, and answer `true`: the tool call in
+   flight finishes, the tool calls that have not started are settled as
+   skipped, no further model call is made, and the run ends as `steered`.
+2. **Send now.** The queue is merged and announced at once, and the thread's
+   interrupt fires: the runtime cancels the model request and the tool calls
+   in flight (settled as cancelled for the model), a delegated builder aborts
+   through the orchestration context's `subAgentAbortSignal`, and the run ends
+   as `steered`. Send now also cancels the thread's background tasks. Both
+   stops are in-process; on another main the queue still ends the run before
+   its next tool call. On an idle thread, Send now delivers at once.
+3. **Run finish.** Whatever is queued goes as one new run. It runs before the
    automatic follow-ups (workflow setup routing, the planned-task tick), and
    when it starts a run those follow-ups hold until that run's own finish
-   re-derives them — a queued turn is a message the user already sent, so it
-   must not wait behind a follow-up or the card it parks on. The guard is the
-   same as the cancel path: no flush while a run is suspended on a confirmation
-   or plan review. A `409 Conflict` stays for a plain `POST /chat/:threadId`.
+   re-derives them. The guard is the same as the cancel path: no flush while
+   a run is suspended on a confirmation or plan review. A `409 Conflict`
+   stays for a plain `POST /chat/:threadId`.
 
 A queued message waits for the run it was typed behind, and only for that run.
 The queue is dropped when that run dies with the process (the startup sweep

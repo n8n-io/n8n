@@ -22,6 +22,7 @@ type InputTestProps = {
 	isAwaitingConfirmation: boolean;
 	isAwaitingPlanReview: boolean;
 	queueWhileStreaming: boolean;
+	queueFull: boolean;
 	currentThreadId: string;
 	amendContext: { agentId: string; role: string } | null;
 	contextualSuggestion: string | null;
@@ -41,6 +42,7 @@ const defaultProps = (): InputTestProps => ({
 	isAwaitingConfirmation: false,
 	isAwaitingPlanReview: false,
 	queueWhileStreaming: false,
+	queueFull: false,
 	currentThreadId: 'thread-1',
 	amendContext: null,
 	contextualSuggestion: null,
@@ -444,6 +446,21 @@ describe('InstanceAiInput', () => {
 		await waitFor(() => expect(emitted().submit?.[0]).toBeDefined());
 		expect(emittedArgument(emitted().submit?.[0], 0)).toBe('Use the Slack node');
 		expect(emitted().stop).toBeUndefined();
+	});
+
+	it('refuses a streaming submit once the queue is full', async () => {
+		const { emitted, getByRole, getByTestId, queryByTestId } = renderComponent({
+			props: { isStreaming: true, queueWhileStreaming: true, queueFull: true },
+		});
+
+		const textbox = getByRole('textbox');
+		await userEvent.type(textbox, 'A sixth message');
+		await fireEvent.keyDown(textbox, { key: 'Enter' });
+
+		expect(emitted().submit).toBeUndefined();
+		// Nothing to queue, so the primary action stays Stop.
+		expect(getByTestId('instance-ai-stop-button')).toBeInTheDocument();
+		expect(queryByTestId('instance-ai-send-button')).not.toBeInTheDocument();
 	});
 
 	it('keeps Stop while streaming when the host does not queue, draft or not', async () => {

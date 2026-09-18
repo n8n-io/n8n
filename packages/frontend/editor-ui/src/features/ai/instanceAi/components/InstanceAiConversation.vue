@@ -59,6 +59,7 @@ import {
 import InstanceAiMessage from './InstanceAiMessage.vue';
 import InstanceAiInput from './InstanceAiInput.vue';
 import InstanceAiQueuedMessages from './InstanceAiQueuedMessages.vue';
+import { INSTANCE_AI_MAX_QUEUED_MESSAGES } from '@n8n/api-types';
 import InstanceAiStatusBar from './InstanceAiStatusBar.vue';
 import InstanceAiConfirmationPanel from './InstanceAiConfirmationPanel.vue';
 import WorkflowBuilderUnavailableNotice from './WorkflowBuilderUnavailableNotice.vue';
@@ -312,6 +313,14 @@ watch(
 function isCurrentThreadRuntime(): boolean {
 	return store.getRuntime(thread.id) === thread;
 }
+
+// Sent items are on their way and no longer count; the cap is on what the user
+// can still change.
+const isQueueFull = computed(
+	() =>
+		thread.queuedMessages.filter((message) => message.sentAt === undefined).length >=
+		INSTANCE_AI_MAX_QUEUED_MESSAGES,
+);
 
 /**
  * Show what the server still holds. A queue a Stop left behind stays in the
@@ -757,6 +766,7 @@ defineExpose({
 										:is-awaiting-confirmation="thread.isAwaitingConfirmation"
 										:is-awaiting-plan-review="thread.pendingPlanReview !== null"
 										queue-while-streaming
+										:queue-full="isQueueFull"
 										:is-workflow-builder-available="settingsStore.isWorkflowBuilderAvailable"
 										:current-thread-id="thread.id"
 										:amend-context="thread.amendContext"

@@ -19,6 +19,12 @@ import {
 	protectUntrustedToolResult,
 } from './untrusted-tool-output';
 import { isAbortError, raceWithAbort } from '../../sdk/abort';
+
+/** Model-facing settlement for a call that never started because the user sent a new instruction. */
+const INTERRUPTED_SKIP_OUTPUT = '[Skipped: the user sent a new instruction]';
+/** Model-facing settlement for a call the host cancelled mid-flight for the same reason. */
+const INTERRUPTED_CANCEL_OUTPUT = '[Tool call cancelled: the user sent a new instruction]';
+const INTERRUPTED_CANCEL_REASON = 'The user sent a new instruction';
 import { isCancellation } from '../../sdk/cancellation';
 import { isLlmMessage } from '../../sdk/message';
 import type { RuntimeSkillLoader } from '../../skills/types';
@@ -146,6 +152,12 @@ export interface ToolBatchContext {
 	 * the run as a normal completion.
 	 */
 	shouldStop?: () => boolean | Promise<boolean>;
+	/**
+	 * True once the host stopped the step in flight (`ExecutionOptions.interruptSignal`)
+	 * while the run itself is still live. `abortSignal` is aborted too, so the
+	 * calls in flight cancel; this tells that cancel apart from a run abort.
+	 */
+	isInterrupted?: () => boolean;
 }
 
 /** A tool-call content block that has already been settled by the AI SDK. */
@@ -164,6 +176,8 @@ interface ProcessToolCallParams {
 	resolvedTelemetry?: BuiltTelemetry;
 	executionCounter?: AgentExecutionCounter;
 	abortSignal?: AbortSignal;
+	/** See `ToolBatchContext.isInterrupted`. */
+	isInterrupted?: () => boolean;
 	/** Whether this counts as a new tool-call invocation. Default `true`; `false` on resume. */
 	countToolCall?: boolean;
 	/** Checkpointed suspend payload of the tool call being resumed. */
@@ -263,9 +277,8 @@ export class ToolCallExecutor {
 			this.deps.onCancelled();
 			return '[Skipped: run was aborted]';
 		}
-		if (askHost && (await ctx.shouldStop?.())) {
-			return '[Skipped: the user sent a new instruction]';
-		}
+		if (ctx.isInterrupted?.()) return INTERRUPTED_SKIP_OUTPUT;
+		if (askHost && (await ctx.shouldStop?.())) return INTERRUPTED_SKIP_OUTPUT;
 		return undefined;
 	}
 
@@ -407,6 +420,7 @@ export class ToolCallExecutor {
 							resolvedTelemetry,
 							executionCounter,
 							abortSignal,
+							isInterrupted: ctx.isInterrupted,
 							countToolCall: true,
 						}),
 				),
@@ -786,18 +800,27 @@ export class ToolCallExecutor {
 			});
 		} catch (error) {
 			if (isAbortError(error) || params.abortSignal?.aborted) {
+				// A host interrupt cancels the call exactly like a run abort, but the
+				// run goes on to a normal completion: no cancelled state, and the
+				// model reads why the call stopped.
+				const interruptedOnly = params.isInterrupted?.() === true;
+				const reason = interruptedOnly ? INTERRUPTED_CANCEL_REASON : 'Run aborted';
 				abortObserved = true;
 				if (didSuspend) {
 					await cleanupInterruptedSuspension();
 				} else if (params.suspendPayload !== undefined || params.continuation !== undefined) {
 					try {
-						await this.runCancellationCleanup({ ...params, input }, builtTool, 'Run aborted');
+						await this.runCancellationCleanup({ ...params, input }, builtTool, reason);
 					} catch {
 						// Parent shutdown must continue; persistent stores will prune stale checkpoints.
 					}
 				}
-				this.deps.onCancelled();
-				return this.buildCancelledOutcome(params, 'Run aborted');
+				if (!interruptedOnly) this.deps.onCancelled();
+				return this.buildCancelledOutcome(
+					params,
+					reason,
+					interruptedOnly ? INTERRUPTED_CANCEL_OUTPUT : undefined,
+				);
 			}
 
 			return await this.toolError(params, error, builtTool);
@@ -875,6 +898,7 @@ export class ToolCallExecutor {
 			resolvedTelemetry: ctx.telemetry,
 			executionCounter: ctx.executionCounter,
 			abortSignal: ctx.abortSignal,
+			isInterrupted: ctx.isInterrupted,
 			countToolCall: false,
 			...(entry.suspended
 				? {
@@ -969,9 +993,10 @@ export class ToolCallExecutor {
 	private buildCancelledOutcome(
 		params: ProcessToolCallParams,
 		userMessage: string,
+		modelOutputOverride?: string,
 	): ToolCallOutcome {
 		const { toolCallId, toolName, input, list } = params;
-		const modelOutput = `[Tool call cancelled. User said: "${userMessage}"]`;
+		const modelOutput = modelOutputOverride ?? `[Tool call cancelled. User said: "${userMessage}"]`;
 		this.eventBus.emit({
 			type: AgentEvent.ToolExecutionEnd,
 			toolCallId,

@@ -244,6 +244,16 @@ export interface ExecutionOptions {
 		step: number;
 		before: 'tool-call' | 'model-call';
 	}) => boolean | Promise<boolean>;
+	/**
+	 * Host request to stop the step in flight at once. When it fires, the model
+	 * request and the tool calls in flight are cancelled, the tool calls are
+	 * settled as cancelled for the model, text streamed so far is kept, and the
+	 * run finishes exactly like a `true` from `shouldStopGracefully`
+	 * (`finishReason: 'stop'`, a normal completion) — so a host can put a new
+	 * user turn in front of work the agent has not finished. Distinct from
+	 * `abortSignal`, which cancels the run.
+	 */
+	interruptSignal?: AbortSignal;
 	/** @deprecated Use `onStepEnd` instead. */
 	onStepFinish?: (event: GenerateTextStepEndEvent) => void | Promise<void>;
 	/**

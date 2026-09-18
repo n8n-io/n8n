@@ -1635,17 +1635,29 @@ export class InstanceAiThreadMessagesQuery extends Z.class({
 	raw: z.enum(['true', 'false']).optional(),
 }) {}
 
+/** Most messages a thread holds in its queue; the composer refuses a sixth. */
+export const INSTANCE_AI_MAX_QUEUED_MESSAGES = 5;
+
 export const instanceAiQueuedMessageSchema = z.object({
 	id: z.string(),
 	text: z.string(),
 	createdAt: z.string(),
-	/** Set when the user requests delivery into the active run. */
-	steerRequestedAt: z.string().optional(),
+	/**
+	 * Set once the message is in the transcript (Send now, or claimed at a
+	 * tool-call boundary) and on its way to its own run. The queue list hides it
+	 * from then on; it is no longer the user's to edit or withdraw.
+	 */
+	sentAt: z.string().optional(),
 });
 export type InstanceAiQueuedMessage = z.infer<typeof instanceAiQueuedMessageSchema>;
 
 export interface InstanceAiQueuedMessagesResponse {
 	queuedMessages: InstanceAiQueuedMessage[];
+}
+
+/** A recalled item and everything queued after it, joined for the composer. */
+export interface InstanceAiRecallQueuedMessagesResponse extends InstanceAiQueuedMessagesResponse {
+	text: string;
 }
 
 export interface InstanceAiSendMessageResponse {

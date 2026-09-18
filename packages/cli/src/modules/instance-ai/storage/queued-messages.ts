@@ -7,7 +7,7 @@ export interface QueuedMessage {
 	id: string;
 	text: string;
 	createdAt: string;
-	steerRequestedAt?: string;
+	sentAt?: string;
 }
 
 export function readQueuedMessages(metadata: Record<string, unknown> | undefined): QueuedMessage[] {
@@ -19,7 +19,7 @@ export function readQueuedMessages(metadata: Record<string, unknown> | undefined
 			typeof item.id === 'string' &&
 			typeof item.text === 'string' &&
 			typeof item.createdAt === 'string' &&
-			(item.steerRequestedAt === undefined || typeof item.steerRequestedAt === 'string'),
+			(item.sentAt === undefined || typeof item.sentAt === 'string'),
 	);
 }
 
@@ -36,11 +36,31 @@ export function withQueuedMessages(
 	return updated;
 }
 
+/**
+ * The queue as one turn: every item in order, joined with a newline, under the
+ * head's id and time. `sentAt` is the earliest one, so a queue whose head was
+ * already announced stays announced.
+ */
+export function mergeQueuedMessages(messages: QueuedMessage[]): QueuedMessage | undefined {
+	const [head] = messages;
+	if (!head) return undefined;
+	const sentAt = messages
+		.map((item) => item.sentAt)
+		.filter((value): value is string => value !== undefined)
+		.sort()[0];
+	return {
+		id: head.id,
+		text: messages.map((item) => item.text).join('\n'),
+		createdAt: head.createdAt,
+		...(sentAt !== undefined ? { sentAt } : {}),
+	};
+}
+
 export function toQueuedMessageList(messages: QueuedMessage[]): InstanceAiQueuedMessage[] {
-	return messages.map(({ id, text, createdAt, steerRequestedAt }) => ({
+	return messages.map(({ id, text, createdAt, sentAt }) => ({
 		id,
 		text,
 		createdAt,
-		...(steerRequestedAt !== undefined ? { steerRequestedAt } : {}),
+		...(sentAt !== undefined ? { sentAt } : {}),
 	}));
 }

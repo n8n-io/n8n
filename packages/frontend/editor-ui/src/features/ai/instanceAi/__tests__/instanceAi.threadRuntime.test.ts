@@ -14,7 +14,8 @@ import {
 	fetchQueuedMessages,
 	postQueuedMessage,
 	deleteQueuedMessage,
-	postSteerQueuedMessage,
+	postSendQueueNow,
+	postRecallQueuedMessages,
 } from '../instanceAi.api';
 import {
 	INSTANCE_AI_THREAD_SOURCE_FALLBACK,
@@ -73,7 +74,8 @@ vi.mock('../instanceAi.api', () => ({
 	fetchQueuedMessages: vi.fn(),
 	postQueuedMessage: vi.fn(),
 	deleteQueuedMessage: vi.fn(),
-	postSteerQueuedMessage: vi.fn(),
+	postSendQueueNow: vi.fn(),
+	postRecallQueuedMessages: vi.fn(),
 }));
 
 vi.mock('../instanceAi.memory.api', () => ({
@@ -3006,8 +3008,12 @@ describe('Instance AI thread runtime — queued messages', () => {
 		vi.mocked(fetchQueuedMessages).mockResolvedValue({ queuedMessages: [] });
 		vi.mocked(postQueuedMessage).mockResolvedValue({ queuedMessages: [queued('qm-1', 'queued')] });
 		vi.mocked(deleteQueuedMessage).mockResolvedValue({ queuedMessages: [] });
-		vi.mocked(postSteerQueuedMessage).mockResolvedValue({
+		vi.mocked(postSendQueueNow).mockResolvedValue({
 			queuedMessages: [queued('qm-1', 'queued')],
+		});
+		vi.mocked(postRecallQueuedMessages).mockResolvedValue({
+			queuedMessages: [],
+			text: 'queued',
 		});
 	});
 
@@ -3053,42 +3059,60 @@ describe('Instance AI thread runtime — queued messages', () => {
 		expect(runtime.queuedMessages).toEqual([]);
 	});
 
-	it('requests immediate delivery and keeps the server queue, stamp included', async () => {
-		const stamped = { ...queued('qm-1', 'queued'), steerRequestedAt: '2026-04-01T00:00:01.000Z' };
-		vi.mocked(postSteerQueuedMessage).mockResolvedValue({ queuedMessages: [stamped] });
+	it('sends the queue now and keeps the server queue, sent marker included', async () => {
+		const sent = { ...queued('qm-1', 'queued'), sentAt: '2026-04-01T00:00:01.000Z' };
+		vi.mocked(postSendQueueNow).mockResolvedValue({ queuedMessages: [sent] });
 		const runtime = createThreadRuntime('thread-queue-steer', {
 			onTitleUpdated: vi.fn(),
 			onRunFinish: vi.fn(),
 		});
 
-		await runtime.steerQueuedMessage('qm-1');
+		await runtime.sendQueueNow();
 
-		expect(postSteerQueuedMessage).toHaveBeenCalledWith(
-			expect.anything(),
-			'thread-queue-steer',
-			'qm-1',
-		);
-		// The list hides stamped items; the runtime keeps the server's view, which
+		expect(postSendQueueNow).toHaveBeenCalledWith(expect.anything(), 'thread-queue-steer');
+		// The list hides sent items; the runtime keeps the server's view, which
 		// is what a reload renders.
-		expect(runtime.queuedMessages).toEqual([stamped]);
+		expect(runtime.queuedMessages).toEqual([sent]);
 	});
 
-	it('takes an item out of the queue for editing and returns its text', async () => {
+	it('recalls an item and everything after it for editing, joined by newlines', async () => {
+		vi.mocked(postQueuedMessage).mockResolvedValue({
+			queuedMessages: [queued('qm-1', 'first'), queued('qm-2', 'second'), queued('qm-3', 'third')],
+		});
+		vi.mocked(postRecallQueuedMessages).mockResolvedValue({
+			queuedMessages: [queued('qm-1', 'first')],
+			text: 'second\nthird',
+		});
 		const runtime = createThreadRuntime('thread-queue-edit', {
 			onTitleUpdated: vi.fn(),
 			onRunFinish: vi.fn(),
 		});
-		await runtime.queueMessage('Use the Slack node');
+		await runtime.queueMessage('third');
 
-		const text = await runtime.takeQueuedMessageForEdit('qm-1');
+		const text = await runtime.takeQueuedMessageForEdit('qm-2');
 
-		expect(text).toBe('queued');
-		expect(deleteQueuedMessage).toHaveBeenCalledWith(
+		expect(text).toBe('second\nthird');
+		expect(postRecallQueuedMessages).toHaveBeenCalledWith(
 			expect.anything(),
 			'thread-queue-edit',
-			'qm-1',
+			'qm-2',
 		);
-		expect(runtime.queuedMessages).toEqual([]);
+		expect(runtime.queuedMessages).toEqual([queued('qm-1', 'first')]);
+	});
+
+	it('falls back to the local text when the recall request is lost', async () => {
+		vi.mocked(postQueuedMessage).mockResolvedValue({
+			queuedMessages: [queued('qm-1', 'first'), queued('qm-2', 'second')],
+		});
+		vi.mocked(postRecallQueuedMessages).mockRejectedValueOnce(new Error('network error'));
+		const runtime = createThreadRuntime('thread-queue-edit-lost', {
+			onTitleUpdated: vi.fn(),
+			onRunFinish: vi.fn(),
+		});
+		await runtime.queueMessage('second');
+
+		expect(await runtime.takeQueuedMessageForEdit('qm-1')).toBe('first\nsecond');
+		expect(fetchQueuedMessages).toHaveBeenCalled();
 	});
 
 	it('returns null for an item the queue does not hold', async () => {
@@ -3098,7 +3122,7 @@ describe('Instance AI thread runtime — queued messages', () => {
 		});
 
 		expect(await runtime.takeQueuedMessageForEdit('qm-missing')).toBeNull();
-		expect(deleteQueuedMessage).not.toHaveBeenCalled();
+		expect(postRecallQueuedMessages).not.toHaveBeenCalled();
 	});
 
 	it('drops a queued item when the server reports it delivered', async () => {
@@ -3121,5 +3145,7 @@ describe('Instance AI thread runtime — queued messages', () => {
 		);
 
 		expect(runtime.queuedMessages).toEqual([]);
+		// The rest of the queue merged into that turn; the server's view says which.
+		expect(fetchQueuedMessages).toHaveBeenCalled();
 	});
 });

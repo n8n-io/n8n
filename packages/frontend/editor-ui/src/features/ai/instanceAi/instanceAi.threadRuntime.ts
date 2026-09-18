@@ -46,7 +46,8 @@ import {
 	fetchQueuedMessages,
 	postQueuedMessage,
 	deleteQueuedMessage,
-	postSteerQueuedMessage,
+	postSendQueueNow,
+	postRecallQueuedMessages,
 } from './instanceAi.api';
 import {
 	fetchThreadMessages as fetchThreadMessagesApi,
@@ -931,8 +932,13 @@ export function createThreadRuntime(
 				parsed.data,
 			);
 			if (parsed.data.type === 'user-message') {
+				// The queue went as one turn under this id; the rest merged into it.
+				// Drop the item at once and take the server's view for the others.
 				const { messageId } = parsed.data.payload;
 				queuedMessages.value = queuedMessages.value.filter((message) => message.id !== messageId);
+				void loadQueuedMessages().catch(() => {
+					// The list is display-only; the next load or event corrects it.
+				});
 			}
 			// Anything received on the stream means generation isn't stalled.
 			resetGenerationStallWatchdog();
@@ -1419,9 +1425,9 @@ export function createThreadRuntime(
 		}
 	}
 
-	async function steerQueuedMessage(messageId: string): Promise<void> {
+	async function sendQueueNow(): Promise<void> {
 		try {
-			const response = await postSteerQueuedMessage(rootStore.restApiContext, threadId, messageId);
+			const response = await postSendQueueNow(rootStore.restApiContext, threadId);
 			queuedMessages.value = response.queuedMessages;
 		} catch {
 			toast.showError(
@@ -1431,22 +1437,36 @@ export function createThreadRuntime(
 		}
 	}
 
+	/**
+	 * Take a queued message back into the composer. The queue is one turn, so
+	 * the messages after it come along, joined with newlines, and the text is
+	 * what the server took out — a local fallback when the request is lost.
+	 */
 	async function takeQueuedMessageForEdit(messageId: string): Promise<string | null> {
-		const message = queuedMessages.value.find((item) => item.id === messageId);
-		if (!message) return null;
+		const index = queuedMessages.value.findIndex((item) => item.id === messageId);
+		if (index === -1) return null;
+		const localText = queuedMessages.value
+			.slice(index)
+			.map((item) => item.text)
+			.join('\n');
 
 		try {
-			const response = await deleteQueuedMessage(rootStore.restApiContext, threadId, messageId);
+			const response = await postRecallQueuedMessages(
+				rootStore.restApiContext,
+				threadId,
+				messageId,
+			);
 			queuedMessages.value = response.queuedMessages;
+			return response.text;
 		} catch {
-			// Refresh the queue after an uncertain delete, but keep the user's edit text.
+			// Refresh the queue after an uncertain recall, but keep the user's edit text.
 			try {
 				await loadQueuedMessages();
 			} catch {
 				// Keep the last confirmed queue when the refresh also fails.
 			}
+			return localText;
 		}
-		return message.text;
 	}
 
 	async function cancelRun(): Promise<void> {
@@ -1668,7 +1688,7 @@ export function createThreadRuntime(
 		loadQueuedMessages,
 		queueMessage,
 		removeQueuedMessage,
-		steerQueuedMessage,
+		sendQueueNow,
 		takeQueuedMessageForEdit,
 		cancelRun,
 		cancelBackgroundTask,

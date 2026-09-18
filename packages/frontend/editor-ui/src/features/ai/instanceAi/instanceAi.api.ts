@@ -8,6 +8,7 @@ import type {
 	InstanceAiEnsureThreadResponse,
 	InstanceAiSendMessageResponse,
 	InstanceAiQueuedMessagesResponse,
+	InstanceAiRecallQueuedMessagesResponse,
 	InstanceAiConfirmRequest,
 	InstanceAiConfirmResponse,
 	InstanceAiCredits,
@@ -90,16 +91,28 @@ export async function deleteQueuedMessage(
 	);
 }
 
-/** Request immediate delivery of a queued message. */
-export async function postSteerQueuedMessage(
+/** Send the whole queue now, as one turn. */
+export async function postSendQueueNow(
 	context: IRestApiContext,
 	threadId: string,
-	messageId: string,
 ): Promise<InstanceAiQueuedMessagesResponse> {
 	return await makeRestApiRequest<InstanceAiQueuedMessagesResponse>(
 		context,
 		'POST',
-		`/instance-ai/threads/${threadId}/queued-messages/${messageId}/steer`,
+		`/instance-ai/threads/${threadId}/queued-messages/send-now`,
+	);
+}
+
+/** Take a queued message and everything after it back out, joined for the composer. */
+export async function postRecallQueuedMessages(
+	context: IRestApiContext,
+	threadId: string,
+	messageId: string,
+): Promise<InstanceAiRecallQueuedMessagesResponse> {
+	return await makeRestApiRequest<InstanceAiRecallQueuedMessagesResponse>(
+		context,
+		'POST',
+		`/instance-ai/threads/${threadId}/queued-messages/${messageId}/recall`,
 	);
 }
 

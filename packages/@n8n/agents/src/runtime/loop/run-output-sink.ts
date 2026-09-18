@@ -132,6 +132,11 @@ export interface RunOutputSink<TResult> {
 	 * this call still recovers the turn from the retained text.
 	 */
 	onTurnFolded?(): void;
+	/**
+	 * Text the interrupted model turn streamed before the host stopped it, as
+	 * an assistant message to keep; undefined when nothing streamed.
+	 */
+	getAbortSnapshot?(): AgentMessage | undefined;
 	/** Emit the results/errors of a completed tool-call batch. */
 	emitToolBatch(batch: ToolCallBatchResult): Promise<void>;
 	/** Produce the terminal result when the run suspends for HITL / suspend-resume. */

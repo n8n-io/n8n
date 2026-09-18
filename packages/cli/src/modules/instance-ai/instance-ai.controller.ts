@@ -986,9 +986,21 @@ export class InstanceAiController {
 		return { queuedMessages };
 	}
 
-	@Post('/threads/:threadId/queued-messages/:messageId/steer')
+	@Post('/threads/:threadId/queued-messages/send-now')
 	@GlobalScope('instanceAi:message')
-	async steerQueuedMessage(
+	async sendQueueNow(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('threadId') threadId: string,
+	) {
+		this.requireInstanceAiEnabled();
+		await this.assertThreadAccess(req.user.id, threadId);
+		return await this.instanceAiService.sendQueueNow(req.user, threadId);
+	}
+
+	@Post('/threads/:threadId/queued-messages/:messageId/recall')
+	@GlobalScope('instanceAi:message')
+	async recallQueuedMessages(
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('threadId') threadId: string,
@@ -996,12 +1008,7 @@ export class InstanceAiController {
 	) {
 		this.requireInstanceAiEnabled();
 		await this.assertThreadAccess(req.user.id, threadId);
-		const { queuedMessages } = await this.instanceAiService.requestSteer(
-			req.user,
-			threadId,
-			messageId,
-		);
-		return { queuedMessages };
+		return await this.instanceAiService.recallQueuedMessages(threadId, messageId);
 	}
 
 	@Get('/threads/:threadId/messages')

@@ -3,6 +3,7 @@ import type { InstanceAiQueuedMessage } from '@n8n/api-types';
 import {
 	QUEUED_MESSAGES_METADATA_KEY,
 	QUEUED_MESSAGES_METADATA_KEY as KEY,
+	mergeQueuedMessages,
 	readQueuedMessages,
 	toQueuedMessageList,
 	withQueuedMessages,
@@ -22,8 +23,8 @@ describe('queued messages metadata', () => {
 		expect(readQueuedMessages(metadata)).toEqual([message()]);
 	});
 
-	it('keeps a steer request timestamp', () => {
-		const steering = message({ steerRequestedAt: '2026-01-01T00:01:00.000Z' });
+	it('keeps a sent timestamp', () => {
+		const steering = message({ sentAt: '2026-01-01T00:01:00.000Z' });
 
 		expect(readQueuedMessages({ [KEY]: [steering] })).toEqual([steering]);
 	});
@@ -44,7 +45,7 @@ describe('queued messages metadata', () => {
 				'string',
 				{ id: 'qm-2' },
 				message({ id: 'qm-3', createdAt: 123 as unknown as string }),
-				message({ id: 'qm-4', steerRequestedAt: 5 as unknown as string }),
+				message({ id: 'qm-4', sentAt: 5 as unknown as string }),
 				message({ id: 'qm-5', text: 99 as unknown as string }),
 			],
 		};
@@ -69,13 +70,29 @@ describe('queued messages metadata', () => {
 	});
 
 	it('maps the stored shape onto the API shape', () => {
-		expect(
-			toQueuedMessageList([message({ steerRequestedAt: '2026-01-01T00:01:00.000Z' })]),
-		).toEqual([message({ steerRequestedAt: '2026-01-01T00:01:00.000Z' })]);
+		expect(toQueuedMessageList([message({ sentAt: '2026-01-01T00:01:00.000Z' })])).toEqual([
+			message({ sentAt: '2026-01-01T00:01:00.000Z' }),
+		]);
 	});
 
-	it('omits an unset steer request from the API shape', () => {
+	it('omits an unset sent time from the API shape', () => {
 		expect(toQueuedMessageList([message()])).toEqual([message()]);
-		expect(toQueuedMessageList([message()])[0]).not.toHaveProperty('steerRequestedAt');
+		expect(toQueuedMessageList([message()])[0]).not.toHaveProperty('sentAt');
+	});
+
+	it('merges the queue into one turn under the head, joined with newlines', () => {
+		const merged = mergeQueuedMessages([
+			message({ id: 'qm-1', text: 'first' }),
+			message({ id: 'qm-2', text: 'second', sentAt: '2026-01-01T00:02:00.000Z' }),
+			message({ id: 'qm-3', text: 'third', sentAt: '2026-01-01T00:01:00.000Z' }),
+		]);
+
+		expect(merged).toEqual({
+			id: 'qm-1',
+			text: 'first\nsecond\nthird',
+			createdAt: '2026-01-01T00:00:00.000Z',
+			sentAt: '2026-01-01T00:01:00.000Z',
+		});
+		expect(mergeQueuedMessages([])).toBeUndefined();
 	});
 });

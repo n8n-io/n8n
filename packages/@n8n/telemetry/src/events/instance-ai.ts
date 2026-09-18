@@ -353,7 +353,7 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 	USER_STEERED_MESSAGE: {
 		name: 'User steered n8n Assistant message',
 		description:
-			'A queued user message ended the running n8n Assistant run at a step boundary and started its own run (Send now). Tracks delivery, not the button press, so a steer the run never reached is not counted.',
+			'The queued user turn ended the running n8n Assistant run before its next tool call, or at once through Send now, and started its own run. Tracks delivery, not the button press, so a turn the run never reached is not counted.',
 		properties: z.object({
 			thread_id: z.string(),
 			step: z.number().optional().describe('Agent-loop step the steer stopped the run before'),

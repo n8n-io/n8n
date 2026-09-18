@@ -72,6 +72,8 @@ const props = withDefaults(
 		isAwaitingPlanReview?: boolean;
 		/** While a run is active, submit joins the queue instead of starting a run. */
 		queueWhileStreaming?: boolean;
+		/** The queue holds as much as it can; a streaming submit is refused until it drains. */
+		queueFull?: boolean;
 		currentThreadId?: string;
 		amendContext?: AmendContext;
 		contextualSuggestion?: string | null;
@@ -98,6 +100,7 @@ const props = withDefaults(
 		isAwaitingConfirmation: false,
 		isAwaitingPlanReview: false,
 		queueWhileStreaming: false,
+		queueFull: false,
 		currentThreadId: '',
 		amendContext: null,
 		contextualSuggestion: null,
@@ -388,7 +391,7 @@ function canSubmitMessage(message: string, attachmentCount = 0) {
 	// the queue instead of starting a run. Staged attachments wait for the run to
 	// end, because the queue holds text only.
 	if (props.isStreaming && props.queueWhileStreaming) {
-		return message.length > 0 && attachmentCount === 0;
+		return message.length > 0 && attachmentCount === 0 && !props.queueFull;
 	}
 	if (isBusy.value) return false;
 	return message.length > 0 || attachmentCount > 0;

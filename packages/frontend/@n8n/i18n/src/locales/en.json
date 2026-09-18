@@ -6965,6 +6965,8 @@
 	"instanceAi.send.instanceLimit.message": "This n8n instance is running as many conversations as it can handle. Try again in a moment.",
 	"instanceAi.input.stop": "Stop",
 	"instanceAi.queue.title": "Queued messages",
+	"instanceAi.queue.count": "Queued messages ({count} of {max})",
+	"instanceAi.queue.full": "The queue is full. Send it now, or edit a message, to add another.",
 	"instanceAi.queue.sendNow": "Send now",
 	"instanceAi.queue.edit": "Edit",
 	"instanceAi.queue.remove": "Remove",

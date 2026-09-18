@@ -194,16 +194,17 @@ describe('InstanceAiConversation', () => {
 			);
 		});
 
-		it('asks for immediate delivery and removal from the queue item', async () => {
+		it('sends the whole queue now, and removes one item', async () => {
 			thread.isStreaming = true;
-			thread.queuedMessages = [queued('qm-1', 'Use the Slack node')];
-			const { getByTestId } = renderWithQueue()();
+			thread.queuedMessages = [queued('qm-1', 'Use the Slack node'), queued('qm-2', 'And log')];
+			const { getByTestId, getAllByTestId } = renderWithQueue()();
 
+			expect(getByTestId('instance-ai-queued-messages-count').textContent).toContain('2 of 5');
 			await fireEvent.click(getByTestId('instance-ai-queued-message-send-now'));
-			await fireEvent.click(getByTestId('instance-ai-queued-message-remove'));
+			await fireEvent.click(getAllByTestId('instance-ai-queued-message-remove')[1]);
 
-			await vi.waitFor(() => expect(thread.steerQueuedMessage).toHaveBeenCalledWith('qm-1'));
-			await vi.waitFor(() => expect(thread.removeQueuedMessage).toHaveBeenCalledWith('qm-1'));
+			await vi.waitFor(() => expect(thread.sendQueueNow).toHaveBeenCalledTimes(1));
+			await vi.waitFor(() => expect(thread.removeQueuedMessage).toHaveBeenCalledWith('qm-2'));
 		});
 
 		it('still offers Send now on an idle thread, for a queue a Stop left behind', async () => {
@@ -213,13 +214,24 @@ describe('InstanceAiConversation', () => {
 
 			await fireEvent.click(getByTestId('instance-ai-queued-message-send-now'));
 
-			await vi.waitFor(() => expect(thread.steerQueuedMessage).toHaveBeenCalledWith('qm-1'));
+			await vi.waitFor(() => expect(thread.sendQueueNow).toHaveBeenCalledTimes(1));
+		});
+
+		it('says so at five', () => {
+			thread.isStreaming = true;
+			thread.queuedMessages = ['one', 'two', 'three', 'four', 'five'].map((text, index) =>
+				queued(`qm-${index}`, text),
+			);
+			const { getByTestId } = renderWithQueue()();
+
+			expect(getByTestId('instance-ai-queued-messages-count').textContent).toContain('5 of 5');
+			expect(getByTestId('instance-ai-queued-messages-full')).toBeInTheDocument();
 		});
 
 		it('drops an item from the list once it was sent now', () => {
 			thread.isStreaming = true;
 			thread.queuedMessages = [
-				{ ...queued('qm-1', 'Use the Slack node'), steerRequestedAt: '2026-04-01T00:00:01.000Z' },
+				{ ...queued('qm-1', 'Use the Slack node'), sentAt: '2026-04-01T00:00:01.000Z' },
 				queued('qm-2', 'And add a filter'),
 			];
 			const { getAllByTestId } = renderWithQueue()();
