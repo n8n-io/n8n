@@ -1,4 +1,4 @@
-import { byIdUnderSp } from '../../actions/task/helpers';
+import { byIdUnderSp } from '../../descriptions/rlc.builder';
 import * as rlc from '../../descriptions/rlc.description';
 
 // Pins the emitted shape of every v2 resource locator, key presence included: pretty-format

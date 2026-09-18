@@ -3,7 +3,7 @@ import type { INodeProperties, IExecuteFunctions } from 'n8n-workflow';
 import { returnAllOrLimit } from '@utils/descriptions';
 import { updateDisplayOptions } from '@utils/utilities';
 
-import { groupRLC, planRLC } from '../../descriptions';
+import { byIdUnderSp, groupRLC, planRLC } from '../../descriptions';
 import {
 	buildTeamsPath,
 	getTeamsCredentialType,
@@ -12,7 +12,6 @@ import {
 	SERVICE_PRINCIPAL_AUTH,
 	SP_HIDE,
 } from '../../transport';
-import { byIdUnderSp } from './helpers';
 
 const properties: INodeProperties[] = [
 	{
