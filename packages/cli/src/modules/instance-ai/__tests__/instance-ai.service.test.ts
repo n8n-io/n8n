@@ -1492,6 +1492,11 @@ describe('InstanceAiService — run start', () => {
 			context,
 			'group-1',
 			undefined,
+			false,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
 		);
 	});
 
@@ -1534,6 +1539,50 @@ describe('InstanceAiService — run start', () => {
 			context,
 			'group-1',
 			undefined,
+			false,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+		);
+	});
+
+	it('passes thread artifacts into executeRun', () => {
+		const service = createStartRunService();
+		const threadArtifacts = {
+			artifacts: [{ type: 'workflow' as const, id: 'wf-1', name: 'WhatsApp FAQ Auto-Responder' }],
+			activeId: 'wf-1',
+		};
+
+		service.startRun(
+			fakeUser,
+			'thread-a',
+			'Change this',
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			threadArtifacts,
+		);
+
+		expect(service.executeRun).toHaveBeenCalledWith(
+			fakeUser,
+			'thread-a',
+			'run-1',
+			'Change this',
+			expect.any(AbortController),
+			undefined,
+			undefined,
+			'group-1',
+			undefined,
+			false,
+			undefined,
+			undefined,
+			undefined,
+			threadArtifacts,
 		);
 	});
 });
@@ -5137,8 +5186,14 @@ describe('InstanceAiService — editor handoff context resources', () => {
 	it('builds the context block from combined workflow and agent attachments', () => {
 		const source = InstanceAiService.toString();
 
-		expect(source).toContain('buildContextResourcesBlock(contextAttachments)');
-		expect(source).not.toContain('buildContextResourcesBlock(workflowAttachments)');
+		// Imported helpers compile to `(0,__vite_ssr_import_N__.fn)(args)`. Both
+		// arguments must reach the block, or the editor hand-off drops out of it.
+		expect(source).toMatch(
+			/buildThreadArtifactsBlock\)?\s*\(\s*threadArtifacts\s*,\s*contextAttachments\s*\)/,
+		);
+		expect(source).toMatch(/buildThreadContextBlock\)?/);
+		expect(source).not.toContain('buildContextResourcesBlock');
+		expect(source).not.toContain('EDITOR_CONTEXT_OPEN_TAG');
 	});
 
 	it('traces the attached resources, which the raw message no longer shows', () => {
@@ -6211,8 +6266,14 @@ describe('InstanceAiService — resolveAiPreferencesBlock', () => {
 		const service = createService();
 		service.aiPreferenceService.getApplicable.mockResolvedValue({
 			instance: [],
-			user: ['Keep replies short.'],
-			projects: [{ id: 'project-1', name: 'Marketing', items: ['Prefer HubSpot nodes.'] }],
+			user: [{ id: 'pref-1', content: 'Keep replies short.' }],
+			projects: [
+				{
+					id: 'project-1',
+					name: 'Marketing',
+					items: [{ id: 'pref-2', content: 'Prefer HubSpot nodes.' }],
+				},
+			],
 		});
 
 		const block = await service.resolveAiPreferencesBlock('user-1', {

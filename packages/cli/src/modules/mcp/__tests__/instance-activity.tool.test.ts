@@ -33,9 +33,13 @@ function harness(credentialGranted = true) {
 	return {
 		instanceContext,
 		telemetry,
-		list: createGetInstanceActivityTool(user, instanceContext, telemetry, { credentialGranted }),
+		list: createGetInstanceActivityTool(user, instanceContext, telemetry, {
+			credentialGranted,
+			executionGranted: true,
+		}),
 		expand: createExpandInstanceActivityTool(user, instanceContext, telemetry, {
 			credentialGranted,
+			executionGranted: true,
 		}),
 	};
 }
@@ -52,7 +56,7 @@ describe('get_instance_activity', () => {
 
 		expect(instanceContext.listPage).toHaveBeenCalledWith(
 			expect.objectContaining({
-				scope: { surface: 'mcp', credentialGranted: true },
+				scope: { surface: 'mcp', credentialGranted: true, executionGranted: true },
 			}),
 		);
 	});
@@ -76,7 +80,12 @@ describe('get_instance_activity', () => {
 
 		expect(instanceContext.listPage).toHaveBeenCalledWith(
 			expect.objectContaining({
-				scope: { surface: 'mcp', credentialGranted: true, projectId: 'project-1' },
+				scope: {
+					surface: 'mcp',
+					credentialGranted: true,
+					executionGranted: true,
+					projectId: 'project-1',
+				},
 			}),
 		);
 	});
@@ -193,7 +202,7 @@ describe('expand_instance_activity', () => {
 		expect(instanceContext.expand).toHaveBeenCalledWith(
 			expect.objectContaining({
 				id: 7,
-				scope: { surface: 'mcp', credentialGranted: false },
+				scope: { surface: 'mcp', credentialGranted: false, executionGranted: true },
 			}),
 		);
 	});

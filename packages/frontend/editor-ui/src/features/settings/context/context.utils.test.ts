@@ -24,6 +24,7 @@ function preference(overrides: Partial<Preference> = {}): Preference {
 		user: { id: 'user-1', email: 'me@n8n.io', firstName: 'Me', lastName: 'Myself' },
 		projectId: null,
 		project: null,
+		source: 'ui',
 		scopes: [],
 		createdAt: '2026-09-08T00:00:00.000Z',
 		updatedAt: '2026-09-08T00:00:00.000Z',

@@ -16,12 +16,6 @@
 			},
 			{
 				"rule": "catalog-violations",
-				"line": 74,
-				"message": "jsdom appears in 4 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
-				"hash": "9c770d66baf2"
-			},
-			{
-				"rule": "catalog-violations",
 				"line": 80,
 				"message": "turndown appears in 3 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "85c311d87491"
@@ -83,12 +77,6 @@
 				"line": 283,
 				"message": "cheerio appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "8cd029bb871e"
-			},
-			{
-				"rule": "catalog-violations",
-				"line": 293,
-				"message": "jsdom appears in 4 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
-				"hash": "26f20ebea4b1"
 			},
 			{
 				"rule": "catalog-violations",
@@ -262,12 +250,6 @@
 			},
 			{
 				"rule": "catalog-violations",
-				"line": 940,
-				"message": "jsdom appears in 4 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
-				"hash": "02341f2b5e3e"
-			},
-			{
-				"rule": "catalog-violations",
 				"line": 951,
 				"message": "mongodb appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "f688907d087a"
@@ -381,12 +363,6 @@
 				"line": 29,
 				"message": "@mozilla/readability appears in 5 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "0c97891a24f4"
-			},
-			{
-				"rule": "catalog-violations",
-				"line": 31,
-				"message": "jsdom appears in 4 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
-				"hash": "8466b03b1044"
 			},
 			{
 				"rule": "catalog-violations",

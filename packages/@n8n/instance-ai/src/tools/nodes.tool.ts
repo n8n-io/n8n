@@ -1,5 +1,6 @@
 /**
- * Consolidated nodes tool — list, search, describe, type-definition, suggested, explore-resources.
+ * Consolidated nodes tool — list, search, describe, type-definition, suggested,
+ * explore-resources, execute.
  */
 import { Tool } from '@n8n/agents';
 import {
@@ -10,10 +11,18 @@ import {
 	type CategorySuggestedNode,
 	type SearchableNodeType,
 } from '@n8n/ai-utilities/node-catalog';
+import {
+	buildExecuteNodeSessionGrantKey,
+	instanceAiApprovalResumeSchema,
+	instanceAiConfirmationSeveritySchema,
+	NODE_RESOURCE_GRANT_FALLBACK_KEYS,
+} from '@n8n/api-types';
+import { validateNodeConfig } from '@n8n/workflow-sdk';
+import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
-import type { InstanceAiContext } from '../types';
+import type { InstanceAiContext, NodeDescription } from '../types';
 import { pickPreferredChatModelNode } from './nodes/preferred-chat-model';
 import { addSetupPreference, type NodeWithSetupPreference } from './nodes/setup-preference';
 import { buildCredentialMap } from './workflows/resolve-credentials';
@@ -128,6 +137,63 @@ const exploreResourcesAction = z.object({
 		.describe(CURRENT_NODE_PARAMETERS_DESCRIPTION),
 });
 
+const MAX_EXECUTE_TIMEOUT_MS = 60_000;
+
+// Envelope mirrors a workflow-sdk node so the agent can pass a node it is
+// building verbatim. Credentials take the resolved `{ id, name }` form only —
+// the SDK's placeholder/new-credential forms have no stored row to execute with.
+const executeAction = z.object({
+	action: z
+		.literal('execute')
+		.describe(
+			'Execute a single node standalone with real credentials and return its real output ' +
+				'items. Use it to learn the exact output shape of a node before wiring downstream ' +
+				"expressions, or to test one node in isolation. Always read the node's " +
+				'`action: "type-definition"` first and build the parameters from it — never guess ' +
+				'parameter names, resource/operation values, or the version. The node really runs — ' +
+				'side effects happen (messages get sent, rows get written). ' +
+				'Expressions referencing other nodes cannot resolve; binary ' +
+				'output is returned as metadata only.',
+		),
+	type: z.string().min(1).describe(NODE_TYPE_ID_DESCRIPTION),
+	version: z.number().describe('Node version, e.g. 4.7'),
+	config: z
+		.object({
+			parameters: z
+				.record(z.unknown())
+				.describe('Node parameters — same shape as workflow-sdk NodeConfig.parameters'),
+			credentials: z
+				.record(
+					z.object({
+						id: z.string().nullable(),
+						name: z.string(),
+						__aiGatewayManaged: z.boolean().optional(),
+					}),
+				)
+				.optional()
+				.describe(
+					'Resolved credential references by credential type, e.g. { slackApi: { id, name } }. ' +
+						'Ask the user which credentials to use if there are multiple credentials available - ' +
+						'do not pick a credential on your own',
+				),
+		})
+		.describe('Node config — same shape as a workflow-sdk node config'),
+	input: z
+		.array(z.object({ json: z.record(z.unknown()) }))
+		.optional()
+		.describe('Input items for the node (defaults to one empty item)'),
+	timeoutMs: z.number().int().positive().max(MAX_EXECUTE_TIMEOUT_MS).optional(),
+});
+
+type ExecuteInput = z.infer<typeof executeAction>;
+
+const suspendSchema = z.object({
+	requestId: z.string(),
+	message: z.string(),
+	resourceName: z.string().optional(),
+	severity: instanceAiConfirmationSeveritySchema,
+});
+
 const fullInputSchema = sanitizeInputSchema(
 	z.discriminatedUnion('action', [
 		listAction,
@@ -136,6 +202,7 @@ const fullInputSchema = sanitizeInputSchema(
 		typeDefinitionAction,
 		suggestedAction,
 		exploreResourcesAction,
+		executeAction,
 	]),
 );
 
@@ -400,6 +467,160 @@ async function handleExploreResources(
 	}
 }
 
+/** True when the property is not gated on `resource`, or is gated on the resolved one. */
+function isShownForResource(
+	property: NodeDescription['properties'][number],
+	resource: string | undefined,
+): boolean {
+	const shownFor = property.displayOptions?.show?.resource;
+	if (!Array.isArray(shownFor)) return true;
+	return resource !== undefined && shownFor.includes(resource);
+}
+
+/** Description for the 45 node types that carry no parameter worth naming (If, Filter, Sort, ...). */
+const EXECUTE_DESCRIPTION_FALLBACK = 'Single run';
+
+/**
+ * Human-readable subjects for the execute-node approval card: the node the card names in its
+ * title (`Google Sheets node`) and what the call does below it (`Sheet Within Document > Append
+ * Row`). Falls back to the node type ID and the raw parameter values when the node description
+ * or its option lists don't resolve.
+ */
+async function buildExecuteNodeLabels(
+	context: InstanceAiContext,
+	input: ExecuteInput,
+): Promise<{ resourceName: string; message: string }> {
+	let description: NodeDescription | undefined;
+	try {
+		description = await context.nodeService.getDescription(input.type, input.version);
+	} catch {
+		// Keep the raw node type in the prompt.
+	}
+	const properties = description?.properties ?? [];
+
+	/**
+	 * A split node declares one `operation` property for each resource, so the same operation
+	 * value can carry a different label under another resource — only the properties shown for
+	 * the resolved resource may name it. An omitted parameter falls back to the node default at
+	 * runtime, so the prompt resolves it the same way and names the call the user really gets.
+	 */
+	const resolveParameter = (name: string, resource?: string) => {
+		const declaredBy = properties.filter(
+			(property) => property.name === name && isShownForResource(property, resource),
+		);
+		const value = input.config.parameters[name] ?? declaredBy[0]?.default;
+		if (typeof value !== 'string' || value.length === 0) return undefined;
+		const option = declaredBy
+			.flatMap((property) => property.options ?? [])
+			.find((candidate) => candidate.value === value);
+		return { value, label: option?.name ?? value };
+	};
+
+	const resource = resolveParameter('resource');
+	const operation = resolveParameter('operation', resource?.value);
+	let label = [resource?.label, operation?.label].filter(Boolean).join(' > ');
+	for (const name of NODE_RESOURCE_GRANT_FALLBACK_KEYS) {
+		if (label) break;
+		label = resolveParameter(name)?.label ?? '';
+	}
+
+	return {
+		resourceName: `${description?.displayName ?? input.type} node`,
+		message: label || EXECUTE_DESCRIPTION_FALLBACK,
+	};
+}
+
+async function handleExecute(
+	context: InstanceAiContext,
+	rawInput: ExecuteInput,
+	resumeData: z.infer<typeof instanceAiApprovalResumeSchema> | undefined | null,
+	suspend: (payload: z.infer<typeof suspendSchema>) => Promise<never>,
+) {
+	const { executeNodeService } = context;
+	if (!executeNodeService) {
+		return {
+			status: 'error' as const,
+			error: { message: 'Node execution is not available on this instance' },
+		};
+	}
+
+	// The flattened runtime schema makes every variant field optional — re-assert
+	// the variant contract so a missing field returns a structured error.
+	const parsedInput = executeAction.safeParse(rawInput);
+	if (!parsedInput.success) {
+		return {
+			status: 'error' as const,
+			error: {
+				message: parsedInput.error.issues
+					.map((issue) => `${issue.path.join('.') || '<root>'}: ${issue.message}`)
+					.join('; '),
+			},
+		};
+	}
+	const input = parsedInput.data;
+
+	const validation = validateNodeConfig(input.type, input.version, input.config);
+	// Missing discriminators fall back to node defaults at runtime, so they don't block.
+	const blockingErrors = validation.errors.filter((error) => !error.missingDiscriminator);
+	if (blockingErrors.length > 0) {
+		return {
+			status: 'error' as const,
+			error: {
+				message: `Node parameters do not match the schema for ${input.type} v${input.version}`,
+				issues: blockingErrors.map(({ path, message }) => ({ path, message })),
+			},
+		};
+	}
+
+	// Executing one node is equivalent to running a one-node workflow, so the
+	// `runWorkflow` policy applies as-is.
+	if (context.permissions?.runWorkflow === 'blocked') {
+		return {
+			status: 'error' as const,
+			denied: true,
+			reason: 'Action blocked by admin',
+		};
+	}
+
+	const grantKey = buildExecuteNodeSessionGrantKey(input.type, input.config.parameters);
+	const requireApproval = context.requireRunWorkflowApproval === true;
+	// A scoped `always_allow` names the workflow IDs it covers, and a standalone node run has no
+	// workflow ID to match, so a scoped override never covers this call.
+	const scopedRunOverride =
+		context.allowedRunWorkflowIds !== undefined || context.allowedRunWorkflowNames !== undefined;
+	const allowedByScope =
+		!requireApproval && !scopedRunOverride && context.permissions?.runWorkflow === 'always_allow';
+	const allowedBySessionGrant =
+		!requireApproval &&
+		grantKey !== null &&
+		context.sessionApprovedToolKeys?.has(grantKey) === true;
+	const needsApproval = !allowedByScope && !allowedBySessionGrant;
+
+	if (needsApproval && (resumeData === undefined || resumeData === null)) {
+		return await suspend({
+			requestId: nanoid(),
+			...(await buildExecuteNodeLabels(context, input)),
+			severity: 'warning' as const,
+		});
+	}
+
+	if (resumeData !== undefined && resumeData !== null && !resumeData.approved) {
+		return { status: 'error' as const, denied: true, reason: 'User denied the action' };
+	}
+
+	if (resumeData?.approved && resumeData.scope === 'session' && grantKey !== null) {
+		await context.grantSessionToolApproval?.(grantKey);
+	}
+
+	return await executeNodeService.execute({
+		type: input.type,
+		version: input.version,
+		config: input.config,
+		input: input.input,
+		timeoutMs: input.timeoutMs,
+	});
+}
+
 // ── Tool factory ────────────────────────────────────────────────────────────
 
 export function createNodesTool(
@@ -457,10 +678,12 @@ export function createNodesTool(
 
 	return new Tool('nodes')
 		.description(
-			'Work with n8n node types. Use `suggested` for known workflow categories, `search` for service-specific discovery, `type-definition` before configuring nodes, and `explore-resources` for live credential-backed lists.',
+			'Work with n8n node types. Use `suggested` for known workflow categories, `search` for service-specific discovery, `type-definition` before configuring nodes, `explore-resources` for live credential-backed lists, and `execute` to run one node standalone (requires user approval, real side effects).',
 		)
 		.input(fullInputSchema)
-		.handler(async (input: FullInput) => {
+		.suspend(suspendSchema)
+		.resume(instanceAiApprovalResumeSchema)
+		.handler(async (input: FullInput, ctx) => {
 			switch (input.action) {
 				case 'list':
 					return await handleList(context, input);
@@ -474,6 +697,8 @@ export function createNodesTool(
 					return await handleSuggested(context, input);
 				case 'explore-resources':
 					return await handleExploreResources(context, input);
+				case 'execute':
+					return await handleExecute(context, input, ctx.resumeData, ctx.suspend);
 			}
 		})
 		.build();

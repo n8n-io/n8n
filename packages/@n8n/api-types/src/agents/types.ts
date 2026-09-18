@@ -363,6 +363,8 @@ export interface AgentPersistedMessageDto {
 	 * so history renders the same error bubble the live stream showed.
 	 */
 	executionError?: string;
+	/** ISO timestamp of when this turn was recorded. Absent on older history. */
+	createdAt?: string;
 }
 
 export interface AgentBuilderOpenSuspension {
