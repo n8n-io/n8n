@@ -54,6 +54,9 @@ const i18n = useI18n();
 const nodeTypesStore = useNodeTypesStore();
 const searchInput = ref<HTMLInputElement>();
 const listboxId = 'instance-ai-mention-listbox';
+const hasNodeCandidates = computed(() =>
+	props.candidates.some((candidate) => candidate.kind === 'node'),
+);
 
 interface CandidateSection {
 	key: string;
@@ -155,13 +158,14 @@ function handleSearchInput(event: Event): void {
 	if (target instanceof HTMLInputElement) emit('update:query', target.value);
 }
 
+watch([() => props.open, hasNodeCandidates], async ([open, hasNodes]) => {
+	if (open && hasNodes) await nodeTypesStore.loadNodeTypesIfNotLoaded();
+});
+
 watch(
 	() => props.open,
 	async (open) => {
 		if (!open) return;
-		if (props.candidates.some((candidate) => candidate.kind === 'node')) {
-			await nodeTypesStore.loadNodeTypesIfNotLoaded();
-		}
 		if (props.origin === 'button') {
 			await nextTick();
 			searchInput.value?.focus();
@@ -206,13 +210,21 @@ watch(
 				<div v-if="limitReason" :class="$style.state" role="status">
 					{{ i18n.baseText(`instanceAi.mentions.limit.${limitReason}`) }}
 				</div>
-				<div v-else-if="availability === 'loading' || loading" :class="$style.state" role="status">
+				<div
+					v-else-if="(availability === 'loading' || loading) && candidates.length === 0"
+					:class="$style.state"
+					role="status"
+				>
 					{{ i18n.baseText('instanceAi.mentions.picker.loading') }}
 				</div>
 				<div v-else-if="availability === 'empty'" :class="$style.state" role="status">
 					{{ i18n.baseText('instanceAi.mentions.picker.emptyProject') }}
 				</div>
-				<div v-else-if="availability === 'error' || error" :class="$style.state" role="alert">
+				<div
+					v-else-if="(availability === 'error' || error) && candidates.length === 0"
+					:class="$style.state"
+					role="alert"
+				>
 					<span>{{ i18n.baseText('instanceAi.mentions.picker.error') }}</span>
 					<N8nButton size="small" variant="subtle" @click="emit('retry')">
 						{{ i18n.baseText('instanceAi.mentions.picker.retry') }}
@@ -222,6 +234,19 @@ watch(
 					{{ i18n.baseText('instanceAi.mentions.picker.noResults') }}
 				</div>
 				<div v-else :id="listboxId" :class="$style.listbox" role="listbox">
+					<div
+						v-if="availability === 'loading' || loading"
+						:class="$style.inlineState"
+						role="status"
+					>
+						{{ i18n.baseText('instanceAi.mentions.picker.loading') }}
+					</div>
+					<div v-if="availability === 'error' || error" :class="$style.inlineState" role="alert">
+						<span>{{ i18n.baseText('instanceAi.mentions.picker.error') }}</span>
+						<N8nButton size="small" variant="subtle" @click="emit('retry')">
+							{{ i18n.baseText('instanceAi.mentions.picker.retry') }}
+						</N8nButton>
+					</div>
 					<section v-for="section in sections" :key="section.key" :class="$style.section">
 						<div v-if="section.label" :class="$style.sectionLabel">{{ section.label }}</div>
 						<button
@@ -231,8 +256,9 @@ watch(
 							type="button"
 							:class="[$style.option, { [$style.highlighted]: candidate.key === highlightedId }]"
 							role="option"
-							:disabled="!candidate.source || Boolean(candidate.unavailableReason)"
+							:aria-disabled="!candidate.source || Boolean(candidate.unavailableReason)"
 							:aria-selected="candidate.unavailableReason === 'selected'"
+							tabindex="-1"
 							:aria-label="`${candidate.label}, ${typeLabel(candidate)}${candidate.parentLabel ? `, ${candidate.parentLabel}` : ''}${unavailableLabel(candidate) ? `, ${unavailableLabel(candidate)}` : ''}`"
 							:title="unavailableLabel(candidate)"
 							@mouseenter="emit('highlight', candidate.key)"
@@ -336,7 +362,7 @@ watch(
 		background: var(--color--background--light-2);
 	}
 
-	&:disabled {
+	&[aria-disabled='true'] {
 		color: var(--color--text--tint-1);
 		cursor: not-allowed;
 	}
@@ -379,6 +405,16 @@ watch(
 	padding: var(--spacing--lg);
 	color: var(--color--text--tint-1);
 	text-align: center;
+}
+
+.inlineState {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--2xs);
+	color: var(--color--text--tint-1);
+	font-size: var(--font-size--2xs);
 }
 
 .loadMore {

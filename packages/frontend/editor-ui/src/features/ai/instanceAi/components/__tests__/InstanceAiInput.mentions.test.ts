@@ -148,6 +148,18 @@ describe('InstanceAiInput mentions', () => {
 		expect(textarea).toHaveValue('Fix Support triage  now');
 	});
 
+	it('restores textarea focus when button mode closes with Escape', async () => {
+		const { getByRole, getByTestId, getByPlaceholderText } = renderComponent();
+		const textarea = getByRole('combobox');
+		await waitForAvailability();
+		await fireEvent.click(getByTestId('instance-ai-mention-button'));
+		const search = await waitFor(() => getByPlaceholderText('Search workflows and nodes'));
+
+		await fireEvent.keyDown(search, { key: 'Escape' });
+
+		await waitFor(() => expect(document.activeElement).toBe(textarea));
+	});
+
 	it('renders a removable mention chip', async () => {
 		const { getByTestId, emitted } = renderComponent({
 			props: { draftMentions: [workflowMention] },
@@ -176,7 +188,10 @@ describe('InstanceAiInput mentions', () => {
 		await waitForAvailability();
 		await openTypedPicker(textarea);
 
-		expect(getByRole('option', { name: /Already mentioned/ })).toBeDisabled();
+		expect(getByRole('option', { name: /Already mentioned/ })).toHaveAttribute(
+			'aria-disabled',
+			'true',
+		);
 	});
 
 	it('blocks an eleventh mention and exhausted attachment budgets', async () => {
@@ -192,7 +207,12 @@ describe('InstanceAiInput mentions', () => {
 		);
 		const first = renderComponent({ props: { draftMentions: mentions } });
 		await waitForAvailability();
-		expect(first.getByTestId('instance-ai-mention-button')).toBeDisabled();
+		const disabledButton = first.getByTestId('instance-ai-mention-button');
+		expect(disabledButton).toBeDisabled();
+		expect(disabledButton.parentElement).toHaveAttribute('tabindex', '0');
+		expect(disabledButton.parentElement).toHaveAccessibleName(
+			'Mention a workflow, node, or canvas group',
+		);
 		first.unmount();
 
 		const second = renderComponent({

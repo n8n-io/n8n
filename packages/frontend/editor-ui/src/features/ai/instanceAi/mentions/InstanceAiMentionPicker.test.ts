@@ -119,9 +119,36 @@ describe('InstanceAiMentionPicker', () => {
 		const { getByRole } = renderPicker({ candidates: [selected] });
 		const option = getByRole('option');
 
-		expect(option).toBeDisabled();
+		expect(option).not.toBeDisabled();
+		expect(option).toHaveAttribute('aria-disabled', 'true');
 		expect(option).toHaveAttribute('aria-selected', 'true');
 		expect(option).toHaveAccessibleName(/Already mentioned/);
+	});
+
+	it('keeps local candidates visible while remote workflows load', () => {
+		const { getByRole } = renderPicker({ loading: true, candidates: [nodeCandidate] });
+
+		expect(getByRole('listbox')).toBeInTheDocument();
+		expect(getByRole('option', { name: /Route request/ })).toBeInTheDocument();
+		expect(getByRole('status')).toHaveTextContent('Loading workflows…');
+	});
+
+	it('loads node types when node candidates arrive after opening', async () => {
+		const nodeTypesStore = useNodeTypesStore();
+		const loadNodeTypes = vi
+			.spyOn(nodeTypesStore, 'loadNodeTypesIfNotLoaded')
+			.mockResolvedValue(undefined);
+		const { rerender } = renderPicker({ candidates: [workflowCandidate] });
+		expect(loadNodeTypes).not.toHaveBeenCalled();
+
+		await rerender({
+			open: true,
+			origin: 'typed',
+			query: '',
+			candidates: [workflowCandidate, nodeCandidate],
+		});
+
+		expect(loadNodeTypes).toHaveBeenCalledOnce();
 	});
 
 	it.each([

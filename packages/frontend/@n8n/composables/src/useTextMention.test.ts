@@ -138,10 +138,24 @@ describe('useTextMention', () => {
 		expect(mention.highlightedId.value).toBe('current-result');
 	});
 
-	it('skips disabled results when it resets the highlight', () => {
+	it('keeps disabled results discoverable but does not select them', () => {
 		const { mention } = setup([{ id: 'selected', disabled: true }, { id: 'available' }]);
 		mention.handleTextInput('@', 1, 1);
+		const enter = new KeyboardEvent('keydown', { key: 'Enter', cancelable: true });
 
+		expect(mention.highlightedId.value).toBe('selected');
+		expect(mention.handleKeydown(enter)).toBeUndefined();
+		expect(enter.defaultPrevented).toBe(true);
+		mention.handleKeydown(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
 		expect(mention.highlightedId.value).toBe('available');
+	});
+
+	it('consumes Enter while an open picker has no result', () => {
+		const { mention } = setup([]);
+		mention.handleTextInput('@missing', 8, 8);
+		const enter = new KeyboardEvent('keydown', { key: 'Enter', cancelable: true });
+
+		expect(mention.handleKeydown(enter)).toBeUndefined();
+		expect(enter.defaultPrevented).toBe(true);
 	});
 });

@@ -693,8 +693,12 @@ function handleMentionCompositionEnd(event: CompositionEvent): void {
 }
 
 function handleMentionKeydown(event: KeyboardEvent): void {
+	const restoreButtonFocus = mention.origin.value === 'button';
 	const action = mention.handleKeydown(event);
 	if (action?.type === 'select') selectMention(action.result, mention.highlightedIndex.value);
+	if (action?.type === 'close' && restoreButtonFocus) {
+		void nextTick(() => chatInputRef.value?.focus());
+	}
 }
 
 function openMentionPickerFromButton(): void {
@@ -708,8 +712,11 @@ function openMentionPickerFromButton(): void {
 }
 
 function handleMentionPickerOpen(open: boolean): void {
-	if (!open) mention.close();
-	else if (!mention.isOpen.value) openMentionPickerFromButton();
+	if (!open) {
+		const restoreButtonFocus = mention.origin.value === 'button';
+		mention.close();
+		if (restoreButtonFocus) void nextTick(() => chatInputRef.value?.focus());
+	} else if (!mention.isOpen.value) openMentionPickerFromButton();
 }
 
 function selectMention(candidate: InstanceAiMentionCandidate, position = 0): void {
@@ -1041,7 +1048,10 @@ const resizable = computed(() => {
 				>
 					<template #trigger>
 						<N8nTooltip as-child :content="mentionButtonTooltip" placement="top">
-							<span>
+							<span
+								:tabindex="mentionButtonDisabled ? 0 : -1"
+								:aria-label="mentionButtonDisabled ? mentionButtonTooltip : undefined"
+							>
 								<N8nIconButton
 									variant="ghost"
 									icon="at-sign"

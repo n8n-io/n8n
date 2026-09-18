@@ -636,7 +636,14 @@ async function onAddNodesToChat(
 	const doc = workflowDocumentStore.value;
 	const projectId = doc.homeProject?.id;
 	const isInsideThread = !instanceAiCapability.openWorkflow;
-	if (!projectId && !isInsideThread) return;
+	if (!projectId && !isInsideThread) {
+		toast.showToast({
+			type: 'warning',
+			title: i18n.baseText('instanceAi.nodeContext.projectUnavailable.title'),
+			message: i18n.baseText('instanceAi.nodeContext.projectUnavailable.message'),
+		});
+		return;
+	}
 	await addSelectedNodesToChat({
 		workflowId: doc.workflowId,
 		projectId: projectId ?? '',

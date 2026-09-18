@@ -362,10 +362,11 @@ function collectFromMessageAttachments(message: InstanceAiMessage, col: Collecti
 				{ linkable: !attachment.pending },
 			);
 		} else if (attachment.type === 'nodes') {
+			if (!attachment.workflowName) continue;
 			recordProduced(col, {
 				type: 'workflow',
 				id: attachment.workflowId,
-				name: attachment.workflowName ?? 'Untitled',
+				name: attachment.workflowName,
 			});
 		}
 	}

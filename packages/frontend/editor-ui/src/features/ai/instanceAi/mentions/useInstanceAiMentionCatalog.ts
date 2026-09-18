@@ -107,6 +107,7 @@ function toProjection(workflow: IWorkflowDb): WorkflowProjection {
 function createIdIndex(nodes: INodeUi[]): Map<string, INodeUi[]> {
 	const index = new Map<string, INodeUi[]>();
 	for (const node of nodes) {
+		if (typeof node.id !== 'string' || node.id.length === 0) continue;
 		const matches = index.get(node.id) ?? [];
 		matches.push(node);
 		index.set(node.id, matches);
@@ -120,13 +121,14 @@ function projectLocalCandidates(projection: WorkflowProjection): InstanceAiMenti
 
 	for (const [index, node] of projection.nodes.entries()) {
 		if (node.type === STICKY_NODE_TYPE) continue;
-		const nodeRef = toMentionNode(node);
+		const nodeId = typeof node.id === 'string' ? node.id : '';
+		const nodeRef = { ...toMentionNode(node), id: nodeId };
 		const available =
-			!projection.isArchived && node.id.length > 0 && nodesById.get(node.id)?.length === 1;
+			!projection.isArchived && nodeId.length > 0 && nodesById.get(nodeId)?.length === 1;
 		candidates.push({
 			key: available
-				? buildMentionKey({ kind: 'node', workflowId: projection.id, nodeId: node.id })
-				: `unavailable-node:${projection.id}:${node.id}:${index}`,
+				? buildMentionKey({ kind: 'node', workflowId: projection.id, nodeId })
+				: `unavailable-node:${projection.id}:${nodeId}:${index}`,
 			kind: 'node',
 			label: node.name,
 			parentLabel: projection.name,
@@ -327,6 +329,11 @@ export function useInstanceAiMentionCatalog(options: UseInstanceAiMentionCatalog
 		}
 	}
 
+	async function retry(): Promise<void> {
+		await checkAvailability();
+		if (availability.value === 'available') await loadWorkflowPage(true);
+	}
+
 	async function fetchProjection(workflowId: string, generation: number): Promise<void> {
 		try {
 			const workflow = await getWorkflow(rootStore.restApiContext, workflowId);
@@ -524,6 +531,6 @@ export function useInstanceAiMentionCatalog(options: UseInstanceAiMentionCatalog
 		workflowError,
 		hasMoreWorkflows,
 		loadMore: async () => await loadWorkflowPage(false),
-		retry: async () => await loadWorkflowPage(true),
+		retry,
 	};
 }

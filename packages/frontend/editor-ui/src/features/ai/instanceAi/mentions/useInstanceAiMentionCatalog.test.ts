@@ -207,6 +207,36 @@ describe('useInstanceAiMentionCatalog', () => {
 		);
 	});
 
+	it('marks a node with a missing runtime ID unavailable instead of throwing', async () => {
+		const missingIdNode = { ...createTestNode({ name: 'Legacy node' }), id: undefined } as never;
+		mockGetWorkflow.mockResolvedValue(
+			workflow('workflow-1', {
+				nodes: [missingIdNode],
+			}),
+		);
+		const { catalog } = setup({ durableWorkflowIds: new Set(['workflow-1']) });
+		await flushPromises();
+
+		expect(catalog.localCandidates.value).toEqual([
+			expect.objectContaining({
+				label: 'Legacy node',
+				unavailableReason: 'node-unavailable',
+			}),
+		]);
+	});
+
+	it('recovers an availability error through retry', async () => {
+		mockGetWorkflows.mockRejectedValueOnce(new Error('offline'));
+		const { catalog } = setup({ isOpen: false });
+		await flushPromises();
+		expect(catalog.availability.value).toBe('error');
+
+		mockGetWorkflows.mockResolvedValue({ count: 1, data: [workflow()] });
+		await catalog.retry();
+
+		expect(catalog.availability.value).toBe('available');
+	});
+
 	it('searches local children immediately while remote workflow search is debounced', async () => {
 		const { catalog, query } = setup({ durableWorkflowIds: new Set(['workflow-1']) });
 		await flushPromises();

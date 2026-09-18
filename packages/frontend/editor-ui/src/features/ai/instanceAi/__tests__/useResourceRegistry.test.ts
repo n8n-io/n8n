@@ -314,6 +314,25 @@ describe('useResourceRegistry', () => {
 			});
 		});
 
+		test('does not create an Untitled tab for a legacy nodes attachment', async () => {
+			const { messages, producedArtifacts } = setup();
+			messages.value = [
+				makeMessage({
+					role: 'user',
+					attachments: [
+						{
+							type: 'nodes',
+							workflowId: 'workflow-1',
+							sets: [{ nodes: [{ id: 'node-1', name: 'Route request' }] }],
+						},
+					],
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.has('workflow-1')).toBe(false);
+		});
+
 		test('registers a pending workflow attachment as a produced tab', async () => {
 			const pending = ref<
 				{ type: 'workflow'; id: string; name?: string; executionId?: string } | undefined

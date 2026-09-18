@@ -45,11 +45,8 @@ export function useTextMention<TResult>(options: UseTextMentionOptions<TResult>)
 
 	const results = computed(() => toValue(options.results));
 	const isDisabled = (result: TResult) => options.isResultDisabled?.(result) ?? false;
-	const selectableResults = computed(() => results.value.filter((result) => !isDisabled(result)));
 	const highlightedResult = computed(() =>
-		results.value.find(
-			(result) => !isDisabled(result) && options.getResultId(result) === highlightedId.value,
-		),
+		results.value.find((result) => options.getResultId(result) === highlightedId.value),
 	);
 	const highlightedIndex = computed(() =>
 		highlightedResult.value ? results.value.indexOf(highlightedResult.value) : -1,
@@ -61,9 +58,7 @@ export function useTextMention<TResult>(options: UseTextMentionOptions<TResult>)
 			return;
 		}
 		if (highlightedResult.value) return;
-		highlightedId.value = selectableResults.value[0]
-			? options.getResultId(selectableResults.value[0])
-			: undefined;
+		highlightedId.value = results.value[0] ? options.getResultId(results.value[0]) : undefined;
 	}
 
 	watch(results, resetHighlight, { immediate: true, deep: true });
@@ -145,22 +140,21 @@ export function useTextMention<TResult>(options: UseTextMentionOptions<TResult>)
 	}
 
 	function moveHighlight(direction: 1 | -1): void {
-		const selectable = selectableResults.value;
-		if (selectable.length === 0) {
+		if (results.value.length === 0) {
 			highlightedId.value = undefined;
 			return;
 		}
 
-		const currentIndex = selectable.findIndex(
+		const currentIndex = results.value.findIndex(
 			(result) => options.getResultId(result) === highlightedId.value,
 		);
 		const nextIndex =
 			currentIndex < 0
 				? direction === 1
 					? 0
-					: selectable.length - 1
-				: (currentIndex + direction + selectable.length) % selectable.length;
-		highlightedId.value = options.getResultId(selectable[nextIndex]);
+					: results.value.length - 1
+				: (currentIndex + direction + results.value.length) % results.value.length;
+		highlightedId.value = options.getResultId(results.value[nextIndex]);
 	}
 
 	function handleKeydown(event: KeyboardEvent): TextMentionKeyAction<TResult> | undefined {
@@ -173,9 +167,9 @@ export function useTextMention<TResult>(options: UseTextMentionOptions<TResult>)
 		}
 
 		if (event.key === 'Enter' || (event.key === 'Tab' && !event.shiftKey)) {
-			const result = highlightedResult.value;
-			if (!result) return undefined;
 			event.preventDefault();
+			const result = highlightedResult.value;
+			if (!result || isDisabled(result)) return undefined;
 			return { type: 'select', result };
 		}
 

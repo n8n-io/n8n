@@ -7696,6 +7696,8 @@
 	"instanceAi.nodeContext.expand": "Expand",
 	"instanceAi.nodeContext.truncated.title": "Some nodes were left out",
 	"instanceAi.nodeContext.truncated.message": "The selection was too large, so only some of the nodes were added to chat.",
+	"instanceAi.nodeContext.projectUnavailable.title": "Can't add nodes to chat",
+	"instanceAi.nodeContext.projectUnavailable.message": "Save the workflow in a project and try again.",
 	"instanceAi.mentions.button.label": "Mention a workflow, node, or canvas group",
 	"instanceAi.mentions.button.emptyProject": "No workflows in this project",
 	"instanceAi.mentions.picker.search": "Search workflows and nodes",
