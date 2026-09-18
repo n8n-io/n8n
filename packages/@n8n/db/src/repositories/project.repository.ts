@@ -1,35 +1,14 @@
 import { Service } from '@n8n/di';
 import type { EntityManager, SelectQueryBuilder } from '@n8n/typeorm';
-import { Brackets, DataSource, In, Not } from '@n8n/typeorm';
+import { Brackets, DataSource, In, Not, Repository } from '@n8n/typeorm';
 
 import { Project } from '../entities';
-import { BaseRepository } from './base-repository';
-import { TransactionRunner, type OperationContext } from '../services/transaction';
 import { chunkIds } from '../utils/chunk-ids';
 
 @Service()
-export class ProjectRepository extends BaseRepository<Project> {
-	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
-		super(Project, dataSource.manager, transactionRunner);
-	}
-
-	async findForScopeCheck(
-		projectId: string,
-		access: { userId: string; roleSlugs: string[] } | undefined,
-		ctx: OperationContext,
-	) {
-		return await this.managerFor(ctx).findOne(Project, {
-			where: {
-				id: projectId,
-				...(access && {
-					projectRelations: { userId: access.userId, role: In(access.roleSlugs) },
-				}),
-			},
-		});
-	}
-
-	async existsForScopeCheck(projectId: string, ctx: OperationContext) {
-		return await this.managerFor(ctx).existsBy(Project, { id: projectId });
+export class ProjectRepository extends Repository<Project> {
+	constructor(dataSource: DataSource) {
+		super(Project, dataSource.manager);
 	}
 
 	async getPersonalProjectForUser(userId: string, entityManager?: EntityManager) {

@@ -69,7 +69,7 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 		> &
 			Partial<Pick<CredentialsEntity, 'isGlobal'>>,
 		projectId: string,
-		dependencyIds: string[],
+		externalSecretProviderIds: string[],
 		ctx: OperationContext,
 	): Promise<CredentialsEntity> {
 		return await this.runInTransaction(ctx, async (manager) => {
@@ -89,7 +89,7 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 			await this.credentialDependencyRepository.upsertDependenciesForCredential({
 				credentialId: entity.id,
 				dependencyType: EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE,
-				dependencyIds,
+				dependencyIds: externalSecretProviderIds,
 				entityManager: manager,
 			});
 			return await manager.findOneByOrFail(CredentialsEntity, { id: entity.id });

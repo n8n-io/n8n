@@ -1203,30 +1203,26 @@ export class CredentialsService {
 	) {
 		const newCredential = this.credentialsRepository.create({ ...credential, ...encryptedData });
 		await this.externalHooks.run('credentials.create', [encryptedData]);
-		const dependencyIds =
+		const externalSecretProviderIds =
 			await this.credentialDependencyService.resolveProviderIdsFromCredentialData(
 				decryptedCredentialData,
 			);
-		return await this.transactionRunner.run({}, async (ctx) => {
-			const project = await this.projectService.getProjectWithScope(
-				user,
-				projectId,
-				['credential:create'],
-				undefined,
-				ctx,
-			);
-			if (project === null) {
-				if (!(await this.projectRepository.existsForScopeCheck(projectId, ctx))) {
-					throw new NotFoundError('Project not found');
-				}
-				throw new ForbiddenError(
-					"You don't have the permissions to save the credential in this project.",
-				);
+		const project = await this.projectService.getProjectWithScope(user, projectId, [
+			'credential:create',
+		]);
+		if (project === null) {
+			if (!(await this.projectRepository.existsBy({ id: projectId }))) {
+				throw new NotFoundError('Project not found');
 			}
+			throw new ForbiddenError(
+				"You don't have the permissions to save the credential in this project.",
+			);
+		}
+		return await this.transactionRunner.run({}, async (ctx) => {
 			return await this.credentialsRepository.insertProjectCredentialWithOwner(
 				newCredential,
 				project.id,
-				dependencyIds,
+				externalSecretProviderIds,
 				ctx,
 			);
 		});

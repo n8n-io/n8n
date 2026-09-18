@@ -3351,12 +3351,11 @@ describe('CredentialsService', () => {
 				[],
 				{},
 			);
-			expect(projectService.getProjectWithScope).toHaveBeenCalledWith(
-				ownerUser,
-				'project-1',
-				['credential:create'],
-				undefined,
-				{},
+			expect(projectService.getProjectWithScope).toHaveBeenCalledWith(ownerUser, 'project-1', [
+				'credential:create',
+			]);
+			expect(projectService.getProjectWithScope.mock.invocationCallOrder[0]).toBeLessThan(
+				transactionRunner.run.mock.invocationCallOrder[0],
 			);
 		});
 
@@ -3376,12 +3375,13 @@ describe('CredentialsService', () => {
 			expect(credentialsRepository.existsBy).not.toHaveBeenCalled();
 		});
 
-		it('checks project access before the insert', async () => {
+		it('checks project access before opening the write transaction', async () => {
 			projectService.getProjectWithScope.mockResolvedValue(null);
-			projectRepository.existsForScopeCheck.mockResolvedValue(true);
+			projectRepository.existsBy.mockResolvedValue(true);
 			await expect(service.createStubCredential(stubOpts, memberUser)).rejects.toThrow(
 				ForbiddenError,
 			);
+			expect(transactionRunner.run).not.toHaveBeenCalled();
 			expect(credentialsRepository.insertProjectCredentialWithOwner).not.toHaveBeenCalled();
 		});
 	});

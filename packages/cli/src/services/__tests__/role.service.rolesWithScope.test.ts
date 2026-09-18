@@ -1,7 +1,6 @@
 import type { LicenseState } from '@n8n/backend-common';
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
-import type { OperationContext, Transaction } from '@n8n/db';
 import { RoleRepository, ScopeRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
@@ -44,30 +43,7 @@ describe('RoleService.rolesWithScope', () => {
 				'project',
 				['project:read'],
 				undefined,
-				undefined,
 			);
-			expect(result).toEqual(mockRoles);
-		});
-
-		it('should forward the operation context with its transaction unchanged', async () => {
-			const ctx: OperationContext = { trx: mock<Transaction>() };
-			const mockRoles = ['project:admin'];
-			roleCacheService.getRolesWithAllScopes.mockResolvedValue(mockRoles);
-
-			const result = await roleService.rolesWithScope(
-				'project',
-				'credential:create',
-				undefined,
-				ctx,
-			);
-
-			expect(roleCacheService.getRolesWithAllScopes).toHaveBeenCalledWith(
-				'project',
-				['credential:create'],
-				undefined,
-				ctx,
-			);
-			expect(roleCacheService.getRolesWithAllScopes.mock.calls[0][3]).toBe(ctx);
 			expect(result).toEqual(mockRoles);
 		});
 
@@ -82,7 +58,6 @@ describe('RoleService.rolesWithScope', () => {
 				'project',
 				inputScopes,
 				undefined,
-				undefined,
 			);
 			expect(result).toEqual(mockRoles);
 		});
@@ -93,12 +68,7 @@ describe('RoleService.rolesWithScope', () => {
 
 			const result = await roleService.rolesWithScope('project', []);
 
-			expect(roleCacheService.getRolesWithAllScopes).toHaveBeenCalledWith(
-				'project',
-				[],
-				undefined,
-				undefined,
-			);
+			expect(roleCacheService.getRolesWithAllScopes).toHaveBeenCalledWith('project', [], undefined);
 			expect(result).toEqual([]);
 		});
 	});
@@ -144,7 +114,6 @@ describe('RoleService.rolesWithScope', () => {
 				'project',
 				['project:read', 'project:update'],
 				undefined,
-				undefined,
 			);
 			expect(result).toEqual(mockRoles);
 		});
@@ -166,20 +135,17 @@ describe('RoleService.rolesWithScope', () => {
 				'credential',
 				['credential:read'],
 				undefined,
-				undefined,
 			);
 			expect(roleCacheService.getRolesWithAllScopes).toHaveBeenNthCalledWith(
 				2,
 				'workflow',
 				['workflow:execute'],
 				undefined,
-				undefined,
 			);
 			expect(roleCacheService.getRolesWithAllScopes).toHaveBeenNthCalledWith(
 				3,
 				'project',
 				['project:delete'],
-				undefined,
 				undefined,
 			);
 		});
@@ -198,7 +164,6 @@ describe('RoleService.rolesWithScope', () => {
 			expect(roleCacheService.getRolesWithAllScopes).toHaveBeenCalledWith(
 				'project',
 				mixedScopes,
-				undefined,
 				undefined,
 			);
 			expect(result).toEqual(mockRoles);

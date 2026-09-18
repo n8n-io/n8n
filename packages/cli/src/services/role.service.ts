@@ -19,7 +19,7 @@ import {
 	ScopeRepository,
 	GLOBAL_ADMIN_ROLE,
 } from '@n8n/db';
-import type { EntityManager, OperationContext } from '@n8n/db';
+import type { EntityManager } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type {
 	Scope,
@@ -451,13 +451,12 @@ export class RoleService {
 		namespace: RoleNamespace,
 		scopes: Scope | Scope[],
 		trx?: EntityManager,
-		ctx?: OperationContext,
 	): Promise<string[]> {
 		if (!Array.isArray(scopes)) {
 			scopes = [scopes];
 		}
 		// Get database roles from cache
-		return await this.roleCacheService.getRolesWithAllScopes(namespace, scopes, trx, ctx);
+		return await this.roleCacheService.getRolesWithAllScopes(namespace, scopes, trx);
 	}
 
 	isRoleLicensed(role: AssignableProjectRole | AssignableGlobalRole) {

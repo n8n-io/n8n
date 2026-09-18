@@ -3,7 +3,6 @@ import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import {
 	type User,
-	type OperationContext,
 	FolderRepository,
 	Project,
 	ProjectRelation,
@@ -870,17 +869,7 @@ export class ProjectService {
 		projectId: string,
 		scopes: Scope[],
 		entityManager?: EntityManager,
-		ctx?: OperationContext,
 	) {
-		if (ctx) {
-			const access = hasGlobalScope(user, scopes, { mode: 'allOf' })
-				? undefined
-				: {
-						userId: user.id,
-						roleSlugs: await this.roleService.rolesWithScope('project', scopes, undefined, ctx),
-					};
-			return await this.projectRepository.findForScopeCheck(projectId, access, ctx);
-		}
 		const em = entityManager ?? this.projectRepository.manager;
 		let where: FindOptionsWhere<Project> = {
 			id: projectId,
