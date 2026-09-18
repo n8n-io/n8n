@@ -254,7 +254,7 @@ parallelism). See the `--build-via-mcp` section in
 | `preview:debug`       | `util-codespace-preview.yml` | Re-serves the instance with `N8N_LOG_LEVEL=debug`   |
 
 **Why:** A reviewer gets a running instance of the PR without a Docker build or a
-cloud deploy. The workflow calls `scripts/preview.mjs`, which keeps one codespace
+cloud deploy. The workflow calls `scripts/codespace-preview/preview.mjs`, which keeps one codespace
 for each PR (display name `preview/pr-<number>`) and shares port 5678 with the
 organization. A later push serves the new head in the same box. Removing the
 label, or closing the PR, deletes the box.
@@ -266,7 +266,7 @@ scoped to `n8n-io/n8n` and cannot check out a fork head.
 
 `up` and `refresh` take minutes, and an absent comment looks the same as a broken
 preview. So the comment goes up before the box work starts, as a checklist of the
-phases in `scripts/preview-phases.mjs`, and is edited for each phase and once a
+phases in `scripts/codespace-preview/preview-phases.mjs`, and is edited for each phase and once a
 minute after that. The final URL replaces it in place.
 
 A comment **edit sends no notification** — only a create does. That is what makes a
@@ -310,12 +310,12 @@ A `preview:*` label configures an instance that already exists, so adding or
 removing one re-serves the box instead of creating or deleting it. It does
 nothing on a PR without `codespace-preview`.
 
-The vocabulary lives in `scripts/preview-labels.mjs`, which both ends import:
+The vocabulary lives in `scripts/codespace-preview/preview-labels.mjs`, which both ends import:
 `preview.mjs` turns the PR's labels into slugs, and `preview-serve.mjs` turns
 those slugs into environment inside the box. Add a toggle there, in one place.
 
 Two things cross the gap, and both are shape-checked rather than trusted: a
-`preview:*` slug, and a phase key from `scripts/preview-phases.mjs`. The `gh
+`preview:*` slug, and a phase key from `scripts/codespace-preview/preview-phases.mjs`. The `gh
 codespace ssh` command is a shell string that appears in the box's process list, so
 a value is never passed through it — `preview:enterprise` resolves to a licence key
 inside the box, not on the runner.
@@ -336,7 +336,7 @@ in this repository, so that is the set of people who already have write access.
 #### Preview environment from a webhook
 
 A preview can also take environment from an n8n webhook we control, so a value
-can change without a commit and a merge. `scripts/preview-remote-env.mjs` fetches
+can change without a commit and a merge. `scripts/codespace-preview/preview-remote-env.mjs` fetches
 it, and `preview-serve.mjs` hands the result to the backend.
 
 It needs three **Codespaces** secrets on `n8n-io/n8n`, again not Actions secrets:
@@ -802,11 +802,11 @@ Scripts in `.github/scripts/`:
 | Script                          | Purpose                                                                 | Called By                      |
 |---------------------------------|-------------------------------------------------------------------------|--------------------------------|
 | `codespace-preview.mjs`         | Map a `pull_request` event or a manual operation onto a preview operation, comment the result | `util-codespace-preview.yml` |
-| `../../scripts/preview.mjs`     | One codespace for each PR: `up`, `refresh`, `down`, `ls`. `--json` for CI | `codespace-preview.mjs`, developers |
-| `../../scripts/preview-remote-env.mjs` | Fetch extra environment for a preview from the webhook, inside the box | `../../scripts/preview-serve.mjs` |
-| `../../scripts/preview-phases.mjs` | The phase vocabulary and its one-line marker, so the runner, the box and the comment cannot drift | `codespace-preview.mjs`, `../../scripts/preview.mjs`, `../../scripts/preview-serve.mjs` |
+| `../../scripts/codespace-preview/preview.mjs`     | One codespace for each PR: `up`, `refresh`, `down`, `ls`. `--json` for CI | `codespace-preview.mjs`, developers |
+| `../../scripts/codespace-preview/preview-remote-env.mjs` | Fetch extra environment for a preview from the webhook, inside the box | `../../scripts/codespace-preview/preview-serve.mjs` |
+| `../../scripts/codespace-preview/preview-phases.mjs` | The phase vocabulary and its one-line marker, so the runner, the box and the comment cannot drift | `codespace-preview.mjs`, `../../scripts/codespace-preview/preview.mjs`, `../../scripts/codespace-preview/preview-serve.mjs` |
 
-`scripts/preview.mjs` is also the developer entry point (`pnpm preview up <pr>`).
+`scripts/codespace-preview/preview.mjs` is also the developer entry point (`pnpm preview up <pr>`).
 In `--json` mode stdout carries one line for each phase and then the report object,
 and all human progress goes to stderr. So a workflow can follow a run that also
 streams an in-box build log. The reader tells the two apart by the `url` field: the

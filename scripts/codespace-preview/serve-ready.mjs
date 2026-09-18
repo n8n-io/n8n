@@ -5,7 +5,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { setTimeout as sleep } from 'node:timers/promises';
 
-import { codespaceName, forwardingDomain } from './codespace-env.mjs';
+import { codespaceName, forwardingDomain } from '../codespace-env.mjs';
 
 const CODESPACES_DIR = '/workspaces/.codespaces';
 
