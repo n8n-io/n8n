@@ -15,7 +15,8 @@
  * release by sbom-generation-callable.yml, not from a package registry, so it
  * does not depend on how n8n is distributed.
  *
- * Needs the local packages built (it reads their generated dist/types). Network
+ * Runs as a step of the PR build that emitted the metadata, so it reads
+ * dist/types directly and nothing has to be built twice. Network
  * failures warn and exit 0: an outage should not block a merge for a guard
  * against a rare mistake. Every outcome, including a skip, is written to the job
  * summary, so a dead check does not read as a passing one.
