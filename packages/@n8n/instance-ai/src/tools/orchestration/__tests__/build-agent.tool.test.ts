@@ -256,6 +256,9 @@ function makeContext(overrides: { delegate?: InstanceAiBuilderDelegate } = {}): 
 	context.userId = 'user-1';
 	context.orchestratorAgentId = 'root-agent';
 	context.abortSignal = new AbortController().signal;
+	// The mock proxy would otherwise hand the builder a fake signal.
+	context.subAgentAbortSignal = undefined;
+	context.subAgentShouldStop = undefined;
 	context.eventBus = eventBus;
 	context.logger = logger;
 	// Sentinel model — the orchestrator's own resolved model, which the
@@ -602,6 +605,119 @@ describe('build-agent tool', () => {
 				status: 'cancelled',
 			});
 		});
+	});
+
+	it('settles the tool call when Send now stops the builder, without cancelling the run', async () => {
+		const { context, delegate, publishedEvents } = makeContext();
+		const steer = new AbortController();
+		context.subAgentAbortSignal = steer.signal;
+		context.claimSubAgentUsage = vi.fn().mockResolvedValue(undefined);
+		vi.mocked(delegate.createAgent).mockResolvedValue({
+			agentId: 'agent-1',
+			projectId: 'proj-1',
+		});
+		vi.mocked(delegate.streamBuild).mockResolvedValue({
+			fullStream: (async function* () {
+				await Promise.resolve();
+				steer.abort();
+				yield finishChunk();
+			})(),
+			text: Promise.resolve(''),
+		});
+
+		const result = await runToolWithCtx(
+			context,
+			{ message: 'Build it', name: 'New Agent' },
+			{ toolCallId: 'orch-call-1' },
+		);
+
+		// The host run is untouched; only the builder loop was aborted.
+		expect(context.abortSignal.aborted).toBe(false);
+		expect(result).toMatchObject({
+			ok: false,
+			error: 'The agent builder run was stopped because the user sent a new instruction.',
+			agentId: 'agent-1',
+		});
+		expect(context.claimSubAgentUsage).toHaveBeenCalledWith(
+			'run-1:orch-call-1',
+			[expectedUsageItem],
+			'cancelled',
+		);
+		const completed = publishedEvents.find((event) => event.type === 'agent-completed');
+		expect(completed && 'payload' in completed ? completed.payload : undefined).toEqual({
+			role: 'agent-builder',
+			result: '',
+			status: 'cancelled',
+		});
+	});
+
+	it('settles the tool call as steered when the queued-turn check ends the builder loop', async () => {
+		const { context, delegate, publishedEvents } = makeContext();
+		const answers = [false, true];
+		context.subAgentShouldStop = vi.fn(async () => answers.shift() ?? true);
+		context.claimSubAgentUsage = vi.fn().mockResolvedValue(undefined);
+		vi.mocked(delegate.createAgent).mockResolvedValue({
+			agentId: 'agent-1',
+			projectId: 'proj-1',
+		});
+		// The builder runtime asks the session's check at its tool boundaries and
+		// ends the loop as a completion once it answers true.
+		vi.mocked(delegate.streamBuild).mockImplementation(async (_agentId, _message, session) => ({
+			fullStream: (async function* () {
+				expect(await session.shouldStopGracefully?.()).toBe(false);
+				expect(await session.shouldStopGracefully?.()).toBe(true);
+				yield finishChunk();
+			})(),
+			text: Promise.resolve('Half-built.'),
+		}));
+
+		const result = await runToolWithCtx(
+			context,
+			{ message: 'Build it', name: 'New Agent' },
+			{ toolCallId: 'orch-call-1' },
+		);
+
+		expect(context.abortSignal.aborted).toBe(false);
+		expect(result).toMatchObject({
+			ok: false,
+			error: 'The agent builder run was stopped because the user sent a new instruction.',
+			agentId: 'agent-1',
+		});
+		expect(context.claimSubAgentUsage).toHaveBeenCalledWith(
+			'run-1:orch-call-1',
+			[expectedUsageItem],
+			'completed',
+		);
+		const completed = publishedEvents.find((event) => event.type === 'agent-completed');
+		expect(completed && 'payload' in completed ? completed.payload : undefined).toEqual({
+			role: 'agent-builder',
+			result: '',
+			status: 'cancelled',
+		});
+	});
+
+	it('runs the builder to completion when the queued-turn check never stops it', async () => {
+		const { context, delegate } = makeContext();
+		context.subAgentShouldStop = vi.fn(async () => false);
+		vi.mocked(delegate.createAgent).mockResolvedValue({
+			agentId: 'agent-1',
+			projectId: 'proj-1',
+		});
+		vi.mocked(delegate.streamBuild).mockImplementation(async (_agentId, _message, session) => ({
+			fullStream: (async function* () {
+				expect(await session.shouldStopGracefully?.()).toBe(false);
+				yield finishChunk();
+			})(),
+			text: Promise.resolve('Done.'),
+		}));
+
+		const result = await runToolWithCtx(
+			context,
+			{ message: 'Build it', name: 'New Agent' },
+			{ toolCallId: 'orch-call-1' },
+		);
+
+		expect(result).toMatchObject({ ok: true, agentId: 'agent-1' });
 	});
 
 	it('reports that the agent is not available on this instance when no builder delegate is configured', async () => {
@@ -1503,6 +1619,9 @@ describe('build-agent tool', () => {
 				ref: 'support-triage',
 			});
 			context.abortSignal = new AbortController().signal;
+			// The mock proxy would otherwise hand the builder a fake signal.
+			context.subAgentAbortSignal = undefined;
+			context.subAgentShouldStop = undefined;
 			vi.mocked(delegate.streamBuild).mockResolvedValue(fakeStream([], 'Continuing.'));
 
 			await runTool(context, { message: 'Build it', name: 'Support Triage' });

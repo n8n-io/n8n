@@ -191,11 +191,16 @@ describe('InstanceAiService — finalizeRun title refinement guard', () => {
 		publishRunFinish: ReturnType<typeof vi.fn>;
 		emitRunMetrics: ReturnType<typeof vi.fn>;
 		refineTitleIfNeeded: ReturnType<typeof vi.fn>;
+		steerInterrupts: Map<string, AbortController>;
 		finalizeRun: (
 			threadId: string,
 			runId: string,
 			status: 'completed' | 'cancelled' | 'errored',
-			options?: { userId?: string; modelId?: ModelConfig },
+			options?: {
+				userId?: string;
+				modelId?: ModelConfig;
+				stopReason?: 'user-steered' | 'planned-tasks-scheduled';
+			},
 		) => Promise<void>;
 	};
 
@@ -206,8 +211,25 @@ describe('InstanceAiService — finalizeRun title refinement guard', () => {
 		service.publishRunFinish = vi.fn();
 		service.emitRunMetrics = vi.fn();
 		service.refineTitleIfNeeded = vi.fn(async () => {});
+		service.steerInterrupts = new Map();
 		return service;
 	}
+
+	it('reports a completed run that a queued turn stopped as steered', async () => {
+		const service = createService();
+
+		await service.finalizeRun('thread-1', 'run-1', 'completed', { stopReason: 'user-steered' });
+		await service.finalizeRun('thread-1', 'run-2', 'completed', {
+			stopReason: 'planned-tasks-scheduled',
+		});
+		await service.finalizeRun('thread-1', 'run-3', 'errored', { stopReason: 'user-steered' });
+
+		expect(service.publishRunFinish.mock.calls.map((call) => call[2])).toEqual([
+			'steered',
+			'completed',
+			'errored',
+		]);
+	});
 
 	it('refines the title when a completed run supplies userId and modelId', async () => {
 		const service = createService();

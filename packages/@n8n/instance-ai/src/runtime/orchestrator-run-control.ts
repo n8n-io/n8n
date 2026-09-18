@@ -1,6 +1,15 @@
 import type { OrchestrationContext } from '../types';
 
-export type OrchestratorRunHandoffReason = 'planned-tasks-scheduled';
+/**
+ * Why a run handed off before its own stop condition.
+ *
+ * - `planned-tasks-scheduled`: the run finished its turn and detached the
+ *   planned tasks; a follow-up run re-enters. Not a terminal outcome.
+ * - `user-steered`: the user sent a new instruction, so the run stopped at the
+ *   step boundary that drained it. The run IS terminal — it completed the work it
+ *   had — and the instruction becomes the next run.
+ */
+export type OrchestratorRunHandoffReason = 'planned-tasks-scheduled' | 'user-steered';
 
 export interface OrchestratorRunHandoffState {
 	handoffReason?: OrchestratorRunHandoffReason;
@@ -30,7 +39,10 @@ export function createOrchestratorRunControl(
 			return state.handoffReason ? { reason: state.handoffReason } : undefined;
 		},
 		shouldEmitTerminalOutcome(stopReason) {
-			return stopReason === undefined;
+			// A steered run really ended: it needs its terminal outcome, its trace root
+			// and its run-finish, exactly like a run that reached its own stop. Only
+			// the planned-tasks handoff hands the turn over without ending it.
+			return stopReason === undefined || stopReason === 'user-steered';
 		},
 	};
 

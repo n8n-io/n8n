@@ -7,6 +7,8 @@ import type {
 	InstanceAiBrowserStatusResponse,
 	InstanceAiEnsureThreadResponse,
 	InstanceAiSendMessageResponse,
+	InstanceAiQueuedMessagesResponse,
+	InstanceAiRecallQueuedMessagesResponse,
 	InstanceAiConfirmRequest,
 	InstanceAiConfirmResponse,
 	InstanceAiCredits,
@@ -52,6 +54,44 @@ export async function postMessage(
 		},
 	);
 }
+
+/** The thread's queue endpoints all answer with the queue after the change. */
+async function queueRequest<T extends InstanceAiQueuedMessagesResponse>(
+	context: IRestApiContext,
+	method: 'GET' | 'POST' | 'DELETE',
+	threadId: string,
+	path = '',
+	data?: { text: string },
+): Promise<T> {
+	const url = `/instance-ai/threads/${threadId}/queued-messages${path}`;
+	return await makeRestApiRequest<T>(context, method, url, data);
+}
+
+export const fetchQueuedMessages = async (context: IRestApiContext, threadId: string) =>
+	await queueRequest(context, 'GET', threadId);
+
+export const postQueuedMessage = async (context: IRestApiContext, threadId: string, text: string) =>
+	await queueRequest(context, 'POST', threadId, '', { text });
+
+export const deleteQueuedMessage = async (context: IRestApiContext, threadId: string, id: string) =>
+	await queueRequest(context, 'DELETE', threadId, `/${id}`);
+
+/** Send the whole queue now, as one turn. */
+export const postSendQueueNow = async (context: IRestApiContext, threadId: string) =>
+	await queueRequest(context, 'POST', threadId, '/send-now');
+
+/** Take a queued message and everything after it back out, joined for the composer. */
+export const postRecallQueuedMessages = async (
+	context: IRestApiContext,
+	threadId: string,
+	id: string,
+) =>
+	await queueRequest<InstanceAiRecallQueuedMessagesResponse>(
+		context,
+		'POST',
+		threadId,
+		`/${id}/recall`,
+	);
 
 export async function ensureThread(
 	context: IRestApiContext,

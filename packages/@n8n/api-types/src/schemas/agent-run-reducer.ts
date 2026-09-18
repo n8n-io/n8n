@@ -532,9 +532,11 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 		case 'run-finish': {
 			const { status } = event.payload;
 			// 'interrupted' renders as a cancellation whose reason attributes the
-			// crash — no dedicated FE state needed.
+			// crash — no dedicated FE state needed. 'steered' renders as a completion:
+			// the run finished its step normally, and the only difference is that the
+			// next run carries the instruction that stopped it there.
 			state.status =
-				status === 'completed'
+				status === 'completed' || status === 'steered'
 					? 'completed'
 					: status === 'cancelled' || status === 'interrupted'
 						? 'cancelled'

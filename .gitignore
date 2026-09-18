@@ -76,6 +76,8 @@ coverage-gaps.json
 scripts/.lucide-tags-cache.json
 
 packages/cli/src/commands/export/outputs
+# Editor assets the cli copies next to its binary when it starts
+packages/cli/bin/.cache
 *.bak
 .data
 .data/

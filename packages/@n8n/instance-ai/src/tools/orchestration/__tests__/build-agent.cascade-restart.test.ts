@@ -350,6 +350,9 @@ function createOrchestrationContext(params: {
 	context.runId = 'orch-run-1';
 	context.orchestratorAgentId = 'root';
 	context.abortSignal = new AbortController().signal;
+	// The mock proxy would otherwise hand the builder a fake signal.
+	context.subAgentAbortSignal = undefined;
+	context.subAgentShouldStop = undefined;
 	context.eventBus = createEventBusStub();
 	context.logger = createLoggerStub();
 	context.modelId = 'anthropic/test-model';

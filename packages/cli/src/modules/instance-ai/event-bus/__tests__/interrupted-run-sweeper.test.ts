@@ -132,6 +132,8 @@ function buildSweeper(setup: Setup) {
 	const metrics = new DurableLogMetrics(mock<EventService>());
 	const host: InterruptedRunResumeHost = {
 		isRunLive: setup.host?.isRunLive ?? (() => false),
+		isThreadLive: setup.host?.isThreadLive ?? (() => false),
+		discardQueuedMessages: setup.host?.discardQueuedMessages ?? vi.fn(async () => {}),
 	};
 
 	const sweeper = new InterruptedRunSweeper(
@@ -143,7 +145,7 @@ function buildSweeper(setup: Setup) {
 		{ isMultiMain: setup.isMultiMain ?? false } as InstanceSettings,
 	);
 	sweeper.setResumeHost(host);
-	return { sweeper, published, metrics, eventLogRepo };
+	return { sweeper, published, metrics, eventLogRepo, host };
 }
 
 describe('InterruptedRunSweeper', () => {
@@ -189,6 +191,39 @@ describe('InterruptedRunSweeper', () => {
 		expect(completed.type === 'agent-completed' && completed.payload.error).toBe(
 			AGENT_INTERRUPTED_MESSAGE,
 		);
+	});
+
+	it('drops the queued user messages of a run it marks interrupted', async () => {
+		const { sweeper, host } = buildSweeper({ events: [runStart(), toolCall('tc-inflight')] });
+
+		await sweeper.sweep();
+
+		expect(host.discardQueuedMessages).toHaveBeenCalledWith(THREAD);
+	});
+
+	it('leaves the queue alone when a newer run on the thread is live', async () => {
+		// The swept run is dead, but the thread already has a new run whose queue
+		// this is now.
+		const { sweeper, host, published } = buildSweeper({
+			events: [runStart()],
+			host: { isRunLive: () => false, isThreadLive: () => true },
+		});
+
+		await sweeper.sweep();
+
+		expect(published.map((e) => e.type)).toContain('run-finish');
+		expect(host.discardQueuedMessages).not.toHaveBeenCalled();
+	});
+
+	it('leaves the queue of a live run alone', async () => {
+		const { sweeper, host } = buildSweeper({
+			events: [runStart()],
+			host: { isRunLive: () => true },
+		});
+
+		await sweeper.sweep();
+
+		expect(host.discardQueuedMessages).not.toHaveBeenCalled();
 	});
 
 	it('is idempotent: a second sweep after the first is a no-op', async () => {
@@ -408,5 +443,50 @@ describe('InterruptedRunSweeper.cancelUnfinishedRuns', () => {
 
 		expect(await sweeper.cancelUnfinishedRuns(THREAD)).toBe(0);
 		expect(published).toHaveLength(0);
+	});
+});
+
+describe('InterruptedRunSweeper.isThreadDrivenElsewhere', () => {
+	it('is false on a single main: an unfinished run with no local live run is dead', async () => {
+		const { sweeper } = buildSweeper({ events: [runStart()], lastFactAt: new Date() });
+
+		await expect(sweeper.isThreadDrivenElsewhere(THREAD)).resolves.toBe(false);
+	});
+
+	it('multi-main: recent durable activity on a run not live here means a sibling drives it', async () => {
+		const { sweeper } = buildSweeper({
+			events: [runStart()],
+			isMultiMain: true,
+			lastFactAt: new Date(),
+		});
+
+		await expect(sweeper.isThreadDrivenElsewhere(THREAD)).resolves.toBe(true);
+	});
+
+	it('multi-main: stale activity past the grace window is not a sibling', async () => {
+		const { sweeper } = buildSweeper({
+			events: [runStart()],
+			isMultiMain: true,
+			lastFactAt: new Date(Date.now() - InterruptedRunSweeper.LIVENESS_GRACE_MS - 1000),
+		});
+
+		await expect(sweeper.isThreadDrivenElsewhere(THREAD)).resolves.toBe(false);
+	});
+
+	it('multi-main: a run live in this process is not "elsewhere"', async () => {
+		const { sweeper } = buildSweeper({
+			events: [runStart()],
+			isMultiMain: true,
+			lastFactAt: new Date(),
+			host: { isRunLive: () => true },
+		});
+
+		await expect(sweeper.isThreadDrivenElsewhere(THREAD)).resolves.toBe(false);
+	});
+
+	it('multi-main: no unfinished run means idle', async () => {
+		const { sweeper } = buildSweeper({ events: [], isMultiMain: true });
+
+		await expect(sweeper.isThreadDrivenElsewhere(THREAD)).resolves.toBe(false);
 	});
 });

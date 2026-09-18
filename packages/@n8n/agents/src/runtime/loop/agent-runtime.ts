@@ -57,6 +57,7 @@ import type { AgentMessage, ContentToolCall } from '../../types/sdk/message';
 import { getModelIdString } from '../../utils/model';
 import { parseWithSchema } from '../../utils/parse';
 import { removeToolResultRun, type WorkspaceFilesystem } from '../../workspace';
+import { isAbortError } from '../../sdk/abort';
 import { createFilteredLogger } from '../logger';
 import { MemoryOrchestrator } from '../memory/memory-orchestrator';
 import type { ScopedMemoryTaskEvent } from '../memory/scoped-memory-task-runner';
@@ -807,6 +808,27 @@ export class AgentRuntime {
 		let iterationCount = options?.iterationCount ?? 0;
 		let reachedStopCondition = false;
 
+		// A host interrupt cancels the step in flight (model request and tool
+		// calls) through the same signal a run abort uses; the loop tells the two
+		// apart here and ends the run normally instead of failing it.
+		const interruptSignal = options?.interruptSignal;
+		const stepSignal = interruptSignal
+			? AbortSignal.any([abortScope.signal, interruptSignal])
+			: abortScope.signal;
+		const interrupted = (): boolean => interruptSignal?.aborted === true && !abortScope.isAborted;
+
+		// The first `true` from the host is final for this run, so the check is not
+		// repeated once it has been answered. An interrupt still asks once, so the
+		// host can record the stop, then ends the run whatever the answer.
+		let gracefulStopRequested = false;
+		const shouldStopGracefully = async (before: 'tool-call' | 'model-call'): Promise<boolean> => {
+			if (gracefulStopRequested) return true;
+			gracefulStopRequested =
+				(await this.checkGracefulStop(options, { step: iterationCount + 1, before })) ||
+				interrupted();
+			return gracefulStopRequested;
+		};
+
 		const buildToolBatchContext = (toolMap: Map<string, BuiltTool>): ToolBatchContext => ({
 			toolMap,
 			list,
@@ -814,9 +836,30 @@ export class AgentRuntime {
 			persistence: options?.persistence,
 			telemetry: runTelemetry,
 			executionCounter: options?.executionCounter,
-			abortSignal: abortScope.signal,
+			abortSignal: stepSignal,
 			isAborted: () => abortScope.isAborted,
+			isInterrupted: interrupted,
+			shouldStop: async () => await shouldStopGracefully('tool-call'),
 		});
+
+		/**
+		 * One model turn, or undefined when the host interrupted it: the text it
+		 * streamed so far is kept as the assistant's message, and the caller ends
+		 * the run at this boundary.
+		 */
+		const callModelUnlessInterrupted = async (
+			ctx: Parameters<typeof sink.callModel>[0],
+		): Promise<Awaited<ReturnType<typeof sink.callModel>> | undefined> => {
+			try {
+				return await sink.callModel(ctx);
+			} catch (error) {
+				if (!(interrupted() && isAbortError(error))) throw error;
+				const partial = sink.getAbortSnapshot?.();
+				if (partial) list.addResponse([partial]);
+				sink.onTurnFolded?.();
+				return undefined;
+			}
+		};
 		const finishToolBatch = async (
 			batch: ToolCallBatchResult,
 			toolMap: Map<string, BuiltTool>,
@@ -932,7 +975,7 @@ export class AgentRuntime {
 				model: staticLoopContext.model,
 				system,
 				messages: cached.messages,
-				abortSignal: abortScope.signal,
+				abortSignal: stepSignal,
 				hasTools,
 				aiTools: cached.aiTools,
 				reasoning: staticLoopContext.reasoning,
@@ -941,7 +984,7 @@ export class AgentRuntime {
 				maxOutputTokens: staticLoopContext.maxOutputTokens,
 				aiSdkOptions: this.buildAiSdkOptions(toolMap, options),
 			};
-			let turn = await sink.callModel(modelCallContext);
+			let turn = await callModelUnlessInterrupted(modelCallContext);
 
 			// Some providers occasionally return a `stop` turn with no output at
 			// all mid-task, which would silently end the run with work half-done.
@@ -949,7 +992,7 @@ export class AgentRuntime {
 			// turn; each discarded attempt still bills its usage.
 			for (
 				let emptyRetry = 0;
-				emptyRetry < MAX_EMPTY_TURN_RETRIES && isEmptyModelTurn(turn);
+				turn && emptyRetry < MAX_EMPTY_TURN_RETRIES && isEmptyModelTurn(turn);
 				emptyRetry++
 			) {
 				totalUsage = mergeUsage(totalUsage, turn.usage);
@@ -958,7 +1001,16 @@ export class AgentRuntime {
 				// and the retry still bills those tokens via getTerminalFinish().
 				sink.reportUsage(totalUsage);
 				this.assertNotAborted(abortScope);
-				turn = await sink.callModel(modelCallContext);
+				turn = await callModelUnlessInterrupted(modelCallContext);
+			}
+
+			if (!turn) {
+				// The host stopped this turn mid-stream; let it record the stop, then
+				// end the run as a normal completion at this boundary.
+				await shouldStopGracefully('model-call');
+				lastFinishReason = 'stop';
+				reachedStopCondition = true;
+				break;
 			}
 
 			// Fold the just-finished turn's usage in before the abort check so a
@@ -996,8 +1048,15 @@ export class AgentRuntime {
 			// Emit TurnEnd after all tool calls in this iteration are processed
 			this.emitTurnEnd(turn.newMessages, extractSettledToolCalls(list.responseDelta()));
 
-			// Clean loop boundary: all tool calls settled. Mid-run observation
-			// may compact the LLM window here before the next call.
+			// Clean loop boundary: all tool calls settled. The host may end the run
+			// here (a check, or an interrupt that cancelled the batch); a stop skips
+			// the observation pass and the checkpoint, because finishComplete
+			// persists the whole turn anyway.
+			if (await shouldStopGracefully('model-call')) {
+				lastFinishReason = 'stop';
+				reachedStopCondition = true;
+				break;
+			}
 			await this.memory.maybeObserveMidRun(list, options);
 
 			// Step boundary reached with nothing pending: durably checkpoint so a
@@ -1024,6 +1083,20 @@ export class AgentRuntime {
 			usage: totalUsage,
 			structuredOutput,
 		});
+	}
+
+	private async checkGracefulStop(
+		options: ExecutionOptions | undefined,
+		context: { step: number; before: 'tool-call' | 'model-call' },
+	): Promise<boolean> {
+		const check = options?.shouldStopGracefully;
+		if (!check) return false;
+		try {
+			return await check(context);
+		} catch (error) {
+			logger.warn('Graceful stop check failed; continuing the run', { runId: this.runId, error });
+			return false;
+		}
 	}
 
 	private async resolveVolatileInstructions(

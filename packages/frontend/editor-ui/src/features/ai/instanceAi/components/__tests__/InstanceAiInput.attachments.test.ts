@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import userEvent from '@testing-library/user-event';
-import { waitFor } from '@testing-library/vue';
+import { fireEvent, waitFor } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -49,6 +49,27 @@ describe('InstanceAiInput — staged node attachments', () => {
 		await waitFor(() => expect(store.pendingComposerAttachments).toHaveLength(0));
 
 		expect(textbox).toHaveValue('my question');
+	});
+
+	it('does not queue a draft that carries staged attachments while a run is active', async () => {
+		const { emitted, getAllByTestId, getByRole } = renderComponent({
+			props: { isStreaming: true, queueWhileStreaming: true },
+		});
+		const store = useInstanceAiStore();
+
+		store.stageNodeSets('w1', [{ nodes: [{ id: 'n1', name: 'A' }] }]);
+		await waitFor(() => expect(getAllByTestId('nodes-chip-node')).toHaveLength(1));
+
+		const textbox = getByRole('textbox');
+		await userEvent.type(textbox, 'use this selection');
+		await fireEvent.keyDown(textbox, { key: 'Enter' });
+
+		// The queue holds text only, so the send waits for the run to end rather
+		// than dropping the attachment: nothing was submitted, and both the text
+		// and the staged chip are still there.
+		expect(emitted().submit).toBeUndefined();
+		expect(textbox).toHaveValue('use this selection');
+		expect(getAllByTestId('nodes-chip-node')).toHaveLength(1);
 	});
 
 	it('dedups re-staging the same selection instead of stacking duplicate chips', async () => {

@@ -197,6 +197,127 @@ function expectReducerMapsNotPolluted(state: InstanceAiReducerState): void {
 // ---------------------------------------------------------------------------
 
 describe('instanceAi.reducer', () => {
+	describe('user-message', () => {
+		test.each(['queued', 'steered'] as const)(
+			'%s places the user message without run routing fields',
+			(source) => {
+				const state = stateWithRun('run-1', 'agent-root');
+				const event: InstanceAiEvent = {
+					type: 'user-message',
+					runId: 'run-1',
+					agentId: 'agent-root',
+					payload: { messageId: 'queued-1', text: 'Next instruction', source },
+				};
+
+				expect(handleEvent(state, event)).toBe('run-1');
+				expect(state.messages.map((message) => message.id)).toEqual(
+					source === 'queued' ? ['queued-1', 'run-1'] : ['run-1', 'queued-1'],
+				);
+				const message = state.messages.find((item) => item.id === 'queued-1');
+				expect(message).toEqual({
+					id: 'queued-1',
+					role: 'user',
+					createdAt: expect.any(String),
+					content: 'Next instruction',
+					reasoning: '',
+					isStreaming: false,
+				});
+				expect(message).not.toHaveProperty('runId');
+				expect(message).not.toHaveProperty('messageGroupId');
+
+				handleEvent(state, event);
+				expect(state.messages).toHaveLength(2);
+			},
+		);
+
+		test('a queued turn sits above the run it starts, after the run it followed', () => {
+			const state = stateWithRun('run-1', 'agent-root');
+			handleEvent(state, {
+				type: 'run-finish',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				payload: { status: 'completed' },
+			});
+			handleEvent(state, {
+				type: 'user-message',
+				runId: 'run-2',
+				agentId: 'agent-root-2',
+				payload: { messageId: 'queued-1', text: 'Next instruction', source: 'queued' },
+			});
+			handleEvent(state, {
+				type: 'run-start',
+				runId: 'run-2',
+				agentId: 'agent-root-2',
+				payload: { messageId: 'message-2' },
+			});
+
+			expect(state.messages.map((message) => message.id)).toEqual(['run-1', 'queued-1', 'run-2']);
+		});
+
+		test('a steered turn sits right below the run it stopped, even on a replay with newer turns', () => {
+			const state = stateWithRun('run-1', 'agent-root');
+			handleEvent(state, {
+				type: 'run-finish',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				payload: { status: 'steered' },
+			});
+			handleEvent(state, {
+				type: 'run-start',
+				runId: 'run-2',
+				agentId: 'agent-root-2',
+				payload: { messageId: 'message-2' },
+			});
+			// Replayed after the newer run was already reduced.
+			handleEvent(state, {
+				type: 'user-message',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				payload: { messageId: 'steered-1', text: 'Stop and do this', source: 'steered' },
+			});
+
+			expect(state.messages.map((message) => message.id)).toEqual(['run-1', 'steered-1', 'run-2']);
+		});
+
+		test('a re-announced turn updates the bubble text in place', () => {
+			const state = stateWithRun('run-1', 'agent-root');
+			const first: InstanceAiEvent = {
+				type: 'user-message',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				payload: { messageId: 'queued-1', text: 'First part', source: 'steered' },
+			};
+			handleEvent(state, first);
+
+			handleEvent(state, {
+				...first,
+				payload: { ...first.payload, text: 'First part\nSecond part' },
+			});
+
+			expect(state.messages.filter((message) => message.id === 'queued-1')).toEqual([
+				expect.objectContaining({ role: 'user', content: 'First part\nSecond part' }),
+			]);
+		});
+
+		test.each(['queued', 'steered'] as const)(
+			'%s appends without creating an assistant message before run-start',
+			(source) => {
+				const state = makeState();
+				expect(
+					handleEvent(state, {
+						type: 'user-message',
+						runId: 'run-1',
+						agentId: 'agent-root',
+						payload: { messageId: 'queued-1', text: 'Next instruction', source },
+					}),
+				).toBeNull();
+				expect(state.messages).toHaveLength(1);
+				expect(state.messages[0]).toMatchObject({ id: 'queued-1', role: 'user' });
+				expect(state.runStateByGroupId.size).toBe(0);
+				expect(state.groupIdByRunId.size).toBe(0);
+			},
+		);
+	});
 	// -----------------------------------------------------------------------
 	// Run lifecycle
 	// -----------------------------------------------------------------------

@@ -21,6 +21,8 @@ type InputTestProps = {
 	isSubmitting: boolean;
 	isAwaitingConfirmation: boolean;
 	isAwaitingPlanReview: boolean;
+	queueWhileStreaming: boolean;
+	queueFull: boolean;
 	currentThreadId: string;
 	amendContext: { agentId: string; role: string } | null;
 	contextualSuggestion: string | null;
@@ -39,6 +41,8 @@ const defaultProps = (): InputTestProps => ({
 	isSubmitting: false,
 	isAwaitingConfirmation: false,
 	isAwaitingPlanReview: false,
+	queueWhileStreaming: false,
+	queueFull: false,
 	currentThreadId: 'thread-1',
 	amendContext: null,
 	contextualSuggestion: null,
@@ -401,6 +405,87 @@ describe('InstanceAiInput', () => {
 		await waitFor(() => {
 			expect(textbox).toHaveValue('Summarize the last workflow error for me');
 		});
+	});
+
+	it('queues a typed message on Enter while a run is active when the host allows it', async () => {
+		const { emitted, getByRole } = renderComponent({
+			props: {
+				isStreaming: true,
+				queueWhileStreaming: true,
+			},
+		});
+
+		const textbox = getByRole('textbox');
+		await userEvent.type(textbox, 'Use the Slack node');
+		await fireEvent.keyDown(textbox, { key: 'Enter' });
+
+		await waitFor(() => expect(emitted().submit?.[0]).toBeDefined());
+		expect(emittedArgument(emitted().submit?.[0], 0)).toBe('Use the Slack node');
+	});
+
+	it('swaps Stop for Send once there is a draft to queue while a run is active', async () => {
+		const { emitted, getByRole, getByTestId, queryByTestId } = renderComponent({
+			props: {
+				isStreaming: true,
+				queueWhileStreaming: true,
+			},
+		});
+
+		// Empty box: the primary action is still Stop.
+		expect(getByTestId('instance-ai-stop-button')).toBeInTheDocument();
+		expect(queryByTestId('instance-ai-send-button')).not.toBeInTheDocument();
+
+		const textbox = getByRole('textbox');
+		await userEvent.type(textbox, 'Use the Slack node');
+
+		await waitFor(() => expect(getByTestId('instance-ai-send-button')).toBeInTheDocument());
+		expect(queryByTestId('instance-ai-stop-button')).not.toBeInTheDocument();
+
+		await userEvent.click(getByTestId('instance-ai-send-button'));
+
+		await waitFor(() => expect(emitted().submit?.[0]).toBeDefined());
+		expect(emittedArgument(emitted().submit?.[0], 0)).toBe('Use the Slack node');
+		expect(emitted().stop).toBeUndefined();
+	});
+
+	it('refuses a streaming submit once the queue is full', async () => {
+		const { emitted, getByRole, getByTestId, queryByTestId } = renderComponent({
+			props: { isStreaming: true, queueWhileStreaming: true, queueFull: true },
+		});
+
+		const textbox = getByRole('textbox');
+		await userEvent.type(textbox, 'A sixth message');
+		await fireEvent.keyDown(textbox, { key: 'Enter' });
+
+		expect(emitted().submit).toBeUndefined();
+		// Nothing to queue, so the primary action stays Stop.
+		expect(getByTestId('instance-ai-stop-button')).toBeInTheDocument();
+		expect(queryByTestId('instance-ai-send-button')).not.toBeInTheDocument();
+	});
+
+	it('keeps Stop while streaming when the host does not queue, draft or not', async () => {
+		const { getByRole, getByTestId, queryByTestId } = renderComponent({
+			props: { isStreaming: true },
+		});
+
+		await userEvent.type(getByRole('textbox'), 'Use the Slack node');
+
+		expect(getByTestId('instance-ai-stop-button')).toBeInTheDocument();
+		expect(queryByTestId('instance-ai-send-button')).not.toBeInTheDocument();
+	});
+
+	it('still blocks a streaming submit when the host does not queue', async () => {
+		const { emitted, getByRole } = renderComponent({
+			props: {
+				isStreaming: true,
+			},
+		});
+
+		const textbox = getByRole('textbox');
+		await userEvent.type(textbox, 'Use the Slack node');
+		await fireEvent.keyDown(textbox, { key: 'Enter' });
+
+		expect(emitted().submit).toBeUndefined();
 	});
 
 	it('does not submit when Enter is pressed on an empty draft', async () => {

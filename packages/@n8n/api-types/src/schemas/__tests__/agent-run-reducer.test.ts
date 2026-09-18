@@ -31,7 +31,7 @@ function makeRunStart(
 function makeRunFinish(
 	runId: string,
 	agentId: string,
-	status: 'completed' | 'cancelled' | 'error',
+	status: 'completed' | 'steered' | 'cancelled' | 'error',
 	reason?: string,
 ): Extract<InstanceAiEvent, { type: 'run-finish' }> {
 	return { type: 'run-finish', runId, agentId, payload: { status, ...(reason ? { reason } : {}) } };
@@ -265,6 +265,15 @@ describe('agent-run-reducer', () => {
 
 			expect(state.status).toBe('completed');
 			expect(state.agentsById['root'].status).toBe('completed');
+		});
+
+		it('run-finish(steered) renders as a completion', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeRunFinish('run-1', 'root', 'steered'));
+
+			expect(state.status).toBe('completed');
+			expect(state.agentsById['root'].status).toBe('completed');
+			expect(state.agentsById['root'].cancellationReason).toBeUndefined();
 		});
 
 		it('run-finish(cancelled) sets status to cancelled', () => {

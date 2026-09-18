@@ -5,6 +5,8 @@ import {
 	InstanceAiGatewayCreateCredentialDto,
 	InstanceAiFilesystemResponseDto,
 	InstanceAiRenameThreadRequestDto,
+	InstanceAiQueueMessageRequest,
+	InstanceAiUpdateQueuedMessageRequest,
 	InstanceAiSendMessageRequest,
 	InstanceAiEventsQuery,
 	instanceAiGatewayKeySchema,
@@ -923,6 +925,95 @@ export class InstanceAiController {
 		this.requireInstanceAiEnabled();
 		await this.assertThreadAccess(req.user.id, threadId);
 		return await this.pendingAgentService.persistAndBind(req.user, threadId, payload);
+	}
+
+	@Get('/threads/:threadId/queued-messages')
+	@GlobalScope('instanceAi:message')
+	async listQueuedMessages(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('threadId') threadId: string,
+	) {
+		this.requireInstanceAiEnabled();
+		await this.assertThreadAccess(req.user.id, threadId);
+		return { queuedMessages: await this.instanceAiService.listQueuedMessages(threadId) };
+	}
+
+	@Post('/threads/:threadId/queued-messages')
+	@GlobalScope('instanceAi:message')
+	async queueMessage(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('threadId') threadId: string,
+		@Body payload: InstanceAiQueueMessageRequest,
+	) {
+		this.requireInstanceAiEnabled();
+		// The message may start a run at once when no run turns out to be live.
+		await this.requireModelConfigured();
+		await this.assertThreadAccess(req.user.id, threadId);
+		const { user } = req;
+		return {
+			queuedMessages: await this.instanceAiService.admitQueuedMessage(user, threadId, payload.text),
+		};
+	}
+
+	@Patch('/threads/:threadId/queued-messages/:messageId')
+	@GlobalScope('instanceAi:message')
+	async updateQueuedMessage(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('threadId') threadId: string,
+		@Param('messageId') messageId: string,
+		@Body payload: InstanceAiUpdateQueuedMessageRequest,
+	) {
+		this.requireInstanceAiEnabled();
+		await this.assertThreadAccess(req.user.id, threadId);
+		const { text } = payload;
+		return {
+			queuedMessages: await this.instanceAiService.updateQueuedMessage(threadId, messageId, text),
+		};
+	}
+
+	@Delete('/threads/:threadId/queued-messages/:messageId')
+	@GlobalScope('instanceAi:message')
+	async removeQueuedMessage(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('threadId') threadId: string,
+		@Param('messageId') messageId: string,
+	) {
+		this.requireInstanceAiEnabled();
+		await this.assertThreadAccess(req.user.id, threadId);
+		return {
+			queuedMessages: await this.instanceAiService.removeQueuedMessage(threadId, messageId),
+		};
+	}
+
+	@Post('/threads/:threadId/queued-messages/send-now')
+	@GlobalScope('instanceAi:message')
+	async sendQueueNow(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('threadId') threadId: string,
+	) {
+		this.requireInstanceAiEnabled();
+		// On an idle thread this starts a run, the same as /chat.
+		await this.requireModelConfigured();
+		await this.assertThreadAccess(req.user.id, threadId);
+		return await this.instanceAiService.sendQueueNow(req.user, threadId);
+	}
+
+	@Post('/threads/:threadId/queued-messages/:messageId/recall')
+	@GlobalScope('instanceAi:message')
+	async recallQueuedMessages(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('threadId') threadId: string,
+		@Param('messageId') messageId: string,
+	) {
+		this.requireInstanceAiEnabled();
+		await this.assertThreadAccess(req.user.id, threadId);
+		return await this.instanceAiService.recallQueuedMessages(threadId, messageId);
 	}
 
 	@Get('/threads/:threadId/messages')

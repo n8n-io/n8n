@@ -98,6 +98,9 @@ function makeContext(threadMemory: unknown) {
 	context.runId = 'run-1';
 	context.userId = 'user-1';
 	context.abortSignal = new AbortController().signal;
+	// The mock proxy would otherwise hand the builder a fake signal.
+	context.subAgentAbortSignal = undefined;
+	context.subAgentShouldStop = undefined;
 	context.eventBus = mock<InstanceAiEventBus>();
 	context.logger = logger;
 	context.modelId = 'anthropic/claude-sonnet';

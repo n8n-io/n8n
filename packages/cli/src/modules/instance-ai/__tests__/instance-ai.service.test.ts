@@ -236,7 +236,7 @@ vi.mock('@/permissions.ee/check-access', () => ({
 
 import type { MemoryTaskUsageReport, ScopedMemoryTaskEvent } from '@n8n/agents';
 import type { InstanceAiEvent } from '@n8n/api-types';
-import type { InstanceAiHandoffContext } from '@n8n/api-types';
+import type { InstanceAiHandoffContext, InstanceAiQueuedMessage } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import type { InstanceAiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
@@ -278,6 +278,7 @@ import {
 import { INSTANCE_AI_RUN_TIMEOUT_REASON } from '../liveness/instance-ai-liveness.service';
 import { InstanceAiRunLimitError } from '../instance-ai-run-limit.error';
 import { InstanceAiService } from '../instance-ai.service';
+import { readQueuedMessages } from '../storage/queued-messages';
 import { InstanceAiSandboxService } from '../sandbox';
 
 type StartRunServiceInternals = {
@@ -307,6 +308,7 @@ type StartRunServiceInternals = {
 	threadPushRef: Map<string, string>;
 	executeRun: Mock;
 	trackInFlightExecution: Mock;
+	discardQueuedMessages: Mock;
 };
 
 function createStartRunService(): StartRunServiceInternals {
@@ -337,6 +339,7 @@ function createStartRunService(): StartRunServiceInternals {
 	service.threadPushRef = new Map();
 	service.executeRun = vi.fn();
 	service.trackInFlightExecution = vi.fn();
+	service.discardQueuedMessages = vi.fn(async () => {});
 	return service;
 }
 
@@ -486,6 +489,7 @@ type TerminalGuardOrderServiceInternals = {
 		cancelThread: Mock;
 		clearActiveRun: Mock;
 		hasSuspendedRun: Mock;
+		hasLiveRun: Mock;
 		getActiveRun: Mock;
 		suspendRun: Mock;
 	};
@@ -503,6 +507,7 @@ type TerminalGuardOrderServiceInternals = {
 	instanceAiErrorReporter: ReturnType<typeof createInstanceAiErrorReporterMock>;
 	instanceAiConfig: {};
 	aiConfig: { modelStreamIdleTimeoutMs: number; modelStreamFirstOutputTimeoutMs: number };
+	steerInterrupts: Map<string, AbortController>;
 	tracing: {
 		finalizeRunTracing: Mock;
 		finalizeDetachedTraceRun: Mock;
@@ -556,6 +561,7 @@ type TerminalGuardOrderServiceInternals = {
 	syncPlannedTasksToUi: Mock;
 	taskProjector: { syncFromWorkflowLoop: Mock };
 	maybeStartWorkflowSetupFollowUp: Mock;
+	flushQueuedMessage: Mock;
 	finalizeRun: Mock;
 	preserveHitlOnShutdown: Set<string>;
 	inFlightExecutions: Set<Promise<unknown>>;
@@ -604,6 +610,7 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 		cancelThread: vi.fn(),
 		clearActiveRun: vi.fn(),
 		hasSuspendedRun: vi.fn(() => true),
+		hasLiveRun: vi.fn(() => false),
 		getActiveRun: vi.fn(() => undefined),
 		suspendRun: vi.fn(),
 	};
@@ -626,6 +633,8 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 	service.instanceAiErrorReporter = createInstanceAiErrorReporterMock();
 	service.instanceAiConfig = {};
 	service.aiConfig = { modelStreamIdleTimeoutMs: 90_000, modelStreamFirstOutputTimeoutMs: 180_000 };
+	// The stream options read the thread's interrupt signal; no live run means no entry.
+	service.steerInterrupts = new Map();
 	service.tracing = {
 		finalizeRunTracing: vi.fn(async () => {}),
 		finalizeDetachedTraceRun: vi.fn(async () => {}),
@@ -700,6 +709,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 	const snapshotModes = ['off', 'seeded', 'read failure'];
 	it.each(snapshotModes)('starts with snapshots %s', async (snapshotMode) => {
 		const service = Object.create(InstanceAiService.prototype) as unknown as {
+			steerInterrupts: Map<string, AbortController>;
 			createExecutionEnvironment: (
 				user: User,
 				threadId: string,
@@ -806,6 +816,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		};
 		service.ensureThreadExists = vi.fn(async () => {});
 		service.agentMemory = { getThreadProjectId: vi.fn(async () => 'project-1') };
+		service.steerInterrupts = new Map();
 		service.dbIterationLogStorage = {};
 		service.checkpointStore = {};
 		service.instanceAiConfig = {};
@@ -1020,6 +1031,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		[true, 'progressive', 'default', 'retired@1'],
 	] as const)('selects mode (%s, %s, %s, %s)', async (enabled, override, expected, version) => {
 		const service = Object.create(InstanceAiService.prototype) as unknown as {
+			steerInterrupts: Map<string, AbortController>;
 			createExecutionEnvironment: (
 				user: User,
 				threadId: string,
@@ -1127,6 +1139,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		};
 		service.ensureThreadExists = vi.fn(async () => {});
 		service.agentMemory = { getThreadProjectId: vi.fn(async () => 'project-1') };
+		service.steerInterrupts = new Map();
 		service.dbIterationLogStorage = {};
 		service.dbSnapshotStorage = {};
 		service.checkpointStore = {};
@@ -1299,6 +1312,14 @@ describe('InstanceAiService — memory task observer', () => {
 });
 
 describe('InstanceAiService — run start', () => {
+	it('drops whatever a stopped run left queued when the user types a new turn', () => {
+		const service = createStartRunService();
+
+		service.startRun(fakeUser, 'thread-a', 'hello');
+
+		expect(service.discardQueuedMessages).toHaveBeenCalledWith('thread-a');
+	});
+
 	describe('concurrency admission', () => {
 		it('refuses a new turn when the user is at their limit', () => {
 			const service = createStartRunService();
@@ -4718,6 +4739,10 @@ describe('InstanceAiService — run error reporter lifecycle', () => {
 		service.maybeStartWorkflowSetupFollowUp = vi.fn(async () => {
 			callOrder.push('maybeStartWorkflowSetupFollowUp');
 		});
+		service.flushQueuedMessage = vi.fn(async () => {
+			callOrder.push('flushQueuedMessage');
+			return false;
+		});
 		service.finalizeRun = vi.fn(async () => {
 			callOrder.push('finalizeRun');
 		});
@@ -4740,6 +4765,8 @@ describe('InstanceAiService — run error reporter lifecycle', () => {
 		expect(callOrder).toEqual([
 			'beginRun',
 			'finalizeRun',
+			// The queued user turn is offered before any automatic follow-up.
+			'flushQueuedMessage',
 			'schedulePlannedTasks',
 			'syncFromWorkflowLoop',
 			'maybeStartWorkflowSetupFollowUp',
@@ -4852,7 +4879,11 @@ describe('InstanceAiService setup panel Execute input', () => {
 				createAgentFromEnvironment: vi.fn(async () => ({})),
 				buildOrchestratorAgentStreamOptions: vi.fn(() => ({})),
 				shouldPreserveHitlOnShutdown: vi.fn(() => true),
-				runState: { clearActiveRun: vi.fn(), hasSuspendedRun: vi.fn(() => true) },
+				runState: {
+					clearActiveRun: vi.fn(),
+					hasSuspendedRun: vi.fn(() => true),
+					hasLiveRun: vi.fn(() => false),
+				},
 				domainAccessTrackersByThread: new Map(),
 				updateInternalFollowUpFailureStreak: vi.fn(),
 			}) as {
@@ -4889,6 +4920,82 @@ describe('InstanceAiService setup panel Execute input', () => {
 			}
 		},
 	);
+});
+
+describe('InstanceAiService — queued user turn goes before automatic follow-ups', () => {
+	function createFinallyService(userTurnStarted: boolean) {
+		vi.mocked(createInstanceAiTraceContext).mockResolvedValueOnce(undefined);
+		vi.mocked(streamAgentRun).mockResolvedValueOnce({
+			status: 'cancelled',
+			agentRunId: 'agent-run-1',
+			text: Promise.resolve(''),
+			workSummary: { toolCalls: [], totalToolCalls: 0, totalToolErrors: 0 },
+		});
+		const environment = {
+			context: {},
+			memory: { getThread: vi.fn(async () => ({ title: 'Existing conversation' })) },
+			taskStorage: { get: vi.fn(async () => undefined) },
+			orchestrationContext: {},
+		};
+		return Object.assign(Object.create(InstanceAiService.prototype), {
+			resolveContextAttachments: vi.fn(async () => []),
+			instanceAiErrorReporter: { beginRun: vi.fn(), endRun: vi.fn() },
+			createProxyRunConfig: vi.fn(async () => ({})),
+			browserSessionService: { getExtensionTraceContext: vi.fn() },
+			readThreadProvenance: vi.fn(async () => ({})),
+			instanceContext: { buildBlock: vi.fn().mockResolvedValue(undefined) },
+			reclassifyMaskedStreamFailure: vi.fn(async (error: unknown) => {
+				throw error;
+			}),
+			isRunDebugEnabled: vi.fn(() => false),
+			eventBus: { publish: vi.fn() },
+			threadPushRef: new Map(),
+			createExecutionEnvironment: vi.fn(async () => environment),
+			snapshotAttachedAgents: vi.fn(),
+			buildMessageWithRunningTasks: vi.fn(async (_threadId: string, text: string) => text),
+			buildWorkflowSetupStateBlock: vi.fn(async () => ''),
+			resolveProjectContextSection: vi.fn(async () => ''),
+			createAgentFromEnvironment: vi.fn(async () => ({})),
+			buildOrchestratorAgentStreamOptions: vi.fn(() => ({})),
+			shouldPreserveHitlOnShutdown: vi.fn(() => true),
+			runState: {
+				clearActiveRun: vi.fn(),
+				hasSuspendedRun: vi.fn(() => false),
+				hasLiveRun: vi.fn(() => false),
+			},
+			domainAccessTrackersByThread: new Map(),
+			updateInternalFollowUpFailureStreak: vi.fn(),
+			flushQueuedMessage: vi.fn(async () => userTurnStarted),
+			schedulePlannedTasks: vi.fn(async () => {}),
+			maybeStartWorkflowSetupFollowUp: vi.fn(async () => false),
+			taskProjector: { syncFromWorkflowLoop: vi.fn(async () => {}) },
+		}) as {
+			executeRun: (
+				user: User,
+				threadId: string,
+				runId: string,
+				message: string,
+				controller: AbortController,
+			) => Promise<void>;
+			flushQueuedMessage: Mock;
+			schedulePlannedTasks: Mock;
+			maybeStartWorkflowSetupFollowUp: Mock;
+			taskProjector: { syncFromWorkflowLoop: Mock };
+		};
+	}
+
+	it('does not hand the queue over after a run that did not complete', async () => {
+		// The mocked stream reports a cancelled result: the queue stays for the
+		// user, and the follow-ups run as before.
+		const service = createFinallyService(true);
+
+		await service.executeRun(fakeUser, 'thread-1', 'run-1', 'Build it.', new AbortController());
+
+		expect(service.flushQueuedMessage).not.toHaveBeenCalled();
+		expect(service.schedulePlannedTasks).toHaveBeenCalledWith(fakeUser, 'thread-1');
+		expect(service.maybeStartWorkflowSetupFollowUp).toHaveBeenCalledWith(fakeUser, 'thread-1');
+		expect(service.taskProjector.syncFromWorkflowLoop).toHaveBeenCalledWith('thread-1', 'run-1');
+	});
 });
 
 describe('InstanceAiService — user message persistence on cancel', () => {
@@ -5933,6 +6040,7 @@ describe('InstanceAiService — clearThreadState agent-builder cleanup', () => {
 		suspendedThreads: { dropPendingConfirmationsForThread: Mock };
 		logger: { warn: Mock };
 		clearThreadState: (threadId: string) => Promise<void>;
+		steerInterrupts: Map<string, AbortController>;
 	};
 
 	function buildService(): Internals {
@@ -5942,6 +6050,7 @@ describe('InstanceAiService — clearThreadState agent-builder cleanup', () => {
 		service.planRequestsByThread = new Map();
 		service.runState = { clearThread: vi.fn(() => ({ active: undefined, suspended: undefined })) };
 		service.backgroundTasks = { cancelThread: vi.fn(() => []) };
+		service.steerInterrupts = new Map([['thread-1', new AbortController()]]);
 		service.schedulerLocks = new Map();
 		service.failedInternalFollowUpStreaks = new Map();
 		service.liveness = { clearThreadState: vi.fn() };
@@ -6315,5 +6424,162 @@ describe('InstanceAiService — resolveAiPreferencesBlock', () => {
 			'Instance AI failed to read the AI preferences for this turn',
 			{ userId: 'user-1', error: 'db down' },
 		);
+	});
+});
+
+describe('InstanceAiService — queued messages', () => {
+	const USER = { id: 'user-1' } as User;
+
+	type ThreadPatchArgs = {
+		threadId: string;
+		update: (current: {
+			id: string;
+			metadata?: Record<string, unknown>;
+		}) => { metadata?: Record<string, unknown> } | null | undefined;
+	};
+
+	type QueueService = {
+		agentMemory: { getThread: Mock; patchThread: Mock; saveMessages: Mock };
+		eventBus: { publish: Mock };
+		telemetry: { track: Mock };
+		runState: {
+			hasLiveRun: Mock;
+			getActiveRunId: Mock;
+			getThreadUser: Mock;
+			getTimeZone: Mock;
+			startRun: Mock;
+		};
+		backgroundTasks: { cancelThread: Mock };
+		steerInterrupts: Map<string, AbortController>;
+		queuedThreads: Set<string>;
+		instanceSettings: { isMultiMain: boolean };
+		interruptedRunSweeper: { isThreadDrivenElsewhere: Mock };
+		startExecuteRun: Mock;
+		defaultTimeZone: string;
+		logger: { warn: Mock; debug: Mock };
+		listQueuedMessages: (threadId: string) => Promise<InstanceAiQueuedMessage[]>;
+		queueMessage: (threadId: string, text: string) => Promise<InstanceAiQueuedMessage[]>;
+		admitQueuedMessage: (
+			user: User,
+			threadId: string,
+			text: string,
+		) => Promise<InstanceAiQueuedMessage[]>;
+		updateQueuedMessage: (
+			threadId: string,
+			messageId: string,
+			text: string,
+		) => Promise<InstanceAiQueuedMessage[]>;
+		removeQueuedMessage: (
+			threadId: string,
+			messageId: string,
+		) => Promise<InstanceAiQueuedMessage[]>;
+		recallQueuedMessages: (
+			threadId: string,
+			messageId: string,
+		) => Promise<{ queuedMessages: InstanceAiQueuedMessage[]; text: string }>;
+		sendQueueNow: (
+			user: User,
+			threadId: string,
+		) => Promise<{ queuedMessages: InstanceAiQueuedMessage[] }>;
+		claimQueuedTurn: (threadId: string, runId: string, step: number) => Promise<boolean>;
+		flushQueuedMessage: (user: User, threadId: string) => Promise<boolean>;
+		discardQueuedMessages: (threadId: string) => Promise<void>;
+	};
+
+	function createService({ includeThread = true }: { includeThread?: boolean } = {}) {
+		const thread = {
+			id: 'thread-1',
+			resourceId: 'user-1',
+			createdAt: new Date('2026-01-01T00:00:00.000Z'),
+			updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+			metadata: {} as Record<string, unknown>,
+		};
+
+		const service = Object.create(InstanceAiService.prototype) as unknown as QueueService;
+		service.agentMemory = {
+			getThread: vi.fn(async () =>
+				includeThread ? { ...thread, metadata: { ...thread.metadata } } : null,
+			),
+			// Mirrors TypeORMAgentMemory.patchThread: run the update against a copy
+			// and commit its metadata, or return null when the row is gone.
+			patchThread: vi.fn(async ({ threadId, update }: ThreadPatchArgs) => {
+				if (!includeThread || threadId !== thread.id) return null;
+				const current = { ...thread, metadata: { ...thread.metadata } };
+				const patch = update(current);
+				if (!patch) return current;
+				if (patch.metadata !== undefined) thread.metadata = patch.metadata;
+				return { ...current, ...patch };
+			}),
+			saveMessages: vi.fn(async () => await Promise.resolve()),
+		};
+		service.eventBus = { publish: vi.fn() };
+		service.telemetry = { track: vi.fn() };
+		service.backgroundTasks = { cancelThread: vi.fn(() => []) };
+		service.steerInterrupts = new Map([['run-live', new AbortController()]]);
+		service.queuedThreads = new Set();
+		service.instanceSettings = { isMultiMain: false };
+		service.interruptedRunSweeper = { isThreadDrivenElsewhere: vi.fn(async () => false) };
+		service.startExecuteRun = vi.fn();
+		service.defaultTimeZone = 'UTC';
+		service.logger = { warn: vi.fn(), debug: vi.fn() };
+		service.runState = {
+			hasLiveRun: vi.fn(() => false),
+			getActiveRunId: vi.fn(() => 'run-live'),
+			getThreadUser: vi.fn(() => USER),
+			getTimeZone: vi.fn(() => 'Europe/Berlin'),
+			startRun: vi.fn(() => ({ runId: 'run-new', abortController: new AbortController() })),
+		};
+
+		return { service, thread };
+	}
+
+	/** queueMessage returns the whole queue; this is the item the call added. */
+	async function queueLast(service: QueueService, text: string) {
+		return (await service.queueMessage('thread-1', text)).at(-1)!;
+	}
+
+	// The behaviour of the queue (order, cap, merge, announce, Send now, claim,
+	// flush, discard, sent-item refusal, sibling mains, faults) is covered by the
+	// model-based property suite in queued-messages.property.test.ts. What is
+	// left here are the cases a random operation sequence cannot reach.
+
+	it('refuses every operation when the thread does not exist', async () => {
+		const { service } = createService({ includeThread: false });
+
+		await expect(service.listQueuedMessages('thread-1')).rejects.toThrow(UserError);
+		await expect(service.queueMessage('thread-1', 'text')).rejects.toThrow(UserError);
+	});
+
+	it.each([
+		['edit', async (s: QueueService) => await s.updateQueuedMessage('thread-1', 'qm_missing', 'x')],
+		['removal', async (s: QueueService) => await s.removeQueuedMessage('thread-1', 'qm_missing')],
+		['recall', async (s: QueueService) => await s.recallQueuedMessages('thread-1', 'qm_missing')],
+	])('refuses the %s of a message that is not queued', async (_name, act) => {
+		const { service } = createService();
+
+		await expect(act(service)).rejects.toThrow(UserError);
+	});
+
+	it('does not claim the queued turn when the thread has no remembered user', async () => {
+		const { service, thread } = createService();
+		await queueLast(service, 'steer me');
+		service.runState.getThreadUser.mockReturnValue(undefined);
+
+		await expect(service.claimQueuedTurn('thread-1', 'run-1', 2)).resolves.toBe(false);
+
+		expect(readQueuedMessages(thread.metadata)[0].sentAt).toBeUndefined();
+	});
+
+	it('leaves the queue in place when a run starts between the idle check and the claim', async () => {
+		const { service, thread } = createService();
+		await queueLast(service, 'keep me');
+		// Idle at the outer check, live by the time the row lock is held.
+		service.runState.hasLiveRun.mockReturnValueOnce(false).mockReturnValueOnce(true);
+
+		await expect(service.flushQueuedMessage(USER, 'thread-1')).resolves.toBe(false);
+
+		expect(service.startExecuteRun).not.toHaveBeenCalled();
+		expect(readQueuedMessages(thread.metadata).map((item) => item.text)).toEqual(['keep me']);
+		expect(service.eventBus.publish).not.toHaveBeenCalled();
 	});
 });

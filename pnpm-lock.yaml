@@ -1278,6 +1278,9 @@ importers:
       dotenv:
         specifier: 'catalog:'
         version: 17.2.3
+      fast-check:
+        specifier: 'catalog:'
+        version: 3.23.2
       nock:
         specifier: 'catalog:'
         version: 14.0.14
@@ -4814,6 +4817,9 @@ importers:
       esbuild:
         specifier: ^0.28.1
         version: 0.28.1
+      fast-check:
+        specifier: 'catalog:'
+        version: 3.23.2
       form-data:
         specifier: 4.0.6
         version: 4.0.6

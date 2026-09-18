@@ -119,4 +119,73 @@ describe('buildInstanceAiRunTraceMetadata', () => {
 			idle_tail_ms: 606_400,
 		});
 	});
+	it('marks a run the user steered and records the step it stopped at', () => {
+		const events: InstanceAiEvent[] = [
+			{
+				type: 'user-message',
+				...baseEvent,
+				payload: { messageId: 'qm-1', text: 'use Slack instead', source: 'steered' },
+			},
+			{
+				type: 'user-message',
+				...baseEvent,
+				payload: { messageId: 'qm-2', text: 'and again', source: 'steered' },
+			},
+		];
+
+		const metadata = buildInstanceAiRunTraceMetadata(events, {
+			status: 'completed',
+			steeredAtStep: 4,
+		});
+
+		expect(metadata).toEqual({
+			first_visible_state: 'empty',
+			steered: true,
+			steer_count: 2,
+			steered_at_step: 4,
+		});
+	});
+
+	it('marks a run the boundary stopped even when no announcement landed on it', () => {
+		const metadata = buildInstanceAiRunTraceMetadata([], { status: 'completed', steeredAtStep: 1 });
+
+		expect(metadata).toEqual({
+			first_visible_state: 'empty',
+			steered: true,
+			steered_at_step: 1,
+		});
+	});
+
+	it('counts an announced turn without marking a run no boundary stopped', () => {
+		// Send now, then Stop before the next tool call: announced, not steered.
+		const events: InstanceAiEvent[] = [
+			{
+				type: 'user-message',
+				...baseEvent,
+				payload: { messageId: 'qm-1', text: 'use Slack instead', source: 'steered' },
+			},
+		];
+
+		const metadata = buildInstanceAiRunTraceMetadata(events, { status: 'cancelled' });
+
+		expect(metadata).toEqual({
+			first_visible_state: 'empty',
+			steer_count: 1,
+			cancellation_type: 'explicit',
+		});
+	});
+
+	it('does not mark a run when only a flushed queued message was delivered', () => {
+		const events: InstanceAiEvent[] = [
+			{
+				type: 'user-message',
+				...baseEvent,
+				payload: { messageId: 'qm-1', text: 'next turn', source: 'queued' },
+			},
+		];
+
+		const metadata = buildInstanceAiRunTraceMetadata(events, { status: 'completed' });
+
+		expect(metadata).toEqual({ first_visible_state: 'empty' });
+	});
 });

@@ -453,7 +453,100 @@ When a run's process died mid-flight, the startup sweep appends:
 {"type":"run-finish","runId":"run_abc123","agentId":"agent-001","payload":{"status":"interrupted","reason":"crash_interrupted"}}
 ```
 
-The four statuses are `completed`, `cancelled`, `error` and `interrupted`.
+When the user pressed Send now on a queued message, the run ends after the tool
+call it was on:
+
+```json
+{"type":"run-finish","runId":"run_abc123","agentId":"agent-001","payload":{"status":"steered"}}
+```
+
+The five statuses are `completed`, `steered`, `cancelled`, `error` and
+`interrupted`. `steered` is a completion: the run kept the work it did, and every
+consumer treats it as `completed`. The distinct value records that the user, not
+the agent, ended the run there.
+
+### `user-message`
+
+A queued user message entered the transcript. The event is the durable fact for
+both delivery paths, and the frontend renders it as a normal user bubble.
+
+```json
+{"type":"user-message","runId":"run_abc123","agentId":"agent-001","payload":{"messageId":"qm_xyz","text":"Use the Slack node","source":"steered"}}
+```
+
+- `source: "steered"` — the user pressed Send now while this run was active. The
+event is published at the press, on the live run, so the bubble appears at once,
+below the reply that is still streaming. The run finishes the tool call it is on,
+takes no further action (it finishes as `steered`), and the message starts its
+own run.
+- `source: "queued"` — a run started with the message. The SDK persists that
+run's input row, so the service does not write one.
+
+A steered turn gets both events: `steered` on the run it stopped, then
+`queued` on the run it started. The frontend keys user bubbles by `messageId`
+and updates the text of a bubble it already has, so the second one only makes
+the turn durable on its own run's log, and a part queued after the first
+announcement reaches the bubble. The queue list hides an item from the moment
+it is sent, since it is no longer the user's to edit or withdraw.
+
+A stopped run's LangSmith root metadata carries `steered`, `steer_count` (the
+Send now presses made during the run) and `steered_at_step` (the boundary the
+first of them stopped the run before), which tells a run the user cut short from
+a run the agent ended on its own. A `queued` event does not mark the run.
+
+## Queued Messages
+
+A user message that arrives while a run is active is held per thread instead of
+being refused. The queue is stored in the thread's metadata under
+`instanceAiQueuedMessages` and holds at most five messages. It is one turn: it
+goes as a whole, in order, joined with newlines.
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| `GET` | `/instance-ai/threads/:threadId/queued-messages` | Read the queue |
+| `POST` | `/instance-ai/threads/:threadId/queued-messages` | Add `{ text }` (refused at five) |
+| `PATCH` | `/instance-ai/threads/:threadId/queued-messages/:messageId` | Edit `{ text }` |
+| `DELETE` | `/instance-ai/threads/:threadId/queued-messages/:messageId` | Remove |
+| `POST` | `/instance-ai/threads/:threadId/queued-messages/:messageId/recall` | Take the item and everything after it back out; returns `{ queuedMessages, text }` |
+| `POST` | `/instance-ai/threads/:threadId/queued-messages/send-now` | Send the queue now |
+
+Every response carries `{ queuedMessages }` — the full queue after the change.
+So a client always renders the server's view of the queue. An item with
+`sentAt` is on its way and hidden from the list; edit, remove and recall refuse
+it, so an announced bubble always gets its run.
+
+The service delivers the queue in three ways:
+
+1. **Next tool call.** The agent runtime asks the service's graceful-stop check
+   before every tool call and at every clean step boundary. A non-empty queue
+   makes the check merge it into one sent item, publish `user-message` with
+   `source: "steered"` on the live run, and answer `true`: the tool call in
+   flight finishes, the tool calls that have not started are settled as
+   skipped, no further model call is made, and the run ends as `steered`.
+   A delegated builder is asked the same check through the orchestration
+   context's `subAgentShouldStop`, so it ends after its own current tool call
+   instead of the whole build; its tool call settles as steered and the
+   orchestrator ends at that boundary.
+2. **Send now.** The queue is merged and announced at once, and the thread's
+   interrupt fires: the runtime cancels the model request and the tool calls
+   in flight (settled as cancelled for the model), a delegated builder aborts
+   through the orchestration context's `subAgentAbortSignal`, and the run ends
+   as `steered`. Send now also cancels the thread's background tasks. Both
+   stops are in-process; on another main the queue still ends the run before
+   its next tool call. On an idle thread, Send now delivers at once.
+3. **Run finish.** Whatever is queued goes as one new run. It runs before the
+   automatic follow-ups (workflow setup routing, the planned-task tick), and
+   when it starts a run those follow-ups hold until that run's own finish
+   re-derives them. The guard is the same as the cancel path: no flush while
+   a run is suspended on a confirmation or plan review. A `409 Conflict`
+   stays for a plain `POST /chat/:threadId`.
+
+A queued message waits for the run it was typed behind, and only for that run.
+The queue is dropped when that run dies with the process (the startup sweep
+that marks it `interrupted`, and service shutdown), and when the user starts a
+new turn with `POST /chat/:threadId` instead. A queue a Stop left behind stays:
+the list shows it on the idle thread, where it can be edited, removed, or sent
+now. The frontend never sends a queued message on its own.
 
 ## Typical Event Sequence
 
@@ -666,6 +759,7 @@ creating duplicate messages.
 |------------|-------------------|---------|
 | `run-start` | `messageId` | First event in a run |
 | `run-finish` | `status`, `reason?` | Ends orchestrator streaming; detached events can follow |
+| `user-message` | `messageId`, `text`, `source` | A queued turn entered the transcript: `steered` on the run it stops, `queued` on the run it starts |
 | `text-delta` | `text` | Incremental agent text |
 | `reasoning-delta` | `text` | Incremental agent reasoning |
 | `tool-call` | `toolCallId`, `toolName`, `args` | Tool invocation (before execution) |

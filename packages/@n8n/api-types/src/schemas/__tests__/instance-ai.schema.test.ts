@@ -1,3 +1,5 @@
+import { InstanceAiQueueMessageRequest } from '../../dto/instance-ai/instance-ai-queue-message-request.dto';
+import { InstanceAiUpdateQueuedMessageRequest } from '../../dto/instance-ai/instance-ai-update-queued-message-request.dto';
 import {
 	AI_GATEWAY_MANAGED_TAG,
 	base64EncodedSize,
@@ -118,7 +120,38 @@ describe('sandbox provider', () => {
 	});
 });
 
+describe.each([InstanceAiQueueMessageRequest, InstanceAiUpdateQueuedMessageRequest])(
+	'%s',
+	(Request) => {
+		it.each(['', '   ', '\t\n'])('rejects blank text %j', (text) => {
+			expect(Request.safeParse({ text }).success).toBe(false);
+		});
+	},
+);
+
 describe('instanceAiEventSchema', () => {
+	it('accepts a steered user message', () => {
+		const event = {
+			type: 'user-message',
+			runId: 'run-1',
+			agentId: 'agent-1',
+			payload: { messageId: 'message-1', text: 'Use a daily schedule', source: 'steered' },
+		};
+
+		expect(instanceAiEventSchema.parse(event)).toEqual(event);
+	});
+
+	it('rejects a user message with an unknown source', () => {
+		expect(
+			instanceAiEventSchema.safeParse({
+				type: 'user-message',
+				runId: 'run-1',
+				agentId: 'agent-1',
+				payload: { messageId: 'message-1', text: 'Use a daily schedule', source: 'unknown' },
+			}).success,
+		).toBe(false);
+	});
+
 	it('preserves traceId on run-start events', () => {
 		const event = {
 			type: 'run-start',

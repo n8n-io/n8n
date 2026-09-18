@@ -186,6 +186,7 @@ export type ToolCallId = string & { readonly __brand: 'ToolCallId' };
 export const instanceAiEventTypeSchema = z.enum([
 	'run-start',
 	'run-finish',
+	'user-message',
 	'agent-spawned',
 	'agent-completed',
 	'text-delta',
@@ -230,7 +231,19 @@ export const INSTANCE_AI_EPHEMERAL_EVENT_TYPES: ReadonlySet<InstanceAiEventType>
 // 'interrupted' (durable-log RFC, resilience phase): appended by the
 // interrupted-run sweep for a run whose process died mid-flight — the fold
 // renders every in-flight item as terminated, no walk-and-mutate.
-export const instanceAiRunStatusSchema = z.enum(['completed', 'cancelled', 'error', 'interrupted']);
+//
+// 'steered': the user sent a new instruction while the run was working, so the
+// run stopped at its next step boundary and the instruction became the next run.
+// The work it completed is intact, which is why every consumer treats it the way
+// it treats 'completed'; the distinct value is what makes a steered step visible
+// in the data instead of looking like a run the agent ended by itself.
+export const instanceAiRunStatusSchema = z.enum([
+	'completed',
+	'steered',
+	'cancelled',
+	'error',
+	'interrupted',
+]);
 export type InstanceAiRunStatus = z.infer<typeof instanceAiRunStatusSchema>;
 
 // ---------------------------------------------------------------------------
@@ -330,6 +343,18 @@ export const runFinishPayloadSchema = z.object({
 	 * entries and label them as archived.
 	 */
 	archivedWorkflowIds: z.array(z.string()).optional(),
+});
+
+export const userMessagePayloadSchema = z.object({
+	messageId: z.string(),
+	text: z.string(),
+	/**
+	 * 'steered': the user pressed Send now while this run was active. The message
+	 * is in the transcript from that moment; the run ends at its next step
+	 * boundary and the message starts its own run. 'queued': the message started
+	 * a run after the previous one finished.
+	 */
+	source: z.enum(['steered', 'queued']),
 });
 
 export const agentSpawnedTargetResourceSchema = z.object({
@@ -1139,6 +1164,7 @@ const eventBase = {
 export const instanceAiEventSchema = z.discriminatedUnion('type', [
 	z.object({ type: z.literal('run-start'), ...eventBase, payload: runStartPayloadSchema }),
 	z.object({ type: z.literal('run-finish'), ...eventBase, payload: runFinishPayloadSchema }),
+	z.object({ type: z.literal('user-message'), ...eventBase, payload: userMessagePayloadSchema }),
 	z.object({ type: z.literal('agent-spawned'), ...eventBase, payload: agentSpawnedPayloadSchema }),
 	z.object({
 		type: z.literal('agent-completed'),
@@ -1212,6 +1238,7 @@ export type InstanceAiEvent = z.infer<typeof instanceAiEventSchema>;
 // Named event types as Extract aliases for consumers that need specific types
 export type InstanceAiRunStartEvent = Extract<InstanceAiEvent, { type: 'run-start' }>;
 export type InstanceAiRunFinishEvent = Extract<InstanceAiEvent, { type: 'run-finish' }>;
+export type InstanceAiUserMessageEvent = Extract<InstanceAiEvent, { type: 'user-message' }>;
 export type InstanceAiAgentSpawnedEvent = Extract<InstanceAiEvent, { type: 'agent-spawned' }>;
 export type InstanceAiAgentCompletedEvent = Extract<InstanceAiEvent, { type: 'agent-completed' }>;
 export type InstanceAiTextDeltaEvent = Extract<InstanceAiEvent, { type: 'text-delta' }>;
@@ -1698,6 +1725,31 @@ export class InstanceAiThreadMessagesQuery extends Z.class({
 	page: z.coerce.number().int().nonnegative().max(INSTANCE_AI_THREAD_MESSAGES_MAX_PAGE).default(0),
 	raw: z.enum(['true', 'false']).optional(),
 }) {}
+
+/** Most messages a thread holds in its queue; the composer refuses a sixth. */
+export const INSTANCE_AI_MAX_QUEUED_MESSAGES = 5;
+
+export const instanceAiQueuedMessageSchema = z.object({
+	id: z.string(),
+	text: z.string(),
+	createdAt: z.string(),
+	/**
+	 * Set once the message is in the transcript (Send now, or claimed at a
+	 * tool-call boundary) and on its way to its own run. The queue list hides it
+	 * from then on; it is no longer the user's to edit or withdraw.
+	 */
+	sentAt: z.string().optional(),
+});
+export type InstanceAiQueuedMessage = z.infer<typeof instanceAiQueuedMessageSchema>;
+
+export interface InstanceAiQueuedMessagesResponse {
+	queuedMessages: InstanceAiQueuedMessage[];
+}
+
+/** A recalled item and everything queued after it, joined for the composer. */
+export interface InstanceAiRecallQueuedMessagesResponse extends InstanceAiQueuedMessagesResponse {
+	text: string;
+}
 
 export interface InstanceAiSendMessageResponse {
 	runId: string;

@@ -19,6 +19,12 @@ import {
 	protectUntrustedToolResult,
 } from './untrusted-tool-output';
 import { isAbortError, raceWithAbort } from '../../sdk/abort';
+
+/** Model-facing settlement for a call that never started because the user sent a new instruction. */
+const INTERRUPTED_SKIP_OUTPUT = '[Skipped: the user sent a new instruction]';
+/** Model-facing settlement for a call the host cancelled mid-flight for the same reason. */
+const INTERRUPTED_CANCEL_OUTPUT = '[Tool call cancelled: the user sent a new instruction]';
+const INTERRUPTED_CANCEL_REASON = 'The user sent a new instruction';
 import { isCancellation } from '../../sdk/cancellation';
 import { isLlmMessage } from '../../sdk/message';
 import type { RuntimeSkillLoader } from '../../skills/types';
@@ -139,6 +145,19 @@ export interface ToolBatchContext {
 	executionCounter?: AgentExecutionCounter;
 	abortSignal: AbortSignal;
 	isAborted: () => boolean;
+	/**
+	 * Host request for a graceful stop, asked before each tool call starts. A
+	 * `true` settles every call that has not started as skipped; the in-flight
+	 * ones finish. Unlike an abort it is not a cancellation: the loop then ends
+	 * the run as a normal completion.
+	 */
+	shouldStop?: () => boolean | Promise<boolean>;
+	/**
+	 * True once the host stopped the step in flight (`ExecutionOptions.interruptSignal`)
+	 * while the run itself is still live. `abortSignal` is aborted too, so the
+	 * calls in flight cancel; this tells that cancel apart from a run abort.
+	 */
+	isInterrupted?: () => boolean;
 }
 
 /** A tool-call content block that has already been settled by the AI SDK. */
@@ -157,6 +176,8 @@ interface ProcessToolCallParams {
 	resolvedTelemetry?: BuiltTelemetry;
 	executionCounter?: AgentExecutionCounter;
 	abortSignal?: AbortSignal;
+	/** See `ToolBatchContext.isInterrupted`. */
+	isInterrupted?: () => boolean;
 	/** Whether this counts as a new tool-call invocation. Default `true`; `false` on resume. */
 	countToolCall?: boolean;
 	/** Checkpointed suspend payload of the tool call being resumed. */
@@ -238,6 +259,53 @@ export class ToolCallExecutor {
 		const delegateOptions = tool ? getInlineDelegateSubAgentToolOptions(tool) : undefined;
 		if (!delegateOptions) return this.concurrency;
 		return delegateOptions.policy?.maxChildren ?? DEFAULT_SUB_AGENT_MAX_CHILDREN;
+	}
+
+	/**
+	 * Why the calls that have not started must be settled as skipped, or
+	 * undefined to keep going. An abort wins over a graceful stop and marks the
+	 * run cancelled; a graceful stop only ends the batch, and is asked only
+	 * before a batch starts — the site after a batch settles exists for an abort
+	 * that landed mid-batch, and the next batch's own check covers a stop. The
+	 * model reads the text, so "aborted" stays reserved for a cancelled run.
+	 */
+	private async getSkipReason(
+		ctx: ToolBatchContext,
+		{ askHost }: { askHost: boolean },
+	): Promise<string | undefined> {
+		if (ctx.isAborted()) {
+			this.deps.onCancelled();
+			return '[Skipped: run was aborted]';
+		}
+		if (ctx.isInterrupted?.()) return INTERRUPTED_SKIP_OUTPUT;
+		if (askHost && (await ctx.shouldStop?.())) return INTERRUPTED_SKIP_OUTPUT;
+		return undefined;
+	}
+
+	/** Settle every call that has not started with the given model-facing output. */
+	private settleUnexecuted(
+		list: AgentMessageList,
+		callsById: Map<string, { toolCallId: string; toolName: string; input: JSONValue }>,
+		unexecutedIds: Set<string>,
+		modelOutput: string,
+	): ToolCallSuccess[] {
+		return [...unexecutedIds].map((id) => {
+			const tc = callsById.get(id)!;
+			list.setToolCallResult(tc.toolCallId, modelOutput, { canceled: true });
+			return {
+				toolCallId: tc.toolCallId,
+				toolName: tc.toolName,
+				input: tc.input,
+				toolEntry: {
+					tool: tc.toolName,
+					input: tc.input,
+					output: modelOutput,
+					transformed: false,
+					canceled: true,
+				},
+				modelOutput,
+			};
+		});
 	}
 
 	private takeNextToolCallBatch<T extends { toolName: string }>(
@@ -339,26 +407,11 @@ export class ToolCallExecutor {
 		const pending: Record<string, PendingToolCall> = {};
 
 		for (let batchStart = 0; batchStart < executableCalls.length; ) {
-			if (ctx.isAborted()) {
-				this.deps.onCancelled();
-				for (const id of unexecutedIds) {
-					const tc = executableCallsById.get(id)!;
-					const modelOutput = '[Skipped: run was aborted]';
-					list.setToolCallResult(tc.toolCallId, modelOutput, { canceled: true });
-					results.push({
-						toolCallId: tc.toolCallId,
-						toolName: tc.toolName,
-						input: tc.input,
-						toolEntry: {
-							tool: tc.toolName,
-							input: tc.input,
-							output: modelOutput,
-							transformed: false,
-							canceled: true,
-						},
-						modelOutput,
-					});
-				}
+			const skipReason = await this.getSkipReason(ctx, { askHost: true });
+			if (skipReason) {
+				results.push(
+					...this.settleUnexecuted(list, executableCallsById, unexecutedIds, skipReason),
+				);
 				return await this.finalizeBatch({ results, suspensions, errors, pending }, ctx);
 			}
 
@@ -379,6 +432,7 @@ export class ToolCallExecutor {
 							resolvedTelemetry,
 							executionCounter,
 							abortSignal,
+							isInterrupted: ctx.isInterrupted,
 							countToolCall: true,
 						}),
 				),
@@ -456,26 +510,11 @@ export class ToolCallExecutor {
 				}
 			}
 
-			if (ctx.isAborted()) {
-				this.deps.onCancelled();
-				for (const id of unexecutedIds) {
-					const tc = executableCallsById.get(id)!;
-					const modelOutput = '[Skipped: run was aborted]';
-					list.setToolCallResult(tc.toolCallId, modelOutput, { canceled: true });
-					results.push({
-						toolCallId: tc.toolCallId,
-						toolName: tc.toolName,
-						input: tc.input,
-						toolEntry: {
-							tool: tc.toolName,
-							input: tc.input,
-							output: modelOutput,
-							transformed: false,
-							canceled: true,
-						},
-						modelOutput,
-					});
-				}
+			const settledSkipReason = await this.getSkipReason(ctx, { askHost: false });
+			if (settledSkipReason) {
+				results.push(
+					...this.settleUnexecuted(list, executableCallsById, unexecutedIds, settledSkipReason),
+				);
 				return await this.finalizeBatch({ results, suspensions, errors, pending }, ctx);
 			}
 
@@ -601,23 +640,14 @@ export class ToolCallExecutor {
 							continue;
 						}
 					}
-					const modelOutput = '[Skipped: a sibling tool call was cancelled]';
-					list.setToolCallResult(id, modelOutput, {
-						canceled: true,
-					});
-					results.push({
-						toolCallId: siblingEntry.toolCallId,
-						toolName: siblingEntry.toolName,
-						input: siblingEntry.input,
-						toolEntry: {
-							tool: siblingEntry.toolName,
-							input: siblingEntry.input,
-							output: modelOutput,
-							transformed: false,
-							canceled: true,
-						},
-						modelOutput,
-					});
+					results.push(
+						...this.settleUnexecuted(
+							list,
+							new Map([[id, siblingEntry]]),
+							new Set([id]),
+							'[Skipped: a sibling tool call was cancelled]',
+						),
+					);
 				}
 			}
 
@@ -668,6 +698,10 @@ export class ToolCallExecutor {
 				executionCounter,
 				abortSignal,
 				isAborted: ctx.isAborted,
+				// The siblings of a resumed call are a fresh batch: the host's stop
+				// policy applies to them exactly as to a batch the model just issued.
+				isInterrupted: ctx.isInterrupted,
+				shouldStop: ctx.shouldStop,
 			});
 			results.push(...batch.results);
 			suspensions.push(...batch.suspensions);
@@ -734,6 +768,10 @@ export class ToolCallExecutor {
 		let didSuspend = false;
 		let abortObserved = false;
 		let suspensionCleanup: Promise<void> | undefined;
+		// A host interrupt is a new user instruction, not a run abort: it changes
+		// the reason the cancellation hook sees and keeps the run's state alive.
+		const wasInterrupted = () => params.isInterrupted?.() === true;
+		const cancelReason = () => (wasInterrupted() ? INTERRUPTED_CANCEL_REASON : 'Run aborted');
 		const cleanupInterruptedSuspension = async () => {
 			suspensionCleanup ??= this.runCancellationCleanup(
 				{
@@ -744,7 +782,7 @@ export class ToolCallExecutor {
 					resumeSchema: getToolResumeJsonSchema(builtTool, interruptedSuspendOptions?.resumeSchema),
 				},
 				builtTool,
-				'Run aborted',
+				cancelReason(),
 			).catch(() => undefined);
 			await suspensionCleanup;
 		};
@@ -759,18 +797,24 @@ export class ToolCallExecutor {
 			});
 		} catch (error) {
 			if (isAbortError(error) || params.abortSignal?.aborted) {
+				const interruptedOnly = wasInterrupted();
+				const reason = cancelReason();
 				abortObserved = true;
 				if (didSuspend) {
 					await cleanupInterruptedSuspension();
 				} else if (params.suspendPayload !== undefined || params.continuation !== undefined) {
 					try {
-						await this.runCancellationCleanup({ ...params, input }, builtTool, 'Run aborted');
+						await this.runCancellationCleanup({ ...params, input }, builtTool, reason);
 					} catch {
 						// Parent shutdown must continue; persistent stores will prune stale checkpoints.
 					}
 				}
-				this.deps.onCancelled();
-				return this.buildCancelledOutcome(params, 'Run aborted');
+				if (!interruptedOnly) this.deps.onCancelled();
+				return this.buildCancelledOutcome(
+					params,
+					reason,
+					interruptedOnly ? INTERRUPTED_CANCEL_OUTPUT : undefined,
+				);
 			}
 
 			return await this.toolError(params, error, builtTool);
@@ -848,6 +892,7 @@ export class ToolCallExecutor {
 			resolvedTelemetry: ctx.telemetry,
 			executionCounter: ctx.executionCounter,
 			abortSignal: ctx.abortSignal,
+			isInterrupted: ctx.isInterrupted,
 			countToolCall: false,
 			...(entry.suspended
 				? {
@@ -942,9 +987,10 @@ export class ToolCallExecutor {
 	private buildCancelledOutcome(
 		params: ProcessToolCallParams,
 		userMessage: string,
+		modelOutputOverride?: string,
 	): ToolCallOutcome {
 		const { toolCallId, toolName, input, list } = params;
-		const modelOutput = `[Tool call cancelled. User said: "${userMessage}"]`;
+		const modelOutput = modelOutputOverride ?? `[Tool call cancelled. User said: "${userMessage}"]`;
 		this.eventBus.emit({
 			type: AgentEvent.ToolExecutionEnd,
 			toolCallId,

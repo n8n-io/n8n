@@ -24,7 +24,11 @@ const aiConfigMock = mock<AiConfig>();
 const agentsSdkMocks = vi.hoisted(() => {
 	const streamCalls: Array<{
 		message: string;
-		options: { persistence: { threadId: string; resourceId: string }; abortSignal?: AbortSignal };
+		options: {
+			persistence: { threadId: string; resourceId: string };
+			abortSignal?: AbortSignal;
+			shouldStopGracefully?: () => Promise<boolean>;
+		};
 	}> = [];
 	const resumeCalls: Array<{ options: Record<string, unknown> }> = [];
 	const instructionsCalls: string[] = [];
@@ -295,10 +299,11 @@ describe('AgentsBuilderService session isolation', () => {
 		);
 	});
 
-	it('forwards session.abortSignal to the SDK stream and resume calls', async () => {
+	it('forwards session.abortSignal and shouldStopGracefully to the SDK stream and resume calls', async () => {
 		const { service, user, credentialProvider, credentialService, n8nCheckpointStorage } = setup();
 		n8nCheckpointStorage.getStatus.mockResolvedValue({ status: 'active', checkpoint: {} as never });
 		const abortSignal = new AbortController().signal;
+		const shouldStopGracefully = vi.fn(async () => false);
 
 		await drain(
 			service.buildAgent(
@@ -311,6 +316,7 @@ describe('AgentsBuilderService session isolation', () => {
 				{
 					...baseSession,
 					abortSignal,
+					shouldStopGracefully,
 				},
 			),
 		);
@@ -324,11 +330,13 @@ describe('AgentsBuilderService session isolation', () => {
 				credentialProvider,
 				credentialService,
 				user,
-				{ ...baseSession, abortSignal },
+				{ ...baseSession, abortSignal, shouldStopGracefully },
 			),
 		);
 		expect(agentsSdkMocks.streamCalls[0]?.options.abortSignal).toBe(abortSignal);
+		expect(agentsSdkMocks.streamCalls[0]?.options.shouldStopGracefully).toBe(shouldStopGracefully);
 		expect(agentsSdkMocks.resumeCalls[0]?.options.abortSignal).toBe(abortSignal);
+		expect(agentsSdkMocks.resumeCalls[0]?.options.shouldStopGracefully).toBe(shouldStopGracefully);
 		expect(n8nCheckpointStorage.getStatus).toHaveBeenCalledWith('builder-run-1', 'agent-1');
 	});
 

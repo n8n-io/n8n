@@ -4,6 +4,7 @@ import type {
 	Workspace,
 	ScopedMemoryTaskEvent,
 	AgentEventData,
+	ExecutionOptions,
 	MemoryTaskUsageReport,
 } from '@n8n/agents';
 import { getPromptWorkspaceRoot, getWorkspaceRoot } from '@n8n/agents/sandbox';
@@ -29,6 +30,8 @@ import {
 	type InstanceAiConfirmResponse,
 	type InstanceAiEvent,
 	type InstanceAiThreadStatusResponse,
+	type InstanceAiQueuedMessage,
+	INSTANCE_AI_MAX_QUEUED_MESSAGES,
 	type InstanceAiThreadArtifactsContext,
 } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
@@ -110,6 +113,7 @@ import {
 	type PlannedWorkflowVerification,
 	type OrchestratorRunHandoffState,
 	type OrchestratorRunStopSignal,
+	type OrchestratorRunHandoffReason,
 	type ServiceProxyConfig,
 	type SuspendedRunState,
 	type SuspensionInfo,
@@ -223,6 +227,11 @@ import { InstanceAiPendingConfirmationRepository } from './repositories/instance
 import { InstanceAiThreadGrantRepository } from './repositories/instance-ai-thread-grant.repository';
 import { InstanceAiSandboxService, type RuntimeSandboxEntry } from './sandbox';
 import { DbIterationLogStorage } from './storage/db-iteration-log-storage';
+import {
+	mergeQueuedMessages,
+	readQueuedMessages,
+	withQueuedMessages,
+} from './storage/queued-messages';
 import { TypeORMAgentCheckpointStore } from './storage/typeorm-agent-checkpoint-store';
 import { TypeORMAgentMemory } from './storage/typeorm-agent-memory';
 import { isStreamTransportError } from './stream-transport-error';
@@ -655,6 +664,20 @@ export class InstanceAiService {
 
 	/** Tracks the iframe pushRef per thread for live execution push events. */
 	private readonly threadPushRef = new Map<string, string>();
+
+	/**
+	 * Send now's interrupt per run: cancels the step in flight and a delegated
+	 * builder. Keyed by run, not thread — a planned-task dispatch on the same
+	 * thread arms its own — and dropped on the run's terminal outcome. In-process
+	 * only: on another main the queue still ends the run at its next tool call.
+	 */
+	private readonly steerInterrupts = new Map<string, AbortController>();
+
+	/**
+	 * Threads whose queue this main last saw non-empty: a free answer for the
+	 * check asked before every tool call. Only trusted on a single main.
+	 */
+	private readonly queuedThreads = new Set<string>();
 
 	/**
 	 * Runs where the credentials tool handed off to browser-assisted credential
@@ -1124,6 +1147,10 @@ export class InstanceAiService {
 	 * The interrupted-run sweeper uses this so a newer run on the same thread
 	 * never shields an older crashed run from being swept.
 	 */
+	isThreadLive(threadId: string): boolean {
+		return this.runState.hasLiveRun(threadId);
+	}
+
 	isRunLive(threadId: string, runId: string): boolean {
 		return (
 			this.runState.getActiveRunId(threadId) === runId ||
@@ -1202,11 +1229,33 @@ export class InstanceAiService {
 		return this.instanceAiConfig.runDebugEnabled;
 	}
 
+	/**
+	 * How a queued turn ends a run: the graceful check before each tool call and
+	 * step boundary, and Send now's interrupt for the call in flight. Either way
+	 * the handoff is raised here, not by cancelling the run, so the work done
+	 * stays done and the queued turn starts its own run.
+	 */
+	private queuedTurnStopOptions(
+		threadId: string,
+		runId: string,
+		onSteered?: (step: number) => void,
+	): Pick<ExecutionOptions, 'shouldStopGracefully' | 'interruptSignal'> {
+		return {
+			shouldStopGracefully: async ({ step }) => {
+				const steered = await this.claimQueuedTurn(threadId, runId, step);
+				if (steered) onSteered?.(step);
+				return steered;
+			},
+			interruptSignal: this.steerInterrupts.get(runId)?.signal,
+		};
+	}
+
 	private buildOrchestratorAgentStreamOptions(
 		user: User,
 		threadId: string,
 		runId: string,
 		signal: AbortSignal,
+		onSteered?: (step: number) => void,
 	): Record<string, unknown> {
 		if (this.isRunDebugEnabled()) {
 			this.runDebugBuffer.ensure(runId, threadId);
@@ -1214,6 +1263,7 @@ export class InstanceAiService {
 		return {
 			maxIterations: MAX_STEPS.ORCHESTRATOR,
 			abortSignal: signal,
+			...this.queuedTurnStopOptions(threadId, runId, onSteered),
 			// Recover token usage from raw provider events so a stopped/errored run
 			// is still billed for the tokens consumed before the stop.
 			recoverUsageOnAbort: true,
@@ -1245,6 +1295,7 @@ export class InstanceAiService {
 		agentRunId: string,
 		toolCallId: string,
 		signal: AbortSignal,
+		onSteered?: (step: number) => void,
 	): Record<string, unknown> {
 		if (this.isRunDebugEnabled()) {
 			this.runDebugBuffer.ensure(runId, threadId);
@@ -1253,6 +1304,7 @@ export class InstanceAiService {
 			runId: agentRunId,
 			toolCallId,
 			abortSignal: signal,
+			...this.queuedTurnStopOptions(threadId, runId, onSteered),
 			// Keep billing stopped/errored resumed runs (see stream-options builder).
 			recoverUsageOnAbort: true,
 			...modelStreamStallOptions(this.aiConfig),
@@ -1390,6 +1442,9 @@ export class InstanceAiService {
 			threadId,
 			user,
 		});
+		// A typed turn supersedes whatever a stopped run left queued; without this
+		// the leftover would follow this run with nothing on screen announcing it.
+		void this.discardQueuedMessages(threadId);
 
 		// Persist the user's time zone so checkpoint / replan / synthesize
 		// follow-up runs can reinject it into the system prompt
@@ -1460,7 +1515,218 @@ export class InstanceAiService {
 		return this.runState.getActiveRunId(threadId);
 	}
 
-	cancelRun(threadId: string, reason = 'user_cancelled'): void {
+	/**
+	 * Drop the thread's queue. A queued message waits for the run it was typed
+	 * behind: when that run is gone without a finish (restart, shutdown) or the
+	 * user starts a new turn instead, delivering it later would send a message
+	 * that nothing on screen announced. Never throws.
+	 */
+	async discardQueuedMessages(threadId: string): Promise<void> {
+		try {
+			if (!(await this.readThreadQueue(threadId))?.length) return;
+			await this.mutateQueuedMessages(threadId, () => []);
+		} catch (error) {
+			this.logger.warn('Failed to discard queued messages', {
+				threadId,
+				error: getErrorMessage(error),
+			});
+		}
+	}
+
+	/** The thread's queue, or undefined when the thread does not exist. */
+	private async readThreadQueue(threadId: string): Promise<InstanceAiQueuedMessage[] | undefined> {
+		const thread = await this.agentMemory.getThread(threadId);
+		return thread ? readQueuedMessages(thread.metadata) : undefined;
+	}
+
+	async listQueuedMessages(threadId: string): Promise<InstanceAiQueuedMessage[]> {
+		const queue = await this.readThreadQueue(threadId);
+		if (!queue) throw new UserError('Thread not found');
+		return queue;
+	}
+
+	/**
+	 * Locked read-modify-write of the thread's queue. Sibling mains can stamp a
+	 * steer at the same time the driving main drains it, so every change goes
+	 * through the repository's row lock instead of a read followed by a write.
+	 */
+	private async mutateQueuedMessages(
+		threadId: string,
+		update: (messages: InstanceAiQueuedMessage[]) => InstanceAiQueuedMessage[],
+	): Promise<InstanceAiQueuedMessage[]> {
+		let messages: InstanceAiQueuedMessage[] = [];
+		const thread = await this.agentMemory.patchThread({
+			threadId,
+			update: (current) => {
+				messages = update(readQueuedMessages(current.metadata));
+				return { metadata: withQueuedMessages(current.metadata, messages) };
+			},
+		});
+		if (!thread) throw new UserError('Thread not found');
+		if (messages.length > 0) this.queuedThreads.add(threadId);
+		else this.queuedThreads.delete(threadId);
+		return messages;
+	}
+
+	/**
+	 * Whether a run owns the thread: live here, or (multi-main) driven by a
+	 * sibling main as far as the durable log shows. A queue is only delivered
+	 * by the run's own finish or by an idle flush, so "idle" must hold on every
+	 * main before a flush starts a second run.
+	 */
+	private async hasLiveRunAnywhere(threadId: string): Promise<boolean> {
+		if (this.runState.hasLiveRun(threadId)) return true;
+		return await this.interruptedRunSweeper.isThreadDrivenElsewhere(threadId);
+	}
+
+	/**
+	 * The composer's path in: queue the message, and when no run owns the thread
+	 * after all (the client believed one was live but it just finished), deliver
+	 * it at once — otherwise nothing would pick it up until a later run.
+	 */
+	async admitQueuedMessage(
+		user: User,
+		threadId: string,
+		text: string,
+	): Promise<InstanceAiQueuedMessage[]> {
+		await this.queueMessage(threadId, text);
+		return await this.deliverIfIdle(user, threadId);
+	}
+
+	/** Flush unless a run owns the thread on any main, then return the queue. */
+	private async deliverIfIdle(user: User, threadId: string): Promise<InstanceAiQueuedMessage[]> {
+		if (!(await this.hasLiveRunAnywhere(threadId))) await this.flushQueuedMessage(user, threadId);
+		return await this.listQueuedMessages(threadId);
+	}
+
+	async queueMessage(threadId: string, text: string): Promise<InstanceAiQueuedMessage[]> {
+		return await this.mutateQueuedMessages(threadId, (messages) => {
+			// A sent turn is on its way and no longer counts against what the user
+			// can still add, which is what the composer counts too.
+			const pending = messages.filter((item) => item.sentAt === undefined).length;
+			if (pending >= INSTANCE_AI_MAX_QUEUED_MESSAGES) {
+				throw new UserError(`The queue holds at most ${INSTANCE_AI_MAX_QUEUED_MESSAGES} messages`);
+			}
+			return [...messages, { id: `qm_${nanoid()}`, text, createdAt: new Date().toISOString() }];
+		});
+	}
+
+	/**
+	 * The queued item the user may still change. A sent item is already in the
+	 * transcript and on its way to its own run; changing or withdrawing it would
+	 * leave a bubble no run answers.
+	 */
+	private requireEditableQueuedMessage(
+		messages: InstanceAiQueuedMessage[],
+		messageId: string,
+	): number {
+		const index = messages.findIndex((item) => item.id === messageId);
+		if (index === -1) throw new UserError('Queued message not found');
+		if (messages[index].sentAt !== undefined) throw new UserError('Queued message already sent');
+		return index;
+	}
+
+	async updateQueuedMessage(
+		threadId: string,
+		messageId: string,
+		text: string,
+	): Promise<InstanceAiQueuedMessage[]> {
+		return await this.mutateQueuedMessages(threadId, (messages) => {
+			this.requireEditableQueuedMessage(messages, messageId);
+			return messages.map((item) => (item.id === messageId ? { ...item, text } : item));
+		});
+	}
+
+	async removeQueuedMessage(
+		threadId: string,
+		messageId: string,
+	): Promise<InstanceAiQueuedMessage[]> {
+		return await this.mutateQueuedMessages(threadId, (messages) => {
+			this.requireEditableQueuedMessage(messages, messageId);
+			return messages.filter((item) => item.id !== messageId);
+		});
+	}
+
+	/**
+	 * Take an item and everything queued after it out of the queue, for the
+	 * composer. The queue is one turn, so a change to an earlier part reopens the
+	 * parts that follow it, joined the way they would have been sent.
+	 */
+	async recallQueuedMessages(
+		threadId: string,
+		messageId: string,
+	): Promise<{ queuedMessages: InstanceAiQueuedMessage[]; text: string }> {
+		let text = '';
+		const queuedMessages = await this.mutateQueuedMessages(threadId, (messages) => {
+			const index = this.requireEditableQueuedMessage(messages, messageId);
+			text = messages
+				.slice(index)
+				.map((item) => item.text)
+				.join('\n');
+			return messages.slice(0, index);
+		});
+		return { queuedMessages, text };
+	}
+
+	/**
+	 * Send now. The whole queue goes as one turn. On a live run it enters the
+	 * transcript at once, the interrupt cancels the tool call in flight (and a
+	 * delegated builder), the run ends there as `steered`, and the run-finish
+	 * flush starts the turn as its own run. On an idle thread it is delivered
+	 * at once.
+	 */
+	async sendQueueNow(
+		user: User,
+		threadId: string,
+	): Promise<{ queuedMessages: InstanceAiQueuedMessage[] }> {
+		const liveRunId = this.runState.getActiveRunId(threadId);
+		if (liveRunId === undefined || !this.runState.hasLiveRun(threadId)) {
+			return { queuedMessages: await this.deliverIfIdle(user, threadId) };
+		}
+		if (await this.announceQueuedTurn(user, threadId, liveRunId)) {
+			this.steerInterrupts.get(liveRunId)?.abort();
+			this.cancelThreadBackgroundTasks(threadId);
+		}
+		return { queuedMessages: await this.listQueuedMessages(threadId) };
+	}
+
+	/**
+	 * Merge the queue into one sent item and put it in the transcript on the
+	 * given run. A second call over an unchanged queue publishes nothing again;
+	 * the frontend keys bubbles by id and updates the text when parts were
+	 * added. The first announcement is the steer that telemetry counts: Send
+	 * now, the orchestrator's check and a delegated builder's check all land
+	 * here, so one turn is one event. Undefined when the queue is empty.
+	 */
+	private async announceQueuedTurn(
+		user: User,
+		threadId: string,
+		runId: string,
+		step?: number,
+	): Promise<InstanceAiQueuedMessage | undefined> {
+		let sent: InstanceAiQueuedMessage | undefined;
+		let changed = false;
+		let first = false;
+		await this.mutateQueuedMessages(threadId, (messages) => {
+			const merged = mergeQueuedMessages(messages);
+			if (!merged) return messages;
+			first = merged.sentAt === undefined;
+			changed = first || messages.length > 1;
+			sent = { ...merged, sentAt: merged.sentAt ?? new Date().toISOString() };
+			return [sent];
+		});
+		if (sent && changed) this.publishQueuedMessage(user, threadId, runId, sent, 'steered');
+		if (first) {
+			this.telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.USER_STEERED_MESSAGE, {
+				thread_id: threadId,
+				...(step !== undefined ? { step } : {}),
+			});
+		}
+		return sent;
+	}
+
+	/** Cancel this thread's background tasks and settle each one. */
+	private cancelThreadBackgroundTasks(threadId: string): void {
 		const cancelledTasks = this.backgroundTasks.cancelThread(threadId);
 		const user = this.runState.getThreadUser(threadId);
 		for (const task of cancelledTasks) {
@@ -1480,6 +1746,10 @@ export class InstanceAiService {
 				void this.handlePlannedTaskSettlement(user, task, 'cancelled', { reschedule: false });
 			}
 		}
+	}
+
+	cancelRun(threadId: string, reason = 'user_cancelled'): void {
+		this.cancelThreadBackgroundTasks(threadId);
 
 		// Clean up any awaiting_approval plan graph for this thread. The user
 		// cancelled before approving, so leaving the graph persisted would (a)
@@ -1827,10 +2097,11 @@ export class InstanceAiService {
 	 */
 	async clearThreadState(threadId: string, userId?: string): Promise<void> {
 		this.liveness.clearThreadState(threadId);
-
 		// Clear run-state registry entries (active/suspended runs, confirmations,
 		// user, time zone, and message-group mappings).
 		const { active, suspended } = this.runState.clearThread(threadId);
+		if (active) this.steerInterrupts.delete(active.runId);
+		if (suspended) this.steerInterrupts.delete(suspended.runId);
 		if (active) {
 			active.abortController.abort();
 			await this.tracing.finalizeRunTracing(active.runId, active.tracing, {
@@ -1892,6 +2163,11 @@ export class InstanceAiService {
 
 		const { activeRuns, suspendedRuns, pendingThreadIds } = this.runState.shutdown();
 		const threadsWithPendingHitl = new Set(pendingThreadIds);
+		// The runs below die with the process, and nothing after the restart
+		// would announce a queued message before delivering it.
+		for (const threadId of new Set([...activeRuns, ...suspendedRuns].map((run) => run.threadId))) {
+			await this.discardQueuedMessages(threadId);
+		}
 		for (const run of activeRuns) {
 			// Runs holding an inline HITL confirmation (`create-tasks`,
 			// sub-agent `ask-user`) sit in `activeRuns` because the orchestrator
@@ -2385,6 +2661,8 @@ export class InstanceAiService {
 		proxyRunConfig?: Awaited<ReturnType<InstanceAiService['createProxyRunConfig']>>,
 	) {
 		const memory = this.agentMemory;
+		const steerStop = new AbortController();
+		this.steerInterrupts.set(runId, steerStop);
 		const boundProjectId = await memory.getThreadProjectId(threadId);
 		if (!boundProjectId) {
 			throw new UnexpectedError(
@@ -2712,6 +2990,8 @@ export class InstanceAiService {
 				}
 			},
 			abortSignal,
+			subAgentAbortSignal: AbortSignal.any([abortSignal, steerStop.signal]),
+			subAgentShouldStop: async () => await this.claimQueuedTurn(threadId, runId),
 			taskStorage,
 			timeZone: this.defaultTimeZone,
 			localMcpServer: context.localMcpServer,
@@ -3240,6 +3520,102 @@ export class InstanceAiService {
 		}
 	}
 
+	/**
+	 * Graceful-stop check, asked before every tool call and at each step
+	 * boundary. A non-empty queue ends the run here: it is merged into one turn
+	 * and put in the transcript on this run (unless Send now already did that),
+	 * and the run-finish flush starts it as its own run, which owns the message
+	 * row from that point.
+	 *
+	 * Never throws: a queue failure leaves the run running and the queue as is.
+	 */
+	private async claimQueuedTurn(threadId: string, runId: string, step?: number): Promise<boolean> {
+		try {
+			const user = this.runState.getThreadUser(threadId);
+			if (!user) return false;
+			// Asked on every tool call, so the common case must be cheap: the
+			// in-memory gate answers on a single main; multi-main always reads.
+			if (!this.instanceSettings.isMultiMain && !this.queuedThreads.has(threadId)) return false;
+			if (!(await this.readThreadQueue(threadId))?.length) return false;
+			return (await this.announceQueuedTurn(user, threadId, runId, step)) !== undefined;
+		} catch (error) {
+			this.logger.warn('Failed to claim the queued turn', {
+				threadId,
+				runId,
+				error: getErrorMessage(error),
+			});
+			return false;
+		}
+	}
+
+	/**
+	 * Run-finish flush: the whole queue goes as one turn. Reports whether a run
+	 * was started, so the caller can hold its automatic follow-ups. The claim is
+	 * made under the row lock and refused there if a run started meanwhile, so a
+	 * claimed turn always gets its run.
+	 *
+	 * Never throws: it runs at the end of a finished run and from the Send-now
+	 * path, where an exception would either reject an unawaited run promise or
+	 * fail a request over a message that is still safely queued.
+	 */
+	private async flushQueuedMessage(user: User, threadId: string): Promise<boolean> {
+		try {
+			if (await this.hasLiveRunAnywhere(threadId)) return false;
+			let claimed: InstanceAiQueuedMessage | undefined;
+			await this.mutateQueuedMessages(threadId, (messages) => {
+				if (this.runState.hasLiveRun(threadId)) return messages;
+				claimed = mergeQueuedMessages(messages);
+				return [];
+			});
+			if (!claimed) return false;
+			// The delivery is what the sent marker announced; it must not outlive it.
+			const { sentAt: _sentAt, ...turn } = claimed;
+			const runId = this.startQueuedMessageRun(user, threadId, turn.text);
+			this.publishQueuedMessage(user, threadId, runId, turn, 'queued');
+			return true;
+		} catch (error) {
+			this.logger.warn('Failed to deliver a queued message', {
+				threadId,
+				error: getErrorMessage(error),
+			});
+			return false;
+		}
+	}
+
+	private startQueuedMessageRun(user: User, threadId: string, text: string): string {
+		const { runId, abortController } = this.runState.startRun({ threadId, user });
+		const timeZone = this.runState.getTimeZone(threadId) ?? this.defaultTimeZone;
+		this.startExecuteRun(
+			user,
+			threadId,
+			runId,
+			text,
+			abortController,
+			undefined,
+			undefined,
+			undefined,
+			timeZone,
+		);
+		return runId;
+	}
+
+	/** Publish the durable user-message fact for a claimed turn. */
+	private publishQueuedMessage(
+		user: User,
+		threadId: string,
+		runId: string,
+		item: InstanceAiQueuedMessage,
+		source: 'steered' | 'queued',
+	): void {
+		this.eventBus.publish(threadId, {
+			type: 'user-message',
+			runId,
+			agentId: orchestratorAgentId(runId),
+			userId: user.id,
+			payload: { messageId: item.id, text: item.text, source },
+		});
+	}
+
 	private async startInternalFollowUpRun(
 		user: User,
 		threadId: string,
@@ -3648,6 +4024,8 @@ export class InstanceAiService {
 		let promptVersion: string | undefined;
 		let modelId: ModelConfig | undefined;
 		let messageTraceFinalization: MessageTraceFinalization | undefined;
+		/** Set when Send now ended this run at a step boundary; read by the trace root. */
+		let steeredAtStep: number | undefined;
 		let aiCreatedWorkflowIds: Set<string> | undefined;
 		let messageId = '';
 		let streamReached = false;
@@ -4136,7 +4514,16 @@ export class InstanceAiService {
 				tracing,
 			);
 
-			const streamOptions = this.buildOrchestratorAgentStreamOptions(user, threadId, runId, signal);
+			const streamOptions = this.buildOrchestratorAgentStreamOptions(
+				user,
+				threadId,
+				runId,
+				signal,
+				(step) => {
+					steeredAtStep = step;
+					runControl.requestHandoff('user-steered');
+				},
+			);
 
 			streamReached = true;
 			// Stored here, not where the block was built: the SDK persists the input on receipt, so
@@ -4386,6 +4773,7 @@ export class InstanceAiService {
 				modelId,
 				metadata: await this.tracing.buildMessageTraceMetadata(threadId, runId, {
 					status: finalStatus,
+					...(steeredAtStep !== undefined ? { steeredAtStep } : {}),
 				}),
 			};
 			const archivedWorkflowIds = await this.temporaryWorkflowService.reapForRun(
@@ -4395,6 +4783,7 @@ export class InstanceAiService {
 				this.backgroundTasks.getRunningTasks(threadId).length,
 			);
 			await this.finalizeRun(threadId, runId, result.status, {
+				stopReason: result.stopReason,
 				promptVersion,
 				userId: user.id,
 				modelId,
@@ -4607,8 +4996,21 @@ export class InstanceAiService {
 			//      call, and tick() is a no-op when no graph exists.
 			//   3. UI projection — always, so a stopped run's task states reach
 			//      the client.
+			//
+			// A queued user turn goes first: the user already sent it, so it must
+			// not wait behind a follow-up or the card one parks on. When it starts
+			// a run the follow-ups hold; the next finally re-derives them. Only a
+			// completed run hands over — after an error the queue stays for the
+			// user to send by hand.
+			const userTurnStarted =
+				messageTraceFinalization?.status === 'completed' &&
+				!segmentSuspended &&
+				!signal.aborted &&
+				!this.runState.hasSuspendedRun(threadId) &&
+				!this.runState.hasLiveRun(threadId) &&
+				(await this.flushQueuedMessage(user, threadId));
 			if (!segmentSuspended && !this.runState.hasSuspendedRun(threadId)) {
-				const reschedule = !signal.aborted;
+				const reschedule = !signal.aborted && !userTurnStarted;
 				if (checkpoint?.isCheckpointFollowUp) {
 					await this.finalizeCheckpointFollowUp(user, threadId, checkpoint.checkpointTaskId, {
 						reschedule,
@@ -5362,6 +5764,8 @@ export class InstanceAiService {
 		},
 	): Promise<void> {
 		let messageTraceFinalization: MessageTraceFinalization | undefined;
+		/** Same role as in executeRun: the step Send now stopped the resumed run before. */
+		let steeredAtStep: number | undefined;
 		const promptVersion =
 			opts.orchestrationContext?.promptConfiguration?.version ??
 			this.runState.getPromptConfiguration(opts.threadId)?.version;
@@ -5425,6 +5829,7 @@ export class InstanceAiService {
 				}
 			}
 
+			const runControl = createOrchestratorRunControlForState(opts.runHandoff);
 			const resumeOptions = {
 				...this.buildOrchestratorResumeAgentOptions(
 					opts.user,
@@ -5433,10 +5838,13 @@ export class InstanceAiService {
 					opts.agentRunId,
 					opts.toolCallId,
 					opts.signal,
+					(step) => {
+						steeredAtStep = step;
+						runControl.requestHandoff('user-steered');
+					},
 				),
 				onResumeClaimed,
 			};
-			const runControl = createOrchestratorRunControlForState(opts.runHandoff);
 			const stopSignal = (): OrchestratorRunStopSignal | undefined => runControl.getStopSignal();
 
 			const result = opts.tracing
@@ -5678,6 +6086,7 @@ export class InstanceAiService {
 				...(opts.modelId !== undefined ? { modelId: opts.modelId } : {}),
 				metadata: await this.tracing.buildMessageTraceMetadata(opts.threadId, opts.runId, {
 					status: finalStatus,
+					...(steeredAtStep !== undefined ? { steeredAtStep } : {}),
 				}),
 			};
 			const archivedWorkflowIds = await this.temporaryWorkflowService.reapForRun(
@@ -5687,6 +6096,7 @@ export class InstanceAiService {
 				this.backgroundTasks.getRunningTasks(opts.threadId).length,
 			);
 			await this.finalizeRun(opts.threadId, opts.runId, result.status, {
+				stopReason: result.stopReason,
 				promptVersion,
 				userId: opts.user.id,
 				// Forward modelId so title refinement fires on the resume path too — a run
@@ -5894,16 +6304,25 @@ export class InstanceAiService {
 					false,
 				);
 			}
-			// Post-run planned-task wiring — mirror the executeRun finally.
+			// Post-run planned-task wiring — mirror the executeRun finally,
+			// including the queued user turn that goes before the follow-ups.
 			// Resumed ordinary-chat runs also need to drive the scheduler in case
 			// a background task settled while they were active or suspended and
 			// the orchestrate-checkpoint branch was skipped because of hasLiveRun.
+			const userTurnStarted =
+				messageTraceFinalization?.status === 'completed' &&
+				!skipPostRunCleanup &&
+				!segmentSuspended &&
+				!opts.signal.aborted &&
+				!this.runState.hasSuspendedRun(opts.threadId) &&
+				!this.runState.hasLiveRun(opts.threadId) &&
+				(await this.flushQueuedMessage(opts.user, opts.threadId));
 			if (
 				!skipPostRunCleanup &&
 				!segmentSuspended &&
 				!this.runState.hasSuspendedRun(opts.threadId)
 			) {
-				const reschedule = !opts.signal.aborted;
+				const reschedule = !opts.signal.aborted && !userTurnStarted;
 				if (opts.checkpoint?.isCheckpointFollowUp) {
 					await this.finalizeCheckpointFollowUp(
 						opts.user,
@@ -6275,7 +6694,7 @@ export class InstanceAiService {
 	private publishRunFinish(
 		threadId: string,
 		runId: string,
-		status: 'completed' | 'cancelled' | 'errored',
+		status: 'completed' | 'steered' | 'cancelled' | 'errored',
 		reason?: string,
 		archivedWorkflowIds?: string[],
 		userId?: string,
@@ -6397,14 +6816,14 @@ export class InstanceAiService {
 	private emitBrowserCredentialSetupOutcomes(
 		threadId: string,
 		runId: string,
-		runStatus: 'completed' | 'cancelled' | 'errored',
+		runStatus: 'completed' | 'steered' | 'cancelled' | 'errored',
 		runFinishReason?: string,
 	): void {
 		const browserSetup = this.pendingBrowserCredentialSetups.get(runId);
 		if (!browserSetup) return;
 		this.pendingBrowserCredentialSetups.delete(runId);
 		const terminalErrorCode =
-			runStatus === 'completed'
+			runStatus === 'completed' || runStatus === 'steered'
 				? 'not_attempted'
 				: runStatus === 'errored'
 					? 'run_errored'
@@ -6437,8 +6856,10 @@ export class InstanceAiService {
 	private async finalizeRun(
 		threadId: string,
 		runId: string,
-		status: 'completed' | 'cancelled' | 'errored',
+		runStatus: 'completed' | 'cancelled' | 'errored',
 		options?: {
+			/** A completed run that a queued turn stopped reports `steered`: the same outcome, told apart in the data. */
+			stopReason?: OrchestratorRunHandoffReason;
 			userId?: string;
 			promptVersion?: string;
 			modelId?: ModelConfig;
@@ -6449,6 +6870,10 @@ export class InstanceAiService {
 			errorInfo?: RunFinishErrorInfo;
 		},
 	): Promise<void> {
+		const status =
+			runStatus === 'completed' && options?.stopReason === 'user-steered' ? 'steered' : runStatus;
+		// The run is over; a resume arms a fresh one with its environment.
+		this.steerInterrupts.delete(runId);
 		this.publishRunFinish(
 			threadId,
 			runId,
@@ -6463,7 +6888,7 @@ export class InstanceAiService {
 			},
 		);
 		this.emitRunMetrics(threadId, status, options);
-		if (status === 'completed' && options?.userId && options?.modelId) {
+		if ((status === 'completed' || status === 'steered') && options?.userId && options?.modelId) {
 			void this.refineTitleIfNeeded(threadId, options.userId, options.modelId);
 		}
 	}
@@ -6471,7 +6896,7 @@ export class InstanceAiService {
 	/** Emit a typed event consumed by the Prometheus Instance AI metrics collector. */
 	private emitRunMetrics(
 		threadId: string,
-		status: 'completed' | 'cancelled' | 'errored' | 'suspended',
+		status: 'completed' | 'steered' | 'cancelled' | 'errored' | 'suspended',
 		options?: { modelId?: ModelConfig; workSummary?: WorkSummary; usage?: RunTokenUsage },
 	): void {
 		const startedAt = this.runState.getActiveRun(threadId)?.startedAt;

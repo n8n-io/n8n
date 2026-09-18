@@ -17,6 +17,7 @@ import {
 	type InstanceAiAttachment,
 	type InstanceAiEvent,
 	type InstanceAiMessage,
+	type InstanceAiQueuedMessage,
 	type InstanceAiThreadSummary,
 	type InstanceAiAgentNode,
 	type InstanceAiToolCallState,
@@ -43,6 +44,11 @@ import {
 	postCancelTask,
 	postConfirmation,
 	postFeedback,
+	fetchQueuedMessages,
+	postQueuedMessage,
+	deleteQueuedMessage,
+	postSendQueueNow,
+	postRecallQueuedMessages,
 } from './instanceAi.api';
 import {
 	fetchThreadMessages as fetchThreadMessagesApi,
@@ -421,6 +427,24 @@ export function createThreadRuntime(
 
 	// --- Reactive state ---
 	const messages = ref<InstanceAiMessage[]>([]);
+	const queuedMessages = ref<InstanceAiQueuedMessage[]>([]);
+	// Every queue request carries a ticket; a response only lands when no later
+	// request has landed already, so a slow load or write cannot roll the list
+	// back over a newer server view.
+	let queueTicketIssued = 0;
+	let queueTicketApplied = 0;
+	function takeQueueTicket(): number {
+		return ++queueTicketIssued;
+	}
+	function applyQueueSnapshot(ticket: number, messages: InstanceAiQueuedMessage[]): void {
+		if (ticket < queueTicketApplied) return;
+		queueTicketApplied = ticket;
+		queuedMessages.value = messages;
+	}
+	/** Take the server's view of the queue; the list is display-only, so a failed read waits for the next. */
+	function refreshQueue(): void {
+		void loadQueuedMessages().catch(() => {});
+	}
 	const projectId = ref<string | undefined>(initialProjectId);
 	const activeRunId = ref<string | null>(null);
 	const archivedWorkflowIds = ref<Set<string>>(new Set());
@@ -938,6 +962,16 @@ export function createThreadRuntime(
 				},
 				parsed.data,
 			);
+			if (parsed.data.type === 'user-message') {
+				// The queue went as one turn under this id; the rest merged into it.
+				// Drop the item at once and take the server's view for the others.
+				const { messageId } = parsed.data.payload;
+				queuedMessages.value = queuedMessages.value.filter((message) => message.id !== messageId);
+				refreshQueue();
+			}
+			// The server may have dropped the queue with the run (a stop, a crash
+			// sweep) or delivered it; the list must not keep offering stale items.
+			if (parsed.data.type === 'run-finish') refreshQueue();
 			// Anything received on the stream means generation isn't stalled.
 			resetGenerationStallWatchdog();
 			if (parsed.data.type === 'tasks-update') {
@@ -1135,6 +1169,7 @@ export function createThreadRuntime(
 		hydrationPromise = null;
 		hydrationStatus.value = 'idle';
 		messages.value = [];
+		queuedMessages.value = [];
 		archivedWorkflowIds.value = new Set();
 		latestTasks.value = null;
 		latestSetupItems.value = null;
@@ -1337,6 +1372,9 @@ export function createThreadRuntime(
 			if (runId) {
 				activeRunId.value = runId;
 			}
+			// A typed turn supersedes whatever a stopped run left queued; the server
+			// dropped it, so the list must not keep offering it.
+			refreshQueue();
 			return true;
 		} catch (error: unknown) {
 			const status = error instanceof ResponseError ? error.httpStatusCode : undefined;
@@ -1400,6 +1438,72 @@ export function createThreadRuntime(
 			return true;
 		} finally {
 			pendingMessageCount.value = Math.max(0, pendingMessageCount.value - 1);
+		}
+	}
+
+	async function loadQueuedMessages(): Promise<void> {
+		const ticket = takeQueueTicket();
+		const response = await fetchQueuedMessages(rootStore.restApiContext, threadId);
+		applyQueueSnapshot(ticket, response.queuedMessages);
+	}
+
+	async function queueMessage(text: string): Promise<boolean> {
+		const ticket = takeQueueTicket();
+		try {
+			const response = await postQueuedMessage(rootStore.restApiContext, threadId, text);
+			applyQueueSnapshot(ticket, response.queuedMessages);
+			return true;
+		} catch {
+			return false;
+		}
+	}
+
+	async function removeQueuedMessage(messageId: string): Promise<void> {
+		const ticket = takeQueueTicket();
+		try {
+			const response = await deleteQueuedMessage(rootStore.restApiContext, threadId, messageId);
+			applyQueueSnapshot(ticket, response.queuedMessages);
+		} catch (error) {
+			// The server's reason goes under the hint, so a failure is diagnosable.
+			toast.showError(error, i18n.baseText('instanceAi.queue.removeError.title'), {
+				message: i18n.baseText('instanceAi.queue.removeError.message'),
+			});
+		}
+	}
+
+	async function sendQueueNow(): Promise<void> {
+		const ticket = takeQueueTicket();
+		try {
+			const response = await postSendQueueNow(rootStore.restApiContext, threadId);
+			applyQueueSnapshot(ticket, response.queuedMessages);
+		} catch (error) {
+			toast.showError(error, i18n.baseText('instanceAi.queue.steerError.title'), {
+				message: i18n.baseText('instanceAi.queue.steerError.message'),
+			});
+		}
+	}
+
+	/**
+	 * Take a queued message back into the composer. The queue is one turn, so
+	 * the messages after it come along, joined with newlines. The text is what
+	 * the server took out: when the recall is lost the items are still queued,
+	 * so handing their text to the composer would let them go twice.
+	 */
+	async function takeQueuedMessageForEdit(messageId: string): Promise<string | null> {
+		if (!queuedMessages.value.some((item) => item.id === messageId)) return null;
+		const ticket = takeQueueTicket();
+		try {
+			const response = await postRecallQueuedMessages(
+				rootStore.restApiContext,
+				threadId,
+				messageId,
+			);
+			applyQueueSnapshot(ticket, response.queuedMessages);
+			return response.text;
+		} catch {
+			// The items stay queued and editable; show the server's view of them.
+			refreshQueue();
+			return null;
 		}
 	}
 
@@ -1574,6 +1678,7 @@ export function createThreadRuntime(
 
 		// state refs
 		messages,
+		queuedMessages,
 		projectId,
 		activeRunId,
 		archivedWorkflowIds,
@@ -1623,6 +1728,11 @@ export function createThreadRuntime(
 		loadHistoricalMessages,
 		loadThreadStatus,
 		sendMessage,
+		loadQueuedMessages,
+		queueMessage,
+		removeQueuedMessage,
+		sendQueueNow,
+		takeQueuedMessageForEdit,
 		cancelRun,
 		cancelBackgroundTask,
 		amendAgent,

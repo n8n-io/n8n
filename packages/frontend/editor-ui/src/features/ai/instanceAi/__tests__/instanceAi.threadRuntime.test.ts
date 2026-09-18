@@ -6,7 +6,18 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { mockedStore } from '@/__tests__/utils';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { fetchThreadMessages, fetchThreadStatus } from '../instanceAi.memory.api';
-import { ensureThread, postMessage, postConfirmation, postCancel } from '../instanceAi.api';
+import {
+	ensureThread,
+	postMessage,
+	postConfirmation,
+	postCancel,
+	fetchQueuedMessages,
+	postQueuedMessage,
+	deleteQueuedMessage,
+	postSendQueueNow,
+	postRecallQueuedMessages,
+} from '../instanceAi.api';
+import type { InstanceAiQueuedMessage } from '@n8n/api-types';
 import {
 	INSTANCE_AI_THREAD_SOURCE_FALLBACK,
 	type InstanceAiCredentialDestination,
@@ -61,6 +72,11 @@ vi.mock('../instanceAi.api', () => ({
 	postCancel: vi.fn(),
 	postCancelTask: vi.fn(),
 	postConfirmation: vi.fn(),
+	fetchQueuedMessages: vi.fn(),
+	postQueuedMessage: vi.fn(),
+	deleteQueuedMessage: vi.fn(),
+	postSendQueueNow: vi.fn(),
+	postRecallQueuedMessages: vi.fn(),
 }));
 
 vi.mock('../instanceAi.memory.api', () => ({
@@ -3009,5 +3025,216 @@ describe('createThreadRuntime - requestPlanChanges', () => {
 		expect(ok).toBe(false);
 		expect(runtime.updatingPlanRequestIds.has('req-plan')).toBe(false);
 		expect(runtime.resolvedConfirmationIds.has('req-plan')).toBe(false);
+	});
+});
+
+describe('Instance AI thread runtime — queued messages', () => {
+	const queued = (id: string, text: string) => ({
+		id,
+		text,
+		createdAt: '2026-04-01T00:00:00.000Z',
+	});
+
+	beforeEach(async () => {
+		setupRuntimePinia();
+		vi.clearAllMocks();
+		capturedOnMessage = null;
+		vi.mocked(fetchQueuedMessages).mockResolvedValue({ queuedMessages: [] });
+		vi.mocked(postQueuedMessage).mockResolvedValue({ queuedMessages: [queued('qm-1', 'queued')] });
+		vi.mocked(deleteQueuedMessage).mockResolvedValue({ queuedMessages: [] });
+		vi.mocked(postSendQueueNow).mockResolvedValue({
+			queuedMessages: [queued('qm-1', 'queued')],
+		});
+		vi.mocked(postRecallQueuedMessages).mockResolvedValue({
+			queuedMessages: [],
+			text: 'queued',
+		});
+	});
+
+	it('replaces the local queue with the server list', async () => {
+		vi.mocked(fetchQueuedMessages).mockResolvedValue({
+			queuedMessages: [queued('qm-1', 'Use the Slack node')],
+		});
+		const runtime = createThreadRuntime('thread-queue-load', {
+			onTitleUpdated: vi.fn(),
+			onRunFinish: vi.fn(),
+		});
+
+		await runtime.loadQueuedMessages();
+
+		expect(runtime.queuedMessages).toEqual([queued('qm-1', 'Use the Slack node')]);
+	});
+
+	it('queues a message and applies the server queue', async () => {
+		const runtime = createThreadRuntime('thread-queue-add', {
+			onTitleUpdated: vi.fn(),
+			onRunFinish: vi.fn(),
+		});
+
+		const queuedOk = await runtime.queueMessage('Use the Slack node');
+
+		expect(queuedOk).toBe(true);
+		expect(postQueuedMessage).toHaveBeenCalledWith(
+			expect.anything(),
+			'thread-queue-add',
+			'Use the Slack node',
+		);
+		expect(runtime.queuedMessages).toEqual([queued('qm-1', 'queued')]);
+	});
+
+	it('reports a refused queue write so the caller can restore the draft', async () => {
+		vi.mocked(postQueuedMessage).mockRejectedValueOnce(new Error('network error'));
+		const runtime = createThreadRuntime('thread-queue-refused', {
+			onTitleUpdated: vi.fn(),
+			onRunFinish: vi.fn(),
+		});
+
+		expect(await runtime.queueMessage('Use the Slack node')).toBe(false);
+		expect(runtime.queuedMessages).toEqual([]);
+	});
+
+	it('sends the queue now and keeps the server queue, sent marker included', async () => {
+		const sent = { ...queued('qm-1', 'queued'), sentAt: '2026-04-01T00:00:01.000Z' };
+		vi.mocked(postSendQueueNow).mockResolvedValue({ queuedMessages: [sent] });
+		const runtime = createThreadRuntime('thread-queue-steer', {
+			onTitleUpdated: vi.fn(),
+			onRunFinish: vi.fn(),
+		});
+
+		await runtime.sendQueueNow();
+
+		expect(postSendQueueNow).toHaveBeenCalledWith(expect.anything(), 'thread-queue-steer');
+		// The list hides sent items; the runtime keeps the server's view, which
+		// is what a reload renders.
+		expect(runtime.queuedMessages).toEqual([sent]);
+	});
+
+	it('recalls an item and everything after it for editing, joined by newlines', async () => {
+		vi.mocked(postQueuedMessage).mockResolvedValue({
+			queuedMessages: [queued('qm-1', 'first'), queued('qm-2', 'second'), queued('qm-3', 'third')],
+		});
+		vi.mocked(postRecallQueuedMessages).mockResolvedValue({
+			queuedMessages: [queued('qm-1', 'first')],
+			text: 'second\nthird',
+		});
+		const runtime = createThreadRuntime('thread-queue-edit', {
+			onTitleUpdated: vi.fn(),
+			onRunFinish: vi.fn(),
+		});
+		await runtime.queueMessage('third');
+
+		const text = await runtime.takeQueuedMessageForEdit('qm-2');
+
+		expect(text).toBe('second\nthird');
+		expect(postRecallQueuedMessages).toHaveBeenCalledWith(
+			expect.anything(),
+			'thread-queue-edit',
+			'qm-2',
+		);
+		expect(runtime.queuedMessages).toEqual([queued('qm-1', 'first')]);
+	});
+
+	it('hands nothing to the composer when the recall is lost, so nothing can go twice', async () => {
+		vi.mocked(postQueuedMessage).mockResolvedValue({
+			queuedMessages: [queued('qm-1', 'first'), queued('qm-2', 'second')],
+		});
+		vi.mocked(fetchQueuedMessages).mockResolvedValue({
+			queuedMessages: [queued('qm-1', 'first'), queued('qm-2', 'second')],
+		});
+		vi.mocked(postRecallQueuedMessages).mockRejectedValueOnce(new Error('network error'));
+		const runtime = createThreadRuntime('thread-queue-edit-lost', {
+			onTitleUpdated: vi.fn(),
+			onRunFinish: vi.fn(),
+		});
+		await runtime.queueMessage('second');
+
+		expect(await runtime.takeQueuedMessageForEdit('qm-1')).toBeNull();
+		// The items are still queued, and the list shows the server's view.
+		expect(runtime.queuedMessages).toHaveLength(2);
+	});
+
+	it('never lets a slow older response roll the list back over a newer one', async () => {
+		let resolveFirst: (value: { queuedMessages: InstanceAiQueuedMessage[] }) => void = () => {};
+		vi.mocked(postQueuedMessage)
+			.mockImplementationOnce(
+				async () =>
+					await new Promise((resolve) => {
+						resolveFirst = resolve;
+					}),
+			)
+			.mockResolvedValueOnce({
+				queuedMessages: [queued('qm-1', 'first'), queued('qm-2', 'second')],
+			});
+		const runtime = createThreadRuntime('thread-queue-order', {
+			onTitleUpdated: vi.fn(),
+			onRunFinish: vi.fn(),
+		});
+
+		const first = runtime.queueMessage('first');
+		await runtime.queueMessage('second');
+		expect(runtime.queuedMessages).toHaveLength(2);
+		// The first request's snapshot arrives last and predates the second's.
+		resolveFirst({ queuedMessages: [queued('qm-1', 'first')] });
+		await first;
+
+		expect(runtime.queuedMessages).toHaveLength(2);
+	});
+
+	it('reloads the queue when the run finishes and when a new turn is sent', async () => {
+		vi.mocked(postMessage).mockResolvedValue({ runId: 'run-2' });
+		const runtime = createThreadRuntime('thread-queue-reload', {
+			onTitleUpdated: vi.fn(),
+			onRunFinish: vi.fn(),
+		});
+		runtime.connectSSE();
+		await vi.waitFor(() => expect(capturedOnMessage).not.toBeNull());
+		vi.mocked(fetchQueuedMessages).mockClear();
+
+		capturedOnMessage!(
+			makeSSEEvent({
+				type: 'run-finish',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				payload: { status: 'completed' },
+			}),
+		);
+		await vi.waitFor(() => expect(fetchQueuedMessages).toHaveBeenCalledTimes(1));
+
+		await runtime.sendMessage('a new turn', { authorship: USER_TYPED_MESSAGE });
+		await vi.waitFor(() => expect(fetchQueuedMessages).toHaveBeenCalledTimes(2));
+	});
+
+	it('returns null for an item the queue does not hold', async () => {
+		const runtime = createThreadRuntime('thread-queue-missing', {
+			onTitleUpdated: vi.fn(),
+			onRunFinish: vi.fn(),
+		});
+
+		expect(await runtime.takeQueuedMessageForEdit('qm-missing')).toBeNull();
+		expect(postRecallQueuedMessages).not.toHaveBeenCalled();
+	});
+
+	it('drops a queued item when the server reports it delivered', async () => {
+		const runtime = createThreadRuntime('thread-queue-delivered', {
+			onTitleUpdated: vi.fn(),
+			onRunFinish: vi.fn(),
+		});
+		await runtime.queueMessage('Use the Slack node');
+		runtime.connectSSE();
+		// MockEventSource publishes its handler on the next tick.
+		await vi.waitFor(() => expect(capturedOnMessage).not.toBeNull());
+
+		capturedOnMessage!(
+			makeSSEEvent({
+				type: 'user-message',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				payload: { messageId: 'qm-1', text: 'Use the Slack node', source: 'steered' },
+			}),
+		);
+
+		expect(runtime.queuedMessages).toEqual([]);
+		// The rest of the queue merged into that turn; the server's view says which.
+		expect(fetchQueuedMessages).toHaveBeenCalled();
 	});
 });

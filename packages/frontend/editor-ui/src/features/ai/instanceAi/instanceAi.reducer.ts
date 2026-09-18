@@ -198,8 +198,10 @@ export function handleEvent(state: InstanceAiReducerState, event: InstanceAiEven
 
 	// Mid-run replay guard: if we receive events for a runId that has no
 	// message yet (e.g., reconnect missed the run-start), create the message
-	// on the fly so subsequent events aren't dropped.
-	if (event.type !== 'run-start') {
+	// on the fly so subsequent events aren't dropped. `user-message` is exempt:
+	// it carries no agent activity, and the reducer below creates its own
+	// message, so there is nothing to drop.
+	if (event.type !== 'run-start' && event.type !== 'user-message') {
 		const { msg, groupId } = resolveTarget(state, event.runId);
 		if (!msg) {
 			const rootAgentId = event.type === 'agent-spawned' ? event.payload.parentId : event.agentId;
@@ -362,6 +364,47 @@ export function handleEvent(state: InstanceAiReducerState, event: InstanceAiEven
 				}
 			}
 			return isActiveRunFinishing ? null : state.activeRunId;
+		}
+
+		// A queued or steered user message the host delivered for us. It becomes a
+		// plain transcript bubble: never a routing target, so no runId /
+		// messageGroupId — group lookups must keep resolving to the run's
+		// assistant message.
+		case 'user-message': {
+			const { messageId, text, source } = event.payload;
+			// The queue goes as one turn under its head's id; a part queued after the
+			// first announcement re-announces the turn with the longer text.
+			const existing = state.messages.find((message) => message.id === messageId);
+			if (existing) {
+				if (existing.role === 'user') existing.content = text;
+				return state.activeRunId;
+			}
+			const userMessage: InstanceAiMessage = {
+				id: messageId,
+				role: 'user',
+				createdAt: new Date().toISOString(),
+				content: text,
+				reasoning: '',
+				isStreaming: false,
+			};
+			// A flushed message is what started its run, so it belongs above that
+			// run's assistant message; the splice keeps the order right whether or
+			// not `run-start` has been reduced yet. A steered message ended the run
+			// that was rendering, so it goes right below that run's message, ahead
+			// of the run it starts — also on a replay, when newer turns already
+			// follow. Without the run's message, append.
+			const { msg: runMessage } = resolveTarget(state, event.runId);
+			const runMessageIndex = runMessage ? state.messages.indexOf(runMessage) : -1;
+			if (runMessageIndex === -1) {
+				state.messages.push(userMessage);
+			} else {
+				state.messages.splice(
+					source === 'queued' ? runMessageIndex : runMessageIndex + 1,
+					0,
+					userMessage,
+				);
+			}
+			return state.activeRunId;
 		}
 
 		default:

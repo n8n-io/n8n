@@ -350,6 +350,15 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 			node_count: z.number().describe('Total nodes attached across the sent message'),
 		}),
 	},
+	USER_STEERED_MESSAGE: {
+		name: 'User steered n8n Assistant message',
+		description:
+			'The queued user turn ended the running n8n Assistant run before its next tool call, or at once through Send now, and started its own run. Tracks delivery, not the button press, so a turn the run never reached is not counted.',
+		properties: z.object({
+			thread_id: z.string(),
+			step: z.number().optional().describe('Agent-loop step the steer stopped the run before'),
+		}),
+	},
 	USER_SENT_BUILDER_MESSAGE: {
 		name: 'User sent builder message',
 		description:

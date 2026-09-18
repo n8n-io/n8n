@@ -42,8 +42,12 @@ export type InstanceAiEventMap = {
 		toolInterruptedFacts: number;
 	};
 	'instance-ai-run-finished': {
-		/** 'suspended' is a non-terminal HITL segment: usage/tool counts only; the terminal event counts the run. */
-		status: 'completed' | 'cancelled' | 'error' | 'suspended';
+		/**
+		 * 'suspended' is a non-terminal HITL segment: usage/tool counts only; the
+		 * terminal event counts the run. 'steered' is a terminal completion: the
+		 * run stopped at a step boundary because the user sent a new instruction.
+		 */
+		status: 'completed' | 'steered' | 'cancelled' | 'error' | 'suspended';
 		/** Wall-clock duration of the run, or undefined when the start time is unknown. */
 		durationMs?: number;
 		/** Model identifier for managed models (built-in providers and proxy-built

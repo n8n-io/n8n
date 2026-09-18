@@ -226,6 +226,34 @@ export interface ExecutionOptions {
 	executionCounter?: AgentExecutionCounter;
 	onStepStart?: (event: GenerateTextStepStartEvent) => void | Promise<void>;
 	onStepEnd?: (event: GenerateTextStepEndEvent) => void | Promise<void>;
+	/**
+	 * Host check for a graceful stop, asked before each tool call starts
+	 * (`before: 'tool-call'`) and at each clean step boundary before the next
+	 * model call (`before: 'model-call'`). The first `true` is final: the tool
+	 * call in flight finishes, the tool calls that have not started are settled
+	 * as skipped, no further model call is made, and the run finishes exactly
+	 * like one that reached its own stop (`finishReason: 'stop'`), so everything
+	 * settled so far is persisted. A host uses this to hand the thread to a new
+	 * run without cancelling anything.
+	 *
+	 * `step` is the 1-based step in progress; at a boundary it is the step that
+	 * just ended. Must not throw; a failing check is logged and read as `false`,
+	 * so it never fails the run.
+	 */
+	shouldStopGracefully?: (context: {
+		step: number;
+		before: 'tool-call' | 'model-call';
+	}) => boolean | Promise<boolean>;
+	/**
+	 * Host request to stop the step in flight at once. When it fires, the model
+	 * request and the tool calls in flight are cancelled, the tool calls are
+	 * settled as cancelled for the model, text streamed so far is kept, and the
+	 * run finishes exactly like a `true` from `shouldStopGracefully`
+	 * (`finishReason: 'stop'`, a normal completion) — so a host can put a new
+	 * user turn in front of work the agent has not finished. Distinct from
+	 * `abortSignal`, which cancels the run.
+	 */
+	interruptSignal?: AbortSignal;
 	/** @deprecated Use `onStepEnd` instead. */
 	onStepFinish?: (event: GenerateTextStepEndEvent) => void | Promise<void>;
 	/**

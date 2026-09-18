@@ -22,7 +22,7 @@
  * builder UI — it is a private sub-agent conversation.
  */
 import type { InterruptibleToolContext } from '@n8n/agents';
-import { APPROVAL_SUSPEND_SCHEMA, createAbortError, Tool } from '@n8n/agents';
+import { APPROVAL_SUSPEND_SCHEMA, createAbortError, isAbortError, Tool } from '@n8n/agents';
 import {
 	BUILDER_CHECKPOINT_UNAVAILABLE_CODE,
 	BUILDER_NOT_CONFIGURED_CODE,
@@ -64,6 +64,7 @@ import {
 } from '../../tracing/agent-snapshot-event';
 import { modelIdTraceMetadata } from '../../tracing/langsmith-tracing';
 import type {
+	BuilderDelegateSession,
 	BuilderTurnStream,
 	InstanceAiBuilderDelegate,
 	InstanceAiContext,
@@ -81,6 +82,13 @@ import { ORCHESTRATION_TOOL_IDS } from '../tool-ids';
 const BUILDER_SUB_AGENT_ROLE = 'agent-builder';
 const BUILDER_SUB_AGENT_KIND = 'agent-builder';
 const BUILDER_RUN_CANCELLED_MESSAGE = 'The agent builder run was cancelled.';
+const BUILDER_RUN_STEERED_MESSAGE =
+	'The agent builder run was stopped because the user sent a new instruction.';
+
+/** True when Send now stopped the builder while the host run itself is still live. */
+function stoppedBySteer(context: OrchestrationContext): boolean {
+	return !context.abortSignal.aborted && context.subAgentAbortSignal?.aborted === true;
+}
 
 function getErrorCode(error: unknown): string | undefined {
 	if (!isRecord(error)) return undefined;
@@ -148,9 +156,17 @@ async function collectRequiredArtifacts(
 	return [...carriedRequiredArtifacts, ...turnRequiredArtifacts];
 }
 
-/** Builder sessions are keyed per assistant thread + target agent; the resume
- *  leg must reconstruct the same `threadId` byte-identically after a restart. */
-function builderSessionFor(context: OrchestrationContext, agentId: string) {
+/**
+ * Builder sessions are keyed per assistant thread + target agent; the resume
+ * leg must reconstruct the same `threadId` byte-identically after a restart.
+ * `stoppedByQueue` says whether the host's queued-turn check ended the loop.
+ */
+function builderSessionFor(
+	context: OrchestrationContext,
+	agentId: string,
+): { session: BuilderDelegateSession; stoppedByQueue: () => boolean } {
+	const check = context.subAgentShouldStop;
+	let stopped = false;
 	const mcpTools =
 		context.mcpTools instanceof Map && context.mcpTools.size > 0 ? context.mcpTools : undefined;
 	const telemetry = context.tracing?.getTelemetry?.({
@@ -163,7 +179,7 @@ function builderSessionFor(context: OrchestrationContext, agentId: string) {
 			...modelIdTraceMetadata(context.modelId),
 		},
 	});
-	return {
+	const session: BuilderDelegateSession = {
 		threadId: `${instanceAiBuilderThreadPrefix(context.threadId)}${agentId}`,
 		hostThreadId: context.threadId,
 		runId: context.runId,
@@ -172,9 +188,11 @@ function builderSessionFor(context: OrchestrationContext, agentId: string) {
 		...(context.tracing?.onMemoryTaskEvent
 			? { memoryTaskObserver: context.tracing.onMemoryTaskEvent }
 			: {}),
-		abortSignal: context.abortSignal,
+		abortSignal: context.subAgentAbortSignal ?? context.abortSignal,
+		...(check ? { shouldStopGracefully: async () => (stopped ||= await check()) } : {}),
 		...(mcpTools ? { mcpTools } : {}),
 	};
+	return { session, stoppedByQueue: () => stopped };
 }
 
 function builderAgentIdFor(agentId: string): string {
@@ -495,6 +513,8 @@ async function runBuilderConsumeLoop(params: {
 	traceInputs?: unknown;
 	/** Deterministic per-leg claim id base (result.agentRunId is always '' for builder streams). */
 	dedupeBase: string;
+	/** Whether the host's queued-turn check ended the builder loop (see `builderSessionFor`). */
+	stoppedByQueue?: () => boolean;
 }): Promise<BuildAgentOutput> {
 	const {
 		context,
@@ -508,6 +528,7 @@ async function runBuilderConsumeLoop(params: {
 		onSettled,
 		traceInputs,
 		dedupeBase,
+		stoppedByQueue,
 	} = params;
 
 	// Every settled return goes through here, so the state a pass left behind is
@@ -541,11 +562,22 @@ async function runBuilderConsumeLoop(params: {
 					eventBus: context.eventBus,
 					logger: context.logger,
 					threadId: context.threadId,
-					abortSignal: context.abortSignal,
+					abortSignal: context.subAgentAbortSignal ?? context.abortSignal,
 				}),
 		);
 	} catch (error) {
 		await failTraceRun(context, traceRun, error);
+		// Send now stopped the builder, not the run: settle the tool call so the
+		// orchestrator ends on its own instead of reading this as a cancelled run.
+		if (isAbortError(error) && stoppedBySteer(context)) {
+			publishAgentBuilderCancelled(context, builderAgentId);
+			return await settle({
+				ok: false,
+				error: BUILDER_RUN_STEERED_MESSAGE,
+				configUpdated: carriedConfigUpdated,
+				...targetIdentity(target),
+			});
+		}
 		// `buildAgent`/`resumeBuild` on the delegate are async generators: calling
 		// them never throws, so errors from their bodies (builder-not-configured,
 		// an expired/missing checkpoint) only surface here, during consumption —
@@ -570,11 +602,27 @@ async function runBuilderConsumeLoop(params: {
 	await onSettled?.();
 	const requiredArtifacts = await collectRequiredArtifacts(turn, carriedRequiredArtifacts);
 
-	if (result.status === 'cancelled') {
-		const cancelled = createAbortError(BUILDER_RUN_CANCELLED_MESSAGE);
+	// A queued turn ends the builder loop as a completion; the tool call still
+	// settles as steered so the orchestrator ends at the same boundary.
+	const steered = stoppedBySteer(context) || stoppedByQueue?.() === true;
+	if (result.status === 'cancelled' || (steered && result.status !== 'suspended')) {
+		const cancelled = createAbortError(
+			steered ? BUILDER_RUN_STEERED_MESSAGE : BUILDER_RUN_CANCELLED_MESSAGE,
+		);
 		publishAgentBuilderCancelled(context, builderAgentId);
 		await failTraceRun(context, traceRun, cancelled);
 		await context.claimSubAgentUsage?.(dedupeBase, result.usage?.usage ?? [], result.status);
+		// A builder stopped by Send now is not a cancelled run: the tool call
+		// settles with this result and the orchestrator ends on its own.
+		if (steered) {
+			return await settle({
+				ok: false,
+				error: BUILDER_RUN_STEERED_MESSAGE,
+				configUpdated: carriedConfigUpdated,
+				...(requiredArtifacts.length > 0 ? { requiredArtifacts } : {}),
+				...targetIdentity(target),
+			});
+		}
 		throw cancelled;
 	}
 
@@ -729,7 +777,7 @@ async function handleResume(
 		};
 	}
 
-	const session = builderSessionFor(context, target.agentId);
+	const { session, stoppedByQueue } = builderSessionFor(context, target.agentId);
 
 	const openSuspensions = await delegate.findOpenSuspensions(target.agentId, session);
 	if (openSuspensions.length === 0) {
@@ -786,6 +834,7 @@ async function handleResume(
 		carriedRequiredArtifacts: ref.requiredArtifacts ?? [],
 		traceInputs: { resumed: true },
 		dedupeBase: `${context.runId}:${ctx.toolCallId ?? builderAgentId}:${ref.toolCallId}`,
+		stoppedByQueue,
 	});
 }
 
@@ -1095,7 +1144,7 @@ export function createBuildAgentTool(context: OrchestrationContext) {
 			const boundTarget = resolution.target;
 			const bindAfterTurn = resolution.bindAfterTurn;
 
-			const session = builderSessionFor(context, boundTarget.agentId);
+			const { session, stoppedByQueue } = builderSessionFor(context, boundTarget.agentId);
 			await hydrateUserDecisions(domainContext);
 			const handedOffDecisions = listUserDecisions(domainContext).map((decision) => ({
 				...decision,
@@ -1134,6 +1183,7 @@ export function createBuildAgentTool(context: OrchestrationContext) {
 				carriedRequiredArtifacts: [],
 				traceInputs: { message: outboundMessage },
 				dedupeBase: `${context.runId}:${ctx.toolCallId ?? builderAgentId}`,
+				stoppedByQueue,
 				onSettled: bindAfterTurn
 					? async () => {
 							domainContext.agentBuilderTarget = boundTarget;

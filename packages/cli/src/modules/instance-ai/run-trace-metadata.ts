@@ -1,4 +1,4 @@
-import type { InstanceAiEvent } from '@n8n/api-types';
+import type { InstanceAiEvent, InstanceAiUserMessageEvent } from '@n8n/api-types';
 import type { InstanceAiLivenessTimeoutReason } from '@n8n/instance-ai';
 
 import type { InstanceAiRunTimeoutDetails } from './run-timeout-details';
@@ -23,6 +23,8 @@ export type InstanceAiRunTraceMetadataOptions = {
 	status: 'completed' | 'cancelled' | 'error';
 	cancellationReason?: string;
 	runTimeout?: InstanceAiRunTimeoutTraceContext;
+	/** The agent-loop step Send now stopped this run before; unset when it ran to its own end. */
+	steeredAtStep?: number;
 };
 
 type FirstVisibleSummary = {
@@ -103,6 +105,20 @@ export function buildInstanceAiRunTraceMetadata(
 
 	if (firstVisible.firstToolName) {
 		metadata.first_tool_name = firstVisible.firstToolName;
+	}
+
+	// A queued turn is announced on the run it will stop, so the announcements
+	// made during this run are its `steered` events. Only the boundary that
+	// claimed one actually stopped the run: a run stopped or failed before that
+	// boundary was not steered, however many were announced.
+	const steerRequests = events.filter(
+		(event): event is InstanceAiUserMessageEvent =>
+			event.type === 'user-message' && event.payload.source === 'steered',
+	);
+	if (steerRequests.length > 0) metadata.steer_count = steerRequests.length;
+	if (options.steeredAtStep !== undefined) {
+		metadata.steered = true;
+		metadata.steered_at_step = options.steeredAtStep;
 	}
 
 	const cancellationType = getCancellationType(options);
