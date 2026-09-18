@@ -1,0 +1,25 @@
+packages/cli/src/public-api/v1/handlers/credentials/credentials.utils.ts
+  s_644fa653780ed3::t_415d00a7f82423 71
+  s_644fa653780ed3::t_a00810d2a60df9 298
+  s_644fa653780ed3::t_576a38b0319d98 113
+packages/cli/src/public-api/types.ts
+  s_644fa653780ed3::t_97dfe782f25eaf 166
+packages/cli/src/public-api/v1/controllers/credentials.public.controller.ts
+  s_644fa653780ed3::t_a9557caf648e19 481
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "e61e987670ad8ad661ca7a0e121aa8eb24e18534",
+  "prompts": {},
+  "sessions": {
+    "s_644fa653780ed3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5d77ebb3-11d2-4f3f-ba25-48171f0149f8",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

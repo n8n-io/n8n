@@ -1,0 +1,33 @@
+packages/cli/src/modules/mcp/mcp.service.ts
+  s_6e3f52ff14ba6e::t_5f0e5b58a212ef 633-639,642
+packages/cli/src/modules/instance-ai/__tests__/instance-context.service.test.ts
+  s_6e3f52ff14ba6e::t_5f0e5b58a212ef 901-947
+packages/@n8n/db/src/repositories/activity-event.repository.ts
+  s_6e3f52ff14ba6e::t_5f0e5b58a212ef 161-165
+packages/cli/src/modules/mcp/__tests__/instance-context-grants.test.ts
+  s_6e3f52ff14ba6e::t_5f0e5b58a212ef 1-34
+packages/@n8n/api-types/src/schemas/mcp.schema.ts
+  s_6e3f52ff14ba6e::t_5f0e5b58a212ef 22
+packages/cli/src/modules/mcp/__tests__/mcp-scopes.test.ts
+  s_6e3f52ff14ba6e::t_f3e8e38bbdcc48 145,164,372-389
+packages/cli/src/modules/mcp/__tests__/mcp.service.test.ts
+  s_6e3f52ff14ba6e::t_5f0e5b58a212ef 10,477-497
+packages/cli/test/integration/instance-context.service.test.ts
+  s_6e3f52ff14ba6e::t_d3ee6dc9236e09 437-439,441-451,453-454,456,458
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b5c66a181d7899bc4539edbda0b3c42c1d35f55b",
+  "prompts": {},
+  "sessions": {
+    "s_6e3f52ff14ba6e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "62e55d43-3015-410a-8652-f8d8d66de8ef",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

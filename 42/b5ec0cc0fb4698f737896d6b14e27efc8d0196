@@ -1,0 +1,31 @@
+packages/cli/src/modules/external-secrets.ee/secrets-cache.service.ts
+  s_4eb5e854703085::t_ed4a74d67da2bc 59-63
+  s_4eb5e854703085::t_856c17a1ff3766 48,56-58,64
+packages/cli/src/modules/external-secrets.ee/__tests__/external-secrets-manager.ee.test.ts
+  s_4eb5e854703085::t_856c17a1ff3766 1601-1602
+  s_4eb5e854703085::t_702cc9ec8d847c 1456-1531
+  s_4eb5e854703085::t_ed4a74d67da2bc 10
+packages/cli/src/modules/external-secrets.ee/with-timeout.ts
+  s_4eb5e854703085::t_856c17a1ff3766 6-7
+packages/cli/src/modules/external-secrets.ee/__tests__/external-secrets-provider-connection-manager.ee.test.ts
+  s_4eb5e854703085::t_4ea5443038348a 123,131,143,161
+packages/cli/src/modules/external-secrets.ee/external-secrets-provider-connection-manager.ee.ts
+  s_4eb5e854703085::t_856c17a1ff3766 154-157,159,161-182
+  s_4eb5e854703085::t_42718e694b1165 59-61,64,70,91,94,96,99,134,148
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "42b5ec0cc0fb4698f737896d6b14e27efc8d0196",
+  "prompts": {},
+  "sessions": {
+    "s_4eb5e854703085": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "49d4aba1-cdb7-4557-ab47-bdbb665d06a4",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

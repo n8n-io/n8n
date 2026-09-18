@@ -1,0 +1,64 @@
+packages/@n8n/api-types/src/agents/dto.ts
+  s_d27d09d94cc9ff::t_bb2cf313c4322d 221,260,272
+  s_d27d09d94cc9ff::t_37a36a2c239f71 273
+packages/@n8n/decorators/src/pubsub/pubsub-metadata.ts
+  s_d27d09d94cc9ff::t_bb2cf313c4322d 29
+packages/cli/src/modules/agents/__tests__/agent-execution-update-broadcaster.test.ts
+  s_d27d09d94cc9ff::t_bb2cf313c4322d 49-140
+packages/cli/src/modules/agents/entities/agent-message-queue.entity.ts
+  s_d27d09d94cc9ff::t_bb2cf313c4322d 45
+packages/@n8n/api-types/src/agents/types.ts
+  s_d27d09d94cc9ff::t_bb2cf313c4322d 369-389
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_d27d09d94cc9ff::t_bb2cf313c4322d 4-6,16-25,45-46,121,125,128,130,134,136-151,153,161-163,167-170,175,177-181,183,187,189-193,197,201,204,206-215,217-226,228-263,265-317,332-341,348
+packages/cli/src/modules/agents/agent-message-queue.service.ts
+  s_d27d09d94cc9ff::t_bb2cf313c4322d 7,10,12-14,18-19,24-27,29-31,38-45,48-49,53,71-72,95-98,100-151,153-237,239,242,244-255,278-283,285-314,344-345,373-378,381-382,393,396,399-400,407-408,411-414,416,420,422-429,431-450,452-461,464-508,513-575,580-583,610-621,623
+  s_d27d09d94cc9ff::t_ffa3533c0fddaa 622
+packages/cli/src/modules/agents/agent-message-queue.types.ts
+  s_d27d09d94cc9ff::t_bb2cf313c4322d 2,13-25,85-88
+packages/cli/src/modules/agents/agent-execution-update-broadcaster.ts
+  s_d27d09d94cc9ff::t_bb2cf313c4322d 7,17-18,42-76
+  s_d27d09d94cc9ff::t_9410136a88c552 77
+packages/cli/src/scaling/pubsub/pubsub.event-map.ts
+  s_d27d09d94cc9ff::t_bb2cf313c4322d 136-140
+packages/@n8n/api-types/src/agents/__tests__/agent-chat-resume.dto.test.ts
+  s_d27d09d94cc9ff::t_bb2cf313c4322d 5-9
+packages/cli/src/scaling/pubsub/__tests__/publisher.service.test.ts
+  s_d27d09d94cc9ff::t_bb2cf313c4322d 174
+packages/@n8n/api-types/src/push/agents.ts
+  s_d27d09d94cc9ff::t_bb2cf313c4322d 1-3,31-51
+packages/cli/src/scaling/pubsub/pubsub.types.ts
+  s_d27d09d94cc9ff::t_bb2cf313c4322d 63,113
+packages/cli/src/scaling/constants.ts
+  s_d27d09d94cc9ff::t_bb2cf313c4322d 40
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_d27d09d94cc9ff::t_bb2cf313c4322d 35-46,101-104,315-385,387-391,393-399,401,403-417,422-429,465-469,472-473,475-479,481-485,488-489,491-499,501,504,506-507,509-512
+packages/cli/src/modules/agents/repositories/agent-message-queue.repository.ts
+  s_d27d09d94cc9ff::t_bb2cf313c4322d 4,34,46-80,87-90,99-100,107
+packages/cli/src/modules/agents/integrations/__tests__/n8n-checkpoint-storage.test.ts
+  s_d27d09d94cc9ff::t_bb2cf313c4322d 276
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_d27d09d94cc9ff::t_bb2cf313c4322d 391-392
+packages/cli/test/integration/agents/agent-message-queue.test.ts
+  s_d27d09d94cc9ff::t_bb2cf313c4322d 5,20-21,30,59,103,120-124,154-156,161-170,182-183,186,306,349,488-489,491-493,501-570,572-635,637,649,661,663,665-676,678-679,684-685,691-695,698-711,713-714,718-798,816-818,877-914,919-923,974,1013-1058,1096,1099,1108
+packages/@n8n/api-types/src/agents/__tests__/agent-chat-message.dto.test.ts
+  s_d27d09d94cc9ff::t_bb2cf313c4322d 5,14,22-26,30-36,38-42,47,56,69,76
+packages/cli/src/modules/agents/integrations/n8n-checkpoint-storage.ts
+  s_d27d09d94cc9ff::t_bb2cf313c4322d 166,170
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "0a67556db5d89244f9ecea95386160f1a9a85104",
+  "prompts": {},
+  "sessions": {
+    "s_d27d09d94cc9ff": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0a974-d93e-7a81-998f-70beb9ade7da",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

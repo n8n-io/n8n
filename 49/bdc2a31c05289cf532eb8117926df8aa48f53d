@@ -1,0 +1,26 @@
+packages/cli/src/modules/external-secrets.ee/providers/vault.ts
+  s_4eb5e854703085::t_1a20384bccf2b4 377-378
+packages/cli/src/modules/external-secrets.ee/providers/__tests__/vault.test.ts
+  ai_agent 84
+  s_4eb5e854703085::t_1a20384bccf2b4 76,111,655,678-679
+packages/cli/src/modules/external-secrets.ee/__tests__/secrets-cache.service.test.ts
+  s_4eb5e854703085::t_1a20384bccf2b4 74-86
+packages/cli/src/modules/external-secrets.ee/providers/__tests__/infisical.test.ts
+  s_4eb5e854703085::t_1a20384bccf2b4 86,125
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "49bdc2a31c05289cf532eb8117926df8aa48f53d",
+  "prompts": {},
+  "sessions": {
+    "s_4eb5e854703085": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "49d4aba1-cdb7-4557-ab47-bdbb665d06a4",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

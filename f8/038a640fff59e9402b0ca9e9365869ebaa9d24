@@ -1,0 +1,57 @@
+packages/cli/src/modules/n8n-packages/__tests__/import-package.integration.test.ts
+  s_302391aec95cb2::t_33d3e2d75da206 2579
+  s_302391aec95cb2::t_3e0b187159e75f 382
+  s_302391aec95cb2::t_3894bbb1e8e7da 2390-2417
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-gates.test.ts
+  s_302391aec95cb2::t_23d45a323fb57f 11
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-importer.test.ts
+  s_302391aec95cb2::t_23d45a323fb57f 98,150,282,337,384,430
+  s_302391aec95cb2::t_f06aa6ab479b5e 176-235
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-import.types.ts
+  s_302391aec95cb2::t_4d4ac8bca8fbe1 9
+  s_302391aec95cb2::t_cbdc299ab02305 100
+packages/cli/src/modules/n8n-packages/__tests__/fixtures/package-fixtures.ts
+  s_302391aec95cb2::t_20015eb5f4fa78 21-25
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-id-policy.test.ts
+  s_302391aec95cb2::t_5d591d3c847fcd 1
+  s_302391aec95cb2::t_5d877cf0282fee 24-33
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-id-policy.ts
+  s_302391aec95cb2::t_63282366821bc3 18,23-28
+  s_302391aec95cb2::t_8b973bb1754320 19,22
+  s_302391aec95cb2::t_f58fdd139be92c 20-21
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-importer.ts
+  s_302391aec95cb2::t_858878cccdbd7d 313
+  s_302391aec95cb2::t_4d08e50504c839 269,275-276
+  s_302391aec95cb2::t_ed7afce953aa28 320,324
+  s_302391aec95cb2::t_46b42e5b1a8420 98,101
+  s_302391aec95cb2::t_4e210c60554cee 139
+  s_302391aec95cb2::t_13b8e8abaf94ef 298
+  s_302391aec95cb2::t_e9143c8adfa6d2 260
+  s_302391aec95cb2::t_4525b7dabaf364 246
+  s_302391aec95cb2::t_2ca4428e4ca147 286
+  s_302391aec95cb2::t_6289a5f613eeb3 235-237
+  s_302391aec95cb2::t_84dec5352ee766 303
+  s_302391aec95cb2::t_fa5b5c2170964e 68
+  s_302391aec95cb2::t_662ea483fe5a97 18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f8038a640fff59e9402b0ca9e9365869ebaa9d24",
+  "prompts": {},
+  "humans": {
+    "h_ce2c4b90496ac9": {
+      "author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_302391aec95cb2": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "40f3fdd1-0f9b-4598-ad15-07acab675a8e",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  }
+}
