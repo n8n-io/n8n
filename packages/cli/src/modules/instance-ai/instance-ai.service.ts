@@ -231,8 +231,6 @@ import {
 	mergeQueuedMessages,
 	readQueuedMessages,
 	withQueuedMessages,
-	toQueuedMessageList,
-	type QueuedMessage,
 } from './storage/queued-messages';
 import { TypeORMAgentCheckpointStore } from './storage/typeorm-agent-checkpoint-store';
 import { TypeORMAgentMemory } from './storage/typeorm-agent-memory';
@@ -1629,7 +1627,7 @@ export class InstanceAiService {
 	async listQueuedMessages(threadId: string): Promise<InstanceAiQueuedMessage[]> {
 		const thread = await this.agentMemory.getThread(threadId);
 		if (!thread) throw new UserError('Thread not found');
-		return toQueuedMessageList(readQueuedMessages(thread.metadata));
+		return readQueuedMessages(thread.metadata);
 	}
 
 	/**
@@ -1639,9 +1637,9 @@ export class InstanceAiService {
 	 */
 	private async mutateQueuedMessages(
 		threadId: string,
-		update: (messages: QueuedMessage[]) => QueuedMessage[],
+		update: (messages: InstanceAiQueuedMessage[]) => InstanceAiQueuedMessage[],
 	): Promise<InstanceAiQueuedMessage[]> {
-		let messages: QueuedMessage[] = [];
+		let messages: InstanceAiQueuedMessage[] = [];
 		const thread = await this.agentMemory.patchThread({
 			threadId,
 			update: (current) => {
@@ -1652,7 +1650,7 @@ export class InstanceAiService {
 		if (!thread) throw new UserError('Thread not found');
 		if (messages.length > 0) this.queuedThreads.add(threadId);
 		else this.queuedThreads.delete(threadId);
-		return toQueuedMessageList(messages);
+		return messages;
 	}
 
 	/**
@@ -1703,7 +1701,10 @@ export class InstanceAiService {
 	 * transcript and on its way to its own run; changing or withdrawing it would
 	 * leave a bubble no run answers.
 	 */
-	private requireEditableQueuedMessage(messages: QueuedMessage[], messageId: string): number {
+	private requireEditableQueuedMessage(
+		messages: InstanceAiQueuedMessage[],
+		messageId: string,
+	): number {
 		const index = messages.findIndex((item) => item.id === messageId);
 		if (index === -1) throw new UserError('Queued message not found');
 		if (messages[index].sentAt !== undefined) throw new UserError('Queued message already sent');
@@ -1784,8 +1785,8 @@ export class InstanceAiService {
 		user: User,
 		threadId: string,
 		runId: string,
-	): Promise<QueuedMessage | undefined> {
-		let sent: QueuedMessage | undefined;
+	): Promise<InstanceAiQueuedMessage | undefined> {
+		let sent: InstanceAiQueuedMessage | undefined;
 		let changed = false;
 		await this.mutateQueuedMessages(threadId, (messages) => {
 			const merged = mergeQueuedMessages(messages);
@@ -3639,7 +3640,7 @@ export class InstanceAiService {
 	private async flushQueuedMessage(user: User, threadId: string): Promise<boolean> {
 		try {
 			if (await this.hasLiveRunAnywhere(threadId)) return false;
-			let claimed: QueuedMessage | undefined;
+			let claimed: InstanceAiQueuedMessage | undefined;
 			await this.mutateQueuedMessages(threadId, (messages) => {
 				if (this.runState.hasLiveRun(threadId)) return messages;
 				claimed = mergeQueuedMessages(messages);
@@ -3682,7 +3683,7 @@ export class InstanceAiService {
 		user: User,
 		threadId: string,
 		runId: string,
-		item: QueuedMessage,
+		item: InstanceAiQueuedMessage,
 		source: 'steered' | 'queued',
 	): void {
 		this.eventBus.publish(threadId, {

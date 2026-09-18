@@ -5,7 +5,6 @@ import {
 	QUEUED_MESSAGES_METADATA_KEY as KEY,
 	mergeQueuedMessages,
 	readQueuedMessages,
-	toQueuedMessageList,
 	withQueuedMessages,
 } from '../storage/queued-messages';
 
@@ -69,15 +68,11 @@ describe('queued messages metadata', () => {
 		expect(withQueuedMessages(metadata, [])).toEqual({ source: 'chat' });
 	});
 
-	it('maps the stored shape onto the API shape', () => {
-		expect(toQueuedMessageList([message({ sentAt: '2026-01-01T00:01:00.000Z' })])).toEqual([
-			message({ sentAt: '2026-01-01T00:01:00.000Z' }),
-		]);
-	});
+	it('reads the API shape as stored, without a sent time that was never set', () => {
+		const stored = readQueuedMessages({ [KEY]: [message(), message({ id: 'qm-2', sentAt: 'x' })] });
 
-	it('omits an unset sent time from the API shape', () => {
-		expect(toQueuedMessageList([message()])).toEqual([message()]);
-		expect(toQueuedMessageList([message()])[0]).not.toHaveProperty('sentAt');
+		expect(stored).toEqual([message(), message({ id: 'qm-2', sentAt: 'x' })]);
+		expect(stored[0]).not.toHaveProperty('sentAt');
 	});
 
 	it('merges the queue into one turn under the head, joined with newlines', () => {

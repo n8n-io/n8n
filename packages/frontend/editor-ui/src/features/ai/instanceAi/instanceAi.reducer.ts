@@ -390,7 +390,8 @@ export function handleEvent(state: InstanceAiReducerState, event: InstanceAiEven
 			// that was rendering, so it goes right below that run's message, ahead
 			// of the run it starts — also on a replay, when newer turns already
 			// follow. Without the run's message, append.
-			const runMessageIndex = state.messages.findIndex((message) => message.runId === event.runId);
+			const { msg: runMessage } = resolveTarget(state, event.runId);
+			const runMessageIndex = runMessage ? state.messages.indexOf(runMessage) : -1;
 			if (runMessageIndex === -1) {
 				state.messages.push(userMessage);
 			} else {

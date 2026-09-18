@@ -640,23 +640,14 @@ export class ToolCallExecutor {
 							continue;
 						}
 					}
-					const modelOutput = '[Skipped: a sibling tool call was cancelled]';
-					list.setToolCallResult(id, modelOutput, {
-						canceled: true,
-					});
-					results.push({
-						toolCallId: siblingEntry.toolCallId,
-						toolName: siblingEntry.toolName,
-						input: siblingEntry.input,
-						toolEntry: {
-							tool: siblingEntry.toolName,
-							input: siblingEntry.input,
-							output: modelOutput,
-							transformed: false,
-							canceled: true,
-						},
-						modelOutput,
-					});
+					results.push(
+						...this.settleUnexecuted(
+							list,
+							new Map([[id, siblingEntry]]),
+							new Set([id]),
+							'[Skipped: a sibling tool call was cancelled]',
+						),
+					);
 				}
 			}
 

@@ -1,39 +1,30 @@
-import type { InstanceAiQueuedMessage } from '@n8n/api-types';
-import { isRecord } from '@n8n/utils/is-record';
+import { instanceAiQueuedMessageSchema, type InstanceAiQueuedMessage } from '@n8n/api-types';
 
 export const QUEUED_MESSAGES_METADATA_KEY = 'instanceAiQueuedMessages';
 
-export interface QueuedMessage {
-	id: string;
-	text: string;
-	createdAt: string;
-	sentAt?: string;
-}
-
-export function readQueuedMessages(metadata: Record<string, unknown> | undefined): QueuedMessage[] {
+/**
+ * Read defensively, one item at a time: the column is a JSON blob shared with
+ * other thread features, and a shape an older or newer client wrote must not
+ * take the whole queue down.
+ */
+export function readQueuedMessages(
+	metadata: Record<string, unknown> | undefined,
+): InstanceAiQueuedMessage[] {
 	const messages = metadata?.[QUEUED_MESSAGES_METADATA_KEY];
 	if (!Array.isArray(messages)) return [];
-	return messages.filter(
-		(item): item is QueuedMessage =>
-			isRecord(item) &&
-			typeof item.id === 'string' &&
-			typeof item.text === 'string' &&
-			typeof item.createdAt === 'string' &&
-			(item.sentAt === undefined || typeof item.sentAt === 'string'),
-	);
+	return messages.flatMap((item) => {
+		const result = instanceAiQueuedMessageSchema.safeParse(item);
+		return result.success ? [result.data] : [];
+	});
 }
 
+/** Metadata with the queue written, or the key dropped when the queue is empty. */
 export function withQueuedMessages(
 	metadata: Record<string, unknown> | undefined,
-	messages: QueuedMessage[],
+	messages: InstanceAiQueuedMessage[],
 ): Record<string, unknown> {
-	const updated = { ...metadata };
-	if (messages.length > 0) {
-		updated[QUEUED_MESSAGES_METADATA_KEY] = messages;
-	} else {
-		delete updated[QUEUED_MESSAGES_METADATA_KEY];
-	}
-	return updated;
+	const { [QUEUED_MESSAGES_METADATA_KEY]: _dropped, ...rest } = metadata ?? {};
+	return messages.length > 0 ? { ...rest, [QUEUED_MESSAGES_METADATA_KEY]: messages } : rest;
 }
 
 /**
@@ -41,7 +32,9 @@ export function withQueuedMessages(
  * head's id and time. `sentAt` is the earliest one, so a queue whose head was
  * already announced stays announced.
  */
-export function mergeQueuedMessages(messages: QueuedMessage[]): QueuedMessage | undefined {
+export function mergeQueuedMessages(
+	messages: InstanceAiQueuedMessage[],
+): InstanceAiQueuedMessage | undefined {
 	const [head] = messages;
 	if (!head) return undefined;
 	const sentAt = messages
@@ -54,13 +47,4 @@ export function mergeQueuedMessages(messages: QueuedMessage[]): QueuedMessage | 
 		createdAt: head.createdAt,
 		...(sentAt !== undefined ? { sentAt } : {}),
 	};
-}
-
-export function toQueuedMessageList(messages: QueuedMessage[]): InstanceAiQueuedMessage[] {
-	return messages.map(({ id, text, createdAt, sentAt }) => ({
-		id,
-		text,
-		createdAt,
-		...(sentAt !== undefined ? { sentAt } : {}),
-	}));
 }

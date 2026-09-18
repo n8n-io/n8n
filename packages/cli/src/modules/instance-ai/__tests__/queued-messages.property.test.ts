@@ -1,11 +1,15 @@
-import { INSTANCE_AI_MAX_QUEUED_MESSAGES, type InstanceAiEvent } from '@n8n/api-types';
+import {
+	INSTANCE_AI_MAX_QUEUED_MESSAGES,
+	type InstanceAiEvent,
+	type InstanceAiQueuedMessage,
+} from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import fc from 'fast-check';
 import { UserError } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 
 import { InstanceAiService } from '../instance-ai.service';
-import { readQueuedMessages, type QueuedMessage } from '../storage/queued-messages';
+import { readQueuedMessages } from '../storage/queued-messages';
 
 /**
  * Model-based property tests for the message queue: random operation
@@ -223,7 +227,7 @@ function mergedTurn(items: ModelItem[]): ModelItem | undefined {
 
 const pendingCount = (items: ModelItem[]) => items.filter((item) => !item.sent).length;
 
-function expectQueueMatches(actual: QueuedMessage[], model: ModelItem[]): void {
+function expectQueueMatches(actual: InstanceAiQueuedMessage[], model: ModelItem[]): void {
 	expect(actual.map(({ id, text, sentAt }) => ({ id, text, sent: sentAt !== undefined }))).toEqual(
 		model,
 	);
