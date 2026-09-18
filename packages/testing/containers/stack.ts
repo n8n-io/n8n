@@ -581,6 +581,8 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 						usePostgres,
 						// Without this the replacement main drops the engine-v2 module, and a
 						// workflow that still asks for engine 2.0 fails far from the cause.
+						// In `container` mode the engine container is not replaced: it keeps
+						// running against the new main.
 						engine,
 						baseUrl,
 						// The same host port keeps `baseUrl` valid across the swap.
