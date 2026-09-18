@@ -60,7 +60,7 @@ export function useWorkflowPublicationStatusSync(documentId: MaybeRefOrGetter<Wo
 		const workflowId = workflowDocumentStore.workflowId;
 		// An unsaved workflow has no publication status on the backend yet. The
 		// watcher below re-runs the fetch as soon as the document becomes saved.
-		if (!isDocumentWorkflowSaved()) return;
+		if (!workflowId || !workflowsStore.isWorkflowSaved[workflowId]) return;
 
 		// Cancel any pending poll before awaiting so an overlapping call can't re-arm a stale timer.
 		clearTimeout(timer);

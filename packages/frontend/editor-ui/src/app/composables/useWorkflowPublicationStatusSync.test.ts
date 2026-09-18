@@ -147,6 +147,7 @@ describe('useWorkflowPublicationStatusSync', () => {
 		await nextTick();
 		await nextTick();
 
+		expect(workflowsStore.fetchPublicationStatus).toHaveBeenCalledTimes(1);
 		expect(workflowsStore.fetchPublicationStatus).toHaveBeenCalledWith(NEW_WORKFLOW_ID);
 		expect(store.publicationStatus).toBe('published');
 	});
