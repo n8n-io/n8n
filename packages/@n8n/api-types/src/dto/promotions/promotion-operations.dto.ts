@@ -84,16 +84,23 @@ export const applyPackageCountsSchema = z.object({
 	}),
 });
 
+const expectedSourceSchema = z
+	.object({
+		configId: n8nIdSchema,
+		branchName: z.string().min(1),
+		commitSha: z.string().regex(/^[0-9a-f]{40}$/),
+	})
+	.strict();
+
+/** Apply may pin the reviewed source. Without it, the branch tip is applied. */
+export class ApplyPackageDto extends Z.class(
+	{ expectedSource: expectedSourceSchema.optional() },
+	{ strict: true },
+) {}
+
+/** Continue must name the source that the paused Apply reported. */
 export class ContinueApplyPackageDto extends Z.class(
-	{
-		expectedSource: z
-			.object({
-				configId: n8nIdSchema,
-				branchName: z.string().min(1),
-				commitSha: z.string().regex(/^[0-9a-f]{40}$/),
-			})
-			.strict(),
-	},
+	{ expectedSource: expectedSourceSchema },
 	{ strict: true },
 ) {}
 

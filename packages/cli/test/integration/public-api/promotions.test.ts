@@ -812,6 +812,21 @@ describe('Promotions in Public API', () => {
 			}
 		});
 
+		it('validates the optional Apply source the same way as Continue', async () => {
+			const agent = testServer.publicApiAgentFor(owner);
+			// Without a source the request is valid, so the unknown connection is what fails.
+			expect((await agent.post('/promotions/connections/someId/apply')).status).toBe(404);
+			expect((await agent.post('/promotions/connections/someId/apply').send({})).status).toBe(404);
+			for (const body of [
+				{ ...continueBody, force: true },
+				{ expectedSource: { ...continueBody.expectedSource, commitSha: 'HEAD' } },
+				{ expectedSource: { ...continueBody.expectedSource, resolved: true } },
+			]) {
+				const response = await agent.post('/promotions/connections/someId/apply').send(body);
+				expect(response.status).toBe(400);
+			}
+		});
+
 		it.each(['blocked', 'applied', 'source-changed'] as const)(
 			'returns the %s contract through both Apply routes with only the pull API-key scope',
 			async (status) => {
@@ -885,6 +900,7 @@ describe('Promotions in Public API', () => {
 					expect(initial).toHaveBeenCalledWith(
 						id,
 						expect.objectContaining({ id: restrictedOwner.id }),
+						continueBody.expectedSource,
 					);
 					expect(continuation).toHaveBeenCalledWith(
 						id,
