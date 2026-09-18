@@ -550,22 +550,14 @@ export class NodeDetailsViewPage extends BasePage {
 		const selector = this.inputPanel.getRunSelector();
 		await selector.click();
 		await this.getVisiblePopoverOption(value).click();
-		await expect(this.inputPanel.getRunSelectorInput()).toHaveValue(containsValue(value));
+		await this.expectInputRunSelectorValue(value);
 	}
 
 	async changeOutputRunSelector(value: string) {
 		const selector = this.outputPanel.getRunSelector();
 		await selector.click();
 		await this.getVisiblePopoverOption(value).click();
-		await expect(this.outputPanel.getRunSelectorInput()).toHaveValue(containsValue(value));
-	}
-
-	async getInputRunSelectorValue() {
-		return await this.inputPanel.getRunSelectorInput().inputValue();
-	}
-
-	async getOutputRunSelectorValue() {
-		return await this.outputPanel.getRunSelectorInput().inputValue();
+		await this.expectOutputRunSelectorValue(value);
 	}
 
 	// Cross-panel run-linking updates a selector asynchronously, so retry the read
