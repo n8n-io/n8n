@@ -40,8 +40,10 @@ export interface VectorStoreNodeConstructorArgs<T extends VectorStore = VectorSt
 	updateFields?: INodeProperties[];
 	hidden?: true;
 	/**
-	 * The store (or its backend) embeds the query inside `similaritySearchWithScore`,
-	 * so the text-search operations skip `embeddings.embedQuery`.
+	 * The text-search operations call `similaritySearchWithScore(prompt, k, filter)` instead of
+	 * embedding the prompt and calling `similaritySearchVectorWithScore`. The store must override
+	 * `similaritySearchWithScore`: the base class version calls `embeddings.embedQuery` first,
+	 * which a backend that embeds server-side cannot do.
 	 */
 	searchByText?: true;
 
