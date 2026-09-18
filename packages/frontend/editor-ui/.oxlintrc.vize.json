@@ -1,0 +1,61 @@
+{
+	"$schema": "./node_modules/oxlint/configuration_schema.json",
+	"plugins": ["vue"],
+	"jsPlugins": ["oxlint-plugin-vize"],
+	"categories": {
+		"correctness": "off"
+	},
+	"settings": {
+		"vize": {
+			"preset": "incremental",
+			"helpLevel": "short"
+		}
+	},
+	"ignorePatterns": ["node_modules/**", "dist/**"],
+	"rules": {
+		"vize/vue/component-name-in-template-casing": "error",
+		"vize/vue/no-child-content": "error",
+		"vize/vue/no-deprecated-functional-template": "error",
+		"vize/vue/no-deprecated-html-element-is": "error",
+		"vize/vue/no-deprecated-inline-template": "error",
+		"vize/vue/no-deprecated-router-link-tag-prop": "error",
+		"vize/vue/no-deprecated-scope-attribute": "error",
+		"vize/vue/no-deprecated-slot-attribute": "error",
+		"vize/vue/no-deprecated-slot-scope-attribute": "error",
+		"vize/vue/no-deprecated-v-bind-sync": "error",
+		"vize/vue/no-deprecated-v-on-native-modifier": "error",
+		"vize/vue/no-deprecated-v-on-number-modifiers": "error",
+		"vize/vue/no-dupe-v-else-if": "error",
+		"vize/vue/no-duplicate-attributes": "error",
+		"vize/vue/no-reserved-component-names": "error",
+		"vize/vue/no-template-key": "error",
+		"vize/vue/no-textarea-mustache": "error",
+		"vize/vue/no-unused-components": "error",
+		"vize/vue/no-unused-vars": "error",
+		"vize/vue/no-use-v-if-with-v-for": "error",
+		"vize/vue/no-useless-template-attributes": "error",
+		"vize/vue/no-v-for-template-key-on-child": "error",
+		"vize/vue/no-v-html": "error",
+		"vize/vue/no-v-text-v-html-on-component": "error",
+		"vize/vue/require-component-is": "error",
+		"vize/vue/require-toggle-inside-transition": "error",
+		"vize/vue/require-v-for-key": "error",
+		"vize/vue/use-v-on-exact": "error",
+		"vize/vue/v-slot-style": "error",
+		"vize/vue/valid-attribute-name": "error",
+		"vize/vue/valid-template-root": "error",
+		"vize/vue/valid-v-bind": "error",
+		"vize/vue/valid-v-cloak": "error",
+		"vize/vue/valid-v-else": "error",
+		"vize/vue/valid-v-for": "error",
+		"vize/vue/valid-v-html": "error",
+		"vize/vue/valid-v-if": "error",
+		"vize/vue/valid-v-memo": "error",
+		"vize/vue/valid-v-model": "error",
+		"vize/vue/valid-v-on": "error",
+		"vize/vue/valid-v-once": "error",
+		"vize/vue/valid-v-show": "error",
+		"vize/vue/valid-v-slot": "error",
+		"vize/vue/valid-v-text": "error"
+	}
+}
