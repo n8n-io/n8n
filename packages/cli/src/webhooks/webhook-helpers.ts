@@ -40,6 +40,7 @@ import type {
 	IWorkflowBase,
 	WebhookResponseData,
 	IDestinationNode,
+	IUser,
 } from 'n8n-workflow';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
@@ -600,6 +601,15 @@ function translateAuthFailureReason(reason?: AuthFailureReason): OAuth2FailureRe
 	}
 }
 
+function toWebhookUser(user: IUser): IUser {
+	return {
+		id: user.id,
+		email: user.email,
+		firstName: user.firstName,
+		lastName: user.lastName,
+	};
+}
+
 /**
  * Executes a webhook
  */
@@ -699,23 +709,13 @@ export async function executeWebhook(
 	const authService = Container.get(AuthService);
 	additionalData.validateCookieAuth = async (token: string) => {
 		const user = await authService.validateCookieToken(token);
-		return {
-			id: user.id,
-			email: user.email,
-			firstName: user.firstName,
-			lastName: user.lastName,
-		};
+		return toWebhookUser(user);
 	};
 
 	additionalData.getUserById = async (id: string) => {
 		const user = await Container.get(UserRepository).findByIdWithRole(id);
 		if (!user) return undefined;
-		return {
-			id: user.id,
-			email: user.email,
-			firstName: user.firstName,
-			lastName: user.lastName,
-		};
+		return toWebhookUser(user);
 	};
 
 	additionalData.beginN8nOAuth2Flow = async (
@@ -740,12 +740,7 @@ export async function executeWebhook(
 			admittedBy = { resource: resourceUrl, grant: result.grant };
 			return {
 				valid: true,
-				user: {
-					id: result.user.id,
-					email: result.user.email,
-					firstName: result.user.firstName,
-					lastName: result.user.lastName,
-				},
+				user: toWebhookUser(result.user),
 			};
 		}
 
