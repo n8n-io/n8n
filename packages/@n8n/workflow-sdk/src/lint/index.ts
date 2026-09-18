@@ -24,5 +24,3 @@ export {
 	type CodeExecutionMode,
 	type EmbeddedCodeSnippet,
 } from './code-node/extract-snippets';
-
-export { getStaticCodePrefix } from './code-context';

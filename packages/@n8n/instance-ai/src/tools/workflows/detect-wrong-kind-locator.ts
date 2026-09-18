@@ -130,7 +130,6 @@ export function detectWrongKindLocatorValues(
 			if (!listModeValueLooksWrongKind(prop, raw)) continue;
 
 			warnings.push({
-				scope: 'node',
 				code: 'WRONG_KIND_LIST_MODE_VALUE',
 				nodeName: typeof node.name === 'string' ? node.name : undefined,
 				message:

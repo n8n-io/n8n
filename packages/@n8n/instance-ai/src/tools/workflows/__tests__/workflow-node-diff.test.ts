@@ -1,8 +1,7 @@
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
 import { computeChangedNodeNames, downgradeUnchangedNodeBlockers } from '../workflow-node-diff';
-import { partitionWarnings, type ValidationWarning } from '../workflow-validation-warnings';
-import { detectArrayInputCollapse } from '../detect-array-input-collapse';
+import type { ValidationWarning } from '../workflow-validation-warnings';
 
 type NodeJSON = WorkflowJSON['nodes'][number];
 
@@ -102,266 +101,291 @@ describe('computeChangedNodeNames', () => {
 });
 
 describe('downgradeUnchangedNodeBlockers', () => {
-	const finding = (overrides: Partial<ValidationWarning> = {}): ValidationWarning => ({
-		code: 'CUSTOM_NODE_FINDING',
-		message: 'Existing configuration needs attention.',
-		nodeName: 'Send a message',
-		scope: 'node',
-		severity: 'warning',
-		...overrides,
+	const blocker = (nodeName?: string, code = 'INVALID_PARAMETER'): ValidationWarning => ({
+		code,
+		message: `Node "${nodeName}": Type mismatches: "parameters.sendTo" (expected string, got undefined).`,
+		nodeName,
 	});
-	const saved = () => makeWorkflow([makeNode(), makeComposeNode()]);
-	const classify = (
-		built: WorkflowJSON,
-		baseline = saved(),
-		warning = finding(),
-		before = [warning],
-	) => downgradeUnchangedNodeBlockers([warning], built, baseline, before)[0];
+
+	it('downgrades INVALID_PARAMETER on nodes whose parameters match the saved workflow', () => {
+		const node = makeNode();
+		const result = downgradeUnchangedNodeBlockers(
+			[blocker('Send a message')],
+			makeWorkflow([node]),
+			makeWorkflow([{ ...node }]),
+		);
+
+		expect(result[0].severity).toBe('informational');
+		expect(result[0].message).toContain('pre-existing node');
+	});
+
+	it('keeps INVALID_PARAMETER blocking on nodes the build changed', () => {
+		const saved = makeWorkflow([makeNode()]);
+		const built = makeWorkflow([makeNode({ parameters: { options: {}, sendTo: 'x' } })]);
+		const result = downgradeUnchangedNodeBlockers([blocker('Send a message')], built, saved);
+
+		expect(result[0].severity).toBeUndefined();
+	});
+
+	it('keeps INVALID_PARAMETER blocking on new nodes', () => {
+		const saved = makeWorkflow([]);
+		const built = makeWorkflow([makeNode()]);
+		const result = downgradeUnchangedNodeBlockers([blocker('Send a message')], built, saved);
+
+		expect(result[0].severity).toBeUndefined();
+	});
 
 	it.each([
-		'CUSTOM_NODE_FINDING',
-		'HARDCODED_CREDENTIALS',
-		'SWITCH_NO_OUTPUT_CONNECTIONS',
 		'UNKNOWN_CONFIG_KEY',
-	])('preserves an existing %s finding during an unrelated edit', (code) => {
-		const built = saved();
-		built.nodes[1].parameters = { jsCode: 'return [{ json: { updated: true } }];' };
-		const result = classify(built, saved(), finding({ code }));
-		expect(result.severity).toBe('informational');
-		expect(result.message).toContain('Existing configuration needs attention.');
+		'ARRAY_INPUT_COLLAPSED_TO_FIRST_ITEM',
+		'MISSING_REQUIRED_INPUT',
+		'SWITCH_FALLBACK_OUTPUT_DISABLED',
+	])('keeps %s blocking even on unchanged nodes', (code) => {
+		const node = makeNode();
+		const finding = blocker('Send a message', code);
+		const result = downgradeUnchangedNodeBlockers(
+			[finding],
+			makeWorkflow([node]),
+			makeWorkflow([{ ...node }]),
+		);
+
+		expect(result).toEqual([finding]);
 	});
 
-	it('preserves a node configuration error confirmed by the baseline', () => {
-		expect(classify(saved(), saved(), finding({ severity: 'error' })).severity).toBe(
-			'informational',
+	it('returns warnings unchanged when there is no saved workflow', () => {
+		const warnings = [blocker('Send a message')];
+		expect(downgradeUnchangedNodeBlockers(warnings, makeWorkflow([makeNode()]), undefined)).toBe(
+			warnings,
 		);
 	});
 
-	it.each([
-		['parameters', { parameters: { options: { changed: true } } }],
-		['type', { type: 'n8n-nodes-base.telegram' }],
-		['version', { typeVersion: 1 }],
-		['credentials', { credentials: { gmailOAuth2: { id: 'new', name: 'New account' } } }],
-		['disabled state', { disabled: true }],
-		['error behavior', { onError: 'continueRegularOutput' as const }],
-		['execution count', { executeOnce: true }],
-		['identity', { id: 'new-node' }],
-		['webhook identity', { webhookId: 'new-webhook' }],
-	])('keeps findings blocking after a change to %s', (_name, override) => {
-		const built = makeWorkflow([makeNode(override), makeComposeNode()]);
-		expect(classify(built).severity).toBe('warning');
+	it('still downgrades on a node renamed but otherwise identical (paired by id)', () => {
+		// Schema validation only concerns parameters; a rename does not make the
+		// node's saved parameter shape any less proven.
+		const saved = makeWorkflow([makeNode()]);
+		const built = makeWorkflow([makeNode({ name: 'Send email' })]);
+		const result = downgradeUnchangedNodeBlockers([blocker('Send email')], built, saved);
+
+		expect(result[0].severity).toBe('informational');
 	});
 
-	it('keeps findings blocking on new nodes', () => {
-		expect(classify(saved(), makeWorkflow([])).severity).toBe('warning');
-	});
-
-	it('requires both saved state and completed baseline validation', () => {
-		const warnings = [finding()];
-		expect(downgradeUnchangedNodeBlockers(warnings, saved(), undefined, warnings)).toBe(warnings);
-		expect(downgradeUnchangedNodeBlockers(warnings, saved(), saved())).toBe(warnings);
-		expect(classify(saved(), saved(), finding(), []).severity).toBe('warning');
-	});
-
-	it.each(['workflow', undefined] as const)('keeps %s-scope findings blocking', (scope) => {
-		expect(classify(saved(), saved(), finding({ scope })).severity).toBe('warning');
-	});
-
-	it('keeps findings without a named node blocking', () => {
-		expect(classify(saved(), saved(), finding({ nodeName: undefined })).severity).toBe('warning');
-	});
-
-	it('does not match a new finding to a different field or message', () => {
-		const before = [finding({ parameterPath: 'options.first' })];
-		expect(
-			classify(saved(), saved(), finding({ parameterPath: 'options.second' }), before).severity,
-		).toBe('warning');
-		expect(
-			classify(saved(), saved(), finding({ message: 'A different problem.' }), before).severity,
-		).toBe('warning');
-	});
-
-	it('does not exempt a familiar code without matching baseline evidence', () => {
-		expect(
-			classify(saved(), saved(), finding({ code: 'HARDCODED_CREDENTIALS' }), []).severity,
-		).toBe('warning');
-	});
-
-	it('keeps an increase in severity blocking', () => {
-		expect(classify(saved(), saved(), finding({ severity: 'error' }), [finding()]).severity).toBe(
-			'error',
-		);
-	});
-
-	it('keeps additional occurrences of a finding blocking', () => {
-		const result = downgradeUnchangedNodeBlockers([finding(), finding()], saved(), saved(), [
-			finding(),
-		]);
-		expect(result.map((warning) => warning.severity)).toEqual(['informational', 'warning']);
-	});
-
-	it('preserves names and positions independently of diagnostic identity', () => {
-		const built = makeWorkflow([
-			makeNode({ name: 'Renamed', position: [100, 100] }),
-			makeComposeNode(),
-		]);
-		const before = finding({ message: 'Send a message needs attention.' });
-		const after = finding({ nodeName: 'Renamed', message: 'Renamed needs attention.' });
-		expect(classify(built, saved(), after, [before]).severity).toBe('informational');
-	});
-
-	it('pairs nodes without IDs by name', () => {
-		const baseline = makeWorkflow([makeNode({ id: '' })]);
-		expect(classify(structuredClone(baseline), baseline).severity).toBe('informational');
-	});
-
-	it.each(['incoming', 'outgoing'])(
-		'keeps findings blocking after an %s connection changes',
-		(direction) => {
-			const built = saved();
-			const source = direction === 'incoming' ? 'Compose' : 'Send a message';
-			const destination = direction === 'incoming' ? 'Send a message' : 'Compose';
-			built.connections = { [source]: { main: [[{ node: destination, type: 'main', index: 0 }]] } };
-			expect(classify(built).severity).toBe('warning');
-		},
-	);
-
-	it('keeps findings blocking after workflow settings change', () => {
-		expect(classify({ ...saved(), settings: { executionOrder: 'v1' } }).severity).toBe('warning');
-	});
-
-	describe('existing Code findings', () => {
-		const code =
-			'const customer = $input.first().json[0];\nconst name = customer.nickname;\nreturn [{ json: { name } }];';
-		function workflow(jsCode = code): WorkflowJSON {
-			return makeWorkflow(
-				[
-					makeNode({
-						type: 'n8n-nodes-base.httpRequest',
-						parameters: { url: 'https://example.test' },
-					}),
-					makeComposeNode({ parameters: { jsCode } }),
-				],
-				{ 'Send a message': { main: [[{ node: 'Compose', type: 'main', index: 0 }]] } },
-			);
-		}
-		async function compare(built: WorkflowJSON, baseline = workflow()) {
-			return downgradeUnchangedNodeBlockers(
-				await detectArrayInputCollapse(built),
-				built,
-				baseline,
-				await detectArrayInputCollapse(baseline),
-			);
-		}
-
-		it('allows a greeting edit after an unchanged array read', async () => {
-			const built = workflow(
-				code.replace('customer.nickname;', 'customer.nickname || customer.full_name;'),
-			);
-			expect(await compare(built)).toEqual([
-				expect.objectContaining({ severity: 'informational' }),
-			]);
+	it('does not downgrade blockers on a node that was wired into the flow', () => {
+		// A disconnected node pulled into the flow just became load-bearing, so
+		// its parameter problems are real again and must stay blocking.
+		const nodes = [makeComposeNode(), makeNode()];
+		const saved = makeWorkflow(nodes, {});
+		const built = makeWorkflow(nodes, {
+			Compose: { main: [[{ node: 'Send a message', type: 'main', index: 0 }]] },
 		});
+		const result = downgradeUnchangedNodeBlockers([blocker('Send a message')], built, saved);
 
-		it('allows a new greeting variable after the unchanged read', async () => {
-			const built = workflow(
-				code.replace(
-					'const name = customer.nickname;',
-					'const greetingName = customer.nickname || customer.full_name;\nconst name = greetingName;',
-				),
+		expect(result[0].severity).toBeUndefined();
+	});
+
+	it('does not compare credentials for the validation downgrade', () => {
+		// Schema validation only concerns parameters; a restored credential must
+		// not force strict validation back on for an otherwise untouched node.
+		const saved = makeWorkflow([makeNode()]);
+		const built = makeWorkflow([
+			makeNode({ credentials: { gmailOAuth2: { id: '1', name: 'Gmail' } } }),
+		]);
+		const result = downgradeUnchangedNodeBlockers([blocker('Send a message')], built, saved);
+
+		expect(result[0].severity).toBe('informational');
+	});
+
+	describe.each([
+		{
+			code: 'HARDCODED_CREDENTIALS',
+			node: makeNode({
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 4.2,
+				parameters: {
+					url: 'https://example.test/records',
+					authentication: 'genericCredentialType',
+					genericAuthType: 'httpHeaderAuth',
+					sendHeaders: true,
+					headerParameters: { parameters: [{ name: 'apikey', value: 'example-key' }] },
+					options: { timeout: 1000 },
+				},
+				credentials: { httpHeaderAuth: { id: 'header-1', name: 'Request header' } },
+			}),
+		},
+		{
+			code: 'SWITCH_NO_OUTPUT_CONNECTIONS',
+			node: makeNode({
+				type: 'n8n-nodes-base.switch',
+				typeVersion: 3.2,
+				parameters: { mode: 'rules', rules: { values: [] }, options: {} },
+			}),
+		},
+	])('$code on saved nodes', ({ code, node }) => {
+		const nodeName = 'Send a message';
+		const finding: ValidationWarning = {
+			code,
+			nodeName,
+			message: 'Existing node requires configuration.',
+			severity: 'warning',
+		};
+
+		it('allows an edit to a different node without hiding the existing finding', () => {
+			const connections: WorkflowJSON['connections'] = {
+				Compose: { main: [[{ node: nodeName, type: 'main', index: 0 }]] },
+			};
+			const saved = makeWorkflow([makeComposeNode(), node], connections);
+			const built = makeWorkflow(
+				[
+					makeComposeNode({ parameters: { jsCode: 'return [{ json: { updated: true } }];' } }),
+					node,
+				],
+				connections,
 			);
-			expect((await compare(built))[0].severity).toBe('informational');
+
+			expect(downgradeUnchangedNodeBlockers([finding], built, saved)).toEqual([
+				{
+					...finding,
+					severity: 'informational',
+					message: expect.stringContaining('pre-existing node, unchanged by this build'),
+				},
+			]);
 		});
 
 		it.each([
-			['changed read', code.replace('json[0]', 'json[1]')],
+			['identity', { id: 'new-node' }],
+			['parameters', { parameters: { options: { timeout: 2000 } } }],
+			['type', { type: 'n8n-nodes-base.noOp' }],
+			['typeVersion', { typeVersion: 1 }],
 			[
-				'additional read',
-				code.replace('return [', 'const extra = $input.first().json[1];\nreturn ['),
+				'credentials',
+				{ credentials: { httpHeaderAuth: { id: 'header-2', name: 'Other header' } } },
 			],
-			['deferred code', code + '\nconst later = () => customer;'],
-			['new binding', code + '\nconst $input = {};'],
-		])('keeps a %s blocking', async (_name, nextCode) => {
-			const findings = await compare(workflow(nextCode));
-			expect(findings).toEqual([
-				expect.objectContaining({ code: 'ARRAY_INPUT_COLLAPSED_TO_FIRST_ITEM' }),
+		])('keeps the finding blocking when %s changes', (_field, overrides) => {
+			const saved = makeWorkflow([node]);
+			const built = makeWorkflow([{ ...node, ...overrides }]);
+
+			expect(downgradeUnchangedNodeBlockers([finding], built, saved)).toEqual([finding]);
+		});
+
+		it('keeps the finding blocking when the node is enabled', () => {
+			const saved = makeWorkflow([{ ...node, disabled: true }]);
+			const built = makeWorkflow([{ ...node, disabled: false }]);
+
+			expect(downgradeUnchangedNodeBlockers([finding], built, saved)).toEqual([finding]);
+		});
+
+		it('keeps the finding blocking when an incoming connection is added', () => {
+			const nodes = [makeComposeNode(), node];
+			const saved = makeWorkflow(nodes);
+			const built = makeWorkflow(nodes, {
+				Compose: { main: [[{ node: nodeName, type: 'main', index: 0 }]] },
+			});
+
+			expect(downgradeUnchangedNodeBlockers([finding], built, saved)).toEqual([finding]);
+		});
+
+		it('keeps the finding blocking when an outgoing connection is removed', () => {
+			const nodes = [makeComposeNode(), node];
+			const saved = makeWorkflow(nodes, {
+				[nodeName]: { main: [[{ node: 'Compose', type: 'main', index: 0 }]] },
+			});
+			const built = makeWorkflow(nodes);
+
+			expect(downgradeUnchangedNodeBlockers([finding], built, saved)).toEqual([finding]);
+		});
+
+		it('keeps the finding blocking for a new node or a missing baseline', () => {
+			const built = makeWorkflow([node]);
+
+			expect(downgradeUnchangedNodeBlockers([finding], built, makeWorkflow([]))).toEqual([finding]);
+			expect(downgradeUnchangedNodeBlockers([finding], built, undefined)).toEqual([finding]);
+		});
+
+		it('allows a rename and position change when identity and configuration are preserved', () => {
+			const saved = makeWorkflow([node]);
+			const built = makeWorkflow([{ ...node, name: 'Renamed', position: [100, 200] }]);
+
+			expect(
+				downgradeUnchangedNodeBlockers([{ ...finding, nodeName: 'Renamed' }], built, saved)[0]
+					.severity,
+			).toBe('informational');
+		});
+
+		it('pairs a node without an ID by name but does not infer a rename', () => {
+			const saved = makeWorkflow([{ ...node, id: '' }]);
+			const built = makeWorkflow([{ ...node, id: '' }]);
+			expect(downgradeUnchangedNodeBlockers([finding], built, saved)[0].severity).toBe(
+				'informational',
+			);
+
+			const renamed = makeWorkflow([{ ...node, id: '', name: 'Renamed' }]);
+			const renamedFinding = { ...finding, nodeName: 'Renamed' };
+			expect(downgradeUnchangedNodeBlockers([renamedFinding], renamed, saved)).toEqual([
+				renamedFinding,
 			]);
-			expect(partitionWarnings(findings).blocking).toEqual(findings);
 		});
 
-		describe('array callbacks', () => {
-			const callbackCode =
-				'const rows = $input.first().json.map(row => row.name);\n' +
-				'const label = "Hello";\nreturn [{ json: { rows, label } }];';
+		it('keeps a finding without a node name blocking', () => {
+			const workflow = makeWorkflow([node]);
+			const unnamedFinding = { ...finding, nodeName: undefined };
 
-			it('allows a later greeting edit after an unchanged callback', async () => {
-				const findings = await compare(
-					workflow(callbackCode.replace('"Hello"', '"Hi"')),
-					workflow(callbackCode),
-				);
-				expect(findings).toEqual([
-					expect.objectContaining({
-						code: 'ARRAY_INPUT_COLLAPSED_TO_FIRST_ITEM',
-						severity: 'informational',
-					}),
-				]);
-			});
-
-			it.each([
-				['callback body', callbackCode.replace('row.name', 'row.full_name')],
-				['input read', callbackCode.replace('$input.first()', '$input.all()[0]')],
-			])('keeps a finding blocking after changing the %s', async (_name, edited) => {
-				const findings = await compare(workflow(edited), workflow(callbackCode));
-				expect(findings).toEqual([
-					expect.objectContaining({ code: 'ARRAY_INPUT_COLLAPSED_TO_FIRST_ITEM' }),
-				]);
-				expect(partitionWarnings(findings).blocking).toEqual(findings);
-			});
-
-			it('keeps a finding blocking after its upstream input changes', async () => {
-				const built = workflow(callbackCode.replace('"Hello"', '"Hi"'));
-				built.nodes[0].parameters = { url: 'https://other.example.test' };
-				const findings = await compare(built, workflow(callbackCode));
-				expect(findings).toEqual([
-					expect.objectContaining({ code: 'ARRAY_INPUT_COLLAPSED_TO_FIRST_ITEM' }),
-				]);
-				expect(partitionWarnings(findings).blocking).toEqual(findings);
-			});
+			expect(downgradeUnchangedNodeBlockers([unnamedFinding], workflow, workflow)).toEqual([
+				unnamedFinding,
+			]);
 		});
+	});
 
-		it('checks every input source when comparing a Code finding', async () => {
-			const baseline = workflow();
-			baseline.nodes.push(
-				makeNode({
-					id: 'second',
-					name: 'Second input',
-					type: 'n8n-nodes-base.set',
-					parameters: { value: 1 },
-				}),
-			);
-			baseline.connections['Second input'] = {
-				main: [[{ node: 'Compose', type: 'main', index: 0 }]],
-			};
-			const built = structuredClone(baseline);
-			built.nodes[1].parameters = {
-				jsCode: code.replace('customer.nickname;', 'customer.nickname || customer.full_name;'),
-			};
-			built.nodes[2].parameters = { value: 2 };
-			const result = downgradeUnchangedNodeBlockers(
-				await detectArrayInputCollapse(built),
-				built,
-				baseline,
-				await detectArrayInputCollapse(baseline),
-			);
-			expect(result[0].severity).not.toBe('informational');
+	it('downgrades chat_model_validation on unchanged nodes and keeps it on changed nodes', () => {
+		const chatModelSaved = makeNode({
+			id: 'cm-1',
+			name: 'OpenAI Chat Model',
+			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+			parameters: { model: 'gpt-4o-mini' },
 		});
+		const chatModelBuilt = makeNode({
+			id: 'cm-1',
+			name: 'OpenAI Chat Model',
+			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+			parameters: { model: 'gpt-4o-mini' },
+		});
+		const saved = makeWorkflow([chatModelSaved]);
+		const built = makeWorkflow([chatModelBuilt]);
 
-		it('keeps the finding blocking if its upstream configuration changes', async () => {
-			const built = workflow(
-				code.replace('customer.nickname;', 'customer.nickname || customer.full_name;'),
-			);
-			built.nodes[0].parameters = { url: 'https://other.example.test' };
-			expect((await compare(built))[0].severity).not.toBe('informational');
-		});
+		const chatModelWarning: ValidationWarning = {
+			code: 'chat_model_validation',
+			message: 'OpenAI Chat Model: Model "gpt-4o-mini" is deprecated.',
+			nodeName: 'OpenAI Chat Model',
+			severity: 'error',
+		};
+
+		const unchangedResult = downgradeUnchangedNodeBlockers([chatModelWarning], built, saved);
+		expect(unchangedResult[0].severity).toBe('informational');
+		expect(unchangedResult[0].message).toContain('pre-existing node, unchanged by this build');
+
+		const modifiedBuilt = makeWorkflow([
+			makeNode({
+				id: 'cm-1',
+				name: 'OpenAI Chat Model',
+				type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+				parameters: { model: 'gpt-4o-mini', options: { temperature: 0.7 } },
+			}),
+		]);
+		const modifiedResult = downgradeUnchangedNodeBlockers([chatModelWarning], modifiedBuilt, saved);
+		expect(modifiedResult[0].severity).toBe('error');
+
+		const rewiredCredsBuilt = makeWorkflow([
+			makeNode({
+				id: 'cm-1',
+				name: 'OpenAI Chat Model',
+				type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+				parameters: { model: 'gpt-4o-mini' },
+				credentials: { openAiApi: { id: 'new-cred', name: 'New OpenAI' } },
+			}),
+		]);
+		const rewiredCredsResult = downgradeUnchangedNodeBlockers(
+			[chatModelWarning],
+			rewiredCredsBuilt,
+			saved,
+		);
+		expect(rewiredCredsResult[0].severity).toBe('error');
 	});
 });

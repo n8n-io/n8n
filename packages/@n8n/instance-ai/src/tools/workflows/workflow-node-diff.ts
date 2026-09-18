@@ -138,102 +138,65 @@ export function computeChangedNodeNames(
 	return changed;
 }
 
-/** Stable identity and full diagnostics keep distinct findings on the same node separate. */
-function findingKey(warning: ValidationWarning, node: NodeJSON): string {
-	return JSON.stringify([
-		warning.code,
-		nodeKey(node),
-		warning.parameterPath ?? '',
-		warning.severity,
-		warning.message.replaceAll(warning.nodeName ?? node.name ?? '', '<node>'),
-		warning.codeContext,
-		warning.relatedNodeNames,
-	]);
-}
-
-function nodeBehavior(node: NodeJSON) {
-	const { id, name, position, notes, notesInFlow, parameters, ...configuration } = node;
-	return Object.fromEntries(
-		Object.entries({
-			...configuration,
-			credentials: node.credentials ?? {},
-			disabled: node.disabled ?? false,
-			onError: node.onError ?? 'stopWorkflow',
-			executeOnce: node.executeOnce ?? false,
-			alwaysOutputData: node.alwaysOutputData ?? false,
-			retryOnFail: node.retryOnFail ?? false,
-		}).filter(([, value]) => value !== undefined),
-	);
-}
-
 /**
- * Preserve existing node findings only after the same validators confirm the baseline.
- * Workflow constraints and findings without a declared scope always remain blocking.
+ * Keep selected findings informational on saved nodes this build did not change.
+ * This lets scoped edits preserve existing configuration and parked nodes.
+ * Parameter findings require unchanged type, version, parameters, and wiring.
+ * Credential, model, and routing findings also require unchanged credentials and
+ * disabled state, so enabling a node or changing its auth restores validation.
  */
 export function downgradeUnchangedNodeBlockers(
 	warnings: ValidationWarning[],
 	workflow: WorkflowJSON,
 	savedWorkflow: WorkflowJSON | undefined,
-	savedWarnings?: ValidationWarning[],
 ): ValidationWarning[] {
-	if (!savedWorkflow || !savedWarnings) return warnings;
-	if (!isDeepStrictEqual(workflow.settings ?? {}, savedWorkflow.settings ?? {})) return warnings;
+	if (!savedWorkflow) return warnings;
 
 	const findCounterpart = counterpartFinder(savedWorkflow);
 	const builtSignatures = connectionSignatures(workflow);
 	const savedSignatures = connectionSignatures(savedWorkflow);
-	const savedByName = new Map(savedWorkflow.nodes.map((node) => [node.name, node]));
-	const existingFindings = new Map<string, number>();
-	for (const warning of savedWarnings) {
-		if (warning.scope !== 'node' || !warning.nodeName) continue;
-		const node = savedByName.get(warning.nodeName);
-		if (!node) continue;
-		const key = findingKey(warning, node);
-		existingFindings.set(key, (existingFindings.get(key) ?? 0) + 1);
-	}
-
-	const unchanged = new Map<string, { built: NodeJSON; saved: NodeJSON }>();
-	for (const node of workflow.nodes) {
+	const unchangedParameterNames = new Set<string>();
+	const fullyUnchangedNames = new Set<string>();
+	for (const node of workflow.nodes ?? []) {
 		if (!node.name) continue;
 		const saved = findCounterpart(node);
 		if (
 			saved &&
 			!(node.id && saved.id && node.id !== saved.id) &&
-			node.type === saved.type &&
-			(node.typeVersion ?? 1) === (saved.typeVersion ?? 1) &&
-			isDeepStrictEqual(nodeBehavior(node), nodeBehavior(saved)) &&
+			parametersUnchanged(node, saved) &&
 			connectionsUnchanged(node, saved, builtSignatures, savedSignatures)
 		) {
-			unchanged.set(node.name, { built: node, saved });
+			unchangedParameterNames.add(node.name);
+			if (
+				isDeepStrictEqual(node.credentials ?? {}, saved.credentials ?? {}) &&
+				(node.disabled ?? false) === (saved.disabled ?? false)
+			) {
+				fullyUnchangedNames.add(node.name);
+			}
 		}
 	}
+	if (unchangedParameterNames.size === 0) return warnings;
 
-	return warnings.map((warning): ValidationWarning => {
-		if (warning.severity === 'informational' || warning.scope !== 'node' || !warning.nodeName) {
+	return warnings.map((warning) => {
+		if (warning.severity === 'informational') return warning;
+		if (!warning.nodeName) return warning;
+
+		if (warning.code === 'INVALID_PARAMETER') {
+			if (!unchangedParameterNames.has(warning.nodeName)) return warning;
+		} else if (
+			warning.code === 'chat_model_validation' ||
+			warning.code === 'HARDCODED_CREDENTIALS' ||
+			warning.code === 'SWITCH_NO_OUTPUT_CONNECTIONS'
+		) {
+			if (!fullyUnchangedNames.has(warning.nodeName)) return warning;
+		} else {
 			return warning;
 		}
-		const pair = unchanged.get(warning.nodeName);
-		if (!pair) return warning;
-		if (!parametersUnchanged(pair.built, pair.saved)) {
-			const parameter = warning.codeContext?.parameter;
-			if (!parameter || warning.parameterPath !== parameter) return warning;
-			const { [parameter]: builtCode, ...builtParameters } = pair.built.parameters ?? {};
-			const { [parameter]: savedCode, ...savedParameters } = pair.saved.parameters ?? {};
-			if (typeof builtCode !== 'string' || typeof savedCode !== 'string') return warning;
-			if (!isDeepStrictEqual(builtParameters, savedParameters)) return warning;
-		}
-		for (const name of warning.relatedNodeNames ?? []) {
-			const related = unchanged.get(name);
-			if (!related || !parametersUnchanged(related.built, related.saved)) return warning;
-		}
-		const key = findingKey(warning, pair.saved);
-		const count = existingFindings.get(key) ?? 0;
-		if (count === 0) return warning;
-		existingFindings.set(key, count - 1);
+
 		return {
 			...warning,
-			severity: 'informational',
-			message: `${warning.message} (pre-existing finding, unchanged by this edit; not blocking)`,
+			severity: 'informational' as const,
+			message: `${warning.message} (pre-existing node, unchanged by this build; not blocking)`,
 		};
 	});
 }

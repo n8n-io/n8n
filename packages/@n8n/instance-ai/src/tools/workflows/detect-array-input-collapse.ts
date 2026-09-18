@@ -1,6 +1,5 @@
 import { isRecord } from '@n8n/utils/is-record';
-import { getStaticCodePrefix, type WorkflowJSON } from '@n8n/workflow-sdk';
-import { createHash } from 'node:crypto';
+import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
 import type { ValidationWarning } from './workflow-validation-warnings';
 
@@ -29,17 +28,17 @@ const VIA_VARIABLE = new RegExp(
 	String.raw`(?:const|let|var)\s+(\w+)\s*=\s*${FIRST_ITEM_READ}\.json\b(?!\s*[.\[])`,
 );
 
-function arrayUseOffsets(jsCode: string): number[] {
-	const offsets = [...jsCode.matchAll(new RegExp(DIRECT.source, 'g'))].map((match) => match.index);
-	for (const assigned of jsCode.matchAll(new RegExp(VIA_VARIABLE.source, 'g'))) {
+function treatsJsonAsArray(jsCode: string): boolean {
+	if (DIRECT.test(jsCode)) return true;
+	const assigned = VIA_VARIABLE.exec(jsCode);
+	if (assigned) {
+		const v = assigned[1];
 		const usedAsArray = new RegExp(
-			String.raw`\b${assigned[1]}\s*(?:\.\s*(?:${ARRAY_OP})\s*\(|\[)|Array\.isArray\(\s*${assigned[1]}\b`,
-			'g',
+			String.raw`\b${v}\s*(?:\.\s*(?:${ARRAY_OP})\s*\(|\[)|Array\.isArray\(\s*${v}\b`,
 		);
-		const uses = [...jsCode.matchAll(usedAsArray)];
-		if (uses.length > 0) offsets.push(assigned.index, ...uses.map((match) => match.index));
+		if (usedAsArray.test(jsCode)) return true;
 	}
-	return offsets;
+	return false;
 }
 
 function nodeTypeByName(json: WorkflowJSON): Map<string, string> {
@@ -76,7 +75,7 @@ function mainInputSources(json: WorkflowJSON, targetName: string): string[] {
  * rest are silently dropped (INS-662). General across endpoints, array shapes,
  * and array operations; not specific to any one API.
  */
-export async function detectArrayInputCollapse(json: WorkflowJSON): Promise<ValidationWarning[]> {
+export function detectArrayInputCollapse(json: WorkflowJSON): ValidationWarning[] {
 	const warnings: ValidationWarning[] = [];
 	const typeByName = nodeTypeByName(json);
 
@@ -84,25 +83,15 @@ export async function detectArrayInputCollapse(json: WorkflowJSON): Promise<Vali
 		if (node.type !== CODE_NODE_TYPE) continue;
 		const params = node.parameters;
 		const jsCode = isRecord(params) && typeof params.jsCode === 'string' ? params.jsCode : '';
-		const offsets = arrayUseOffsets(jsCode);
-		if (offsets.length === 0) continue;
+		if (!jsCode || !treatsJsonAsArray(jsCode)) continue;
 
-		const parents = typeof node.name === 'string' ? mainInputSources(json, node.name) : [];
-		const httpParent = parents.find((name) => typeByName.get(name)?.includes('httpRequest'));
+		const httpParent =
+			typeof node.name === 'string'
+				? mainInputSources(json, node.name).find((s) => typeByName.get(s)?.includes('httpRequest'))
+				: undefined;
 		if (!httpParent) continue;
 
-		const prefix = await getStaticCodePrefix(jsCode, offsets);
 		warnings.push({
-			scope: 'node',
-			parameterPath: 'jsCode',
-			codeContext:
-				prefix === undefined
-					? undefined
-					: {
-							parameter: 'jsCode',
-							fingerprint: createHash('sha256').update(prefix).digest('hex'),
-						},
-			relatedNodeNames: [...new Set(parents)].sort(),
 			code: 'ARRAY_INPUT_COLLAPSED_TO_FIRST_ITEM',
 			nodeName: typeof node.name === 'string' ? node.name : undefined,
 			message:

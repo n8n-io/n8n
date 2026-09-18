@@ -165,7 +165,6 @@ export {
 	validateNodeConfig,
 	type SchemaValidationResult,
 	type IssueSeverity,
-	type ValidationScope,
 	isInformationalIssue,
 	partitionValidationIssues,
 	validateWorkflowBuilder,
@@ -182,7 +181,6 @@ export {
 // AST interpreter into the root entry that every consumer of this package loads.
 // `code-node/python` needs only `lint/types`.
 export { lintPythonCode } from './lint/code-node/python';
-export { getStaticCodePrefix } from './lint/code-context';
 export type { SourceLintIssue } from './lint/types';
 export type { CodeExecutionMode } from './lint/code-node/extract-snippets';
 

@@ -1,11 +1,7 @@
 import escapeRegExp from 'lodash/escapeRegExp';
 
 import { lintWorkflowSource, type SourceLintIssue } from '../lint';
-import {
-	type IssueSeverity,
-	type ValidationScope,
-	partitionValidationIssues,
-} from './issue-severity';
+import { type IssueSeverity, partitionValidationIssues } from './issue-severity';
 import { getSchemaBaseDirs, setSchemaBaseDirs } from './node-parameter-schema/schema-validator';
 import {
 	validateWorkflow,
@@ -23,7 +19,6 @@ export interface CollectedValidationIssue {
 	message: string;
 	/** Severity set at the issue creation site. */
 	severity: IssueSeverity;
-	scope?: ValidationScope;
 	nodeName?: string;
 	parameterPath?: string;
 	/** 1-based line in the workflow source file, when resolvable. */
@@ -135,7 +130,6 @@ function toCollected(
 			code: issue.code,
 			message: issue.message,
 			severity: issue.severity,
-			scope: issue.scope,
 			nodeName: issue.nodeName,
 			parameterPath,
 			line: location?.line,

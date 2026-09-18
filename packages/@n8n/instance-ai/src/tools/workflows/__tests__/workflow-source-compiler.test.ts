@@ -8,7 +8,7 @@ import {
 import type { InstanceAiContext } from '../../../types';
 import { runInSandbox } from '../../../workspace/sandbox-fs';
 import { downgradeUnchangedNodeBlockers } from '../workflow-node-diff';
-import { compileWorkflowSource, validateSavedWorkflow } from '../workflow-source-compiler';
+import { compileWorkflowSource } from '../workflow-source-compiler';
 import { partitionWarnings } from '../workflow-validation-warnings';
 
 vi.mock('@n8n/agents/sandbox', () => ({
@@ -48,7 +48,7 @@ describe('compileWorkflowSource', () => {
 
 	it('preserves node attribution for SDK and host findings on an unchanged node', async () => {
 		const sdk = await vi.importActual<typeof import('@n8n/workflow-sdk')>('@n8n/workflow-sdk');
-		vi.mocked(validateWorkflow).mockImplementation(sdk.validateWorkflow);
+		vi.mocked(validateWorkflow).mockImplementationOnce(sdk.validateWorkflow);
 		const saved: WorkflowJSON = {
 			name: 'Scoped edit',
 			nodes: [
@@ -130,12 +130,7 @@ describe('compileWorkflowSource', () => {
 			]),
 		);
 		const classified = partitionWarnings(
-			downgradeUnchangedNodeBlockers(
-				result.warnings,
-				result.workflow,
-				saved,
-				await validateSavedWorkflow(makeContext(), saved),
-			),
+			downgradeUnchangedNodeBlockers(result.warnings, result.workflow, saved),
 		);
 		expect(classified.blocking).toEqual([]);
 		expect(classified.informational).toEqual(

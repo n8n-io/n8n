@@ -413,21 +413,12 @@ provided to bind the file to an existing workflow. If the bound workflow no
 longer exists, the tool returns blocked remediation rather than creating a
 replacement.
 
-For edits, the host validates the saved workflow with the same SDK and host
-checks. Existing node findings become informational only when the finding and
-the configuration that causes it are unchanged. The comparison never lowers the severity of workflow-wide or unscoped findings.
-New or worsened blockers still block. Missing
-or failed baseline validation also keeps findings blocking.
-
-Node comparison includes identity, type, version, parameters, runtime settings,
-credentials, and wiring. A Code diagnostic can identify an unchanged synchronous
-prefix so a later expression can be edited without repairing that finding.
-Programs with control-flow statements, functions, deferred execution, or
-ambiguous bindings require unchanged code. Upstream nodes named by the diagnostic must also be unchanged.
-
-The sandbox CLI has no saved-workflow baseline, so `build-workflow` makes the
-final decision. Preserve unrelated nodes and report any remaining blocker
-without expanding the edit.
+For edits, selected validation findings on unchanged saved nodes become
+informational. This includes literal HTTP authentication and missing Switch
+outputs when parameters, wiring, credentials, and disabled state are unchanged.
+New or changed configurations still require validation. The sandbox CLI has no
+saved-workflow baseline, so `build-workflow` makes the final decision. Preserve
+unrelated nodes and report any remaining blocker instead of expanding the edit.
 
 ### `workflows(action="delete")`
 

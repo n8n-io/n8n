@@ -1,4 +1,3 @@
-import type { ValidationScope } from './validation/issue-severity';
 import { isIfNodeType, isSwitchNodeType } from './constants/node-types';
 import type {
 	WorkflowBuilder,
@@ -785,14 +784,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 
 			for (const validator of validators) {
 				const issues = validator.validateNode(graphNode.instance, graphNode, pluginCtx);
-				this.collectValidationIssues(
-					issues,
-					errors,
-					warnings,
-					ValidationError,
-					ValidationWarning,
-					'node',
-				);
+				this.collectValidationIssues(issues, errors, warnings, ValidationError, ValidationWarning);
 			}
 		}
 
@@ -800,14 +792,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		for (const validator of registry.getValidators()) {
 			if (validator.validateWorkflow) {
 				const issues = validator.validateWorkflow(pluginCtx);
-				this.collectValidationIssues(
-					issues,
-					errors,
-					warnings,
-					ValidationError,
-					ValidationWarning,
-					'workflow',
-				);
+				this.collectValidationIssues(issues, errors, warnings, ValidationError, ValidationWarning);
 			}
 		}
 
@@ -827,7 +812,6 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		warnings: ValidationWarning[],
 		ValidationErrorClass: typeof ValidationError,
 		ValidationWarningClass: typeof ValidationWarning,
-		scope: ValidationScope,
 	): void {
 		for (const issue of issues) {
 			// Cast code to ValidationErrorCode - plugins can use custom codes
@@ -839,9 +823,8 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 						code,
 						issue.message,
 						issue.nodeName,
-						issue.parameterPath,
+						undefined,
 						issue.violationLevel,
-						issue.scope ?? scope,
 					),
 				);
 			} else {
@@ -854,7 +837,6 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 						issue.originalName,
 						issue.violationLevel,
 						issue.severity === 'informational' ? 'informational' : 'warning',
-						issue.scope ?? scope,
 					),
 				);
 			}

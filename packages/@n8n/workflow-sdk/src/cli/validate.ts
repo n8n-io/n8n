@@ -33,7 +33,7 @@ interface ReportEntry {
 function buildTrailer(unchecked: string[]): string {
 	return (
 		'note: errors block new workflow builds; warnings do not. For edits, build-workflow compares against ' +
-		'the saved workflow and may keep existing node findings informational when their cause is unchanged. Preserve unrelated ' +
+		'the saved workflow and may downgrade selected findings on unchanged nodes. Preserve unrelated ' +
 		`existing nodes and report any remaining blocker. Not checked here: ${unchecked.join('; ')}.`
 	);
 }

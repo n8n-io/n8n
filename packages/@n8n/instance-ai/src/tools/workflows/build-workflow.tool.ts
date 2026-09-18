@@ -14,7 +14,7 @@ import { makeGetNodeTypeForGrouping, UnexpectedError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
-import { collectChatModelValidationWarnings } from './chat-model-validation';
+import { computeChatModelValidationIssues } from './chat-model-validation';
 import { planVerificationSimulation } from './plan-verification-simulation';
 import { preserveExistingNodePositions } from './preserve-node-positions';
 import {
@@ -78,7 +78,7 @@ import {
 	preserveExistingSetupValues,
 } from './workflow-json-utils';
 import { computeChangedNodeNames, downgradeUnchangedNodeBlockers } from './workflow-node-diff';
-import { compileWorkflowSource, validateSavedWorkflow } from './workflow-source-compiler';
+import { compileWorkflowSource } from './workflow-source-compiler';
 import { appendWorkflowSourceDiagnostics } from './workflow-source-diagnostics';
 import {
 	GROUP_DROPPED_OVER_CEILING_CODE,
@@ -1125,26 +1125,8 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				}
 			}
 
-			let savedWarnings: ValidationWarning[] | undefined;
-			if (
-				savedWorkflowSnapshot &&
-				compiled.warnings.some(
-					(warning) => warning.scope === 'node' && warning.severity !== 'informational',
-				)
-			) {
-				try {
-					savedWarnings = await validateSavedWorkflow(context, savedWorkflowSnapshot);
-				} catch {
-					context.logger.debug('Cannot validate saved workflow; keeping findings blocking');
-				}
-			}
 			const partitionedWarnings = partitionWarnings(
-				downgradeUnchangedNodeBlockers(
-					compiled.warnings,
-					compiled.workflow,
-					savedWorkflowSnapshot,
-					savedWarnings,
-				),
+				downgradeUnchangedNodeBlockers(compiled.warnings, compiled.workflow, savedWorkflowSnapshot),
 			);
 			informational = partitionedWarnings.informational;
 
@@ -1231,6 +1213,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			// a chat-model node for a provider the user has no credential for gets
 			// flagged with the LLM credentials they do have. Nodes the resolver
 			// covered with n8n credits are exempt — they run as built.
+			const chatModelBlocking: ValidationWarning[] = [];
 			for (const message of buildChatModelProviderMismatchWarnings(
 				(json.nodes ?? []).filter((node) => !node.disabled),
 				[...credentialMap.values()].flat(),
@@ -1243,25 +1226,23 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				});
 			}
 
-			const chatModelBlocking = await collectChatModelValidationWarnings(context, json.nodes ?? []);
-			let savedChatModelWarnings: ValidationWarning[] | undefined;
-			if (savedWorkflowSnapshot && chatModelBlocking.length > 0) {
-				try {
-					savedChatModelWarnings = await collectChatModelValidationWarnings(
-						context,
-						savedWorkflowSnapshot.nodes ?? [],
-					);
-				} catch {
-					context.logger.debug('Cannot validate saved models; keeping findings blocking');
+			for (const node of json.nodes ?? []) {
+				if (!node.name || node.disabled) continue;
+				const chatModelIssues = await computeChatModelValidationIssues(context, node);
+				for (const messages of Object.values(chatModelIssues)) {
+					for (const message of messages) {
+						chatModelBlocking.push({
+							code: 'chat_model_validation',
+							message: `${node.name}: ${message}`,
+							nodeName: node.name,
+							severity: 'error',
+						});
+					}
 				}
 			}
+
 			const partitionedChatModelWarnings = partitionWarnings(
-				downgradeUnchangedNodeBlockers(
-					chatModelBlocking,
-					json,
-					savedWorkflowSnapshot,
-					savedChatModelWarnings,
-				),
+				downgradeUnchangedNodeBlockers(chatModelBlocking, json, savedWorkflowSnapshot),
 			);
 			informational.push(...partitionedChatModelWarnings.informational);
 

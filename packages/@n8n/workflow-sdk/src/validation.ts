@@ -9,7 +9,6 @@ export {
 	type ValidationOptions,
 	type ValidationErrorCode,
 	type IssueSeverity,
-	type ValidationScope,
 	isInformationalIssue,
 	partitionValidationIssues,
 	validateWorkflowBuilder,

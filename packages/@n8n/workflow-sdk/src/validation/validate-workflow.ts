@@ -1,4 +1,3 @@
-import type { ValidationScope } from './issue-severity';
 import { isRecord } from '@n8n/utils/is-record';
 import get from 'lodash/get';
 import type { INodeType, INodeTypes, IDisplayOptions } from 'n8n-workflow';
@@ -61,7 +60,6 @@ export type ValidationErrorCode =
  * Validation error class
  */
 export class ValidationError {
-	readonly scope?: ValidationScope;
 	readonly code: ValidationErrorCode;
 	readonly message: string;
 	readonly nodeName?: string;
@@ -76,9 +74,7 @@ export class ValidationError {
 		nodeName?: string,
 		parameterName?: string,
 		violationLevel?: 'critical' | 'major' | 'minor',
-		scope: ValidationScope = 'workflow',
 	) {
-		this.scope = scope;
 		this.code = code;
 		this.message = message;
 		this.nodeName = nodeName;
@@ -94,7 +90,6 @@ export class ValidationError {
  * `warning` blocks unless the caller chooses otherwise.
  */
 export class ValidationWarning {
-	readonly scope?: ValidationScope;
 	readonly code: ValidationErrorCode;
 	readonly message: string;
 	readonly nodeName?: string;
@@ -112,9 +107,7 @@ export class ValidationWarning {
 		originalName?: string,
 		violationLevel?: 'critical' | 'major' | 'minor',
 		severity: 'warning' | 'informational' = 'warning',
-		scope: ValidationScope = 'node',
 	) {
-		this.scope = scope;
 		this.code = code;
 		this.message = message;
 		this.nodeName = nodeName;
@@ -122,27 +115,6 @@ export class ValidationWarning {
 		this.originalName = originalName;
 		this.violationLevel = violationLevel;
 		this.severity = severity;
-	}
-
-	/** Graph constraints apply to every save, including edits to other nodes. */
-	static workflowConstraint(
-		code: ValidationErrorCode,
-		message: string,
-		nodeName?: string,
-		parameterPath?: string,
-		originalName?: string,
-		violationLevel?: 'critical' | 'major' | 'minor',
-	): ValidationWarning {
-		return new ValidationWarning(
-			code,
-			message,
-			nodeName,
-			parameterPath,
-			originalName,
-			violationLevel,
-			'warning',
-			'workflow',
-		);
 	}
 
 	/** Soft graph findings that must not block save / CLI exit. */
@@ -343,7 +315,7 @@ function checkDuplicateSingleValueAiConnections(
 					if (firstSource === sourceNodeName || warnedInputs.has(key)) continue;
 					warnedInputs.add(key);
 					warnings.push(
-						ValidationWarning.workflowConstraint(
+						new ValidationWarning(
 							'DUPLICATE_SUBNODE_CONNECTION',
 							`'${conn.node}' has multiple '${connType}' connections ('${firstSource}' and '${sourceNodeName}'), but this input accepts only one. Remove the extra connection.`,
 							conn.node,
@@ -845,7 +817,7 @@ function checkMergeNodeInputCount(json: WorkflowJSON, warnings: ValidationWarnin
 
 		if (maxConnectedIndex >= declaredInputs) {
 			warnings.push(
-				ValidationWarning.workflowConstraint(
+				new ValidationWarning(
 					'INVALID_INPUT_INDEX',
 					`Merge node '${node.name}' has a connection to input index ${maxConnectedIndex} but 'numberInputs' is ${declaredInputs}. Set 'numberInputs' to ${maxConnectedIndex + 1} so every branch is accepted.`,
 					node.name,
@@ -1399,7 +1371,7 @@ function validateSwitchFallbackOutputConnections(
 			if (isErrorOutput) continue;
 
 			warnings.push(
-				ValidationWarning.workflowConstraint(
+				new ValidationWarning(
 					'SWITCH_FALLBACK_OUTPUT_DISABLED',
 					`Switch node '${sourceNode.name}' has a connection from output ${outputIndex}, but rules mode only creates fallback output ${rulesCount} when options.fallbackOutput is set to 'extra'. Set options.fallbackOutput to 'extra' before wiring a catch-all branch, or route unmatched items to an existing rule output with a numeric fallbackOutput value.`,
 					sourceNode.name,
@@ -1513,7 +1485,7 @@ function checkNodeOutputIndices(
 
 			if (outputIndex >= allowedOutputCount) {
 				warnings.push(
-					ValidationWarning.workflowConstraint(
+					new ValidationWarning(
 						'INVALID_OUTPUT_INDEX',
 						`Connection from '${sourceName}' uses output index ${outputIndex}, but node only has ${allowedOutputCount} output(s) (indices 0-${allowedOutputCount - 1}). To route the error output, set onError: 'continueErrorOutput' on the node and use .onError(target).`,
 						sourceName,
@@ -1574,7 +1546,7 @@ function checkNodeInputIndices(
 					if (!warnedInputs.has(warnKey)) {
 						warnedInputs.add(warnKey);
 						warnings.push(
-							ValidationWarning.workflowConstraint(
+							new ValidationWarning(
 								'INVALID_INPUT_INDEX',
 								`Connection to '${targetNodeName}' uses input index ${targetInputIndex}, but node only has ${mainInputCount} input(s) (indices 0-${mainInputCount - 1})`,
 								targetNodeName,
