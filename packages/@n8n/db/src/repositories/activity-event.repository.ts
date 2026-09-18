@@ -138,20 +138,6 @@ export class ActivityEventRepository extends Repository<ActivityEvent> {
 		return await this.find({ where, order: { id: 'DESC' }, take: query.limit });
 	}
 
-	/** Returns the newest entry in scope. Its timestamp detects reused SQLite row ids. */
-	async findNewestEntry(query: {
-		projectIds: ActivityProjectScope;
-		allowedCategories: Array<ActivityEvent['category']>;
-	}): Promise<Pick<ActivityEvent, 'id' | 'createdAt'> | null> {
-		if (isEmptyScope(query.projectIds) || query.allowedCategories.length === 0) return null;
-
-		return await this.findOne({
-			where: { ...projectScopeWhere(query.projectIds), category: In(query.allowedCategories) },
-			order: { id: 'DESC' },
-			select: { id: true, createdAt: true },
-		});
-	}
-
 	/**
 	 * One entry by id, or null when it is not in scope — which is also what a pruned id returns.
 	 * The two are deliberately indistinguishable: an id is a guess a reader may get wrong, and a
