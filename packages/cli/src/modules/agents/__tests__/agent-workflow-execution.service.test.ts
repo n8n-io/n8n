@@ -15,6 +15,7 @@ import type { Telemetry } from '@/telemetry';
 import type { AgentExecutionService } from '../agent-execution.service';
 import type { AgentRunTracingService } from '../agent-run-tracing.service';
 import type { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
+import { AgentTurnExecutionService } from '../agent-turn-execution.service';
 import {
 	encodeAgentSandboxHostMetadata,
 	hashAgentSandboxPrincipal,
@@ -135,7 +136,7 @@ function makeService() {
 	const service = new AgentWorkflowExecutionService(
 		mockLogger(),
 		agentRepository,
-		executionService,
+		new AgentTurnExecutionService(mockLogger(), executionService),
 		telemetry,
 		credentialsService,
 		reconstructionService,
@@ -320,6 +321,52 @@ describe('AgentWorkflowExecutionService', () => {
 			'fallback-execution-1',
 			expect.objectContaining({
 				record: expect.objectContaining({ error: 'stream setup failed', finishReason: 'error' }),
+			}),
+		);
+	});
+
+	it.each(['startExecutionRecording', 'finalizeExecution'] as const)(
+		'returns workflow output when %s fails',
+		async (recordingOperation) => {
+			const { service, agentRepository, reconstructionService, executionService } = makeService();
+			const runtime = makeRuntime([
+				{ type: 'text-delta', id: 'text-1', delta: 'answer' },
+				{ type: 'finish', finishReason: 'stop' },
+			]);
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+			reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
+			executionService[recordingOperation].mockRejectedValue(new Error('recording unavailable'));
+
+			await expect(
+				service.executeForWorkflow(agentId, 'hello', 'execution-1', 'thread-1', projectId),
+			).resolves.toMatchObject({ response: 'answer' });
+		},
+	);
+
+	it('retries initial recording after a workflow stream failure', async () => {
+		const { service, agentRepository, reconstructionService, executionService } = makeService();
+		const runtime = makeRuntime();
+		runtime.agent.stream.mockResolvedValue({
+			stream: makeFailingStream(new Error('stream failed')),
+		});
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+		reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
+		executionService.startExecutionRecording
+			.mockRejectedValueOnce(new Error('recording unavailable'))
+			.mockResolvedValueOnce('retry-execution');
+
+		await expect(
+			service.executeForWorkflow(agentId, 'hello', 'execution-1', 'thread-1', projectId),
+		).rejects.toThrow('stream failed');
+
+		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+			'retry-execution',
+			expect.objectContaining({
+				record: expect.objectContaining({
+					assistantResponse: 'partial answer',
+					error: 'stream failed',
+					finishReason: 'error',
+				}),
 			}),
 		);
 	});

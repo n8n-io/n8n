@@ -301,7 +301,7 @@
     "html-to-text": "9.0.5",
     "ignore": "^5.2.0",
     "js-tiktoken": "catalog:",
-    "jsdom": "23.0.1",
+    "jsdom": "catalog:",
     "jsonwebtoken": "catalog:",
     "langchain": "catalog:",
     "lodash": "catalog:",

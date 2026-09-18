@@ -390,6 +390,14 @@ describe('createThreadRuntime - SSE and hydration', () => {
 									credentialType: 'slackApi',
 								},
 							],
+							'wf-2': [
+								{ id: 'wf-2:credential:slackApi', kind: 'credential', credentialType: 'slackApi' },
+							],
+						},
+						latestSetupAnnouncement: {
+							workflowId: 'wf-1',
+							agentId: 'agent-root',
+							timestamp: '2026-09-15T08:00:00.000Z',
 						},
 					},
 				},
@@ -402,7 +410,61 @@ describe('createThreadRuntime - SSE and hydration', () => {
 
 		expect(runtime.setupItemsByWorkflowId['wf-1']).toHaveLength(1);
 		expect(runtime.setupItemsByWorkflowId['wf-1'][0]).toMatchObject({ credentialType: 'slackApi' });
+		expect(runtime.latestSetupWorkflowId).toBe('wf-1');
 	});
+
+	test.each([
+		{ workflowIds: ['wf-1', 'wf-2'], completed: false, expected: undefined },
+		{ workflowIds: ['wf-1', 'wf-2'], completed: true, expected: undefined },
+		{ workflowIds: ['wf-1'], completed: false, expected: 'wf-1' },
+		{ workflowIds: ['wf-1'], completed: true, expected: 'wf-1' },
+	])(
+		'restores legacy setup selection without inferring key order: %j',
+		async ({ workflowIds, completed, expected }) => {
+			mockFetchThreadMessages.mockResolvedValueOnce({
+				threadId: 'thread-legacy',
+				messages: [
+					{
+						id: 'msg-legacy',
+						role: 'assistant',
+						createdAt: '2026-09-15T08:00:00.000Z',
+						content: '',
+						reasoning: '',
+						isStreaming: false,
+						agentTree: {
+							agentId: 'root',
+							role: 'orchestrator',
+							status: 'completed',
+							textContent: '',
+							reasoning: '',
+							toolCalls: [],
+							children: [],
+							timeline: [],
+							setupItemsByWorkflowId: Object.fromEntries(
+								workflowIds.map((id) => [
+									id,
+									completed && id === 'wf-1'
+										? []
+										: [
+												{
+													id: `${id}:credential:slackApi`,
+													kind: 'credential' as const,
+													credentialType: 'slackApi',
+												},
+											],
+								]),
+							),
+						},
+					},
+				],
+				nextEventId: 10,
+			});
+			const runtime = registry.getOrCreateRuntime('thread-legacy');
+			await runtime.loadHistoricalMessages();
+			expect(runtime.latestSetupWorkflowId).toBe(expected);
+			expect(Object.keys(runtime.setupItemsByWorkflowId)).toEqual(workflowIds);
+		},
+	);
 
 	test('background-group run-sync does not overwrite activeRunId from orchestrator sync', () => {
 		// First, create two assistant messages via normal events
@@ -1284,6 +1346,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 			expect.any(String),
 			'iframe-push-ref-123',
 			expect.any(Array),
+			undefined,
 		);
 	});
 
@@ -1319,6 +1382,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 			expect.any(String),
 			undefined,
 			expect.any(Array),
+			undefined,
 		);
 	});
 
@@ -1336,6 +1400,37 @@ describe('createThreadRuntime - SSE and hydration', () => {
 			expect.any(String),
 			undefined,
 			expect.any(Array),
+			undefined,
+		);
+	});
+
+	test('sendMessage forwards the thread artifact index to postMessage', async () => {
+		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
+		const runtime = activeRuntime(registry);
+		runtime.producedArtifacts.set('wf-1', {
+			type: 'workflow',
+			id: 'wf-1',
+			name: 'WhatsApp FAQ Auto-Responder',
+		});
+		runtime.setActiveArtifactId('wf-1');
+
+		await runtime.sendMessage('Change the WhatsApp node', {
+			authorship: USER_TYPED_MESSAGE,
+		});
+
+		expect(mockPostMessage).toHaveBeenCalledWith(
+			expect.anything(),
+			activeThreadId,
+			'Change the WhatsApp node',
+			undefined,
+			undefined,
+			expect.any(String),
+			undefined,
+			expect.any(Array),
+			{
+				artifacts: [{ type: 'workflow', id: 'wf-1', name: 'WhatsApp FAQ Auto-Responder' }],
+				activeId: 'wf-1',
+			},
 		);
 	});
 

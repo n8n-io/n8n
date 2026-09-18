@@ -31,6 +31,7 @@ import {
 	type SetupNodeCredential,
 } from './credential-utils';
 import { coerceWrongKindListModeParams } from './detect-wrong-kind-locator';
+import { describeSavedPublishState, type SavedWorkflowState } from './saved-workflow-state';
 import type { SetupRequest } from './setup-workflow.schema';
 import { refreshWorkflowSourceFileBindingFromSave } from './workflow-file-bindings';
 import type { InstanceAiContext } from '../../types';
@@ -1017,7 +1018,7 @@ export function sortByExecutionOrder(
 // ── Workflow mutation ───────────────────────────────────────────────────────
 
 /** Result of applying credentials or parameters to workflow nodes. */
-export interface ApplyResult {
+export interface ApplyResult extends SavedWorkflowState {
 	applied: string[];
 	failed: Array<{ nodeName: string; error: string }>;
 }
@@ -1083,6 +1084,7 @@ export async function applyNodeCredentials(
 			versionId: saved.versionId,
 			checksum: saved.checksum,
 		});
+		return { ...result, ...describeSavedPublishState(saved) };
 	} catch (error) {
 		// If the final save fails, mark all previously-applied nodes as failed
 		const saveError = `Failed to save workflow after credential apply: ${error instanceof Error ? error.message : 'Unknown error'}`;
@@ -1130,6 +1132,7 @@ export async function applyNodeParameters(
 			versionId: saved.versionId,
 			checksum: saved.checksum,
 		});
+		return { ...result, ...describeSavedPublishState(saved) };
 	} catch (error) {
 		const saveError = `Failed to save workflow after parameter apply: ${error instanceof Error ? error.message : 'Unknown error'}`;
 		for (const nodeName of result.applied) {
@@ -1303,6 +1306,7 @@ export async function applyNodeChanges(
 			checksum: saved.checksum,
 		});
 		result.applied = [...appliedNodes];
+		return { ...result, ...describeSavedPublishState(saved) };
 	} catch (error) {
 		const saveError = `Failed to save workflow: ${error instanceof Error ? error.message : 'Unknown error'}`;
 		for (const nodeName of appliedNodes) {

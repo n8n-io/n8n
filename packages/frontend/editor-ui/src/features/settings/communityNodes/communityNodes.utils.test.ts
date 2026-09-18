@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { fetchInstalledPackageInfo } from './communityNodes.utils';
+import { fetchInstalledPackageInfo, isNodesApiVersionError } from './communityNodes.utils';
 import { useCommunityNodesStore } from './communityNodes.store';
 import { type NodeTypesStore, useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { PublicInstalledPackage } from 'n8n-workflow';
@@ -93,5 +93,29 @@ describe('fetchInstalledPackageInfo', () => {
 
 		const result = await fetchInstalledPackageInfo(packageName);
 		expect(result).toEqual({ ...installedPackage, unverifiedUpdate: true });
+	});
+});
+
+describe('isNodesApiVersionError', () => {
+	const incompatibleNodesApiVersionError = (requiredNodesApiVersion: number | null): unknown => ({
+		httpStatusCode: 400,
+		meta: { requiredNodesApiVersion, supportedNodesApiVersion: 1 },
+	});
+
+	it('should match the error metadata, not the message', () => {
+		expect(isNodesApiVersionError(incompatibleNodesApiVersionError(3))).toBe(true);
+		// Malformed declared values carry `null` and must be recognized too.
+		expect(isNodesApiVersionError(incompatibleNodesApiVersionError(null))).toBe(true);
+		// The same copy without the metadata is a generic error.
+		expect(
+			isNodesApiVersionError(new Error('This community node requires n8n node API version 3.')),
+		).toBe(false);
+		// Other 400s must not match.
+		expect(
+			isNodesApiVersionError(
+				Object.assign(new Error('Package is banned'), { httpStatusCode: 400 }),
+			),
+		).toBe(false);
+		expect(isNodesApiVersionError(undefined)).toBe(false);
 	});
 });
