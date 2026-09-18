@@ -714,6 +714,15 @@ export const instanceAiQuestionSchema = z.object({
 	question: z.string(),
 	type: z.enum(['single', 'multi', 'text']),
 	options: z.array(z.string()).optional(),
+	/** Hides Skip and blocks Next until the question has an answer. */
+	required: z.boolean().optional(),
+	/**
+	 * Options that follow an earlier `single` question of the same card: the option selected for
+	 * `questionId` picks the list. A free-text or unknown answer falls back to `options`.
+	 */
+	optionsByAnswer: z
+		.object({ questionId: z.string(), options: z.record(z.string(), z.array(z.string())) })
+		.optional(),
 });
 
 export const confirmationRequestPayloadSchema = z.object({
