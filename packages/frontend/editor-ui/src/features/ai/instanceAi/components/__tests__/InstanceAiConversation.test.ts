@@ -172,8 +172,7 @@ describe('InstanceAiConversation', () => {
 				name: 'Stashed Name',
 				pending: true,
 			});
-			const reactiveSubject =
-				subject === undefined ? undefined : reactive({ ...subject });
+			const reactiveSubject = subject === undefined ? undefined : reactive({ ...subject });
 			const renderer = createThreadComponentRenderer(
 				InstanceAiConversation,
 				{
