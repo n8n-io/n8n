@@ -1,8 +1,12 @@
 import {
+	collectSubNodeNames,
 	dropInvalidWorkflowGroups,
+	formatTopLevelItemsMessage,
 	GROUP_DESCRIPTION_MAX_LENGTH,
 	makeGetNodeTypeForGrouping,
 	normalizeGroupDescription,
+	summarizeTopLevelItems,
+	TOP_LEVEL_ITEM_CEILING,
 	validateNodeSelectionForExtraction,
 	validateNodeSelectionForGrouping,
 	validateWorkflowGroups,
@@ -1115,5 +1119,121 @@ describe('dropInvalidWorkflowGroups', () => {
 			).toEqual([]);
 			expect(workflow.nodeGroups).toHaveLength(2);
 		});
+	});
+});
+
+describe('summarizeTopLevelItems', () => {
+	const plainNodes = (count: number) =>
+		Array.from({ length: count }, (_, i) => makeNode({ id: `n${i}`, name: `N${i}` }));
+
+	it('stays under the ceiling with exactly TOP_LEVEL_ITEM_CEILING boxes', () => {
+		const summary = summarizeTopLevelItems({ nodes: plainNodes(TOP_LEVEL_ITEM_CEILING) });
+
+		expect(summary.total).toBe(TOP_LEVEL_ITEM_CEILING);
+		expect(summary.overCeiling).toBe(false);
+	});
+
+	it('counts the trigger as a box but leaves it out of the groupable list', () => {
+		const nodes = [
+			makeNode({ id: 't', name: 'When chat message received', type: 'n8n-nodes-base.chatTrigger' }),
+			...plainNodes(TOP_LEVEL_ITEM_CEILING),
+		];
+
+		const summary = summarizeTopLevelItems({ nodes });
+
+		expect(summary.total).toBe(TOP_LEVEL_ITEM_CEILING + 1);
+		expect(summary.overCeiling).toBe(true);
+		expect(summary.ungroupedNodeNames).toContain('When chat message received');
+		expect(summary.groupableNodeNames).not.toContain('When chat message received');
+		expect(summary.groupableNodeNames).toHaveLength(TOP_LEVEL_ITEM_CEILING);
+	});
+
+	it('counts a group as one box and its members as none', () => {
+		const summary = summarizeTopLevelItems({
+			nodes: plainNodes(8),
+			nodeGroups: [{ nodeIds: ['n0', 'n1', 'n2'] }],
+		});
+
+		// 1 group + 5 ungrouped nodes.
+		expect(summary.total).toBe(6);
+		expect(summary.groupCount).toBe(1);
+		expect(summary.groupableNodeNames).toEqual(['N3', 'N4', 'N5', 'N6', 'N7']);
+	});
+
+	it('counts an agent and its sub-nodes as one box', () => {
+		const connections: IConnections = {
+			Model: { ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 0 }]] },
+			Memory: { ai_memory: [[{ node: 'Agent', type: 'ai_memory', index: 0 }]] },
+			Tool: { ai_tool: [[{ node: 'Agent', type: 'ai_tool', index: 0 }]] },
+			Agent: { main: [[{ node: 'N0', type: NodeConnectionTypes.Main, index: 0 }]] },
+		};
+		const nodes = [
+			makeNode({ id: 'agent', name: 'Agent' }),
+			makeNode({ id: 'model', name: 'Model' }),
+			makeNode({ id: 'memory', name: 'Memory' }),
+			makeNode({ id: 'tool', name: 'Tool' }),
+			...plainNodes(6),
+		];
+
+		const summary = summarizeTopLevelItems({ nodes, connectionsBySourceNode: connections });
+
+		// Agent + 6 plain nodes; the three sub-nodes do not count.
+		expect(summary.total).toBe(7);
+		expect(summary.overCeiling).toBe(false);
+	});
+
+	it('does not count sticky notes', () => {
+		const summary = summarizeTopLevelItems({
+			nodes: [...plainNodes(TOP_LEVEL_ITEM_CEILING), makeStickyNode()],
+		});
+
+		expect(summary.total).toBe(TOP_LEVEL_ITEM_CEILING);
+	});
+
+	it('treats a node without an id as ungrouped', () => {
+		const nodes = [
+			{ type: 'n8n-nodes-base.set', name: 'Anonymous' },
+			...plainNodes(TOP_LEVEL_ITEM_CEILING),
+		];
+
+		const summary = summarizeTopLevelItems({ nodes, nodeGroups: [{ nodeIds: ['n0'] }] });
+
+		expect(summary.total).toBe(TOP_LEVEL_ITEM_CEILING + 1);
+		expect(summary.groupableNodeNames).toContain('Anonymous');
+	});
+
+	it('lists the groupable nodes in the message and leaves the trigger out', () => {
+		const nodes = [
+			makeNode({ id: 't', name: 'Start', type: 'n8n-nodes-base.manualTrigger' }),
+			...plainNodes(TOP_LEVEL_ITEM_CEILING),
+		];
+
+		const message = formatTopLevelItemsMessage(summarizeTopLevelItems({ nodes }));
+
+		expect(message).toContain(`${TOP_LEVEL_ITEM_CEILING + 1} boxes`);
+		expect(message).toContain('Still ungrouped: N0, N1');
+		expect(message).not.toContain('Start');
+	});
+});
+
+describe('collectSubNodeNames', () => {
+	it('keeps a node with a main output out of the sub-node set', () => {
+		const connections: IConnections = {
+			Model: { ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 0 }]] },
+			Agent: { main: [[{ node: 'Next', type: NodeConnectionTypes.Main, index: 0 }]] },
+		};
+
+		expect([...collectSubNodeNames(connections)]).toEqual(['Model']);
+		expect(collectSubNodeNames(undefined).size).toBe(0);
+	});
+
+	it('does not treat a node with only empty non-main slots as a sub-node', () => {
+		const connections: IConnections = {
+			'Loose Tool': { ai_tool: [[]] },
+			'Wired Tool': { ai_tool: [[{ node: 'Agent', type: 'ai_tool', index: 0 }]] },
+			Agent: { main: [[]], ai_tool: [[{ node: 'Other Agent', type: 'ai_tool', index: 0 }]] },
+		};
+
+		expect([...collectSubNodeNames(connections)].sort()).toEqual(['Agent', 'Wired Tool']);
 	});
 });

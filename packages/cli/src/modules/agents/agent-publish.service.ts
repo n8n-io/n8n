@@ -225,7 +225,7 @@ export class AgentPublishService {
 			agent.revision = expectedRevision + 1;
 		});
 		this.eventService.emit('agent-saved', { agentId });
-		this.agentUpdateBroadcaster.notify({ projectId, agentId }, pushRef);
+		this.agentUpdateBroadcaster.notify({ projectId, agentId, source: emitter.by }, pushRef);
 
 		this.runtimeCacheService.clearRuntimes(agentId);
 
@@ -358,7 +358,7 @@ export class AgentPublishService {
 			agent.revision = expectedRevision + 1;
 		});
 		this.eventService.emit('agent-saved', { agentId });
-		this.agentUpdateBroadcaster.notify({ projectId, agentId }, pushRef);
+		this.agentUpdateBroadcaster.notify({ projectId, agentId, source: by }, pushRef);
 
 		this.runtimeCacheService.clearRuntimes(agentId);
 
@@ -503,7 +503,7 @@ export class AgentPublishService {
 			tasksChanged = await this.restoreTasksFromSnapshot(trx, agentId, activeVersion.versionId);
 		});
 		this.eventService.emit('agent-saved', { agentId });
-		this.agentUpdateBroadcaster.notify({ projectId, agentId }, pushRef);
+		this.agentUpdateBroadcaster.notify({ projectId, agentId, source: modifiedBy }, pushRef);
 
 		this.runtimeCacheService.clearRuntimes(agentId);
 		await this.recordRevert(agent, projectId, user, modifiedBy, previousSchema, {
@@ -557,7 +557,7 @@ export class AgentPublishService {
 			tasksChanged = await this.restoreTasksFromSnapshot(trx, agentId, target.versionId);
 		});
 		this.eventService.emit('agent-saved', { agentId });
-		this.agentUpdateBroadcaster.notify({ projectId, agentId }, pushRef);
+		this.agentUpdateBroadcaster.notify({ projectId, agentId, source: modifiedBy }, pushRef);
 
 		this.runtimeCacheService.clearRuntimes(agentId);
 		await this.recordRevert(agent, projectId, user, modifiedBy, previousSchema, {

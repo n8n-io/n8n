@@ -8,7 +8,6 @@ import '@vue-flow/node-resizer/dist/style.css';
 
 import 'vue-json-pretty/lib/styles.css';
 import '@n8n/design-system/css/index.scss';
-// import '@n8n/design-system/css/tailwind/index.css';
 
 import '@/main.scss';
 import '@/features/ai/assistant/aiBuilderDiff.scss';

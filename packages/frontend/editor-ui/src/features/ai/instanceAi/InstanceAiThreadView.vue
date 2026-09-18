@@ -1,22 +1,10 @@
 <script lang="ts" setup>
-import {
-	computed,
-	nextTick,
-	onMounted,
-	onUnmounted,
-	provide,
-	ref,
-	shallowReactive,
-	useTemplateRef,
-	watch,
-} from 'vue';
-import { storeToRefs } from 'pinia';
+import { computed, onMounted, onUnmounted, provide, ref, useTemplateRef, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import {
 	N8nHeading,
 	N8nIconButton,
 	N8nResizeWrapper,
-	N8nScrollArea,
 	N8nText,
 	N8nTooltip,
 	TOOLTIP_DELAY_MS,
@@ -27,15 +15,10 @@ import {
 	useDebounceFn,
 	useElementSize,
 	useLocalStorage,
-	useScroll,
 	useWindowSize,
 } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
-import type {
-	InstanceAiAgentAttachment,
-	InstanceAiAttachment,
-	InstanceAiHandoffContext,
-} from '@n8n/api-types';
+import type { InstanceAiAgentAttachment } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import {
 	DEBOUNCE_TIME,
@@ -43,70 +26,31 @@ import {
 	LOCAL_STORAGE_INSTANCE_AI_CHAT_PANEL_WIDTH_RATIO,
 } from '@/app/constants';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
-import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { COLLAPSED_MAIN_SIDEBAR_WIDTH, useSidebarLayout } from '@/app/composables/useSidebarLayout';
-// Experiment cleanup: remove with openWorkflowInAssistant.
-import { useOpenWorkflowInAssistantStore } from '@/experiments/openWorkflowInAssistant/stores/openWorkflowInAssistant.store';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
-import { useTelemetry } from '@n8n/composables/useTelemetry';
-import { TELEMETRY_EVENT } from '@n8n/telemetry';
-import { countAttachedNodes } from './utils/buildNodesAttachment';
 import { useToast } from '@n8n/composables/useToast';
 import { provideThread, useInstanceAiStore } from './instanceAi.store';
 import {
 	getAgentBuilderTargetFromThreadMetadata,
 	getAgentPreviewSessionFromThreadMetadata,
 	getAgentPreviewViewFromThreadMetadata,
+	getThreadDisplayTitle,
 } from './instanceAi.threadRuntime';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
-import { isPendingItemFloating } from './confirmationKinds';
-import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import { useCanvasPreview } from './useCanvasPreview';
-import { useCreditWarningBanner } from './composables/useCreditWarningBanner';
-import {
-	buildInstanceAiAgentPreviewHandoffContext,
-	clearPendingAgentAttachment,
-	consumePendingDraftAttachment,
-	clearPendingComposerDraft,
-	clearPendingHandoffContext,
-	clearPendingThreadHandoff,
-	consumePendingFirstMessage,
-	getPendingAgentAttachment,
-	getPendingComposerDraft,
-	getPendingHandoffContext,
-	stashPendingComposerDraft,
-	stashPendingFirstMessage,
-	stashPendingHandoffContext,
-} from './composables/useInstanceAiHandoff';
+import { buildInstanceAiAgentPreviewHandoffContext } from './composables/useInstanceAiHandoff';
 import type { AgentPreviewHandoffParams } from './composables/useInstanceAiAgentPreviewHandoff';
 import { useTransitionGate } from './useTransitionGate';
-import {
-	INSTANCE_AI_AGENT_PREVIEW_VIEW_METADATA_KEY,
-	INSTANCE_AI_VIEW,
-	NEW_CONVERSATION_TITLE,
-} from './constants';
-import {
-	agentPreviewContextIcon,
-	formatAgentPreviewContextLabel,
-	getDismissedContextKeys,
-	handoffContextKey,
-} from './instanceAi.handoffContext';
-import { useSidebarState } from './instanceAiLayout';
-import InstanceAiMessage from './components/InstanceAiMessage.vue';
-import InstanceAiInput from './components/InstanceAiInput.vue';
+import { INSTANCE_AI_VIEW } from './constants';
+import { getDismissedContextKeys } from './instanceAi.handoffContext';
 import InstanceAiDebugPanel from './components/InstanceAiDebugPanel.vue';
 import InstanceAiArtifactsPanel from './components/InstanceAiArtifactsPanel.vue';
-import InstanceAiStatusBar from './components/InstanceAiStatusBar.vue';
-import InstanceAiConfirmationPanel from './components/InstanceAiConfirmationPanel.vue';
 import InstanceAiFixWithAiPanel from './components/InstanceAiFixWithAiPanel.vue';
 import InstanceAiSetupPanel from './components/setupPanel/InstanceAiSetupPanel.vue';
 import InstanceAiTestAgentPanel from './components/InstanceAiTestAgentPanel.vue';
 import InstanceAiPreviewTabBar from './components/InstanceAiPreviewTabBar.vue';
 import InstanceAiViewHeader from './components/InstanceAiViewHeader.vue';
-import WorkflowBuilderUnavailableNotice from './components/WorkflowBuilderUnavailableNotice.vue';
-import AgentSection from './components/AgentSection.vue';
-import { collectActiveBuilderAgents, messageHasVisibleContent } from './builderAgents';
-import CreditWarningBanner from '@/features/ai/assistant/components/Agent/CreditWarningBanner.vue';
+import InstanceAiConversation from './components/InstanceAiConversation.vue';
 // Experiment cleanup: remove with openWorkflowInAssistant.
 import OpenWorkflowInAssistantNotification from '@/experiments/openWorkflowInAssistant/components/OpenWorkflowInAssistantNotification.vue';
 import InstanceAiWorkflowPreview, {
@@ -130,74 +74,31 @@ const props = defineProps<{
 const store = useInstanceAiStore();
 const settingsStore = useInstanceAiSettingsStore();
 const thread = provideThread(props.threadId);
-const { showCreditWarning, quotaLocked } = storeToRefs(store);
 const rootStore = useRootStore();
 const i18n = useI18n();
 const router = useRouter();
-const { goToUpgrade } = usePageRedirectionHelper();
-const creditBanner = useCreditWarningBanner(showCreditWarning);
-const sidebar = useSidebarState();
 const { width: windowWidth } = useWindowSize();
 const { isCollapsed: isMainSidebarCollapsed, sidebarWidth: mainSidebarWidth } = useSidebarLayout();
-const telemetry = useTelemetry();
 const toast = useToast();
-const pendingComposerContext = ref<InstanceAiHandoffContext | null>(null);
-const pendingComposerDraft = ref<string | null>(null);
-const generatedComposerDraft = ref<string | null>(null);
-const pendingAgentAttachment = ref<InstanceAiAgentAttachment | null>(null);
-const currentAgentAttachment = computed<InstanceAiAgentAttachment | null>(() => {
-	const queued = pendingAgentAttachment.value;
-	if (!queued) return null;
 
-	const boundTarget = getAgentBuilderTargetFromThreadMetadata(store.getThreadMetadata(thread.id));
-	if (
-		boundTarget?.agentId !== queued.id ||
-		boundTarget.projectId !== queued.projectId ||
-		!queued.pending
-	) {
-		return queued;
-	}
+const conversationRef = useTemplateRef<InstanceType<typeof InstanceAiConversation>>('conversation');
 
-	const name = boundTarget.name ?? queued.name;
-	return {
-		type: 'agent',
-		id: queued.id,
-		projectId: queued.projectId,
-		...(name ? { name } : {}),
-	};
-});
+// The conversation owns the composer-handoff state; read it through the
+// template ref for the agent-preview session id below and for
+// `InstanceAiArtifactsPanel`, a sibling of the conversation rather than a
+// descendant of it.
+const handoffContext = computed(() => conversationRef.value?.pendingComposerContext ?? null);
 
-// Running builders render in a dedicated bottom section of the conversation.
-// Once a builder finishes it falls out of this list and AgentTimeline renders
-// it in its natural chronological slot.
-const builderAgents = computed(() => collectActiveBuilderAgents(thread.messages));
+function onThreadMissing() {
+	// The user may have navigated to another thread before this one reported
+	// missing; only redirect if we're still on the thread that went missing.
+	if (router.currentRoute.value.params.threadId !== props.threadId) return;
+	void router.replace({ name: INSTANCE_AI_VIEW });
+}
 
-// Assistant messages whose only content has been extracted to the bottom
-// builder section (or which haven't produced anything renderable yet) would
-// otherwise leave an empty wrapper in the list — filter them out.
-// Reconciled in place: spliced only when membership changes, so streamed
-// tokens don't re-render the list.
-const displayedMessages = shallowReactive<typeof thread.messages>([]);
-watch(
-	() => thread.messages.filter(messageHasVisibleContent),
-	(next) => {
-		const unchanged =
-			next.length === displayedMessages.length &&
-			next.every((msg, i) => msg === displayedMessages[i]);
-		if (!unchanged) displayedMessages.splice(0, displayedMessages.length, ...next);
-	},
-	{ immediate: true },
-);
-
-// Show the input disclaimer only once the AI has produced a visible response.
-const hasAssistantResponse = computed(() => displayedMessages.some((m) => m.role === 'assistant'));
-
-// True when at least one pending confirmation should occupy the chat-input
-// slot (questions, generic approvals, or domain/web-search access). Drives
-// the swap between the input and the floating confirmation panel.
-const hasFloatingConfirmation = computed(() =>
-	thread.pendingConfirmations.some(isPendingItemFloating),
-);
+function onAgentAttachmentRestored(attachment: InstanceAiAgentAttachment) {
+	preview.openAgentPreview(attachment.id, attachment.projectId);
+}
 
 // --- Fix-with-AI offer (failure data emitted by the artifact host) ---
 const failedRun = ref<WorkflowFailuresReport | null>(null);
@@ -277,18 +178,12 @@ const activeTestAgentOffer = computed(() => {
 // Returns the resolved title once we have one, or undefined while we're still
 // figuring out which thread to show. Rendering only on a defined value avoids
 // the "New conversation" → real title flash when resuming a recent thread.
-const currentThreadTitle = computed<string | undefined>(() => {
-	const threadSummary = store.threads.find((t) => t.id === props.threadId);
-	if (threadSummary?.title && threadSummary.title !== NEW_CONVERSATION_TITLE) {
-		return threadSummary.title;
-	}
-	const firstUserMsg = thread.messages.find((m) => m.role === 'user');
-	if (firstUserMsg?.content) {
-		const text = firstUserMsg.content.trim();
-		return text.length > 60 ? text.slice(0, 60) + '…' : text;
-	}
-	return undefined;
-});
+const currentThreadTitle = computed<string | undefined>(() =>
+	getThreadDisplayTitle(
+		store.threads.find((t) => t.id === props.threadId),
+		thread.messages,
+	),
+);
 
 // The tab names the conversation, not the workflow previewed inside it — the
 // parent view claims the title so the embedded canvas can't overwrite this.
@@ -317,6 +212,13 @@ const preview = useCanvasPreview({
 		persistedArtifactPreviewOpen.value = open;
 	},
 });
+watch(
+	[() => preview.activeTabId.value, () => preview.isPreviewVisible.value],
+	([tabId, previewVisible]) => {
+		thread.setActiveArtifactId(previewVisible ? tabId : undefined);
+	},
+	{ immediate: true },
+);
 // --- Setup panel (checklist docked above the composer) ---
 // Anchors to the active canvas tab's workflow; on a hydrated thread with no
 // tab state yet, the latest workflow artifact wins (insertion order).
@@ -354,7 +256,7 @@ function openAgentChatPreview(agentId: string, projectId: string): boolean {
 }
 
 const activeAgentPreviewSessionId = computed(() => {
-	const context = pendingComposerContext.value;
+	const context = handoffContext.value;
 	if (context?.source === 'agent-preview' && context.agentId === preview.activeAgentId.value) {
 		return context.threadId;
 	}
@@ -370,18 +272,10 @@ provide('openWorkflowPreview', preview.openWorkflowPreview);
 provide('openDataTablePreview', preview.openDataTablePreview);
 provide('openAgentPreview', preview.openAgentPreview);
 provide('openAgentChatPreview', openAgentChatPreview);
-provide('pendingComposerContext', pendingComposerContext);
-provide('dismissPendingComposerContext', dismissPendingComposerContext);
-
-// Focus the composer when plan-edit mode is entered. The thread runtime
-// owns the activePlanEdit state; this watcher just reacts to the transition.
-watch(
-	() => thread.activePlanEdit,
-	(next, prev) => {
-		if (next && !prev) {
-			void nextTick(() => chatInputRef.value?.focus());
-		}
-	},
+provide('pendingComposerContext', handoffContext);
+provide(
+	'dismissPendingComposerContext',
+	(key: string) => conversationRef.value?.dismissPendingComposerContext(key) ?? false,
 );
 
 // --- Side panels ---
@@ -390,7 +284,6 @@ const isDebugEnabled = computed(() => localStorage.getItem('instanceAi.debugMode
 const hasPreviewTabs = computed(() => preview.allArtifactTabs.value.length > 0);
 const isArtifactsPanelRevealed = ref(false);
 const isArtifactsPanelDismissedInLayout = ref(false);
-const DEFAULT_INSTANCE_AI_SIDEBAR_WIDTH = 260;
 const MIN_AVAILABLE_WIDTH_FOR_PINNED_ARTIFACTS_PANEL = 900;
 const artifactsPanelTransitionGate = useTransitionGate({
 	isBlocked: () => thread.isHydratingThread,
@@ -472,11 +365,8 @@ const { width: threadAreaWidth } = useElementSize(threadAreaRef);
 const mainSidebarOccupiedWidth = computed(() =>
 	isMainSidebarCollapsed.value ? COLLAPSED_MAIN_SIDEBAR_WIDTH : (mainSidebarWidth.value ?? 0),
 );
-const instanceAiSidebarOccupiedWidth = computed(() =>
-	sidebar.collapsed.value ? 0 : (sidebar.width?.value ?? DEFAULT_INSTANCE_AI_SIDEBAR_WIDTH),
-);
 const availableWidthForPinnedArtifactsPanel = computed(
-	() => windowWidth.value - mainSidebarOccupiedWidth.value - instanceAiSidebarOccupiedWidth.value,
+	() => windowWidth.value - mainSidebarOccupiedWidth.value,
 );
 const isArtifactsPanelInLayout = computed(
 	() =>
@@ -519,6 +409,16 @@ const DEFAULT_CHAT_PANEL_CONTENT_WIDTH = 800;
 const chatPanelWidthRatio = useLocalStorage(LOCAL_STORAGE_INSTANCE_AI_CHAT_PANEL_WIDTH_RATIO, -1, {
 	writeDefaults: false,
 });
+
+// The composer requesting focus (e.g. after a canvas action) reads as the user
+// wanting the chat back — collapse the expanded preview so it's visible again.
+// The conversation itself owns focusing the input for the same trigger.
+watch(
+	() => store.composerFocusRequest,
+	() => {
+		isPreviewExpanded.value = false;
+	},
+);
 
 watch(
 	preview.activeTabId,
@@ -691,240 +591,8 @@ watch(
 	},
 );
 
-// --- Scroll management ---
-const scrollableRef = useTemplateRef<HTMLElement>('scrollable');
-// The actual scroll container is the reka-ui viewport inside N8nScrollArea,
-// NOT the immediate parent (which is a non-scrolling content wrapper).
-const scrollContainerRef = computed(
-	() =>
-		(scrollableRef.value?.closest('[data-reka-scroll-area-viewport]') as HTMLElement | null) ??
-		null,
-);
-const { arrivedState } = useScroll(scrollContainerRef, {
-	throttle: 100,
-	offset: { bottom: 100 },
-});
-const userScrolledUp = ref(false);
-
-watch(
-	() => arrivedState.bottom,
-	(atBottom) => {
-		userScrolledUp.value = !atBottom;
-	},
-);
-
-function scrollToBottom(smooth = false) {
-	const container = scrollContainerRef.value;
-	if (container) {
-		container.scrollTo({
-			top: container.scrollHeight,
-			behavior: smooth ? 'smooth' : 'instant',
-		});
-	}
-}
-
-// Auto-scroll when content height changes (handles text deltas, tool calls,
-// sub-agent spawns, results, etc. — anything that grows the DOM).
-let contentResizeObserver: ResizeObserver | null = null;
-
-watch(
-	scrollableRef,
-	(el) => {
-		contentResizeObserver?.disconnect();
-		if (el) {
-			contentResizeObserver = new ResizeObserver(() => {
-				if (!userScrolledUp.value) {
-					scrollToBottom();
-				}
-			});
-			contentResizeObserver.observe(el);
-		}
-	},
-	{ immediate: true },
-);
-
-// --- Chat input ref for auto-focus ---
-const chatInputRef = ref<InstanceType<typeof InstanceAiInput> | null>(null);
-
-function focusChatInputIfFocusIsIdle() {
-	const activeElement = document.activeElement;
-	if (
-		activeElement instanceof HTMLElement &&
-		activeElement !== document.body &&
-		activeElement !== document.documentElement
-	) {
-		return;
-	}
-
-	chatInputRef.value?.focus();
-}
-
-// Focus input on initial render (ref rebinds when messages load)
-watch(chatInputRef, (el) => {
-	if (el) {
-		void nextTick(focusChatInputIfFocusIsIdle);
-	}
-});
-
-watch(
-	() => store.composerFocusRequest,
-	() => {
-		isPreviewExpanded.value = false;
-		void nextTick(() => chatInputRef.value?.focus());
-	},
-);
-
-watch(
-	[chatInputRef, pendingComposerDraft, () => thread.activePlanEdit],
-	([input, draft, planEdit]) => {
-		if (!input || !draft || planEdit) return;
-		input.setText(draft);
-		generatedComposerDraft.value = draft;
-		pendingComposerDraft.value = null;
-		void nextTick(focusChatInputIfFocusIsIdle);
-	},
-);
-
-// Reset scroll state when switching threads so new content auto-scrolls.
-watch(
-	() => props.threadId,
-	(threadId, previousThreadId) => {
-		if (threadId !== previousThreadId) {
-			userScrolledUp.value = false;
-			void nextTick(focusChatInputIfFocusIsIdle);
-		}
-	},
-);
-
-function isCurrentThreadRuntime(): boolean {
-	return store.getRuntime(props.threadId) === thread;
-}
-
-const composerContextChip = computed(() => {
-	const agentAttachment = currentAgentAttachment.value;
-	if (agentAttachment && pendingComposerContext.value?.source !== 'agent-preview') {
-		return {
-			type: 'agent-artifact' as const,
-			agentId: agentAttachment.id,
-			projectId: agentAttachment.projectId,
-			isNewAgent:
-				pendingAgentAttachment.value?.id === agentAttachment.id &&
-				pendingAgentAttachment.value.pending === true,
-			key: `pending-agent:${agentAttachment.id}`,
-			label: agentAttachment.name ?? i18n.baseText('agents.new.defaultName'),
-			icon: 'robot',
-			isPending: true,
-		};
-	}
-
-	if (pendingComposerContext.value?.source === 'agent-preview') {
-		return {
-			type: 'agent-preview-session' as const,
-			agentId: pendingComposerContext.value.agentId,
-			threadId: pendingComposerContext.value.threadId,
-			executionId: pendingComposerContext.value.executionId,
-			key: handoffContextKey(pendingComposerContext.value),
-			label: formatAgentPreviewContextLabel(
-				pendingComposerContext.value,
-				(textKey, options) => i18n.baseText(textKey, options),
-				thread.producedArtifacts.get(pendingComposerContext.value.agentId)?.name,
-			),
-			icon: agentPreviewContextIcon(pendingComposerContext.value.agentIcon),
-			isPending: true,
-		};
-	}
-
-	const dismissedKeys = new Set(getDismissedContextKeys(store.getThreadMetadata(thread.id)));
-	for (const message of [...thread.messages].reverse()) {
-		if (message.role !== 'user' || message.context?.source !== 'agent-preview') continue;
-
-		const key = handoffContextKey(message.context);
-		if (dismissedKeys.has(key)) continue;
-
-		return {
-			type: 'agent-preview-session' as const,
-			agentId: message.context.agentId,
-			threadId: message.context.threadId,
-			executionId: message.context.executionId,
-			key,
-			label: formatAgentPreviewContextLabel(
-				message.context,
-				(textKey, options) => i18n.baseText(textKey, options),
-				thread.producedArtifacts.get(message.context.agentId)?.name,
-			),
-			icon: agentPreviewContextIcon(message.context.agentIcon),
-			isPending: false,
-		};
-	}
-
-	return null;
-});
-
-function reconnectThreadAfterHydration(): void {
-	const agentAttachment = getPendingAgentAttachment(props.threadId);
-	if (agentAttachment) {
-		pendingAgentAttachment.value = agentAttachment;
-		preview.openAgentPreview(agentAttachment.id, agentAttachment.projectId);
-	}
-	const draftAttachment = consumePendingDraftAttachment(props.threadId);
-	if (draftAttachment) store.stageNodeSets(draftAttachment.workflowId, draftAttachment.sets);
-	void thread.loadHistoricalMessages().then(async (hydrationStatus) => {
-		if (hydrationStatus === 'stale') return;
-		await thread.loadThreadStatus();
-		if (!isCurrentThreadRuntime()) return;
-		thread.connectSSE();
-		// Replay an opening message handed off from another tab (e.g. credential help
-		// opened in a new tab) as if typed here, so it shows and streams in this runtime.
-		const pending = consumePendingFirstMessage(props.threadId);
-		if (pending) {
-			void thread
-				.sendMessage(pending.message, pending.attachments, rootStore.pushRef, pending.context)
-				.then((sent) => {
-					if (sent) return;
-					// Consuming already removed it, so a refused send (e.g. a concurrency cap)
-					// would otherwise discard a message the user typed in another tab. Put it
-					// back so the next mount replays it -- but only while there is still a
-					// thread to replay it into, otherwise the payload would be stranded in
-					// localStorage for a thread that no longer exists.
-					if (!store.threads.some((t) => t.id === props.threadId)) return;
-					stashPendingFirstMessage(props.threadId, pending);
-				});
-			// Experiment cleanup: remove with openWorkflowInAssistant.
-			useOpenWorkflowInAssistantStore().handleRedirectLanding(props.threadId);
-		}
-	});
-}
-
-// Validate the route's :threadId against the loaded thread list, then connect
-// this route-scoped runtime. Route changes remount this component, so no
-// store-level "active thread" state is needed here.
-async function syncRouteToStore() {
-	const requestedThreadId = props.threadId;
-	// Apply preview/credential composer state synchronously so a quick first
-	// submit cannot race past it while the thread list is still loading.
-	pendingComposerContext.value = getPendingHandoffContext(requestedThreadId);
-	pendingComposerDraft.value = getPendingComposerDraft(requestedThreadId);
-	if (!store.threads.length) {
-		await store.loadThreads();
-	}
-	// User may have navigated elsewhere while we awaited
-	if (requestedThreadId !== props.threadId) return;
-	if (!store.threads.some((t) => t.id === requestedThreadId)) {
-		clearPendingThreadHandoff(requestedThreadId);
-		void router.replace({ name: INSTANCE_AI_VIEW });
-		return;
-	}
-	if (thread.sseState === 'disconnected') {
-		reconnectThreadAfterHydration();
-	}
-}
-
 onMounted(() => {
 	enablePanelTransitionsAfterStableRender();
-
-	void syncRouteToStore();
-
-	void nextTick(focusChatInputIfFocusIsIdle);
 });
 
 onUnmounted(() => {
@@ -943,123 +611,23 @@ onUnmounted(() => {
 		const offeredAgentId = agentBuilderTarget.value?.agentId;
 		if (offeredAgentId) agentEvalsStore.clearEvalsFocus(offeredAgentId);
 	}
-	contentResizeObserver?.disconnect();
 });
 
 const workflowPreviewRef =
 	useTemplateRef<InstanceType<typeof InstanceAiWorkflowPreview>>('workflowPreview');
-
-// --- Message handlers ---
-function handleSubmit(
-	message: string,
-	attachments?: InstanceAiAttachment[],
-	restoreDraft?: () => boolean,
-) {
-	if (!settingsStore.isWorkflowBuilderAvailable) {
-		return;
-	}
-
-	// Reset scroll on new user message
-	userScrolledUp.value = false;
-
-	const planEdit = thread.activePlanEdit;
-	if (planEdit) {
-		thread.cancelPlanEdit();
-		telemetry.track('User finished providing input', {
-			thread_id: thread.id,
-			input_thread_id: planEdit.inputThreadId ?? '',
-			instance_id: rootStore.instanceId,
-			type: 'plan-review',
-			provided_inputs: [
-				{
-					label: 'plan',
-					options: ['approve', 'ask-for-edits', 'deny'],
-					option_chosen: 'ask-for-edits',
-				},
-			],
-			skipped_inputs: [],
-			num_tasks: planEdit.taskCount,
-			feedback: scrubSecretsInText(message),
-			plan_feedback_type: 'changes_requested',
-		});
-		thread.markPlanUpdatePending(planEdit.requestId);
-		void thread
-			.confirmAction(planEdit.requestId, {
-				kind: 'approval',
-				approved: false,
-				userInput: message,
-			})
-			.then((success) => {
-				if (success) {
-					thread.resolveConfirmation(planEdit.requestId, 'changes-requested');
-				} else {
-					thread.clearPlanUpdatePending(planEdit.requestId);
-				}
-			});
-		return;
-	}
-
-	const handoffContext = pendingComposerContext.value ?? undefined;
-	const submittedGeneratedDraft = generatedComposerDraft.value;
-	const queuedAgentAttachment = pendingAgentAttachment.value;
-	const agentAttachment = currentAgentAttachment.value;
-	const submittedAttachments = agentAttachment
-		? [...(attachments ?? []), agentAttachment]
-		: attachments;
-
-	const nodeCount = countAttachedNodes(attachments);
-
-	void thread
-		.sendMessage(message, submittedAttachments, rootStore.pushRef, handoffContext)
-		.then((sent) => {
-			if (!sent) {
-				if (restoreDraft?.()) return;
-				const input = chatInputRef.value;
-				if (input && !input.isDirty()) input.setText(message);
-				return;
-			}
-			// Track message-with-nodes only after a successful send, so failed
-			// sends and retries don't inflate the node-count metric.
-			if (nodeCount > 0) {
-				telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_CHAT_MESSAGE_WITH_NODES, {
-					node_count: nodeCount,
-				});
-			}
-			// Clear the canvas selection only once the send succeeded — clearing it
-			// up front loses the selection on a failed send that the user retries.
-			if (submittedAttachments?.some((a) => a.type === 'nodes')) {
-				store.requestClearCanvasSelection();
-			}
-			const isCurrentHandoff = !handoffContext || pendingComposerContext.value === handoffContext;
-			const isCurrentDraft =
-				!submittedGeneratedDraft || generatedComposerDraft.value === submittedGeneratedDraft;
-			if ((handoffContext || submittedGeneratedDraft) && isCurrentHandoff && isCurrentDraft) {
-				clearPendingHandoffContext(props.threadId);
-				clearPendingComposerDraft(props.threadId);
-				if (handoffContext) pendingComposerContext.value = null;
-				if (submittedGeneratedDraft) generatedComposerDraft.value = null;
-			}
-			if (queuedAgentAttachment && pendingAgentAttachment.value === queuedAgentAttachment) {
-				clearPendingAgentAttachment(props.threadId);
-				pendingAgentAttachment.value = null;
-			}
-		});
-}
-
-function handleStop() {
-	void thread.cancelRun();
-}
 
 function handleFixWithAiFromOffer() {
 	const offer = activeFixWithAiOffer.value;
 	if (!offer) return;
 
 	dismissedExecutionId.value = offer.executionId;
-	userScrolledUp.value = false;
+	conversationRef.value?.resetScroll();
 	void thread.sendMessage(
 		buildFixWithAiPrompt({ workflowName: offer.workflowName, errors: offer.errors }),
-		undefined,
-		rootStore.pushRef,
+		{
+			authorship: { kind: 'prefill', prefillType: 'handoff_fix_with_ai' },
+			pushRef: rootStore.pushRef,
+		},
 	);
 }
 
@@ -1080,7 +648,7 @@ function handleAgentPreviewAssistantHandoff(params: AgentPreviewHandoffParams) {
 	) {
 		return;
 	}
-	if (chatInputRef.value?.isDirty()) {
+	if (conversationRef.value?.isDirty()) {
 		toast.showMessage({
 			title: i18n.baseText('instanceAi.input.finishDraftBeforeHandoff.title'),
 			message: i18n.baseText('instanceAi.input.finishDraftBeforeHandoff.message'),
@@ -1093,34 +661,10 @@ function handleAgentPreviewAssistantHandoff(params: AgentPreviewHandoffParams) {
 	// preview chat open reads as two places to ask the same thing.
 	isAgentPreviewDockOpen.value = false;
 
-	const context = buildInstanceAiAgentPreviewHandoffContext(params);
-	stashPendingHandoffContext(props.threadId, context);
-	pendingComposerContext.value = context;
-
-	void store
-		.updateThreadMetadata(thread.id, {
-			[INSTANCE_AI_AGENT_PREVIEW_VIEW_METADATA_KEY]: {
-				agentId: params.agentId,
-				threadId: params.threadId,
-			},
-		})
-		.catch((error: unknown) => {
-			toast.showError(error, i18n.baseText('generic.error'));
-		});
-	if (params.initialDraft) {
-		stashPendingComposerDraft(props.threadId, params.initialDraft);
-		pendingComposerDraft.value = params.initialDraft;
-	} else {
-		const generatedDraft = generatedComposerDraft.value;
-		if (generatedDraft) chatInputRef.value?.clearTextIfMatches(generatedDraft);
-		clearPendingComposerDraft(props.threadId);
-		pendingComposerDraft.value = null;
-		generatedComposerDraft.value = null;
-	}
-
-	if (!thread.activePlanEdit) {
-		void nextTick(() => chatInputRef.value?.focus());
-	}
+	conversationRef.value?.applyHandoff(
+		buildInstanceAiAgentPreviewHandoffContext(params),
+		params.initialDraft,
+	);
 }
 
 /**
@@ -1155,44 +699,6 @@ async function persistTestAgentOfferDismissal(agentId: string) {
 		dismissedContextKeys: [...dismissedKeys],
 	});
 }
-
-function clearPendingComposerHandoff() {
-	const draft = generatedComposerDraft.value ?? pendingComposerDraft.value;
-	if (draft) chatInputRef.value?.clearTextIfMatches(draft);
-	pendingComposerDraft.value = null;
-	generatedComposerDraft.value = null;
-	pendingComposerContext.value = null;
-	clearPendingHandoffContext(props.threadId);
-	clearPendingComposerDraft(props.threadId);
-}
-
-function dismissPendingComposerContext(key: string): boolean {
-	const context = pendingComposerContext.value;
-	if (!context || handoffContextKey(context) !== key) return false;
-	clearPendingComposerHandoff();
-	return true;
-}
-
-async function dismissComposerContextChip() {
-	if (!composerContextChip.value) return;
-
-	if (pendingAgentAttachment.value && pendingComposerContext.value?.source !== 'agent-preview') {
-		clearPendingAgentAttachment(props.threadId);
-		pendingAgentAttachment.value = null;
-		return;
-	}
-
-	if (composerContextChip.value.isPending) {
-		clearPendingComposerHandoff();
-		return;
-	}
-
-	const dismissedKeys = new Set(getDismissedContextKeys(store.getThreadMetadata(thread.id)));
-	dismissedKeys.add(composerContextChip.value.key);
-	await store.updateThreadMetadata(thread.id, {
-		dismissedContextKeys: [...dismissedKeys],
-	});
-}
 </script>
 
 <template>
@@ -1220,15 +726,7 @@ async function dismissComposerContextChip() {
 			<div :class="$style.builderChatHeader" data-test-id="instance-ai-builder-chat-header">
 				<InstanceAiViewHeader>
 					<template #title>
-						<N8nHeading
-							v-if="currentThreadTitle"
-							tag="h2"
-							size="small"
-							:class="[
-								$style.headerTitle,
-								{ [$style.headerTitleWithSidebar]: !sidebar.collapsed.value },
-							]"
-						>
+						<N8nHeading v-if="currentThreadTitle" tag="h2" size="small" :class="$style.headerTitle">
 							{{ currentThreadTitle }}
 						</N8nHeading>
 						<N8nText
@@ -1309,136 +807,38 @@ async function dismissComposerContextChip() {
 				:data-layout-transitions-enabled="isPreviewPanelTransitionEnabled"
 				data-test-id="instance-ai-content-area"
 			>
-				<div :class="$style.chatContent">
-					<N8nScrollArea as-child type="auto" :class="$style.scrollArea">
-						<div ref="scrollable" :class="$style.scrollContent">
-							<div :class="$style.messageList">
-								<TransitionGroup name="message-slide">
-									<InstanceAiMessage
-										v-for="message in displayedMessages"
-										:key="message.id"
-										:message="message"
-									/>
-								</TransitionGroup>
-								<!-- Builder sub-agents are extracted from their parent assistant
-	     messages and rendered here so they always sit at the bottom
-	     of the conversation. -->
-								<div v-if="builderAgents.length" :class="$style.builderAgents">
-									<AgentSection
-										v-for="builder in builderAgents"
-										:key="builder.agentId"
-										:agent-node="builder"
-									/>
-								</div>
-								<!-- Inline confirmations (plan review, text, setup, credential,
-									 gateway resource-decision, continue) render in
-									 the chat flow. Floating-eligible items take over the chat
-									 input slot below instead - see `hasFloatingConfirmation`. -->
-								<InstanceAiConfirmationPanel kind="inline" />
-
-								<Transition name="confirmation-slide">
-									<InstanceAiFixWithAiPanel
-										v-if="activeFixWithAiOffer"
-										:node-name="activeFixWithAiOffer.errors[0].nodeName"
-										:error-message="activeFixWithAiOffer.errors[0].errorMessage"
-										:failed-count="activeFixWithAiOffer.errors.length"
-										@fix-with-ai="handleFixWithAiFromOffer"
-										@dismiss="dismissFixWithAiOffer"
-									/>
-								</Transition>
-
-								<Transition name="confirmation-slide">
-									<InstanceAiTestAgentPanel
-										v-if="activeTestAgentOffer"
-										@generate="handleGenerateTestCasesFromOffer"
-										@dismiss="dismissTestAgentOffer"
-									/>
-								</Transition>
-								<!-- Live activity indicator. Sits at the very end of the
-									 conversation flow — below any pending questions/confirmations
-									 and not pinned above the input — so it trails the active
-									 content and scrolls away when reading back. -->
-								<InstanceAiStatusBar />
-							</div>
-
-							<!-- Floating input slot - replaced by the confirmation panel while a
-								 floating interaction is pending. The credit banner stays
-								 anchored above the slot in both states. The leaving child is
-								 positioned absolutely during the cross-fade so the in-flow child
-								 can size the slot to its natural height. -->
-							<div :class="$style.inputDock">
-								<!-- Scroll to bottom button -->
-								<div :class="$style.scrollButtonContainer">
-									<Transition name="scroll-button-fade">
-										<N8nIconButton
-											v-if="userScrolledUp && thread.hasMessages"
-											variant="outline"
-											icon="arrow-down"
-											size="large"
-											icon-size="large"
-											:class="$style.scrollToBottomButton"
-											@click="
-												scrollToBottom(true);
-												userScrolledUp = false;
-											"
-										/>
-									</Transition>
-								</div>
-
-								<div :class="$style.inputContainer">
-									<div :class="$style.inputConstraint">
-										<WorkflowBuilderUnavailableNotice
-											v-if="!settingsStore.isWorkflowBuilderAvailable"
-										/>
-										<CreditWarningBanner
-											v-if="creditBanner.visible.value"
-											:credits-remaining="store.creditsRemaining"
-											:credits-quota="store.creditsQuota"
-											:amounts-hidden="quotaLocked"
-											@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
-											@dismiss="creditBanner.dismiss()"
-										/>
-										<InstanceAiSetupPanel
-											v-if="setupPanelWorkflowId"
-											:workflow-id="setupPanelWorkflowId"
-											:project-id="setupPanelProjectId"
-										/>
-										<div :class="$style.inputSwap">
-											<Transition name="input-swap">
-												<InstanceAiConfirmationPanel
-													v-if="hasFloatingConfirmation"
-													key="floating-confirmation"
-													kind="floating"
-												/>
-												<InstanceAiInput
-													v-else
-													ref="chatInputRef"
-													key="chat-input"
-													:is-streaming="thread.isStreaming"
-													:is-submitting="thread.isSendingMessage"
-													:is-awaiting-confirmation="thread.isAwaitingConfirmation"
-													:is-plan-edit-mode="thread.activePlanEdit !== null"
-													:is-workflow-builder-available="settingsStore.isWorkflowBuilderAvailable"
-													:current-thread-id="thread.id"
-													:amend-context="thread.amendContext"
-													:context-chip="composerContextChip"
-													:contextual-suggestion="thread.contextualSuggestion"
-													@submit="handleSubmit"
-													@stop="handleStop"
-													@cancel-plan-edit="thread.cancelPlanEdit"
-													@dismiss-context-chip="dismissComposerContextChip"
-												/>
-											</Transition>
-										</div>
-										<p v-if="hasAssistantResponse" :class="$style.disclaimer">
-											{{ i18n.baseText('instanceAi.input.disclaimer') }}
-										</p>
-									</div>
-								</div>
-							</div>
-						</div>
-					</N8nScrollArea>
-				</div>
+				<InstanceAiConversation
+					ref="conversation"
+					@thread-missing="onThreadMissing"
+					@agent-attachment-restored="onAgentAttachmentRestored"
+				>
+					<template #above-input>
+						<InstanceAiSetupPanel
+							v-if="setupPanelWorkflowId"
+							:workflow-id="setupPanelWorkflowId"
+							:project-id="setupPanelProjectId"
+						/>
+					</template>
+					<template #inline-offers>
+						<Transition name="confirmation-slide">
+							<InstanceAiFixWithAiPanel
+								v-if="activeFixWithAiOffer"
+								:node-name="activeFixWithAiOffer.errors[0].nodeName"
+								:error-message="activeFixWithAiOffer.errors[0].errorMessage"
+								:failed-count="activeFixWithAiOffer.errors.length"
+								@fix-with-ai="handleFixWithAiFromOffer"
+								@dismiss="dismissFixWithAiOffer"
+							/>
+						</Transition>
+						<Transition name="confirmation-slide">
+							<InstanceAiTestAgentPanel
+								v-if="activeTestAgentOffer"
+								@generate="handleGenerateTestCasesFromOffer"
+								@dismiss="dismissTestAgentOffer"
+							/>
+						</Transition>
+					</template>
+				</InstanceAiConversation>
 
 				<!-- Artifacts panel (below header, beside chat) -->
 				<Transition :name="artifactsPanelTransitionName" :css="shouldAnimateArtifactsPanel">
@@ -1566,12 +966,6 @@ async function dismissComposerContextChip() {
 <style lang="scss" module>
 @use '@n8n/design-system/css/mixins/motion' as motion;
 
-@property --instance-ai-artifacts-layout-width {
-	syntax: '<length>';
-	inherits: true;
-	initial-value: 0;
-}
-
 .threadArea {
 	--instance-ai-artifacts-panel-width: 280px;
 	--instance-ai-panel-transition-duration: calc(var(--duration--snappy) + 80ms);
@@ -1626,10 +1020,6 @@ async function dismissComposerContextChip() {
 	color: var(--color--text);
 }
 
-.headerTitleWithSidebar {
-	padding-left: var(--spacing--4xs);
-}
-
 .activeButton {
 	color: var(--color--primary);
 }
@@ -1668,164 +1058,18 @@ async function dismissComposerContextChip() {
 	max-height: calc(100% - var(--spacing--sm));
 }
 
-.chatContent {
-	flex: 1;
-	min-width: 0;
-	display: flex;
-	flex-direction: column;
-	position: relative;
-}
-
-.scrollArea {
-	flex: 1;
-	// Allow flex item to shrink below content size so reka-ui viewport scrolls
-	min-height: 0;
-
-	:global([data-orientation='vertical'][data-orientation='vertical']) {
-		background: transparent;
-		padding: 0;
-		// Sit above the sticky input dock (z-index: 3) so its gradient doesn't cover the scrollbar
-		z-index: 4;
-	}
-
-	:global([data-orientation='vertical'][data-orientation='vertical'] > *) {
-		background: light-dark(var(--color--neutral-400), var(--color--neutral-600));
-
-		&:hover {
-			background: light-dark(var(--color--neutral-500), var(--color--neutral-500));
-		}
-	}
-}
-
-.scrollContent {
-	width: 100%;
-	min-height: 100%;
-	display: flex;
-	flex-direction: column;
-}
-
-.messageList {
-	width: calc(100% - var(--instance-ai-artifacts-layout-width));
-	max-width: 800px;
-	margin: 0 auto;
-	padding: var(--spacing--sm) var(--spacing--lg);
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--xs);
-	transform: translateX(calc(var(--instance-ai-artifacts-layout-width) / -2));
-}
-
 .contentAreaWithPinnedArtifacts {
 	--instance-ai-artifacts-layout-width: var(--instance-ai-artifacts-panel-width);
 }
 
 .contentAreaWithoutLayoutTransitions {
 	transition: none;
-
-	.messageList,
-	.scrollButtonContainer,
-	.inputConstraint {
-		transition: none;
-	}
-}
-
-.builderAgents {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--2xs);
-	margin-top: var(--spacing--xs);
-}
-
-.inputDock {
-	position: sticky;
-	bottom: 0;
-	margin-top: auto;
-	z-index: 3;
-	pointer-events: none;
-}
-
-.scrollButtonContainer {
-	display: flex;
-	justify-content: center;
-	pointer-events: none;
-	margin-bottom: var(--spacing--sm);
-	transform: translateX(calc(var(--instance-ai-artifacts-layout-width) / -2));
-}
-
-.scrollToBottomButton {
-	--button--color: var(--icon-color--strong);
-	--button--color--background: var(--background--surface);
-	--button--color--background-hover: var(--color--foreground--tint-2);
-	--button--color--background-active: var(--color--foreground--tint-2);
-	--button--shadow: var(--shadow--xs);
-	--button--shadow--hover: var(--shadow--xs);
-	--button--shadow--active: var(--shadow--xs);
-	--button--border-color: var(--border-color);
-	--button--border-color--hover: var(--border-color);
-	--button--border-color--active: var(--border-color);
-	--button--border--shadow: 0 0 0 1px var(--button--border-color);
-	--button--border--shadow--hover: 0 0 0 1px var(--button--border-color--hover);
-	--button--border--shadow--active: 0 0 0 1px var(--button--border-color--active);
-	--button--radius: var(--radius--full);
-
-	pointer-events: auto;
-
-	&.scrollToBottomButton {
-		background-color: var(--background--surface);
-		border: var(--border);
-		border-radius: var(--radius--full);
-		box-shadow: var(--shadow--xs);
-		color: var(--icon-color--strong);
-
-		&:hover {
-			background-color: var(--color--foreground--tint-2);
-			box-shadow: var(--shadow--xs);
-		}
-	}
-}
-
-.inputContainer {
-	padding: 0 var(--spacing--lg) var(--spacing--sm);
-	background: linear-gradient(transparent 0%, var(--color--background--light-2) 30%);
-	pointer-events: none;
-
-	& > * {
-		pointer-events: auto;
-	}
-}
-
-.inputConstraint {
-	width: calc(100% - var(--instance-ai-artifacts-layout-width));
-	max-width: 750px;
-	margin: 0 auto;
-	transform: translateX(calc(var(--instance-ai-artifacts-layout-width) / -2));
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--xs);
-}
-
-.disclaimer {
-	margin: 0;
-	text-align: center;
-	color: var(--color--text--tint-1);
-	font-size: var(--font-size--2xs);
-	line-height: var(--line-height--md);
 }
 
 @media (prefers-reduced-motion: reduce) {
-	.contentArea,
-	.messageList,
-	.scrollButtonContainer,
-	.inputConstraint {
+	.contentArea {
 		transition: none;
 	}
-}
-
-// The leaving child is detached from layout (see `.input-swap-leave-active`
-// below) so the slot follows the entering child's intrinsic height during
-// the cross-fade.
-.inputSwap {
-	position: relative;
 }
 
 .previewPanel {
@@ -1854,15 +1098,6 @@ async function dismissComposerContextChip() {
 <style lang="scss">
 @use '@n8n/design-system/css/mixins/motion';
 
-.message-slide-enter-from {
-	opacity: 0;
-	transform: translateY(8px);
-}
-
-.message-slide-enter-active {
-	transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
 .fade-enter-from,
 .fade-leave-to {
 	opacity: 0;
@@ -1871,16 +1106,6 @@ async function dismissComposerContextChip() {
 .fade-enter-active,
 .fade-leave-active {
 	transition: opacity 0.2s ease;
-}
-
-.scroll-button-fade-enter-from,
-.scroll-button-fade-leave-to {
-	opacity: 0;
-}
-
-.scroll-button-fade-enter-active,
-.scroll-button-fade-leave-active {
-	transition: opacity 0.12s ease;
 }
 
 .preview-panel-slide-enter-active,
@@ -2003,24 +1228,5 @@ async function dismissComposerContextChip() {
 
 .artifacts-panel-preview-leave-active {
 	pointer-events: none;
-}
-
-// Cross-fade between the chat input and the floating confirmation panel.
-// Default-mode cross-fade: both children co-exist briefly, the leaving one
-// is absolute-positioned so it doesn't push the entering one down, and the
-// slot sizes to the in-flow (entering) child.
-.input-swap-enter-from,
-.input-swap-leave-to {
-	opacity: 0;
-}
-
-.input-swap-enter-active,
-.input-swap-leave-active {
-	transition: opacity 120ms ease;
-}
-
-.input-swap-leave-active {
-	position: absolute;
-	inset: 0;
 }
 </style>

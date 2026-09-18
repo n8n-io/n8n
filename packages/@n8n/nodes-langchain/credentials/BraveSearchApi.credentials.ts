@@ -35,6 +35,7 @@ export class BraveSearchApi implements ICredentialType {
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: 'https://api.search.brave.com',
+			headers: { Accept: 'application/json' },
 			url: '/res/v1/web/search?q=test&count=1',
 		},
 	};

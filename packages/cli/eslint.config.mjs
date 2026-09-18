@@ -163,7 +163,6 @@ export default defineConfig(
 			'./src/public-api/v1/handlers/security-policy/security-policy.handler.ts',
 			'./src/public-api/v1/handlers/sso-oidc/sso-oidc.handler.ts',
 			'./src/public-api/v1/handlers/sso-saml/sso-saml.handler.ts',
-			'./src/public-api/v1/handlers/tags/tags.handler.ts',
 			'./src/public-api/v1/handlers/users/users.handler.ee.ts',
 			'./src/public-api/v1/handlers/workflows/workflows.handler.ts',
 		],
@@ -276,7 +275,6 @@ export default defineConfig(
 			'./src/eventbus/message-event-bus/message-event-bus.ts',
 			'./src/evaluation.ee/evaluation-collection.service.ts',
 			'./src/evaluation.ee/test-runner/test-runner.service.ee.ts',
-			'./src/public-api/v1/handlers/tags/tags.handler.ts',
 			// modules/** non-persistence services surfaced by narrowing the exemption
 			'./src/modules/agents/agent-knowledge.service.ts',
 			'./src/modules/agents/agent-publish.service.ts',
@@ -386,7 +384,7 @@ export default defineConfig(
 		// tasks. NEVER add to this list — new periodic leader work must be a
 		// @SystemTask() class. Entries are removed as each migrates on its own ticket.
 		files: [
-			'./src/modules/instance-reporting/instance-reporting-scheduler.service.ts',
+			'./src/modules/instance-reporting.ee/instance-reporting-scheduler.service.ts',
 			'./src/services/pruning/executions-pruning.service.ts',
 			'./src/services/workflow-statistics-rollup.service.ts',
 		],

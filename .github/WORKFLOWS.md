@@ -262,6 +262,25 @@ label, or closing the PR, deletes the box.
 Only a PR from a branch in this repository is eligible: a codespace token is
 scoped to `n8n-io/n8n` and cannot check out a fork head.
 
+#### Live progress on the PR
+
+`up` and `refresh` take minutes, and an absent comment looks the same as a broken
+preview. So the comment goes up before the box work starts, as a checklist of the
+phases in `scripts/preview-phases.mjs`, and is edited for each phase and once a
+minute after that. The final URL replaces it in place.
+
+A comment **edit sends no notification** — only a create does. That is what makes a
+heartbeat on a sticky comment acceptable at all.
+
+A `refresh` keeps the URL of the previous run in the checklist. The URL does not
+change between runs, and taking a working link off the PR for several minutes is
+worse than saying it is briefly down.
+
+A cancelled job — including the 45-minute `timeout-minutes` — kills the script while
+its checklist is up, so a last `if: cancelled()` step writes the outcome instead. It
+writes **only over a checklist**: a run cancelled while it was queued never started
+work, and must leave the previous run's URL alone.
+
 #### Running it by hand
 
 A box sleeps after 2 hours of no use, and GitHub makes every forwarded port
@@ -295,9 +314,11 @@ The vocabulary lives in `scripts/preview-labels.mjs`, which both ends import:
 `preview.mjs` turns the PR's labels into slugs, and `preview-serve.mjs` turns
 those slugs into environment inside the box. Add a toggle there, in one place.
 
-Only slugs cross the gap. The `gh codespace ssh` command is a shell string that
-appears in the box's process list, so a value is never passed through it —
-`preview:enterprise` resolves to a licence key inside the box, not on the runner.
+Two things cross the gap, and both are shape-checked rather than trusted: a
+`preview:*` slug, and a phase key from `scripts/preview-phases.mjs`. The `gh
+codespace ssh` command is a shell string that appears in the box's process list, so
+a value is never passed through it — `preview:enterprise` resolves to a licence key
+inside the box, not on the runner.
 
 `preview:enterprise` needs a **Codespaces** secret named
 `N8N_LICENSE_ACTIVATION_KEY`, scoped to `n8n-io/n8n`. That is a Codespaces
@@ -311,6 +332,39 @@ Note what the label does and does not control. Codespaces injects the secret int
 whether the key reaches the box. Anyone who can run PR-head code can read
 `/workspaces/.codespaces/shared/.env-secrets`. Previews are limited to branches
 in this repository, so that is the set of people who already have write access.
+
+#### Preview environment from a webhook
+
+A preview can also take environment from an n8n webhook we control, so a value
+can change without a commit and a merge. `scripts/preview-remote-env.mjs` fetches
+it, and `preview-serve.mjs` hands the result to the backend.
+
+It needs three **Codespaces** secrets on `n8n-io/n8n`, again not Actions secrets:
+
+| Secret | Purpose |
+| ------------------------ | ------------------------------------------------- |
+| `CODESPACE_ENV_URL`        | The webhook URL |
+| `CODESPACE_ENV_USER`       | Basic auth user. Optional, defaults to `preview`. |
+| `CODESPACE_ENV_PASSWORD`   | Basic auth password |
+
+The webhook answers with a flat JSON object. Its keys become environment
+variables and its values are used as-is, so a number or a boolean is stringified
+and a nested object is dropped. The request carries the PR number and the head
+SHA as query parameters, so one endpoint can answer per PR.
+
+The fetch runs in the box, not on the runner. Codespaces secrets are unreadable
+from Actions, so neither the password nor a returned value can reach a CI log.
+The log prints key names only.
+
+**Every key is passed through.** A response containing `NODE_OPTIONS`,
+`EXTERNAL_HOOK_FILES` or `PATH` runs code inside the preview box, so whoever can
+edit that workflow can run code there. The one exception is the preview's own
+wiring — the sign-in hook and the owner credentials — which is applied last and
+wins. The `.env-secrets` note above applies to these secrets too.
+
+Nothing here is required. Without the secrets, an unreachable webhook or a
+rejected password, the preview serves as usual and says so in the log. A wrong
+password is not retried: it cannot fix itself.
 
 #### The `CODESPACE_PREVIEW_TOKEN` secret
 
@@ -563,18 +617,21 @@ Push to master/1.x
 
 ## v3 development (master + 3.x)
 
+The sync runs automation code from the triggering `master` SHA while its working checkout
+stays on `3.x`.
+
 During the v3 release window, `master` carries normal feature work (behind opt-in
 flags) and the long-lived `3.x` branch carries breaking changes. `util-sync-master-to-3x.yml`
 syncs daily by **replaying the `3.x`-only commits onto `master` and force-pushing `3.x`**, so a
 clean sync adds no commit and nothing is squashed. What it pushes is always verified to be
 exactly the tree a merge of `3.x` and `master` produces, and marker-free. Conflicts confined
-to mechanical, tool-generated files (the pnpm lockfile, bot-maintained data files — see
-`MECHANICAL_PATHS` in `sync-master-to-3x.mjs`) are auto-resolved during the replay; the tree
-check then applies to every path except those files. On a real code conflict `3.x` is left
-untouched and a draft PR carrying the conflict markers (labeled `automation:v3-sync`, with
-mechanical files pre-resolved) is opened on `sync/master-to-3x`, naming both ends of the
-conflict — the breaking-commit authors and the `master` commits that touched the same files
-— via `sync-conflict-owners.mjs`, posting to `#alerts-v3-sync` and pausing further syncs
+to non-lockfile mechanical files (bot-maintained data files — see `MECHANICAL_PATHS` in
+`sync-master-to-3x.mjs`) are auto-resolved during the replay. On a code or `pnpm-lock.yaml`
+conflict, `3.x` is left untouched and a draft PR carrying the conflict markers (labeled
+`automation:v3-sync`, with other mechanical files pre-resolved) is opened on
+`sync/master-to-3x`. The lockfile is always left for the resolver. The PR names both ends of
+the conflict — the breaking-commit authors and the `master` commits that touched the same
+files — via `sync-conflict-owners.mjs`, posts to `#alerts-v3-sync`, and pauses further syncs
 until it is resolved and merged normally. Delete/modify conflicts have no markers to carry,
 so they are resolved toward `3.x` and listed as an explicit decision in the PR body.
 `build-v3-nightly.yml` publishes `n8nio/n8n:v3-nightly[-<date>]` images from `3.x`
@@ -597,6 +654,7 @@ Composite actions in `.github/actions/`:
 | Action                   | Purpose                                      | Used By            |
 |--------------------------|----------------------------------------------|--------------------|
 | `setup-nodejs`           | pnpm + Node.js + Turbo cache + Docker (opt)  | Most CI workflows  |
+| `run-workflow-script`    | Run a `.github/scripts` module with no setup or install | Owners and PR quality checks |
 | `docker-registry-login`  | GHCR + DockerHub + DHI authentication        | Docker workflows   |
 
 ### setup-nodejs
@@ -632,6 +690,30 @@ newly created sticky disk - it stays at 0 bytes however many runs commit to it,
 while the build reports a successful commit. Every job therefore shares the
 `n8n-io/n8n` key, which is the only disk that actually retains layers. Revisit
 once new-disk retention works.
+
+### run-workflow-script
+
+```yaml
+inputs:
+  script:        # path of the module, relative to the repository root
+  github-token:  # token for the Octokit client, also exported as GITHUB_TOKEN
+```
+
+Runs one `.github/scripts` module through `actions/github-script`. That action
+brings its own Node.js and an Octokit client, so the job needs no
+`setup-nodejs` step and no dependency install. The action loads
+`github-helpers.mjs`, hands the client to `setOctokit`, then imports the module
+and awaits its exported `main()`.
+
+Use it for a module that imports only node builtins and other `.github/scripts`
+modules. `github-helpers.mjs` loads `@actions/github` and `semver` only when
+they are present, so it works in both modes. A module that needs an npm
+package (`semver`, `yaml`, `minimatch`, ...) keeps the `setup-nodejs` path with
+the `.github/scripts` install command.
+
+Pair it with a sparse checkout of `.github` when the module reads nothing else
+from the tree. Cone mode always includes the root files, so `OWNERS` and
+`package.json` stay available.
 
 ### docker-registry-login
 
@@ -712,6 +794,7 @@ Scripts in `.github/scripts/`:
 | `nightly-sbom-context.mjs` | Resolve the source SHA and image tag for nightly SBOM validation | `test-sbom-nightly.yml` |
 | `db-test-matrix.mjs`    | DB test matrix from `postgres-versions.json` | `ci-pull-requests.yml` |
 | `quality/check-cubic-config.mjs` | Validate `cubic.yaml` against the vendored cubic schema; enforce its silent agent/character limits. `--refresh` re-pulls the schema | `test-workflow-scripts-reusable.yml`, `util-refresh-cubic-schema.yml` |
+| `glob.mjs`              | Builtin-only glob matcher for changed-file paths (`**`, `*`, dot segments) | `quality/check-pr-size.mjs` |
 | `probe-registry.mjs`    | Registry path throughput probe (temporary) | `util-probe-registry.yml` |
 
 ### Preview Scripts
@@ -720,10 +803,14 @@ Scripts in `.github/scripts/`:
 |---------------------------------|-------------------------------------------------------------------------|--------------------------------|
 | `codespace-preview.mjs`         | Map a `pull_request` event or a manual operation onto a preview operation, comment the result | `util-codespace-preview.yml` |
 | `../../scripts/preview.mjs`     | One codespace for each PR: `up`, `refresh`, `down`, `ls`. `--json` for CI | `codespace-preview.mjs`, developers |
+| `../../scripts/preview-remote-env.mjs` | Fetch extra environment for a preview from the webhook, inside the box | `../../scripts/preview-serve.mjs` |
+| `../../scripts/preview-phases.mjs` | The phase vocabulary and its one-line marker, so the runner, the box and the comment cannot drift | `codespace-preview.mjs`, `../../scripts/preview.mjs`, `../../scripts/preview-serve.mjs` |
 
 `scripts/preview.mjs` is also the developer entry point (`pnpm preview up <pr>`).
-In `--json` mode it prints one object on stdout and sends all progress to stderr,
-so a workflow can read the URL from a run that also streams an in-box build log.
+In `--json` mode stdout carries one line for each phase and then the report object,
+and all human progress goes to stderr. So a workflow can follow a run that also
+streams an in-box build log. The reader tells the two apart by the `url` field: the
+report has one, a phase line never does.
 
 ### Branch Replay Scripts
 

@@ -40,6 +40,7 @@ export enum VIEWS {
 	SETUP = 'SetupView',
 	FORGOT_PASSWORD = 'ForgotMyPasswordView',
 	CHANGE_PASSWORD = 'ChangePasswordView',
+	CONFIRM_EMAIL_CHANGE = 'ConfirmEmailChangeView',
 	SETTINGS = 'Settings',
 	USERS_SETTINGS = 'UsersSettings',
 	LDAP_SETTINGS = 'LdapSettings',
@@ -95,5 +96,7 @@ export enum VIEWS {
 	MIGRATION_REPORT = 'MigrationReport',
 	MIGRATION_RULE_REPORT = 'MigrationRuleReport',
 	RESOLVERS = 'Resolvers',
+	SETTINGS_CONTEXT = 'SettingsContext',
+	SETTINGS_CONTEXT_PREFERENCES = 'SettingsContextPreferences',
 	RESOURCE_CENTER = 'ResourceCenter',
 }

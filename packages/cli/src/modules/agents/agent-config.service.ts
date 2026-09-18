@@ -321,7 +321,10 @@ export class AgentConfigService {
 		this.eventService.emit('agent-saved', { agentId });
 		// Every config writer (editor, builder, MCP) lands here, so this is where
 		// other open Agent Builder tabs learn that their loaded config is stale.
-		this.agentUpdateBroadcaster.notify({ projectId, agentId }, options.pushRef);
+		this.agentUpdateBroadcaster.notify(
+			{ projectId, agentId, source: options.modifiedBy },
+			options.pushRef,
+		);
 		this.logger.debug('Updated agent JSON config', { agentId, projectId });
 
 		this.modificationTelemetry.record({

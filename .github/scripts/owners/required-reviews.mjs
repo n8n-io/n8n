@@ -210,6 +210,8 @@ export async function run() {
 	});
 }
 
+export const main = run;
+
 if (import.meta.url === `file://${process.argv[1]}`) {
-	await run();
+	await main();
 }

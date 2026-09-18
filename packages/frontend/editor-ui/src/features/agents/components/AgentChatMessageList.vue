@@ -7,6 +7,7 @@ import { useI18n } from '@n8n/i18n';
 import { useSessionStorage } from '@vueuse/core';
 import {
 	buildDisplayGroups,
+	isAssistantGroup,
 	type DisplayGroup,
 } from '@/features/ai/shared/agentsChat/displayGroups';
 import { getMessageInteractives, isRecord } from '@/features/ai/shared/agentsChat/messageMappers';
@@ -22,6 +23,7 @@ import type {
 import AiReasoningBlock from '@/features/ai/shared/components/AiReasoningBlock.vue';
 import AiThinkingBlock from '@/features/ai/shared/components/AiThinkingBlock.vue';
 import AgentChatMemoryUsed from './AgentChatMemoryUsed.vue';
+import AgentChatBackgroundJobSignal from './AgentChatBackgroundJobSignal.vue';
 import AgentChatMessageActions from './AgentChatMessageActions.vue';
 import AgentChatMessageAttachments from './AgentChatMessageAttachments.vue';
 import AgentChatToolSteps from './AgentChatToolSteps.vue';
@@ -52,6 +54,7 @@ const canSendToAssistant = computed(() =>
 );
 
 function onFixWithAssistant(group: DisplayGroup, failures: AgentFixWithAssistantFailure[]) {
+	if (group.kind === 'backgroundJobSignal') return;
 	const executionId = group.kind === 'toolRun' ? group.executionId : group.message.executionId;
 	if (!executionId || failures.length === 0) return;
 	emit('sendToAssistant', { executionId, failures });
@@ -183,15 +186,12 @@ function isThinkingActive(message: ChatMessage): boolean {
 }
 
 function getAssistantGroupContent(group: DisplayGroup): string {
+	if (group.kind === 'backgroundJobSignal') return '';
 	if (group.kind === 'toolRun') {
 		return group.finalMessage?.content ?? '';
 	}
 
 	return group.message.role === 'assistant' ? group.message.content : '';
-}
-
-function isAssistantGroup(group: DisplayGroup): boolean {
-	return group.kind === 'toolRun' || group.message.role === 'assistant';
 }
 
 function getAssistantRunContent(groupId: string): string {
@@ -254,6 +254,7 @@ function parseMemoryOutput(output: unknown): MemoryUsed[] {
 }
 
 function isCompletedAssistantGroup(group: DisplayGroup): boolean {
+	if (group.kind === 'backgroundJobSignal') return false;
 	if (group.kind === 'toolRun') {
 		return (
 			group.finalMessage !== undefined &&
@@ -411,7 +412,10 @@ watch(
 <template>
 	<div ref="scrollRef" :class="$style.messages" @scroll.passive="onScroll">
 		<template v-for="group in displayGroups" :key="group.id">
-			<div v-if="group.kind === 'toolRun'" :class="[$style.message, $style.assistant]">
+			<div v-if="group.kind === 'backgroundJobSignal'" :class="[$style.message, $style.assistant]">
+				<AgentChatBackgroundJobSignal :class="$style.content" :signal="group.signal" />
+			</div>
+			<div v-else-if="group.kind === 'toolRun'" :class="[$style.message, $style.assistant]">
 				<div :class="$style.content">
 					<AgentChatToolSteps
 						v-if="group.toolCalls.length"
@@ -753,6 +757,10 @@ watch(
 	overflow-wrap: break-word;
 	font-size: var(--font-size--sm);
 	line-height: var(--line-height--xl);
+
+	& + .chatMessage {
+		margin-top: calc(var(--spacing--sm) + var(--spacing--4xs));
+	}
 }
 
 .chatMessageUser {

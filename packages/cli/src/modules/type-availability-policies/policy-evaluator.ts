@@ -3,6 +3,7 @@ import type { NodeTypeAvailabilityScope } from '@n8n/api-types';
 import type {
 	PolicyAction,
 	PolicyAttachment,
+	PolicyRule,
 	PolicySelector,
 	PolicyVerdict,
 } from './policy-rule.types';
@@ -78,14 +79,52 @@ export function evaluateType(
 	typeName: string,
 ): PolicyVerdict {
 	for (const attachment of orderedAttachments(attachments)) {
-		for (const rule of attachment.rules) {
-			if (selectorMatches(rule.selector, typeName)) {
-				return { action: rule.action, matchedRuleId: rule.id };
-			}
-		}
+		const matched = firstMatch(attachment.rules, typeName);
+		if (matched) return matched;
 	}
 
 	return { action: defaultAction, matchedRuleId: null };
+}
+
+/** The first rule matching `typeName`, or `null` when none does. */
+function firstMatch(rules: readonly PolicyRule[], typeName: string): PolicyVerdict | null {
+	for (const rule of rules) {
+		if (selectorMatches(rule.selector, typeName)) {
+			return { action: rule.action, matchedRuleId: rule.id };
+		}
+	}
+
+	return null;
+}
+
+/**
+ * Same first-match evaluation as `evaluateType`, for a caller that already holds the flattened
+ * rule sequence rather than the attachments it came from.
+ */
+export function evaluateRules(
+	rules: readonly PolicyRule[],
+	defaultAction: PolicyAction,
+	typeName: string,
+): PolicyVerdict {
+	return firstMatch(rules, typeName) ?? { action: defaultAction, matchedRuleId: null };
+}
+
+/**
+ * Sorts every known type name by what one scope's own policy decides for it. At project scope
+ * this is the project's layer alone, before composition with the instance policy.
+ */
+export function partitionTypesByAction(
+	rules: readonly PolicyRule[],
+	defaultAction: PolicyAction,
+	typeNames: readonly string[],
+): Record<PolicyAction, string[]> {
+	const partition: Record<PolicyAction, string[]> = { allow: [], deny: [], delegate: [] };
+
+	for (const typeName of typeNames) {
+		partition[evaluateRules(rules, defaultAction, typeName).action].push(typeName);
+	}
+
+	return partition;
 }
 
 /**

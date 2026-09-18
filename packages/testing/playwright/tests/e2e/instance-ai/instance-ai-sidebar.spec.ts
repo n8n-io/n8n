@@ -17,11 +17,9 @@ test.describe(
 			await expect(n8n.page).toHaveURL(/\/assistant\/[^/]+$/);
 			const firstThreadPath = new URL(n8n.page.url()).pathname;
 
-			// Sidebar starts collapsed; open it so the thread list is queryable.
-			await n8n.instanceAi.openSidebar();
-
-			// Click new thread button
-			await n8n.instanceAi.sidebar.getNewThreadButton().click();
+			// Start a new thread from the main navigation, outside the history popover.
+			await n8n.instanceAi.getNewThreadButton().click();
+			await expect(n8n.page).toHaveURL(/\/assistant$/);
 
 			// Should show empty input in the new thread
 			await expect(n8n.instanceAi.getChatInput()).toBeVisible({ timeout: 10_000 });
@@ -32,6 +30,8 @@ test.describe(
 			await expect(n8n.page).toHaveURL(/\/assistant\/[^/]+$/);
 			const secondThreadPath = new URL(n8n.page.url()).pathname;
 			expect(secondThreadPath).not.toBe(firstThreadPath);
+
+			await n8n.instanceAi.openSidebar();
 
 			// Assert specific threads instead of a count, which can include stray rows.
 			await expect(n8n.instanceAi.sidebar.getThreadByHref(firstThreadPath)).toBeVisible();
@@ -49,12 +49,9 @@ test.describe(
 			await expect(n8n.page).toHaveURL(/\/assistant\/[^/]+$/);
 			const firstThreadPath = new URL(n8n.page.url()).pathname;
 
-			// Sidebar starts collapsed; open it so the new-thread button and
-			// thread list are queryable.
-			await n8n.instanceAi.openSidebar();
-
 			// Create second thread
-			await n8n.instanceAi.sidebar.getNewThreadButton().click();
+			await n8n.instanceAi.getNewThreadButton().click();
+			await expect(n8n.page).toHaveURL(/\/assistant$/);
 			await expect(n8n.instanceAi.getChatInput()).toBeVisible({ timeout: 10_000 });
 
 			await n8n.instanceAi.sendMessage(
@@ -62,6 +59,7 @@ test.describe(
 			);
 			await n8n.instanceAi.waitForResponseComplete();
 
+			await n8n.instanceAi.openSidebar();
 			const firstThread = n8n.instanceAi.sidebar.getThreadByHref(firstThreadPath);
 			await expect(firstThread).toBeVisible({ timeout: 10_000 });
 			await firstThread.click();
@@ -72,7 +70,7 @@ test.describe(
 			});
 		});
 
-		test('should rename thread via double-click', async ({ n8n }) => {
+		test('should rename thread via action menu', async ({ n8n }) => {
 			const thread = await n8n.api.createInstanceAiThread();
 			await n8n.api.renameInstanceAiThread(thread.id, 'Thread to rename');
 			await n8n.instanceAi.gotoThread(thread.id);
@@ -98,7 +96,6 @@ test.describe(
 
 			const targetThread = n8n.instanceAi.sidebar.getThreadByTitle('Thread to delete');
 			await expect(targetThread).toBeVisible({ timeout: 10_000 });
-			const threadCountBefore = await n8n.instanceAi.sidebar.getThreadItems().count();
 
 			// Hover the target thread to reveal the three-dots button, then click it
 			const actionButton = n8n.instanceAi.sidebar.getThreadActionsTrigger(targetThread);
@@ -109,10 +106,10 @@ test.describe(
 			await expect(n8n.instanceAi.sidebar.getDeleteMenuItem()).toBeVisible({ timeout: 5_000 });
 			await n8n.instanceAi.sidebar.getDeleteMenuItem().click();
 
-			// Thread should no longer be visible
-			await expect(n8n.instanceAi.sidebar.getThreadItems()).toHaveCount(threadCountBefore - 1, {
-				timeout: 10_000,
-			});
+			// Reopen after navigation so unmounting the popover cannot satisfy this assertion.
+			await expect(n8n.page).not.toHaveURL(new RegExp(`/assistant/${thread.id}$`));
+			await n8n.instanceAi.openSidebar();
+			await expect(n8n.instanceAi.sidebar.getThreadByTitle('Thread to delete')).toBeHidden();
 		});
 	},
 );

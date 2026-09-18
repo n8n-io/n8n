@@ -231,6 +231,7 @@ describe('InstanceAiPromptSuggestionsV2', () => {
 					promptKey: 'instanceAi.emptyState.quickExamples.answerSupportRequests.prompt',
 					suggestionId: 'answer-support-requests',
 					suggestionKind: 'prompt',
+					prefillType: 'suggestion_catalog',
 					position: 6,
 				},
 			],

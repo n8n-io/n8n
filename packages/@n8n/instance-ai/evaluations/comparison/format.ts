@@ -52,7 +52,11 @@ export interface RerunHint {
 	dispatchUrl: string;
 }
 
+export type EvaluationSubject = 'agent' | 'workflow';
+
 interface FormatOptions {
+	/** Artifact family covered by the run. Defaults to the legacy workflow report. */
+	subject?: EvaluationSubject;
 	/** Optional commit SHA for the terminal heading. Truncated to 8 chars. */
 	commitSha?: string;
 	/** When set, the comment shows how to re-run against the PR's latest commit. */
@@ -184,7 +188,7 @@ export function formatComparisonMarkdown(
 	const gate = options.gate;
 	const comparison = !gate && outcome?.kind === 'ok' ? outcome.result : undefined;
 
-	lines.push(formatHeading());
+	lines.push(formatHeading(options.subject));
 	lines.push('');
 	lines.push(renderRerunCallout(options.rerun));
 	lines.push('');
@@ -495,8 +499,8 @@ function renderWorkflowChecksSection(evaluation: MultiRunEvaluation): string[] {
 	return lines;
 }
 
-function formatHeading(): string {
-	return '### Instance AI Workflow Eval';
+function formatHeading(subject: EvaluationSubject = 'workflow'): string {
+	return `### Instance AI ${subject === 'agent' ? 'Agent' : 'Workflow'} Eval`;
 }
 
 function formatTopAlert(outcome?: ComparisonOutcome): string {
@@ -718,7 +722,7 @@ function renderPerTestCaseDetails(
 		return slug ? `\`${slug}\`` : `\`${caseDisplayPrompt(tc.testCase).slice(0, 70)}\``;
 	};
 	if (totalRuns > 1) {
-		lines.push(`| Workflow | Status | pass@${totalRuns} | pass^${totalRuns} |`);
+		lines.push(`| Test case | Status | pass@${totalRuns} | pass^${totalRuns} |`);
 		lines.push('|---|---|---|---|');
 		for (const tc of testCases) {
 			const units = [
@@ -744,7 +748,7 @@ function renderPerTestCaseDetails(
 			);
 		}
 	} else {
-		lines.push('| Workflow | Status | Pass rate |');
+		lines.push('| Test case | Status | Pass rate |');
 		lines.push('|---|---|---|');
 		for (const tc of testCases) {
 			const run = tc.runs[0];
@@ -1019,7 +1023,8 @@ export function formatComparisonTerminal(
 	const comparison = !gate && outcome?.kind === 'ok' ? outcome.result : undefined;
 
 	const titleSuffix = options.commitSha ? ` — ${options.commitSha.slice(0, 8)}` : '';
-	const title = `Instance AI Workflow Eval${titleSuffix}`;
+	const subject = options.subject === 'agent' ? 'Agent' : 'Workflow';
+	const title = `Instance AI ${subject} Eval${titleSuffix}`;
 	lines.push(title);
 	lines.push('═'.repeat(title.length));
 

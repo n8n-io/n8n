@@ -35,8 +35,12 @@ export interface WebhookThroughputOptions {
 	connections: number;
 	durationSeconds: number;
 	timeoutMs: number;
+	/** Maximum post-load observation window for queued executions. Default: 30s. */
+	drainTimeoutSeconds?: number;
 	/** PromQL metric to track workflow completions. Defaults to resolveMetricQuery(testInfo). */
 	metricQuery?: string;
+	/** Additional dimensions attached to every metric and the run report. */
+	dimensions?: BenchmarkDimensions;
 	/**
 	 * Seconds of discarded load BEFORE the measurement window. Warms V8 JIT,
 	 * PG connection pool, webhook cache, and BullMQ worker hot paths so the
@@ -51,6 +55,10 @@ export interface WebhookThroughputOptions {
 	 * by overlapping requests on the same socket.
 	 */
 	pipelining?: number;
+	/** Fail when transport and non-2xx errors exceed this percentage. */
+	maxErrorRatePct?: number;
+	/** Fail unless this share of successful HTTP responses reaches workflow completion. */
+	minCompletedResponseRatio?: number;
 }
 
 /**
@@ -71,6 +79,7 @@ export async function runWebhookThroughputTest(options: WebhookThroughputOptions
 		connections,
 		durationSeconds,
 		timeoutMs,
+		drainTimeoutSeconds = 30,
 		warmupSeconds = 10,
 		pipelining = DEFAULT_PIPELINING,
 	} = options;
@@ -79,6 +88,7 @@ export async function runWebhookThroughputTest(options: WebhookThroughputOptions
 	testInfo.setTimeout(timeoutMs + 120_000);
 
 	const dimensions: BenchmarkDimensions = {
+		...options.dimensions,
 		trigger: 'webhook',
 		nodes: nodeCount,
 		connections,
@@ -148,7 +158,7 @@ export async function runWebhookThroughputTest(options: WebhookThroughputOptions
 		waitForThroughput(services.observability.metrics, {
 			expectedCount: Infinity,
 			nodeCount,
-			timeoutMs: (durationSeconds + 30) * 1000,
+			timeoutMs: (durationSeconds + drainTimeoutSeconds) * 1000,
 			baselineValue: setup.baselineCounter,
 			metricQuery,
 		}),
@@ -157,7 +167,7 @@ export async function runWebhookThroughputTest(options: WebhookThroughputOptions
 	// Backlog growth rate: ingestion exceeding processing accumulates queue depth.
 	// For async webhooks at saturation, this is THE key indicator of sustainability.
 	const httpReqPerSec = cannonResult.requests.average;
-	const n8nExecPerSec = throughputResult.tailExecPerSec || throughputResult.avgExecPerSec;
+	const n8nExecPerSec = throughputResult.tailExecPerSec ?? throughputResult.avgExecPerSec;
 	const backlogGrowthPerSec = httpReqPerSec - n8nExecPerSec;
 	const ingestionVsExecutionRatio = n8nExecPerSec > 0 ? httpReqPerSec / n8nExecPerSec : 0;
 	const totalErrors = cannonResult.errors + cannonResult.non2xx;
@@ -247,5 +257,16 @@ export async function runWebhookThroughputTest(options: WebhookThroughputOptions
 	await attachReportMetrics(testInfo, report, dimensions);
 	renderRunReport(report);
 
-	expect(throughputResult.totalCompleted).toBeGreaterThan(0);
+	expect(cannonResult.requests.total).toBeGreaterThan(0);
+	if (options.maxErrorRatePct !== undefined) {
+		expect(errorRatePct).toBeLessThanOrEqual(options.maxErrorRatePct);
+	}
+	if (options.minCompletedResponseRatio !== undefined) {
+		const successfulResponses = cannonResult.requests.total - cannonResult.non2xx;
+		const completionRatio =
+			successfulResponses > 0 ? throughputResult.totalCompleted / successfulResponses : 0;
+		expect(completionRatio).toBeGreaterThanOrEqual(options.minCompletedResponseRatio);
+	} else {
+		expect(throughputResult.totalCompleted).toBeGreaterThan(0);
+	}
 }

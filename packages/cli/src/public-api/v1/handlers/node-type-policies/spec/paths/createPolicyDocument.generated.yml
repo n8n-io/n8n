@@ -1,0 +1,79 @@
+operationId: createPolicyDocument
+tags:
+  - NodeTypePolicy
+summary: Create a node type policy document
+description: Creates a reusable policy document that is not yet attached to any scope. Rule ids must be unique within the list. `warnings` lists rules that an earlier rule already shadows.
+x-required-scope: nodeTypePolicy:manage
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          rules:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  minLength: 1
+                action:
+                  type: string
+                  enum:
+                    - allow
+                    - deny
+                    - delegate
+                selector:
+                  oneOf:
+                    - type: object
+                      properties:
+                        kind:
+                          type: string
+                          enum:
+                            - name
+                        value:
+                          type: string
+                          minLength: 1
+                      required:
+                        - kind
+                        - value
+                    - type: object
+                      properties:
+                        kind:
+                          type: string
+                          enum:
+                            - package
+                        value:
+                          type: string
+                          minLength: 1
+                      required:
+                        - kind
+                        - value
+              required:
+                - id
+                - action
+                - selector
+        required:
+          - rules
+responses:
+  '201':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          $ref: ../../../../shared/spec/schemas/nodeTypePolicyDocumentWriteResultPublicDto.generated.yml
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '415':
+    $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
+  '503':
+    $ref: ../../../../shared/spec/responses/serviceUnavailable.yml

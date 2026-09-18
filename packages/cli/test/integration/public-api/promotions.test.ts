@@ -1,6 +1,8 @@
+import { ApplyPackageResultDto, type ContinueApplyPackageDto } from '@n8n/api-types';
+import { ModuleRegistry } from '@n8n/backend-common';
 import { createTeamProject, getPersonalProject, testDb } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
-import { ProjectRepository } from '@n8n/db';
+import { GLOBAL_MEMBER_ROLE, ProjectRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 
@@ -9,6 +11,7 @@ import { PromotionConfigRepository } from '@/modules/promotions.ee/database/repo
 import { PromotionConnectionProjectRepository } from '@/modules/promotions.ee/database/repositories/promotion-connection-project.repository';
 import { PromotionConnectionRepository } from '@/modules/promotions.ee/database/repositories/promotion-connection.repository';
 import { PromotionProviderRepository } from '@/modules/promotions.ee/database/repositories/promotion-provider.repository';
+import { PromotionChangeService } from '@/modules/promotions.ee/promotion-change.service';
 import { PromotionProvidersService } from '@/modules/promotions.ee/promotion-providers.service';
 import { PromotionsService } from '@/modules/promotions.ee/promotions.service';
 import { createOwnerWithApiKey } from '@test-integration/db/users';
@@ -692,7 +695,209 @@ describe('Promotions in Public API', () => {
 		});
 	});
 
+	describe('change preview', () => {
+		it('checks the scope of the requested direction and forwards the query', async () => {
+			const getChanges = vi
+				.spyOn(Container.get(PromotionChangeService), 'getChanges')
+				.mockResolvedValue({ commitSha: 'a'.repeat(40), changes: [] });
+			try {
+				const pushOnly = testServer.publicApiAgentFor(
+					await createOwnerWithApiKey({ scopes: ['gitConnection:push'] }),
+				);
+				const pullOnly = testServer.publicApiAgentFor(
+					await createOwnerWithApiKey({ scopes: ['gitConnection:pull'] }),
+				);
+
+				const promote = await pushOnly.get('/promotions/projects/proj1/changes/promote');
+				expect(promote.status, JSON.stringify(promote.body)).toBe(200);
+				expect(promote.body).toEqual({ commitSha: 'a'.repeat(40), changes: [] });
+				expect(getChanges).toHaveBeenLastCalledWith(
+					expect.objectContaining({ id: expect.any(String) }),
+					'proj1',
+					'promote',
+					expect.anything(),
+				);
+
+				expect((await pushOnly.get('/promotions/projects/proj1/changes/apply')).status).toBe(403);
+				expect((await pullOnly.get('/promotions/projects/proj1/changes/promote')).status).toBe(403);
+
+				const apply = await pullOnly.get('/promotions/projects/proj1/changes/apply?search=order');
+				expect(apply.status, JSON.stringify(apply.body)).toBe(200);
+				expect(getChanges).toHaveBeenLastCalledWith(
+					expect.anything(),
+					'proj1',
+					'apply',
+					expect.objectContaining({ search: 'order' }),
+				);
+
+				expect((await pullOnly.get('/promotions/projects/proj1/changes/sideways')).status).toBe(
+					404,
+				);
+				expect(getChanges).toHaveBeenCalledTimes(2);
+			} finally {
+				getChanges.mockRestore();
+			}
+		});
+
+		it('explains that the direction needs a clone first', async () => {
+			const agent = testServer.publicApiAgentFor(owner);
+			await createConnection(agent);
+			const project = await createTeamProject('Team project', owner);
+
+			const response = await agent.get(`/promotions/projects/${project.id}/changes/apply`);
+
+			expect(response.status).toBe(400);
+			expect(response.body.message).toContain('not cloned');
+		});
+	});
+
 	describe('package operations', () => {
+		const continueBody: ContinueApplyPackageDto = {
+			expectedSource: { configId: 'config1', branchName: 'main', commitSha: 'a'.repeat(40) },
+		};
+
+		it.each(['apply', 'apply/continue'])('%s requires the pull API-key scope', async (route) => {
+			const restrictedOwner = await createOwnerWithApiKey({ scopes: ['variable:list'] });
+			const response = await testServer
+				.publicApiAgentFor(restrictedOwner)
+				.post(`/promotions/connections/someId/${route}`)
+				.send(continueBody);
+			expect(response.status).toBe(403);
+		});
+
+		it.each(['apply', 'apply/continue'])(
+			'%s requires a licensed and active module',
+			async (route) => {
+				const agent = testServer.publicApiAgentFor(owner);
+				testServer.license.disable('feat:gitConnections');
+				expect(
+					(await agent.post(`/promotions/connections/someId/${route}`).send(continueBody)).status,
+				).toBe(403);
+				testServer.license.enable('feat:gitConnections');
+				const active = vi.spyOn(Container.get(ModuleRegistry), 'isActive').mockReturnValue(false);
+				try {
+					expect(
+						(await agent.post(`/promotions/connections/someId/${route}`).send(continueBody)).status,
+					).toBe(503);
+				} finally {
+					active.mockRestore();
+				}
+			},
+		);
+
+		it.each(['apply', 'apply/continue'])(
+			'%s rejects a user without the pull grant',
+			async (route) => {
+				await Container.get(UserRepository).update(owner.id, { role: GLOBAL_MEMBER_ROLE });
+				const response = await testServer
+					.publicApiAgentFor(owner)
+					.post(`/promotions/connections/someId/${route}`)
+					.send(continueBody);
+				expect(response.status).toBe(403);
+			},
+		);
+
+		it('rejects Continue requests with missing or unsupported source fields', async () => {
+			const agent = testServer.publicApiAgentFor(owner);
+			for (const body of [
+				{},
+				{ ...continueBody, force: true },
+				{ expectedSource: { ...continueBody.expectedSource, commitSha: 'HEAD' } },
+				{ expectedSource: { ...continueBody.expectedSource, resolved: true } },
+			]) {
+				const response = await agent
+					.post('/promotions/connections/someId/apply/continue')
+					.send(body);
+				expect(response.status).toBe(400);
+			}
+		});
+
+		it.each(['blocked', 'applied', 'source-changed'] as const)(
+			'returns the %s contract through both Apply routes with only the pull API-key scope',
+			async (status) => {
+				const id = await createConnection(testServer.publicApiAgentFor(owner));
+				const restrictedOwner = await createOwnerWithApiKey({ scopes: ['gitConnection:pull'] });
+				const agent = testServer.publicApiAgentFor(restrictedOwner);
+				const consumers = [
+					{
+						project: { id: 'project1', name: 'Orders' },
+						workflows: [{ id: 'workflow1', name: 'Process order' }],
+					},
+				];
+				const warnings = [
+					{
+						kind: 'variable',
+						code: 'variable-shadowed',
+						name: 'API_URL',
+						scope: { kind: 'global' },
+						consumers,
+					},
+				];
+				const result = ApplyPackageResultDto.parse({
+					status,
+					connectionId: id,
+					configId: continueBody.expectedSource.configId,
+					git: { branchName: 'main', commitSha: continueBody.expectedSource.commitSha },
+					preflight: {
+						missingBindings: [
+							{
+								kind: 'variable',
+								name: 'API_URL',
+								variableType: 'string',
+								scope: { kind: 'global' },
+								sourceValue: '',
+								consumers,
+							},
+						],
+						accessRequirements: [],
+						conflicts: [],
+						warnings,
+					},
+					warnings,
+					counts: {
+						projects: { created: 0, updated: 0, skipped: 0, deleted: 0 },
+						folders: { created: 0, skipped: 0, removed: 0 },
+						workflows: {
+							created: 0,
+							updated: 0,
+							skipped: 0,
+							archived: 0,
+							deleted: 0,
+							publishing: { published: 0, unpublished: 0, unchanged: 0, blocked: 0, failed: 0 },
+						},
+						credentials: { matched: 0, stubbed: 0 },
+						dataTables: { matched: 0, created: 0 },
+						variables: { matched: 0, created: 0, updated: 0, stubbed: 0, missing: 0 },
+						tags: { matched: 0, created: 0, renamed: 0, reconciled: 0, skipped: 0 },
+					},
+				});
+				const service = Container.get(PromotionsService);
+				const initial = vi.spyOn(service, 'apply').mockResolvedValue(result);
+				const continuation = vi.spyOn(service, 'continueApply').mockResolvedValue(result);
+				try {
+					for (const route of ['apply', 'apply/continue']) {
+						const response = await agent
+							.post(`/promotions/connections/${id}/${route}`)
+							.send(continueBody);
+						expect(response.status, JSON.stringify(response.body)).toBe(200);
+						expect(response.body).toEqual(result);
+					}
+					expect(initial).toHaveBeenCalledWith(
+						id,
+						expect.objectContaining({ id: restrictedOwner.id }),
+					);
+					expect(continuation).toHaveBeenCalledWith(
+						id,
+						expect.objectContaining({ id: restrictedOwner.id }),
+						continueBody,
+					);
+				} finally {
+					initial.mockRestore();
+					continuation.mockRestore();
+				}
+			},
+		);
+
 		it('explains that Promote needs a clone first', async () => {
 			const agent = testServer.publicApiAgentFor(owner);
 			const id = await createConnection(agent);
@@ -709,6 +914,11 @@ describe('Promotions in Public API', () => {
 			const id = await createConnection(agent);
 
 			const response = await agent.post(`/promotions/connections/${id}/apply`);
+			const continued = await agent
+				.post(`/promotions/connections/${id}/apply/continue`)
+				.send(continueBody);
+			expect(continued.status).toBe(400);
+			expect(continued.body.message).toContain('not cloned');
 			expect(response.status).toBe(400);
 			expect(response.body.message).toContain('not cloned');
 		});
@@ -724,6 +934,10 @@ describe('Promotions in Public API', () => {
 			});
 
 			const response = await agent.post(`/promotions/connections/${create.body.id}/apply`);
+			const continued = await agent
+				.post(`/promotions/connections/${create.body.id}/apply/continue`)
+				.send(continueBody);
+			expect(continued.status).toBe(404);
 			expect(response.status).toBe(404);
 		});
 
@@ -753,6 +967,11 @@ describe('Promotions in Public API', () => {
 			expect(promote.body.message).toContain('instance connection');
 			expect(apply.status).toBe(400);
 			expect(apply.body.message).toContain('instance connection');
+			const continued = await agent
+				.post(`/promotions/connections/${id}/apply/continue`)
+				.send(continueBody);
+			expect(continued.status).toBe(400);
+			expect(continued.body.message).toContain('instance connection');
 		});
 	});
 });

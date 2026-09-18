@@ -60,14 +60,18 @@ const SOURCE_IGNORE = [
 ];
 
 /**
- * An ESLint directive comment: a disable in any of its three forms, or an
+ * A linter directive comment: a disable in any of its three forms, or an
  * inline configuration comment (`eslint rule: severity`). The captured form
  * must end right after its name, so `eslint-enable` and `eslint-env` do not
  * match. A quote right before the comment opener means directive text inside
  * a string literal (e.g. a code generator), not a directive.
+ *
+ * oxlint honours its own `oxlint-disable` spelling as well as ESLint's, so a
+ * scanner that knows only the ESLint form leaves a silent second way to
+ * suppress a guardrail in any package that runs oxlint.
  */
 const DIRECTIVE =
-	/(?<!['"`])(?:\/\/|\/\*)[ \t]*(eslint-disable(?:-next-line|-line)?|eslint)(?![\w-])(.*)$/;
+	/(?<!['"`])(?:\/\/|\/\*)[ \t]*((?:es|ox)lint-disable(?:-next-line|-line)?|(?:es|ox)lint)(?![\w-])(.*)$/;
 
 function stringArrayOption(value: unknown, fallback: string[]): string[] {
 	return Array.isArray(value) && value.every((entry): entry is string => typeof entry === 'string')
@@ -211,7 +215,7 @@ export class EncryptionBoundaryRule extends BaseRule<CodeHealthContext> {
 		const body = rest.split('*/')[0];
 		const column = match.index + 1;
 
-		if (form === 'eslint') {
+		if (form === 'eslint' || form === 'oxlint') {
 			const rule = guardedRules.find((name) =>
 				new RegExp(`(?:^|[\\s/'"])${name}(?![\\w-])`).test(body),
 			);
@@ -220,7 +224,7 @@ export class EncryptionBoundaryRule extends BaseRule<CodeHealthContext> {
 				file,
 				lineNumber,
 				column,
-				`An inline ESLint configuration comment reconfigures the encryption guardrail \`${rule}\`.`,
+				`An inline \`${form}\` configuration comment reconfigures the encryption guardrail \`${rule}\`.`,
 				`Remove the comment. Widen the boundary in ${BOUNDARY_CONFIG_PATH} instead.`,
 			);
 		}

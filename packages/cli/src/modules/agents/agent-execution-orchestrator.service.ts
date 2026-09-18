@@ -5,7 +5,11 @@ import {
 	type SerializableAgentState,
 	type StreamChunk,
 } from '@n8n/agents';
-import type { AgentMessageAuthor, AgentPersistedMessageDto } from '@n8n/api-types';
+import type {
+	AgentBackgroundJobSignal,
+	AgentMessageAuthor,
+	AgentPersistedMessageDto,
+} from '@n8n/api-types';
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { AiConfig } from '@n8n/config';
@@ -48,6 +52,7 @@ import { createAgentExecutionCounter } from './utils/agent-execution-counter';
 import { getPublishedAgentSnapshot } from './utils/agent-published-snapshot';
 import { buildInboundUserMessage } from './utils/inbound-attachments';
 import { streamAgentChunks } from './utils/agent-stream';
+import { createAttributionTracker } from './utils/mcp-attribution';
 import { executionsToMessagesDto } from './utils/execution-to-message-mapper';
 
 export interface AgentMemoryScope {
@@ -172,6 +177,7 @@ export interface ExecuteForTaskNowConfig {
 }
 
 export interface ExecuteForWakeConfig {
+	backgroundJobSignal: AgentBackgroundJobSignal;
 	agentId: string;
 	projectId: string;
 	message: string;
@@ -189,6 +195,8 @@ export interface ExecuteForWakeConfig {
 export interface StreamChatResponseConfig {
 	agentInstance: RuntimeAgent;
 	toolRegistry: ToolRegistry;
+	/** See `AgentRuntime.mcpServerAttributions`. */
+	mcpServerAttributions: Map<string, string>;
 	agentId: string;
 	userId?: string;
 	/** What the user wrote; recorded in the execution transcript. */
@@ -217,6 +225,7 @@ export interface StreamChatResponseConfig {
 	hideUserMessageFromTranscript?: boolean;
 	/** Prevent this wake run from triggering another wake. */
 	isWakeRun?: boolean;
+	backgroundJobSignal?: AgentBackgroundJobSignal;
 }
 
 function withApprovalToolDetails(chunk: StreamChunk, toolRegistry: ToolRegistry): StreamChunk {
@@ -532,9 +541,14 @@ export class AgentExecutionOrchestratorService {
 				startedAt,
 				'Failed to start resumed agent execution recording',
 			);
+			const attributionTracker = createAttributionTracker(runtime.mcpServerAttributions);
 			for await (const value of streamAgentChunks(resultStream.stream)) {
 				const chunk = usePublishedVersion ? value : withApprovalToolDetails(value, toolRegistry);
 				recorder.record(chunk);
+				for (const attributionChunk of attributionTracker.observe(chunk)) {
+					recorder.record(attributionChunk);
+					yield attributionChunk;
+				}
 				yield chunk;
 			}
 		} catch (error) {
@@ -622,6 +636,7 @@ export class AgentExecutionOrchestratorService {
 			yield* this.streamChatResponse({
 				agentInstance: runtime.agent,
 				toolRegistry: runtime.toolRegistry,
+				mcpServerAttributions: runtime.mcpServerAttributions,
 				agentId,
 				userId: user.id,
 				message,
@@ -687,6 +702,7 @@ export class AgentExecutionOrchestratorService {
 			yield* this.streamChatResponse({
 				agentInstance: runtime.agent,
 				toolRegistry: runtime.toolRegistry,
+				mcpServerAttributions: runtime.mcpServerAttributions,
 				agentId,
 				message,
 				modelMessage,
@@ -734,6 +750,7 @@ export class AgentExecutionOrchestratorService {
 			yield* this.streamChatResponse({
 				agentInstance: runtime.agent,
 				toolRegistry: runtime.toolRegistry,
+				mcpServerAttributions: runtime.mcpServerAttributions,
 				agentId,
 				message,
 				memory,
@@ -778,6 +795,7 @@ export class AgentExecutionOrchestratorService {
 			yield* this.streamChatResponse({
 				agentInstance: runtime.agent,
 				toolRegistry: runtime.toolRegistry,
+				mcpServerAttributions: runtime.mcpServerAttributions,
 				agentId,
 				userId: user.id,
 				message,
@@ -820,6 +838,7 @@ export class AgentExecutionOrchestratorService {
 			const stream = this.streamChatResponse({
 				agentInstance: runtime.agent,
 				toolRegistry: runtime.toolRegistry,
+				mcpServerAttributions: runtime.mcpServerAttributions,
 				agentId,
 				...(isDraft ? { userId: identity.user.id } : {}),
 				message,
@@ -835,6 +854,7 @@ export class AgentExecutionOrchestratorService {
 				sandboxPrincipalHash: identity.principalHash,
 				hideUserMessageFromTranscript: true,
 				isWakeRun: true,
+				backgroundJobSignal: config.backgroundJobSignal,
 			});
 
 			// The runtime returns model errors as stream chunks. Throw here so the caller
@@ -891,6 +911,7 @@ export class AgentExecutionOrchestratorService {
 		const {
 			agentInstance,
 			toolRegistry,
+			mcpServerAttributions,
 			agentId,
 			userId,
 			message,
@@ -909,15 +930,17 @@ export class AgentExecutionOrchestratorService {
 			sandboxPrincipalHash,
 			hideUserMessageFromTranscript,
 			isWakeRun,
+			backgroundJobSignal,
 		} = config;
 		const { threadId, resourceId } = memory;
 
 		let executionId: string | undefined;
-		const recorder = this.createRecorder(toolRegistry, () => executionId, {
-			projectId,
-			agentId,
-			threadId,
-		});
+		const recorder = this.createRecorder(
+			toolRegistry,
+			() => executionId,
+			{ projectId, agentId, threadId },
+			backgroundJobSignal,
+		);
 		const startedAt = recorder.startedAt;
 
 		try {
@@ -949,6 +972,9 @@ export class AgentExecutionOrchestratorService {
 				...(abortSignal ? { abortSignal } : {}),
 			});
 			const startParams: StartExecutionParams = {
+				...(backgroundJobSignal
+					? { initialTimeline: structuredClone(recorder.getMessageRecord().timeline) }
+					: {}),
 				threadId,
 				agentId,
 				agentName: agentInstance.name,
@@ -966,6 +992,7 @@ export class AgentExecutionOrchestratorService {
 				startedAt,
 				'Failed to start agent execution recording',
 			);
+			const attributionTracker = createAttributionTracker(mcpServerAttributions);
 			for await (const value of streamAgentChunks(resultStream.stream)) {
 				const chunk = includeHitlToolDetails ? withApprovalToolDetails(value, toolRegistry) : value;
 				recorder.record(chunk);
@@ -981,6 +1008,10 @@ export class AgentExecutionOrchestratorService {
 						recorder.record(chunk);
 						yield chunk;
 					}
+				}
+				for (const attributionChunk of attributionTracker.observe(chunk)) {
+					recorder.record(attributionChunk);
+					yield attributionChunk;
 				}
 				yield chunk;
 			}
@@ -1097,17 +1128,22 @@ export class AgentExecutionOrchestratorService {
 		toolRegistry: ToolRegistry,
 		getExecutionId: () => string | undefined,
 		context: Pick<StartExecutionParams, 'projectId' | 'agentId' | 'threadId'>,
+		backgroundJobSignal?: AgentBackgroundJobSignal,
 	): ExecutionRecorder {
-		return new ExecutionRecorder(toolRegistry, (timeline) => {
-			const executionId = getExecutionId();
-			if (executionId) {
-				this.agentExecutionService.recordTimelineSnapshot({
-					...context,
-					executionId,
-					timeline,
-				});
-			}
-		});
+		return new ExecutionRecorder(
+			toolRegistry,
+			(timeline) => {
+				const executionId = getExecutionId();
+				if (executionId) {
+					this.agentExecutionService.recordTimelineSnapshot({
+						...context,
+						executionId,
+						timeline,
+					});
+				}
+			},
+			backgroundJobSignal,
+		);
 	}
 
 	private async tryStartExecution(

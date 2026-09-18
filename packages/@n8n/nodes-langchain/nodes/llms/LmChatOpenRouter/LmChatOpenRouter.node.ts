@@ -396,10 +396,14 @@ export class LmChatOpenRouter implements INodeType {
 			baseURL: credentials.url,
 			fetch: createOpenRouterFetch(globalThis.fetch),
 			fetchOptions: {
-				dispatcher: getProxyAgent(credentials.url, {
-					headersTimeout: timeout,
-					bodyTimeout: timeout,
-				}),
+				dispatcher: getProxyAgent(
+					credentials.url,
+					{
+						headersTimeout: timeout,
+						bodyTimeout: timeout,
+					},
+					this.helpers.getSecureEgressFilter(),
+				),
 			},
 		};
 

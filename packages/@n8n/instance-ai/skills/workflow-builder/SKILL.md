@@ -219,7 +219,9 @@ follow its build → publish → assign steps.
    Decide grouping now, while writing the source: `.group(...)` lives in the code, so
    it cannot be added after the build. See [Node Groups](#node-groups) for the
    criteria, and reach a decision either way — groups declared, or this workflow does
-   not warrant them.
+   not warrant them. When the canvas will be over the ceiling and no valid group can hold
+   the remaining nodes, pass `groupingDecision: 'not_warranted'` with a `groupingReason`
+   to `build-workflow`; without groups or that reason the build is refused.
 7. Before the first `build-workflow` (and again after substantive edits), run
    SDK validation on the workspace source file via
    `workspace_execute_command`:
@@ -589,8 +591,12 @@ unsolicited `sticky()`, forbidden builder constructs (e.g. `.map()`), and
 repeated `.onTrue()` / `.onFalse()` overwrites on the same IF variable. Fix
 every reported error and warning before calling `build-workflow`.
 
-- Avoid code node where possible, use n8n nodes that help do the same thing.
-  If it makes it simpler, go ahead and use code node.
+- Native node first: shape, compute, default or format fields with
+  **Edit Fields (Set)** and expressions (full JavaScript); **Filter**, **IF** /
+  **Switch**, **Sort**, **Remove Duplicates**, **Aggregate**, **Split Out**,
+  **Limit** and **Merge** cover the rest. A Code node is only for multi-pass
+  algorithms, `$getWorkflowStaticData` state, fence-stripping model output,
+  try/catch around upstream node access, or a step needing three or more nodes.
 - Write Code nodes in JavaScript unless the user explicitly asks for Python.
   `language: 'pythonNative'` runs a locked-down runner that defines only `_items`
   (all-items mode), `_item` (per-item mode) and `print()` — no `_('Node Name')`,
@@ -601,8 +607,8 @@ every reported error and warning before calling `build-workflow`.
   anything the runner would reject.
 - SDK builder code is a restricted subset of TypeScript that builds a static
   graph; it is not a Code node and does not run. Build strings with template
-  literals; do runtime joining, aggregation, or transforms in a Code node or
-  `expr()`. Full allowed/forbidden list:
+  literals; do runtime joining, aggregation, or transforms with `expr()` in a
+  native node. Full allowed/forbidden list and "Native node mappings" table:
   `${N8N_WORKSPACE_DIR}/knowledge-base/reference/workflow-sdk-language.md`.
 - Use `@n8n/workflow-sdk`.
 - Do not specify node positions. They are auto-calculated by the layout engine.
@@ -992,9 +998,13 @@ store its own public endpoint.
 Do not report a build as done until you have made the grouping decision described in
 [Node Groups](#node-groups) and checked what the build did with it. A dropped-group warning
 names what was invalid — a duplicate name, a member that does not exist, a boundary the rules
-reject: fix what the warning reports and build again. If the top level is still above
-{{TOP_LEVEL_ITEM_CEILING_PLACEHOLDER}} items, name each remaining item and why it cannot join
-a group — if you cannot, group it and build again.
+reject: fix what the warning reports and build again. A `GROUPING_DECISION_MISSING` error means
+the build was refused: fix the source, or pass the opt-out with a reason. A
+`GROUP_DROPPED_OVER_CEILING` error also refuses the build: a declared group was invalid and the
+canvas is still over the ceiling. Fix the boundary the message names — the opt-out does not
+apply. If the top level is still above
+{{TOP_LEVEL_ITEM_CEILING_PLACEHOLDER}} items with groups in place, name each remaining item and
+why it cannot join a group.
 
 For a successful build, finish with one concise sentence naming the workflow and
 what changed. Include the workflow ID when it is available. If setup is
