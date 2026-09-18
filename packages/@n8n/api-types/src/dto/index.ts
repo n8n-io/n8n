@@ -233,9 +233,11 @@ export { CreateOrUpdateTagRequestDto } from './tag/create-or-update-tag-request.
 export { RetrieveTagQueryDto } from './tag/retrieve-tag-query.dto';
 export { ListTagsQueryDto } from './tag/list-tags-query.dto';
 export {
-	CreateTagPublicDto,
 	TagPublicDto,
 	TagListPublicDto,
+	CreateTagPublicDto,
+	UpdateTagPublicDto,
+	UpdatedTagPublicDto,
 	tagPublicSchema,
 } from './tag/tag-public.dto';
 
@@ -252,6 +254,14 @@ export { UpdateFolderDto } from './folders/update-folder.dto';
 export { DeleteFolderDto } from './folders/delete-folder.dto';
 export { ListFolderQueryDto } from './folders/list-folder-query.dto';
 export { TransferFolderBodyDto } from './folders/transfer-folder.dto';
+export {
+	FolderListPublicDto,
+	FolderPublicDto,
+	FolderDetailsPublicDto,
+	ListFoldersQueryPublicDto,
+	folderPublicSchema,
+} from './folders/folder-public.dto';
+export type { FolderPublic } from './folders/folder-public.dto';
 
 export { ListInsightsWorkflowQueryDto } from './insights/list-workflow-query.dto';
 export { InsightsDateFilterDto } from './insights/date-filter.dto';
@@ -515,18 +525,19 @@ export {
 } from './otel/update-otel-settings.dto';
 export { TestOtelTraceDto } from './otel/test-otel-trace.dto';
 
-export { InstanceAiExamplesQueryDto } from './instance-ai-examples/instance-ai-examples-query.dto';
-
 export {
+	PromotionChangesDto,
 	PromotionChangesQueryDto,
 	promotableResourceSchema,
 	promotableResourceStatusSchema,
 	promotableResourceTypeSchema,
 	promoteRequestSchema,
+	promotionChangesSchema,
 	type PromotableResource,
 	type PromotableResourceStatus,
 	type PromotableResourceType,
 	type PromoteRequest,
+	type PromotionChanges,
 } from './promotions/promotable-resource.dto';
 
 export { promotionDisplayNameSchema } from './promotions/promotion-common.dto';
@@ -597,6 +608,7 @@ export {
 } from './promotions/promotion-connection.dto';
 export {
 	ApplyPackageResultDto,
+	ContinueApplyPackageDto,
 	PromotePackageDto,
 	PromotePackageResultDto,
 	applyPackageCountsSchema,

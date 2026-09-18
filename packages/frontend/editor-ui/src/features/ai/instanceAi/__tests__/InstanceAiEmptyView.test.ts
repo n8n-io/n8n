@@ -14,7 +14,7 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { INSTANCE_AI_THREAD_VIEW } from '../constants';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { Project, ProjectListItem } from '@/features/collaboration/projects/projects.types';
-import type { FrontendModuleSettings } from '@n8n/api-types';
+import { defaultModuleSettings } from './createThreadComponentRenderer';
 
 const PERSONAL_PROJECT_ID = 'personal-project-id';
 
@@ -33,14 +33,8 @@ const {
 	appSettingsStoreMock,
 	replaceMock,
 	showErrorMock,
-	templateExamplesStoreMock,
-	templateExamplesEnabled,
 	telemetryTrack,
 } = vi.hoisted(() => ({
-	templateExamplesStoreMock: {
-		hasLoadFailed: false,
-	},
-	templateExamplesEnabled: { value: false },
 	experimentMocks: {
 		proactiveAgentEnabled: { value: false },
 		promptSuggestionsV2Enabled: { value: false },
@@ -240,39 +234,6 @@ vi.mock('@/experiments/instanceAiWorkflowPreviewSuggestions', () => ({
 	getPreviewWorkflow: () => null,
 }));
 
-vi.mock('@/experiments/instanceAiTemplateExamples', async () => {
-	const { computed, h } = await import('vue');
-	type VueSetupContext = {
-		emit: (event: string, ...args: unknown[]) => void;
-	};
-	return {
-		useInstanceAiTemplateExamplesExperiment: () => ({
-			isFeatureEnabled: computed(() => templateExamplesEnabled.value),
-			currentVariant: computed(() => (templateExamplesEnabled.value ? 'variant' : 'control')),
-		}),
-		useInstanceAiTemplateExamplesStore: () => templateExamplesStoreMock,
-		TEMPLATE_PROMPT_SUFFIX:
-			'\n\nAsk me questions to narrow down my use case and the tools I use to best personalize the example for my needs.',
-		TemplateExamplesCatalog: {
-			name: 'TemplateExamplesCatalogStub',
-			emits: ['hover-prompt', 'hover-end', 'select-prompt'],
-			setup(_props: Record<string, unknown>, { emit }: VueSetupContext) {
-				return () =>
-					h('div', { 'data-test-id': 'template-examples-catalog' }, [
-						h(
-							'button',
-							{
-								'data-test-id': 'template-example-card',
-								onClick: () => emit('select-prompt', 'Build me an invoice automation'),
-							},
-							'example card',
-						),
-					]);
-			},
-		},
-	};
-});
-
 vi.mock('@/app/composables/usePageRedirectionHelper', () => ({
 	usePageRedirectionHelper: () => ({ goToUpgrade: vi.fn() }),
 }));
@@ -469,20 +430,6 @@ const renderView = createComponentRenderer(InstanceAiEmptyView, {
 	},
 });
 
-type InstanceAiModuleSettings = NonNullable<FrontendModuleSettings['instance-ai']>;
-
-const defaultModuleSettings: InstanceAiModuleSettings = {
-	enabled: true,
-	localGatewayDisabled: false,
-	browserUseEnabled: true,
-	proxyEnabled: false,
-	cloudManaged: false,
-	sandboxEnabled: true,
-	workflowBuilderAvailable: true,
-	sandboxUnavailableReason: null,
-	runDebugEnabled: false,
-};
-
 describe('InstanceAiEmptyView', () => {
 	let store: ReturnType<typeof mockedStore<typeof useInstanceAiStore>>;
 	let thread: ThreadRuntime;
@@ -533,8 +480,6 @@ describe('InstanceAiEmptyView', () => {
 		cloudPlanStoreMock.state.initialized = false;
 		cloudPlanStoreMock.currentUserCloudInfo = null;
 		appSettingsStoreMock.isCloudDeployment = false;
-		templateExamplesStoreMock.hasLoadFailed = false;
-		templateExamplesEnabled.value = false;
 	});
 
 	afterEach(() => {
@@ -1060,12 +1005,6 @@ describe('InstanceAiEmptyView', () => {
 				experimentMocks.proactiveAgentEnabled.value = true;
 			},
 		},
-		{
-			name: 'template examples',
-			setup: () => {
-				templateExamplesEnabled.value = true;
-			},
-		},
 	])('does not track inspiration from taxonomy exposure when $name is active', ({ setup }) => {
 		experimentMocks.inspirationFromTaxonomyVariant.value = 'control';
 		appSettingsStoreMock.isCloudDeployment = true;
@@ -1356,51 +1295,5 @@ describe('InstanceAiEmptyView', () => {
 		expect(store.getOrCreateRuntime).not.toHaveBeenCalled();
 		expect(thread.sendMessage).not.toHaveBeenCalled();
 		expect(replaceMock).not.toHaveBeenCalled();
-	});
-
-	it('injects the prompt into the input when a template example card is clicked', async () => {
-		templateExamplesEnabled.value = true;
-
-		const { getByTestId } = renderView();
-
-		expect(getByTestId('template-examples-catalog')).toBeInTheDocument();
-		expect(getByTestId('instance-ai-free-nudge-stub')).toHaveAttribute('data-eligible', 'true');
-
-		await fireEvent.click(getByTestId('template-example-card'));
-		await flushPromises();
-
-		expect(getByTestId('instance-ai-input-stub')).toHaveClass('inputPulse');
-		expect(getByTestId('instance-ai-free-nudge-stub')).not.toHaveClass('inputPulse');
-		expect(getByTestId('instance-ai-input-text')).toHaveTextContent(
-			'Build me an invoice automation',
-		);
-	});
-
-	// The pre-fill tagging must not disturb what the agent receives: the suffix is
-	// still appended, and the card now reports itself instead of being recovered by
-	// matching that suffix against the message body.
-	it('sends a template example with its suffix intact and reports it as a pre-fill', async () => {
-		templateExamplesEnabled.value = true;
-		store.syncThread.mockResolvedValue(undefined);
-
-		const { getByTestId } = renderView();
-
-		await fireEvent.click(getByTestId('template-example-card'));
-		await flushPromises();
-		await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
-		await flushPromises();
-
-		expect(thread.sendMessage).toHaveBeenCalledWith(
-			'Build me an invoice automation\n\nAsk me questions to narrow down my use case and the tools I use to best personalize the example for my needs.',
-			{
-				authorship: {
-					kind: 'prefill',
-					prefillType: 'template_example',
-					promptModified: false,
-				},
-				attachments: undefined,
-				pushRef: 'test-push-ref',
-			},
-		);
 	});
 });

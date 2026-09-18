@@ -12,19 +12,38 @@
 //
 // `refresh` never creates a box. A box that GitHub already deleted (24 h
 // retention) is reported as expired, not as a failure.
-import { spawnSync } from 'node:child_process';
+//
+// `up` and `refresh` take minutes, so the comment goes up before the work starts
+// and is edited for each phase and once a minute after that. `preview.mjs --json`
+// prints one JSON line per phase on the channel this already parses; the report is
+// the line that carries a `url`.
+//
+// With `--report-cancelled` it posts one body and nothing else. The workflow runs
+// that on a cancelled or timed-out job, which kills this process mid-checklist.
+import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 import { PREVIEW_LABEL_PREFIX } from '../../scripts/preview-labels.mjs';
-import { ensureEnvVar, postOrUpdateComment } from './github-helpers.mjs';
+import { PREVIEW_PHASES, createLineSplitter, phaseIndex } from '../../scripts/preview-phases.mjs';
+import {
+	ensureEnvVar,
+	findCommentByMarker,
+	postOrUpdateComment,
+	updateCommentById,
+} from './github-helpers.mjs';
 
 export const BOT_MARKER = '<!-- codespace-preview -->';
+// Only a progress body carries this. The cancelled-run step checks for it before it
+// writes, so a run cancelled while it was still queued cannot replace a good ready
+// comment left by the run before it.
+export const PROGRESS_MARKER = '<!-- codespace-preview:progress -->';
 export const PREVIEW_LABEL = 'codespace-preview';
 // Copied from `preview.mjs`, which owns them, so they move together. They cannot be
 // imported: that module runs its command switch on import. They appear in the comment
 // so a reviewer knows how long the instance lasts without reading the script.
 const IDLE_TIMEOUT = '2 hours';
 const RETENTION_PERIOD = '24 hours';
+const CODESPACE_ENV_VARIABLE_URL = "https://internal.users.n8n.cloud/form/codespace-environments";
 // A slept box comes back with a private port, so every recovery hint points here.
 export const WORKFLOW_URL =
 	'https://github.com/n8n-io/n8n/actions/workflows/util-codespace-preview.yml';
@@ -32,6 +51,8 @@ export const WORKFLOW_URL =
 export const DISPATCH_OPERATIONS = ['up', 'refresh', 'down'];
 // Resolved against this file, so the script runs the same from any directory.
 const PREVIEW_SCRIPT = fileURLToPath(new URL('../../scripts/preview.mjs', import.meta.url));
+// Often enough to look alive, rarely enough that the edit history stays readable.
+const HEARTBEAT_MS = 60_000;
 
 /**
  * A `preview:*` label configures an instance that already exists, so toggling one
@@ -133,6 +154,9 @@ export function readyComment({ url, codespace, sha, orgVisible, pr }) {
 		'',
 		`**[Open the preview](${url}/preview-signin)** — one click signs you in.`,
 		'',
+		`If you need to modify the environment variables of this instance, navigate to ${CODESPACE_ENV_VARIABLE_URL}?pr=${pr} and submit them.`,
+		'The instance will refresh and apply your variables.',
+		'',
 		'| | |',
 		'| --- | --- |',
 		`| URL | ${url} |`,
@@ -169,6 +193,131 @@ export function expiredComment({ pr }) {
 	].join('\n');
 }
 
+/**
+ * `4m 12s`, for a comment that is read while it counts. Anything unusable reads as
+ * `0s`: a wrong duration in a status line is worse than a boring one.
+ *
+ * @param {number} ms
+ */
+export function formatElapsed(ms) {
+	const total = Number.isFinite(ms) && ms > 0 ? Math.floor(ms / 1000) : 0;
+	const seconds = total % 60;
+	const minutes = Math.floor(total / 60) % 60;
+	const hours = Math.floor(total / 3600);
+
+	if (hours) return `${hours}h ${minutes}m`;
+	if (minutes) return `${minutes}m ${String(seconds).padStart(2, '0')}s`;
+	return `${seconds}s`;
+}
+
+/**
+ * The instance URL out of a body a previous run left. A refresh replaces the ready
+ * comment with a checklist, so without this the PR loses the URL for several
+ * minutes. Reads the URL row `readyComment` writes.
+ *
+ * @param {string} body
+ */
+export function previewUrlFromBody(body) {
+	return body.match(/^\| URL \| (\S+) \|$/m)?.[1];
+}
+
+/**
+ * One line of a `preview.mjs --json` run that reports a phase rather than the final
+ * result. A report carries a `url`; a progress line never does.
+ *
+ * @param {string} line
+ * @returns {{phase: string, detail?: string, sha?: string, codespace?: string} | undefined}
+ */
+export function parseProgressLine(line) {
+	const trimmed = line.trim();
+	if (!trimmed.startsWith('{')) return undefined;
+	try {
+		const parsed = JSON.parse(trimmed);
+		if (parsed && typeof parsed.phase === 'string' && parsed.url === undefined) return parsed;
+	} catch {}
+	return undefined;
+}
+
+/**
+ * The checklist, while the box is being set up. Pure: the caller passes the clock,
+ * so this renders the same body twice.
+ *
+ * @param {{
+ *   pr: string | number,
+ *   operation: 'up' | 'refresh',
+ *   runUrl: string,
+ *   sha?: string,
+ *   phase?: string,
+ *   detail?: string,
+ *   previousUrl?: string,
+ *   startedAt: number,
+ *   phaseStartedAt: number,
+ *   now: number,
+ * }} state
+ */
+export function progressComment({
+	pr,
+	operation,
+	runUrl,
+	sha,
+	phase,
+	detail,
+	previousUrl,
+	startedAt,
+	phaseStartedAt,
+	now,
+}) {
+	// Everything before the current phase is done. Going by position rather than by
+	// the phases actually seen keeps the list right when one never reports — an old
+	// PR head has no in-box emitter.
+	const current = phaseIndex(phase);
+	const inPhaseMs = now - phaseStartedAt;
+
+	const steps = PREVIEW_PHASES.map((step, index) => {
+		if (index < current) return `- [x] ${step.label}`;
+		if (index !== current) return `- [ ] ${step.label}`;
+		return `- [ ] **${step.label}**${detail ? ` — ${detail}` : ''} · ${formatElapsed(inPhaseMs)}`;
+	});
+
+	const slow = PREVIEW_PHASES[current]?.slowAfterMs;
+	const target = sha ? `\`${sha.slice(0, 7)}\`` : `PR #${pr}`;
+
+	return [
+		BOT_MARKER,
+		PROGRESS_MARKER,
+		`### Preview instance ${operation === 'refresh' ? 'updating to' : 'starting for'} ${target}`,
+		'',
+		'Setting up the box. This usually takes a few minutes.',
+		'',
+		...steps,
+		...(slow && inPhaseMs > slow
+			? ['', `> ${PREVIEW_PHASES[current].label} is taking longer than usual.`]
+			: []),
+		// A refresh stops the old backend before it rebuilds, so the URL is down for
+		// the rest of this run. Keep it on the PR anyway: it is the same URL when the
+		// run finishes, and losing it for several minutes is worse than saying so.
+		...(previousUrl
+			? ['', `The URL does not change: ${previousUrl}. It stops answering until this finishes.`]
+			: []),
+		'',
+		`Elapsed ${formatElapsed(now - startedAt)} · updated ${new Date(now).toISOString().slice(11, 19)} UTC · [live log](${runUrl})`,
+	].join('\n');
+}
+
+/** @param {{pr: string | number, operation: string, runUrl: string}} context */
+export function cancelledComment({ pr, operation, runUrl }) {
+	return [
+		BOT_MARKER,
+		`### Preview instance run stopped`,
+		'',
+		`The \`preview ${operation}\` run for PR #${pr} was cancelled or timed out, so the`,
+		'instance is in an unknown state. The box can still exist.',
+		'',
+		`Run [the preview workflow](${WORKFLOW_URL}) with \`up\` to finish the job, or \`down\` to delete the box.`,
+		`See [the workflow run](${runUrl}) for how far it got.`,
+	].join('\n');
+}
+
 /** @param {{operation: string, runUrl: string, message: string}} context */
 export function failureComment({ operation, runUrl, message }) {
 	return [
@@ -183,18 +332,120 @@ export function failureComment({ operation, runUrl, message }) {
 }
 
 /**
- * Progress and the in-box build log go to stderr, so they stream into the job log
- * live. Only the JSON line is captured.
+ * Human progress and the in-box build log go to stderr, so they stream into the job
+ * log live. Only stdout is captured, and its phase lines are handed over as they
+ * arrive — a run this long has to report itself while it runs, not at the end.
  *
  * @param {readonly string[]} args
+ * @param {{onProgress?: (progress: {phase: string, detail?: string, sha?: string}) => void}} [hooks]
+ * @returns {Promise<{status: number | null, stdout: string}>}
  */
-function runPreview(args) {
-	const result = spawnSync('node', [PREVIEW_SCRIPT, ...args], {
-		encoding: 'utf8',
-		stdio: ['ignore', 'pipe', 'inherit'],
+function runPreview(args, { onProgress } = {}) {
+	return new Promise((resolve, reject) => {
+		const child = spawn('node', [PREVIEW_SCRIPT, ...args], {
+			stdio: ['ignore', 'pipe', 'inherit'],
+		});
+		const splitLines = createLineSplitter();
+		let stdout = '';
+
+		child.stdout.setEncoding('utf8');
+		child.stdout.on('data', (chunk) => {
+			// Kept whole for `parsePreviewJson`, which reads the report off the end.
+			stdout += chunk;
+			if (!onProgress) return;
+			for (const line of splitLines(chunk)) {
+				const progress = parseProgressLine(line);
+				if (progress) onProgress(progress);
+			}
+		});
+
+		child.on('error', reject);
+		child.on('close', (status) => resolve({ status, stdout }));
 	});
-	if (result.error) throw result.error;
-	return { status: result.status, stdout: result.stdout ?? '' };
+}
+
+/**
+ * Keeps the checklist on the PR current while `preview.mjs` runs: one edit for each
+ * phase, plus a heartbeat so a long phase still looks alive.
+ *
+ * @param {{pr: string, operation: 'up' | 'refresh', runUrl: string, previousUrl?: string, commentId?: number}} context
+ */
+function createProgressReporter({ pr, operation, runUrl, previousUrl, commentId }) {
+	const startedAt = Date.now();
+	let phaseStartedAt = startedAt;
+	let id = commentId;
+	let phase;
+	let detail;
+	let sha;
+	let writes = Promise.resolve();
+
+	// One chain, so two edits never overlap, and every failure is swallowed: this
+	// Octokit carries no retry plugin, and a status edit must not fail a preview that
+	// is otherwise fine. Resetting the chain keeps one failure from poisoning the next.
+	function push() {
+		writes = writes
+			.then(async () => {
+				const body = progressComment({
+					pr,
+					operation,
+					runUrl,
+					sha,
+					phase,
+					detail,
+					previousUrl,
+					startedAt,
+					phaseStartedAt,
+					now: Date.now(),
+				});
+				// Hold the id from the first write: paginating every comment on the PR
+				// once a minute would be the expensive part of a heartbeat.
+				if (id === undefined) id = await postOrUpdateComment(Number(pr), body, BOT_MARKER);
+				else await updateCommentById(id, body);
+			})
+			.catch((error) => {
+				console.log(`::warning::Could not update the preview comment: ${error.message}`);
+			});
+		return writes;
+	}
+
+	const timer = setInterval(push, HEARTBEAT_MS);
+	timer.unref();
+
+	return {
+		start: push,
+		/** @param {{phase: string, detail?: string, sha?: string}} progress */
+		onProgress(progress) {
+			if (progress.sha) sha = progress.sha;
+			if (progress.phase === phase && progress.detail === detail) return;
+			phase = progress.phase;
+			detail = progress.detail;
+			phaseStartedAt = Date.now();
+			push();
+		},
+		/** Drains the queue, so the final body of the run is always the last write. */
+		async stop() {
+			clearInterval(timer);
+			await writes;
+		},
+	};
+}
+
+/**
+ * A cancelled or timed-out job kills this process mid-checklist, so the workflow
+ * runs it again just to say so. Only over a progress body: a run cancelled while it
+ * was queued never started work, and must leave a ready comment alone.
+ *
+ * @param {string} pr
+ * @param {string} operation
+ * @param {string} runUrl
+ */
+async function reportCancelled(pr, operation, runUrl) {
+	const existing = await findCommentByMarker(Number(pr), BOT_MARKER);
+	if (!existing?.body.includes(PROGRESS_MARKER)) {
+		console.log('The preview comment is not a checklist — leaving it as it is.');
+		return;
+	}
+	await updateCommentById(existing.id, cancelledComment({ pr, operation, runUrl }));
 }
 
 async function main() {
@@ -222,9 +473,14 @@ async function main() {
 		return;
 	}
 
+	if (process.argv.includes('--report-cancelled')) {
+		await reportCancelled(pr, operation, runUrl);
+		return;
+	}
+
 	try {
 		if (operation === 'refresh') {
-			const list = runPreview(['ls']);
+			const list = await runPreview(['ls']);
 			if (list.status !== 0) throw new Error(`\`preview ls\` exited ${list.status}`);
 			if (!hasPreviewBox(list.stdout, pr)) {
 				console.log(`No preview box for PR #${pr} — reporting it as expired.`);
@@ -233,13 +489,36 @@ async function main() {
 			}
 		}
 
-		const { status, stdout } = runPreview([operation, pr, '--json']);
-		if (status !== 0) throw new Error(`\`preview ${operation}\` exited ${status}`);
-
 		if (operation === 'down') {
+			const { status } = await runPreview([operation, pr, '--json']);
+			if (status !== 0) throw new Error(`\`preview ${operation}\` exited ${status}`);
 			await postOrUpdateComment(Number(pr), downComment({ pr }), BOT_MARKER);
 			return;
 		}
+
+		// A checklist only earns its place in front of work that takes minutes. It also
+		// goes up after the `refresh` check above, so a box that is already gone never
+		// flashes a checklist before the expired body replaces it.
+		const existing = await findCommentByMarker(Number(pr), BOT_MARKER);
+		const reporter = createProgressReporter({
+			pr,
+			operation,
+			runUrl,
+			previousUrl: previewUrlFromBody(existing?.body ?? ''),
+			commentId: existing?.id,
+		});
+		await reporter.start();
+
+		let status;
+		let stdout;
+		try {
+			({ status, stdout } = await runPreview([operation, pr, '--json'], {
+				onProgress: reporter.onProgress,
+			}));
+		} finally {
+			await reporter.stop();
+		}
+		if (status !== 0) throw new Error(`\`preview ${operation}\` exited ${status}`);
 
 		const preview = parsePreviewJson(stdout);
 		if (!preview) throw new Error(`\`preview ${operation}\` printed no preview details`);

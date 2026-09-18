@@ -10,6 +10,7 @@ import {
 } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import type { InstanceAiThreadSummary } from '@n8n/api-types';
 import {
 	ComboboxContent,
 	ComboboxGroup,
@@ -29,15 +30,30 @@ import { useToast } from '@n8n/composables/useToast';
 const props = withDefaults(
 	defineProps<{
 		maxHeight?: string;
+		/** Scope the history shown — applied to `history.threads` before grouping. */
+		filter?: (thread: InstanceAiThreadSummary) => boolean;
+		/** False → rows are buttons emitting `select` instead of `RouterLink`s, "View all" is hidden,
+		 * and deleting the active thread emits `deleted(true)` instead of navigating. For an
+		 * embedding host that has no thread route of its own. */
+		navigate?: boolean;
+		/** Falls back to the route param when omitted (the page's own use). */
+		activeThreadId?: string;
+		/** The assistant is actively building — rows stop being interactive so a click can't race it. */
+		disabled?: boolean;
 	}>(),
 	{
 		maxHeight: undefined,
+		filter: undefined,
+		navigate: true,
+		activeThreadId: undefined,
+		disabled: false,
 	},
 );
 
 const emit = defineEmits<{
 	close: [];
 	select: [threadId: string];
+	deleted: [wasActive: boolean];
 }>();
 
 const store = useInstanceAiStore();
@@ -53,8 +69,10 @@ const renameInput = ref<HTMLInputElement | null>(null);
 const comboboxRef = ref<{
 	highlightFirstItem?: () => void;
 }>();
-const activeThreadId = computed(() =>
-	typeof route.params.threadId === 'string' ? route.params.threadId : undefined,
+const activeThreadId = computed(
+	() =>
+		props.activeThreadId ??
+		(typeof route.params.threadId === 'string' ? route.params.threadId : undefined),
 );
 
 const threadActions: Array<ActionDropdownItem<'rename' | 'delete'>> = [
@@ -79,6 +97,12 @@ const dateGroupI18nMap: Record<string, string> = {
 
 const groupOrder = ['Today', 'Yesterday', 'This week', 'Older'] as const;
 
+// Scoped to the embedding host's subject (e.g. one agent) before grouping —
+// the underlying history stays the shared, server-paged list.
+const filteredThreads = computed(() =>
+	props.filter ? history.value.threads.filter(props.filter) : history.value.threads,
+);
+
 const groupedThreads = computed(() => {
 	const now = new Date();
 	const groups = new Map<string, typeof history.value.threads>();
@@ -87,7 +111,7 @@ const groupedThreads = computed(() => {
 	// but messaged today belongs under "Today", matching the backend ordering
 	// (memory.service returns threads sorted by updatedAt desc) and the
 	// chatHub sidebar's `groupConversationsByDate` behaviour.
-	for (const thread of history.value.threads) {
+	for (const thread of filteredThreads.value) {
 		const group = getRelativeDate(now, thread.updatedAt ?? thread.createdAt);
 		let threads = groups.get(group);
 		if (!threads) {
@@ -122,20 +146,20 @@ async function handleDeleteThread(threadId: string) {
 	if (!deleted) return;
 	clearPendingThreadHandoff(threadId);
 
-	if (wasActive) {
-		if (store.threads.length > 0) {
-			void router.push({
-				name: INSTANCE_AI_THREAD_VIEW,
-				params: { threadId: store.threads[0].id },
-			});
-		} else {
-			void router.push({ name: INSTANCE_AI_VIEW });
-		}
+	if (!wasActive) return;
+	if (!props.navigate) {
+		// No thread route of our own to land on — let the host decide.
+		emit('deleted', true);
+		return;
 	}
-}
-
-function handleThreadSelect(threadId: string) {
-	emit('select', threadId);
+	if (store.threads.length > 0) {
+		void router.push({
+			name: INSTANCE_AI_THREAD_VIEW,
+			params: { threadId: store.threads[0].id },
+		});
+	} else {
+		void router.push({ name: INSTANCE_AI_VIEW });
+	}
 }
 
 function openAllThreads() {
@@ -173,7 +197,19 @@ function cancelRename() {
 	editingThreadId.value = null;
 }
 
+function handleThreadSelect(threadId: string) {
+	// The `disabled` attribute already blocks real user interaction; this guards
+	// the emit itself too, since a disabled element still receives a
+	// programmatically dispatched click.
+	if (props.disabled) return;
+	emit('select', threadId);
+}
+
 function handleThreadAction(action: string, threadId: string) {
+	// N8nActionDropdown has no `disabled` slot for a custom `#activator`, so the
+	// trigger button below is disabled directly — this is the second guard for
+	// whatever reaches here anyway (e.g. an already-open menu).
+	if (props.disabled) return;
 	if (action === 'delete') {
 		void handleDeleteThread(threadId);
 	} else if (action === 'rename') {
@@ -200,6 +236,7 @@ function handleThreadAction(action: string, threadId: string) {
 					{{ i18n.baseText('instanceAi.sidebar.chatHistory') }}
 				</N8nText>
 				<N8nButton
+					v-if="navigate"
 					variant="ghost"
 					size="xsmall"
 					:class="$style.viewAll"
@@ -246,7 +283,7 @@ function handleThreadAction(action: string, threadId: string) {
 							<div
 								v-for="thread in group.threads"
 								:key="thread.id"
-								:class="$style.threadItem"
+								:class="[$style.threadItem, { [$style.disabled]: disabled }]"
 								data-test-id="instance-ai-thread-item"
 							>
 								<!-- Inline rename mode -->
@@ -267,6 +304,7 @@ function handleThreadAction(action: string, threadId: string) {
 								<template v-else>
 									<ComboboxItem as-child :value="thread.id" :text-value="thread.title">
 										<RouterLink
+											v-if="navigate"
 											:to="{ name: INSTANCE_AI_THREAD_VIEW, params: { threadId: thread.id } }"
 											:class="$style.threadLink"
 											:title="thread.title"
@@ -277,11 +315,24 @@ function handleThreadAction(action: string, threadId: string) {
 										>
 											<span :class="$style.threadTitle">{{ thread.title }}</span>
 										</RouterLink>
+										<!-- No thread route to land on (an embedding host) — emit `select` instead. -->
+										<button
+											v-else
+											type="button"
+											:class="[$style.threadLink, $style.threadLinkButton]"
+											:title="thread.title"
+											:disabled="disabled"
+											@click="handleThreadSelect(thread.id)"
+											@dblclick.prevent="startRename(thread.id, thread.title)"
+										>
+											<span :class="$style.threadTitle">{{ thread.title }}</span>
+										</button>
 									</ComboboxItem>
 									<N8nActionDropdown
 										:items="threadActions"
 										:class="$style.actionDropdown"
 										placement="bottom-start"
+										:disabled="disabled"
 										@select="handleThreadAction($event, thread.id)"
 										@click.stop
 									>
@@ -290,6 +341,7 @@ function handleThreadAction(action: string, threadId: string) {
 												variant="ghost"
 												icon="ellipsis-vertical"
 												:class="$style.actionTrigger"
+												:disabled="disabled"
 												:aria-label="i18n.baseText('instanceAi.threads.actions')"
 											/>
 										</template>
@@ -311,7 +363,7 @@ function handleThreadAction(action: string, threadId: string) {
 							</N8nButton>
 						</div>
 						<div v-else-if="history.hasMore" ref="sentinelRef" :class="$style.sentinel" />
-						<div v-else-if="history.threads.length === 0" :class="$style.empty" role="status">
+						<div v-else-if="filteredThreads.length === 0" :class="$style.empty" role="status">
 							<N8nText size="small" color="text-light">
 								{{
 									i18n.baseText(
@@ -486,6 +538,11 @@ function handleThreadAction(action: string, threadId: string) {
 			background-color: var(--background--hover);
 		}
 	}
+
+	&.disabled {
+		pointer-events: none;
+		opacity: var(--opacity--disabled, 0.5);
+	}
 }
 
 .threadLink {
@@ -512,6 +569,14 @@ function handleThreadAction(action: string, threadId: string) {
 		color: var(--text-color) !important;
 		text-decoration: none !important;
 	}
+}
+
+.threadLinkButton {
+	width: 100%;
+	background: none;
+	border: none;
+	font: inherit;
+	text-align: left;
 }
 
 .threadTitle {

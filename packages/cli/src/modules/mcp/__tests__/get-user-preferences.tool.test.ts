@@ -9,6 +9,9 @@ import { Telemetry } from '@/telemetry';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import { createGetUserPreferencesTool } from '../tools/get-user-preferences.tool';
 
+/** A saved preference now carries its id. Ids do not affect rendering, so the text doubles as one. */
+const saved = (...texts: string[]) => texts.map((content) => ({ id: `id-${content}`, content }));
+
 /**
  * The ticket fixes the description as a requirement, not an implementation choice: whether the
  * assistant calls the tool at all, and keeps applying the result, is decided by this text. It
@@ -88,7 +91,7 @@ describe('get-user-preferences MCP tool', () => {
 		test('reads the preferences that apply to the calling user', async () => {
 			const { aiPreferenceService, telemetry } = createMocks({
 				instance: [],
-				user: ['Keep replies short.'],
+				user: saved('Keep replies short.'),
 				projects: [],
 			});
 			const tool = createGetUserPreferencesTool(user, aiPreferenceService, telemetry);
@@ -100,9 +103,9 @@ describe('get-user-preferences MCP tool', () => {
 
 		test('returns the rendered preferences', async () => {
 			const { aiPreferenceService, telemetry } = createMocks({
-				instance: ['Use British English.'],
-				user: ['Keep replies short.'],
-				projects: [{ id: 'p-1', name: 'Marketing', items: ['Prefer HubSpot nodes.'] }],
+				instance: saved('Use British English.'),
+				user: saved('Keep replies short.'),
+				projects: [{ id: 'p-1', name: 'Marketing', items: saved('Prefer HubSpot nodes.') }],
 			});
 			const tool = createGetUserPreferencesTool(user, aiPreferenceService, telemetry);
 
@@ -113,12 +116,19 @@ describe('get-user-preferences MCP tool', () => {
 			expect(text && 'text' in text ? text.text : '').toContain('- Use British English.');
 			expect(text && 'text' in text ? text.text : '').toContain('- Keep replies short.');
 			expect(text && 'text' in text ? text.text : '').toContain('- Prefer HubSpot nodes.');
+			// The id travels with each item: an edit has to address a row, and the block
+			// the assistant is given carries text without ids (CONTEXT-137).
 			expect(result.structuredContent).toEqual({
 				hasPreferences: true,
 				preferences: [
-					{ scope: 'instance', text: 'Use British English.' },
-					{ scope: 'user', text: 'Keep replies short.' },
-					{ scope: 'project', project: 'Marketing', text: 'Prefer HubSpot nodes.' },
+					{ id: 'id-Use British English.', scope: 'instance', text: 'Use British English.' },
+					{ id: 'id-Keep replies short.', scope: 'user', text: 'Keep replies short.' },
+					{
+						id: 'id-Prefer HubSpot nodes.',
+						scope: 'project',
+						project: 'Marketing',
+						text: 'Prefer HubSpot nodes.',
+					},
 				],
 			});
 		});
@@ -151,7 +161,7 @@ describe('get-user-preferences MCP tool', () => {
 		 * every class.
 		 */
 		describe('structured output (decision table over the three groups)', () => {
-			const MARKETING = { id: 'p-1', name: 'Marketing', items: ['Prefer HubSpot nodes.'] };
+			const MARKETING = { id: 'p-1', name: 'Marketing', items: saved('Prefer HubSpot nodes.') };
 
 			it.each([
 				{ instance: false, personal: false, projects: false, expected: [] },
@@ -191,8 +201,8 @@ describe('get-user-preferences MCP tool', () => {
 				'instance=$instance personal=$personal projects=$projects',
 				async ({ instance, personal, projects, expected }) => {
 					const { aiPreferenceService, telemetry } = createMocks({
-						instance: instance ? ['Use British English.'] : [],
-						user: personal ? ['Keep replies short.'] : [],
+						instance: instance ? saved('Use British English.') : [],
+						user: personal ? saved('Keep replies short.') : [],
 						projects: projects ? [MARKETING] : [],
 					});
 					const tool = createGetUserPreferencesTool(user, aiPreferenceService, telemetry);
@@ -246,7 +256,7 @@ describe('get-user-preferences MCP tool', () => {
 	describe('telemetry', () => {
 		test('reports a successful call', async () => {
 			const { aiPreferenceService, telemetry } = createMocks({
-				instance: ['Use British English.'],
+				instance: saved('Use British English.'),
 				user: [],
 				projects: [],
 			});
@@ -258,8 +268,71 @@ describe('get-user-preferences MCP tool', () => {
 				user_id: 'user-1',
 				tool_name: 'get_user_preferences',
 				parameters: {},
-				results: { success: true, data: { hasPreferences: true } },
+				results: {
+					success: true,
+					data: {
+						hasPreferences: true,
+						count: 1,
+						scopes: ['instance'],
+						rendered_length: expect.any(Number),
+					},
+				},
 			});
+		});
+
+		test('reports nothing saved as a count of zero and no scopes', async () => {
+			const { aiPreferenceService, telemetry } = createMocks();
+			const tool = createGetUserPreferencesTool(user, aiPreferenceService, telemetry);
+
+			await tool.handler({});
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				USER_CALLED_MCP_TOOL_EVENT,
+				expect.objectContaining({
+					results: {
+						success: true,
+						data: { hasPreferences: false, count: 0, scopes: [], rendered_length: 0 },
+					},
+				}),
+			);
+		});
+
+		test('counts every item and keeps the scope list distinct and in render order', async () => {
+			const { aiPreferenceService, telemetry } = createMocks({
+				instance: saved('Use British English.'),
+				user: saved('Keep replies short.'),
+				projects: [
+					{
+						id: 'p-1',
+						name: 'Marketing',
+						type: 'team',
+						items: saved('Prefer HubSpot nodes.', 'Name flows after the campaign.'),
+					},
+				],
+			});
+			const tool = createGetUserPreferencesTool(user, aiPreferenceService, telemetry);
+
+			const result = await tool.handler({});
+			const rendered = result.content?.[0];
+			const renderedLength = rendered && 'text' in rendered ? rendered.text.length : 0;
+
+			// Two rows in one project must not report `project` twice, and the length is the
+			// text the caller was actually given: it reviews the caps (CONTEXT-137).
+			expect(telemetry.track).toHaveBeenCalledWith(
+				USER_CALLED_MCP_TOOL_EVENT,
+				expect.objectContaining({
+					results: {
+						success: true,
+						data: {
+							hasPreferences: true,
+							count: 4,
+							scopes: ['instance', 'user', 'project'],
+							rendered_length: renderedLength,
+						},
+					},
+				}),
+			);
+			expect(renderedLength).toBeGreaterThan(0);
 		});
 
 		test('reports a failed call', async () => {

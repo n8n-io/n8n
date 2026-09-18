@@ -521,14 +521,13 @@ export async function setCommitStatus(sha, { state, context, description, target
 }
 
 /**
- * Post a PR comment, or update the existing one if a previous run already
- * left one identified by the provided bot marker.
+ * The comment a previous run left, found by its bot marker.
  *
  * @param { number } pullRequestNumber
- * @param { string } body
  * @param { string } botMarker
+ * @returns { Promise<{ id: number, body: string } | undefined> }
  */
-export async function postOrUpdateComment(pullRequestNumber, body, botMarker) {
+export async function findCommentByMarker(pullRequestNumber, botMarker) {
 	const { octokit, owner, repo } = initGithub();
 
 	const comments = await octokit.paginate(octokit.rest.issues.listComments, {
@@ -540,21 +539,49 @@ export async function postOrUpdateComment(pullRequestNumber, body, botMarker) {
 
 	const existing = comments.find((c) => c.body?.includes(botMarker));
 
+	return existing ? { id: existing.id, body: existing.body ?? '' } : undefined;
+}
+
+/**
+ * Overwrite a comment whose id is already known. A caller that edits the same
+ * comment repeatedly uses this instead of paginating every comment each time.
+ *
+ * @param { number } commentId
+ * @param { string } body
+ */
+export async function updateCommentById(commentId, body) {
+	const { octokit, owner, repo } = initGithub();
+
+	await octokit.rest.issues.updateComment({ owner, repo, comment_id: commentId, body });
+}
+
+/**
+ * Post a PR comment, or update the existing one if a previous run already
+ * left one identified by the provided bot marker.
+ *
+ * @param { number } pullRequestNumber
+ * @param { string } body
+ * @param { string } botMarker
+ * @returns { Promise<number> } the id of the comment it wrote
+ */
+export async function postOrUpdateComment(pullRequestNumber, body, botMarker) {
+	const { octokit, owner, repo } = initGithub();
+
+	const existing = await findCommentByMarker(pullRequestNumber, botMarker);
+
 	if (existing) {
-		await octokit.rest.issues.updateComment({
-			owner,
-			repo,
-			comment_id: existing.id,
-			body,
-		});
-	} else {
-		await octokit.rest.issues.createComment({
-			owner,
-			repo,
-			issue_number: pullRequestNumber,
-			body,
-		});
+		await updateCommentById(existing.id, body);
+		return existing.id;
 	}
+
+	const created = await octokit.rest.issues.createComment({
+		owner,
+		repo,
+		issue_number: pullRequestNumber,
+		body,
+	});
+
+	return created.data.id;
 }
 
 /**

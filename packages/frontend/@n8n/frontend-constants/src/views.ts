@@ -40,6 +40,7 @@ export enum VIEWS {
 	SETUP = 'SetupView',
 	FORGOT_PASSWORD = 'ForgotMyPasswordView',
 	CHANGE_PASSWORD = 'ChangePasswordView',
+	CONFIRM_EMAIL_CHANGE = 'ConfirmEmailChangeView',
 	SETTINGS = 'Settings',
 	USERS_SETTINGS = 'UsersSettings',
 	LDAP_SETTINGS = 'LdapSettings',

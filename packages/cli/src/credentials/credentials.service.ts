@@ -81,6 +81,7 @@ import { CredentialsFinderService } from './credentials-finder.service';
 import { getExternalSecretExpressionPaths } from './external-secrets.utils';
 import { InstanceCredentialUseRegistry } from './instance-credential-use.registry';
 import {
+	parseCredentialDescription,
 	validateAccessToReferencedSecretProviders,
 	validateExternalSecretsPermissions,
 } from './validation';
@@ -792,6 +793,9 @@ export class CredentialsService {
 		const dataMerge = options?.dataMerge ?? 'unredact';
 
 		const mergedData = deepCopy(data);
+		if (data.description !== undefined) {
+			mergedData.description = parseCredentialDescription(data.description);
+		}
 		if (mergedData.data) {
 			mergedData.data = this.applyDataMerge(
 				mergedData.data,
@@ -1091,6 +1095,11 @@ export class CredentialsService {
 				type: prepared.type,
 				data: decryptedData,
 			}));
+
+		if (data.description !== undefined) {
+			encrypted.description = prepared.description;
+		}
+
 		if (!options.skipExternalHooks) {
 			await this.externalHooks.run('credentials.update', [encrypted]);
 		}
@@ -1984,6 +1993,8 @@ export class CredentialsService {
 			data: opts.data as ICredentialDataDecryptedObject,
 		});
 
+		encryptedCredential.description = parseCredentialDescription(opts.description);
+
 		// Set isGlobal if provided in the payload and user has permission
 		const isGlobal = opts.isGlobal;
 		if (isGlobal === true) {
@@ -2055,6 +2066,7 @@ export class CredentialsService {
 		this.validateCredentialData(opts.type, hookedData);
 		const credentialEntity = this.credentialsRepository.create({
 			...encryptedCredential,
+			description: parseCredentialDescription(opts.description),
 			isManaged: false,
 			isResolvable: false,
 			usageScope: 'instance' as const,
