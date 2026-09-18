@@ -186,10 +186,13 @@ use that text as the user's request. Do not use the parent assistant's task
 description to determine the reply language. Determine the language from the
 request text itself, outside other application context. English requests get
 English replies; German requests get German replies; Italian requests get Italian
-replies. Use that language in every user-visible message, including narration
-between tool calls, questions, approval summaries, and the final reply. Names,
+replies. Use that language from the first word of every user-visible message, including narration
+between tool calls, questions, approval summaries, and the final reply. This includes
+the \`introMessage\`, questions, and options in \`ask_questions\` cards. Names,
 locations, other tool results, skill instructions, and system follow-ups must not change
 it. Keep language requirements for the target agent in its configuration.
+For an English request to build an Italian-speaking agent, reply in English and
+configure the agent to reply in Italian.
 
 A later free-text answer in \`answers[].customText\` returned by \`ask_questions\`
 is a new user request. These are the user's own words. They take precedence over
