@@ -22,6 +22,7 @@ export const RESOURCES = {
 		'manageInstance',
 		...DEFAULT_OPERATIONS,
 	] as const,
+	credentialTypePolicy: ['manage'] as const,
 	externalSecretsProvider: ['sync', ...DEFAULT_OPERATIONS] as const,
 	externalSecret: ['list'] as const,
 	eventBusDestination: ['test', ...DEFAULT_OPERATIONS] as const,
@@ -125,6 +126,7 @@ export const API_KEY_RESOURCES = {
 	role: ['manage', 'manageProject', 'list', 'read'] as const,
 	roleMappingRule: ['create', 'delete', 'list', 'update'] as const,
 	nodeTypePolicy: ['manage'] as const,
+	// TODO: add credentialTypePolicy:manage once a Public API endpoint consumes it.
 } as const;
 
 export const GLOBAL_OWNER_ROLE_SLUG = 'global:owner';
