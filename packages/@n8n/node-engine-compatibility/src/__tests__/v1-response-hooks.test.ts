@@ -1,5 +1,6 @@
 import type { ResponseEmitter, StepExecutionRequest } from '@n8n/engine';
-import type { IWorkflowExecuteAdditionalData } from 'n8n-workflow';
+import { ExecutionLifecycleHooks } from 'n8n-core';
+import type { IWorkflowBase, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import { describe, expect, it, vi } from 'vitest';
 
 import { attachResponseHooks } from '../v1-response-hooks';
@@ -24,6 +25,22 @@ const newRequest = () => {
 const newAdditionalData = () => ({}) as IWorkflowExecuteAdditionalData;
 
 describe('attachResponseHooks', () => {
+	it('preserves hooks supplied by the host', async () => {
+		const { request, respond } = newRequest();
+		const existingHandler = vi.fn();
+		const hooks = new ExecutionLifecycleHooks('webhook', 'exec-1', {} as IWorkflowBase);
+		hooks.addHandler('sendChunk', existingHandler);
+		const additionalData = { ...newAdditionalData(), hooks };
+		const response = { body: { ok: true }, statusCode: 200 };
+
+		attachResponseHooks(additionalData, request);
+		await additionalData.hooks.runHook('sendResponse', [response]);
+
+		expect(additionalData.hooks).toBe(hooks);
+		expect(additionalData.hooks.handlers.sendChunk).toEqual([existingHandler]);
+		expect(respond.send).toHaveBeenCalledWith(response);
+	});
+
 	it('sends what the Respond node produced to the channel', async () => {
 		const { request, respond } = newRequest();
 		const additionalData = newAdditionalData();
