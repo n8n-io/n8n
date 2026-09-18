@@ -776,19 +776,36 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		}));
 	});
 
-	const environmentGates = ['off', 'seeded', 'read failure'].flatMap((snapshotMode) =>
-		[true, false].map((instanceContextEnabled) => ({ snapshotMode, instanceContextEnabled })),
-	);
+	type ContextGates = { instanceContextEnabled: boolean; nodeUsageEnabled: boolean };
+	const environmentGates = [
+		...['off', 'seeded', 'read failure'].flatMap((snapshotMode) =>
+			[true, false].map((instanceContextEnabled) => ({
+				snapshotMode,
+				instanceContextEnabled,
+				boundGates: undefined as ContextGates | undefined,
+			})),
+		),
+		...[true, false].map((enabled) => ({
+			snapshotMode: 'off',
+			instanceContextEnabled: !enabled,
+			boundGates: { instanceContextEnabled: enabled, nodeUsageEnabled: !enabled },
+		})),
+	];
 	it.each(environmentGates)('starts with gates %j', async (gates) => {
-		const { snapshotMode, instanceContextEnabled } = gates;
+		const { snapshotMode, instanceContextEnabled, boundGates } = gates;
 		const service = Object.create(InstanceAiService.prototype) as unknown as {
 			createExecutionEnvironment: (
 				user: User,
 				threadId: string,
 				runId: string,
 				abortSignal: AbortSignal,
+				messageGroupId?: string,
+				pushRef?: string,
+				proxyRunConfig?: undefined,
+				instanceContextGates?: ContextGates,
 			) => Promise<{
 				instanceContextEnabled: boolean;
+				nodeUsageEnabled: boolean;
 				orchestrationContext: {
 					setupPanelEnabled?: boolean;
 					workspace?: unknown;
@@ -877,7 +894,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				configEvalsEnabled: true,
 				mcpConnectionsEnabled: false,
 				conversationHistoryEnabled: false,
-				nodeUsageEnabled: false,
+				nodeUsageEnabled: !instanceContextEnabled,
 				folderExplorationEnabled: false,
 				aiPreferencesEnabled: false,
 				instanceContextEnabled,
@@ -959,12 +976,21 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			'thread-1',
 			'run-1',
 			new AbortController().signal,
+			undefined,
+			undefined,
+			undefined,
+			boundGates,
 		);
-		expect(environment.instanceContextEnabled).toBe(instanceContextEnabled);
+		const expectedGates = boundGates ?? {
+			instanceContextEnabled,
+			nodeUsageEnabled: !instanceContextEnabled,
+		};
+		expect(environment).toMatchObject(expectedGates);
 		expect(service.adapterService.createContext).toHaveBeenCalledWith(
 			fakeUser,
-			expect.objectContaining({ instanceContextEnabled }),
+			expect.objectContaining({ ...expectedGates, configEvalsEnabled: true }),
 		);
+		expect(service.settingsService.getPermissions).toHaveBeenCalled();
 		expect(environment.orchestrationContext.setupPanelEnabled).toBe(snapshotMode !== 'off');
 		if (snapshotMode === 'off') {
 			expect(service.eventLog.getSetupItemsSnapshots).not.toHaveBeenCalled();
@@ -2092,6 +2118,12 @@ function createSuspendedRunResumeService(): SuspendedRunResumeServiceInternals {
 			messageGroupId: 'group-1',
 			checkpoint: undefined,
 			runHandoff: undefined,
+			instanceContext: {
+				injection: { state: 'absent', reason: 'disabled' },
+				instanceContextEnabled: false,
+				nodeUsageEnabled: true,
+				reachSoFar: { surfaces: [] },
+			},
 		})),
 		activateSuspendedRun: vi.fn(() => ({})),
 		clearActiveRun: vi.fn(),
@@ -2749,6 +2781,7 @@ describe('InstanceAiService — suspended run user revalidation', () => {
 			undefined,
 			undefined,
 			'group-1',
+			expect.objectContaining({ instanceContextEnabled: false, nodeUsageEnabled: true }),
 		);
 		expect(service.processResumedStream).toHaveBeenCalledWith(
 			rebuiltAgent,
@@ -2851,6 +2884,7 @@ describe('InstanceAiService — suspended run user revalidation', () => {
 			undefined,
 			undefined,
 			'group-1',
+			expect.objectContaining({ instanceContextEnabled: false, nodeUsageEnabled: true }),
 		);
 		expect(service.processResumedStream).toHaveBeenCalledWith(
 			rebuiltAgent,
@@ -2983,6 +3017,7 @@ describe('InstanceAiService — rebuildAgentForResume', () => {
 			tracing: InstanceAiTraceContext | undefined,
 			runHandoff: { handoffReason?: string } | undefined,
 			messageGroupId?: string,
+			instanceContextGates?: { instanceContextEnabled: boolean; nodeUsageEnabled: boolean },
 		) => Promise<{ agent: unknown; modelId?: unknown } | undefined>;
 		buildFreshInstanceAgent: Mock;
 		threadPushRef: { get: Mock };
@@ -2998,6 +3033,42 @@ describe('InstanceAiService — rebuildAgentForResume', () => {
 		service.logger = { warn: vi.fn() };
 		return service;
 	}
+
+	it.each([false, true])('rebuilds with the bound context gates %s', async (enabled) => {
+		const service = Object.assign(
+			Object.create(InstanceAiService.prototype) as RebuildAgentServiceInternals,
+			{
+				createExecutionEnvironment: vi.fn(async () => ({ orchestrationContext: {} })),
+				createAgentFromEnvironment: vi.fn(async () => ({})),
+				threadPushRef: { get: vi.fn(() => undefined) },
+				logger: { warn: vi.fn() },
+			},
+		);
+		const gates = { instanceContextEnabled: enabled, nodeUsageEnabled: !enabled };
+		const abortController = new AbortController();
+
+		await service.rebuildAgentForResume(
+			fakeUser,
+			'thread-a',
+			'run-1',
+			abortController,
+			undefined,
+			undefined,
+			'group-1',
+			gates,
+		);
+
+		expect(service.createExecutionEnvironment).toHaveBeenCalledWith(
+			fakeUser,
+			'thread-a',
+			'run-1',
+			abortController.signal,
+			'group-1',
+			undefined,
+			undefined,
+			gates,
+		);
+	});
 
 	it('reconnects the rebuilt context to the existing runHandoff state', async () => {
 		const service = createRebuildAgentService();
@@ -6788,6 +6859,16 @@ describe('InstanceAiService — instance-context turn event', () => {
 				expect(restored.kind).toBe('ready');
 				if (restored.kind !== 'ready') throw new Error('Expected a restored run');
 				expect(restored.state.instanceContext).toEqual(saved.instanceContext);
+				expect(service.createExecutionEnvironment).toHaveBeenCalledWith(
+					fakeUser,
+					'thread-1',
+					'run-1',
+					expect.any(AbortSignal),
+					undefined,
+					undefined,
+					undefined,
+					saved.instanceContext,
+				);
 				expect(checkpoint.persistence?.hostMetadata?.buildMode).toBe('default');
 				instanceContext = restored.state.instanceContext!;
 			}

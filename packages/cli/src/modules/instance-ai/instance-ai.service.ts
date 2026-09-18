@@ -729,6 +729,11 @@ type InstanceContextTurnBinding = {
 	nodeUsageEnabled: boolean;
 };
 
+type InstanceContextGates = Pick<
+	InstanceContextTurnBinding,
+	'instanceContextEnabled' | 'nodeUsageEnabled'
+>;
+
 /** The built orchestrator agent type returned by `createInstanceAgent`. */
 type InstanceAgent = Awaited<ReturnType<typeof createInstanceAgent>>['agent'];
 
@@ -2496,6 +2501,7 @@ export class InstanceAiService {
 		messageGroupId?: string,
 		pushRef?: string,
 		proxyRunConfig?: Awaited<ReturnType<InstanceAiService['createProxyRunConfig']>>,
+		instanceContextGates?: InstanceContextGates,
 	) {
 		const memory = this.agentMemory;
 		const boundProjectId = await memory.getThreadProjectId(threadId);
@@ -2525,16 +2531,17 @@ export class InstanceAiService {
 				? await this.modelService.resolveProxyModel(user, proxyBaseUrl, tokenManager, proxyContext)
 				: await this.modelService.resolveAgentModelConfig(user, proxyContext);
 
+		const gates = await this.adapterService.resolveExperimentGates(user);
 		const {
 			configEvalsEnabled,
 			mcpConnectionsEnabled,
 			conversationHistoryEnabled,
 			progressiveBuildingEnabled,
-			nodeUsageEnabled,
 			folderExplorationEnabled,
 			aiPreferencesEnabled,
-			instanceContextEnabled,
-		} = await this.adapterService.resolveExperimentGates(user);
+		} = gates;
+		// Resumed segments use the gates bound to the original turn.
+		const { instanceContextEnabled, nodeUsageEnabled } = instanceContextGates ?? gates;
 		// One scoped reader backs both the tool and the first-turn hint.
 		const conversationHistory = conversationHistoryEnabled
 			? this.conversationHistoryService.forContext(user.id, boundProjectId, threadId)
@@ -5104,6 +5111,7 @@ export class InstanceAiService {
 		tracing: InstanceAiTraceContext | undefined,
 		messageGroupId?: string,
 		pushRef?: string,
+		instanceContextGates?: InstanceContextGates,
 	): Promise<{
 		agent: InstanceAgent;
 		modelId: ModelConfig;
@@ -5116,6 +5124,8 @@ export class InstanceAiService {
 			abortSignal,
 			messageGroupId,
 			pushRef,
+			undefined,
+			instanceContextGates,
 		);
 		const agent = await this.createAgentFromEnvironment(
 			environment,
@@ -5183,6 +5193,8 @@ export class InstanceAiService {
 				abortController.signal,
 				orphan.messageGroupId ?? undefined,
 				this.threadPushRef.get(orphan.threadId),
+				undefined,
+				instanceContext,
 			);
 		} catch (error: unknown) {
 			return { kind: 'env-failure', error };
@@ -5324,6 +5336,7 @@ export class InstanceAiService {
 		tracing: InstanceAiTraceContext | undefined,
 		runHandoff: OrchestratorRunHandoffState | undefined,
 		messageGroupId?: string,
+		instanceContextGates?: InstanceContextGates,
 	): Promise<
 		| {
 				agent: InstanceAgent;
@@ -5341,6 +5354,7 @@ export class InstanceAiService {
 				tracing,
 				messageGroupId,
 				this.threadPushRef.get(threadId),
+				instanceContextGates,
 			);
 			createOrchestratorRunControl(rebuilt.orchestrationContext, runHandoff ?? {});
 			return {
@@ -5479,6 +5493,7 @@ export class InstanceAiService {
 				effectiveTracing,
 				runHandoff,
 				messageGroupId,
+				instanceContext,
 			);
 			if (!rebuilt) {
 				const rebuildFailure = 'Agent rebuild failed';
@@ -6810,7 +6825,7 @@ export class InstanceAiService {
 		input: {
 			/** A turn can suspend more than once. Aggregate segments by run ID. */
 			segment: 'whole' | 'suspended' | 'resumed';
-			status: string;
+			status: 'completed' | 'cancelled' | 'errored' | 'suspended';
 			reach: InstanceContextReach;
 			workSummary?: WorkSummary;
 			/** Measured usage for this segment, not the estimated block size. */
@@ -6826,10 +6841,10 @@ export class InstanceAiService {
 			segment: input.segment,
 			instance_context_enabled: turn.instanceContextEnabled,
 			node_usage_enabled: turn.nodeUsageEnabled,
-			block_state: injection.state,
 			...(injection.state === 'absent'
-				? { absence_reason: injection.reason }
+				? { block_state: injection.state, absence_reason: injection.reason }
 				: {
+						block_state: injection.state,
 						block_is_update: injection.isUpdate,
 						block_inventory_rows: injection.legs.inventory,
 						block_event_rows: injection.legs.events,
