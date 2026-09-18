@@ -4,6 +4,7 @@ import { DeploymentKeyRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import jsonwebtoken from 'jsonwebtoken';
 import { Cipher, InstanceSettings } from 'n8n-core';
+import { mock } from 'vitest-mock-extended';
 
 import { JwtService } from '@/services/jwt.service';
 
@@ -119,10 +120,10 @@ describe('deployment signing secrets (integration)', () => {
 
 		const globalConfig = Container.get(GlobalConfig);
 		globalConfig.userManagement.jwtSecret = '';
-		const service = new JwtService(Container.get(InstanceSettings), globalConfig);
+		const service = new JwtService(Container.get(InstanceSettings), globalConfig, mock());
 		await service.initialize(repo);
 
-		const token = service.sign({ sub: 'roundtrip' });
+		const token = service.sign('session', { sub: 'roundtrip' });
 		expect(jsonwebtoken.verify(token, 'preseeded-db-secret')).toMatchObject({ sub: 'roundtrip' });
 	});
 });
