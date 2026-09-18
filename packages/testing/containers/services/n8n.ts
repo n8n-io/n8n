@@ -10,7 +10,9 @@ import {
 	createSilentLogConsumer,
 } from '../helpers/utils';
 import { N8nImagePullPolicy } from '../n8n-image-pull-policy';
+import type { StartupDeadline } from '../startup-deadline';
 import { TEST_CONTAINER_IMAGES } from '../test-containers';
+import { applyEngineEnv, type EngineMode } from './engine';
 import type { FileToMount } from './types';
 
 const N8N_IMAGE = TEST_CONTAINER_IMAGES.n8n;
@@ -74,6 +76,7 @@ export interface N8NInstancesOptions {
 	serviceEnvironment: Record<string, string>;
 	userEnvironment?: Record<string, string>;
 	usePostgres: boolean;
+	engine?: EngineMode;
 	baseUrl?: string;
 	allocatedPort?: number;
 	resourceQuota?: { memory?: number; cpu?: number };
@@ -83,6 +86,24 @@ export interface N8NInstancesOptions {
 	filesToMount?: FileToMount[];
 	coverageHostDir?: string;
 	registerContainer?: (container: StartedTestContainer) => void;
+	startupDeadline: StartupDeadline;
+	/**
+	 * Override the n8n image for these instances (default: the process-wide
+	 * TEST_IMAGE_N8N resolution). Lets one process boot different releases in
+	 * sequence — the upgrade/downgrade cycles swap images over the same data.
+	 */
+	image?: string;
+	/**
+	 * Host dir bind-mounted as the container's home (`/home/node`), so the
+	 * user folder (settings file, sqlite database) outlives the container and
+	 * a different image can boot on the same data. Disables container reuse.
+	 * Pair with `user` so the files stay owned by the host user.
+	 */
+	userHomeHostDir?: string;
+	/** Run the container as this uid:gid (e.g. the host user for bind mounts). */
+	user?: string;
+	/** Readiness timeout override; an old release migrating a fresh DB can exceed the default. */
+	startupTimeoutMs?: number;
 }
 
 export interface N8NInstancesResult {
@@ -97,6 +118,7 @@ function computeEnvironment(options: N8NInstancesOptions): Record<string, string
 		workers,
 		webhooks = 0,
 		usePostgres,
+		engine,
 		baseUrl,
 		serviceEnvironment,
 		userEnvironment = {},
@@ -113,6 +135,8 @@ function computeEnvironment(options: N8NInstancesOptions): Record<string, string
 	if (!usePostgres) {
 		env.DB_TYPE = 'sqlite';
 	}
+
+	applyEngineEnv(env, { engine, isQueueMode });
 
 	if (isQueueMode) {
 		env.EXECUTIONS_MODE = 'queue';
@@ -154,6 +178,11 @@ interface SharedConfig {
 	filesToMount?: FileToMount[];
 	coverageHostDir?: string;
 	registerContainer?: (container: StartedTestContainer) => void;
+	startupDeadline: StartupDeadline;
+	image?: string;
+	userHomeHostDir?: string;
+	user?: string;
+	startupTimeoutMs?: number;
 }
 
 interface ContainerStartResult {
@@ -182,29 +211,56 @@ async function createContainer(
 		filesToMount,
 		coverageHostDir,
 		registerContainer,
+		startupDeadline,
+		image,
+		userHomeHostDir,
+		user,
+		startupTimeoutMs,
 	} = shared;
 	const { consumer, throwWithLogs, getLogs } = createSilentLogConsumer();
 	const { strategy: waitStrategy, getLastBody: getLastReadinessBody } = createReadinessProbe(
 		'/healthz/readiness',
 		N8N_READINESS_PORT,
-		{ startupTimeoutMs: N8N_STARTUP_TIMEOUT_MS, readTimeoutMs: N8N_READ_TIMEOUT_MS },
+		{
+			startupTimeoutMs: Math.min(
+				startupTimeoutMs ?? N8N_STARTUP_TIMEOUT_MS,
+				startupDeadline.remainingMs,
+			),
+			readTimeoutMs: N8N_READ_TIMEOUT_MS,
+		},
 	);
 
 	const containerEnvironment = coverageHostDir
 		? { ...environment, NODE_V8_COVERAGE: CONTAINER_COVERAGE_DIR }
 		: environment;
 
-	let container = new GenericContainer(N8N_IMAGE)
+	const containerImage = image ?? N8N_IMAGE;
+	let container = new GenericContainer(containerImage)
 		.withEnvironment(containerEnvironment)
 		.withLabels({
 			'com.docker.compose.project': projectName,
 			'com.docker.compose.service': SERVICE_LABEL[role],
 			instance: instanceNumber.toString(),
 		})
-		.withPullPolicy(new N8nImagePullPolicy(N8N_IMAGE))
+		.withPullPolicy(new N8nImagePullPolicy(containerImage))
 		.withName(name)
 		.withLogConsumer(consumer)
 		.withNetwork(network);
+
+	if (user) {
+		container = container.withUser(user);
+	}
+
+	// withBindMounts REPLACES the mount list, so all mounts go in one call.
+	const bindMounts: Array<{ source: string; target: string; mode: 'rw' }> = [];
+
+	if (userHomeHostDir) {
+		// The whole home is mounted (not just ~/.n8n) so the settings file and
+		// the sqlite database live on the host and a different image can boot
+		// on the same data later.
+		mkdirSync(userHomeHostDir, { recursive: true });
+		bindMounts.push({ source: userHomeHostDir, target: '/home/node', mode: 'rw' });
+	}
 
 	if (coverageHostDir) {
 		// Per-container host dir → /cov; n8n flushes V8 here on graceful stop.
@@ -215,10 +271,16 @@ async function createContainer(
 		// is direct (no Docker Desktop uid mapping), so make the dir writable by
 		// the container or NODE_V8_COVERAGE silently fails to flush.
 		chmodSync(hostCoverageDir, 0o777);
-		container = container.withBindMounts([
-			{ source: hostCoverageDir, target: CONTAINER_COVERAGE_DIR, mode: 'rw' },
-		]);
-	} else {
+		bindMounts.push({ source: hostCoverageDir, target: CONTAINER_COVERAGE_DIR, mode: 'rw' });
+	}
+
+	if (bindMounts.length > 0) {
+		container = container.withBindMounts(bindMounts);
+	}
+
+	// Reuse stays off for a coverage or mounted-home container: the process
+	// must exit to flush coverage, and cycle data belongs to the cycle.
+	if (!coverageHostDir && !userHomeHostDir) {
 		container = container.withReuse();
 	}
 
@@ -250,6 +312,7 @@ async function createContainer(
 	}
 
 	try {
+		startupDeadline.throwIfAborted();
 		const started = await container.start();
 		registerContainer?.(started);
 		return { container: started, getLogs, getLastReadinessBody };
@@ -285,6 +348,11 @@ export async function createN8NInstances(
 		filesToMount,
 		coverageHostDir,
 		registerContainer,
+		startupDeadline,
+		image,
+		userHomeHostDir,
+		user,
+		startupTimeoutMs,
 	} = options;
 
 	const log = createElapsedLogger('n8n-instances');
@@ -300,6 +368,11 @@ export async function createN8NInstances(
 		filesToMount,
 		coverageHostDir,
 		registerContainer,
+		startupDeadline,
+		image,
+		userHomeHostDir,
+		user,
+		startupTimeoutMs,
 	};
 
 	const workerShared: SharedConfig = {
@@ -310,6 +383,10 @@ export async function createN8NInstances(
 		filesToMount,
 		coverageHostDir,
 		registerContainer,
+		startupDeadline,
+		image,
+		user,
+		startupTimeoutMs,
 	};
 
 	const webhookShared: SharedConfig = {
@@ -319,6 +396,10 @@ export async function createN8NInstances(
 		resourceQuota: webhookResourceQuota ?? resourceQuota,
 		filesToMount,
 		registerContainer,
+		startupDeadline,
+		image,
+		user,
+		startupTimeoutMs,
 	};
 
 	const sharedByRole: Record<InstanceRole, SharedConfig> = {
@@ -368,6 +449,7 @@ export async function createN8NInstances(
 		diagnostics.logs[instance.name] = result.getLogs();
 		diagnostics.readinessPayloads[instance.name] = result.getLastReadinessBody();
 	};
+	options.startupDeadline.throwIfAborted();
 
 	const rethrowWithDiagnostics = (error: unknown): never => {
 		const message =

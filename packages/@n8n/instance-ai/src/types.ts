@@ -177,6 +177,12 @@ export interface ExecutionResult {
 	 * unsaved workflow, absent when the record could not be read.
 	 */
 	workflowVersionId?: string | null;
+	/**
+	 * Set when the trigger did not fire from a real event: its output came from
+	 * injected `inputData` or verification pin data. Such a run proves nothing
+	 * about the trigger's ingress (auth, payload shape, response mode).
+	 */
+	injectedTriggerNodeName?: string;
 	error?: string;
 	startedAt?: string;
 	finishedAt?: string;

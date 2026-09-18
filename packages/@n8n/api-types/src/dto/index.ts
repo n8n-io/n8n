@@ -528,15 +528,18 @@ export {
 export { TestOtelTraceDto } from './otel/test-otel-trace.dto';
 
 export {
+	PromotionChangesDto,
 	PromotionChangesQueryDto,
 	promotableResourceSchema,
 	promotableResourceStatusSchema,
 	promotableResourceTypeSchema,
 	promoteRequestSchema,
+	promotionChangesSchema,
 	type PromotableResource,
 	type PromotableResourceStatus,
 	type PromotableResourceType,
 	type PromoteRequest,
+	type PromotionChanges,
 } from './promotions/promotable-resource.dto';
 
 export { promotionDisplayNameSchema } from './promotions/promotion-common.dto';
@@ -607,6 +610,7 @@ export {
 } from './promotions/promotion-connection.dto';
 export {
 	ApplyPackageResultDto,
+	ContinueApplyPackageDto,
 	PromotePackageDto,
 	PromotePackageResultDto,
 	applyPackageCountsSchema,

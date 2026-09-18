@@ -61,7 +61,7 @@ describe('InstanceContextService', () => {
 
 		const built = await service.buildBlock({
 			user,
-			projectId: project.id,
+			scope: bound(project.id),
 			cursor: null,
 		});
 
@@ -77,7 +77,7 @@ describe('InstanceContextService', () => {
 		config.instanceAi.instanceContextEnabled = false;
 
 		try {
-			expect(await service.buildBlock({ user, projectId: project.id, cursor: null })).toBeNull();
+			expect(await service.buildBlock({ user, scope: bound(project.id), cursor: null })).toBeNull();
 		} finally {
 			config.instanceAi.instanceContextEnabled = true;
 		}
@@ -101,7 +101,7 @@ describe('InstanceContextService', () => {
 
 			const built = await service.buildBlock({
 				user,
-				projectId: project.id,
+				scope: bound(project.id),
 				cursor: null,
 			});
 
@@ -156,7 +156,7 @@ describe('InstanceContextService', () => {
 
 			const delta = await service.buildBlock({
 				user,
-				projectId: project.id,
+				scope: bound(project.id),
 				cursor: {
 					activityMark: newest.id,
 					activitySeen: [newest.id],
@@ -183,7 +183,7 @@ describe('InstanceContextService', () => {
 
 			const first = await service.buildBlock({
 				user,
-				projectId: project.id,
+				scope: bound(project.id),
 				cursor: null,
 			});
 			await record({
@@ -198,7 +198,7 @@ describe('InstanceContextService', () => {
 
 			const delta = await service.buildBlock({
 				user,
-				projectId: project.id,
+				scope: bound(project.id),
 				cursor: first!.cursor,
 			});
 
@@ -212,14 +212,14 @@ describe('InstanceContextService', () => {
 
 			const first = await service.buildBlock({
 				user,
-				projectId: project.id,
+				scope: bound(project.id),
 				cursor: null,
 			});
 
 			expect(
 				await service.buildBlock({
 					user,
-					projectId: project.id,
+					scope: bound(project.id),
 					cursor: first!.cursor,
 				}),
 			).toBeNull();
@@ -236,7 +236,7 @@ describe('InstanceContextService', () => {
 
 		const built = await service.buildBlock({
 			user,
-			projectId: otherProject.id,
+			scope: bound(otherProject.id),
 			cursor: null,
 		});
 
@@ -249,7 +249,7 @@ describe('InstanceContextService', () => {
 
 		const built = await service.buildBlock({
 			user,
-			projectId: project.id,
+			scope: bound(project.id),
 			cursor: null,
 		});
 
@@ -286,7 +286,9 @@ describe('InstanceContextService', () => {
 			resourceId: 'wf-1',
 		});
 
-		expect(await service.buildBlock({ user, cursor: null })).toBeNull();
+		expect(
+			await service.buildBlock({ user, scope: { surface: 'conversation' }, cursor: null }),
+		).toBeNull();
 	});
 
 	/**
@@ -299,6 +301,228 @@ describe('InstanceContextService', () => {
 		const mcp = (credentialGranted = true): InstanceContextScope => ({
 			surface: 'mcp',
 			credentialGranted,
+			executionGranted: true,
+		});
+
+		it('reads the projects the caller can open and not the ones they cannot', async () => {
+			const mine = await createWorkflow(
+				{ name: 'Mine', settings: { availableInMCP: true } },
+				project,
+			);
+			const theirs = await createWorkflow(
+				{ name: 'Theirs', settings: { availableInMCP: true } },
+				otherProject,
+			);
+			await record({
+				category: 'workflow',
+				action: 'saved',
+				projectId: project.id,
+				resourceType: 'workflow',
+				resourceId: mine.id,
+				resourceName: mine.name,
+			});
+			await record({
+				category: 'workflow',
+				action: 'saved',
+				projectId: otherProject.id,
+				resourceType: 'workflow',
+				resourceId: theirs.id,
+				resourceName: theirs.name,
+			});
+
+			const entries = await service.list({ user, scope: mcp(), limit: 20 });
+
+			expect(entries.map((entry) => entry.resourceId)).toEqual([mine.id]);
+		});
+
+		it('does not report a workflow the instance withholds from MCP', async () => {
+			const visible = await createWorkflow(
+				{ name: 'Visible', settings: { availableInMCP: true } },
+				project,
+			);
+			// Withheld is the default: no `availableInMCP` at all reads as not available.
+			const withheld = await createWorkflow({ name: 'Withheld' }, project);
+
+			for (const workflow of [visible, withheld]) {
+				await record({
+					category: 'workflow',
+					action: 'saved',
+					projectId: project.id,
+					resourceType: 'workflow',
+					resourceId: workflow.id,
+					resourceName: workflow.name,
+				});
+			}
+
+			const entries = await service.list({ user, scope: mcp(), limit: 20 });
+
+			expect(entries.map((entry) => entry.resourceId)).toEqual([visible.id]);
+		});
+
+		/**
+		 * The inventory and run legs are aggregates. Filtering their rows after the query would
+		 * leave a total that still counts what the caller cannot see, so the filter has to be in
+		 * the SQL — which only a real database can prove.
+		 */
+		it('counts only visible workflows in the opening block, not just lists them', async () => {
+			const visible = await createWorkflow(
+				{ name: 'Visible', settings: { availableInMCP: true } },
+				project,
+			);
+			await createWorkflow({ name: 'Withheld one' }, project);
+			await createWorkflow({ name: 'Withheld two' }, project);
+			await createExecution({ status: 'error', stoppedAt: recently() }, visible);
+
+			const built = await service.buildBlock({ user, scope: mcp(), cursor: null });
+
+			expect(built?.block).toContain('Workflows that already exist here: 1');
+			expect(built?.block).toContain('Visible');
+			expect(built?.block).not.toContain('Withheld');
+		});
+
+		it('leaves a withheld workflow out of the run counts', async () => {
+			const withheld = await createWorkflow({ name: 'Nightly sync' }, project);
+			await createExecution({ status: 'error', stoppedAt: recently() }, withheld);
+
+			const built = await service.buildBlock({ user, scope: mcp(), cursor: null });
+
+			expect(built?.block ?? '').not.toContain('Nightly sync');
+		});
+
+		/**
+		 * A chat turn has no error channel so it degrades to no block, but an MCP caller reads an
+		 * empty answer as "nothing exists here yet" — the two must not look the same.
+		 */
+		it('throws on a failed read instead of answering as though the instance were empty', async () => {
+			const spy = vi
+				.spyOn(activity, 'findFeed')
+				.mockRejectedValueOnce(new Error('db is down'))
+				.mockRejectedValueOnce(new Error('db is down'));
+
+			try {
+				await expect(service.buildBlock({ user, scope: mcp(), cursor: null })).rejects.toThrow(
+					'db is down',
+				);
+
+				await expect(
+					service.buildBlock({ user, scope: bound(project.id), cursor: null }),
+				).resolves.toBeNull();
+			} finally {
+				spy.mockRestore();
+			}
+		});
+
+		/**
+		 * Every other MCP read refuses an archived workflow before it looks at the setting, so the
+		 * feed must not be the one door that reports its history.
+		 */
+		it('treats an archived workflow as withheld even when it is marked available', async () => {
+			const archived = await createWorkflow(
+				{ name: 'Archived', isArchived: true, settings: { availableInMCP: true } },
+				project,
+			);
+			await record({
+				category: 'workflow',
+				action: 'saved',
+				projectId: project.id,
+				resourceType: 'workflow',
+				resourceId: archived.id,
+				resourceName: archived.name,
+			});
+
+			expect(await service.list({ user, scope: mcp(), limit: 20 })).toEqual([]);
+		});
+
+		/**
+		 * A deleted workflow keeps its deletion and loses the rest: the setting that withheld it
+		 * is gone with the row, so releasing its earlier history would undo that setting after
+		 * the fact.
+		 */
+		it('keeps only the deletion for a workflow that no longer exists', async () => {
+			for (const action of ['created', 'saved', 'deleted']) {
+				await record({
+					category: 'workflow',
+					action,
+					projectId: project.id,
+					resourceType: 'workflow',
+					resourceId: 'wf-long-gone',
+					resourceName: 'Nightly sync',
+				});
+			}
+
+			const viaMcp = await service.list({ user, scope: mcp(), limit: 20 });
+			expect(viaMcp.map((entry) => entry.action)).toEqual(['deleted']);
+
+			// The conversation surface has no per-workflow visibility rule, so it sees them all.
+			const viaChat = await service.list({ user, scope: bound(project.id), limit: 20 });
+			expect(viaChat).toHaveLength(3);
+		});
+
+		it('answers a withheld id exactly as it answers a pruned one', async () => {
+			const withheld = await createWorkflow({ name: 'Withheld' }, project);
+			await record({
+				category: 'workflow',
+				action: 'saved',
+				projectId: project.id,
+				resourceType: 'workflow',
+				resourceId: withheld.id,
+				resourceName: withheld.name,
+			});
+			const [entry] = await activity.findFeed({ projectIds: [project.id], limit: 1 });
+
+			expect(await service.expand({ id: entry.id, user, scope: mcp() })).toBeNull();
+			expect(await service.expand({ id: entry.id + 5_000, user, scope: mcp() })).toBeNull();
+		});
+
+		/** The two surfaces do not share tool names, so the hint must be named for its caller. */
+		it('names the live record in MCP tool vocabulary, not Instance AI vocabulary', async () => {
+			const workflow = await createWorkflow(
+				{ name: 'Lead enrichment', settings: { availableInMCP: true } },
+				project,
+			);
+			await record({
+				category: 'workflow',
+				action: 'saved',
+				projectId: project.id,
+				resourceType: 'workflow',
+				resourceId: workflow.id,
+				resourceName: workflow.name,
+			});
+			const [entry] = await activity.findFeed({ projectIds: [project.id], limit: 1 });
+
+			const viaMcp = await service.expand({ id: entry.id, user, scope: mcp() });
+			const viaChat = await service.expand({ id: entry.id, user, scope: bound(project.id) });
+
+			expect(viaMcp?.liveRecordHint).toBe(`get_workflow_details(workflowId="${workflow.id}")`);
+			expect(viaChat?.liveRecordHint).toBe(`workflows(action="get", workflowId="${workflow.id}")`);
+		});
+
+		it('reads no credential history for a caller without the credential grant', async () => {
+			await record({
+				category: 'credential',
+				action: 'created',
+				projectId: project.id,
+				resourceType: 'credential',
+				resourceId: 'cred-1',
+				resourceName: 'Slack account',
+			});
+
+			expect(await service.list({ user, scope: mcp(false), limit: 20 })).toEqual([]);
+			expect(await service.list({ user, scope: mcp(), limit: 20 })).toHaveLength(1);
+		});
+	});
+
+	/**
+	 * The MCP surface reads without a conversation to bind to, and under the per-workflow
+	 * visibility rule the rest of that surface already enforces. Both are read from real rows:
+	 * `availableInMCP` lives inside the workflow `settings` JSON column, and a mocked repository
+	 * would report the filter working whatever that column actually holds.
+	 */
+	describe('the MCP surface', () => {
+		const mcp = (credentialGranted = true, executionGranted = true): InstanceContextScope => ({
+			surface: 'mcp',
+			credentialGranted,
+			executionGranted,
 		});
 
 		it('reads the projects the caller can open and not the ones they cannot', async () => {

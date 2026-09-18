@@ -1284,6 +1284,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 			expect.any(String),
 			'iframe-push-ref-123',
 			expect.any(Array),
+			undefined,
 		);
 	});
 
@@ -1319,6 +1320,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 			expect.any(String),
 			undefined,
 			expect.any(Array),
+			undefined,
 		);
 	});
 
@@ -1336,6 +1338,37 @@ describe('createThreadRuntime - SSE and hydration', () => {
 			expect.any(String),
 			undefined,
 			expect.any(Array),
+			undefined,
+		);
+	});
+
+	test('sendMessage forwards the thread artifact index to postMessage', async () => {
+		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
+		const runtime = activeRuntime(registry);
+		runtime.producedArtifacts.set('wf-1', {
+			type: 'workflow',
+			id: 'wf-1',
+			name: 'WhatsApp FAQ Auto-Responder',
+		});
+		runtime.setActiveArtifactId('wf-1');
+
+		await runtime.sendMessage('Change the WhatsApp node', {
+			authorship: USER_TYPED_MESSAGE,
+		});
+
+		expect(mockPostMessage).toHaveBeenCalledWith(
+			expect.anything(),
+			activeThreadId,
+			'Change the WhatsApp node',
+			undefined,
+			undefined,
+			expect.any(String),
+			undefined,
+			expect.any(Array),
+			{
+				artifacts: [{ type: 'workflow', id: 'wf-1', name: 'WhatsApp FAQ Auto-Responder' }],
+				activeId: 'wf-1',
+			},
 		);
 	});
 

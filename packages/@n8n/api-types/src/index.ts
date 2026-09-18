@@ -125,8 +125,10 @@ export type { FavoriteResourceType } from './schemas/favorites.schema';
 export { FAVORITE_RESOURCE_TYPES } from './schemas/favorites.schema';
 export {
 	AI_PREFERENCE_CONTENT_MAX_LENGTH,
+	AI_PREFERENCE_MAX_PER_SCOPE,
 	aiPreferenceContentSchema,
 	aiPreferenceScopeSchema,
+	aiPreferenceSourceSchema,
 	CONTEXT_PREFERENCES_CONTROL_VARIANT,
 	CONTEXT_PREFERENCES_ENABLED_VARIANT,
 	CONTEXT_PREFERENCES_FLAG,
@@ -141,6 +143,7 @@ export type {
 	AiPreferenceProjectDto,
 	AiPreferenceUserDto,
 	AiPreferenceScope,
+	AiPreferenceSource,
 } from './schemas/ai-preference.schema';
 
 export type { BannerName } from './schemas/banner-name.schema';
@@ -182,6 +185,10 @@ export {
 	WORKFLOW_VERSION_NAME_MAX_LENGTH,
 	WORKFLOW_VERSION_DESCRIPTION_MAX_LENGTH,
 } from './schemas/workflow-version.schema';
+export {
+	CREDENTIAL_DESCRIPTION_MAX_LENGTH,
+	credentialDescriptionSchema,
+} from './schemas/credential-description.schema';
 export type {
 	DependencyType,
 	DependencyResourceType,
@@ -396,6 +403,7 @@ export {
 	workflowSetupNodeSchema,
 	setupItemSchema,
 	setupItemsPayloadSchema,
+	aiPreferencesAppliedPayloadSchema,
 	errorPayloadSchema,
 	filesystemRequestPayloadSchema,
 	mcpToolSchema,
@@ -430,6 +438,8 @@ export {
 	instanceAiCredentialHandoffContextSchema,
 	instanceAiAgentPreviewHandoffContextSchema,
 	instanceAiHandoffContextSchema,
+	instanceAiThreadArtifactSchema,
+	instanceAiThreadArtifactsContextSchema,
 	gatewayConfirmationRequiredWirePayloadSchema,
 	gatewayConfirmationRequiredPayloadSchema,
 	instanceGatewayResourceDecisionSchema,
@@ -555,6 +565,8 @@ export type {
 	InstanceAiConfirmationRequestEvent,
 	InstanceAiSetupItem,
 	InstanceAiSetupItemsEvent,
+	InstanceAiPreferencesAppliedEvent,
+	AiPreferencesAppliedPayload,
 	InstanceAiErrorEvent,
 	InstanceAiFilesystemRequestEvent,
 	InstanceAiFilesystemResponse,
@@ -620,6 +632,8 @@ export type {
 	InstanceAiCredentialHandoffContext,
 	InstanceAiAgentPreviewHandoffContext,
 	InstanceAiHandoffContext,
+	InstanceAiThreadArtifact,
+	InstanceAiThreadArtifactsContext,
 	GatewayConfirmationRequiredWirePayload,
 	GatewayConfirmationRequiredPayload,
 	InstanceGatewayResourceDecision,
@@ -668,6 +682,7 @@ export type { AgentRunState } from './schemas/agent-run-reducer';
 export {
 	formatDebugJson,
 	summarizeJsonValue,
+	stepInstructions,
 	parseSystemPromptForDisplay,
 	parseMessageBlocks,
 	parseUsageSummary,
@@ -689,7 +704,6 @@ export {
 	MCP_APPS_FLAG,
 	MCP_APPS_VARIANT_CONTROL,
 	MCP_APPS_VARIANT_ENABLED,
-	MCP_CANVAS_GROUPS_FLAG,
 	MCP_INSTANCE_CONTEXT_FLAG,
 	MCP_AGENT_SCOPES,
 	MCP_INSTANCE_SCOPES,

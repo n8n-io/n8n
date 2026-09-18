@@ -1,6 +1,7 @@
 import { instanceAiApprovalDetailsSchema } from './instance-ai-approval.schema';
 import { z } from 'zod';
 
+import { aiPreferenceScopeSchema } from './ai-preference.schema';
 import { folderNameSchema } from './folder.schema';
 import type { McpRegistryServerIconResponse } from './mcp-registry.schema';
 import { TimeZoneSchema } from './timezone.schema';
@@ -199,6 +200,7 @@ export const instanceAiEventTypeSchema = z.enum([
 	'confirmation-request',
 	'tasks-update',
 	'setup-items',
+	'preferences-applied',
 	'filesystem-request',
 	'thread-title-updated',
 	'status',
@@ -1065,6 +1067,60 @@ export const threadTitleUpdatedPayloadSchema = z.object({
 	title: z.string(),
 });
 
+/**
+ * What the saved AI preferences contributed to one turn.
+ *
+ * The turn is the only place that knows this. The settings endpoint lists every row the
+ * user can see, which is a different question and a different answer: the turn reads a
+ * bound project rather than all projects, the read is best effort, the feature flag can be
+ * off, and a row can change between the turn and the moment somebody looks. So the chat
+ * and the plus menu report this payload instead of deriving one of their own.
+ *
+ * An empty `preferences` array says that the turn applied none. No event at all says that
+ * the code path never ran, which is a different fact.
+ *
+ * CONTEXT-137 defines the shape. CONTEXT-139 publishes the event on every turn.
+ */
+const appliedPreferenceSchema = z.object({
+	/** Stable row id, so a reader can link to the preference or edit it. */
+	id: z.string(),
+	scope: aiPreferenceScopeSchema,
+	/** Set only for a team project. A personal project reports as `user`. */
+	projectId: z.string().optional(),
+	projectName: z.string().optional(),
+});
+
+const appliedPreferencesBase = {
+	preferences: z
+		.array(appliedPreferenceSchema)
+		.describe('Every preference the request carried, instance first, then personal, then projects'),
+	/** Characters in the rendered block. Reviews the caps against real conversations. */
+	renderedLength: z.number(),
+};
+
+/**
+ * Two arms, because a turn either sent the block or it did not, and only the second case has a
+ * run to name. `injectedThisTurn: false` means the text was unchanged, so an earlier block in
+ * the same conversation still carries it and `carriedFromRunId` says which run sent it. A
+ * payload that claims both is refused here as well as in the type.
+ */
+export const aiPreferencesAppliedPayloadSchema = z.discriminatedUnion('injectedThisTurn', [
+	// `z.undefined().optional()` rather than a strict object: a present `carriedFromRunId`
+	// fails, an absent one passes, and a field a newer server adds is still ignored.
+	z.object({
+		...appliedPreferencesBase,
+		injectedThisTurn: z.literal(true),
+		carriedFromRunId: z.undefined().optional(),
+	}),
+	z.object({
+		...appliedPreferencesBase,
+		injectedThisTurn: z.literal(false),
+		carriedFromRunId: z.string().optional(),
+	}),
+]);
+
+export type AiPreferencesAppliedPayload = z.infer<typeof aiPreferencesAppliedPayloadSchema>;
+
 // ---------------------------------------------------------------------------
 // Event schema (Zod discriminated union — single source of truth)
 // ---------------------------------------------------------------------------
@@ -1128,6 +1184,11 @@ export const instanceAiEventSchema = z.discriminatedUnion('type', [
 	}),
 	z.object({ type: z.literal('tasks-update'), ...eventBase, payload: tasksUpdatePayloadSchema }),
 	z.object({ type: z.literal('setup-items'), ...eventBase, payload: setupItemsPayloadSchema }),
+	z.object({
+		type: z.literal('preferences-applied'),
+		...eventBase,
+		payload: aiPreferencesAppliedPayloadSchema,
+	}),
 	z.object({ type: z.literal('status'), ...eventBase, payload: statusPayloadSchema }),
 	z.object({ type: z.literal('error'), ...eventBase, payload: errorPayloadSchema }),
 	z.object({
@@ -1165,6 +1226,10 @@ export type InstanceAiConfirmationRequestEvent = Extract<
 >;
 export type InstanceAiTasksUpdateEvent = Extract<InstanceAiEvent, { type: 'tasks-update' }>;
 export type InstanceAiSetupItemsEvent = Extract<InstanceAiEvent, { type: 'setup-items' }>;
+export type InstanceAiPreferencesAppliedEvent = Extract<
+	InstanceAiEvent,
+	{ type: 'preferences-applied' }
+>;
 export type InstanceAiStatusEvent = Extract<InstanceAiEvent, { type: 'status' }>;
 export type InstanceAiErrorEvent = Extract<InstanceAiEvent, { type: 'error' }>;
 export type InstanceAiFilesystemRequestEvent = Extract<
@@ -1402,6 +1467,29 @@ export const instanceAiHandoffContextSchema = z.discriminatedUnion('source', [
 export type InstanceAiHandoffContext = z.infer<typeof instanceAiHandoffContextSchema>;
 
 /**
+ * One preview tab in the current Instance AI thread. Ids and names only — the
+ * agent resolves contents with its tools. Cap matches the send-message field.
+ */
+export const instanceAiThreadArtifactSchema = z.object({
+	type: z.enum(['workflow', 'agent', 'data-table']),
+	id: z.string().min(1).max(64),
+	name: z.string().max(255).optional(),
+	projectId: z.string().min(1).max(64).optional(),
+	pending: z.literal(true).optional(),
+	archived: z.literal(true).optional(),
+});
+export type InstanceAiThreadArtifact = z.infer<typeof instanceAiThreadArtifactSchema>;
+
+/** The thread view's artifact tabs, plus which tab is focused when the preview is open. */
+export const instanceAiThreadArtifactsContextSchema = z.object({
+	artifacts: z.array(instanceAiThreadArtifactSchema).min(1).max(20),
+	activeId: z.string().min(1).max(64).optional(),
+});
+export type InstanceAiThreadArtifactsContext = z.infer<
+	typeof instanceAiThreadArtifactsContextSchema
+>;
+
+/**
  * Build style for a run. `progressive` makes the agent build a minimal working
  * slice first, gate increments on real executions, and extend on actual
  * execution data. `default` uses the standard building policy.
@@ -1431,6 +1519,8 @@ export class InstanceAiSendMessageRequest extends Z.class({
 	message: z.string().default(''),
 	attachments: z.array(instanceAiAttachmentSchema).max(10).optional(),
 	context: instanceAiHandoffContextSchema.optional(),
+	/** Preview tabs in this thread. The server injects them as a per-turn index. */
+	threadArtifacts: instanceAiThreadArtifactsContextSchema.optional(),
 	timeZone: TimeZoneSchema,
 	pushRef: z.string().optional(),
 	/** Entries the client renders for this user. Omit to advertise none. The
@@ -1519,8 +1609,9 @@ export type InstanceAiThreadSourcePersisted =
  *   travels separately and is already catalog-prefixed
  * - `v1_opener` — the original empty-state openers ("I want to build a new
  *   workflow…")
- * - `workflow_attachment_opener` — a workflow opened in the assistant, which
- *   sends an empty message and lets the editor context greet
+ * - `workflow_attachment_opener` — legacy: a workflow opened in the assistant
+ *   used to send an empty message so the editor context would greet. New
+ *   hand-offs stash the attachment and wait for the user's first prompt.
  * - `contextual_followup` — the follow-up the composer offers as a placeholder
  *   after a build, accepted with Tab; lands mid-thread
  */

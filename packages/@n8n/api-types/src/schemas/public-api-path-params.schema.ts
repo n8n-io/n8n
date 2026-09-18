@@ -1,6 +1,8 @@
 import '../openapi-extend';
 import { z } from 'zod';
 
+import { promotionDirectionSchema } from '../dto/promotions/promotion-config.dto';
+
 /**
  * Runtime: the id stays a string, because the services these routes call expect a string.
  * Docs: `.openapi({ type })` overrides them, so they show `integer`.
@@ -29,9 +31,11 @@ export const promotionConnectionIdParamSchema = stringIdParamSchema(
 export const promotionProviderIdParamSchema = stringIdParamSchema(
 	'The ID of the promotion provider.',
 );
-export const promotionDirectionParamSchema = z
-	.string()
-	.openapi({ param: { description: 'The direction of the promotion: apply or promote.' } });
+
+export const promotionDirectionParamSchema = z.string().openapi({
+	enum: [...promotionDirectionSchema.options],
+	param: { description: 'The direction of the promotion: apply or promote.' },
+});
 export const credentialIdParamSchema = stringIdParamSchema('The ID of the credential.');
 export const credentialTypeNameParamSchema = stringIdParamSchema(
 	'The credential type name that you want to get the schema for',
