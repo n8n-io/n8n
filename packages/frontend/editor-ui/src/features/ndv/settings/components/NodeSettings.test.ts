@@ -344,5 +344,24 @@ describe('NodeSettings', () => {
 
 			expect(emitted('replaceNode')).toEqual([[httpNode.id]]);
 		});
+
+		it('locks the embedded header and offers no replace action', async () => {
+			const { findByTestId, getByTestId, queryByTestId } = renderNodeSettings({
+				...restricted,
+				props: { readOnly: false, isEmbeddedInCanvas: true },
+				stubs: {
+					ExperimentalEmbeddedNdvHeader: {
+						props: ['readOnly', 'hideTabs'],
+						template:
+							'<div data-test-id="embedded-ndv-header" :data-read-only="readOnly" :data-hide-tabs="hideTabs" />',
+					},
+				},
+			});
+
+			expect(await findByTestId('node-restricted-panel')).toBeInTheDocument();
+			expect(queryByTestId('node-restricted-replace')).not.toBeInTheDocument();
+			expect(getByTestId('embedded-ndv-header')).toHaveAttribute('data-read-only', 'true');
+			expect(getByTestId('embedded-ndv-header')).toHaveAttribute('data-hide-tabs', 'true');
+		});
 	});
 });
