@@ -948,8 +948,14 @@ export class InstanceAiController {
 		@Body payload: InstanceAiQueueMessageRequest,
 	) {
 		this.requireInstanceAiEnabled();
+		// The message may start a run at once when no run turns out to be live.
+		await this.requireModelConfigured();
 		await this.assertThreadAccess(req.user.id, threadId);
-		const queuedMessages = await this.instanceAiService.queueMessage(threadId, payload.text);
+		const queuedMessages = await this.instanceAiService.admitQueuedMessage(
+			req.user,
+			threadId,
+			payload.text,
+		);
 		return { queuedMessages };
 	}
 
@@ -994,6 +1000,8 @@ export class InstanceAiController {
 		@Param('threadId') threadId: string,
 	) {
 		this.requireInstanceAiEnabled();
+		// On an idle thread this starts a run, the same as /chat.
+		await this.requireModelConfigured();
 		await this.assertThreadAccess(req.user.id, threadId);
 		return await this.instanceAiService.sendQueueNow(req.user, threadId);
 	}

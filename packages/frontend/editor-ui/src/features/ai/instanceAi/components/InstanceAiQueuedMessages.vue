@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { INSTANCE_AI_MAX_QUEUED_MESSAGES } from '@n8n/api-types';
-import { N8nButton, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
+import { N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
 import { computed, ref } from 'vue';
 
 import { useI18n } from '@n8n/i18n';
@@ -57,27 +57,21 @@ function onRemove(messageId: string): void {
 		:aria-label="i18n.baseText('instanceAi.queue.title')"
 		data-test-id="instance-ai-queued-messages"
 	>
-		<div :class="$style.header">
-			<N8nText size="small" color="text-light" data-test-id="instance-ai-queued-messages-count">
-				{{
-					i18n.baseText('instanceAi.queue.count', {
-						interpolate: {
-							count: String(pendingMessages.length),
-							max: String(INSTANCE_AI_MAX_QUEUED_MESSAGES),
-						},
-					})
-				}}
-			</N8nText>
-			<N8nButton
-				size="mini"
-				variant="subtle"
-				icon="send"
-				:loading="isSending"
-				:label="i18n.baseText(isSending ? 'instanceAi.queue.sending' : 'instanceAi.queue.sendNow')"
-				data-test-id="instance-ai-queued-message-send-now"
-				@click="onSendNow"
-			/>
-		</div>
+		<N8nText
+			:class="$style.count"
+			size="small"
+			color="text-light"
+			data-test-id="instance-ai-queued-messages-count"
+		>
+			{{
+				i18n.baseText('instanceAi.queue.count', {
+					interpolate: {
+						count: String(pendingMessages.length),
+						max: String(INSTANCE_AI_MAX_QUEUED_MESSAGES),
+					},
+				})
+			}}
+		</N8nText>
 		<div
 			v-for="message in pendingMessages"
 			:key="message.id"
@@ -87,7 +81,22 @@ function onRemove(messageId: string): void {
 			<N8nText :class="$style.text" size="small" color="text-base" :title="message.text">
 				{{ message.text }}
 			</N8nText>
-			<div :class="$style.actions">
+			<!-- While Send now is in flight the whole queue is already on its way; an
+				 edit or a removal here would try to change what was just announced. -->
+			<N8nText v-if="isSending" size="small" color="text-light">
+				{{ i18n.baseText('instanceAi.queue.sending') }}
+			</N8nText>
+			<div v-else :class="$style.actions">
+				<N8nTooltip :content="i18n.baseText('instanceAi.queue.sendNow')" placement="top">
+					<N8nIconButton
+						icon="send"
+						size="xsmall"
+						variant="ghost"
+						:aria-label="i18n.baseText('instanceAi.queue.sendNow')"
+						data-test-id="instance-ai-queued-message-send-now"
+						@click="onSendNow"
+					/>
+				</N8nTooltip>
 				<N8nTooltip :content="i18n.baseText('instanceAi.queue.edit')" placement="top">
 					<N8nIconButton
 						icon="pencil"
@@ -129,11 +138,7 @@ function onRemove(messageId: string): void {
 	margin-bottom: var(--spacing--2xs);
 }
 
-.header {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: var(--spacing--2xs);
+.count {
 	padding: 0 var(--spacing--2xs);
 }
 

@@ -191,6 +191,7 @@ describe('InstanceAiService — finalizeRun title refinement guard', () => {
 		publishRunFinish: ReturnType<typeof vi.fn>;
 		emitRunMetrics: ReturnType<typeof vi.fn>;
 		refineTitleIfNeeded: ReturnType<typeof vi.fn>;
+		steerInterrupts: Map<string, AbortController>;
 		finalizeRun: (
 			threadId: string,
 			runId: string,
@@ -206,6 +207,7 @@ describe('InstanceAiService — finalizeRun title refinement guard', () => {
 		service.publishRunFinish = vi.fn();
 		service.emitRunMetrics = vi.fn();
 		service.refineTitleIfNeeded = vi.fn(async () => {});
+		service.steerInterrupts = new Map();
 		return service;
 	}
 

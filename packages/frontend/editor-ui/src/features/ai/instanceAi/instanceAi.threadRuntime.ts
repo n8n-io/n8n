@@ -426,6 +426,19 @@ export function createThreadRuntime(
 	// --- Reactive state ---
 	const messages = ref<InstanceAiMessage[]>([]);
 	const queuedMessages = ref<InstanceAiQueuedMessage[]>([]);
+	// Every queue request carries a ticket; a response only lands when no later
+	// request has landed already, so a slow load or write cannot roll the list
+	// back over a newer server view.
+	let queueTicketIssued = 0;
+	let queueTicketApplied = 0;
+	function takeQueueTicket(): number {
+		return ++queueTicketIssued;
+	}
+	function applyQueueSnapshot(ticket: number, messages: InstanceAiQueuedMessage[]): void {
+		if (ticket < queueTicketApplied) return;
+		queueTicketApplied = ticket;
+		queuedMessages.value = messages;
+	}
 	const projectId = ref<string | undefined>(initialProjectId);
 	const activeRunId = ref<string | null>(null);
 	const archivedWorkflowIds = ref<Set<string>>(new Set());
@@ -940,6 +953,13 @@ export function createThreadRuntime(
 					// The list is display-only; the next load or event corrects it.
 				});
 			}
+			if (parsed.data.type === 'run-finish') {
+				// The server may have dropped the queue with the run (a stop, a crash
+				// sweep) or delivered it; the list must not keep offering stale items.
+				void loadQueuedMessages().catch(() => {
+					// Same as above: display-only.
+				});
+			}
 			// Anything received on the stream means generation isn't stalled.
 			resetGenerationStallWatchdog();
 			if (parsed.data.type === 'tasks-update') {
@@ -1332,6 +1352,11 @@ export function createThreadRuntime(
 			if (runId) {
 				activeRunId.value = runId;
 			}
+			// A typed turn supersedes whatever a stopped run left queued; the server
+			// dropped it, so the list must not keep offering it.
+			void loadQueuedMessages().catch(() => {
+				// Display-only.
+			});
 			return true;
 		} catch (error: unknown) {
 			const status = error instanceof ResponseError ? error.httpStatusCode : undefined;
@@ -1399,14 +1424,16 @@ export function createThreadRuntime(
 	}
 
 	async function loadQueuedMessages(): Promise<void> {
+		const ticket = takeQueueTicket();
 		const response = await fetchQueuedMessages(rootStore.restApiContext, threadId);
-		queuedMessages.value = response.queuedMessages;
+		applyQueueSnapshot(ticket, response.queuedMessages);
 	}
 
 	async function queueMessage(text: string): Promise<boolean> {
+		const ticket = takeQueueTicket();
 		try {
 			const response = await postQueuedMessage(rootStore.restApiContext, threadId, text);
-			queuedMessages.value = response.queuedMessages;
+			applyQueueSnapshot(ticket, response.queuedMessages);
 			return true;
 		} catch {
 			return false;
@@ -1414,58 +1441,55 @@ export function createThreadRuntime(
 	}
 
 	async function removeQueuedMessage(messageId: string): Promise<void> {
+		const ticket = takeQueueTicket();
 		try {
 			const response = await deleteQueuedMessage(rootStore.restApiContext, threadId, messageId);
-			queuedMessages.value = response.queuedMessages;
-		} catch {
-			toast.showError(
-				new Error(i18n.baseText('instanceAi.queue.removeError.message')),
-				i18n.baseText('instanceAi.queue.removeError.title'),
-			);
+			applyQueueSnapshot(ticket, response.queuedMessages);
+		} catch (error) {
+			// The server's reason goes under the hint, so a failure is diagnosable.
+			toast.showError(error, i18n.baseText('instanceAi.queue.removeError.title'), {
+				message: i18n.baseText('instanceAi.queue.removeError.message'),
+			});
 		}
 	}
 
 	async function sendQueueNow(): Promise<void> {
+		const ticket = takeQueueTicket();
 		try {
 			const response = await postSendQueueNow(rootStore.restApiContext, threadId);
-			queuedMessages.value = response.queuedMessages;
-		} catch {
-			toast.showError(
-				new Error(i18n.baseText('instanceAi.queue.steerError.message')),
-				i18n.baseText('instanceAi.queue.steerError.title'),
-			);
+			applyQueueSnapshot(ticket, response.queuedMessages);
+		} catch (error) {
+			toast.showError(error, i18n.baseText('instanceAi.queue.steerError.title'), {
+				message: i18n.baseText('instanceAi.queue.steerError.message'),
+			});
 		}
 	}
 
 	/**
 	 * Take a queued message back into the composer. The queue is one turn, so
-	 * the messages after it come along, joined with newlines, and the text is
-	 * what the server took out — a local fallback when the request is lost.
+	 * the messages after it come along, joined with newlines. The text is what
+	 * the server took out: when the recall is lost the items are still queued,
+	 * so handing their text to the composer would let them go twice.
 	 */
 	async function takeQueuedMessageForEdit(messageId: string): Promise<string | null> {
-		const index = queuedMessages.value.findIndex((item) => item.id === messageId);
-		if (index === -1) return null;
-		const localText = queuedMessages.value
-			.slice(index)
-			.map((item) => item.text)
-			.join('\n');
-
+		if (!queuedMessages.value.some((item) => item.id === messageId)) return null;
+		const ticket = takeQueueTicket();
 		try {
 			const response = await postRecallQueuedMessages(
 				rootStore.restApiContext,
 				threadId,
 				messageId,
 			);
-			queuedMessages.value = response.queuedMessages;
+			applyQueueSnapshot(ticket, response.queuedMessages);
 			return response.text;
 		} catch {
-			// Refresh the queue after an uncertain recall, but keep the user's edit text.
+			// Refresh the queue after an uncertain recall; the items stay editable.
 			try {
 				await loadQueuedMessages();
 			} catch {
 				// Keep the last confirmed queue when the refresh also fails.
 			}
-			return localText;
+			return null;
 		}
 	}
 

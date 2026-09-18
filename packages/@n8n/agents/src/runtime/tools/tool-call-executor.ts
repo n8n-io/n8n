@@ -709,6 +709,10 @@ export class ToolCallExecutor {
 				executionCounter,
 				abortSignal,
 				isAborted: ctx.isAborted,
+				// The siblings of a resumed call are a fresh batch: the host's stop
+				// policy applies to them exactly as to a batch the model just issued.
+				isInterrupted: ctx.isInterrupted,
+				shouldStop: ctx.shouldStop,
 			});
 			results.push(...batch.results);
 			suspensions.push(...batch.suspensions);
@@ -775,6 +779,10 @@ export class ToolCallExecutor {
 		let didSuspend = false;
 		let abortObserved = false;
 		let suspensionCleanup: Promise<void> | undefined;
+		// Why the call is being cancelled, for the tool's cancellation hook: a
+		// host interrupt is a new user instruction, not a run abort.
+		const cancelReason = () =>
+			params.isInterrupted?.() === true ? INTERRUPTED_CANCEL_REASON : 'Run aborted';
 		const cleanupInterruptedSuspension = async () => {
 			suspensionCleanup ??= this.runCancellationCleanup(
 				{
@@ -785,7 +793,7 @@ export class ToolCallExecutor {
 					resumeSchema: getToolResumeJsonSchema(builtTool, interruptedSuspendOptions?.resumeSchema),
 				},
 				builtTool,
-				'Run aborted',
+				cancelReason(),
 			).catch(() => undefined);
 			await suspensionCleanup;
 		};
@@ -804,7 +812,7 @@ export class ToolCallExecutor {
 				// run goes on to a normal completion: no cancelled state, and the
 				// model reads why the call stopped.
 				const interruptedOnly = params.isInterrupted?.() === true;
-				const reason = interruptedOnly ? INTERRUPTED_CANCEL_REASON : 'Run aborted';
+				const reason = cancelReason();
 				abortObserved = true;
 				if (didSuspend) {
 					await cleanupInterruptedSuspension();

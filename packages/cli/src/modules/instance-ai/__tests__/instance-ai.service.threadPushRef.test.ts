@@ -101,10 +101,14 @@ describe('InstanceAiService — threadPushRef lifetime', () => {
 		const service = Object.create(InstanceAiService.prototype) as unknown as Internals;
 
 		service.threadPushRef = new Map<string, string>([['thread-a', 'push-ref-a']]);
-		service.steerInterrupts = new Map([['thread-a', new AbortController()]]);
+		// Keyed by run: the thread's active run owns one.
+		service.steerInterrupts = new Map([['run-a', new AbortController()]]);
 		service.planRequestsByThread = new Map<string, number>([['thread-a', 2]]);
 		service.runState = {
-			clearThread: vi.fn(() => ({ active: undefined, suspended: undefined })),
+			clearThread: vi.fn(() => ({
+				active: { runId: 'run-a', abortController: new AbortController(), tracing: undefined },
+				suspended: undefined,
+			})),
 		};
 		service.backgroundTasks = { cancelThread: vi.fn(() => []) };
 		service.schedulerLocks = new Map();
@@ -130,6 +134,8 @@ describe('InstanceAiService — threadPushRef lifetime', () => {
 		await service.clearThreadState('thread-a');
 
 		expect(service.threadPushRef.has('thread-a')).toBe(false);
+		// The active run's interrupt must not outlive the thread either.
+		expect(service.steerInterrupts.has('run-a')).toBe(false);
 		expect(service.planRequestsByThread.has('thread-a')).toBe(false);
 		expect(service.evalCredentialAllowlists.get('thread-a')).toBeUndefined();
 	});

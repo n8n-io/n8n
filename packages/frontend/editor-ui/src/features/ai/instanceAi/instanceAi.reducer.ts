@@ -387,15 +387,18 @@ export function handleEvent(state: InstanceAiReducerState, event: InstanceAiEven
 			// A flushed message is what started its run, so it belongs above that
 			// run's assistant message; the splice keeps the order right whether or
 			// not `run-start` has been reduced yet. A steered message ended the run
-			// that was rendering, so it goes below it, ahead of the run it starts.
-			const runMessageIndex =
-				source === 'queued'
-					? state.messages.findIndex((message) => message.runId === event.runId)
-					: -1;
+			// that was rendering, so it goes right below that run's message, ahead
+			// of the run it starts — also on a replay, when newer turns already
+			// follow. Without the run's message, append.
+			const runMessageIndex = state.messages.findIndex((message) => message.runId === event.runId);
 			if (runMessageIndex === -1) {
 				state.messages.push(userMessage);
 			} else {
-				state.messages.splice(runMessageIndex, 0, userMessage);
+				state.messages.splice(
+					source === 'queued' ? runMessageIndex : runMessageIndex + 1,
+					0,
+					userMessage,
+				);
 			}
 			return state.activeRunId;
 		}

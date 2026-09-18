@@ -146,14 +146,32 @@ describe('buildInstanceAiRunTraceMetadata', () => {
 		});
 	});
 
-	it('marks a run that a steer request stopped even when the request landed on an earlier run', () => {
+	it('marks a run the boundary stopped even when no announcement landed on it', () => {
 		const metadata = buildInstanceAiRunTraceMetadata([], { status: 'completed', steeredAtStep: 1 });
 
 		expect(metadata).toEqual({
 			first_visible_state: 'empty',
 			steered: true,
-			steer_count: 0,
 			steered_at_step: 1,
+		});
+	});
+
+	it('counts an announced turn without marking a run no boundary stopped', () => {
+		// Send now, then Stop before the next tool call: announced, not steered.
+		const events: InstanceAiEvent[] = [
+			{
+				type: 'user-message',
+				...baseEvent,
+				payload: { messageId: 'qm-1', text: 'use Slack instead', source: 'steered' },
+			},
+		];
+
+		const metadata = buildInstanceAiRunTraceMetadata(events, { status: 'cancelled' });
+
+		expect(metadata).toEqual({
+			first_visible_state: 'empty',
+			steer_count: 1,
+			cancellation_type: 'explicit',
 		});
 	});
 

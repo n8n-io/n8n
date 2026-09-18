@@ -1822,9 +1822,9 @@ describe('InstanceAiController', () => {
 			},
 			{
 				handler: 'queueMessage',
-				serviceMethod: 'queueMessage',
+				serviceMethod: 'admitQueuedMessage',
 				invoke: async () => await controller.queueMessage(req, res, THREAD_ID, queuePayload),
-				args: [THREAD_ID, queuePayload.text],
+				args: [req.user, THREAD_ID, queuePayload.text],
 				response: queuedMessages,
 				expected: { queuedMessages },
 			},

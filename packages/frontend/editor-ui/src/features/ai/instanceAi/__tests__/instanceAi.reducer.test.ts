@@ -230,6 +230,55 @@ describe('instanceAi.reducer', () => {
 			},
 		);
 
+		test('a queued turn sits above the run it starts, after the run it followed', () => {
+			const state = stateWithRun('run-1', 'agent-root');
+			handleEvent(state, {
+				type: 'run-finish',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				payload: { status: 'completed' },
+			});
+			handleEvent(state, {
+				type: 'user-message',
+				runId: 'run-2',
+				agentId: 'agent-root-2',
+				payload: { messageId: 'queued-1', text: 'Next instruction', source: 'queued' },
+			});
+			handleEvent(state, {
+				type: 'run-start',
+				runId: 'run-2',
+				agentId: 'agent-root-2',
+				payload: { messageId: 'message-2' },
+			});
+
+			expect(state.messages.map((message) => message.id)).toEqual(['run-1', 'queued-1', 'run-2']);
+		});
+
+		test('a steered turn sits right below the run it stopped, even on a replay with newer turns', () => {
+			const state = stateWithRun('run-1', 'agent-root');
+			handleEvent(state, {
+				type: 'run-finish',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				payload: { status: 'steered' },
+			});
+			handleEvent(state, {
+				type: 'run-start',
+				runId: 'run-2',
+				agentId: 'agent-root-2',
+				payload: { messageId: 'message-2' },
+			});
+			// Replayed after the newer run was already reduced.
+			handleEvent(state, {
+				type: 'user-message',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				payload: { messageId: 'steered-1', text: 'Stop and do this', source: 'steered' },
+			});
+
+			expect(state.messages.map((message) => message.id)).toEqual(['run-1', 'steered-1', 'run-2']);
+		});
+
 		test('a re-announced turn updates the bubble text in place', () => {
 			const state = stateWithRun('run-1', 'agent-root');
 			const first: InstanceAiEvent = {

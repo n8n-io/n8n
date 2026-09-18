@@ -65,8 +65,11 @@ describe('InstanceAiInput — staged node attachments', () => {
 		await fireEvent.keyDown(textbox, { key: 'Enter' });
 
 		// The queue holds text only, so the send waits for the run to end rather
-		// than dropping the attachment.
+		// than dropping the attachment: nothing was submitted, and both the text
+		// and the staged chip are still there.
 		expect(emitted().submit).toBeUndefined();
+		expect(textbox).toHaveValue('use this selection');
+		expect(getAllByTestId('nodes-chip-node')).toHaveLength(1);
 	});
 
 	it('dedups re-staging the same selection instead of stacking duplicate chips', async () => {

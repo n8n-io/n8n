@@ -17,6 +17,7 @@ import {
 	postSendQueueNow,
 	postRecallQueuedMessages,
 } from '../instanceAi.api';
+import type { InstanceAiQueuedMessage } from '@n8n/api-types';
 import {
 	INSTANCE_AI_THREAD_SOURCE_FALLBACK,
 	type InstanceAiCredentialDestination,
@@ -3100,8 +3101,11 @@ describe('Instance AI thread runtime — queued messages', () => {
 		expect(runtime.queuedMessages).toEqual([queued('qm-1', 'first')]);
 	});
 
-	it('falls back to the local text when the recall request is lost', async () => {
+	it('hands nothing to the composer when the recall is lost, so nothing can go twice', async () => {
 		vi.mocked(postQueuedMessage).mockResolvedValue({
+			queuedMessages: [queued('qm-1', 'first'), queued('qm-2', 'second')],
+		});
+		vi.mocked(fetchQueuedMessages).mockResolvedValue({
 			queuedMessages: [queued('qm-1', 'first'), queued('qm-2', 'second')],
 		});
 		vi.mocked(postRecallQueuedMessages).mockRejectedValueOnce(new Error('network error'));
@@ -3111,8 +3115,60 @@ describe('Instance AI thread runtime — queued messages', () => {
 		});
 		await runtime.queueMessage('second');
 
-		expect(await runtime.takeQueuedMessageForEdit('qm-1')).toBe('first\nsecond');
-		expect(fetchQueuedMessages).toHaveBeenCalled();
+		expect(await runtime.takeQueuedMessageForEdit('qm-1')).toBeNull();
+		// The items are still queued, and the list shows the server's view.
+		expect(runtime.queuedMessages).toHaveLength(2);
+	});
+
+	it('never lets a slow older response roll the list back over a newer one', async () => {
+		let resolveFirst: (value: { queuedMessages: InstanceAiQueuedMessage[] }) => void = () => {};
+		vi.mocked(postQueuedMessage)
+			.mockImplementationOnce(
+				async () =>
+					await new Promise((resolve) => {
+						resolveFirst = resolve;
+					}),
+			)
+			.mockResolvedValueOnce({
+				queuedMessages: [queued('qm-1', 'first'), queued('qm-2', 'second')],
+			});
+		const runtime = createThreadRuntime('thread-queue-order', {
+			onTitleUpdated: vi.fn(),
+			onRunFinish: vi.fn(),
+		});
+
+		const first = runtime.queueMessage('first');
+		await runtime.queueMessage('second');
+		expect(runtime.queuedMessages).toHaveLength(2);
+		// The first request's snapshot arrives last and predates the second's.
+		resolveFirst({ queuedMessages: [queued('qm-1', 'first')] });
+		await first;
+
+		expect(runtime.queuedMessages).toHaveLength(2);
+	});
+
+	it('reloads the queue when the run finishes and when a new turn is sent', async () => {
+		vi.mocked(postMessage).mockResolvedValue({ runId: 'run-2' });
+		const runtime = createThreadRuntime('thread-queue-reload', {
+			onTitleUpdated: vi.fn(),
+			onRunFinish: vi.fn(),
+		});
+		runtime.connectSSE();
+		await vi.waitFor(() => expect(capturedOnMessage).not.toBeNull());
+		vi.mocked(fetchQueuedMessages).mockClear();
+
+		capturedOnMessage!(
+			makeSSEEvent({
+				type: 'run-finish',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				payload: { status: 'completed' },
+			}),
+		);
+		await vi.waitFor(() => expect(fetchQueuedMessages).toHaveBeenCalledTimes(1));
+
+		await runtime.sendMessage('a new turn', { authorship: USER_TYPED_MESSAGE });
+		await vi.waitFor(() => expect(fetchQueuedMessages).toHaveBeenCalledTimes(2));
 	});
 
 	it('returns null for an item the queue does not hold', async () => {

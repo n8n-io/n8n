@@ -107,17 +107,18 @@ export function buildInstanceAiRunTraceMetadata(
 		metadata.first_tool_name = firstVisible.firstToolName;
 	}
 
-	// A Send now is announced on the run it will stop, so the requests made
-	// during this run are its `steered` events; the step it actually stopped at
-	// is only known at the boundary that claimed the first of them.
+	// A queued turn is announced on the run it will stop, so the announcements
+	// made during this run are its `steered` events. Only the boundary that
+	// claimed one actually stopped the run: a run stopped or failed before that
+	// boundary was not steered, however many were announced.
 	const steerRequests = events.filter(
 		(event): event is InstanceAiUserMessageEvent =>
 			event.type === 'user-message' && event.payload.source === 'steered',
 	);
-	if (steerRequests.length > 0 || options.steeredAtStep !== undefined) {
+	if (steerRequests.length > 0) metadata.steer_count = steerRequests.length;
+	if (options.steeredAtStep !== undefined) {
 		metadata.steered = true;
-		metadata.steer_count = steerRequests.length;
-		if (options.steeredAtStep !== undefined) metadata.steered_at_step = options.steeredAtStep;
+		metadata.steered_at_step = options.steeredAtStep;
 	}
 
 	const cancellationType = getCancellationType(options);

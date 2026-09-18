@@ -200,7 +200,8 @@ describe('InstanceAiConversation', () => {
 			const { getByTestId, getAllByTestId } = renderWithQueue()();
 
 			expect(getByTestId('instance-ai-queued-messages-count').textContent).toContain('2 of 5');
-			await fireEvent.click(getByTestId('instance-ai-queued-message-send-now'));
+			// Send now sits on every row and sends the whole queue.
+			await fireEvent.click(getAllByTestId('instance-ai-queued-message-send-now')[1]);
 			await fireEvent.click(getAllByTestId('instance-ai-queued-message-remove')[1]);
 
 			await vi.waitFor(() => expect(thread.sendQueueNow).toHaveBeenCalledTimes(1));

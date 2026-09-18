@@ -488,7 +488,8 @@ goes as a whole, in order, joined with newlines.
 
 Every response carries `{ queuedMessages }` — the full queue after the change.
 So a client always renders the server's view of the queue. An item with
-`sentAt` is on its way and hidden from the list.
+`sentAt` is on its way and hidden from the list; edit, remove and recall refuse
+it, so an announced bubble always gets its run.
 
 The service delivers the queue in three ways:
 
@@ -730,6 +731,7 @@ creating duplicate messages.
 |------------|-------------------|---------|
 | `run-start` | `messageId` | First event in a run |
 | `run-finish` | `status`, `reason?` | Ends orchestrator streaming; detached events can follow |
+| `user-message` | `messageId`, `text`, `source` | A queued turn entered the transcript: `steered` on the run it stops, `queued` on the run it starts |
 | `text-delta` | `text` | Incremental agent text |
 | `reasoning-delta` | `text` | Incremental agent reasoning |
 | `tool-call` | `toolCallId`, `toolName`, `args` | Tool invocation (before execution) |

@@ -4936,27 +4936,17 @@ describe('InstanceAiService — queued user turn goes before automatic follow-up
 		};
 	}
 
-	it('starts the queued message and holds the follow-ups for the next finish', async () => {
+	it('does not hand the queue over after a run that did not complete', async () => {
+		// The mocked stream reports a cancelled result: the queue stays for the
+		// user, and the follow-ups run as before.
 		const service = createFinallyService(true);
 
 		await service.executeRun(fakeUser, 'thread-1', 'run-1', 'Build it.', new AbortController());
 
-		expect(service.flushQueuedMessage).toHaveBeenCalledWith(fakeUser, 'thread-1');
-		// A queued turn is a message the user already sent; setup routing and the
-		// planned-task tick wait for it, and the next finally re-derives them.
-		expect(service.schedulePlannedTasks).not.toHaveBeenCalled();
-		expect(service.maybeStartWorkflowSetupFollowUp).not.toHaveBeenCalled();
-		expect(service.taskProjector.syncFromWorkflowLoop).toHaveBeenCalledWith('thread-1', 'run-1');
-	});
-
-	it('runs the follow-ups as before when the queue is empty', async () => {
-		const service = createFinallyService(false);
-
-		await service.executeRun(fakeUser, 'thread-1', 'run-1', 'Build it.', new AbortController());
-
-		expect(service.flushQueuedMessage).toHaveBeenCalledWith(fakeUser, 'thread-1');
+		expect(service.flushQueuedMessage).not.toHaveBeenCalled();
 		expect(service.schedulePlannedTasks).toHaveBeenCalledWith(fakeUser, 'thread-1');
 		expect(service.maybeStartWorkflowSetupFollowUp).toHaveBeenCalledWith(fakeUser, 'thread-1');
+		expect(service.taskProjector.syncFromWorkflowLoop).toHaveBeenCalledWith('thread-1', 'run-1');
 	});
 });
 
@@ -6434,11 +6424,19 @@ describe('InstanceAiService — queued messages', () => {
 		};
 		backgroundTasks: { cancelThread: Mock };
 		steerInterrupts: Map<string, AbortController>;
+		queuedThreads: Set<string>;
+		instanceSettings: { isMultiMain: boolean };
+		interruptedRunSweeper: { isThreadDrivenElsewhere: Mock };
 		startExecuteRun: Mock;
 		defaultTimeZone: string;
 		logger: { warn: Mock; debug: Mock };
 		listQueuedMessages: (threadId: string) => Promise<InstanceAiQueuedMessage[]>;
 		queueMessage: (threadId: string, text: string) => Promise<InstanceAiQueuedMessage[]>;
+		admitQueuedMessage: (
+			user: User,
+			threadId: string,
+			text: string,
+		) => Promise<InstanceAiQueuedMessage[]>;
 		updateQueuedMessage: (
 			threadId: string,
 			messageId: string,
@@ -6490,7 +6488,10 @@ describe('InstanceAiService — queued messages', () => {
 		service.eventBus = { publish: vi.fn() };
 		service.telemetry = { track: vi.fn() };
 		service.backgroundTasks = { cancelThread: vi.fn(() => []) };
-		service.steerInterrupts = new Map([['thread-1', new AbortController()]]);
+		service.steerInterrupts = new Map([['run-live', new AbortController()]]);
+		service.queuedThreads = new Set();
+		service.instanceSettings = { isMultiMain: false };
+		service.interruptedRunSweeper = { isThreadDrivenElsewhere: vi.fn(async () => false) };
 		service.startExecuteRun = vi.fn();
 		service.defaultTimeZone = 'UTC';
 		service.logger = { warn: vi.fn(), debug: vi.fn() };
@@ -6539,6 +6540,19 @@ describe('InstanceAiService — queued messages', () => {
 
 			await expect(service.queueMessage('thread-1', 'six')).rejects.toThrow(UserError);
 			expect(readQueuedMessages(thread.metadata)).toHaveLength(5);
+		});
+
+		it('does not count a sent turn against the cap, as the composer does not', async () => {
+			const { service, thread } = createService();
+			await service.queueMessage('thread-1', 'on its way');
+			service.runState.hasLiveRun.mockReturnValue(true);
+			await service.sendQueueNow(USER, 'thread-1');
+			for (const text of ['one', 'two', 'three', 'four', 'five']) {
+				await service.queueMessage('thread-1', text);
+			}
+
+			await expect(service.queueMessage('thread-1', 'six')).rejects.toThrow(UserError);
+			expect(readQueuedMessages(thread.metadata)).toHaveLength(6);
 		});
 
 		it('edits a queued message in place', async () => {
@@ -6592,6 +6606,51 @@ describe('InstanceAiService — queued messages', () => {
 		});
 	});
 
+	describe('admitQueuedMessage', () => {
+		it('queues while a run is live', async () => {
+			const { service, thread } = createService();
+			service.runState.hasLiveRun.mockReturnValue(true);
+
+			const queue = await service.admitQueuedMessage(USER, 'thread-1', 'later');
+
+			expect(queue.map((item) => item.text)).toEqual(['later']);
+			expect(readQueuedMessages(thread.metadata)).toHaveLength(1);
+			expect(service.startExecuteRun).not.toHaveBeenCalled();
+		});
+
+		it('delivers at once when the run the client saw has already finished', async () => {
+			const { service, thread } = createService();
+			service.runState.hasLiveRun.mockReturnValue(false);
+
+			const queue = await service.admitQueuedMessage(USER, 'thread-1', 'not too late');
+
+			expect(queue).toEqual([]);
+			expect(readQueuedMessages(thread.metadata)).toEqual([]);
+			expect(service.startExecuteRun).toHaveBeenCalledWith(
+				USER,
+				'thread-1',
+				'run-new',
+				'not too late',
+				expect.anything(),
+				undefined,
+				undefined,
+				undefined,
+				'Europe/Berlin',
+			);
+		});
+
+		it('queues when a sibling main drives the run', async () => {
+			const { service, thread } = createService();
+			service.runState.hasLiveRun.mockReturnValue(false);
+			service.interruptedRunSweeper.isThreadDrivenElsewhere.mockResolvedValue(true);
+
+			await service.admitQueuedMessage(USER, 'thread-1', 'for the other main');
+
+			expect(readQueuedMessages(thread.metadata)).toHaveLength(1);
+			expect(service.startExecuteRun).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('recallQueuedMessages', () => {
 		it('takes the item and everything after it out, joined for the composer', async () => {
 			const { service, thread } = createService();
@@ -6604,6 +6663,26 @@ describe('InstanceAiService — queued messages', () => {
 			expect(text).toBe('second\nthird');
 			expect(queuedMessages.map((item) => item.text)).toEqual(['first']);
 			expect(readQueuedMessages(thread.metadata).map((item) => item.text)).toEqual(['first']);
+		});
+
+		it('refuses to edit, remove or recall a sent message', async () => {
+			const { service, thread } = createService();
+			const item = await queueLast(service, 'on its way');
+			service.runState.hasLiveRun.mockReturnValue(true);
+			await service.sendQueueNow(USER, 'thread-1');
+
+			await expect(service.updateQueuedMessage('thread-1', item.id, 'changed')).rejects.toThrow(
+				'already sent',
+			);
+			await expect(service.removeQueuedMessage('thread-1', item.id)).rejects.toThrow(
+				'already sent',
+			);
+			await expect(service.recallQueuedMessages('thread-1', item.id)).rejects.toThrow(
+				'already sent',
+			);
+			expect(readQueuedMessages(thread.metadata)).toEqual([
+				expect.objectContaining({ id: item.id, text: 'on its way' }),
+			]);
 		});
 
 		it('refuses a recall of a message that is not queued', async () => {
@@ -6648,7 +6727,7 @@ describe('InstanceAiService — queued messages', () => {
 				}),
 			);
 			// The step in flight is cancelled, delegated builders with it.
-			expect(service.steerInterrupts.get('thread-1')?.signal.aborted).toBe(true);
+			expect(service.steerInterrupts.get('run-live')?.signal.aborted).toBe(true);
 			expect(service.backgroundTasks.cancelThread).toHaveBeenCalledWith('thread-1');
 			// The run's own finish starts the turn; nothing starts here.
 			expect(service.startExecuteRun).not.toHaveBeenCalled();
@@ -6708,7 +6787,22 @@ describe('InstanceAiService — queued messages', () => {
 			const { queuedMessages } = await service.sendQueueNow(USER, 'thread-1');
 
 			expect(queuedMessages).toEqual([]);
-			expect(service.steerInterrupts.get('thread-1')?.signal.aborted).toBe(false);
+			expect(service.steerInterrupts.get('run-live')?.signal.aborted).toBe(false);
+			expect(service.eventBus.publish).not.toHaveBeenCalled();
+		});
+
+		it('leaves the queue to a sibling main that drives the run', async () => {
+			const { service, thread } = createService();
+			await queueLast(service, 'for the other main');
+			service.runState.hasLiveRun.mockReturnValue(false);
+			service.interruptedRunSweeper.isThreadDrivenElsewhere.mockResolvedValue(true);
+
+			const { queuedMessages } = await service.sendQueueNow(USER, 'thread-1');
+
+			// No second run beside the sibling's; its next tool call claims the queue.
+			expect(queuedMessages).toHaveLength(1);
+			expect(readQueuedMessages(thread.metadata)).toHaveLength(1);
+			expect(service.startExecuteRun).not.toHaveBeenCalled();
 			expect(service.eventBus.publish).not.toHaveBeenCalled();
 		});
 	});
@@ -6825,6 +6919,17 @@ describe('InstanceAiService — queued messages', () => {
 			const { service, thread } = createService();
 			await queueLast(service, 'later');
 			service.runState.hasLiveRun.mockReturnValue(true);
+
+			await expect(service.flushQueuedMessage(USER, 'thread-1')).resolves.toBe(false);
+
+			expect(service.startExecuteRun).not.toHaveBeenCalled();
+			expect(readQueuedMessages(thread.metadata)).toHaveLength(1);
+		});
+
+		it('does nothing while a sibling main drives a run on the thread', async () => {
+			const { service, thread } = createService();
+			await queueLast(service, 'later');
+			service.interruptedRunSweeper.isThreadDrivenElsewhere.mockResolvedValue(true);
 
 			await expect(service.flushQueuedMessage(USER, 'thread-1')).resolves.toBe(false);
 

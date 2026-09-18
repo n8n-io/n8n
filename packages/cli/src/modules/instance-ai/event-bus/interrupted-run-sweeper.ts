@@ -6,6 +6,7 @@ import { InstanceSettings } from 'n8n-core';
 
 import { DurableLogMetrics } from './durable-log-metrics';
 import { InProcessEventBus } from './in-process-event-bus';
+import type { InstanceAiCheckpoint } from '../entities/instance-ai-checkpoint.entity';
 import { InstanceAiCheckpointRepository } from '../repositories/instance-ai-checkpoint.repository';
 import { InstanceAiEventLogRepository } from '../repositories/instance-ai-event-log.repository';
 
@@ -35,6 +36,8 @@ interface OrphanedSpawnedAgent {
 export interface InterruptedRunResumeHost {
 	/** Whether this specific run is live (active or suspended) in this process. */
 	isRunLive(threadId: string, runId: string): boolean;
+	/** Whether any run on the thread is live (active or suspended) in this process. */
+	isThreadLive(threadId: string): boolean;
 	/**
 	 * Drop the thread's queued user messages. A queued message waits for the run
 	 * it was typed behind; once that run is marked dead, nothing would announce
@@ -130,7 +133,53 @@ export class InterruptedRunSweeper {
 			runId,
 			inFlightToolCalls,
 		});
+		// The queue belongs to the thread, not the run: a new run that started on
+		// this thread since the crash may already own what is queued.
+		if (this.resumeHost?.isThreadLive(threadId)) return;
 		await this.resumeHost?.discardQueuedMessages(threadId);
+	}
+
+	/**
+	 * Multi-main: whether a sibling main is driving a run on this thread — an
+	 * unfinished run that is not live here, is parked at HITL, or shows durable
+	 * activity inside the grace window. Single-main answers false: an unfinished
+	 * run with no local live run is dead, and the sweep owns it.
+	 */
+	async isThreadDrivenElsewhere(threadId: string): Promise<boolean> {
+		if (!this.instanceSettings.isMultiMain) return false;
+		let unfinished;
+		try {
+			unfinished = await this.eventLogRepo.findUnfinishedRuns(threadId);
+		} catch (error) {
+			this.logger.error('Sibling-liveness check failed to query the event log', { error });
+			// Unknown is not idle: a wrong "idle" would start a second run.
+			return true;
+		}
+		const checkpoints = await this.checkpointRepo.findActiveByThreadId(threadId);
+		const subAgentPrefix = createSubAgentResourceIdPrefix(threadId);
+		for (const run of unfinished) {
+			if (this.resumeHost?.isRunLive(threadId, run.runId)) continue;
+			const runCheckpoints = checkpoints.filter(
+				(row) => !row.resourceId?.startsWith(subAgentPrefix) && row.hostRunId === run.runId,
+			);
+			if (runCheckpoints.some((row) => row.state?.status === 'suspended')) return true;
+			if (await this.hasRecentActivity(threadId, run.runId, runCheckpoints)) return true;
+		}
+		return false;
+	}
+
+	/** Durable activity inside the grace window: the heartbeat of a sibling main. */
+	private async hasRecentActivity(
+		threadId: string,
+		runId: string,
+		runCheckpoints: InstanceAiCheckpoint[],
+	): Promise<boolean> {
+		const cutoff = Date.now() - InterruptedRunSweeper.LIVENESS_GRACE_MS;
+		const lastFact = await this.eventLogRepo.lastFactAt(threadId, runId);
+		const newestCheckpointAt = runCheckpoints
+			.map((row) => row.updatedAt?.getTime() ?? 0)
+			.reduce((a, b) => Math.max(a, b), 0);
+		return Math.max(lastFact?.getTime() ?? 0, newestCheckpointAt) > cutoff;
 	}
 
 	/**
@@ -223,14 +272,11 @@ export class InterruptedRunSweeper {
 		// Multi-main: durable activity is the liveness heartbeat — a sibling
 		// main driving this run appends facts and upserts its checkpoint every
 		// step, so recent writes mean "not a zombie, leave it alone".
-		if (this.instanceSettings.isMultiMain) {
-			const cutoff = Date.now() - InterruptedRunSweeper.LIVENESS_GRACE_MS;
-			const lastFact = await this.eventLogRepo.lastFactAt(threadId, runId);
-			const newestCheckpointAt = runCheckpoints
-				.map((row) => row.updatedAt?.getTime() ?? 0)
-				.reduce((a, b) => Math.max(a, b), 0);
-			const lastActivity = Math.max(lastFact?.getTime() ?? 0, newestCheckpointAt);
-			if (lastActivity > cutoff) return null;
+		if (
+			this.instanceSettings.isMultiMain &&
+			(await this.hasRecentActivity(threadId, runId, runCheckpoints))
+		) {
+			return null;
 		}
 
 		const events = await this.eventLogRepo.getForRuns(threadId, [runId]);

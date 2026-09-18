@@ -763,14 +763,25 @@ export class InstanceAiService {
 	private readonly threadPushRef = new Map<string, string>();
 
 	/**
-	 * Per-thread interrupt for Send now: the runtime cancels the step in flight
-	 * (model request and tool calls) and a delegated builder aborts. The run's
-	 * execution environment arms a fresh one, because a fired controller stays
-	 * fired and a later run must not start already stopped. In-process only: on
-	 * another main the queue still ends the run before its next tool call, but
-	 * the call in flight there runs to its end first.
+	 * Per-run interrupt for Send now, keyed by run id: the runtime cancels the
+	 * step in flight (model request and tool calls) and a delegated builder
+	 * aborts. Each execution environment arms its own, because a fired controller
+	 * stays fired, and because a planned-task dispatch on the same thread builds
+	 * an environment too — keyed by thread, that one would replace the
+	 * orchestrator's and Send now would abort the wrong run. Dropped when the run
+	 * reaches a terminal outcome. In-process only: on another main the queue
+	 * still ends the run before its next tool call, but the call in flight there
+	 * runs to its end first.
 	 */
 	private readonly steerInterrupts = new Map<string, AbortController>();
+
+	/**
+	 * Threads whose queue this main last saw non-empty. A cheap gate for the
+	 * check the runtime asks before every tool call, so an idle queue costs no
+	 * database read. Only trusted on a single main: a sibling main's write is
+	 * not seen here, so multi-main always reads.
+	 */
+	private readonly queuedThreads = new Set<string>();
 
 	/**
 	 * Runs where the credentials tool handed off to browser-assisted credential
@@ -1240,6 +1251,10 @@ export class InstanceAiService {
 	 * The interrupted-run sweeper uses this so a newer run on the same thread
 	 * never shields an older crashed run from being swept.
 	 */
+	isThreadLive(threadId: string): boolean {
+		return this.runState.hasLiveRun(threadId);
+	}
+
 	isRunLive(threadId: string, runId: string): boolean {
 		return (
 			this.runState.getActiveRunId(threadId) === runId ||
@@ -1340,7 +1355,7 @@ export class InstanceAiService {
 				if (steered) onSteered?.(step);
 				return steered;
 			},
-			interruptSignal: this.steerInterrupts.get(threadId)?.signal,
+			interruptSignal: this.steerInterrupts.get(runId)?.signal,
 			// Recover token usage from raw provider events so a stopped/errored run
 			// is still billed for the tokens consumed before the stop.
 			recoverUsageOnAbort: true,
@@ -1388,7 +1403,7 @@ export class InstanceAiService {
 				if (steered) onSteered?.(step);
 				return steered;
 			},
-			interruptSignal: this.steerInterrupts.get(threadId)?.signal,
+			interruptSignal: this.steerInterrupts.get(runId)?.signal,
 			// Keep billing stopped/errored resumed runs (see stream-options builder).
 			recoverUsageOnAbort: true,
 			...modelStreamStallOptions(this.aiConfig),
@@ -1636,16 +1651,60 @@ export class InstanceAiService {
 			},
 		});
 		if (!thread) throw new UserError('Thread not found');
+		if (messages.length > 0) this.queuedThreads.add(threadId);
+		else this.queuedThreads.delete(threadId);
 		return toQueuedMessageList(messages);
+	}
+
+	/**
+	 * Whether a run owns the thread: live here, or (multi-main) driven by a
+	 * sibling main as far as the durable log shows. A queue is only delivered
+	 * by the run's own finish or by an idle flush, so "idle" must hold on every
+	 * main before a flush starts a second run.
+	 */
+	private async hasLiveRunAnywhere(threadId: string): Promise<boolean> {
+		if (this.runState.hasLiveRun(threadId)) return true;
+		return await this.interruptedRunSweeper.isThreadDrivenElsewhere(threadId);
+	}
+
+	/**
+	 * The composer's path in: queue the message, and when no run owns the
+	 * thread after all (the client believed one was live but it just finished),
+	 * deliver it at once — otherwise nothing would pick it up until a later run.
+	 */
+	async admitQueuedMessage(
+		user: User,
+		threadId: string,
+		text: string,
+	): Promise<InstanceAiQueuedMessage[]> {
+		const queuedMessages = await this.queueMessage(threadId, text);
+		if (await this.hasLiveRunAnywhere(threadId)) return queuedMessages;
+		await this.flushQueuedMessage(user, threadId);
+		return await this.listQueuedMessages(threadId);
 	}
 
 	async queueMessage(threadId: string, text: string): Promise<InstanceAiQueuedMessage[]> {
 		return await this.mutateQueuedMessages(threadId, (messages) => {
-			if (messages.length >= INSTANCE_AI_MAX_QUEUED_MESSAGES) {
+			// A sent turn is on its way and no longer counts against what the user
+			// can still add, which is what the composer counts too.
+			const pending = messages.filter((item) => item.sentAt === undefined).length;
+			if (pending >= INSTANCE_AI_MAX_QUEUED_MESSAGES) {
 				throw new UserError(`The queue holds at most ${INSTANCE_AI_MAX_QUEUED_MESSAGES} messages`);
 			}
 			return [...messages, { id: `qm_${nanoid()}`, text, createdAt: new Date().toISOString() }];
 		});
+	}
+
+	/**
+	 * The queued item the user may still change. A sent item is already in the
+	 * transcript and on its way to its own run; changing or withdrawing it would
+	 * leave a bubble no run answers.
+	 */
+	private requireEditableQueuedMessage(messages: QueuedMessage[], messageId: string): number {
+		const index = messages.findIndex((item) => item.id === messageId);
+		if (index === -1) throw new UserError('Queued message not found');
+		if (messages[index].sentAt !== undefined) throw new UserError('Queued message already sent');
+		return index;
 	}
 
 	async updateQueuedMessage(
@@ -1654,9 +1713,7 @@ export class InstanceAiService {
 		text: string,
 	): Promise<InstanceAiQueuedMessage[]> {
 		return await this.mutateQueuedMessages(threadId, (messages) => {
-			if (!messages.some((item) => item.id === messageId)) {
-				throw new UserError('Queued message not found');
-			}
+			this.requireEditableQueuedMessage(messages, messageId);
 			return messages.map((item) => (item.id === messageId ? { ...item, text } : item));
 		});
 	}
@@ -1666,9 +1723,7 @@ export class InstanceAiService {
 		messageId: string,
 	): Promise<InstanceAiQueuedMessage[]> {
 		return await this.mutateQueuedMessages(threadId, (messages) => {
-			if (!messages.some((item) => item.id === messageId)) {
-				throw new UserError('Queued message not found');
-			}
+			this.requireEditableQueuedMessage(messages, messageId);
 			return messages.filter((item) => item.id !== messageId);
 		});
 	}
@@ -1684,8 +1739,7 @@ export class InstanceAiService {
 	): Promise<{ queuedMessages: InstanceAiQueuedMessage[]; text: string }> {
 		let text = '';
 		const queuedMessages = await this.mutateQueuedMessages(threadId, (messages) => {
-			const index = messages.findIndex((item) => item.id === messageId);
-			if (index === -1) throw new UserError('Queued message not found');
+			const index = this.requireEditableQueuedMessage(messages, messageId);
 			text = messages
 				.slice(index)
 				.map((item) => item.text)
@@ -1709,12 +1763,16 @@ export class InstanceAiService {
 		const liveRunId = this.runState.getActiveRunId(threadId);
 		const live = liveRunId !== undefined && this.runState.hasLiveRun(threadId);
 		if (!live) {
-			await this.flushQueuedMessage(user, threadId);
+			// A sibling main's run claims the queue before its next tool call; a
+			// flush from here would start a second run beside it.
+			if (!(await this.hasLiveRunAnywhere(threadId))) {
+				await this.flushQueuedMessage(user, threadId);
+			}
 			return { queuedMessages: await this.listQueuedMessages(threadId) };
 		}
 		const sent = await this.announceQueuedTurn(user, threadId, liveRunId);
 		if (sent) {
-			this.steerInterrupts.get(threadId)?.abort();
+			this.steerInterrupts.get(liveRunId)?.abort();
 			this.cancelThreadBackgroundTasks(threadId);
 		}
 		return { queuedMessages: await this.listQueuedMessages(threadId) };
@@ -2119,11 +2177,11 @@ export class InstanceAiService {
 	 */
 	async clearThreadState(threadId: string, userId?: string): Promise<void> {
 		this.liveness.clearThreadState(threadId);
-		this.steerInterrupts.delete(threadId);
-
 		// Clear run-state registry entries (active/suspended runs, confirmations,
 		// user, time zone, and message-group mappings).
 		const { active, suspended } = this.runState.clearThread(threadId);
+		if (active) this.steerInterrupts.delete(active.runId);
+		if (suspended) this.steerInterrupts.delete(suspended.runId);
 		if (active) {
 			active.abortController.abort();
 			await this.tracing.finalizeRunTracing(active.runId, active.tracing, {
@@ -2684,7 +2742,7 @@ export class InstanceAiService {
 	) {
 		const memory = this.agentMemory;
 		const steerStop = new AbortController();
-		this.steerInterrupts.set(threadId, steerStop);
+		this.steerInterrupts.set(runId, steerStop);
 		const boundProjectId = await memory.getThreadProjectId(threadId);
 		if (!boundProjectId) {
 			throw new UnexpectedError(
@@ -3560,8 +3618,11 @@ export class InstanceAiService {
 				});
 				return false;
 			}
-			// Asked on every tool call, so the common case is a plain read; only a
-			// queued item pays for the locked write.
+			// Asked on every tool call, so the common case must be cheap: on a single
+			// main the in-memory gate answers, and only a queued item pays for the
+			// read and the locked write. A sibling main's write is not seen here, so
+			// multi-main always reads.
+			if (!this.instanceSettings.isMultiMain && !this.queuedThreads.has(threadId)) return false;
 			const thread = await this.agentMemory.getThread(threadId);
 			if (!thread || readQueuedMessages(thread.metadata).length === 0) return false;
 			const sent = await this.announceQueuedTurn(user, threadId, runId);
@@ -3596,7 +3657,7 @@ export class InstanceAiService {
 		// later failure must not queue it a second time.
 		let handedOver = false;
 		try {
-			if (this.runState.hasLiveRun(threadId)) return false;
+			if (await this.hasLiveRunAnywhere(threadId)) return false;
 			await this.mutateQueuedMessages(threadId, (messages) => {
 				claimed = mergeQueuedMessages(messages);
 				return [];
@@ -5079,9 +5140,11 @@ export class InstanceAiService {
 			// so it must not wait behind an automatic follow-up (setup routing, the
 			// next planned-task tick) — nor behind whatever card that follow-up
 			// parks on. When it starts a run, the follow-ups hold: the next finally
-			// re-derives them from the same state. A parked run waits for its
-			// answer, and a stop must not start a new run.
+			// re-derives them from the same state. Only a completed run hands over:
+			// a parked run waits for its answer, a stop must not start a new run,
+			// and after an error the queue stays for the user to send by hand.
 			const userTurnStarted =
+				messageTraceFinalization?.status === 'completed' &&
 				!segmentSuspended &&
 				!signal.aborted &&
 				!this.runState.hasSuspendedRun(threadId) &&
@@ -6392,6 +6455,7 @@ export class InstanceAiService {
 			// a background task settled while they were active or suspended and
 			// the orchestrate-checkpoint branch was skipped because of hasLiveRun.
 			const userTurnStarted =
+				messageTraceFinalization?.status === 'completed' &&
 				!skipPostRunCleanup &&
 				!segmentSuspended &&
 				!opts.signal.aborted &&
@@ -6961,6 +7025,8 @@ export class InstanceAiService {
 			errorInfo?: RunFinishErrorInfo;
 		},
 	): Promise<void> {
+		// The run is over; a resume arms a fresh one with its environment.
+		this.steerInterrupts.delete(runId);
 		this.publishRunFinish(
 			threadId,
 			runId,

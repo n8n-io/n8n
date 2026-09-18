@@ -143,22 +143,31 @@ describe('shouldStopGracefully', () => {
 	});
 
 	it('lets the tool call in flight finish and skips the rest of the batch', async () => {
-		let calls = 0;
-		// The host stamps the request while the first call runs: false before it,
-		// true before the second.
-		const shouldStopGracefully = vi.fn(async () => calls++ > 0);
-		const { model, chunks, persisted, result, handler } = await runWithCheck(
-			{ shouldStopGracefully },
-			2,
-		);
+		// The first call is in flight when the host's answer changes: it must run
+		// to its end, and only the call that has not started is skipped.
+		let release: () => void = () => {};
+		const gate = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		let stopRequested = false;
+		const handler = vi.fn(async () => {
+			await gate;
+			return { found: true };
+		});
+		const shouldStopGracefully = vi.fn(async () => stopRequested);
+		const run = runWithCheck({ shouldStopGracefully }, 2, handler);
+		await vi.waitFor(() => expect(handler).toHaveBeenCalledOnce());
+		stopRequested = true;
+		release();
+		const { model, chunks, persisted, result } = await run;
 
 		expect(handler).toHaveBeenCalledOnce();
 		expect(model.doStreamCalls).toHaveLength(1);
 		expect(chunks.at(-1)).toMatchObject({ type: 'finish', finishReason: 'stop' });
 		expect(result.getState().status).toBe('success');
-		// The first answer is final: the boundary does not ask again.
+		// Asked before each call and once at the boundary; the first answer that
+		// is true is final, so the boundary is not asked again.
 		expect(shouldStopGracefully).toHaveBeenCalledTimes(2);
-		// The skipped call is settled for the model, not left dangling.
 		const assistant = persisted.find(
 			(message) => 'role' in message && message.role === 'assistant',
 		);
