@@ -2,7 +2,7 @@
 
 Role id: `other`. Ranked by how common the automation is, 1 is the most common. This file also serves users who did not pick a role.
 Tools are listed as family (example): any tool of the same family works, for example Outlook instead of Gmail.
-`Template:` names a workflow source in `templates/` to start the build from; swap the tool nodes marked with the family comment. A `notification` family means the template holds one ready node per notification tool behind its `NOTIFY` constant.
+`Template:` names a workflow source in `templates/` to start the build from; swap the tool nodes marked with the family comment. A `notification` family (send a message or mail) means the template holds one ready node per tool behind its `NOTIFY` constant; an `email` family (read a mailbox) with an `INBOX` constant and a `spreadsheet` family with a `SPREADSHEET` constant work the same way. `rank.sh` prints `[set NAME=key]` for these swaps.
 
 ## 1. Job vacancies to the careers website
 

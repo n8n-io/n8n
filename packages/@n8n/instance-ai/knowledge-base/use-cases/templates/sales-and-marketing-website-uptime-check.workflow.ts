@@ -134,98 +134,93 @@ const failedChecks = node({
 	},
 });
 
-type Sink = 'slack' | 'teams' | 'gmail' | 'outlook';
-const NOTIFY: Sink = 'slack';
+const NOTIFY = 'slack';
 
 // One ready node per tool. Each reads $json.subject and $json.message.
 const sinks = {
-	slack: () =>
-		node({
-			type: 'n8n-nodes-base.slack',
-			version: 2.7,
-			config: {
-				name: 'Post to Slack',
-				credentials: { slackOAuth2Api: newCredential('Slack account') },
-				parameters: {
-					resource: 'message',
-					operation: 'post',
-					authentication: 'oAuth2',
-					select: 'channel',
-					channelId: {
-						__rl: true,
-						mode: 'name',
-						value: placeholder('Slack channel name, for example alerts'),
-					},
-					messageType: 'text',
-					text: expr('{{ $json.message }}'),
-					otherOptions: { includeLinkToWorkflow: false },
+	slack: {
+		type: 'n8n-nodes-base.slack',
+		version: 2.7,
+		config: {
+			name: 'Post to Slack',
+			credentials: { slackOAuth2Api: newCredential('Slack account') },
+			parameters: {
+				resource: 'message',
+				operation: 'post',
+				authentication: 'oAuth2',
+				select: 'channel',
+				channelId: {
+					__rl: true,
+					mode: 'name',
+					value: placeholder('Slack channel name, for example alerts'),
 				},
+				messageType: 'text',
+				text: expr('{{ $json.message }}'),
+				otherOptions: { includeLinkToWorkflow: false },
 			},
-		}),
-	teams: () =>
-		node({
-			type: 'n8n-nodes-base.microsoftTeams',
-			version: 2,
-			config: {
-				name: 'Post to Teams',
-				credentials: { microsoftTeamsOAuth2Api: newCredential('Microsoft Teams account') },
-				parameters: {
-					resource: 'channelMessage',
-					operation: 'create',
-					teamId: {
-						__rl: true,
-						mode: 'id',
-						value: placeholder('Team ID, the groupId in the team link'),
-					},
-					channelId: {
-						__rl: true,
-						mode: 'id',
-						value: placeholder('Channel ID, the 19:...@thread.tacv2 part of the channel link'),
-					},
-					contentType: 'text',
-					message: expr('{{ $json.message }}'),
+		},
+	},
+	teams: {
+		type: 'n8n-nodes-base.microsoftTeams',
+		version: 2,
+		config: {
+			name: 'Post to Teams',
+			credentials: { microsoftTeamsOAuth2Api: newCredential('Microsoft Teams account') },
+			parameters: {
+				resource: 'channelMessage',
+				operation: 'create',
+				teamId: {
+					__rl: true,
+					mode: 'id',
+					value: placeholder('Team ID, the groupId in the team link'),
 				},
-			},
-		}),
-	gmail: () =>
-		node({
-			type: 'n8n-nodes-base.gmail',
-			version: 2.2,
-			config: {
-				name: 'Send Email',
-				credentials: { gmailOAuth2: newCredential('Gmail account') },
-				parameters: {
-					resource: 'message',
-					operation: 'send',
-					authentication: 'oAuth2',
-					sendTo: placeholder('Recipient email address, for example security@example.com'),
-					subject: expr('{{ $json.subject }}'),
-					emailType: 'text',
-					message: expr('{{ $json.message }}'),
-					options: { appendAttribution: false },
+				channelId: {
+					__rl: true,
+					mode: 'id',
+					value: placeholder('Channel ID, the 19:...@thread.tacv2 part of the channel link'),
 				},
+				contentType: 'text',
+				message: expr('{{ $json.message }}'),
 			},
-		}),
-	outlook: () =>
-		node({
-			type: 'n8n-nodes-base.microsoftOutlook',
-			version: 2,
-			config: {
-				name: 'Send Email',
-				credentials: { microsoftOutlookOAuth2Api: newCredential('Microsoft Outlook account') },
-				parameters: {
-					authentication: 'microsoftOutlookOAuth2Api',
-					resource: 'message',
-					operation: 'send',
-					toRecipients: placeholder('Recipient email address, for example security@example.com'),
-					subject: expr('{{ $json.subject }}'),
-					bodyContent: expr('{{ $json.message }}'),
-					additionalFields: { bodyContentType: 'Text' },
-				},
+		},
+	},
+	gmail: {
+		type: 'n8n-nodes-base.gmail',
+		version: 2.2,
+		config: {
+			name: 'Send Email',
+			credentials: { gmailOAuth2: newCredential('Gmail account') },
+			parameters: {
+				resource: 'message',
+				operation: 'send',
+				authentication: 'oAuth2',
+				sendTo: placeholder('Recipient email address, for example security@example.com'),
+				subject: expr('{{ $json.subject }}'),
+				emailType: 'text',
+				message: expr('{{ $json.message }}'),
+				options: { appendAttribution: false },
 			},
-		}),
+		},
+	},
+	outlook: {
+		type: 'n8n-nodes-base.microsoftOutlook',
+		version: 2,
+		config: {
+			name: 'Send Email',
+			credentials: { microsoftOutlookOAuth2Api: newCredential('Microsoft Outlook account') },
+			parameters: {
+				authentication: 'microsoftOutlookOAuth2Api',
+				resource: 'message',
+				operation: 'send',
+				toRecipients: placeholder('Recipient email address, for example security@example.com'),
+				subject: expr('{{ $json.subject }}'),
+				bodyContent: expr('{{ $json.message }}'),
+				additionalFields: { bodyContentType: 'Text' },
+			},
+		},
+	},
 };
-const notify = sinks[NOTIFY]();
+const notify = node(sinks[NOTIFY]);
 
 export default workflow('id', 'Website Uptime Check')
 	.add(everyThirtyMinutes)

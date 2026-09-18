@@ -49,9 +49,9 @@ the user's tool replaces.
    output is the three entries to offer, best first, one per line, tab
    separated: rank, title, template file, tools, swaps, description. Use the
    three lines as they come: do not read the role file, do not score or
-   re-rank. `swaps` reads `email (Gmail) -> Microsoft Outlook` when the user's
-   tool replaces the example, `notification (Slack) -> Gmail [key: gmail]` when
-   the template also holds a ready node for that tool, `email (Gmail) -> ?`
+   re-rank. `swaps` reads `CRM (HubSpot) -> Pipedrive` when the user's tool
+   replaces the example, `notification (Slack) -> Gmail [set NOTIFY=gmail]`
+   when the template also holds a ready node for that tool, `CRM (HubSpot) -> ?`
    when the user has no tool of that family, `none` when the entry runs on the
    user's tools as is. Only when every line shows `?` for every family, search
    the other role files for a tool:
@@ -76,13 +76,14 @@ the user's tool replaces.
    template's tool. Write exactly one line before the first tool call,
    `Building <title> now.`, and no other text until the `build-workflow`
    result: do not report the validate result or the swap decision.
-   1. Copy, set the keyed tool and validate in ONE `workspace_execute_command`
+   1. Copy, set the keyed tools and validate in ONE `workspace_execute_command`
       call:
-      `mkdir -p src/workflows && cp ${N8N_WORKSPACE_DIR}/knowledge-base/use-cases/templates/<file> src/workflows/<file> && sed -i "s/^const NOTIFY: Sink = '[a-z]*'/const NOTIFY: Sink = '<key>'/" src/workflows/<file> && node --import tsx node_modules/@n8n/workflow-sdk/dist/cli/index.js validate src/workflows/<file>`
-      `<key>` is the value in `[key: ...]` of the swaps column: the template
-      holds one ready node per key behind `const NOTIFY`, and the `sed` is the
-      whole swap for that family. No `[key: ...]` in the swaps column: leave
-      the `sed` part out. Never infer a key from a tool name.
+      `mkdir -p src/workflows && cp ${N8N_WORKSPACE_DIR}/knowledge-base/use-cases/templates/<file> src/workflows/<file> && sed -i -e "s/^const NOTIFY = '[a-z]*'/const NOTIFY = '<key>'/" src/workflows/<file> && node --import tsx node_modules/@n8n/workflow-sdk/dist/cli/index.js validate src/workflows/<file>`
+      Every `[set NAME=key]` in the swaps column is one `-e` expression
+      `s/^const NAME = '[a-z]*'/const NAME = 'key'/`: the template holds one
+      ready node per key behind `const NAME`, and the `sed` is the whole swap
+      for that family. No `[set ...]` in the swaps column: leave the `sed`
+      part out. Never infer a key from a tool name.
    2. Every swap done by the `sed`, or only `-> ?` left: do not read the file,
       call `build-workflow` at once (step 4). Any other swap: read the copy
       with `workspace_read_file`. Every tool node starts with a comment

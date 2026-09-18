@@ -3,11 +3,13 @@
 # usage: bash rank.sh <role id> <tool>...
 # Output: a header, then one entry per line, best first, tab separated:
 #   rank, title, template file (or -), tools, swaps, description
-# swaps: `family (example) -> Tool`  = the user's tool replaces the example;
-#        `... -> Tool [key: k]`       = same, and the template holds a ready node
-#                                      for it behind `const NOTIFY: Sink = 'k'`;
-#        `family (example) -> ?`     = the user has no tool of this family;
-#        `none`                      = the entry runs on the user's tools as is.
+# swaps: `family (example) -> Tool`    = the user's tool replaces the example;
+#        `... -> Tool [set NAME=k]`    = same, and the template holds a ready node
+#                                       for it behind `const NAME = 'k'` (NOTIFY sends a
+#                                       message or mail, INBOX reads a mailbox, SPREADSHEET
+#                                       reads or writes rows);
+#        `family (example) -> ?`       = the user has no tool of this family;
+#        `none`                        = the entry runs on the user's tools as is.
 # Tool names match case-insensitively, with or without a vendor prefix or a
 # note in brackets: "Twilio (SMS)", "MS Teams", "Outlook 365", "a / b" all work.
 # Score: +1 for a family the user has a tool for, -1 for a family the user has
@@ -22,7 +24,7 @@ file="$dir/$role.md"
 [ -f "$file" ] || file="$dir/other.md"
 
 printf 'rank\ttitle\ttemplate\ttools\tswaps\tdescription\n'
-printf '%s\n' "$@" | awk '
+printf '%s\n' "$@" | awk -v dir="$dir" '
 BEGIN {
 	# The family table: which tools are interchangeable. `|` separates tools,
 	# `/` separates the spellings of one tool (the first is its name). A tool
@@ -57,8 +59,10 @@ BEGIN {
 	fam["accounting"] = "quickbooks|xero"
 	fam["SMS"] = "twilio|vonage|messagebird"
 	fam["app builder"] = "bubble|retool|softr|glide|appsmith"
-	# The `const NOTIFY: Sink` keys of the templates, by tool name.
+	# The selector keys of the templates, by tool name, and the constant per family.
 	key["slack"] = "slack"; key["microsoft teams"] = "teams"; key["gmail"] = "gmail"; key["microsoft outlook"] = "outlook"
+	key["google sheets"] = "sheets"; key["microsoft excel 365"] = "excel"
+	sel["notification"] = "NOTIFY"; sel["email"] = "INBOX"; sel["spreadsheet"] = "SPREADSHEET"
 	for (f in fam) {
 		n = split(fam[f], groups, /\|/)
 		for (i = 1; i <= n; i++) {
@@ -107,6 +111,15 @@ function take(name, label,   k, fl, i) {
 	for (i = 1; i <= k; i++) if (fl[i] != "" && !(fl[i] in have)) { have[fl[i]] = label; havename[fl[i]] = name }
 }
 
+# Whether the template of the entry holds the line const NAME = <key>, the selector of a family.
+function hasconst(name,   path, line, found) {
+	if (tmpl == "-") return 0
+	path = dir "/" tmpl; found = 0
+	while ((getline line < path) > 0) if (line ~ ("^const " name " = \047")) found = 1
+	close(path)
+	return found
+}
+
 function flush(   n, i, item, f, e, s, sw) {
 	if (!inentry) return
 	s = 0; sw = ""
@@ -121,7 +134,7 @@ function flush(   n, i, item, f, e, s, sw) {
 			else if (f in have) {
 				s++
 				sw = sw (sw == "" ? "" : "; ") item " -> " have[f]
-				if (f == "notification" && (havename[f] in key)) sw = sw " [key: " key[havename[f]] "]"
+				if ((f in sel) && (havename[f] in key) && hasconst(sel[f])) sw = sw " [set " sel[f] "=" key[havename[f]] "]"
 			} else { s--; sw = sw (sw == "" ? "" : "; ") item " -> ?" }
 		}
 	}

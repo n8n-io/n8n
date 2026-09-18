@@ -2,7 +2,7 @@
 
 Role id: `security`. Ranked by how common the automation is, 1 is the most common.
 Tools are listed as family (example): any tool of the same family works, for example Outlook instead of Gmail.
-`Template:` names a workflow source in `templates/` to start the build from; swap the tool nodes marked with the family comment. A `notification` family means the template holds one ready node per notification tool behind its `NOTIFY` constant.
+`Template:` names a workflow source in `templates/` to start the build from; swap the tool nodes marked with the family comment. A `notification` family (send a message or mail) means the template holds one ready node per tool behind its `NOTIFY` constant; an `email` family (read a mailbox) with an `INBOX` constant and a `spreadsheet` family with a `SPREADSHEET` constant work the same way. `rank.sh` prints `[set NAME=key]` for these swaps.
 
 ## 1. Reference data sync to an app backend
 
@@ -25,7 +25,7 @@ Exports the records changed since the last run from the HR system API, normalize
 ## 3. Timed SMS and email follow-ups for new prospects
 
 - Trigger: Schedule, every 30 minutes
-- Tools: spreadsheet (Google Sheets), SMS (Twilio), email (Gmail)
+- Tools: spreadsheet (Google Sheets), SMS (Twilio), notification (Gmail)
 - Category: sales-and-marketing.lead-acquisition.nurture-and-reengagement
 - Template: templates/security-timed-follow-ups.workflow.ts
 

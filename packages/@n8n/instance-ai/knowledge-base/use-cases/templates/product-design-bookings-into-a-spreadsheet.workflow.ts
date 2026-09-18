@@ -1,8 +1,12 @@
 // Use case: product-design / Member Bookings into a Spreadsheet.
+// Spreadsheet tool: set SPREADSHEET to sheets or excel. Nothing else changes.
 // Swap a tool: replace only the nodes marked with that family. Keep the variable names
 // and the fields the next node reads.
 // Sheet columns: email, member_id, attended_a_class, booked_a_class.
 import { workflow, node, trigger, placeholder, newCredential, expr } from '@n8n/workflow-sdk';
+
+// Spreadsheet tool: set SPREADSHEET to sheets or excel. Nothing else changes.
+const SPREADSHEET = 'sheets';
 
 const schedule = trigger({
 	type: 'n8n-nodes-base.scheduleTrigger',
@@ -17,38 +21,71 @@ const schedule = trigger({
 	},
 });
 
-// [spreadsheet] Google Sheets. Swap for Microsoft Excel 365 or Airtable: replace this node
-// and the update node below. The next node reads $json.member_id.
-const readMembers = node({
-	type: 'n8n-nodes-base.googleSheets',
-	version: 4.7,
-	config: {
-		name: 'Read Members',
-		credentials: { googleSheetsOAuth2Api: newCredential('Google Sheets account') },
-		parameters: {
-			resource: 'sheet',
-			operation: 'read',
-			documentId: {
-				__rl: true,
-				mode: 'url',
-				value: placeholder('Google Sheets URL of the members sheet'),
+// Spreadsheet: one ready node per tool. The next node reads $json.member_id.
+const readMembersConfigs = {
+	sheets: {
+		type: 'n8n-nodes-base.googleSheets',
+		version: 4.7,
+		config: {
+			name: 'Read Members',
+			credentials: { googleSheetsOAuth2Api: newCredential('Google Sheets account') },
+			parameters: {
+				resource: 'sheet',
+				operation: 'read',
+				documentId: {
+					__rl: true,
+					mode: 'url',
+					value: placeholder('Google Sheets URL of the members sheet'),
+				},
+				sheetName: {
+					__rl: true,
+					mode: 'name',
+					value: placeholder('Sheet name, for example Members'),
+				},
 			},
-			sheetName: {
-				__rl: true,
-				mode: 'name',
-				value: placeholder('Sheet name, for example Members'),
-			},
+			output: [
+				{
+					email: 'jane@example.com',
+					member_id: 'M-1001',
+					attended_a_class: 'no',
+					booked_a_class: 'no',
+				},
+			],
 		},
-		output: [
-			{
-				email: 'jane@example.com',
-				member_id: 'M-1001',
-				attended_a_class: 'no',
-				booked_a_class: 'no',
-			},
-		],
 	},
-});
+	excel: {
+		type: 'n8n-nodes-base.microsoftExcel',
+		version: 2.2,
+		config: {
+			name: 'Read Members',
+			credentials: { microsoftExcelOAuth2Api: newCredential('Microsoft Excel 365 account') },
+			parameters: {
+				authentication: 'microsoftExcelOAuth2Api',
+				resource: 'worksheet',
+				operation: 'readRows',
+				workbook: {
+					__rl: true,
+					mode: 'list',
+					value: placeholder('Excel workbook with the members sheet'),
+				},
+				worksheet: {
+					__rl: true,
+					mode: 'list',
+					value: placeholder('Worksheet, for example Members'),
+				},
+			},
+			output: [
+				{
+					email: 'jane@example.com',
+					member_id: 'M-1001',
+					attended_a_class: 'no',
+					booked_a_class: 'no',
+				},
+			],
+		},
+	},
+};
+const readMembers = node(readMembersConfigs[SPREADSHEET]);
 
 // Fetches the bookings of the member in $json.member_id from the booking system.
 const fetchBookings = node({
@@ -118,68 +155,103 @@ const flagAttendance = node({
 	},
 });
 
-// [spreadsheet] Google Sheets: writes the attendance flags back to the row that matches
-// email. It reads $json.email, $json.attended_a_class and $json.booked_a_class.
-const updateMembers = node({
-	type: 'n8n-nodes-base.googleSheets',
-	version: 4.7,
-	config: {
-		name: 'Update Members',
-		credentials: { googleSheetsOAuth2Api: newCredential('Google Sheets account') },
-		parameters: {
-			resource: 'sheet',
-			operation: 'update',
-			documentId: {
-				__rl: true,
-				mode: 'url',
-				value: placeholder('Google Sheets URL of the members sheet'),
-			},
-			sheetName: {
-				__rl: true,
-				mode: 'name',
-				value: placeholder('Sheet name, for example Members'),
-			},
-			columns: {
-				mappingMode: 'defineBelow',
-				value: {
-					email: expr('{{ $json.email }}'),
-					attended_a_class: expr('{{ $json.attended_a_class }}'),
-					booked_a_class: expr('{{ $json.booked_a_class }}'),
+// Spreadsheet: one ready node per tool. It writes the attendance flags back to the row that
+// matches email and reads $json.email, $json.attended_a_class and $json.booked_a_class.
+const updateMembersConfigs = {
+	sheets: {
+		type: 'n8n-nodes-base.googleSheets',
+		version: 4.7,
+		config: {
+			name: 'Update Members',
+			credentials: { googleSheetsOAuth2Api: newCredential('Google Sheets account') },
+			parameters: {
+				resource: 'sheet',
+				operation: 'update',
+				documentId: {
+					__rl: true,
+					mode: 'url',
+					value: placeholder('Google Sheets URL of the members sheet'),
 				},
-				matchingColumns: ['email'],
-				schema: [
-					{
-						id: 'email',
-						displayName: 'email',
-						required: false,
-						defaultMatch: false,
-						display: true,
-						type: 'string',
-						canBeUsedToMatch: true,
+				sheetName: {
+					__rl: true,
+					mode: 'name',
+					value: placeholder('Sheet name, for example Members'),
+				},
+				columns: {
+					mappingMode: 'defineBelow',
+					value: {
+						email: expr('{{ $json.email }}'),
+						attended_a_class: expr('{{ $json.attended_a_class }}'),
+						booked_a_class: expr('{{ $json.booked_a_class }}'),
 					},
-					{
-						id: 'attended_a_class',
-						displayName: 'attended_a_class',
-						required: false,
-						defaultMatch: false,
-						display: true,
-						type: 'string',
-						canBeUsedToMatch: false,
-					},
-					{
-						id: 'booked_a_class',
-						displayName: 'booked_a_class',
-						required: false,
-						defaultMatch: false,
-						display: true,
-						type: 'string',
-						canBeUsedToMatch: false,
-					},
-				],
+					matchingColumns: ['email'],
+					schema: [
+						{
+							id: 'email',
+							displayName: 'email',
+							required: false,
+							defaultMatch: false,
+							display: true,
+							type: 'string',
+							canBeUsedToMatch: true,
+						},
+						{
+							id: 'attended_a_class',
+							displayName: 'attended_a_class',
+							required: false,
+							defaultMatch: false,
+							display: true,
+							type: 'string',
+							canBeUsedToMatch: false,
+						},
+						{
+							id: 'booked_a_class',
+							displayName: 'booked_a_class',
+							required: false,
+							defaultMatch: false,
+							display: true,
+							type: 'string',
+							canBeUsedToMatch: false,
+						},
+					],
+				},
 			},
 		},
 	},
-});
+	excel: {
+		type: 'n8n-nodes-base.microsoftExcel',
+		version: 2.2,
+		config: {
+			name: 'Update Members',
+			credentials: { microsoftExcelOAuth2Api: newCredential('Microsoft Excel 365 account') },
+			parameters: {
+				authentication: 'microsoftExcelOAuth2Api',
+				resource: 'worksheet',
+				operation: 'update',
+				workbook: {
+					__rl: true,
+					mode: 'list',
+					value: placeholder('Excel workbook with the members sheet'),
+				},
+				worksheet: {
+					__rl: true,
+					mode: 'list',
+					value: placeholder('Worksheet, for example Members'),
+				},
+				dataMode: 'define',
+				columnToMatchOn: 'email',
+				valueToMatchOn: expr('{{ $json.email }}'),
+				fieldsUi: {
+					values: [
+						{ column: 'attended_a_class', fieldValue: expr('{{ $json.attended_a_class }}') },
+						{ column: 'booked_a_class', fieldValue: expr('{{ $json.booked_a_class }}') },
+					],
+				},
+			},
+		},
+	},
+};
+const updateMembers = node(updateMembersConfigs[SPREADSHEET]);
 
 export default workflow('id', 'Member Bookings into a Spreadsheet')
 	.add(schedule)
