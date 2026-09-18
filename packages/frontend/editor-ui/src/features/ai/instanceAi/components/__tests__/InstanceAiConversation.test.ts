@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { defineComponent, h } from 'vue';
+import { defineComponent, h, nextTick, reactive } from 'vue';
 import { mount } from '@vue/test-utils';
 import { fireEvent } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
@@ -20,6 +20,7 @@ import {
 	stashPendingRedirectLanding,
 	stashPendingWorkflowAttachment,
 } from '../../composables/useInstanceAiHandoff';
+import type { InstanceAiEmbedSubject } from '../../embed/instanceAiEmbed.types';
 import type { InstanceAiHandoffContext, InstanceAiMessage } from '@n8n/api-types';
 import { ResponseError } from '@n8n/rest-api-client';
 import { USER_TYPED_MESSAGE } from '../../prefills';
@@ -155,6 +156,82 @@ describe('InstanceAiConversation', () => {
 		expect(conversation.emitted('agent-attachment-restored')?.[0]).toEqual([
 			{ type: 'agent', id: 'agent-1', projectId: 'proj-1', pending: true },
 		]);
+	});
+
+	describe('composer context chip label', () => {
+		// Wraps the subject in `reactive` and returns it alongside the render
+		// result, so a test can mutate `subject.name` after mount and assert the
+		// chip follows the live value — the actual AGENT-954 scenario (a rename in
+		// the builder while the panel stays open).
+		function mountWithSubject(subject: InstanceAiEmbedSubject | undefined) {
+			thread.sseState = 'disconnected';
+			stashPendingAgentAttachment('thread-1', {
+				type: 'agent',
+				id: 'agent-1',
+				projectId: 'proj-1',
+				name: 'Stashed Name',
+				pending: true,
+			});
+			const reactiveSubject = subject === undefined ? undefined : reactive({ ...subject });
+			const renderer = createThreadComponentRenderer(
+				InstanceAiConversation,
+				{
+					props: { subject: reactiveSubject },
+					global: { stubs: { InstanceAiInput: InstanceAiInputStub } },
+				},
+				() => thread,
+			);
+			return { ...renderer(), subject: reactiveSubject };
+		}
+
+		it('prefers the live subject name over the stashed name when agent ids match', async () => {
+			const { getByTestId } = mountWithSubject({
+				type: 'agent',
+				id: 'agent-1',
+				projectId: 'proj-1',
+				name: 'Renamed Live',
+			});
+			await vi.waitFor(() =>
+				expect(getByTestId('instance-ai-input-context-chip').textContent).toBe('Renamed Live'),
+			);
+		});
+
+		it('updates the chip when the live subject is renamed after mount', async () => {
+			const { getByTestId, subject } = mountWithSubject({
+				type: 'agent',
+				id: 'agent-1',
+				projectId: 'proj-1',
+				name: 'Initial Name',
+			});
+			await vi.waitFor(() =>
+				expect(getByTestId('instance-ai-input-context-chip').textContent).toBe('Initial Name'),
+			);
+
+			// A rename in the builder mutates the reactive subject's name; the chip
+			// must follow it without a re-stash or remount.
+			subject!.name = 'Renamed Mid-Session';
+			await nextTick();
+			expect(getByTestId('instance-ai-input-context-chip').textContent).toBe('Renamed Mid-Session');
+		});
+
+		it('falls back to the stashed name when the subject refers to a different agent', async () => {
+			const { getByTestId } = mountWithSubject({
+				type: 'agent',
+				id: 'agent-other',
+				projectId: 'proj-1',
+				name: 'Renamed Live',
+			});
+			await vi.waitFor(() =>
+				expect(getByTestId('instance-ai-input-context-chip').textContent).toBe('Stashed Name'),
+			);
+		});
+
+		it('falls back to the stashed name when no subject is provided', async () => {
+			const { getByTestId } = mountWithSubject(undefined);
+			await vi.waitFor(() =>
+				expect(getByTestId('instance-ai-input-context-chip').textContent).toBe('Stashed Name'),
+			);
+		});
 	});
 
 	it('awaits beforeSend before sending, restoring the draft if it rejects', async () => {

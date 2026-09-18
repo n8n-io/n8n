@@ -572,9 +572,7 @@ async function handleExecute(
 		};
 	}
 
-	// Executing one node is equivalent to running a one-node workflow, so the
-	// `runWorkflow` policy applies as-is.
-	if (context.permissions?.runWorkflow === 'blocked') {
+	if (context.permissions?.executeNode === 'blocked') {
 		return {
 			status: 'error' as const,
 			denied: true,
@@ -589,7 +587,7 @@ async function handleExecute(
 	const scopedRunOverride =
 		context.allowedRunWorkflowIds !== undefined || context.allowedRunWorkflowNames !== undefined;
 	const allowedByScope =
-		!requireApproval && !scopedRunOverride && context.permissions?.runWorkflow === 'always_allow';
+		!requireApproval && !scopedRunOverride && context.permissions?.executeNode === 'always_allow';
 	const allowedBySessionGrant =
 		!requireApproval &&
 		grantKey !== null &&
