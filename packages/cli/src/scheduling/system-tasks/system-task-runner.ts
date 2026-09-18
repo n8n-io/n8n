@@ -356,7 +356,7 @@ export class SystemTaskRunner {
 			});
 			emitSystemTaskMetric(this.eventService, 'system-task-routed', {
 				name: task.name,
-				mode: 'per_instance',
+				mode: 'instance_timer',
 				intervalSeconds,
 			});
 
@@ -371,7 +371,7 @@ export class SystemTaskRunner {
 			});
 			emitSystemTaskMetric(this.eventService, 'system-task-routed', {
 				name: task.name,
-				mode: 'in_memory',
+				mode: 'leader_timer',
 				intervalSeconds,
 			});
 
@@ -539,5 +539,5 @@ function runsOn(placement: SystemTaskPlacement, instanceType: InstanceType): boo
 
 /** The metrics mode of a task that runs from a timer, by the timer's scope. */
 function timerMode(routed: Pick<RoutedTask, 'scope'>): SystemTaskMode {
-	return routed.scope === 'instance' ? 'per_instance' : 'in_memory';
+	return routed.scope === 'instance' ? 'instance_timer' : 'leader_timer';
 }

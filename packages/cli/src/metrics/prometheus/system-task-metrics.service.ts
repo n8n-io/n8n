@@ -41,7 +41,7 @@ export class PrometheusSystemTaskMetricsService implements PrometheusMetricsColl
 
 		const runDuration = new promClient.Histogram({
 			name: `${prefix}system_task_run_duration_seconds`,
-			help: 'Duration in seconds of a system task run, by task, mode (in_memory, durable, per_instance) and result (success, failure, aborted).',
+			help: 'Duration in seconds of a system task run, by task, mode (leader_timer, instance_timer, durable) and result (success, failure, aborted).',
 			labelNames: ['task', 'mode', 'result'],
 			buckets: DURATION_BUCKETS_SECONDS,
 		});
@@ -107,7 +107,7 @@ export class PrometheusSystemTaskMetricsService implements PrometheusMetricsColl
 			buckets: LAG_BUCKETS_SECONDS,
 		});
 
-		const inMemoryTasks = new Set<string>();
+		const leaderTimerTasks = new Set<string>();
 		let timersRunning = false;
 
 		const seed = (task: string, mode: SystemTaskMode) => {
@@ -119,9 +119,9 @@ export class PrometheusSystemTaskMetricsService implements PrometheusMetricsColl
 			runsInFlight.inc({ task, mode }, 0);
 		};
 
-		const inMemoryGauges = [info, scheduled, runsInFlight, lastSuccess];
-		const removeInMemorySeries = (task: string) => {
-			inMemoryGauges.forEach((gauge) => gauge.remove({ task, mode: 'in_memory' }));
+		const leaderTimerGauges = [info, scheduled, runsInFlight, lastSuccess];
+		const removeLeaderTimerSeries = (task: string) => {
+			leaderTimerGauges.forEach((gauge) => gauge.remove({ task, mode: 'leader_timer' }));
 			nextRun.remove({ task });
 		};
 
@@ -129,22 +129,22 @@ export class PrometheusSystemTaskMetricsService implements PrometheusMetricsColl
 			if (intervalSeconds !== undefined) {
 				interval.set({ task: name }, intervalSeconds);
 			}
-			if (mode === 'in_memory') {
-				inMemoryTasks.add(name);
+			if (mode === 'leader_timer') {
+				leaderTimerTasks.add(name);
 			}
-			if (mode !== 'in_memory' || timersRunning) {
+			if (mode !== 'leader_timer' || timersRunning) {
 				seed(name, mode);
 			}
 		});
 
 		this.eventService.on('system-task-timers-started', () => {
 			timersRunning = true;
-			inMemoryTasks.forEach((task) => seed(task, 'in_memory'));
+			leaderTimerTasks.forEach((task) => seed(task, 'leader_timer'));
 		});
 
 		this.eventService.on('system-task-timers-stopped', () => {
 			timersRunning = false;
-			inMemoryTasks.forEach(removeInMemorySeries);
+			leaderTimerTasks.forEach(removeLeaderTimerSeries);
 		});
 
 		this.eventService.on('system-task-run-started', ({ name, mode }) => {

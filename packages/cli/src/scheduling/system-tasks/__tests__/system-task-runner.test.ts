@@ -918,7 +918,7 @@ describe('SystemTaskRunner', () => {
 
 			expect(eventService.emit).toHaveBeenCalledWith('system-task-routed', {
 				name: 'dummy',
-				mode: 'in_memory',
+				mode: 'leader_timer',
 				intervalSeconds: 60,
 			});
 		});
@@ -932,7 +932,7 @@ describe('SystemTaskRunner', () => {
 
 			expect(eventService.emit).toHaveBeenCalledWith('system-task-routed', {
 				name: 'dummy',
-				mode: 'in_memory',
+				mode: 'leader_timer',
 				intervalSeconds: undefined,
 			});
 		});
@@ -967,11 +967,11 @@ describe('SystemTaskRunner', () => {
 			});
 			expect(eventService.emit).toHaveBeenCalledWith('system-task-run-started', {
 				name: 'dummy',
-				mode: 'in_memory',
+				mode: 'leader_timer',
 			});
 			expect(eventService.emit).toHaveBeenCalledWith('system-task-run-settled', {
 				name: 'dummy',
-				mode: 'in_memory',
+				mode: 'leader_timer',
 				result: 'success',
 				durationMs: 250,
 			});
@@ -1114,7 +1114,7 @@ describe('SystemTaskRunner', () => {
 
 			expect(eventService.emit).toHaveBeenCalledWith(
 				'system-task-run-settled',
-				expect.objectContaining({ name: 'dummy', mode: 'in_memory', result: 'failure' }),
+				expect.objectContaining({ name: 'dummy', mode: 'leader_timer', result: 'failure' }),
 			);
 			expect(eventService.emit).toHaveBeenCalledWith('system-task-retry-scheduled', {
 				name: 'dummy',
@@ -1215,7 +1215,7 @@ describe('SystemTaskRunner', () => {
 
 			expect(eventService.emit).toHaveBeenCalledWith('system-task-scheduling-failed', {
 				name: 'dummy',
-				mode: 'in_memory',
+				mode: 'leader_timer',
 			});
 		});
 
@@ -1317,7 +1317,7 @@ describe('SystemTaskRunner', () => {
 			expect(perInstance.runCount).toBe(0);
 		});
 
-		it('emits the runs of an instance-scoped task as per_instance', async () => {
+		it('emits the runs of an instance-scoped task as instance_timer', async () => {
 			const { runner, metadata, eventService } = setup();
 			metadata.register(PerInstanceDummySystemTask);
 			await initRunner(runner);
@@ -1325,12 +1325,12 @@ describe('SystemTaskRunner', () => {
 
 			expect(eventService.emit).toHaveBeenCalledWith('system-task-routed', {
 				name: 'per-instance-dummy',
-				mode: 'per_instance',
+				mode: 'instance_timer',
 				intervalSeconds: 60,
 			});
 			expect(eventService.emit).toHaveBeenCalledWith('system-task-run-started', {
 				name: 'per-instance-dummy',
-				mode: 'per_instance',
+				mode: 'instance_timer',
 			});
 		});
 
