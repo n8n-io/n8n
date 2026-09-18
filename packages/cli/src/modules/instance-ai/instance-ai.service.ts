@@ -1233,6 +1233,7 @@ export class InstanceAiService {
 				client,
 				nodeService: context.nodeService,
 				credentialService: context.credentialService,
+				logger: this.logger,
 			});
 			if (preflightRun && tracing) {
 				await tracing.finishRun(preflightRun, {

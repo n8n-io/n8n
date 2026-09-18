@@ -12,6 +12,7 @@ import {
 	parseUsageSummary,
 	summarizeJsonValue,
 	extractObservationsBlock,
+	extractActiveSkillsBlock,
 	stepInstructions,
 } from '../llm-step-display';
 
@@ -295,9 +296,81 @@ describe('llm-step-display', () => {
 		);
 
 		expect(parsed.observations).toBe('* INFO (09:15) User prefers Slack notifications');
+		expect(parsed.skills).toEqual([]);
 		expect(parsed.systemBlocks[0]?.content).toBe('Skill loading protocol');
 		expect(parsed.systemBlocks[0]?.segments).toEqual([
 			{ type: 'text', text: 'Skill loading protocol' },
+		]);
+	});
+
+	it('extracts each active skill from the system prompt', () => {
+		const systemPrompt = [
+			'Skill loading protocol',
+			'<active_skills>',
+			'Use these current skill versions when relevant to the task. Earlier tool results may describe older versions.',
+			'',
+			'[Skill: "workflow-builder"]',
+			'[Skill hash: "abc"]',
+			'',
+			'Build one workflow.',
+			'',
+			'[Skill: "agent-builder"]',
+			'[Skill hash: "def"]',
+			'',
+			'Build one agent.',
+			'</active_skills>',
+		].join('\n');
+
+		expect(extractActiveSkillsBlock(systemPrompt)).toEqual({
+			withoutActiveSkills: 'Skill loading protocol',
+			skills: [
+				{
+					name: 'workflow-builder',
+					content: [
+						'[Skill: "workflow-builder"]',
+						'[Skill hash: "abc"]',
+						'',
+						'Build one workflow.',
+					].join('\n'),
+				},
+				{
+					name: 'agent-builder',
+					content: ['[Skill: "agent-builder"]', '[Skill hash: "def"]', '', 'Build one agent.'].join(
+						'\n',
+					),
+				},
+			],
+		});
+
+		const parsed = parseSystemPromptForDisplay(systemPrompt);
+		expect(parsed.systemBlocks[0]?.content).toBe('Skill loading protocol');
+		expect(parsed.skills).toHaveLength(2);
+		expect(parsed.skills[0]?.name).toBe('workflow-builder');
+		expect(parsed.skills[1]?.name).toBe('agent-builder');
+		expect(parsed.observations).toBeNull();
+	});
+
+	it('splits system, observations, and active skills from one prompt', () => {
+		const parsed = parseSystemPromptForDisplay(
+			[
+				'You are helpful.',
+				'<active_skills>',
+				'[Skill: "planning"]',
+				'Create a task plan.',
+				'</active_skills>',
+				'<observations>',
+				'* INFO (09:15) User prefers Slack notifications',
+				'</observations>',
+			].join('\n'),
+		);
+
+		expect(parsed.systemBlocks[0]?.content).toBe('You are helpful.');
+		expect(parsed.observations).toBe('* INFO (09:15) User prefers Slack notifications');
+		expect(parsed.skills).toEqual([
+			{
+				name: 'planning',
+				content: ['[Skill: "planning"]', 'Create a task plan.'].join('\n'),
+			},
 		]);
 	});
 

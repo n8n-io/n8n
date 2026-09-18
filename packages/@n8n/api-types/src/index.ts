@@ -691,7 +691,11 @@ export {
 	parseStepSummary,
 } from './schemas/llm-step-display';
 
-export type { ReadableContentBlock, ReadableSegment } from './schemas/llm-step-display';
+export type {
+	ReadableContentBlock,
+	ReadableSegment,
+	ParsedActiveSkillDisplay,
+} from './schemas/llm-step-display';
 
 export {
 	startTestRunPayloadSchema,

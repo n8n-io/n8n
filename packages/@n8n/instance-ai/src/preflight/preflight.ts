@@ -24,6 +24,7 @@ import type {
 	SystemOneResult,
 } from '@typesafe-ai/sdk';
 
+import type { Logger } from '../logger';
 import type {
 	CredentialSummary,
 	InstanceAiCredentialService,
@@ -95,6 +96,7 @@ export interface RunPreflightOptions {
 	/** Credential choice confidence required to name a single credential. */
 	credentialConfidenceThreshold?: number;
 	maxCandidateNodes?: number;
+	logger?: Logger;
 }
 
 const DEFAULTS = {
@@ -105,6 +107,14 @@ const DEFAULTS = {
 };
 
 const UNSPECIFIED = 'unspecified';
+
+function serializeForLog(value: unknown): string {
+	try {
+		return JSON.stringify(value);
+	} catch {
+		return String(value);
+	}
+}
 
 export async function createJevPreflightClient(): Promise<PreflightDecisionClient | undefined> {
 	if (!process.env.TYPESAFE_API_KEY?.trim()) return undefined;
@@ -159,7 +169,20 @@ export async function runPreflight(options: RunPreflightOptions): Promise<Prefli
 		),
 	};
 
-	const result = await options.client.systemOne({ state: options.message, questions });
+	const jevInput = { state: options.message, questions };
+	options.logger?.info(`Instance AI preflight: calling Jev ${serializeForLog(jevInput)}`);
+	let result;
+	try {
+		result = await options.client.systemOne(jevInput);
+	} catch (error) {
+		options.logger?.info(
+			`Instance AI preflight: Jev call failed ${serializeForLog(
+				error instanceof Error ? { message: error.message } : error,
+			)}`,
+		);
+		throw error;
+	}
+	options.logger?.info(`Instance AI preflight: Jev response ${serializeForLog(result)}`);
 	const intent = result.answers.intent;
 	if (intent.type !== 'choice') return null;
 	const skillId = INTENT_SKILL[intent.choice];
