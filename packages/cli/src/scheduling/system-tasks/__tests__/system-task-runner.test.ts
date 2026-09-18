@@ -880,6 +880,25 @@ describe('SystemTaskRunner', () => {
 				}),
 			);
 		});
+
+		it('rejects two tasks registered under the same name when only one runs here', () => {
+			perInstance.name = dummy.name;
+			const { runner, metadata } = setup({
+				isLeader: false,
+				instanceRole: 'unset',
+				instanceType: 'worker',
+			});
+			metadata.register(DummySystemTask);
+			metadata.register(PerInstanceDummySystemTask);
+
+			expect(() => runner.initPerInstance()).toThrow(
+				expect.objectContaining({
+					cause: expect.objectContaining({
+						message: expect.stringContaining('more than once'),
+					}),
+				}),
+			);
+		});
 	});
 
 	describe('metrics events', () => {

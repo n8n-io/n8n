@@ -75,6 +75,12 @@ type RoutedTask = {
 export class SystemTaskRunner {
 	private readonly routedTasksByName = new Map<string, RoutedTask>();
 
+	/**
+	 * Every name seen, routed or not. A task dropped on this kind of instance
+	 * still claims its name, or two tasks could share one across instance kinds.
+	 */
+	private readonly registeredNames = new Set<string>();
+
 	private readonly logger: Logger;
 
 	private initialized = false;
@@ -284,11 +290,12 @@ export class SystemTaskRunner {
 	private route(taskClass: SystemTaskClass): void {
 		const task = Container.get(taskClass);
 
-		if (this.routedTasksByName.has(task.name)) {
+		if (this.registeredNames.has(task.name)) {
 			throw new UnexpectedError('A system task name is registered more than once', {
 				extra: { name: task.name },
 			});
 		}
+		this.registeredNames.add(task.name);
 
 		const placement = resolveSystemTaskPlacement(task);
 		if (!runsOn(placement, this.instanceSettings.instanceType)) {
