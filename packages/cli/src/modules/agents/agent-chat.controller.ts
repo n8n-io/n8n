@@ -27,7 +27,8 @@ import {
 } from './agent-chat-attachment.service';
 import { AgentExecutionOrchestratorService } from './agent-execution-orchestrator.service';
 import { AgentExecutionRecordingError } from './agent-execution-recording.error';
-import { AgentExecutionService, threadBelongsTo } from './agent-execution.service';
+import { AgentExecutionService } from './agent-execution.service';
+import { threadBelongsTo } from './utils/agent-thread-access';
 import { messagesToDto } from './agent-message-mapper';
 import { type FlushableResponse, initSseStream } from './agent-sse-stream';
 import { AgentTestChatService, chatThreadId } from './agent-test-chat.service';
@@ -35,7 +36,10 @@ import { AgentTestRunService } from './agent-test-run.service';
 import { AgentsService } from './agents.service';
 import { AgentsBuilderService } from './builder/agents-builder.service';
 import { AgentBackgroundJobService } from './background/agent-background-job.service';
-import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
+import {
+	draftChatMemoryResourceId,
+	userIdFromDraftChatMemoryResourceId,
+} from './utils/agent-memory-scope';
 import { resolveInboundMimeType } from './utils/inbound-attachments';
 import { withOpenSuspensions } from './utils/messages-envelope';
 
@@ -129,6 +133,7 @@ export class AgentChatController {
 			const prepared = await this.agentTestRunService.prepareDraftRun({
 				agentId,
 				projectId,
+				user: req.user,
 				sessionId,
 				credentialProvider,
 			});
@@ -265,7 +270,7 @@ export class AgentChatController {
 		// A new preview session has no thread until its first execution starts.
 		if (!thread) return { tasks: [] };
 
-		if (!threadBelongsTo(thread, projectId, agentId)) {
+		if (!threadBelongsTo(thread, projectId, agentId, req.user.id)) {
 			throw new NotFoundError(`Thread "${threadId}" not found`);
 		}
 
@@ -293,18 +298,36 @@ export class AgentChatController {
 		const { projectId, agentId, threadId } = req.params;
 		const agent = await this.agentsService.findById(agentId, projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
-		// getConversationHistory delegates to getThreadDetail, which validates
-		// thread ownership against both projectId and agentId before returning
-		// execution transcript data.
+		const thread = await this.agentExecutionService.findThreadById(threadId);
+		if (thread && !threadBelongsTo(thread, projectId, agentId, req.user.id)) {
+			throw new NotFoundError(`Thread "${threadId}" not found`);
+		}
 		const history = await this.agentExecutionOrchestratorService.getConversationHistory({
 			threadId,
 			projectId,
 			agentId,
+			userId: req.user.id,
 		});
 		const checkpoint = await this.agentsBuilderService.findOpenCheckpointForThread(
 			agentId,
 			threadId,
 		);
+		if (
+			checkpoint &&
+			(thread?.accessScope === 'project'
+				? userIdFromDraftChatMemoryResourceId(checkpoint.persistence?.resourceId ?? '') !==
+					undefined
+				: checkpoint.persistence?.resourceId !== draftChatMemoryResourceId(req.user.id) ||
+					(!thread &&
+						!(await this.agentExecutionService.canUsePreviewThread(
+							threadId,
+							projectId,
+							agentId,
+							req.user.id,
+						))))
+		) {
+			throw new NotFoundError(`Thread "${threadId}" not found`);
+		}
 		if (!history) {
 			if (checkpoint) return withOpenSuspensions([], checkpoint);
 			throw new NotFoundError(`Thread "${threadId}" not found`);
@@ -322,12 +345,27 @@ export class AgentChatController {
 		const { projectId, agentId } = req.params;
 		const agent = await this.agentsService.findById(agentId, projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
+		if (
+			!(await this.agentExecutionService.canUsePreviewThread(
+				chatThreadId(agentId, req.user.id),
+				projectId,
+				agentId,
+				req.user.id,
+			))
+		) {
+			throw new NotFoundError('Session not found');
+		}
 		const messages = await this.agentTestChatService.getTestChatMessages(agentId, req.user.id);
 		const checkpoint = await this.agentsBuilderService.findOpenCheckpointForThread(
 			agentId,
 			chatThreadId(agentId, req.user.id),
 		);
-		return withOpenSuspensions(messagesToDto(messages), checkpoint);
+		return withOpenSuspensions(
+			messagesToDto(messages),
+			checkpoint?.persistence?.resourceId === draftChatMemoryResourceId(req.user.id)
+				? checkpoint
+				: null,
+		);
 	}
 
 	@Get('/:agentId/chat/attachments/:attachmentId')
@@ -343,6 +381,7 @@ export class AgentChatController {
 		const attachment = await this.agentChatAttachmentService.getForAgent(attachmentId, {
 			agentId,
 			projectId,
+			userId: req.user.id,
 		});
 		if (!attachment) throw new NotFoundError(`Attachment "${attachmentId}" not found`);
 
@@ -396,6 +435,16 @@ export class AgentChatController {
 		const { projectId, agentId } = req.params;
 		const agent = await this.agentsService.findById(agentId, projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
+		if (
+			!(await this.agentExecutionService.canUsePreviewThread(
+				chatThreadId(agentId, req.user.id),
+				projectId,
+				agentId,
+				req.user.id,
+			))
+		) {
+			throw new NotFoundError('Session not found');
+		}
 		await this.agentTestChatService.clearTestChatMessages(agentId, req.user.id);
 		return { ok: true };
 	}
