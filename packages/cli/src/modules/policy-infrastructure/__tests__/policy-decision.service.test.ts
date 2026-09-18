@@ -1,6 +1,7 @@
 import { mockLogger } from '@n8n/backend-test-utils';
 import {
 	type CredentialDecryptContext,
+	type CredentialSaveContext,
 	type PolicyCheckClass,
 	type PolicyCheckMetadata,
 	type PolicyCheckResult,
@@ -81,6 +82,18 @@ const createWithClaimedIdContext: WorkflowSaveContext = {
 const transferContext: WorkflowTransferContext = {
 	workflow: { id: 'wf-1', name: 'My workflow', nodes: [] },
 	targetProjectId: 'proj-2',
+};
+
+const credentialCreateContext: CredentialSaveContext = {
+	credential: { id: null, type: 'slackApi' },
+	storedCredential: null,
+	projectId: 'proj-1',
+};
+
+const credentialUpdateContext: CredentialSaveContext = {
+	credential: { id: 'cred-1', type: 'slackApi' },
+	storedCredential: { id: 'cred-1', type: 'slackApi' },
+	projectId: 'proj-1',
 };
 
 const decryptContext: CredentialDecryptContext = {
@@ -165,6 +178,10 @@ class OtherPointsCheck implements RegisteredPolicyCheck {
 	}
 
 	async onCredentialDecrypt(): Promise<PolicyCheckResult> {
+		return { violations: [slackBlocked] };
+	}
+
+	async onCredentialSave(): Promise<PolicyCheckResult> {
 		return { violations: [slackBlocked] };
 	}
 }
@@ -402,6 +419,30 @@ describe('PolicyDecisionService', () => {
 			await service.enforce('workflowTransfer', transferContext);
 
 			expect(audit.mock.calls[0][1]).toMatchObject({ projectId: 'proj-2' });
+		});
+
+		it('records a credential create by type, with no id', async () => {
+			const { service, audit } = auditedServiceWith(OtherPointsCheck);
+
+			await service.enforce('credentialSave', credentialCreateContext);
+
+			expect(audit.mock.calls[0][1]).toMatchObject({
+				credentialId: null,
+				credentialType: 'slackApi',
+				projectId: 'proj-1',
+			});
+			expect(audit.mock.calls[0][1]).not.toHaveProperty('workflowId');
+		});
+
+		it('records a credential update by its stored id', async () => {
+			const { service, audit } = auditedServiceWith(OtherPointsCheck);
+
+			await service.enforce('credentialSave', credentialUpdateContext);
+
+			expect(audit.mock.calls[0][1]).toMatchObject({
+				credentialId: 'cred-1',
+				credentialType: 'slackApi',
+			});
 		});
 
 		it('records the credential and the node asking for it', async () => {

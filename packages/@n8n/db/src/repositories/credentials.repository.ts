@@ -1,7 +1,9 @@
+import { assertClearedFor, credentialContentSubject } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 import type { FindManyOptions, SelectQueryBuilder } from '@n8n/typeorm';
 import { DataSource, In, Like, Not, QueryFailedError } from '@n8n/typeorm';
+import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 
 import { UserError } from 'n8n-workflow';
 
@@ -72,6 +74,7 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 		externalSecretProviderIds: string[],
 		ctx: OperationContext,
 	): Promise<CredentialsEntity> {
+		assertClearedFor(ctx.policyCleared, 'credentialSave', credentialContentSubject(credential));
 		return await this.runInTransaction(ctx, async (manager) => {
 			const entity = this.create({ ...credential, usageScope: 'project' });
 			try {
@@ -187,10 +190,34 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 		});
 	}
 
+	/**
+	 * Persists a new project credential, gated on a clearance for its type.
+	 *
+	 * A create binds to the type hash, not the id: an id here is generated on insert, so nothing
+	 * may change `type` between the `enforceCredentialSave` call and this write.
+	 */
+	async createContent(
+		credential: CredentialsEntity,
+		ctx: OperationContext,
+	): Promise<CredentialsEntity> {
+		assertClearedFor(ctx.policyCleared, 'credentialSave', credentialContentSubject(credential));
+		return await this.managerFor(ctx).save(CredentialsEntity, credential);
+	}
+
+	async updateContent(
+		id: string,
+		content: QueryDeepPartialEntity<CredentialsEntity>,
+		ctx: OperationContext,
+	): Promise<void> {
+		assertClearedFor(ctx.policyCleared, 'credentialSave', { type: 'credential', id });
+		await this.managerFor(ctx).update(CredentialsEntity, id, content);
+	}
+
 	async saveInstanceCredential(
 		credential: CredentialsEntity,
 		ctx: OperationContext,
 	): Promise<CredentialsEntity> {
+		assertClearedFor(ctx.policyCleared, 'credentialSave', credentialContentSubject(credential));
 		return await this.managerFor(ctx).save(CredentialsEntity, credential);
 	}
 
@@ -199,6 +226,7 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 		data: Pick<ICredentialsDb, 'id' | 'name' | 'type' | 'data'>,
 		ctx: OperationContext,
 	): Promise<CredentialsEntity | null> {
+		assertClearedFor(ctx.policyCleared, 'credentialSave', { type: 'credential', id: credentialId });
 		const manager = this.managerFor(ctx);
 		await manager.update(CredentialsEntity, { id: credentialId, usageScope: 'instance' }, data);
 		return await manager.findOneBy(CredentialsEntity, {

@@ -1,3 +1,5 @@
+import { credentialContentSubject, type PolicySubject } from '@n8n/decorators';
+import { mintPolicyCleared } from '@n8n/decorators/policy-internal';
 import { Container } from '@n8n/di';
 import type { EntityManager, SelectQueryBuilder } from '@n8n/typeorm';
 import { In, Not, QueryFailedError } from '@n8n/typeorm';
@@ -120,6 +122,7 @@ describe('CredentialsRepository', () => {
 		const ctx = { trx: new TypeOrmTransaction(transactionManager) };
 		const credential = mock<CredentialsEntity>({
 			id: 'credential-id',
+			type: 'openAiApi',
 			usageScope: 'instance',
 		});
 		transactionManager.save.mockResolvedValue(credential);
@@ -128,12 +131,17 @@ describe('CredentialsRepository', () => {
 		transactionManager.delete.mockRejectedValue(
 			new QueryFailedError('DELETE', [], new Error('foreign key constraint')),
 		);
+		const clearedFor = (subject: PolicySubject) =>
+			mintPolicyCleared({ point: 'credentialSave', subject, decision: { violations: [] } });
 
-		await credentialsRepository.saveInstanceCredential(credential, ctx);
+		await credentialsRepository.saveInstanceCredential(credential, {
+			...ctx,
+			policyCleared: clearedFor(credentialContentSubject(credential)),
+		});
 		await credentialsRepository.updateInstanceCredential(
 			credential.id,
 			{ ...credential, name: 'Updated', type: 'openAiApi', data: 'encrypted' },
-			ctx,
+			{ ...ctx, policyCleared: clearedFor({ type: 'credential', id: credential.id }) },
 		);
 		await expect(
 			credentialsRepository.deleteInstanceCredentialIfUnassigned(credential.id, ctx),
