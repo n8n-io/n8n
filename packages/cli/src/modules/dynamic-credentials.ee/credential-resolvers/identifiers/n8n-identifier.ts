@@ -1,3 +1,4 @@
+import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import type { ICredentialContext, OAuthResourceGrant } from 'n8n-workflow';
 import { ITokenIdentifier } from './identifier-interface';
@@ -101,6 +102,7 @@ export function carriesN8nIdentity(context: ICredentialContext): boolean {
 @Service()
 export class N8NIdentifier implements ITokenIdentifier {
 	constructor(
+		private readonly logger: Logger,
 		private readonly authService: AuthService,
 		private readonly oauthTokenVerifierProxy: OAuthTokenVerifierProxy,
 		private readonly userRepository: UserRepository,
@@ -199,5 +201,50 @@ export class N8NIdentifier implements ITokenIdentifier {
 			metadataResult.data.browserId,
 		);
 		return user.id;
+	}
+
+	/**
+	 * Best-effort: the n8n user this identity represents, so the redaction layer can
+	 * grant that user access to their own run — including one that failed before a
+	 * private credential resolved. Identification only: unlike {@link resolve} it does
+	 * no execution binding or grant enforcement and never throws. Returns undefined
+	 * when the identity is not an n8n user or cannot be validated, so the run stays
+	 * redacted for everyone. Derives from the same carrier as resolution, so the
+	 * redaction owner cannot drift from the user the credentials resolve as.
+	 */
+	async identify(context: ICredentialContext): Promise<string | undefined> {
+		const metadataResult = N8NIdentifierMetadataSchema.safeParse(context.metadata);
+		if (!metadataResult.success) return undefined;
+
+		try {
+			if (metadataResult.data.source === 'manual-execution') {
+				const user = await this.authService.authenticateUserByCookie(context.identity);
+				return user.id;
+			}
+
+			if (metadataResult.data.source === 'n8n-oauth') {
+				if (metadataResult.data.subject) return metadataResult.data.subject;
+				const verified = await this.oauthTokenVerifierProxy.verifyOAuthAccessToken(
+					context.identity,
+					metadataResult.data.resource,
+					metadataResult.data.grant,
+				);
+				return verified?.user?.id;
+			}
+
+			const user = await this.authService.authenticateUserBasedOnToken(
+				context.identity,
+				metadataResult.data.method,
+				metadataResult.data.endpoint,
+				metadataResult.data.browserId,
+			);
+			return user.id;
+		} catch (error) {
+			this.logger.warn('Could not identify the executing user for redaction attribution', {
+				source: metadataResult.data.source,
+				error,
+			});
+			return undefined;
+		}
 	}
 }

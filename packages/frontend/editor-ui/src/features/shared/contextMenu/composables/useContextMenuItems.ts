@@ -367,7 +367,9 @@ export function useContextMenuItems(
 				id: 'tidy_up',
 				divided: true,
 				label: i18n.baseText(
-					nodes.length < 2 ? 'contextMenu.tidyUpWorkflow' : 'contextMenu.tidyUpSelection',
+					isGroupTarget || nodes.length >= 2
+						? 'contextMenu.tidyUpSelection'
+						: 'contextMenu.tidyUpWorkflow',
 				),
 				shortcut: { shiftKey: true, altKey: true, keys: ['T'] },
 				disabled: isReadOnly.value,

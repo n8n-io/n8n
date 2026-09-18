@@ -250,8 +250,7 @@ export class WorkflowPublicationOutboxConsumer {
 	 * Returns whether the record settled in time.
 	 */
 	private async processRecordWithAbort(record: WorkflowPublicationOutbox): Promise<boolean> {
-		const leaseMs =
-			this.workflowsConfig.publicationOutboxLeaseSeconds * Time.seconds.toMilliseconds;
+		const { leaseMs } = this;
 		const abortAfterMs = leaseMs * ABORT_AFTER_LEASE_FRACTION;
 		const abandonGraceMs = Math.min(ABANDON_GRACE_MS, leaseMs * ABANDON_GRACE_LEASE_FRACTION);
 
@@ -321,7 +320,12 @@ export class WorkflowPublicationOutboxConsumer {
 				},
 			},
 			async (span) => {
-				await this.lifecycleLock.runExclusive(record.workflowId, async () => {
+				const startedAt = Date.now();
+				let entered = false;
+
+				const process = async () => {
+					entered = true;
+
 					// A record claimed while leader can reach here after stepdown (e.g. while
 					// waiting on the lock during teardown). Activating triggers now would leave
 					// them running on a demoted instance, so hand the record back to the queue.
@@ -334,50 +338,53 @@ export class WorkflowPublicationOutboxConsumer {
 						return;
 					}
 
-					// The worker may have aborted this record while it queued on the lock;
-					// starting now would apply work long after it was abandoned. The row is
-					// left `in_progress` for lease reclaim rather than returned to pending:
-					// the wait may have outlived the lease, and flipping the row here would
-					// release the claim of whichever worker has since reclaimed it.
-					if (signal.aborted) {
-						this.logger.debug('Skipped applying publication outbox record: aborted', {
-							outboxId: record.id,
-							workflowId: record.workflowId,
-						});
-						return;
-					}
-
-					this.logger.debug('Started processing workflow publication outbox record', {
-						outboxId: record.id,
-						workflowId: record.workflowId,
-						publishedVersionId: record.publishedVersionId,
-					});
-
-					const startedAt = Date.now();
 					let result: PublicationResult;
 
 					// An aborted per-node operation is abandoned, not cancelled; collect
 					// every orphan so the lock outlives whatever may still mutate this
 					// workflow's registrations.
 					const detachedWork: Array<Promise<unknown>> = [];
-					const abort: TriggerOperationAbort = {
-						signal,
-						onDetached: (work) => detachedWork.push(work),
-					};
 
-					try {
-						result = await this.applier.apply(record, abort);
-					} catch (error) {
-						const cause = ensureError(error);
+					if (signal.aborted) {
+						// The deadline fired before applying could start, i.e. while this
+						// record queued on the lock behind an earlier one for the workflow.
+						this.logger.warn('Failing publication outbox record: aborted before applying', {
+							outboxId: record.id,
+							workflowId: record.workflowId,
+						});
 						result = {
 							type: 'failed',
-							// An abort is our own doing and a UserError is a known cause (e.g.
-							// a missing credential), not an unexpected applier failure.
-							error:
-								signal.aborted || cause instanceof UserError
-									? cause
-									: new UnexpectedError(`Unexpected: ${cause.message}`, { cause }),
+							error: new OperationalError(
+								'Workflow publication timed out waiting for a previous publication of this workflow to finish',
+								{ cause: ensureError(signal.reason) },
+							),
 						};
+					} else {
+						this.logger.debug('Started processing workflow publication outbox record', {
+							outboxId: record.id,
+							workflowId: record.workflowId,
+							publishedVersionId: record.publishedVersionId,
+						});
+
+						const abort: TriggerOperationAbort = {
+							signal,
+							onDetached: (work) => detachedWork.push(work),
+						};
+
+						try {
+							result = await this.applier.apply(record, abort);
+						} catch (error) {
+							const cause = ensureError(error);
+							result = {
+								type: 'failed',
+								// An abort is our own doing and a UserError is a known cause (e.g.
+								// a missing credential), not an unexpected applier failure.
+								error:
+									signal.aborted || cause instanceof UserError
+										? cause
+										: new UnexpectedError(`Unexpected: ${cause.message}`, { cause }),
+							};
+						}
 					}
 
 					let reporterFailed = false;
@@ -404,18 +411,76 @@ export class WorkflowPublicationOutboxConsumer {
 					// The terminal status is already written; keep the lock until the
 					// abandoned operations settle so the next record for this workflow
 					// can never run concurrently with them.
+					//
+					// The detached work is populated when the abort signal fires while
+					// a promise is still pending; so we know that we've aborted if there
+					// is any detached work.
 					if (detachedWork.length > 0) {
 						this.logger.warn(
 							'Keeping workflow publication lock held until abandoned trigger operations settle',
 							{ outboxId: record.id, workflowId: record.workflowId },
 						);
-						await Promise.allSettled(detachedWork);
+						await this.awaitDetachedWork(record, detachedWork);
 					}
-				});
+				};
+
+				try {
+					await this.lifecycleLock.runExclusive({
+						workflowId: record.workflowId,
+						fn: process,
+						signal,
+					});
+				} catch (error) {
+					// Aborted while still queued on the lock. `process` then only settles the
+					// record (back to the queue, or failed) and applies nothing, so it needs
+					// no lock.
+					if (entered || !signal.aborted) throw error;
+					await process();
+				}
 
 				span.setStatus({ code: SpanStatus.ok });
 			},
 		);
+	}
+
+	/**
+	 * Waits for abandoned trigger operations, but not forever: an operation that
+	 * never settles (node code that hangs) would otherwise hold this workflow's
+	 * lock for the rest of the process's life, failing every later publication
+	 * of the workflow. The bound is one lease: past it the lock is released and
+	 * the orphan reported. An orphan still running after release is the same
+	 * state a crashed leader can leave, which reconciliation already handles.
+	 */
+	private async awaitDetachedWork(
+		record: WorkflowPublicationOutbox,
+		detachedWork: Array<Promise<unknown>>,
+	): Promise<void> {
+		// Note: detachedWork has already been signaled to abort, so we give it the remaining
+		// lease before we release the lock.
+		const settled = await this.raceTimeout(Promise.allSettled(detachedWork), this.leaseMs);
+		if (settled !== TIMED_OUT) return;
+
+		// `level: 'error'`: nothing else reports this hang — the record itself
+		// settled at its deadline — and `OperationalError` defaults to a
+		// warning, which the error reporter filters from Sentry.
+		this.errorReporter.error(
+			new OperationalError(
+				'Released workflow publication lock with abandoned trigger operations still pending',
+				{
+					level: 'error',
+					extra: {
+						outboxId: record.id,
+						workflowId: record.workflowId,
+						pendingOperations: detachedWork.length,
+					},
+				},
+			),
+			{ shouldBeLogged: true },
+		);
+	}
+
+	private get leaseMs(): number {
+		return this.workflowsConfig.publicationOutboxLeaseSeconds * Time.seconds.toMilliseconds;
 	}
 
 	/**

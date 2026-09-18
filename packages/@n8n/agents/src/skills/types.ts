@@ -155,6 +155,18 @@ export interface RuntimeSkillSource {
 	loadFile?: RuntimeSkillFileLoader;
 }
 
+export interface RuntimeSkillStateScope {
+	threadId: string;
+	resourceId: string;
+	agentName: string;
+}
+
+/** Stores active IDs separately from conversation text that memory can compact. */
+export interface RuntimeSkillStateStore {
+	load(scope: RuntimeSkillStateScope): Promise<string[] | undefined>;
+	save(scope: RuntimeSkillStateScope, skillIds: string[]): Promise<void>;
+}
+
 export interface RuntimeSkillValidationError {
 	code: string;
 	message: string;

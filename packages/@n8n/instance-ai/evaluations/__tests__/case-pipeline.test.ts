@@ -57,6 +57,7 @@ function makeLane(): LaneState {
 			baseUrl: 'http://lane1.test',
 			preRunWorkflowIds: new Set<string>(),
 			preRunDataTableIds: new Set<string>(),
+			preRunFolderIds: new Set<string>(),
 			claimedWorkflowIds: new Set<string>(),
 			createdCredentialIds: new Set<string>(),
 			workflowIdsToDelete: new Set<string>(),
@@ -192,6 +193,38 @@ describe('createCasePipeline', () => {
 		});
 		expect(String(output.reasoning)).toContain('premise is missing');
 		// The scenario must never run: its result would describe absent history.
+		expect(vi.mocked(lane.tracedExecute)).not.toHaveBeenCalled();
+	});
+
+	it('preserves agent metadata when a prior run failed', async () => {
+		const lane = makeLane();
+		const build = okBuild({
+			priorRunFailed: 'seedWf1: fetch failed',
+			artifactRefs: [{ type: 'agent', id: 'agent-1' }] as never,
+		});
+		const orchestrator = makeOrchestrator({ build, lane, buildDurationMs: 42 });
+		const agentArtifact = {
+			agentId: 'agent-1',
+			config: { name: 'Support agent' },
+			skills: {},
+		};
+		const pipeline = createCasePipeline(
+			makeDeps(orchestrator, {
+				agentContextByKey: new Map([
+					['0:case-a', Promise.resolve({ rendered: 'AGENT CONTEXT', artifact: agentArtifact })],
+				]),
+			}),
+		);
+
+		const output = await pipeline.runRow(rowInputs('happy-path'));
+
+		expect(output).toMatchObject({
+			incomplete: true,
+			failureCategory: 'framework_issue',
+			agentId: 'agent-1',
+			agentContext: 'AGENT CONTEXT',
+			agentArtifact,
+		});
 		expect(vi.mocked(lane.tracedExecute)).not.toHaveBeenCalled();
 	});
 
@@ -365,9 +398,16 @@ describe('createCasePipeline', () => {
 			artifactRefs: [{ type: 'agent', id: 'agent-1' }] as never,
 		});
 		const orchestrator = makeOrchestrator({ build, lane, buildDurationMs: 3 });
+		const agentArtifact = {
+			agentId: 'agent-1',
+			config: { name: 'Support agent' },
+			skills: {},
+		};
 		const pipeline = createCasePipeline(
 			makeDeps(orchestrator, {
-				agentContextByKey: new Map([['0:case-a', Promise.resolve('AGENT CONTEXT')]]),
+				agentContextByKey: new Map([
+					['0:case-a', Promise.resolve({ rendered: 'AGENT CONTEXT', artifact: agentArtifact })],
+				]),
 			}),
 		);
 
@@ -378,6 +418,7 @@ describe('createCasePipeline', () => {
 			passed: true,
 			agentId: 'agent-1',
 			agentContext: 'AGENT CONTEXT',
+			agentArtifact,
 			reasoning: 'agent did it',
 		});
 		expect(lane.tracedExecute).not.toHaveBeenCalled();

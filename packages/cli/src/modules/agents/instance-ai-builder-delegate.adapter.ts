@@ -105,6 +105,7 @@ export class InstanceAiBuilderDelegateAdapterService {
 	private buildSubAgentSession(
 		session: BuilderDelegateSession,
 		onRequiredArtifact: (artifact: BuilderRequiredArtifact) => void,
+		useEvalModelCatalog: boolean,
 	): InstanceAiBuilderSessionOptions {
 		return {
 			threadId: session.threadId,
@@ -116,6 +117,7 @@ export class InstanceAiBuilderDelegateAdapterService {
 			...(session.memoryTaskObserver ? { memoryTaskObserver: session.memoryTaskObserver } : {}),
 			abortSignal: session.abortSignal,
 			...(session.mcpTools ? { mcpTools: session.mcpTools } : {}),
+			...(useEvalModelCatalog ? { useEvalModelCatalog: true } : {}),
 			onRequiredArtifact,
 		};
 	}
@@ -125,25 +127,33 @@ export class InstanceAiBuilderDelegateAdapterService {
 		projectId: string,
 		credentialProvider: CredentialProvider,
 		credentialService: InstanceAiCredentialService,
+		options: { useEvalModelCatalog?: boolean } = {},
 	): InstanceAiBuilderDelegate {
 		// Mirrors the `@ProjectScope('agent:*')` guards on the agent-builder REST
 		// routes. The delegate calls the builder service directly, bypassing the
 		// controller middleware, so a user reaching agent-building via Instance AI
 		// must still hold the corresponding project scope before any agent mutation.
-		const assertProjectScope = async (scope: Scope): Promise<void> => {
-			if (!(await userHasScopes(user, [scope], false, { projectId }))) {
+		const assertProjectScope = async (...scopes: Scope[]): Promise<void> => {
+			if (!(await userHasScopes(user, scopes, false, { projectId }))) {
 				throw new ForbiddenError('You do not have permission to access agents in this project.');
 			}
 		};
 
 		return {
-			createAgent: async (name, id) => {
-				await assertProjectScope('agent:create');
-				const agent = await this.agentsService.create(projectId, name, {
-					id,
-					adoptUnconfiguredOnCollision: true,
-				});
-				return { agentId: agent.id, projectId };
+			createAgent: async (name, options) => {
+				// Adopting also needs `agent:update` — see the port's `adoptOnCollision` docs.
+				await assertProjectScope(
+					...(options?.adoptOnCollision
+						? (['agent:create', 'agent:update'] as const)
+						: (['agent:create'] as const)),
+				);
+				const { agent, adopted } = await this.agentsService.createOrAdopt(
+					projectId,
+					name,
+					options ?? {},
+				);
+				// An adopted row keeps the winner's name, so report the persisted one.
+				return { agentId: agent.id, projectId, name: agent.name, adopted };
 			},
 
 			streamBuild: async (agentId, message, session) => {
@@ -157,7 +167,11 @@ export class InstanceAiBuilderDelegateAdapterService {
 						credentialProvider,
 						credentialService,
 						user,
-						this.buildSubAgentSession(session, (artifact) => requiredArtifacts.push(artifact)),
+						this.buildSubAgentSession(
+							session,
+							(artifact) => requiredArtifacts.push(artifact),
+							options.useEvalModelCatalog === true,
+						),
 					),
 					requiredArtifacts,
 				);
@@ -176,7 +190,11 @@ export class InstanceAiBuilderDelegateAdapterService {
 						credentialProvider,
 						credentialService,
 						user,
-						this.buildSubAgentSession(session, (artifact) => requiredArtifacts.push(artifact)),
+						this.buildSubAgentSession(
+							session,
+							(artifact) => requiredArtifacts.push(artifact),
+							options.useEvalModelCatalog === true,
+						),
 					),
 					requiredArtifacts,
 				);

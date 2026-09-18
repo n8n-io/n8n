@@ -1018,6 +1018,7 @@ function renderInteraction(interaction: ToolInteraction): string | null {
 			}
 			const lines = interaction.questions
 				.map((q) => {
+					const type = q.type ? ` <code>${escapeHtml(q.type)}</code>` : '';
 					const opts =
 						q.options && q.options.length > 0
 							? ` <em>(${q.options.map((o) => escapeHtml(o)).join(' / ')})</em>`
@@ -1026,7 +1027,7 @@ function renderInteraction(interaction: ToolInteraction): string | null {
 					const answerHtml = answer
 						? `<div class="transcript-answer">👤 ${escapeHtml(answer)}</div>`
 						: '';
-					return `<li>${escapeHtml(q.question)}${opts}${answerHtml}</li>`;
+					return `<li>${escapeHtml(q.question)}${type}${opts}${answerHtml}</li>`;
 				})
 				.join('');
 			const summary =

@@ -57,7 +57,7 @@ import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useDebounce } from '@n8n/composables/useDebounce';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
-import RedactionMembersModal from '@/app/components/RedactionMembersModal.vue';
+import RedactionMembersModal from '@/features/workflows/components/WorkflowSettings/RedactionMembersModal.vue';
 import { useGlobalLinkActions } from '@/app/composables/useGlobalLinkActions';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
@@ -458,7 +458,7 @@ const loadWorkflowCallerPolicyOptions = async () => {
 		{
 			key: 'workflowsFromSameOwner',
 			value: i18n.baseText(
-				workflow.value.homeProject?.type === ProjectTypes.Personal
+				workflow.value?.homeProject?.type === ProjectTypes.Personal
 					? 'workflowSettings.callerPolicy.options.workflowsFromPersonalProject'
 					: 'workflowSettings.callerPolicy.options.workflowsFromTeamProject',
 				{
@@ -1824,6 +1824,8 @@ onBeforeUnmount(() => {
 </template>
 
 <style module lang="scss">
+@use '@/app/css/variables' as *;
+
 .workflow-settings {
 	font-size: var(--font-size--sm);
 	display: flex;

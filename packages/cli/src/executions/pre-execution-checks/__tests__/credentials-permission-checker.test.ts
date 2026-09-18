@@ -1,9 +1,9 @@
 import {
 	type Project,
 	type User,
+	type CredentialsEntity,
 	type SharedCredentialsRepository,
 	type CredentialsRepository,
-	type CredentialsEntity,
 	type UserRepository,
 	GLOBAL_OWNER_ROLE,
 	GLOBAL_MEMBER_ROLE,
@@ -61,7 +61,7 @@ describe('CredentialsPermissionChecker', () => {
 		node.credentials!.someCredential.id = credentialId;
 		ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(personalProject);
 		projectService.findProjectsWorkflowIsIn.mockResolvedValueOnce([personalProject.id]);
-		credentialsRepository.find.mockResolvedValue([]);
+		credentialsRepository.findGlobalProjectCredentialIds.mockResolvedValue([]);
 		credentialsRepository.findNonProjectCredentialsByIds.mockResolvedValue([]);
 	});
 
@@ -80,7 +80,7 @@ describe('CredentialsPermissionChecker', () => {
 		// AI Gateway managed credentials intentionally have id: null and must be skipped.
 		ownershipService.getPersonalProjectOwnerCached.mockResolvedValueOnce(null);
 		sharedCredentialsRepository.getFilteredAccessibleCredentials.mockResolvedValueOnce([]);
-		credentialsRepository.find.mockResolvedValueOnce([]);
+		credentialsRepository.findGlobalProjectCredentialIds.mockResolvedValueOnce([]);
 
 		const managedNode = mock<INode>({
 			name: 'AI Node',
@@ -94,7 +94,7 @@ describe('CredentialsPermissionChecker', () => {
 	it('should throw if a credential is not accessible', async () => {
 		ownershipService.getPersonalProjectOwnerCached.mockResolvedValueOnce(null);
 		sharedCredentialsRepository.getFilteredAccessibleCredentials.mockResolvedValueOnce([]);
-		credentialsRepository.find.mockResolvedValueOnce([]);
+		credentialsRepository.findGlobalProjectCredentialIds.mockResolvedValueOnce([]);
 
 		await expect(permissionChecker.check(workflowId, [node])).rejects.toThrow(
 			'Node "Test Node" does not have access to the credential',
@@ -118,7 +118,7 @@ describe('CredentialsPermissionChecker', () => {
 		sharedCredentialsRepository.getFilteredAccessibleCredentials.mockResolvedValueOnce([
 			credentialId,
 		]);
-		credentialsRepository.find.mockResolvedValueOnce([]);
+		credentialsRepository.findGlobalProjectCredentialIds.mockResolvedValueOnce([]);
 
 		await expect(permissionChecker.check(workflowId, [node])).resolves.not.toThrow();
 
@@ -127,6 +127,36 @@ describe('CredentialsPermissionChecker', () => {
 			[personalProject.id],
 			[credentialId],
 		);
+	});
+
+	describe('findInaccessible', () => {
+		it('returns every inaccessible id in the order given', async () => {
+			ownershipService.getPersonalProjectOwnerCached.mockResolvedValueOnce(null);
+			sharedCredentialsRepository.getFilteredAccessibleCredentials.mockResolvedValueOnce(['b']);
+			credentialsRepository.findGlobalProjectCredentialIds.mockResolvedValueOnce(['d']);
+
+			const result = await permissionChecker.findInaccessible(workflowId, ['a', 'b', 'c', 'd']);
+
+			expect(result).toEqual({ homeProject: personalProject, inaccessibleIds: ['a', 'c'] });
+			expect(credentialsRepository.findGlobalProjectCredentialIds).toHaveBeenCalledWith([
+				'a',
+				'b',
+				'c',
+				'd',
+			]);
+		});
+
+		it('returns only the non-project credentials when there are any', async () => {
+			credentialsRepository.findNonProjectCredentialsByIds.mockResolvedValue([
+				mock<CredentialsEntity>({ id: 'b' }),
+			]);
+
+			const result = await permissionChecker.findInaccessible(workflowId, ['a', 'b']);
+
+			expect(result.inaccessibleIds).toEqual(['b']);
+			// Decided before any sharing is read.
+			expect(sharedCredentialsRepository.getFilteredAccessibleCredentials).not.toHaveBeenCalled();
+		});
 	});
 
 	it('should skip credential checks if the home project owner has global scope', async () => {
@@ -178,11 +208,7 @@ describe('CredentialsPermissionChecker', () => {
 	it('should allow global credentials for any project', async () => {
 		ownershipService.getPersonalProjectOwnerCached.mockResolvedValueOnce(null);
 		sharedCredentialsRepository.getFilteredAccessibleCredentials.mockResolvedValueOnce([]);
-		const globalCredential = mock<CredentialsEntity>({
-			id: credentialId,
-			isGlobal: true,
-		});
-		credentialsRepository.find.mockResolvedValueOnce([globalCredential]);
+		credentialsRepository.findGlobalProjectCredentialIds.mockResolvedValueOnce([credentialId]);
 
 		await expect(permissionChecker.check(workflowId, [node])).resolves.not.toThrow();
 
@@ -191,13 +217,9 @@ describe('CredentialsPermissionChecker', () => {
 			[personalProject.id],
 			[credentialId],
 		);
-		expect(credentialsRepository.find).toHaveBeenCalledWith({
-			select: ['id'],
-			where: {
-				isGlobal: true,
-				usageScope: 'project',
-			},
-		});
+		expect(credentialsRepository.findGlobalProjectCredentialIds).toHaveBeenCalledWith([
+			credentialId,
+		]);
 	});
 
 	it('should allow global credentials for team projects', async () => {
@@ -213,11 +235,7 @@ describe('CredentialsPermissionChecker', () => {
 		ownershipService.getPersonalProjectOwnerCached.mockResolvedValue(null);
 		sharedCredentialsRepository.getFilteredAccessibleCredentials.mockResolvedValue([]);
 		credentialsRepository.findNonProjectCredentialsByIds.mockResolvedValue([]);
-		const globalCredential = mock<CredentialsEntity>({
-			id: credentialId,
-			isGlobal: true,
-		});
-		credentialsRepository.find.mockResolvedValueOnce([globalCredential]);
+		credentialsRepository.findGlobalProjectCredentialIds.mockResolvedValueOnce([credentialId]);
 
 		await expect(permissionChecker.check(workflowId, [node])).resolves.not.toThrow();
 
@@ -226,13 +244,9 @@ describe('CredentialsPermissionChecker', () => {
 			[teamProject.id],
 			[credentialId],
 		);
-		expect(credentialsRepository.find).toHaveBeenCalledWith({
-			select: ['id'],
-			where: {
-				isGlobal: true,
-				usageScope: 'project',
-			},
-		});
+		expect(credentialsRepository.findGlobalProjectCredentialIds).toHaveBeenCalledWith([
+			credentialId,
+		]);
 	});
 
 	describe('credential type filtering', () => {
@@ -292,7 +306,7 @@ describe('CredentialsPermissionChecker', () => {
 			sharedCredentialsRepository.getFilteredAccessibleCredentials.mockResolvedValue([
 				activeCredentialId,
 			]);
-			credentialsRepository.find.mockResolvedValue([]);
+			credentialsRepository.findGlobalProjectCredentialIds.mockResolvedValue([]);
 
 			await expect(permissionChecker.check(workflowId, [httpRequestNode])).resolves.not.toThrow();
 
@@ -336,7 +350,7 @@ describe('CredentialsPermissionChecker', () => {
 			} as never);
 
 			sharedCredentialsRepository.getFilteredAccessibleCredentials.mockResolvedValue([]);
-			credentialsRepository.find.mockResolvedValue([]);
+			credentialsRepository.findGlobalProjectCredentialIds.mockResolvedValue([]);
 
 			await expect(
 				permissionChecker.check(workflowId, [httpRequestNodeWithGenericAuth]),
@@ -375,7 +389,7 @@ describe('CredentialsPermissionChecker', () => {
 			} as never);
 
 			sharedCredentialsRepository.getFilteredAccessibleCredentials.mockResolvedValue([]);
-			credentialsRepository.find.mockResolvedValue([]);
+			credentialsRepository.findGlobalProjectCredentialIds.mockResolvedValue([]);
 
 			await expect(
 				permissionChecker.check(workflowId, [httpRequestNodeWithExpressionAuth]),
@@ -413,7 +427,7 @@ describe('CredentialsPermissionChecker', () => {
 			} as never);
 
 			sharedCredentialsRepository.getFilteredAccessibleCredentials.mockResolvedValue([]);
-			credentialsRepository.find.mockResolvedValue([]);
+			credentialsRepository.findGlobalProjectCredentialIds.mockResolvedValue([]);
 
 			await expect(
 				permissionChecker.check(workflowId, [httpRequestNodeWithExpressionAuth]),
@@ -469,7 +483,7 @@ describe('CredentialsPermissionChecker', () => {
 
 			beforeEach(() => {
 				nodeTypes.getByNameAndVersion.mockReturnValue({ description } as never);
-				credentialsRepository.find.mockResolvedValue([]);
+				credentialsRepository.findGlobalProjectCredentialIds.mockResolvedValue([]);
 			});
 
 			it('should not check a credential whose selector parameter is hidden', async () => {
@@ -559,7 +573,7 @@ describe('CredentialsPermissionChecker', () => {
 				activeCredentialId,
 				staleCredentialId,
 			]);
-			credentialsRepository.find.mockResolvedValue([]);
+			credentialsRepository.findGlobalProjectCredentialIds.mockResolvedValue([]);
 
 			await expect(permissionChecker.check(workflowId, [httpRequestNode])).resolves.not.toThrow();
 

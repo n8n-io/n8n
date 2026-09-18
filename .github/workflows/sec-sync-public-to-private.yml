@@ -8,7 +8,9 @@
 #
 # A skipped branch or a hard failure is reported to #alerts-build.
 #
-# The bundle/* integration branches are kept current by sec-sync-bundle-branches.yml.
+# The bundle/* integration branches are kept current by sec-sync-bundle-branches.yml, which
+# depends on this mirror: it refuses to build a bundle branch on a base commit the public repo
+# does not have yet. So while this workflow is stuck, bundle syncing is stuck too.
 
 name: 'Security: Sync from Public'
 run-name: "${{ github.event_name == 'workflow_dispatch' && format('Security: Sync from Public (force={0})', inputs.force) || '' }}"
@@ -102,7 +104,8 @@ jobs:
           git reset --hard public-1.x
           git push origin 1.x --force-with-lease
 
-      - name: Re-create missing bundle branches
+      # Dispatch only: the bundle sync creates the branch and moves its PRs back onto it.
+      - name: Dispatch re-creation of missing bundle branches
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |

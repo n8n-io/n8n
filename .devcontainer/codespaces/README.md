@@ -48,6 +48,69 @@ create an 8-core Codespace by default.
 - First codespace creation takes ~20 min uncached (image + full build). After
   that, sessions attach instantly; new worktrees cost a `pnpm install` (~1–2 min).
 
+## Configure the local OpenCode harness
+
+Install the pinned shared harness:
+
+```bash
+pnpm agent:harness
+```
+
+The command verifies the release checksum. It caches the bundle under
+`~/.cache/n8n-agent-harness`. It then links the bundle plugin into
+`~/.config/opencode/plugins`. Run the command again after the lock changes.
+Restart OpenCode after the command completes.
+
+## PR previews (a running instance of someone else's PR)
+
+A preview is a codespace that serves one pull request, so a reviewer can use the
+PR instead of reading it. It is a different box from a `pnpm session`: it uses
+`.devcontainer/preview/devcontainer.json`, and its display name is
+`preview/pr-<number>`.
+
+**From GitHub:** for a PR targeting master, add the `codespace-preview` label to the PR.
+[util-codespace-preview.yml](../../.github/workflows/util-codespace-preview.yml)
+creates the box, serves the PR head, shares port 5678 with the org, and comments
+the URL on the PR. A later push serves the new head in the same box. Remove the
+label, or close the PR, to delete the box. The same workflow runs by hand from
+the Actions tab: give it a PR number and `up`, `refresh` or `down`.
+
+**From your laptop:** `pnpm preview up <pr>` does the same thing, plus
+`pnpm preview refresh <pr>`, `pnpm preview down <pr>` and `pnpm preview ls`. It
+needs `gh` with the codespace scope, the same as `pnpm session`.
+
+- **Watch it come up on the PR.** The comment appears before the box work starts
+  and updates about once a minute with a checklist of the phases, so you can see
+  which step a slow preview is on. `pnpm preview up <pr>` prints the same phases as
+  plain progress — the markers the comment reads are `--json` only.
+- **Sign in with one click** at `<url>/preview-signin`. It logs you in as the
+  seeded owner and sends you to the editor. The credentials are
+  `preview@n8n.io` / `PreviewInstance1`. They are not secrets: the boundary is
+  the org-visible forwarded port, which needs a GitHub sign-in and n8n org
+  membership.
+- **Configure the instance with `preview:*` labels.** `preview:enterprise` serves
+  it with a licence, so enterprise features such as SSO and source control are
+  present. `preview:debug` sets `N8N_LOG_LEVEL=debug`. Adding or removing one
+  re-serves the box; it never creates or deletes one. From a laptop the labels
+  apply the same way — `pnpm preview refresh <pr>` reads them from the PR. The
+  toggles are defined in `scripts/preview-labels.mjs`; add new ones there.
+- **Configure the instance from a webhook.** A preview also reads extra
+  environment from an n8n webhook, so a value can change without a commit. It
+  needs the `CODESPACE_ENV_URL`, `CODESPACE_ENV_USER` and `CODESPACE_ENV_PASSWORD`
+  codespace secrets. Every key the webhook returns becomes an environment
+  variable, so editing that workflow runs code in the box. Without the secrets
+  the preview serves as usual. See [WORKFLOWS.md](../../.github/WORKFLOWS.md).
+- **A preview sleeps after 2 hours** of no use and GitHub deletes it after 24
+  hours. A box that slept serves nothing and its port is private again, so wake
+  it with `pnpm preview up <pr>` or a manual run of
+  [util-codespace-preview.yml](../../.github/workflows/util-codespace-preview.yml)
+  with `up`. Removing and adding the label works too, but it deletes the box and
+  builds a new one.
+- **A PR from a fork gets no preview.** A codespace's token is scoped to
+  `n8n-io/n8n`, so it cannot check out a fork head.
+- **A PR that predates this tooling has no `scripts/preview-serve.mjs`.** The
+  serve step says so and stops; rebase the PR on master and retry.
+
 ## Agent worker (drive a session from n8n)
 
 `agent-worker.mjs` lets an n8n workflow drive an OpenCode session on the
@@ -64,7 +127,12 @@ instead. It asks n8n for a turn addressed to this box's owner (`$GITHUB_USER`).
 It runs the turn. It sends the result to the turn's resume URL. It uses no
 tunnel, no open port, and no domain.
 
-The worker starts on each container start (`postStartCommand`). It needs three
+The post-start command installs the pinned OpenCode harness before it starts the
+worker. It verifies a valid cached bundle before reuse. The worker does not start
+if the harness is unavailable. `/tmp/post-start-status.json` contains the harness
+and worker status.
+
+The worker needs three
 secrets and uses three optional secrets. Add them at
 [github.com/settings/codespaces](https://github.com/settings/codespaces), the
 same way as `ANTHROPIC_API_KEY`:
@@ -84,8 +152,12 @@ worker posts one placeholder in that thread. It coalesces completed tool calls.
 It updates the message at most once every 1.5 seconds. It does not send reasoning
 text. The worker replaces the placeholder with the final answer.
 If the Slack API fails, the turn still completes through the n8n resume URL.
-The worker does not export its dequeue or Slack credentials to OpenCode.
+The worker does not export its dequeue or Slack credentials to OpenCode. It uses
+the harness `sandbox` runtime and `slack` profile. The profile supplies the
+atomic-turn instruction.
 Interactive sessions remove all worker-only credentials before they start.
+Interactive OpenCode uses the global harness plugin with the `sandbox` runtime.
+It does not set a profile. It keeps the dynamic OpenRouter configuration.
 
 An idle worker starts with a 3-second poll interval. After each empty dequeue,
 it doubles the interval and limits it to 30 seconds. Work resets the interval
@@ -99,16 +171,15 @@ A turn stops after about 25 minutes (`TURN_TIMEOUT_MS`). This limit is below the
 n8n Wait limit. So the worker reports a clear message before n8n reports a
 generic timeout. Keep the worker limit below the n8n limit if you change either.
 
-**A turn is atomic, and the worker tells the session so.** The turn ends on the
+**A turn is atomic, and the harness tells the session so.** The turn ends on the
 session's final message, and its children end with it: a background `Bash` task
 is killed, `Monitor` events never arrive, `PushNotification` has nowhere to go,
 and `ScheduleWakeup` never fires. The session also gets no turn of its own to
 report back in — the turn's resume URL continues one waiting n8n execution and is
 then spent, so nothing on the box can post to the thread unprompted. A session
 that backgrounds a build and signs off with "I'll verify once it finishes" is
-therefore describing something that cannot happen. The worker states this in
-each OpenCode prompt (`turnContract`), together with a pointer to this file for
-the box-specific parts. This is only the n8n/Slack path: an
+therefore describing something that cannot happen. The harness `slack` profile
+states this contract. This is only the n8n/Slack path: an
 interactive session (`pnpm session`, tmux) is long-lived, so background work,
 monitors and notifications behave normally there.
 
@@ -305,3 +376,7 @@ Compute bills only while the codespace runs: ~$0.72/hr for the 8-core box,
 ~nothing stopped. Usage draws from a shared monthly org budget, so
 `pnpm session stop` when you leave; the idle timeout is the backstop, not the
 plan.
+
+Previews draw from the same budget on a 2-core box. Remove the
+`codespace-preview` label when the review is done instead of waiting for the
+24-hour retention.

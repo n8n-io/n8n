@@ -64,6 +64,7 @@ test('starts a named OpenCode session in a worktree', () => {
 	assert.match(command, /tmux new -As fix-flaky-opencode/);
 	assert.match(command, /unset AGENT_WORKER_TOKEN N8N_DEQUEUE_URL SLACK_BOT_TOKEN/);
 	assert.match(command, /OPENCODE_CONFIG_CONTENT/);
+	assert.match(command, /export N8N_AGENT_RUNTIME=sandbox; unset N8N_AGENT_PROFILE/);
 	assert.match(command, /git -C \/workspaces\/n8n worktree add "\/workspaces\/wt-fix-flaky"/);
 	assert.match(command, /cd "\/workspaces\/wt-fix-flaky" && opencode --auto --model test/);
 	assert.doesNotMatch(command, /unset OPENROUTER_API_KEY/);

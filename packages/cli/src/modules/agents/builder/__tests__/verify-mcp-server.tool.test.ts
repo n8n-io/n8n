@@ -60,6 +60,22 @@ describe('buildVerifyMcpServerTool', () => {
 		expect(result.success).toBe(true);
 	});
 
+	it('accepts a native OAuth2 credential type', () => {
+		const tool = buildVerifyMcpServerTool(makeDeps());
+		const result = (
+			tool.inputSchema as unknown as {
+				safeParse: (input: unknown) => { success: boolean };
+			}
+		).safeParse({
+			name: 'GitHub',
+			url: 'https://api.githubcopilot.com/mcp/',
+			authentication: 'githubOAuth2Api',
+			credential: 'github-credential',
+		});
+
+		expect(result.success).toBe(true);
+	});
+
 	it('returns { ok: true, tools } with name and description on success', async () => {
 		const mcpClient = makeMcpClient({
 			listTools: vi.fn().mockResolvedValue([

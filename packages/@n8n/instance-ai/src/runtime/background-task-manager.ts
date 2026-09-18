@@ -147,7 +147,7 @@ export class BackgroundTaskManager {
 			const existingId = this.byPlannedTaskId.get(dedupeKey.plannedTaskId);
 			if (existingId) {
 				const existing = this.tasks.get(existingId);
-				if (existing && existing.status === 'running') return existing;
+				if (existing?.status === 'running') return existing;
 			}
 			return undefined;
 		}
@@ -157,7 +157,7 @@ export class BackgroundTaskManager {
 			);
 			if (existingId) {
 				const existing = this.tasks.get(existingId);
-				if (existing && existing.status === 'running') return existing;
+				if (existing?.status === 'running') return existing;
 			}
 		}
 		return undefined;
@@ -206,7 +206,7 @@ export class BackgroundTaskManager {
 		correction: string,
 	): 'queued' | 'task-completed' | 'task-not-found' {
 		const task = this.tasks.get(taskId);
-		if (!task || task.threadId !== threadId) return 'task-not-found';
+		if (task?.threadId !== threadId) return 'task-not-found';
 		if (task.status !== 'running') return 'task-completed';
 		this.touchTask(threadId, taskId);
 		task.corrections.push(correction);
@@ -220,7 +220,7 @@ export class BackgroundTaskManager {
 
 	cancelTask(threadId: string, taskId: string): ManagedBackgroundTask | undefined {
 		const task = this.tasks.get(taskId);
-		if (!task || task.threadId !== threadId || task.status !== 'running') return undefined;
+		if (task?.threadId !== threadId || task.status !== 'running') return undefined;
 
 		task.abortController.abort();
 		task.status = 'cancelled';
@@ -259,7 +259,7 @@ export class BackgroundTaskManager {
 
 	touchTask(threadId: string, taskId: string, at = Date.now()): boolean {
 		const task = this.tasks.get(taskId);
-		if (!task || task.threadId !== threadId || task.status !== 'running') return false;
+		if (task?.threadId !== threadId || task.status !== 'running') return false;
 		task.lastActivityAt = at;
 		return true;
 	}

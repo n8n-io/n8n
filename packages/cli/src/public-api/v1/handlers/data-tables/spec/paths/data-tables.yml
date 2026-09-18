@@ -5,7 +5,7 @@ get:
   tags:
     - DataTable
   summary: List all data tables
-  description: Retrieve a list of all data tables with optional filtering, sorting, and pagination.
+  description: Retrieve a list of all data tables with optional filtering, sorting, and pagination. Each table includes `sizeBytes`, the value the `size` sort option orders by.
   operationId: list-data-tables
   parameters:
     - $ref: '../../../../shared/spec/parameters/limit.yml'

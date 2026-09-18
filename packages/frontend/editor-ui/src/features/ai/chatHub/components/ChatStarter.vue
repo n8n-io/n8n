@@ -166,6 +166,8 @@ function handleUpgradeClick() {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/breakpoints';
+
 .header {
 	display: flex;
 	flex-direction: column;
@@ -178,7 +180,7 @@ function handleUpgradeClick() {
 	display: flex;
 	max-width: 700px;
 
-	@include mixins.breakpoint('sm-and-down') {
+	@include breakpoints.breakpoint('sm-and-down') {
 		flex-direction: column;
 	}
 }
@@ -192,7 +194,7 @@ function handleUpgradeClick() {
 		margin-left: -1px;
 	}
 
-	@include mixins.breakpoint('sm-and-down') {
+	@include breakpoints.breakpoint('sm-and-down') {
 		&:not(:first-child) {
 			margin-left: 0;
 			margin-top: -1px;
@@ -211,7 +213,7 @@ function handleUpgradeClick() {
 .cardFirst .card {
 	border-radius: var(--radius--lg) 0 0 var(--radius--lg);
 
-	@include mixins.breakpoint('sm-and-down') {
+	@include breakpoints.breakpoint('sm-and-down') {
 		border-radius: var(--radius--lg) var(--radius--lg) 0 0;
 	}
 }
@@ -223,7 +225,7 @@ function handleUpgradeClick() {
 .cardLast .card {
 	border-radius: 0 var(--radius--lg) var(--radius--lg) 0;
 
-	@include mixins.breakpoint('sm-and-down') {
+	@include breakpoints.breakpoint('sm-and-down') {
 		border-radius: 0 0 var(--radius--lg) var(--radius--lg);
 	}
 }

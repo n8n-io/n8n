@@ -89,12 +89,9 @@ const validationErrors = computed<Partial<Record<keyof AgentSkill, string>>>(() 
 
 	if (!instructions) {
 		errors.instructions = i18n.baseText('agents.builder.skills.validation.instructionsRequired');
-	} else if (
-		new TextEncoder().encode(skill.value.instructions).byteLength >
-		AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH
-	) {
+	} else if (skill.value.instructions.length > AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH) {
 		errors.instructions = i18n.baseText('agents.builder.skills.validation.instructionsMaxLength', {
-			interpolate: { max: String(AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH) },
+			interpolate: { max: AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH.toLocaleString() },
 		});
 	}
 	if (skill.value.references?.some((reference) => !reference.content.trim())) {

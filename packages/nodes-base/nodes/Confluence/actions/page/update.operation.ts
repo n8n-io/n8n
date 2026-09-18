@@ -33,12 +33,14 @@ export const description: INodeProperties[] = [
 		name: 'status',
 		type: 'options',
 		default: 'keep',
-		description: 'Whether the page is published or a draft after the update',
+		description: 'Whether the update is published or saved as an unpublished draft',
+		hint: 'A draft update does not unpublish the page. The live page keeps showing the last published version.',
 		options: [
 			{
 				name: 'Draft',
 				value: 'draft',
-				description: 'Save the update as a draft. Replaces any existing draft of the page.',
+				description:
+					'Save the update as an unpublished draft. Replaces any existing draft of the page.',
 			},
 			{
 				name: 'Keep Current Status',

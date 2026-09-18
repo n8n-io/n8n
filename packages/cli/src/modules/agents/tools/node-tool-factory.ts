@@ -199,7 +199,7 @@ export async function resolveNodeTool(
 			// can render the real node config alongside the LLM's runtime
 			// input. Without this the synthetic execution viewer shows empty
 			// parameters and input/output read as the same thing.
-			nodeParameters: toolSchema.node.nodeParameters as INodeParameters,
+			nodeParameters: toolSchema.node.nodeParameters,
 		},
 	};
 }

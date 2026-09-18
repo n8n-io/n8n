@@ -3,14 +3,11 @@ import {
 	type CheckpointStore,
 	type SerializableAgentState,
 } from '@n8n/agents';
-import { Logger, ModuleRegistry } from '@n8n/backend-common';
+import { Logger } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import { InstanceSettings } from 'n8n-core';
 import { jsonParse, UnexpectedError, UserError } from 'n8n-workflow';
-import { strict } from 'node:assert';
 
 import {
 	decodeAgentSandboxHostMetadata,
@@ -46,21 +43,12 @@ export const CHECKPOINT_RECONCILIATION_OVERFLOW = Symbol('checkpoint-reconciliat
 
 @Service()
 export class N8NCheckpointStorage {
-	private pruneTimeout: NodeJS.Timeout | undefined;
-
-	private isStopping = false;
-
-	private isInitialized = false;
-
 	constructor(
-		private readonly instanceSettings: InstanceSettings,
 		private readonly agentCheckpointRepository: AgentCheckpointRepository,
 		private readonly logger: Logger,
 		private readonly agentsConfig: AgentsConfig,
-		private readonly moduleRegistry: ModuleRegistry,
 	) {
 		this.logger = this.logger.scoped('agents');
-		this.isInitialized = this.moduleRegistry.isActive('agents');
 	}
 
 	getStorage(agentId: string): CheckpointStore {
@@ -98,12 +86,6 @@ export class N8NCheckpointStorage {
 		}
 
 		return runIds;
-	}
-
-	init() {
-		strict(this.instanceSettings.instanceRole !== 'unset', 'Instance role is not set');
-
-		if (this.instanceSettings.isLeader) this.startPruning();
 	}
 
 	async save(key: string, checkpointState: SerializableAgentState, agentId: string): Promise<void> {
@@ -219,46 +201,16 @@ export class N8NCheckpointStorage {
 		await this.agentCheckpointRepository.expireByRunIdAndAgentId(key, agentId);
 	}
 
-	@OnLeaderTakeover()
-	startPruning() {
-		this.isStopping = false;
-		this.scheduleNextPrune(0);
-	}
-
-	@OnLeaderStepdown()
-	stopPruning() {
-		clearTimeout(this.pruneTimeout);
-		this.pruneTimeout = undefined;
-	}
-
-	@OnShutdown()
-	shutdown() {
-		this.isStopping = true;
-		this.stopPruning();
-	}
-
-	private scheduleNextPrune(delayMs = Time.hours.toMilliseconds) {
-		if (this.isStopping || !this.isInitialized) return;
-		this.pruneTimeout = setTimeout(async () => {
-			await this.pruneStaleSuspensions();
-		}, delayMs);
-	}
-
-	private async pruneStaleSuspensions() {
+	/** Marks checkpoints past their TTL as expired. A failure propagates to the caller. */
+	async pruneStaleSuspensions() {
 		const ttlMs = this.agentsConfig.checkpointTtlSeconds * Time.seconds.toMilliseconds;
 		const cutoffDate = new Date(Date.now() - ttlMs);
 
-		try {
-			const count = await this.agentCheckpointRepository.markExpired(cutoffDate);
-			if (count > 0) {
-				this.logger.info('Marked stale agent checkpoints as expired', { count });
-			} else {
-				this.logger.debug('No stale agent checkpoints to expire');
-			}
-			this.scheduleNextPrune();
-		} catch (error: unknown) {
-			this.logger.warn('Failed to expire stale agent checkpoints', { error });
-			this.scheduleNextPrune(Time.seconds.toMilliseconds * 30);
+		const count = await this.agentCheckpointRepository.markExpired(cutoffDate);
+		if (count > 0) {
+			this.logger.info('Marked stale agent checkpoints as expired', { count });
+		} else {
+			this.logger.debug('No stale agent checkpoints to expire');
 		}
 	}
 }

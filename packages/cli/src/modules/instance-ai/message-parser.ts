@@ -1,10 +1,11 @@
+import type { AgentDbMessage } from '@n8n/agents';
 import { normalizeAgentTree } from '@n8n/api-types';
 import type {
 	InstanceAiMessage,
 	InstanceAiAgentNode,
 	InstanceAiToolCallState,
 } from '@n8n/api-types';
-import type { AgentDbMessage, AgentTreeSnapshot } from '@n8n/instance-ai';
+import type { AgentTreeSnapshot } from '@n8n/instance-ai';
 import { z } from 'zod';
 
 import {
@@ -41,7 +42,9 @@ type ConversationStoredMessage = (AgentDbMessage | StoredAgentMessage) & {
 // Helpers
 // ---------------------------------------------------------------------------
 
-function extractTextFromContent(content: unknown): string {
+/** Concatenated text blocks of a stored message's content. Exported for the
+ *  conversation-history service, which reads the same persisted rows. */
+export function extractTextFromContent(content: unknown): string {
 	if (typeof content === 'string') return content;
 	if (Array.isArray(content)) return extractTextFromParts(content);
 	return '';
@@ -220,8 +223,9 @@ export function parseStoredMessages(
 			const content = cleanStoredUserMessage(text);
 			if (content === null) continue;
 
-			// Rebuild the editor hand-off's resource attachments (workflow/agent) so
-			// the UI can re-surface them (chip + artifact) after a reload.
+			// Rebuild resource attachments from the durable JSON line inside
+			// `<thread-artifacts>` (or a legacy `<editor-context>`) so the UI can
+			// re-surface them (chip + artifact) after a reload.
 			const attachments = extractEditorContextResourceAttachments(text);
 			const context = extractAgentPreviewHandoffContext(text);
 
@@ -390,7 +394,9 @@ function isActionableConfirmation(tc: InstanceAiToolCallState): boolean {
 	);
 }
 
-export function collectConfirmationRequestIds(messages: InstanceAiMessage[]): string[] {
+export function collectConfirmationRequestIds(
+	messages: Array<Pick<InstanceAiMessage, 'agentTree'>>,
+): string[] {
 	const requestIds: string[] = [];
 	for (const message of messages) {
 		if (!message.agentTree) continue;
@@ -412,7 +418,7 @@ export function collectConfirmationRequestIds(messages: InstanceAiMessage[]): st
  * means "resolved", not "expired", so relabeling them would rewrite history.
  */
 export function markExpiredConfirmations(
-	messages: InstanceAiMessage[],
+	messages: Array<Pick<InstanceAiMessage, 'agentTree'>>,
 	liveRequestIds: Set<string>,
 ): void {
 	for (const message of messages) {

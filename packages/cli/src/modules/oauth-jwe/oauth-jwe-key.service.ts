@@ -241,5 +241,5 @@ function toPublicJwk(privateJwk: JWK, algorithm: JweKeyAlgorithm): JWK {
 	const entries = allowed
 		.filter((field) => privateJwk[field] !== undefined)
 		.map((field) => [field, privateJwk[field]] as const);
-	return Object.fromEntries(entries) as JWK;
+	return Object.fromEntries(entries);
 }

@@ -5,12 +5,18 @@ import type { Project, WorkflowEntity } from '@n8n/db';
 import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { sleep } from '@n8n/utils/sleep';
-import type { ErrorReporter, IGetExecutePollFunctions, StorageConfig } from 'n8n-core';
-import { UnexpectedError, Workflow } from 'n8n-workflow';
+import type {
+	BinaryDataService,
+	ErrorReporter,
+	IGetExecutePollFunctions,
+	StorageConfig,
+} from 'n8n-core';
+import { UnexpectedError, UserError, Workflow } from 'n8n-workflow';
 import type {
 	Cron,
 	CronExpression,
 	ExecutionError,
+	IBinaryData,
 	IConnections,
 	IExecuteResponsePromiseData,
 	INode,
@@ -40,6 +46,9 @@ import type {
 	PublishedWorkflowDataForExecution,
 	WorkflowPublishedDataService,
 } from '@/workflows/workflow-published-data.service';
+import type { EngineV2Dispatcher } from '@/services/engine-v2-dispatcher.service';
+import { EngineV2PayloadGuard } from '@/services/engine-v2-payload-guard.service';
+import { EngineV2ActiveTriggers } from '@/workflows/triggers/engine-v2-active-triggers';
 import type { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 import { createNodeTypes } from './trigger-test-utils';
@@ -63,6 +72,14 @@ describe('TriggerExecutionContextFactory', () => {
 	const scheduleCollectionSession = mock<ScheduleTriggerCollectionSession>();
 	const ownershipService = mock<OwnershipService>();
 	const nodeTypes = createNodeTypes();
+	// The real service over a mocked dispatcher: `engineV2Dispatcher.handlesWorkflow`
+	// is the only input, and the refusals under test stay the production ones.
+	const engineV2Dispatcher = mock<EngineV2Dispatcher>();
+	const binaryDataService = mock<BinaryDataService>();
+	const engineV2ActiveTriggers = new EngineV2ActiveTriggers(
+		engineV2Dispatcher,
+		new EngineV2PayloadGuard(binaryDataService, mock<Logger>()),
+	);
 
 	let factory: TriggerExecutionContextFactory;
 	let errorReporter: ErrorReporter;
@@ -80,6 +97,7 @@ describe('TriggerExecutionContextFactory', () => {
 		);
 
 		scheduleTriggerJobRegistrar.interceptsNode.mockReturnValue(false);
+		engineV2Dispatcher.handlesWorkflow.mockReturnValue(false);
 		scopedLogger = mock<Logger>();
 		const rootLogger = mock<Logger>({ scoped: vi.fn().mockReturnValue(scopedLogger) });
 		errorReporter = mock<ErrorReporter>();
@@ -99,6 +117,7 @@ describe('TriggerExecutionContextFactory', () => {
 			nodeTypes,
 			pollCursorService,
 			mock<GlobalConfig>({ scheduler: { pollTimeoutSeconds: 45, leaseDurationSeconds: 60 } }),
+			engineV2ActiveTriggers,
 		);
 	});
 
@@ -928,6 +947,47 @@ describe('TriggerExecutionContextFactory', () => {
 			expect(workflowExecutionService.runWorkflow).not.toHaveBeenCalled();
 		});
 
+		test('routes to runPolledWorkflowV2, not the transactional runPolledWorkflow, on engine 2.0', async () => {
+			engineV2Dispatcher.handlesWorkflow.mockReturnValue(true);
+			workflowExecutionService.runPolledWorkflowV2.mockResolvedValue('exec-v2');
+			const responsePromise = createDeferredPromise<IExecuteResponsePromiseData>();
+
+			await context.__runPoll(async () => {
+				Object.assign(context.getWorkflowStaticData('node'), { lastItemId: 'a' });
+				context.__emit(pollData, responsePromise);
+			});
+			await sleep(0);
+
+			expect(workflowExecutionService.runPolledWorkflowV2).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'wf-1' }),
+				node,
+				pollData,
+				additionalData,
+				mode,
+				{ lastItemId: 'a' },
+				responsePromise,
+				undefined,
+			);
+			expect(workflowExecutionService.runPolledWorkflow).not.toHaveBeenCalled();
+			expect(workflowExecutionService.runWorkflow).not.toHaveBeenCalled();
+		});
+
+		test('refuses a migrated poll that carries a file, and commits no cursor, on engine 2.0', async () => {
+			engineV2Dispatcher.handlesWorkflow.mockReturnValue(true);
+			const storedFile = mock<IBinaryData>({ id: 'filesystem:abc', mimeType: 'text/plain' });
+			const fileData: INodeExecutionData[][] = [[{ json: {}, binary: { attachment: storedFile } }]];
+
+			await context.__runPoll(async () => {
+				Object.assign(context.getWorkflowStaticData('node'), { lastItemId: 'a' });
+				expect(() => context.__emit(fileData)).toThrow(
+					'Engine 2.0 cannot receive files from a trigger yet.',
+				);
+			});
+
+			expect(pollCursorService.commitCursorOnly).not.toHaveBeenCalled();
+			expect(workflowExecutionService.runPolledWorkflowV2).not.toHaveBeenCalled();
+		});
+
 		// A poll that neither emitted nor committed leaves its mutation behind; the next
 		// poll must not pick it up and commit an advance past items nobody carried.
 		const abandonedStaging = [
@@ -1025,6 +1085,7 @@ describe('TriggerExecutionContextFactory', () => {
 					nodeTypes,
 					pollCursorService,
 					globalConfig,
+					engineV2ActiveTriggers,
 				);
 				const getPollFunctions = budgetFactory.getExecutePollFunctions(
 					mock<IWorkflowBase>({ id: 'wf-1', name: 'Test Workflow' }),
@@ -1665,6 +1726,214 @@ describe('TriggerExecutionContextFactory', () => {
 			);
 
 			await expect(factory.findPublishedWorkflowData('wf-1')).resolves.toBe(workflowData);
+		});
+	});
+
+	describe('on engine 2.0', () => {
+		/** An attachment already written to storage, so it has an id to delete. */
+		const storedFile = mock<IBinaryData>({ id: 'filesystem:abc', mimeType: 'text/plain' });
+
+		const workflowData = mock<WorkflowEntity>({ id: 'wf-1', name: 'Test Workflow' });
+		const additionalData = mock<IWorkflowExecuteAdditionalData>();
+		const mode: WorkflowExecuteMode = 'trigger';
+		const activation: WorkflowActivateMode = 'activate';
+		const workflow = mock<Workflow>({ id: 'wf-1', name: 'Test Workflow' });
+
+		const triggerContext = () => {
+			const getTriggerFunctions = factory.getExecuteTriggerFunctions(
+				workflowData,
+				additionalData,
+				mode,
+				activation,
+				async () => workflowData,
+				mock<TriggerFailureHandler>(),
+				scheduleCollectionSession,
+			);
+			return getTriggerFunctions(
+				workflow,
+				mock<INode>({ name: 'Trigger Node' }),
+				additionalData,
+				mode,
+				activation,
+			);
+		};
+
+		const pollContext = () => {
+			const getPollFunctions = factory.getExecutePollFunctions(
+				workflowData,
+				additionalData,
+				mode,
+				activation,
+				async () => workflowData,
+			);
+			return getPollFunctions(
+				workflow,
+				mock<INode>({ name: 'Poll Node' }),
+				additionalData,
+				mode,
+				activation,
+			);
+		};
+
+		describe('an active trigger', () => {
+			beforeEach(() => {
+				engineV2Dispatcher.handlesWorkflow.mockReturnValue(true);
+			});
+
+			test('hands a plain emit to the runner, which dispatches it', async () => {
+				triggerContext().emit([[{ json: {} }]]);
+				await sleep(0);
+
+				expect(workflowExecutionService.runWorkflow).toHaveBeenCalled();
+			});
+
+			test('refuses an emit that waits for its run, and starts nothing', async () => {
+				const donePromise = createDeferredPromise<IRun>();
+
+				triggerContext().emit([[{ json: {} }]], undefined, donePromise);
+				// Attached before the flush, as the nodes do: they await the promise on the
+				// line after `emit`, so the rejection is never unhandled.
+				const refused = expect(donePromise.promise).rejects.toThrow(
+					'Engine 2.0 cannot run a trigger that waits for its execution to finish yet',
+				);
+
+				await sleep(0);
+
+				expect(workflowExecutionService.runWorkflow).not.toHaveBeenCalled();
+				await refused;
+			});
+
+			test('refuses an emit carrying a file, and deletes what it stored', async () => {
+				const data: INodeExecutionData[][] = [[{ json: {}, binary: { attachment: storedFile } }]];
+
+				triggerContext().emit(data);
+				await sleep(0);
+
+				expect(workflowExecutionService.runWorkflow).not.toHaveBeenCalled();
+				// No execution will ever own the file, so nothing else would reclaim it.
+				expect(binaryDataService.deleteManyByBinaryDataId).toHaveBeenCalledExactlyOnceWith([
+					'filesystem:abc',
+				]);
+			});
+
+			test('deletes the files even when the emit is refused for waiting on its run', async () => {
+				const data: INodeExecutionData[][] = [[{ json: {}, binary: { attachment: storedFile } }]];
+				const donePromise = createDeferredPromise<IRun>();
+
+				triggerContext().emit(data, undefined, donePromise);
+				const refused = expect(donePromise.promise).rejects.toThrow(UserError);
+
+				await sleep(0);
+
+				expect(binaryDataService.deleteManyByBinaryDataId).toHaveBeenCalledExactlyOnceWith([
+					'filesystem:abc',
+				]);
+				await refused;
+			});
+
+			test('rejects the response promise too, so the node does not wait forever', async () => {
+				const responsePromise = createDeferredPromise<IExecuteResponsePromiseData>();
+				const donePromise = createDeferredPromise<IRun>();
+
+				triggerContext().emit([[{ json: {} }]], responsePromise, donePromise);
+				const refused = Promise.all([
+					expect(responsePromise.promise).rejects.toThrow(
+						'Engine 2.0 cannot run a trigger that waits for its execution to finish yet',
+					),
+					expect(donePromise.promise).rejects.toThrow(UserError),
+				]);
+
+				await sleep(0);
+				await refused;
+			});
+		});
+
+		describe('a poll trigger', () => {
+			beforeEach(() => {
+				engineV2Dispatcher.handlesWorkflow.mockReturnValue(true);
+			});
+
+			test('deletes the attachments the refused poll stored', async () => {
+				const data: INodeExecutionData[][] = [[{ json: {}, binary: { attachment: storedFile } }]];
+
+				expect(() => pollContext().__emit(data)).toThrow(UserError);
+				await sleep(0);
+
+				expect(binaryDataService.deleteManyByBinaryDataId).toHaveBeenCalledExactlyOnceWith([
+					'filesystem:abc',
+				]);
+			});
+
+			test('refuses an emit carrying a file, and commits no cursor', () => {
+				const data: INodeExecutionData[][] = [[{ json: {}, binary: { attachment: storedFile } }]];
+
+				expect(() => pollContext().__emit(data)).toThrow(
+					'Engine 2.0 cannot receive files from a trigger yet.',
+				);
+				expect(workflowExecutionService.runWorkflow).not.toHaveBeenCalled();
+				expect(workflowExecutionService.runPolledWorkflowV2).not.toHaveBeenCalled();
+				expect(pollCursorService.commitWithExecution).not.toHaveBeenCalled();
+				expect(pollCursorService.commitCursorOnly).not.toHaveBeenCalled();
+				expect(workflowStaticDataService.saveStaticData).not.toHaveBeenCalled();
+			});
+
+			test('hands an unmigrated emit to the plain runner, which dispatches it', async () => {
+				pollContext().__emit([[{ json: {} }]]);
+				await sleep(0);
+
+				expect(workflowExecutionService.runWorkflow).toHaveBeenCalled();
+				expect(workflowExecutionService.runPolledWorkflowV2).not.toHaveBeenCalled();
+			});
+
+			test('re-checks the payload against fresh data when the registration snapshot missed the transition to engine 2.0', async () => {
+				const staleWorkflowData = mock<WorkflowEntity>({ id: 'wf-1', name: 'Test Workflow' });
+				const freshWorkflowData = mock<WorkflowEntity>({ id: 'wf-1', name: 'Test Workflow' });
+				// The registration snapshot still says v1; only the fresh read reflects
+				// the workflow having since been republished onto engine 2.0.
+				engineV2Dispatcher.handlesWorkflow.mockImplementation((wf) => wf === freshWorkflowData);
+
+				const getPollFunctions = factory.getExecutePollFunctions(
+					staleWorkflowData,
+					additionalData,
+					mode,
+					activation,
+					async () => freshWorkflowData,
+				);
+				const context = getPollFunctions(
+					workflow,
+					mock<INode>({ name: 'Poll Node' }),
+					additionalData,
+					mode,
+					activation,
+				);
+
+				const data: INodeExecutionData[][] = [[{ json: {}, binary: { attachment: storedFile } }]];
+				context.__emit(data);
+				await sleep(0);
+
+				expect(workflowExecutionService.runWorkflow).not.toHaveBeenCalled();
+				expect(binaryDataService.deleteManyByBinaryDataId).toHaveBeenCalledExactlyOnceWith([
+					'filesystem:abc',
+				]);
+			});
+		});
+
+		describe('a workflow that did not opt in', () => {
+			test('runs an emit that waits for its run, as it does today', async () => {
+				const donePromise = createDeferredPromise<IRun>();
+
+				triggerContext().emit([[{ json: {} }]], undefined, donePromise);
+				await sleep(0);
+
+				expect(workflowExecutionService.runWorkflow).toHaveBeenCalled();
+			});
+
+			test('runs a polled emit, as it does today', async () => {
+				pollContext().__emit([[{ json: {} }]]);
+				await sleep(0);
+
+				expect(workflowExecutionService.runWorkflow).toHaveBeenCalled();
+			});
 		});
 	});
 });

@@ -98,6 +98,7 @@ erDiagram
 }
 "public.agent_execution" {
   json attachments
+  json author
   integer completionTokens
   double_precision cost
   timestamp_3__with_time_zone createdAt

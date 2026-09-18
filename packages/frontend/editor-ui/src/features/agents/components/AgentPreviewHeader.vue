@@ -102,7 +102,7 @@ const sessionDropdownOptions = computed<Array<DropdownMenuItemProps<string, Sess
 						</template>
 						<template #item-label="{ item }">
 							<N8nText bold :class="$style.sessionDropdownName">{{
-								item.label ?? 'New session'
+								item.label ?? i18n.baseText('agents.builder.chat.newChat.label')
 							}}</N8nText>
 						</template>
 						<template #item-trailing="{ item }">
@@ -162,7 +162,6 @@ const sessionDropdownOptions = computed<Array<DropdownMenuItemProps<string, Sess
 }
 
 .sessionTitle {
-	transform: translateY(1px);
 	min-width: 0;
 	max-width: 40rem;
 	padding-inline: var(--spacing--2xs);

@@ -183,6 +183,17 @@ export const usePostHog = defineStore('posthog', () => {
 		evaluatedFeatureFlags?: FeatureFlags,
 		evaluatedFeatureFlagPayloads?: FeatureFlagPayloads,
 	) => {
+		const hasServerFlags =
+			evaluatedFeatureFlags !== undefined && Object.keys(evaluatedFeatureFlags).length > 0;
+
+		// Server-evaluated flags include env-var overrides, so they must be
+		// available even when PostHog is disabled and the SDK never loads.
+		if (hasServerFlags) {
+			featureFlags.value = evaluatedFeatureFlags;
+			featureFlagPayloads.value = evaluatedFeatureFlagPayloads ?? {};
+			resolveFeatureFlagsWaiters(featureFlags.value);
+		}
+
 		if (!window.posthog) {
 			return;
 		}
@@ -213,9 +224,12 @@ export const usePostHog = defineStore('posthog', () => {
 			}),
 		};
 
-		if (evaluatedFeatureFlags && Object.keys(evaluatedFeatureFlags).length) {
+		if (hasServerFlags) {
 			options.bootstrap = {
 				distinctID: distinctId,
+				// The bootstrapped id is a logged-in user, not a device. Without this the
+				// initial $pageview and the first recording snapshots are anonymous events.
+				isIdentifiedID: true,
 				featureFlags: evaluatedFeatureFlags,
 				...(evaluatedFeatureFlagPayloads && {
 					featureFlagPayloads: evaluatedFeatureFlagPayloads,
@@ -227,21 +241,26 @@ export const usePostHog = defineStore('posthog', () => {
 			options.advanced_disable_feature_flags = true;
 		}
 
-		window.posthog?.init(config.apiKey, {
-			...options,
-			loaded: () => {
-				identify();
-				groupIdentify(POSTHOG_GROUP_TYPE_INSTANCE, instanceId);
-			},
-		});
+		const identifyUserAndInstance = () => {
+			identify();
+			groupIdentify(POSTHOG_GROUP_TYPE_INSTANCE, instanceId);
+		};
 
-		if (evaluatedFeatureFlags && Object.keys(evaluatedFeatureFlags).length) {
-			featureFlags.value = evaluatedFeatureFlags;
-			featureFlagPayloads.value = evaluatedFeatureFlagPayloads ?? {};
-			resolveFeatureFlagsWaiters(featureFlags.value);
+		if (window.posthog.__loaded) {
+			// init() is a no-op once the SDK is loaded, so a login without a page reload
+			// (enforced MFA) would otherwise leave the session on the anonymous id that
+			// the logout hook's reset() created.
+			identifyUserAndInstance();
+		} else {
+			window.posthog.init(config.apiKey, {
+				...options,
+				loaded: identifyUserAndInstance,
+			});
+		}
 
+		if (hasServerFlags) {
 			// does not need to be debounced really, but tracking does not fire without delay on page load
-			trackExperimentsDebounced(featureFlags.value);
+			trackExperimentsDebounced(evaluatedFeatureFlags);
 		} else {
 			// depend on client side evaluation if serverside evaluation fails
 			pendingFeatureFlagsEvaluation.value = true;

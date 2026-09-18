@@ -90,17 +90,15 @@ export async function execute(
 	const options = this.getNodeParameter('options', itemIndex, {});
 
 	const rawTitle: unknown = this.getNodeParameter('title', itemIndex, '');
-	// Objects coerce to '' so validation rejects them instead of titling the page '[object Object]'
-	const title =
-		typeof rawTitle === 'string'
-			? rawTitle.trim()
-			: rawTitle === null || rawTitle === undefined || typeof rawTitle === 'object'
-				? ''
-				: String(rawTitle).trim();
 
 	if (!spaceId) {
 		throw new NodeOperationError(this.getNode(), 'Space is required', { itemIndex });
 	}
+	// Before the empty check: an object was given, it is only the wrong type
+	if (rawTitle !== null && typeof rawTitle === 'object') {
+		throw new NodeOperationError(this.getNode(), 'Title must be text', { itemIndex });
+	}
+	const title = rawTitle === null || rawTitle === undefined ? '' : String(rawTitle).trim();
 	if (!title) {
 		throw new NodeOperationError(this.getNode(), 'Title is required', { itemIndex });
 	}

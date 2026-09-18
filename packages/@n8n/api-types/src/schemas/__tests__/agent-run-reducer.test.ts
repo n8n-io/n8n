@@ -494,14 +494,19 @@ describe('agent-run-reducer', () => {
 				makeToolCall('run-1', 'root', 'tc-legacy-builder', 'build-workflow-with-agent'),
 			);
 			reduceEvent(state, makeToolCall('run-1', 'root', 'tc-research', 'research-with-agent'));
-			reduceEvent(state, makeToolCall('run-1', 'root', 'tc-eval-setup', 'eval-setup-with-agent'));
 			reduceEvent(state, makeToolCall('run-1', 'root', 'tc-skill', 'load_skill'));
 
 			expect(state.toolCallsById['tc-builder'].renderHint).toBe('builder');
 			expect(state.toolCallsById['tc-legacy-builder'].renderHint).toBe('builder');
 			expect(state.toolCallsById['tc-research'].renderHint).toBe('researcher');
-			expect(state.toolCallsById['tc-eval-setup'].renderHint).toBe('eval-setup');
 			expect(state.toolCallsById['tc-skill'].renderHint).toBe('skill');
+		});
+
+		it('keeps the eval-setup render hint when replaying a historical tool call', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeToolCall('run-1', 'root', 'tc-eval-setup', 'eval-setup-with-agent'));
+
+			expect(state.toolCallsById['tc-eval-setup'].renderHint).toBe('eval-setup');
 		});
 
 		it('tool-input-start announces a pending tool call before its args stream', () => {
@@ -642,6 +647,23 @@ describe('agent-run-reducer', () => {
 				type: 'child',
 				agentId: 'sub-1',
 			});
+		});
+
+		it('hydrates the kind from a historical eval-setup agent event', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, {
+				type: 'agent-spawned',
+				runId: 'run-1',
+				agentId: 'legacy-eval',
+				payload: {
+					parentId: 'root',
+					role: 'evaluation setup',
+					tools: ['workflows'],
+					kind: 'eval-setup',
+				},
+			});
+
+			expect(state.agentsById['legacy-eval'].kind).toBe('eval-setup');
 		});
 
 		it('agent-spawned with unknown parent is silently dropped', () => {

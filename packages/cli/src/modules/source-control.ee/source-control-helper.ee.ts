@@ -18,7 +18,7 @@ import { readFile as fsReadFile } from 'node:fs/promises';
 import path from 'path';
 
 import { License } from '@/license';
-import { generateSshKeyPair as generateGitSshKeyPair } from '@/modules/git-connections.ee/git-connections-git.utils';
+import { generateSshKeyPair as generateGitSshKeyPair } from '@/modules/promotions.ee/promotions-git.utils';
 import { containsExpression } from '@/utils';
 
 import {
@@ -206,10 +206,7 @@ export async function readTagAndMappingsFromSourceControlFile(file: string): Pro
 
 function isErrnoException(error: unknown): error is NodeJS.ErrnoException {
 	return (
-		typeof error === 'object' &&
-		error !== null &&
-		'code' in error &&
-		typeof (error as { code: unknown }).code === 'string'
+		typeof error === 'object' && error !== null && 'code' in error && typeof error.code === 'string'
 	);
 }
 

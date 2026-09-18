@@ -587,6 +587,11 @@ export class ExecutionPersistence {
 		});
 	}
 
+	/** Statuses of the given executions in one read; ids that no longer exist are absent. */
+	async findStatusesByIds(ids: string[]): Promise<Array<{ id: string; status: ExecutionStatus }>> {
+		return await this.executionRepository.findStatusesByIds(ids);
+	}
+
 	/** Find executions scoped to the given workflows, with data per `storedAt`. */
 	async findManyInWorkflows(
 		workflowIds: string[],

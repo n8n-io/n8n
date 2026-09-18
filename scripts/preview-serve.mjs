@@ -10,9 +10,14 @@
 import { execFileSync, spawnSync } from 'node:child_process';
 import { openSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
+import { setTimeout as sleep } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 
-import { serveHealthPath, servePort, waitForHealth } from './serve-ready.mjs';
+import { codespaceSecret } from './codespace-env.mjs';
+import { envForSlugs } from './preview-labels.mjs';
+import { phaseMarkerLine } from './preview-phases.mjs';
+import { fetchRemoteEnv } from './preview-remote-env.mjs';
+import { serveHealthPath, servePort, waitForHealth, waitForReady } from './serve-ready.mjs';
 
 const SESSION = 'n8n-preview';
 const BUILD_LOG = '/tmp/preview-build.log';
@@ -37,10 +42,17 @@ const healthPath = serveHealthPath();
 
 const tmux = (...args) => spawnSync('tmux', args, { stdio: 'ignore' });
 
+// `preview.mjs` sets this for a CI (--json) run only, and reads the markers back off
+// the ssh stream to keep the PR comment current. A laptop sees plain progress.
+const phase = (key) => {
+	if (process.env.PREVIEW_PHASES === '1') console.log(phaseMarkerLine(key));
+};
+
 // Stop the old backend before rebuilding: it frees the port, and it stops the
 // previous build being served alongside newly written assets.
 tmux('kill-session', '-t', SESSION);
 
+phase('build');
 console.log(`Building (turbo cache — fast when warm; log: ${BUILD_LOG})…`);
 const buildFd = openSync(BUILD_LOG, 'w');
 try {
@@ -78,12 +90,50 @@ const signinEnv = [
 	`PREVIEW_OWNER_PASSWORD=${OWNER_PASSWORD}`,
 ].flatMap((pair) => ['-e', pair]);
 
+// `preview.mjs` passes the PR's preview:* label slugs. Resolve them here, where a
+// codespace secret is readable, and apply them before the sign-in variables so a
+// toggle can never displace the preview's own wiring.
+const slugs = (process.env.PREVIEW_LABELS ?? '').split(',').filter(Boolean);
+const { env: labelEnv, warnings } = envForSlugs(slugs, codespaceSecret);
+for (const warning of warnings) console.warn(warning);
+if (labelEnv.length)
+	// Names only: one of these values is a licence key.
+	console.log(
+		`Applying preview labels: ${slugs.join(', ')} → ${labelEnv.map((pair) => pair.split('=')[0]).join(', ')}`,
+	);
+
+// Extra environment from a webhook we control, so a preview can be reconfigured
+// without a commit. Its credentials are codespace secrets, so it resolves here and
+// never on the runner. Whatever it returns becomes environment, so anyone who can
+// edit that workflow can run code in this box.
+const { env: remoteEnv, warnings: remoteWarnings } = await fetchRemoteEnv({
+	url: codespaceSecret('CODESPACE_ENV_URL'),
+	user: codespaceSecret('CODESPACE_ENV_USER'),
+	password: codespaceSecret('CODESPACE_ENV_PASSWORD'),
+	pr: process.env.PREVIEW_PR
+});
+for (const warning of remoteWarnings) {
+	console.warn(warning);
+}
+if (remoteEnv.length) {
+	// Names only: the webhook can return a secret.
+	console.log(
+		`Applying remote preview env: ${remoteEnv.map((pair) => pair.split('=')[0]).join(', ')}`,
+	);
+} else {
+	console.log("No remote envs setup")
+}
+
+phase('start');
 console.log(`Starting backend in tmux session '${SESSION}' (log: ${BE_LOG})…`);
 const started = tmux(
 	'new',
 	'-d',
 	'-s',
 	SESSION,
+	// First, so the preview's own wiring below it wins: tmux takes the last -e for a key.
+	...remoteEnv.flatMap((pair) => ['-e', pair]),
+	...labelEnv.flatMap((pair) => ['-e', pair]),
 	...signinEnv,
 	`cd ${repoRoot} && exec pnpm dev:be > ${BE_LOG} 2>&1`,
 );
@@ -101,10 +151,27 @@ if (!(await waitForHealth(port, healthPath))) {
 // Promote the shell user into the owner so the instance opens on a login page with
 // known credentials, not the setup wizard. Idempotent: on a refresh the sqlite file
 // survives, the owner already exists, and the endpoint rejects the second attempt.
-async function seedOwner() {
-	let res;
+
+// The setup endpoint's status cannot tell success from failure: it answers 400 both
+// when an owner exists and when the payload is wrong, and 404 while the REST routes
+// are still mounting. `showSetupOnFirstLoad` drives the wall a reviewer actually
+// hits, so check that instead. Undefined means the answer is not readable yet.
+async function setupWallIsUp() {
 	try {
-		res = await fetch(`http://127.0.0.1:${port}/rest/owner/setup`, {
+		const res = await fetch(`http://127.0.0.1:${port}/rest/settings`, {
+			signal: AbortSignal.timeout(15_000),
+		});
+		if (!res.ok) return undefined;
+		const body = await res.json();
+		return body?.data?.userManagement?.showSetupOnFirstLoad;
+	} catch {
+		return undefined;
+	}
+}
+
+async function postOwnerSetup() {
+	try {
+		const res = await fetch(`http://127.0.0.1:${port}/rest/owner/setup`, {
 			method: 'POST',
 			headers: { 'content-type': 'application/json' },
 			body: JSON.stringify({
@@ -115,19 +182,41 @@ async function seedOwner() {
 			}),
 			signal: AbortSignal.timeout(15_000),
 		});
+		return `HTTP ${res.status} ${(await res.text()).slice(0, 300)}`;
 	} catch (error) {
-		console.error(`Could not reach the owner setup endpoint: ${error.message}`);
-		return;
+		return `request failed: ${error.message}`;
 	}
+}
 
-	if (res.ok) {
-		console.log(`Seeded the instance owner: ${OWNER_EMAIL} / ${OWNER_PASSWORD}`);
-		return;
+// Retry anyway, as a backstop for anything readiness does not cover, and report
+// every attempt: a silent seed failure hands the reviewer a URL that lands on /setup.
+async function seedOwner(attempts = 5, delayMs = 3000) {
+	for (let attempt = 1; attempt <= attempts; attempt++) {
+		const result = await postOwnerSetup();
+		console.log(`Owner setup attempt ${attempt}/${attempts} — ${result}`);
+
+		if ((await setupWallIsUp()) === false) {
+			console.log(`Owner is set up — sign in as ${OWNER_EMAIL} / ${OWNER_PASSWORD}`);
+			return;
+		}
+		if (attempt < attempts) {
+			await sleep(delayMs);
+		}
 	}
-	// Already set up is the normal refresh case, not a failure.
-	console.log(
-		`Owner already set up (HTTP ${res.status}) — sign in as ${OWNER_EMAIL} / ${OWNER_PASSWORD}`,
+	console.error(
+		`Owner seeding FAILED: /rest/settings still reports showSetupOnFirstLoad. A reviewer will land on /setup, and /${SIGNIN_ROUTE} will not work. See ${BE_LOG}.`,
 	);
+}
+
+// /healthz says nothing about the REST API, so seeding straight after it raced the
+// controllers and got `Cannot POST /rest/owner/setup`. Wait for readiness first.
+if (!(await waitForReady(port, healthPath))) {
+	console.error(
+		`Backend did not answer ${healthPath}/readiness within 3 min. It is not fully initialized, so the owner seeding below is likely to fail — check ${BE_LOG}.`,
+
+	);
+	execFileSync('tail', ['-n', '30', BE_LOG], { stdio: 'inherit'});
+	process.exit(1);
 }
 
 await seedOwner();

@@ -54,6 +54,7 @@ export function toImportedWorkflowSummaries(
 			projectId,
 			parentFolderId: current.parentFolder?.id ?? null,
 			activeVersionId: current.activeVersionId ?? null,
+			isArchived: current.isArchived,
 			publishing: result?.publishing ?? { state: 'unchanged' },
 			status,
 		};

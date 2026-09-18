@@ -18,8 +18,11 @@ import type {
 	IDestinationNode,
 } from 'n8n-workflow';
 
-import { TEST_WEBHOOK_TIMEOUT } from '@/constants';
-import { isChatOAuth2Enabled } from '@/constants/oauth2-triggers';
+import {
+	TEST_WEBHOOK_MAX_TIMEOUT,
+	TEST_WEBHOOK_TIMEOUT,
+	TEST_WEBHOOK_TIMEOUT_BUFFER,
+} from '@/constants';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
 import { SingleWebhookTriggerError } from '@/errors/single-webhook-trigger.error';
@@ -359,9 +362,7 @@ export class TestWebhooks implements IWebhookManager {
 
 		if (node?.type !== CHAT_TRIGGER_NODE_TYPE) return false;
 
-		return classifyTriggerIdentity(node.type, node.parameters, {
-			isChatOAuth2Enabled: isChatOAuth2Enabled(),
-		}).providesN8nIdentity;
+		return classifyTriggerIdentity(node.type, node.parameters).providesN8nIdentity;
 	}
 
 	/**
@@ -380,7 +381,7 @@ export class TestWebhooks implements IWebhookManager {
 		webhooks: IWebhookData[],
 		n8nAuthCookie?: string,
 	) {
-		if (!n8nAuthCookie || !isChatOAuth2Enabled()) return undefined;
+		if (!n8nAuthCookie) return undefined;
 
 		const anyEstablishesIdentity = webhooks.some((webhook) =>
 			this.establishesRunnerIdentity(workflow, webhook.node),
@@ -405,6 +406,8 @@ export class TestWebhooks implements IWebhookManager {
 		chatSessionId?: string;
 		workflowIsActive?: boolean;
 		n8nAuthCookie?: string;
+		/** How long the test webhook stays registered, at most `TEST_WEBHOOK_MAX_TIMEOUT`. Defaults to `TEST_WEBHOOK_TIMEOUT`. */
+		timeoutMs?: number;
 	}) {
 		const {
 			userId,
@@ -417,6 +420,7 @@ export class TestWebhooks implements IWebhookManager {
 			chatSessionId,
 			workflowIsActive,
 			n8nAuthCookie,
+			timeoutMs,
 		} = options;
 
 		if (!workflowEntity.id) throw new WorkflowMissingIdError(workflowEntity);
@@ -449,7 +453,12 @@ export class TestWebhooks implements IWebhookManager {
 				return false; // no webhooks found to start a workflow
 			}
 
-			const timeoutDuration = TEST_WEBHOOK_TIMEOUT;
+			// A non-positive or oversized delay would fire the cancel timer at once, so clamp it.
+			const timeoutDuration =
+				timeoutMs !== undefined && timeoutMs > 0
+					? Math.min(timeoutMs, TEST_WEBHOOK_MAX_TIMEOUT)
+					: TEST_WEBHOOK_TIMEOUT;
+			const registrationTtl = timeoutDuration + TEST_WEBHOOK_TIMEOUT_BUFFER;
 
 			// Check if any webhook is a single webhook trigger and workflow is active
 			if (workflowIsActive) {
@@ -534,14 +543,17 @@ export class TestWebhooks implements IWebhookManager {
 					 * Register the test webhook _before_ creation at third-party service
 					 * in case service sends a confirmation request immediately on creation.
 					 */
-					await this.registrations.register(registration);
+					await this.registrations.register(registration, registrationTtl);
 
 					await this.webhookService.createWebhookIfNotExists(workflow, webhook, 'manual', 'manual');
 
 					cacheableWebhook.staticData = workflow.staticData;
 
-					await this.registrations.register(registration);
+					await this.registrations.register(registration, registrationTtl);
 
+					// Clear the timer of the registration this one replaces. Otherwise it fires
+					// early and cancels the new registration.
+					if (this.timeouts[key] !== timeout) this.clearTimeout(key);
 					this.timeouts[key] = timeout;
 				} catch (error) {
 					await this.deactivateWebhooks(workflow);

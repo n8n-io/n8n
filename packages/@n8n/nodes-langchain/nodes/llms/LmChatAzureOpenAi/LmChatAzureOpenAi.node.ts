@@ -107,10 +107,14 @@ export class LmChatAzureOpenAi implements INodeType {
 				const configuration: ClientOptions = {
 					baseURL: foundryURL,
 					fetchOptions: {
-						dispatcher: getProxyAgent(foundryURL, {
-							headersTimeout: timeout,
-							bodyTimeout: timeout,
-						}),
+						dispatcher: getProxyAgent(
+							foundryURL,
+							{
+								headersTimeout: timeout,
+								bodyTimeout: timeout,
+							},
+							this.helpers.getSecureEgressFilter(),
+						),
 					},
 				};
 				if (modelConfig.azureADTokenProvider) {
@@ -152,10 +156,17 @@ export class LmChatAzureOpenAi implements INodeType {
 				callbacks: [new N8nLlmTracing(this)],
 				configuration: {
 					fetchOptions: {
-						dispatcher: getProxyAgent(undefined, {
-							headersTimeout: timeout,
-							bodyTimeout: timeout,
-						}),
+						// Resolve the proxy against the host LangChain dials so NO_PROXY applies to it.
+						// `||` rather than `??`: the Entra handler yields '' for a missing endpoint.
+						dispatcher: getProxyAgent(
+							modelConfig.azureOpenAIEndpoint ||
+								`https://${modelConfig.azureOpenAIApiInstanceName}.openai.azure.com`,
+							{
+								headersTimeout: timeout,
+								bodyTimeout: timeout,
+							},
+							this.helpers.getSecureEgressFilter(),
+						),
 					},
 				},
 				modelKwargs: options.responseFormat

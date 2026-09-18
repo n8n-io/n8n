@@ -13,6 +13,8 @@ import type { Tracing } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import { DurableJobProvisioner } from '../durable-job-provisioner';
+import type { AgentScheduledJobOwner } from '../agent-scheduled-job-owner';
+import { SystemTaskScheduledJobOwner } from '../system-tasks/system-task-scheduled-job-owner';
 import type { WorkflowScheduledJobOwner } from '../workflow-scheduled-job-owner';
 
 const CLOCK = new Date('2026-01-05T09:00:00.000Z');
@@ -32,23 +34,30 @@ const desiredJob = (
 	firstRunAt: Date | null = CLOCK,
 ): DesiredJob => ({ name, schedule, firstRunAt });
 
-/** A stored cron job row; override the fields a test cares about. */
-const jobRow = (over: Partial<ScheduledJob> = {}): ScheduledJob =>
-	mock<ScheduledJob>({
-		id: 10,
-		name: 'wf:node:0',
-		kind: 'cron',
-		cronExpression: '0 0 9 * * *',
-		timezone: 'UTC',
-		recurrenceUnit: null,
-		recurrenceSize: null,
-		intervalSeconds: null,
-		fireAt: null,
-		nextRunAt: CLOCK,
-		misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
-		misfireGraceSeconds: 90,
-		...over,
-	});
+/**
+ * A stored cron job row; override the fields a test cares about. The payload is
+ * assigned after the mock is built so it stays a plain object rather than a proxy.
+ */
+const jobRow = ({ payload = {}, ...over }: Partial<ScheduledJob> = {}): ScheduledJob =>
+	Object.assign(
+		mock<ScheduledJob>({
+			id: 10,
+			name: 'wf:node:0',
+			kind: 'cron',
+			cronExpression: '0 0 9 * * *',
+			timezone: 'UTC',
+			recurrenceUnit: null,
+			recurrenceSize: null,
+			intervalSeconds: null,
+			fireAt: null,
+			nextRunAt: CLOCK,
+			maxAttempts: 5,
+			misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
+			misfireGraceSeconds: 90,
+			...over,
+		}),
+		{ payload },
+	);
 
 describe('DurableJobProvisioner', () => {
 	const manager = mock<EntityManager>();
@@ -57,6 +66,8 @@ describe('DurableJobProvisioner', () => {
 	const tasks = mock<ScheduledTaskRepository>();
 	const tracing = mock<Tracing>();
 	const workflowOwner = mock<WorkflowScheduledJobOwner>();
+	const agentOwner = mock<AgentScheduledJobOwner>();
+	const systemTaskOwner = new SystemTaskScheduledJobOwner(jobs);
 
 	let provisioner: DurableJobProvisioner;
 	let logger: Logger;
@@ -82,6 +93,8 @@ describe('DurableJobProvisioner', () => {
 			tasks,
 			globalConfig,
 			workflowOwner,
+			agentOwner,
+			systemTaskOwner,
 			tracing,
 		);
 	};
@@ -111,6 +124,20 @@ describe('DurableJobProvisioner', () => {
 			desired,
 			misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 			misfireGraceSeconds: misfireGraceSeconds as number | undefined,
+		});
+
+	/** Provision one job with a request-supplied retry ceiling. */
+	const provisionWithAttempts = async (
+		maxAttempts: number | undefined,
+		desired: DesiredJob[] = [desiredJob('wf:node:0')],
+	): Promise<ProvisionSummary> =>
+		await provisioner.provision({
+			owner: OWNER,
+			taskType: 'schedule-trigger',
+			payload: {},
+			desired,
+			misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
+			maxAttempts,
 		});
 
 	beforeEach(() => {
@@ -181,8 +208,39 @@ describe('DurableJobProvisioner', () => {
 			expect(jobs.insertMany).toHaveBeenCalledWith(manager, []);
 			expect(jobs.updateDefinition).not.toHaveBeenCalled();
 			expect(tasks.deletePendingByJobIds).toHaveBeenCalledWith(manager, []);
-			expect(jobs.updateMisfirePolicy).toHaveBeenCalledWith(manager, [], expect.anything());
+			expect(jobs.updateRunOptions).toHaveBeenCalledWith(manager, [], expect.anything());
+			expect(jobs.updatePayload).toHaveBeenCalledWith(manager, [], expect.anything());
 			expect(summary.unchanged).toEqual([{ id: 10, name: 'wf:node:0' }]);
+		});
+
+		it('rewrites the payload of a job whose stored payload differs, keeping its schedule', async () => {
+			jobs.findManyByOwner.mockResolvedValue([jobRow({ payload: { n8nVersion: '1.0.0' } })]);
+
+			const summary = await provision(
+				'system:prune',
+				{ n8nVersion: '2.0.0' },
+				[desiredJob('wf:node:0')],
+				ScheduledJobMisfirePolicy.Coalesce,
+			);
+
+			expect(jobs.updatePayload).toHaveBeenCalledWith(manager, [10], { n8nVersion: '2.0.0' });
+			expect(jobs.updateDefinition).not.toHaveBeenCalled();
+			expect(summary.unchanged).toEqual([{ id: 10, name: 'wf:node:0' }]);
+		});
+
+		it('leaves the payload of a job alone when it already matches', async () => {
+			jobs.findManyByOwner.mockResolvedValue([
+				jobRow({ payload: { workflowId: 'wf', nodeId: 'node' } }),
+			]);
+
+			await provision(
+				'schedule-trigger',
+				{ workflowId: 'wf', nodeId: 'node' },
+				[desiredJob('wf:node:0')],
+				ScheduledJobMisfirePolicy.Coalesce,
+			);
+
+			expect(jobs.updatePayload).toHaveBeenCalledWith(manager, [], expect.anything());
 		});
 
 		it('reconciles the policy of a job whose schedule is unchanged', async () => {
@@ -195,7 +253,8 @@ describe('DurableJobProvisioner', () => {
 				ScheduledJobMisfirePolicy.Skip,
 			);
 
-			expect(jobs.updateMisfirePolicy).toHaveBeenCalledWith(manager, [10], {
+			expect(jobs.updateRunOptions).toHaveBeenCalledWith(manager, [10], {
+				maxAttempts: 5,
 				misfirePolicy: ScheduledJobMisfirePolicy.Skip,
 				misfireGraceSeconds: 90,
 			});
@@ -215,7 +274,7 @@ describe('DurableJobProvisioner', () => {
 				ScheduledJobMisfirePolicy.Skip,
 			);
 
-			expect(jobs.updateMisfirePolicy).toHaveBeenCalledWith(manager, [10], expect.anything());
+			expect(jobs.updateRunOptions).toHaveBeenCalledWith(manager, [10], expect.anything());
 			expect(tasks.updateMissedAfterForJobs).toHaveBeenCalledWith(manager, [], 90);
 		});
 
@@ -229,7 +288,8 @@ describe('DurableJobProvisioner', () => {
 				ScheduledJobMisfirePolicy.Coalesce,
 			);
 
-			expect(jobs.updateMisfirePolicy).toHaveBeenCalledWith(manager, [10], {
+			expect(jobs.updateRunOptions).toHaveBeenCalledWith(manager, [10], {
+				maxAttempts: 5,
 				misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 				misfireGraceSeconds: 90,
 			});
@@ -288,6 +348,7 @@ describe('DurableJobProvisioner', () => {
 				intervalSeconds: null,
 				fireAt: null,
 				nextRunAt: CLOCK,
+				maxAttempts: 5,
 				misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 				misfireGraceSeconds: 90,
 			});
@@ -580,7 +641,8 @@ describe('DurableJobProvisioner', () => {
 
 			await provisionWithGrace(30);
 
-			expect(jobs.updateMisfirePolicy).toHaveBeenCalledWith(manager, [10], {
+			expect(jobs.updateRunOptions).toHaveBeenCalledWith(manager, [10], {
+				maxAttempts: 5,
 				misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 				misfireGraceSeconds: 60,
 			});
@@ -594,11 +656,71 @@ describe('DurableJobProvisioner', () => {
 
 			await provisionWithGrace(300);
 
-			expect(jobs.updateMisfirePolicy).toHaveBeenCalledWith(manager, [10], {
+			expect(jobs.updateRunOptions).toHaveBeenCalledWith(manager, [10], {
+				maxAttempts: 5,
 				misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 				misfireGraceSeconds: 300,
 			});
 			expect(tasks.updateMissedAfterForJobs).toHaveBeenCalledWith(manager, [10], 300);
+		});
+	});
+
+	describe('attempts resolution', () => {
+		it('stamps a request-supplied ceiling onto the inserted row, in place of the configured one', async () => {
+			await provisionWithAttempts(1);
+
+			expect(jobs.insertMany).toHaveBeenCalledWith(manager, [
+				expect.objectContaining({ maxAttempts: 1 }),
+			]);
+		});
+
+		it('stamps the configured ceiling onto the inserted row when the request omits one', async () => {
+			await provisionWithAttempts(undefined);
+
+			expect(jobs.insertMany).toHaveBeenCalledWith(manager, [
+				expect.objectContaining({ maxAttempts: 5 }),
+			]);
+		});
+
+		it("writes a request-supplied ceiling onto a redefined job's row", async () => {
+			jobs.findManyByOwner.mockResolvedValue([jobRow()]);
+
+			await provisionWithAttempts(1, [
+				desiredJob('wf:node:0', {
+					kind: 'cron',
+					cronExpression: '0 0 18 * * *',
+					timezone: 'UTC',
+				}),
+			]);
+
+			expect(jobs.updateDefinition).toHaveBeenCalledWith(
+				manager,
+				10,
+				expect.objectContaining({ maxAttempts: 1 }),
+			);
+		});
+
+		it('reconciles the ceiling of a job whose schedule is unchanged', async () => {
+			jobs.findManyByOwner.mockResolvedValue([jobRow({ maxAttempts: 5 })]);
+
+			await provisionWithAttempts(1);
+
+			expect(jobs.updateRunOptions).toHaveBeenCalledWith(manager, [10], {
+				maxAttempts: 1,
+				misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
+				misfireGraceSeconds: 90,
+			});
+			expect(jobs.updateDefinition).not.toHaveBeenCalled();
+			// The grace is unchanged, so queued tasks keep their deadline.
+			expect(tasks.updateMissedAfterForJobs).toHaveBeenCalledWith(manager, [], 90);
+		});
+
+		it('leaves a job already stored at the requested ceiling out of the reconciliation', async () => {
+			jobs.findManyByOwner.mockResolvedValue([jobRow({ maxAttempts: 1 })]);
+
+			await provisionWithAttempts(1);
+
+			expect(jobs.updateRunOptions).toHaveBeenCalledWith(manager, [], expect.anything());
 		});
 	});
 
@@ -963,11 +1085,26 @@ describe('DurableJobProvisioner', () => {
 			expect(result).toEqual({ removed: 5 });
 		});
 
+		it('deletes one job as it was read, inside a transaction, and reports the count', async () => {
+			jobs.deleteIfPayloadUnchanged.mockResolvedValue(1);
+
+			const result = await provisioner.deprovisionUnchangedJob({
+				id: 10,
+				payload: { n8nVersion: '1.0.0' },
+			});
+
+			expect(jobs.deleteIfPayloadUnchanged).toHaveBeenCalledWith(manager, 10, {
+				n8nVersion: '1.0.0',
+			});
+			expect(dataSource.transaction).toHaveBeenCalledTimes(1);
+			expect(result).toEqual({ removed: 1 });
+		});
+
 		it('deprovisions an owner type with no registered resolver, so cleanup is never blocked', async () => {
 			jobs.deleteByOwnerRef.mockResolvedValue(1);
 
 			await expect(
-				provisioner.deprovisionOwner({ ownerType: 'agent', ownerId: 'agent-1' }),
+				provisioner.deprovisionOwner({ ownerType: 'unknown-thing', ownerId: 'thing-1' }),
 			).resolves.toEqual({ removed: 1 });
 		});
 	});
@@ -1004,10 +1141,10 @@ describe('DurableJobProvisioner', () => {
 		it('refuses an owner type the manifest registry does not declare', async () => {
 			await expect(
 				provisioner.provision({
-					owner: { ownerType: 'agent', ownerId: 'agent-1', ownerMemberId: null },
-					taskType: 'agent:task',
+					owner: { ownerType: 'unknown-thing', ownerId: 'thing-1', ownerMemberId: null },
+					taskType: 'unknown-thing:task',
 					payload: {},
-					desired: [desiredJob('agent-1:0')],
+					desired: [desiredJob('thing-1:0')],
 					misfirePolicy: ScheduledJobMisfirePolicy.Skip,
 				}),
 			).rejects.toThrow('no registered liveness resolver');

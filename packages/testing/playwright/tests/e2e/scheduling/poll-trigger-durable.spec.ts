@@ -16,14 +16,13 @@ test.use({
 			N8N_SCHEDULER_ENABLED: 'true',
 			N8N_USE_WORKFLOW_PUBLICATION_SERVICE: 'true',
 			N8N_SCHEDULER_POLL_TRIGGERS_ENABLED: 'true',
-			N8N_SCHEDULER_SWEEP_INTERVAL: '1',
 			N8N_SCHEDULER_EXECUTOR_INTERVAL: '1',
 		},
 	},
 });
 
 test.describe(
-	'Poll Trigger (durable scheduler) @capability:proxy',
+	'Poll Trigger (durable scheduler)',
 	{
 		annotation: [{ type: 'owner', description: 'Catalysts' }],
 	},
@@ -50,9 +49,8 @@ test.describe(
 			services,
 		}) => {
 			// The seed poll above runs inline on activation, bypassing the scheduler.
-			// `fireScheduledJobsNow` forces the job's `nextRunAt` to now so the 1s
-			// sweep configured above claims it, instead of waiting out the real
-			// cron interval.
+			// `fireScheduledJobsNow` moves the job's `nextRunAt` to now so the one-second
+			// executor sweep claims it instead of waiting for the real cron interval.
 			const { workflowId, nodeId } = await expectPollTriggerFires(
 				api,
 				services.proxy,

@@ -5,6 +5,7 @@ import {
 	type INodeExecutionData,
 	type INodeType,
 	type INodeTypeDescription,
+	toPathSegment,
 	NodeConnectionTypes,
 } from 'n8n-workflow';
 
@@ -39,7 +40,7 @@ function createQueryDatabaseRequest(ctx: IPollFunctions): NotionQueryRequest {
 			(await notionApiRequestV3.call(
 				ctx,
 				'POST',
-				`/data_sources/${dataSourceId}/query`,
+				`/data_sources/${toPathSegment(dataSourceId)}/query`,
 				body,
 			)) as NotionQueryResponse;
 	}
@@ -47,11 +48,19 @@ function createQueryDatabaseRequest(ctx: IPollFunctions): NotionQueryRequest {
 	const databaseId = ctx.getNodeParameter('databaseId', '', { extractValue: true }) as string;
 
 	return async (body) =>
-		(await notionApiRequest.call(ctx, 'POST', `/databases/${databaseId}/query`, body, {}, '', {
-			headers: {
-				'Notion-Version': '2022-02-22',
+		(await notionApiRequest.call(
+			ctx,
+			'POST',
+			`/databases/${toPathSegment(databaseId)}/query`,
+			body,
+			{},
+			'',
+			{
+				headers: {
+					'Notion-Version': '2022-02-22',
+				},
 			},
-		})) as NotionQueryResponse;
+		)) as NotionQueryResponse;
 }
 
 export class NotionTrigger implements INodeType {

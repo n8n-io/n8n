@@ -115,11 +115,10 @@ export class LiveWebhooks implements IWebhookManager {
 		const { workflow: workflowData, publishedVersion } = await this.loadWebhookExecutionData(
 			webhook.workflowId,
 		);
-		const { nodes, connections } = publishedVersion;
+		const { nodes, connections, versionId } = publishedVersion;
 
-		// Create a clean workflowData object with only activeVersion nodes/connections
-		// This prevents any downstream code from accidentally using the draft nodes
-		const activeWorkflowData: IWorkflowBase = { ...workflowData, nodes, connections };
+		// Use the published revision for both execution content and metadata.
+		const activeWorkflowData: IWorkflowBase = { ...workflowData, nodes, connections, versionId };
 
 		const workflow = new Workflow({
 			id: webhook.workflowId,

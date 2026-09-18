@@ -446,10 +446,14 @@ export function extractAskUserQuestions(raw: unknown[]): AskUserQuestion[] {
 		if (!isRecord(item)) continue;
 		const id = typeof item.id === 'string' ? item.id : '';
 		const question = typeof item.question === 'string' ? item.question : '';
+		const type =
+			item.type === 'single' || item.type === 'multi' || item.type === 'text'
+				? item.type
+				: undefined;
 		const options = Array.isArray(item.options)
 			? item.options.filter((o): o is string => typeof o === 'string')
 			: undefined;
-		if (id || question) questions.push({ id, question, options });
+		if (id || question) questions.push({ id, question, type, options });
 	}
 	return questions;
 }

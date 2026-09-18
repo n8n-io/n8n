@@ -17,6 +17,7 @@ type EndpointGroup =
 	| 'oauth2'
 	| 'owner'
 	| 'passwordReset'
+	| 'changeEmail'
 	| 'credentials'
 	| 'workflows'
 	| 'publicApi'
@@ -29,6 +30,7 @@ type EndpointGroup =
 	| 'eventBus'
 	| 'license'
 	| 'variables'
+	| 'ai-preferences'
 	| 'annotationTags'
 	| 'tags'
 	| 'externalSecrets'
@@ -50,6 +52,7 @@ type EndpointGroup =
 	| 'folder'
 	| 'insights'
 	| 'module-settings'
+	| 'promotions'
 	| 'security-settings'
 	| 'data-table'
 	| 'third-party-licenses'
@@ -57,7 +60,8 @@ type EndpointGroup =
 	| 'workflowDependencies'
 	| 'encryption-keys'
 	| 'workflow-reviews'
-	| 'test-webhooks';
+	| 'test-webhooks'
+	| 'type-availability-policies';
 
 type ModuleName =
 	| 'insights'
@@ -71,10 +75,12 @@ type ModuleName =
 	| 'ldap'
 	| 'redaction'
 	| 'source-control'
-	| 'git-connections'
+	| 'promotions'
+	| 'n8n-packages'
 	| 'token-exchange'
 	| 'policy-infrastructure'
-	| 'workflow-reviews';
+	| 'workflow-reviews'
+	| 'type-availability-policies';
 
 export interface SetupProps {
 	endpointGroups?: EndpointGroup[];

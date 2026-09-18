@@ -74,7 +74,7 @@ function rebuild(code: string): WorkflowJSON {
 }
 
 async function getAsCode(): Promise<string> {
-	const tool = createWorkflowsTool(createContext(), 'full');
+	const tool = createWorkflowsTool(createContext());
 	// A versionId keeps this a historical read, which skips the source-file binding refresh
 	// and its thread-metadata plumbing — irrelevant to the round trip under test.
 	const result = await executeTool<{ code: string; error?: string }>(

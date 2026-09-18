@@ -1,9 +1,19 @@
 import { setActivePinia, createPinia } from 'pinia';
+import { effectScope, nextTick } from 'vue';
 import { beforeAll, afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ensureThread } from '../instanceAi.api';
-import { deleteThread as deleteThreadApi } from '../instanceAi.memory.api';
+import {
+	deleteThread as deleteThreadApi,
+	fetchThreadHistory,
+	fetchThread,
+	renameThread as renameThreadApi,
+} from '../instanceAi.memory.api';
 import { useInstanceAiStore } from '../instanceAi.store';
-import { UNLIMITED_CREDITS, type InstanceAiThreadSummary } from '@n8n/api-types';
+import {
+	UNLIMITED_CREDITS,
+	type InstanceAiThreadHistoryResponse,
+	type InstanceAiThreadSummary,
+} from '@n8n/api-types';
 
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: vi.fn().mockReturnValue({
@@ -48,6 +58,8 @@ vi.mock('../instanceAi.api', () => ({
 
 vi.mock('../instanceAi.memory.api', () => ({
 	fetchThreads: vi.fn().mockResolvedValue({ threads: [], total: 0, page: 1, hasMore: false }),
+	fetchThread: vi.fn(),
+	fetchThreadHistory: vi.fn().mockResolvedValue({ threads: [], nextCursor: null, hasMore: false }),
 	fetchThreadMessages: vi
 		.fn()
 		.mockResolvedValue({ threadId: 'thread-1', messages: [], nextEventId: 0 }),
@@ -91,6 +103,73 @@ describe('useInstanceAiStore - runtime registry', () => {
 		vi.clearAllMocks();
 	});
 
+	function historyThread(id: string) {
+		return { id, title: id, resourceId: 'user', createdAt: '2026-01-01', updatedAt: '2026-01-01' };
+	}
+
+	it('pages the chat history once per row and drops a response that predates a reset', async () => {
+		const store = useInstanceAiStore();
+		vi.mocked(fetchThreadHistory)
+			.mockResolvedValueOnce({
+				threads: [historyThread('a'), historyThread('b')],
+				nextCursor: 'cursor-1',
+				hasMore: true,
+			})
+			.mockResolvedValueOnce({
+				threads: [historyThread('b'), historyThread('c')],
+				nextCursor: null,
+				hasMore: false,
+			});
+		await store.loadThreadHistoryPage();
+		await store.loadThreadHistoryPage();
+		expect(fetchThreadHistory).toHaveBeenLastCalledWith(expect.anything(), {
+			limit: 30,
+			search: undefined,
+			cursor: 'cursor-1',
+		});
+		expect(store.threadHistory.threads.map((thread) => thread.id)).toEqual(['a', 'b', 'c']);
+		expect(store.threadHistory.hasMore).toBe(false);
+
+		const late = Promise.withResolvers<InstanceAiThreadHistoryResponse>();
+		vi.mocked(fetchThreadHistory).mockReturnValueOnce(late.promise);
+		store.resetThreadHistory('old');
+		const pending = store.loadThreadHistoryPage();
+		store.resetThreadHistory('new');
+		late.resolve({ threads: [historyThread('late')], nextCursor: null, hasMore: false });
+		await pending;
+		expect(store.threadHistory).toMatchObject({ search: 'new', threads: [], loading: false });
+	});
+
+	it('renames and deletes threads on the history page and rolls back a failed rename', async () => {
+		const store = useInstanceAiStore();
+		vi.mocked(fetchThreadHistory).mockResolvedValueOnce({
+			threads: [historyThread('a'), historyThread('b')],
+			nextCursor: null,
+			hasMore: false,
+		});
+		await store.loadThreadHistoryPage();
+
+		await store.renameThread('a', 'Renamed');
+		expect(renameThreadApi).toHaveBeenCalledWith(expect.anything(), 'a', 'Renamed');
+		expect(store.threadHistory.threads[0].title).toBe('Renamed');
+
+		vi.mocked(renameThreadApi).mockRejectedValueOnce(new Error('offline'));
+		await expect(store.renameThread('a', 'Rejected')).rejects.toThrow('offline');
+		expect(store.threadHistory.threads[0].title).toBe('Renamed');
+
+		await store.deleteThread('b');
+		expect(mockDeleteThread).toHaveBeenCalledWith(expect.anything(), 'b');
+		expect(store.threadHistory.threads.map((thread) => thread.id)).toEqual(['a']);
+	});
+
+	it('loadThread adds a thread the sidebar list does not hold, once', async () => {
+		const store = useInstanceAiStore();
+		vi.mocked(fetchThread).mockResolvedValue({ thread: historyThread('old') });
+		await store.loadThread('old');
+		await store.loadThread('old');
+		expect(store.threads.map((thread) => thread.id)).toEqual(['old']);
+	});
+
 	it('returns the same runtime for the same thread id', () => {
 		const store = useInstanceAiStore();
 
@@ -111,6 +190,28 @@ describe('useInstanceAiStore - runtime registry', () => {
 
 		expect(disposeSpy).toHaveBeenCalledOnce();
 		expect(store.getRuntime('thread-1')).toBeUndefined();
+	});
+
+	it('keeps the runtime watchers alive after the creating scope stops', async () => {
+		const store = useInstanceAiStore();
+		// The thread view creates the runtime in setup. A Suspense duplicate of the
+		// view is discarded before it mounts, which stops that component scope.
+		const creatorScope = effectScope();
+		const runtime = creatorScope.run(() => store.getOrCreateRuntime('thread-1'));
+		creatorScope.stop();
+
+		runtime?.messages.push({
+			id: 'm1',
+			role: 'user',
+			createdAt: '2026-01-01T00:00:00.000Z',
+			content: '',
+			reasoning: '',
+			isStreaming: false,
+			attachments: [{ type: 'workflow', id: 'wf-1', name: 'My workflow' }],
+		});
+		await nextTick();
+
+		expect(runtime?.producedArtifacts.get('wf-1')?.name).toBe('My workflow');
 	});
 
 	it('syncs a thread into the sidebar list', async () => {

@@ -472,5 +472,6 @@ defineExpose({ open, close });
 
 .trigger {
 	display: inline-flex;
+	min-width: 0;
 }
 </style>

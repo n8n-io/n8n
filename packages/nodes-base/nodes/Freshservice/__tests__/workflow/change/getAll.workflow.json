@@ -1,0 +1,130 @@
+{
+	"name": "Freshservice Tests - Change Get Many",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "9b3f7a52-1c44-4a19-b8e1-2f5a7d9c3e10",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"resource": "change",
+				"operation": "getAll",
+				"returnAll": false,
+				"limit": 50,
+				"filters": {
+					"filter": "my_open",
+					"sort_by": "asc",
+					"updated_since": "2025-09-01T00:00:00.000Z"
+				}
+			},
+			"type": "n8n-nodes-base.freshservice",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"id": "f1d2c3b4-a596-4877-9868-59a1b2c3d4e5",
+			"name": "Change > Get Many",
+			"credentials": {
+				"freshserviceApi": {
+					"id": "AgqfXX1kkgs2h3Zk",
+					"name": "Freshservice account"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [440, 0],
+			"id": "0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+			"name": "Get Many Response"
+		}
+	],
+	"pinData": {
+		"Get Many Response": [
+			{
+				"json": {
+					"id": 15,
+					"agent_id": 21001397559,
+					"description": "<div>Upgrade the database server to the latest version</div>",
+					"requester_id": 21001397559,
+					"group_id": null,
+					"priority": 2,
+					"impact": 1,
+					"status": 1,
+					"risk": 2,
+					"change_type": 2,
+					"planned_start_date": "2025-09-08T09:00:00Z",
+					"planned_end_date": "2025-09-08T17:00:00Z",
+					"subject": "DB server upgrade",
+					"department_id": null,
+					"category": "Hardware",
+					"sub_category": "Computer",
+					"item_category": null,
+					"created_at": "2025-09-01T10:26:23Z",
+					"updated_at": "2025-09-03T12:45:11Z"
+				}
+			},
+			{
+				"json": {
+					"id": 16,
+					"agent_id": 21001397559,
+					"description": "<div>Roll out the new VPN client</div>",
+					"requester_id": 21001931696,
+					"group_id": null,
+					"priority": 1,
+					"impact": 1,
+					"status": 1,
+					"risk": 1,
+					"change_type": 1,
+					"planned_start_date": "2025-09-10T09:00:00Z",
+					"planned_end_date": "2025-09-10T12:00:00Z",
+					"subject": "VPN client rollout",
+					"department_id": null,
+					"category": "Software",
+					"sub_category": null,
+					"item_category": null,
+					"created_at": "2025-09-02T08:14:02Z",
+					"updated_at": "2025-09-04T16:20:44Z"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Change > Get Many",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Change > Get Many": {
+			"main": [
+				[
+					{
+						"node": "Get Many Response",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "3c9d2f81-5b7a-4e6d-9a0c-8f1e2d3c4b5a",
+	"meta": {
+		"templateCredsSetupCompleted": true,
+		"instanceId": "0fa937d34dcabeff4bd6480d3b42cc95edf3bc20e6810819086ef1ce2623639d"
+	},
+	"id": "FrshSvcChgGetMany",
+	"tags": []
+}

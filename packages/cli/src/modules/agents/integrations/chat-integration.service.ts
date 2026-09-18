@@ -1200,7 +1200,7 @@ export class ChatIntegrationService {
 			);
 		}
 		const decrypted = await this.credentialsService.decrypt(credential, true);
-		return decrypted as Record<string, unknown>;
+		return decrypted;
 	}
 
 	private buildWebhookUrl(agentId: string, projectId: string, platform: string): string {

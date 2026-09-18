@@ -1,0 +1,100 @@
+operationId: upsertPromotionApplyConfig
+tags:
+  - Promotions
+summary: Create or replace the Apply configuration
+description: Replaces the whole configuration, so an omitted name resets it to "Apply". Answers 200 whether it created or replaced.
+x-required-scope: gitConnection:update
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+parameters:
+  - schema:
+      type: string
+    required: true
+    description: The ID of the promotion connection.
+    name: promotionConnectionId
+    in: path
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          name:
+            type: string
+            minLength: 1
+            maxLength: 128
+          settings:
+            type: object
+            properties:
+              schemaVersion:
+                type: number
+                enum:
+                  - 1
+              branchName:
+                type: string
+                minLength: 1
+                maxLength: 255
+            required:
+              - schemaVersion
+              - branchName
+            additionalProperties: false
+        required:
+          - settings
+        additionalProperties: false
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            id:
+              type: string
+              minLength: 1
+              maxLength: 36
+            name:
+              type: string
+            createdAt:
+              type: string
+              format: date-time
+            updatedAt:
+              type: string
+              format: date-time
+            settings:
+              type: object
+              properties:
+                schemaVersion:
+                  type: number
+                  enum:
+                    - 1
+                branchName:
+                  type: string
+                  minLength: 1
+                  maxLength: 255
+              required:
+                - schemaVersion
+                - branchName
+              additionalProperties: false
+          required:
+            - id
+            - name
+            - createdAt
+            - updatedAt
+            - settings
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '409':
+    $ref: ../../../../shared/spec/responses/conflict.yml
+  '415':
+    $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
+  '503':
+    $ref: ../../../../shared/spec/responses/serviceUnavailable.yml

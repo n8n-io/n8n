@@ -1,12 +1,14 @@
-import { effectScope, ref } from 'vue';
+import { effectScope, reactive, ref } from 'vue';
+import { flushPromises } from '@vue/test-utils';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia, type TestingPinia } from '@pinia/testing';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { ICredentialType } from 'n8n-workflow';
+import type { ICredentialType, INodeParameters } from 'n8n-workflow';
 import { createTestNode, createTestWorkflow, mockNodeTypeDescription } from '@/__tests__/mocks';
 import { mockedStore } from '@/__tests__/utils';
-import type { InstanceAiSetupItem } from '@n8n/api-types';
-import type { INodeUi } from '@/Interface';
+import type { InstanceAiAgentNode, InstanceAiSetupItem } from '@n8n/api-types';
+import type { INodeUi, IWorkflowDb } from '@/Interface';
+import { useSetupPanelState } from '@/features/ai/instanceAi/composables/useSetupPanelState';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
@@ -167,6 +169,149 @@ describe('useWorkflowSetupItems', () => {
 		await Promise.resolve();
 		await Promise.resolve();
 		expect(isWorkflowAvailable.value).toBe(false);
+	});
+
+	it('refreshes completion from saved data without creating a canvas document', async () => {
+		const pending = createTestWorkflow({
+			id: WORKFLOW_ID,
+			nodes: [
+				createTestNode({
+					name: 'Slack',
+					parameters: { channel: '<__PLACEHOLDER_VALUE__channel__>' },
+				}),
+			],
+		});
+		workflowsListStore.fetchWorkflow.mockResolvedValueOnce(pending);
+		const state = useWorkflowSetupItems(() => WORKFLOW_ID);
+		await flushPromises();
+		const item = state.derivedItems.value[0];
+		expect(item).toMatchObject({ kind: 'parameters', parameterNames: ['channel'] });
+		expect(state.isItemDone(item)).toBe(false);
+
+		workflowsListStore.fetchWorkflow.mockResolvedValueOnce(
+			createTestWorkflow({
+				id: WORKFLOW_ID,
+				nodes: [createTestNode({ name: 'Slack', parameters: { channel: 'team-updates' } })],
+			}),
+		);
+		await state.refreshWorkflow();
+		expect(state.isItemDone(item)).toBe(true);
+		expect(state.getNodeByName('Slack')?.parameters.channel).toBe('team-updates');
+		expect(
+			getWorkflowDocumentStoreId(createWorkflowDocumentId(WORKFLOW_ID)) in pinia.state.value,
+		).toBe(false);
+	});
+
+	it('ignores an older fetch that finishes after a refresh', async () => {
+		const oldRead = Promise.withResolvers<IWorkflowDb>();
+		workflowsListStore.fetchWorkflow.mockReturnValueOnce(oldRead.promise);
+		const state = useWorkflowSetupItems(() => WORKFLOW_ID);
+		workflowsListStore.fetchWorkflow.mockResolvedValueOnce(
+			createTestWorkflow({
+				id: WORKFLOW_ID,
+				nodes: [createTestNode({ name: 'Slack', parameters: { channel: 'new-value' } })],
+			}),
+		);
+		await state.refreshWorkflow();
+		oldRead.resolve(
+			createTestWorkflow({
+				id: WORKFLOW_ID,
+				nodes: [createTestNode({ name: 'Slack', parameters: { channel: 'old-value' } })],
+			}),
+		);
+		await flushPromises();
+		expect(state.getNodeByName('Slack')?.parameters.channel).toBe('new-value');
+	});
+
+	it('recovers a failed overlapping refresh without accepting the older response', async () => {
+		const initialRead = Promise.withResolvers<IWorkflowDb>();
+		const refreshRead = Promise.withResolvers<IWorkflowDb>();
+		const retryRead = Promise.withResolvers<IWorkflowDb>();
+		workflowsListStore.fetchWorkflow
+			.mockReturnValueOnce(initialRead.promise)
+			.mockReturnValueOnce(refreshRead.promise)
+			.mockReturnValueOnce(retryRead.promise);
+		const state = useWorkflowSetupItems(() => WORKFLOW_ID);
+		const refresh = state.refreshWorkflow();
+		refreshRead.reject(new Error('Temporary failure'));
+		await flushPromises();
+		initialRead.resolve(
+			createTestWorkflow({
+				id: WORKFLOW_ID,
+				nodes: [createTestNode({ name: 'Slack', parameters: { channel: 'old-value' } })],
+			}),
+		);
+		await flushPromises();
+		expect(state.isWorkflowAvailable.value).toBe(false);
+		retryRead.resolve(
+			createTestWorkflow({
+				id: WORKFLOW_ID,
+				nodes: [createTestNode({ name: 'Slack', parameters: { channel: 'current-value' } })],
+			}),
+		);
+		await refresh;
+		expect(state.isWorkflowAvailable.value).toBe(true);
+		expect(state.getNodeByName('Slack')?.parameters.channel).toBe('current-value');
+	});
+
+	it.each<{ label: string; value: INodeParameters[string] }>([
+		{ label: 'direct', value: '<__PLACEHOLDER_VALUE__API URL__>' },
+		{ label: 'embedded', value: 'https://example.com/<__PLACEHOLDER_VALUE__path__>' },
+		{ label: 'nested', value: { entries: [{ key: '<__PLACEHOLDER_VALUE__API key__>' }] } },
+	])('keeps $label placeholders incomplete until they are replaced', ({ value, label }) => {
+		hydrateWorkflow([createTestNode({ name: 'Request', parameters: { value } })]);
+		const { derivedItems, isItemDone } = useWorkflowSetupItems(() => WORKFLOW_ID);
+		const item: InstanceAiSetupItem = {
+			id: `${WORKFLOW_ID}:parameters:Request`,
+			kind: 'parameters',
+			nodeName: 'Request',
+			parameterNames: ['value'],
+		};
+		expect(derivedItems.value).toEqual([item]);
+		expect(isItemDone(item)).toBe(false);
+		if (label === 'nested') {
+			expect(isItemDone({ ...item, parameterNames: ['value.entries[0].key'] })).toBe(false);
+		}
+
+		hydrateWorkflow([createTestNode({ name: 'Request', parameters: { value: 'real-value' } })]);
+		expect(isItemDone(item)).toBe(true);
+		expect(derivedItems.value).toEqual([item]);
+	});
+
+	it('does not retain temporary parameter rows when it resolves an event credential binding', () => {
+		mockGetNodeCredentialTypes.mockReturnValue(['slackApi']);
+		mockGetNodeParametersIssues.mockReturnValue({ channel: ['Required'] });
+		hydrateWorkflow([createTestNode({ name: 'Slack', parameters: { channel: '' } })]);
+		const agentTree: InstanceAiAgentNode = {
+			agentId: 'root',
+			role: 'orchestrator',
+			status: 'active',
+			textContent: '',
+			reasoning: '',
+			timeline: [],
+			children: [],
+			toolCalls: [
+				{
+					toolCallId: 'update',
+					toolName: 'workflows',
+					isLoading: true,
+					args: { action: 'update', workflowId: WORKFLOW_ID },
+				},
+			],
+		};
+		const thread = reactive({
+			messages: [{ agentTree }],
+			setupItemsByWorkflowId: { [WORKFLOW_ID]: [credentialItem({ nodeBindings: undefined })] },
+		});
+		const state = useSetupPanelState({ thread, workflowId: () => WORKFLOW_ID });
+		expect(state.rows.value).toEqual([{ item: credentialItem(), isDone: false }]);
+
+		mockGetNodeParametersIssues.mockReturnValue({});
+		hydrateWorkflow([
+			createTestNode({ name: 'Slack', parameters: { channel: 'generated-value' } }),
+		]);
+		thread.messages = [];
+		expect(state.rows.value).toEqual([{ item: credentialItem(), isDone: false }]);
 	});
 
 	// Without node types the derivation would drop type-defined credentials and

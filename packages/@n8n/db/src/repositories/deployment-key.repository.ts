@@ -1,8 +1,16 @@
 import { Service } from '@n8n/di';
-import { DataSource, Repository } from '@n8n/typeorm';
+import { DataSource, IsNull, Repository } from '@n8n/typeorm';
+import { Cipher } from 'n8n-core';
+import { UnexpectedError } from 'n8n-workflow';
 
 import { DeploymentKey } from '../entities/deployment-key';
 import { DbLock, DbLockService } from '../services/db-lock.service';
+
+/**
+ * Marker for signing-secret rows whose value is wrapped with the instance
+ * key. Rows without it hold the value in the original stored form.
+ */
+const SECRET_WRAP_ALGORITHM = 'aes-256-gcm';
 
 export type DeploymentKeySortField = 'createdAt' | 'updatedAt' | 'status';
 export type DeploymentKeySortDirection = 'ASC' | 'DESC';
@@ -22,8 +30,71 @@ export class DeploymentKeyRepository extends Repository<DeploymentKey> {
 	constructor(
 		dataSource: DataSource,
 		private readonly dbLockService: DbLockService,
+		private readonly cipher: Cipher,
 	) {
 		super(DeploymentKey, dataSource.manager);
+	}
+
+	/**
+	 * Reads the active signing secret of the given type and returns it in
+	 * usable form. Storage format is this repository's concern: a row marked
+	 * with {@link SECRET_WRAP_ALGORITHM} is unwrapped with the instance key.
+	 *
+	 * With `rewrapLegacy`, a row found in the original stored form is
+	 * rewritten in place to the wrapped form. The conditional update keys on
+	 * `algorithm IS NULL`, so concurrent instances upgrading the same row
+	 * cannot double-wrap it, and the returned secret is identical either way.
+	 * The flag exists because not every reader may write: one-off CLI commands
+	 * must not mutate deployment state and may run with read-only DB
+	 * credentials, so callers opt into the rewrite explicitly.
+	 */
+	async findActiveSigningSecret(
+		type: string,
+		{ rewrapLegacy = false }: { rewrapLegacy?: boolean } = {},
+	): Promise<string | null> {
+		const row = await this.findActiveByType(type);
+		if (!row) return null;
+		if (row.algorithm === SECRET_WRAP_ALGORITHM) {
+			try {
+				return this.cipher.decryptDEKWithInstanceKey(row.value);
+			} catch {
+				throw new UnexpectedError(
+					`Deployment key '${type}' cannot be read with this instance encryption key`,
+				);
+			}
+		}
+		// Only the pre-wrap form (algorithm NULL) may pass through as-is; any
+		// other marker means a format this version cannot read — fail loudly
+		// instead of handing ciphertext to the caller as if it were the secret.
+		if (row.algorithm !== null) {
+			throw new UnexpectedError(
+				`Deployment key '${type}' has an unsupported storage format '${row.algorithm}'`,
+			);
+		}
+		if (rewrapLegacy) {
+			await this.update(
+				{ id: row.id, algorithm: IsNull() },
+				{
+					value: this.cipher.encryptDEKWithInstanceKey(row.value),
+					algorithm: SECRET_WRAP_ALGORITHM,
+				},
+			);
+		}
+		return row.value;
+	}
+
+	/**
+	 * Inserts an active signing secret of the given type in wrapped form.
+	 * On a unique-index conflict (concurrent multi-main startup) the insert is
+	 * silently ignored; the caller should read the winner's value afterwards.
+	 */
+	async seedSigningSecret(type: string, secret: string): Promise<void> {
+		await this.insertOrIgnore({
+			type,
+			value: this.cipher.encryptDEKWithInstanceKey(secret),
+			status: 'active',
+			algorithm: SECRET_WRAP_ALGORITHM,
+		});
 	}
 
 	/**
@@ -57,6 +128,18 @@ export class DeploymentKeyRepository extends Repository<DeploymentKey> {
 
 	async findAllByType(type: string): Promise<DeploymentKey[]> {
 		return await this.find({ where: { type } });
+	}
+
+	async findDataEncryptionKeys(): Promise<DeploymentKey[]> {
+		return await this.find({ where: { type: 'data_encryption' } });
+	}
+
+	async rewrapLegacyDataEncryptionValue(
+		id: string,
+		oldValue: string,
+		wrappedValue: string,
+	): Promise<void> {
+		await this.update({ id, type: 'data_encryption', value: oldValue }, { value: wrappedValue });
 	}
 
 	async findAndCountForList(
@@ -127,5 +210,32 @@ export class DeploymentKeyRepository extends Repository<DeploymentKey> {
 			await tx.update(DeploymentKey, { type, status: 'active' }, { status: 'inactive' });
 			await tx.update(DeploymentKey, { id, type }, { status: 'active' });
 		});
+	}
+
+	// Deployment keys must never be deleted: data encrypted with a key becomes
+	// unreadable without it. Keys are deactivated instead (`markInactive` /
+	// `promoteToActive`). These parameterless shadows close the inherited
+	// TypeORM delete surface twice over — calls with arguments no longer
+	// type-check, and any call throws at runtime. Call sites are additionally
+	// rejected in CI by `n8n-local-rules/no-deployment-key-delete`.
+
+	async delete(): Promise<never> {
+		throw new UnexpectedError('Deployment keys must never be deleted — deactivate them instead');
+	}
+
+	async remove(): Promise<never> {
+		throw new UnexpectedError('Deployment keys must never be deleted — deactivate them instead');
+	}
+
+	async softDelete(): Promise<never> {
+		throw new UnexpectedError('Deployment keys must never be deleted — deactivate them instead');
+	}
+
+	async softRemove(): Promise<never> {
+		throw new UnexpectedError('Deployment keys must never be deleted — deactivate them instead');
+	}
+
+	async clear(): Promise<never> {
+		throw new UnexpectedError('Deployment keys must never be deleted — deactivate them instead');
 	}
 }

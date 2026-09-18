@@ -29,7 +29,7 @@ vi.mock('../harness/agent-execution', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('../harness/agent-execution')>();
 	return {
 		...actual,
-		fetchAgentScenarioContext: vi.fn().mockResolvedValue('AGENT CONTEXT'),
+		fetchAgentScenarioContext: vi.fn().mockResolvedValue({ rendered: 'AGENT CONTEXT' }),
 	};
 });
 
@@ -104,6 +104,7 @@ function makeLane(num: number, tracedBuild: LaneState['tracedBuild']): LaneState
 			baseUrl: `http://lane${String(num)}.test`,
 			preRunWorkflowIds: new Set<string>(),
 			preRunDataTableIds: new Set<string>(),
+			preRunFolderIds: new Set<string>(),
 			claimedWorkflowIds: new Set<string>(),
 			createdCredentialIds: new Set<string>(),
 			workflowIdsToDelete: new Set<string>(),

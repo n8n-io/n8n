@@ -346,13 +346,22 @@ async function onFiltersChange(value: AgentSessionFilters) {
 					>
 						<td :colspan="5" style="text-align: center; padding: var(--spacing--lg)">
 							<template v-if="!sessionsStore.threads.length && !sessionsStore.loading">
-								<span data-test-id="agent-sessions-empty">
-									{{
-										i18n.baseText(
-											hasActiveFilters ? 'agentSessions.emptyWithFilters' : 'agentSessions.empty',
-										)
-									}}
-								</span>
+								<div :class="$style.emptyState">
+									<span data-test-id="agent-sessions-empty">
+										{{
+											i18n.baseText(
+												hasActiveFilters ? 'agentSessions.emptyWithFilters' : 'agentSessions.empty',
+											)
+										}}
+									</span>
+									<span
+										v-if="!hasActiveFilters"
+										:class="$style.emptyStateDescription"
+										data-test-id="agent-sessions-empty-description"
+									>
+										{{ i18n.baseText('agentSessions.emptyDescription') }}
+									</span>
+								</div>
 							</template>
 						</td>
 					</tr>
@@ -576,5 +585,19 @@ async function onFiltersChange(value: AgentSessionFilters) {
 	&:hover {
 		background-color: transparent;
 	}
+}
+
+.emptyState {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	text-align: center;
+}
+
+.emptyStateDescription {
+	max-width: 100%;
+	color: var(--text-color--subtler);
+	white-space: normal;
 }
 </style>

@@ -53,7 +53,7 @@ import {
 	updateFromAIOverrideValues,
 	type FromAIOverride,
 } from '../../utils/fromAIOverride.utils';
-import { completeExpressionSyntax } from '@/app/utils/expressions';
+import { completeExpressionSyntax, shouldConvertToExpression } from '@/app/utils/expressions';
 import { openSafeUrl } from '@/app/utils/htmlUtils';
 import { DEBOUNCE_TIME, ExpressionLocalResolveContextSymbol } from '@/app/constants';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -91,7 +91,7 @@ const NODE_API_AUTH_ERROR_MESSAGES = [
 
 interface IResourceLocatorQuery {
 	results: INodeListSearchItems[];
-	nextPageToken: unknown;
+	nextPageToken: string | null;
 	error: boolean;
 	errorDetails?: {
 		message?: string;
@@ -748,7 +748,9 @@ function onInputChange(value: INodeParameterResourceLocator['value']): void {
 			params.cachedResultUrl = resource.url;
 		}
 	} else {
-		params.value = completeExpressionSyntax(value);
+		// A literal `{{ }}` is never a valid id or url, so a pasted expression
+		// always switches to expression mode, even when it replaces a stored value.
+		params.value = shouldConvertToExpression(value) ? '=' + value : completeExpressionSyntax(value);
 	}
 	emit('update:modelValue', params);
 }
@@ -858,7 +860,7 @@ async function loadResources() {
 
 	try {
 		if (cachedResponse) {
-			const nextPageToken = cachedResponse.nextPageToken as string;
+			const nextPageToken = cachedResponse.nextPageToken;
 			if (nextPageToken) {
 				paginationToken = nextPageToken;
 				setResponse(paramsKey, { loading: true });

@@ -124,7 +124,7 @@ const formattedCreatedAtDate = computed(() => {
 	);
 });
 
-const credentialHasDependents = computed(() => hasDependencies(props.data.id));
+const credentialHasDependents = computed(() => hasDependencies(props.data.id, 'credential'));
 
 function onClick() {
 	emit('click', props.data.id);
@@ -310,6 +310,8 @@ function moveResource() {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/breakpoints';
+
 .cardLink {
 	--card--padding: 0 0 0 var(--spacing--sm);
 
@@ -353,7 +355,7 @@ function moveResource() {
 	cursor: default;
 }
 
-@include mixins.breakpoint('sm-and-down') {
+@include breakpoints.breakpoint('sm-and-down') {
 	.cardLink {
 		--card--padding: 0 var(--spacing--sm) var(--spacing--sm);
 		--card--append--width: 100%;

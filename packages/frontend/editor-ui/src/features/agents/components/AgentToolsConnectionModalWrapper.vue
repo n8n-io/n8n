@@ -69,10 +69,12 @@ import {
 	nodeTypeToNewMcpServer,
 } from '../composables/useMcpServerAdapter';
 import type { AgentJsonMcpServerConfig, AgentJsonToolRef, WorkflowToolRef } from '../types';
+import type { ToolPickerMode } from './AgentCapabilitiesSection.types';
 import type { WorkflowToolIncompatibilityReason } from '@n8n/api-types';
 import { toToolIconSource } from '../utils/toolIconSource';
+import { workflowToolTriggerLabel } from '../utils/workflowToolTriggers';
 
-const BASE_CATEGORIES: ToolCategoryKey[] = ['all', 'mcp', 'n8n', 'app-action', 'workflows'];
+const BASE_CATEGORIES: ToolCategoryKey[] = ['all', 'mcp', 'app-action', 'workflows'];
 /** Prefix for the synthetic ids of gateway-backed rows in the n8n Connect section. */
 const N8N_CONNECT_ID_PREFIX = 'n8n-connect:';
 const incompatibleWorkflowToolBodyNodeTypes = new Set<string>(
@@ -88,6 +90,7 @@ defineOptions({ inheritAttrs: false });
 const props = defineProps<{
 	modalName: string;
 	data: {
+		mode: ToolPickerMode;
 		tools: AgentJsonToolRef[];
 		mcpServers?: AgentJsonMcpServerConfig[];
 		projectId?: string;
@@ -130,6 +133,7 @@ const usersStore = useUsersStore();
 
 const searchQuery = ref('');
 const installingToolName = ref<string | null>(null);
+const isWorkflow = computed(() => props.data.mode === 'workflows');
 const isCreatingWorkflow = ref(false);
 const canCreateWorkflow = computed(() => {
 	if (!props.data.projectId || sourceControlStore.preferences.branchReadOnly) return false;
@@ -220,7 +224,7 @@ function openConfigModal(data: Record<string, unknown>) {
 }
 
 onMounted(() => {
-	void loadWorkflows(props.data.projectId);
+	if (isWorkflow.value) void loadWorkflows(props.data.projectId);
 	// Same catalog load the canvas uses for verified community previews.
 	void nodeTypesStore.fetchCommunityNodePreviews();
 	// Config gates which tools are eligible for the n8n Connect section; the
@@ -680,7 +684,7 @@ function availableNodeItem(nodeType: INodeTypeDescription): NodeConnectionItem {
 /**
  * Same node, presented in the n8n Connect section: credentials are managed, so
  * it carries the "Free credits" pill and adds without a Connect step. The node
- * still appears under its native tab for users who want their own credential.
+ * still appears under n8n nodes for users who want their own credential.
  */
 function n8nConnectNodeItem(nodeType: INodeTypeDescription): NodeConnectionItem {
 	return {
@@ -699,6 +703,12 @@ function availableWorkflowItem(workflow: IWorkflowDb): WorkflowConnectionItem {
 		workflowId: workflow.id,
 		title: workflow.name,
 		description: workflow.description ?? undefined,
+		// An unpublished workflow stays selectable; the warning tells the user the
+		// published agent cannot call it until they publish it.
+		warning:
+			workflow.activeVersionId === null
+				? i18n.baseText('agents.tools.workflow.notPublished')
+				: undefined,
 		status: 'none',
 		credentials: [],
 	};
@@ -726,7 +736,9 @@ function disabledWorkflowReasonText(reason: WorkflowToolIncompatibilityReason): 
 	if (reason.reason === 'incompatible_nodes') {
 		return i18n.baseText('agents.tools.workflow.disabled.incompatibleNodes');
 	}
-	return i18n.baseText('agents.tools.workflow.disabled.noSupportedTrigger');
+	return i18n.baseText('agents.tools.workflow.disabled.noSupportedTrigger', {
+		interpolate: { trigger: workflowToolTriggerLabel() },
+	});
 }
 
 /**
@@ -768,12 +780,24 @@ const n8nConnectItems = computed<NodeConnectionItem[]>(() =>
  * it — only when the gateway actually offers something to show.
  */
 const categories = computed<ToolCategoryKey[]>(() => {
-	if (n8nConnectItems.value.length === 0) return BASE_CATEGORIES;
-	const [all, ...rest] = BASE_CATEGORIES;
+	if (isWorkflow.value) return ['workflows'];
+
+	const baseCategories = BASE_CATEGORIES.filter((category) => category !== 'workflows');
+	if (n8nConnectItems.value.length === 0) return baseCategories;
+	const [all, ...rest] = baseCategories;
 	return [all, 'n8n-connect', ...rest];
 });
 
 const items = computed<ToolConnectionItem[]>(() => {
+	if (isWorkflow.value) {
+		return [
+			...availableWorkflows.value.map(availableWorkflowItem),
+			...incompatibleWorkflows.value.map(({ workflow, reason }) =>
+				disabledWorkflowItem(workflow, reason),
+			),
+		];
+	}
+
 	const out: ToolConnectionItem[] = [];
 
 	for (const item of n8nConnectItems.value) {
@@ -793,15 +817,6 @@ const items = computed<ToolConnectionItem[]>(() => {
 	for (const nodeType of communitySearchToolTypes.value) {
 		out.push(availableNodeItem(nodeType));
 	}
-	for (const workflow of availableWorkflows.value) {
-		out.push(availableWorkflowItem(workflow));
-	}
-	// Incompatible workflows appear last, greyed out and disabled, so the user
-	// can see why they're missing instead of them simply being absent.
-	for (const { workflow, reason } of incompatibleWorkflows.value) {
-		out.push(disabledWorkflowItem(workflow, reason));
-	}
-
 	return out;
 });
 
@@ -878,10 +893,14 @@ function handleRowActivate(item: ToolConnectionItem) {
 		v-model:open="isOpen"
 		:items="items"
 		:categories="categories"
+		:title="isWorkflow ? i18n.baseText('generic.workflows') : undefined"
+		:searchPlaceholder="
+			isWorkflow ? i18n.baseText('agents.tools.workflow.search.placeholder') : undefined
+		"
 		size="2xlarge"
 		:detail-item="null"
-		:allow-workflow-creation="canCreateWorkflow"
-		:workflow-creation-loading="isCreatingWorkflow"
+		:allowWorkflowCreation="isWorkflow && canCreateWorkflow"
+		:workflowCreationLoading="isCreatingWorkflow"
 		@update:search-query="searchQuery = $event"
 		@connect="handleRowActivate"
 		@open-detail="handleRowActivate"

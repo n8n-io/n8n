@@ -7,6 +7,10 @@ import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-wor
 
 import type { ITables, OperationInputData } from './interfaces';
 
+function toOptionalNumber(value: unknown) {
+	return value === undefined || value === null || value === '' ? undefined : Number(value);
+}
+
 /**
  * Returns a copy of the item which only contains the json data and
  * of that only the defined properties
@@ -97,13 +101,13 @@ export function formatColumns(columns: string) {
 export function configurePool(credentials: IDataObject) {
 	const config = {
 		server: credentials.server as string,
-		port: credentials.port as number,
+		port: toOptionalNumber(credentials.port),
 		database: credentials.database as string,
 		user: credentials.user as string,
 		password: credentials.password as string,
 		domain: credentials.domain ? (credentials.domain as string) : undefined,
-		connectionTimeout: credentials.connectTimeout as number,
-		requestTimeout: credentials.requestTimeout as number,
+		connectionTimeout: toOptionalNumber(credentials.connectTimeout),
+		requestTimeout: toOptionalNumber(credentials.requestTimeout),
 		options: {
 			encrypt: credentials.tls as boolean,
 			enableArithAbort: false,

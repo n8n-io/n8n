@@ -1,3 +1,4 @@
+import { NATIVE_NODE_PREFERENCE } from '@n8n/workflow-sdk/prompts/node-selection';
 import { jsonParse } from 'n8n-workflow';
 
 import type { SandboxWorkspace } from '../../workspace/sandbox-fs';
@@ -106,16 +107,21 @@ describe('buildKnowledgeBaseWorkspaceBundle', () => {
 			),
 		).toContain('# Workflow Builder Guardrails');
 
-		expect(
-			bundle.files.get(`${ROOT}/${SANDBOX_KNOWLEDGE_BASE_DIR}/reference/workflow-sdk-language.md`),
-		).toContain('# Workflow SDK language reference');
+		const sdkLanguageReference = bundle.files.get(
+			`${ROOT}/${SANDBOX_KNOWLEDGE_BASE_DIR}/reference/workflow-sdk-language.md`,
+		);
+		expect(sdkLanguageReference).toContain('# Workflow SDK language reference');
+		// The Code-node-to-native-node mapping table rides along in the same file.
+		expect(sdkLanguageReference).toContain('## Native node mappings');
+		expect(sdkLanguageReference).toContain(NATIVE_NODE_PREFERENCE);
 
-		// Generated from two constants: the rules, then the when-to-group guidance.
+		// Rules only: the when-to-group guidance already lives in the skill's
+		// always-loaded "## Node Groups" section, so it is not repeated here.
 		const nodeGroupsReference = bundle.files.get(
 			`${ROOT}/${SANDBOX_KNOWLEDGE_BASE_DIR}/reference/node-groups.md`,
 		);
 		expect(nodeGroupsReference).toContain('## Node groups');
-		expect(nodeGroupsReference).toContain('## Grouping');
+		expect(nodeGroupsReference).not.toContain('## Grouping');
 
 		const rootIndex = jsonParse<{
 			bestPractices: { indexFile: string; entries: Array<{ id: string }> };

@@ -1,21 +1,30 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import type { SystemTask, SystemTaskClass } from '@n8n/decorators';
+import type { SystemTask, SystemTaskClass, SystemTaskSchedule } from '@n8n/decorators';
 import {
 	OnLeaderStepdown,
 	OnLeaderTakeover,
 	OnShutdown,
+	resolveSystemTaskRunOptions,
 	SystemTaskMetadata,
+	resolveSystemTaskSchedule,
 } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { scheduleFromDefinition } from '@n8n/scheduler';
-import { ErrorReporter, InstanceSettings } from 'n8n-core';
+import { ErrorReporter, InstanceSettings, Tracing } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
 import { strict } from 'node:assert';
 
+import { EventService } from '@/events/event.service';
+import type { SystemTaskSkipReason } from '@/events/maps/system-task-metrics.event-map';
+
 import { DurableScheduler } from '../durable-scheduler';
+import { emitSystemTaskMetric } from './emit-system-task-metric';
 import { SystemTaskHandler } from './system-task-handler';
+import { SystemTaskJobRegistrar } from './system-task-job-registrar';
+import { observeSystemTaskRun } from './system-task-run-observer';
+import { SystemTaskScheduledJobOwner } from './system-task-scheduled-job-owner';
 import { SystemTaskTimer } from './system-task-timer';
 import { systemTaskType } from './system-task-type';
 
@@ -32,6 +41,7 @@ type InFlightRun = {
 
 type RoutedTask = {
 	task: SystemTask;
+	schedule: SystemTaskSchedule;
 	timer?: SystemTaskTimer;
 	inFlightRun?: InFlightRun;
 	retryTimer?: NodeJS.Timeout;
@@ -57,6 +67,14 @@ export class SystemTaskRunner {
 
 	private timersStarted = false;
 
+	/**
+	 * Bumped on every start and stop of the timers. A stop awaits the in-flight
+	 * runs, so a takeover can start the timers again before that await returns;
+	 * the generation tells the returning stop that it no longer speaks for the
+	 * timers.
+	 */
+	private timerGeneration = 0;
+
 	private isShuttingDown = false;
 
 	private inMemoryRunsController = new AbortController();
@@ -67,20 +85,25 @@ export class SystemTaskRunner {
 		logger: Logger,
 		private readonly metadata: SystemTaskMetadata,
 		private readonly durableScheduler: DurableScheduler,
+		private readonly jobRegistrar: SystemTaskJobRegistrar,
+		private readonly systemTaskOwner: SystemTaskScheduledJobOwner,
 		private readonly globalConfig: GlobalConfig,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly errorReporter: ErrorReporter,
+		private readonly eventService: EventService,
+		private readonly tracing: Tracing,
 	) {
 		this.logger = logger.scoped('system-tasks');
 	}
 
 	/**
 	 * Take ownership of the registry: route every task registered so far and
-	 * every one registered later, then start the in-memory timers if this
-	 * instance is already the leader. Later leadership changes arrive through
-	 * {@link startTimers} and {@link stopTimers}.
+	 * every one registered later, start the in-memory timers if this instance is
+	 * already the leader, provision the durable jobs and remove the stale ones.
+	 * Later leadership changes arrive through {@link startTimers} and
+	 * {@link stopTimers}.
 	 */
-	init(): void {
+	async init(): Promise<void> {
 		strict(this.instanceSettings.instanceRole !== 'unset', 'Instance role is not set');
 
 		if (!this.initialized) {
@@ -91,14 +114,27 @@ export class SystemTaskRunner {
 			if (this.instanceSettings.isLeader) {
 				this.startTimers();
 			}
+
+			for (const { task } of this.durableTasks()) {
+				await this.jobRegistrar.provision(task);
+			}
+			await this.jobRegistrar.removeStale();
 		}
 	}
 
+	/**
+	 * Start the in-memory timers of this instance. Does nothing before
+	 * {@link init}, which starts them itself when this instance already leads.
+	 * An earlier takeover has no routed task to start, and marking the timers
+	 * started would skip the real start.
+	 */
 	@OnLeaderTakeover()
 	startTimers(): void {
-		if (!this.isShuttingDown && !this.timersStarted) {
+		if (this.initialized && !this.isShuttingDown && !this.timersStarted) {
 			this.timersStarted = true;
+			this.timerGeneration++;
 			this.inMemoryRunsController = new AbortController();
+			emitSystemTaskMetric(this.eventService, 'system-task-timers-started', {});
 			const from = new Date();
 			const inMemoryTasks = this.inMemoryTasks();
 			for (const routed of inMemoryTasks) {
@@ -115,6 +151,7 @@ export class SystemTaskRunner {
 
 	@OnLeaderStepdown()
 	async stopTimers(): Promise<void> {
+		const generation = ++this.timerGeneration;
 		this.timersStarted = false;
 		this.inMemoryRunsController.abort();
 		for (const routed of this.inMemoryTasks()) {
@@ -124,12 +161,19 @@ export class SystemTaskRunner {
 		}
 		this.logger.debug('Stopped the in-memory system task timers');
 		await Promise.all(this.inFlightRuns());
+		if (generation === this.timerGeneration) {
+			emitSystemTaskMetric(this.eventService, 'system-task-timers-stopped', {});
+		}
 	}
 
 	private inMemoryTasks(): Array<RoutedTask & { timer: SystemTaskTimer }> {
 		return [...this.routedTasksByName.values()].filter(
 			(routed): routed is RoutedTask & { timer: SystemTaskTimer } => routed.timer !== undefined,
 		);
+	}
+
+	private durableTasks(): RoutedTask[] {
+		return [...this.routedTasksByName.values()].filter((routed) => this.runsDurably(routed.task));
 	}
 
 	private inFlightRuns(): Array<Promise<void>> {
@@ -161,6 +205,9 @@ export class SystemTaskRunner {
 	 * @throws {UnexpectedError} When a task declares a `retryDelaySeconds` that is
 	 * not an integer between 1 and {@link MAX_RETRY_DELAY_SECONDS}. A timeout would
 	 * silently turn such a delay into an immediate retry.
+	 *
+	 * @throws {UnexpectedError} When a task declares a `maxAttempts` or
+	 * `misfireGraceSeconds` the scheduler cannot store.
 	 */
 	private route(taskClass: SystemTaskClass): void {
 		const task = Container.get(taskClass);
@@ -183,25 +230,43 @@ export class SystemTaskRunner {
 			});
 		}
 
-		const routed: RoutedTask = { task };
+		resolveSystemTaskRunOptions(task);
+
+		const routed: RoutedTask = { task, schedule: resolveSystemTaskSchedule(task) };
 		this.routedTasksByName.set(task.name, routed);
+		const intervalSeconds =
+			routed.schedule.kind === 'interval' ? routed.schedule.intervalSeconds : undefined;
 
 		if (this.runsDurably(task)) {
+			this.systemTaskOwner.declareDurable(task.name);
 			this.durableScheduler.registerTaskHandler(
 				systemTaskType(task.name),
-				new SystemTaskHandler(task, this.shutdownController.signal, this.logger, (error) =>
-					this.reportFailure('A durable system task run failed', task, error),
+				new SystemTaskHandler(
+					task,
+					this.shutdownController.signal,
+					this.logger,
+					this.eventService,
+					this.tracing,
+					(error) => this.reportFailure('A durable system task run failed', task, error),
 				),
 			);
-			// Warn rather than debug while nothing provisions the occurrences: an
-			// operator who turns the flag on otherwise sees the task simply stop.
-			this.logger.warn(
-				'System task handed to the durable scheduler, which does not provision its occurrences yet, so it will not run',
-				{ name: task.name },
-			);
+			this.logger.debug('System task will run on the durable scheduler', { name: task.name });
+			emitSystemTaskMetric(this.eventService, 'system-task-routed', {
+				name: task.name,
+				mode: 'durable',
+				intervalSeconds,
+			});
 		} else {
 			routed.timer = this.createTimer(routed);
-			this.logger.debug('System task will run on an in-memory timer', { name: task.name });
+			this.logger.debug('System task will run on an in-memory timer', {
+				name: task.name,
+				schedule: routed.schedule,
+			});
+			emitSystemTaskMetric(this.eventService, 'system-task-routed', {
+				name: task.name,
+				mode: 'in_memory',
+				intervalSeconds,
+			});
 
 			if (this.timersStarted) {
 				routed.timer.start(new Date());
@@ -222,19 +287,34 @@ export class SystemTaskRunner {
 
 	private createTimer(routed: RoutedTask): SystemTaskTimer {
 		const { task } = routed;
-		const schedule = scheduleFromDefinition(task.schedule, this.globalConfig.generic.timezone);
+		const schedule = scheduleFromDefinition(routed.schedule, this.globalConfig.generic.timezone);
 
 		return new SystemTaskTimer(
 			schedule,
-			() => {
+			(lagMs, coalesced) => {
+				emitSystemTaskMetric(this.eventService, 'system-task-fired', { name: task.name, lagMs });
+				if (coalesced > 0) {
+					this.emitSkipped(task, 'coalesced', coalesced);
+				}
 				void this.run(routed);
 			},
-			(error) =>
+			(error) => {
 				this.reportFailure(
 					'Could not plan a system task schedule, so the task will not run',
 					task,
 					error,
-				),
+				);
+				emitSystemTaskMetric(this.eventService, 'system-task-scheduling-failed', {
+					name: task.name,
+					mode: 'in_memory',
+				});
+			},
+			(fireAt) => {
+				emitSystemTaskMetric(this.eventService, 'system-task-next-run-planned', {
+					name: task.name,
+					nextRunAtMs: fireAt.getTime(),
+				});
+			},
 		);
 	}
 
@@ -253,6 +333,7 @@ export class SystemTaskRunner {
 					name: task.name,
 				});
 			}
+			this.emitSkipped(task, 'overlap');
 		} else {
 			// A newer occurrence runs the same work, so it supersedes a pending retry.
 			clearTimeout(routed.retryTimer);
@@ -273,16 +354,30 @@ export class SystemTaskRunner {
 	}
 
 	private async runOnce(routed: RoutedTask): Promise<void> {
+		const { task } = routed;
+		if (task.durable && (await this.jobRegistrar.isProvisioned(task.name))) {
+			this.logger.debug('Skipped an in-memory system task run, its durable job is provisioned', {
+				name: task.name,
+			});
+			this.emitSkipped(task, 'provisioned_elsewhere');
+			return;
+		}
+
 		const { signal } = this.inMemoryRunsController;
-		try {
-			await routed.task.run(signal);
-		} catch (error) {
-			// A rejection after the run's signal aborted is the task honoring the
-			// abort, not a failure.
-			if (!signal.aborted) {
-				this.reportFailure('A system task run failed', routed.task, error);
-				this.scheduleRetry(routed);
-			}
+		if (signal.aborted) {
+			this.emitSkipped(task, 'aborted');
+			return;
+		}
+		const outcome = await observeSystemTaskRun(
+			this.eventService,
+			this.tracing,
+			task,
+			'in_memory',
+			signal,
+		);
+		if (outcome.result === 'failure') {
+			this.reportFailure('A system task run failed', task, outcome.error);
+			this.scheduleRetry(routed);
 		}
 	}
 
@@ -297,9 +392,24 @@ export class SystemTaskRunner {
 			void this.run(routed);
 		}, retryDelaySeconds * Time.seconds.toMilliseconds);
 		routed.retryTimer.unref();
+		emitSystemTaskMetric(this.eventService, 'system-task-retry-scheduled', {
+			name: routed.task.name,
+		});
 	}
 
-	private reportFailure(message: string, task: SystemTask, error: unknown): void {
+	private emitSkipped(
+		task: Pick<SystemTask, 'name'>,
+		reason: SystemTaskSkipReason,
+		count?: number,
+	): void {
+		emitSystemTaskMetric(this.eventService, 'system-task-run-skipped', {
+			name: task.name,
+			reason,
+			...(count === undefined ? {} : { count }),
+		});
+	}
+
+	private reportFailure(message: string, task: Pick<SystemTask, 'name'>, error: unknown): void {
 		this.logger.error(message, { name: task.name, error });
 		this.errorReporter.error(error, {
 			extra: { systemTask: task.name },

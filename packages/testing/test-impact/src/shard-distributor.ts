@@ -1,7 +1,7 @@
 /**
  * Algorithm:
  * 1. Enrich specs with duration from metrics
- * 2. Group by capability (specs sharing a capability stay together)
+ * 2. Group specs that share the same fixture pools
  * 3. Split large groups exceeding maxGroupDuration
  * 4. Limit the bucket count to keep each shard near targetShardDuration
  * 5. Greedy bin-packing: assign heaviest items to lightest shard
@@ -14,6 +14,8 @@ export interface ShardAssignment {
 	specs: string[];
 	testTime: number;
 	capabilities: string[];
+	services: string[];
+	fixturePools: string[];
 	fixtureCount: number;
 }
 
@@ -29,14 +31,12 @@ interface DistributeConfig {
 	minShardSpecs?: number;
 }
 
-interface SpecWithDuration {
-	path: string;
-	capabilities: string[];
-	duration: number;
-}
+type SpecWithDuration = DiscoveredSpec & { duration: number };
 
 interface PackingItem {
-	capability: string | null;
+	fixtures: string[];
+	capabilities: string[];
+	services: string[];
 	specs: string[];
 	duration: number;
 }
@@ -45,6 +45,8 @@ interface Bucket {
 	specs: string[];
 	testTime: number;
 	capabilities: Set<string>;
+	services: Set<string>;
+	fixtures: Set<string>;
 	hasStandardSpecs: boolean;
 }
 
@@ -59,7 +61,7 @@ function enrichWithDuration(
 	}));
 }
 
-function groupByCapability(specs: SpecWithDuration[]): {
+function groupSpecs(specs: SpecWithDuration[]): {
 	groups: Map<string, SpecWithDuration[]>;
 	standard: SpecWithDuration[];
 } {
@@ -67,12 +69,14 @@ function groupByCapability(specs: SpecWithDuration[]): {
 	const standard: SpecWithDuration[] = [];
 
 	for (const spec of specs) {
-		if (spec.capabilities.length > 0) {
-			const cap = spec.capabilities[0];
-			if (!groups.has(cap)) {
-				groups.set(cap, []);
+		const group = spec.fixturePools?.length
+			? JSON.stringify([...spec.fixturePools].sort())
+			: undefined;
+		if (group) {
+			if (!groups.has(group)) {
+				groups.set(group, []);
 			}
-			groups.get(cap)?.push(spec);
+			groups.get(group)?.push(spec);
 		} else {
 			standard.push(spec);
 		}
@@ -87,9 +91,10 @@ function splitLargeGroups(
 ): PackingItem[] {
 	const items: PackingItem[] = [];
 
-	for (const [capability, specs] of groups.entries()) {
+	for (const specs of groups.values()) {
 		specs.sort((a, b) => b.duration - a.duration);
 		const totalDuration = specs.reduce((sum, s) => sum + s.duration, 0);
+		const fixtures = [...new Set(specs.flatMap((spec) => spec.fixturePools ?? []))].sort();
 
 		if (totalDuration > maxGroupDuration && specs.length > 1) {
 			const numSubGroups = Math.ceil(totalDuration / maxGroupDuration);
@@ -110,14 +115,18 @@ function splitLargeGroups(
 
 			for (const subGroup of subGroups) {
 				items.push({
-					capability,
+					fixtures,
+					capabilities: [...new Set(subGroup.flatMap((spec) => spec.capabilities))].sort(),
+					services: [...new Set(subGroup.flatMap((spec) => spec.services))].sort(),
 					specs: subGroup.map((s) => s.path),
 					duration: subGroup.reduce((sum, s) => sum + s.duration, 0),
 				});
 			}
 		} else {
 			items.push({
-				capability,
+				fixtures,
+				capabilities: [...new Set(specs.flatMap((spec) => spec.capabilities))].sort(),
+				services: [...new Set(specs.flatMap((spec) => spec.services))].sort(),
 				specs: specs.map((s) => s.path),
 				duration: totalDuration,
 			});
@@ -128,21 +137,16 @@ function splitLargeGroups(
 }
 
 /**
- * Each shard pays the same fixed setup cost, so a small selection on many shards
- * spends more time in setup than in tests. The limit applies before bin-packing,
- * so the packer still balances the shards it gets.
- *
- * The count never drops below the number of capability packing items. A group
- * split by maxGroupDuration needs one shard per piece, so counting distinct
- * capabilities instead would leave the packer too few shards and merge the
- * remaining capabilities' fixtures onto one runner. One runner that starts every
- * image set pays back in container startup what it saved in setup.
+ * Small selections spend more time in shard setup than in tests.
+ * Limit the shard count before bin-packing.
+ * Keep one shard for each grouped item.
+ * This prevents one runner from starting multiple fixture groups.
  */
 function boundShardCount(
 	numShards: number,
 	totalTestTime: number,
 	specCount: number,
-	capabilityItemCount: number,
+	groupedItemCount: number,
 	config: DistributeConfig,
 ): number {
 	const limits = [numShards];
@@ -152,7 +156,7 @@ function boundShardCount(
 	if (config.minShardSpecs && config.minShardSpecs > 1) {
 		limits.push(Math.floor(specCount / config.minShardSpecs));
 	}
-	return Math.min(numShards, Math.max(1, capabilityItemCount, Math.min(...limits)));
+	return Math.min(numShards, Math.max(1, groupedItemCount, Math.min(...limits)));
 }
 
 function assignToShards(items: PackingItem[], numShards: number): Bucket[] {
@@ -162,6 +166,8 @@ function assignToShards(items: PackingItem[], numShards: number): Bucket[] {
 		specs: [],
 		testTime: 0,
 		capabilities: new Set<string>(),
+		services: new Set<string>(),
+		fixtures: new Set<string>(),
 		hasStandardSpecs: false,
 	}));
 
@@ -171,8 +177,10 @@ function assignToShards(items: PackingItem[], numShards: number): Bucket[] {
 		lightest.specs.push(...item.specs);
 		lightest.testTime += item.duration;
 
-		if (item.capability) {
-			lightest.capabilities.add(item.capability);
+		for (const capability of item.capabilities) lightest.capabilities.add(capability);
+		for (const service of item.services) lightest.services.add(service);
+		if (item.fixtures.length > 0) {
+			for (const fixture of item.fixtures) lightest.fixtures.add(fixture);
 		} else {
 			lightest.hasStandardSpecs = true;
 		}
@@ -188,11 +196,13 @@ export function distributeShards(
 	config: DistributeConfig,
 ): ShardDistribution {
 	const enriched = enrichWithDuration(specs, metrics, config.defaultDuration);
-	const { groups, standard } = groupByCapability(enriched);
+	const { groups, standard } = groupSpecs(enriched);
 
-	const capabilityItems = splitLargeGroups(groups, config.maxGroupDuration);
+	const groupedItems = splitLargeGroups(groups, config.maxGroupDuration);
 	const standardItems: PackingItem[] = standard.map((spec) => ({
-		capability: null,
+		fixtures: spec.fixturePools ?? [],
+		capabilities: spec.capabilities,
+		services: spec.services,
 		specs: [spec.path],
 		duration: spec.duration,
 	}));
@@ -202,10 +212,10 @@ export function distributeShards(
 		numShards,
 		totalTestTime,
 		enriched.length,
-		capabilityItems.length,
+		groupedItems.length,
 		config,
 	);
-	const buckets = assignToShards([...capabilityItems, ...standardItems], targetShards);
+	const buckets = assignToShards([...groupedItems, ...standardItems], targetShards);
 
 	return {
 		shards: buckets
@@ -215,7 +225,9 @@ export function distributeShards(
 				specs: b.specs,
 				testTime: b.testTime,
 				capabilities: [...b.capabilities].sort(),
-				fixtureCount: b.capabilities.size + (b.hasStandardSpecs ? 1 : 0),
+				services: [...b.services].sort(),
+				fixturePools: [...b.fixtures].sort(),
+				fixtureCount: b.fixtures.size + (b.hasStandardSpecs ? 1 : 0),
 			})),
 		totalTestTime,
 	};

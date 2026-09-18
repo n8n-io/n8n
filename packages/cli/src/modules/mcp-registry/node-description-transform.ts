@@ -16,9 +16,11 @@ import {
 } from './mcp-registry-connection';
 import {
 	mcpRegistryExtendsCredentialSchema,
+	mcpRegistryUsesCredentialsSchema,
 	type McpRegistryExtendsCredential,
 	type McpRegistryIcon,
 	type McpRegistryServer,
+	type McpRegistryUsesCredential,
 } from './registry/mcp-registry.types';
 
 export {
@@ -27,7 +29,10 @@ export {
 	MCP_REGISTRY_BASE_NODE_NAME,
 	MCP_REGISTRY_PACKAGE_NAME,
 } from './mcp-registry-connection';
-export { getMcpRegistryCredentialTypeName } from './mcp-registry-connection';
+export {
+	getMcpRegistryCredentialOptions,
+	getMcpRegistryCredentialTypeName,
+} from './mcp-registry-connection';
 
 /**
  * Predicate that tells whether a credential type name is registered in the runtime.
@@ -118,7 +123,7 @@ function getValidatedExtendsCredential(
 	server: McpRegistryServer,
 	isKnownCredentialType: IsKnownCredentialType,
 ) {
-	if (!server.extendsCredential) return null;
+	if (server.authType !== 'extendsCredential') return null;
 
 	const parseResult = mcpRegistryExtendsCredentialSchema.safeParse(server.extendsCredential);
 	if (!parseResult.success) return null;
@@ -134,6 +139,20 @@ function getValidatedExtendsCredential(
 	>;
 
 	return { parentType, overrides };
+}
+
+function getValidatedUsesCredentials(
+	server: McpRegistryServer,
+	isKnownCredentialType: IsKnownCredentialType,
+): McpRegistryUsesCredential[] | null {
+	if (server.authType !== 'usesCredentials') return null;
+
+	const parseResult = mcpRegistryUsesCredentialsSchema.safeParse(server.usesCredentials);
+	if (!parseResult.success) return null;
+	const supportedCredentials = parseResult.data.filter(({ credentialType }) =>
+		isKnownCredentialType(credentialType),
+	);
+	return supportedCredentials.length > 0 ? supportedCredentials : null;
 }
 
 /**
@@ -152,6 +171,12 @@ function serverToExtendedCredentialDescription(
 
 	const remote = resolveMcpRegistryConnection(server);
 	if (!remote) return null;
+
+	// A row that fixes `scope` makes the parent's "Custom Scopes" toggle dead
+	// weight, so hide it unless the row sets `customScopes` itself.
+	if (validated.overrides.scope !== undefined && validated.overrides.customScopes === undefined) {
+		validated.overrides.customScopes = false;
+	}
 
 	const overrideProperties: INodeProperties[] = Object.entries(validated.overrides).map(
 		([name, value]) => ({
@@ -200,11 +225,39 @@ function getNodeDescriptionCredentials(
 			if (!validated) return [];
 			return [{ name: getMcpRegistryCredentialTypeName(server), required: true }];
 		}
+		case 'usesCredentials': {
+			const credentials = getValidatedUsesCredentials(server, isKnownCredentialType);
+			if (!credentials) return [];
+			if (credentials.length === 1) {
+				return [{ name: credentials[0].credentialType, required: true }];
+			}
+			return credentials.map(({ credentialType, value }) => ({
+				name: credentialType,
+				required: true,
+				displayOptions: { show: { authentication: [value] } },
+			}));
+		}
 		default:
 			return [];
 	}
 }
 
+function getAuthenticationProperty(
+	server: McpRegistryServer,
+	isKnownCredentialType: IsKnownCredentialType,
+): INodeProperties | null {
+	const credentials = getValidatedUsesCredentials(server, isKnownCredentialType);
+	if (!credentials || credentials.length < 2) return null;
+
+	return {
+		displayName: 'Authentication',
+		name: 'authentication',
+		type: 'options',
+		noDataExpression: true,
+		options: credentials.map(({ name, value }) => ({ name, value })),
+		default: credentials[0].value,
+	};
+}
 const ICON_MIME_PREFERENCE: Array<McpRegistryIcon['mimeType']> = [
 	'image/svg+xml',
 	'image/webp',
@@ -236,20 +289,15 @@ function pickIconUrl(icons: McpRegistryIcon[]): Themed<string> | undefined {
 	return preferredIcon(icons)?.src;
 }
 
-/**
- * Patches the `endpointUrl` and `serverTransport` defaults on a cloned property
- * list with the entry's resolved remote, leaving the rest of the runtime's UI
- * surface untouched.
- */
 function withRemoteDefaults(
 	properties: INodeProperties[],
 	transport: 'httpStreamable' | 'sse',
 	endpointUrl: string,
 ): INodeProperties[] {
-	return properties.map((prop) => {
-		if (prop.name === 'endpointUrl') return { ...prop, default: endpointUrl };
-		if (prop.name === 'serverTransport') return { ...prop, default: transport };
-		return prop;
+	return properties.map((property) => {
+		if (property.name === 'endpointUrl') return { ...property, default: endpointUrl };
+		if (property.name === 'serverTransport') return { ...property, default: transport };
+		return property;
 	});
 }
 
@@ -265,6 +313,8 @@ export function serverToCredentialDescription(
 			return serverToOAuth2CredentialDescription(server);
 		case 'extendsCredential':
 			return serverToExtendedCredentialDescription(server, isKnownCredentialType);
+		case 'usesCredentials':
+			return null;
 		default:
 			return null;
 	}
@@ -278,10 +328,18 @@ export function serverToNodeDescription(
 	baseDescription: INodeTypeDescription,
 	isKnownCredentialType: IsKnownCredentialType,
 ): INodeTypeDescription | null {
-	if (server.authType !== 'oauth2' && server.authType !== 'extendsCredential') return null;
+	if (
+		server.authType !== 'oauth2' &&
+		server.authType !== 'extendsCredential' &&
+		server.authType !== 'usesCredentials'
+	) {
+		return null;
+	}
 
 	const connection = resolveMcpRegistryConnection(server);
 	if (!connection) return null;
+	const credentials = getNodeDescriptionCredentials(server, isKnownCredentialType);
+	if (credentials.length === 0) return null;
 
 	const displayName = `${server.title} MCP`;
 	const description = structuredClone(baseDescription);
@@ -296,7 +354,7 @@ export function serverToNodeDescription(
 	description.iconUrl = pickIconUrl(server.icons);
 	description.description = server.tagline;
 	description.defaults = { name: displayName };
-	description.credentials = getNodeDescriptionCredentials(server, isKnownCredentialType);
+	description.credentials = credentials;
 	if (description.codex) {
 		description.codex.alias?.push(server.title, displayName);
 		if (server.websiteUrl) {
@@ -308,6 +366,10 @@ export function serverToNodeDescription(
 		connection.transport,
 		getConfiguredEndpointUrl(connection),
 	);
+	const authenticationProperty = getAuthenticationProperty(server, isKnownCredentialType);
+	if (authenticationProperty) {
+		description.properties = [authenticationProperty, ...description.properties];
+	}
 	description.builderHint = {
 		...description.builderHint,
 		searchHint: `Agent-optimised ${server.title} integration. When wiring an ai_tool to an AI Agent for ${server.title}, use THIS node, not the native action node — this variant exposes ${server.title}'s tools in the shape AI Agents expect and ships pre-configured connection details.`,

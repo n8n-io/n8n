@@ -12,6 +12,7 @@ import type {
 	SubAgentSpawnRequest,
 } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
+import type { AiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Mocked } from 'vitest';
@@ -30,6 +31,8 @@ import type {
 	ResolvedSubAgentRuntimeSource,
 	SubAgentSourceResolver,
 } from '../sub-agent-source-resolver';
+
+const aiConfigMock = mock<AiConfig>();
 
 const projectId = 'project-1';
 const parentThreadId = 'parent-thread-1';
@@ -131,7 +134,13 @@ describe('SubAgentRunner', () => {
 		agentExecutionService.finalizeExecution.mockResolvedValue('agent-execution-1');
 		checkpointStorage = mock<N8NCheckpointStorage>();
 		logger = mock<Logger>();
-		runner = new SubAgentRunner(sourceResolver, agentExecutionService, checkpointStorage, logger);
+		runner = new SubAgentRunner(
+			sourceResolver,
+			agentExecutionService,
+			checkpointStorage,
+			logger,
+			aiConfigMock,
+		);
 
 		childAgent = mock<BuiltAgent>();
 		childAgent.stream.mockResolvedValue(makeStreamResult(defaultStreamChunks));
@@ -139,6 +148,7 @@ describe('SubAgentRunner', () => {
 		reconstructionService.reconstructFromResolvedSource.mockResolvedValue({
 			agent: childAgent as never,
 			toolRegistry: new Map(),
+			mcpServerAttributions: new Map(),
 		});
 
 		credentialProvider = mock<CredentialProvider>();
@@ -229,6 +239,45 @@ describe('SubAgentRunner', () => {
 		const startedAt = agentExecutionService.startExecutionRecording.mock.calls[0][1];
 		const finalizedRecord = agentExecutionService.finalizeExecution.mock.calls[0][1].record;
 		expect(startedAt.getTime()).toBe(finalizedRecord.startTime);
+	});
+
+	it('appends the MCP registry attribution to the child answer and forwards it to the parent', async () => {
+		reconstructionService.reconstructFromResolvedSource.mockResolvedValue({
+			agent: childAgent as never,
+			toolRegistry: new Map(),
+			mcpServerAttributions: new Map([['Databricks Genie', 'Powered by Genie']]),
+		});
+		childAgent.stream.mockResolvedValue(
+			makeStreamResult([
+				{
+					type: 'tool-result',
+					toolCallId: 'tc-1',
+					toolName: 'Databricks_Genie_ask',
+					output: 'rows',
+					mcpServerName: 'Databricks Genie',
+				},
+				...defaultStreamChunks,
+			]),
+		);
+		const onChunk = vi.fn();
+
+		const result = await runner.run(spawnRequest, {
+			projectId,
+			credentialProvider,
+			runType: 'production',
+			onChunk,
+		});
+
+		expect(result.result.messages).toEqual([
+			expect.objectContaining({
+				content: [{ type: 'text', text: 'Child answer\n\nPowered by Genie' }],
+			}),
+		]);
+		expect(onChunk).toHaveBeenCalledWith(
+			expect.objectContaining({ type: 'text-delta', delta: '\n\nPowered by Genie' }),
+		);
+		const finalizedRecord = agentExecutionService.finalizeExecution.mock.calls[0][1].record;
+		expect(finalizedRecord.assistantResponse).toBe('Child answer\n\nPowered by Genie');
 	});
 
 	it('runs the child on a caller-supplied childThreadId instead of minting one', async () => {

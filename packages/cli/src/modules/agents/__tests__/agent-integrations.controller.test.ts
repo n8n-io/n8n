@@ -91,6 +91,7 @@ describe('AgentIntegrationsController integration management', () => {
 				params: { projectId: agent.projectId },
 				user,
 				body: integration,
+				headers: { 'push-ref': 'sender-1' },
 			} as never,
 			undefined as never,
 			agent.id,
@@ -98,11 +99,9 @@ describe('AgentIntegrationsController integration management', () => {
 		);
 
 		expect(managementService.validateConfig).toHaveBeenCalledWith(integration);
-		expect(managementService.connect).toHaveBeenCalledWith({
-			agent,
-			user,
-			integration,
-		});
+		expect(managementService.connect).toHaveBeenCalledWith(
+			expect.objectContaining({ agent, user, integration, pushRef: 'sender-1' }),
+		);
 		expect(result).toEqual({ status: 'connected' });
 	});
 
@@ -126,12 +125,14 @@ describe('AgentIntegrationsController integration management', () => {
 			{ ...integration, replaces: { credentialId: 'credential-0' } } as never,
 		);
 
-		expect(managementService.connect).toHaveBeenCalledWith({
-			agent,
-			user,
-			integration: { ...integration, replaces: { credentialId: 'credential-0' } },
-			replaces: { type: 'slack', credentialId: 'credential-0' },
-		});
+		expect(managementService.connect).toHaveBeenCalledWith(
+			expect.objectContaining({
+				agent,
+				user,
+				integration: { ...integration, replaces: { credentialId: 'credential-0' } },
+				replaces: { type: 'slack', credentialId: 'credential-0' },
+			}),
+		);
 	});
 
 	it('passes platform settings through the envelope untouched', async () => {
@@ -155,7 +156,9 @@ describe('AgentIntegrationsController integration management', () => {
 			integration as never,
 		);
 
-		expect(managementService.connect).toHaveBeenCalledWith({ agent, user, integration });
+		expect(managementService.connect).toHaveBeenCalledWith(
+			expect.objectContaining({ agent, user, integration }),
+		);
 	});
 
 	it('reports configured when the saved agent is unpublished', async () => {
@@ -193,6 +196,7 @@ describe('AgentIntegrationsController integration management', () => {
 		const result = await controller.disconnectIntegration(
 			{
 				params: { projectId: agent.projectId },
+				headers: { 'push-ref': 'sender-1' },
 				user,
 			} as never,
 			undefined as never,
@@ -200,12 +204,15 @@ describe('AgentIntegrationsController integration management', () => {
 			{ type: 'slack', credentialId: 'credential-1' },
 		);
 
-		expect(managementService.disconnect).toHaveBeenCalledWith({
-			agent,
-			user,
-			type: 'slack',
-			credentialId: 'credential-1',
-		});
+		expect(managementService.disconnect).toHaveBeenCalledWith(
+			expect.objectContaining({
+				agent,
+				user,
+				type: 'slack',
+				credentialId: 'credential-1',
+				pushRef: 'sender-1',
+			}),
+		);
 		expect(result).toEqual({ status: 'disconnected' });
 	});
 

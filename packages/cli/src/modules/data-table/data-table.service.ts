@@ -803,8 +803,26 @@ export class DataTableService {
 			true,
 		);
 
+		const columnTypeMap = new Map<string, DataTableColumnType>([
+			...Object.entries(DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP),
+			...columns.map((c) => [c.name, c.type] as const),
+		]);
+
 		const transformedFilters = filterObject.filters.map((filter, index) => {
 			const transformedValue = transformedRows[index][filter.columnName];
+
+			// Empty/not-empty use an empty-string comparison that only makes sense for string
+			// columns. On any other type "empty" can only mean NULL, so map to eq/neq null
+			// (mirrors the DataTable node). This keeps the API path consistent and avoids an
+			// invalid `col = ''` comparison the DB would reject.
+			if (columnTypeMap.get(filter.columnName) !== 'string') {
+				if (filter.condition === 'isEmpty') {
+					return { ...filter, condition: 'eq' as const, value: null };
+				}
+				if (filter.condition === 'isNotEmpty') {
+					return { ...filter, condition: 'neq' as const, value: null };
+				}
+			}
 
 			if (['like', 'ilike'].includes(filter.condition)) {
 				if (transformedValue === null || transformedValue === undefined) {
@@ -875,6 +893,20 @@ export class DataTableService {
 			quotaStatus: this.dataTableSizeValidator.sizeToState(allSizeData.totalBytes),
 			dataTables,
 		};
+	}
+
+	/**
+	 * Sizes in bytes from the shared size cache, so callers add no query load.
+	 * Does no project filtering, so callers must have authorised these ids.
+	 */
+	async getCachedSizeBytesByIds(dataTableIds: string[]): Promise<Map<string, number>> {
+		if (dataTableIds.length === 0) return new Map();
+
+		const sizeData = await this.dataTableSizeValidator.getCachedSizeData(
+			async () => await this.dataTableRepository.findDataTablesSize(),
+		);
+
+		return new Map(dataTableIds.map((id) => [id, sizeData.dataTables[id]?.sizeBytes ?? 0]));
 	}
 
 	async findDataTablesByIdsForUser(

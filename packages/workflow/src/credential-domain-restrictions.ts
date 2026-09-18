@@ -142,7 +142,7 @@ function toDisplayHost(url: string): string {
 }
 
 /** Hostname of an absolute URL, normalised for matching. `undefined` when there is none. */
-function toHostname(url: string | undefined): string | undefined {
+export function toHostname(url: string | undefined): string | undefined {
 	if (!url) return undefined;
 	try {
 		return new URL(url).hostname.toLowerCase().replace(/\.$/, '') || undefined;
@@ -270,4 +270,35 @@ export function assertCredentialAllowsUrl(options: {
 	}
 
 	return undefined;
+}
+
+/**
+ * Allowlist for a request the credential itself issues — its own token exchange, against a
+ * host the credential declares. `undefined` means unrestricted.
+ *
+ * This is a credential-owned surface in the sense `getCredentialAllowedDomains` means it,
+ * so `'none'` is a no-op here for the same reason it is there: the editor writes `'none'`
+ * by default when it creates OAuth and quick-connect credentials, and blocking on it would
+ * stop those credentials obtaining a token at all. Only an explicit `'domains'` list
+ * applies. Unlike that function it takes no `INode`, because `runPreAuthentication` has
+ * none to give.
+ *
+ * The list is never widened by the host being requested: unlike a node endpoint declared
+ * in a node definition, a hook's target is read from a credential field the user typed.
+ *
+ * @throws {UserError} if `'domains'` is set with an empty list.
+ */
+export function getCredentialOwnRequestAllowedDomains(
+	credentialData: ICredentialDataDecryptedObject,
+): string | undefined {
+	if (readMode(credentialData) !== 'domains') return undefined;
+
+	const allowedDomains = readAllowedDomainsField(credentialData);
+	if (!allowedDomains) {
+		throw new UserError(
+			'No allowed domains specified. Configure allowed domains or change restriction setting.',
+		);
+	}
+
+	return allowedDomains;
 }

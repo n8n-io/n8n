@@ -58,6 +58,7 @@ import { DirectedGraph } from '../partial-execution-utils';
 import * as partialExecutionUtils from '../partial-execution-utils';
 import { createNodeData, toITaskData } from '../partial-execution-utils/__tests__/helpers';
 import { WorkflowExecute } from '../workflow-execute';
+import { modifyNode, nodeTypeArguments, passThroughNode, types } from './mock-node-types';
 
 vi.mock('node:fs', async (importActual) => ({
 	...(await importActual()),
@@ -617,6 +618,77 @@ describe('WorkflowExecute', () => {
 			expect(runNodeFilter).toContain(trigger.name);
 			expect(runNodeFilter).toContain(agent.name);
 			expect(runNodeFilter).toContain(tool.name);
+		});
+
+		test('runs the tool nodes of an agent upstream of the destination node', async () => {
+			const agentNodeType = modifyNode(passThroughNode)
+				.return({
+					actions: [
+						{
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'tool',
+							input: { query: 'test input' },
+							type: 'ai_tool',
+							id: 'action_1',
+							metadata: {},
+						},
+					],
+					metadata: {},
+				})
+				.return((response) => [
+					[
+						{
+							json: {
+								toolResult:
+									response?.actionResponses[0]?.data.data?.ai_tool?.[0]?.[0]?.json ?? null,
+							},
+						},
+					],
+				])
+				.done();
+
+			const trigger = createNodeData({ name: 'trigger', type: types.passThrough });
+			const agent = createNodeData({ name: 'agent', type: 'agent' });
+			const merge = createNodeData({ name: 'merge', type: types.passThrough });
+			const tool = createNodeData({ name: 'tool', type: types.passThrough });
+			const customNodeTypes = Helpers.NodeTypes({
+				...nodeTypeArguments,
+				agent: { type: agentNodeType, sourcePath: '' },
+			});
+
+			const workflow = new DirectedGraph()
+				.addNodes(trigger, agent, merge, tool)
+				.addConnections(
+					{ from: trigger, to: agent, type: NodeConnectionTypes.Main },
+					{ from: agent, to: merge, type: NodeConnectionTypes.Main },
+					{ from: tool, to: agent, type: NodeConnectionTypes.AiTool },
+				)
+				.toWorkflow({
+					name: '',
+					active: false,
+					nodeTypes: customNodeTypes,
+					settings: { executionOrder },
+				});
+
+			const workflowExecute = new WorkflowExecute(
+				Helpers.WorkflowExecuteAdditionalData(createDeferredPromise<IRun>()),
+				executionMode,
+			);
+
+			const result = await workflowExecute.run({
+				workflow,
+				startNode: trigger,
+				destinationNode: { nodeName: merge.name, mode: 'inclusive' },
+			});
+
+			const runData = result.data.resultData.runData;
+			expect(runData[tool.name][0].executionStatus).toBe('success');
+
+			const agentRuns = runData[agent.name];
+			expect(agentRuns[agentRuns.length - 1].data?.main?.[0]?.[0]?.json.toolResult).toMatchObject({
+				query: 'test input',
+				toolCallId: 'action_1',
+			});
 		});
 	});
 

@@ -1,11 +1,9 @@
 import type { HttpRequestClient } from '@n8n/backend-network';
-import { OutboundHttp } from '@n8n/backend-network';
-import { EngineConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type { LifecycleEvent } from '@n8n/engine';
-import { mintActionToken } from '@n8n/engine';
 import { OperationalError } from 'n8n-workflow';
 
+import { EngineControlPlaneTransport } from './engine-control-plane-transport';
 import { STATUS_CALLBACK_PATH } from './engine-v2.constants';
 
 /**
@@ -16,21 +14,8 @@ import { STATUS_CALLBACK_PATH } from './engine-v2.constants';
 export class EngineControlPlaneClient {
 	private readonly http: HttpRequestClient;
 
-	constructor(
-		private readonly engineConfig: EngineConfig,
-		outboundHttp: OutboundHttp,
-	) {
-		this.http = outboundHttp.requests({
-			// Fixed, n8n-controlled host.
-			useDefaultSsrfPolicy: 'unsafe',
-			// A bind address is not dialable, so default to loopback.
-			baseURL:
-				engineConfig.controlPlaneBaseUrl || `http://127.0.0.1:${engineConfig.controlPlanePort}`,
-			// A factory: each request needs a fresh token, and the secret is set later.
-			headers: () => ({
-				authorization: `Bearer ${mintActionToken(this.engineConfig.authSecret, 'lifecycle-events:write')}`,
-			}),
-		});
+	constructor(transport: EngineControlPlaneTransport) {
+		this.http = transport.forScope('lifecycle-events:write');
 	}
 
 	/** Throws on a refused batch; the engine decides what a failed delivery costs. */
