@@ -2,6 +2,7 @@ import { proxyFetch, type ProxyFetchOptions } from '@n8n/ai-utilities';
 import { listOpenAiModels } from '@n8n/ai-utilities/model-discovery';
 import { AiConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
+import { isRecord } from '@n8n/utils/is-record';
 import type {
 	ICredentialDataDecryptedObject,
 	ILoadOptionsFunctions,
@@ -19,10 +20,6 @@ import { N8N_ORIGINATOR } from '../OpenAiAccountChatModel';
 const OPENAI_ACCOUNT_MODELS_URL =
 	'https://chatgpt.com/backend-api/codex/models?client_version=1.0.0';
 const JWT_ACCOUNT_CLAIM = 'https://api.openai.com/auth';
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 function hasModelSlug(model: Record<string, unknown>): model is Record<string, unknown> & {
 	slug: string;

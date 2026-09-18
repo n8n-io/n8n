@@ -1,20 +1,16 @@
+import { isRecord } from '@n8n/utils/is-record';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialTestRequest,
 	ICredentialType,
 	IHttpRequestOptions,
-	IDataObject,
 	INodeProperties,
 } from 'n8n-workflow';
-
-function isDataObject(value: unknown): value is IDataObject {
-	return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
-}
 
 export function getOpenAiApiKey(credentials: ICredentialDataDecryptedObject): string {
 	const { oauthTokenData } = credentials;
 	let oauthAccessToken = '';
-	if (isDataObject(oauthTokenData)) {
+	if (isRecord(oauthTokenData)) {
 		oauthAccessToken =
 			typeof oauthTokenData.access_token === 'string' ? oauthTokenData.access_token : '';
 	}

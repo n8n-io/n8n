@@ -20,6 +20,7 @@ import { ChatGenerationChunk, type ChatResult } from '@langchain/core/outputs';
 import { toJsonSchema } from '@langchain/core/utils/json_schema';
 import type { Runnable } from '@langchain/core/runnables';
 import { parseSSEStream } from '@n8n/ai-utilities';
+import { isRecord } from '@n8n/utils/is-record';
 import type { JSONSchema7 } from 'json-schema';
 import type { ZodSchema } from 'zod';
 
@@ -1141,10 +1142,6 @@ function stringifyToolResult(value: unknown): string {
 
 function readOptionalString(value: unknown): string | undefined {
 	return typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
 
 function normalizeFunctionToolParametersSchema(
