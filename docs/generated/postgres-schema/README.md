@@ -20,7 +20,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.agent_eval_result](public.agent_eval_result.md) | 15 |  | BASE TABLE |
 | [public.agent_eval_run](public.agent_eval_run.md) | 14 |  | BASE TABLE |
 | [public.agent_execution](public.agent_execution.md) | 22 |  | BASE TABLE |
-| [public.agent_execution_threads](public.agent_execution_threads.md) | 17 |  | BASE TABLE |
+| [public.agent_execution_threads](public.agent_execution_threads.md) | 19 |  | BASE TABLE |
 | [public.agent_files](public.agent_files.md) | 10 |  | BASE TABLE |
 | [public.agent_history](public.agent_history.md) | 9 |  | BASE TABLE |
 | [public.agent_task_definition](public.agent_task_definition.md) | 8 |  | BASE TABLE |
@@ -189,6 +189,7 @@ erDiagram
 "public.agent_eval_run" }o--o| "public.user" : "FOREIGN KEY (#quot;createdById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.agent_eval_run" }o--|| "public.agent_eval_dataset" : "FOREIGN KEY (#quot;datasetId#quot;) REFERENCES agent_eval_dataset(id) ON DELETE CASCADE"
 "public.agent_execution" }o--|| "public.agent_execution_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES agent_execution_threads(id) ON DELETE CASCADE"
+"public.agent_execution_threads" }o--o| "public.user" : "FOREIGN KEY (#quot;ownerId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.agent_execution_threads" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.agent_execution_threads" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agent_execution_threads" }o--o| "public.agent_history" : "FOREIGN KEY (#quot;taskVersionId#quot;) REFERENCES agent_history(#quot;versionId#quot;) ON DELETE SET NULL"
@@ -536,11 +537,13 @@ erDiagram
   text userMessage
 }
 "public.agent_execution_threads" {
+  varchar_16_ accessScope
   varchar_36_ agentId FK
   varchar_255_ agentName
   timestamp_3__with_time_zone createdAt
   varchar_8_ emoji
   varchar_128_ id
+  uuid ownerId FK
   varchar_36_ parentAgentId
   varchar_128_ parentThreadId
   varchar_255_ projectId FK

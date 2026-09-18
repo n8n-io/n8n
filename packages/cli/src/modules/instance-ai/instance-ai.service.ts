@@ -2783,7 +2783,7 @@ export class InstanceAiService {
 		context.resolvePreviewSession = async (ref) => {
 			const service = this.getAgentExecutionService();
 			if (!service) return null;
-			const detail = await service.getThreadDetail(ref.threadId, projectId, ref.agentId);
+			const detail = await service.getThreadDetail(ref.threadId, projectId, ref.agentId, user.id);
 			if (!detail) return null;
 			const transcript = formatPreviewSessionContext(
 				detail.thread,
@@ -3915,6 +3915,7 @@ export class InstanceAiService {
 				}
 				const resolved = await resolveAgentPreviewHandoff(handoffContext, {
 					projectId,
+					userId: user.id,
 					getThreadDetail: agentExecutionService.getThreadDetail.bind(agentExecutionService),
 				});
 				handoffContextBlock = resolved.block;

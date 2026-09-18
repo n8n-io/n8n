@@ -12,7 +12,6 @@ import type { AgentExecutionOrchestratorService } from '../agent-execution-orche
 import type { AgentExecutionService } from '../agent-execution.service';
 import { AgentTestRunService } from '../agent-test-run.service';
 import type { AgentValidationService } from '../agent-validation.service';
-import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
 import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 
 const agentId = 'agent-1';
@@ -67,6 +66,7 @@ function makeService() {
 	const agentExecutionOrchestratorService = mock<AgentExecutionOrchestratorService>();
 	const n8nCheckpointStorage = mock<N8NCheckpointStorage>();
 	agentExecutionService.findThreadById.mockResolvedValue(null);
+	agentExecutionService.canUsePreviewThread.mockResolvedValue(true);
 	agentValidationService.validateAgentIsRunnable.mockResolvedValue({ missing: [] });
 
 	return {
@@ -413,11 +413,7 @@ describe('AgentTestRunService', () => {
 			agentValidationService,
 			agentExecutionOrchestratorService,
 		} = makeService();
-		agentExecutionService.findThreadById.mockResolvedValue({
-			id: 'session-1',
-			projectId: 'another-project',
-			agentId,
-		} as AgentExecutionThread);
+		agentExecutionService.canUsePreviewThread.mockResolvedValue(false);
 
 		await expect(
 			service.executeDraftRun({

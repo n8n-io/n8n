@@ -1,9 +1,13 @@
 import type { AgentSessionOrigin, AgentSessionQueryFilters } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import { DataSource, Repository, type SelectQueryBuilder } from '@n8n/typeorm';
+import { UserError } from 'n8n-workflow';
 
 import { AgentExecution } from '../entities/agent-execution.entity';
-import { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
+import {
+	AgentExecutionThread,
+	type AgentThreadAccess,
+} from '../entities/agent-execution-thread.entity';
 
 const SESSION_NUMBER_RETRY_ATTEMPTS = 3;
 
@@ -32,6 +36,7 @@ export class AgentExecutionThreadRepository extends Repository<AgentExecutionThr
 		agentId: string,
 		agentName: string,
 		projectId: string,
+		access: AgentThreadAccess,
 		metadata?: AgentExecutionThreadMetadata,
 		taskId?: string | null,
 		taskVersionId?: string | null,
@@ -43,6 +48,7 @@ export class AgentExecutionThreadRepository extends Repository<AgentExecutionThr
 					agentId,
 					agentName,
 					projectId,
+					access,
 					metadata,
 					taskId,
 					taskVersionId,
@@ -60,14 +66,35 @@ export class AgentExecutionThreadRepository extends Repository<AgentExecutionThr
 		agentId: string,
 		agentName: string,
 		projectId: string,
+		access: AgentThreadAccess,
 		metadata?: AgentExecutionThreadMetadata,
 		taskId?: string | null,
 		taskVersionId?: string | null,
 	): Promise<{ thread: AgentExecutionThread; created: boolean }> {
 		return await this.manager.transaction('SERIALIZABLE', async (entityManager) => {
 			const repository = entityManager.getRepository(AgentExecutionThread);
+			if (metadata?.parentThreadId) {
+				const parent = await repository.findOneBy({ id: metadata.parentThreadId });
+				if (parent) {
+					if (parent.projectId !== projectId || parent.agentId !== metadata.parentAgentId) {
+						throw new UserError('Session not found');
+					}
+					access = { accessScope: parent.accessScope, ownerId: parent.ownerId };
+				}
+			}
+			if (access.accessScope === 'user' && !access.ownerId) {
+				throw new UserError('Session not found');
+			}
 			const existing = await repository.findOneBy({ id: threadId });
 			if (existing) {
+				if (
+					existing.projectId !== projectId ||
+					existing.agentId !== agentId ||
+					existing.accessScope !== access.accessScope ||
+					existing.ownerId !== access.ownerId
+				) {
+					throw new UserError('Session not found');
+				}
 				return { thread: existing, created: false };
 			}
 
@@ -84,6 +111,7 @@ export class AgentExecutionThreadRepository extends Repository<AgentExecutionThr
 				agentId,
 				agentName,
 				projectId,
+				...access,
 				taskId: taskId ?? null,
 				taskVersionId: taskVersionId ?? null,
 				sessionNumber,
@@ -103,6 +131,7 @@ export class AgentExecutionThreadRepository extends Repository<AgentExecutionThr
 	async findByProjectIdPaginated(
 		projectId: string,
 		agentId: string,
+		userId: string,
 		limit: number,
 		cursor?: string,
 		filters: AgentSessionQueryFilters = {},
@@ -110,6 +139,10 @@ export class AgentExecutionThreadRepository extends Repository<AgentExecutionThr
 		const query = this.createQueryBuilder('thread')
 			.where('thread.projectId = :projectId', { projectId })
 			.andWhere('thread.agentId = :agentId', { agentId })
+			.andWhere(
+				"(thread.accessScope = 'project' OR (thread.accessScope = 'user' AND thread.ownerId = :userId))",
+				{ userId },
+			)
 			.orderBy('thread.updatedAt', 'DESC')
 			.take(limit + 1);
 
