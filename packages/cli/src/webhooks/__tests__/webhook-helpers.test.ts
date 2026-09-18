@@ -1153,46 +1153,45 @@ describe('executeWebhook seeded execution stack', () => {
 		activeExecutions.getPostExecutePromise.mockReturnValue(new Promise(() => {}));
 	});
 
-	it.each([
-		MCP_TRIGGER_NODE_TYPE,
-		MICROSOFT_AGENT365_TRIGGER_NODE_TYPE,
-		CHAT_TRIGGER_NODE_TYPE,
-	])('seeds execution data before running a %s webhook', async (type) => {
-		const startNode = mock<INode>({ name: 'Trigger', type, typeVersion: 1, parameters: {} });
-		const workflow = mock<Workflow>({
-			id: WORKFLOW_ID,
-			name: 'Test Workflow',
-			nodeTypes: {
-				getByNameAndVersion: vi
-					.fn()
-					.mockReturnValue(mock<INodeType>({ description: { name: 'trigger' } })),
-			},
-			expression: {
-				getSimpleParameterValue: vi.fn().mockReturnValue('onReceived'),
-				getComplexParameterValue: vi.fn().mockReturnValue('firstEntryJson'),
-			},
-		});
-		webhookService.runWebhook.mockImplementation(async (...args) => {
-			expect(args[5]?.executionData?.nodeExecutionStack).toEqual([
-				{ node: startNode, data: { main: [] }, source: null },
-			]);
-			return { workflowData: [[{ json: { data: 'test' } }]] };
-		});
+	it.each([MCP_TRIGGER_NODE_TYPE, MICROSOFT_AGENT365_TRIGGER_NODE_TYPE, CHAT_TRIGGER_NODE_TYPE])(
+		'seeds execution data before running a %s webhook',
+		async (type) => {
+			const startNode = mock<INode>({ name: 'Trigger', type, typeVersion: 1, parameters: {} });
+			const workflow = mock<Workflow>({
+				id: WORKFLOW_ID,
+				name: 'Test Workflow',
+				nodeTypes: {
+					getByNameAndVersion: vi
+						.fn()
+						.mockReturnValue(mock<INodeType>({ description: { name: 'trigger' } })),
+				},
+				expression: {
+					getSimpleParameterValue: vi.fn().mockReturnValue('onReceived'),
+					getComplexParameterValue: vi.fn().mockReturnValue('firstEntryJson'),
+				},
+			});
+			webhookService.runWebhook.mockImplementation(async (...args) => {
+				expect(args[5]?.executionData?.nodeExecutionStack).toEqual([
+					{ node: startNode, data: { main: [] }, source: null },
+				]);
+				return { workflowData: [[{ json: { data: 'test' } }]] };
+			});
 
-		await executeWebhook(
-			workflow,
-			{ webhookDescription: { name: 'default' }, workflowId: WORKFLOW_ID } as IWebhookData,
-			mock<IWorkflowBase>({ id: WORKFLOW_ID, name: 'Test Workflow' }),
-			startNode,
-			'webhook',
-			undefined,
-			undefined,
-			undefined,
-			mock<WebhookRequest>({ method: 'POST', contentType: undefined, headers: {} }),
-			mock<express.Response>({ headersSent: false }),
-			vi.fn(),
-		);
-	});
+			await executeWebhook(
+				workflow,
+				{ webhookDescription: { name: 'default' }, workflowId: WORKFLOW_ID } as IWebhookData,
+				mock<IWorkflowBase>({ id: WORKFLOW_ID, name: 'Test Workflow' }),
+				startNode,
+				'webhook',
+				undefined,
+				undefined,
+				undefined,
+				mock<WebhookRequest>({ method: 'POST', contentType: undefined, headers: {} }),
+				mock<express.Response>({ headersSent: false }),
+				vi.fn(),
+			);
+		},
+	);
 });
 
 describe('executeWebhook form content type', () => {
