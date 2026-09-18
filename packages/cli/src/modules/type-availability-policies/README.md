@@ -140,11 +140,20 @@ Every write drops the entries it changed, after its transaction commits. Invalid
 keeps the cache fresh; the 10-minute TTL is only a backstop — see "Cache staleness" under
 "Known limits" for what is left for it to heal.
 
-In front of that entry, each process holds its own read of a scope for 1 second — the promise,
-not the value, so callers who arrive while it is still running share it as well. A burst of
-decisions on a cold entry therefore costs one database read rather than one for each, and a
-warm decision costs no round trip and no parse of every rule. That parse is what makes a
-decision on Redis grow more expensive as an admin writes more rules.
+In front of that entry, each process shares its own read of a scope. It holds the promise
+rather than the value, and registers it before the read starts, which buys two things on two
+different time scales:
+
+- **Callers that arrive while the read is running share it.** A burst of decisions on a cold
+  entry costs one database read rather than one for each. Nothing survives from before here —
+  the first caller registers its promise before any I/O, so the rest find it. The window is
+  that one read.
+- **Callers that arrive after it finished share it too, for 1 second.** A warm decision then
+  costs no round trip and no parse of every rule. That parse is what makes a decision on Redis
+  grow more expensive as an admin writes more rules.
+
+The 1 second must stay longer than one read, or the first of those leaks: a caller arriving
+late in a slow read would find the entry expired and start a second read.
 
 A cache call is also bounded at 50 ms and falls through to the database. ioredis queues
 commands while it is disconnected rather than rejecting them, so without the bound a lost Redis
@@ -179,7 +188,7 @@ through a sealed repository method, and the lint rule that guards that has no al
 - **A policy change applies at once, plus up to 1 second.** The write drops the shared entry,
   which reaches every process, because every deployment with more than one process reading
   policy shares one Redis cache — unless `N8N_CACHE_BACKEND=memory` is set by hand in queue
-  mode. What is left is each process's 1-second memo, so that is the staleness window a
+  mode. What is left is each process's 1-second shared read, so that is the staleness window a
   builder or an execution can see.
 
   A fill that read the database before the write committed can put its old snapshot back after
@@ -187,7 +196,7 @@ through a sealed repository method, and the lint rule that guards that has no al
   write-back. Elsewhere the counter cannot see it, so the same keys are dropped a second time a
   second later, which is long enough for any fill in flight at commit time to have landed.
   `CacheService` has no compare-and-set to make this airtight; pubsub invalidation would, and
-  is the step that would also let the memo grow and the TTL go away.
+  is the step that would also let that 1 second grow and the TTL go away.
 
 - **The 10-minute TTL heals only what invalidation cannot reach.** Three cases, all
   operator-level: that forced memory backend, where each process keeps its own copy and no
