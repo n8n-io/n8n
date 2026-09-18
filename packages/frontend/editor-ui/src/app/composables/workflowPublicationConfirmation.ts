@@ -14,15 +14,24 @@
  * exist in the browser tab that initiated the publish.
  */
 
-/** How long a pending intent stays valid before it is silently dropped. */
-export const PENDING_ACTIVATION_MODAL_TIMEOUT = 60_000;
+/**
+ * How long a pending intent stays valid before it is silently dropped.
+ *
+ * The backend applies a publication under an outbox lease
+ * (N8N_WORKFLOW_PUBLICATION_OUTBOX_LEASE_SECONDS, default 2 minutes), and a
+ * record whose lease expired is reclaimed and retried. Cover the default lease
+ * plus one retry so a slow publication still gets its success modal; this is
+ * only a cleanup safety net — the modal opens when the confirming push
+ * arrives, not at this deadline.
+ */
+export const PENDING_ACTIVATION_MODAL_TIMEOUT = 5 * 60_000;
 
 interface PendingActivationModal {
 	activeVersionId: string;
 	timeoutId: ReturnType<typeof setTimeout>;
 }
 
-const pendingActivationModals = new Map<string, PendingActivationModal>();
+const pendingActivationModalsByWorkflowId = new Map<string, PendingActivationModal>();
 
 /**
  * Registers the intent to show the activation success modal for a workflow
@@ -35,10 +44,10 @@ export function registerPendingActivationModal(workflowId: string, activeVersion
 	clearPendingActivationModal(workflowId);
 
 	const timeoutId = setTimeout(() => {
-		pendingActivationModals.delete(workflowId);
+		pendingActivationModalsByWorkflowId.delete(workflowId);
 	}, PENDING_ACTIVATION_MODAL_TIMEOUT);
 
-	pendingActivationModals.set(workflowId, { activeVersionId, timeoutId });
+	pendingActivationModalsByWorkflowId.set(workflowId, { activeVersionId, timeoutId });
 }
 
 /**
@@ -51,13 +60,13 @@ export function consumePendingActivationModal(
 	workflowId: string,
 	activeVersionId: string,
 ): boolean {
-	const pending = pendingActivationModals.get(workflowId);
+	const pending = pendingActivationModalsByWorkflowId.get(workflowId);
 	if (pending?.activeVersionId !== activeVersionId) {
 		return false;
 	}
 
 	clearTimeout(pending.timeoutId);
-	pendingActivationModals.delete(workflowId);
+	pendingActivationModalsByWorkflowId.delete(workflowId);
 	return true;
 }
 
@@ -66,9 +75,9 @@ export function consumePendingActivationModal(
  * failed, was partial, or the workflow got unpublished in the meantime.
  */
 export function clearPendingActivationModal(workflowId: string): void {
-	const pending = pendingActivationModals.get(workflowId);
+	const pending = pendingActivationModalsByWorkflowId.get(workflowId);
 	if (pending) {
 		clearTimeout(pending.timeoutId);
-		pendingActivationModals.delete(workflowId);
+		pendingActivationModalsByWorkflowId.delete(workflowId);
 	}
 }
