@@ -588,6 +588,18 @@ export function prepareExecutionData(
 	return { runExecutionData, pinData };
 }
 
+function translateAuthFailureReason(reason?: AuthFailureReason): OAuth2FailureReason {
+	switch (reason) {
+		case 'verifier_not_registered':
+		case 'unknown_error':
+			return 'verifier_unavailable';
+		case 'insufficient_scope':
+			return 'insufficient_scope';
+		default:
+			return 'invalid_token';
+	}
+}
+
 /**
  * Executes a webhook
  */
@@ -704,18 +716,6 @@ export async function executeWebhook(
 			firstName: user.firstName,
 			lastName: user.lastName,
 		};
-	};
-
-	const translateAuthFailureReason = (reason?: AuthFailureReason): OAuth2FailureReason => {
-		switch (reason) {
-			case 'verifier_not_registered':
-			case 'unknown_error':
-				return 'verifier_unavailable';
-			case 'insufficient_scope':
-				return 'insufficient_scope';
-			default:
-				return 'invalid_token';
-		}
 	};
 
 	additionalData.beginN8nOAuth2Flow = async (
