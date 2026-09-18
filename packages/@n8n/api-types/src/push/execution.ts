@@ -152,7 +152,7 @@ export type SubworkflowExecutionStarted = {
 		parentNodeName: string;
 		/** Child sub-execution id. */
 		executionId: string;
-		/** Total nodes in the child workflow — used to render "X / Y". */
+		/** Upper bound on the child nodes that can run. Branches make it an over-estimate. */
 		totalNodes: number;
 	};
 };
@@ -169,8 +169,12 @@ export type SubworkflowNodeProgress = {
 		executionId: string;
 		/** Currently-running node name in the child workflow. */
 		currentNodeName: string;
-		/** 1-based index of the node in the child workflow's execution order. */
+		/**
+		 * Count of distinct child nodes reached so far, not an execution-order index.
+		 * A loop re-runs the same nodes, so the count parks while it iterates.
+		 */
 		currentNodeIndex: number;
+		/** Upper bound on the child nodes that can run. Branches make it an over-estimate. */
 		totalNodes: number;
 		/** 'running' on nodeExecuteBefore; 'success' | 'error' on nodeExecuteAfter. */
 		phase: 'running' | 'success' | 'error';

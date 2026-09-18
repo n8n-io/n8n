@@ -84,7 +84,7 @@ $status-shimmer-gradient: conic-gradient(
 	inset: 0;
 	// Follows the node's shape, so per-variant radius overrides aren't repeated here.
 	border-radius: inherit;
-	padding: 2px; // arc thickness
+	padding: var(--spacing--5xs); // arc thickness
 	// A conic gradient's 0deg is already at 12 o'clock and advances clockwise, so
 	// no `from` offset — adding one would start the arc off the top edge.
 	background: conic-gradient(
