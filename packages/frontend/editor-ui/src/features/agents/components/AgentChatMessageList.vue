@@ -5,6 +5,7 @@ import { N8N_CHAT_ACTION_TOOL_NAME } from '@n8n/api-types';
 import { isAwaitingCard } from '@/features/ai/shared/agentsChat/n8nChatInteraction';
 import { useI18n } from '@n8n/i18n';
 import { useSessionStorage } from '@vueuse/core';
+import { TIME } from '@/app/constants/durations';
 import {
 	buildDisplayGroups,
 	isAssistantGroup,
@@ -149,10 +150,6 @@ const scrollRef = useTemplateRef<HTMLDivElement>('scrollRef');
 
 const displayGroups = computed(() => buildDisplayGroups(props.messages));
 
-// Gap since the previous user message that earns a new timestamp divider.
-// Tunable — ChatGPT uses roughly this window.
-const TIMESTAMP_DIVIDER_GAP_MS = 60 * 60 * 1000;
-
 const formatChatDividerTimestamp = useChatDividerTimestamp();
 
 /**
@@ -173,7 +170,7 @@ const dividerLabels = computed(() => {
 		// "Yesterday at ..." heading.
 		if (
 			previousUserCreatedAt === undefined ||
-			createdAt - previousUserCreatedAt > TIMESTAMP_DIVIDER_GAP_MS ||
+			createdAt - previousUserCreatedAt > TIME.HOUR ||
 			!isSameLocalDay(new Date(createdAt), new Date(previousUserCreatedAt))
 		) {
 			labels.set(group.id, formatChatDividerTimestamp(createdAt));
