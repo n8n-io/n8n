@@ -74,6 +74,7 @@ export class ModuleRegistry {
 		'mcp-registry',
 		'workflow-reviews',
 		'instance-ai',
+		'custom-nodes',
 	];
 
 	private readonly activeModules: string[] = [];
