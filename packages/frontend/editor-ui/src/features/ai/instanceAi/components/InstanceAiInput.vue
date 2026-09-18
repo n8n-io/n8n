@@ -5,6 +5,8 @@ import { N8nIcon, N8nIconButton, N8nTag, N8nTooltip } from '@n8n/design-system';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
 import { useTextMention } from '@n8n/composables/useTextMention';
 import { useToast } from '@n8n/composables/useToast';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
 import { EXTENDED_PROMPT_MAX_LENGTH } from '@/features/ai/shared/constants';
 import AttachmentPreview from './AttachmentPreview.vue';
@@ -167,6 +169,7 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const toast = useToast();
+const telemetry = useTelemetry();
 const promptSuggestionsTelemetry = useInstanceAiPromptSuggestionsTelemetry();
 const instanceAiStore = useInstanceAiStore();
 const inputText = ref('');
@@ -342,6 +345,12 @@ watch(
 	[mentionUiEnabled, isBusy, isGatedBySetup, () => props.isAwaitingPlanReview],
 	([enabled, busy, gated, planReview]) => {
 		if (!enabled || busy || gated || planReview) mention.close();
+	},
+);
+watch(
+	() => mentionCatalog.availability.value,
+	(availability) => {
+		if (availability === 'empty' && mention.origin.value === 'typed') mention.close();
 	},
 );
 
@@ -664,7 +673,9 @@ function handleMentionInput(event: Event): void {
 	}
 	const target = event.target;
 	if (!(target instanceof HTMLTextAreaElement)) return;
+	const wasOpen = mention.isOpen.value;
 	mention.handleTextInput(target.value, target.selectionStart, target.selectionEnd);
+	if (!wasOpen && mention.isOpen.value) trackMentionPickerOpened('typed');
 }
 
 function handleMentionSelectionChange(selection: { start: number; end: number }): void {
@@ -683,16 +694,17 @@ function handleMentionCompositionEnd(event: CompositionEvent): void {
 
 function handleMentionKeydown(event: KeyboardEvent): void {
 	const action = mention.handleKeydown(event);
-	if (action?.type === 'select') selectMention(action.result);
+	if (action?.type === 'select') selectMention(action.result, mention.highlightedIndex.value);
 }
 
 function openMentionPickerFromButton(): void {
-	if (!canStartMention()) return;
+	if (!canStartMention() || mention.isOpen.value) return;
 	const selection = chatInputRef.value?.getSelection();
 	mention.openFromButton(
 		selection?.start ?? inputText.value.length,
 		selection?.end ?? inputText.value.length,
 	);
+	trackMentionPickerOpened('button');
 }
 
 function handleMentionPickerOpen(open: boolean): void {
@@ -700,15 +712,23 @@ function handleMentionPickerOpen(open: boolean): void {
 	else if (!mention.isOpen.value) openMentionPickerFromButton();
 }
 
-function selectMention(candidate: InstanceAiMentionCandidate): void {
+function selectMention(candidate: InstanceAiMentionCandidate, position = 0): void {
 	const source = candidate.source;
 	const origin = mention.origin.value;
+	const queryLength = mention.query.value.length;
 	if (!source || !origin || mentionLimitReason.value) return;
 	const edit = mention.applySelection(inputText.value, candidate.label);
 	if (!edit) return;
 
 	inputText.value = edit.value;
 	emit('update:draftMentions', [...props.draftMentions, buildDraftMention(source, origin)]);
+	telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.USER_ADDED_CHAT_MENTION, {
+		source: origin,
+		resource_type: source.kind === 'canvas-group' ? 'canvas_group' : source.kind,
+		query_length: queryLength,
+		result_position: Math.max(0, position),
+		surface: props.currentThreadId ? 'thread' : 'blank_chat',
+	});
 	if (source.kind === 'workflow') {
 		emit(
 			'mention-workflow-selected',
@@ -721,6 +741,14 @@ function selectMention(candidate: InstanceAiMentionCandidate): void {
 	void nextTick(() => {
 		chatInputRef.value?.setSelection(edit.selectionStart, edit.selectionEnd);
 		chatInputRef.value?.focus();
+	});
+}
+
+function trackMentionPickerOpened(source: 'typed' | 'button'): void {
+	telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.USER_OPENED_CHAT_MENTION_PICKER, {
+		source,
+		surface: props.currentThreadId ? 'thread' : 'blank_chat',
+		has_open_workflow: props.durableWorkflowIds.size > 0 || props.draftMentions.length > 0,
 	});
 }
 
@@ -738,10 +766,6 @@ watch(
 		const consumed = instanceAiStore.consumePendingAttachments();
 		for (const attachment of consumed) {
 			if (attachment.type === 'file') continue;
-			if (outgoingAttachmentCount.value >= INSTANCE_AI_MAX_ATTACHMENTS) {
-				showAttachmentLimit();
-				continue;
-			}
 			if (attachment.type === 'nodes') {
 				const existing = attachedResources.value.find(
 					(a): a is Extract<InstanceAiResourceAttachment, { type: 'nodes' }> =>
@@ -751,6 +775,10 @@ watch(
 					existing.sets = mergeNodeSets(existing.sets, attachment.sets);
 					continue;
 				}
+			}
+			if (outgoingAttachmentCount.value >= INSTANCE_AI_MAX_ATTACHMENTS) {
+				showAttachmentLimit();
+				continue;
 			}
 			attachedResources.value = [...attachedResources.value, attachment];
 		}
@@ -781,7 +809,7 @@ function handleFilesSelected(files: File[]) {
 function showAttachmentLimit() {
 	toast.showError(
 		new Error(i18n.baseText('instanceAi.mentions.limit.attachments')),
-		i18n.baseText('generic.error'),
+		i18n.baseText('instanceAi.mentions.limit.title'),
 	);
 }
 
@@ -1007,7 +1035,7 @@ const resizable = computed(() => {
 					@update:query="mention.setQuery"
 					@highlight="mention.setHighlightedId"
 					@keydown="handleMentionKeydown"
-					@select="selectMention($event)"
+					@select="selectMention"
 					@retry="mentionCatalog.retry"
 					@load-more="mentionCatalog.loadMore"
 				>

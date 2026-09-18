@@ -350,6 +350,39 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 			node_count: z.number().describe('Total nodes attached across the sent message'),
 		}),
 	},
+	USER_OPENED_CHAT_MENTION_PICKER: {
+		name: 'User opened chat mention picker',
+		description:
+			'The user opened the n8n Assistant resource mention picker by typing an at sign or selecting the composer button.',
+		properties: z.object({
+			source: z.enum(['typed', 'button']),
+			surface: z.enum(['blank_chat', 'thread']),
+			has_open_workflow: z.boolean(),
+		}),
+	},
+	USER_ADDED_CHAT_MENTION: {
+		name: 'User added chat mention',
+		description:
+			'The user selected one workflow, node, or canvas group from the n8n Assistant mention picker.',
+		properties: z.object({
+			source: z.enum(['typed', 'button']),
+			resource_type: z.enum(['workflow', 'node', 'canvas_group']),
+			query_length: z.number().int().nonnegative(),
+			result_position: z.number().int().nonnegative(),
+			surface: z.enum(['blank_chat', 'thread']),
+		}),
+	},
+	USER_SENT_CHAT_MESSAGE_WITH_MENTIONS: {
+		name: 'User sent chat message with mentions',
+		description:
+			'The backend accepted an n8n Assistant message that contained one or more resource mentions.',
+		properties: z.object({
+			mention_count: z.number().int().nonnegative(),
+			workflow_count: z.number().int().nonnegative(),
+			node_count: z.number().int().nonnegative(),
+			canvas_group_count: z.number().int().nonnegative(),
+		}),
+	},
 	USER_SENT_BUILDER_MESSAGE: {
 		name: 'User sent builder message',
 		description:

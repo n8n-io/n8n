@@ -180,6 +180,10 @@ export function consumePendingMentionDraft(threadId: string): PendingMentionDraf
 	if (!parsed.success) return null;
 	if (parsed.data.selectionStart > parsed.data.text.length) return null;
 	if (parsed.data.selectionEnd > parsed.data.text.length) return null;
+	if (parsed.data.selectionStart > parsed.data.selectionEnd) return null;
+	if (new Set(parsed.data.mentions.map(({ key }) => key)).size !== parsed.data.mentions.length) {
+		return null;
+	}
 	if (!parsed.data.mentions.every(isConsistentDraftMention)) return null;
 	return parsed.data;
 }

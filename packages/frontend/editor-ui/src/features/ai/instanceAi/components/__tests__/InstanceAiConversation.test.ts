@@ -28,6 +28,7 @@ import type { InstanceAiHandoffContext, InstanceAiMessage } from '@n8n/api-types
 import { ResponseError } from '@n8n/rest-api-client';
 import { USER_TYPED_MESSAGE } from '../../prefills';
 import { buildDraftMention } from '../../mentions/buildMentionAttachment';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 const telemetryTrackSpy = vi.hoisted(() => vi.fn());
 const showMessageSpy = vi.hoisted(() => vi.fn());
@@ -202,6 +203,72 @@ describe('InstanceAiConversation', () => {
 		expect(thread.sendMessage).not.toHaveBeenCalled();
 		expect(getByTestId('instance-ai-input-draft').textContent).toBe('Normal message');
 		expect(getByTestId('instance-ai-input-attachments').textContent).toBe('attached');
+	});
+
+	it('tracks mention counts only after the backend accepts resource attachments', async () => {
+		thread.draftMentions = [
+			buildDraftMention(
+				{ kind: 'workflow', workflowId: 'workflow-1', workflowName: 'Support triage' },
+				'typed',
+			),
+			buildDraftMention(
+				{
+					kind: 'node',
+					workflowId: 'workflow-1',
+					workflowName: 'Support triage',
+					node: {
+						id: 'node-1',
+						name: 'Route request',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 1,
+					},
+				},
+				'button',
+			),
+			buildDraftMention(
+				{
+					kind: 'canvas-group',
+					workflowId: 'workflow-1',
+					workflowName: 'Support triage',
+					groupId: 'group-1',
+					groupName: 'Handle failures',
+					nodes: [
+						{
+							id: 'node-2',
+							name: 'Notify owner',
+							type: 'n8n-nodes-base.set',
+							typeVersion: 1,
+						},
+					],
+				},
+				'button',
+			),
+		];
+		vi.mocked(thread.sendMessage).mockImplementation(async (_message, options) => {
+			options.onAcceptedResourceAttachments?.([
+				{ type: 'workflow', id: 'workflow-1', name: 'Support triage' },
+			]);
+			return true;
+		});
+		const renderer = createThreadComponentRenderer(
+			InstanceAiConversation,
+			{ global: { stubs: { InstanceAiInput: InstanceAiInputStub } } },
+			() => thread,
+		);
+		const { getByTestId } = renderer();
+
+		await fireEvent.click(getByTestId('instance-ai-input-submit'));
+		await vi.waitFor(() =>
+			expect(telemetryTrackSpy).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_CHAT_MESSAGE_WITH_MENTIONS,
+				{
+					mention_count: 3,
+					workflow_count: 1,
+					node_count: 1,
+					canvas_group_count: 1,
+				},
+			),
+		);
 	});
 
 	it('sends the message once beforeSend resolves', async () => {

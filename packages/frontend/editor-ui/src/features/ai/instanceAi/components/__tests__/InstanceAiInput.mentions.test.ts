@@ -9,6 +9,9 @@ import { getWorkflows } from '@/app/api/workflows';
 import InstanceAiInput from '../InstanceAiInput.vue';
 import { buildDraftMention } from '../../mentions/buildMentionAttachment';
 import type { InstanceAiDraftMention } from '../../mentions/instanceAiMentions.types';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
+
+const telemetryTrack = vi.hoisted(() => vi.fn());
 
 vi.mock('@/app/api/workflows', () => ({
 	getWorkflows: vi.fn(),
@@ -19,6 +22,9 @@ vi.mock('../../composables/useIsInstanceAiMentionsEnabled', () => ({
 }));
 vi.mock('../../composables/useIsNodeContextEnabled', () => ({
 	useIsNodeContextEnabled: () => ref(true),
+}));
+vi.mock('@n8n/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track: telemetryTrack }),
 }));
 
 const workflow = createTestWorkflow({
@@ -62,6 +68,7 @@ describe('InstanceAiInput mentions', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia());
 		vi.clearAllMocks();
+		telemetryTrack.mockClear();
 		vi.mocked(getWorkflows).mockResolvedValue({ count: 1, data: [workflow] });
 	});
 
@@ -91,7 +98,23 @@ describe('InstanceAiInput mentions', () => {
 				attachment: { type: 'workflow', id: 'workflow-1', name: 'Support triage' },
 			}),
 		]);
-		expect(emitted()['mention-workflow-selected']).toEqual([['workflow-1']]);
+		expect(emitted()['mention-workflow-selected']).toEqual([
+			['workflow-1', 'Support triage ', 15, 15],
+		]);
+		expect(telemetryTrack).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.INSTANCE_AI.USER_OPENED_CHAT_MENTION_PICKER,
+			{ source: 'typed', surface: 'thread', has_open_workflow: false },
+		);
+		expect(telemetryTrack).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.INSTANCE_AI.USER_ADDED_CHAT_MENTION,
+			{
+				source: 'typed',
+				resource_type: 'workflow',
+				query_length: 3,
+				result_position: 0,
+				surface: 'thread',
+			},
+		);
 	});
 
 	it('gives mention selection priority over Enter submit', async () => {

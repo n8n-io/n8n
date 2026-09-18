@@ -7716,6 +7716,7 @@
 	"instanceAi.mentions.unavailable.group": "This canvas group can't be mentioned",
 	"instanceAi.mentions.unavailable.groupTooLarge": "This canvas group has more than 50 nodes",
 	"instanceAi.mentions.limit.mentions": "You can mention up to 10 items in one message.",
+	"instanceAi.mentions.limit.title": "Attachment limit reached",
 	"instanceAi.mentions.limit.attachments": "Remove an attachment before you add another mention.",
 	"instanceAi.mentions.remove.workflow": "Remove workflow mention {name}",
 	"instanceAi.mentions.remove.node": "Remove node mention {name}",

@@ -15,6 +15,7 @@ import {
 	type InstanceAiConfirmResponse,
 	type InstanceAiResourceDecision,
 	type InstanceAiAttachment,
+	type InstanceAiResourceAttachment,
 	type InstanceAiSendMessageResponse,
 	type InstanceAiEvent,
 	type InstanceAiMessage,
@@ -1409,9 +1410,13 @@ export function createThreadRuntime(
 			attachments?: InstanceAiAttachment[];
 			pushRef?: string;
 			handoffContext?: InstanceAiHandoffContext;
+			onAcceptedResourceAttachments?: (
+				attachments: InstanceAiResourceAttachment[] | undefined,
+			) => void;
 		},
 	): Promise<boolean> {
-		const { authorship, attachments, pushRef, handoffContext } = opts;
+		const { authorship, attachments, pushRef, handoffContext, onAcceptedResourceAttachments } =
+			opts;
 		amendContext.value = null;
 		pendingMessageCount.value += 1;
 		try {
@@ -1426,6 +1431,7 @@ export function createThreadRuntime(
 				return false;
 			}
 			applyAcceptedResourceAttachments(optimistic, response.acceptedResourceAttachments);
+			onAcceptedResourceAttachments?.(response.acceptedResourceAttachments);
 			return true;
 		} finally {
 			pendingMessageCount.value = Math.max(0, pendingMessageCount.value - 1);

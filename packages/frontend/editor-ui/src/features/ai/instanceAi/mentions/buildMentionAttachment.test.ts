@@ -76,7 +76,7 @@ describe('buildMentionAttachment', () => {
 				groupName: 'Handle failures',
 				nodes: Array.from({ length: 51 }, (_, index) => mentionNode(index)),
 			}),
-		).toThrow('more than 50 nodes');
+		).toThrow('between 1 and 50 nodes');
 	});
 
 	it('builds stable composite keys', () => {

@@ -1,4 +1,12 @@
-import { computed, onScopeDispose, ref, toValue, watch, type MaybeRefOrGetter } from 'vue';
+import {
+	computed,
+	nextTick,
+	onScopeDispose,
+	ref,
+	toValue,
+	watch,
+	type MaybeRefOrGetter,
+} from 'vue';
 import { useDebounceFn } from '@vueuse/core';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
 
@@ -187,6 +195,7 @@ export function useInstanceAiMentionCatalog(options: UseInstanceAiMentionCatalog
 	const projections = ref(new Map<string, WorkflowProjection>());
 	const pageCache = new Map<string, { count: number; data: WorkflowMetadata[] }>();
 	const queuedDetailIds = new Set<string>();
+	const scheduledDetailIds = new Set<string>();
 	const detailQueue: string[] = [];
 	const inFlightDetails = new Map<string, Promise<void>>();
 	let activeDetailRequests = 0;
@@ -366,7 +375,7 @@ export function useInstanceAiMentionCatalog(options: UseInstanceAiMentionCatalog
 		}
 	}
 
-	function queueProjection(workflowId: string): void {
+	function enqueueProjection(workflowId: string): void {
 		if (
 			!toValue(options.enabled) ||
 			!toValue(options.projectId) ||
@@ -379,6 +388,20 @@ export function useInstanceAiMentionCatalog(options: UseInstanceAiMentionCatalog
 		queuedDetailIds.add(workflowId);
 		detailQueue.push(workflowId);
 		drainDetailQueue();
+	}
+
+	function queueProjection(workflowId: string): void {
+		if (scheduledDetailIds.has(workflowId)) return;
+		scheduledDetailIds.add(workflowId);
+		void nextTick(() => {
+			scheduledDetailIds.delete(workflowId);
+			const store = useExistingWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+			if (store) {
+				if (store.hydrated) refreshEligibleProjections();
+				return;
+			}
+			enqueueProjection(workflowId);
+		});
 	}
 
 	function refreshEligibleProjections(): void {
@@ -444,7 +467,9 @@ export function useInstanceAiMentionCatalog(options: UseInstanceAiMentionCatalog
 			toValue(options.isOpen),
 			remoteQuery.value,
 		],
-		() => void loadWorkflowPage(),
+		() => {
+			void loadWorkflowPage();
+		},
 		{ immediate: true },
 	);
 	watch(
@@ -487,6 +512,7 @@ export function useInstanceAiMentionCatalog(options: UseInstanceAiMentionCatalog
 		searchGeneration += 1;
 		detailQueue.length = 0;
 		queuedDetailIds.clear();
+		scheduledDetailIds.clear();
 	});
 
 	return {
@@ -497,7 +523,7 @@ export function useInstanceAiMentionCatalog(options: UseInstanceAiMentionCatalog
 		isLoadingWorkflows,
 		workflowError,
 		hasMoreWorkflows,
-		loadMore: () => loadWorkflowPage(false),
-		retry: () => loadWorkflowPage(true),
+		loadMore: async () => await loadWorkflowPage(false),
+		retry: async () => await loadWorkflowPage(true),
 	};
 }

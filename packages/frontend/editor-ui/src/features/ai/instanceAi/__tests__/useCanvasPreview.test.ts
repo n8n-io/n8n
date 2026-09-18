@@ -188,6 +188,20 @@ describe('useCanvasPreview', () => {
 			);
 		});
 
+		test('opens a workflow tab when a draft mention arrives', async () => {
+			const ctx = setup();
+			ctx.thread.draftMentions = [
+				buildDraftMention(
+					{ kind: 'workflow', workflowId: 'wf-draft', workflowName: 'Draft workflow' },
+					'typed',
+				),
+			];
+			await nextTick();
+
+			expect(ctx.activeTabId.value).toBe('wf-draft');
+			expect(ctx.isPreviewVisible.value).toBe(true);
+		});
+
 		test('uses a node mention owning workflow and prefers a durable tab', () => {
 			const ctx = setup();
 			ctx.thread.draftMentions = [

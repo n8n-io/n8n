@@ -39,8 +39,8 @@ export function buildMentionAttachment(
 		};
 	}
 
-	if (source.nodes.length > 50) {
-		throw new Error('Canvas groups with more than 50 nodes cannot be mentioned');
+	if (source.nodes.length === 0 || source.nodes.length > 50) {
+		throw new Error('Canvas groups must contain between 1 and 50 nodes');
 	}
 
 	return {

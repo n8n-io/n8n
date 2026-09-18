@@ -18,6 +18,7 @@ import {
 	type InstanceAiAgentAttachment,
 	type InstanceAiAttachment,
 	type InstanceAiHandoffContext,
+	type InstanceAiResourceAttachment,
 } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
@@ -586,13 +587,15 @@ async function handleSubmit(
 	if ((submittedAttachments?.length ?? 0) > INSTANCE_AI_MAX_ATTACHMENTS) {
 		toast.showError(
 			new Error(i18n.baseText('instanceAi.mentions.limit.attachments')),
-			i18n.baseText('generic.error'),
+			i18n.baseText('instanceAi.mentions.limit.title'),
 		);
 		restoreFailedSubmission(restoreDraft);
 		return;
 	}
 
 	const nodeCount = countAttachedNodes(attachments);
+	const submittedMentions = [...thread.draftMentions];
+	let acceptedResourceAttachments: InstanceAiResourceAttachment[] | undefined;
 
 	void thread
 		.sendMessage(message, {
@@ -600,6 +603,9 @@ async function handleSubmit(
 			attachments: submittedAttachments,
 			pushRef: rootStore.pushRef,
 			handoffContext,
+			onAcceptedResourceAttachments: (accepted) => {
+				acceptedResourceAttachments = accepted;
+			},
 		})
 		.then((sent) => {
 			if (!sent) {
@@ -607,6 +613,17 @@ async function handleSubmit(
 				return;
 			}
 			thread.setDraftMentions([]);
+			if (submittedMentions.length > 0 && acceptedResourceAttachments !== undefined) {
+				telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_CHAT_MESSAGE_WITH_MENTIONS, {
+					mention_count: submittedMentions.length,
+					workflow_count: submittedMentions.filter((mention) => mention.target.kind === 'workflow')
+						.length,
+					node_count: submittedMentions.filter((mention) => mention.target.kind === 'node').length,
+					canvas_group_count: submittedMentions.filter(
+						(mention) => mention.target.kind === 'canvas-group',
+					).length,
+				});
+			}
 			// Track message-with-nodes only after a successful send, so failed
 			// sends and retries don't inflate the node-count metric.
 			if (nodeCount > 0) {
