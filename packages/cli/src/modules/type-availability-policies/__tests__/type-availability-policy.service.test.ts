@@ -13,7 +13,10 @@ import type { TypeAvailabilityPolicyRepository } from '../database/repositories/
 import { TypeAvailabilityPolicy } from '../database/entities/type-availability-policy.entity';
 import { TypeAvailabilityPolicyScope } from '../database/entities/type-availability-policy-scope.entity';
 import type { PolicyRule } from '../policy-rule.types';
-import { TypeAvailabilityPolicyService } from '../type-availability-policy.service';
+import {
+	LOCAL_READ_MAX_ENTRIES,
+	TypeAvailabilityPolicyService,
+} from '../type-availability-policy.service';
 
 const KIND = 'node-types';
 const ROOT: OperationContext = {};
@@ -1624,10 +1627,12 @@ describe('TypeAvailabilityPolicyService', () => {
 				const decideFor = async (projectId: string) =>
 					await service.evaluateComposedTypesFor(KIND, projectId, [TYPE]);
 
-				// Fill to the cap: the instance scope, one busy project, and 510 quiet ones.
+				// Fill to the cap: the instance scope, one busy project, and quiet ones for the rest.
+				const quietScopes = LOCAL_READ_MAX_ENTRIES - 2;
+
 				await decideFor('busy');
 				vi.setSystemTime(Date.now() + 600);
-				for (let index = 0; index < 510; index++) await decideFor(`quiet-${index}`);
+				for (let index = 0; index < quietScopes; index++) await decideFor(`quiet-${index}`);
 
 				// Past the busy scope's window, so it is read again, which is the case that used
 				// to leave it at the front of the map.

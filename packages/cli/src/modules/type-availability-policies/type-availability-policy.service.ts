@@ -52,8 +52,11 @@ const LOCAL_READ_TTL_MS = 1 * Time.seconds.toMilliseconds;
  * Caps the reads one process holds. Each one resolves to a whole rule list and the key space is
  * `kind` x projects, so an instance with many projects would otherwise keep every project's
  * policy in memory for ever.
+ *
+ * Exported so the test that fills the cap derives its fixture from it rather than repeating the
+ * number, which would stop testing the cap the moment this changed.
  */
-const LOCAL_READ_MAX_ENTRIES = 512;
+export const LOCAL_READ_MAX_ENTRIES = 512;
 
 /**
  * How long after an invalidation the same keys are dropped a second time.
