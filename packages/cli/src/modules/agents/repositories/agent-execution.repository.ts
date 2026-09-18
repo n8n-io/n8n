@@ -1,9 +1,11 @@
+import { BaseRepository, TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, IsNull, Not, Repository } from '@n8n/typeorm';
+import { DataSource, IsNull, Not } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 
 import { AgentExecution, type AgentExecutionStatus } from '../entities/agent-execution.entity';
 import type { ThreadFailureSummary } from '../utils/execution-failure-summary';
+import { conversationDbTime } from './agent-conversation-lease.repository';
 
 export type RunningAgentExecution = Pick<
 	AgentExecution,
@@ -22,9 +24,29 @@ type AgentExecutionFinalizationValues = Pick<
 	>;
 
 @Service()
-export class AgentExecutionRepository extends Repository<AgentExecution> {
-	constructor(dataSource: DataSource) {
-		super(AgentExecution, dataSource.manager);
+export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(AgentExecution, dataSource.manager, transactionRunner);
+	}
+
+	private time(offsetMs = 0): string {
+		return conversationDbTime(this.manager.connection.options.type === 'postgres', offsetMs);
+	}
+
+	async createExecution(
+		values: Partial<AgentExecution>,
+		ctx: OperationContext,
+	): Promise<AgentExecution> {
+		const manager = this.managerFor(ctx);
+		return await manager.save(AgentExecution, manager.create(AgentExecution, values));
+	}
+
+	async findStaleRunning(graceMs: number): Promise<RunningAgentExecution[]> {
+		return await this.createQueryBuilder('execution')
+			.select(['execution.id', 'execution.threadId'])
+			.where({ status: 'running' })
+			.andWhere(`execution.updatedAt <= ${this.time(-graceMs)}`)
+			.getMany();
 	}
 
 	/** All executions in a thread, oldest first — used by the timeline view. */
@@ -32,40 +54,69 @@ export class AgentExecutionRepository extends Repository<AgentExecution> {
 		return await this.find({ where: { threadId }, order: { createdAt: 'ASC' } });
 	}
 
-	async findRunning(): Promise<RunningAgentExecution[]> {
-		return await this.find({
-			select: ['id', 'threadId', 'startedAt', 'updatedAt', 'timeline'],
-			where: { status: 'running' },
-		});
-	}
-
 	async existsRunningByThread(threadId: string): Promise<boolean> {
 		return await this.existsBy({ threadId, status: 'running' });
 	}
 
-	async touchRunning(executionId: string): Promise<void> {
-		await this.update({ id: executionId, status: 'running' }, { updatedAt: new Date() });
+	async findRunningById(id: string): Promise<RunningAgentExecution | null> {
+		return await this.findOne({
+			select: ['id', 'threadId', 'startedAt', 'updatedAt', 'timeline'],
+			where: { id, status: 'running' },
+		});
+	}
+
+	async touchRunning(executionId: string, ctx: OperationContext): Promise<void> {
+		await this.managerFor(ctx).update(
+			AgentExecution,
+			{ id: executionId, status: 'running' },
+			{
+				updatedAt: () => this.time(),
+			},
+		);
 	}
 
 	async updateTimelineIfRunning(
 		executionId: string,
 		timeline: AgentExecution['timeline'],
+		ctx: OperationContext,
 	): Promise<boolean> {
-		const result = await this.update({ id: executionId, status: 'running' }, {
-			timeline,
-			updatedAt: new Date(),
-		} as QueryDeepPartialEntity<AgentExecution>);
+		const result = await this.managerFor(ctx).update(
+			AgentExecution,
+			{ id: executionId, status: 'running' },
+			{
+				timeline,
+				updatedAt: () => this.time(),
+			} as QueryDeepPartialEntity<AgentExecution>,
+		);
 		return result.affected === 1;
 	}
 
 	async updateIfRunning(
 		executionId: string,
 		values: AgentExecutionFinalizationValues,
+		ctx: OperationContext,
 	): Promise<boolean> {
-		const result = await this.update(
+		const result = await this.managerFor(ctx).update(
+			AgentExecution,
 			{ id: executionId, status: 'running' },
 			values as QueryDeepPartialEntity<AgentExecution>,
 		);
+		return result.affected === 1;
+	}
+
+	async updateIfAbandoned(
+		executionId: string,
+		graceMs: number,
+		values: AgentExecutionFinalizationValues,
+		ctx: OperationContext,
+	): Promise<boolean> {
+		const result = await this.managerFor(ctx)
+			.createQueryBuilder()
+			.update(AgentExecution)
+			.set(values)
+			.where({ id: executionId, status: 'running' })
+			.andWhere(`"updatedAt" <= ${this.time(-graceMs)}`)
+			.execute();
 		return result.affected === 1;
 	}
 
@@ -216,9 +267,10 @@ export class AgentExecutionRepository extends Repository<AgentExecution> {
 	}
 
 	/** Backfill model on a set of executions in a single statement. */
-	async backfillModel(executionIds: string[], model: string): Promise<void> {
+	async backfillModel(executionIds: string[], model: string, ctx: OperationContext): Promise<void> {
 		if (executionIds.length === 0) return;
-		await this.createQueryBuilder()
+		await this.managerFor(ctx)
+			.createQueryBuilder()
 			.update(AgentExecution)
 			.set({ model })
 			.whereInIds(executionIds)

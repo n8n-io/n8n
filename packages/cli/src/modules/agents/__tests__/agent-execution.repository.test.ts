@@ -1,3 +1,4 @@
+import { mock } from 'vitest-mock-extended';
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests intentionally reference unbound methods */
 import { mockEntityManager } from '@test/mocking';
 
@@ -12,7 +13,7 @@ describe('AgentExecutionRepository', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		repository = new AgentExecutionRepository(mockDataSource as never);
+		repository = new AgentExecutionRepository(mockDataSource as never, mock());
 	});
 
 	describe('findLatestSuspendedByThreadId', () => {

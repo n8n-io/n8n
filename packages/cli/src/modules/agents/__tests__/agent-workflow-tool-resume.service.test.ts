@@ -1,3 +1,4 @@
+import { mockConversationLeases } from './mock-conversation-lease';
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { User, UserRepository } from '@n8n/db';
@@ -11,6 +12,7 @@ import { mock } from 'vitest-mock-extended';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import type { AgentExecutionUpdateBroadcaster } from '../agent-execution-update-broadcaster';
+import type { AgentMessageQueueService } from '../agent-message-queue.service';
 import type { AgentTestRunService } from '../agent-test-run.service';
 import { AgentWorkflowToolResumeService } from '../agent-workflow-tool-resume.service';
 import type { AgentBackgroundJobService } from '../background/agent-background-job.service';
@@ -53,6 +55,11 @@ function setup() {
 		checkpoint: { status: 'suspended' },
 	} as never);
 	const backgroundJobService = mock<AgentBackgroundJobService>();
+	const leases = mockConversationLeases();
+	leases.withLease.mockImplementation(
+		async (_ns, _key, execute) => await execute(new AbortController().signal),
+	);
+	const messageQueue = mock<AgentMessageQueueService>();
 	const service = new AgentWorkflowToolResumeService(
 		logger,
 		userRepository,
@@ -64,6 +71,8 @@ function setup() {
 		instanceSettings,
 		publisher,
 		backgroundJobService,
+		leases,
+		messageQueue,
 	);
 	return {
 		service,
@@ -78,6 +87,7 @@ function setup() {
 		instanceSettings,
 		messageContextService,
 		backgroundJobService,
+		messageQueue,
 	};
 }
 
@@ -100,7 +110,7 @@ function afterContext(
 
 describe('AgentWorkflowToolResumeService → lifecycle wiring', () => {
 	it('resumes the agent run once the sub-workflow finishes', async () => {
-		const { service, bridge, chatIntegrationService } = setup();
+		const { service, bridge, chatIntegrationService, messageQueue } = setup();
 		chatIntegrationService.getBridge.mockReturnValue(bridge);
 
 		await service.handleWorkflowExecuteAfter(afterContext('success', agentRun));
@@ -110,7 +120,9 @@ describe('AgentWorkflowToolResumeService → lifecycle wiring', () => {
 			'run-1',
 			'call-1',
 			{ type: 'workflow_finished', value: 'success' },
+			expect.any(AbortSignal),
 		);
+		expect(messageQueue.notify).toHaveBeenCalledWith(agentRun.threadId);
 	});
 
 	it.each([
@@ -155,12 +167,13 @@ describe('AgentWorkflowToolResumeService → lifecycle wiring', () => {
 	});
 
 	it('resumes on a main when the relayed command arrives', async () => {
-		const { service, bridge, chatIntegrationService } = setup();
+		const { service, bridge, chatIntegrationService, messageQueue } = setup();
 		chatIntegrationService.getBridge.mockReturnValue(bridge);
 
 		await service.handleResumeRelay({ agentRun, status: 'success' });
 
 		expect(bridge.resumeInAgentThread).toHaveBeenCalled();
+		expect(messageQueue.notify).toHaveBeenCalledWith(agentRun.threadId);
 	});
 
 	it('never lets a failed resume disturb the execution that triggered it', async () => {
@@ -191,6 +204,7 @@ describe('AgentWorkflowToolResumeService → chat platforms', () => {
 			expect.any(String),
 			expect.any(String),
 			{ type: 'workflow_finished', value: 'error' },
+			expect.any(AbortSignal),
 		);
 	});
 

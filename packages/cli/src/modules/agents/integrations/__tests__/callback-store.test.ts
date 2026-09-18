@@ -37,7 +37,7 @@ describe('CallbackStore', () => {
 			kind: 'approval',
 		});
 
-		await expect(reader.resolve(key)).resolves.toEqual({
+		await expect(reader.resolve(key, async () => {})).resolves.toEqual({
 			actionId: 'resume:run:tool:0',
 			value: '{"approved":true}',
 			kind: 'approval',
@@ -52,8 +52,8 @@ describe('CallbackStore', () => {
 
 		const key = await writer.store('resume:run:tool:0', 'yes');
 
-		await expect(otherScope.resolve(key)).resolves.toBeUndefined();
-		await expect(writer.resolve(key)).resolves.toMatchObject({
+		await expect(otherScope.resolve(key, async () => {})).resolves.toBeUndefined();
+		await expect(writer.resolve(key, async () => {})).resolves.toMatchObject({
 			actionId: 'resume:run:tool:0',
 			value: 'yes',
 		});
@@ -71,11 +71,11 @@ describe('CallbackStore', () => {
 			groupId: 'card-1',
 		});
 
-		await expect(store.resolve(approveKey)).resolves.toMatchObject({
+		await expect(store.resolve(approveKey, async () => {})).resolves.toMatchObject({
 			value: '{"approved":true}',
 			groupId: 'card-1',
 		});
-		await expect(store.resolve(declineKey)).resolves.toBeUndefined();
+		await expect(store.resolve(declineKey, async () => {})).resolves.toBeUndefined();
 	});
 
 	it('cannot resolve a consumed key again', async () => {
@@ -84,7 +84,23 @@ describe('CallbackStore', () => {
 		const store = new CallbackStore(cache, lockService, 'agent-1:telegram:cred-1');
 
 		const key = await store.store('resume:run:tool:0', 'once');
-		await expect(store.resolve(key)).resolves.toMatchObject({ value: 'once' });
-		await expect(store.resolve(key)).resolves.toBeUndefined();
+		await expect(store.resolve(key, async () => {})).resolves.toMatchObject({ value: 'once' });
+		await expect(store.resolve(key, async () => {})).resolves.toBeUndefined();
+	});
+	it('keeps the callback available when persistence fails', async () => {
+		const cache = await createCache();
+		const store = new CallbackStore(cache, createLockService(), 'agent-1:slack');
+		const key = await store.store('resume:run:tool:0', 'yes');
+		await expect(
+			store.resolve(key, async () => {
+				throw new Error('database unavailable');
+			}),
+		).rejects.toThrow('database unavailable');
+		const persisted: string[] = [];
+		await store.resolve(key, async (payload) => {
+			persisted.push(payload.value);
+		});
+		expect(persisted).toEqual(['yes']);
+		await expect(store.resolve(key, async () => {})).resolves.toBeUndefined();
 	});
 });

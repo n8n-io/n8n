@@ -28,6 +28,7 @@ import {
 } from './agent-chat-attachment.service';
 import { AgentExecutionOrchestratorService } from './agent-execution-orchestrator.service';
 import { AgentExecutionService, threadBelongsTo } from './agent-execution.service';
+import { AgentMessageQueueService } from './agent-message-queue.service';
 import { messagesToDto } from './agent-message-mapper';
 import { type FlushableResponse, initSseStream, pumpChunks } from './agent-sse-stream';
 import { AgentTestChatService, chatThreadId } from './agent-test-chat.service';
@@ -51,6 +52,7 @@ export class AgentChatController {
 		private readonly agentChatAttachmentService: AgentChatAttachmentService,
 		private readonly agentExecutionService: AgentExecutionService,
 		private readonly backgroundJobService: AgentBackgroundJobService,
+		private readonly messageQueue: AgentMessageQueueService,
 	) {}
 
 	/** Decode, sniff, and persist inbound chat attachments; returns refs for the user turn. */
@@ -158,25 +160,47 @@ export class AgentChatController {
 				resourceId: draftChatMemoryResourceId(req.user.id),
 			});
 
-			const suspended = await pumpChunks(
-				this.agentTestRunService.streamDraftRun({
+			await this.messageQueue.enqueuePreview(
+				{
 					agentId,
-					projectId,
-					message,
-					attachments: storedAttachments,
-					user: req.user,
-					sessionId: threadId,
-					previewChat: true,
-					onExecutionRecorded: (id) => {
-						executionId = id;
+					threadId,
+					payload: {
+						source: 'preview',
+						kind: 'message',
+						projectId,
+						userId: req.user.id,
+						resourceId: draftChatMemoryResourceId(req.user.id),
+						message,
+						attachments: storedAttachments,
 					},
-					abortSignal: abortController.signal,
-				}),
-				send,
+				},
+				async ({ abortSignal, onExecutionStarted }) => {
+					const suspended = await pumpChunks(
+						this.agentTestRunService.streamDraftRun({
+							agentId,
+							projectId,
+							message,
+							attachments: storedAttachments,
+							user: req.user,
+							sessionId: threadId,
+							previewChat: true,
+							onExecutionRecorded: (id) => {
+								executionId = id;
+							},
+							abortSignal,
+							onExecutionStarted: async (id) => {
+								executionId = id;
+								await onExecutionStarted(id);
+							},
+						}),
+						send,
+					);
+					if (!suspended) {
+						send({ type: 'done', sessionId: threadId, ...(executionId ? { executionId } : {}) });
+					}
+				},
+				abortController.signal,
 			);
-			if (!suspended) {
-				send({ type: 'done', sessionId: threadId, ...(executionId ? { executionId } : {}) });
-			}
 		} catch (error) {
 			// No execution recorded means nothing references this turn's attachments —
 			// remove them so failed turns can't accumulate orphans. Best-effort, and
@@ -213,27 +237,53 @@ export class AgentChatController {
 		res.once('close', abortOnClose);
 		try {
 			let executionId: string | undefined;
-			const suspended = await pumpChunks(
-				this.agentExecutionOrchestratorService.resumeForChat({
-					agentId,
-					projectId,
-					runId,
-					toolCallId,
-					resumeData,
-					user: req.user,
-					usePublishedVersion: false,
-					integrationType: N8N_CHAT_INTEGRATION_TYPE,
-					previewChat: true,
-					onExecutionRecorded: (id) => {
-						executionId = id;
-					},
-					abortSignal: abortController.signal,
-				}),
-				send,
+			const memory = await this.messageQueue.getResumeScope(
+				agentId,
+				runId,
+				draftChatMemoryResourceId(req.user.id),
 			);
-			if (!suspended) {
-				send({ type: 'done', ...(executionId ? { executionId } : {}) });
-			}
+			await this.messageQueue.enqueuePreview(
+				{
+					agentId,
+					threadId: memory.threadId,
+					payload: {
+						source: 'preview',
+						kind: 'hitl',
+						projectId,
+						userId: req.user.id,
+						resourceId: memory.resourceId,
+						runId,
+						toolCallId,
+						resumeData,
+					},
+				},
+				async ({ abortSignal, onExecutionStarted }) => {
+					const suspended = await pumpChunks(
+						this.agentExecutionOrchestratorService.resumeForChat({
+							agentId,
+							projectId,
+							runId,
+							toolCallId,
+							resumeData,
+							user: req.user,
+							usePublishedVersion: false,
+							integrationType: N8N_CHAT_INTEGRATION_TYPE,
+							previewChat: true,
+							onExecutionRecorded: (id) => {
+								executionId = id;
+							},
+							abortSignal,
+							onExecutionStarted,
+							expectedMemory: memory,
+						}),
+						send,
+					);
+					if (!suspended) {
+						send({ type: 'done', ...(executionId ? { executionId } : {}) });
+					}
+				},
+				abortController.signal,
+			);
 		} catch (error) {
 			if (!abortController.signal.aborted) {
 				const errorMessage = error instanceof Error ? error.message : 'Resume failed';
@@ -261,6 +311,7 @@ export class AgentChatController {
 			agentId,
 			runId,
 			resourceId: draftChatMemoryResourceId(req.user.id),
+			onCancelled: (threadId) => this.messageQueue.notify(threadId),
 		});
 		return { cancelled };
 	}

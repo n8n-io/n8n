@@ -6,6 +6,7 @@ import {
 import { Logger } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
+import type { OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { jsonParse, UnexpectedError, UserError } from 'n8n-workflow';
 
@@ -14,6 +15,7 @@ import {
 	type AgentSandboxPrincipalHash,
 } from '../agent-sandbox-principal';
 import { AgentCheckpointRepository } from '../repositories/agent-checkpoint.repository';
+import { AgentConversationLeaseService } from '../agent-conversation-lease.service';
 
 /** File parts are checkpointed reference-only (a `Uint8Array` would not survive JSON round-tripping). */
 function stripStateFileData(state: SerializableAgentState): SerializableAgentState {
@@ -47,18 +49,34 @@ export class N8NCheckpointStorage {
 		private readonly agentCheckpointRepository: AgentCheckpointRepository,
 		private readonly logger: Logger,
 		private readonly agentsConfig: AgentsConfig,
+		private readonly leases: AgentConversationLeaseService,
 	) {
 		this.logger = this.logger.scoped('agents');
 	}
 
-	getStorage(agentId: string): CheckpointStore {
+	getStorage(agentId: string, requireOwnership = true): CheckpointStore {
 		return {
-			save: async (key, state) => await this.save(key, state, agentId),
+			save: async (key, state) => await this.save(key, state, agentId, requireOwnership),
 			load: async (key) => await this.load(key, agentId),
 			claimForResume: async (key: string, state: SerializableAgentState) =>
-				await this.claimForResume(key, state, agentId),
-			delete: async (key) => await this.delete(key, agentId),
+				await this.claimForResume(key, state, agentId, requireOwnership),
+			delete: async (key) => await this.delete(key, agentId, requireOwnership),
 		};
+	}
+
+	private async writeState<T>(
+		state: SerializableAgentState,
+		agentId: string,
+		requireOwnership: boolean,
+		write: (ctx: OperationContext) => Promise<T>,
+	): Promise<T> {
+		if (!requireOwnership) return await write({});
+		if (!state.persistence?.threadId)
+			throw new UnexpectedError('Agent checkpoint has no conversation');
+		return await this.leases.write(
+			this.leases.requireOwner(state.persistence.threadId, agentId),
+			write,
+		);
 	}
 
 	async getActiveRunIdsForSandbox(
@@ -88,26 +106,20 @@ export class N8NCheckpointStorage {
 		return runIds;
 	}
 
-	async save(key: string, checkpointState: SerializableAgentState, agentId: string): Promise<void> {
+	async save(
+		key: string,
+		checkpointState: SerializableAgentState,
+		agentId: string,
+		requireOwnership = true,
+	): Promise<void> {
 		const state = stripStateFileData(checkpointState);
-		const existing = await this.agentCheckpointRepository.findByRunId(key);
-
-		if (existing) {
-			if (existing.agentId !== agentId) {
-				throw new UnexpectedError('Agent checkpoint is owned by a different agent');
-			}
-			existing.state = JSON.stringify(state);
-			existing.expired = false;
-			await this.agentCheckpointRepository.save(existing);
-		} else {
-			const checkpoint = this.agentCheckpointRepository.create({
-				runId: key,
-				agentId,
-				state: JSON.stringify(state),
-				expired: false,
-			});
-			await this.agentCheckpointRepository.save(checkpoint);
-		}
+		await this.writeState(
+			state,
+			agentId,
+			requireOwnership,
+			async (ctx) =>
+				await this.agentCheckpointRepository.saveState(key, agentId, JSON.stringify(state), ctx),
+		);
 	}
 
 	async load(key: string, agentId: string): Promise<SerializableAgentState | undefined> {
@@ -131,13 +143,21 @@ export class N8NCheckpointStorage {
 		key: string,
 		checkpointState: SerializableAgentState,
 		agentId: string,
+		requireOwnership = true,
 	): Promise<boolean> {
 		const state = stripStateFileData(checkpointState);
-		return await this.agentCheckpointRepository.claimForResume(
-			key,
+		return await this.writeState(
+			state,
 			agentId,
-			JSON.stringify(state),
-			JSON.stringify({ ...state, status: 'running' }),
+			requireOwnership,
+			async (ctx) =>
+				await this.agentCheckpointRepository.claimForResume(
+					key,
+					agentId,
+					JSON.stringify(state),
+					JSON.stringify({ ...state, status: 'running' }),
+					ctx,
+				),
 		);
 	}
 
@@ -147,10 +167,17 @@ export class N8NCheckpointStorage {
 		agentId: string,
 	): Promise<boolean> {
 		if (state.status !== 'suspended') return false;
-		return await this.agentCheckpointRepository.cancelSuspended(
-			key,
+		return await this.writeState(
+			state,
 			agentId,
-			JSON.stringify(state),
+			true,
+			async (ctx) =>
+				await this.agentCheckpointRepository.cancelSuspended(
+					key,
+					agentId,
+					JSON.stringify(state),
+					ctx,
+				),
 		);
 	}
 
@@ -197,8 +224,35 @@ export class N8NCheckpointStorage {
 		return { status: 'active', checkpoint: state };
 	}
 
-	async delete(key: string, agentId: string): Promise<void> {
-		await this.agentCheckpointRepository.expireByRunIdAndAgentId(key, agentId);
+	async delete(key: string, agentId: string, requireOwnership = true): Promise<void> {
+		const checkpoint = await this.agentCheckpointRepository.findByRunIdAndAgentId(key, agentId);
+		if (!checkpoint?.state) return;
+		const state = jsonParse<SerializableAgentState>(checkpoint.state);
+		await this.writeState(
+			state,
+			agentId,
+			requireOwnership,
+			async (ctx) =>
+				await this.agentCheckpointRepository.expireByRunIdAndAgentId(key, agentId, ctx),
+		);
+	}
+
+	async deleteSuspended(key: string, agentId: string): Promise<void> {
+		const initial = await this.getStatus(key, agentId);
+		const threadId =
+			initial.status !== 'not-found' ? initial.checkpoint?.persistence?.threadId : undefined;
+		if (!threadId) return;
+		await this.leases.withLease(
+			agentId,
+			threadId,
+			async () => {
+				const current = await this.getStatus(key, agentId);
+				if (current.status !== 'not-found' && current.checkpoint?.status === 'suspended') {
+					await this.delete(key, agentId);
+				}
+			},
+			{ waitTimeoutMs: 250 },
+		);
 	}
 
 	/** Marks checkpoints past their TTL as expired. A failure propagates to the caller. */

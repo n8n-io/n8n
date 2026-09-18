@@ -1,4 +1,4 @@
-import { LockNamespace, LockService, Logger } from '@n8n/backend-common';
+import { Logger } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
 import { UserRepository } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
@@ -34,8 +34,11 @@ import {
 export const WAKE_DEBOUNCE_MS = 5_000;
 export const MAX_CONSECUTIVE_FAILED_WAKES = 3;
 
+import { AgentMessageQueueService } from '../agent-message-queue.service';
+import { AgentConversationLeaseService } from '../agent-conversation-lease.service';
+import { AgentConversationLeaseTimeoutError } from '../agent-conversation-lease.types';
+
 const WAKE_LOCK_WAIT_MS = 250;
-const WAKE_LOCK_TTL_MS = 30_000;
 const HINT_TITLE_MAX_CHARS = 80;
 
 type FailureState = { generation: string; count: number };
@@ -57,12 +60,13 @@ export class AgentWakeService {
 		private readonly checkpointStorage: N8NCheckpointStorage,
 		private readonly integrationRegistry: ChatIntegrationRegistry,
 		private readonly orchestrator: AgentExecutionOrchestratorService,
-		private readonly lockService: LockService,
+		private readonly leases: AgentConversationLeaseService,
 		private readonly publisher: Publisher,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly agentsConfig: AgentsConfig,
 		private readonly logger: Logger,
 		private readonly backgroundJobService: AgentBackgroundJobService,
+		private readonly messageQueue: AgentMessageQueueService,
 	) {
 		this.logger = this.logger.scoped('agents');
 	}
@@ -139,14 +143,28 @@ export class AgentWakeService {
 		if (!this.agentsConfig.backgroundTasksEnabled) return;
 
 		try {
-			await this.lockService.withLease(
-				LockNamespace.KNOWN_LOCKS,
-				`agent-background-wake:${threadId}`,
-				async (signal) => await this.deliverInsideLease(threadId, signal),
-				{ waitTimeoutMs: WAKE_LOCK_WAIT_MS, leaseTtlMs: WAKE_LOCK_TTL_MS },
+			const [first] = await this.jobRepository.findWakeableUnconsumedSettled(threadId);
+			if (!first) return;
+			await this.leases.withLease(
+				first.parentAgentId,
+				threadId,
+				async (signal) => {
+					try {
+						await this.deliverInsideLease(threadId, signal);
+					} finally {
+						this.messageQueue.notify(threadId);
+					}
+				},
+				{ waitTimeoutMs: WAKE_LOCK_WAIT_MS },
 			);
 		} catch (error) {
-			this.logger.warn('Failed to acquire the background job wake lease', { threadId, error });
+			if (error instanceof AgentConversationLeaseTimeoutError) {
+				this.logger.debug('Skipped background job wake because the conversation lease is busy', {
+					threadId,
+				});
+				return;
+			}
+			this.logger.warn('Failed to run the background job wake', { threadId, error });
 		}
 	}
 
@@ -171,9 +189,7 @@ export class AgentWakeService {
 		// Check the checkpoint store to determine whether the thread is still suspended.
 		if (
 			(await this.executionRepository.existsRunningByThread(threadId)) ||
-			((await this.executionRepository.hasSuspendedRun(threadId)) &&
-				(await this.checkpointStorage.findSuspendedForThread(first.parentAgentId, threadId)) !==
-					null)
+			(await this.checkpointStorage.findSuspendedForThread(first.parentAgentId, threadId)) !== null
 		) {
 			return;
 		}

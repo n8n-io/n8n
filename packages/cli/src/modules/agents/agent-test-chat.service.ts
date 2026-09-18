@@ -48,14 +48,14 @@ export class AgentTestChatService {
 	 */
 	async clearTestChatMessages(agentId: string, userId: string) {
 		const threadId = chatThreadId(agentId, userId);
-		await this.n8nMemory.getImplementation(agentId).deleteThread(threadId);
+		await this.n8nMemory.getImplementation(agentId, false).deleteThread(threadId);
 		await this.agentChatAttachmentService.deleteByThread(threadId, { agentId });
 	}
 
 	/** Delete all test-chat messages + the thread row — used when the agent itself is deleted. */
 	async clearAllTestChatMessages(agentId: string) {
 		const threadId = chatThreadId(agentId);
-		const memory = this.n8nMemory.getImplementation(agentId);
+		const memory = this.n8nMemory.getImplementation(agentId, false);
 		await memory.deleteThreadsByPrefix(threadId);
 		await memory.deleteMessagesByThread(threadId);
 		await memory.deleteThread(threadId);

@@ -1,4 +1,6 @@
-import type { LockService, Logger } from '@n8n/backend-common';
+import { mockConversationLeases } from '../../__tests__/mock-conversation-lease';
+import type { Logger } from '@n8n/backend-common';
+import { AgentConversationLeaseTimeoutError } from '../../agent-conversation-lease.types';
 import type { AgentsConfig } from '@n8n/config';
 import type { UserRepository } from '@n8n/db';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
@@ -8,6 +10,7 @@ import { mock } from 'vitest-mock-extended';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
+import type { AgentMessageQueueService } from '../../agent-message-queue.service';
 import type { AgentExecutionOrchestratorService } from '../../agent-execution-orchestrator.service';
 import { hashAgentSandboxPrincipal } from '../../agent-sandbox-principal';
 import type { AgentBackgroundJob } from '../../entities/agent-background-job.entity';
@@ -70,11 +73,12 @@ function setup(options: { worker?: boolean; enabled?: boolean } = {}) {
 	const checkpointStorage = mock<N8NCheckpointStorage>();
 	const integrationRegistry = mock<ChatIntegrationRegistry>();
 	const orchestrator = mock<AgentExecutionOrchestratorService>();
-	const lockService = mock<LockService>();
+	const leases = mockConversationLeases();
 	const publisher = mock<Publisher>();
 	const instanceSettings = mock<InstanceSettings>({ isWorker: options.worker ?? false });
 	const agentsConfig = mock<AgentsConfig>({ backgroundTasksEnabled: options.enabled ?? true });
 	const logger = mock<Logger>();
+	const messageQueue = mock<AgentMessageQueueService>();
 	logger.scoped.mockReturnValue(logger);
 
 	jobRepository.findWakeableUnconsumedSettled.mockResolvedValue([makeJob()]);
@@ -84,7 +88,7 @@ function setup(options: { worker?: boolean; enabled?: boolean } = {}) {
 	agentRepository.findById.mockResolvedValue({ id: 'agent-1', projectId: 'project-1' } as never);
 	userRepository.findByIdWithRole.mockResolvedValue(user as never);
 	integrationRegistry.get.mockReturnValue({} as never);
-	lockService.withLease.mockImplementation(async (_namespace, _key, callback) => {
+	leases.withLease.mockImplementation(async (_namespace, _key, callback) => {
 		return await callback(new AbortController().signal);
 	});
 
@@ -96,12 +100,13 @@ function setup(options: { worker?: boolean; enabled?: boolean } = {}) {
 		checkpointStorage,
 		integrationRegistry,
 		orchestrator,
-		lockService,
+		leases,
 		publisher,
 		instanceSettings,
 		agentsConfig,
 		logger,
 		backgroundJobService,
+		messageQueue,
 	);
 
 	return {
@@ -113,10 +118,11 @@ function setup(options: { worker?: boolean; enabled?: boolean } = {}) {
 		userRepository,
 		checkpointStorage,
 		orchestrator,
-		lockService,
+		leases,
 		publisher,
 		integrationRegistry,
 		logger,
+		messageQueue,
 	};
 }
 
@@ -154,22 +160,22 @@ describe('AgentWakeService', () => {
 	it('debounces wakes for one thread', async () => {
 		vi.useFakeTimers();
 		try {
-			const { service, lockService } = setup();
+			const { service, leases } = setup();
 
 			await service.requestWake('thread-1');
 			await service.requestWake('thread-1');
-			expect(lockService.withLease).not.toHaveBeenCalled();
+			expect(leases.withLease).not.toHaveBeenCalled();
 
 			await vi.advanceTimersByTimeAsync(WAKE_DEBOUNCE_MS);
 
-			expect(lockService.withLease).toHaveBeenCalledTimes(1);
+			expect(leases.withLease).toHaveBeenCalledTimes(1);
 		} finally {
 			vi.useRealTimers();
 		}
 	});
 
 	it('routes worker wakes through pubsub', async () => {
-		const { service, publisher, lockService } = setup({ worker: true });
+		const { service, publisher, leases } = setup({ worker: true });
 
 		await service.requestWake('thread-1');
 
@@ -177,20 +183,20 @@ describe('AgentWakeService', () => {
 			command: 'wake-agent-background-job',
 			payload: { threadId: 'thread-1' },
 		});
-		expect(lockService.withLease).not.toHaveBeenCalled();
+		expect(leases.withLease).not.toHaveBeenCalled();
 	});
 
 	it('schedules a wake when a main instance receives the pubsub request', async () => {
 		vi.useFakeTimers();
 		try {
-			const { service, lockService } = setup();
+			const { service, leases } = setup();
 
 			service.handleWakeRelay({ threadId: 'thread-1' });
 			await vi.advanceTimersByTimeAsync(WAKE_DEBOUNCE_MS);
 
-			expect(lockService.withLease).toHaveBeenCalledWith(
+			expect(leases.withLease).toHaveBeenCalledWith(
 				expect.anything(),
-				'agent-background-wake:thread-1',
+				'thread-1',
 				expect.any(Function),
 				expect.anything(),
 			);
@@ -202,27 +208,27 @@ describe('AgentWakeService', () => {
 	it('schedules a wake for each thread with pending results', async () => {
 		vi.useFakeTimers();
 		try {
-			const { service, jobRepository, lockService } = setup();
+			const { service, jobRepository, leases } = setup();
 			jobRepository.findThreadsWithUnconsumedMail.mockResolvedValue(['thread-1', 'thread-2']);
 
 			await service.drainUnconsumed();
 			await vi.advanceTimersByTimeAsync(WAKE_DEBOUNCE_MS);
 
-			expect(lockService.withLease).toHaveBeenCalledTimes(2);
+			expect(leases.withLease).toHaveBeenCalledTimes(2);
 		} finally {
 			vi.useRealTimers();
 		}
 	});
 
 	it('does nothing while background tasks are disabled', async () => {
-		const { service, publisher, lockService, jobRepository } = setup({ enabled: false });
+		const { service, publisher, leases, jobRepository } = setup({ enabled: false });
 
 		await service.requestWake('thread-1');
 		await service.drainUnconsumed();
 		await service.attemptWake('thread-1');
 
 		expect(publisher.publishCommand).not.toHaveBeenCalled();
-		expect(lockService.withLease).not.toHaveBeenCalled();
+		expect(leases.withLease).not.toHaveBeenCalled();
 		expect(jobRepository.findThreadsWithUnconsumedMail).not.toHaveBeenCalled();
 	});
 
@@ -359,7 +365,7 @@ describe('AgentWakeService', () => {
 	it('delivers results for one author and schedules another wake for the remaining authors', async () => {
 		vi.useFakeTimers();
 		try {
-			const { service, orchestrator, jobRepository, lockService } = setup();
+			const { service, orchestrator, jobRepository, leases } = setup();
 			const otherJob = makeJob({
 				id: 'job-2',
 				parentResourceId: `draft-chat:${otherUser.id}`,
@@ -378,7 +384,7 @@ describe('AgentWakeService', () => {
 			expect(jobRepository.markMailConsumed).toHaveBeenCalledWith('thread-1', ['job-1']);
 
 			await vi.advanceTimersByTimeAsync(WAKE_DEBOUNCE_MS);
-			expect(lockService.withLease).toHaveBeenCalledTimes(2);
+			expect(leases.withLease).toHaveBeenCalledTimes(2);
 		} finally {
 			vi.useRealTimers();
 		}
@@ -391,18 +397,12 @@ describe('AgentWakeService', () => {
 		expect(running.orchestrator.executeForWake).not.toHaveBeenCalled();
 
 		const suspended = setup();
-		suspended.executionRepository.hasSuspendedRun.mockResolvedValue(true);
 		suspended.checkpointStorage.findSuspendedForThread.mockResolvedValue({} as never);
 		await suspended.service.attemptWake('thread-1');
 		expect(suspended.orchestrator.executeForWake).not.toHaveBeenCalled();
 	});
 
-	it('checks checkpoints only for threads with a recorded suspension', async () => {
-		const never = setup();
-		await never.service.attemptWake('thread-1');
-		expect(never.checkpointStorage.findSuspendedForThread).not.toHaveBeenCalled();
-		expect(never.orchestrator.executeForWake).toHaveBeenCalledTimes(1);
-
+	it('permits wakes after the checkpoint has resumed', async () => {
 		// A resumed run keeps its suspended status. Only an active checkpoint blocks the wake.
 		const resumed = setup();
 		resumed.executionRepository.hasSuspendedRun.mockResolvedValue(true);
@@ -415,9 +415,9 @@ describe('AgentWakeService', () => {
 	});
 
 	it('does not mark results as delivered after the wake loses its lease', async () => {
-		const { service, lockService, orchestrator, jobRepository } = setup();
+		const { service, leases, orchestrator, jobRepository } = setup();
 		const controller = new AbortController();
-		lockService.withLease.mockImplementation(async (_namespace, _key, callback) => {
+		leases.withLease.mockImplementation(async (_namespace, _key, callback) => {
 			return await callback(controller.signal);
 		});
 		orchestrator.executeForWake.mockImplementation(async () => {
@@ -430,18 +430,27 @@ describe('AgentWakeService', () => {
 	});
 
 	it('leaves results pending when the wake cannot acquire the lease', async () => {
-		const { service, lockService, orchestrator, jobRepository } = setup();
-		lockService.withLease.mockRejectedValue(new Error('lock unavailable'));
+		const { service, leases, orchestrator, jobRepository, messageQueue, logger } = setup();
+		leases.withLease.mockRejectedValue(new AgentConversationLeaseTimeoutError('lock unavailable'));
 
 		await service.attemptWake('thread-1');
 
 		expect(orchestrator.executeForWake).not.toHaveBeenCalled();
 		expect(jobRepository.markMailConsumed).not.toHaveBeenCalled();
+		expect(messageQueue.notify).not.toHaveBeenCalled();
+		expect(logger.debug).toHaveBeenCalledWith(
+			'Skipped background job wake because the conversation lease is busy',
+			{ threadId: 'thread-1' },
+		);
+		expect(logger.warn).not.toHaveBeenCalled();
 	});
 
 	it('leaves results pending after a failed wake and omits error details from the log', async () => {
-		const { service, orchestrator, jobRepository, logger } = setup();
-		orchestrator.executeForWake.mockRejectedValue(new Error('401 for token sk-secret'));
+		const { service, orchestrator, jobRepository, logger, messageQueue } = setup();
+		orchestrator.executeForWake.mockImplementation(async () => {
+			expect(messageQueue.notify).not.toHaveBeenCalled();
+			throw new Error('401 for token sk-secret');
+		});
 
 		await service.attemptWake('thread-1');
 
@@ -451,6 +460,7 @@ describe('AgentWakeService', () => {
 			expect.objectContaining({ threadId: 'thread-1', attempt: 1, reason: 'Wake run failed' }),
 		);
 		expect(JSON.stringify(logger.warn.mock.calls)).not.toContain('sk-secret');
+		expect(messageQueue.notify).toHaveBeenCalledExactlyOnceWith('thread-1');
 	});
 
 	describe('identity validation', () => {

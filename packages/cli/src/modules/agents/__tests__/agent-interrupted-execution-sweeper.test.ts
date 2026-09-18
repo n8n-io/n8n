@@ -1,4 +1,7 @@
+import type { AgentExecutionThreadRepository } from '../repositories/agent-execution-thread.repository';
+import { mockConversationLeases } from './mock-conversation-lease';
 import { mockLogger } from '@n8n/backend-test-utils';
+import type { AgentMessageQueueService } from '../agent-message-queue.service';
 import type { AgentsConfig } from '@n8n/config';
 import { mock } from 'vitest-mock-extended';
 
@@ -17,6 +20,13 @@ function setup(options: { backgroundTasksEnabled?: boolean } = {}) {
 	const agentsConfig = mock<AgentsConfig>({
 		backgroundTasksEnabled: options.backgroundTasksEnabled ?? false,
 	});
+	const leases = mockConversationLeases();
+	leases.withLease.mockImplementation(
+		async (_ns, _key, execute) => await execute(new AbortController().signal),
+	);
+	repository.findRunningById.mockImplementation(
+		async (id) => (await repository.findStaleRunning(120_000)).find((row) => row.id === id) ?? null,
+	);
 	const sweeper = new AgentInterruptedExecutionSweeper(
 		mockLogger(),
 		repository,
@@ -24,6 +34,11 @@ function setup(options: { backgroundTasksEnabled?: boolean } = {}) {
 		backgroundJobService,
 		agentWakeService,
 		agentsConfig,
+		mock<AgentMessageQueueService>(),
+		leases,
+		mock<AgentExecutionThreadRepository>({
+			findOneBy: vi.fn().mockResolvedValue({ agentId: 'agent-1' }),
+		}),
 	);
 	return { sweeper, repository, executionService, backgroundJobService, agentWakeService };
 }
@@ -38,40 +53,35 @@ describe('AgentInterruptedExecutionSweeper', () => {
 			startedAt: new Date(0),
 			updatedAt: new Date(0),
 		} as AgentExecution;
-		repository.findRunning.mockResolvedValue([execution]);
+		repository.findStaleRunning.mockResolvedValue([execution]);
 		executionService.finalizeInterruptedExecution.mockResolvedValue(true);
 
 		await sweeper.sweep();
 
-		expect(executionService.finalizeInterruptedExecution).toHaveBeenCalledWith(execution);
+		expect(executionService.finalizeInterruptedExecution).toHaveBeenCalledWith(
+			execution,
+			AgentInterruptedExecutionSweeper.LIVENESS_GRACE_MS,
+		);
 	});
 
-	it('leaves a recently active execution running in another process', async () => {
+	it('leaves an execution running when the database liveness recheck fails', async () => {
 		const { sweeper, repository, executionService } = setup();
-		repository.findRunning.mockResolvedValue([
-			{
-				id: 'execution-1',
-				threadId: 'thread-1',
-				status: 'running',
-				startedAt: new Date(Date.now() - AgentInterruptedExecutionSweeper.LIVENESS_GRACE_MS * 2),
-				updatedAt: new Date(),
-			} as AgentExecution,
-		]);
-
+		const execution = mock<AgentExecution>({ id: 'execution-1', threadId: 'thread-1' });
+		repository.findStaleRunning.mockResolvedValue([execution]);
+		executionService.finalizeInterruptedExecution.mockResolvedValue(false);
 		await sweeper.sweep();
-
-		expect(executionService.finalizeInterruptedExecution).not.toHaveBeenCalled();
+		expect(executionService.finalizeInterruptedExecution).toHaveBeenCalledOnce();
 	});
 
 	it('runs full reconciliation when the feature is on, and still reconciles workflow jobs when it is off', async () => {
 		const disabled = setup();
-		disabled.repository.findRunning.mockResolvedValue([]);
+		disabled.repository.findStaleRunning.mockResolvedValue([]);
 		await disabled.sweeper.sweep();
 		expect(disabled.backgroundJobService.reconcile).not.toHaveBeenCalled();
 		expect(disabled.backgroundJobService.reconcileWorkflowJobs).toHaveBeenCalled();
 
 		const enabled = setup({ backgroundTasksEnabled: true });
-		enabled.repository.findRunning.mockResolvedValue([]);
+		enabled.repository.findStaleRunning.mockResolvedValue([]);
 		await enabled.sweeper.sweep();
 		expect(enabled.backgroundJobService.reconcile).toHaveBeenCalled();
 		expect(enabled.backgroundJobService.reconcileWorkflowJobs).not.toHaveBeenCalled();
@@ -79,7 +89,7 @@ describe('AgentInterruptedExecutionSweeper', () => {
 
 	it('checks for pending job results after reconciliation', async () => {
 		const { sweeper, repository, agentWakeService } = setup();
-		repository.findRunning.mockResolvedValue([]);
+		repository.findStaleRunning.mockResolvedValue([]);
 
 		await sweeper.sweep();
 

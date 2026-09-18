@@ -59,7 +59,10 @@ export class CallbackStore {
 	}
 
 	/** Resolve a short key and delete it. Returns undefined if missing/expired. */
-	async resolve(key: string): Promise<CallbackPayload | undefined> {
+	async resolve(
+		key: string,
+		persist: (payload: CallbackPayload) => Promise<void>,
+	): Promise<CallbackPayload | undefined> {
 		const peek = await this.cache.get<CallbackPayload>(this.entryCacheKey(key));
 		if (!peek) return undefined;
 
@@ -70,6 +73,8 @@ export class CallbackStore {
 		return await this.lockService.withLease(LockNamespace.KNOWN_LOCKS, lockId, async () => {
 			const entry = await this.cache.get<CallbackPayload>(this.entryCacheKey(key));
 			if (!entry) return undefined;
+			// Keep the one-time key usable if durable admission fails.
+			await persist(entry);
 
 			if (entry.groupId) {
 				const groupCacheKey = this.groupCacheKey(entry.groupId);

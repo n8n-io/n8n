@@ -3,13 +3,17 @@ import { AgentsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 
 import { AgentExecutionService } from './agent-execution.service';
+import { AgentMessageQueueService } from './agent-message-queue.service';
+import { AgentConversationLeaseService } from './agent-conversation-lease.service';
+import { AgentConversationLeaseTimeoutError } from './agent-conversation-lease.types';
+import { AgentExecutionThreadRepository } from './repositories/agent-execution-thread.repository';
 import { AgentBackgroundJobService } from './background/agent-background-job.service';
 import { AgentWakeService } from './background/agent-wake.service';
 import { AgentExecutionRepository } from './repositories/agent-execution.repository';
 
 @Service()
 export class AgentInterruptedExecutionSweeper {
-	static readonly LIVENESS_GRACE_MS = 2 * 60 * 1000;
+	static readonly LIVENESS_GRACE_MS = AgentMessageQueueService.LIVENESS_GRACE_MS;
 
 	constructor(
 		private readonly logger: Logger,
@@ -18,14 +22,18 @@ export class AgentInterruptedExecutionSweeper {
 		private readonly backgroundJobService: AgentBackgroundJobService,
 		private readonly agentWakeService: AgentWakeService,
 		private readonly agentsConfig: AgentsConfig,
+		private readonly messageQueue: AgentMessageQueueService,
+		private readonly leases: AgentConversationLeaseService,
+		private readonly threadRepository: AgentExecutionThreadRepository,
 	) {
 		this.logger = this.logger.scoped('agents');
 	}
 
 	async sweep(): Promise<void> {
+		const graceMs = AgentInterruptedExecutionSweeper.LIVENESS_GRACE_MS;
 		let running;
 		try {
-			running = await this.executionRepository.findRunning();
+			running = await this.executionRepository.findStaleRunning(graceMs);
 		} catch (error) {
 			this.logger.error('Failed to query running agent executions', { error });
 			return;
@@ -33,19 +41,25 @@ export class AgentInterruptedExecutionSweeper {
 
 		for (const execution of running) {
 			try {
-				if (
-					execution.updatedAt.getTime() >
-					Date.now() - AgentInterruptedExecutionSweeper.LIVENESS_GRACE_MS
-				) {
-					continue;
-				}
-				if (await this.executionService.finalizeInterruptedExecution(execution)) {
-					this.logger.info('Marked abandoned agent execution as interrupted', {
-						executionId: execution.id,
-						threadId: execution.threadId,
-					});
-				}
+				const thread = await this.threadRepository.findOneBy({ id: execution.threadId });
+				if (!thread) continue;
+				await this.leases.withLease(
+					thread.agentId,
+					execution.threadId,
+					async () => {
+						const current = await this.executionRepository.findRunningById(execution.id);
+						if (!current) return;
+						if (await this.executionService.finalizeInterruptedExecution(current, graceMs)) {
+							this.logger.info('Marked abandoned agent execution as interrupted', {
+								executionId: execution.id,
+								threadId: execution.threadId,
+							});
+						}
+					},
+					{ waitTimeoutMs: 250 },
+				);
 			} catch (error) {
+				if (error instanceof AgentConversationLeaseTimeoutError) continue;
 				this.logger.error('Failed to finalize interrupted agent execution', {
 					executionId: execution.id,
 					threadId: execution.threadId,
@@ -74,5 +88,7 @@ export class AgentInterruptedExecutionSweeper {
 		} catch (error) {
 			this.logger.error('Failed to schedule delivery of pending background job results', { error });
 		}
+
+		await this.messageQueue.recover();
 	}
 }

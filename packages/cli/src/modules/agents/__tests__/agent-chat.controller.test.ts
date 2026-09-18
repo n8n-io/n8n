@@ -10,6 +10,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import { AgentChatController } from '../agent-chat.controller';
 import type { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
+import type { AgentMessageQueueService } from '../agent-message-queue.service';
 import type { AgentExecutionService } from '../agent-execution.service';
 import type { AgentBackgroundJobService } from '../background/agent-background-job.service';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
@@ -32,6 +33,12 @@ function makeController() {
 	const agentChatAttachmentService = mock<AgentChatAttachmentService>();
 	const agentExecutionService = mock<AgentExecutionService>();
 	const backgroundJobService = mock<AgentBackgroundJobService>();
+	const queue = mock<AgentMessageQueueService>();
+	queue.enqueuePreview.mockImplementation(
+		async (_input, execute, abortSignal) =>
+			await execute({ abortSignal, onExecutionStarted: async () => {} }),
+	);
+	queue.getResumeScope.mockResolvedValue({ threadId: 'thread-1', resourceId: 'draft-chat:user-1' });
 	agentTestRunService.prepareDraftRun.mockResolvedValue({
 		status: 'ready',
 		sessionId: 'thread-1',
@@ -56,6 +63,7 @@ function makeController() {
 		agentChatAttachmentService,
 		agentExecutionService,
 		backgroundJobService,
+		queue,
 	);
 
 	return {
@@ -65,6 +73,7 @@ function makeController() {
 		agentExecutionOrchestratorService,
 		agentTestRunService,
 		agentChatAttachmentService,
+		queue,
 		agentsService: {
 			findById: agentsService.findById,
 			getConversationHistory: agentExecutionOrchestratorService.getConversationHistory,
@@ -454,9 +463,13 @@ describe('AgentChatController SSE done payload', () => {
 
 describe('AgentChatController HITL cancellation', () => {
 	it('cancels a suspended run for the current preview user', async () => {
-		const { controller, agentExecutionOrchestratorService, agentsService } = makeController();
+		const { controller, agentExecutionOrchestratorService, agentsService, queue } =
+			makeController();
 		agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
-		agentExecutionOrchestratorService.cancelChatRun.mockResolvedValue(true);
+		agentExecutionOrchestratorService.cancelChatRun.mockImplementation(async ({ onCancelled }) => {
+			onCancelled?.('thread-1');
+			return true;
+		});
 
 		await expect(
 			controller.cancelChatRun(
@@ -474,7 +487,9 @@ describe('AgentChatController HITL cancellation', () => {
 			agentId: 'agent-1',
 			runId: 'run-1',
 			resourceId: 'draft-chat:user-1',
+			onCancelled: expect.any(Function),
 		});
+		expect(queue.notify).toHaveBeenCalledWith('thread-1');
 	});
 });
 
@@ -523,7 +538,7 @@ describe('AgentChatController attachment cleanup on failed turns', () => {
 		expect(agentChatAttachmentService.deleteByIds).toHaveBeenCalledWith(['att-1']);
 	});
 
-	it('keeps stored attachments when the run fails after an execution was recorded', async () => {
+	it('keeps stored attachments when the run fails after an execution starts', async () => {
 		const { controller, agentExecutionOrchestratorService, agentChatAttachmentService } =
 			makeController();
 		agentChatAttachmentService.storeInbound.mockResolvedValue({
@@ -532,11 +547,10 @@ describe('AgentChatController attachment cleanup on failed turns', () => {
 			mimeType: 'text/plain',
 			fileSizeBytes: 5,
 		} as never);
-		// eslint-disable-next-line @typescript-eslint/require-await
 		agentExecutionOrchestratorService.executeForChat.mockImplementation(async function* (config) {
-			config.onExecutionRecorded?.('exec-1');
+			await config.onExecutionStarted?.('exec-1');
 			yield* [];
-			throw new Error('flaky post-persist failure');
+			throw new Error('execution finalization failed');
 		});
 		const { res } = makeCleanupSseResponse();
 

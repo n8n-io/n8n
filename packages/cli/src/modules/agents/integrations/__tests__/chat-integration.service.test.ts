@@ -13,6 +13,7 @@ import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { UrlService } from '@/services/url.service';
 
 import { AgentExecutionOrchestratorService } from '../../agent-execution-orchestrator.service';
+import { AgentMessageQueueService } from '../../agent-message-queue.service';
 import type { Agent } from '../../entities/agent.entity';
 import type { AgentChannelStatusReporter } from '../agent-channel-status-reporter';
 import type { AgentRepository } from '../../repositories/agent.repository';
@@ -132,6 +133,9 @@ function buildServiceWith(
 	} = {},
 ) {
 	const registry = opts.registry ?? new ChatIntegrationRegistry();
+	const queue = mock<AgentMessageQueueService>();
+	queue.onConnectionReady.mockResolvedValue(undefined);
+	Container.set(AgentMessageQueueService, queue);
 	const agentRepository = opts.agentRepository ?? mock<AgentRepository>();
 	const credentialsService = opts.credentialsService ?? mock<CredentialsService>();
 	const publisher = opts.publisher ?? mock<Publisher>();
@@ -613,7 +617,9 @@ describe('ChatIntegrationService — outbound Preview connections', () => {
 		expect(reusedChat).toBe(chatInstance);
 		expect(agentRepository.findOne).toHaveBeenCalledTimes(3);
 		expect(Chat).toHaveBeenCalledTimes(1);
-		expect(Chat).toHaveBeenCalledWith(expect.objectContaining({ state: memoryState }));
+		expect(Chat).toHaveBeenCalledWith(
+			expect.objectContaining({ state: memoryState, concurrency: 'concurrent' }),
+		);
 		expect(createAdapter).toHaveBeenCalledWith(expect.objectContaining({ ingressEnabled: false }));
 		expect(chatInstance.initialize).toHaveBeenCalledTimes(1);
 		expect(chatSubscriptionStateService.createStateAdapter).not.toHaveBeenCalled();

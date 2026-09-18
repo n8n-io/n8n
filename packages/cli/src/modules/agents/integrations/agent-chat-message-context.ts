@@ -1,5 +1,5 @@
 import type { AgentIntegrationConfig } from '@n8n/api-types';
-import type { Message, MessageSubject, Thread } from 'chat';
+import type { Adapter, Message, MessageSubject, Thread } from 'chat';
 import type { Logger } from 'n8n-workflow';
 
 import type { IntegrationMessageContextService } from './integration-message-context.service';
@@ -75,9 +75,12 @@ export class AgentChatMessageContextBridge {
 		}
 	}
 
-	async resolveSubject(message: Message<unknown>): Promise<IntegrationMessageSubject | undefined> {
+	async resolveSubject(
+		message: Message<unknown>,
+		adapter: Adapter,
+	): Promise<IntegrationMessageSubject | undefined> {
 		try {
-			return toIntegrationMessageSubject(await message.subject);
+			return toIntegrationMessageSubject(await adapter.fetchSubject?.(message.raw));
 		} catch (error) {
 			this.logger.debug(
 				`[AgentChatBridge] Failed to fetch message subject: ${

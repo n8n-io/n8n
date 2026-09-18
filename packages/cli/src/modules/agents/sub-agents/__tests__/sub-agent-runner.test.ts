@@ -1,3 +1,4 @@
+import { mockConversationLeases } from '../../__tests__/mock-conversation-lease';
 import {
 	INLINE_SUB_AGENT_ID,
 	type BuiltAgent,
@@ -140,6 +141,8 @@ describe('SubAgentRunner', () => {
 			checkpointStorage,
 			logger,
 			aiConfigMock,
+
+			mockConversationLeases(),
 		);
 
 		childAgent = mock<BuiltAgent>();
@@ -743,7 +746,7 @@ describe('SubAgentRunner', () => {
 			{ projectId, usePublishedVersion: true },
 		);
 		expect(result.threadId).toBe('child-thread-1');
-		expect(checkpointStorage.delete).toHaveBeenCalledWith('child-run-1', parentAgentId);
+		expect(checkpointStorage.deleteSuspended).toHaveBeenCalledWith('child-run-1', parentAgentId);
 	});
 
 	it('accepts a legacy pinned resume context', async () => {
@@ -782,7 +785,7 @@ describe('SubAgentRunner', () => {
 				reason: 'Parent run aborted',
 			});
 
-			expect(checkpointStorage.delete).toHaveBeenCalledWith('child-run-1', 'agent-1');
+			expect(checkpointStorage.deleteSuspended).toHaveBeenCalledWith('child-run-1', 'agent-1');
 			expect(sourceResolver.resolveForRuntime).not.toHaveBeenCalled();
 			expect(reconstructionService.reconstructFromResolvedSource).not.toHaveBeenCalled();
 			expect(childAgent.resume).not.toHaveBeenCalled();
@@ -803,7 +806,7 @@ describe('SubAgentRunner', () => {
 				reason: 'Parent run aborted',
 			}),
 		).rejects.toThrow('Configured sub-agent resume context is missing or invalid');
-		expect(checkpointStorage.delete).not.toHaveBeenCalled();
+		expect(checkpointStorage.deleteSuspended).not.toHaveBeenCalled();
 	});
 
 	it('marks the run as failed when the child result contains an error', async () => {

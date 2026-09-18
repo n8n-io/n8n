@@ -10,6 +10,7 @@ import {
 	type BackgroundJobReceipt,
 } from './agent-background-job.service';
 import type { AgentBackgroundJobSettlement } from '../repositories/agent-background-job.repository';
+import { AgentConversationLeaseService } from '../agent-conversation-lease.service';
 import { formatSubAgentToolOutput } from '../sub-agents/format-sub-agent-tool-output';
 import {
 	SubAgentRunner,
@@ -46,6 +47,7 @@ export class SubAgentBackgroundRunner {
 		private readonly runner: SubAgentRunner,
 		private readonly jobService: AgentBackgroundJobService,
 		private readonly logger: Logger,
+		private readonly leases: AgentConversationLeaseService,
 	) {
 		this.logger = this.logger.scoped('agents');
 	}
@@ -84,81 +86,83 @@ export class SubAgentBackgroundRunner {
 		});
 		if (receipt.status !== 'started') return receipt;
 
-		// The job runs on its own abort scope: the parent's signal dies with the
-		// chat connection, and the parent's live telemetry does not outlive its
-		// turn — neither is forwarded.
-		const abortController = new AbortController();
-		this.jobService.registerAbortController(jobId, abortController);
-		const timeout = setTimeout(() => {
-			// Settle first so the timeout is recorded as the reason; the aborted
-			// run's own settle then loses to this one.
-			void this.jobService
-				.settle(jobId, {
-					status: 'failed',
-					error: `Timed out after ${Math.round(SUB_AGENT_BACKGROUND_TIMEOUT_MS / 60_000)} minutes`,
+		this.leases.outsideConversation(() => {
+			// The job runs on its own abort scope: the parent's signal dies with the
+			// chat connection, and the parent's live telemetry does not outlive its
+			// turn — neither is forwarded.
+			const abortController = new AbortController();
+			this.jobService.registerAbortController(jobId, abortController);
+			const timeout = setTimeout(() => {
+				// Settle first so the timeout is recorded as the reason; the aborted
+				// run's own settle then loses to this one.
+				void this.jobService
+					.settle(jobId, {
+						status: 'failed',
+						error: `Timed out after ${Math.round(SUB_AGENT_BACKGROUND_TIMEOUT_MS / 60_000)} minutes`,
+					})
+					.catch((error: unknown) => {
+						// A rejection escaping this detached chain would surface as an
+						// unhandled rejection; the sweeper reconciles the row later.
+						this.logger.error('Failed to settle timed-out background job', { jobId, error });
+					})
+					.finally(() => abortController.abort());
+			}, SUB_AGENT_BACKGROUND_TIMEOUT_MS);
+			timeout.unref();
+
+			void this.runner
+				.run(
+					{
+						goal: request.goal,
+						source: request.source,
+						...(request.context !== undefined ? { context: request.context } : {}),
+						...(request.expectedOutput !== undefined
+							? { expectedOutput: request.expectedOutput }
+							: {}),
+						parentThreadId: request.parentThreadId,
+						parentResourceId: request.parentResourceId,
+						parentSandboxPrincipalHash: request.parentSandboxPrincipalHash,
+						childThreadId,
+						taskPath,
+					},
+					{
+						projectId: context.projectId,
+						parentAgentId: context.parentAgentId,
+						credentialProvider: context.credentialProvider,
+						runType: context.runType,
+						workflowToolExecutionMode: context.workflowToolExecutionMode,
+						user: context.user,
+						instrumentation: context.instrumentation,
+						abortSignal: abortController.signal,
+						...(request.difficulty !== undefined
+							? { selfDelegationDifficulty: request.difficulty }
+							: {}),
+						...(context.parentWorkspaceHandle !== undefined
+							? { parentWorkspaceHandle: context.parentWorkspaceHandle }
+							: {}),
+					},
+				)
+				.then((result) => settlementFor(result))
+				.catch(
+					(error: unknown): AgentBackgroundJobSettlement => ({
+						status: 'failed',
+						error: error instanceof Error ? error.message : String(error),
+					}),
+				)
+				.then(async (settlement) => {
+					const settled = await this.jobService.settle(jobId, settlement);
+					if (settled && settlement.status === 'failed') {
+						this.logger.warn('Background sub-agent job failed', { jobId, error: settlement.error });
+					}
 				})
 				.catch((error: unknown) => {
-					// A rejection escaping this detached chain would surface as an
-					// unhandled rejection; the sweeper reconciles the row later.
-					this.logger.error('Failed to settle timed-out background job', { jobId, error });
+					// Only the settle write itself can land here: don't overwrite the
+					// outcome (a completed answer must not become 'failed' over a DB
+					// blip) and don't let the rejection escape the detached chain —
+					// the sweeper reconciles the still-running row later.
+					this.logger.error('Failed to settle background sub-agent job', { jobId, error });
 				})
-				.finally(() => abortController.abort());
-		}, SUB_AGENT_BACKGROUND_TIMEOUT_MS);
-		timeout.unref();
-
-		void this.runner
-			.run(
-				{
-					goal: request.goal,
-					source: request.source,
-					...(request.context !== undefined ? { context: request.context } : {}),
-					...(request.expectedOutput !== undefined
-						? { expectedOutput: request.expectedOutput }
-						: {}),
-					parentThreadId: request.parentThreadId,
-					parentResourceId: request.parentResourceId,
-					parentSandboxPrincipalHash: request.parentSandboxPrincipalHash,
-					childThreadId,
-					taskPath,
-				},
-				{
-					projectId: context.projectId,
-					parentAgentId: context.parentAgentId,
-					credentialProvider: context.credentialProvider,
-					runType: context.runType,
-					workflowToolExecutionMode: context.workflowToolExecutionMode,
-					user: context.user,
-					instrumentation: context.instrumentation,
-					abortSignal: abortController.signal,
-					...(request.difficulty !== undefined
-						? { selfDelegationDifficulty: request.difficulty }
-						: {}),
-					...(context.parentWorkspaceHandle !== undefined
-						? { parentWorkspaceHandle: context.parentWorkspaceHandle }
-						: {}),
-				},
-			)
-			.then((result) => settlementFor(result))
-			.catch(
-				(error: unknown): AgentBackgroundJobSettlement => ({
-					status: 'failed',
-					error: error instanceof Error ? error.message : String(error),
-				}),
-			)
-			.then(async (settlement) => {
-				const settled = await this.jobService.settle(jobId, settlement);
-				if (settled && settlement.status === 'failed') {
-					this.logger.warn('Background sub-agent job failed', { jobId, error: settlement.error });
-				}
-			})
-			.catch((error: unknown) => {
-				// Only the settle write itself can land here: don't overwrite the
-				// outcome (a completed answer must not become 'failed' over a DB
-				// blip) and don't let the rejection escape the detached chain —
-				// the sweeper reconciles the still-running row later.
-				this.logger.error('Failed to settle background sub-agent job', { jobId, error });
-			})
-			.finally(() => clearTimeout(timeout));
+				.finally(() => clearTimeout(timeout));
+		});
 
 		return receipt;
 	}

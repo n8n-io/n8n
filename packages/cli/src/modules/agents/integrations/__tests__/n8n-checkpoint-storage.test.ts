@@ -1,3 +1,5 @@
+import type { DataSource, EntityManager } from '@n8n/typeorm';
+import { mockConversationLeases } from '../../__tests__/mock-conversation-lease';
 import type { SerializableAgentState } from '@n8n/agents';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { AgentsConfig } from '@n8n/config';
@@ -8,7 +10,7 @@ import {
 	hashAgentSandboxPrincipal,
 } from '../../agent-sandbox-principal';
 import type { AgentCheckpoint } from '../../entities/agent-checkpoint.entity';
-import type { AgentCheckpointRepository } from '../../repositories/agent-checkpoint.repository';
+import { AgentCheckpointRepository } from '../../repositories/agent-checkpoint.repository';
 import {
 	CHECKPOINT_RECONCILIATION_OVERFLOW,
 	N8NCheckpointStorage,
@@ -31,10 +33,22 @@ const principalHash = hashAgentSandboxPrincipal({ type: 'n8n-user', userId: 'use
 
 function makeService() {
 	const repository = mock<AgentCheckpointRepository>();
+	const manager = mock<EntityManager>();
+	manager.findOneBy.mockImplementation(
+		async (_target, criteria) => await repository.findOneBy(criteria as never),
+	);
+	manager.create.mockImplementation((_target, values) => values as never);
+	manager.save.mockImplementation(
+		async (_target, values) => await repository.save(values as never),
+	);
+	const persistence = new AgentCheckpointRepository(mock<DataSource>({ manager }), mock());
+	repository.saveState.mockImplementation(persistence.saveState.bind(persistence));
 	const service = new N8NCheckpointStorage(
 		repository,
 		mockLogger(),
 		mock<AgentsConfig>({ checkpointTtlSeconds: 60 }),
+
+		mockConversationLeases(),
 	);
 
 	return { service, repository };
@@ -43,24 +57,17 @@ function makeService() {
 describe('N8NCheckpointStorage', () => {
 	it('creates new checkpoints with the storage agent as owner', async () => {
 		const { service, repository } = makeService();
-		const checkpoint = {
-			runId: 'run-1',
-			agentId: 'agent-1',
-			expired: false,
-			state: JSON.stringify(suspendedState),
-		} as AgentCheckpoint;
-		repository.findByRunId.mockResolvedValue(null);
-		repository.create.mockReturnValue(checkpoint);
+
+		repository.findOneBy.mockResolvedValue(null);
 
 		await service.getStorage('agent-1').save('run-1', suspendedState);
 
-		expect(repository.create).toHaveBeenCalledWith({
+		expect(repository.save).toHaveBeenCalledWith({
 			runId: 'run-1',
 			agentId: 'agent-1',
 			expired: false,
 			state: JSON.stringify(suspendedState),
 		});
-		expect(repository.save).toHaveBeenCalledWith(checkpoint);
 	});
 
 	it('updates a checkpoint only when the owner matches', async () => {
@@ -71,23 +78,24 @@ describe('N8NCheckpointStorage', () => {
 			expired: true,
 			state: null,
 		} as AgentCheckpoint;
-		repository.findByRunId.mockResolvedValue(checkpoint);
+		repository.findOneBy.mockResolvedValue(checkpoint);
 
 		await service.getStorage('agent-1').save('run-1', suspendedState);
 
-		expect(checkpoint).toMatchObject({
-			agentId: 'agent-1',
-			expired: false,
-			state: JSON.stringify(suspendedState),
-		});
-		expect(repository.save).toHaveBeenCalledWith(checkpoint);
+		expect(repository.save).toHaveBeenCalledWith(
+			expect.objectContaining({
+				agentId: 'agent-1',
+				expired: false,
+				state: JSON.stringify(suspendedState),
+			}),
+		);
 	});
 
 	it.each(['agent-2', null])(
 		'rejects overwriting a checkpoint owned by %s',
 		async (existingAgentId) => {
 			const { service, repository } = makeService();
-			repository.findByRunId.mockResolvedValue({
+			repository.findOneBy.mockResolvedValue({
 				runId: 'run-1',
 				agentId: existingAgentId,
 				expired: false,
@@ -127,6 +135,7 @@ describe('N8NCheckpointStorage', () => {
 			'agent-1',
 			JSON.stringify(suspendedState),
 			JSON.stringify({ ...suspendedState, status: 'running' }),
+			{},
 		);
 		await expect(storage.claimForResume?.('run-1', suspendedState)).resolves.toBe(false);
 	});
@@ -141,6 +150,7 @@ describe('N8NCheckpointStorage', () => {
 			'run-1',
 			'agent-1',
 			JSON.stringify(suspendedState),
+			{},
 		);
 	});
 
@@ -177,9 +187,12 @@ describe('N8NCheckpointStorage', () => {
 	it('expires only a checkpoint owned by the storage agent', async () => {
 		const { service, repository } = makeService();
 
+		repository.findByRunIdAndAgentId.mockResolvedValue(
+			mock<AgentCheckpoint>({ state: JSON.stringify(suspendedState) }),
+		);
 		await service.getStorage('agent-1').delete('run-1');
 
-		expect(repository.expireByRunIdAndAgentId).toHaveBeenCalledWith('run-1', 'agent-1');
+		expect(repository.expireByRunIdAndAgentId).toHaveBeenCalledWith('run-1', 'agent-1', {});
 	});
 
 	it('returns every persisted active run for the principal workspace', async () => {

@@ -20,8 +20,18 @@ import {
 	AgentChatAttachmentService,
 	type StoredAttachmentRef,
 } from '../agent-chat-attachment.service';
-import type { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
+import type {
+	AgentExecutionOrchestratorService,
+	ResumeForChatConfig,
+} from '../agent-execution-orchestrator.service';
 import { AgentExecutionService } from '../agent-execution.service';
+import { AgentConversationLeaseService } from '../agent-conversation-lease.service';
+import type { AgentMessageQueueService } from '../agent-message-queue.service';
+import {
+	type IntegrationMessageQueuePayload,
+	type IntegrationQueuePayload,
+	type QueueExecutionContext,
+} from '../agent-message-queue.types';
 import {
 	hashAgentSandboxPrincipal,
 	type AgentSandboxPrincipalHash,
@@ -72,26 +82,10 @@ interface SessionGenerationState {
 	lastActivityAt: number;
 }
 
-/**
- * Reply sent when a message arrives while the run is parked. Leads with the
- * suspension card's own title (e.g. `Waiting on "Approval workflow"`) so the
- * user knows what is holding things up, and falls back to a generic line for
- * payloads that carry no title.
- */
-function stillWaitingNotice(suspendPayload: unknown): string {
-	const title =
-		typeof suspendPayload === 'object' &&
-		suspendPayload !== null &&
-		'title' in suspendPayload &&
-		typeof suspendPayload.title === 'string' &&
-		suspendPayload.title.length > 0
-			? suspendPayload.title
-			: "I'm still waiting on the previous step";
-	return `⏳ ${title} — use the buttons on that card and I'll continue from there.`;
-}
-
 interface AgentExecutor {
 	executeForChatPublished(config: {
+		abortSignal?: AbortSignal;
+		onExecutionStarted?: (executionId: string) => Promise<void>;
 		agentId: string;
 		projectId: string;
 		message: string;
@@ -103,29 +97,13 @@ interface AgentExecutor {
 		sandboxPrincipalHash: AgentSandboxPrincipalHash;
 	}): AsyncGenerator<StreamChunk>;
 
-	resumeForChat(config: {
-		agentId: string;
-		projectId: string;
-		runId: string;
-		toolCallId: string;
-		resumeData: unknown;
-		integrationType?: string;
-	}): AsyncGenerator<StreamChunk>;
+	resumeForChat(config: ResumeForChatConfig): AsyncGenerator<StreamChunk>;
 
-	/**
-	 * The thread's still-open suspension, if the run is parked on one right now.
-	 * Optional so a caller that cannot look checkpoints up (tests) simply skips
-	 * the inbound gate.
-	 */
-	findOpenSuspension?(config: {
+	hasOpenSuspension?(config: {
 		agentId: string;
 		threadId: string;
-	}): Promise<OpenSuspension | null>;
-}
-
-/** Enough of a parked run to tell the user what the agent is still waiting on. */
-interface OpenSuspension {
-	suspendPayload?: unknown;
+	}): Promise<boolean>;
+	hasRunningExecution?(threadId: string): Promise<boolean>;
 }
 
 /**
@@ -165,6 +143,7 @@ export class AgentChatBridge {
 
 	constructor(
 		private readonly chat: Chat,
+		private readonly messageQueue: AgentMessageQueueService,
 		private readonly agentId: string,
 		private readonly agentService: AgentExecutor,
 		private readonly componentMapper: ComponentMapper,
@@ -203,6 +182,7 @@ export class AgentChatBridge {
 			isIntegrationActionTool: (toolName) => actionToolNamePattern.test(toolName),
 		});
 		this.hitlResumeHandler = new AgentChatHitlResumeHandler({
+			messageQueue,
 			agentId,
 			projectId: n8nProjectId,
 			integration,
@@ -214,8 +194,6 @@ export class AgentChatBridge {
 			formatActionDecisionMessage: (params) =>
 				this.integrationImpl?.formatActionDecisionMessage?.(params),
 			settleActionMessage: this.integrationImpl?.settleActionMessage?.bind(this.integrationImpl),
-			resolvePlatformThreadId: this.resolvePlatformThreadId.bind(this),
-			toAgentThreadId: this.toAgentThreadId.bind(this),
 			getPlatformAgentContext: this.getPlatformAgentContext.bind(this),
 			messageContextBridge: this.messageContextBridge,
 			streamConsumer: this.streamConsumer,
@@ -247,9 +225,12 @@ export class AgentChatBridge {
 		logger: Logger,
 		n8nProjectId: string,
 		integration: AgentIntegrationConfig,
+		messageQueue: AgentMessageQueueService,
 	): AgentChatBridge {
 		const agentExecutor: AgentExecutor = {
 			async *executeForChatPublished({
+				abortSignal,
+				onExecutionStarted,
 				memory,
 				agentId: aid,
 				message,
@@ -260,6 +241,8 @@ export class AgentChatBridge {
 				sandboxPrincipalHash,
 			}) {
 				yield* agentService.executeForChatPublished({
+					abortSignal,
+					onExecutionStarted,
 					agentId: aid,
 					projectId: n8nProjectId,
 					message,
@@ -280,27 +263,25 @@ export class AgentChatBridge {
 			async *resumeForChat(config) {
 				yield* agentService.resumeForChat(config);
 			},
-			async findOpenSuspension({ agentId: aid, threadId }) {
-				// Checkpoints carry no thread index, so the authoritative lookup parses
-				// every active checkpoint of the agent. Gate it behind a counted query
-				// on the thread's own runs: a thread that never parked one cannot have
-				// an open checkpoint, and that is the common case for inbound traffic.
+			async hasOpenSuspension({ agentId: aid, threadId }) {
 				if (!(await Container.get(AgentExecutionService).hasSuspendedRun(threadId))) {
-					return null;
+					return false;
 				}
 				const checkpoint = await Container.get(N8NCheckpointStorage).findSuspendedForThread(
 					aid,
 					threadId,
 				);
-				if (!checkpoint) return null;
-				const suspended = Object.values(checkpoint.pendingToolCalls ?? {}).find(
+				return Object.values(checkpoint?.pendingToolCalls ?? {}).some(
 					(toolCall) => toolCall.suspended,
 				);
-				return suspended ? { suspendPayload: suspended.suspendPayload } : null;
+			},
+			async hasRunningExecution(threadId) {
+				return await Container.get(AgentExecutionService).hasRunningExecution(threadId);
 			},
 		};
 		return new AgentChatBridge(
 			chat,
+			messageQueue,
 			agentId,
 			agentExecutor,
 			componentMapper,
@@ -331,7 +312,7 @@ export class AgentChatBridge {
 				if (shouldSubscribe) {
 					await anchoredThread.subscribe();
 				}
-				await this.executeAndStream(anchoredThread, message, { isNewMention: true });
+				await this.enqueueMessage(anchoredThread, message, true);
 			} catch (error) {
 				await this.postErrorToThread(thread, error);
 			}
@@ -341,7 +322,7 @@ export class AgentChatBridge {
 			try {
 				if (!this.canUserAccess(message.author)) return;
 				const anchoredThread = this.anchorInboundThread(thread, message);
-				await this.executeAndStream(anchoredThread, message, { isNewMention: false });
+				await this.enqueueMessage(anchoredThread, message, false);
 			} catch (error) {
 				await this.postErrorToThread(thread, error);
 			}
@@ -407,6 +388,7 @@ export class AgentChatBridge {
 		runId: string,
 		toolCallId: string,
 		resumeData: unknown,
+		abortSignal?: AbortSignal,
 	): Promise<void> {
 		const prefix = `${this.agentId}:`;
 		const withoutAgentPrefix = agentThreadId.startsWith(prefix)
@@ -426,7 +408,7 @@ export class AgentChatBridge {
 			runId,
 			toolCallId,
 			resumeData,
-			false,
+			{ abortSignal, expectedMemory: { threadId: agentThreadId } },
 		);
 	}
 
@@ -454,21 +436,6 @@ export class AgentChatBridge {
 	}
 
 	/**
-	 * Resolves the thread to run this message in, applying the channel's
-	 * configured idle-timeout session rotation (`/new` is handled separately —
-	 * see {@link resetSession} — before this is ever called).
-	 */
-	private async resolveActiveThreadId(thread: Thread): Promise<InternalThread> {
-		const baseId = this.baseThreadId(thread);
-		const idleTimeoutMinutes = this.integration.settings?.sessionIdleTimeoutMinutes ?? null;
-		const id = await this.withSessionLock(
-			baseId,
-			async () => await this.computeGeneration(baseId, false, idleTimeoutMinutes),
-		);
-		return toInternalThreadId(id);
-	}
-
-	/**
 	 * Handles `/new` for adapters that deliver it as plain text rather than a
 	 * slash command (i.e. everything but Telegram — see the `onSlashCommand`
 	 * registration above). Only treated as the reset command alone: a `/new`
@@ -488,8 +455,7 @@ export class AgentChatBridge {
 
 	/**
 	 * Rotates to a brand-new session for `thread` and confirms it there.
-	 * Unbinding a task-run session (see {@link resolveSession} in
-	 * `executeAndStream`) and rotating the generation happen inside the same
+	 * Unbinding a task-run session and rotating the generation happen inside the same
 	 * critical section, in that order, as one unit:
 	 * - Same critical section: splitting them would let a concurrent message
 	 *   land in between and read the just-rotated generation while the old
@@ -507,9 +473,14 @@ export class AgentChatBridge {
 	 */
 	private async resetSession(thread: Thread): Promise<void> {
 		const baseId = this.baseThreadId(thread);
-		await this.withSessionLock(baseId, async () => {
+		await this.withSessionLock(baseId, async (leaseSignal) => {
+			const currentId = await this.computeGeneration(baseId, false, null, leaseSignal);
+			const origin = await this.messageContextBridge.resolveSession(baseId);
+			leaseSignal.throwIfAborted();
+			await this.messageQueue.cancelWaiting(origin?.threadId ?? currentId);
+			leaseSignal.throwIfAborted();
 			await this.messageContextBridge.unbindSession(baseId);
-			await this.computeGeneration(baseId, true, null);
+			await this.computeGeneration(baseId, true, null, leaseSignal);
 		});
 		await thread.post('🔄 Started a new session.');
 	}
@@ -521,7 +492,10 @@ export class AgentChatBridge {
 	 * concurrent idle-triggered rotation (or unbind) mutually exclusive
 	 * instead of racing on stale reads.
 	 */
-	private async withSessionLock<T>(baseId: string, fn: () => Promise<T>): Promise<T> {
+	private async withSessionLock<T>(
+		baseId: string,
+		fn: (leaseSignal: AbortSignal) => Promise<T>,
+	): Promise<T> {
 		return await Container.get(LockService).withLease(
 			LockNamespace.KNOWN_LOCKS,
 			this.sessionGenerationCacheKey(baseId),
@@ -549,6 +523,7 @@ export class AgentChatBridge {
 		baseId: string,
 		forceRotate: boolean,
 		idleTimeoutMinutes: number | null,
+		leaseSignal: AbortSignal,
 	): Promise<string> {
 		const cache = Container.get(CacheService);
 		const key = this.sessionGenerationCacheKey(baseId);
@@ -563,7 +538,11 @@ export class AgentChatBridge {
 			state !== undefined &&
 			now - state.lastActivityAt > idleTimeoutMinutes * 60_000;
 		const currentId = currentGeneration === 0 ? baseId : `${baseId}#${currentGeneration}`;
-		const rotate = forceRotate || (idleExpired && !(await this.hasOpenSuspension(currentId)));
+		const rotate =
+			forceRotate ||
+			(idleExpired &&
+				!(await this.isConversationBusy(currentId)) &&
+				!(await this.hasOpenSuspension(currentId)));
 		const generation = rotate ? currentGeneration + 1 : currentGeneration;
 
 		// Only persist when it matters: a rotation just happened (so the next
@@ -572,14 +551,26 @@ export class AgentChatBridge {
 		// Otherwise this thread has never been touched by either mechanism, or
 		// the timeout was turned off after an earlier reset — nothing to track.
 		if (rotate || idleTimeoutMinutes !== null) {
+			leaseSignal.throwIfAborted();
 			await cache.set(key, { generation, lastActivityAt: now }, SESSION_GENERATION_TTL_MS);
 		}
 		return generation === 0 ? baseId : `${baseId}#${generation}`;
 	}
 
+	private async isConversationBusy(threadId: string): Promise<boolean> {
+		if (
+			(await this.messageQueue.hasEntries(threadId)) ||
+			(await this.agentService.hasRunningExecution?.(threadId))
+		) {
+			return true;
+		}
+		return await Container.get(AgentConversationLeaseService).isHeld(threadId);
+	}
+
 	private async hasOpenSuspension(threadId: string): Promise<boolean> {
-		const open = await this.agentService.findOpenSuspension?.({ agentId: this.agentId, threadId });
-		return open !== null && open !== undefined;
+		return (
+			(await this.agentService.hasOpenSuspension?.({ agentId: this.agentId, threadId })) ?? false
+		);
 	}
 
 	private sessionGenerationCacheKey(baseId: string): string {
@@ -606,12 +597,108 @@ export class AgentChatBridge {
 	// Core execution pipeline
 	// ---------------------------------------------------------------------------
 
-	private async executeAndStream(
+	private async enqueueMessage(
 		thread: Thread,
 		message: Message,
-		options: { isNewMention: boolean },
+		isNewMention: boolean,
 	): Promise<void> {
-		const { isNewMention } = options;
+		const text = this.prepareInboundText(
+			await this.getInboundText(message),
+			this.getPlatformAgentContext(),
+		).trim();
+		if (!text && !message.attachments?.length) return;
+		if (await this.handleResetCommand(thread, text, message.attachments ?? [])) return;
+		const baseId = this.baseThreadId(thread);
+		await this.withSessionLock(baseId, async (leaseSignal) => {
+			const contextThreadId = await this.computeGeneration(
+				baseId,
+				false,
+				this.integration.settings?.sessionIdleTimeoutMinutes ?? null,
+				leaseSignal,
+			);
+			const origin = await this.messageContextBridge.resolveSession(baseId);
+			leaseSignal.throwIfAborted();
+			await this.messageQueue.enqueue({
+				agentId: this.agentId,
+				threadId: origin?.threadId ?? contextThreadId,
+				payload: {
+					source: 'integration',
+					kind: 'message',
+					projectId: this.n8nProjectId,
+					integrationType: this.integration.type,
+					credentialId: this.integration.credentialId,
+					resourceId:
+						origin?.resourceId ??
+						integrationMemoryResourceId(this.integration.type, message.author.userId),
+					contextThreadId,
+					isNewMention,
+					thread: thread.toJSON(),
+					message: message.toJSON(),
+				},
+			});
+		});
+	}
+
+	async processQueuedInput(
+		payload: IntegrationQueuePayload,
+		threadId: string,
+		context: QueueExecutionContext,
+	): Promise<void> {
+		const { Message, ThreadImpl, ThreadHistoryCache } = await loadChatSdk();
+		const adapter = this.chat.getAdapter(payload.thread.adapterName);
+		if (!adapter) throw new UserError('Chat integration is unavailable');
+		const state = this.chat.getState();
+		const restoreMessage = (data: IntegrationMessageQueuePayload['message']) => {
+			const message = Message.fromJSON(data);
+			message.attachments = message.attachments.map(
+				(attachment) => adapter.rehydrateAttachment?.(attachment) ?? attachment,
+			);
+			return message;
+		};
+		const thread = new ThreadImpl({
+			id: payload.thread.id,
+			channelId: payload.thread.channelId,
+			channelVisibility: payload.thread.channelVisibility,
+			isDM: payload.thread.isDM,
+			currentMessage: payload.thread.currentMessage
+				? restoreMessage(payload.thread.currentMessage)
+				: undefined,
+			adapter,
+			stateAdapter: state,
+			threadHistory:
+				adapter.persistThreadHistory || adapter.persistMessageHistory
+					? new ThreadHistoryCache(state)
+					: undefined,
+		});
+		try {
+			context.abortSignal.throwIfAborted();
+			const author = payload.kind === 'message' ? payload.message.author : payload.action.user;
+			if (!this.canUserAccess(author)) return;
+			if (payload.kind === 'hitl') {
+				await this.hitlResumeHandler.processQueuedResponse(payload, thread, threadId, context);
+			} else {
+				await this.executeQueuedMessage(
+					thread,
+					restoreMessage(payload.message),
+					payload,
+					threadId,
+					context,
+				);
+			}
+		} catch (error) {
+			if (!context.abortSignal.aborted) await this.postErrorToThread(thread, error);
+			throw error;
+		}
+	}
+
+	private async executeQueuedMessage(
+		thread: Thread,
+		message: Message,
+		payload: IntegrationMessageQueuePayload,
+		memoryId: string,
+		context: QueueExecutionContext,
+	): Promise<void> {
+		const { isNewMention } = payload;
 		const platformAgentContext = this.getPlatformAgentContext();
 		const text = this.prepareInboundText(
 			await this.getInboundText(message),
@@ -620,26 +707,9 @@ export class AgentChatBridge {
 		// `?? []` guards rehydrated/serialized messages that predate the field.
 		const inboundAttachments = message.attachments ?? [];
 		if (!text && inboundAttachments.length === 0) return;
-		if (await this.handleResetCommand(thread, text, inboundAttachments)) return;
-
-		const threadId = await this.resolveActiveThreadId(thread);
-		const resourceId = integrationMemoryResourceId(this.integration.type, message.author.userId);
-		// If this thread was established by an outbound task send, continue that
-		// task's session instead of starting a fresh one. Attachments are stored
-		// on the execution thread so file-store hydration (scoped to
-		// persistence.threadId) can load them. The Slack reply thread is unchanged.
-		// The binding is always keyed by the base (pre-rotation) thread id — it's
-		// written by an outbound send that has no notion of session rotation —
-		// so it has to be looked up the same way, not by whatever generation is
-		// currently active.
-		const sessionOrigin = await this.messageContextBridge.resolveSession(this.baseThreadId(thread));
-		const memoryThreadId = sessionOrigin ? toInternalThreadId(sessionOrigin.threadId) : threadId;
-		const memoryResourceId = sessionOrigin?.resourceId ?? resourceId;
-		// The run parks against the session it executes in, which for a bound reply
-		// is the task's thread rather than the platform one — so this has to come
-		// after the binding is resolved, and before anything is stored for a turn
-		// that is not going to run.
-		if (await this.postStillWaitingReply(thread, memoryThreadId.id)) return;
+		const threadId = toInternalThreadId(payload.contextThreadId);
+		const memoryThreadId = toInternalThreadId(memoryId);
+		const memoryResourceId = payload.resourceId;
 		const { attachments, attachmentNotes } = await this.storeInboundAttachments(
 			inboundAttachments,
 			memoryThreadId.id,
@@ -667,7 +737,7 @@ export class AgentChatBridge {
 					isNewMention,
 					replyExpectation,
 				),
-				this.messageContextBridge.resolveSubject(message),
+				this.messageContextBridge.resolveSubject(message, thread.adapter),
 			]);
 			statusHandle = onceStatusHandle(bridgeExecutionContext.statusHandle);
 			const latestContextOptions = {
@@ -706,6 +776,7 @@ export class AgentChatBridge {
 				? `${bridgeExecutionContext.historyContext}\n\n${labelledText}`
 				: labelledText;
 			const stream = this.agentService.executeForChatPublished({
+				...context,
 				agentId: this.agentId,
 				projectId: this.n8nProjectId,
 				message: textWithNotes,
@@ -749,44 +820,6 @@ export class AgentChatBridge {
 		}
 	}
 
-	/**
-	 * A run parked on a suspension owns the conversation until it is resolved.
-	 * Starting a second run here would hand the model a history with the pending
-	 * tool call stripped out, so it would call the same tool again — a duplicate
-	 * side effect and a second parked run. Tell the user instead of executing,
-	 * and let them resolve the open card.
-	 *
-	 * Returns true when the message was answered with the notice and must not
-	 * start a run. A failure to post propagates: the gate has already decided not
-	 * to run, and the handler's error reply is the only thing left that can tell
-	 * the user their message went nowhere.
-	 */
-	private async postStillWaitingReply(thread: Thread, threadId: string): Promise<boolean> {
-		const open = await this.agentService.findOpenSuspension?.({
-			agentId: this.agentId,
-			threadId,
-		});
-		if (!open) return false;
-
-		try {
-			await thread.post(stillWaitingNotice(open.suspendPayload));
-		} catch (error) {
-			this.logger.warn('[AgentChatBridge] Failed to post the still-waiting notice', {
-				agentId: this.agentId,
-				threadId,
-				error: error instanceof Error ? error.message : String(error),
-			});
-			throw error;
-		}
-		return true;
-	}
-
-	/**
-	 * Download and persist inbound platform attachments. Slack/Telegram adapters
-	 * provide `fetchData`; Discord provides a signed CDN URL. Oversize or failed
-	 * downloads degrade to a text note on the user turn — an attachment problem
-	 * never aborts the run. Returns stored refs plus the notes to append.
-	 */
 	private async storeInboundAttachments(
 		inboundAttachments: Attachment[],
 		threadId: string,

@@ -1,11 +1,14 @@
 import type { StreamChunk } from '@n8n/agents';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 import { Container } from '@n8n/di';
-import type { Logger } from 'n8n-workflow';
+import { jsonParse, type Logger } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { AgentChatBridge } from '../../agent-chat-bridge';
+import type { ResumeForChatConfig } from '../../../agent-execution-orchestrator.service';
+import type { AgentMessageQueueService } from '../../../agent-message-queue.service';
+import type { IntegrationQueuePayload } from '../../../agent-message-queue.types';
 import { ChatIntegrationRegistry, type AgentChatIntegration } from '../../agent-chat-integration';
 import type { ChatIntegrationService, ChatInstance } from '../../chat-integration.service';
 import type { ComponentMapper } from '../../component-mapper';
@@ -217,12 +220,18 @@ export function createReplayContextSetup<TChat extends ChatInstance>(params: {
 	];
 	const agentExecutor = {
 		executeForChatPublished: vi.fn(() => toStream(stream)),
-		resumeForChat: vi.fn(() => toStream(stream)),
+		resumeForChat: vi.fn(async function* (config: ResumeForChatConfig) {
+			await config.onResumeClaimed?.();
+			yield* toStream(stream);
+		}),
 	};
 	const messageContextStore = new MemoryMessageContextStore();
 
-	new AgentChatBridge(
+	const queue = mock<AgentMessageQueueService>();
+	let resumeScope: { threadId: string; resourceId: string } | undefined;
+	const bridge = new AgentChatBridge(
 		params.chat as never,
+		queue,
 		'agent-1',
 		agentExecutor,
 		params.componentMapper ?? mock<ComponentMapper>(),
@@ -231,6 +240,23 @@ export function createReplayContextSetup<TChat extends ChatInstance>(params: {
 		params.integration,
 		messageContextStore as unknown as IntegrationMessageContextService,
 	);
+	queue.getResumeScope.mockImplementation(async () => {
+		if (!resumeScope) throw new Error('Expected an integration message before a response');
+		return resumeScope;
+	});
+	queue.enqueue.mockImplementation(async ({ payload, threadId }) => {
+		if (payload.source !== 'integration') throw new Error('Expected an integration input');
+		if (payload.kind === 'message') resumeScope = { threadId, resourceId: payload.resourceId };
+		await bridge.processQueuedInput(
+			jsonParse<IntegrationQueuePayload>(JSON.stringify(payload)),
+			threadId,
+			{
+				abortSignal: new AbortController().signal,
+				onExecutionStarted: async () => {},
+			},
+		);
+		return 'queue-entry';
+	});
 
 	const chatIntegrationService = mock<ChatIntegrationService>();
 	chatIntegrationService.getChatInstance.mockReturnValue(params.chat);

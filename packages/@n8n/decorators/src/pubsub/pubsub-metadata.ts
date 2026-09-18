@@ -48,6 +48,7 @@ export type PubSubEventName =
 	| 'agent-config-changed'
 	| 'cancel-agent-background-job'
 	| 'wake-agent-background-job'
+	| 'drain-agent-message-queue'
 	| 'agent-tasks-changed'
 	| 'redaction-floor-changed';
 

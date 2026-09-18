@@ -1,10 +1,11 @@
+import { mock } from 'vitest-mock-extended';
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests intentionally reference unbound methods */
 import { mockEntityManager } from '@test/mocking';
 
 import { AgentCheckpoint } from '../entities/agent-checkpoint.entity';
 import { AgentCheckpointRepository } from '../repositories/agent-checkpoint.repository';
 
-const entityManager = mockEntityManager(AgentCheckpoint);
+const entityManager = { ...mockEntityManager(AgentCheckpoint), update: vi.fn() };
 const mockDataSource = { manager: entityManager };
 
 describe('AgentCheckpointRepository', () => {
@@ -12,12 +13,12 @@ describe('AgentCheckpointRepository', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		repository = new AgentCheckpointRepository(mockDataSource as never);
+		repository = new AgentCheckpointRepository(mockDataSource as never, mock());
 	});
 
 	describe('claimForResume', () => {
 		it('claims only the checkpoint row that still has the original suspended state', async () => {
-			vi.spyOn(repository, 'update').mockResolvedValue({ affected: 1 } as never);
+			vi.spyOn(entityManager, 'update').mockResolvedValue({ affected: 1 } as never);
 
 			await expect(
 				repository.claimForResume(
@@ -25,10 +26,12 @@ describe('AgentCheckpointRepository', () => {
 					'agent-1',
 					'{"status":"suspended"}',
 					'{"status":"running"}',
+					{},
 				),
 			).resolves.toBe(true);
 
-			expect(repository.update).toHaveBeenCalledWith(
+			expect(entityManager.update).toHaveBeenCalledWith(
+				AgentCheckpoint,
 				{
 					runId: 'run-1',
 					agentId: 'agent-1',
@@ -40,7 +43,7 @@ describe('AgentCheckpointRepository', () => {
 		});
 
 		it('returns false when another process already changed the checkpoint state', async () => {
-			vi.spyOn(repository, 'update').mockResolvedValue({ affected: 0 } as never);
+			vi.spyOn(entityManager, 'update').mockResolvedValue({ affected: 0 } as never);
 
 			await expect(
 				repository.claimForResume(
@@ -48,6 +51,7 @@ describe('AgentCheckpointRepository', () => {
 					'agent-1',
 					'{"status":"suspended"}',
 					'{"status":"running"}',
+					{},
 				),
 			).resolves.toBe(false);
 		});
@@ -55,13 +59,14 @@ describe('AgentCheckpointRepository', () => {
 
 	describe('cancelSuspended', () => {
 		it('matches checkpoints scoped to the current agent', async () => {
-			vi.spyOn(repository, 'update').mockResolvedValue({ affected: 1 } as never);
+			vi.spyOn(entityManager, 'update').mockResolvedValue({ affected: 1 } as never);
 
 			await expect(
-				repository.cancelSuspended('run-1', 'agent-1', '{"status":"suspended"}'),
+				repository.cancelSuspended('run-1', 'agent-1', '{"status":"suspended"}', {}),
 			).resolves.toBe(true);
 
-			expect(repository.update).toHaveBeenCalledWith(
+			expect(entityManager.update).toHaveBeenCalledWith(
+				AgentCheckpoint,
 				{
 					runId: 'run-1',
 					agentId: 'agent-1',

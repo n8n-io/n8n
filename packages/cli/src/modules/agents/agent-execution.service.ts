@@ -18,6 +18,11 @@ import {
 	type StoredAttachmentRef,
 } from './agent-chat-attachment.service';
 import { AgentExecutionUpdateBroadcaster } from './agent-execution-update-broadcaster';
+import {
+	AgentConversationLeaseService,
+	type AgentConversationOwner,
+} from './agent-conversation-lease.service';
+import { AgentConversationLeaseLostError } from './agent-conversation-lease.types';
 import { AgentExecutionThread } from './entities/agent-execution-thread.entity';
 import { AgentExecution, type AgentExecutionStatus } from './entities/agent-execution.entity';
 import type { MessageRecord, TimelineEvent } from './execution-recorder';
@@ -29,6 +34,7 @@ import {
 	AgentExecutionRepository,
 	type RunningAgentExecution,
 } from './repositories/agent-execution.repository';
+import { AgentMessageQueueRepository } from './repositories/agent-message-queue.repository';
 import {
 	computeExecutionFailureSummary,
 	type ThreadFailureSummary,
@@ -98,10 +104,11 @@ export class AgentExecutionService {
 	private static readonly heartbeatIntervalMs = 30_000;
 
 	private readonly heartbeatTimers = new Map<string, NodeJS.Timeout>();
+	private readonly recordingOwners = new Map<string, AgentConversationOwner>();
 
 	private readonly pendingTimelineSnapshots = new Map<
 		string,
-		Omit<TimelineSnapshotParams, 'executionId'>
+		Omit<TimelineSnapshotParams, 'executionId'> & { owner: AgentConversationOwner }
 	>();
 
 	private readonly timelineSnapshotWrites = new Map<string, Promise<void>>();
@@ -119,36 +126,45 @@ export class AgentExecutionService {
 		private readonly storageConfig: StorageConfig,
 		private readonly errorReporter: ErrorReporter,
 		private readonly executionUpdateBroadcaster: AgentExecutionUpdateBroadcaster,
+		private readonly agentMessageQueueRepository: AgentMessageQueueRepository,
+		private readonly leases: AgentConversationLeaseService,
 	) {}
 
 	async startExecutionRecording(params: StartExecutionParams, startedAt: Date): Promise<string> {
+		const owner = this.leases.requireOwner(params.threadId, params.agentId);
 		const { userMessage, created } = await this.prepareThread(params);
-		const inserted = await this.agentExecutionRepository.save(
-			this.agentExecutionRepository.create({
-				threadId: params.threadId,
-				status: 'running',
-				startedAt,
-				stoppedAt: null,
-				duration: 0,
-				userMessage,
-				author: params.author ?? null,
-				model: null,
-				promptTokens: null,
-				completionTokens: null,
-				totalTokens: null,
-				cost: null,
-				// Save the background job signal before notifying clients that the execution started.
-				timeline: params.initialTimeline?.length ? params.initialTimeline : null,
-				storedAt: 'db',
-				error: null,
-				failureSummary: null,
-				hitlStatus: null,
-				source: params.source ?? null,
-				attachments: params.attachments?.length ? params.attachments : null,
-			}),
+		const inserted = await this.leases.write(
+			owner,
+			async (ctx) =>
+				await this.agentExecutionRepository.createExecution(
+					{
+						threadId: params.threadId,
+						status: 'running',
+						startedAt,
+						stoppedAt: null,
+						duration: 0,
+						userMessage,
+						author: params.author ?? null,
+						model: null,
+						promptTokens: null,
+						completionTokens: null,
+						totalTokens: null,
+						cost: null,
+						// Save the background job signal before notifying clients that the execution started.
+						timeline: params.initialTimeline?.length ? params.initialTimeline : null,
+						storedAt: 'db',
+						error: null,
+						failureSummary: null,
+						hitlStatus: null,
+						source: params.source ?? null,
+						attachments: params.attachments?.length ? params.attachments : null,
+					},
+					ctx,
+				),
 		);
+		this.recordingOwners.set(inserted.id, owner);
 		if (created) this.executionsNeedingTitleSync.add(inserted.id);
-		this.startHeartbeat(inserted.id);
+		this.startHeartbeat(inserted.id, owner);
 		this.executionUpdateBroadcaster.notify({
 			projectId: params.projectId,
 			agentId: params.agentId,
@@ -159,11 +175,15 @@ export class AgentExecutionService {
 	}
 
 	recordTimelineSnapshot({ executionId, ...snapshot }: TimelineSnapshotParams): void {
-		this.pendingTimelineSnapshots.set(executionId, snapshot);
+		const owner = this.recordingOwners.get(executionId);
+		if (owner === undefined) return;
+		this.pendingTimelineSnapshots.set(executionId, { ...snapshot, owner });
 		this.ensureTimelineSnapshotWrite(executionId);
 	}
 
 	async finalizeExecution(executionId: string, params: RecordMessageParams): Promise<string> {
+		const owner = this.recordingOwners.get(executionId);
+		if (owner === undefined) throw new UnexpectedError('Agent execution has no recording owner');
 		const { record, hitlStatus } = params;
 		const status = executionStatus(record);
 		const stoppedAt = new Date(record.startTime + record.duration);
@@ -190,21 +210,29 @@ export class AgentExecutionService {
 				}
 			}
 
-			const finalized = await this.agentExecutionRepository.updateIfRunning(executionId, {
-				status,
-				stoppedAt,
-				duration: record.duration,
-				model: record.model,
-				promptTokens: record.usage?.promptTokens ?? null,
-				completionTokens: record.usage?.completionTokens ?? null,
-				totalTokens: record.usage?.totalTokens ?? null,
-				cost: record.totalCost,
-				timeline: storedAt === 'db' && record.timeline.length > 0 ? record.timeline : null,
-				storedAt,
-				error: record.error,
-				failureSummary,
-				hitlStatus: hitlStatus ?? null,
-			});
+			const finalized = await this.leases.write(
+				owner,
+				async (ctx) =>
+					await this.agentExecutionRepository.updateIfRunning(
+						executionId,
+						{
+							status,
+							stoppedAt,
+							duration: record.duration,
+							model: record.model,
+							promptTokens: record.usage?.promptTokens ?? null,
+							completionTokens: record.usage?.completionTokens ?? null,
+							totalTokens: record.usage?.totalTokens ?? null,
+							cost: record.totalCost,
+							timeline: storedAt === 'db' && record.timeline.length > 0 ? record.timeline : null,
+							storedAt,
+							error: record.error,
+							failureSummary,
+							hitlStatus: hitlStatus ?? null,
+						},
+						ctx,
+					),
+			);
 			if (!finalized) return executionId;
 
 			this.executionUpdateBroadcaster.notify({
@@ -213,7 +241,7 @@ export class AgentExecutionService {
 				threadId: params.threadId,
 				executionId,
 			});
-			await this.completeRecordedExecution(params, executionId, status);
+			await this.completeRecordedExecution(params, executionId, status, owner);
 			return executionId;
 		} catch (error) {
 			this.errorReporter.error(error);
@@ -221,30 +249,44 @@ export class AgentExecutionService {
 		} finally {
 			this.stopHeartbeat(executionId);
 			this.executionsNeedingTitleSync.delete(executionId);
+			this.recordingOwners.delete(executionId);
 		}
 	}
 
-	async finalizeInterruptedExecution(execution: RunningAgentExecution): Promise<boolean> {
+	async finalizeInterruptedExecution(
+		execution: RunningAgentExecution,
+		graceMs: number,
+	): Promise<boolean> {
 		const timeline = execution.timeline ?? [];
 		const stoppedAt = new Date();
 		const error = 'Agent execution was interrupted by a process restart.';
 		const duration = execution.startedAt
 			? Math.max(0, stoppedAt.getTime() - execution.startedAt.getTime())
 			: 0;
-		const finalized = await this.agentExecutionRepository.updateIfRunning(execution.id, {
-			status: 'interrupted',
-			stoppedAt,
-			duration,
-			timeline: timeline.length > 0 ? timeline : null,
-			storedAt: 'db',
-			error,
-			failureSummary: computeExecutionFailureSummary({
-				timeline,
-				status: 'interrupted',
-				error,
-				stoppedAt: stoppedAt.getTime(),
-			}),
-		});
+		const owner = this.leases.requireOwner(execution.threadId);
+		const finalized = await this.leases.write(
+			owner,
+			async (ctx) =>
+				await this.agentExecutionRepository.updateIfAbandoned(
+					execution.id,
+					graceMs,
+					{
+						status: 'interrupted',
+						stoppedAt,
+						duration,
+						timeline: timeline.length > 0 ? timeline : null,
+						storedAt: 'db',
+						error,
+						failureSummary: computeExecutionFailureSummary({
+							timeline,
+							status: 'interrupted',
+							error,
+							stoppedAt: stoppedAt.getTime(),
+						}),
+					},
+					ctx,
+				),
+		);
 		if (finalized) void this.notifyInterruptedExecution(execution);
 		return finalized;
 	}
@@ -270,14 +312,23 @@ export class AgentExecutionService {
 		}
 	}
 
-	private startHeartbeat(executionId: string): void {
+	private startHeartbeat(executionId: string, owner: AgentConversationOwner): void {
 		const timer = setInterval(() => {
-			void this.agentExecutionRepository.touchRunning(executionId).catch((error: unknown) => {
-				this.logger.warn('Failed to heartbeat a running agent execution', {
-					executionId,
-					error: error instanceof Error ? error.message : String(error),
+			if (owner.signal.aborted) {
+				this.stopHeartbeat(executionId);
+				return;
+			}
+			void this.leases
+				.write(
+					owner,
+					async (ctx) => await this.agentExecutionRepository.touchRunning(executionId, ctx),
+				)
+				.catch((error: unknown) => {
+					this.logger.warn('Failed to heartbeat a running agent execution', {
+						executionId,
+						error: error instanceof Error ? error.message : String(error),
+					});
 				});
-			});
 		}, AgentExecutionService.heartbeatIntervalMs);
 		timer.unref();
 		this.heartbeatTimers.set(executionId, timer);
@@ -310,9 +361,14 @@ export class AgentExecutionService {
 			this.pendingTimelineSnapshots.delete(executionId);
 			try {
 				if (
-					!(await this.agentExecutionRepository.updateTimelineIfRunning(
-						executionId,
-						snapshot.timeline,
+					!(await this.leases.write(
+						snapshot.owner,
+						async (ctx) =>
+							await this.agentExecutionRepository.updateTimelineIfRunning(
+								executionId,
+								snapshot.timeline,
+								ctx,
+							),
 					))
 				) {
 					this.pendingTimelineSnapshots.delete(executionId);
@@ -325,6 +381,10 @@ export class AgentExecutionService {
 					executionId,
 				});
 			} catch (error) {
+				if (error instanceof AgentConversationLeaseLostError) {
+					this.pendingTimelineSnapshots.delete(executionId);
+					return;
+				}
 				if (!this.pendingTimelineSnapshots.has(executionId)) {
 					this.pendingTimelineSnapshots.set(executionId, snapshot);
 				}
@@ -363,10 +423,11 @@ export class AgentExecutionService {
 		params: RecordMessageParams,
 		executionId: string,
 		status: AgentExecution['status'],
+		owner: AgentConversationOwner,
 	): Promise<void> {
 		const { threadId, agentId, record, hitlStatus } = params;
 		if (hitlStatus === 'resumed' && record.model) {
-			await this.backfillSuspendedExecutions(threadId, record.model);
+			await this.backfillSuspendedExecutions(threadId, record.model, owner);
 		}
 		if (record.usage) {
 			await this.agentExecutionThreadRepository.incrementUsage(
@@ -429,17 +490,30 @@ export class AgentExecutionService {
 		return await this.agentExecutionRepository.hasSuspendedRun(threadId);
 	}
 
+	async hasRunningExecution(threadId: string): Promise<boolean> {
+		return await this.agentExecutionRepository.existsRunningByThread(threadId);
+	}
+
 	/**
 	 * Backfill `model` on suspended runs in a thread that don't yet have it.
 	 * Called when the resumed run finishes — the model applies to the whole
 	 * suspend/resume cycle but only arrives once the resume completes.
 	 */
-	private async backfillSuspendedExecutions(threadId: string, model: string): Promise<void> {
+	private async backfillSuspendedExecutions(
+		threadId: string,
+		model: string,
+		owner: AgentConversationOwner,
+	): Promise<void> {
 		const candidates = await this.agentExecutionRepository.findSuspendedWithoutModel(threadId);
 		if (candidates.length === 0) return;
-		await this.agentExecutionRepository.backfillModel(
-			candidates.map((c) => c.id),
-			model,
+		await this.leases.write(
+			owner,
+			async (ctx) =>
+				await this.agentExecutionRepository.backfillModel(
+					candidates.map((c) => c.id),
+					model,
+					ctx,
+				),
 		);
 	}
 
@@ -484,10 +558,11 @@ export class AgentExecutionService {
 			await this.agentExecutionRepository.findBlobRefsByThreadId(threadId),
 		);
 
-		await this.n8nMemory.getImplementation(agentId).deleteThread(threadId);
+		await this.n8nMemory.getImplementation(agentId, false).deleteThread(threadId);
 		await this.agentChatAttachmentService.deleteByThread(threadId, { projectId });
 		await Promise.all([
 			this.agentExecutionThreadRepository.delete({ id: threadId }),
+			this.agentMessageQueueRepository.cancelWaiting(threadId),
 			this.agentExecutionLogStore.delete(
 				blobRefs.map((r) => ({ agentId, threadId, executionId: r.id, storedAt: r.storedAt })),
 			),

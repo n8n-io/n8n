@@ -1,4 +1,5 @@
-import { LockService, type Logger } from '@n8n/backend-common';
+import { AgentConversationLeaseService } from '@/modules/agents/agent-conversation-lease.service';
+import { type Logger } from '@n8n/backend-common';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import type { AgentsConfig } from '@n8n/config';
 import type { UserRepository } from '@n8n/db';
@@ -14,6 +15,7 @@ import type { AgentExecutionUpdateBroadcaster } from '@/modules/agents/agent-exe
 import { hashAgentSandboxPrincipal } from '@/modules/agents/agent-sandbox-principal';
 import { AgentBackgroundJobService } from '@/modules/agents/background/agent-background-job.service';
 import { AgentWakeService, WAKE_DEBOUNCE_MS } from '@/modules/agents/background/agent-wake.service';
+import type { AgentMessageQueueService } from '@/modules/agents/agent-message-queue.service';
 import type { AgentBackgroundJob } from '@/modules/agents/entities/agent-background-job.entity';
 import type { Agent } from '@/modules/agents/entities/agent.entity';
 import type { N8NCheckpointStorage } from '@/modules/agents/integrations/n8n-checkpoint-storage';
@@ -219,7 +221,7 @@ describe('AgentBackgroundJobRepository', () => {
 				firstWakeStarted();
 				throw new Error('model unavailable');
 			});
-			const lockService = Container.get(LockService);
+			const lockService = Container.get(AgentConversationLeaseService);
 			const publisher = mock<Publisher>();
 			const agentsConfig = mock<AgentsConfig>({ backgroundTasksEnabled: true });
 			const logger = mock<Logger>();
@@ -257,6 +259,7 @@ describe('AgentBackgroundJobRepository', () => {
 				agentsConfig,
 				logger,
 				jobService,
+				mock<AgentMessageQueueService>(),
 			);
 			Container.set(AgentWakeService, wakeService);
 

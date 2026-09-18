@@ -44,6 +44,11 @@ import { buildAgentConfigurationTelemetry } from './agent-telemetry';
 import { buildToolCallDetails, ExecutionRecorder, type MessageRecord } from './execution-recorder';
 import { IntegrationMessageContextService } from './integrations/integration-message-context.service';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
+import { AgentConversationLeaseService } from './agent-conversation-lease.service';
+import {
+	AgentConversationLeaseLostError,
+	AgentConversationLeaseTimeoutError,
+} from './agent-conversation-lease.types';
 import { modelStreamStallOptions } from './model-stream-stall-options';
 import { AgentRepository } from './repositories/agent.repository';
 import type { ToolRegistry } from './tool-registry';
@@ -85,10 +90,13 @@ export interface ExecuteForChatConfig {
 	previewChat?: boolean;
 	/** Fired after the turn is persisted; used to attach `executionId` to SSE `done`. */
 	onExecutionRecorded?: (executionId: string) => void;
+	onExecutionStarted?: (executionId: string) => Promise<void>;
 	abortSignal?: AbortSignal;
 }
 
 export interface ExecuteForChatPublishedConfig {
+	onExecutionStarted?: (executionId: string) => Promise<void>;
+	abortSignal?: AbortSignal;
 	agentId: string;
 	projectId: string;
 	/** What the user wrote; recorded in the execution transcript. */
@@ -143,10 +151,13 @@ export interface ResumeForChatConfig {
 	previewChat?: boolean;
 	/** Fired after the resumed turn is persisted; used to attach `executionId` to SSE `done`. */
 	onExecutionRecorded?: (executionId: string) => void;
+	onResumeClaimed?: () => void | Promise<void>;
+	onExecutionStarted?: (executionId: string) => Promise<void>;
 	abortSignal?: AbortSignal;
 }
 
 export interface ExecuteForTaskPublishedConfig {
+	abortSignal?: AbortSignal;
 	agentId: string;
 	projectId: string;
 	message: string;
@@ -159,6 +170,7 @@ export interface ExecuteForTaskPublishedConfig {
 }
 
 export interface ExecuteForTaskNowConfig {
+	abortSignal?: AbortSignal;
 	agentId: string;
 	projectId: string;
 	/**
@@ -193,6 +205,7 @@ export interface ExecuteForWakeConfig {
 }
 
 export interface StreamChatResponseConfig {
+	onExecutionStarted?: (executionId: string) => Promise<void>;
 	agentInstance: RuntimeAgent;
 	toolRegistry: ToolRegistry;
 	/** See `AgentRuntime.mcpServerAttributions`. */
@@ -330,6 +343,7 @@ export class AgentExecutionOrchestratorService {
 		private readonly agentSandboxRuntimeService: AgentSandboxRuntimeService,
 		private readonly agentRepository: AgentRepository,
 		private readonly aiConfig: AiConfig,
+		private readonly leases: AgentConversationLeaseService,
 	) {}
 
 	/**
@@ -354,6 +368,37 @@ export class AgentExecutionOrchestratorService {
 		agentId: string;
 		runId: string;
 		resourceId: string;
+		onCancelled?: (threadId: string) => void;
+	}): Promise<boolean> {
+		const initial = await this.n8nCheckpointStorage.getStatus(params.runId, params.agentId);
+		const memory = initial.status !== 'not-found' ? initial.checkpoint?.persistence : undefined;
+		if (!memory || memory.delegated || memory.resourceId !== params.resourceId) return false;
+		const current = this.leases.currentOwner();
+		try {
+			if (current?.lease.threadId === memory.threadId && current.lease.agentId === params.agentId) {
+				return await this.cancelChatRunInsideLease(params);
+			}
+			return await this.leases.withLease(
+				params.agentId,
+				memory.threadId,
+				async () => await this.cancelChatRunInsideLease(params),
+				{ waitTimeoutMs: 250 },
+			);
+		} catch (error) {
+			if (
+				error instanceof AgentConversationLeaseTimeoutError ||
+				error instanceof AgentConversationLeaseLostError
+			)
+				return false;
+			throw error;
+		}
+	}
+
+	private async cancelChatRunInsideLease(params: {
+		agentId: string;
+		runId: string;
+		resourceId: string;
+		onCancelled?: (threadId: string) => void;
 	}): Promise<boolean> {
 		const checkpointStatus = await this.n8nCheckpointStorage.getStatus(
 			params.runId,
@@ -384,10 +429,12 @@ export class AgentExecutionOrchestratorService {
 
 		await Promise.all(
 			childCheckpoints.map(
-				async ({ runId, agentId }) => await this.n8nCheckpointStorage.delete(runId, agentId),
+				async ({ runId, agentId }) =>
+					await this.n8nCheckpointStorage.deleteSuspended(runId, agentId),
 			),
 		);
 		await this.n8nCheckpointStorage.delete(params.runId, params.agentId);
+		params.onCancelled?.(checkpoint.persistence.threadId);
 		return true;
 	}
 
@@ -396,7 +443,30 @@ export class AgentExecutionOrchestratorService {
 	 * Used by chat integration handlers to continue an agent run after
 	 * a human-in-the-loop action (button click, modal submission).
 	 */
-	async *resumeForChat(config: ResumeForChatConfig): AsyncGenerator<StreamChunk> {
+	resumeForChat(config: ResumeForChatConfig): AsyncGenerator<StreamChunk> {
+		return this.leases.stream(
+			config.agentId,
+			async () => {
+				const initial = await this.n8nCheckpointStorage.getStatus(config.runId, config.agentId);
+				if (initial.status === 'expired') {
+					throw new UserError(`Checkpoint ${config.runId} is expired and cannot be resumed`);
+				}
+				if (initial.status === 'not-found') {
+					throw new UserError(`Checkpoint ${config.runId} not found and cannot be resumed`);
+				}
+				const threadId = initial.checkpoint.persistence?.threadId;
+				if (!threadId)
+					throw new UserError(
+						`Checkpoint ${config.runId} has no memory data and cannot be resumed`,
+					);
+				return threadId;
+			},
+			(signal) => this.resumeForChatOwned({ ...config, abortSignal: signal }),
+			{ signal: config.abortSignal },
+		);
+	}
+
+	private async *resumeForChatOwned(config: ResumeForChatConfig): AsyncGenerator<StreamChunk> {
 		const {
 			agentId,
 			projectId,
@@ -521,6 +591,7 @@ export class AgentExecutionOrchestratorService {
 				...modelStreamStallOptions(this.aiConfig),
 				...(tracing ? { telemetry: tracing } : {}),
 				...(abortSignal ? { abortSignal } : {}),
+				onResumeClaimed: config.onResumeClaimed,
 			});
 			recorder.recordHitlResponse(toolCallId, resumeData);
 			const startParams: StartExecutionParams = {
@@ -541,6 +612,7 @@ export class AgentExecutionOrchestratorService {
 				startedAt,
 				'Failed to start resumed agent execution recording',
 			);
+			if (executionId) await config.onExecutionStarted?.(executionId);
 			const attributionTracker = createAttributionTracker(runtime.mcpServerAttributions);
 			for await (const value of streamAgentChunks(resultStream.stream)) {
 				const chunk = usePublishedVersion ? value : withApprovalToolDetails(value, toolRegistry);
@@ -595,7 +667,16 @@ export class AgentExecutionOrchestratorService {
 	/**
 	 * Execute an agent for the in-app test chat and yield stream chunks.
 	 */
-	async *executeForChat(config: ExecuteForChatConfig): AsyncGenerator<StreamChunk> {
+	executeForChat(config: ExecuteForChatConfig): AsyncGenerator<StreamChunk> {
+		return this.leases.stream(
+			config.agentId,
+			config.memory.threadId,
+			(signal) => this.executeForChatOwned({ ...config, abortSignal: signal }),
+			{ signal: config.abortSignal },
+		);
+	}
+
+	private async *executeForChatOwned(config: ExecuteForChatConfig): AsyncGenerator<StreamChunk> {
 		const {
 			agentId,
 			projectId,
@@ -651,6 +732,7 @@ export class AgentExecutionOrchestratorService {
 				onExecutionRecorded,
 				abortSignal,
 				includeHitlToolDetails: true,
+				onExecutionStarted: config.onExecutionStarted,
 				sandboxPrincipalHash,
 			});
 		} finally {
@@ -663,7 +745,16 @@ export class AgentExecutionOrchestratorService {
 	 *
 	 * Loads the published snapshot — never the draft.
 	 */
-	async *executeForChatPublished(
+	executeForChatPublished(config: ExecuteForChatPublishedConfig): AsyncGenerator<StreamChunk> {
+		return this.leases.stream(
+			config.agentId,
+			config.memory.threadId,
+			(signal) => this.executeForChatPublishedOwned({ ...config, abortSignal: signal }),
+			{ signal: config.abortSignal },
+		);
+	}
+
+	private async *executeForChatPublishedOwned(
 		config: ExecuteForChatPublishedConfig,
 	): AsyncGenerator<StreamChunk> {
 		const {
@@ -715,6 +806,8 @@ export class AgentExecutionOrchestratorService {
 					runType: 'production',
 					configuration: runtime.telemetryConfiguration,
 				},
+				onExecutionStarted: config.onExecutionStarted,
+				abortSignal: config.abortSignal,
 				sandboxPrincipalHash,
 			});
 		} finally {
@@ -726,7 +819,16 @@ export class AgentExecutionOrchestratorService {
 	 * Execute a published agent for a scheduled task, stamping `source='task'`
 	 * and the originating `taskId` on the recorded session for traceability.
 	 */
-	async *executeForTaskPublished(
+	executeForTaskPublished(config: ExecuteForTaskPublishedConfig): AsyncGenerator<StreamChunk> {
+		return this.leases.stream(
+			config.agentId,
+			config.memory.threadId,
+			(signal) => this.executeForTaskPublishedOwned({ ...config, abortSignal: signal }),
+			{ signal: config.abortSignal },
+		);
+	}
+
+	private async *executeForTaskPublishedOwned(
 		config: ExecuteForTaskPublishedConfig,
 	): AsyncGenerator<StreamChunk> {
 		const { agentId, projectId, message, memory, taskId, taskVersionId } = config;
@@ -748,6 +850,7 @@ export class AgentExecutionOrchestratorService {
 
 		try {
 			yield* this.streamChatResponse({
+				abortSignal: config.abortSignal,
 				agentInstance: runtime.agent,
 				toolRegistry: runtime.toolRegistry,
 				mcpServerAttributions: runtime.mcpServerAttributions,
@@ -773,7 +876,18 @@ export class AgentExecutionOrchestratorService {
 	 * Execute a task on demand against the current (draft) config as the
 	 * requesting user.
 	 */
-	async *executeForTaskNow(config: ExecuteForTaskNowConfig): AsyncGenerator<StreamChunk> {
+	executeForTaskNow(config: ExecuteForTaskNowConfig): AsyncGenerator<StreamChunk> {
+		return this.leases.stream(
+			config.agentId,
+			config.memory.threadId,
+			(signal) => this.executeForTaskNowOwned({ ...config, abortSignal: signal }),
+			{ signal: config.abortSignal },
+		);
+	}
+
+	private async *executeForTaskNowOwned(
+		config: ExecuteForTaskNowConfig,
+	): AsyncGenerator<StreamChunk> {
 		const { agentId, projectId, user, message, memory, taskId } = config;
 
 		// `user` is always set (see ExecuteForTaskNowConfig) — manual "Run now"
@@ -793,6 +907,7 @@ export class AgentExecutionOrchestratorService {
 
 		try {
 			yield* this.streamChatResponse({
+				abortSignal: config.abortSignal,
 				agentInstance: runtime.agent,
 				toolRegistry: runtime.toolRegistry,
 				mcpServerAttributions: runtime.mcpServerAttributions,
@@ -992,6 +1107,7 @@ export class AgentExecutionOrchestratorService {
 				startedAt,
 				'Failed to start agent execution recording',
 			);
+			if (executionId) await config.onExecutionStarted?.(executionId);
 			const attributionTracker = createAttributionTracker(mcpServerAttributions);
 			for await (const value of streamAgentChunks(resultStream.stream)) {
 				const chunk = includeHitlToolDetails ? withApprovalToolDetails(value, toolRegistry) : value;
@@ -1154,6 +1270,7 @@ export class AgentExecutionOrchestratorService {
 		try {
 			return await this.agentExecutionService.startExecutionRecording(params, startedAt);
 		} catch (error) {
+			if (error instanceof AgentConversationLeaseLostError) throw error;
 			this.logger.warn(failureMessage, {
 				agentId: params.agentId,
 				threadId: params.threadId,
@@ -1175,6 +1292,7 @@ export class AgentExecutionOrchestratorService {
 			const recordedId = await this.agentExecutionService.finalizeExecution(executionId, params);
 			onExecutionRecorded?.(recordedId);
 		} catch (error) {
+			if (error instanceof AgentConversationLeaseLostError) throw error;
 			this.logger.warn(failureMessage, {
 				agentId: params.agentId,
 				threadId: params.threadId,

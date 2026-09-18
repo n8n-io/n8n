@@ -187,8 +187,7 @@ export class AgentIntegrationsController {
 		});
 		await channelIntegrationRecorder.recordWebhook(platform, webRequest.clone());
 
-		// In Express, background tasks just need to not be garbage collected.
-		// We hold references to keep them alive for the lifetime of the process.
+		// Chat handlers finish after durable admission. Agent execution runs separately.
 		const backgroundTasks: Array<Promise<unknown>> = [];
 		const waitUntil = (task: Promise<unknown>) => {
 			backgroundTasks.push(
@@ -202,6 +201,7 @@ export class AgentIntegrationsController {
 		};
 
 		const webResponse = await webhookHandler(webRequest, { waitUntil });
+		await Promise.all(backgroundTasks);
 
 		res.status(webResponse.status);
 		webResponse.headers.forEach((value, key) => {

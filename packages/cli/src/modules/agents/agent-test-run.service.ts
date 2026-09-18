@@ -47,6 +47,7 @@ interface StreamDraftRunInput {
 	/** Set by the in-app preview chat only — see `ExecuteForChatConfig.previewChat`. */
 	previewChat?: boolean;
 	onExecutionRecorded?: (executionId: string) => void;
+	onExecutionStarted?: (executionId: string) => Promise<void>;
 	abortSignal?: AbortSignal;
 }
 
@@ -195,6 +196,7 @@ export class AgentTestRunService {
 		source,
 		previewChat,
 		onExecutionRecorded,
+		onExecutionStarted,
 		abortSignal,
 	}: StreamDraftRunInput): AsyncGenerator<StreamChunk> {
 		return this.agentExecutionOrchestratorService.executeForChat({
@@ -210,6 +212,7 @@ export class AgentTestRunService {
 			source,
 			previewChat,
 			onExecutionRecorded,
+			onExecutionStarted,
 			abortSignal,
 		});
 	}

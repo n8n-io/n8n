@@ -1,9 +1,11 @@
+import type { DataSource, EntityManager } from '@n8n/typeorm';
+import { mockConversationLeases } from '../../__tests__/mock-conversation-lease';
 import { hashEpisodicMemoryEvidence, type NewObservationLogEntry } from '@n8n/agents';
 import { Equal, In, IsNull, LessThan, Like, MoreThan } from '@n8n/typeorm';
 import type { Mock, Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { AgentMemoryEntryCandidateEntity } from '../../entities/agent-memory-entry-candidate.entity';
+import { AgentMemoryEntryCandidateEntity } from '../../entities/agent-memory-entry-candidate.entity';
 import type { AgentMemoryEntryLockEntity } from '../../entities/agent-memory-entry-lock.entity';
 import { AgentMemoryEntrySourceEntity } from '../../entities/agent-memory-entry-source.entity';
 import { AgentMemoryEntryEntity } from '../../entities/agent-memory-entry.entity';
@@ -16,12 +18,12 @@ import type { AgentMemoryEntryCandidateRepository } from '../../repositories/age
 import type { AgentMemoryEntryLockRepository } from '../../repositories/agent-memory-entry-lock.repository';
 import type { AgentMemoryEntrySourceRepository } from '../../repositories/agent-memory-entry-source.repository';
 import type { AgentMemoryEntryRepository } from '../../repositories/agent-memory-entry.repository';
-import type { AgentMessageRepository } from '../../repositories/agent-message.repository';
+import { AgentMessageRepository } from '../../repositories/agent-message.repository';
 import type { AgentObservationCursorRepository } from '../../repositories/agent-observation-cursor.repository';
 import type { AgentObservationLockRepository } from '../../repositories/agent-observation-lock.repository';
 import type { AgentObservationRepository } from '../../repositories/agent-observation.repository';
 import type { AgentResourceRepository } from '../../repositories/agent-resource.repository';
-import type { AgentThreadRepository } from '../../repositories/agent-thread.repository';
+import { AgentThreadRepository } from '../../repositories/agent-thread.repository';
 import { N8nMemory } from '../n8n-memory';
 
 type N8nMemoryImplementation = ReturnType<N8nMemory['getImplementation']>;
@@ -68,6 +70,23 @@ describe('N8nMemory', () => {
 		vi.clearAllMocks();
 
 		messageRepository = mock<AgentMessageRepository>();
+		const messageManager = mock<EntityManager>();
+		messageManager.upsert.mockImplementation(
+			async (_target, values, options) => await messageRepository.upsert(values as never, options),
+		);
+		messageManager.delete.mockImplementation(
+			async (_target, criteria) => await messageRepository.delete(criteria as never),
+		);
+		const messagePersistence = new AgentMessageRepository(
+			mock<DataSource>({ manager: messageManager }),
+			mock(),
+		);
+		messageRepository.saveMessages.mockImplementation(
+			messagePersistence.saveMessages.bind(messagePersistence),
+		);
+		messageRepository.deleteMessagesByThread.mockImplementation(
+			messagePersistence.deleteMessagesByThread.bind(messagePersistence),
+		);
 		threadRepository = mock<AgentThreadRepository>();
 		resourceRepository = mock<AgentResourceRepository>();
 		observationRepository = mock<AgentObservationRepository>();
@@ -137,27 +156,27 @@ describe('N8nMemory', () => {
 				updatedAt: entity.updatedAt ?? new Date('2026-05-12T10:00:00Z'),
 			})),
 		);
-		runInTransaction = vi.fn(
-			async (
-				callback: (trx: {
-					delete: typeof transactionDelete;
-					getRepository: Mock;
-				}) => Promise<void>,
-			) => {
-				await callback({
-					delete: transactionDelete,
-					getRepository: vi.fn((entity) => {
-						if (entity === AgentMemoryEntryEntity) {
-							return { update: transactionMemoryEntryUpdate };
-						}
-						return { find: transactionMemoryEntrySourceFind };
-					}),
-				});
-			},
+		runInTransaction = vi.fn(async (callback: () => Promise<unknown>) => await callback());
+		const threadManager = mock<EntityManager>();
+		threadManager.delete.mockImplementation(transactionDelete);
+		threadManager.update.mockImplementation(
+			async (_target, criteria, values) => await transactionMemoryEntryUpdate(criteria, values),
 		);
-		Object.defineProperty(threadRepository, 'manager', {
-			value: { transaction: runInTransaction },
-		});
+		threadManager.getRepository.mockReturnValue({
+			find: transactionMemoryEntrySourceFind,
+			delete: async (criteria: unknown) =>
+				await transactionDelete(AgentMemoryEntrySourceEntity, criteria),
+		} as never);
+		const threadPersistence = new AgentThreadRepository(
+			mock<DataSource>({ manager: threadManager }),
+			mock(),
+		);
+		vi.spyOn(threadPersistence, 'runInTransaction').mockImplementation(
+			async (ctx, run) => await runInTransaction(async () => await run(threadManager, ctx)),
+		);
+		threadRepository.deleteWithMemory.mockImplementation(
+			threadPersistence.deleteWithMemory.bind(threadPersistence),
+		);
 		memoryEntryRunInTransaction = vi.fn(
 			async (callback: (trx: { getRepository: Mock }) => Promise<unknown>) =>
 				await callback({
@@ -195,8 +214,10 @@ describe('N8nMemory', () => {
 			memoryEntryCandidateRepository,
 			memoryEntryLockRepository,
 			memoryEntrySourceRepository,
+
+			mockConversationLeases(),
 		);
-		memory = memoryService.getImplementation('agent-1');
+		memory = memoryService.getImplementation('agent-1', false);
 	});
 
 	function makeMessageEntity(id: string, createdAt: Date, text: string): AgentMessageEntity {
@@ -558,22 +579,26 @@ describe('N8nMemory', () => {
 
 			const observationScope = { agentId: 'agent-1', observationScopeId: 'thread-1' };
 			expect(runInTransaction).toHaveBeenCalledWith(expect.any(Function));
+			expect(transactionDelete).toHaveBeenNthCalledWith(1, AgentMemoryEntryCandidateEntity, {
+				agentId: 'agent-1',
+				threadId: 'thread-1',
+			});
 			expect(transactionDelete).toHaveBeenNthCalledWith(
-				1,
+				2,
 				AgentObservationEntity,
 				observationScope,
 			);
 			expect(transactionDelete).toHaveBeenNthCalledWith(
-				2,
+				3,
 				AgentObservationCursorEntity,
 				observationScope,
 			);
 			expect(transactionDelete).toHaveBeenNthCalledWith(
-				3,
+				4,
 				AgentObservationLockEntity,
 				observationScope,
 			);
-			expect(transactionDelete).toHaveBeenNthCalledWith(4, AgentThreadEntity, { id: 'thread-1' });
+			expect(transactionDelete).toHaveBeenNthCalledWith(5, AgentThreadEntity, { id: 'thread-1' });
 			expect(observationRepository.delete).not.toHaveBeenCalled();
 			expect(observationCursorRepository.delete).not.toHaveBeenCalled();
 			expect(observationLockRepository.delete).not.toHaveBeenCalled();
@@ -646,22 +671,26 @@ describe('N8nMemory', () => {
 				observationScopeId: Like('test-agent-1%'),
 			};
 			expect(runInTransaction).toHaveBeenCalledWith(expect.any(Function));
+			expect(transactionDelete).toHaveBeenNthCalledWith(1, AgentMemoryEntryCandidateEntity, {
+				agentId: 'agent-1',
+				threadId: Like('test-agent-1%'),
+			});
 			expect(transactionDelete).toHaveBeenNthCalledWith(
-				1,
+				2,
 				AgentObservationEntity,
 				observationScope,
 			);
 			expect(transactionDelete).toHaveBeenNthCalledWith(
-				2,
+				3,
 				AgentObservationCursorEntity,
 				observationScope,
 			);
 			expect(transactionDelete).toHaveBeenNthCalledWith(
-				3,
+				4,
 				AgentObservationLockEntity,
 				observationScope,
 			);
-			expect(transactionDelete).toHaveBeenNthCalledWith(4, AgentThreadEntity, {
+			expect(transactionDelete).toHaveBeenNthCalledWith(5, AgentThreadEntity, {
 				id: Like('test-agent-1%'),
 			});
 			expect(observationRepository.delete).not.toHaveBeenCalled();

@@ -13,20 +13,20 @@ import { onceStatusHandle } from './agent-chat-integration';
 import type { AgentChatMessageContextBridge } from './agent-chat-message-context';
 import type { AgentChatStreamConsumer } from './agent-chat-stream-consumer';
 import type { CallbackStore } from './callback-store';
-import type { InternalThread } from './types';
+import type { AgentMessageQueueService } from '../agent-message-queue.service';
+import type {
+	IntegrationResumeQueuePayload,
+	QueueExecutionContext,
+} from '../agent-message-queue.types';
+import type { ResumeForChatConfig } from '../agent-execution-orchestrator.service';
+import { UserError } from 'n8n-workflow';
 
 interface ResumeExecutor {
-	resumeForChat(config: {
-		agentId: string;
-		projectId: string;
-		runId: string;
-		toolCallId: string;
-		resumeData: unknown;
-		integrationType?: string;
-	}): AsyncGenerator<StreamChunk>;
+	resumeForChat(config: ResumeForChatConfig): AsyncGenerator<StreamChunk>;
 }
 
 interface AgentChatHitlResumeHandlerOptions {
+	messageQueue: AgentMessageQueueService;
 	agentId: string;
 	projectId: string;
 	integration: AgentIntegrationConfig;
@@ -36,8 +36,6 @@ interface AgentChatHitlResumeHandlerOptions {
 	deleteActionMessageBeforeResume: boolean;
 	formatActionDecisionMessage?: ActionDecisionMessageFormatter;
 	settleActionMessage?: SettleActionMessage;
-	resolvePlatformThreadId: (thread: Thread<unknown, unknown>) => string;
-	toAgentThreadId: (platformThreadId: string) => InternalThread;
 	getPlatformAgentContext: () => PlatformAgentContext;
 	messageContextBridge: AgentChatMessageContextBridge;
 	streamConsumer: AgentChatStreamConsumer;
@@ -47,9 +45,6 @@ interface AgentChatHitlResumeHandlerOptions {
 }
 
 export class AgentChatHitlResumeHandler {
-	/** Short-lived set of run IDs that have been resumed to prevent double resumption */
-	private readonly activeResumedRuns = new Set<string>();
-
 	constructor(private readonly options: AgentChatHitlResumeHandlerOptions) {}
 
 	/**
@@ -68,27 +63,84 @@ export class AgentChatHitlResumeHandler {
 			return;
 		}
 
-		const callbackData = await this.resolveCallbackData(event.actionId, event.value, thread);
-		if (!callbackData) return;
+		const persist = async (callbackData: {
+			actionId: string;
+			value?: string;
+			kind?: 'approval';
+			label?: string;
+		}) => {
+			const parsed = this.parseActionId(callbackData.actionId, callbackData.value);
+			if (!parsed) throw new UserError('This action is not available');
+			const memory = await this.options.messageQueue.getResumeScope(
+				this.options.agentId,
+				parsed.runId,
+			);
+			await this.options.messageQueue.enqueue({
+				agentId: this.options.agentId,
+				threadId: memory.threadId,
+				payload: {
+					source: 'integration',
+					kind: 'hitl',
+					projectId: this.options.projectId,
+					resourceId: memory.resourceId,
+					integrationType: this.options.integration.type,
+					credentialId: this.options.integration.credentialId,
+					thread: thread.toJSON(),
+					...parsed,
+					action: {
+						messageId: event.messageId,
+						user: event.user,
+						raw: event.raw,
+						callbackData: { kind: callbackData.kind, label: callbackData.label },
+					},
+				},
+			});
+		};
+		if (this.options.callbackStore) {
+			const resolved = await this.options.callbackStore.resolve(event.actionId, persist);
+			if (!resolved)
+				await thread.post(
+					'This action is no longer available. The link may have expired or already been used.',
+				);
+		} else {
+			await persist({ actionId: event.actionId, value: event.value });
+		}
+	}
 
-		const parsed = this.parseActionId(callbackData.actionId, callbackData.value);
-		if (!parsed) return;
-		// Persist the interacting user / messageId into the thread's message
-		// context so tools running on resume can read it via the message
-		// context store — no need to bolt a duplicate copy onto resumeData.
-		const platformThreadId = this.options.resolvePlatformThreadId(thread);
-		const threadId = this.options.toAgentThreadId(platformThreadId);
-		await this.options.messageContextBridge.updateLatest(threadId.id, event.user.userId, thread, {
-			messageId: event.messageId,
-			interactingUserId: event.user.userId,
-			...this.options.getPlatformAgentContext(),
-			// The resume response streams back to this thread like any chat turn,
-			// so the same reply-delivery rules apply.
-			replyExpectation: 'required',
+	async processQueuedResponse(
+		payload: IntegrationResumeQueuePayload,
+		thread: Thread,
+		threadId: string,
+		context: QueueExecutionContext,
+	): Promise<void> {
+		const memory = await this.options.messageQueue.getResumeScope(
+			this.options.agentId,
+			payload.runId,
+		);
+		if (memory.threadId !== threadId || memory.resourceId !== payload.resourceId) {
+			throw new UserError(`Checkpoint ${payload.runId} does not belong to this chat`);
+		}
+		await this.executeResume(thread, payload.runId, payload.toolCallId, payload.resumeData, {
+			...context,
+			expectedMemory: memory,
+			onResumeClaimed: async () => {
+				await this.options.messageContextBridge.updateLatest(threadId, payload.resourceId, thread, {
+					messageId: payload.action.messageId,
+					interactingUserId: payload.action.user.userId,
+					...this.options.getPlatformAgentContext(),
+					replyExpectation: 'required',
+				});
+				await this.cleanUpBeforeResume(
+					{
+						adapter: thread.adapter,
+						threadId: thread.id,
+						...payload.action,
+					},
+					payload.resumeData,
+					payload.action.callbackData,
+				);
+			},
 		});
-
-		await this.cleanUpBeforeResume(event, parsed.resumeData, callbackData);
-		await this.executeResume(thread, parsed.runId, parsed.toolCallId, parsed.resumeData);
 	}
 
 	/** Parsed result from an action ID. */
@@ -127,41 +179,9 @@ export class AgentChatHitlResumeHandler {
 		return null;
 	}
 
-	/**
-	 * Resolve short callback keys when the platform uses them (e.g. Telegram).
-	 * Returns the resolved `{ actionId, value }` or `null` if expired/missing.
-	 */
-	private async resolveCallbackData(
-		actionId: string,
-		value: string | undefined,
-		thread: Thread<unknown, unknown>,
-	): Promise<{
-		actionId: string;
-		value: string | undefined;
-		kind?: 'approval';
-		label?: string;
-	} | null> {
-		if (!this.options.callbackStore) return { actionId, value };
-
-		const resolved = await this.options.callbackStore.resolve(actionId);
-		if (!resolved) {
-			this.options.logger.warn('[AgentChatBridge] Callback key not found or expired', { actionId });
-			await thread.post(
-				'This action is no longer available. The link may have expired or already been used.',
-			);
-			return null;
-		}
-		return {
-			actionId: resolved.actionId,
-			value: resolved.value,
-			kind: resolved.kind,
-			label: resolved.label,
-		};
-	}
-
 	/** Clean up the action message according to integration policy before resuming. */
 	private async cleanUpBeforeResume(
-		event: ActionEvent,
+		event: Pick<ActionEvent, 'adapter' | 'threadId' | 'messageId' | 'raw' | 'user'>,
 		resumeData: unknown,
 		callbackData: { kind?: 'approval'; label?: string },
 	): Promise<void> {
@@ -217,53 +237,35 @@ export class AgentChatHitlResumeHandler {
 		return resumeData.approved;
 	}
 
-	/**
-	 * Guard against double resumption, then resume the agent and stream the
-	 * response back into the thread.
-	 *
-	 * Public because a resume is not always user-driven — `AgentChatBridge` also
-	 * calls this when a sub-workflow finishing wakes a suspended run. Note the
-	 * `activeResumedRuns` guard is per instance, so it only covers this process.
-	 */
+	/** Callers hold the conversation lock. Checkpoint claims reject duplicate responses. */
 	async executeResume(
 		thread: Thread<unknown, unknown>,
 		runId: string,
 		toolCallId: string,
 		resumeData: unknown,
-		/** Tell the user the action was already handled. Only for their own clicks. */
-		notifyOnDuplicate = true,
+		execution: Pick<
+			ResumeForChatConfig,
+			'abortSignal' | 'onExecutionStarted' | 'expectedMemory' | 'onResumeClaimed'
+		> = {},
 	): Promise<void> {
-		if (this.activeResumedRuns.has(runId)) {
-			this.options.logger.warn('[AgentChatBridge] Run is already active', { runId, toolCallId });
-			if (notifyOnDuplicate) await thread.post('This action has already been handled');
-			return;
-		}
-
-		this.activeResumedRuns.add(runId);
+		const resumeExecutionContext = await this.options.createResumeExecutionContext(thread);
+		const statusHandle = onceStatusHandle(resumeExecutionContext.statusHandle);
 		try {
-			const resumeExecutionContext = await this.options.createResumeExecutionContext(thread);
-			const statusHandle = onceStatusHandle(resumeExecutionContext.statusHandle);
-			try {
-				const stream = this.options.agentService.resumeForChat({
-					agentId: this.options.agentId,
-					projectId: this.options.projectId,
-					runId,
-					toolCallId,
-					resumeData,
-					integrationType: this.options.integration.type,
-				});
-				await this.options.streamConsumer.consume(stream, thread, {
-					...resumeExecutionContext,
-					statusHandle,
-				});
-			} finally {
-				// The stream consumer clears the status right before the first response;
-				// this clear covers failures before/outside consumption. The
-				// once-wrapped handle makes it a no-op await when that already ran.
-				await statusHandle?.clearBeforeResponse();
-			}
+			const stream = this.options.agentService.resumeForChat({
+				agentId: this.options.agentId,
+				projectId: this.options.projectId,
+				runId,
+				toolCallId,
+				resumeData,
+				integrationType: this.options.integration.type,
+				...execution,
+			});
+			await this.options.streamConsumer.consume(stream, thread, {
+				...resumeExecutionContext,
+				statusHandle,
+			});
 		} finally {
-			this.activeResumedRuns.delete(runId);
+			await statusHandle?.clearBeforeResponse();
 		}
 	}
 }

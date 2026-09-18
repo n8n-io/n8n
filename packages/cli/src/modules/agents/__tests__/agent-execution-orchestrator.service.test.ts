@@ -1,3 +1,4 @@
+import { mockConversationLeases } from './mock-conversation-lease';
 import type {
 	Agent as RuntimeAgent,
 	JSONValue,
@@ -180,6 +181,8 @@ function makeService(sandboxEnabled = false) {
 		agentSandboxRuntimeService,
 		agentRepository,
 		aiConfigMock,
+
+		mockConversationLeases(),
 	);
 
 	return {
@@ -494,7 +497,7 @@ describe('AgentExecutionOrchestratorService', () => {
 			],
 			genieAttribution,
 		);
-		checkpointStorage.getStatus.mockResolvedValueOnce({
+		checkpointStorage.getStatus.mockResolvedValue({
 			status: 'active',
 			checkpoint: { persistence: { threadId: 'thread-1', resourceId: 'resource-1' } },
 		} as never);
@@ -579,6 +582,7 @@ describe('AgentExecutionOrchestratorService', () => {
 		const { service, executionService } = makeService();
 		const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
 		const onExecutionRecorded = vi.fn();
+		const onExecutionStarted = vi.fn().mockResolvedValue(undefined);
 
 		await collect(
 			service.streamChatResponse({
@@ -593,12 +597,48 @@ describe('AgentExecutionOrchestratorService', () => {
 				telemetry: telemetryContext,
 				sandboxPrincipalHash: userPrincipalHash,
 				onExecutionRecorded,
+				onExecutionStarted,
 			}),
 		);
 
 		expect(executionService.finalizeExecution).toHaveBeenCalled();
 		expect(onExecutionRecorded).toHaveBeenCalledWith('execution-1');
+		expect(onExecutionStarted).toHaveBeenCalledWith('execution-1');
+		expect(onExecutionStarted.mock.invocationCallOrder[0]).toBeLessThan(
+			executionService.finalizeExecution.mock.invocationCallOrder[0],
+		);
 	});
+
+	it.each([false, true])(
+		'loads the runtime when processing starts (published: %s)',
+		async (published) => {
+			const { service, runtimeCacheService } = makeService();
+			const oldRuntime = makeRuntime();
+			runtimeCacheService.getRuntime.mockResolvedValue(oldRuntime);
+			const stream = published
+				? service.executeForChatPublished({
+						agentId,
+						projectId,
+						message: 'hello',
+						memory: { threadId: 'thread', resourceId: 'integration:slack:user' },
+						integrationType: 'slack',
+						sandboxPrincipalHash: integrationPrincipalHash,
+					})
+				: service.executeForChat({
+						agentId,
+						projectId,
+						message: 'hello',
+						user,
+						memory: { threadId: 'thread', resourceId: 'draft-chat:user-1' },
+					});
+			expect(runtimeCacheService.getRuntime).not.toHaveBeenCalled();
+			const currentRuntime = makeRuntime();
+			runtimeCacheService.getRuntime.mockResolvedValue(currentRuntime);
+			await collect(stream);
+			expect(currentRuntime.agent.stream).toHaveBeenCalledTimes(1);
+			expect(oldRuntime.agent.stream).not.toHaveBeenCalled();
+		},
+	);
 
 	it('still records the message when onExecutionRecorded is omitted', async () => {
 		const { service, executionService } = makeService();
@@ -1428,7 +1468,7 @@ describe('AgentExecutionOrchestratorService', () => {
 		} = makeService();
 		const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
 
-		checkpointStorage.getStatus.mockResolvedValueOnce({ status: 'expired' });
+		checkpointStorage.getStatus.mockResolvedValue({ status: 'expired' });
 		await expect(
 			collect(
 				service.resumeForChat({
@@ -1442,13 +1482,14 @@ describe('AgentExecutionOrchestratorService', () => {
 		).rejects.toThrow(UserError);
 		expect(checkpointStorage.getStatus).toHaveBeenLastCalledWith('expired-run', agentId);
 
-		checkpointStorage.getStatus.mockResolvedValueOnce({
+		checkpointStorage.getStatus.mockResolvedValue({
 			status: 'active',
 			checkpoint: { persistence: { threadId: 'thread-1', resourceId: 'platform-user-1' } },
 		} as never);
 		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
 
 		const abortController = new AbortController();
+		const onResumeClaimed = vi.fn();
 		await collect(
 			service.resumeForChat({
 				agentId,
@@ -1458,6 +1499,7 @@ describe('AgentExecutionOrchestratorService', () => {
 				resumeData: { value: 'yes' },
 				integrationType: 'slack',
 				abortSignal: abortController.signal,
+				onResumeClaimed,
 			}),
 		);
 		expect(checkpointStorage.getStatus).toHaveBeenLastCalledWith('run-1', agentId);
@@ -1468,7 +1510,8 @@ describe('AgentExecutionOrchestratorService', () => {
 			expect.objectContaining({
 				runId: 'run-1',
 				toolCallId: 'tc-1',
-				abortSignal: abortController.signal,
+				abortSignal: expect.any(AbortSignal),
+				onResumeClaimed,
 			}),
 		);
 		expect(externalHooks.run).not.toHaveBeenCalled();
@@ -1770,12 +1813,12 @@ describe('AgentExecutionOrchestratorService', () => {
 			}),
 		).resolves.toBe(true);
 
-		expect(checkpointStorage.delete).toHaveBeenCalledTimes(3);
-		expect(checkpointStorage.delete).toHaveBeenCalledWith(
+		expect(checkpointStorage.deleteSuspended).toHaveBeenCalledTimes(2);
+		expect(checkpointStorage.deleteSuspended).toHaveBeenCalledWith(
 			'configured-child-run',
 			'configured-agent',
 		);
-		expect(checkpointStorage.delete).toHaveBeenCalledWith('inline-child-run', agentId);
+		expect(checkpointStorage.deleteSuspended).toHaveBeenCalledWith('inline-child-run', agentId);
 		expect(checkpointStorage.delete).toHaveBeenCalledWith('run-1', agentId);
 	});
 
@@ -1792,9 +1835,10 @@ describe('AgentExecutionOrchestratorService', () => {
 		});
 		checkpointStorage.getStatus
 			.mockResolvedValueOnce({ status: 'active', checkpoint })
-			.mockResolvedValueOnce({ status: 'expired', checkpoint });
+			.mockResolvedValueOnce({ status: 'active', checkpoint })
+			.mockResolvedValue({ status: 'expired', checkpoint });
 		checkpointStorage.cancelSuspended.mockResolvedValue(true);
-		checkpointStorage.delete
+		checkpointStorage.deleteSuspended
 			.mockRejectedValueOnce(new Error('child checkpoint unavailable'))
 			.mockResolvedValue(undefined);
 
@@ -1807,9 +1851,9 @@ describe('AgentExecutionOrchestratorService', () => {
 		await expect(service.cancelChatRun(request)).resolves.toBe(true);
 
 		expect(checkpointStorage.cancelSuspended).toHaveBeenCalledOnce();
-		expect(checkpointStorage.delete).toHaveBeenNthCalledWith(1, 'child-run-1', agentId);
-		expect(checkpointStorage.delete).toHaveBeenNthCalledWith(2, 'child-run-1', agentId);
-		expect(checkpointStorage.delete).toHaveBeenNthCalledWith(3, 'run-1', agentId);
+		expect(checkpointStorage.deleteSuspended).toHaveBeenNthCalledWith(1, 'child-run-1', agentId);
+		expect(checkpointStorage.deleteSuspended).toHaveBeenNthCalledWith(2, 'child-run-1', agentId);
+		expect(checkpointStorage.delete).toHaveBeenCalledWith('run-1', agentId);
 	});
 
 	it('passes tracing telemetry returned by AgentRunTracingService into stream() and resume()', async () => {
@@ -1842,7 +1886,7 @@ describe('AgentExecutionOrchestratorService', () => {
 			expect.objectContaining({ telemetry: fakeTelemetry }),
 		);
 
-		checkpointStorage.getStatus.mockResolvedValueOnce({
+		checkpointStorage.getStatus.mockResolvedValue({
 			status: 'active',
 			checkpoint: { persistence: { threadId: 'thread-1', resourceId: 'platform-user-1' } },
 		} as never);
@@ -1875,7 +1919,7 @@ describe('AgentExecutionOrchestratorService', () => {
 		} = makeService();
 		const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
 
-		checkpointStorage.getStatus.mockResolvedValueOnce({
+		checkpointStorage.getStatus.mockResolvedValue({
 			status: 'active',
 			checkpoint: { persistence: { threadId: 'thread-1', resourceId: 'platform-user-1' } },
 		} as never);
@@ -1917,7 +1961,7 @@ describe('AgentExecutionOrchestratorService', () => {
 		} = makeService();
 		const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
 
-		checkpointStorage.getStatus.mockResolvedValueOnce({
+		checkpointStorage.getStatus.mockResolvedValue({
 			status: 'active',
 			checkpoint: { persistence: { threadId: 'thread-1', resourceId: 'platform-user-1' } },
 		} as never);
@@ -1951,7 +1995,7 @@ describe('AgentExecutionOrchestratorService', () => {
 		const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
 
 		Object.defineProperty(agentRunTracingService, 'enabled', { value: false });
-		checkpointStorage.getStatus.mockResolvedValueOnce({
+		checkpointStorage.getStatus.mockResolvedValue({
 			status: 'active',
 			checkpoint: { persistence: { threadId: 'thread-1', resourceId: 'platform-user-1' } },
 		} as never);
@@ -1985,7 +2029,7 @@ describe('AgentExecutionOrchestratorService', () => {
 			},
 		]);
 
-		checkpointStorage.getStatus.mockResolvedValueOnce({
+		checkpointStorage.getStatus.mockResolvedValue({
 			status: 'active',
 			checkpoint: { persistence: { threadId: 'thread-1', resourceId: 'platform-user-1' } },
 		} as never);

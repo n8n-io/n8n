@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests intentionally reference unbound methods */
 import type { AgentIntegrationConfig } from '@n8n/api-types';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -308,6 +309,46 @@ describe('AgentIntegrationsController integration management', () => {
 			error: 'No active discord integration for agent "agent-1"',
 		});
 	});
+
+	it.each([false, true])(
+		'waits for webhook admission and reports admission errors (failure: %s)',
+		async (fails) => {
+			const chatIntegrationService = mock<ChatIntegrationService>();
+			const admitted = createDeferredPromise();
+			const handler = vi.fn<NonNullable<ReturnType<ChatIntegrationService['getWebhookHandler']>>>(
+				async (_request, options) => {
+					options?.waitUntil?.(admitted.promise);
+					return new Response('ok');
+				},
+			);
+			chatIntegrationService.getWebhookHandler.mockReturnValue(handler);
+			const { controller } = makeController({ chatIntegrationService });
+			const res = { status: vi.fn().mockReturnThis(), setHeader: vi.fn(), send: vi.fn() };
+			const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+			try {
+				const response = controller.handleWebhook(
+					{
+						params: { projectId: 'project', agentId: 'agent', platform: 'slack' },
+						headers: { host: 'localhost', 'content-type': 'application/json' },
+						method: 'POST',
+						protocol: 'http',
+						originalUrl: '/webhook',
+						body: {},
+					} as never,
+					res as never,
+				);
+				await vi.waitFor(() => expect(handler).toHaveBeenCalled());
+				expect(res.send).not.toHaveBeenCalled();
+				if (fails) admitted.reject(new Error('Admission failed'));
+				else admitted.resolve();
+				await response;
+				expect(res.send).toHaveBeenCalledWith('ok');
+				if (fails) expect(warn).toHaveBeenCalledWith(expect.any(String), 'Admission failed');
+			} finally {
+				warn.mockRestore();
+			}
+		},
+	);
 
 	it('returns 404 when the selected connection has no handler', async () => {
 		const chatIntegrationService = mock<ChatIntegrationService>();
