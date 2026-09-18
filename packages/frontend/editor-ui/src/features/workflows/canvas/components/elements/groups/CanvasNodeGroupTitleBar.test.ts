@@ -15,11 +15,12 @@ const viewportRef = { value: { x: 0, y: 0, zoom: 1 } };
 vi.mock('@vue-flow/core', () => ({
 	Handle: {
 		name: 'Handle',
-		props: ['id', 'type', 'position', 'isConnectable'],
+		props: ['id', 'type', 'position', 'connectable'],
 		render() {
 			return h('div', {
 				class: 'vue-flow__handle',
 				'data-handle-id': (this as unknown as { id: string }).id,
+				'data-connectable': String((this as unknown as { connectable: boolean }).connectable),
 			});
 		},
 	},
@@ -118,6 +119,28 @@ describe('CanvasNodeGroupTitleBar', () => {
 			const wrapper = render();
 			await fireEvent.click(wrapper.getByTestId('canvas-node-group-toggle'));
 			expect(wrapper.emitted().toggle).toEqual([['g1']]);
+		});
+	});
+
+	describe('empty-group connection handles', () => {
+		it('enables both title-bar handles only for a collapsed empty group', () => {
+			const wrapper = render({
+				data: makeData({
+					isCollapsed: true,
+					isEmptyGroup: true,
+					group: { ...baseGroup, nodeIds: ['anchor'] },
+				}),
+			});
+
+			expect(wrapper.container.querySelectorAll('[data-connectable="true"]')).toHaveLength(2);
+		});
+
+		it('does not enable handles for expanded or non-empty groups', () => {
+			const expanded = render({ data: makeData({ isCollapsed: false, isEmptyGroup: true }) });
+			const nonEmpty = render({ data: makeData({ isCollapsed: true, isEmptyGroup: false }) });
+
+			expect(expanded.container.querySelectorAll('[data-connectable="true"]')).toHaveLength(0);
+			expect(nonEmpty.container.querySelectorAll('[data-connectable="true"]')).toHaveLength(0);
 		});
 	});
 

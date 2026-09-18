@@ -8,7 +8,7 @@ import {
 	createTestWorkflow,
 	createTestWorkflowExecutionResponse,
 } from '@/__tests__/mocks';
-import { STICKY_NODE_TYPE } from '@/app/constants';
+import { NO_OP_NODE_TYPE, STICKY_NODE_TYPE } from '@/app/constants';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
@@ -208,6 +208,35 @@ describe('useWorkflowDocumentRenderData — fusion projections', () => {
 
 		const render = renderData.renderTypeByNodeId.get('a')?.value;
 		expect(render?.type).toBe('default');
+	});
+
+	it('renders empty-group anchors as placeholders', () => {
+		const { docId } = setupWorkflow('wf-empty-group-anchor-placeholder', [
+			{
+				id: 'anchor',
+				name: 'No Operation, do nothing',
+				type: NO_OP_NODE_TYPE,
+				parameters: { emptyGroupAnchor: true },
+			},
+		]);
+		const { renderData } = createRenderData(docId);
+
+		const render = renderData.renderTypeByNodeId.get('anchor')?.value;
+		expect((render as CanvasNodeDefaultRender).options.placeholder).toBe(true);
+	});
+
+	it('does not render a regular No-Op as a placeholder', () => {
+		const { docId } = setupWorkflow('wf-regular-no-op-placeholder', [
+			{
+				id: 'regular-no-op',
+				name: 'No Operation, do nothing',
+				type: NO_OP_NODE_TYPE,
+			},
+		]);
+		const { renderData } = createRenderData(docId);
+
+		const render = renderData.renderTypeByNodeId.get('regular-no-op')?.value;
+		expect((render as CanvasNodeDefaultRender).options.placeholder).toBe(false);
 	});
 
 	it('returns a sticky-note render type for sticky nodes', () => {
