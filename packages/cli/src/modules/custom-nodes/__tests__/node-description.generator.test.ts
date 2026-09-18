@@ -25,7 +25,9 @@ const paymentLink = (): CustomOperationDefinition => ({
 				bodyType: 'form',
 				auth: { kind: 'predefined', credentialType: 'stripeApi' },
 			},
-			fixedData: [{ target: 'body', key: 'line_items[0].adjustable_quantity.enabled', value: 'false' }],
+			fixedData: [
+				{ target: 'body', key: 'line_items[0].adjustable_quantity.enabled', value: 'false' },
+			],
 			inputs: [
 				{
 					name: 'price',
@@ -148,8 +150,7 @@ describe('node-description.generator', () => {
 			expect(v2.version).toBe(2);
 			expect(v2.requestDefaults?.headers).toEqual({
 				'Content-Type': 'application/x-www-form-urlencoded',
-				'Idempotency-Key':
-					'={{ ($parameter["additionalFields"]?.["idempotencyKey"] ?? "") }}',
+				'Idempotency-Key': '={{ ($parameter["additionalFields"]?.["idempotencyKey"] ?? "") }}',
 			});
 		});
 	});
@@ -203,7 +204,12 @@ describe('node-description.generator', () => {
 				versions: [
 					{
 						...opA.versions[0],
-						request: { ...opA.versions[0].request, method: 'POST', url: '/invoices', bodyType: 'json' },
+						request: {
+							...opA.versions[0].request,
+							method: 'POST',
+							url: '/invoices',
+							bodyType: 'json',
+						},
 						inputs: [
 							{
 								name: 'amount',
@@ -259,9 +265,9 @@ describe('node-description.generator', () => {
 	describe('templateToExpression', () => {
 		it('leaves plain strings alone and rewrites placeholders', () => {
 			expect(templateToExpression('https://x.test/a', {})).toBe('https://x.test/a');
-			expect(templateToExpression('https://x.test/{{ $parameter.id }}', { id: '$parameter["id"]' })).toBe(
-				'=https://x.test/{{ $parameter["id"] }}',
-			);
+			expect(
+				templateToExpression('https://x.test/{{ $parameter.id }}', { id: '$parameter["id"]' }),
+			).toBe('=https://x.test/{{ $parameter["id"] }}');
 		});
 	});
 });

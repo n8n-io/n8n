@@ -1,7 +1,4 @@
-import type {
-	CustomNodeDefinition,
-	CustomOperationDefinition,
-} from '@n8n/api-types';
+import type { CustomNodeDefinition, CustomOperationDefinition } from '@n8n/api-types';
 import { CUSTOM_DEFINITIONS_PACKAGE_NAME } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import { UnrecognizedCredentialTypeError, UnrecognizedNodeTypeError } from 'n8n-core';
@@ -108,7 +105,7 @@ export class CustomNodesNodeLoader implements NodeLoader {
 		this.known.nodes[bareName] = { className: 'CustomDefinitionNode', sourcePath: '' };
 	}
 
-	private resolveParent(parentNodeType: string): ParentNodeInfo | undefined {
+	resolveParent(parentNodeType: string): ParentNodeInfo | undefined {
 		try {
 			const { type } = this.loadNodesAndCredentials.getNode(parentNodeType);
 			const { description } = NodeHelpers.getVersionedNodeType(type);

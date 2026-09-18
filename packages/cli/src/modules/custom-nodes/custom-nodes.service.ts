@@ -1,6 +1,7 @@
 import type {
 	CreateCustomNodeDto,
 	CreateCustomOperationDto,
+	PreviewCustomOperationDto,
 	CustomNodeDefinition,
 	CustomNodeListItem,
 	CustomOperationDefinition,
@@ -18,7 +19,12 @@ import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { Push } from '@/push';
 
 import { CustomNodesNodeLoader } from './custom-nodes-node-loader';
-import { seedAcmeBillingNode, seedAcmeOperations, seedStripePaymentLink } from './custom-nodes.seed';
+import { generateOperationNodeDescriptions } from './node-description.generator';
+import {
+	seedAcmeBillingNode,
+	seedAcmeOperations,
+	seedStripePaymentLink,
+} from './custom-nodes.seed';
 import { CustomNodeDefinitionEntity } from './database/custom-node-definition.entity';
 import { CustomNodeDefinitionRepository } from './database/custom-node-definition.repository';
 
@@ -118,6 +124,27 @@ export class CustomNodesService {
 		const match = /^data:(image\/(?:svg\+xml|png));base64,(.+)$/.exec(iconDataUri);
 		if (!match) throw new UserError('Stored icon is not a valid data URI');
 		return { mimeType: match[1], data: Buffer.from(match[2], 'base64') };
+	}
+
+	/** Generates the description for an unsaved draft so the wizard can preview it. */
+	preview(dto: PreviewCustomOperationDto) {
+		const loader = this.loadNodesAndCredentials.loaders[CUSTOM_DEFINITIONS_PACKAGE_NAME];
+		const parent =
+			dto.parentNodeType && loader instanceof CustomNodesNodeLoader
+				? loader.resolveParent(dto.parentNodeType)
+				: undefined;
+		const [description] = generateOperationNodeDescriptions(
+			{
+				id: 'preview',
+				name: dto.name,
+				parentNodeType: dto.parentNodeType,
+				customNodeId: null,
+				activeVersion: 1,
+				versions: [{ ...dto.version, version: 1, createdAt: new Date().toISOString() }],
+			},
+			{ parent },
+		);
+		return description;
 	}
 
 	// --------------------------------------------------------- operations

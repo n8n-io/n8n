@@ -1,4 +1,5 @@
 import { useRouter } from 'vue-router';
+import { CUSTOM_NODES_SETTINGS_VIEW } from '@/features/customNodes/customNodes.constants';
 import { useUserHelpers } from './useUserHelpers';
 import { useAiGateway } from './useAiGateway';
 import { useAiGatewayTopUp } from './useAiGatewayTopUp';
@@ -189,6 +190,16 @@ export function useSettingsItems() {
 			position: 'top',
 			available: canUserAccessRouteByName(VIEWS.COMMUNITY_NODES),
 			route: { to: { name: VIEWS.COMMUNITY_NODES } },
+		});
+
+		// Custom Nodes & Custom Operations mockup, sits next to Community Nodes
+		menuItems.push({
+			id: 'settings-custom-nodes',
+			icon: 'blocks',
+			label: i18n.baseText('settings.customNodes'),
+			position: 'top',
+			available: settingsStore.isCustomNodesMockupEnabled,
+			route: { to: { name: CUSTOM_NODES_SETTINGS_VIEW } },
 		});
 
 		if (MIGRATION_REPORT_TARGET_VERSION) {

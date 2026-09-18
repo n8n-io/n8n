@@ -32,7 +32,8 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 
 export const ADDITIONAL_FIELDS_NAME = 'additionalFields';
 export const OPERATION_PARAMETER_NAME = 'operation';
-const PLACEHOLDER_REGEX = /\{\{\s*\$parameter(?:\.([A-Za-z_][A-Za-z0-9_]*)|\["([^"]+)"\]|\['([^']+)'\])\s*\}\}/g;
+const PLACEHOLDER_REGEX =
+	/\{\{\s*\$parameter(?:\.([A-Za-z_][A-Za-z0-9_]*)|\["([^"]+)"\]|\['([^']+)'\])\s*\}\}/g;
 
 /** Subset of the parent node description that a custom operation borrows. */
 export type ParentNodeInfo = Pick<
@@ -138,7 +139,8 @@ export function buildFixedRequest(
 		url: templateToExpression(request.url, pathByName),
 		json: true,
 	};
-	if (Object.keys(headers).length) fixed.headers = rewriteLeaves(headers, pathByName) as IDataObject;
+	if (Object.keys(headers).length)
+		fixed.headers = rewriteLeaves(headers, pathByName) as IDataObject;
 	if (Object.keys(qs).length) fixed.qs = rewriteLeaves(qs, pathByName) as IDataObject;
 	if (body && Object.keys(body).length) fixed.body = rewriteLeaves(body, pathByName) as IDataObject;
 	return fixed;

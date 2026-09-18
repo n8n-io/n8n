@@ -248,6 +248,10 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isCommunityNodesFeatureEnabled = computed(() => settings.value.communityNodesEnabled);
 
+	const isCustomNodesMockupEnabled = computed(
+		() => isModuleActive('custom-nodes') && moduleSettings.value['custom-nodes']?.enabled === true,
+	);
+
 	const isUnverifiedPackagesEnabled = computed(
 		() => settings.value.unverifiedCommunityNodesEnabled,
 	);
@@ -503,6 +507,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		templatesHost,
 		pushBackend,
 		isCommunityNodesFeatureEnabled,
+		isCustomNodesMockupEnabled,
 		isUnverifiedPackagesEnabled,
 		allowedModules,
 		isQueueModeEnabled,

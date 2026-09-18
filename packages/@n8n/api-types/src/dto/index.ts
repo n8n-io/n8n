@@ -123,6 +123,7 @@ export {
 	CreateCustomNodeDto,
 	UpdateCustomNodeDto,
 	UploadCustomNodeIconDto,
+	PreviewCustomOperationDto,
 } from './custom-nodes/custom-nodes.dto';
 
 export { CreateCredentialDto } from './credentials/create-credential.dto';

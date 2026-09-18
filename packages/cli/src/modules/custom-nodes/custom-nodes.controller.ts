@@ -1,6 +1,7 @@
 import {
 	CreateCustomNodeDto,
 	CreateCustomOperationDto,
+	PreviewCustomOperationDto,
 	SetActiveVersionDto,
 	UpdateCustomNodeDto,
 	UpdateCustomOperationDto,
@@ -19,6 +20,15 @@ export class CustomNodesController {
 	@Get('/')
 	async list() {
 		return await this.service.list();
+	}
+
+	@Post('/preview')
+	async preview(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: PreviewCustomOperationDto,
+	) {
+		return this.service.preview(payload);
 	}
 
 	@Get('/:id')

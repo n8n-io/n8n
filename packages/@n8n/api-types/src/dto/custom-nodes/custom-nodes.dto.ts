@@ -66,3 +66,10 @@ export class UploadCustomNodeIconDto extends Z.class({
 		.string()
 		.regex(/^data:image\/(svg\+xml|png);base64,[A-Za-z0-9+/=]+$/, 'must be an SVG or PNG data URI'),
 }) {}
+
+/** Preview the generated node description for a draft without saving it. */
+export class PreviewCustomOperationDto extends Z.class({
+	name: nameSchema,
+	parentNodeType: z.string().min(1).nullable(),
+	version: customOperationVersionContentSchema,
+}) {}
