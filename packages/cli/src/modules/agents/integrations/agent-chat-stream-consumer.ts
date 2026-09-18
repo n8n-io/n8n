@@ -37,6 +37,19 @@ interface AgentChatStreamConsumerOptions {
 	 * tools returning a `silent` field must not mute the reply.
 	 */
 	isIntegrationActionTool?: (toolName: string) => boolean;
+	/**
+	 * Give up on a streaming post that has not settled this long after the text
+	 * stream ended, and post the accumulated text as an ordinary message
+	 * instead. Unset means wait indefinitely.
+	 */
+	streamingPostTimeoutMs?: number;
+	/**
+	 * True when the platform renders only one streamed run per inbound turn.
+	 * Text after the first run is buffered and posted as its own message.
+	 */
+	singleStreamedRunPerTurn?: boolean;
+	/** Called when a streaming post had to be abandoned and posted buffered. */
+	onStreamingPostStalled?: () => void;
 }
 
 interface ConsumeStreamOptions {
@@ -103,6 +116,11 @@ export class AgentChatStreamConsumer {
 			end: null,
 		};
 		let streamingPost: Promise<unknown> | null = null;
+		/** Text yielded into the current streaming post, for the stalled fallback. */
+		let streamedText = '';
+		/** Text that arrived after streaming stopped for this turn. */
+		let bufferedTail = '';
+		let streamedOnce = false;
 
 		const createTextIterable = (): AsyncIterable<string> => {
 			const queue: string[] = [];
@@ -149,6 +167,7 @@ export class AgentChatStreamConsumer {
 
 		const startStreamingPost = () => {
 			const iterable = createTextIterable();
+			streamedText = '';
 			streamingPost = thread.post(iterable).catch(async (postError: unknown) => {
 				await this.options.postErrorToThread(thread, postError);
 				this.options.logger.error('[AgentChatBridge] Streaming post failed', {
@@ -164,19 +183,34 @@ export class AgentChatStreamConsumer {
 				textStream.yield = null;
 			}
 			if (streamingPost) {
-				await streamingPost;
+				const post = streamingPost;
 				streamingPost = null;
+				streamedOnce = true;
+				await this.awaitStreamingPost(post, thread, streamedText);
 			}
+		};
+
+		const flushBufferedTail = async () => {
+			const text = bufferedTail;
+			bufferedTail = '';
+			if (!text.trim()) return;
+			await this.postBufferedText(thread, text);
 		};
 
 		// Don't start streaming post eagerly — wait for first text delta
 		const ensureStreamingPost = () => {
+			// A platform that renders one streamed run per turn cannot open a
+			// second one: Teams reuses a single open stream per inbound activity,
+			// so a second run refills the first bubble, which sits above anything
+			// posted in between. Buffer the rest of the turn instead.
+			if (streamedOnce && this.options.singleStreamedRunPerTurn) return;
 			if (!streamingPost) startStreamingPost();
 		};
 		const responseLifecycle = this.createResponseLifecycle({
 			statusHandle: options.statusHandle,
 			ensureStreamingPost,
 			endStreamingPost,
+			flushBufferedText: flushBufferedTail,
 		});
 		const responseState = createResponseState();
 
@@ -187,7 +221,12 @@ export class AgentChatStreamConsumer {
 						if (responseState.suppressText) break;
 						const { delta } = chunk;
 						await responseLifecycle.startStreamingResponse();
-						textStream.yield?.(delta);
+						if (textStream.yield) {
+							streamedText += delta;
+							textStream.yield(delta);
+						} else {
+							bufferedTail += delta;
+						}
 						if (delta.trim()) responseState.hasVisibleResponse = true;
 						break;
 					}
@@ -224,6 +263,62 @@ export class AgentChatStreamConsumer {
 			await this.postFallbackIfNeeded(responseState, responseLifecycle, thread);
 		} finally {
 			await responseLifecycle.finish();
+		}
+	}
+
+	/**
+	 * Await a streaming post, degrading to a buffered message when the platform
+	 * never settles it.
+	 *
+	 * A platform adapter can wait on its own acknowledgement without a deadline
+	 * and swallow the rejection that would end that wait, which leaves the turn
+	 * hung and the user with no reply at all. Opting into a timeout trades the
+	 * streamed rendering for a message that actually arrives.
+	 */
+	private async awaitStreamingPost(
+		post: Promise<unknown>,
+		thread: Thread<unknown, unknown>,
+		streamedText: string,
+	): Promise<void> {
+		const timeoutMs = this.options.streamingPostTimeoutMs;
+		if (timeoutMs === undefined) {
+			await post;
+			return;
+		}
+
+		const stalled = Symbol('stalled');
+		let timer: NodeJS.Timeout | undefined;
+		const deadline = new Promise<typeof stalled>((resolve) => {
+			timer = setTimeout(() => resolve(stalled), timeoutMs);
+			timer.unref();
+		});
+		try {
+			if ((await Promise.race([post, deadline])) !== stalled) return;
+		} finally {
+			clearTimeout(timer);
+		}
+
+		this.options.logger.warn(
+			'[AgentChatBridge] Streaming post did not settle, posting buffered instead',
+			{ threadId: thread.id, timeoutMs },
+		);
+		this.options.onStreamingPostStalled?.();
+		if (streamedText.trim()) await this.postBufferedText(thread, streamedText);
+	}
+
+	/**
+	 * Chat SDK's streaming path wraps accumulated deltas as `{ markdown }` so the
+	 * adapter applies its markdown parse mode. A raw string bypasses that and
+	 * renders as plain text, so buffered text is posted in the same shape.
+	 */
+	private async postBufferedText(thread: Thread<unknown, unknown>, text: string): Promise<void> {
+		try {
+			await thread.post({ markdown: text });
+		} catch (postError: unknown) {
+			this.options.logger.error('[AgentChatBridge] Buffered post failed', {
+				error: postError instanceof Error ? postError.message : String(postError),
+			});
+			await this.options.postErrorToThread(thread, postError);
 		}
 	}
 
@@ -272,6 +367,7 @@ export class AgentChatStreamConsumer {
 		statusHandle?: BridgeStatusHandle;
 		ensureStreamingPost?: () => void;
 		endStreamingPost?: () => Promise<void>;
+		flushBufferedText?: () => Promise<void>;
 	}): ResponseLifecycle {
 		let responseStarted = false;
 
@@ -288,10 +384,12 @@ export class AgentChatStreamConsumer {
 			},
 			startDiscreteResponse: async () => {
 				await options.endStreamingPost?.();
+				await options.flushBufferedText?.();
 				await clearStatusBeforeFirstResponse();
 			},
 			finish: async () => {
 				await options.endStreamingPost?.();
+				await options.flushBufferedText?.();
 				await clearStatusBeforeFirstResponse();
 			},
 		};
