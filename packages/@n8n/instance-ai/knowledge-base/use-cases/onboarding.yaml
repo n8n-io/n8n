@@ -1,0 +1,46 @@
+# The opening of an onboarding thread, stored with the thread before the agent's first turn. The
+# UI shows the greeting as the first assistant message and the questions as ONE ask-user card,
+# one step per question in this order. The answers reach the agent in an <onboarding-answer>
+# block on the first user turn, with the role id, the tools and the three ranked use cases
+# resolved on the host. {{firstName}} becomes the user's first name, or "there". To try another
+# question, add it to the list: `single` or `multi` with options, or `text` for a free-text
+# field; `required: true` hides Skip. The next new onboarding thread reads this file again.
+title: Welcome to n8n
+greeting: >-
+  Hi {{firstName}}, welcome to n8n! I am the n8n Assistant. I can build
+  workflows with you, connect your tools, and answer questions about n8n.
+  Tell me a little about yourself so I can suggest a good first automation.
+questions:
+  - id: role
+    question: What best describes your role?
+    type: single
+    required: true
+    options:
+      - Business owner
+      - Customer support
+      - Data science
+      - DevOps
+      - Engineering
+      - IT
+      - Product & Design
+      - Sales & Marketing
+      - Security
+  # No options here: the backend fills them per role from the role's use cases (<role id>.md
+  # in this folder, most frequent first), so this step follows the role step; a free-text role
+  # gets `other`'s tools.
+  - id: tools
+    question: Which tools do you use?
+    type: multi
+    required: true
+# Card option to use-case corpus role id (<id>.md in this folder). The backend resolves this; a
+# skipped or free-text answer maps to `other`.
+roles:
+  Business owner: business-owner
+  Customer support: customer-support
+  Data science: data-science
+  DevOps: devops
+  Engineering: engineering
+  IT: it
+  Product & Design: product-design
+  Sales & Marketing: sales-and-marketing
+  Security: security

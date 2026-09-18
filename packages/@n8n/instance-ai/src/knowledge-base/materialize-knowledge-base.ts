@@ -36,13 +36,18 @@ export const KNOWLEDGE_BASE_REFERENCE_DIR = 'reference';
 /** Role-indexed use cases for suggesting a first automation: one Markdown file per role. */
 export const KNOWLEDGE_BASE_USE_CASES_DIR = 'use-cases';
 export const KNOWLEDGE_BASE_USE_CASE_TEMPLATES_DIR = 'templates';
-const KNOWLEDGE_BASE_USE_CASES_RANK_SCRIPT = 'rank.sh';
 export const KNOWLEDGE_BASE_INDEX_FILE = 'index.json';
 export const INSTANCE_AI_KNOWLEDGE_BASE_SOURCE_DIR = resolve(
 	__dirname,
 	'..',
 	'..',
 	'knowledge-base',
+);
+/** The onboarding opening (title, greeting, card questions, role map). Read on the host only. */
+export const INSTANCE_AI_ONBOARDING_OPENING_FILE = join(
+	INSTANCE_AI_KNOWLEDGE_BASE_SOURCE_DIR,
+	KNOWLEDGE_BASE_USE_CASES_DIR,
+	'onboarding.yaml',
 );
 export const KNOWLEDGE_BASE_MANIFEST_FILE = WORKSPACE_MANIFEST_FILE;
 export const KNOWLEDGE_BASE_MANIFEST_SCHEMA_VERSION = 4;
@@ -246,8 +251,6 @@ async function addReferenceFilesToKnowledgeBase(
  * Copy every `use-cases/<role>.md` as is; the file name is the role id.
  * Copy every `use-cases/templates/*.workflow.ts` as is; the corpus entries
  * reference them by file name so the agent can start a build from a template.
- * Copy `use-cases/rank.sh` as is; it ranks the entries of a role file for the
- * user's tools so the agent does not score them in prose.
  */
 async function addUseCaseFilesToKnowledgeBase(
 	files: Map<string, string>,
@@ -278,11 +281,6 @@ async function addUseCaseFilesToKnowledgeBase(
 			withTrailingNewline(content),
 		);
 	}
-	const rankScript = await readFile(join(sourceDir, KNOWLEDGE_BASE_USE_CASES_RANK_SCRIPT), 'utf-8');
-	files.set(
-		posixJoin(rootDir, KNOWLEDGE_BASE_USE_CASES_DIR, KNOWLEDGE_BASE_USE_CASES_RANK_SCRIPT),
-		withTrailingNewline(rankScript),
-	);
 	const index: KnowledgeBaseUseCasesIndex = { entries };
 	files.set(
 		posixJoin(rootDir, KNOWLEDGE_BASE_USE_CASES_DIR, KNOWLEDGE_BASE_INDEX_FILE),

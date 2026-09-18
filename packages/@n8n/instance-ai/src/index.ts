@@ -5,6 +5,7 @@ import type * as AiaModelDefaultsMod from './agent/aia-model-defaults';
 import type * as ApplyAgentThinkingMod from './agent/apply-agent-thinking';
 import type * as InstanceAgentMod from './agent/instance-agent';
 import type * as MaterializeKnowledgeBaseMod from './knowledge-base/materialize-knowledge-base';
+import type * as RankUseCasesMod from './knowledge-base/rank-use-cases';
 import type * as SystemPromptMod from './agent/system-prompt';
 import type * as DomainAccessMod from './domain-access';
 import type * as McpClientManagerMod from './mcp/mcp-client-manager';
@@ -131,6 +132,9 @@ const loadPromptProfiles = lazyModule(
 const loadMaterializeKnowledgeBase = lazyModule(
 	() =>
 		require('./knowledge-base/materialize-knowledge-base') as typeof MaterializeKnowledgeBaseMod,
+);
+const loadRankUseCases = lazyModule(
+	() => require('./knowledge-base/rank-use-cases') as typeof RankUseCasesMod,
 );
 const loadMaterializeRuntimeSkills = lazyModule(
 	() => require('./skills/materialize-runtime-skills') as typeof MaterializeRuntimeSkillsMod,
@@ -313,8 +317,12 @@ export type {
 } from './tracing/trace-replay';
 export type { SubAgentOptions } from './agent/sub-agent-factory';
 export declare const INSTANCE_AI_SKILLS_DIR: typeof RuntimeSkillsMod.INSTANCE_AI_SKILLS_DIR;
+export declare const INSTANCE_AI_ONBOARDING_OPENING_FILE: typeof MaterializeKnowledgeBaseMod.INSTANCE_AI_ONBOARDING_OPENING_FILE;
 export const loadUseCaseToolOptions: typeof MaterializeKnowledgeBaseMod.loadUseCaseToolOptions =
 	lazyFunction(() => loadMaterializeKnowledgeBase().loadUseCaseToolOptions);
+export const rankUseCases: typeof RankUseCasesMod.rankUseCases = lazyFunction(
+	() => loadRankUseCases().rankUseCases,
+);
 export const loadInstanceAiRuntimeSkillSource: typeof RuntimeSkillsMod.loadInstanceAiRuntimeSkillSource =
 	lazyFunction(() => loadRuntimeSkills().loadInstanceAiRuntimeSkillSource);
 export const loadInstanceAiRuntimeSkillSourceForBuildMode: typeof RuntimeSkillsMod.loadInstanceAiRuntimeSkillSourceForBuildMode =
@@ -443,6 +451,10 @@ defineLazyExport(
 );
 defineLazyExport('iterationEntrySchema', () => loadStorage().iterationEntrySchema);
 defineLazyExport('INSTANCE_AI_SKILLS_DIR', () => loadRuntimeSkills().INSTANCE_AI_SKILLS_DIR);
+defineLazyExport(
+	'INSTANCE_AI_ONBOARDING_OPENING_FILE',
+	() => loadMaterializeKnowledgeBase().INSTANCE_AI_ONBOARDING_OPENING_FILE,
+);
 defineLazyExport(
 	'SANDBOX_RUNTIME_SKILLS_DIR',
 	() => loadMaterializeRuntimeSkills().SANDBOX_RUNTIME_SKILLS_DIR,
