@@ -500,6 +500,7 @@ export {
 	findUnbackedSeedWorkflowTools,
 	findSeedFolderIssues,
 	applyBranchReadOnlyOverrides,
+	resolveInstanceAiPermissions,
 	deriveInstanceAiSetupState,
 	INSTANCE_AI_THREAD_SOURCES,
 	INSTANCE_AI_THREAD_SOURCE_FALLBACK,

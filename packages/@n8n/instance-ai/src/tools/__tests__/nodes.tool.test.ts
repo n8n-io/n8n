@@ -894,11 +894,11 @@ describe('nodes tool', () => {
 			});
 		});
 
-		it('should deny without suspending when the admin policy blocks workflow runs', async () => {
+		it('should deny without suspending when the admin policy blocks node execution', async () => {
 			const executeNodeService = { execute: vi.fn() };
 			const suspendFn = vi.fn();
 			const tool = createNodesTool(
-				createMockContext({ executeNodeService, permissions: { runWorkflow: 'blocked' } as never }),
+				createMockContext({ executeNodeService, permissions: { executeNode: 'blocked' } as never }),
 				'full',
 			);
 
@@ -922,7 +922,31 @@ describe('nodes tool', () => {
 			const tool = createNodesTool(
 				createMockContext({
 					executeNodeService,
-					permissions: { runWorkflow: 'always_allow' } as never,
+					permissions: { executeNode: 'always_allow' } as never,
+				}),
+				'full',
+			);
+
+			const result = await executeTool(
+				tool,
+				executeInput as never,
+				{
+					suspend: suspendFn,
+				} as never,
+			);
+
+			expect(suspendFn).not.toHaveBeenCalled();
+			expect(result).toEqual(serviceResult);
+		});
+
+		it('should not consult the runWorkflow policy', async () => {
+			const serviceResult = { status: 'success', output: [[{ json: {} }]] };
+			const executeNodeService = { execute: vi.fn().mockResolvedValue(serviceResult) };
+			const suspendFn = vi.fn();
+			const tool = createNodesTool(
+				createMockContext({
+					executeNodeService,
+					permissions: { runWorkflow: 'blocked', executeNode: 'always_allow' } as never,
 				}),
 				'full',
 			);

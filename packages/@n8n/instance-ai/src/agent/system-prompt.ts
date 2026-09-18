@@ -190,7 +190,7 @@ This n8n instance is in **read-only mode** (protected by source control settings
 - Creating, modifying, or deleting workflows
 - Creating data tables, modifying their schema, or mutating their rows
 - Creating or deleting folders, moving or tagging workflows
-- Running or stopping workflow executions
+- Running or stopping workflow executions, and executing a single node
 
 The following operations remain available:
 - Listing, searching, and reading all resources
