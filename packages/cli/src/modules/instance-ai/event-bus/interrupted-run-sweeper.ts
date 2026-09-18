@@ -135,8 +135,8 @@ export class InterruptedRunSweeper {
 		});
 		// The queue belongs to the thread, not the run: a new run that started on
 		// this thread since the crash may already own what is queued.
-		if (this.resumeHost?.isThreadLive(threadId)) return;
-		await this.resumeHost?.discardQueuedMessages(threadId);
+		const host = this.resumeHost;
+		if (host && !host.isThreadLive(threadId)) await host.discardQueuedMessages(threadId);
 	}
 
 	/**
@@ -157,8 +157,9 @@ export class InterruptedRunSweeper {
 		}
 		const checkpoints = await this.checkpointRepo.findActiveByThreadId(threadId);
 		const subAgentPrefix = createSubAgentResourceIdPrefix(threadId);
+		const host = this.resumeHost;
 		for (const run of unfinished) {
-			if (this.resumeHost?.isRunLive(threadId, run.runId)) continue;
+			if (host?.isRunLive(threadId, run.runId)) continue;
 			const runCheckpoints = checkpoints.filter(
 				(row) => !row.resourceId?.startsWith(subAgentPrefix) && row.hostRunId === run.runId,
 			);

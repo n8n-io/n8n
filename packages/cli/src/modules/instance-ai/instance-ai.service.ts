@@ -1613,8 +1613,7 @@ export class InstanceAiService {
 	 */
 	async discardQueuedMessages(threadId: string): Promise<void> {
 		try {
-			const thread = await this.agentMemory.getThread(threadId);
-			if (!thread || readQueuedMessages(thread.metadata).length === 0) return;
+			if (!(await this.readThreadQueue(threadId))?.length) return;
 			await this.mutateQueuedMessages(threadId, () => []);
 		} catch (error) {
 			this.logger.warn('Failed to discard queued messages', {
@@ -1624,10 +1623,16 @@ export class InstanceAiService {
 		}
 	}
 
-	async listQueuedMessages(threadId: string): Promise<InstanceAiQueuedMessage[]> {
+	/** The thread's queue, or undefined when the thread does not exist. */
+	private async readThreadQueue(threadId: string): Promise<InstanceAiQueuedMessage[] | undefined> {
 		const thread = await this.agentMemory.getThread(threadId);
-		if (!thread) throw new UserError('Thread not found');
-		return readQueuedMessages(thread.metadata);
+		return thread ? readQueuedMessages(thread.metadata) : undefined;
+	}
+
+	async listQueuedMessages(threadId: string): Promise<InstanceAiQueuedMessage[]> {
+		const queue = await this.readThreadQueue(threadId);
+		if (!queue) throw new UserError('Thread not found');
+		return queue;
 	}
 
 	/**
@@ -3609,8 +3614,7 @@ export class InstanceAiService {
 			// Asked on every tool call, so the common case must be cheap: the
 			// in-memory gate answers on a single main; multi-main always reads.
 			if (!this.instanceSettings.isMultiMain && !this.queuedThreads.has(threadId)) return false;
-			const thread = await this.agentMemory.getThread(threadId);
-			if (!thread || readQueuedMessages(thread.metadata).length === 0) return false;
+			if (!(await this.readThreadQueue(threadId))?.length) return false;
 			if (!(await this.announceQueuedTurn(user, threadId, runId))) return false;
 			this.telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.USER_STEERED_MESSAGE, {
 				thread_id: threadId,

@@ -768,10 +768,10 @@ export class ToolCallExecutor {
 		let didSuspend = false;
 		let abortObserved = false;
 		let suspensionCleanup: Promise<void> | undefined;
-		// Why the call is being cancelled, for the tool's cancellation hook: a
-		// host interrupt is a new user instruction, not a run abort.
-		const cancelReason = () =>
-			params.isInterrupted?.() === true ? INTERRUPTED_CANCEL_REASON : 'Run aborted';
+		// A host interrupt is a new user instruction, not a run abort: it changes
+		// the reason the cancellation hook sees and keeps the run's state alive.
+		const wasInterrupted = () => params.isInterrupted?.() === true;
+		const cancelReason = () => (wasInterrupted() ? INTERRUPTED_CANCEL_REASON : 'Run aborted');
 		const cleanupInterruptedSuspension = async () => {
 			suspensionCleanup ??= this.runCancellationCleanup(
 				{
@@ -797,10 +797,7 @@ export class ToolCallExecutor {
 			});
 		} catch (error) {
 			if (isAbortError(error) || params.abortSignal?.aborted) {
-				// A host interrupt cancels the call exactly like a run abort, but the
-				// run goes on to a normal completion: no cancelled state, and the
-				// model reads why the call stopped.
-				const interruptedOnly = params.isInterrupted?.() === true;
+				const interruptedOnly = wasInterrupted();
 				const reason = cancelReason();
 				abortObserved = true;
 				if (didSuspend) {
