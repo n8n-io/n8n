@@ -69,6 +69,14 @@ vi.mock('@n8n/i18n', () => ({
 	}),
 }));
 
+vi.mock('../components/AgentWebSearchSection.vue', () => ({
+	default: {
+		name: 'AgentWebSearchSection',
+		emits: ['update:config'],
+		template: '<div data-testid="agent-web-search-section" />',
+	},
+}));
+
 function mountSection(
 	tools: AgentJsonToolRef[],
 	customTools: Record<string, CustomToolEntry> = {},
@@ -156,6 +164,16 @@ describe('AgentCapabilitiesSection', () => {
 		ensureProjectAgentsLoadedSpy.mockImplementation(async () => projectAgentsListRef.value ?? []);
 		refreshProjectAgentsSpy.mockImplementation(async () => projectAgentsListRef.value ?? []);
 		integrationsCatalogRef.value = [];
+	});
+
+	it('renders web search and forwards its config updates', () => {
+		const wrapper = mountSection([]);
+		const webSearchSection = wrapper.getComponent({ name: 'AgentWebSearchSection' });
+		const update = { config: { webSearch: { enabled: false } } };
+
+		webSearchSection.vm.$emit('update:config', update);
+
+		expect(wrapper.emitted('update:config')?.[0]).toEqual([update]);
 	});
 
 	it('formats node and custom tool chip labels for display', () => {
@@ -997,42 +1015,17 @@ describe('AgentCapabilitiesSection', () => {
 		});
 
 		it('renders only the allowlisted sections and skips sub-agents', async () => {
-			const wrapper = mount(AgentCapabilitiesSection, {
-				props: {
-					config: null,
-					tools: [],
-					customTools: {},
-					skills: [],
-					projectId: 'project-id',
-					agentId: 'agent-id',
-					isPublished: false,
-					sections: ['tools', 'skills'],
-				},
-				global: {
-					stubs: {
-						NodeIcon: { template: '<span />' },
-						N8nButton: {
-							props: ['disabled'],
-							emits: ['click'],
-							template:
-								'<button v-bind="$attrs" :disabled="disabled" @click="$emit(\'click\')"><slot name="icon" /><slot /></button>',
-						},
-						N8nIcon: { template: '<span />' },
-						N8nText: { template: '<span><slot /></span>' },
-						N8nTooltip: { template: '<span><slot /></span>' },
-					},
-				},
-			});
+			const wrapper = mountSection([], {}, null, [], [], { sections: ['tools', 'skills'] });
 			await flushPromises();
 
-			// Allowlisted rows present.
+			/** Allowlisted rows are present. */
 			expect(wrapper.find('[data-testid="agent-capabilities-add-tool"]').exists()).toBe(true);
 			expect(wrapper.find('[data-testid="agent-capabilities-add-skill"]').exists()).toBe(true);
 
-			// Suppressed rows absent.
+			/** Suppressed rows are absent. */
 			expect(wrapper.find('[data-testid="agent-capabilities-add-sub-agent"]').exists()).toBe(false);
 
-			// The project-agents list (only needed for sub-agents) is not fetched.
+			/** The project-agent list is not needed for hidden sub-agents. */
 			expect(ensureProjectAgentsLoadedSpy).not.toHaveBeenCalled();
 		});
 	});

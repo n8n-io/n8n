@@ -47,11 +47,13 @@ const makeN8nLlmFailedAttemptHandler = vi.mocked(
 const N8nLlmTracing = vi.mocked(n8nLlmTracing.N8nLlmTracing);
 
 describe('supplyModel', () => {
+	const egressFilter = { createSecureLookup: vi.fn() };
 	const mockCtx = {
 		getNode: vi.fn(),
 		addOutputData: vi.fn(),
 		addInputData: vi.fn(),
 		getNextRunIndex: vi.fn(),
+		helpers: { getSecureEgressFilter: vi.fn().mockReturnValue(egressFilter) },
 	} as unknown as ISupplyDataFunctions;
 
 	beforeEach(() => {
@@ -190,10 +192,14 @@ describe('supplyModel', () => {
 				timeout: 12345,
 			});
 
-			expect(getProxyAgent).toHaveBeenCalledWith('https://api.openai.com', {
-				headersTimeout: 12345,
-				bodyTimeout: 12345,
-			});
+			expect(getProxyAgent).toHaveBeenCalledWith(
+				'https://api.openai.com',
+				{
+					headersTimeout: 12345,
+					bodyTimeout: 12345,
+				},
+				egressFilter,
+			);
 
 			expect(ChatOpenAI).toHaveBeenCalledWith(
 				expect.objectContaining({

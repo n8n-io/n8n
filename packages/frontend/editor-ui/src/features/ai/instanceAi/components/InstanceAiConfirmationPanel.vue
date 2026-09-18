@@ -3,6 +3,7 @@ import { N8nButton, N8nCard, N8nInput, N8nText } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import type { InstanceAiConfirmation, InstanceAiConfirmRequest } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { redactTelemetryProperties } from '@n8n/telemetry';
 import { computed, ref } from 'vue';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
@@ -19,14 +20,14 @@ import type { QuestionAnswer } from './InstanceAiQuestions.vue';
 import InstanceAiQuestions from './InstanceAiQuestions.vue';
 import InstanceAiWorkflowSetup from '../workflowSetup/InstanceAiWorkflowSetup.vue';
 import ConfirmationPreview from './ConfirmationPreview.vue';
-import PlanReviewPanel, { type PlannedTaskArg } from './PlanReviewPanel.vue';
 
 interface Props {
 	/**
 	 * Where this panel is mounted. The component renders different subsets of
 	 * `pendingConfirmations` depending on this:
-	 * - `inline`: full-form confirmations rendered in the chat flow (plan review,
-	 *   text, setup, credential, gateway resource-decision, continue).
+	 * - `inline`: full-form confirmations rendered in the chat flow (text, setup,
+	 *   credential, gateway resource-decision, continue). Plan review is filtered
+	 *   out of `pendingConfirmations` and renders in the timeline instead.
 	 * - `floating`: questions, single-click approvals, and domain/web-search
 	 *   access, which replace the chat input slot. Only the oldest pending item
 	 *   is rendered at a time — no stacking.
@@ -39,6 +40,7 @@ const props = defineProps<Props>();
 const thread = useThread();
 const i18n = useI18n();
 const rootStore = useRootStore();
+const settingsStore = useInstanceAiSettingsStore();
 const telemetry = useTelemetry();
 const { getToolLabel } = useToolLabel();
 
@@ -138,6 +140,7 @@ const approvalTitleKeys = new Map<string, BaseTextKey>(
 			'instanceAi.tools.workflows.update-version.imperativeWithResource',
 			'instanceAi.tools.workflows.restore-version.imperative',
 			'instanceAi.tools.workflows.restore-version.imperativeWithResource',
+			'instanceAi.tools.nodes.execute.imperativeWithResource',
 			'instanceAi.tools.executions.run.imperative',
 			'instanceAi.tools.executions.run.imperativeWithResource',
 			'instanceAi.tools.credentials.delete.imperative',
@@ -493,38 +496,6 @@ function handleQuestionsSubmit(conf: InstanceAiConfirmation, answers: QuestionAn
 	thread.resolveConfirmation(conf.requestId, 'approved');
 	void thread.confirmAction(conf.requestId, { kind: 'questions', answers });
 }
-
-const PLAN_REVIEW_OPTIONS = ['approve', 'ask-for-edits', 'deny'] as const;
-
-function handlePlanApprove(conf: InstanceAiConfirmation, numTasks: number) {
-	trackInputCompleted(
-		conf,
-		[{ label: 'plan', options: [...PLAN_REVIEW_OPTIONS], option_chosen: 'approve' }],
-		[],
-		{ num_tasks: numTasks, plan_feedback_type: 'accept' },
-	);
-	thread.resolveConfirmation(conf.requestId, 'approved');
-	void thread.confirmAction(conf.requestId, { kind: 'approval', approved: true });
-}
-
-function handlePlanAskForEdits(conf: InstanceAiConfirmation, numTasks: number) {
-	thread.startPlanEdit({
-		requestId: conf.requestId,
-		inputThreadId: conf.inputThreadId,
-		taskCount: numTasks,
-	});
-}
-
-function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
-	trackInputCompleted(
-		conf,
-		[{ label: 'plan', options: [...PLAN_REVIEW_OPTIONS], option_chosen: 'deny' }],
-		[],
-		{ num_tasks: numTasks, plan_feedback_type: 'deny' },
-	);
-	thread.resolveConfirmation(conf.requestId, 'denied');
-	void thread.confirmAction(conf.requestId, { kind: 'planDeny' });
-}
 </script>
 
 <template>
@@ -568,36 +539,6 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 					:project-id="chunk.item.toolCall.confirmation.projectId ?? thread.projectId"
 					:credential-flow="chunk.item.toolCall.confirmation.credentialFlow"
 					:require-user-selection="chunk.item.toolCall.confirmation.requireUserSelection"
-				/>
-
-				<!-- Plan review -->
-				<PlanReviewPanel
-					v-else-if="chunk.item.toolCall.confirmation.inputType === 'plan-review'"
-					:key="'plan-' + chunk.item.toolCall.confirmation.requestId"
-					:planned-tasks="
-						chunk.item.toolCall.confirmation?.planItems ??
-						(chunk.item.toolCall.args?.tasks as PlannedTaskArg[] | undefined) ??
-						[]
-					"
-					:message="chunk.item.toolCall.confirmation.message"
-					@approve="
-						handlePlanApprove(
-							chunk.item.toolCall.confirmation,
-							((chunk.item.toolCall.args?.tasks as PlannedTaskArg[] | undefined) ?? []).length,
-						)
-					"
-					@ask-for-edits="
-						handlePlanAskForEdits(
-							chunk.item.toolCall.confirmation,
-							((chunk.item.toolCall.args?.tasks as PlannedTaskArg[] | undefined) ?? []).length,
-						)
-					"
-					@deny="
-						handlePlanDeny(
-							chunk.item.toolCall.confirmation,
-							((chunk.item.toolCall.args?.tasks as PlannedTaskArg[] | undefined) ?? []).length,
-						)
-					"
 				/>
 
 				<!-- Text input (ask-user) -->
@@ -713,7 +654,18 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 									<N8nText size="large" bold>
 										{{ buildApprovalTitle(chunk.item) }}
 									</N8nText>
+									<N8nText
+										v-if="
+											settingsStore.isInstanceAiSetupPanelEnabled &&
+											chunk.item.toolCall.confirmation.credentialDestination
+										"
+										tag="p"
+										size="small"
+										:class="$style.credentialDescription"
+										>{{ buildApprovalSubtitle(chunk.item) }}</N8nText
+									>
 									<ConfirmationPreview
+										v-else
 										:class="$style.approvalDescription"
 										role="region"
 										:aria-label="i18n.baseText('instanceAi.confirmation.details')"
@@ -793,6 +745,12 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 	flex-direction: column;
 	gap: var(--spacing--2xs);
 	padding: var(--spacing--sm) var(--spacing--sm) 0;
+}
+
+.credentialDescription {
+	margin: 0;
+	overflow-wrap: anywhere;
+	word-break: normal;
 }
 
 .textInputRow {

@@ -233,8 +233,6 @@ export async function createWhatsAppReplayContext(
 		adapter,
 		apiCalls: stub.apiCalls,
 		sendWebhook,
-		latestContext: () => setup.messageContextStore.latest(),
-		latestThreadId: () => setup.messageContextStore.latestThreadId(),
 		lastApiCall: () => stub.apiCalls.at(-1),
 		lastPost: () => stub.apiCalls.filter((call) => call.method === 'messages').at(-1),
 		shutdown: async () => {

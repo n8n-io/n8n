@@ -7,6 +7,12 @@
  */
 
 import {
+	LIST_N8N_GATEWAY_SERVICES_TOOL_NAME,
+	MCP_GET_USER_PREFERENCES_TOOL_NAME,
+	MCP_USER_PREFERENCES_TRIGGER_CLAUSE,
+} from '../../mcp.constants';
+import { GET_INSTANCE_CONTEXT_TOOL_NAME } from '../get-instance-context.tool';
+import {
 	MCP_CREATE_WORKFLOW_FROM_CODE_TOOL,
 	MCP_UPDATE_WORKFLOW_TOOL,
 	MCP_ARCHIVE_WORKFLOW_TOOL,
@@ -18,7 +24,6 @@ import {
 	CODE_BUILDER_VALIDATE_TOOL,
 	CODE_BUILDER_VALIDATE_NODE_TOOL,
 } from './constants';
-import { LIST_N8N_GATEWAY_SERVICES_TOOL_NAME } from '../../mcp.constants';
 
 export type McpInstructionsOptions = {
 	/**
@@ -34,39 +39,55 @@ export type McpInstructionsOptions = {
 	isN8nConnectAvailable?: boolean;
 
 	/**
-	 * Whether canvas node groups are enabled for this user.
-	 * If true, the builder instructions point the client at the groups docs.
-	 */
-	canvasGroupsEnabled?: boolean;
-
-	/**
 	 * Whether first-class Agent tools are enabled on this MCP server.
 	 * If true, the instructions include Agent build guidance and artifact routing.
 	 */
 	isAgentsEnabled?: boolean;
 
 	/**
-	 * The caller's saved AI preferences, already rendered as a tagged block by
-	 * `AiPreferenceService`. Appended as the last section when set.
+	 * Whether the instance-context surface is on. When it is, the instructions name the opening
+	 * read — the one thing here a client would otherwise never think to ask for.
 	 */
-	aiPreferences?: string;
+	isInstanceContextEnabled?: boolean;
+
+	/**
+	 * Whether the `get_user_preferences` tool is registered for this caller. If true, one
+	 * sentence points the client at it: clients that load tool descriptions on demand never
+	 * read the tool's own description before building. Identical for every caller.
+	 */
+	isUserPreferencesEnabled?: boolean;
 };
 export function getMcpInstructions(options: McpInstructionsOptions): string {
 	const {
 		isBuilderEnabled,
 		isN8nConnectAvailable = false,
-		canvasGroupsEnabled = false,
 		isAgentsEnabled = false,
-		aiPreferences,
+		isInstanceContextEnabled = false,
+		isUserPreferencesEnabled = false,
 	} = options;
 	const INTRO = 'This is the official MCP server for n8n, a workflow automation platform.';
 
-	// Only appended when the flag is on; keeps the paid-per-session string short.
-	const GROUPS_HINT = canvasGroupsEnabled
-		? `
-
-Node groups: when a workflow has several distinct stages, organise it into named groups so it is readable on the canvas. Before creating groups, call ${MCP_GET_SDK_REFERENCE_TOOL.toolName} with section "groups" for the rules, and ${MCP_GET_WORKFLOW_BEST_PRACTICES_TOOL.toolName} (technique "list") for when to group. The save never fails because of groups, so read its result: when it reports TOP_LEVEL_ITEMS_OVER_CEILING, skippedGroups or removedGroups, repair the groups with ${MCP_UPDATE_WORKFLOW_TOOL.toolName} before you tell the user the workflow is done. A warning marked [pre-existing] describes a canvas that was already like that before your update; you do not need to repair it before you report done.`
+	// One sentence, placed right after the intro: some clients keep only the first 2048
+	// characters of the instructions, and a test pins the sentence inside that budget.
+	const USER_PREFERENCES_HINT = isUserPreferencesEnabled
+		? `Before ${MCP_USER_PREFERENCES_TRIGGER_CLAUSE} call ${MCP_GET_USER_PREFERENCES_TOOL_NAME} first and apply what it returns for the remainder of the task.`
 		: '';
+
+	// Its only job is to get the opening read called. Measured: with this sentence the read
+	// happens on every run; with the tools registered and nothing pointing at them, the client
+	// does not reach for them at all. What the read contains, and how to treat it, belong in the
+	// block and the tool description, which are not paid for at every handshake.
+	//
+	// Placement is load-bearing, and so is length. A client may keep only the opening of these
+	// instructions — Claude Code truncates at 2048 characters, and the full text is several times
+	// that — so anything below the cut never arrives. A test pins this inside the budget.
+	const INSTANCE_CONTEXT_HINT = isInstanceContextEnabled
+		? `Start with the instance, not a blank page. Read the n8n://instance/context resource, or call ${GET_INSTANCE_CONTEXT_TOOL_NAME} if you do not read resources, before your first substantive answer.`
+		: '';
+
+	const GROUPS_HINT = `
+
+Node groups: when a workflow has several distinct stages, organise it into named groups so it is readable on the canvas. Before creating groups, call ${MCP_GET_SDK_REFERENCE_TOOL.toolName} with section "groups" for the rules, and ${MCP_GET_WORKFLOW_BEST_PRACTICES_TOOL.toolName} (technique "list") for when to group. The save never fails because of groups, so read its result: when it reports TOP_LEVEL_ITEMS_OVER_CEILING, skippedGroups or removedGroups, repair the groups with ${MCP_UPDATE_WORKFLOW_TOOL.toolName} before you tell the user the workflow is done. A warning marked [pre-existing] describes a canvas that was already like that before your update; you do not need to repair it before you report done.`;
 
 	const N8N_CONNECT_HINT = isN8nConnectAvailable
 		? `
@@ -107,7 +128,7 @@ To build n8n workflows${WORKFLOWS_ONLY_CLAUSE}, follow these steps in order:
 
 9. Create: Call ${MCP_CREATE_WORKFLOW_FROM_CODE_TOOL.toolName} with the validated code to save the workflow to n8n. Include a short \`description\` (1-2 sentences, max 255 chars) summarizing what the workflow does — this helps users find and understand their workflows.
 
-10. Update: Call ${MCP_UPDATE_WORKFLOW_TOOL.toolName} with the workflow ID and a list of operations (addNode, removeNode, updateNodeParameters, setNodeParameter, renameNode, addConnection, removeConnection, setNodeCredential, setNodePosition, setNodeDisabled, setNodeSettings, setWorkflowMetadata, setWorkflowSettings). The whole batch is atomic: if any op fails the workflow is unchanged. To modify an existing node's configuration, use updateNodeParameters or setNodeParameter — do NOT use removeNode followed by addNode for the same node, as this disconnects any attached sub-nodes (LLM models, memory, tools) and they will not be re-attached automatically. Use setNodeSettings to change a node's execution behavior (onError, retryOnFail, maxTries, waitBetweenTries, alwaysOutputData, executeOnce); for sub-nodes (LLM model, memory, tools) this is the only way to set onError, because the canvas UI does not expose that setting for them.
+10. Update: Call ${MCP_UPDATE_WORKFLOW_TOOL.toolName} with the workflow ID and a list of operations (addNode, removeNode, updateNodeParameters, setNodeParameter, renameNode, addConnection, removeConnection, setNodeCredential, setNodePosition, setNodeDisabled, setNodeSettings, setWorkflowMetadata, setWorkflowSettings, setNodeGroups, addNodeGroup, removeNodeGroup, updateNodeGroup). The whole batch is atomic: if any op fails the workflow is unchanged, except node-group operations, which are skipped and reported in skippedOperations. To modify an existing node's configuration, use updateNodeParameters or setNodeParameter — do NOT use removeNode followed by addNode for the same node, as this disconnects any attached sub-nodes (LLM models, memory, tools) and they will not be re-attached automatically. Use setNodeSettings to change a node's execution behavior (onError, retryOnFail, maxTries, waitBetweenTries, alwaysOutputData, executeOnce); for sub-nodes (LLM model, memory, tools) this is the only way to set onError, because the canvas UI does not expose that setting for them.
 
 11. Archive: Call ${MCP_ARCHIVE_WORKFLOW_TOOL.toolName} with the workflow ID.
 
@@ -125,10 +146,11 @@ Agent conversations and runs are not workflow executions: get_workflow_execution
 
 	return [
 		INTRO,
+		USER_PREFERENCES_HINT,
+		INSTANCE_CONTEXT_HINT,
 		isBuilderEnabled && isAgentsEnabled ? ARTIFACT_ROUTING_INSTRUCTIONS : '',
 		isAgentsEnabled ? AGENT_INSTRUCTIONS : '',
 		isBuilderEnabled ? BUILDER_INSTRUCTIONS : '',
-		aiPreferences,
 	]
 		.filter(Boolean)
 		.join('\n\n');

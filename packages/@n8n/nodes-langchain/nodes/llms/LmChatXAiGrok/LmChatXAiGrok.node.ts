@@ -275,10 +275,14 @@ export class LmChatXAiGrok implements INodeType {
 		const configuration: ClientOptions = {
 			baseURL: credentials.url,
 			fetchOptions: {
-				dispatcher: getProxyAgent(credentials.url, {
-					headersTimeout: timeout,
-					bodyTimeout: timeout,
-				}),
+				dispatcher: getProxyAgent(
+					credentials.url,
+					{
+						headersTimeout: timeout,
+						bodyTimeout: timeout,
+					},
+					this.helpers.getSecureEgressFilter(),
+				),
 			},
 		};
 

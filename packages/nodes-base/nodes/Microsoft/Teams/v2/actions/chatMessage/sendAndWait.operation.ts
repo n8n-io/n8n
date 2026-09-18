@@ -7,7 +7,7 @@ import {
 import { createUtmCampaignLink } from '../../../../../../utils/utilities';
 import { chatRLC } from '../../descriptions';
 import { buildTeamsPath, microsoftApiRequest, SP_HIDE } from '../../transport';
-import { throwIfChatUnsupported } from './sharedGuard';
+import { throwIfChatMessageUnsupported } from './sharedGuard';
 
 export const description: INodeProperties[] = getSendAndWaitProperties(
 	[chatRLC],
@@ -34,7 +34,7 @@ export const description: INodeProperties[] = getSendAndWaitProperties(
 export async function execute(this: IExecuteFunctions, i: number, instanceId: string) {
 	// App-only Graph cannot post chat messages. Dispatched from the router before the
 	// item loop, so this guard fires before any putExecutionToWait.
-	throwIfChatUnsupported.call(this);
+	throwIfChatMessageUnsupported.call(this);
 
 	const chatId = this.getNodeParameter('chatId', i, '', { extractValue: true }) as string;
 	const config = getSendAndWaitConfig(this);

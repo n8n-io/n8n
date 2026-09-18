@@ -28,7 +28,7 @@
     "@modelcontextprotocol/sdk": "catalog:",
     "@mozilla/readability": "catalog:",
     "agent-browser": "catalog:",
-    "jsdom": "^23.0.1",
+    "jsdom": "catalog:",
     "nanoid": "catalog:",
     "picocolors": "catalog:",
     "playwright-core": "catalog:",

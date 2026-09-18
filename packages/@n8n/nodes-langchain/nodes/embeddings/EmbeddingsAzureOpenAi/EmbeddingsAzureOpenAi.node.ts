@@ -157,7 +157,7 @@ export class EmbeddingsAzureOpenAi implements INodeType {
 				configuration: {
 					baseURL: foundryURL,
 					fetchOptions: {
-						dispatcher: getProxyAgent(foundryURL, {}),
+						dispatcher: getProxyAgent(foundryURL, {}, this.helpers.getSecureEgressFilter()),
 					},
 				},
 				...options,
@@ -184,6 +184,7 @@ export class EmbeddingsAzureOpenAi implements INodeType {
 					dispatcher: getProxyAgent(
 						credentials.endpoint ?? `https://${credentials.resourceName}.openai.azure.com`,
 						{},
+						this.helpers.getSecureEgressFilter(),
 					),
 				},
 			},

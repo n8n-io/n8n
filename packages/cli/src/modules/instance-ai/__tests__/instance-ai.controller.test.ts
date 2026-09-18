@@ -210,6 +210,38 @@ describe('InstanceAiController', () => {
 				payload.mode,
 				payload.promptVersion,
 				payload.computerUseChannels,
+				payload.threadArtifacts,
+			);
+		});
+
+		it('should forward thread artifacts to startRun', async () => {
+			const payloadWithArtifacts = mock<InstanceAiSendMessageRequest>({
+				message: 'Change this',
+				timeZone: 'UTC',
+				attachments: undefined,
+				threadArtifacts: {
+					artifacts: [{ type: 'workflow', id: 'wf-1', name: 'WhatsApp FAQ Auto-Responder' }],
+					activeId: 'wf-1',
+				},
+			});
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			instanceAiService.hasActiveRun.mockReturnValue(false);
+			instanceAiService.startRun.mockReturnValue('run-6');
+
+			await controller.chat(req, res, THREAD_ID, payloadWithArtifacts);
+
+			expect(instanceAiService.startRun).toHaveBeenCalledWith(
+				req.user,
+				THREAD_ID,
+				payloadWithArtifacts.message,
+				payloadWithArtifacts.attachments,
+				payloadWithArtifacts.context,
+				payloadWithArtifacts.timeZone,
+				payloadWithArtifacts.pushRef,
+				payloadWithArtifacts.mode,
+				payloadWithArtifacts.promptVersion,
+				payloadWithArtifacts.computerUseChannels,
+				payloadWithArtifacts.threadArtifacts,
 			);
 		});
 
@@ -247,6 +279,7 @@ describe('InstanceAiController', () => {
 				payloadWithPushRef.mode,
 				payloadWithPushRef.promptVersion,
 				payloadWithPushRef.computerUseChannels,
+				payloadWithPushRef.threadArtifacts,
 			);
 		});
 
@@ -275,6 +308,7 @@ describe('InstanceAiController', () => {
 				'progressive',
 				'progressive@1',
 				payloadWithMode.computerUseChannels,
+				payloadWithMode.threadArtifacts,
 			);
 		});
 
@@ -310,6 +344,7 @@ describe('InstanceAiController', () => {
 				payloadWithContext.mode,
 				payloadWithContext.promptVersion,
 				payloadWithContext.computerUseChannels,
+				payloadWithContext.threadArtifacts,
 			);
 		});
 
@@ -411,6 +446,7 @@ describe('InstanceAiController', () => {
 				nodesPayload.mode,
 				nodesPayload.promptVersion,
 				nodesPayload.computerUseChannels,
+				nodesPayload.threadArtifacts,
 			);
 		});
 
@@ -961,6 +997,7 @@ describe('InstanceAiController', () => {
 		beforeEach(() => {
 			evalThreadRestore.restoreAgents.mockResolvedValue([]);
 			evalThreadRestore.publishSeedWorkflows.mockResolvedValue([]);
+			evalThreadRestore.restoreFolders.mockResolvedValue(new Map());
 			// The allowlist service is real and shared: drop what the allowlist tests pinned.
 			evalCredentialAllowlists.clearThread(THREAD_ID);
 		});
@@ -982,6 +1019,7 @@ describe('InstanceAiController', () => {
 				'project-1',
 				expect.any(Map),
 				undefined,
+				expect.any(Map),
 			);
 			expect(memoryService.restoreThreadMessages).toHaveBeenCalledWith(
 				USER_ID,
@@ -995,6 +1033,7 @@ describe('InstanceAiController', () => {
 				workflowIds: ['wf-1'],
 				dataTableIds: [],
 				agentIds: [],
+				folderIds: [],
 			});
 		});
 
@@ -1023,6 +1062,7 @@ describe('InstanceAiController', () => {
 				'project-1',
 				idMap,
 				undefined,
+				expect.any(Map),
 			);
 			expect(result).toMatchObject({ dataTableIds: ['dt-new'] });
 		});
@@ -1041,6 +1081,7 @@ describe('InstanceAiController', () => {
 				'project-1',
 				expect.any(Map),
 				new Set(['cred-1', 'cred-2']),
+				expect.any(Map),
 			);
 		});
 
@@ -1115,6 +1156,116 @@ describe('InstanceAiController', () => {
 
 			expect(evalThreadRestore.deleteWorkflows).toHaveBeenCalledWith(['wf-1']);
 			expect(evalThreadRestore.deleteDataTables).toHaveBeenCalledWith(['dt-new'], 'project-1');
+		});
+
+		describe('with seeded folders', () => {
+			const folder = { id: 'odwFolder0001', name: 'ODW' };
+			const placedWorkflow = { ...seedWorkflow, parentFolderId: 'odwFolder0001' };
+			const folderPayload = {
+				threadId: THREAD_ID,
+				messages: seedMessages,
+				folders: [folder],
+				workflows: [placedWorkflow],
+			} as InstanceAiEvalRestoreThreadRequest;
+
+			beforeEach(() => {
+				memoryService.checkThreadOwnership.mockResolvedValue('owned');
+				memoryService.getThreadProjectId.mockResolvedValue('project-1');
+				memoryService.restoreThreadMessages.mockResolvedValue({ restored: 1 });
+				evalThreadRestore.restoreDataTables.mockResolvedValue(new Map());
+			});
+
+			it('creates the folders first, hands their id map to the workflow restore and returns the created ids', async () => {
+				const folderIdMap = new Map([['odwFolder0001', 'real-odw']]);
+				evalThreadRestore.restoreFolders.mockResolvedValue(folderIdMap);
+
+				const result = await controller.restoreEvalThread(req, res, folderPayload);
+
+				expect(evalThreadRestore.restoreFolders).toHaveBeenCalledWith(
+					[folder],
+					'project-1',
+					req.user,
+				);
+				expect(evalThreadRestore.restoreWorkflows).toHaveBeenCalledWith(
+					[placedWorkflow],
+					'project-1',
+					expect.any(Map),
+					undefined,
+					folderIdMap,
+				);
+				// Folders before data tables, data tables before workflows.
+				const order = [
+					evalThreadRestore.restoreFolders,
+					evalThreadRestore.restoreDataTables,
+					evalThreadRestore.restoreWorkflows,
+				].map((fn) => fn.mock.invocationCallOrder[0]);
+				expect(order).toEqual([...order].sort((a, b) => a - b));
+				expect(result).toMatchObject({ folderIds: ['real-odw'] });
+			});
+
+			it('rolls the folders back after the workflows and data tables when a later step fails', async () => {
+				evalThreadRestore.restoreFolders.mockResolvedValue(
+					new Map([['odwFolder0001', 'real-odw']]),
+				);
+				evalThreadRestore.restoreDataTables.mockResolvedValue(new Map([['dt-old-1234', 'dt-new']]));
+				evalThreadRestore.restoreWorkflows.mockResolvedValue(['wf-1']);
+				memoryService.restoreThreadMessages.mockRejectedValue(new Error('boom'));
+
+				await expect(controller.restoreEvalThread(req, res, folderPayload)).rejects.toThrow('boom');
+
+				expect(evalThreadRestore.deleteFolders).toHaveBeenCalledWith(
+					[folder],
+					new Map([['odwFolder0001', 'real-odw']]),
+					'project-1',
+					req.user,
+				);
+				// A folder delete cascades to the workflows inside it, so the workflows
+				// must already be gone by their own path (unpublished, then deleted).
+				const order = [
+					evalThreadRestore.deleteWorkflows,
+					evalThreadRestore.deleteDataTables,
+					evalThreadRestore.deleteFolders,
+				].map((fn) => fn.mock.invocationCallOrder[0]);
+				expect(order).toEqual([...order].sort((a, b) => a - b));
+			});
+
+			it('rolls the folders back when the data tables fail', async () => {
+				evalThreadRestore.restoreFolders.mockResolvedValue(
+					new Map([['odwFolder0001', 'real-odw']]),
+				);
+				evalThreadRestore.restoreDataTables.mockRejectedValueOnce(new Error('table refused'));
+
+				await expect(controller.restoreEvalThread(req, res, folderPayload)).rejects.toThrow(
+					'table refused',
+				);
+
+				expect(evalThreadRestore.deleteFolders).toHaveBeenCalledWith(
+					[folder],
+					new Map([['odwFolder0001', 'real-odw']]),
+					'project-1',
+					req.user,
+				);
+				expect(evalThreadRestore.restoreWorkflows).not.toHaveBeenCalled();
+			});
+
+			it('refuses a workflow placed in a folder the seed does not declare, before creating anything', async () => {
+				await expect(
+					controller.restoreEvalThread(req, res, {
+						...folderPayload,
+						folders: [],
+					} as InstanceAiEvalRestoreThreadRequest),
+				).rejects.toThrow(BadRequestError);
+
+				expect(evalThreadRestore.restoreFolders).not.toHaveBeenCalled();
+				expect(evalThreadRestore.restoreDataTables).not.toHaveBeenCalled();
+			});
+
+			it('creates no folders and reports none for a seed without them', async () => {
+				const result = await controller.restoreEvalThread(req, res, payload);
+
+				expect(evalThreadRestore.restoreFolders).toHaveBeenCalledWith([], 'project-1', req.user);
+				expect(result).toMatchObject({ folderIds: [] });
+			});
 		});
 
 		describe('with seeded agents', () => {

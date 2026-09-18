@@ -12,7 +12,6 @@ import type { Request, Response } from 'express';
 import { InstanceSettings } from 'n8n-core';
 
 import { AgentIntegrationManagementService } from './agent-integration-management.service';
-import { AgentUpdateBroadcaster } from './agent-update-broadcaster';
 import { AgentChannelStatusReporter } from './integrations/agent-channel-status-reporter';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import { buildChannelStatusReport } from './integrations/channel-status-report';
@@ -33,7 +32,6 @@ export class AgentIntegrationsController {
 		private readonly chatIntegrationRegistry: ChatIntegrationRegistry,
 		private readonly channelStatusRepository: AgentChannelStatusRepository,
 		private readonly statusReporter: AgentChannelStatusReporter,
-		private readonly agentUpdateBroadcaster: AgentUpdateBroadcaster,
 		private readonly instanceSettings: InstanceSettings,
 	) {}
 
@@ -55,11 +53,7 @@ export class AgentIntegrationsController {
 			...(payload.replaces
 				? { replaces: { type: payload.type, credentialId: payload.replaces.credentialId } }
 				: {}),
-			onPersisted: () =>
-				this.agentUpdateBroadcaster.notify(
-					{ projectId: req.params.projectId, agentId },
-					req.headers?.['push-ref'],
-				),
+			pushRef: req.headers?.['push-ref'],
 		});
 		return { status: savedAgent.activeVersionId === null ? 'configured' : 'connected' };
 	}
@@ -81,11 +75,7 @@ export class AgentIntegrationsController {
 			type,
 			credentialId,
 			deleteExternalResource,
-			onPersisted: () =>
-				this.agentUpdateBroadcaster.notify(
-					{ projectId: req.params.projectId, agentId },
-					req.headers?.['push-ref'],
-				),
+			pushRef: req.headers?.['push-ref'],
 		});
 		return { status: 'disconnected', ...(warning ? { warning } : {}) };
 	}

@@ -5,7 +5,7 @@ import { Container } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { Request, Response } from 'express';
 import { Cipher } from 'n8n-core';
-import { jsonParse } from 'n8n-workflow';
+import { type ICredentialContext, jsonParse } from 'n8n-workflow';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
@@ -15,8 +15,10 @@ import { EventService } from '@/events/event.service';
 import { CreateCsrfStateData, OauthService } from '@/oauth/oauth.service';
 import { UrlService } from '@/services/url.service';
 
+import { carriesN8nIdentity } from './credential-resolvers/identifiers/n8n-identifier';
 import { DynamicCredentialResolverRepository } from './database/repositories/credential-resolver.repository';
 import { DynamicCredentialsConfig } from './dynamic-credentials.config';
+import { N8nIdentityNotSupportedError } from './errors/n8n-identity-not-supported.error';
 import {
 	AuthorizeIntentService,
 	CredentialConnectionStatusService,
@@ -72,7 +74,11 @@ export class DynamicCredentialsController {
 		return credential;
 	}
 
-	private async getResolverInstance(resolverId: string | undefined) {
+	private async getResolverInstance(
+		resolverId: string | undefined,
+		credentialContext: ICredentialContext,
+		credentialName: string,
+	) {
 		if (!resolverId) {
 			throw new BadRequestError('Missing resolverId query parameter');
 		}
@@ -91,6 +97,15 @@ export class DynamicCredentialsController {
 		if (!resolver) {
 			throw new NotFoundError('Resolver type not found');
 		}
+
+		// The caller names the resolver, and clients take that id from the workflow's
+		// effective resolver rather than the credential's own, so it can be any
+		// registered resolver. Refuse to hand an n8n session token to a resolver that
+		// keys on an external subject (it would forward the token to a third party).
+		if (carriesN8nIdentity(credentialContext) && !resolver.resolveOwningUserId) {
+			throw new BadRequestError(new N8nIdentityNotSupportedError(credentialName).message);
+		}
+
 		return { resolver, resolverEntity };
 	}
 
@@ -118,7 +133,11 @@ export class DynamicCredentialsController {
 		const credential = await this.findCredentialToUse(req.params.id);
 
 		const resolverId = req.query.resolverId as string | undefined;
-		const { resolver, resolverEntity } = await this.getResolverInstance(resolverId);
+		const { resolver, resolverEntity } = await this.getResolverInstance(
+			resolverId,
+			credentialContext,
+			credential.name,
+		);
 
 		if (resolver.deleteSecret) {
 			// Decrypt and parse resolver configuration
@@ -159,7 +178,11 @@ export class DynamicCredentialsController {
 		const credential = await this.findCredentialToUse(req.params.id);
 
 		const resolverId = req.query.resolverId as string | undefined;
-		const { resolver, resolverEntity } = await this.getResolverInstance(resolverId);
+		const { resolver, resolverEntity } = await this.getResolverInstance(
+			resolverId,
+			credentialContext,
+			credential.name,
+		);
 
 		if (resolver.validateIdentity) {
 			// Decrypt and parse resolver configuration

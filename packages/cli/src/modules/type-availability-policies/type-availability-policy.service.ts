@@ -364,7 +364,7 @@ export class TypeAvailabilityPolicyService {
 	 * Replaces a policy document's rules, guarded by optimistic concurrency: `expectedVersion`
 	 * must match the document's current version, checked and written inside one transaction
 	 * that (on Postgres) holds the document's row lock (see
-	 * `TypeAvailabilityPolicyRepository.findById`).
+	 * `TypeAvailabilityPolicyRepository.findByIdAndKind`).
 	 *
 	 * Also bumps every scope this document is attached to, in the same transaction — a scope's
 	 * `version` is its clients' freshness signal for the *effective* policy, and this document's
@@ -372,6 +372,7 @@ export class TypeAvailabilityPolicyService {
 	 * bump is skipped when the rules did not change, matching `updateRules`' own no-op.
 	 */
 	async updatePolicyDocument(
+		kind: string,
 		policyId: string,
 		rules: readonly PolicyRule[],
 		expectedVersion: number,
@@ -399,7 +400,7 @@ export class TypeAvailabilityPolicyService {
 				throw new UserError(DELEGATE_RULE_AT_PROJECT_SCOPE);
 			}
 
-			const existing = await this.policyRepository.findById(policyId, ctx, true);
+			const existing = await this.policyRepository.findByIdAndKind(policyId, kind, ctx, true);
 			if (!existing) {
 				throw new NotFoundError(`Policy document not found: ${policyId}`);
 			}
@@ -465,9 +466,9 @@ export class TypeAvailabilityPolicyService {
 	 * row lock. An attachment insert takes a key-share lock on the document it points at, so a
 	 * concurrent attach waits for this transaction rather than landing between the two.
 	 */
-	async deletePolicyDocument(policyId: string, updatedBy: string): Promise<void> {
+	async deletePolicyDocument(kind: string, policyId: string, updatedBy: string): Promise<void> {
 		const existing = await this.transactionRunner.run({}, async (ctx) => {
-			const policy = await this.policyRepository.findById(policyId, ctx, true);
+			const policy = await this.policyRepository.findByIdAndKind(policyId, kind, ctx, true);
 			if (!policy) {
 				throw new NotFoundError(`Policy document not found: ${policyId}`);
 			}
@@ -495,8 +496,8 @@ export class TypeAvailabilityPolicyService {
 		});
 	}
 
-	async getPolicyDocument(policyId: string): Promise<TypeAvailabilityPolicy | null> {
-		return await this.policyRepository.findById(policyId, {});
+	async getPolicyDocument(kind: string, policyId: string): Promise<TypeAvailabilityPolicy | null> {
+		return await this.policyRepository.findByIdAndKind(policyId, kind, {});
 	}
 
 	async listPolicyDocuments(kind: string): Promise<TypeAvailabilityPolicy[]> {
@@ -666,8 +667,14 @@ export class TypeAvailabilityPolicyService {
 			// the check below cannot be overtaken between reading the attachments and the edit.
 			// Scope first, then document — the order every write path keeps.
 			const existingDocument = existingDocumentId
-				? await this.policyRepository.findById(existingDocumentId, ctx, true)
+				? await this.policyRepository.findByIdAndKind(existingDocumentId, kind, ctx, true)
 				: null;
+
+			// Second line of defense: `assertAttachableToScope` already refuses to attach across
+			// kinds, so a miss here means the rest of the write would edit a foreign document.
+			if (existingDocumentId && !existingDocument) {
+				throw new NotFoundError(`Policy document not found: ${existingDocumentId}`);
+			}
 
 			if (scope && existingDocumentId) {
 				const attachedScopeIds = await this.attachmentRepository.listScopeIdsAttachedToPolicy(
@@ -704,25 +711,23 @@ export class TypeAvailabilityPolicyService {
 			let documentCreated: boolean;
 			let policyId: string;
 
-			if (existingDocumentId) {
-				documentBefore = existingDocument
-					? { rules: existingDocument.rules, version: existingDocument.version }
-					: null;
+			if (existingDocument) {
+				documentBefore = { rules: existingDocument.rules, version: existingDocument.version };
 
 				const updated = await this.policyRepository.updateRules(
-					existingDocumentId,
+					existingDocument.id,
 					input.rules,
 					updatedBy,
 					ctx,
 				);
-				// The attachment's FK guarantees the policy row exists.
+				// Defensive: the row was read under a lock above, so it cannot be gone here.
 				if (!updated) {
-					throw new NotFoundError(`Policy document not found: ${existingDocumentId}`);
+					throw new NotFoundError(`Policy document not found: ${existingDocument.id}`);
 				}
 
 				documentAfter = { rules: updated.rules, version: updated.version };
 				documentCreated = false;
-				policyId = existingDocumentId;
+				policyId = existingDocument.id;
 			} else {
 				const created = await this.policyRepository.createPolicy(
 					{ kind, rules: input.rules, updatedBy },

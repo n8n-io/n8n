@@ -6,6 +6,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
+import { escapeODataValue } from '../../../utils/query-escaping';
 import { DATAVERSE_API_PATH } from './constants';
 import {
 	dataverseApiRequestRaw,
@@ -291,7 +292,7 @@ export async function searchRows(
 		'/EntityDefinitions',
 		{
 			$select: 'PrimaryIdAttribute,PrimaryNameAttribute',
-			$filter: `EntitySetName eq '${entitySet.replace(/'/g, "''")}'`,
+			$filter: `EntitySetName eq '${escapeODataValue(entitySet)}'`,
 		},
 	);
 	const { PrimaryIdAttribute: idAttribute, PrimaryNameAttribute: nameAttribute } =
@@ -313,7 +314,7 @@ export async function searchRows(
 		};
 		const trimmedFilter = filter?.trim();
 		if (trimmedFilter && nameAttribute) {
-			qs.$filter = `contains(${nameAttribute},'${trimmedFilter.replace(/'/g, "''")}')`;
+			qs.$filter = `contains(${nameAttribute},'${escapeODataValue(trimmedFilter)}')`;
 		}
 		response = await dataverseGet<RowPage>(this, `/${entitySet}`, qs, pageHeaders);
 	}
@@ -354,7 +355,7 @@ async function getColumns(
 		'/EntityDefinitions',
 		{
 			$select: 'LogicalName',
-			$filter: `EntitySetName eq '${entitySet.replace(/'/g, "''")}'`,
+			$filter: `EntitySetName eq '${escapeODataValue(entitySet)}'`,
 		},
 	);
 	const logicalName = lookup.value?.[0]?.LogicalName;

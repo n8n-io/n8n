@@ -66,6 +66,7 @@ describe('CredentialsController', () => {
 		mock(), // instanceCredentialUseRegistry
 		mock(), // dbLockService
 		mock(), // eventService
+		mock(), // transactionRunner
 	);
 
 	// Spy on methods that need to be mocked in tests
@@ -500,6 +501,55 @@ describe('CredentialsController', () => {
 				existingCredential,
 				{ clearOauthTokenData: false },
 			);
+		});
+
+		describe('description', () => {
+			const updateRequest = (body: Record<string, unknown>) =>
+				({
+					user: { id: 'owner-id', role: GLOBAL_OWNER_ROLE },
+					params: { credentialId },
+					body: {
+						name: 'Updated Credential',
+						type: 'apiKey',
+						data: { apiKey: 'updated-key' },
+						...body,
+					},
+				}) as unknown as CredentialRequest.Update;
+
+			beforeEach(() => {
+				credentialsFinderService.findCredentialForUser.mockResolvedValue(existingCredential);
+				updateSpy.mockResolvedValue({ ...existingCredential, name: 'Updated Credential' });
+			});
+
+			it.each([
+				[
+					'writes a description the payload sends',
+					'Read-only reporting key.',
+					'Read-only reporting key.',
+				],
+				['clears a description the payload blanks out', '  ', null],
+			])('%s', async (_label, sent, prepared) => {
+				const req = updateRequest({ description: sent });
+				prepareUpdateDataSpy.mockResolvedValue({ ...req.body, description: prepared });
+
+				await credentialsController.updateCredentials(req);
+
+				expect(updateSpy).toHaveBeenCalledWith(
+					credentialId,
+					expect.objectContaining({ description: prepared }),
+					expect.anything(),
+					expect.any(Object),
+				);
+			});
+
+			it('leaves the stored description alone when the payload omits the field', async () => {
+				const req = updateRequest({});
+				prepareUpdateDataSpy.mockResolvedValue({ ...req.body });
+
+				await credentialsController.updateCredentials(req);
+
+				expect(updateSpy.mock.calls[0][1]).not.toHaveProperty('description');
+			});
 		});
 
 		it('should emit "credentials-updated" with jweEnabled true when JWE is enabled in payload', async () => {

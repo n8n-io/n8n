@@ -5,6 +5,7 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
+import { assertNoQueryDelimiters } from '@utils/query-escaping';
 import { updateDisplayOptions } from '@utils/utilities';
 
 import { folderRLC, returnAllOrLimit } from '../../descriptions';
@@ -102,7 +103,7 @@ export const properties: INodeProperties[] = [
 						default: '',
 						placeholder: 'e.g. automation',
 						description:
-							'Only return messages that contains search term. Without specific message properties, the search is carried out on the default search properties of from, subject, and body. <a href="https://docs.microsoft.com/en-us/graph/query-parameters#search-parameter target="_blank">More info</a>.',
+							'Only return messages that contain the search term. Without a message property prefix such as <code>subject:</code>, the search covers from, subject and body. A double quote is not supported in this field. <a href="https://docs.microsoft.com/en-us/graph/query-parameters#search-parameter target="_blank">More info</a>.',
 						displayOptions: {
 							show: {
 								filterBy: ['search'],
@@ -255,6 +256,11 @@ export async function execute(this: IExecuteFunctions, index: number) {
 	}
 
 	if (filters.filterBy === 'search' && filters.search !== '') {
+		assertNoQueryDelimiters.call(this, 'Search', filters.search, ['"'], index);
+		// Safe by the assertion above. Escaping is not an option here: this is
+		// Exchange KQL, which documents no escape for the delimiter — unlike the
+		// directory-object $search dialect the Entra node uses.
+		// eslint-disable-next-line n8n-local-rules/require-escaped-query-values
 		qs.$search = `"${filters.search}"`;
 	}
 

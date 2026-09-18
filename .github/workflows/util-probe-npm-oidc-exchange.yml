@@ -70,8 +70,8 @@ jobs:
       - name: Verify pnpm version for publishing
         shell: bash
         run: |
-          if [ "$(pnpm --version)" != '12.3.4' ]; then
-            echo '::error::Expected pnpm 12.3.4 for publishing.'
+          if [ "$(pnpm --version)" != '12.4.2' ]; then
+            echo '::error::Expected pnpm 12.4.2 for publishing.'
             exit 1
           fi
 

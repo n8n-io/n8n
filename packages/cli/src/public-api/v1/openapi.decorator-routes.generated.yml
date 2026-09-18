@@ -18,6 +18,12 @@ paths:
   /credentials/{credentialId}/transfer:
     put:
       $ref: ./handlers/credentials/spec/paths/transferCredential.generated.yml
+  /credentials/{credentialId}/test:
+    post:
+      $ref: ./handlers/credentials/spec/paths/testCredential.generated.yml
+  /credentials/schema/{credentialTypeName}:
+    get:
+      $ref: ./handlers/credentials/spec/paths/getCredentialType.generated.yml
   /executions:
     get:
       $ref: ./handlers/executions/spec/paths/getExecutions.generated.yml
@@ -40,6 +46,12 @@ paths:
   /executions/{executionId}/retry:
     post:
       $ref: ./handlers/executions/spec/paths/retryExecution.generated.yml
+  /projects/{projectId}/folders:
+    get:
+      $ref: ./handlers/projects/spec/paths/listFolders.generated.yml
+  /projects/{projectId}/folders/{folderId}:
+    get:
+      $ref: ./handlers/projects/spec/paths/getFolder.generated.yml
   /node-type-policies/instance:
     get:
       $ref: ./handlers/node-type-policies/spec/paths/getInstancePolicy.generated.yml
@@ -138,6 +150,12 @@ paths:
   /promotions/connections/{promotionConnectionId}/apply:
     post:
       $ref: ./handlers/promotions/spec/paths/applyPackage.generated.yml
+  /promotions/connections/{promotionConnectionId}/apply/continue:
+    post:
+      $ref: ./handlers/promotions/spec/paths/continueApplyPackage.generated.yml
+  /promotions/projects/{projectId}/changes/{direction}:
+    get:
+      $ref: ./handlers/promotions/spec/paths/getPromotionChanges.generated.yml
   /role-mapping-rules:
     get:
       $ref: ./handlers/role-mapping-rules/spec/paths/getRoleMappingRules.generated.yml
@@ -180,6 +198,10 @@ paths:
   /tags/{tagId}:
     get:
       $ref: ./handlers/tags/spec/paths/getTag.generated.yml
+    put:
+      $ref: ./handlers/tags/spec/paths/updateTag.generated.yml
+    delete:
+      $ref: ./handlers/tags/spec/paths/deleteTag.generated.yml
   /variables:
     get:
       $ref: ./handlers/variables/spec/paths/getVariables.generated.yml

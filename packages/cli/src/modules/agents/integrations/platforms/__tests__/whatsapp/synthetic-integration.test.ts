@@ -1,6 +1,7 @@
 import { UserError } from 'n8n-workflow';
 
 import { deriveWhatsAppVerifyToken } from '../../../integration-helpers';
+import { encodeIntegrationMessageContext } from '../../../integration-message-context';
 import { createIntegrationContextTool } from '../../../integration-tools';
 import type { SuspendComponent } from '../../../component-mapper';
 import {
@@ -102,12 +103,17 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 			const contextTool = createIntegrationContextTool({
 				descriptor: ctx.descriptor,
 				queryExecutor: { execute: vi.fn() },
-				messageContextStore: ctx.messageContextStore,
 			}).build();
 
 			const result = await contextTool.handler!(
 				{ query: 'get_current_message_context', input: {} },
-				{ persistence: { threadId, resourceId: fixtures.contact.wa_id } },
+				{
+					persistence: {
+						threadId,
+						resourceId: fixtures.contact.wa_id,
+						hostMetadata: encodeIntegrationMessageContext(context ?? null),
+					},
+				},
 			);
 			expect(result).toEqual({ ok: true, context });
 		} finally {

@@ -107,6 +107,9 @@ export async function createInstanceAgent(
 			context.runtimeSkillCatalog ??
 			orchestrationContext?.runtimeSkills,
 	};
+	if (orchestrationContext) {
+		orchestrationContext.domainContext = domainContext;
+	}
 	// Load MCP tools (cached by config hash inside the manager — only spawns
 	// processes / opens connections on first call or config change). The manager
 	// returns per-server connection failures alongside the tools so they travel
@@ -174,10 +177,8 @@ export async function createInstanceAgent(
 		if (builderMcpTools.size > 0) orchestrationContext.mcpTools = builderMcpTools;
 	}
 
-	const orchestratorDomainTools = createOrchestratorDomainTools({
-		...domainContext,
-		connectedMcpServices: listConnectedMcpServices(mcpServers, safeMcpTools),
-	});
+	domainContext.connectedMcpServices = listConnectedMcpServices(mcpServers, safeMcpTools);
+	const orchestratorDomainTools = createOrchestratorDomainTools(domainContext);
 
 	const allOrchestratorTools = mergeToolRegistries(
 		orchestratorDomainTools,
