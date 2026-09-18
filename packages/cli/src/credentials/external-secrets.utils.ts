@@ -4,6 +4,8 @@ import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 
 import { getAllKeyPaths } from '@/utils';
 
+const BRACKET_SECRETS_PROVIDER_KEY_PATTERN = `[^'"\\]]+`;
+
 const SECRETS_REFERENCE_REGEX = /\$secrets\b/;
 
 /**
@@ -57,7 +59,7 @@ export function extractProviderKeysFromExpression(expression: string): string[] 
 		// - $secrets ['providerKey']
 		// - $secrets["providerKey"]
 		const bracketMatches = expressionContent.matchAll(
-			new RegExp(`\\$secrets\\s*\\[\\s*['"](${SECRETS_PROVIDER_KEY_PATTERN})['"]\\s*\\]`, 'g'),
+			new RegExp(`\\$secrets\\s*\\[\\s*['"](${BRACKET_SECRETS_PROVIDER_KEY_PATTERN})['"]\\s*\\]`, 'g'),
 		);
 		for (const match of bracketMatches) {
 			providerKeys.add(match[1]);
