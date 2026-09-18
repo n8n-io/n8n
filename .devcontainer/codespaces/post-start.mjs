@@ -91,4 +91,15 @@ if (!workerStarted && harness.status !== 'active') {
 	console.error('worker start: skipped because the pinned agent harness is unavailable');
 }
 
-writeFileSync(STATUS_FILE, JSON.stringify({ installed, failed, harness, workerStarted }, null, 2));
+// Nothing runs in the worktrees at container start, so this is the safe moment to
+// drop the ones whose PR is merged or closed, or that idled for a week untouched.
+// Dirty trees, unpushed commits and open PRs are kept. Report: /tmp/post-start.log.
+const worktreesCleaned = tryRun('worktree cleanup', 'node', [
+	'/workspaces/n8n/scripts/worktree-clean.mjs',
+	'--yes',
+]);
+
+writeFileSync(
+	STATUS_FILE,
+	JSON.stringify({ installed, failed, harness, workerStarted, worktreesCleaned }, null, 2),
+);

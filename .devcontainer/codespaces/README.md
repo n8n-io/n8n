@@ -47,6 +47,12 @@ create an 8-core Codespace by default.
   in fresh worktrees are cache-hits via a shared turbo cache.
 - First codespace creation takes ~20 min uncached (image + full build). After
   that, sessions attach instantly; new worktrees cost a `pnpm install` (~1–2 min).
+- **Stale worktrees are removed at container start.** `post-start.mjs` runs
+  `pnpm worktree:clean --yes`: a worktree goes when its tree is clean, every
+  commit is on a remote, and its PR is merged or closed or it idled for a week
+  with no open PR. Anything dirty, unpushed or in use stays. Run
+  `pnpm worktree:clean` in a session to see the report, `--deps` to also drop
+  `node_modules` and build outputs of idle worktrees that are kept.
 
 ## Configure the local OpenCode harness
 
