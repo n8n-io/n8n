@@ -140,6 +140,7 @@ const i18n = useI18n();
 							:validation-issues="configValidationIssues ?? []"
 							@open-skill="emit('open-skill', $event)"
 							@add-skill="emit('add-skill')"
+							@remove-skill="emit('remove-skill', $event)"
 						/>
 					</AgentPanel>
 

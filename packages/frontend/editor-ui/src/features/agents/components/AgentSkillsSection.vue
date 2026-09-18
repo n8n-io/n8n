@@ -25,6 +25,7 @@ const props = withDefaults(
 const emit = defineEmits<{
 	'open-skill': [id: string];
 	'add-skill': [];
+	'remove-skill': [id: string];
 }>();
 
 const i18n = useI18n();
