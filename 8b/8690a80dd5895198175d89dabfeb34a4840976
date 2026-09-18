@@ -1,0 +1,40 @@
+packages/testing/playwright/tests/framework/harness-contract.test.ts
+  s_5be157f6e91b85::t_f47aab0d609019 33
+packages/cli/src/posthog/index.ts
+  s_5be157f6e91b85::t_65427902cd5e92 174
+  s_5be157f6e91b85::t_1f918b702f12fd 211
+packages/testing/playwright/pages/CanvasPage.ts
+  s_5be157f6e91b85::t_d5efa993da1854 1187-1188
+packages/cli/src/modules/instance-ai/__tests__/instance-context.service.test.ts
+  s_5be157f6e91b85::t_f3339997a8a587 462
+  s_5be157f6e91b85::t_80e6ec9db29686 544,574-578,582,587,591-598,614,635-636,642-645
+  s_5be157f6e91b85::t_5c7097414b82b4 637-641
+packages/cli/src/modules/instance-ai/instance-context.service.ts
+  s_5be157f6e91b85::t_4cb54b51cf224c 311,561-574,576-577
+  s_5be157f6e91b85::t_8ff8f003ec3a51 542,550-551
+  s_583f31bceceb3e::t_8e3c52d209ce4e 605
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8b8690a80dd5895198175d89dabfeb34a4840976",
+  "prompts": {},
+  "sessions": {
+    "s_583f31bceceb3e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9264794a-277b-4041-ba69-ba6dee92fbf7",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    },
+    "s_5be157f6e91b85": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0ae78-4d49-7f60-886d-eb5d6b02f635",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}
