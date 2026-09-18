@@ -152,6 +152,7 @@ export { passwordSchema, createPasswordSchema } from './schemas/password.schema'
 export { n8nIdSchema } from './schemas/id.schema';
 export {
 	credentialIdParamSchema,
+	credentialTypeNameParamSchema,
 	executionIdParamSchema,
 	nodeTypePolicyIdParamSchema,
 	nodeTypePolicyScopeIdParamSchema,
@@ -437,6 +438,8 @@ export {
 	instanceAiCredentialHandoffContextSchema,
 	instanceAiAgentPreviewHandoffContextSchema,
 	instanceAiHandoffContextSchema,
+	instanceAiThreadArtifactSchema,
+	instanceAiThreadArtifactsContextSchema,
 	gatewayConfirmationRequiredWirePayloadSchema,
 	gatewayConfirmationRequiredPayloadSchema,
 	instanceGatewayResourceDecisionSchema,
@@ -629,6 +632,8 @@ export type {
 	InstanceAiCredentialHandoffContext,
 	InstanceAiAgentPreviewHandoffContext,
 	InstanceAiHandoffContext,
+	InstanceAiThreadArtifact,
+	InstanceAiThreadArtifactsContext,
 	GatewayConfirmationRequiredWirePayload,
 	GatewayConfirmationRequiredPayload,
 	InstanceGatewayResourceDecision,

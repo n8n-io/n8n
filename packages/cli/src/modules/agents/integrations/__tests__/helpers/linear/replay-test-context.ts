@@ -300,8 +300,8 @@ export async function createLinearReplayContext(
 		chat: chat as unknown as ChatInstance,
 		apiCalls: stub.apiCalls,
 		sendWebhook,
-		latestContext: () => setup.messageContextStore.latest(),
-		latestThreadId: () => setup.messageContextStore.latestThreadId(),
+		latestContext: setup.latestContext,
+		latestThreadId: setup.latestThreadId,
 		lastPost: () => stub.apiCalls.filter((call) => POST_METHODS.has(call.method)).at(-1),
 		shutdown: async () => {
 			try {

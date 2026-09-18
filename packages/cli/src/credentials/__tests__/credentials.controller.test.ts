@@ -66,6 +66,7 @@ describe('CredentialsController', () => {
 		mock(), // instanceCredentialUseRegistry
 		mock(), // dbLockService
 		mock(), // eventService
+		mock(), // transactionRunner
 	);
 
 	// Spy on methods that need to be mocked in tests

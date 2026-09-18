@@ -529,6 +529,42 @@ describe('InstanceAiThreadView', () => {
 			});
 		});
 
+		it('shows an announced workflow before its first artifact exists', async () => {
+			seedSetupArtifacts();
+			thread.producedArtifacts = new Map();
+			const rendered = renderView({ props: { threadId: 'thread-1' } });
+			expect(rendered.queryByTestId('setup-panel')).not.toBeInTheDocument();
+			thread.setupItemsByWorkflowId = {
+				'wf-early': [
+					{ id: 'wf-early:credential:slackApi', kind: 'credential', credentialType: 'slackApi' },
+				],
+			};
+			thread.latestSetupWorkflowId = 'wf-early';
+			await flushPromises();
+			expect(rendered.getByTestId('setup-panel')).toHaveAttribute('data-workflow-id', 'wf-early');
+			expect(rendered.getByTestId('setup-panel')).not.toHaveAttribute('data-project-id');
+		});
+
+		it('does not pick an arbitrary workflow from legacy setup rows', () => {
+			seedSetupArtifacts();
+			thread.producedArtifacts = new Map();
+			thread.latestSetupWorkflowId = undefined;
+			thread.setupItemsByWorkflowId = Object.fromEntries(
+				['wf-1', 'wf-2'].map((id) => [
+					id,
+					[
+						{
+							id: `${id}:credential:slackApi`,
+							kind: 'credential' as const,
+							credentialType: 'slackApi',
+						},
+					],
+				]),
+			);
+			const { queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
+			expect(queryByTestId('setup-panel')).not.toBeInTheDocument();
+		});
+
 		it('follows the selected workflow and project when tabs change', async () => {
 			seedSetupArtifacts();
 			thread.messages[0].attachments = [{ type: 'workflow', id: 'wf-1', name: 'First workflow' }];
