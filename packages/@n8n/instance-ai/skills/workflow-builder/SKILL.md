@@ -236,7 +236,7 @@ follow its build → publish → assign steps.
    decide which findings still block. It validates the saved workflow too and
    can keep existing node findings informational when their cause is unchanged.
    Workflow constraints still block. If the save remains blocked, report the blocker without
-   expanding scope. Warnings do not block saves; resolve or consciously dismiss
+   expanding scope. CLI warning rows do not block saves; resolve or consciously dismiss
    them within the requested scope. A clean validate run does not guarantee
    `build-workflow` will succeed (no full node-type registry in the sandbox CLI),
    so still call `build-workflow`.

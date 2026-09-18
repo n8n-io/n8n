@@ -1,7 +1,7 @@
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
 import { computeChangedNodeNames, downgradeUnchangedNodeBlockers } from '../workflow-node-diff';
-import type { ValidationWarning } from '../workflow-validation-warnings';
+import { partitionWarnings, type ValidationWarning } from '../workflow-validation-warnings';
 import { detectArrayInputCollapse } from '../detect-array-input-collapse';
 
 type NodeJSON = WorkflowJSON['nodes'][number];
@@ -245,12 +245,12 @@ describe('downgradeUnchangedNodeBlockers', () => {
 				{ 'Send a message': { main: [[{ node: 'Compose', type: 'main', index: 0 }]] } },
 			);
 		}
-		async function compare(built: WorkflowJSON) {
+		async function compare(built: WorkflowJSON, baseline = workflow()) {
 			return downgradeUnchangedNodeBlockers(
 				await detectArrayInputCollapse(built),
 				built,
-				workflow(),
-				await detectArrayInputCollapse(workflow()),
+				baseline,
+				await detectArrayInputCollapse(baseline),
 			);
 		}
 
@@ -282,7 +282,51 @@ describe('downgradeUnchangedNodeBlockers', () => {
 			['deferred code', code + '\nconst later = () => customer;'],
 			['new binding', code + '\nconst $input = {};'],
 		])('keeps a %s blocking', async (_name, nextCode) => {
-			expect((await compare(workflow(nextCode)))[0]?.severity).not.toBe('informational');
+			const findings = await compare(workflow(nextCode));
+			expect(findings).toEqual([
+				expect.objectContaining({ code: 'ARRAY_INPUT_COLLAPSED_TO_FIRST_ITEM' }),
+			]);
+			expect(partitionWarnings(findings).blocking).toEqual(findings);
+		});
+
+		describe('array callbacks', () => {
+			const callbackCode =
+				'const rows = $input.first().json.map(row => row.name);\n' +
+				'const label = "Hello";\nreturn [{ json: { rows, label } }];';
+
+			it('allows a later greeting edit after an unchanged callback', async () => {
+				const findings = await compare(
+					workflow(callbackCode.replace('"Hello"', '"Hi"')),
+					workflow(callbackCode),
+				);
+				expect(findings).toEqual([
+					expect.objectContaining({
+						code: 'ARRAY_INPUT_COLLAPSED_TO_FIRST_ITEM',
+						severity: 'informational',
+					}),
+				]);
+			});
+
+			it.each([
+				['callback body', callbackCode.replace('row.name', 'row.full_name')],
+				['input read', callbackCode.replace('$input.first()', '$input.all()[0]')],
+			])('keeps a finding blocking after changing the %s', async (_name, edited) => {
+				const findings = await compare(workflow(edited), workflow(callbackCode));
+				expect(findings).toEqual([
+					expect.objectContaining({ code: 'ARRAY_INPUT_COLLAPSED_TO_FIRST_ITEM' }),
+				]);
+				expect(partitionWarnings(findings).blocking).toEqual(findings);
+			});
+
+			it('keeps a finding blocking after its upstream input changes', async () => {
+				const built = workflow(callbackCode.replace('"Hello"', '"Hi"'));
+				built.nodes[0].parameters = { url: 'https://other.example.test' };
+				const findings = await compare(built, workflow(callbackCode));
+				expect(findings).toEqual([
+					expect.objectContaining({ code: 'ARRAY_INPUT_COLLAPSED_TO_FIRST_ITEM' }),
+				]);
+				expect(partitionWarnings(findings).blocking).toEqual(findings);
+			});
 		});
 
 		it('checks every input source when comparing a Code finding', async () => {

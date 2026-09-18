@@ -1,9 +1,9 @@
 import { walkAst } from './ast-walk';
 
 /**
- * Capture the synchronous code that can affect diagnostics at the given offsets.
- * Restrict this to straight-line code. Hoisted bindings and deferred execution
- * require a dependency analysis, so other programs have no partial comparison.
+ * Capture complete statements through the diagnostics in straight-line code.
+ * Include functions only when their bodies contain no diagnostic and fit inside
+ * the captured prefix. Other execution patterns need a dependency analysis.
  */
 export async function getStaticCodePrefix(
 	code: string,
@@ -23,19 +23,6 @@ export async function getStaticCodePrefix(
 			return undefined;
 		}
 	}
-	let deferred = false;
-	walkAst(ast, (node) => {
-		if (
-			node.type === 'FunctionExpression' ||
-			node.type === 'ArrowFunctionExpression' ||
-			node.type === 'ClassExpression' ||
-			node.type === 'AwaitExpression' ||
-			node.type === 'YieldExpression' ||
-			(node.type === 'Identifier' && node.name === 'eval')
-		)
-			deferred = true;
-	});
-	if (deferred) return undefined;
 	let end = 0;
 	for (const offset of offsets) {
 		const statement = ast.body.find(
@@ -44,6 +31,29 @@ export async function getStaticCodePrefix(
 		if (!statement?.range) return undefined;
 		end = Math.max(end, statement.range[1]);
 	}
+	let deferred = false;
+	walkAst(ast, (node) => {
+		if (node.type === 'FunctionExpression' || node.type === 'ArrowFunctionExpression') {
+			const range = node.range;
+			if (
+				!range ||
+				range[1] > end ||
+				node.async ||
+				(node.type === 'FunctionExpression' && node.generator) ||
+				offsets.some((offset) => range[0] <= offset && offset < range[1])
+			) {
+				deferred = true;
+			}
+		}
+		if (
+			node.type === 'ClassExpression' ||
+			node.type === 'AwaitExpression' ||
+			node.type === 'YieldExpression' ||
+			(node.type === 'Identifier' && node.name === 'eval')
+		)
+			deferred = true;
+	});
+	if (deferred) return undefined;
 	const referenced = new Set<string>();
 	walkAst(ast, (node) => {
 		if (node.type === 'Identifier' && node.range && node.range[1] <= end) referenced.add(node.name);

@@ -39,7 +39,48 @@ describe('getStaticCodePrefix', () => {
 
 	it('supports literal values that JSON does not serialize directly', async () => {
 		const withBigInt = 'const limit = 10n;\n' + source;
-		expect(await getStaticCodePrefix(withBigInt, [withBigInt.indexOf('$input')])).toBeDefined();
+		const context = await getStaticCodePrefix(withBigInt, [withBigInt.indexOf('$input')]);
+		expect(context).toContain('"value":"10"');
+		const changed = withBigInt.replace('10n', '11n');
+		const changedContext = await getStaticCodePrefix(changed, [changed.indexOf('$input')]);
+		expect(changedContext).toContain('"value":"11"');
+		expect(changedContext).not.toBe(context);
+	});
+
+	it.each(['row => row.name', 'function (row) { return row.name; }'])(
+		'preserves context for an unchanged callback: %s',
+		async (callback) => {
+			const original =
+				`const rows = $input.first().json.map(${callback});\n` +
+				'const label = "Hello";\nreturn [{ json: { rows, label } }];';
+			const context = await getStaticCodePrefix(original, [original.indexOf('$input')]);
+			expect(context).toBeDefined();
+			const edited = original.replace('"Hello"', '"Hi"');
+			expect(await getStaticCodePrefix(edited, [edited.indexOf('$input')])).toBe(context);
+			const changedCallback = original.replace('row.name', 'row.full_name');
+			expect(
+				await getStaticCodePrefix(changedCallback, [changedCallback.indexOf('$input')]),
+			).not.toBe(context);
+		},
+	);
+
+	it('includes bindings used by a captured callback', async () => {
+		const original =
+			'const field = "name";\nconst rows = $input.first().json.map(row => row[field]);';
+		const context = await getStaticCodePrefix(original, [original.indexOf('$input')]);
+		expect(context).toBeDefined();
+		const edited = original.replace('"name"', '"full_name"');
+		expect(await getStaticCodePrefix(edited, [edited.indexOf('$input')])).not.toBe(context);
+	});
+
+	it.each([
+		'const rows = values.map(() => $input.first().json[0]);',
+		'const rows = values.map(function () { return $input.first().json[0]; });',
+		'const rows = $input.first().json.map(async row => row.name);',
+		'const rows = $input.first().json.map(function* (row) { return row.name; });',
+		'const rows = $input.first().json.map(async row => await row.name);',
+	])('does not compare a read with deferred execution: %s', async (code) => {
+		expect(await getStaticCodePrefix(code, [code.indexOf('$input')])).toBeUndefined();
 	});
 
 	it.each([
