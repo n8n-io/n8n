@@ -24,28 +24,28 @@ it('should default a task to one run for the whole cluster, on a main', () => {
 
 it('should keep a declared placement', () => {
 	const placement = resolveSystemTaskPlacement(
-		taskWith({ scope: 'process', instanceTypes: ['main', 'worker'] }),
+		taskWith({ scope: 'instance', instanceTypes: ['main', 'worker'] }),
 	);
 
-	expect(placement).toEqual({ scope: 'process', instanceTypes: ['main', 'worker'] });
+	expect(placement).toEqual({ scope: 'instance', instanceTypes: ['main', 'worker'] });
 });
 
-it('should reject a process-scoped task that is durable', () => {
-	expect(() => resolveSystemTaskPlacement(taskWith({ scope: 'process', durable: true }))).toThrow(
-		'A process-scoped system task cannot be durable',
+it('should reject an instance-scoped task that is durable', () => {
+	expect(() => resolveSystemTaskPlacement(taskWith({ scope: 'instance', durable: true }))).toThrow(
+		'An instance-scoped system task cannot be durable',
 	);
 });
 
-it('should reject a process-scoped task that asks to run on takeover', () => {
+it('should reject an instance-scoped task that asks to run on takeover', () => {
 	expect(() =>
-		resolveSystemTaskPlacement(taskWith({ scope: 'process', runOnTakeover: true })),
-	).toThrow('A process-scoped system task cannot run on leader takeover');
+		resolveSystemTaskPlacement(taskWith({ scope: 'instance', runOnTakeover: true })),
+	).toThrow('An instance-scoped system task cannot run on leader takeover');
 });
 
-it('should accept a process-scoped task that opts out of running on takeover', () => {
+it('should accept an instance-scoped task that opts out of running on takeover', () => {
 	expect(
-		resolveSystemTaskPlacement(taskWith({ scope: 'process', runOnTakeover: false })).scope,
-	).toBe('process');
+		resolveSystemTaskPlacement(taskWith({ scope: 'instance', runOnTakeover: false })).scope,
+	).toBe('instance');
 });
 
 it('should reject a task that declares no instance type', () => {

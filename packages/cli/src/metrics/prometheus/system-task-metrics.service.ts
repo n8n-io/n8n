@@ -11,12 +11,12 @@ import { DURATION_BUCKETS_SECONDS, LAG_BUCKETS_SECONDS } from './constant';
 
 /**
  * Collects Prometheus metrics for system tasks, on all of their paths: the
- * in-memory timers of the leader, the durable scheduler and the per-process
+ * in-memory timers of the leader, the durable scheduler and the per-instance
  * timers, told apart by the `mode` label. Opt-in via
  * `includeSystemTaskMetrics`. Every value comes from `EventService`, so this is
  * the only place that touches `prom-client` for system tasks.
  *
- * The per-task gauges of a durable or per-process task are seeded when it is
+ * The per-task gauges of a durable or per-instance task are seeded when it is
  * routed, so the series exist before the first run and a restart shows as a
  * reset rather than a gap. Those of an in-memory task exist only while this
  * instance leads: seeded when the timers start, removed when they stop, so a
@@ -41,7 +41,7 @@ export class PrometheusSystemTaskMetricsService implements PrometheusMetricsColl
 
 		const runDuration = new promClient.Histogram({
 			name: `${prefix}system_task_run_duration_seconds`,
-			help: 'Duration in seconds of a system task run, by task, mode (in_memory, durable, per_process) and result (success, failure, aborted).',
+			help: 'Duration in seconds of a system task run, by task, mode (in_memory, durable, per_instance) and result (success, failure, aborted).',
 			labelNames: ['task', 'mode', 'result'],
 			buckets: DURATION_BUCKETS_SECONDS,
 		});
@@ -66,7 +66,7 @@ export class PrometheusSystemTaskMetricsService implements PrometheusMetricsColl
 
 		const info = new promClient.Gauge({
 			name: `${prefix}system_task_info`,
-			help: 'Always 1 for every system task this instance can run, by task and mode: durable tasks on every main, in-memory tasks on the leader, per-process tasks in every process that runs them.',
+			help: 'Always 1 for every system task this instance can run, by task and mode: durable tasks on every main, in-memory tasks on the leader, per-instance tasks in every instance that runs them.',
 			labelNames: ['task', 'mode'],
 		});
 

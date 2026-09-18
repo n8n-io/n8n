@@ -216,10 +216,10 @@ describe('Worker', () => {
 			},
 		);
 
-		it('should start the per-process system tasks', async () => {
+		it('should start the per-instance system tasks', async () => {
 			await createWorkerForInit().init();
 
-			expect(systemTaskRunner.initPerProcess).toHaveBeenCalledTimes(1);
+			expect(systemTaskRunner.initPerInstance).toHaveBeenCalledTimes(1);
 		});
 	});
 

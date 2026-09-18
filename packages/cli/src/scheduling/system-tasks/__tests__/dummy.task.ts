@@ -37,10 +37,10 @@ export class OtherDummySystemTask extends DummySystemTask {
 }
 
 @SystemTask()
-export class PerProcessDummySystemTask extends DummySystemTask {
-	name = 'per-process-dummy';
+export class PerInstanceDummySystemTask extends DummySystemTask {
+	name = 'per-instance-dummy';
 
-	scope: SystemTaskScope = 'process';
+	scope: SystemTaskScope = 'instance';
 
 	instanceTypes: readonly InstanceType[] = ['main', 'worker', 'webhook'];
 }

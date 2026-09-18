@@ -253,7 +253,7 @@ export abstract class BaseCommand<F = never> {
 		await Container.get(TelemetryEventRelay).init();
 
 		if (this.needsSystemTasks) {
-			Container.get(SystemTaskRunner).initPerProcess();
+			Container.get(SystemTaskRunner).initPerInstance();
 		}
 
 		Container.get(ActivityEventRelay).init();

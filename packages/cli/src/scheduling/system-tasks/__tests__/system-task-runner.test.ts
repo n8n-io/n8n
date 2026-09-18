@@ -16,20 +16,20 @@ import { SystemTaskHandler } from '../system-task-handler';
 import type { SystemTaskJobRegistrar } from '../system-task-job-registrar';
 import { SystemTaskRunner } from '../system-task-runner';
 import { SystemTaskScheduledJobOwner } from '../system-task-scheduled-job-owner';
-import { DummySystemTask, OtherDummySystemTask, PerProcessDummySystemTask } from './dummy.task';
+import { DummySystemTask, OtherDummySystemTask, PerInstanceDummySystemTask } from './dummy.task';
 
 const START = new Date('2026-01-01T00:00:00.000Z');
 const ONE_INTERVAL_MS = 60 * Time.seconds.toMilliseconds;
 
 /** What a main does at startup: route everything, then take over the cluster tasks. */
 async function initRunner(runner: SystemTaskRunner): Promise<void> {
-	runner.initPerProcess();
+	runner.initPerInstance();
 	await runner.initCluster();
 }
 
 describe('SystemTaskRunner', () => {
 	let dummy: DummySystemTask;
-	let perProcess: PerProcessDummySystemTask;
+	let perInstance: PerInstanceDummySystemTask;
 
 	function setup({
 		isLeader = true,
@@ -85,8 +85,8 @@ describe('SystemTaskRunner', () => {
 		vi.setSystemTime(START);
 		dummy = new DummySystemTask();
 		Container.set(DummySystemTask, dummy);
-		perProcess = new PerProcessDummySystemTask();
-		Container.set(PerProcessDummySystemTask, perProcess);
+		perInstance = new PerInstanceDummySystemTask();
+		Container.set(PerInstanceDummySystemTask, perInstance);
 	});
 
 	afterEach(() => {
@@ -473,7 +473,7 @@ describe('SystemTaskRunner', () => {
 		it('refuses to init before the instance role is resolved', async () => {
 			const { runner, metadata } = setup({ instanceRole: 'unset' });
 			metadata.register(DummySystemTask);
-			runner.initPerProcess();
+			runner.initPerInstance();
 
 			await expect(runner.initCluster()).rejects.toThrow('Instance role is not set');
 		});
@@ -1219,66 +1219,66 @@ describe('SystemTaskRunner', () => {
 			);
 		});
 	});
-	describe('per-process timers', () => {
-		it('fires a process-scoped task on a follower main, without taking over the cluster', async () => {
+	describe('per-instance timers', () => {
+		it('fires an instance-scoped task on a follower main, without taking over the cluster', async () => {
 			const { runner, metadata, jobRegistrar } = setup({
 				isLeader: false,
 				instanceRole: 'follower',
 			});
-			metadata.register(PerProcessDummySystemTask);
+			metadata.register(PerInstanceDummySystemTask);
 
-			runner.initPerProcess();
+			runner.initPerInstance();
 			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS);
 
-			expect(perProcess.runCount).toBe(1);
+			expect(perInstance.runCount).toBe(1);
 			expect(jobRegistrar.provision).not.toHaveBeenCalled();
 			expect(jobRegistrar.removeStale).not.toHaveBeenCalled();
 		});
 
-		it('fires a process-scoped task on a worker, which has no role at all', async () => {
+		it('fires an instance-scoped task on a worker, which has no role at all', async () => {
 			const { runner, metadata } = setup({
 				isLeader: false,
 				instanceRole: 'unset',
 				instanceType: 'worker',
 			});
-			metadata.register(PerProcessDummySystemTask);
+			metadata.register(PerInstanceDummySystemTask);
 
-			runner.initPerProcess();
+			runner.initPerInstance();
 			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS);
 
-			expect(perProcess.runCount).toBe(1);
+			expect(perInstance.runCount).toBe(1);
 		});
 
-		it('fires a process-scoped task registered after it took over the registry', async () => {
+		it('fires an instance-scoped task registered after it took over the registry', async () => {
 			const { runner, metadata } = setup();
-			runner.initPerProcess();
+			runner.initPerInstance();
 
-			metadata.register(PerProcessDummySystemTask);
+			metadata.register(PerInstanceDummySystemTask);
 			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS);
 
-			expect(perProcess.runCount).toBe(1);
+			expect(perInstance.runCount).toBe(1);
 		});
 
-		it('keeps a process-scoped task running through a stepdown', async () => {
+		it('keeps an instance-scoped task running through a stepdown', async () => {
 			const { runner, metadata } = setup();
 			metadata.register(DummySystemTask);
-			metadata.register(PerProcessDummySystemTask);
+			metadata.register(PerInstanceDummySystemTask);
 			await initRunner(runner);
 
 			await runner.stopTimers();
 			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS);
 
 			expect(dummy.runCount).toBe(0);
-			expect(perProcess.runCount).toBe(1);
+			expect(perInstance.runCount).toBe(1);
 		});
 
-		it('does not abort a process-scoped run in flight on a stepdown', async () => {
+		it('does not abort an instance-scoped run in flight on a stepdown', async () => {
 			const { runner, metadata } = setup();
 			let seenSignal: AbortSignal | undefined;
-			perProcess.onRun = async (signal) => {
+			perInstance.onRun = async (signal) => {
 				seenSignal = signal;
 			};
-			metadata.register(PerProcessDummySystemTask);
+			metadata.register(PerInstanceDummySystemTask);
 			await initRunner(runner);
 			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS);
 
@@ -1287,31 +1287,31 @@ describe('SystemTaskRunner', () => {
 			expect(seenSignal?.aborted).toBe(false);
 		});
 
-		it('stops a process-scoped task on shutdown', async () => {
+		it('stops an instance-scoped task on shutdown', async () => {
 			const { runner, metadata } = setup();
-			metadata.register(PerProcessDummySystemTask);
+			metadata.register(PerInstanceDummySystemTask);
 			await initRunner(runner);
 
 			await runner.shutdown();
 			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS * 2);
 
-			expect(perProcess.runCount).toBe(0);
+			expect(perInstance.runCount).toBe(0);
 		});
 
-		it('emits the runs of a process-scoped task as per_process', async () => {
+		it('emits the runs of an instance-scoped task as per_instance', async () => {
 			const { runner, metadata, eventService } = setup();
-			metadata.register(PerProcessDummySystemTask);
+			metadata.register(PerInstanceDummySystemTask);
 			await initRunner(runner);
 			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS);
 
 			expect(eventService.emit).toHaveBeenCalledWith('system-task-routed', {
-				name: 'per-process-dummy',
-				mode: 'per_process',
+				name: 'per-instance-dummy',
+				mode: 'per_instance',
 				intervalSeconds: 60,
 			});
 			expect(eventService.emit).toHaveBeenCalledWith('system-task-run-started', {
-				name: 'per-process-dummy',
-				mode: 'per_process',
+				name: 'per-instance-dummy',
+				mode: 'per_instance',
 			});
 		});
 
@@ -1323,7 +1323,7 @@ describe('SystemTaskRunner', () => {
 			});
 			metadata.register(DummySystemTask);
 
-			runner.initPerProcess();
+			runner.initPerInstance();
 			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS);
 
 			expect(dummy.runCount).toBe(0);
@@ -1337,12 +1337,12 @@ describe('SystemTaskRunner', () => {
 			);
 		});
 
-		it('rejects a process-scoped task that is also durable', () => {
-			perProcess.durable = true;
+		it('rejects an instance-scoped task that is also durable', () => {
+			perInstance.durable = true;
 			const { runner, metadata } = setup();
-			metadata.register(PerProcessDummySystemTask);
+			metadata.register(PerInstanceDummySystemTask);
 
-			expect(() => runner.initPerProcess()).toThrow(
+			expect(() => runner.initPerInstance()).toThrow(
 				expect.objectContaining({
 					cause: expect.objectContaining({
 						message: expect.stringContaining('cannot be durable'),
@@ -1353,12 +1353,12 @@ describe('SystemTaskRunner', () => {
 
 		it('takes ownership of the registry when only the cluster tasks are taken over', async () => {
 			const { runner, metadata } = setup();
-			metadata.register(PerProcessDummySystemTask);
+			metadata.register(PerInstanceDummySystemTask);
 
 			await runner.initCluster();
 			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS);
 
-			expect(perProcess.runCount).toBe(1);
+			expect(perInstance.runCount).toBe(1);
 		});
 	});
 });

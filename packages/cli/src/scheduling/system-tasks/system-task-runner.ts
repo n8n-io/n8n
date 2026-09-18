@@ -65,9 +65,9 @@ type RoutedTask = {
  *   system-task flag on, is handed to the database-backed queue: it gets a
  *   {@link SystemTaskHandler} registered under its task type, so occurrences
  *   claimed for that type are dispatched to it.
- * - A process-scoped task runs from an in-memory timer in every eligible
- *   process, with no coordination at all: the work reads state local to the
- *   process, so leadership and claiming are meaningless for it.
+ * - An instance-scoped task runs from an in-memory timer in every eligible
+ *   instance, with no coordination at all: the work reads state local to the
+ *   instance, so leadership and claiming are meaningless for it.
  * - Every other task runs from an in-memory timer on the leader.
  */
 @Service()
@@ -82,7 +82,7 @@ export class SystemTaskRunner {
 
 	private timersStarted = false;
 
-	private processTimersStarted = false;
+	private instanceTimersStarted = false;
 
 	/**
 	 * Bumped on every start and stop of the timers. A stop awaits the in-flight
@@ -115,17 +115,17 @@ export class SystemTaskRunner {
 
 	/**
 	 * Take ownership of the registry: route every task registered so far and
-	 * every one registered later, then start the timers of the process-scoped
-	 * tasks. Runs in every process, whatever its type and whether or not it has
-	 * a role, so a process-scoped task runs where its state lives.
+	 * every one registered later, then start the timers of the instance-scoped
+	 * tasks. Runs in every instance, whatever its type and whether or not it has
+	 * a role, so an instance-scoped task runs where its state lives.
 	 */
-	initPerProcess(): void {
+	initPerInstance(): void {
 		if (this.initialized) return;
 		this.initialized = true;
 
 		this.metadata.subscribe((taskClass) => this.route(taskClass));
 
-		this.startProcessTimers();
+		this.startInstanceTimers();
 	}
 
 	/**
@@ -143,7 +143,7 @@ export class SystemTaskRunner {
 	async initCluster(): Promise<void> {
 		strict(this.instanceSettings.instanceRole !== 'unset', 'Instance role is not set');
 
-		this.initPerProcess();
+		this.initPerInstance();
 
 		if (this.clusterInitialized) return;
 		this.clusterInitialized = true;
@@ -159,18 +159,18 @@ export class SystemTaskRunner {
 	}
 
 	/**
-	 * Start the timers of the process-scoped tasks routed so far. Idempotent, and
+	 * Start the timers of the instance-scoped tasks routed so far. Idempotent, and
 	 * never stopped by a leadership change: only shutdown stops them.
 	 */
-	private startProcessTimers(): void {
+	private startInstanceTimers(): void {
 		if (this.isShuttingDown) return;
-		this.processTimersStarted = true;
+		this.instanceTimersStarted = true;
 		const from = new Date();
-		const timers = this.processTimers();
+		const timers = this.instanceTimers();
 		for (const routed of timers) {
 			routed.timer.start(from);
 		}
-		this.logger.debug('Started the per-process system task timers', { count: timers.length });
+		this.logger.debug('Started the per-instance system task timers', { count: timers.length });
 	}
 
 	/**
@@ -222,9 +222,9 @@ export class SystemTaskRunner {
 		return this.timersOfScope('cluster');
 	}
 
-	/** The per-process timers, which only shutdown stops. */
-	private processTimers(): Array<RoutedTask & { timer: SystemTaskTimer }> {
-		return this.timersOfScope('process');
+	/** The per-instance timers, which only shutdown stops. */
+	private instanceTimers(): Array<RoutedTask & { timer: SystemTaskTimer }> {
+		return this.timersOfScope('instance');
 	}
 
 	private timersOfScope(scope: SystemTaskScope): Array<RoutedTask & { timer: SystemTaskTimer }> {
@@ -246,15 +246,15 @@ export class SystemTaskRunner {
 	async shutdown(): Promise<void> {
 		this.isShuttingDown = true;
 		this.shutdownController.abort();
-		this.processTimersStarted = false;
-		const processTimers = this.processTimers();
-		for (const routed of processTimers) {
+		this.instanceTimersStarted = false;
+		const instanceTimers = this.instanceTimers();
+		for (const routed of instanceTimers) {
 			routed.timer.stop();
 			clearTimeout(routed.retryTimer);
 			routed.retryTimer = undefined;
 		}
 		await this.stopTimers();
-		await Promise.all(this.inFlightRuns(processTimers));
+		await Promise.all(this.inFlightRuns(instanceTimers));
 	}
 
 	/**
@@ -278,7 +278,7 @@ export class SystemTaskRunner {
 	 * `misfireGraceSeconds` the scheduler cannot store.
 	 *
 	 * @throws {UnexpectedError} When a task declares a placement the runner cannot
-	 * honor, such as a process-scoped task that is also durable.
+	 * honor, such as an instance-scoped task that is also durable.
 	 */
 	private route(taskClass: SystemTaskClass): void {
 		const task = Container.get(taskClass);
@@ -336,19 +336,19 @@ export class SystemTaskRunner {
 				mode: 'durable',
 				intervalSeconds,
 			});
-		} else if (scope === 'process') {
+		} else if (scope === 'instance') {
 			routed.timer = this.createTimer(routed);
-			this.logger.debug('System task will run on a per-process timer', {
+			this.logger.debug('System task will run on a per-instance timer', {
 				name: task.name,
 				schedule: routed.schedule,
 			});
 			emitSystemTaskMetric(this.eventService, 'system-task-routed', {
 				name: task.name,
-				mode: 'per_process',
+				mode: 'per_instance',
 				intervalSeconds,
 			});
 
-			if (this.processTimersStarted) {
+			if (this.instanceTimersStarted) {
 				routed.timer.start(new Date());
 			}
 		} else {
@@ -458,9 +458,9 @@ export class SystemTaskRunner {
 			return;
 		}
 
-		// A process-scoped run outlives a stepdown, so only shutdown aborts it.
+		// An instance-scoped run outlives a stepdown, so only shutdown aborts it.
 		const { signal } =
-			routed.scope === 'process' ? this.shutdownController : this.inMemoryRunsController;
+			routed.scope === 'instance' ? this.shutdownController : this.inMemoryRunsController;
 		if (signal.aborted) {
 			this.emitSkipped(task, 'aborted');
 			return;
@@ -481,7 +481,7 @@ export class SystemTaskRunner {
 	private scheduleRetry(routed: RoutedTask): void {
 		const { retryDelaySeconds, effects } = routed.task;
 		const timersRunning =
-			routed.scope === 'process' ? this.processTimersStarted : this.timersStarted;
+			routed.scope === 'instance' ? this.instanceTimersStarted : this.timersStarted;
 		if (retryDelaySeconds === undefined || effects === 'non-idempotent' || !timersRunning) {
 			return;
 		}
@@ -520,5 +520,5 @@ export class SystemTaskRunner {
 
 /** The metrics mode of a task that runs from a timer, by the timer's scope. */
 function timerMode(routed: Pick<RoutedTask, 'scope'>): SystemTaskMode {
-	return routed.scope === 'process' ? 'per_process' : 'in_memory';
+	return routed.scope === 'instance' ? 'per_instance' : 'in_memory';
 }

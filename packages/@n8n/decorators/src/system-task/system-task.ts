@@ -11,8 +11,8 @@ import { UnexpectedError } from 'n8n-workflow';
 /** Whether a run is safe to repeat. */
 export type SystemTaskEffects = 'idempotent' | 'non-idempotent';
 
-/** How many processes run one occurrence of a task. */
-export type SystemTaskScope = 'cluster' | 'process';
+/** How many instances run one occurrence of a task. */
+export type SystemTaskScope = 'cluster' | 'instance';
 
 /** A system task always has a next run, so a one-off schedule is not allowed. */
 export type SystemTaskSchedule = Exclude<ScheduleDefinition, OneOffDefinition>;
@@ -34,14 +34,14 @@ export interface SystemTask {
 	readonly effects: SystemTaskEffects;
 
 	/**
-	 * How many processes run one occurrence. Defaults to `cluster`: one run for
+	 * How many instances run one occurrence. Defaults to `cluster`: one run for
 	 * the whole cluster, coordinated by leadership or by the durable scheduler.
-	 * `process` means every eligible process runs its own occurrence, for work
-	 * that reads state local to the process and that no other process could do.
+	 * `instance` means every eligible instance runs its own occurrence, for work
+	 * that reads state local to the instance and that no other instance could do.
 	 */
 	readonly scope?: SystemTaskScope;
 
-	/** Which kinds of process run the task. Defaults to `['main']`. */
+	/** Which kinds of instance run the task. Defaults to `['main']`. */
 	readonly instanceTypes?: readonly InstanceType[];
 
 	/**
@@ -153,7 +153,7 @@ export function resolveSystemTaskRunOptions(task: SystemTask): SystemTaskRunOpti
 	return options;
 }
 
-/** Where a task's occurrences run: how many copies, and on which kinds of process. */
+/** Where a task's occurrences run: how many copies, and on which kinds of instance. */
 export interface SystemTaskPlacement {
 	scope: SystemTaskScope;
 	instanceTypes: readonly InstanceType[];
@@ -164,21 +164,21 @@ const DEFAULT_SYSTEM_TASK_INSTANCE_TYPES: readonly InstanceType[] = ['main'];
 /**
  * Resolves where a task runs, and rejects a placement the runner cannot honor.
  *
- * @throws {UnexpectedError} When a process-scoped task is durable or asks to run
+ * @throws {UnexpectedError} When an instance-scoped task is durable or asks to run
  * on leader takeover, or when it declares no instance type at all.
  */
 export function resolveSystemTaskPlacement(task: SystemTask): SystemTaskPlacement {
 	const scope = task.scope ?? 'cluster';
 	const instanceTypes = task.instanceTypes ?? DEFAULT_SYSTEM_TASK_INSTANCE_TYPES;
 
-	if (scope === 'process' && task.durable) {
-		throw new UnexpectedError('A process-scoped system task cannot be durable', {
+	if (scope === 'instance' && task.durable) {
+		throw new UnexpectedError('An instance-scoped system task cannot be durable', {
 			extra: { name: task.name },
 		});
 	}
 
-	if (scope === 'process' && task.runOnTakeover) {
-		throw new UnexpectedError('A process-scoped system task cannot run on leader takeover', {
+	if (scope === 'instance' && task.runOnTakeover) {
+		throw new UnexpectedError('An instance-scoped system task cannot run on leader takeover', {
 			extra: { name: task.name },
 		});
 	}

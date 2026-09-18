@@ -8,9 +8,9 @@
 
 /**
  * Where a system task runs: an in-memory timer on the leader, the durable
- * scheduler, or a per-process timer in every eligible process.
+ * scheduler, or a per-instance timer in every eligible instance.
  */
-export type SystemTaskMode = 'in_memory' | 'durable' | 'per_process';
+export type SystemTaskMode = 'in_memory' | 'durable' | 'per_instance';
 
 /**
  * How a run settled. A rejection after the run's abort signal fired is the task
