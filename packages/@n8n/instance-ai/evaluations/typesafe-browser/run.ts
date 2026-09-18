@@ -11,6 +11,7 @@
  */
 
 import {
+	actionCandidates,
 	buildRequest,
 	createSystemOneFn,
 	estimateTokens,
@@ -22,22 +23,29 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { z } from 'zod';
 
-import { gradeCase, summarize, type Summary } from './grade';
+import { gradeCase, summarize } from './grade';
 
 const DEFAULT_CASES = join(__dirname, 'fixtures/cases.json');
 const OUTPUT_PATH = '.eval-output/typesafe-browser-results.json';
 const API_KEY_ENV = 'N8N_INSTANCE_AI_TYPESAFE_API_KEY';
 /** Requests are independent; a few at a time keeps the run quick. */
 const CONCURRENCY = 4;
-const THRESHOLDS = [0, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95];
 
 const caseSchema = z.object({
 	id: z.string(),
 	task: z.object({
 		goal: z.string(),
-		step: z.string(),
 		knownValues: z.record(z.string(), z.string()).optional(),
-		recentActions: z.array(z.string()).optional(),
+		recentActions: z
+			.array(
+				z.object({
+					action: z.string(),
+					target: z.string().optional(),
+					text: z.string().optional(),
+					changedPage: z.boolean(),
+				}),
+			)
+			.optional(),
 		page: z.object({ url: z.string(), title: z.string() }),
 	}),
 	snapshot: z.string(),
@@ -65,7 +73,6 @@ function toTaskBrief(benchmarkCase: BenchmarkCase): TaskBrief {
 	const { task } = benchmarkCase;
 	return {
 		goal: task.goal,
-		step: task.step,
 		...(task.knownValues ? { knownValues: task.knownValues } : {}),
 		...(task.recentActions ? { recentActions: task.recentActions } : {}),
 		url: task.page.url,
@@ -92,7 +99,7 @@ async function runAll(
 			const benchmarkCase = cases[next++];
 			try {
 				const brief = toTaskBrief(benchmarkCase);
-				const elements = parseSnapshot(brief.snapshot);
+				const { elements } = actionCandidates(parseSnapshot(brief.snapshot));
 				const { state, questions } = buildRequest(brief, elements);
 
 				const startedAt = Date.now();
@@ -128,10 +135,6 @@ function median(values: number[]): number {
 	return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
 }
 
-function gradeAt(runs: CaseRun[], threshold: number) {
-	return runs.map((run) => gradeCase(run.id, run.expected, run.answers, threshold));
-}
-
 async function main(): Promise<void> {
 	const casesPath = resolve(process.argv[2] ?? DEFAULT_CASES);
 	const systemOne = createSystemOneFn(process.env[API_KEY_ENV] ?? '', {
@@ -156,15 +159,11 @@ async function main(): Promise<void> {
 		return;
 	}
 
-	// `decide` is pure, so every threshold is swept over the answers already
-	// fetched — one API call per case, not one per threshold.
-	const byThreshold = new Map<number, Summary>(
-		THRESHOLDS.map((threshold) => [threshold, summarize(gradeAt(runs, threshold))]),
-	);
-	const atDefault = gradeAt(runs, 0.7);
+	const allGraded = runs.map((run) => gradeCase(run.id, run.expected, run.answers));
+	const base = summarize(allGraded);
 
-	console.log('Per case (at the 0.7 production default):');
-	for (const graded of atDefault) {
+	console.log('Per case:');
+	for (const graded of allGraded) {
 		const run = runs.find((r) => r.id === graded.id);
 		const want = graded.expected.tool + (graded.expected.ref ? ` ${graded.expected.ref}` : '');
 		const got = graded.routerChoice + (graded.refChoice ? ` ${graded.refChoice}` : '');
@@ -190,9 +189,6 @@ async function main(): Promise<void> {
 		for (const failure of failures) console.log(`  ${failure.id}: ${failure.error}`);
 	}
 
-	const base = byThreshold.get(0.7);
-	if (!base) throw new Error('Missing summary for the 0.7 threshold');
-
 	console.log(`\nScored            ${base.cases}/${cases.length} case(s)`);
 	console.log(`Router accuracy   ${percent(base.routerAccuracy)}`);
 	console.log(`Ref accuracy      ${percent(base.refAccuracy)} (over ${base.refsJudged} judged)`);
@@ -202,15 +198,20 @@ async function main(): Promise<void> {
 	console.log(`Largest state est ${Math.max(...runs.map((r) => r.stateTokensEst))} tok`);
 	console.log(`Hand-back reasons ${JSON.stringify(base.handbackReasons)}`);
 
-	console.log('\nWhat the loop would have executed, by confidence threshold:');
-	console.log('  conf>=   executed  wrong  coverage  wrong-rate');
-	for (const threshold of THRESHOLDS) {
-		const summary = byThreshold.get(threshold);
-		if (!summary) continue;
+	// There is no confidence gate any more, so the question is no longer "which
+	// threshold" but "would any threshold have separated right from wrong". If
+	// the two columns overlap, a gate cannot help and only costs coverage.
+	console.log('\nConfidence of executed actions:');
+	console.log('  bucket      correct  wrong');
+	for (const low of [0, 0.2, 0.4, 0.6, 0.8]) {
+		const inBucket = allGraded.filter(
+			(one) => one.autoExecuted && one.confidence >= low && one.confidence < low + 0.2,
+		);
+		if (inBucket.length === 0) continue;
+		const correct = inBucket.filter((one) => one.autoExecutedCorrectly).length;
 		console.log(
-			`  ${threshold.toFixed(2)}     ${String(summary.executed).padStart(8)}  ` +
-				`${String(summary.wrong).padStart(5)}  ${percent(summary.coverage).padStart(8)}  ` +
-				`${percent(summary.wrongRate).padStart(10)}`,
+			`  ${low.toFixed(1)}–${(low + 0.2).toFixed(1)}     ${String(correct).padStart(8)}  ` +
+				`${String(inBucket.length - correct).padStart(5)}`,
 		);
 	}
 
@@ -218,11 +219,7 @@ async function main(): Promise<void> {
 	await mkdir(dirname(outputPath), { recursive: true });
 	await writeFile(
 		outputPath,
-		JSON.stringify(
-			{ summaries: Object.fromEntries(byThreshold), failures, runs, graded: atDefault },
-			null,
-			2,
-		),
+		JSON.stringify({ summary: base, failures, runs, graded: allGraded }, null, 2),
 		'utf-8',
 	);
 	console.log(`\nFull results written to ${outputPath}`);

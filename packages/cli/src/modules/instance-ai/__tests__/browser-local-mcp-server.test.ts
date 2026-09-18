@@ -32,6 +32,14 @@ function makeServer(tool: ToolDefinition) {
 	return new BrowserLocalMcpServer(toolkit, mock<ToolContext>(), mock<Logger>());
 }
 
+/** Same server, plus the context the gate writes its capabilities into. */
+function makeServerWithContext(tool: ToolDefinition) {
+	const toolkit = { tools: [tool], connection: {} } as unknown as BrowserToolkit;
+	const toolContext = mock<ToolContext>();
+	const server = new BrowserLocalMcpServer(toolkit, toolContext, mock<Logger>());
+	return { server, toolContext };
+}
+
 function gate(
 	tracker: DomainAccessTracker,
 	permissionMode: BrowserDomainGate['permissionMode'] = 'require_approval',
@@ -53,6 +61,75 @@ describe('BrowserLocalMcpServer domain gating', () => {
 	beforeEach(() => {
 		tracker = mock<DomainAccessTracker>();
 		tracker.isHostAllowed.mockReturnValue(false);
+	});
+
+	describe('capabilities handed to browser_act', () => {
+		// `browser_act` drives the adapter directly, so its actions never reach
+		// callTool. It gets the gate's two decisions injected instead.
+		it('allows any host under always_allow, without asking the tracker', () => {
+			const { server, toolContext } = makeServerWithContext(makeTool());
+
+			server.setDomainGate(gate(tracker, 'always_allow'));
+
+			expect(toolContext.isHostAllowed?.('app.slack.com')).toBe(true);
+			expect(tracker.isHostAllowed).not.toHaveBeenCalled();
+		});
+
+		it('allows nothing under blocked', () => {
+			const { server, toolContext } = makeServerWithContext(makeTool());
+
+			server.setDomainGate(gate(tracker, 'blocked'));
+
+			expect(toolContext.isHostAllowed?.('app.slack.com')).toBe(false);
+		});
+
+		it('defers to the tracker when approval is required', () => {
+			const { server, toolContext } = makeServerWithContext(makeTool());
+			tracker.isHostAllowed.mockReturnValue(true);
+
+			server.setDomainGate(gate(tracker));
+
+			expect(toolContext.isHostAllowed?.('app.slack.com')).toBe(true);
+			expect(tracker.isHostAllowed).toHaveBeenCalledWith('app.slack.com', RUN_ID);
+		});
+
+		it('asks for approval with the same payload the per-call gate produces', () => {
+			const { server, toolContext } = makeServerWithContext(makeTool());
+
+			server.setDomainGate(gate(tracker));
+			const result = toolContext.requestHostApproval?.('app.slack.com');
+
+			const text = result?.content?.[0]?.type === 'text' ? result.content[0].text : '';
+			expect(text).toContain(GATEWAY_CONFIRMATION_REQUIRED_PREFIX);
+			const payload: unknown = JSON.parse(text.slice(GATEWAY_CONFIRMATION_REQUIRED_PREFIX.length));
+			expect(payload).toMatchObject({
+				toolGroup: 'browser',
+				resource: 'app.slack.com',
+				options: ['denyOnce', 'allowOnce', 'allowForSession'],
+			});
+			expect(result?.isError).toBe(true);
+		});
+
+		it('refuses to ask under blocked', () => {
+			const { server, toolContext } = makeServerWithContext(makeTool());
+
+			server.setDomainGate(gate(tracker, 'blocked'));
+			const result = toolContext.requestHostApproval?.('app.slack.com');
+
+			const text = result?.content?.[0]?.type === 'text' ? result.content[0].text : '';
+			expect(text).not.toContain(GATEWAY_CONFIRMATION_REQUIRED_PREFIX);
+			expect(text).toContain('blocked by admin');
+		});
+
+		it('clears both when the gate is removed', () => {
+			const { server, toolContext } = makeServerWithContext(makeTool());
+			server.setDomainGate(gate(tracker));
+
+			server.setDomainGate(undefined);
+
+			expect(toolContext.isHostAllowed).toBeUndefined();
+			expect(toolContext.requestHostApproval).toBeUndefined();
+		});
 	});
 
 	describe('first call', () => {

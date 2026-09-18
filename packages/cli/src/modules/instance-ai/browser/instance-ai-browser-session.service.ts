@@ -7,6 +7,7 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { createFieldTextFn } from '@n8n/instance-ai';
 import type { BrowserExtensionTraceContext } from '@n8n/instance-ai';
 import type {
 	BrowserConnection,
@@ -165,9 +166,14 @@ export class InstanceAiBrowserSessionService {
 	}
 
 	private async createSession(userId: string): Promise<BrowserSession> {
-		const { CDPRelayServer, createBrowserTools, createSystemOneFn } = await import(
+		const { CDPRelayServer, configureLogger, createBrowserTools, createSystemOneFn } = await import(
 			'@n8n/mcp-browser'
 		);
+
+		// `@n8n/mcp-browser` keeps its own logger, defaulting to `info`. Without
+		// this it never sees `N8N_LOG_LEVEL`, so its debug output is unreachable
+		// from a normal n8n deployment. The level names are the same set.
+		configureLogger({ level: this.globalConfig.logging.level });
 
 		const sessionId = nanoid();
 		const cdpToken = `cdp_${nanoid(32)}`;
@@ -205,7 +211,9 @@ export class InstanceAiBrowserSessionService {
 			secretsBuffer: createInMemorySecretsBuffer(),
 			createCredential: async (payload: CreateCredentialPayload) =>
 				await this.createCredential(userId, payload),
-			...(systemOne ? { systemOne } : {}),
+			// Only useful alongside the fast model: it exists to keep `browser_act`
+			// going through a form rather than handing back at every input.
+			...(systemOne ? { systemOne, generateFieldText: createFieldTextFn() } : {}),
 		};
 
 		const session: BrowserSession = {

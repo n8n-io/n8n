@@ -3,7 +3,7 @@ import { z } from 'zod';
 
 import type { BrowserConnection as BrowserConnectionType } from './connection';
 import type { ConnectionLostReason } from './errors';
-import type { SystemOneFn } from './typesafe/types';
+import type { FieldTextFn, SystemOneFn } from './typesafe/types';
 
 // ---------------------------------------------------------------------------
 // Browser names
@@ -103,8 +103,13 @@ export interface Adapter {
 	// Interaction
 	click(pageId: string, target: ElementTarget, options?: ClickOptions): Promise<void>;
 	type(pageId: string, target: ElementTarget, text: string, options?: TypeOptions): Promise<void>;
-	select(pageId: string, target: ElementTarget, values: string[]): Promise<string[]>;
-	hover(pageId: string, target: ElementTarget): Promise<void>;
+	select(
+		pageId: string,
+		target: ElementTarget,
+		values: string[],
+		options?: { timeoutMs?: number },
+	): Promise<string[]>;
+	hover(pageId: string, target: ElementTarget, options?: { timeoutMs?: number }): Promise<void>;
 	press(pageId: string, keys: string): Promise<void>;
 	drag(pageId: string, from: ElementTarget, to: ElementTarget): Promise<void>;
 	scroll(pageId: string, target?: ElementTarget, options?: ScrollOptions): Promise<void>;
@@ -242,6 +247,13 @@ export interface ClickOptions {
 	button?: 'left' | 'right' | 'middle';
 	clickCount?: number;
 	modifiers?: string[];
+	/**
+	 * How long the driver may keep retrying before giving up. Its own default is
+	 * 30s, which a caller running several actions inside one budget cannot
+	 * afford: one control covered by an overlay would spend the whole budget
+	 * retrying.
+	 */
+	timeoutMs?: number;
 }
 
 export interface TypeOptions {
@@ -276,7 +288,7 @@ export interface WaitOptions {
 
 export type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 
-export type { SystemOneFn } from './typesafe/types';
+export type { FieldTextFn, SystemOneFn } from './typesafe/types';
 
 export interface SecretsBuffer {
 	capture(credentialsKey: string, field: string, value: string): void;
@@ -303,11 +315,25 @@ export interface ToolContext {
 	 */
 	systemOne?: SystemOneFn;
 	/**
-	 * Whether a host is already approved for this session. `browser_act` refuses
-	 * to act on a host this rejects, which keeps the loop from having to suspend
-	 * for a confirmation mid-run.
+	 * Writes values for text fields so `browser_act` can fill a form instead of
+	 * handing back at every input. Absent leaves typing to the caller.
+	 */
+	generateFieldText?: FieldTextFn;
+	/**
+	 * Whether a host is already approved for this session, mirroring whatever the
+	 * host's own gate would decide — including an admin mode that allows or
+	 * blocks everything.
 	 */
 	isHostAllowed?: (host: string) => boolean;
+	/**
+	 * Asks the user to approve a host the loop reached mid-run, by returning the
+	 * result that suspends the run and resumes the tool with their decision.
+	 *
+	 * A click can navigate somewhere new, and the entry gate only saw the host
+	 * the page was on when the call started. Without this the loop can only
+	 * stop, which strands a task one approval short of finishing.
+	 */
+	requestHostApproval?: (host: string) => CallToolResult;
 }
 
 export interface ToolDefinition<TSchema extends z.ZodType = z.ZodType> {

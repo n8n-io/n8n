@@ -15,7 +15,7 @@ import {
 	decide,
 	GUARD_QUESTIONS,
 	GUARD_THRESHOLD,
-	TARGET_REF_QUESTION,
+	pickRef,
 	type Answer,
 	type Decision,
 } from '@n8n/mcp-browser';
@@ -54,15 +54,11 @@ export function gradeCase(
 	id: string,
 	expected: ExpectedAction,
 	answers: Record<string, Answer>,
-	confidenceThreshold?: number,
 ): GradedCase {
 	const router = answers.action;
 	if (!isChoice(router)) throw new Error(`Case ${id}: missing or non-choice "action" answer`);
 
-	const refAnswer = ACTIONS_TAKING_REF.has(router.choice)
-		? answers[TARGET_REF_QUESTION]
-		: undefined;
-	const ref = isChoice(refAnswer) ? refAnswer : undefined;
+	const ref = ACTIONS_TAKING_REF.has(router.choice) ? pickRef(answers) : undefined;
 
 	const routerCorrect = router.choice === expected.tool;
 	const refCorrect = ref && expected.ref !== undefined ? ref.choice === expected.ref : undefined;
@@ -73,7 +69,7 @@ export function gradeCase(
 		return answer?.type === 'noul' && answer.noul >= GUARD_THRESHOLD;
 	});
 
-	const decision = decide(answers, confidenceThreshold);
+	const decision = decide(answers);
 	const autoExecuted = decision.kind === 'execute';
 	const executedMatches =
 		decision.kind === 'execute' &&

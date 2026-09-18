@@ -56,6 +56,30 @@ const KEEPALIVE_INTERVAL_MS = 15_000;
 // ---------------------------------------------------------------------------
 
 /** URL prefixes that indicate restricted child targets (extensions, internal pages). */
+/**
+ * Drops `waitForDebuggerOnStart` from auto-attach parameters.
+ *
+ * Playwright always asks for `{ autoAttach: true, waitForDebuggerOnStart: true,
+ * flatten: true }`, which makes Chrome pause every auto-attached child target —
+ * workers included — until something sends `Runtime.runIfWaitingForDebugger` to
+ * that child's session. Nothing can: `chrome.debugger.Debuggee` addresses a
+ * `tabId`, `extensionId` or `targetId` and has no session field, and the relay
+ * protocol carries only a tab id. So a paused worker stays paused for the life
+ * of the attachment, its requests never run, and a page that fetches through a
+ * worker spins forever — until the debugger detaches and Chrome releases it.
+ *
+ * Declining the pause avoids the deadlock instead of trying to undo it. The
+ * cost is that a child target may run a little script before Playwright
+ * attaches; for workers that costs nothing, because the relay filters them out
+ * before Playwright ever sees them.
+ */
+function withoutDebuggerPause(params: unknown): object | undefined {
+	if (typeof params !== 'object' || params === null) return undefined;
+	const record = params as Record<string, unknown>;
+	if (record.waitForDebuggerOnStart !== true) return record;
+	return { ...record, waitForDebuggerOnStart: false };
+}
+
 function isRestrictedUrl(url: string | undefined): boolean {
 	if (!url) return false;
 	if (url.startsWith('chrome-extension://')) return true;
@@ -538,18 +562,24 @@ export class RelayConnection {
 	// =========================================================================
 
 	private async handleForwardCDPCommand(params: Record<string, unknown>): Promise<unknown> {
-		const { method, params: cmdParams, id: rawId } = params;
+		const { method, id: rawId } = params;
+		// Applies to both the root call and a tab-scoped one; either would
+		// otherwise reinstate the pause for the tabs it touches.
+		const cmdParams =
+			method === 'Target.setAutoAttach'
+				? withoutDebuggerPause(params.params)
+				: (params.params as object | undefined);
 
 		// Root-level Target.setAutoAttach: cache params and apply to ALL attached tabs.
 		// This ensures Chrome emits Target.attachedToTarget for cross-origin iframes.
 		if (method === 'Target.setAutoAttach' && !rawId) {
-			this.autoAttachParams = (cmdParams as object) ?? null;
+			this.autoAttachParams = cmdParams ?? null;
 			const promises: Array<Promise<void>> = [];
 			for (const [, entry] of this.tabs) {
 				if (!entry.attached) continue;
 				promises.push(
 					chrome.debugger
-						.sendCommand({ tabId: entry.chromeTabId }, 'Target.setAutoAttach', cmdParams as object)
+						.sendCommand({ tabId: entry.chromeTabId }, 'Target.setAutoAttach', cmdParams ?? {})
 						.then(() => {})
 						.catch((e) => log.debug('setAutoAttach failed:', e)),
 				);
@@ -597,12 +627,7 @@ export class RelayConnection {
 
 			const result = await this.explainDenials(
 				entry.chromeTabId,
-				async () =>
-					await chrome.debugger.sendCommand(
-						debuggee,
-						method as string,
-						cmdParams as object | undefined,
-					),
+				async () => await chrome.debugger.sendCommand(debuggee, method as string, cmdParams),
 			);
 			await contextReady;
 			return result;
@@ -612,7 +637,7 @@ export class RelayConnection {
 			entry.chromeTabId,
 			async () =>
 				await Promise.race([
-					chrome.debugger.sendCommand(debuggee, method as string, cmdParams as object | undefined),
+					chrome.debugger.sendCommand(debuggee, method as string, cmdParams),
 					new Promise<never>((_resolve, reject) => {
 						setTimeout(() => {
 							reject(

@@ -39,6 +39,7 @@ vi.mock('@n8n/mcp-browser', () => {
 		// Mirrors the real factory: no API key means no fast-model function, which
 		// is what leaves `browser_act` disabled.
 		createSystemOneFn: vi.fn((apiKey: string) => (apiKey ? vi.fn() : undefined)),
+		configureLogger: vi.fn(),
 		buildExtensionConnectUrl: (endpoint: string) =>
 			`chrome-extension://ext-id/connect.html?mcpRelayUrl=${encodeURIComponent(endpoint)}`,
 	};
