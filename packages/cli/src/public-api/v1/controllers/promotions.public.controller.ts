@@ -1,4 +1,5 @@
 import {
+	ApplyPackageDto,
 	ApplyPackageResultDto,
 	ContinueApplyPackageDto,
 	CreatePromotionConnectionDto,
@@ -532,7 +533,7 @@ export class PromotionsPublicController {
 	@GlobalScope('gitConnection:pull')
 	@ApiSummary('Apply a package to the instance')
 	@ApiDescription(
-		'Checks the full package at the configured branch tip. Returns status `blocked` before import writes if bindings need setup. Retain configId and git for Continue. Status `applied` includes counts and warnings. Inspect status before reading counts. Existing target variable values, including empty strings, are preserved. Requires a cloned Apply direction on an instance connection. The API key needs the gitConnection:pull scope. The importer checks user write permissions; granular API-key write scopes are not passed to it.',
+		'Checks the full package at the configured branch tip. Optionally send expectedSource with the configId, branchName, and full commitSha from the reviewed change preview; status `source-changed` means the branch moved since that review and nothing was imported. Returns status `blocked` before import writes if bindings need setup. Retain configId and git for Continue. Status `applied` includes counts and warnings. Inspect status before reading counts. Existing target variable values, including empty strings, are preserved. Requires a cloned Apply direction on an instance connection. The API key needs the gitConnection:pull scope. The importer checks user write permissions; granular API-key write scopes are not passed to it.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, ApplyPackageResultDto)
@@ -546,8 +547,13 @@ export class PromotionsPublicController {
 		_res: Response,
 		@Param('promotionConnectionId', promotionConnectionIdParamSchema)
 		promotionConnectionId: string,
+		@Body input: ApplyPackageDto,
 	): Promise<ApplyPackageResultDto> {
-		return await (await this.promotionsService()).apply(promotionConnectionId, req.user);
+		return await (await this.promotionsService()).apply(
+			promotionConnectionId,
+			req.user,
+			input.expectedSource,
+		);
 	}
 
 	@Post('/connections/:promotionConnectionId/apply/continue')
