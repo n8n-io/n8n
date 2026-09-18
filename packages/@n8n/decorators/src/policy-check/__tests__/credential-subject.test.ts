@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 
+import type { PolicedCredential } from '../policy-check';
 import { credentialContentSubject, credentialSubject } from '../policy-cleared';
 
 const hashOf = (type: string) => createHash('sha256').update(type).digest('hex');
@@ -38,7 +39,9 @@ describe('credentialSubject', () => {
 
 describe('credentialContentSubject', () => {
 	it('ignores a supplied id and binds to the type', () => {
-		expect(credentialContentSubject({ id: 'cred-9', type: 'slackApi' })).toEqual({
+		const withId: PolicedCredential = { id: 'cred-9', type: 'slackApi' };
+
+		expect(credentialContentSubject(withId)).toEqual({
 			type: 'credential',
 			id: hashOf('slackApi'),
 		});
