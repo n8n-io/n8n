@@ -7,6 +7,8 @@ import {
 	N8nIconButton,
 	N8nText,
 	N8nScrollArea,
+	N8nTooltip,
+	TOOLTIP_DELAY_MS,
 } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -167,6 +169,11 @@ function openAllThreads() {
 	void router.push({ name: INSTANCE_AI_THREADS_VIEW });
 }
 
+function openNewThread() {
+	emit('close');
+	void router.push({ name: INSTANCE_AI_VIEW });
+}
+
 function setRenameInput(element: unknown) {
 	renameInput.value = element instanceof HTMLInputElement ? element : null;
 }
@@ -238,13 +245,37 @@ function handleThreadAction(action: string, threadId: string) {
 				<N8nButton
 					v-if="navigate"
 					variant="ghost"
-					size="xsmall"
+					size="small"
 					:class="$style.viewAll"
 					data-test-id="instance-ai-view-all-threads"
 					@click="openAllThreads"
 				>
 					{{ i18n.baseText('instanceAi.threads.viewAll') }}
 				</N8nButton>
+				<N8nTooltip
+					v-if="navigate"
+					:content="i18n.baseText('instanceAi.thread.new')"
+					placement="bottom"
+					:show-after="TOOLTIP_DELAY_MS"
+				>
+					<N8nButton
+						variant="ghost"
+						size="small"
+						icon-only
+						:aria-label="i18n.baseText('instanceAi.thread.new')"
+						data-test-id="instance-ai-new-thread"
+						@click="openNewThread"
+					>
+						<template #icon>
+							<N8nIcon
+								icon="message-circle-plus"
+								size="large"
+								color="--icon-color--strong"
+								:stroke-width="1.5"
+							/>
+						</template>
+					</N8nButton>
+				</N8nTooltip>
 			</div>
 			<form :class="$style.search" role="search" @submit.prevent>
 				<div :class="$style.searchControl">
@@ -273,7 +304,11 @@ function handleThreadAction(action: string, threadId: string) {
 
 			<ComboboxContent force-mount as-child>
 				<div ref="listRef" :class="$style.comboboxContent">
-					<N8nScrollArea :class="$style.threadList" :max-height="props.maxHeight" type="auto">
+					<N8nScrollArea
+						:class="[$style.threadList, { [$style.hasMore]: history.hasMore }]"
+						:max-height="props.maxHeight"
+						type="auto"
+					>
 						<ComboboxGroup v-for="group in groupedThreads" :key="group.label" :class="$style.group">
 							<ComboboxLabel :class="$style.groupLabel">
 								<N8nText tag="span" size="small" color="text-light">
@@ -374,7 +409,7 @@ function handleThreadAction(action: string, threadId: string) {
 								}}
 							</N8nText>
 						</div>
-						<div :class="$style.fadeSpacer" />
+						<div v-if="history.hasMore" :class="$style.fadeSpacer" />
 					</N8nScrollArea>
 				</div>
 			</ComboboxContent>
@@ -398,7 +433,7 @@ function handleThreadAction(action: string, threadId: string) {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--3xs);
-	padding: var(--spacing--2xs) var(--spacing--3xs) var(--spacing--2xs) var(--spacing--sm);
+	padding: var(--spacing--xs) var(--spacing--sm);
 	min-height: var(--height--xl);
 }
 
@@ -414,11 +449,12 @@ function handleThreadAction(action: string, threadId: string) {
 .viewAll {
 	--button--color: var(--text-color--subtle);
 
+	font-size: var(--font-size--sm);
 	font-weight: var(--font-weight--regular);
 }
 
 .search {
-	padding: 0 var(--spacing--sm) var(--spacing--2xs);
+	padding: 0 var(--spacing--sm);
 }
 
 .searchControl {
@@ -490,11 +526,10 @@ function handleThreadAction(action: string, threadId: string) {
 .threadList {
 	flex: 1;
 	min-height: 0;
-	padding: var(--spacing--2xs) var(--spacing--2xs) 0;
+	padding: var(--spacing--2xs);
 
-	// Always on. The spacer at the end of the list is as tall as the fade, so once the list
-	// is scrolled to its end the fade covers only empty space and no row is hidden.
-	&::after {
+	// The spacer is as tall as the fade, so the fade covers no row when the next page loads.
+	&.hasMore::after {
 		content: '';
 		position: absolute;
 		inset: auto 0 0;
