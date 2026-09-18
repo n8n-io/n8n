@@ -1,3 +1,4 @@
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { sleep } from '@n8n/utils/sleep';
 import * as aiModule from 'ai';
 import type { JSONSchema7 } from 'json-schema';
@@ -348,6 +349,343 @@ function makeInterruptibleTool(): BuiltTool {
 // ---------------------------------------------------------------------------
 // execution counters
 // ---------------------------------------------------------------------------
+
+describe('AgentRuntime — rejected attachments', () => {
+	const persistence = { threadId: 'attachment-thread', resourceId: 'user-1' };
+	const rejection = Object.assign(
+		new Error('Image dimensions exceed max allowed size: 8000 pixels'),
+		{
+			statusCode: 400,
+		},
+	);
+	const input: Message = {
+		id: 'rejected-input',
+		role: 'user',
+		content: [
+			{ type: 'text', text: 'Describe this image' },
+			{
+				type: 'file',
+				mediaType: 'image/png',
+				fileRef: { id: 'attachment-1', fileName: 'image.png' },
+			},
+		],
+	};
+
+	beforeEach(() => {
+		generateText.mockReset();
+		streamText.mockReset();
+	});
+
+	function buildRuntime(memory: InMemoryMemory, tools?: BuiltTool[]) {
+		return new AgentRuntime({
+			name: 'attachment-test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			memory,
+			fileStore: { load: vi.fn().mockResolvedValue(new Uint8Array([1, 2, 3])) },
+			tools,
+			checkpointStorage: 'memory',
+		});
+	}
+
+	function rejectModel(
+		error: Error = rejection,
+		precedingChunks: Array<Record<string, unknown>> = [],
+	) {
+		generateText.mockRejectedValueOnce(error);
+		streamText.mockReturnValueOnce({
+			...makeStreamSuccess(),
+			stream: makeChunkStream([...precedingChunks, { type: 'error', error }]),
+			finishReason: silentReject(error),
+		});
+	}
+
+	async function run(
+		runtime: AgentRuntime,
+		mode: 'generate' | 'stream',
+		messages: Message[] | string = [structuredClone(input)],
+		abortSignal?: AbortSignal,
+	) {
+		if (mode === 'generate') {
+			const result = await runtime.generate(messages, { persistence, abortSignal });
+			return result.error;
+		}
+		const result = await runtime.stream(messages, { persistence, abortSignal });
+		const chunks = await collectChunks(result.stream);
+		return chunks.find((chunk) => chunk.type === 'error');
+	}
+
+	it.each(['generate', 'stream'] as const)(
+		'%s removes rejected input and accepts the next message',
+		async (mode) => {
+			const memory = new InMemoryMemory();
+			await memory.saveThread({ id: persistence.threadId, resourceId: persistence.resourceId });
+			const history: AgentDbMessage = {
+				id: 'earlier-message',
+				createdAt: new Date('2026-01-01'),
+				role: 'user',
+				content: [{ type: 'text', text: 'Earlier message' }],
+			};
+			await memory.saveMessages({ ...persistence, messages: [history] });
+			await memory.saveMessages({
+				...persistence,
+				resourceId: 'user-2',
+				messages: [{ ...history, id: 'other-participant' }],
+			});
+			const remove = vi.spyOn(memory, 'deleteMessages');
+			const runtime = buildRuntime(memory);
+			rejectModel();
+
+			expect(await run(runtime, mode)).toBeDefined();
+			expect(remove).toHaveBeenCalledExactlyOnceWith(['rejected-input']);
+			expect((await memory.getMessages(persistence.threadId)).map((message) => message.id)).toEqual(
+				['earlier-message', 'other-participant'],
+			);
+			expect(runtime.getState().messageList.inputIds).toEqual([]);
+			expect(runtime.getState().messageList.messages).not.toEqual(
+				expect.arrayContaining([expect.objectContaining({ id: input.id })]),
+			);
+
+			generateText.mockResolvedValueOnce(makeGenerateSuccess());
+			streamText.mockReturnValueOnce(makeStreamSuccess());
+			expect(await run(buildRuntime(memory), mode, 'Continue')).toBeUndefined();
+			const model = mode === 'generate' ? generateText : streamText;
+			expect(model).toHaveBeenCalledTimes(2);
+			expect(model.mock.calls[1][0].messages).not.toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({
+						content: expect.arrayContaining([expect.objectContaining({ type: 'file' })]),
+					}),
+				]),
+			);
+		},
+	);
+
+	it.each(['generate', 'stream'] as const)(
+		'%s retains input for unrelated errors and text-only requests',
+		async (mode) => {
+			const memory = new InMemoryMemory();
+			const remove = vi.spyOn(memory, 'deleteMessages');
+			rejectModel(new Error('Request payload size exceeds the limit'));
+			await run(buildRuntime(memory), mode);
+			expect(remove).not.toHaveBeenCalled();
+			expect(await memory.getMessages(persistence.threadId)).toHaveLength(1);
+
+			rejectModel();
+			await run(buildRuntime(memory), mode, 'Continue');
+			expect(remove).not.toHaveBeenCalled();
+			expect(await memory.getMessages(persistence.threadId)).toHaveLength(2);
+		},
+	);
+
+	it.each(['generate', 'stream'] as const)(
+		'%s removes rejected input after a successful image request',
+		async (mode) => {
+			const memory = new InMemoryMemory();
+			const earlierInput = { ...structuredClone(input), id: 'earlier-image' };
+			earlierInput.content[0] = { type: 'text', text: 'Earlier image' };
+			earlierInput.content[1] = {
+				type: 'file',
+				mediaType: 'image/jpeg',
+				fileRef: { id: 'earlier-attachment', fileName: 'earlier.jpg' },
+			};
+			generateText.mockResolvedValueOnce(makeGenerateSuccess());
+			streamText.mockReturnValueOnce(makeStreamSuccess());
+			expect(await run(buildRuntime(memory), mode, [earlierInput])).toBeUndefined();
+			const history = structuredClone(await memory.getMessages(persistence.threadId));
+			const remove = vi.spyOn(memory, 'deleteMessages');
+			const runtime = buildRuntime(memory);
+			rejectModel();
+
+			expect(await run(runtime, mode)).toBeDefined();
+			expect(remove).toHaveBeenCalledExactlyOnceWith([input.id]);
+			expect(await memory.getMessages(persistence.threadId)).toEqual(history);
+			expect(runtime.getState().messageList.inputIds).toEqual([]);
+			expect(runtime.getState().messageList.messages).not.toEqual(
+				expect.arrayContaining([expect.objectContaining({ id: input.id })]),
+			);
+
+			generateText.mockResolvedValueOnce(makeGenerateSuccess());
+			streamText.mockReturnValueOnce(makeStreamSuccess());
+			expect(await run(buildRuntime(memory), mode, 'Continue')).toBeUndefined();
+			const model = mode === 'generate' ? generateText : streamText;
+			expect(model).toHaveBeenCalledTimes(3);
+			expect(model.mock.calls[2][0].messages).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({
+						role: 'user',
+						content: expect.arrayContaining([
+							{ type: 'text', text: 'Earlier image' },
+							expect.objectContaining({ type: 'file', mediaType: 'image/jpeg' }),
+						]),
+					}),
+				]),
+			);
+			expect(model.mock.calls[2][0].messages).not.toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({
+						content: expect.arrayContaining([
+							expect.objectContaining({ type: 'file', mediaType: 'image/png' }),
+						]),
+					}),
+				]),
+			);
+		},
+	);
+
+	it.each(['generate', 'stream'] as const)(
+		'%s removes only current input when the error refers to older history',
+		async (mode) => {
+			const memory = new InMemoryMemory();
+			await memory.saveThread({ id: persistence.threadId, resourceId: persistence.resourceId });
+			await memory.saveMessages({
+				...persistence,
+				messages: [
+					{ ...structuredClone(input), id: 'older-image', createdAt: new Date('2026-01-01') },
+				],
+			});
+			const remove = vi.spyOn(memory, 'deleteMessages');
+			rejectModel(new Error('messages.0.content.1: Image is too large'));
+			await run(buildRuntime(memory), mode);
+			expect(remove).toHaveBeenCalledExactlyOnceWith([input.id]);
+			expect(await memory.getMessages(persistence.threadId)).toEqual([
+				expect.objectContaining({ id: 'older-image' }),
+			]);
+		},
+	);
+
+	it.each([
+		{ type: 'text-delta', id: 'text-1', text: 'Started' },
+		{ type: 'reasoning-delta', id: 'reasoning-1', text: 'Thinking' },
+		{ type: 'tool-input-start', id: 'tool-1', toolName: 'search' },
+	])('preserves input after streamed $type activity', async (chunk) => {
+		const memory = new InMemoryMemory();
+		const remove = vi.spyOn(memory, 'deleteMessages');
+		rejectModel(rejection, [chunk]);
+		await run(buildRuntime(memory), 'stream');
+		expect(remove).not.toHaveBeenCalled();
+		expect(await memory.getMessages(persistence.threadId)).toHaveLength(1);
+	});
+
+	it.each(['generate', 'stream'] as const)(
+		'%s preserves the error when deletion fails',
+		async (mode) => {
+			const memory = new InMemoryMemory();
+			const cleanupError = new Error('Storage unavailable');
+			vi.spyOn(memory, 'deleteMessages').mockRejectedValueOnce(cleanupError);
+			const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+			rejectModel();
+			const runtime = buildRuntime(memory);
+			try {
+				const error = await run(runtime, mode);
+				expect(error).toBeDefined();
+				if (mode === 'generate') expect(error).toBe(rejection);
+				expect(warn).toHaveBeenCalledWith('Failed to remove rejected input', {
+					error: cleanupError,
+					threadId: persistence.threadId,
+				});
+				expect(runtime.getState().messageList.inputIds).toEqual([]);
+				expect(await memory.getMessages(persistence.threadId)).toHaveLength(1);
+			} finally {
+				warn.mockRestore();
+			}
+		},
+	);
+
+	it.each(['generate', 'stream'] as const)(
+		'%s does not restore rejected input if cancellation occurs during deletion',
+		async (mode) => {
+			const memory = new InMemoryMemory();
+			const controller = new AbortController();
+			const deleteMessages = memory.deleteMessages.bind(memory);
+			vi.spyOn(memory, 'deleteMessages').mockImplementation(async (ids) => {
+				controller.abort();
+				await deleteMessages(ids);
+			});
+			rejectModel();
+			await run(buildRuntime(memory), mode, [structuredClone(input)], controller.signal);
+			expect(await memory.getMessages(persistence.threadId)).toEqual([]);
+		},
+	);
+
+	it.each(['generate', 'stream'] as const)(
+		'%s waits for deletion before completing',
+		async (mode) => {
+			const memory = new InMemoryMemory();
+			const deletion = createDeferredPromise();
+			const deleteMessages = memory.deleteMessages.bind(memory);
+			const remove = vi.spyOn(memory, 'deleteMessages').mockImplementation(async (ids) => {
+				await deletion.promise;
+				await deleteMessages(ids);
+			});
+			rejectModel();
+			let completed = false;
+			const completion = run(buildRuntime(memory), mode).then((error) => {
+				completed = true;
+				return error;
+			});
+			await vi.waitFor(() => expect(remove).toHaveBeenCalledOnce());
+			expect(completed).toBe(false);
+			deletion.resolve();
+			expect(await completion).toBeDefined();
+			expect(await memory.getMessages(persistence.threadId)).toEqual([]);
+		},
+	);
+
+	it.each(['generate', 'stream'] as const)('%s preserves input after a tool call', async (mode) => {
+		const memory = new InMemoryMemory();
+		const remove = vi.spyOn(memory, 'deleteMessages');
+		const handler = vi.fn().mockResolvedValue('Done');
+		const tool: BuiltTool = {
+			name: 'search',
+			description: 'Search',
+			inputSchema: z.object({}),
+			handler,
+		};
+		const response = makeGenerateWithToolCalls([
+			{ toolCallId: 'search-1', toolName: 'search', args: {} },
+		]);
+		generateText.mockResolvedValueOnce(response);
+		streamText.mockReturnValueOnce({
+			...makeStreamSuccess(),
+			stream: makeChunkStream([{ type: 'tool-call', ...response.toolCalls[0] }]),
+			finishReason: Promise.resolve('tool-calls'),
+			response: Promise.resolve(response.response),
+			toolCalls: Promise.resolve(response.toolCalls),
+		});
+		rejectModel();
+		await run(buildRuntime(memory, [tool]), mode);
+		expect(handler).toHaveBeenCalledOnce();
+		expect(remove).not.toHaveBeenCalled();
+		expect(await memory.getMessages(persistence.threadId)).toEqual(
+			expect.arrayContaining([expect.objectContaining({ id: input.id })]),
+		);
+	});
+
+	it.each(['generate', 'stream'] as const)('%s leaves resumed input unchanged', async (mode) => {
+		const memory = new InMemoryMemory();
+		const remove = vi.spyOn(memory, 'deleteMessages');
+		const runtime = buildRuntime(memory, [makeInterruptibleTool()]);
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCalls([
+				{ toolCallId: 'approval-1', toolName: 'approve', args: { question: 'Continue?' } },
+			]),
+		);
+		const first = await runtime.generate([structuredClone(input)], { persistence });
+		const { runId, toolCallId } = first.pendingSuspend![0];
+		rejectModel();
+		if (mode === 'generate') {
+			await runtime.resume('generate', { approved: true }, { runId, toolCallId });
+		} else {
+			const resumed = await runtime.resume('stream', { approved: true }, { runId, toolCallId });
+			await collectChunks(resumed.stream);
+		}
+		expect(remove).not.toHaveBeenCalled();
+		expect(await memory.getMessages(persistence.threadId)).toEqual(
+			expect.arrayContaining([expect.objectContaining({ id: input.id })]),
+		);
+	});
+});
 
 describe('AgentRuntime — execution counters', () => {
 	beforeEach(() => {

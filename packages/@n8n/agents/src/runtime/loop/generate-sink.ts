@@ -41,6 +41,9 @@ export class GenerateSink implements RunOutputSink<GenerateResult> {
 			...(ctx.outputSpec ? { output: ctx.outputSpec } : {}),
 			...(ctx.maxOutputTokens !== undefined ? { maxOutputTokens: ctx.maxOutputTokens } : {}),
 			...ctx.aiSdkOptions,
+		}).catch(async (error: unknown) => {
+			await ctx.onInputRejected?.(error);
+			throw error;
 		});
 
 		const aiFinishReason = result.finishReason;

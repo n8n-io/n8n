@@ -60,6 +60,7 @@ import { createFilteredLogger } from '../logger';
 import { MemoryOrchestrator } from '../memory/memory-orchestrator';
 import type { ScopedMemoryTaskEvent } from '../memory/scoped-memory-task-runner';
 import { generateThreadTitle } from '../memory/title-generation';
+import { isAttachmentValidationError } from '../model/attachment-validation-error';
 import { AgentMessageList, type SerializedMessageList } from '../model/message-list';
 import { supportsSplitSystemMessages, type FetchFn } from '../model/model-factory';
 import { createModelTokenCounter } from '../model/model-token-counter';
@@ -171,6 +172,7 @@ type RuntimeExecutionOptions = RunOptions & ExecutionOptions & { iterationCount?
 /** Shared input for the private generate/stream loops. */
 interface LoopContext {
 	list: AgentMessageList;
+	isFreshRun?: boolean;
 	options?: RuntimeExecutionOptions;
 	abortScope: AgentAbortScope;
 	pendingResume?: PendingResume;
@@ -313,7 +315,7 @@ export class AgentRuntime {
 					const initializedList = await this.initRun(input, options);
 					list = initializedList;
 					const result = await this.runAgentLoop<GenerateResult>(
-						{ list: initializedList, options, abortScope },
+						{ list: initializedList, options, abortScope, isFreshRun: true },
 						sink,
 					);
 					return { result, list: initializedList };
@@ -805,6 +807,21 @@ export class AgentRuntime {
 		const maxIterations = options?.maxIterations ?? MAX_LOOP_ITERATIONS;
 		let iterationCount = options?.iterationCount ?? 0;
 		let reachedStopCondition = false;
+		const inputMessages = new Set(list.inputDelta());
+		const inputIds = new Set([...inputMessages].map((message) => message.id));
+		const canDiscardInput =
+			ctx.isFreshRun === true &&
+			[...inputMessages].some(
+				(message) =>
+					'role' in message &&
+					message.role === 'user' &&
+					Array.isArray(message.content) &&
+					message.content.some(
+						(part) =>
+							(part.type === 'file' || part.type === 'reasoning-file') && part.data !== undefined,
+					),
+			) &&
+			!list.messages().some((message) => !inputMessages.has(message) && inputIds.has(message.id));
 
 		const buildToolBatchContext = (toolMap: Map<string, BuiltTool>): ToolBatchContext => ({
 			toolMap,
@@ -939,8 +956,18 @@ export class AgentRuntime {
 				outputSpec: staticLoopContext.outputSpec,
 				maxOutputTokens: staticLoopContext.maxOutputTokens,
 				aiSdkOptions: this.buildAiSdkOptions(toolMap, options),
+				...(canDiscardInput && iterationCount === 0
+					? {
+							onInputRejected: async (error: unknown) => {
+								if (abortScope.isAborted || !isAttachmentValidationError(error)) return;
+								await this.memory.discardRejectedInput(list, options);
+								this.updateState({ messageList: list.serialize() });
+							},
+						}
+					: {}),
 			};
 			let turn = await sink.callModel(modelCallContext);
+			delete modelCallContext.onInputRejected;
 
 			// Some providers occasionally return a `stop` turn with no output at
 			// all mid-task, which would silently end the run with work half-done.
@@ -1086,6 +1113,7 @@ export class AgentRuntime {
 						options: ctx.options,
 						abortScope: ctx.abortScope,
 						pendingResume: ctx.pendingResume,
+						isFreshRun: ctx.list === undefined,
 					},
 					sink,
 				);

@@ -623,6 +623,37 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(thread.post).toHaveBeenCalledWith(GENERIC_ERROR_MESSAGE);
 		});
 
+		it.each([
+			'Image dimensions exceed max allowed size: 8000 pixels',
+			'Image is too small',
+			'Unsupported MIME type: image/svg+xml',
+			'Could not decode image',
+		])('explains attachment errors: %s', async (message) => {
+			const thread = await runMention(bufferedIntegration, [
+				{ type: 'error', error: new Error(message) },
+				finishChunk,
+			]);
+
+			expect(thread.post).toHaveBeenCalledOnce();
+			expect(thread.post).toHaveBeenCalledWith(
+				'⚠️ The model rejected an attachment. Resend your message without attachments, or try a different file.',
+			);
+		});
+
+		it.each([
+			'Network error: invalid image',
+			'Unknown error',
+			'Request payload size exceeds the limit',
+		])('keeps the generic message for unrelated errors: %s', async (message) => {
+			const thread = await runMention(bufferedIntegration, [
+				{ type: 'error', error: new Error(message) },
+				finishChunk,
+			]);
+
+			expect(thread.post).toHaveBeenCalledOnce();
+			expect(thread.post).toHaveBeenCalledWith(GENERIC_ERROR_MESSAGE);
+		});
+
 		it('names the misconfiguration when the run fails with a UserError', async () => {
 			const { bot, handlers } = makeBot();
 			const agentExecutor = {

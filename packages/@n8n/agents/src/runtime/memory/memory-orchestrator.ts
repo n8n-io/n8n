@@ -305,6 +305,23 @@ export class MemoryOrchestrator {
 		}
 	}
 
+	async discardRejectedInput(
+		list: AgentMessageList,
+		options: (RunOptions & ExecutionOptions) | undefined,
+	): Promise<void> {
+		const messageIds = list.inputDelta().map((message) => message.id);
+		list.removeInput();
+		if (!this.config.memory || !options?.persistence || messageIds.length === 0) return;
+		try {
+			await this.config.memory.deleteMessages(messageIds);
+		} catch (error) {
+			logger.warn('Failed to remove rejected input', {
+				error,
+				threadId: options.persistence.threadId,
+			});
+		}
+	}
+
 	/**
 	 * Eagerly persist just this turn's input messages, before the turn completes.
 	 * Skips the observation-log / episodic-memory jobs that `saveToMemory` schedules —

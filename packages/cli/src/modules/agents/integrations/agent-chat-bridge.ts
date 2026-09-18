@@ -1,4 +1,4 @@
-import type { AgentMessage, StreamChunk } from '@n8n/agents';
+import { isAttachmentValidationError, type AgentMessage, type StreamChunk } from '@n8n/agents';
 import {
 	MAX_AGENT_CHAT_ATTACHMENT_FILENAME_LENGTH,
 	MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES,
@@ -1041,9 +1041,11 @@ export class AgentChatBridge {
 			const text =
 				rateLimitMessage !== undefined
 					? `⚠️ ${rateLimitMessage}`
-					: error instanceof UserError
-						? `⚠️ This agent is misconfigured: ${error.message} An agent owner has to fix this in n8n.`
-						: '⚠️ Something went wrong while processing your request. Please try again.';
+					: isAttachmentValidationError(error)
+						? '⚠️ The model rejected an attachment. Resend your message without attachments, or try a different file.'
+						: error instanceof UserError
+							? `⚠️ This agent is misconfigured: ${error.message} An agent owner has to fix this in n8n.`
+							: '⚠️ Something went wrong while processing your request. Please try again.';
 			await thread.post(text);
 		} catch (postError) {
 			this.logger.error('[AgentChatBridge] Failed to post error message', {

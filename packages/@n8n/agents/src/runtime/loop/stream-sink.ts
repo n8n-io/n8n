@@ -11,6 +11,7 @@ import type {
 import { classifyModelTurnError, mergeUsage } from './runtime-helpers';
 import type { ExecutionOptions, TokenUsage } from '../../types/sdk/agent';
 import type { AgentMessage } from '../../types/sdk/message';
+import { isAttachmentValidationError } from '../model/attachment-validation-error';
 import { loadAi } from '../model/lazy-ai';
 import { fromAiFinishReason, fromAiMessages } from '../model/messages';
 import { createRawErrorReader, type RawErrorReader } from '../model/raw-error';
@@ -191,10 +192,14 @@ export class StreamSink implements RunOutputSink<void> {
 			// fetch (releasing the socket the 1h network timeout would otherwise
 			// hold) without touching the run-level signal.
 			const turnAbort = new AbortController();
-			const attemptState = { streamedContent: false };
+			const attemptState = { streamedContent: false, modelActivity: false };
 			try {
 				return await this.streamModelTurn(ctx, turnAbort, { idleMs, firstOutputMs }, attemptState);
 			} catch (error) {
+				if (isAttachmentValidationError(error)) {
+					if (!attemptState.modelActivity) await ctx.onInputRejected?.(error);
+					throw error;
+				}
 				// A stalled or empty stream before any content is invisible to the user
 				// (and to the host's persistence) — re-issue the request instead of
 				// failing the run for what is usually a dead connection at request time.
@@ -218,7 +223,7 @@ export class StreamSink implements RunOutputSink<void> {
 		ctx: ModelCallContext,
 		turnAbort: AbortController,
 		deadlines: { idleMs: number; firstOutputMs: number },
-		attemptState: { streamedContent: boolean },
+		attemptState: { streamedContent: boolean; modelActivity: boolean },
 	): Promise<ModelTurnResult> {
 		const { idleMs, firstOutputMs } = deadlines;
 		const { NoOutputGeneratedError, streamText } = loadAi();
@@ -280,6 +285,7 @@ export class StreamSink implements RunOutputSink<void> {
 		// cancels the underlying fetch and the async iterator throws; the error
 		// propagates to the StreamSession which closes the consumer stream.
 		for await (const chunk of chunkStream) {
+			if (chunk.type === 'error' && isAttachmentValidationError(chunk.error)) throw chunk.error;
 			// The rejected result promises surface this error after the stream
 			// closes. Forwarding it here would mark a successful retry as failed.
 			// Runs before the `streamedContent` check below so a skipped chunk
@@ -298,6 +304,9 @@ export class StreamSink implements RunOutputSink<void> {
 			// Anything beyond transport bookkeeping counts as content: once seen,
 			// a stalled attempt is no longer silently retryable (see callModel).
 			if (!STALL_RETRY_SAFE_CHUNK_TYPES.has(chunk.type)) attemptState.streamedContent = true;
+			if (chunk.type !== 'error' && !STALL_RETRY_SAFE_CHUNK_TYPES.has(chunk.type)) {
+				attemptState.modelActivity = true;
+			}
 			// Filter only the SDK's terminal `finish` chunk — the runtime emits its
 			// own consolidated `finish` after the loop completes. `start-step` /
 			// `finish-step` are passed through as LLM-iteration boundaries.
