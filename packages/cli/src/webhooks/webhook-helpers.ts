@@ -431,12 +431,16 @@ export function setupResponseNodePromise(
 			}
 
 			const binaryData = (response.body as IDataObject)?.binaryData as IBinaryData;
-			if (binaryData?.id) {
+			const isBufferBody = Buffer.isBuffer(response.body);
+			if (binaryData?.id || isBufferBody) {
 				if (response.statusCode) {
 					res.status(response.statusCode);
 				}
 				WebhookResponseHeaders.fromObject(response.headers).applyToResponse(res);
 				applySandboxCSP(res);
+			}
+
+			if (binaryData?.id) {
 				try {
 					const stream = await Container.get(BinaryDataService).getAsStream(binaryData.id);
 					res.once('close', () => stream.destroy());
@@ -449,12 +453,7 @@ export function setupResponseNodePromise(
 					});
 				}
 				responseCallback(null, { noWebhookResponse: true });
-			} else if (Buffer.isBuffer(response.body)) {
-				if (response.statusCode) {
-					res.status(response.statusCode);
-				}
-				WebhookResponseHeaders.fromObject(response.headers).applyToResponse(res);
-				applySandboxCSP(res);
+			} else if (isBufferBody) {
 				res.end(response.body);
 				responseCallback(null, { noWebhookResponse: true });
 			} else {
