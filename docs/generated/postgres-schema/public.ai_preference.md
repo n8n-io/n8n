@@ -9,6 +9,7 @@
 | createdById | uuid |  | true |  | [public.user](public.user.md) | Author. NULL after the author is deleted |
 | id | uuid |  | false |  |  |  |
 | projectId | varchar(36) |  | true |  | [public.project](public.project.md) | Set for a project preference. NULL otherwise |
+| source | varchar(16) |  | false |  |  | Surface that wrote the row: ui (settings), aia (assistant), mcp (client) |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | userId | uuid |  | true |  | [public.user](public.user.md) | Set for a personal preference. NULL otherwise |
 
@@ -17,6 +18,7 @@
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
 | CHK_ai_preference_single_target | CHECK | CHECK ((("userId" IS NULL) OR ("projectId" IS NULL))) |
+| CHK_ai_preference_source | CHECK | CHECK (((source)::text = ANY ((ARRAY['ui'::character varying, 'aia'::character varying, 'mcp'::character varying])::text[]))) |
 | FK_4ea340a1847ad0e40a0b0360fe4 | FOREIGN KEY | FOREIGN KEY ("projectId") REFERENCES project(id) ON DELETE CASCADE |
 | FK_aeb2ce3354b55bd61c8d7e17169 | FOREIGN KEY | FOREIGN KEY ("createdById") REFERENCES "user"(id) ON DELETE SET NULL |
 | FK_e9059770c01bfda6062d78d9f8e | FOREIGN KEY | FOREIGN KEY ("userId") REFERENCES "user"(id) ON DELETE CASCADE |
@@ -24,6 +26,7 @@
 | ai_preference_content_not_null | n | NOT NULL content |
 | ai_preference_createdAt_not_null | n | NOT NULL "createdAt" |
 | ai_preference_id_not_null | n | NOT NULL id |
+| ai_preference_source_not_null | n | NOT NULL source |
 | ai_preference_updatedAt_not_null | n | NOT NULL "updatedAt" |
 
 ## Indexes
@@ -49,6 +52,7 @@ erDiagram
   uuid createdById FK
   uuid id
   varchar_36_ projectId FK
+  varchar_16_ source
   timestamp_3__with_time_zone updatedAt
   uuid userId FK
 }

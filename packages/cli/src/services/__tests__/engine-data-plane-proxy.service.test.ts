@@ -51,6 +51,24 @@ describe('EngineDataPlaneProxyService', () => {
 		await expect(proxy.getExecution(executionId)).resolves.toBeUndefined();
 	});
 
+	it('returns an empty search without a provider', async () => {
+		await expect(proxy.searchExecutions({ workflowIds: 'all', limit: 20 })).resolves.toEqual({
+			items: [],
+			nextCursor: null,
+			total: 0,
+		});
+	});
+
+	it('forwards search filters and propagates provider failures', async () => {
+		const provider = mock<EngineDataPlaneProvider>();
+		proxy.registerProvider(provider);
+		provider.searchExecutions.mockRejectedValue(new Error('unavailable'));
+		await expect(proxy.searchExecutions({ workflowIds: ['wf'], limit: 20 })).rejects.toThrow(
+			'unavailable',
+		);
+		expect(provider.searchExecutions).toHaveBeenCalledWith({ workflowIds: ['wf'], limit: 20 });
+	});
+
 	it('delegates a read to the registered provider', async () => {
 		const provider = mock<EngineDataPlaneProvider>();
 		const snapshot = mock<ExecutionSnapshot>({ id: executionId });

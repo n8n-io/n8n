@@ -34,6 +34,7 @@ import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
+	deriveHomeProject,
 } from '@/app/stores/workflowDocument.store';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useDebounceFn } from '@vueuse/core';
@@ -699,6 +700,10 @@ export function useWorkflowSaving({
 				description: null,
 			});
 			workflowDocumentStore.setUpdatedAt(workflowData.updatedAt);
+			// Before the first save the store carries project-derived values as a
+			// stand-in; the create response has the real workflow scopes and owner.
+			workflowDocumentStore.setScopes(workflowData.scopes ?? []);
+			workflowDocumentStore.setHomeProject(deriveHomeProject(workflowData));
 
 			if (workflowData.settings) {
 				workflowDocumentStore.setSettings(workflowData.settings);

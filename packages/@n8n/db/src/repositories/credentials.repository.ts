@@ -3,9 +3,17 @@ import type { Scope } from '@n8n/permissions';
 import type { FindManyOptions, SelectQueryBuilder } from '@n8n/typeorm';
 import { DataSource, In, Like, Not, QueryFailedError } from '@n8n/typeorm';
 
-import { CredentialsEntity, type User } from '../entities';
+import { UserError } from 'n8n-workflow';
+
+import {
+	CredentialsEntity,
+	EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE,
+	SharedCredentials,
+	type User,
+} from '../entities';
 import { BaseRepository } from './base-repository';
 import {
+	CredentialDependencyRepository,
 	addCredentialDependencyExistsFilter,
 	type CredentialDependencyFilter,
 } from './credential-dependency.repository';
@@ -14,7 +22,15 @@ import { SharedCredentialsRepository } from './shared-credentials.repository';
 import type { ICredentialsDb, ListQuery } from '../entities/types-db';
 import type { OperationContext } from '../services/transaction';
 import { TransactionRunner } from '../services/transaction';
+import { isUniqueConstraintError } from '../utils/is-unique-constraint-error';
+import { chunkIds } from '../utils/chunk-ids';
 import { parseListQuerySortBy } from '../utils/list-query-sort';
+
+export class CredentialIdConflictError extends UserError {
+	constructor() {
+		super('A credential with this ID already exists');
+	}
+}
 
 const SORTABLE_COLUMNS = new Set(['id', 'name', 'createdAt', 'updatedAt']);
 
@@ -41,8 +57,43 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 		dataSource: DataSource,
 		private readonly instanceCredentialAssignmentRepository: InstanceCredentialAssignmentRepository,
 		transactionRunner: TransactionRunner,
+		private readonly credentialDependencyRepository: CredentialDependencyRepository,
 	) {
 		super(CredentialsEntity, dataSource.manager, transactionRunner);
+	}
+
+	async insertProjectCredentialWithOwner(
+		credential: Pick<
+			CredentialsEntity,
+			'id' | 'name' | 'type' | 'data' | 'isManaged' | 'isResolvable'
+		> &
+			Partial<Pick<CredentialsEntity, 'isGlobal'>>,
+		projectId: string,
+		externalSecretProviderIds: string[],
+		ctx: OperationContext,
+	): Promise<CredentialsEntity> {
+		return await this.runInTransaction(ctx, async (manager) => {
+			const entity = this.create({ ...credential, usageScope: 'project' });
+			try {
+				await manager.insert(CredentialsEntity, entity);
+			} catch (error) {
+				// Only the credential insert can report an ID conflict.
+				if (isUniqueConstraintError(error)) throw new CredentialIdConflictError();
+				throw error;
+			}
+			await manager.insert(SharedCredentials, {
+				credentialsId: entity.id,
+				projectId,
+				role: 'credential:owner',
+			});
+			await this.credentialDependencyRepository.upsertDependenciesForCredential({
+				credentialId: entity.id,
+				dependencyType: EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE,
+				dependencyIds: externalSecretProviderIds,
+				entityManager: manager,
+			});
+			return await manager.findOneByOrFail(CredentialsEntity, { id: entity.id });
+		});
 	}
 
 	async findStartingWith(credentialName: string) {
@@ -69,6 +120,46 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 		});
 
 		return rows.map((row) => row.id);
+	}
+
+	/** Reads workflow eligibility and access for the package's credential and project IDs. */
+	async findPromotionBindingAccess(
+		ids: string[],
+		projectIds: string[],
+	): Promise<
+		Array<
+			Pick<CredentialsEntity, 'id' | 'type' | 'usageScope' | 'isGlobal'> & { projectIds: string[] }
+		>
+	> {
+		const found = [];
+		for (const batch of chunkIds(ids)) {
+			const credentials = await this.find({
+				where: { id: In(batch) },
+				select: ['id', 'type', 'usageScope', 'isGlobal'],
+			});
+			const projectsByCredential = new Map<string, string[]>();
+			for (const projectBatch of chunkIds(projectIds)) {
+				const relations = await this.manager.find(SharedCredentials, {
+					where: { credentialsId: In(batch), projectId: In(projectBatch) },
+					select: ['credentialsId', 'projectId'],
+				});
+				for (const relation of relations) {
+					const projects = projectsByCredential.get(relation.credentialsId) ?? [];
+					projects.push(relation.projectId);
+					projectsByCredential.set(relation.credentialsId, projects);
+				}
+			}
+			found.push(
+				...credentials.map(({ id, type, usageScope, isGlobal }) => ({
+					id,
+					type,
+					usageScope,
+					isGlobal,
+					projectIds: projectsByCredential.get(id) ?? [],
+				})),
+			);
+		}
+		return found;
 	}
 
 	/** True when any of the given credentials is a private (resolvable) credential. */
@@ -184,6 +275,7 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 		const defaultSelect: Select = [
 			'id',
 			'name',
+			'description',
 			'type',
 			'isManaged',
 			'createdAt',
@@ -354,6 +446,7 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 		const defaultSelect: Array<keyof CredentialsEntity> = [
 			'id',
 			'name',
+			'description',
 			'type',
 			'isManaged',
 			'createdAt',
@@ -526,6 +619,7 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 		const defaultSelect: Array<keyof CredentialsEntity> = [
 			'id',
 			'name',
+			'description',
 			'type',
 			'isManaged',
 			'createdAt',

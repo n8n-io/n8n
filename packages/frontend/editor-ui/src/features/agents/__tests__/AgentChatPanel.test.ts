@@ -1,7 +1,10 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { flushPromises, mount } from '@vue/test-utils';
-import { computed, defineComponent, h, ref } from 'vue';
+import { computed, defineComponent, h, ref, nextTick } from 'vue';
+import { createMemoryHistory, createRouter } from 'vue-router';
+import { AGENT_SESSION_DETAIL_VIEW } from '../constants';
 import { APPROVAL_TOOL_NAME, N8N_CHAT_ACTION_TOOL_NAME, WAIT_TOOL_NAME } from '@n8n/api-types';
+import type { AgentBackgroundJobDto } from '@n8n/api-types';
 import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
 import AgentChatPanel from '../components/AgentChatPanel.vue';
 import AgentPreviewDock from '../components/AgentPreviewDock.vue';
@@ -16,9 +19,14 @@ const stopGeneratingMock = vi.fn();
 const loadHistoryMock = vi.fn();
 const refreshMock = vi.fn();
 const cancelAndSteerMock = vi.fn();
+const focusInputMock = vi.fn();
 const messagesMock = ref<ChatMessage[]>([]);
 const isStreamingMock = ref(false);
 const isCancellingMock = ref(false);
+const backgroundJobsMock = ref<AgentBackgroundJobDto[]>([]);
+vi.mock('../composables/useAgentBackgroundJobs', () => ({
+	useAgentBackgroundJobs: () => ({ jobs: backgroundJobsMock }),
+}));
 let onHistoryLoaded: ((count: number) => void) | undefined;
 
 const fatalErrorMock = ref<{ missing: string[] } | null>(null);
@@ -30,13 +38,27 @@ const defaultAgentConfig: AgentJsonConfig = {
 };
 
 vi.mock('@n8n/i18n', () => {
-	const baseText = (key: string, options?: { interpolate?: Record<string, string> }) => {
+	const baseText = (
+		key: string,
+		options?: { interpolate?: Record<string, string | number>; adjustToNumber?: number },
+	) => {
 		const translations: Record<string, string> = {
 			'agents.chat.input.placeholder.withAgent': `Message ${options?.interpolate?.agentName}…`,
 			'agents.chat.misconfigured.issuesPrefix': 'Check:',
 			'agents.chat.misconfigured.missing.tools': 'Tool configuration',
 			'agents.chat.misconfigured.missing.mcpServers': 'MCP server',
 			'agents.chat.misconfigured.missing.subAgents.agents': 'Sub-agent',
+			'agents.chat.backgroundTasks.finished':
+				options?.adjustToNumber === 1 ? 'Background task finished' : 'Background tasks finished',
+			'agents.chat.backgroundTasks.runningCount': `Running ${options?.interpolate?.count} background ${String(options?.interpolate?.count) === '1' ? 'task' : 'tasks'}`,
+			'agents.chat.backgroundTasks.subagent': `Sub-agent — ${options?.interpolate?.title}`,
+			'agents.chat.backgroundTasks.workflow': `Workflow — ${options?.interpolate?.title}`,
+			'agents.chat.backgroundTasks.viewTrace': 'View trace',
+			'agents.chat.backgroundTasks.status.waiting': 'Waiting',
+			'agents.chat.backgroundTasks.status.running': 'Running',
+			'agents.chat.backgroundTasks.status.completed': 'Completed',
+			'agents.chat.backgroundTasks.status.failed': 'Failed',
+			'agents.chat.backgroundTasks.status.cancelled': 'Canceled',
 		};
 		return translations[key] ?? key;
 	};
@@ -52,12 +74,17 @@ vi.mock('../components/AgentSessionTimelinePanel.vue', () => ({
 	},
 }));
 
-vi.mock('@n8n/design-system', () => ({
+vi.mock('@n8n/design-system', async (importOriginal) => ({
+	N8nAiActivityStepGroup: (await importOriginal<typeof import('@n8n/design-system')>())
+		.N8nAiActivityStepGroup,
+	N8nLink: (await importOriginal<typeof import('@n8n/design-system')>()).N8nLink,
+	useDropdownSearch: (await importOriginal<typeof import('@n8n/design-system')>())
+		.useDropdownSearch,
 	N8nButton: { template: '<button><slot /></button>' },
 	N8nCallout: { template: '<div><slot /><slot name="trailingContent" /></div>' },
 	N8nDropdownMenu: { template: '<div><slot name="trigger" /></div>' },
 	N8nHeading: { template: '<div><slot /></div>' },
-	N8nIcon: { template: '<i />' },
+	N8nIcon: { name: 'N8nIcon', props: ['icon', 'spin'], template: '<i />' },
 	N8nIconButton: {
 		emits: ['click'],
 		template: '<button v-bind="$attrs" @click="$emit(\'click\')" />',
@@ -114,16 +141,28 @@ vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showMessage: vi.fn() }),
 }));
 
-vi.mock('@/features/ai/shared/components/ChatInputBase.vue', () => ({
-	default: {
-		name: 'ChatInputBase',
-		template:
-			'<form data-testid="chat-input-stub" @submit.prevent="$emit(\'submit\')"><slot name="footer-start" /></form>',
-		props: ['modelValue', 'placeholder', 'isStreaming', 'canSubmit', 'disabled', 'maxLength'],
-		emits: ['submit', 'stop', 'update:modelValue', 'files-selected'],
-		methods: { focus: vi.fn() },
-	},
-}));
+vi.mock('@/features/ai/shared/components/ChatInputBase.vue', async () => {
+	const { defineComponent, ref } = await import('vue');
+	return {
+		default: defineComponent({
+			name: 'ChatInputBase',
+			template:
+				'<form data-testid="chat-input-stub" @submit.prevent="$emit(\'submit\')"><slot name="header" /><textarea ref="input" /><slot name="footer-start" /></form>',
+			props: ['modelValue', 'placeholder', 'isStreaming', 'canSubmit', 'disabled', 'maxLength'],
+			emits: ['submit', 'stop', 'update:modelValue', 'files-selected'],
+			setup(_, { expose }) {
+				const input = ref<HTMLTextAreaElement>();
+				expose({
+					focus: (options?: FocusOptions) => {
+						focusInputMock(options);
+						input.value?.focus(options);
+					},
+				});
+				return { input };
+			},
+		}),
+	};
+});
 
 vi.mock('../components/AgentChatEmptyState.vue', () => ({
 	default: { template: '<div data-testid="empty-state-stub" />' },
@@ -181,6 +220,7 @@ describe('AgentChatPanel', () => {
 		messagesMock.value = [];
 		isStreamingMock.value = false;
 		isCancellingMock.value = false;
+		backgroundJobsMock.value = [];
 		fatalErrorMock.value = null;
 		onHistoryLoaded = undefined;
 	});
@@ -191,9 +231,24 @@ describe('AgentChatPanel', () => {
 			continueSessionId: string;
 			agentConfig: AgentJsonConfig | null;
 			beforeSend: () => Promise<void> | void;
+			backgroundJobsActive: boolean;
 		}> = {},
+		attachTo?: HTMLElement,
 	) {
+		const router = createRouter({
+			history: createMemoryHistory(),
+			routes: [
+				{ path: '/', component: { template: '<div />' } },
+				{
+					path: '/projects/:projectId/agents/:agentId/sessions/:threadId',
+					name: AGENT_SESSION_DETAIL_VIEW,
+					component: { template: '<div />' },
+				},
+			],
+		});
 		return mount(AgentChatPanel, {
+			attachTo,
+			global: { plugins: [router] },
 			props: {
 				projectId: 'p1',
 				agentId: 'a1',
@@ -204,6 +259,276 @@ describe('AgentChatPanel', () => {
 			},
 		});
 	}
+
+	describe('background task panel', () => {
+		afterEach(() => vi.useRealTimers());
+		const job: AgentBackgroundJobDto = {
+			id: 'job-1',
+			kind: 'subagent',
+			title: 'Check escalations',
+			status: 'running',
+			startedAt: '2026-09-09T10:00:00.000Z',
+		};
+
+		it.each(['trigger', 'trace'])(
+			'moves focus from the %s to the composer on completion',
+			async (target) => {
+				backgroundJobsMock.value = [job];
+				const wrapper = mountPanel(
+					{ backgroundJobsActive: true, continueSessionId: 't1' },
+					document.body,
+				);
+				try {
+					const trigger = wrapper.get('[data-testid="agent-background-jobs"] button');
+					await trigger.trigger('click');
+					const focused =
+						target === 'trigger'
+							? trigger
+							: wrapper.get('[data-testid="agent-background-jobs-trace"]');
+					(focused.element as HTMLElement).focus();
+					expect(document.activeElement).toBe(focused.element);
+					backgroundJobsMock.value = [];
+					await flushPromises();
+					expect(document.activeElement).toBe(wrapper.get('textarea').element);
+				} finally {
+					wrapper.unmount();
+				}
+			},
+		);
+
+		it('keeps focus outside the card when jobs finish', async () => {
+			backgroundJobsMock.value = [job];
+			const wrapper = mountPanel(
+				{ backgroundJobsActive: true, continueSessionId: 't1' },
+				document.body,
+			);
+			const outside = document.createElement('button');
+			document.body.append(outside);
+			try {
+				outside.focus();
+				backgroundJobsMock.value = [];
+				await flushPromises();
+				expect(document.activeElement).toBe(outside);
+			} finally {
+				wrapper.unmount();
+				outside.remove();
+			}
+		});
+
+		it('keeps a new focus target chosen while the card is removed', async () => {
+			backgroundJobsMock.value = [job];
+			const wrapper = mountPanel(
+				{ backgroundJobsActive: true, continueSessionId: 't1' },
+				document.body,
+			);
+			const outside = document.createElement('button');
+			document.body.append(outside);
+			try {
+				(
+					wrapper.get('[data-testid="agent-background-jobs"] button').element as HTMLElement
+				).focus();
+				backgroundJobsMock.value = [];
+				await nextTick();
+				outside.focus();
+				await flushPromises();
+				expect(document.activeElement).toBe(outside);
+			} finally {
+				wrapper.unmount();
+				outside.remove();
+			}
+		});
+
+		it('does not focus the composer when the session changes', async () => {
+			backgroundJobsMock.value = [job];
+			const wrapper = mountPanel(
+				{ backgroundJobsActive: true, continueSessionId: 't1' },
+				document.body,
+			);
+			try {
+				(
+					wrapper.get('[data-testid="agent-background-jobs"] button').element as HTMLElement
+				).focus();
+				backgroundJobsMock.value = [];
+				await wrapper.setProps({ continueSessionId: 't2' });
+				await flushPromises();
+				expect(document.activeElement).not.toBe(wrapper.get('textarea').element);
+			} finally {
+				wrapper.unmount();
+			}
+		});
+
+		it('does not restore focus after the panel unmounts', async () => {
+			backgroundJobsMock.value = [job];
+			const wrapper = mountPanel(
+				{ backgroundJobsActive: true, continueSessionId: 't1' },
+				document.body,
+			);
+			(wrapper.get('[data-testid="agent-background-jobs"] button').element as HTMLElement).focus();
+			backgroundJobsMock.value = [];
+			await nextTick();
+			wrapper.unmount();
+			await flushPromises();
+			expect(focusInputMock).not.toHaveBeenCalled();
+		});
+
+		it('keeps finished rows and expansion until the entire group finishes', async () => {
+			vi.useFakeTimers();
+			vi.setSystemTime(new Date('2026-09-09T10:00:31Z'));
+			const wrapper = mountPanel({ backgroundJobsActive: true, continueSessionId: 't1' });
+			expect(wrapper.find('[data-testid="agent-background-jobs"]').exists()).toBe(false);
+			backgroundJobsMock.value = [job, { ...job, id: 'job-2', title: 'Check tickets' }];
+			await flushPromises();
+			const panel = wrapper.get('[data-testid="chat-input"] [data-testid="agent-background-jobs"]');
+			const trigger = panel.get('button');
+			expect(trigger.text()).toContain('Running 2 background tasks');
+			expect(trigger.attributes('aria-expanded')).toBe('false');
+			expect(panel.get('[data-testid="agent-background-jobs-timer"]').text()).toBe('0:31');
+			await trigger.trigger('click');
+			expect(trigger.attributes('aria-expanded')).toBe('true');
+			expect(panel.findAll('li').map((li) => li.text())).toEqual([
+				'Sub-agent — Check escalations',
+				'Sub-agent — Check tickets',
+			]);
+			backgroundJobsMock.value = [
+				{ ...job, status: 'completed' },
+				{ ...job, id: 'job-2', title: 'Check tickets' },
+			];
+			await flushPromises();
+			expect(trigger.text()).toContain('Running 1 background task');
+			expect(panel.findAll('li').map((li) => li.text())).toEqual([
+				'Sub-agent — Check escalations',
+				'Sub-agent — Check tickets',
+			]);
+			expect(panel.get('[data-status="completed"]').attributes('aria-label')).toBe('Completed');
+			expect(panel.findAll('[data-status="running"]')).toHaveLength(1);
+			expect(trigger.attributes('aria-expanded')).toBe('true');
+			expect(wrapper.findComponent({ name: 'ChatInputBase' }).props('disabled')).toBe(false);
+			backgroundJobsMock.value = [];
+			await flushPromises();
+			expect(wrapper.find('[data-testid="agent-background-jobs"]').exists()).toBe(false);
+			backgroundJobsMock.value = [job];
+			await flushPromises();
+			expect(
+				wrapper.get('[data-testid="agent-background-jobs"] button').attributes('aria-expanded'),
+			).toBe('false');
+			expect(wrapper.get('[data-testid="agent-background-jobs"] button').text()).toContain(
+				'Running 1 background task',
+			);
+			wrapper.unmount();
+		});
+
+		it('keeps final statuses and expansion with a stopped timer while results await delivery', async () => {
+			vi.useFakeTimers();
+			vi.setSystemTime(new Date('2026-09-09T10:00:30Z'));
+			backgroundJobsMock.value = [job, { ...job, id: 'job-2' }];
+			const wrapper = mountPanel({ backgroundJobsActive: true });
+			const panel = wrapper.get('[data-testid="agent-background-jobs"]');
+			const trigger = panel.get('button');
+			await trigger.trigger('click');
+			backgroundJobsMock.value = [
+				{ ...job, status: 'completed', settledAt: '2026-09-09T10:00:31Z' },
+				{ ...job, id: 'job-2', status: 'failed', settledAt: '2026-09-09T10:00:32Z' },
+			];
+			await flushPromises();
+			expect(trigger.text()).toContain('Background tasks finished');
+			expect(trigger.attributes('aria-expanded')).toBe('true');
+			expect(panel.get('[data-testid="agent-background-jobs-timer"]').text()).toBe('0:32');
+			for (const icon of panel.findAllComponents({ name: 'N8nIcon' })) {
+				expect(icon.props('spin')).toBe(false);
+			}
+			await vi.advanceTimersByTimeAsync(10_000);
+			expect(panel.get('[data-testid="agent-background-jobs-timer"]').text()).toBe('0:32');
+			expect(wrapper.findComponent({ name: 'ChatInputBase' }).props('disabled')).toBe(false);
+			expect(vi.getTimerCount()).toBe(0);
+			backgroundJobsMock.value = [];
+			await flushPromises();
+			expect(wrapper.find('[data-testid="agent-background-jobs"]').exists()).toBe(false);
+			wrapper.unmount();
+		});
+
+		it('shows waiting workflows and links to the current parent session trace', async () => {
+			backgroundJobsMock.value = [
+				job,
+				{ ...job, id: 'job-2', kind: 'workflow', title: 'Forecast refresh' },
+			];
+			const wrapper = mountPanel({ backgroundJobsActive: true, continueSessionId: 't1' });
+			expect(wrapper.find('[data-testid="agent-background-jobs-trace"]').exists()).toBe(false);
+			const trigger = wrapper.get('[data-testid="agent-background-jobs"] button');
+			await trigger.trigger('click');
+			const workflow = wrapper.findAll('li')[1];
+			expect(workflow.text()).toBe('Workflow — Forecast refresh');
+			expect(workflow.get('[role="img"]').attributes('aria-label')).toBe('Waiting');
+			expect(workflow.findComponent({ name: 'N8nIcon' }).props()).toMatchObject({
+				icon: 'circle',
+				spin: false,
+			});
+			const link = wrapper.get('[data-testid="agent-background-jobs-trace"]');
+			expect(link.text()).toBe('View trace');
+			expect(link.attributes('href')).toBe('/projects/p1/agents/a1/sessions/t1');
+			expect(
+				trigger.element.compareDocumentPosition(link.element) & Node.DOCUMENT_POSITION_FOLLOWING,
+			).toBeTruthy();
+			await link.trigger('click');
+			await flushPromises();
+			expect(wrapper.vm.$router.currentRoute.value).toMatchObject({
+				name: AGENT_SESSION_DETAIL_VIEW,
+				params: { projectId: 'p1', agentId: 'a1', threadId: 't1' },
+			});
+			await wrapper.setProps({ continueSessionId: 't2' });
+			const newTrigger = wrapper.get('[data-testid="agent-background-jobs"] button');
+			expect(newTrigger.attributes('aria-expanded')).toBe('false');
+			await newTrigger.trigger('click');
+			expect(wrapper.get('[data-testid="agent-background-jobs-trace"]').attributes('href')).toBe(
+				'/projects/p1/agents/a1/sessions/t2',
+			);
+			wrapper.unmount();
+		});
+
+		it.each([
+			['completed', 'Completed', 'circle-check'],
+			['failed', 'Failed', 'circle-x'],
+			['cancelled', 'Canceled', 'circle-x'],
+		] as const)('shows the %s status without a spinner', async (status, label, icon) => {
+			backgroundJobsMock.value = [
+				{ ...job, status },
+				{ ...job, id: 'job-2' },
+			];
+			const wrapper = mountPanel({ backgroundJobsActive: true });
+			await wrapper.get('[data-testid="agent-background-jobs"] button').trigger('click');
+			const statusIcon = wrapper.get(`[data-status="${status}"]`);
+			expect(statusIcon.attributes('aria-label')).toBe(label);
+			expect(statusIcon.findComponent({ name: 'N8nIcon' }).props()).toMatchObject({
+				icon,
+				spin: false,
+			});
+			wrapper.unmount();
+		});
+
+		it('advances the local timer through an hour and stops it after the panel hides', async () => {
+			vi.useFakeTimers();
+			vi.setSystemTime(new Date('2026-09-09T10:59:59Z'));
+			const wrapper = mountPanel({ backgroundJobsActive: true });
+			backgroundJobsMock.value = [
+				{ ...job, status: 'completed' },
+				{ ...job, id: 'job-2', startedAt: '2026-09-09T10:59:00.000Z' },
+			];
+			await flushPromises();
+			expect(wrapper.get('[data-testid="agent-background-jobs-timer"]').text()).toBe('59:59');
+			await vi.advanceTimersByTimeAsync(1000);
+			expect(wrapper.get('[data-testid="agent-background-jobs-timer"]').text()).toBe('1:00:00');
+			backgroundJobsMock.value = [];
+			await flushPromises();
+			expect(vi.getTimerCount()).toBe(0);
+			wrapper.unmount();
+		});
+
+		it('does not show background tasks outside the active preview', () => {
+			backgroundJobsMock.value = [job];
+			const wrapper = mountPanel();
+			expect(wrapper.find('[data-testid="agent-background-jobs"]').exists()).toBe(false);
+			wrapper.unmount();
+		});
+	});
 
 	it('refreshes history when the preview reopens', async () => {
 		isStreamingMock.value = true;

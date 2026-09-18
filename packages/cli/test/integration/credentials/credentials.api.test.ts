@@ -7,6 +7,7 @@ import {
 	randomName,
 	testDb,
 } from '@n8n/backend-test-utils';
+import { CREDENTIAL_DESCRIPTION_MAX_LENGTH } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import type { Project, User, ListQueryDb } from '@n8n/db';
 import { CredentialsRepository, ProjectRepository, SharedCredentialsRepository } from '@n8n/db';
@@ -1660,6 +1661,151 @@ describe('PATCH /credentials/:id', () => {
 	});
 });
 
+describe('credential description', () => {
+	const saveOwned = async () =>
+		await saveCredential(randomCredentialPayload(), { user: owner, role: 'credential:owner' });
+
+	const patchDescription = async (credentialId: string, description: unknown) =>
+		await authOwnerAgent
+			.patch(`/credentials/${credentialId}`)
+			.send({ ...randomCredentialPayload(), description });
+
+	test('a PATCH writes a description and a later GET returns the same text', async () => {
+		const saved = await saveOwned();
+		const description = 'Read-only key for the reporting database. Do not use for writes.';
+
+		const patched = await patchDescription(saved.id, description);
+		expect(patched.statusCode).toBe(200);
+		expect(patched.body.data.description).toBe(description);
+
+		const fetched = await authOwnerAgent.get(`/credentials/${saved.id}`);
+		expect(fetched.statusCode).toBe(200);
+		expect(fetched.body.data.description).toBe(description);
+
+		const listed = await authOwnerAgent.get('/credentials');
+		expect(listed.statusCode).toBe(200);
+		expect(listed.body.data).toContainEqual(expect.objectContaining({ id: saved.id, description }));
+	});
+
+	test('a PATCH that omits the field keeps the stored description', async () => {
+		const saved = await saveOwned();
+		const description = 'Sandbox account. Safe to write to.';
+		await patchDescription(saved.id, description);
+
+		const renamed = await authOwnerAgent
+			.patch(`/credentials/${saved.id}`)
+			.send(randomCredentialPayload());
+
+		expect(renamed.statusCode).toBe(200);
+		const fetched = await authOwnerAgent.get(`/credentials/${saved.id}`);
+		expect(fetched.body.data.description).toBe(description);
+	});
+
+	test('a credential saved without a description reads back as null', async () => {
+		const saved = await saveOwned();
+
+		const fetched = await authOwnerAgent.get(`/credentials/${saved.id}`);
+
+		expect(fetched.statusCode).toBe(200);
+		expect(fetched.body.data.description).toBeNull();
+	});
+
+	test('a blank description is stored as null', async () => {
+		const saved = await saveOwned();
+		await patchDescription(saved.id, 'Temporary note');
+
+		const cleared = await patchDescription(saved.id, '   ');
+
+		expect(cleared.statusCode).toBe(200);
+		expect(cleared.body.data.description).toBeNull();
+		const stored = await Container.get(CredentialsRepository).findOneByOrFail({ id: saved.id });
+		expect(stored.description).toBeNull();
+	});
+
+	test('a description over the cap is rejected', async () => {
+		const saved = await saveOwned();
+
+		const response = await patchDescription(
+			saved.id,
+			'a'.repeat(CREDENTIAL_DESCRIPTION_MAX_LENGTH + 1),
+		);
+
+		expect(response.statusCode).toBe(400);
+		const stored = await Container.get(CredentialsRepository).findOneByOrFail({ id: saved.id });
+		expect(stored.description).toBeNull();
+	});
+
+	test('a non-string description is rejected with a 400', async () => {
+		const saved = await saveOwned();
+
+		const response = await patchDescription(saved.id, 42);
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	test('both verbs reject the same over-cap value with the same message', async () => {
+		const tooLong = 'a'.repeat(CREDENTIAL_DESCRIPTION_MAX_LENGTH + 1);
+		const saved = await saveOwned();
+
+		const created = await authOwnerAgent
+			.post('/credentials')
+			.send({ ...randomCredentialPayload(), description: tooLong });
+		const patched = await patchDescription(saved.id, tooLong);
+
+		expect(created.statusCode).toBe(400);
+		expect(patched.statusCode).toBe(400);
+		expect(patched.body.message).toBe(created.body.message);
+	});
+
+	test('a null description is accepted by both verbs and stored as null', async () => {
+		const created = await authOwnerAgent
+			.post('/credentials')
+			.send({ ...randomCredentialPayload(), description: null });
+		expect(created.statusCode).toBe(200);
+
+		const patched = await patchDescription(created.body.data.id, null);
+
+		expect(patched.statusCode).toBe(200);
+		expect(patched.body.data.description).toBeNull();
+	});
+
+	test('both verbs apply the cap to the same character count', async () => {
+		const astral = '\u{1F600}'.repeat(CREDENTIAL_DESCRIPTION_MAX_LENGTH);
+		const saved = await saveOwned();
+
+		const created = await authOwnerAgent
+			.post('/credentials')
+			.send({ ...randomCredentialPayload(), description: astral });
+		const patched = await patchDescription(saved.id, astral);
+
+		expect(patched.statusCode).toBe(created.statusCode);
+		expect(created.statusCode).toBe(400);
+	});
+
+	test('a POST stores a trimmed description', async () => {
+		const description = 'Sandbox account. Safe to write to.';
+
+		const response = await authOwnerAgent
+			.post('/credentials')
+			.send({ ...randomCredentialPayload(), description: `  ${description}  ` });
+
+		expect(response.statusCode).toBe(200);
+		const stored = await Container.get(CredentialsRepository).findOneByOrFail({
+			id: response.body.data.id,
+		});
+		expect(stored.description).toBe(description);
+	});
+
+	test('a POST with a description over the cap is rejected', async () => {
+		const response = await authOwnerAgent.post('/credentials').send({
+			...randomCredentialPayload(),
+			description: 'a'.repeat(CREDENTIAL_DESCRIPTION_MAX_LENGTH + 1),
+		});
+
+		expect(response.statusCode).toBe(400);
+	});
+});
+
 describe('GET /credentials/new', () => {
 	test('should return default name for new credential or its increment', async () => {
 		const name = Container.get(GlobalConfig).credentials.defaultName;
@@ -1857,8 +2003,10 @@ describe('POST /credentials/test', () => {
 		expect(mockCredentialsTester.testCredentials.mock.calls[0][1]).toBe(savedCredential.type);
 		expect(mockCredentialsTester.testCredentials.mock.calls[0][2]).toEqual({
 			id: savedCredential.id,
+			name: '',
 			type: savedCredential.type,
 			data: credential.data,
+			homeProject: expect.objectContaining({ id: ownerPersonalProject.id }),
 		});
 	});
 
@@ -1887,8 +2035,10 @@ describe('POST /credentials/test', () => {
 		expect(mockCredentialsTester.testCredentials.mock.calls[0][1]).toBe(savedCredential.type);
 		expect(mockCredentialsTester.testCredentials.mock.calls[0][2]).toEqual({
 			id: savedCredential.id,
+			name: '',
 			type: savedCredential.type,
 			data: credential.data,
+			homeProject: expect.objectContaining({ id: ownerPersonalProject.id }),
 		});
 	});
 

@@ -1,0 +1,128 @@
+operationId: replaceAttachments
+tags:
+  - NodeTypePolicy
+summary: Replace a scope's attached policy documents
+description: Replaces every attachment on a scope. `scopeId` comes from the scope's `GET` response once it has been written. Each `policyId` and each `(isFloor, priority)` pair must be unique within the list. Last write wins; the scope's version is bumped.
+x-required-scope: nodeTypePolicy:manage
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+parameters:
+  - schema:
+      type: string
+    required: true
+    description: The ID of the node type policy scope.
+    name: scopeId
+    in: path
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          attachments:
+            type: array
+            items:
+              type: object
+              properties:
+                policyId:
+                  type: string
+                  minLength: 1
+                priority:
+                  type: integer
+                isFloor:
+                  type: boolean
+              required:
+                - policyId
+                - priority
+                - isFloor
+        required:
+          - attachments
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            attachments:
+              type: array
+              items:
+                type: object
+                properties:
+                  policyId:
+                    type: string
+                  rules:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          minLength: 1
+                        action:
+                          type: string
+                          enum:
+                            - allow
+                            - deny
+                            - delegate
+                        selector:
+                          oneOf:
+                            - type: object
+                              properties:
+                                kind:
+                                  type: string
+                                  enum:
+                                    - name
+                                value:
+                                  type: string
+                                  minLength: 1
+                              required:
+                                - kind
+                                - value
+                            - type: object
+                              properties:
+                                kind:
+                                  type: string
+                                  enum:
+                                    - package
+                                value:
+                                  type: string
+                                  minLength: 1
+                              required:
+                                - kind
+                                - value
+                      required:
+                        - id
+                        - action
+                        - selector
+                  priority:
+                    type: integer
+                  isFloor:
+                    type: boolean
+                required:
+                  - policyId
+                  - rules
+                  - priority
+                  - isFloor
+            version:
+              type: integer
+              minimum: 0
+              exclusiveMinimum: true
+          required:
+            - attachments
+            - version
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '415':
+    $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
+  '503':
+    $ref: ../../../../shared/spec/responses/serviceUnavailable.yml

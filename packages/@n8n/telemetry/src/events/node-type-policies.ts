@@ -16,6 +16,20 @@ const scope = z
 	.enum(['instance', 'project'])
 	.describe('Which scope the policy was written at; project policies compose under instance');
 
+/**
+ * Exported so callers that build these events from a domain event (which keeps `kind` as a
+ * plain string, so a later kind needs no change there) can narrow it against the same set this
+ * schema validates against, instead of redeclaring the list and risking drift.
+ */
+export const POLICY_KINDS = ['node-types', 'credential-types'] as const;
+export type PolicyKind = (typeof POLICY_KINDS)[number];
+
+const kind = z
+	.enum(POLICY_KINDS)
+	.describe(
+		'Which type family the policy governs. Credential type policies report through these same events instead of a second set, so this is what tells the two apart.',
+	);
+
 const projectId = z.string().optional().describe('Absent at instance scope');
 
 const ruleCounts = {
@@ -35,6 +49,7 @@ export const NODE_TYPE_POLICIES_TELEMETRY = defineTelemetryEvents({
 		properties: z.object({
 			user_id: userId,
 			source,
+			kind,
 			scope,
 			project_id: projectId,
 			default_action: z
@@ -80,6 +95,7 @@ export const NODE_TYPE_POLICIES_TELEMETRY = defineTelemetryEvents({
 		properties: z.object({
 			user_id: userId,
 			source,
+			kind,
 			operation: z.enum(['created', 'updated', 'deleted']),
 			policy_id: z.string(),
 			...ruleCounts,
@@ -93,6 +109,7 @@ export const NODE_TYPE_POLICIES_TELEMETRY = defineTelemetryEvents({
 		properties: z.object({
 			user_id: userId,
 			source,
+			kind,
 			scope,
 			project_id: projectId,
 			scope_id: z.string(),

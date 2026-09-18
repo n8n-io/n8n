@@ -83,6 +83,9 @@ export interface Lane {
 	/** Data tables present before any build here — the scenario-table eviction's
 	 *  allowlist, so it can't delete a concurrent iteration's live table. */
 	preRunDataTableIds: Set<string>;
+	/** Root folders present before any build here — the seed-folder eviction's
+	 *  allowlist, for the same reason. */
+	preRunFolderIds: Set<string>;
 	claimedWorkflowIds: Set<string>;
 	/** Credentials created for test cases on this lane; cleaned up after the run. */
 	createdCredentialIds: Set<string>;

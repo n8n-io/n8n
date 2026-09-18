@@ -2,7 +2,10 @@ import {
 	CUSTOM_ROLE_SCOPE_WHITELIST,
 	GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS,
 	GLOBAL_CUSTOM_ROLE_SCOPES,
+	isMandatoryInstanceOption,
+	MANDATORY_INSTANCE_SCOPES,
 	PROJECT_CUSTOM_ROLE_SCOPES,
+	withMandatoryInstanceScopes,
 } from '@/roles/custom-role-scopes.ee';
 import { GLOBAL_MEMBER_SCOPES } from '@/roles/scopes/global-scopes.ee';
 import { ALL_SCOPES } from '@/scope-information';
@@ -104,14 +107,124 @@ describe('custom role scope whitelists', () => {
 		}
 	});
 
+	it('exposes "Tags: View" as exactly the tag read/list pair', () => {
+		expect(GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.tag.View).toEqual(['tag:read', 'tag:list']);
+	});
+
+	it('keeps tag "Manage" a strict superset of tag "View"', () => {
+		// The editor's implied/downgrade arithmetic (SUPERSEDED_BY: View -> Manage)
+		// only holds while Manage contains everything View grants.
+		const view = GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.tag.View;
+		const manage = GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.tag.Manage;
+		expect(view.every((scope) => (manage as readonly string[]).includes(scope))).toBe(true);
+		expect(manage.length).toBeGreaterThan(view.length);
+	});
+
+	it('exposes "Variables: View" as exactly the global variable list/read pair', () => {
+		expect(GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.variable.View).toEqual([
+			'variable:list',
+			'variable:read',
+		]);
+	});
+
+	it('keeps "Variables: View" within GLOBAL_MEMBER_SCOPES', () => {
+		// A custom role built to mirror Member must never end up with more than Member.
+		for (const scope of GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.variable.View) {
+			expect(GLOBAL_MEMBER_SCOPES).toContain(scope);
+		}
+	});
+
+	it('keeps variable "Manage" a strict superset of variable "View"', () => {
+		// The editor's implied/downgrade arithmetic (SUPERSEDED_BY: View -> Manage)
+		// only holds while Manage contains everything View grants.
+		const view = GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.variable.View;
+		const manage = GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.variable.Manage;
+		expect(view.every((scope) => (manage as readonly string[]).includes(scope))).toBe(true);
+		expect(manage.length).toBeGreaterThan(view.length);
+	});
+
+	it('keeps variable scopes out of the settings.Manage bundle', () => {
+		// Global variables have their own group, so granting instance Settings no
+		// longer grants them. Every scope must live under exactly one group.
+		const bundle = GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.settings.Manage as readonly string[];
+		expect(bundle).not.toContain('variable:list');
+		expect(bundle).not.toContain('variable:read');
+	});
+
+	it('keeps "Tags: View" within GLOBAL_MEMBER_SCOPES', () => {
+		// "Tags: View" is granted to every instance role by default (see
+		// MANDATORY_INSTANCE_OPTIONS), so it must never exceed what the built-in
+		// Member role already has.
+		for (const scope of GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.tag.View) {
+			expect(GLOBAL_MEMBER_SCOPES).toContain(scope);
+		}
+	});
+
 	it('exposes "Users: View" as exactly user:list, matching GLOBAL_MEMBER_SCOPES', () => {
 		// "Users: View" is granted to every instance role by default (see
-		// instanceRoleScopes.ts). It must never exceed what the built-in Member
-		// role already has, or a custom role mirroring Member ends up more
+		// MANDATORY_INSTANCE_OPTIONS). It must never exceed what the built-in
+		// Member role already has, or a custom role mirroring Member ends up more
 		// privileged than Member itself
 		expect(GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.user.View).toEqual(['user:list']);
 		for (const scope of GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.user.View) {
 			expect(GLOBAL_MEMBER_SCOPES).toContain(scope);
 		}
+	});
+});
+
+describe('mandatory instance options', () => {
+	it('resolves to the user and tag view scopes', () => {
+		expect(MANDATORY_INSTANCE_SCOPES).toEqual(['user:list', 'tag:read', 'tag:list']);
+	});
+
+	it('stays inside the global custom-role whitelist', () => {
+		// resolveScopes unions these in before the whitelist check, so a mandatory
+		// scope outside the whitelist would make every global-role write fail.
+		for (const scope of MANDATORY_INSTANCE_SCOPES) {
+			expect(GLOBAL_CUSTOM_ROLE_SCOPES.has(scope)).toBe(true);
+		}
+	});
+
+	it('stays within GLOBAL_MEMBER_SCOPES', () => {
+		// Added to every custom instance role, so they must never exceed what the
+		// built-in Member role already grants.
+		for (const scope of MANDATORY_INSTANCE_SCOPES) {
+			expect(GLOBAL_MEMBER_SCOPES).toContain(scope);
+		}
+	});
+
+	it('identifies mandatory options and only those', () => {
+		expect(isMandatoryInstanceOption('user', 'View')).toBe(true);
+		expect(isMandatoryInstanceOption('tag', 'View')).toBe(true);
+		expect(isMandatoryInstanceOption('user', 'Manage')).toBe(false);
+		expect(isMandatoryInstanceOption('insights', 'View')).toBe(false);
+		expect(isMandatoryInstanceOption('nonsense', 'View')).toBe(false);
+	});
+
+	it('withMandatoryInstanceScopes adds the mandatory scopes to an empty list', () => {
+		expect(withMandatoryInstanceScopes([])).toEqual(['user:list', 'tag:read', 'tag:list']);
+	});
+
+	it('withMandatoryInstanceScopes does not duplicate scopes already present', () => {
+		const result = withMandatoryInstanceScopes(['user:list', 'tag:read']);
+		expect(result.filter((scope) => scope === 'user:list')).toHaveLength(1);
+		expect(result.filter((scope) => scope === 'tag:read')).toHaveLength(1);
+		expect(new Set(result).size).toBe(result.length);
+	});
+
+	it('withMandatoryInstanceScopes dedups a repeated input slug', () => {
+		expect(withMandatoryInstanceScopes(['insights:read', 'insights:read'])).toEqual([
+			'insights:read',
+			'user:list',
+			'tag:read',
+			'tag:list',
+		]);
+	});
+
+	it('withMandatoryInstanceScopes preserves unrelated scopes untouched', () => {
+		const result = withMandatoryInstanceScopes(['insights:read', 'insights:list']);
+		expect(result).toContain('insights:read');
+		expect(result).toContain('insights:list');
+		expect(result).toEqual(expect.arrayContaining([...MANDATORY_INSTANCE_SCOPES]));
 	});
 });

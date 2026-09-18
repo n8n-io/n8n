@@ -63,6 +63,7 @@ defineExpose({ focusInput, getConversationMarkdown });
 				:project-id="projectId"
 				:agent-id="agentId"
 				:visible="visible"
+				:background-jobs-active="visible"
 				mode="inline"
 				:continue-session-id="effectiveSessionId"
 				:agent-config="localConfig"

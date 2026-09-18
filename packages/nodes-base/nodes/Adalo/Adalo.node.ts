@@ -75,7 +75,7 @@ export class Adalo implements INodeType {
 							},
 							request: {
 								method: 'POST',
-								url: '=/collections/{{$parameter["collectionId"]}}',
+								url: '=/collections/{{toPathSegment($parameter["collectionId"])}}',
 							},
 						},
 						action: 'Create a row',
@@ -87,7 +87,7 @@ export class Adalo implements INodeType {
 						routing: {
 							request: {
 								method: 'DELETE',
-								url: '=/collections/{{$parameter["collectionId"]}}/{{$parameter["rowId"]}}',
+								url: '=/collections/{{toPathSegment($parameter["collectionId"])}}/{{toPathSegment($parameter["rowId"])}}',
 							},
 							output: {
 								postReceive: [
@@ -109,7 +109,7 @@ export class Adalo implements INodeType {
 						routing: {
 							request: {
 								method: 'GET',
-								url: '=/collections/{{$parameter["collectionId"]}}/{{$parameter["rowId"]}}',
+								url: '=/collections/{{toPathSegment($parameter["collectionId"])}}/{{toPathSegment($parameter["rowId"])}}',
 							},
 						},
 						action: 'Retrieve a row',
@@ -121,7 +121,7 @@ export class Adalo implements INodeType {
 						routing: {
 							request: {
 								method: 'GET',
-								url: '=/collections/{{$parameter["collectionId"]}}',
+								url: '=/collections/{{toPathSegment($parameter["collectionId"])}}',
 								qs: {
 									limit: '={{$parameter["limit"]}}',
 								},
@@ -152,7 +152,7 @@ export class Adalo implements INodeType {
 							},
 							request: {
 								method: 'PUT',
-								url: '=/collections/{{$parameter["collectionId"]}}/{{$parameter["rowId"]}}',
+								url: '=/collections/{{toPathSegment($parameter["collectionId"])}}/{{toPathSegment($parameter["rowId"])}}',
 							},
 						},
 						action: 'Update a row',
