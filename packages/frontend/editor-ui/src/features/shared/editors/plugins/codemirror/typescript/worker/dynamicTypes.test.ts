@@ -62,5 +62,41 @@ describe('typescript worker dynamicTypes', () => {
 }>;
 }`);
 		});
+
+		it('should quote keys with spaces, hyphens, and leading digits', () => {
+			expect(
+				schemaToTypescriptTypes(
+					{
+						type: 'object',
+						value: [
+							{
+								key: 'testing Stuff',
+								type: 'string',
+								value: '',
+								path: '["testing Stuff"]',
+							},
+							{
+								key: 'content-type',
+								type: 'string',
+								value: '',
+								path: '["content-type"]',
+							},
+							{
+								key: '0leading-digit',
+								type: 'number',
+								value: '',
+								path: '["0leading-digit"]',
+							},
+						],
+						path: '',
+					},
+					'NodeName_2',
+				),
+			).toEqual(`interface NodeName_2 {
+  "testing Stuff": string;
+  "content-type": string;
+  "0leading-digit": number;
+}`);
+		});
 	});
 });
