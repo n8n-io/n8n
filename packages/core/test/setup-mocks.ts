@@ -18,3 +18,6 @@ afterAll(() => {
 
 	rmSync(testUserFolder, { recursive: true, force: true });
 });
+
+// Best-effort cleanup for runs interrupted before afterAll executes (SIGINT/worker kill).
+process.on('exit', () => rmSync(testUserFolder, { recursive: true, force: true }));
