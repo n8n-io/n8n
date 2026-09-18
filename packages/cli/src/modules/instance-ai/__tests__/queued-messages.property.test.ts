@@ -76,7 +76,7 @@ type QueueService = {
 		messageId: string,
 	) => Promise<{ queuedMessages: unknown[]; text: string }>;
 	sendQueueNow: (user: User, threadId: string) => Promise<{ queuedMessages: unknown[] }>;
-	claimQueuedTurn: (threadId: string, runId: string, step: number) => Promise<boolean>;
+	claimQueuedTurn: (threadId: string, runId: string, step?: number) => Promise<boolean>;
 	flushQueuedMessage: (user: User, threadId: string) => Promise<boolean>;
 	discardQueuedMessages: (threadId: string) => Promise<void>;
 };
@@ -184,7 +184,7 @@ type Op =
 	| { kind: 'setLive'; live: boolean }
 	| { kind: 'setElsewhere'; elsewhere: boolean }
 	| { kind: 'sendNow' }
-	| { kind: 'claim' }
+	| { kind: 'claim'; step?: number }
 	| { kind: 'flush' }
 	| { kind: 'discard' }
 	| { kind: 'writeFails'; during: 'queue' | 'claim' | 'flush' | 'discard' };
@@ -212,7 +212,12 @@ const arbOp: fc.Arbitrary<Op> = fc.oneof(
 			.map((during): Op => ({ kind: 'writeFails', during })),
 	},
 	{ weight: 3, arbitrary: fc.constant<Op>({ kind: 'sendNow' }) },
-	{ weight: 3, arbitrary: fc.constant<Op>({ kind: 'claim' }) },
+	{
+		weight: 3,
+		arbitrary: fc
+			.option(fc.nat(9), { nil: undefined })
+			.map<Op>((step) => ({ kind: 'claim', step })),
+	},
 	{ weight: 3, arbitrary: fc.constant<Op>({ kind: 'flush' }) },
 	{ weight: 1, arbitrary: fc.constant<Op>({ kind: 'discard' }) },
 );
@@ -408,15 +413,22 @@ describe('queued messages — properties', () => {
 							break;
 						}
 						case 'claim': {
+							// The orchestrator's check passes its step; a delegated builder's
+							// check passes none. Both must answer alike over the same queue.
 							const before = model;
 							const eventsBefore = h.observed.events.length;
-							const stop = await h.service.claimQueuedTurn(THREAD_ID, 'run-live', 1);
+							const steersBefore = h.service.telemetry.track.mock.calls.length;
+							const stop = await h.service.claimQueuedTurn(THREAD_ID, 'run-live', op.step);
 							expect(stop).toBe(before.length > 0);
 							const merged = mergedTurn(before);
 							model = merged ? [merged] : [];
 							if (merged) {
 								const changed = before.length > 1 || !before[0].sent;
 								expect(h.observed.events.length - eventsBefore).toBe(changed ? 1 : 0);
+								// One steer event per turn: only the first announcement counts.
+								expect(h.service.telemetry.track.mock.calls.length - steersBefore).toBe(
+									before.some((item) => item.sent) ? 0 : 1,
+								);
 							}
 							break;
 						}

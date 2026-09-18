@@ -1290,6 +1290,8 @@ export interface BuilderDelegateSession {
 	memoryTaskObserver?: (event: ScopedMemoryTaskEvent) => void;
 	/** Host run's abort signal, so a user stop ends the builder's own loop rather than only our consumption of it. */
 	abortSignal: AbortSignal;
+	/** Host's graceful-stop check, asked before each builder tool call: `true` ends the builder loop at that boundary. */
+	shouldStopGracefully?: () => Promise<boolean>;
 	/** The parent orchestrator's validated, approval-wrapped MCP tools. */
 	mcpTools?: InstanceAiToolRegistry;
 }
@@ -2099,6 +2101,13 @@ export interface OrchestrationContext {
 	 * its own work. Unset in hosts that do not steer.
 	 */
 	subAgentAbortSignal?: AbortSignal;
+	/**
+	 * The host's queued-turn check for a delegated loop. Answers `true` once a
+	 * message is queued, so the builder ends after its current tool call and
+	 * the orchestrator ends at the same boundary. Unset in hosts that do not
+	 * steer.
+	 */
+	subAgentShouldStop?: () => Promise<boolean>;
 	taskStorage: TaskStorage;
 	tracing?: InstanceAiTraceContext;
 	/** Local MCP server (Computer Use daemon) for filesystem, shell, browser, and related tools. */

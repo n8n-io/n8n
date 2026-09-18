@@ -131,6 +131,7 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 			agentsBuilderService.buildAgent.mockReturnValue(asAsyncGenerator<StreamChunk>([]));
 			const sentinel = { functionId: 'host' } as unknown as BuiltTelemetry;
 			const mcpTools = fakeMcpTools();
+			const shouldStopGracefully = vi.fn(async () => false);
 
 			await delegate.streamBuild('agent-1', 'hi', {
 				threadId: 'ia-builder:t:agent-1',
@@ -138,6 +139,7 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 				runId: 'run-1',
 				modelConfig: 'anthropic/claude-sonnet-host-resolved',
 				abortSignal,
+				shouldStopGracefully,
 				telemetry: sentinel,
 				mcpTools,
 			});
@@ -155,6 +157,7 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 					runId: 'run-1',
 					modelConfig: 'anthropic/claude-sonnet-host-resolved',
 					abortSignal,
+					shouldStopGracefully,
 					instructionsAddendum: INSTANCE_AI_BUILDER_ADDENDUM,
 					telemetry: sentinel,
 					mcpTools,

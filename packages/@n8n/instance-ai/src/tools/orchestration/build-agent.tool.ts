@@ -64,6 +64,7 @@ import {
 } from '../../tracing/agent-snapshot-event';
 import { modelIdTraceMetadata } from '../../tracing/langsmith-tracing';
 import type {
+	BuilderDelegateSession,
 	BuilderTurnStream,
 	InstanceAiBuilderDelegate,
 	InstanceAiContext,
@@ -155,9 +156,17 @@ async function collectRequiredArtifacts(
 	return [...carriedRequiredArtifacts, ...turnRequiredArtifacts];
 }
 
-/** Builder sessions are keyed per assistant thread + target agent; the resume
- *  leg must reconstruct the same `threadId` byte-identically after a restart. */
-function builderSessionFor(context: OrchestrationContext, agentId: string) {
+/**
+ * Builder sessions are keyed per assistant thread + target agent; the resume
+ * leg must reconstruct the same `threadId` byte-identically after a restart.
+ * `stoppedByQueue` says whether the host's queued-turn check ended the loop.
+ */
+function builderSessionFor(
+	context: OrchestrationContext,
+	agentId: string,
+): { session: BuilderDelegateSession; stoppedByQueue: () => boolean } {
+	const check = context.subAgentShouldStop;
+	let stopped = false;
 	const mcpTools =
 		context.mcpTools instanceof Map && context.mcpTools.size > 0 ? context.mcpTools : undefined;
 	const telemetry = context.tracing?.getTelemetry?.({
@@ -170,7 +179,7 @@ function builderSessionFor(context: OrchestrationContext, agentId: string) {
 			...modelIdTraceMetadata(context.modelId),
 		},
 	});
-	return {
+	const session: BuilderDelegateSession = {
 		threadId: `${instanceAiBuilderThreadPrefix(context.threadId)}${agentId}`,
 		hostThreadId: context.threadId,
 		runId: context.runId,
@@ -180,8 +189,10 @@ function builderSessionFor(context: OrchestrationContext, agentId: string) {
 			? { memoryTaskObserver: context.tracing.onMemoryTaskEvent }
 			: {}),
 		abortSignal: context.subAgentAbortSignal ?? context.abortSignal,
+		...(check ? { shouldStopGracefully: async () => (stopped ||= await check()) } : {}),
 		...(mcpTools ? { mcpTools } : {}),
 	};
+	return { session, stoppedByQueue: () => stopped };
 }
 
 function builderAgentIdFor(agentId: string): string {
@@ -502,6 +513,8 @@ async function runBuilderConsumeLoop(params: {
 	traceInputs?: unknown;
 	/** Deterministic per-leg claim id base (result.agentRunId is always '' for builder streams). */
 	dedupeBase: string;
+	/** Whether the host's queued-turn check ended the builder loop (see `builderSessionFor`). */
+	stoppedByQueue?: () => boolean;
 }): Promise<BuildAgentOutput> {
 	const {
 		context,
@@ -515,6 +528,7 @@ async function runBuilderConsumeLoop(params: {
 		onSettled,
 		traceInputs,
 		dedupeBase,
+		stoppedByQueue,
 	} = params;
 
 	// Every settled return goes through here, so the state a pass left behind is
@@ -588,8 +602,10 @@ async function runBuilderConsumeLoop(params: {
 	await onSettled?.();
 	const requiredArtifacts = await collectRequiredArtifacts(turn, carriedRequiredArtifacts);
 
-	if (result.status === 'cancelled') {
-		const steered = stoppedBySteer(context);
+	// A queued turn ends the builder loop as a completion; the tool call still
+	// settles as steered so the orchestrator ends at the same boundary.
+	const steered = stoppedBySteer(context) || stoppedByQueue?.() === true;
+	if (result.status === 'cancelled' || (steered && result.status !== 'suspended')) {
 		const cancelled = createAbortError(
 			steered ? BUILDER_RUN_STEERED_MESSAGE : BUILDER_RUN_CANCELLED_MESSAGE,
 		);
@@ -761,7 +777,7 @@ async function handleResume(
 		};
 	}
 
-	const session = builderSessionFor(context, target.agentId);
+	const { session, stoppedByQueue } = builderSessionFor(context, target.agentId);
 
 	const openSuspensions = await delegate.findOpenSuspensions(target.agentId, session);
 	if (openSuspensions.length === 0) {
@@ -818,6 +834,7 @@ async function handleResume(
 		carriedRequiredArtifacts: ref.requiredArtifacts ?? [],
 		traceInputs: { resumed: true },
 		dedupeBase: `${context.runId}:${ctx.toolCallId ?? builderAgentId}:${ref.toolCallId}`,
+		stoppedByQueue,
 	});
 }
 
@@ -1127,7 +1144,7 @@ export function createBuildAgentTool(context: OrchestrationContext) {
 			const boundTarget = resolution.target;
 			const bindAfterTurn = resolution.bindAfterTurn;
 
-			const session = builderSessionFor(context, boundTarget.agentId);
+			const { session, stoppedByQueue } = builderSessionFor(context, boundTarget.agentId);
 			await hydrateUserDecisions(domainContext);
 			const handedOffDecisions = listUserDecisions(domainContext).map((decision) => ({
 				...decision,
@@ -1166,6 +1183,7 @@ export function createBuildAgentTool(context: OrchestrationContext) {
 				carriedRequiredArtifacts: [],
 				traceInputs: { message: outboundMessage },
 				dedupeBase: `${context.runId}:${ctx.toolCallId ?? builderAgentId}`,
+				stoppedByQueue,
 				onSettled: bindAfterTurn
 					? async () => {
 							domainContext.agentBuilderTarget = boundTarget;

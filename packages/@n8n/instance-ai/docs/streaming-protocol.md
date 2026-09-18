@@ -523,6 +523,10 @@ The service delivers the queue in three ways:
    `source: "steered"` on the live run, and answer `true`: the tool call in
    flight finishes, the tool calls that have not started are settled as
    skipped, no further model call is made, and the run ends as `steered`.
+   A delegated builder is asked the same check through the orchestration
+   context's `subAgentShouldStop`, so it ends after its own current tool call
+   instead of the whole build; its tool call settles as steered and the
+   orchestrator ends at that boundary.
 2. **Send now.** The queue is merged and announced at once, and the thread's
    interrupt fires: the runtime cancels the model request and the tool calls
    in flight (settled as cancelled for the model), a delegated builder aborts

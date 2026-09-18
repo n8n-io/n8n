@@ -116,6 +116,9 @@ export class InstanceAiBuilderDelegateAdapterService {
 			...(session.telemetry ? { telemetry: session.telemetry } : {}),
 			...(session.memoryTaskObserver ? { memoryTaskObserver: session.memoryTaskObserver } : {}),
 			abortSignal: session.abortSignal,
+			...(session.shouldStopGracefully
+				? { shouldStopGracefully: session.shouldStopGracefully }
+				: {}),
 			...(session.mcpTools ? { mcpTools: session.mcpTools } : {}),
 			...(useEvalModelCatalog ? { useEvalModelCatalog: true } : {}),
 			onRequiredArtifact,

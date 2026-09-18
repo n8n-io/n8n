@@ -80,6 +80,8 @@ export interface InstanceAiBuilderSessionOptions {
 	memoryTaskObserver?: (event: ScopedMemoryTaskEvent) => void;
 	/** Host run's abort signal, so a user stop ends the builder's own loop rather than only the host's consumption of it. */
 	abortSignal: AbortSignal;
+	/** Host's graceful-stop check, asked before each tool call: `true` ends the loop at that boundary. */
+	shouldStopGracefully?: () => Promise<boolean>;
 	/** The parent orchestrator's validated, approval-wrapped MCP tools. */
 	mcpTools?: InstanceAiToolRegistry;
 	/** Use deterministic model catalogs for an Instance AI evaluation. */
@@ -129,6 +131,7 @@ export class AgentsBuilderService {
 		const resultStream = await builder.stream(message, {
 			persistence: { threadId: session.threadId, resourceId },
 			abortSignal: session.abortSignal,
+			shouldStopGracefully: session.shouldStopGracefully,
 			// Keep billing a stopped builder turn for the tokens it already spent.
 			recoverUsageOnAbort: true,
 			...modelStreamStallOptions(this.aiConfig),
@@ -190,6 +193,7 @@ export class AgentsBuilderService {
 			runId,
 			toolCallId,
 			abortSignal: session.abortSignal,
+			shouldStopGracefully: session.shouldStopGracefully,
 			// Keep billing a stopped builder turn for the tokens it already spent.
 			recoverUsageOnAbort: true,
 			...modelStreamStallOptions(this.aiConfig),

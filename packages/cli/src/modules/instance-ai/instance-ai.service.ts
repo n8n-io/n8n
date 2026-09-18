@@ -1694,23 +1694,34 @@ export class InstanceAiService {
 	 * Merge the queue into one sent item and put it in the transcript on the
 	 * given run. A second call over an unchanged queue publishes nothing again;
 	 * the frontend keys bubbles by id and updates the text when parts were
-	 * added. Undefined when the queue is empty.
+	 * added. The first announcement is the steer that telemetry counts: Send
+	 * now, the orchestrator's check and a delegated builder's check all land
+	 * here, so one turn is one event. Undefined when the queue is empty.
 	 */
 	private async announceQueuedTurn(
 		user: User,
 		threadId: string,
 		runId: string,
+		step?: number,
 	): Promise<InstanceAiQueuedMessage | undefined> {
 		let sent: InstanceAiQueuedMessage | undefined;
 		let changed = false;
+		let first = false;
 		await this.mutateQueuedMessages(threadId, (messages) => {
 			const merged = mergeQueuedMessages(messages);
 			if (!merged) return messages;
-			changed = messages.length > 1 || merged.sentAt === undefined;
+			first = merged.sentAt === undefined;
+			changed = first || messages.length > 1;
 			sent = { ...merged, sentAt: merged.sentAt ?? new Date().toISOString() };
 			return [sent];
 		});
 		if (sent && changed) this.publishQueuedMessage(user, threadId, runId, sent, 'steered');
+		if (first) {
+			this.telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.USER_STEERED_MESSAGE, {
+				thread_id: threadId,
+				...(step !== undefined ? { step } : {}),
+			});
+		}
 		return sent;
 	}
 
@@ -2980,6 +2991,7 @@ export class InstanceAiService {
 			},
 			abortSignal,
 			subAgentAbortSignal: AbortSignal.any([abortSignal, steerStop.signal]),
+			subAgentShouldStop: async () => await this.claimQueuedTurn(threadId, runId),
 			taskStorage,
 			timeZone: this.defaultTimeZone,
 			localMcpServer: context.localMcpServer,
@@ -3517,7 +3529,7 @@ export class InstanceAiService {
 	 *
 	 * Never throws: a queue failure leaves the run running and the queue as is.
 	 */
-	private async claimQueuedTurn(threadId: string, runId: string, step: number): Promise<boolean> {
+	private async claimQueuedTurn(threadId: string, runId: string, step?: number): Promise<boolean> {
 		try {
 			const user = this.runState.getThreadUser(threadId);
 			if (!user) return false;
@@ -3525,12 +3537,7 @@ export class InstanceAiService {
 			// in-memory gate answers on a single main; multi-main always reads.
 			if (!this.instanceSettings.isMultiMain && !this.queuedThreads.has(threadId)) return false;
 			if (!(await this.readThreadQueue(threadId))?.length) return false;
-			if (!(await this.announceQueuedTurn(user, threadId, runId))) return false;
-			this.telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.USER_STEERED_MESSAGE, {
-				thread_id: threadId,
-				step,
-			});
-			return true;
+			return (await this.announceQueuedTurn(user, threadId, runId, step)) !== undefined;
 		} catch (error) {
 			this.logger.warn('Failed to claim the queued turn', {
 				threadId,
