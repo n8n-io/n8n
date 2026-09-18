@@ -140,11 +140,11 @@ describe('NodeView', () => {
 						template: `<>
 							<button
 								data-test-id="node-creation-stub-add-empty-group"
-								@click="$emit('addEmptyGroup', [320, 240])"
+								@click="$emit('addEmptyGroup', false)"
 							/>
 							<button
 								data-test-id="node-creation-stub-add-empty-groups"
-								@click="$emit('addEmptyGroup', [320, 240]); $emit('addEmptyGroup', [640, 480])"
+								@click="$emit('addEmptyGroup', false); $emit('addEmptyGroup', false)"
 							/>
 							<button
 								data-test-id="node-creation-stub-add-loop-replacement"
@@ -158,7 +158,7 @@ describe('NodeView', () => {
 					}),
 					LazySetupWorkflowCredentialsButton: { render: () => null },
 					WorkflowCanvas: defineComponent({
-						emits: ['copy:nodes', 'replace:node'],
+						emits: ['copy:nodes', 'replace:node', 'viewport:change'],
 						setup(_, { emit, expose }) {
 							expose({ ensureNodesAreVisible });
 							return {
@@ -172,6 +172,10 @@ describe('NodeView', () => {
 						template: `<div>
 							<button data-test-id="canvas-stub-copy" @click="$emit('copy:nodes', copyNodeIds)" />
 							<button data-test-id="canvas-stub-replace-first" @click="replaceFirstNode" />
+							<button
+								data-test-id="canvas-stub-set-viewport"
+								@click="$emit('viewport:change', { x: 0, y: 0, zoom: 1 }, { width: 1000, height: 1000 })"
+							/>
 							<slot />
 						</div>`,
 					}),
@@ -235,7 +239,6 @@ describe('NodeView', () => {
 			expect(anchor).toMatchObject({
 				type: NO_OP_NODE_TYPE,
 				name: 'No Operation, do nothing',
-				position: [320, 240],
 				parameters: { emptyGroupAnchor: true },
 				placeholder: true,
 			});
@@ -281,6 +284,32 @@ describe('NodeView', () => {
 			await waitFor(() => expect(workflowDocumentStore.allGroups).toHaveLength(1));
 			expect(workflowDocumentStore.allNodes).toHaveLength(1);
 			expect(useHistoryStore().undoStack).toHaveLength(1);
+		});
+
+		it('places sequential empty groups at different positions', async () => {
+			routeMock.meta = { nodeView: true };
+			useWorkflowsListStore().addWorkflow(
+				createTestWorkflow({ id: 'w0', scopes: ['workflow:read', 'workflow:update'] }),
+			);
+			useNodeTypesStore().setNodeTypes([
+				mockNodeTypeDescription({
+					name: NO_OP_NODE_TYPE,
+					displayName: 'No Operation, do nothing',
+					properties: [],
+				}),
+			]);
+			const { findByTestId } = renderNodeView();
+			await userEvent.click(await findByTestId('canvas-stub-set-viewport'));
+			const addEmptyGroup = await findByTestId('node-creation-stub-add-empty-group');
+
+			await userEvent.click(addEmptyGroup);
+			await waitFor(() => expect(workflowDocumentStore.allGroups).toHaveLength(1));
+			const firstPosition = workflowDocumentStore.allNodes[0].position;
+
+			await userEvent.click(addEmptyGroup);
+			await waitFor(() => expect(workflowDocumentStore.allGroups).toHaveLength(2));
+
+			expect(workflowDocumentStore.allNodes[1].position).not.toEqual(firstPosition);
 		});
 
 		it('adds a node to a regular group through the output plus', async () => {
