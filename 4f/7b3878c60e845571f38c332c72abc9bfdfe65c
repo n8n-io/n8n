@@ -1,0 +1,63 @@
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/types.ts
+  s_e4691750936e0f::t_40f3bf44146e82 146-147
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_e4691750936e0f::t_a60fa3084dd776 972
+  s_e4691750936e0f::t_b5c6faa10c4ca9 1033
+packages/cli/src/modules/agents/utils/execution-to-message-mapper.ts
+  s_e4691750936e0f::t_ceca8c03d91d83 150-152,170,196
+  s_e4691750936e0f::t_0e52e7bd1e2453 9
+packages/@n8n/api-types/src/agents/types.ts
+  s_e4691750936e0f::t_065994d7021538 356-357
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/messageMappers.ts
+  s_e4691750936e0f::t_19a09aaafe2cb7 323-326,342
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatMessageList.test.ts
+  s_e4691750936e0f::t_bd0bb329f2df1f 889-905,907-932,956-969
+  s_e4691750936e0f::t_cbf8c6f8b32b18 906
+  s_e4691750936e0f::t_23952fd52e4cc3 933-955
+packages/cli/src/modules/agents/agent-message-mapper.ts
+  s_e4691750936e0f::t_ceca8c03d91d83 1,28-32,37
+packages/frontend/editor-ui/src/features/agents/components/AgentChatMessageList.vue
+  s_e4691750936e0f::t_a69e24210c7882 450,452-454,456
+  s_e4691750936e0f::t_dcca8f4b29d979 735-739
+  s_e4691750936e0f::t_7caf391b9cc087 35,171-173,176-177
+  s_e4691750936e0f::t_53306d34f971dd 152-158,163,166-170,174-175,178,180-182,184-185
+  s_e4691750936e0f::t_08e1289dbf8afc 159-162,164-165,179,183,451,455
+packages/frontend/editor-ui/src/features/agents/__tests__/relative-time.test.ts
+  s_e4691750936e0f::t_c42df23603d544 53-59,62-64,66-70,72-82,84-86
+  s_e4691750936e0f::t_81f48d5d27435b 2
+  s_e4691750936e0f::t_cbf8c6f8b32b18 60-61,71,83
+  s_e4691750936e0f::t_23952fd52e4cc3 65
+packages/frontend/editor-ui/src/features/agents/utils/relative-time.ts
+  s_e4691750936e0f::t_08e1289dbf8afc 88
+  s_e4691750936e0f::t_0dedba644f4fc3 68-87,89-113
+  s_e4691750936e0f::t_7caf391b9cc087 54
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_e4691750936e0f::t_7caf391b9cc087 1391,1398,1412,1419
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_e4691750936e0f::t_f23ae110eb9a01 7701-7703
+packages/@n8n/agents/src/index.ts
+  s_e4691750936e0f::t_ceca8c03d91d83 268
+packages/cli/src/modules/agents/__tests__/agent-message-mapper.test.ts
+  s_e4691750936e0f::t_7efa2456794d70 50-62,64-70
+  s_e4691750936e0f::t_d46e8267153387 7,10,25
+  s_e4691750936e0f::t_cbf8c6f8b32b18 63
+  s_e4691750936e0f::t_95ebef0279adc4 36,39,46
+packages/cli/src/modules/agents/__tests__/execution-to-message-mapper.test.ts
+  s_e4691750936e0f::t_e901b2df6605f3 7-8,14,47,196,216,285,303,329,372,454,483,490
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4f7b3878c60e845571f38c332c72abc9bfdfe65c",
+  "prompts": {},
+  "sessions": {
+    "s_e4691750936e0f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ab4a9273-49f3-4f07-9ba6-02e9834ba73d",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}
