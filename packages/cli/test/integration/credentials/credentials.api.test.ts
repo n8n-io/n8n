@@ -861,6 +861,66 @@ describe('GET /credentials', () => {
 
 			response.body.data.forEach(validateCredentialWithNoData);
 		});
+
+		test('should page onlySharedWithMe results', async () => {
+			const first = await saveCredential(payload(), { user: owner, role: 'credential:owner' });
+			const second = await saveCredential(payload(), { user: owner, role: 'credential:owner' });
+			await shareCredentialWithUsers(first, [member]);
+			await shareCredentialWithUsers(second, [member]);
+
+			const page1 = await authMemberAgent
+				.get('/credentials')
+				.query({ onlySharedWithMe: true, take: 1, skip: 0 })
+				.expect(200);
+			const page2 = await authMemberAgent
+				.get('/credentials')
+				.query({ onlySharedWithMe: true, take: 1, skip: 1 })
+				.expect(200);
+
+			expect(page1.body.data).toHaveLength(1);
+			expect(page2.body.data).toHaveLength(1);
+			expect([page1.body.data[0].id, page2.body.data[0].id].sort()).toEqual(
+				[first.id, second.id].sort(),
+			);
+		});
+	});
+
+	describe('includeGlobal', () => {
+		test('should return global credentials to a member who is not shared on them', async () => {
+			const own = await saveCredential(payload(), { user: member, role: 'credential:owner' });
+			const global = await saveCredential(payload({ isGlobal: true }), {
+				user: owner,
+				role: 'credential:owner',
+			});
+			await saveCredential(payload(), { user: owner, role: 'credential:owner' });
+
+			const without = await authMemberAgent.get('/credentials').expect(200);
+			expect(without.body.data.map((c: { id: string }) => c.id)).toEqual([own.id]);
+
+			const withGlobal = await authMemberAgent
+				.get('/credentials')
+				.query({ includeGlobal: true })
+				.expect(200);
+			expect(withGlobal.body.data.map((c: { id: string }) => c.id).sort()).toEqual(
+				[own.id, global.id].sort(),
+			);
+			withGlobal.body.data.forEach(validateCredentialWithNoData);
+		});
+
+		// `take` bounds the whole page, globals included.
+		test('should respect take when includeGlobal=true', async () => {
+			await saveCredential(payload(), { user: member, role: 'credential:owner' });
+			await saveCredential(payload(), { user: member, role: 'credential:owner' });
+			await saveCredential(payload({ isGlobal: true }), { user: owner, role: 'credential:owner' });
+			await saveCredential(payload({ isGlobal: true }), { user: owner, role: 'credential:owner' });
+
+			const response = await authMemberAgent
+				.get('/credentials')
+				.query({ includeGlobal: true, take: 1 })
+				.expect(200);
+
+			expect(response.body.data).toHaveLength(1);
+		});
 	});
 });
 

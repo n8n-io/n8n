@@ -812,6 +812,37 @@ describe('Promotions in Public API', () => {
 			}
 		});
 
+		it('validates the optional Apply source like Continue and applies the tip without one', async () => {
+			const agent = testServer.publicApiAgentFor(owner);
+			for (const body of [
+				{ ...continueBody, force: true },
+				{ expectedSource: { ...continueBody.expectedSource, commitSha: 'HEAD' } },
+				{ expectedSource: { ...continueBody.expectedSource, resolved: true } },
+			]) {
+				const response = await agent.post('/promotions/connections/someId/apply').send(body);
+				expect(response.status).toBe(400);
+			}
+
+			const id = await createConnection(agent);
+			const initial = vi.spyOn(Container.get(PromotionsService), 'apply').mockResolvedValue({
+				status: 'source-changed',
+				connectionId: id,
+				configId: continueBody.expectedSource.configId,
+				git: { branchName: 'main', commitSha: continueBody.expectedSource.commitSha },
+			});
+			try {
+				const response = await agent.post(`/promotions/connections/${id}/apply`);
+				expect(response.status, JSON.stringify(response.body)).toBe(200);
+				expect(initial).toHaveBeenCalledWith(
+					id,
+					expect.objectContaining({ id: owner.id }),
+					undefined,
+				);
+			} finally {
+				initial.mockRestore();
+			}
+		});
+
 		it.each(['blocked', 'applied', 'source-changed'] as const)(
 			'returns the %s contract through both Apply routes with only the pull API-key scope',
 			async (status) => {
@@ -885,6 +916,7 @@ describe('Promotions in Public API', () => {
 					expect(initial).toHaveBeenCalledWith(
 						id,
 						expect.objectContaining({ id: restrictedOwner.id }),
+						continueBody.expectedSource,
 					);
 					expect(continuation).toHaveBeenCalledWith(
 						id,
