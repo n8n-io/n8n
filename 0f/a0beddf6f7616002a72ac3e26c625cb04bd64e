@@ -1,0 +1,37 @@
+packages/@n8n/engine/docs/adr/ADR-20260904-timeout-excludes-waiting-time.md
+  s_77655ca8fe3a59::t_5c8ced0da71a29 63
+  s_77655ca8fe3a59::t_92f9ed093e3f3b 64,66
+packages/@n8n/engine/docs/adr/ADR-20260902-steps-declare-waits.md
+  s_13d0f2e1be0144::t_684fada72c2a59 69-71
+  s_13d0f2e1be0144::t_865943e44889ca 65-68,165-168
+  s_13d0f2e1be0144::t_51e6d3292b3b4f 64,122-125
+packages/@n8n/engine/src/database/typeorm-execution-store.ts
+  s_13d0f2e1be0144::t_865943e44889ca 65-67
+packages/@n8n/engine/src/execution/execution-store.ts
+  s_13d0f2e1be0144::t_865943e44889ca 64-66,68,73-74
+  s_13d0f2e1be0144::t_684fada72c2a59 69-70
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "0fa0beddf6f7616002a72ac3e26c625cb04bd64e",
+  "prompts": {},
+  "sessions": {
+    "s_13d0f2e1be0144": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "46caa7f3-0057-4c97-8c31-ca17c936adc0",
+        "model": "claude-opus-5"
+      },
+      "human_author": null
+    },
+    "s_77655ca8fe3a59": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d2c5a11b-62c7-4839-ab99-8421196be4d4",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}
