@@ -21,7 +21,7 @@ import {
 	type AgentChatIntegrationContext,
 	type ActionDecisionMessageParams,
 } from '../agent-chat-integration';
-import type { SuspendComponent } from '../component-mapper';
+import { componentTextToString, type SuspendComponent } from '../component-mapper';
 import { assertCredentialNotClaimed } from '../credential-claim';
 import { loadChatSdk, loadWhatsAppAdapter } from '../esm-loader';
 import { deriveWhatsAppVerifyToken } from '../integration-helpers';
@@ -214,18 +214,21 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 	 * caps interactive messages at 3 buttons and otherwise rejects the send.
 	 */
 	normalizeComponents(components: SuspendComponent[]): SuspendComponent[] {
-		const buttonCount = components.filter((c) => c.type === 'button').length;
-		if (buttonCount <= WHATSAPP_MAX_REPLY_BUTTONS) return components;
+		const buttons = components.filter((c) => c.type === 'button');
+		if (buttons.length <= WHATSAPP_MAX_REPLY_BUTTONS) return components;
 
-		// Tier 4 fallback: more than 3 options don't fit WhatsApp's reply-button
-		// limit. The intended fallback is a link back to the n8n web UI so the
-		// user can finish the action there, but no such HITL resume-link
-		// mechanism exists in this codebase yet.
-		// TODO: link to the n8n web UI conversation once a resume-link mechanism exists.
+		// More than 3 options don't fit WhatsApp's reply-button limit, but
+		// WhatsApp list messages allow far more entries — convert the overflow
+		// into a `select` so the action stays completable from WhatsApp, instead
+		// of dropping the options behind unreachable text.
 		const normalized = components.filter((c) => c.type !== 'button');
 		normalized.push({
-			type: 'section',
-			text: 'This action has more options than WhatsApp supports as buttons. Open this conversation in n8n to choose.',
+			type: 'select',
+			label: 'Choose an option',
+			options: buttons.map((b) => ({
+				label: b.label ?? componentTextToString(b.text) ?? b.value ?? '',
+				value: b.value ?? b.label ?? '',
+			})),
 		});
 		return normalized;
 	}
@@ -289,7 +292,7 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 	): string {
 		const value = credential[field];
 		if (typeof value === 'string' && value.trim()) return value.trim();
-		throw new Error(message);
+		throw new UserError(message);
 	}
 }
 

@@ -155,8 +155,11 @@ function originPresentation(thread: AgentExecutionThread): OriginPresentation {
 		case 'telegram':
 		case 'linear':
 		case 'discord':
-		case 'whatsapp':
 			return { icon: source, label: source.charAt(0).toUpperCase() + source.slice(1) };
+		case 'whatsapp':
+			// The generic capitalize-first-letter above would produce "Whatsapp",
+			// misspelling the brand name — WhatsApp has an internal capital.
+			return { icon: source, label: 'WhatsApp' };
 		case 'chat':
 		case 'n8n_chat':
 		case undefined:

@@ -159,7 +159,7 @@ The \`integrations\` array controls how the target agent is triggered.
 - Chat integration types must come from \`list_integration_types\`. A channel
   absent from its result is unsupported for agents — never invent a type, never
   draft or configure it, and never substitute a workflow node (e.g. a
-  WhatsApp/Twilio node) to fake an unsupported chat channel. Instead, explain
+  Twilio node) to fake an unsupported chat channel. Instead, explain
   the channel is unsupported, offer the supported alternatives the tool
   returned with their \`capabilities\`, and ask which to use (or whether the
   user wants a workflow path after the limitation is stated).

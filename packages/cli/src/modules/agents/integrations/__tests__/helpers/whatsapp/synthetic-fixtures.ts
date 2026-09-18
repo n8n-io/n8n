@@ -67,7 +67,11 @@ export const whatsAppReplayFixtures = (
 	const contact = overrides.contact ?? whatsAppContact();
 	const mention =
 		overrides.mention ??
-		whatsAppWebhook({ phoneNumberId, contact, message: whatsAppInboundTextMessage() });
+		whatsAppWebhook({
+			phoneNumberId,
+			contact,
+			message: whatsAppInboundTextMessage({ from: contact.wa_id }),
+		});
 
 	return {
 		phoneNumberId,
@@ -79,6 +83,7 @@ export const whatsAppReplayFixtures = (
 				phoneNumberId,
 				contact,
 				message: whatsAppInboundTextMessage({
+					from: contact.wa_id,
 					id: 'wamid.TEST_INBOUND_0002',
 					text: { body: 'follow up' },
 				}),

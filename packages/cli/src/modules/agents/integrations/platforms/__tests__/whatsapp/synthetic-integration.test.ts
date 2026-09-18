@@ -243,7 +243,7 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 			expect(integration.normalizeComponents(components)).toEqual(components);
 		});
 
-		it('replaces reply buttons with a text fallback when there are more than 3 buttons', () => {
+		it('converts overflow buttons into a WhatsApp list when there are more than 3', () => {
 			const integration = createWhatsAppIntegration();
 			const section: SuspendComponent = { type: 'section', text: 'Pick one' };
 			const components: SuspendComponent[] = [section, ...buttons(4)];
@@ -253,8 +253,13 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 			expect(normalized.filter((c) => c.type === 'button')).toHaveLength(0);
 			expect(normalized[0]).toEqual(section);
 			expect(normalized.at(-1)).toMatchObject({
-				type: 'section',
-				text: 'This action has more options than WhatsApp supports as buttons. Open this conversation in n8n to choose.',
+				type: 'select',
+				options: [
+					{ label: 'Option 1', value: 'opt-1' },
+					{ label: 'Option 2', value: 'opt-2' },
+					{ label: 'Option 3', value: 'opt-3' },
+					{ label: 'Option 4', value: 'opt-4' },
+				],
 			});
 		});
 	});
