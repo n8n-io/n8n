@@ -33,7 +33,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [agents_memory_entry_locks](agents_memory_entry_locks.md) | 6 |  | table |
 | [agents_memory_entry_sources](agents_memory_entry_sources.md) | 10 |  | table |
 | [agents_messages](agents_messages.md) | 8 |  | table |
-| [agents_observation_cursors](agents_observation_cursors.md) | 6 |  | table |
+| [agents_observation_cursors](agents_observation_cursors.md) | 7 |  | table |
 | [agents_observation_locks](agents_observation_locks.md) | 7 |  | table |
 | [agents_observations](agents_observations.md) | 11 |  | table |
 | [agents_resources](agents_resources.md) | 4 |  | table |
@@ -200,8 +200,8 @@ erDiagram
 "agents_memory_entry_sources" }o--|| "agents_memory_entries" : "FOREIGN KEY (memoryEntryId) REFERENCES agents_memory_entries (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agents_memory_entry_sources" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agents_messages" }o--|| "agents_threads" : "FOREIGN KEY (threadId) REFERENCES agents_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"agents_observation_cursors" |o--|| "agents_threads" : "FOREIGN KEY (observationScopeId) REFERENCES agents_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agents_observation_cursors" |o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"agents_observation_cursors" |o--|| "agents_threads" : "FOREIGN KEY (observationScopeId) REFERENCES agents_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agents_observation_locks" |o--|| "agents_threads" : "FOREIGN KEY (observationScopeId) REFERENCES agents_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agents_observation_locks" |o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agents_observations" }o--o| "agents_observations" : "FOREIGN KEY (supersededBy) REFERENCES agents_observations (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
@@ -678,6 +678,7 @@ erDiagram
 "agents_observation_cursors" {
   varchar_36_ agentId PK
   datetime_3_ createdAt
+  varchar_36_ emptyLogThroughMessageId
   datetime_3_ lastObservedAt
   varchar_36_ lastObservedMessageId
   varchar_255_ observationScopeId PK

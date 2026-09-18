@@ -60,6 +60,22 @@ export interface ObservationLogObserverMemory extends BuiltMemory, BuiltObservat
 	setCursor(cursor: ObservationCursor): Promise<void>;
 }
 
+export async function readObservationState(
+	memory: ObservationLogObserverMemory,
+	observationScopeId: string,
+): Promise<{ cursor: ObservationCursor | null; hasActiveObservations: boolean }> {
+	const [cursor, observations] = await Promise.all([
+		memory.getCursor(observationScopeId),
+		memory.getActiveObservationLog({ observationScopeId, limit: 1, order: 'desc' }),
+	]);
+	const hasActiveObservations = observations.length > 0;
+	// Missing memory is not proof that the processed history was empty.
+	const trusted =
+		cursor &&
+		(hasActiveObservations || cursor.emptyLogThroughMessageId === cursor.lastObservedMessageId);
+	return { cursor: trusted ? cursor : null, hasActiveObservations };
+}
+
 export interface RunObservationLogObserverOpts {
 	memory: ObservationLogObserverMemory;
 	observationScopeId: string;
@@ -73,7 +89,7 @@ export interface RunObservationLogObserverOpts {
 }
 
 export type RunObservationLogObserverResult =
-	| { status: 'skipped'; reason: 'no-delta' | 'pending-tool-call' }
+	| { status: 'skipped'; reason: 'no-delta' | 'pending-tool-call' | 'run-disabled' }
 	| {
 			status: 'ran';
 			observationsWritten: number;
@@ -167,7 +183,7 @@ export async function runObservationLogObserver(
 	opts: RunObservationLogObserverOpts,
 ): Promise<RunObservationLogObserverResult> {
 	const { memory, observationScopeId } = opts;
-	const cursor = await memory.getCursor(observationScopeId);
+	const { cursor, hasActiveObservations } = await readObservationState(memory, observationScopeId);
 	const deltaMessages = await memory.getMessagesForObservationScope(
 		observationScopeId,
 		cursor
@@ -216,9 +232,26 @@ export async function runObservationLogObserver(
 		telemetry: opts.telemetry,
 	});
 
-	const parsed = parseObservationLogMarkdown(markdown);
+	const noObservations = markdown.trim() === 'NO_OBSERVATIONS';
+	const parsed = noObservations
+		? { entries: [], skippedLines: [] }
+		: parseObservationLogMarkdown(markdown);
 	for (const line of parsed.skippedLines) {
 		opts.onMalformedLine?.(line);
+	}
+	if (
+		!noObservations &&
+		(parsed.entries.length === 0 ||
+			parsed.skippedLines.length > 0 ||
+			parsed.entries.some((entry) => entry.text.length === 0))
+	) {
+		return {
+			status: 'ran',
+			observationsWritten: 0,
+			cursorAdvanced: false,
+			tokenCount,
+			skippedLines: parsed.skippedLines,
+		};
 	}
 
 	const prepared = await Promise.all(
@@ -249,19 +282,19 @@ export async function runObservationLogObserver(
 		inserted.push(row);
 	}
 
-	// Only advance the cursor once the delta is actually represented by
-	// persisted observations. Advancing after an empty or unparseable observe()
-	// result would mark these messages "observed" with no summary standing in
-	// for them, which permanently orphans them from loaded history.
-	const cursorAdvanced = inserted.length > 0;
-	if (cursorAdvanced) {
-		await advanceObserverCursor(memory, observationScopeId, observable[observable.length - 1], now);
-	}
+	const lastMessage = observable[observable.length - 1];
+	await memory.setCursor({
+		observationScopeId,
+		lastObservedMessageId: lastMessage.id,
+		lastObservedAt: lastMessage.createdAt,
+		emptyLogThroughMessageId: noObservations && !hasActiveObservations ? lastMessage.id : null,
+		updatedAt: now,
+	});
 
 	return {
 		status: 'ran',
 		observationsWritten: inserted.length,
-		cursorAdvanced,
+		cursorAdvanced: true,
 		tokenCount,
 		skippedLines: parsed.skippedLines,
 	};
@@ -369,18 +402,4 @@ export function wrapUntrustedObserverData(content: string, source: string): stri
 	const safeSource = escapeXmlAttribute(source);
 	const safeContent = content.replace(/<\/untrusted_tool_data/gi, '&lt;/untrusted_tool_data');
 	return `<untrusted_tool_data source="${safeSource}">${safeContent}</untrusted_tool_data>`;
-}
-
-async function advanceObserverCursor(
-	memory: ObservationLogObserverMemory,
-	observationScopeId: string,
-	lastMessage: AgentDbMessage,
-	now: Date,
-): Promise<void> {
-	await memory.setCursor({
-		observationScopeId,
-		lastObservedMessageId: lastMessage.id,
-		lastObservedAt: lastMessage.createdAt,
-		updatedAt: now,
-	});
 }

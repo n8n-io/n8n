@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "agents_observation_cursors" ("agentId" varchar(36) NOT NULL, "observationScopeId" varchar(255) NOT NULL, "lastObservedMessageId" varchar(36) NOT NULL, "lastObservedAt" datetime(3) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "FK_64e92819f4b413661ed6e2c3c3d" FOREIGN KEY ("agentId") REFERENCES "agents" ("id") ON DELETE CASCADE, CONSTRAINT "FK_87aa187d27ea67eafd164905154" FOREIGN KEY ("observationScopeId") REFERENCES "agents_threads" ("id") ON DELETE CASCADE, PRIMARY KEY ("agentId", "observationScopeId"))
+CREATE TABLE "agents_observation_cursors" ("agentId" varchar(36) NOT NULL, "observationScopeId" varchar(255) NOT NULL, "lastObservedMessageId" varchar(36) NOT NULL, "lastObservedAt" datetime(3) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "emptyLogThroughMessageId" varchar(36), CONSTRAINT "FK_87aa187d27ea67eafd164905154" FOREIGN KEY ("observationScopeId") REFERENCES "agents_threads" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_64e92819f4b413661ed6e2c3c3d" FOREIGN KEY ("agentId") REFERENCES "agents" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, PRIMARY KEY ("agentId", "observationScopeId"))
 ```
 
 </details>
@@ -17,6 +17,7 @@ CREATE TABLE "agents_observation_cursors" ("agentId" varchar(36) NOT NULL, "obse
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | agentId | varchar(36) |  | false |  | [agents](agents.md) |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| emptyLogThroughMessageId | varchar(36) |  | true |  |  |  |
 | lastObservedAt | datetime(3) |  | false |  |  |  |
 | lastObservedMessageId | varchar(36) |  | false |  |  |  |
 | observationScopeId | varchar(255) |  | false |  | [agents_threads](agents_threads.md) |  |
@@ -26,8 +27,8 @@ CREATE TABLE "agents_observation_cursors" ("agentId" varchar(36) NOT NULL, "obse
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (observationScopeId) REFERENCES agents_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
-| - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (observationScopeId) REFERENCES agents_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | agentId | PRIMARY KEY | PRIMARY KEY (agentId) |
 | observationScopeId | PRIMARY KEY | PRIMARY KEY (observationScopeId) |
 | sqlite_autoindex_agents_observation_cursors_1 | PRIMARY KEY | PRIMARY KEY (agentId, observationScopeId) |
@@ -50,6 +51,7 @@ erDiagram
 "agents_observation_cursors" {
   varchar_36_ agentId PK
   datetime_3_ createdAt
+  varchar_36_ emptyLogThroughMessageId
   datetime_3_ lastObservedAt
   varchar_36_ lastObservedMessageId
   varchar_255_ observationScopeId PK

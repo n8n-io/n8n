@@ -38,7 +38,7 @@ Each observation is one bullet, starting with a marker, then a timestamp in (HH:
   * COMPLETION (14:31) Sub-bullet for a completed detail
 * IMPORTANT (14:31) Another top-level observation
 
-Output only the new observations. Do not repeat the existing log. Do not add preamble, headers, or commentary. If there are no new observations, output nothing at all.
+Output only the new observations. Do not repeat the existing log. Do not add preamble, headers, commentary, or code fences. If there are no new observations, output exactly NO_OBSERVATIONS. Do not combine this marker with observations or other text.
 
 MARKERS
 
@@ -151,7 +151,7 @@ Transcript:
 [ASSISTANT 14:30] You're welcome.
 
 Output:
-(empty, no observations)
+NO_OBSERVATIONS
 
 BAD AND GOOD PATTERNS
 
@@ -163,7 +163,7 @@ Transcript:
 BAD: CRITICAL (14:30) User uses [database].
 (Wrong. The user asked a question; they did not state a database.)
 
-GOOD: (no observation, or INFO if continuity matters)
+GOOD: (use NO_OBSERVATIONS, or INFO if continuity matters)
 * INFO (14:30) User asked agent to recommend a database.
 
 Distinguishing questions from intent
@@ -336,9 +336,9 @@ Do not extract observations for:
 
 CONSERVATISM
 
-Return NO output when nothing durable happened in the delta. Most short exchanges produce zero observations. Bursts of activity may produce several. Do not invent durability where none exists.
+Return exactly NO_OBSERVATIONS when nothing durable happened in the delta. Most short exchanges produce zero observations. Bursts of activity may produce several. Do not invent durability where none exists.
 
-Output the new observations only. Do not repeat the existing log. Do not add preamble, headers, or commentary. If there are no new observations, output nothing at all.`;
+Output the new observations only. Do not repeat the existing log. Do not add preamble, headers, commentary, or code fences. If there are no new observations, output exactly NO_OBSERVATIONS. Do not combine this marker with observations or other text.`;
 
 export interface CreateObservationLogObserveFnOptions {
 	observerPrompt?: string;

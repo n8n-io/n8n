@@ -33,7 +33,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.agents_memory_entry_locks](public.agents_memory_entry_locks.md) | 6 |  | BASE TABLE |
 | [public.agents_memory_entry_sources](public.agents_memory_entry_sources.md) | 10 |  | BASE TABLE |
 | [public.agents_messages](public.agents_messages.md) | 8 |  | BASE TABLE |
-| [public.agents_observation_cursors](public.agents_observation_cursors.md) | 6 |  | BASE TABLE |
+| [public.agents_observation_cursors](public.agents_observation_cursors.md) | 7 |  | BASE TABLE |
 | [public.agents_observation_locks](public.agents_observation_locks.md) | 7 |  | BASE TABLE |
 | [public.agents_observations](public.agents_observations.md) | 11 |  | BASE TABLE |
 | [public.agents_resources](public.agents_resources.md) | 4 |  | BASE TABLE |
@@ -691,6 +691,7 @@ erDiagram
 "public.agents_observation_cursors" {
   varchar_36_ agentId FK
   timestamp_3__with_time_zone createdAt
+  varchar_36_ emptyLogThroughMessageId
   timestamp_3__with_time_zone lastObservedAt
   varchar_36_ lastObservedMessageId
   varchar_255_ observationScopeId FK
