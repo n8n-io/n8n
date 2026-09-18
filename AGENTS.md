@@ -105,7 +105,8 @@ Worktrees pile up on a shared machine. `pnpm worktree:clean` lists them with
 the reason each one is kept or removed, and `pnpm worktree:clean --yes` removes
 the stale ones: clean trees whose PR is merged or closed, or that idled for a
 week with no open PR. Dirty trees, unpushed commits and live sessions are
-always kept. Codespaces run it at each container start.
+always kept. The live-session check reads `/proc`, so on macOS the script only
+reports. Codespaces run it at each container start.
 
 ### Testing
 - `pnpm test` - Run all tests

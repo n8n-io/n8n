@@ -4,30 +4,17 @@
 //
 // A worktree is removed only when all of these hold:
 //   - no uncommitted or untracked files
-//   - every commit is on a remote (nothing would be lost)
-//   - no running process has its cwd inside it
+//   - no running process has its cwd inside it (Linux only; elsewhere nothing is removed)
 //   - it is not locked
-//   - its PR is merged or closed, or it has no open PR and idled past --older-than
+//   - its PR is merged at the current HEAD, or every commit is on a remote and
+//     its PR is merged or closed, or it has no open PR and idled past --older-than
 //
-// The main worktree is never touched. `pnpm session` worktrees (/workspaces/wt-*)
-// and Claude Code worktrees (.claude/worktrees/*) are both plain git worktrees,
-// so one pass covers both.
-//
-// Removal is a rename into a sibling `.worktree-trash/` directory plus
-// `git worktree prune`, which takes milliseconds. A detached process deletes the
-// trash afterwards: unlinking 250k files takes ~20 s, and that must not hold up
-// the Codespace start.
+// The main worktree is never touched. Removal is a rename into a sibling
+// `.worktree-trash/` directory plus `git worktree prune`; a detached process
+// deletes the trash afterwards so a Codespace start is not held up.
 import { execFile, execFileSync, spawn, spawnSync } from 'node:child_process';
-import {
-	existsSync,
-	mkdirSync,
-	readdirSync,
-	readFileSync,
-	readlinkSync,
-	renameSync,
-	statSync,
-} from 'node:fs';
-import { basename, dirname, join, relative, resolve, sep } from 'node:path';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readlinkSync, renameSync } from 'node:fs';
+import { basename, dirname, join, relative, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { parseArgs, promisify } from 'node:util';
 
@@ -42,31 +29,21 @@ Flags:
   --yes                 remove the worktrees marked "remove" and prune stale entries
   --older-than <days>   idle days before a clean worktree without an open PR is
                         removed (default 7)
-  --deps                also delete node_modules, dist and .turbo in kept worktrees
-                        that idled past --older-than (they reinstall in seconds)
-  --no-gh               skip the PR lookup; idle worktrees are then removed on age alone
-  --json                print the report as JSON
   -h, --help            show this help
 `;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-const DEPS_DIRS = new Set(['node_modules', 'dist', '.turbo']);
-// A hung network call keeps the worktree (lookup failed); it must not hang the run.
 const GH_TIMEOUT_MS = 20_000;
 const TRASH_DIR = '.worktree-trash';
 
-// ---------------------------------------------------------------------------
-// Pure helpers. Exported for tests.
-
-/** Parses `git worktree list --porcelain`. The first entry is the main worktree. */
 export function parsePorcelain(text) {
 	const entries = [];
 	let current = null;
 	for (const line of text.split('\n')) {
 		if (line.startsWith('worktree ')) {
-			current = { path: line.slice('worktree '.length), locked: false, prunable: false };
+			current = { path: line.slice('worktree '.length), locked: false };
 			entries.push(current);
-		} else if (!current || line === '') {
+		} else if (!current) {
 			continue;
 		} else if (line.startsWith('branch ')) {
 			current.branch = line.slice('branch '.length).replace(/^refs\/heads\//, '');
@@ -74,91 +51,39 @@ export function parsePorcelain(text) {
 			current.head = line.slice('HEAD '.length);
 		} else if (line === 'locked' || line.startsWith('locked ')) {
 			current.locked = true;
-		} else if (line === 'prunable' || line.startsWith('prunable ')) {
-			current.prunable = true;
-		} else if (line === 'detached') {
-			current.detached = true;
 		}
 	}
 	return entries;
 }
 
-/**
- * Decides what to do with one worktree. `info` carries the gathered signals:
- * { missing, locked, inUse (true | false | null = unknown), dirty, unpushed,
- *   pr: { number, state } | null, prLookupFailed, idleDays }.
- * Returns { action: 'prune' | 'remove' | 'keep', reason, deleteBranch, depsCandidate }.
- */
 export function decide(info, { olderThanDays }) {
-	const keep = (reason, depsCandidate = false) => ({
-		action: 'keep',
-		reason,
-		deleteBranch: null,
-		depsCandidate,
-	});
-	if (info.missing) return { action: 'prune', reason: 'directory is gone', deleteBranch: null };
+	const keep = (reason) => ({ action: 'keep', reason });
+	const remove = (reason) => ({ action: 'remove', reason });
+	if (info.missing) return { action: 'prune', reason: 'directory is gone' };
 	if (info.locked) return keep('locked');
 	if (info.inUse === null) return keep('cannot check running processes');
 	if (info.inUse) return keep('in use by a running process');
-
-	const idle = info.idleDays >= olderThanDays;
-	if (info.dirty) return keep('uncommitted changes', idle);
+	if (info.dirty) return keep('uncommitted changes');
+	if (info.pr?.state === 'MERGED' && info.pr.headSha === info.head) {
+		return remove(`PR #${info.pr.number} merged`);
+	}
 	if (info.unpushed > 0) {
-		return keep(`${info.unpushed} commit${info.unpushed === 1 ? '' : 's'} not on any remote`, idle);
+		return keep(`${info.unpushed} commit${info.unpushed === 1 ? '' : 's'} not on any remote`);
 	}
-	if (info.prLookupFailed) return keep('PR lookup failed', idle);
-	if (info.pr?.state === 'MERGED') {
-		return { action: 'remove', reason: `PR #${info.pr.number} merged`, deleteBranch: 'force' };
-	}
-	if (info.pr?.state === 'CLOSED') {
-		return { action: 'remove', reason: `PR #${info.pr.number} closed`, deleteBranch: 'force' };
-	}
-	if (info.pr?.state === 'OPEN') return keep(`PR #${info.pr.number} is open`, idle);
-	if (idle) {
-		return {
-			action: 'remove',
-			reason: `clean, idle for ${info.idleDays} days, no PR`,
-			deleteBranch: 'safe',
-		};
-	}
+	if (info.prLookupFailed) return keep('PR lookup failed');
+	if (info.pr?.state === 'OPEN') return keep(`PR #${info.pr.number} is open`);
+	if (info.pr) return remove(`PR #${info.pr.number} ${info.pr.state.toLowerCase()}`);
+	if (info.idleDays >= olderThanDays) return remove(`clean, idle for ${info.idleDays} days, no PR`);
 	return keep(`active ${info.idleDays} day${info.idleDays === 1 ? '' : 's'} ago`);
 }
 
-/**
- * Where a removed directory is renamed to before the background delete: a
- * `.worktree-trash/` folder next to the worktree, so the rename stays on one filesystem.
- */
-export function trashPathFor(worktreePath, name = basename(worktreePath), now = Date.now()) {
-	return join(dirname(worktreePath), TRASH_DIR, `${name}-${now}`);
-}
-
-/**
- * Picks the PR state that matters when two repositories answer for one branch.
- * OPEN wins: it blocks removal. MERGED beats CLOSED so the branch is force-deleted
- * only when its work landed.
- */
-export function preferPr(a, b) {
-	const rank = { OPEN: 3, MERGED: 2, CLOSED: 1 };
-	if (!a) return b ?? null;
-	if (!b) return a;
-	return (rank[b.state] ?? 0) > (rank[a.state] ?? 0) ? b : a;
-}
-
-export function formatSize(kb) {
-	if (kb == null) return '-';
-	if (kb >= 1024 * 1024) return `${(kb / 1024 / 1024).toFixed(1)}G`;
-	if (kb >= 1024) return `${Math.round(kb / 1024)}M`;
-	return `${kb}K`;
-}
-
 export function formatTable(rows) {
-	const header = ['worktree', 'branch', 'pr', 'idle', 'size', 'action', 'reason'];
+	const header = ['worktree', 'branch', 'pr', 'idle', 'action', 'reason'];
 	const cells = rows.map((r) => [
 		r.name,
 		r.branch ?? '(detached)',
-		r.pr ? `#${r.pr.number} ${r.pr.state.toLowerCase()}` : (r.prNote ?? '-'),
+		r.pr ? `#${r.pr.number} ${r.pr.state.toLowerCase()}` : r.prLookupFailed ? 'gh failed' : '-',
 		r.idleDays == null ? '-' : `${r.idleDays}d`,
-		formatSize(r.sizeKb),
 		r.action,
 		r.reason,
 	]);
@@ -171,20 +96,13 @@ export function formatTable(rows) {
 	return [line(header), line(widths.map((w) => '-'.repeat(w))), ...cells.map(line)].join('\n');
 }
 
-// ---------------------------------------------------------------------------
-// Signal gathering.
-
-function git(args, cwd) {
-	return execFileSync('git', args, {
-		cwd,
-		encoding: 'utf8',
-		stdio: ['ignore', 'pipe', 'pipe'],
-	}).trim();
-}
-
 function tryGit(args, cwd) {
 	try {
-		return git(args, cwd);
+		return execFileSync('git', args, {
+			cwd,
+			encoding: 'utf8',
+			stdio: ['ignore', 'pipe', 'pipe'],
+		}).trim();
 	} catch {
 		return null;
 	}
@@ -194,129 +112,63 @@ function isInside(child, parent) {
 	return child === parent || child.startsWith(parent + sep);
 }
 
-/**
- * The cwd of every running process, or null when that cannot be read at all.
- * Includes this process, so the worktree the cleaner runs from is always kept.
- *
- * On Linux a few processes hide their cwd even from their own user: zombies have
- * none, and sshd's privilege-separated children are not dumpable. Those cannot
- * hold a worktree open, so they are counted and reported, not treated as unknown.
- */
 function processCwds() {
-	if (process.platform === 'linux') {
-		const cwds = [process.cwd()];
-		let unreadable = 0;
-		for (const pid of readdirSync('/proc')) {
-			if (!/^\d+$/.test(pid)) continue;
-			try {
-				cwds.push(readlinkSync(`/proc/${pid}/cwd`));
-			} catch (error) {
-				if (error.code === 'EACCES' && !isZombie(pid)) unreadable++;
-			}
-		}
-		return { cwds, unreadable };
-	}
-	// macOS: lsof prints `p<pid>` then `n<path>` for each process.
-	const res = spawnSync('lsof', ['-a', '-d', 'cwd', '-Fn'], { encoding: 'utf8' });
-	if (res.status !== 0 && !res.stdout) return null;
+	if (process.platform !== 'linux') return null;
 	const cwds = [process.cwd()];
-	for (const line of res.stdout.split('\n')) {
-		if (line.startsWith('n')) cwds.push(line.slice(1));
+	for (const pid of readdirSync('/proc')) {
+		if (!/^\d+$/.test(pid)) continue;
+		try {
+			cwds.push(readlinkSync(`/proc/${pid}/cwd`));
+		} catch {}
 	}
-	return { cwds, unreadable: 0 };
+	return cwds;
 }
 
-function isZombie(pid) {
-	try {
-		return /^State:\s+Z/m.test(readFileSync(`/proc/${pid}/status`, 'utf8'));
-	} catch {
-		return true;
-	}
-}
-
-function mtimeMs(path) {
-	try {
-		return statSync(path).mtimeMs;
-	} catch {
-		return 0;
-	}
-}
-
-/** Most recent of: last commit, index or HEAD write, directory change. */
 function lastActivityMs(wt) {
-	const gitDir = tryGit(['rev-parse', '--git-dir'], wt.path);
-	const commit = Number(tryGit(['log', '-1', '--format=%ct'], wt.path) ?? 0) * 1000;
-	const candidates = [commit, mtimeMs(wt.path)];
-	if (gitDir) {
-		const abs = resolve(wt.path, gitDir);
-		candidates.push(mtimeMs(join(abs, 'index')), mtimeMs(join(abs, 'HEAD')));
-	}
-	return Math.max(...candidates);
+	const reflogEntry = tryGit(['reflog', '-1', '--date=unix', '--format=%gd'], wt.path) ?? '';
+	const seconds =
+		reflogEntry.match(/\{(\d+)\}/)?.[1] ?? tryGit(['log', '-1', '--format=%ct'], wt.path) ?? '0';
+	return Number(seconds) * 1000;
 }
 
-function dirSizeKb(path) {
-	const res = spawnSync('du', ['-sk', path], { encoding: 'utf8' });
-	const kb = Number.parseInt(res.stdout, 10);
-	return Number.isNaN(kb) ? null : kb;
+function originSlug(root) {
+	const url = tryGit(['remote', 'get-url', 'origin'], root) ?? '';
+	return url.match(/github\.com[/:]([^/]+\/[^/.]+)/)?.[1] ?? null;
 }
 
-/** GitHub `owner/repo` slugs of the origin and upstream remotes, origin first. */
-function repoSlugs(root) {
-	const slugs = [];
-	for (const remote of ['origin', 'upstream']) {
-		const url = tryGit(['remote', 'get-url', remote], root) ?? '';
-		const match = url.match(/github\.com[/:]([^/]+\/[^/.]+)/);
-		if (match && !slugs.includes(match[1])) slugs.push(match[1]);
-	}
-	return slugs;
-}
-
-/**
- * Most recent PR per branch across the given repositories, looked up concurrently:
- * Map<branch, { number, state } | null>. A branch is missing from the map when a
- * lookup failed or timed out and no other repository reported a PR for it.
- * A fork's PRs live in the upstream repository, hence more than one slug.
- */
-async function lookupPrs(slugs, branches) {
+async function lookupPrs(slug, branches) {
 	const prs = new Map();
-	const failed = new Set();
+	if (!slug) return prs;
 	await Promise.all(
-		branches.flatMap((branch) =>
-			slugs.map(async (slug) => {
-				try {
-					const { stdout } = await execFileAsync(
-						'gh',
-						[
-							'pr',
-							'list',
-							'-R',
-							slug,
-							'--head',
-							branch,
-							'--state',
-							'all',
-							'--limit',
-							'1',
-							'--json',
-							'number,state',
-						],
-						{ encoding: 'utf8', timeout: GH_TIMEOUT_MS },
-					);
-					const [pr] = JSON.parse(stdout);
-					const found = pr ? { number: pr.number, state: pr.state } : null;
-					prs.set(branch, preferPr(prs.get(branch), found));
-				} catch {
-					failed.add(branch);
-				}
-			}),
-		),
+		branches.map(async (branch) => {
+			try {
+				const { stdout } = await execFileAsync(
+					'gh',
+					[
+						'pr',
+						'list',
+						'-R',
+						slug,
+						'--head',
+						branch,
+						'--state',
+						'all',
+						'--limit',
+						'1',
+						'--json',
+						'number,state,headRefOid',
+					],
+					{ encoding: 'utf8', timeout: GH_TIMEOUT_MS },
+				);
+				const [pr] = JSON.parse(stdout);
+				prs.set(branch, pr ? { number: pr.number, state: pr.state, headSha: pr.headRefOid } : null);
+			} catch {}
+		}),
 	);
-	// A failed lookup only counts when no repository answered with a PR.
-	for (const branch of failed) if (prs.get(branch) === null) prs.delete(branch);
 	return prs;
 }
 
-function gather(wt, { root, prs, cwds, measureSize, now }) {
+function gather(wt, { root, prs, cwds, now }) {
 	const info = {
 		...wt,
 		name: isInside(wt.path, root) ? relative(root, wt.path) : wt.path,
@@ -325,53 +177,39 @@ function gather(wt, { root, prs, cwds, measureSize, now }) {
 		dirty: false,
 		unpushed: 0,
 		pr: null,
-		prNote: null,
 		prLookupFailed: false,
 		idleDays: null,
-		sizeKb: null,
 	};
 	if (info.missing) return info;
 
-	info.inUse = cwds ? cwds.cwds.some((cwd) => isInside(cwd, wt.path)) : null;
+	info.inUse = cwds ? cwds.some((cwd) => isInside(cwd, wt.path)) : null;
 	info.dirty = (tryGit(['status', '--porcelain'], wt.path) ?? 'unknown') !== '';
 	info.unpushed = Number(
 		tryGit(['rev-list', '--count', 'HEAD', '--not', '--remotes'], wt.path) ?? 1,
 	);
-	// `git status` above refreshes the index, so clamp: activity is never in the future.
 	info.idleDays = Math.max(0, Math.floor((now - lastActivityMs(wt)) / DAY_MS));
-	// `du` over an installed worktree costs ~2 s; only the report needs it.
-	if (measureSize) info.sizeKb = dirSizeKb(wt.path);
-	if (!wt.branch) return info;
-	if (!prs) {
-		info.prNote = 'not checked';
-	} else if (prs.has(wt.branch)) {
-		info.pr = prs.get(wt.branch);
-	} else {
-		info.prNote = 'gh failed';
-		info.prLookupFailed = true;
+	if (wt.branch) {
+		if (prs.has(wt.branch)) info.pr = prs.get(wt.branch);
+		else info.prLookupFailed = true;
 	}
 	return info;
 }
 
-// ---------------------------------------------------------------------------
-// Actions.
-
-let trashCounter = 0;
-
-/** Renames `path` into the worktree's trash folder. Returns the trash path. */
-function moveToTrash(worktreePath, path = worktreePath) {
-	// Two `dist` directories in one worktree must not collide: name by relative path.
-	const name =
-		path === worktreePath
-			? basename(path)
-			: `${basename(worktreePath)}-${relative(worktreePath, path).replaceAll(sep, '_')}`;
-	const dest = trashPathFor(worktreePath, `${name}-${trashCounter++}`);
-	mkdirSync(dirname(dest), { recursive: true });
-	renameSync(path, dest);
-	return dest;
+function moveToTrash(path) {
+	const trashDir = join(dirname(path), TRASH_DIR);
+	mkdirSync(trashDir, { recursive: true });
+	renameSync(path, join(mkdtempSync(join(trashDir, 'wt-')), basename(path)));
 }
 
-/** Deletes the given paths in a detached process so this run can exit at once. */
+function trashDirs(root, worktrees) {
+	const parents = new Set([
+		join(root, '.claude', 'worktrees'),
+		dirname(root),
+		...worktrees.map((wt) => dirname(wt.path)),
+	]);
+	return [...parents].map((dir) => join(dir, TRASH_DIR)).filter(existsSync);
+}
+
 function deleteInBackground(paths) {
 	if (paths.length === 0) return;
 	const script = [
@@ -383,80 +221,16 @@ function deleteInBackground(paths) {
 	spawn(process.execPath, ['-e', script, ...paths], { detached: true, stdio: 'ignore' }).unref();
 }
 
-/**
- * Trash an earlier run left behind because its background delete did not finish.
- * Looks next to every listed worktree and in the usual worktree parents, so trash
- * of a worktree that is already pruned is found too.
- */
-function leftoverTrash(root, worktrees) {
-	const dirs = new Set([
-		join(root, '.claude', 'worktrees'),
-		dirname(root),
-		...worktrees.map((wt) => dirname(wt.path)),
-	]);
-	const paths = [];
-	for (const dir of dirs) {
-		const trash = join(dir, TRASH_DIR);
-		if (!existsSync(trash)) continue;
-		for (const entry of readdirSync(trash)) paths.push(join(trash, entry));
-	}
-	return paths;
-}
-
-/** Removes one worktree. Returns { message, trash } where trash is the path to delete. */
 function removeWorktree(row, root) {
-	// The report may be minutes old: re-check right before acting.
 	if ((tryGit(['status', '--porcelain'], row.path) ?? 'unknown') !== '') {
 		throw new Error('changed since the report, kept');
 	}
-	let trash = null;
-	try {
-		trash = moveToTrash(row.path);
-	} catch (error) {
-		if (error.code !== 'EXDEV') throw error;
-		// No same-filesystem trash location: let git delete in place.
-		const res = spawnSync('git', ['worktree', 'remove', row.path], { cwd: root, encoding: 'utf8' });
-		if (res.status !== 0) throw new Error(res.stderr.trim() || 'git worktree remove failed');
-	}
+	moveToTrash(row.path);
 	tryGit(['worktree', 'prune', '--expire', 'now'], root);
-	let message = 'removed';
-	if (row.branch && row.deleteBranch) {
-		const flag = row.deleteBranch === 'force' ? '-D' : '-d';
-		const del = spawnSync('git', ['branch', flag, row.branch], { cwd: root, encoding: 'utf8' });
-		message = del.status === 0 ? `removed, branch ${row.branch} deleted` : 'removed, branch kept';
-	}
-	return { message, trash };
+	if (!row.branch) return 'removed';
+	const del = spawnSync('git', ['branch', '-D', row.branch], { cwd: root, encoding: 'utf8' });
+	return del.status === 0 ? `removed, branch ${row.branch} deleted` : 'removed, branch kept';
 }
-
-/**
- * Moves ignored node_modules, dist and .turbo directories of a kept worktree to
- * the trash folder next to it. Returns { message, trash: [paths] }.
- */
-function pruneDeps(row) {
-	const listed = tryGit(
-		['ls-files', '--others', '--ignored', '--exclude-standard', '--directory', '-z'],
-		row.path,
-	);
-	if (listed === null) return { message: 'deps: skipped', trash: [] };
-	const targets = listed
-		.split('\0')
-		.filter((p) => p && DEPS_DIRS.has(basename(p.replace(/\/$/, ''))))
-		.map((p) => join(row.path, p));
-	const trash = [];
-	let failed = 0;
-	for (const target of targets) {
-		try {
-			trash.push(moveToTrash(row.path, target));
-		} catch (error) {
-			failed++;
-			console.error(`${target}: ${error.message}`);
-		}
-	}
-	const summary = `deps: removed ${trash.length} director${trash.length === 1 ? 'y' : 'ies'}`;
-	return { message: failed ? `${summary}, ${failed} failed` : summary, trash };
-}
-
-// ---------------------------------------------------------------------------
 
 export async function main(argv = process.argv.slice(2)) {
 	let values;
@@ -466,12 +240,8 @@ export async function main(argv = process.argv.slice(2)) {
 			options: {
 				yes: { type: 'boolean', default: false },
 				'older-than': { type: 'string', default: '7' },
-				deps: { type: 'boolean', default: false },
-				gh: { type: 'boolean', default: true },
-				json: { type: 'boolean', default: false },
 				help: { type: 'boolean', short: 'h', default: false },
 			},
-			allowNegative: true,
 		}));
 	} catch (error) {
 		process.stderr.write(`worktree-clean: ${error.message}\n\n${USAGE}`);
@@ -492,66 +262,40 @@ export async function main(argv = process.argv.slice(2)) {
 		process.stderr.write('worktree-clean: not inside a git repository\n');
 		process.exit(1);
 	}
-	const [main, ...others] = parsePorcelain(porcelain);
-	const root = main.path;
-	const slugs = values.gh ? repoSlugs(root) : [];
-	const branches = others.map((wt) => wt.branch).filter(Boolean);
+	const [mainWorktree, ...others] = parsePorcelain(porcelain);
+	const root = mainWorktree.path;
 	const ctx = {
 		root,
-		prs: slugs.length > 0 ? await lookupPrs(slugs, branches) : null,
+		prs: await lookupPrs(originSlug(root), others.map((wt) => wt.branch).filter(Boolean)),
 		cwds: processCwds(),
-		measureSize: !values.yes,
 		now: Date.now(),
 	};
-
 	const rows = others.map((wt) => {
 		const info = gather(wt, ctx);
-		const row = { ...info, ...decide(info, { olderThanDays }) };
-		if (values.deps && row.depsCandidate) row.reason += '; --deps drops node_modules, dist, .turbo';
-		return row;
+		return { ...info, ...decide(info, { olderThanDays }) };
 	});
 
-	if (values.json) {
-		process.stdout.write(
-			`${JSON.stringify({ root, olderThanDays, apply: values.yes, worktrees: rows }, null, 2)}\n`,
-		);
-	} else if (rows.length === 0) {
+	if (rows.length === 0) {
 		console.log(`No worktrees besides the main one at ${root}.`);
 	} else {
 		console.log(formatTable(rows));
-		const removable = rows.filter((r) => r.action === 'remove');
-		const reclaim = removable.reduce((sum, r) => sum + (r.sizeKb ?? 0), 0);
-		const reclaimNote = ctx.measureSize ? `, ${formatSize(reclaim)} reclaimable` : '';
-		console.log(`\n${removable.length} of ${rows.length} worktrees removable${reclaimNote}.`);
+		const removable = rows.filter((r) => r.action === 'remove').length;
+		console.log(`\n${removable} of ${rows.length} worktrees removable.`);
 		if (ctx.cwds === null) {
 			console.log('Process check unavailable on this platform: nothing is removed.');
-		} else if (ctx.cwds.unreadable > 0) {
-			console.log(
-				`${ctx.cwds.unreadable} process${ctx.cwds.unreadable === 1 ? '' : 'es'} hide their cwd (sshd, other users): not checked.`,
-			);
 		}
 	}
 
 	if (!values.yes) {
-		if (!values.json && rows.some((r) => r.action !== 'keep')) {
-			console.log('Dry run. Re-run with --yes to apply.');
-		}
+		if (rows.some((r) => r.action !== 'keep')) console.log('Dry run. Re-run with --yes to apply.');
 		return;
 	}
 
 	const results = [];
-	const trash = leftoverTrash(root, others);
 	for (const row of rows) {
+		if (row.action !== 'remove') continue;
 		try {
-			if (row.action === 'remove') {
-				const res = removeWorktree(row, root);
-				results.push(`${row.name}: ${res.message}`);
-				if (res.trash) trash.push(res.trash);
-			} else if (values.deps && row.depsCandidate) {
-				const res = pruneDeps(row);
-				results.push(`${row.name}: ${res.message}`);
-				trash.push(...res.trash);
-			}
+			results.push(`${row.name}: ${removeWorktree(row, root)}`);
 		} catch (error) {
 			results.push(`${row.name}: failed, ${error.message}`);
 			process.exitCode = 1;
@@ -561,15 +305,14 @@ export async function main(argv = process.argv.slice(2)) {
 		tryGit(['worktree', 'prune', '--expire', 'now'], root);
 		results.push('pruned stale worktree entries');
 	}
+	const trash = trashDirs(root, others);
 	if (trash.length > 0) {
 		deleteInBackground(trash);
 		results.push(
-			`deleting ${trash.length} director${trash.length === 1 ? 'y' : 'ies'} in the background`,
+			`deleting ${trash.length} trash director${trash.length === 1 ? 'y' : 'ies'} in the background`,
 		);
 	}
-	if (!values.json) {
-		console.log(results.length ? `\n${results.join('\n')}` : '\nNothing to do.');
-	}
+	console.log(results.length ? `\n${results.join('\n')}` : '\nNothing to do.');
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
