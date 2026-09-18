@@ -9,7 +9,7 @@ import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { N8N_VERSION } from '@/constants';
-import { FLAGS_CACHE_MAX_ENTRIES, PostHogClient } from '@/posthog';
+import { PostHogClient } from '@/posthog';
 
 vi.mock('posthog-node');
 
@@ -587,63 +587,6 @@ describe('PostHog', () => {
 					'104_canvas_aia_node_context': true,
 				});
 			});
-		});
-	});
-
-	it('does not serve one signup date answer to an evaluation that sends another', async () => {
-		(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(
-			mockEvaluatedFlags({ 'test-flag': true }),
-		);
-		const ph = new PostHogClient(instanceSettings, globalConfig);
-		await ph.init();
-		const createdAt = new Date();
-
-		await ph.getFeatureFlags({ id: userId, createdAt: new Date(0) });
-		await ph.getFeatureFlags({ id: userId, createdAt });
-
-		expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledTimes(2);
-		expect(PostHog.prototype.evaluateFlags).toHaveBeenLastCalledWith(
-			`${instanceId}#${userId}`,
-			expect.objectContaining({
-				personProperties: expect.objectContaining({
-					created_at_timestamp: createdAt.getTime().toString(),
-				}),
-			}),
-		);
-	});
-
-	describe('the cache ceiling', () => {
-		const createdAt = new Date();
-
-		/** Distinct users, so each evaluation takes its own slot. */
-		async function fillCache(ph: PostHogClient, count: number, from = 0) {
-			for (let i = from; i < from + count; i++) {
-				await ph.getFeatureFlags({ id: `filler-${i}`, createdAt });
-			}
-		}
-
-		beforeEach(() => {
-			(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(
-				mockEvaluatedFlags({ 'test-flag': true }),
-			);
-		});
-
-		it('drops the oldest slot once full, keeping the users being evaluated now', async () => {
-			const ph = new PostHogClient(instanceSettings, globalConfig);
-			await ph.init();
-
-			await ph.getFeatureFlags({ id: userId, createdAt });
-			// The first user is now the oldest insertion, so filling the rest evicts exactly it.
-			await fillCache(ph, FLAGS_CACHE_MAX_ENTRIES - 1);
-			const callsWhenFull = (PostHog.prototype.evaluateFlags as Mock).mock.calls.length;
-
-			// A newcomer takes a slot, which costs the oldest one.
-			await ph.getFeatureFlags({ id: 'newcomer', createdAt });
-			// The evicted user has to be evaluated again; a survivor does not.
-			await ph.getFeatureFlags({ id: userId, createdAt });
-			await ph.getFeatureFlags({ id: 'filler-1', createdAt });
-
-			expect((PostHog.prototype.evaluateFlags as Mock).mock.calls.length).toBe(callsWhenFull + 2);
 		});
 	});
 

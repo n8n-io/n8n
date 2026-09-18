@@ -111,7 +111,6 @@ describe('InstanceContextService', () => {
 		projectService = mock<ProjectService>();
 
 		activityEventRepository.findFeed.mockResolvedValue([]);
-		activityEventRepository.findNewestEntry.mockResolvedValue(null);
 		executionRepository.summariseRunsForProjects.mockResolvedValue([]);
 		workflowRepository.findRecentForProjects.mockResolvedValue({ total: 0, workflows: [] });
 		// Visible unless a test says otherwise, so the MCP filter only shows up where it is the point.
@@ -430,72 +429,6 @@ describe('InstanceContextService', () => {
 				}
 			});
 
-			it.each([1, 2])(
-				'keeps the cursor when %s entries arrive during block construction',
-				async (count) => {
-					const service = serviceWith();
-					const table = Array.from({ length: count }, (_, index) =>
-						entry({ id: count - index, createdAt: new Date(NOW.getTime() + 1_000) }),
-					);
-					activityEventRepository.findFeed.mockImplementation(async (query) =>
-						table
-							.filter((row) => row.id > (query.afterId ?? 0))
-							.filter((row) => query.beforeId === undefined || row.id < query.beforeId),
-					);
-					activityEventRepository.findEntry.mockImplementation(
-						async ({ id }) => table.find((row) => row.id === id) ?? null,
-					);
-					activityEventRepository.findNewestEntry.mockResolvedValue(table[0]);
-					const opening = await service.buildBlock({
-						enabled: true,
-						user: USER,
-						scope: BOUND,
-						cursor: null,
-						now: NOW,
-					});
-
-					expect(
-						await service.buildBlock({
-							enabled: true,
-							user: USER,
-							scope: BOUND,
-							cursor: cursorOf(opening),
-							now: new Date(NOW.getTime() + 2_000),
-						}),
-					).toMatchObject({ state: 'absent', reason: 'empty' });
-				},
-			);
-
-			it('does not reset for an insert between the delta queries', async () => {
-				const service = serviceWith();
-				const previous = entry({ id: 10 });
-				const arrival = entry({ id: 11, createdAt: new Date(NOW.getTime() + 1_000) });
-				activityEventRepository.findFeed.mockResolvedValueOnce([previous]);
-				const opening = await service.buildBlock({
-					enabled: true,
-					user: USER,
-					scope: BOUND,
-					cursor: null,
-					now: NOW,
-				});
-				activityEventRepository.findEntry.mockResolvedValue(previous);
-				activityEventRepository.findNewestEntry.mockResolvedValue(arrival);
-				activityEventRepository.findFeed
-					.mockResolvedValueOnce([])
-					.mockResolvedValueOnce([])
-					.mockResolvedValue([arrival, previous]);
-
-				const next = await service.buildBlock({
-					enabled: true,
-					user: USER,
-					scope: BOUND,
-					cursor: cursorOf(opening),
-					now: NOW,
-				});
-				expect(next).toMatchObject({ state: 'absent', reason: 'empty' });
-				expect(activityEventRepository.findFeed).toHaveBeenCalledTimes(3);
-			});
-
 			const cursor: InstanceContextCursor = {
 				activityMark: 500,
 				activityFloor: 400,
@@ -526,11 +459,7 @@ describe('InstanceContextService', () => {
 				activityEventRepository.findFeed
 					.mockResolvedValueOnce([]) // arrivals above the mark
 					.mockResolvedValueOnce([
-						entry({
-							id: 499,
-							resourceName: 'Shown already',
-							createdAt: new Date(NOW.getTime() - 15 * 60_000),
-						}),
+						entry({ id: 499, resourceName: 'Shown already' }),
 						entry({ id: 498, resourceName: 'Committed late' }),
 					]);
 
@@ -612,6 +541,7 @@ describe('InstanceContextService', () => {
 			it('reopens the entry window when the scope widens, without repeating the rest', async () => {
 				const service = serviceWith();
 				activityEventRepository.findFeed.mockResolvedValueOnce([]);
+				activityEventRepository.findFeed.mockResolvedValueOnce([]);
 				activityEventRepository.findFeed.mockResolvedValueOnce([
 					entry({
 						id: 320,
@@ -641,19 +571,31 @@ describe('InstanceContextService', () => {
 				expect(built).toMatchObject({ state: 'injected', isUpdate: true });
 				expect(workflowRepository.findRecentForProjects).not.toHaveBeenCalled();
 				expect(activityEventRepository.findFeed).toHaveBeenCalledWith(
-					expect.objectContaining({ afterId: 0, beforeId: 500 }),
+					expect.objectContaining({
+						afterId: 0,
+						beforeId: 401,
+						allowedCategories: ['credential'],
+					}),
 				);
 			});
 
-			it('does not re-show entries a re-floored turn stopped remembering', async () => {
+			it('reopens credential history without repeating cut workflow entries', async () => {
 				const service = serviceWith();
 				let table = [3, 2, 1];
 				activityEventRepository.findFeed.mockImplementation(async (query) => {
 					const ids = table
+						.filter((id) => query.allowedCategories.includes(id === 2 ? 'credential' : 'workflow'))
 						.filter((id) => (query.afterId === undefined ? true : id > query.afterId))
 						.filter((id) => (query.beforeId === undefined ? true : id < query.beforeId))
 						.slice(0, query.limit);
-					return ids.map((id) => entry({ id, resourceId: `wf-${id}` }));
+					return ids.map((id) =>
+						entry({
+							id,
+							resourceId: `resource-${id}`,
+							category: id === 2 ? 'credential' : 'workflow',
+							resourceType: id === 2 ? 'credential' : 'workflow',
+						}),
+					);
 				});
 				const idsIn = (block: string) => block.match(/^\[\d+\]/gm) ?? [];
 
@@ -669,7 +611,7 @@ describe('InstanceContextService', () => {
 					cursor: null,
 					now: NOW,
 				});
-				expect(idsIn(blockOf(first))).toEqual(['[3]', '[2]', '[1]']);
+				expect(idsIn(blockOf(first))).toEqual(['[3]', '[1]']);
 
 				table = [...Array.from({ length: 41 }, (_, index) => 44 - index), 3, 2, 1];
 				const second = await service.buildBlock({
@@ -690,8 +632,17 @@ describe('InstanceContextService', () => {
 					now: NOW,
 				});
 
-				// Id 4 alone: cut by the second turn and never shown, so it is genuinely owed.
-				expect(idsIn(blockOf(third))).toEqual(['[4]']);
+				expect(idsIn(blockOf(third))).toEqual(['[2]']);
+				expect(cursorOf(third).activityFloor).toBe(4);
+				expect(
+					await service.buildBlock({
+						enabled: true,
+						user: USER,
+						scope: BOUND,
+						cursor: cursorOf(third),
+						now: NOW,
+					}),
+				).toMatchObject({ state: 'absent', reason: 'empty' });
 			});
 
 			it('reaches the oldest end of a band that outgrew one window', async () => {
@@ -725,121 +676,6 @@ describe('InstanceContextService', () => {
 				expect(blockOf(built)).toContain('[10]');
 				// The straggler alone: everything else in the span is already in `activitySeen`.
 				expect(blockOf(built).match(/^\[\d+\]/gm)).toHaveLength(1);
-			});
-
-			it('starts the entry read over when the ids fell below the stored mark', async () => {
-				const service = serviceWith();
-				const table = [3, 2, 1];
-				activityEventRepository.findNewestEntry.mockResolvedValue({
-					id: 3,
-					createdAt: new Date(NOW.getTime() - 30_000),
-				});
-				activityEventRepository.findFeed.mockImplementation(async (query) => {
-					const ids = table
-						.filter((id) => (query.afterId === undefined ? true : id > query.afterId))
-						.filter((id) => (query.beforeId === undefined ? true : id < query.beforeId))
-						.slice(0, query.limit);
-					return ids.map((id) => entry({ id, resourceId: `wf-${id}` }));
-				});
-
-				const built = await service.buildBlock({
-					enabled: true,
-					user: USER,
-					scope: BOUND,
-					cursor: {
-						activityMark: 5_000,
-						activityAnchor: {
-							id: 5_000,
-							createdAt: new Date(NOW.getTime() - 60_000).toISOString(),
-							category: 'workflow',
-						},
-						activityFloor: 4_900,
-						activityCategories: ['workflow', 'credential'],
-						activitySeen: [5_000, 4_999],
-						runsThrough: new Date(NOW.getTime() - 60_000).toISOString(),
-					},
-					now: NOW,
-				});
-
-				expect(blockOf(built)).toContain('[3]');
-				expect(blockOf(built)).toContain('[1]');
-				// The mark comes back down to the surviving id space instead of staying stranded.
-				expect(cursorOf(built).activityMark).toBe(3);
-				expect(cursorOf(built).activitySeen).toEqual([3, 2, 1]);
-				// Still a delta: a renumbering says nothing about the estate or what has run.
-				expect(workflowRepository.findRecentForProjects).not.toHaveBeenCalled();
-			});
-
-			it('leaves a healthy cursor alone when nothing new arrived', async () => {
-				const service = serviceWith();
-				activityEventRepository.findNewestEntry.mockResolvedValue({
-					id: 500,
-					createdAt: new Date(NOW.getTime() - 10 * 60_000),
-				});
-
-				await service.buildBlock({
-					enabled: true,
-					user: USER,
-					scope: BOUND,
-					cursor,
-					now: NOW,
-				});
-
-				expect(activityEventRepository.findFeed).toHaveBeenCalledTimes(2);
-				expect(activityEventRepository.findFeed).toHaveBeenNthCalledWith(
-					2,
-					expect.objectContaining({ afterId: 400, beforeId: 500 }),
-				);
-			});
-
-			it('does not restart the read when the scope narrowed rather than the ids resetting', async () => {
-				const service = serviceWith();
-				const rows = [
-					{ id: 20, category: 'credential' as const },
-					{ id: 10, category: 'workflow' as const },
-				];
-				const visible = (query: {
-					allowedCategories?: string[];
-					afterId?: number;
-					beforeId?: number;
-				}) =>
-					rows
-						.filter((row) => (query.allowedCategories ?? []).includes(row.category))
-						.filter((row) => (query.afterId === undefined ? true : row.id > query.afterId))
-						.filter((row) => (query.beforeId === undefined ? true : row.id < query.beforeId));
-				activityEventRepository.findFeed.mockImplementation(async (query) =>
-					visible(query).map((row) =>
-						entry({ id: row.id, category: row.category, resourceType: row.category }),
-					),
-				);
-
-				const wide = await service.buildBlock({
-					enabled: true,
-					user: USER,
-					scope: BOUND,
-					cursor: null,
-					now: NOW,
-				});
-				expect(blockOf(wide).match(/^\[\d+\]/gm)).toEqual(['[20]', '[10]']);
-
-				userHasScopes.mockImplementation(async (...args: unknown[]) => {
-					const scopes = args[1];
-					return !(Array.isArray(scopes) && scopes.includes('credential:read'));
-				});
-				const narrowed = await service.buildBlock({
-					enabled: true,
-					user: USER,
-					scope: BOUND,
-					cursor: cursorOf(wide),
-					now: NOW,
-				});
-
-				// Nothing new is readable, so there is nothing to say — and in particular id 10,
-				// already shown above, is not offered again.
-				expect(narrowed).toMatchObject({ state: 'absent', reason: 'empty' });
-				// The band still reaches id 10, so the recovery is never even considered: a
-				// narrowing leaves the reader's own older rows in view, and a renumbering does not.
-				expect(activityEventRepository.findNewestEntry).not.toHaveBeenCalled();
 			});
 
 			/**
@@ -1543,7 +1379,6 @@ describe('readInstanceContextCursor', () => {
 		const stored = {
 			activityMark: 12,
 			activitySeenFloor: 1,
-			activityAnchor: { id: 12, createdAt: NOW.toISOString(), category: 'workflow' },
 			activityFloor: 4,
 			activityCategories: ['workflow'],
 			activitySeen: [12, 11],

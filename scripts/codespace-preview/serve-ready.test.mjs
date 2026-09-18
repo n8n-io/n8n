@@ -1,4 +1,4 @@
-// node --test scripts/serve-ready.test.mjs
+// node --test scripts/codespace-preview/serve-ready.test.mjs
 import assert from 'node:assert/strict';
 import { mkdtempSync } from 'node:fs';
 import { createServer } from 'node:http';

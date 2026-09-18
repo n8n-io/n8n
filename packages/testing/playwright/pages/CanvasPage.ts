@@ -1184,20 +1184,19 @@ export class CanvasPage extends BasePage {
 	async openWorkflowHistory(): Promise<void> {
 		await this.clickByTestId('workflow-menu');
 		await this.clickByTestId('workflow-menu-item-version-history');
-		await this.page.waitForURL(/\/history(?:\/[^/?#]+)?(?:[?#].*)?$/);
-		const historyList = this.page.getByTestId('workflow-history-list');
-		await historyList.waitFor({ state: 'attached' });
-		await historyList.getByRole('status').waitFor({ state: 'hidden' });
-		// Empty history has no version redirect. Wait for it only when an entry exists.
-		if (await historyList.getByTestId('workflow-history-list-item').count()) {
-			await this.page.waitForURL(/\/history\/[^/?#]+(?:[?#].*)?$/);
-		}
+		await this.page.waitForURL(/\/history(?:\/|$)/);
+		await expect(this.getWorkflowHistoryCloseButton()).toBeVisible();
 	}
 
 	async closeWorkflowHistory(): Promise<void> {
-		const workflowId = this.getWorkflowIdFromUrl();
 		await this.getWorkflowHistoryCloseButton().click();
-		await this.page.waitForURL((url) => url.pathname.endsWith(`/workflow/${workflowId}`));
+		// History still shows the workflow canvas, so canvas-ready is not enough
+		// to know we are back on the editor.
+		await this.page.waitForURL((url) => !/\/history(?:\/|$)/.test(url.pathname), {
+			timeout: 30_000,
+		});
+		await expect(this.getWorkflowHistoryCloseButton()).toBeHidden();
+		await expect(this.page.getByTestId('workflow-menu')).toBeVisible();
 	}
 
 	// Canvas node groups (selection toolbar + group overlay)

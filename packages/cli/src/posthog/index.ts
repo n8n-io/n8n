@@ -28,9 +28,6 @@ const POSTHOG_GROUP_TYPE_INSTANCE = 'company';
 
 const FLAGS_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
-/** Maximum number of flag evaluations kept in memory. */
-export const FLAGS_CACHE_MAX_ENTRIES = 5_000;
-
 const SESSION_ID_MAX_LENGTH = 1000;
 
 function sanitizeSessionId(value: string | undefined): string | undefined {
@@ -174,7 +171,7 @@ export class PostHogClient {
 			const { instanceId } = this.instanceSettings;
 			const distinctId = [instanceId, user.id].join('#');
 			data = await this.fetchFlagsFromPostHog({
-				cacheKey: [distinctId, user.createdAt.getTime()].join('#'),
+				cacheKey: distinctId,
 				distinctId,
 				options: {
 					personProperties: {
@@ -211,19 +208,10 @@ export class PostHogClient {
 		const data = this.resolveFeatureFlagData(evaluatedFlags);
 
 		if (Object.keys(data.featureFlags).length > 0) {
-			this.rememberFlags(cacheKey, { ...data, expiresAt: Date.now() + FLAGS_CACHE_TTL_MS });
+			this.flagsCache.set(cacheKey, { ...data, expiresAt: Date.now() + FLAGS_CACHE_TTL_MS });
 		}
 
 		return data;
-	}
-
-	/** Stores a slot, dropping the oldest insertion once the cache is full. */
-	private rememberFlags(cacheKey: string, entry: CachedFlags): void {
-		if (!this.flagsCache.has(cacheKey) && this.flagsCache.size >= FLAGS_CACHE_MAX_ENTRIES) {
-			const oldest = this.flagsCache.keys().next();
-			if (!oldest.done) this.flagsCache.delete(oldest.value);
-		}
-		this.flagsCache.set(cacheKey, entry);
 	}
 
 	private resolveFeatureFlagData(evaluatedFlags: FeatureFlagEvaluations): FeatureFlagData {

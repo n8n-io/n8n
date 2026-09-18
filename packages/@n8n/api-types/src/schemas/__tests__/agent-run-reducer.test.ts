@@ -1051,6 +1051,11 @@ describe('agent-run-reducer', () => {
 			reduceEvent(state, makeSetupItems('run-1', 'root', 'wf-1', 'slackApi'));
 			reduceEvent(state, makeSetupItems('run-1', 'root', 'wf-1', 'notionApi'));
 			reduceEvent(state, makeSetupItems('run-1', 'root', 'wf-2', 'gmailOAuth2'));
+			reduceEvent(state, makeSetupItems('run-1', 'root', 'wf-1', 'notionApi'));
+			expect(state.agentsById['root'].latestSetupAnnouncement).toMatchObject({
+				workflowId: 'wf-1',
+				agentId: 'root',
+			});
 
 			const byWorkflowId = state.agentsById['root'].setupItemsByWorkflowId!;
 			expect(byWorkflowId['wf-1']).toHaveLength(1);
@@ -1065,6 +1070,25 @@ describe('agent-run-reducer', () => {
 
 			expect(state.agentsById['root'].setupItemsByWorkflowId?.['wf-1']).toHaveLength(1);
 			expect(state.agentsById['sub-1'].setupItemsByWorkflowId).toBeUndefined();
+			expect(state.agentsById['root'].latestSetupAnnouncement?.agentId).toBe('sub-1');
+		});
+
+		it('preserves the emitting agent identity across an aliased follow-up run', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeSetupItems('run-1', 'root', 'wf-1', 'slackApi'));
+			reduceEvent(state, makeRunFinish('run-1', 'root', 'completed'));
+			reduceEvent(state, makeRunStart('run-2', 'follow-up-root'));
+			reduceEvent(state, makeToolCall('run-2', 'follow-up-root', 'build-2', 'build-workflow'));
+			reduceEvent(state, makeSetupItems('run-2', 'follow-up-root', 'wf-2', 'notionApi'));
+
+			const root = toAgentTree(state);
+			expect(root.latestSetupAnnouncement).toMatchObject({
+				workflowId: 'wf-2',
+				agentId: root.agentId,
+			});
+			expect(root.toolCalls).toContainEqual(
+				expect.objectContaining({ toolCallId: 'build-2', isLoading: true }),
+			);
 		});
 
 		it('survives a tree snapshot round trip (history restore)', () => {
@@ -1079,6 +1103,9 @@ describe('agent-run-reducer', () => {
 			expect(restored?.agentsById['root'].setupItemsByWorkflowId?.['wf-1'][0]).toMatchObject({
 				credentialType: 'slackApi',
 			});
+			expect(restored?.agentsById['root'].latestSetupAnnouncement).toEqual(
+				state.agentsById['root'].latestSetupAnnouncement,
+			);
 		});
 
 		it('is preserved across a follow-up run-start when it is the only content', () => {

@@ -893,6 +893,17 @@ describe('AgentRuntime — reasoning-only turn', () => {
 		};
 	}
 
+	function makeGenerateReasoningOnly(finishReason = 'stop') {
+		return {
+			finishReason,
+			usage: { inputTokens: 10, outputTokens: 5, totalTokens: 15 },
+			response: {
+				messages: [{ role: 'assistant', content: [{ type: 'reasoning', text: 'thinking...' }] }],
+			},
+			toolCalls: [],
+		};
+	}
+
 	it('retries a reasoning-only turn instead of ending the run', async () => {
 		streamText
 			.mockReturnValueOnce(makeStreamReasoningOnly())
@@ -927,41 +938,87 @@ describe('AgentRuntime — reasoning-only turn', () => {
 		expect(String((error?.error as Error).message)).toContain('no output');
 	});
 
-	it.each([
-		{ finishReason: 'length', errorText: 'output token limit' },
-		{ finishReason: 'stop', errorText: 'without returning an answer' },
-	])(
-		'fails a reasoning-only $finishReason turn without retrying or persisting it',
-		async ({ finishReason, errorText }) => {
-			streamText.mockReturnValue(makeStreamReasoningOnly(finishReason));
-			const memory = new InMemoryMemory();
-			const runtime = new AgentRuntime({
-				name: 'test',
-				model: 'anthropic/claude-opus-5',
-				instructions: 'You are a test assistant.',
-				memory,
-			});
+	it('fails a reasoning-only length turn without retrying or persisting it', async () => {
+		streamText.mockReturnValue(makeStreamReasoningOnly('length'));
+		const memory = new InMemoryMemory();
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'anthropic/claude-opus-5',
+			instructions: 'You are a test assistant.',
+			memory,
+		});
 
-			const result = await runtime.stream('make my workflow smarter', {
-				persistence: { threadId: 'thread-1', resourceId: 'user-1' },
-			});
-			const chunks = await collectChunks(result.stream);
+		const result = await runtime.stream('make my workflow smarter', {
+			persistence: { threadId: 'thread-1', resourceId: 'user-1' },
+		});
+		const chunks = await collectChunks(result.stream);
 
-			expect(streamText).toHaveBeenCalledTimes(1);
-			expect(chunks).toEqual(
-				expect.arrayContaining([
-					expect.objectContaining({ type: 'error' }),
-					expect.objectContaining({ type: 'finish', finishReason: 'error' }),
-				]),
-			);
-			const error = chunks.find((chunk) => chunk.type === 'error');
-			expect(String(error?.error)).toContain(errorText);
-			const persisted = await memory.getMessages('thread-1', { resourceId: 'user-1' });
-			expect(
-				persisted.filter((message) => (message as { role?: string }).role === 'assistant'),
-			).toHaveLength(0);
-		},
-	);
+		expect(streamText).toHaveBeenCalledTimes(1);
+		expect(chunks).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ type: 'error' }),
+				expect.objectContaining({ type: 'finish', finishReason: 'error' }),
+			]),
+		);
+		const error = chunks.find((chunk) => chunk.type === 'error');
+		expect(String(error?.error)).toContain('output token limit');
+		const persisted = await memory.getMessages('thread-1', { resourceId: 'user-1' });
+		expect(
+			persisted.filter((message) => (message as { role?: string }).role === 'assistant'),
+		).toHaveLength(0);
+	});
+
+	it('streams a reasoning-only stop without an error or retry', async () => {
+		streamText.mockReturnValue(makeStreamReasoningOnly('stop'));
+		const { runtime } = createRuntime();
+
+		const result = await runtime.stream('make my workflow smarter');
+		const chunks = await collectChunks(result.stream);
+
+		expect(streamText).toHaveBeenCalledTimes(1);
+		expect(chunks.find((chunk) => chunk.type === 'error')).toBeUndefined();
+		expect(chunks).toContainEqual(
+			expect.objectContaining({ type: 'finish', finishReason: 'stop' }),
+		);
+	});
+
+	it('completes a reasoning-only stop and keeps it out of follow-up history', async () => {
+		generateText
+			.mockResolvedValueOnce(makeGenerateReasoningOnly())
+			.mockResolvedValueOnce(makeGenerateSuccess('Follow-up answer'));
+		const memory = new InMemoryMemory();
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'anthropic/claude-opus-5',
+			instructions: 'You are a test assistant.',
+			memory,
+		});
+
+		const first = await runtime.generate('make my workflow smarter', {
+			persistence: { threadId: 'thread-1', resourceId: 'user-1' },
+		});
+		const second = await runtime.generate('what next?', {
+			persistence: { threadId: 'thread-1', resourceId: 'user-1' },
+		});
+
+		expect(first).toEqual(
+			expect.objectContaining({
+				finishReason: 'stop',
+				usage: expect.objectContaining({ totalTokens: 15 }),
+			}),
+		);
+		expect(first.error).toBeUndefined();
+		expect(second).toEqual(expect.objectContaining({ finishReason: 'stop' }));
+		expect(generateText).toHaveBeenCalledTimes(2);
+		const persisted = await memory.getMessages('thread-1', { resourceId: 'user-1' });
+		const assistantMessages = persisted.filter(
+			(message) => (message as { role?: string }).role === 'assistant',
+		);
+		expect(assistantMessages).toHaveLength(1);
+		expect(assistantMessages[0]).toEqual(
+			expect.objectContaining({ content: [{ type: 'text', text: 'Follow-up answer' }] }),
+		);
+	});
 });
 
 // ---------------------------------------------------------------------------
