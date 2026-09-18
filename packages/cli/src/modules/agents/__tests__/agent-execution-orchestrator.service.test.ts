@@ -375,7 +375,11 @@ describe('AgentExecutionOrchestratorService', () => {
 			expect(executionService.finalizeExecution).toHaveBeenCalledWith(
 				'execution-1',
 				expect.objectContaining({
-					record: expect.objectContaining({ assistantResponse: 'partial answer' }),
+					record: expect.objectContaining({
+						assistantResponse: 'partial answer',
+						finishReason: 'cancelled',
+						error: null,
+					}),
 				}),
 			);
 

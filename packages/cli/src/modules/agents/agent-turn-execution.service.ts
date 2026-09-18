@@ -87,6 +87,7 @@ export class AgentTurnExecutionService {
 		const { agentInstance, toolRegistry, backgroundJobSignal, onExecutionRecorded } = config;
 		let executionId: string | undefined;
 		let turn: AgentTurnRequest | undefined;
+		let receivedFinish = false;
 		const recorder = this.createRecorder(
 			toolRegistry,
 			() => executionId,
@@ -123,6 +124,7 @@ export class AgentTurnExecutionService {
 					? withApprovalToolDetails(value, toolRegistry)
 					: value;
 				recorder.record(chunk);
+				if (chunk.type === 'finish') receivedFinish = true;
 				if (turn.type === 'start') {
 					if (chunk.type === 'tool-call-suspended') {
 						this.logger.info('Chat: tool-call-suspended chunk received', {
@@ -151,6 +153,9 @@ export class AgentTurnExecutionService {
 		} finally {
 			if (turn) {
 				const record = recorder.getMessageRecord();
+				const cancelled =
+					turn.options.abortSignal?.aborted ||
+					(!receivedFinish && !recorder.suspended && record.error === null);
 				await this.persistRecordedExecution({
 					executionId,
 					onExecutionRecorded,
@@ -160,9 +165,7 @@ export class AgentTurnExecutionService {
 							: 'Failed to record agent execution',
 					params: {
 						...turn.recording,
-						record: turn.options.abortSignal?.aborted
-							? { ...record, finishReason: 'cancelled', error: null }
-							: record,
+						record: cancelled ? { ...record, finishReason: 'cancelled', error: null } : record,
 						hitlStatus: recorder.suspended
 							? 'suspended'
 							: turn.type === 'resume'
