@@ -79,7 +79,9 @@ export const GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS = {
 		// use/manage options below so a role can be given just those without the
 		// rest of instance Settings — Manage's bundle is a strict superset of all
 		// four, so checking Manage checks them too, and unchecking any one of them
-		// drops Manage out of the fully-checked state.
+		// drops Manage out of the fully-checked state. The bundle also carries
+		// scopes the Member role already holds; see
+		// GLOBAL_CUSTOM_ROLE_COMPANION_SCOPES for how the editor treats those.
 		Manage: [
 			'securitySettings:manage', // Security & Policies
 			'credentialResolver:read', // Resolvers (requires the full CRUD set)
@@ -176,6 +178,27 @@ export const GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS = {
 		View: ['insights:read', 'insights:list'],
 	},
 } as const satisfies InstanceScopeGroups;
+
+/**
+ * Scopes the built-in Member role already holds that the "Manage all settings"
+ * bundle grants as well, because its pages depend on them (Log Streaming lists
+ * and tests destinations, the Chat settings page lists models, the Resolvers
+ * page lists resolvers, and so on).
+ * The instance role editor saves and removes them together with the option,
+ * but does not count them toward its checked state. Counted, they would
+ * render "Manage all settings" half-checked on the Member and Chat system
+ * roles: a state no custom role can reproduce, because no other option
+ * grants these scopes on their own.
+ */
+export const GLOBAL_CUSTOM_ROLE_COMPANION_SCOPES: ReadonlySet<Scope> = new Set<Scope>([
+	'credentialResolver:list',
+	'eventBusDestination:list',
+	'eventBusDestination:test',
+	'variable:list',
+	'variable:read',
+	'dataTable:list',
+	'chatHub:message',
+]);
 
 export const GLOBAL_CUSTOM_ROLE_SCOPES: ReadonlySet<Scope> = new Set(
 	Object.values(GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS).flatMap((optionMap) =>

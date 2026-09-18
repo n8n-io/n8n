@@ -6,6 +6,7 @@ import { VIEWS } from '@/app/constants';
 import { useRolesStore } from '@n8n/stores/roles.store';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import InstanceRoleView from './InstanceRoleView.vue';
+import { GLOBAL_MEMBER_SCOPES } from '@n8n/permissions';
 
 const mockShowError = vi.fn();
 const mockShowMessage = vi.fn();
@@ -59,6 +60,26 @@ const mockSystemRole = {
 	roleType: 'global' as const,
 };
 
+const mockMemberRole = {
+	displayName: 'Member',
+	slug: 'global:member',
+	description: 'Can create and use their own workflows and credentials',
+	scopes: [...GLOBAL_MEMBER_SCOPES],
+	licensed: true,
+	systemRole: true,
+	roleType: 'global' as const,
+};
+
+const mockChatRole = {
+	displayName: 'Chat',
+	slug: 'global:chatUser',
+	description: 'Can only use chat',
+	scopes: ['chatHub:message'],
+	licensed: true,
+	systemRole: true,
+	roleType: 'global' as const,
+};
+
 let rolesStore: MockedStore<typeof useRolesStore>;
 
 const getFormElements = (container: Element) => ({
@@ -79,7 +100,7 @@ describe('InstanceRoleView', () => {
 		createTestingPinia();
 		rolesStore = mockedStore(useRolesStore);
 		rolesStore.fetchRoles.mockResolvedValue();
-		rolesStore.processedInstanceRoles = [mockSystemRole];
+		rolesStore.processedInstanceRoles = [mockSystemRole, mockMemberRole, mockChatRole];
 	});
 
 	describe('Create', () => {
@@ -165,6 +186,81 @@ describe('InstanceRoleView', () => {
 
 			await waitFor(() =>
 				expect(getByTestId('scope-option-tag-manage').getAttribute('aria-checked')).toBe('true'),
+			);
+		});
+
+		it('offers the Member and Admin system roles as presets, in that order, but not Chat', async () => {
+			const { container, queryByTestId } = renderComponent();
+
+			await waitFor(() => expect(queryByTestId('role-preset-global:member')).toBeInTheDocument());
+
+			const presets = Array.from(container.querySelectorAll('[data-test-id^="role-preset-"]')).map(
+				(el) => el.getAttribute('data-test-id'),
+			);
+			expect(presets).toEqual(['role-preset-global:member', 'role-preset-global:admin']);
+		});
+
+		it('populates the options Member grants in full from the Member preset, with no half-checked box', async () => {
+			const { container, getByTestId } = renderComponent();
+
+			await waitFor(() =>
+				expect(getByTestId('scope-option-settings-mcp-use').getAttribute('aria-checked')).toBe(
+					'false',
+				),
+			);
+
+			await userEvent.click(getByTestId('role-preset-global:member'));
+
+			await waitFor(() =>
+				expect(getByTestId('scope-option-settings-mcp-use').getAttribute('aria-checked')).toBe(
+					'true',
+				),
+			);
+			expect(
+				getByTestId('scope-option-settings-aiassistant-use').getAttribute('aria-checked'),
+			).toBe('true');
+			expect(getByTestId('scope-option-apiKey-manage-own').getAttribute('aria-checked')).toBe(
+				'true',
+			);
+			expect(getByTestId('scope-option-settings-manage').getAttribute('aria-checked')).toBe(
+				'false',
+			);
+			// Member holds four of the five Tags scopes: the partial option is left
+			// out of the preset instead of rendering half-checked.
+			expect(getByTestId('scope-option-tag-manage').getAttribute('aria-checked')).toBe('false');
+			const halfChecked = Array.from(
+				container.querySelectorAll('[data-test-id^="scope-option-"]'),
+			).filter((el) => el.getAttribute('aria-checked') === 'mixed');
+			expect(halfChecked).toHaveLength(0);
+		});
+
+		it('highlights the preset the form matches and drops the highlight on any change', async () => {
+			const { getByTestId } = renderComponent();
+
+			await waitFor(() => expect(getByTestId('role-preset-global:member')).toBeInTheDocument());
+			// A new role starts with the mandatory scopes only: no preset matches yet.
+			expect(getByTestId('role-preset-global:member').getAttribute('aria-pressed')).toBe('false');
+			expect(getByTestId('role-preset-global:admin').getAttribute('aria-pressed')).toBe('false');
+
+			await userEvent.click(getByTestId('role-preset-global:member'));
+
+			await waitFor(() =>
+				expect(getByTestId('role-preset-global:member').getAttribute('aria-pressed')).toBe('true'),
+			);
+			expect(getByTestId('role-preset-global:admin').getAttribute('aria-pressed')).toBe('false');
+
+			// Any change to the form drops the highlight ...
+			await userEvent.click(getByTestId('scope-option-project-create'));
+
+			await waitFor(() =>
+				expect(getByTestId('role-preset-global:member').getAttribute('aria-pressed')).toBe('false'),
+			);
+
+			// ... and it returns once the form matches the preset again.
+			await userEvent.click(getByTestId('scope-option-project-create'));
+
+			await waitFor(() =>
+				expect(getByTestId('role-preset-global:member').getAttribute('aria-pressed')).toBe('true'),
 			);
 		});
 	});

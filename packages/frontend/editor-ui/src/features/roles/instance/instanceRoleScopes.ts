@@ -8,7 +8,11 @@
  */
 
 import { type BaseTextKey } from '@n8n/i18n';
-import { GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS, type Scope } from '@n8n/permissions';
+import {
+	GLOBAL_CUSTOM_ROLE_COMPANION_SCOPES,
+	GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS,
+	type Scope,
+} from '@n8n/permissions';
 export { GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS as INSTANCE_SCOPE_GROUPS } from '@n8n/permissions';
 
 export type InstanceResource = keyof typeof GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS;
@@ -119,7 +123,13 @@ export type InstanceScopeOption = {
 	labelKey: BaseTextKey;
 	/** i18n key for the tooltip explaining what the option grants, if any. */
 	descriptionKey?: BaseTextKey;
+	/** Scopes that define the option: all present renders it checked, some present indeterminate. */
 	scopes: Scope[];
+	/**
+	 * Scopes saved and removed together with `scopes` but not counted toward the
+	 * option's state. See `GLOBAL_CUSTOM_ROLE_COMPANION_SCOPES`.
+	 */
+	companionScopes: Scope[];
 };
 
 export type InstanceScopeGroup = {
@@ -148,14 +158,26 @@ export const INSTANCE_SCOPE_GROUP_LIST: InstanceScopeGroup[] = INSTANCE_RESOURCE
 				labelKey:
 					INSTANCE_OPTION_LABEL_OVERRIDES[resource]?.[key] ?? INSTANCE_OPTION_LABEL_KEYS[key],
 				descriptionKey: INSTANCE_OPTION_DESCRIPTION_KEYS[resource]?.[key],
-				scopes: [...optionMap[key]],
+				scopes: optionMap[key].filter((scope) => !GLOBAL_CUSTOM_ROLE_COMPANION_SCOPES.has(scope)),
+				companionScopes: optionMap[key].filter((scope) =>
+					GLOBAL_CUSTOM_ROLE_COMPANION_SCOPES.has(scope),
+				),
 			}));
 		return { resource, labelKey: INSTANCE_RESOURCE_LABEL_KEYS[resource], options };
 	},
 );
 
+/** Every scope an option saves: its counted scopes plus its companions. */
+export function getOptionGrantedScopes(option: InstanceScopeOption): Scope[] {
+	return [...option.scopes, ...option.companionScopes];
+}
+
+/**
+ * Every scope the editor can save, companions included. The form filters stored
+ * roles through this list, so a role's companions survive a save untouched.
+ */
 export const ALL_INSTANCE_SCOPES: Scope[] = [
-	...new Set(INSTANCE_SCOPE_GROUP_LIST.flatMap((g) => g.options.flatMap((o) => o.scopes))),
+	...new Set(INSTANCE_SCOPE_GROUP_LIST.flatMap((g) => g.options.flatMap(getOptionGrantedScopes))),
 ];
 
 type MandatoryInstanceOption = {
@@ -214,13 +236,15 @@ export type OptionState = 'checked' | 'indeterminate' | 'unchecked';
 /**
  * Declares when one option is visually superseded by another within the same
  * resource group. If the superseding option is fully checked, the superseded
- * option is implied — it should render as disabled ✔︎ with an explanatory
- * tooltip rather than as an independently active selection.
+ * option is implied — it renders as disabled ✔︎ with an explanatory tooltip
+ * rather than as an independently active selection.
  */
 export const SUPERSEDED_BY: Partial<Record<string, string>> = {
 	'Manage own': 'Manage all',
 	'Manage project roles': 'Manage',
 	View: 'Manage',
+	'Mcp use': 'Mcp manage',
+	'AiAssistant use': 'AiAssistant manage',
 };
 
 /**
@@ -240,10 +264,10 @@ export function isOptionImplied(
 }
 
 /**
- * Resolve how an option should render against a saved flat scope list.
+ * Resolve how an option's own scopes read against a saved flat scope list.
  * - all of the option's scopes present -> checked
- * - some but not all present          -> indeterminate (e.g. system-role presets
- *                                         or API-created roles that carry a partial subset)
+ * - some but not all present          -> indeterminate (e.g. API-created roles
+ *                                         that carry a partial subset)
  * - none present                      -> unchecked
  */
 export function getOptionState(
@@ -256,41 +280,65 @@ export function getOptionState(
 	return 'indeterminate';
 }
 
+function isStrictSubset(subset: readonly string[], superset: readonly string[]): boolean {
+	return (
+		subset.length > 0 &&
+		subset.length < superset.length &&
+		subset.every((scope) => superset.includes(scope))
+	);
+}
+
 /**
- * When option A is a strict superset of option B (B is superseded by A), and B
- * is fully checked, A will appear indeterminate via raw scope arithmetic because
- * B's scopes are already present. That indeterminate is misleading — the user
- * selected B only, not A. This function returns 'unchecked' in that case.
+ * Options in the same group that `option` covers: the ones SUPERSEDED_BY declares
+ * subordinate to it, plus every sibling whose scopes are a strict subset of its
+ * own. The latter is the select-all case — "Manage all settings" over the MCP and
+ * n8n Assistant use/manage options — which stays out of SUPERSEDED_BY on purpose,
+ * so those options remain toggleable while the select-all is checked.
+ */
+export function getCoveredOptions(
+	option: InstanceScopeOption,
+	groupOptions: InstanceScopeOption[],
+): InstanceScopeOption[] {
+	return groupOptions.filter(
+		(other) =>
+			other.key !== option.key &&
+			(SUPERSEDED_BY[other.key] === option.key || isStrictSubset(other.scopes, option.scopes)),
+	);
+}
+
+/**
+ * Resolve how an option renders against a saved flat scope list.
  *
- * The guard only fires when a sub-option is *fully* checked, so genuine partial
- * selections (e.g. API-created roles with an arbitrary subset) still show
- * indeterminate correctly.
+ * An implied option (see SUPERSEDED_BY) renders checked even when the role does
+ * not list its own scopes: Admin holds role:manage but not role:manageProject,
+ * yet "Manage project roles" is granted through "Manage all roles".
+ *
+ * When option A covers option B and B is fully checked, A appears indeterminate
+ * via raw scope arithmetic because B's scopes are already present. That
+ * indeterminate is misleading — the user selected B only, not A — so this
+ * returns 'unchecked' when every present scope of A belongs to a fully-checked
+ * covered option. Genuine partial selections (e.g. API-created roles with an
+ * arbitrary subset) still show indeterminate.
  */
 export function resolveOptionState(
 	option: InstanceScopeOption,
 	groupOptions: InstanceScopeOption[],
 	roleScopes: readonly string[],
 ): OptionState {
+	if (isOptionImplied(option, groupOptions, roleScopes)) return 'checked';
+
 	const base = getOptionState(roleScopes, option.scopes);
 	if (base !== 'indeterminate') return base;
 
-	// Collect scopes that belong to fully-checked sub-options of this option.
-	const fullyCheckedSubScopes = new Set(
-		groupOptions
-			.filter(
-				(other) =>
-					SUPERSEDED_BY[other.key] === option.key &&
-					getOptionState(roleScopes, other.scopes) === 'checked',
-			)
-			.flatMap((o) => o.scopes),
+	const coveredCheckedScopes = new Set(
+		getCoveredOptions(option, groupOptions)
+			.filter((other) => getOptionState(roleScopes, other.scopes) === 'checked')
+			.flatMap((other) => other.scopes),
 	);
+	if (coveredCheckedScopes.size === 0) return base;
 
-	if (fullyCheckedSubScopes.size === 0) return base;
-
-	// If every present scope in this option is already accounted for by a
-	// fully-checked sub-option, the indeterminate is an artifact — show unchecked.
-	const presentScopes = option.scopes.filter((s) => roleScopes.includes(s));
-	return presentScopes.every((s) => fullyCheckedSubScopes.has(s)) ? 'unchecked' : base;
+	const presentScopes = option.scopes.filter((scope) => roleScopes.includes(scope));
+	return presentScopes.every((scope) => coveredCheckedScopes.has(scope)) ? 'unchecked' : base;
 }
 
 /**
@@ -312,11 +360,11 @@ export function findSubordinateOption(
 
 /**
  * Toggle an option within its resource group. Checking adds the option's full
- * scope set. Unchecking an option which supersedes another (e.g. "Manage all"
- * over "Manage own", or "Manage all roles" over "Manage project roles") downgrades
- * to the subordinate option instead of clearing it too: the option's own scopes are
- * removed, then the subordinate's scopes are (re)added so the lesser permission
- * stays selected. Returns a new array; input is not mutated.
+ * scope set, companions included. Unchecking an option which supersedes another
+ * (e.g. "Manage all" over "Manage own", or "Mcp manage" over "Mcp use")
+ * downgrades to the subordinate option instead of clearing it too: the option's
+ * own scopes are removed, then the subordinate's scopes are (re)added so the
+ * lesser permission stays selected. Returns a new array; input is not mutated.
  */
 export function toggleOptionInGroup(
 	scopes: readonly string[],
@@ -325,20 +373,32 @@ export function toggleOptionInGroup(
 ): string[] {
 	const fullyChecked = option.scopes.every((scope) => scopes.includes(scope));
 	if (!fullyChecked) {
-		// Checking: add the option's full scope set.
-		return [...new Set([...scopes, ...option.scopes])];
+		return [...new Set([...scopes, ...getOptionGrantedScopes(option)])];
 	}
 
-	// Unchecking: drop the option's scopes, then downgrade to its subordinate
-	// (if any) so the lesser permission remains selected rather than clearing
-	// the scopes the two share.
 	const next = new Set(scopes);
-	for (const scope of option.scopes) next.delete(scope);
+	for (const scope of getOptionGrantedScopes(option)) next.delete(scope);
 	const subordinate = findSubordinateOption(option, groupOptions);
 	if (subordinate) {
-		for (const scope of subordinate.scopes) next.add(scope);
+		for (const scope of getOptionGrantedScopes(subordinate)) next.add(scope);
 	}
 	return [...next];
+}
+
+/**
+ * Scopes a preset copies from a system role: the full scope set of every option
+ * the role grants in full, plus the mandatory scopes. Scopes the editor does not
+ * expose (e.g. chatHub:*) and options the role covers only in part (Member holds
+ * four of the five Tags scopes) are left out, so a preset never produces a
+ * half-checked box the user could not set themselves.
+ */
+export function getPresetScopes(roleScopes: readonly string[]): string[] {
+	const granted = INSTANCE_SCOPE_GROUP_LIST.flatMap((group) =>
+		group.options
+			.filter((option) => getOptionState(roleScopes, option.scopes) === 'checked')
+			.flatMap(getOptionGrantedScopes),
+	);
+	return withMandatoryInstanceScopes(granted);
 }
 
 const userViewScopes: ReadonlySet<Scope> = new Set(GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.user.View);
@@ -390,12 +450,15 @@ export const TOTAL_INSTANCE_PERMISSIONS = INSTANCE_SCOPE_GROUP_LIST.reduce(
 	0,
 );
 
-/** Count how many permission options a saved flat scope list fully grants. */
+/**
+ * Count how many permission options a saved flat scope list grants, implied
+ * options included (Admin's "Manage project roles" counts, see `resolveOptionState`).
+ */
 export function countGrantedInstancePermissions(scopes: readonly string[]): number {
 	let count = 0;
 	for (const group of INSTANCE_SCOPE_GROUP_LIST) {
 		for (const option of group.options) {
-			if (getOptionState(scopes, option.scopes) === 'checked') count++;
+			if (resolveOptionState(option, group.options, scopes) === 'checked') count++;
 		}
 	}
 	return count;

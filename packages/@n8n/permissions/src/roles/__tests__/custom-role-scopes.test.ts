@@ -1,5 +1,6 @@
 import {
 	CUSTOM_ROLE_SCOPE_WHITELIST,
+	GLOBAL_CUSTOM_ROLE_COMPANION_SCOPES,
 	GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS,
 	GLOBAL_CUSTOM_ROLE_SCOPES,
 	PROJECT_CUSTOM_ROLE_SCOPES,
@@ -135,5 +136,28 @@ describe('custom role scope whitelists', () => {
 		for (const scope of GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.user.View) {
 			expect(GLOBAL_MEMBER_SCOPES).toContain(scope);
 		}
+	});
+
+	describe('companion scopes', () => {
+		it('are exactly the Member scopes in settings.Manage that no other option grants', () => {
+			const otherOptionScopes = new Set<string>(
+				Object.entries(GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS).flatMap(([resource, options]) =>
+					Object.entries(options).flatMap(([option, scopes]) =>
+						resource === 'settings' && option === 'Manage' ? [] : [...scopes],
+					),
+				),
+			);
+			const memberScopes = new Set<string>(GLOBAL_MEMBER_SCOPES);
+			const expected = GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.settings.Manage.filter(
+				(scope) => memberScopes.has(scope) && !otherOptionScopes.has(scope),
+			);
+			expect(new Set(GLOBAL_CUSTOM_ROLE_COMPANION_SCOPES)).toEqual(new Set(expected));
+		});
+
+		it('stay in the global whitelist, so a role saved with "Manage all settings" is accepted', () => {
+			for (const scope of GLOBAL_CUSTOM_ROLE_COMPANION_SCOPES) {
+				expect(GLOBAL_CUSTOM_ROLE_SCOPES.has(scope)).toBe(true);
+			}
+		});
 	});
 });
