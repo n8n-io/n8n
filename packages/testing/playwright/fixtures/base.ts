@@ -235,7 +235,11 @@ export const test = base.extend<
 				await apiContext.dispose();
 
 				// The reset endpoint only reaches the control plane database.
-				if (n8nStackConfig.engine) await n8nContainer.services.postgres.truncateEngineDatabase();
+				if (n8nStackConfig.engine) {
+					await (
+						n8nContainer.services.enginePostgres ?? n8nContainer.services.postgres
+					).truncateEngineDatabase();
+				}
 			}
 			await use(undefined);
 		},
