@@ -31,7 +31,6 @@ requestBody:
             example: updated-customers
         required:
           - name
-        additionalProperties: false
 responses:
   '200':
     description: Operation successful.
