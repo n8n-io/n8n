@@ -647,6 +647,17 @@ export async function attachReportMetrics(
 	if (mainCpu !== undefined) {
 		await attachMetric(testInfo, 'main-cpu-avg', mainCpu, '%', dimensions);
 	}
+	const mainContainers = report.containers.filter((container) =>
+		container.name.startsWith('n8n-main'),
+	);
+	if (mainContainers.length > 0) {
+		const mainMemoryMb =
+			mainContainers.reduce((sum, container) => sum + (container.memBytes ?? 0), 0) /
+			mainContainers.length /
+			1024 /
+			1024;
+		await attachMetric(testInfo, 'main-memory-mb', mainMemoryMb, 'MB', dimensions);
+	}
 	const workerCpu = avgCpuFor('n8n-worker');
 	if (workerCpu !== undefined) {
 		await attachMetric(testInfo, 'worker-cpu-avg', workerCpu, '%', dimensions);

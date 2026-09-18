@@ -137,6 +137,9 @@ Every run prints a per-test `[DIAG]` block and emits a Benchmark Summary table a
 | `p50/p99` | Per-execution duration percentiles (when execution data is saved) |
 | `req/s` | HTTP requests per second (webhook specs only) |
 | `ev lag` | Node.js event loop lag (sum across mains/workers) |
+| `CPU` | Average CPU use across main containers |
+| `RAM` | Average memory use across main containers |
+| `PG CPU` | Average control-plane PostgreSQL container CPU use |
 | `pg tx/s` | Postgres `xact_commit` rate from postgres-exporter |
 | `queue` | Bull jobs waiting (queue specs only) |
 

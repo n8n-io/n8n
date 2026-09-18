@@ -63,6 +63,21 @@ const COLUMNS: Column[] = [
 		format: (v) => `${(v * 1000).toFixed(0)}ms`,
 	},
 	{
+		header: 'CPU',
+		suffixes: ['main-cpu-avg'],
+		format: (v) => `${v.toFixed(0)}%`,
+	},
+	{
+		header: 'RAM',
+		suffixes: ['main-memory-mb'],
+		format: (v) => `${v.toFixed(0)}MB`,
+	},
+	{
+		header: 'PG CPU',
+		suffixes: ['pg-cpu-avg'],
+		format: (v) => `${v.toFixed(0)}%`,
+	},
+	{
 		header: 'pg tx/s',
 		suffixes: ['pg-tx-rate'],
 		format: (v) => v.toFixed(0),
