@@ -1,19 +1,20 @@
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
-import type {
-	ComputerUseChannel,
-	InstanceAiAttachment,
-	InstanceAiBrowserCreateLinkResponse,
-	InstanceAiBrowserStatusResponse,
-	InstanceAiEnsureThreadResponse,
-	InstanceAiSendMessageResponse,
-	InstanceAiConfirmRequest,
-	InstanceAiConfirmResponse,
-	InstanceAiCredits,
-	InstanceAiHandoffContext,
-	InstanceAiThreadOrigin,
-	InstanceAiThreadSource,
-	InstanceAiThreadArtifactsContext,
+import {
+	instanceAiSendMessageResponseSchema,
+	type ComputerUseChannel,
+	type InstanceAiAttachment,
+	type InstanceAiBrowserCreateLinkResponse,
+	type InstanceAiBrowserStatusResponse,
+	type InstanceAiEnsureThreadResponse,
+	type InstanceAiSendMessageResponse,
+	type InstanceAiConfirmRequest,
+	type InstanceAiConfirmResponse,
+	type InstanceAiCredits,
+	type InstanceAiHandoffContext,
+	type InstanceAiThreadOrigin,
+	type InstanceAiThreadSource,
+	type InstanceAiThreadArtifactsContext,
 } from '@n8n/api-types';
 
 export interface InstanceAiThreadLaunchInput {
@@ -37,7 +38,7 @@ export async function postMessage(
 	computerUseChannels?: ComputerUseChannel[],
 	threadArtifacts?: InstanceAiThreadArtifactsContext,
 ): Promise<InstanceAiSendMessageResponse> {
-	return await makeRestApiRequest<InstanceAiSendMessageResponse>(
+	const response = await makeRestApiRequest<unknown>(
 		context,
 		'POST',
 		`/instance-ai/chat/${threadId}`,
@@ -51,6 +52,7 @@ export async function postMessage(
 			...(threadArtifacts ? { threadArtifacts } : {}),
 		},
 	);
+	return instanceAiSendMessageResponseSchema.parse(response);
 }
 
 export async function ensureThread(

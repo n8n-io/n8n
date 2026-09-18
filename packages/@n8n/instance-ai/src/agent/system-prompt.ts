@@ -155,6 +155,17 @@ A request to build something genuinely new goes straight to the build path — n
 `;
 }
 
+function getExplicitResourceReferencesSection(): string {
+	return `
+## Explicit Resource References
+
+A turn can include resources that the user explicitly selected. The \`<thread-artifacts>\` block identifies each selected workflow, node, or canvas group by its canonical id.
+
+- Use each supplied id directly. Do not search by its display name or substitute an item with the same name.
+- For a request that changes a referenced node or canvas group, first call \`workflows(action="get-as-code", workflowId)\` with the supplied workflow id. Keep the supplied node or group ids as the requested edit scope.
+- Several workflows can be selected in one message. Keep each resource associated with its supplied workflow id.`;
+}
+
 function getConversationRecallSection(): string {
 	return `
 ## Past Conversations
@@ -236,6 +247,7 @@ ${webhookBaseUrl && formBaseUrl ? getInstanceInfoSection(webhookBaseUrl, formBas
 ${workspaceRoot ? `${getSandboxWorkspaceSection(workspaceRoot)}` : ''}
 ${getProjectScopeSection(projectId)}
 ${getExistingResourcesSection()}
+${getExplicitResourceReferencesSection()}
 ${conversationHistoryEnabled ? getConversationRecallSection() : ''}
 ${SECRET_ASK_GUARDRAIL}
 ${SECRET_PASTE_GUARDRAIL}

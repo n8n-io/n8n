@@ -691,8 +691,8 @@ describe('buildThreadArtifactsBlock', () => {
 		expect(block).toContain('(id: `wf-1`) [current]');
 		expect(block).toContain('Data table "FAQ"');
 		expect(block.match(/WhatsApp FAQ Auto-Responder/g)?.length).toBe(2); // JSON + prose once
-		// The workflow is already a tab, so no second "opened from the editor" section.
-		expect(block).not.toContain('opened this conversation from the editor');
+		// The workflow is already a tab, so no second explicit-reference section.
+		expect(block).not.toContain('explicitly referenced these resources');
 	});
 
 	it('round-trips a hand-off attachment when there are no preview tabs', () => {
@@ -701,7 +701,7 @@ describe('buildThreadArtifactsBlock', () => {
 		const stored = `${buildThreadContextBlock([block])}\n\nfix it`;
 
 		expect(extractEditorContextResourceAttachments(stored)).toEqual(attachments);
-		expect(block).toContain('opened this conversation from the editor');
+		expect(block).toContain('explicitly referenced these resources');
 		expect(block).not.toContain('conversation’s preview');
 	});
 
@@ -712,7 +712,7 @@ describe('buildThreadArtifactsBlock', () => {
 		);
 
 		expect(block.indexOf('conversation’s preview:')).toBeLessThan(block.indexOf('Digest'));
-		expect(block.indexOf('opened this conversation from the editor')).toBeLessThan(
+		expect(block.indexOf('explicitly referenced these resources')).toBeLessThan(
 			block.indexOf('Agent "Triage"'),
 		);
 		expect(block.indexOf('Digest')).toBeLessThan(block.indexOf('Agent "Triage"'));
@@ -724,7 +724,7 @@ describe('buildThreadArtifactsBlock', () => {
 			[{ type: 'agent', id: 'shared-1', name: 'Triage', projectId: 'proj-1' }],
 		);
 
-		expect(block).toContain('opened this conversation from the editor');
+		expect(block).toContain('explicitly referenced these resources');
 		expect(block).toContain('Agent "Triage" (id: `shared-1`');
 		expect(block).toContain('Workflow "Digest" (id: `shared-1`) [current]');
 	});
@@ -808,7 +808,7 @@ describe('buildThreadArtifactsBlock', () => {
 
 			expect(block).toContain('HTTP Request');
 			expect(block).toContain('wf-1');
-			expect(block).toContain('opened this conversation from the editor');
+			expect(block).toContain('explicitly referenced these resources');
 			expect(block).not.toContain('conversation’s preview');
 			expect(block).not.toContain('chain');
 			expect(block).not.toContain('preceded by');
@@ -835,9 +835,11 @@ describe('buildThreadArtifactsBlock', () => {
 				}),
 			]);
 
-			expect(block).toContain('HTTP Request → Set → IF');
-			expect(block).toContain('receiving input from "Webhook"');
-			expect(block).toContain('sending output to "Slack"');
+			expect(block).toContain('"HTTP Request" (node id: `n1`)');
+			expect(block).toContain('"Set" (node id: `n2`)');
+			expect(block).toContain('"IF" (node id: `n3`)');
+			expect(block).toContain('receiving input from "Webhook" (node id: `n0`)');
+			expect(block).toContain('sending output to "Slack" (node id: `n4`)');
 			expect(block).toContain('canvas group "My Group 1"');
 		});
 
@@ -862,7 +864,28 @@ describe('buildThreadArtifactsBlock', () => {
 				.find((line) => line.includes('Loose Node'));
 			expect(looseLine).toBeDefined();
 			expect(looseLine).not.toContain('Chain Input');
-			expect(block).toContain('Chain A → Chain B');
+			expect(block).toContain('"Chain A" (node id: `n2`) → "Chain B" (node id: `n3`)');
+		});
+
+		it('renders a whole canvas group as the selected resource', () => {
+			const block = buildThreadArtifactsBlock(undefined, [
+				nodesAttachment({
+					workflowName: 'Support triage',
+					sets: [
+						{
+							selectionKind: 'canvas-group',
+							canvasGroupId: 'group-1',
+							canvasGroupName: 'Handle failures',
+							nodes: [{ id: 'n1', name: 'Retry request' }],
+						},
+					],
+				}),
+			]);
+
+			expect(block).toContain('workflow "Support triage" (workflow id: `wf-1`)');
+			expect(block).toContain('Canvas group "Handle failures" (group id: `group-1`) was selected');
+			expect(block).toContain('"Retry request" (node id: `n1`)');
+			expect(block).not.toContain('part of canvas group');
 		});
 
 		it('renders a nodes attachment alongside a workflow attachment', () => {

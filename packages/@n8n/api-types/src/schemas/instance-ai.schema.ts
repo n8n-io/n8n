@@ -1360,24 +1360,38 @@ export type InstanceAiAgentAttachment = z.infer<typeof instanceAiAgentAttachment
 const instanceAiNodeRefSchema = z.object({
 	id: z.string().min(1).max(64),
 	name: z.string().max(255).optional(),
+	type: z.string().min(1).max(255).optional(),
+	typeVersion: z.number().nonnegative().optional(),
 });
 
-const instanceAiNodeSetSchema = z.object({
+const instanceAiBaseNodeSetSchema = z.object({
 	/** Ordered from the set's input side to its output side. Length 1 = a single loose node; length > 1 = a chain of connected nodes. */
 	nodes: z.array(instanceAiNodeRefSchema).min(1).max(50),
 	/** The node feeding into this set from outside it, if any (absent when the set starts at a trigger/root). */
 	inputNode: instanceAiNodeRefSchema.optional(),
 	/** The node this set feeds into from outside it, if any (absent when the set ends at a terminal node). */
 	outputNode: instanceAiNodeRefSchema.optional(),
+});
+
+const instanceAiNodesSetSchema = instanceAiBaseNodeSetSchema.extend({
+	/** Missing for attachments created before selection kinds were persisted. */
+	selectionKind: z.literal('nodes').optional(),
 	/**
-	 * The canvas group this set belongs to, if any. A group has a single entry/exit
-	 * (no islands), so a group's own nodes selected alone always resolve to exactly
-	 * one set — no merging/collapsing logic is needed elsewhere for this field.
+	 * Legacy display metadata for a partial canvas selection. It does not mark the
+	 * full group as selected unless selectionKind is `canvas-group`.
 	 */
 	canvasGroupId: z.string().min(1).max(64).optional(),
 	/** Paired with canvasGroupId so the model's context and the FE chip agree on the same display name. */
 	canvasGroupName: z.string().max(255).optional(),
 });
+
+const instanceAiCanvasGroupSetSchema = instanceAiBaseNodeSetSchema.extend({
+	selectionKind: z.literal('canvas-group'),
+	canvasGroupId: z.string().min(1).max(64),
+	canvasGroupName: z.string().min(1).max(255),
+});
+
+const instanceAiNodeSetSchema = z.union([instanceAiCanvasGroupSetSchema, instanceAiNodesSetSchema]);
 
 /**
  * A reference to one or more sets of canvas-selected nodes the editor hands off to a
@@ -1387,6 +1401,7 @@ const instanceAiNodeSetSchema = z.object({
 export const instanceAiNodesAttachmentSchema = z.object({
 	type: z.literal('nodes'),
 	workflowId: z.string().min(1).max(64),
+	workflowName: z.string().max(255).optional(),
 	sets: z.array(instanceAiNodeSetSchema).min(1).max(50),
 });
 export type InstanceAiNodesAttachment = z.infer<typeof instanceAiNodesAttachmentSchema>;
@@ -1515,9 +1530,11 @@ export type InstanceAiPromptConfiguration = z.infer<typeof instanceAiPromptConfi
 export const computerUseChannelSchema = z.enum(['localComputer', 'browser']);
 export type ComputerUseChannel = z.infer<typeof computerUseChannelSchema>;
 
+export const INSTANCE_AI_MAX_ATTACHMENTS = 10;
+
 export class InstanceAiSendMessageRequest extends Z.class({
 	message: z.string().default(''),
-	attachments: z.array(instanceAiAttachmentSchema).max(10).optional(),
+	attachments: z.array(instanceAiAttachmentSchema).max(INSTANCE_AI_MAX_ATTACHMENTS).optional(),
 	context: instanceAiHandoffContextSchema.optional(),
 	/** Preview tabs in this thread. The server injects them as a per-turn index. */
 	threadArtifacts: instanceAiThreadArtifactsContextSchema.optional(),
@@ -1699,9 +1716,11 @@ export class InstanceAiThreadMessagesQuery extends Z.class({
 	raw: z.enum(['true', 'false']).optional(),
 }) {}
 
-export interface InstanceAiSendMessageResponse {
-	runId: string;
-}
+export const instanceAiSendMessageResponseSchema = z.object({
+	runId: z.string(),
+	acceptedResourceAttachments: z.array(instanceAiResourceAttachmentSchema).optional(),
+});
+export type InstanceAiSendMessageResponse = z.infer<typeof instanceAiSendMessageResponseSchema>;
 
 /**
  * Why a run was refused admission, sent as `meta.reason` on the 429 so the editor can

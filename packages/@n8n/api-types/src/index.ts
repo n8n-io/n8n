@@ -450,6 +450,7 @@ export {
 	INSTANCE_AI_CATALOG_PROVIDERS,
 	GATEWAY_CONFIRMATION_REQUIRED_PREFIX,
 	InstanceAiSendMessageRequest,
+	instanceAiSendMessageResponseSchema,
 	InstanceAiEvalExecutionRequest,
 	InstanceAiEvalAgentExecutionRequest,
 	InstanceAiEvalCredentialAllowlistRequest,
@@ -505,6 +506,7 @@ export {
 	instanceAiBuildModeSchema,
 	instanceAiPromptConfigurationSchema,
 	INSTANCE_AI_RUN_LIMIT_REASONS,
+	INSTANCE_AI_MAX_ATTACHMENTS,
 } from './schemas/instance-ai.schema';
 
 export type {

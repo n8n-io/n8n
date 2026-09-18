@@ -269,6 +269,7 @@ import type { Mock, MockedFunction } from 'vitest';
 
 import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
 import { userHasScopes } from '@/permissions.ee/check-access';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
 
 import { EvalThreadCredentialAllowlistService } from '../eval/thread-credential-allowlist.service';
 import {
@@ -286,6 +287,7 @@ type StartRunServiceInternals = {
 		clearThreadState: MockedFunction<(threadId: string) => void>;
 	};
 	runState: {
+		hasLiveRun: MockedFunction<(threadId: string) => boolean>;
 		startRun: MockedFunction<
 			(options: { threadId: string; user: User }) => {
 				runId: string;
@@ -315,6 +317,7 @@ function createStartRunService(): StartRunServiceInternals {
 		clearThreadState: vi.fn((_threadId: string) => {}),
 	};
 	service.runState = {
+		hasLiveRun: vi.fn(() => false),
 		startRun: vi.fn((_options) => ({
 			runId: 'run-1',
 			abortController: new AbortController(),
@@ -1300,6 +1303,15 @@ describe('InstanceAiService — memory task observer', () => {
 
 describe('InstanceAiService — run start', () => {
 	describe('concurrency admission', () => {
+		it('refuses a new turn when the thread became active before admission', () => {
+			const service = createStartRunService();
+			service.runState.hasLiveRun.mockReturnValue(true);
+
+			expect(() => service.startRun(fakeUser, 'thread-a', 'hello')).toThrow(ConflictError);
+			expect(service.runState.startRun).not.toHaveBeenCalled();
+			expect(service.liveness.clearThreadState).not.toHaveBeenCalled();
+		});
+
 		it('refuses a new turn when the user is at their limit', () => {
 			const service = createStartRunService();
 			service.runState.activeRunCountForUser.mockReturnValue(3);
@@ -3683,7 +3695,7 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 	/** The smallest executeRun surface: no tracing, no attachments, no handoff. */
 	function stubInitialRunSurface(service: TerminalGuardOrderServiceInternals): void {
 		Object.assign(service, {
-			resolveContextAttachments: vi.fn(async () => []),
+			resolveContextAttachments: vi.fn(() => []),
 			createProxyRunConfig: vi.fn(async () => ({})),
 			browserSessionService: { getExtensionTraceContext: vi.fn() },
 			readThreadProvenance: vi.fn(async () => ({})),
@@ -4832,7 +4844,7 @@ describe('InstanceAiService setup panel Execute input', () => {
 				orchestrationContext: {},
 			};
 			const service = Object.assign(Object.create(InstanceAiService.prototype), {
-				resolveContextAttachments: vi.fn(async () => []),
+				resolveContextAttachments: vi.fn(() => []),
 				instanceAiErrorReporter: { beginRun: vi.fn(), endRun: vi.fn() },
 				createProxyRunConfig: vi.fn(async () => ({})),
 				browserSessionService: { getExtensionTraceContext: vi.fn() },

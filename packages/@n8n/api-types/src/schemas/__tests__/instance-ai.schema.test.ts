@@ -22,8 +22,10 @@ import {
 	FETCH_URL_ALLOW_ALL_GRANT_KEY,
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiSendMessageRequest,
+	instanceAiSendMessageResponseSchema,
 	instanceAiEventSchema,
 	INSTANCE_AI_EPHEMERAL_EVENT_TYPES,
+	INSTANCE_AI_MAX_ATTACHMENTS,
 	isDisplayableConfirmationRequest,
 	InstanceAiEnsureThreadRequest,
 	findUnbackedSeedWorkflowTools,
@@ -1154,6 +1156,75 @@ describe('instanceAiAttachmentSchema — nodes attachment', () => {
 		expect(result.success).toBe(true);
 	});
 
+	it('accepts node icon metadata, including type version 0', () => {
+		const result = instanceAiAttachmentSchema.safeParse(
+			nodesAttachment({
+				workflowName: 'Support triage',
+				sets: [
+					{
+						selectionKind: 'nodes',
+						nodes: [
+							{
+								id: 'n1',
+								name: 'HTTP Request',
+								type: 'n8n-nodes-base.httpRequest',
+								typeVersion: 0,
+							},
+						],
+					},
+				],
+			}),
+		);
+
+		expect(result.success).toBe(true);
+	});
+
+	it('accepts a whole canvas group', () => {
+		const result = instanceAiAttachmentSchema.safeParse(
+			nodesAttachment({
+				sets: [
+					{
+						selectionKind: 'canvas-group',
+						canvasGroupId: 'group-1',
+						canvasGroupName: 'Handle failure',
+						nodes: [{ id: 'n1' }],
+					},
+				],
+			}),
+		);
+
+		expect(result.success).toBe(true);
+	});
+
+	it.each([
+		{ canvasGroupId: undefined, canvasGroupName: 'Handle failure' },
+		{ canvasGroupId: 'group-1', canvasGroupName: undefined },
+	])('requires complete whole-group identity metadata', (group) => {
+		const result = instanceAiAttachmentSchema.safeParse(
+			nodesAttachment({
+				sets: [
+					{
+						selectionKind: 'canvas-group',
+						...group,
+						nodes: [{ id: 'n1' }],
+					},
+				],
+			}),
+		);
+
+		expect(result.success).toBe(false);
+	});
+
+	it('rejects unsupported selection kinds', () => {
+		const result = instanceAiAttachmentSchema.safeParse(
+			nodesAttachment({
+				sets: [{ selectionKind: 'workflow', nodes: [{ id: 'n1' }] }],
+			}),
+		);
+
+		expect(result.success).toBe(false);
+	});
+
 	it('still accepts file, workflow, and agent attachments unchanged', () => {
 		expect(
 			instanceAiAttachmentSchema.safeParse({
@@ -1175,6 +1246,37 @@ describe('instanceAiAttachmentSchema — nodes attachment', () => {
 	it('is also accepted by instanceAiResourceAttachmentSchema', () => {
 		const result = instanceAiResourceAttachmentSchema.safeParse(nodesAttachment());
 		expect(result.success).toBe(true);
+	});
+});
+
+describe('Instance AI send message attachment contract', () => {
+	const request = (count: number) => ({
+		message: '',
+		timeZone: 'UTC',
+		attachments: Array.from({ length: count }, (_, index) => ({
+			type: 'workflow' as const,
+			id: `workflow-${index}`,
+		})),
+	});
+
+	it('accepts the shared attachment limit and rejects one more', () => {
+		expect(
+			InstanceAiSendMessageRequest.safeParse(request(INSTANCE_AI_MAX_ATTACHMENTS)).success,
+		).toBe(true);
+		expect(
+			InstanceAiSendMessageRequest.safeParse(request(INSTANCE_AI_MAX_ATTACHMENTS + 1)).success,
+		).toBe(false);
+	});
+
+	it('parses normalized resource attachments in the send response', () => {
+		const response = {
+			runId: 'run-1',
+			acceptedResourceAttachments: [
+				{ type: 'workflow' as const, id: 'workflow-1', name: 'Support triage' },
+			],
+		};
+
+		expect(instanceAiSendMessageResponseSchema.parse(response)).toEqual(response);
 	});
 });
 

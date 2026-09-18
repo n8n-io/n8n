@@ -15,6 +15,7 @@ import {
 	type InstanceAiConfirmResponse,
 	type InstanceAiResourceDecision,
 	type InstanceAiAttachment,
+	type InstanceAiSendMessageResponse,
 	type InstanceAiEvent,
 	type InstanceAiMessage,
 	type InstanceAiThreadSummary,
@@ -1320,9 +1321,9 @@ export function createThreadRuntime(
 		attachments?: InstanceAiAttachment[],
 		handoffContext?: InstanceAiHandoffContext,
 		pushRef?: string,
-	): Promise<boolean> {
+	): Promise<InstanceAiSendMessageResponse | undefined> {
 		try {
-			const { runId } = await postMessage(
+			const response = await postMessage(
 				rootStore.restApiContext,
 				threadId,
 				message,
@@ -1334,10 +1335,10 @@ export function createThreadRuntime(
 				buildThreadArtifactsContext(producedArtifacts.values(), activeArtifactId.value),
 			);
 
-			if (runId) {
-				activeRunId.value = runId;
+			if (response.runId) {
+				activeRunId.value = response.runId;
 			}
-			return true;
+			return response;
 		} catch (error: unknown) {
 			const status = error instanceof ResponseError ? error.httpStatusCode : undefined;
 			if (status === 409) {
@@ -1367,8 +1368,28 @@ export function createThreadRuntime(
 			} else {
 				toast.showError(new Error('Failed to send message. Try again.'), 'Send failed');
 			}
-			return false;
+			return undefined;
 		}
+	}
+
+	function applyAcceptedResourceAttachments(
+		message: InstanceAiMessage,
+		acceptedResourceAttachments: InstanceAiSendMessageResponse['acceptedResourceAttachments'],
+	): void {
+		if (!acceptedResourceAttachments) return;
+
+		let resourceIndex = 0;
+		const normalizedAttachments: InstanceAiAttachment[] = [];
+		for (const attachment of message.attachments ?? []) {
+			if (attachment.type === 'file') {
+				normalizedAttachments.push(attachment);
+				continue;
+			}
+			const accepted = acceptedResourceAttachments[resourceIndex++];
+			if (accepted) normalizedAttachments.push(accepted);
+		}
+		normalizedAttachments.push(...acceptedResourceAttachments.slice(resourceIndex));
+		message.attachments = normalizedAttachments.length > 0 ? normalizedAttachments : undefined;
 	}
 
 	/**
@@ -1393,10 +1414,12 @@ export function createThreadRuntime(
 			const optimistic = pushOptimisticUserMessage(message, attachments, handoffContext);
 			trackUserMessageSent(isFirstMessage, authorship);
 
-			if (!(await dispatchUserMessage(message, attachments, handoffContext, pushRef))) {
+			const response = await dispatchUserMessage(message, attachments, handoffContext, pushRef);
+			if (!response) {
 				removeOptimisticMessage(optimistic);
 				return false;
 			}
+			applyAcceptedResourceAttachments(optimistic, response.acceptedResourceAttachments);
 			return true;
 		} finally {
 			pendingMessageCount.value = Math.max(0, pendingMessageCount.value - 1);

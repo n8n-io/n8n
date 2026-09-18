@@ -192,11 +192,12 @@ export class WorkflowFinderService {
 			includeParentFolder?: boolean;
 			includeTags?: boolean;
 			includeActiveVersion?: boolean;
+			projectId?: string;
 		} = {},
 	): Promise<WorkflowEntity[]> {
 		if (workflowIds.length === 0) return [];
 
-		const where = await this.findAllWhere(user, scopes);
+		const where = await this.findAllWhere(user, scopes, undefined, options.projectId);
 
 		// A workflow may appear via several share paths (project membership +
 		// direct share); dedupe so callers see one entity per id.

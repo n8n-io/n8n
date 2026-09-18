@@ -1,10 +1,8 @@
-import type {
-	InstanceAiNodesAttachment,
-	InstanceAiResourceAttachment,
-	InstanceAiWorkflowAttachment,
-} from '@n8n/api-types';
+import type { InstanceAiNodesAttachment, InstanceAiWorkflowAttachment } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import type { Mock } from 'vitest';
+
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 import { InstanceAiService } from '../instance-ai.service';
 
@@ -19,13 +17,13 @@ function nodesAttachment(
 	};
 }
 
-describe('InstanceAiService — resolveContextAttachments gating', () => {
+describe('InstanceAiService — resource attachment capability gating', () => {
 	type GatedService = {
 		canvasNodeContextFlagGate: { isEnabled: Mock };
-		resolveContextAttachments: (
-			attachments: InstanceAiResourceAttachment[] | undefined,
+		assertResourceAttachmentCapabilities: (
+			attachments: Array<InstanceAiNodesAttachment | InstanceAiWorkflowAttachment> | undefined,
 			user: User,
-		) => Promise<InstanceAiResourceAttachment[]>;
+		) => Promise<void>;
 	};
 
 	function createService(isEnabled: Mock): GatedService {
@@ -36,20 +34,20 @@ describe('InstanceAiService — resolveContextAttachments gating', () => {
 
 	const user = { id: 'user-1' } as User;
 
-	it('includes the nodes attachment when the flag is on', async () => {
+	it('accepts a nodes attachment when the flag is on', async () => {
 		const service = createService(vi.fn().mockResolvedValue(true));
 
-		const result = await service.resolveContextAttachments([nodesAttachment()], user);
-
-		expect(result).toEqual([nodesAttachment()]);
+		await expect(
+			service.assertResourceAttachmentCapabilities([nodesAttachment()], user),
+		).resolves.toBeUndefined();
 	});
 
-	it('drops the nodes attachment when the flag is off, without throwing', async () => {
+	it('rejects a nodes attachment when the flag is off', async () => {
 		const service = createService(vi.fn().mockResolvedValue(false));
 
-		const result = await service.resolveContextAttachments([nodesAttachment()], user);
-
-		expect(result).toEqual([]);
+		await expect(
+			service.assertResourceAttachmentCapabilities([nodesAttachment()], user),
+		).rejects.toBeInstanceOf(BadRequestError);
 	});
 
 	it('never asks the gate when there are no nodes attachments', async () => {
@@ -57,21 +55,18 @@ describe('InstanceAiService — resolveContextAttachments gating', () => {
 		const service = createService(isEnabled);
 		const workflowAttachment: InstanceAiWorkflowAttachment = { type: 'workflow', id: 'wf-1' };
 
-		const result = await service.resolveContextAttachments([workflowAttachment], user);
-
-		expect(result).toEqual([workflowAttachment]);
+		await expect(
+			service.assertResourceAttachmentCapabilities([workflowAttachment], user),
+		).resolves.toBeUndefined();
 		expect(isEnabled).not.toHaveBeenCalled();
 	});
 
-	it('keeps a workflow attachment alongside an enabled nodes attachment', async () => {
+	it('accepts a workflow attachment alongside an enabled nodes attachment', async () => {
 		const service = createService(vi.fn().mockResolvedValue(true));
 		const workflowAttachment: InstanceAiWorkflowAttachment = { type: 'workflow', id: 'wf-1' };
 
-		const result = await service.resolveContextAttachments(
-			[workflowAttachment, nodesAttachment()],
-			user,
-		);
-
-		expect(result).toEqual([workflowAttachment, nodesAttachment()]);
+		await expect(
+			service.assertResourceAttachmentCapabilities([workflowAttachment, nodesAttachment()], user),
+		).resolves.toBeUndefined();
 	});
 });

@@ -10,8 +10,8 @@ import NodeIcon from '@/app/components/NodeIcon.vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import {
-	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
+	useExistingWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 import { isNodeChipRemovalKey } from '../constants';
 
@@ -31,7 +31,7 @@ const injectedWorkflowId = inject(
 	computed(() => ''),
 );
 const workflowDocumentStore = computed(() =>
-	useWorkflowDocumentStore(
+	useExistingWorkflowDocumentStore(
 		createWorkflowDocumentId(props.attachment.workflowId || injectedWorkflowId.value || 'unknown'),
 	),
 );
@@ -43,13 +43,19 @@ interface ResolvedAttachedNode {
 	workflowNode: INodeUi | null;
 }
 
-function resolveAttachedNode(node: { id: string; name?: string }): ResolvedAttachedNode {
+function resolveAttachedNode(
+	node: InstanceAiNodesAttachment['sets'][number]['nodes'][number],
+): ResolvedAttachedNode {
 	const store = workflowDocumentStore.value;
 	const workflowNode =
-		store.getNodeById(node.id) ?? (node.name ? store.getNodeByName(node.name) : undefined) ?? null;
-	const nodeType = workflowNode
-		? nodeTypesStore.getNodeType(workflowNode.type, workflowNode.typeVersion)
-		: null;
+		store?.getNodeById(node.id) ??
+		(node.name ? store?.getNodeByName(node.name) : undefined) ??
+		null;
+	const nodeType = node.type
+		? nodeTypesStore.getNodeType(node.type, node.typeVersion)
+		: workflowNode
+			? nodeTypesStore.getNodeType(workflowNode.type, workflowNode.typeVersion)
+			: null;
 	return {
 		id: node.id,
 		name: node.name ?? workflowNode?.name ?? '',

@@ -116,6 +116,37 @@ describe('WorkflowFinderService', () => {
 		});
 	});
 
+	describe('findWorkflowsByIdsForUser', () => {
+		it('limits access checks to the requested project', async () => {
+			const { service, sharedWorkflowRepository, roleService } = makeService();
+			const user = {
+				id: 'user-1',
+				role: { slug: 'global:member', scopes: [] },
+			} as never;
+			roleService.rolesWithScope.mockImplementation(async (namespace) =>
+				namespace === 'project' ? ['project:admin'] : ['workflow:owner'],
+			);
+			sharedWorkflowRepository.find.mockResolvedValue([
+				{ workflow: { id: 'workflow-1' } },
+			] as never);
+
+			await service.findWorkflowsByIdsForUser(['workflow-1'], user, ['workflow:read'], {
+				projectId: 'project-1',
+			});
+
+			expect(sharedWorkflowRepository.find).toHaveBeenCalledWith(
+				expect.objectContaining({
+					where: expect.objectContaining({
+						project: expect.objectContaining({
+							id: 'project-1',
+							projectRelations: expect.objectContaining({ userId: 'user-1' }),
+						}),
+					}),
+				}),
+			);
+		});
+	});
+
 	describe('findOwnedWorkflowsBySourceWorkflowIds', () => {
 		it('merges workflows returned from different chunks', async () => {
 			const { service, sharedWorkflowRepository } = makeService();

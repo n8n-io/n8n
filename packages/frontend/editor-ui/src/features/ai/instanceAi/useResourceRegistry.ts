@@ -361,6 +361,12 @@ function collectFromMessageAttachments(message: InstanceAiMessage, col: Collecti
 				},
 				{ linkable: !attachment.pending },
 			);
+		} else if (attachment.type === 'nodes') {
+			recordProduced(col, {
+				type: 'workflow',
+				id: attachment.workflowId,
+				name: attachment.workflowName ?? 'Untitled',
+			});
 		}
 	}
 }

@@ -26,7 +26,11 @@ import {
 	findSeedFolderIssues,
 	findUnbackedSeedWorkflowTools,
 } from '@n8n/api-types';
-import type { InstanceAiAdminSettingsResponse, InstanceAiEvent } from '@n8n/api-types';
+import type {
+	InstanceAiAdminSettingsResponse,
+	InstanceAiEvent,
+	InstanceAiResourceAttachment,
+} from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { AuthenticatedRequest, User, UserRepository } from '@n8n/db';
@@ -72,6 +76,7 @@ import { InstanceAiGatewayService } from './instance-ai-gateway.service';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiModelCatalogService } from './instance-ai-model-catalog.service';
 import { InstanceAiPendingAgentService } from './instance-ai-pending-agent.service';
+import { InstanceAiResourceAttachmentResolverService } from './instance-ai-resource-attachment-resolver.service';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { InstanceAiVerificationService } from './instance-ai-verification.service';
 import { InstanceAiService } from './instance-ai.service';
@@ -100,6 +105,7 @@ export class InstanceAiController {
 		private readonly browserSessionService: InstanceAiBrowserSessionService,
 		private readonly memoryService: InstanceAiMemoryService,
 		private readonly pendingAgentService: InstanceAiPendingAgentService,
+		private readonly resourceAttachmentResolver: InstanceAiResourceAttachmentResolverService,
 		private readonly settingsService: InstanceAiSettingsService,
 		private readonly modelCatalogService: InstanceAiModelCatalogService,
 		private readonly evalExecutionService: EvalExecutionService,
@@ -220,11 +226,21 @@ export class InstanceAiController {
 			throw new ConflictError('A run is already active for this thread');
 		}
 
+		await this.instanceAiService.assertResourceAttachmentCapabilities(
+			payload.attachments,
+			req.user,
+		);
+		const attachments = await this.resourceAttachmentResolver.resolve(
+			req.user,
+			threadId,
+			payload.attachments,
+		);
+
 		const runId = this.instanceAiService.startRun(
 			req.user,
 			threadId,
 			payload.message,
-			payload.attachments,
+			attachments,
 			payload.context,
 			payload.timeZone,
 			payload.pushRef,
@@ -233,7 +249,13 @@ export class InstanceAiController {
 			payload.computerUseChannels,
 			payload.threadArtifacts,
 		);
-		return { runId };
+		const acceptedResourceAttachments = (attachments ?? []).filter(
+			(attachment): attachment is InstanceAiResourceAttachment => attachment.type !== 'file',
+		);
+		return {
+			runId,
+			...(acceptedResourceAttachments.length > 0 ? { acceptedResourceAttachments } : {}),
+		};
 	}
 
 	// usesTemplates bypasses the send() wrapper so we can write SSE frames directly

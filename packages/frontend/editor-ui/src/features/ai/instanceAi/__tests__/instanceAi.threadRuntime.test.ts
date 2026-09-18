@@ -9,6 +9,7 @@ import { fetchThreadMessages, fetchThreadStatus } from '../instanceAi.memory.api
 import { ensureThread, postMessage, postConfirmation, postCancel } from '../instanceAi.api';
 import {
 	INSTANCE_AI_THREAD_SOURCE_FALLBACK,
+	type InstanceAiAttachment,
 	type InstanceAiCredentialDestination,
 	type InstanceAiTargetApproval,
 } from '@n8n/api-types';
@@ -1388,6 +1389,45 @@ describe('createThreadRuntime - SSE and hydration', () => {
 		// sendMessage should have re-opened an EventSource before posting
 		expect(capturedInstance).not.toBeNull();
 		expect(mockPostMessage).toHaveBeenCalled();
+	});
+
+	test('sendMessage replaces optimistic resources with accepted attachments and preserves files', async () => {
+		const attachments: InstanceAiAttachment[] = [
+			{ type: 'file', data: 'YQ==', mimeType: 'text/plain', fileName: 'before.txt' },
+			{ type: 'workflow', id: 'workflow-1', name: 'Spoofed workflow' },
+			{ type: 'file', data: 'Yg==', mimeType: 'text/plain', fileName: 'after.txt' },
+		];
+		mockPostMessage.mockResolvedValue({
+			runId: 'run-1',
+			acceptedResourceAttachments: [
+				{ type: 'workflow', id: 'workflow-1', name: 'Canonical workflow' },
+			],
+		});
+
+		await activeRuntime(registry).sendMessage('Review this', {
+			authorship: USER_TYPED_MESSAGE,
+			attachments,
+		});
+
+		expect(activeRuntime(registry).messages[0].attachments).toEqual([
+			attachments[0],
+			{ type: 'workflow', id: 'workflow-1', name: 'Canonical workflow' },
+			attachments[2],
+		]);
+	});
+
+	test('sendMessage keeps submitted resources when the response omits accepted attachments', async () => {
+		const attachments: InstanceAiAttachment[] = [
+			{ type: 'workflow', id: 'workflow-1', name: 'Submitted workflow' },
+		];
+		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
+
+		await activeRuntime(registry).sendMessage('Review this', {
+			authorship: USER_TYPED_MESSAGE,
+			attachments,
+		});
+
+		expect(activeRuntime(registry).messages[0].attachments).toEqual(attachments);
 	});
 
 	test('sendMessage rolls back the optimistic message when postMessage fails', async () => {

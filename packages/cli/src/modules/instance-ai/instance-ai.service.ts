@@ -21,7 +21,6 @@ import {
 	type InstanceAiHandoffContext,
 	type InstanceAiAgentAttachment,
 	type InstanceAiFileAttachment,
-	type InstanceAiNodesAttachment,
 	type InstanceAiResourceAttachment,
 	type InstanceAiWorkflowAttachment,
 	type InstanceAiConfirmRequest,
@@ -138,6 +137,7 @@ import { nanoid } from 'nanoid';
 
 import { N8N_VERSION, WORKFLOW_SDK_VERSION } from '@/constants';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
 import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
@@ -1383,6 +1383,9 @@ export class InstanceAiService {
 			resolvePromptProfile({ version: promptVersion }).fallbackFrom
 		) {
 			throw new BadRequestError(`Unknown Instance AI prompt version "${promptVersion}"`);
+		}
+		if (this.runState.hasLiveRun(threadId)) {
+			throw new ConflictError('A run is already active for this thread');
 		}
 		this.assertRunAdmissible(user);
 		this.liveness.clearThreadState(threadId);
@@ -3565,32 +3568,24 @@ export class InstanceAiService {
 	 * CANVAS_NODE_CONTEXT_FLAG per user. Workflow and agent references always pass
 	 * through — only `nodes` attachments are conditional.
 	 */
-	private async resolveContextAttachments(
+	async assertResourceAttachmentCapabilities(
 		attachments: InstanceAiAttachment[] | undefined,
 		user: User,
-	): Promise<InstanceAiResourceAttachment[]> {
-		const attachmentsOrEmpty = attachments ?? [];
+	): Promise<void> {
+		if (!(attachments ?? []).some((attachment) => attachment.type === 'nodes')) return;
+		if (await this.canvasNodeContextFlagGate.isEnabled(user)) return;
 
-		const workflowAttachments = attachmentsOrEmpty.filter(
-			(attachment): attachment is InstanceAiWorkflowAttachment => attachment.type === 'workflow',
+		throw new BadRequestError(
+			'Node and canvas group attachments are not available. Remove them and try again.',
 		);
+	}
 
-		const agentAttachments = attachmentsOrEmpty.filter(
-			(attachment): attachment is InstanceAiAgentAttachment => attachment.type === 'agent',
+	private resolveContextAttachments(
+		attachments: InstanceAiAttachment[] | undefined,
+	): InstanceAiResourceAttachment[] {
+		return (attachments ?? []).filter(
+			(attachment): attachment is InstanceAiResourceAttachment => attachment.type !== 'file',
 		);
-
-		const nodeAttachments = attachmentsOrEmpty.filter(
-			(attachment): attachment is InstanceAiNodesAttachment => attachment.type === 'nodes',
-		);
-
-		const canvasNodeContextEnabled =
-			nodeAttachments.length > 0 && (await this.canvasNodeContextFlagGate.isEnabled(user));
-
-		return [
-			...workflowAttachments,
-			...agentAttachments,
-			...(canvasNodeContextEnabled ? nodeAttachments : []),
-		];
 	}
 
 	/**
@@ -3641,7 +3636,7 @@ export class InstanceAiService {
 			(attachment): attachment is InstanceAiFileAttachment => attachment.type === 'file',
 		);
 
-		const contextAttachments = await this.resolveContextAttachments(attachments, user);
+		const contextAttachments = this.resolveContextAttachments(attachments);
 
 		const signal = abortController.signal;
 		let tracing: InstanceAiTraceContext | undefined;

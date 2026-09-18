@@ -91,6 +91,7 @@ import type { LocalGateway } from '../filesystem/local-gateway';
 import type { InstanceAiGatewayService } from '../instance-ai-gateway.service';
 import type { InstanceAiMemoryService } from '../instance-ai-memory.service';
 import type { InstanceAiPendingAgentService } from '../instance-ai-pending-agent.service';
+import type { InstanceAiResourceAttachmentResolverService } from '../instance-ai-resource-attachment-resolver.service';
 import type { InstanceAiModelCatalogService } from '../instance-ai-model-catalog.service';
 import type { InstanceAiSettingsService } from '../instance-ai-settings.service';
 import { InstanceAiController } from '../instance-ai.controller';
@@ -117,6 +118,7 @@ describe('InstanceAiController', () => {
 	const browserSessionService = mock<InstanceAiBrowserSessionService>();
 	const memoryService = mock<InstanceAiMemoryService>();
 	const pendingAgentService = mock<InstanceAiPendingAgentService>();
+	const resourceAttachmentResolver = mock<InstanceAiResourceAttachmentResolverService>();
 	const settingsService = mock<InstanceAiSettingsService>();
 	const modelCatalogService = mock<InstanceAiModelCatalogService>();
 	const eventBus = mock<InProcessEventBus>();
@@ -146,6 +148,7 @@ describe('InstanceAiController', () => {
 		browserSessionService,
 		memoryService,
 		pendingAgentService,
+		resourceAttachmentResolver,
 		settingsService,
 		modelCatalogService,
 		mock<EvalExecutionService>(),
@@ -178,6 +181,9 @@ describe('InstanceAiController', () => {
 		eventLog.getOpenSegments.mockReturnValue([]);
 		settingsService.isInstanceAiEnabled.mockReturnValue(true);
 		settingsService.isModelConfigured.mockResolvedValue(true);
+		resourceAttachmentResolver.resolve.mockImplementation(
+			async (_user, _threadId, attachments) => attachments,
+		);
 	});
 
 	describe('chat', () => {
@@ -434,6 +440,7 @@ describe('InstanceAiController', () => {
 
 			await expect(controller.chat(req, res, THREAD_ID, nodesPayload)).resolves.toEqual({
 				runId: 'run-4',
+				acceptedResourceAttachments: [{ type: 'nodes', workflowId: 'wf1', sets }],
 			});
 			expect(instanceAiService.startRun).toHaveBeenCalledWith(
 				req.user,
@@ -2397,6 +2404,7 @@ describe('InstanceAiController — durable-log SSE replay', () => {
 		mock<InstanceAiBrowserSessionService>(),
 		memoryService,
 		mock<InstanceAiPendingAgentService>(),
+		mock<InstanceAiResourceAttachmentResolverService>(),
 		settingsService,
 		mock<InstanceAiModelCatalogService>(),
 		mock<EvalExecutionService>(),

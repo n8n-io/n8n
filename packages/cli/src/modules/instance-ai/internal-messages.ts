@@ -235,6 +235,10 @@ export function sanitisePromptText(value: string): string {
 		.slice(0, PROMPT_TEXT_MAX_LENGTH);
 }
 
+function quotePromptText(value: string): string {
+	return JSON.stringify(sanitisePromptText(value));
+}
+
 /** The fact, and only the fact. The rule that follows from it ("writes are locked to
  *  this project", "check it before you build") lives in the system prompt, which is
  *  CACHED — restating it here would pay for the same sentence in uncached tokens on
@@ -335,7 +339,7 @@ function formatThreadArtifactLine(
 ): string {
 	const pendingAgent = artifact.type === 'agent' && artifact.pending;
 	const kind = pendingAgent ? 'New unsaved Agent' : THREAD_ARTIFACT_KIND[artifact.type];
-	const name = artifact.name ? ` "${sanitisePromptText(artifact.name)}"` : '';
+	const name = artifact.name ? ` ${quotePromptText(artifact.name)}` : '';
 	const idLabel = pendingAgent ? 'pending id' : 'id';
 	const project = artifact.projectId
 		? `, in project \`${sanitisePromptText(artifact.projectId)}\``
@@ -353,22 +357,24 @@ function formatThreadArtifactLine(
 
 /** Renders one canvas node-selection attachment as one line per set. */
 function buildNodesAttachmentLine(attachment: InstanceAiNodesAttachment): string {
-	const label = (ref: { id: string; name?: string }) => sanitisePromptText(ref.name ?? ref.id);
+	const label = (ref: { id: string; name?: string }) =>
+		`${quotePromptText(ref.name ?? ref.id)} (node id: \`${sanitisePromptText(ref.id)}\`)`;
 
 	const setLines = attachment.sets.map((set) => {
-		const names = set.nodes.map(label);
+		const nodes = set.nodes.map(label);
+		if (set.selectionKind === 'canvas-group') {
+			return `    - Canvas group ${quotePromptText(set.canvasGroupName)} (group id: \`${sanitisePromptText(set.canvasGroupId)}\`) was selected. Its complete node membership is: ${nodes.join(', ')}.`;
+		}
 
 		const head =
-			names.length === 1
-				? `Node "${names[0]}"`
-				: `A chain of connected nodes: ${names.join(' → ')}`;
+			nodes.length === 1 ? `Node ${nodes[0]}` : `A chain of connected nodes: ${nodes.join(' → ')}`;
 
-		const input = set.inputNode ? `, receiving input from "${label(set.inputNode)}"` : '';
+		const input = set.inputNode ? `, receiving input from ${label(set.inputNode)}` : '';
 
-		const output = set.outputNode ? `, sending output to "${label(set.outputNode)}"` : '';
+		const output = set.outputNode ? `, sending output to ${label(set.outputNode)}` : '';
 
 		const group = set.canvasGroupName
-			? `, part of canvas group "${sanitisePromptText(set.canvasGroupName)}"`
+			? `, part of canvas group ${quotePromptText(set.canvasGroupName)}`
 			: set.canvasGroupId
 				? `, part of canvas group \`${sanitisePromptText(set.canvasGroupId)}\``
 				: '';
@@ -381,7 +387,10 @@ function buildNodesAttachmentLine(attachment: InstanceAiNodesAttachment): string
 		? '\n  The "receiving input from"/"sending output to" nodes show only where the selection connects; they are not part of the selection. Do not describe, inspect, or make claims about them — scope your answer to the selected nodes.'
 		: '';
 
-	return `  - Selected nodes in workflow \`${sanitisePromptText(attachment.workflowId)}\`:\n${setLines.join('\n')}${boundaryNote}`;
+	const workflowName = attachment.workflowName
+		? ` ${quotePromptText(attachment.workflowName)}`
+		: '';
+	return `  - Selected resources in workflow${workflowName} (workflow id: \`${sanitisePromptText(attachment.workflowId)}\`):\n${setLines.join('\n')}${boundaryNote}`;
 }
 
 /**
@@ -479,10 +488,7 @@ export function buildThreadArtifactsBlock(
 			? ['Artifacts the user can see in this conversation’s preview:', ...previewLines]
 			: []),
 		...(handoffLines.length > 0
-			? [
-					'The user opened this conversation from the editor, where they are looking at:',
-					...handoffLines,
-				]
+			? ['The user explicitly referenced these resources in this message:', ...handoffLines]
 			: []),
 		currentGuidance,
 		pendingAgentGuidance,

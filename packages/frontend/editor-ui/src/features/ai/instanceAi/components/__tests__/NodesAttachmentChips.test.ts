@@ -110,6 +110,36 @@ describe('NodesAttachmentChips', () => {
 		}
 	});
 
+	it('uses persisted node type metadata without a workflow document', () => {
+		useNodeTypesStore().setNodeTypes([
+			mock<INodeTypeDescription>({
+				version: 1,
+				name: 'n8n-nodes-base.set',
+				displayName: 'Edit Fields',
+				iconUrl: 'icons/n8n-nodes-base/dist/nodes/Set/set.svg',
+			}),
+		]);
+
+		const { getByTestId } = renderComponent(NodesAttachmentChips, {
+			props: {
+				attachment: att([
+					{
+						nodes: [
+							{
+								id: 'n1',
+								name: 'Edit Fields',
+								type: 'n8n-nodes-base.set',
+								typeVersion: 1,
+							},
+						],
+					},
+				]),
+			},
+		});
+
+		expect(getByTestId('nodes-chip-node').querySelector('.n8n-node-icon img')).toBeTruthy();
+	});
+
 	it('collapsing many sets shows a total-count summary chip, not a bare toggle', async () => {
 		const sets = nodeRefs('A', 'B', 'C', 'D', 'E', 'F', 'G').map((n) => ({ nodes: [n] }));
 		const { getByTestId, queryByTestId, getAllByTestId } = renderComponent(NodesAttachmentChips, {

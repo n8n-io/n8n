@@ -289,6 +289,31 @@ describe('useResourceRegistry', () => {
 			expect(linkableResourceNameIndex.get('support agent')).toBeUndefined();
 		});
 
+		test('registers the owning workflow from a durable nodes attachment', async () => {
+			const { messages, producedArtifacts } = setup();
+
+			messages.value = [
+				makeMessage({
+					role: 'user',
+					attachments: [
+						{
+							type: 'nodes',
+							workflowId: 'workflow-1',
+							workflowName: 'Support triage',
+							sets: [{ nodes: [{ id: 'node-1', name: 'Route request' }] }],
+						},
+					],
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.get('workflow-1')).toEqual({
+				type: 'workflow',
+				id: 'workflow-1',
+				name: 'Support triage',
+			});
+		});
+
 		test('registers a pending workflow attachment as a produced tab', async () => {
 			const pending = ref<
 				{ type: 'workflow'; id: string; name?: string; executionId?: string } | undefined
