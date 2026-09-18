@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import type { NodeTypeAvailabilityScope } from '@n8n/api-types';
-import { N8nButton, N8nIcon, N8nPopover, N8nText } from '@n8n/design-system';
+import { N8nIcon, N8nPopover, N8nText } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { unrefElement, useElementHover, type MaybeElement } from '@vueuse/core';
 import { computed, ref } from 'vue';
 
-import ContactInstanceAdminModal from './ContactInstanceAdminModal.vue';
+import ContactInstanceAdminButton from './ContactInstanceAdminButton.vue';
 
 const props = defineProps<{
 	nodeTypeName: string;
@@ -30,17 +30,17 @@ const anchorElement = computed(() => unrefElement(props.anchor) ?? undefined);
 const contentRef = ref<HTMLElement | null>(null);
 const anchorHovered = useElementHover(anchorElement, { delayLeave: HOVER_GRACE_MS });
 const contentHovered = useElementHover(contentRef, { delayLeave: HOVER_GRACE_MS });
-const open = computed(() => anchorHovered.value || contentHovered.value || props.active);
-
 const isContactAdminOpen = ref(false);
+// The popover content unmounts when closed and would take the open dialog with it.
+const open = computed(
+	() => anchorHovered.value || contentHovered.value || props.active || isContactAdminOpen.value,
+);
 
 const scopeKey = computed<BaseTextKey>(
 	() =>
 		(props.scope && SCOPE_TITLE_KEY[props.scope]) ??
 		'typeAvailabilityPolicies.restrictedNode.title',
 );
-
-const interpolate = computed(() => ({ nodeType: props.nodeTypeName }));
 </script>
 
 <template>
@@ -70,32 +70,20 @@ const interpolate = computed(() => ({ nodeType: props.nodeTypeName }));
 					<N8nText tag="p" size="small" color="text-base" :class="$style.description">
 						{{ i18n.baseText('typeAvailabilityPolicies.restrictedNode.popover.description') }}
 					</N8nText>
-					<N8nButton
+					<ContactInstanceAdminButton
+						v-model:dialog-open="isContactAdminOpen"
+						:node-type-name="nodeTypeName"
 						variant="outline"
 						size="small"
 						:class="$style.action"
-						data-test-id="node-restricted-contact-admin"
-						@click="isContactAdminOpen = true"
 					>
-						{{ i18n.baseText('typeAvailabilityPolicies.restrictedNode.contactAdmin') }}
-						<N8nIcon icon="arrow-up-right" size="xsmall" />
-					</N8nButton>
+						<template #suffix>
+							<N8nIcon icon="arrow-up-right" size="xsmall" />
+						</template>
+					</ContactInstanceAdminButton>
 				</div>
 			</template>
 		</N8nPopover>
-		<ContactInstanceAdminModal
-			v-model:open="isContactAdminOpen"
-			:description="
-				i18n.baseText('typeAvailabilityPolicies.restrictedNode.contactAdmin.description', {
-					interpolate,
-				})
-			"
-			:mail-subject="
-				i18n.baseText('typeAvailabilityPolicies.restrictedNode.contactAdmin.mailSubject', {
-					interpolate,
-				})
-			"
-		/>
 	</span>
 </template>
 
