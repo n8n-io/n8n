@@ -477,6 +477,18 @@ describe('SystemTaskRunner', () => {
 			await expect(runner.initCluster()).rejects.toThrow('Instance role is not set');
 		});
 
+		it('refuses to take over the cluster tasks on a worker', async () => {
+			const { runner, metadata, jobRegistrar } = setup({
+				isLeader: false,
+				instanceRole: 'unset',
+				instanceType: 'worker',
+			});
+			metadata.register(DummySystemTask);
+
+			await expect(runner.initCluster()).rejects.toThrow('Only a main runs the cluster tasks');
+			expect(jobRegistrar.removeStale).not.toHaveBeenCalled();
+		});
+
 		it('stops the timers on stepdown, awaiting the run in flight', async () => {
 			const { runner, metadata } = setup();
 			let releaseRun = () => {};

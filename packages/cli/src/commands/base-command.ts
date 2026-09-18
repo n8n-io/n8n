@@ -243,7 +243,6 @@ export abstract class BaseCommand<F = never> {
 
 		await Container.get(PostHogClient).init();
 		await Container.get(TelemetryEventRelay).init();
-
 		Container.get(ActivityEventRelay).init();
 		Container.get(WorkflowFailureNotificationEventRelay).init();
 

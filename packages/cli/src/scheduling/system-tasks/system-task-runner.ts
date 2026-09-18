@@ -152,6 +152,7 @@ export class SystemTaskRunner {
 	 * the cluster's durable jobs.
 	 */
 	async initCluster(): Promise<void> {
+		strict(this.instanceSettings.instanceType === 'main', 'Only a main runs the cluster tasks');
 		strict(this.instanceSettings.instanceRole !== 'unset', 'Instance role is not set');
 
 		this.initPerInstance();
@@ -279,7 +280,7 @@ export class SystemTaskRunner {
 	 *
 	 * @throws {UnexpectedError} When a name is registered more than once, whether
 	 * by two tasks claiming it or by one task being registered twice. It surfaces
-	 * out of {@link init} for a task registered before it, and out of the
+	 * out of {@link initPerInstance} for a task registered before it, and out of the
 	 * `SystemTaskMetadata.register` call for one registered after. Either way the
 	 * runner is left half-routed and startup fails, which is the point: a
 	 * duplicate name is a coding mistake.
@@ -292,6 +293,7 @@ export class SystemTaskRunner {
 	 * `misfireGraceSeconds` the scheduler cannot store.
 	 */
 	private route(taskClass: SystemTaskClass): void {
+		// The name and placement live on the instance, so a task this instance drops is resolved too.
 		const task = Container.get(taskClass);
 
 		if (this.registeredNames.has(task.name)) {

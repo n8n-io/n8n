@@ -18,7 +18,7 @@ import { DURATION_BUCKETS_SECONDS, LAG_BUCKETS_SECONDS } from './constant';
  *
  * The per-task gauges of a durable or per-instance task are seeded when it is
  * routed, so the series exist before the first run and a restart shows as a
- * reset rather than a gap. Those of an in-memory task exist only while this
+ * reset rather than a gap. Those of a leader_timer task exist only while this
  * instance leads: seeded when the timers start, removed when they stop, so a
  * former leader does not export frozen series for runs it no longer makes.
  *
