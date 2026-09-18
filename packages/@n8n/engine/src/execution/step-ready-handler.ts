@@ -64,8 +64,14 @@ export class StepReadyHandler {
 		const execution = await this.executionStore.loadExecution(event.executionId);
 		const node = validateStepContext(step, execution);
 
-		// The engine runs a batch step itself, so it has no executor to look up.
-		const executor = node.type === 'batch' ? undefined : this.executorFor(step, node);
+		// The engine runs a batch step itself, and a deadline resume emits what the
+		// declaration captured, so neither needs an executor. Looking one up for
+		// either would fail a step that this worker can serve: a resume is
+		// announced to every worker, including one that carries no shim.
+		const executor =
+			node.type === 'batch' || step.resume?.kind === 'deadline'
+				? undefined
+				: this.executorFor(step, node);
 
 		if (!isLiveExecutionStatus(execution.status)) {
 			// The execution has ended, so we don't run the step. The step is left

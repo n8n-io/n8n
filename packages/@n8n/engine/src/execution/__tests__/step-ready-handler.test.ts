@@ -843,6 +843,28 @@ describe('StepReadyHandler resumes', () => {
 		});
 	});
 
+	it('resumes at a deadline in a worker that has no v1 executor', async () => {
+		// The step suspended in a process that had the shim, and the sweep announces
+		// the resume for any worker to claim. A deadline resume runs no node code, so
+		// looking an executor up here would fail a resume this worker can serve.
+		const stepStore = makeStepStore({
+			status: 'running',
+			wait: timeWait,
+			resume: { kind: 'deadline' },
+		});
+		const queue = makeQueue();
+		const handler = makeHandler(makeExecutionStore(), stepStore, queue, {});
+
+		await handler.handle(event);
+
+		expect(stepStore.completeStep).toHaveBeenCalledWith('step-a', timeWait.outputsAtDeadline);
+		expect(queue.publish).toHaveBeenCalledWith({
+			type: 'step:settled',
+			executionId: 'exec-1',
+			stepId: 'step-a',
+		});
+	});
+
 	it('runs the executor with the resume payload when a request resume dispatches the step', async () => {
 		const openWait: WaitDeclaration = { acceptsResumeRequest: true };
 		const stepStore = makeStepStore(
