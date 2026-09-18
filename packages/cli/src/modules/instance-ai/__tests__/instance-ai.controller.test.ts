@@ -1058,7 +1058,7 @@ describe('InstanceAiController', () => {
 			const result = await controller.getEvalThreadMemory(req, res, THREAD_ID);
 
 			expect(result).toEqual(memory);
-			expect(instanceAiService.getThreadMemory).toHaveBeenCalledWith(THREAD_ID);
+			expect(instanceAiService.getThreadMemory).toHaveBeenCalledWith(USER_ID, THREAD_ID);
 		});
 
 		it("should reject another user's thread", async () => {

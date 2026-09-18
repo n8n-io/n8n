@@ -1284,8 +1284,16 @@ export class InstanceAiService {
 
 	/** What observational memory holds for a thread: the live observations and the
 	 *  compaction cursor. An eval asserts on these rows instead of parsing the
-	 *  rendered system prompt. */
-	async getThreadMemory(threadId: string): Promise<InstanceAiEvalThreadMemoryResponse> {
+	 *  rendered system prompt. Refuses a thread the caller does not own, so the
+	 *  check does not depend on the route. */
+	async getThreadMemory(
+		userId: string,
+		threadId: string,
+	): Promise<InstanceAiEvalThreadMemoryResponse> {
+		const thread = await this.agentMemory.getThread(threadId);
+		if (!thread || thread.resourceId !== userId) {
+			throw new ForbiddenError('Not authorized for this thread');
+		}
 		const [observations, cursor] = await Promise.all([
 			this.observationRepo.findActiveForThread(threadId),
 			this.observationCursorRepo.findForThread(threadId),

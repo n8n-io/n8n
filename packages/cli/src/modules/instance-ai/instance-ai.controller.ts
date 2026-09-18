@@ -1105,7 +1105,7 @@ export class InstanceAiController {
 	): Promise<InstanceAiEvalThreadMemoryResponse> {
 		this.requireInstanceAiEnabled();
 		await this.assertThreadAccess(req.user.id, threadId);
-		return await this.instanceAiService.getThreadMemory(threadId);
+		return await this.instanceAiService.getThreadMemory(req.user.id, threadId);
 	}
 
 	/**
