@@ -41,6 +41,7 @@ import {
 } from '../composables/useInstanceAiHandoff';
 import InstanceAiViewHeader from '../components/InstanceAiViewHeader.vue';
 import InstanceAiConversation from '../components/InstanceAiConversation.vue';
+import AgentBuilderIntro from './AgentBuilderIntro.vue';
 import { useInstanceAiEmbedThreads } from './useInstanceAiEmbedThreads';
 import { threadTargetsSubject, type InstanceAiEmbedSubject } from './instanceAiEmbed.types';
 
@@ -66,6 +67,14 @@ const router = useRouter();
 const store = useInstanceAiStore();
 const subject = computed(() => props.subject);
 const { threads } = useInstanceAiEmbedThreads(subject);
+/**
+ * The welcome intro belongs to the first build of a brand-new agent. Latched at
+ * setup rather than read reactively: the host derives `pending` from its own
+ * unsaved state, which clears on the first autosave, and the intro must not
+ * vanish while the user is still reading it. The host keys this panel by agent
+ * id, so a different subject remounts and re-reads this.
+ */
+const showAgentIntro = props.subject.type === 'agent' && props.subject.pending === true;
 // Scopes the header's popover history to this panel's subject — a stable
 // function reference so the list's `filter` prop doesn't re-run on every render.
 function threadFilter(thread: InstanceAiThreadSummary): boolean {
@@ -380,14 +389,25 @@ const ThreadScope = defineComponent({
 			{ immediate: true },
 		);
 		return () =>
-			h(InstanceAiConversation, {
-				// Closes over the outer scope's ref directly — `ThreadScope` is
-				// defined inside the panel's own `<script setup>`, and this is the
-				// only place that can reach the mounted conversation for `handoff()`.
-				ref: conversationRef,
-				beforeSend: props.beforeSend,
-				onThreadMissing: () => scopeEmit('thread-missing'),
-			});
+			h(
+				InstanceAiConversation,
+				{
+					// Closes over the outer scope's ref directly — `ThreadScope` is
+					// defined inside the panel's own `<script setup>`, and this is the
+					// only place that can reach the mounted conversation for `handoff()`.
+					ref: conversationRef,
+					beforeSend: props.beforeSend,
+					onThreadMissing: () => scopeEmit('thread-missing'),
+				},
+				showAgentIntro
+					? {
+							empty: () =>
+								h(AgentBuilderIntro, {
+									onSelect: (payload) => conversationRef.value?.submitSuggestion(payload),
+								}),
+						}
+					: undefined,
+			);
 	},
 });
 </script>

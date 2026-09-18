@@ -12,7 +12,7 @@ import {
 import { storeToRefs } from 'pinia';
 import { N8nIconButton, N8nScrollArea } from '@n8n/design-system';
 import { useScroll } from '@vueuse/core';
-import { useI18n } from '@n8n/i18n';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import type {
 	InstanceAiAgentAttachment,
 	InstanceAiAttachment,
@@ -48,7 +48,7 @@ import {
 	stashPendingHandoffContext,
 	type PendingComposerDraft,
 } from '../composables/useInstanceAiHandoff';
-import type { InstanceAiMessageAuthorship } from '../prefills';
+import type { InstanceAiMessageAuthorship, InstanceAiPrefillDeclaration } from '../prefills';
 import { INSTANCE_AI_AGENT_PREVIEW_VIEW_METADATA_KEY } from '../constants';
 import {
 	agentPreviewContextIcon,
@@ -78,6 +78,8 @@ const emit = defineEmits<{
 defineSlots<{
 	'above-input'?: () => unknown;
 	'inline-offers'?: () => unknown;
+	/** A host's welcome state, rendered until the thread has its first message. */
+	empty?: () => unknown;
 }>();
 
 const store = useInstanceAiStore();
@@ -611,6 +613,22 @@ function isDirty(): boolean {
 	return chatInputRef.value?.isDirty() ?? false;
 }
 
+/**
+ * Lets a host's `empty` slot start the conversation from one of its own
+ * examples. The payload mirrors what `InstanceAiInput` exposes, so it carries
+ * its pre-fill type through to telemetry rather than reporting as user-typed.
+ */
+function submitSuggestion(
+	payload: InstanceAiPrefillDeclaration & {
+		promptKey: BaseTextKey;
+		suggestionId: string;
+		suggestionKind: 'prompt' | 'quick_example';
+		position: number;
+	},
+) {
+	chatInputRef.value?.submitSuggestion(payload);
+}
+
 /** So a host-triggered send (e.g. the "fix with AI" offer) re-follows new messages. */
 function resetScroll() {
 	userScrolledUp.value = false;
@@ -621,6 +639,7 @@ defineExpose({
 	applyHandoff,
 	dismissPendingComposerContext,
 	resetScroll,
+	submitSuggestion,
 	// Read by the host for panels that sit beside (not inside) the conversation.
 	pendingComposerContext,
 });
@@ -631,6 +650,9 @@ defineExpose({
 		<N8nScrollArea as-child type="auto" :class="$style.scrollArea">
 			<div ref="scrollable" :class="$style.scrollContent">
 				<div :class="$style.messageList">
+					<!-- A host's welcome state (e.g. the agent builder's intro), shown
+						 until the conversation has its first message. -->
+					<slot v-if="!thread.hasMessages" name="empty" />
 					<TransitionGroup name="message-slide">
 						<InstanceAiMessage
 							v-for="message in displayedMessages"
