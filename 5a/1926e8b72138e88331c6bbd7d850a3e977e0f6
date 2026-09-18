@@ -1,0 +1,11 @@
+packages/cli/src/workflow-runner.ts
+  ai_agent 55,133,290-300,306,317
+packages/cli/src/__tests__/workflow-runner.test.ts
+  ai_agent 47,483,488-545,659
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5a1926e8b72138e88331c6bbd7d850a3e977e0f6",
+  "prompts": {}
+}
