@@ -9,7 +9,12 @@ import type {
 } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 
-const { createClient } = vi.hoisted(() => ({ createClient: vi.fn() }));
+const { createClient, getOnDemandEmbeddingModelFallbacks, ociGenAiEmbeddingsConstructor } =
+	vi.hoisted(() => ({
+		createClient: vi.fn(),
+		getOnDemandEmbeddingModelFallbacks: vi.fn(),
+		ociGenAiEmbeddingsConstructor: vi.fn().mockImplementation(function MockOciGenAiEmbeddings() {}),
+	}));
 
 vi.mock('@n8n/ai-utilities', () => ({
 	getConnectionHintNoticeField: vi.fn(() => ({
@@ -22,7 +27,7 @@ vi.mock('@n8n/ai-utilities', () => ({
 }));
 
 vi.mock('@oracle/langchain-oci', () => ({
-	OciGenAiEmbeddings: vi.fn().mockImplementation(function MockOciGenAiEmbeddings() {}),
+	OciGenAiEmbeddings: ociGenAiEmbeddingsConstructor,
 }));
 
 vi.mock('../../../../utils/ociGenAi', () => ({
@@ -32,8 +37,18 @@ vi.mock('../../../../utils/ociGenAi', () => ({
 			? { outputDimensions: [256, 512, 1024, 1536] }
 			: undefined,
 	getOciEmbeddingModelIdsWithOutputDimensions: () => ['cohere.embed-v4.0'],
-	getOnDemandEmbeddingModelFallbacks: () => [],
+	getOnDemandEmbeddingModelFallbacks,
 	isOciGenAiCredentials: () => true,
+	loadOciSdk: async () => ({
+		genaiInference: {
+			models: {
+				EmbedTextDetails: {
+					Truncate: { None: 'NONE', Start: 'START', End: 'END' },
+				},
+			},
+		},
+		langchainOci: { OciGenAiEmbeddings: ociGenAiEmbeddingsConstructor },
+	}),
 	validateOciCompartmentId: (value: string) => {
 		if (!value.startsWith('ocid1.compartment.')) throw new Error('Invalid OCI Compartment OCID');
 		return value;
@@ -71,7 +86,13 @@ describe('EmbeddingsOciGenAi', () => {
 			if (name === 'compartmentId') return 'ocid1.compartment.oc1..test';
 			if (name === 'servingMode') return 'onDemand';
 			if (name === 'options') {
-				return { batchSize: 24, maxConcurrency: 3, outputDimensions: 1024, truncate: 'END' };
+				return {
+					batchSize: 24,
+					maxConcurrency: 3,
+					outputDimensions: 1024,
+					timeout: 45,
+					truncate: 'END',
+				};
 			}
 			return '';
 		});
@@ -150,18 +171,38 @@ describe('EmbeddingsOciGenAi', () => {
 		});
 	});
 
-	it('returns no model entries when the regional catalog has no matching models', async () => {
+	it('uses OpenAI-compatible timeout semantics', () => {
+		const node = new EmbeddingsOciGenAi();
+		const options = node.description.properties.find((property) => property.name === 'options');
+		const timeout = options?.options?.find((property) => property.name === 'timeout');
+
+		expect(timeout).toMatchObject({
+			default: -1,
+			typeOptions: { minValue: -1 },
+			description:
+				'Maximum amount of time a request is allowed to take in seconds. Set to -1 for no timeout.',
+		});
+	});
+
+	it('returns regional embedding models matching the search filter', async () => {
 		const node = new EmbeddingsOciGenAi();
 		const context = createContext();
 		const search = node.methods.listSearch?.searchEmbeddingModels;
+		getOnDemandEmbeddingModelFallbacks.mockReturnValue([
+			{
+				displayName: 'Cohere Embed 4',
+				modelId: 'cohere.embed-v4.0',
+				regions: ['us-chicago-1'],
+			},
+		]);
 
 		if (!search) throw new Error('Embedding model search is not configured');
-
 		await expect(
-			search.call(context as unknown as ILoadOptionsFunctions, 'nomatch'),
+			search.call(context as unknown as ILoadOptionsFunctions, 'embed'),
 		).resolves.toEqual({
-			results: [],
+			results: [{ name: 'Cohere Embed 4', value: 'cohere.embed-v4.0' }],
 		});
+		expect(getOnDemandEmbeddingModelFallbacks).toHaveBeenCalledWith('us-chicago-1', 'embed');
 	});
 
 	it('creates OCI embeddings with the selected model and options', async () => {
@@ -169,6 +210,7 @@ describe('EmbeddingsOciGenAi', () => {
 		const context = createContext();
 
 		const result = await node.supplyData.call(context, 0);
+		expect(createClient).toHaveBeenCalledWith(expect.anything(), expect.anything(), 45000);
 
 		expect(MockedOciGenAiEmbeddings).toHaveBeenCalledWith(
 			expect.objectContaining({
@@ -177,6 +219,7 @@ describe('EmbeddingsOciGenAi', () => {
 				onDemandModelId: 'cohere.embed-v4.0',
 				batchSize: 24,
 				maxConcurrency: 3,
+				maxRetries: 0,
 				outputDimensions: 1024,
 				truncate: 'END',
 			}),
@@ -197,12 +240,14 @@ describe('EmbeddingsOciGenAi', () => {
 		});
 
 		await node.supplyData.call(context, 0);
+		expect(createClient).toHaveBeenCalledWith(expect.anything(), expect.anything(), undefined);
 
 		expect(MockedOciGenAiEmbeddings).toHaveBeenCalledWith({
 			client: { client: 'inference' },
 			compartmentId: 'ocid1.compartment.oc1..test',
 			batchSize: 96,
 			maxConcurrency: 2,
+			maxRetries: 0,
 			onDemandModelId: 'cohere.embed-v4.0',
 		});
 	});
@@ -262,6 +307,9 @@ describe('EmbeddingsOciGenAi', () => {
 		[{ batchSize: 97 }, 'Batch Size must be an integer between 1 and 96.'],
 		[{ maxConcurrency: 0 }, 'Maximum Concurrency must be an integer between 1 and 10.'],
 		[{ maxConcurrency: 11 }, 'Maximum Concurrency must be an integer between 1 and 10.'],
+		[{ timeout: 0 }, 'Timeout must be -1 or a positive integer in seconds.'],
+		[{ timeout: -2 }, 'Timeout must be -1 or a positive integer in seconds.'],
+		[{ timeout: 1.5 }, 'Timeout must be -1 or a positive integer in seconds.'],
 	])('rejects invalid embedding request option %o', async (options, errorMessage) => {
 		const node = new EmbeddingsOciGenAi();
 		const context = createContext();

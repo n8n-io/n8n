@@ -1,57 +1,21 @@
-import { OciGenAiGenericChat } from '@oracle/langchain-oci';
 import { HumanMessage } from '@langchain/core/messages';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { lookup } from 'node:dns/promises';
 import process from 'node:process';
-import { ConfigFileReader } from 'oci-common';
+import { Region } from 'oci-common';
 import { describe, it } from 'vitest';
 
+import type { OciGenAiGenericChat } from '@oracle/langchain-oci';
+import type { OciGenAiCredentials } from '../../../../utils/ociGenAi';
+
 import {
-	createOciGenAiClient,
-	validateOciCompartmentId,
-	validateOciModelId,
-	type OciGenAiCredentials,
-} from '../../../../utils/ociGenAi';
-
-const runOciIntegrationTests = process.env.N8N_OCI_INTEGRATION_TESTS === '1';
-
-function requiredEnv(name: string): string {
-	const value = process.env[name];
-
-	if (!value) {
-		throw new Error(`Missing integration-test environment variable: ${name}`);
-	}
-
-	return value;
-}
-
-function getCredentials(): OciGenAiCredentials {
-	const profile = process.env.OCI_CONFIG_PROFILE ?? 'DEFAULT';
-	const config = ConfigFileReader.parseDefault(profile);
-	const regionId = config.get('region');
-
-	if (!regionId) {
-		throw new Error(`OCI config profile "${profile}" does not define a region`);
-	}
-
-	return {
-		// Let the OCI SDK load the default ~/.oci/config file, including its key path and passphrase.
-		authentication: 'session',
-		configFilePath: ConfigFileReader.DEFAULT_FILE_PATH,
-		configProfile: profile,
-		regionId,
-		serviceEndpoint: process.env.OCI_INFERENCE_ENDPOINT,
-	};
-}
-
-function getModel(): string {
-	return requiredEnv('OCI_GENAI_MODEL');
-}
-
-function getCompartmentId(): string {
-	return requiredEnv('OCI_GENAI_COMPARTMENT_OCID');
-}
+	createOciTestChatModel,
+	getOciTestCompartmentId,
+	getOciTestCredentials,
+	getOciTestModelId,
+	runOciIntegrationTests,
+} from './oci-test-utils';
 
 function getIdleObservationDurationMs(name: string, defaultSeconds: number): number {
 	const configuredSeconds = process.env[name];
@@ -133,9 +97,10 @@ async function getOciEndpointIp(credentials: OciGenAiCredentials): Promise<strin
 	 * hostname derived from Region. If you supplied an endpoint,
 	 * resolve that instead.
 	 */
+	const region = Region.fromRegionId(credentials.regionId);
 	const endpoint =
 		credentials.serviceEndpoint ??
-		`https://inference.generativeai.${credentials.regionId}.oci.oraclecloud.com`;
+		`https://inference.generativeai.${region.regionId}.oci.${region.realm.secondLevelDomain}`;
 
 	const url = new URL(endpoint);
 
@@ -144,20 +109,6 @@ async function getOciEndpointIp(credentials: OciGenAiCredentials): Promise<strin
 	});
 
 	return result.address;
-}
-
-async function createChatModel(
-	credentials: OciGenAiCredentials,
-	modelId: string,
-	compartmentId: string,
-): Promise<OciGenAiGenericChat> {
-	// Keep this standalone script independent of the node's workspace-only runtime imports.
-	// supplyData() behavior is covered by the chat node's Vitest unit tests.
-	return new OciGenAiGenericChat({
-		client: await createOciGenAiClient(credentials),
-		compartmentId: validateOciCompartmentId(compartmentId),
-		onDemandModelId: validateOciModelId(modelId),
-	});
 }
 
 function printOciConnections(ociIp: string, label: string): string[] {
@@ -183,7 +134,7 @@ function getLocalConnectionEndpoint(connection: string): string | undefined {
 	return endpoint?.split('->')[0];
 }
 
-function printConnectionReuse(
+function printConnectionTransition(
 	previousConnections: string[],
 	currentConnections: string[],
 	label: string,
@@ -231,9 +182,9 @@ async function runConcurrentBatch(
 }
 
 async function run(): Promise<void> {
-	const credentials = getCredentials();
-	const model = getModel();
-	const compartmentId = getCompartmentId();
+	const credentials = getOciTestCredentials();
+	const model = getOciTestModelId();
+	const compartmentId = getOciTestCompartmentId();
 	const firstIdleObservationMs = getIdleObservationDurationMs('OCI_SOCKET_IDLE_SECONDS', 5);
 	const extendedIdleObservationMs = getIdleObservationDurationMs(
 		'OCI_SOCKET_EXTENDED_IDLE_SECONDS',
@@ -248,7 +199,7 @@ async function run(): Promise<void> {
 		printOciConnections(ociIp, 'before OCI chat-model creation');
 	}
 
-	const firstModel = await createChatModel(credentials, model, compartmentId);
+	const firstModel = await createOciTestChatModel(credentials, model, compartmentId);
 
 	console.log('[OCI INT TEST] Created OCI chat model');
 	printSocketSnapshot('after OCI chat-model creation');
@@ -288,7 +239,7 @@ async function run(): Promise<void> {
 	const models = [] as Array<typeof firstModel>;
 
 	for (let i = 0; i < wrapperCount; i++) {
-		models.push(await createChatModel(credentials, model, compartmentId));
+		models.push(await createOciTestChatModel(credentials, model, compartmentId));
 		console.log(`[OCI INT TEST] Created OCI chat model #${i + 2}`);
 	}
 
@@ -311,7 +262,9 @@ async function run(): Promise<void> {
 		printOciConnections(ociIp, 'after all OCI chat-model requests');
 	}
 
-	// Observe connection-pool behavior across repeated concurrent batches.
+	// This is a diagnostic, not a transport contract: OCI, proxies, and the runtime may each
+	// choose different connection-pool sizes and idle-retirement timings.
+	// Record snapshots across repeated concurrent batches for manual lifecycle investigation.
 	const concurrentResponses = await runConcurrentBatch(models, 1);
 
 	console.log(`[OCI INT TEST] Completed ${concurrentResponses.length} concurrent batch 1 requests`);
@@ -328,7 +281,7 @@ async function run(): Promise<void> {
 			ociIp,
 			`${firstIdleObservationMs / 1_000} seconds after concurrent batch 1`,
 		);
-		printConnectionReuse(
+		printConnectionTransition(
 			firstBatchConnections,
 			idleConnections,
 			`idle behavior after ${firstIdleObservationMs / 1_000} seconds`,
@@ -342,7 +295,7 @@ async function run(): Promise<void> {
 			ociIp,
 			`${(firstIdleObservationMs + extendedIdleObservationMs) / 1_000} seconds after concurrent batch 1`,
 		);
-		printConnectionReuse(
+		printConnectionTransition(
 			firstBatchConnections,
 			idleConnectionsAfterObservation,
 			`idle behavior after ${(firstIdleObservationMs + extendedIdleObservationMs) / 1_000} seconds`,
@@ -353,7 +306,7 @@ async function run(): Promise<void> {
 	let secondBatchConnections: string[] = [];
 	if (ociIp) {
 		secondBatchConnections = printOciConnections(ociIp, 'after concurrent batch 2');
-		printConnectionReuse(
+		printConnectionTransition(
 			idleConnectionsAfterObservation,
 			secondBatchConnections,
 			'connection reuse from idle state to batch 2',
@@ -363,7 +316,7 @@ async function run(): Promise<void> {
 	const thirdBatchResponses = await runConcurrentBatch(models, 3);
 	if (ociIp) {
 		const thirdBatchConnections = printOciConnections(ociIp, 'after concurrent batch 3');
-		printConnectionReuse(
+		printConnectionTransition(
 			secondBatchConnections,
 			thirdBatchConnections,
 			'connection reuse from batch 2 to batch 3',
@@ -377,6 +330,6 @@ async function run(): Promise<void> {
 	assert.equal(thirdBatchResponses.length, wrapperCount);
 }
 
-describe.skipIf(!runOciIntegrationTests)('OCI Generative AI socket lifecycle', () => {
-	it('observes OCI connection reuse and idle retirement', run, 120_000);
+describe.skipIf(!runOciIntegrationTests)('OCI Generative AI socket diagnostics', () => {
+	it('reports socket snapshots for repeated OCI requests', run, 120_000);
 });

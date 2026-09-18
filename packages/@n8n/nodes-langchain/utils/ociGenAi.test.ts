@@ -1,9 +1,29 @@
 import { models as ociModels } from 'oci-generativeai';
+import type { NodeEgressFilter } from 'n8n-workflow';
 
-const { listModels, generativeAiInferenceClient } = vi.hoisted(() => ({
+const {
+	proxyFetch,
+	listModels,
+	generativeAiClient,
+	generativeAiInferenceClient,
+	maxAttemptsTerminationStrategy,
+	defaultRequestSigner,
+	simpleAuthenticationDetailsProvider,
+} = vi.hoisted(() => ({
+	proxyFetch: vi.fn(),
 	listModels: vi.fn(),
+	generativeAiClient: vi.fn(),
 	generativeAiInferenceClient: vi.fn(),
+	maxAttemptsTerminationStrategy: vi.fn().mockImplementation(function MockMaxAttempts() {
+		return { maxAttempts: 1 };
+	}),
+	defaultRequestSigner: vi.fn().mockImplementation(function MockDefaultRequestSigner() {
+		return { signHttpRequest: vi.fn() };
+	}),
+	simpleAuthenticationDetailsProvider: vi.fn(),
 }));
+
+vi.mock('@n8n/ai-utilities', () => ({ proxyFetch }));
 
 vi.mock('oci-common', () => ({
 	Region: {
@@ -18,13 +38,15 @@ vi.mock('oci-common', () => ({
 			return { regionId, realm: { secondLevelDomain: realmDomain } };
 		}),
 	},
-	SimpleAuthenticationDetailsProvider: vi
-		.fn()
-		.mockImplementation(function MockAuthenticationProvider() {
+	MaxAttemptsTerminationStrategy: maxAttemptsTerminationStrategy,
+	DefaultRequestSigner: defaultRequestSigner,
+	SimpleAuthenticationDetailsProvider: simpleAuthenticationDetailsProvider.mockImplementation(
+		function MockAuthenticationProvider() {
 			return {
 				getTenantId: () => 'ocid1.tenancy.oc1..test',
 			};
-		}),
+		},
+	),
 	InstancePrincipalsAuthenticationDetailsProviderBuilder: vi
 		.fn()
 		.mockImplementation(function MockInstancePrincipalProviderBuilder() {
@@ -37,7 +59,7 @@ vi.mock('oci-common', () => ({
 
 vi.mock('oci-generativeai', () => ({
 	models: { ModelCapability: { Chat: 'CHAT' } },
-	GenerativeAiClient: vi.fn().mockImplementation(function MockGenerativeAiClient() {
+	GenerativeAiClient: generativeAiClient.mockImplementation(function MockGenerativeAiClient() {
 		return { listModels };
 	}),
 }));
@@ -48,6 +70,7 @@ vi.mock('oci-generativeaiinference', () => ({
 
 import {
 	clearOciGenAiCachesForTesting,
+	awaitOciGenAiRequest,
 	createOciGenAiClient,
 	getCachedOciGenAiModelCatalogPage,
 	getOciEmbeddingModelCapabilities,
@@ -56,6 +79,7 @@ import {
 	getOnDemandEmbeddingModelFallbacks,
 	isOnDemandModelAvailable,
 	OCI_INFERENCE_CLIENT_CACHE_TTL_MS,
+	OCI_MODEL_CATALOG_REQUEST_TIMEOUT_MS,
 	type OciGenAiCredentials,
 	validateOciCompartmentId,
 	validateOciEndpoint,
@@ -70,6 +94,13 @@ const ociCredentials: OciGenAiCredentials = {
 	userId: 'ocid1.user.oc1..test',
 	fingerprint: 'test',
 	privateKey: 'test-key',
+};
+
+const secureEgressFilter: NodeEgressFilter = {
+	validateUrl: vi.fn(),
+	validateConnectionHost: vi.fn(),
+	createSecureLookup: vi.fn(),
+	validateRedirectSync: vi.fn(),
 };
 
 describe('OCI input validation', () => {
@@ -224,6 +255,85 @@ describe('OCI input validation', () => {
 	describe('createOciGenAiClient', () => {
 		beforeEach(() => {
 			generativeAiInferenceClient.mockClear();
+			proxyFetch.mockClear();
+			maxAttemptsTerminationStrategy.mockClear();
+			simpleAuthenticationDetailsProvider.mockClear();
+		});
+
+		it('preserves whitespace in API key passphrases', async () => {
+			await createOciGenAiClient({
+				...ociCredentials,
+				passphrase: ' secret passphrase ',
+			});
+
+			expect(simpleAuthenticationDetailsProvider).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.anything(),
+				expect.anything(),
+				expect.anything(),
+				' secret passphrase ',
+				expect.anything(),
+			);
+		});
+
+		it('uses null for an empty API key passphrase', async () => {
+			await createOciGenAiClient({ ...ociCredentials, passphrase: '' });
+
+			expect(simpleAuthenticationDetailsProvider).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.anything(),
+				expect.anything(),
+				expect.anything(),
+				null,
+				expect.anything(),
+			);
+		});
+
+		it('uses a custom OCI HTTP client for n8n secure egress', async () => {
+			await createOciGenAiClient(ociCredentials, secureEgressFilter);
+
+			expect(generativeAiInferenceClient).toHaveBeenCalledWith(
+				expect.objectContaining({ httpClient: expect.anything() }),
+				expect.anything(),
+			);
+			const httpClient = generativeAiInferenceClient.mock.calls[0][0].httpClient;
+			await httpClient.send({
+				method: 'POST',
+				headers: new Headers(),
+				uri: 'https://inference.generativeai.us-phoenix-1.oci.oraclecloud.com/test',
+			});
+			expect(proxyFetch).toHaveBeenCalledWith(
+				expect.objectContaining({
+					input: 'https://inference.generativeai.us-phoenix-1.oci.oraclecloud.com/test',
+					egressFilter: secureEgressFilter,
+				}),
+			);
+		});
+
+		it('uses the OCI SDK default transport with one SDK attempt outside n8n execution', async () => {
+			await createOciGenAiClient(ociCredentials);
+
+			expect(maxAttemptsTerminationStrategy).toHaveBeenCalledWith(1);
+			expect(generativeAiInferenceClient).toHaveBeenCalledWith(expect.anything(), {
+				retryConfiguration: { terminationStrategy: { maxAttempts: 1 } },
+			});
+		});
+
+		it('applies the configured timeout to OCI inference requests', async () => {
+			await createOciGenAiClient(ociCredentials, secureEgressFilter, 60000);
+
+			const httpClient = generativeAiInferenceClient.mock.calls[0][0].httpClient;
+			await httpClient.send({
+				method: 'POST',
+				headers: new Headers(),
+				uri: 'https://inference.generativeai.us-phoenix-1.oci.oraclecloud.com/test',
+			});
+			expect(proxyFetch).toHaveBeenCalledWith(
+				expect.objectContaining({
+					egressFilter: secureEgressFilter,
+					timeoutOptions: { headersTimeout: 60000, bodyTimeout: 60000 },
+				}),
+			);
 		});
 
 		it('reuses a single inference client across concurrent model wrappers', async () => {
@@ -324,6 +434,19 @@ describe('OCI input validation', () => {
 				regionId: 'us-gov-ashburn-1',
 				serviceEndpoint: 'https://inference.generativeai.us-gov-ashburn-1.oci.oraclegovcloud.com',
 			});
+
+			expect(secondClient).not.toBe(firstClient);
+			expect(generativeAiInferenceClient).toHaveBeenCalledTimes(2);
+		});
+
+		it('does not reuse an inference client with a different request timeout', async () => {
+			const credentials = {
+				...ociCredentials,
+				userId: 'ocid1.user.oc1..inference-client-timeout-test',
+			};
+
+			const firstClient = await createOciGenAiClient(credentials, undefined, 60000);
+			const secondClient = await createOciGenAiClient(credentials, undefined, 120000);
 
 			expect(secondClient).not.toBe(firstClient);
 			expect(generativeAiInferenceClient).toHaveBeenCalledTimes(2);
@@ -463,57 +586,169 @@ describe('OCI input validation', () => {
 	});
 
 	describe('validateOciEndpoint', () => {
-		it('accepts supported OCI inference endpoints', () => {
+		it('accepts supported OCI inference endpoints', async () => {
 			expect(
-				validateOciEndpoint(
+				await validateOciEndpoint(
 					'https://inference.generativeai.us-phoenix-1.oci.oraclecloud.com',
 					'us-phoenix-1',
 				),
 			).toBe('https://inference.generativeai.us-phoenix-1.oci.oraclecloud.com');
 			expect(
-				validateOciEndpoint(
+				await validateOciEndpoint(
 					'https://inference.generativeai.us-gov-ashburn-1.oci.oraclegovcloud.com',
 					'us-gov-ashburn-1',
 				),
 			).toBe('https://inference.generativeai.us-gov-ashburn-1.oci.oraclegovcloud.com');
 			expect(
-				validateOciEndpoint(
+				await validateOciEndpoint(
 					'https://inference.generativeai.uk-gov-london-1.oci.oraclegovcloud.uk',
 					'uk-gov-london-1',
 				),
 			).toBe('https://inference.generativeai.uk-gov-london-1.oci.oraclegovcloud.uk');
 		});
 
-		it('rejects untrusted or malformed endpoints', () => {
-			expect(() =>
+		it('rejects untrusted or malformed endpoints', async () => {
+			await expect(
 				validateOciEndpoint(
 					'http://inference.generativeai.us-phoenix-1.oci.oraclecloud.com',
 					'us-phoenix-1',
 				),
-			).toThrow();
-			expect(() => validateOciEndpoint('https://example.com', 'us-phoenix-1')).toThrow();
-			expect(() =>
+			).rejects.toThrow();
+			await expect(validateOciEndpoint('https://example.com', 'us-phoenix-1')).rejects.toThrow();
+			await expect(
 				validateOciEndpoint(
 					'https://inference.generativeai.us-phoenix-1.oci.oraclecloud.com.evil.example',
 					'us-phoenix-1',
 				),
-			).toThrow();
-			expect(() =>
+			).rejects.toThrow();
+			await expect(
 				validateOciEndpoint(
 					'https://user:pass@inference.generativeai.us-phoenix-1.oci.oraclecloud.com',
 					'us-phoenix-1',
 				),
-			).toThrow();
-			expect(() =>
+			).rejects.toThrow();
+			await expect(
 				validateOciEndpoint(
 					'https://inference.generativeai.us-phoenix-1.oci.oraclecloud.com',
 					'us-gov-ashburn-1',
 				),
-			).toThrow();
+			).rejects.toThrow();
 		});
 	});
 
 	describe('getCachedOciGenAiModelCatalogPage', () => {
+		beforeEach(() => {
+			generativeAiClient.mockClear();
+			proxyFetch.mockClear();
+		});
+
+		it('uses a custom OCI HTTP client for catalog requests through n8n secure egress', async () => {
+			listModels.mockResolvedValue({ modelCollection: { items: [] } });
+
+			await getCachedOciGenAiModelCatalogPage(
+				ociCredentials,
+				{
+					compartmentId: 'ocid1.compartment.oc1..test',
+					capability: ociModels.ModelCapability.Chat,
+				},
+				secureEgressFilter,
+			);
+
+			expect(generativeAiClient).toHaveBeenCalledWith(
+				expect.objectContaining({ httpClient: expect.anything() }),
+				expect.anything(),
+			);
+		});
+
+		it('looks up an exact provider model ID that is not on the current catalog page', async () => {
+			listModels.mockResolvedValue({
+				modelCollection: {
+					items: [
+						{
+							id: 'ocid1.generativeaimodel.oc1.phx.example',
+							vendor: 'xai',
+							displayName: 'xai.grok-4.6',
+						},
+					],
+				},
+			});
+
+			const page = await getCachedOciGenAiModelCatalogPage(ociCredentials, {
+				compartmentId: 'ocid1.compartment.oc1..test',
+				capability: ociModels.ModelCapability.Chat,
+				modelId: 'xai.grok-4.6',
+			});
+
+			expect(listModels).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'xai.grok-4.6', limit: 1 }),
+			);
+			expect(page.searchModels).toEqual([
+				{
+					id: 'xai.grok-4.6',
+					name: 'xai.grok-4.6',
+					searchText: 'xai.grok-4.6 xai.grok-4.6',
+				},
+			]);
+		});
+
+		it('retries an exact provider model ID as a display name when OCI IDs are management OCIDs', async () => {
+			listModels.mockResolvedValueOnce({ modelCollection: { items: [] } }).mockResolvedValueOnce({
+				modelCollection: {
+					items: [
+						{
+							id: 'ocid1.generativeaimodel.oc1.phx.example',
+							vendor: 'xai',
+							displayName: 'xai.grok-4.6',
+						},
+					],
+				},
+			});
+
+			const page = await getCachedOciGenAiModelCatalogPage(ociCredentials, {
+				compartmentId: 'ocid1.compartment.oc1..test',
+				capability: ociModels.ModelCapability.Chat,
+				modelId: 'xai.grok-4.6',
+			});
+
+			expect(listModels).toHaveBeenNthCalledWith(
+				2,
+				expect.objectContaining({ displayName: 'xai.grok-4.6', id: undefined, limit: 1 }),
+			);
+			expect(page.searchModels).not.toHaveLength(0);
+		});
+
+		it('removes a timed-out catalog page so the next search can create a new connection', async () => {
+			vi.useFakeTimers();
+			try {
+				const request = {
+					compartmentId: 'ocid1.compartment.oc1..test',
+					capability: ociModels.ModelCapability.Chat,
+				};
+				listModels.mockImplementationOnce(async () => await new Promise<never>(() => {}));
+
+				const pendingPage = getCachedOciGenAiModelCatalogPage(ociCredentials, request);
+				const timedOutPage = expect(pendingPage).rejects.toThrow(
+					'OCI model catalog request timed out',
+				);
+				// Let lazy OCI module loading reach the catalog timeout before advancing time.
+				await vi.dynamicImportSettled();
+				await vi.advanceTimersByTimeAsync(OCI_MODEL_CATALOG_REQUEST_TIMEOUT_MS);
+				await timedOutPage;
+
+				listModels.mockResolvedValueOnce({
+					modelCollection: {
+						items: [{ id: 'xai.grok-4.6', displayName: 'xai.grok-4.6' }],
+					},
+				});
+				const retry = await getCachedOciGenAiModelCatalogPage(ociCredentials, request);
+
+				expect(generativeAiClient).toHaveBeenCalledTimes(2);
+				expect(listModels).toHaveBeenCalledTimes(2);
+				expect(retry.searchModels).not.toHaveLength(0);
+			} finally {
+				vi.useRealTimers();
+			}
+		});
 		beforeEach(() => {
 			listModels.mockReset();
 		});
@@ -626,5 +861,27 @@ describe('OCI input validation', () => {
 			});
 			expect(listModels).toHaveBeenCalledTimes(2);
 		});
+	});
+});
+
+describe('OCI request timeout', () => {
+	it('returns the SDK response when it resolves before the configured timeout', async () => {
+		await expect(awaitOciGenAiRequest(Promise.resolve('response'), 1_000)).resolves.toBe(
+			'response',
+		);
+	});
+
+	it('returns a timeout error when an SDK request remains pending', async () => {
+		vi.useFakeTimers();
+		try {
+			const pendingRequest = awaitOciGenAiRequest(new Promise<never>(() => {}), 1_000);
+			const expectation = expect(pendingRequest).rejects.toThrow(
+				'OCI request timed out after 1000ms',
+			);
+			await vi.advanceTimersByTimeAsync(1_000);
+			await expectation;
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 });

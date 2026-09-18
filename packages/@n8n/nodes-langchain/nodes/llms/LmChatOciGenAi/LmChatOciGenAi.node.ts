@@ -1,5 +1,5 @@
 import { getConnectionHintNoticeField } from '@n8n/ai-utilities';
-import { OciGenAiGenericChat } from '@oracle/langchain-oci';
+import type { OciGenAiGenericChat as OciGenAiGenericChatType } from '@oracle/langchain-oci';
 import {
 	NodeConnectionTypes,
 	NodeOperationError,
@@ -13,13 +13,14 @@ import {
 	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
-import { models as ociModels } from 'oci-generativeai';
 import type { models as ociInferenceModels } from 'oci-generativeaiinference';
 
 import {
 	createOciGenAiClient,
+	awaitOciGenAiRequest,
 	getCachedOciGenAiModelCatalogPage,
 	isOciGenAiCredentials,
+	loadOciSdk,
 	validateOciCompartmentId,
 	validateOciModelId,
 	validateOciVendor,
@@ -29,6 +30,7 @@ const DEFAULT_MODEL = 'meta.llama-3.3-70b-instruct';
 const DEFAULT_TEMPERATURE = 0.7;
 const DEFAULT_MAX_TOKENS = 1024;
 const DEFAULT_TOP_P = 0.9;
+const DEFAULT_REQUEST_TIMEOUT = 60000;
 
 type ResourceLocatorValue = {
 	mode: string;
@@ -42,6 +44,13 @@ type OciChatRequestParams = {
 	topK?: number;
 	seed?: number;
 };
+
+type OciGenAiChatConstructor = new (
+	params: ConstructorParameters<typeof OciGenAiGenericChatType>[0] & {
+		defaultRequestParams?: OciChatRequestParams;
+		requestTimeout?: number;
+	},
+) => OciGenAiGenericChatType;
 
 function isResourceLocatorValue(value: unknown): value is ResourceLocatorValue {
 	if (typeof value !== 'object' || value === null) {
@@ -94,7 +103,7 @@ function sanitizeOciToolDefinitions(
 }
 
 export function normalizeEmptyOciToolCallContent(
-	messages: Parameters<OciGenAiGenericChat['_prepareRequest']>[0],
+	messages: Parameters<OciGenAiGenericChatType['_prepareRequest']>[0],
 ) {
 	return messages.map((message) => {
 		// n8n tool agents can represent an otherwise valid AI tool call with content: [].
@@ -127,49 +136,72 @@ export function normalizeEmptyOciToolCallContent(
  * _createRequest(), the returned object remains a native chat model while
  * still applying the node-level defaults.
  */
-class N8nOciGenAiGenericChat extends OciGenAiGenericChat {
-	private readonly defaultRequestParams: OciChatRequestParams;
+/** Creates the request-normalizing wrapper only when n8n supplies the OCI chat model. */
+export async function createN8nOciGenAiGenericChat(): Promise<OciGenAiChatConstructor> {
+	// The lazy-loaded CJS module and its type-only ESM declaration otherwise expose
+	// separate LangChain class identities to TypeScript.
+	const { langchainOci } = await loadOciSdk();
+	const { OciGenAiGenericChat } = langchainOci as unknown as {
+		OciGenAiGenericChat: typeof OciGenAiGenericChatType;
+	};
+	return class N8nOciGenAiGenericChat extends OciGenAiGenericChat {
+		private readonly defaultRequestParams: OciChatRequestParams;
+		private readonly requestTimeout: number | undefined;
 
-	constructor(
-		params: ConstructorParameters<typeof OciGenAiGenericChat>[0] & {
-			defaultRequestParams?: OciChatRequestParams;
-		},
-	) {
-		super(params);
-		this.defaultRequestParams = params.defaultRequestParams ?? {};
-	}
-
-	override _prepareRequest(
-		messages: Parameters<OciGenAiGenericChat['_prepareRequest']>[0],
-		options: Parameters<OciGenAiGenericChat['_prepareRequest']>[1],
-		stream?: boolean,
-	) {
-		return super._prepareRequest(normalizeEmptyOciToolCallContent(messages), options, stream);
-	}
-
-	override _createRequest(
-		messages: Parameters<OciGenAiGenericChat['_createRequest']>[0],
-		options: Parameters<OciGenAiGenericChat['_createRequest']>[1],
-		stream?: boolean,
-	) {
-		const requestParams = {
-			...this.defaultRequestParams,
-			...(options.requestParams ?? {}),
-		};
-		const tools = sanitizeOciToolDefinitions(requestParams.tools);
-
-		return super._createRequest(
-			messages,
-			{
-				...options,
-				requestParams: {
-					...requestParams,
-					...(tools === undefined ? {} : { tools }),
-				},
+		constructor(
+			params: ConstructorParameters<typeof OciGenAiGenericChat>[0] & {
+				defaultRequestParams?: OciChatRequestParams;
+				requestTimeout?: number;
 			},
-			stream,
-		);
-	}
+		) {
+			super(params);
+			this.defaultRequestParams = params.defaultRequestParams ?? {};
+			this.requestTimeout = params.requestTimeout;
+		}
+
+		override async _makeRequest<ResponseType>(
+			messages: Parameters<InstanceType<typeof OciGenAiGenericChat>['_makeRequest']>[0],
+			options: Parameters<InstanceType<typeof OciGenAiGenericChat>['_makeRequest']>[1],
+			stream?: boolean,
+		): Promise<ResponseType> {
+			return await awaitOciGenAiRequest(
+				super._makeRequest<ResponseType>(messages, options, stream),
+				this.requestTimeout,
+			);
+		}
+
+		override _prepareRequest(
+			messages: Parameters<InstanceType<typeof OciGenAiGenericChat>['_prepareRequest']>[0],
+			options: Parameters<InstanceType<typeof OciGenAiGenericChat>['_prepareRequest']>[1],
+			stream?: boolean,
+		) {
+			return super._prepareRequest(normalizeEmptyOciToolCallContent(messages), options, stream);
+		}
+
+		override _createRequest(
+			messages: Parameters<InstanceType<typeof OciGenAiGenericChat>['_createRequest']>[0],
+			options: Parameters<InstanceType<typeof OciGenAiGenericChat>['_createRequest']>[1],
+			stream?: boolean,
+		) {
+			const requestParams = {
+				...this.defaultRequestParams,
+				...(options.requestParams ?? {}),
+			};
+			const tools = sanitizeOciToolDefinitions(requestParams.tools);
+
+			return super._createRequest(
+				messages,
+				{
+					...options,
+					requestParams: {
+						...requestParams,
+						...(tools === undefined ? {} : { tools }),
+					},
+				},
+				stream,
+			);
+		}
+	};
 }
 
 const modelProperty: INodeProperties = {
@@ -327,6 +359,16 @@ const optionsProperty: INodeProperties = {
 			},
 			description: 'Seed used for reproducible generation where supported by the selected model',
 		},
+		{
+			displayName: 'Timeout',
+			name: 'timeout',
+			type: 'number',
+			default: DEFAULT_REQUEST_TIMEOUT,
+			typeOptions: {
+				minValue: 1,
+			},
+			description: 'Maximum amount of time a request is allowed to take in milliseconds',
+		},
 	],
 };
 
@@ -336,6 +378,7 @@ type OciChatOptions = {
 	topP?: number;
 	topK?: number;
 	seed?: number;
+	timeout?: number;
 };
 
 export class LmChatOciGenAi implements INodeType {
@@ -416,15 +459,27 @@ export class LmChatOciGenAi implements INodeType {
 				} catch (error) {
 					throw new NodeOperationError(this.getNode(), error as Error);
 				}
-
-				const response = await getCachedOciGenAiModelCatalogPage(credentials, {
-					compartmentId,
-					capability: ociModels.ModelCapability.Chat,
-					vendor,
-					paginationToken,
-				});
-
 				const normalizedFilter = (filter ?? '').trim().toLowerCase();
+				let modelId: string | undefined;
+				if (normalizedFilter) {
+					try {
+						modelId = validateOciModelId(normalizedFilter);
+					} catch {
+						// Non-ID typeahead input continues to use local filtering of the cached catalog.
+					}
+				}
+
+				const { genai } = await loadOciSdk();
+				const response = await getCachedOciGenAiModelCatalogPage(
+					credentials,
+					{
+						compartmentId,
+						capability: genai.models.ModelCapability.Chat,
+						vendor,
+						...(modelId === undefined ? { paginationToken } : { modelId }),
+					},
+					this.helpers.getSecureEgressFilter(),
+				);
 
 				const results: INodeListSearchItems[] = response.searchModels
 					.filter((model) => !normalizedFilter || model.searchText.includes(normalizedFilter))
@@ -494,8 +549,22 @@ export class LmChatOciGenAi implements INodeType {
 		const topK = typeof options.topK === 'number' && options.topK > 0 ? options.topK : undefined;
 
 		const seed = typeof options.seed === 'number' && options.seed >= 0 ? options.seed : undefined;
+		const timeout = options.timeout ?? DEFAULT_REQUEST_TIMEOUT;
 
-		const client = await createOciGenAiClient(credentials);
+		if (!Number.isInteger(timeout) || timeout < 1) {
+			throw new NodeOperationError(
+				this.getNode(),
+				'Timeout must be a positive integer in milliseconds.',
+				{ itemIndex },
+			);
+		}
+
+		const client = await createOciGenAiClient(
+			credentials,
+			this.helpers.getSecureEgressFilter(),
+			timeout,
+		);
+		const N8nOciGenAiGenericChat = await createN8nOciGenAiGenericChat();
 
 		const defaultRequestParams: OciChatRequestParams = {
 			temperature,
@@ -508,6 +577,9 @@ export class LmChatOciGenAi implements INodeType {
 		const modelParams = {
 			client,
 			compartmentId,
+			// Do not repeat an operation after the node-level request timeout has elapsed.
+			maxRetries: 0,
+			requestTimeout: timeout,
 			defaultRequestParams,
 			...(servingMode === 'onDemand' ? { onDemandModelId: model } : { dedicatedEndpointId }),
 		};

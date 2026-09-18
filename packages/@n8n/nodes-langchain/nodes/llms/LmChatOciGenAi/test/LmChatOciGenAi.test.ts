@@ -3,40 +3,50 @@ import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import type { ILoadOptionsFunctions, INode, ISupplyDataFunctions } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 
-const { createClient, getCachedCatalog, getConnectionHint, validateModelId, validateVendor } =
-	vi.hoisted(() => ({
-		createClient: vi.fn(),
-		getCachedCatalog: vi.fn(),
-		getConnectionHint: vi.fn(() => ({
-			displayName: 'Connection hint',
-			name: 'connectionHint',
-			type: 'notice',
-			default: '',
-		})),
-		validateModelId: vi.fn((value: string) => {
-			if (value === 'invalid-model') throw new Error('Invalid OCI Generative AI model ID');
-			return value;
-		}),
-		validateVendor: vi.fn((value: string) => {
-			const normalized = value.trim().toLowerCase();
-			if (normalized.includes('/') || normalized.includes(' '))
-				throw new Error('Invalid OCI vendor');
-			return normalized || undefined;
-		}),
-	}));
+const {
+	createClient,
+	getCachedCatalog,
+	getConnectionHint,
+	ociGenAiGenericChatConstructor,
+	validateModelId,
+	validateVendor,
+} = vi.hoisted(() => ({
+	createClient: vi.fn(),
+	getCachedCatalog: vi.fn(),
+	getConnectionHint: vi.fn(() => ({
+		displayName: 'Connection hint',
+		name: 'connectionHint',
+		type: 'notice',
+		default: '',
+	})),
+	validateModelId: vi.fn((value: string) => {
+		if (value === 'invalid-model') throw new Error('Invalid OCI Generative AI model ID');
+		return value;
+	}),
+	validateVendor: vi.fn((value: string) => {
+		const normalized = value.trim().toLowerCase();
+		if (normalized.includes('/') || normalized.includes(' ')) throw new Error('Invalid OCI vendor');
+		return normalized || undefined;
+	}),
+	ociGenAiGenericChatConstructor: vi.fn().mockImplementation(function MockOciGenAiGenericChat() {}),
+}));
 
 vi.mock('@n8n/ai-utilities', () => ({
 	getConnectionHintNoticeField: getConnectionHint,
 }));
 
 vi.mock('@oracle/langchain-oci', () => ({
-	OciGenAiGenericChat: vi.fn().mockImplementation(function MockOciGenAiGenericChat() {}),
+	OciGenAiGenericChat: ociGenAiGenericChatConstructor,
 }));
 
 vi.mock('../../../../utils/ociGenAi', () => ({
 	createOciGenAiClient: createClient,
 	getCachedOciGenAiModelCatalogPage: getCachedCatalog,
 	isOciGenAiCredentials: () => true,
+	loadOciSdk: async () => ({
+		genai: { models: { ModelCapability: { Chat: 'CHAT' } } },
+		langchainOci: { OciGenAiGenericChat: ociGenAiGenericChatConstructor },
+	}),
 	validateOciCompartmentId: (value: string) => {
 		if (!value.startsWith('ocid1.compartment.')) throw new Error('Invalid OCI Compartment OCID');
 		return value;
@@ -74,7 +84,14 @@ describe('LmChatOciGenAi', () => {
 			if (name === 'compartmentId') return 'ocid1.compartment.oc1..test';
 			if (name === 'servingMode') return 'onDemand';
 			if (name === 'options') {
-				return { temperature: 0.2, maxTokens: 512, topP: 0.8, topK: 40, seed: 42 };
+				return {
+					temperature: 0.2,
+					maxTokens: 512,
+					topP: 0.8,
+					topK: 40,
+					seed: 42,
+					timeout: 45000,
+				};
 			}
 			return '';
 		});
@@ -104,6 +121,18 @@ describe('LmChatOciGenAi', () => {
 		});
 	});
 
+	it('uses the OpenAI chat timeout default and units', () => {
+		const node = new LmChatOciGenAi();
+		const options = node.description.properties.find((property) => property.name === 'options');
+		const timeout = options?.options?.find((property) => property.name === 'timeout');
+
+		expect(timeout).toMatchObject({
+			default: 60000,
+			typeOptions: { minValue: 1 },
+			description: 'Maximum amount of time a request is allowed to take in milliseconds',
+		});
+	});
+
 	it('explains the provider model ID required for manual model entry', () => {
 		const node = new LmChatOciGenAi();
 		const model = node.description.properties.find((property) => property.name === 'model');
@@ -123,12 +152,15 @@ describe('LmChatOciGenAi', () => {
 
 		expect(createClient).toHaveBeenCalledWith(
 			expect.objectContaining({ regionId: 'us-phoenix-1' }),
+			expect.anything(),
+			45000,
 		);
 		expect(MockedOciGenAiGenericChat).toHaveBeenCalledWith(
 			expect.objectContaining({
 				client: { client: 'inference' },
 				compartmentId: 'ocid1.compartment.oc1..test',
 				onDemandModelId: 'meta.llama-3.3-70b-instruct',
+				maxRetries: 0,
 				defaultRequestParams: { temperature: 0.2, maxTokens: 512, topP: 0.8, topK: 40, seed: 42 },
 			}),
 		);
@@ -147,6 +179,11 @@ describe('LmChatOciGenAi', () => {
 		});
 
 		await node.supplyData.call(context, 0);
+		expect(createClient).toHaveBeenCalledWith(
+			expect.objectContaining({ regionId: 'us-phoenix-1' }),
+			expect.anything(),
+			60000,
+		);
 
 		expect(MockedOciGenAiGenericChat).toHaveBeenCalledWith(
 			expect.objectContaining({
@@ -252,6 +289,24 @@ describe('LmChatOciGenAi', () => {
 		expect(createClient).not.toHaveBeenCalled();
 	});
 
+	it.each([
+		[0, 'Timeout must be a positive integer in milliseconds.'],
+		[1.5, 'Timeout must be a positive integer in milliseconds.'],
+	])('rejects an invalid timeout of %s', async (timeout, errorMessage) => {
+		const node = new LmChatOciGenAi();
+		const context = createContext();
+		context.getNodeParameter = vi.fn().mockImplementation((name: string) => {
+			if (name === 'model') return 'meta.llama-3.3-70b-instruct';
+			if (name === 'compartmentId') return 'ocid1.compartment.oc1..test';
+			if (name === 'servingMode') return 'onDemand';
+			if (name === 'options') return { timeout };
+			return '';
+		});
+
+		await expect(node.supplyData.call(context, 0)).rejects.toThrow(errorMessage);
+		expect(createClient).not.toHaveBeenCalled();
+	});
+
 	it('filters cached chat models locally during model search', async () => {
 		const node = new LmChatOciGenAi();
 		const context = createContext();
@@ -267,6 +322,25 @@ describe('LmChatOciGenAi', () => {
 		const result = await search.call(context as unknown as ILoadOptionsFunctions, 'llama');
 
 		expect(result.results).toEqual([{ name: 'Meta Llama', value: 'meta.llama-3.3-70b-instruct' }]);
+	});
+
+	it('uses an exact OCI catalog lookup for a typed provider model ID', async () => {
+		const node = new LmChatOciGenAi();
+		const context = createContext();
+		getCachedCatalog.mockResolvedValue({
+			searchModels: [{ id: 'xai.grok-4.6', name: 'xai.grok-4.6', searchText: 'xai.grok-4.6' }],
+		});
+
+		const search = node.methods.listSearch?.searchChatModels;
+		if (!search) throw new Error('Chat model search is not configured');
+		const result = await search.call(context as unknown as ILoadOptionsFunctions, 'xai.grok-4.6');
+
+		expect(getCachedCatalog).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({ modelId: 'xai.grok-4.6' }),
+			expect.anything(),
+		);
+		expect(result.results).toEqual([{ name: 'xai.grok-4.6', value: 'xai.grok-4.6' }]);
 	});
 
 	it('returns the OCI pagination token from model search', async () => {
@@ -285,6 +359,7 @@ describe('LmChatOciGenAi', () => {
 		expect(getCachedCatalog).toHaveBeenCalledWith(
 			expect.anything(),
 			expect.objectContaining({ paginationToken: 'current-page' }),
+			expect.anything(),
 		);
 		expect(result).toEqual({ results: [], paginationToken: 'next-page' });
 	});
@@ -326,6 +401,7 @@ describe('LmChatOciGenAi', () => {
 		expect(getCachedCatalog).toHaveBeenCalledWith(
 			expect.anything(),
 			expect.objectContaining({ vendor: 'openai' }),
+			expect.anything(),
 		);
 	});
 

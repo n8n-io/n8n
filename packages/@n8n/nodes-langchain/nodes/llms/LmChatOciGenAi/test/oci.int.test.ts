@@ -1,75 +1,60 @@
-import { OciGenAiGenericChat } from '@oracle/langchain-oci';
 import { HumanMessage } from '@langchain/core/messages';
 import assert from 'node:assert/strict';
-import process from 'node:process';
-import { ConfigFileReader } from 'oci-common';
 import { describe, it } from 'vitest';
 
+import { awaitOciGenAiRequest } from '../../../../utils/ociGenAi';
+
 import {
-	createOciGenAiClient,
-	validateOciCompartmentId,
-	validateOciModelId,
-	type OciGenAiCredentials,
-} from '../../../../utils/ociGenAi';
+	OCI_INTEGRATION_REQUEST_TIMEOUT_MS,
+	createOciTestChatModel,
+	getOciTestCompartmentId,
+	getOciTestCredentials,
+	getOciTestModelId,
+	runOciIntegrationTests,
+} from './oci-test-utils';
 
-const runOciIntegrationTests = process.env.N8N_OCI_INTEGRATION_TESTS === '1';
-
-function requiredEnv(name: string): string {
-	const value = process.env[name];
-
-	if (!value) {
-		throw new Error(`Missing integration-test environment variable: ${name}`);
-	}
-
-	return value;
-}
-
-function getCredentials(): OciGenAiCredentials {
-	const profile = process.env.OCI_CONFIG_PROFILE ?? 'DEFAULT';
-	const config = ConfigFileReader.parseDefault(profile);
-	const regionId = config.get('region');
-
-	if (!regionId) {
-		throw new Error(`OCI config profile "${profile}" does not define a region`);
-	}
-
-	return {
-		// Let the OCI SDK load the default ~/.oci/config file, including its key path and passphrase.
-		authentication: 'session',
-		configFilePath: ConfigFileReader.DEFAULT_FILE_PATH,
-		configProfile: profile,
-		regionId,
-		serviceEndpoint: process.env.OCI_INFERENCE_ENDPOINT,
-	};
-}
-
-async function createChatModel(
-	credentials: OciGenAiCredentials,
-	modelId: string,
-	compartmentId: string,
-): Promise<OciGenAiGenericChat> {
-	// Keep this standalone script independent of the node's workspace-only runtime imports.
-	// supplyData() behavior is covered by the chat node's Vitest unit tests.
-	return new OciGenAiGenericChat({
-		client: await createOciGenAiClient(credentials),
-		compartmentId: validateOciCompartmentId(compartmentId),
-		onDemandModelId: validateOciModelId(modelId),
-	});
-}
+const INVALID_MODEL_ID = 'n8n.integration-test-invalid-model';
 
 async function run(): Promise<void> {
-	const credentials = getCredentials();
-	const model = requiredEnv('OCI_GENAI_MODEL');
-	const compartmentId = requiredEnv('OCI_GENAI_COMPARTMENT_OCID');
-	const chatModel = await createChatModel(credentials, model, compartmentId);
-	const response = await chatModel.invoke([
-		new HumanMessage('Reply with exactly: OCI integration test passed'),
-	]);
+	const credentials = getOciTestCredentials();
+	const model = getOciTestModelId();
+	const compartmentId = getOciTestCompartmentId();
+	const chatModel = await createOciTestChatModel(credentials, model, compartmentId);
+	const response = await awaitOciGenAiRequest(
+		chatModel.invoke([new HumanMessage('Reply with exactly: OCI integration test passed')]),
+		OCI_INTEGRATION_REQUEST_TIMEOUT_MS,
+	);
 
-	assert.ok(response.content, 'The OCI chat model returned empty content');
+	assert.ok(
+		typeof response.content === 'string' ? response.content.trim() : response.content.length > 0,
+		'The OCI chat model returned empty content',
+	);
 	console.log('[OCI INT TEST] OCI chat integration passed.');
+}
+
+async function runInvalidModel(): Promise<void> {
+	const credentials = getOciTestCredentials();
+	const compartmentId = getOciTestCompartmentId();
+	const chatModel = await createOciTestChatModel(credentials, INVALID_MODEL_ID, compartmentId);
+
+	await assert.rejects(
+		async () => {
+			await awaitOciGenAiRequest(
+				chatModel.invoke([new HumanMessage('This request must fail')]),
+				OCI_INTEGRATION_REQUEST_TIMEOUT_MS,
+			);
+		},
+		(error: unknown) => {
+			assert.ok(error instanceof Error, 'OCI returned a non-Error rejection');
+			assert.ok(error.message.trim(), 'OCI returned an empty error message');
+			assert.notEqual(error.message, '[object Object]', 'OCI error details were not normalized');
+			return true;
+		},
+	);
+	console.log('[OCI INT TEST] Invalid OCI model rejection returned an actionable error.');
 }
 
 describe.skipIf(!runOciIntegrationTests)('OCI Generative AI integration', () => {
 	it('invokes the configured chat model', run, 60_000);
+	it('returns an actionable error for an unavailable model', runInvalidModel, 60_000);
 });

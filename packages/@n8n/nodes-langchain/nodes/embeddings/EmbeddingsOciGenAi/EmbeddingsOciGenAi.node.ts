@@ -1,5 +1,5 @@
 import { logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
-import { OciGenAiEmbeddings } from '@oracle/langchain-oci';
+import type { OciGenAiEmbeddings } from '@oracle/langchain-oci';
 import {
 	NodeConnectionTypes,
 	NodeOperationError,
@@ -13,20 +13,23 @@ import {
 	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
-import { models as ociModels } from 'oci-generativeaiinference';
+import type { models as ociModels } from 'oci-generativeaiinference';
 
 import {
+	awaitOciGenAiRequest,
 	createOciGenAiClient,
 	getOciEmbeddingModelCapabilities,
 	getOciEmbeddingModelIdsWithOutputDimensions,
 	getOnDemandEmbeddingModelFallbacks,
 	isOciGenAiCredentials,
+	loadOciSdk,
 	validateOciCompartmentId,
 	validateOciModelId,
 } from '../../../utils/ociGenAi';
 
 const DEFAULT_BATCH_SIZE = 96;
 const DEFAULT_MAX_CONCURRENCY = 2;
+const NO_REQUEST_TIMEOUT = -1;
 const MAX_CONCURRENCY = 10;
 const DEFAULT_OUTPUT_DIMENSIONS = '';
 
@@ -39,8 +42,40 @@ type OciEmbeddingsOptions = {
 	batchSize?: number;
 	maxConcurrency?: number;
 	outputDimensions?: number | string;
+	timeout?: number;
 	truncate?: 'NONE' | 'START' | 'END';
 };
+
+type OciGenAiEmbeddingsConstructor = new (
+	params: ConstructorParameters<typeof OciGenAiEmbeddings>[0] & { requestTimeout?: number },
+) => OciGenAiEmbeddings;
+
+/** Creates an embeddings wrapper that applies the node's request timeout. */
+async function createN8nOciGenAiEmbeddings(): Promise<OciGenAiEmbeddingsConstructor> {
+	const { langchainOci } = await loadOciSdk();
+	const { OciGenAiEmbeddings } = langchainOci as unknown as {
+		OciGenAiEmbeddings: typeof import('@oracle/langchain-oci').OciGenAiEmbeddings;
+	};
+
+	return class N8nOciGenAiEmbeddings extends OciGenAiEmbeddings {
+		private readonly requestTimeout: number | undefined;
+
+		constructor(
+			params: ConstructorParameters<typeof OciGenAiEmbeddings>[0] & { requestTimeout?: number },
+		) {
+			super(params);
+			this.requestTimeout = params.requestTimeout;
+		}
+
+		override async embedDocuments(documents: string[]): Promise<number[][]> {
+			return await awaitOciGenAiRequest(super.embedDocuments(documents), this.requestTimeout);
+		}
+
+		override async embedQuery(text: string): Promise<number[]> {
+			return await awaitOciGenAiRequest(super.embedQuery(text), this.requestTimeout);
+		}
+	};
+}
 
 function isResourceLocatorValue(value: unknown): value is ResourceLocatorValue {
 	if (typeof value !== 'object' || value === null) {
@@ -71,14 +106,17 @@ function getModelId(node: INode, value: unknown, itemIndex?: number): string {
 	throw new NodeOperationError(node, 'Invalid model value provided', { itemIndex });
 }
 
-function getTruncate(value: unknown): ociModels.EmbedTextDetails.Truncate | undefined {
+function getTruncate(
+	value: unknown,
+	models: typeof import('oci-generativeaiinference').models,
+): ociModels.EmbedTextDetails.Truncate | undefined {
 	switch (value) {
 		case 'NONE':
-			return ociModels.EmbedTextDetails.Truncate.None;
+			return models.EmbedTextDetails.Truncate.None;
 		case 'START':
-			return ociModels.EmbedTextDetails.Truncate.Start;
+			return models.EmbedTextDetails.Truncate.Start;
 		case 'END':
-			return ociModels.EmbedTextDetails.Truncate.End;
+			return models.EmbedTextDetails.Truncate.End;
 		default:
 			return undefined;
 	}
@@ -246,6 +284,17 @@ const optionsProperty: INodeProperties = {
 			description:
 				'Maximum number of OCI embedding requests to run concurrently. Higher values can improve bulk ingestion throughput but can increase throttling.',
 		},
+		{
+			displayName: 'Timeout',
+			name: 'timeout',
+			type: 'number',
+			default: NO_REQUEST_TIMEOUT,
+			typeOptions: {
+				minValue: NO_REQUEST_TIMEOUT,
+			},
+			description:
+				'Maximum amount of time a request is allowed to take in seconds. Set to -1 for no timeout.',
+		},
 		...outputDimensionsProperties,
 		customOutputDimensionsProperty,
 		{
@@ -327,6 +376,8 @@ export class EmbeddingsOciGenAi implements INodeType {
 					throw new NodeOperationError(this.getNode(), 'Invalid OCI Generative AI credentials');
 				}
 
+				// listModels(TEXT_EMBEDDINGS) does not reliably establish on-demand availability per
+				// region, so the selector uses the curated regional list. Manual ID entry supports new models.
 				const results = getOnDemandEmbeddingModelFallbacks(credentials.regionId, filter).map(
 					(model): INodeListSearchItems => ({
 						name: model.displayName,
@@ -382,6 +433,7 @@ export class EmbeddingsOciGenAi implements INodeType {
 
 		const batchSize = options.batchSize ?? DEFAULT_BATCH_SIZE;
 		const maxConcurrency = options.maxConcurrency ?? DEFAULT_MAX_CONCURRENCY;
+		const timeout = options.timeout ?? NO_REQUEST_TIMEOUT;
 
 		if (!Number.isInteger(batchSize) || batchSize < 1 || batchSize > 96) {
 			throw new NodeOperationError(
@@ -399,6 +451,14 @@ export class EmbeddingsOciGenAi implements INodeType {
 			throw new NodeOperationError(
 				this.getNode(),
 				`Maximum Concurrency must be an integer between 1 and ${MAX_CONCURRENCY}.`,
+				{ itemIndex },
+			);
+		}
+
+		if (!Number.isInteger(timeout) || timeout === 0 || timeout < NO_REQUEST_TIMEOUT) {
+			throw new NodeOperationError(
+				this.getNode(),
+				'Timeout must be -1 or a positive integer in seconds.',
 				{ itemIndex },
 			);
 		}
@@ -434,22 +494,34 @@ export class EmbeddingsOciGenAi implements INodeType {
 			);
 		}
 
-		const truncate = getTruncate(options.truncate);
+		const client = await createOciGenAiClient(
+			credentials,
+			this.helpers.getSecureEgressFilter(),
+			timeout === NO_REQUEST_TIMEOUT ? undefined : timeout * 1000,
+		);
+		const [{ genaiInference }, N8nOciGenAiEmbeddings] = await Promise.all([
+			loadOciSdk(),
+			createN8nOciGenAiEmbeddings(),
+		]);
+		const truncate = getTruncate(options.truncate, genaiInference.models);
 
-		const client = await createOciGenAiClient(credentials);
-
-		const embeddings = new OciGenAiEmbeddings({
+		const embeddings = new N8nOciGenAiEmbeddings({
 			client,
 			compartmentId,
 			batchSize,
 			maxConcurrency,
+			// Do not repeat an operation after the node-level request timeout has elapsed.
+			maxRetries: 0,
+			...(timeout === NO_REQUEST_TIMEOUT ? {} : { requestTimeout: timeout * 1000 }),
 			...(outputDimensions !== undefined ? { outputDimensions } : {}),
 			...(truncate !== undefined ? { truncate } : {}),
 			...(servingMode === 'dedicated' ? { dedicatedEndpointId } : { onDemandModelId: model }),
 		});
 
 		return {
-			response: logWrapper(embeddings, this),
+			// Dynamic import resolves a separate LangChain declaration identity; the runtime class is the
+			// same OCI embeddings implementation expected by logWrapper.
+			response: logWrapper(embeddings as unknown as OciGenAiEmbeddings, this),
 		};
 	}
 }

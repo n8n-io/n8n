@@ -1,7 +1,12 @@
-import { UserError, type ICredentialDataDecryptedObject } from 'n8n-workflow';
-import * as common from 'oci-common';
-import * as genai from 'oci-generativeai';
-import * as genaiInference from 'oci-generativeaiinference';
+import {
+	UserError,
+	type ICredentialDataDecryptedObject,
+	type NodeEgressFilter,
+} from 'n8n-workflow';
+import type * as common from 'oci-common';
+import type * as genai from 'oci-generativeai';
+import type * as genaiInference from 'oci-generativeaiinference';
+import { PassThrough, Readable } from 'node:stream';
 
 const OCI_MODEL_OCID_PATTERN =
 	/^ocid[0-9]+\.generativeaimodel\.oc[0-9]+(?:\.[a-z0-9_-]*)*\.[a-z0-9_-]+$/i;
@@ -14,8 +19,45 @@ const MAX_OCI_OCID_LENGTH = 256;
 const MODEL_CATALOG_CACHE_TTL_MS = 60_000;
 const MAX_MODEL_CATALOG_CACHE_ENTRIES = 100;
 const MAX_MODEL_CATALOG_PAGES_PER_ENTRY = 20;
+export const OCI_MODEL_CATALOG_REQUEST_TIMEOUT_MS = 15_000;
 export const OCI_INFERENCE_CLIENT_CACHE_TTL_MS = 60_000;
 const MAX_INFERENCE_CLIENT_CACHE_ENTRIES = 32;
+
+type OciSdk = {
+	common: typeof common;
+	genai: typeof genai;
+	genaiInference: typeof genaiInference;
+	// The package's CJS runtime and ESM type declarations have distinct private class identities.
+	langchainOci: unknown;
+};
+
+let ociSdkPromise: Promise<OciSdk> | undefined;
+
+/** Lazily loads the OCI runtime once so concurrent Chat and Embeddings requests share it. */
+// eslint-disable-next-line @typescript-eslint/promise-function-async
+export function loadOciSdk(): Promise<OciSdk> {
+	if (ociSdkPromise !== undefined) return ociSdkPromise;
+
+	const request: Promise<OciSdk> = Promise.all([
+		import('oci-common'),
+		import('oci-generativeai'),
+		import('oci-generativeaiinference'),
+		import('@oracle/langchain-oci'),
+	]).then(([common, genai, genaiInference, langchainOci]) => ({
+		common,
+		genai,
+		genaiInference,
+		langchainOci,
+	}));
+
+	ociSdkPromise = request;
+	void request.catch(() => {
+		// Do not retain a failed load; a later OCI request can retry it.
+		if (ociSdkPromise === request) ociSdkPromise = undefined;
+	});
+
+	return request;
+}
 
 export type OciEmbeddingModelCapabilities = {
 	outputDimensions?: readonly number[];
@@ -106,10 +148,12 @@ export function validateOciCompartmentId(compartmentId: string): string {
 	return normalized;
 }
 
-function getExpectedOciInferenceEndpointHost(regionId: string): string {
+async function getExpectedOciInferenceEndpointHost(regionId: string): Promise<string> {
+	const { common } = await loadOciSdk();
+	const { Region } = common;
 	let region: common.Region;
 	try {
-		region = common.Region.fromRegionId(regionId.trim());
+		region = Region.fromRegionId(regionId.trim());
 	} catch {
 		throw new UserError('Region ID must be a valid OCI region');
 	}
@@ -117,10 +161,149 @@ function getExpectedOciInferenceEndpointHost(regionId: string): string {
 	return `inference.generativeai.${region.regionId}.oci.${region.realm.secondLevelDomain}`;
 }
 
-export function validateOciEndpoint(
+async function getOciManagementEndpoint(regionId: string): Promise<string> {
+	const { common } = await loadOciSdk();
+	const { Region } = common;
+	let region: common.Region;
+	try {
+		region = Region.fromRegionId(regionId.trim());
+	} catch {
+		throw new UserError('Region ID must be a valid OCI region');
+	}
+
+	return `https://generativeai.${region.regionId}.oci.${region.realm.secondLevelDomain}`;
+}
+
+/**
+ * Splits the OCI SDK body between request signing and n8n's proxy fetch.
+ *
+ * Signing a stream consumes it, so streams need independent pass-through copies;
+ * string bodies can safely be shared by both operations.
+ */
+function getOciSignerAndRequestBody(
+	body: unknown,
+	forceExcludeBody: boolean,
+): { signerBody: unknown; requestBody: RequestInit['body'] } {
+	// Requests without a body must not send a body or ask the signer to hash one.
+	if (body === undefined || body === null || body === '') {
+		return { signerBody: undefined, requestBody: undefined };
+	}
+
+	// OCI marks some requests as body-excluded, but the request itself still carries the body.
+	if (forceExcludeBody) {
+		return { signerBody: undefined, requestBody: body as RequestInit['body'] };
+	}
+
+	// Strings are immutable, so the signer and proxy fetch can use the same value.
+	if (typeof body === 'string') {
+		return { signerBody: body, requestBody: body };
+	}
+
+	if (body instanceof Readable) {
+		return {
+			// Pipe the source stream twice because signing and sending each consume their copy.
+			signerBody: body.pipe(new PassThrough()),
+			// Undici accepts Node streams although the DOM RequestInit type does not expose them.
+			requestBody: body.pipe(new PassThrough()) as unknown as RequestInit['body'],
+		};
+	}
+
+	throw new Error('OCI SDK cannot prepare this request body for signing');
+}
+
+/** Matches the OCI LangChain integration: one SDK attempt per LangChain call. */
+async function getOciClientConfiguration() {
+	const { common } = await loadOciSdk();
+	const { MaxAttemptsTerminationStrategy } = common;
+	return {
+		retryConfiguration: {
+			terminationStrategy: new MaxAttemptsTerminationStrategy(1),
+		},
+	};
+}
+
+/** Routes OCI SDK requests through n8n's egress-aware fetch when filtering is configured. */
+async function createOciEgressHttpClient(
+	authenticationDetailsProvider: common.AuthenticationDetailsProvider,
+	egressFilter: NodeEgressFilter | undefined,
+	requestTimeout?: number,
+): Promise<common.HttpClient | undefined> {
+	// n8n node helpers always provide a filter, including the passthrough filter when egress
+	// restrictions are disabled. Undefined supports non-n8n callers using the OCI SDK transport.
+	if (egressFilter === undefined) return undefined;
+
+	const [{ proxyFetch }, { common }] = await Promise.all([
+		import('@n8n/ai-utilities'),
+		loadOciSdk(),
+	]);
+	const { DefaultRequestSigner } = common;
+	const signer = new DefaultRequestSigner(authenticationDetailsProvider);
+
+	return {
+		async send(request, forceExcludeBody = false): Promise<Response> {
+			const body = getOciSignerAndRequestBody(request.body, forceExcludeBody);
+			await signer.signHttpRequest(
+				{
+					method: request.method,
+					headers: request.headers,
+					uri: request.uri,
+					body: body.signerBody,
+				},
+				forceExcludeBody,
+			);
+
+			const init: RequestInit & { duplex?: 'half' } = {
+				method: request.method,
+				headers: request.headers,
+				body: body.requestBody,
+			};
+			if (body.requestBody) init.duplex = 'half';
+
+			return await proxyFetch({
+				input: request.uri,
+				init,
+				egressFilter,
+				...(requestTimeout === undefined
+					? {}
+					: {
+							timeoutOptions: {
+								headersTimeout: requestTimeout,
+								bodyTimeout: requestTimeout,
+							},
+						}),
+			});
+		},
+	};
+}
+
+/**
+ * Bounds the time the node waits for an OCI SDK operation. OCI's fetch wrapper
+ * does not accept an abort signal per request, so the underlying request may finish later.
+ */
+export async function awaitOciGenAiRequest<T>(
+	request: Promise<T>,
+	requestTimeout?: number,
+): Promise<T> {
+	if (requestTimeout === undefined) return await request;
+
+	let timeout: ReturnType<typeof setTimeout> | undefined;
+	const timeoutPromise = new Promise<never>((_, reject) => {
+		timeout = setTimeout(() => {
+			reject(new Error(`OCI request timed out after ${requestTimeout}ms`));
+		}, requestTimeout);
+	});
+
+	try {
+		return await Promise.race([request, timeoutPromise]);
+	} finally {
+		if (timeout !== undefined) clearTimeout(timeout);
+	}
+}
+
+export async function validateOciEndpoint(
 	endpoint: string | undefined,
 	regionId: string,
-): string | undefined {
+): Promise<string | undefined> {
 	const normalized = endpoint?.trim();
 	if (!normalized) return undefined;
 
@@ -135,7 +318,7 @@ export function validateOciEndpoint(
 		throw new UserError('Inference endpoint must use HTTPS');
 	}
 	// OCI clients sign outbound requests, so endpoint overrides must match the selected region's realm.
-	if (url.hostname !== getExpectedOciInferenceEndpointHost(regionId)) {
+	if (url.hostname !== (await getExpectedOciInferenceEndpointHost(regionId))) {
 		throw new UserError('Inference endpoint must match the configured OCI region and realm');
 	}
 	if (url.username || url.password || url.port || url.pathname !== '/' || url.search || url.hash) {
@@ -351,6 +534,50 @@ function required(credentials: OciGenAiCredentials, name: keyof OciGenAiCredenti
 	return value.trim();
 }
 
+function getOciSdkErrorMessage(error: unknown): string {
+	if (error instanceof Error) return error.message;
+	if (typeof error !== 'object' || error === null) return String(error);
+
+	const details = error as Record<string, unknown>;
+	const message = typeof details.message === 'string' ? details.message : 'OCI request failed';
+	const statusCode = details.statusCode ?? details.code;
+	const serviceCode = details.serviceCode;
+	const prefix = [statusCode, serviceCode].filter((value) => value !== undefined).join(' ');
+
+	return prefix ? `${prefix}: ${message}` : message;
+}
+
+/** Converts OCI SDK plain-object rejections before LangChain discards their details. */
+function normalizeOciSdkError(error: unknown): Error {
+	if (error instanceof Error) return error;
+
+	const normalizedError = new Error(getOciSdkErrorMessage(error), { cause: error });
+	if (typeof error === 'object' && error !== null) {
+		Object.assign(normalizedError, error);
+	}
+	return normalizedError;
+}
+
+function normalizeOciSdkMethodErrors<T extends object>(
+	client: T,
+	methods: readonly PropertyKey[],
+): T {
+	return new Proxy(client, {
+		get(target, property, receiver) {
+			const value = Reflect.get(target, property, receiver);
+			if (!methods.includes(property) || typeof value !== 'function') return value;
+
+			return async (...args: unknown[]) => {
+				try {
+					return await Reflect.apply(value, target, args);
+				} catch (error) {
+					throw normalizeOciSdkError(error);
+				}
+			};
+		},
+	});
+}
+
 function sanitizePrivateKey(rawKey: string): string {
 	let key = rawKey.trim();
 	// Credentials pasted as JSON commonly preserve line breaks as literal escape sequences.
@@ -363,27 +590,36 @@ function sanitizePrivateKey(rawKey: string): string {
 async function getAuthenticationDetailsProvider(
 	credentials: OciGenAiCredentials,
 ): Promise<common.AuthenticationDetailsProvider> {
+	const { common } = await loadOciSdk();
+
 	switch (credentials.authentication) {
 		case 'apiKey': {
+			const { Region, SimpleAuthenticationDetailsProvider } = common;
 			const privateKey = sanitizePrivateKey(required(credentials, 'privateKey'));
-			return new common.SimpleAuthenticationDetailsProvider(
+			return new SimpleAuthenticationDetailsProvider(
 				required(credentials, 'tenancyId'),
 				required(credentials, 'userId'),
 				required(credentials, 'fingerprint'),
 				privateKey,
-				credentials.passphrase ? credentials.passphrase.trim() : null,
-				common.Region.fromRegionId(required(credentials, 'regionId')),
+				credentials.passphrase || null,
+				Region.fromRegionId(required(credentials, 'regionId')),
 			);
 		}
-		case 'instancePrincipal':
-			return await new common.InstancePrincipalsAuthenticationDetailsProviderBuilder().build();
-		case 'resourcePrincipal':
-			return common.ResourcePrincipalAuthenticationDetailsProvider.builder();
-		case 'session':
-			return new common.ConfigFileAuthenticationDetailsProvider(
+		case 'instancePrincipal': {
+			const { InstancePrincipalsAuthenticationDetailsProviderBuilder } = common;
+			return await new InstancePrincipalsAuthenticationDetailsProviderBuilder().build();
+		}
+		case 'resourcePrincipal': {
+			const { ResourcePrincipalAuthenticationDetailsProvider } = common;
+			return ResourcePrincipalAuthenticationDetailsProvider.builder();
+		}
+		case 'session': {
+			const { ConfigFileAuthenticationDetailsProvider } = common;
+			return new ConfigFileAuthenticationDetailsProvider(
 				required(credentials, 'configFilePath'),
 				required(credentials, 'configProfile'),
 			);
+		}
 		default:
 			throw new UserError(
 				`Unsupported OCI authentication method: ${String(credentials.authentication)}`,
@@ -394,42 +630,62 @@ async function getAuthenticationDetailsProvider(
 // Keep construction separate so the cache can share initialization across model wrappers.
 async function createOciGenAiClientInternal(
 	credentials: OciGenAiCredentials,
+	egressFilter?: NodeEgressFilter,
+	requestTimeout?: number,
 ): Promise<genaiInference.GenerativeAiInferenceClient> {
-	const authenticationDetailsProvider = await getAuthenticationDetailsProvider(credentials);
-	const client = new genaiInference.GenerativeAiInferenceClient({ authenticationDetailsProvider });
+	const [authenticationDetailsProvider, serviceEndpoint, { genaiInference }] = await Promise.all([
+		getAuthenticationDetailsProvider(credentials),
+		validateOciEndpoint(credentials.serviceEndpoint, credentials.regionId),
+		loadOciSdk(),
+	]);
+	const { GenerativeAiInferenceClient } = genaiInference;
+	const httpClient = await createOciEgressHttpClient(
+		authenticationDetailsProvider,
+		egressFilter,
+		requestTimeout,
+	);
+	const client = new GenerativeAiInferenceClient(
+		httpClient === undefined ? { authenticationDetailsProvider } : { httpClient },
+		await getOciClientConfiguration(),
+	);
 
-	if (credentials.regionId) {
-		client.region = common.Region.fromRegionId(credentials.regionId.trim());
-	}
-	const endpoint = validateOciEndpoint(credentials.serviceEndpoint, credentials.regionId);
-	if (endpoint) {
-		client.endpoint = endpoint;
+	// Use the same region-id setup path as @oracle/langchain-oci.
+	client.regionId = required(credentials, 'regionId');
+	if (serviceEndpoint) {
+		client.endpoint = serviceEndpoint;
 	}
 
-	return client;
+	return normalizeOciSdkMethodErrors(client, ['chat', 'embedText']);
 }
 
 // Cache only non-secret identity and routing settings; model and compartment are request-specific.
-function getInferenceClientCacheKey(credentials: OciGenAiCredentials): string {
+async function getInferenceClientCacheKey(
+	credentials: OciGenAiCredentials,
+	requestTimeout?: number,
+): Promise<string> {
 	// Private key and passphrase stay out of cache keys. The fingerprint identifies
 	// the OCI signing key, so key rotation invalidates the cached client. Passphrase-only
 	// changes take effect after the cache entry expires.
 	const authenticationIdentity = getOciAuthenticationIdentity(credentials);
-	const endpoint = validateOciEndpoint(credentials.serviceEndpoint, credentials.regionId) ?? '';
+	const endpoint =
+		(await validateOciEndpoint(credentials.serviceEndpoint, credentials.regionId)) ?? '';
 
 	return JSON.stringify([
 		authenticationIdentity,
 		credentials.regionId.trim().toLowerCase(),
 		endpoint,
+		requestTimeout,
 	]);
 }
 
 // Agent tool calls rebuild LangChain wrappers, so reuse OCI client initialization across wrappers.
 async function getCachedOciGenAiClient(
 	credentials: OciGenAiCredentials,
+	egressFilter?: NodeEgressFilter,
+	requestTimeout?: number,
 ): Promise<genaiInference.GenerativeAiInferenceClient> {
 	const now = Date.now();
-	const key = getInferenceClientCacheKey(credentials);
+	const key = await getInferenceClientCacheKey(credentials, requestTimeout);
 	const cachedClient = inferenceClientCache.get(key);
 	if (cachedClient) {
 		if (cachedClient.expiresAt > now) {
@@ -445,7 +701,7 @@ async function getCachedOciGenAiClient(
 
 	let request = inferenceClientInFlight.get(key);
 	if (!request) {
-		request = createOciGenAiClientInternal(credentials);
+		request = createOciGenAiClientInternal(credentials, egressFilter, requestTimeout);
 		inferenceClientInFlight.set(key, request);
 
 		void request
@@ -488,14 +744,16 @@ function usesExternalPrincipalAuthentication(credentials: OciGenAiCredentials): 
 // Preserve the shared client factory used by both OCI Chat and Embeddings nodes.
 export async function createOciGenAiClient(
 	credentials: OciGenAiCredentials,
+	egressFilter?: NodeEgressFilter,
+	requestTimeout?: number,
 ): Promise<genaiInference.GenerativeAiInferenceClient> {
 	// Principal identity comes from the runtime environment and is not represented in credential data.
 	// Do not reuse a client when its cache key cannot identify that external identity.
 	if (usesExternalPrincipalAuthentication(credentials)) {
-		return await createOciGenAiClientInternal(credentials);
+		return await createOciGenAiClientInternal(credentials, egressFilter, requestTimeout);
 	}
 
-	return await getCachedOciGenAiClient(credentials);
+	return await getCachedOciGenAiClient(credentials, egressFilter, requestTimeout);
 }
 
 // Reset module-level caches so unit tests do not depend on execution order.
@@ -503,19 +761,29 @@ export function clearOciGenAiCachesForTesting(): void {
 	inferenceClientCache.clear();
 	inferenceClientInFlight.clear();
 	modelCatalogCache.clear();
+	ociSdkPromise = undefined;
 }
 
 export async function createOciGenAiModelClient(
 	credentials: OciGenAiCredentials,
+	egressFilter?: NodeEgressFilter,
 ): Promise<genai.GenerativeAiClient> {
-	const authenticationDetailsProvider = await getAuthenticationDetailsProvider(credentials);
-	const client = new genai.GenerativeAiClient({ authenticationDetailsProvider });
+	const [authenticationDetailsProvider, endpoint, { genai }] = await Promise.all([
+		getAuthenticationDetailsProvider(credentials),
+		getOciManagementEndpoint(credentials.regionId),
+		loadOciSdk(),
+	]);
+	const { GenerativeAiClient } = genai;
+	const httpClient = await createOciEgressHttpClient(authenticationDetailsProvider, egressFilter);
+	const client = new GenerativeAiClient(
+		httpClient === undefined ? { authenticationDetailsProvider } : { httpClient },
+		await getOciClientConfiguration(),
+	);
 
-	if (credentials.regionId) {
-		client.region = common.Region.fromRegionId(credentials.regionId.trim());
-	}
+	client.regionId = required(credentials, 'regionId');
+	client.endpoint = endpoint;
 
-	return client;
+	return normalizeOciSdkMethodErrors(client, ['listModels']);
 }
 
 // Both OCI caches need the same non-secret identity boundary.
@@ -575,6 +843,24 @@ function getModelCatalogCache(key: string, now: number): CachedModelCatalog {
 	return catalog;
 }
 
+/** Bounds how long a catalog caller waits so a stalled SDK call cannot retain a cached page. */
+async function getOciModelCatalogResponse<T>(request: Promise<T>): Promise<T> {
+	let timeout: ReturnType<typeof setTimeout> | undefined;
+	const timeoutPromise = new Promise<never>((_, reject) => {
+		timeout = setTimeout(() => {
+			reject(new Error('OCI model catalog request timed out'));
+		}, OCI_MODEL_CATALOG_REQUEST_TIMEOUT_MS);
+	});
+
+	try {
+		return await Promise.race([request, timeoutPromise]);
+	} finally {
+		if (timeout !== undefined) {
+			clearTimeout(timeout);
+		}
+	}
+}
+
 // Cache model pages because searchable selectors call this once per typed character.
 export async function getCachedOciGenAiModelCatalogPage(
 	credentials: OciGenAiCredentials,
@@ -583,14 +869,18 @@ export async function getCachedOciGenAiModelCatalogPage(
 		capability,
 		vendor,
 		paginationToken,
+		modelId,
 	}: {
 		compartmentId: string;
 		capability: genai.models.ModelCapability;
 		vendor?: string;
 		paginationToken?: string;
+		modelId?: string;
 	},
+	egressFilter?: NodeEgressFilter,
 ): Promise<OciGenAiModelCatalogPage> {
 	const normalizedVendor = validateOciVendor(vendor) ?? '';
+	const exactModelId = modelId === undefined ? undefined : validateOciModelId(modelId);
 	const cacheKey = JSON.stringify([
 		getOciAuthenticationIdentity(credentials),
 		credentials.regionId.trim().toLowerCase(),
@@ -599,7 +889,7 @@ export async function getCachedOciGenAiModelCatalogPage(
 		capability,
 	]);
 	const cachedCatalog = getModelCatalogCache(cacheKey, Date.now());
-	const pageKey = paginationToken ?? '';
+	const pageKey = exactModelId === undefined ? (paginationToken ?? '') : `id:${exactModelId}`;
 	const cachedPage = cachedCatalog.pages.get(pageKey);
 	if (cachedPage) {
 		// Reuse the promise too, preventing concurrent keystrokes from duplicating OCI requests.
@@ -614,21 +904,36 @@ export async function getCachedOciGenAiModelCatalogPage(
 		}
 	}
 
-	const page = createOciGenAiModelClient(credentials)
+	const page = createOciGenAiModelClient(credentials, egressFilter)
 		.then(async (client) => {
-			const response = await client.listModels({
+			const request = {
 				compartmentId,
 				capability: [capability],
 				...(normalizedVendor ? { vendor: normalizedVendor } : {}),
-				limit: 100,
-				...(paginationToken ? { page: paginationToken } : {}),
-			});
+				...(exactModelId === undefined
+					? { limit: 100, ...(paginationToken ? { page: paginationToken } : {}) }
+					: { id: exactModelId, limit: 1 }),
+			};
+			let response = await getOciModelCatalogResponse(client.listModels(request));
+			let models = response.modelCollection.items ?? [];
 
-			const models = response.modelCollection.items ?? [];
+			// OCI catalog IDs can be management OCIDs while the selector exposes provider IDs.
+			// For a typed provider ID, retry its exact displayName form before falling back to typeahead.
+			if (exactModelId !== undefined && models.length === 0 && !isOciModelOCID(exactModelId)) {
+				response = await getOciModelCatalogResponse(
+					client.listModels({
+						...request,
+						id: undefined,
+						displayName: exactModelId,
+					}),
+				);
+				models = response.modelCollection.items ?? [];
+			}
+
 			return {
 				models,
 				searchModels: normalizeOciModelCatalog(models),
-				nextPage: response.opcNextPage,
+				nextPage: exactModelId === undefined ? response.opcNextPage : undefined,
 			};
 		})
 		.catch((error: unknown) => {

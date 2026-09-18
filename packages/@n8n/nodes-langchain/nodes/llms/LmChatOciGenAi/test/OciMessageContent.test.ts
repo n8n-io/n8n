@@ -1,11 +1,11 @@
 import { AIMessage, HumanMessage } from '@langchain/core/messages';
-import { OciGenAiGenericChat } from '@oracle/langchain-oci';
 import type { GenerativeAiInferenceClient } from 'oci-generativeaiinference';
 
-import { normalizeEmptyOciToolCallContent } from '../LmChatOciGenAi.node';
+import { createN8nOciGenAiGenericChat } from '../LmChatOciGenAi.node';
 
-function createChatModel(): OciGenAiGenericChat {
-	return new OciGenAiGenericChat({
+async function createChatModel() {
+	const N8nOciGenAiGenericChat = await createN8nOciGenAiGenericChat();
+	return new N8nOciGenAiGenericChat({
 		client: {} as GenerativeAiInferenceClient,
 		compartmentId: 'ocid1.compartment.oc1..test',
 		onDemandModelId: 'meta.llama-3.3-70b-instruct',
@@ -13,8 +13,8 @@ function createChatModel(): OciGenAiGenericChat {
 }
 
 describe('OCI chat message content', () => {
-	it('accepts text-only content blocks', () => {
-		const chatModel = createChatModel();
+	it('accepts text-only content blocks', async () => {
+		const chatModel = await createChatModel();
 
 		expect(() =>
 			chatModel._prepareRequest(
@@ -24,28 +24,31 @@ describe('OCI chat message content', () => {
 		).not.toThrow();
 	});
 
-	it('accepts empty content on AI tool-call messages', () => {
-		const chatModel = createChatModel();
+	it('accepts empty content on AI tool-call messages', async () => {
+		const chatModel = await createChatModel();
 
-		const messages = normalizeEmptyOciToolCallContent([
-			new AIMessage({
-				content: [],
-				tool_calls: [
-					{
-						id: 'call_1',
-						name: 'exampleTool',
-						args: {},
-						type: 'tool_call',
-					},
+		expect(() =>
+			chatModel._prepareRequest(
+				[
+					new AIMessage({
+						content: [],
+						tool_calls: [
+							{
+								id: 'call_1',
+								name: 'exampleTool',
+								args: {},
+								type: 'tool_call',
+							},
+						],
+					}),
 				],
-			}),
-		]);
-
-		expect(() => chatModel._prepareRequest(messages, {})).not.toThrow();
+				{},
+			),
+		).not.toThrow();
 	});
 
-	it('rejects unsupported multimodal content instead of serializing it as text', () => {
-		const chatModel = createChatModel();
+	it('rejects unsupported multimodal content instead of serializing it as text', async () => {
+		const chatModel = await createChatModel();
 
 		expect(() =>
 			chatModel._prepareRequest(
