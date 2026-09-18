@@ -119,3 +119,26 @@ export class TransferCredentialPublicDto extends Z.class({
 		example: 'VmwOO9HeTEj20kxM',
 	}),
 }) {}
+
+export class CredentialTestPublicDto extends Z.class({
+	status: z.enum(['OK', 'Error']).openapi({ example: 'OK' }),
+	message: z.string().openapi({ example: 'Connection successful!' }),
+}) {}
+
+export class CredentialSchemaPublicDto extends Z.class(
+	{
+		additionalProperties: z.literal(false),
+		type: z.literal('object'),
+		properties: z.record(z.string(), z.unknown()).openapi({
+			description:
+				"JSON Schema fragment for each of the credential type's fields, keyed by field name.",
+			example: { apiKey: { type: 'string' }, domain: { type: 'string' } },
+		}),
+		required: z.array(z.string()).openapi({
+			description: 'Names of the fields that are required for this credential type.',
+			example: ['apiKey', 'domain'],
+		}),
+		allOf: z.array(z.unknown()).optional(),
+	},
+	{ strict: true },
+) {}

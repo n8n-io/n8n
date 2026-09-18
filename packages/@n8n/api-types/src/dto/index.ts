@@ -136,6 +136,8 @@ export {
 	UpdateCredentialPublicDto,
 	DeleteCredentialPublicDto,
 	TransferCredentialPublicDto,
+	CredentialTestPublicDto,
+	CredentialSchemaPublicDto,
 	credentialPublicSchema,
 } from './credentials/credential-public.dto';
 export { ListCredentialsQueryDto } from './credentials/list-credentials-query.dto';
@@ -607,6 +609,7 @@ export {
 	type PromotionConnectionTarget,
 } from './promotions/promotion-connection.dto';
 export {
+	ApplyPackageDto,
 	ApplyPackageResultDto,
 	ContinueApplyPackageDto,
 	PromotePackageDto,

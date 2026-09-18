@@ -1,4 +1,5 @@
 import type {
+	ApplyPackageDto,
 	ApplyPackageResultDto,
 	ContinueApplyPackageDto,
 	PromotePackageDto,
@@ -362,8 +363,12 @@ export class PromotionsService {
 	}
 
 	/** Checks package bindings and imports only when no blocking issues remain. */
-	async apply(connectionId: string, actor: User): Promise<ApplyPackageResultDto> {
-		return await this.applyFromSource(connectionId, actor);
+	async apply(
+		connectionId: string,
+		actor: User,
+		expectedSource?: ApplyPackageDto['expectedSource'],
+	): Promise<ApplyPackageResultDto> {
+		return await this.applyFromSource(connectionId, actor, expectedSource);
 	}
 
 	async continueApply(
@@ -377,7 +382,7 @@ export class PromotionsService {
 	private async applyFromSource(
 		connectionId: string,
 		actor: User,
-		expectedSource?: ContinueApplyPackageDto['expectedSource'],
+		expectedSource?: ApplyPackageDto['expectedSource'],
 	): Promise<ApplyPackageResultDto> {
 		const input = await this.resolver.resolveForConnection(connectionId, 'apply');
 		this.assertInstanceScope(input, 'Apply');

@@ -6,7 +6,6 @@ import {
 	AgentChatResumeDto,
 	MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES,
 	MAX_AGENT_CHAT_ATTACHMENT_SIZE_MB,
-	N8N_CHAT_INTEGRATION_TYPE,
 	ViewableMimeTypes,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
@@ -30,7 +29,7 @@ import { AgentExecutionOrchestratorService } from './agent-execution-orchestrato
 import { AgentExecutionRecordingError } from './agent-execution-recording.error';
 import { AgentExecutionService, threadBelongsTo } from './agent-execution.service';
 import { messagesToDto } from './agent-message-mapper';
-import { type FlushableResponse, initSseStream, pumpChunks } from './agent-sse-stream';
+import { type FlushableResponse, initSseStream } from './agent-sse-stream';
 import { AgentTestChatService, chatThreadId } from './agent-test-chat.service';
 import { AgentTestRunService } from './agent-test-run.service';
 import { AgentsService } from './agents.service';
@@ -122,10 +121,7 @@ export class AgentChatController {
 			req.user,
 		);
 
-		const { send } = initSseStream(res);
-		const abortController = new AbortController();
-		const abortOnClose = () => abortController.abort();
-		res.once('close', abortOnClose);
+		const { send, onChunk, abortSignal, close } = initSseStream(res);
 		let executionId: string | undefined;
 		let storedAttachments: StoredAttachmentRef[] | undefined;
 		try {
@@ -135,7 +131,7 @@ export class AgentChatController {
 				sessionId,
 				credentialProvider,
 			});
-			if (abortController.signal.aborted) return;
+			if (abortSignal.aborted) return;
 			if (prepared.status === 'session_not_found') {
 				send({ type: 'error', message: 'Session not found' });
 				return;
@@ -158,24 +154,25 @@ export class AgentChatController {
 				threadId,
 				resourceId: draftChatMemoryResourceId(req.user.id),
 			});
+			abortSignal.throwIfAborted();
 
-			const suspended = await pumpChunks(
-				this.agentTestRunService.streamDraftRun({
-					agentId,
-					projectId,
-					message,
-					attachments: storedAttachments,
-					user: req.user,
-					sessionId: threadId,
-					previewChat: true,
-					onExecutionRecorded: (id) => {
-						executionId = id;
-					},
-					abortSignal: abortController.signal,
-				}),
-				send,
-			);
-			if (!suspended) {
+			const result = await this.agentTestRunService.executePreparedDraftRun({
+				agentId,
+				projectId,
+				message,
+				attachments: storedAttachments,
+				user: req.user,
+				sessionId: threadId,
+				previewChat: true,
+				errorMode: 'forward',
+				onChunk,
+				onExecutionRecorded: (id) => {
+					executionId = id;
+				},
+				abortSignal,
+			});
+			executionId = result.executionId ?? executionId;
+			if (result.status === 'completed') {
 				send({ type: 'done', sessionId: threadId, ...(executionId ? { executionId } : {}) });
 			}
 		} catch (error) {
@@ -188,13 +185,10 @@ export class AgentChatController {
 					.deleteByIds(storedAttachments.map((ref) => ref.id))
 					.catch(() => {});
 			}
-			if (!abortController.signal.aborted) {
-				const errorMessage = error instanceof Error ? error.message : 'Chat failed';
-				send({ type: 'error', message: errorMessage });
-			}
+			const errorMessage = error instanceof Error ? error.message : 'Chat failed';
+			send({ type: 'error', message: errorMessage });
 		} finally {
-			res.off('close', abortOnClose);
-			res.end();
+			close();
 		}
 	}
 
@@ -208,42 +202,32 @@ export class AgentChatController {
 	) {
 		const { projectId } = req.params;
 		const { runId, toolCallId, resumeData } = payload;
-		const { send } = initSseStream(res);
-
-		const abortController = new AbortController();
-		const abortOnClose = () => abortController.abort();
-		res.once('close', abortOnClose);
+		const { send, onChunk, abortSignal, close } = initSseStream(res);
 		try {
-			let executionId: string | undefined;
-			const suspended = await pumpChunks(
-				this.agentExecutionOrchestratorService.resumeForChat({
-					agentId,
-					projectId,
-					runId,
-					toolCallId,
-					resumeData,
-					user: req.user,
-					usePublishedVersion: false,
-					integrationType: N8N_CHAT_INTEGRATION_TYPE,
-					previewChat: true,
-					onExecutionRecorded: (id) => {
-						executionId = id;
-					},
-					abortSignal: abortController.signal,
-				}),
-				send,
-			);
-			if (!suspended) {
-				send({ type: 'done', ...(executionId ? { executionId } : {}) });
+			abortSignal.throwIfAborted();
+			const result = await this.agentTestRunService.resumePreparedDraftRun({
+				agentId,
+				projectId,
+				runId,
+				toolCallId,
+				resumeData,
+				user: req.user,
+				previewChat: true,
+				errorMode: 'forward',
+				onChunk,
+				abortSignal,
+			});
+			if (result.status === 'completed') {
+				send({
+					type: 'done',
+					...(result.executionId ? { executionId: result.executionId } : {}),
+				});
 			}
 		} catch (error) {
-			if (!abortController.signal.aborted) {
-				const errorMessage = error instanceof Error ? error.message : 'Resume failed';
-				send({ type: 'error', message: errorMessage });
-			}
+			const errorMessage = error instanceof Error ? error.message : 'Resume failed';
+			send({ type: 'error', message: errorMessage });
 		} finally {
-			res.off('close', abortOnClose);
-			res.end();
+			close();
 		}
 	}
 
