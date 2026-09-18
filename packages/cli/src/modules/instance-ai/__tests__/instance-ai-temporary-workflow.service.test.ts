@@ -43,7 +43,6 @@ function createService() {
 	adapterService.createContext.mockReturnValue(context);
 	adapterService.resolveExperimentGates.mockResolvedValue({
 		configEvalsEnabled: false,
-		mcpConnectionsEnabled: false,
 		conversationHistoryEnabled: false,
 		progressiveBuildingEnabled: false,
 		nodeUsageEnabled: false,
