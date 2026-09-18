@@ -7,15 +7,17 @@ import RestrictedNodePopover from './RestrictedNodePopover.vue';
 
 const DESCRIPTION =
 	'An administrator blocked this node. To use it in your workflows, contact an instance administrator for access.';
+/** Mirrors the leave delay in the component, so the wait below outlasts it. */
+const HOVER_GRACE_MS = 200;
 
 const renderComponent = createComponentRenderer(RestrictedNodePopover, {
 	props: { nodeTypeName: 'Gmail', scope: 'instance' },
 	global: {
 		stubs: {
 			ContactInstanceAdminModal: {
-				props: ['open', 'description'],
+				props: ['open', 'nodeTypeName'],
 				template:
-					'<div v-if="open" data-test-id="contact-instance-admin-modal">{{ description }}</div>',
+					'<div v-if="open" data-test-id="contact-instance-admin-modal">{{ nodeTypeName }}</div>',
 			},
 		},
 	},
@@ -73,5 +75,21 @@ describe('RestrictedNodePopover', () => {
 		await userEvent.click(await screen.findByTestId('node-restricted-contact-admin'));
 
 		expect(screen.getByTestId('contact-instance-admin-modal')).toHaveTextContent('Gmail');
+	});
+
+	it('keeps the dialog open after the pointer leaves the row and the popover', async () => {
+		const anchor = document.createElement('div');
+		document.body.appendChild(anchor);
+		renderPopover({ anchor });
+
+		await userEvent.hover(anchor);
+		const popover = await screen.findByTestId('node-restricted-popover');
+		await userEvent.click(screen.getByTestId('node-restricted-contact-admin'));
+		await userEvent.unhover(popover);
+		await userEvent.unhover(anchor);
+		await new Promise((resolve) => setTimeout(resolve, HOVER_GRACE_MS + 50));
+
+		expect(screen.getByTestId('contact-instance-admin-modal')).toHaveTextContent('Gmail');
+		anchor.remove();
 	});
 });

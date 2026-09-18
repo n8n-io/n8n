@@ -2436,7 +2436,7 @@
 	"typeAvailabilityPolicies.restrictedNode.description.instance": "An administrator blocked '{nodeType}' on this instance. Contact an instance admin or replace the node to continue.",
 	"typeAvailabilityPolicies.restrictedNode.description.project": "An administrator blocked '{nodeType}' in this project. Contact an instance admin or replace the node to continue.",
 	"typeAvailabilityPolicies.restrictedNode.description.generic": "An administrator blocked '{nodeType}'. Contact an instance admin or replace the node to continue.",
-	"typeAvailabilityPolicies.restrictedNode.contactAdmin": "Contact administrator",
+	"typeAvailabilityPolicies.restrictedNode.contactAdmin": "Contact instance admin",
 	"typeAvailabilityPolicies.restrictedNode.scope.instance": "Restricted on this instance",
 	"typeAvailabilityPolicies.restrictedNode.scope.project": "Restricted in this project",
 	"typeAvailabilityPolicies.restrictedNode.popover.description": "An administrator blocked this node. To use it in your workflows, contact an instance administrator for access.",

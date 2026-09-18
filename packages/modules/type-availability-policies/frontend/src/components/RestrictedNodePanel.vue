@@ -2,9 +2,9 @@
 import type { NodeTypeAvailabilityScope } from '@n8n/api-types';
 import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 
-import ContactInstanceAdminModal from './ContactInstanceAdminModal.vue';
+import ContactInstanceAdminButton from './ContactInstanceAdminButton.vue';
 
 const {
 	nodeTypeName,
@@ -24,7 +24,6 @@ const DESCRIPTION_KEY: Record<NodeTypeAvailabilityScope, BaseTextKey> = {
 };
 
 const i18n = useI18n();
-const isContactAdminOpen = ref(false);
 
 const description = computed(() =>
 	i18n.baseText(
@@ -42,15 +41,11 @@ const description = computed(() =>
 		</N8nText>
 		<N8nText :class="$style.description">{{ description }}</N8nText>
 		<div :class="$style.actions">
-			<N8nButton
-				variant="solid"
-				size="small"
-				icon="mail"
-				data-test-id="node-restricted-contact-admin"
-				@click="isContactAdminOpen = true"
-			>
-				{{ i18n.baseText('typeAvailabilityPolicies.restrictedNode.contactAdmin') }}
-			</N8nButton>
+			<ContactInstanceAdminButton :node-type-name="nodeTypeName" variant="solid" size="small">
+				<template #icon>
+					<N8nIcon icon="mail" size="small" />
+				</template>
+			</ContactInstanceAdminButton>
 			<N8nButton
 				v-if="showReplace"
 				variant="subtle"
@@ -62,7 +57,6 @@ const description = computed(() =>
 				{{ i18n.baseText('typeAvailabilityPolicies.restrictedNode.replaceNode') }}
 			</N8nButton>
 		</div>
-		<ContactInstanceAdminModal v-model:open="isContactAdminOpen" :node-type-name="nodeTypeName" />
 	</div>
 </template>
 
