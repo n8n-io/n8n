@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { TELEMETRY_EVENT, type InferTelemetryProps } from '@n8n/telemetry';
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 
 import type { IUpdateInformation, NewCredentialsModal } from '@/Interface';
@@ -11,6 +10,7 @@ import type {
 	ICredentialsDecrypted,
 	INode,
 	INodeParameters,
+	ITelemetryTrackProperties,
 } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
 import CredentialIcon from '../CredentialIcon.vue';
@@ -784,9 +784,7 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 			}
 		}
 
-		const trackProperties: InferTelemetryProps<
-			typeof TELEMETRY_EVENT.CREDENTIALS.USER_SAVED_CREDENTIALS
-		> = {
+		const trackProperties: ITelemetryTrackProperties = {
 			credential_type: credentialDetails.type,
 			workflow_id: telemetryWorkflowId.value,
 			credential_id: credential.id,
@@ -815,7 +813,7 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 		 * so that the `is_valid` property is correct.
 		 */
 		if (!isOAuthType.value) {
-			telemetry.track(TELEMETRY_EVENT.CREDENTIALS.USER_SAVED_CREDENTIALS, trackProperties);
+			telemetry.track('User saved credentials', trackProperties);
 			void handleDynamicNotification(!!trackProperties.is_valid);
 		}
 
@@ -919,8 +917,7 @@ async function createCredential(
 		is_new: true,
 	});
 
-	telemetry.track(TELEMETRY_EVENT.CREDENTIALS.USER_CREATED_CREDENTIALS, {
-		source: 'frontend',
+	telemetry.track('User created credentials', {
 		credential_type: credentialDetails.type,
 		credential_id: credential.id,
 		workflow_id: telemetryWorkflowId.value,
@@ -1162,10 +1159,8 @@ async function oAuthCredentialAuthorize() {
 	};
 
 	const handleOAuthResult = (successfullyConnected: boolean) => {
-		const trackProperties: InferTelemetryProps<
-			typeof TELEMETRY_EVENT.CREDENTIALS.USER_SAVED_CREDENTIALS
-		> = {
-			credential_type: credential.type,
+		const trackProperties: ITelemetryTrackProperties = {
+			credential_type: credentialTypeName.value,
 			workflow_id: telemetryWorkflowId.value || null,
 			credential_id: credentialId.value,
 			is_complete: !!requiredPropertiesFilled.value,
@@ -1178,7 +1173,7 @@ async function oAuthCredentialAuthorize() {
 			trackProperties.node_type = ndvStore.value.activeNode.type;
 		}
 
-		telemetry.track(TELEMETRY_EVENT.CREDENTIALS.USER_SAVED_CREDENTIALS, trackProperties);
+		telemetry.track('User saved credentials', trackProperties);
 		void handleDynamicNotification(successfullyConnected);
 
 		if (successfullyConnected) {

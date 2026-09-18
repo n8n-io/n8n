@@ -1,4 +1,3 @@
-import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
@@ -948,8 +947,7 @@ describe('useCredentialOAuth', () => {
 			const { createAndAuthorize } = useCredentialOAuth();
 			await createAndAuthorize('slackOAuth2Api');
 
-			expect(mockTrack).toHaveBeenCalledWith(TELEMETRY_EVENT.CREDENTIALS.USER_CREATED_CREDENTIALS, {
-				source: 'frontend',
+			expect(mockTrack).toHaveBeenCalledWith('User created credentials', {
 				credential_type: 'slackOAuth2Api',
 				credential_id: 'new-cred-123',
 				workflow_id: '',
@@ -962,7 +960,7 @@ describe('useCredentialOAuth', () => {
 			const { createAndAuthorize } = useCredentialOAuth();
 			await createAndAuthorize('slackOAuth2Api');
 
-			expect(mockTrack).toHaveBeenCalledWith(TELEMETRY_EVENT.CREDENTIALS.USER_SAVED_CREDENTIALS, {
+			expect(mockTrack).toHaveBeenCalledWith('User saved credentials', {
 				credential_type: 'slackOAuth2Api',
 				workflow_id: '',
 				credential_id: 'new-cred-123',
@@ -979,7 +977,7 @@ describe('useCredentialOAuth', () => {
 			const { createAndAuthorize } = useCredentialOAuth();
 			await createAndAuthorize('slackOAuth2Api');
 
-			expect(mockTrack).toHaveBeenCalledWith(TELEMETRY_EVENT.CREDENTIALS.USER_SAVED_CREDENTIALS, {
+			expect(mockTrack).toHaveBeenCalledWith('User saved credentials', {
 				credential_type: 'slackOAuth2Api',
 				workflow_id: '',
 				credential_id: 'new-cred-123',
@@ -997,7 +995,7 @@ describe('useCredentialOAuth', () => {
 			await createAndAuthorize('slackOAuth2Api', 'n8n-nodes-base.slack');
 
 			expect(mockTrack).toHaveBeenCalledWith(
-				TELEMETRY_EVENT.CREDENTIALS.USER_SAVED_CREDENTIALS,
+				'User saved credentials',
 				expect.objectContaining({
 					node_type: 'n8n-nodes-base.slack',
 				}),
@@ -1010,9 +1008,7 @@ describe('useCredentialOAuth', () => {
 			const { createAndAuthorize } = useCredentialOAuth();
 			await createAndAuthorize('slackOAuth2Api');
 
-			const savedCall = mockTrack.mock.calls.find(
-				(call) => call[0] === TELEMETRY_EVENT.CREDENTIALS.USER_SAVED_CREDENTIALS,
-			);
+			const savedCall = mockTrack.mock.calls.find((call) => call[0] === 'User saved credentials');
 			expect(savedCall?.[1]).not.toHaveProperty('node_type');
 		});
 
@@ -1210,10 +1206,10 @@ describe('useCredentialOAuth', () => {
 			await createAndAuthorize('slackOAuth2Api');
 
 			const createdIndex = mockTrack.mock.calls.findIndex(
-				(call) => call[0] === TELEMETRY_EVENT.CREDENTIALS.USER_CREATED_CREDENTIALS,
+				(call) => call[0] === 'User created credentials',
 			);
 			const savedIndex = mockTrack.mock.calls.findIndex(
-				(call) => call[0] === TELEMETRY_EVENT.CREDENTIALS.USER_SAVED_CREDENTIALS,
+				(call) => call[0] === 'User saved credentials',
 			);
 
 			expect(createdIndex).toBeGreaterThanOrEqual(0);

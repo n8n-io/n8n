@@ -13,6 +13,7 @@ Use these backend events:
 - `User updated credentials` with `source = backend`.
 
 Require both description properties on each event.
+Existing frontend creation events have no `source` property.
 Exclude frontend events and events that lack the required properties from both
 counts. Join `user_id` with the instance identity from the event envelope.
 Count each user once in the numerator and once in the denominator.

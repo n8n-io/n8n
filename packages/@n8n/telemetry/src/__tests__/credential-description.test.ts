@@ -28,12 +28,11 @@ describe('credential description telemetry', () => {
 		).toContain('description: unrecognized property');
 	});
 
-	it('accepts frontend creation without description metadata', () => {
+	it('accepts existing frontend creation without source or description metadata', () => {
 		expect(
 			getEventValidationError(TELEMETRY_EVENT.CREDENTIALS.USER_CREATED_CREDENTIALS, {
 				credential_id: 'credential-1',
 				credential_type: 'postgres',
-				source: 'frontend',
 				workflow_id: 'workflow-1',
 			}),
 		).toBeNull();

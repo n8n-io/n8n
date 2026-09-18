@@ -1,4 +1,3 @@
-import { TELEMETRY_EVENT, type InferTelemetryProps } from '@n8n/telemetry';
 import { useToast } from '@n8n/composables/useToast';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useI18n } from '@n8n/i18n';
@@ -7,6 +6,7 @@ import { createResultError, createResultOk, type Result } from '@n8n/utils/resul
 import {
 	NodeHelpers,
 	type CredentialInformation,
+	type GenericValue,
 	type ICredentialDataDecryptedObject,
 	type ICredentialType,
 	type INodeProperties,
@@ -449,8 +449,7 @@ export function useCredentialOAuth() {
 				{ skipStoreUpdate: true },
 			);
 
-			telemetry.track(TELEMETRY_EVENT.CREDENTIALS.USER_CREATED_CREDENTIALS, {
-				source: 'frontend',
+			telemetry.track('User created credentials', {
 				credential_type: credential.type,
 				credential_id: credential.id,
 				workflow_id: workflowsStore.workflowId,
@@ -471,9 +470,7 @@ export function useCredentialOAuth() {
 		oauthAbortController.value = null;
 		pendingCredentialId.value = null;
 
-		const trackProperties: InferTelemetryProps<
-			typeof TELEMETRY_EVENT.CREDENTIALS.USER_SAVED_CREDENTIALS
-		> = {
+		const trackProperties: Record<string, GenericValue> = {
 			credential_type: credentialTypeName,
 			workflow_id: workflowsStore.workflowId ?? null,
 			credential_id: credential.id,
@@ -487,7 +484,7 @@ export function useCredentialOAuth() {
 			trackProperties.node_type = nodeType;
 		}
 
-		telemetry.track(TELEMETRY_EVENT.CREDENTIALS.USER_SAVED_CREDENTIALS, trackProperties);
+		telemetry.track('User saved credentials', trackProperties);
 
 		if (success) {
 			await publishConnectedCredential(credential);

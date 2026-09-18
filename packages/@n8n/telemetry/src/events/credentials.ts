@@ -15,11 +15,14 @@ export const CREDENTIALS_TELEMETRY = defineTelemetryEvents({
 	USER_CREATED_CREDENTIALS: {
 		name: 'User created credentials',
 		description:
-			'A credential was created. The server and editor can both emit this event. Use source to select one emitter. Only the server reports description metadata. Description text is never included.',
+			'A credential was created. The server sets source to backend and reports description metadata. Existing editor events omit these properties. Description text is never included.',
 		properties: z.object({
 			credential_id: z.string(),
 			credential_type: z.string(),
-			source: z.enum(['frontend', 'backend']).describe('The emitter of the creation event.'),
+			source: z
+				.literal('backend')
+				.optional()
+				.describe('Set by the server. Existing editor events omit it.'),
 			public_api: z.boolean().optional().describe('Whether the server used the public API.'),
 			has_description: descriptionProperties.has_description.optional(),
 			description_length: descriptionProperties.description_length.optional(),
@@ -52,22 +55,6 @@ export const CREDENTIALS_TELEMETRY = defineTelemetryEvents({
 			jwe_enabled: z.boolean(),
 			credential_supports_managed_auth: z.boolean(),
 			credential_uses_managed_auth: z.boolean(),
-		}),
-	},
-	USER_SAVED_CREDENTIALS: {
-		name: 'User saved credentials',
-		description:
-			'The editor saved a non-OAuth credential, or an OAuth connection attempt finished. A connection attempt can finish without a credential save.',
-		properties: z.object({
-			credential_id: z.string(),
-			credential_type: z.string(),
-			workflow_id: z.string().nullable().optional(),
-			is_complete: z.boolean(),
-			is_new: z.boolean(),
-			is_valid: z.boolean().optional(),
-			uses_external_secrets: z.boolean(),
-			node_type: z.string().optional(),
-			authError: z.string().optional().describe('Legacy property for the connection error.'),
 		}),
 	},
 	USER_PROBED_CREDENTIAL: {
