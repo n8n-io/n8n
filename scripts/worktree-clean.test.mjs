@@ -127,10 +127,13 @@ describe('parsePorcelain', () => {
 describe('trashPathFor', () => {
 	it('places the trash next to the worktree, on the same filesystem', () => {
 		assert.equal(
-			trashPathFor('/workspaces/n8n/.claude/worktrees/foo-1a2b3c', 1700000000000),
+			trashPathFor('/workspaces/n8n/.claude/worktrees/foo-1a2b3c', undefined, 1700000000000),
 			'/workspaces/n8n/.claude/worktrees/.worktree-trash/foo-1a2b3c-1700000000000',
 		);
-		assert.equal(trashPathFor('/workspaces/wt-fix', 5), '/workspaces/.worktree-trash/wt-fix-5');
+		assert.equal(
+			trashPathFor('/workspaces/wt-fix', 'wt-fix-node_modules', 5),
+			'/workspaces/.worktree-trash/wt-fix-node_modules-5',
+		);
 	});
 });
 

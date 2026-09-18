@@ -18,7 +18,15 @@
 // trash afterwards: unlinking 250k files takes ~20 s, and that must not hold up
 // the Codespace start.
 import { execFile, execFileSync, spawn, spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, readdirSync, readlinkSync, renameSync, statSync } from 'node:fs';
+import {
+	existsSync,
+	mkdirSync,
+	readdirSync,
+	readFileSync,
+	readlinkSync,
+	renameSync,
+	statSync,
+} from 'node:fs';
 import { basename, dirname, join, relative, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { parseArgs, promisify } from 'node:util';
@@ -116,9 +124,12 @@ export function decide(info, { olderThanDays }) {
 	return keep(`active ${info.idleDays} day${info.idleDays === 1 ? '' : 's'} ago`);
 }
 
-/** Where a removed worktree is renamed to before the background delete. */
-export function trashPathFor(path, now = Date.now()) {
-	return join(dirname(path), TRASH_DIR, `${basename(path)}-${now}`);
+/**
+ * Where a removed directory is renamed to before the background delete: a
+ * `.worktree-trash/` folder next to the worktree, so the rename stays on one filesystem.
+ */
+export function trashPathFor(worktreePath, name = basename(worktreePath), now = Date.now()) {
+	return join(dirname(worktreePath), TRASH_DIR, `${name}-${now}`);
 }
 
 export function formatSize(kb) {
@@ -172,21 +183,26 @@ function isInside(child, parent) {
 }
 
 /**
- * Paths of the cwd of every running process, or null when that cannot be read.
+ * The cwd of every running process, or null when that cannot be read at all.
  * Includes this process, so the worktree the cleaner runs from is always kept.
+ *
+ * On Linux a few processes hide their cwd even from their own user: zombies have
+ * none, and sshd's privilege-separated children are not dumpable. Those cannot
+ * hold a worktree open, so they are counted and reported, not treated as unknown.
  */
 function processCwds() {
 	if (process.platform === 'linux') {
 		const cwds = [process.cwd()];
+		let unreadable = 0;
 		for (const pid of readdirSync('/proc')) {
 			if (!/^\d+$/.test(pid)) continue;
 			try {
 				cwds.push(readlinkSync(`/proc/${pid}/cwd`));
-			} catch {
-				// The process exited or belongs to another user.
+			} catch (error) {
+				if (error.code === 'EACCES' && !isZombie(pid)) unreadable++;
 			}
 		}
-		return cwds;
+		return { cwds, unreadable };
 	}
 	// macOS: lsof prints `p<pid>` then `n<path>` for each process.
 	const res = spawnSync('lsof', ['-a', '-d', 'cwd', '-Fn'], { encoding: 'utf8' });
@@ -195,7 +211,15 @@ function processCwds() {
 	for (const line of res.stdout.split('\n')) {
 		if (line.startsWith('n')) cwds.push(line.slice(1));
 	}
-	return cwds;
+	return { cwds, unreadable: 0 };
+}
+
+function isZombie(pid) {
+	try {
+		return /^State:\s+Z/m.test(readFileSync(`/proc/${pid}/status`, 'utf8'));
+	} catch {
+		return true;
+	}
 }
 
 function mtimeMs(path) {
@@ -224,46 +248,59 @@ function dirSizeKb(path) {
 	return Number.isNaN(kb) ? null : kb;
 }
 
-function repoSlug(root) {
-	const url = tryGit(['remote', 'get-url', 'origin'], root) ?? '';
-	const match = url.match(/github\.com[/:]([^/]+\/[^/.]+)/);
-	return match ? match[1] : null;
+/** GitHub `owner/repo` slugs of the origin and upstream remotes, origin first. */
+function repoSlugs(root) {
+	const slugs = [];
+	for (const remote of ['origin', 'upstream']) {
+		const url = tryGit(['remote', 'get-url', remote], root) ?? '';
+		const match = url.match(/github\.com[/:]([^/]+\/[^/.]+)/);
+		if (match && !slugs.includes(match[1])) slugs.push(match[1]);
+	}
+	return slugs;
 }
 
 /**
- * Most recent PR per branch, looked up concurrently: Map<branch, { number, state } | null>.
- * A branch is missing from the map when its lookup failed or timed out.
+ * Most recent PR per branch across the given repositories, looked up concurrently:
+ * Map<branch, { number, state } | null>. A branch is missing from the map when a
+ * lookup failed or timed out and no other repository reported a PR for it.
+ * A fork's PRs live in the upstream repository, hence more than one slug.
  */
-async function lookupPrs(slug, branches) {
+async function lookupPrs(slugs, branches) {
 	const prs = new Map();
+	const failed = new Set();
 	await Promise.all(
-		branches.map(async (branch) => {
-			try {
-				const { stdout } = await execFileAsync(
-					'gh',
-					[
-						'pr',
-						'list',
-						'-R',
-						slug,
-						'--head',
-						branch,
-						'--state',
-						'all',
-						'--limit',
-						'1',
-						'--json',
-						'number,state',
-					],
-					{ encoding: 'utf8', timeout: GH_TIMEOUT_MS },
-				);
-				const [pr] = JSON.parse(stdout);
-				prs.set(branch, pr ? { number: pr.number, state: pr.state } : null);
-			} catch {
-				// Left out of the map: the caller keeps the worktree.
-			}
-		}),
+		branches.flatMap((branch) =>
+			slugs.map(async (slug) => {
+				try {
+					const { stdout } = await execFileAsync(
+						'gh',
+						[
+							'pr',
+							'list',
+							'-R',
+							slug,
+							'--head',
+							branch,
+							'--state',
+							'all',
+							'--limit',
+							'1',
+							'--json',
+							'number,state',
+						],
+						{ encoding: 'utf8', timeout: GH_TIMEOUT_MS },
+					);
+					const [pr] = JSON.parse(stdout);
+					if (pr) prs.set(branch, { number: pr.number, state: pr.state });
+					else if (!prs.has(branch)) prs.set(branch, null);
+				} catch {
+					failed.add(branch);
+				}
+			}),
+		),
 	);
+	// A failed lookup only counts when no repository answered with a PR.
+	for (const branch of failed) if (prs.get(branch) === null) prs.delete(branch);
 	return prs;
 }
 
@@ -283,7 +320,7 @@ function gather(wt, { root, prs, cwds, measureSize, now }) {
 	};
 	if (info.missing) return info;
 
-	info.inUse = cwds ? cwds.some((cwd) => isInside(cwd, wt.path)) : null;
+	info.inUse = cwds ? cwds.cwds.some((cwd) => isInside(cwd, wt.path)) : null;
 	info.dirty = (tryGit(['status', '--porcelain'], wt.path) ?? 'unknown') !== '';
 	info.unpushed = Number(
 		tryGit(['rev-list', '--count', 'HEAD', '--not', '--remotes'], wt.path) ?? 1,
@@ -307,9 +344,11 @@ function gather(wt, { root, prs, cwds, measureSize, now }) {
 // ---------------------------------------------------------------------------
 // Actions.
 
-/** Moves a path into the trash directory next to it. Returns the trash path. */
-function moveToTrash(path) {
-	const dest = trashPathFor(path);
+/** Renames `path` into the worktree's trash folder. Returns the trash path. */
+function moveToTrash(worktreePath, path = worktreePath) {
+	const name =
+		path === worktreePath ? basename(path) : `${basename(worktreePath)}-${basename(path)}`;
+	const dest = trashPathFor(worktreePath, name);
 	mkdirSync(dirname(dest), { recursive: true });
 	renameSync(path, dest);
 	return dest;
@@ -318,18 +357,31 @@ function moveToTrash(path) {
 /** Deletes the given paths in a detached process so this run can exit at once. */
 function deleteInBackground(paths) {
 	if (paths.length === 0) return;
-	const script =
-		'for (const p of process.argv.slice(1)) require("node:fs").rmSync(p, { recursive: true, force: true })';
+	const script = [
+		'const fs = require("node:fs");',
+		'for (const p of process.argv.slice(1)) {',
+		'  try { fs.rmSync(p, { recursive: true, force: true }); } catch {}',
+		'}',
+	].join('\n');
 	spawn(process.execPath, ['-e', script, ...paths], { detached: true, stdio: 'ignore' }).unref();
 }
 
-/** Trash left behind by an earlier run whose background delete did not finish. */
-function leftoverTrash(worktrees) {
-	const dirs = new Set(worktrees.map((wt) => join(dirname(wt.path), TRASH_DIR)));
+/**
+ * Trash an earlier run left behind because its background delete did not finish.
+ * Looks next to every listed worktree and in the usual worktree parents, so trash
+ * of a worktree that is already pruned is found too.
+ */
+function leftoverTrash(root, worktrees) {
+	const dirs = new Set([
+		join(root, '.claude', 'worktrees'),
+		dirname(root),
+		...worktrees.map((wt) => dirname(wt.path)),
+	]);
 	const paths = [];
 	for (const dir of dirs) {
-		if (!existsSync(dir)) continue;
-		for (const entry of readdirSync(dir)) paths.push(join(dir, entry));
+		const trash = join(dir, TRASH_DIR);
+		if (!existsSync(trash)) continue;
+		for (const entry of readdirSync(trash)) paths.push(join(trash, entry));
 	}
 	return paths;
 }
@@ -361,7 +413,7 @@ function removeWorktree(row, root) {
 
 /**
  * Moves ignored node_modules, dist and .turbo directories of a kept worktree to
- * the trash. Returns { message, trash: [paths] }.
+ * the trash folder next to it. Returns { message, trash: [paths] }.
  */
 function pruneDeps(row) {
 	const listed = tryGit(
@@ -377,7 +429,7 @@ function pruneDeps(row) {
 	let failed = 0;
 	for (const target of targets) {
 		try {
-			trash.push(moveToTrash(target));
+			trash.push(moveToTrash(row.path, target));
 		} catch (error) {
 			failed++;
 			console.error(`${target}: ${error.message}`);
@@ -425,11 +477,11 @@ export async function main(argv = process.argv.slice(2)) {
 	}
 	const [main, ...others] = parsePorcelain(porcelain);
 	const root = main.path;
-	const slug = values.gh ? repoSlug(root) : null;
+	const slugs = values.gh ? repoSlugs(root) : [];
 	const branches = others.map((wt) => wt.branch).filter(Boolean);
 	const ctx = {
 		root,
-		prs: slug ? await lookupPrs(slug, branches) : null,
+		prs: slugs.length > 0 ? await lookupPrs(slugs, branches) : null,
 		cwds: processCwds(),
 		measureSize: !values.yes,
 		now: Date.now(),
@@ -454,8 +506,13 @@ export async function main(argv = process.argv.slice(2)) {
 		const reclaim = removable.reduce((sum, r) => sum + (r.sizeKb ?? 0), 0);
 		const reclaimNote = ctx.measureSize ? `, ${formatSize(reclaim)} reclaimable` : '';
 		console.log(`\n${removable.length} of ${rows.length} worktrees removable${reclaimNote}.`);
-		if (ctx.cwds === null)
+		if (ctx.cwds === null) {
 			console.log('Process check unavailable on this platform: nothing is removed.');
+		} else if (ctx.cwds.unreadable > 0) {
+			console.log(
+				`${ctx.cwds.unreadable} process${ctx.cwds.unreadable === 1 ? '' : 'es'} hide their cwd (sshd, other users): not checked.`,
+			);
+		}
 	}
 
 	if (!values.yes) {
@@ -466,7 +523,7 @@ export async function main(argv = process.argv.slice(2)) {
 	}
 
 	const results = [];
-	const trash = leftoverTrash(others);
+	const trash = leftoverTrash(root, others);
 	for (const row of rows) {
 		try {
 			if (row.action === 'remove') {
