@@ -5,15 +5,21 @@ const indexColumns = ['agentId', 'threadId', 'expired', 'updatedAt'];
 export class AddThreadIdToAgentCheckpoints1789717191125 implements ReversibleMigration {
 	async up(context: MigrationContext) {
 		const { addColumns, column, createIndex } = context.schemaBuilder;
-		await addColumns(
-			'agent_checkpoints',
-			[
-				column('threadId').text.comment(
-					'SDK thread key from checkpoint state. Execution history is optional.',
-				),
-			],
-			{ recreatesOnSqlite: true },
-		);
+		if (context.isSqlite) {
+			await context.runQuery(
+				`ALTER TABLE ${context.escape.tableName('agent_checkpoints')} ADD COLUMN ${context.escape.columnName('threadId')} TEXT`,
+			);
+		} else {
+			await addColumns(
+				'agent_checkpoints',
+				[
+					column('threadId').text.comment(
+						'SDK thread key from checkpoint state. Execution history is optional.',
+					),
+				],
+				{ recreatesOnSqlite: true },
+			);
+		}
 		await this.backfillThreadIds(context);
 		await createIndex('agent_checkpoints', indexColumns);
 	}

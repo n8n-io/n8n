@@ -71,6 +71,17 @@ describe('AddThreadIdToAgentCheckpoints migration', () => {
 		);
 	}
 
+	async function readSqliteCheckpointRootPage() {
+		return await withContext(async ({ escape, isSqlite, runQuery, tablePrefix }) => {
+			if (!isSqlite) return undefined;
+			const [table] = await runQuery<Array<{ rootPage: number }>>(
+				`SELECT rootpage AS ${escape.columnName('rootPage')} FROM sqlite_master WHERE type = 'table' AND name = :tableName`,
+				{ tableName: `${tablePrefix}agent_checkpoints` },
+			);
+			return table?.rootPage;
+		});
+	}
+
 	beforeAll(async () => {
 		await Container.get(DbConnection).init();
 		dataSource = Container.get(DataSource);
@@ -107,12 +118,16 @@ describe('AddThreadIdToAgentCheckpoints migration', () => {
 		await Container.get(DbConnection).close();
 	});
 
-	it('indexes existing thread keys across batches without changing checkpoint state or age', async () => {
+	it('indexes existing thread keys without rebuilding the SQLite table or changing checkpoint state or age', async () => {
 		const original = await readOriginalColumns();
+		const sqliteRootPage = await readSqliteCheckpointRootPage();
 
 		await runSingleMigration(MIGRATION_NAME);
 
 		expect(await readOriginalColumns()).toEqual(original);
+		if (sqliteRootPage !== undefined) {
+			expect(await readSqliteCheckpointRootPage()).toBe(sqliteRootPage);
+		}
 		await withContext(async (context) => {
 			const { escape, runQuery } = context;
 			const rows = await runQuery<Array<{ runId: string; threadId: string | null }>>(
