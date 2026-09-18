@@ -13,8 +13,9 @@ import { dirname, resolve } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 
-import { codespaceSecret } from './codespace-env.mjs';
+import { codespaceSecret } from '../codespace-env.mjs';
 import { envForSlugs } from './preview-labels.mjs';
+import { phaseMarkerLine } from './preview-phases.mjs';
 import { fetchRemoteEnv } from './preview-remote-env.mjs';
 import { serveHealthPath, servePort, waitForHealth, waitForReady } from './serve-ready.mjs';
 
@@ -35,16 +36,23 @@ const OWNER_EMAIL = process.env.PREVIEW_OWNER_EMAIL ?? 'preview@n8n.io';
 const OWNER_PASSWORD = process.env.PREVIEW_OWNER_PASSWORD ?? 'PreviewInstance1';
 const HEAP_MB = process.env.PREVIEW_BUILD_HEAP_MB ?? '6144';
 // Resolve from this file, not cwd, so the tmux command lands in the right tree.
-const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const port = servePort();
 const healthPath = serveHealthPath();
 
 const tmux = (...args) => spawnSync('tmux', args, { stdio: 'ignore' });
 
+// `preview.mjs` sets this for a CI (--json) run only, and reads the markers back off
+// the ssh stream to keep the PR comment current. A laptop sees plain progress.
+const phase = (key) => {
+	if (process.env.PREVIEW_PHASES === '1') console.log(phaseMarkerLine(key));
+};
+
 // Stop the old backend before rebuilding: it frees the port, and it stops the
 // previous build being served alongside newly written assets.
 tmux('kill-session', '-t', SESSION);
 
+phase('build');
 console.log(`Building (turbo cache — fast when warm; log: ${BUILD_LOG})…`);
 const buildFd = openSync(BUILD_LOG, 'w');
 try {
@@ -104,13 +112,19 @@ const { env: remoteEnv, warnings: remoteWarnings } = await fetchRemoteEnv({
 	password: codespaceSecret('CODESPACE_ENV_PASSWORD'),
 	pr: process.env.PREVIEW_PR
 });
-for (const warning of remoteWarnings) console.warn(warning);
-if (remoteEnv.length)
+for (const warning of remoteWarnings) {
+	console.warn(warning);
+}
+if (remoteEnv.length) {
 	// Names only: the webhook can return a secret.
 	console.log(
 		`Applying remote preview env: ${remoteEnv.map((pair) => pair.split('=')[0]).join(', ')}`,
 	);
+} else {
+	console.log("No remote envs setup")
+}
 
+phase('start');
 console.log(`Starting backend in tmux session '${SESSION}' (log: ${BE_LOG})…`);
 const started = tmux(
 	'new',

@@ -12,7 +12,7 @@ import {
 } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { scheduleFromDefinition } from '@n8n/scheduler';
-import { ErrorReporter, InstanceSettings } from 'n8n-core';
+import { ErrorReporter, InstanceSettings, Tracing } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
 import { strict } from 'node:assert';
 
@@ -91,6 +91,7 @@ export class SystemTaskRunner {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly errorReporter: ErrorReporter,
 		private readonly eventService: EventService,
+		private readonly tracing: Tracing,
 	) {
 		this.logger = logger.scoped('system-tasks');
 	}
@@ -245,6 +246,7 @@ export class SystemTaskRunner {
 					this.shutdownController.signal,
 					this.logger,
 					this.eventService,
+					this.tracing,
 					(error) => this.reportFailure('A durable system task run failed', task, error),
 				),
 			);
@@ -366,7 +368,13 @@ export class SystemTaskRunner {
 			this.emitSkipped(task, 'aborted');
 			return;
 		}
-		const outcome = await observeSystemTaskRun(this.eventService, task, 'in_memory', signal);
+		const outcome = await observeSystemTaskRun(
+			this.eventService,
+			this.tracing,
+			task,
+			'in_memory',
+			signal,
+		);
 		if (outcome.result === 'failure') {
 			this.reportFailure('A system task run failed', task, outcome.error);
 			this.scheduleRetry(routed);

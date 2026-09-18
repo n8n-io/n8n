@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process';
-import { chmodSync, mkdtempSync } from 'node:fs';
+import { chmodSync, mkdtempSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
@@ -120,6 +120,7 @@ async function generateMtlsCerts(
 	const tlsDir = mkdtempSync(join(tmpdir(), `${projectName}-sandbox-tls-`));
 	ctx?.registerPath?.(tlsDir);
 	chmodSync(tlsDir, 0o755);
+	const { uid: hostUid, gid: hostGid } = statSync(tlsDir);
 	const { consumer, throwWithLogs } = createSilentLogConsumer();
 
 	try {
@@ -132,8 +133,8 @@ async function generateMtlsCerts(
 				'-c',
 				[
 					'bootstrap-mtls.sh --out-dir /tls --api-san sandbox-api --control-san-prefix sandbox-runner --world-readable',
-					'chown -R sandbox-api:sandbox-api /tls/api',
 					'chmod -R a+rX /tls',
+					`chown -R ${hostUid}:${hostGid} /tls`,
 					`echo ${CERT_GEN_SENTINEL}`,
 				].join(' && '),
 			])

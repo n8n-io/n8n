@@ -40,6 +40,7 @@ import type {
 	IWorkflowBase,
 	WebhookResponseData,
 	IDestinationNode,
+	IUser,
 } from 'n8n-workflow';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
@@ -162,6 +163,61 @@ function isMcpListToolsRelay(value: unknown): value is McpListToolsRelayPayload 
 		typeof (value as Record<string, unknown>).messageId === 'string' &&
 		'marker' in value
 	);
+}
+
+/** Adds MCP queue metadata and returns whether the request was handled as a tools relay. */
+async function prepareMcpQueueExecution(
+	workflowStartNode: INode,
+	req: WebhookRequest,
+	webhookResultData: IWebhookResponseData,
+	runData: IWorkflowExecutionDataProcess,
+): Promise<boolean> {
+	const executionsConfig = Container.get(ExecutionsConfig);
+	if (workflowStartNode.type !== MCP_TRIGGER_NODE_TYPE || executionsConfig.mode !== 'queue') {
+		return false;
+	}
+
+	const querySessionId = req.query?.sessionId;
+	const headerSessionId = req.headers['mcp-session-id'];
+	const mcpSessionId =
+		typeof querySessionId === 'string'
+			? querySessionId
+			: typeof headerSessionId === 'string'
+				? headerSessionId
+				: '';
+
+	const firstItem = webhookResultData.workflowData?.[0]?.[0];
+	const mcpMessageId =
+		(firstItem && 'json' in firstItem && typeof firstItem.json?.mcpMessageId === 'string'
+			? firstItem.json.mcpMessageId
+			: null) ?? `mcp-trigger-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+
+	runData.isMcpExecution = true;
+	runData.mcpType = 'trigger';
+	runData.mcpSessionId = mcpSessionId;
+	runData.mcpMessageId = mcpMessageId;
+
+	const mcpToolCallValue = firstItem && 'json' in firstItem ? firstItem.json?.mcpToolCall : null;
+	if (isMcpToolCall(mcpToolCallValue)) {
+		runData.mcpToolCall = mcpToolCallValue;
+	}
+
+	// The worker has no access to the request, so carry the node input the trigger built
+	runData.mcpToolInput = webhookResultData.toolInput;
+
+	const mcpListToolsRelayValue =
+		firstItem && 'json' in firstItem ? firstItem.json?.mcpListToolsRelay : null;
+	if (!isMcpListToolsRelay(mcpListToolsRelayValue)) return false;
+
+	const { Publisher } = await import('@/scaling/pubsub/publisher.service.js');
+	const publisher = Container.get(Publisher);
+	await publisher.publishMcpRelay({
+		sessionId: mcpListToolsRelayValue.sessionId,
+		messageId: mcpListToolsRelayValue.messageId,
+		response: mcpListToolsRelayValue.marker,
+	});
+
+	return true;
 }
 
 export function handleHostedChatResponse(
@@ -533,6 +589,27 @@ export function prepareExecutionData(
 	return { runExecutionData, pinData };
 }
 
+function translateAuthFailureReason(reason?: AuthFailureReason): OAuth2FailureReason {
+	switch (reason) {
+		case 'verifier_not_registered':
+		case 'unknown_error':
+			return 'verifier_unavailable';
+		case 'insufficient_scope':
+			return 'insufficient_scope';
+		default:
+			return 'invalid_token';
+	}
+}
+
+function toWebhookUser(user: IUser): IUser {
+	return {
+		id: user.id,
+		email: user.email,
+		firstName: user.firstName,
+		lastName: user.lastName,
+	};
+}
+
 /**
  * Executes a webhook
  */
@@ -632,35 +709,13 @@ export async function executeWebhook(
 	const authService = Container.get(AuthService);
 	additionalData.validateCookieAuth = async (token: string) => {
 		const user = await authService.validateCookieToken(token);
-		return {
-			id: user.id,
-			email: user.email,
-			firstName: user.firstName,
-			lastName: user.lastName,
-		};
+		return toWebhookUser(user);
 	};
 
 	additionalData.getUserById = async (id: string) => {
 		const user = await Container.get(UserRepository).findByIdWithRole(id);
 		if (!user) return undefined;
-		return {
-			id: user.id,
-			email: user.email,
-			firstName: user.firstName,
-			lastName: user.lastName,
-		};
-	};
-
-	const translateAuthFailureReason = (reason?: AuthFailureReason): OAuth2FailureReason => {
-		switch (reason) {
-			case 'verifier_not_registered':
-			case 'unknown_error':
-				return 'verifier_unavailable';
-			case 'insufficient_scope':
-				return 'insufficient_scope';
-			default:
-				return 'invalid_token';
-		}
+		return toWebhookUser(user);
 	};
 
 	additionalData.beginN8nOAuth2Flow = async (
@@ -685,12 +740,7 @@ export async function executeWebhook(
 			admittedBy = { resource: resourceUrl, grant: result.grant };
 			return {
 				valid: true,
-				user: {
-					id: result.user.id,
-					email: result.user.email,
-					firstName: result.user.firstName,
-					lastName: result.user.lastName,
-				},
+				user: toWebhookUser(result.user),
 			};
 		}
 
@@ -1005,53 +1055,13 @@ export async function executeWebhook(
 			runData.pushRef = runExecutionData.pushRef;
 		}
 
-		const executionsConfig = Container.get(ExecutionsConfig);
-		if (workflowStartNode.type === MCP_TRIGGER_NODE_TYPE && executionsConfig.mode === 'queue') {
-			const querySessionId = req.query?.sessionId;
-			const headerSessionId = req.headers['mcp-session-id'];
-			const mcpSessionId =
-				typeof querySessionId === 'string'
-					? querySessionId
-					: typeof headerSessionId === 'string'
-						? headerSessionId
-						: '';
-
-			const firstItem = webhookResultData.workflowData?.[0]?.[0];
-			const mcpMessageId =
-				(firstItem && 'json' in firstItem && typeof firstItem.json?.mcpMessageId === 'string'
-					? firstItem.json.mcpMessageId
-					: null) ?? `mcp-trigger-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
-
-			runData.isMcpExecution = true;
-			runData.mcpType = 'trigger';
-			runData.mcpSessionId = mcpSessionId;
-			runData.mcpMessageId = mcpMessageId;
-
-			const mcpToolCallValue =
-				firstItem && 'json' in firstItem ? firstItem.json?.mcpToolCall : null;
-			if (isMcpToolCall(mcpToolCallValue)) {
-				runData.mcpToolCall = mcpToolCallValue;
-			}
-
-			// The worker has no access to the request, so carry the node input the trigger built
-			runData.mcpToolInput = webhookResultData.toolInput;
-
-			// Handle MCP list tools relay - forward to main with SSE transport via pub/sub
-			const mcpListToolsRelayValue =
-				firstItem && 'json' in firstItem ? firstItem.json?.mcpListToolsRelay : null;
-			if (isMcpListToolsRelay(mcpListToolsRelayValue)) {
-				const { Publisher } = await import('@/scaling/pubsub/publisher.service.js');
-				const publisher = Container.get(Publisher);
-				await publisher.publishMcpRelay({
-					sessionId: mcpListToolsRelayValue.sessionId,
-					messageId: mcpListToolsRelayValue.messageId,
-					response: mcpListToolsRelayValue.marker,
-				});
-				// Don't run workflow - the relay will be handled by the main with the transport
-				// Return undefined since no execution is started
-				return undefined;
-			}
-		}
+		const didPublishMcpRelay = await prepareMcpQueueExecution(
+			workflowStartNode,
+			req,
+			webhookResultData,
+			runData,
+		);
+		if (didPublishMcpRelay) return undefined;
 
 		let responsePromise: IDeferredPromise<IN8nHttpFullResponse> | undefined;
 		if (responseMode === 'responseNode') {
@@ -1401,6 +1411,18 @@ function requiresMultipartFormData(node: INode): boolean {
 	);
 }
 
+function isParsableContentType(contentType: string | undefined): boolean {
+	if (!contentType) return false;
+
+	return (
+		contentType.startsWith('application/json') ||
+		contentType.startsWith('text/plain') ||
+		contentType.startsWith('application/x-www-form-urlencoded') ||
+		contentType.endsWith('/xml') ||
+		contentType.endsWith('+xml')
+	);
+}
+
 /**
  * Parses the request body (form, xml, json, form-urlencoded, etc.) if needed
  * into the `req.body` property.
@@ -1438,21 +1460,11 @@ async function parseRequestBody(
 		const { body, cleanup } = await parseFormData(req);
 		req.body = body;
 		return cleanup;
-	} else {
-		if (nodeVersion > 1) {
-			if (
-				contentType?.startsWith('application/json') ||
-				contentType?.startsWith('text/plain') ||
-				contentType?.startsWith('application/x-www-form-urlencoded') ||
-				contentType?.endsWith('/xml') ||
-				contentType?.endsWith('+xml')
-			) {
-				await parseBody(req);
-			}
-		} else {
-			await parseBody(req);
-		}
 	}
+
+	if (nodeVersion > 1 && !isParsableContentType(contentType)) return undefined;
+
+	await parseBody(req);
 
 	return undefined;
 }

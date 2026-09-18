@@ -144,6 +144,12 @@ paths:
   /promotions/connections/{promotionConnectionId}/apply:
     post:
       $ref: ./handlers/promotions/spec/paths/applyPackage.generated.yml
+  /promotions/connections/{promotionConnectionId}/apply/continue:
+    post:
+      $ref: ./handlers/promotions/spec/paths/continueApplyPackage.generated.yml
+  /promotions/projects/{projectId}/changes/{direction}:
+    get:
+      $ref: ./handlers/promotions/spec/paths/getPromotionChanges.generated.yml
   /role-mapping-rules:
     get:
       $ref: ./handlers/role-mapping-rules/spec/paths/getRoleMappingRules.generated.yml

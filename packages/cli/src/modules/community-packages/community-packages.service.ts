@@ -24,6 +24,7 @@ import { valid } from 'semver';
 
 import { NODE_PACKAGE_PREFIX, NPM_PACKAGE_STATUS_GOOD, RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
+import { IncompatibleNodesApiVersionError } from '@/errors/response-errors/incompatible-nodes-api-version.error';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
@@ -287,6 +288,35 @@ export class CommunityPackagesService {
 		}
 	}
 
+	/**
+	 * Rejects a downloaded package that requires a node-authoring API version this
+	 * runtime does not support (or declares a malformed one). Runs after
+	 * `downloadPackage` extracted the files and before any `require()` of node
+	 * code, so no loader can ever import incompatible node code.
+	 *
+	 * An unreadable `package.json` is not a compatibility verdict: fall through and
+	 * let the load step report it.
+	 */
+	private async assertPackageApiVersionSupported(packageName: string) {
+		const packageJson = await this.readInstalledPackageJson(packageName);
+		if (!packageJson) return;
+
+		const check = checkNodesApiVersion(packageJson);
+		if (check.compatible) return;
+
+		const isMalformed = check.reason === 'malformed';
+
+		throw new IncompatibleNodesApiVersionError(
+			isMalformed
+				? `This community node declares an invalid n8n node API version (${JSON.stringify(check.declared)}). Install a version of the package with valid metadata or contact the package author.`
+				: "This community node isn't compatible with your version of n8n. Update n8n to use it.",
+			{
+				requiredNodesApiVersion: isMalformed ? null : Number(check.declared),
+				supportedNodesApiVersion: N8N_NODES_API_VERSION,
+			},
+		);
+	}
+
 	/** Reads the version a package actually has on disk, or `null` if absent or unreadable. */
 	private async readInstalledPackageVersion(packageName: string): Promise<string | null> {
 		return (await this.readInstalledPackageJson(packageName))?.version ?? null;
@@ -526,6 +556,8 @@ export class CommunityPackagesService {
 
 			try {
 				await this.downloadPackage(packageName, packageVersion, authToken);
+				// Reject before the loader imports node code or the database records the version.
+				await this.assertPackageApiVersionSupported(packageName);
 			} catch (error) {
 				// No reload here: the previous package was not unloaded before the download
 				await this.restorePackageFiles(packageName, {
@@ -674,7 +706,13 @@ export class CommunityPackagesService {
 
 			await this.installOrUpdateNpmPackage(installedPackage.packageName, resolvedVersion);
 		} catch (error) {
-			const details = { packageName, reason: ensureError(error).message };
+			const details = {
+				packageName,
+				reason: ensureError(error).message,
+				// The operator needs both node API versions to see why a leader's package
+				// is rejected here; the user-facing message deliberately omits them.
+				...(error instanceof IncompatibleNodesApiVersionError ? error.meta : {}),
+			};
 
 			if (accepted) this.logger.error('Failed to install community package', details);
 			else this.logger.warn('Skipped installing community package', details);
@@ -736,6 +774,8 @@ export class CommunityPackagesService {
 			// entry is justified by the leader's database record, not by this instance's disk.
 			try {
 				await this.downloadPackage(packageName, packageVersion, authToken);
+				// The command may come from a newer leader in a mixed fleet.
+				await this.assertPackageApiVersionSupported(packageName);
 			} catch (error) {
 				// No reload: the previous package was not unloaded before the download
 				await this.restorePackageDirectory(packageName, backupDirectory);
