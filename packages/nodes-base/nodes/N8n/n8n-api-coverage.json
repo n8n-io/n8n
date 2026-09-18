@@ -125,7 +125,7 @@
 		"GET /tags/{tagId}": {
 			"status": "gap"
 		},
-		"DELETE /tags/{id}": {
+		"DELETE /tags/{tagId}": {
 			"status": "gap"
 		},
 		"PUT /tags/{tagId}": {
@@ -284,6 +284,9 @@
 			"status": "gap"
 		},
 		"POST /promotions/connections/{promotionConnectionId}/promote": {
+			"status": "gap"
+		},
+		"POST /promotions/connections/{promotionConnectionId}/apply/continue": {
 			"status": "gap"
 		},
 		"POST /promotions/connections/{promotionConnectionId}/apply": {

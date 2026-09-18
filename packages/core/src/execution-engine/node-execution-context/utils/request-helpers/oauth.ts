@@ -311,7 +311,14 @@ function resolveTokenExpiredStatusCode(
 	oAuth2Options?: IOAuth2Options,
 	credentials?: OAuth2CredentialData,
 ): number | number[] {
-	return credentials?.tokenExpiredStatusCode ?? oAuth2Options?.tokenExpiredStatusCode ?? 401;
+	const credentialStatusCode = credentials?.tokenExpiredStatusCode;
+	if (credentialStatusCode === undefined) {
+		return oAuth2Options?.tokenExpiredStatusCode ?? 401;
+	}
+
+	return Array.isArray(credentialStatusCode)
+		? credentialStatusCode.map((statusCode) => Number(statusCode))
+		: Number(credentialStatusCode);
 }
 
 // Some gateways signal an expired token with different codes on different endpoints

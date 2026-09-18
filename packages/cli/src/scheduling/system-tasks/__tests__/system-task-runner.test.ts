@@ -6,7 +6,7 @@ import { SystemTaskMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { ClaimedTask } from '@n8n/scheduler';
 import { createDispatchReporter } from '@n8n/scheduler';
-import type { ErrorReporter, InstanceSettings } from 'n8n-core';
+import { Tracing, type ErrorReporter, type InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import type { EventService } from '@/events/event.service';
@@ -55,6 +55,7 @@ describe('SystemTaskRunner', () => {
 			instanceSettings,
 			errorReporter,
 			eventService,
+			new Tracing(),
 		);
 
 		return {

@@ -63,10 +63,6 @@ export declare namespace TestRunRequest {
 	type Cancel = AuthenticatedRequest<{ id: string; runId: string }>;
 }
 
-export declare namespace TagRequest {
-	type Delete = AuthenticatedRequest<{ id: string }>;
-}
-
 export declare namespace CredentialTypeRequest {
 	type Get = AuthenticatedRequest<{ credentialTypeName: string }, {}, {}, {}>;
 }

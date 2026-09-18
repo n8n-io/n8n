@@ -212,6 +212,13 @@ const preview = useCanvasPreview({
 		persistedArtifactPreviewOpen.value = open;
 	},
 });
+watch(
+	[() => preview.activeTabId.value, () => preview.isPreviewVisible.value],
+	([tabId, previewVisible]) => {
+		thread.setActiveArtifactId(previewVisible ? tabId : undefined);
+	},
+	{ immediate: true },
+);
 // --- Setup panel (checklist docked above the composer) ---
 // Early setup announcements can arrive before the first workflow artifact.
 const setupPanelWorkflowId = computed(() => {
@@ -960,12 +967,6 @@ async function persistTestAgentOfferDismissal(agentId: string) {
 
 <style lang="scss" module>
 @use '@n8n/design-system/css/mixins/motion' as motion;
-
-@property --instance-ai-artifacts-layout-width {
-	syntax: '<length>';
-	inherits: true;
-	initial-value: 0;
-}
 
 .threadArea {
 	--instance-ai-artifacts-panel-width: 280px;

@@ -72,10 +72,7 @@ import {
 	removeProjectAgentFromListCache,
 	upsertProjectAgentsListCache,
 } from '../composables/useProjectAgentsList';
-import {
-	useInstanceAiAgentPreviewHandoff,
-	type AgentPreviewHandoffParams,
-} from '@/features/ai/instanceAi/composables/useInstanceAiAgentPreviewHandoff';
+import type { AgentPreviewHandoffParams } from '@/features/ai/instanceAi/composables/useInstanceAiAgentPreviewHandoff';
 import {
 	AGENT_BUILDER_VIEW,
 	AGENT_PREVIEW_VIEW,
@@ -86,6 +83,7 @@ import {
 	CONTINUE_SESSION_ID_PARAM,
 	NEW_SESSION_PARAM,
 	OPEN_PREVIEW_PARAM,
+	PENDING_AGENT_ID_STATE,
 } from '../constants';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
 import { agentsEventBus, type AgentUpdatedEvent } from '../agents.eventBus';
@@ -104,10 +102,7 @@ import {
 	useInstanceAiAvailable,
 	useInstanceAiReady,
 } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
-import {
-	INSTANCE_AI_PENDING_AGENT_ID_STATE,
-	INSTANCE_AI_VIEW,
-} from '@/features/ai/instanceAi/constants';
+import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
 import InstanceAiChatPanel from '@/features/ai/instanceAi/embed/InstanceAiChatPanel.vue';
 import { persistPendingAgent } from '@/features/ai/instanceAi/instanceAi.memory.api';
 import type { InstanceAiEmbedSubject } from '@/features/ai/instanceAi/embed/instanceAiEmbed.types';
@@ -170,7 +165,6 @@ const projectsStore = useProjectsStore();
 const telemetry = useTelemetry();
 const instanceAiAvailable = useInstanceAiAvailable();
 const instanceAiReady = useInstanceAiReady();
-const { canSendPreviewToInstanceAi } = useInstanceAiAgentPreviewHandoff();
 const sessionsStore = useAgentSessionsStore();
 const agentEvalsStore = useAgentEvalsStore();
 const credentialsStore = useCredentialsStore();
@@ -208,12 +202,11 @@ const agentId = computed(
 	() =>
 		(isArtifactMode.value ? props.artifactAgentId : undefined) ?? (route.params.agentId as string),
 );
-const pendingAgentIdFromHistory = (history.state as Record<string, unknown>)[
-	INSTANCE_AI_PENDING_AGENT_ID_STATE
-];
-const routePendingAgentId = ref(
-	typeof pendingAgentIdFromHistory === 'string' ? pendingAgentIdFromHistory : null,
-);
+function readPendingAgentIdFromHistory(): string | null {
+	const pendingAgentId = (history.state as Record<string, unknown>)[PENDING_AGENT_ID_STATE];
+	return typeof pendingAgentId === 'string' ? pendingAgentId : null;
+}
+const routePendingAgentId = ref(readPendingAgentIdFromHistory());
 const isRouteAgentPending = computed(() => {
 	if (isArtifactMode.value) return false;
 	return routePendingAgentId.value === agentId.value;
@@ -249,6 +242,11 @@ const storedAiPanelOpen = useLocalStorage<boolean | null>(aiPanelOpenStorageKey,
 // under the user — so the default is snapshotted per agent instead of reread live.
 const openedForPendingAgent = ref(isRouteAgentPending.value);
 watch(agentId, () => {
+	// An in-place agentId change (e.g. "New agent" from the switcher) reuses this
+	// component instance, so `history.state` — just updated by that navigation —
+	// must be re-read here, before `isRouteAgentPending` (read below, and by the
+	// `initialize()` watcher) reflects the new agent instead of the mounted one.
+	routePendingAgentId.value = readPendingAgentIdFromHistory();
 	openedForPendingAgent.value = isRouteAgentPending.value;
 });
 const isAiPanelOpen = computed({
@@ -956,8 +954,8 @@ const persistedAgentsByTarget = new Map<string, AgentResource>();
 function clearRoutePendingState(targetAgentId: string) {
 	if (isArtifactMode.value) return;
 	const historyState = history.state as Record<string, unknown>;
-	if (historyState[INSTANCE_AI_PENDING_AGENT_ID_STATE] !== targetAgentId) return;
-	const { [INSTANCE_AI_PENDING_AGENT_ID_STATE]: _, ...state } = historyState;
+	if (historyState[PENDING_AGENT_ID_STATE] !== targetAgentId) return;
+	const { [PENDING_AGENT_ID_STATE]: _, ...state } = historyState;
 	history.replaceState(state, '');
 	if (routePendingAgentId.value === targetAgentId) routePendingAgentId.value = null;
 }
@@ -1304,7 +1302,13 @@ onBeforeRouteUpdate(async (to) => {
 		: to.params.projectId;
 	const nextAgentId = Array.isArray(to.params.agentId) ? to.params.agentId[0] : to.params.agentId;
 	if (nextProjectId === projectId.value && nextAgentId === agentId.value) return;
-	await flushPendingRouteDraftBeforeNavigation();
+	if (isRouteAgentPending.value) {
+		await flushPendingRouteDraftBeforeNavigation();
+		return;
+	}
+	// An in-place switch skips the unmount flush, so persist queued edits here.
+	// A failed save rejects and cancels the switch, so the edit stays for a retry.
+	await flushAutosave();
 });
 
 async function beforePreviewSend() {
@@ -1502,23 +1506,11 @@ const externalUpdateTime = computed(() =>
 		interpolate: { count: externalUpdateAgeMinutes.value },
 	}),
 );
-const externalUpdateMessage = computed(() => {
-	let key: BaseTextKey;
-	switch (recentExternalUpdate.value?.source) {
-		case 'mcp':
-			key = 'agents.builder.externalUpdate.mcp';
-			break;
-		case 'builder':
-			key = 'agents.builder.externalUpdate.builder';
-			break;
-		case 'user':
-			key = 'agents.builder.externalUpdate.user';
-			break;
-		default:
-			key = 'agents.builder.externalUpdate.unknown';
-	}
-	return locale.baseText(key, { interpolate: { time: externalUpdateTime.value } });
-});
+const externalUpdateMessage = computed(() =>
+	locale.baseText('agents.builder.externalUpdate.mcp', {
+		interpolate: { time: externalUpdateTime.value },
+	}),
+);
 
 function clearExternalUpdate() {
 	clearTimeout(externalUpdateTimer);
@@ -1526,12 +1518,6 @@ function clearExternalUpdate() {
 	externalUpdateAt = 0;
 	externalUpdateAgeMinutes.value = 0;
 	recentExternalUpdate.value = null;
-}
-
-function shouldShowExternalUpdate(source: PushPayload<'agentUpdated'>['source']) {
-	if (source === 'builder') return !isArtifactMode.value;
-	if (source === 'user') return isArtifactMode.value;
-	return true;
 }
 
 watch([projectId, agentId], clearExternalUpdate);
@@ -1607,7 +1593,7 @@ function onAgentPushMessage(event: PushMessage) {
 	) {
 		return;
 	}
-	if (shouldShowExternalUpdate(event.data.source)) {
+	if (event.data.source === 'mcp') {
 		clearExternalUpdate();
 		recentExternalUpdate.value = event.data;
 		externalUpdateAt = Date.now();
@@ -2401,7 +2387,7 @@ function onSwitchAgent(nextAgentId: string) {
 					:local-config="localConfig"
 					:connected-triggers="connectedTriggers"
 					:effective-session-id="effectiveSessionId"
-					:can-send-to-assistant="canSendPreviewToInstanceAi"
+					:can-send-to-assistant="instanceAiAvailable"
 					:before-send="beforePreviewSend"
 					@continue-loaded="onContinueLoaded"
 					@open-build="returnToBuilderFromPreview"
@@ -2484,7 +2470,7 @@ function onSwitchAgent(nextAgentId: string) {
 					:local-config="localConfig"
 					:connected-triggers="connectedTriggers"
 					:effective-session-id="effectiveSessionId"
-					:can-send-to-assistant="canSendPreviewToInstanceAi"
+					:can-send-to-assistant="instanceAiAvailable"
 					:before-send="beforePreviewSend"
 					@view-trace="viewPreviewTrace"
 					@new-session="startNewPreviewSession"
@@ -2499,6 +2485,8 @@ function onSwitchAgent(nextAgentId: string) {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
+
 .root {
 	position: relative;
 	display: flex;
@@ -2516,20 +2504,19 @@ function onSwitchAgent(nextAgentId: string) {
 	padding-right: 0;
 	scrollbar-width: thin;
 	scrollbar-color: var(--border-color) transparent;
+	transition:
+		padding-left var(--duration--snappy) var(--easing--ease-out),
+		padding-right var(--duration--snappy) var(--easing--ease-out);
 
 	&.previewOpen {
 		padding-right: var(--agent-preview-chat-column-width, 30rem);
-		transition: padding-right var(--duration--snappy) var(--easing--ease-out);
 	}
 
 	&.aiPanelOpen {
 		padding-left: var(--agent-ai-panel-width);
-		transition: padding-left var(--duration--snappy) var(--easing--ease-out);
 	}
 
-	@media (prefers-reduced-motion: reduce) {
-		transition: none;
-	}
+	@include motion.reduced-motion;
 }
 
 .loading {

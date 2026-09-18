@@ -161,6 +161,7 @@ describe('DELETE /tags/:id', () => {
 		const response = await authOwnerAgent.delete('/tags/gZqmqiGAuo1dHT7q');
 
 		expect(response.statusCode).toBe(404);
+		expect(response.body.message).toBe('Not Found');
 	});
 
 	test('owner should delete the tag', async () => {
@@ -171,12 +172,12 @@ describe('DELETE /tags/:id', () => {
 
 		expect(response.statusCode).toBe(200);
 
-		const { id, name, createdAt, updatedAt } = response.body;
-
-		expect(id).toEqual(tag.id);
-		expect(name).toEqual(tag.name);
-		expect(createdAt).toEqual(tag.createdAt.toISOString());
-		expect(updatedAt).toEqual(tag.updatedAt.toISOString());
+		expect(response.body).toStrictEqual({
+			id: tag.id,
+			name: tag.name,
+			createdAt: tag.createdAt.toISOString(),
+			updatedAt: tag.updatedAt.toISOString(),
+		});
 
 		// make sure the tag actually deleted from the db
 		const deletedTag = await Container.get(TagRepository).findOneBy({
@@ -202,6 +203,23 @@ describe('DELETE /tags/:id', () => {
 		const notDeletedTag = await Container.get(TagRepository).findOneBy({
 			id: tag.id,
 		});
+
+		expect(notDeletedTag).not.toBeNull();
+	});
+
+	test('should fail due to missing "tag:delete" scope', async () => {
+		const tag = await createTag({});
+
+		const memberWithoutScope = await createMemberWithApiKey({ scopes: ['tag:list'] });
+		const agent = testServer.publicApiAgentFor(memberWithoutScope);
+
+		const response = await agent.delete(`/tags/${tag.id}`);
+
+		expect(response.statusCode).toBe(403);
+		expect(response.body.message).toBe('Forbidden');
+
+		// make sure the tag was not deleted from the db
+		const notDeletedTag = await Container.get(TagRepository).findOneBy({ id: tag.id });
 
 		expect(notDeletedTag).not.toBeNull();
 	});

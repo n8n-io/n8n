@@ -79,6 +79,7 @@ responses:
                   parentFolderId:
                     type: string
                     nullable: true
+                    example: kRZ0ewrAEAhCkTBd
                   createdAt:
                     type: string
                     format: date-time

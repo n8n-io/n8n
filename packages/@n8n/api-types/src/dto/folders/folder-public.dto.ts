@@ -3,6 +3,7 @@ import '../../openapi-extend';
 import { z } from 'zod';
 
 import {
+	folderContentCountFieldDocs,
 	folderFieldDocs,
 	folderListFieldDocs,
 	folderListQueryFieldDocs,
@@ -49,7 +50,7 @@ const folderTagPublicSchema = z.object({
 export const folderPublicSchema = z.object({
 	id: z.string().openapi(folderFieldDocs.id),
 	name: z.string().optional().openapi(folderFieldDocs.name),
-	parentFolderId: z.string().nullable().optional(),
+	parentFolderId: z.string().nullable().optional().openapi(folderFieldDocs.parentFolderId),
 	createdAt: z.string().datetime().optional().openapi(folderFieldDocs.createdAt),
 	updatedAt: z.string().datetime().optional().openapi(folderFieldDocs.updatedAt),
 	homeProject: folderProjectPublicSchema.optional(),
@@ -85,3 +86,13 @@ export class ListFoldersQueryPublicDto extends Z.class(
 	},
 	{ strict: true },
 ) {}
+
+export class FolderDetailsPublicDto extends Z.class({
+	id: z.string().openapi(folderFieldDocs.id),
+	name: z.string().openapi(folderFieldDocs.name),
+	parentFolderId: z.string().nullable().openapi(folderFieldDocs.parentFolderId),
+	createdAt: z.string().datetime().openapi(folderFieldDocs.createdAt),
+	updatedAt: z.string().datetime().openapi(folderFieldDocs.updatedAt),
+	totalSubFolders: z.number().int().openapi(folderContentCountFieldDocs.totalSubFolders),
+	totalWorkflows: z.number().int().openapi(folderContentCountFieldDocs.totalWorkflows),
+}) {}

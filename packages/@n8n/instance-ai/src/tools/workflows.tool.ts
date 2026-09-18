@@ -28,6 +28,10 @@ import {
 } from './credentials.tool';
 import { formatTimestamp } from '../utils/format-timestamp';
 import { formatClaimDisclosure } from '../workflow-loop/render-claim';
+import {
+	describeSavedPublishState,
+	type SavedWorkflowState,
+} from './workflows/saved-workflow-state';
 import { isSetupPanelEnabled } from './workflows/setup-items';
 import {
 	describeSetupItem,
@@ -1149,6 +1153,8 @@ async function handleSetupTestTrigger(
 		return {
 			success: false,
 			error: `Failed to apply setup before trigger test: ${applyFailures.map((f) => `${f.nodeName}: ${f.error}`).join('; ')}`,
+			publishState: preTestApply.publishState,
+			publishStateNote: preTestApply.publishStateNote,
 			failedNodes: applyFailures,
 		};
 	}
@@ -1183,6 +1189,8 @@ async function handleSetupTestTrigger(
 			error: 'invalid_credential_hints',
 			message: INVALID_SETUP_HINT_MESSAGE,
 			problems: destinationInspection.problems,
+			publishState: preTestApply.publishState,
+			publishStateNote: preTestApply.publishStateNote,
 		};
 	}
 
@@ -1351,6 +1359,8 @@ async function handleSetupApply(
 				success: true,
 				partial: true,
 				reason: `Applied setup for ${String(validCompletedNodes.length)} node(s), ${String(pendingRequests.length)} node(s) still need configuration.`,
+				publishState: applyResult.publishState,
+				publishStateNote: applyResult.publishStateNote,
 				completedNodes: validCompletedNodes,
 				nodesStillNeedingSetup,
 				...skippedByUserReport,
@@ -1362,6 +1372,8 @@ async function handleSetupApply(
 
 		return {
 			success: true,
+			publishState: applyResult.publishState,
+			publishStateNote: applyResult.publishStateNote,
 			completedNodes: validCompletedNodes,
 			...skippedByUserReport,
 			failedNodes: mergedFailedNodes,
@@ -1779,9 +1791,14 @@ async function handleSetup(
 
 	// State 2: User declined — revert any trigger-test changes
 	if (!resumeData.approved) {
+		let savedState: SavedWorkflowState = {};
 		if (state.preTestSnapshot) {
-			await context.workflowService.updateFromWorkflowJSON(input.workflowId, state.preTestSnapshot);
-			await refreshWorkflowSourceFileBindingFromWorkflow(context, input.workflowId);
+			const saved = await context.workflowService.updateFromWorkflowJSON(
+				input.workflowId,
+				state.preTestSnapshot,
+			);
+			await refreshWorkflowSourceFileBindingFromSave(context, input.workflowId, saved);
+			savedState = describeSavedPublishState(saved);
 			state.preTestSnapshot = null;
 		}
 		// Re-analyze rather than remembering what was suspended: the closure state doesn't
@@ -1794,6 +1811,7 @@ async function handleSetup(
 		return {
 			success: true,
 			deferred: true,
+			...savedState,
 			reason: 'User skipped workflow setup for now.',
 			...(dismissed.length > 0
 				? {

@@ -5,6 +5,7 @@ import { alsoNullable } from '../openapi-nullable';
 export const folderFieldDocs = {
 	id: { readOnly: true, example: 'zLXWgYyZrZ4Gn1Vk' },
 	name: { example: 'My Folder' },
+	parentFolderId: { example: 'kRZ0ewrAEAhCkTBd' },
 	createdAt: { readOnly: true },
 	updatedAt: { readOnly: true },
 	workflowCount: { description: 'Number of workflows the folder holds.', readOnly: true },
@@ -57,4 +58,9 @@ export const folderListQueryFieldDocs = {
 	sortBy: { description: 'Sort order for results.' },
 	skip: { type: 'string', description: 'Number of items to skip for pagination. Defaults to 0.' },
 	take: { type: 'string', description: 'Number of items to return. Defaults to 10.' },
+} as const satisfies Record<string, ZodOpenAPIMetadata>;
+
+export const folderContentCountFieldDocs = {
+	totalSubFolders: { description: 'Total number of sub-folders (recursive).' },
+	totalWorkflows: { description: 'Total number of workflows (recursive).' },
 } as const satisfies Record<string, ZodOpenAPIMetadata>;
