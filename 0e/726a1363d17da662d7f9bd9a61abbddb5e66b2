@@ -1,0 +1,49 @@
+packages/cli/src/modules/source-control.ee/source-control-helper.ee.ts
+  s_b81dec2d7f74f0::t_b4cfa178a53ddb 377
+packages/cli/src/modules/source-control.ee/source-control-import.service.ee.ts
+  s_b81dec2d7f74f0::t_c94b512842e678 194,343,476,500,602,655,699
+packages/cli/src/modules/source-control.ee/__tests__/source-control-git.service.test.ts
+  s_b81dec2d7f74f0::t_99b82599e2c303 140-143,145-154
+  s_b81dec2d7f74f0::t_420ce09cc59aeb 84
+  s_b81dec2d7f74f0::t_c70dbdc09355cc 7,51-83,85-122,466,513
+  s_b81dec2d7f74f0::t_d9c2996bec494a 189-192,202,363-366,370,426
+  s_b81dec2d7f74f0::t_2eb81069650eca 123-139,144,155-172
+packages/cli/src/modules/source-control.ee/__tests__/source-control.service.test.ts
+  s_b81dec2d7f74f0::t_d9c2996bec494a 8,1554,1569,1576,1700
+packages/cli/src/modules/source-control.ee/source-control-status.service.ee.ts
+  s_b81dec2d7f74f0::t_b4cfa178a53ddb 243
+packages/cli/src/modules/source-control.ee/__tests__/source-control-helper.ee.test.ts
+  s_b81dec2d7f74f0::t_c70dbdc09355cc 27,242-258
+  s_b81dec2d7f74f0::t_14802914a66f9c 259-260
+packages/cli/src/modules/source-control.ee/__tests__/source-control-git.service.integration.test.ts
+  s_b81dec2d7f74f0::t_4931777f59a454 1-5,54-150
+  s_b81dec2d7f74f0::t_bd0c1294ab693a 151-152
+packages/cli/src/modules/source-control.ee/source-control-git.service.ee.ts
+  s_b81dec2d7f74f0::t_b4cfa178a53ddb 5
+  s_b81dec2d7f74f0::t_420ce09cc59aeb 405-407,449-454,467
+  s_b81dec2d7f74f0::t_e874fbb7474877 279-282,314
+  s_b81dec2d7f74f0::t_21ec8b3b418919 24,125,134-137,356,403,409-445,447-448,455-466,468-482,523-529
+packages/cli/src/modules/source-control.ee/constants.ts
+  s_b81dec2d7f74f0::t_21ec8b3b418919 11-19
+packages/cli/src/modules/source-control.ee/source-control.service.ee.ts
+  s_b81dec2d7f74f0::t_b4cfa178a53ddb 311
+  s_b81dec2d7f74f0::t_e4d1d1f6499178 91,135-136,138-140,142-146,223-228,287-296
+packages/cli/src/modules/source-control.ee/__tests__/source-control-import.service.ee.test.ts
+  s_b81dec2d7f74f0::t_8ec6f355f74721 3974
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0e726a1363d17da662d7f9bd9a61abbddb5e66b2",
+  "prompts": {},
+  "sessions": {
+    "s_b81dec2d7f74f0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0aaa1-7817-7b52-8211-c92566862939",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

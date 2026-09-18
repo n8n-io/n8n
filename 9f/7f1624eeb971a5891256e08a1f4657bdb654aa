@@ -13,6 +13,7 @@ packages/@n8n/permissions/src/scope-information.ts
   s_6be64701202322::t_eb5dcf728cea54 155-158
 packages/cli/src/public-api/v1/controllers/git-connections.public.controller.ts
   s_6be64701202322::t_8832d84a1eb29d 205-206,226-227
+  s_6be64701202322::t_8f82360eb2e2e5 205-206
 packages/@n8n/permissions/src/public-api-permissions.ee.ts
   s_6be64701202322::t_2a65ea201701b5 22
 ---

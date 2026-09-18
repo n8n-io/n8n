@@ -1,0 +1,56 @@
+packages/@n8n/instance-ai/src/tools/tool-ids.ts
+  s_22e1224efb24cb::t_01ec896e2e7449 17,74-76
+packages/@n8n/instance-ai/src/tools/index.ts
+  s_22e1224efb24cb::t_01ec896e2e7449 43-45,154-158
+  s_1898563af1e1ac::t_365582c886d36c 159-160
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.agent-sessions.test.ts
+  s_22e1224efb24cb::t_c1ca75c751792f 1-97,99-132,134-189
+  s_22e1224efb24cb::t_9024068b474bdf 98
+  s_22e1224efb24cb::t_3aa99decc72148 133
+packages/@n8n/instance-ai/src/tools/agent-sessions.tool.ts
+  s_22e1224efb24cb::t_a01ce6cd729ab6 8,98-103,133
+  s_22e1224efb24cb::t_ae63323d21ad1a 1,3-7,9-97,104-124,128-132,134-135,137-141,143-152,155-186
+  s_22e1224efb24cb::t_078b98fc0dedbc 2,125-127,136,142,153-154
+packages/@n8n/instance-ai/docs/tools.md
+  s_22e1224efb24cb::t_d9b5f540e9e3fe 64,1202-1218
+  s_1898563af1e1ac::t_7daf122aff7950 1219
+packages/@n8n/instance-ai/src/tools/__tests__/index.test.ts
+  s_22e1224efb24cb::t_aaffe8b63fb0dc 32-35,236-249
+  s_1898563af1e1ac::t_8cda12e00e94da 250
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_22e1224efb24cb::t_d9f736c0e3b75f 2910-2923,2925-2952,5042
+  s_22e1224efb24cb::t_216ce681c5f5de 104,243-247,258-305
+  s_22e1224efb24cb::t_078b98fc0dedbc 2924
+  s_22e1224efb24cb::t_5d42af49c8e84e 306
+packages/@n8n/instance-ai/src/tools/__tests__/agent-sessions.tool.test.ts
+  s_22e1224efb24cb::t_5fbdd0318e4f22 1-56,58-151
+  s_22e1224efb24cb::t_9ad31ad29c8cd8 57
+packages/@n8n/instance-ai/src/types.ts
+  s_22e1224efb24cb::t_1192e503bdc8f4 18-19,1435-1482,1522-1523
+packages/@n8n/instance-ai/src/index.ts
+  s_22e1224efb24cb::t_c619cf033d6a53 738-741,749
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "ea6f0ccd858abef8849b5810e0eff5ff316b3290",
+  "prompts": {},
+  "sessions": {
+    "s_1898563af1e1ac": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0aa46-de73-7d21-a1c0-00a174d6481a",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    },
+    "s_22e1224efb24cb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0aadb-6625-7102-88f4-ab5ed0c4f71f",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

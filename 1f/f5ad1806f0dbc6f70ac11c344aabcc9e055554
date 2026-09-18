@@ -1,0 +1,21 @@
+OWNERS
+  s_5fa01b9ee14ea0::t_5aa991a16fe801 30
+packages/@n8n/backend-services/README.md
+  s_5fa01b9ee14ea0::t_5aa991a16fe801 47-50
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1ff5ad1806f0dbc6f70ac11c344aabcc9e055554",
+  "prompts": {},
+  "sessions": {
+    "s_5fa01b9ee14ea0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "75d07095-e302-4ebf-88fd-d4e2269ab03d",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
