@@ -488,6 +488,62 @@ describe('the plan against the engine rules', () => {
 	it('starts at the trigger without run data, which is the chain run to avoid', () => {
 		expect(startNodesFor({})).toEqual(['Trigger']);
 	});
+
+	// The Agent is rarely the last node. `rewireGraph` used to walk every
+	// descendant of the tool and stand in for the *farthest* one, so a node below
+	// the Agent supplied the Tool Executor's main parents and the Agent — plus
+	// everything between it and that node — ran again.
+	it('starts at the Tool Executor when the Agent has nodes below it', () => {
+		const notify = node('Notify');
+		const summarize = node('Summarize');
+		const withDownstream = [...nodes, notify, summarize];
+		const connectionsWithDownstream = connectSubNode(
+			connect(
+				['Trigger', 'Create Ticket'],
+				['Create Ticket', 'Agent'],
+				['Agent', 'Notify'],
+				['Notify', 'Summarize'],
+			),
+			'Calculator',
+			'Agent',
+		);
+
+		const plan = planStepRun({
+			nodes: withDownstream,
+			connections: connectionsWithDownstream,
+			targetName: 'Calculator',
+			mockItems: toExecutionItems([{ id: 1 }]),
+		});
+
+		const graph = new DirectedGraph()
+			.addNodes(...withDownstream)
+			.addConnections(
+				{ from: trigger, to: createTicket },
+				{ from: createTicket, to: agent },
+				{ from: agent, to: notify },
+				{ from: notify, to: summarize },
+				{ from: calculator, to: agent, type: NodeConnectionTypes.AiTool },
+			);
+		const rewired = rewireGraph(calculator, graph);
+		const destination = rewired.getNodes().get(TOOL_EXECUTOR_NODE_NAME);
+		expect(destination).toBeDefined();
+
+		const subgraph = findSubgraph({ graph: rewired, destination: destination!, trigger });
+		const startNodes = [
+			...findStartNodes({
+				graph: subgraph,
+				trigger,
+				destination: destination!,
+				runData: plan.runData!,
+				pinData: {},
+			}),
+		].map((startNode) => startNode.name);
+
+		expect(startNodes).toEqual([TOOL_EXECUTOR_NODE_NAME]);
+		// Neither node below the Agent is even part of the run.
+		expect([...subgraph.getNodes().keys()]).not.toContain('Notify');
+		expect([...subgraph.getNodes().keys()]).not.toContain('Summarize');
+	});
 });
 
 describe('tool arguments', () => {
