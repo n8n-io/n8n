@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Drives a PR preview instance from CI. `scripts/preview.mjs` does the work; this
+// Drives a PR preview instance from CI. `scripts/codespace-preview/preview.mjs` does the work; this
 // script maps the pull_request event onto one of its operations and reports the
 // result back to the PR as a single, edited-in-place comment.
 //
@@ -23,8 +23,8 @@
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
-import { PREVIEW_LABEL_PREFIX } from '../../scripts/preview-labels.mjs';
-import { PREVIEW_PHASES, createLineSplitter, phaseIndex } from '../../scripts/preview-phases.mjs';
+import { PREVIEW_LABEL_PREFIX } from '../../scripts/codespace-preview/preview-labels.mjs';
+import { PREVIEW_PHASES, createLineSplitter, phaseIndex } from '../../scripts/codespace-preview/preview-phases.mjs';
 import {
 	ensureEnvVar,
 	findCommentByMarker,
@@ -50,7 +50,7 @@ export const WORKFLOW_URL =
 // What a manual run may ask for. `ls` is absent: it needs no PR and posts no comment.
 export const DISPATCH_OPERATIONS = ['up', 'refresh', 'down'];
 // Resolved against this file, so the script runs the same from any directory.
-const PREVIEW_SCRIPT = fileURLToPath(new URL('../../scripts/preview.mjs', import.meta.url));
+const PREVIEW_SCRIPT = fileURLToPath(new URL('../../scripts/codespace-preview/preview.mjs', import.meta.url));
 // Often enough to look alive, rarely enough that the edit history stays readable.
 const HEARTBEAT_MS = 60_000;
 
