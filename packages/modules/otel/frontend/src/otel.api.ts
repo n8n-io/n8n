@@ -1,8 +1,11 @@
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 
+import type { OtlpProtocol } from './otel.constants';
+
 export type OtelSettings = {
 	enabled: boolean;
+	exporterProtocol: OtlpProtocol;
 	exporterEndpoint: string;
 	exporterTracingPath: string;
 	exporterServiceName: string;
@@ -31,6 +34,7 @@ export async function updateOtelSettings(
 
 export type OtelTestConnection = Pick<
 	OtelSettings,
+	| 'exporterProtocol'
 	| 'exporterEndpoint'
 	| 'exporterTracingPath'
 	| 'exporterServiceName'

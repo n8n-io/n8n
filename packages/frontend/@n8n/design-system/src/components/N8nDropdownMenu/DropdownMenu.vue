@@ -69,6 +69,7 @@ provide(
 const internalOpen = ref(props.defaultOpen ?? false);
 
 const contentRef = ref<InstanceType<typeof DropdownMenuContent> | null>(null);
+const searchableContentRef = ref<{ highlightFirstItem: () => void } | null>(null);
 let hoverCloseTimer: ReturnType<typeof setTimeout> | undefined;
 
 // Track open sub-menu index for non-searchable menus. Searchable menus own this in
@@ -186,6 +187,10 @@ const close = () => {
 	openSubMenuIndex.value = -1;
 };
 
+const highlightFirstItem = () => {
+	searchableContentRef.value?.highlightFirstItem();
+};
+
 watch(
 	() => props.modelValue,
 	(newValue) => {
@@ -237,7 +242,7 @@ watch(internalOpen, (isOpen, _oldValue, onCleanup) => {
 	});
 });
 
-defineExpose({ open, close });
+defineExpose({ open, close, highlightFirstItem });
 </script>
 
 <!-- TODO DS-580: Let consumers bind trigger props/listeners directly in the slot so their
@@ -293,6 +298,7 @@ defineExpose({ open, close });
 				<template v-else>
 					<DropdownMenuSearchableContent
 						v-if="searchable"
+						ref="searchableContentRef"
 						:open="internalOpen"
 						:items="items"
 						:search-placeholder="searchPlaceholder"
@@ -472,5 +478,6 @@ defineExpose({ open, close });
 
 .trigger {
 	display: inline-flex;
+	min-width: 0;
 }
 </style>

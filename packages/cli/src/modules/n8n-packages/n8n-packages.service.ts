@@ -35,6 +35,7 @@ import { WorkflowRequirementExporter } from './entities/workflow/workflow-requir
 import { WorkflowExporter } from './entities/workflow/workflow.exporter';
 import { DirectoryPackageReader } from './io/directory/directory-package-reader';
 import { DirectoryPackageWriter } from './io/directory/directory-package-writer';
+import { formatEntityFile } from './io/entity-file-format';
 import type { PackageReader } from './io/package-reader';
 import type { PackageWriter } from './io/package-writer';
 import { TarPackageReader } from './io/tar/tar-package-reader';
@@ -46,11 +47,13 @@ import {
 	WorkflowVersionPolicy,
 	type ExportPackageEventCounts,
 	type ExportPackageRequest,
+	type ExportPackageDirectoryResult,
 	type ExportPackageResult,
 	type ExportPackageSummary,
 	type ImportPackageRequest,
 	type ImportRequest,
 	type ImportResult,
+	type PackageImportSource,
 	type ResolvedImportPackageRequest,
 	createBindings,
 } from './n8n-packages.types';
@@ -63,11 +66,13 @@ import {
 import type { PackageRequirements } from './spec/requirements.schema';
 
 interface WrittenExport {
+	manifest: PackageManifest;
 	counts: ExportPackageEventCounts;
 	workflowIds: string[];
 	folderIds: string[];
 	projectIds: string[];
 	credentialExportPolicy: CredentialExportPolicy;
+	includeArchivedWorkflows: boolean;
 }
 
 @Service()
@@ -106,6 +111,7 @@ export class N8nPackagesService {
 			...(result.projectIds.length ? { projectIds: result.projectIds } : {}),
 			counts: result.counts,
 			credentialExportPolicy: result.credentialExportPolicy,
+			includeArchivedWorkflows: result.includeArchivedWorkflows,
 		});
 
 		return { stream, counts: result.counts };
@@ -119,11 +125,19 @@ export class N8nPackagesService {
 	async exportPackageToDirectory(
 		request: ExportPackageRequest,
 		target: { targetDir: string },
-	): Promise<ExportPackageSummary> {
+	): Promise<ExportPackageDirectoryResult> {
 		const writer = new DirectoryPackageWriter(target.targetDir);
-		const result = await this.writeExport(writer, request);
+		const result = await this.exportPackageToWriter(request, writer);
 		await writer.finalize();
-		return { counts: result.counts };
+		return { counts: result.counts, manifest: result.manifest };
+	}
+
+	async exportPackageToWriter(
+		request: ExportPackageRequest,
+		writer: PackageWriter,
+	): Promise<ExportPackageSummary & { manifest: PackageManifest }> {
+		const { manifest, counts } = await this.writeExport(writer, request);
+		return { manifest, counts };
 	}
 
 	private async writeExport(
@@ -141,6 +155,7 @@ export class N8nPackagesService {
 		const workflowVersionPolicy = request.workflowVersionPolicy ?? WorkflowVersionPolicy.Latest;
 		const credentialExportPolicy =
 			request.credentialExportPolicy ?? CredentialExportPolicy.ExpressionValuesOnly;
+		const includeArchivedWorkflows = request.includeArchivedWorkflows ?? false;
 
 		const folderExportResult =
 			folderIds.length > 0
@@ -150,6 +165,7 @@ export class N8nPackagesService {
 						writer,
 						includeTags,
 						workflowVersionPolicy,
+						includeArchivedWorkflows,
 					})
 				: undefined;
 
@@ -174,9 +190,11 @@ export class N8nPackagesService {
 				? await this.projectExporter.export({
 						user: request.user,
 						projectIds,
+						workflowIds: request.projectWorkflowIds,
 						writer,
 						includeTags,
 						workflowVersionPolicy,
+						includeArchivedWorkflows,
 					})
 				: undefined;
 
@@ -335,7 +353,7 @@ export class N8nPackagesService {
 			...(allProjects.length > 0 ? { projects: allProjects } : {}),
 		});
 
-		await writer.writeFile('manifest.json', JSON.stringify(manifest, null, '\t'));
+		await writer.writeFile('manifest.json', formatEntityFile(manifest));
 
 		const counts: ExportPackageEventCounts = {
 			workflows: allWorkflowsInPackage.length,
@@ -347,18 +365,25 @@ export class N8nPackagesService {
 		};
 
 		return {
+			manifest,
 			counts,
 			workflowIds: allWorkflowsInPackage.map(({ id }) => id),
 			folderIds: allFolders.map(({ id }) => id),
 			projectIds: allProjects.map(({ id }) => id),
 			credentialExportPolicy,
+			includeArchivedWorkflows,
 		};
 	}
 
 	async importPackage(request: ImportPackageRequest): Promise<ImportResult> {
 		const reader = new TarPackageReader(request.packageBuffer, this.packageImportConfig);
 		const manifest = await this.packageParser.getManifest(reader);
-		const { result, scopes } = await this.dispatchImport(request, reader, manifest);
+		const { result, scopes } = await this.dispatchImport(
+			request,
+			reader,
+			manifest,
+			'package-import',
+		);
 
 		const resolvedRequest: ResolvedImportPackageRequest = {
 			...request,
@@ -379,8 +404,13 @@ export class N8nPackagesService {
 		const reader = new DirectoryPackageReader(source.sourceDir, this.packageImportConfig);
 		await reader.listEntries();
 		const manifest = await this.packageParser.getManifest(reader);
-		if (!isProjectPackage(manifest)) return emptyImportResult(manifest);
-		const { result } = await this.dispatchImport(request, reader, manifest);
+		if (!isProjectPackage(manifest)) {
+			if (hasContentWithoutProjects(manifest)) {
+				throw new BadRequestError('Directory packages must contain projects');
+			}
+			return emptyImportResult(manifest);
+		}
+		const { result } = await this.dispatchImport(request, reader, manifest, 'git-pull');
 		return result;
 	}
 
@@ -388,6 +418,7 @@ export class N8nPackagesService {
 		request: ImportRequest,
 		reader: PackageReader,
 		manifest: PackageManifest,
+		importSource: PackageImportSource,
 	): Promise<ImportOutcome> {
 		if (isProjectPackage(manifest)) {
 			if (request.variableParentPolicy !== undefined) {
@@ -401,6 +432,7 @@ export class N8nPackagesService {
 				{ ...request, folderConflictPolicy: resolveFolderConflictPolicy(request, 'project') },
 				reader,
 				manifest,
+				importSource,
 			);
 		}
 
@@ -452,6 +484,19 @@ export class N8nPackagesService {
 
 function isProjectPackage(manifest: PackageManifest): boolean {
 	return (manifest.projects?.length ?? 0) > 0;
+}
+
+function hasContentWithoutProjects(manifest: PackageManifest): boolean {
+	return (
+		[
+			manifest.workflows,
+			manifest.folders,
+			manifest.credentials,
+			manifest.dataTables,
+			manifest.variables,
+			manifest.tags,
+		].some((entries) => (entries?.length ?? 0) > 0) || manifest.requirements !== undefined
+	);
 }
 
 function emptyImportResult(manifest: PackageManifest): ImportResult {

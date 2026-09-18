@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import ProjectHeader from '@/features/collaboration/projects/components/ProjectHeader.vue';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
-import { InsightsSummary, useInsightsStore } from '@/features/execution/insights';
+import { InsightsSummary, useInsightsStore } from '@n8n/frontend-module-insights';
 
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import DataTableCard from '@/features/core/dataTable/components/DataTableCard.vue';

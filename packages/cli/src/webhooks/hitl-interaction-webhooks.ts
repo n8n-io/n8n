@@ -34,6 +34,9 @@ export abstract class HitlInteractionWebhooks extends WaitingWebhooks {
 		req: WaitingWebhookRequest,
 	): Promise<ParsedHitlCallbackReference | null>;
 
+	/** The node type this route is allowed to resume (e.g. 'n8n-nodes-base.slack'). */
+	protected abstract readonly platformNodeType: string;
+
 	/**
 	 * Response when the request carries no resumable reference. Defaults to 400; platforms
 	 * that also deliver fire-and-forget interactions here (Slack URL buttons) override to 200.
@@ -62,12 +65,18 @@ export abstract class HitlInteractionWebhooks extends WaitingWebhooks {
 
 		const lastNodeExecuted = execution.data.resultData.lastNodeExecuted as string;
 		const workflow = this.createWorkflow(execution.workflowData);
-		const nodeId = workflow.getNode(lastNodeExecuted)?.id;
-		if (!nodeId) return { ok: false, status: 404 };
+		const node = workflow.getNode(lastNodeExecuted);
+		if (!node) return { ok: false, status: 404 };
+
+		if (node.type !== this.platformNodeType) return { ok: false, status: 404 };
+
+		// The resume routes on the node id as the webhook suffix. Execution snapshots are frozen
+		// copies that can predate id enforcement, and an id-less node resolves to an empty suffix.
+		if (!node.id) return { ok: false, status: 404 };
 
 		return {
 			ok: true,
-			value: { execution, executionId: parsed.executionId, lastNodeExecuted, nodeId },
+			value: { execution, executionId: parsed.executionId, lastNodeExecuted, nodeId: node.id },
 		};
 	}
 

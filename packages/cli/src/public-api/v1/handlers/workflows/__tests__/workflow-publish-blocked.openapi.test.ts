@@ -38,6 +38,21 @@ describe('workflow publication blocker in OpenAPI', () => {
 		});
 	});
 
+	// The update route replaces the shared 403 with its own body, because a refused
+	// re-publication still saved a draft the caller needs to be told about.
+	test('documents the permission refusal separately, naming the saved draft', () => {
+		const { schema } = readSpec('paths/updateWorkflow.generated.yml').responses['403'].content[
+			'application/json'
+		];
+
+		expect(schema.required).toEqual(['message']);
+		expect(schema.properties.reason.enum).toEqual([
+			'insufficient_api_key_scope',
+			'insufficient_permissions',
+		]);
+		expect(schema.properties.versionId.type).toBe('string');
+	});
+
 	// the same 409 also carries webhook conflicts, whose body is
 	// `message`-only
 	test('stays satisfiable by a message-only conflict body', () => {

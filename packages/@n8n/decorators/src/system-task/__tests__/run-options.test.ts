@@ -63,12 +63,20 @@ it.each([
 
 it('should keep the defaults for the fields a task does not override', () => {
 	const options = resolveSystemTaskRunOptions(
-		taskWith({ effects: 'non-idempotent', maxAttempts: 10 }),
+		taskWith({ effects: 'non-idempotent', misfireGraceSeconds: 5 }),
 	);
 
 	expect(options).toEqual({
 		misfirePolicy: ScheduledJobMisfirePolicy.Skip,
-		misfireGraceSeconds: 60,
-		maxAttempts: 10,
+		misfireGraceSeconds: 5,
+		maxAttempts: 1,
 	});
+});
+
+it('should refuse to retry non-idempotent work that asked for more attempts', () => {
+	const options = resolveSystemTaskRunOptions(
+		taskWith({ effects: 'non-idempotent', maxAttempts: 10 }),
+	);
+
+	expect(options.maxAttempts).toBe(1);
 });

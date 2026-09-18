@@ -7,6 +7,7 @@ import {
 	createFileSearchStore,
 	deleteFileSearchStore,
 	downloadFile,
+	getCredentialHostname,
 	getFilenameFromMimeType,
 	listFileSearchStores,
 	transferFile,
@@ -45,6 +46,26 @@ describe('GoogleGemini -> utils', () => {
 		});
 	});
 
+	describe('getCredentialHostname', () => {
+		it('should return the hostname from the credential URL', () => {
+			const hostname = getCredentialHostname.call(
+				mockExecuteFunctions,
+				'https://generativelanguage.googleapis.com/v1beta',
+			);
+
+			expect(hostname).toBe('generativelanguage.googleapis.com');
+		});
+
+		it('should wrap an invalid credential URL in a NodeOperationError', () => {
+			expect(() => getCredentialHostname.call(mockExecuteFunctions, 'not a URL')).toThrowError(
+				NodeOperationError,
+			);
+			expect(() => getCredentialHostname.call(mockExecuteFunctions, 'not a URL')).toThrowError(
+				"The Google Gemini credential host isn't a valid URL",
+			);
+		});
+	});
+
 	describe('downloadFile', () => {
 		it('should download file', async () => {
 			mockExecuteFunctions.helpers.httpRequest.mockResolvedValue({
@@ -63,6 +84,55 @@ describe('GoogleGemini -> utils', () => {
 			expect(mockExecuteFunctions.helpers.httpRequest).toHaveBeenCalledWith({
 				method: 'GET',
 				url: 'https://example.com/file.pdf',
+				returnFullResponse: true,
+				encoding: 'arraybuffer',
+			});
+		});
+
+		it('should restrict a matching URL to the configured domain', async () => {
+			mockExecuteFunctions.helpers.httpRequest.mockResolvedValue({
+				body: new ArrayBuffer(10),
+				headers: {},
+			});
+			const url = 'https://generativelanguage.googleapis.com/v1beta/files/video:download';
+
+			await downloadFile.call(
+				mockExecuteFunctions,
+				url,
+				'video/mp4',
+				{ key: 'test-api-key' },
+				'generativelanguage.googleapis.com',
+			);
+
+			expect(mockExecuteFunctions.helpers.httpRequest).toHaveBeenCalledWith({
+				method: 'GET',
+				url,
+				qs: { key: 'test-api-key' },
+				allowedDomains: 'generativelanguage.googleapis.com',
+				returnFullResponse: true,
+				encoding: 'arraybuffer',
+			});
+		});
+
+		it('should propagate a domain policy error for a mismatching URL', async () => {
+			mockExecuteFunctions.helpers.httpRequest.mockRejectedValue(new Error('Domain not allowed'));
+			const url = 'https://example.com/video.mp4';
+
+			await expect(
+				downloadFile.call(
+					mockExecuteFunctions,
+					url,
+					'video/mp4',
+					{ key: 'test-api-key' },
+					'generativelanguage.googleapis.com',
+				),
+			).rejects.toThrow('Domain not allowed');
+
+			expect(mockExecuteFunctions.helpers.httpRequest).toHaveBeenCalledWith({
+				method: 'GET',
+				url,
+				qs: { key: 'test-api-key' },
+				allowedDomains: 'generativelanguage.googleapis.com',
 				returnFullResponse: true,
 				encoding: 'arraybuffer',
 			});

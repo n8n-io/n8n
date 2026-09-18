@@ -854,7 +854,9 @@ describe('KafkaTriggerV2 Node', () => {
 				messages: [{ value: Buffer.from('avro-encoded') }],
 			});
 
-			expect(SchemaRegistry).toHaveBeenCalledWith({ host: 'http://localhost:8081' });
+			expect(SchemaRegistry).toHaveBeenCalledWith(
+				expect.objectContaining({ host: 'http://localhost:8081/' }),
+			);
 			expect(mockDecode).toHaveBeenCalledWith(Buffer.from('avro-encoded'));
 			expect(emit).toHaveBeenCalledWith([
 				[{ json: { message: { data: 'decoded-data' }, topic: 'test-topic' } }],

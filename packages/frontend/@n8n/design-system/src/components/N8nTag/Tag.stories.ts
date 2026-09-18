@@ -1,16 +1,14 @@
-import type { StoryFn } from '@storybook/vue3-vite';
+import type { Meta, StoryObj } from '@storybook/vue3-vite';
 
 import N8nTag from './Tag.vue';
 import N8nTags from '../N8nTags/Tags.vue';
 
-export default {
+const meta = {
 	title: 'Core/Tag',
 	component: N8nTag,
 	argTypes: {
 		text: {
-			control: {
-				control: 'text',
-			},
+			control: 'text',
 		},
 		size: {
 			control: 'select',
@@ -24,84 +22,75 @@ export default {
 			},
 		},
 	},
-};
+} satisfies Meta<typeof N8nTag>;
 
-const SingleTagTemplate: StoryFn = (args, { argTypes }) => ({
-	setup: () => ({ args }),
-	props: Object.keys(argTypes),
-	components: {
-		N8nTag,
+export default meta;
+type Story = StoryObj<typeof meta>;
+type TagsStory = StoryObj<typeof N8nTags>;
+
+export const Default: Story = {
+	render: (args) => ({
+		components: { N8nTag },
+		setup() {
+			return { args };
+		},
+		template: '<N8nTag v-bind="args" />',
+	}),
+	args: {
+		text: 'tag name',
+		size: 'sm',
 	},
-	template: '<n8n-tag v-bind="args"></n8n-tag>',
-});
-
-export const SingleTag = SingleTagTemplate.bind({});
-SingleTag.args = {
-	text: 'tag name',
-	size: 'sm',
 };
 
-export const MediumTag = SingleTagTemplate.bind({});
-MediumTag.args = {
-	text: 'tag name',
-	size: 'md',
-};
-
-export const LargeTag = SingleTagTemplate.bind({});
-LargeTag.args = {
-	text: 'tag name',
-	size: 'lg',
-};
-
-const TagListTemplate: StoryFn = (args) => ({
-	setup: () => ({ args }),
-	components: {
-		N8nTags,
+export const Sizes: Story = {
+	render: () => ({
+		components: { N8nTag },
+		template: `
+			<div style="display: flex; gap: 12px; align-items: center;">
+				<N8nTag text="tag name" size="sm" />
+				<N8nTag text="tag name" size="md" />
+				<N8nTag text="tag name" size="lg" />
+			</div>
+		`,
+	}),
+	args: {
+		text: 'tag name',
 	},
-	template: '<n8n-tags v-bind="args"></n8n-tags>',
-});
-
-export const TagList = TagListTemplate.bind({});
-TagList.args = {
-	tags: [
-		{
-			id: 1,
-			name: 'very long tag name',
-		},
-		{
-			id: 2,
-			name: 'tag1',
-		},
-		{
-			id: 3,
-			name: 'tag2 yo',
-		},
-	],
 };
 
-export const TruncatedTagList = TagListTemplate.bind({});
-TruncatedTagList.args = {
-	truncate: true,
-	tags: [
-		{
-			id: 1,
-			name: 'very long tag name',
+export const TagList: TagsStory = {
+	render: (args) => ({
+		components: { N8nTags },
+		setup() {
+			return { args };
 		},
-		{
-			id: 2,
-			name: 'tag1',
+		template: '<N8nTags v-bind="args" />',
+	}),
+	args: {
+		tags: [
+			{ id: '1', name: 'very long tag name' },
+			{ id: '2', name: 'tag1' },
+			{ id: '3', name: 'tag2 yo' },
+		],
+	},
+};
+
+export const TruncatedTagList: TagsStory = {
+	render: (args) => ({
+		components: { N8nTags },
+		setup() {
+			return { args };
 		},
-		{
-			id: 3,
-			name: 'tag2 yo',
-		},
-		{
-			id: 4,
-			name: 'tag3',
-		},
-		{
-			id: 5,
-			name: 'tag4',
-		},
-	],
+		template: '<N8nTags v-bind="args" />',
+	}),
+	args: {
+		truncate: true,
+		tags: [
+			{ id: '1', name: 'very long tag name' },
+			{ id: '2', name: 'tag1' },
+			{ id: '3', name: 'tag2 yo' },
+			{ id: '4', name: 'tag3' },
+			{ id: '5', name: 'tag4' },
+		],
+	},
 };

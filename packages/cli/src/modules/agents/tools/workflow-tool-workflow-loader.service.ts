@@ -1,9 +1,10 @@
 import { WorkflowsConfig } from '@n8n/config';
 import { type WorkflowEntity, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { UserError } from 'n8n-workflow';
 
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
+
+import { WorkflowToolUnavailableError } from './workflow-tool-unavailable-error';
 
 export interface WorkflowToolWorkflowReference {
 	workflowId?: string;
@@ -14,7 +15,8 @@ export interface LoadWorkflowOptions {
 	/**
 	 * Load the published workflow version instead of the draft. Set for
 	 * production agent runs, mirroring how sub-workflows resolve referenced
-	 * workflows. Throws when the workflow has never been published.
+	 * workflows. Throws `WorkflowToolUnavailableError` when the workflow has
+	 * never been published.
 	 */
 	usePublishedVersion?: boolean;
 }
@@ -42,8 +44,9 @@ export class WorkflowToolWorkflowLoader {
 		if (options.usePublishedVersion) {
 			const published = await this.resolvePublishedContent(workflow);
 			if (!published) {
-				throw new UserError(
-					`Workflow "${workflow.name}" is not published. Publish it before using it in a production agent run.`,
+				throw new WorkflowToolUnavailableError(
+					'not_published',
+					`Workflow "${workflow.name}" is not published. Publish it so the published agent can use it.`,
 				);
 			}
 			Object.assign(workflow, { nodes: published.nodes, connections: published.connections });

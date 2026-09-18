@@ -6,7 +6,16 @@ import type { AgentJsonConfig } from '../types';
 export function useAgentConfig() {
 	const rootStore = useRootStore();
 	const config = ref<AgentJsonConfig | null>(null);
+	// `undefined` until a fetch or update lands; `null` when the agent has no config.
+	const configHash = ref<string | null>();
 	const loading = ref(false);
+	// Hashes this composable's own writes moved the server through since it last
+	// saw the server elsewhere, and where they left it. An edit scheduled while a
+	// save was still in flight carries that save's base hash and must be saved
+	// against the hash the save returned instead. A hash loaded by a fetch never
+	// advances a base: when it differs from `ownLatest`, the run is over.
+	const ownBases = new Set<string | null>();
+	let ownLatest: string | null = null;
 
 	// Tracks the most recently requested (project, agent) pair. fetch/update
 	// resolutions whose pair no longer matches are dropped — without this, an
@@ -30,6 +39,7 @@ export function useAgentConfig() {
 	function repoint(projectId: string, agentId: string) {
 		latestKey = keyFor(projectId, agentId);
 		config.value = null;
+		configHash.value = undefined;
 		loading.value = false;
 	}
 
@@ -39,23 +49,49 @@ export function useAgentConfig() {
 		loading.value = true;
 		try {
 			const fresh = await getAgentConfig(rootStore.restApiContext, projectId, agentId);
-			if (latestKey === key) config.value = fresh;
+			if (latestKey === key) {
+				config.value = fresh.config;
+				configHash.value = fresh.configHash;
+			}
 		} finally {
 			if (latestKey === key) loading.value = false;
 		}
 	}
 
+	/**
+	 * `baseConfigHash` is the server hash the edit was made against. Callers
+	 * that debounce saves must capture it at edit time: a refresh landing in
+	 * between would otherwise lend the stale snapshot the fresh hash and let it
+	 * pass the backend's conflict check. A base captured while one of this
+	 * composable's own saves was in flight is advanced to that save's result.
+	 * An unknown hash is sent as `null`, so the server rejects the write unless
+	 * the agent really has no config yet.
+	 */
 	async function updateConfig(
 		projectId: string,
 		agentId: string,
 		data: AgentJsonConfig,
+		baseConfigHash: string | null = configHash.value ?? null,
 	): Promise<{ versionId: string | null; stale: boolean }> {
 		const key = keyFor(projectId, agentId);
-		const result = await updateAgentConfig(rootStore.restApiContext, projectId, agentId, data);
+		if (configHash.value !== ownLatest) ownBases.clear();
+		else if (ownBases.has(baseConfigHash)) baseConfigHash = ownLatest;
+		const result = await updateAgentConfig(
+			rootStore.restApiContext,
+			projectId,
+			agentId,
+			data,
+			baseConfigHash,
+		);
 		const stale = latestKey !== key;
-		if (!stale) config.value = result.config;
+		if (!stale) {
+			config.value = result.config;
+			configHash.value = result.configHash;
+			ownBases.add(baseConfigHash);
+			ownLatest = result.configHash;
+		}
 		return { versionId: result.versionId, stale };
 	}
 
-	return { config, loading, repoint, fetchConfig, updateConfig };
+	return { config, configHash, loading, repoint, fetchConfig, updateConfig };
 }

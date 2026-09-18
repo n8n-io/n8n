@@ -5,11 +5,22 @@ import { nextTick, ref } from 'vue';
 import type * as VueUse from '@vueuse/core';
 
 import AgentAdvancedPanel from '../components/AgentAdvancedPanel.vue';
+import AgentWebSearchSection from '../components/AgentWebSearchSection.vue';
 import type { ProviderCatalog } from '../composables/useAgentApi';
 import type { AgentJsonConfig } from '../types';
 
 const ensureLoadedMock = vi.fn();
+const openNewCredentialMock = vi.hoisted(() => vi.fn());
 const modelCatalog = ref<ProviderCatalog>({});
+
+type MockProject = { id: string; scopes: string[] };
+const CREDENTIAL_CREATE_SCOPES = ['credential:create'];
+// Mutable per test (reset in beforeEach) so the project → permission resolution can be exercised.
+const projectsStoreState = vi.hoisted(() => ({
+	currentProject: null as MockProject | null,
+	personalProject: null as MockProject | null,
+	myProjects: [] as MockProject[],
+}));
 
 vi.mock('../composables/useModelCatalog', () => ({
 	useModelCatalog: () => ({
@@ -26,6 +37,9 @@ vi.mock('@n8n/i18n', () => ({
 				'agents.builder.advanced.reasoning.unsupportedHint':
 					'This model does not support reasoning',
 				'agents.builder.advanced.reasoning.noModelHint': 'No model selected',
+				'nodeCredentials.createNew': 'Create new credential',
+				'nodeCredentials.createNew.permissionDenied':
+					'Your current role does not allow you to create credentials',
 			})[key] ?? key,
 	}),
 }));
@@ -36,7 +50,25 @@ vi.mock('@/features/credentials/credentials.store', () => ({
 			{ id: 'brave-1', name: 'Brave Key', type: 'braveSearchApi' },
 			{ id: 'searxng-1', name: 'SearXNG', type: 'searXngApi' },
 		],
+		getCredentialTypeByName: (type: string) => ({ displayName: type }),
 	}),
+}));
+
+vi.mock('@/features/collaboration/projects/projects.store', () => ({
+	useProjectsStore: () => projectsStoreState,
+}));
+
+vi.mock('@/app/stores/ui.store', () => ({
+	useUIStore: () => ({ openNewCredential: openNewCredentialMock }),
+}));
+
+vi.mock('../components/AgentMemoryModelSetting.vue', () => ({
+	default: {
+		name: 'AgentMemoryModelSetting',
+		template: '<div data-testid="agent-memory-model-setting" />',
+		props: ['config', 'disabled', 'projectId'],
+		emits: ['update:config'],
+	},
 }));
 
 // Numeric/reasoning sub-controls debounce — execute synchronously in the test.
@@ -51,17 +83,24 @@ vi.mock('@vueuse/core', async (importOriginal) => {
 const globalStubs = {
 	N8nIcon: { template: '<span v-bind="$attrs" />', props: ['icon', 'size'] },
 	N8nText: { template: '<span><slot /></span>' },
-	N8nInputNumber2: {
+	N8nInputNumber: {
 		props: ['modelValue', 'disabled', 'min', 'max', 'precision', 'placeholder'],
 		emits: ['update:modelValue'],
 		template:
 			'<input :value="modelValue" :disabled="disabled" @input="$emit(\'update:modelValue\', Number($event.target.value))" />',
 	},
+	// Keep <select> as the single root so `findComponent('[data-testid=…]')` matches the stub;
+	// the footer slot is where CredentialsDropdown renders "Create new credential".
 	N8nSelect: {
 		props: ['modelValue', 'disabled'],
 		emits: ['update:modelValue'],
 		template:
-			'<select v-bind="$attrs" :value="modelValue" :disabled="disabled" @change="$emit(\'update:modelValue\', $event.target.value)"><slot /></select>',
+			'<select v-bind="$attrs" :value="modelValue" :disabled="disabled" @change="$emit(\'update:modelValue\', $event.target.value)"><slot /><slot name="footer" /></select>',
+	},
+	N8nTooltip: {
+		props: ['disabled', 'content'],
+		template:
+			'<span :data-tooltip-disabled="String(disabled)" :data-tooltip-content="content"><slot /></span>',
 	},
 	N8nOption: {
 		name: 'N8nOption',
@@ -162,219 +201,38 @@ function findStubComponent(wrapper: ReturnType<typeof mount>, testId: string) {
 	};
 }
 
-type WebSearchConfig = {
-	enabled: boolean;
-	provider?: string;
-	credential?: string;
-};
-
-function getWebSearchConfig(changes: Partial<AgentJsonConfig>): WebSearchConfig | undefined {
-	return (
-		changes.config as
-			| (NonNullable<AgentJsonConfig['config']> & { webSearch?: WebSearchConfig })
-			| undefined
-	)?.webSearch;
-}
-
 describe('AgentAdvancedPanel', () => {
 	beforeEach(() => {
 		ensureLoadedMock.mockReset();
+		openNewCredentialMock.mockReset();
 		modelCatalog.value = makeCatalog();
+		projectsStoreState.currentProject = { id: 'project-1', scopes: CREDENTIAL_CREATE_SCOPES };
+		projectsStoreState.personalProject = null;
+		projectsStoreState.myProjects = [];
 	});
 
-	it('renders the collapsible heading and toggles the advanced content', async () => {
-		const wrapper = mount(AgentAdvancedPanel, {
-			props: { config: makeConfig(), collapsible: true },
-			global: { stubs: globalStubs },
-		});
-
-		const title = wrapper.find('[data-testid="agent-advanced-title"]');
-		const trigger = wrapper.find('[data-testid="agent-advanced-trigger"]');
-		const chevron = wrapper.find('[data-testid="agent-advanced-chevron"]');
-		const content = wrapper.find('[data-testid="agent-advanced-content"]');
-
-		expect(title.text()).toContain('agents.builder.advanced.title');
-		expect(chevron.exists()).toBe(true);
-		expect(content.isVisible()).toBe(false);
-
-		await trigger.trigger('click');
-
-		expect(content.isVisible()).toBe(true);
-	});
-
-	it('treats sparse native web search config as disabled', async () => {
+	it('renders the advanced section without a collapsible heading', () => {
 		const wrapper = mount(AgentAdvancedPanel, {
 			props: { config: makeConfig() },
 			global: { stubs: globalStubs },
 		});
 
-		const method = findStubComponent(wrapper, 'agent-web-search-method');
-		expect(method.exists()).toBe(true);
-		expect(method.props('modelValue')).toBe('off');
-
-		emitSelectValue(wrapper, 'agent-web-search-method', 'native');
-		await nextTick();
-		const events = wrapper.emitted('update:config') ?? [];
-		const last = events[events.length - 1][0] as Partial<AgentJsonConfig>;
-		expect(getWebSearchConfig(last)).toEqual({ enabled: true, provider: 'native' });
-		expect(last.providerTools).toEqual({ 'anthropic.web_search': { maxUses: 5 } });
+		expect(wrapper.text()).toContain('agents.builder.advanced.title');
+		expect(wrapper.find('[data-testid="agent-memory-model-setting"]').exists()).toBe(true);
+		expect(wrapper.find('[data-testid="agent-advanced-trigger"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-advanced-chevron"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-behavior-panel"]').isVisible()).toBe(true);
+		expect(wrapper.find('[data-testid="agent-reasoning-toggle"]').isVisible()).toBe(true);
 	});
 
-	it('emits provider-specific web search options', async () => {
-		const config = makeConfig({
-			model: 'openai/gpt-5',
-			config: { webSearch: { enabled: true } },
-			providerTools: { 'openai.web_search': {} },
-		} as Partial<AgentJsonConfig>);
+	it('does not render web search controls', function doesNotRenderWebSearchControls() {
 		const wrapper = mount(AgentAdvancedPanel, {
-			props: { config },
+			props: { config: makeConfig() },
 			global: { stubs: globalStubs },
 		});
 
-		await wrapper.find('[data-testid="agent-web-search-external-access"]').trigger('click');
-
-		const events = wrapper.emitted('update:config') ?? [];
-		const last = events[events.length - 1][0] as Partial<AgentJsonConfig>;
-		expect(last.providerTools).toEqual({
-			'openai.web_search': {
-				externalWebAccess: false,
-				searchContextSize: 'medium',
-			},
-		});
-	});
-
-	it('strips native web search provider tools when native web search is disabled', async () => {
-		const config = makeConfig({
-			config: { webSearch: { enabled: true } },
-			providerTools: {
-				'anthropic.web_search': { maxUses: 5 },
-				'openai.image_generation': {},
-			},
-		} as Partial<AgentJsonConfig>);
-		const wrapper = mount(AgentAdvancedPanel, {
-			props: { config },
-			global: { stubs: globalStubs },
-		});
-
-		emitSelectValue(wrapper, 'agent-web-search-method', 'off');
-		await nextTick();
-
-		const events = wrapper.emitted('update:config') ?? [];
-		const last = events[events.length - 1][0] as Partial<AgentJsonConfig>;
-		expect(getWebSearchConfig(last)).toEqual({ enabled: false });
-		expect(last.providerTools).toEqual({ 'openai.image_generation': {} });
-	});
-
-	it('enables fallback web search for providers without native web search', async () => {
-		const config = makeConfig({ model: 'deepseek/deepseek-chat' });
-		const wrapper = mount(AgentAdvancedPanel, {
-			props: { config },
-			global: { stubs: globalStubs },
-		});
-
-		emitSelectValue(wrapper, 'agent-web-search-method', 'brave');
-		await nextTick();
-
-		const events = wrapper.emitted('update:config') ?? [];
-		const last = events[events.length - 1][0] as Partial<AgentJsonConfig>;
-		expect(getWebSearchConfig(last)).toEqual({ enabled: true, provider: 'brave' });
-	});
-
-	it('keeps fallback controls visible on native-capable models', async () => {
-		const config = makeConfig({
-			config: { webSearch: { enabled: true, provider: 'brave', credential: 'brave-1' } },
-			providerTools: { 'anthropic.web_search': { maxUses: 5 } },
-		} as Partial<AgentJsonConfig>);
-		const wrapper = mount(AgentAdvancedPanel, {
-			props: { config },
-			global: { stubs: globalStubs },
-		});
-
-		expect(wrapper.find('[data-testid="agent-web-search-method"]').exists()).toBe(true);
-		expect(wrapper.find('[data-testid="agent-web-search-fallback-credential"]').exists()).toBe(
-			true,
-		);
-		expect(wrapper.find('[data-testid="agent-web-search-max-uses"]').exists()).toBe(false);
-	});
-
-	it('switches fallback web search to native and emits native provider tools', async () => {
-		const config = makeConfig({
-			config: { webSearch: { enabled: true, provider: 'brave', credential: 'brave-1' } },
-		} as Partial<AgentJsonConfig>);
-		const wrapper = mount(AgentAdvancedPanel, {
-			props: { config },
-			global: { stubs: globalStubs },
-		});
-
-		emitSelectValue(wrapper, 'agent-web-search-method', 'native');
-		await nextTick();
-
-		const events = wrapper.emitted('update:config') ?? [];
-		const last = events[events.length - 1][0] as Partial<AgentJsonConfig>;
-		expect(getWebSearchConfig(last)).toEqual({ enabled: true, provider: 'native' });
-		expect(last.providerTools).toEqual({ 'anthropic.web_search': { maxUses: 5 } });
-	});
-
-	it('preserves fallback web search credential when switching away and back to the same fallback provider', async () => {
-		const config = makeConfig({
-			config: { webSearch: { enabled: true, provider: 'brave', credential: 'brave-1' } },
-		} as Partial<AgentJsonConfig>);
-		const wrapper = mount(AgentAdvancedPanel, {
-			props: { config },
-			global: { stubs: globalStubs },
-		});
-
-		emitSelectValue(wrapper, 'agent-web-search-method', 'native');
-		await nextTick();
-		emitSelectValue(wrapper, 'agent-web-search-method', 'brave');
-		await nextTick();
-
-		const events = wrapper.emitted('update:config') ?? [];
-		const last = events[events.length - 1][0] as Partial<AgentJsonConfig>;
-		expect(getWebSearchConfig(last)).toEqual({
-			enabled: true,
-			provider: 'brave',
-			credential: 'brave-1',
-		});
-	});
-
-	it('clears fallback web search credential when switching fallback providers', async () => {
-		const config = makeConfig({
-			config: { webSearch: { enabled: true, provider: 'brave', credential: 'brave-1' } },
-		} as Partial<AgentJsonConfig>);
-		const wrapper = mount(AgentAdvancedPanel, {
-			props: { config },
-			global: { stubs: globalStubs },
-		});
-
-		emitSelectValue(wrapper, 'agent-web-search-method', 'searxng');
-		await nextTick();
-
-		const events = wrapper.emitted('update:config') ?? [];
-		const last = events[events.length - 1][0] as Partial<AgentJsonConfig>;
-		expect(getWebSearchConfig(last)).toEqual({ enabled: true, provider: 'searxng' });
-	});
-
-	it('switches native web search to fallback and strips native provider tools', async () => {
-		const config = makeConfig({
-			config: { webSearch: { enabled: true, provider: 'native' } },
-			providerTools: {
-				'anthropic.web_search': { maxUses: 5 },
-				'openai.image_generation': {},
-			},
-		} as Partial<AgentJsonConfig>);
-		const wrapper = mount(AgentAdvancedPanel, {
-			props: { config },
-			global: { stubs: globalStubs },
-		});
-
-		emitSelectValue(wrapper, 'agent-web-search-method', 'brave');
-		await nextTick();
-
-		const events = wrapper.emitted('update:config') ?? [];
-		const last = events[events.length - 1][0] as Partial<AgentJsonConfig>;
-		expect(getWebSearchConfig(last)).toEqual({ enabled: true, provider: 'brave' });
-		expect(last.providerTools).toEqual({ 'openai.image_generation': {} });
+		expect(wrapper.findComponent(AgentWebSearchSection).exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-web-search-method"]').exists()).toBe(false);
 	});
 
 	it('loads the model catalog for the current project', () => {
@@ -669,8 +527,6 @@ describe('AgentAdvancedPanel', () => {
 			props: { config, disabled: true },
 			global: { stubs: globalStubs },
 		});
-		const webSearchMethod = findStubComponent(wrapper, 'agent-web-search-method');
-		expect(webSearchMethod.props('disabled')).toBe(true);
 		expect(
 			wrapper.find('[data-testid="agent-reasoning-toggle"]').attributes('disabled'),
 		).toBeDefined();

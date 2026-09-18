@@ -7,6 +7,7 @@ import {
 	WorkflowRepository,
 	WorkflowHistoryRepository,
 	WorkflowPublishHistoryRepository,
+	WorkflowPublishedVersionRepository,
 	WorkflowDependencies,
 	WorkflowDependencyRepository,
 	WebhookRepository,
@@ -348,6 +349,12 @@ export async function createActiveWorkflow(
 	);
 
 	await setActiveVersion(workflow.id, workflow.versionId);
+	// The publication service serves webhooks and sub-workflow calls from this
+	// mapping, so a "running" fixture needs it as well as `activeVersionId`.
+	await Container.get(WorkflowPublishedVersionRepository).setPublishedVersion(
+		workflow.id,
+		workflow.versionId,
+	);
 
 	workflow.activeVersionId = workflow.versionId;
 
@@ -355,6 +362,8 @@ export async function createActiveWorkflow(
 }
 
 export async function deleteWorkflowAndWebhooks(workflowId: string) {
+	// RESTRICT FK: the mapping must go before the workflow row.
+	await Container.get(WorkflowPublishedVersionRepository).removePublishedVersion(workflowId);
 	await Container.get(WorkflowRepository).delete({ id: workflowId });
 	await Container.get(WebhookRepository).delete({ workflowId });
 }

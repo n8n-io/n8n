@@ -1716,4 +1716,47 @@ describe('EvalExecutionService', () => {
 			expect(result.hints.nodeHints).toEqual({ 'HTTP Request': 'Return user profiles' });
 		});
 	});
+
+	// ── reserved node names ──────────────────────────────────────────
+
+	describe('reserved node names', () => {
+		// Object literals cannot express an own "__proto__" key; this mirrors the
+		// shape JSON.parse produces for a persisted runData column.
+		function runDataWithOwnKey(key: string, value: unknown): Record<string, unknown> {
+			const runData: Record<string, unknown> = {};
+			Object.defineProperty(runData, key, {
+				value,
+				enumerable: true,
+				writable: true,
+				configurable: true,
+			});
+			return runData;
+		}
+
+		afterEach(() => {
+			// Undo any pollution a regression would have caused so it can't leak
+			// into unrelated tests.
+			for (const key of ['iterationCount', 'outputs', 'outputCount', 'executionMode']) {
+				delete (Object.prototype as Record<string, unknown>)[key];
+			}
+		});
+
+		it('does not pollute Object.prototype when a run node is named "__proto__"', async () => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(makeWorkflowEntity() as never);
+			activeExecutions.getPostExecutePromise.mockResolvedValue(
+				makeIRun({
+					data: {
+						resultData: { runData: runDataWithOwnKey('__proto__', []) },
+					} as unknown as IRunExecutionData,
+				}),
+			);
+
+			const result = await service.executeWithLlmMock('wf-1', makeUser());
+
+			expect('iterationCount' in {}).toBe(false);
+			expect(Object.getOwnPropertyNames(Object.prototype)).not.toContain('iterationCount');
+			// The node is still recorded — as an own key on the result, not on the prototype.
+			expect(Object.keys(result.nodeResults)).toContain('__proto__');
+		});
+	});
 });

@@ -1,8 +1,6 @@
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import { PromptTemplate } from '@langchain/core/prompts';
-import type { JSONSchema7 } from 'json-schema';
 import {
-	jsonParse,
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
@@ -22,7 +20,11 @@ import {
 	N8nOutputFixingParser,
 	N8nStructuredOutputParser,
 } from '@utils/output_parsers/N8nOutputParser';
-import { convertJsonSchemaToZod, generateSchemaFromExample } from '@utils/schemaParsing';
+import {
+	convertJsonSchemaToZod,
+	generateSchemaFromExample,
+	parseJsonSchemaParameter,
+} from '@utils/schemaParsing';
 import { getConnectionHintNoticeField } from '@n8n/ai-utilities';
 
 import { NAIVE_FIX_PROMPT } from './prompt';
@@ -197,23 +199,23 @@ export class OutputParserStructured implements INodeType {
 		const schemaType = this.getNodeParameter('schemaType', itemIndex, '') as 'fromJson' | 'manual';
 		// We initialize these even though one of them will always be empty
 		// it makes it easer to navigate the ternary operator
-		const jsonExample = this.getNodeParameter('jsonSchemaExample', itemIndex, '') as string;
+		const jsonExample = this.getNodeParameter('jsonSchemaExample', itemIndex, '') as unknown;
 
-		let inputSchema: string;
+		let inputSchema: unknown;
 
 		// Enforce all fields to be required in the generated schema if the node version is 1.3 or higher
 		const jsonExampleAllFieldsRequired = this.getNode().typeVersion >= 1.3;
 
 		if (this.getNode().typeVersion <= 1.1) {
-			inputSchema = this.getNodeParameter('jsonSchema', itemIndex, '') as string;
+			inputSchema = this.getNodeParameter('jsonSchema', itemIndex, '') as unknown;
 		} else {
-			inputSchema = this.getNodeParameter('inputSchema', itemIndex, '') as string;
+			inputSchema = this.getNodeParameter('inputSchema', itemIndex, '') as unknown;
 		}
 
 		const jsonSchema =
 			schemaType === 'fromJson'
 				? generateSchemaFromExample(jsonExample, jsonExampleAllFieldsRequired)
-				: jsonParse<JSONSchema7>(inputSchema);
+				: parseJsonSchemaParameter(inputSchema);
 
 		const zodSchema = convertJsonSchemaToZod<z.ZodSchema<object>>(jsonSchema);
 		const nodeVersion = this.getNode().typeVersion;

@@ -12,6 +12,7 @@ import type {
 } from 'n8n-workflow';
 import { UserError } from 'n8n-workflow';
 import nock from 'nock';
+import dns from 'node:dns';
 import type { LookupAddress } from 'node:dns';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
@@ -217,10 +218,20 @@ describe('SSRF end-to-end integration', () => {
 	});
 
 	describe('getSecureEgressFilter', () => {
-		test('returns the configured filter when egress filtering is enabled', () => {
+		test('returns the instance filter when egress filtering is enabled', () => {
 			const { ssrfBridge } = createSsrfBridge();
-			const additionalData = mock<IWorkflowExecuteAdditionalData>();
-			additionalData.ssrfBridge = ssrfBridge;
+			const helpers = createRequestHelpers(ssrfBridge);
+
+			expect(helpers.getSecureEgressFilter()).toBe(ssrfBridge);
+		});
+
+		test('resolves the filter from the instance policy, not from additionalData', () => {
+			const { ssrfBridge } = createSsrfBridge();
+			Container.set(
+				OutboundHttp,
+				new OutboundHttp(ssrfBridge, createConfig({ enabled: true }), mock<Logger>()),
+			);
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({ ssrfBridge: undefined });
 			const helpers = getRequestHelperFunctions(
 				mock<Workflow>(),
 				mock<INode>(),
@@ -232,10 +243,20 @@ describe('SSRF end-to-end integration', () => {
 			expect(helpers.getSecureEgressFilter()).toBe(ssrfBridge);
 		});
 
-		test('returns undefined when egress filtering is not configured', () => {
+		test('forwards the requested policy to the instance resolution', () => {
+			const { ssrfBridge } = createSsrfBridge();
+			const helpers = createRequestHelpers(ssrfBridge);
+
+			expect(helpers.getSecureEgressFilter('unsafe').createSecureLookup()).toBe(dns.lookup);
+		});
+
+		test('returns a passthrough filter using the plain system lookup when egress filtering is not configured', () => {
 			const helpers = createRequestHelpers(undefined);
 
-			expect(helpers.getSecureEgressFilter()).toBeUndefined();
+			const filter = helpers.getSecureEgressFilter();
+
+			expect(filter).toBeDefined();
+			expect(filter.createSecureLookup()).toBe(dns.lookup);
 		});
 	});
 

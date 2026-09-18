@@ -26,8 +26,10 @@
  * test/fixture/exports-subpath package.json) — only relevant for image scans.
  *
  * Usage: node enrich-sbom.mjs <sbom-path> [output-path] [--license-file=<path>]
- *                             [--lenient-config] [--drop-phantom-npm]
+ *                             [--overrides=<path>] [--lenient-config]
+ *                             [--drop-phantom-npm]
  *        output-path defaults to <sbom-path> (in-place).
+ *        --overrides defaults to license-overrides.json next to this script.
  */
 
 import { readFile, writeFile, readdir } from 'node:fs/promises';
@@ -48,9 +50,9 @@ const SKIP_DIRS = new Set(['node_modules', 'dist', '.git', '.turbo', 'coverage']
 export const FIRST_PARTY_LICENSE_REF = 'LicenseRef-n8n-sustainable-use';
 export const ELECTED_PROPERTY = 'cdx:license:elected';
 
-export async function loadLicenseConfig() {
+export async function loadLicenseConfig(overridesPath = OVERRIDES_PATH) {
 	try {
-		const raw = await readFile(OVERRIDES_PATH, 'utf-8');
+		const raw = await readFile(overridesPath, 'utf-8');
 		const parsed = JSON.parse(raw);
 		return {
 			overrides: parsed.overrides ?? {},
@@ -76,6 +78,16 @@ function srcFileOf(component) {
 }
 
 /**
+ * An npm name is `name` or `@scope/name` — neither part may contain a slash. A
+ * further slash means the scanner named a directory inside a package, i.e. an
+ * `exports` subpath (@google/genai/node, @linear/sdk/webhooks).
+ */
+function isExportsSubpath(component) {
+	const qualified = qualifiedName(component) ?? '';
+	return qualified.replace(/^@[^/]+\//, '').includes('/');
+}
+
+/**
  * A scan of a container image filesystem (unlike the pnpm-lockfile scan of the
  * release closure) deep-walks node_modules and mis-catalogs nested package.json
  * as standalone components: `exports` subpaths (@google/genai/web), sub-builds
@@ -90,6 +102,11 @@ function srcFileOf(component) {
 export function isPhantomNpm(component) {
 	const purl = component.purl ?? '';
 	if (!purl.startsWith('pkg:npm/')) return false;
+
+	// Checked before the path rules: a subpath stub lives at
+	// node_modules/@google/genai/node/package.json, which *does* end with its own
+	// qualified name, so the canonical-path check below would call it real.
+	if (isExportsSubpath(component)) return true;
 
 	const src = srcFileOf(component);
 	// syft writes "UNKNOWN" where cdxgen omits the field. Neither is a real
@@ -275,6 +292,9 @@ async function main() {
 	const args = process.argv.slice(2);
 	const positional = args.filter((a) => !a.startsWith('--'));
 	const licenseFileArg = args.find((a) => a.startsWith('--license-file='));
+	// Lets a test drive the chain against a frozen fixture config instead of the
+	// shipped one, so a dependency change can't break a behaviour test.
+	const overridesArg = args.find((a) => a.startsWith('--overrides='));
 	// A per-image scan contains only the npm subset present in that image, so most
 	// overrides/elections won't match — that's expected, not a stale pin. Lenient
 	// mode warns instead of failing. The full release-closure run stays strict.
@@ -287,7 +307,7 @@ async function main() {
 	const sbomPath = positional[0];
 	if (!sbomPath) {
 		console.error(
-			'Usage: enrich-sbom.mjs <sbom-path> [output-path] [--license-file=<path>] [--lenient-config] [--drop-phantom-npm]',
+			'Usage: enrich-sbom.mjs <sbom-path> [output-path] [--license-file=<path>] [--overrides=<path>] [--lenient-config] [--drop-phantom-npm]',
 		);
 		process.exit(1);
 	}
@@ -295,9 +315,12 @@ async function main() {
 	const licenseFile = licenseFileArg
 		? licenseFileArg.slice('--license-file='.length)
 		: DEFAULT_LICENSE_FILE;
+	const overridesPath = overridesArg
+		? overridesArg.slice('--overrides='.length)
+		: OVERRIDES_PATH;
 
 	const sbom = JSON.parse(await readFile(sbomPath, 'utf-8'));
-	const { overrides, byName, elections } = await loadLicenseConfig();
+	const { overrides, byName, elections } = await loadLicenseConfig(overridesPath);
 	const validIds = await loadSpdxIds();
 	const firstPartyOsi = await buildFirstPartyOsiMap(DEFAULT_PACKAGES_DIR, validIds);
 

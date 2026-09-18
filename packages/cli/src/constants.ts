@@ -87,6 +87,16 @@ export const OIDC_NONCE_COOKIE_NAME = 'n8n-oidc-nonce';
 export const FORM_AUTH_COOKIE_PREFIX = 'n8n-form-auth';
 export const FORM_OAUTH_COOKIE_NAME = 'n8n-form-oauth';
 
+/**
+ * Cookies the Chat trigger's hosted page sets, duplicated here for the same reason
+ * as the form ones above — the names are owned by
+ * `@n8n/n8n-nodes-langchain/nodes/trigger/ChatTrigger/shell.ts`. Keep both sides in
+ * step. The `-refresh` one carries a 30-day refresh token, so it must never leak to
+ * an unrelated webhook.
+ */
+export const CHAT_OAUTH_COOKIE_NAME = 'n8n-chat-oauth';
+export const CHAT_OAUTH_REFRESH_COOKIE_NAME = 'n8n-chat-oauth-refresh';
+
 export const NPM_COMMAND_TOKENS = {
 	NPM_PACKAGE_NOT_FOUND_ERROR: '404 Not Found',
 	NPM_PACKAGE_VERSION_NOT_FOUND_ERROR: 'No matching version found for',
@@ -119,6 +129,9 @@ export const UM_FIX_INSTRUCTION =
 export const TEST_WEBHOOK_TIMEOUT = 2 * Time.minutes.toMilliseconds;
 
 export const TEST_WEBHOOK_TIMEOUT_BUFFER = 30 * Time.seconds.toMilliseconds;
+
+/** Longest window a caller can request with `timeoutMs`. Also bounds the multi-main registrations hash TTL. */
+export const TEST_WEBHOOK_MAX_TIMEOUT = 10 * Time.minutes.toMilliseconds;
 
 export const GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE = [
 	'oAuth2Api',

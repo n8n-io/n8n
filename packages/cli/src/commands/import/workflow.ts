@@ -143,7 +143,7 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 
 		const workflows = await this.readWorkflows(flags.input, flags.separate);
 
-		const result = await this.checkRelations(workflows, flags.projectId, flags.userId);
+		const result = await this.checkRelations(workflows, project.id, flags);
 
 		if (!result.success) {
 			throw new UserError(result.message);
@@ -158,19 +158,25 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 			{ activeState: flags.activeState },
 		);
 
-		this.logContentImportViolations(violations);
+		this.logSkippedWorkflows(violations);
 
-		this.reportSuccess(workflows.length);
+		const importedCount = workflows.length - violations.length;
+
+		this.reportSuccess(importedCount);
 
 		Container.get(EventService).emit('server-cli-import', {
 			activeState: flags.activeState,
-			workflowCount: workflows.length,
+			workflowCount: importedCount,
 			separate: flags.separate,
 		});
 	}
 
-	private async checkRelations(workflows: IWorkflowBase[], projectId?: string, userId?: string) {
-		// The credential is not supposed to be re-owned.
+	private async checkRelations(
+		workflows: IWorkflowBase[],
+		targetProjectId: string,
+		{ userId, projectId }: { userId?: string; projectId?: string },
+	) {
+		// The workflow is not supposed to be re-owned.
 		if (!userId && !projectId) {
 			return {
 				success: true as const,
@@ -189,7 +195,7 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 				continue;
 			}
 
-			if (ownerProject.id !== projectId) {
+			if (ownerProject.id !== targetProjectId) {
 				const currentOwner =
 					ownerProject.type === 'personal'
 						? `the user with the ID "${user.id}"`
@@ -202,7 +208,7 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 
 				return {
 					success: false as const,
-					message: `The credential with ID "${workflow.id}" is already owned by ${currentOwner}. It can't be re-owned by ${newOwner}.`,
+					message: `The workflow with ID "${workflow.id}" is already owned by ${currentOwner}. It can't be re-owned by ${newOwner}.`,
 				};
 			}
 		}
@@ -222,20 +228,12 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 		this.logger.info(`Successfully imported ${total} ${total === 1 ? 'workflow.' : 'workflows.'}`);
 	}
 
-	private logContentImportViolations(violations: WorkflowImportViolations[]) {
-		for (const { name, contentImportPolicy } of violations) {
-			if (contentImportPolicy.violations.length) {
-				this.logger.warn(
-					`Workflow "${name}" has ${contentImportPolicy.violations.length} content-import policy violation(s)`,
-					{ violations: contentImportPolicy.violations },
-				);
-			}
-			if (contentImportPolicy.checkErrors.length) {
-				this.logger.warn(
-					`Workflow "${name}" has ${contentImportPolicy.checkErrors.length} content-import policy check(s) that failed to run`,
-					{ checkErrors: contentImportPolicy.checkErrors },
-				);
-			}
+	private logSkippedWorkflows(skipped: WorkflowImportViolations[]) {
+		for (const { name, violations } of skipped) {
+			this.logger.warn(
+				`Skipped workflow "${name}": ${violations.length} content-import policy violation(s)`,
+				{ violations },
+			);
 		}
 	}
 

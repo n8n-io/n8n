@@ -15,6 +15,19 @@ export class JiraSoftwareCloudOAuth2Api implements ICredentialType {
 
 	properties: INodeProperties[] = [
 		{
+			// Named `domain` so existing Jira OAuth2 credentials, which store the value
+			// under this key, keep working. The Confluence sibling has no site field:
+			// its node carries a Site selector instead.
+			displayName: 'Site URL',
+			name: 'domain',
+			type: 'string',
+			default: '',
+			placeholder: 'https://your-site.atlassian.net',
+			required: true,
+			description:
+				'The URL of your Atlassian site, e.g. https://your-site.atlassian.net. The scheme and any path (like /wiki) are ignored.',
+		},
+		{
 			displayName: 'Custom Scopes',
 			name: 'customScopes',
 			type: 'boolean',

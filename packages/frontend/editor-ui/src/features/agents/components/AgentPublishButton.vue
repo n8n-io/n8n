@@ -4,9 +4,11 @@ import { computed } from 'vue';
 import { N8nActionDropdown, N8nButton, N8nIconButton } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { useKeybindings } from '@/app/composables/useKeybindings';
 import { useAgentPermissions } from '../composables/useAgentPermissions';
 import { useAgentPublish } from '../composables/useAgentPublish';
 import type { AgentResource } from '../types';
+import { hasBlockingIssues } from '../utils/validationIssues';
 import AgentValidationTooltip from './AgentValidationTooltip.vue';
 
 const props = withDefaults(
@@ -56,7 +58,9 @@ const publishState = computed((): AgentPublishState => {
 // `null` (unknown/stale, e.g. still loading or invalidated by a local edit
 // that hasn't been re-validated yet) is treated as not publishable — Publish
 // must never stay enabled against a result that predates the working copy.
-const isConfigInvalid = computed(() => props.configValidationStatus !== 'valid');
+const isConfigInvalid = computed(
+	() => props.configValidationStatus === null || hasBlockingIssues(props.configValidationIssues),
+);
 const invalidConfigTooltip = computed(() =>
 	locale.baseText('agents.publish.button.invalidConfigTooltip'),
 );
@@ -88,17 +92,22 @@ const buttonConfig = computed(() => {
 	}
 });
 
+const isPublishDisabled = computed(
+	() =>
+		!buttonConfig.value.enabled ||
+		publishing.value ||
+		props.isSaving ||
+		!canPublish.value ||
+		isConfigInvalid.value,
+);
+
 const dropdownActions = computed(() => {
 	const actions: Array<ActionDropdownItem<string>> = [
 		{
 			id: 'publish',
 			label: locale.baseText('agents.publish.dropdown.publish'),
-			disabled:
-				!buttonConfig.value.enabled ||
-				publishing.value ||
-				props.isSaving ||
-				!canPublish.value ||
-				isConfigInvalid.value,
+			shortcut: { shiftKey: true, keys: ['P'] },
+			disabled: isPublishDisabled.value,
 		},
 	];
 
@@ -126,13 +135,18 @@ const dropdownActions = computed(() => {
 });
 
 async function onPublishClick() {
-	if (!buttonConfig.value.enabled || props.isSaving || !canPublish.value || isConfigInvalid.value) {
-		return;
-	}
+	if (isPublishDisabled.value) return;
 	if (props.beforePublish && !(await props.beforePublish())) return;
 	const updated = await publish(props.projectId, props.agentId);
 	if (updated) emit('published', updated);
 }
+
+useKeybindings({
+	shift_p: {
+		disabled: () => isPublishDisabled.value,
+		run: onPublishClick,
+	},
+});
 
 async function onDropdownSelect(action: string) {
 	if (action === 'publish') {
@@ -164,7 +178,7 @@ async function onDropdownSelect(action: string) {
 			<N8nButton
 				:class="$style.groupButtonLeft"
 				:loading="publishing"
-				:disabled="!buttonConfig.enabled || isSaving || !canPublish || isConfigInvalid"
+				:disabled="isPublishDisabled"
 				variant="ghost"
 				data-testid="publish-agent-button"
 				@click="onPublishClick"

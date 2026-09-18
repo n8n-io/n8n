@@ -29,6 +29,8 @@ import {
 import { createZodSchemaFromArgs, extractFromAIParameters, logAiEvent } from '@n8n/ai-utilities';
 import { sleep } from '@n8n/utils/sleep';
 
+import { SUB_WORKFLOW_WAITING_PLACEHOLDER } from '../../constants';
+
 function isNodeExecutionData(data: unknown): data is INodeExecutionData[] {
 	return isArray(data) && Boolean(data.length) && isObject(data[0]) && 'json' in data[0];
 }
@@ -285,6 +287,7 @@ export class WorkflowToolService {
 				parentExecution: {
 					executionId: workflowProxy.$execution.id,
 					workflowId: workflowProxy.$workflow.id,
+					shouldResume: true,
 				},
 				returnLastRunOnly: true, // The tool's answer is the sub-workflow's final-run output, not its internal multi-run computation.
 			});
@@ -292,6 +295,15 @@ export class WorkflowToolService {
 			this.subExecutionId = receivedData.executionId;
 		} catch (error) {
 			throw new NodeOperationError(context.getNode(), error as Error);
+		}
+		if (receivedData.waitTill) {
+			// A parked child has no final output yet: Wait / Send-and-Wait nodes pass their input
+			// through, so `data` is the HITL node's input, not a result. The parent is already parked
+			// via BaseExecuteContext.executeWorkflow and gets the real output on resume.
+			const response = this.returnAllItems
+				? [{ json: SUB_WORKFLOW_WAITING_PLACEHOLDER }]
+				: SUB_WORKFLOW_WAITING_PLACEHOLDER;
+			return { response, subExecutionId: receivedData.executionId };
 		}
 
 		let response: IDataObject | INodeExecutionData[] | undefined;

@@ -1,0 +1,288 @@
+[
+	{
+		"rule": "@typescript-eslint/naming-convention",
+		"pkg": "packages/",
+		"before": "error",
+		"after": "off",
+		"reason": "retired in base: downgraded in 39 of 72 packages (12 keep a local error upgrade)"
+	},
+	{
+		"rule": "@typescript-eslint/no-unsafe-assignment",
+		"pkg": "packages/",
+		"before": "error",
+		"after": "off",
+		"reason": "retired in base: downgraded in 31 packages"
+	},
+	{
+		"rule": "@typescript-eslint/no-unsafe-member-access",
+		"pkg": "packages/",
+		"before": "error",
+		"after": "off",
+		"reason": "retired in base: downgraded in 23 packages"
+	},
+	{
+		"rule": "@typescript-eslint/no-unsafe-call",
+		"pkg": "packages/",
+		"before": "error",
+		"after": "off",
+		"reason": "retired in base: downgraded in 20 packages"
+	},
+	{
+		"rule": "@typescript-eslint/require-await",
+		"pkg": "packages/",
+		"before": "error",
+		"after": "off",
+		"reason": "retired in base: downgraded in 18 packages"
+	},
+	{
+		"rule": "@typescript-eslint/no-unsafe-return",
+		"pkg": "packages/",
+		"before": "error",
+		"after": "off",
+		"reason": "retired in base: downgraded in 17 packages"
+	},
+	{
+		"rule": "@typescript-eslint/no-unsafe-argument",
+		"pkg": "packages/",
+		"before": "error",
+		"after": "off",
+		"reason": "retired in base: downgraded in 15 packages"
+	},
+	{
+		"rule": "@typescript-eslint/prefer-nullish-coalescing",
+		"pkg": "packages/",
+		"before": "error",
+		"after": "off",
+		"reason": "retired in base: downgraded in 13 packages"
+	},
+	{
+		"rule": "@typescript-eslint/unbound-method",
+		"pkg": "packages/",
+		"before": "error",
+		"after": "off",
+		"reason": "retired in base: downgraded in 12 packages"
+	},
+	{
+		"rule": "n8n-local-rules/no-uncaught-json-parse",
+		"pkg": "packages/",
+		"before": "error",
+		"after": "off",
+		"reason": "retired in base: downgraded in 12 packages"
+	},
+	{
+		"rule": "@typescript-eslint/no-unsafe-function-type",
+		"pkg": "packages/",
+		"before": "error",
+		"after": "off",
+		"reason": "retired in base: downgraded in 11 packages"
+	},
+	{
+		"rule": "import-x/no-default-export",
+		"pkg": "packages/",
+		"before": "error",
+		"after": "off",
+		"reason": "retired in base: downgraded in 11 packages"
+	},
+	{
+		"rule": "@typescript-eslint/no-empty-object-type",
+		"pkg": "packages/",
+		"before": "error",
+		"after": "off",
+		"reason": "retired in base: downgraded in 10 packages"
+	},
+	{
+		"rule": "import-x/order",
+		"pkg": "packages/",
+		"before": "error",
+		"after": "off",
+		"reason": "retired in base: downgraded in 10 packages"
+	},
+	{
+		"rule": "no-empty",
+		"pkg": "packages/",
+		"before": "error",
+		"after": "off",
+		"reason": "retired in base: downgraded in 10 packages"
+	},
+
+	{
+		"rule": "unicorn/filename-case",
+		"pkg": "packages/",
+		"before": "off",
+		"after": "error",
+		"reason": "base now sets kebab-case, which 35 packages had each set for themselves"
+	},
+
+	{
+		"rule": "n8n-local-rules/no-uncentralized-http",
+		"pkg": "packages/",
+		"before": "off",
+		"after": "error",
+		"reason": "package moved from base to the backend layer, which carries the network boundary"
+	},
+	{
+		"rule": "n8n-local-rules/no-legacy-cipher-methods",
+		"pkg": "packages/",
+		"before": "off",
+		"after": "error",
+		"reason": "package moved from base to the backend layer, which carries the encryption boundary"
+	},
+	{
+		"rule": "n8n-local-rules/no-misplaced-cipher-primitives",
+		"pkg": "packages/",
+		"before": "off",
+		"after": "error",
+		"reason": "package moved from base to the backend layer, which carries the encryption boundary"
+	},
+	{
+		"rule": "n8n-local-rules/no-deployment-key-delete",
+		"pkg": "packages/",
+		"before": "off",
+		"after": "error",
+		"reason": "package moved from base to the backend layer, which carries the encryption boundary"
+	},
+	{
+		"rule": "n8n-local-rules/no-encryption-guardrail-disable",
+		"pkg": "packages/",
+		"before": "off",
+		"after": "error",
+		"reason": "package moved from base to the backend layer, which carries the encryption boundary"
+	},
+	{
+		"rule": "n8n-local-rules/no-uncentralized-http",
+		"pkg": "packages/",
+		"before": "error",
+		"after": "error",
+		"reason": "the allow list gained @n8n/backend-network, which is the factory itself"
+	},
+
+	{
+		"rule": "n8n-local-rules/no-uncentralized-http",
+		"pkg": "packages/@n8n/utils",
+		"before": "error",
+		"after": "off",
+		"reason": "runtime-agnostic library moved to base: no Node runtime, no HTTP imports"
+	},
+	{
+		"rule": "n8n-local-rules/no-legacy-cipher-methods",
+		"pkg": "packages/@n8n/utils",
+		"before": "error",
+		"after": "off",
+		"reason": "runtime-agnostic library moved to base"
+	},
+	{
+		"rule": "n8n-local-rules/no-misplaced-cipher-primitives",
+		"pkg": "packages/@n8n/utils",
+		"before": "error",
+		"after": "off",
+		"reason": "runtime-agnostic library moved to base"
+	},
+	{
+		"rule": "n8n-local-rules/no-deployment-key-delete",
+		"pkg": "packages/@n8n/utils",
+		"before": "error",
+		"after": "off",
+		"reason": "runtime-agnostic library moved to base"
+	},
+	{
+		"rule": "n8n-local-rules/no-encryption-guardrail-disable",
+		"pkg": "packages/@n8n/utils",
+		"before": "error",
+		"after": "off",
+		"reason": "runtime-agnostic library moved to base"
+	},
+	{
+		"rule": "n8n-local-rules/no-uncentralized-http",
+		"pkg": "packages/@n8n/json-schema-to-zod",
+		"before": "error",
+		"after": "off",
+		"reason": "pure library moved to base: no Node APIs"
+	},
+	{
+		"rule": "n8n-local-rules/no-legacy-cipher-methods",
+		"pkg": "packages/@n8n/json-schema-to-zod",
+		"before": "error",
+		"after": "off",
+		"reason": "pure library moved to base"
+	},
+	{
+		"rule": "n8n-local-rules/no-misplaced-cipher-primitives",
+		"pkg": "packages/@n8n/json-schema-to-zod",
+		"before": "error",
+		"after": "off",
+		"reason": "pure library moved to base"
+	},
+	{
+		"rule": "n8n-local-rules/no-deployment-key-delete",
+		"pkg": "packages/@n8n/json-schema-to-zod",
+		"before": "error",
+		"after": "off",
+		"reason": "pure library moved to base"
+	},
+	{
+		"rule": "n8n-local-rules/no-encryption-guardrail-disable",
+		"pkg": "packages/@n8n/json-schema-to-zod",
+		"before": "error",
+		"after": "off",
+		"reason": "pure library moved to base"
+	},
+	{
+		"rule": "n8n-local-rules/no-uncentralized-http",
+		"pkg": "packages/@n8n/crdt",
+		"before": "error",
+		"after": "off",
+		"reason": "yjs-only library moved to base: no Node APIs"
+	},
+	{
+		"rule": "n8n-local-rules/no-legacy-cipher-methods",
+		"pkg": "packages/@n8n/crdt",
+		"before": "error",
+		"after": "off",
+		"reason": "yjs-only library moved to base"
+	},
+	{
+		"rule": "n8n-local-rules/no-misplaced-cipher-primitives",
+		"pkg": "packages/@n8n/crdt",
+		"before": "error",
+		"after": "off",
+		"reason": "yjs-only library moved to base"
+	},
+	{
+		"rule": "n8n-local-rules/no-deployment-key-delete",
+		"pkg": "packages/@n8n/crdt",
+		"before": "error",
+		"after": "off",
+		"reason": "yjs-only library moved to base"
+	},
+	{
+		"rule": "n8n-local-rules/no-encryption-guardrail-disable",
+		"pkg": "packages/@n8n/crdt",
+		"before": "error",
+		"after": "off",
+		"reason": "yjs-only library moved to base"
+	},
+
+	{
+		"key": "(languageOptions)",
+		"pkg": "packages/",
+		"reason": "Node globals and ecmaVersion 2024 follow the base/backend move"
+	},
+
+	{
+		"rule": "n8n-nodes-base/node-filename-against-convention",
+		"pkg": "packages/@n8n/nodes-langchain",
+		"before": "error",
+		"after": "off",
+		"reason": "the nodes layer relaxes it for test files, which nodes-base already did and langchain did not"
+	},
+	{
+		"key": "(plugins)",
+		"pkg": "packages/nodes-base",
+		"reason": "the nodes layer registers eslint-plugin-n8n-nodes-base once, so it is visible to test files under credentials/ too"
+	},
+	{
+		"key": "(plugins)",
+		"pkg": "packages/@n8n/nodes-langchain",
+		"reason": "the nodes layer registers eslint-plugin-n8n-nodes-base once, so it is visible to test files under credentials/ too"
+	}
+]

@@ -6,6 +6,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 
 import { AllowAllAdmittance } from '../../admittance';
 import { mintIdentityToken, SharedSecretIdentityVerifier } from '../../auth';
+import { UnexpectedError } from '../../common';
 import { createDataSource, createStores, WorkflowExecution } from '../../database';
 import { generateId } from '../../database/generate-id';
 import { ExecutionQueryService, StartExecutionService } from '../../execution';
@@ -13,23 +14,164 @@ import type { WorkflowGraph } from '../../graph';
 import type { OrchestrationMessage, WorkQueue } from '../../queue';
 import { createEngineRuntime } from '../../runtime';
 import { startEngineServer } from '../../testing/start-engine-server';
+import type { SearchExecutionsResponse } from '../api.types';
 
 const sampleGraph: WorkflowGraph = {
 	nodes: [{ id: 'trigger', name: 'Manual Trigger', type: 'trigger', config: {} }],
 	edges: [],
 };
 
+/** Opaque to the engine: it is stored and reported, never read into. */
+const sampleWorkflow = {
+	id: 'wf-1',
+	name: 'Sample',
+	nodes: [{ name: 'Manual Trigger' }],
+	connections: {},
+};
+
 const secret = 'a'.repeat(32);
+
+/** A well-formed cursor, to test what pairs with it rather than its own shape. */
+const sampleCursor = { id: generateId(), createdAt: '2026-09-07T12:00:00.000Z' };
 
 const authHeader = () => ({
 	authorization: `Bearer ${mintIdentityToken(secret, { cpId: 'cp-1', tenantId: 'tenant-1' })}`,
+});
+
+describe('POST /api/workflow-executions/search (integration)', () => {
+	const search = (body: object) =>
+		request(url).post('/api/workflow-executions/search').set(authHeader()).send(body);
+	async function start(workflowId: string) {
+		const body = startBody({ workflowId });
+		await request(url).post('/api/workflow-executions').set(authHeader()).send(body).expect(201);
+		return body.executionId;
+	}
+
+	it('requires authentication', async () => {
+		await request(url)
+			.post('/api/workflow-executions/search')
+			.send({ workflowIds: 'all' })
+			.expect(401);
+	});
+
+	it.each([
+		{},
+		{ workflowIds: [] },
+		{ workflowIds: [''] },
+		{ workflowIds: 'all', tenantId: 'tenant' },
+		{ workflowIds: 'all', unknown: true },
+		{ workflowIds: 'all', limit: 101 },
+		{ workflowIds: 'all', limit: 0 },
+		{ workflowIds: 'all', status: [] },
+		{ workflowIds: 'all', before: { id: 'bad', createdAt: 'today' } },
+		{ workflowIds: Array.from({ length: 10_001 }, () => 'wf') },
+		{ workflowIds: 'all', before: sampleCursor, order: { top: 'running' } },
+	])('rejects an invalid search body %#', async (body) => {
+		await search(body).expect(400);
+	});
+
+	it('rejects a cursor paired with a status-first sort at the store', async () => {
+		const { executionViewStore } = createStores(dataSource);
+		await expect(
+			executionViewStore.listExecutionViews({
+				workflowIds: 'all',
+				limit: 20,
+				before: sampleCursor,
+				order: { top: 'running' },
+			}),
+		).rejects.toThrow(UnexpectedError);
+	});
+
+	it('filters workflows and selects exactly the summary columns', async () => {
+		const workflowId = generateId();
+		const id = await start(workflowId);
+		await start(generateId());
+		const response = await search({ workflowIds: [workflowId], includeTotal: true }).expect(200);
+		const result = response.body as SearchExecutionsResponse;
+		expect(result.total).toBe(1);
+		expect(result.nextCursor).toBeNull();
+		expect(result.items.map((item) => item.id)).toEqual([id]);
+		expect(Object.keys(result.items[0]).sort()).toEqual(
+			['id', 'workflowId', 'status', 'mode', 'createdAt', 'updatedAt', 'finishedAt'].sort(),
+		);
+		const { executionViewStore } = createStores(dataSource);
+		const rows = await executionViewStore.listExecutionViews({
+			workflowIds: [workflowId],
+			limit: 20,
+		});
+		expect(Object.keys(rows[0]).sort()).toEqual(Object.keys(result.items[0]).sort());
+	});
+
+	it('allows all for the authenticated CP', async () => {
+		const id = await start(generateId());
+		const response = await search({ workflowIds: 'all', includeTotal: true }).expect(200);
+		const result = response.body as SearchExecutionsResponse;
+		expect(result.items.map((item) => item.id)).toContain(id);
+		expect(result.total).toBeGreaterThanOrEqual(1);
+	});
+
+	it('compares modes exactly and applies status filters', async () => {
+		const workflowId = generateId();
+		await start(workflowId);
+		const production = await search({
+			workflowIds: [workflowId],
+			mode: 'production',
+			status: ['queued'],
+		}).expect(200);
+		expect((production.body as SearchExecutionsResponse).items).toHaveLength(1);
+		for (const filter of [{ mode: 'webhook' }, { mode: 'manual' }, { status: ['completed'] }]) {
+			const response = await search({
+				workflowIds: [workflowId],
+				...filter,
+				includeTotal: true,
+			}).expect(200);
+			expect(response.body).toEqual({ items: [], nextCursor: null, total: 0 });
+		}
+	});
+
+	it('walks equal timestamps without losing rows and keeps the total independent of the cursor', async () => {
+		const workflowId = generateId();
+		const ids: string[] = [];
+		for (let i = 0; i < 5; i++) ids.push(await start(workflowId));
+		const timestamp = '2026-09-07T12:00:00.000Z';
+		await dataSource.query('UPDATE workflow_execution SET created_at = $1 WHERE workflow_id = $2', [
+			timestamp,
+			workflowId,
+		]);
+		const seen: string[] = [];
+		let before: { id: string; createdAt: string } | undefined;
+		for (let i = 0; i < 3; i++) {
+			const response = await search({
+				workflowIds: [workflowId],
+				limit: 2,
+				includeTotal: true,
+				before,
+				createdAfter: timestamp,
+				createdBefore: timestamp,
+			}).expect(200);
+			const page = response.body as SearchExecutionsResponse;
+			expect(page.total).toBe(5);
+			expect(page.nextCursor !== null).toBe(i < 2);
+			seen.push(...page.items.map((item) => item.id));
+			before = page.nextCursor ?? undefined;
+		}
+		expect(seen).toEqual(ids.sort().reverse());
+		expect(new Set(seen).size).toBe(5);
+		const excluded = await search({
+			workflowIds: [workflowId],
+			createdBefore: '2026-09-07T11:59:59.999Z',
+		}).expect(200);
+		expect((excluded.body as SearchExecutionsResponse).items).toEqual([]);
+	});
 });
 
 /** The caller always mints the id, so every valid body carries one. */
 const startBody = (overrides: Record<string, unknown> = {}) => ({
 	workflowId: 'wf-1',
 	graph: sampleGraph,
+	workflow: sampleWorkflow,
 	executionId: generateId(),
+	callerContext: {},
 	...overrides,
 });
 
@@ -88,6 +230,7 @@ describe('POST /api/workflow-executions (integration)', () => {
 		expect(row.status).toBe('queued');
 		expect(row.mode).toBe('production');
 		expect(row.graph).toEqual(sampleGraph);
+		expect(row.workflow).toEqual(sampleWorkflow);
 		expect(row.triggerOutputs).toEqual([[{ json: { hello: 'world' } }]]);
 
 		expect(workQueue.publish).toHaveBeenCalledWith({ type: 'execution:enqueued', executionId });
@@ -98,21 +241,78 @@ describe('POST /api/workflow-executions (integration)', () => {
 	it.each(['not-a-uuid', '9f1b7d0e-2c4a-4f8b-9d3e-6a5c1b2d3e4f', undefined])(
 		'rejects the execution id %p with 400',
 		async (executionId) => {
-			const response = await request(url)
-				.post('/api/workflow-executions')
-				.set(authHeader())
-				.send({ workflowId: 'wf-1', graph: sampleGraph, executionId });
+			const response = await request(url).post('/api/workflow-executions').set(authHeader()).send({
+				workflowId: 'wf-1',
+				graph: sampleGraph,
+				workflow: sampleWorkflow,
+				executionId,
+				callerContext: {},
+			});
 
 			expect(response.status).toBe(400);
 			expect((response.body as { error: string }).error).toBe('invalid_request');
 		},
 	);
 
+	it('stores the caller context with the row', async () => {
+		const callerContext = { userId: 'user-1', projectId: 'project-1', hostMode: 'webhook' };
+		const body = startBody({ callerContext });
+
+		const response = await request(url)
+			.post('/api/workflow-executions')
+			.set(authHeader())
+			.send(body);
+
+		expect(response.status).toBe(201);
+		const row = await dataSource
+			.getRepository(WorkflowExecution)
+			.findOneOrFail({ where: { id: body.executionId } });
+		expect(row.callerContext).toEqual(callerContext);
+	});
+
+	it('rejects a body without a caller context with 400', async () => {
+		const response = await request(url)
+			.post('/api/workflow-executions')
+			.set(authHeader())
+			.send(startBody({ callerContext: undefined }));
+
+		expect(response.status).toBe(400);
+		expect((response.body as { error: string }).error).toBe('invalid_request');
+	});
+
+	it('rejects a caller context with a key it does not know with 400', async () => {
+		const response = await request(url)
+			.post('/api/workflow-executions')
+			.set(authHeader())
+			.send(startBody({ callerContext: { user: 'user-1' } }));
+
+		expect(response.status).toBe(400);
+		expect((response.body as { error: string }).error).toBe('invalid_request');
+	});
+
 	it('rejects an invalid body with 400', async () => {
 		const response = await request(url)
 			.post('/api/workflow-executions')
 			.set(authHeader())
 			.send({ workflowId: 'wf-1' }); // missing graph
+
+		expect(response.status).toBe(400);
+		expect((response.body as { error: string }).error).toBe('invalid_request');
+	});
+
+	it.each([
+		['absent', undefined],
+		['not an object', 'a workflow'],
+		['an array', []],
+	])('rejects a workflow that is %s with 400', async (_case, workflow) => {
+		const body = startBody();
+		if (workflow === undefined) delete (body as { workflow?: unknown }).workflow;
+		else (body as { workflow?: unknown }).workflow = workflow;
+
+		const response = await request(url)
+			.post('/api/workflow-executions')
+			.set(authHeader())
+			.send(body);
 
 		expect(response.status).toBe(400);
 		expect((response.body as { error: string }).error).toBe('invalid_request');
@@ -236,7 +436,7 @@ describe('GET /api/workflow-executions/:id (integration)', () => {
 		return (response.body as { executionId: string }).executionId;
 	}
 
-	it('returns the persisted status, mode, workflow id, graph and ISO timestamps', async () => {
+	it('returns the persisted status, mode, workflow id, graph, workflow and ISO timestamps', async () => {
 		const executionId = await createExecution();
 
 		const response = await request(url)
@@ -250,8 +450,10 @@ describe('GET /api/workflow-executions/:id (integration)', () => {
 			status: 'queued',
 			mode: 'production',
 			graph: sampleGraph,
+			workflow: sampleWorkflow,
 			finishedAt: null,
 		});
+		expect(response.body).not.toHaveProperty('steps');
 		const body = response.body as { createdAt: string; updatedAt: string };
 		expect(new Date(body.createdAt).toISOString()).toBe(body.createdAt);
 		expect(new Date(body.updatedAt).toISOString()).toBe(body.updatedAt);
@@ -304,7 +506,8 @@ describe('GET /api/workflow-executions/:id (integration)', () => {
 		await finished;
 
 		const response = await request(runtime.app)
-			.get(`/api/workflow-executions/${executionId}/steps`)
+			.get(`/api/workflow-executions/${executionId}`)
+			.query({ includeSteps: 'true' })
 			.set(authHeader());
 		await runtime.stop();
 
@@ -320,18 +523,51 @@ describe('GET /api/workflow-executions/:id (integration)', () => {
 		});
 	});
 
-	it('returns 200 with an empty list from /steps for an unknown execution id', async () => {
+	it('returns an empty step list for an execution that has run nothing yet', async () => {
+		const executionId = await createExecution();
+
 		const response = await request(url)
-			.get('/api/workflow-executions/00000000-0000-0000-0000-000000000000/steps')
+			.get(`/api/workflow-executions/${executionId}`)
+			.query({ includeSteps: 'true' })
 			.set(authHeader());
 
 		expect(response.status).toBe(200);
-		expect(response.body).toEqual({ steps: [] });
+		expect((response.body as { steps: unknown[] }).steps).toEqual([]);
+		// The steps are aggregated into the execution row, so the execution's own
+		// columns still have to come back beside them.
+		expect(response.body).toMatchObject({ graph: sampleGraph, workflow: sampleWorkflow });
 	});
 
-	it('returns 400 invalid_request from /steps for a non-uuid id', async () => {
+	it('returns 404 not_found for an unknown execution id even when steps are asked for', async () => {
 		const response = await request(url)
-			.get('/api/workflow-executions/not-a-uuid/steps')
+			.get('/api/workflow-executions/00000000-0000-0000-0000-000000000000')
+			.query({ includeSteps: 'true' })
+			.set(authHeader());
+
+		expect(response.status).toBe(404);
+		expect((response.body as { error: string }).error).toBe('not_found');
+	});
+
+	it('returns 400 invalid_request for a misspelled query key', async () => {
+		const executionId = await createExecution();
+
+		// Stripping it would answer 200 with no steps, which reads the same as an
+		// execution that ran none.
+		const response = await request(url)
+			.get(`/api/workflow-executions/${executionId}`)
+			.query({ includeStep: 'true' })
+			.set(authHeader());
+
+		expect(response.status).toBe(400);
+		expect((response.body as { error: string }).error).toBe('invalid_request');
+	});
+
+	it('returns 400 invalid_request for an includeSteps value that is not a boolean', async () => {
+		const executionId = await createExecution();
+
+		const response = await request(url)
+			.get(`/api/workflow-executions/${executionId}`)
+			.query({ includeSteps: 'yes' })
 			.set(authHeader());
 
 		expect(response.status).toBe(400);

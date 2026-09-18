@@ -10,7 +10,7 @@ import { getTeamsCredentialType, SERVICE_PRINCIPAL_AUTH } from '../../transport'
  * guards on this BEFORE any request — covering hand-edited workflows that bypass
  * the hidden UI. For `sendAndWait` it fires before any `putExecutionToWait`.
  */
-export function throwIfChatUnsupported(this: IExecuteFunctions): void {
+export function throwIfChatMessageUnsupported(this: IExecuteFunctions): void {
 	if (getTeamsCredentialType.call(this) === SERVICE_PRINCIPAL_AUTH) {
 		throw new NodeOperationError(
 			this.getNode(),

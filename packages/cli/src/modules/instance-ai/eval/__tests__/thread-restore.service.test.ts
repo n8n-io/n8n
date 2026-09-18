@@ -1,12 +1,29 @@
-import { ModuleRegistry } from '@n8n/backend-common';
+import { ModuleRegistry, type LicenseState } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
-import type { Project, SharedWorkflowRepository, WorkflowRepository } from '@n8n/db';
+import type {
+	CredentialsEntity,
+	CredentialsRepository,
+	Folder,
+	Project,
+	SharedWorkflowRepository,
+	User,
+	WorkflowEntity,
+	WorkflowPublishedVersionRepository,
+	WorkflowRepository,
+} from '@n8n/db';
+import type { PolicyCleared, PolicyViolation } from '@n8n/decorators';
+import type { EntityManager } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { AgentsService } from '@/modules/agents/agents.service';
 import type { DataTable } from '@/modules/data-table/data-table.entity';
 import type { DataTableService } from '@/modules/data-table/data-table.service';
+import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
+import { PolicyViolationError } from '@/policy/policy-violation.error';
+import type { FolderService } from '@/services/folder.service';
+import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
+import type { WorkflowService } from '@/workflows/workflow.service';
 
 import { EvalThreadRestoreService } from '../thread-restore.service';
 
@@ -25,13 +42,41 @@ function makeNode(overrides: Record<string, unknown> = {}): Record<string, unkno
 describe('EvalThreadRestoreService', () => {
 	const workflowRepo = mock<WorkflowRepository>();
 	const sharedWorkflowRepo = mock<SharedWorkflowRepository>();
+	const credentialsRepo = mock<CredentialsRepository>();
+	const workflowPublishedVersionRepo = mock<WorkflowPublishedVersionRepository>();
 	const dataTableService = mock<DataTableService>();
-	const service = new EvalThreadRestoreService(workflowRepo, sharedWorkflowRepo, dataTableService);
+	const policyEnforcementService = mock<PolicyEnforcementService>();
+	const workflowHistoryService = mock<WorkflowHistoryService>();
+	const workflowService = mock<WorkflowService>();
+	const folderService = mock<FolderService>();
+	const licenseState = mock<LicenseState>();
+	const evalUser = mock<User>({ id: 'user-1' });
+	const service = new EvalThreadRestoreService(
+		workflowRepo,
+		sharedWorkflowRepo,
+		credentialsRepo,
+		workflowPublishedVersionRepo,
+		dataTableService,
+		policyEnforcementService,
+		workflowHistoryService,
+		workflowService,
+		folderService,
+		licenseState,
+	);
+	const transactionManager = mock<EntityManager>();
+	const cleared = mock<PolicyCleared<'workflowSave'>>();
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 		workflowRepo.create.mockImplementation((entity) => entity as never);
+		workflowRepo.runInTransaction.mockImplementation(
+			async (ctx, fn) => await fn(transactionManager, ctx),
+		);
+		workflowRepo.findByIds.mockResolvedValue([]);
+		credentialsRepo.findByNameAndTypeInProject.mockResolvedValue([]);
+		policyEnforcementService.enforceWorkflowSave.mockResolvedValue(cleared);
 		sharedWorkflowRepo.getWorkflowOwningProject.mockResolvedValue(undefined);
+		licenseState.isFoldersLicensed.mockReturnValue(true);
 	});
 
 	it('recreates the workflow pinned to its seeded id and grants project ownership', async () => {
@@ -40,7 +85,7 @@ describe('EvalThreadRestoreService', () => {
 			'project-1',
 		);
 
-		expect(workflowRepo.save).toHaveBeenCalledTimes(1);
+		expect(workflowRepo.createContent).toHaveBeenCalledTimes(1);
 		const saved = workflowRepo.create.mock.calls[0][0];
 		expect(saved).toMatchObject({
 			id: 'wf-original',
@@ -48,10 +93,37 @@ describe('EvalThreadRestoreService', () => {
 			active: false,
 		});
 		expect(saved.versionId).toEqual(expect.any(String));
-		expect(sharedWorkflowRepo.makeOwner).toHaveBeenCalledWith(['wf-original'], 'project-1');
+		expect(sharedWorkflowRepo.makeOwner).toHaveBeenCalledWith(
+			['wf-original'],
+			'project-1',
+			transactionManager,
+		);
 	});
 
-	it('strips pre-attached node credentials so they cannot bypass the credential pin', async () => {
+	it('checks the seed content against the thread project and threads the clearance into the sealed write', async () => {
+		await service.restoreWorkflows(
+			[{ id: 'wf-1', name: 'Daily digest', nodes: [makeNode()], connections: {} }],
+			'project-1',
+		);
+
+		const saved = workflowRepo.create.mock.calls[0][0];
+		expect(policyEnforcementService.enforceWorkflowSave).toHaveBeenCalledExactlyOnceWith({
+			workflow: { id: null, name: 'Daily digest', nodes: saved.nodes },
+			storedWorkflow: null,
+			projectId: 'project-1',
+		});
+		expect(workflowRepo.runInTransaction).toHaveBeenCalledExactlyOnceWith(
+			{ policyCleared: cleared },
+			expect.any(Function),
+		);
+		expect(workflowRepo.createContent).toHaveBeenCalledExactlyOnceWith(
+			saved,
+			expect.objectContaining({ policyCleared: cleared }),
+		);
+		expect(workflowRepo.save).not.toHaveBeenCalled();
+	});
+
+	it('strips a node credential the project does not hold, so a seed cannot bypass the credential pin', async () => {
 		const node = makeNode({
 			credentials: { slackApi: { id: 'cred-from-source-instance', name: 'Slack' } },
 		});
@@ -61,21 +133,228 @@ describe('EvalThreadRestoreService', () => {
 			'project-1',
 		);
 
+		expect(credentialsRepo.findByNameAndTypeInProject).toHaveBeenCalledExactlyOnceWith(
+			'Slack',
+			'slackApi',
+			'project-1',
+		);
 		const saved = workflowRepo.create.mock.calls[0][0];
 		expect(saved.nodes).toHaveLength(1);
 		expect(saved.nodes?.[0]).not.toHaveProperty('credentials');
 		expect(saved.nodes?.[0]).toMatchObject({ name: 'Slack', parameters: expect.any(Object) });
 	});
 
+	it('points a node credential at the project credential of the same type and name', async () => {
+		credentialsRepo.findByNameAndTypeInProject.mockImplementation(async (name, type) =>
+			name === 'Slack' && type === 'slackApi'
+				? [mock<CredentialsEntity>({ id: 'cred-here', name: 'Slack' })]
+				: [],
+		);
+		const node = makeNode({
+			credentials: {
+				slackApi: { id: 'cred-from-source-instance', name: 'Slack' },
+				openAiApi: { id: 'cred-from-source-instance-2', name: 'OpenAI' },
+			},
+		});
+
+		await service.restoreWorkflows(
+			[{ id: 'wf-1', name: 'wf', nodes: [node], connections: {} }],
+			'project-1',
+		);
+
+		const saved = workflowRepo.create.mock.calls[0][0];
+		expect(saved.nodes?.[0]?.credentials).toEqual({
+			slackApi: { id: 'cred-here', name: 'Slack' },
+		});
+	});
+
+	it('prefers the credential the thread is allowed to see when several share type and name', async () => {
+		credentialsRepo.findByNameAndTypeInProject.mockResolvedValue([
+			mock<CredentialsEntity>({ id: 'cred-other-thread', name: 'Slack' }),
+			mock<CredentialsEntity>({ id: 'cred-this-thread', name: 'Slack' }),
+		]);
+		const node = makeNode({ credentials: { slackApi: { id: '', name: 'Slack' } } });
+
+		await service.restoreWorkflows(
+			[{ id: 'wf-1', name: 'wf', nodes: [node], connections: {} }],
+			'project-1',
+			new Map(),
+			new Set(['cred-this-thread']),
+		);
+
+		const saved = workflowRepo.create.mock.calls[0][0];
+		expect(saved.nodes?.[0]?.credentials).toEqual({
+			slackApi: { id: 'cred-this-thread', name: 'Slack' },
+		});
+	});
+
+	it('strips a node credential when several project credentials share its type and name, like the product resolver', async () => {
+		credentialsRepo.findByNameAndTypeInProject.mockResolvedValue([
+			mock<CredentialsEntity>({ id: 'cred-a', name: 'Slack' }),
+			mock<CredentialsEntity>({ id: 'cred-b', name: 'Slack' }),
+		]);
+		const node = makeNode({ credentials: { slackApi: { id: '', name: 'Slack' } } });
+
+		await service.restoreWorkflows(
+			[{ id: 'wf-1', name: 'wf', nodes: [node], connections: {} }],
+			'project-1',
+		);
+
+		expect(workflowRepo.create.mock.calls[0][0].nodes?.[0]).not.toHaveProperty('credentials');
+	});
+
+	it('refuses a published seed whose node credential does not resolve, naming it', async () => {
+		const node = makeNode({ credentials: { slackApi: { id: '', name: 'Slak' } } });
+
+		await expect(
+			service.restoreWorkflows(
+				[{ id: 'wf-live', name: 'wf', nodes: [node], connections: {}, published: true }],
+				'project-1',
+			),
+		).rejects.toThrow(
+			'Seed workflow wf-live is published, but its slackApi credential "Slak" matched 0 project credentials (need exactly 1)',
+		);
+		expect(workflowRepo.runInTransaction).not.toHaveBeenCalled();
+	});
+
+	it('refuses a published seed whose node credential matches several project credentials', async () => {
+		credentialsRepo.findByNameAndTypeInProject.mockResolvedValue([
+			mock<CredentialsEntity>({ id: 'cred-a', name: 'Slack' }),
+			mock<CredentialsEntity>({ id: 'cred-b', name: 'Slack' }),
+		]);
+		const node = makeNode({ credentials: { slackApi: { id: '', name: 'Slack' } } });
+
+		await expect(
+			service.restoreWorkflows(
+				[{ id: 'wf-live', name: 'wf', nodes: [node], connections: {}, published: true }],
+				'project-1',
+			),
+		).rejects.toThrow(
+			'Seed workflow wf-live is published, but its slackApi credential "Slack" matched 2 project credentials (need exactly 1)',
+		);
+		expect(workflowRepo.runInTransaction).not.toHaveBeenCalled();
+	});
+
+	it('refuses a published seed whose node credential reference has no name', async () => {
+		// The seed schema lets any object through as a node; this reference lost its name.
+		const node = makeNode({ credentials: { slackApi: { id: 'cred-1' } } as never });
+
+		await expect(
+			service.restoreWorkflows(
+				[{ id: 'wf-live', name: 'wf', nodes: [node], connections: {}, published: true }],
+				'project-1',
+			),
+		).rejects.toThrow(
+			'Seed workflow wf-live is published, but its slackApi credential reference has no name',
+		);
+		expect(credentialsRepo.findByNameAndTypeInProject).not.toHaveBeenCalled();
+		expect(workflowRepo.runInTransaction).not.toHaveBeenCalled();
+	});
+
+	it('publishes only the seeds flagged published, as the requesting user, with their history row in place', async () => {
+		const user = mock<User>();
+
+		const published = await service.publishSeedWorkflows(
+			[
+				{ id: 'wf-live', name: 'Live', nodes: [], connections: {}, published: true },
+				{ id: 'wf-draft', name: 'Draft', nodes: [], connections: {} },
+			],
+			user,
+		);
+
+		// The caller's rollback unpublishes these: a re-applied seed is not a created one.
+		expect(published).toEqual(['wf-live']);
+		expect(workflowHistoryService.snapshotCurrent).toHaveBeenCalledExactlyOnceWith('wf-live');
+		expect(workflowService.activateWorkflow).toHaveBeenCalledExactlyOnceWith(user, 'wf-live');
+		// The row first: activation looks the version up in the history.
+		expect(workflowHistoryService.snapshotCurrent.mock.invocationCallOrder[0]).toBeLessThan(
+			workflowService.activateWorkflow.mock.invocationCallOrder[0],
+		);
+	});
+
+	it('unpublishes every seed it attempted when an activation fails, the failed one included', async () => {
+		const user = mock<User>();
+		workflowService.activateWorkflow
+			.mockResolvedValueOnce(mock<WorkflowEntity>())
+			.mockRejectedValueOnce(new Error('Workflow has no trigger'));
+
+		await expect(
+			service.publishSeedWorkflows(
+				[
+					{ id: 'wf-first', name: 'First', nodes: [], connections: {}, published: true },
+					{ id: 'wf-second', name: 'Second', nodes: [], connections: {}, published: true },
+				],
+				user,
+			),
+		).rejects.toThrow('Workflow has no trigger');
+
+		// The failed seed too: activation can throw after its triggers are registered.
+		expect(workflowService.deactivateWorkflowAsSystem.mock.calls).toEqual([
+			['wf-first'],
+			['wf-second'],
+		]);
+	});
+
+	it('keeps unpublishing the other seeds when one deactivation fails', async () => {
+		workflowService.deactivateWorkflowAsSystem.mockRejectedValueOnce(new Error('already gone'));
+
+		await service.unpublishWorkflows(['wf-first', 'wf-second']);
+
+		expect(workflowService.deactivateWorkflowAsSystem.mock.calls).toEqual([
+			['wf-first'],
+			['wf-second'],
+		]);
+	});
+
+	it('unpublishes a seed and waits for its publication teardown before the rollback deletes it', async () => {
+		workflowPublishedVersionRepo.getPublishedVersionId
+			.mockResolvedValueOnce('version-live')
+			.mockResolvedValueOnce(null);
+
+		await service.deleteWorkflows(['wf-live']);
+
+		expect(workflowService.deactivateWorkflowAsSystem).toHaveBeenCalledExactlyOnceWith('wf-live');
+		expect(workflowService.deactivateWorkflowAsSystem.mock.invocationCallOrder[0]).toBeLessThan(
+			workflowPublishedVersionRepo.getPublishedVersionId.mock.invocationCallOrder[0],
+		);
+		expect(workflowPublishedVersionRepo.getPublishedVersionId).toHaveBeenCalledTimes(2);
+		expect(workflowRepo.delete).toHaveBeenCalledExactlyOnceWith({ id: 'wf-live' });
+	});
+
+	it('still deletes the seed when the publication lookup fails', async () => {
+		workflowPublishedVersionRepo.getPublishedVersionId.mockRejectedValueOnce(new Error('db down'));
+
+		await service.deleteWorkflows(['wf-live']);
+
+		expect(workflowRepo.delete).toHaveBeenCalledExactlyOnceWith({ id: 'wf-live' });
+	});
+
 	it('does not re-grant ownership when the workflow already exists in this project', async () => {
 		sharedWorkflowRepo.getWorkflowOwningProject.mockResolvedValue({ id: 'project-1' } as Project);
+		const storedNodes = [makeNode({ id: 'old-node', name: 'Old' })];
+		workflowRepo.findByIds.mockResolvedValue([
+			{ id: 'wf-1', name: 'Old name', nodes: storedNodes },
+		] as never);
 
 		const created = await service.restoreWorkflows(
 			[{ id: 'wf-1', name: 'wf', nodes: [makeNode()], connections: {} }],
 			'project-1',
 		);
 
-		expect(workflowRepo.save).toHaveBeenCalledTimes(1);
+		expect(workflowRepo.findByIds).toHaveBeenCalledWith(['wf-1'], {
+			fields: ['id', 'name', 'nodes'],
+		});
+		expect(policyEnforcementService.enforceWorkflowSave).toHaveBeenCalledExactlyOnceWith({
+			workflow: { id: 'wf-1', name: 'wf', nodes: expect.any(Array) },
+			storedWorkflow: { id: 'wf-1', name: 'Old name', nodes: storedNodes },
+			projectId: 'project-1',
+		});
+		expect(workflowRepo.updateContent).toHaveBeenCalledExactlyOnceWith(
+			'wf-1',
+			expect.objectContaining({ name: 'wf', active: false, versionId: expect.any(String) }),
+			expect.objectContaining({ policyCleared: cleared }),
+		);
+		expect(workflowRepo.createContent).not.toHaveBeenCalled();
 		expect(sharedWorkflowRepo.makeOwner).not.toHaveBeenCalled();
 		expect(created).toEqual([]); // not newly created
 	});
@@ -91,7 +370,8 @@ describe('EvalThreadRestoreService', () => {
 				'project-1',
 			),
 		).rejects.toThrow(BadRequestError);
-		expect(workflowRepo.save).not.toHaveBeenCalled();
+		expect(policyEnforcementService.enforceWorkflowSave).not.toHaveBeenCalled();
+		expect(workflowRepo.createContent).not.toHaveBeenCalled();
 	});
 
 	it('rejects a structurally invalid node without writing anything', async () => {
@@ -101,7 +381,56 @@ describe('EvalThreadRestoreService', () => {
 				'project-1',
 			),
 		).rejects.toThrow(BadRequestError);
-		expect(workflowRepo.save).not.toHaveBeenCalled();
+		expect(policyEnforcementService.enforceWorkflowSave).not.toHaveBeenCalled();
+		expect(workflowRepo.createContent).not.toHaveBeenCalled();
+	});
+
+	describe('policy refusal', () => {
+		const violation: PolicyViolation = {
+			kind: 'test-denial',
+			checkId: 'test-check',
+			message: 'Denied by the test policy check',
+			subject: 'n8n-nodes-base.slack',
+			subjectType: 'nodeType',
+		};
+
+		it('fails the restore, names the refused seed and rolls back the workflows already created', async () => {
+			policyEnforcementService.enforceWorkflowSave
+				.mockResolvedValueOnce(cleared)
+				.mockRejectedValueOnce(new PolicyViolationError([violation]));
+
+			const restore = service.restoreWorkflows(
+				[
+					{ id: 'wf-ok', name: 'Allowed', nodes: [makeNode()], connections: {} },
+					{ id: 'wf-blocked', name: 'Blocked', nodes: [makeNode()], connections: {} },
+				],
+				'project-1',
+			);
+
+			await expect(restore).rejects.toThrow(PolicyViolationError);
+			await expect(restore).rejects.toThrow(
+				'Seed workflow wf-blocked ("Blocked") was refused by policy: Denied by the test policy check',
+			);
+			await expect(restore).rejects.toMatchObject({
+				httpStatusCode: 403,
+				violations: [violation],
+			});
+			expect(workflowRepo.createContent).toHaveBeenCalledTimes(1);
+			expect(workflowRepo.delete).toHaveBeenCalledExactlyOnceWith({ id: 'wf-ok' });
+		});
+
+		it('passes a check that breaks through unchanged', async () => {
+			const failure = new Error('check crashed');
+			policyEnforcementService.enforceWorkflowSave.mockRejectedValue(failure);
+
+			await expect(
+				service.restoreWorkflows(
+					[{ id: 'wf-1', name: 'wf', nodes: [makeNode()], connections: {} }],
+					'project-1',
+				),
+			).rejects.toBe(failure);
+			expect(workflowRepo.createContent).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('data tables', () => {
@@ -433,6 +762,264 @@ describe('EvalThreadRestoreService', () => {
 			moduleRegistry.isActive.calledWith('agents').mockReturnValue(false);
 
 			await expect(service.restoreAgents([], 'project-1')).resolves.toEqual([]);
+		});
+	});
+	describe('folders', () => {
+		const folderRow = (id: string) => mock<Folder>({ id });
+
+		it('creates each folder verbatim in the project and maps the seed id to the created one', async () => {
+			folderService.createFolder.mockResolvedValueOnce(folderRow('real-odw'));
+
+			const idMap = await service.restoreFolders(
+				[{ id: 'odwFolder0001', name: 'ODW' }],
+				'project-1',
+				evalUser,
+			);
+
+			expect(idMap.get('odwFolder0001')).toBe('real-odw');
+			// No `[seed …]` suffix: the live turn names the folder the way a user would.
+			expect(folderService.createFolder).toHaveBeenCalledExactlyOnceWith(
+				{ name: 'ODW', parentFolderId: undefined },
+				'project-1',
+			);
+		});
+
+		it('creates parents before children, whatever the declared order, and nests by the created id', async () => {
+			folderService.createFolder
+				.mockResolvedValueOnce(folderRow('real-odw'))
+				.mockResolvedValueOnce(folderRow('real-archive'));
+
+			const idMap = await service.restoreFolders(
+				[
+					{ id: 'odwArchive001', name: 'Archive', parentFolderId: 'odwFolder0001' },
+					{ id: 'odwFolder0001', name: 'ODW' },
+				],
+				'project-1',
+				evalUser,
+			);
+
+			expect(folderService.createFolder.mock.calls.map(([dto]) => dto)).toEqual([
+				{ name: 'ODW', parentFolderId: undefined },
+				{ name: 'Archive', parentFolderId: 'real-odw' },
+			]);
+			expect([...idMap.entries()]).toEqual([
+				['odwFolder0001', 'real-odw'],
+				['odwArchive001', 'real-archive'],
+			]);
+		});
+
+		it('refuses an unlicensed instance with the local license hint, creating nothing', async () => {
+			licenseState.isFoldersLicensed.mockReturnValue(false);
+
+			await expect(
+				service.restoreFolders([{ id: 'odwFolder0001', name: 'ODW' }], 'project-1', evalUser),
+			).rejects.toThrow(/feat:folders/);
+
+			expect(folderService.createFolder).not.toHaveBeenCalled();
+		});
+
+		it('does not consult the license for a seed without folders', async () => {
+			const idMap = await service.restoreFolders([], 'project-1', evalUser);
+
+			expect(idMap.size).toBe(0);
+			expect(licenseState.isFoldersLicensed).not.toHaveBeenCalled();
+		});
+
+		it('moves a re-applied seed workflow to the folder the seed names, or to the root when it names none', async () => {
+			// The seed's placement is authoritative, like its nodes: the update path
+			// writes `parentFolder` too, `null` meaning the project root.
+			sharedWorkflowRepo.getWorkflowOwningProject.mockResolvedValue(
+				mock<Project>({ id: 'project-1' }),
+			);
+			workflowRepo.findByIds.mockResolvedValue([
+				mock<WorkflowEntity>({ id: 'wf-1', name: 'Old', nodes: [] }),
+			]);
+
+			await service.restoreWorkflows(
+				[
+					{
+						id: 'wf-1',
+						name: 'Placed',
+						nodes: [makeNode()],
+						connections: {},
+						parentFolderId: 'odwFolder0001',
+					},
+					{ id: 'wf-1', name: 'Rooted', nodes: [makeNode()], connections: {} },
+				],
+				'project-1',
+				new Map(),
+				undefined,
+				new Map([['odwFolder0001', 'real-odw']]),
+			);
+
+			const updates = workflowRepo.updateContent.mock.calls.map(([, content]) => content);
+			expect(updates[0]).toMatchObject({ name: 'Placed', parentFolder: { id: 'real-odw' } });
+			expect(updates[1]).toMatchObject({ name: 'Rooted', parentFolder: null });
+		});
+
+		it('refuses a folder whose parent the seed does not declare, creating nothing', async () => {
+			await expect(
+				service.restoreFolders(
+					[{ id: 'odwArchive001', name: 'Archive', parentFolderId: 'missingFolder1' }],
+					'project-1',
+					evalUser,
+				),
+			).rejects.toThrow(BadRequestError);
+
+			expect(folderService.createFolder).not.toHaveBeenCalled();
+		});
+
+		it('rolls back the folders already created when a later one fails', async () => {
+			folderService.createFolder
+				.mockResolvedValueOnce(folderRow('real-odw'))
+				.mockRejectedValueOnce(new Error('db down'));
+
+			await expect(
+				service.restoreFolders(
+					[
+						{ id: 'odwFolder0001', name: 'ODW' },
+						{ id: 'otherFolder01', name: 'Other' },
+					],
+					'project-1',
+					evalUser,
+				),
+			).rejects.toThrow('db down');
+
+			expect(folderService.deleteFolder).toHaveBeenCalledExactlyOnceWith(
+				evalUser,
+				'real-odw',
+				'project-1',
+				{ transferToFolderId: '0' },
+			);
+		});
+
+		const tree = [
+			{ id: 'odwFolder0001', name: 'ODW' },
+			{ id: 'odwArchive001', name: 'Archive', parentFolderId: 'odwFolder0001' },
+		];
+		const created = new Map([
+			['odwFolder0001', 'real-odw'],
+			['odwArchive001', 'real-archive'],
+		]);
+
+		it('deletes children before parents on rollback, moving contents to the root', async () => {
+			// Transfer, not archive: a re-applied seed workflow the restore moved into
+			// the folder was not created by it, and the rollback must not take it.
+			await service.deleteFolders(tree, created, 'project-1', evalUser);
+
+			expect(folderService.deleteFolder.mock.calls).toEqual([
+				[evalUser, 'real-archive', 'project-1', { transferToFolderId: '0' }],
+				[evalUser, 'real-odw', 'project-1', { transferToFolderId: '0' }],
+			]);
+		});
+
+		it('keeps a parent whose child could not be deleted, so the leftover stays under the seed name', async () => {
+			// Deleting the parent would move the failed child to the root under a name
+			// nothing evicts; the kept parent is what the next run's eviction matches.
+			folderService.deleteFolder.mockRejectedValueOnce(new Error('busy'));
+
+			await service.deleteFolders(tree, created, 'project-1', evalUser);
+
+			expect(folderService.deleteFolder).toHaveBeenCalledExactlyOnceWith(
+				evalUser,
+				'real-archive',
+				'project-1',
+				{ transferToFolderId: '0' },
+			);
+		});
+
+		it('still deletes the other folders when one delete fails', async () => {
+			// Best-effort: one failed folder must not keep the unrelated ones, or a
+			// failed rollback leaks folders across runs.
+			const siblings = [
+				{ id: 'odwFolder0001', name: 'ODW' },
+				{ id: 'otherFolder01', name: 'Other' },
+			];
+			folderService.deleteFolder.mockRejectedValueOnce(new Error('busy'));
+
+			await service.deleteFolders(
+				siblings,
+				new Map([
+					['odwFolder0001', 'real-odw'],
+					['otherFolder01', 'real-other'],
+				]),
+				'project-1',
+				evalUser,
+			);
+
+			expect(folderService.deleteFolder.mock.calls).toEqual([
+				[evalUser, 'real-odw', 'project-1', { transferToFolderId: '0' }],
+				[evalUser, 'real-other', 'project-1', { transferToFolderId: '0' }],
+			]);
+		});
+
+		it('skips folders the restore never created', async () => {
+			await service.deleteFolders(
+				tree,
+				new Map([['odwFolder0001', 'real-odw']]),
+				'project-1',
+				evalUser,
+			);
+
+			expect(folderService.deleteFolder).toHaveBeenCalledExactlyOnceWith(
+				evalUser,
+				'real-odw',
+				'project-1',
+				{ transferToFolderId: '0' },
+			);
+		});
+
+		it('places a workflow in its remapped folder', async () => {
+			await service.restoreWorkflows(
+				[
+					{
+						id: 'wf-1',
+						name: 'Odds Watch - 1',
+						nodes: [makeNode()],
+						connections: {},
+						parentFolderId: 'odwFolder0001',
+					},
+				],
+				'project-1',
+				new Map(),
+				undefined,
+				new Map([['odwFolder0001', 'real-odw']]),
+			);
+
+			const saved = workflowRepo.create.mock.calls[0][0];
+			expect(saved.parentFolder).toEqual({ id: 'real-odw' });
+		});
+
+		it('leaves a workflow without parentFolderId at the project root', async () => {
+			await service.restoreWorkflows(
+				[{ id: 'wf-1', name: 'Root', nodes: [makeNode()], connections: {} }],
+				'project-1',
+				new Map(),
+				undefined,
+				new Map([['odwFolder0001', 'real-odw']]),
+			);
+
+			const saved = workflowRepo.create.mock.calls[0][0];
+			expect(saved.parentFolder).toBeNull();
+		});
+
+		it('refuses a workflow placed in a folder the restore did not create, writing nothing', async () => {
+			await expect(
+				service.restoreWorkflows(
+					[
+						{
+							id: 'wf-1',
+							name: 'Odds Watch - 1',
+							nodes: [makeNode()],
+							connections: {},
+							parentFolderId: 'nopeFolder001',
+						},
+					],
+					'project-1',
+				),
+			).rejects.toThrow(BadRequestError);
+
+			expect(workflowRepo.createContent).not.toHaveBeenCalled();
 		});
 	});
 });

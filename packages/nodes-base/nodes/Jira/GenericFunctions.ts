@@ -1,4 +1,5 @@
 import type {
+	IAdditionalCredentialOptions,
 	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
@@ -12,7 +13,12 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import { getAtlassianApiBaseUrl, getAtlassianCloudId } from '@utils/atlassian';
+import {
+	getAtlassianApiBaseUrl,
+	getAtlassianCloudId,
+	getAtlassianSiteParameter,
+	resolveAtlassianCloudId,
+} from '@utils/atlassian';
 
 import type { JiraServerInfo, JiraWebhook } from './types';
 
@@ -37,8 +43,8 @@ export async function jiraSoftwareCloudApiRequest(
 		domain = (await this.getCredentials('jiraSoftwareServerPatApi')).domain as string;
 		credentialType = 'jiraSoftwareServerPatApi';
 	} else if (jiraVersion === 'cloudOAuth2') {
-		const rawDomain = (await this.getCredentials('jiraSoftwareCloudOAuth2Api')).domain;
 		credentialType = 'jiraSoftwareCloudOAuth2Api';
+		const rawDomain = (await this.getCredentials(credentialType)).domain;
 		if (typeof rawDomain !== 'string' || rawDomain === '') {
 			throw new NodeOperationError(
 				this.getNode(),
@@ -47,10 +53,22 @@ export async function jiraSoftwareCloudApiRequest(
 		}
 		const cloudId = await getAtlassianCloudId.call(this, credentialType, rawDomain, 'jira');
 		domain = getAtlassianApiBaseUrl('jira', cloudId);
+	} else if (jiraVersion === 'cloudServiceAccount') {
+		credentialType = 'atlassianServiceAccountApi';
+		const cloudId = await resolveAtlassianCloudId.call(
+			this,
+			credentialType,
+			getAtlassianSiteParameter(this),
+			'jira',
+		);
+		domain = getAtlassianApiBaseUrl('jira', cloudId);
 	} else {
 		domain = (await this.getCredentials('jiraSoftwareCloudApi')).domain as string;
 		credentialType = 'jiraSoftwareCloudApi';
 	}
+
+	// Strip trailing slashes from domain to prevent double slashes in URL construction
+	domain = domain.replace(/\/+$/, '');
 
 	const options: IRequestOptions = {
 		headers: {
@@ -76,8 +94,23 @@ export async function jiraSoftwareCloudApiRequest(
 	if (Object.keys(query || {}).length === 0) {
 		delete options.qs;
 	}
+
+	// The gateway answers 403/404 for an expired token, not the 401 n8n's OAuth2 refresh looks
+	// for (ENT-408). 401 stays, since a revoked token still gets one, and
+	// `skipRefreshWhileTokenIsFresh` keeps a genuinely missing issue from paying for a refresh.
+	// atlassianServiceAccountApi refreshes on its own, so it opts out.
+	const additionalCredentialOptions: IAdditionalCredentialOptions | undefined =
+		credentialType === 'jiraSoftwareCloudOAuth2Api'
+			? { oauth2: { tokenExpiredStatusCode: [401, 403, 404], skipRefreshWhileTokenIsFresh: true } }
+			: undefined;
+
 	try {
-		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
+		return await this.helpers.requestWithAuthentication.call(
+			this,
+			credentialType,
+			options,
+			additionalCredentialOptions,
+		);
 	} catch (error) {
 		if (error.description?.includes?.("Field 'priority' cannot be set")) {
 			throw new NodeApiError(this.getNode(), error as JsonObject, {

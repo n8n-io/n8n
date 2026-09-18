@@ -1,9 +1,10 @@
 #!/usr/bin/env node
-// Runs on each codespace start. Installs the skills marketplace, starts the worker.
+// Runs on each Codespace start. Installs the skills and harness, then starts the worker.
 import { execFileSync } from 'node:child_process';
 import { rmSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
+import { installAgentHarness } from '../../scripts/agent-harness.mjs';
 import { MARKETPLACE, PLUGINS } from './plugins.mjs';
 
 const STATUS_FILE = '/tmp/post-start-status.json';
@@ -61,19 +62,33 @@ if (addMarketplace()) {
 	failed.push(...PLUGINS);
 }
 
-writeFileSync(STATUS_FILE, JSON.stringify({ installed, failed }, null, 2));
-
 // A skipped install is otherwise invisible until someone misses a skill mid-session.
 if (failed.length > 0) {
 	console.error(`\n!! SKILLS NOT INSTALLED: ${failed.join(', ')}`);
 	console.error('!! Sessions start without them. Retry with:');
 	console.error('!!   node /workspaces/n8n/.devcontainer/codespaces/post-start.mjs\n');
 }
+let harness;
+try {
+	const result = installAgentHarness();
+	harness = { status: 'active', version: result.version, cacheHit: result.cacheHit };
+} catch (error) {
+	harness = { status: 'unavailable', error: error.message };
+	console.error(`agent harness: ${error.message}`);
+}
 
-tryRun('worker start', 'tmux', [
-	'new-session',
-	'-d',
-	'-s',
-	'agent-worker',
-	'bash -lc "export CLAUDE_CODE_PLUGIN_PREFER_HTTPS=1 CLAUDE_CODE_PLUGIN_KEEP_MARKETPLACE_ON_FAILURE=1; node /workspaces/n8n/.devcontainer/codespaces/agent-worker.mjs >> /tmp/agent-worker.log 2>&1"',
-]);
+const workerStarted =
+	harness.status === 'active' &&
+	tryRun('worker start', 'tmux', [
+		'new-session',
+		'-d',
+		'-s',
+		'agent-worker',
+		'bash -lc ". /usr/local/lib/codespaces-env.sh; export CLAUDE_CODE_PLUGIN_PREFER_HTTPS=1 CLAUDE_CODE_PLUGIN_KEEP_MARKETPLACE_ON_FAILURE=1; node /workspaces/n8n/.devcontainer/codespaces/agent-worker.mjs >> /tmp/agent-worker.log 2>&1"',
+	]);
+
+if (!workerStarted && harness.status !== 'active') {
+	console.error('worker start: skipped because the pinned agent harness is unavailable');
+}
+
+writeFileSync(STATUS_FILE, JSON.stringify({ installed, failed, harness, workerStarted }, null, 2));

@@ -37,6 +37,8 @@ export interface SchedulerMetrics {
 	recordDeadLettered(): void;
 	/** Outcome of one retention pass. */
 	recordPruned(deleted: number): void;
+	/** Outcome of one owner reconciliation pass. */
+	recordReconciled(quarantined: number, deleted: number, revived: number): void;
 }
 
 /** Default metrics: records nothing. */
@@ -52,4 +54,5 @@ export const noopMetrics: SchedulerMetrics = {
 	recordReaped() {},
 	recordDeadLettered() {},
 	recordPruned() {},
+	recordReconciled() {},
 };

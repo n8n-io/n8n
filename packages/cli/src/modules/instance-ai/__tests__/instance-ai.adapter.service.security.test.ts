@@ -65,6 +65,7 @@ import type { DataTableRepository } from '@/modules/data-table/data-table.reposi
 import type { DataTableService } from '@/modules/data-table/data-table.service';
 import type { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 import type { NodeTypes } from '@/node-types';
+import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import type { RoleService } from '@/services/role.service';
 import type { OutboundHttp } from '@n8n/backend-network';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
@@ -131,6 +132,9 @@ const nodeResourceExplorerService = new NodeResourceExplorerService(
 	nodeTypes,
 );
 
+const policyEnforcementService = mock<PolicyEnforcementService>();
+policyEnforcementService.enforceWorkflowSave.mockResolvedValue(mock());
+
 const service = new InstanceAiAdapterService(
 	logger,
 	globalConfig,
@@ -167,6 +171,7 @@ const service = new InstanceAiAdapterService(
 	mock<AiGatewayService>(),
 	mock<WorkflowTemplatesService>(),
 	mock<CollaborationService>(),
+	policyEnforcementService,
 );
 
 const user = mock<User>({

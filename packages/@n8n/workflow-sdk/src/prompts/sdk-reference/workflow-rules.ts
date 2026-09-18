@@ -61,4 +61,12 @@ export const WORKFLOW_RULES = `Follow these rules strictly when generating workf
      - **Reference explicitly**: have the downstream node read \`$('Data Node').item.json.field\` instead of \`$json\`.
    - Counter-example to AVOID:
      - WRONG: \`code.to(ensureSheet).to(appendRows)\` — appendRows maps the create-sheet response, not the rows from \`code\`.
-     - CORRECT: \`trigger.to(ensureSheet).to(code).to(appendRows)\` — the ensure step runs before the data is produced, and the write still receives the data.`;
+     - CORRECT: \`trigger.to(ensureSheet).to(code).to(appendRows)\` — the ensure step runs before the data is produced, and the write still receives the data.
+
+8. **Polling triggers that feed create/write actions need a mark-as-handled step**
+   - When a polling trigger (Gmail Trigger, Outlook Trigger, or similar) feeds an action that creates or writes records — tasks, rows, tickets, messages — the workflow must ensure each polled item is processed once. Poll cursors are best-effort bookkeeping: they reset when the trigger node is recreated or renamed, and every still-matching item is then re-delivered and re-creates its record as a duplicate.
+   - Use one of these mechanisms:
+     - Restrict the trigger to unread/unprocessed items AND mark each item handled once its record exists — in a way the trigger's own filter excludes: mark as read when filtering unread, move out of the watched folder, or apply a label ONLY if the trigger's query also excludes that label (adding a label does not mark a message read, so a label alone changes nothing under an unread filter).
+     - Record handled item ids in a Data Table and skip ids already seen: look the id up BEFORE creating the record, and insert it only AFTER the create succeeds.
+   - An unread filter alone is NOT enough. If no step ever marks the item read, the filter never excludes anything — the workflow looks correct on the canvas while still reprocessing every item.
+   - The mark-as-handled step must run AFTER the record is created — wire it downstream of the create node (a terminal write is fine under rule 7) — so a mid-run failure cannot consume an item without producing its output. This ordering deliberately trades a rare duplicate (create succeeded, marking failed) for never losing an item; do not invert it.`;

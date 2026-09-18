@@ -153,59 +153,61 @@ function onUpdate(raw: AcceptableValue) {
 .segmentControl {
 	@include input-mixin.size-variables('medium');
 
-	--segment-control--padding: var(--spacing--5xs);
-	--segment-control--font-size: var(--font-size--2xs);
-	--segment-control--item-padding: 0 var(--spacing--xs);
+	--n8n-segment-control--padding: var(--spacing--5xs);
+	--n8n-segment-control--font-size: var(--font-size--2xs);
+	--n8n-segment-control--item-padding: 0 var(--spacing--xs);
+	--n8n-segment-control--height: var(--input--height);
 
 	display: inline-flex;
 	align-items: stretch;
-	height: var(--input--height);
+	height: var(--n8n-segment-control--height);
 	line-height: 1;
 	vertical-align: middle;
 	background-color: var(--color--foreground);
-	padding: var(--segment-control--padding);
+	padding: var(--n8n-segment-control--padding);
 	border-radius: var(--radius--2xs);
 }
 
 .mini {
 	@include input-mixin.size-variables('mini');
 
-	--segment-control--font-size: var(--font-size--3xs);
-	--segment-control--item-padding: 0 var(--spacing--2xs);
+	--n8n-segment-control--font-size: var(--font-size--3xs);
+	--n8n-segment-control--item-padding: 0 var(--spacing--2xs);
 }
 
 .small {
 	@include input-mixin.size-variables('small');
 
-	--segment-control--font-size: var(--font-size--3xs);
-	--segment-control--item-padding: 0 var(--spacing--2xs);
+	--n8n-segment-control--font-size: var(--font-size--3xs);
+	--n8n-segment-control--item-padding: 0 var(--spacing--2xs);
 }
 
 .default {
 	@include input-mixin.size-variables('medium');
 
-	--segment-control--font-size: var(--font-size--2xs);
-	--segment-control--item-padding: 0 var(--spacing--xs);
+	--n8n-segment-control--font-size: var(--font-size--2xs);
+	--n8n-segment-control--item-padding: 0 var(--spacing--xs);
 }
 
 .large {
 	@include input-mixin.size-variables('large');
 
-	--segment-control--font-size: var(--font-size--xs);
-	--segment-control--item-padding: 0 var(--spacing--xs);
+	--n8n-segment-control--font-size: var(--font-size--xs);
+	--n8n-segment-control--item-padding: 0 var(--spacing--xs);
 }
 
 .xlarge {
 	@include input-mixin.size-variables('xlarge');
 
-	--segment-control--font-size: var(--font-size--sm);
-	--segment-control--item-padding: 0 var(--spacing--sm);
+	--n8n-segment-control--font-size: var(--font-size--sm);
+	--n8n-segment-control--item-padding: 0 var(--spacing--sm);
 }
 
 .group {
 	display: flex;
 	align-items: stretch;
 	flex: 1;
+	height: 100%;
 	width: 100%;
 	gap: var(--spacing--5xs);
 }

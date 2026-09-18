@@ -80,7 +80,7 @@ export class WorkflowStatusController {
 		const status = await this.credentialResolverWorkflowService.getWorkflowStatus(
 			workflowId,
 			credentialContext,
-			user,
+			{ user },
 		);
 
 		const isReady = status.every((s) => s.status === 'configured');

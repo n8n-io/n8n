@@ -108,6 +108,53 @@ describe('AgentExecutionService', () => {
 	}
 
 	describe('startExecutionRecording', () => {
+		it('stores the signal before publishing the execution update', async () => {
+			agentExecutionThreadRepository.findOrCreate.mockResolvedValue({
+				thread: makeThread(),
+				created: false,
+			});
+			const execution = mock<AgentExecution>({ id: 'execution-1' });
+			agentExecutionRepository.create.mockReturnValue(execution);
+			agentExecutionRepository.save.mockResolvedValue(execution);
+			const initialTimeline: TimelineEvent[] = [
+				{
+					type: 'background-task-signal',
+					timestamp: 100,
+					signal: {
+						tasks: [{ id: 'job-1', title: 'Research', kind: 'subagent', status: 'completed' }],
+					},
+				},
+			];
+			const params = {
+				threadId: 'thread-1',
+				agentId: 'agent-1',
+				agentName: 'Agent',
+				projectId: 'project-1',
+				userMessage: null,
+				initialTimeline,
+			};
+			executionUpdateBroadcaster.notify.mockImplementation(() => {
+				expect(agentExecutionRepository.save).toHaveBeenCalled();
+				expect(agentExecutionRepository.create).toHaveBeenCalledWith(
+					expect.objectContaining({
+						timeline: initialTimeline,
+						userMessage: null,
+						status: 'running',
+					}),
+				);
+			});
+			const id = await service.startExecutionRecording(params, new Date(100));
+			expect(executionUpdateBroadcaster.notify).toHaveBeenCalledOnce();
+			await service.finalizeExecution(id, {
+				...params,
+				record: makeMessageRecord({ timeline: initialTimeline }),
+			});
+			expect(agentExecutionRepository.updateIfRunning).toHaveBeenCalledWith(
+				id,
+				expect.objectContaining({ timeline: initialTimeline }),
+			);
+		});
+
 		it('keeps a running execution alive until it is finalized', async () => {
 			vi.useFakeTimers();
 			try {

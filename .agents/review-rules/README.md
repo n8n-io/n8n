@@ -13,7 +13,7 @@ clear, when to stay silent, what never to say — lives once in
 
 | Directory   | Agent    | Scope                                               |
 |-------------|----------|-----------------------------------------------------|
-| `security/` | Security | backend packages + nodes                            |
+| `security/` | Security | backend packages, nodes, and the frontend render surface |
 | `backend/`  | Backend  | `cli`, `@n8n/db`, `core`, `workflow`, node packages |
 | `db-migrations/` | DB migrations | `@n8n/db` migrations + their tests in `cli` |
 | `frontend/` | Frontend | `packages/frontend`                                 |
@@ -59,6 +59,9 @@ enforces them in CI:
    files — a backend PR still loads the node rules, since include globs are
    per-agent.
 3. Add its path to every `file_paths` that should load it in `cubic.yaml`.
+   Keep each agent's list ordered by how often the class it covers actually
+   shows up — the ceiling truncates from the end, so the last file listed is the
+   one that silently disappears first.
 4. Run `pnpm check:cubic-config`. It validates `cubic.yaml` against cubic's
    published JSON schema, then fails on a missing path, an over-budget agent, or
    a rule file nobody links, and warns at 80% of the ceiling.

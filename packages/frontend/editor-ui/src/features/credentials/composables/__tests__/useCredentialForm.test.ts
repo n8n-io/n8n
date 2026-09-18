@@ -127,6 +127,7 @@ const falSetupHint = {
 	testUrl: 'https://fal.run/v1/models',
 	docsUrl: 'https://fal.ai/dashboard/keys',
 	serviceHost: 'fal.run',
+	serviceOrigin: 'https://fal.run',
 };
 
 describe('useCredentialForm', () => {
@@ -230,6 +231,7 @@ describe('useCredentialForm', () => {
 				testUrl: falSetupHint.testUrl,
 				docsUrl: falSetupHint.docsUrl,
 				serviceHost: falSetupHint.serviceHost,
+				serviceOrigin: falSetupHint.serviceOrigin,
 			});
 			// Freshly seeded = the required placeholder has no value yet, so the
 			// save/test gate holds until the user pastes it.

@@ -54,6 +54,14 @@ The bypass is queried per test rather than snapshotted into the adapter: the
 harness registers ids mid-run, when the simulated user creates a credential on
 a card, long after the run's context was built.
 
+## Agent model catalogs
+
+The eval credential allowlist also marks Agent Builder sessions as evaluations.
+Model catalog requests return one deterministic fake model for each provider.
+The lookup still checks that the user can use the stored credential in the project.
+It does not decrypt the placeholder credential or contact the model provider.
+Production sessions continue to use live model catalogs.
+
 ## The rule
 
 `__schema__` describes a node's **output**, not the service's wire format —

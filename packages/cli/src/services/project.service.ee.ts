@@ -414,6 +414,7 @@ export class ProjectService {
 		const [projects, count] = await this.projectRepository.findAndCount({
 			skip: offset,
 			take: limit,
+			order: { createdAt: 'ASC', id: 'ASC' },
 		});
 		return { projects, count };
 	}
@@ -994,6 +995,10 @@ export class ProjectService {
 		});
 	}
 
+	async findUserIdsByProjectId(projectId: string): Promise<string[]> {
+		return await this.projectRelationRepository.findUserIdsByProjectId(projectId);
+	}
+
 	async getProjectRelationForUserAndProject(
 		userId: string,
 		projectId: string,
@@ -1011,6 +1016,7 @@ export class ProjectService {
 		const [members, count] = await this.projectRelationRepository.findAndCount({
 			where: { projectId },
 			relations: { user: true, role: true },
+			order: { createdAt: 'ASC', userId: 'ASC' },
 			skip: offset,
 			take: limit,
 		});

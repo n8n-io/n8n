@@ -246,6 +246,12 @@ function getFieldIdentifier(field: FormFieldsParameter[number], nodeVersion?: nu
 	return field.fieldLabel ?? field.fieldName ?? '';
 }
 
+/** Target of the "Form automated with n8n" attribution footer. */
+export function getN8nWebsiteLink(instanceId?: string) {
+	const utm_campaign = instanceId ? `&utm_campaign=${encodeURIComponent(instanceId)}` : '';
+	return `https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger${utm_campaign}`;
+}
+
 export function prepareFormData({
 	formTitle,
 	formDescription,
@@ -285,8 +291,7 @@ export function prepareFormData({
 	hasAuthenticatedSubmitter?: boolean;
 	hostNavigationPath?: string;
 }) {
-	const utm_campaign = instanceId ? `&utm_campaign=${instanceId}` : '';
-	const n8nWebsiteLink = `https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger${utm_campaign}`;
+	const n8nWebsiteLink = getN8nWebsiteLink(instanceId);
 
 	if (formSubmittedText === undefined) {
 		formSubmittedText = 'Your response has been recorded';

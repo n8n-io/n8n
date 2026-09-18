@@ -44,6 +44,9 @@
                 "dueComplete": {
                     "type": "boolean"
                 },
+                "externalSource": {
+                    "type": "null"
+                },
                 "fogbugz": {
                     "type": "string"
                 },
@@ -221,5 +224,5 @@
             "type": "string"
         }
     },
-    "version": 10
+    "version": 11
 }

@@ -87,7 +87,8 @@ export const getRequestHelperFunctions = (
 			}
 			return await Container.get(OutboundHttp).requests().request(requestOptions);
 		},
-		getSecureEgressFilter: () => additionalData.ssrfBridge,
+		getSecureEgressFilter: (useDefaultSsrfPolicy) =>
+			Container.get(OutboundHttp).egressFilter(useDefaultSsrfPolicy),
 		async requestWithAuthenticationPaginated(
 			this: IExecuteFunctions,
 			requestOptions,
@@ -127,7 +128,6 @@ export const getRequestHelperFunctions = (
 				additionalCredentialOptions,
 			);
 		},
-
 		async refreshOAuth2Token(
 			this: IAllExecuteFunctions,
 			credentialsType: string,

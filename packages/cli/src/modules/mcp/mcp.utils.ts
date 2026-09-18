@@ -5,6 +5,7 @@ import type { INode } from 'n8n-workflow';
 
 import {
 	MCP_CLIENT_INFO_META_KEY,
+	MCP_DISCOVER_METHOD,
 	MCP_PROTOCOL_VERSION_META_KEY,
 	SUPPORTED_MCP_TRIGGERS,
 	SUPPORTED_PRODUCTION_MCP_TRIGGERS,
@@ -19,6 +20,13 @@ const getRequestMetaValue = (params: JSONRPCRequest['params'], key: string): unk
 	const meta = params?._meta;
 	return isRecord(meta) ? meta[key] : undefined;
 };
+
+/**
+ * Whether the request is a connection handshake: `server/discover`
+ * (2026-07-28) or `initialize` (2025-era clients on the stateless fallback).
+ */
+export const isConnectionHandshake = (body: unknown): boolean =>
+	isJSONRPCRequest(body) && (body.method === 'initialize' || body.method === MCP_DISCOVER_METHOD);
 
 /**
  * Extracts the client's self-identification from a request. The 2026-07-28

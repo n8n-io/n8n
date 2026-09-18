@@ -81,12 +81,23 @@ import { CredentialsFinderService } from './credentials-finder.service';
 import { getExternalSecretExpressionPaths } from './external-secrets.utils';
 import { InstanceCredentialUseRegistry } from './instance-credential-use.registry';
 import {
+	parseCredentialDescription,
 	validateAccessToReferencedSecretProviders,
 	validateExternalSecretsPermissions,
 } from './validation';
 
 /** Sentinel placed at every leaf of a redacted httpCustomAuth JSON shape */
 const CUSTOM_AUTH_JSON_REDACTED_VALUE = '***';
+
+function parseHttpUrl(value: unknown): URL | undefined {
+	if (typeof value !== 'string') return undefined;
+	try {
+		const url = new URL(value);
+		return url.protocol === 'http:' || url.protocol === 'https:' ? url : undefined;
+	} catch {
+		return undefined;
+	}
+}
 
 export type CredentialsGetSharedOptions =
 	| { allowGlobalScope: true; globalScope: Scope }
@@ -635,23 +646,30 @@ export class CredentialsService {
 		]);
 
 		// get all credentials the workflow or project has access to
-		const allCredentialsForWorkflow =
+		const credentialIdsForWorkflow = new Set(
 			'workflowId' in options
 				? (await this.findAllCredentialIdsForWorkflow(options.workflowId)).map((c) => c.id)
-				: (await this.findAllCredentialIdsForProject(options.projectId)).map((c) => c.id);
+				: (await this.findAllCredentialIdsForProject(options.projectId)).map((c) => c.id),
+		);
 
 		// the intersection of both is all credentials the user can use in this
 		// workflow or project
 		const intersection = allCredentials.filter(
-			(c) => allCredentialsForWorkflow.includes(c.id) || c.isGlobal,
+			(c) => credentialIdsForWorkflow.has(c.id) || c.isGlobal,
 		);
 
 		if (intersection.length > 0) {
 			const relations = await this.sharedCredentialsRepository.getAllRelationsForCredentials(
 				intersection.map((c) => c.id),
 			);
+			const relationsByCredentialId = new Map<string, SharedCredentials[]>();
+			for (const relation of relations) {
+				const credentialRelations = relationsByCredentialId.get(relation.credentialsId);
+				if (credentialRelations) credentialRelations.push(relation);
+				else relationsByCredentialId.set(relation.credentialsId, [relation]);
+			}
 			intersection.forEach((c) => {
-				c.shared = relations.filter((r) => r.credentialsId === c.id);
+				c.shared = relationsByCredentialId.get(c.id) ?? [];
 			});
 		}
 
@@ -775,6 +793,9 @@ export class CredentialsService {
 		const dataMerge = options?.dataMerge ?? 'unredact';
 
 		const mergedData = deepCopy(data);
+		if (data.description !== undefined) {
+			mergedData.description = parseCredentialDescription(data.description);
+		}
 		if (mergedData.data) {
 			mergedData.data = this.applyDataMerge(
 				mergedData.data,
@@ -1074,6 +1095,11 @@ export class CredentialsService {
 				type: prepared.type,
 				data: decryptedData,
 			}));
+
+		if (data.description !== undefined) {
+			encrypted.description = prepared.description;
+		}
+
 		if (!options.skipExternalHooks) {
 			await this.externalHooks.run('credentials.update', [encrypted]);
 		}
@@ -1199,10 +1225,28 @@ export class CredentialsService {
 			return;
 		}
 
+		// Read before the delete cascades away the `shared_credentials` rows that name it. An
+		// instance-scoped credential has no such row and resolves to nothing, which is expected.
+		let owningProject: Project | undefined;
+
 		if (credential.isResolvable) {
-			const owningProject =
+			// The authorization check depends on the project, so a failed lookup has to fail the
+			// delete — and with its own error, rather than a misleading permission one.
+			owningProject =
 				await this.sharedCredentialsRepository.findCredentialOwningProject(credentialId);
 			await this.ensureCanManageEndUserCredential(user, owningProject?.id);
+		} else {
+			// Here it only attributes the activity entry, so recording must never be the reason a
+			// delete fails. Without a project the entry is dropped, which is the right outcome.
+			try {
+				owningProject =
+					await this.sharedCredentialsRepository.findCredentialOwningProject(credentialId);
+			} catch (error) {
+				this.logger.warn('Failed to resolve the project owning a credential', {
+					credentialId,
+					error,
+				});
+			}
 		}
 		await this.externalHooks.run('credentials.delete', [credentialId]);
 
@@ -1216,20 +1260,26 @@ export class CredentialsService {
 				);
 			}
 			if (result.status === 'deleted') {
-				this.emitCredentialDeleted(user, credential);
+				this.emitCredentialDeleted(user, credential, owningProject?.id);
 			}
 			return;
 		}
 
 		await this.credentialsRepository.remove(credential);
-		this.emitCredentialDeleted(user, credential);
+		this.emitCredentialDeleted(user, credential, owningProject?.id);
 	}
 
-	private emitCredentialDeleted(user: User, credential: CredentialsEntity) {
+	private emitCredentialDeleted(
+		user: User,
+		credential: CredentialsEntity,
+		projectId: string | undefined,
+	) {
 		this.eventService.emit('credentials-deleted', {
 			user,
 			credentialType: credential.type,
 			credentialId: credential.id,
+			credentialName: credential.name,
+			projectId,
 		});
 
 		if (credential.isResolvable) {
@@ -1301,10 +1351,20 @@ export class CredentialsService {
 
 		const data = await this.decrypt(storedCredential, true);
 
-		// Expressions (leading '=') and non-http values are refused, not resolved.
-		const testUrl = data.testUrl;
-		if (typeof testUrl !== 'string' || !/^https?:\/\//i.test(testUrl)) {
+		// Expressions and non-HTTP values are refused, not resolved.
+		const testTarget = parseHttpUrl(data.testUrl);
+		if (!testTarget) {
 			throw new BadRequestError('The credential has no test URL to probe');
+		}
+
+		const storedOrigin = typeof data.serviceOrigin === 'string' ? data.serviceOrigin.trim() : '';
+		const serviceOrigin = parseHttpUrl(storedOrigin);
+		if (
+			!serviceOrigin ||
+			serviceOrigin.origin !== storedOrigin ||
+			serviceOrigin.origin !== testTarget.origin
+		) {
+			throw new BadRequestError('The credential test URL is not bound to its service origin');
 		}
 
 		return await this.credentialsTester.probeCredentialAuth(
@@ -1316,8 +1376,11 @@ export class CredentialsService {
 				type: storedCredential.type,
 				data,
 			},
-			testUrl,
-			{ acceptedStatusCodes: parseAcceptedStatusCodes(data.acceptedStatusCodes) },
+			testTarget.href,
+			{
+				acceptedStatusCodes: parseAcceptedStatusCodes(data.acceptedStatusCodes),
+				allowedDomains: testTarget.hostname,
+			},
 		);
 	}
 
@@ -1930,6 +1993,8 @@ export class CredentialsService {
 			data: opts.data as ICredentialDataDecryptedObject,
 		});
 
+		encryptedCredential.description = parseCredentialDescription(opts.description);
+
 		// Set isGlobal if provided in the payload and user has permission
 		const isGlobal = opts.isGlobal;
 		if (isGlobal === true) {
@@ -2001,6 +2066,7 @@ export class CredentialsService {
 		this.validateCredentialData(opts.type, hookedData);
 		const credentialEntity = this.credentialsRepository.create({
 			...encryptedCredential,
+			description: parseCredentialDescription(opts.description),
 			isManaged: false,
 			isResolvable: false,
 			usageScope: 'instance' as const,
@@ -2108,6 +2174,21 @@ export class CredentialsService {
 					type: storedCredential.type,
 					data: decryptedData,
 				};
+
+		// Find the owning project to prevent leakage of other project data.
+		const owningProject = await this.findCredentialOwningProject(storedCredential.id);
+		if (!owningProject) {
+			mergedCredentials.homeProject = undefined;
+		} else {
+			mergedCredentials.homeProject = {
+				id: owningProject.id,
+				name: owningProject.name,
+				icon: owningProject.icon,
+				type: owningProject.type,
+				createdAt: owningProject.createdAt.toISOString(),
+				updatedAt: owningProject.updatedAt.toISOString(),
+			};
+		}
 
 		if (user && credentialsToTest) {
 			await this.replaceCredentialContentsForSharee(

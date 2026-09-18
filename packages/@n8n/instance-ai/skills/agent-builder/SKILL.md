@@ -1,12 +1,12 @@
 ---
 name: agent-builder
 description: >-
-  Load before calling build-agent for a new or existing n8n Agent. Governs
-  prerequisite creation, faithful handoff of the user's request, agent
-  targeting across turns, builder questions, testing, and publishing. Use
-  directly for routine follow-ups when the conversation already targets an
-  Agent; rerun intent-recognition only when the requested artifact is no
-  longer clear.
+  Load immediately after an Agent intent. Then call build-agent with the user's
+  request after any required orchestrator-owned prerequisites are ready. Agent
+  Builder owns Agent setup and implementation questions. Governs prerequisite
+  creation, faithful handoff, targeting, testing, and publishing. Use directly
+  for routine Agent follow-ups; rerun intent-recognition only when the requested
+  artifact is no longer clear.
 recommended_tools:
   - build-agent
   - build-workflow
@@ -22,6 +22,38 @@ when the conversation already targets an Agent and the user is continuing that
 build. Do not rerun intent recognition for routine Agent edits or extensions.
 Use `build-agent` only for Agent artifacts.
 
+For a new Agent request, make the first `build-agent` call with a faithful copy
+of the request as soon as any required orchestrator-owned prerequisites are
+ready. Before that call, use `ask-user` only to choose a supported channel or to
+define a workflow or data-table prerequisite that the orchestrator must create.
+Only ask about the channel after `list-agent-capabilities` shows that the
+requested channel is unsupported. Do not collect model, service, tool, topic,
+schedule, credential, or other Agent implementation choices first. The embedded
+Agent Builder asks those questions through the `build-agent` call.
+
+When the conversation opens from an existing Agent in the editor and the user
+asks to change its configuration or capabilities, that is an agent-anchored
+request — target that Agent and call `build-agent`. Do not reroute to
+`workflow-builder`, and do not spawn a workflow to satisfy a capability change
+on the Agent.
+
+## Supported channels & unsupported requests
+
+`list-agent-capabilities` returns every chat channel n8n Agents support, each
+with `capabilities`, `useIntegrationWhen`, and `useNodeToolWhen`. It is the
+authoritative source the orchestrator can read before building; a channel
+absent from its result is unsupported for agents.
+
+When the user asks for a channel that is not supported (e.g. WhatsApp,
+Microsoft Teams), do not forward it to the builder as a channel to configure
+and do not fake it by adding the platform as an agent tool. Explain the channel
+is unsupported for agents, offer the supported alternatives, and ask which to
+use — or whether the user explicitly wants that unsupported platform as the
+conversation surface, in which case offer the `agent-entrypoint` workflow
+bridge described in Prerequisites (it connects the platform trigger to Message
+an Agent; it is not a channel config). Only forward a channel to `build-agent`
+once it is a supported type or the user has chosen an alternative.
+
 ## Faithful handoff
 
 Treat `message` as a faithful handoff of the user's request, not an Agent build
@@ -33,6 +65,12 @@ as possible. Include only:
 - Explicit answers or decisions from earlier turns that are necessary for the
   current request.
 - Prerequisite workflows or data tables you created for this Agent.
+
+The host appends an <aia-handoff> block with the current user text and pending
+ask-user answers that have not yet reached Agent Builder. Treat those as the
+user's decisions for this build call, not as implementation you invented.
+Still copy user-stated model, channel, and credential choices into message; do not omit
+them because the host also injected them.
 
 Never infer, invent, expand, recommend, or prescribe implementation details the
 user did not request, and never present your assumptions as user requirements.

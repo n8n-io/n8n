@@ -29,4 +29,62 @@ describe('secretKeys guardrail', () => {
 		expect(result.tripwireTriggered).toBe(true);
 		expect(result.info?.maskEntities?.SECRET).toContain('custom-secret-1234');
 	});
+
+	it('detects vendor-prefixed keys that end with a file suffix in balanced mode', () => {
+		const config: SecretKeysConfig = {
+			threshold: 'balanced',
+			customRegex: [],
+		};
+		const secrets = [
+			'sk-proj-AbCdEfGh1234567890xyzQRSTUVWXYZ.txt',
+			'AKIAABCDEFGHIJKLMNOP.json',
+			'ghp_1234567890AbCdEfGhIjKlMnOpQrStUvWx.log',
+		];
+
+		for (const secret of secrets) {
+			const result = secretKeysCheck(secret, config);
+
+			expect(result.tripwireTriggered).toBe(true);
+			expect(result.info?.maskEntities?.SECRET).toContain(secret);
+		}
+	});
+
+	it('does not treat generic filenames as secrets in balanced mode', () => {
+		const config: SecretKeysConfig = {
+			threshold: 'balanced',
+			customRegex: [],
+		};
+
+		for (const filename of ['api-client.ts', 'config.json', 'key-value.json']) {
+			const result = secretKeysCheck(filename, config);
+
+			expect(result.tripwireTriggered).toBe(false);
+		}
+	});
+
+	it('detects vendor-prefixed keys without a file suffix in balanced mode', () => {
+		const config: SecretKeysConfig = {
+			threshold: 'balanced',
+			customRegex: [],
+		};
+		const secret = 'sk-proj-AbCdEfGh1234567890xyzQRSTUVWXYZ';
+
+		const result = secretKeysCheck(secret, config);
+
+		expect(result.tripwireTriggered).toBe(true);
+		expect(result.info?.maskEntities?.SECRET).toContain(secret);
+	});
+
+	it('detects vendor-prefixed keys that end with a file suffix in strict mode', () => {
+		const config: SecretKeysConfig = {
+			threshold: 'strict',
+			customRegex: [],
+		};
+		const secret = 'sk-proj-AbCdEfGh1234567890xyzQRSTUVWXYZ.txt';
+
+		const result = secretKeysCheck(secret, config);
+
+		expect(result.tripwireTriggered).toBe(true);
+		expect(result.info?.maskEntities?.SECRET).toContain(secret);
+	});
 });

@@ -13,9 +13,9 @@ import { triggerResourceGate } from '../resource-gate';
 import {
 	FORM_TRIGGER_CONSENT_HINTS,
 	FORM_TRIGGER_SCOPES,
-	resourceUrlToWebhookPath,
 	trimSlashes,
 	trimTrailingSlash,
+	webhookPathFromResourceUrl,
 } from './utils';
 
 @Service()
@@ -33,11 +33,12 @@ export class FormTriggerResourceResolver implements ProtectedResourceResolver {
 	readonly scopes = FORM_TRIGGER_SCOPES;
 
 	async resolveByUrl(resourceUrl: string) {
-		const pathname = resourceUrlToWebhookPath(resourceUrl, this.urlService.getWebhookBaseUrl());
-		if (pathname === undefined) {
-			this.logger.debug(`Resource URL is not under the webhook base URL: ${resourceUrl}`);
-			return undefined;
-		}
+		const pathname = webhookPathFromResourceUrl(
+			resourceUrl,
+			this.urlService.getWebhookBaseUrl(),
+			this.logger,
+		);
+		if (pathname === undefined) return undefined;
 		return await this.resolveByPath(pathname);
 	}
 

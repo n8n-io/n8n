@@ -782,6 +782,11 @@ export function useWorkflowHelpers() {
 
 			node.credentials = Object.entries(node.credentials).reduce<INodeCredentials>(
 				(acc, [credentialType, credential]) => {
+					if (credential.__aiGatewayManaged && credential.id === null) {
+						acc[credentialType] = credential;
+						return acc;
+					}
+
 					const isUsableCredential = usableCredentials.some(
 						(ownCredential) => `${ownCredential.id}` === `${credential.id}`,
 					);

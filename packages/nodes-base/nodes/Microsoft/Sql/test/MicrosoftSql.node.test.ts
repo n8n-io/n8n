@@ -4,6 +4,7 @@ import type * as mssql from 'mssql';
 import { constructExecutionMetaData, returnJsonArray } from 'n8n-core';
 import type { IExecuteFunctions } from 'n8n-workflow';
 
+import { configurePool } from '../GenericFunctions';
 import { MicrosoftSql } from '../MicrosoftSql.node';
 import type { MockedClass } from 'vitest';
 
@@ -40,6 +41,30 @@ describe('MicrosoftSql Node', () => {
 
 	beforeEach(() => {
 		mockedConnectionPool = mssqlDefault.ConnectionPool as MockedClass<typeof mssql.ConnectionPool>;
+	});
+
+	test('converts numeric credential strings in the pool configuration', () => {
+		configurePool({ port: '1433', connectTimeout: '1000', requestTimeout: '10000' });
+
+		expect(mockedConnectionPool).toHaveBeenLastCalledWith(
+			expect.objectContaining({
+				port: 1433,
+				connectionTimeout: 1000,
+				requestTimeout: 10000,
+			}),
+		);
+	});
+
+	test('preserves driver defaults for empty numeric credentials', () => {
+		configurePool({ port: undefined, connectTimeout: '', requestTimeout: null });
+
+		expect(mockedConnectionPool).toHaveBeenLastCalledWith(
+			expect.objectContaining({
+				port: undefined,
+				connectionTimeout: undefined,
+				requestTimeout: undefined,
+			}),
+		);
 	});
 
 	test('handles connection error with continueOnFail', async () => {

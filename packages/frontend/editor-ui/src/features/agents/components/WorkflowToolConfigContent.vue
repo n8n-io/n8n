@@ -28,6 +28,7 @@ import {
 	N8nText,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import type { BaseTextKey } from '@n8n/i18n';
 import type { AgentJsonWorkflowToolInputField } from '@n8n/api-types';
 import { useRouter } from 'vue-router';
 
@@ -39,6 +40,7 @@ import {
 	listWorkflowToolInputFields,
 	parseWorkflowToolFixedValue,
 } from '../utils/workflowToolInputFields';
+import { workflowToolTriggerLabel } from '../utils/workflowToolTriggers';
 
 const props = defineProps<{
 	initialRef: WorkflowToolRef;
@@ -51,6 +53,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const triggerLabel = workflowToolTriggerLabel();
 
 const router = useRouter();
 const { availableWorkflows, projectWorkflows, loadWorkflows } = useAgentToolCatalog();
@@ -146,6 +149,14 @@ const isAmbiguous = computed(
 	() => workflowId.value === undefined && matchingProjectWorkflows.value.length > 1,
 );
 
+/** Target works in preview, but the published agent cannot call it until it is published. */
+const isUnpublished = computed(
+	() =>
+		!isLoadingWorkflows.value &&
+		!isUnusable.value &&
+		targetWorkflow.value?.activeVersionId === null,
+);
+
 /**
  * Options are keyed by id so same-named workflows remain individually
  * selectable.
@@ -187,6 +198,23 @@ function fieldFixedValue(fieldName: string): string {
 	const binding = fieldBinding(fieldName);
 	if (binding.mode !== 'fixed') return '';
 	return formatWorkflowToolFixedValue(binding.value);
+}
+
+// The trigger's declared field type only matters once the user types a fixed
+// value, so it surfaces as the input placeholder instead of a label.
+const FIXED_VALUE_PLACEHOLDER_KEYS: Record<string, BaseTextKey> = {
+	string: 'agents.toolConfig.workflow.inputs.value.placeholder.string',
+	number: 'agents.toolConfig.workflow.inputs.value.placeholder.number',
+	boolean: 'agents.toolConfig.workflow.inputs.value.placeholder.boolean',
+	array: 'agents.toolConfig.workflow.inputs.value.placeholder.array',
+	object: 'agents.toolConfig.workflow.inputs.value.placeholder.object',
+};
+
+function fieldFixedValuePlaceholder(fieldName: string): string {
+	return i18n.baseText(
+		FIXED_VALUE_PLACEHOLDER_KEYS[fieldType(fieldName) ?? ''] ??
+			'agents.toolConfig.workflow.inputs.value.placeholder',
+	);
 }
 
 // Raw text being typed per field. While editing, the input shows this
@@ -349,7 +377,11 @@ defineExpose({
 		</div>
 
 		<N8nCallout theme="warning" data-test-id="agent-workflow-tool-target-notice">
-			{{ i18n.baseText('agents.toolConfig.workflow.target.notice') }}
+			{{
+				i18n.baseText('agents.toolConfig.workflow.target.notice', {
+					interpolate: { trigger: triggerLabel },
+				})
+			}}
 		</N8nCallout>
 
 		<div :class="$style.field">
@@ -357,7 +389,7 @@ defineExpose({
 				{{ i18n.baseText('agents.toolConfig.workflow.target') }}
 				<N8nText color="primary" size="small" bold>*</N8nText>
 			</label>
-			<div :class="$style.targetRow">
+			<div :class="$style.controlRow">
 				<N8nSelect
 					:model-value="mode"
 					:class="$style.modeSelector"
@@ -372,7 +404,7 @@ defineExpose({
 					v-if="mode === 'list'"
 					id="workflow-tool-target"
 					:model-value="selectedOptionId"
-					:class="$style.targetInput"
+					:class="$style.controlInput"
 					filterable
 					:loading="isLoadingWorkflows"
 					:placeholder="i18n.baseText('agents.toolConfig.workflow.target.placeholder')"
@@ -404,7 +436,7 @@ defineExpose({
 					v-else
 					id="workflow-tool-target"
 					v-model="enteredId"
-					:class="$style.targetInput"
+					:class="$style.controlInput"
 					:placeholder="i18n.baseText('resourceLocator.id.placeholder')"
 					data-test-id="agent-workflow-tool-target-id"
 					@blur="handleEnterWorkflowId(enteredId)"
@@ -429,7 +461,11 @@ defineExpose({
 				color="danger"
 				data-test-id="agent-workflow-tool-target-id-unresolvable"
 			>
-				{{ i18n.baseText('agents.toolConfig.workflow.target.idNotFound') }}
+				{{
+					i18n.baseText('agents.toolConfig.workflow.target.idNotFound', {
+						interpolate: { trigger: triggerLabel },
+					})
+				}}
 			</N8nText>
 			<N8nText
 				v-else-if="isMissing"
@@ -467,6 +503,14 @@ defineExpose({
 					})
 				}}
 			</N8nText>
+			<N8nText
+				v-else-if="isUnpublished"
+				size="xsmall"
+				color="warning"
+				data-test-id="agent-workflow-tool-target-unpublished"
+			>
+				{{ i18n.baseText('agents.toolConfig.workflow.target.notPublished') }}
+			</N8nText>
 		</div>
 
 		<div
@@ -480,40 +524,41 @@ defineExpose({
 			<N8nText size="xsmall" color="text-light">
 				{{ i18n.baseText('agents.toolConfig.workflow.inputs.hint') }}
 			</N8nText>
-			<div
-				v-for="field in declaredInputFields"
-				:key="field.name"
-				:class="$style.inputRow"
-				:data-test-id="`agent-workflow-tool-input-${field.name}`"
-			>
-				<div :class="$style.inputFieldOption">
+			<div :class="$style.inputFields">
+				<div
+					v-for="field in declaredInputFields"
+					:key="field.name"
+					:class="$style.field"
+					:data-test-id="`agent-workflow-tool-input-${field.name}`"
+				>
 					<N8nText size="small" :bold="true" :class="$style.inputName">{{ field.name }}</N8nText>
-					<N8nSelect
-						:model-value="fieldMode(field.name)"
-						:class="$style.inputMode"
-						:data-test-id="`agent-workflow-tool-input-mode-${field.name}`"
-						@update:model-value="setFieldMode(field.name, $event)"
-					>
-						<N8nOption
-							value="ai"
-							:label="i18n.baseText('agents.toolConfig.workflow.inputs.mode.ai')"
+					<div :class="$style.controlRow">
+						<N8nSelect
+							:model-value="fieldMode(field.name)"
+							:class="fieldMode(field.name) === 'fixed' ? $style.inputMode : $style.controlInput"
+							:data-test-id="`agent-workflow-tool-input-mode-${field.name}`"
+							@update:model-value="setFieldMode(field.name, $event)"
+						>
+							<N8nOption
+								value="ai"
+								:label="i18n.baseText('agents.toolConfig.workflow.inputs.mode.ai')"
+							/>
+							<N8nOption
+								value="fixed"
+								:label="i18n.baseText('agents.toolConfig.workflow.inputs.mode.fixed')"
+							/>
+						</N8nSelect>
+						<N8nInput
+							v-if="fieldMode(field.name) === 'fixed'"
+							:model-value="fieldInputDisplay(field.name)"
+							:class="$style.controlInput"
+							:placeholder="fieldFixedValuePlaceholder(field.name)"
+							:data-test-id="`agent-workflow-tool-input-value-${field.name}`"
+							@update:model-value="handleFieldInput(field.name, $event)"
+							@blur="commitFieldFixedValue(field.name)"
 						/>
-						<N8nOption
-							value="fixed"
-							:label="i18n.baseText('agents.toolConfig.workflow.inputs.mode.fixed')"
-						/>
-					</N8nSelect>
+					</div>
 				</div>
-
-				<N8nInput
-					v-if="fieldMode(field.name) === 'fixed'"
-					:model-value="fieldInputDisplay(field.name)"
-					:class="$style.inputValue"
-					:placeholder="i18n.baseText('agents.toolConfig.workflow.inputs.value.placeholder')"
-					:data-test-id="`agent-workflow-tool-input-value-${field.name}`"
-					@update:model-value="handleFieldInput(field.name, $event)"
-					@blur="commitFieldFixedValue(field.name)"
-				/>
 			</div>
 		</div>
 
@@ -572,7 +617,7 @@ defineExpose({
 	min-width: 0;
 }
 
-.targetRow {
+.controlRow {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--3xs);
@@ -583,7 +628,7 @@ defineExpose({
 	width: 120px;
 }
 
-.targetInput {
+.controlInput {
 	flex: 1;
 	min-width: 0;
 }
@@ -615,35 +660,18 @@ defineExpose({
 	text-overflow: ellipsis;
 }
 
-.inputRow {
+.inputFields {
 	display: flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
-	flex-wrap: wrap;
-	flex-direction: row;
+	flex-direction: column;
+	gap: var(--spacing--xs);
+	padding-top: var(--spacing--3xs);
 }
 
 .inputName {
-	flex: 0 0 120px;
-	min-width: 0;
-	overflow: hidden;
-	text-overflow: ellipsis;
-}
-
-.inputFieldOption {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
-	flex-wrap: wrap;
-	width: 100%;
+	text-transform: capitalize;
 }
 
 .inputMode {
-	flex: 0 0 200px;
-}
-
-.inputValue {
-	flex: 1;
-	min-width: 120px;
+	flex: 0 0 180px;
 }
 </style>

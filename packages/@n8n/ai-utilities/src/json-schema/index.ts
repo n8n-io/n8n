@@ -1,9 +1,10 @@
 import type { ZodSchema } from 'zod';
-import { zodToJsonSchema, type Options } from 'zod-to-json-schema';
+import { zodToJsonSchema as zodToJsonSchemaLib, type Options } from 'zod-to-json-schema';
 
 import { toDraft202012 } from './draft-2020-12';
 
 export { JSON_SCHEMA_DRAFT_2020_12, toDraft202012 } from './draft-2020-12';
+export { isZodSchema, zodSchemaToJsonSchema, zodToJsonSchema } from './zod-to-json-schema';
 
 /**
  * Converts a zod schema to a JSON Schema 2020-12 document.
@@ -15,5 +16,5 @@ export function zodToDraft202012(
 	schema: ZodSchema,
 	options?: Partial<Omit<Options<'jsonSchema7'>, 'target'>>,
 ): Record<string, unknown> {
-	return toDraft202012(zodToJsonSchema(schema, { ...options, target: 'jsonSchema7' }));
+	return toDraft202012(zodToJsonSchemaLib(schema, { ...options, target: 'jsonSchema7' }));
 }

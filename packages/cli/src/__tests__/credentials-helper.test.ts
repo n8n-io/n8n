@@ -15,9 +15,11 @@ import {
 	EncryptionKeyProxy,
 } from 'n8n-core';
 import { SalesforceJwtApi } from 'n8n-nodes-base/credentials/SalesforceJwtApi.credentials';
+import { WekanApi } from 'n8n-nodes-base/credentials/WekanApi.credentials';
 import type {
 	IAuthenticateGeneric,
 	ICredentialDataDecryptedObject,
+	ICredentialsExpressionResolveValues,
 	ICredentialType,
 	IExecuteData,
 	IHttpRequestHelper,
@@ -50,6 +52,7 @@ import { CredentialsHelper } from '@/credentials-helper';
 import type { CredentialsOverwrites } from '@/credentials-overwrites';
 import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { MissingExecutionContextError } from '@/modules/dynamic-credentials.ee/errors/missing-execution-context.error';
 import type { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
 import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
@@ -67,13 +70,28 @@ describe('CredentialsHelper', () => {
 	const dynamicCredentialProxy = new DynamicCredentialsProxy(mockLogger);
 
 	// Setup cipher for testing
+	const encryptionKeyProxy = new EncryptionKeyProxy();
 	const cipher = new Cipher(
 		mock<InstanceSettings>({ encryptionKey: 'test_key_for_testing' }),
 		new CipherAes256GCM(),
 		new CipherAes256CBC(),
-		new EncryptionKeyProxy(),
+		encryptionKeyProxy,
 	);
 	Container.set(Cipher, cipher);
+
+	// The default deployment: no rotation, so the active key is the legacy
+	// instance-key descriptor (no-prefix, instance-key-wrapped).
+	const legacyDescriptor = {
+		id: 'instance-key',
+		value: cipher.encryptDEKWithInstanceKey('test_key_for_testing'),
+		algorithm: 'aes-256-cbc' as const,
+		format: 'no-prefix' as const,
+	};
+	encryptionKeyProxy.setProvider({
+		getActiveKey: async () => legacyDescriptor,
+		getKeyById: async () => null,
+		getLegacyKey: async () => legacyDescriptor,
+	});
 
 	const credentialsHelper = new CredentialsHelper(
 		new CredentialTypes(mockNodesAndCredentials),
@@ -1390,6 +1408,119 @@ describe('CredentialsHelper', () => {
 			});
 			expect(result).toEqual(syntheticCred);
 		});
+
+		it('should forward the executing node to getSyntheticCredential', async () => {
+			const aiGatewayService = mock<AiGatewayService>();
+			const helperWithGateway = new CredentialsHelper(
+				new CredentialTypes(mockNodesAndCredentials),
+				mock(),
+				credentialsRepository,
+				dynamicCredentialProxy,
+				secretsProviderRepository,
+				licenseState,
+				externalSecretsConfig,
+				aiGatewayService,
+				policyEnforcementService,
+			);
+
+			aiGatewayService.getSyntheticCredential.mockResolvedValue({ apiKey: 'mock-jwt' });
+
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				userId: 'user-123',
+				workflowId: undefined,
+				projectId: undefined,
+				executionId: undefined,
+			});
+			const nodeCredentials: INodeCredentialsDetails = {
+				id: null,
+				name: '',
+				__aiGatewayManaged: true,
+			};
+			const executeData = mock<IExecuteData>({
+				node: {
+					name: 'HTTP Request',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 4.5,
+					parameters: {},
+					position: [0, 0],
+				},
+			});
+
+			await helperWithGateway.getDecrypted(
+				additionalData,
+				nodeCredentials,
+				'openAiApi',
+				'manual',
+				executeData,
+			);
+
+			expect(aiGatewayService.getSyntheticCredential).toHaveBeenCalledWith(
+				expect.objectContaining({ node: executeData.node }),
+			);
+		});
+
+		it('prefers expressionResolveValues.node over a stale executeData.node from a parent orchestrator node', async () => {
+			const aiGatewayService = mock<AiGatewayService>();
+			const helperWithGateway = new CredentialsHelper(
+				new CredentialTypes(mockNodesAndCredentials),
+				mock(),
+				credentialsRepository,
+				dynamicCredentialProxy,
+				secretsProviderRepository,
+				licenseState,
+				externalSecretsConfig,
+				aiGatewayService,
+				policyEnforcementService,
+			);
+
+			aiGatewayService.getSyntheticCredential.mockResolvedValue({ apiKey: 'mock-jwt' });
+
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				userId: 'user-123',
+				workflowId: undefined,
+				projectId: undefined,
+				executionId: undefined,
+			});
+			const nodeCredentials: INodeCredentialsDetails = {
+				id: null,
+				name: '',
+				__aiGatewayManaged: true,
+			};
+			const parentNode: INode = {
+				id: 'node-chain',
+				name: 'Basic LLM Chain',
+				type: '@n8n/n8n-nodes-langchain.chainLlm',
+				typeVersion: 1.5,
+				parameters: {},
+				position: [0, 0],
+			};
+			const subNode: INode = {
+				id: 'node-anthropic',
+				name: 'Anthropic Chat Model',
+				type: '@n8n/n8n-nodes-langchain.lmChatAnthropic',
+				typeVersion: 1.3,
+				parameters: {},
+				position: [0, 0],
+			};
+			const executeData = mock<IExecuteData>({ node: parentNode });
+			const expressionResolveValues = mock<ICredentialsExpressionResolveValues>({
+				node: subNode,
+			});
+
+			await helperWithGateway.getDecrypted(
+				additionalData,
+				nodeCredentials,
+				'anthropicApi',
+				'manual',
+				executeData,
+				false,
+				expressionResolveValues,
+			);
+
+			expect(aiGatewayService.getSyntheticCredential).toHaveBeenCalledWith(
+				expect.objectContaining({ node: subNode }),
+			);
+		});
 	});
 
 	describe('getDecrypted - externalSecrets license check', () => {
@@ -1485,6 +1616,30 @@ describe('CredentialsHelper', () => {
 		};
 
 		const credentialType = 'testApi';
+		const triggerExecuteData = {
+			data: {},
+			node: {
+				id: 'gmail-trigger',
+				name: 'Gmail Trigger',
+				type: 'n8n-nodes-base.gmailTrigger',
+				typeVersion: 1,
+				parameters: {},
+				position: [0, 0],
+			},
+			source: null,
+		} satisfies IExecuteData;
+		const actionExecuteData = {
+			data: {},
+			node: {
+				id: 'gmail-node',
+				name: 'Gmail',
+				type: 'n8n-nodes-base.gmail',
+				typeVersion: 1,
+				parameters: {},
+				position: [0, 0],
+			},
+			source: null,
+		} satisfies IExecuteData;
 
 		const mockCredentialEntity = {
 			id: 'cred-456',
@@ -1627,8 +1782,123 @@ describe('CredentialsHelper', () => {
 			expect(result).not.toEqual({ apiKey: 'static-key' });
 		});
 
-		test('should skip resolution when executionContext is missing (manual mode)', async () => {
+		test.each([
+			{
+				name: 'system resolver',
+				credentialResolverId: undefined,
+				expectedMessage:
+					"End-user credentials aren't supported by this workflow's trigger. Supported triggers: Manual, Sub-workflow, Chat available in n8n Chat Hub or using n8n user authentication in hosted chat mode, and MCP, Form, or Webhook with n8n user authentication. To use another trigger, switch this credential to Fixed.",
+			},
+			{
+				name: 'custom resolver',
+				credentialResolverId: 'custom-resolver',
+				expectedMessage:
+					'End-user credentials with this resolver need a trigger that extracts an identity. Configure an identity extractor on the trigger, or switch this credential to Fixed.',
+			},
+		])(
+			'should explain unsupported manual triggers using the $name',
+			async ({ credentialResolverId, expectedMessage }) => {
+				dynamicCredentialProxy.setResolverProvider(mockCredentialResolutionProvider);
+				mockCredentialResolutionProvider.getSystemResolverId.mockReturnValue('system-n8n');
+
+				credentialsRepository.findOneByOrFail.mockResolvedValue({
+					...mockCredentialEntity,
+					isResolvable: true,
+				} as CredentialsEntity);
+
+				await expect(
+					credentialsHelper.getDecrypted(
+						{
+							...mockAdditionalData,
+							executionContext: undefined,
+							workflowSettings: {
+								...mockAdditionalData.workflowSettings,
+								credentialResolverId,
+							},
+						},
+						nodeCredentials,
+						credentialType,
+						'manual',
+						triggerExecuteData,
+						true,
+						undefined,
+						{ credentialUsage: 'trigger' },
+					),
+				).rejects.toThrow(expectedMessage);
+
+				expect(mockCredentialResolutionProvider.resolveIfNeeded).not.toHaveBeenCalled();
+			},
+		);
+
+		test('should surface resolver configuration errors instead of an unsupported-trigger error', async () => {
 			dynamicCredentialProxy.setResolverProvider(mockCredentialResolutionProvider);
+			mockCredentialResolutionProvider.getSystemResolverId.mockReturnValue(null);
+			mockCredentialResolutionProvider.resolveIfNeeded.mockRejectedValue(
+				new Error('Credential resolver is not configured'),
+			);
+			credentialsRepository.findOneByOrFail.mockResolvedValue({
+				...mockCredentialEntity,
+				isResolvable: true,
+			} as CredentialsEntity);
+
+			await expect(
+				credentialsHelper.getDecrypted(
+					{
+						...mockAdditionalData,
+						executionContext: undefined,
+						workflowSettings: {
+							...mockAdditionalData.workflowSettings,
+							credentialResolverId: undefined,
+						},
+					},
+					nodeCredentials,
+					credentialType,
+					'manual',
+					triggerExecuteData,
+					true,
+					undefined,
+					{ credentialUsage: 'trigger' },
+				),
+			).rejects.toThrow('Credential resolver is not configured');
+
+			expect(mockCredentialResolutionProvider.resolveIfNeeded).toHaveBeenCalledOnce();
+		});
+
+		test('should defer to the resolver when trigger execution data is unavailable', async () => {
+			dynamicCredentialProxy.setResolverProvider(mockCredentialResolutionProvider);
+			mockCredentialResolutionProvider.resolveIfNeeded.mockRejectedValue(
+				new MissingExecutionContextError(),
+			);
+			credentialsRepository.findOneByOrFail.mockResolvedValue({
+				...mockCredentialEntity,
+				isResolvable: true,
+			} as CredentialsEntity);
+
+			await expect(
+				credentialsHelper.getDecrypted(
+					{
+						...mockAdditionalData,
+						executionContext: undefined,
+					},
+					nodeCredentials,
+					credentialType,
+					'manual',
+					undefined,
+					true,
+					undefined,
+					{ credentialUsage: 'trigger' },
+				),
+			).rejects.toThrow(MissingExecutionContextError);
+
+			expect(mockCredentialResolutionProvider.resolveIfNeeded).toHaveBeenCalledOnce();
+		});
+
+		test('should preserve static credentials for manual action-node tests without context', async () => {
+			dynamicCredentialProxy.setResolverProvider(mockCredentialResolutionProvider);
+			credentialsRepository.findOneByOrFail.mockResolvedValue({
+				...mockCredentialEntity,
+				isResolvable: true,
+			} as CredentialsEntity);
 			mockCredentialResolutionProvider.resolveIfNeeded.mockResolvedValue({
 				data: { apiKey: 'resolved' },
 				isDynamic: false,
@@ -1644,7 +1914,7 @@ describe('CredentialsHelper', () => {
 				nodeCredentials,
 				credentialType,
 				'manual',
-				undefined,
+				actionExecuteData,
 				true,
 			);
 
@@ -1652,22 +1922,27 @@ describe('CredentialsHelper', () => {
 			expect(result).toEqual({ apiKey: 'static-key' });
 		});
 
-		test('should resolve in manual mode when credentials context is present (test webhook with identity extractor)', async () => {
+		test('should resolve manual trigger credentials when execution context is present', async () => {
 			dynamicCredentialProxy.setResolverProvider(mockCredentialResolutionProvider);
+			credentialsRepository.findOneByOrFail.mockResolvedValue({
+				...mockCredentialEntity,
+				isResolvable: true,
+			} as CredentialsEntity);
 			const dynamicData = { apiKey: 'dynamic-key' };
 			mockCredentialResolutionProvider.resolveIfNeeded.mockResolvedValue({
 				data: dynamicData,
 				isDynamic: true,
 			});
 
-			// mockAdditionalData has credentials context set — simulates a test webhook run
 			const result = await credentialsHelper.getDecrypted(
 				mockAdditionalData,
 				nodeCredentials,
 				credentialType,
 				'manual',
-				undefined,
+				triggerExecuteData,
 				true,
+				undefined,
+				{ credentialUsage: 'trigger' },
 			);
 
 			expect(mockCredentialResolutionProvider.resolveIfNeeded).toHaveBeenCalled();
@@ -2341,6 +2616,216 @@ describe('CredentialsHelper', () => {
 
 			expect(mockTokenRequest).toHaveBeenCalledTimes(2);
 			expect(refreshed).toMatchObject({ accessToken: 'TOKEN_2' });
+		});
+	});
+	describe('preAuthentication domain restrictions', () => {
+		// This layer attaches the policy; the outbound client enforces it.
+		const wekan = new WekanApi();
+		const httpRequest = vi.fn();
+		const helpers = mock<IHttpRequestHelper>({ helpers: { httpRequest } });
+
+		const storedCredentials = mock<Credentials>({ getData: vi.fn().mockResolvedValue({}) });
+
+		const selfPolicingApi: ICredentialType = {
+			name: 'selfPolicingApi',
+			displayName: 'Self Policing API',
+			properties: [],
+			async preAuthentication(this: IHttpRequestHelper) {
+				await this.helpers.httpRequest({
+					method: 'POST',
+					url: 'https://other.example/login',
+					allowedDomains: 'other.example',
+				});
+				return { token: 'SESSION_TOKEN' };
+			},
+		};
+
+		let updateSpy: MockInstance;
+
+		const wekanNode: INode = {
+			id: 'uuid-1',
+			name: 'Node',
+			type: 'n8n-nodes-base.noOp',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+			credentials: { wekanApi: { id: 'cred-1', name: 'Credential' } },
+		};
+
+		const wekanCredentials = (overrides: ICredentialDataDecryptedObject = {}) => ({
+			url: 'https://wekan.example.com',
+			username: 'admin',
+			password: 'secret',
+			token: '',
+			...overrides,
+		});
+
+		const exchange = async (overrides: ICredentialDataDecryptedObject = {}) =>
+			await credentialsHelper.preAuthentication(
+				helpers,
+				wekanCredentials(overrides),
+				'wekanApi',
+				wekanNode,
+				false,
+			);
+
+		// The spies below need no teardown: `restoreMocks` is enabled repo-wide.
+		beforeEach(() => {
+			vi.clearAllMocks();
+			mockNodesAndCredentials.getCredential
+				.calledWith('wekanApi')
+				.mockReturnValue({ type: wekan, sourcePath: '' });
+			mockNodesAndCredentials.getCredential
+				.calledWith('selfPolicingApi')
+				.mockReturnValue({ type: selfPolicingApi, sourcePath: '' });
+			httpRequest.mockResolvedValue({ token: 'SESSION_TOKEN' });
+			updateSpy = vi.spyOn(credentialsHelper, 'updateCredentials').mockResolvedValue();
+			vi.spyOn(credentialsHelper, 'getCredentials').mockResolvedValue(storedCredentials);
+		});
+
+		test('binds the exchange to the allowlist the credential declares', async () => {
+			const result = await exchange({
+				allowedHttpRequestDomains: 'domains',
+				allowedDomains: 'wekan.example.com',
+			});
+
+			expect(result).toMatchObject({ token: 'SESSION_TOKEN' });
+			expect(httpRequest).toHaveBeenCalledWith(
+				expect.objectContaining({
+					url: 'https://wekan.example.com/users/login',
+					allowedDomains: 'wekan.example.com',
+				}),
+			);
+		});
+
+		test('binds the exchange for any host the credential names', async () => {
+			await exchange({
+				url: 'https://other.example',
+				allowedHttpRequestDomains: 'domains',
+				allowedDomains: 'wekan.example.com',
+			});
+
+			expect(httpRequest).toHaveBeenCalledWith(
+				expect.objectContaining({
+					url: 'https://other.example/users/login',
+					allowedDomains: 'wekan.example.com',
+				}),
+			);
+		});
+
+		test('leaves the request unrestricted when the credential declares no allowlist', async () => {
+			await exchange();
+
+			expect(httpRequest).toHaveBeenCalledWith({
+				method: 'POST',
+				url: 'https://wekan.example.com/users/login',
+				body: { username: 'admin', password: 'secret' },
+			});
+		});
+
+		test('still authenticates when the credential is scoped out of HTTP Request nodes', async () => {
+			const result = await exchange({ allowedHttpRequestDomains: 'none' });
+
+			expect(result).toMatchObject({ token: 'SESSION_TOKEN' });
+			expect(httpRequest).toHaveBeenCalledWith(
+				expect.not.objectContaining({ allowedDomains: expect.anything() }),
+			);
+		});
+
+		test('refuses the exchange when the allowlist was left empty', async () => {
+			await expect(
+				exchange({ allowedHttpRequestDomains: 'domains', allowedDomains: '   ' }),
+			).rejects.toThrow('No allowed domains specified');
+
+			expect(httpRequest).not.toHaveBeenCalled();
+			expect(updateSpy).not.toHaveBeenCalled();
+		});
+
+		test('does not refuse a hook that issues no request of its own', async () => {
+			const inMemoryApi: ICredentialType = {
+				name: 'inMemoryApi',
+				displayName: 'In Memory API',
+				properties: [],
+				// eslint-disable-next-line @typescript-eslint/require-await
+				async preAuthentication(this: IHttpRequestHelper) {
+					return { oauthTokenData: { access_token: 'transformed' } };
+				},
+			};
+
+			mockNodesAndCredentials.getCredential
+				.calledWith('inMemoryApi')
+				.mockReturnValue({ type: inMemoryApi, sourcePath: '' });
+
+			const result = await credentialsHelper.runPreAuthentication(
+				helpers,
+				{ allowedHttpRequestDomains: 'domains', allowedDomains: '' },
+				'inMemoryApi',
+			);
+
+			expect(result).toMatchObject({ oauthTokenData: { access_token: 'transformed' } });
+			expect(httpRequest).not.toHaveBeenCalled();
+		});
+
+		test('refuses to combine the credential allowlist with one the hook set itself', async () => {
+			await expect(
+				credentialsHelper.runPreAuthentication(
+					helpers,
+					{ allowedHttpRequestDomains: 'domains', allowedDomains: 'wekan.example.com' },
+					'selfPolicingApi',
+				),
+			).rejects.toThrow('cannot be combined');
+		});
+
+		test('leaves that allowlist alone when the credential declares none', async () => {
+			await credentialsHelper.runPreAuthentication(helpers, {}, 'selfPolicingApi');
+
+			expect(httpRequest).toHaveBeenCalledWith(
+				expect.objectContaining({ allowedDomains: 'other.example' }),
+			);
+		});
+
+		test('hides request methods it does not wrap', async () => {
+			const unwrapped = vi.fn();
+			let reachable: unknown;
+
+			const probingApi: ICredentialType = {
+				name: 'probingApi',
+				displayName: 'Probing API',
+				properties: [],
+				// eslint-disable-next-line @typescript-eslint/require-await
+				async preAuthentication(this: IHttpRequestHelper) {
+					reachable = (this.helpers as unknown as Record<string, unknown>).request;
+					return { token: 'SESSION_TOKEN' };
+				},
+			};
+
+			mockNodesAndCredentials.getCredential
+				.calledWith('probingApi')
+				.mockReturnValue({ type: probingApi, sourcePath: '' });
+
+			await credentialsHelper.runPreAuthentication(
+				{ helpers: { httpRequest, request: unwrapped } } as unknown as IHttpRequestHelper,
+				{ allowedHttpRequestDomains: 'domains', allowedDomains: 'wekan.example.com' },
+				'probingApi',
+			);
+
+			expect(reachable).toBeUndefined();
+			expect(unwrapped).not.toHaveBeenCalled();
+		});
+
+		test('binds the non-persisting entry point the same way', async () => {
+			await credentialsHelper.runPreAuthentication(
+				helpers,
+				wekanCredentials({
+					allowedHttpRequestDomains: 'domains',
+					allowedDomains: 'wekan.example.com',
+				}),
+				'wekanApi',
+			);
+
+			expect(httpRequest).toHaveBeenCalledWith(
+				expect.objectContaining({ allowedDomains: 'wekan.example.com' }),
+			);
 		});
 	});
 

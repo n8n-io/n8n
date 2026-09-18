@@ -1,9 +1,10 @@
 import { JsonColumn, WithTimestampsAndStringId } from '@n8n/db';
-import { Column, Entity, JoinColumn, ManyToOne } from '@n8n/typeorm';
+import { Column, Entity, Index, JoinColumn, ManyToOne } from '@n8n/typeorm';
 
 import { AgentThreadEntity } from './agent-thread.entity';
 
 @Entity({ name: 'agents_messages' })
+@Index(['resourceId', 'threadId'])
 export class AgentMessageEntity extends WithTimestampsAndStringId {
 	@Column({ type: 'varchar', length: 255 })
 	threadId: string;

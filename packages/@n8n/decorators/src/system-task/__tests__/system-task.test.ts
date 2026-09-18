@@ -14,7 +14,7 @@ beforeEach(() => {
 	Container.set(SystemTaskMetadata, metadata);
 });
 
-it('should register classes decorated with @SystemTask', () => {
+it('should make a decorated class injectable without registering it', () => {
 	vi.spyOn(metadata, 'register');
 
 	@SystemTask()
@@ -30,11 +30,11 @@ it('should register classes decorated with @SystemTask', () => {
 		async run() {}
 	}
 
-	expect(metadata.register).toHaveBeenCalledTimes(1);
-	expect(metadata.register).toHaveBeenCalledWith(TestTask);
+	expect(metadata.register).not.toHaveBeenCalled();
+	expect(Container.get(TestTask)).toBeInstanceOf(TestTask);
 });
 
-it('should notify a subscribed listener when a task class is decorated later', () => {
+it('should notify a subscribed listener when a task class is registered later', () => {
 	const seen: SystemTaskClass[] = [];
 	metadata.subscribe((taskClass) => seen.push(taskClass));
 
@@ -55,10 +55,12 @@ it('should notify a subscribed listener when a task class is decorated later', (
 		async run() {}
 	}
 
+	metadata.register(LateTask);
+
 	expect(seen).toEqual([LateTask]);
 });
 
-it('should make the class injectable before notifying a subscribed listener', () => {
+it('should let a subscribed listener resolve the class it is notified of', () => {
 	const resolved: SystemTask[] = [];
 	metadata.subscribe((taskClass) => resolved.push(Container.get(taskClass)));
 
@@ -74,6 +76,8 @@ it('should make the class injectable before notifying a subscribed listener', ()
 
 		async run() {}
 	}
+
+	metadata.register(ResolvableTask);
 
 	expect(resolved).toHaveLength(1);
 	expect(resolved[0]).toBeInstanceOf(ResolvableTask);

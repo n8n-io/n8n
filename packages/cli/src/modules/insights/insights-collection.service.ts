@@ -13,6 +13,7 @@ import {
 
 import { InsightsMetadata } from '@/modules/insights/database/entities/insights-metadata';
 import { InsightsRaw } from '@/modules/insights/database/entities/insights-raw';
+import { isBillableExecution } from '@/utils/is-billable-execution';
 
 import { InsightsMetadataRepository } from './database/repositories/insights-metadata.repository';
 import { InsightsRawRepository } from './database/repositories/insights-raw.repository';
@@ -180,6 +181,14 @@ export class InsightsCollectionService {
 			type: status,
 			value: 1,
 		});
+
+		if (isBillableExecution(ctx.runData, ctx.source)) {
+			this.bufferedInsights.add({
+				...commonWorkflowData,
+				type: 'billable',
+				value: 1,
+			});
+		}
 
 		// run time event
 		if (ctx.runData.stoppedAt) {

@@ -1,4 +1,4 @@
-import { SECRET_KEYS } from '@n8n/utils/scrub-secrets';
+import { isSensitiveKey } from '@n8n/utils/redaction/sensitive-key';
 
 import { renderObservationLog } from './observation-log-renderer';
 import { redactText } from '../../sdk/guardrails';
@@ -32,14 +32,6 @@ const DEFAULT_MAX_STRING_CHARS = 500;
 const DEFAULT_MAX_ARRAY_ITEMS = 20;
 const DEFAULT_MAX_OBJECT_KEYS = 40;
 const REDACTED_VALUE = '[REDACTED]';
-// Built from the shared secret-key vocabulary (@n8n/utils/scrub-secrets) plus
-// a few key names that vocabulary doesn't cover (bare `token`, private keys,
-// client secrets, session cookies) — catches secrets sitting under a
-// sensitive object key regardless of value shape.
-const SENSITIVE_KEY_PATTERN = new RegExp(
-	`(?:^|[_-])(?:${SECRET_KEYS}|token|private[_-]?key|client[_-]?secret|session[_-]?cookie)(?:$|[_-])`,
-	'i',
-);
 
 export interface ParsedObservationLogEntry {
 	marker: ObservationLogMarker;
@@ -71,7 +63,6 @@ export interface ObservationLogObserverMemory extends BuiltMemory, BuiltObservat
 export interface RunObservationLogObserverOpts {
 	memory: ObservationLogObserverMemory;
 	observationScopeId: string;
-	observerThresholdTokens: number;
 	observationLogTailLimit: number;
 	observe: ObservationLogObserveFn;
 	tokenCounter?: TokenCounter;
@@ -83,7 +74,6 @@ export interface RunObservationLogObserverOpts {
 
 export type RunObservationLogObserverResult =
 	| { status: 'skipped'; reason: 'no-delta' | 'pending-tool-call' }
-	| { status: 'skipped'; reason: 'below-threshold'; tokenCount: number }
 	| {
 			status: 'ran';
 			observationsWritten: number;
@@ -204,9 +194,6 @@ export async function runObservationLogObserver(
 	const tokenCounter = opts.tokenCounter ?? estimateObservationTokens;
 	const transcript = renderObserverTranscript(observable);
 	const tokenCount = await tokenCounter(transcript);
-	if (tokenCount < opts.observerThresholdTokens) {
-		return { status: 'skipped', reason: 'below-threshold', tokenCount };
-	}
 
 	const observationLogTail = (
 		await memory.getActiveObservationLog({
@@ -339,7 +326,7 @@ function compactForObserver(value: unknown, options: RenderObserverTranscriptOpt
 	for (const [key, entryValue] of entries.slice(0, maxObjectKeys)) {
 		if (isSensitiveKey(key)) {
 			result[key] = REDACTED_VALUE;
-		} else if (shouldStripBlob(key, entryValue)) {
+		} else if (shouldStripBlob(key, entryValue, maxStringChars)) {
 			result[key] = '[omitted large blob]';
 		} else {
 			result[key] = compactForObserver(entryValue, options);
@@ -351,13 +338,9 @@ function compactForObserver(value: unknown, options: RenderObserverTranscriptOpt
 	return result;
 }
 
-function isSensitiveKey(key: string): boolean {
-	return SENSITIVE_KEY_PATTERN.test(key);
-}
-
-function shouldStripBlob(key: string, value: unknown): boolean {
+function shouldStripBlob(key: string, value: unknown, maxStringChars: number): boolean {
 	if (typeof value !== 'string') return false;
-	if (value.length <= DEFAULT_MAX_STRING_CHARS) return false;
+	if (value.length <= maxStringChars) return false;
 	return /blob|base64|data|file|image/i.test(key);
 }
 

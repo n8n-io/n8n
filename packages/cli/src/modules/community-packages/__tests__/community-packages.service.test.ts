@@ -3,7 +3,7 @@ import type { HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import { mockInstance, randomName } from '@n8n/backend-test-utils';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import type { InstanceSettings, PackageDirectoryLoader } from 'n8n-core';
-import type { PublicInstalledPackage } from 'n8n-workflow';
+import { N8N_NODES_API_VERSION, type PublicInstalledPackage } from 'n8n-workflow';
 import { execFile } from 'node:child_process';
 import { access, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import path, { join } from 'node:path';
@@ -54,12 +54,15 @@ vi.mocked(execFile).mockImplementation(execMock);
 
 describe('CommunityPackagesService', () => {
 	const license = mock<License>();
-	const config = mock<CommunityPackagesConfig>({
+	const configDefaults = {
+		enabled: true,
+		preventLoading: false,
 		reinstallMissing: false,
 		registry: 'some.random.host',
 		unverifiedEnabled: true,
 		authToken: '',
-	});
+	};
+	const config = mock<CommunityPackagesConfig>({ ...configDefaults });
 	const loadNodesAndCredentials = mock<LoadNodesAndCredentials>();
 	const installedNodesRepository = mockInstance(InstalledNodesRepository);
 	const installedPackageRepository = mockInstance(InstalledPackagesRepository);
@@ -87,6 +90,7 @@ describe('CommunityPackagesService', () => {
 
 	beforeEach(() => {
 		vi.resetAllMocks();
+		Object.assign(config, configDefaults);
 		loadNodesAndCredentials.postProcessLoaders.mockResolvedValue(undefined);
 		publisher.publishCommand.mockResolvedValue(undefined);
 
@@ -126,6 +130,25 @@ describe('CommunityPackagesService', () => {
 			},
 		);
 
+		test.each(['n8n-nodes-base', '@n8n/n8n-nodes-langchain'])(
+			'should reject reserved package name %s',
+			(name) => {
+				expect(() => communityPackagesService.parseNpmPackageName(name)).toThrow(/reserved/);
+			},
+		);
+
+		test.each(['n8n-nodes-base@1.2.3', '@n8n/n8n-nodes-langchain@1.2.3'])(
+			'should reject reserved package name with version specifier %s',
+			(name) => {
+				expect(() => communityPackagesService.parseNpmPackageName(name)).toThrow(/reserved/);
+			},
+		);
+
+		test('should accept a package name that merely starts with a reserved name', () => {
+			const parsed = communityPackagesService.parseNpmPackageName('n8n-nodes-base-extended');
+			expect(parsed.packageName).toBe('n8n-nodes-base-extended');
+		});
+
 		test.each(['beta', 'next', 'latest', 'canary', 'rc-1'])(
 			'should accept npm dist-tag as version',
 			(tag) => {
@@ -133,6 +156,22 @@ describe('CommunityPackagesService', () => {
 				expect(parsed.version).toBe(tag);
 			},
 		);
+
+		test.each(['../n8n-nodes-test', 'n8n-nodes-test/n8n-nodes-test'])(
+			'should fail with an invalid scope segment',
+			(name) => {
+				expect(() => communityPackagesService.parseNpmPackageName(name)).toThrowError();
+			},
+		);
+
+		test.each([
+			'@scope/n8n-nodes-test/..',
+			'@scope/n8n-nodes-test/../..',
+			'n8n-nodes-test/..',
+			'n8n-nodes-test/../../node_modules/n8n-nodes-other',
+		])('should fail when the name carries extra path segments (%s)', (name) => {
+			expect(() => communityPackagesService.parseNpmPackageName(name)).toThrowError();
+		});
 
 		test('should parse valid package name', () => {
 			const name = mockPackageName();
@@ -168,6 +207,29 @@ describe('CommunityPackagesService', () => {
 			expect(parsed.scope).toBe(scope);
 			expect(parsed.version).toBe(version);
 		});
+	});
+
+	describe('resolvePackageDirectory()', () => {
+		// Called directly: every caller reaching it in production has already been through
+		// `parseNpmPackageName`, so only a direct call covers the guard on its own.
+		const resolvePackageDirectory = (packageName: string) =>
+			communityPackagesService['resolvePackageDirectory'](packageName);
+
+		test.each(['@scope/n8n-nodes-test/..', 'n8n-nodes-test/..', '../../etc', '..', '.', ''])(
+			'should reject the name "%s"',
+			(packageName) => {
+				expect(() => resolvePackageDirectory(packageName)).toThrowError('Invalid package name');
+			},
+		);
+
+		test.each(['n8n-nodes-test', '@scope/n8n-nodes-test'])(
+			'should resolve the directory for "%s"',
+			(packageName) => {
+				expect(resolvePackageDirectory(packageName)).toBe(
+					`${nodesDownloadDir}/node_modules/${packageName}`,
+				);
+			},
+		);
 	});
 
 	describe('crossInformationPackage()', () => {
@@ -347,6 +409,11 @@ describe('CommunityPackagesService', () => {
 			installedVersion: COMMUNITY_PACKAGE_VERSION.CURRENT,
 		});
 
+		const packageAfterUpdate = mock<InstalledPackages>({
+			packageName: PACKAGE_NAME,
+			installedVersion: COMMUNITY_PACKAGE_VERSION.UPDATED,
+		});
+
 		const packageDirectoryLoader = mock<PackageDirectoryLoader>({
 			loadedNodes: [{ name: 'a-node-from-the-loader', version: 1 }],
 		});
@@ -399,6 +466,7 @@ describe('CommunityPackagesService', () => {
 					devDependencies: { 'a-dev-dep': '1.0.0' },
 					peerDependencies: { 'a-peer-dep': '2.0.0' },
 					optionalDependencies: { 'an-optional-dep': '3.0.0' },
+					n8n: { n8nNodesApiVersion: N8N_NODES_API_VERSION },
 				}),
 			);
 			vi.mocked(writeFile).mockResolvedValue(undefined);
@@ -412,7 +480,7 @@ describe('CommunityPackagesService', () => {
 				installedPackageForUpdateTest,
 			);
 			installedPackageRepository.replaceInstalledPackageWithNodes.mockResolvedValue(
-				installedPackageForUpdateTest,
+				packageAfterUpdate,
 			);
 
 			publisher.publishCommand.mockResolvedValue(undefined);
@@ -453,6 +521,7 @@ describe('CommunityPackagesService', () => {
 						dependencies: { [PACKAGE_NAME]: COMMUNITY_PACKAGE_VERSION.CURRENT },
 					}),
 				)
+				// The extracted package.json, which the download strips and writes back.
 				.mockResolvedValueOnce(
 					JSON.stringify({
 						name: PACKAGE_NAME,
@@ -461,6 +530,7 @@ describe('CommunityPackagesService', () => {
 						devDependencies: {},
 						peerDependencies: {},
 						optionalDependencies: {},
+						n8n: { n8nNodesApiVersion: N8N_NODES_API_VERSION },
 					}),
 				)
 				.mockResolvedValueOnce(
@@ -468,6 +538,15 @@ describe('CommunityPackagesService', () => {
 						name: 'installed-nodes',
 						private: true,
 						dependencies: { [PACKAGE_NAME]: '2.0.0' },
+					}),
+				)
+				// The compatibility guard reads the same extracted package.json, now stripped.
+				.mockResolvedValueOnce(
+					JSON.stringify({
+						name: PACKAGE_NAME,
+						version: '2.0.0',
+						dependencies: { 'some-actual-dep': '1.2.3' },
+						n8n: { n8nNodesApiVersion: N8N_NODES_API_VERSION },
 					}),
 				)
 				.mockResolvedValueOnce(
@@ -561,6 +640,53 @@ describe('CommunityPackagesService', () => {
 			expect(installedPackageRepository.replaceInstalledPackageWithNodes).not.toHaveBeenCalled();
 		});
 
+		describe('node API version guard', () => {
+			const updateToIncompatible = async (n8nNodesApiVersion: unknown) => {
+				vi.mocked(readFile).mockResolvedValue(
+					JSON.stringify({
+						name: PACKAGE_NAME,
+						version: '2.0.0',
+						dependencies: { 'some-actual-dep': '1.2.3' },
+						n8n: { n8nNodesApiVersion },
+					}),
+				);
+				return await communityPackagesService.updatePackage(
+					installedPackageForUpdateTest.packageName,
+					installedPackageForUpdateTest,
+				);
+			};
+
+			test('should reject the update when the package requires a newer node API version', async () => {
+				license.isCustomNpmRegistryEnabled.mockReturnValue(true);
+
+				await expect(updateToIncompatible(N8N_NODES_API_VERSION + 1)).rejects.toThrow(
+					"This community node isn't compatible with your version of n8n. Update n8n to use it.",
+				);
+
+				expect(loadNodesAndCredentials.loadPackage).not.toHaveBeenCalled();
+				expect(installedPackageRepository.replaceInstalledPackageWithNodes).not.toHaveBeenCalled();
+				expect(publisher.publishCommand).not.toHaveBeenCalled();
+			});
+
+			test('should reject the update when the declared node API version is malformed', async () => {
+				license.isCustomNpmRegistryEnabled.mockReturnValue(true);
+
+				await expect(updateToIncompatible('3')).rejects.toThrow('invalid n8n node API version');
+
+				expect(loadNodesAndCredentials.loadPackage).not.toHaveBeenCalled();
+				expect(installedPackageRepository.replaceInstalledPackageWithNodes).not.toHaveBeenCalled();
+			});
+
+			test('should update to a package that declares the supported node API version', async () => {
+				license.isCustomNpmRegistryEnabled.mockReturnValue(true);
+
+				await expect(updateToIncompatible(N8N_NODES_API_VERSION)).resolves.toBe(packageAfterUpdate);
+
+				expect(loadNodesAndCredentials.loadPackage).toHaveBeenCalledWith(PACKAGE_NAME);
+				expect(installedPackageRepository.replaceInstalledPackageWithNodes).toHaveBeenCalled();
+			});
+		});
+
 		test('should remove the package.json dependency when a fresh install fails', async () => {
 			license.isCustomNpmRegistryEnabled.mockReturnValue(true);
 			// No pre-existing directory here, unlike the shared beforeEach's update scenario.
@@ -572,6 +698,7 @@ describe('CommunityPackagesService', () => {
 				.mockResolvedValueOnce(
 					JSON.stringify({ name: 'installed-nodes', private: true, dependencies: {} }),
 				)
+				// The extracted package.json, which the download strips and writes back.
 				.mockResolvedValueOnce(
 					JSON.stringify({
 						name: PACKAGE_NAME,
@@ -580,6 +707,7 @@ describe('CommunityPackagesService', () => {
 						devDependencies: {},
 						peerDependencies: {},
 						optionalDependencies: {},
+						n8n: { n8nNodesApiVersion: N8N_NODES_API_VERSION },
 					}),
 				)
 				.mockResolvedValueOnce(
@@ -587,6 +715,15 @@ describe('CommunityPackagesService', () => {
 						name: 'installed-nodes',
 						private: true,
 						dependencies: { [PACKAGE_NAME]: '1.0.0' },
+					}),
+				)
+				// The compatibility guard reads the same extracted package.json, now stripped.
+				.mockResolvedValueOnce(
+					JSON.stringify({
+						name: PACKAGE_NAME,
+						version: '1.0.0',
+						dependencies: {},
+						n8n: { n8nNodesApiVersion: N8N_NODES_API_VERSION },
 					}),
 				)
 				.mockResolvedValueOnce(
@@ -698,7 +835,7 @@ describe('CommunityPackagesService', () => {
 					installedPackageForUpdateTest.packageName,
 					installedPackageForUpdateTest,
 				),
-			).resolves.toBe(installedPackageForUpdateTest);
+			).resolves.toBe(packageAfterUpdate);
 
 			expect(logger.warn).toHaveBeenCalledWith(
 				'Failed to remove community package backup directory',
@@ -786,6 +923,9 @@ describe('CommunityPackagesService', () => {
 						name: PACKAGE_NAME,
 						version: '1.0.0',
 						dependencies: { 'some-actual-dep': '1.2.3' },
+						// The dependency-stripping rewrite must keep the `n8n` section: the
+						// compatibility guard reads it from the rewritten file.
+						n8n: { n8nNodesApiVersion: N8N_NODES_API_VERSION },
 					},
 					null,
 					2,
@@ -807,7 +947,11 @@ describe('CommunityPackagesService', () => {
 			expect(publisher.publishCommand).toHaveBeenCalledWith({
 				command: 'community-package-update',
 				// The resolved version that was just persisted, not the requested `latest` specifier.
-				payload: { packageName: PACKAGE_NAME, packageVersion: COMMUNITY_PACKAGE_VERSION.CURRENT },
+				payload: {
+					packageName: PACKAGE_NAME,
+					packageVersion: COMMUNITY_PACKAGE_VERSION.UPDATED,
+					checksum: undefined,
+				},
 			});
 		});
 
@@ -820,7 +964,7 @@ describe('CommunityPackagesService', () => {
 					installedPackageForUpdateTest.packageName,
 					installedPackageForUpdateTest,
 				),
-			).resolves.toBe(installedPackageForUpdateTest);
+			).resolves.toBe(packageAfterUpdate);
 			await Promise.resolve();
 			await Promise.resolve();
 
@@ -828,6 +972,26 @@ describe('CommunityPackagesService', () => {
 				'Failed to publish community package install/update event',
 				expect.objectContaining({ packageName: PACKAGE_NAME }),
 			);
+		});
+
+		test('should publish the resolved version and the checksum when one is provided', async () => {
+			license.isCustomNpmRegistryEnabled.mockReturnValue(true);
+
+			await communityPackagesService.updatePackage(
+				installedPackageForUpdateTest.packageName,
+				installedPackageForUpdateTest,
+				'latest',
+				'sha512-abc123',
+			);
+
+			expect(publisher.publishCommand).toHaveBeenCalledWith({
+				command: 'community-package-update',
+				payload: {
+					packageName: PACKAGE_NAME,
+					packageVersion: COMMUNITY_PACKAGE_VERSION.UPDATED,
+					checksum: 'sha512-abc123',
+				},
+			});
 		});
 
 		test('should not attempt to delete the tarball when npm pack prints no filename', async () => {
@@ -869,6 +1033,15 @@ describe('CommunityPackagesService', () => {
 	});
 
 	describe('installPackage', () => {
+		test('should throw when the package status check rejects the package', async () => {
+			config.registry = 'https://registry.npmjs.org';
+			request.mockResolvedValue({ status: 'Banned', reason: 'Not good' });
+
+			await expect(communityPackagesService.installPackage('package', '0.1.0')).rejects.toThrow(
+				'Package "package" is not allowed',
+			);
+		});
+
 		test('should throw when installation of not vetted packages is forbidden', async () => {
 			config.unverifiedEnabled = false;
 			config.registry = 'https://registry.npmjs.org';
@@ -1216,6 +1389,92 @@ describe('CommunityPackagesService', () => {
 			);
 		});
 
+		test('should not reinstall a package the startup guard skipped as incompatible', async () => {
+			// The package is on disk but declares a node API version this runtime
+			// does not support. Reinstalling the same version cannot fix it, and
+			// `loadPackage` would import its node code, bypassing the startup guard.
+			const installedPackages = [installedPackage1];
+
+			installedPackageRepository.find.mockResolvedValue(installedPackages);
+			loadNodesAndCredentials.isKnownNode.mockReturnValue(false);
+			config.reinstallMissing = true;
+			vi.mocked(readFile).mockResolvedValue(
+				JSON.stringify({
+					name: 'package-1',
+					version: '1.0.0',
+					n8n: { n8nNodesApiVersion: N8N_NODES_API_VERSION + 1 },
+				}),
+			);
+
+			await communityPackagesService.checkForMissingPackages();
+
+			expect(communityPackagesService.installPackage).not.toHaveBeenCalled();
+			expect(logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('Not reinstalling package "package-1"'),
+			);
+			expect(loadNodesAndCredentials.postProcessLoaders).not.toHaveBeenCalled();
+		});
+
+		test('should not reinstall a package with a malformed node API version on disk', async () => {
+			const installedPackages = [installedPackage1];
+
+			installedPackageRepository.find.mockResolvedValue(installedPackages);
+			loadNodesAndCredentials.isKnownNode.mockReturnValue(false);
+			config.reinstallMissing = true;
+			vi.mocked(readFile).mockResolvedValue(
+				JSON.stringify({ name: 'package-1', version: '1.0.0', n8n: { n8nNodesApiVersion: '3' } }),
+			);
+
+			await communityPackagesService.checkForMissingPackages();
+
+			expect(communityPackagesService.installPackage).not.toHaveBeenCalled();
+			expect(logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('invalid n8nNodesApiVersion'),
+			);
+		});
+
+		test('should reinstall a not-loaded package whose on-disk copy is compatible', async () => {
+			const installedPackages = [installedPackage1];
+
+			installedPackageRepository.find.mockResolvedValue(installedPackages);
+			loadNodesAndCredentials.isKnownNode.mockReturnValue(false);
+			config.reinstallMissing = true;
+			vi.mocked(readFile).mockResolvedValue(
+				JSON.stringify({
+					name: 'package-1',
+					version: '1.0.0',
+					n8n: { n8nNodesApiVersion: N8N_NODES_API_VERSION },
+				}),
+			);
+
+			await communityPackagesService.checkForMissingPackages();
+
+			expect(communityPackagesService.installPackage).toHaveBeenCalledWith(
+				'package-1',
+				'1.0.0',
+				undefined,
+			);
+		});
+
+		test('should reinstall a package whose package.json is unreadable', async () => {
+			// An unreadable package.json is the partial/corrupt-install case:
+			// reinstall is the repair path, incompatibility is not the diagnosis.
+			const installedPackages = [installedPackage1];
+
+			installedPackageRepository.find.mockResolvedValue(installedPackages);
+			loadNodesAndCredentials.isKnownNode.mockReturnValue(false);
+			config.reinstallMissing = true;
+			vi.mocked(readFile).mockRejectedValue(new Error('ENOENT'));
+
+			await communityPackagesService.checkForMissingPackages();
+
+			expect(communityPackagesService.installPackage).toHaveBeenCalledWith(
+				'package-1',
+				'1.0.0',
+				undefined,
+			);
+		});
+
 		test('should log an error for a failed reinstallation', async () => {
 			const installedPackages = [installedPackage1];
 
@@ -1497,272 +1756,6 @@ describe('CommunityPackagesService', () => {
 				rebuiltPackageJson,
 				'utf-8',
 			);
-		});
-	});
-
-	describe('handleInstallEvent', () => {
-		test('should call unloadPackage before loadPackage to handle already-loaded packages', async () => {
-			vi.mocked(readFile).mockRejectedValue(new Error('ENOENT'));
-
-			const callOrder: string[] = [];
-			loadNodesAndCredentials.unloadPackage.mockImplementation(async () => {
-				callOrder.push('unloadPackage');
-			});
-			loadNodesAndCredentials.loadPackage.mockImplementation(async () => {
-				callOrder.push('loadPackage');
-				return mock<PackageDirectoryLoader>();
-			});
-
-			vi.spyOn(communityPackagesService as any, 'downloadPackage').mockResolvedValue(undefined);
-
-			await communityPackagesService.handleInstallEvent({
-				packageName: 'n8n-nodes-test',
-				packageVersion: '1.0.0',
-			});
-
-			expect(callOrder).toEqual(['unloadPackage', 'loadPackage']);
-		});
-
-		test('should catch and log the error instead of throwing', async () => {
-			vi.spyOn(communityPackagesService as any, 'downloadPackage').mockRejectedValue(
-				new Error('npm registry unreachable'),
-			);
-
-			await expect(
-				communityPackagesService.handleInstallEvent({
-					packageName: 'n8n-nodes-test',
-					packageVersion: '1.0.0',
-				}),
-			).resolves.toBeUndefined();
-
-			expect(logger.error).toHaveBeenCalledWith(
-				'Failed to install community package n8n-nodes-test from pubsub event',
-				expect.objectContaining({ packageName: 'n8n-nodes-test', packageVersion: '1.0.0' }),
-			);
-		});
-
-		test('should skip the download when the on-disk version already matches and the loader is registered', async () => {
-			vi.mocked(readFile).mockResolvedValue(JSON.stringify({ version: '1.0.0' }));
-			loadNodesAndCredentials.loaders['n8n-nodes-test'] = mock<PackageDirectoryLoader>();
-
-			const downloadPackageSpy = vi
-				.spyOn(communityPackagesService as any, 'downloadPackage')
-				.mockResolvedValue(undefined);
-
-			await communityPackagesService.handleInstallEvent({
-				packageName: 'n8n-nodes-test',
-				packageVersion: '1.0.0',
-			});
-
-			expect(downloadPackageSpy).not.toHaveBeenCalled();
-			expect(loadNodesAndCredentials.unloadPackage).not.toHaveBeenCalled();
-			expect(loadNodesAndCredentials.loadPackage).not.toHaveBeenCalled();
-			expect(logger.debug).toHaveBeenCalledWith(
-				'Community package n8n-nodes-test already at 1.0.0, skipping',
-			);
-		});
-	});
-
-	describe('handleUninstallEvent', () => {
-		test('should catch and log the error instead of throwing', async () => {
-			vi.mocked(rm).mockRejectedValue(new Error('EBUSY'));
-
-			await expect(
-				communityPackagesService.handleUninstallEvent({ packageName: 'n8n-nodes-test' }),
-			).resolves.toBeUndefined();
-
-			expect(logger.error).toHaveBeenCalledWith(
-				'Failed to uninstall community package n8n-nodes-test from pubsub event',
-				expect.objectContaining({ packageName: 'n8n-nodes-test' }),
-			);
-		});
-	});
-
-	describe('packageMutex', () => {
-		beforeEach(() => {
-			loadNodesAndCredentials.unloadPackage.mockResolvedValue(undefined);
-			loadNodesAndCredentials.loadPackage.mockResolvedValue(mock<PackageDirectoryLoader>());
-			loadNodesAndCredentials.postProcessLoaders.mockResolvedValue(undefined);
-			// No package.json on disk, so the already-installed check doesn't short-circuit.
-			vi.mocked(readFile).mockRejectedValue(new Error('ENOENT'));
-		});
-
-		test('serializes two overlapping handleInstallEvent calls for different packages', async () => {
-			const callOrder: string[] = [];
-			let releaseFirst!: () => void;
-			const firstGate = new Promise<void>((resolve) => {
-				releaseFirst = resolve;
-			});
-
-			vi.spyOn(communityPackagesService as any, 'downloadPackage')
-				.mockImplementationOnce(async (packageName: string) => {
-					callOrder.push(`start:${packageName}`);
-					await firstGate;
-					callOrder.push(`end:${packageName}`);
-					return 'irrelevant-dir';
-				})
-				.mockImplementationOnce(async (packageName: string) => {
-					callOrder.push(`start:${packageName}`);
-					callOrder.push(`end:${packageName}`);
-					return 'irrelevant-dir';
-				});
-
-			const eventA = communityPackagesService.handleInstallEvent({
-				packageName: 'pkg-a',
-				packageVersion: '1.0.0',
-			});
-			const eventB = communityPackagesService.handleInstallEvent({
-				packageName: 'pkg-b',
-				packageVersion: '1.0.0',
-			});
-
-			// Only pkg-a's download should have been reached; pkg-b is still waiting on the mutex.
-			await vi.waitFor(() => expect(callOrder).toEqual(['start:pkg-a']));
-
-			releaseFirst();
-			await Promise.all([eventA, eventB]);
-
-			expect(callOrder).toEqual(['start:pkg-a', 'end:pkg-a', 'start:pkg-b', 'end:pkg-b']);
-		});
-
-		test('serializes installPackage against a concurrent handleInstallEvent for a different package', async () => {
-			// installPackage() goes through installOrUpdatePackage; handleInstallEvent() goes
-			// through installOrUpdateNpmPackage. Proves the SAME mutex serializes across the two
-			// different locked methods, not just repeated calls to one of them.
-			config.unverifiedEnabled = true;
-			const callOrder: string[] = [];
-			let releaseFirst!: () => void;
-			const firstGate = new Promise<void>((resolve) => {
-				releaseFirst = resolve;
-			});
-
-			vi.spyOn(communityPackagesService as any, 'downloadPackage')
-				.mockImplementationOnce(async (packageName: string) => {
-					callOrder.push(`start:${packageName}`);
-					await firstGate;
-					callOrder.push(`end:${packageName}`);
-					return 'irrelevant-dir';
-				})
-				.mockImplementationOnce(async (packageName: string) => {
-					callOrder.push(`start:${packageName}`);
-					callOrder.push(`end:${packageName}`);
-					return 'irrelevant-dir';
-				});
-
-			installedPackageRepository.saveInstalledPackageWithNodes.mockResolvedValue(
-				mock<InstalledPackages>(),
-			);
-			loadNodesAndCredentials.loadPackage.mockResolvedValue(
-				mock<PackageDirectoryLoader>({ loadedNodes: [{ name: 'n', version: 1 }] }),
-			);
-
-			const installCall = communityPackagesService.installPackage('pkg-http');
-			const pubsubCall = communityPackagesService.handleInstallEvent({
-				packageName: 'pkg-pubsub',
-				packageVersion: '1.0.0',
-			});
-
-			// Only pkg-http's download should have been reached; pkg-pubsub is still waiting.
-			await vi.waitFor(() => expect(callOrder).toEqual(['start:pkg-http']));
-
-			releaseFirst();
-			await Promise.all([installCall, pubsubCall]);
-
-			expect(callOrder).toEqual([
-				'start:pkg-http',
-				'end:pkg-http',
-				'start:pkg-pubsub',
-				'end:pkg-pubsub',
-			]);
-		});
-
-		test('does not deadlock when checkForMissingPackages overlaps a pub/sub install for a different package', async () => {
-			// Forward-looking safety net, not a reproduction of a live race: the actual boot
-			// sequence never lets checkForMissingPackages() overlap a pub/sub handler (traced in
-			// worker.ts/webhook.ts/start.ts/base-command.ts). This guards against the lock ever
-			// being misplaced one layer too high (e.g. on installPackage/checkForMissingPackages),
-			// which would hang forever rather than throw. Promise.all(...) relies on Vitest's
-			// default per-test timeout to fail loudly if that regression is ever introduced.
-			config.unverifiedEnabled = true;
-			config.reinstallMissing = true;
-			installedPackageRepository.find.mockResolvedValue([
-				mock<InstalledPackages>({
-					packageName: 'pkg-missing',
-					installedVersion: '1.0.0',
-					installedNodes: [{ type: 'node-type-missing' }],
-				}),
-			]);
-			loadNodesAndCredentials.isKnownNode.mockReturnValue(false);
-			vi.mocked(getCommunityNodeTypes).mockResolvedValue([]);
-
-			vi.spyOn(communityPackagesService as any, 'downloadPackage').mockResolvedValue(
-				'irrelevant-dir',
-			);
-			installedPackageRepository.saveInstalledPackageWithNodes.mockResolvedValue(
-				mock<InstalledPackages>(),
-			);
-			loadNodesAndCredentials.loadPackage.mockResolvedValue(
-				mock<PackageDirectoryLoader>({ loadedNodes: [{ name: 'n', version: 1 }] }),
-			);
-
-			await Promise.all([
-				communityPackagesService.checkForMissingPackages(),
-				communityPackagesService.handleInstallEvent({
-					packageName: 'pkg-other',
-					packageVersion: '1.0.0',
-				}),
-			]);
-
-			expect(installedPackageRepository.saveInstalledPackageWithNodes).toHaveBeenCalled();
-			expect(loadNodesAndCredentials.unloadPackage).toHaveBeenCalledWith('pkg-other');
-		});
-
-		test('serializes handleUninstallEvent against a concurrent handleInstallEvent for a different package', async () => {
-			// removeNpmPackage can't be spied on directly the way downloadPackage is elsewhere in
-			// this block — it IS one of the three locked methods, so replacing it wholesale would
-			// also replace its `packageMutex(...)` wrapper, running the mock without the lock at
-			// all. Gate on `rm` instead, the one async step deletePackageDirectory calls internally.
-			const callOrder: string[] = [];
-			let releaseRemove!: () => void;
-			const removeGate = new Promise<void>((resolve) => {
-				releaseRemove = resolve;
-			});
-
-			vi.mocked(rm).mockImplementationOnce(async () => {
-				callOrder.push('start:remove');
-				await removeGate;
-				callOrder.push('end:remove');
-			});
-
-			vi.spyOn(communityPackagesService as any, 'downloadPackage').mockImplementationOnce(
-				async (packageName: string) => {
-					callOrder.push(`start:${packageName}`);
-					callOrder.push(`end:${packageName}`);
-					return 'irrelevant-dir';
-				},
-			);
-
-			const removeCall = communityPackagesService.handleUninstallEvent({
-				packageName: 'pkg-remove',
-			});
-			const installCall = communityPackagesService.handleInstallEvent({
-				packageName: 'pkg-install',
-				packageVersion: '1.0.0',
-			});
-
-			await Promise.resolve();
-			await Promise.resolve();
-			expect(callOrder).toEqual(['start:remove']);
-
-			releaseRemove();
-			await Promise.all([removeCall, installCall]);
-
-			expect(callOrder).toEqual([
-				'start:remove',
-				'end:remove',
-				'start:pkg-install',
-				'end:pkg-install',
-			]);
 		});
 	});
 });

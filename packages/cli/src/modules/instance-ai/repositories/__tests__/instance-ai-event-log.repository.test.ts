@@ -88,6 +88,80 @@ describe('InstanceAiEventLogRepository', () => {
 		});
 	});
 
+	describe('findLangsmithAnchor', () => {
+		const runStartRow = (
+			seq: number,
+			runId: string,
+			payload: Record<string, unknown>,
+		): InstanceAiEventLogEntry =>
+			({
+				seq,
+				runId,
+				createdAt: new Date(`2026-07-01T10:00:0${seq}.000Z`),
+				payload: JSON.stringify({ type: 'run-start', runId, agentId: 'a1', payload }),
+			}) as InstanceAiEventLogEntry;
+
+		const repoWithRunStarts = (rows: InstanceAiEventLogEntry[]) => {
+			const repo = Object.create(
+				InstanceAiEventLogRepository.prototype,
+			) as InstanceAiEventLogRepository;
+			const find = vi.fn().mockResolvedValue(rows);
+			Object.defineProperty(repo, 'find', { value: find, configurable: true });
+			return { repo, find };
+		};
+
+		it('resolves the group anchor from a later sibling when earlier ones carry no ids', async () => {
+			const { repo, find } = repoWithRunStarts([
+				// Anchored, but a different group: must never hijack another group's turn.
+				runStartRow(1, 'run-0', {
+					messageGroupId: 'mg-other',
+					langsmithRunId: 'ls-other',
+					langsmithTraceId: 'trace-other',
+				}),
+				// The group's first sibling, unanchored — what a segment without
+				// tracing leaves behind.
+				runStartRow(2, 'run-1', { messageGroupId: 'mg-1' }),
+				runStartRow(3, 'run-2', {
+					messageGroupId: 'mg-1',
+					langsmithRunId: 'ls-run',
+					langsmithTraceId: 'ls-trace',
+				}),
+			]);
+
+			await expect(repo.findLangsmithAnchor('thread-1', 'mg-1')).resolves.toEqual({
+				langsmithRunId: 'ls-run',
+				langsmithTraceId: 'ls-trace',
+			});
+			// One row per run, not the whole log.
+			expect(find).toHaveBeenCalledWith(
+				expect.objectContaining({ where: { threadId: 'thread-1', type: 'run-start' } }),
+			);
+		});
+
+		it('falls back to the runId for a turn with no message group', async () => {
+			const { repo } = repoWithRunStarts([
+				runStartRow(1, 'run-1', { langsmithRunId: 'ls-run', langsmithTraceId: 'ls-trace' }),
+			]);
+
+			await expect(repo.findLangsmithAnchor('thread-1', 'run-1')).resolves.toEqual({
+				langsmithRunId: 'ls-run',
+				langsmithTraceId: 'ls-trace',
+			});
+		});
+
+		it('resolves undefined for a genuinely untraced turn', async () => {
+			const { repo } = repoWithRunStarts([
+				runStartRow(1, 'run-1', { messageGroupId: 'mg-1' }),
+				runStartRow(2, 'run-2', { messageGroupId: 'mg-1' }),
+			]);
+
+			// No sibling in the group is anchored…
+			await expect(repo.findLangsmithAnchor('thread-1', 'mg-1')).resolves.toBeUndefined();
+			// …and the runId fallback must not fabricate an anchor from an id-less start.
+			await expect(repo.findLangsmithAnchor('thread-1', 'run-2')).resolves.toBeUndefined();
+		});
+	});
+
 	describe('findRunIdsInWindow', () => {
 		it('bounds the window half-open so the next page owns its first fact', async () => {
 			const repo = Object.create(
@@ -140,6 +214,61 @@ describe('InstanceAiEventLogRepository', () => {
 			await expect(repo.getForThreadRuns('thread-1', [])).resolves.toEqual([]);
 			// `IN ()` is not valid SQL, so the short-circuit is load-bearing.
 			expect(createQueryBuilder).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('getSetupItemsSnapshots', () => {
+		it('keeps the latest snapshot per workflow and drops unparseable items', async () => {
+			const repo = Object.create(
+				InstanceAiEventLogRepository.prototype,
+			) as InstanceAiEventLogRepository;
+			const snapshot = (seq: number, workflowId: string, items: unknown[]) => ({
+				seq,
+				runId: 'run-1',
+				createdAt: new Date('2026-07-01T10:00:00.000Z'),
+				payload: JSON.stringify({
+					type: 'setup-items',
+					runId: 'run-1',
+					agentId: 'a1',
+					payload: { workflowId, items },
+				}),
+			});
+			const slack = {
+				id: 'wf-1:credential:slackApi',
+				kind: 'credential',
+				credentialType: 'slackApi',
+			};
+			const gmail = {
+				id: 'wf-1:credential:gmailOAuth2',
+				kind: 'credential',
+				credentialType: 'gmailOAuth2',
+			};
+			const find = vi
+				.fn()
+				.mockResolvedValue([
+					snapshot(1, 'wf-1', [slack]),
+					snapshot(2, 'wf-2', [
+						{ id: 'wf-2:parameters:N', kind: 'parameters', nodeName: 'N', parameterNames: [] },
+					]),
+					snapshot(3, 'wf-1', [slack, gmail, null]),
+				] as InstanceAiEventLogEntry[]);
+			Object.defineProperty(repo, 'find', { value: find, configurable: true });
+
+			const snapshots = await repo.getSetupItemsSnapshots('thread-1');
+
+			expect(find).toHaveBeenCalledWith({
+				where: { threadId: 'thread-1', type: 'setup-items' },
+				order: { seq: 'ASC' },
+			});
+			expect(snapshots).toEqual([
+				{
+					workflowId: 'wf-2',
+					items: [
+						{ id: 'wf-2:parameters:N', kind: 'parameters', nodeName: 'N', parameterNames: [] },
+					],
+				},
+				{ workflowId: 'wf-1', items: [slack, gmail] },
+			]);
 		});
 	});
 });

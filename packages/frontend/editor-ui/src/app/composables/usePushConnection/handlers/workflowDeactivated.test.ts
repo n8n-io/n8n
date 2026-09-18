@@ -9,14 +9,23 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import type { PushHandlerOptions } from './types';
 
-const { mockSettingsStore, mockUiStore, mockInitializeWorkspace, mockFetchWorkflow } = vi.hoisted(
-	() => ({
-		mockSettingsStore: { isWorkflowPublicationServiceEnabled: true },
-		mockUiStore: { stateIsDirty: true },
-		mockInitializeWorkspace: vi.fn(),
-		mockFetchWorkflow: vi.fn().mockResolvedValue({ checksum: 'abc' }),
-	}),
-);
+const {
+	mockSettingsStore,
+	mockUiStore,
+	mockInitializeWorkspace,
+	mockFetchWorkflow,
+	mockClearPendingActivationModal,
+} = vi.hoisted(() => ({
+	mockSettingsStore: { isWorkflowPublicationServiceEnabled: true },
+	mockUiStore: { stateIsDirty: true },
+	mockInitializeWorkspace: vi.fn(),
+	mockFetchWorkflow: vi.fn().mockResolvedValue({ checksum: 'abc' }),
+	mockClearPendingActivationModal: vi.fn(),
+}));
+
+vi.mock('@/app/composables/workflowPublicationConfirmation', () => ({
+	clearPendingActivationModal: mockClearPendingActivationModal,
+}));
 
 vi.mock('@n8n/stores/settings.store', () => ({
 	useSettingsStore: () => mockSettingsStore,
@@ -62,6 +71,20 @@ describe('workflowDeactivated', () => {
 
 		expect(workflowDocumentStore.publicationStatus).toBe('idle');
 		expect(workflowDocumentStore.publicationFailures).toEqual([]);
+	});
+
+	// ADO-4969: an unpublish that lands while a publish confirmation is pending
+	// invalidates the deferred success modal.
+	it('clears a pending activation success modal intent', async () => {
+		await workflowDeactivated(makeEvent(), options);
+
+		expect(mockClearPendingActivationModal).toHaveBeenCalledWith('wf-123');
+	});
+
+	it('clears the pending intent even when viewing another workflow', async () => {
+		await workflowDeactivated(makeEvent('wf-other'), options);
+
+		expect(mockClearPendingActivationModal).toHaveBeenCalledWith('wf-other');
 	});
 
 	it('clears the status on the non-dirty (re-init) path too', async () => {

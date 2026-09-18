@@ -1,13 +1,11 @@
 import {
-	getEpisodicMemoryScope,
-	hasEpisodicMemoryStore,
-	isEpisodicMemoryEnabled,
-	runEpisodicMemoryIndexer,
-} from './episodic-memory';
+	FLAG_MEMORY_TOOL_NAME,
+	resolveEpisodicMemoryCapture,
+	runEpisodicMemoryCandidateProcessor,
+} from './episodic-memory-capture';
 import { createFilteredLogger } from '../logger';
 import { compareKeyset, saveMessagesToThread } from './memory-store';
 import {
-	renderObserverTranscript,
 	runObservationLogObserver,
 	type ObservationLogObserverMemory,
 	type RunObservationLogObserverResult,
@@ -26,6 +24,7 @@ import type {
 	AgentExecutionCounter,
 	BuiltMemory,
 	BuiltTelemetry,
+	EpisodicMemoryScope,
 	EpisodicMemoryTaskLockHandle,
 	EpisodicMemoryTaskLockMethods,
 } from '../../types';
@@ -51,13 +50,51 @@ const DEFAULT_MEMORY_TASK_LOCK_TTL_MS = 30_000;
 const MID_RUN_SOFT_THRESHOLD_RATIO = 0.7;
 /**
  * Consecutive observer attempts that failed to advance the cursor (provider
- * outage, persistently unparseable output, estimator disagreement) before
+ * outage, lock contention, persistently unparseable output) before
  * mid-run observation stops retrying for the rest of the run. Without the
  * latch, the hard path would fire a blocking observer call at every loop
  * boundary. Post-turn observation is unaffected.
  */
 const MID_RUN_MAX_NON_ADVANCING_ATTEMPTS = 3;
 const logger = createFilteredLogger();
+
+function stringifyForBudget(value: unknown): string {
+	try {
+		return JSON.stringify(value) ?? '';
+	} catch {
+		return '';
+	}
+}
+
+function serializeMessageForBudget(message: AgentDbMessage): string {
+	if (!('role' in message) || !Array.isArray(message.content)) return '';
+	const parts: string[] = [];
+	for (const content of message.content) {
+		if (content.type === 'text') {
+			parts.push(content.text);
+		} else if (content.type === 'tool-call') {
+			parts.push(content.toolName, stringifyForBudget(content.input));
+			if (content.state === 'resolved') parts.push(stringifyForBudget(content.output));
+			else if (content.state === 'rejected') parts.push(content.error);
+		}
+	}
+	return parts.join('\n');
+}
+
+function hasSuccessfulMemoryFlag(list: AgentMessageList): boolean {
+	return list
+		.turnDelta()
+		.some(
+			(message) =>
+				'content' in message &&
+				message.content.some(
+					(part) =>
+						part.type === 'tool-call' &&
+						part.toolName === FLAG_MEMORY_TOOL_NAME &&
+						part.state === 'resolved',
+				),
+		);
+}
 
 function hasFunctionProperty<K extends PropertyKey>(
 	value: object,
@@ -94,22 +131,31 @@ function hasObservationLogObserverMemory(
  * Owns all memory-store side effects for a single agent runtime: loading thread
  * history, seeding the live message list with the active observation log,
  * persisting the turn delta, and scheduling background observation-log and
- * episodic-memory indexing jobs.
+ * episodic-memory processing jobs.
  *
  */
 export class MemoryOrchestrator {
 	private memoryTasks: ScopedMemoryTaskRunner | undefined;
 
-	private episodicMemoryTasksByResource = new Map<string, Promise<unknown>>();
+	/** Keyed by resource and thread because backends can lock on either scope. */
+	private episodicMemoryTasks = new Map<string, Promise<unknown>>();
 
 	/**
-	 * Per-message observer-transcript token estimates for the mid-run budget,
-	 * cached by message id so the boundary check never re-encodes messages.
+	 * Per-message model-facing token estimates, cached by message id so
+	 * observation gates never re-encode messages.
 	 */
-	private midRunTokenCounts = new Map<string, number>();
+	private visibleTokenEstimates = new Map<string, number>();
+
+	private visibleTokenEstimateTotal = 0;
 
 	/** In-flight background mid-run observer task; `result` set on settlement. */
 	private midRunObserverTask: MidRunObserverTask | undefined;
+
+	/**
+	 * Set when a mid-run observer advanced the cursor this run. The post-turn
+	 * gate reads the masked window, so the tail must be observed unconditionally.
+	 */
+	private cursorAdvancedThisRun = false;
 
 	/** Consecutive mid-run observer attempts that did not advance the cursor. */
 	private midRunNonAdvancingAttempts = 0;
@@ -198,9 +244,10 @@ export class MemoryOrchestrator {
 		list: AgentMessageList,
 		options: (RunOptions & ExecutionOptions) | undefined,
 	): Promise<void> {
-		this.resetMidRunState();
+		this.resetRunState();
 		if (this.config.memory && options?.persistence?.threadId) {
 			const telemetry = this.runtimeTelemetry.resolve(options);
+			this.scheduleEpisodicMemoryJob(options.persistence, options.executionCounter, telemetry);
 			const memMessages = await this.loadHistoryMessages(options.persistence, telemetry);
 
 			if (memMessages.length > 0) {
@@ -388,22 +435,20 @@ export class MemoryOrchestrator {
 		// Memory jobs receive the execution counter so their LLM and embedding
 		// usage contributes to token_count.
 
-		const observationTasks = this.scheduleObservationLogJobs(
+		await this.scheduleObservationLogJobs(
+			list,
 			options.persistence,
 			options.executionCounter,
 			telemetry,
 		);
-		this.scheduleEpisodicMemoryJob(
-			options.persistence,
-			observationTasks,
-			options.executionCounter,
-			telemetry,
-		);
+		if (hasSuccessfulMemoryFlag(list)) {
+			this.scheduleEpisodicMemoryJob(options.persistence, options.executionCounter, telemetry);
+		}
 	}
 
 	/**
-	 * Mid-run observation, called at clean loop boundaries. When the
-	 * unobserved-transcript token budget crosses a soft threshold
+	 * Mid-run observation, called at clean loop boundaries. When the visible
+	 * window's estimated model-facing token size crosses a soft threshold
 	 * (`MID_RUN_SOFT_THRESHOLD_RATIO` x `observerThresholdTokens`), persist the
 	 * turn-so-far (the Observer reads from the store) and start the Observer as
 	 * a background task without blocking the loop. A later boundary activates
@@ -434,10 +479,14 @@ export class MemoryOrchestrator {
 		}
 	}
 
-	/** Per-run mid-run observation state; reset on each run entry (generate via `loadInto`, resume via `applyObservationMask`). */
-	private resetMidRunState(): void {
+	/** Reset per-run observation state on generate and resume entry. */
+	private resetRunState(): void {
+		this.midRunObserverTask = undefined;
 		this.midRunNonAdvancingAttempts = 0;
 		this.lastPersistedTurnKeyset = undefined;
+		this.visibleTokenEstimates.clear();
+		this.visibleTokenEstimateTotal = 0;
+		this.cursorAdvancedThisRun = false;
 	}
 
 	/**
@@ -451,6 +500,7 @@ export class MemoryOrchestrator {
 	): boolean {
 		if (didAdvanceCursor(result)) {
 			this.midRunNonAdvancingAttempts = 0;
+			this.cursorAdvancedThisRun = true;
 			return true;
 		}
 		this.midRunNonAdvancingAttempts += 1;
@@ -468,6 +518,9 @@ export class MemoryOrchestrator {
 	): Promise<void> {
 		const { memory, observationalMemory } = this.config;
 		if (!memory || !options?.persistence || !hasObservationLogObserverMemory(memory)) return;
+		// Hosts can restrict the Observer to the post-turn path, so the visible
+		// window stays byte-stable within a turn (better prompt-cache reuse).
+		if (observationalMemory?.midRunObservation === false) return;
 		const observerThresholdTokens = observationalMemory?.observerThresholdTokens;
 		if (!observationalMemory?.observe || observerThresholdTokens === undefined) return;
 
@@ -532,7 +585,6 @@ export class MemoryOrchestrator {
 			options.persistence,
 			options.executionCounter,
 			telemetry,
-			softThresholdTokens,
 		);
 		if (!handle) return;
 		const entry: MidRunObserverTask = { handle };
@@ -542,18 +594,30 @@ export class MemoryOrchestrator {
 		this.midRunObserverTask = entry;
 	}
 
-	/** Sum cached per-message observer-transcript token estimates for the visible window. */
+	/**
+	 * Sum cached per-message estimates of the visible model-facing text and
+	 * full tool payloads. Non-text blocks such as files are excluded.
+	 */
 	private async estimateVisibleBudget(list: AgentMessageList): Promise<number> {
 		const visible = list.llmVisibleMessages();
 		for (const message of visible) {
-			if (!this.midRunTokenCounts.has(message.id)) {
-				this.midRunTokenCounts.set(
-					message.id,
-					await this.tokenCounter(renderObserverTranscript([message])),
-				);
+			if (!this.visibleTokenEstimates.has(message.id)) {
+				const estimate = await this.tokenCounter(serializeMessageForBudget(message));
+				this.visibleTokenEstimates.set(message.id, estimate);
+				this.visibleTokenEstimateTotal += estimate;
 			}
 		}
-		return visible.reduce((sum, m) => sum + (this.midRunTokenCounts.get(m.id) ?? 0), 0);
+		return this.visibleTokenEstimateTotal;
+	}
+
+	private pruneVisibleTokenEstimates(list: AgentMessageList): void {
+		const visibleIds = new Set(list.llmVisibleMessages().map((message) => message.id));
+		for (const [messageId, estimate] of this.visibleTokenEstimates) {
+			if (!visibleIds.has(messageId)) {
+				this.visibleTokenEstimates.delete(messageId);
+				this.visibleTokenEstimateTotal -= estimate;
+			}
+		}
 	}
 
 	/** Mask the window up to the persisted cursor and refresh the injected log. No LLM call. */
@@ -566,6 +630,7 @@ export class MemoryOrchestrator {
 		const cursor = await memory.getCursor(persistence.threadId);
 		if (!cursor) return;
 		list.maskObservedMessages(cursor);
+		this.pruneVisibleTokenEstimates(list);
 		await this.setListObservationLogMemory(list, persistence);
 	}
 
@@ -584,7 +649,7 @@ export class MemoryOrchestrator {
 		// mid-run state so a cached runtime cannot carry the suspended run's
 		// watermark or latch into the resumed run — the resolved tool call
 		// mutated in place and must be re-persisted.
-		this.resetMidRunState();
+		this.resetRunState();
 		const { memory, observationalMemory } = this.config;
 		if (!observationalMemory) return;
 		if (!memory || !persistence || !hasObservationLogObserverMemory(memory)) return;
@@ -596,14 +661,12 @@ export class MemoryOrchestrator {
 
 	/**
 	 * Queue an Observer run on the scoped task runner, or return `undefined`
-	 * when observation is not configured. Callers decide whether to await the
-	 * handle (mid-run) or just track its `done` promise (post-turn).
+	 * when observation is not configured. Mid-run callers can await the handle.
 	 */
 	private scheduleObserverTask(
 		persistence: AgentPersistenceOptions,
 		executionCounter?: AgentExecutionCounter,
 		telemetry?: BuiltTelemetry,
-		effectiveThresholdTokens?: number,
 	): ScopedMemoryTaskHandle<RunObservationLogObserverResult> | undefined {
 		const { memory, observationalMemory } = this.config;
 		if (!memory || !observationalMemory || !hasObservationLogObserverMemory(memory)) {
@@ -621,10 +684,6 @@ export class MemoryOrchestrator {
 				await runObservationLogObserver({
 					memory,
 					...scope,
-					// The observer re-checks its delta against this threshold; a
-					// soft-threshold background run must pass the soft value or the
-					// re-check would skip it as below-threshold.
-					observerThresholdTokens: effectiveThresholdTokens ?? observerThresholdTokens,
 					observationLogTailLimit: observationalMemory.observationLogTailLimit ?? 0,
 					observe,
 					tokenCounter: this.tokenCounter,
@@ -634,104 +693,134 @@ export class MemoryOrchestrator {
 		);
 	}
 
-	private scheduleObservationLogJobs(
+	private async scheduleObservationLogJobs(
+		list: AgentMessageList,
 		persistence: AgentPersistenceOptions,
 		executionCounter?: AgentExecutionCounter,
 		telemetry?: BuiltTelemetry,
-	): Array<Promise<unknown>> {
+	): Promise<void> {
 		const { memory, observationalMemory } = this.config;
-		if (!memory || !observationalMemory || !hasObservationLogStore(memory)) return [];
+		if (!memory || !observationalMemory || !hasObservationLogStore(memory)) return;
 
 		const scope = this.getObservationLogScope(persistence);
 		const runner = this.getMemoryTaskRunner(memory, observationalMemory.lockTtlMs);
-		const tasks: Array<Promise<unknown>> = [];
-
-		const observerHandle = this.scheduleObserverTask(persistence, executionCounter, telemetry);
-		if (observerHandle) tasks.push(observerHandle.done);
+		const midRunTask = this.midRunObserverTask;
+		if (midRunTask?.result) this.midRunObserverTask = undefined;
+		if (
+			midRunTask &&
+			!midRunTask.result &&
+			midRunTask.handle.observationScopeId === scope.observationScopeId
+		) {
+			// A mid-run task still in flight only covers up to its boundary.
+			// Queue the tail observer behind it on the per-scope runner instead
+			// of joining and dropping the post-boundary tail.
+			void midRunTask.handle.done.then(() => {
+				if (this.midRunObserverTask === midRunTask) this.midRunObserverTask = undefined;
+			});
+			this.scheduleObserverTask(persistence, executionCounter, telemetry);
+		} else if (
+			this.cursorAdvancedThisRun ||
+			(midRunTask?.result !== undefined && didAdvanceCursor(midRunTask.result))
+		) {
+			// Mid-run advanced the cursor this run — either activated at a boundary
+			// or settled after the last one: observe the tail regardless of the
+			// visible-window budget, which the mask shrank below threshold.
+			this.scheduleObserverTask(persistence, executionCounter, telemetry);
+		} else if (await this.shouldScheduleObserver(list, persistence.threadId)) {
+			this.scheduleObserverTask(persistence, executionCounter, telemetry);
+		}
 
 		const reflect = observationalMemory.reflect;
 		const reflectorThresholdTokens = observationalMemory.reflectorThresholdTokens;
 		if (reflect && reflectorThresholdTokens !== undefined) {
-			tasks.push(
-				this.scheduleMemoryTask(
-					runner,
-					scope,
-					'reflector',
-					async () =>
-						await runObservationLogReflector({
-							memory,
-							...scope,
-							reflectorThresholdTokens,
-							reflect,
-							tokenCounter: this.tokenCounter,
-							executionCounter,
-							telemetry,
-						}),
-				),
+			void this.scheduleMemoryTask(
+				runner,
+				scope,
+				'reflector',
+				async () =>
+					await runObservationLogReflector({
+						memory,
+						...scope,
+						reflectorThresholdTokens,
+						reflect,
+						tokenCounter: this.tokenCounter,
+						executionCounter,
+						telemetry,
+					}),
 			);
 		}
-
-		return tasks;
 	}
 
+	private async shouldScheduleObserver(list: AgentMessageList, threadId: string): Promise<boolean> {
+		const observerThresholdTokens = this.config.observationalMemory?.observerThresholdTokens;
+		if (observerThresholdTokens === undefined) return false;
+		try {
+			return (await this.estimateVisibleBudget(list)) >= observerThresholdTokens;
+		} catch (error) {
+			logger.warn('Post-turn observer gating failed; skipping observation this turn', {
+				error,
+				threadId,
+			});
+			return false;
+		}
+	}
+
+	/**
+	 * Drains every pending candidate for the resource in the background, so a
+	 * run never waits on memory work. Scheduled before each run to pick up
+	 * candidates a crashed or failed earlier job left behind, and after runs
+	 * that flagged memory.
+	 */
 	private scheduleEpisodicMemoryJob(
 		persistence: AgentPersistenceOptions,
-		observationTasks: Array<Promise<unknown>>,
 		executionCounter?: AgentExecutionCounter,
 		telemetry?: BuiltTelemetry,
 	): void {
-		const { memory, episodicMemory } = this.config;
-		if (
-			!memory ||
-			!episodicMemory ||
-			!isEpisodicMemoryEnabled(episodicMemory) ||
-			!hasEpisodicMemoryStore(memory) ||
-			!hasObservationLogStore(memory) ||
-			!episodicMemory.extract
-		) {
-			return;
-		}
-		const scope = getEpisodicMemoryScope(persistence);
-		if (!scope) return;
+		const capture = resolveEpisodicMemoryCapture(this.config, persistence);
+		if (!capture) return;
 
-		const observationScope = this.getObservationLogScope(persistence);
-		this.scheduleEpisodicMemoryTask(memory, scope.resourceId, async () => {
-			await Promise.allSettled(observationTasks);
-			await runEpisodicMemoryIndexer({
-				memory,
-				config: episodicMemory,
-				scope,
-				observationScope,
-				threadId: persistence.threadId,
-				executionCounter,
-				telemetry,
-				agentName: this.config.name,
-			});
+		this.scheduleEpisodicMemoryTask(capture.memory, capture.scope, async () => {
+			let result;
+			do {
+				result = await runEpisodicMemoryCandidateProcessor({
+					...capture,
+					executionCounter,
+					telemetry,
+					agentName: this.config.name,
+				});
+			} while (result.status === 'ran');
 		});
 	}
 
 	private scheduleEpisodicMemoryTask(
 		memory: BuiltMemory,
-		resourceId: string,
+		scope: EpisodicMemoryScope,
 		task: () => Promise<void>,
 	): void {
 		const id = crypto.randomUUID();
-		const previous = this.episodicMemoryTasksByResource.get(resourceId) ?? Promise.resolve();
-		const done = previous
-			.catch(() => undefined)
-			.then(async () => await this.runEpisodicMemoryTask(memory, resourceId, id, task));
+		const keys = [`resource:${scope.resourceId}`, `thread:${scope.threadId}`];
+		const previous: Array<Promise<unknown>> = [];
+		for (const key of keys) {
+			const running = this.episodicMemoryTasks.get(key);
+			if (running) previous.push(running);
+		}
+		const done = Promise.allSettled(previous).then(
+			async () => await this.runEpisodicMemoryTask(memory, scope, id, task),
+		);
 		const queued = done.finally(() => {
-			if (this.episodicMemoryTasksByResource.get(resourceId) === queued) {
-				this.episodicMemoryTasksByResource.delete(resourceId);
+			for (const key of keys) {
+				if (this.episodicMemoryTasks.get(key) === queued) {
+					this.episodicMemoryTasks.delete(key);
+				}
 			}
 		});
-		this.episodicMemoryTasksByResource.set(resourceId, queued);
+		for (const key of keys) this.episodicMemoryTasks.set(key, queued);
 		this.backgroundTasks.track(queued);
 	}
 
 	private async runEpisodicMemoryTask(
 		memory: BuiltMemory,
-		resourceId: string,
+		scope: EpisodicMemoryScope,
 		holderId: string,
 		task: () => Promise<void>,
 	): Promise<void> {
@@ -739,7 +828,7 @@ export class MemoryOrchestrator {
 		let lock: EpisodicMemoryTaskLockHandle | null = null;
 		try {
 			if (taskLock) {
-				lock = await taskLock.acquire(resourceId, {
+				lock = await taskLock.acquire(scope, {
 					holderId,
 					ttlMs: this.config.observationalMemory?.lockTtlMs ?? DEFAULT_MEMORY_TASK_LOCK_TTL_MS,
 				});
@@ -747,12 +836,12 @@ export class MemoryOrchestrator {
 			}
 			await task();
 		} catch (error) {
-			const message = 'Episodic memory indexing task failed';
-			logger.warn(message, { error, resourceId });
+			const message = 'Episodic memory processing task failed';
+			logger.warn(message, { error, ...scope });
 			this.eventBus.emit({ type: AgentEvent.Error, message, error, source: 'episodic-memory' });
 		} finally {
 			if (lock) {
-				await this.releaseEpisodicMemoryTaskLock(taskLock, lock, resourceId);
+				await this.releaseEpisodicMemoryTaskLock(taskLock, lock, scope);
 			}
 		}
 	}
@@ -760,12 +849,12 @@ export class MemoryOrchestrator {
 	private async releaseEpisodicMemoryTaskLock(
 		taskLock: EpisodicMemoryTaskLockMethods | undefined,
 		lock: EpisodicMemoryTaskLockHandle,
-		resourceId: string,
+		scope: EpisodicMemoryScope,
 	): Promise<void> {
 		try {
 			await taskLock?.release(lock);
 		} catch (error) {
-			logger.warn('Episodic memory indexing lock release failed', { error, resourceId });
+			logger.warn('Episodic memory processing lock release failed', { error, ...scope });
 		}
 	}
 

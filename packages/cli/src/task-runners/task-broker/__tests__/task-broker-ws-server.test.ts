@@ -4,10 +4,16 @@ import { Time } from '@n8n/constants';
 import { mock } from 'vitest-mock-extended';
 import type WebSocket from 'ws';
 
-import { WsStatusCodes } from '@/constants';
+import { ShutdownMetadata } from '@n8n/decorators';
+import { Container } from '@n8n/di';
+
+import { HIGHEST_SHUTDOWN_PRIORITY, WsStatusCodes } from '@/constants';
 import type { EventService } from '@/events/event.service';
 import type { DefaultTaskRunnerDisconnectAnalyzer } from '@/task-runners/default-task-runner-disconnect-analyzer';
-import { TaskBrokerWsServer } from '@/task-runners/task-broker/task-broker-ws-server';
+import {
+	SHUTDOWN_TASK_BUDGET_RATIO,
+	TaskBrokerWsServer,
+} from '@/task-runners/task-broker/task-broker-ws-server';
 import type { TaskBroker } from '@/task-runners/task-broker/task-broker.service';
 import { TaskRunnerLifecycleEvents } from '@/task-runners/task-runner-lifecycle-events';
 
@@ -273,6 +279,40 @@ describe('TaskBrokerWsServer', () => {
 			await registerOverWs(server, 'test-runner', mockWs());
 
 			expect(logger.warn).not.toHaveBeenCalledWith(idIsAlreadyTaken());
+		});
+	});
+
+	describe('capTaskTimeoutsForShutdown', () => {
+		beforeEach(() => {
+			vi.useFakeTimers();
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		it('should register at the highest shutdown priority, so the cap runs alongside the worker drain instead of after it', () => {
+			const handlers =
+				Container.get(ShutdownMetadata).getHandlersByPriority()[HIGHEST_SHUTDOWN_PRIORITY] ?? [];
+
+			expect(handlers).toContainEqual({
+				serviceClass: TaskBrokerWsServer,
+				methodName: 'capTaskTimeoutsForShutdown',
+			});
+		});
+
+		it('should cap broker task timeouts to 80% of the graceful shutdown window', () => {
+			const taskBroker = mock<TaskBroker>();
+			const server = createServer({ taskBroker });
+
+			server.capTaskTimeoutsForShutdown();
+
+			expect(taskBroker.capTaskTimeoutsForShutdown).toHaveBeenCalledWith(
+				Date.now() +
+					globalConfig.generic.gracefulShutdownTimeout *
+						SHUTDOWN_TASK_BUDGET_RATIO *
+						Time.seconds.toMilliseconds,
+			);
 		});
 	});
 

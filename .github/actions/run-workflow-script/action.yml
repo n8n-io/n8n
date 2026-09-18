@@ -1,0 +1,42 @@
+# Runs one `.github/scripts` module without a Node.js setup or a dependency
+# install. actions/github-script brings its own Node.js and Octokit client;
+# the module receives that client through `setOctokit` in github-helpers.mjs.
+#
+# The module must export an async `main()` function and must import only
+# node builtins and other `.github/scripts` modules. A module that needs an
+# npm package (semver, yaml, ...) keeps using `setup-nodejs` with an
+# install command instead.
+name: 'Run workflow script'
+description: 'Runs a .github/scripts module through actions/github-script, without a Node.js setup or dependency install.'
+
+inputs:
+  script:
+    description: 'Path of the module, relative to the repository root. It must export an async main() function.'
+    required: true
+  github-token:
+    description: 'Token for the Octokit client. Also exported as GITHUB_TOKEN for the module.'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Run workflow script
+      uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+      env:
+        SCRIPT: ${{ inputs.script }}
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+      with:
+        github-token: ${{ inputs.github-token }}
+        script: |
+          const path = require('node:path');
+          const { pathToFileURL } = require('node:url');
+          const load = (file) => import(pathToFileURL(path.join(process.env.GITHUB_WORKSPACE, file)).href);
+
+          const { setOctokit } = await load('.github/scripts/github-helpers.mjs');
+          setOctokit(github);
+
+          const { main } = await load(process.env.SCRIPT);
+          if (typeof main !== 'function') {
+            throw new Error(`${process.env.SCRIPT} does not export main()`);
+          }
+          await main();

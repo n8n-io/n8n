@@ -1,3 +1,4 @@
+import { extractJsonCandidate } from '@n8n/ai-utilities/llm-output';
 import { isRecord } from '@n8n/utils/is-record';
 
 import { uniqueStrings } from './memory-lifecycle';
@@ -64,7 +65,7 @@ export type RunObservationLogReflectorResult =
 export function parseObservationLogReflectionJson(output: string): ObservationLogReflection {
 	let parsed: unknown;
 	try {
-		parsed = JSON.parse(extractJsonObject(output));
+		parsed = JSON.parse(extractJsonCandidate(output));
 	} catch {
 		throw new Error('Reflector output must be valid JSON');
 	}
@@ -273,15 +274,6 @@ function normalizeReplacementParentId(
 ): string | null | undefined {
 	if (parentId === undefined || parentId === null) return parentId;
 	return activeById.has(parentId) && !removedIds.has(parentId) ? parentId : null;
-}
-
-function extractJsonObject(output: string): string {
-	const start = output.indexOf('{');
-	const end = output.lastIndexOf('}');
-	if (start === -1 || end === -1 || end < start) {
-		throw new Error('Reflector output did not contain a JSON object');
-	}
-	return output.slice(start, end + 1);
 }
 
 function readStringArray(value: unknown, fieldName: string): string[] {

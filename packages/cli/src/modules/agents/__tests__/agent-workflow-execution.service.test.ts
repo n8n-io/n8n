@@ -1,6 +1,7 @@
 import type { Agent as RuntimeAgent, StreamChunk } from '@n8n/agents';
 import type { AgentJsonConfig } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
+import type { AiConfig } from '@n8n/config';
 import type { JSONSchema7 } from 'json-schema';
 import { OperationalError, UserError } from 'n8n-workflow';
 import type { ExecuteAgentWorkflowContext, IRunExecutionData } from 'n8n-workflow';
@@ -14,6 +15,7 @@ import type { Telemetry } from '@/telemetry';
 import type { AgentExecutionService } from '../agent-execution.service';
 import type { AgentRunTracingService } from '../agent-run-tracing.service';
 import type { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
+import { AgentTurnExecutionService } from '../agent-turn-execution.service';
 import {
 	encodeAgentSandboxHostMetadata,
 	hashAgentSandboxPrincipal,
@@ -24,6 +26,8 @@ import type { NodeToolAiGatewayService } from '../json-config/node-tool-ai-gatew
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { ToolRegistry } from '../tool-registry';
 import type { WorkflowAgentStreamObserver } from '../workflow-agent-stream';
+
+const aiConfigMock = mock<AiConfig>();
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
@@ -96,6 +100,7 @@ function makeRuntime(chunks: StreamChunk[] = [{ type: 'finish', finishReason: 's
 			structuredOutput: Mock;
 		},
 		toolRegistry: mock<ToolRegistry>(),
+		mcpServerAttributions: new Map<string, string>(),
 		projectId,
 		agentId,
 		telemetryConfiguration: {
@@ -131,13 +136,14 @@ function makeService() {
 	const service = new AgentWorkflowExecutionService(
 		mockLogger(),
 		agentRepository,
-		executionService,
+		new AgentTurnExecutionService(mockLogger(), executionService),
 		telemetry,
 		credentialsService,
 		reconstructionService,
 		agentRunTracingService,
 		executionLevelTracer,
 		nodeToolAiGatewayService,
+		aiConfigMock,
 	);
 
 	return {
@@ -315,6 +321,52 @@ describe('AgentWorkflowExecutionService', () => {
 			'fallback-execution-1',
 			expect.objectContaining({
 				record: expect.objectContaining({ error: 'stream setup failed', finishReason: 'error' }),
+			}),
+		);
+	});
+
+	it.each(['startExecutionRecording', 'finalizeExecution'] as const)(
+		'returns workflow output when %s fails',
+		async (recordingOperation) => {
+			const { service, agentRepository, reconstructionService, executionService } = makeService();
+			const runtime = makeRuntime([
+				{ type: 'text-delta', id: 'text-1', delta: 'answer' },
+				{ type: 'finish', finishReason: 'stop' },
+			]);
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+			reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
+			executionService[recordingOperation].mockRejectedValue(new Error('recording unavailable'));
+
+			await expect(
+				service.executeForWorkflow(agentId, 'hello', 'execution-1', 'thread-1', projectId),
+			).resolves.toMatchObject({ response: 'answer' });
+		},
+	);
+
+	it('retries initial recording after a workflow stream failure', async () => {
+		const { service, agentRepository, reconstructionService, executionService } = makeService();
+		const runtime = makeRuntime();
+		runtime.agent.stream.mockResolvedValue({
+			stream: makeFailingStream(new Error('stream failed')),
+		});
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+		reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
+		executionService.startExecutionRecording
+			.mockRejectedValueOnce(new Error('recording unavailable'))
+			.mockResolvedValueOnce('retry-execution');
+
+		await expect(
+			service.executeForWorkflow(agentId, 'hello', 'execution-1', 'thread-1', projectId),
+		).rejects.toThrow('stream failed');
+
+		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+			'retry-execution',
+			expect.objectContaining({
+				record: expect.objectContaining({
+					assistantResponse: 'partial answer',
+					error: 'stream failed',
+					finishReason: 'error',
+				}),
 			}),
 		);
 	});

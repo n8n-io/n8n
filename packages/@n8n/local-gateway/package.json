@@ -28,7 +28,6 @@
     "electron-store": "^8.2.0"
   },
   "devDependencies": {
-    "@electron/rebuild": "^4.0.4",
     "@n8n/eslint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",

@@ -100,14 +100,10 @@ export class McpSettingsController {
 			},
 		};
 
-		const { workflows, count } = await this.workflowService.getMany(
-			req.user,
-			options,
-			false, // includeScopes
-			false, // includeFolders
-			false, // onlySharedWithMe
-			['workflow:update'], // requiredScopes - only return workflows the user can edit
-		);
+		const { workflows, count } = await this.workflowService.getMany(req.user, options, {
+			// Only return workflows the user can edit
+			requiredScopes: ['workflow:update'],
+		});
 
 		res.json({ count, data: workflows });
 	}

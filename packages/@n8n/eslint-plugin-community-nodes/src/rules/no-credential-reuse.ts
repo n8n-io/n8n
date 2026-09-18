@@ -1,9 +1,8 @@
-import { TSESTree } from '@typescript-eslint/utils';
 import type { ReportSuggestionArray } from '@typescript-eslint/utils/ts-eslint';
 
 import {
 	isNodeTypeClass,
-	findClassProperty,
+	findNodeDescriptionObject,
 	findArrayLiteralProperty,
 	extractCredentialNameFromArray,
 	findPackageJson,
@@ -59,15 +58,12 @@ export const NoCredentialReuseRule = createRule({
 					return;
 				}
 
-				const descriptionProperty = findClassProperty(node, 'description');
-				if (
-					!descriptionProperty?.value ||
-					descriptionProperty.value.type !== TSESTree.AST_NODE_TYPES.ObjectExpression
-				) {
+				const description = findNodeDescriptionObject(node);
+				if (!description) {
 					return;
 				}
 
-				const credentialsArray = findArrayLiteralProperty(descriptionProperty.value, 'credentials');
+				const credentialsArray = findArrayLiteralProperty(description, 'credentials');
 				if (!credentialsArray) {
 					return;
 				}

@@ -23,7 +23,7 @@ const makeIntervalJob = (intervalSeconds: number): ScheduledJob => ({
 	maxAttempts: 1,
 	misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 	misfireGraceSeconds: 60,
-	ownerKey: null,
+	ownerKey: 'owner-1',
 });
 
 const makeCronJob = (cronExpression: string, timezone: string): ScheduledJob => ({
@@ -42,7 +42,7 @@ const makeCronJob = (cronExpression: string, timezone: string): ScheduledJob => 
 	maxAttempts: 1,
 	misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 	misfireGraceSeconds: 60,
-	ownerKey: null,
+	ownerKey: 'owner-1',
 });
 
 const makeOneOffJob = (fireAt: Date): ScheduledJob => ({
@@ -63,7 +63,7 @@ const makeOneOffJob = (fireAt: Date): ScheduledJob => ({
 	maxAttempts: 1,
 	misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 	misfireGraceSeconds: 60,
-	ownerKey: null,
+	ownerKey: 'owner-1',
 });
 
 /**

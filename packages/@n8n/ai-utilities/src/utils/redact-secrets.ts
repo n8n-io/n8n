@@ -1,11 +1,8 @@
+import { isRecord } from '@n8n/utils/is-record';
 import { redactDeep, redactText } from '@n8n/utils/redaction/redact-text';
 import { jsonParse, jsonStringify } from 'n8n-workflow';
 
 const OPTIONS = { secrets: true, redactSensitiveKeys: true };
-
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-	return value !== null && typeof value === 'object' && !Array.isArray(value);
-}
 
 function parseJsonObject(value: string): object | undefined {
 	try {
@@ -38,7 +35,7 @@ function parseNestedJson(value: unknown): unknown {
 		return value.map(parseNestedJson);
 	}
 
-	if (isPlainObject(value)) {
+	if (isRecord(value)) {
 		const walked: Record<string, unknown> = {};
 		for (const [key, child] of Object.entries(value)) {
 			walked[key] = parseNestedJson(child);
@@ -63,7 +60,7 @@ function restoreJsonStrings(original: unknown, redacted: unknown): unknown {
 		return original.map((item, index) => restoreJsonStrings(item, redacted[index]));
 	}
 
-	if (isPlainObject(original) && isPlainObject(redacted)) {
+	if (isRecord(original) && isRecord(redacted)) {
 		const restored: Record<string, unknown> = {};
 		for (const [key, child] of Object.entries(original)) {
 			restored[key] = restoreJsonStrings(child, redacted[key]);

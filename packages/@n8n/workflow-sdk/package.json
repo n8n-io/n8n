@@ -1,6 +1,6 @@
 {
   "name": "@n8n/workflow-sdk",
-  "version": "0.30.0",
+  "version": "0.33.0",
   "description": "TypeScript SDK for programmatically creating n8n workflows",
   "exports": {
     ".": {
@@ -55,6 +55,8 @@
     "test:unit": "vitest run",
     "test:dev": "vitest --silent=false",
     "generate-types": "npx tsx src/generate-types/generate-types.ts",
+    "schema-coverage": "node dist/generate-types/schema-coverage-cli.js",
+    "schema-harvest": "node dist/generate-types/schema-harvest-cli.js",
     "fetch-workflows": "npx tsx scripts/fetch-test-workflows.ts",
     "create-workflows-zip": "npx tsx scripts/create-workflows-zip.ts",
     "json-to-code": "npx tsx src/cli/index.ts json-to-code",
@@ -93,7 +95,6 @@
     "@n8n/eslint-plugin-community-nodes": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
-    "@types/adm-zip": "^0.5.7",
     "@types/estree": "catalog:",
     "@types/lodash": "catalog:",
     "@vitest/coverage-v8": "catalog:",

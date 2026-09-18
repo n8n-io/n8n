@@ -267,3 +267,173 @@ export const memberRLC: INodeProperties = {
 		},
 	],
 };
+
+export const meetingRLC: INodeProperties = {
+	displayName: 'Meeting',
+	name: 'meetingId',
+	type: 'resourceLocator',
+	default: { mode: 'id', value: '' },
+	required: true,
+	description: 'The online meeting, by its ID or by its join URL',
+	modes: [
+		{
+			displayName: 'By ID',
+			name: 'id',
+			type: 'string',
+			placeholder: 'e.g. MSpkYzE3Njc0Yy04MWQ5LTRhZGItYmZi...',
+			hint: 'The ID returned when the meeting was created, not the numeric meeting ID from the invite',
+			validation: [
+				{
+					type: 'regex',
+					properties: {
+						regex: '[^\\/\\\\?#%]*',
+						errorMessage: "Not a valid meeting ID. To use a join URL, switch to 'By URL'",
+					},
+				},
+			],
+		},
+		{
+			displayName: 'By URL',
+			name: 'url',
+			type: 'string',
+			placeholder: 'e.g. https://teams.microsoft.com/l/meetup-join/19%3ameeting...',
+			validation: [
+				{
+					type: 'regex',
+					properties: {
+						regex: '(\\s*https:\\/\\/.+\\/l\\/meetup-join\\/.+\\s*)?',
+						errorMessage:
+							"Use the meeting link that contains '/l/meetup-join/', such as the joinWebUrl returned when the meeting was created",
+					},
+				},
+			],
+		},
+	],
+};
+
+export const userRLC: INodeProperties = {
+	displayName: 'User',
+	name: 'userId',
+	type: 'resourceLocator',
+	default: { mode: 'list', value: '' },
+	required: true,
+	description:
+		'Select the user from the list or by ID. Guest users must be given by their object ID, not by their user principal name.',
+	modes: [
+		{
+			displayName: 'From List',
+			name: 'list',
+			type: 'list',
+			placeholder: 'Select a User...',
+			typeOptions: {
+				searchListMethod: 'getUsers',
+				searchable: true,
+			},
+		},
+		{
+			displayName: 'By ID',
+			name: 'id',
+			type: 'string',
+			placeholder: 'e.g. jacob@contoso.com',
+			// `validation` only, never an `extractValue`: a GUID-only extractor makes core
+			// reject any expression that resolves to a user principal name before the node
+			// runs, and Graph binds a principal name directly.
+			validation: [
+				{
+					type: 'regex',
+					properties: {
+						regex:
+							'^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|[^\\s@#]+@[^\\s@#]+)[ \t]*$',
+						errorMessage:
+							'Not a valid user ID or user principal name. Give a guest user by their object ID, because a guest principal name contains "#EXT#".',
+					},
+				},
+			],
+		},
+	],
+};
+
+/**
+ * Team tag picker, scoped to the node's `teamId` and backed by `getTags`. Like `userRLC`, no mode
+ * declares an `extractValue`: the row read that consumes it cannot pass `{ extractValue: true }`,
+ * because a row-level `displayOptions` makes that read throw.
+ */
+export const teamworkTagRLC: INodeProperties = {
+	displayName: 'Team Tag',
+	name: 'tagId',
+	type: 'resourceLocator',
+	default: { mode: 'list', value: '' },
+	required: true,
+	description: 'Select a tag from the team, or enter its ID',
+	typeOptions: {
+		loadOptionsDependsOn: ['teamId.value'],
+	},
+	modes: [
+		{
+			displayName: 'From List',
+			name: 'list',
+			type: 'list',
+			placeholder: 'e.g. Engineering',
+			typeOptions: {
+				searchListMethod: 'getTags',
+				searchable: true,
+			},
+		},
+		{
+			displayName: 'By ID',
+			name: 'id',
+			type: 'string',
+			hint: 'The base64 tag ID from the Microsoft Graph tags endpoint',
+			validation: [
+				{
+					type: 'regex',
+					properties: {
+						// A tag ID is base64 of `{groupId}##{tagGuid}##{token}`. base64 emits `+` or
+						// `/` only for a plaintext byte of `>`, `~`, `?`, DEL or non-ASCII, and hex,
+						// `-`, `#` and alphanumerics contain none of those, so only `[A-Za-z0-9]`
+						// and `=` padding can occur. No length check: a GUID-shaped token gives 152
+						// characters (pinned in `v2/test/methods/getUsers.test.ts`), but nothing
+						// documents the token as a GUID, so both that length and the alphabet above
+						// rest on the assumed token shape. If Microsoft widens it, a From List pick
+						// bypasses this regex and dies at `buildTeamsPath` with "remove any slashes"
+						// for a tag the user chose from a dropdown.
+						regex: '^[A-Za-z0-9=]+[ \t]*$',
+						errorMessage: 'Not a valid Microsoft Teams tag ID',
+					},
+				},
+			],
+		},
+	],
+};
+
+export const chatMemberRLC: INodeProperties = {
+	displayName: 'Member',
+	name: 'membershipId',
+	type: 'resourceLocator',
+	default: { mode: 'list', value: '' },
+	required: true,
+	description:
+		'Select the member from the list, or give the membership ID returned by Chat Member → Get Many (the ID field, not the "userId" field)',
+	typeOptions: {
+		loadOptionsDependsOn: ['chatId.value'],
+	},
+	modes: [
+		{
+			displayName: 'From List',
+			name: 'list',
+			type: 'list',
+			placeholder: 'Select a Member...',
+			typeOptions: {
+				searchListMethod: 'getChatMembers',
+				searchable: true,
+			},
+		},
+		{
+			displayName: 'By ID',
+			name: 'id',
+			type: 'string',
+			placeholder: 'e.g. MCMjMCMjMjM3ODZjYTYtN2ZmMi00NjcyLTg3ZDAtNWM2NDll...',
+			// validation missing because Microsoft documents no shape for membership ids.
+		},
+	],
+};

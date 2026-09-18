@@ -104,6 +104,20 @@ describe('ProjectService', () => {
 		});
 	});
 
+	describe('getProjectsAndCount', () => {
+		it('orders the page by creation time, then id, so cursor pages are stable', async () => {
+			projectRepository.findAndCount.mockResolvedValueOnce([[], 0]);
+
+			await projectService.getProjectsAndCount({ offset: 20, limit: 10 });
+
+			expect(projectRepository.findAndCount).toHaveBeenCalledWith({
+				skip: 20,
+				take: 10,
+				order: { createdAt: 'ASC', id: 'ASC' },
+			});
+		});
+	});
+
 	describe('addUsersToProject', () => {
 		it('throws if called with a personal project', async () => {
 			// ARRANGE
@@ -929,6 +943,17 @@ describe('ProjectService', () => {
 			const result = await projectService.findExistingProjectIds(['proj-1', 'proj-missing']);
 
 			expect(result).toEqual(new Set(['proj-1']));
+		});
+	});
+
+	describe('findUserIdsByProjectId', () => {
+		it('delegates to the project relation repository', async () => {
+			projectRelationRepository.findUserIdsByProjectId.mockResolvedValueOnce(['user-1', 'user-2']);
+
+			const result = await projectService.findUserIdsByProjectId('project-1');
+
+			expect(projectRelationRepository.findUserIdsByProjectId).toHaveBeenCalledWith('project-1');
+			expect(result).toEqual(['user-1', 'user-2']);
 		});
 	});
 });

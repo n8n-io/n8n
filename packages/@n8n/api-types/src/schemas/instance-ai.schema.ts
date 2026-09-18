@@ -1,9 +1,13 @@
+import { instanceAiApprovalDetailsSchema } from './instance-ai-approval.schema';
 import { z } from 'zod';
 
+import { aiPreferenceScopeSchema } from './ai-preference.schema';
+import { folderNameSchema } from './folder.schema';
 import type { McpRegistryServerIconResponse } from './mcp-registry.schema';
 import { TimeZoneSchema } from './timezone.schema';
 import { AgentJsonConfigSchema } from '../agents/agent-json-config.schema';
 import { agentSkillSchema } from '../agents/agent-skill.schema';
+import { clientMintedAgentIdSchema } from '../agents/dto';
 import { Z } from '../zod-class';
 
 // ---------------------------------------------------------------------------
@@ -17,7 +21,7 @@ import { Z } from '../zod-class';
 export const UNLIMITED_CREDITS = -1;
 
 /**
- * The instance's AI Assistant credit standing, as reported by `GET /instance-ai/credits`, by the
+ * The instance's n8n Assistant credit standing, as reported by `GET /instance-ai/credits`, by the
  * `updateInstanceAiCredits` push and by the internal callers that pass it around.
  *
  * `creditsQuota` is {@link UNLIMITED_CREDITS} when credits are not metered — either the proxy is
@@ -53,6 +57,19 @@ export function buildRunWorkflowSessionGrantKey(workflowId: string): string {
 }
 
 /**
+ * Builds the thread-level "always allow" grant key for running one node of a
+ * workflow ("execute step").
+ *
+ * Scoped per node, so a debug loop on one node stops re-prompting while the
+ * other nodes of the same workflow still need approval. A whole-workflow run
+ * grant covers a step of that workflow too — running everything is strictly
+ * more than running one node — so the executions tool checks both keys.
+ */
+export function buildRunStepSessionGrantKey(workflowId: string, nodeName: string): string {
+	return `executions:run-step:${workflowId}:${nodeName}`;
+}
+
+/**
  * Builds the thread-level grant key for updating a specific workflow without HITL.
  *
  * Written automatically when the agent creates a workflow in this thread, so follow-up
@@ -62,6 +79,11 @@ export function buildRunWorkflowSessionGrantKey(workflowId: string): string {
  */
 export function buildUpdateWorkflowSessionGrantKey(workflowId: string): string {
 	return `workflows:update:${workflowId}`;
+}
+
+/** Builds the thread-level grant for using a credential with one exact service origin. */
+export function buildCredentialDestinationGrantKey(workflowId: string, origin: string): string {
+	return `credential-destination:${encodeURIComponent(workflowId)}:${encodeURIComponent(origin)}`;
 }
 
 /**
@@ -177,6 +199,8 @@ export const instanceAiEventTypeSchema = z.enum([
 	'tool-interrupted',
 	'confirmation-request',
 	'tasks-update',
+	'setup-items',
+	'preferences-applied',
 	'filesystem-request',
 	'thread-title-updated',
 	'status',
@@ -286,6 +310,14 @@ export const runStartPayloadSchema = z.object({
 		.describe(
 			'Stable ID for the assistant message group that owns this run. Used to reconnect live activity back to the correct assistant bubble.',
 		),
+	langsmithRunId: z
+		.string()
+		.optional()
+		.describe('LangSmith root-run ID, so user feedback can annotate the trace after a restart.'),
+	langsmithTraceId: z
+		.string()
+		.optional()
+		.describe('LangSmith trace ID paired with langsmithRunId for feedback annotation.'),
 });
 
 export const runFinishPayloadSchema = z.object({
@@ -412,6 +444,18 @@ export const credentialPlaceholderDefSchema = z.object({
 });
 export type InstanceAiCredentialPlaceholderDef = z.infer<typeof credentialPlaceholderDefSchema>;
 
+const exactHttpOriginSchema = z
+	.string()
+	.max(300)
+	.refine((value) => {
+		try {
+			const url = new URL(value);
+			return ['http:', 'https:'].includes(url.protocol) && url.origin === value;
+		} catch {
+			return false;
+		}
+	}, 'Expected an exact HTTP origin');
+
 /**
  * Agent-supplied recipe for creating a Templated Custom Auth credential: the
  * auth request parts with `{{placeholder}}` markers where user-provided values
@@ -438,6 +482,9 @@ export const credentialSetupHintSchema = z.object({
 	 *  being set up (never model-supplied). Stamped into the created credential
 	 *  so setup surfaces only offer it to nodes calling the same service. */
 	serviceHost: z.string().optional(),
+	/** Exact origin of the API the recipe targets, derived server-side from the
+	 *  node being set up. Used to bind automatic credential tests to that API. */
+	serviceOrigin: exactHttpOriginSchema.optional(),
 });
 export type InstanceAiCredentialSetupHint = z.infer<typeof credentialSetupHintSchema>;
 
@@ -456,6 +503,19 @@ export const credentialFlowSchema = z.object({
 	stage: z.enum(['generic', 'finalize']),
 });
 export type InstanceAiCredentialFlow = z.infer<typeof credentialFlowSchema>;
+
+export const credentialDestinationSchema = z.object({
+	origin: exactHttpOriginSchema,
+	nodeNames: z.array(z.string().trim().min(1).max(255)).min(1),
+});
+export type InstanceAiCredentialDestination = z.infer<typeof credentialDestinationSchema>;
+
+export const credentialDestinationDecisionSchema = credentialDestinationSchema.pick({
+	origin: true,
+});
+export type InstanceAiCredentialDestinationDecision = z.infer<
+	typeof credentialDestinationDecisionSchema
+>;
 
 export const workflowSetupNodeSchema = z.object({
 	node: z.object({
@@ -529,17 +589,6 @@ export const workflowSetupNodeSchema = z.object({
 			'Whether the credential slot itself is what needs intervention. False when the node has a ' +
 				'resolvable credential and only a parameter is missing — that card asks about a parameter, ' +
 				'not about the service, so a skip of it must not be generalised to the credential type.',
-		),
-	subnodeRootNode: z
-		.object({
-			name: z.string(),
-			type: z.string(),
-			typeVersion: z.number(),
-			id: z.string(),
-		})
-		.optional()
-		.describe(
-			'Snapshot of the root node for this sub-node connected via a non-Main port (e.g. ai_languageModel, ai_memory, ai_tool). Carries the metadata needed to render the group header even when the root node itself has no setup request.',
 		),
 });
 export type InstanceAiWorkflowSetupNode = z.infer<typeof workflowSetupNodeSchema>;
@@ -621,7 +670,15 @@ export const mcpConnectServerSchema = z.object({
 	serverSlug: z.string(),
 	title: z.string(),
 	tagline: z.string().optional(),
-	credentialType: z.string(),
+	usesCredentials: z
+		.array(
+			z.object({
+				credentialType: z.string(),
+				name: z.string(),
+				value: z.string(),
+			}),
+		)
+		.min(1),
 });
 export type InstanceAiMcpConnectServer = z.infer<typeof mcpConnectServerSchema>;
 
@@ -664,6 +721,13 @@ export const confirmationRequestPayloadSchema = z.object({
 	args: z.record(z.unknown()),
 	severity: instanceAiConfirmationSeveritySchema,
 	message: z.string().describe('Human-readable description of the action'),
+	approvalDetails: instanceAiApprovalDetailsSchema.optional(),
+	resourceName: z
+		.string()
+		.optional()
+		.describe(
+			'Display name of the workflow or data table the action applies to, shown in the card title',
+		),
 	targetApproval: instanceAiTargetApprovalSchema
 		.optional()
 		.describe('Target-agent tool approval details rendered instead of the outer tool call'),
@@ -717,6 +781,11 @@ export const confirmationRequestPayloadSchema = z.object({
 		.optional()
 		.describe(
 			'Credential flow stage — finalize renders post-verification credential picker with different copy',
+		),
+	credentialDestination: credentialDestinationSchema
+		.optional()
+		.describe(
+			'Exact destination that must be approved before a workflow credential setup card opens',
 		),
 	setupRequests: z
 		.array(workflowSetupNodeSchema)
@@ -944,9 +1013,113 @@ export const tasksUpdatePayloadSchema = z.object({
 	planItems: z.array(plannedTaskArgSchema).optional(),
 });
 
+/**
+ * One entry of the setup panel checklist. Service-keyed (one row per
+ * credential type, fanned out to all nodes that use it via `nodeBindings`),
+ * not per-node like the wizard's `workflowSetupNodeSchema`. Carries identity
+ * and requirements only — done-ness is always derived client-side (usable
+ * credential exists / slot bound / parameter filled), never stored, so
+ * replay, refresh, and out-of-band completion stay consistent.
+ */
+const setupItemBase = {
+	/** Stable identity: `${workflowId}:${kind}:${key}` — key = credentialType
+	 *  for credential items (`${credentialType}:${nodeName}` for generic auth
+	 *  types, where one credential serves many services so items are per
+	 *  node), nodeName for parameter items. */
+	id: z.string(),
+};
+
+/** No 'question' kind in v1 (agent questions stay in chat); arms are additive. */
+export const setupItemSchema = z.discriminatedUnion('kind', [
+	z.object({
+		...setupItemBase,
+		kind: z.literal('credential'),
+		credentialType: z.string(),
+		appDisplayName: z.string().optional(),
+		nodeBindings: z.array(z.object({ nodeName: z.string() })).optional(),
+		setupHint: credentialSetupHintSchema.optional(),
+		/** Why the app is needed, e.g. "for the docs search". */
+		reason: z.string().optional(),
+	}),
+	// Parameter names only — values always derive from the workflow.
+	z.object({
+		...setupItemBase,
+		kind: z.literal('parameters'),
+		nodeName: z.string(),
+		parameterNames: z.array(z.string()),
+	}),
+]);
+export type InstanceAiSetupItem = z.infer<typeof setupItemSchema>;
+
+export const setupItemsPayloadSchema = z.object({
+	workflowId: z.string().min(1).max(64),
+	/** FULL current list for this workflow. Each event replaces the previous
+	 *  snapshot — removal is implicit (an item absent from the next snapshot is
+	 *  gone). No delta/retraction protocol. Items that fail to parse (e.g. a
+	 *  kind added after this client was built) drop individually instead of
+	 *  failing the whole event — deployed clients keep the items they know. */
+	items: z
+		.array(setupItemSchema.nullable().catch(null))
+		.transform((items) => items.filter((item): item is InstanceAiSetupItem => item !== null)),
+});
+
 export const threadTitleUpdatedPayloadSchema = z.object({
 	title: z.string(),
 });
+
+/**
+ * What the saved AI preferences contributed to one turn.
+ *
+ * The turn is the only place that knows this. The settings endpoint lists every row the
+ * user can see, which is a different question and a different answer: the turn reads a
+ * bound project rather than all projects, the read is best effort, the feature flag can be
+ * off, and a row can change between the turn and the moment somebody looks. So the chat
+ * and the plus menu report this payload instead of deriving one of their own.
+ *
+ * An empty `preferences` array says that the turn applied none. No event at all says that
+ * the code path never ran, which is a different fact.
+ *
+ * CONTEXT-137 defines the shape. CONTEXT-139 publishes the event on every turn.
+ */
+const appliedPreferenceSchema = z.object({
+	/** Stable row id, so a reader can link to the preference or edit it. */
+	id: z.string(),
+	scope: aiPreferenceScopeSchema,
+	/** Set only for a team project. A personal project reports as `user`. */
+	projectId: z.string().optional(),
+	projectName: z.string().optional(),
+});
+
+const appliedPreferencesBase = {
+	preferences: z
+		.array(appliedPreferenceSchema)
+		.describe('Every preference the request carried, instance first, then personal, then projects'),
+	/** Characters in the rendered block. Reviews the caps against real conversations. */
+	renderedLength: z.number(),
+};
+
+/**
+ * Two arms, because a turn either sent the block or it did not, and only the second case has a
+ * run to name. `injectedThisTurn: false` means the text was unchanged, so an earlier block in
+ * the same conversation still carries it and `carriedFromRunId` says which run sent it. A
+ * payload that claims both is refused here as well as in the type.
+ */
+export const aiPreferencesAppliedPayloadSchema = z.discriminatedUnion('injectedThisTurn', [
+	// `z.undefined().optional()` rather than a strict object: a present `carriedFromRunId`
+	// fails, an absent one passes, and a field a newer server adds is still ignored.
+	z.object({
+		...appliedPreferencesBase,
+		injectedThisTurn: z.literal(true),
+		carriedFromRunId: z.undefined().optional(),
+	}),
+	z.object({
+		...appliedPreferencesBase,
+		injectedThisTurn: z.literal(false),
+		carriedFromRunId: z.string().optional(),
+	}),
+]);
+
+export type AiPreferencesAppliedPayload = z.infer<typeof aiPreferencesAppliedPayloadSchema>;
 
 // ---------------------------------------------------------------------------
 // Event schema (Zod discriminated union — single source of truth)
@@ -958,8 +1131,8 @@ const eventBase = {
 	userId: z.string().optional(),
 	/** Anthropic API response ID (msg_01...) — groups events from the same LLM response. */
 	responseId: z.string().optional(),
-	/** Epoch ms stamped once at publish — replays (SSE reconnect, snapshot
-	 *  rebuilds) use it to reconstruct real timing instead of "now". */
+	/** Epoch ms stamped once at publish — replays (SSE reconnect, history
+	 *  folds) use it to reconstruct real timing instead of "now". */
 	ts: z.number().optional(),
 };
 
@@ -1010,6 +1183,12 @@ export const instanceAiEventSchema = z.discriminatedUnion('type', [
 		payload: confirmationRequestPayloadSchema,
 	}),
 	z.object({ type: z.literal('tasks-update'), ...eventBase, payload: tasksUpdatePayloadSchema }),
+	z.object({ type: z.literal('setup-items'), ...eventBase, payload: setupItemsPayloadSchema }),
+	z.object({
+		type: z.literal('preferences-applied'),
+		...eventBase,
+		payload: aiPreferencesAppliedPayloadSchema,
+	}),
 	z.object({ type: z.literal('status'), ...eventBase, payload: statusPayloadSchema }),
 	z.object({ type: z.literal('error'), ...eventBase, payload: errorPayloadSchema }),
 	z.object({
@@ -1046,6 +1225,11 @@ export type InstanceAiConfirmationRequestEvent = Extract<
 	{ type: 'confirmation-request' }
 >;
 export type InstanceAiTasksUpdateEvent = Extract<InstanceAiEvent, { type: 'tasks-update' }>;
+export type InstanceAiSetupItemsEvent = Extract<InstanceAiEvent, { type: 'setup-items' }>;
+export type InstanceAiPreferencesAppliedEvent = Extract<
+	InstanceAiEvent,
+	{ type: 'preferences-applied' }
+>;
 export type InstanceAiStatusEvent = Extract<InstanceAiEvent, { type: 'status' }>;
 export type InstanceAiErrorEvent = Extract<InstanceAiEvent, { type: 'error' }>;
 export type InstanceAiFilesystemRequestEvent = Extract<
@@ -1262,18 +1446,90 @@ export type InstanceAiAgentPreviewHandoffContext = z.infer<
 	typeof instanceAiAgentPreviewHandoffContextSchema
 >;
 
+/**
+ * Sent with the setup panel's synthesized "Execute" user message. Signals the
+ * agent to run a test execution of the workflow instead of treating the
+ * message as a build request.
+ */
+export const instanceAiSetupPanelExecuteHandoffContextSchema = z.object({
+	source: z.literal('setup-panel-execute'),
+	workflowId: z.string().min(1).max(64),
+});
+export type InstanceAiSetupPanelExecuteHandoffContext = z.infer<
+	typeof instanceAiSetupPanelExecuteHandoffContextSchema
+>;
+
 export const instanceAiHandoffContextSchema = z.discriminatedUnion('source', [
 	instanceAiCredentialHandoffContextSchema,
 	instanceAiAgentPreviewHandoffContextSchema,
+	instanceAiSetupPanelExecuteHandoffContextSchema,
 ]);
 export type InstanceAiHandoffContext = z.infer<typeof instanceAiHandoffContextSchema>;
+
+/**
+ * One preview tab in the current Instance AI thread. Ids and names only — the
+ * agent resolves contents with its tools. Cap matches the send-message field.
+ */
+export const instanceAiThreadArtifactSchema = z.object({
+	type: z.enum(['workflow', 'agent', 'data-table']),
+	id: z.string().min(1).max(64),
+	name: z.string().max(255).optional(),
+	projectId: z.string().min(1).max(64).optional(),
+	pending: z.literal(true).optional(),
+	archived: z.literal(true).optional(),
+});
+export type InstanceAiThreadArtifact = z.infer<typeof instanceAiThreadArtifactSchema>;
+
+/** The thread view's artifact tabs, plus which tab is focused when the preview is open. */
+export const instanceAiThreadArtifactsContextSchema = z.object({
+	artifacts: z.array(instanceAiThreadArtifactSchema).min(1).max(20),
+	activeId: z.string().min(1).max(64).optional(),
+});
+export type InstanceAiThreadArtifactsContext = z.infer<
+	typeof instanceAiThreadArtifactsContextSchema
+>;
+
+/**
+ * Build style for a run. `progressive` makes the agent build a minimal working
+ * slice first, gate increments on real executions, and extend on actual
+ * execution data. `default` uses the standard building policy.
+ */
+export const instanceAiBuildModeSchema = z.enum(['default', 'progressive']);
+export type InstanceAiBuildMode = z.infer<typeof instanceAiBuildModeSchema>;
+
+export const instanceAiPromptConfigurationSchema = z.object({
+	version: z.string(),
+	systemPromptVersion: z.string(),
+	skillVariants: z.array(z.string()),
+	skillsHash: z.string(),
+	fallbackFrom: z.string().optional(),
+});
+export type InstanceAiPromptConfiguration = z.infer<typeof instanceAiPromptConfigurationSchema>;
+
+/**
+ * A Computer Use entry point in the chat input's + menu. The client decides
+ * which entries it renders — its rollout and the device are only visible there
+ * — so it reports them and the backend never advertises an entry it is not told
+ * about.
+ */
+export const computerUseChannelSchema = z.enum(['localComputer', 'browser']);
+export type ComputerUseChannel = z.infer<typeof computerUseChannelSchema>;
 
 export class InstanceAiSendMessageRequest extends Z.class({
 	message: z.string().default(''),
 	attachments: z.array(instanceAiAttachmentSchema).max(10).optional(),
 	context: instanceAiHandoffContextSchema.optional(),
+	/** Preview tabs in this thread. The server injects them as a per-turn index. */
+	threadArtifacts: instanceAiThreadArtifactsContextSchema.optional(),
 	timeZone: TimeZoneSchema,
 	pushRef: z.string().optional(),
+	/** Entries the client renders for this user. Omit to advertise none. The
+	 *  backend still applies the admin switches, so this can only narrow. */
+	computerUseChannels: z.array(computerUseChannelSchema).optional(),
+	/** Explicit override for evals. Omit to use the backend experiment assignment. */
+	mode: instanceAiBuildModeSchema.optional(),
+	/** Pin a published prompt profile. Takes precedence over mode. */
+	promptVersion: z.string().trim().min(1).max(128).optional(),
 }) {}
 
 export class InstanceAiCorrectTaskRequest extends Z.class({
@@ -1299,7 +1555,7 @@ export class InstanceAiCorrectTaskRequest extends Z.class({
  * - `playwright` — Playwright E2E helpers that create threads via the REST API
  * Experiment cleanup: remove with openWorkflowInAssistant.
  * - `workflow_list_auto` — treatment redirect: a workflow list card opened in the assistant by default
- * - `workflow_list_button` — deliberate "Edit with AI Assistant" button on a workflow list card
+ * - `workflow_list_button` — deliberate "Edit with n8n Assistant" button on a workflow list card
  */
 export const INSTANCE_AI_THREAD_SOURCES = [
 	'website-template',
@@ -1326,6 +1582,65 @@ export type InstanceAiThreadSourcePersisted =
 	| InstanceAiThreadSource
 	| typeof INSTANCE_AI_THREAD_SOURCE_FALLBACK;
 
+/**
+ * Pre-fill taxonomy for Instance AI messages. A pre-fill is message text n8n
+ * wrote, not text the user typed: the opener a failed execution, a credential
+ * modal, a template card or a suggestion chip puts in the composer. Analytics
+ * used to recover the type by string-matching the message body, which broke
+ * silently every time a catalog was reworded, so the client states it instead.
+ *
+ * Every new pre-fill surface must register a value here. The editor's send
+ * boundary requires an authorship and its catalogs must declare a type, so a
+ * surface that skips this fails typecheck rather than reporting untagged
+ * messages. Reported on `User sent builder message` as `prefill_type`.
+ *
+ * - `handoff_execution_error` — "Ask AI" on a failed execution or node error
+ * - `handoff_credential_setup` — credential help from the editor, credentials
+ *   list, or the workflow artifact in a live thread
+ * - `handoff_fix_with_ai` — the in-thread fix-with-AI offer after a failed run
+ * - `handoff_setup_panel_execute` — the setup panel's Execute button; lands
+ *   mid-thread rather than as a first message
+ * - `handoff_agent_change_request` — agent builder hand-off: a fix request or a
+ *   change request, dropped into the composer
+ * - `template_adjustment` — "start from this template and help me adapt it",
+ *   from the in-app template preview or an n8n.io deep link
+ * - `template_example` — a featured example card on the empty state
+ * - `suggestion_catalog` — a suggestion chip from any catalog; the entry id
+ *   travels separately and is already catalog-prefixed
+ * - `v1_opener` — the original empty-state openers ("I want to build a new
+ *   workflow…")
+ * - `workflow_attachment_opener` — legacy: a workflow opened in the assistant
+ *   used to send an empty message so the editor context would greet. New
+ *   hand-offs stash the attachment and wait for the user's first prompt.
+ * - `contextual_followup` — the follow-up the composer offers as a placeholder
+ *   after a build, accepted with Tab; lands mid-thread
+ */
+export const INSTANCE_AI_PREFILL_TYPES = [
+	'handoff_execution_error',
+	'handoff_credential_setup',
+	'handoff_fix_with_ai',
+	'handoff_setup_panel_execute',
+	'handoff_agent_change_request',
+	'template_adjustment',
+	'template_example',
+	'suggestion_catalog',
+	'v1_opener',
+	'workflow_attachment_opener',
+	'contextual_followup',
+] as const;
+export type InstanceAiPrefillType = (typeof INSTANCE_AI_PREFILL_TYPES)[number];
+
+/**
+ * Read-path fallback, mirroring `INSTANCE_AI_THREAD_SOURCE_FALLBACK`. Only
+ * reachable for a pre-fill a previous deploy stashed in the browser, which
+ * carries no type. Deliberately outside `INSTANCE_AI_PREFILL_TYPES` so a new
+ * surface cannot declare it.
+ */
+export const INSTANCE_AI_PREFILL_TYPE_FALLBACK = 'unknown';
+export type InstanceAiPrefillTypeReported =
+	| InstanceAiPrefillType
+	| typeof INSTANCE_AI_PREFILL_TYPE_FALLBACK;
+
 export const INSTANCE_AI_THREAD_ORIGINS = ['internal', 'external'] as const;
 export type InstanceAiThreadOrigin = (typeof INSTANCE_AI_THREAD_ORIGINS)[number];
 
@@ -1341,6 +1656,17 @@ export class InstanceAiEnsureThreadRequest extends Z.class({
 	source: z.enum(INSTANCE_AI_THREAD_SOURCES),
 	origin: z.enum(INSTANCE_AI_THREAD_ORIGINS).optional(),
 	sourceContext: instanceAiSourceContextSchema.optional(),
+}) {}
+
+/**
+ * Persist the pending new-agent artifact a thread has open: creates the agent
+ * under the id the frontend minted, or adopts it when a concurrent writer got
+ * there first, and binds it to the thread in the same request.
+ */
+export class InstanceAiPersistPendingAgentRequest extends Z.class({
+	projectId: z.string().min(1),
+	agentId: clientMintedAgentIdSchema,
+	name: z.string().min(1),
 }) {}
 
 export const instanceAiGatewayKeySchema = z.string().min(1).max(256);
@@ -1377,39 +1703,29 @@ export interface InstanceAiSendMessageResponse {
 	runId: string;
 }
 
+/**
+ * Why a run was refused admission, sent as `meta.reason` on the 429 so the editor can
+ * tell the two cases apart. They need different copy and different advice: an instance
+ * limit is transient and not the user's fault, so retrying is right; a user limit means
+ * they already have runs in flight and retrying is exactly wrong.
+ */
+export const INSTANCE_AI_RUN_LIMIT_REASONS = ['user_run_limit', 'instance_run_limit'] as const;
+
+export type InstanceAiRunLimitReason = (typeof INSTANCE_AI_RUN_LIMIT_REASONS)[number];
+
+export type InstanceAiRunLimitMeta = {
+	reason: InstanceAiRunLimitReason;
+	limit: number;
+};
+
 // ---------------------------------------------------------------------------
 // Frontend store types (shared so both sides agree on structure)
 // ---------------------------------------------------------------------------
 
-export interface InstanceAiConfirmation {
-	requestId: string;
-	inputThreadId?: string;
-	severity: InstanceAiConfirmationSeverity;
-	message: string;
-	targetApproval?: InstanceAiTargetApproval;
-	credentialRequests?: InstanceAiCredentialRequest[];
-	requireUserSelection?: boolean;
-	projectId?: string;
-	inputType?: 'approval' | 'text' | 'questions' | 'plan-review' | 'resource-decision' | 'continue';
-	domainAccess?: DomainAccessMeta;
-	webSearch?: WebSearchMeta;
-	credentialFlow?: InstanceAiCredentialFlow;
-	setupRequests?: InstanceAiWorkflowSetupNode[];
-	workflowId?: string;
-	planItems?: PlannedTaskArg[];
-	questions?: Array<{
-		id: string;
-		question: string;
-		type: 'single' | 'multi' | 'text';
-		options?: string[];
-	}>;
-	introMessage?: string;
-	tasks?: TaskList;
-	resourceDecision?: GatewayConfirmationRequiredPayload;
-	channelConfig?: InstanceAiChannelConfig;
-	mcpConnectRequest?: InstanceAiMcpConnectRequest;
-	expired?: boolean;
-}
+export type InstanceAiConfirmation = Omit<
+	InstanceAiConfirmationRequestPayload,
+	'toolCallId' | 'toolName' | 'args'
+> & { expired?: boolean };
 
 export interface InstanceAiToolCallState {
 	toolCallId: string;
@@ -1472,6 +1788,15 @@ export interface InstanceAiAgentNode {
 	tasks?: TaskList;
 	/** Full planned task details — updated by create-tasks via tasks-update. */
 	planItems?: PlannedTaskArg[];
+	/**
+	 * Latest setup-panel snapshot per workflow — updated by setup-items events
+	 * (last event wins per workflowId). Thread-level state: always folded onto
+	 * the ROOT node so history restore, which reads the tree root, sees it
+	 * regardless of which agent emitted.
+	 */
+	setupItemsByWorkflowId?: Record<string, InstanceAiSetupItem[]>;
+	/** Latest setup announcement, including its emitting agent and replay-stable time. */
+	latestSetupAnnouncement?: { workflowId: string; agentId: string; timestamp: string };
 	result?: string;
 	error?: string;
 	errorDetails?: {
@@ -1540,6 +1865,24 @@ export interface InstanceAiThreadListResponse {
 	threads: InstanceAiThreadInfo[];
 	total: number;
 	page: number;
+	hasMore: boolean;
+}
+
+export class InstanceAiThreadHistoryQuery extends Z.class({
+	limit: z.coerce.number().int().min(1).max(100).default(30),
+	// Postgres rejects NUL bytes in text parameters, so reject them here as a 400.
+	search: z
+		.string()
+		.trim()
+		.max(500)
+		.refine((value) => !value.includes('\u0000'))
+		.optional(),
+	cursor: z.string().min(1).max(256).optional(),
+}) {}
+
+export interface InstanceAiThreadHistoryResponse {
+	threads: InstanceAiThreadInfo[];
+	nextCursor: string | null;
 	hasMore: boolean;
 }
 
@@ -1635,6 +1978,7 @@ export interface InstanceAiMemoryTaskSnapshot {
 }
 
 export interface InstanceAiThreadStatusResponse {
+	promptConfiguration?: InstanceAiPromptConfiguration;
 	hasActiveRun: boolean;
 	isSuspended: boolean;
 	runId?: string;
@@ -1865,7 +2209,7 @@ export interface InstanceAiSetupState {
 }
 
 /**
- * How each AI Assistant setup component is configured, derived from the admin
+ * How each n8n Assistant setup component is configured, derived from the admin
  * settings response. Single source of truth for the setup gate and the setup
  * telemetry snapshot, on both backend and frontend. The response already
  * resolves precedence (credential ids are null when env config wins), so env
@@ -2151,8 +2495,37 @@ export const INSTANCE_AI_MCP_CONNECTIONS_FLAG = '089_instance_ai_mcp_connections
 
 export const INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT = 'variant';
 
-/** Enables adding selected canvas nodes as chat context in the AI Assistant */
+/** Enables adding selected canvas nodes as chat context in the n8n Assistant */
 export const CANVAS_NODE_CONTEXT_FLAG = '104_canvas_aia_node_context';
+
+/** Enables the conversation-history tool and the past-conversations first-turn hint */
+export const INSTANCE_AI_CONVERSATION_HISTORY_FLAG = '109_instance_ai_conversation_history';
+
+export const INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT = 'variant';
+
+export const INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG = '111_instance_ai_progressive_building';
+export const INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT = 'variant';
+
+/** Enables the node-usage context surface for Instance AI: the `node-usage`
+
+ *  action and the `nodeTypes` filter on `workflows(action="list")`. */
+export const INSTANCE_AI_NODE_USAGE_FLAG = '109_instance_ai_node_usage';
+
+/**
+ * Rollout flag for folder exploration in Instance AI: folder attribution on
+ * `workflows(action="list")` rows plus `folderPath` / `folderId` / `recursive`
+ * on that action. Off by default. PostHog owns cohort rollout;
+ * `N8N_INSTANCE_AI_FOLDER_EXPLORATION_ENABLED` force-enables.
+ */
+export const INSTANCE_AI_FOLDER_EXPLORATION_FLAG = '110_instance_ai_folder_exploration';
+
+/**
+ * `110_instance_ai_folder_exploration` is multivariate — the enabled arm is a
+ * variant string, not a boolean. The flag names its on-arm `test` rather than
+ * the `variant` the other Instance AI experiments use, so this constant tracks
+ * the flag's own spelling.
+ */
+export const INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT = 'test';
 
 /**
  * Records a credential field that was rewritten (e.g. routed to the eval wire
@@ -2296,6 +2669,13 @@ export class InstanceAiEvalCredentialAllowlistRequest extends Z.class({
 	bypassCredentialTest: z.array(z.string().min(1)).max(50).optional(),
 }) {}
 
+/** The id an authored seed gives a data table, agent or folder. ≥8 chars: the
+ *  restore remaps ids by whole-document string replace, and a short id would risk
+ *  corrupting unrelated substrings — so the restore path refuses shorter ids.
+ *  Enforcing it here fails a bad fixture at load time instead of after a workflow
+ *  has already been built. */
+export const instanceAiEvalSeedArtifactIdSchema = z.string().min(8).max(64);
+
 /** A workflow a conversation seed references, recreated at its given id so the
  *  seeded history resolves. Content is opaque here; the server validates it. */
 const instanceAiEvalSeedWorkflowSchema = z.object({
@@ -2303,9 +2683,101 @@ const instanceAiEvalSeedWorkflowSchema = z.object({
 	name: z.string().min(1).max(255),
 	nodes: z.array(z.record(z.unknown())).max(500),
 	connections: z.record(z.unknown()),
+	/** Publish the workflow once restored, so a case starts from a live automation.
+	 *  Its node credentials must name credentials the thread's project holds, or
+	 *  activation refuses the workflow and the restore fails. */
+	published: z.boolean().optional(),
+	/** The seed folder (`folders[].id`) the workflow is created in. Omit for the
+	 *  project root. Must name a declared folder; see `findSeedFolderIssues`. */
+	parentFolderId: instanceAiEvalSeedArtifactIdSchema.optional(),
 });
 
 export type InstanceAiEvalSeedWorkflow = z.infer<typeof instanceAiEvalSeedWorkflowSchema>;
+
+/** A folder a seed creates in the thread's project before the live turn, so a
+ *  case can grade how the agent finds the contents of a folder. The server
+ *  generates the real id and maps this one to it. The name is created VERBATIM,
+ *  with no seed suffix: the live turn names the folder the way a user would. */
+export const instanceAiEvalSeedFolderSchema = z.object({
+	id: instanceAiEvalSeedArtifactIdSchema,
+	name: z
+		.string()
+		// Refused rather than trimmed. `folderNameSchema` trims silently, and a
+		// trimmed name no longer matches what the case says in prose.
+		.refine((name) => name.trim() === name, { message: 'Seed folder name must be trimmed' })
+		// `folderNameSchema` refuses it too, but name the reason: the list tool's
+		// `folderPath` splits on it, so a name with a slash could never be addressed.
+		.refine((name) => !name.includes('/'), {
+			message: 'Seed folder name cannot contain "/", the folderPath separator',
+		})
+		.pipe(folderNameSchema),
+	/** The seed folder this one sits in. Omit for a root folder. */
+	parentFolderId: instanceAiEvalSeedArtifactIdSchema.optional(),
+});
+
+export type InstanceAiEvalSeedFolder = z.infer<typeof instanceAiEvalSeedFolderSchema>;
+
+/**
+ * Reference rules for seed folders that no single field can check: ids are
+ * unique, every parent is a declared folder, no folder is its own ancestor, and
+ * every workflow `parentFolderId` names a declared folder. Returns one message
+ * per issue, so a case fails at load with every fault named, not at restore.
+ *
+ * Shared by the request schema, the restore endpoint and the eval harness, so
+ * all three refuse the same seeds.
+ */
+export function findSeedFolderIssues(payload: {
+	folders?: Array<{ id: string; parentFolderId?: string }>;
+	workflows?: Array<{ id: string; parentFolderId?: string }>;
+}): string[] {
+	const issues: string[] = [];
+	const folders = payload.folders ?? [];
+	const parentOf = new Map<string, string | undefined>();
+	for (const folder of folders) {
+		if (parentOf.has(folder.id)) {
+			issues.push(`Duplicate seed folder id "${folder.id}" — folder ids resolve references`);
+			continue;
+		}
+		parentOf.set(folder.id, folder.parentFolderId);
+	}
+	for (const folder of folders) {
+		if (folder.parentFolderId === undefined) continue;
+		if (!parentOf.has(folder.parentFolderId)) {
+			issues.push(
+				`Seed folder "${folder.id}" names parent "${folder.parentFolderId}", which the seed does not declare`,
+			);
+		}
+	}
+	// A cycle (a self-parent included) means no folder in it can be created
+	// first. Walk each chain to the root: a return to the start is a cycle, and a
+	// repeat elsewhere means the chain leads into one, so this folder cannot be
+	// created either. Both are named, so the author sees every folder the fault
+	// blocks. Missing parents were reported above.
+	for (const folder of folders) {
+		const seen = new Set<string>([folder.id]);
+		let current = parentOf.get(folder.id);
+		while (current !== undefined && parentOf.has(current)) {
+			if (seen.has(current)) {
+				issues.push(
+					current === folder.id
+						? `Seed folder "${folder.id}" is in a parent cycle`
+						: `Seed folder "${folder.id}" descends from a parent cycle`,
+				);
+				break;
+			}
+			seen.add(current);
+			current = parentOf.get(current);
+		}
+	}
+	for (const workflow of payload.workflows ?? []) {
+		if (workflow.parentFolderId !== undefined && !parentOf.has(workflow.parentFolderId)) {
+			issues.push(
+				`Seed workflow "${workflow.id}" is placed in folder "${workflow.parentFolderId}", which the seed does not declare`,
+			);
+		}
+	}
+	return issues;
+}
 
 /** A data table a seed references. Recreated on restore (its id is server-
  *  generated, so the seed workflows' references are rewritten to the new id).
@@ -2315,11 +2787,7 @@ export type InstanceAiEvalSeedWorkflow = z.infer<typeof instanceAiEvalSeedWorkfl
  *  explicitly `string`-typed column instead of being rejected by free-text
  *  `dataSetup` landing it in a `number` column. */
 export const instanceAiEvalSeedDataTableSchema = z.object({
-	// ≥8 chars: restore remaps this id by whole-document string replace, and a
-	// short id would risk corrupting unrelated substrings — so the restore path
-	// refuses shorter ids. Enforcing it here fails a bad fixture at load time
-	// instead of after a workflow has already been built.
-	id: z.string().min(8).max(64),
+	id: instanceAiEvalSeedArtifactIdSchema,
 	name: z.string().min(1).max(128),
 	columns: z
 		.array(
@@ -2346,9 +2814,7 @@ export type InstanceAiEvalSeedDataTable = z.infer<typeof instanceAiEvalSeedDataT
  *  Credential ids in the config are blanked on restore. */
 export const instanceAiEvalSeedAgentSchema = z
 	.object({
-		// ≥8 chars like a seed data table: the harness remaps this id by whole-document
-		// string replace before restoring.
-		id: z.string().min(8).max(64),
+		id: instanceAiEvalSeedArtifactIdSchema,
 		/** Carries the agent's display name as `config.name`. */
 		config: AgentJsonConfigSchema,
 		/** Skill bodies keyed by the ids `config.skills[].id` references. */
@@ -2394,9 +2860,25 @@ export class InstanceAiEvalRestoreThreadRequest extends Z.class({
 	/** Native agent message log (ISO `createdAt`), stored verbatim. May be empty
 	 *  when the request only seeds data tables (TRUST-311 scenario seeding). */
 	messages: z.array(z.record(z.unknown())).max(1000),
+	/** Folders created first, parents before children, in the thread's project.
+	 *  Workflows reference them by `parentFolderId`. The folder-only rules (unique
+	 *  ids, declared parents, no cycles) hold here, so any caller of the schema
+	 *  refuses a graph that cannot be created; the workflow references need both
+	 *  arrays, so the endpoint runs `findSeedFolderIssues` on the whole payload. */
+	folders: z
+		.array(instanceAiEvalSeedFolderSchema)
+		.max(20)
+		.optional()
+		.superRefine((folders, ctx) => {
+			if (!folders) return;
+			for (const message of findSeedFolderIssues({ folders })) {
+				ctx.addIssue({ code: z.ZodIssueCode.custom, message });
+			}
+		}),
 	/** Data tables the workflows reference; recreated first so ids can be rewritten. */
 	dataTables: z.array(instanceAiEvalSeedDataTableSchema).max(20).optional(),
-	/** Workflows the history references; recreated (node credentials stripped). */
+	/** Workflows the history references; recreated. A node credential is kept only
+	 *  when the thread's project holds one of the same type and name. */
 	workflows: z.array(instanceAiEvalSeedWorkflowSchema).max(50).optional(),
 	/** Agents the history references; created at their pinned id, with the thread
 	 *  bound to them so the next turn continues one instead of resolving it again. */

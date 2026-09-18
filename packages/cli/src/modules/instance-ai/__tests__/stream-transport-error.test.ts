@@ -1,3 +1,5 @@
+import { ModelStreamStallError } from '@n8n/agents';
+
 import { QuotaExhaustedStreamError } from '../instance-ai.service';
 import { isStreamTransportError } from '../stream-transport-error';
 
@@ -10,6 +12,10 @@ function socketError(code: string, message = 'socket failure'): Error {
 }
 
 describe('isStreamTransportError', () => {
+	it('matches a stalled model stream', () => {
+		expect(isStreamTransportError(new ModelStreamStallError(90_000))).toBe(true);
+	});
+
 	it('matches undici mid-stream termination with no cause attached', () => {
 		expect(isStreamTransportError(new TypeError('terminated'))).toBe(true);
 	});

@@ -67,6 +67,22 @@ export interface RecurringCronSchedule {
 
 export type Schedule = CronSchedule | IntervalSchedule | OneOffSchedule | RecurringCronSchedule;
 
+/**
+ * The stored form of a {@link Schedule}: the flat fields it is assembled from,
+ * plus the id a corruption error names. Any shape carrying them qualifies.
+ */
+export type StoredSchedule = Pick<
+	ScheduledJob,
+	| 'id'
+	| 'kind'
+	| 'cronExpression'
+	| 'timezone'
+	| 'intervalSeconds'
+	| 'fireAt'
+	| 'recurrenceUnit'
+	| 'recurrenceSize'
+>;
+
 export interface ScheduledJob {
 	id: number;
 	taskType: string;
@@ -93,8 +109,8 @@ export interface ScheduledJob {
 	misfireGraceSeconds: number;
 	/**
 	 * Groups jobs for `coalesce_owner`: same value, same group. The scheduler
-	 * only compares values, it never reads them. `null` means the job stands
-	 * alone. Required so an adapter that forgets to map it fails to compile.
+	 * only compares values, it never reads them. Required so an adapter that
+	 * forgets to map it fails to compile.
 	 */
-	ownerKey: string | null;
+	ownerKey: string;
 }

@@ -115,18 +115,11 @@ describe('PruningService', () => {
 				mock<ExecutionsConfig>({ pruneData: false }),
 			);
 
-			const scheduleRollingSoftDeletionsSpy = vi.spyOn(
-				pruningService,
-				// @ts-expect-error Private method
-				'scheduleRollingSoftDeletions',
-			);
-
 			// @ts-expect-error Private method
 			const scheduleNextHardDeletionSpy = vi.spyOn(pruningService, 'scheduleNextHardDeletion');
 
 			pruningService.startPruning();
 
-			expect(scheduleRollingSoftDeletionsSpy).not.toHaveBeenCalled();
 			expect(scheduleNextHardDeletionSpy).not.toHaveBeenCalled();
 		});
 
@@ -140,11 +133,6 @@ describe('PruningService', () => {
 				mock<ExecutionsConfig>({ pruneData: true }),
 			);
 
-			const scheduleRollingSoftDeletionsSpy = vi
-				// @ts-expect-error Private method
-				.spyOn(pruningService, 'scheduleRollingSoftDeletions')
-				.mockImplementation((() => {}) as never);
-
 			const scheduleNextHardDeletionSpy = vi
 				// @ts-expect-error Private method
 				.spyOn(pruningService, 'scheduleNextHardDeletion')
@@ -152,7 +140,6 @@ describe('PruningService', () => {
 
 			pruningService.startPruning();
 
-			expect(scheduleRollingSoftDeletionsSpy).toHaveBeenCalled();
 			expect(scheduleNextHardDeletionSpy).toHaveBeenCalled();
 		});
 	});
@@ -163,7 +150,6 @@ describe('PruningService', () => {
 		it('should stop pruning when instance loses leadership', () => {
 			// arrange
 
-			const clearIntervalSpy = vi.spyOn(global, 'clearInterval');
 			const clearTimeoutSpy = vi.spyOn(global, 'clearTimeout');
 
 			let isLeader = true;
@@ -198,7 +184,6 @@ describe('PruningService', () => {
 			// assert
 
 			expect(isLeader).toBe(false);
-			expect(clearIntervalSpy).toHaveBeenCalled();
 			expect(clearTimeoutSpy).toHaveBeenCalled();
 		});
 	});

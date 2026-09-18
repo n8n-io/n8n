@@ -1,3 +1,4 @@
+import type { PolicyViolation } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import type { Readable } from 'node:stream';
 
@@ -8,8 +9,12 @@ import type {
 	VariableLimitFailure,
 	VariableResolutionFailure,
 } from './entities/variable/variable.types';
-import type { WorkflowIdConflict } from './entities/workflow/workflow-import-match.service';
 import type {
+	WorkflowIdConflict,
+	WorkflowLineageConflict,
+} from './entities/workflow/workflow-import-match.service';
+import type {
+	WorkflowArchiveForbidden,
 	WorkflowConflict,
 	WorkflowFolderConflict,
 } from './entities/workflow/workflow-import.types';
@@ -17,6 +22,7 @@ import type {
 	WorkflowPublishingOutcome,
 	WorkflowPublishingPolicy,
 } from './entities/workflow/workflow-publishing-policy.types';
+import type { PackageManifest } from './spec/manifest.schema';
 
 export type { CredentialResolution } from './entities/credential/credential.types';
 export { WorkflowPublishingPolicy } from './entities/workflow/workflow-publishing-policy.types';
@@ -29,7 +35,10 @@ export type PackageFailureReason = 'access-denied' | 'entity-not-found' | 'block
 
 /* eslint-disable @typescript-eslint/naming-convention -- enum-like members for IDE documentation */
 export const WorkflowConflictPolicy = {
-	/** Updates existing workflows with matching sourceWorkflowId; otherwise creates a new workflow. */
+	/**
+	 * Updates existing workflows with matching sourceWorkflowId; otherwise creates a new workflow.
+	 * The archived state follows the package: a matched workflow is archived or unarchived to match.
+	 */
 	NewVersion: 'new-version',
 	/** Fails the import if any matched workflow already exists in the target project. */
 	Fail: 'fail',
@@ -222,13 +231,23 @@ export interface ExportPackageRequest {
 	workflowIds?: string[];
 	folderIds?: string[];
 	projectIds?: string[];
+	/**
+	 * Restricts `projectIds` exports to these workflows and the folders on the
+	 * path to them. Omit to export the whole projects; an empty array writes the
+	 * project shells only. Every id must belong to one of `projectIds`.
+	 */
+	projectWorkflowIds?: string[];
 	includeVariableValues?: boolean;
 	canExportVariableValues?: boolean;
 	includeTags?: boolean;
+	/** Whether folder and project exports include archived workflows. Explicit ids always export. */
+	includeArchivedWorkflows?: boolean;
 	missingWorkflowDependencyPolicy?: MissingWorkflowDependencyPolicy;
 	workflowVersionPolicy?: WorkflowVersionPolicy;
 	credentialExportPolicy?: CredentialExportPolicy;
 }
+
+export type PackageImportSource = 'package-import' | 'git-pull';
 
 export type ImportRequest = {
 	user: User;
@@ -399,10 +418,19 @@ export interface ExportPackageSummary {
 /**
  * Result of an export where the package itself is returned to the caller as an
  * archive stream, on top of the summary. Contrast with a directory export, which
- * writes to disk in place and only returns the {@link ExportPackageSummary}.
+ * writes to disk in place and returns {@link ExportPackageDirectoryResult}.
  */
 export interface ExportPackageResult extends ExportPackageSummary {
 	stream: Readable;
+}
+
+/**
+ * Result of an export written to a directory. It carries the manifest the
+ * export built, so a caller that keeps working with the directory does not
+ * have to read `manifest.json` back.
+ */
+export interface ExportPackageDirectoryResult extends ExportPackageSummary {
+	manifest: PackageManifest;
 }
 
 /**
@@ -418,6 +446,11 @@ export interface ImportedWorkflowSummary {
 	parentFolderId: string | null;
 	/** Published version on the target instance, or `null` when not published after import. */
 	activeVersionId: string | null;
+	/**
+	 * Whether the workflow is archived on the target after import. Under `new-version` this follows
+	 * the package; a skipped workflow keeps its own state.
+	 */
+	isArchived: boolean;
 	publishing: WorkflowPublishingOutcome;
 	status: 'created' | 'updated' | 'skipped';
 }
@@ -469,8 +502,10 @@ export interface ImportedProjectSummary {
  */
 export type BlockingIssue =
 	| ({ type: 'workflow-conflict' } & WorkflowConflict)
+	| ({ type: 'workflow-lineage-conflict' } & WorkflowLineageConflict)
 	| ({ type: 'workflow-id-conflict' } & WorkflowIdConflict)
 	| ({ type: 'workflow-folder-conflict' } & WorkflowFolderConflict)
+	| ({ type: 'workflow-archive-forbidden' } & WorkflowArchiveForbidden)
 	| {
 			type: 'credential-unresolved';
 			kind: 'not_found' | 'unknown_type' | 'source_not_found' | 'type_mismatch';
@@ -497,6 +532,12 @@ export type BlockingIssue =
 			nodeType: string;
 			typeVersion: number;
 			usedByWorkflows: string[];
+	  }
+	| {
+			type: 'policy-violation';
+			sourceWorkflowId: string;
+			name: string;
+			violations: PolicyViolation[];
 	  };
 
 /**

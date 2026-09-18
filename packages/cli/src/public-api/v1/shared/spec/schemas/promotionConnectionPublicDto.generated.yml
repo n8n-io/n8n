@@ -1,0 +1,151 @@
+type: object
+properties:
+  id:
+    type: string
+    minLength: 1
+    maxLength: 36
+  name:
+    type: string
+  scope:
+    type: string
+    enum:
+      - instance
+      - projects
+  target:
+    type: object
+    properties:
+      schemaVersion:
+        type: number
+        enum:
+          - 1
+      remoteUrl:
+        type: string
+        minLength: 1
+    required:
+      - schemaVersion
+      - remoteUrl
+    additionalProperties: false
+  provider:
+    type: object
+    properties:
+      id:
+        type: string
+        minLength: 1
+        maxLength: 36
+      name:
+        type: string
+      type:
+        type: string
+        enum:
+          - git
+      authType:
+        type: string
+        enum:
+          - ssh-key
+          - token
+      createdAt:
+        type: string
+        format: date-time
+      updatedAt:
+        type: string
+        format: date-time
+    required:
+      - id
+      - name
+      - type
+      - authType
+      - createdAt
+      - updatedAt
+  configs:
+    type: object
+    properties:
+      apply:
+        type: object
+        properties:
+          id:
+            type: string
+            minLength: 1
+            maxLength: 36
+          name:
+            type: string
+          createdAt:
+            type: string
+            format: date-time
+          updatedAt:
+            type: string
+            format: date-time
+          settings:
+            type: object
+            properties:
+              schemaVersion:
+                type: number
+                enum:
+                  - 1
+              branchName:
+                type: string
+                minLength: 1
+                maxLength: 255
+            required:
+              - schemaVersion
+              - branchName
+            additionalProperties: false
+        required:
+          - id
+          - name
+          - createdAt
+          - updatedAt
+          - settings
+      promote:
+        type: object
+        properties:
+          id:
+            type: string
+            minLength: 1
+            maxLength: 36
+          name:
+            type: string
+          createdAt:
+            type: string
+            format: date-time
+          updatedAt:
+            type: string
+            format: date-time
+          settings:
+            type: object
+            properties:
+              schemaVersion:
+                type: number
+                enum:
+                  - 1
+              baseBranchName:
+                type: string
+                minLength: 1
+                maxLength: 255
+              createBranchOnPromotion:
+                type: boolean
+            required:
+              - schemaVersion
+              - baseBranchName
+              - createBranchOnPromotion
+            additionalProperties: false
+        required:
+          - id
+          - name
+          - createdAt
+          - updatedAt
+          - settings
+  createdAt:
+    type: string
+    format: date-time
+  updatedAt:
+    type: string
+    format: date-time
+required:
+  - id
+  - name
+  - scope
+  - target
+  - provider
+  - configs
+  - createdAt
+  - updatedAt

@@ -46,6 +46,7 @@ test-results.json
 *.0x
 packages/testing/playwright/playwright-report
 packages/testing/playwright/eval-report
+packages/testing/playwright/a11y-report
 packages/testing/playwright/test-results
 packages/testing/playwright/results.xml
 packages/testing/playwright/eval-results.json
@@ -82,7 +83,7 @@ packages/cli/src/commands/export/outputs
 .claude/plans/
 .claude/worktrees/
 .claude/specs/
-.cursor/plans/
+.cursor/
 .superset
 .conductor
 .n8n

@@ -196,7 +196,14 @@ describe('transcript rendering', () => {
 					steps: [
 						{
 							kind: 'ask-user',
-							questions: [{ id: 'q1', question: 'Which channel?', options: ['#a', '#b'] }],
+							questions: [
+								{
+									id: 'q1',
+									question: 'Which channel?',
+									type: 'single',
+									options: ['#a', '#b'],
+								},
+							],
 							answers: [{ questionId: 'q1', selectedOptions: [], skipped: true }],
 						},
 					],
@@ -206,6 +213,7 @@ describe('transcript rendering', () => {
 		const html = generateWorkflowReport([result]);
 		expect(html).toContain('👤 (skipped)');
 		expect(html).toContain('ask-user (with answers)');
+		expect(html).toContain('<code>single</code>');
 	});
 });
 

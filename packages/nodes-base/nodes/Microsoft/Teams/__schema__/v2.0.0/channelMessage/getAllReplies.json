@@ -1,0 +1,84 @@
+{
+	"properties": {
+		"attachments": {
+			"items": {},
+			"type": "array"
+		},
+		"body": {
+			"properties": {
+				"content": {
+					"type": "string"
+				},
+				"contentType": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"channelIdentity": {
+			"properties": {
+				"channelId": {
+					"type": "string"
+				},
+				"teamId": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"createdDateTime": {
+			"type": "string"
+		},
+		"etag": {
+			"type": "string"
+		},
+		"from": {
+			"properties": {
+				"application": {},
+				"device": {},
+				"user": {
+					"properties": {
+						"@odata.type": {
+							"type": "string"
+						},
+						"displayName": {
+							"type": "string"
+						},
+						"id": {
+							"type": "string"
+						},
+						"userIdentityType": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				}
+			},
+			"type": "object"
+		},
+		"id": {
+			"type": "string"
+		},
+		"importance": {
+			"type": "string"
+		},
+		"locale": {
+			"type": "string"
+		},
+		"mentions": {
+			"items": {},
+			"type": "array"
+		},
+		"messageType": {
+			"type": "string"
+		},
+		"reactions": {
+			"items": {},
+			"type": "array"
+		},
+		"replyToId": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

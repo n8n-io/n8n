@@ -1,0 +1,94 @@
+operationId: updatePolicyDocument
+tags:
+  - NodeTypePolicy
+summary: Replace the rules of a node type policy document
+description: Replaces the document's whole rule list. `version` must equal the version last read; a stale value is rejected with 409. Every scope the document is attached to has its version bumped. A `delegate` rule is rejected when the document is attached to a project scope.
+x-required-scope: nodeTypePolicy:manage
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+parameters:
+  - schema:
+      type: string
+    required: true
+    description: The ID of the node type policy document.
+    name: policyId
+    in: path
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          rules:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  minLength: 1
+                action:
+                  type: string
+                  enum:
+                    - allow
+                    - deny
+                    - delegate
+                selector:
+                  oneOf:
+                    - type: object
+                      properties:
+                        kind:
+                          type: string
+                          enum:
+                            - name
+                        value:
+                          type: string
+                          minLength: 1
+                      required:
+                        - kind
+                        - value
+                    - type: object
+                      properties:
+                        kind:
+                          type: string
+                          enum:
+                            - package
+                        value:
+                          type: string
+                          minLength: 1
+                      required:
+                        - kind
+                        - value
+              required:
+                - id
+                - action
+                - selector
+          version:
+            type: integer
+            minimum: 0
+        required:
+          - rules
+          - version
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          $ref: ../../../../shared/spec/schemas/nodeTypePolicyDocumentWriteResultPublicDto.generated.yml
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '409':
+    $ref: ../../../../shared/spec/responses/conflict.yml
+  '415':
+    $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
+  '503':
+    $ref: ../../../../shared/spec/responses/serviceUnavailable.yml

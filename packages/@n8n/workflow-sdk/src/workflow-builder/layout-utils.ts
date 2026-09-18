@@ -15,6 +15,7 @@ import {
 	CONFIGURATION_NODE_SIZE,
 	CONFIGURATION_NODE_RADIUS,
 	CONFIGURABLE_NODE_SIZE,
+	AGENT_NODE_SIZE,
 	NODE_MIN_INPUT_ITEMS_COUNT,
 	NODE_X_SPACING,
 	NODE_Y_SPACING,
@@ -23,6 +24,7 @@ import {
 	AI_Y_SPACING,
 	STICKY_BOTTOM_PADDING,
 	STICKY_NODE_TYPE,
+	MESSAGE_AN_AGENT_NODE_TYPE,
 	NODE_SPACING_X,
 	DEFAULT_Y,
 	START_X,
@@ -31,6 +33,7 @@ import {
 	STICKY_HEADER_HEIGHT,
 	MAX_STICKY_SEPARATION_STEPS,
 } from './constants';
+import { parseVersion } from './string-utils';
 import { isAnchoredStickyNote, type GraphNode } from '../types/base';
 
 // ===========================================================================
@@ -234,6 +237,13 @@ export function getNodeDimensions(
 	const graphNode = nodes.get(nodeName);
 	if (graphNode?.instance.type === STICKY_NODE_TYPE) {
 		return declaredStickySize(graphNode);
+	}
+
+	if (
+		graphNode?.instance.type === MESSAGE_AN_AGENT_NODE_TYPE &&
+		parseVersion(graphNode.instance.version) >= 2
+	) {
+		return { width: AGENT_NODE_SIZE[0], height: AGENT_NODE_SIZE[1] };
 	}
 
 	if (aiConfigNames.has(nodeName)) {

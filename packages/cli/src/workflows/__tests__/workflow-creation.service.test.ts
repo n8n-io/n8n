@@ -1,6 +1,15 @@
 import type { Logger, LicenseState } from '@n8n/backend-common';
-import type { Folder, Project, ProjectRepository, Role, User } from '@n8n/db';
+import type {
+	EntityManager,
+	Folder,
+	Project,
+	ProjectRepository,
+	Role,
+	User,
+	WorkflowRepository,
+} from '@n8n/db';
 import { WorkflowEntity } from '@n8n/db';
+import type { PolicyCleared } from '@n8n/decorators';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
 
@@ -46,6 +55,7 @@ describe('WorkflowCreationService', () => {
 	let workflowHookContextServiceMock: MockProxy<WorkflowHookContextService>;
 	let mcpSettingsService: MockProxy<McpSettingsService>;
 	let policyEnforcementServiceMock: MockProxy<PolicyEnforcementService>;
+	let workflowRepositoryMock: MockProxy<WorkflowRepository>;
 	let loggerMock: MockProxy<Logger>;
 
 	beforeEach(() => {
@@ -82,6 +92,8 @@ describe('WorkflowCreationService', () => {
 		policyEnforcementServiceMock = mock<PolicyEnforcementService>();
 		policyEnforcementServiceMock.enforceWorkflowSave.mockResolvedValue(mock());
 
+		workflowRepositoryMock = mock<WorkflowRepository>();
+
 		workflowCreationService = new WorkflowCreationService(
 			loggerMock,
 			mock(), // sharedWorkflowRepository
@@ -104,6 +116,7 @@ describe('WorkflowCreationService', () => {
 			workflowHookContextServiceMock,
 			mcpSettingsService,
 			policyEnforcementServiceMock,
+			workflowRepositoryMock,
 		);
 	});
 
@@ -162,14 +175,12 @@ describe('WorkflowCreationService', () => {
 			save: vi.fn().mockRejectedValue(new Error('Stopping for test')),
 		};
 
-		Object.defineProperty(projectRepositoryMock, 'manager', {
-			value: {
-				transaction: vi.fn(
-					async (cb: (em: unknown) => Promise<void>) => await cb(transactionManager),
-				),
-			},
-			writable: true,
-		});
+		// The create body still hands the manager to its co-writers; only the workflow row
+		// itself goes through the token-gated repository method.
+		workflowRepositoryMock.runInTransaction.mockImplementation(
+			async (ctx, fn) => await fn(transactionManager as unknown as EntityManager, ctx),
+		);
+		workflowRepositoryMock.createContent.mockRejectedValue(new Error('Stopping for test'));
 
 		if (options.personalProjectId) {
 			projectRepositoryMock.getPersonalProjectForUserOrFail.mockResolvedValue({
@@ -205,6 +216,7 @@ describe('WorkflowCreationService', () => {
 			projectServiceMock.getProjectWithScope.mockResolvedValue({ id: 'project-1' } as never);
 			const { transactionManager } = setupTransactionMocks();
 			transactionManager.save.mockImplementation(async (entity: unknown) => entity);
+			workflowRepositoryMock.createContent.mockImplementation(async (workflow) => workflow);
 			workflowHistoryServiceMock.saveVersion.mockRejectedValue(new Error('Stopping for test'));
 
 			const user = mock<User>();
@@ -395,6 +407,7 @@ describe('WorkflowCreationService', () => {
 				projectServiceMock.getProjectWithScope.mockResolvedValue({ id: 'project-1' } as never);
 				const { transactionManager } = setupTransactionMocks();
 				transactionManager.save.mockImplementation(async (entity: unknown) => entity);
+				workflowRepositoryMock.createContent.mockImplementation(async (workflow) => workflow);
 				workflowHistoryServiceMock.saveVersion.mockResolvedValue(undefined as never);
 
 				const savedWorkflow = new WorkflowEntity();
@@ -426,6 +439,7 @@ describe('WorkflowCreationService', () => {
 			projectServiceMock.getProjectWithScope.mockResolvedValue({ id: 'project-1' } as never);
 			const { transactionManager } = setupTransactionMocks();
 			transactionManager.save.mockImplementation(async (entity: unknown) => entity);
+			workflowRepositoryMock.createContent.mockImplementation(async (workflow) => workflow);
 			workflowHistoryServiceMock.saveVersion.mockResolvedValue(undefined as never);
 			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(
 				makeWorkflow({ id: 'workflow-1' }),
@@ -462,7 +476,7 @@ describe('WorkflowCreationService', () => {
 		});
 
 		it('creates the workflow unchanged when the check clears', async () => {
-			const { transactionManager } = arrangeSuccessfulCreate();
+			arrangeSuccessfulCreate();
 
 			const savedWorkflow = await workflowCreationService.createWorkflow(
 				mock<User>(),
@@ -470,12 +484,42 @@ describe('WorkflowCreationService', () => {
 				{ projectId: 'project-1' },
 			);
 
-			expect(transactionManager.save).toHaveBeenCalled();
+			expect(workflowRepositoryMock.createContent).toHaveBeenCalled();
 			expect(savedWorkflow.id).toBe('workflow-1');
 		});
 
-		it('persists nothing when the check throws', async () => {
+		it('threads the minted clearance into the sealed write', async () => {
+			arrangeSuccessfulCreate();
+			const cleared = mock<PolicyCleared<'workflowSave'>>();
+			policyEnforcementServiceMock.enforceWorkflowSave.mockResolvedValue(cleared);
+			const newWorkflow = makeWorkflow();
+
+			await workflowCreationService.createWorkflow(mock<User>(), newWorkflow, {
+				projectId: 'project-1',
+			});
+
+			expect(workflowRepositoryMock.createContent).toHaveBeenCalledWith(
+				newWorkflow,
+				expect.objectContaining({ policyCleared: cleared }),
+			);
+		});
+
+		it('writes the workflow, its owner row and its history version in one transaction', async () => {
 			const { transactionManager } = arrangeSuccessfulCreate();
+
+			await workflowCreationService.createWorkflow(mock<User>(), makeWorkflow(), {
+				projectId: 'project-1',
+			});
+
+			expect(workflowRepositoryMock.runInTransaction).toHaveBeenCalledTimes(1);
+			expect(workflowRepositoryMock.createContent).toHaveBeenCalledTimes(1);
+			expect(transactionManager.save).toHaveBeenCalledTimes(1);
+			expect(workflowHistoryServiceMock.saveVersion).toHaveBeenCalledTimes(1);
+			expect(workflowHistoryServiceMock.saveVersion.mock.calls[0][5]).toBe(transactionManager);
+		});
+
+		it('persists nothing when the check throws', async () => {
+			arrangeSuccessfulCreate();
 			const violation = new Error('blocked by policy');
 			policyEnforcementServiceMock.enforceWorkflowSave.mockRejectedValue(violation);
 
@@ -485,7 +529,7 @@ describe('WorkflowCreationService', () => {
 				}),
 			).rejects.toThrow(violation);
 
-			expect(transactionManager.save).not.toHaveBeenCalled();
+			expect(workflowRepositoryMock.createContent).not.toHaveBeenCalled();
 			expect(workflowHistoryServiceMock.saveVersion).not.toHaveBeenCalled();
 		});
 
@@ -541,7 +585,7 @@ describe('WorkflowCreationService', () => {
 				transactionManager,
 			);
 
-			const savedEntity = transactionManager.save.mock.calls[0][0] as WorkflowEntity;
+			const savedEntity = workflowRepositoryMock.createContent.mock.calls[0][0];
 			expect(savedEntity.settings?.redactionPolicy).toBeUndefined();
 		});
 
@@ -577,7 +621,7 @@ describe('WorkflowCreationService', () => {
 				transactionManager,
 			);
 
-			const savedEntity = transactionManager.save.mock.calls[0][0] as WorkflowEntity;
+			const savedEntity = workflowRepositoryMock.createContent.mock.calls[0][0];
 			expect(savedEntity.settings?.redactionPolicy).toBe('all');
 		});
 
@@ -588,7 +632,7 @@ describe('WorkflowCreationService', () => {
 			projectServiceMock.getProjectWithScope.mockResolvedValue({ id: 'project-1' } as never);
 			licenseStateMock.isSharingLicensed.mockReturnValue(false);
 			licenseStateMock.isDataRedactionLicensed.mockReturnValue(true);
-			const { transactionManager } = setupTransactionMocks();
+			setupTransactionMocks();
 
 			const user = mock<User>();
 			const newWorkflow = new WorkflowEntity();
@@ -606,7 +650,7 @@ describe('WorkflowCreationService', () => {
 			 */
 			expect(userHasScopesMock).not.toHaveBeenCalled();
 
-			const savedEntity = transactionManager.save.mock.calls[0][0] as WorkflowEntity;
+			const savedEntity = workflowRepositoryMock.createContent.mock.calls[0][0];
 			expect(savedEntity.settings?.redactionPolicy).toBe('none');
 		});
 
@@ -686,7 +730,7 @@ describe('WorkflowCreationService', () => {
 		it('seeds non-manual when floor is production-only and no policy is provided', async () => {
 			userHasScopesMock.mockResolvedValue(true);
 			instanceRedactionEnforcementServiceMock.get.mockResolvedValue('production');
-			const { transactionManager } = setupTransactionMocks();
+			setupTransactionMocks();
 
 			const newWorkflow = new WorkflowEntity();
 			newWorkflow.settings = { executionOrder: 'v1' };
@@ -697,7 +741,7 @@ describe('WorkflowCreationService', () => {
 				}),
 			).rejects.toThrow('Stopping for test');
 
-			const savedEntity = transactionManager.save.mock.calls[0][0] as WorkflowEntity;
+			const savedEntity = workflowRepositoryMock.createContent.mock.calls[0][0];
 			expect(savedEntity.settings?.redactionPolicy).toBe('non-manual');
 			expect(savedEntity.settings?.executionOrder).toBe('v1');
 		});
@@ -705,7 +749,7 @@ describe('WorkflowCreationService', () => {
 		it('seeds all when floor is production+manual and no policy is provided', async () => {
 			userHasScopesMock.mockResolvedValue(true);
 			instanceRedactionEnforcementServiceMock.get.mockResolvedValue('all');
-			const { transactionManager } = setupTransactionMocks();
+			setupTransactionMocks();
 
 			const newWorkflow = new WorkflowEntity();
 			newWorkflow.settings = { executionOrder: 'v1' };
@@ -716,7 +760,7 @@ describe('WorkflowCreationService', () => {
 				}),
 			).rejects.toThrow('Stopping for test');
 
-			const savedEntity = transactionManager.save.mock.calls[0][0] as WorkflowEntity;
+			const savedEntity = workflowRepositoryMock.createContent.mock.calls[0][0];
 			expect(savedEntity.settings?.redactionPolicy).toBe('all');
 			expect(savedEntity.settings?.executionOrder).toBe('v1');
 		});
@@ -724,7 +768,7 @@ describe('WorkflowCreationService', () => {
 		it('does not seed when floor is not enforced', async () => {
 			userHasScopesMock.mockResolvedValue(true);
 			instanceRedactionEnforcementServiceMock.get.mockResolvedValue('off');
-			const { transactionManager } = setupTransactionMocks();
+			setupTransactionMocks();
 
 			const newWorkflow = new WorkflowEntity();
 			newWorkflow.settings = { executionOrder: 'v1' };
@@ -735,7 +779,7 @@ describe('WorkflowCreationService', () => {
 				}),
 			).rejects.toThrow('Stopping for test');
 
-			const savedEntity = transactionManager.save.mock.calls[0][0] as WorkflowEntity;
+			const savedEntity = workflowRepositoryMock.createContent.mock.calls[0][0];
 			expect(savedEntity.settings?.redactionPolicy).toBeUndefined();
 			expect(savedEntity.settings?.executionOrder).toBe('v1');
 		});
@@ -743,7 +787,7 @@ describe('WorkflowCreationService', () => {
 		it('does not seed when user lacks workflow:enableRedaction', async () => {
 			userHasScopesMock.mockResolvedValue(false);
 			instanceRedactionEnforcementServiceMock.get.mockResolvedValue('production');
-			const { transactionManager } = setupTransactionMocks();
+			setupTransactionMocks();
 
 			const newWorkflow = new WorkflowEntity();
 			newWorkflow.settings = { executionOrder: 'v1' };
@@ -754,7 +798,7 @@ describe('WorkflowCreationService', () => {
 				}),
 			).rejects.toThrow('Stopping for test');
 
-			const savedEntity = transactionManager.save.mock.calls[0][0] as WorkflowEntity;
+			const savedEntity = workflowRepositoryMock.createContent.mock.calls[0][0];
 			expect(savedEntity.settings?.redactionPolicy).toBeUndefined();
 			expect(savedEntity.settings?.executionOrder).toBe('v1');
 		});
@@ -762,7 +806,7 @@ describe('WorkflowCreationService', () => {
 		it('does not seed when the effective floor is off', async () => {
 			userHasScopesMock.mockResolvedValue(true);
 			instanceRedactionEnforcementServiceMock.get.mockResolvedValue('off');
-			const { transactionManager } = setupTransactionMocks();
+			setupTransactionMocks();
 
 			const newWorkflow = new WorkflowEntity();
 			newWorkflow.settings = { executionOrder: 'v1' };
@@ -773,7 +817,7 @@ describe('WorkflowCreationService', () => {
 				}),
 			).rejects.toThrow('Stopping for test');
 
-			const savedEntity = transactionManager.save.mock.calls[0][0] as WorkflowEntity;
+			const savedEntity = workflowRepositoryMock.createContent.mock.calls[0][0];
 			expect(savedEntity.settings?.redactionPolicy).toBeUndefined();
 			expect(savedEntity.settings?.executionOrder).toBe('v1');
 		});
@@ -781,7 +825,7 @@ describe('WorkflowCreationService', () => {
 		it('clamps a none policy up to non-manual when the floor requires production redaction', async () => {
 			userHasScopesMock.mockResolvedValue(true);
 			instanceRedactionEnforcementServiceMock.get.mockResolvedValue('production');
-			const { transactionManager } = setupTransactionMocks();
+			setupTransactionMocks();
 
 			const newWorkflow = new WorkflowEntity();
 			newWorkflow.settings = { redactionPolicy: 'none' };
@@ -792,14 +836,14 @@ describe('WorkflowCreationService', () => {
 				}),
 			).rejects.toThrow('Stopping for test');
 
-			const savedEntity = transactionManager.save.mock.calls[0][0] as WorkflowEntity;
+			const savedEntity = workflowRepositoryMock.createContent.mock.calls[0][0];
 			expect(savedEntity.settings?.redactionPolicy).toBe('non-manual');
 		});
 
 		it('replaces a manual-only policy with the floor seed when the floor requires production redaction', async () => {
 			userHasScopesMock.mockResolvedValue(true);
 			instanceRedactionEnforcementServiceMock.get.mockResolvedValue('production');
-			const { transactionManager } = setupTransactionMocks();
+			setupTransactionMocks();
 
 			const newWorkflow = new WorkflowEntity();
 			newWorkflow.settings = { redactionPolicy: 'manual-only' };
@@ -810,14 +854,14 @@ describe('WorkflowCreationService', () => {
 				}),
 			).rejects.toThrow('Stopping for test');
 
-			const savedEntity = transactionManager.save.mock.calls[0][0] as WorkflowEntity;
+			const savedEntity = workflowRepositoryMock.createContent.mock.calls[0][0];
 			expect(savedEntity.settings?.redactionPolicy).toBe('non-manual');
 		});
 
 		it('accepts a stricter-than-floor policy unchanged', async () => {
 			userHasScopesMock.mockResolvedValue(true);
 			instanceRedactionEnforcementServiceMock.get.mockResolvedValue('production');
-			const { transactionManager } = setupTransactionMocks();
+			setupTransactionMocks();
 
 			const newWorkflow = new WorkflowEntity();
 			newWorkflow.settings = { redactionPolicy: 'all' };
@@ -828,13 +872,13 @@ describe('WorkflowCreationService', () => {
 				}),
 			).rejects.toThrow('Stopping for test');
 
-			const savedEntity = transactionManager.save.mock.calls[0][0] as WorkflowEntity;
+			const savedEntity = workflowRepositoryMock.createContent.mock.calls[0][0];
 			expect(savedEntity.settings?.redactionPolicy).toBe('all');
 		});
 
 		it('drops redactionPolicy when the instance lacks the data-redaction license', async () => {
 			licenseStateMock.isDataRedactionLicensed.mockReturnValue(false);
-			const { transactionManager } = setupTransactionMocks();
+			setupTransactionMocks();
 
 			const newWorkflow = new WorkflowEntity();
 			newWorkflow.settings = { redactionPolicy: 'all' };
@@ -846,7 +890,7 @@ describe('WorkflowCreationService', () => {
 			).rejects.toThrow('Stopping for test');
 
 			expect(instanceRedactionEnforcementServiceMock.get).not.toHaveBeenCalled();
-			const savedEntity = transactionManager.save.mock.calls[0][0] as WorkflowEntity;
+			const savedEntity = workflowRepositoryMock.createContent.mock.calls[0][0];
 			expect(savedEntity.settings?.redactionPolicy).toBeUndefined();
 		});
 	});
@@ -918,6 +962,7 @@ describe('WorkflowCreationService', () => {
 			licenseStateMock.isDataRedactionLicensed.mockReturnValue(false);
 			const { transactionManager } = setupTransactionMocks();
 			transactionManager.save.mockImplementation(async (entity: unknown) => entity);
+			workflowRepositoryMock.createContent.mockImplementation(async (workflow) => workflow);
 			workflowHistoryServiceMock.saveVersion.mockResolvedValue(undefined as never);
 			workflowFinderServiceMock.findWorkflowForUser.mockImplementation(
 				async () => new WorkflowEntity(),

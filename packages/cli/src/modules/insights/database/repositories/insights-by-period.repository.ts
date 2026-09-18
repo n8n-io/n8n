@@ -11,7 +11,7 @@ import { z } from 'zod';
 
 import { getDateRangesCommonTableExpressionQuery } from './insights-by-period-query.helper';
 import { InsightsByPeriod } from '../entities/insights-by-period';
-import type { PeriodUnit, TypeUnit } from '../entities/insights-shared';
+import type { PeriodUnit, TypeUnitNumber, ByTimeInsightType } from '../entities/insights-shared';
 import { PeriodUnitToNumber, TypeToNumber } from '../entities/insights-shared';
 
 const dbType = Container.get(GlobalConfig).database.type;
@@ -25,7 +25,13 @@ const displayTypeName = {
 const summaryParser = z
 	.object({
 		period: z.enum(['previous', 'current']),
-		type: z.union([z.literal(0), z.literal(1), z.literal(2), z.literal(3)]),
+		type: z.union([
+			z.literal(TypeToNumber.time_saved_min),
+			z.literal(TypeToNumber.runtime_ms),
+			z.literal(TypeToNumber.success),
+			z.literal(TypeToNumber.failure),
+			z.literal(TypeToNumber.billable),
+		]),
 
 		// depending on db engine, sum(value) can be a number or a string - because of big numbers
 		total_value: z.union([z.number(), z.string()]),
@@ -55,17 +61,16 @@ const optionalNumberLike = z
 
 const aggregatedInsightsByTimeParser = z
 	.object({
-		periodStart: z.union([z.date(), z.string()]).transform((value) => {
+		periodStart: z.union([z.date(), z.string()]).transform((value): string => {
 			if (value instanceof Date) {
 				return value.toISOString();
 			}
 
 			const parsedDatetime = DateTime.fromSQL(value.toString(), { zone: 'utc' });
 			if (parsedDatetime.isValid) {
-				return parsedDatetime.toISO();
+				return parsedDatetime.toISO() ?? new Date(value).toISOString();
 			}
 
-			// fallback on native date parsing
 			return new Date(value).toISOString();
 		}),
 		runTime: optionalNumberLike,
@@ -354,7 +359,7 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 	}): Promise<
 		Array<{
 			period: 'previous' | 'current';
-			type: 0 | 1 | 2 | 3;
+			type: TypeUnitNumber;
 			total_value: string | number;
 		}>
 	> {
@@ -500,7 +505,7 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		accessFilter,
 	}: {
 		periodUnit: PeriodUnit;
-		insightTypes: TypeUnit[];
+		insightTypes: ByTimeInsightType[];
 		projectId?: string;
 		startDate: Date;
 		endDate: Date;

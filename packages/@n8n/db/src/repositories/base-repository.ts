@@ -42,12 +42,14 @@ export abstract class BaseRepository<Entity extends ObjectLiteral> extends Repos
 	 * Runs `fn` under `TransactionRunner.run`, so it reuses the transaction `ctx` carries
 	 * instead of opening a second, independent one on another connection.
 	 *
-	 * `fn` receives the resolved `EntityManager`, so one multi-write body works either way.
+	 * `fn` receives the resolved `EntityManager`, so one multi-write body works either way,
+	 * plus the augmented `ctx` — a body mid-migration can pass `ctx` to the repository
+	 * methods that take one while its remaining co-writers still take the manager.
 	 */
 	async runInTransaction<T>(
 		ctx: OperationContext,
-		fn: (tx: EntityManager) => Promise<T>,
+		fn: (tx: EntityManager, ctx: OperationContext) => Promise<T>,
 	): Promise<T> {
-		return await this.transactionRunner.run(ctx, async (c) => await fn(this.managerFor(c)));
+		return await this.transactionRunner.run(ctx, async (c) => await fn(this.managerFor(c), c));
 	}
 }

@@ -496,7 +496,6 @@ function onRenameNode(value: string) {
 							:is-read-only="isReadOnly"
 							:target-node-parameter-context="targetNodeParameterContext"
 							fill-parent
-							:disable-ask-ai="true"
 							@update:model-value="onInputChange"
 						/>
 						<HtmlEditor
