@@ -43,6 +43,8 @@ export interface TeamsReplayContext extends Omit<ReplayContextSetup, 'chat'> {
 	latestThreadId: () => string | undefined;
 	lastPost: () => ReplayApiCall | undefined;
 	lastEdit: () => ReplayApiCall | undefined;
+	/** Every activity the adapter sent, in order. */
+	activities: () => ReplayApiCall[];
 	lastPostedMessageId: () => string | undefined;
 }
 
@@ -90,7 +92,27 @@ function buildBotFrameworkSigner() {
 	};
 }
 
-function installTeamsApiStub(jwks: object, accessToken: string) {
+export interface TeamsStreamingFailure {
+	status: number;
+	message: string;
+	/** Streaming activities to let through before the failure starts. */
+	afterChunks?: number;
+}
+
+/** True for the `typing` activities that carry a stream, not a plain indicator. */
+function isStreamingActivity(body: Record<string, unknown>): boolean {
+	const entities = body.entities;
+	return (
+		Array.isArray(entities) &&
+		entities.some((entity) => (entity as { type?: string })?.type === 'streaminfo')
+	);
+}
+
+function installTeamsApiStub(
+	jwks: object,
+	accessToken: string,
+	failStreamingWith?: TeamsStreamingFailure,
+) {
 	const apiCalls: ReplayApiCall[] = [];
 	const serviceUrl = new URL(TEAMS_SERVICE_URL);
 
@@ -108,15 +130,24 @@ function installTeamsApiStub(jwks: object, accessToken: string) {
 
 	// Recorded as `sendActivity` so `lastPost()` reads like the other platforms'.
 	let nextMessageId = 1000;
+	let streamingActivitiesAllowed = failStreamingWith?.afterChunks ?? 0;
 	const postedMessageIds: string[] = [];
 	nock(serviceUrl.origin)
 		.persist()
 		.post(/\/v3\/conversations\/.+\/activities.*/)
 		.reply(function (_uri, body) {
-			apiCalls.push({
-				method: 'sendActivity',
-				body: (typeof body === 'object' && body !== null ? body : {}) as Record<string, unknown>,
-			});
+			const activity = (typeof body === 'object' && body !== null ? body : {}) as Record<
+				string,
+				unknown
+			>;
+			apiCalls.push({ method: 'sendActivity', body: activity });
+			if (failStreamingWith && isStreamingActivity(activity)) {
+				if (streamingActivitiesAllowed > 0) {
+					streamingActivitiesAllowed -= 1;
+				} else {
+					return [failStreamingWith.status, { error: { message: failStreamingWith.message } }];
+				}
+			}
 			const id = `message-${nextMessageId++}`;
 			postedMessageIds.push(id);
 			return [200, { id }];
@@ -137,10 +168,16 @@ function installTeamsApiStub(jwks: object, accessToken: string) {
 }
 
 export async function createTeamsReplayContext(
-	options: { stream?: StreamChunk[] } = {},
+	options: {
+		stream?: StreamChunk[];
+		/** Reject streaming activities, as a tenant without streaming does. */
+		failStreamingWith?: TeamsStreamingFailure;
+		/** Shorten the stalled-stream deadline so a test does not wait for it. */
+		streamingPostTimeoutMs?: number;
+	} = {},
 ): Promise<TeamsReplayContext> {
 	const signer = createBotFrameworkSigner();
-	const stub = installTeamsApiStub(signer.jwks, signer.accessToken());
+	const stub = installTeamsApiStub(signer.jwks, signer.accessToken(), options.failStreamingWith);
 
 	// Dynamic imports — the chat packages are ESM-only. Production routes through
 	// esm-loader to dodge the CJS transform; vitest loads ESM natively.
@@ -160,9 +197,14 @@ export async function createTeamsReplayContext(
 		state: createMemoryState(),
 	});
 
+	const integrationImpl = new TeamsIntegration(mock<BackendLogger>(), mock<AgentRepository>());
+	if (options.streamingPostTimeoutMs !== undefined) {
+		Object.assign(integrationImpl, { streamingPostTimeoutMs: options.streamingPostTimeoutMs });
+	}
+
 	const setup = createReplayContextSetup({
 		chat: chat as never,
-		integrationImpl: new TeamsIntegration(mock<BackendLogger>(), mock<AgentRepository>()),
+		integrationImpl,
 		integration: { type: 'teams', credentialId: 'cred-teams', settings: undefined },
 		componentMapper: new ComponentMapper(),
 		stream: options.stream,
@@ -197,6 +239,7 @@ export async function createTeamsReplayContext(
 		latestThreadId: setup.latestThreadId,
 		lastPost: () => lastCall('sendActivity'),
 		lastEdit: () => lastCall('updateActivity'),
+		activities: () => stub.apiCalls.filter((call) => call.method === 'sendActivity'),
 		lastPostedMessageId: () => stub.postedMessageIds.at(-1),
 		shutdown: async () => {
 			stub.restore();
