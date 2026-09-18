@@ -1,6 +1,10 @@
 import {
+	CreateUsersPublicDto,
+	DeleteUserQueryPublicDto,
 	GetUserQueryDto,
+	InvitedUsersPublicDto,
 	ListUsersQueryDto,
+	RoleChangeRequestDto,
 	UserListPublicDto,
 	UserPublicDto,
 	userIdentifierParamSchema,
@@ -13,8 +17,13 @@ import {
 	ApiResponse,
 	ApiSummary,
 	ApiTags,
+	Body,
+	Delete,
 	Get,
+	Licensed,
 	Param,
+	Patch,
+	Post,
 	PublicApiController,
 	Query,
 	RequiresUserQuota,
@@ -107,5 +116,56 @@ export class UsersPublicController {
 		});
 
 		return toPublicApiUser(user, { includeRole });
+	}
+
+	@Post('/')
+	@ApiKeyScope('user:create')
+	@ApiSummary('Create multiple users')
+	@ApiDescription('Create one or more users.')
+	@ApiTags(tags)
+	@ApiResponse(201, InvitedUsersPublicDto)
+	async createUser(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body body: CreateUsersPublicDto,
+	): Promise<InvitedUsersPublicDto> {
+		const usersInvited = await this.userService.inviteUser(req.user, body);
+
+		// `UserService.inviteUser` types `error` as optional, but every code path sets it (to '' on
+		// success). Normalize here so the response always matches the documented, non-optional shape.
+		return usersInvited.map(({ user, error }) => ({ user, error: error ?? '' }));
+	}
+
+	@Delete('/:userId')
+	@ApiKeyScope('user:delete')
+	@ApiSummary('Delete user')
+	@ApiDescription('Delete a user from your instance.')
+	@ApiTags(tags)
+	@ApiResponse(204)
+	@ApiErrorResponse(404)
+	async deleteUser(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('userId', userIdentifierParamSchema) userId: string,
+		@Query query: DeleteUserQueryPublicDto,
+	): Promise<void> {
+		await this.userService.deleteUser(req.user, userId, query.transferId);
+	}
+
+	@Patch('/:userId/role')
+	@ApiKeyScope('user:changeRole')
+	@Licensed('feat:advancedPermissions')
+	@ApiSummary("Change a user's global role")
+	@ApiDescription("Change a user's global role")
+	@ApiTags(tags)
+	@ApiResponse(204)
+	@ApiErrorResponse(404)
+	async changeRole(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('userId', userIdentifierParamSchema) userId: string,
+		@Body body: RoleChangeRequestDto,
+	): Promise<void> {
+		await this.userService.changeGlobalRole(req.user, userId, body);
 	}
 }
