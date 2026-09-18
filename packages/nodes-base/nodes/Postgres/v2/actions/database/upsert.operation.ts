@@ -257,14 +257,16 @@ export async function execute(
 				}
 			}
 
-			if (item[columnsToMatchOn[0]] === undefined) {
-				throw new NodeOperationError(
-					this.getNode(),
-					"Column to match on not found in input item. Add a column to match on or set the 'Data Mode' to 'Define Below' to define the value to match on.",
-				);
+			for (const column of columnsToMatchOn) {
+				if (item[column] === undefined || item[column] === null) {
+					throw new NodeOperationError(
+						this.getNode(),
+						"Column to match on not found in input item. Add a column to match on or set the 'Data Mode' to 'Define Below' to define the value to match on.",
+					);
+				}
 			}
 
-			if (item[columnsToMatchOn[0]] !== undefined && Object.keys(item).length === 1) {
+			if (Object.keys(item).length === columnsToMatchOn.length) {
 				throw new NodeOperationError(
 					this.getNode(),
 					"Add values to update or insert to the input item or set the 'Data Mode' to 'Define Below' to define the values to insert or update.",
