@@ -16,13 +16,10 @@ export class CreateCustomNodeDefinitionTable1789761498249 implements ReversibleM
 			column('type')
 				.varchar(16)
 				.notNull.withEnumCheck(['operation', 'node'])
-				.comment(
-					'`operation` extends an existing node type, `node` is a standalone custom node.',
-				),
-			column('definition')
-				.json.notNull.comment(
-					'CustomOperationDefinition or CustomNodeDefinition JSON, see @n8n/api-types.',
-				),
+				.comment('`operation` extends an existing node type, `node` is a standalone custom node.'),
+			column('definition').json.notNull.comment(
+				'CustomOperationDefinition or CustomNodeDefinition JSON, see @n8n/api-types.',
+			),
 		).withTimestamps;
 	}
 
