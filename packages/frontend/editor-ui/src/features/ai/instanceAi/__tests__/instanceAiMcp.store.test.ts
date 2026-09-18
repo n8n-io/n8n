@@ -281,6 +281,7 @@ describe('useInstanceAiMcpStore', () => {
 		it.each([
 			['server_unavailable', 'instanceAi.mcp.error.connection.serverUnavailable'],
 			['authentication', 'instanceAi.mcp.error.connection.authentication'],
+			['insufficient_scope', 'instanceAi.mcp.error.connection.insufficientScope'],
 			['unknown', 'instanceAi.mcp.error.connection.unknown'],
 		] as const)('shows the connection error for %s failures', async (failureReason, message) => {
 			mockFetchMcpConnections.mockResolvedValue([makeConnection()]);

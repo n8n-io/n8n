@@ -734,6 +734,77 @@ describe('InstanceAiMcpRegistryService', () => {
 			);
 		});
 
+		it('returns insufficient scope when the recorded request lacks a required scope', async () => {
+			const deps = createService();
+			arrangeResolvableConnection(deps);
+			deps.oauthService.resolveRequiredOAuthScope.mockResolvedValue('read write');
+			deps.credentialsService.decrypt.mockResolvedValue({
+				...oauthCredentialData,
+				oauthTokenData: {
+					...oauthCredentialData.oauthTokenData,
+					n8n_requested_scope: 'read',
+				},
+			});
+
+			const result = await deps.service.listConnectionTools(user, 'conn-1');
+
+			expect(result).toEqual({
+				id: 'conn-1',
+				status: 'disconnected',
+				tools: [],
+				failureReason: 'insufficient_scope',
+			});
+			expect(mcpClientConstructorMock).not.toHaveBeenCalled();
+		});
+
+		it('uses recorded requested scopes instead of provider-normalized scopes', async () => {
+			const deps = createService();
+			arrangeResolvableConnection(deps);
+			deps.oauthService.resolveRequiredOAuthScope.mockResolvedValue('read write');
+			deps.credentialsService.decrypt.mockResolvedValue({
+				...oauthCredentialData,
+				oauthTokenData: {
+					...oauthCredentialData.oauthTokenData,
+					n8n_requested_scope: 'read write',
+					scope: 'write',
+				},
+			});
+
+			const result = await deps.service.listConnectionTools(user, 'conn-1');
+
+			expect(result).toEqual({ id: 'conn-1', status: 'connected', tools: [] });
+		});
+
+		it('uses provider scopes for credentials without recorded requested scopes', async () => {
+			const deps = createService();
+			arrangeResolvableConnection(deps);
+			deps.oauthService.resolveRequiredOAuthScope.mockResolvedValue('read write');
+			deps.credentialsService.decrypt.mockResolvedValue({
+				...oauthCredentialData,
+				oauthTokenData: {
+					...oauthCredentialData.oauthTokenData,
+					scope: 'read',
+				},
+			});
+
+			const result = await deps.service.listConnectionTools(user, 'conn-1');
+
+			expect(result).toMatchObject({
+				status: 'disconnected',
+				failureReason: 'insufficient_scope',
+			});
+		});
+
+		it('does not reject credentials without scope metadata', async () => {
+			const deps = createService();
+			arrangeResolvableConnection(deps);
+			deps.oauthService.resolveRequiredOAuthScope.mockResolvedValue('read');
+
+			const result = await deps.service.listConnectionTools(user, 'conn-1');
+
+			expect(result).toEqual({ id: 'conn-1', status: 'connected', tools: [] });
+		});
+
 		it('returns disconnected when the MCP client records a connection failure', async () => {
 			const deps = createService();
 			arrangeResolvableConnection(deps);

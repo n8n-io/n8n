@@ -2008,7 +2008,87 @@ describe('OauthService', () => {
 		});
 	});
 
+	describe('resolveRequiredOAuthScope', () => {
+		const credential = mock<CredentialsEntity>({ id: '1', type: 'testOAuth2Api' });
+
+		it('returns the resolved scope for a hidden scope property', async () => {
+			credentialsHelper.getCredentialsProperties.mockReturnValue([
+				{ displayName: 'Scope', name: 'scope', type: 'hidden', default: 'read' },
+			]);
+			vi.spyOn(service, 'getOAuthCredentials').mockResolvedValue({ scope: 'read' });
+
+			await expect(service.resolveRequiredOAuthScope(credential)).resolves.toBe('read');
+		});
+
+		it('does not return an editable scope', async () => {
+			credentialsHelper.getCredentialsProperties.mockReturnValue([
+				{ displayName: 'Scope', name: 'scope', type: 'string', default: '' },
+			]);
+			const getOAuthCredentials = vi.spyOn(service, 'getOAuthCredentials');
+
+			await expect(service.resolveRequiredOAuthScope(credential)).resolves.toBeUndefined();
+			expect(getOAuthCredentials).not.toHaveBeenCalled();
+		});
+
+		it('does not return a scope when custom scopes are enabled', async () => {
+			credentialsHelper.getCredentialsProperties.mockReturnValue([
+				{ displayName: 'Scope', name: 'scope', type: 'hidden', default: 'read' },
+				{
+					displayName: 'Custom Scopes',
+					name: 'customScopes',
+					type: 'boolean',
+					default: false,
+				},
+			]);
+			vi.spyOn(service, 'getOAuthCredentials').mockResolvedValue({
+				scope: 'user-selected',
+				customScopes: true,
+			});
+
+			await expect(service.resolveRequiredOAuthScope(credential)).resolves.toBeUndefined();
+		});
+	});
+
 	describe('generateAOauth2AuthUri', () => {
+		it('stores the scope sent in the authorization URL', async () => {
+			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
+			vi.mocked(ClientOAuth2).mockImplementation(function () {
+				return {
+					code: {
+						getUri: () => 'https://example.domain/oauth2/auth?state=state&scope=read%20write',
+					},
+				} as any;
+			});
+			const credential = mock<CredentialsEntity>({ id: '1', type: 'testOAuth2Api' });
+			vi.spyOn(service, 'getOAuthCredentials').mockResolvedValue({
+				clientId: 'client_id',
+				clientSecret: 'client_secret',
+				authUrl: 'https://example.domain/oauth2/auth',
+				accessTokenUrl: 'https://example.domain/oauth2/token',
+				grantType: 'authorizationCode',
+				authentication: 'header',
+			});
+			vi.spyOn(service, 'createCsrfState').mockResolvedValue([
+				'csrf-secret',
+				'base64-state',
+				'state-token',
+			]);
+			const storeOauthFlowState = vi
+				.spyOn(service, 'storeOauthFlowState')
+				.mockResolvedValue(undefined);
+
+			await service.generateAOauth2AuthUri(credential, {
+				cid: credential.id,
+				origin: 'static-credential',
+				userId: 'user-id',
+			});
+
+			expect(storeOauthFlowState).toHaveBeenCalledWith(
+				'state-token',
+				expect.objectContaining({ requestedScope: 'read write' }),
+			);
+		});
+
 		it('should generate auth URI without dynamic client registration', async () => {
 			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
 			const mockGetUri = vi.fn().mockReturnValue({
