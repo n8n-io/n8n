@@ -55,12 +55,12 @@ deadline, or accept a resume request, or do both.
    same status-conditioned update that every other transition uses. Only the
    firing mechanism belongs to the sweep. The step row holds the deadline in all
    cases.
-5. **Resume requests arrive on a control-plane route that always accepts them.**
-   The resume URL holds the execution id and a signed resume token
-   (ADR-20260904-resume-urls-carry-a-derived-token). The control plane sends the
-   request to the data-plane resolve endpoint. The data plane verifies the
-   token. The data plane then validates the request against the waiting step.
-   The engine does not register wait channels with the control plane.
+5. **The engine does not register wait channels with the control plane.** A
+   waiting step is discoverable from its own row, so the control plane needs no
+   copy of the wait state. A resume request therefore reaches a data-plane
+   endpoint that always accepts it, and the data plane validates the request
+   against the waiting step. How a request authorizes itself is a separate
+   decision.
 6. **The execution stores a `waiting` status.** An execution reports `waiting`
    when every step it still owes is suspended. It reports `running` when one of
    its steps can still run. The step rows decide the status, and the execution
@@ -71,8 +71,9 @@ deadline, or accept a resume request, or do both.
 ## How the design doc's model maps onto this one
 
 The detailed design, §3.3, sketches a `WaitStepConfig` with an `until` of four
-kinds, an optional `action`, and a `timeout`. This ADR keeps the intent and needs fewer
-parts. The mapping matters, because the doc is what the team reviewed.
+kinds, an optional `action`, and a `timeout`. This ADR keeps the intent and
+needs fewer parts. The mapping matters, because the doc is what the team
+reviewed.
 
 - **`duration` and `timestamp` both become a deadline.** The shim resolves a
   duration to an absolute instant, because v1 gives it a `Date` and not a
@@ -81,7 +82,7 @@ parts. The mapping matters, because the doc is what the team reviewed.
   differ by who registers the wait: a webhook registers a path with the control
   plane, and a signal hands out an opaque token. Decision 5 registers nothing,
   so the difference disappears. Every resume request reaches the same resolve
-  endpoint with the execution id and a signed token. The kind of caller changes
+  endpoint with the execution id. The kind of caller changes
   the payload only. A webhook client, a form, and a person who approves a
   message all reach the same endpoint. The resume method of the node reads the
   payload.
@@ -197,5 +198,4 @@ Documentation: Engine 2.0 — Detailed Design, §3.3
 https://app.notion.com/p/n8n/34b5b6e0c94f81feba4bdb59a65d55dc
 Tickets: CAT-2881, CAT-2927, CAT-2928, CAT-2929
 Related ADRs: ADR-20260828-trigger-settlement-before-execution,
-ADR-20260904-store-the-workflow-with-the-execution,
-ADR-20260904-resume-urls-carry-a-derived-token
+ADR-20260904-store-the-workflow-with-the-execution
