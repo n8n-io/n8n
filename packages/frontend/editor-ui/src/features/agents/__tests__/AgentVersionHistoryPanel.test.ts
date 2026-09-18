@@ -210,6 +210,9 @@ describe('AgentVersionHistoryPanel — published-row actions', () => {
 		await flushPromises();
 
 		expect(requestWriteAccessMock).toHaveBeenCalledTimes(1);
+		expect(requestWriteAccessMock.mock.invocationCallOrder[0]).toBeLessThan(
+			versionHistoryMock.revertToVersion.mock.invocationCallOrder[0],
+		);
 	});
 });
 
