@@ -210,6 +210,15 @@ export class AgentRepository extends Repository<Agent> {
 		return await this.exists({ where: { id, projectId } });
 	}
 
+	/** Lightweight project-id lookup — avoids loading the full agent config. */
+	async getProjectIdById(id: string): Promise<string | null> {
+		const result = await this.findOne({
+			select: ['projectId'],
+			where: { id },
+		});
+		return result?.projectId ?? null;
+	}
+
 	async findByIdsAndProjectId(
 		ids: string[],
 		projectId: string,

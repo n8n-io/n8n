@@ -18,6 +18,7 @@ import {
 	INSTANCE_CHAT_CREDENTIALS,
 } from '../config/test-users';
 import { TestError } from '../Types';
+import { AgentApiHelper } from './agent-api-helper';
 import { CredentialApiHelper } from './credential-api-helper';
 import { DynamicCredentialApiHelper } from './dynamic-credential-api-helper';
 import { ExternalSecretsApiHelper } from './external-secrets-api-helper';
@@ -79,6 +80,7 @@ const DB_TAGS = {
 
 export class ApiHelpers {
 	request: APIRequestContext;
+	agents: AgentApiHelper;
 	workflows: WorkflowApiHelper;
 	webhooks: WebhookApiHelper;
 	metrics: MetricsApiHelper;
@@ -104,6 +106,7 @@ export class ApiHelpers {
 		readonly options: ApiHelpersOptions = {},
 	) {
 		this.request = requestContext;
+		this.agents = new AgentApiHelper(this);
 		this.workflows = new WorkflowApiHelper(this);
 		this.webhooks = new WebhookApiHelper(this);
 		this.metrics = new MetricsApiHelper(this);

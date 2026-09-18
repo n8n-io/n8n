@@ -13,6 +13,7 @@ import {
 import type { Response } from 'express';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { CollaborationService } from '@/collaboration/collaboration.service';
 
 import { AgentTaskService } from './agent-task.service';
 import type { Agent } from './entities/agent.entity';
@@ -23,6 +24,7 @@ export class AgentTasksController {
 	constructor(
 		private readonly agentTaskService: AgentTaskService,
 		private readonly agentRepository: AgentRepository,
+		private readonly collaborationService: CollaborationService,
 	) {}
 
 	private async getAgentOrThrow(agentId: string, projectId: string): Promise<Agent> {
@@ -52,6 +54,14 @@ export class AgentTasksController {
 	): Promise<AgentTaskDto> {
 		const projectId = req.params.projectId;
 		await this.getAgentOrThrow(agentId, projectId);
+		const clientId = req.headers?.['push-ref'];
+		await this.collaborationService.validateAgentWriteLock(
+			req.user.id,
+			clientId,
+			projectId,
+			agentId,
+			'create task for',
+		);
 		return await this.agentTaskService.create(agentId, projectId, payload, {
 			user: req.user,
 			modifiedBy: 'user',
@@ -70,6 +80,14 @@ export class AgentTasksController {
 	): Promise<AgentTaskDto> {
 		const projectId = req.params.projectId;
 		await this.getAgentOrThrow(agentId, projectId);
+		const clientId = req.headers?.['push-ref'];
+		await this.collaborationService.validateAgentWriteLock(
+			req.user.id,
+			clientId,
+			projectId,
+			agentId,
+			'update task for',
+		);
 		return await this.agentTaskService.update(agentId, projectId, taskId, payload, {
 			user: req.user,
 			modifiedBy: 'user',
@@ -87,6 +105,14 @@ export class AgentTasksController {
 	): Promise<{ success: true }> {
 		const projectId = req.params.projectId;
 		await this.getAgentOrThrow(agentId, projectId);
+		const clientId = req.headers?.['push-ref'];
+		await this.collaborationService.validateAgentWriteLock(
+			req.user.id,
+			clientId,
+			projectId,
+			agentId,
+			'delete task for',
+		);
 		await this.agentTaskService.delete(agentId, projectId, taskId, {
 			user: req.user,
 			modifiedBy: 'user',

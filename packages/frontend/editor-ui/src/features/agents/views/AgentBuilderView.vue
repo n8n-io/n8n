@@ -88,6 +88,7 @@ import {
 import { getDebounceTime } from '@n8n/composables/useDebounce';
 import { agentsEventBus, type AgentUpdatedEvent } from '../agents.eventBus';
 import AgentBuilderHeader from '../components/AgentBuilderHeader.vue';
+import AgentCollaborationBanner from '../components/AgentCollaborationBanner.vue';
 import AgentBuilderEditorColumn from '../components/AgentBuilderEditorColumn.vue';
 import AgentPreviewHeader from '../components/AgentPreviewHeader.vue';
 import AgentPreviewChatPage from '../components/AgentPreviewChatPage.vue';
@@ -109,6 +110,8 @@ import type { InstanceAiEmbedSubject } from '@/features/ai/instanceAi/embed/inst
 import AgentBuildingIndicator from '@/features/ai/instanceAi/components/AgentBuildingIndicator.vue';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
+import { useAgentCollaborationStore } from '../stores/agentCollaboration.store';
+import { useActivityDetection } from '@/app/composables/useActivityDetection';
 import { buildAgentChangeRequestPrompt } from '../utils/agent-change-request';
 import { buildAgentFixWithAssistantPrompt } from '../utils/fix-with-assistant';
 import { hasBlockingIssues } from '../utils/validationIssues';
@@ -173,6 +176,8 @@ const uiStore = useUIStore();
 const favoritesStore = useFavoritesStore();
 const mcpStore = useMCPStore();
 const mcp = useMcp();
+const agentCollaborationStore = useAgentCollaborationStore();
+useActivityDetection(agentCollaborationStore);
 const { isCtrlKeyPressed } = useDeviceSupport();
 
 // Gates the Knowledge Base files table (upload, list, sandbox fetch/warmup) on
@@ -287,7 +292,6 @@ watch(aiPanelRef, (panel) => {
 	queuedAiHandoff.value = null;
 	panel.handoff(context, initialDraft);
 });
-const isEditingLocked = computed(() => props.artifactEditingLocked || embeddedAiBuilding.value);
 const aiPanelWidth = useStorage('N8N_AGENT_AI_PANEL_WIDTH', 400);
 function onAiPanelResize({ width }: { width: number }) {
 	aiPanelWidth.value = width;
@@ -325,10 +329,20 @@ const {
 	canDelete: canDeleteAgent,
 	canExecute: canExecuteAgent,
 } = useAgentPermissions(projectId);
-// Combines permission with the build lock: while the AI (the artifact-mode
-// host or the embedded panel) is actively building/mutating this agent,
-// editing is disabled even for a user who otherwise has permission — mirrors
-// the workflow artifact's read-only lock during a build.
+// True while writes from this tab must not reach the backend: the AI is
+// mutating this agent (artifact build lock or the embedded assistant), or
+// another client holds the collaboration write lock (multi-tab / multi-user).
+// Every write path — the editor, the header actions, and the autosave loops —
+// keys off this.
+const isEditingLocked = computed(
+	() =>
+		props.artifactEditingLocked ||
+		embeddedAiBuilding.value ||
+		agentCollaborationStore.shouldBeReadOnly,
+);
+// Combines permission with the lock: while locked, editing is disabled even
+// for a user who otherwise has permission — mirrors the workflow artifact's
+// read-only lock during a build.
 const effectiveCanEditAgent = computed(() => canEditAgent.value && !isEditingLocked.value);
 const canDeletePreviewSession = computed(() => canEditAgent.value);
 
@@ -1098,8 +1112,9 @@ async function handleAutosaveConflict(snapshot: {
 }
 
 async function saveConfig(snapshot: ConfigAutosaveSnapshot): Promise<AutosaveResult> {
-	// The AI may be mutating this agent right now — a save queued just before
-	// the lock engaged must not persist its now-stale full config over it.
+	// The AI or another client may be mutating this agent right now — a save
+	// queued just before the lock engaged must not persist its now-stale full
+	// config over it.
 	if (isEditingLocked.value) return 'skipped';
 	await ensureAgentPersisted();
 	let result;
@@ -1248,6 +1263,8 @@ const mcpAutosave = useAgentConfigAutosave<McpAvailabilitySnapshot>({
 
 function onToggleMcpAccess(enabled: boolean) {
 	if (!agent.value) return;
+	// Acquire the write lock before persisting any change.
+	agentCollaborationStore.requestWriteAccess();
 	mcpAvailabilityOverride.value = enabled;
 	mcpAutosave.scheduleAutosave({
 		type: 'mcp',
@@ -1280,9 +1297,18 @@ async function settleAutosave() {
 	]);
 }
 
+/** Acquire the write lock, then settle pending autosaves before a
+ * revert-to-published. The lock is lazy — acquired on first mutating
+ * action, released on inactivity — matching the workflow pattern. */
+async function beforeRevertToPublished() {
+	agentCollaborationStore.requestWriteAccess();
+	await settleAutosave();
+}
+
 async function flushAutosave() {
-	// Locked means the AI is mutating this agent right now — flushing a
-	// pending edit here would persist a stale full config over its writes.
+	// Locked means the AI or another client is mutating this agent right now —
+	// flushing a pending edit here would persist a stale full config over
+	// their writes.
 	if (isEditingLocked.value) {
 		configAutosave.cancelPendingAutosave();
 		skillAutosave.cancelPendingAutosave();
@@ -1335,19 +1361,14 @@ async function beforePreviewSend() {
 }
 
 // Makes the lock a write boundary rather than only a disabled UI state: drop
-// any autosave queued before the AI started mutating this agent.
-watch(
-	() => isEditingLocked.value,
-	(locked) => {
-		if (!locked) return;
-		configAutosave.cancelPendingAutosave();
-		skillAutosave.cancelPendingAutosave();
-		mcpAutosave.cancelPendingAutosave();
-		// The dropped toggle never persisted — don't leave its optimistic value
-		// showing once the lock releases.
-		mcpAvailabilityOverride.value = null;
-	},
-);
+// any autosave queued before the AI or another client took over this agent.
+watch(isEditingLocked, (locked) => {
+	if (!locked) return;
+	configAutosave.cancelPendingAutosave();
+	skillAutosave.cancelPendingAutosave();
+	mcpAutosave.cancelPendingAutosave();
+	mcpAvailabilityOverride.value = null;
+});
 
 /**
  * Authoritative pre-publish gate for the frontend: flush any pending edit so
@@ -1357,6 +1378,8 @@ watch(
  * re-validates independently, so this is a UX affordance, not the only guard.
  */
 async function refreshValidationBeforePublish(): Promise<boolean> {
+	// Acquire the write lock before publishing — the lock is lazy.
+	agentCollaborationStore.requestWriteAccess();
 	try {
 		await flushAutosave();
 	} catch {
@@ -1379,6 +1402,10 @@ function normalizeAgentMemoryConfig(config: AgentJsonConfig): AgentJsonConfig {
 
 function onConfigFieldUpdate(updates: Partial<AgentJsonConfig>, meta?: { source: 'auto' }) {
 	if (!localConfig.value) return;
+	// Acquire the write lock before persisting any change — the lock is
+	// lazy (acquired on first edit, released on inactivity), matching the
+	// workflow collaboration pattern.
+	agentCollaborationStore.requestWriteAccess();
 	// The persisted validation result no longer reflects the working copy —
 	// Publish must not stay enabled against a result that predates this edit.
 	invalidateConfigValidation();
@@ -1421,6 +1448,8 @@ const caps = useAgentCapabilitiesActions({
 	validationIssues: computed(() => configValidation.value?.issues ?? []),
 	scheduleConfigUpdate: onConfigFieldUpdate,
 	scheduleSkillSave: ({ skillId, skill }) => {
+		// Acquire the write lock before persisting any change.
+		agentCollaborationStore.requestWriteAccess();
 		// The persisted validation result no longer reflects the working copy —
 		// mirrors `onConfigFieldUpdate`'s invalidation before scheduling a config autosave.
 		invalidateConfigValidation();
@@ -2044,6 +2073,13 @@ async function initialize({ preserveState = false }: { preserveState?: boolean }
 			initialized.value = true;
 			void replayPendingExternalRefresh().catch(handleArtifactRefreshError);
 			warmAgentKnowledgeSandboxForPage();
+			// Acquire the collaboration write lock for the first opener. Only the
+			// standalone builder participates in multi-tab/multi-user locking —
+			// artifact mode is the AI builder, which has its own lock, and the
+			// standalone preview has no editing controls.
+			if (!isArtifactMode.value && !isStandalonePreview.value && !isUnsaved.value) {
+				void agentCollaborationStore.initialize(projectId.value, agentId.value);
+			}
 		}
 	}
 }
@@ -2074,7 +2110,29 @@ watch(
 	{ immediate: true },
 );
 
-onBeforeUnmount(() => {
+// Builder and preview share the same component, so switching between them
+// does not unmount and release the write lock. Release it when entering
+// preview (no editing controls) and reacquire when returning to the builder.
+watch(isStandalonePreview, (isPreview, wasPreview) => {
+	if (isPreview === wasPreview || isArtifactMode.value) return;
+	if (isPreview) {
+		agentCollaborationStore.terminate();
+	} else if (initialized.value && !isUnsaved.value) {
+		void agentCollaborationStore.initialize(projectId.value, agentId.value);
+	}
+});
+
+// Browser tab close does not run Vue's onBeforeUnmount, so the collaboration
+// lock would linger until its TTL expires. Release it during beforeunload
+// while the WebSocket is still alive to deliver the agentClosed message.
+// terminate() is idempotent, so a double call with onBeforeUnmount is safe.
+useEventListener(window, 'beforeunload', () => {
+	if (!isArtifactMode.value && !isStandalonePreview.value) {
+		agentCollaborationStore.terminate();
+	}
+});
+
+onBeforeUnmount(async () => {
 	disposed = true;
 	latestSessionsFetchRequestId++;
 	agentsEventBus.off('agentUpdated', onExternalAgentUpdated);
@@ -2083,7 +2141,21 @@ onBeforeUnmount(() => {
 	clearTimeout(externalRefreshTimer);
 	clearExternalUpdate();
 	sessionsStore.stopAutoRefresh();
-	void flushAutosave().catch(() => {});
+	// Drain pending saves before releasing the write lock so in-flight
+	// writes land while this tab still holds the lock. Without this,
+	// terminate() releases the lock immediately and the backend accepts
+	// the queued saves after release — a new writer or Instance AI mutation
+	// can then be overwritten by stale config or MCP state.
+	if (!isArtifactMode.value) {
+		try {
+			await flushAutosave();
+		} catch {
+			// best-effort flush; the lock is still released below
+		}
+		agentCollaborationStore.terminate();
+	} else {
+		void flushAutosave().catch(() => {});
+	}
 });
 
 // If the user is on Preview before the sessions list finishes loading, latch onto
@@ -2311,7 +2383,7 @@ function onSwitchAgent(nextAgentId: string) {
 			:project-name="projectName"
 			:header-actions="headerActions"
 			:save-status="saveStatus"
-			:before-revert-to-published="settleAutosave"
+			:before-revert-to-published="beforeRevertToPublished"
 			:artifact-mode="isArtifactMode"
 			:editing-locked="isEditingLocked"
 			:config-validation-status="configValidation?.status ?? null"
@@ -2329,6 +2401,7 @@ function onSwitchAgent(nextAgentId: string) {
 			@switch-agent="onSwitchAgent"
 			@toggle-instance-ai="toggleAiPanel"
 		/>
+		<AgentCollaborationBanner v-if="!isArtifactMode" />
 		<div :class="$style.externalUpdateNotice" role="status" aria-live="polite" aria-atomic="true">
 			<N8nCanvasPill
 				v-if="recentExternalUpdate"
@@ -2466,6 +2539,7 @@ function onSwitchAgent(nextAgentId: string) {
 						Boolean(agent?.activeVersionId) && agent?.versionId !== agent?.activeVersionId
 					"
 					:agent-name="agent?.name ?? agentName"
+					:editing-locked="isEditingLocked"
 					@close="onCloseVersionHistory"
 					@reverted="onReverted"
 					@published="onPublished"
