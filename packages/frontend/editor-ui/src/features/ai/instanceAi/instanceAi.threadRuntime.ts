@@ -72,6 +72,7 @@ import {
 } from './instanceAi.liveRunState';
 import { isInstanceAiThreadSource } from './constants';
 import { resolvePlanTasks } from './planReview.utils';
+import type { InstanceAiDraftMention } from './mentions/instanceAiMentions.types';
 
 /** The plan review the composer is currently collecting feedback for. */
 export interface PendingPlanReview {
@@ -422,6 +423,7 @@ export function createThreadRuntime(
 
 	// --- Reactive state ---
 	const messages = ref<InstanceAiMessage[]>([]);
+	const draftMentions = ref<InstanceAiDraftMention[]>([]);
 	const projectId = ref<string | undefined>(initialProjectId);
 	const activeRunId = ref<string | null>(null);
 	const archivedWorkflowIds = ref<Set<string>>(new Set());
@@ -443,6 +445,9 @@ export function createThreadRuntime(
 	const seenEventIds = new Set<number>();
 	const amendContext = ref<{ agentId: string; role: string } | null>(null);
 	const updatingPlanRequestIds = reactive(new Set<string>());
+	function setDraftMentions(mentions: readonly InstanceAiDraftMention[]): void {
+		draftMentions.value = [...mentions];
+	}
 
 	// Workflow + execution the editor was showing at hand-off, to load once when
 	// the artifact first opens. Transient (never persisted): set by the editor
@@ -1136,6 +1141,7 @@ export function createThreadRuntime(
 		hydrationPromise = null;
 		hydrationStatus.value = 'idle';
 		messages.value = [];
+		draftMentions.value = [];
 		archivedWorkflowIds.value = new Set();
 		latestTasks.value = null;
 		latestSetupItems.value = null;
@@ -1597,6 +1603,7 @@ export function createThreadRuntime(
 
 		// state refs
 		messages,
+		draftMentions,
 		projectId,
 		activeRunId,
 		archivedWorkflowIds,
@@ -1632,6 +1639,7 @@ export function createThreadRuntime(
 
 		// actions
 		setPendingHandoff,
+		setDraftMentions,
 		consumePendingHandoff,
 		pendingWorkflowAttachment,
 		setPendingWorkflowAttachment,

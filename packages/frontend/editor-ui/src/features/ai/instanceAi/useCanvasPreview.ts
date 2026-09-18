@@ -26,6 +26,8 @@ export interface ArtifactTab {
 	pending?: boolean;
 	/** The AI is actively mutating this artifact right now. */
 	building?: boolean;
+	/** The artifact exists only because the current composer draft references it. */
+	temporary?: boolean;
 }
 
 const ARTIFACT_ICON_MAP: Record<string, IconName> = {
@@ -104,6 +106,23 @@ export function useCanvasPreview({
 					building: buildingArtifactIds.value.has(entry.id),
 				});
 			}
+		}
+
+		for (const mention of thread.draftMentions) {
+			const workflowId = mention.target.workflowId;
+			if (result.some((tab) => tab.type === 'workflow' && tab.id === workflowId)) continue;
+			const workflowName =
+				mention.attachment.type === 'workflow'
+					? mention.attachment.name
+					: mention.attachment.workflowName;
+			result.push({
+				id: workflowId,
+				type: 'workflow',
+				name: workflowName ?? mention.parentLabel ?? mention.label,
+				icon: ARTIFACT_ICON_MAP.workflow,
+				temporary: true,
+				building: buildingArtifactIds.value.has(workflowId),
+			});
 		}
 
 		if (linkedAgent && !result.some((tab) => tab.id === linkedAgent.agentId)) {
@@ -292,12 +311,24 @@ export function useCanvasPreview({
 	// Only acts when there ARE tabs but the selected one is missing (i.e. it was removed).
 	// Skips when tabs are empty to avoid a race where the registry hasn't been populated yet.
 
+	let previousArtifactTabs: ArtifactTab[] = [];
 	watch(allArtifactTabs, (tabs) => {
-		if (activeTabId.value === undefined || tabs.length === 0) return;
+		if (activeTabId.value === undefined) {
+			previousArtifactTabs = tabs;
+			return;
+		}
 		const stillExists = tabs.some((t) => t.id === activeTabId.value);
 		if (!stillExists) {
-			activeTabId.value = tabs[0].id;
+			if (tabs[0]) {
+				activeTabId.value = tabs[0].id;
+			} else if (
+				previousArtifactTabs.some((tab) => tab.id === activeTabId.value && tab.temporary)
+			) {
+				activeTabId.value = undefined;
+				setPreviewOpen(false);
+			}
 		}
+		previousArtifactTabs = tabs;
 	});
 
 	// --- Auto-open canvas when AI creates/modifies a workflow ---

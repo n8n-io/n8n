@@ -44,3 +44,20 @@ export type InstanceAiMentionSource =
 			groupName: string;
 			nodes: InstanceAiMentionNode[];
 	  };
+
+export type InstanceAiMentionUnavailableReason =
+	| 'selected'
+	| 'node-unavailable'
+	| 'group-unavailable'
+	| 'group-too-large';
+
+export interface InstanceAiMentionCandidate {
+	key: string;
+	kind: InstanceAiMentionTarget['kind'];
+	label: string;
+	parentLabel?: string;
+	workflowId: string;
+	source?: InstanceAiMentionSource;
+	node?: InstanceAiMentionNode;
+	unavailableReason?: InstanceAiMentionUnavailableReason;
+}

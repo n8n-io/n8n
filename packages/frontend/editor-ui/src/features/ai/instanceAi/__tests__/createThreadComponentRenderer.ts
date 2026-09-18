@@ -3,6 +3,7 @@ import { defineComponent, h, reactive, ref, type Component } from 'vue';
 import { createComponentRenderer, type RenderOptions } from '@/__tests__/render';
 import { provideThread, useInstanceAiStore, type ThreadRuntime } from '../instanceAi.store';
 import type { FrontendModuleSettings, InstanceAiMessage } from '@n8n/api-types';
+import type { InstanceAiDraftMention } from '../mentions/instanceAiMentions.types';
 import {
 	USER_TYPED_MESSAGE,
 	type InstanceAiMessageAuthorship,
@@ -16,6 +17,8 @@ export function makeThread(): ThreadRuntime {
 	const thread = reactive({
 		id: 'thread-1',
 		messages: [] as InstanceAiMessage[],
+		projectId: 'project-1',
+		draftMentions: [] as InstanceAiDraftMention[],
 		hasMessages: false,
 		sseState: 'connected',
 		isStreaming: false,
@@ -32,6 +35,7 @@ export function makeThread(): ThreadRuntime {
 		linkableResourceNameIndex: new Map(),
 		activeArtifactId: undefined,
 		setActiveArtifactId: vi.fn(),
+		setDraftMentions: vi.fn(),
 		feedbackByResponseId: {},
 		rateableResponseId: null,
 		pendingConfirmations: [],
@@ -59,6 +63,9 @@ export function makeThread(): ThreadRuntime {
 	});
 	thread.setActiveArtifactId = vi.fn((id) => {
 		thread.activeArtifactId = id;
+	});
+	thread.setDraftMentions = vi.fn((mentions) => {
+		thread.draftMentions = [...mentions];
 	});
 	thread.setPendingWorkflowAttachment = vi.fn((value) => {
 		thread.pendingWorkflowAttachment = value;
@@ -98,8 +105,14 @@ export const InstanceAiInputStub = defineComponent({
 		isSubmitting: { type: Boolean, required: false },
 		isWorkflowBuilderAvailable: { type: Boolean, required: false },
 		contextChip: { type: Object, required: false },
+		enableMentions: { type: Boolean, required: false },
+		projectId: { type: String, required: false },
+		draftMentions: { type: Array, required: false },
+		durableWorkflowIds: { type: Set, required: false },
+		buildingWorkflowIds: { type: Set, required: false },
+		reservedAttachmentCount: { type: Number, required: false },
 	},
-	emits: ['submit', 'dismiss-context-chip'],
+	emits: ['submit', 'dismiss-context-chip', 'update:draftMentions', 'mention-workflow-selected'],
 	setup(props, { emit, expose }) {
 		const inputDraft = ref(inputState.initialDraft);
 		const hasAttachments = ref(inputState.hasAttachments);

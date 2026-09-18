@@ -809,8 +809,10 @@ async function persistTestAgentOfferDismissal(agentId: string) {
 			>
 				<InstanceAiConversation
 					ref="conversation"
+					enable-mentions
 					@thread-missing="onThreadMissing"
 					@agent-attachment-restored="onAgentAttachmentRestored"
+					@mention-workflow-selected="preview.openWorkflowPreview"
 				>
 					<template #above-input>
 						<InstanceAiSetupPanel

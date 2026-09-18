@@ -1,8 +1,10 @@
 <script lang="ts" setup>
 import { computed, nextTick, onBeforeUnmount, ref, watch, type Component } from 'vue';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import { N8nIcon, N8nIconButton, N8nTag } from '@n8n/design-system';
+import { N8nIcon, N8nIconButton, N8nTag, N8nTooltip } from '@n8n/design-system';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
+import { useTextMention } from '@n8n/composables/useTextMention';
+import { useToast } from '@n8n/composables/useToast';
 import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
 import { EXTENDED_PROMPT_MAX_LENGTH } from '@/features/ai/shared/constants';
 import AttachmentPreview from './AttachmentPreview.vue';
@@ -11,6 +13,7 @@ import InstanceAiInputMenu from './InstanceAiInputMenu.vue';
 import { convertFileToBinaryData } from '@/app/utils/fileUtils';
 import {
 	base64EncodedSize,
+	INSTANCE_AI_MAX_ATTACHMENTS,
 	type InstanceAiAttachment,
 	type InstanceAiResourceAttachment,
 } from '@n8n/api-types';
@@ -25,6 +28,16 @@ import {
 	type InstanceAiPrefillTypeReported,
 } from '../prefills';
 import { mergeNodeSets } from '../utils/buildNodesAttachment';
+import { useIsInstanceAiMentionsEnabled } from '../composables/useIsInstanceAiMentionsEnabled';
+import { useIsNodeContextEnabled } from '../composables/useIsNodeContextEnabled';
+import InstanceAiMentionChip from '../mentions/InstanceAiMentionChip.vue';
+import InstanceAiMentionPicker from '../mentions/InstanceAiMentionPicker.vue';
+import { buildDraftMention } from '../mentions/buildMentionAttachment';
+import { useInstanceAiMentionCatalog } from '../mentions/useInstanceAiMentionCatalog';
+import type {
+	InstanceAiDraftMention,
+	InstanceAiMentionCandidate,
+} from '../mentions/instanceAiMentions.types';
 
 type AmendContext = { agentId: string; role: string } | null;
 type SuggestionPromptPayload =
@@ -60,6 +73,11 @@ type ActivePrefill = {
 	prefillType: InstanceAiPrefillTypeReported;
 	prefillId?: string;
 };
+interface SubmittedDraft {
+	files: File[];
+	resources: InstanceAiResourceAttachment[];
+	mentions: InstanceAiDraftMention[];
+}
 const SUGGESTIONS_TRANSITION_DURATION = { enter: 450, leave: 320 };
 const DEFAULT_AUTOSIZE_ROWS = 3;
 const DEFAULT_MAX_AUTOSIZE_ROWS = 6;
@@ -89,6 +107,12 @@ const props = withDefaults(
 		submitLabel?: string;
 		submitActiveRequiresFocus?: boolean;
 		contextChip?: ContextChip | null;
+		enableMentions?: boolean;
+		projectId?: string;
+		draftMentions?: readonly InstanceAiDraftMention[];
+		durableWorkflowIds?: ReadonlySet<string>;
+		buildingWorkflowIds?: ReadonlySet<string>;
+		reservedAttachmentCount?: number;
 	}>(),
 	{
 		isStreaming: false,
@@ -104,6 +128,12 @@ const props = withDefaults(
 		submitLabel: undefined,
 		submitActiveRequiresFocus: false,
 		contextChip: null,
+		enableMentions: false,
+		projectId: undefined,
+		draftMentions: () => [],
+		durableWorkflowIds: () => new Set<string>(),
+		buildingWorkflowIds: () => new Set<string>(),
+		reservedAttachmentCount: 0,
 	},
 );
 
@@ -126,9 +156,12 @@ const emit = defineEmits<{
 	// empty state can pause its cycling placeholders only once the user types
 	// (auto-focus on mount must NOT pause the cycle).
 	'content-change': [hasContent: boolean];
+	'update:draftMentions': [mentions: InstanceAiDraftMention[]];
+	'mention-workflow-selected': [workflowId: string];
 }>();
 
 const i18n = useI18n();
+const toast = useToast();
 const promptSuggestionsTelemetry = useInstanceAiPromptSuggestionsTelemetry();
 const instanceAiStore = useInstanceAiStore();
 const inputText = ref('');
@@ -240,7 +273,16 @@ const isBusy = computed(() =>
 const hasNonWhitespaceDraftText = computed(() => inputText.value.trim().length > 0);
 const isInputVisuallyEmpty = computed(() => inputText.value.length === 0);
 const hasAttachments = computed(
-	() => attachedFiles.value.length > 0 || attachedResources.value.length > 0,
+	() =>
+		attachedFiles.value.length > 0 ||
+		attachedResources.value.length > 0 ||
+		props.draftMentions.length > 0,
+);
+const composerAttachmentCount = computed(
+	() => attachedFiles.value.length + attachedResources.value.length + props.draftMentions.length,
+);
+const outgoingAttachmentCount = computed(
+	() => composerAttachmentCount.value + props.reservedAttachmentCount,
 );
 // Fed to the composer so its size guard can account for what is already staged.
 // Summed per file after encoding — base64 pads each file individually, so encoding
@@ -255,11 +297,76 @@ const isGatedBySetup = computed(
 	() => props.isAwaitingConfirmation || !props.isWorkflowBuilderAvailable,
 );
 const canSubmit = computed(() =>
-	canSubmitMessage(
-		inputText.value.trim(),
-		attachedFiles.value.length + attachedResources.value.length,
-	),
+	canSubmitMessage(inputText.value.trim(), outgoingAttachmentCount.value),
 );
+
+const mentionsFlagEnabled = useIsInstanceAiMentionsEnabled();
+const nodeContextEnabled = useIsNodeContextEnabled();
+const mentionUiEnabled = computed(
+	() => props.enableMentions && mentionsFlagEnabled.value && Boolean(props.projectId),
+);
+const mentionResults = ref<InstanceAiMentionCandidate[]>([]);
+const mention = useTextMention({
+	results: mentionResults,
+	getResultId: (candidate) => candidate.key,
+	isResultDisabled: (candidate) => !candidate.source || Boolean(candidate.unavailableReason),
+});
+const mentionCatalog = useInstanceAiMentionCatalog({
+	enabled: mentionUiEnabled,
+	projectId: () => props.projectId,
+	isOpen: mention.isOpen,
+	query: mention.query,
+	durableWorkflowIds: () => props.durableWorkflowIds,
+	draftMentions: () => props.draftMentions,
+	buildingWorkflowIds: () => props.buildingWorkflowIds,
+	nodeContextEnabled,
+});
+watch(
+	() => mentionCatalog.visibleCandidates.value,
+	(candidates) => {
+		mentionResults.value = candidates;
+	},
+	{ immediate: true },
+);
+watch(
+	[mentionUiEnabled, isBusy, isGatedBySetup, () => props.isAwaitingPlanReview],
+	([enabled, busy, gated, planReview]) => {
+		if (!enabled || busy || gated || planReview) mention.close();
+	},
+);
+
+const mentionLimitReason = computed<'mentions' | 'attachments' | undefined>(() => {
+	if (props.draftMentions.length >= INSTANCE_AI_MAX_ATTACHMENTS) return 'mentions';
+	if (outgoingAttachmentCount.value >= INSTANCE_AI_MAX_ATTACHMENTS) return 'attachments';
+	return undefined;
+});
+const mentionButtonDisabled = computed(
+	() =>
+		isBusy.value ||
+		isGatedBySetup.value ||
+		props.isAwaitingPlanReview ||
+		mentionCatalog.availability.value === 'empty' ||
+		Boolean(mentionLimitReason.value),
+);
+const mentionButtonTooltip = computed(() =>
+	mentionCatalog.availability.value === 'empty'
+		? i18n.baseText('instanceAi.mentions.button.emptyProject')
+		: i18n.baseText('instanceAi.mentions.button.label'),
+);
+const mentionTextareaAttributes = computed(() => {
+	if (!mentionUiEnabled.value) return undefined;
+	const highlighted = mention.highlightedId.value;
+	return {
+		role: 'combobox' as const,
+		'aria-expanded': mention.isOpen.value,
+		'aria-controls': 'instance-ai-mention-listbox',
+		...(highlighted
+			? {
+					'aria-activedescendant': `instance-ai-mention-${highlighted.replace(/[^a-zA-Z0-9_-]/g, '-')}`,
+				}
+			: {}),
+	};
+});
 const canShowSuggestions = computed(
 	() =>
 		Boolean(props.suggestions?.length) &&
@@ -370,6 +477,7 @@ function resetDraftComposer({ keepAttachments = false } = {}) {
 /** The single submission gate — `canSubmit` is this predicate over the draft. */
 function canSubmitMessage(message: string, attachmentCount = 0) {
 	if (isBusy.value || isGatedBySetup.value) return false;
+	if (attachmentCount > INSTANCE_AI_MAX_ATTACHMENTS) return false;
 	// Plan feedback travels as a plain string, so an attachment cannot carry it.
 	if (props.isAwaitingPlanReview) return message.length > 0;
 	return message.length > 0 || attachmentCount > 0;
@@ -398,15 +506,19 @@ function restoreSubmittedDraft(
 	message: string,
 	files: File[],
 	resources: InstanceAiResourceAttachment[],
+	mentions: InstanceAiDraftMention[],
 	prefill: ActivePrefill | null,
 ) {
 	const restorePrefill = () => {
 		activePrefill.value = prefill ? { ...prefill } : null;
 	};
-	if (isDirty()) {
-		// Dirty only because something was attached after the send: the text slot is
-		// still free, so give the draft back and leave the new attachments alone.
-		if (inputText.value.trim()) return false;
+	if (inputText.value.trim()) return false;
+	const submittedMentionKeys = new Set(mentions.map((mention) => mention.key));
+	const hasNewAttachments = attachedFiles.value.length > 0 || attachedResources.value.length > 0;
+	const hasNewMentions = props.draftMentions.some(
+		(mention) => !submittedMentionKeys.has(mention.key),
+	);
+	if (hasNewAttachments || hasNewMentions) {
 		inputText.value = message;
 		restorePrefill();
 		return true;
@@ -415,6 +527,7 @@ function restoreSubmittedDraft(
 	restorePrefill();
 	attachedFiles.value = [...files];
 	attachedResources.value = [...resources];
+	emit('update:draftMentions', [...mentions]);
 	return true;
 }
 
@@ -427,6 +540,11 @@ function submitComposerMessage(
 	message: string,
 	attachments: InstanceAiAttachment[] | undefined,
 	prefill: ActivePrefill | null,
+	draft: SubmittedDraft = {
+		files: [...attachedFiles.value],
+		resources: [...attachedResources.value],
+		mentions: [...props.draftMentions],
+	},
 ) {
 	if (!canSubmitMessage(message, attachments?.length ?? 0)) {
 		return;
@@ -452,12 +570,10 @@ function submitComposerMessage(
 
 	trackSelectedSuggestionSubmitted(message);
 
-	const submittedFiles = [...attachedFiles.value];
-	const submittedResources = [...attachedResources.value];
 	emitSubmittedMessage(
 		message,
 		attachments,
-		() => restoreSubmittedDraft(message, submittedFiles, submittedResources, prefill),
+		() => restoreSubmittedDraft(message, draft.files, draft.resources, draft.mentions, prefill),
 		resolveAuthorship(message, prefill),
 	);
 	resetDraftComposer();
@@ -484,7 +600,7 @@ async function handleSubmit() {
 	// Read with the text: the file conversion below awaits, and an edit during it
 	// would otherwise pair this message with the next pre-fill's authorship.
 	const prefill = activePrefill.value;
-	if (!canSubmitMessage(text, attachedFiles.value.length + attachedResources.value.length)) {
+	if (!canSubmitMessage(text, outgoingAttachmentCount.value)) {
 		return;
 	}
 
@@ -494,21 +610,107 @@ async function handleSubmit() {
 		return;
 	}
 
-	const fileAttachments: InstanceAiAttachment[] = attachedFiles.value.length
-		? (await Promise.all(attachedFiles.value.map(convertFileToBinaryData))).map((b) => ({
+	const draft: SubmittedDraft = {
+		files: [...attachedFiles.value],
+		resources: [...attachedResources.value],
+		mentions: [...props.draftMentions],
+	};
+	const fileAttachments: InstanceAiAttachment[] = draft.files.length
+		? (await Promise.all(draft.files.map(convertFileToBinaryData))).map((b) => ({
 				type: 'file' as const,
 				data: b.data,
 				mimeType: b.mimeType,
 				fileName: b.fileName ?? 'unnamed',
 			}))
 		: [];
-	const attachments = [...fileAttachments, ...attachedResources.value];
+	const attachments = [
+		...fileAttachments,
+		...draft.resources,
+		...draft.mentions.map((draftMention) => draftMention.attachment),
+	];
 
-	submitComposerMessage(text, attachments.length ? attachments : undefined, prefill);
+	submitComposerMessage(text, attachments.length ? attachments : undefined, prefill, draft);
 }
 
 function removeResource(index: number) {
 	attachedResources.value = attachedResources.value.filter((_, i) => i !== index);
+}
+
+function canStartMention(): boolean {
+	return (
+		mentionUiEnabled.value &&
+		!isBusy.value &&
+		!isGatedBySetup.value &&
+		!props.isAwaitingPlanReview &&
+		mentionCatalog.availability.value !== 'empty' &&
+		!mentionLimitReason.value
+	);
+}
+
+function handleMentionInput(event: Event): void {
+	if (!canStartMention()) {
+		mention.close();
+		return;
+	}
+	const target = event.target;
+	if (!(target instanceof HTMLTextAreaElement)) return;
+	mention.handleTextInput(target.value, target.selectionStart, target.selectionEnd);
+}
+
+function handleMentionSelectionChange(selection: { start: number; end: number }): void {
+	mention.handleSelectionChange(inputText.value, selection.start, selection.end);
+}
+
+function handleMentionCompositionStart(): void {
+	if (mentionUiEnabled.value) mention.startComposition();
+}
+
+function handleMentionCompositionEnd(event: CompositionEvent): void {
+	const target = event.target;
+	if (!(target instanceof HTMLTextAreaElement) || !canStartMention()) return;
+	mention.endComposition(target.value, target.selectionStart, target.selectionEnd);
+}
+
+function handleMentionKeydown(event: KeyboardEvent): void {
+	const action = mention.handleKeydown(event);
+	if (action?.type === 'select') selectMention(action.result);
+}
+
+function openMentionPickerFromButton(): void {
+	if (!canStartMention()) return;
+	const selection = chatInputRef.value?.getSelection();
+	mention.openFromButton(
+		selection?.start ?? inputText.value.length,
+		selection?.end ?? inputText.value.length,
+	);
+}
+
+function handleMentionPickerOpen(open: boolean): void {
+	if (!open) mention.close();
+	else if (!mention.isOpen.value) openMentionPickerFromButton();
+}
+
+function selectMention(candidate: InstanceAiMentionCandidate): void {
+	const source = candidate.source;
+	const origin = mention.origin.value;
+	if (!source || !origin || mentionLimitReason.value) return;
+	const edit = mention.applySelection(inputText.value, candidate.label);
+	if (!edit) return;
+
+	inputText.value = edit.value;
+	emit('update:draftMentions', [...props.draftMentions, buildDraftMention(source, origin)]);
+	if (source.kind === 'workflow') emit('mention-workflow-selected', source.workflowId);
+	void nextTick(() => {
+		chatInputRef.value?.setSelection(edit.selectionStart, edit.selectionEnd);
+		chatInputRef.value?.focus();
+	});
+}
+
+function removeMention(key: string): void {
+	emit(
+		'update:draftMentions',
+		props.draftMentions.filter((draftMention) => draftMention.key !== key),
+	);
 }
 
 watch(
@@ -518,6 +720,10 @@ watch(
 		const consumed = instanceAiStore.consumePendingAttachments();
 		for (const attachment of consumed) {
 			if (attachment.type === 'file') continue;
+			if (outgoingAttachmentCount.value >= INSTANCE_AI_MAX_ATTACHMENTS) {
+				showAttachmentLimit();
+				continue;
+			}
 			if (attachment.type === 'nodes') {
 				const existing = attachedResources.value.find(
 					(a): a is Extract<InstanceAiResourceAttachment, { type: 'nodes' }> =>
@@ -546,7 +752,19 @@ function handleTabAutocomplete() {
 }
 
 function handleFilesSelected(files: File[]) {
+	const remaining = INSTANCE_AI_MAX_ATTACHMENTS - outgoingAttachmentCount.value;
+	if (files.length > remaining) {
+		showAttachmentLimit();
+		return;
+	}
 	attachedFiles.value.push(...files);
+}
+
+function showAttachmentLimit() {
+	toast.showError(
+		new Error(i18n.baseText('instanceAi.mentions.limit.attachments')),
+		i18n.baseText('generic.error'),
+	);
 }
 
 function handleFileRemove(file: File) {
@@ -679,10 +897,16 @@ const resizable = computed(() => {
 			:show-attach="!props.isAwaitingPlanReview"
 			:show-attach-button="false"
 			:attached-encoded-bytes="attachedEncodedBytes"
+			:textarea-attributes="mentionTextareaAttributes"
 			@submit="handleSubmit"
 			@stop="handleStop"
 			@tab="handleTabAutocomplete"
 			@files-selected="handleFilesSelected"
+			@input="handleMentionInput"
+			@keydown="handleMentionKeydown"
+			@compositionstart="handleMentionCompositionStart"
+			@compositionend="handleMentionCompositionEnd"
+			@selection-change="handleMentionSelectionChange"
 		>
 			<template #attachments>
 				<div
@@ -714,6 +938,14 @@ const resizable = computed(() => {
 						</template>
 					</N8nTag>
 				</div>
+				<div v-if="props.draftMentions.length > 0" :class="$style.attachments">
+					<InstanceAiMentionChip
+						v-for="draftMention in props.draftMentions"
+						:key="draftMention.key"
+						:mention="draftMention"
+						@remove="removeMention(draftMention.key)"
+					/>
+				</div>
 				<div v-if="attachedResources.length > 0" :class="$style.attachments">
 					<AttachmentPreview
 						v-for="(attachment, index) in attachedResources"
@@ -739,6 +971,44 @@ const resizable = computed(() => {
 					:disabled="isBusy || isGatedBySetup"
 					@attach-files="chatInputRef?.openFilePicker()"
 				/>
+			</template>
+			<template v-if="mentionUiEnabled" #right-actions>
+				<InstanceAiMentionPicker
+					:open="mention.isOpen.value"
+					:origin="mention.origin.value"
+					:query="mention.query.value"
+					:candidates="mentionCatalog.visibleCandidates.value"
+					:highlighted-id="mention.highlightedId.value"
+					:anchor="chatInputRef?.getTextareaElement()"
+					:availability="mentionCatalog.availability.value"
+					:loading="mentionCatalog.isLoadingWorkflows.value"
+					:error="mentionCatalog.workflowError.value"
+					:has-more="mentionCatalog.hasMoreWorkflows.value"
+					:limit-reason="mentionLimitReason"
+					@update:open="handleMentionPickerOpen"
+					@update:query="mention.setQuery"
+					@highlight="mention.setHighlightedId"
+					@keydown="handleMentionKeydown"
+					@select="selectMention($event)"
+					@retry="mentionCatalog.retry"
+					@load-more="mentionCatalog.loadMore"
+				>
+					<template #trigger>
+						<N8nTooltip as-child :content="mentionButtonTooltip" placement="top">
+							<span>
+								<N8nIconButton
+									variant="ghost"
+									icon="at-sign"
+									icon-size="large"
+									:disabled="mentionButtonDisabled"
+									:aria-label="i18n.baseText('instanceAi.mentions.button.label')"
+									data-test-id="instance-ai-mention-button"
+									@click.stop="openMentionPickerFromButton"
+								/>
+							</span>
+						</N8nTooltip>
+					</template>
+				</InstanceAiMentionPicker>
 			</template>
 		</ChatInputBase>
 		<slot name="footer"></slot>

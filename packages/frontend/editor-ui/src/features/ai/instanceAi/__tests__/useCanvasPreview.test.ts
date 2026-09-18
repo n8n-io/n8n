@@ -7,6 +7,8 @@ import type {
 } from '@n8n/api-types';
 import { useCanvasPreview } from '../useCanvasPreview';
 import type { ResourceEntry } from '../useResourceRegistry';
+import { buildDraftMention } from '../mentions/buildMentionAttachment';
+import type { InstanceAiDraftMention } from '../mentions/instanceAiMentions.types';
 
 // ---------------------------------------------------------------------------
 // Factories
@@ -56,6 +58,7 @@ function createMockThread() {
 	const isHydratingThread = ref(false);
 	const producedArtifacts = ref(new Map<string, ResourceEntry>());
 	const resourceNameIndex = ref(new Map<string, ResourceEntry>());
+	const draftMentions = ref<InstanceAiDraftMention[]>([]);
 	const pendingWorkflowAttachment = ref<{ type: 'workflow'; id: string; name?: string } | null>(
 		null,
 	);
@@ -67,6 +70,7 @@ function createMockThread() {
 		isHydratingThread,
 		producedArtifacts,
 		resourceNameIndex,
+		draftMentions,
 		pendingWorkflowAttachment,
 	});
 }
@@ -165,6 +169,77 @@ describe('useCanvasPreview', () => {
 	});
 
 	describe('allArtifactTabs', () => {
+		test('adds a temporary workflow tab from a draft mention', () => {
+			const ctx = setup();
+			ctx.thread.draftMentions = [
+				buildDraftMention(
+					{ kind: 'workflow', workflowId: 'wf-draft', workflowName: 'Draft workflow' },
+					'typed',
+				),
+			];
+
+			expect(ctx.allArtifactTabs.value).toContainEqual(
+				expect.objectContaining({
+					id: 'wf-draft',
+					name: 'Draft workflow',
+					type: 'workflow',
+					temporary: true,
+				}),
+			);
+		});
+
+		test('uses a node mention owning workflow and prefers a durable tab', () => {
+			const ctx = setup();
+			ctx.thread.draftMentions = [
+				buildDraftMention(
+					{
+						kind: 'node',
+						workflowId: 'wf-1',
+						workflowName: 'Support triage',
+						node: {
+							id: 'node-1',
+							name: 'Route request',
+							type: 'n8n-nodes-base.set',
+							typeVersion: 1,
+						},
+					},
+					'button',
+				),
+			];
+			expect(ctx.allArtifactTabs.value[0]).toMatchObject({
+				id: 'wf-1',
+				name: 'Support triage',
+				temporary: true,
+			});
+
+			registerWorkflow(ctx.thread, 'wf-1', 'Canonical workflow');
+			expect(ctx.allArtifactTabs.value).toHaveLength(1);
+			expect(ctx.allArtifactTabs.value[0]).toMatchObject({
+				id: 'wf-1',
+				name: 'Canonical workflow',
+			});
+			expect(ctx.allArtifactTabs.value[0].temporary).toBeUndefined();
+		});
+
+		test('closes the preview after the final draft-only tab is removed', async () => {
+			const ctx = setup();
+			ctx.thread.draftMentions = [
+				buildDraftMention(
+					{ kind: 'workflow', workflowId: 'wf-draft', workflowName: 'Draft workflow' },
+					'typed',
+				),
+			];
+			await nextTick();
+			ctx.openWorkflowPreview('wf-draft');
+			expect(ctx.isPreviewVisible.value).toBe(true);
+
+			ctx.thread.draftMentions = [];
+			await nextTick();
+
+			expect(ctx.activeTabId.value).toBeUndefined();
+			expect(ctx.isPreviewVisible.value).toBe(false);
+		});
+
 		test('derives tabs from resource registry', () => {
 			const ctx = setup();
 			registerWorkflow(ctx.thread, 'wf-1', 'My Workflow');

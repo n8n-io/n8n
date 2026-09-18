@@ -13,10 +13,11 @@ import { storeToRefs } from 'pinia';
 import { N8nChatMessage, N8nIconButton, N8nScrollArea, N8nText } from '@n8n/design-system';
 import { useScroll } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
-import type {
-	InstanceAiAgentAttachment,
-	InstanceAiAttachment,
-	InstanceAiHandoffContext,
+import {
+	INSTANCE_AI_MAX_ATTACHMENTS,
+	type InstanceAiAgentAttachment,
+	type InstanceAiAttachment,
+	type InstanceAiHandoffContext,
 } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
@@ -33,6 +34,7 @@ import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { isPendingItemFloating } from '../confirmationKinds';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import { useCreditWarningBanner } from '../composables/useCreditWarningBanner';
+import { useBuildingArtifactIds } from '../composables/useBuildingArtifactIds';
 import {
 	clearPendingAgentAttachment,
 	clearPendingWorkflowAttachment as clearStashedWorkflowAttachment,
@@ -70,14 +72,19 @@ import AgentSection from './AgentSection.vue';
 import { collectActiveBuilderAgents, messageHasVisibleContent } from '../builderAgents';
 import CreditWarningBanner from '@/features/ai/assistant/components/Agent/CreditWarningBanner.vue';
 
-const props = defineProps<{
-	/** Runs before every send (e.g. flush a pending autosave). Rejecting cancels the send. */
-	beforeSend?: () => Promise<void>;
-}>();
+const props = withDefaults(
+	defineProps<{
+		/** Runs before every send (e.g. flush a pending autosave). Rejecting cancels the send. */
+		beforeSend?: () => Promise<void>;
+		enableMentions?: boolean;
+	}>(),
+	{ beforeSend: undefined, enableMentions: false },
+);
 
 const emit = defineEmits<{
 	'thread-missing': [];
 	'agent-attachment-restored': [attachment: InstanceAiAgentAttachment];
+	'mention-workflow-selected': [workflowId: string];
 }>();
 
 defineSlots<{
@@ -94,6 +101,7 @@ const settingsStore = useInstanceAiSettingsStore();
 // `isCurrentThreadRuntime()` compares against `store.getRuntime(thread.id)` to detect a
 // disposed/recreated runtime, so an unregistered runtime object would never connect.
 const thread = useThread();
+const buildingWorkflowIds = useBuildingArtifactIds(thread);
 const { showCreditWarning, quotaLocked } = storeToRefs(store);
 const rootStore = useRootStore();
 const i18n = useI18n();
@@ -127,6 +135,19 @@ const currentAgentAttachment = computed<InstanceAiAgentAttachment | null>(() => 
 		...(name ? { name } : {}),
 	};
 });
+const durableWorkflowIds = computed(
+	() =>
+		new Set(
+			[...thread.producedArtifacts.values()]
+				.filter((artifact) => artifact.type === 'workflow')
+				.map((artifact) => artifact.id),
+		),
+);
+const reservedComposerAttachments = computed(
+	() =>
+		Number(currentAgentAttachment.value !== null) +
+		Number(thread.pendingWorkflowAttachment !== null),
+);
 
 // Running builders render in a dedicated bottom section of the conversation.
 // Once a builder finishes it falls out of this list and AgentTimeline renders
@@ -544,6 +565,14 @@ async function handleSubmit(
 	}
 	const submittedAttachments =
 		extraAttachments.length > 0 ? [...(attachments ?? []), ...extraAttachments] : attachments;
+	if ((submittedAttachments?.length ?? 0) > INSTANCE_AI_MAX_ATTACHMENTS) {
+		toast.showError(
+			new Error(i18n.baseText('instanceAi.mentions.limit.attachments')),
+			i18n.baseText('generic.error'),
+		);
+		restoreFailedSubmission(restoreDraft);
+		return;
+	}
 
 	const nodeCount = countAttachedNodes(attachments);
 
@@ -559,6 +588,7 @@ async function handleSubmit(
 				restoreFailedSubmission(restoreDraft);
 				return;
 			}
+			thread.setDraftMentions([]);
 			// Track message-with-nodes only after a successful send, so failed
 			// sends and retries don't inflate the node-count metric.
 			if (nodeCount > 0) {
@@ -814,6 +844,14 @@ defineExpose({
 										:amend-context="thread.amendContext"
 										:context-chip="composerContextChip"
 										:contextual-suggestion="thread.contextualSuggestion"
+										:enable-mentions="props.enableMentions"
+										:project-id="thread.projectId"
+										:draft-mentions="thread.draftMentions"
+										:durable-workflow-ids="durableWorkflowIds"
+										:building-workflow-ids="buildingWorkflowIds"
+										:reserved-attachment-count="reservedComposerAttachments"
+										@update:draft-mentions="thread.setDraftMentions"
+										@mention-workflow-selected="emit('mention-workflow-selected', $event)"
 										@submit="handleSubmit"
 										@stop="handleStop"
 										@dismiss-context-chip="dismissComposerContextChip"
