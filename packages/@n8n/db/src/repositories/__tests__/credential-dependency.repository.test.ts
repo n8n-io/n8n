@@ -175,8 +175,14 @@ describe('addCredentialDependencyExistsFilter', () => {
 
 		const result = addCredentialDependencyExistsFilter(qb as never, filter);
 
+		expect(subQuery.select).toHaveBeenCalledWith('1');
 		expect(subQuery.from).toHaveBeenCalledWith(CredentialDependency, 'cd');
 		expect(subQuery.where).toHaveBeenCalledWith('cd.credentialId = credential.id');
+		// Both dependency conditions must be present, or the filter matches any dependency row.
+		expect(subQuery.andWhere.mock.calls).toEqual([
+			['cd.dependencyType = :dependencyType'],
+			['cd.dependencyId = :dependencyId'],
+		]);
 		expect(qb.andWhere).toHaveBeenCalledWith('EXISTS (SELECT 1 FROM "cd")', filter);
 		expect(result).toBe(qb);
 	});

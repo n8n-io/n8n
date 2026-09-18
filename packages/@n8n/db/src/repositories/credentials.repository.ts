@@ -558,12 +558,18 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 			qb.addSelect('credential.data');
 		}
 
-		// Apply relations
+		// Apply relations, same set as `toFindManyOptions`
 		if (joinRelations && !options.select) {
-			qb.leftJoinAndSelect('credential.shared', 'shared').leftJoinAndSelect(
-				'shared.project',
-				'project',
-			);
+			const relations = options.relations ?? DEFAULT_CREDENTIAL_RELATIONS;
+			if (relations.includes('shared')) {
+				qb.leftJoinAndSelect('credential.shared', 'shared');
+			}
+			if (relations.includes('shared.project')) {
+				qb.leftJoinAndSelect('shared.project', 'project');
+			}
+			if (relations.includes('shared.project.projectRelations')) {
+				qb.leftJoinAndSelect('project.projectRelations', 'projectRelations');
+			}
 		}
 
 		if (options.sortBy) {

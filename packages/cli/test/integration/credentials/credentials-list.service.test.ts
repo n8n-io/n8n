@@ -330,6 +330,17 @@ describe('onlySharedWithMe', () => {
 		expect(result.count).toBe(1);
 	});
 
+	test('admin with includeGlobal also gets globals, paged and counted', async () => {
+		const result = await list(admin, { onlySharedWithMe: true, includeGlobal: true });
+		expect(ids(result.credentials)).toEqual(labels('c01-p1', 'c11-g-p1', 'c12-g', 'c13-g-ftp'));
+		expect(result.count).toBe(4);
+		await expectConsistentPaging(
+			admin,
+			{ onlySharedWithMe: true, includeGlobal: true, listQueryOptions: { sortBy: 'name:asc' } },
+			2,
+		);
+	});
+
 	test('pages consistently for member and admin', async () => {
 		await expectConsistentPaging(
 			memberA,

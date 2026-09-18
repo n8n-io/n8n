@@ -2499,6 +2499,8 @@ describe('CredentialsService', () => {
 
 				await service.getMany(ownerUser, { includeGlobal: true });
 				await service.getMany(memberUser, { includeGlobal: true });
+				// Owners with a sharing filter take the subquery path too
+				await service.getMany(ownerUser, { includeGlobal: true, onlySharedWithMe: true });
 
 				expect(credentialsRepository.findManyAndCount).toHaveBeenCalledWith(
 					expect.objectContaining({ includeGlobal: true }),
@@ -2506,6 +2508,11 @@ describe('CredentialsService', () => {
 				expect(credentialsRepository.getManyAndCountWithSharingSubquery).toHaveBeenCalledWith(
 					memberUser,
 					expect.anything(),
+					expect.objectContaining({ includeGlobal: true }),
+				);
+				expect(credentialsRepository.getManyAndCountWithSharingSubquery).toHaveBeenCalledWith(
+					ownerUser,
+					{ onlySharedWithMe: true },
 					expect.objectContaining({ includeGlobal: true }),
 				);
 			});

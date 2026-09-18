@@ -120,6 +120,8 @@ type Tier = {
 	/** A member of every project in the tier, with `project:editor`. */
 	member: User;
 	credentialIds: string[];
+	/** How many of `credentialIds` are also shared to the member's personal project. */
+	sharedWithMemberCount: number;
 };
 
 describe.runIf(runBenchmarks)('credentials list benchmarks', () => {
@@ -128,6 +130,8 @@ describe.runIf(runBenchmarks)('credentials list benchmarks', () => {
 	let owner: User;
 	const tiers: Tier[] = [];
 	let encryptedData: string;
+	/** Every credential in the corpus; what the owner sees. */
+	let totalCredentials = 0;
 
 	async function bulkInsert<T>(
 		entity: new () => T,
@@ -329,14 +333,21 @@ describe.runIf(runBenchmarks)('credentials list benchmarks', () => {
 		const personalProject = await dataSource
 			.getRepository(Project)
 			.findOneByOrFail({ type: 'personal', creatorId: member.id });
-		for (const credentialsId of credentialIds.slice(0, SHARED_WITH_ME)) {
+		const sharedWithMember = credentialIds.slice(0, SHARED_WITH_ME);
+		for (const credentialsId of sharedWithMember) {
 			sharings.push({ credentialsId, projectId: personalProject.id, role: 'credential:user' });
 		}
 
 		await bulkInsert(CredentialsEntity, credentials);
 		await bulkInsert(SharedCredentials, sharings);
 
-		return { membersPerProject, projectIds, member, credentialIds };
+		return {
+			membersPerProject,
+			projectIds,
+			member,
+			credentialIds,
+			sharedWithMemberCount: sharedWithMember.length,
+		};
 	}
 
 	async function seedGlobals(): Promise<void> {
@@ -390,6 +401,7 @@ describe.runIf(runBenchmarks)('credentials list benchmarks', () => {
 		}
 		await seedGlobals();
 
+		totalCredentials = await dataSource.getRepository(CredentialsEntity).count();
 		const counts = await Promise.all(
 			[UserEntity, Project, ProjectRelation, CredentialsEntity, SharedCredentials].map(
 				async (entity) => await dataSource.getRepository(entity).count(),
@@ -424,7 +436,7 @@ describe.runIf(runBenchmarks)('credentials list benchmarks', () => {
 						}),
 				);
 				reportScenario('member · take=' + TAKE, tier, result);
-				expect(result.returned).toBe(TAKE);
+				expect(result.returned).toBe(Math.min(TAKE, tier.credentialIds.length));
 				expect(result.statements.length).toBeLessThanOrEqual(8);
 			},
 			TEST_TIMEOUT_MS,
@@ -486,7 +498,7 @@ describe.runIf(runBenchmarks)('credentials list benchmarks', () => {
 						}),
 				);
 				reportScenario('member · onlySharedWithMe', tier, result);
-				expect(result.returned).toBe(SHARED_WITH_ME);
+				expect(result.returned).toBe(Math.min(TAKE, tier.sharedWithMemberCount));
 				expect(result.statements.length).toBeLessThanOrEqual(8);
 			},
 			TEST_TIMEOUT_MS,
@@ -517,7 +529,7 @@ describe.runIf(runBenchmarks)('credentials list benchmarks', () => {
 						}),
 				);
 				reportScenario('owner · take=' + TAKE, tier, result);
-				expect(result.returned).toBe(TAKE);
+				expect(result.returned).toBe(Math.min(TAKE, totalCredentials));
 				expect(result.statements.length).toBeLessThanOrEqual(8);
 			},
 			TEST_TIMEOUT_MS,
