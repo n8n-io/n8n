@@ -18,6 +18,7 @@ import {
 	settlementStatusForExecution,
 } from './background/agent-background-job.service';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
+import { readIntegrationMessageContext } from './integrations/integration-message-context';
 import { IntegrationMessageContextService } from './integrations/integration-message-context.service';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 
@@ -152,10 +153,36 @@ export class AgentWorkflowToolResumeService {
 			return;
 		}
 
-		// Reply through the connection the thread actually came in on. An agent with
-		// two connections on one platform would otherwise post into whichever
-		// workspace happened to be found first.
-		const credentialId = await this.originatingCredentialId(agentRun);
+		const checkpoint = await this.checkpointStorage.getStatus(agentRun.runId, agentRun.agentId);
+		if (checkpoint.status !== 'active' || checkpoint.checkpoint.status !== 'suspended') return;
+		const persistence = checkpoint.checkpoint.persistence;
+		if (!persistence) return;
+		let messageContext = readIntegrationMessageContext(persistence);
+		const allowLegacyThreadId = messageContext === undefined;
+		if (messageContext === undefined) {
+			try {
+				messageContext = await this.messageContextService.getLatest(persistence.threadId);
+			} catch (error) {
+				this.logger.warn('Could not read the thread message context for an agent resume', {
+					runId: agentRun.runId,
+					error: error instanceof Error ? error.message : String(error),
+				});
+				messageContext = null;
+			}
+		}
+		const [platform, storedCredentialId] = messageContext?.integrationConnectionId.split(':') ?? [];
+		const matchesPlatform =
+			messageContext?.platform === agentRun.integrationType &&
+			platform === agentRun.integrationType &&
+			!!storedCredentialId;
+		if (!allowLegacyThreadId && !matchesPlatform) {
+			this.logger.warn('Agent resume has no integration reply context', {
+				agentId: agentRun.agentId,
+				runId: agentRun.runId,
+			});
+			return;
+		}
+		const credentialId = matchesPlatform ? storedCredentialId : undefined;
 		const bridge = this.chatIntegrationService.getBridge(
 			agentRun.agentId,
 			agentRun.integrationType,
@@ -178,29 +205,8 @@ export class AgentWorkflowToolResumeService {
 			agentRun.runId,
 			agentRun.toolCallId,
 			resumeData,
+			{ messageContext, allowLegacyThreadId },
 		);
-	}
-
-	/**
-	 * The credential of the connection this thread last exchanged a message on, as
-	 * recorded in the thread's message context. Undefined when unknown, which
-	 * leaves the lookup to fall back to any ingress bridge for the platform.
-	 */
-	private async originatingCredentialId(agentRun: RelatedAgentRun): Promise<string | undefined> {
-		try {
-			const context = await this.messageContextService.getLatest(agentRun.threadId);
-			if (!context || context.platform !== agentRun.integrationType) return undefined;
-			// `integrationConnectionId` is `type` alone for a single-connection agent,
-			// or `type:credentialId` once a credential is bound.
-			const [, credentialId] = context.integrationConnectionId.split(':');
-			return credentialId;
-		} catch (error) {
-			this.logger.warn('Could not read the thread message context for an agent resume', {
-				runId: agentRun.runId,
-				error: error instanceof Error ? error.message : String(error),
-			});
-			return undefined;
-		}
 	}
 
 	/**
