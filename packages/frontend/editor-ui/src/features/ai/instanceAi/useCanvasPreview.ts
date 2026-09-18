@@ -215,13 +215,15 @@ export function useCanvasPreview({
 		if (!agentId) return undefined;
 		return allArtifactTabs.value.find((tab) => tab.type === 'agent' && tab.id === agentId)?.id;
 	});
+	const firstDraftWorkflowId = computed(() => thread.draftMentions[0]?.target.workflowId);
 
 	const initialArtifactId = computed(
 		() =>
 			firstAttachedArtifactId.value ??
 			pendingAgentTabId.value ??
 			initialAgentTabId.value ??
-			thread.pendingWorkflowAttachment?.id,
+			thread.pendingWorkflowAttachment?.id ??
+			firstDraftWorkflowId.value,
 	);
 
 	// Open the arriving resource. Only when nothing is open, so it never steals

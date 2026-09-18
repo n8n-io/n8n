@@ -15,6 +15,7 @@ import { INSTANCE_AI_THREAD_VIEW } from '../constants';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { Project, ProjectListItem } from '@/features/collaboration/projects/projects.types';
 import { defaultModuleSettings } from './createThreadComponentRenderer';
+import { buildDraftMention } from '../mentions/buildMentionAttachment';
 
 const PERSONAL_PROJECT_ID = 'personal-project-id';
 
@@ -281,8 +282,9 @@ const InstanceAiInputStub = defineComponent({
 		isSubmitting: { type: Boolean, required: false },
 		isWorkflowBuilderAvailable: { type: Boolean, required: false },
 		fixedRows: { type: Number, required: false },
+		draftMentions: { type: Array, required: false, default: () => [] },
 	},
-	emits: ['submit'],
+	emits: ['submit', 'update:draftMentions', 'mention-workflow-selected'],
 	setup(props, { emit, expose, slots }) {
 		const i18n = useI18n();
 		const currentText = ref('');
@@ -397,10 +399,34 @@ const InstanceAiInputStub = defineComponent({
 				h(
 					'button',
 					{
+						'data-test-id': 'instance-ai-input-stub-mention-workflow',
+						onClick: () => {
+							const mention = buildDraftMention(
+								{
+									kind: 'workflow',
+									workflowId: 'workflow-1',
+									workflowName: 'Support triage',
+								},
+								'typed',
+							);
+							emit('update:draftMentions', [mention]);
+							emit('mention-workflow-selected', 'workflow-1', 'Support triage ', 15, 15);
+						},
+					},
+					'Mention workflow',
+				),
+				h(
+					'button',
+					{
 						'data-test-id': 'instance-ai-input-stub-submit',
 						onClick: () => submit(currentText.value || 'hello'),
 					},
 					'submit',
+				),
+				h(
+					'span',
+					{ 'data-test-id': 'instance-ai-input-draft-mention-count' },
+					String(props.draftMentions.length),
 				),
 				...(slots.footer?.() ?? []),
 			]);
@@ -1184,6 +1210,53 @@ describe('InstanceAiEmptyView', () => {
 			source: 'assistant_page',
 			origin: 'internal',
 		});
+	});
+
+	it('creates a thread in the selected project for the first workflow mention without sending', async () => {
+		routeQuery.projectId = 'team-project-42';
+		store.syncThread.mockResolvedValue(undefined);
+		const { getByTestId } = renderView();
+
+		await fireEvent.click(getByTestId('instance-ai-input-stub-mention-workflow'));
+		await flushPromises();
+
+		expect(store.syncThread).toHaveBeenCalledWith('thread-placeholder', 'team-project-42', {
+			source: 'assistant_page',
+			origin: 'internal',
+		});
+		expect(store.getOrCreateRuntime).not.toHaveBeenCalled();
+		expect(thread.sendMessage).not.toHaveBeenCalled();
+		expect(replaceMock).toHaveBeenCalledWith({
+			name: INSTANCE_AI_THREAD_VIEW,
+			params: { threadId: 'thread-placeholder' },
+		});
+		const mentionDraftCall = vi
+			.mocked(localStorage.setItem)
+			.mock.calls.find(([key]) => key === 'n8n-instance-ai-mention-draft:thread-placeholder');
+		expect(mentionDraftCall).toBeDefined();
+		expect(JSON.parse(mentionDraftCall?.[1] ?? '{}')).toMatchObject({
+			text: 'Support triage ',
+			selectionStart: 15,
+			selectionEnd: 15,
+			mentions: [{ key: 'workflow:workflow-1' }],
+		});
+	});
+
+	it('keeps the blank-view mention draft when thread creation fails', async () => {
+		store.syncThread.mockRejectedValue(new Error('persist failed'));
+		const { getByTestId } = renderView();
+
+		await fireEvent.click(getByTestId('instance-ai-input-stub-mention-workflow'));
+		await flushPromises();
+
+		expect(getByTestId('instance-ai-input-draft-mention-count')).toHaveTextContent('1');
+		expect(replaceMock).not.toHaveBeenCalled();
+		expect(thread.sendMessage).not.toHaveBeenCalled();
+		expect(localStorage.setItem).not.toHaveBeenCalledWith(
+			'n8n-instance-ai-mention-draft:thread-placeholder',
+			expect.any(String),
+		);
+		expect(showErrorMock).toHaveBeenCalled();
 	});
 
 	it('falls back to the personal project when the ?projectId= query is cleared', async () => {

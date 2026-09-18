@@ -14,6 +14,7 @@ import {
 } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { jsonParse } from 'n8n-workflow';
+import { z } from 'zod';
 
 import type { InstanceAiCredentialContext } from '@/app/composables/useInstanceAiEditorCapability';
 import type { IWorkflowDb } from '@/Interface';
@@ -28,6 +29,8 @@ import {
 	INSTANCE_AI_VIEW,
 } from '../constants';
 import type { InstanceAiEmbedSubject } from '../embed/instanceAiEmbed.types';
+import type { InstanceAiDraftMention } from '../mentions/instanceAiMentions.types';
+import { buildMentionKey } from '../mentions/buildMentionAttachment';
 import { useInstanceAiStore } from '../instanceAi.store';
 import { useInstanceAiReady } from './useInstanceAiAvailability';
 import {
@@ -94,6 +97,31 @@ const pendingWorkflowAttachmentKey = (threadId: string) =>
 	`n8n-instance-ai-workflow-attachment:${threadId}`;
 const pendingRedirectLandingKey = (threadId: string) =>
 	`n8n-instance-ai-redirect-landing:${threadId}`;
+const pendingMentionDraftKey = (threadId: string) => `n8n-instance-ai-mention-draft:${threadId}`;
+
+const instanceAiMentionTargetSchema = z.discriminatedUnion('kind', [
+	z.object({ kind: z.literal('workflow'), workflowId: z.string().min(1) }),
+	z.object({ kind: z.literal('node'), workflowId: z.string().min(1), nodeId: z.string().min(1) }),
+	z.object({
+		kind: z.literal('canvas-group'),
+		workflowId: z.string().min(1),
+		groupId: z.string().min(1),
+	}),
+]);
+const instanceAiDraftMentionSchema = z.object({
+	key: z.string().min(1),
+	target: instanceAiMentionTargetSchema,
+	label: z.string(),
+	parentLabel: z.string().optional(),
+	origin: z.enum(['typed', 'button']),
+	attachment: z.union([instanceAiWorkflowAttachmentSchema, instanceAiNodesAttachmentSchema]),
+});
+const pendingMentionDraftSchema = z.object({
+	text: z.string(),
+	mentions: z.array(instanceAiDraftMentionSchema).max(10),
+	selectionStart: z.number().int().nonnegative(),
+	selectionEnd: z.number().int().nonnegative(),
+});
 
 export interface PendingFirstMessage {
 	message: string;
@@ -105,6 +133,59 @@ export interface PendingFirstMessage {
 	 * deploy wrote — see `consumePendingFirstMessage`.
 	 */
 	authorship: InstanceAiMessageAuthorship;
+}
+
+export interface PendingMentionDraft {
+	text: string;
+	mentions: InstanceAiDraftMention[];
+	selectionStart: number;
+	selectionEnd: number;
+}
+
+function isConsistentDraftMention(mention: InstanceAiDraftMention): boolean {
+	if (mention.key !== buildMentionKey(mention.target)) return false;
+	if (mention.target.kind === 'workflow') {
+		return (
+			mention.attachment.type === 'workflow' && mention.attachment.id === mention.target.workflowId
+		);
+	}
+	if (
+		mention.attachment.type !== 'nodes' ||
+		mention.attachment.workflowId !== mention.target.workflowId
+	) {
+		return false;
+	}
+	if (mention.target.kind === 'node') {
+		const nodeId = mention.target.nodeId;
+		return mention.attachment.sets.some(
+			(set) => set.selectionKind !== 'canvas-group' && set.nodes.some(({ id }) => id === nodeId),
+		);
+	}
+	const groupId = mention.target.groupId;
+	return mention.attachment.sets.some(
+		(set) => set.selectionKind === 'canvas-group' && set.canvasGroupId === groupId,
+	);
+}
+
+export function stashPendingMentionDraft(threadId: string, draft: PendingMentionDraft): void {
+	localStorage.setItem(pendingMentionDraftKey(threadId), JSON.stringify(draft));
+}
+
+export function consumePendingMentionDraft(threadId: string): PendingMentionDraft | null {
+	const raw = localStorage.getItem(pendingMentionDraftKey(threadId));
+	if (!raw) return null;
+	localStorage.removeItem(pendingMentionDraftKey(threadId));
+
+	const parsed = pendingMentionDraftSchema.safeParse(jsonParse(raw, { fallbackValue: undefined }));
+	if (!parsed.success) return null;
+	if (parsed.data.selectionStart > parsed.data.text.length) return null;
+	if (parsed.data.selectionEnd > parsed.data.text.length) return null;
+	if (!parsed.data.mentions.every(isConsistentDraftMention)) return null;
+	return parsed.data;
+}
+
+export function clearPendingMentionDraft(threadId: string): void {
+	localStorage.removeItem(pendingMentionDraftKey(threadId));
 }
 
 export function buildInstanceAiCredentialHandoffContext(
@@ -371,6 +452,7 @@ export function clearPendingThreadHandoff(threadId: string): void {
 	clearPendingRedirectLanding(threadId);
 	clearPendingFirstMessage(threadId);
 	clearPendingDraftAttachment(threadId);
+	clearPendingMentionDraft(threadId);
 }
 
 /** Resolve the personal project a launched thread binds to, loading it on first use. */
@@ -673,16 +755,17 @@ export function useInstanceAiHandoff() {
 		}
 	}
 
-	async function openThreadForDraft(workflow?: {
-		id: string;
-		name?: string;
-		snapshot?: IWorkflowDb;
-	}): Promise<string | null> {
+	async function openThreadForDraft(
+		projectId: string,
+		workflow?: {
+			id: string;
+			name?: string;
+			snapshot?: IWorkflowDb;
+		},
+	): Promise<string | null> {
 		if (handoffInFlight) return null;
 		handoffInFlight = true;
 		try {
-			const projectId = await ensurePersonalProjectId();
-			if (!projectId) return null;
 			const threadId = uuidv4();
 			const launch: InstanceAiThreadLaunch = { source: 'canvas_action_button', origin: 'internal' };
 			try {

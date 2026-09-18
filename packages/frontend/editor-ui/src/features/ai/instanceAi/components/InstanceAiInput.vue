@@ -157,7 +157,12 @@ const emit = defineEmits<{
 	// (auto-focus on mount must NOT pause the cycle).
 	'content-change': [hasContent: boolean];
 	'update:draftMentions': [mentions: InstanceAiDraftMention[]];
-	'mention-workflow-selected': [workflowId: string];
+	'mention-workflow-selected': [
+		workflowId: string,
+		text: string,
+		selectionStart: number,
+		selectionEnd: number,
+	];
 }>();
 
 const i18n = useI18n();
@@ -218,6 +223,10 @@ function focus() {
 	chatInputRef.value?.focus();
 }
 
+function setSelection(start: number, end: number = start) {
+	chatInputRef.value?.setSelection(start, end);
+}
+
 function appendText(text: string) {
 	inputText.value += text;
 }
@@ -256,6 +265,7 @@ defineExpose({
 	focus,
 	appendText,
 	setText,
+	setSelection,
 	setPrefill,
 	setTextIfEmpty,
 	clearTextIfMatches,
@@ -699,7 +709,15 @@ function selectMention(candidate: InstanceAiMentionCandidate): void {
 
 	inputText.value = edit.value;
 	emit('update:draftMentions', [...props.draftMentions, buildDraftMention(source, origin)]);
-	if (source.kind === 'workflow') emit('mention-workflow-selected', source.workflowId);
+	if (source.kind === 'workflow') {
+		emit(
+			'mention-workflow-selected',
+			source.workflowId,
+			edit.value,
+			edit.selectionStart,
+			edit.selectionEnd,
+		);
+	}
 	void nextTick(() => {
 		chatInputRef.value?.setSelection(edit.selectionStart, edit.selectionEnd);
 		chatInputRef.value?.focus();

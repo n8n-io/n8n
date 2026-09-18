@@ -93,6 +93,7 @@ export const defaultModuleSettings: NonNullable<FrontendModuleSettings['instance
 export const inputState = { initialDraft: '', hasAttachments: false };
 export const inputFocusSpy = vi.fn();
 export const inputSetTextSpy = vi.fn();
+export const inputSetSelectionSpy = vi.fn();
 export const planEditSubmitState = { message: 'Make the plan simpler' };
 
 /** Fake `InstanceAiInput` exposing the same surface real callers rely on (focus/setText/…). */
@@ -143,7 +144,14 @@ export const InstanceAiInputStub = defineComponent({
 				promptModified: message !== prefill.text.trim(),
 			};
 		};
-		expose({ focus: inputFocusSpy, setText, setPrefill, clearTextIfMatches, isDirty });
+		expose({
+			focus: inputFocusSpy,
+			setText,
+			setSelection: inputSetSelectionSpy,
+			setPrefill,
+			clearTextIfMatches,
+			isDirty,
+		});
 		return () =>
 			h('div', { 'data-test-id': 'instance-ai-input-stub' }, [
 				props.suggestions === undefined ? 'unset' : String(props.suggestions.length),

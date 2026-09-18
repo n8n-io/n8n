@@ -26,6 +26,7 @@ export function useAddNodesToChat() {
 
 	async function addSelectedNodesToChat(params: {
 		workflowId: string;
+		projectId: string;
 		selectedNodeIds: string[];
 		workflow: NodeContextWorkflow;
 		isInsideThread: boolean;
@@ -57,7 +58,7 @@ export function useAddNodesToChat() {
 			return;
 		}
 
-		const threadId = await handoff.openThreadForDraft({
+		const threadId = await handoff.openThreadForDraft(params.projectId, {
 			id: params.workflowId,
 			name: params.workflowName,
 			snapshot: params.workflowSnapshot,

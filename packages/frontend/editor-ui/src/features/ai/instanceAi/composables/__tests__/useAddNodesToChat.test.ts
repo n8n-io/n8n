@@ -60,6 +60,7 @@ describe('useAddNodesToChat', () => {
 		const { addSelectedNodesToChat } = useAddNodesToChat();
 		await addSelectedNodesToChat({
 			workflowId: 'w1',
+			projectId: 'project-1',
 			selectedNodeIds: ['n1'],
 			workflow: wf,
 			isInsideThread: true,
@@ -75,12 +76,13 @@ describe('useAddNodesToChat', () => {
 		const { addSelectedNodesToChat } = useAddNodesToChat();
 		await addSelectedNodesToChat({
 			workflowId: 'w1',
+			projectId: 'project-1',
 			selectedNodeIds: ['n1'],
 			workflow: wf,
 			isInsideThread: false,
 			workflowName: 'My workflow',
 		});
-		expect(openThreadForDraft).toHaveBeenCalledWith({
+		expect(openThreadForDraft).toHaveBeenCalledWith('project-1', {
 			id: 'w1',
 			name: 'My workflow',
 			snapshot: undefined,
@@ -98,6 +100,7 @@ describe('useAddNodesToChat', () => {
 		const { addSelectedNodesToChat } = useAddNodesToChat();
 		await addSelectedNodesToChat({
 			workflowId: 'w1',
+			projectId: 'project-1',
 			selectedNodeIds: ['n1'],
 			workflow: wf,
 			isInsideThread: false,
@@ -110,6 +113,7 @@ describe('useAddNodesToChat', () => {
 		const { addSelectedNodesToChat } = useAddNodesToChat();
 		await addSelectedNodesToChat({
 			workflowId: 'w1',
+			projectId: 'project-1',
 			selectedNodeIds: [],
 			workflow: wf,
 			isInsideThread: true,
@@ -121,6 +125,7 @@ describe('useAddNodesToChat', () => {
 		const { addSelectedNodesToChat } = useAddNodesToChat();
 		await addSelectedNodesToChat({
 			workflowId: 'w1',
+			projectId: 'project-1',
 			selectedNodeIds: ['n1', 'n2'],
 			workflow: wf,
 			isInsideThread: true,
@@ -136,6 +141,7 @@ describe('useAddNodesToChat', () => {
 		const { addSelectedNodesToChat } = useAddNodesToChat();
 		await addSelectedNodesToChat({
 			workflowId: 'w1',
+			projectId: 'project-1',
 			selectedNodeIds: [],
 			workflow: wf,
 			isInsideThread: true,

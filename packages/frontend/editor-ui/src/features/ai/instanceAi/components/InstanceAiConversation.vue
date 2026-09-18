@@ -42,6 +42,7 @@ import {
 	clearPendingComposerDraft,
 	clearPendingHandoffContext,
 	clearPendingThreadHandoff,
+	consumePendingMentionDraft,
 	consumePendingFirstMessage,
 	consumePendingRedirectLanding,
 	getPendingAgentAttachment,
@@ -52,6 +53,7 @@ import {
 	stashPendingFirstMessage,
 	stashPendingHandoffContext,
 	type PendingComposerDraft,
+	type PendingMentionDraft,
 } from '../composables/useInstanceAiHandoff';
 import type { InstanceAiMessageAuthorship } from '../prefills';
 import { INSTANCE_AI_AGENT_PREVIEW_VIEW_METADATA_KEY } from '../constants';
@@ -112,6 +114,7 @@ const creditBanner = useCreditWarningBanner(showCreditWarning);
 
 const pendingComposerContext = ref<InstanceAiHandoffContext | null>(null);
 const pendingComposerDraft = ref<PendingComposerDraft | null>(null);
+const pendingMentionDraft = ref<PendingMentionDraft | null>(null);
 const generatedComposerDraft = ref<string | null>(null);
 const pendingAgentAttachment = ref<InstanceAiAgentAttachment | null>(null);
 const currentAgentAttachment = computed<InstanceAiAgentAttachment | null>(() => {
@@ -363,6 +366,16 @@ watch(
 	},
 );
 
+watch([chatInputRef, pendingMentionDraft], ([input, draft]) => {
+	if (!input || !draft) return;
+	input.setText(draft.text);
+	void nextTick(() => {
+		input.setSelection(draft.selectionStart, draft.selectionEnd);
+		input.focus();
+	});
+	pendingMentionDraft.value = null;
+});
+
 function isCurrentThreadRuntime(): boolean {
 	return store.getRuntime(thread.id) === thread;
 }
@@ -427,6 +440,11 @@ async function syncThread() {
 	// submit cannot race past it while the thread list is still loading.
 	pendingComposerContext.value = getPendingHandoffContext(requestedThreadId);
 	pendingComposerDraft.value = getPendingComposerDraft(requestedThreadId);
+	const mentionDraft = consumePendingMentionDraft(requestedThreadId);
+	if (mentionDraft) {
+		thread.setDraftMentions(mentionDraft.mentions);
+		pendingMentionDraft.value = mentionDraft;
+	}
 	// Apply editor hand-off attachments before any await so a first submit
 	// cannot race past them, including when SSE is already connected.
 	restorePendingHandoffAttachments();

@@ -634,11 +634,15 @@ async function onAddNodesToChat(
 	source: AddNodesToChatSource = 'keyboard',
 ) {
 	const doc = workflowDocumentStore.value;
+	const projectId = doc.homeProject?.id;
+	const isInsideThread = !instanceAiCapability.openWorkflow;
+	if (!projectId && !isInsideThread) return;
 	await addSelectedNodesToChat({
 		workflowId: doc.workflowId,
+		projectId: projectId ?? '',
 		selectedNodeIds: ids,
 		workflow: buildNodeContextWorkflow(),
-		isInsideThread: !instanceAiCapability.openWorkflow,
+		isInsideThread,
 		onStaged: () => instanceAiStore.requestComposerFocus(),
 		workflowName: doc.name,
 		workflowSnapshot: doc.getSnapshot(),

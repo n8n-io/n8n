@@ -80,6 +80,11 @@ import CreditWarningBanner from '@/features/ai/assistant/components/Agent/Credit
 import ProjectSelect from './components/ProjectSelect.vue';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { InstanceAiFreeNudge } from '@/experiments/instanceAiFreeNudge';
+import type { InstanceAiDraftMention } from './mentions/instanceAiMentions.types';
+import {
+	clearPendingMentionDraft,
+	stashPendingMentionDraft,
+} from './composables/useInstanceAiHandoff';
 
 // Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
 const INSTANCE_AI_PROMPT_SUGGESTIONS_V2_TITLE_KEY: BaseTextKey =
@@ -125,6 +130,7 @@ function resolveLaunchSource(): InstanceAiThreadSource {
 }
 
 const selectedProject = ref(resolveInitialProjectId());
+const draftMentions = ref<InstanceAiDraftMention[]>([]);
 const settingsStore = useInstanceAiSettingsStore();
 const { showCreditWarning, quotaLocked } = storeToRefs(store);
 const rootStore = useRootStore();
@@ -526,6 +532,39 @@ function handleWorkflowPreview(workflowFile: string | null) {
 	activeWorkflowPreviewFile.value = workflowFile;
 }
 
+async function handleMentionWorkflowSelected(
+	_workflowId: string,
+	text: string,
+	selectionStart: number,
+	selectionEnd: number,
+) {
+	if (isStartingThread.value || !selectedProject.value) return;
+	const threadId = uuidv4();
+	const mentions = [...draftMentions.value];
+	isStartingThread.value = true;
+	let threadCreated = false;
+
+	try {
+		await store.syncThread(threadId, selectedProject.value, {
+			source: 'assistant_page',
+			origin: 'internal',
+		});
+		threadCreated = true;
+		stashPendingMentionDraft(threadId, { text, mentions, selectionStart, selectionEnd });
+		const failure = await router.replace({
+			name: INSTANCE_AI_THREAD_VIEW,
+			params: { threadId },
+		});
+		if (failure) throw new Error('Navigation failed');
+	} catch {
+		clearPendingMentionDraft(threadId);
+		if (threadCreated) await store.deleteThread(threadId, { silent: true });
+		toast.showError(new Error('Failed to start a new thread. Try again.'), 'Send failed');
+	} finally {
+		isStartingThread.value = false;
+	}
+}
+
 onMounted(() => {
 	void nextTick(() => chatInputRef.value?.focus());
 });
@@ -607,6 +646,7 @@ async function handleSubmit(
 		}
 		return;
 	}
+	draftMentions.value = [];
 
 	// Track message-with-nodes only after a successful send, so refused sends and
 	// retries don't inflate the node-count metric.
@@ -663,9 +703,13 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 					<WorkflowBuilderUnavailableNotice v-if="!settingsStore.isWorkflowBuilderAvailable" />
 					<InstanceAiInput
 						ref="chatInputRef"
+						v-model:draft-mentions="draftMentions"
 						:is-submitting="isStartingThread"
 						:is-workflow-builder-available="settingsStore.isWorkflowBuilderAvailable"
+						enable-mentions
+						:project-id="selectedProject"
 						@submit="handleSubmit"
+						@mention-workflow-selected="handleMentionWorkflowSelected"
 						@content-change="composerHasContent = $event"
 					>
 						<template v-if="projectsStore.myProjects.length > 1" #footer>
@@ -701,8 +745,11 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 						<WorkflowBuilderUnavailableNotice v-if="!settingsStore.isWorkflowBuilderAvailable" />
 						<InstanceAiInput
 							ref="chatInputRef"
+							v-model:draft-mentions="draftMentions"
 							:is-submitting="isStartingThread"
 							:is-workflow-builder-available="settingsStore.isWorkflowBuilderAvailable"
+							enable-mentions
+							:project-id="selectedProject"
 							:placeholder-key="INSTANCE_AI_SPLIT_EMPTY_STATE_PLACEHOLDER_KEY"
 							:preview-prompt-key="composerHasContent ? null : splitPreviewPromptKey"
 							:fixed-rows="INSTANCE_AI_SPLIT_FIXED_ROWS"
@@ -710,6 +757,7 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 							:submit-active-requires-focus="true"
 							:suggestion-catalog-version="INSTANCE_AI_SPLIT_EMPTY_STATE_SUGGESTIONS_VERSION"
 							@submit="handleSubmit"
+							@mention-workflow-selected="handleMentionWorkflowSelected"
 							@content-change="composerHasContent = $event"
 						>
 							<template v-if="projectsStore.myProjects.length > 1" #footer>
@@ -742,10 +790,14 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 					<WorkflowBuilderUnavailableNotice v-if="!settingsStore.isWorkflowBuilderAvailable" />
 					<InstanceAiInput
 						ref="chatInputRef"
+						v-model:draft-mentions="draftMentions"
 						:is-submitting="isStartingThread"
 						:is-workflow-builder-available="settingsStore.isWorkflowBuilderAvailable"
+						enable-mentions
+						:project-id="selectedProject"
 						v-bind="emptyStatePromptSuggestionProps"
 						@submit="handleSubmit"
+						@mention-workflow-selected="handleMentionWorkflowSelected"
 						@workflow-preview="handleWorkflowPreview"
 						@content-change="composerHasContent = $event"
 					>

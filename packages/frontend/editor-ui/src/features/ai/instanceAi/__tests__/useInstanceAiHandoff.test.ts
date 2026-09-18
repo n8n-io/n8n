@@ -52,6 +52,8 @@ import {
 	clearPendingFirstMessage,
 	clearPendingHandoffContext,
 	clearPendingThreadHandoff,
+	clearPendingMentionDraft,
+	consumePendingMentionDraft,
 	clearPendingWorkflowAttachment,
 	consumePendingFirstMessage,
 	consumePendingRedirectLanding,
@@ -66,11 +68,13 @@ import {
 	stashPendingComposerDraft,
 	stashPendingFirstMessage,
 	stashPendingHandoffContext,
+	stashPendingMentionDraft,
 	stashPendingRedirectLanding,
 	stashPendingWorkflowAttachment,
 	useInstanceAiHandoff,
 } from '../composables/useInstanceAiHandoff';
 import type { PendingFirstMessage } from '../composables/useInstanceAiHandoff';
+import { buildDraftMention } from '../mentions/buildMentionAttachment';
 
 describe('useInstanceAiHandoff', () => {
 	beforeEach(() => {
@@ -197,6 +201,57 @@ describe('useInstanceAiHandoff', () => {
 		});
 		clearPendingComposerDraft('thread-1');
 		expect(getPendingComposerDraft('thread-1')).toBeNull();
+	});
+
+	it('round-trips a mention draft exactly once', () => {
+		const mention = buildDraftMention(
+			{ kind: 'workflow', workflowId: 'workflow-1', workflowName: 'Support triage' },
+			'typed',
+		);
+		const draft = {
+			text: 'Review Support triage ',
+			mentions: [mention],
+			selectionStart: 22,
+			selectionEnd: 22,
+		};
+
+		stashPendingMentionDraft('thread-1', draft);
+
+		expect(consumePendingMentionDraft('thread-1')).toEqual(draft);
+		expect(consumePendingMentionDraft('thread-1')).toBeNull();
+	});
+
+	it('rejects a mention draft whose key does not match its target', () => {
+		const mention = buildDraftMention(
+			{ kind: 'workflow', workflowId: 'workflow-1', workflowName: 'Support triage' },
+			'typed',
+		);
+		stashPendingMentionDraft('thread-1', {
+			text: 'Support triage ',
+			mentions: [{ ...mention, key: 'workflow:other' }],
+			selectionStart: 15,
+			selectionEnd: 15,
+		});
+
+		expect(consumePendingMentionDraft('thread-1')).toBeNull();
+	});
+
+	it('clears a pending mention draft with the rest of a thread handoff', () => {
+		const mention = buildDraftMention(
+			{ kind: 'workflow', workflowId: 'workflow-1', workflowName: 'Support triage' },
+			'button',
+		);
+		stashPendingMentionDraft('thread-1', {
+			text: 'Support triage ',
+			mentions: [mention],
+			selectionStart: 15,
+			selectionEnd: 15,
+		});
+
+		clearPendingThreadHandoff('thread-1');
+
+		expect(consumePendingMentionDraft('thread-1')).toBeNull();
+		clearPendingMentionDraft('thread-1');
 	});
 
 	it('provisions a context-only thread with an optional composer draft', async () => {
@@ -364,7 +419,7 @@ describe('useInstanceAiHandoff', () => {
 			setPendingHandoff,
 		});
 
-		const threadId = await openThreadForDraft({
+		const threadId = await openThreadForDraft('project-1', {
 			id: 'wf-1',
 			name: 'My Workflow',
 			snapshot: { id: 'wf-1', name: 'My Workflow' } as never,

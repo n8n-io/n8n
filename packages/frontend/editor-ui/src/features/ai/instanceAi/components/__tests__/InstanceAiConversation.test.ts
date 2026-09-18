@@ -10,19 +10,24 @@ import {
 	createThreadComponentRenderer,
 	defaultModuleSettings,
 	InstanceAiInputStub,
+	inputSetSelectionSpy,
+	inputSetTextSpy,
 	makeThread,
 } from '../../__tests__/createThreadComponentRenderer';
 import InstanceAiConversation from '../InstanceAiConversation.vue';
 import { provideThread, useInstanceAiStore, type ThreadRuntime } from '../../instanceAi.store';
 import {
 	getPendingWorkflowAttachment,
+	consumePendingMentionDraft,
 	stashPendingAgentAttachment,
 	stashPendingRedirectLanding,
 	stashPendingWorkflowAttachment,
+	stashPendingMentionDraft,
 } from '../../composables/useInstanceAiHandoff';
 import type { InstanceAiHandoffContext, InstanceAiMessage } from '@n8n/api-types';
 import { ResponseError } from '@n8n/rest-api-client';
 import { USER_TYPED_MESSAGE } from '../../prefills';
+import { buildDraftMention } from '../../mentions/buildMentionAttachment';
 
 const telemetryTrackSpy = vi.hoisted(() => vi.fn());
 const showMessageSpy = vi.hoisted(() => vi.fn());
@@ -155,6 +160,26 @@ describe('InstanceAiConversation', () => {
 		expect(conversation.emitted('agent-attachment-restored')?.[0]).toEqual([
 			{ type: 'agent', id: 'agent-1', projectId: 'proj-1', pending: true },
 		]);
+	});
+
+	it('consumes a mention draft once and restores its text, mentions, and caret', async () => {
+		const mention = buildDraftMention(
+			{ kind: 'workflow', workflowId: 'workflow-1', workflowName: 'Support triage' },
+			'typed',
+		);
+		stashPendingMentionDraft('thread-1', {
+			text: 'Review Support triage ',
+			mentions: [mention],
+			selectionStart: 22,
+			selectionEnd: 22,
+		});
+
+		mountConversation();
+
+		await vi.waitFor(() => expect(thread.setDraftMentions).toHaveBeenCalledWith([mention]));
+		expect(inputSetTextSpy).toHaveBeenCalledWith('Review Support triage ');
+		await vi.waitFor(() => expect(inputSetSelectionSpy).toHaveBeenCalledWith(22, 22));
+		expect(consumePendingMentionDraft('thread-1')).toBeNull();
 	});
 
 	it('awaits beforeSend before sending, restoring the draft if it rejects', async () => {
