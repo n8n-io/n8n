@@ -20,6 +20,8 @@ import {
 } from '@n8n/ai-utilities';
 import { shouldIncludeGoogleModel } from '@n8n/ai-utilities/model-discovery';
 
+import { GEMINI_CHAT_MODEL_HINT } from '@utils/model-builder-hints';
+
 /** Drop non-chat models (embedding, image, TTS, Veo, etc.) from the dropdown. */
 async function filterChatModels(
 	this: IExecuteSingleFunctions,
@@ -97,8 +99,7 @@ const modelRLC: INodeProperties = {
 	},
 	default: 'models/gemini-2.5-flash',
 	builderHint: {
-		propertyHint:
-			'Default to the latest flagship Gemini (models/gemini-3.1-pro-preview). Use models/gemini-3.1-flash-lite for cost-efficient builds. Avoid Gemini 2.x, 1.x, and earlier.',
+		propertyHint: GEMINI_CHAT_MODEL_HINT,
 	},
 };
 

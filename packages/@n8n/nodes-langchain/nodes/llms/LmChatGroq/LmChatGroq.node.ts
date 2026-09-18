@@ -13,6 +13,8 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
+import { MODEL_SELECTION_HINT } from '@utils/model-builder-hints';
+
 export class LmChatGroq implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Groq Chat Model',
@@ -103,7 +105,8 @@ export class LmChatGroq implements INodeType {
 				default: 'llama3-8b-8192',
 				builderHint: {
 					propertyHint:
-						'Default to a flagship model on Groq (openai/gpt-oss-120b, llama-3.3-70b-versatile, or moonshotai/kimi-k2-instruct-0905). Avoid the legacy llama3-8b-8192 default and older llama3/llama-2 variants.',
+						'Consider openai/gpt-oss-120b when the connected credential offers it. Select a smaller listed model when cost or latency matters more. ' +
+						MODEL_SELECTION_HINT,
 				},
 			},
 			{

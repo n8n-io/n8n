@@ -890,6 +890,10 @@ export class AgentRuntime {
 
 			this.eventBus.emit({ type: AgentEvent.TurnStart });
 
+			for (const toolName of this.activeSkills?.toolDependencies() ?? []) {
+				this.deferredToolManager?.load(toolName);
+			}
+
 			const {
 				toolMap,
 				aiTools,

@@ -18,16 +18,14 @@ import {
 } from 'n8n-workflow';
 
 import { getCustomCredentialHeader } from '@utils/helpers';
+import { MODEL_SELECTION_HINT } from '@utils/model-builder-hints';
 
 import { searchModels } from './methods/searchModels';
 
-// The 1.3+ resource locator accepts any id the provider lists, so the newest
-// generation is the right answer on every one of those versions. Phrased as
-// choice guidance rather than a validity claim: older versions still default to
-// an older model, and that stored value is not wrong, just superseded.
 const ANTHROPIC_MODEL_BUILDER_HINT = {
 	propertyHint:
-		'Default to claude-sonnet-5 (latest Sonnet); use claude-opus-5 when the user needs the most capable model. Do not fall back to an older generation (Claude Sonnet 4.6 or earlier, Claude 3.x, Claude 2, LEGACY options) unless the user asks for a specific model. Tell the user which model you picked, why, and that they can change it at any time. When extended thinking is needed, set Thinking Mode to Adaptive and choose an Effort level. The legacy Manual thinking mode is rejected by Opus 4.7.',
+		'Consider claude-sonnet-5 for general tasks or claude-opus-5 when more capability is needed. When extended thinking is needed, use Adaptive mode and choose an Effort level. ' +
+		MODEL_SELECTION_HINT,
 };
 
 // Versions 1 to 1.2 expose a fixed enum that predates the current generation,
