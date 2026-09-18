@@ -1333,7 +1333,7 @@ describe('SystemTaskRunner', () => {
 			);
 			expect(logger.debug).toHaveBeenCalledWith(
 				expect.stringContaining('does not run on this kind of instance'),
-				{ name: 'dummy', instanceTypes: ['main'] },
+				{ name: 'dummy', placement: { scope: 'cluster' } },
 			);
 		});
 

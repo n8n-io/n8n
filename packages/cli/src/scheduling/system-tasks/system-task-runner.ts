@@ -1,9 +1,10 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import { Time } from '@n8n/constants';
+import { Time, type InstanceType } from '@n8n/constants';
 import type {
 	SystemTask,
 	SystemTaskClass,
+	SystemTaskPlacement,
 	SystemTaskSchedule,
 	SystemTaskScope,
 } from '@n8n/decorators';
@@ -289,11 +290,11 @@ export class SystemTaskRunner {
 			});
 		}
 
-		const { scope, instanceTypes } = resolveSystemTaskPlacement(task);
-		if (!instanceTypes.includes(this.instanceSettings.instanceType)) {
+		const placement = resolveSystemTaskPlacement(task);
+		if (!runsOn(placement, this.instanceSettings.instanceType)) {
 			this.logger.debug('System task does not run on this kind of instance', {
 				name: task.name,
-				instanceTypes,
+				placement,
 			});
 			return;
 		}
@@ -312,7 +313,11 @@ export class SystemTaskRunner {
 
 		resolveSystemTaskRunOptions(task);
 
-		const routed: RoutedTask = { task, scope, schedule: resolveSystemTaskSchedule(task) };
+		const routed: RoutedTask = {
+			task,
+			scope: placement.scope,
+			schedule: resolveSystemTaskSchedule(task),
+		};
 		this.routedTasksByName.set(task.name, routed);
 		const intervalSeconds =
 			routed.schedule.kind === 'interval' ? routed.schedule.intervalSeconds : undefined;
@@ -336,7 +341,7 @@ export class SystemTaskRunner {
 				mode: 'durable',
 				intervalSeconds,
 			});
-		} else if (scope === 'instance') {
+		} else if (placement.scope === 'instance') {
 			routed.timer = this.createTimer(routed);
 			this.logger.debug('System task will run on a per-instance timer', {
 				name: task.name,
@@ -516,6 +521,13 @@ export class SystemTaskRunner {
 			shouldIsolate: true,
 		});
 	}
+}
+
+/** A cluster-scoped task belongs to the mains, an instance-scoped one to the kinds it names. */
+function runsOn(placement: SystemTaskPlacement, instanceType: InstanceType): boolean {
+	return placement.scope === 'cluster'
+		? instanceType === 'main'
+		: placement.instanceTypes.includes(instanceType);
 }
 
 /** The metrics mode of a task that runs from a timer, by the timer's scope. */

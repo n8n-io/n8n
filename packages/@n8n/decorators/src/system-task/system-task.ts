@@ -14,6 +14,19 @@ export type SystemTaskEffects = 'idempotent' | 'non-idempotent';
 /** How many instances run one occurrence of a task. */
 export type SystemTaskScope = 'cluster' | 'instance';
 
+/**
+ * Where a task's occurrences run. A cluster-scoped task runs once for the
+ * whole cluster, on a main, so it names no instance type. An instance-scoped
+ * task runs its own occurrence in every instance of the kinds it names, and
+ * has to name at least one.
+ */
+export type SystemTaskPlacement =
+	| { readonly scope: 'cluster' }
+	| {
+			readonly scope: 'instance';
+			readonly instanceTypes: readonly [InstanceType, ...InstanceType[]];
+	  };
+
 /** A system task always has a next run, so a one-off schedule is not allowed. */
 export type SystemTaskSchedule = Exclude<ScheduleDefinition, OneOffDefinition>;
 
@@ -34,15 +47,12 @@ export interface SystemTask {
 	readonly effects: SystemTaskEffects;
 
 	/**
-	 * How many instances run one occurrence. Defaults to `cluster`: one run for
-	 * the whole cluster, coordinated by leadership or by the durable scheduler.
+	 * Where the occurrences run. Defaults to `cluster`: one run for the whole
+	 * cluster, coordinated by leadership or by the durable scheduler.
 	 * `instance` means every eligible instance runs its own occurrence, for work
 	 * that reads state local to the instance and that no other instance could do.
 	 */
-	readonly scope?: SystemTaskScope;
-
-	/** Which kinds of instance run the task. Defaults to `['main']`. */
-	readonly instanceTypes?: readonly InstanceType[];
+	readonly placement?: SystemTaskPlacement;
 
 	/**
 	 * Migration status.
@@ -153,43 +163,30 @@ export function resolveSystemTaskRunOptions(task: SystemTask): SystemTaskRunOpti
 	return options;
 }
 
-/** Where a task's occurrences run: how many copies, and on which kinds of instance. */
-export interface SystemTaskPlacement {
-	scope: SystemTaskScope;
-	instanceTypes: readonly InstanceType[];
-}
-
-const DEFAULT_SYSTEM_TASK_INSTANCE_TYPES: readonly InstanceType[] = ['main'];
+const DEFAULT_SYSTEM_TASK_PLACEMENT: SystemTaskPlacement = { scope: 'cluster' };
 
 /**
  * Resolves where a task runs, and rejects a placement the runner cannot honor.
  *
- * @throws {UnexpectedError} When an instance-scoped task is durable or asks to run
- * on leader takeover, or when it declares no instance type at all.
+ * @throws {UnexpectedError} When an instance-scoped task is durable or asks to
+ * run on leader takeover.
  */
 export function resolveSystemTaskPlacement(task: SystemTask): SystemTaskPlacement {
-	const scope = task.scope ?? 'cluster';
-	const instanceTypes = task.instanceTypes ?? DEFAULT_SYSTEM_TASK_INSTANCE_TYPES;
+	const placement = task.placement ?? DEFAULT_SYSTEM_TASK_PLACEMENT;
 
-	if (scope === 'instance' && task.durable) {
+	if (placement.scope === 'instance' && task.durable) {
 		throw new UnexpectedError('An instance-scoped system task cannot be durable', {
 			extra: { name: task.name },
 		});
 	}
 
-	if (scope === 'instance' && task.runOnTakeover) {
+	if (placement.scope === 'instance' && task.runOnTakeover) {
 		throw new UnexpectedError('An instance-scoped system task cannot run on leader takeover', {
 			extra: { name: task.name },
 		});
 	}
 
-	if (instanceTypes.length === 0) {
-		throw new UnexpectedError('A system task declares no instance type, so nothing runs it', {
-			extra: { name: task.name },
-		});
-	}
-
-	return { scope, instanceTypes };
+	return placement;
 }
 
 /**

@@ -1,6 +1,5 @@
-import type { InstanceType } from '@n8n/constants';
 import { SystemTask } from '@n8n/decorators';
-import type { SystemTaskEffects, SystemTaskSchedule, SystemTaskScope } from '@n8n/decorators';
+import type { SystemTaskEffects, SystemTaskPlacement, SystemTaskSchedule } from '@n8n/decorators';
 
 @SystemTask()
 export class DummySystemTask implements SystemTask {
@@ -40,7 +39,8 @@ export class OtherDummySystemTask extends DummySystemTask {
 export class PerInstanceDummySystemTask extends DummySystemTask {
 	name = 'per-instance-dummy';
 
-	scope: SystemTaskScope = 'instance';
-
-	instanceTypes: readonly InstanceType[] = ['main', 'worker', 'webhook'];
+	placement: SystemTaskPlacement = {
+		scope: 'instance',
+		instanceTypes: ['main', 'worker', 'webhook'],
+	};
 }
