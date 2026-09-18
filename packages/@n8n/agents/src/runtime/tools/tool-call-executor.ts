@@ -282,6 +282,32 @@ export class ToolCallExecutor {
 		return undefined;
 	}
 
+	/** Settle every call that has not started with the given model-facing output. */
+	private settleUnexecuted(
+		list: AgentMessageList,
+		callsById: Map<string, { toolCallId: string; toolName: string; input: JSONValue }>,
+		unexecutedIds: Set<string>,
+		modelOutput: string,
+	): ToolCallSuccess[] {
+		return [...unexecutedIds].map((id) => {
+			const tc = callsById.get(id)!;
+			list.setToolCallResult(tc.toolCallId, modelOutput, { canceled: true });
+			return {
+				toolCallId: tc.toolCallId,
+				toolName: tc.toolName,
+				input: tc.input,
+				toolEntry: {
+					tool: tc.toolName,
+					input: tc.input,
+					output: modelOutput,
+					transformed: false,
+					canceled: true,
+				},
+				modelOutput,
+			};
+		});
+	}
+
 	private takeNextToolCallBatch<T extends { toolName: string }>(
 		calls: T[],
 		start: number,
@@ -383,23 +409,9 @@ export class ToolCallExecutor {
 		for (let batchStart = 0; batchStart < executableCalls.length; ) {
 			const skipReason = await this.getSkipReason(ctx, { askHost: true });
 			if (skipReason) {
-				for (const id of unexecutedIds) {
-					const tc = executableCallsById.get(id)!;
-					list.setToolCallResult(tc.toolCallId, skipReason, { canceled: true });
-					results.push({
-						toolCallId: tc.toolCallId,
-						toolName: tc.toolName,
-						input: tc.input,
-						toolEntry: {
-							tool: tc.toolName,
-							input: tc.input,
-							output: skipReason,
-							transformed: false,
-							canceled: true,
-						},
-						modelOutput: skipReason,
-					});
-				}
+				results.push(
+					...this.settleUnexecuted(list, executableCallsById, unexecutedIds, skipReason),
+				);
 				return await this.finalizeBatch({ results, suspensions, errors, pending }, ctx);
 			}
 
@@ -500,23 +512,9 @@ export class ToolCallExecutor {
 
 			const settledSkipReason = await this.getSkipReason(ctx, { askHost: false });
 			if (settledSkipReason) {
-				for (const id of unexecutedIds) {
-					const tc = executableCallsById.get(id)!;
-					list.setToolCallResult(tc.toolCallId, settledSkipReason, { canceled: true });
-					results.push({
-						toolCallId: tc.toolCallId,
-						toolName: tc.toolName,
-						input: tc.input,
-						toolEntry: {
-							tool: tc.toolName,
-							input: tc.input,
-							output: settledSkipReason,
-							transformed: false,
-							canceled: true,
-						},
-						modelOutput: settledSkipReason,
-					});
-				}
+				results.push(
+					...this.settleUnexecuted(list, executableCallsById, unexecutedIds, settledSkipReason),
+				);
 				return await this.finalizeBatch({ results, suspensions, errors, pending }, ctx);
 			}
 

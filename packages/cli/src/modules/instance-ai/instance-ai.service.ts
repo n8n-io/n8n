@@ -4,6 +4,7 @@ import type {
 	Workspace,
 	ScopedMemoryTaskEvent,
 	AgentEventData,
+	ExecutionOptions,
 	MemoryTaskUsageReport,
 } from '@n8n/agents';
 import { getPromptWorkspaceRoot, getWorkspaceRoot } from '@n8n/agents/sandbox';
@@ -763,23 +764,16 @@ export class InstanceAiService {
 	private readonly threadPushRef = new Map<string, string>();
 
 	/**
-	 * Per-run interrupt for Send now, keyed by run id: the runtime cancels the
-	 * step in flight (model request and tool calls) and a delegated builder
-	 * aborts. Each execution environment arms its own, because a fired controller
-	 * stays fired, and because a planned-task dispatch on the same thread builds
-	 * an environment too — keyed by thread, that one would replace the
-	 * orchestrator's and Send now would abort the wrong run. Dropped when the run
-	 * reaches a terminal outcome. In-process only: on another main the queue
-	 * still ends the run before its next tool call, but the call in flight there
-	 * runs to its end first.
+	 * Send now's interrupt per run: cancels the step in flight and a delegated
+	 * builder. Keyed by run, not thread — a planned-task dispatch on the same
+	 * thread arms its own — and dropped on the run's terminal outcome. In-process
+	 * only: on another main the queue still ends the run at its next tool call.
 	 */
 	private readonly steerInterrupts = new Map<string, AbortController>();
 
 	/**
-	 * Threads whose queue this main last saw non-empty. A cheap gate for the
-	 * check the runtime asks before every tool call, so an idle queue costs no
-	 * database read. Only trusted on a single main: a sibling main's write is
-	 * not seen here, so multi-main always reads.
+	 * Threads whose queue this main last saw non-empty: a free answer for the
+	 * check asked before every tool call. Only trusted on a single main.
 	 */
 	private readonly queuedThreads = new Set<string>();
 
@@ -1333,6 +1327,27 @@ export class InstanceAiService {
 		return this.instanceAiConfig.runDebugEnabled;
 	}
 
+	/**
+	 * How a queued turn ends a run: the graceful check before each tool call and
+	 * step boundary, and Send now's interrupt for the call in flight. Either way
+	 * the handoff is raised here, not by cancelling the run, so the work done
+	 * stays done and the queued turn starts its own run.
+	 */
+	private queuedTurnStopOptions(
+		threadId: string,
+		runId: string,
+		onSteered?: (step: number) => void,
+	): Pick<ExecutionOptions, 'shouldStopGracefully' | 'interruptSignal'> {
+		return {
+			shouldStopGracefully: async ({ step }) => {
+				const steered = await this.claimQueuedTurn(threadId, runId, step);
+				if (steered) onSteered?.(step);
+				return steered;
+			},
+			interruptSignal: this.steerInterrupts.get(runId)?.signal,
+		};
+	}
+
 	private buildOrchestratorAgentStreamOptions(
 		user: User,
 		threadId: string,
@@ -1346,16 +1361,7 @@ export class InstanceAiService {
 		return {
 			maxIterations: MAX_STEPS.ORCHESTRATOR,
 			abortSignal: signal,
-			// A queued turn ends the run before its next tool call, and Send now
-			// cancels the call in flight through the interrupt. Either way the
-			// handoff is raised here, not by cancelling the run: the work this run
-			// completed stays completed, and the queued turn starts its own run.
-			shouldStopGracefully: async ({ step }: { step: number }) => {
-				const steered = await this.claimQueuedTurn(threadId, runId, step);
-				if (steered) onSteered?.(step);
-				return steered;
-			},
-			interruptSignal: this.steerInterrupts.get(runId)?.signal,
+			...this.queuedTurnStopOptions(threadId, runId, onSteered),
 			// Recover token usage from raw provider events so a stopped/errored run
 			// is still billed for the tokens consumed before the stop.
 			recoverUsageOnAbort: true,
@@ -1396,14 +1402,7 @@ export class InstanceAiService {
 			runId: agentRunId,
 			toolCallId,
 			abortSignal: signal,
-			// A turn queued while the run was parked ends the resumed run before its
-			// next tool call, like any other queued turn.
-			shouldStopGracefully: async ({ step }: { step: number }) => {
-				const steered = await this.claimQueuedTurn(threadId, runId, step);
-				if (steered) onSteered?.(step);
-				return steered;
-			},
-			interruptSignal: this.steerInterrupts.get(runId)?.signal,
+			...this.queuedTurnStopOptions(threadId, runId, onSteered),
 			// Keep billing stopped/errored resumed runs (see stream-options builder).
 			recoverUsageOnAbort: true,
 			...modelStreamStallOptions(this.aiConfig),
@@ -1668,18 +1667,22 @@ export class InstanceAiService {
 	}
 
 	/**
-	 * The composer's path in: queue the message, and when no run owns the
-	 * thread after all (the client believed one was live but it just finished),
-	 * deliver it at once — otherwise nothing would pick it up until a later run.
+	 * The composer's path in: queue the message, and when no run owns the thread
+	 * after all (the client believed one was live but it just finished), deliver
+	 * it at once — otherwise nothing would pick it up until a later run.
 	 */
 	async admitQueuedMessage(
 		user: User,
 		threadId: string,
 		text: string,
 	): Promise<InstanceAiQueuedMessage[]> {
-		const queuedMessages = await this.queueMessage(threadId, text);
-		if (await this.hasLiveRunAnywhere(threadId)) return queuedMessages;
-		await this.flushQueuedMessage(user, threadId);
+		await this.queueMessage(threadId, text);
+		return await this.deliverIfIdle(user, threadId);
+	}
+
+	/** Flush unless a run owns the thread on any main, then return the queue. */
+	private async deliverIfIdle(user: User, threadId: string): Promise<InstanceAiQueuedMessage[]> {
+		if (!(await this.hasLiveRunAnywhere(threadId))) await this.flushQueuedMessage(user, threadId);
 		return await this.listQueuedMessages(threadId);
 	}
 
@@ -1761,17 +1764,10 @@ export class InstanceAiService {
 		threadId: string,
 	): Promise<{ queuedMessages: InstanceAiQueuedMessage[] }> {
 		const liveRunId = this.runState.getActiveRunId(threadId);
-		const live = liveRunId !== undefined && this.runState.hasLiveRun(threadId);
-		if (!live) {
-			// A sibling main's run claims the queue before its next tool call; a
-			// flush from here would start a second run beside it.
-			if (!(await this.hasLiveRunAnywhere(threadId))) {
-				await this.flushQueuedMessage(user, threadId);
-			}
-			return { queuedMessages: await this.listQueuedMessages(threadId) };
+		if (liveRunId === undefined || !this.runState.hasLiveRun(threadId)) {
+			return { queuedMessages: await this.deliverIfIdle(user, threadId) };
 		}
-		const sent = await this.announceQueuedTurn(user, threadId, liveRunId);
-		if (sent) {
+		if (await this.announceQueuedTurn(user, threadId, liveRunId)) {
 			this.steerInterrupts.get(liveRunId)?.abort();
 			this.cancelThreadBackgroundTasks(threadId);
 		}
@@ -1798,10 +1794,7 @@ export class InstanceAiService {
 			sent = { ...merged, sentAt: merged.sentAt ?? new Date().toISOString() };
 			return [sent];
 		});
-		if (!sent) return undefined;
-		if (changed) {
-			await this.publishQueuedMessage({ user, threadId, runId, item: sent, source: 'steered' });
-		}
+		if (sent && changed) this.publishQueuedMessage(user, threadId, runId, sent, 'steered');
 		return sent;
 	}
 
@@ -3611,22 +3604,13 @@ export class InstanceAiService {
 	private async claimQueuedTurn(threadId: string, runId: string, step: number): Promise<boolean> {
 		try {
 			const user = this.runState.getThreadUser(threadId);
-			if (!user) {
-				this.logger.warn('Cannot claim the queued turn without a thread user', {
-					threadId,
-					runId,
-				});
-				return false;
-			}
-			// Asked on every tool call, so the common case must be cheap: on a single
-			// main the in-memory gate answers, and only a queued item pays for the
-			// read and the locked write. A sibling main's write is not seen here, so
-			// multi-main always reads.
+			if (!user) return false;
+			// Asked on every tool call, so the common case must be cheap: the
+			// in-memory gate answers on a single main; multi-main always reads.
 			if (!this.instanceSettings.isMultiMain && !this.queuedThreads.has(threadId)) return false;
 			const thread = await this.agentMemory.getThread(threadId);
 			if (!thread || readQueuedMessages(thread.metadata).length === 0) return false;
-			const sent = await this.announceQueuedTurn(user, threadId, runId);
-			if (!sent) return false;
+			if (!(await this.announceQueuedTurn(user, threadId, runId))) return false;
 			this.telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.USER_STEERED_MESSAGE, {
 				thread_id: threadId,
 				step,
@@ -3643,66 +3627,40 @@ export class InstanceAiService {
 	}
 
 	/**
-	 * Run-finish flush: the whole queue goes as one turn. Claim it, start a run,
-	 * then publish it. Reports whether a run was started, so the caller can hold
-	 * its automatic follow-ups.
+	 * Run-finish flush: the whole queue goes as one turn. Reports whether a run
+	 * was started, so the caller can hold its automatic follow-ups. The claim is
+	 * made under the row lock and refused there if a run started meanwhile, so a
+	 * claimed turn always gets its run.
 	 *
 	 * Never throws: it runs at the end of a finished run and from the Send-now
 	 * path, where an exception would either reject an unawaited run promise or
 	 * fail a request over a message that is still safely queued.
 	 */
 	private async flushQueuedMessage(user: User, threadId: string): Promise<boolean> {
-		let claimed: QueuedMessage | undefined;
-		// A started run owns the message from the moment it is handed over, so a
-		// later failure must not queue it a second time.
-		let handedOver = false;
 		try {
 			if (await this.hasLiveRunAnywhere(threadId)) return false;
+			let claimed: QueuedMessage | undefined;
 			await this.mutateQueuedMessages(threadId, (messages) => {
+				if (this.runState.hasLiveRun(threadId)) return messages;
 				claimed = mergeQueuedMessages(messages);
 				return [];
 			});
 			if (!claimed) return false;
 			// The delivery is what the sent marker announced; it must not outlive it.
-			const { sentAt: _sentAt, ...claimedMessage } = claimed;
-			const runId = await this.startQueuedMessageRun(user, threadId, claimedMessage.text);
-			if (!runId) {
-				await this.restoreQueuedHead(threadId, claimed);
-				claimed = undefined;
-				return false;
-			}
-			handedOver = true;
-			await this.publishQueuedMessage({
-				user,
-				threadId,
-				runId,
-				item: claimedMessage,
-				source: 'queued',
-			});
+			const { sentAt: _sentAt, ...turn } = claimed;
+			const runId = this.startQueuedMessageRun(user, threadId, turn.text);
+			this.publishQueuedMessage(user, threadId, runId, turn, 'queued');
+			return true;
 		} catch (error) {
 			this.logger.warn('Failed to deliver a queued message', {
 				threadId,
 				error: getErrorMessage(error),
 			});
-			if (claimed && !handedOver) await this.restoreQueuedHead(threadId, claimed);
-		}
-		return handedOver;
-	}
-
-	/** Put a claimed turn back at the front of the queue; best-effort. */
-	private async restoreQueuedHead(threadId: string, item: QueuedMessage): Promise<void> {
-		try {
-			await this.mutateQueuedMessages(threadId, (messages) => [item, ...messages]);
-		} catch (error) {
-			this.logger.warn('Failed to restore a queued message', {
-				threadId,
-				error: getErrorMessage(error),
-			});
+			return false;
 		}
 	}
 
-	private async startQueuedMessageRun(user: User, threadId: string, text: string): Promise<string> {
-		if (this.runState.hasLiveRun(threadId)) return '';
+	private startQueuedMessageRun(user: User, threadId: string, text: string): string {
 		const { runId, abortController } = this.runState.startRun({ threadId, user });
 		const timeZone = this.runState.getTimeZone(threadId) ?? this.defaultTimeZone;
 		this.startExecuteRun(
@@ -3719,25 +3677,20 @@ export class InstanceAiService {
 		return runId;
 	}
 
-	/** Publish the durable user-message fact for a claimed item. */
-	private async publishQueuedMessage(args: {
-		user: User;
-		threadId: string;
-		runId: string;
-		item: QueuedMessage;
-		source: 'steered' | 'queued';
-	}): Promise<void> {
-		const { user, threadId, runId, item, source } = args;
+	/** Publish the durable user-message fact for a claimed turn. */
+	private publishQueuedMessage(
+		user: User,
+		threadId: string,
+		runId: string,
+		item: QueuedMessage,
+		source: 'steered' | 'queued',
+	): void {
 		this.eventBus.publish(threadId, {
 			type: 'user-message',
 			runId,
 			agentId: orchestratorAgentId(runId),
 			userId: user.id,
-			payload: {
-				messageId: item.id,
-				text: item.text,
-				source,
-			},
+			payload: { messageId: item.id, text: item.text, source },
 		});
 	}
 
@@ -4917,30 +4870,26 @@ export class InstanceAiService {
 				aiCreatedWorkflowIds,
 				this.backgroundTasks.getRunningTasks(threadId).length,
 			);
-			await this.finalizeRun(
-				threadId,
-				runId,
-				this.finalRunStatus(result.status, result.stopReason),
-				{
-					promptVersion,
-					userId: user.id,
-					modelId,
-					archivedWorkflowIds,
-					workSummary: result.workSummary,
-					usage: result.usage,
-					errorReason: userFacingErrorMessage,
-					...(result.status === 'errored'
-						? {
-								errorInfo: {
-									errorMessage: terminalError
-										? getErrorMessage(terminalError)
-										: 'Instance AI stream errored',
-									errorSource: 'stream' as const,
-								},
-							}
-						: {}),
-				},
-			);
+			await this.finalizeRun(threadId, runId, result.status, {
+				stopReason: result.stopReason,
+				promptVersion,
+				userId: user.id,
+				modelId,
+				archivedWorkflowIds,
+				workSummary: result.workSummary,
+				usage: result.usage,
+				errorReason: userFacingErrorMessage,
+				...(result.status === 'errored'
+					? {
+							errorInfo: {
+								errorMessage: terminalError
+									? getErrorMessage(terminalError)
+									: 'Instance AI stream errored',
+								errorSource: 'stream' as const,
+							},
+						}
+					: {}),
+			});
 
 			// Bill token usage for every terminal outcome (completed / cancelled / errored),
 			// deduped per run segment. `result.agentRunId` is the segment id; fall back to runId.
@@ -5136,13 +5085,11 @@ export class InstanceAiService {
 			//   3. UI projection — always, so a stopped run's task states reach
 			//      the client.
 			//
-			// A queued user message goes first. It is a turn the user already sent,
-			// so it must not wait behind an automatic follow-up (setup routing, the
-			// next planned-task tick) — nor behind whatever card that follow-up
-			// parks on. When it starts a run, the follow-ups hold: the next finally
-			// re-derives them from the same state. Only a completed run hands over:
-			// a parked run waits for its answer, a stop must not start a new run,
-			// and after an error the queue stays for the user to send by hand.
+			// A queued user turn goes first: the user already sent it, so it must
+			// not wait behind a follow-up or the card one parks on. When it starts
+			// a run the follow-ups hold; the next finally re-derives them. Only a
+			// completed run hands over — after an error the queue stays for the
+			// user to send by hand.
 			const userTurnStarted =
 				messageTraceFinalization?.status === 'completed' &&
 				!segmentSuspended &&
@@ -6236,32 +6183,28 @@ export class InstanceAiService {
 				undefined,
 				this.backgroundTasks.getRunningTasks(opts.threadId).length,
 			);
-			await this.finalizeRun(
-				opts.threadId,
-				opts.runId,
-				this.finalRunStatus(result.status, result.stopReason),
-				{
-					promptVersion,
-					userId: opts.user.id,
-					// Forward modelId so title refinement fires on the resume path too — a run
-					// that suspends for HITL and completes here would otherwise never be titled.
-					...(opts.modelId !== undefined ? { modelId: opts.modelId } : {}),
-					archivedWorkflowIds,
-					workSummary: result.workSummary,
-					usage: result.usage,
-					errorReason: userFacingErrorMessage,
-					...(result.status === 'errored'
-						? {
-								errorInfo: {
-									errorMessage: terminalError
-										? getErrorMessage(terminalError)
-										: 'Instance AI resumed stream errored',
-									errorSource: 'stream' as const,
-								},
-							}
-						: {}),
-				},
-			);
+			await this.finalizeRun(opts.threadId, opts.runId, result.status, {
+				stopReason: result.stopReason,
+				promptVersion,
+				userId: opts.user.id,
+				// Forward modelId so title refinement fires on the resume path too — a run
+				// that suspends for HITL and completes here would otherwise never be titled.
+				...(opts.modelId !== undefined ? { modelId: opts.modelId } : {}),
+				archivedWorkflowIds,
+				workSummary: result.workSummary,
+				usage: result.usage,
+				errorReason: userFacingErrorMessage,
+				...(result.status === 'errored'
+					? {
+							errorInfo: {
+								errorMessage: terminalError
+									? getErrorMessage(terminalError)
+									: 'Instance AI resumed stream errored',
+								errorSource: 'stream' as const,
+							},
+						}
+					: {}),
+			});
 
 			// Bill token usage for every terminal outcome, deduped per run segment.
 			await this.creditService.claimRunUsage(
@@ -6836,18 +6779,6 @@ export class InstanceAiService {
 		void this.suspendedThreads.dropPendingConfirmation(suspended.requestId);
 	}
 
-	/**
-	 * Terminal status to publish. A run the user steered stopped at a step boundary
-	 * with its work intact, so it reports `steered` — the same outcome as `completed`
-	 * for every consumer, told apart only in the data.
-	 */
-	private finalRunStatus(
-		status: 'completed' | 'errored' | 'cancelled',
-		stopReason?: OrchestratorRunHandoffReason,
-	): 'completed' | 'steered' | 'cancelled' | 'errored' {
-		return status === 'completed' && stopReason === 'user-steered' ? 'steered' : status;
-	}
-
 	private publishRunFinish(
 		threadId: string,
 		runId: string,
@@ -7013,8 +6944,10 @@ export class InstanceAiService {
 	private async finalizeRun(
 		threadId: string,
 		runId: string,
-		status: 'completed' | 'steered' | 'cancelled' | 'errored',
+		runStatus: 'completed' | 'cancelled' | 'errored',
 		options?: {
+			/** A completed run that a queued turn stopped reports `steered`: the same outcome, told apart in the data. */
+			stopReason?: OrchestratorRunHandoffReason;
 			userId?: string;
 			promptVersion?: string;
 			modelId?: ModelConfig;
@@ -7025,6 +6958,8 @@ export class InstanceAiService {
 			errorInfo?: RunFinishErrorInfo;
 		},
 	): Promise<void> {
+		const status =
+			runStatus === 'completed' && options?.stopReason === 'user-steered' ? 'steered' : runStatus;
 		// The run is over; a resume arms a fresh one with its environment.
 		this.steerInterrupts.delete(runId);
 		this.publishRunFinish(

@@ -935,8 +935,7 @@ export class InstanceAiController {
 	) {
 		this.requireInstanceAiEnabled();
 		await this.assertThreadAccess(req.user.id, threadId);
-		const queuedMessages = await this.instanceAiService.listQueuedMessages(threadId);
-		return { queuedMessages };
+		return { queuedMessages: await this.instanceAiService.listQueuedMessages(threadId) };
 	}
 
 	@Post('/threads/:threadId/queued-messages')
@@ -951,12 +950,10 @@ export class InstanceAiController {
 		// The message may start a run at once when no run turns out to be live.
 		await this.requireModelConfigured();
 		await this.assertThreadAccess(req.user.id, threadId);
-		const queuedMessages = await this.instanceAiService.admitQueuedMessage(
-			req.user,
-			threadId,
-			payload.text,
-		);
-		return { queuedMessages };
+		const { user } = req;
+		return {
+			queuedMessages: await this.instanceAiService.admitQueuedMessage(user, threadId, payload.text),
+		};
 	}
 
 	@Patch('/threads/:threadId/queued-messages/:messageId')
@@ -970,12 +967,10 @@ export class InstanceAiController {
 	) {
 		this.requireInstanceAiEnabled();
 		await this.assertThreadAccess(req.user.id, threadId);
-		const queuedMessages = await this.instanceAiService.updateQueuedMessage(
-			threadId,
-			messageId,
-			payload.text,
-		);
-		return { queuedMessages };
+		const { text } = payload;
+		return {
+			queuedMessages: await this.instanceAiService.updateQueuedMessage(threadId, messageId, text),
+		};
 	}
 
 	@Delete('/threads/:threadId/queued-messages/:messageId')
@@ -988,8 +983,9 @@ export class InstanceAiController {
 	) {
 		this.requireInstanceAiEnabled();
 		await this.assertThreadAccess(req.user.id, threadId);
-		const queuedMessages = await this.instanceAiService.removeQueuedMessage(threadId, messageId);
-		return { queuedMessages };
+		return {
+			queuedMessages: await this.instanceAiService.removeQueuedMessage(threadId, messageId),
+		};
 	}
 
 	@Post('/threads/:threadId/queued-messages/send-now')

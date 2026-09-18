@@ -52,69 +52,43 @@ export async function postMessage(
 	);
 }
 
-/** Fetch the queued messages for a thread. */
-export async function fetchQueuedMessages(
+/** The thread's queue endpoints all answer with the queue after the change. */
+async function queueRequest<T extends InstanceAiQueuedMessagesResponse>(
 	context: IRestApiContext,
+	method: 'GET' | 'POST' | 'DELETE',
 	threadId: string,
-): Promise<InstanceAiQueuedMessagesResponse> {
-	return await makeRestApiRequest<InstanceAiQueuedMessagesResponse>(
-		context,
-		'GET',
-		`/instance-ai/threads/${threadId}/queued-messages`,
-	);
+	path = '',
+	data?: { text: string },
+): Promise<T> {
+	const url = `/instance-ai/threads/${threadId}/queued-messages${path}`;
+	return await makeRestApiRequest<T>(context, method, url, data);
 }
 
-/** Add a message to the thread queue. */
-export async function postQueuedMessage(
-	context: IRestApiContext,
-	threadId: string,
-	text: string,
-): Promise<InstanceAiQueuedMessagesResponse> {
-	return await makeRestApiRequest<InstanceAiQueuedMessagesResponse>(
-		context,
-		'POST',
-		`/instance-ai/threads/${threadId}/queued-messages`,
-		{ text },
-	);
-}
+export const fetchQueuedMessages = async (context: IRestApiContext, threadId: string) =>
+	await queueRequest(context, 'GET', threadId);
 
-/** Remove a message from the thread queue. */
-export async function deleteQueuedMessage(
-	context: IRestApiContext,
-	threadId: string,
-	messageId: string,
-): Promise<InstanceAiQueuedMessagesResponse> {
-	return await makeRestApiRequest<InstanceAiQueuedMessagesResponse>(
-		context,
-		'DELETE',
-		`/instance-ai/threads/${threadId}/queued-messages/${messageId}`,
-	);
-}
+export const postQueuedMessage = async (context: IRestApiContext, threadId: string, text: string) =>
+	await queueRequest(context, 'POST', threadId, '', { text });
+
+export const deleteQueuedMessage = async (context: IRestApiContext, threadId: string, id: string) =>
+	await queueRequest(context, 'DELETE', threadId, `/${id}`);
 
 /** Send the whole queue now, as one turn. */
-export async function postSendQueueNow(
-	context: IRestApiContext,
-	threadId: string,
-): Promise<InstanceAiQueuedMessagesResponse> {
-	return await makeRestApiRequest<InstanceAiQueuedMessagesResponse>(
-		context,
-		'POST',
-		`/instance-ai/threads/${threadId}/queued-messages/send-now`,
-	);
-}
+export const postSendQueueNow = async (context: IRestApiContext, threadId: string) =>
+	await queueRequest(context, 'POST', threadId, '/send-now');
 
 /** Take a queued message and everything after it back out, joined for the composer. */
-export async function postRecallQueuedMessages(
+export const postRecallQueuedMessages = async (
 	context: IRestApiContext,
 	threadId: string,
-	messageId: string,
-): Promise<InstanceAiRecallQueuedMessagesResponse> {
-	return await makeRestApiRequest<InstanceAiRecallQueuedMessagesResponse>(
+	id: string,
+) =>
+	await queueRequest<InstanceAiRecallQueuedMessagesResponse>(
 		context,
 		'POST',
-		`/instance-ai/threads/${threadId}/queued-messages/${messageId}/recall`,
+		threadId,
+		`/${id}/recall`,
 	);
-}
 
 export async function ensureThread(
 	context: IRestApiContext,

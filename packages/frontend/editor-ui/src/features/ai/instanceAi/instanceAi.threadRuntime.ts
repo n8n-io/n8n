@@ -439,6 +439,10 @@ export function createThreadRuntime(
 		queueTicketApplied = ticket;
 		queuedMessages.value = messages;
 	}
+	/** Take the server's view of the queue; the list is display-only, so a failed read waits for the next. */
+	function refreshQueue(): void {
+		void loadQueuedMessages().catch(() => {});
+	}
 	const projectId = ref<string | undefined>(initialProjectId);
 	const activeRunId = ref<string | null>(null);
 	const archivedWorkflowIds = ref<Set<string>>(new Set());
@@ -949,17 +953,11 @@ export function createThreadRuntime(
 				// Drop the item at once and take the server's view for the others.
 				const { messageId } = parsed.data.payload;
 				queuedMessages.value = queuedMessages.value.filter((message) => message.id !== messageId);
-				void loadQueuedMessages().catch(() => {
-					// The list is display-only; the next load or event corrects it.
-				});
+				refreshQueue();
 			}
-			if (parsed.data.type === 'run-finish') {
-				// The server may have dropped the queue with the run (a stop, a crash
-				// sweep) or delivered it; the list must not keep offering stale items.
-				void loadQueuedMessages().catch(() => {
-					// Same as above: display-only.
-				});
-			}
+			// The server may have dropped the queue with the run (a stop, a crash
+			// sweep) or delivered it; the list must not keep offering stale items.
+			if (parsed.data.type === 'run-finish') refreshQueue();
 			// Anything received on the stream means generation isn't stalled.
 			resetGenerationStallWatchdog();
 			if (parsed.data.type === 'tasks-update') {
@@ -1354,9 +1352,7 @@ export function createThreadRuntime(
 			}
 			// A typed turn supersedes whatever a stopped run left queued; the server
 			// dropped it, so the list must not keep offering it.
-			void loadQueuedMessages().catch(() => {
-				// Display-only.
-			});
+			refreshQueue();
 			return true;
 		} catch (error: unknown) {
 			const status = error instanceof ResponseError ? error.httpStatusCode : undefined;
@@ -1483,12 +1479,8 @@ export function createThreadRuntime(
 			applyQueueSnapshot(ticket, response.queuedMessages);
 			return response.text;
 		} catch {
-			// Refresh the queue after an uncertain recall; the items stay editable.
-			try {
-				await loadQueuedMessages();
-			} catch {
-				// Keep the last confirmed queue when the refresh also fails.
-			}
+			// The items stay queued and editable; show the server's view of them.
+			refreshQueue();
 			return null;
 		}
 	}

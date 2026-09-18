@@ -20,7 +20,6 @@ const USAGE: Extract<MockStreamPart, { type: 'finish' }>['usage'] = {
 };
 const PERSISTENCE = { threadId: 'thread-1', resourceId: 'user-1' };
 const SKIPPED = '[Skipped: the user sent a new instruction]';
-const CANCELLED = '[Tool call cancelled: the user sent a new instruction]';
 
 /**
  * A two-step run: the first model turn calls the lookup tool `toolCalls` times,
@@ -95,17 +94,12 @@ async function runWithCheck(
 	return { model, chunks, persisted, result, handler };
 }
 
+// Stop-before-call-k, interrupt-during-call-j and the no-stop baseline are
+// properties in graceful-stop.property.test.ts; these are the cases a
+// parameterised batch cannot express.
 describe('shouldStopGracefully', () => {
 	afterEach(() => {
 		vi.restoreAllMocks();
-	});
-
-	it('runs every step when no check is supplied', async () => {
-		const { model, chunks, handler } = await runWithCheck();
-
-		expect(handler).toHaveBeenCalledOnce();
-		expect(model.doStreamCalls).toHaveLength(2);
-		expect(chunks.at(-1)).toMatchObject({ type: 'finish', finishReason: 'stop' });
 	});
 
 	it('asks before each tool call and at the boundary, and continues on false', async () => {
@@ -119,27 +113,6 @@ describe('shouldStopGracefully', () => {
 		]);
 		expect(handler).toHaveBeenCalledTimes(2);
 		expect(model.doStreamCalls).toHaveLength(2);
-	});
-
-	it('ends the run at the boundary as a normal completion', async () => {
-		const shouldStopGracefully = vi.fn(
-			async ({ before }: { before: string }) => before === 'model-call',
-		);
-		const { model, chunks, persisted, result, handler } = await runWithCheck({
-			shouldStopGracefully,
-		});
-
-		// The tool call ran; the step the check refused never started; not a cancellation.
-		expect(handler).toHaveBeenCalledOnce();
-		expect(model.doStreamCalls).toHaveLength(1);
-		expect(chunks.at(-1)).toMatchObject({ type: 'finish', finishReason: 'stop' });
-		expect(result.getState().status).toBe('success');
-		expect(persisted).toContainEqual(
-			expect.objectContaining({
-				role: 'assistant',
-				content: [expect.objectContaining({ type: 'tool-call', state: 'resolved' })],
-			}),
-		);
 	});
 
 	it('lets the tool call in flight finish and skips the rest of the batch', async () => {
@@ -194,43 +167,6 @@ describe('shouldStopGracefully', () => {
 		});
 		expect(model.doStreamCalls).toHaveLength(2);
 		expect(chunks.at(-1)).toMatchObject({ type: 'finish', finishReason: 'stop' });
-	});
-
-	it('interrupt: cancels the tool call in flight and ends the run as a completion', async () => {
-		const interrupt = new AbortController();
-		// The host interrupts while the call runs; the executor cancels it through
-		// the tool's own signal, so the handler never gets to finish.
-		const handler = vi.fn(async (_input: unknown, ctx: { abortSignal?: AbortSignal }) => {
-			interrupt.abort();
-			await new Promise<never>((_resolve, reject) => {
-				ctx.abortSignal?.addEventListener('abort', () => reject(new Error('aborted')), {
-					once: true,
-				});
-			});
-			return { found: true };
-		});
-		const shouldStopGracefully = vi.fn().mockResolvedValue(false);
-		const { model, chunks, persisted, result } = await runWithCheck(
-			{ shouldStopGracefully, interruptSignal: interrupt.signal },
-			2,
-			handler,
-		);
-
-		expect(handler).toHaveBeenCalledOnce();
-		expect(model.doStreamCalls).toHaveLength(1);
-		expect(chunks.at(-1)).toMatchObject({ type: 'finish', finishReason: 'stop' });
-		expect(result.getState().status).toBe('success');
-		// The host was still asked, so it can record the stop.
-		expect(shouldStopGracefully).toHaveBeenCalledWith({ step: 1, before: 'model-call' });
-		const assistant = persisted.find(
-			(message) => 'role' in message && message.role === 'assistant',
-		);
-		expect(assistant && 'content' in assistant ? assistant.content : undefined).toEqual(
-			expect.arrayContaining([
-				expect.objectContaining({ toolCallId: 'tc-1', output: CANCELLED }),
-				expect.objectContaining({ toolCallId: 'tc-2', output: SKIPPED }),
-			]),
-		);
 	});
 
 	it('interrupt: a signal that fired before the run started still ends it at the first check', async () => {

@@ -22,7 +22,11 @@ import { readQueuedMessages, type QueuedMessage } from '../storage/queued-messag
  * - a sent turn is no longer the user's to change: edit, remove and recall
  *   refuse it, so an announced bubble always gets its run;
  * - nothing is lost and nothing goes twice: every queued line ends up in
- *   exactly one of {still queued, one started run, dropped by the user}.
+ *   exactly one of {still queued, one started run, dropped by the user};
+ * - a run driven by a sibling main owns the queue: nothing is announced,
+ *   interrupted or started from here while it does;
+ * - a failed queue write never throws out of the run's own paths (claim,
+ *   flush, discard) and leaves the queue as it was.
  */
 
 const THREAD_ID = 'thread-1';
@@ -90,6 +94,7 @@ function createHarness() {
 	const observed: Observed = { events: [], runs: [] };
 	let runCounter = 0;
 	let live = false;
+	let elsewhere = false;
 
 	const service = Object.create(InstanceAiService.prototype) as unknown as QueueService;
 	service.agentMemory = {
@@ -119,7 +124,7 @@ function createHarness() {
 	service.steerInterrupts = new Map([['run-live', new AbortController()]]);
 	service.queuedThreads = new Set();
 	service.instanceSettings = { isMultiMain: false };
-	service.interruptedRunSweeper = { isThreadDrivenElsewhere: vi.fn(async () => false) };
+	service.interruptedRunSweeper = { isThreadDrivenElsewhere: vi.fn(async () => elsewhere) };
 	service.startExecuteRun = vi.fn((_user: User, _threadId: string, runId: string, text: string) => {
 		observed.runs.push({ runId, text });
 	});
@@ -146,7 +151,15 @@ function createHarness() {
 			live = value;
 		},
 		isLive: () => live,
+		setElsewhere(value: boolean) {
+			elsewhere = value;
+		},
+		/** Whether any run owns the thread, here or on a sibling main. */
+		isOwned: () => live || elsewhere,
 		interruptFired: () => service.steerInterrupts.get('run-live')?.signal.aborted === true,
+		/** The next queue write fails. */
+		failNextWrite: () =>
+			service.agentMemory.patchThread.mockRejectedValueOnce(new Error('db down')),
 	};
 }
 
@@ -165,10 +178,12 @@ type Op =
 	| { kind: 'remove'; index: number }
 	| { kind: 'recall'; index: number }
 	| { kind: 'setLive'; live: boolean }
+	| { kind: 'setElsewhere'; elsewhere: boolean }
 	| { kind: 'sendNow' }
 	| { kind: 'claim' }
 	| { kind: 'flush' }
-	| { kind: 'discard' };
+	| { kind: 'discard' }
+	| { kind: 'writeFails'; during: 'queue' | 'claim' | 'flush' | 'discard' };
 
 const arbOp: fc.Arbitrary<Op> = fc.oneof(
 	{ weight: 6, arbitrary: arbText.map((text): Op => ({ kind: 'queue', text })) },
@@ -182,6 +197,16 @@ const arbOp: fc.Arbitrary<Op> = fc.oneof(
 	{ weight: 2, arbitrary: fc.nat({ max: 7 }).map((index): Op => ({ kind: 'remove', index })) },
 	{ weight: 2, arbitrary: fc.nat({ max: 7 }).map((index): Op => ({ kind: 'recall', index })) },
 	{ weight: 3, arbitrary: fc.boolean().map((live): Op => ({ kind: 'setLive', live })) },
+	{
+		weight: 1,
+		arbitrary: fc.boolean().map((elsewhere): Op => ({ kind: 'setElsewhere', elsewhere })),
+	},
+	{
+		weight: 2,
+		arbitrary: fc
+			.constantFrom(...(['queue', 'claim', 'flush', 'discard'] as const))
+			.map((during): Op => ({ kind: 'writeFails', during })),
+	},
 	{ weight: 3, arbitrary: fc.constant<Op>({ kind: 'sendNow' }) },
 	{ weight: 3, arbitrary: fc.constant<Op>({ kind: 'claim' }) },
 	{ weight: 3, arbitrary: fc.constant<Op>({ kind: 'flush' }) },
@@ -241,7 +266,7 @@ describe('queued messages — properties', () => {
 							const runsBefore = h.observed.runs.length;
 							const queue = await h.service.admitQueuedMessage(USER, THREAD_ID, op.text);
 							ledger.queued.push(op.text);
-							if (h.isLive()) {
+							if (h.isOwned()) {
 								const added = queue.at(-1)!;
 								model = [...model, { id: added.id, text: op.text, sent: false }];
 							} else {
@@ -307,6 +332,38 @@ describe('queued messages — properties', () => {
 							h.setLive(op.live);
 							break;
 						}
+						case 'setElsewhere': {
+							h.setElsewhere(op.elsewhere);
+							break;
+						}
+						case 'writeFails': {
+							// The run's own paths must survive a failed write, and the API
+							// paths must surface it; either way the queue is as it was.
+							if (op.during === 'queue') {
+								h.failNextWrite();
+								await expect(h.service.queueMessage(THREAD_ID, 'lost')).rejects.toThrow('db down');
+								break;
+							}
+							// These return before writing on an empty queue (or a busy thread),
+							// which would leave the fault armed for the next step.
+							if (model.length === 0) break;
+							if (op.during === 'flush' && h.isOwned()) break;
+							h.failNextWrite();
+							const eventsBefore = h.observed.events.length;
+							const runsBefore = h.observed.runs.length;
+							if (op.during === 'claim') {
+								await expect(h.service.claimQueuedTurn(THREAD_ID, 'run-live', 1)).resolves.toBe(
+									false,
+								);
+							} else if (op.during === 'flush') {
+								await expect(h.service.flushQueuedMessage(USER, THREAD_ID)).resolves.toBe(false);
+							} else {
+								await expect(h.service.discardQueuedMessages(THREAD_ID)).resolves.toBeUndefined();
+							}
+							expect(h.observed.events.length).toBe(eventsBefore);
+							expect(h.observed.runs.length).toBe(runsBefore);
+							break;
+						}
 						case 'sendNow': {
 							const before = model;
 							const eventsBefore = h.observed.events.length;
@@ -336,6 +393,10 @@ describe('queued messages — properties', () => {
 									expect(h.observed.events.length).toBe(eventsBefore);
 									expect(h.interruptFired()).toBe(firedBefore);
 								}
+							} else if (h.isOwned()) {
+								// A sibling main's run owns the queue: nothing from here.
+								expect(h.observed.events.length).toBe(eventsBefore);
+								expect(h.observed.runs.length).toBe(runsBefore);
 							} else {
 								expectFlushed(h, before, runsBefore);
 								model = [];
@@ -359,7 +420,7 @@ describe('queued messages — properties', () => {
 							const before = model;
 							const runsBefore = h.observed.runs.length;
 							const started = await h.service.flushQueuedMessage(USER, THREAD_ID);
-							if (h.isLive()) {
+							if (h.isOwned()) {
 								expect(started).toBe(false);
 								expect(h.observed.runs.length).toBe(runsBefore);
 							} else {
