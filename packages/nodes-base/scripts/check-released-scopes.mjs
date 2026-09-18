@@ -113,6 +113,7 @@ const baseline = [];
 const local = [];
 const checkedCredentials = new Set();
 const compared = [];
+let incomplete = false;
 
 for (const { name, dir, asset } of PACKAGES) {
 	const localFile = path.join(dir, TYPES_FILE);
@@ -130,8 +131,9 @@ for (const { name, dir, asset } of PACKAGES) {
 	const published = assets.get(asset);
 	if (!published) {
 		skip(
-			`${release.tag_name} has no \`${asset}\`, so ${name} scopes were not checked. Releases only carry it from the one after #36252.`,
+			`${release.tag_name} has no \`${asset}\`, so no scopes were checked. Releases only carry it from the one after #36252.`,
 		);
+		incomplete = true;
 		continue;
 	}
 
@@ -141,6 +143,7 @@ for (const { name, dir, asset } of PACKAGES) {
 		if (!Array.isArray(released)) throw new Error('metadata is not an array of credentials');
 	} catch (error) {
 		skip(`could not read ${asset} from ${release.tag_name} (${error.message}).`);
+		incomplete = true;
 		continue;
 	}
 
@@ -150,7 +153,9 @@ for (const { name, dir, asset } of PACKAGES) {
 	compared.push(name);
 }
 
-if (compared.length === 0) process.exit(0);
+// All or nothing: `extends` crosses packages, so a missing one leaves the
+// inherited scope defaults unresolvable and a removal there would not show up.
+if (incomplete || compared.length === 0) process.exit(0);
 
 const { removals, advisories } = diffScopes(
 	scopesByCredential(baseline),
