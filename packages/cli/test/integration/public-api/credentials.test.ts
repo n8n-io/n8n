@@ -861,6 +861,23 @@ describe('POST /credentials/:id/test', () => {
 
 		expect(response.statusCode).toBe(404);
 	});
+
+	test('should return 403 when the API key lacks credential:read', async () => {
+		const savedCredential = await saveCredential(dbCredential(), { user: owner });
+		const agent = await makeGlobalRoleUserAgent(['credential:list']);
+
+		const response = await agent.post(`/credentials/${savedCredential.id}/test`);
+
+		expect(response.statusCode).toBe(403);
+	});
+
+	test('should not test a credential the member has no access to', async () => {
+		const savedCredential = await saveCredential(dbCredential(), { user: owner });
+
+		const response = await authMemberAgent.post(`/credentials/${savedCredential.id}/test`);
+
+		expect(response.statusCode).toBe(403);
+	});
 });
 
 // Custom GLOBAL role carrying the given scopes, plus an API key whose scopes are

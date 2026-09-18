@@ -233,6 +233,31 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 			'The n8n Assistant requested a direct connection through the Browser Use extension.',
 		properties: z.object({}),
 	},
+	USER_RECEIVED_AI_ASSISTANT_RESPONSE: {
+		name: 'User received AI Assistant response',
+		description:
+			'The initial foreground AI Assistant reply was rendered after a user submitted a chat message. Starts before attachment processing and first-thread creation, then fires once when the initial run completes or pauses for user input. Automated follow-up runs do not create another sample.',
+		properties: z.object({
+			instance_id: z.string(),
+			thread_id: z.string(),
+			run_id: z.string().describe('Run ID returned for the user-submitted message'),
+			latency_ms: z
+				.number()
+				.int()
+				.nonnegative()
+				.describe('Milliseconds from submit intent until the initial foreground reply is rendered'),
+			is_first_user_message: z
+				.boolean()
+				.describe("Whether this was the thread's first user message"),
+			response_kind: z
+				.enum(['completed', 'awaiting_input'])
+				.describe('Whether the response completed the run or rendered an input request'),
+			action_source: threadActionSource,
+			tab_visible: z
+				.boolean()
+				.describe('Whether the document was visible when the response rendered'),
+		}),
+	},
 	COMPUTER_USE_MODAL_OPENED: {
 		name: 'User opened computer use connection modal',
 		description: 'The user opened the Computer Use connection interface.',

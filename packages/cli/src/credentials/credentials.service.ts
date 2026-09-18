@@ -269,34 +269,6 @@ export class CredentialsService {
 		}
 	}
 
-	private async addGlobalCredentials(
-		credentials: CredentialsEntity[],
-		includeData: boolean,
-		dependencyFilter?: CredentialDependencyFilter,
-		type?: string,
-	): Promise<CredentialsEntity[]> {
-		const globalCredentials = await this.credentialsRepository.findAllGlobalCredentials({
-			includeData,
-			...(type ? { type } : {}),
-			filters: { dependency: dependencyFilter },
-		});
-
-		// Merge and deduplicate based on credential ID
-		const credentialIds = new Set(credentials.map((c) => c.id));
-		const newGlobalCreds = globalCredentials.filter((gc) => !credentialIds.has(gc.id));
-
-		return [...credentials, ...newGlobalCreds];
-	}
-
-	/**
-	 * Read the credential `type` filter from listQueryOptions before any repo
-	 * call mutates it (toFindManyOptions wraps it in a Like(...) in place).
-	 */
-	private extractTypeFilter(listQueryOptions: ListQuery.Options): string | undefined {
-		const filterType = listQueryOptions.filter?.type;
-		return typeof filterType === 'string' && filterType !== '' ? filterType : undefined;
-	}
-
 	async getMany(
 		user: User,
 		options: GetManyOptions & { includeData: true },
@@ -382,35 +354,24 @@ export class CredentialsService {
 		}: GetManyCredentialsOptions,
 	): Promise<CredentialsWithCount> {
 		const { dependency: dependencyFilter } = filters ?? {};
-		const typeFilter = this.extractTypeFilter(listQueryOptions);
 
 		// If onlySharedWithMe or dependency filtering is requested, use subquery approach.
 		if (onlySharedWithMe || dependencyFilter) {
 			const sharingOptions = {
 				...(onlySharedWithMe ? { onlySharedWithMe: true } : {}),
 			};
-			const { credentials, count } =
-				await this.credentialsRepository.getManyAndCountWithSharingSubquery(user, sharingOptions, {
+			return await this.credentialsRepository.getManyAndCountWithSharingSubquery(
+				user,
+				sharingOptions,
+				{
 					...listQueryOptions,
 					...(includeData ? { includeData: true } : {}),
+					...(includeGlobal ? { includeGlobal: true } : {}),
 					filters: {
 						dependency: dependencyFilter,
 					},
-				});
-
-			if (includeGlobal) {
-				return {
-					credentials: await this.addGlobalCredentials(
-						credentials,
-						includeData,
-						dependencyFilter,
-						typeFilter,
-					),
-					count,
-				};
-			}
-
-			return { credentials, count };
+				},
+			);
 		}
 
 		await this.applyPersonalProjectFilter(listQueryOptions);
@@ -418,19 +379,8 @@ export class CredentialsService {
 		const [credentials, count] = await this.credentialsRepository.findManyAndCount({
 			...listQueryOptions,
 			...(includeData ? { includeData: true } : {}),
+			...(includeGlobal ? { includeGlobal: true } : {}),
 		});
-
-		if (includeGlobal) {
-			return {
-				credentials: await this.addGlobalCredentials(
-					credentials,
-					includeData,
-					dependencyFilter,
-					typeFilter,
-				),
-				count,
-			};
-		}
 
 		return { credentials, count };
 	}
@@ -446,7 +396,6 @@ export class CredentialsService {
 		}: GetManyCredentialsOptions,
 	): Promise<CredentialsWithCount> {
 		const { dependency: dependencyFilter } = filters ?? {};
-		const typeFilter = this.extractTypeFilter(listQueryOptions);
 
 		let isPersonalProject = false;
 		let personalProjectOwnerId: string | null = null;
@@ -493,28 +442,18 @@ export class CredentialsService {
 			sharingOptions.credentialRoles = credentialRoles;
 		}
 
-		const { credentials, count } =
-			await this.credentialsRepository.getManyAndCountWithSharingSubquery(user, sharingOptions, {
+		return await this.credentialsRepository.getManyAndCountWithSharingSubquery(
+			user,
+			sharingOptions,
+			{
 				...listQueryOptions,
 				...(includeData ? { includeData: true } : {}),
+				...(includeGlobal ? { includeGlobal: true } : {}),
 				filters: {
 					dependency: dependencyFilter,
 				},
-			});
-
-		if (includeGlobal) {
-			return {
-				credentials: await this.addGlobalCredentials(
-					credentials,
-					includeData,
-					dependencyFilter,
-					typeFilter,
-				),
-				count,
-			};
-		}
-
-		return { credentials, count };
+			},
+		);
 	}
 
 	private async applyPersonalProjectFilter(listQueryOptions: ListQuery.Options): Promise<void> {

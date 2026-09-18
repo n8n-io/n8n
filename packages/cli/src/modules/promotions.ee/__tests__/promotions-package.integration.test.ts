@@ -45,7 +45,6 @@ import { DataTableService } from '@/modules/data-table/data-table.service';
 import {
 	PACKAGE_ENTITY_LAYOUT,
 	entityFilePath,
-	workflowMetadataFilePath,
 	type ManifestEntityCollection,
 } from '@/modules/n8n-packages/io/manifest-entry';
 import { saveCredential } from '@test-integration/db/credentials';
@@ -816,6 +815,30 @@ describe('Promote and Apply', () => {
 		expect(await snapshotApplyState()).toEqual(before);
 	});
 
+	it('stops the first Apply when the reviewed commit moved and accepts the current one', async () => {
+		const { connection, remote } = await prepareBindingApply();
+		const reviewed = await service.apply(connection.id, owner);
+		assert(reviewed.status === 'blocked');
+		const before = await snapshotApplyState();
+		await remote.git.pull('origin', 'main');
+		await writeRemoteFile(remote, 'README.md', 'Updated description');
+		await commitAndPushRemote(remote, 'Update description');
+		const source = { configId: reviewed.configId, ...reviewed.git };
+
+		const moved = await service.apply(connection.id, owner, source);
+		expect(moved).toEqual({
+			status: 'source-changed',
+			connectionId: connection.id,
+			configId: reviewed.configId,
+			git: { branchName: 'main', commitSha: (await remote.git.revparse(['HEAD'])).trim() },
+		});
+		expect(await snapshotApplyState()).toEqual(before);
+
+		const current = await service.apply(connection.id, owner, { ...source, ...moved.git });
+		expect(current.status).toBe('blocked');
+		expect(await snapshotApplyState()).toEqual(before);
+	});
+
 	it('keeps the missing-manifest import error after a clear preflight', async () => {
 		const remote = await createRemote();
 		const connection = await createInstanceConnection(remote.bareDir);
@@ -1302,10 +1325,7 @@ describe('Promotion base branch listing', () => {
 						target === projectEntry.target ||
 						target.startsWith(`${projectEntry.target}/`),
 				)
-				.flatMap(({ target }) => [
-					`n8n-export/${entityFilePath(collection, target)}`,
-					...(collection === 'workflows' ? [`n8n-export/${workflowMetadataFilePath(target)}`] : []),
-				]),
+				.map(({ target }) => `n8n-export/${entityFilePath(collection, target)}`),
 		);
 
 		const files = await listBaseBranchFiles(project.id);

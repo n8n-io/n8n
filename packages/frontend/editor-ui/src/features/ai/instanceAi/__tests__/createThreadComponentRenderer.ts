@@ -21,6 +21,7 @@ export function makeThread(): ThreadRuntime {
 		isStreaming: false,
 		isSendingMessage: false,
 		isAwaitingConfirmation: false,
+		hydrationStatus: 'ready',
 		isHydratingThread: false,
 		amendContext: null,
 		pendingPlanReview: null,

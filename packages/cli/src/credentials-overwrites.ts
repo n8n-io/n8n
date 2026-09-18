@@ -164,8 +164,10 @@ export class CredentialsOverwrites {
 		}
 
 		const returnData = deepCopy(data);
-		// Overwrite only if there is currently no data set
+		// Overwrite only if there is currently no data set. An empty overwrite value is
+		// skipped so it does not suppress the credential type default downstream.
 		for (const key of Object.keys(overwrites)) {
+			if (overwrites[key] === '') continue;
 			const current = returnData[key];
 			if (current === null || current === undefined || current === '') {
 				returnData[key] = overwrites[key];
