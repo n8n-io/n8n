@@ -4,8 +4,9 @@ import { setActivePinia } from 'pinia';
 import { ref, shallowRef } from 'vue';
 import { fireEvent, waitFor } from '@testing-library/vue';
 import { createRunExecutionData, type INodeTypeDescription, type IRunData } from 'n8n-workflow';
+import type { NodeTypeAvailabilityScope } from '@n8n/api-types';
 
-import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
+import { createTestNode, createTestWorkflow, mockRestrictedNodeTypes } from '@/__tests__/mocks';
 import { createComponentRenderer } from '@/__tests__/render';
 
 import NodeSettings from './NodeSettings.vue';
@@ -112,6 +113,8 @@ interface RenderOptions {
 	provide?: Record<symbol, unknown>;
 	stubs?: Record<string, unknown>;
 	canvasOnly?: boolean;
+	props?: Record<string, unknown>;
+	restrictedNodeTypes?: Record<string, NodeTypeAvailabilityScope>;
 }
 
 const renderNodeSettings = (options: RenderOptions = {}) => {
@@ -122,6 +125,8 @@ const renderNodeSettings = (options: RenderOptions = {}) => {
 		provide = {},
 		stubs = {},
 		canvasOnly = false,
+		props = {},
+		restrictedNodeTypes = {},
 	} = options;
 	const pinia = createTestingPinia({ stubActions: false });
 	setActivePinia(pinia);
@@ -138,6 +143,7 @@ const renderNodeSettings = (options: RenderOptions = {}) => {
 	workflowDocumentStore.hydrate(workflow);
 	nodeTypesStore.setNodeTypes([nodeType]);
 	ndvStore.activeNodeName = node.name;
+	mockRestrictedNodeTypes(restrictedNodeTypes);
 
 	if (runData) {
 		useWorkflowExecutionStateStore(createWorkflowDocumentId(workflow.id)).setWorkflowExecutionData({
@@ -194,6 +200,7 @@ const renderNodeSettings = (options: RenderOptions = {}) => {
 			foreignCredentials: [],
 			blockUI: false,
 			executable: false,
+			...props,
 		},
 	});
 
@@ -307,6 +314,54 @@ describe('NodeSettings', () => {
 
 			await findByTestId('tab-params');
 			expect(container.querySelector('agent-ndv-referenced-summary-stub')).toBeNull();
+		});
+	});
+
+	describe('restricted node type', () => {
+		const restricted = {
+			restrictedNodeTypes: { [httpNode.type]: 'instance' as const },
+			props: { readOnly: false },
+		};
+
+		it('replaces the header and the parameters with the restricted panel', async () => {
+			const { findByTestId, queryByTestId } = renderNodeSettings({
+				...restricted,
+				props: { readOnly: false, executable: true },
+			});
+
+			expect(await findByTestId('node-restricted-panel')).toHaveTextContent(
+				"An administrator blocked 'HTTP Request' on this instance.",
+			);
+			expect(queryByTestId('node-parameters')).not.toBeInTheDocument();
+			expect(queryByTestId('tab-params')).not.toBeInTheDocument();
+			expect(queryByTestId('node-execute-button')).not.toBeInTheDocument();
+		});
+
+		it('re-emits the replace action with the node id', async () => {
+			const { findByTestId, emitted } = renderNodeSettings(restricted);
+
+			await fireEvent.click(await findByTestId('node-restricted-replace'));
+
+			expect(emitted('replaceNode')).toEqual([[httpNode.id]]);
+		});
+
+		it('locks the embedded header and offers no replace action', async () => {
+			const { findByTestId, getByTestId, queryByTestId } = renderNodeSettings({
+				...restricted,
+				props: { readOnly: false, isEmbeddedInCanvas: true },
+				stubs: {
+					ExperimentalEmbeddedNdvHeader: {
+						props: ['readOnly', 'hideTabs'],
+						template:
+							'<div data-test-id="embedded-ndv-header" :data-read-only="readOnly" :data-hide-tabs="hideTabs" />',
+					},
+				},
+			});
+
+			expect(await findByTestId('node-restricted-panel')).toBeInTheDocument();
+			expect(queryByTestId('node-restricted-replace')).not.toBeInTheDocument();
+			expect(getByTestId('embedded-ndv-header')).toHaveAttribute('data-read-only', 'true');
+			expect(getByTestId('embedded-ndv-header')).toHaveAttribute('data-hide-tabs', 'true');
 		});
 	});
 });

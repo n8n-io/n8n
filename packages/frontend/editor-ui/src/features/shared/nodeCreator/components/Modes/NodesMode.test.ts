@@ -18,7 +18,8 @@ import { useViewStacks } from '@/features/shared/nodeCreator/composables/useView
 import { useKeyboardNavigation } from '@/features/shared/nodeCreator/composables/useKeyboardNavigation';
 import { createComponentRenderer } from '@/__tests__/render';
 import { waitAllPromises } from '@n8n/frontend-test-utils';
-import { mockRestrictedNodeTypes, mockSimplifiedNodeType } from '../../__tests__/utils';
+import { mockRestrictedNodeTypes } from '@/__tests__/mocks';
+import { mockSimplifiedNodeType } from '../../__tests__/utils';
 import NodesMode from './NodesMode.vue';
 
 const mockDocumentStoreState = {
