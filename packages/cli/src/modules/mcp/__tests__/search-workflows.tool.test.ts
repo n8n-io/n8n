@@ -236,6 +236,7 @@ describe('search-workflows MCP tool', () => {
 			expect(optionsArg.take).toBe(200);
 			expect(optionsArg.filter).toMatchObject({
 				isArchived: false,
+				availableInMCP: true,
 				query: 'foo',
 				projectId: 'proj-1',
 			});
