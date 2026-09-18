@@ -6483,6 +6483,23 @@ describe('createContext — builder delegate wiring', () => {
 		// The third argument is a provider factory, not a pre-built provider: it
 		// is called per turn with the concrete target agent id so Gateway spend
 		// carries the right id even when the agent is created mid-build.
+		// An eval thread gets the allowlist-scoped wrapper, not the raw provider.
+		const providerFor = builderDelegateAdapter.createDelegate.mock.calls[0][2] as (
+			agentId: string,
+		) => AgentsCredentialProvider;
+		const provider = providerFor('agent-42');
+		expect(provider).not.toBeInstanceOf(AgentsCredentialProvider);
+		expect(provider).toEqual(
+			expect.objectContaining({ list: expect.any(Function), resolve: expect.any(Function) }),
+		);
+	});
+
+	it('hands production threads the raw provider, built per target agent id', () => {
+		const service = createAdapterWithGatewayMock(vi.fn(), { telemetry: { track: vi.fn() } });
+		const builderDelegateAdapter = mockBuilderModuleActive(mock<InstanceAiBuilderDelegate>());
+
+		service.createContext(mockUser, { threadId: 'thread-1', projectId: 'proj-1' });
+
 		const providerFor = builderDelegateAdapter.createDelegate.mock.calls[0][2] as (
 			agentId: string,
 		) => AgentsCredentialProvider;
