@@ -8,11 +8,11 @@ import { NodeOperationError } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 
 import { EmbeddingsDatabricks } from '../EmbeddingsDatabricks/EmbeddingsDatabricks.node';
-import { getDatabricksTokenProvider } from '../../../utils/databricks/token-provider';
+import { getDatabricksTokenProvider } from '@utils/databricks/token-provider';
 
 vi.mock('@langchain/openai');
 vi.mock('@n8n/ai-utilities');
-vi.mock('../../../utils/databricks/token-provider');
+vi.mock('@utils/databricks/token-provider');
 
 const MockedOpenAIEmbeddings = vi.mocked(OpenAIEmbeddings);
 const mockedLogWrapper = vi.mocked(logWrapper);

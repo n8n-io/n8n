@@ -12,13 +12,13 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { makeDatabricksFailedAttemptHandler } from '../../../utils/databricks/error-handling';
-import { createDatabricksGatewayConfig } from '../../../utils/databricks/gateway-config';
-import { CHAT_CAPABILITY, makeModelSearch } from '../../../utils/databricks/model-services';
+import { makeDatabricksFailedAttemptHandler } from '@utils/databricks/error-handling';
+import { createDatabricksGatewayConfig } from '@utils/databricks/gateway-config';
+import { CHAT_CAPABILITY, makeModelSearch } from '@utils/databricks/model-services';
 import {
 	DATABRICKS_CREDENTIAL_TYPE,
 	type DatabricksOAuth2Credential,
-} from '../../../utils/databricks/token-provider';
+} from '@utils/databricks/token-provider';
 
 const searchModels = makeModelSearch(CHAT_CAPABILITY);
 
@@ -33,7 +33,10 @@ export class LmChatDatabricks implements INodeType {
 		displayName: 'Databricks Chat Model',
 		name: 'lmChatDatabricks',
 		hidden: true,
-		icon: { light: 'file:databricks.svg', dark: 'file:databricks.dark.svg' },
+		icon: {
+			light: 'file:../../shared/icons/databricks.svg',
+			dark: 'file:../../shared/icons/databricks.dark.svg',
+		},
 		group: ['transform'],
 		version: [1],
 		description: 'For advanced usage with an AI chain',
