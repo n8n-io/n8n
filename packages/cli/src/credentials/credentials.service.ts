@@ -2,6 +2,8 @@ import type { CreateCredentialDto, CredentialConnectionStatus } from '@n8n/api-t
 import { Logger } from '@n8n/backend-common';
 import {
 	Project,
+	TransactionRunner,
+	CredentialIdConflictError,
 	CredentialsEntity,
 	DbLock,
 	DbLockService,
@@ -55,6 +57,7 @@ import { CredentialTypes } from '@/credential-types';
 import { createCredentialsFromCredentialsEntity, CredentialsHelper } from '@/credentials-helper';
 import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
@@ -229,6 +232,7 @@ export class CredentialsService {
 		private readonly instanceCredentialUseRegistry: InstanceCredentialUseRegistry,
 		private readonly dbLockService: DbLockService,
 		private readonly eventService: EventService,
+		private readonly transactionRunner: TransactionRunner,
 	) {}
 
 	async countConnectedUsers(credentialId: string): Promise<number> {
@@ -1199,6 +1203,40 @@ export class CredentialsService {
 		return result;
 	}
 
+	private async insertProjectCredential(
+		credential: CredentialsEntity,
+		encryptedData: ICredentialsDb,
+		user: User,
+		projectId: string,
+		decryptedCredentialData: ICredentialDataDecryptedObject,
+	) {
+		const newCredential = this.credentialsRepository.create({ ...credential, ...encryptedData });
+		await this.externalHooks.run('credentials.create', [encryptedData]);
+		const externalSecretProviderIds =
+			await this.credentialDependencyService.resolveProviderIdsFromCredentialData(
+				decryptedCredentialData,
+			);
+		const project = await this.projectService.getProjectWithScope(user, projectId, [
+			'credential:create',
+		]);
+		if (project === null) {
+			if (!(await this.projectRepository.existsBy({ id: projectId }))) {
+				throw new NotFoundError('Project not found');
+			}
+			throw new ForbiddenError(
+				"You don't have the permissions to save the credential in this project.",
+			);
+		}
+		return await this.transactionRunner.run({}, async (ctx) => {
+			return await this.credentialsRepository.insertProjectCredentialWithOwner(
+				newCredential,
+				project.id,
+				externalSecretProviderIds,
+				ctx,
+			);
+		});
+	}
+
 	async findCredentialOwningProject(credentialId: string) {
 		return await this.sharedCredentialsRepository.findCredentialOwningProject(credentialId);
 	}
@@ -1785,8 +1823,12 @@ export class CredentialsService {
 	 * Create a new credential in user's account and return it along the scopes
 	 * If a projectId is send, then it also binds the credential to that specific project
 	 */
-	async createUnmanagedCredential(dto: CreateCredentialDto, user: User) {
-		return await this.createCredential({ ...dto, isManaged: false }, user);
+	async createUnmanagedCredential(
+		dto: CreateCredentialDto,
+		user: User,
+		options: { id?: string } = {},
+	) {
+		return await this.createCredential({ ...dto, isManaged: false }, user, options);
 	}
 
 	async createInstanceCredential(
@@ -1803,20 +1845,13 @@ export class CredentialsService {
 
 	/**
 	 * Creates an empty credential placeholder for package import. Skips field
-	 * validation so every known type can be stubbed; {@link save} still enforces
+	 * validation so every known type can be stubbed; the insert still enforces
 	 * `credential:create` on the target project. A supplied `id` preserves source identity.
 	 */
 	async createStubCredential(
 		opts: { id?: string; name: string; type: string; projectId: string },
 		user: User,
 	): Promise<CredentialsEntity> {
-		// `save` upserts by id, so reject a taken id rather than overwriting that credential.
-		if (opts.id !== undefined && (await this.credentialsRepository.existsBy({ id: opts.id }))) {
-			throw new BadRequestError(
-				`Cannot create credential stub: a credential with id "${opts.id}" already exists`,
-			);
-		}
-
 		const encryptedCredential = await this.createEncryptedData({
 			id: opts.id ?? null,
 			name: opts.name,
@@ -1830,7 +1865,22 @@ export class CredentialsService {
 			isResolvable: false,
 		});
 
-		return await this.save(credentialEntity, encryptedCredential, user, opts.projectId, {});
+		try {
+			return await this.insertProjectCredential(
+				credentialEntity,
+				encryptedCredential,
+				user,
+				opts.projectId,
+				{},
+			);
+		} catch (error) {
+			if (error instanceof CredentialIdConflictError) {
+				throw new BadRequestError(
+					`Cannot create credential stub: a credential with id "${opts.id}" already exists`,
+				);
+			}
+			throw error;
+		}
 	}
 
 	/**
@@ -1956,8 +2006,15 @@ export class CredentialsService {
 		}
 	}
 
-	private async createCredential(opts: CreateCredentialOptions, user: User) {
+	private async createCredential(
+		opts: CreateCredentialOptions,
+		user: User,
+		options: { id?: string } = {},
+	) {
 		if (opts.usageScope === 'instance') {
+			if (options.id !== undefined) {
+				throw new BadRequestError('A supplied ID requires project usage scope');
+			}
 			const savedCredential = await this.persistInstanceCredential(opts, user, {});
 			const scopes = await this.getCredentialScopes(user, savedCredential.id);
 			const { shared, ...credential } = savedCredential;
@@ -1987,7 +2044,7 @@ export class CredentialsService {
 			);
 		}
 		const encryptedCredential = await this.createEncryptedData({
-			id: null,
+			id: options.id ?? null,
 			name: opts.name,
 			type: opts.type,
 			data: opts.data as ICredentialDataDecryptedObject,
@@ -2013,13 +2070,20 @@ export class CredentialsService {
 			isResolvable: opts.isResolvable ?? false,
 		});
 
-		const { shared, ...credential } = await this.save(
+		const persist =
+			options.id === undefined ? this.save.bind(this) : this.insertProjectCredential.bind(this);
+		const { shared, ...credential } = await persist(
 			credentialEntity,
 			encryptedCredential,
 			user,
 			targetProjectId,
 			opts.data as ICredentialDataDecryptedObject,
-		);
+		).catch((error: unknown) => {
+			if (error instanceof CredentialIdConflictError) {
+				throw new ConflictError('A credential with this ID already exists');
+			}
+			throw error;
+		});
 
 		const scopes = await this.getCredentialScopes(user, credential.id);
 

@@ -182,6 +182,7 @@ export class CredentialsPublicController {
 	@ApiTags(['Credential'])
 	@ApiResponse(200, CredentialPublicDto)
 	@ApiErrorResponse(404)
+	@ApiErrorResponse(409)
 	async createCredential(
 		req: AuthenticatedRequest,
 		_res: Response,
@@ -200,6 +201,7 @@ export class CredentialsPublicController {
 				usageScope: 'project',
 			},
 			req.user,
+			{ id: body.id },
 		);
 
 		const project = await this.credentialsService.findCredentialOwningProject(credential.id);
