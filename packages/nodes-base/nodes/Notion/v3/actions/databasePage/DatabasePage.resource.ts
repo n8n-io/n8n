@@ -471,6 +471,10 @@ export const description: INodeProperties[] = [
 			show: { resource: ['databasePage'], operation: ['create', 'get', 'getAll', 'update'] },
 		},
 		description: 'Whether to return a simplified version of the response instead of the raw data',
+		builderHint: {
+			propertyHint:
+				'When true, database property keys use the property_ prefix and snake_case names. For example, Status is $json.property_status and Owner is $json.property_owner. Status values and rich-text values are strings. People values are arrays of email addresses; map them to the type the destination expects. Use this same shape for downstream expressions and verification output fixtures. When false, read the native $json.properties structure. To use person display names, set false and read the name fields in the people array.',
+		},
 	},
 	getQueryOptions(),
 ];
