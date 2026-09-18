@@ -143,7 +143,11 @@ const runs = new WeakMap<DatabricksFetchContext, Promise<Run>>();
 async function databricksFetch(ctx: DatabricksFetchContext): Promise<Run> {
 	let run = runs.get(ctx);
 	if (!run) {
-		run = openRun(ctx);
+		// Evict a rejected run so a failed credential lookup does not poison the rest of the run
+		run = openRun(ctx).catch((error) => {
+			runs.delete(ctx);
+			throw error;
+		});
 		runs.set(ctx, run);
 	}
 	return await run;
