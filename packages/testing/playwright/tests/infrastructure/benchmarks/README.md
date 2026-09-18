@@ -165,6 +165,8 @@ Adding a new trigger type requires one driver + one or more spec files. The harn
 
 ## Adding a spec
 
+Agents must also follow `AGENTS.md` in this directory.
+
 1. Pick a question that isn't already answered by an existing spec.
 2. Decide which tier it belongs to: **Peak** (no workers), **Actual** (1m+1w), or **Scaling** (2m+2w).
 3. Create `kafka/<question>.spec.ts` or `webhook/<question>.spec.ts`.
@@ -175,3 +177,4 @@ Adding a new trigger type requires one driver + one or more spec files. The harn
    - Scaling: `benchConfig('<slug>', { mains: 2, workers: 2 })` (kafka adds `kafka: true`)
 5. Wire the trigger driver (`kafkaDriver` or `setupWebhook`) and a harness (`runLoadTest` or `runWebhookThroughputTest`).
 6. Annotate with `{ type: 'question', description: '<slug>' }` so the question is searchable in test metadata.
+7. Set `variant` when the question emits multiple rows. The summary reporter does not infer row labels from other dimensions.

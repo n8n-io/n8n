@@ -173,7 +173,7 @@ The monorepo is organized into these key packages:
 
 - **Frontend:** Vue 3 + TypeScript + Vite + Pinia + Storybook UI Library
 - **Backend:** Node.js + TypeScript + Express + TypeORM
-- **Testing:** Vitest (unit) + Playwright (E2E)
+- **Testing:** Vitest (unit) + Playwright (UI, API, infrastructure, lifecycle, performance, and E2E orchestration)
 - **Database:** TypeORM with SQLite/PostgreSQL support
 - **Code Quality:** Biome (for formatting) + ESLint + lefthook git hooks
 
@@ -340,7 +340,10 @@ What we use for testing and writing tests:
 - For testing nodes and other backend components, we use Vitest for unit tests. Examples can be found in `packages/nodes-base/nodes/**/*test*`.
 - We use `nock` for server mocking
 - For frontend we use `vitest`
-- For E2E tests we use Playwright. Run with `pnpm --filter=n8n-playwright test:local`.
+- Playwright is the general-purpose test orchestrator. It runs UI journeys, API tests,
+  container topologies, lifecycle tests, infrastructure checks, and performance benchmarks.
+  Read `packages/testing/playwright/AGENTS.md` before you add or change these tests.
+- Use `pnpm --filter=n8n-playwright test:local` for product E2E tests against a local instance.
   See `packages/testing/playwright/README.md` for details.
 - **To iterate on a feature without docker rebuilds**, boot service containers
   and run the dev servers locally — `pnpm --filter n8n-containers services --services postgres,redis,mailpit,proxy`
