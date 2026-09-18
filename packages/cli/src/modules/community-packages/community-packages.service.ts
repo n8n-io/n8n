@@ -807,6 +807,19 @@ export class CommunityPackagesService {
 			}
 
 			await this.deletePackageDirectory(packageName);
+
+			// Housekeeping: the ledger is a projection of the database, so a dangling entry
+			// must not fail the uninstall, but leaving it gives `npm prune` a reason to put
+			// the package back on disk.
+			try {
+				await this.removePackageJsonDependency(packageName);
+			} catch (error) {
+				this.logger.warn('Failed to remove community package from the ledger', {
+					error: ensureError(error),
+					packageName,
+				});
+			}
+
 			await this.loadNodesAndCredentials.unloadPackage(packageName);
 			await this.loadNodesAndCredentials.postProcessLoaders();
 			this.loadNodesAndCredentials.releaseTypes();

@@ -1527,7 +1527,7 @@ describe('AgentChatBridge — consumeStream', () => {
 				'project-1',
 				integration,
 			);
-			return { bot, bridge };
+			return { bot, bridge, agentExecutor };
 		}
 
 		it('strips a rotation suffix before reconstructing the platform thread id', async () => {
@@ -1541,6 +1541,31 @@ describe('AgentChatBridge — consumeStream', () => {
 				.catch(() => {});
 
 			expect(bot.thread).toHaveBeenCalledWith('1001');
+		});
+
+		it('routes a task continuation to its saved reply destination', async () => {
+			const { bot, bridge, agentExecutor } = makeResumeBridge(streamingIntegration);
+			const messageContext = {
+				integrationConnectionId: 'test-streaming:cred-1',
+				platform: 'test-streaming',
+				target: { type: 'thread' as const, threadId: 'outbound-thread' },
+				replyTarget: { type: 'thread' as const, threadId: 'reply-thread' },
+				updatedAt: '2026-09-18T10:00:00.000Z',
+			};
+			await bridge.resumeInAgentThread(
+				'task-run-1',
+				'run-1',
+				'tool-1',
+				{},
+				{
+					messageContext,
+					allowLegacyThreadId: false,
+				},
+			);
+			expect(bot.thread).toHaveBeenCalledWith('reply-thread');
+			expect(agentExecutor.resumeForChat).toHaveBeenCalledWith(
+				expect.objectContaining({ messageContext }),
+			);
 		});
 
 		it('reconstructs an unrotated thread id unchanged', async () => {
@@ -2485,12 +2510,11 @@ describe('AgentChatBridge — consumeStream', () => {
 	});
 
 	describe('message context', () => {
-		it('strips the Slack bot mention before executing and stores the Slack bot user ID', async () => {
+		it('strips the Slack bot mention before executing and captures the Slack bot user ID', async () => {
 			const { bot, handlers } = makeBot();
 			bot.getAdapter.mockReturnValue({ botUserId: 'U_BOT' });
 			const thread = makeThread();
 			const messageContextStore = mock<IntegrationMessageContextService>();
-			messageContextStore.getLatest.mockResolvedValue(null);
 			const agentExecutor = makeAgentExecutor([{ type: 'finish', finishReason: 'stop' }]);
 
 			new AgentChatBridge(
@@ -2520,23 +2544,24 @@ describe('AgentChatBridge — consumeStream', () => {
 					author: { id: 'u1', name: 'user1' },
 				}),
 			);
-			expect(messageContextStore.setLatest).toHaveBeenCalledWith(
-				'agent-1:thread-1',
-				'u1',
+			expect(agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
 				expect.objectContaining({
-					agentUserId: 'U_BOT',
-					interactingUserId: 'u1',
-					messageId: 'message-1',
+					contextConversation: { threadId: 'agent-1:thread-1', resourceId: 'u1' },
+					messageContext: expect.objectContaining({
+						agentUserId: 'U_BOT',
+						interactingUserId: 'u1',
+						messageId: 'message-1',
+					}),
 				}),
 			);
+			expect(messageContextStore.setLatest).not.toHaveBeenCalled();
 		});
 
-		it('stores the platform reply expectation for subscribed Slack channel messages', async () => {
+		it('captures the platform reply expectation for subscribed Slack channel messages', async () => {
 			const { bot, handlers } = makeBot();
 			bot.getAdapter.mockReturnValue({ botUserId: 'U_BOT' });
 			const thread = makeThread();
 			const messageContextStore = mock<IntegrationMessageContextService>();
-			messageContextStore.getLatest.mockResolvedValue(null);
 			const agentExecutor = makeAgentExecutor([{ type: 'finish', finishReason: 'stop' }]);
 
 			new AgentChatBridge(
@@ -2560,26 +2585,27 @@ describe('AgentChatBridge — consumeStream', () => {
 				raw: { channel: 'C123', channel_type: 'channel' },
 			});
 
-			expect(messageContextStore.setLatest).toHaveBeenCalledWith(
-				'agent-1:thread-1',
-				'u1',
+			expect(agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
 				expect.objectContaining({
-					replyExpectation: 'optional',
-					replyTarget: {
-						type: 'thread',
-						threadId: 'thread-1',
-						channelId: 'channel-1',
-					},
-					replyMessageId: 'message-2',
+					contextConversation: { threadId: 'agent-1:thread-1', resourceId: 'u1' },
+					messageContext: expect.objectContaining({
+						replyExpectation: 'optional',
+						replyTarget: {
+							type: 'thread',
+							threadId: 'thread-1',
+							channelId: 'channel-1',
+						},
+						replyMessageId: 'message-2',
+					}),
 				}),
 			);
+			expect(messageContextStore.setLatest).not.toHaveBeenCalled();
 		});
 
 		it('defaults the reply expectation to required for platforms without a reply policy', async () => {
 			const { bot, handlers } = makeBot();
 			const thread = makeThread();
 			const messageContextStore = mock<IntegrationMessageContextService>();
-			messageContextStore.getLatest.mockResolvedValue(null);
 			const agentExecutor = makeAgentExecutor([{ type: 'finish', finishReason: 'stop' }]);
 
 			new AgentChatBridge(
@@ -2599,18 +2625,19 @@ describe('AgentChatBridge — consumeStream', () => {
 				author: { userId: 'u1', userName: 'user1' },
 			});
 
-			expect(messageContextStore.setLatest).toHaveBeenCalledWith(
-				'agent-1:thread-1',
-				'u1',
-				expect.objectContaining({ replyExpectation: 'required' }),
+			expect(agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
+				expect.objectContaining({
+					contextConversation: { threadId: 'agent-1:thread-1', resourceId: 'u1' },
+					messageContext: expect.objectContaining({ replyExpectation: 'required' }),
+				}),
 			);
+			expect(messageContextStore.setLatest).not.toHaveBeenCalled();
 		});
 
-		it('stores a sanitized message subject from the inbound message', async () => {
+		it('captures a sanitized message subject from the inbound message', async () => {
 			const { bot, handlers } = makeBot();
 			const thread = makeThread();
 			const messageContextStore = mock<IntegrationMessageContextService>();
-			messageContextStore.getLatest.mockResolvedValue(null);
 			const agentExecutor = makeAgentExecutor([{ type: 'finish', finishReason: 'stop' }]);
 
 			new AgentChatBridge(
@@ -2644,48 +2671,36 @@ describe('AgentChatBridge — consumeStream', () => {
 				},
 			});
 
-			expect(messageContextStore.setLatest).toHaveBeenCalledWith(
-				'agent-1:thread-1',
-				'u1',
+			expect(agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
 				expect.objectContaining({
-					integrationConnectionId: 'test-streaming:cred-1',
-					platform: 'test-streaming',
-					target: { type: 'thread', threadId: 'thread-1', channelId: 'channel-1' },
-					messageId: 'message-1',
-					interactingUserId: 'u1',
-					subject: {
-						type: 'issue',
-						id: 'ENG-123',
-						title: 'Fix signup',
-						description: 'Signup fails for invited users',
-						status: 'In Progress',
-						url: 'https://linear.app/n8n/issue/ENG-123/fix-signup',
-						labels: ['Bug'],
-						assignee: { id: 'user-2', name: 'Michael Drury' },
-						author: { id: 'user-3', name: 'Ada Lovelace' },
-					},
+					contextConversation: { threadId: 'agent-1:thread-1', resourceId: 'u1' },
+					messageContext: expect.objectContaining({
+						integrationConnectionId: 'test-streaming:cred-1',
+						platform: 'test-streaming',
+						target: { type: 'thread', threadId: 'thread-1', channelId: 'channel-1' },
+						messageId: 'message-1',
+						interactingUserId: 'u1',
+						subject: {
+							type: 'issue',
+							id: 'ENG-123',
+							title: 'Fix signup',
+							description: 'Signup fails for invited users',
+							status: 'In Progress',
+							url: 'https://linear.app/n8n/issue/ENG-123/fix-signup',
+							labels: ['Bug'],
+							assignee: { id: 'user-2', name: 'Michael Drury' },
+							author: { id: 'user-3', name: 'Ada Lovelace' },
+						},
+					}),
 				}),
 			);
+			expect(messageContextStore.setLatest).not.toHaveBeenCalled();
 		});
 
-		it('keeps the previous subject when an action click updates the latest context', async () => {
+		it('captures the selected interaction without reading or writing thread context', async () => {
 			const { bot, handlers } = makeBot();
 			const thread = makeThread();
 			const messageContextStore = mock<IntegrationMessageContextService>();
-			messageContextStore.getLatest.mockResolvedValue({
-				integrationConnectionId: 'test-streaming:cred-1',
-				platform: 'test-streaming',
-				target: { type: 'thread', threadId: 'thread-1', channelId: 'channel-1' },
-				messageId: 'message-1',
-				interactingUserId: 'u1',
-				agentUserId: 'U_BOT',
-				subject: {
-					type: 'issue',
-					id: 'ENG-123',
-					title: 'Fix signup',
-				},
-				updatedAt: '2026-05-18T10:00:00.000Z',
-			});
 			const agentExecutor = makeAgentExecutor([{ type: 'finish', finishReason: 'stop' }]);
 
 			new AgentChatBridge(
@@ -2709,21 +2724,17 @@ describe('AgentChatBridge — consumeStream', () => {
 				adapter: { deleteMessage: vi.fn().mockResolvedValue(undefined) },
 			});
 
-			expect(messageContextStore.setLatest).toHaveBeenCalledWith(
-				'agent-1:thread-1',
-				'u2',
+			expect(agentExecutor.resumeForChat).toHaveBeenCalledWith(
 				expect.objectContaining({
-					messageId: 'card-message-1',
-					interactingUserId: 'u2',
-					agentUserId: 'U_BOT',
-					subject: {
-						type: 'issue',
-						id: 'ENG-123',
-						title: 'Fix signup',
-					},
-					replyExpectation: 'required',
+					contextConversation: { threadId: 'agent-1:thread-1', resourceId: 'u2' },
+					messageContext: expect.objectContaining({
+						messageId: 'card-message-1',
+						interactingUserId: 'u2',
+						replyExpectation: 'required',
+					}),
 				}),
 			);
+			expect(messageContextStore.setLatest).not.toHaveBeenCalled();
 		});
 	});
 
@@ -2768,20 +2779,17 @@ describe('AgentChatBridge — consumeStream', () => {
 					}),
 				}),
 			);
-			expect(messageContextStore.setLatest).toHaveBeenCalledWith(
-				'agent-1:slack:D123:1001',
-				'u1',
-				expect.objectContaining({ messageId: '1002', interactingUserId: 'u1' }),
-			);
-			expect(messageContextStore.setLatest).toHaveBeenCalledWith(
-				'task-1-uuid',
-				'task:task-1',
+			expect(agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
 				expect.objectContaining({
-					messageId: '1002',
-					interactingUserId: 'u1',
-					target: expect.objectContaining({ threadId: 'slack:D123:1001' }),
+					contextConversation: { threadId: 'agent-1:slack:D123:1001', resourceId: 'u1' },
+					messageContext: expect.objectContaining({
+						messageId: '1002',
+						interactingUserId: 'u1',
+						target: expect.objectContaining({ threadId: 'slack:D123:1001' }),
+					}),
 				}),
 			);
+			expect(messageContextStore.setLatest).not.toHaveBeenCalled();
 		});
 
 		it('stores inbound attachments on the bound task thread', async () => {

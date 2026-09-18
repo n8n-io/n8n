@@ -3,6 +3,7 @@ import type { ServiceHelpers } from 'n8n-containers/services/types';
 
 import type { ApiHelpers } from '../../../../services/api-helper';
 import type { BenchmarkDimensions } from '../../../../utils/benchmark';
+import { WORKFLOW_SUCCESS_QUERY } from '../../../../utils/benchmark';
 import { setupWebhook } from '../../../../utils/benchmark/webhook-driver';
 import { runWebhookThroughputTest } from './webhook-throughput-harness';
 
@@ -16,7 +17,10 @@ export async function runSingleInstanceWebhookBenchmark(options: {
 	testInfo: TestInfo;
 	baseUrl: string;
 	dimensions: BenchmarkDimensions;
+	drainTimeoutSeconds?: number;
 }): Promise<void> {
+	const drainTimeoutSeconds =
+		options.drainTimeoutSeconds ?? SINGLE_INSTANCE_WEBHOOK_DRAIN_TIMEOUT_SECONDS;
 	const handle = setupWebhook({
 		scenario: {
 			nodeCount: 1,
@@ -36,14 +40,14 @@ export async function runSingleInstanceWebhookBenchmark(options: {
 		pipelining: 1,
 		warmupSeconds: 0,
 		durationSeconds: SINGLE_INSTANCE_WEBHOOK_DURATION_SECONDS,
-		timeoutMs:
-			(SINGLE_INSTANCE_WEBHOOK_DURATION_SECONDS +
-				SINGLE_INSTANCE_WEBHOOK_DRAIN_TIMEOUT_SECONDS +
-				60) *
-			1000,
-		drainTimeoutSeconds: SINGLE_INSTANCE_WEBHOOK_DRAIN_TIMEOUT_SECONDS,
+		timeoutMs: (SINGLE_INSTANCE_WEBHOOK_DURATION_SECONDS + drainTimeoutSeconds + 60) * 1000,
+		drainTimeoutSeconds,
 		maxErrorRatePct: 1,
-		minCompletedResponseRatio: 0.95,
+		minCompletedResponseRatio: drainTimeoutSeconds === 0 ? undefined : 0.95,
+		counterReader:
+			options.api.options.workflowSettings?.engineType === 'v2'
+				? undefined
+				: async () => await options.api.metrics.getCounter(WORKFLOW_SUCCESS_QUERY),
 		dimensions: options.dimensions,
 	});
 }
