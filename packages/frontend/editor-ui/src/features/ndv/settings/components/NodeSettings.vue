@@ -35,6 +35,10 @@ import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useInstalledCommunityPackage } from '@/features/settings/communityNodes/composables/useInstalledCommunityPackage';
 import { useNodeCredentialOptions } from '@/features/credentials/composables/useNodeCredentialOptions';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
+import {
+	RestrictedNodePanel,
+	useNodeTypeRestriction,
+} from '@n8n/frontend-module-type-availability-policies';
 import { useNodeSettingsParameters } from '@/features/ndv/settings/composables/useNodeSettingsParameters';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { importCurlEventBus } from '@/app/event-bus';
@@ -111,6 +115,7 @@ const emit = defineEmits<{
 	];
 	activate: [];
 	execute: [];
+	replaceNode: [nodeId: string];
 	captureWheelBody: [WheelEvent];
 	dblclickHeader: [MouseEvent];
 }>();
@@ -175,6 +180,7 @@ const isReadOnly = computed(
 	() => props.readOnly || (hasForeignCredential.value && !isHomeProjectTeam.value),
 );
 const node = computed(() => props.activeNode ?? ndvStore.value.activeNode);
+const { isRestricted, restrictionScope } = useNodeTypeRestriction(() => node.value?.type);
 
 const nodeType = computed(() =>
 	node.value ? nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion) : null,
@@ -683,7 +689,7 @@ function handleSelectAction(params: INodeParameters) {
 			</template>
 		</ExperimentalEmbeddedNdvHeader>
 		<NodeSettingsHeader
-			v-else-if="node && nodeValid"
+			v-else-if="node && nodeValid && !isRestricted"
 			:selected-tab="openPanel"
 			:node-name="node.name"
 			:node-type="nodeType"
@@ -705,8 +711,16 @@ function handleSelectAction(params: INodeParameters) {
 			:preview-mode="isDemoPreview"
 		/>
 
+		<RestrictedNodePanel
+			v-if="node && nodeValid && isRestricted"
+			:node-type-name="nodeType?.displayName ?? node.type"
+			:scope="restrictionScope"
+			:show-replace="!isEmbeddedInCanvas"
+			@replace-node="emit('replaceNode', node.id)"
+		/>
+
 		<div
-			v-if="node && nodeValid"
+			v-else-if="node && nodeValid"
 			ref="nodeParameterWrapper"
 			:class="[
 				'node-parameters-wrapper',
