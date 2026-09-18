@@ -29,7 +29,6 @@ const props = withDefaults(
 		availability?: CatalogAvailability;
 		loading?: boolean;
 		error?: boolean;
-		hasMore?: boolean;
 		limitReason?: 'mentions' | 'attachments';
 	}>(),
 	{
@@ -43,7 +42,6 @@ const props = withDefaults(
 		availability: 'available',
 		loading: false,
 		error: false,
-		hasMore: false,
 		limitReason: undefined,
 	},
 );
@@ -58,12 +56,12 @@ const emit = defineEmits<{
 	'browse-workflows': [];
 	retry: [];
 	'retry-workflow': [];
-	'load-more': [];
 }>();
 
 const i18n = useI18n();
 const nodeTypesStore = useNodeTypesStore();
 const searchInput = ref<HTMLInputElement>();
+const listboxRef = ref<HTMLElement>();
 const listboxId = 'instance-ai-mention-listbox';
 const hasNodeCandidates = computed(() =>
 	props.candidates.some((candidate) => candidate.kind === 'node'),
@@ -117,6 +115,20 @@ const activeOptionId = computed(() => {
 	return candidate ? optionId(candidate) : undefined;
 });
 
+watch(
+	[activeOptionId, () => props.open],
+	([optionId, open]) => {
+		if (!open || !optionId) return;
+		void nextTick(() => {
+			const option = document.getElementById(optionId);
+			if (option && listboxRef.value?.contains(option)) {
+				option.scrollIntoView?.({ block: 'nearest' });
+			}
+		});
+	},
+	{ immediate: true },
+);
+
 function handleSelect(candidate: InstanceAiMentionCandidate): void {
 	if (!candidate.source || candidate.unavailableReason) return;
 	emit('select', candidate, candidatePositions.value.get(candidate.key) ?? 0);
@@ -150,8 +162,7 @@ watch(
 		side="top"
 		:side-flip="true"
 		align="end"
-		width="min(calc(var(--spacing--5xl) * 3), calc(100vw - var(--spacing--lg)))"
-		max-height="calc(var(--spacing--5xl) * 5)"
+		width="min(var(--reka-popper-anchor-width), calc(100vw - var(--spacing--lg)))"
 		:enable-scrolling="false"
 		:suppress-auto-focus="origin === 'typed'"
 		@update:open="emit('update:open', $event)"
@@ -238,7 +249,7 @@ watch(
 				<div v-else-if="candidates.length === 0" :class="$style.state" role="status">
 					{{ i18n.baseText('instanceAi.mentions.picker.noResults') }}
 				</div>
-				<div v-else :id="listboxId" :class="$style.listbox" role="listbox">
+				<div v-else :id="listboxId" ref="listboxRef" :class="$style.listbox" role="listbox">
 					<div
 						v-if="!isBrowseMode && (availability === 'loading' || loading)"
 						:class="$style.inlineState"
@@ -320,15 +331,6 @@ watch(
 							@click.stop="emit('browse-workflow', candidate)"
 						/>
 					</div>
-					<N8nButton
-						v-if="hasMore && !isBrowseMode"
-						:class="$style.loadMore"
-						size="small"
-						variant="ghost"
-						@click="emit('load-more')"
-					>
-						{{ i18n.baseText('instanceAi.mentions.picker.loadMore') }}
-					</N8nButton>
 				</div>
 			</div>
 		</template>
@@ -377,7 +379,7 @@ watch(
 }
 
 .listbox {
-	max-height: calc(var(--spacing--5xl) * 4);
+	max-height: var(--spacing--5xl);
 	overflow-y: auto;
 	padding: var(--spacing--3xs);
 }
@@ -470,10 +472,5 @@ watch(
 	padding: var(--spacing--2xs);
 	color: var(--color--text--tint-1);
 	font-size: var(--font-size--2xs);
-}
-
-.loadMore {
-	width: 100%;
-	margin-top: var(--spacing--3xs);
 }
 </style>

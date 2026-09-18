@@ -1117,7 +1117,6 @@ const resizable = computed(() => {
 					:availability="mentionCatalog.availability.value"
 					:loading="mentionCatalog.isLoadingWorkflows.value"
 					:error="mentionCatalog.workflowError.value"
-					:has-more="mentionCatalog.hasMoreWorkflows.value"
 					:limit-reason="mentionLimitReason"
 					@update:open="handleMentionPickerOpen"
 					@update:query="mention.setQuery"
@@ -1128,7 +1127,6 @@ const resizable = computed(() => {
 					@select="selectMention"
 					@retry="mentionCatalog.retry"
 					@retry-workflow="retryBrowsedWorkflow"
-					@load-more="mentionCatalog.loadMore"
 				>
 					<template #trigger>
 						<N8nTooltip as-child :content="mentionButtonTooltip" placement="top">

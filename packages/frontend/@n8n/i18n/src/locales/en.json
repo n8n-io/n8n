@@ -7712,7 +7712,6 @@
 	"instanceAi.mentions.picker.error": "Workflows couldn't load. Try again.",
 	"instanceAi.mentions.picker.workflowError": "Workflow couldn't load. Try again.",
 	"instanceAi.mentions.picker.retry": "Try again",
-	"instanceAi.mentions.picker.loadMore": "Load more workflows",
 	"instanceAi.mentions.type.workflow": "Workflow",
 	"instanceAi.mentions.type.node": "Node",
 	"instanceAi.mentions.type.canvasGroup": "Canvas group",

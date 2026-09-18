@@ -101,13 +101,13 @@ describe('useInstanceAiMentionCatalog', () => {
 		expect(mockGetWorkflows).toHaveBeenCalledWith(
 			expect.anything(),
 			{ projectId: 'project-1', isArchived: false },
-			{ skip: 0, take: 1, sortBy: 'name:asc' },
-			['id'],
+			{ skip: 0, take: 1, sortBy: 'updatedAt:desc' },
+			['id', 'updatedAt'],
 		);
 		expect(mockGetWorkflows).toHaveBeenCalledWith(
 			expect.anything(),
 			{ projectId: 'project-1', isArchived: false },
-			{ skip: 0, take: 50, sortBy: 'name:asc' },
+			{ skip: 0, take: 10, sortBy: 'updatedAt:desc' },
 			['id', 'name', 'versionId', 'isArchived', 'updatedAt'],
 		);
 	});
@@ -119,29 +119,19 @@ describe('useInstanceAiMentionCatalog', () => {
 		expect(mockGetWorkflow).not.toHaveBeenCalled();
 	});
 
-	it('paginates workflow metadata', async () => {
-		const firstPage = Array.from({ length: 50 }, (_, index) => workflow(`workflow-${index}`));
+	it('limits workflow metadata to 10 results', async () => {
+		const workflows = Array.from({ length: 12 }, (_, index) => workflow(`workflow-${index}`));
 		mockGetWorkflows.mockImplementation(async (_context, _filter, request) => {
 			const pagination = request as { take?: number; skip?: number } | undefined;
 			return pagination?.take === 1
-				? { count: 51, data: [firstPage[0]] }
-				: pagination?.skip === 50
-					? { count: 51, data: [workflow('workflow-50')] }
-					: { count: 51, data: firstPage };
+				? { count: workflows.length, data: [workflows[0]] }
+				: { count: workflows.length, data: workflows };
 		});
 		const { catalog } = setup();
 		await flushPromises();
-		expect(catalog.hasMoreWorkflows.value).toBe(true);
 
-		await catalog.loadMore();
-
-		expect(catalog.workflowCandidates.value).toHaveLength(51);
-		expect(mockGetWorkflows).toHaveBeenLastCalledWith(
-			expect.anything(),
-			{ projectId: 'project-1', isArchived: false },
-			{ skip: 50, take: 50, sortBy: 'name:asc' },
-			['id', 'name', 'versionId', 'isArchived', 'updatedAt'],
-		);
+		expect(catalog.workflowCandidates.value).toHaveLength(10);
+		expect(catalog.workflowCandidates.value.at(-1)?.workflowId).toBe('workflow-9');
 	});
 
 	it('uses a hydrated workflow document before an API fallback', async () => {

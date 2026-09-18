@@ -28,7 +28,7 @@ import type {
 	InstanceAiMentionNode,
 } from './instanceAiMentions.types';
 
-const WORKFLOW_PAGE_SIZE = 50;
+const WORKFLOW_RESULT_LIMIT = 10;
 const MAX_VISIBLE_RESULTS = 50;
 const MAX_DETAIL_REQUESTS = 2;
 
@@ -188,14 +188,13 @@ export function useInstanceAiMentionCatalog(options: UseInstanceAiMentionCatalog
 	const rootStore = useRootStore();
 	const availability = ref<CatalogAvailability>('idle');
 	const workflowMetadata = ref<WorkflowMetadata[]>([]);
-	const workflowCount = ref(0);
 	const workflowError = ref(false);
 	const isLoadingWorkflows = ref(false);
 	const loadedQuery = ref('');
 	const remoteQuery = ref('');
 	const projections = ref(new Map<string, WorkflowProjection>());
 	const projectionErrorIds = ref<ReadonlySet<string>>(new Set());
-	const pageCache = new Map<string, { count: number; data: WorkflowMetadata[] }>();
+	const pageCache = new Map<string, WorkflowMetadata[]>();
 	const queuedDetailIds = new Set<string>();
 	const scheduledDetailIds = new Set<string>();
 	const detailQueue: string[] = [];
@@ -262,8 +261,6 @@ export function useInstanceAiMentionCatalog(options: UseInstanceAiMentionCatalog
 			.slice(0, MAX_VISIBLE_RESULTS)
 			.map(({ candidate }) => candidate);
 	});
-	const hasMoreWorkflows = computed(() => workflowMetadata.value.length < workflowCount.value);
-
 	async function checkAvailability(): Promise<void> {
 		const enabled = toValue(options.enabled);
 		const projectId = toValue(options.projectId);
@@ -278,8 +275,8 @@ export function useInstanceAiMentionCatalog(options: UseInstanceAiMentionCatalog
 			const response = await getWorkflows(
 				rootStore.restApiContext,
 				{ projectId, isArchived: false },
-				{ skip: 0, take: 1, sortBy: 'name:asc' },
-				['id'],
+				{ skip: 0, take: 1, sortBy: 'updatedAt:desc' },
+				['id', 'updatedAt'],
 			);
 			if (generation !== scopeGeneration) return;
 			availability.value = response.count > 0 ? 'available' : 'empty';
@@ -288,40 +285,31 @@ export function useInstanceAiMentionCatalog(options: UseInstanceAiMentionCatalog
 		}
 	}
 
-	async function loadWorkflowPage(reset = true): Promise<void> {
+	async function loadWorkflowPage(): Promise<void> {
 		if (!toValue(options.enabled) || !toValue(options.isOpen)) return;
 		const projectId = toValue(options.projectId);
 		if (!projectId) return;
 
 		const query = normalize(remoteQuery.value);
-		const skip = reset ? 0 : workflowMetadata.value.length;
-		const cacheKey = `${projectId}:${query}:${skip}`;
+		const cacheKey = `${projectId}:${query}`;
 		const generation = ++searchGeneration;
 		workflowError.value = false;
 		isLoadingWorkflows.value = true;
 
 		try {
-			let page = pageCache.get(cacheKey);
-			if (!page) {
+			let workflows = pageCache.get(cacheKey);
+			if (!workflows) {
 				const response = await getWorkflows(
 					rootStore.restApiContext,
 					{ projectId, isArchived: false, ...(query ? { query } : {}) },
-					{ skip, take: WORKFLOW_PAGE_SIZE, sortBy: 'name:asc' },
+					{ skip: 0, take: WORKFLOW_RESULT_LIMIT, sortBy: 'updatedAt:desc' },
 					['id', 'name', 'versionId', 'isArchived', 'updatedAt'],
 				);
-				page = { count: response.count, data: response.data.map(toMetadata) };
-				pageCache.set(cacheKey, page);
+				workflows = response.data.map(toMetadata).slice(0, WORKFLOW_RESULT_LIMIT);
+				pageCache.set(cacheKey, workflows);
 			}
 			if (generation !== searchGeneration) return;
-			workflowMetadata.value = reset
-				? page.data
-				: [
-						...workflowMetadata.value,
-						...page.data.filter(
-							(workflow) => !workflowMetadata.value.some(({ id }) => id === workflow.id),
-						),
-					];
-			workflowCount.value = page.count;
+			workflowMetadata.value = workflows;
 			loadedQuery.value = query;
 		} catch {
 			if (generation === searchGeneration) workflowError.value = true;
@@ -332,7 +320,7 @@ export function useInstanceAiMentionCatalog(options: UseInstanceAiMentionCatalog
 
 	async function retry(): Promise<void> {
 		await checkAvailability();
-		if (availability.value === 'available') await loadWorkflowPage(true);
+		if (availability.value === 'available') await loadWorkflowPage();
 	}
 
 	function setProjectionError(workflowId: string, hasError: boolean): void {
@@ -486,7 +474,6 @@ export function useInstanceAiMentionCatalog(options: UseInstanceAiMentionCatalog
 			scopeGeneration += 1;
 			searchGeneration += 1;
 			workflowMetadata.value = [];
-			workflowCount.value = 0;
 			loadedQuery.value = '';
 			projections.value = new Map();
 			projectionErrorIds.value = new Set();
@@ -559,8 +546,6 @@ export function useInstanceAiMentionCatalog(options: UseInstanceAiMentionCatalog
 		projectionErrorIds,
 		isLoadingWorkflows,
 		workflowError,
-		hasMoreWorkflows,
-		loadMore: async () => await loadWorkflowPage(false),
 		retry,
 		retryWorkflowDetails,
 	};

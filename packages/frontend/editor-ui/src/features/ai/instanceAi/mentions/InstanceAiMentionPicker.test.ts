@@ -1,4 +1,4 @@
-import { fireEvent } from '@testing-library/vue';
+import { fireEvent, waitFor } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { mock } from 'vitest-mock-extended';
@@ -94,7 +94,34 @@ describe('InstanceAiMentionPicker', () => {
 
 		expect(getByText('Workflows')).toBeInTheDocument();
 		expect(getByRole('option', { name: /Support triage, Workflow/ })).toBeInTheDocument();
+		expect(getByRole('dialog')).toHaveStyle({
+			width: 'min(var(--reka-popper-anchor-width), calc(100vw - var(--spacing--lg)))',
+		});
 		expect(queryByTestId('instance-ai-mention-browse-workflow-1')).not.toBeInTheDocument();
+	});
+
+	it('scrolls the highlighted option into view', async () => {
+		const scrollIntoView = vi.fn();
+		const originalDescriptor = Object.getOwnPropertyDescriptor(
+			HTMLElement.prototype,
+			'scrollIntoView',
+		);
+		Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+			configurable: true,
+			value: scrollIntoView,
+		});
+
+		try {
+			renderPicker({ highlightedId: workflowCandidate.key });
+
+			await waitFor(() => expect(scrollIntoView).toHaveBeenCalledWith({ block: 'nearest' }));
+		} finally {
+			if (originalDescriptor) {
+				Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', originalDescriptor);
+			} else {
+				Reflect.deleteProperty(HTMLElement.prototype, 'scrollIntoView');
+			}
+		}
 	});
 
 	it('drills into an open workflow without selecting the whole workflow', async () => {
