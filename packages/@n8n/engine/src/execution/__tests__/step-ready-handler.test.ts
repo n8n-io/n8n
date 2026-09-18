@@ -51,7 +51,10 @@ function makeHandler(
 	queue: WorkQueue<OrchestrationMessage>,
 	dependencies: ExternalDependencies,
 	lifecycleEventPublisher: LifecycleEventPublisher = makeLifecycleEventPublisher(),
-	responseChannel: ExecutionResponseChannel = new ExecutionResponseChannel(noopResponseTransport, createConsoleLogger()),
+	responseChannel: ExecutionResponseChannel = new ExecutionResponseChannel(
+		noopResponseTransport,
+		createConsoleLogger(),
+	),
 ): StepReadyHandler {
 	return new StepReadyHandler(
 		executionStore,
