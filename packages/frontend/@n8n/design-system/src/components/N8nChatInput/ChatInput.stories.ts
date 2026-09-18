@@ -1,5 +1,8 @@
+import { useTextMention } from '@n8n/composables/useTextMention';
 import type { StoryFn } from '@storybook/vue3-vite';
 import { action } from 'storybook/actions';
+import { expect, userEvent, within } from 'storybook/test';
+import { computed, nextTick, ref, watch } from 'vue';
 
 import '../../css/_tokens.scss';
 
@@ -37,6 +40,10 @@ export default {
 		},
 		refocusAfterSend: {
 			control: 'boolean',
+		},
+		mentionSuggestions: {
+			control: 'object',
+			table: { category: 'Story mock data' },
 		},
 	},
 	parameters: {
@@ -122,20 +129,202 @@ MultiLine.args = {
 	maxLength: 1000,
 };
 
-export const ComboboxTextareaAdapter = Template.bind({});
-ComboboxTextareaAdapter.args = {
-	placeholder: 'Type @ to reference a workflow...',
-	textareaAttributes: {
-		role: 'combobox',
-		'aria-expanded': 'false',
-		'aria-controls': 'example-resource-listbox',
+interface MentionAdapterSuggestion {
+	id: string;
+	label: string;
+	type: 'Workflow' | 'Node';
+	parentLabel?: string;
+}
+
+interface MentionAdapterStoryArgs {
+	modelValue?: string;
+	placeholder?: string;
+	maxLength?: number;
+	mentionSuggestions: MentionAdapterSuggestion[];
+}
+
+const mentionAdapterSuggestions: MentionAdapterSuggestion[] = [
+	{ id: 'workflow-daily-sales', label: 'Daily sales report', type: 'Workflow' },
+	{ id: 'workflow-support-triage', label: 'Customer support triage', type: 'Workflow' },
+	{
+		id: 'node-send-summary',
+		label: 'Send summary email',
+		type: 'Node',
+		parentLabel: 'Daily sales report',
 	},
+];
+
+const MentionAdapterTemplate: StoryFn<MentionAdapterStoryArgs> = (args) => ({
+	components: { N8nChatInput },
+	setup() {
+		const inputRef = ref<InstanceType<typeof N8nChatInput>>();
+		const value = ref(args.modelValue ?? '');
+		const visibleSuggestions = ref<MentionAdapterSuggestion[]>([]);
+		const mention = useTextMention({
+			results: visibleSuggestions,
+			getResultId: (suggestion) => suggestion.id,
+		});
+
+		watch(
+			[() => args.mentionSuggestions, mention.query],
+			([suggestions, query]) => {
+				const normalizedQuery = query.trim().toLowerCase();
+				visibleSuggestions.value = normalizedQuery
+					? suggestions.filter((suggestion) =>
+							suggestion.label.toLowerCase().includes(normalizedQuery),
+						)
+					: [...suggestions];
+			},
+			{ immediate: true, deep: true },
+		);
+		watch(
+			() => args.modelValue,
+			(modelValue) => {
+				if (modelValue !== undefined) value.value = modelValue;
+			},
+		);
+
+		const textareaAttributes = computed(() => ({
+			role: 'combobox' as const,
+			'aria-expanded': mention.isOpen.value,
+			'aria-controls': 'mention-adapter-listbox',
+			...(mention.highlightedId.value
+				? { 'aria-activedescendant': optionId(mention.highlightedId.value) }
+				: {}),
+		}));
+
+		function optionId(id: string): string {
+			return `mention-adapter-${id.replace(/[^a-zA-Z0-9_-]/g, '-')}`;
+		}
+
+		function updateValue(nextValue: string): void {
+			value.value = nextValue;
+			methods.onUpdateModelValue(nextValue);
+		}
+
+		function handleInput(event: Event): void {
+			const target = event.target;
+			if (!(target instanceof HTMLTextAreaElement)) return;
+			mention.handleTextInput(target.value, target.selectionStart, target.selectionEnd);
+		}
+
+		function handleSelectionChange(selection: { start: number; end: number }): void {
+			mention.handleSelectionChange(value.value, selection.start, selection.end);
+		}
+
+		function handleCompositionEnd(event: CompositionEvent): void {
+			const target = event.target;
+			if (!(target instanceof HTMLTextAreaElement)) return;
+			mention.endComposition(target.value, target.selectionStart, target.selectionEnd);
+		}
+
+		async function selectSuggestion(suggestion: MentionAdapterSuggestion): Promise<void> {
+			const edit = mention.applySelection(value.value, suggestion.label);
+			if (!edit) return;
+
+			value.value = edit.value;
+			await nextTick();
+			inputRef.value?.setSelection(edit.selectionStart, edit.selectionEnd);
+			inputRef.value?.focusInput();
+		}
+
+		function handleKeydown(event: KeyboardEvent): void {
+			const result = mention.handleKeydown(event);
+			if (result?.type === 'select') void selectSuggestion(result.result);
+		}
+
+		return {
+			args,
+			highlightedId: mention.highlightedId,
+			handleCompositionEnd,
+			handleInput,
+			handleKeydown,
+			handleSelectionChange,
+			inputRef,
+			isOpen: mention.isOpen,
+			optionId,
+			selectSuggestion,
+			setHighlightedId: mention.setHighlightedId,
+			startComposition: mention.startComposition,
+			textareaAttributes,
+			updateValue,
+			value,
+			visibleSuggestions,
+		};
+	},
+	template: `
+		<div style="width: 500px; max-width: 100%;">
+			<N8nChatInput
+				ref="inputRef"
+				:model-value="value"
+				:placeholder="args.placeholder"
+				:max-length="args.maxLength"
+				:textarea-attributes="textareaAttributes"
+				@update:model-value="updateValue"
+				@input="handleInput"
+				@keydown="handleKeydown"
+				@compositionstart="startComposition"
+				@compositionend="handleCompositionEnd"
+				@selection-change="handleSelectionChange"
+			/>
+			<div
+				v-if="isOpen && visibleSuggestions.length > 0"
+				id="mention-adapter-listbox"
+				role="listbox"
+				aria-label="Mention suggestions"
+				style="
+					margin-top: var(--spacing--2xs);
+					overflow: hidden;
+					background: var(--background--surface);
+					border: var(--border);
+					border-radius: var(--radius--lg);
+					box-shadow: var(--shadow--sm);
+				"
+			>
+				<div
+					v-for="suggestion in visibleSuggestions"
+					:id="optionId(suggestion.id)"
+					:key="suggestion.id"
+					role="option"
+					:aria-selected="highlightedId === suggestion.id"
+					:style="{
+						display: 'flex',
+						alignItems: 'center',
+						justifyContent: 'space-between',
+						gap: 'var(--spacing--xs)',
+						padding: 'var(--spacing--2xs) var(--spacing--xs)',
+						color: 'var(--text-color)',
+						background:
+							highlightedId === suggestion.id
+								? 'var(--background--active)'
+								: 'var(--background--surface)',
+						cursor: 'pointer',
+					}"
+					@mouseenter="setHighlightedId(suggestion.id)"
+					@mousedown.prevent
+					@click="selectSuggestion(suggestion)"
+				>
+					<span>{{ suggestion.label }}</span>
+					<span style="color: var(--text-color--subtle); font-size: var(--font-size--2xs);">
+						{{ suggestion.type }}<template v-if="suggestion.parentLabel"> - {{ suggestion.parentLabel }}</template>
+					</span>
+				</div>
+			</div>
+		</div>
+	`,
+});
+
+export const InteractiveMentionAdapter = MentionAdapterTemplate.bind({});
+InteractiveMentionAdapter.args = {
+	placeholder: 'Type @ to reference a workflow...',
+	maxLength: 1000,
+	mentionSuggestions: mentionAdapterSuggestions,
 };
-ComboboxTextareaAdapter.parameters = {
+InteractiveMentionAdapter.parameters = {
 	docs: {
 		description: {
 			story:
-				'Combobox accessibility attributes apply to the native textarea. Consumers can also use the exposed selection and focus methods to position a related picker.',
+				'Uses mock story data and the shared mention composable to demonstrate the textarea adapter interaction.',
 		},
 	},
 };
