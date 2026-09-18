@@ -122,6 +122,24 @@ MultiLine.args = {
 	maxLength: 1000,
 };
 
+export const ComboboxTextareaAdapter = Template.bind({});
+ComboboxTextareaAdapter.args = {
+	placeholder: 'Type @ to reference a workflow...',
+	textareaAttributes: {
+		role: 'combobox',
+		'aria-expanded': 'false',
+		'aria-controls': 'example-resource-listbox',
+	},
+};
+ComboboxTextareaAdapter.parameters = {
+	docs: {
+		description: {
+			story:
+				'Combobox accessibility attributes apply to the native textarea. Consumers can also use the exposed selection and focus methods to position a related picker.',
+		},
+	},
+};
+
 export const Adaptive = Template.bind({});
 Adaptive.args = {
 	placeholder: 'Starts as one line and grows with your text...',

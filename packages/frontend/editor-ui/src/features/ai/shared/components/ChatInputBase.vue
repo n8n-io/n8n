@@ -8,7 +8,14 @@ import {
 	MAX_TOTAL_ATTACHMENT_BASE64_BYTES,
 } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
-import { N8nIconButton, N8nChatInput, N8nText, N8nTooltip } from '@n8n/design-system';
+import {
+	N8nIconButton,
+	N8nChatInput,
+	N8nText,
+	N8nTooltip,
+	type N8nChatInputSelection,
+	type N8nChatInputTextareaAttributes,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useSpeechRecognition } from '@vueuse/core';
 import { useFileDrop } from '@/features/ai/shared/composables/useFileDrop';
@@ -40,6 +47,8 @@ const props = withDefaults(
 		// Send button turns active only while focused with text (default: follows canSubmit).
 		activeRequiresFocus?: boolean;
 		maxLength?: number;
+		/** Accessibility attributes applied to the native textarea. */
+		textareaAttributes?: N8nChatInputTextareaAttributes;
 	}>(),
 	{
 		placeholder: undefined,
@@ -59,6 +68,11 @@ const emit = defineEmits<{
 	stop: [];
 	tab: [];
 	'files-selected': [files: File[]];
+	input: [event: Event];
+	keydown: [event: KeyboardEvent];
+	compositionstart: [event: CompositionEvent];
+	compositionend: [event: CompositionEvent];
+	'selection-change': [selection: N8nChatInputSelection];
 }>();
 
 const i18n = useI18n();
@@ -122,6 +136,22 @@ function handleAttach() {
 
 function focusInput(options?: FocusOptions) {
 	inputRef.value?.focusInput(options);
+}
+
+function getSelection(): N8nChatInputSelection | undefined {
+	return inputRef.value?.getSelection();
+}
+
+function setSelection(
+	start: number,
+	end: number = start,
+	direction: 'forward' | 'backward' | 'none' = 'none',
+) {
+	inputRef.value?.setSelection(start, end, direction);
+}
+
+function getTextareaElement(): HTMLTextAreaElement | undefined {
+	return inputRef.value?.getTextareaElement();
 }
 
 /**
@@ -197,6 +227,9 @@ function handleFileSelect(e: Event) {
 }
 
 function handleKeydown(e: KeyboardEvent) {
+	emit('keydown', e);
+	if (e.defaultPrevented) return;
+
 	// Only the textarea gets tab-to-autocomplete; other focusable children
 	// (attach/mic buttons, leading-slot chips) must keep normal Tab navigation.
 	const isTextareaFocused = (e.target as HTMLElement)?.tagName === 'TEXTAREA';
@@ -218,6 +251,9 @@ function handleSubmit() {
 defineExpose({
 	focus: focusInput,
 	openFilePicker: handleAttach,
+	getSelection,
+	setSelection,
+	getTextareaElement,
 });
 </script>
 
@@ -265,7 +301,12 @@ defineExpose({
 			:autosize="autosize"
 			:layout="autosize === false ? 'single-line' : 'multiline'"
 			:max-length="maxLength"
+			:textarea-attributes="textareaAttributes"
 			@update:model-value="emit('update:modelValue', $event)"
+			@input="emit('input', $event)"
+			@compositionstart="emit('compositionstart', $event)"
+			@compositionend="emit('compositionend', $event)"
+			@selection-change="emit('selection-change', $event)"
 			@submit="handleSubmit"
 			@stop="emit('stop')"
 			@focus="isFocused = true"
@@ -308,6 +349,7 @@ defineExpose({
 						@click.stop="handleMic"
 					/>
 				</N8nTooltip>
+				<slot name="right-actions" />
 			</template>
 		</N8nChatInput>
 	</div>

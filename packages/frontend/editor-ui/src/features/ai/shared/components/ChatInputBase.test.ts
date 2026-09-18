@@ -145,6 +145,52 @@ describe('ChatInputBase', () => {
 		expect(emitted().tab).toBeTruthy();
 	});
 
+	it('gives a keydown listener priority over contextual Tab completion', () => {
+		const onKeydown = vi.fn((event: KeyboardEvent) => event.preventDefault());
+		const { getByRole, emitted } = renderComponent({
+			props: makeProps(),
+			attrs: { onKeydown },
+		});
+
+		getByRole('textbox').dispatchEvent(
+			new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true }),
+		);
+
+		expect(onKeydown).toHaveBeenCalledOnce();
+		expect(emitted().tab).toBeFalsy();
+	});
+
+	it('forwards combobox attributes to the native textarea', () => {
+		const { getByRole } = renderComponent({
+			props: makeProps({
+				textareaAttributes: {
+					role: 'combobox',
+					'aria-expanded': 'true',
+					'aria-controls': 'mention-listbox',
+					'aria-activedescendant': 'mention-workflow-1',
+				},
+			}),
+		});
+
+		const textarea = getByRole('combobox');
+		expect(textarea).toHaveAttribute('aria-expanded', 'true');
+		expect(textarea).toHaveAttribute('aria-controls', 'mention-listbox');
+		expect(textarea).toHaveAttribute('aria-activedescendant', 'mention-workflow-1');
+	});
+
+	it('renders right actions immediately before Send', () => {
+		const { getByTestId } = renderComponent({
+			props: makeProps(),
+			slots: {
+				'right-actions': '<button data-test-id="mention-action">Mention</button>',
+			},
+		});
+		const mention = getByTestId('mention-action');
+		const send = getByTestId('instance-ai-send-button');
+
+		expect(mention.compareDocumentPosition(send) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+	});
+
 	it('should disable send button when canSubmit is false', () => {
 		const { getByTestId } = renderComponent({
 			props: makeProps({ canSubmit: false }),

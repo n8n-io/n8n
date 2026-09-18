@@ -61,6 +61,77 @@ describe('N8nChatInput', () => {
 			expect(textarea).not.toHaveAttribute('disabled');
 			expect(container).toMatchSnapshot();
 		});
+
+		it('applies combobox attributes to the textarea instead of the wrapper', () => {
+			const { container } = renderComponent({
+				props: {
+					textareaAttributes: {
+						role: 'combobox',
+						'aria-expanded': 'true',
+						'aria-controls': 'mention-listbox',
+						'aria-activedescendant': 'mention-workflow-1',
+					},
+				},
+				global: { stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton'] },
+			});
+			const textarea = container.querySelector('textarea');
+
+			expect(textarea).toHaveAttribute('role', 'combobox');
+			expect(textarea).toHaveAttribute('aria-expanded', 'true');
+			expect(textarea).toHaveAttribute('aria-controls', 'mention-listbox');
+			expect(textarea).toHaveAttribute('aria-activedescendant', 'mention-workflow-1');
+			expect(container.firstElementChild).not.toHaveAttribute('role');
+		});
+	});
+
+	describe('textarea adapter', () => {
+		it('exposes the textarea, selection read, selection write, and focus APIs', async () => {
+			const wrapper = mount(N8nChatInput, {
+				props: { modelValue: 'hello' },
+				global: { stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton'] },
+				attachTo: document.body,
+			});
+			const textarea = wrapper.find('textarea').element as HTMLTextAreaElement;
+
+			wrapper.vm.setSelection(1, 4, 'forward');
+			expect(wrapper.vm.getSelection()).toEqual({ start: 1, end: 4, direction: 'forward' });
+			expect(wrapper.vm.getTextareaElement()).toBe(textarea);
+
+			wrapper.vm.focusInput();
+			await nextTick();
+			expect(document.activeElement).toBe(textarea);
+			wrapper.unmount();
+		});
+
+		it('does not submit when a keydown listener consumes Enter', async () => {
+			const wrapper = mount(N8nChatInput, {
+				props: {
+					modelValue: 'hello',
+					onKeydown: (event: KeyboardEvent) => event.preventDefault(),
+				},
+				global: { stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton'] },
+			});
+
+			await wrapper.find('textarea').trigger('keydown', { key: 'Enter' });
+
+			expect(wrapper.emitted('keydown')).toHaveLength(1);
+			expect(wrapper.emitted('submit')).toBeUndefined();
+		});
+
+		it('forwards input and composition events', async () => {
+			const wrapper = mount(N8nChatInput, {
+				global: { stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton'] },
+			});
+			const textarea = wrapper.find('textarea');
+
+			await textarea.trigger('compositionstart');
+			await textarea.trigger('input');
+			await textarea.trigger('compositionend');
+
+			expect(wrapper.emitted('compositionstart')).toHaveLength(1);
+			expect(wrapper.emitted('input')?.length).toBeGreaterThanOrEqual(1);
+			expect(wrapper.emitted('compositionend')).toHaveLength(1);
+		});
 	});
 
 	describe('mode switching', () => {

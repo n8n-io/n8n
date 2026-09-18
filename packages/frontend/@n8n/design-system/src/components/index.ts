@@ -108,6 +108,9 @@ export {
 	useChatInputAutoFocus,
 	type ChatInputAutoFocusOptions,
 	type ChatInputAutoFocusTarget,
+	type N8nChatInputProps,
+	type N8nChatInputSelection,
+	type N8nChatInputTextareaAttributes,
 } from './N8nChatInput';
 export { default as N8nChatMessage } from './N8nChatMessage';
 export { default as N8nChatActions } from './N8nChatActions/ChatActions.vue';

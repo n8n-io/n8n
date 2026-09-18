@@ -4,6 +4,7 @@ export const INSTANCE_AI_VIEW = 'InstanceAi';
 export const INSTANCE_AI_THREAD_VIEW = 'InstanceAiThread';
 export const INSTANCE_AI_THREADS_VIEW = 'InstanceAiThreads';
 export const INSTANCE_AI_SETTINGS_VIEW = 'InstanceAiSettings';
+export const INSTANCE_AI_MENTIONS_FLAG = '116_at_mentions_enabled';
 export const INSTANCE_AI_PROJECT_ID_QUERY = 'projectId';
 /** Entry-point source carried into the empty view when a hand-off can't create a thread yet. */
 export const INSTANCE_AI_SOURCE_QUERY = 'source';

@@ -9,6 +9,8 @@ import {
 	useSlots,
 	watch,
 	watchEffect,
+	type AriaAttributes,
+	type HTMLAttributes,
 } from 'vue';
 
 import { useAutosizeTextarea } from '../../composables/useAutosizeTextarea';
@@ -55,6 +57,21 @@ export interface N8nChatInputProps {
 	submitDisabled?: boolean;
 	sendButtonTestId?: string;
 	stopButtonTestId?: string;
+	/** Accessibility attributes applied to the native textarea. */
+	textareaAttributes?: N8nChatInputTextareaAttributes;
+}
+
+export interface N8nChatInputTextareaAttributes {
+	role?: HTMLAttributes['role'];
+	'aria-expanded'?: AriaAttributes['aria-expanded'];
+	'aria-controls'?: AriaAttributes['aria-controls'];
+	'aria-activedescendant'?: AriaAttributes['aria-activedescendant'];
+}
+
+export interface N8nChatInputSelection {
+	start: number;
+	end: number;
+	direction: 'forward' | 'backward' | 'none';
 }
 
 const INFINITE_CREDITS = -1;
@@ -78,6 +95,7 @@ const props = withDefaults(defineProps<N8nChatInputProps>(), {
 	submitDisabled: undefined,
 	sendButtonTestId: 'send-message-button',
 	stopButtonTestId: 'send-message-button',
+	textareaAttributes: undefined,
 });
 
 const emit = defineEmits<{
@@ -87,6 +105,11 @@ const emit = defineEmits<{
 	focus: [event: FocusEvent];
 	blur: [event: FocusEvent];
 	'upgrade-click': [];
+	input: [event: Event];
+	keydown: [event: KeyboardEvent];
+	compositionstart: [event: CompositionEvent];
+	compositionend: [event: CompositionEvent];
+	'selection-change': [selection: N8nChatInputSelection];
 }>();
 
 const slots = useSlots();
@@ -224,6 +247,9 @@ async function handleStop() {
 }
 
 async function handleKeyDown(event: KeyboardEvent) {
+	emit('keydown', event);
+	if (event.defaultPrevented) return;
+
 	if (effectiveLayout() === 'single-line' && event.key === 'Enter' && !event.isComposing) {
 		event.preventDefault();
 		if (!sendDisabled.value) {
@@ -266,6 +292,46 @@ async function handleKeyDown(event: KeyboardEvent) {
 			textareaRef.value.selectionStart = textareaRef.value.selectionEnd = start + 1;
 		}
 	}
+}
+
+function handleInput(event: Event) {
+	if (isAutosizeEnabled.value) adjustHeight();
+	emit('input', event);
+}
+
+function handleCompositionStart(event: CompositionEvent) {
+	emit('compositionstart', event);
+}
+
+function handleCompositionEnd(event: CompositionEvent) {
+	emit('compositionend', event);
+}
+
+function getSelection(): N8nChatInputSelection | undefined {
+	const textarea = textareaRef.value;
+	if (!textarea) return undefined;
+	return {
+		start: textarea.selectionStart,
+		end: textarea.selectionEnd,
+		direction: textarea.selectionDirection,
+	};
+}
+
+function emitSelectionChange() {
+	const selection = getSelection();
+	if (selection) emit('selection-change', selection);
+}
+
+function setSelection(
+	start: number,
+	end: number = start,
+	direction: 'forward' | 'backward' | 'none' = 'none',
+) {
+	textareaRef.value?.setSelectionRange(start, end, direction);
+}
+
+function getTextareaElement(): HTMLTextAreaElement | undefined {
+	return textareaRef.value;
 }
 
 function handleFocus(event: FocusEvent) {
@@ -314,6 +380,9 @@ onMounted(() => {
 
 defineExpose({
 	focusInput,
+	getSelection,
+	setSelection,
+	getTextareaElement,
 });
 </script>
 
@@ -342,6 +411,7 @@ defineExpose({
 				<textarea
 					ref="textareaRef"
 					v-model="textValue"
+					v-bind="textareaAttributes"
 					:class="[
 						$style.textarea,
 						{
@@ -358,7 +428,11 @@ defineExpose({
 					@keydown="handleKeyDown"
 					@focus="handleFocus"
 					@blur="handleBlur"
-					@input="isAutosizeEnabled ? adjustHeight : undefined"
+					@input="handleInput"
+					@compositionstart="handleCompositionStart"
+					@compositionend="handleCompositionEnd"
+					@select="emitSelectionChange"
+					@keyup="emitSelectionChange"
 					@click="handleFocusableRegionClick"
 				/>
 				<div
