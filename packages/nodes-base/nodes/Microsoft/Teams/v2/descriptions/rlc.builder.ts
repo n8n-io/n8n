@@ -11,8 +11,7 @@ type RlcSpec = Omit<INodeProperties, 'type' | 'default' | 'modes' | 'typeOptions
 
 /**
  * One resource locator from a declarative spec. Every key that is not derived passes through
- * untouched, so key presence is the spec's: `memberRLC` has no `required`, `groupRLC` and
- * `memberRLC` have no `description`.
+ * untouched. The spec decides key presence: an omitted key stays omitted.
  */
 export const makeRLC = ({ dependsOn, ...spec }: RlcSpec): INodeProperties => ({
 	...spec,
@@ -51,12 +50,11 @@ export const idMode = (
 };
 
 // A v4 GUID: the shape of a team (group) ID and of a group member ID.
-const GUID_V4 = '^([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})';
+const GUID_V4_REGEX = '^([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})';
 
 /**
- * By-ID mode for a v4 GUID, shared by `teamRLC`, `groupRLC` and `memberRLC`. The "Team ID"
- * error copy is wrong for a member. Keep it here: this builder is a pure refactor, and the copy
- * fix is a follow-up ticket with its own `.snap` diff.
+ * By-ID mode for a v4 GUID, shared by `teamRLC`, `groupRLC` and `memberRLC`. The error copy
+ * says "Team ID" for every caller, so it is wrong for a member. A copy change is a `.snap` diff.
  */
 export const guidIdMode = (placeholder: string): INodePropertyMode =>
 	idMode({
@@ -65,14 +63,14 @@ export const guidIdMode = (placeholder: string): INodePropertyMode =>
 			{
 				type: 'regex',
 				properties: {
-					regex: `${GUID_V4}[ \t]*`,
+					regex: `${GUID_V4_REGEX}[ \t]*`,
 					errorMessage: 'Not a valid Microsoft Teams Team ID',
 				},
 			},
 		],
 		extractValue: {
 			type: 'regex',
-			regex: GUID_V4,
+			regex: GUID_V4_REGEX,
 		},
 	});
 

@@ -7,8 +7,9 @@ import * as rlc from '../../descriptions/rlc.description';
 describe('Microsoft Teams v2 resource locators', () => {
 	it('emit the pinned INodeProperties', () => {
 		expect({ ...rlc }).toMatchSnapshot();
-		// Each locator owns its mode objects (outer objects only); a hoisted shared mode would pass the snapshot.
-		expect(rlc.teamRLC.modes?.[2]).not.toBe(rlc.groupRLC.modes?.[1]);
+		// The plan and bucket By-ID modes have identical content, so only a reference check
+		// separates a hoisted shared mode object from two fresh ones.
+		expect(rlc.planRLC.modes?.[1]).not.toBe(rlc.bucketRLC.modes?.[1]);
 	});
 
 	// The Service Principal By-ID copies: seven call sites in task:create, task:update and
