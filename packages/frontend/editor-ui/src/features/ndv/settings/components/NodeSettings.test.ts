@@ -4,8 +4,9 @@ import { setActivePinia } from 'pinia';
 import { ref, shallowRef } from 'vue';
 import { fireEvent, waitFor } from '@testing-library/vue';
 import { createRunExecutionData, type INodeTypeDescription, type IRunData } from 'n8n-workflow';
+import type { NodeTypeAvailabilityScope } from '@n8n/api-types';
 
-import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
+import { createTestNode, createTestWorkflow, mockRestrictedNodeTypes } from '@/__tests__/mocks';
 import { createComponentRenderer } from '@/__tests__/render';
 
 import NodeSettings from './NodeSettings.vue';
@@ -15,7 +16,6 @@ import type { UseNdvAgentConfigReturn } from '@/features/ndv/agents/composables/
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
-import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	createWorkflowDocumentId,
@@ -114,7 +114,7 @@ interface RenderOptions {
 	stubs?: Record<string, unknown>;
 	canvasOnly?: boolean;
 	props?: Record<string, unknown>;
-	restrictedNodeTypes?: string[];
+	restrictedNodeTypes?: Record<string, NodeTypeAvailabilityScope>;
 }
 
 const renderNodeSettings = (options: RenderOptions = {}) => {
@@ -126,7 +126,7 @@ const renderNodeSettings = (options: RenderOptions = {}) => {
 		stubs = {},
 		canvasOnly = false,
 		props = {},
-		restrictedNodeTypes = [],
+		restrictedNodeTypes = {},
 	} = options;
 	const pinia = createTestingPinia({ stubActions: false });
 	setActivePinia(pinia);
@@ -143,12 +143,7 @@ const renderNodeSettings = (options: RenderOptions = {}) => {
 	workflowDocumentStore.hydrate(workflow);
 	nodeTypesStore.setNodeTypes([nodeType]);
 	ndvStore.activeNodeName = node.name;
-	vi.spyOn(useTypeAvailabilityPoliciesStore(), 'getNodeTypeAvailability').mockImplementation(
-		(name) =>
-			restrictedNodeTypes.includes(name)
-				? { name, available: false, scope: 'instance' }
-				: { name, available: true },
-	);
+	mockRestrictedNodeTypes(restrictedNodeTypes);
 
 	if (runData) {
 		useWorkflowExecutionStateStore(createWorkflowDocumentId(workflow.id)).setWorkflowExecutionData({
@@ -323,7 +318,10 @@ describe('NodeSettings', () => {
 	});
 
 	describe('restricted node type', () => {
-		const restricted = { restrictedNodeTypes: [httpNode.type], props: { readOnly: false } };
+		const restricted = {
+			restrictedNodeTypes: { [httpNode.type]: 'instance' as const },
+			props: { readOnly: false },
+		};
 
 		it('replaces the header and the parameters with the restricted panel', async () => {
 			const { findByTestId, queryByTestId } = renderNodeSettings({

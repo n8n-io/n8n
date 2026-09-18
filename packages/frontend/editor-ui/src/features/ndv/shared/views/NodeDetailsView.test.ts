@@ -14,10 +14,14 @@ import {
 } from '@/app/stores/workflowDocument.store';
 
 import { createComponentRenderer } from '@/__tests__/render';
-import { createTestNode, createTestWorkflow, defaultNodeDescriptions } from '@/__tests__/mocks';
+import {
+	createTestNode,
+	createTestWorkflow,
+	defaultNodeDescriptions,
+	mockRestrictedNodeTypes,
+} from '@/__tests__/mocks';
 import { computed, shallowRef } from 'vue';
 import { WorkflowDocumentStoreKey, WorkflowIdKey } from '@/app/constants/injectionKeys';
-import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
 
 vi.mock('vue-router', () => ({
 	useRouter: () => ({}),
@@ -318,9 +322,7 @@ describe('NodeDetailsView', () => {
 			pinia = store.pinia;
 			workflowId = store.workflow.id;
 			workflowDocumentStoreRef = store.workflowDocumentStoreRef;
-			vi.spyOn(useTypeAvailabilityPoliciesStore(), 'getNodeTypeAvailability').mockImplementation(
-				(name) => ({ name, available: name !== SET_NODE_TYPE }),
-			);
+			mockRestrictedNodeTypes({ [SET_NODE_TYPE]: 'instance' });
 		});
 
 		test('makes the output panel read-only', async () => {
