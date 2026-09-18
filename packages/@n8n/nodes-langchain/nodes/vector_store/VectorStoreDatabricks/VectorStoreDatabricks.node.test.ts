@@ -181,6 +181,22 @@ describe('VectorStoreDatabricks', () => {
 			);
 		});
 
+		it('opens the run again after a failed credential lookup in the same run', async () => {
+			mockedFromExistingIndex.mockResolvedValue({} as DatabricksVectorStore);
+			mockedDescribeIndex.mockResolvedValue(indexInfo);
+			const ctx = setupContext<ISupplyDataFunctions>({ ...baseParams, mode: 'retrieve' });
+			ctx.getCredentials = vi
+				.fn()
+				.mockRejectedValueOnce(new Error('credential store unavailable'))
+				.mockResolvedValue(mockCredential);
+
+			await expect(node.supplyData.call(ctx, 0)).rejects.toThrow('credential store unavailable');
+			await node.supplyData.call(ctx, 0);
+
+			expect(ctx.getCredentials).toHaveBeenCalledTimes(2);
+			expect(mockedFromExistingIndex).toHaveBeenCalledTimes(1);
+		});
+
 		it('rejects an http host before describing the index', async () => {
 			const ctx = setupContext<ISupplyDataFunctions>(
 				{ ...baseParams, mode: 'retrieve' },
