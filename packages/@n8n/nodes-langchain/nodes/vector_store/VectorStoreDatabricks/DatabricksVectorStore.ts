@@ -23,6 +23,7 @@ export type DatabricksIndexInfo = {
 };
 
 export interface DatabricksVectorStoreConfig {
+	/** Adds the bearer and the partner User-Agent to every request, the Unity Catalog lookup included */
 	fetch: Fetch;
 	/** https://..., no trailing slash */
 	host: string;
@@ -49,10 +50,15 @@ function sanitizeMessage(message: string): string {
 const FULL_NAME = /^[^/\s]+\.[^/\s]+\.[^/\s]+$/;
 
 // `.` and `..` survive encodeURIComponent, so the shape is checked before a URL is built.
-// `sourceTable` comes from the server, so the echoed value is sanitized
-function assertFullName(value: string, what: string): void {
+// The index name is user input (UserError); `sourceTable` comes from the server, so that path is
+// an OperationalError and the echoed value is sanitized
+function assertFullName(
+	value: string,
+	what: string,
+	Err: typeof UserError | typeof OperationalError,
+): void {
 	if (!FULL_NAME.test(value)) {
-		throw new OperationalError(
+		throw new Err(
 			`Invalid Databricks ${what} "${sanitizeMessage(value)}": use catalog.schema.${what}`,
 		);
 	}
@@ -160,7 +166,7 @@ export class DatabricksVectorStore extends VectorStore {
 		host: string,
 		indexName: string,
 	): Promise<DatabricksIndexInfo> {
-		assertFullName(indexName, 'index');
+		assertFullName(indexName, 'index', UserError);
 		const info = parseIndexInfo(
 			await databricksRequest(
 				fetchFn,
@@ -169,7 +175,7 @@ export class DatabricksVectorStore extends VectorStore {
 		);
 
 		if (info.indexType === 'DELTA_SYNC' && !info.schemaColumns && info.sourceTable) {
-			assertFullName(info.sourceTable, 'table');
+			assertFullName(info.sourceTable, 'table', OperationalError);
 			const response = await fetchFn(
 				`${host}/api/2.1/unity-catalog/tables/${encodeURIComponent(info.sourceTable)}`,
 			);

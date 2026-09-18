@@ -1,4 +1,5 @@
 import type { Embeddings } from '@langchain/core/embeddings';
+import { OperationalError, UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { DatabricksVectorStoreConfig } from './DatabricksVectorStore';
@@ -196,9 +197,10 @@ describe('DatabricksVectorStore', () => {
 				}),
 			);
 
-			await expect(
-				DatabricksVectorStore.describeIndex(fetchMock, host, 'cat.sch.idx'),
-			).rejects.toThrow('catalog.schema.table');
+			const attempt = DatabricksVectorStore.describeIndex(fetchMock, host, 'cat.sch.idx');
+
+			await expect(attempt).rejects.toThrow('catalog.schema.table');
+			await expect(attempt).rejects.toThrow(OperationalError);
 			expect(fetchMock).toHaveBeenCalledTimes(1);
 		});
 
@@ -214,9 +216,10 @@ describe('DatabricksVectorStore', () => {
 		it.each(['..', 'cat.sch/x.y', 'cat.sch'])(
 			'rejects the index name %s before any request',
 			async (indexName) => {
-				await expect(
-					DatabricksVectorStore.describeIndex(fetchMock, host, indexName),
-				).rejects.toThrow('catalog.schema.index');
+				const attempt = DatabricksVectorStore.describeIndex(fetchMock, host, indexName);
+
+				await expect(attempt).rejects.toThrow('catalog.schema.index');
+				await expect(attempt).rejects.toThrow(UserError);
 				expect(fetchMock).not.toHaveBeenCalled();
 			},
 		);
