@@ -1679,8 +1679,8 @@ describe('CommunityPackagesService', () => {
 					filters: { packageName: { $in: ['package-1'] } },
 					fields: ['packageName', 'npmVersion', 'checksum', 'nodeVersions'],
 				},
-				1,
-				N8N_NODES_API_VERSION,
+				config.aiNodeSdkVersion,
+				config.nodesApiVersion,
 			);
 		});
 
@@ -1705,8 +1705,8 @@ describe('CommunityPackagesService', () => {
 						filters: { packageName: { $in: ['package-1'] } },
 						fields: ['packageName', 'npmVersion', 'checksum', 'nodeVersions'],
 					},
-					1,
-					N8N_NODES_API_VERSION,
+					config.aiNodeSdkVersion,
+					config.nodesApiVersion,
 				);
 			} finally {
 				// Restore original environment
