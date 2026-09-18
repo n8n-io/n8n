@@ -305,6 +305,14 @@ const getChatResponseMode = (workflowStartNode: INode, method: string) => {
 	return undefined;
 };
 
+/** Returns whether the node is an enabled Form node or form-resuming Wait node. */
+function isEnabledFormPageNode(node: INode): boolean {
+	if (node.disabled) return false;
+	if (node.type === FORM_NODE_TYPE) return true;
+
+	return node.type === WAIT_NODE_TYPE && node.parameters.resume === 'form';
+}
+
 // eslint-disable-next-line complexity
 export function autoDetectResponseMode(
 	workflowStartNode: INode,
@@ -317,11 +325,7 @@ export function autoDetectResponseMode(
 		for (const nodeName of connectedNodes) {
 			const node = workflow.nodes[nodeName];
 
-			if (node.type === WAIT_NODE_TYPE && node.parameters.resume !== 'form') {
-				continue;
-			}
-
-			if ([FORM_NODE_TYPE, WAIT_NODE_TYPE].includes(node.type) && !node.disabled) {
+			if (isEnabledFormPageNode(node)) {
 				return 'formPage';
 			}
 		}
@@ -361,11 +365,7 @@ export function autoDetectResponseMode(
 		for (const nodeName of connectedNodes) {
 			const node = workflow.nodes[nodeName];
 
-			if (node.type === WAIT_NODE_TYPE && node.parameters.resume !== 'form') {
-				continue;
-			}
-
-			if ([FORM_NODE_TYPE, WAIT_NODE_TYPE].includes(node.type) && !node.disabled) {
+			if (isEnabledFormPageNode(node)) {
 				return 'responseNode';
 			}
 		}
