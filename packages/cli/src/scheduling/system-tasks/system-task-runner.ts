@@ -6,13 +6,11 @@ import type {
 	SystemTaskClass,
 	SystemTaskPlacement,
 	SystemTaskSchedule,
-	SystemTaskScope,
 } from '@n8n/decorators';
 import {
 	OnLeaderStepdown,
 	OnLeaderTakeover,
 	OnShutdown,
-	resolveSystemTaskPlacement,
 	resolveSystemTaskRunOptions,
 	SystemTaskMetadata,
 	resolveSystemTaskSchedule,
@@ -49,14 +47,20 @@ type InFlightRun = {
 	skipWarned: boolean;
 };
 
+type ClusterPlacement = Extract<SystemTaskPlacement, { scope: 'cluster' }>;
+
 type RoutedTask = {
 	task: SystemTask;
+	placement: SystemTaskPlacement;
 	schedule: SystemTaskSchedule;
-	scope: SystemTaskScope;
 	timer?: SystemTaskTimer;
 	inFlightRun?: InFlightRun;
 	retryTimer?: NodeJS.Timeout;
 };
+
+type TimerTask = RoutedTask & { timer: SystemTaskTimer };
+
+type ClusterTimerTask = TimerTask & { placement: ClusterPlacement };
 
 /**
  * The single owner of the system tasks' run loop: it consumes the registry and
@@ -197,7 +201,7 @@ export class SystemTaskRunner {
 			const clusterTimers = this.clusterTimers();
 			for (const routed of clusterTimers) {
 				routed.timer.start(from);
-				if (routed.task.runOnTakeover) {
+				if (routed.placement.runOnTakeover) {
 					void this.run(routed);
 				}
 			}
@@ -225,24 +229,27 @@ export class SystemTaskRunner {
 	}
 
 	/** The leader-gated timers, which a leadership change starts and stops. */
-	private clusterTimers(): Array<RoutedTask & { timer: SystemTaskTimer }> {
-		return this.timersOfScope('cluster');
+	private clusterTimers(): ClusterTimerTask[] {
+		return this.timers().filter(
+			(routed): routed is ClusterTimerTask => routed.placement.scope === 'cluster',
+		);
 	}
 
 	/** The per-instance timers, which only shutdown stops. */
-	private instanceTimers(): Array<RoutedTask & { timer: SystemTaskTimer }> {
-		return this.timersOfScope('instance');
+	private instanceTimers(): TimerTask[] {
+		return this.timers().filter((routed) => routed.placement.scope === 'instance');
 	}
 
-	private timersOfScope(scope: SystemTaskScope): Array<RoutedTask & { timer: SystemTaskTimer }> {
+	private timers(): TimerTask[] {
 		return [...this.routedTasksByName.values()].filter(
-			(routed): routed is RoutedTask & { timer: SystemTaskTimer } =>
-				routed.timer !== undefined && routed.scope === scope,
+			(routed): routed is TimerTask => routed.timer !== undefined,
 		);
 	}
 
 	private durableTasks(): RoutedTask[] {
-		return [...this.routedTasksByName.values()].filter((routed) => this.runsDurably(routed.task));
+		return [...this.routedTasksByName.values()].filter(
+			(routed) => routed.placement.scope === 'cluster' && this.runsDurably(routed.placement),
+		);
 	}
 
 	private inFlightRuns(routed: RoutedTask[]): Array<Promise<void>> {
@@ -283,9 +290,6 @@ export class SystemTaskRunner {
 	 *
 	 * @throws {UnexpectedError} When a task declares a `maxAttempts` or
 	 * `misfireGraceSeconds` the scheduler cannot store.
-	 *
-	 * @throws {UnexpectedError} When a task declares a placement the runner cannot
-	 * honor, such as an instance-scoped task that is also durable.
 	 */
 	private route(taskClass: SystemTaskClass): void {
 		const task = Container.get(taskClass);
@@ -297,7 +301,7 @@ export class SystemTaskRunner {
 		}
 		this.registeredNames.add(task.name);
 
-		const placement = resolveSystemTaskPlacement(task);
+		const { placement } = task;
 		if (!runsOn(placement, this.instanceSettings.instanceType)) {
 			this.logger.debug('System task does not run on this kind of instance', {
 				name: task.name,
@@ -322,14 +326,29 @@ export class SystemTaskRunner {
 
 		const routed: RoutedTask = {
 			task,
-			scope: placement.scope,
+			placement,
 			schedule: resolveSystemTaskSchedule(task),
 		};
 		this.routedTasksByName.set(task.name, routed);
 		const intervalSeconds =
 			routed.schedule.kind === 'interval' ? routed.schedule.intervalSeconds : undefined;
 
-		if (this.runsDurably(task)) {
+		if (placement.scope === 'instance') {
+			routed.timer = this.createTimer(routed);
+			this.logger.debug('System task will run on a per-instance timer', {
+				name: task.name,
+				schedule: routed.schedule,
+			});
+			emitSystemTaskMetric(this.eventService, 'system-task-routed', {
+				name: task.name,
+				mode: 'instance_timer',
+				intervalSeconds,
+			});
+
+			if (this.instanceTimersStarted) {
+				routed.timer.start(new Date());
+			}
+		} else if (this.runsDurably(placement)) {
 			this.systemTaskOwner.declareDurable(task.name);
 			this.durableScheduler.registerTaskHandler(
 				systemTaskType(task.name),
@@ -348,21 +367,6 @@ export class SystemTaskRunner {
 				mode: 'durable',
 				intervalSeconds,
 			});
-		} else if (placement.scope === 'instance') {
-			routed.timer = this.createTimer(routed);
-			this.logger.debug('System task will run on a per-instance timer', {
-				name: task.name,
-				schedule: routed.schedule,
-			});
-			emitSystemTaskMetric(this.eventService, 'system-task-routed', {
-				name: task.name,
-				mode: 'instance_timer',
-				intervalSeconds,
-			});
-
-			if (this.instanceTimersStarted) {
-				routed.timer.start(new Date());
-			}
 		} else {
 			routed.timer = this.createTimer(routed);
 			this.logger.debug('System task will run on an in-memory timer', {
@@ -377,16 +381,16 @@ export class SystemTaskRunner {
 
 			if (this.timersStarted) {
 				routed.timer.start(new Date());
-				if (task.runOnTakeover) {
+				if (placement.runOnTakeover) {
 					void this.run(routed);
 				}
 			}
 		}
 	}
 
-	private runsDurably(task: SystemTask): boolean {
+	private runsDurably(placement: ClusterPlacement): boolean {
 		return (
-			task.durable &&
+			placement.durable &&
 			this.globalConfig.scheduler.enabledForSystemTasks &&
 			this.durableScheduler.isActive()
 		);
@@ -461,8 +465,12 @@ export class SystemTaskRunner {
 	}
 
 	private async runOnce(routed: RoutedTask): Promise<void> {
-		const { task } = routed;
-		if (task.durable && (await this.jobRegistrar.isProvisioned(task.name))) {
+		const { task, placement } = routed;
+		if (
+			placement.scope === 'cluster' &&
+			placement.durable &&
+			(await this.jobRegistrar.isProvisioned(task.name))
+		) {
 			this.logger.debug('Skipped an in-memory system task run, its durable job is provisioned', {
 				name: task.name,
 			});
@@ -472,7 +480,7 @@ export class SystemTaskRunner {
 
 		// An instance-scoped run outlives a stepdown, so only shutdown aborts it.
 		const { signal } =
-			routed.scope === 'instance' ? this.shutdownController : this.inMemoryRunsController;
+			placement.scope === 'instance' ? this.shutdownController : this.inMemoryRunsController;
 		if (signal.aborted) {
 			this.emitSkipped(task, 'aborted');
 			return;
@@ -493,7 +501,7 @@ export class SystemTaskRunner {
 	private scheduleRetry(routed: RoutedTask): void {
 		const { retryDelaySeconds, effects } = routed.task;
 		const timersRunning =
-			routed.scope === 'instance' ? this.instanceTimersStarted : this.timersStarted;
+			routed.placement.scope === 'instance' ? this.instanceTimersStarted : this.timersStarted;
 		if (retryDelaySeconds === undefined || effects === 'non-idempotent' || !timersRunning) {
 			return;
 		}
@@ -538,6 +546,6 @@ function runsOn(placement: SystemTaskPlacement, instanceType: InstanceType): boo
 }
 
 /** The metrics mode of a task that runs from a timer, by the timer's scope. */
-function timerMode(routed: Pick<RoutedTask, 'scope'>): SystemTaskMode {
-	return routed.scope === 'instance' ? 'instance_timer' : 'leader_timer';
+function timerMode(routed: Pick<RoutedTask, 'placement'>): SystemTaskMode {
+	return routed.placement.scope === 'instance' ? 'instance_timer' : 'leader_timer';
 }

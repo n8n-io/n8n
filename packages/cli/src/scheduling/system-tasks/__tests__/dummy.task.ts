@@ -9,9 +9,7 @@ export class DummySystemTask implements SystemTask {
 
 	effects: SystemTaskEffects = 'idempotent';
 
-	durable = false;
-
-	runOnTakeover = false;
+	placement: SystemTaskPlacement = { scope: 'cluster', durable: false };
 
 	retryDelaySeconds?: number;
 

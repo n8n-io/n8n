@@ -1,7 +1,7 @@
 import { WorkflowHistoryCompactionConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { SystemTask } from '@n8n/decorators';
-import type { SystemTaskEffects, SystemTaskSchedule } from '@n8n/decorators';
+import type { SystemTaskEffects, SystemTaskPlacement, SystemTaskSchedule } from '@n8n/decorators';
 
 import { WorkflowHistoryCompactionService } from './workflow-history-compaction.service';
 
@@ -22,7 +22,7 @@ export class WorkflowHistoryCompactionOptimizeTask implements SystemTask {
 
 	readonly effects: SystemTaskEffects = 'idempotent';
 
-	readonly durable = false;
+	readonly placement: SystemTaskPlacement = { scope: 'cluster', durable: false };
 
 	constructor(
 		private readonly config: WorkflowHistoryCompactionConfig,

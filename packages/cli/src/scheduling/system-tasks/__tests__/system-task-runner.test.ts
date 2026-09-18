@@ -166,7 +166,7 @@ describe('SystemTaskRunner', () => {
 
 		it('runs a takeover task at once when the timers start', async () => {
 			const { runner, metadata } = setup({ isLeader: true });
-			dummy.runOnTakeover = true;
+			dummy.placement = { scope: 'cluster', durable: false, runOnTakeover: true };
 			metadata.register(DummySystemTask);
 
 			await initRunner(runner);
@@ -178,7 +178,7 @@ describe('SystemTaskRunner', () => {
 
 		it('runs a takeover task registered after takeover at once', async () => {
 			const { runner, metadata } = setup({ isLeader: true });
-			dummy.runOnTakeover = true;
+			dummy.placement = { scope: 'cluster', durable: false, runOnTakeover: true };
 			await initRunner(runner);
 
 			metadata.register(DummySystemTask);
@@ -188,7 +188,7 @@ describe('SystemTaskRunner', () => {
 
 		it('does not run a takeover task on a follower', async () => {
 			const { runner, metadata } = setup({ isLeader: false });
-			dummy.runOnTakeover = true;
+			dummy.placement = { scope: 'cluster', durable: false, runOnTakeover: true };
 			metadata.register(DummySystemTask);
 
 			await initRunner(runner);
@@ -199,7 +199,7 @@ describe('SystemTaskRunner', () => {
 
 		it('runs a takeover task again on a later takeover', async () => {
 			const { runner, metadata } = setup({ isLeader: true });
-			dummy.runOnTakeover = true;
+			dummy.placement = { scope: 'cluster', durable: false, runOnTakeover: true };
 			metadata.register(DummySystemTask);
 			await initRunner(runner);
 
@@ -396,7 +396,7 @@ describe('SystemTaskRunner', () => {
 	describe('in-memory runs of a task provisioned elsewhere', () => {
 		it('skips the run when a durable job is stored for the task', async () => {
 			const { runner, metadata, jobRegistrar, logger } = setup();
-			dummy.durable = true;
+			dummy.placement = { scope: 'cluster', durable: true };
 			dummy.retryDelaySeconds = 1;
 			jobRegistrar.isProvisioned.mockResolvedValue(true);
 			metadata.register(DummySystemTask);
@@ -414,8 +414,7 @@ describe('SystemTaskRunner', () => {
 
 		it('skips a takeover run when a durable job is stored for the task', async () => {
 			const { runner, metadata, jobRegistrar } = setup();
-			dummy.durable = true;
-			dummy.runOnTakeover = true;
+			dummy.placement = { scope: 'cluster', durable: true, runOnTakeover: true };
 			jobRegistrar.isProvisioned.mockResolvedValue(true);
 			metadata.register(DummySystemTask);
 
@@ -426,7 +425,7 @@ describe('SystemTaskRunner', () => {
 
 		it('runs when no durable job is stored for the task', async () => {
 			const { runner, metadata, jobRegistrar } = setup();
-			dummy.durable = true;
+			dummy.placement = { scope: 'cluster', durable: true };
 			jobRegistrar.isProvisioned.mockResolvedValue(false);
 			metadata.register(DummySystemTask);
 			await initRunner(runner);
@@ -438,7 +437,7 @@ describe('SystemTaskRunner', () => {
 
 		it('does not run a task whose store check settles after stepdown', async () => {
 			const { runner, metadata, jobRegistrar } = setup();
-			dummy.durable = true;
+			dummy.placement = { scope: 'cluster', durable: true };
 			let settleCheck!: (exists: boolean) => void;
 			jobRegistrar.isProvisioned.mockReturnValue(
 				new Promise<boolean>((resolve) => {
@@ -610,9 +609,9 @@ describe('SystemTaskRunner', () => {
 		const durably = { schedulerActive: true, enabledForSystemTasks: true };
 
 		it('hands each durable task to the job registrar', async () => {
-			dummy.durable = true;
+			dummy.placement = { scope: 'cluster', durable: true };
 			const other = new OtherDummySystemTask();
-			other.durable = true;
+			other.placement = { scope: 'cluster', durable: true };
 			Container.set(OtherDummySystemTask, other);
 			const { runner, metadata, jobRegistrar } = setup(durably);
 			metadata.register(DummySystemTask);
@@ -642,7 +641,7 @@ describe('SystemTaskRunner', () => {
 		])(
 			'leaves a durable task unprovisioned while $case',
 			async ({ schedulerActive, enabledForSystemTasks }) => {
-				dummy.durable = true;
+				dummy.placement = { scope: 'cluster', durable: true };
 				const { runner, metadata, jobRegistrar } = setup({
 					schedulerActive,
 					enabledForSystemTasks,
@@ -660,7 +659,7 @@ describe('SystemTaskRunner', () => {
 		const durably = { schedulerActive: true, enabledForSystemTasks: true };
 
 		it('removes stale jobs once, after provisioning the wanted ones', async () => {
-			dummy.durable = true;
+			dummy.placement = { scope: 'cluster', durable: true };
 			const { runner, metadata, jobRegistrar } = setup(durably);
 			metadata.register(DummySystemTask);
 
@@ -692,7 +691,7 @@ describe('SystemTaskRunner', () => {
 		const durably = { schedulerActive: true, enabledForSystemTasks: true };
 
 		it('hands a durable task to the durable scheduler', async () => {
-			dummy.durable = true;
+			dummy.placement = { scope: 'cluster', durable: true };
 			const { runner, metadata, durableScheduler } = setup(durably);
 			metadata.register(DummySystemTask);
 
@@ -707,7 +706,7 @@ describe('SystemTaskRunner', () => {
 		});
 
 		it('hands a durable task registered after it took over the registry to the scheduler', async () => {
-			dummy.durable = true;
+			dummy.placement = { scope: 'cluster', durable: true };
 			const { runner, metadata, durableScheduler } = setup(durably);
 			await initRunner(runner);
 
@@ -722,7 +721,7 @@ describe('SystemTaskRunner', () => {
 		});
 
 		it('reports a failing durable run, which the executor would not', async () => {
-			dummy.durable = true;
+			dummy.placement = { scope: 'cluster', durable: true };
 			const error = new Error('failed');
 			dummy.onRun = async () => {
 				throw error;
@@ -744,7 +743,7 @@ describe('SystemTaskRunner', () => {
 		});
 
 		it('aborts the signal of a durable run on shutdown', async () => {
-			dummy.durable = true;
+			dummy.placement = { scope: 'cluster', durable: true };
 			const { runner, metadata, durableScheduler } = setup(durably);
 			let runSignal: AbortSignal | undefined;
 			let releaseRun = () => {};
@@ -778,7 +777,7 @@ describe('SystemTaskRunner', () => {
 		])(
 			'keeps a durable task on its timer while $case',
 			async ({ schedulerActive, enabledForSystemTasks }) => {
-				dummy.durable = true;
+				dummy.placement = { scope: 'cluster', durable: true };
 				const { runner, metadata, durableScheduler } = setup({
 					schedulerActive,
 					enabledForSystemTasks,
@@ -805,7 +804,7 @@ describe('SystemTaskRunner', () => {
 		});
 
 		it('declares a task it hands to the durable scheduler to the job owner', async () => {
-			dummy.durable = true;
+			dummy.placement = { scope: 'cluster', durable: true };
 			const { runner, metadata, systemTaskOwner } = setup(durably);
 			metadata.register(DummySystemTask);
 
@@ -815,7 +814,7 @@ describe('SystemTaskRunner', () => {
 		});
 
 		it('does not declare a task it keeps on a timer to the job owner', async () => {
-			dummy.durable = true;
+			dummy.placement = { scope: 'cluster', durable: true };
 			const { runner, metadata, systemTaskOwner } = setup({ enabledForSystemTasks: false });
 			metadata.register(DummySystemTask);
 
@@ -938,7 +937,7 @@ describe('SystemTaskRunner', () => {
 		});
 
 		it('emits a durable task as routed', async () => {
-			dummy.durable = true;
+			dummy.placement = { scope: 'cluster', durable: true };
 			const { runner, metadata, eventService } = setup(durably);
 			metadata.register(DummySystemTask);
 
@@ -1045,7 +1044,7 @@ describe('SystemTaskRunner', () => {
 
 		it('stays stopped when an early takeover is followed by stepdown before init', async () => {
 			const { runner, metadata, eventService, instanceSettings } = setup();
-			dummy.runOnTakeover = true;
+			dummy.placement = { scope: 'cluster', durable: false, runOnTakeover: true };
 			metadata.register(DummySystemTask);
 
 			runner.startTimers();
@@ -1169,7 +1168,7 @@ describe('SystemTaskRunner', () => {
 
 		it('emits a run skipped for a durable job provisioned elsewhere, without starting it', async () => {
 			const { runner, metadata, jobRegistrar, eventService } = setup();
-			dummy.durable = true;
+			dummy.placement = { scope: 'cluster', durable: true };
 			jobRegistrar.isProvisioned.mockResolvedValue(true);
 			metadata.register(DummySystemTask);
 			await initRunner(runner);
@@ -1185,7 +1184,7 @@ describe('SystemTaskRunner', () => {
 
 		it('emits a run skipped when its store check settles after stepdown', async () => {
 			const { runner, metadata, jobRegistrar, eventService } = setup();
-			dummy.durable = true;
+			dummy.placement = { scope: 'cluster', durable: true };
 			let settleCheck!: (exists: boolean) => void;
 			jobRegistrar.isProvisioned.mockReturnValue(
 				new Promise<boolean>((resolve) => {
@@ -1220,7 +1219,7 @@ describe('SystemTaskRunner', () => {
 		});
 
 		it('emits the runs of a durable task as durable', async () => {
-			dummy.durable = true;
+			dummy.placement = { scope: 'cluster', durable: true };
 			const { runner, metadata, durableScheduler, eventService } = setup(durably);
 			metadata.register(DummySystemTask);
 			await initRunner(runner);
@@ -1427,21 +1426,7 @@ describe('SystemTaskRunner', () => {
 			);
 			expect(logger.debug).toHaveBeenCalledWith(
 				expect.stringContaining('does not run on this kind of instance'),
-				{ name: 'dummy', placement: { scope: 'cluster' } },
-			);
-		});
-
-		it('rejects an instance-scoped task that is also durable', () => {
-			perInstance.durable = true;
-			const { runner, metadata } = setup();
-			metadata.register(PerInstanceDummySystemTask);
-
-			expect(() => runner.initPerInstance()).toThrow(
-				expect.objectContaining({
-					cause: expect.objectContaining({
-						message: expect.stringContaining('cannot be durable'),
-					}),
-				}),
+				{ name: 'dummy', placement: { scope: 'cluster', durable: false } },
 			);
 		});
 
