@@ -6,11 +6,13 @@
  * assert what reaches the data plane.
  */
 
+import { Logger } from '@n8n/backend-common';
 import { createWorkflow, mockInstance, testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { UUID_V7_PATTERN } from '@n8n/constants';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { ExecutionResponseChannel, InMemoryResponseTransport } from '@n8n/engine';
 import type { INode } from 'n8n-workflow';
 import { WEBHOOK_NODE_TYPE } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
@@ -18,6 +20,7 @@ import { agent as testAgent } from 'supertest';
 
 import { CacheService } from '@/services/cache/cache.service';
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
+import { EngineV2WebhookResponder } from '@/services/engine-v2-webhook-responder.service';
 import { Telemetry } from '@/telemetry';
 import { WebhookServer } from '@/webhooks/webhook-server';
 
@@ -73,6 +76,12 @@ beforeAll(async () => {
 		getExecution,
 		searchExecutions: vi.fn().mockResolvedValue({ items: [], nextCursor: null, total: 0 }),
 	});
+	// The host hands the responder its channel at boot (`EngineV2Module.init`).
+	// This test drives the webhook route directly, without the module, so it
+	// wires the same channel by hand.
+	Container.get(EngineV2WebhookResponder).useChannel(
+		new ExecutionResponseChannel(new InMemoryResponseTransport(), Container.get(Logger)),
+	);
 
 	// `/webhook-test/*` is mounted only when a server opts into test webhooks.
 	class EditorFacingWebhookServer extends WebhookServer {
@@ -134,7 +143,7 @@ describe('webhook runs on engine 2.0', () => {
 	test('answers 400 with the reason when the response mode is unsupported', async () => {
 		const webhookId = randomUUID();
 		const trigger = webhookNode(webhookId);
-		trigger.parameters.responseMode = 'lastNode';
+		trigger.parameters.responseMode = 'responseNode';
 		const workflow = await createV2Workflow(trigger);
 
 		await startListening(workflow.id);
@@ -144,7 +153,9 @@ describe('webhook runs on engine 2.0', () => {
 			.send({ order: 42 });
 
 		expect(response.statusCode).toBe(400);
-		expect(response.body.message).toContain("does not support the 'lastNode' response mode yet");
+		expect(response.body.message).toContain(
+			"does not support the 'responseNode' response mode yet",
+		);
 		expect(startExecution).not.toHaveBeenCalled();
 	});
 });
