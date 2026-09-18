@@ -2386,6 +2386,7 @@ export interface InstanceAiMcpConnectionToolResponse {
 export type InstanceAiMcpConnectionFailureReason =
 	| 'server_unavailable'
 	| 'authentication'
+	| 'insufficient_scope'
 	| 'unknown';
 
 export type InstanceAiMcpConnectionToolsResponse =

@@ -10,6 +10,7 @@ export interface ClientOAuth2TokenData extends Record<string, string | undefined
 	refresh_token: string;
 	expires_in?: string;
 	n8n_expires_at?: string;
+	n8n_requested_scope?: string;
 	scope?: string | undefined;
 }
 

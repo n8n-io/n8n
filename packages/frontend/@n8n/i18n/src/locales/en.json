@@ -7035,6 +7035,7 @@
 	"instanceAi.mcp.error.connection.title": "Failed to connect to MCP server",
 	"instanceAi.mcp.error.connection.serverUnavailable": "The server isn't responding. Try again shortly.",
 	"instanceAi.mcp.error.connection.authentication": "Credentials have expired. Reconnect to restore access.",
+	"instanceAi.mcp.error.connection.insufficientScope": "The credential doesn't have the required permissions. Reconnect it to restore access.",
 	"instanceAi.mcp.error.connection.unknown": "Check the server settings and try again.",
 	"instanceAi.mcp.error.connect": "Failed to connect MCP server",
 	"instanceAi.mcp.error.updateSettings": "Failed to update MCP server settings",

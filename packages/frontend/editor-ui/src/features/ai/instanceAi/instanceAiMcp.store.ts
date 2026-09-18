@@ -127,6 +127,8 @@ export const useInstanceAiMcpStore = defineStore('instanceAiMcp', () => {
 				return i18n.baseText('instanceAi.mcp.error.connection.serverUnavailable');
 			case 'authentication':
 				return i18n.baseText('instanceAi.mcp.error.connection.authentication');
+			case 'insufficient_scope':
+				return i18n.baseText('instanceAi.mcp.error.connection.insufficientScope');
 			default:
 				return i18n.baseText('instanceAi.mcp.error.connection.unknown');
 		}

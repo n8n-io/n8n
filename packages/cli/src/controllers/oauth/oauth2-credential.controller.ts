@@ -2,12 +2,12 @@ import { Logger } from '@n8n/backend-common';
 import type { ClientOAuth2Options, OAuth2CredentialData } from '@n8n/client-oauth2';
 import { ClientOAuth2, resolveClientAuthOptions } from '@n8n/client-oauth2';
 import { Get, RestController } from '@n8n/decorators';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { Response } from 'express';
 import omit from 'lodash/omit';
 import set from 'lodash/set';
 import split from 'lodash/split';
 import type { ICredentialDataDecryptedObject, IDataObject } from 'n8n-workflow';
-import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { jsonParse } from 'n8n-workflow';
 
 import { CredentialsOverwrites } from '@/credentials-overwrites';
@@ -115,6 +115,16 @@ export class OAuth2CredentialController {
 				...(typeof tokenData === 'object' ? tokenData : {}),
 				...tokenResponse,
 			} as ICredentialDataDecryptedObject;
+
+			if (typeof tokenResponse.scope !== 'string') {
+				delete oauthTokenData.scope;
+			}
+
+			if (flowState.requestedScope === undefined) {
+				delete oauthTokenData.n8n_requested_scope;
+			} else {
+				oauthTokenData.n8n_requested_scope = flowState.requestedScope;
+			}
 
 			const expiresInSeconds = Number(tokenResponse.expires_in);
 			if (Number.isFinite(expiresInSeconds) && expiresInSeconds > 0) {

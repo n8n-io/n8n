@@ -88,6 +88,8 @@ export type OauthFlowState = {
 	stateData?: CreateCsrfStateData;
 	/** OAuth2 PKCE verifier, needed to exchange the code in the callback. */
 	codeVerifier?: string;
+	/** Scope sent in the OAuth2 authorization request. */
+	requestedScope?: string;
 	/** OAuth1 request-token secret, needed to sign the access-token request in the callback. */
 	oauthTokenSecret?: string;
 };
@@ -689,6 +691,23 @@ export class OauthService {
 		return oauthCredentials;
 	}
 
+	/**
+	 * Resolves scopes only when the credential definition controls it.
+	 * User-editable and custom scopes cannot define reliable requirements.
+	 */
+	async resolveRequiredOAuthScope(credential: CredentialsEntity): Promise<string | undefined> {
+		const properties = this.credentialsHelper.getCredentialsProperties(credential.type);
+		const scopeProperty = properties.find((property) => property.name === 'scope');
+		if (scopeProperty?.type !== 'hidden') return undefined;
+
+		const oauthCredentials =
+			await this.getOAuthCredentials<ICredentialDataDecryptedObject>(credential);
+		const supportsCustomScopes = properties.some((property) => property.name === 'customScopes');
+		if (supportsCustomScopes && oauthCredentials.customScopes === true) return undefined;
+
+		return typeof oauthCredentials.scope === 'string' ? oauthCredentials.scope : undefined;
+	}
+
 	private credentialIsAccessibleToProject(credential: CredentialsEntity, projectId: string) {
 		return credential.isGlobal || (credential.shared ?? []).some((s) => s.projectId === projectId);
 	}
@@ -1071,6 +1090,9 @@ export class OauthService {
 			flowState.codeVerifier = code_verifier;
 		}
 
+		const oAuthObj = new ClientOAuth2(oAuthOptions);
+		const returnUri = oAuthObj.code.getUri();
+		flowState.requestedScope = new URL(returnUri).searchParams.get('scope') ?? undefined;
 		await this.storeOauthFlowState(stateToken, flowState);
 
 		// Only persist DCR-driven updates to the credential. CSRF/PKCE state lives in the cache
@@ -1078,9 +1100,6 @@ export class OauthService {
 		if (Object.keys(toUpdate).length > 0 || toDelete.length > 0) {
 			await this.encryptAndSaveData(credential, toUpdate, toDelete);
 		}
-
-		const oAuthObj = new ClientOAuth2(oAuthOptions);
-		const returnUri = oAuthObj.code.getUri();
 
 		this.logger.debug('OAuth2 authorization url created for credential', {
 			csrfData,

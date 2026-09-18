@@ -48,6 +48,10 @@ interface ResolvedRegistryServer {
 	connection: LiteralMcpRegistryConnection;
 }
 
+type RegistryServerFetchResult =
+	| { ok: true; fetch: CustomFetch }
+	| { ok: false; reason: 'authentication' | 'insufficient_scope' };
+
 const MCP_REGISTRY_SERVER_PREFIX = 'mcp_';
 const MAX_MCP_SERVER_NAME_LENGTH = 24;
 
@@ -108,6 +112,21 @@ function disconnectedToolsResponse(
 	failureReason: InstanceAiMcpConnectionFailureReason = 'unknown',
 ): InstanceAiMcpConnectionToolsResponse {
 	return { id, status: 'disconnected', tools: [], failureReason };
+}
+
+function parseScopes(value: unknown): Set<string> | undefined {
+	if (typeof value !== 'string') return undefined;
+	return new Set(value.split(/[\s,]+/).filter(Boolean));
+}
+
+function hasMissingRequiredScopes(requiredScope: string | undefined, tokenData: unknown): boolean {
+	const requiredScopes = parseScopes(requiredScope);
+	if (!requiredScopes?.size || !isRecord(tokenData)) return false;
+
+	const knownScopes = parseScopes(tokenData.n8n_requested_scope) ?? parseScopes(tokenData.scope);
+	if (!knownScopes) return false;
+
+	return [...requiredScopes].some((scope) => !knownScopes.has(scope));
 }
 
 @Service()
@@ -282,13 +301,14 @@ export class InstanceAiMcpRegistryService {
 		if (!resolvedServer) return disconnectedToolsResponse(connection.id);
 
 		const aiMcpFetch = createAiMcpFetch(this.outboundHttp);
-		const requestFetch = await this.buildRegistryServerFetch(
+		const fetchResult = await this.buildRegistryServerFetch(
 			resolvedServer,
 			user,
 			connection.id,
 			aiMcpFetch,
 		);
-		if (!requestFetch) return disconnectedToolsResponse(connection.id, 'authentication');
+		if (!fetchResult.ok) return disconnectedToolsResponse(connection.id, fetchResult.reason);
+		const requestFetch = fetchResult.fetch;
 
 		let failureReason: InstanceAiMcpConnectionFailureReason = 'unknown';
 		const classifiedFetch: CustomFetch = async (input, init) => {
@@ -398,16 +418,16 @@ export class InstanceAiMcpRegistryService {
 				resolvedServer.authType === 'extendsCredential' ||
 				resolvedServer.authType === 'usesCredentials'
 			) {
-				const requestFetch = await this.buildRegistryServerFetch(
+				const fetchResult = await this.buildRegistryServerFetch(
 					resolvedServer,
 					user,
 					connection.id,
 					aiMcpFetch,
 				);
-				if (!requestFetch) {
+				if (!fetchResult.ok) {
 					continue;
 				}
-				serverConfig.fetch = requestFetch;
+				serverConfig.fetch = fetchResult.fetch;
 			}
 
 			resolved.push(serverConfig);
@@ -457,7 +477,7 @@ export class InstanceAiMcpRegistryService {
 		user: User,
 		connectionId: string,
 		baseFetch: CustomFetch,
-	): Promise<CustomFetch | null> {
+	): Promise<RegistryServerFetchResult> {
 		const credentialWithData = await this.getCredentialWithData(config.credentialId, user);
 		if (!credentialWithData) {
 			this.logger.warn('Skipping MCP registry connection with inaccessible credential', {
@@ -466,7 +486,7 @@ export class InstanceAiMcpRegistryService {
 				credentialId: config.credentialId,
 				userId: user.id,
 			});
-			return null;
+			return { ok: false, reason: 'authentication' };
 		}
 
 		const credentialType = credentialWithData.credential.type;
@@ -476,7 +496,7 @@ export class InstanceAiMcpRegistryService {
 				serverSlug: config.serverSlug,
 				credentialType,
 			});
-			return null;
+			return { ok: false, reason: 'authentication' };
 		}
 		const prepared = prepareMcpRegistryConnection({
 			connection: config.connection,
@@ -490,13 +510,20 @@ export class InstanceAiMcpRegistryService {
 				credentialId: config.credentialId,
 				reason: prepared.error.code,
 			});
-			return null;
+			return { ok: false, reason: 'authentication' };
+		}
+
+		const requiredScope = await this.oauthService.resolveRequiredOAuthScope(
+			credentialWithData.credential,
+		);
+		if (hasMissingRequiredScopes(requiredScope, credentialWithData.data.oauthTokenData)) {
+			return { ok: false, reason: 'insufficient_scope' };
 		}
 
 		const projectId = credentialWithData.credential.shared?.[0]?.projectId ?? null;
 		const storedTokenData = credentialWithData.data.oauthTokenData;
 		const oauthTokenData = isRecord(storedTokenData) ? { ...storedTokenData } : undefined;
-		return createAuthFetch({
+		const fetch = createAuthFetch({
 			baseFetch,
 			initialHeaders: prepared.value.headers,
 			onUnauthorized: async (currentHeaders) => {
@@ -525,6 +552,7 @@ export class InstanceAiMcpRegistryService {
 				domains: prepared.value.allowedDomains,
 			},
 		});
+		return { ok: true, fetch };
 	}
 
 	private async getCredentialWithData(

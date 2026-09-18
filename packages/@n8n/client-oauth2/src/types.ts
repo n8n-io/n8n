@@ -40,7 +40,9 @@ export interface OAuth2CredentialData {
 		refresh_token?: string;
 		expires_in?: string;
 		n8n_expires_at?: string;
+		n8n_requested_scope?: string;
 		resource?: string;
+		scope?: string;
 	};
 	useDynamicClientRegistration?: boolean;
 	serverUrl?: string;
