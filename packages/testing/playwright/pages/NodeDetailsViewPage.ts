@@ -568,6 +568,16 @@ export class NodeDetailsViewPage extends BasePage {
 		return await this.outputPanel.getRunSelectorInput().inputValue();
 	}
 
+	// Cross-panel run-linking updates a selector asynchronously, so retry the read
+	// instead of asserting a one-shot inputValue().
+	async expectInputRunSelectorValue(value: string) {
+		await expect(this.inputPanel.getRunSelectorInput()).toHaveValue(containsValue(value));
+	}
+
+	async expectOutputRunSelectorValue(value: string) {
+		await expect(this.outputPanel.getRunSelectorInput()).toHaveValue(containsValue(value));
+	}
+
 	getExecuteNodeButton() {
 		return this.container.getByTestId('node-execute-button');
 	}
