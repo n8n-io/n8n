@@ -56,9 +56,7 @@ export function attachResponseHooks(
 	// so setting it unconditionally would break the `responseNode` mode.
 	if (context.callerContext.streamingEnabled === true) {
 		additionalData.streamingEnabled = true;
-		additionalData.hooks.addHandler('sendChunk', (chunk) =>
-			respond.chunk(toJsonPayload(chunk)),
-		);
+		additionalData.hooks.addHandler('sendChunk', (chunk) => respond.chunk(toJsonPayload(chunk)));
 	}
 }
 
