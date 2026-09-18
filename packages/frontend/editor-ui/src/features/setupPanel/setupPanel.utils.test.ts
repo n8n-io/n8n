@@ -38,6 +38,24 @@ describe('setupPanel.utils', () => {
 	});
 
 	describe('getNodeCredentialTypes', () => {
+		it('resolves predefined HTTP credentials before a binding or node issue exists', () => {
+			const node = createNode({
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: { authentication: 'predefinedCredentialType', nodeCredentialType: 'slackApi' },
+			});
+			mockNodeTypeProvider.getNodeType.mockReturnValue({
+				credentials: [],
+				properties: [
+					{
+						name: 'nodeCredentialType',
+						displayOptions: { show: { authentication: ['predefinedCredentialType'] } },
+					},
+				],
+			});
+			expect(getNodeCredentialTypes(mockNodeTypeProvider, node)).toEqual(['slackApi']);
+			node.parameters.authentication = 'none';
+			expect(getNodeCredentialTypes(mockNodeTypeProvider, node)).toEqual([]);
+		});
 		it('should return credential types from displayable credentials', () => {
 			const node = createNode();
 			mockGetNodeTypeDisplayableCredentials.mockReturnValue([

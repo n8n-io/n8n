@@ -51,10 +51,15 @@ const mockChanges = [
 	},
 ];
 
+const COMMIT_SHA = 'a'.repeat(40);
+
 describe('usePromotionChanges', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		vi.mocked(promotionsApi.getPromotableChanges).mockResolvedValue(mockChanges);
+		vi.mocked(promotionsApi.getPromotableChanges).mockResolvedValue({
+			commitSha: COMMIT_SHA,
+			changes: mockChanges,
+		});
 	});
 
 	it('should drop selections whose resource disappears after a refresh', async () => {
@@ -65,13 +70,24 @@ describe('usePromotionChanges', () => {
 		toggleSelected('wf-002');
 		expect(selectedCount.value).toBe(2);
 
-		vi.mocked(promotionsApi.getPromotableChanges).mockResolvedValueOnce(
-			mockChanges.filter((change) => change.id !== 'wf-001'),
-		);
+		vi.mocked(promotionsApi.getPromotableChanges).mockResolvedValueOnce({
+			commitSha: COMMIT_SHA,
+			changes: mockChanges.filter((change) => change.id !== 'wf-001'),
+		});
 		await fetchChanges();
 
 		expect(selectedIds.value).toEqual(new Set(['wf-002']));
 		expect(selectedCount.value).toBe(1);
+	});
+
+	it('should request the given direction and keep the commit the rows came from', async () => {
+		const { fetchChanges, commitSha } = usePromotionChanges('project-1', 'apply');
+		expect(commitSha.value).toBeNull();
+
+		await fetchChanges();
+
+		expect(promotionsApi.getPromotableChanges).toHaveBeenCalledWith({}, 'project-1', 'apply');
+		expect(commitSha.value).toBe(COMMIT_SHA);
 	});
 
 	it('should handle fetch errors', async () => {

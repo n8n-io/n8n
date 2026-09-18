@@ -31,6 +31,8 @@ export interface InstanceAiCredentialContext {
 	documentationUrl?: string;
 	/** OAuth redirect/callback URL shown in the modal, when this is an OAuth credential. */
 	oauthRedirectUrl?: string;
+	/** Instance-specific setup guidance appended to the help question. */
+	setupContext?: string;
 }
 
 /**

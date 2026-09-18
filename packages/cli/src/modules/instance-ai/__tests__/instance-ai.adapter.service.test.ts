@@ -98,6 +98,7 @@ import {
 	resolveDataTableByIdOrName,
 	resolveMetricProviders,
 	truncateNodeOutput,
+	redactExecuteNodeResult,
 	truncateResultData,
 } from '../instance-ai.adapter.service';
 import { LlmJudgeProviderRegistry } from '@/evaluation.ee/llm-judge-provider-registry';
@@ -646,6 +647,82 @@ describe('formatExecutionError', () => {
 			expect(result).not.toContain('sensitive upstream payload');
 			expect(result).toContain('instance AI privacy setting');
 		});
+	});
+});
+
+// ---------------------------------------------------------------------------
+// redactExecuteNodeResult
+// ---------------------------------------------------------------------------
+
+describe('redactExecuteNodeResult', () => {
+	const successResult = (items: Array<{ json: Record<string, unknown> }>) =>
+		({ status: 'success', output: [items] }) as Parameters<typeof redactExecuteNodeResult>[0];
+
+	it('returns the items inside the untrusted-data boundary when sending values is allowed', () => {
+		const result = redactExecuteNodeResult(successResult([{ json: { id: 1 } }]), true);
+
+		expect(result.status).toBe('success');
+		if (result.status !== 'success') return;
+		expect(result.output).toContain('<untrusted_data source="execution-output">');
+		expect(result.output).toContain('"id": 1');
+		expect(result.output.trimEnd().endsWith('</untrusted_data>')).toBe(true);
+	});
+
+	it('caps oversized output and reports shown vs total items', () => {
+		const items = Array.from({ length: 100 }, (_, i) => ({
+			json: { id: i, payload: 'x'.repeat(80) },
+		}));
+
+		const result = redactExecuteNodeResult(successResult(items), true);
+
+		expect(result.status).toBe('success');
+		if (result.status !== 'success') return;
+		expect(result.truncated).toEqual(
+			expect.objectContaining({ totalItems: 100, shownItems: expect.any(Number) }),
+		);
+		const shown = result.truncated?.shownItems ?? 0;
+		expect(shown).toBeLessThan(100);
+		expect(result.output.match(/"payload"/g)).toHaveLength(shown);
+	});
+
+	it('suppresses output items when sending values is disabled', () => {
+		const result = redactExecuteNodeResult(successResult([{ json: { secret: 'x' } }]), false);
+
+		expect(result).toEqual({
+			status: 'success',
+			output: '',
+			outputSuppressed: expect.stringContaining('privacy setting'),
+		});
+	});
+
+	it('suppresses upstream error details when sending values is disabled', () => {
+		const result = redactExecuteNodeResult(
+			{
+				status: 'error',
+				error: { message: 'boom', description: 'api key leaked', nodeErrorType: 'NodeApiError' },
+			},
+			false,
+		);
+
+		expect(result).toEqual({
+			status: 'error',
+			error: {
+				message: 'boom',
+				description: expect.stringContaining('suppressed'),
+				nodeErrorType: 'NodeApiError',
+			},
+		});
+	});
+
+	it('caps an oversized error description when sending values is allowed', () => {
+		const result = redactExecuteNodeResult(
+			{ status: 'error', error: { message: 'boom', description: 'y'.repeat(10_000) } },
+			true,
+		);
+
+		expect(result.status).toBe('error');
+		if (result.status !== 'error') return;
+		expect(result.error.description?.length).toBeLessThanOrEqual(4_001);
 	});
 });
 
@@ -1527,6 +1604,7 @@ function createNodeAdapterServiceForTests(
 		loadNodesAndCredentials?: Record<string, unknown>;
 		credentialsService?: Record<string, unknown>;
 		credentialsFinderService?: Record<string, unknown>;
+		executeNodeService?: Record<string, unknown>;
 	},
 ) {
 	const mockUser = { id: 'user-1', role: { slug: 'global:member' } } as unknown as User;
@@ -1598,6 +1676,15 @@ function createNodeAdapterServiceForTests(
 			typeof InstanceAiAdapterService
 		>[35],
 		nodeCatalogService,
+		undefined,
+		undefined,
+		undefined,
+		undefined,
+		undefined,
+		undefined,
+		options?.executeNodeService as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[43],
 	);
 
 	(
@@ -1613,11 +1700,56 @@ function createNodeAdapterServiceForTests(
 
 	return {
 		service,
+		mockUser,
 		nodeService: context.nodeService,
 		credentialService: context.credentialService,
 		nodeCatalogService,
 	};
 }
+
+describe('executeNodeService adapter', () => {
+	const executeRequest = {
+		type: 'n8n-nodes-base.set',
+		version: 3,
+		config: { parameters: {} },
+	};
+
+	beforeEach(() => {
+		mockedUserHasScopes.mockReset();
+	});
+
+	it('runs the node in the bound project after asserting execute scope there', async () => {
+		mockedUserHasScopes.mockResolvedValue(true);
+		const executeNodeService = {
+			run: vi.fn().mockResolvedValue({ status: 'success', output: [] }),
+		};
+		const { service, mockUser } = createNodeAdapterServiceForTests([], { executeNodeService });
+
+		const context = service.createContext(mockUser, { projectId: 'team-project-1' });
+		await context.executeNodeService?.execute(executeRequest);
+
+		expect(mockedUserHasScopes).toHaveBeenCalledWith(mockUser, ['workflow:execute'], false, {
+			projectId: 'team-project-1',
+		});
+		expect(executeNodeService.run).toHaveBeenCalledWith(
+			mockUser,
+			expect.objectContaining({ projectId: 'team-project-1' }),
+		);
+	});
+
+	it('does not run when the user lacks execute scope in the bound project', async () => {
+		mockedUserHasScopes.mockResolvedValue(false);
+		const executeNodeService = { run: vi.fn() };
+		const { service, mockUser } = createNodeAdapterServiceForTests([], { executeNodeService });
+
+		const context = service.createContext(mockUser, { projectId: 'team-project-1' });
+
+		await expect(context.executeNodeService?.execute(executeRequest)).rejects.toThrow(
+			'required permissions',
+		);
+		expect(executeNodeService.run).not.toHaveBeenCalled();
+	});
+});
 
 function createNodeAdapterForTests(
 	nodes: Array<Record<string, unknown>>,
@@ -4525,6 +4657,35 @@ function createRunAdapterForTests(
 describe('createExecutionAdapter run()', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+	});
+
+	it('names the trigger whose output the caller injected', async () => {
+		const { adapter } = createRunAdapterForTests(
+			{
+				id: 'wf-1',
+				nodes: [
+					{
+						id: 'n1',
+						name: 'Webhook',
+						type: 'n8n-nodes-base.webhook',
+						typeVersion: 2,
+						position: [0, 0],
+					},
+				],
+				connections: {},
+			},
+			{ execution: makeExecution({ status: 'success' }) },
+		);
+
+		const injected = await adapter.run('wf-1', { body: { name: 'Ada' } });
+		const pinned = await adapter.run('wf-1', undefined, {
+			verificationPinData: { Webhook: [{ body: { name: 'Ada' } }] },
+		});
+		const live = await adapter.run('wf-1');
+
+		expect(injected.injectedTriggerNodeName).toBe('Webhook');
+		expect(pinned.injectedTriggerNodeName).toBe('Webhook');
+		expect(live).not.toHaveProperty('injectedTriggerNodeName');
 	});
 
 	it('reports workflow-pinned nodes on the run result', async () => {

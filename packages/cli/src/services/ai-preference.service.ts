@@ -4,8 +4,10 @@ import type {
 	AiPreferenceListDto,
 	AiPreferenceProjectDto,
 	AiPreferenceRequestDto,
+	AiPreferenceSource,
+	AiPreferencesAppliedPayload,
 } from '@n8n/api-types';
-import { aiPreferenceTargetOf } from '@n8n/api-types';
+import { AI_PREFERENCE_MAX_PER_SCOPE, aiPreferenceTargetOf } from '@n8n/api-types';
 import type { AiPreference, Project, ProjectRelation, User } from '@n8n/db';
 import {
 	AiPreferenceRepository,
@@ -85,19 +87,28 @@ type PreferenceTarget = {
  * alone, so the reader gains nothing from telling them apart.
  */
 export type AiPreferenceItem = {
+	/** Stable row id, so a caller can edit the preference it was given. */
+	id: string;
 	scope: 'instance' | 'user' | 'project';
 	/** The team project's name. Set only when `scope` is `project`. */
 	project?: string;
 	text: string;
 };
 
+/**
+ * One saved preference, carried with its id. The prompt text drops the id, but every
+ * other reader needs it: an edit has to address a row, and the applied-preferences
+ * payload names the rows a turn used.
+ */
+export type AppliedPreference = { id: string; content: string };
+
 export type ApplicableAiPreferences = {
 	/** Set by an admin. Apply to everyone on the instance. */
-	instance: string[];
+	instance: AppliedPreference[];
 	/** Set by the user for themselves. */
-	user: string[];
+	user: AppliedPreference[];
 	/** Grouped by project. Projects without preferences are omitted. */
-	projects: Array<AiPreferenceProjectRef & { items: string[] }>;
+	projects: Array<AiPreferenceProjectRef & { items: AppliedPreference[] }>;
 };
 
 /** The settings CRUD and the prompt read share one set of rules. */
@@ -120,6 +131,19 @@ export class AiPreferenceService {
 			projectIds: projects.map((project) => project.id),
 		});
 		return groupAiPreferences(rows, projects);
+	}
+
+	async getApplicableForProject(user: User, projectId: string): Promise<ApplicableAiPreferences> {
+		const readable = await this.projectAccess(user).has(projectId, 'read');
+		const project = readable ? await this.projectRepository.findOneBy({ id: projectId }) : null;
+		// Global access does not include another user's personal project.
+		const foreignPersonal =
+			project?.type === 'personal' &&
+			(await this.projectRepository.getPersonalProjectForUser(user.id))?.id !== project.id;
+		if (!project || foreignPersonal) {
+			throw new NotFoundError(`Project with id ${projectId} not found`);
+		}
+		return await this.getApplicable(user.id, [project]);
 	}
 
 	/**
@@ -169,14 +193,24 @@ export class AiPreferenceService {
 		return { count };
 	}
 
-	async create(user: User, request: AiPreferenceRequestDto): Promise<AiPreferenceDto> {
+	/**
+	 * `source` comes from the caller, never from the request body: a client must not be
+	 * able to claim that the assistant wrote a row the person wrote themselves.
+	 */
+	async create(
+		user: User,
+		request: AiPreferenceRequestDto,
+		source: AiPreferenceSource,
+	): Promise<AiPreferenceDto> {
 		const access = this.projectAccess(user);
 		const target = await this.resolveTarget(user, request, 'create', access);
+		await this.assertScopeHasRoom(target);
 
 		const row = await this.aiPreferenceRepository.save(
 			this.aiPreferenceRepository.create({
 				id: randomUUID(),
 				content: request.content,
+				source,
 				userId: target.userId,
 				projectId: target.projectId,
 				createdById: user.id,
@@ -195,7 +229,11 @@ export class AiPreferenceService {
 		const moved = this.isMove(user, row, request);
 		await this.assertCanWrite(user, row, moved ? 'delete' : 'update', access);
 		const target = await this.resolveTarget(user, request, moved ? 'create' : 'update', access);
+		// A move adds a row to the scope it lands in. An edit in place adds nothing.
+		if (moved) await this.assertScopeHasRoom(target);
 
+		// `source` is not touched: it records the surface that created the row. An assistant
+		// edit of a row a person wrote does not make that row the assistant's.
 		row.content = request.content;
 		row.userId = target.userId;
 		row.user = target.user;
@@ -346,6 +384,27 @@ export class AiPreferenceService {
 		}
 	}
 
+	/**
+	 * A cap on one scope, applied on the write for every surface. The settings UI and the
+	 * assistant then refuse at the same number, so the assistant cannot save text that the
+	 * settings modal would have rejected.
+	 *
+	 * The count and the insert are not atomic, so every write in flight when the scope is one
+	 * short can pass, and the scope lands one row over for each of them. The cap is a safety net
+	 * and not a quota, the next write refuses, and nothing downstream reads the count, so
+	 * serializing every write for this would cost more than the overshoot. A hard bound belongs
+	 * in the repository, with the count and the insert in one transaction.
+	 */
+	private async assertScopeHasRoom(target: PreferenceTarget) {
+		const scope = aiPreferenceTargetOf(target);
+		const saved = await this.aiPreferenceRepository.countForTarget(scope);
+		if (saved >= AI_PREFERENCE_MAX_PER_SCOPE) {
+			throw new BadRequestError(
+				`A ${scope.scope} cannot hold more than ${AI_PREFERENCE_MAX_PER_SCOPE} preferences`,
+			);
+		}
+	}
+
 	/** Reported in the `aiPreference` namespace whatever granted it. */
 	private async scopesFor(user: User, row: AiPreference, access: ProjectAccess): Promise<Scope[]> {
 		const [updatable, deletable] = await Promise.all([
@@ -373,6 +432,7 @@ export class AiPreferenceService {
 					}
 				: null,
 			projectId: row.projectId,
+			source: row.source,
 			project: row.project
 				? {
 						id: row.project.id,
@@ -401,24 +461,28 @@ export function groupAiPreferences(
 ): ApplicableAiPreferences {
 	// Keyed in caller order, so the output keeps that order.
 	const byProject = new Map(
-		projects.map(({ id, name, type }) => [id, { id, name, type, items: [] as string[] }]),
+		projects.map(({ id, name, type }) => [
+			id,
+			{ id, name, type, items: [] as AppliedPreference[] },
+		]),
 	);
-	const instance: string[] = [];
-	const user: string[] = [];
+	const instance: AppliedPreference[] = [];
+	const user: AppliedPreference[] = [];
 
 	for (const row of rows) {
 		const content = row.content.trim();
 		if (!content) continue;
+		const item: AppliedPreference = { id: row.id, content };
 		const target = aiPreferenceTargetOf(row);
 		switch (target.scope) {
 			case 'project':
-				byProject.get(target.projectId)?.items.push(content);
+				byProject.get(target.projectId)?.items.push(item);
 				break;
 			case 'user':
-				user.push(content);
+				user.push(item);
 				break;
 			case 'instance':
-				instance.push(content);
+				instance.push(item);
 				break;
 		}
 	}
@@ -477,16 +541,74 @@ export function renderAiPreferences(preferences: ApplicableAiPreferences): strin
 export function flattenAiPreferences(preferences: ApplicableAiPreferences): AiPreferenceItem[] {
 	const { personal, team } = splitPersonalProject(preferences);
 	return [
-		...preferences.instance.map((text) => ({ scope: 'instance' as const, text })),
-		...[...preferences.user, ...personal.items].map((text) => ({ scope: 'user' as const, text })),
+		...preferences.instance.map(({ id, content }) => ({
+			id,
+			scope: 'instance' as const,
+			text: content,
+		})),
+		...[...preferences.user, ...personal.items].map(({ id, content }) => ({
+			id,
+			scope: 'user' as const,
+			text: content,
+		})),
 		...team.flatMap((project) =>
-			project.items.map((text) => ({
+			project.items.map(({ id, content }) => ({
+				id,
 				scope: 'project' as const,
 				project: singleLine(project.name),
-				text,
+				text: content,
 			})),
 		),
 	];
+}
+
+/**
+ * Where the block the model reads came from. A turn either sent it or it did not, and only
+ * the second case has a run to name, so the two cannot be reported together.
+ */
+export type AppliedPreferencesInjection =
+	| { injectedThisTurn: true }
+	| { injectedThisTurn: false; carriedFromRunId?: string };
+
+/**
+ * Names the preferences one turn carried, in the shape the turn publishes.
+ *
+ * Built from the same read that rendered the block, so the report and the prompt cannot
+ * disagree. A personal project folds into `user`, exactly as the block and the tool output
+ * fold it: both are the caller's own, and the raw name of a personal project is an email
+ * address that no reader wants to see.
+ *
+ * CONTEXT-139 calls this on every turn and publishes the result as `preferences-applied`.
+ */
+export function buildAppliedPreferencesPayload({
+	preferences,
+	renderedLength,
+	...injection
+}: {
+	preferences: ApplicableAiPreferences;
+	renderedLength: number;
+} & AppliedPreferencesInjection): AiPreferencesAppliedPayload {
+	const { personal, team } = splitPersonalProject(preferences);
+
+	return {
+		preferences: [
+			...preferences.instance.map(({ id }) => ({ id, scope: 'instance' as const })),
+			...[...preferences.user, ...personal.items].map(({ id }) => ({
+				id,
+				scope: 'user' as const,
+			})),
+			...team.flatMap((project) =>
+				project.items.map(({ id }) => ({
+					id,
+					scope: 'project' as const,
+					projectId: project.id,
+					projectName: singleLine(project.name),
+				})),
+			),
+		],
+		renderedLength,
+		...injection,
+	};
 }
 
 /**
@@ -495,7 +617,7 @@ export function flattenAiPreferences(preferences: ApplicableAiPreferences): AiPr
  * always means "yours".
  */
 function splitPersonalProject(preferences: ApplicableAiPreferences) {
-	const personal: string[] = [];
+	const personal: AppliedPreference[] = [];
 	const team: ApplicableAiPreferences['projects'] = [];
 	for (const project of preferences.projects) {
 		if (project.type === 'personal') personal.push(...project.items);
@@ -511,12 +633,12 @@ function splitPersonalProject(preferences: ApplicableAiPreferences) {
  */
 const LINE_BREAK = /\r\n?|[\n\v\f\u0085\u2028\u2029]/g;
 
-function renderGroup({ heading, items }: { heading: string; items: string[] }): string {
+function renderGroup({ heading, items }: { heading: string; items: AppliedPreference[] }): string {
 	// A multi-line preference stays one bullet. The two-space continuation indent is also the
 	// only thing separating what one person wrote from the headings around it: a heading always
 	// starts at column 0 and no part of a preference ever can, so a member cannot write text
 	// that reads as an instance rule set by an admin. Pinned by a test — keep the indent.
-	const bullets = items.map((item) => `- ${item.replaceAll(LINE_BREAK, '\n  ')}`);
+	const bullets = items.map(({ content }) => `- ${content.replaceAll(LINE_BREAK, '\n  ')}`);
 	return [heading, ...bullets].join('\n');
 }
 
@@ -533,16 +655,21 @@ function singleLine(text: string): string {
  */
 export function renderAiPreferencesBlock(preferences: ApplicableAiPreferences): string | undefined {
 	const body = renderAiPreferences({
-		instance: preferences.instance.map(escapeTags),
-		user: preferences.user.map(escapeTags),
+		instance: preferences.instance.map(escapeItem),
+		user: preferences.user.map(escapeItem),
 		projects: preferences.projects.map((project) => ({
 			...project,
 			name: escapeTags(project.name),
-			items: project.items.map(escapeTags),
+			items: project.items.map(escapeItem),
 		})),
 	});
 	if (body === '') return undefined;
 	return `<ai-preferences>\n${body}\n</ai-preferences>`;
+}
+
+/** Escapes the text of one item and keeps its id, so the block cannot be closed from inside. */
+function escapeItem({ id, content }: AppliedPreference): AppliedPreference {
+	return { id, content: escapeTags(content) };
 }
 
 /**

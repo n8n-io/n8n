@@ -56,6 +56,9 @@ function createMockThread() {
 	const isHydratingThread = ref(false);
 	const producedArtifacts = ref(new Map<string, ResourceEntry>());
 	const resourceNameIndex = ref(new Map<string, ResourceEntry>());
+	const pendingWorkflowAttachment = ref<{ type: 'workflow'; id: string; name?: string } | null>(
+		null,
+	);
 
 	return reactive({
 		id: 'thread-1',
@@ -64,6 +67,7 @@ function createMockThread() {
 		isHydratingThread,
 		producedArtifacts,
 		resourceNameIndex,
+		pendingWorkflowAttachment,
 	});
 }
 
@@ -1133,6 +1137,20 @@ describe('useCanvasPreview', () => {
 			await nextTick();
 
 			expect(ctx.activeTabId.value).toBe('agent-1');
+			expect(ctx.isPreviewVisible.value).toBe(true);
+		});
+
+		test('opens a pending workflow attachment on arrival', async () => {
+			const ctx = setup();
+			registerWorkflow(ctx.thread, 'wf-1', 'FAQ Responder');
+			ctx.thread.pendingWorkflowAttachment = {
+				type: 'workflow',
+				id: 'wf-1',
+				name: 'FAQ Responder',
+			};
+			await nextTick();
+
+			expect(ctx.activeTabId.value).toBe('wf-1');
 			expect(ctx.isPreviewVisible.value).toBe(true);
 		});
 
