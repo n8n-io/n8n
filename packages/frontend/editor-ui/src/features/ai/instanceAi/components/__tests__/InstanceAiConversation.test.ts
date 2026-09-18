@@ -15,6 +15,7 @@ import {
 import InstanceAiConversation from '../InstanceAiConversation.vue';
 import { provideThread, useInstanceAiStore, type ThreadRuntime } from '../../instanceAi.store';
 import { stashPendingAgentAttachment } from '../../composables/useInstanceAiHandoff';
+import type { InstanceAiEmbedSubject } from '../../embed/instanceAiEmbed.types';
 import type { InstanceAiHandoffContext, InstanceAiMessage } from '@n8n/api-types';
 import { ResponseError } from '@n8n/rest-api-client';
 
@@ -143,6 +144,59 @@ describe('InstanceAiConversation', () => {
 		expect(conversation.emitted('agent-attachment-restored')?.[0]).toEqual([
 			{ type: 'agent', id: 'agent-1', projectId: 'proj-1', pending: true },
 		]);
+	});
+
+	describe('composer context chip label', () => {
+		function mountWithSubject(subject: InstanceAiEmbedSubject | undefined) {
+			thread.sseState = 'disconnected';
+			stashPendingAgentAttachment('thread-1', {
+				type: 'agent',
+				id: 'agent-1',
+				projectId: 'proj-1',
+				name: 'Stashed Name',
+				pending: true,
+			});
+			const renderer = createThreadComponentRenderer(
+				InstanceAiConversation,
+				{
+					props: { subject },
+					global: { stubs: { InstanceAiInput: InstanceAiInputStub } },
+				},
+				() => thread,
+			);
+			return renderer();
+		}
+
+		it('prefers the live subject name over the stashed name when agent ids match', async () => {
+			const { getByTestId } = mountWithSubject({
+				type: 'agent',
+				id: 'agent-1',
+				projectId: 'proj-1',
+				name: 'Renamed Live',
+			});
+			await vi.waitFor(() =>
+				expect(getByTestId('instance-ai-input-context-chip').textContent).toBe('Renamed Live'),
+			);
+		});
+
+		it('falls back to the stashed name when the subject refers to a different agent', async () => {
+			const { getByTestId } = mountWithSubject({
+				type: 'agent',
+				id: 'agent-other',
+				projectId: 'proj-1',
+				name: 'Renamed Live',
+			});
+			await vi.waitFor(() =>
+				expect(getByTestId('instance-ai-input-context-chip').textContent).toBe('Stashed Name'),
+			);
+		});
+
+		it('falls back to the stashed name when no subject is provided', async () => {
+			const { getByTestId } = mountWithSubject(undefined);
+			await vi.waitFor(() =>
+				expect(getByTestId('instance-ai-input-context-chip').textContent).toBe('Stashed Name'),
+			);
+		});
 	});
 
 	it('awaits beforeSend before sending, restoring the draft if it rejects', async () => {
