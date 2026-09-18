@@ -208,11 +208,10 @@ function walk(
 }
 
 function refusalMessage(
-	nodeName: string | undefined,
+	subject: CallSubject,
 	found: TransferRejection | undefined,
 	stopped: boolean,
 ): string {
-	const source = nodeName === undefined ? 'an upstream node' : `node '${nodeName}'`;
 	let where: string;
 	let cause: string;
 	if (found === undefined) {
@@ -222,18 +221,59 @@ function refusalMessage(
 		where = found.path === '' ? 'the item' : `the value at ${found.path}`;
 		cause = found.descriptor === undefined ? '' : ` (${found.descriptor})`;
 	}
-	return `Can't read item from ${source}: ${where} cannot be used in an expression${cause}`;
+	return `Can't read ${subject.text}: ${where} cannot be used in an expression${cause}`;
 }
 
 function buildError(
-	nodeName: string | undefined,
+	subject: CallSubject,
 	found: TransferRejection | undefined,
 	stopped: boolean,
 ): ExpressionError {
 	return new ExpressionError(
-		refusalMessage(nodeName, found, stopped),
-		nodeName === undefined ? {} : { nodeCause: nodeName },
+		refusalMessage(subject, found, stopped),
+		subject.nodeName === undefined ? {} : { nodeCause: subject.nodeName },
 	);
+}
+
+/** Host calls whose result is item data, so a refusal of it reads as an item read. */
+const ITEM_CALL_TYPES = new Set([
+	'getNodeFirst',
+	'getNodeLast',
+	'getNodeAll',
+	'getInputFirst',
+	'getInputLast',
+	'getInputAll',
+	'getItems',
+	'getNodePairedItem',
+	'getNodeItemMatching',
+	'getNodeItem',
+	'getPairedItem',
+]);
+
+const CALL_SUBJECTS: Record<string, string> = {
+	fromAi: 'the value $fromAI gave back',
+	evaluateExpression: 'the value $evaluateExpression gave back',
+};
+
+interface CallSubject {
+	text: string;
+	nodeName?: string;
+}
+
+function callTypeOf(rawMsg: unknown): string | undefined {
+	if (typeof rawMsg !== 'object' || rawMsg === null || !('type' in rawMsg)) return undefined;
+	return typeof rawMsg.type === 'string' ? rawMsg.type : undefined;
+}
+
+/** Name what the caller asked for, so a call that returns no item does not read as an item read. */
+function subjectForCall(rawMsg: unknown, data: WorkflowData): CallSubject {
+	const type = callTypeOf(rawMsg);
+	if (type !== undefined && !ITEM_CALL_TYPES.has(type)) {
+		return { text: CALL_SUBJECTS[type] ?? 'the value the expression asked for' };
+	}
+	const nodeName = nodeNameForCall(rawMsg, data);
+	const source = nodeName === undefined ? 'an upstream node' : `node '${nodeName}'`;
+	return { text: `item from ${source}`, nodeName };
 }
 
 function nodeNameForCall(rawMsg: unknown, data: WorkflowData): string | undefined {
@@ -270,9 +310,9 @@ export function untransferableItemError(
 	data: WorkflowData,
 	budgetMs: number,
 ): ExpressionError {
-	let nodeName: string | undefined;
+	let subject: CallSubject = { text: 'item from an upstream node' };
 	try {
-		nodeName = nodeNameForCall(rawMsg, data);
+		subject = subjectForCall(rawMsg, data);
 	} catch {}
 	try {
 		const state: WalkState = {
@@ -282,22 +322,22 @@ export function untransferableItemError(
 			exhausted: false,
 		};
 		const found = walk(value, '', 0, state);
-		return buildError(nodeName, found, state.exhausted);
+		return buildError(subject, found, state.exhausted);
 	} catch {
-		return buildError(nodeName, undefined, false);
+		return buildError(subject, undefined, false);
 	}
 }
 
 interface SanitiseState {
 	probe: TransferProbe;
 	deadline: number;
-	nodeName: string | undefined;
+	subject: CallSubject;
 }
 
 function marker(state: SanitiseState, path: string, descriptor: string | undefined): object {
 	return {
 		[TRANSFER_UNUSABLE_KEY]: true,
-		message: refusalMessage(state.nodeName, { path, descriptor }, false),
+		message: refusalMessage(state.subject, { path, descriptor }, false),
 	};
 }
 
@@ -356,15 +396,15 @@ export function sanitiseForTransfer(
 	data: WorkflowData,
 	budgetMs: number,
 ): object | undefined {
-	let nodeName: string | undefined;
+	let subject: CallSubject = { text: 'item from an upstream node' };
 	try {
-		nodeName = nodeNameForCall(rawMsg, data);
+		subject = subjectForCall(rawMsg, data);
 	} catch {}
 	try {
 		const state: SanitiseState = {
 			probe: transferProbe,
 			deadline: Date.now() + budgetMs,
-			nodeName,
+			subject,
 		};
 		const sanitised = sanitiseValue(state, value, '', 0);
 		const envelope = { [TRANSFER_SANITISED_KEY]: true, value: sanitised };

@@ -982,4 +982,19 @@ describe('Typed RPC: a result the engine cannot transfer', () => {
 
 		expect((caught as Error).message).toBe('lazy read failed');
 	});
+
+	it('names the call, not an item, when a refused result came from a non-item RPC', () => {
+		const data: Record<string, unknown> = { $fromAI: () => () => 1 };
+
+		let caught: unknown;
+		try {
+			evaluator.evaluate("{{ $fromAI('placeholder') }}", data, caller);
+		} catch (error) {
+			caught = error;
+		}
+
+		expect((caught as Error).name).toBe('ExpressionError');
+		expect((caught as Error).message).toContain('$fromAI');
+		expect((caught as Error).message).not.toContain('item from');
+	});
 });
