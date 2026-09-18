@@ -1,11 +1,5 @@
 <script lang="ts" setup>
-import {
-	N8nButton,
-	N8nIcon,
-	N8nText,
-	N8nTooltip,
-	TOOLTIP_DELAY_MS,
-} from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nText, N8nTooltip, TOOLTIP_DELAY_MS } from '@n8n/design-system';
 import type { ActionDropdownItem, DropdownMenuItemProps } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { InstanceAiThreadSummary } from '@n8n/api-types';
@@ -262,6 +256,48 @@ function handleThreadAction(action: string, threadId: string) {
 			<span ref="triggerRef"><slot name="trigger" /></span>
 		</template>
 
+		<template #header>
+			<div :class="$style.header">
+				<N8nText :class="$style.title" tag="div" size="medium" bold>
+					{{ i18n.baseText('instanceAi.sidebar.chatHistory') }}
+				</N8nText>
+				<N8nButton
+					v-if="navigate"
+					variant="ghost"
+					size="small"
+					:class="$style.viewAll"
+					data-test-id="instance-ai-view-all-threads"
+					@click="openAllThreads"
+				>
+					{{ i18n.baseText('instanceAi.threads.viewAll') }}
+				</N8nButton>
+				<N8nTooltip
+					v-if="navigate"
+					:content="i18n.baseText('instanceAi.thread.new')"
+					placement="bottom"
+					:show-after="TOOLTIP_DELAY_MS"
+				>
+					<N8nButton
+						variant="ghost"
+						size="small"
+						icon-only
+						:aria-label="i18n.baseText('instanceAi.thread.new')"
+						data-test-id="instance-ai-new-thread"
+						@click="openNewThread"
+					>
+						<template #icon>
+							<N8nIcon
+								icon="message-circle-plus"
+								size="large"
+								color="--icon-color--strong"
+								:stroke-width="1.5"
+							/>
+						</template>
+					</N8nButton>
+				</N8nTooltip>
+			</div>
+		</template>
+
 		<template #loading>
 			<div :class="$style.status" role="status">
 				<N8nText size="small" color="text-light">
@@ -328,21 +364,16 @@ function handleThreadAction(action: string, threadId: string) {
 		</template>
 
 		<template #footer>
-			<div :class="$style.footer">
-				<div
-					v-if="filteredThreads.length > 0 && history.loading"
-					:class="$style.status"
-					role="status"
-				>
+			<div
+				v-if="filteredThreads.length > 0 && (history.loading || history.error)"
+				:class="$style.footer"
+			>
+				<div v-if="history.loading" :class="$style.status" role="status">
 					<N8nText size="small" color="text-light">
 						{{ i18n.baseText('instanceAi.threads.loading') }}
 					</N8nText>
 				</div>
-				<div
-					v-else-if="filteredThreads.length > 0 && history.error"
-					:class="$style.status"
-					role="alert"
-				>
+				<div v-else-if="history.error" :class="$style.status" role="alert">
 					<N8nText size="small" color="text-light">
 						{{ i18n.baseText('instanceAi.threads.loadError') }}
 					</N8nText>
@@ -350,47 +381,29 @@ function handleThreadAction(action: string, threadId: string) {
 						{{ i18n.baseText('generic.retry') }}
 					</N8nButton>
 				</div>
-				<N8nButton
-					v-if="navigate"
-					variant="ghost"
-					size="small"
-					:class="$style.viewAll"
-					data-test-id="instance-ai-view-all-threads"
-					@click="openAllThreads"
-				>
-					{{ i18n.baseText('instanceAi.threads.viewAll') }}
-				</N8nButton>
-				<N8nTooltip
-					v-if="navigate"
-					:content="i18n.baseText('instanceAi.thread.new')"
-					placement="bottom"
-					:show-after="TOOLTIP_DELAY_MS"
-				>
-					<N8nButton
-						variant="ghost"
-						size="small"
-						icon-only
-						:class="$style.newChat"
-						:aria-label="i18n.baseText('instanceAi.thread.new')"
-						data-test-id="instance-ai-new-thread"
-						@click="openNewThread"
-					>
-						<template #icon>
-							<N8nIcon
-								icon="message-circle-plus"
-								size="large"
-								color="--icon-color--strong"
-								:stroke-width="1.5"
-							/>
-						</template>
-					</N8nButton>
-				</N8nTooltip>
 			</div>
 		</template>
 	</ChatHistoryDropdown>
 </template>
 
 <style lang="scss" module>
+.header {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+	padding: var(--spacing--xs) var(--spacing--sm);
+	min-height: var(--height--xl);
+}
+
+.title {
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	color: var(--text-color);
+}
+
 .renameContainer {
 	flex: 1;
 }
@@ -441,12 +454,7 @@ function handleThreadAction(action: string, threadId: string) {
 .viewAll {
 	--button--color: var(--text-color--subtle);
 
-	margin: var(--spacing--4xs);
 	font-size: var(--font-size--sm);
 	font-weight: var(--font-weight--regular);
-}
-
-.newChat {
-	margin: var(--spacing--4xs) var(--spacing--4xs) var(--spacing--4xs) 0;
 }
 </style>

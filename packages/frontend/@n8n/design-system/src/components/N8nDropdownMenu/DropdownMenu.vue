@@ -301,6 +301,7 @@ defineExpose({ open, close, highlightFirstItem });
 			>
 				<slot v-if="slots.content" name="content" />
 				<template v-else>
+					<slot v-if="slots.header" name="header" />
 					<DropdownMenuSearchableContent
 						v-if="searchable"
 						ref="searchableContentRef"
