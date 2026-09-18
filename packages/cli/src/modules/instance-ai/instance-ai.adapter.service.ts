@@ -2403,7 +2403,7 @@ export class InstanceAiAdapterService {
 							id: c.id,
 							name: c.name,
 							type: c.type,
-							description: c.description ?? null,
+							description: c.description,
 						}),
 					);
 				}
@@ -2427,7 +2427,7 @@ export class InstanceAiAdapterService {
 							id: c.id,
 							name: c.name,
 							type: c.type,
-							description: c.description ?? null,
+							description: c.description,
 						}),
 					);
 				}
@@ -2444,7 +2444,7 @@ export class InstanceAiAdapterService {
 						id: c.id,
 						name: c.name,
 						type: c.type,
-						description: c.description ?? null,
+						description: c.description,
 					}),
 				);
 			},
@@ -2455,7 +2455,7 @@ export class InstanceAiAdapterService {
 					id: credential.id,
 					name: credential.name,
 					type: credential.type,
-					description: credential.description ?? null,
+					description: credential.description,
 				} satisfies CredentialDetail;
 			},
 

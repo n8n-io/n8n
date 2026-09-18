@@ -634,6 +634,7 @@ describe('credentialService.get — credential ownership revalidation', () => {
 			id: 'cred-mine',
 			name: 'My Slack',
 			type: 'slackApi',
+			description: null,
 		} as never);
 
 		const ctx = service.createContext(user);
