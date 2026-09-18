@@ -2,67 +2,49 @@
 
 Role id: `customer-support`. Ranked by how common the automation is, 1 is the most common.
 Tools are listed as family (example): any tool of the same family works, for example Outlook instead of Gmail.
+`Template:` names a workflow source in `templates/` to start the build from; swap the tool nodes marked with the family comment. A `notification` family (send a message or mail) means the template holds one ready node per tool behind its `NOTIFY` constant; an `email` family (read a mailbox) with an `INBOX` constant and a `spreadsheet` family with a `SPREADSHEET` constant work the same way. `rank.sh` prints `[set NAME=key]` for these swaps.
 
-## 1. Triage new tickets with AI
-
-- Trigger: Zendesk new ticket
-- Tools: help desk (Zendesk), AI model (OpenAI), chat (Slack)
-- Category: customer-support.ticket-triage
-
-Classifies each new ticket by topic and urgency with an AI model, sets the Zendesk tags and priority, and routes urgent tickets to a Slack channel.
-
-## 2. Daily ticket summary
+## 1. Re-engagement emails after sign-up
 
 - Trigger: Schedule, daily
-- Tools: help desk (Intercom), chat (Slack)
-- Category: customer-support.reporting
+- Tools: spreadsheet (Google Sheets), notification (Gmail)
+- Category: sales-and-marketing.lead-acquisition.nurture-and-reengagement
+- Template: templates/customer-support-re-engagement-emails-after-sign-up.workflow.ts
 
-Counts yesterday's Intercom conversations by topic and first response time and posts a summary to Slack.
+Reads the sign-up list every morning, emails the people who signed up 3 or 7 days ago and have not received that step yet, and marks the step as sent.
 
-## 3. Coaching notes for support agents
+## 2. Unassign form tickets in the help desk
+
+- Trigger: Schedule, hourly
+- Tools: help desk (Intercom)
+- Category: customer-support.multichannel-ticketing-and-sla
+- Template: templates/customer-support-unassign-form-tickets-in-the-help-desk.workflow.ts
+
+Lists the open conversations, keeps the tickets of a given type that sit with one agent and puts them back in the unassigned queue.
+
+## 3. Payment notifications to invoices and a ledger
+
+- Trigger: Webhook from the payment provider
+- Tools: Webhook, HTTP Request, spreadsheet (Google Sheets)
+- Category: finance.payments-and-ar
+- Template: templates/customer-support-payment-notifications-to-invoices-and-a-ledger.workflow.ts
+
+Receives each payment result, logs rejected payments, splits the approved amount into net and tax, creates the electronic invoice and appends the accounting entry to the ledger sheet.
+
+## 4. AI ticket routing in the help desk
+
+- Trigger: Webhook from the help desk on a new ticket
+- Tools: Webhook, help desk (Gorgias), AI model (Google Gemini)
+- Category: customer-support.multichannel-ticketing-and-sla
+- Template: templates/customer-support-ai-ticket-routing-in-the-help-desk.workflow.ts
+
+Asks an AI model for the contact reason and the right team of each new ticket, writes the reason to a custom field and assigns the ticket to the sales or post-purchase team.
+
+## 5. Knowledge base refresh from a table
 
 - Trigger: Schedule, daily
-- Tools: database (Airtable), AI model (OpenAI)
-- Category: customer-support.interaction-analytics
+- Tools: database (Airtable), HTTP Request
+- Category: generic-automation.rag-and-knowledge-tooling
+- Template: templates/customer-support-knowledge-base-refresh-from-a-table.workflow.ts
 
-Reviews the day's ticket summaries in Airtable, spots repeated mistakes in agent replies with an AI model, and writes short coaching notes back to Airtable.
-
-## 4. Draft answers to FAQ emails
-
-- Trigger: Gmail email in the support inbox
-- Tools: email (Gmail), docs (Notion), AI model (OpenAI)
-- Category: customer-support.auto-reply
-
-Matches the question against a Notion FAQ database, drafts a reply with an AI model, and saves it as a Gmail draft for a person to send.
-
-## 5. Low satisfaction alerts
-
-- Trigger: Typeform survey response
-- Tools: form (Typeform), spreadsheet (Google Sheets), chat (Slack)
-- Category: customer-support.customer-feedback
-
-Stores each survey response in Google Sheets and alerts the team lead in Slack when the score is 2 or lower, with the ticket link.
-
-## 6. Bug reports to the engineering board
-
-- Trigger: Zendesk ticket tagged bug
-- Tools: help desk (Zendesk), issue tracker (Jira)
-- Category: customer-support.escalation
-
-Creates a Jira issue with the ticket details, links it in Zendesk, and posts the issue key as an internal note.
-
-## 7. Refund requests to finance
-
-- Trigger: Freshdesk ticket with a refund keyword
-- Tools: help desk (Freshdesk), e-commerce (Shopify), chat (Slack)
-- Category: customer-support.order-support
-
-Looks up the order in Shopify, posts the refund request with the amount to a Slack approval channel, and updates the ticket when it is approved.
-
-## 8. Weekly knowledge-base gaps
-
-- Trigger: Schedule, weekly
-- Tools: help desk (Zendesk), AI model (OpenAI), docs (Notion)
-- Category: customer-support.knowledge-management
-
-Clusters the week's Zendesk ticket subjects with an AI model, lists the topics without a help article, and creates Notion tasks to write them.
+Fetches the reference records from the table, renames the fields and uploads them as one table document to the assistant's knowledge base, replacing the previous version.

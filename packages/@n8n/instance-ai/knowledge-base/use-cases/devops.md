@@ -2,67 +2,49 @@
 
 Role id: `devops`. Ranked by how common the automation is, 1 is the most common.
 Tools are listed as family (example): any tool of the same family works, for example Outlook instead of Gmail.
+`Template:` names a workflow source in `templates/` to start the build from; swap the tool nodes marked with the family comment. A `notification` family (send a message or mail) means the template holds one ready node per tool behind its `NOTIFY` constant; an `email` family (read a mailbox) with an `INBOX` constant and a `spreadsheet` family with a `SPREADSHEET` constant work the same way. `rank.sh` prints `[set NAME=key]` for these swaps.
 
-## 1. Website health check
+## 1. CSV export endpoint for a business system
 
-- Trigger: Schedule, every 5 minutes
-- Tools: HTTP Request, chat (Slack)
-- Category: devops.service-monitoring
+- Trigger: Webhook, a GET request with the export id
+- Tools: Webhook, HTTP Request
+- Category: generic-automation.data-serving
+- Template: templates/devops-csv-export-endpoint-for-a-business-system.workflow.ts
 
-Calls each site in a list, checks the status and response time, and sends a Slack alert with the failing URL when a check fails twice in a row.
+Serves one URL that fetches the records of a business system and returns them as a CSV download, so other tools can import them on a schedule.
 
-## 2. Certificate expiry alerts
-
-- Trigger: Schedule, daily
-- Tools: HTTP Request, chat (Slack)
-- Category: devops.service-monitoring.certificates
-
-Queries an SSL check API for each domain and posts a Slack warning 30, 14 and 7 days before a certificate expires.
-
-## 3. Release notifications
-
-- Trigger: GitHub release published
-- Tools: code hosting (GitHub), chat (Slack), issue tracker (Jira)
-- Category: devops.ci-cd.notifications
-
-Posts the release notes to Slack, creates the Jira version, and marks the linked issues as released.
-
-## 4. Failed CI runs to the on-call channel
-
-- Trigger: GitHub Actions run failed
-- Tools: code hosting (GitHub), AI model (OpenAI), chat (Slack)
-- Category: devops.ci-cd.failure-alerts
-
-Fetches the failing job log, summarizes the error with an AI model, and posts it to Slack with a link to the run.
-
-## 5. Incident channel setup
-
-- Trigger: PagerDuty incident triggered
-- Tools: incident alerting (PagerDuty), chat (Slack), issue tracker (Jira)
-- Category: devops.incident-management
-
-Creates a Slack channel for the incident, invites the on-call engineers, posts the runbook link, and opens a Jira incident ticket.
-
-## 6. Cloud cost report
+## 2. Changed rows copy between databases
 
 - Trigger: Schedule, daily
-- Tools: AWS, spreadsheet (Google Sheets), chat (Slack)
-- Category: devops.cost-management
+- Tools: database (Postgres)
+- Category: generic-automation.data-movement
+- Template: templates/devops-changed-rows-copy-between-databases.workflow.ts
 
-Pulls yesterday's AWS cost by service, appends it to Google Sheets, and alerts in Slack when spend is above the daily budget.
+Reads the rows changed in the last two days from the source database and upserts them into the target database.
 
-## 7. Backup verification
+## 3. Audit submissions into a database and a task board
 
-- Trigger: Schedule, daily
-- Tools: file storage (AWS S3), email (Gmail)
-- Category: devops.backups
+- Trigger: Webhook from the audit app
+- Tools: Webhook, database (Postgres), task manager (Monday.com)
+- Category: knowledge.task-project-management
+- Template: templates/devops-audit-submissions-into-a-database-and-a-task-board.workflow.ts
 
-Lists yesterday's backup files in S3, checks their size and age, and emails the team when a backup is missing or too small.
+Stores each submitted audit in a database table and creates a task board item in the group that matches the audit type.
 
-## 8. Error tracker issues to the issue tracker
+## 4. Campaign plan sync between spreadsheets
 
-- Trigger: Sentry alert
-- Tools: error tracking (Sentry), issue tracker (Jira)
-- Category: devops.error-tracking
+- Trigger: Schedule, every 12 hours
+- Tools: spreadsheet (Google Sheets)
+- Category: sales-and-marketing.analytics.campaign-performance
+- Template: templates/devops-campaign-plan-sync-between-spreadsheets.workflow.ts
 
-Groups new Sentry issues by fingerprint, creates a Jira bug for new groups, and comments on the existing issue for repeats.
+Copies the budget, dates and KPI targets of each campaign from the planning sheet into the report sheet, matched by campaign id.
+
+## 5. Catalog sync per configuration entry
+
+- Trigger: Schedule, hourly
+- Tools: n8n sub-workflow
+- Category: generic-automation.data-movement
+- Template: templates/devops-catalog-sync-per-configuration-entry.workflow.ts
+
+Holds the list of catalogs to sync in one place and runs the sync sub-workflow for each entry every hour.

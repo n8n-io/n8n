@@ -2,67 +2,49 @@
 
 Role id: `business-owner`. Ranked by how common the automation is, 1 is the most common.
 Tools are listed as family (example): any tool of the same family works, for example Outlook instead of Gmail.
+`Template:` names a workflow source in `templates/` to start the build from; swap the tool nodes marked with the family comment. A `notification` family (send a message or mail) means the template holds one ready node per tool behind its `NOTIFY` constant; an `email` family (read a mailbox) with an `INBOX` constant and a `spreadsheet` family with a `SPREADSHEET` constant work the same way. `rank.sh` prints `[set NAME=key]` for these swaps.
 
-## 1. Overdue invoice reminders
+## 1. Product listings feed to file storage
 
-- Trigger: Schedule, daily
-- Tools: accounting (QuickBooks), email (Gmail), chat (Slack)
-- Category: finance.accounts-receivable
+- Trigger: Schedule, every 30 minutes
+- Tools: HTTP Request, file storage (AWS S3)
+- Category: ecommerce.catalog-and-listings
+- Template: templates/business-owner-product-listings-feed-to-file-storage.workflow.ts
 
-Finds overdue invoices in QuickBooks, sends a friendly reminder email per customer, and posts the total overdue amount in Slack.
+Fetches the current listings from the source API, converts them to the XML feed format a partner portal expects and uploads the file to a bucket.
 
-## 2. New customer welcome sequence
-
-- Trigger: Stripe payment succeeded
-- Tools: payments (Stripe), email marketing (Mailchimp), docs (Notion)
-- Category: sales-and-marketing.customer-lifecycle.onboarding
-
-Adds the customer to Mailchimp, sends the welcome email with the getting-started guide, and creates a day-7 follow-up task in Notion.
-
-## 3. Daily sales summary
-
-- Trigger: Schedule, evening
-- Tools: e-commerce (Shopify), chat (Telegram)
-- Category: business.reporting.daily-sales
-
-Totals the day's Shopify orders and refunds and sends a short Telegram message with revenue and top products.
-
-## 4. Bookings to calendar and CRM
-
-- Trigger: Calendly invitee created
-- Tools: scheduling (Calendly), calendar (Google Calendar), CRM (HubSpot), SMS (Twilio)
-- Category: business.scheduling
-
-Adds the event to Google Calendar, creates or updates the contact in HubSpot, and sends a confirmation SMS with Twilio.
-
-## 5. Review requests after purchase
-
-- Trigger: Shopify order fulfilled
-- Tools: e-commerce (Shopify), email (Gmail), spreadsheet (Google Sheets)
-- Category: sales-and-marketing.reputation
-
-Waits five days, then emails the customer a review link and logs the request in Google Sheets.
-
-## 6. Receipts to bookkeeping
-
-- Trigger: Gmail email with an attachment
-- Tools: email (Gmail), AI model (OpenAI), file storage (Google Drive), spreadsheet (Google Sheets)
-- Category: finance.bookkeeping
-
-Extracts the vendor, date and amount from receipt attachments with an AI model, saves the file to Google Drive, and adds a row to the expenses sheet.
-
-## 7. Contact form to inbox and CRM
-
-- Trigger: Webflow form submission
-- Tools: form (Webflow), email (Gmail), CRM (Pipedrive)
-- Category: sales-and-marketing.lead-acquisition.form-and-inbox-capture
-
-Emails the owner, creates the lead in Pipedrive, and sends the visitor an acknowledgement.
-
-## 8. Brand mentions monitor
+## 2. Overdue task reminders from a database
 
 - Trigger: Schedule, hourly
-- Tools: social (X), social (Reddit), AI model (OpenAI), chat (Slack)
-- Category: sales-and-marketing.brand-monitoring
+- Tools: database (MySQL), notification (Gmail)
+- Category: other.education-operations
+- Template: templates/business-owner-overdue-task-reminders-from-a-database.workflow.ts
 
-Searches X and Reddit for the brand name, filters noise with an AI model, and posts relevant mentions to Slack.
+Queries the database for items past their deadline, sends each owner a personal reminder and posts one summary for the team.
+
+## 3. New client document alerts from the CRM
+
+- Trigger: Schedule, every 15 minutes
+- Tools: HTTP Request, notification (Slack)
+- Category: sales-and-marketing.crm-operations
+- Template: templates/business-owner-new-client-document-alerts-from-the-crm.workflow.ts
+
+Polls the CRM activity feed for newly uploaded client documents, skips the ones already seen and alerts the team with a link to each new file.
+
+## 4. Unread mail triage for phishing
+
+- Trigger: Schedule, hourly
+- Tools: email (Gmail), HTTP Request
+- Category: security.threat-detection-response
+- Template: templates/business-owner-unread-mail-triage-for-phishing.workflow.ts
+
+Reads the unread messages, sends each one to an analyzer endpoint and labels it as phishing or legitimate in the mailbox.
+
+## 5. Inbox summary by AI
+
+- Trigger: Schedule, daily
+- Tools: email (Gmail), AI model (OpenAI), notification (Gmail)
+- Category: knowledge.email-management
+- Template: templates/business-owner-inbox-summary-by-ai.workflow.ts
+
+Collects the messages received during the day, asks an AI agent for a short bulleted summary and sends it to you.
