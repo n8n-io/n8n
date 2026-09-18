@@ -1,15 +1,19 @@
-packages/cli/src/modules/engine-v2/create-response-channel.ts
-  s_71c6da2ee47cd3::t_7e2ae250b0c29e 1-12,14-45,49-52
-  s_71c6da2ee47cd3::t_943b9d2565fe23 13,46-48
-packages/@n8n/config/src/configs/engine.config.ts
-  s_71c6da2ee47cd3::t_7e2ae250b0c29e 68-76
-packages/@n8n/engine/src/response-channel/redis-transport.ts
-  s_71c6da2ee47cd3::t_521444d1f0a6be 1,3-5,22-27,30-35,37-38,42-43,47,50-53,56-81,85-94
-  s_71c6da2ee47cd3::t_7e2ae250b0c29e 2,6-21,28-29,36,39-41,44-46,48-49,54-55,82-84,95-96
-packages/@n8n/engine/src/index.ts
-  s_71c6da2ee47cd3::t_7e2ae250b0c29e 43,49-50
 packages/@n8n/engine/src/response-channel/index.ts
-  s_71c6da2ee47cd3::t_7e2ae250b0c29e 12-13
+  s_71c6da2ee47cd3::t_d67313882bd806 1-2
+  s_71c6da2ee47cd3::t_7914db3e7b1dc8 3-4,6-9
+  s_71c6da2ee47cd3::t_0cee0633057f64 5
+packages/@n8n/engine/src/index.ts
+  s_71c6da2ee47cd3::t_613cff5051c1db 37-40,42,44-45,47
+  s_71c6da2ee47cd3::t_7914db3e7b1dc8 41,48,51
+  s_71c6da2ee47cd3::t_0cee0633057f64 46
+packages/@n8n/engine/src/response-channel/__tests__/execution-response-channel.test.ts
+  s_71c6da2ee47cd3::t_4c8a66733e8771 1-6,10-17,19,21-31,33-36,38,43-47,94,96-98,101-111,123-124,132,141-150,152-158
+  s_71c6da2ee47cd3::t_fa016bb36a11bb 159-161,163-175,177-187,189
+  s_71c6da2ee47cd3::t_4e714ff987f823 191-194,197-204,206
+packages/cli/src/modules/engine-v2/engine-v2.module.ts
+  s_71c6da2ee47cd3::t_219e2dfcd3c658 5,21-22,40,42-44,48,50
+packages/@n8n/config/src/configs/engine.config.ts
+  s_71c6da2ee47cd3::t_11151294bf63cb 66,77-81,83
 ---
 {
   "schema_version": "authorship/3.0.0",
