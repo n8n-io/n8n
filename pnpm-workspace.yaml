@@ -216,6 +216,7 @@ catalog:
   isolated-vm: ^7.0.1
   js-base64: 3.7.8
   js-tiktoken: 1.0.21
+  jsdom: 23.0.1
   json-schema: 0.4.0
   jsonrepair: 3.13.2
   jsonwebtoken: 9.0.3

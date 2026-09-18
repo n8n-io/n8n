@@ -234,6 +234,18 @@ describe('llm-step-display', () => {
 		});
 	});
 
+	it('excludes AI SDK instructions from input extras', () => {
+		expect(
+			parseInputExtras({
+				instructions: 'You are helpful',
+				messages: [],
+				tools: { search: { description: 'search' } },
+			}),
+		).toEqual({
+			tools: { search: { description: 'search' } },
+		});
+	});
+
 	it('includes full tools and config in input extras', () => {
 		expect(
 			parseInputExtras({

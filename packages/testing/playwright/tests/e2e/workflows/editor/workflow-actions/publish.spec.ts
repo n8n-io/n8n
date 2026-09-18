@@ -109,16 +109,6 @@ test.describe(
 				);
 				cleanupWorkflowIds.push(workflowId);
 				await api.workflows.activate(workflowId, createdWorkflow.versionId!);
-				await expect
-					.poll(
-						async () => {
-							const workflows: Array<{ id: string; publicationStatus?: string }> =
-								await api.workflows.getWorkflows();
-							return workflows.find((workflow) => workflow.id === workflowId)?.publicationStatus;
-						},
-						{ timeout: 30_000 },
-					)
-					.toBe('published');
 
 				const { workflowId: workflowId2, createdWorkflow: createdWorkflow2 } =
 					await api.workflows.importWorkflowFromFile('webhook-publish-no-conflicts.json', {

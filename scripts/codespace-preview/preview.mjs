@@ -171,10 +171,11 @@ const serveCommand = (pr, head) => {
 		`git checkout --detach ${head.headRefOid}`,
 		// The serve script comes from the checked-out PR head, so a PR cut before this
 		// tooling landed on master does not have it. Say so, instead of letting pnpm
-		// report a missing script.
+		// report a missing script. A head from before the scripts moved into
+		// scripts/codespace-preview still has it at the old path.
 		// An `||` here would also fire when an earlier step in this && chain failed,
 		// reporting the wrong cause. `if` keeps the test self-contained.
-		'if [ ! -f scripts/preview-serve.mjs ]; then echo "This PR predates the preview tooling. Rebase it on master and retry."; exit 1; fi',
+		'if [ ! -f scripts/codespace-preview/preview-serve.mjs ] && [ ! -f scripts/preview-serve.mjs ]; then echo "This PR predates the preview tooling. Rebase it on master and retry."; exit 1; fi',
 		// After the guard above: a PR that predates the tooling must not tick off
 		// "Install dependencies" and then stop.
 		...marker('install'),

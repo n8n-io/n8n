@@ -29,6 +29,7 @@ import {
 	type InstanceAiConfirmResponse,
 	type InstanceAiEvent,
 	type InstanceAiThreadStatusResponse,
+	type InstanceAiThreadArtifactsContext,
 } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { SsrfProtectionService } from '@n8n/backend-network';
@@ -186,19 +187,18 @@ import { InstanceAiTerminalOutcomeService } from './instance-ai-terminal-outcome
 import { InstanceAiAdapterService } from './instance-ai.adapter.service';
 import {
 	AUTO_FOLLOW_UP_MESSAGE,
-	EDITOR_CONTEXT_OPEN_TAG,
-	EDITOR_CONTEXT_CLOSE_TAG,
 	CREDENTIAL_CONTEXT_OPEN_TAG,
 	CREDENTIAL_CONTEXT_CLOSE_TAG,
 	cleanStoredUserMessage,
-	withCurrentDateTime,
-	withAiPreferences,
-	withPastConversations,
-	withProjectContext,
-	getProjectContextSection,
-	WORKFLOW_SETUP_STATE_OPEN_TAG,
-	WORKFLOW_SETUP_STATE_CLOSE_TAG,
+	buildCurrentDateTimeBlock,
+	buildPastConversationsBlock,
+	buildProjectContextBlock,
+	buildThreadArtifactsBlock,
+	buildThreadContextBlock,
 	buildWorkflowTestRequestBlock,
+	getProjectContextSection,
+	WORKFLOW_SETUP_STATE_CLOSE_TAG,
+	WORKFLOW_SETUP_STATE_OPEN_TAG,
 } from './internal-messages';
 import { INSTANCE_AI_RUN_TIMEOUT_REASON, InstanceAiLivenessService } from './liveness';
 import { InstanceAiMcpRegistryService } from './mcp';
@@ -242,7 +242,9 @@ import { WorkflowVerificationTaskProjector } from './workflow-verification-task-
 import { AgentExecutionService } from '../agents/agent-execution.service';
 import { formatPreviewSessionContext } from '../agents/builder/format-preview-context';
 
-/** A resource attachment as the trace records it: the reference, not its contents. */
+/**
+ * A resource attachment as the trace records it: the reference, not its contents.
+ */
 type TracedResourceAttachment = {
 	type: InstanceAiResourceAttachment['type'];
 	id: string;
@@ -262,104 +264,6 @@ function buildSuspensionTraceOutputs(runId: string, suspension: SuspensionInfo |
 		...(suspension?.toolName ? { toolName: suspension.toolName } : {}),
 		...(message ? { message } : {}),
 	};
-}
-
-/**
- * Renders a message's resource attachments (e.g. a workflow + execution, or an
- * agent, handed off from the editor) as a context block telling the agent what
- * the user is looking at. Informative only: the agent should greet the user and ask how it
- * can help rather than inspecting the resources up front. The ids stay in the
- * block so they're available once the user actually asks for something.
- * Returns an empty string when there are none.
- */
-/** Renders one canvas node-selection attachment as one line per set. */
-function buildNodesAttachmentLine(attachment: InstanceAiNodesAttachment): string {
-	const setLines = attachment.sets.map((set) => {
-		const names = set.nodes.map((node) => node.name ?? node.id);
-
-		const label =
-			names.length === 1
-				? `Node "${names[0]}"`
-				: `A chain of connected nodes: ${names.join(' → ')}`;
-
-		const input = set.inputNode
-			? `, receiving input from "${set.inputNode.name ?? set.inputNode.id}"`
-			: '';
-
-		const output = set.outputNode
-			? `, sending output to "${set.outputNode.name ?? set.outputNode.id}"`
-			: '';
-
-		const group = set.canvasGroupName
-			? `, part of canvas group "${set.canvasGroupName}"`
-			: set.canvasGroupId
-				? `, part of canvas group \`${set.canvasGroupId}\``
-				: '';
-
-		return `  - ${label}${input}${output}${group}.`;
-	});
-
-	const hasBoundary = attachment.sets.some((set) => set.inputNode ?? set.outputNode);
-	const boundaryNote = hasBoundary
-		? '\n  The "receiving input from"/"sending output to" nodes show only where the selection connects; they are not part of the selection. Do not describe, inspect, or make claims about them — scope your answer to the selected nodes.'
-		: '';
-
-	return `- Selected nodes in workflow \`${attachment.workflowId}\`:\n${setLines.join('\n')}${boundaryNote}`;
-}
-
-export function buildContextResourcesBlock(
-	contextAttachments: InstanceAiResourceAttachment[],
-): string {
-	if (contextAttachments.length === 0) {
-		return '';
-	}
-
-	const lines = contextAttachments.map((attachment) => {
-		if (attachment.type === 'nodes') {
-			return buildNodesAttachmentLine(attachment);
-		}
-
-		const name = attachment.name ? ` "${attachment.name}"` : '';
-
-		if (attachment.type === 'agent') {
-			if (attachment.pending) {
-				return `- New unsaved Agent artifact${name} (pending id: \`${attachment.id}\`, in project \`${attachment.projectId}\`).`;
-			}
-			return `- Agent${name} (id: \`${attachment.id}\`, in project \`${attachment.projectId}\`).`;
-		}
-
-		// Attachment type must be workflow at this point
-		// Only mention the execution when one was actually handed off.
-		const execution = attachment.executionId
-			? `, currently viewing its execution \`${attachment.executionId}\``
-			: '';
-
-		return `- Workflow${name} (id: \`${attachment.id}\`)${execution}.`;
-	});
-
-	const header = contextAttachments.some((attachment) => attachment.type === 'agent')
-		? 'The user opened this conversation from the agent editor, where they are looking at:'
-		: 'The user opened this conversation from the workflow editor, where they are looking at:';
-
-	const pendingAgentGuidance = contextAttachments.some(
-		(attachment) => attachment.type === 'agent' && attachment.pending,
-	)
-		? "Treat references such as “the agent” as this pending artifact. It has no persisted agent row yet. When the user asks to build or change it, use `build-agent`'s new-agent path with a name; do not pass its pending id as an existing `agentId`. The thread's pending target will make creation reuse that id."
-		: '';
-
-	const prose = [
-		header,
-		...lines,
-		pendingAgentGuidance,
-		"Treat this purely as context. Until the user tells you what they need, don't read, inspect, run, or otherwise call tools on these resources, and don't make claims about their contents — just briefly acknowledge what they're working on and ask how you can help.",
-	]
-		.filter(Boolean)
-		.join('\n');
-	// Wrap in EDITOR_CONTEXT_BLOCK so the UI strips it from the visible message
-	// (cleanStoredUserMessage) and the parser can reconstruct the attachments on
-	// reload from the leading JSON line — keeping the resource durable without
-	// persisting it as visible text.
-	return `${EDITOR_CONTEXT_OPEN_TAG}\n${JSON.stringify(contextAttachments)}\n\n${prose}\n${EDITOR_CONTEXT_CLOSE_TAG}`;
 }
 
 /** Workflow/agent attachments carry a display name; a nodes attachment doesn't. */
@@ -1472,6 +1376,7 @@ export class InstanceAiService {
 		mode?: InstanceAiBuildMode,
 		promptVersion?: string,
 		computerUseChannels?: ComputerUseChannel[],
+		threadArtifacts?: InstanceAiThreadArtifactsContext,
 	): string {
 		if (
 			promptVersion !== undefined &&
@@ -1516,6 +1421,11 @@ export class InstanceAiService {
 			context,
 			messageGroupId,
 			timeZone,
+			false,
+			undefined,
+			undefined,
+			undefined,
+			threadArtifacts,
 		);
 
 		return runId;
@@ -3723,6 +3633,7 @@ export class InstanceAiService {
 		checkpoint?: { isCheckpointFollowUp: true; checkpointTaskId: string },
 		resumeReason?: OrchestratorResumeReason,
 		plannedBuild?: PlannedBuildFollowUp,
+		threadArtifacts?: InstanceAiThreadArtifactsContext,
 	): Promise<void> {
 		// Split the message's attachments by kind once, here at the agent
 		// boundary: files feed the parse-file / content-block path, workflow
@@ -3782,6 +3693,9 @@ export class InstanceAiService {
 
 					return resource;
 				});
+			}
+			if (threadArtifacts?.artifacts.length) {
+				traceInput.threadArtifacts = threadArtifacts;
 			}
 			if (messageGroupId) {
 				traceInput.messageGroupId = messageGroupId;
@@ -3987,7 +3901,6 @@ export class InstanceAiService {
 			await this.snapshotAttachedAgents(contextAttachments, orchestrationContext, tracing);
 
 			const enrichedMessage = await this.buildMessageWithRunningTasks(threadId, message);
-			const contextResourcesBlock = buildContextResourcesBlock(contextAttachments);
 
 			let handoffContextBlock = '';
 			let agentPreviewTitleFallback: string | undefined;
@@ -4109,51 +4022,35 @@ export class InstanceAiService {
 						? `${enrichedMessage}\n\n${attachmentManifest}`
 						: enrichedMessage;
 
-			// The context block (an editor hand-off) leads the message so the agent
-			// knows what the user is looking at. On an empty-text hand-off it is the
-			// entire prompt, and the agent greets rather than investigating.
-			// Instance context sits last of the leading blocks, nearest the user's own words: it is
-			// background for reading their intent, not a statement of what they are looking at now.
-			const messageWithContext = [
-				contextResourcesBlock,
-				handoffContextBlock,
-				setupStateBlock,
-				instanceContext?.block ?? '',
-				messageBody,
-			]
-				.filter(Boolean)
-				.join('\n\n');
-			// The bound project's NAME rides turn for the same reason as the clock: it is per-thread,
-			// so putting it in the cached system prefix would break caching.
-			//
-			// The opening turn names the project's recent conversations; otherwise the
-			// agent has no reason to believe the conversation-history tool holds anything.
+			// Setup / credential handoff blocks lead. Ambient context (instance,
+			// preview tabs + editor resource hand-off, project, clock) is one
+			// `<thread-context>` wrapper. The user's own words stay last.
+			const threadArtifactsBlock =
+				resumeReason === undefined
+					? buildThreadArtifactsBlock(threadArtifacts, contextAttachments)
+					: '';
 			const [boundProject, pastConversationsSection] = await Promise.all([
 				this.resolveBoundProject(context),
 				isOpeningTurn ? conversationHistory?.getPastConversationsSection() : undefined,
 			]);
 			const projectSection = boundProject ? getProjectContextSection(boundProject) : undefined;
-			// Saved preferences ride the opening turn too, under the same project name.
 			const aiPreferencesBlock =
 				isOpeningTurn && aiPreferencesEnabled
 					? await this.resolveAiPreferencesBlock(user.id, boundProject)
 					: undefined;
-			const messageWithProject = projectSection
-				? withProjectContext(messageWithContext, projectSection)
-				: messageWithContext;
-			const messageWithPastConversations = pastConversationsSection
-				? withPastConversations(messageWithProject, pastConversationsSection)
-				: messageWithProject;
-			const messageWithPreferences = aiPreferencesBlock
-				? withAiPreferences(messageWithPastConversations, aiPreferencesBlock)
-				: messageWithPastConversations;
-
-			// Carry "now" on the per-turn input, not the cached system prefix, so the prefix stays cacheable.
-			// Wrapped so the parser strips it from the displayed user message on history reload.
-			const fullMessage = withCurrentDateTime(
-				messageWithPreferences,
-				getDateTimeSection(timeZone ?? this.defaultTimeZone),
-			);
+			const threadContextBlock = buildThreadContextBlock([
+				instanceContext?.block ?? '',
+				threadArtifactsBlock,
+				projectSection ? buildProjectContextBlock(projectSection) : undefined,
+				pastConversationsSection
+					? buildPastConversationsBlock(pastConversationsSection)
+					: undefined,
+				aiPreferencesBlock,
+				buildCurrentDateTimeBlock(getDateTimeSection(timeZone ?? this.defaultTimeZone)),
+			]);
+			const fullMessage = [handoffContextBlock, setupStateBlock, threadContextBlock, messageBody]
+				.filter(Boolean)
+				.join('\n\n');
 
 			const promptBuildRun = tracing
 				? await tracing.startChildRun(tracing.messageRun, {
@@ -6616,7 +6513,7 @@ export class InstanceAiService {
 			const userTexts: string[] = [];
 			for (const m of history) {
 				if (!('role' in m) || m.role !== 'user') continue;
-				// Stored user messages carry service-injected blocks (<current-date-time>,
+				// Stored user messages carry service-injected blocks (<thread-context>,
 				// task context). Strip them or a trivial "hey" looks substantial enough to
 				// title, and the injected blocks leak into the title prompt.
 				const text = cleanStoredUserMessage(this.extractStoredMessageText(m.content));

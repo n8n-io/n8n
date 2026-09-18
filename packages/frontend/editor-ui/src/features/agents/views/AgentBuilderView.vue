@@ -330,6 +330,7 @@ const {
 // editing is disabled even for a user who otherwise has permission — mirrors
 // the workflow artifact's read-only lock during a build.
 const effectiveCanEditAgent = computed(() => canEditAgent.value && !isEditingLocked.value);
+const canDeletePreviewSession = computed(() => canEditAgent.value);
 
 const isVersionHistoryOpen = ref(false);
 
@@ -489,11 +490,17 @@ const {
 	currentSessionTitle,
 	currentSessionIsEphemeral,
 	sessionMenu,
+	isDeletingSession,
 	setSessionInUrl,
 	clearContinueSessionParam,
 	onSessionPick,
 	onNewChat,
-} = useAgentBuilderSession({ routeBacked: computed(() => !isArtifactMode.value) });
+	deleteSession,
+} = useAgentBuilderSession({
+	routeBacked: computed(() => !isArtifactMode.value),
+	projectId,
+	agentId,
+});
 
 // Config
 const { config, configHash, fetchConfig, updateConfig, repoint: repointConfig } = useAgentConfig();
@@ -794,6 +801,11 @@ function viewPreviewTrace() {
 
 function startNewPreviewSession() {
 	onNewChat();
+}
+
+async function onDeletePreviewSession(sessionId: string) {
+	if (!canDeletePreviewSession.value) return;
+	await deleteSession(sessionId);
 }
 
 async function onOpenPreview() {
@@ -1506,23 +1518,11 @@ const externalUpdateTime = computed(() =>
 		interpolate: { count: externalUpdateAgeMinutes.value },
 	}),
 );
-const externalUpdateMessage = computed(() => {
-	let key: BaseTextKey;
-	switch (recentExternalUpdate.value?.source) {
-		case 'mcp':
-			key = 'agents.builder.externalUpdate.mcp';
-			break;
-		case 'builder':
-			key = 'agents.builder.externalUpdate.builder';
-			break;
-		case 'user':
-			key = 'agents.builder.externalUpdate.user';
-			break;
-		default:
-			key = 'agents.builder.externalUpdate.unknown';
-	}
-	return locale.baseText(key, { interpolate: { time: externalUpdateTime.value } });
-});
+const externalUpdateMessage = computed(() =>
+	locale.baseText('agents.builder.externalUpdate.mcp', {
+		interpolate: { time: externalUpdateTime.value },
+	}),
+);
 
 function clearExternalUpdate() {
 	clearTimeout(externalUpdateTimer);
@@ -1530,12 +1530,6 @@ function clearExternalUpdate() {
 	externalUpdateAt = 0;
 	externalUpdateAgeMinutes.value = 0;
 	recentExternalUpdate.value = null;
-}
-
-function shouldShowExternalUpdate(source: PushPayload<'agentUpdated'>['source']) {
-	if (source === 'builder') return !isArtifactMode.value;
-	if (source === 'user') return isArtifactMode.value;
-	return true;
 }
 
 watch([projectId, agentId], clearExternalUpdate);
@@ -1611,7 +1605,7 @@ function onAgentPushMessage(event: PushMessage) {
 	) {
 		return;
 	}
-	if (shouldShowExternalUpdate(event.data.source)) {
+	if (event.data.source === 'mcp') {
 		clearExternalUpdate();
 		recentExternalUpdate.value = event.data;
 		externalUpdateAt = Date.now();
@@ -2301,7 +2295,10 @@ function onSwitchAgent(nextAgentId: string) {
 			:session-title="currentSessionTitle"
 			:session-options="sessionMenu"
 			:has-trace="currentSessionHasMessages && Boolean(effectiveSessionId)"
+			:can-delete-session="canDeletePreviewSession"
+			:is-deleting-session="isDeletingSession"
 			@back="returnToBuilderFromPreview"
+			@delete-session="onDeletePreviewSession"
 			@new-session="startNewPreviewSession"
 			@session-select="onSessionPick"
 			@view-trace="viewPreviewTrace"
@@ -2488,10 +2485,13 @@ function onSwitchAgent(nextAgentId: string) {
 					:local-config="localConfig"
 					:connected-triggers="connectedTriggers"
 					:effective-session-id="effectiveSessionId"
+					:can-delete-session="canDeletePreviewSession"
+					:is-deleting-session="isDeletingSession"
 					:can-send-to-assistant="instanceAiAvailable"
 					:before-send="beforePreviewSend"
 					@view-trace="viewPreviewTrace"
 					@new-session="startNewPreviewSession"
+					@delete-session="onDeletePreviewSession"
 					@session-select="onSessionPick"
 					@close="closePreviewDock"
 					@continue-loaded="onContinueLoaded"
