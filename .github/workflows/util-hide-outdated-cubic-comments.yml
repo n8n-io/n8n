@@ -1,17 +1,13 @@
 name: Hide outdated cubic review comments
 
-# Every time cubic re-reviews a PR it posts a brand new "left a comment" review
-# summary instead of updating the previous one, which clutters the PR timeline.
-# This workflow minimizes (hides) every cubic-dev-ai review except the one that
-# just arrived. Hidden comments are collapsed, not deleted -- anyone can still
-# expand them. Only review summaries are touched; cubic's issue comments and
-# inline threads are left alone.
+# cubic posts a new review summary on every re-review. This workflow collapses
+# every older cubic-dev-ai summary on the PR so only the newest stays visible.
+# Collapsed summaries can still be expanded. Issue comments and inline threads
+# are not touched.
 
-# Triggered by the review itself, not by the push. cubic posts its review 2-11
-# minutes after a `synchronize`, so a push-triggered run cannot see the review it
-# is meant to supersede and always leaves the previous one visible.
-# `pull_request_review` runs in the base-repo context, so it also gets a
-# write-capable token on fork PRs. It checks out no code.
+# Runs on the review, not the push: cubic reviews 2-11 minutes after a push, so
+# a push-triggered run finishes before the summary it should hide exists.
+# `pull_request_review` has a write token on fork PRs too. No code is checked out.
 
 on:
   pull_request_review:
@@ -48,20 +44,15 @@ jobs:
               per_page: 100,
             });
 
-            // Never touch a review newer than the triggering one. Two reviews
-            // submitted close together start two runs; without this guard the
-            // older run minimizes the newer review, and the newer run keeps that
-            // review but never restores its visibility, hiding every summary.
-            //
-            // A stale read that omits the triggering review means everything
-            // listed predates it, so Infinity is the right cutoff there.
+            // Only hide reviews older than the one that triggered this run. If two
+            // runs overlap, the older run must not hide the newer review.
+            // If the list does not include the triggering review yet, treat every
+            // listed review as older.
             const keep = reviews.find((r) => r.id === keepId);
             const keepAt = keep ? new Date(keep.submitted_at).getTime() : Infinity;
 
-            // `submitted_at` has second granularity, so two reviews can tie.
-            // Review ids grow with submission order, which breaks the tie and
-            // makes this a total order -- without it a tie hides neither review
-            // and both summaries stay visible.
+            // `submitted_at` is in whole seconds, so reviews can tie. Ids increase
+            // with submission order and break the tie.
             const precedesKeep = (r) => {
               const at = new Date(r.submitted_at).getTime();
               return at < keepAt || (at === keepAt && r.id < keepId);
