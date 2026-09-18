@@ -39,6 +39,14 @@ describe('useChatHubMarkdownOptions', () => {
 		expect(html).toContain('rel="noopener"');
 	});
 
+	it('renders bare URLs as clickable links', () => {
+		const html = renderMarkdown('Open it: https://docs.n8n.io/some/page');
+
+		expect(html).toContain('href="https://docs.n8n.io/some/page"');
+		expect(html).toContain('target="_blank"');
+		expect(html).toContain('rel="noopener"');
+	});
+
 	it('classifies relative app links as same-tab links', () => {
 		expect(shouldOpenChatMarkdownLinkInNewTab('/projects/project-1/agents/agent-1/preview')).toBe(
 			false,
