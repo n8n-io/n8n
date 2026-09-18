@@ -3,6 +3,7 @@ import { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
 import { TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { LRUCache } from 'lru-cache';
 import { OperationalError, UserError } from 'n8n-workflow';
 
 import { ConflictError } from '@/errors/response-errors/conflict.error';
@@ -48,8 +49,8 @@ const SCOPE_CACHE_TTL_MS = 10 * Time.minutes.toMilliseconds;
 const LOCAL_READ_TTL_MS = 1 * Time.seconds.toMilliseconds;
 
 /**
- * Caps the reads one process holds. Each one resolves to a whole rule list and the key space
- * is `kind` x projects, so an instance with many projects would otherwise keep every project's
+ * Caps the reads one process holds. Each one resolves to a whole rule list and the key space is
+ * `kind` x projects, so an instance with many projects would otherwise keep every project's
  * policy in memory for ever.
  */
 const LOCAL_READ_MAX_ENTRIES = 512;
@@ -239,11 +240,15 @@ export class TypeAvailabilityPolicyService {
 	 * This process's own read of each scope, held for `LOCAL_READ_TTL_MS` from when it started
 	 * — the promise, not the value, so that callers who arrive while it is still running share
 	 * it too. Coalescing and memoizing are then the same thing at two different moments.
+	 *
+	 * An `LRUCache` for the cap, so the scope nobody has read for longest is the one dropped.
+	 * The window stays here rather than using the cache's own `ttl`, which is measured with
+	 * `performance.now()` — a clock a test cannot freeze.
 	 */
-	private readonly localReads = new Map<
+	private readonly localReads = new LRUCache<
 		string,
 		{ read: Promise<EffectivePolicy>; expiresAt: number }
-	>();
+	>({ max: LOCAL_READ_MAX_ENTRIES });
 
 	/**
 	 * Counts invalidations on this process, so a read can notice one that overtook it. Deliberately
@@ -973,14 +978,14 @@ export class TypeAvailabilityPolicyService {
 
 		const read = this.readScope(kind, projectId, key);
 
-		// A failed read must not be the answer for the rest of the window. Only drop it while it
-		// is still the current one, or a slow failure evicts the read that replaced it.
+		// A failed read must not be the answer for the rest of the window. `peek` so that checking
+		// does not itself count as use, and only drop it while it is still the current one, or a
+		// slow failure evicts the read that replaced it.
 		read.catch(() => {
-			if (this.localReads.get(key)?.read === read) this.localReads.delete(key);
+			if (this.localReads.peek(key)?.read === read) this.localReads.delete(key);
 		});
 
 		this.localReads.set(key, { read, expiresAt: Date.now() + LOCAL_READ_TTL_MS });
-		this.pruneLocalReads();
 
 		return await read;
 	}
@@ -1031,21 +1036,6 @@ export class TypeAvailabilityPolicyService {
 		if (this.invalidations !== invalidations) return false;
 
 		return Date.now() - startedAt < INVALIDATION_REPEAT_DELAY_MS;
-	}
-
-	/** Drops expired entries, then the oldest ones, while the map is over its cap. */
-	private pruneLocalReads(): void {
-		if (this.localReads.size <= LOCAL_READ_MAX_ENTRIES) return;
-
-		const now = Date.now();
-		for (const [key, entry] of this.localReads) {
-			if (entry.expiresAt <= now) this.localReads.delete(key);
-		}
-
-		for (const key of this.localReads.keys()) {
-			if (this.localReads.size <= LOCAL_READ_MAX_ENTRIES) break;
-			this.localReads.delete(key);
-		}
 	}
 
 	/**

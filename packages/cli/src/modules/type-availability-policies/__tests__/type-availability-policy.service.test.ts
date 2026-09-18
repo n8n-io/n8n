@@ -1612,6 +1612,42 @@ describe('TypeAvailabilityPolicyService', () => {
 			}
 		});
 
+		/**
+		 * The cap has to drop the scope nobody has read for longest, not the one that happens to
+		 * have been inserted first — a busy scope is re-read every window and would otherwise be
+		 * evicted while a quiet one survives.
+		 */
+		it('evicts the least recently read scope when it reaches the cap', async () => {
+			vi.useFakeTimers({ toFake: ['Date'] });
+			try {
+				cacheService.get.mockResolvedValue(CACHED_DENY);
+				const decideFor = async (projectId: string) =>
+					await service.evaluateComposedTypesFor(KIND, projectId, [TYPE]);
+
+				// Fill to the cap: the instance scope, one busy project, and 510 quiet ones.
+				await decideFor('busy');
+				vi.setSystemTime(Date.now() + 600);
+				for (let index = 0; index < 510; index++) await decideFor(`quiet-${index}`);
+
+				// Past the busy scope's window, so it is read again, which is the case that used
+				// to leave it at the front of the map.
+				vi.setSystemTime(Date.now() + 401);
+				await decideFor('busy');
+
+				// One over the cap, so exactly one entry is evicted.
+				await decideFor('straw');
+
+				cacheService.get.mockClear();
+				await decideFor('busy');
+				expect(cacheService.get).not.toHaveBeenCalled();
+
+				await decideFor('quiet-0');
+				expect(cacheService.get).toHaveBeenCalledTimes(1);
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
 		it('is dropped by a write, so the process that wrote sees its own change at once', async () => {
 			cacheService.get.mockResolvedValue(CACHED_DENY);
 			await decide();
