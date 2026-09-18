@@ -55,7 +55,6 @@ export interface UseInstanceAiMentionCatalogOptions {
 	durableWorkflowIds: MaybeRefOrGetter<ReadonlySet<string>>;
 	draftMentions: MaybeRefOrGetter<readonly InstanceAiDraftMention[]>;
 	buildingWorkflowIds?: MaybeRefOrGetter<ReadonlySet<string>>;
-	nodeContextEnabled?: MaybeRefOrGetter<boolean>;
 }
 
 function normalize(value: string): string {
@@ -195,6 +194,7 @@ export function useInstanceAiMentionCatalog(options: UseInstanceAiMentionCatalog
 	const loadedQuery = ref('');
 	const remoteQuery = ref('');
 	const projections = ref(new Map<string, WorkflowProjection>());
+	const projectionErrorIds = ref<ReadonlySet<string>>(new Set());
 	const pageCache = new Map<string, { count: number; data: WorkflowMetadata[] }>();
 	const queuedDetailIds = new Set<string>();
 	const scheduledDetailIds = new Set<string>();
@@ -208,6 +208,7 @@ export function useInstanceAiMentionCatalog(options: UseInstanceAiMentionCatalog
 	const selectedKeys = computed(
 		() => new Set(toValue(options.draftMentions).map((mention) => mention.key)),
 	);
+	// Keep detail reads bounded to workflows already represented by an Assistant tab.
 	const eligibleWorkflowIds = computed(() => {
 		const ids = new Set(toValue(options.durableWorkflowIds));
 		for (const mention of toValue(options.draftMentions)) ids.add(mention.target.workflowId);
@@ -234,16 +235,16 @@ export function useInstanceAiMentionCatalog(options: UseInstanceAiMentionCatalog
 			};
 		}),
 	);
-	const localCandidates = computed(() => {
-		if (!toValue(options.nodeContextEnabled ?? true)) return [];
-		return [...projections.value.values()]
+	const localCandidates = computed(() =>
+		[...projections.value.values()]
 			.flatMap(projectLocalCandidates)
 			.map((candidate) =>
 				selectedKeys.value.has(candidate.key)
 					? { ...candidate, unavailableReason: 'selected' as const }
 					: candidate,
-			);
-	});
+			),
+	);
+	const loadedWorkflowIds = computed<ReadonlySet<string>>(() => new Set(projections.value.keys()));
 	const visibleCandidates = computed(() => {
 		const query = normalize(toValue(options.query));
 		const workflows =
@@ -334,6 +335,13 @@ export function useInstanceAiMentionCatalog(options: UseInstanceAiMentionCatalog
 		if (availability.value === 'available') await loadWorkflowPage(true);
 	}
 
+	function setProjectionError(workflowId: string, hasError: boolean): void {
+		const next = new Set(projectionErrorIds.value);
+		if (hasError) next.add(workflowId);
+		else next.delete(workflowId);
+		projectionErrorIds.value = next;
+	}
+
 	async function fetchProjection(workflowId: string, generation: number): Promise<void> {
 		try {
 			const workflow = await getWorkflow(rootStore.restApiContext, workflowId);
@@ -348,8 +356,11 @@ export function useInstanceAiMentionCatalog(options: UseInstanceAiMentionCatalog
 			const next = new Map(projections.value);
 			next.set(workflowId, toProjection(workflow));
 			projections.value = next;
+			setProjectionError(workflowId, false);
 		} catch {
-			// Keep the artifact out of the catalog until a later invalidation retries it.
+			if (generation === scopeGeneration && eligibleWorkflowIds.value.has(workflowId)) {
+				setProjectionError(workflowId, true);
+			}
 		} finally {
 			activeDetailRequests -= 1;
 			inFlightDetails.delete(workflowId);
@@ -386,6 +397,7 @@ export function useInstanceAiMentionCatalog(options: UseInstanceAiMentionCatalog
 		if (
 			!toValue(options.enabled) ||
 			!toValue(options.projectId) ||
+			!eligibleWorkflowIds.value.has(workflowId) ||
 			queuedDetailIds.has(workflowId) ||
 			inFlightDetails.has(workflowId) ||
 			buildingWorkflowIds.value.has(workflowId)
@@ -414,6 +426,7 @@ export function useInstanceAiMentionCatalog(options: UseInstanceAiMentionCatalog
 	function refreshEligibleProjections(): void {
 		if (!toValue(options.enabled) || !toValue(options.projectId)) {
 			projections.value = new Map();
+			projectionErrorIds.value = new Set();
 			return;
 		}
 		const eligible = eligibleWorkflowIds.value;
@@ -439,6 +452,20 @@ export function useInstanceAiMentionCatalog(options: UseInstanceAiMentionCatalog
 		}
 
 		projections.value = next;
+		projectionErrorIds.value = new Set(
+			[...projectionErrorIds.value].filter(
+				(workflowId) => eligible.has(workflowId) && !next.has(workflowId),
+			),
+		);
+	}
+
+	function retryWorkflowDetails(workflowId: string): void {
+		if (!eligibleWorkflowIds.value.has(workflowId)) return;
+		setProjectionError(workflowId, false);
+		const next = new Map(projections.value);
+		next.delete(workflowId);
+		projections.value = next;
+		queueProjection(workflowId);
 	}
 
 	const updateRemoteQuery = useDebounceFn((value: string) => {
@@ -462,6 +489,7 @@ export function useInstanceAiMentionCatalog(options: UseInstanceAiMentionCatalog
 			workflowCount.value = 0;
 			loadedQuery.value = '';
 			projections.value = new Map();
+			projectionErrorIds.value = new Set();
 			pageCache.clear();
 			void checkAvailability();
 		},
@@ -527,10 +555,13 @@ export function useInstanceAiMentionCatalog(options: UseInstanceAiMentionCatalog
 		workflowCandidates,
 		localCandidates,
 		visibleCandidates,
+		loadedWorkflowIds,
+		projectionErrorIds,
 		isLoadingWorkflows,
 		workflowError,
 		hasMoreWorkflows,
 		loadMore: async () => await loadWorkflowPage(false),
 		retry,
+		retryWorkflowDetails,
 	};
 }

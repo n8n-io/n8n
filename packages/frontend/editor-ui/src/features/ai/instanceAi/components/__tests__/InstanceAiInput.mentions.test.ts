@@ -3,8 +3,9 @@ import { createPinia, setActivePinia } from 'pinia';
 import { ref } from 'vue';
 
 import { createComponentRenderer } from '@/__tests__/render';
-import { createTestWorkflow } from '@/__tests__/mocks';
-import { getWorkflows } from '@/app/api/workflows';
+import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
+import { getWorkflow, getWorkflows } from '@/app/api/workflows';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 
 import InstanceAiInput from '../InstanceAiInput.vue';
 import { buildDraftMention } from '../../mentions/buildMentionAttachment';
@@ -33,6 +34,8 @@ const workflow = createTestWorkflow({
 	versionId: 'version-1',
 	isArchived: false,
 	updatedAt: '2026-09-18T00:00:00.000Z',
+	nodes: [createTestNode({ id: 'node-1', name: 'Route request' })],
+	nodeGroups: [{ id: 'group-1', name: 'Handle failures', nodeIds: ['node-1'] }],
 });
 
 const workflowMention = buildDraftMention(
@@ -68,8 +71,10 @@ describe('InstanceAiInput mentions', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia());
 		vi.clearAllMocks();
+		vi.spyOn(useNodeTypesStore(), 'loadNodeTypesIfNotLoaded').mockResolvedValue(undefined);
 		telemetryTrack.mockClear();
 		vi.mocked(getWorkflows).mockResolvedValue({ count: 1, data: [workflow] });
+		vi.mocked(getWorkflow).mockResolvedValue(workflow);
 	});
 
 	it('keeps mention controls hidden when host wiring is disabled', () => {
@@ -129,6 +134,32 @@ describe('InstanceAiInput mentions', () => {
 		expect(emitted().submit).toBeUndefined();
 	});
 
+	it('uses Right Arrow to browse a newly mentioned workflow and Enter to mention its highlighted node', async () => {
+		const { getByRole, emitted } = renderComponent({
+			props: { draftMentions: [workflowMention] },
+		});
+		const textarea = getByRole('combobox');
+		await waitForAvailability();
+		await fireEvent.update(textarea, '@');
+		await waitFor(() =>
+			expect(getByRole('option', { name: /Support triage, Workflow/ })).toBeVisible(),
+		);
+
+		await fireEvent.keyDown(textarea, { key: 'ArrowRight' });
+		await waitFor(() => expect(getByRole('option', { name: /Route request, Node/ })).toBeVisible());
+		await fireEvent.keyDown(textarea, { key: 'Enter' });
+
+		expect(textarea).toHaveValue('Route request ');
+		const mentionEvents = emitted<[InstanceAiDraftMention[]]>()['update:draftMentions'];
+		expect(mentionEvents[0][0]).toEqual([
+			expect.objectContaining({ key: 'workflow:workflow-1' }),
+			expect.objectContaining({
+				key: 'node:workflow-1:node-1',
+				origin: 'typed',
+			}),
+		]);
+	});
+
 	it('opens from the button and inserts at the saved textarea selection', async () => {
 		const { getByRole, getByTestId, getByPlaceholderText } = renderComponent();
 		const textarea = getByRole('combobox') as HTMLTextAreaElement;
@@ -138,7 +169,9 @@ describe('InstanceAiInput mentions', () => {
 
 		await fireEvent.click(getByTestId('instance-ai-mention-button'));
 		await waitFor(() =>
-			expect(getByPlaceholderText('Search workflows and nodes')).toBeInTheDocument(),
+			expect(
+				getByPlaceholderText('Search workflows, nodes, and canvas groups'),
+			).toBeInTheDocument(),
 		);
 		await waitFor(() =>
 			expect(getByRole('option', { name: /Support triage, Workflow/ })).toBeVisible(),
@@ -153,7 +186,9 @@ describe('InstanceAiInput mentions', () => {
 		const textarea = getByRole('combobox');
 		await waitForAvailability();
 		await fireEvent.click(getByTestId('instance-ai-mention-button'));
-		const search = await waitFor(() => getByPlaceholderText('Search workflows and nodes'));
+		const search = await waitFor(() =>
+			getByPlaceholderText('Search workflows, nodes, and canvas groups'),
+		);
 
 		await fireEvent.keyDown(search, { key: 'Escape' });
 
@@ -188,9 +223,11 @@ describe('InstanceAiInput mentions', () => {
 		await waitForAvailability();
 		await openTypedPicker(textarea);
 
-		expect(getByRole('option', { name: /Already mentioned/ })).toHaveAttribute(
-			'aria-disabled',
-			'true',
+		await waitFor(() =>
+			expect(getByRole('option', { name: /Already mentioned/ })).toHaveAttribute(
+				'aria-disabled',
+				'true',
+			),
 		);
 	});
 

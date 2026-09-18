@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue';
-import { N8nButton, N8nIcon, N8nPopover } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nIconButton, N8nPopover } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 
 import NodeIcon from '@/app/components/NodeIcon.vue';
@@ -20,6 +20,10 @@ const props = withDefaults(
 		origin?: InstanceAiMentionOrigin;
 		query: string;
 		candidates: InstanceAiMentionCandidate[];
+		browsedWorkflow?: InstanceAiMentionCandidate;
+		drillableWorkflowIds?: ReadonlySet<string>;
+		workflowDetailsLoaded?: boolean;
+		workflowDetailsError?: boolean;
 		highlightedId?: string;
 		anchor?: HTMLElement;
 		availability?: CatalogAvailability;
@@ -29,6 +33,10 @@ const props = withDefaults(
 		limitReason?: 'mentions' | 'attachments';
 	}>(),
 	{
+		browsedWorkflow: undefined,
+		drillableWorkflowIds: () => new Set<string>(),
+		workflowDetailsLoaded: false,
+		workflowDetailsError: false,
 		origin: undefined,
 		highlightedId: undefined,
 		anchor: undefined,
@@ -46,7 +54,10 @@ const emit = defineEmits<{
 	select: [candidate: InstanceAiMentionCandidate, position: number];
 	highlight: [key: string];
 	keydown: [event: KeyboardEvent];
+	'browse-workflow': [candidate: InstanceAiMentionCandidate];
+	'browse-workflows': [];
 	retry: [];
+	'retry-workflow': [];
 	'load-more': [];
 }>();
 
@@ -57,62 +68,12 @@ const listboxId = 'instance-ai-mention-listbox';
 const hasNodeCandidates = computed(() =>
 	props.candidates.some((candidate) => candidate.kind === 'node'),
 );
-
-interface CandidateSection {
-	key: string;
-	label?: string;
-	candidates: InstanceAiMentionCandidate[];
-}
-
-const sections = computed<CandidateSection[]>(() => {
-	if (props.query.trim()) return [{ key: 'search', candidates: props.candidates }];
-
-	const result: CandidateSection[] = [];
-	const workflows = props.candidates.filter((candidate) => candidate.kind === 'workflow');
-	if (workflows.length > 0) {
-		result.push({
-			key: 'workflows',
-			label: i18n.baseText('instanceAi.mentions.picker.workflows'),
-			candidates: workflows,
-		});
-	}
-
-	const childWorkflowNames = new Map<string, string>();
-	for (const candidate of props.candidates) {
-		if (candidate.kind !== 'workflow' && candidate.parentLabel) {
-			childWorkflowNames.set(candidate.workflowId, candidate.parentLabel);
-		}
-	}
-	for (const [workflowId, workflowName] of childWorkflowNames) {
-		const groups = props.candidates.filter(
-			(candidate) => candidate.kind === 'canvas-group' && candidate.workflowId === workflowId,
-		);
-		if (groups.length > 0) {
-			result.push({
-				key: `groups:${workflowId}`,
-				label: i18n.baseText('instanceAi.mentions.picker.groupsInWorkflow', {
-					interpolate: { workflow: workflowName },
-				}),
-				candidates: groups,
-			});
-		}
-
-		const nodes = props.candidates.filter(
-			(candidate) => candidate.kind === 'node' && candidate.workflowId === workflowId,
-		);
-		if (nodes.length > 0) {
-			result.push({
-				key: `nodes:${workflowId}`,
-				label: i18n.baseText('instanceAi.mentions.picker.nodesInWorkflow', {
-					interpolate: { workflow: workflowName },
-				}),
-				candidates: nodes,
-			});
-		}
-	}
-
-	return result;
-});
+const isSearchMode = computed(() => props.query.trim().length > 0);
+const isBrowseMode = computed(() => !isSearchMode.value && props.browsedWorkflow !== undefined);
+const isWorkflowRoot = computed(() => !isSearchMode.value && !props.browsedWorkflow);
+const isWorkflowDetailsLoading = computed(
+	() => isBrowseMode.value && !props.workflowDetailsLoaded && !props.workflowDetailsError,
+);
 
 const candidatePositions = computed(
 	() => new Map(props.candidates.map((candidate, index) => [candidate.key, index])),
@@ -127,6 +88,14 @@ function typeLabel(candidate: InstanceAiMentionCandidate): string {
 		candidate.kind === 'canvas-group'
 			? 'instanceAi.mentions.type.canvasGroup'
 			: `instanceAi.mentions.type.${candidate.kind}`,
+	);
+}
+
+function canBrowseWorkflow(candidate: InstanceAiMentionCandidate): boolean {
+	return (
+		isWorkflowRoot.value &&
+		candidate.kind === 'workflow' &&
+		props.drillableWorkflowIds.has(candidate.workflowId)
 	);
 }
 
@@ -206,22 +175,51 @@ watch(
 					@input="handleSearchInput"
 					@keydown="emit('keydown', $event)"
 				/>
+				<button
+					v-if="isBrowseMode"
+					type="button"
+					:class="$style.workflowBack"
+					tabindex="-1"
+					:aria-label="i18n.baseText('instanceAi.mentions.picker.backToWorkflows')"
+					@mousedown.prevent
+					@click="emit('browse-workflows')"
+				>
+					<N8nIcon icon="chevron-left" size="small" />
+					<span>{{ browsedWorkflow?.label }}</span>
+				</button>
 
 				<div v-if="limitReason" :class="$style.state" role="status">
 					{{ i18n.baseText(`instanceAi.mentions.limit.${limitReason}`) }}
 				</div>
+				<div v-else-if="isWorkflowDetailsLoading" :class="$style.state" role="status">
+					{{ i18n.baseText('instanceAi.mentions.picker.loadingWorkflow') }}
+				</div>
+				<div v-else-if="isBrowseMode && workflowDetailsError" :class="$style.state" role="alert">
+					<span>{{ i18n.baseText('instanceAi.mentions.picker.workflowError') }}</span>
+					<N8nButton size="small" variant="subtle" @click="emit('retry-workflow')">
+						{{ i18n.baseText('instanceAi.mentions.picker.retry') }}
+					</N8nButton>
+				</div>
 				<div
-					v-else-if="(availability === 'loading' || loading) && candidates.length === 0"
+					v-else-if="
+						!isBrowseMode && (availability === 'loading' || loading) && candidates.length === 0
+					"
 					:class="$style.state"
 					role="status"
 				>
 					{{ i18n.baseText('instanceAi.mentions.picker.loading') }}
 				</div>
-				<div v-else-if="availability === 'empty'" :class="$style.state" role="status">
+				<div
+					v-else-if="!isBrowseMode && availability === 'empty'"
+					:class="$style.state"
+					role="status"
+				>
 					{{ i18n.baseText('instanceAi.mentions.picker.emptyProject') }}
 				</div>
 				<div
-					v-else-if="(availability === 'error' || error) && candidates.length === 0"
+					v-else-if="
+						!isBrowseMode && (availability === 'error' || error) && candidates.length === 0
+					"
 					:class="$style.state"
 					role="alert"
 				>
@@ -230,41 +228,60 @@ watch(
 						{{ i18n.baseText('instanceAi.mentions.picker.retry') }}
 					</N8nButton>
 				</div>
+				<div
+					v-else-if="isBrowseMode && workflowDetailsLoaded && candidates.length === 0"
+					:class="$style.state"
+					role="status"
+				>
+					{{ i18n.baseText('instanceAi.mentions.picker.emptyWorkflow') }}
+				</div>
 				<div v-else-if="candidates.length === 0" :class="$style.state" role="status">
 					{{ i18n.baseText('instanceAi.mentions.picker.noResults') }}
 				</div>
 				<div v-else :id="listboxId" :class="$style.listbox" role="listbox">
 					<div
-						v-if="availability === 'loading' || loading"
+						v-if="!isBrowseMode && (availability === 'loading' || loading)"
 						:class="$style.inlineState"
 						role="status"
 					>
 						{{ i18n.baseText('instanceAi.mentions.picker.loading') }}
 					</div>
-					<div v-if="availability === 'error' || error" :class="$style.inlineState" role="alert">
+					<div
+						v-if="!isBrowseMode && (availability === 'error' || error)"
+						:class="$style.inlineState"
+						role="alert"
+					>
 						<span>{{ i18n.baseText('instanceAi.mentions.picker.error') }}</span>
 						<N8nButton size="small" variant="subtle" @click="emit('retry')">
 							{{ i18n.baseText('instanceAi.mentions.picker.retry') }}
 						</N8nButton>
 					</div>
-					<section v-for="section in sections" :key="section.key" :class="$style.section">
-						<div v-if="section.label" :class="$style.sectionLabel">{{ section.label }}</div>
+					<div v-if="isWorkflowRoot" :class="$style.sectionLabel">
+						{{ i18n.baseText('instanceAi.mentions.picker.workflows') }}
+					</div>
+					<div
+						v-for="candidate in candidates"
+						:key="candidate.key"
+						:class="[$style.optionRow, { [$style.highlighted]: candidate.key === highlightedId }]"
+						@mouseenter="emit('highlight', candidate.key)"
+					>
 						<button
-							v-for="candidate in section.candidates"
 							:id="optionId(candidate)"
-							:key="candidate.key"
 							type="button"
-							:class="[$style.option, { [$style.highlighted]: candidate.key === highlightedId }]"
+							:class="$style.option"
 							role="option"
 							:aria-disabled="!candidate.source || Boolean(candidate.unavailableReason)"
 							:aria-selected="candidate.unavailableReason === 'selected'"
 							tabindex="-1"
 							:aria-label="`${candidate.label}, ${typeLabel(candidate)}${candidate.parentLabel ? `, ${candidate.parentLabel}` : ''}${unavailableLabel(candidate) ? `, ${unavailableLabel(candidate)}` : ''}`"
 							:title="unavailableLabel(candidate)"
-							@mouseenter="emit('highlight', candidate.key)"
 							@mousedown.prevent
 							@click="handleSelect(candidate)"
 						>
+							<template v-if="isSearchMode && candidate.kind !== 'workflow'">
+								<span :class="$style.parentName">{{ candidate.parentLabel }}</span>
+								<N8nIcon :class="$style.breadcrumbSeparator" icon="chevron-right" size="xsmall" />
+							</template>
 							<span :class="$style.icon">
 								<N8nIcon v-if="candidate.kind === 'workflow'" icon="workflow" />
 								<N8nIcon v-else-if="candidate.kind === 'canvas-group'" icon="layers" />
@@ -278,20 +295,33 @@ watch(
 									:size="16"
 								/>
 							</span>
-							<span :class="$style.optionText">
-								<span :class="$style.name">{{ candidate.label }}</span>
-								<span :class="$style.meta">
-									{{ typeLabel(candidate) }}
-									<template v-if="candidate.parentLabel"> · {{ candidate.parentLabel }}</template>
-									<template v-if="unavailableLabel(candidate)">
-										· {{ unavailableLabel(candidate) }}
-									</template>
-								</span>
-							</span>
+							<span :class="$style.name">{{ candidate.label }}</span>
 						</button>
-					</section>
+						<N8nIconButton
+							v-if="canBrowseWorkflow(candidate)"
+							icon="chevron-right"
+							icon-size="medium"
+							size="small"
+							variant="ghost"
+							:class="$style.drillButton"
+							tabindex="-1"
+							:title="
+								i18n.baseText('instanceAi.mentions.picker.openWorkflow', {
+									interpolate: { workflow: candidate.label },
+								})
+							"
+							:aria-label="
+								i18n.baseText('instanceAi.mentions.picker.openWorkflow', {
+									interpolate: { workflow: candidate.label },
+								})
+							"
+							:data-test-id="`instance-ai-mention-browse-${candidate.workflowId}`"
+							@mousedown.stop.prevent
+							@click.stop="emit('browse-workflow', candidate)"
+						/>
+					</div>
 					<N8nButton
-						v-if="hasMore"
+						v-if="hasMore && !isBrowseMode"
 						:class="$style.loadMore"
 						size="small"
 						variant="ghost"
@@ -327,40 +357,61 @@ watch(
 	}
 }
 
+.workflowBack {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+	width: 100%;
+	padding: var(--spacing--2xs) var(--spacing--xs);
+	border: none;
+	border-bottom: var(--border);
+	background: transparent;
+	color: var(--color--text);
+	font: inherit;
+	text-align: left;
+	cursor: pointer;
+
+	&:hover {
+		background: var(--color--background--light-2);
+	}
+}
+
 .listbox {
 	max-height: calc(var(--spacing--5xl) * 4);
 	overflow-y: auto;
 	padding: var(--spacing--3xs);
 }
 
-.section + .section {
-	margin-top: var(--spacing--2xs);
-}
-
 .sectionLabel {
 	padding: var(--spacing--4xs) var(--spacing--2xs);
 	color: var(--color--text--tint-1);
 	font-size: var(--font-size--2xs);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--regular);
 }
 
-.option {
+.optionRow {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--2xs);
-	width: 100%;
-	padding: var(--spacing--2xs);
-	border: none;
 	border-radius: var(--radius--sm);
-	background: transparent;
-	color: var(--color--text);
-	text-align: left;
-	cursor: pointer;
 
 	&:hover,
 	&.highlighted {
 		background: var(--color--background--light-2);
 	}
+}
+
+.option {
+	display: flex;
+	flex: 1 1 auto;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	min-width: 0;
+	padding: var(--spacing--2xs);
+	border: none;
+	background: transparent;
+	color: var(--color--text);
+	text-align: left;
+	cursor: pointer;
 
 	&[aria-disabled='true'] {
 		color: var(--color--text--tint-1);
@@ -373,27 +424,31 @@ watch(
 	flex: 0 0 auto;
 }
 
-.optionText {
-	display: flex;
-	flex: 1 1 auto;
-	flex-direction: column;
-	min-width: 0;
+.drillButton {
+	flex: 0 0 auto;
 }
 
-.name,
-.meta {
+.parentName,
+.name {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
 }
 
-.name {
-	font-size: var(--font-size--sm);
+.parentName {
+	flex: 0 1 auto;
+	color: var(--color--text--tint-1);
 }
 
-.meta {
+.breadcrumbSeparator {
+	flex: 0 0 auto;
 	color: var(--color--text--tint-1);
-	font-size: var(--font-size--2xs);
+}
+
+.name {
+	flex: 1 1 auto;
+	min-width: 0;
+	font-size: var(--font-size--sm);
 }
 
 .state {

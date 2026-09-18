@@ -69,7 +69,7 @@ function renderPicker(props: Partial<InstanceType<typeof InstanceAiMentionPicker
 			open: true,
 			origin: 'typed',
 			query: '',
-			candidates: [workflowCandidate, groupCandidate, nodeCandidate],
+			candidates: [workflowCandidate],
 			...props,
 		},
 		slots: { trigger: '<button>Mentions</button>' },
@@ -89,23 +89,65 @@ describe('InstanceAiMentionPicker', () => {
 		]);
 	});
 
-	it('shows browse sections for workflows and open workflow children', () => {
-		const { getByText } = renderPicker();
+	it('shows workflow rows without drill actions for workflows that are not open', () => {
+		const { getByText, getByRole, queryByTestId } = renderPicker();
 
 		expect(getByText('Workflows')).toBeInTheDocument();
-		expect(getByText('Canvas groups in Support triage')).toBeInTheDocument();
-		expect(getByText('Nodes in Support triage')).toBeInTheDocument();
+		expect(getByRole('option', { name: /Support triage, Workflow/ })).toBeInTheDocument();
+		expect(queryByTestId('instance-ai-mention-browse-workflow-1')).not.toBeInTheDocument();
 	});
 
-	it('shows flat search results with type and parent labels', () => {
-		const { queryByText, getByText } = renderPicker({
-			query: 'route',
-			candidates: [nodeCandidate],
+	it('drills into an open workflow without selecting the whole workflow', async () => {
+		const { getByTestId, emitted } = renderPicker({
+			drillableWorkflowIds: new Set(['workflow-1']),
 		});
 
-		expect(queryByText('Nodes in Support triage')).not.toBeInTheDocument();
-		expect(getByText('Route request')).toBeInTheDocument();
-		expect(getByText(/Node.*Support triage/)).toBeInTheDocument();
+		await fireEvent.click(getByTestId('instance-ai-mention-browse-workflow-1'));
+
+		expect(emitted()['browse-workflow']).toEqual([[workflowCandidate]]);
+		expect(emitted().select).toBeUndefined();
+	});
+
+	it('shows children for the browsed workflow and returns to the workflow list', async () => {
+		const { getByRole, queryByText, emitted } = renderPicker({
+			browsedWorkflow: workflowCandidate,
+			drillableWorkflowIds: new Set(['workflow-1']),
+			workflowDetailsLoaded: true,
+			candidates: [groupCandidate, nodeCandidate],
+		});
+
+		expect(queryByText('Workflows')).not.toBeInTheDocument();
+		expect(getByRole('button', { name: 'Back to workflows' })).toHaveTextContent('Support triage');
+		expect(getByRole('option', { name: /Handle failures/ })).toBeInTheDocument();
+		expect(getByRole('option', { name: /Route request/ })).toBeInTheDocument();
+
+		await fireEvent.click(getByRole('button', { name: 'Back to workflows' }));
+		expect(emitted()['browse-workflows']).toBeTruthy();
+	});
+
+	it.each([
+		{ candidate: nodeCandidate, query: 'route', hiddenType: 'Node' },
+		{ candidate: groupCandidate, query: 'failures', hiddenType: 'Canvas group' },
+	])(
+		'shows a workflow breadcrumb for a $hiddenType search result',
+		({ candidate, query, hiddenType }) => {
+			const { getByText, queryByText } = renderPicker({ query, candidates: [candidate] });
+
+			expect(queryByText('Workflows')).not.toBeInTheDocument();
+			expect(getByText('Support triage')).toBeInTheDocument();
+			expect(getByText(candidate.label)).toBeInTheDocument();
+			expect(queryByText(hiddenType)).not.toBeInTheDocument();
+		},
+	);
+
+	it('shows only the workflow icon and name for workflow search results', () => {
+		const { getByText, queryByText } = renderPicker({
+			query: 'support',
+			candidates: [workflowCandidate],
+		});
+
+		expect(getByText('Support triage')).toBeInTheDocument();
+		expect(queryByText('Workflow')).not.toBeInTheDocument();
 	});
 
 	it('renders real node icons', () => {
@@ -126,7 +168,11 @@ describe('InstanceAiMentionPicker', () => {
 	});
 
 	it('keeps local candidates visible while remote workflows load', () => {
-		const { getByRole } = renderPicker({ loading: true, candidates: [nodeCandidate] });
+		const { getByRole } = renderPicker({
+			query: 'route',
+			loading: true,
+			candidates: [nodeCandidate],
+		});
 
 		expect(getByRole('listbox')).toBeInTheDocument();
 		expect(getByRole('option', { name: /Route request/ })).toBeInTheDocument();
@@ -144,8 +190,8 @@ describe('InstanceAiMentionPicker', () => {
 		await rerender({
 			open: true,
 			origin: 'typed',
-			query: '',
-			candidates: [workflowCandidate, nodeCandidate],
+			query: 'route',
+			candidates: [nodeCandidate],
 		});
 
 		expect(loadNodeTypes).toHaveBeenCalledOnce();
@@ -159,6 +205,31 @@ describe('InstanceAiMentionPicker', () => {
 	])('shows the $text state', ({ props, text }) => {
 		const { getByText } = renderPicker(props);
 		expect(getByText(new RegExp(text))).toBeInTheDocument();
+	});
+
+	it.each([
+		{ props: {}, text: 'Loading workflow…' },
+		{ props: { workflowDetailsLoaded: true }, text: 'No nodes or canvas groups to mention' },
+	])('shows the browsed workflow $text state', ({ props, text }) => {
+		const { getByText } = renderPicker({
+			browsedWorkflow: workflowCandidate,
+			candidates: [],
+			...props,
+		});
+
+		expect(getByText(text)).toBeInTheDocument();
+	});
+
+	it('retries a failed browsed workflow', async () => {
+		const { getByRole, emitted } = renderPicker({
+			browsedWorkflow: workflowCandidate,
+			workflowDetailsError: true,
+			candidates: [],
+		});
+
+		expect(getByRole('alert')).toHaveTextContent("Workflow couldn't load. Try again.");
+		await fireEvent.click(getByRole('button', { name: 'Try again' }));
+		expect(emitted()['retry-workflow']).toBeTruthy();
 	});
 
 	it('shows a retry action after workflow search fails', async () => {

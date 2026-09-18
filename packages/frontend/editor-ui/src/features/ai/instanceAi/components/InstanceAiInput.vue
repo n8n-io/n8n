@@ -31,7 +31,6 @@ import {
 } from '../prefills';
 import { mergeNodeSets } from '../utils/buildNodesAttachment';
 import { useIsInstanceAiMentionsEnabled } from '../composables/useIsInstanceAiMentionsEnabled';
-import { useIsNodeContextEnabled } from '../composables/useIsNodeContextEnabled';
 import InstanceAiMentionChip from '../mentions/InstanceAiMentionChip.vue';
 import InstanceAiMentionPicker from '../mentions/InstanceAiMentionPicker.vue';
 import { buildDraftMention } from '../mentions/buildMentionAttachment';
@@ -314,10 +313,17 @@ const canSubmit = computed(() =>
 );
 
 const mentionsFlagEnabled = useIsInstanceAiMentionsEnabled();
-const nodeContextEnabled = useIsNodeContextEnabled();
 const mentionUiEnabled = computed(
 	() => props.enableMentions && mentionsFlagEnabled.value && Boolean(props.projectId),
 );
+const browsedWorkflowId = ref<string>();
+// Draft mentions create temporary Assistant tabs, so they become drillable before submission.
+const drillableWorkflowIds = computed<ReadonlySet<string>>(() => {
+	const ids = new Set(props.durableWorkflowIds);
+	for (const draftMention of props.draftMentions) ids.add(draftMention.target.workflowId);
+	for (const workflowId of props.buildingWorkflowIds) ids.delete(workflowId);
+	return ids;
+});
 const mentionResults = ref<InstanceAiMentionCandidate[]>([]);
 const mention = useTextMention({
 	results: mentionResults,
@@ -332,14 +338,48 @@ const mentionCatalog = useInstanceAiMentionCatalog({
 	durableWorkflowIds: () => props.durableWorkflowIds,
 	draftMentions: () => props.draftMentions,
 	buildingWorkflowIds: () => props.buildingWorkflowIds,
-	nodeContextEnabled,
 });
+const browsedWorkflow = computed(() =>
+	mentionCatalog.workflowCandidates.value.find(
+		(candidate) => candidate.workflowId === browsedWorkflowId.value,
+	),
+);
+const mentionCandidates = computed(() => {
+	if (mention.query.value.trim()) return mentionCatalog.visibleCandidates.value;
+	if (browsedWorkflowId.value) {
+		return mentionCatalog.localCandidates.value.filter(
+			(candidate) => candidate.workflowId === browsedWorkflowId.value,
+		);
+	}
+	return mentionCatalog.workflowCandidates.value;
+});
+const workflowDetailsLoaded = computed(
+	() =>
+		browsedWorkflowId.value !== undefined &&
+		mentionCatalog.loadedWorkflowIds.value.has(browsedWorkflowId.value),
+);
+const workflowDetailsError = computed(
+	() =>
+		browsedWorkflowId.value !== undefined &&
+		mentionCatalog.projectionErrorIds.value.has(browsedWorkflowId.value),
+);
 watch(
-	() => mentionCatalog.visibleCandidates.value,
+	mentionCandidates,
 	(candidates) => {
 		mentionResults.value = candidates;
 	},
 	{ immediate: true },
+);
+watch(
+	[mention.isOpen, () => props.projectId, drillableWorkflowIds],
+	([open, _projectId, drillableIds]) => {
+		if (
+			!open ||
+			(browsedWorkflowId.value !== undefined && !drillableIds.has(browsedWorkflowId.value))
+		) {
+			browsedWorkflowId.value = undefined;
+		}
+	},
 );
 watch(
 	[mentionUiEnabled, isBusy, isGatedBySetup, () => props.isAwaitingPlanReview],
@@ -692,7 +732,42 @@ function handleMentionCompositionEnd(event: CompositionEvent): void {
 	mention.endComposition(target.value, target.selectionStart, target.selectionEnd);
 }
 
+function browseMentionWorkflow(candidate: InstanceAiMentionCandidate): void {
+	if (candidate.kind !== 'workflow' || !drillableWorkflowIds.value.has(candidate.workflowId))
+		return;
+	browsedWorkflowId.value = candidate.workflowId;
+}
+
+function browseMentionWorkflows(): void {
+	browsedWorkflowId.value = undefined;
+}
+
+function retryBrowsedWorkflow(): void {
+	if (browsedWorkflowId.value) {
+		mentionCatalog.retryWorkflowDetails(browsedWorkflowId.value);
+	}
+}
+
 function handleMentionKeydown(event: KeyboardEvent): void {
+	if (mention.isOpen.value && !mention.query.value.trim()) {
+		if (event.key === 'ArrowRight' && !browsedWorkflowId.value) {
+			const highlighted = mention.highlightedResult.value;
+			if (
+				highlighted?.kind === 'workflow' &&
+				drillableWorkflowIds.value.has(highlighted.workflowId)
+			) {
+				event.preventDefault();
+				browseMentionWorkflow(highlighted);
+				return;
+			}
+		}
+		if (event.key === 'ArrowLeft' && browsedWorkflowId.value) {
+			event.preventDefault();
+			browseMentionWorkflows();
+			return;
+		}
+	}
+
 	const restoreButtonFocus = mention.origin.value === 'button';
 	const action = mention.handleKeydown(event);
 	if (action?.type === 'select') selectMention(action.result, mention.highlightedIndex.value);
@@ -703,6 +778,7 @@ function handleMentionKeydown(event: KeyboardEvent): void {
 
 function openMentionPickerFromButton(): void {
 	if (!canStartMention() || mention.isOpen.value) return;
+	browseMentionWorkflows();
 	const selection = chatInputRef.value?.getSelection();
 	mention.openFromButton(
 		selection?.start ?? inputText.value.length,
@@ -714,6 +790,7 @@ function openMentionPickerFromButton(): void {
 function handleMentionPickerOpen(open: boolean): void {
 	if (!open) {
 		const restoreButtonFocus = mention.origin.value === 'button';
+		browseMentionWorkflows();
 		mention.close();
 		if (restoreButtonFocus) void nextTick(() => chatInputRef.value?.focus());
 	} else if (!mention.isOpen.value) openMentionPickerFromButton();
@@ -1030,7 +1107,11 @@ const resizable = computed(() => {
 					:open="mention.isOpen.value"
 					:origin="mention.origin.value"
 					:query="mention.query.value"
-					:candidates="mentionCatalog.visibleCandidates.value"
+					:candidates="mentionCandidates"
+					:browsed-workflow="browsedWorkflow"
+					:drillable-workflow-ids="drillableWorkflowIds"
+					:workflow-details-loaded="workflowDetailsLoaded"
+					:workflow-details-error="workflowDetailsError"
 					:highlighted-id="mention.highlightedId.value"
 					:anchor="chatInputRef?.getTextareaElement()"
 					:availability="mentionCatalog.availability.value"
@@ -1042,8 +1123,11 @@ const resizable = computed(() => {
 					@update:query="mention.setQuery"
 					@highlight="mention.setHighlightedId"
 					@keydown="handleMentionKeydown"
+					@browse-workflow="browseMentionWorkflow"
+					@browse-workflows="browseMentionWorkflows"
 					@select="selectMention"
 					@retry="mentionCatalog.retry"
+					@retry-workflow="retryBrowsedWorkflow"
 					@load-more="mentionCatalog.loadMore"
 				>
 					<template #trigger>

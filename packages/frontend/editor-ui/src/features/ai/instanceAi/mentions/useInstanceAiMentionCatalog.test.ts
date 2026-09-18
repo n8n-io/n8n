@@ -112,6 +112,13 @@ describe('useInstanceAiMentionCatalog', () => {
 		);
 	});
 
+	it('does not load workflow details until the workflow has an open Assistant tab', async () => {
+		setup();
+		await flushPromises();
+
+		expect(mockGetWorkflow).not.toHaveBeenCalled();
+	});
+
 	it('paginates workflow metadata', async () => {
 		const firstPage = Array.from({ length: 50 }, (_, index) => workflow(`workflow-${index}`));
 		mockGetWorkflows.mockImplementation(async (_context, _filter, request) => {
@@ -154,7 +161,7 @@ describe('useInstanceAiMentionCatalog', () => {
 	});
 
 	it('fetches full bodies only for eligible artifact workflows and deduplicates reads', async () => {
-		const { durableWorkflowIds } = setup({
+		const { catalog, durableWorkflowIds } = setup({
 			durableWorkflowIds: new Set(['workflow-1']),
 		});
 		await flushPromises();
@@ -163,6 +170,22 @@ describe('useInstanceAiMentionCatalog', () => {
 
 		expect(mockGetWorkflow).toHaveBeenCalledTimes(1);
 		expect(mockGetWorkflow).toHaveBeenCalledWith(expect.anything(), 'workflow-1');
+		expect(catalog.loadedWorkflowIds.value.has('workflow-1')).toBe(true);
+	});
+
+	it('reports a workflow detail error and retries it', async () => {
+		mockGetWorkflow.mockRejectedValueOnce(new Error('offline'));
+		const { catalog } = setup({ durableWorkflowIds: new Set(['workflow-1']) });
+		await flushPromises();
+		expect(catalog.projectionErrorIds.value.has('workflow-1')).toBe(true);
+
+		mockGetWorkflow.mockResolvedValue(workflow());
+		catalog.retryWorkflowDetails('workflow-1');
+		await flushPromises();
+
+		expect(mockGetWorkflow).toHaveBeenCalledTimes(2);
+		expect(catalog.projectionErrorIds.value.has('workflow-1')).toBe(false);
+		expect(catalog.loadedWorkflowIds.value.has('workflow-1')).toBe(true);
 	});
 
 	it('limits workflow detail reads to two concurrent requests', async () => {
