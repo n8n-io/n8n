@@ -1,7 +1,12 @@
 import { createTestNode, createTestWorkflow, mockNodeTypeDescription } from '@/__tests__/mocks';
+import type { AddedNodesAndConnections } from '@/Interface';
 import { waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
-import { EVALUATION_TRIGGER_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE } from 'n8n-workflow';
+import {
+	EVALUATION_TRIGGER_NODE_TYPE,
+	MANUAL_TRIGGER_NODE_TYPE,
+	NodeConnectionTypes,
+} from 'n8n-workflow';
 import {
 	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
@@ -14,9 +19,9 @@ import { useNodeTypesStore } from '../stores/nodeTypes.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { renderComponent } from '@/__tests__/render';
 import NodeView from './NodeView.vue';
-import { NO_OP_NODE_TYPE, VIEWS } from '../constants';
+import { NO_OP_NODE_TYPE, SPLIT_IN_BATCHES_NODE_TYPE, VIEWS } from '../constants';
 import { WorkflowIdKey, WorkflowDocumentStoreKey } from '../constants/injectionKeys';
-import { computed, defineComponent, shallowRef } from 'vue';
+import { computed, defineComponent, nextTick, shallowRef } from 'vue';
 import { nodeViewEventBus } from '@/app/event-bus';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { Project } from '@/features/collaboration/projects/projects.types';
@@ -61,6 +66,22 @@ vi.mock('@/features/ndv/shared/views/NodeDetailsView.vue', () => ({
 }));
 
 describe('NodeView', () => {
+	const loopReplacementBatch: AddedNodesAndConnections = {
+		nodes: [
+			{ type: SPLIT_IN_BATCHES_NODE_TYPE, name: 'Loop Over Items' },
+			{
+				type: NO_OP_NODE_TYPE,
+				name: 'Replace Me',
+				isAutoAdd: true,
+				placeholder: true,
+			},
+		],
+		connections: [
+			{ from: { nodeIndex: 0, outputIndex: 1 }, to: { nodeIndex: 1 } },
+			{ from: { nodeIndex: 1 }, to: { nodeIndex: 0 } },
+		],
+	};
+
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 	let workflowDocumentStore: ReturnType<typeof useWorkflowDocumentStore>;
 	let ensureNodesAreVisible: ReturnType<typeof vi.fn>;
@@ -102,7 +123,12 @@ describe('NodeView', () => {
 					// test here needs it, and on a writable canvas the import can still be in
 					// flight when the environment tears down, which fails the whole run.
 					LazyNodeCreation: defineComponent({
-						emits: ['addEmptyGroup'],
+						emits: ['addEmptyGroup', 'addNodes'],
+						setup(_, { emit }) {
+							return {
+								addLoopReplacement: () => emit('addNodes', loopReplacementBatch),
+							};
+						},
 						template: `<>
 							<button
 								data-test-id="node-creation-stub-add-empty-group"
@@ -112,19 +138,32 @@ describe('NodeView', () => {
 								data-test-id="node-creation-stub-add-empty-groups"
 								@click="$emit('addEmptyGroup', [320, 240]); $emit('addEmptyGroup', [640, 480])"
 							/>
+							<button
+								data-test-id="node-creation-stub-add-loop-replacement"
+								@click="addLoopReplacement"
+							/>
 						</>`,
 					}),
 					// Same for the setup-credentials button: its import chain pulls in the
 					// ready-to-run stores and their bundled workflow fixtures.
 					LazySetupWorkflowCredentialsButton: true,
 					WorkflowCanvas: defineComponent({
-						emits: ['copy:nodes'],
-						setup(_, { expose }) {
+						emits: ['copy:nodes', 'replace:node'],
+						setup(_, { emit, expose }) {
 							expose({ ensureNodesAreVisible });
-							return { copyNodeIds };
+							return {
+								copyNodeIds,
+								replaceFirstNode: () => {
+									const nodeId = workflowDocStore.allNodes[0]?.id;
+									if (nodeId) emit('replace:node', nodeId);
+								},
+							};
 						},
-						template:
-							'<div><button data-test-id="canvas-stub-copy" @click="$emit(\'copy:nodes\', copyNodeIds)" /><slot /></div>',
+						template: `<div>
+							<button data-test-id="canvas-stub-copy" @click="$emit('copy:nodes', copyNodeIds)" />
+							<button data-test-id="canvas-stub-replace-first" @click="replaceFirstNode" />
+							<slot />
+						</div>`,
 					}),
 				},
 			},
@@ -132,6 +171,32 @@ describe('NodeView', () => {
 	}
 
 	describe('Empty group creation', () => {
+		function addReplacementNodeTypes() {
+			useNodeTypesStore().setNodeTypes([
+				mockNodeTypeDescription({
+					name: NO_OP_NODE_TYPE,
+					displayName: 'No Operation, do nothing',
+					inputs: [NodeConnectionTypes.Main],
+					outputs: [NodeConnectionTypes.Main],
+					properties: [
+						{
+							displayName: 'Empty Group Anchor',
+							name: 'emptyGroupAnchor',
+							type: 'hidden',
+							default: false,
+							validateType: undefined,
+						},
+					],
+				}),
+				mockNodeTypeDescription({
+					name: SPLIT_IN_BATCHES_NODE_TYPE,
+					displayName: 'Loop Over Items',
+					inputs: [NodeConnectionTypes.Main],
+					outputs: [NodeConnectionTypes.Main, NodeConnectionTypes.Main],
+				}),
+			]);
+		}
+
 		it('creates a marked NoOp and its group as one undoable action', async () => {
 			routeMock.meta = { nodeView: true };
 			useWorkflowsListStore().addWorkflow(
@@ -160,8 +225,10 @@ describe('NodeView', () => {
 			const anchor = workflowDocumentStore.allNodes[0];
 			expect(anchor).toMatchObject({
 				type: NO_OP_NODE_TYPE,
+				name: 'No Operation, do nothing',
 				position: [320, 240],
 				parameters: { emptyGroupAnchor: true },
+				placeholder: true,
 			});
 			expect(workflowDocumentStore.allGroups[0]).toMatchObject({
 				name: 'Group 1',
@@ -205,6 +272,51 @@ describe('NodeView', () => {
 			await waitFor(() => expect(workflowDocumentStore.allGroups).toHaveLength(1));
 			expect(workflowDocumentStore.allNodes).toHaveLength(1);
 			expect(useHistoryStore().undoStack).toHaveLength(1);
+		});
+
+		it('replaces the empty-group anchor with the selected batch and restores it on undo', async () => {
+			routeMock.meta = { nodeView: true };
+			useWorkflowsListStore().addWorkflow(
+				createTestWorkflow({ id: 'w0', scopes: ['workflow:read', 'workflow:update'] }),
+			);
+			addReplacementNodeTypes();
+			const { findByTestId } = renderNodeView();
+
+			await userEvent.click(await findByTestId('node-creation-stub-add-empty-group'));
+			await waitFor(() => expect(workflowDocumentStore.allGroups).toHaveLength(1));
+			const anchorId = workflowDocumentStore.allNodes[0].id;
+
+			await userEvent.click(await findByTestId('canvas-stub-replace-first'));
+			await userEvent.click(await findByTestId('node-creation-stub-add-loop-replacement'));
+
+			await waitFor(() => expect(workflowDocumentStore.allNodes).toHaveLength(2));
+			expect(workflowDocumentStore.getNodeById(anchorId)).toBeUndefined();
+			expect(workflowDocumentStore.allGroups[0].nodeIds).toEqual(
+				workflowDocumentStore.allNodes.map((node) => node.id),
+			);
+			expect(workflowDocumentStore.allNodes.map((node) => node.name)).toEqual([
+				'Loop Over Items',
+				'Replace Me',
+			]);
+
+			const historyStore = useHistoryStore();
+			expect(historyStore.undoStack).toHaveLength(2);
+			const replacementUndo = historyStore.popUndoableToUndo();
+			expect(replacementUndo).toBeInstanceOf(BulkCommand);
+			if (!(replacementUndo instanceof BulkCommand)) {
+				throw new Error('Expected a bulk history action');
+			}
+
+			historyStore.bulkInProgress = true;
+			for (let index = replacementUndo.commands.length - 1; index >= 0; index--) {
+				await replacementUndo.commands[index].revert();
+			}
+			await nextTick();
+			historyStore.bulkInProgress = false;
+
+			await waitFor(() => expect(workflowDocumentStore.allNodes).toHaveLength(1));
+			expect(workflowDocumentStore.allNodes[0].id).toBe(anchorId);
+			expect(workflowDocumentStore.allGroups[0].nodeIds).toEqual([anchorId]);
 		});
 	});
 

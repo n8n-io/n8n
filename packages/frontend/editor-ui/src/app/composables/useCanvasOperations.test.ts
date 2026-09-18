@@ -28,7 +28,9 @@ import type {
 import type { IWorkflowTemplate, IWorkflowTemplateNode } from '@n8n/rest-api-client/api/templates';
 import {
 	AddConnectionCommand,
+	AddNodeCommand,
 	AddNodeGroupCommand,
+	BulkCommand,
 	RemoveNodeCommand,
 	RemoveNodeGroupCommand,
 	ReplaceNodeParametersCommand,
@@ -69,6 +71,7 @@ import {
 	HTTP_REQUEST_NODE_TYPE,
 	MCP_TRIGGER_NODE_TYPE,
 	MESSAGE_AN_AGENT_NODE_TYPE,
+	NO_OP_NODE_TYPE,
 	OPEN_AI_CHAT_MODEL_NODE_TYPE,
 	SET_NODE_TYPE,
 	STICKY_NODE_TYPE,
@@ -129,6 +132,7 @@ vi.mock('@n8n/rest-api-client/api/workflowHistory', () => ({
 
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import * as workflowHelpersModule from '@/app/composables/useWorkflowHelpers';
+import * as nodeGroupOperationGuards from '@/features/workflows/canvas/composables/useCanvasNodeGroupOperationGuards';
 import { DEFAULT_NODE_SIZE, GRID_SIZE, HORIZONTAL_NODE_STEP } from '@/app/utils/nodeViewUtils';
 import { AGENT_NODE_SIZE } from '@/features/agents/utils/agentNode';
 
@@ -1831,11 +1835,11 @@ describe('useCanvasOperations', () => {
 			expect(groupCommand?.after.nodeIds).toEqual(['a', 'c']);
 		});
 
-		it('records a group removal when deleting the last grouped node', () => {
+		it('records a group removal when deleting the last grouped sticky note', () => {
 			const historyStore = mockedStore(useHistoryStore);
 			vi.mocked(workflowDocumentStoreInstance.incomingConnectionsByNodeName).mockReturnValue({});
 
-			const node = createTestNode({ id: 'b', name: 'B' });
+			const node = createTestNode({ id: 'b', name: 'B', type: STICKY_NODE_TYPE });
 			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockReturnValue(node);
 
 			const group = { id: 'g1', name: 'Group 1', nodeIds: ['b'] };
@@ -1852,6 +1856,203 @@ describe('useCanvasOperations', () => {
 				| undefined;
 			expect(groupCommand).toBeInstanceOf(RemoveNodeGroupCommand);
 			expect(groupCommand?.group.nodeIds).toEqual(['b']);
+		});
+
+		it('restores a placeholder anchor when deleting the last real group member', () => {
+			const historyStore = mockedStore(useHistoryStore);
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			vi.mocked(workflowDocumentStoreInstance.incomingConnectionsByNodeName).mockReturnValue({});
+
+			const node = createTestNode({ id: 'b', name: 'B', position: [112, 208] });
+			const anchorType = mockNodeTypeDescription({
+				name: NO_OP_NODE_TYPE,
+				inputs: [NodeConnectionTypes.Main],
+				outputs: [NodeConnectionTypes.Main],
+				properties: [
+					{
+						displayName: 'Empty Group Anchor',
+						name: 'emptyGroupAnchor',
+						type: 'hidden',
+						default: false,
+						validateType: undefined,
+					},
+				],
+			});
+			const nodeType = mockNodeTypeDescription({
+				name: node.type,
+				inputs: [NodeConnectionTypes.Main],
+				outputs: [NodeConnectionTypes.Main],
+			});
+			nodeTypesStore.nodeTypes = {
+				[node.type]: { 1: nodeType },
+				[NO_OP_NODE_TYPE]: { 1: anchorType },
+			};
+			nodeTypesStore.getNodeType = vi.fn((type) =>
+				type === NO_OP_NODE_TYPE ? anchorType : type === node.type ? nodeType : null,
+			);
+
+			const group = { id: 'g1', name: 'Group 1', nodeIds: [node.id] };
+			const nodesById = new Map([[node.id, node]]);
+			workflowDocumentStoreInstance.connectionsBySourceNode = {};
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockImplementation((id) =>
+				nodesById.get(id),
+			);
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodeByName').mockImplementation(
+				(name) => [...nodesById.values()].find((candidate) => candidate.name === name) ?? null,
+			);
+			vi.spyOn(workflowDocumentStoreInstance, 'getGroupForNode').mockImplementation((id) =>
+				group.nodeIds.includes(id) ? group : undefined,
+			);
+			vi.spyOn(workflowDocumentStoreInstance, 'getGroupById').mockReturnValue(group);
+			vi.spyOn(workflowDocumentStoreInstance, 'replaceNodeInGroup').mockImplementation(
+				(_groupId, previousNodeId, newNodeId) => {
+					group.nodeIds = group.nodeIds.map((id) => (id === previousNodeId ? newNodeId : id));
+				},
+			);
+			vi.spyOn(workflowDocumentStoreInstance, 'getParentNodes').mockReturnValue([]);
+			vi.spyOn(workflowDocumentStoreInstance, 'getChildNodes').mockReturnValue([]);
+			vi.spyOn(workflowDocumentStoreInstance, 'getConnectionsBetweenNodes').mockReturnValue([]);
+			vi.spyOn(workflowDocumentStoreInstance, 'addNode').mockImplementation((addedNode) => {
+				nodesById.set(addedNode.id, addedNode);
+			});
+			vi.spyOn(workflowDocumentStoreInstance, 'removeNodeById').mockImplementation((id) => {
+				nodesById.delete(id);
+			});
+
+			const { deleteNode } = useCanvasOperations();
+			deleteNode(node.id, { trackHistory: true });
+
+			expect(workflowDocumentStoreInstance.addNode).toHaveBeenCalled();
+			expect(workflowDocumentStoreInstance.replaceNodeInGroup).toHaveBeenCalled();
+
+			const anchor = [...nodesById.values()].find(
+				(candidate) => candidate.parameters?.emptyGroupAnchor === true,
+			);
+			expect(anchor).toMatchObject({
+				type: NO_OP_NODE_TYPE,
+				position: node.position,
+				parameters: { emptyGroupAnchor: true },
+				placeholder: true,
+			});
+			expect(group.nodeIds).toEqual([anchor?.id]);
+			expect(nodesById.has(node.id)).toBe(false);
+			expect(historyStore.pushCommandToUndo).toHaveBeenCalled();
+		});
+
+		it('does not restore an anchor when deleting the selected group', () => {
+			const historyStore = mockedStore(useHistoryStore);
+			vi.mocked(workflowDocumentStoreInstance.incomingConnectionsByNodeName).mockReturnValue({});
+
+			const node = createTestNode({ id: 'b', name: 'B' });
+			const group = { id: 'g1', name: 'Group 1', nodeIds: [node.id] };
+			const nodesById = new Map([[node.id, node]]);
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockImplementation((id) =>
+				nodesById.get(id),
+			);
+			vi.spyOn(workflowDocumentStoreInstance, 'getGroupForNode').mockImplementation((id) =>
+				group.nodeIds.includes(id) ? group : undefined,
+			);
+			vi.spyOn(workflowDocumentStoreInstance, 'getGroupById').mockReturnValue(undefined);
+			vi.spyOn(workflowDocumentStoreInstance, 'removeNodeById').mockImplementation((id) => {
+				nodesById.delete(id);
+			});
+
+			const { deleteNodes } = useCanvasOperations();
+			deleteNodes([node.id], { trackHistory: true, preserveEmptyGroupAnchor: false });
+
+			expect(workflowDocumentStoreInstance.addNode).not.toHaveBeenCalled();
+			expect(workflowDocumentStoreInstance.removeNodeById).toHaveBeenCalledWith(node.id);
+			expect(nodesById.has(node.id)).toBe(false);
+			expect(historyStore.pushCommandToUndo).toHaveBeenCalled();
+		});
+
+		it('does not leave an anchor add command when replacement is rejected', () => {
+			const historyStore = mockedStore(useHistoryStore);
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			vi.mocked(workflowDocumentStoreInstance.incomingConnectionsByNodeName).mockReturnValue({});
+			historyStore.currentBulkAction = new BulkCommand([]);
+			historyStore.pushCommandToUndo.mockImplementation((command) => {
+				historyStore.currentBulkAction?.commands.push(command);
+			});
+
+			const node = createTestNode({ id: 'b', name: 'B', position: [112, 208] });
+			const anchorType = mockNodeTypeDescription({
+				name: NO_OP_NODE_TYPE,
+				inputs: [NodeConnectionTypes.Main],
+				outputs: [NodeConnectionTypes.Main],
+			});
+			nodeTypesStore.nodeTypes = { [NO_OP_NODE_TYPE]: { 1: anchorType } };
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(anchorType);
+
+			const group = { id: 'g1', name: 'Group 1', nodeIds: [node.id] };
+			const nodesById = new Map([[node.id, node]]);
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockImplementation((id) =>
+				nodesById.get(id),
+			);
+			vi.spyOn(workflowDocumentStoreInstance, 'getGroupForNode').mockImplementation((id) =>
+				group.nodeIds.includes(id) ? group : undefined,
+			);
+			vi.spyOn(workflowDocumentStoreInstance, 'getGroupById').mockReturnValue(undefined);
+			vi.spyOn(workflowDocumentStoreInstance, 'addNode').mockImplementation((addedNode) => {
+				nodesById.set(addedNode.id, addedNode);
+			});
+			vi.spyOn(workflowDocumentStoreInstance, 'removeNodeById').mockImplementation((id) => {
+				nodesById.delete(id);
+			});
+
+			const replacementAllowedSpy = vi.fn().mockReturnValue(false);
+			vi.spyOn(nodeGroupOperationGuards, 'useCanvasNodeGroupOperationGuards').mockReturnValue({
+				isConnectionRemovalAllowedForNodeGroups: vi.fn().mockReturnValue(true),
+				isConnectionReplacementAllowedForNodeGroups: vi
+					.fn()
+					.mockReturnValue({ outcome: 'proceed' }),
+				isNodeReplacementAllowedForNodeGroups: replacementAllowedSpy,
+				applyNodeGroupAutoExtend: vi.fn(),
+			});
+
+			const { deleteNode } = useCanvasOperations();
+			deleteNode(node.id, { trackHistory: true });
+
+			expect(replacementAllowedSpy).toHaveBeenCalled();
+			expect(workflowDocumentStoreInstance.removeNodeById).toHaveBeenCalledWith(node.id);
+			const commands = historyStore.currentBulkAction?.commands ?? [];
+			expect(commands.some((command) => command instanceof AddNodeCommand)).toBe(false);
+		});
+
+		it('deletes an existing empty-group anchor without restoring another anchor', () => {
+			const historyStore = mockedStore(useHistoryStore);
+			vi.mocked(workflowDocumentStoreInstance.incomingConnectionsByNodeName).mockReturnValue({});
+
+			const anchor = createTestNode({
+				id: 'anchor',
+				name: 'No Operation, do nothing',
+				type: NO_OP_NODE_TYPE,
+				parameters: { emptyGroupAnchor: true },
+			});
+			const group = { id: 'g1', name: 'Group 1', nodeIds: [anchor.id] };
+			const nodesById = new Map([[anchor.id, anchor]]);
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockImplementation((id) =>
+				nodesById.get(id),
+			);
+			vi.spyOn(workflowDocumentStoreInstance, 'getGroupForNode').mockImplementation((id) =>
+				group.nodeIds.includes(id) ? group : undefined,
+			);
+			vi.spyOn(workflowDocumentStoreInstance, 'getGroupById').mockReturnValue(undefined);
+			vi.spyOn(workflowDocumentStoreInstance, 'removeNodeById').mockImplementation((id) => {
+				nodesById.delete(id);
+			});
+
+			const { deleteNode } = useCanvasOperations();
+			deleteNode(anchor.id, { trackHistory: true });
+
+			expect(workflowDocumentStoreInstance.addNode).not.toHaveBeenCalled();
+			expect(workflowDocumentStoreInstance.replaceNodeInGroup).not.toHaveBeenCalled();
+			expect(workflowDocumentStoreInstance.removeNodeById).toHaveBeenCalledWith(anchor.id);
+			expect(
+				historyStore.pushCommandToUndo.mock.calls.some(
+					([command]) => command instanceof RemoveNodeGroupCommand,
+				),
+			).toBe(true);
 		});
 
 		it('does not record any group command when the deleted node is ungrouped', () => {
@@ -7614,11 +7815,11 @@ describe('useCanvasOperations', () => {
 			});
 		});
 		describe('node group validation', () => {
-			it('should replace a grouped node against the final graph and transfer group membership', () => {
+			it('should replace the sole group anchor and transfer all group connections', () => {
 				const toast = useToast();
 				const group = {
 					id: 'group',
-					nodeIds: [sourceNode.id, targetNode.id, nextNode.id],
+					nodeIds: [targetNode.id],
 					name: 'Group 1',
 				};
 				const connections: IConnections = {
@@ -7719,7 +7920,7 @@ describe('useCanvasOperations', () => {
 					targetNode.id,
 					replacementNode.id,
 				);
-				expect(group.nodeIds).toEqual([sourceNode.id, replacementNode.id, nextNode.id]);
+				expect(group.nodeIds).toEqual([replacementNode.id]);
 
 				const groupCommand = historyStore.pushCommandToUndo.mock.calls
 					.map(([command]) => command)
@@ -7727,12 +7928,8 @@ describe('useCanvasOperations', () => {
 					| UpdateNodeGroupCommand
 					| undefined;
 				expect(groupCommand).toBeInstanceOf(UpdateNodeGroupCommand);
-				expect(groupCommand?.before.nodeIds).toEqual([sourceNode.id, targetNode.id, nextNode.id]);
-				expect(groupCommand?.after.nodeIds).toEqual([
-					sourceNode.id,
-					replacementNode.id,
-					nextNode.id,
-				]);
+				expect(groupCommand?.before.nodeIds).toEqual([targetNode.id]);
+				expect(groupCommand?.after.nodeIds).toEqual([replacementNode.id]);
 
 				expect(workflowDocumentStoreInstance.removeConnection).toHaveBeenCalledTimes(2);
 				expectConnectionRemoved(sourceNode, targetNode);
