@@ -30,9 +30,9 @@ const GLOBAL_GRAPH_API_BASE_URL = 'https://graph.microsoft.com';
 const TEAMS_TYPING_REFRESH_MS = 8000;
 
 /**
- * Teams acknowledges the first chunk of a stream before the adapter posts
- * anything, and the Teams SDK swallows the 403 a tenant without streaming
- * returns, so a stream that never starts would hang the turn.
+ * The adapter waits for Teams to acknowledge the first chunk before it finishes
+ * the post, and the Teams SDK swallows the 403 a tenant without streaming
+ * returns — so a stream that never starts would hang the turn for good.
  */
 const TEAMS_STREAMING_POST_TIMEOUT_MS = 15_000;
 
@@ -188,7 +188,7 @@ export class TeamsIntegration extends AgentChatIntegration {
 		const streamable =
 			params.thread.isDM && !this.bufferedOnly.has(params.integration.credentialId);
 		return {
-			platformAgentContext: {},
+			platformAgentContext: this.getPlatformAgentContext?.(params.chat) ?? {},
 			forceBuffered: !streamable,
 			statusHandle: this.startTyping(params.thread, params.logger, params.agentId),
 		};

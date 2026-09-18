@@ -252,7 +252,12 @@ export class AgentChatStreamConsumer {
 						break;
 					case 'tool-result':
 						this.noteToolResult(chunk, responseState);
-						if (this.isSilentOutcome(chunk)) responseState.suppressText = true;
+						if (this.isSilentOutcome(chunk)) {
+							responseState.suppressText = true;
+							// Streamed text is already on the platform, but the tail is
+							// not, so the silence can still be honored for it.
+							bufferedTail = '';
+						}
 						break;
 					default:
 						// Ignore non-user-visible chunks (reasoning, finish,

@@ -226,3 +226,28 @@ describe('AgentChatStreamConsumer — singleStreamedRunPerTurn', () => {
 		expect(discrete).toEqual([]);
 	});
 });
+
+describe('AgentChatStreamConsumer — silent outcome after a discrete post', () => {
+	it('drops trailing text that a do_not_respond outcome silenced', async () => {
+		const { thread, streamed, discrete } = makeStreamingThread();
+		const consumer = makeStreamingConsumer({ singleStreamedRunPerTurn: true });
+
+		await consumer.consume(
+			makeStream([
+				{ type: 'text-delta', id: 't-1', delta: 'Before' },
+				{ type: 'message', message: { text: 'a card' } } as unknown as StreamChunk,
+				{ type: 'text-delta', id: 't-2', delta: 'After' },
+				{
+					type: 'tool-result',
+					toolCallId: 'tc-1',
+					toolName: 'teams_action',
+					output: { silent: true },
+				},
+			]),
+			thread,
+		);
+
+		expect(streamed).toHaveLength(1);
+		expect(discrete).toEqual([]);
+	});
+});
