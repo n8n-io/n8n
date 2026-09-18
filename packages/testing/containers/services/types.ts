@@ -7,6 +7,7 @@ export const EXTERNAL_HOST = 'host.docker.internal';
 
 export const SERVICE_NAMES = [
 	'postgres',
+	'enginePostgres',
 	'redis',
 	'mailpit',
 	'gitea',

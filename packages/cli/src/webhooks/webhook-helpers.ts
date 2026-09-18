@@ -40,6 +40,7 @@ import type {
 	IWorkflowBase,
 	WebhookResponseData,
 	IDestinationNode,
+	IUser,
 } from 'n8n-workflow';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
@@ -104,6 +105,15 @@ import {
 } from './webhook-response-headers';
 import { WebhookService } from './webhook.service';
 import type { IWebhookResponseCallbackData, WebhookRequest } from './webhook.types';
+
+const SUPPORTED_RESPONSE_MODES = new Set<WebhookResponseMode>([
+	'onReceived',
+	'lastNode',
+	'responseNode',
+	'formPage',
+	'streaming',
+	'hostedChat',
+]);
 
 const deferCleanupUntilStreamEnds = (
 	stream: Readable,
@@ -295,6 +305,14 @@ const getChatResponseMode = (workflowStartNode: INode, method: string) => {
 	return undefined;
 };
 
+/** Returns whether the node is an enabled Form node or form-resuming Wait node. */
+function isEnabledFormPageNode(node: INode): boolean {
+	if (node.disabled) return false;
+	if (node.type === FORM_NODE_TYPE) return true;
+
+	return node.type === WAIT_NODE_TYPE && node.parameters.resume === 'form';
+}
+
 // eslint-disable-next-line complexity
 export function autoDetectResponseMode(
 	workflowStartNode: INode,
@@ -307,11 +325,7 @@ export function autoDetectResponseMode(
 		for (const nodeName of connectedNodes) {
 			const node = workflow.nodes[nodeName];
 
-			if (node.type === WAIT_NODE_TYPE && node.parameters.resume !== 'form') {
-				continue;
-			}
-
-			if ([FORM_NODE_TYPE, WAIT_NODE_TYPE].includes(node.type) && !node.disabled) {
+			if (isEnabledFormPageNode(node)) {
 				return 'formPage';
 			}
 		}
@@ -351,11 +365,7 @@ export function autoDetectResponseMode(
 		for (const nodeName of connectedNodes) {
 			const node = workflow.nodes[nodeName];
 
-			if (node.type === WAIT_NODE_TYPE && node.parameters.resume !== 'form') {
-				continue;
-			}
-
-			if ([FORM_NODE_TYPE, WAIT_NODE_TYPE].includes(node.type) && !node.disabled) {
+			if (isEnabledFormPageNode(node)) {
 				return 'responseNode';
 			}
 		}
@@ -600,6 +610,15 @@ function translateAuthFailureReason(reason?: AuthFailureReason): OAuth2FailureRe
 	}
 }
 
+function toWebhookUser(user: IUser): IUser {
+	return {
+		id: user.id,
+		email: user.email,
+		firstName: user.firstName,
+		lastName: user.lastName,
+	};
+}
+
 /**
  * Executes a webhook
  */
@@ -679,11 +698,7 @@ export async function executeWebhook(
 		responseBinaryPropertyName,
 	} = evaluateResponseOptions(context, req);
 
-	if (
-		!['onReceived', 'lastNode', 'responseNode', 'formPage', 'streaming', 'hostedChat'].includes(
-			responseMode,
-		)
-	) {
+	if (!SUPPORTED_RESPONSE_MODES.has(responseMode)) {
 		// If the mode is not known we error. Is probably best like that instead of using
 		// the default that people know as early as possible (probably already testing phase)
 		// that something does not resolve properly.
@@ -699,23 +714,13 @@ export async function executeWebhook(
 	const authService = Container.get(AuthService);
 	additionalData.validateCookieAuth = async (token: string) => {
 		const user = await authService.validateCookieToken(token);
-		return {
-			id: user.id,
-			email: user.email,
-			firstName: user.firstName,
-			lastName: user.lastName,
-		};
+		return toWebhookUser(user);
 	};
 
 	additionalData.getUserById = async (id: string) => {
 		const user = await Container.get(UserRepository).findByIdWithRole(id);
 		if (!user) return undefined;
-		return {
-			id: user.id,
-			email: user.email,
-			firstName: user.firstName,
-			lastName: user.lastName,
-		};
+		return toWebhookUser(user);
 	};
 
 	additionalData.beginN8nOAuth2Flow = async (
@@ -740,12 +745,7 @@ export async function executeWebhook(
 			admittedBy = { resource: resourceUrl, grant: result.grant };
 			return {
 				valid: true,
-				user: {
-					id: result.user.id,
-					email: result.user.email,
-					firstName: result.user.firstName,
-					lastName: result.user.lastName,
-				},
+				user: toWebhookUser(result.user),
 			};
 		}
 

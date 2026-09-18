@@ -1795,6 +1795,8 @@ export interface InstanceAiAgentNode {
 	 * regardless of which agent emitted.
 	 */
 	setupItemsByWorkflowId?: Record<string, InstanceAiSetupItem[]>;
+	/** Latest setup announcement, including its emitting agent and replay-stable time. */
+	latestSetupAnnouncement?: { workflowId: string; agentId: string; timestamp: string };
 	result?: string;
 	error?: string;
 	errorDetails?: {

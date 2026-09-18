@@ -922,6 +922,50 @@ describe('useCredentialOAuth', () => {
 			);
 		});
 
+		it('uses explicit workflow and project context with self-hosted client data', async () => {
+			const credentialsStore = setupSuccessfulOAuthFlow();
+			credentialsStore.fetchUsableCredentials.mockResolvedValue([]);
+			await useCredentialOAuth().createAndAuthorize('slackOAuth2Api', 'n8n-nodes-base.slack', {
+				projectId: 'workflow-project',
+				workflowId: 'setup-workflow',
+				name: 'Custom account',
+				data: { clientId: 'client', clientSecret: 'secret', allowedHttpRequestDomains: 'all' },
+			});
+			expect(credentialsStore.getNewCredentialName).not.toHaveBeenCalled();
+			expect(credentialsStore.createNewCredential).toHaveBeenCalledWith(
+				{
+					id: '',
+					type: 'slackOAuth2Api',
+					name: 'Custom account',
+					data: { clientId: 'client', clientSecret: 'secret', allowedHttpRequestDomains: 'all' },
+				},
+				'workflow-project',
+				undefined,
+				{ skipStoreUpdate: true },
+			);
+			expect(credentialsStore.fetchUsableCredentials).toHaveBeenCalledWith({
+				workflowId: 'setup-workflow',
+			});
+			expect(mockTrack).toHaveBeenCalledWith(
+				'User saved credentials',
+				expect.objectContaining({ workflow_id: 'setup-workflow' }),
+			);
+		});
+
+		it('keeps project scope when quick connecting from an unsaved workflow', async () => {
+			const store = setupSuccessfulOAuthFlow();
+			store.fetchUsableCredentials.mockResolvedValue([]);
+			await useCredentialOAuth().createAndAuthorize('slackOAuth2Api', undefined, {
+				workflowId: 'unsaved-workflow',
+				projectId: 'project-1',
+				credentialFetchScope: { projectId: 'project-1' },
+			});
+			expect(store.fetchUsableCredentials).toHaveBeenCalledWith({ projectId: 'project-1' });
+			expect(store.fetchUsableCredentials).not.toHaveBeenCalledWith({
+				workflowId: 'unsaved-workflow',
+			});
+		});
+
 		it('should set allowedHttpRequestDomains when property is not hidden', async () => {
 			const credentialsStore = setupSuccessfulOAuthFlow();
 			credentialsStore.state.credentialTypes.customOAuth2Api =

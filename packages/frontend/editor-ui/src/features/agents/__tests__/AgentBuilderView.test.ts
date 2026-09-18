@@ -546,6 +546,8 @@ const commonStubs = {
 			'initialPrompt',
 			'canSendToAssistant',
 			'beforeSend',
+			'canDeleteSession',
+			'isDeletingSession',
 		],
 		emits: [
 			'view-trace',
@@ -1160,6 +1162,9 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		await (wrapper.vm as unknown as { flushAutosave: () => Promise<void> }).flushAutosave();
 
 		expect(updateConfigMock).not.toHaveBeenCalled();
+		expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props('canDeleteSession')).toBe(
+			false,
+		);
 	});
 
 	it('reloads task bodies after reverting to a published version', async () => {

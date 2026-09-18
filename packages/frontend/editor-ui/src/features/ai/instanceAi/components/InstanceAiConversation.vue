@@ -73,6 +73,8 @@ import CreditWarningBanner from '@/features/ai/assistant/components/Agent/Credit
 const props = defineProps<{
 	/** Runs before every send (e.g. flush a pending autosave). Rejecting cancels the send. */
 	beforeSend?: () => Promise<void>;
+	/** Extra scroll space for a panel that overlays messages above the input. */
+	aboveInputOverlapHeight?: number;
 }>();
 
 const emit = defineEmits<{
@@ -251,6 +253,8 @@ const workflowHandoffAttachment = computed(() => {
 
 // --- Scroll management ---
 const scrollableRef = useTemplateRef<HTMLElement>('scrollable');
+const messageListRef = useTemplateRef<HTMLElement>('messageList');
+const inputDockRef = useTemplateRef<HTMLElement>('inputDock');
 // The actual scroll container is the reka-ui viewport inside N8nScrollArea,
 // NOT the immediate parent (which is a non-scrolling content wrapper).
 const scrollContainerRef = computed(
@@ -286,16 +290,19 @@ function scrollToBottom(smooth = false) {
 let contentResizeObserver: ResizeObserver | null = null;
 
 watch(
-	scrollableRef,
-	(el) => {
+	[messageListRef, inputDockRef],
+	(elements) => {
 		contentResizeObserver?.disconnect();
-		if (el) {
+		if (elements.some(Boolean)) {
 			contentResizeObserver = new ResizeObserver(() => {
 				if (!userScrolledUp.value) {
 					scrollToBottom();
 				}
 			});
-			contentResizeObserver.observe(el);
+			// Extra setup clearance changes the scroll range without moving the messages.
+			for (const element of elements) {
+				if (element) contentResizeObserver.observe(element);
+			}
 		}
 	},
 	{ immediate: true },
@@ -706,8 +713,12 @@ defineExpose({
 <template>
 	<div :class="$style.chatContent">
 		<N8nScrollArea as-child type="auto" :class="$style.scrollArea">
-			<div ref="scrollable" :class="$style.scrollContent">
-				<div :class="$style.messageList">
+			<div
+				ref="scrollable"
+				:class="$style.scrollContent"
+				:style="{ overflowAnchor: aboveInputOverlapHeight !== undefined ? 'none' : undefined }"
+			>
+				<div ref="messageList" :class="$style.messageList">
 					<!-- Mirrors the old empty opener: a user bubble with only the
 					     workflow chip, then the static assistant greeting. -->
 					<N8nChatMessage
@@ -763,7 +774,12 @@ defineExpose({
 					 anchored above the slot in both states. The leaving child is
 					 positioned absolutely during the cross-fade so the in-flow child
 					 can size the slot to its natural height. -->
-				<div :class="$style.inputDock">
+				<div
+					v-if="aboveInputOverlapHeight"
+					:style="{ minHeight: `${aboveInputOverlapHeight}px` }"
+					data-test-id="setup-scroll-clearance"
+				/>
+				<div ref="inputDock" :class="$style.inputDock">
 					<!-- Scroll to bottom button -->
 					<div :class="$style.scrollButtonContainer">
 						<Transition name="scroll-button-fade">

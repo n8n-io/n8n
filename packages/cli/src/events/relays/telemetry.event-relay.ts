@@ -2435,11 +2435,17 @@ export class TelemetryEventRelay extends EventRelay {
 
 	// #region Custom Roles
 
-	private customRoleCreated({ userId, roleSlug, scopes }: RelayEventMap['custom-role-created']) {
+	private customRoleCreated({
+		userId,
+		roleSlug,
+		scopes,
+		source,
+	}: RelayEventMap['custom-role-created']) {
 		this.telemetry.track('User created custom role', {
 			user_id: userId,
 			role_slug: roleSlug,
 			scopes,
+			source,
 		});
 	}
 

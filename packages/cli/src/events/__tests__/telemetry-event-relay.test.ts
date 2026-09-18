@@ -1302,6 +1302,7 @@ describe('TelemetryEventRelay', () => {
 				userId: 'user123',
 				roleSlug: 'project:my-role-abc123',
 				scopes: ['workflow:create', 'workflow:read', 'credential:read'],
+				source: 'ui',
 			};
 
 			eventService.emit('custom-role-created', event);
@@ -1310,6 +1311,7 @@ describe('TelemetryEventRelay', () => {
 				user_id: 'user123',
 				role_slug: 'project:my-role-abc123',
 				scopes: ['workflow:create', 'workflow:read', 'credential:read'],
+				source: 'ui',
 			});
 		});
 

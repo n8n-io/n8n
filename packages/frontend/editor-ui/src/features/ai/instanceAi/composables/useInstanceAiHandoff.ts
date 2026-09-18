@@ -81,7 +81,8 @@ export function buildInstanceAiArtifactCredentialQuestion(
 	if (credential.placeholderTitles?.length) {
 		return `${templatedValuesQuestion(credential)}${node}`;
 	}
-	return `How do I set up the credentials for ${credential.displayName}?${node}${existingCredentialNote(credential)}`;
+	const setupContext = credential.setupContext ? ` ${credential.setupContext}` : '';
+	return `How do I set up the credentials for ${credential.displayName}?${node}${existingCredentialNote(credential)}${setupContext}`;
 }
 
 const pendingFirstMessageKey = (threadId: string) => `n8n-instance-ai-first-message:${threadId}`;

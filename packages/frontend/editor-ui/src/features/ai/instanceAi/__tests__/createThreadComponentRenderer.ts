@@ -28,6 +28,8 @@ export function makeThread(): ThreadRuntime {
 		contextualSuggestion: null,
 		currentTasks: null,
 		producedArtifacts: new Map(),
+		setupItemsByWorkflowId: {},
+		projectId: 'thread-project',
 		resourceNameIndex: new Map(),
 		linkableResourceNameIndex: new Map(),
 		activeArtifactId: undefined,
