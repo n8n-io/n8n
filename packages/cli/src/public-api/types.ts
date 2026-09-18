@@ -63,10 +63,6 @@ export declare namespace TestRunRequest {
 	type Cancel = AuthenticatedRequest<{ id: string; runId: string }>;
 }
 
-export declare namespace CredentialTypeRequest {
-	type Get = AuthenticatedRequest<{ credentialTypeName: string }, {}, {}, {}>;
-}
-
 export declare namespace WorkflowRequest {
 	type Activate = AuthenticatedRequest<
 		{ id: string },
@@ -129,10 +125,6 @@ export declare namespace UserRequest {
 	>;
 }
 
-export declare namespace CredentialRequest {
-	type Test = AuthenticatedRequest<{ id: string }, {}, {}, {}>;
-}
-
 export declare namespace InsightsRequest {
 	type GetSummary = AuthenticatedRequest<
 		{},
@@ -166,7 +158,7 @@ export interface IDependency {
 }
 
 export interface IJsonSchema {
-	additionalProperties: boolean;
+	additionalProperties: false;
 	type: 'object';
 	properties: { [key: string]: { type: string } };
 	allOf?: IDependency[];

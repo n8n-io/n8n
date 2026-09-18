@@ -78,7 +78,7 @@ async function fetchPromotableChangeCount() {
 		return;
 	}
 	try {
-		const changes = await getPromotableChanges(rootStore.restApiContext, requestedProjectId);
+		const { changes } = await getPromotableChanges(rootStore.restApiContext, requestedProjectId);
 		if (currentProjectId.value !== requestedProjectId) return;
 		promotableChangeCount.value = changes.length;
 	} catch {

@@ -1,15 +1,18 @@
+import type { ToolContext } from '@n8n/agents';
+import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
 import { jsonParse } from 'n8n-workflow';
 
 import type {
 	IntegrationMessageContext,
-	IntegrationMessageSubject,
-	IntegrationSubjectPerson,
 	IntegrationMessageContextStore,
-	IntegrationMessageTarget,
 	SessionBinding,
-} from './integration-tools';
+} from './integration-tool-types';
+import {
+	isIntegrationMessageContext,
+	readIntegrationMessageContext,
+} from './integration-message-context';
 import { AgentResourceRepository } from '../repositories/agent-resource.repository';
 import { AgentThreadRepository } from '../repositories/agent-thread.repository';
 
@@ -22,12 +25,51 @@ export class IntegrationMessageContextService implements IntegrationMessageConte
 	constructor(
 		private readonly threadRepository: AgentThreadRepository,
 		private readonly resourceRepository: AgentResourceRepository,
+		private readonly logger: Logger,
 	) {}
 
 	async getLatest(threadId: string): Promise<IntegrationMessageContext | null> {
 		const thread = await this.threadRepository.findOneBy({ id: threadId });
 		const value = this.parseMetadata(thread?.metadata)[MESSAGE_CONTEXT_METADATA_KEY];
 		return isIntegrationMessageContext(value) ? value : null;
+	}
+
+	async getForResume(
+		persistence: NonNullable<ToolContext['persistence']>,
+	): Promise<IntegrationMessageContext | null> {
+		const context = readIntegrationMessageContext(persistence);
+		return context === undefined ? await this.getLatest(persistence.threadId) : context;
+	}
+
+	async getLatestForIncoming(threadId: string): Promise<IntegrationMessageContext | null> {
+		try {
+			return await this.getLatest(threadId);
+		} catch (error) {
+			this.logger.warn('Failed to read previous integration message context', {
+				threadId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return null;
+		}
+	}
+
+	async installIncoming(
+		context: IntegrationMessageContext,
+		memory: SessionBinding,
+		conversation: SessionBinding,
+	): Promise<void> {
+		const scopes =
+			conversation.threadId === memory.threadId ? [conversation] : [conversation, memory];
+		for (const { threadId, resourceId } of scopes) {
+			try {
+				await this.setLatest(threadId, resourceId, context);
+			} catch (error) {
+				this.logger.warn('Failed to update integration message context', {
+					threadId,
+					error: error instanceof Error ? error.message : String(error),
+				});
+			}
+		}
 	}
 
 	async setLatest(
@@ -171,72 +213,8 @@ export class IntegrationMessageContextService implements IntegrationMessageConte
 	}
 }
 
-export function isIntegrationMessageContext(value: unknown): value is IntegrationMessageContext {
-	if (!value || typeof value !== 'object') return false;
-	const context = value as Record<string, unknown>;
-	return (
-		typeof context.integrationConnectionId === 'string' &&
-		typeof context.platform === 'string' &&
-		isIntegrationMessageTarget(context.target) &&
-		(context.messageId === undefined || typeof context.messageId === 'string') &&
-		(context.interactingUserId === undefined || typeof context.interactingUserId === 'string') &&
-		(context.agentUserId === undefined || typeof context.agentUserId === 'string') &&
-		(context.subject === undefined || isIntegrationMessageSubject(context.subject)) &&
-		typeof context.updatedAt === 'string'
-	);
-}
-
 function isSessionBinding(value: unknown): value is SessionBinding {
 	return (
 		isRecord(value) && typeof value.threadId === 'string' && typeof value.resourceId === 'string'
 	);
-}
-
-function isIntegrationMessageSubject(value: unknown): value is IntegrationMessageSubject {
-	if (!value || typeof value !== 'object') return false;
-	const subject = value as Record<string, unknown>;
-	return (
-		typeof subject.type === 'string' &&
-		typeof subject.id === 'string' &&
-		(subject.title === undefined || typeof subject.title === 'string') &&
-		(subject.description === undefined || typeof subject.description === 'string') &&
-		(subject.url === undefined || typeof subject.url === 'string') &&
-		(subject.status === undefined || typeof subject.status === 'string') &&
-		(subject.labels === undefined ||
-			(Array.isArray(subject.labels) &&
-				subject.labels.every((label) => typeof label === 'string'))) &&
-		(subject.assignee === undefined || isIntegrationSubjectPerson(subject.assignee)) &&
-		(subject.author === undefined || isIntegrationSubjectPerson(subject.author))
-	);
-}
-
-function isIntegrationSubjectPerson(value: unknown): value is IntegrationSubjectPerson {
-	if (!value || typeof value !== 'object') return false;
-	const person = value as Record<string, unknown>;
-	return typeof person.id === 'string' && typeof person.name === 'string';
-}
-
-function isIntegrationMessageTarget(value: unknown): value is IntegrationMessageTarget {
-	if (!value || typeof value !== 'object') return false;
-	const target = value as Record<string, unknown>;
-	if (target.type === 'thread') {
-		return (
-			typeof target.threadId === 'string' &&
-			(target.channelId === undefined || typeof target.channelId === 'string') &&
-			(target.userId === undefined || typeof target.userId === 'string')
-		);
-	}
-	if (target.type === 'channel') {
-		return (
-			typeof target.channelId === 'string' &&
-			(target.threadId === undefined || typeof target.threadId === 'string')
-		);
-	}
-	if (target.type === 'dm') {
-		return (
-			typeof target.userId === 'string' &&
-			(target.threadId === undefined || typeof target.threadId === 'string')
-		);
-	}
-	return false;
 }

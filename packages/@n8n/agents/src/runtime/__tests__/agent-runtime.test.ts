@@ -893,6 +893,17 @@ describe('AgentRuntime — reasoning-only turn', () => {
 		};
 	}
 
+	function makeGenerateReasoningOnly(finishReason = 'stop') {
+		return {
+			finishReason,
+			usage: { inputTokens: 10, outputTokens: 5, totalTokens: 15 },
+			response: {
+				messages: [{ role: 'assistant', content: [{ type: 'reasoning', text: 'thinking...' }] }],
+			},
+			toolCalls: [],
+		};
+	}
+
 	it('retries a reasoning-only turn instead of ending the run', async () => {
 		streamText
 			.mockReturnValueOnce(makeStreamReasoningOnly())
@@ -927,41 +938,87 @@ describe('AgentRuntime — reasoning-only turn', () => {
 		expect(String((error?.error as Error).message)).toContain('no output');
 	});
 
-	it.each([
-		{ finishReason: 'length', errorText: 'output token limit' },
-		{ finishReason: 'stop', errorText: 'without returning an answer' },
-	])(
-		'fails a reasoning-only $finishReason turn without retrying or persisting it',
-		async ({ finishReason, errorText }) => {
-			streamText.mockReturnValue(makeStreamReasoningOnly(finishReason));
-			const memory = new InMemoryMemory();
-			const runtime = new AgentRuntime({
-				name: 'test',
-				model: 'anthropic/claude-opus-5',
-				instructions: 'You are a test assistant.',
-				memory,
-			});
+	it('fails a reasoning-only length turn without retrying or persisting it', async () => {
+		streamText.mockReturnValue(makeStreamReasoningOnly('length'));
+		const memory = new InMemoryMemory();
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'anthropic/claude-opus-5',
+			instructions: 'You are a test assistant.',
+			memory,
+		});
 
-			const result = await runtime.stream('make my workflow smarter', {
-				persistence: { threadId: 'thread-1', resourceId: 'user-1' },
-			});
-			const chunks = await collectChunks(result.stream);
+		const result = await runtime.stream('make my workflow smarter', {
+			persistence: { threadId: 'thread-1', resourceId: 'user-1' },
+		});
+		const chunks = await collectChunks(result.stream);
 
-			expect(streamText).toHaveBeenCalledTimes(1);
-			expect(chunks).toEqual(
-				expect.arrayContaining([
-					expect.objectContaining({ type: 'error' }),
-					expect.objectContaining({ type: 'finish', finishReason: 'error' }),
-				]),
-			);
-			const error = chunks.find((chunk) => chunk.type === 'error');
-			expect(String(error?.error)).toContain(errorText);
-			const persisted = await memory.getMessages('thread-1', { resourceId: 'user-1' });
-			expect(
-				persisted.filter((message) => (message as { role?: string }).role === 'assistant'),
-			).toHaveLength(0);
-		},
-	);
+		expect(streamText).toHaveBeenCalledTimes(1);
+		expect(chunks).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ type: 'error' }),
+				expect.objectContaining({ type: 'finish', finishReason: 'error' }),
+			]),
+		);
+		const error = chunks.find((chunk) => chunk.type === 'error');
+		expect(String(error?.error)).toContain('output token limit');
+		const persisted = await memory.getMessages('thread-1', { resourceId: 'user-1' });
+		expect(
+			persisted.filter((message) => (message as { role?: string }).role === 'assistant'),
+		).toHaveLength(0);
+	});
+
+	it('streams a reasoning-only stop without an error or retry', async () => {
+		streamText.mockReturnValue(makeStreamReasoningOnly('stop'));
+		const { runtime } = createRuntime();
+
+		const result = await runtime.stream('make my workflow smarter');
+		const chunks = await collectChunks(result.stream);
+
+		expect(streamText).toHaveBeenCalledTimes(1);
+		expect(chunks.find((chunk) => chunk.type === 'error')).toBeUndefined();
+		expect(chunks).toContainEqual(
+			expect.objectContaining({ type: 'finish', finishReason: 'stop' }),
+		);
+	});
+
+	it('completes a reasoning-only stop and keeps it out of follow-up history', async () => {
+		generateText
+			.mockResolvedValueOnce(makeGenerateReasoningOnly())
+			.mockResolvedValueOnce(makeGenerateSuccess('Follow-up answer'));
+		const memory = new InMemoryMemory();
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'anthropic/claude-opus-5',
+			instructions: 'You are a test assistant.',
+			memory,
+		});
+
+		const first = await runtime.generate('make my workflow smarter', {
+			persistence: { threadId: 'thread-1', resourceId: 'user-1' },
+		});
+		const second = await runtime.generate('what next?', {
+			persistence: { threadId: 'thread-1', resourceId: 'user-1' },
+		});
+
+		expect(first).toEqual(
+			expect.objectContaining({
+				finishReason: 'stop',
+				usage: expect.objectContaining({ totalTokens: 15 }),
+			}),
+		);
+		expect(first.error).toBeUndefined();
+		expect(second).toEqual(expect.objectContaining({ finishReason: 'stop' }));
+		expect(generateText).toHaveBeenCalledTimes(2);
+		const persisted = await memory.getMessages('thread-1', { resourceId: 'user-1' });
+		const assistantMessages = persisted.filter(
+			(message) => (message as { role?: string }).role === 'assistant',
+		);
+		expect(assistantMessages).toHaveLength(1);
+		expect(assistantMessages[0]).toEqual(
+			expect.objectContaining({ content: [{ type: 'text', text: 'Follow-up answer' }] }),
+		);
+	});
 });
 
 // ---------------------------------------------------------------------------
@@ -2149,17 +2206,17 @@ function createRuntimeWithCheckpointStore(
 }
 
 function makeClaimingCheckpointStore(): ClaimingCheckpointStore {
-	const checkpoints = new Map<string, SerializableAgentState>();
+	const checkpoints = new Map<string, string>();
 
 	return {
 		save: vi.fn(async (key: string, state: SerializableAgentState): Promise<void> => {
 			await Promise.resolve();
-			checkpoints.set(key, structuredClone(state));
+			checkpoints.set(key, JSON.stringify(state));
 		}),
 		load: vi.fn(async (key: string): Promise<SerializableAgentState | undefined> => {
 			await Promise.resolve();
 			const state = checkpoints.get(key);
-			return state ? structuredClone(state) : undefined;
+			return state ? (JSON.parse(state) as SerializableAgentState) : undefined;
 		}),
 		delete: vi.fn(async (key: string): Promise<void> => {
 			await Promise.resolve();
@@ -2168,8 +2225,8 @@ function makeClaimingCheckpointStore(): ClaimingCheckpointStore {
 		claimForResume: vi.fn<ClaimForResume>(async (key, state) => {
 			await Promise.resolve();
 			const current = checkpoints.get(key);
-			if (!current || JSON.stringify(current) !== JSON.stringify(state)) return false;
-			checkpoints.set(key, { ...state, status: 'running' });
+			if (!current || current !== JSON.stringify(state)) return false;
+			checkpoints.set(key, JSON.stringify({ ...state, status: 'running' }));
 			return true;
 		}),
 	};
@@ -5675,6 +5732,86 @@ describe('AgentRuntime.resume() — checkpoint lifecycle', () => {
 		).rejects.toThrow(`No suspended run found for runId: ${runId}`);
 	});
 
+	it.each(['generate', 'stream'] as const)(
+		'restores and updates host metadata across repeated %s resumes',
+		async (method) => {
+			const checkpointStore = makeClaimingCheckpointStore();
+			const observed: Array<ToolContext['persistence']> = [];
+			const tool = makeSuspendingTool('suspend_tool', async (_input, ctx) => {
+				if (!ctx.resumeData) return await ctx.suspend({ reason: 'needs approval' });
+				observed.push(structuredClone(ctx.persistence));
+				ctx.persistence!.hostMetadata!.actor = 'tool-update';
+				return { approved: true };
+			});
+			const persistence = {
+				threadId: 'thread-1',
+				resourceId: 'resource-1',
+				hostMetadata: { scope: { tenant: 'tenant-1' }, actor: 'original' },
+			};
+			generateText.mockResolvedValueOnce(
+				makeGenerateWithToolCalls([
+					{ toolCallId: 'tc-1', toolName: 'suspend_tool', args: {} },
+					{ toolCallId: 'tc-2', toolName: 'suspend_tool', args: {} },
+				]),
+			);
+			const initial = createRuntimeWithCheckpointStore([tool], checkpointStore);
+			const { runId } = await initial.generate('run tools', { persistence });
+			const checkpoint = await checkpointStore.load(runId);
+			const onResumeClaimed = vi.fn(async () => {
+				expect(await checkpointStore.load(runId)).toEqual({ ...checkpoint, status: 'running' });
+			});
+			const resumed = createRuntimeWithCheckpointStore([tool], checkpointStore);
+			const options = {
+				runId,
+				toolCallId: 'tc-1',
+				hostMetadata: { actor: 'selected' },
+				onResumeClaimed,
+			};
+			if (method === 'stream') {
+				await collectChunks((await resumed.resume('stream', { approved: true }, options)).stream);
+			} else {
+				await resumed.resume('generate', { approved: true }, options);
+			}
+			expect(observed).toEqual([
+				{ ...persistence, hostMetadata: { scope: { tenant: 'tenant-1' }, actor: 'selected' } },
+			]);
+			expect(onResumeClaimed).toHaveBeenCalledOnce();
+			expect((await checkpointStore.load(runId))?.persistence).toEqual({
+				...persistence,
+				hostMetadata: { scope: { tenant: 'tenant-1' }, actor: 'tool-update' },
+			});
+			expect(persistence.hostMetadata.actor).toBe('original');
+
+			generateText.mockResolvedValueOnce(makeGenerateSuccess('done'));
+			const next = createRuntimeWithCheckpointStore([tool], checkpointStore);
+			await next.resume('generate', { approved: true }, { runId, toolCallId: 'tc-2' });
+			expect(observed[1]?.hostMetadata?.actor).toBe('tool-update');
+			expect(await checkpointStore.load(runId)).toBeUndefined();
+		},
+	);
+
+	it('rejects resume metadata without persistence before claiming the checkpoint', async () => {
+		const checkpointStore = makeClaimingCheckpointStore();
+		const runtime = createRuntimeWithCheckpointStore([makeApprovalTool()], checkpointStore);
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCalls([{ toolCallId: 'tc-1', toolName: 'suspend_tool', args: {} }]),
+		);
+		const { runId } = await runtime.generate('run tool');
+		await expect(
+			runtime.resume(
+				'generate',
+				{ approved: true },
+				{
+					runId,
+					toolCallId: 'tc-1',
+					hostMetadata: { actor: 'selected' },
+				},
+			),
+		).rejects.toThrow('Cannot update host metadata without persistence');
+		expect(checkpointStore.claimForResume).not.toHaveBeenCalled();
+		expect((await checkpointStore.load(runId))?.status).toBe('suspended');
+	});
+
 	it('claims the checkpoint after resume validation passes', async () => {
 		const checkpointStore = makeClaimingCheckpointStore();
 		const runtime = createRuntimeWithCheckpointStore([makeApprovalTool()], checkpointStore);
@@ -5720,16 +5857,28 @@ describe('AgentRuntime.resume() — checkpoint lifecycle', () => {
 		generateText.mockResolvedValueOnce(
 			makeGenerateWithToolCalls([{ toolCallId: 'tc-1', toolName: 'suspend_tool', args: {} }]),
 		);
-		const first = await runtime.generate('run tool');
+		const first = await runtime.generate('run tool', {
+			persistence: {
+				threadId: 'thread-1',
+				resourceId: 'resource-1',
+				hostMetadata: { actor: 'original' },
+			},
+		});
 		const { runId, toolCallId } = first.pendingSuspend![0];
+		const checkpoint = await checkpointStore.load(runId);
 		checkpointStore.claimForResume.mockResolvedValueOnce(false);
 
 		await expect(
-			runtime.resume('stream', { approved: true }, { runId, toolCallId, onResumeClaimed }),
+			runtime.resume(
+				'stream',
+				{ approved: true },
+				{ runId, toolCallId, onResumeClaimed, hostMetadata: { actor: 'selected' } },
+			),
 		).rejects.toBeInstanceOf(StaleResumeError);
 		expect(errorEvents).toEqual([]);
 		expect(streamText).not.toHaveBeenCalled();
 		expect(onResumeClaimed).not.toHaveBeenCalled();
+		expect(await checkpointStore.load(runId)).toEqual(checkpoint);
 	});
 
 	it('does not invoke the claim hook when checkpoint claiming fails', async () => {
