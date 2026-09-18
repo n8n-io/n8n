@@ -136,9 +136,15 @@ reads each scope through a `CacheService` entry keyed
 `type-availability-policy:scope:{kind}:{projectId ?? 'instance'}`, and a warm decision costs no
 queries at all. The instance entry is one row shared by every project.
 
-Every write drops the entries it changed, after its transaction commits. That delete is
-best-effort, so a 30-second TTL backstops it — see "Cache staleness" under "Known limits" for
-the three cases it covers.
+Every write drops the entries it changed, after its transaction commits. Invalidation is what
+keeps the cache fresh; the 10-minute TTL is only a backstop — see "Cache staleness" under
+"Known limits" for what is left for it to heal.
+
+In front of that entry, each process holds its own read of a scope for 1 second — the promise,
+not the value, so callers who arrive while it is still running share it as well. A burst of
+decisions on a cold entry therefore costs one database read rather than one for each, and a
+warm decision costs no round trip and no parse of every rule. That parse is what makes a
+decision on Redis grow more expensive as an admin writes more rules.
 
 A cache call is also bounded at 50 ms and falls through to the database. ioredis queues
 commands while it is disconnected rather than rejecting them, so without the bound a lost Redis
@@ -170,18 +176,23 @@ through a sealed repository method, and the lint rule that guards that has no al
   asking — an OAuth authorize or revoke, the agents adapter, a log-streaming destination. There
   is no node type to evaluate there, and the credential's type is deliberately not a stand-in,
   so the decryption goes through.
-- **Cache staleness is bounded by the TTL, not eliminated.** A write drops the cached scope it
-  changed, which is enough wherever the processes share one Redis cache — which is every
-  deployment that has more than one, unless `N8N_CACHE_BACKEND=memory` is set by hand in queue
-  mode. Three cases outlive the delete, and the 30-second TTL is what ends all of them:
+- **A policy change applies at once, plus up to 1 second.** The write drops the shared entry,
+  which reaches every process, because every deployment with more than one process reading
+  policy shares one Redis cache — unless `N8N_CACHE_BACKEND=memory` is set by hand in queue
+  mode. What is left is each process's 1-second memo, so that is the staleness window a
+  builder or an execution can see.
 
-  - that forced memory backend, where each process keeps its own copy and no delete reaches it;
-  - a `deleteMany` that fails after the write committed, which is logged and not retried;
-  - a read that missed, and writes the value it fetched back after a write committed and
-    deleted the key. The window is the few milliseconds between the two, so it needs a policy
-    edit to land inside one unlucky read.
+  A fill that read the database before the write committed can put its old snapshot back after
+  the delete. On the process that wrote, a per-scope counter makes that fill skip its
+  write-back. Elsewhere the counter cannot see it, so the same keys are dropped a second time a
+  second later, which is long enough for any fill in flight at commit time to have landed.
+  `CacheService` has no compare-and-set to make this airtight; pubsub invalidation would, and
+  is the step that would also let the memo grow and the TTL go away.
 
-  A row edited outside the service — a migration, manual SQL — is bounded the same way.
+- **The 10-minute TTL heals only what invalidation cannot reach.** Three cases, all
+  operator-level: that forced memory backend, where each process keeps its own copy and no
+  delete reaches it; a `deleteMany` that failed after its write committed, which is logged and
+  not retried; and a row edited outside the service, by a migration or manual SQL.
 - **Type-level policy is not a data boundary.** Blocking a node does not block the API behind
   it, because HTTP Request and Code remain available. Load-time exclusion
   (`NODES_EXCLUDE`) is the stronger tool for the types that must never load.

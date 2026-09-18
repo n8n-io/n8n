@@ -134,9 +134,10 @@ describe('node type policy document fan-out', () => {
 	/**
 	 * Multi-main needs queue mode, where `N8N_CACHE_BACKEND=auto` is Redis — so two mains share
 	 * one cache, and the entry one drops is the entry the other was reading. A second service
-	 * over that shared cache and database models this: a reader that memoized anything per
-	 * process would keep serving the old verdict. Two mains given unshared caches
-	 * (`N8N_CACHE_BACKEND=memory`) stay stale until the TTL instead, which is out of scope here.
+	 * over that shared cache and database models this. Its 1-second memo is the one window the
+	 * invalidation cannot close, so the edit is served as soon as that lapses. Two mains given
+	 * unshared caches (`N8N_CACHE_BACKEND=memory`) stay stale until the TTL instead, which is
+	 * out of scope here.
 	 */
 	it('serves the committed edit to a second main that had already read the old one', async () => {
 		const { policy, projectIds } = await attachToThreeScopes();
@@ -160,6 +161,12 @@ describe('node type policy document fan-out', () => {
 		}
 
 		await service.updatePolicyDocument(KIND, policy.id, [], policy.version, 'user-1');
+
+		// The memo holds the old verdict for its second, which is the documented bound.
+		expect(await verdictOnSecondMain(projectIds[0])).toBe('deny');
+
+		// Stands in for that second passing, so the test does not have to wait it out.
+		secondMain.resetLocalCaches();
 
 		for (const projectId of projectIds) {
 			expect(await verdictOnSecondMain(projectId)).toBe('allow');
