@@ -319,17 +319,13 @@ export function autoDetectResponseMode(
 	workflow: Workflow,
 	method: string,
 ): WebhookResponseMode | undefined {
-	if (workflowStartNode.type === FORM_TRIGGER_NODE_TYPE && method === 'POST') {
-		const connectedNodes = workflow.getChildNodes(workflowStartNode.name);
+	const hasChildMatching = (predicate: (node: INode) => boolean) =>
+		workflow
+			.getChildNodes(workflowStartNode.name)
+			.some((nodeName) => predicate(workflow.nodes[nodeName]));
 
-		for (const nodeName of connectedNodes) {
-			const node = workflow.nodes[nodeName];
-
-			if (isEnabledFormPageNode(node)) {
-				return 'formPage';
-			}
-		}
-	}
+	const isFormTriggerPost = workflowStartNode.type === FORM_TRIGGER_NODE_TYPE && method === 'POST';
+	if (isFormTriggerPost && hasChildMatching(isEnabledFormPageNode)) return 'formPage';
 
 	const chatResponseMode = getChatResponseMode(workflowStartNode, method);
 	if (chatResponseMode) return chatResponseMode;
@@ -337,17 +333,9 @@ export function autoDetectResponseMode(
 	// If there are form nodes connected to a current form node we're dealing with a multipage form
 	// and we need to return the formPage response mode when a second page of the form gets submitted
 	// to be able to show potential form errors correctly.
-	if (workflowStartNode.type === FORM_NODE_TYPE && method === 'POST') {
-		const connectedNodes = workflow.getChildNodes(workflowStartNode.name);
-
-		for (const nodeName of connectedNodes) {
-			const node = workflow.nodes[nodeName];
-
-			if (node.type === FORM_NODE_TYPE && !node.disabled) {
-				return 'formPage';
-			}
-		}
-	}
+	const isFormPost = workflowStartNode.type === FORM_NODE_TYPE && method === 'POST';
+	if (isFormPost && hasChildMatching((node) => node.type === FORM_NODE_TYPE && !node.disabled))
+		return 'formPage';
 
 	if (workflowStartNode.type === WAIT_NODE_TYPE && workflowStartNode.parameters.resume !== 'form') {
 		return undefined;
@@ -359,17 +347,9 @@ export function autoDetectResponseMode(
 	) {
 		return 'onReceived';
 	}
-	if ([FORM_NODE_TYPE, WAIT_NODE_TYPE].includes(workflowStartNode.type) && method === 'POST') {
-		const connectedNodes = workflow.getChildNodes(workflowStartNode.name);
-
-		for (const nodeName of connectedNodes) {
-			const node = workflow.nodes[nodeName];
-
-			if (isEnabledFormPageNode(node)) {
-				return 'responseNode';
-			}
-		}
-	}
+	const isFormOrWaitPost =
+		[FORM_NODE_TYPE, WAIT_NODE_TYPE].includes(workflowStartNode.type) && method === 'POST';
+	if (isFormOrWaitPost && hasChildMatching(isEnabledFormPageNode)) return 'responseNode';
 
 	return undefined;
 }
