@@ -640,19 +640,18 @@ describe('AgentChatBridge — consumeStream', () => {
 			);
 		});
 
-		it.each([
-			'Network error: invalid image',
-			'Unknown error',
-			'Request payload size exceeds the limit',
-		])('keeps the generic message for unrelated errors: %s', async (message) => {
-			const thread = await runMention(bufferedIntegration, [
-				{ type: 'error', error: new Error(message) },
-				finishChunk,
-			]);
+		it.each(['fetch failed', 'Unknown error', 'Request payload size exceeds the limit'])(
+			'keeps the generic message for unrelated errors: %s',
+			async (message) => {
+				const thread = await runMention(bufferedIntegration, [
+					{ type: 'error', error: new Error(message) },
+					finishChunk,
+				]);
 
-			expect(thread.post).toHaveBeenCalledOnce();
-			expect(thread.post).toHaveBeenCalledWith(GENERIC_ERROR_MESSAGE);
-		});
+				expect(thread.post).toHaveBeenCalledOnce();
+				expect(thread.post).toHaveBeenCalledWith(GENERIC_ERROR_MESSAGE);
+			},
+		);
 
 		it('names the misconfiguration when the run fails with a UserError', async () => {
 			const { bot, handlers } = makeBot();

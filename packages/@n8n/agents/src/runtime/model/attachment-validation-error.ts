@@ -25,7 +25,7 @@ const ATTACHMENT_ERROR_MESSAGES = [
 	/\b(?:cannot|could not|unable to|failed to) (?:decode|parse) (?:the )?(?:image|attachment|file)\b/i,
 	/\b(?:image|attachment|file)\b[^\n]{0,60}\b(?:decoding|decode|parsing) (?:error|failed)\b/i,
 	/\bunsupported (?:mime|media) type:\s*(?:image\/|audio\/|video\/|application\/pdf)/i,
-	/\bimage\.source\.[^\n]*media_type:[^\n]*Input should be /i,
+	/\bimage\.source\.[^\n]{0,100}media_type:[^\n]{0,100}Input should be /i,
 ];
 
 function errorDetails(error: unknown): Array<Readonly<Record<string, unknown>>> {
@@ -44,7 +44,7 @@ export function isAttachmentValidationError(error: unknown): boolean {
 	if (
 		details.some((detail) => {
 			const status = detail.statusCode ?? detail.code;
-			return typeof status === 'number' && status >= 400 && ![400, 413, 422].includes(status);
+			return typeof status === 'number' && status >= 400 && ![400, 413, 415, 422].includes(status);
 		}) ||
 		messages.some((message) =>
 			/(?:authenticat|unauthorized|forbidden|permission|rate.limit|content.policy|prohibited.content|safety|timeout|timed out|network|failed to download)/i.test(

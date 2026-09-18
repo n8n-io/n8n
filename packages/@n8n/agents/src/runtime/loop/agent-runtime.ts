@@ -808,17 +808,16 @@ export class AgentRuntime {
 		let reachedStopCondition = false;
 		const inputMessages = new Set(list.inputDelta());
 		const inputIds = new Set([...inputMessages].map((message) => message.id));
-		const canDiscardInput =
+
+		// Can we discard an input in case of an error caused by its attachment
+		const canDiscardRejectedInput =
 			ctx.isFreshRun === true &&
 			[...inputMessages].some(
 				(message) =>
 					'role' in message &&
 					message.role === 'user' &&
 					Array.isArray(message.content) &&
-					message.content.some(
-						(part) =>
-							(part.type === 'file' || part.type === 'reasoning-file') && part.data !== undefined,
-					),
+					message.content.some((part) => part.type === 'file' && part.data !== undefined),
 			) &&
 			!list.messages().some((message) => !inputMessages.has(message) && inputIds.has(message.id));
 
@@ -956,7 +955,7 @@ export class AgentRuntime {
 				maxOutputTokens: staticLoopContext.maxOutputTokens,
 				aiSdkOptions: this.buildAiSdkOptions(toolMap, options),
 				onInputRejected:
-					canDiscardInput && iterationCount === 0
+					canDiscardRejectedInput && iterationCount === 0
 						? async () => {
 								if (abortScope.isAborted) return;
 								await this.memory.discardRejectedInput(list, options);

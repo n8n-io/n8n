@@ -16,15 +16,16 @@ describe('isAttachmentValidationError', () => {
 	});
 
 	it.each([
-		'invalid_image_format',
-		'image_too_large',
-		'image_file_too_large',
-		'unsupported_image_media_type',
-		'image_parse_error',
-	])('recognizes the structured code %s', (code) => {
+		['invalid_image_format', 400],
+		['image_too_large', 400],
+		['image_file_too_large', 400],
+		['unsupported_image_media_type', 400],
+		['image_parse_error', 400],
+		['unsupported_image_media_type', 415],
+	])('recognizes the structured code %s with HTTP %s', (code, statusCode) => {
 		expect(
 			isAttachmentValidationError({
-				statusCode: 400,
+				statusCode,
 				data: { error: { code, message: 'Invalid request' } },
 			}),
 		).toBe(true);
@@ -48,8 +49,7 @@ describe('isAttachmentValidationError', () => {
 		'Invalid image detail parameter',
 		'Invalid image generation model',
 		'Failed to download image',
-		'Network error: invalid image',
-		'Safety refusal: unsupported image',
+		'fetch failed',
 	])('excludes unrelated errors: %s', (message) => {
 		expect(isAttachmentValidationError(new Error(message))).toBe(false);
 	});
@@ -57,8 +57,13 @@ describe('isAttachmentValidationError', () => {
 	it('excludes image content policy errors', () => {
 		expect(
 			isAttachmentValidationError({
-				code: 'image_content_policy_violation',
-				message: 'Invalid image',
+				statusCode: 400,
+				data: {
+					error: {
+						code: 'image_content_policy_violation',
+						message: 'Image content policy violation',
+					},
+				},
 			}),
 		).toBe(false);
 	});
@@ -68,6 +73,7 @@ describe('isAttachmentValidationError', () => {
 		null,
 		'request failed',
 		{ statusCode: 400 },
+		{ statusCode: 415 },
 		{ responseBody: '<html>error' },
 	])('ignores unknown error shapes: %s', (error) => {
 		expect(isAttachmentValidationError(error)).toBe(false);

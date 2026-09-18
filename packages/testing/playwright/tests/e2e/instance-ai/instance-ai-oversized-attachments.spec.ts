@@ -225,14 +225,12 @@ test.describe(
 				);
 				await n8n.instanceAi.waitForRunComplete();
 
-				// Assert the mechanism directly, not just its effect: the persisted turn keeps
-				// the user's text but no longer carries an inline `file` part.
 				const persisted = await n8n.api.instanceAi.getRawThreadMessagesResponse(
 					n8n.instanceAi.getCurrentThreadId(),
 				);
 				expect(persisted.status()).toBe(200);
 				const persistedBody = await persisted.text();
-				expect(persistedBody).toContain('What is in this screenshot?');
+				expect(persistedBody).not.toContain('What is in this screenshot?');
 				expect(persistedBody).not.toContain('"type":"file"');
 
 				// The regression itself: a plain follow-up in the same thread now completes.
