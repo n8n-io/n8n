@@ -65,7 +65,7 @@
 		"PUT /credentials/{credentialId}/transfer": {
 			"status": "gap"
 		},
-		"POST /credentials/{id}/test": {
+		"POST /credentials/{credentialId}/test": {
 			"status": "gap"
 		},
 		"GET /community-packages": {
@@ -284,6 +284,9 @@
 			"status": "gap"
 		},
 		"POST /promotions/connections/{promotionConnectionId}/promote": {
+			"status": "gap"
+		},
+		"POST /promotions/connections/{promotionConnectionId}/apply/continue": {
 			"status": "gap"
 		},
 		"POST /promotions/connections/{promotionConnectionId}/apply": {

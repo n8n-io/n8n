@@ -1,13 +1,6 @@
-import { useTelemetry } from '@n8n/composables/useTelemetry';
-import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import type { PendingComposerDraft } from './useInstanceAiHandoff';
 
-import { useInstanceAiAvailable } from './useInstanceAiAvailability';
-import {
-	buildInstanceAiAgentPreviewHandoffContext,
-	useInstanceAiHandoff,
-	type PendingComposerDraft,
-} from './useInstanceAiHandoff';
-
+/** The builder hands preview sessions to its embedded panel; only the shared params type remains. */
 export interface AgentPreviewHandoffParams {
 	projectId: string;
 	agentId: string;
@@ -17,60 +10,4 @@ export interface AgentPreviewHandoffParams {
 	sessionTitle?: string;
 	executionId?: string;
 	initialDraft?: PendingComposerDraft;
-}
-
-export function useInstanceAiAgentPreviewHandoff() {
-	const telemetry = useTelemetry();
-	const canSendPreviewToInstanceAi = useInstanceAiAvailable();
-	const { openAgentArtifactThread } = useInstanceAiHandoff();
-
-	/** Resolves true when the assistant thread actually opened. */
-	async function sendPreviewSessionToInstanceAi({
-		projectId,
-		agentId,
-		threadId,
-		agentName,
-		agentIcon,
-		sessionTitle,
-		executionId,
-		initialDraft,
-	}: AgentPreviewHandoffParams): Promise<boolean> {
-		if (!canSendPreviewToInstanceAi.value || !projectId || !agentId || !threadId) return false;
-
-		const context = buildInstanceAiAgentPreviewHandoffContext({
-			agentId,
-			threadId,
-			agentName,
-			agentIcon,
-			sessionTitle,
-			executionId,
-		});
-		const opened = await openAgentArtifactThread(
-			{
-				type: 'agent',
-				id: agentId,
-				projectId,
-				...(agentName ? { name: agentName } : {}),
-			},
-			{
-				source: 'agent_preview',
-				origin: 'internal',
-				sourceContext: { agentId, previewThreadId: threadId },
-			},
-			{
-				context,
-				...(initialDraft ? { initialDraft } : {}),
-			},
-		);
-		if (!opened) return false;
-
-		telemetry.track(TELEMETRY_EVENT.AGENTS.INSTANCE_AI_OPENED_FROM_AGENT_PREVIEW, {
-			agent_id: agentId,
-			preview_thread_id: threadId,
-			...(executionId ? { preview_execution_id: executionId } : {}),
-		});
-		return true;
-	}
-
-	return { canSendPreviewToInstanceAi, sendPreviewSessionToInstanceAi };
 }
