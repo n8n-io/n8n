@@ -23,6 +23,7 @@ import {
 	getPrReviews,
 	getPullRequestById,
 	isTeamMember,
+	listOpenPullRequestsByHead,
 	setCommitStatus,
 } from '../github-helpers.mjs';
 import { parseOwnersFile, resolveRequiredTeams, teamHandleToSlug } from './owners.mjs';
@@ -100,13 +101,23 @@ export function findExemption(pullRequest, exemptions = REQUIRED_REVIEW_EXEMPTIO
 /**
  * Resolve the PR number from the triggering event.
  *
+ * A workflow_run event carries no PR: the PR is looked up from the
+ * triggering run's head. Only an open PR whose head SHA is the run's head
+ * SHA counts; several PRs can share a head branch.
+ *
  * @param { string } eventName
  * @param { any } event Parsed GITHUB_EVENT_PATH payload.
  * @param { string | undefined } pullRequestNumberEnv PULL_REQUEST_NUMBER (workflow_dispatch input).
- * @returns { number }
+ * @returns { Promise<number | undefined> } undefined when the event has no open PR to evaluate.
  */
-export function resolvePullRequestNumber(eventName, event, pullRequestNumberEnv) {
+export async function resolvePullRequestNumber(eventName, event, pullRequestNumberEnv) {
 	if (event?.pull_request?.number) return event.pull_request.number;
+
+	if (eventName === 'workflow_run' && event?.workflow_run) {
+		const { head_sha: sha, head_branch: branch, head_repository: headRepository } = event.workflow_run;
+		const candidates = await listOpenPullRequestsByHead(headRepository.owner.login, branch);
+		return candidates.find((pullRequest) => pullRequest.head.sha === sha)?.number;
+	}
 
 	const parsed = parseInt(pullRequestNumberEnv ?? '');
 	if (Number.isNaN(parsed)) {
@@ -221,11 +232,15 @@ export async function run() {
 	const eventName = process.env.GITHUB_EVENT_NAME ?? 'workflow_dispatch';
 	const event = getEventFromGithubEventPath();
 
-	const pullRequestNumber = resolvePullRequestNumber(
+	const pullRequestNumber = await resolvePullRequestNumber(
 		eventName,
 		event,
 		process.env.PULL_REQUEST_NUMBER,
 	);
+	if (pullRequestNumber === undefined) {
+		console.log(`No open PR for the ${eventName} head; nothing to evaluate.`);
+		return;
+	}
 	const pullRequest = await getPullRequestById(pullRequestNumber);
 	const statusSha = pullRequest.head.sha;
 	const targetUrl = statusTargetUrl();

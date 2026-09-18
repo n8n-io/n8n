@@ -19,6 +19,8 @@ let getPrReviewsImpl = async () => [];
 let isTeamMemberImpl = async () => false;
 /** @type {(sha: string, status: any) => Promise<void>} */
 let setCommitStatusImpl = async () => {};
+/** @type {(headOwner: string, headBranch: string) => Promise<any[]>} */
+let listOpenPullRequestsByHeadImpl = async () => [];
 
 mock.module('../github-helpers.mjs', {
 	namedExports: {
@@ -28,6 +30,8 @@ mock.module('../github-helpers.mjs', {
 		getPrReviews: (n) => getPrReviewsImpl(n),
 		isTeamMember: (slug, username) => isTeamMemberImpl(slug, username),
 		setCommitStatus: (sha, status) => setCommitStatusImpl(sha, status),
+		listOpenPullRequestsByHead: (headOwner, headBranch) =>
+			listOpenPullRequestsByHeadImpl(headOwner, headBranch),
 	},
 });
 
@@ -145,19 +149,51 @@ describe('findExemption', () => {
 });
 
 describe('resolvePullRequestNumber', () => {
-	it('reads the PR number from pull_request payloads', () => {
+	/** A workflow_run payload for a run on `owner/branch` at `sha`. */
+	function workflowRunEvent(owner, branch, sha) {
+		return { workflow_run: { head_sha: sha, head_branch: branch, head_repository: { owner: { login: owner } } } };
+	}
+
+	beforeEach(() => {
+		listOpenPullRequestsByHeadImpl = async () => [];
+	});
+
+	it('reads the PR number from pull_request payloads', async () => {
 		assert.equal(
-			resolvePullRequestNumber('pull_request', { pull_request: { number: 42 } }, undefined),
+			await resolvePullRequestNumber('pull_request_target', { pull_request: { number: 42 } }, undefined),
 			42,
 		);
 	});
 
-	it('falls back to the PULL_REQUEST_NUMBER env value for workflow_dispatch', () => {
-		assert.equal(resolvePullRequestNumber('workflow_dispatch', {}, '7'), 7);
+	it('falls back to the PULL_REQUEST_NUMBER env value for workflow_dispatch', async () => {
+		assert.equal(await resolvePullRequestNumber('workflow_dispatch', {}, '7'), 7);
 	});
 
-	it('throws when no source yields a PR number', () => {
-		assert.throws(() => resolvePullRequestNumber('workflow_dispatch', {}, undefined), /Cannot resolve/);
+	it('rejects when no source yields a PR number', async () => {
+		await assert.rejects(resolvePullRequestNumber('workflow_dispatch', {}, undefined), /Cannot resolve/);
+	});
+
+	it('looks up the open PR for a workflow_run head', async () => {
+		const listOpenPullRequestsByHead = mock.fn(async () => [
+			{ number: 11, head: { sha: 'old-sha' } },
+			{ number: 12, head: { sha: 'run-sha' } },
+		]);
+		listOpenPullRequestsByHeadImpl = listOpenPullRequestsByHead;
+
+		assert.equal(
+			await resolvePullRequestNumber('workflow_run', workflowRunEvent('forker', 'fix/x', 'run-sha'), undefined),
+			12,
+		);
+		assert.deepEqual(listOpenPullRequestsByHead.mock.calls[0].arguments, ['forker', 'fix/x']);
+	});
+
+	it('returns undefined when no open PR has the workflow_run head SHA', async () => {
+		listOpenPullRequestsByHeadImpl = async () => [{ number: 11, head: { sha: 'old-sha' } }];
+
+		assert.equal(
+			await resolvePullRequestNumber('workflow_run', workflowRunEvent('forker', 'fix/x', 'run-sha'), undefined),
+			undefined,
+		);
 	});
 });
 
@@ -354,6 +390,18 @@ describe('run', () => {
 
 		const [, status] = setCommitStatus.mock.calls.at(-1).arguments;
 		assert.equal(status.state, 'pending');
+	});
+
+	it('writes no status for a workflow_run head without an open PR', async () => {
+		process.env.GITHUB_EVENT_NAME = 'workflow_run';
+		eventImpl = () => ({
+			workflow_run: { head_sha: 'gone-sha', head_branch: 'fix/x', head_repository: { owner: { login: 'forker' } } },
+		});
+		listOpenPullRequestsByHeadImpl = async () => [];
+
+		await run();
+
+		assert.equal(setCommitStatus.mock.calls.length, 0);
 	});
 
 	it('evaluates PRs into branches other than master', async () => {

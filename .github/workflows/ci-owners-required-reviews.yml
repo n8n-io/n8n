@@ -8,33 +8,44 @@ run-name: "${{ github.event_name == 'workflow_dispatch' && format('CI: Owners Re
 # Replaces the GitHub-native CODEOWNERS enforcement, which could not express
 # team ownership metadata beyond "request a review".
 #
-# Every base branch is enforced. The routes that skip the evaluation (for
-# example the master-to-3.x sync branch) live in REQUIRED_REVIEW_EXEMPTIONS
-# in required-reviews.mjs; an exempt PR gets a success status.
+# Every PR is evaluated, whatever its base branch and whether or not its head
+# is a fork. Two PR classes make this necessary: GitHub applies the ruleset of
+# a stack's target branch to every PR in the stack, so a PR into a feature
+# branch can be gated by the master ruleset; and a fork PR cannot write the
+# status from a fork-context run. Every path that reports the status runs
+# in the base repository context (secrets, write token). The routes that
+# skip the evaluation (for example the master-to-3.x sync branch) live in
+# REQUIRED_REVIEW_EXEMPTIONS in required-reviews.mjs; an exempt PR gets a
+# success status.
 #
 # Triggers
-#   - pull_request (opened/synchronize/reopened/ready_for_review, and edited
-#     when the base branch changes): re-evaluates whenever the changeset can
-#     change. A retargeted PR keeps its head SHA, so a verdict computed against
-#     the old base must not survive the retarget. Skipped for fork PRs
-#     (no secrets): their status stays "expected" — fail closed — until the
-#     first review event reports it.
+#   - pull_request_target (opened/synchronize/reopened/ready_for_review, and
+#     edited when the base branch changes): re-evaluates whenever the
+#     changeset can change, for same-repo and fork heads alike. A retargeted
+#     PR keeps its head SHA, so a verdict computed against the old base must
+#     not survive the retarget.
 #   - pull_request_review (submitted/dismissed): re-evaluates when approvals
-#     change. A privileged event (base repo context, secrets), so it covers
-#     fork PRs too — and approvals can only change through review events.
+#     change on a same-repo PR. A fork PR's review event runs without secrets
+#     and with a read-only token, so this path skips fork heads.
 #     Comment-only reviews are skipped: they cannot change approvals, and
 #     review bots submit one after every push.
+#   - workflow_run of "CI: Pull Request Review" (completed): the fork
+#     counterpart of pull_request_review. That workflow runs on every review
+#     event; its completion arrives here in the base repository context. The
+#     PR is looked up from the triggering run's head. Same-repo heads skip
+#     this path, which pull_request_review already covers.
 #   - merge_group: reports success on the queue head without re-evaluating.
 #     A PR cannot enter the queue unless this status is green on its head,
 #     and the queue does not change approvals.
-#   - workflow_dispatch: manual re-check (e.g. after a team membership change,
-#     or a fork PR push after an approval).
+#   - workflow_dispatch: manual re-check (e.g. after a team membership
+#     change).
 #
 # The checkout below always pins master, never the base branch or the PR
 # merge ref: the scripts, the OWNERS file and the exemption routes are trusted
 # input, so a PR cannot lift its own review requirement or reach the
 # status-writing token. Any branch can be a base, and anyone with push access
-# can edit a branch, so only master is trusted.
+# can edit a branch, so only master is trusted. This is also what makes
+# pull_request_target safe here: no step checks out or runs PR code.
 #
 # Output
 #   - A commit status named "Required Reviews" on the PR head SHA (or
@@ -46,10 +57,13 @@ run-name: "${{ github.event_name == 'workflow_dispatch' && format('CI: Owners Re
 #     stale verdict in effect. The job itself only fails on errors.
 
 on:
-  pull_request:
+  pull_request_target:
     types: [opened, synchronize, reopened, ready_for_review, edited]
   pull_request_review:
     types: [submitted, dismissed]
+  workflow_run:
+    workflows: ['CI: Pull Request Review']
+    types: [completed]
   merge_group:
   workflow_dispatch:
     inputs:
@@ -96,23 +110,29 @@ jobs:
 
   required-reviews:
     name: Check required reviews
-    # Fork PRs are skipped on pull_request (no secrets for the app token);
-    # pull_request_review covers them. Of the edited events only a base
-    # change matters; title and body edits do not change the verdict.
+    # Of the edited events only a base change matters; title and body edits
+    # do not change the verdict. Review events split by head: same-repo
+    # heads come in through pull_request_review, fork heads through the
+    # workflow_run of the review workflow.
     if: >-
       github.event_name != 'merge_group' &&
-      (github.event_name != 'pull_request' ||
-       (github.event.pull_request.head.repo.full_name == github.repository &&
-        (github.event.action != 'edited' || github.event.changes.base))) &&
+      (github.event_name != 'pull_request_target' ||
+       github.event.action != 'edited' || github.event.changes.base) &&
       (github.event_name != 'pull_request_review' ||
-       github.event.review.state != 'commented')
+       (github.event.pull_request.head.repo.full_name == github.repository &&
+        github.event.review.state != 'commented')) &&
+      (github.event_name != 'workflow_run' ||
+       (github.event.workflow_run.event == 'pull_request_review' &&
+        github.event.workflow_run.head_repository.full_name != github.repository))
     runs-on: ubuntu-latest
     timeout-minutes: 5
     # Job-level, not workflow-level: a run whose job is skipped must not
-    # cancel an in-flight evaluation, or the status stays pending.
+    # cancel an in-flight evaluation, or the status stays pending. Keyed by
+    # head SHA, so the paths above share one group per PR head.
     concurrency:
       group: >-
-        owners-required-reviews-${{ github.event.pull_request.number
+        owners-required-reviews-${{ github.event.pull_request.head.sha
+          || github.event.workflow_run.head_sha
           || inputs.pr_number
           || github.ref }}
       cancel-in-progress: true
@@ -140,7 +160,7 @@ jobs:
         if: github.event_name != 'workflow_dispatch'
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
-          SHA: ${{ github.event.pull_request.head.sha }}
+          SHA: ${{ github.event.pull_request.head.sha || github.event.workflow_run.head_sha }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           gh api "repos/${GITHUB_REPOSITORY}/statuses/${SHA}" \
@@ -159,33 +179,7 @@ jobs:
           persist-credentials: false
           sparse-checkout: .github
 
-      # Bootstrap: the checkout is master. Until the action exists there,
-      # there is nothing to run. Report success so the PR that introduces it
-      # can merge; the check is enforced again from the next PR.
-      - name: Check for the enforcement action on master
-        id: bootstrap
-        shell: bash
-        run: |
-          if [ -f .github/actions/run-workflow-script/action.yml ]; then
-            echo "ready=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "ready=false" >> "$GITHUB_OUTPUT"
-            echo "No enforcement action on master; nothing to enforce."
-          fi
-
-      - name: Report the bootstrap state
-        if: steps.bootstrap.outputs.ready != 'true' && github.event.pull_request.head.sha != ''
-        env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
-          SHA: ${{ github.event.pull_request.head.sha }}
-        run: |
-          gh api "repos/${GITHUB_REPOSITORY}/statuses/${SHA}" \
-            -f state=success \
-            -f context='Required Reviews' \
-            -f description='Owners enforcement is not on master yet'
-
       - name: Evaluate required reviews
-        if: steps.bootstrap.outputs.ready == 'true'
         uses: ./.github/actions/run-workflow-script
         env:
           PULL_REQUEST_NUMBER: ${{ inputs.pr_number || '' }}
