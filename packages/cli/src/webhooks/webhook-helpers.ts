@@ -1155,7 +1155,7 @@ export async function executeWebhook(
 			pending = Container.get(EngineV2WebhookResponder).waitForResponse(engineExecutionId, {
 				responseMode,
 				responsePromise,
-				httpResponse: res,
+				responseStream: res,
 			});
 			runData.engineExecutionId = engineExecutionId;
 		}

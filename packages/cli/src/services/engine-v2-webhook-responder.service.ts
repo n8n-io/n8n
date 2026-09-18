@@ -8,7 +8,6 @@ import type {
 	Unsubscribe,
 } from '@n8n/engine';
 import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
-import type express from 'express';
 import type {
 	IExecuteResponsePromiseData,
 	IN8nHttpFullResponse,
@@ -21,9 +20,11 @@ import type { ExecutionIdV2 } from '@/executions/execution-id';
 import { PendingWebhookResponse } from '@/services/pending-webhook-response';
 import { EXECUTION_ENDED_WITHOUT_RESPONSE } from '@/webhooks/constants';
 
-/** `flush` is added at runtime by the Express `compression` middleware. */
-function flushResponse(res: { flush?: () => void }): void {
-	if (typeof res.flush === 'function') res.flush();
+/** The operations that the responder needs to write a streamed answer. */
+export interface ResponseStream {
+	write(chunk: string): void;
+	end(): void;
+	flush?: () => void;
 }
 
 /** What the request waiting on a run needs, beyond the run's own answer. */
@@ -32,7 +33,7 @@ export interface WaitOptions {
 	/** Set for `responseNode`: what the Respond node's answer resolves. */
 	responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>;
 	/** Set for `streaming`: chunks are written to it as they arrive. */
-	httpResponse?: express.Response;
+	responseStream?: ResponseStream;
 }
 
 /** A request that is still open, and the subscription that feeds its answer. */
@@ -124,12 +125,12 @@ export class EngineV2WebhookResponder {
 		response: PendingWebhookResponse,
 		options: WaitOptions,
 	): void {
-		const { responsePromise, httpResponse, responseMode } = options;
+		const { responsePromise, responseStream, responseMode } = options;
 
 		switch (published.type) {
 			case 'failure':
 				responsePromise?.reject(new Error(published.error.message));
-				if (responseMode === 'streaming') httpResponse?.end();
+				if (responseMode === 'streaming') responseStream?.end();
 				response.resolve({
 					status: 'failed',
 					error: { name: published.error.code, message: published.error.message },
@@ -142,9 +143,17 @@ export class EngineV2WebhookResponder {
 				return;
 
 			case 'chunk':
-				if (!httpResponse) return;
-				httpResponse.write(JSON.stringify(published.payload as unknown as StructuredChunk) + '\n');
-				flushResponse(httpResponse);
+				if (!responseStream) {
+					this.logger.error('Received an engine 2.0 chunk without a response stream', {
+						executionId: published.executionId,
+						responseMode,
+					});
+					return;
+				}
+				responseStream.write(
+					JSON.stringify(published.payload as unknown as StructuredChunk) + '\n',
+				);
+				responseStream.flush?.();
 				return;
 
 			case 'ended':
@@ -154,7 +163,7 @@ export class EngineV2WebhookResponder {
 				responsePromise?.resolve(EXECUTION_ENDED_WITHOUT_RESPONSE);
 				// v1 closes the stream in `ActiveExecutions.finalizeExecution`, which a
 				// v2 run has no entry in.
-				if (responseMode === 'streaming') httpResponse?.end();
+				if (responseMode === 'streaming') responseStream?.end();
 				this.onEnded(published, response);
 				return;
 		}
