@@ -2,8 +2,10 @@ import {
 	CreateCredentialPublicDto,
 	CredentialListPublicDto,
 	CredentialPublicDto,
+	DeleteCredentialPublicDto,
 	ListCredentialsQueryDto,
 	UpdateCredentialPublicDto,
+	TransferCredentialPublicDto,
 } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
 import type { AuthenticatedRequest, CredentialsEntity, ICredentialsDb, User } from '@n8n/db';
@@ -15,12 +17,14 @@ import {
 	ApiSummary,
 	ApiTags,
 	Body,
+	Delete,
 	Get,
 	Param,
 	Patch,
 	Post,
 	ProjectScope,
 	PublicApiController,
+	Put,
 	Query,
 } from '@n8n/decorators';
 import { hasGlobalScope } from '@n8n/permissions';
@@ -30,6 +34,7 @@ import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
 import { CredentialsHelper } from '@/credentials-helper';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
@@ -77,6 +82,14 @@ function toCredentialPublicDto(credential: CredentialPublicDtoSource): Credentia
 	};
 }
 
+/** The delete response adds `usageScope` to the standard credential fields. Carry over from legacy EOV handler. */
+function toDeleteCredentialPublicDto(credential: CredentialsEntity): DeleteCredentialPublicDto {
+	return {
+		...toCredentialPublicDto(credential),
+		usageScope: credential.usageScope,
+	};
+}
+
 function toCredentialListItem(credential: CredentialsEntity) {
 	return {
 		id: credential.id,
@@ -101,6 +114,7 @@ export class CredentialsPublicController {
 		private readonly credentialsHelper: CredentialsHelper,
 		private readonly licenseState: LicenseState,
 		private readonly eventService: EventService,
+		private readonly enterpriseCredentialsService: EnterpriseCredentialsService,
 	) {}
 
 	@Get('/')
@@ -361,5 +375,56 @@ export class CredentialsPublicController {
 		updatePayload.updatedAt = new Date();
 
 		return { updatePayload, decryptedDataForDeps };
+	}
+
+	@Delete('/:credentialId')
+	@ApiKeyScope('credential:delete')
+	@ProjectScope('credential:delete')
+	@ApiSummary('Delete credential by ID')
+	@ApiDescription(
+		'Deletes a credential from your instance. You must be the owner of the credential.',
+	)
+	@ApiTags(['Credential'])
+	@ApiResponse(200, DeleteCredentialPublicDto)
+	@ApiErrorResponse(404)
+	async deleteCredential(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('credentialId') credentialId: string,
+	): Promise<DeleteCredentialPublicDto> {
+		const credential = await this.credentialsFinderService.findCredentialForUser(
+			credentialId,
+			req.user,
+			['credential:delete'],
+		);
+
+		if (!credential) {
+			throw new NotFoundError('Not Found');
+		}
+
+		await this.credentialsService.delete(req.user, credentialId);
+
+		return toDeleteCredentialPublicDto(credential);
+	}
+
+	@Put('/:credentialId/transfer')
+	@ApiKeyScope('credential:move')
+	@ProjectScope('credential:move')
+	@ApiSummary('Transfer a credential to another project.')
+	@ApiDescription('Transfer a credential to another project.')
+	@ApiTags(['Credential'])
+	@ApiResponse(204)
+	@ApiErrorResponse(404)
+	async transferCredential(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('credentialId') credentialId: string,
+		@Body body: TransferCredentialPublicDto,
+	): Promise<void> {
+		await this.enterpriseCredentialsService.transferOne(
+			req.user,
+			credentialId,
+			body.destinationProjectId,
+		);
 	}
 }

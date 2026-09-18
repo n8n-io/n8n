@@ -22,6 +22,12 @@ export const credentialPublicSchema = publicApiCredentialResponseSchema.extend({
 
 export class CredentialPublicDto extends Z.class(credentialPublicSchema.shape) {}
 
+export const credentialDeletedPublicSchema = credentialPublicSchema.extend({
+	usageScope: z.enum(['project', 'instance']),
+});
+
+export class DeleteCredentialPublicDto extends Z.class(credentialDeletedPublicSchema.shape) {}
+
 export const credentialListItemPublicSchema = credentialPublicSchema
 	.pick({ id: true, name: true, type: true, createdAt: true, updatedAt: true })
 	.extend({ shared: z.array(credentialSharedPublicSchema) });
@@ -96,4 +102,11 @@ export class UpdateCredentialPublicDto extends Z.class({
 				'If true, unredacts and merges existing credential data with the provided data. ' +
 				'If false, replaces the entire data object.',
 		}),
+}) {}
+
+export class TransferCredentialPublicDto extends Z.class({
+	destinationProjectId: z.string().openapi({
+		description: 'The ID of the project to transfer the credential to.',
+		example: 'VmwOO9HeTEj20kxM',
+	}),
 }) {}
