@@ -8225,6 +8225,7 @@
 	"agents.builder.tools.remove": "Remove tool",
 	"agents.builder.tools.back": "Back to tools",
 	"agents.builder.skills.title": "Skills",
+	"agents.builder.skills.description": "How this agent handles specific tasks",
 	"agents.builder.skills.count": "{count} skill applied | {count} skills applied",
 	"agents.builder.skills.add": "Add skill",
 	"agents.builder.skills.empty": "No skills applied yet.",

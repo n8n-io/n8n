@@ -28,6 +28,7 @@ import AgentBuilderTabPanel from './AgentBuilderTabPanel.vue';
 import AgentPanel from './AgentPanel.vue';
 import AgentEvalsSection from './AgentEvalsSection.vue';
 import AgentPreviewButton from './AgentPreviewButton.vue';
+import AgentSkillsSection from './AgentSkillsSection.vue';
 
 const props = defineProps<{
 	activeMainTab: AgentBuilderMainTab;
@@ -128,6 +129,22 @@ const i18n = useI18n();
 					/>
 
 					<AgentPanel
+						:header="i18n.baseText('agents.builder.skills.title')"
+						:description="i18n.baseText('agents.builder.skills.description')"
+						data-testid="agent-skills-panel"
+					>
+						<AgentSkillsSection
+							:skills="appliedSkills"
+							:disabled="childrenDisabled"
+							:show-label="false"
+							:validation-issues="configValidationIssues ?? []"
+							@open-skill="emit('open-skill', $event)"
+							@add-skill="emit('add-skill')"
+							@remove-skill="emit('remove-skill', $event)"
+						/>
+					</AgentPanel>
+
+					<AgentPanel
 						:header="i18n.baseText('agents.builder.triggers.title')"
 						:description="i18n.baseText('agents.builder.triggers.description')"
 					>
@@ -175,13 +192,11 @@ const i18n = useI18n();
 							:is-published="Boolean(agent?.activeVersionId)"
 							:validation-issues="configValidationIssues ?? []"
 							:agent-unsaved="agentUnsaved"
+							:sections="['tools', 'subAgents', 'tasks']"
 							@open-tool="emit('open-tool', $event)"
-							@open-skill="emit('open-skill', $event)"
 							@add-tool="emit('add-tool', $event)"
-							@add-skill="emit('add-skill')"
 							@update:config="emit('update:config', $event)"
 							@remove-tool="emit('remove-tool', $event)"
-							@remove-skill="emit('remove-skill', $event)"
 						/>
 					</AgentPanel>
 
