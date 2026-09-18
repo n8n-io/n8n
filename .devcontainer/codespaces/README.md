@@ -51,8 +51,8 @@ create an 8-core Codespace by default.
   `pnpm worktree:clean --yes`: a worktree goes when its tree is clean, every
   commit is on a remote, and its PR is merged or closed or it idled for a week
   with no open PR. Anything dirty, unpushed or in use stays. Run
-  `pnpm worktree:clean` in a session to see the report, `--deps` to also drop
-  `node_modules` and build outputs of idle worktrees that are kept.
+  `pnpm worktree:clean` in a session to see the report, `--yes --deps` to also
+  drop `node_modules` and build outputs of idle worktrees that are kept.
 
 ## Configure the local OpenCode harness
 

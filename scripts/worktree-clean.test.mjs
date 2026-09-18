@@ -56,6 +56,11 @@ describe('decide', () => {
 		assert.deepEqual([d.action, d.deleteBranch], ['remove', 'force']);
 	});
 
+	it('keeps a clean idle worktree when the PR lookup failed', () => {
+		const d = decide({ ...clean, prLookupFailed: true, idleDays: 30 }, opts);
+		assert.deepEqual([d.action, d.reason, d.depsCandidate], ['keep', 'PR lookup failed', true]);
+	});
+
 	it('keeps a worktree with an open PR, however idle', () => {
 		const d = decide({ ...clean, pr: { number: 42, state: 'OPEN' }, idleDays: 60 }, opts);
 		assert.deepEqual([d.action, d.reason], ['keep', 'PR #42 is open']);

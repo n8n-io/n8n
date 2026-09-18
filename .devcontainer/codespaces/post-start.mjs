@@ -68,6 +68,15 @@ if (failed.length > 0) {
 	console.error('!! Sessions start without them. Retry with:');
 	console.error('!!   node /workspaces/n8n/.devcontainer/codespaces/post-start.mjs\n');
 }
+// Runs before the worker starts: a turn it dequeues may target one of these
+// worktrees. Nothing else runs in them at container start, so this is the moment to
+// drop the ones whose PR is merged or closed, or that idled for a week untouched.
+// Dirty trees, unpushed commits and open PRs are kept. Report: /tmp/post-start.log.
+const worktreesCleaned = tryRun('worktree cleanup', 'node', [
+	'/workspaces/n8n/scripts/worktree-clean.mjs',
+	'--yes',
+]);
+
 let harness;
 try {
 	const result = installAgentHarness();
@@ -90,14 +99,6 @@ const workerStarted =
 if (!workerStarted && harness.status !== 'active') {
 	console.error('worker start: skipped because the pinned agent harness is unavailable');
 }
-
-// Nothing runs in the worktrees at container start, so this is the safe moment to
-// drop the ones whose PR is merged or closed, or that idled for a week untouched.
-// Dirty trees, unpushed commits and open PRs are kept. Report: /tmp/post-start.log.
-const worktreesCleaned = tryRun('worktree cleanup', 'node', [
-	'/workspaces/n8n/scripts/worktree-clean.mjs',
-	'--yes',
-]);
 
 writeFileSync(
 	STATUS_FILE,

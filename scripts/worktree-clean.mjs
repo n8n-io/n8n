@@ -29,7 +29,7 @@ Flags:
                         removed (default 7)
   --deps                also delete node_modules, dist and .turbo in kept worktrees
                         that idled past --older-than (they reinstall in seconds)
-  --no-gh               skip the PR lookup
+  --no-gh               skip the PR lookup; idle worktrees are then removed on age alone
   --json                print the report as JSON
   -h, --help            show this help
 `;
@@ -68,7 +68,7 @@ export function parsePorcelain(text) {
 /**
  * Decides what to do with one worktree. `info` carries the gathered signals:
  * { missing, locked, inUse (true | false | null = unknown), dirty, unpushed,
- *   pr: { number, state } | null, idleDays }.
+ *   pr: { number, state } | null, prLookupFailed, idleDays }.
  * Returns { action: 'prune' | 'remove' | 'keep', reason, deleteBranch, depsCandidate }.
  */
 export function decide(info, { olderThanDays }) {
@@ -88,6 +88,7 @@ export function decide(info, { olderThanDays }) {
 	if (info.unpushed > 0) {
 		return keep(`${info.unpushed} commit${info.unpushed === 1 ? '' : 's'} not on any remote`, idle);
 	}
+	if (info.prLookupFailed) return keep('PR lookup failed', idle);
 	if (info.pr?.state === 'MERGED') {
 		return { action: 'remove', reason: `PR #${info.pr.number} merged`, deleteBranch: 'force' };
 	}
@@ -155,12 +156,15 @@ function isInside(child, parent) {
 	return child === parent || child.startsWith(parent + sep);
 }
 
-/** Paths of the cwd of every running process, or null when that cannot be read. */
+/**
+ * Paths of the cwd of every running process, or null when that cannot be read.
+ * Includes this process, so the worktree the cleaner runs from is always kept.
+ */
 function processCwds() {
 	if (process.platform === 'linux') {
-		const cwds = [];
+		const cwds = [process.cwd()];
 		for (const pid of readdirSync('/proc')) {
-			if (!/^\d+$/.test(pid) || Number(pid) === process.pid) continue;
+			if (!/^\d+$/.test(pid)) continue;
 			try {
 				cwds.push(readlinkSync(`/proc/${pid}/cwd`));
 			} catch {
@@ -172,11 +176,9 @@ function processCwds() {
 	// macOS: lsof prints `p<pid>` then `n<path>` for each process.
 	const res = spawnSync('lsof', ['-a', '-d', 'cwd', '-Fn'], { encoding: 'utf8' });
 	if (res.status !== 0 && !res.stdout) return null;
-	const cwds = [];
-	let pid = null;
+	const cwds = [process.cwd()];
 	for (const line of res.stdout.split('\n')) {
-		if (line.startsWith('p')) pid = Number(line.slice(1));
-		else if (line.startsWith('n') && pid !== process.pid) cwds.push(line.slice(1));
+		if (line.startsWith('n')) cwds.push(line.slice(1));
 	}
 	return cwds;
 }
@@ -252,6 +254,7 @@ function gather(wt, { root, slug, cwds, useGh, now }) {
 		unpushed: 0,
 		pr: null,
 		prNote: null,
+		prLookupFailed: false,
 		idleDays: null,
 		sizeKb: null,
 	};
@@ -267,8 +270,12 @@ function gather(wt, { root, slug, cwds, useGh, now }) {
 	info.sizeKb = dirSizeKb(wt.path);
 	if (useGh && slug && wt.branch) {
 		const pr = lookupPr(slug, wt.branch);
-		if (pr === undefined) info.prNote = 'gh failed';
-		else info.pr = pr;
+		if (pr === undefined) {
+			info.prNote = 'gh failed';
+			info.prLookupFailed = true;
+		} else {
+			info.pr = pr;
+		}
 	} else if (wt.branch) {
 		info.prNote = 'not checked';
 	}
@@ -279,16 +286,10 @@ function gather(wt, { root, slug, cwds, useGh, now }) {
 // Actions.
 
 function removeWorktree(row, root) {
-	// Our own status check passed, so --force only bypasses git's stricter view of
-	// ignored build outputs. It never deletes uncommitted work.
+	// No --force: git re-checks that the tree is clean at this moment, so work that
+	// appeared since the report stays. Ignored build outputs do not block removal.
 	const res = spawnSync('git', ['worktree', 'remove', row.path], { cwd: root, encoding: 'utf8' });
-	if (res.status !== 0) {
-		const forced = spawnSync('git', ['worktree', 'remove', '--force', row.path], {
-			cwd: root,
-			encoding: 'utf8',
-		});
-		if (forced.status !== 0) throw new Error(forced.stderr.trim() || 'git worktree remove failed');
-	}
+	if (res.status !== 0) throw new Error(res.stderr.trim() || 'git worktree remove failed');
 	if (row.branch && row.deleteBranch) {
 		const flag = row.deleteBranch === 'force' ? '-D' : '-d';
 		const del = spawnSync('git', ['branch', flag, row.branch], { cwd: root, encoding: 'utf8' });
@@ -308,8 +309,18 @@ function pruneDeps(row) {
 		.split('\0')
 		.filter((p) => p && DEPS_DIRS.has(basename(p.replace(/\/$/, ''))))
 		.map((p) => join(row.path, p));
-	for (const target of targets) rmSync(target, { recursive: true, force: true });
-	return `deps: removed ${targets.length} director${targets.length === 1 ? 'y' : 'ies'}`;
+	let failed = 0;
+	for (const target of targets) {
+		try {
+			rmSync(target, { recursive: true, force: true });
+		} catch (error) {
+			failed++;
+			console.error(`${target}: ${error.message}`);
+		}
+	}
+	const removed = targets.length - failed;
+	const summary = `deps: removed ${removed} director${removed === 1 ? 'y' : 'ies'}`;
+	return failed ? `${summary}, ${failed} failed` : summary;
 }
 
 // ---------------------------------------------------------------------------
@@ -360,7 +371,9 @@ export function main(argv = process.argv.slice(2)) {
 
 	const rows = others.map((wt) => {
 		const info = gather(wt, ctx);
-		return { ...info, ...decide(info, { olderThanDays }) };
+		const row = { ...info, ...decide(info, { olderThanDays }) };
+		if (values.deps && row.depsCandidate) row.reason += '; --deps drops node_modules, dist, .turbo';
+		return row;
 	});
 
 	if (values.json) {
