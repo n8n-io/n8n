@@ -118,10 +118,9 @@ export function buildIntegrationConnectionId(integration: IntegrationToolConnect
 
 export function createIntegrationContextTool(params: {
 	descriptor: IntegrationToolConnectionDescriptor;
-	messageContextStore: IntegrationMessageContextStore;
 	queryExecutor: IntegrationContextQueryExecutor;
 }) {
-	const { descriptor, messageContextStore, queryExecutor } = params;
+	const { descriptor, queryExecutor } = params;
 
 	return new Tool(descriptor.contextToolName)
 		.description(buildContextToolDescription(descriptor))
@@ -137,7 +136,6 @@ export function createIntegrationContextTool(params: {
 							result: await executeContextToolOperation({
 								operation,
 								descriptor,
-								messageContextStore,
 								queryExecutor,
 								persistence: ctx.persistence,
 							}),
@@ -151,7 +149,6 @@ export function createIntegrationContextTool(params: {
 			return await executeContextToolOperation({
 				operation: toSingleContextOperation(toolInput),
 				descriptor,
-				messageContextStore,
 				queryExecutor,
 				persistence: ctx.persistence,
 			});

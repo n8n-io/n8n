@@ -2,6 +2,10 @@ import type { InterruptibleToolContext } from '@n8n/agents';
 import { zodToJsonSchema } from '@n8n/ai-utilities/json-schema';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 import { mock } from 'vitest-mock-extended';
+import {
+	encodeIntegrationMessageContext,
+	readIntegrationMessageContext,
+} from '../integration-message-context';
 import type { z } from 'zod';
 
 import {
@@ -11,6 +15,7 @@ import {
 	type IntegrationActionExecutor,
 	type IntegrationContextQueryExecutor,
 	type IntegrationMessageContextStore,
+	type IntegrationMessageContext,
 } from '../integration-tools';
 import { INTEGRATION_ACTION_RESUME_SCHEMA } from '../integration-tool-execution';
 
@@ -74,44 +79,77 @@ describe('integration tools', () => {
 		);
 	});
 
-	it('context tool returns the latest message context for its integration connection', async () => {
-		const messageContextStore = mock<IntegrationMessageContextStore>();
-		messageContextStore.getLatest.mockResolvedValue({
+	it('keeps selected turn contexts separate when the thread context changes', async () => {
+		const first = {
 			integrationConnectionId: 'slack:cred-a',
 			platform: 'slack',
-			target: { type: 'thread', threadId: 'slack:C123:123.456' },
+			target: { type: 'thread' as const, threadId: 'slack:C123:123.456' },
 			messageId: '123.456',
+			interactingUserId: 'user-1',
+			subject: { type: 'issue', id: 'issue-1' },
+			replyTarget: { type: 'thread' as const, threadId: 'slack:C123:123.456' },
 			updatedAt: '2026-05-18T10:00:00.000Z',
-		});
+		};
+		const second = {
+			...first,
+			messageId: '123.789',
+			interactingUserId: 'user-2',
+			subject: { type: 'issue', id: 'issue-2' },
+			replyTarget: { type: 'thread' as const, threadId: 'slack:C456:123.789' },
+		};
+		const turns = [first, second].map((context, index) =>
+			makeInterruptibleCtx({
+				runId: `run-${index}`,
+				persistence: {
+					threadId: 'thread-1',
+					resourceId: 'resource-1',
+					hostMetadata: encodeIntegrationMessageContext(context),
+				},
+			}),
+		);
 		const queryExecutor = mock<IntegrationContextQueryExecutor>();
+		const descriptor = getIntegrationToolConnectionDescriptors([slackA])[0];
 
 		const tool = createIntegrationContextTool({
-			descriptor: getIntegrationToolConnectionDescriptors([slackA])[0],
-			messageContextStore,
+			descriptor,
 			queryExecutor,
 		}).build();
 
-		const result = await tool.handler!(
-			{ query: 'get_current_message_context', input: {} },
-			{ persistence: { threadId: 'thread-1', resourceId: 'resource-1' } },
+		for (const index of [0, 1, 0]) {
+			const result = await tool.handler!(
+				{ query: 'get_current_message_context', input: {} },
+				turns[index],
+			);
+			expect(result).toEqual({ ok: true, context: [first, second][index] });
+		}
+		const sentContext = { ...second, messageId: 'sent-message' };
+		const actionExecutor = mock<IntegrationActionExecutor>();
+		actionExecutor.execute.mockResolvedValue({ ok: true, messageContext: sentContext });
+		const messageContextStore = mock<IntegrationMessageContextStore>();
+		const actionTool = createIntegrationActionTool({
+			descriptor,
+			messageContextStore,
+			actionExecutor,
+		}).build();
+		await actionTool.handler!(
+			{ action: 'respond', input: { message: { text: 'Done' } } },
+			turns[1],
 		);
-
-		expect(result).toEqual({
-			ok: true,
-			context: {
-				integrationConnectionId: 'slack:cred-a',
-				platform: 'slack',
-				target: { type: 'thread', threadId: 'slack:C123:123.456' },
-				messageId: '123.456',
-				updatedAt: '2026-05-18T10:00:00.000Z',
-			},
-		});
+		expect(messageContextStore.setLatest).toHaveBeenCalledWith(
+			'thread-1',
+			'resource-1',
+			sentContext,
+		);
+		for (const index of [1, 0]) {
+			expect(
+				await tool.handler!({ query: 'get_current_message_context', input: {} }, turns[index]),
+			).toEqual({ ok: true, context: [first, sentContext][index] });
+		}
 		expect(queryExecutor.execute).not.toHaveBeenCalled();
 	});
 
 	it('context tool returns the current message subject when available', async () => {
-		const messageContextStore = mock<IntegrationMessageContextStore>();
-		messageContextStore.getLatest.mockResolvedValue({
+		const messageContext: IntegrationMessageContext | null = {
 			integrationConnectionId: 'linear:cred-c',
 			platform: 'linear',
 			target: { type: 'thread', threadId: 'linear:issue-comment-1' },
@@ -128,12 +166,11 @@ describe('integration tools', () => {
 				author: { id: 'user-2', name: 'Ada Lovelace' },
 			},
 			updatedAt: '2026-05-18T10:00:00.000Z',
-		});
+		};
 		const queryExecutor = mock<IntegrationContextQueryExecutor>();
 
 		const tool = createIntegrationContextTool({
 			descriptor: getIntegrationToolConnectionDescriptors([linear])[0],
-			messageContextStore,
 			queryExecutor,
 		}).build();
 		const schema = tool.inputSchema as z.ZodType;
@@ -143,7 +180,13 @@ describe('integration tools', () => {
 
 		const result = await tool.handler!(
 			{ query: 'get_current_subject', input: {} },
-			{ persistence: { threadId: 'thread-1', resourceId: 'resource-1' } },
+			{
+				persistence: {
+					threadId: 'thread-1',
+					resourceId: 'resource-1',
+					hostMetadata: encodeIntegrationMessageContext(messageContext),
+				},
+			},
 		);
 
 		expect(result).toEqual({
@@ -164,15 +207,14 @@ describe('integration tools', () => {
 	});
 
 	it('context tool accepts an argument-free query without an input object', async () => {
-		const messageContextStore = mock<IntegrationMessageContextStore>();
-		messageContextStore.getLatest.mockResolvedValue({
+		const messageContext: IntegrationMessageContext | null = {
 			integrationConnectionId: 'slack:cred-a',
 			platform: 'slack',
 			target: { type: 'thread', threadId: 'slack:C123:123.456' },
 			messageId: '123.456',
 			interactingUserId: 'U123',
 			updatedAt: '2026-05-18T10:00:00.000Z',
-		});
+		};
 		const queryExecutor = mock<IntegrationContextQueryExecutor>();
 		queryExecutor.execute.mockResolvedValue({
 			ok: true,
@@ -181,7 +223,6 @@ describe('integration tools', () => {
 
 		const tool = createIntegrationContextTool({
 			descriptor: getIntegrationToolConnectionDescriptors([slackA])[0],
-			messageContextStore,
 			queryExecutor,
 		}).build();
 		const schema = tool.inputSchema as z.ZodType;
@@ -190,7 +231,13 @@ describe('integration tools', () => {
 
 		const result = await tool.handler!(
 			{ query: 'get_current_user' },
-			{ persistence: { threadId: 'thread-1', resourceId: 'resource-1' } },
+			{
+				persistence: {
+					threadId: 'thread-1',
+					resourceId: 'resource-1',
+					hostMetadata: encodeIntegrationMessageContext(messageContext),
+				},
+			},
 		);
 
 		expect(result).toEqual({
@@ -201,14 +248,17 @@ describe('integration tools', () => {
 			descriptor: expect.any(Object),
 			query: 'get_user',
 			input: { userId: 'U123' },
-			persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
+			persistence: {
+				threadId: 'thread-1',
+				resourceId: 'resource-1',
+				hostMetadata: encodeIntegrationMessageContext(messageContext),
+			},
 		});
 	});
 
 	it('context tool schema requires platform IDs for user and channel lookups', () => {
 		const tool = createIntegrationContextTool({
 			descriptor: getIntegrationToolConnectionDescriptors([slackA])[0],
-			messageContextStore: mock<IntegrationMessageContextStore>(),
 			queryExecutor: mock<IntegrationContextQueryExecutor>(),
 		}).build();
 		const schema = tool.inputSchema as z.ZodType;
@@ -241,7 +291,6 @@ describe('integration tools', () => {
 					'search_channels',
 				],
 			}))[0],
-			messageContextStore: mock<IntegrationMessageContextStore>(),
 			queryExecutor: mock<IntegrationContextQueryExecutor>(),
 		}).build();
 		const schema = tool.inputSchema as z.ZodType;
@@ -280,7 +329,6 @@ describe('integration tools', () => {
 					'search_issues',
 				],
 			}))[0],
-			messageContextStore: mock<IntegrationMessageContextStore>(),
 			queryExecutor: mock<IntegrationContextQueryExecutor>(),
 		}).build();
 		const schema = tool.inputSchema as z.ZodType;
@@ -358,7 +406,6 @@ describe('integration tools', () => {
 			descriptor: getIntegrationToolConnectionDescriptors([linear], 'agent-1', () => ({
 				contextQueries: ['search_teams', 'search_labels'],
 			}))[0],
-			messageContextStore: mock<IntegrationMessageContextStore>(),
 			queryExecutor,
 		}).build();
 		const schema = tool.inputSchema as z.ZodType;
@@ -418,7 +465,6 @@ describe('integration tools', () => {
 
 		const contextTool = createIntegrationContextTool({
 			descriptor,
-			messageContextStore: mock<IntegrationMessageContextStore>(),
 			queryExecutor: mock<IntegrationContextQueryExecutor>(),
 		}).build();
 		const actionTool = createIntegrationActionTool({
@@ -433,7 +479,7 @@ describe('integration tools', () => {
 
 	it('respond returns a structured error when no latest message context exists', async () => {
 		const messageContextStore = mock<IntegrationMessageContextStore>();
-		messageContextStore.getLatest.mockResolvedValue(null);
+		const messageContext: IntegrationMessageContext | null = null;
 		const actionExecutor = mock<IntegrationActionExecutor>();
 
 		const tool = createIntegrationActionTool({
@@ -444,7 +490,13 @@ describe('integration tools', () => {
 
 		const result = await tool.handler!(
 			{ action: 'respond', input: { message: { text: 'Hello' } } },
-			makeInterruptibleCtx(),
+			makeInterruptibleCtx({
+				persistence: {
+					threadId: 'thread-1',
+					resourceId: 'resource-1',
+					hostMetadata: encodeIntegrationMessageContext(messageContext),
+				},
+			}),
 		);
 
 		expect(result).toEqual({
@@ -473,7 +525,7 @@ describe('integration tools', () => {
 			updatedAt: '2026-07-31T10:00:01.000Z',
 		};
 		const messageContextStore = mock<IntegrationMessageContextStore>();
-		messageContextStore.getLatest.mockResolvedValue(inboundContext);
+		const messageContext: IntegrationMessageContext | null = inboundContext;
 		const actionExecutor = mock<IntegrationActionExecutor>();
 		actionExecutor.execute.mockImplementation(async ({ action }) =>
 			action === 'respond'
@@ -496,7 +548,13 @@ describe('integration tools', () => {
 					{ action: 'do_not_respond' },
 				],
 			},
-			{ persistence: { threadId: 'thread-1', resourceId: 'resource-1' } },
+			{
+				persistence: {
+					threadId: 'thread-1',
+					resourceId: 'resource-1',
+					hostMetadata: encodeIntegrationMessageContext(messageContext),
+				},
+			},
 		);
 
 		expect(actionExecutor.execute).toHaveBeenLastCalledWith(
@@ -522,7 +580,7 @@ describe('integration tools', () => {
 			updatedAt: '2026-07-31T10:00:00.000Z',
 		};
 		const messageContextStore = mock<IntegrationMessageContextStore>();
-		messageContextStore.getLatest.mockResolvedValue(inboundContext);
+		const messageContext: IntegrationMessageContext | null = inboundContext;
 		const actionExecutor = mock<IntegrationActionExecutor>();
 		actionExecutor.execute
 			.mockResolvedValueOnce({
@@ -552,7 +610,13 @@ describe('integration tools', () => {
 					{ action: 'do_not_respond' },
 				],
 			},
-			{ persistence: { threadId: 'thread-1', resourceId: 'resource-1' } },
+			{
+				persistence: {
+					threadId: 'thread-1',
+					resourceId: 'resource-1',
+					hostMetadata: encodeIntegrationMessageContext(messageContext),
+				},
+			},
 		);
 
 		expect(actionExecutor.execute).toHaveBeenLastCalledWith(
@@ -1159,6 +1223,8 @@ describe('integration tools', () => {
 				messageId: '123.456',
 			}),
 		);
+
+		expect(readIntegrationMessageContext(ctx.persistence)?.messageId).toBe('123.456');
 		expect(ctx.suspend).toHaveBeenCalledWith(
 			{
 				type: 'integration_action',
@@ -1174,15 +1240,49 @@ describe('integration tools', () => {
 		);
 	});
 
+	it('keeps the turn context and propagates an action context write failure', async () => {
+		const original: IntegrationMessageContext = {
+			integrationConnectionId: 'slack:cred-a',
+			platform: 'slack',
+			target: { type: 'thread', threadId: 'slack:C1:1' },
+			messageId: 'original',
+			updatedAt: '2026-09-18T10:00:00.000Z',
+		};
+		const ctx = makeInterruptibleCtx({
+			persistence: {
+				threadId: 'thread-1',
+				resourceId: 'resource-1',
+				hostMetadata: encodeIntegrationMessageContext(original),
+			},
+		});
+		const messageContextStore = mock<IntegrationMessageContextStore>();
+		messageContextStore.setLatest.mockRejectedValue(new Error('database unavailable'));
+		const actionExecutor = mock<IntegrationActionExecutor>();
+		actionExecutor.execute.mockResolvedValue({
+			ok: true,
+			messageContext: { ...original, messageId: 'sent' },
+		});
+		const tool = createIntegrationActionTool({
+			descriptor: getIntegrationToolConnectionDescriptors([slackA])[0],
+			messageContextStore,
+			actionExecutor,
+		}).build();
+		await expect(
+			tool.handler!({ action: 'respond', input: { message: { text: 'hello' } } }, ctx),
+		).rejects.toThrow('database unavailable');
+		expect(readIntegrationMessageContext(ctx.persistence)).toEqual(original);
+		expect(ctx.suspend).not.toHaveBeenCalled();
+	});
+
 	it('section accessory button sends first, updates message context, then suspends', async () => {
 		const messageContextStore = mock<IntegrationMessageContextStore>();
-		messageContextStore.getLatest.mockResolvedValue({
+		const messageContext: IntegrationMessageContext | null = {
 			integrationConnectionId: 'slack:cred-a',
 			platform: 'slack',
 			target: { type: 'thread', threadId: 'slack:C123:123.456', channelId: 'slack:C123' },
 			messageId: '123.456',
 			updatedAt: '2026-05-18T10:00:00.000Z',
-		});
+		};
 		const actionExecutor = mock<IntegrationActionExecutor>();
 		actionExecutor.execute.mockResolvedValue({
 			ok: true,
@@ -1194,7 +1294,13 @@ describe('integration tools', () => {
 				updatedAt: '2026-05-18T10:01:00.000Z',
 			},
 		});
-		const ctx = makeInterruptibleCtx();
+		const ctx = makeInterruptibleCtx({
+			persistence: {
+				threadId: 'thread-1',
+				resourceId: 'resource-1',
+				hostMetadata: encodeIntegrationMessageContext(messageContext),
+			},
+		});
 
 		const tool = createIntegrationActionTool({
 			descriptor: getIntegrationToolConnectionDescriptors([slackA])[0],
@@ -1332,13 +1438,13 @@ describe('integration tools', () => {
 
 		it('does not bind for respond (operates on an existing thread)', async () => {
 			const messageContextStore = mock<IntegrationMessageContextStore>();
-			messageContextStore.getLatest.mockResolvedValue({
+			const messageContext: IntegrationMessageContext | null = {
 				integrationConnectionId: 'slack:cred-a',
 				platform: 'slack',
 				target: { type: 'thread' as const, threadId: 'slack:C1:1.1', channelId: 'slack:C1' },
 				messageId: '1.1',
 				updatedAt: '2026-08-20T10:00:00.000Z',
-			});
+			};
 			const actionExecutor = mock<IntegrationActionExecutor>();
 			actionExecutor.execute.mockResolvedValue({ ok: true, messageContext: sentContext });
 
@@ -1350,7 +1456,13 @@ describe('integration tools', () => {
 
 			await tool.handler!(
 				{ action: 'respond', input: { message: { text: 'hi' } } },
-				makeInterruptibleCtx(),
+				makeInterruptibleCtx({
+					persistence: {
+						threadId: 'thread-1',
+						resourceId: 'resource-1',
+						hostMetadata: encodeIntegrationMessageContext(messageContext),
+					},
+				}),
 			);
 
 			expect(messageContextStore.bindSession).not.toHaveBeenCalled();
@@ -1402,7 +1514,7 @@ describe('integration tools', () => {
 
 	it('action tool preserves the current subject when updating message context', async () => {
 		const messageContextStore = mock<IntegrationMessageContextStore>();
-		messageContextStore.getLatest.mockResolvedValue({
+		const messageContext: IntegrationMessageContext | null = {
 			integrationConnectionId: 'slack:cred-a',
 			platform: 'slack',
 			target: { type: 'thread', threadId: 'slack:C123:123.456', channelId: 'slack:C123' },
@@ -1414,7 +1526,7 @@ describe('integration tools', () => {
 				title: 'Fix signup',
 			},
 			updatedAt: '2026-05-18T10:00:00.000Z',
-		});
+		};
 		const actionExecutor = mock<IntegrationActionExecutor>();
 		actionExecutor.execute.mockResolvedValue({
 			ok: true,
@@ -1435,7 +1547,13 @@ describe('integration tools', () => {
 
 		const result = await tool.handler!(
 			{ action: 'send_dm', input: { userId: 'slack:U123', message: { text: 'Hello' } } },
-			makeInterruptibleCtx(),
+			makeInterruptibleCtx({
+				persistence: {
+					threadId: 'thread-1',
+					resourceId: 'resource-1',
+					hostMetadata: encodeIntegrationMessageContext(messageContext),
+				},
+			}),
 		);
 
 		expect(messageContextStore.setLatest).toHaveBeenCalledWith(

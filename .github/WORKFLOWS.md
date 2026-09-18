@@ -254,7 +254,7 @@ parallelism). See the `--build-via-mcp` section in
 | `preview:debug`       | `util-codespace-preview.yml` | Re-serves the instance with `N8N_LOG_LEVEL=debug`   |
 
 **Why:** A reviewer gets a running instance of the PR without a Docker build or a
-cloud deploy. The workflow calls `scripts/preview.mjs`, which keeps one codespace
+cloud deploy. The workflow calls `scripts/codespace-preview/preview.mjs`, which keeps one codespace
 for each PR (display name `preview/pr-<number>`) and shares port 5678 with the
 organization. A later push serves the new head in the same box. Removing the
 label, or closing the PR, deletes the box.
@@ -266,7 +266,7 @@ scoped to `n8n-io/n8n` and cannot check out a fork head.
 
 `up` and `refresh` take minutes, and an absent comment looks the same as a broken
 preview. So the comment goes up before the box work starts, as a checklist of the
-phases in `scripts/preview-phases.mjs`, and is edited for each phase and once a
+phases in `scripts/codespace-preview/preview-phases.mjs`, and is edited for each phase and once a
 minute after that. The final URL replaces it in place.
 
 A comment **edit sends no notification** — only a create does. That is what makes a
@@ -310,12 +310,12 @@ A `preview:*` label configures an instance that already exists, so adding or
 removing one re-serves the box instead of creating or deleting it. It does
 nothing on a PR without `codespace-preview`.
 
-The vocabulary lives in `scripts/preview-labels.mjs`, which both ends import:
+The vocabulary lives in `scripts/codespace-preview/preview-labels.mjs`, which both ends import:
 `preview.mjs` turns the PR's labels into slugs, and `preview-serve.mjs` turns
 those slugs into environment inside the box. Add a toggle there, in one place.
 
 Two things cross the gap, and both are shape-checked rather than trusted: a
-`preview:*` slug, and a phase key from `scripts/preview-phases.mjs`. The `gh
+`preview:*` slug, and a phase key from `scripts/codespace-preview/preview-phases.mjs`. The `gh
 codespace ssh` command is a shell string that appears in the box's process list, so
 a value is never passed through it — `preview:enterprise` resolves to a licence key
 inside the box, not on the runner.
@@ -336,7 +336,7 @@ in this repository, so that is the set of people who already have write access.
 #### Preview environment from a webhook
 
 A preview can also take environment from an n8n webhook we control, so a value
-can change without a commit and a merge. `scripts/preview-remote-env.mjs` fetches
+can change without a commit and a merge. `scripts/codespace-preview/preview-remote-env.mjs` fetches
 it, and `preview-serve.mjs` hands the result to the backend.
 
 It needs three **Codespaces** secrets on `n8n-io/n8n`, again not Actions secrets:
@@ -617,18 +617,21 @@ Push to master/1.x
 
 ## v3 development (master + 3.x)
 
+The sync runs automation code from the triggering `master` SHA while its working checkout
+stays on `3.x`.
+
 During the v3 release window, `master` carries normal feature work (behind opt-in
 flags) and the long-lived `3.x` branch carries breaking changes. `util-sync-master-to-3x.yml`
 syncs daily by **replaying the `3.x`-only commits onto `master` and force-pushing `3.x`**, so a
 clean sync adds no commit and nothing is squashed. What it pushes is always verified to be
 exactly the tree a merge of `3.x` and `master` produces, and marker-free. Conflicts confined
-to mechanical, tool-generated files (the pnpm lockfile, bot-maintained data files — see
-`MECHANICAL_PATHS` in `sync-master-to-3x.mjs`) are auto-resolved during the replay; the tree
-check then applies to every path except those files. On a real code conflict `3.x` is left
-untouched and a draft PR carrying the conflict markers (labeled `automation:v3-sync`, with
-mechanical files pre-resolved) is opened on `sync/master-to-3x`, naming both ends of the
-conflict — the breaking-commit authors and the `master` commits that touched the same files
-— via `sync-conflict-owners.mjs`, posting to `#alerts-v3-sync` and pausing further syncs
+to non-lockfile mechanical files (bot-maintained data files — see `MECHANICAL_PATHS` in
+`sync-master-to-3x.mjs`) are auto-resolved during the replay. On a code or `pnpm-lock.yaml`
+conflict, `3.x` is left untouched and a draft PR carrying the conflict markers (labeled
+`automation:v3-sync`, with other mechanical files pre-resolved) is opened on
+`sync/master-to-3x`. The lockfile is always left for the resolver. The PR names both ends of
+the conflict — the breaking-commit authors and the `master` commits that touched the same
+files — via `sync-conflict-owners.mjs`, posts to `#alerts-v3-sync`, and pauses further syncs
 until it is resolved and merged normally. Delete/modify conflicts have no markers to carry,
 so they are resolved toward `3.x` and listed as an explicit decision in the PR body.
 `build-v3-nightly.yml` publishes `n8nio/n8n:v3-nightly[-<date>]` images from `3.x`
@@ -799,11 +802,11 @@ Scripts in `.github/scripts/`:
 | Script                          | Purpose                                                                 | Called By                      |
 |---------------------------------|-------------------------------------------------------------------------|--------------------------------|
 | `codespace-preview.mjs`         | Map a `pull_request` event or a manual operation onto a preview operation, comment the result | `util-codespace-preview.yml` |
-| `../../scripts/preview.mjs`     | One codespace for each PR: `up`, `refresh`, `down`, `ls`. `--json` for CI | `codespace-preview.mjs`, developers |
-| `../../scripts/preview-remote-env.mjs` | Fetch extra environment for a preview from the webhook, inside the box | `../../scripts/preview-serve.mjs` |
-| `../../scripts/preview-phases.mjs` | The phase vocabulary and its one-line marker, so the runner, the box and the comment cannot drift | `codespace-preview.mjs`, `../../scripts/preview.mjs`, `../../scripts/preview-serve.mjs` |
+| `../../scripts/codespace-preview/preview.mjs`     | One codespace for each PR: `up`, `refresh`, `down`, `ls`. `--json` for CI | `codespace-preview.mjs`, developers |
+| `../../scripts/codespace-preview/preview-remote-env.mjs` | Fetch extra environment for a preview from the webhook, inside the box | `../../scripts/codespace-preview/preview-serve.mjs` |
+| `../../scripts/codespace-preview/preview-phases.mjs` | The phase vocabulary and its one-line marker, so the runner, the box and the comment cannot drift | `codespace-preview.mjs`, `../../scripts/codespace-preview/preview.mjs`, `../../scripts/codespace-preview/preview-serve.mjs` |
 
-`scripts/preview.mjs` is also the developer entry point (`pnpm preview up <pr>`).
+`scripts/codespace-preview/preview.mjs` is also the developer entry point (`pnpm preview up <pr>`).
 In `--json` mode stdout carries one line for each phase and then the report object,
 and all human progress goes to stderr. So a workflow can follow a run that also
 streams an in-box build log. The reader tells the two apart by the `url` field: the
@@ -886,14 +889,42 @@ PR changes and review events, and reports a commit status
 named **Required Reviews** on the head SHA. A missing approval reports
 `pending` ("Waiting for approval from: …"), not `failure`, so an unreviewed PR
 does not show red CI; any non-success state blocks the merge equally. The
-ruleset for `master` must list
-that status as a required check for the block to take effect. Merge-queue runs
-report success on the queue head without re-evaluating: a PR cannot enter the
-queue unless the status is green on its head, and the queue does not change
-approvals.
+ruleset for a branch must list that status as a required check for the block
+to take effect. Merge-queue runs report success on the queue head without
+re-evaluating: a PR cannot enter the queue unless the status is green on its
+head, and the queue does not change approvals.
 
-The workflow reads OWNERS and its scripts from the base branch only, so a PR
-cannot lift its own review requirement.
+The status is evaluated for a PR into any base branch, from a same-repo head
+or a fork. Both matter because the ruleset that gates a PR is not always the
+one on its base branch: GitHub applies the ruleset of a stack's target branch
+to every PR in the stack, so a stacked PR into a feature branch is gated by
+the `master` ruleset. A required status that no run ever writes leaves the PR
+blocked on "Expected". Routes that skip the evaluation are listed in
+`REQUIRED_REVIEW_EXEMPTIONS` in
+`required-reviews.mjs`. An entry is `<head> -> <base>` or just `<base>`
+(any head); `*` matches any run of characters. An exempt PR reports
+`success` with the route in the description. Only heads in this repository
+can match, so a fork branch with a matching name is still evaluated. Add a
+route only when every commit it carries was already reviewed elsewhere, as
+with `sync/master-to-3x -> 3.x`: its commits landed on `master` first.
+
+The workflow reads OWNERS, its scripts and the exemption routes from `master`
+only, never from the base branch or the PR: any writable branch can be a base,
+so only `master` is trusted input. A PR cannot lift its own review
+requirement. A retarget re-evaluates the PR, so a verdict computed against the
+old base does not carry over.
+
+Every path that writes the status runs in the base repository context, because
+a fork-context run has no secrets and a read-only token. PR changes arrive
+through `pull_request_target`, which is safe here because no step checks out
+or runs PR code. Review events on a same-repo PR arrive through
+`pull_request_review`. Review events on a fork PR arrive through the
+`workflow_run` of `ci-pull-request-review.yml`, which runs on every submitted
+or dismissed review; the owners workflow looks the PR up from that run's head
+and skips same-repo heads, which the direct event already covers. A first
+contribution whose runs still wait for approval gets no review-event
+re-evaluation until a maintainer approves the runs; `workflow_dispatch` with
+the PR number is the manual fallback.
 
 ### Transition from CODEOWNERS
 

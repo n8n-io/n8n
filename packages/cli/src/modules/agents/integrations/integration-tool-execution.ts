@@ -13,6 +13,11 @@ import {
 	type IntegrationCardComponent,
 } from './integration-tool-definitions';
 import { INTEGRATION_ERROR_CODES } from './integration-error-codes';
+import {
+	isIntegrationMessageContext,
+	readIntegrationMessageContext,
+	replaceIntegrationMessageContext,
+} from './integration-message-context';
 import type {
 	IntegrationAction,
 	IntegrationActionExecutor,
@@ -31,11 +36,10 @@ export const INTEGRATION_ACTION_RESUME_SCHEMA = z.record(z.string(), z.unknown()
 export async function executeContextToolOperation(params: {
 	operation: RawContextToolOperation;
 	descriptor: IntegrationToolConnectionDescriptor;
-	messageContextStore: IntegrationMessageContextStore;
 	queryExecutor: IntegrationContextQueryExecutor;
 	persistence: ToolContext['persistence'];
 }): Promise<unknown> {
-	const { operation, descriptor, messageContextStore, queryExecutor, persistence } = params;
+	const { operation, descriptor, queryExecutor, persistence } = params;
 
 	if (isCurrentContextQuery(operation.query)) {
 		if (!persistence) {
@@ -47,7 +51,7 @@ export async function executeContextToolOperation(params: {
 				},
 			};
 		}
-		const context = await messageContextStore.getLatest(persistence.threadId);
+		const context = readIntegrationMessageContext(persistence);
 		if (!context || context.integrationConnectionId !== descriptor.integrationConnectionId) {
 			if (operation.query === 'get_current_message_context') {
 				return { ok: true, context: null };
@@ -121,14 +125,10 @@ export async function executeActionToolBatch(params: {
 	ctx: ToolContext;
 }): Promise<unknown> {
 	const { operations, descriptor, messageContextStore, actionExecutor, ctx } = params;
-	let currentMessageContext =
-		ctx.persistence !== undefined
-			? await getOptionalCurrentContext({
-					descriptor,
-					messageContextStore,
-					threadId: ctx.persistence.threadId,
-				})
-			: undefined;
+	let currentMessageContext = getOptionalCurrentContext({
+		descriptor,
+		persistence: ctx.persistence,
+	});
 
 	const results: Array<{ action: IntegrationAction; result: unknown }> = [];
 	for (const operation of operations) {
@@ -222,22 +222,14 @@ export async function executeActionToolOperation(params: {
 	let currentMessageContext = params.currentMessageContext;
 	if (operation.action === 'respond') {
 		if (!currentMessageContext) {
-			const contextResult = await getRespondContext({
-				descriptor,
-				messageContextStore,
-				persistence,
-			});
+			const contextResult = getRespondContext({ descriptor, persistence });
 			if (!contextResult.ok) {
 				return contextResult;
 			}
 			currentMessageContext = contextResult.context;
 		}
 	} else if (!currentMessageContext && persistence) {
-		currentMessageContext = await getOptionalCurrentContext({
-			descriptor,
-			messageContextStore,
-			threadId: persistence.threadId,
-		});
+		currentMessageContext = getOptionalCurrentContext({ descriptor, persistence });
 	}
 
 	const result = await actionExecutor.execute({
@@ -260,6 +252,7 @@ export async function executeActionToolOperation(params: {
 			persistence.resourceId,
 			messageContext,
 		);
+		replaceIntegrationMessageContext(persistence, messageContext);
 		// Task-run sends bind the outbound thread so inbound replies continue
 		// that task session. Chat mentions stay on their own thread.
 		// respond/edit/reaction operate on existing threads and do not bind.
@@ -373,42 +366,23 @@ function extractSuccessfulMessageContext(result: unknown): IntegrationMessageCon
 	return isIntegrationMessageContext(messageContext) ? messageContext : undefined;
 }
 
-function isIntegrationMessageContext(value: unknown): value is IntegrationMessageContext {
-	return (
-		isRecord(value) &&
-		typeof value.integrationConnectionId === 'string' &&
-		typeof value.platform === 'string' &&
-		isRecord(value.target) &&
-		(value.agentUserId === undefined || typeof value.agentUserId === 'string') &&
-		typeof value.updatedAt === 'string'
-	);
-}
-
-async function getOptionalCurrentContext(params: {
+function getOptionalCurrentContext(params: {
 	descriptor: IntegrationToolConnectionDescriptor;
-	messageContextStore: IntegrationMessageContextStore;
-	threadId: string;
-}): Promise<IntegrationMessageContext | undefined> {
-	try {
-		const context = await params.messageContextStore.getLatest(params.threadId);
-		if (context?.integrationConnectionId !== params.descriptor.integrationConnectionId) {
-			return undefined;
-		}
-		return context;
-	} catch {
-		return undefined;
-	}
-}
-
-async function getRespondContext(params: {
-	descriptor: IntegrationToolConnectionDescriptor;
-	messageContextStore: IntegrationMessageContextStore;
 	persistence: ToolContext['persistence'];
-}): Promise<
+}): IntegrationMessageContext | undefined {
+	const context = readIntegrationMessageContext(params.persistence);
+	return context?.integrationConnectionId === params.descriptor.integrationConnectionId
+		? context
+		: undefined;
+}
+
+function getRespondContext(params: {
+	descriptor: IntegrationToolConnectionDescriptor;
+	persistence: ToolContext['persistence'];
+}):
 	| { ok: true; context: IntegrationMessageContext }
-	| { ok: false; error: { code: string; message: string } }
-> {
-	const { descriptor, messageContextStore, persistence } = params;
+	| { ok: false; error: { code: string; message: string } } {
+	const { descriptor, persistence } = params;
 	if (!persistence) {
 		return {
 			ok: false,
@@ -419,7 +393,7 @@ async function getRespondContext(params: {
 		};
 	}
 
-	const context = await messageContextStore.getLatest(persistence.threadId);
+	const context = readIntegrationMessageContext(persistence);
 	if (!context) {
 		return {
 			ok: false,

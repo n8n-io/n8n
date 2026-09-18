@@ -12,6 +12,7 @@ import {
 	applyCredentialHints,
 	applyNodeChanges,
 	applyNodeCredentials,
+	applyNodeParameters,
 	buildCompletedReport,
 	createCredentialCache,
 	stripStaleCredentialsFromWorkflow,
@@ -1259,6 +1260,73 @@ describe('analyzeWorkflow', () => {
 // applyNodeChanges
 // ---------------------------------------------------------------------------
 
+describe.each([
+	{
+		name: 'applyNodeCredentials',
+		apply: async (context: InstanceAiContext) =>
+			await applyNodeCredentials(context, 'wf-1', { Slack: { slackApi: 'cred-1' } }),
+	},
+	{
+		name: 'applyNodeParameters',
+		apply: async (context: InstanceAiContext) =>
+			await applyNodeParameters(context, 'wf-1', { Slack: { channel: 'updated' } }),
+	},
+	{
+		name: 'applyNodeChanges',
+		apply: async (context: InstanceAiContext) =>
+			await applyNodeChanges(context, 'wf-1', { Slack: { slackApi: 'cred-1' } }),
+	},
+])('$name save state', ({ apply }) => {
+	function setup() {
+		const context = createMockContext();
+		vi.mocked(context.workflowService.getAsWorkflowJSON).mockResolvedValue(
+			makeWorkflowJSON([makeNode()]),
+		);
+		vi.mocked(context.credentialService.get).mockResolvedValue({
+			id: 'cred-1',
+			name: 'My Slack',
+			type: 'slackApi',
+		});
+		return context;
+	}
+
+	it.each([
+		{ activeVersionId: null, live: 'unpublished' },
+		{ activeVersionId: 'v-live', live: 'stale' },
+	])('returns the saved revision with $live state', async ({ activeVersionId, live }) => {
+		const context = setup();
+		vi.mocked(context.workflowService.updateFromWorkflowJSON).mockResolvedValue({
+			id: 'wf-1',
+			versionId: 'v-saved',
+			activeVersionId,
+			checksum: 'saved-checksum',
+		} as never);
+
+		const result = await apply(context);
+
+		expect(result).toMatchObject({
+			applied: ['Slack'],
+			failed: [],
+			publishState: { savedVersionId: 'v-saved', activeVersionId, live },
+		});
+		expect(context.workflowService.getAsWorkflowJSON).toHaveBeenCalledTimes(1);
+	});
+
+	it('does not report a revision when saving fails', async () => {
+		const context = setup();
+		vi.mocked(context.workflowService.updateFromWorkflowJSON).mockRejectedValue(
+			new Error('Save failed'),
+		);
+
+		const result = await apply(context);
+
+		expect(result.applied).toEqual([]);
+		expect(result.failed).toHaveLength(1);
+		expect(result).not.toHaveProperty('publishState');
+		expect(result).not.toHaveProperty('publishStateNote');
+	});
+});
+
 describe('applyNodeChanges', () => {
 	let context: InstanceAiContext;
 
@@ -1293,6 +1361,33 @@ describe('applyNodeChanges', () => {
 		expect(result.failed).toHaveLength(0);
 		// Single save for both changes
 		expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenCalledTimes(1);
+	});
+
+	it('reports the saved revision when only some requested nodes exist', async () => {
+		vi.mocked(context.workflowService.getAsWorkflowJSON).mockResolvedValue(
+			makeWorkflowJSON([makeNode()]),
+		);
+		vi.mocked(context.workflowService.updateFromWorkflowJSON).mockResolvedValue({
+			id: 'wf-1',
+			versionId: 'v-saved',
+			activeVersionId: 'v-live',
+			checksum: 'saved-checksum',
+		} as never);
+
+		const result = await applyNodeChanges(context, 'wf-1', undefined, {
+			Slack: { channel: 'updated' },
+			Missing: { channel: 'updated' },
+		});
+
+		expect(result.applied).toEqual(['Slack']);
+		expect(result.failed).toEqual([
+			{ nodeName: 'Missing', error: 'Node "Missing" was not found in the workflow' },
+		]);
+		expect(result.publishState).toEqual({
+			live: 'stale',
+			savedVersionId: 'v-saved',
+			activeVersionId: 'v-live',
+		});
 	});
 
 	it('reports failures when credential is not found', async () => {
