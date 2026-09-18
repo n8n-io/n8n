@@ -113,6 +113,7 @@ describe('getDatabricksTokenProvider', () => {
 			validateUrl: vi.fn(),
 			validateRedirectSync: vi.fn(),
 			createSecureLookup: vi.fn(),
+			validateConnectionHost: vi.fn(),
 		};
 		const { getToken } = getDatabricksTokenProvider(mockCtx, mockCredential, egressFilter);
 

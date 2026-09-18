@@ -7,6 +7,7 @@ const mockDeleteThread = vi.fn();
 const mockDeleteThreadsByResourceIdPrefix = vi.fn();
 const mockDeleteThreadsByResourceId = vi.fn();
 const mockListThreads = vi.fn();
+const mockListThreadHistory = vi.fn();
 const mockSaveThreadWithProject = vi.fn();
 const mockGetThreadProjectId = vi.fn();
 const mockSaveMessages = vi.fn();
@@ -18,6 +19,7 @@ const mockAgentMemory = {
 	deleteThreadsByResourceIdPrefix: mockDeleteThreadsByResourceIdPrefix,
 	deleteThreadsByResourceId: mockDeleteThreadsByResourceId,
 	listThreads: mockListThreads,
+	listThreadHistory: mockListThreadHistory,
 	saveThreadWithProject: mockSaveThreadWithProject,
 	getThreadProjectId: mockGetThreadProjectId,
 	saveMessages: mockSaveMessages,
@@ -122,6 +124,48 @@ function makeThread(id: string, updatedAt: string) {
 		updatedAt: new Date(updatedAt),
 	};
 }
+
+describe('InstanceAiMemoryService.listThreadHistory', () => {
+	beforeEach(() => {
+		mockListThreadHistory.mockReset();
+	});
+
+	it('encodes the last returned row as the cursor and stops on the final page', async () => {
+		const rows = ['c', 'b', 'a'].map((id) => makeThread(id, '2026-02-01T00:00:00.000Z'));
+		mockListThreadHistory.mockResolvedValueOnce(rows).mockResolvedValueOnce([rows[2]]);
+		const service = createService();
+		const first = await service.listThreadHistory('user-1', { limit: 2, search: 'invoice' });
+		expect(first.threads.map((thread) => thread.id)).toEqual(['c', 'b']);
+		expect(first.hasMore).toBe(true);
+		expect(first.nextCursor).not.toBeNull();
+		const second = await service.listThreadHistory('user-1', {
+			limit: 2,
+			search: 'invoice',
+			cursor: first.nextCursor!,
+		});
+		expect(mockListThreadHistory).toHaveBeenNthCalledWith(1, 'user-1', 2, 'invoice', undefined);
+		expect(mockListThreadHistory).toHaveBeenNthCalledWith(2, 'user-1', 2, 'invoice', {
+			id: 'b',
+			updatedAt: rows[1].updatedAt,
+		});
+		expect(second).toMatchObject({ hasMore: false, nextCursor: null });
+		expect(second.threads.map((thread) => thread.id)).toEqual(['a']);
+	});
+
+	it('returns an empty final page for a search with no matches', async () => {
+		mockListThreadHistory.mockResolvedValueOnce([]);
+		expect(
+			await createService().listThreadHistory('user-1', { limit: 30, search: 'missing' }),
+		).toEqual({ threads: [], hasMore: false, nextCursor: null });
+	});
+
+	it('rejects a malformed cursor before querying storage', async () => {
+		await expect(
+			createService().listThreadHistory('user-1', { limit: 30, cursor: 'invalid' }),
+		).rejects.toThrow('Invalid thread history cursor');
+		expect(mockListThreadHistory).not.toHaveBeenCalled();
+	});
+});
 
 describe('InstanceAiMemoryService.getRichMessages', () => {
 	beforeEach(() => {

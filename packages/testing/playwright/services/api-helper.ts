@@ -7,6 +7,7 @@ import type {
 	InstanceAiThreadInfo,
 } from '@n8n/api-types';
 import { request, type APIRequestContext } from '@playwright/test';
+import type { IWorkflowSettings } from 'n8n-workflow';
 import { setTimeout as wait } from 'node:timers/promises';
 
 import type { UserCredentials } from '../config/test-users';
@@ -35,6 +36,14 @@ import { UserApiHelper, type TestUser } from './user-api-helper';
 import { VariablesApiHelper } from './variables-api-helper';
 import { WebhookApiHelper } from './webhook-api-helper';
 import { WorkflowApiHelper } from './workflow-api-helper';
+
+export interface ApiHelpersOptions {
+	/**
+	 * Settings merged over every workflow this helper creates. Set per stack, so
+	 * a project that runs engine 2.0 routes every workflow to it.
+	 */
+	workflowSettings?: Partial<IWorkflowSettings>;
+}
 
 export interface LoginResponseData {
 	id: string;
@@ -90,7 +99,10 @@ export class ApiHelpers {
 
 	publicApi: PublicApiHelper;
 
-	constructor(requestContext: APIRequestContext) {
+	constructor(
+		requestContext: APIRequestContext,
+		readonly options: ApiHelpersOptions = {},
+	) {
 		this.request = requestContext;
 		this.workflows = new WorkflowApiHelper(this);
 		this.webhooks = new WebhookApiHelper(this);
@@ -360,6 +372,24 @@ export class ApiHelpers {
 		return data.activeModules ?? [];
 	}
 
+	/**
+	 * The engine the editor evaluates expressions with
+	 * (`N8N_EXPRESSION_ENGINE_FRONTEND`). Read from the instance rather than the
+	 * env, so a spec can skip when the instance does not run the engine it needs.
+	 */
+	async getFrontendExpressionEngine(): Promise<string | undefined> {
+		const response = await this.request.get('/rest/settings');
+
+		if (!response.ok()) {
+			throw new TestError(
+				`GET /rest/settings failed (${response.status()}): ${await response.text()}`,
+			);
+		}
+
+		const { data } = await response.json();
+		return data.expressionEngine;
+	}
+
 	// ===== CONVENIENCE METHODS =====
 
 	async enableFeature(feature: string): Promise<void> {
@@ -393,7 +423,7 @@ export class ApiHelpers {
 	 */
 	async createApiForUser(user: Pick<TestUser, 'email' | 'password'>): Promise<ApiHelpers> {
 		const userContext = await request.newContext();
-		const userApi = new ApiHelpers(userContext);
+		const userApi = new ApiHelpers(userContext, this.options);
 		await userApi.login({ email: user.email, password: user.password });
 		return userApi;
 	}

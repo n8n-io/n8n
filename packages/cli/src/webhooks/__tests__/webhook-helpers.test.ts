@@ -37,6 +37,7 @@ import type {
 } from 'n8n-workflow';
 import {
 	FORM_NODE_TYPE,
+	FORM_TRIGGER_NODE_TYPE,
 	WAIT_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
@@ -44,6 +45,7 @@ import {
 	WorkflowConfigurationError,
 	NodeOperationError,
 	MICROSOFT_AGENT365_TRIGGER_NODE_TYPE,
+	SEND_AND_WAIT_OPERATION,
 	createRunExecutionData,
 	UserError,
 } from 'n8n-workflow';
@@ -1134,6 +1136,120 @@ mockInstance(WorkflowStatisticsService);
 const WORKFLOW_ID = 'wf-1';
 const EXECUTION_ID = 'exec-1';
 
+describe('executeWebhook form content type', () => {
+	const runRequest = async (startNode: INode, rawBody = '{') => {
+		ownershipService.getWorkflowProjectCached.mockResolvedValue(
+			mock<Project>({ id: 'project-1', name: 'Project 1' }),
+		);
+		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
+			mock<IWorkflowExecuteAdditionalData>(),
+		);
+		webhookService.runWebhook.mockResolvedValue({});
+
+		const workflow = mock<Workflow>({
+			id: WORKFLOW_ID,
+			name: 'Test Workflow',
+			nodes: { [startNode.name]: startNode },
+			getChildNodes: vi.fn().mockReturnValue([]),
+			nodeTypes: {
+				getByNameAndVersion: vi
+					.fn()
+					.mockReturnValue(mock<INodeType>({ description: { name: 'formTrigger' } })),
+			},
+			expression: {
+				getSimpleParameterValue: vi.fn(
+					(...args: Parameters<Workflow['expression']['getSimpleParameterValue']>) =>
+						args[1] ?? args[5],
+				),
+				getComplexParameterValue: vi.fn(
+					(...args: Parameters<Workflow['expression']['getComplexParameterValue']>) => args[1],
+				),
+			},
+		});
+		const req = mock<WebhookRequest>({
+			method: 'POST',
+			contentType: 'application/json',
+			headers: {},
+		});
+		req.readRawBody.mockImplementation(async () => {
+			req.rawBody = Buffer.from(rawBody);
+			req.encoding = 'utf8';
+		});
+		const responseCallback = vi.fn();
+
+		await executeWebhook(
+			workflow,
+			{
+				webhookDescription: { name: 'default', responseMode: 'onReceived' },
+				workflowId: WORKFLOW_ID,
+			} as unknown as IWebhookData,
+			mock<IWorkflowBase>({ id: WORKFLOW_ID, name: 'Test Workflow' }),
+			startNode,
+			'webhook',
+			undefined,
+			undefined,
+			undefined,
+			req,
+			mock<express.Response>({ headersSent: false }),
+			responseCallback,
+		);
+
+		return { req, responseCallback };
+	};
+
+	beforeEach(() => {
+		vi.restoreAllMocks();
+		vi.clearAllMocks();
+	});
+
+	it.each([
+		['a Form Trigger', FORM_TRIGGER_NODE_TYPE, {}],
+		['a Form page', FORM_NODE_TYPE, { operation: 'page' }],
+		['a Wait form', WAIT_NODE_TYPE, { resume: 'form' }],
+		[
+			'a custom send-and-wait form',
+			'n8n-nodes-base.gmail',
+			{ operation: SEND_AND_WAIT_OPERATION, responseType: 'customForm' },
+		],
+	])('returns 415 before parsing malformed JSON for %s', async (_name, type, parameters) => {
+		const { req, responseCallback } = await runRequest(
+			mock<INode>({ name: 'Form', type, typeVersion: 2, parameters }),
+		);
+
+		expect(req.readRawBody).not.toHaveBeenCalled();
+		expect(webhookService.runWebhook).not.toHaveBeenCalled();
+		expect(responseCallback).toHaveBeenCalledWith(
+			expect.objectContaining({
+				httpStatusCode: 415,
+				message: 'Expected multipart/form-data',
+			}),
+			{},
+		);
+	});
+
+	it.each([
+		['a Form completion', FORM_NODE_TYPE, { operation: 'completion' }],
+		['a webhook Wait', WAIT_NODE_TYPE, { resume: 'webhook' }],
+		[
+			'a send-and-wait approval',
+			'n8n-nodes-base.gmail',
+			{ operation: SEND_AND_WAIT_OPERATION, responseType: 'approval' },
+		],
+	])('continues parsing JSON for %s', async (_name, type, parameters) => {
+		const { req, responseCallback } = await runRequest(
+			mock<INode>({ name: 'Form', type, typeVersion: 2, parameters }),
+			'{}',
+		);
+
+		expect(req.readRawBody).toHaveBeenCalledOnce();
+		expect(webhookService.runWebhook).toHaveBeenCalledOnce();
+		expect(responseCallback).not.toHaveBeenCalledWith(
+			expect.objectContaining({ httpStatusCode: 415 }),
+			{},
+		);
+	});
+});
+
 describe('executeWebhook credential-status gate', () => {
 	const missingGateResult: CredentialCheckResult = {
 		readyToExecute: false,
@@ -1212,6 +1328,11 @@ describe('executeWebhook credential-status gate', () => {
 		const workflow = mock<Workflow>({
 			id: WORKFLOW_ID,
 			name: 'Test Workflow',
+			connectionsBySourceNode: {},
+			connectionsByDestinationNode: {},
+			// The gate reads the reachable nodes off the executing workflow, so `nodes` must
+			// resolve the start node by name (a bare deep mock would auto-vivify a fake node).
+			nodes: { Webhook: workflowStartNode },
 			nodeTypes: {
 				getByNameAndVersion: vi
 					.fn()
@@ -1247,19 +1368,22 @@ describe('executeWebhook credential-status gate', () => {
 			responseCallback,
 		);
 
-		return { checkCredentialStatus, responseCallback };
+		return { checkCredentialStatus, responseCallback, workflowStartNode };
 	};
 
 	it('responds 428 with the missing-credential list and signed connect links when the caller has unconnected credentials', async () => {
-		const { checkCredentialStatus, responseCallback } = await runGate({
+		const { checkCredentialStatus, responseCallback, workflowStartNode } = await runGate({
 			authentication: 'n8nOAuth2',
 			gateResult: missingGateResult,
 		});
 
-		// Checked using the established identity and the workflow being called.
-		expect(checkCredentialStatus).toHaveBeenCalledWith(WORKFLOW_ID, {
-			credentials: 'encrypted-runner-identity',
-		});
+		// Checked using the established identity and the workflow being called, scoped to the
+		// nodes of the executing workflow the trigger can reach (here: just the start node).
+		expect(checkCredentialStatus).toHaveBeenCalledWith(
+			WORKFLOW_ID,
+			{ credentials: 'encrypted-runner-identity' },
+			{ rootNodes: [workflowStartNode] },
+		);
 
 		expect(responseCallback).toHaveBeenCalledWith(null, {
 			data: missingGateResult,
@@ -1399,6 +1523,8 @@ describe('executeWebhook establishTriggerIdentity', () => {
 		const workflow = mock<Workflow>({
 			id: WORKFLOW_ID,
 			name: 'Test Workflow',
+			connectionsBySourceNode: {},
+			connectionsByDestinationNode: {},
 			nodeTypes: {
 				getByNameAndVersion: vi
 					.fn()

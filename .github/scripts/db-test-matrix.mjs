@@ -27,8 +27,9 @@ export function readPostgresVersions(repoRoot = REPO_ROOT) {
 const SCOPES = new Set(['pr', 'full']);
 
 /**
- * Coverage and the schema-docs check run on the primary Postgres leg only, since
- * the committed docs come from that one version.
+ * The schema-docs check runs on the primary Postgres leg only, since the
+ * committed docs come from that one version. PRs collect coverage on that leg.
+ * Merge groups use the full scope and skip duplicate coverage collection.
  *
  * Scope 'pr' keeps SQLite plus the primary Postgres leg. Scope 'full' keeps
  * every Postgres major. The merge queue generates with 'full', so every merge
@@ -98,7 +99,7 @@ export function buildMatrix(versions, scope = 'full') {
 			'migration-cmd': 'pnpm test:postgres:migrations:tc',
 			'schema-check-cmd': image === primary ? 'pnpm --filter=@n8n/db schema:check:postgres' : '',
 			TEST_IMAGE_POSTGRES: image,
-			collectCoverage: image === primary ? 'true' : 'false',
+			collectCoverage: scope === 'pr' && image === primary ? 'true' : 'false',
 		})),
 	];
 }

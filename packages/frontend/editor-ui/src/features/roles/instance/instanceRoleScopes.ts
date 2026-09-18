@@ -91,7 +91,10 @@ export const INSTANCE_OPTION_DESCRIPTION_KEYS: Partial<
 		'Manage own': 'instanceRoles.description.apiKey.manageOwn',
 		'Manage all': 'instanceRoles.description.apiKey.manageAll',
 	},
-	tag: { Manage: 'instanceRoles.description.tag.manage' },
+	tag: {
+		View: 'instanceRoles.description.tag.view',
+		Manage: 'instanceRoles.description.tag.manage',
+	},
 	project: { Create: 'instanceRoles.description.project.create' },
 	insights: { View: 'instanceRoles.description.insights.view' },
 };
@@ -155,18 +158,51 @@ export const ALL_INSTANCE_SCOPES: Scope[] = [
 	...new Set(INSTANCE_SCOPE_GROUP_LIST.flatMap((g) => g.options.flatMap((o) => o.scopes))),
 ];
 
+type MandatoryInstanceOption = {
+	resource: InstanceResource;
+	option: string;
+	/** Overrides the option's own description where the "why it's locked" wording differs. */
+	tooltipKey?: BaseTextKey;
+};
+
 /**
- * "Users: View" is baseline behavior every instance role carries — the default
- * Member role already has it — not something a custom role can opt out of.
- * Rendered checked and disabled in the editor. `withMandatoryInstanceScopes`
- * is applied to the form (and on save), not the persisted snapshot, so a
- * stored role that is missing these scopes stays unsaved until the next save.
+ * Options every instance role carries regardless of what is saved — the default
+ * Member role already grants them, so they are baseline behaviour rather than
+ * something a custom role opts into. Rendered checked and disabled.
+ * `withMandatoryInstanceScopes` is applied to the form (and on save), not the
+ * persisted snapshot, so a stored role missing these scopes stays unsaved until
+ * the next save.
  */
-export function isOptionMandatory(resource: InstanceResource, option: InstanceScopeOption) {
-	return resource === 'user' && option.key === 'View';
+const MANDATORY_INSTANCE_OPTIONS: readonly MandatoryInstanceOption[] = [
+	{ resource: 'user', option: 'View', tooltipKey: 'instanceRoles.option.mandatory' },
+	{ resource: 'tag', option: 'View' }, // falls back to instanceRoles.description.tag.view
+];
+
+/** Tooltip key for a mandatory option, or undefined when the option is not mandatory. */
+export function mandatoryOptionTooltipKey(
+	resource: InstanceResource,
+	option: InstanceScopeOption,
+): BaseTextKey | undefined {
+	const entry = MANDATORY_INSTANCE_OPTIONS.find(
+		(m) => m.resource === resource && m.option === option.key,
+	);
+	return entry ? (entry.tooltipKey ?? option.descriptionKey) : undefined;
 }
 
-const MANDATORY_INSTANCE_SCOPES: readonly Scope[] = GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.user.View;
+export function isOptionMandatory(resource: InstanceResource, option: InstanceScopeOption) {
+	return MANDATORY_INSTANCE_OPTIONS.some((m) => m.resource === resource && m.option === option.key);
+}
+
+/** Derived from the group list so a typo in the table contributes nothing silently. */
+const MANDATORY_INSTANCE_SCOPES: readonly Scope[] = [
+	...new Set(
+		INSTANCE_SCOPE_GROUP_LIST.flatMap((group) =>
+			group.options
+				.filter((option) => isOptionMandatory(group.resource, option))
+				.flatMap((option) => option.scopes),
+		),
+	),
+];
 
 /** Unions in the mandatory scopes (see `isOptionMandatory`) on top of an already-filtered scope list. */
 export function withMandatoryInstanceScopes(scopes: readonly string[]): string[] {

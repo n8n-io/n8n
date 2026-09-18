@@ -82,6 +82,8 @@ export interface InstanceAiBuilderSessionOptions {
 	abortSignal: AbortSignal;
 	/** The parent orchestrator's validated, approval-wrapped MCP tools. */
 	mcpTools?: InstanceAiToolRegistry;
+	/** Use deterministic model catalogs for an Instance AI evaluation. */
+	useEvalModelCatalog?: boolean;
 	/** Reports host-owned artifacts requested by the embedded builder. Omitted in the standalone builder. */
 	onRequiredArtifact?: (artifact: BuilderRequiredArtifact) => void;
 }
@@ -256,7 +258,11 @@ export class AgentsBuilderService {
 			credentialProvider,
 			credentialService,
 			user,
-			{ threadId: session.hostThreadId, runId: session.runId },
+			{
+				threadId: session.hostThreadId,
+				runId: session.runId,
+				...(session.useEvalModelCatalog ? { useEvalModelCatalog: true } : {}),
+			},
 		);
 
 		const { Agent, Memory, Tool, createPlannerTodosTool } = await import('@n8n/agents');

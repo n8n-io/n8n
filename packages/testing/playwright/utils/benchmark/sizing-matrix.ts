@@ -174,6 +174,10 @@ function groupByCell(
 ): Map<Scale, CellGroupEntry[]> {
 	const byScale = new Map<Scale, CellGroupEntry[]>();
 	for (const { path, report } of reports) {
+		// The sizing matrix represents the default runtime. Optimized comparison
+		// profiles remain available in benchmark metrics and run-report artifacts.
+		if (report.scenario.dimensions['expression_profile'] === 'vm-lazy-cache') continue;
+
 		const cellCoord = findMapping(path, report, mapping);
 		if (!cellCoord) {
 			console.warn(

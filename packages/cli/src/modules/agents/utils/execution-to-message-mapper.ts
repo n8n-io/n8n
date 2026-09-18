@@ -6,7 +6,7 @@ import type { TimelineEvent } from '../execution-recorder';
 
 type ExecutionTranscript = Pick<
 	AgentExecution,
-	'id' | 'userMessage' | 'timeline' | 'attachments' | 'status' | 'error'
+	'id' | 'userMessage' | 'author' | 'timeline' | 'attachments' | 'status' | 'error'
 >;
 
 type ToolCallTimelineEvent = Extract<TimelineEvent, { type: 'tool-call' }>;
@@ -162,10 +162,14 @@ export function executionToMessagesDto(execution: ExecutionTranscript): AgentPer
 			id: `${execution.id}:user`,
 			role: 'user',
 			content: userContent,
+			...(execution.author ? { author: execution.author } : {}),
 			executionId: execution.id,
 		});
 	}
 
+	const backgroundJobSignal = execution.timeline?.find(
+		(event) => event.type === 'background-task-signal',
+	)?.signal;
 	const assistantContent = assistantContentFromExecution(execution);
 	// The recorded run error travels with the transcript so history renders the
 	// same error bubble the live stream showed — also when the turn failed
@@ -176,11 +180,12 @@ export function executionToMessagesDto(execution: ExecutionTranscript): AgentPer
 		(execution.status === 'error' || execution.status === 'interrupted') && execution.error
 			? execution.error
 			: undefined;
-	if (assistantContent.length > 0 || executionError !== undefined) {
+	if (backgroundJobSignal || assistantContent.length > 0 || executionError !== undefined) {
 		messages.push({
 			id: `${execution.id}:assistant`,
 			role: 'assistant',
 			content: assistantContent,
+			...(backgroundJobSignal ? { backgroundTaskSignal: backgroundJobSignal } : {}),
 			executionId: execution.id,
 			...(execution.status ? { executionStatus: execution.status } : {}),
 			...(executionError !== undefined ? { executionError } : {}),
@@ -230,6 +235,9 @@ export function executionsToMessagesDto(
 	}
 
 	return messages.filter(
-		(message) => message.content.length > 0 || message.executionError !== undefined,
+		(message) =>
+			message.backgroundTaskSignal ||
+			message.content.length > 0 ||
+			message.executionError !== undefined,
 	);
 }

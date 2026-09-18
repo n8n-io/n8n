@@ -20,3 +20,16 @@ export type MailData = {
 	subject: string;
 	textOnly?: string;
 };
+
+export type EmailChangeConfirmationData = {
+	email: string; // current (old) address — the recipient
+	firstName: string;
+	newEmail: string;
+	confirmationUrl: string;
+};
+
+export type EmailChangeCompletedData = {
+	email: string; // old address — the recipient
+	firstName: string;
+	newEmail: string;
+};

@@ -41,6 +41,27 @@ export function isSlackInteractionRequest(req: object): boolean {
 	return (req as Record<PropertyKey, unknown>)[SLACK_INTERACTION_REQUEST] === true;
 }
 
+/**
+ * Telegram's counterpart to `SLACK_INTERACTION_REQUEST`, set by `TelegramInteractionWebhooks`.
+ * The Telegram node's handler reads it to route the request to its chat-approval branch, which
+ * verifies the bot secret token.
+ */
+const TELEGRAM_INTERACTION_REQUEST = Symbol('n8nTelegramInteractionRequest');
+
+/** Flags a request as having arrived via the Telegram interaction webhook route. */
+export function markTelegramInteractionRequest(req: object): void {
+	Object.defineProperty(req, TELEGRAM_INTERACTION_REQUEST, {
+		value: true,
+		enumerable: false,
+		configurable: true,
+	});
+}
+
+/** Whether a request was flagged by `markTelegramInteractionRequest`. */
+export function isTelegramInteractionRequest(req: object): boolean {
+	return (req as Record<PropertyKey, unknown>)[TELEGRAM_INTERACTION_REQUEST] === true;
+}
+
 export type HitlCallbackDecision = 'a' | 'd';
 
 export interface ParsedHitlCallbackReference {

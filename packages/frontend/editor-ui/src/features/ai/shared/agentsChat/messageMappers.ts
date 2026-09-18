@@ -324,6 +324,7 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 			id: msg.id ?? crypto.randomUUID(),
 			role,
 			content: text,
+			...(msg.author && { author: msg.author }),
 			...(renderParts.length > 0 && { renderParts }),
 			thinking: thinking || undefined,
 			...(thinkingSegments.length > 0 && { thinkingSegments }),
@@ -331,6 +332,9 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 			...(attachments.length > 0 && { attachments }),
 			...(status && { status }),
 			...(msg.executionId ? { executionId: msg.executionId } : {}),
+			...(role === 'assistant' && msg.backgroundTaskSignal
+				? { backgroundJobSignal: msg.backgroundTaskSignal }
+				: {}),
 		};
 		setMessageInteractives(chatMessage, interactives);
 		result.push(chatMessage);

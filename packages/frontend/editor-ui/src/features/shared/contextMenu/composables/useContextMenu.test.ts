@@ -317,6 +317,9 @@ describe('useContextMenu', () => {
 				expect(ids).not.toContain(singleNodeAction);
 			}
 			expect(actions.value.find((action) => action.id === 'copy')?.label).toBe('Copy group');
+			expect(actions.value.find((action) => action.id === 'tidy_up')?.label).toBe(
+				'Tidy up selection',
+			);
 		});
 
 		it('falls back to the group actions alone when no member node resolves', () => {

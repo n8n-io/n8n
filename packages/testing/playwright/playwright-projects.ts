@@ -1,33 +1,18 @@
 import type { Project } from '@playwright/test';
 import type { N8NConfig } from 'n8n-containers/stack';
 
-import {
-	CONTAINER_ONLY_CAPABILITIES,
-	CONTAINER_ONLY_MODES,
-	LICENSED_TAG,
-} from './fixtures/capabilities';
+import { ALLOW_CONTAINER_ONLY, CONTAINER_ONLY_MODES, LICENSED_TAG } from './fixtures/capabilities';
+import { ENGINE_TAG_PREFIX } from './fixtures/engine-parity';
 import { getBackendUrl, getFrontendUrl } from './utils/url-helper';
 
 // Tests that require container environment (won't run against local n8n).
 // Matches:
-// - @capability:X - add-on features (email, proxy, source-control, etc.)
 // - @mode:X - infrastructure modes (postgres, queue, multi-main)
 // - @licensed - enterprise license features (log streaming, SSO, etc.)
 // - @db:reset - tests needing per-test database reset (requires isolated containers)
 const CONTAINER_ONLY = new RegExp(
-	[
-		`@capability:(${CONTAINER_ONLY_CAPABILITIES.join('|')})`,
-		`@mode:(${CONTAINER_ONLY_MODES.join('|')})`,
-		`@${LICENSED_TAG}`,
-		'@db:reset',
-	].join('|'),
+	[`@mode:(${CONTAINER_ONLY_MODES.join('|')})`, `@${LICENSED_TAG}`, '@db:reset'].join('|'),
 );
-
-// Escape hatch: allow `@capability:*` tests to run against a pre-started local
-// n8n. Fixtures that depend on container-provided services (proxy, mailpit,
-// etc.) must detect the no-container case and skip or fall back to direct
-// network calls. Used by `pnpm test:local:isolated` and similar workflows.
-const ALLOW_CONTAINER_ONLY = process.env.PLAYWRIGHT_ALLOW_CONTAINER_ONLY === 'true';
 
 const CONTAINER_CONFIGS: Array<{ name: string; config: N8NConfig }> = [
 	{ name: 'sqlite', config: {} },
@@ -35,7 +20,7 @@ const CONTAINER_CONFIGS: Array<{ name: string; config: N8NConfig }> = [
 	{ name: 'queue', config: { workers: 1 } },
 	{
 		name: 'multi-main',
-		config: { mains: 2, workers: 1, services: ['victoriaLogs', 'victoriaMetrics', 'vector'] },
+		config: { mains: 2, workers: 1 },
 	},
 ];
 
@@ -243,13 +228,30 @@ export function getProjects(): Project[] {
 				{
 					name: `${name}:infrastructure`,
 					testDir: './tests/infrastructure',
-					grep: new RegExp(`@mode:${name}|@capability:${name}`),
+					grep: new RegExp(`@mode:${name}`),
 					workers: 1,
 					timeout: 180000,
 					use: { containerConfig: config },
 				},
 			);
 		}
+
+		// Engine 2.0 parity: the same e2e specs against a main that routes every
+		// workflow to the new engine. Opt-in by tag while the engine matures: any
+		// `@engine:*` tag selects the spec, and the parity fixture then runs, skips
+		// or expects failure by bucket. Drop the grep once the suite is triaged.
+		// The CI job e2e-engine blocks merges, so a spec this grep selects fails the
+		// PR when it misses the outcome its bucket asks for.
+		projects.push({
+			name: 'engine-v2:e2e',
+			testDir: './tests/e2e',
+			grep: new RegExp(ENGINE_TAG_PREFIX),
+			timeout: 180000,
+			// One worker, one stack. Every worker boots its own Postgres and main,
+			// and the CI job asks for one worker anyway.
+			workers: 1,
+			use: { containerConfig: { postgres: true, engine: 'in-process' } },
+		});
 
 		projects.push({
 			name: 'coverage',
@@ -277,6 +279,20 @@ export function getProjects(): Project[] {
 			timeout: 600_000,
 			retries: 0,
 			use: { containerConfig: BENCHMARKING_DEFAULT_CONFIG },
+		});
+
+		// API-only, no browser: the specs manage their own stack (they swap n8n
+		// images mid-test via stack.replaceN8N), so no containerConfig fixture.
+		projects.push({
+			name: 'encryption:infrastructure',
+			testDir: './tests/infrastructure/encryption',
+			workers: 1,
+			// One upgrade cycle boots four instances and pulls the old release.
+			timeout: 900_000,
+			retries: 0,
+			// No browser runs here — the global trace/video/screenshot capture
+			// only produces empty artifacts for these tests.
+			use: { trace: 'off', video: 'off', screenshot: 'off' },
 		});
 
 		for (const { name, config } of LOCAL_ONLY_BENCHMARK_PROFILES) {

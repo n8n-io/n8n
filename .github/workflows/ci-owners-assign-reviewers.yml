@@ -48,17 +48,16 @@ jobs:
           app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
           private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
 
+      # The script reads only `.github/` and the root OWNERS file, which cone
+      # mode always includes.
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - name: Setup Node.js
-        uses: ./.github/actions/setup-nodejs
         with:
-          build-command: ''
-          install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --lockfile-dir ${{ github.workspace }}/.github/scripts --ignore-workspace
-          cache-dependency-path: .github/scripts/pnpm-lock.yaml
+          sparse-checkout: .github
 
       - name: Assign reviewer teams
+        uses: ./.github/actions/run-workflow-script
         env:
-          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
           PULL_REQUEST_NUMBER: ${{ github.event.pull_request.number }}
-        run: node .github/scripts/owners/assign-reviewers.mjs
+        with:
+          script: .github/scripts/owners/assign-reviewers.mjs
+          github-token: ${{ steps.app-token.outputs.token }}

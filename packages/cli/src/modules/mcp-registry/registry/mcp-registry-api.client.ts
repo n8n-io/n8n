@@ -17,8 +17,9 @@ const MCP_SERVERS_PRODUCTION_URL = 'https://api.n8n.io/api/mcp-servers';
 const STRAPI_ARRAY_LIMIT = 100;
 /** Version history:
  * 2 - introduced authType: `usesCredentials` field
+ * 3 - introduced remotes[].type: `streamable-http-templated`
  */
-const STRAPI_API_VERSION = 2;
+const STRAPI_API_VERSION = 3;
 
 @Service()
 export class McpRegistryApiClient {

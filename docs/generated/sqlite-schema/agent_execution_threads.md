@@ -99,6 +99,7 @@ erDiagram
 }
 "agent_execution" {
   TEXT attachments
+  TEXT author
   INTEGER completionTokens
   REAL cost
   datetime_3_ createdAt

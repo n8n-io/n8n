@@ -44,6 +44,12 @@ export interface GetRuntimeParams {
 	sandboxPrincipalHash?: AgentSandboxPrincipalHash;
 	/** Disable background-job tools and wake hints for task-triggered runtimes. */
 	allowBackgroundTasks?: boolean;
+	/**
+	 * Build for the in-app preview chat, which gets an extra instruction saying
+	 * the agent cannot change its own setup. It makes the runtime unusable for
+	 * every other surface, so it is part of the cache key.
+	 */
+	previewChat?: boolean;
 }
 
 /**
@@ -57,6 +63,8 @@ export interface AgentRuntime {
 	agent: RuntimeAgent;
 	agentId: string;
 	toolRegistry: ToolRegistry;
+	/** MCP server name -> registry attribution appended to replies that used its tools. */
+	mcpServerAttributions: Map<string, string>;
 	projectId: string;
 	telemetryConfiguration: IAgentConfigurationTelemetryProperties;
 	/**
@@ -79,8 +87,8 @@ interface RuntimeInitialization {
 export class AgentRuntimeCacheService {
 	/**
 	 * Cached agent runtimes.  Keys follow the pattern:
-	 *   Draft:     `{agentId}:draft[:{integrationType}][:{callerScope}]`
-	 *   Published: `{agentId}:published[:{integrationType}][:{callerScope}]`
+	 *   Draft:     `{agentId}:draft[:preview][:{integrationType}][:no-background-tasks][:{callerScope}]`
+	 *   Published: `{agentId}:published[:{integrationType}][:no-background-tasks][:{callerScope}]`
 	 *
 	 * TTL = 30 minutes of inactivity (sliding — each cache hit refreshes the
 	 * expiry) so actively used runtimes stay cached while idle agents are
@@ -122,6 +130,10 @@ export class AgentRuntimeCacheService {
 	private computeRuntimeCacheKey(params: GetRuntimeParams): string {
 		const sandboxEnabled = this.agentSandboxRuntimeService.isEnabled();
 		const parts = [params.agentId, params.usePublishedVersion ? 'published' : 'draft'];
+		// ponytail: a whole second runtime per agent just to carry one extra
+		// instruction paragraph. Move to a per-run instruction override if
+		// runtime count becomes a problem — `@n8n/agents` has no such option yet.
+		if (params.previewChat) parts.push('preview');
 		if (params.integrationType) parts.push(params.integrationType);
 		if (params.allowBackgroundTasks === false) parts.push('no-background-tasks');
 		// Per-user runtimes have node/workflow tools filtered by that user's
@@ -350,6 +362,7 @@ export class AgentRuntimeCacheService {
 			user,
 			sandboxPrincipalHash,
 			allowBackgroundTasks,
+			previewChat,
 		} = params;
 
 		const agentEntity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
@@ -379,15 +392,20 @@ export class AgentRuntimeCacheService {
 			undefined,
 			usePublishedVersion ? 'integrated' : 'manual',
 			sandboxPrincipalHash,
-			undefined,
-			allowBackgroundTasks,
+			{ previewChat, allowBackgroundTasks },
 		);
-		const { agent: agentInstance, toolRegistry, userToolAccessSnapshot } = await reconstruction;
+		const {
+			agent: agentInstance,
+			toolRegistry,
+			mcpServerAttributions,
+			userToolAccessSnapshot,
+		} = await reconstruction;
 
 		return {
 			agent: agentInstance,
 			agentId,
 			toolRegistry,
+			mcpServerAttributions,
 			projectId,
 			telemetryConfiguration: buildAgentConfigurationTelemetry(agentData),
 			...(userToolAccessSnapshot !== undefined ? { userToolAccessSnapshot } : {}),

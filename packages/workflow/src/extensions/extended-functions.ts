@@ -4,18 +4,10 @@
 // Vite-stubbed for browser builds (to exclude isolated-vm), which prevents n8n-workflow
 // from importing these extension utilities directly from the runtime package.
 import { average as aAverage } from './array-extensions';
+import { defineField } from './utils';
 import { ExpressionExtensionError } from '../errors/expression-extension.error';
 import { ExpressionError } from '../errors/expression.error';
-
-// Define an own data field rather than assigning through an inherited setter.
-function defineField(target: Record<string, unknown>, key: PropertyKey, value: unknown): void {
-	Object.defineProperty(target, key, {
-		value,
-		writable: true,
-		enumerable: true,
-		configurable: true,
-	});
-}
+import { toPathSegment as toPathSegmentValue } from '../url';
 
 const min = Math.min;
 const max = Math.max;
@@ -77,6 +69,17 @@ function ifEmpty<T, V>(value: V, defaultValue: T) {
 	return value;
 }
 
+function toPathSegment(value: unknown): string {
+	try {
+		return toPathSegmentValue(value);
+	} catch (error) {
+		if (error instanceof Error) {
+			throw new ExpressionError(error.message);
+		}
+		throw error;
+	}
+}
+
 ifEmpty.doc = {
 	name: 'ifEmpty',
 	description:
@@ -96,6 +99,7 @@ export const extendedFunctions = {
 	average,
 	numberList,
 	zip,
+	toPathSegment,
 	$min: min,
 	$max: max,
 	$average: average,

@@ -172,7 +172,7 @@ The JSON output is useful for AI agents that need to understand the rules before
 Discover test specs via AST analysis and distribute them across CI shards:
 
 ```bash
-# Discover specs and capabilities (JSON output)
+# Discover specs and worker requirements (JSON output)
 janitor discover
 
 # Distribute specs across shards (JSON output)
@@ -185,7 +185,7 @@ janitor orchestrate --shards=14 --shard-index=0
 janitor orchestrate --shards=14 --impact
 ```
 
-Discovery detects `test.fixme()` and `test.skip()` via AST and excludes them automatically. Capability tags (`@capability:proxy`) are extracted for grouping.
+Discovery detects `test.fixme()` and `test.skip()` via AST. It excludes fully skipped specs. It resolves worker requirements from `test.use()`.
 
 ### Workspace-Wide CI Test Scoping
 
@@ -662,10 +662,7 @@ interface JanitorConfig {
   /** Tags that exclude specs from discovery (e.g., ['@wip', '@local-only']) */
   skipTags: string[];
 
-  /** Prefix for extracting capabilities from tags (default: '@capability:') */
-  capabilityPrefix: string;
-
-  /** Orchestration configuration for distributing specs across shards */
+	/** Orchestration configuration for distributing specs across shards */
   orchestration: {
     /** Path to metrics JSON file (relative to rootDir) */
     metricsPath?: string;

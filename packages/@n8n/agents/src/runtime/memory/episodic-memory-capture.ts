@@ -406,6 +406,7 @@ async function buildReflectionCluster(
 	].join('\n');
 	const related = await opts.memory.episodic.searchEntries(opts.scope, query, {
 		topK: Math.max(config.topK, 20),
+		writeScopeOnly: true,
 	});
 	const relatedById = new Map(related.map((entry) => [entry.id, entry]));
 	for (const saved of savedEntries) {

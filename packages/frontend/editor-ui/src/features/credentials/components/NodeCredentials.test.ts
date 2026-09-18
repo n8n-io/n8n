@@ -15,6 +15,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import type { INodeUi } from '@/Interface';
 import { useCredentialsStore } from '../credentials.store';
+import * as credentialsApi from '../credentials.api';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { Project } from '@/features/collaboration/projects/projects.types';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
@@ -1731,6 +1732,135 @@ describe('NodeCredentials', () => {
 				id: 'c8vqdPpPClh4TgIO',
 				name: 'OpenAi account',
 			});
+		});
+	});
+
+	// A host can hand the picker its own list (the Instance AI setup
+	// card receives one in the suspend payload). Every path that reads a picked
+	// or restored credential must then resolve from that list, because the flat
+	// map and the usable slice may hold nothing yet — or ever, if the fetch fails.
+	describe('host-supplied credentials list', () => {
+		const httpNodeNoCreds: INodeUi = { ...httpNode, credentials: {} };
+		const olderCred = {
+			...createCredential({ id: 'payload-older', name: 'Older payload cred' }),
+			updatedAt: '2024-01-01T00:00:00.000Z',
+		};
+		const newerCred = {
+			...createCredential({ id: 'payload-newer', name: 'Newer payload cred' }),
+			updatedAt: '2024-06-01T00:00:00.000Z',
+		};
+
+		type SelectedPayload = {
+			name: string;
+			properties: { credentials: Record<string, { id: string | null; name: string }> };
+		};
+
+		beforeEach(() => {
+			// Nothing in the store: the list is the only source of truth.
+			stopCredentialsMirror();
+			credentialsStore.state.credentials = {};
+			credentialsStore.usableCredentials = {};
+			credentialsStore.hasFetchedUsableCredentials = false;
+			ndvStore.activeNode = httpNodeNoCreds;
+		});
+
+		it('auto-selects the most recent supplied credential without waiting for the slice fetch', () => {
+			const { emitted } = renderComponent({
+				props: { node: httpNodeNoCreds, credentials: [olderCred, newerCred] },
+			});
+
+			const payload = (emitted('credentialSelected')?.[0] as [SelectedPayload])?.[0];
+			expect(payload?.properties.credentials['openAiApi']).toEqual({
+				id: 'payload-newer',
+				name: 'Newer payload cred',
+			});
+		});
+
+		it('lists the supplied credentials and emits the picked row even when the store lacks it', async () => {
+			const { emitted } = renderComponent({
+				props: { node: httpNodeNoCreds, credentials: [olderCred, newerCred], skipAutoSelect: true },
+			});
+
+			await userEvent.click(screen.getByTestId('node-credentials-select'));
+			expect(screen.getByText('Older payload cred')).toBeInTheDocument();
+			expect(screen.getByText('Newer payload cred')).toBeInTheDocument();
+
+			await userEvent.click(screen.getByTestId('node-credentials-select-item-payload-older'));
+
+			const payload = (emitted('credentialSelected')?.[0] as [SelectedPayload])?.[0];
+			expect(payload?.properties.credentials['openAiApi']).toEqual({
+				id: 'payload-older',
+				name: 'Older payload cred',
+			});
+		});
+
+		it('restores from the supplied list when n8n credits is toggled off', () => {
+			// The gateway is enabled but this node version no longer qualifies, so the
+			// mount-time cleanup toggles the managed slot off and must restore a row.
+			vi.mocked(useAiGateway).mockReturnValue({
+				isEnabled: computed(() => true),
+				isCredentialTypeSupported: vi.fn((credType: string) => credType === 'openAiApi'),
+				canServeCredentialType: vi.fn((credType: string) => credType === 'openAiApi'),
+				isNodeTypeVersionSupported: vi.fn(() => false),
+				isActionSupported: vi.fn(() => true),
+				isActionOptionVisible: vi.fn(() => true),
+				isNodePropertyHidden: vi.fn(() => false),
+				balance: computed(() => undefined),
+				budget: computed(() => undefined),
+				creditsLabelKey: computed(() => 'generic.freeCredits'),
+				fetchConfig: vi.fn().mockResolvedValue(undefined),
+				fetchWallet: vi.fn().mockResolvedValue(undefined),
+				saveAfterToggle: vi.fn().mockResolvedValue(undefined),
+				fetchError: computed(() => null),
+			});
+			const getByIdSpy = vi.fn().mockReturnValue(undefined);
+			credentialsStore.getCredentialById = getByIdSpy;
+
+			const managedNode: INodeUi = {
+				...httpNodeNoCreds,
+				credentials: { openAiApi: { id: null, name: '', __aiGatewayManaged: true } },
+			};
+			ndvStore.activeNode = managedNode;
+
+			const { emitted } = renderComponent({
+				props: { node: managedNode, credentials: [olderCred, newerCred] },
+			});
+
+			const payload = (emitted('credentialSelected')?.[0] as [SelectedPayload])?.[0];
+			expect(payload?.properties.credentials['openAiApi']).toEqual({
+				id: 'payload-newer',
+				name: 'Newer payload cred',
+			});
+			expect(getByIdSpy).not.toHaveBeenCalled();
+		});
+
+		it('leaves the selection untouched when a picked id is in neither the list nor the store', async () => {
+			// After a deletion the store listener re-selects the last credential in the
+			// usable slice. With a host-supplied list that id can be unknown to both the
+			// displayed rows and the flat map; the pick must then be dropped, not applied
+			// with undefined fields or thrown.
+			const nodeWithSelection: INodeUi = {
+				...httpNodeNoCreds,
+				credentials: { openAiApi: { id: 'payload-older', name: 'Older payload cred' } },
+			};
+			ndvStore.activeNode = nodeWithSelection;
+			credentialsStore.usableCredentials = {
+				'ghost-cred': createCredential({ id: 'ghost-cred', name: 'Ghost cred' }),
+			};
+			vi.spyOn(credentialsApi, 'deleteCredential').mockResolvedValue(true);
+
+			const { emitted } = renderComponent({
+				props: { node: nodeWithSelection, credentials: [olderCred] },
+			});
+
+			// Subscribes the component to store mutations for this credential type.
+			await userEvent.click(
+				screen.getByTestId('credential-edit-button').querySelector('[data-icon="pen"]')!,
+			);
+			await credentialsStore.deleteCredential({ id: 'payload-older' });
+			await nextTick();
+
+			expect(emitted('credentialSelected')).toBeUndefined();
 		});
 	});
 

@@ -77,8 +77,13 @@ export interface BuiltMemory {
 
 export type EpisodicMemoryStatus = 'active' | 'superseded' | 'dropped';
 
+/**
+ * Who asked and where. Stores decide the storage scope from both: a host can
+ * key shared conversations by thread and still resolve recall per resource.
+ */
 export interface EpisodicMemoryScope {
 	resourceId: string;
+	threadId: string;
 }
 
 export type EpisodicMemoryCaptureKind =
@@ -174,6 +179,8 @@ export interface EpisodicMemorySearchOptions {
 	topK?: number;
 	queryEmbedding?: number[];
 	includeStatuses?: EpisodicMemoryStatus[];
+	/** Search only entries a write from this scope would supersede or merge. Shared backends must not widen this search. */
+	writeScopeOnly?: boolean;
 }
 
 export interface EpisodicMemoryTaskLockHandle {
@@ -184,7 +191,7 @@ export interface EpisodicMemoryTaskLockHandle {
 
 export interface EpisodicMemoryTaskLockMethods {
 	acquire(
-		resourceId: string,
+		scope: EpisodicMemoryScope,
 		opts: { ttlMs: number; holderId: string },
 	): Promise<EpisodicMemoryTaskLockHandle | null>;
 	release(handle: EpisodicMemoryTaskLockHandle): Promise<void>;
@@ -308,6 +315,11 @@ export interface ObservationLogMemoryConfig {
 export interface ObservationalMemoryConfig {
 	/** Estimated visible-window tokens at which the Observer is scheduled mid-run and post-turn. */
 	observerThresholdTokens?: number;
+	/**
+	 * Run the Observer at tool-loop boundaries inside a turn. Default `true`.
+	 * When `false`, the Observer runs only after the turn completes.
+	 */
+	midRunObservation?: boolean;
 	/** Estimated active observation-log tokens required before the Reflector runs. */
 	reflectorThresholdTokens?: number;
 	/** Maximum estimated tokens to render into the system prompt. */

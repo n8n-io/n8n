@@ -47,6 +47,7 @@ import {
 	WorkflowVersionPolicy,
 	type ExportPackageEventCounts,
 	type ExportPackageRequest,
+	type ExportPackageDirectoryResult,
 	type ExportPackageResult,
 	type ExportPackageSummary,
 	type ImportPackageRequest,
@@ -124,11 +125,11 @@ export class N8nPackagesService {
 	async exportPackageToDirectory(
 		request: ExportPackageRequest,
 		target: { targetDir: string },
-	): Promise<ExportPackageSummary> {
+	): Promise<ExportPackageDirectoryResult> {
 		const writer = new DirectoryPackageWriter(target.targetDir);
 		const result = await this.exportPackageToWriter(request, writer);
 		await writer.finalize();
-		return { counts: result.counts };
+		return { counts: result.counts, manifest: result.manifest };
 	}
 
 	async exportPackageToWriter(

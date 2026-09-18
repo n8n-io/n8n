@@ -10,3 +10,5 @@ export * from './vectorSearch/operations';
 export * from './vectorSearch/parameters';
 export * from './genie/operations';
 export * from './genie/parameters';
+export * from './job/operations';
+export * from './job/parameters';

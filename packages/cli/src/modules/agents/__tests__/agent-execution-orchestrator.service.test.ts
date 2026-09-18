@@ -4,7 +4,11 @@ import type {
 	SerializableAgentState,
 	StreamChunk,
 } from '@n8n/agents';
-import { N8N_CHAT_INTEGRATION_TYPE, type AgentJsonConfig } from '@n8n/api-types';
+import {
+	N8N_CHAT_INTEGRATION_TYPE,
+	type AgentBackgroundJobSignal,
+	type AgentJsonConfig,
+} from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { AiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
@@ -39,16 +43,20 @@ const aiConfigMock = mock<AiConfig>({
 	modelStreamFirstOutputTimeoutMs: 180_000,
 });
 
+const backgroundJobSignal: AgentBackgroundJobSignal = {
+	tasks: [{ id: 'job-1', title: 'Research', kind: 'subagent', status: 'completed' }],
+};
+
 const agentId = 'agent-1';
 const projectId = 'project-1';
 const userId = 'user-1';
 const user = mock<User>({ id: userId });
 const userPrincipalHash = hashAgentSandboxPrincipal({ type: 'n8n-user', userId });
 const integrationPrincipalHash = hashAgentSandboxPrincipal({
-	type: 'integration-user',
+	type: 'integration-thread',
 	connectionId: 'credential-1',
 	platform: 'slack',
-	platformUserId: 'platform-user-1',
+	platformThreadId: 'thread-1',
 });
 const taskPrincipalHash = hashAgentSandboxPrincipal({ type: 'scheduled-task', taskId: 'task-1' });
 
@@ -99,9 +107,13 @@ function makeFailingStream(error: Error): ReadableStream<StreamChunk> {
 	});
 }
 
-function makeRuntime(chunks: StreamChunk[] = [{ type: 'finish', finishReason: 'stop' }]) {
+function makeRuntime(
+	chunks: StreamChunk[] = [{ type: 'finish', finishReason: 'stop' }],
+	mcpServerAttributions = new Map<string, string>(),
+) {
 	const toolRegistry: ToolRegistry = new Map();
 	return {
+		mcpServerAttributions,
 		agent: {
 			name: 'Runtime Agent',
 			snapshot: { model: { provider: 'anthropic', name: 'claude-sonnet-4-5' } },
@@ -246,6 +258,7 @@ describe('AgentExecutionOrchestratorService', () => {
 			service.streamChatResponse({
 				agentInstance: runtime.agent,
 				toolRegistry: runtime.toolRegistry,
+				mcpServerAttributions: runtime.mcpServerAttributions,
 				agentId,
 				userId,
 				message: 'hello',
@@ -282,6 +295,227 @@ describe('AgentExecutionOrchestratorService', () => {
 		expect(startedAt.getTime()).toBe(finalizedRecord.startTime);
 	});
 
+	const genieResult: StreamChunk = {
+		type: 'tool-result',
+		toolCallId: 'tc-1',
+		toolName: 'Databricks_Genie_ask',
+		output: 'rows',
+		mcpServerName: 'Databricks Genie',
+	};
+	const genieAttribution = new Map([['Databricks Genie', 'Powered by Genie']]);
+
+	it('appends the MCP registry attribution on its own line when a tool of that server returned', async () => {
+		const { service, executionService } = makeService();
+		executionService.startExecutionRecording.mockResolvedValue('execution-running');
+		executionService.finalizeExecution.mockResolvedValue('execution-running');
+		const runtime = makeRuntime(
+			[
+				genieResult,
+				{ type: 'text-delta', id: 'text-1', delta: 'Answer' },
+				{ type: 'finish', finishReason: 'stop' },
+			],
+			genieAttribution,
+		);
+
+		const chunks = await collect(
+			service.streamChatResponse({
+				agentInstance: runtime.agent,
+				toolRegistry: runtime.toolRegistry,
+				mcpServerAttributions: runtime.mcpServerAttributions,
+				agentId,
+				userId,
+				message: 'hello',
+				memory: { threadId: 'thread-1', resourceId: 'resource-1' },
+				projectId,
+				telemetry: telemetryContext,
+				sandboxPrincipalHash: userPrincipalHash,
+			}),
+		);
+
+		const attributionIndex = chunks.findIndex(
+			(chunk) => chunk.type === 'text-delta' && chunk.delta === '\n\nPowered by Genie',
+		);
+		const finishIndex = chunks.findIndex((chunk) => chunk.type === 'finish');
+		expect(attributionIndex).toBeGreaterThan(-1);
+		expect(attributionIndex).toBeLessThan(finishIndex);
+		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+			'execution-running',
+			expect.objectContaining({
+				record: expect.objectContaining({ assistantResponse: 'Answer\n\nPowered by Genie' }),
+			}),
+		);
+	});
+
+	it('appends no attribution when the reply is reasoning only, with no text', async () => {
+		const { service, executionService } = makeService();
+		executionService.startExecutionRecording.mockResolvedValue('execution-running');
+		executionService.finalizeExecution.mockResolvedValue('execution-running');
+		const runtime = makeRuntime(
+			[
+				genieResult,
+				{ type: 'reasoning-start', id: 'reasoning-1' },
+				{ type: 'reasoning-delta', id: 'reasoning-1', delta: 'Check the result.' },
+				{ type: 'reasoning-end', id: 'reasoning-1' },
+				{ type: 'finish', finishReason: 'stop' },
+			],
+			genieAttribution,
+		);
+
+		const chunks = await collect(
+			service.streamChatResponse({
+				agentInstance: runtime.agent,
+				toolRegistry: runtime.toolRegistry,
+				mcpServerAttributions: runtime.mcpServerAttributions,
+				agentId,
+				userId,
+				message: 'hello',
+				memory: { threadId: 'thread-1', resourceId: 'resource-1' },
+				projectId,
+				telemetry: telemetryContext,
+				sandboxPrincipalHash: userPrincipalHash,
+			}),
+		);
+
+		expect(chunks.some((chunk) => chunk.type === 'text-delta')).toBe(false);
+	});
+
+	it('appends no attribution when no tool of that server returned a result', async () => {
+		const { service, executionService } = makeService();
+		executionService.startExecutionRecording.mockResolvedValue('execution-running');
+		executionService.finalizeExecution.mockResolvedValue('execution-running');
+		const runtime = makeRuntime(
+			[
+				// Same name prefix as an attributed server, but not one of its tools
+				{ type: 'tool-result', toolCallId: 'tc-0', toolName: 'web_search', output: [] },
+				{ ...genieResult, isError: true },
+				{ type: 'text-delta', id: 'text-1', delta: 'Answer' },
+				{ type: 'finish', finishReason: 'stop' },
+			],
+			new Map([...genieAttribution, ['web', 'Powered by Web']]),
+		);
+
+		const chunks = await collect(
+			service.streamChatResponse({
+				agentInstance: runtime.agent,
+				toolRegistry: runtime.toolRegistry,
+				mcpServerAttributions: runtime.mcpServerAttributions,
+				agentId,
+				userId,
+				message: 'hello',
+				memory: { threadId: 'thread-1', resourceId: 'resource-1' },
+				projectId,
+				telemetry: telemetryContext,
+				sandboxPrincipalHash: userPrincipalHash,
+			}),
+		);
+
+		expect(chunks.filter((chunk) => chunk.type === 'text-delta')).toHaveLength(1);
+		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+			'execution-running',
+			expect.objectContaining({
+				record: expect.objectContaining({ assistantResponse: 'Answer' }),
+			}),
+		);
+	});
+
+	it('skips the attribution the model already echoed into its reply', async () => {
+		const { service, executionService } = makeService();
+		executionService.startExecutionRecording.mockResolvedValue('execution-running');
+		executionService.finalizeExecution.mockResolvedValue('execution-running');
+		const runtime = makeRuntime(
+			[
+				genieResult,
+				{ type: 'text-delta', id: 'text-1', delta: 'Answer\n\nPowered by Genie' },
+				{ type: 'finish', finishReason: 'stop' },
+			],
+			genieAttribution,
+		);
+
+		await collect(
+			service.streamChatResponse({
+				agentInstance: runtime.agent,
+				toolRegistry: runtime.toolRegistry,
+				mcpServerAttributions: runtime.mcpServerAttributions,
+				agentId,
+				userId,
+				message: 'hello',
+				memory: { threadId: 'thread-1', resourceId: 'resource-1' },
+				projectId,
+				telemetry: telemetryContext,
+				sandboxPrincipalHash: userPrincipalHash,
+			}),
+		);
+
+		const finalizedRecord = executionService.finalizeExecution.mock.calls[0][1].record;
+		expect(finalizedRecord.assistantResponse).toBe('Answer\n\nPowered by Genie');
+	});
+
+	it('attributes an approval-gated tool on the resumed segment, not on the suspended one', async () => {
+		const { service, executionService, checkpointStorage, runtimeCacheService } = makeService();
+		executionService.startExecutionRecording.mockResolvedValue('execution-running');
+		executionService.finalizeExecution.mockResolvedValue('execution-running');
+		const suspended = makeRuntime(
+			[
+				// A sibling Genie tool already returned; the suspended segment is not the reply
+				{ ...genieResult, toolCallId: 'tc-0' },
+				{ type: 'tool-call', toolCallId: 'tc-1', toolName: 'Databricks_Genie_ask', input: {} },
+				{
+					type: 'tool-call-suspended',
+					toolCallId: 'tc-1',
+					toolName: 'Databricks_Genie_ask',
+					runId: 'run-1',
+				},
+				{ type: 'finish', finishReason: 'tool-calls' },
+			],
+			genieAttribution,
+		);
+
+		const suspendedChunks = await collect(
+			service.streamChatResponse({
+				agentInstance: suspended.agent,
+				toolRegistry: suspended.toolRegistry,
+				mcpServerAttributions: suspended.mcpServerAttributions,
+				agentId,
+				userId,
+				message: 'hello',
+				memory: { threadId: 'thread-1', resourceId: 'resource-1' },
+				projectId,
+				telemetry: telemetryContext,
+				sandboxPrincipalHash: userPrincipalHash,
+			}),
+		);
+		expect(suspendedChunks.some((chunk) => chunk.type === 'text-delta')).toBe(false);
+
+		const resumed = makeRuntime(
+			[
+				genieResult,
+				{ type: 'text-delta', id: 'text-1', delta: 'Answer' },
+				{ type: 'finish', finishReason: 'stop' },
+			],
+			genieAttribution,
+		);
+		checkpointStorage.getStatus.mockResolvedValueOnce({
+			status: 'active',
+			checkpoint: { persistence: { threadId: 'thread-1', resourceId: 'resource-1' } },
+		} as never);
+		runtimeCacheService.getRuntime.mockResolvedValue(resumed);
+
+		const resumedChunks = await collect(
+			service.resumeForChat({
+				agentId,
+				projectId,
+				runId: 'run-1',
+				toolCallId: 'tc-1',
+				resumeData: { approved: true },
+			}),
+		);
+		expect(
+			resumedChunks.some(
+				(chunk) => chunk.type === 'text-delta' && chunk.delta === '\n\nPowered by Genie',
+			),
+		).toBe(true);
+	});
+
 	it('streams chat responses and records suspended executions', async () => {
 		const { service, executionService } = makeService();
 		const abortController = new AbortController();
@@ -300,6 +534,7 @@ describe('AgentExecutionOrchestratorService', () => {
 			service.streamChatResponse({
 				agentInstance: runtime.agent,
 				toolRegistry: runtime.toolRegistry,
+				mcpServerAttributions: runtime.mcpServerAttributions,
 				agentId,
 				userId,
 				message: 'hello',
@@ -349,6 +584,7 @@ describe('AgentExecutionOrchestratorService', () => {
 			service.streamChatResponse({
 				agentInstance: runtime.agent,
 				toolRegistry: runtime.toolRegistry,
+				mcpServerAttributions: runtime.mcpServerAttributions,
 				agentId,
 				userId,
 				message: 'hello',
@@ -372,6 +608,7 @@ describe('AgentExecutionOrchestratorService', () => {
 			service.streamChatResponse({
 				agentInstance: runtime.agent,
 				toolRegistry: runtime.toolRegistry,
+				mcpServerAttributions: runtime.mcpServerAttributions,
 				agentId,
 				userId,
 				message: 'hello',
@@ -534,6 +771,8 @@ describe('AgentExecutionOrchestratorService', () => {
 				agentId,
 				projectId,
 				message: 'from slack',
+				modelMessage: '[alice (platform-user-1)]: from slack',
+				author: { id: 'platform-user-1', name: 'alice' },
 				memory: { threadId: 'thread-1', resourceId: 'platform-user-1' },
 				integrationType: 'slack',
 				sandboxPrincipalHash: integrationPrincipalHash,
@@ -547,6 +786,18 @@ describe('AgentExecutionOrchestratorService', () => {
 			usePublishedVersion: true,
 			sandboxPrincipalHash: integrationPrincipalHash,
 		});
+		// The model sees the labelled text; the transcript keeps the plain text and the author.
+		expect(runtime.agent.stream).toHaveBeenCalledWith(
+			'[alice (platform-user-1)]: from slack',
+			expect.anything(),
+		);
+		expect(executionService.startExecutionRecording).toHaveBeenCalledWith(
+			expect.objectContaining({
+				userMessage: 'from slack',
+				author: { id: 'platform-user-1', name: 'alice' },
+			}),
+			expect.any(Date),
+		);
 		expect(externalHooks.run).toHaveBeenCalledWith('agent.preExecute', [agentId]);
 		expect(externalHooks.run).toHaveBeenCalledTimes(1);
 		expect(externalHooks.run.mock.invocationCallOrder[0] ?? 0).toBeLessThan(
@@ -771,6 +1022,68 @@ describe('AgentExecutionOrchestratorService', () => {
 		).resolves.toEqual(expect.any(Array));
 	});
 
+	it('records the background signal before the model produces any output', async () => {
+		const { service, runtimeCacheService, executionService } = makeService();
+		const runtime = makeRuntime();
+		let streamController!: ReadableStreamDefaultController<StreamChunk>;
+		vi.mocked(runtime.agent.stream).mockResolvedValue({
+			stream: new ReadableStream<StreamChunk>({
+				start(controller) {
+					streamController = controller;
+				},
+			}),
+			runId: 'run-1',
+			getState: vi.fn(),
+		});
+		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+		const wake = service.executeForWake({
+			backgroundJobSignal,
+			agentId,
+			projectId,
+			message: '<background-jobs-settled>internal result</background-jobs-settled>',
+			memory: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
+			identity: { type: 'draft', user, principalHash: userPrincipalHash },
+			abortSignal: new AbortController().signal,
+		});
+		try {
+			await vi.waitFor(() =>
+				expect(executionService.startExecutionRecording).toHaveBeenCalledWith(
+					expect.objectContaining({
+						userMessage: null,
+						initialTimeline: [
+							{
+								type: 'background-task-signal',
+								timestamp: expect.any(Number),
+								signal: backgroundJobSignal,
+							},
+						],
+					}),
+					expect.any(Date),
+				),
+			);
+			expect(executionService.finalizeExecution).not.toHaveBeenCalled();
+		} finally {
+			streamController.enqueue({ type: 'text-delta', id: 'text-1', delta: 'Done' });
+			streamController.enqueue({ type: 'finish', finishReason: 'stop' });
+			streamController.close();
+			await wake;
+		}
+		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+			'execution-1',
+			expect.objectContaining({
+				record: expect.objectContaining({
+					timeline: [
+						expect.objectContaining({
+							type: 'background-task-signal',
+							signal: backgroundJobSignal,
+						}),
+						expect.objectContaining({ type: 'text', content: 'Done' }),
+					],
+				}),
+			}),
+		);
+	});
+
 	it('runs a draft wake without a chat client and hides its input from execution history', async () => {
 		const { service, runtimeCacheService, executionService, externalHooks, wakeService, bridge } =
 			makeService();
@@ -783,6 +1096,7 @@ describe('AgentExecutionOrchestratorService', () => {
 		const abortSignal = new AbortController().signal;
 
 		await service.executeForWake({
+			backgroundJobSignal,
 			agentId,
 			projectId,
 			message: '<background-jobs-settled>[]</background-jobs-settled>',
@@ -836,6 +1150,7 @@ describe('AgentExecutionOrchestratorService', () => {
 
 			await expect(
 				service.executeForWake({
+					backgroundJobSignal,
 					agentId,
 					projectId,
 					message: '<background-jobs-settled>[]</background-jobs-settled>',
@@ -871,6 +1186,7 @@ describe('AgentExecutionOrchestratorService', () => {
 		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
 
 		await service.executeForWake({
+			backgroundJobSignal,
 			agentId,
 			projectId,
 			message: '<background-jobs-settled>[]</background-jobs-settled>',
@@ -904,6 +1220,7 @@ describe('AgentExecutionOrchestratorService', () => {
 
 		await expect(
 			service.executeForWake({
+				backgroundJobSignal,
 				agentId,
 				projectId,
 				message: '<background-jobs-settled>[]</background-jobs-settled>',
@@ -935,6 +1252,7 @@ describe('AgentExecutionOrchestratorService', () => {
 
 			await expect(
 				service.executeForWake({
+					backgroundJobSignal,
 					agentId,
 					projectId,
 					message: '<background-jobs-settled>[]</background-jobs-settled>',
@@ -961,6 +1279,7 @@ describe('AgentExecutionOrchestratorService', () => {
 			service.streamChatResponse({
 				agentInstance: runtime.agent,
 				toolRegistry: runtime.toolRegistry,
+				mcpServerAttributions: runtime.mcpServerAttributions,
 				agentId,
 				message: 'hello',
 				memory: { threadId: 'thread-1', resourceId: 'resource-1' },
@@ -999,6 +1318,7 @@ describe('AgentExecutionOrchestratorService', () => {
 				service.streamChatResponse({
 					agentInstance: runtime.agent,
 					toolRegistry: runtime.toolRegistry,
+					mcpServerAttributions: runtime.mcpServerAttributions,
 					agentId,
 					message: 'hello',
 					memory: { threadId: 'thread-1', resourceId: 'resource-1' },
@@ -1036,6 +1356,7 @@ describe('AgentExecutionOrchestratorService', () => {
 		const stream = service.streamChatResponse({
 			agentInstance: runtime.agent,
 			toolRegistry: runtime.toolRegistry,
+			mcpServerAttributions: runtime.mcpServerAttributions,
 			agentId,
 			message: 'hello',
 			memory: { threadId: 'thread-1', resourceId: 'resource-1' },
@@ -1507,6 +1828,7 @@ describe('AgentExecutionOrchestratorService', () => {
 			service.streamChatResponse({
 				agentInstance: runtime.agent,
 				toolRegistry: runtime.toolRegistry,
+				mcpServerAttributions: runtime.mcpServerAttributions,
 				agentId,
 				message: 'hello',
 				memory: { threadId: 'thread-1', resourceId: 'resource-1' },

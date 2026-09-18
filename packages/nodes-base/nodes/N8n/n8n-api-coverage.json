@@ -8,16 +8,16 @@
 		"GET /roles": {
 			"status": "gap"
 		},
-		"GET /roles/{slug}": {
+		"GET /roles/{roleSlug}": {
 			"status": "gap"
 		},
 		"POST /roles": {
 			"status": "gap"
 		},
-		"PUT /roles/{slug}": {
+		"PUT /roles/{roleSlug}": {
 			"status": "gap"
 		},
-		"DELETE /roles/{slug}": {
+		"DELETE /roles/{roleSlug}": {
 			"status": "gap"
 		},
 		"GET /role-mapping-rules": {
@@ -51,10 +51,10 @@
 			"status": "covered",
 			"nodeOperation": "credential:create"
 		},
-		"PATCH /credentials/{id}": {
+		"PATCH /credentials/{credentialId}": {
 			"status": "gap"
 		},
-		"DELETE /credentials/{id}": {
+		"DELETE /credentials/{credentialId}": {
 			"status": "covered",
 			"nodeOperation": "credential:delete"
 		},
@@ -62,7 +62,7 @@
 			"status": "covered",
 			"nodeOperation": "credential:getSchema"
 		},
-		"PUT /credentials/{id}/transfer": {
+		"PUT /credentials/{credentialId}/transfer": {
 			"status": "gap"
 		},
 		"POST /credentials/{id}/test": {
@@ -122,13 +122,13 @@
 		"GET /tags": {
 			"status": "gap"
 		},
-		"GET /tags/{id}": {
+		"GET /tags/{tagId}": {
 			"status": "gap"
 		},
-		"DELETE /tags/{id}": {
+		"DELETE /tags/{tagId}": {
 			"status": "gap"
 		},
-		"PUT /tags/{id}": {
+		"PUT /tags/{tagId}": {
 			"status": "gap"
 		},
 		"POST /workflows": {
@@ -155,7 +155,7 @@
 			"status": "covered",
 			"nodeOperation": "workflow:getVersion"
 		},
-		"GET /workflows/{workflowId}/versions/{versionId}": {
+		"GET /workflows/{workflowId}/versions/{workflowVersionId}": {
 			"status": "gap"
 		},
 		"GET /workflows/{id}/history": {
@@ -284,6 +284,9 @@
 			"status": "gap"
 		},
 		"POST /promotions/connections/{promotionConnectionId}/promote": {
+			"status": "gap"
+		},
+		"POST /promotions/connections/{promotionConnectionId}/apply/continue": {
 			"status": "gap"
 		},
 		"POST /promotions/connections/{promotionConnectionId}/apply": {
@@ -437,6 +440,36 @@
 			"status": "gap"
 		},
 		"POST /n8n-packages/import": {
+			"status": "gap"
+		},
+		"GET /node-type-policies/instance": {
+			"status": "gap"
+		},
+		"PUT /node-type-policies/instance": {
+			"status": "gap"
+		},
+		"GET /node-type-policies/projects/{projectId}": {
+			"status": "gap"
+		},
+		"PUT /node-type-policies/projects/{projectId}": {
+			"status": "gap"
+		},
+		"GET /node-type-policies/policies": {
+			"status": "gap"
+		},
+		"POST /node-type-policies/policies": {
+			"status": "gap"
+		},
+		"GET /node-type-policies/policies/{policyId}": {
+			"status": "gap"
+		},
+		"PUT /node-type-policies/policies/{policyId}": {
+			"status": "gap"
+		},
+		"DELETE /node-type-policies/policies/{policyId}": {
+			"status": "gap"
+		},
+		"PUT /node-type-policies/scopes/{scopeId}/attachments": {
 			"status": "gap"
 		}
 	}

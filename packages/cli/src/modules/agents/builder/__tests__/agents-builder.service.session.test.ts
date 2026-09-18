@@ -265,6 +265,36 @@ describe('AgentsBuilderService session isolation', () => {
 		);
 	});
 
+	it('forwards the eval model catalog option to the builder tools', async () => {
+		const { service, user, credentialProvider, credentialService, agentsBuilderToolsService } =
+			setup();
+
+		await drain(
+			service.buildAgent(
+				'agent-1',
+				'project-1',
+				'hi',
+				credentialProvider,
+				credentialService,
+				user,
+				{ ...baseSession, useEvalModelCatalog: true },
+			),
+		);
+
+		expect(agentsBuilderToolsService.getTools).toHaveBeenCalledWith(
+			'agent-1',
+			'project-1',
+			credentialProvider,
+			credentialService,
+			user,
+			{
+				threadId: 'instance-thread-1',
+				runId: 'run-1',
+				useEvalModelCatalog: true,
+			},
+		);
+	});
+
 	it('forwards session.abortSignal to the SDK stream and resume calls', async () => {
 		const { service, user, credentialProvider, credentialService, n8nCheckpointStorage } = setup();
 		n8nCheckpointStorage.getStatus.mockResolvedValue({ status: 'active', checkpoint: {} as never });

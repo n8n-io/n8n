@@ -24,6 +24,7 @@ import type {
 	AgentExecutionCounter,
 	BuiltMemory,
 	BuiltTelemetry,
+	EpisodicMemoryScope,
 	EpisodicMemoryTaskLockHandle,
 	EpisodicMemoryTaskLockMethods,
 } from '../../types';
@@ -136,7 +137,8 @@ function hasObservationLogObserverMemory(
 export class MemoryOrchestrator {
 	private memoryTasks: ScopedMemoryTaskRunner | undefined;
 
-	private episodicMemoryTasksByResource = new Map<string, Promise<unknown>>();
+	/** Keyed by resource and thread because backends can lock on either scope. */
+	private episodicMemoryTasks = new Map<string, Promise<unknown>>();
 
 	/**
 	 * Per-message model-facing token estimates, cached by message id so
@@ -148,6 +150,12 @@ export class MemoryOrchestrator {
 
 	/** In-flight background mid-run observer task; `result` set on settlement. */
 	private midRunObserverTask: MidRunObserverTask | undefined;
+
+	/**
+	 * Set when a mid-run observer advanced the cursor this run. The post-turn
+	 * gate reads the masked window, so the tail must be observed unconditionally.
+	 */
+	private cursorAdvancedThisRun = false;
 
 	/** Consecutive mid-run observer attempts that did not advance the cursor. */
 	private midRunNonAdvancingAttempts = 0;
@@ -473,10 +481,12 @@ export class MemoryOrchestrator {
 
 	/** Reset per-run observation state on generate and resume entry. */
 	private resetRunState(): void {
+		this.midRunObserverTask = undefined;
 		this.midRunNonAdvancingAttempts = 0;
 		this.lastPersistedTurnKeyset = undefined;
 		this.visibleTokenEstimates.clear();
 		this.visibleTokenEstimateTotal = 0;
+		this.cursorAdvancedThisRun = false;
 	}
 
 	/**
@@ -490,6 +500,7 @@ export class MemoryOrchestrator {
 	): boolean {
 		if (didAdvanceCursor(result)) {
 			this.midRunNonAdvancingAttempts = 0;
+			this.cursorAdvancedThisRun = true;
 			return true;
 		}
 		this.midRunNonAdvancingAttempts += 1;
@@ -507,6 +518,9 @@ export class MemoryOrchestrator {
 	): Promise<void> {
 		const { memory, observationalMemory } = this.config;
 		if (!memory || !options?.persistence || !hasObservationLogObserverMemory(memory)) return;
+		// Hosts can restrict the Observer to the post-turn path, so the visible
+		// window stays byte-stable within a turn (better prompt-cache reuse).
+		if (observationalMemory?.midRunObservation === false) return;
 		const observerThresholdTokens = observationalMemory?.observerThresholdTokens;
 		if (!observationalMemory?.observe || observerThresholdTokens === undefined) return;
 
@@ -690,12 +704,6 @@ export class MemoryOrchestrator {
 
 		const scope = this.getObservationLogScope(persistence);
 		const runner = this.getMemoryTaskRunner(memory, observationalMemory.lockTtlMs);
-
-		// A mid-run task still in flight for this scope already covers the
-		// messages persisted at its boundary: join it instead of queueing a
-		// second observer behind it — the post-boundary tail waits for the next
-		// turn's gate. A task that settled after the last boundary was never
-		// activated; the run is over, so drop it and let the gauge decide.
 		const midRunTask = this.midRunObserverTask;
 		if (midRunTask?.result) this.midRunObserverTask = undefined;
 		if (
@@ -703,9 +711,21 @@ export class MemoryOrchestrator {
 			!midRunTask.result &&
 			midRunTask.handle.observationScopeId === scope.observationScopeId
 		) {
+			// A mid-run task still in flight only covers up to its boundary.
+			// Queue the tail observer behind it on the per-scope runner instead
+			// of joining and dropping the post-boundary tail.
 			void midRunTask.handle.done.then(() => {
 				if (this.midRunObserverTask === midRunTask) this.midRunObserverTask = undefined;
 			});
+			this.scheduleObserverTask(persistence, executionCounter, telemetry);
+		} else if (
+			this.cursorAdvancedThisRun ||
+			(midRunTask?.result !== undefined && didAdvanceCursor(midRunTask.result))
+		) {
+			// Mid-run advanced the cursor this run — either activated at a boundary
+			// or settled after the last one: observe the tail regardless of the
+			// visible-window budget, which the mask shrank below threshold.
+			this.scheduleObserverTask(persistence, executionCounter, telemetry);
 		} else if (await this.shouldScheduleObserver(list, persistence.threadId)) {
 			this.scheduleObserverTask(persistence, executionCounter, telemetry);
 		}
@@ -759,7 +779,7 @@ export class MemoryOrchestrator {
 		const capture = resolveEpisodicMemoryCapture(this.config, persistence);
 		if (!capture) return;
 
-		this.scheduleEpisodicMemoryTask(capture.memory, capture.scope.resourceId, async () => {
+		this.scheduleEpisodicMemoryTask(capture.memory, capture.scope, async () => {
 			let result;
 			do {
 				result = await runEpisodicMemoryCandidateProcessor({
@@ -774,26 +794,33 @@ export class MemoryOrchestrator {
 
 	private scheduleEpisodicMemoryTask(
 		memory: BuiltMemory,
-		resourceId: string,
+		scope: EpisodicMemoryScope,
 		task: () => Promise<void>,
 	): void {
 		const id = crypto.randomUUID();
-		const previous = this.episodicMemoryTasksByResource.get(resourceId) ?? Promise.resolve();
-		const done = previous
-			.catch(() => undefined)
-			.then(async () => await this.runEpisodicMemoryTask(memory, resourceId, id, task));
+		const keys = [`resource:${scope.resourceId}`, `thread:${scope.threadId}`];
+		const previous: Array<Promise<unknown>> = [];
+		for (const key of keys) {
+			const running = this.episodicMemoryTasks.get(key);
+			if (running) previous.push(running);
+		}
+		const done = Promise.allSettled(previous).then(
+			async () => await this.runEpisodicMemoryTask(memory, scope, id, task),
+		);
 		const queued = done.finally(() => {
-			if (this.episodicMemoryTasksByResource.get(resourceId) === queued) {
-				this.episodicMemoryTasksByResource.delete(resourceId);
+			for (const key of keys) {
+				if (this.episodicMemoryTasks.get(key) === queued) {
+					this.episodicMemoryTasks.delete(key);
+				}
 			}
 		});
-		this.episodicMemoryTasksByResource.set(resourceId, queued);
+		for (const key of keys) this.episodicMemoryTasks.set(key, queued);
 		this.backgroundTasks.track(queued);
 	}
 
 	private async runEpisodicMemoryTask(
 		memory: BuiltMemory,
-		resourceId: string,
+		scope: EpisodicMemoryScope,
 		holderId: string,
 		task: () => Promise<void>,
 	): Promise<void> {
@@ -801,7 +828,7 @@ export class MemoryOrchestrator {
 		let lock: EpisodicMemoryTaskLockHandle | null = null;
 		try {
 			if (taskLock) {
-				lock = await taskLock.acquire(resourceId, {
+				lock = await taskLock.acquire(scope, {
 					holderId,
 					ttlMs: this.config.observationalMemory?.lockTtlMs ?? DEFAULT_MEMORY_TASK_LOCK_TTL_MS,
 				});
@@ -810,11 +837,11 @@ export class MemoryOrchestrator {
 			await task();
 		} catch (error) {
 			const message = 'Episodic memory processing task failed';
-			logger.warn(message, { error, resourceId });
+			logger.warn(message, { error, ...scope });
 			this.eventBus.emit({ type: AgentEvent.Error, message, error, source: 'episodic-memory' });
 		} finally {
 			if (lock) {
-				await this.releaseEpisodicMemoryTaskLock(taskLock, lock, resourceId);
+				await this.releaseEpisodicMemoryTaskLock(taskLock, lock, scope);
 			}
 		}
 	}
@@ -822,12 +849,12 @@ export class MemoryOrchestrator {
 	private async releaseEpisodicMemoryTaskLock(
 		taskLock: EpisodicMemoryTaskLockMethods | undefined,
 		lock: EpisodicMemoryTaskLockHandle,
-		resourceId: string,
+		scope: EpisodicMemoryScope,
 	): Promise<void> {
 		try {
 			await taskLock?.release(lock);
 		} catch (error) {
-			logger.warn('Episodic memory processing lock release failed', { error, resourceId });
+			logger.warn('Episodic memory processing lock release failed', { error, ...scope });
 		}
 	}
 

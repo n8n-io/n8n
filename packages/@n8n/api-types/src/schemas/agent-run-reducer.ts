@@ -558,8 +558,11 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			break;
 		}
 
+		// `preferences-applied` names the saved preferences the turn carried. The chat and
+		// the plus menu read it from the durable log, so the run tree holds no copy.
 		case 'filesystem-request':
-		case 'thread-title-updated': {
+		case 'thread-title-updated':
+		case 'preferences-applied': {
 			// Handled externally — no state change
 			break;
 		}

@@ -9,6 +9,7 @@ import {
 	MANUAL_CHAT_TRIGGER_NODE_NAME,
 } from '../../../config/constants';
 import { expect, test } from '../../../fixtures/base';
+import { PROXY_WITHOUT_COMMUNITY_PACKAGES } from '../../../fixtures/capabilities';
 import type { n8nPage } from '../../../pages/n8nPage';
 
 async function addOpenAILanguageModelWithCredentials(
@@ -57,17 +58,12 @@ interface OpenAIResponsesRequest {
 }
 
 const hitlForToolsTestConfig = {
-	capability: {
-		services: ['proxy'],
-		env: {
-			N8N_COMMUNITY_PACKAGES_ENABLED: 'false',
-		},
-	},
+	capability: PROXY_WITHOUT_COMMUNITY_PACKAGES,
 } as const;
 
 test.use(hitlForToolsTestConfig);
 test.describe(
-	'HITL for Tools @capability:proxy',
+	'HITL for Tools',
 	{
 		annotation: [{ type: 'owner', description: 'AI' }],
 	},

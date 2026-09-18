@@ -2,8 +2,10 @@ import { splitModelId } from '@n8n/ai-utilities/agent-config';
 import {
 	DEFAULT_AGENT_PERSONALISATION,
 	getRandomAgentPersonalisationGradient,
+	sanitizeAgentJsonConfig,
 	type AgentCapabilitySummary,
 	type AgentCapabilityTool,
+	type AgentIntegrationConfig,
 	type AgentJsonConfig,
 	type AgentSkill,
 	type ListAgentsQueryDto,
@@ -14,25 +16,32 @@ import { Container, Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import { v4 as uuid } from 'uuid';
 
+// `CredentialsService` reaches `workflow-execute-additional-data`, which
+// reaches back into this module to run agents from workflows — a known cycle
+// in this area (see `agents-credential-provider.ts`). Resolved lazily by DI.
+// eslint-disable-next-line import-x/no-cycle
+import { CredentialsService } from '@/credentials/credentials.service';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { EventService } from '@/events/event.service';
 
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
-import { AgentKnowledgeService } from './agent-knowledge.service';
 import { AgentExecutionService } from './agent-execution.service';
+import { AgentKnowledgeService } from './agent-knowledge.service';
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import { AgentTestChatService } from './agent-test-chat.service';
 import { Agent } from './entities/agent.entity';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
-import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { decomposeJsonConfig } from './json-config/agent-config-composition';
+import { sanitizeUnknownAgentCredentials } from './json-config/sanitize-unknown-agent-credentials';
+import { AgentTaskRepository } from './repositories/agent-task.repository';
 import {
 	AgentRepository,
 	type AgentSummary,
 	type AgentSummaryFilters,
 } from './repositories/agent.repository';
 import { SubAgentCleanupService } from './sub-agents/sub-agent-cleanup.service';
-import { EventService } from '@/events/event.service';
+import { createAgentCredentialProvider } from './utils/agent-credential-provider';
 
 type CreateAgentOptions = {
 	availableInMCP?: boolean;
@@ -43,6 +52,16 @@ type CreateAgentOptions = {
 	 *  can recreate an already-built agent in one insert. */
 	schema?: AgentJsonConfig;
 	skills?: Record<string, AgentSkill>;
+	/** Opaque custom tool bodies keyed by id (passthrough from the duplicate path;
+	 *  validated when the source agent was authored). */
+	tools?: Record<string, unknown>;
+	/** When set, the create is a user-driven duplicate: the seeded config is
+	 *  sanitized and credential-access-checked, channels are copied as drafts,
+	 *  and the write emits `agent-saved` so the dependency index refreshes —
+	 *  parity with the `AgentConfigService.updateConfig` write path. Eval
+	 *  seeding omits it. The duplicate itself is reported by the frontend
+	 *  "User duplicated agent" event (mirrors "User duplicated workflow"). */
+	user?: User;
 };
 
 @Service()
@@ -59,6 +78,7 @@ export class AgentsService {
 		private readonly subAgentCleanupService: SubAgentCleanupService,
 		private readonly eventService: EventService,
 		private readonly agentExecutionService: AgentExecutionService,
+		private readonly credentialsService: CredentialsService,
 	) {}
 
 	/**
@@ -75,7 +95,11 @@ export class AgentsService {
 	 *
 	 * Emits no telemetry: a row on its own is not a created agent, so the
 	 * creation events fire from the first configuring write instead (see
-	 * `AgentModificationTelemetryService`).
+	 * `AgentModificationTelemetryService`). The duplicate path is the one
+	 * exception — a seeded copy is born configured, so the first edit would
+	 * otherwise report a modification, not a creation. The frontend emits a
+	 * dedicated "User duplicated agent" event for that case (carrying the
+	 * source agent id), mirroring "User duplicated workflow".
 	 */
 	async create(projectId: string, name: string, options: CreateAgentOptions = {}): Promise<Agent> {
 		return (await this.createOrAdopt(projectId, name, options)).agent;
@@ -96,6 +120,8 @@ export class AgentsService {
 			defaultModel,
 			schema,
 			skills,
+			tools,
+			user,
 		}: CreateAgentOptions = {},
 	): Promise<{ agent: Agent; adopted: boolean }> {
 		const defaultConfig: AgentJsonConfig = {
@@ -114,9 +140,15 @@ export class AgentsService {
 			},
 		};
 
-		// Integrations live on their own column; `composeJsonConfig` reads them from
-		// there, so leaving them inside `schema` loses them on the next read.
-		const { schemaConfig, integrations } = decomposeJsonConfig(schema ?? defaultConfig);
+		// A user-driven duplicate seeds a full config. Mirror the `updateConfig`
+		// write path: sanitize the config, then blank any credential the
+		// duplicating user cannot use in this project. Eval seeding (no `user`)
+		// inserts the config as-is, as before.
+		const { schemaConfig, integrations } = schema
+			? user
+				? await this.prepareDuplicateConfig(schema, projectId, user)
+				: decomposeJsonConfig(schema)
+			: decomposeJsonConfig(defaultConfig);
 
 		const agent = this.agentRepository.create({
 			...(id ? { id } : {}),
@@ -125,6 +157,7 @@ export class AgentsService {
 			schema: schemaConfig,
 			...(integrations.length > 0 ? { integrations } : {}),
 			...(skills ? { skills } : {}),
+			...(tools ? { tools: tools as Agent['tools'] } : {}),
 			versionId: uuid(),
 			availableInMCP,
 		});
@@ -147,7 +180,50 @@ export class AgentsService {
 
 		this.logger.debug('Created SDK agent', { agentId: saved.id, projectId });
 
+		// A user-driven duplicate is a real config write, so give it the same
+		// side effect as `updateConfig`: refresh the dependency index. Without
+		// this, a duplicated agent stays un-indexed (workflow edits wouldn't
+		// invalidate its runtime cache). Eval seeding stays silent, as before.
+		// The duplicate is reported by the frontend "User duplicated agent"
+		// event, which carries the source agent id — see `AgentsListView`.
+		if (user) {
+			this.eventService.emit('agent-saved', { agentId: saved.id });
+		}
+
 		return { agent: saved, adopted: false };
+	}
+
+	/**
+	 * Decompose a duplicated config the way `AgentConfigService.updateConfig` does:
+	 * sanitize the config, blank credentials the duplicating user cannot use in
+	 * this project, then split integrations onto their own column — copied as
+	 * drafts (credentialId blanked) so the clone does not claim the source's
+	 * channel credential.
+	 */
+	private async prepareDuplicateConfig(
+		schema: AgentJsonConfig,
+		projectId: string,
+		user: User,
+	): Promise<{ schemaConfig: AgentJsonConfig; integrations: AgentIntegrationConfig[] }> {
+		const accessibleCredentialIds = new Set(
+			(await createAgentCredentialProvider(this.credentialsService, projectId, user).list()).map(
+				(credential) => credential.id,
+			),
+		);
+		const sanitized = sanitizeUnknownAgentCredentials(
+			sanitizeAgentJsonConfig(schema),
+			accessibleCredentialIds,
+		) as AgentJsonConfig;
+
+		const { schemaConfig, integrations } = decomposeJsonConfig(sanitized);
+		// The credential-claim check ignores publish state, so a copy holding the
+		// source's channel credentialId would block the original from republishing
+		// or reconnecting (and the reconciler records that 409 on the source's row).
+		const draftIntegrations = integrations.map((integration) => ({
+			...integration,
+			credentialId: '',
+		}));
+		return { schemaConfig, integrations: draftIntegrations };
 	}
 
 	async findByProjectId(projectId: string): Promise<Agent[]> {

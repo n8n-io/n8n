@@ -41,7 +41,7 @@ type WorkflowPackageKeyHandling = {
 	sourceWorkflowId: 'exclude';
 };
 
-type WorkflowPackageContent = Pick<
+export type WorkflowPackageContent = Pick<
 	WorkflowEntity,
 	'name' | 'nodes' | 'connections' | 'nodeGroups' | 'isArchived' | 'settings'
 >;

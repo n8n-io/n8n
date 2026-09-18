@@ -1,5 +1,6 @@
 import { BreakingChangeRule } from '@n8n/decorators';
 
+import { NOT_AFFECTED_INSTANCE } from '../../detection-report';
 import type {
 	BreakingChangeRuleMetadata,
 	IBreakingChangeInstanceRule,
@@ -44,7 +45,7 @@ export class CompressionNodeLimitsRule implements IBreakingChangeInstanceRule {
 		}
 
 		if (instanceIssues.length === 0) {
-			return { isAffected: false, instanceIssues: [], recommendations: [] };
+			return NOT_AFFECTED_INSTANCE;
 		}
 
 		return {

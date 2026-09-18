@@ -141,6 +141,23 @@ describe('PublicApiControllerRegistry', () => {
 		);
 	});
 
+	describe('success response without a DTO', () => {
+		it('sends an empty body without a content-type when the handler returns nothing', async () => {
+			@Service()
+			class WidgetsPublicController {
+				@Post('/')
+				@ApiResponse(201)
+				create() {}
+			}
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+			const response = await request(activate()).post('/api/v1/widgets').expect(201);
+
+			expect(response.text).toBe('');
+			expect(response.headers['content-type']).toBeUndefined();
+		});
+	});
+
 	describe('validation failures', () => {
 		class WidgetValidationDto extends Z.class({
 			name: z.string(),

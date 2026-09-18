@@ -15,10 +15,10 @@
  *     `/rest/e2e/reset`, so the run waits for the E2E controller itself. Sets
  *     `PLAYWRIGHT_SKIP_WEBSERVER=true` so Playwright doesn't race to spawn its
  *     own n8n.
- *   - **Container-only tests included.** Sets `PLAYWRIGHT_ALLOW_CONTAINER_ONLY=true`
- *     so `@capability:*`, `@licensed`, and `@db:reset` tests are picked up by
- *     the local `e2e` project. Their fixtures are responsible for detecting
- *     the missing container and skipping or falling back.
+ *   - **Container-tagged tests included.** Sets `PLAYWRIGHT_ALLOW_CONTAINER_ONLY=true`
+ *     so `@licensed`, `@db:reset`, and `@mode:*` tests are picked up by the
+ *     local `e2e` project. Service-backed tests still skip because local mode
+ *     does not provide the service container helpers.
  *   - **Process-group cleanup.** Spawns n8n `detached: true` and SIGTERMs the
  *     whole tree on exit, so `node ./n8n` and the task-runner don't get
  *     orphaned to PID 1.

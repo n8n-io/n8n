@@ -32,6 +32,7 @@ function jobView(overrides: Partial<BackgroundJobView> = {}): BackgroundJobView 
 		createdAt: new Date('2026-08-26T10:00:00Z'),
 		timeoutAt: null,
 		settledAt: null,
+		notifiedAt: null,
 		childExecutionId: null,
 		...overrides,
 	};

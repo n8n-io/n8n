@@ -231,6 +231,7 @@ export class AgentWorkflowToolResumeService {
 			toolCallId: agentRun.toolCallId,
 			resumeData,
 			user,
+			previewChat: agentRun.previewChat,
 			response: '',
 		});
 

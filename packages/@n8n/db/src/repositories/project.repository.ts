@@ -3,6 +3,7 @@ import type { EntityManager, SelectQueryBuilder } from '@n8n/typeorm';
 import { Brackets, DataSource, In, Not, Repository } from '@n8n/typeorm';
 
 import { Project } from '../entities';
+import { chunkIds } from '../utils/chunk-ids';
 
 @Service()
 export class ProjectRepository extends Repository<Project> {
@@ -41,6 +42,15 @@ export class ProjectRepository extends Repository<Project> {
 			order: { id: 'ASC' },
 		});
 		return rows.map(({ id }) => id);
+	}
+
+	/** Id and type of every project that exists with one of these ids. */
+	async findTypesByIds(ids: string[]): Promise<Array<Pick<Project, 'id' | 'type'>>> {
+		const rows: Array<Pick<Project, 'id' | 'type'>> = [];
+		for (const batch of chunkIds(ids)) {
+			rows.push(...(await this.find({ where: { id: In(batch) }, select: ['id', 'type'] })));
+		}
+		return rows;
 	}
 
 	async getAccessibleProjects(userId: string) {
