@@ -1307,14 +1307,23 @@ describe('SystemTaskRunner', () => {
 		});
 
 		it('stops an instance-scoped task on shutdown', async () => {
-			const { runner, metadata } = setup();
+			const { runner, metadata, eventService } = setup();
 			metadata.register(PerInstanceDummySystemTask);
 			await initRunner(runner);
+			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS);
+			expect(perInstance.runCount).toBe(1);
 
 			await runner.shutdown();
+			eventService.emit.mockClear();
 			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS * 2);
 
-			expect(perInstance.runCount).toBe(0);
+			// A run count alone would pass with a timer still armed, because a fire
+			// after shutdown is skipped as aborted before it reaches the task.
+			expect(perInstance.runCount).toBe(1);
+			expect(eventService.emit).not.toHaveBeenCalledWith(
+				'system-task-fired',
+				expect.objectContaining({ name: 'per-instance-dummy' }),
+			);
 		});
 
 		it('emits the runs of an instance-scoped task as instance_timer', async () => {
