@@ -221,16 +221,13 @@ describe('GET /insights/summary', () => {
 
 		const parsed = insightsSummarySchema.safeParse(response.body);
 		expect(parsed.success).toBe(true);
-		expect(Object.keys(response.body).sort()).toEqual([
-			'averageRunTime',
-			'failed',
-			'failureRate',
-			'timeSaved',
-			'total',
-		]);
-		expect(response.body.total).toEqual({ value: 4, deviation: null, unit: 'count' });
-		expect(response.body.failed.value).toBe(1);
-		expect(response.body).not.toHaveProperty('billable');
+		expect(response.body).toStrictEqual({
+			total: { value: 4, deviation: null, unit: 'count' },
+			failed: { value: 1, deviation: null, unit: 'count' },
+			failureRate: { value: 0.25, deviation: null, unit: 'ratio' },
+			timeSaved: { value: 20, deviation: null, unit: 'minute' },
+			averageRunTime: { value: 100, deviation: null, unit: 'millisecond' },
+		});
 	});
 
 	test('respects startDate and endDate filters', async () => {
