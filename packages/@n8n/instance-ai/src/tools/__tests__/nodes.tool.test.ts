@@ -969,7 +969,7 @@ describe('nodes tool', () => {
 			const tool = createNodesTool(
 				createMockContext({
 					executeNodeService,
-					permissions: { runWorkflow: 'always_allow' } as never,
+					permissions: { executeNode: 'always_allow' } as never,
 					allowedRunWorkflowIds: new Set(['wf-under-verification']),
 				}),
 				'full',
