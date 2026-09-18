@@ -723,16 +723,16 @@ export async function executeWebhook(
 		return toWebhookUser(user);
 	};
 
-	additionalData.beginN8nOAuth2Flow = async (
+	additionalData.beginN8nOAuth2Flow = (
 		resourceUrl: string,
 		metadata?: Record<string, string>,
-	) => await Container.get(OAuth2FlowProxy).begin(resourceUrl, metadata);
+	) => Container.get(OAuth2FlowProxy).begin(resourceUrl, metadata);
 
-	additionalData.completeN8nOAuth2Flow = async (code: string, state: string) =>
-		await Container.get(OAuth2FlowProxy).complete(code, state);
+	additionalData.completeN8nOAuth2Flow = (code: string, state: string) =>
+		Container.get(OAuth2FlowProxy).complete(code, state);
 
-	additionalData.refreshN8nOAuth2Flow = async (refreshToken: string, resourceUrl: string) =>
-		await Container.get(OAuth2FlowProxy).refreshVirtualClientToken(refreshToken, resourceUrl);
+	additionalData.refreshN8nOAuth2Flow = (refreshToken: string, resourceUrl: string) =>
+		Container.get(OAuth2FlowProxy).refreshVirtualClientToken(refreshToken, resourceUrl);
 
 	// Captured here so `establishTriggerIdentity` seals the gate that admitted this
 	// request, instead of resolving the resource a second time.
