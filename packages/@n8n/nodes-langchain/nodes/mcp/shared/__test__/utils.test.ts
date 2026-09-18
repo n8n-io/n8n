@@ -125,6 +125,31 @@ describe('utils', () => {
 			expect(ctx.helpers.refreshOAuth2Token).not.toHaveBeenCalled();
 		});
 
+		it('should return a bearer header for a synthesized MCP Gateway credential', async () => {
+			const ctx = mockDeep<IExecuteFunctions>();
+			const credentials = { token: 'gateway-jwt' };
+			ctx.getCredentials.mockResolvedValue(credentials);
+
+			const result = await getAuthHeaders(ctx, 'firecrawlMcpGatewayApi');
+
+			expect(ctx.getCredentials).toHaveBeenCalledWith('firecrawlMcpGatewayApi');
+			expect(result).toEqual({
+				headers: { Authorization: 'Bearer gateway-jwt' },
+				credentials,
+			});
+			// Minted per execution, so there is nothing to refresh.
+			expect(ctx.helpers.refreshOAuth2Token).not.toHaveBeenCalled();
+		});
+
+		it('should not send an undefined bearer token when a Gateway credential is empty', async () => {
+			const ctx = mockDeep<IExecuteFunctions>();
+			ctx.getCredentials.mockResolvedValue({});
+
+			const result = await getAuthHeaders(ctx, 'mcpGatewayApi');
+
+			expect(result).toEqual({});
+		});
+
 		it('should not send an undefined bearer token when mcpOAuth2Api token data is empty', async () => {
 			const ctx = mockDeep<IExecuteFunctions>();
 			const credentials = {

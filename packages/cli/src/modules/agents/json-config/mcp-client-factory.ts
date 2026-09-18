@@ -1,10 +1,16 @@
-import type { CredentialProvider, McpClient, McpServerConfig } from '@n8n/agents';
+import type {
+	CredentialProvider,
+	McpClient,
+	McpServerConfig,
+	ResolvedCredential,
+} from '@n8n/agents';
 import type { AgentJsonMcpServerConfig } from '@n8n/api-types';
 import type { CustomFetch } from '@n8n/backend-network';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { isRecord } from '@n8n/utils/is-record';
 import {
 	getMcpAuthHeaders,
+	isMcpGatewayAuthentication,
 	isMcpOAuth2Authentication,
 	OperationalError,
 	shouldRefreshMcpOAuth2Token,
@@ -110,8 +116,22 @@ function resolveMcpDomainPolicy(
 	}
 }
 
+/**
+ * A `CredentialProvider` that can also mint the n8n Connect (AI Gateway) managed
+ * credential for a gateway-hosted MCP server, keyed by its credential type (e.g.
+ * `firecrawlMcpGatewayApi`). Such credentials have no stored id — the bearer
+ * token is minted on demand — so they cannot go through `resolve`. Mirrors
+ * `AiGatewayModelCredentialResolver` for the model path; `AgentsCredentialProvider`
+ * implements it, so the capability rides on the provider instead of threading a
+ * separate resolver through the build path. Kept off the `@n8n/agents` SDK
+ * interface because it is n8n-Connect-specific.
+ */
+export interface AiGatewayMcpCredentialResolver {
+	resolveAiGatewayMcpCredential(credentialType: string): Promise<ResolvedCredential>;
+}
+
 export interface BuildMcpClientDeps {
-	credentialProvider: CredentialProvider;
+	credentialProvider: CredentialProvider & Partial<AiGatewayMcpCredentialResolver>;
 	resolveRegistryConnection?: (nodeTypeName: string) => Promise<McpRegistryConnection | undefined>;
 	/**
 	 * Used to refresh OAuth2 tokens before expiry or after a 401 response without an
@@ -157,7 +177,7 @@ export async function buildMcpClientForServer(
 	const { McpClient } = await import('@n8n/agents');
 
 	const derivedAuth = await deriveAuthHeaders(server, credentialProvider);
-	const { credentialData, credentialType } = derivedAuth;
+	let { credentialData, credentialType } = derivedAuth;
 	let { headers: initialHeaders, credentialError } = derivedAuth;
 	let runtimeUrl = server.url;
 	let runtimeTransport = server.transport;
@@ -177,11 +197,28 @@ export async function buildMcpClientForServer(
 	} else if (registryNodeName) {
 		try {
 			const connection = await deps.resolveRegistryConnection?.(registryNodeName);
+			if (!connection) {
+				throw new OperationalError('MCP registry connection could not be resolved');
+			}
+
+			// A gateway-hosted server mints its bearer token on demand (no stored
+			// credential), keyed by the gateway credential type the registry node
+			// binds. This is independent of `server.credential`/`authentication`,
+			// which the managed credential cannot carry (it has no stored id).
+			const gatewayBinding = connection.credentialBindings.find((binding) =>
+				isMcpGatewayAuthentication(binding.credentialType),
+			);
+			if (gatewayBinding && !credentialData && credentialProvider.resolveAiGatewayMcpCredential) {
+				credentialData = (await credentialProvider.resolveAiGatewayMcpCredential(
+					gatewayBinding.credentialType,
+				)) as ICredentialDataDecryptedObject;
+				credentialType = gatewayBinding.credentialType;
+			}
+
 			if (
-				!connection ||
 				!credentialData ||
 				!credentialType ||
-				!isMcpOAuth2Authentication(credentialType)
+				!(isMcpOAuth2Authentication(credentialType) || isMcpGatewayAuthentication(credentialType))
 			) {
 				throw new OperationalError('MCP registry connection could not be resolved');
 			}

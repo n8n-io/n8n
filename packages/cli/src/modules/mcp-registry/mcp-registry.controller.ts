@@ -13,13 +13,18 @@ export class McpRegistryController {
 	/**
 	 * Only Instance AI reads this, to fill its tool-connection picker. A
 	 * templated row is dropped: that path cannot resolve the template, so
-	 * `createConnection` refuses it and offering it leads nowhere.
+	 * `createConnection` refuses it and offering it leads nowhere. A gateway
+	 * row is dropped too: Instance AI connects with a stored user credential,
+	 * which a managed gateway server has none of, so it can never be connected.
 	 */
 	@Get('/servers')
 	async listServers(): Promise<McpRegistryServerResponse[]> {
 		const servers = await this.service.getAll({ includeDeprecated: false });
 		return servers
-			.filter((server) => !resolveMcpRegistryConnection(server)?.isTemplated)
+			.filter(
+				(server) =>
+					server.authType !== 'gateway' && !resolveMcpRegistryConnection(server)?.isTemplated,
+			)
 			.map(toResponse);
 	}
 }

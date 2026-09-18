@@ -128,6 +128,9 @@ const mcpRegistryServerAuthSchema = z.discriminatedUnion('authType', [
 		authType: z.literal('usesCredentials'),
 		usesCredentials: mcpRegistryUsesCredentialsSchema,
 	}),
+	// A server the AI Gateway hosts and bills to Gateway credits. It needs no
+	// credential from the user and is only offered on instances licensed for it.
+	z.object({ authType: z.literal('gateway') }),
 ]);
 
 export const mcpRegistryServerSchema = mcpRegistryServerBaseSchema.and(mcpRegistryServerAuthSchema);

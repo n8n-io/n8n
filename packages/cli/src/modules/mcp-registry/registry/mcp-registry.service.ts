@@ -7,6 +7,7 @@ import type { McpRegistryConnection } from 'n8n-workflow';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { Push } from '@/push';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { AiGatewayService } from '@/services/ai-gateway.service';
 
 import { McpRegistryServerRepository } from './mcp-registry-server.repository';
 import { McpRegistryNodeLoader } from '../mcp-registry-node-loader';
@@ -31,20 +32,35 @@ export class McpRegistryService {
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
 		private readonly push: Push,
 		private readonly publisher: Publisher,
+		private readonly aiGatewayService: AiGatewayService,
 	) {
 		this.logger = logger.scoped('mcp-registry');
 	}
 
 	async init(): Promise<void> {
+		await this.seedGatewayServers();
 		await this.refreshRegistryNodeTypes(false);
 	}
 
 	@OnPubSubEvent('reload-mcp-registry')
 	async handleReloadMcpRegistry(): Promise<void> {
+		await this.seedGatewayServers();
 		await this.refreshRegistryNodeTypes(true);
 		if (this.isMainInstance()) {
 			this.notifyNodeDescriptionsUpdated();
 		}
+	}
+
+	/**
+	 * Persist gateway-hosted servers as real registry rows so every process
+	 * resolves them from the DB like any remote server, not from a live in-memory
+	 * injection a loader refresh could miss. `getHostedMcpServers()` is empty when
+	 * n8n Connect is off, so nothing is seeded then.
+	 */
+	private async seedGatewayServers(): Promise<void> {
+		const hosted = await this.aiGatewayService.getHostedMcpServers();
+		if (hosted.length === 0) return;
+		await this.saveServers(hosted);
 	}
 
 	async getAll({
@@ -53,12 +69,25 @@ export class McpRegistryService {
 		const entities = includeDeprecated
 			? await this.repository.find()
 			: await this.repository.findBy({ status: 'active' });
-		return entities.map(fromEntity);
+		return this.filterGatewayEligibility(entities.map(fromEntity));
+	}
+
+	/**
+	 * Hide gateway-hosted rows when n8n Connect is off, so a row left over from a
+	 * licensed period can't be selected on an instance that can no longer mint a
+	 * token. Applied to every read, not just `getAll`.
+	 */
+	private filterGatewayEligibility(servers: McpRegistryServer[]): McpRegistryServer[] {
+		if (this.aiGatewayService.isEnabled()) return servers;
+		return servers.filter((server) => server.authType !== 'gateway');
 	}
 
 	async get(slug: string): Promise<McpRegistryServer | undefined> {
 		const entity = await this.repository.findOneBy({ slug });
-		return entity ? fromEntity(entity) : undefined;
+		if (!entity) return undefined;
+		const server = fromEntity(entity);
+		if (server.authType === 'gateway' && !this.aiGatewayService.isEnabled()) return undefined;
+		return server;
 	}
 
 	async getBySlugs(slugs: string[]): Promise<McpRegistryServer[]> {
@@ -67,7 +96,7 @@ export class McpRegistryService {
 		}
 
 		const entities = await this.repository.findBy(slugs.map((slug) => ({ slug })));
-		return entities.map(fromEntity);
+		return this.filterGatewayEligibility(entities.map(fromEntity));
 	}
 
 	/**
@@ -137,7 +166,14 @@ export class McpRegistryService {
 			.filter((entry) => this.shouldFetchFullServer(entry, existingBySlug.get(entry.slug)))
 			.map(({ slug }) => slug);
 		const serversToDeprecate = existingServers
-			.filter((server) => !metadataSlugs.has(server.slug) && server.status !== 'deprecated')
+			// Gateway-hosted rows are seeded locally and never appear in the remote
+			// metadata, so exclude them or every refresh would deprecate them.
+			.filter(
+				(server) =>
+					server.authType !== 'gateway' &&
+					!metadataSlugs.has(server.slug) &&
+					server.status !== 'deprecated',
+			)
 			.map((server) => ({ ...server, status: 'deprecated' as const, updatedAt: now }));
 
 		if (slugsToFetch.length === 0 && serversToDeprecate.length === 0) {

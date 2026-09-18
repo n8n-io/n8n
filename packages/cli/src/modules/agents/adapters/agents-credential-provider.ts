@@ -8,6 +8,7 @@ import type { CredentialsService } from '@/credentials/credentials.service';
 import { CredentialsHelper } from '@/credentials-helper';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 
+import type { AiGatewayMcpCredentialResolver } from '../json-config/mcp-client-factory';
 import type { AiGatewayModelCredentialResolver } from '../json-config/model-config';
 
 function toResolvedCredential(data: unknown): ResolvedCredential {
@@ -26,7 +27,7 @@ function toResolvedCredential(data: unknown): ResolvedCredential {
  * Published runtime execution can omit the user and stays project-scoped.
  */
 export class AgentsCredentialProvider
-	implements CredentialProvider, AiGatewayModelCredentialResolver
+	implements CredentialProvider, AiGatewayModelCredentialResolver, AiGatewayMcpCredentialResolver
 {
 	constructor(
 		private readonly credentialsService: CredentialsService,
@@ -47,6 +48,22 @@ export class AgentsCredentialProvider
 		if (!credentialType) {
 			throw new UserError(`Gateway credits do not support the "${provider}" model provider.`);
 		}
+		return await aiGatewayService.getSyntheticCredential({
+			credentialType,
+			userId: this.user?.id,
+			projectId: this.projectId,
+		});
+	}
+
+	/**
+	 * Mint the n8n Connect (AI Gateway) managed credential for a gateway-hosted
+	 * MCP server, keyed by its credential type (e.g. `firecrawlMcpGatewayApi`).
+	 * These have no stored id — the bearer token is minted on demand — so they
+	 * cannot go through {@link resolve}. Mirrors {@link resolveAiGatewayModelCredential}
+	 * for the MCP-server path.
+	 */
+	async resolveAiGatewayMcpCredential(credentialType: string): Promise<ResolvedCredential> {
+		const aiGatewayService = Container.get(AiGatewayService);
 		return await aiGatewayService.getSyntheticCredential({
 			credentialType,
 			userId: this.user?.id,

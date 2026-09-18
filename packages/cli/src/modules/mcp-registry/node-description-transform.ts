@@ -9,6 +9,7 @@ import type {
 
 import {
 	getMcpRegistryCredentialTypeName,
+	getMcpRegistryGatewayCredentialTypeName,
 	MCP_BASE_OAUTH2_CREDENTIAL_NAME,
 	MCP_REGISTRY_PACKAGE_NAME,
 	getConfiguredEndpointUrl,
@@ -33,6 +34,11 @@ export {
 	getMcpRegistryCredentialOptions,
 	getMcpRegistryCredentialTypeName,
 } from './mcp-registry-connection';
+
+// Base credential a gateway-hosted server's synthetic type extends. The suffix
+// is load-bearing: the MCP runtime picks the gateway auth strategy from the
+// credential type name (`isMcpGatewayAuthentication`).
+const MCP_BASE_GATEWAY_CREDENTIAL_NAME = 'mcpGatewayApi';
 
 /**
  * Predicate that tells whether a credential type name is registered in the runtime.
@@ -113,6 +119,27 @@ function serverToOAuth2CredentialDescription(server: McpRegistryServer): ICreden
 			},
 			...buildDomainRestrictionProperties(remote.endpointHostname),
 		],
+	};
+}
+
+/**
+ * Builds the credential type for a server the AI Gateway hosts and bills.
+ *
+ * It carries no user-supplied fields: the token is minted per execution from the
+ * `__aiGatewayManaged` marker on the node's credential entry. The type exists so
+ * the runtime has something to resolve and so the domain restriction still pins
+ * requests to the gateway's own host.
+ */
+function serverToGatewayCredentialDescription(server: McpRegistryServer): ICredentialType | null {
+	const remote = resolveMcpRegistryConnection(server);
+	if (!remote || remote.isTemplated) return null;
+
+	return {
+		name: getMcpRegistryGatewayCredentialTypeName(server),
+		icon: `node:${MCP_REGISTRY_PACKAGE_NAME}.${getMcpRegistryNodeTypeName(server)}`,
+		displayName: `${server.title} MCP Gateway Credits`,
+		extends: [MCP_BASE_GATEWAY_CREDENTIAL_NAME],
+		properties: buildDomainRestrictionProperties(remote.endpointHostname),
 	};
 }
 
@@ -220,6 +247,8 @@ function getNodeDescriptionCredentials(
 	switch (server.authType) {
 		case 'oauth2':
 			return [{ name: getMcpRegistryCredentialTypeName(server), required: true }];
+		case 'gateway':
+			return [{ name: getMcpRegistryGatewayCredentialTypeName(server), required: true }];
 		case 'extendsCredential': {
 			const validated = getValidatedExtendsCredential(server, isKnownCredentialType);
 			if (!validated) return [];
@@ -313,6 +342,8 @@ export function serverToCredentialDescription(
 			return serverToOAuth2CredentialDescription(server);
 		case 'extendsCredential':
 			return serverToExtendedCredentialDescription(server, isKnownCredentialType);
+		case 'gateway':
+			return serverToGatewayCredentialDescription(server);
 		case 'usesCredentials':
 			return null;
 		default:
@@ -331,7 +362,8 @@ export function serverToNodeDescription(
 	if (
 		server.authType !== 'oauth2' &&
 		server.authType !== 'extendsCredential' &&
-		server.authType !== 'usesCredentials'
+		server.authType !== 'usesCredentials' &&
+		server.authType !== 'gateway'
 	) {
 		return null;
 	}
