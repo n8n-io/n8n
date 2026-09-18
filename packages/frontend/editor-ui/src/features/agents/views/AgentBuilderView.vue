@@ -101,6 +101,7 @@ import { INSTANCE_AI_PENDING_AGENT_ID_STATE } from '@/features/ai/instanceAi/con
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { useAgentCollaborationStore } from '../stores/agentCollaboration.store';
+import { useActivityDetection } from '@/app/composables/useActivityDetection';
 import { buildAgentChangeRequestPrompt } from '../utils/agent-change-request';
 import { buildAgentFixWithAssistantPrompt } from '../utils/fix-with-assistant';
 import { hasBlockingIssues } from '../utils/validationIssues';
@@ -168,6 +169,7 @@ const favoritesStore = useFavoritesStore();
 const mcpStore = useMCPStore();
 const mcp = useMcp();
 const agentCollaborationStore = useAgentCollaborationStore();
+useActivityDetection(agentCollaborationStore);
 const { isCtrlKeyPressed } = useDeviceSupport();
 
 // Gates the Knowledge Base files table (upload, list, sandbox fetch/warmup) on
@@ -1094,6 +1096,8 @@ const mcpAutosave = useAgentConfigAutosave<McpAvailabilitySnapshot>({
 
 function onToggleMcpAccess(enabled: boolean) {
 	if (!agent.value) return;
+	// Acquire the write lock before persisting any change.
+	agentCollaborationStore.requestWriteAccess();
 	mcpAvailabilityOverride.value = enabled;
 	mcpAutosave.scheduleAutosave({
 		type: 'mcp',
@@ -1124,6 +1128,14 @@ async function settleAutosave() {
 		skillAutosave.settleAutosave(),
 		mcpAutosave.settleAutosave(),
 	]);
+}
+
+/** Acquire the write lock, then settle pending autosaves before a
+ * revert-to-published. The lock is lazy — acquired on first mutating
+ * action, released on inactivity — matching the workflow pattern. */
+async function beforeRevertToPublished() {
+	agentCollaborationStore.requestWriteAccess();
+	await settleAutosave();
 }
 
 async function flushAutosave() {
@@ -1193,6 +1205,8 @@ watch(isEditingLocked, (locked) => {
  * re-validates independently, so this is a UX affordance, not the only guard.
  */
 async function refreshValidationBeforePublish(): Promise<boolean> {
+	// Acquire the write lock before publishing — the lock is lazy.
+	agentCollaborationStore.requestWriteAccess();
 	try {
 		await flushAutosave();
 	} catch {
@@ -1240,6 +1254,10 @@ function normalizeAgentMemoryConfig(config: AgentJsonConfig): AgentJsonConfig {
 
 function onConfigFieldUpdate(updates: Partial<AgentJsonConfig>) {
 	if (!localConfig.value) return;
+	// Acquire the write lock before persisting any change — the lock is
+	// lazy (acquired on first edit, released on inactivity), matching the
+	// workflow collaboration pattern.
+	agentCollaborationStore.requestWriteAccess();
 	// The persisted validation result no longer reflects the working copy —
 	// Publish must not stay enabled against a result that predates this edit.
 	invalidateConfigValidation();
@@ -1274,6 +1292,8 @@ const caps = useAgentCapabilitiesActions({
 	validationIssues: computed(() => configValidation.value?.issues ?? []),
 	scheduleConfigUpdate: onConfigFieldUpdate,
 	scheduleSkillSave: ({ skillId, skill }) => {
+		// Acquire the write lock before persisting any change.
+		agentCollaborationStore.requestWriteAccess();
 		// The persisted validation result no longer reflects the working copy —
 		// mirrors `onConfigFieldUpdate`'s invalidation before scheduling a config autosave.
 		invalidateConfigValidation();
@@ -2183,7 +2203,7 @@ function onSwitchAgent(nextAgentId: string) {
 			:project-name="projectName"
 			:header-actions="headerActions"
 			:save-status="saveStatus"
-			:before-revert-to-published="settleAutosave"
+			:before-revert-to-published="beforeRevertToPublished"
 			:artifact-mode="isArtifactMode"
 			:editing-locked="isEditingLocked"
 			:config-validation-status="configValidation?.status ?? null"

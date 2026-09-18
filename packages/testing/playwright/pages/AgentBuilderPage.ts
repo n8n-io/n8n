@@ -24,4 +24,14 @@ export class AgentBuilderPage extends BasePage {
 	getCollaborationTakeOverButton(): Locator {
 		return this.page.getByTestId('agent-collaboration-take-over');
 	}
+
+	/** Triggers a config edit by changing the agent name, which acquires the
+	 * write lock under the lazy-acquisition pattern. */
+	async editAgentName(name: string): Promise<void> {
+		const edit = this.page.locator('[data-testid="agent-name-inline-edit"]');
+		await edit.click();
+		await edit.locator('input, textarea').fill(name);
+		// Blur to trigger the update event
+		await edit.locator('input, textarea').press('Enter');
+	}
 }

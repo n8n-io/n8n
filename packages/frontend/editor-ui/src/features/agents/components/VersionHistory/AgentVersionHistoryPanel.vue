@@ -7,6 +7,7 @@ import { useI18n } from '@n8n/i18n';
 import { useAgentVersionHistory } from '../../composables/useAgentVersionHistory';
 import { useAgentPermissions } from '../../composables/useAgentPermissions';
 import { useAgentPublish } from '../../composables/useAgentPublish';
+import { useAgentCollaborationStore } from '../../stores/agentCollaboration.store';
 import type { AgentResource } from '../../types';
 import AgentVersionList from './AgentVersionList.vue';
 import type { AgentVersionAction } from './AgentVersionListItem.vue';
@@ -45,6 +46,7 @@ const {
 const { unpublish } = useAgentPublish();
 
 const { canUpdate, canPublish, canUnpublish } = useAgentPermissions(toRef(props, 'projectId'));
+const agentCollaborationStore = useAgentCollaborationStore();
 
 // Hide actions the user can't perform server-side. Disable them while the
 // collaboration write lock prevents edits so the user sees the button is
@@ -103,6 +105,10 @@ watch(
 );
 
 async function onAction({ action, versionId }: { action: AgentVersionAction; versionId: string }) {
+	// Acquire the write lock before any mutating version action — the lock
+	// is lazy (acquired on first edit, released on inactivity), matching
+	// the workflow collaboration pattern.
+	agentCollaborationStore.requestWriteAccess();
 	if (action === 'revert') {
 		const result = await revertToVersion(props.projectId, props.agentId, versionId);
 		if (result) emit('reverted', result);

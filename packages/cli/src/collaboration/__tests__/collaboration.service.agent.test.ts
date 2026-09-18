@@ -47,6 +47,8 @@ describe('CollaborationService — agent messages', () => {
 		} as unknown as User);
 
 		agentRepository.findById.mockResolvedValue({ projectId: 'project-1' } as Agent);
+		agentRepository.getProjectIdById.mockResolvedValue('project-1');
+		agentRepository.existsByIdAndProjectId.mockResolvedValue(true);
 
 		state.getAgentCollaborators.mockResolvedValue([]);
 
@@ -200,10 +202,12 @@ describe('CollaborationService — agent messages', () => {
 		});
 
 		it('returns null when the agent belongs to a different project', async () => {
+			agentRepository.existsByIdAndProjectId.mockResolvedValue(false);
 			state.getAgentWriteLock.mockResolvedValue({ clientId: 'client-1', userId: 'user-1' });
 
 			await expect(service.getAgentWriteLock('other-project', 'agent-1')).resolves.toBeNull();
 			expect(state.getAgentWriteLock).not.toHaveBeenCalled();
+			agentRepository.existsByIdAndProjectId.mockResolvedValue(true);
 		});
 	});
 
@@ -249,11 +253,13 @@ describe('CollaborationService — agent messages', () => {
 		});
 
 		it('throws NotFoundError when the agent belongs to a different project', async () => {
+			agentRepository.existsByIdAndProjectId.mockResolvedValue(false);
 			state.getAgentWriteLock.mockResolvedValue({ clientId: 'client-1', userId: 'user-1' });
 
 			await expect(
 				service.validateAgentWriteLock(userId, 'client-1', 'other-project', 'agent-1', 'update'),
 			).rejects.toThrow(/Agent not found/);
+			agentRepository.existsByIdAndProjectId.mockResolvedValue(true);
 		});
 	});
 

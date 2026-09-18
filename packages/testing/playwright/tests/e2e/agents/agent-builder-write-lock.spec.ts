@@ -17,8 +17,9 @@ test.describe(
 	() => {
 		/**
 		 * Two tabs of the same user open the same agent. The first tab acquires the
-		 * write lock on mount; the second tab is read-only and shows the
-		 * collaboration banner until the first tab closes and releases the lock.
+		 * write lock on first edit (lazy acquisition); the second tab is read-only
+		 * and shows the collaboration banner until the first tab closes and
+		 * releases the lock.
 		 */
 		test('second tab is read-only until the first tab closes', async ({ n8n, api }) => {
 			const project = await api.projects.getMyPersonalProject();
@@ -26,15 +27,19 @@ test.describe(
 
 			const { id: agentId } = await api.agents.create(projectId, `Write lock E2E ${nanoid(6)}`);
 
-			// First tab opens the builder and acquires the lock.
+			// First tab opens the builder. With lazy acquisition, no lock is
+			// held until the user makes an edit.
 			await n8n.start.fromHome();
 			await n8n.agentBuilder.goto(projectId, agentId);
 			await expect(n8n.agentBuilder.getHeader()).toBeVisible();
 			await expect(n8n.agentBuilder.getCollaborationBanner()).toBeHidden();
 
+			// Make an edit to acquire the write lock.
+			await n8n.agentBuilder.editAgentName('Edited agent name');
+
 			// Wait for the first tab to acquire the write lock before opening
-			// the second tab — the lock is acquired asynchronously after mount
-			// via WebSocket round-trip, and the second tab must see it.
+			// the second tab — the lock is acquired asynchronously via WebSocket
+			// round-trip, and the second tab must see it.
 			await expect
 				.poll(
 					async () => {

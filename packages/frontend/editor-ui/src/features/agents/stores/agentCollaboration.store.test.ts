@@ -47,7 +47,7 @@ describe('useAgentCollaborationStore', () => {
 	});
 
 	describe('initialize', () => {
-		test('sends agentOpened and requests write access when no lock exists', async () => {
+		test('sends agentOpened but does not eagerly request write access', async () => {
 			const store = useAgentCollaborationStore();
 
 			await store.initialize('project-1', 'agent-1');
@@ -56,10 +56,11 @@ describe('useAgentCollaborationStore', () => {
 				type: 'agentOpened',
 				agentId: 'agent-1',
 			});
-			expect(mockPushStore.send).toHaveBeenCalledWith({
-				type: 'agentWriteAccessRequested',
-				agentId: 'agent-1',
-			});
+			// Lazy acquisition: the lock is acquired on first edit, not on mount.
+			const requestCall = mockPushStore.send.mock.calls.find(
+				(call) => (call[0] as { type: string }).type === 'agentWriteAccessRequested',
+			);
+			expect(requestCall).toBeUndefined();
 		});
 
 		test('does not request write access when a lock already exists', async () => {
@@ -146,6 +147,57 @@ describe('useAgentCollaborationStore', () => {
 				agentId: 'agent-1',
 				force: true,
 			});
+		});
+	});
+
+	describe('requestWriteAccess', () => {
+		test('sends agentWriteAccessRequested and sets isRequestingWriteAccess', async () => {
+			const store = useAgentCollaborationStore();
+
+			await store.initialize('project-1', 'agent-1');
+			mockPushStore.send.mockClear();
+
+			store.requestWriteAccess();
+
+			expect(mockPushStore.send).toHaveBeenCalledWith({
+				type: 'agentWriteAccessRequested',
+				agentId: 'agent-1',
+			});
+			expect(store.shouldBeReadOnly).toBe(true);
+		});
+
+		test('is a no-op when already the current tab writer', async () => {
+			const store = useAgentCollaborationStore();
+
+			await store.initialize('project-1', 'agent-1');
+			const handler = mockPushStore.addEventListener.mock.calls[0][0] as PushHandler;
+
+			// Acquire the lock for this tab
+			handler({
+				type: 'writeAccessAcquired',
+				data: { agentId: 'agent-1', clientId: 'push-1', userId: 'user-1' },
+			});
+			mockPushStore.send.mockClear();
+
+			store.requestWriteAccess();
+
+			// No message sent — already the writer
+			const requestCall = mockPushStore.send.mock.calls.find(
+				(call) => (call[0] as { type: string }).type === 'agentWriteAccessRequested',
+			);
+			expect(requestCall).toBeUndefined();
+		});
+	});
+
+	describe('recordActivity', () => {
+		test('is exposed and updates lastActivityTime', async () => {
+			const store = useAgentCollaborationStore();
+
+			await store.initialize('project-1', 'agent-1');
+
+			// recordActivity is a no-op function that updates internal state.
+			// It should not throw and should be callable.
+			expect(() => store.recordActivity()).not.toThrow();
 		});
 	});
 

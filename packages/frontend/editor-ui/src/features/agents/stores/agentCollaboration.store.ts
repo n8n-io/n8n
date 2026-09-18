@@ -14,6 +14,8 @@ import { getAgentWriteLock } from '../composables/useAgentApi';
 const HEARTBEAT_INTERVAL = 5 * TIME.MINUTE;
 const WRITE_LOCK_HEARTBEAT_INTERVAL = 30 * TIME.SECOND;
 const LOCK_STATE_POLL_INTERVAL = 20 * TIME.SECOND;
+const INACTIVITY_CHECK_INTERVAL = 5 * TIME.SECOND;
+const INACTIVITY_TIMEOUT_THRESHOLD = 20 * TIME.SECOND;
 
 /**
  * Store for tracking the agent builder write lock and active collaborators.
@@ -31,6 +33,9 @@ export const useAgentCollaborationStore = defineStore(STORES.AGENT_COLLABORATION
 	// Keeps the tab read-only until it actually holds the lock, so a
 	// released/expired lock does not make every tab writable at once.
 	const isRequestingWriteAccess = ref(false);
+
+	const lastActivityTime = ref<number>(Date.now());
+	const activityCheckInterval = ref<number | null>(null);
 
 	const heartbeatTimer = ref<number | null>(null);
 	const writeLockHeartbeatTimer = ref<number | null>(null);
@@ -174,6 +179,32 @@ export const useAgentCollaborationStore = defineStore(STORES.AGENT_COLLABORATION
 		);
 	};
 
+	function recordActivity() {
+		lastActivityTime.value = Date.now();
+	}
+
+	function checkInactivity() {
+		if (!isCurrentTabWriter.value) return;
+
+		const timeSinceActivity = Date.now() - lastActivityTime.value;
+
+		if (timeSinceActivity >= INACTIVITY_TIMEOUT_THRESHOLD) {
+			releaseWriteAccess();
+		}
+	}
+
+	function stopInactivityCheck() {
+		if (activityCheckInterval.value !== null) {
+			clearInterval(activityCheckInterval.value);
+			activityCheckInterval.value = null;
+		}
+	}
+
+	function startInactivityCheck() {
+		stopInactivityCheck();
+		activityCheckInterval.value = window.setInterval(checkInactivity, INACTIVITY_CHECK_INTERVAL);
+	}
+
 	function requestWriteAccess() {
 		if (isCurrentTabWriter.value) {
 			return true;
@@ -306,6 +337,7 @@ export const useAgentCollaborationStore = defineStore(STORES.AGENT_COLLABORATION
 				};
 
 				if (isCurrentTabWriter.value) {
+					recordActivity();
 					startWriteLockHeartbeat();
 					stopLockStatePolling();
 				} else {
@@ -330,11 +362,7 @@ export const useAgentCollaborationStore = defineStore(STORES.AGENT_COLLABORATION
 
 		notifyAgentOpened();
 		startHeartbeat();
-
-		// First opener acquires the lock so a second tab is read-only immediately.
-		if (!currentWriterLock.value) {
-			requestWriteAccess();
-		}
+		startInactivityCheck();
 	}
 
 	function terminate() {
@@ -350,6 +378,7 @@ export const useAgentCollaborationStore = defineStore(STORES.AGENT_COLLABORATION
 		stopHeartbeat();
 		stopWriteLockHeartbeat();
 		stopLockStatePolling();
+		stopInactivityCheck();
 		if (isCurrentTabWriter.value) {
 			releaseWriteAccess();
 		}
@@ -371,6 +400,7 @@ export const useAgentCollaborationStore = defineStore(STORES.AGENT_COLLABORATION
 		requestWriteAccess,
 		requestWriteAccessForce,
 		releaseWriteAccess,
+		recordActivity,
 		initialize,
 		terminate,
 		startHeartbeat,

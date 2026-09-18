@@ -2425,6 +2425,11 @@ describe('AgentBuilderView — three-column shell', () => {
 				await vi.advanceTimersByTimeAsync(400);
 				expect(wrapper.find(externalUpdateSelector).exists()).toBe(true);
 				wrapper.unmount();
+				// onBeforeUnmount is async (drains autosave before releasing the
+				// lock). With lazy acquisition the tab is writable, so flushAutosave
+				// does real work — advance timers to let it settle before asserting.
+				await vi.advanceTimersByTimeAsync(0);
+				await flushPromises();
 				expect(pushListeners.size).toBe(0);
 				expect(vi.getTimerCount()).toBe(0);
 			} finally {
@@ -3942,7 +3947,8 @@ describe('AgentBuilderView — collaboration write lock', { timeout: 60_000 }, (
 	});
 
 	it('reacts to writeAccessAcquired from another client by showing the read-only banner', async () => {
-		// Start with no lock — this tab will request and acquire it.
+		// Start with no lock — lazy acquisition means the tab is writable
+		// until someone else acquires the lock.
 		getAgentWriteLockMock.mockResolvedValue(null);
 		rootStoreMock.pushRef = 'tab-1';
 		usersStoreMock.currentUserId = 'user-1';
@@ -3950,20 +3956,7 @@ describe('AgentBuilderView — collaboration write lock', { timeout: 60_000 }, (
 		const wrapper = await renderView();
 		await flushPromises();
 
-		// The tab is read-only while requesting the lock (isRequestingWriteAccess).
-		// Simulate the backend granting the lock to this tab.
-		const acquireSelf: PushMessage = {
-			type: 'writeAccessAcquired',
-			data: {
-				agentId: 'a1',
-				userId: 'user-1',
-				clientId: 'tab-1',
-			},
-		};
-		for (const listener of pushListeners) listener(acquireSelf);
-		await flushPromises();
-
-		// Now editable — this tab holds the lock.
+		// No lock held by anyone — the tab is writable (lazy acquisition).
 		expect(wrapper.find('[data-test-id="agent-collaboration-banner"]').exists()).toBe(false);
 		expect(wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('canEditAgent')).toBe(
 			true,

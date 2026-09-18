@@ -435,12 +435,12 @@ export class CollaborationService {
 		agentId: string,
 		scope: 'agent:read' | 'agent:update',
 	): Promise<boolean> {
-		const [agent, user] = await Promise.all([
-			this.agentRepository.findById(agentId),
+		const [projectId, user] = await Promise.all([
+			this.agentRepository.getProjectIdById(agentId),
 			this.userRepository.findOne({ where: { id: userId }, relations: ['role'] }),
 		]);
-		if (!agent || !user) return false;
-		return await userHasScopes(user, [scope], false, { projectId: agent.projectId });
+		if (!projectId || !user) return false;
+		return await userHasScopes(user, [scope], false, { projectId });
 	}
 
 	private async hasAgentReadAccess(userId: User['id'], agentId: string): Promise<boolean> {
@@ -601,8 +601,8 @@ export class CollaborationService {
 		projectId: string,
 		agentId: string,
 	): Promise<{ clientId: string; userId: string } | null> {
-		const agent = await this.agentRepository.findById(agentId);
-		if (agent?.projectId !== projectId) {
+		const exists = await this.agentRepository.existsByIdAndProjectId(agentId, projectId);
+		if (!exists) {
 			return null;
 		}
 
@@ -639,8 +639,8 @@ export class CollaborationService {
 		// the lock. Without this, a request with an agentId from a different
 		// project would return 409/423 (leaking lock state) instead of the
 		// expected 404 from the downstream project-boundary check.
-		const agent = await this.agentRepository.findById(agentId);
-		if (agent?.projectId !== projectId) {
+		const exists = await this.agentRepository.existsByIdAndProjectId(agentId, projectId);
+		if (!exists) {
 			throw new NotFoundError('Agent not found');
 		}
 
