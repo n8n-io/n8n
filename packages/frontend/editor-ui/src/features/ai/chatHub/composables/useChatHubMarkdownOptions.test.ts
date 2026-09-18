@@ -8,7 +8,7 @@ import {
 
 function renderMarkdown(content: string): string {
 	const markdown = useChatHubMarkdownOptions('code-actions', 'table-container', null);
-	const renderer = new MarkdownIt();
+	const renderer = new MarkdownIt(markdown.options);
 
 	for (const plugin of markdown.plugins.value) {
 		renderer.use(plugin);
@@ -29,6 +29,14 @@ describe('useChatHubMarkdownOptions', () => {
 		const html = renderMarkdown('[Docs](https://docs.n8n.io)');
 
 		expect(html).toContain('href="https://docs.n8n.io"');
+		expect(html).toContain('target="_blank"');
+		expect(html).toContain('rel="noopener"');
+	});
+
+	it('renders bare URLs as clickable links', () => {
+		const html = renderMarkdown('Open it: https://docs.n8n.io/some/page');
+
+		expect(html).toContain('href="https://docs.n8n.io/some/page"');
 		expect(html).toContain('target="_blank"');
 		expect(html).toContain('rel="noopener"');
 	});
