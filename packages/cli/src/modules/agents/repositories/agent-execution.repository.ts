@@ -76,6 +76,13 @@ export class AgentExecutionRepository extends Repository<AgentExecution> {
 		await this.update({ id: executionId, storedAt: 'db' }, { storedAt, timeline: null });
 	}
 
+	async findTimelineStorageLocation(
+		executionId: string,
+	): Promise<AgentExecution['storedAt'] | null> {
+		const execution = await this.findOne({ select: ['storedAt'], where: { id: executionId } });
+		return execution?.storedAt ?? null;
+	}
+
 	/**
 	 * The first user-message text in each of the given threads. Used by the
 	 * sessions list to render a preview before the LLM-generated title is

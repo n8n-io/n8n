@@ -403,6 +403,14 @@ describe('AgentExecutionService', () => {
 				}),
 			}),
 		).resolves.toBe('execution-1');
+		expect(agentExecutionThreadRepository.incrementUsage).toHaveBeenCalledWith(
+			'thread-1',
+			2,
+			3,
+			0,
+			1,
+		);
+		expect(agentExecutionRepository.findSuspendedWithoutModel).toHaveBeenCalledWith('thread-1');
 		expect(agentExecutionRepository.updateIfRunning).toHaveBeenCalledWith(
 			'execution-1',
 			expect.objectContaining({ status: 'success', totalTokens: 5, model: 'mock' }),
@@ -492,9 +500,13 @@ describe('AgentExecutionService', () => {
 			expect(executionUpdateBroadcaster.notify).toHaveBeenCalledTimes(2);
 		});
 
-		it.each(['blob write', 'storage pointer update'])(
+		it.each([
+			['blob write', null, false],
+			['storage pointer update', 'db', true],
+			['storage pointer acknowledgement', 'fs', false],
+		] as const)(
 			'keeps the finalized execution in the database when the %s fails',
-			async (failure) => {
+			async (failure, currentLocation, shouldDeleteBlob) => {
 				storageConfig = mock<StorageConfig>({ modeTag: 'fs' });
 				service = new AgentExecutionService(
 					mockLogger(),
@@ -531,8 +543,12 @@ describe('AgentExecutionService', () => {
 				agentExecutionRepository.create.mockImplementation((data) => data as AgentExecution);
 				agentExecutionRepository.save.mockResolvedValue({ id: 'execution-1' } as AgentExecution);
 				const error = new Error('storage unavailable');
-				if (failure === 'blob write') agentExecutionLogStore.write.mockRejectedValue(error);
-				else agentExecutionRepository.moveTimelineToBlob.mockRejectedValue(error);
+				if (failure === 'blob write') {
+					agentExecutionLogStore.write.mockRejectedValue(error);
+				} else {
+					agentExecutionRepository.moveTimelineToBlob.mockRejectedValue(error);
+					agentExecutionRepository.findTimelineStorageLocation.mockResolvedValue(currentLocation);
+				}
 
 				await recordExecution({
 					threadId: 'thread-1',
@@ -553,6 +569,18 @@ describe('AgentExecutionService', () => {
 					}),
 				);
 				expect(errorReporter.error).toHaveBeenCalledWith(error);
+				if (shouldDeleteBlob) {
+					expect(agentExecutionLogStore.delete).toHaveBeenCalledWith([
+						{
+							agentId: 'agent-1',
+							threadId: 'thread-1',
+							executionId: 'execution-1',
+							storedAt: 'fs',
+						},
+					]);
+				} else {
+					expect(agentExecutionLogStore.delete).not.toHaveBeenCalled();
+				}
 			},
 		);
 

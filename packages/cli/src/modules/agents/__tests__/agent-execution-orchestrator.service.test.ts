@@ -514,7 +514,11 @@ describe('AgentExecutionOrchestratorService', () => {
 		async (failFinalization) => {
 			const { service, executionService, runtimeCacheService, checkpointStorage } = makeService();
 			const executionError = new Error('model failed');
-			const runtime = makeRuntime([{ type: 'error', error: executionError }]);
+			const usage = { promptTokens: 2, completionTokens: 3, totalTokens: 5, cost: 0.01 };
+			const runtime = makeRuntime([
+				{ type: 'error', error: executionError },
+				{ type: 'finish', finishReason: 'error', model: 'mock-model', usage },
+			]);
 			runtimeCacheService.getRuntime.mockResolvedValue(runtime);
 			const validation = mock<AgentValidationService>();
 			validation.validateAgentIsRunnable.mockResolvedValue({ missing: [] });
@@ -555,6 +559,16 @@ describe('AgentExecutionOrchestratorService', () => {
 				expect(error).toBe(executionError);
 			}
 			expect(runtimeCacheService.releaseRuntimeLease).toHaveBeenCalledWith(runtime.agent);
+			expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+				'execution-1',
+				expect.objectContaining({
+					record: expect.objectContaining({
+						model: 'mock-model',
+						usage: { promptTokens: 2, completionTokens: 3, totalTokens: 5 },
+						totalCost: 0.01,
+					}),
+				}),
+			);
 		},
 	);
 
@@ -1173,6 +1187,31 @@ describe('AgentExecutionOrchestratorService', () => {
 			}
 		},
 	);
+
+	it('does not record a runtime failure when cancellation arrives during agent lookup', async () => {
+		const { service, runtimeCacheService, executionService, agentRepository } = makeService();
+		const controller = new AbortController();
+		const agent = createDeferredPromise<Agent | null>();
+		runtimeCacheService.getRuntime.mockRejectedValue(new Error('runtime initialization failed'));
+		agentRepository.findByIdAndProjectId.mockReturnValue(agent.promise);
+
+		const result = collect(
+			service.executeForChat({
+				agentId,
+				projectId,
+				user,
+				message: 'Hello',
+				memory: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
+				abortSignal: controller.signal,
+			}),
+		);
+		await vi.waitFor(() => expect(agentRepository.findByIdAndProjectId).toHaveBeenCalled());
+		controller.abort();
+		agent.resolve(null);
+
+		await expect(result).rejects.toMatchObject({ name: 'AbortError' });
+		expect(executionService.startExecutionRecording).not.toHaveBeenCalled();
+	});
 
 	it('does not mark an unclaimed resume error stream as an accepted human response', async () => {
 		const { service, runtimeCacheService, executionService, checkpointStorage } = makeService();

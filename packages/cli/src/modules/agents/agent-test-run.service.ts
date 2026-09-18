@@ -354,9 +354,10 @@ export class AgentTestRunService {
 
 		for await (const chunk of stream) {
 			if (chunk.type === 'error') {
-				errorChunk = chunk;
-				break;
+				errorChunk ??= chunk;
+				continue;
 			}
+			if (errorChunk) continue;
 			if (chunk.type === 'text-delta') {
 				response += chunk.delta;
 			} else if (chunk.type === 'tool-call-suspended') {
@@ -371,7 +372,7 @@ export class AgentTestRunService {
 			}
 		}
 
-		// A break awaits iterator cleanup and preserves any finalization failure.
+		// Draining preserves terminal usage and lets finalization failures take precedence.
 		if (errorChunk) throw errorChunk.error;
 		const executionId = getExecutionId();
 		if (!executionId) throw new UnexpectedError('Agent execution completed without a recorded ID');

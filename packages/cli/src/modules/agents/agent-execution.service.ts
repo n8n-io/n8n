@@ -204,15 +204,15 @@ export class AgentExecutionService {
 
 			// Save the terminal row first. A rejected finalization must not replace a stored blob.
 			if (storedAt !== 'db') {
+				const logRef = { agentId: params.agentId, threadId: params.threadId, executionId };
+				let blobWritten = false;
 				try {
-					await this.agentExecutionLogStore.write(
-						{ agentId: params.agentId, threadId: params.threadId, executionId },
-						{ timeline: record.timeline },
-						storedAt,
-					);
+					await this.agentExecutionLogStore.write(logRef, { timeline: record.timeline }, storedAt);
+					blobWritten = true;
 					await this.agentExecutionRepository.moveTimelineToBlob(executionId, storedAt);
 				} catch (error) {
 					this.errorReporter.error(error);
+					if (blobWritten) await this.deleteUnreferencedTimelineBlob(logRef, storedAt);
 				}
 			}
 
@@ -229,6 +229,22 @@ export class AgentExecutionService {
 			throw error;
 		} finally {
 			this.executionsNeedingTitleSync.delete(executionId);
+		}
+	}
+
+	private async deleteUnreferencedTimelineBlob(
+		ref: { agentId: string; threadId: string; executionId: string },
+		storedAt: StorageLocation,
+	): Promise<void> {
+		try {
+			// The pointer update can commit before its error reaches us. Delete only after checking it.
+			const currentLocation = await this.agentExecutionRepository.findTimelineStorageLocation(
+				ref.executionId,
+			);
+			if (currentLocation === 'db')
+				await this.agentExecutionLogStore.delete([{ ...ref, storedAt }]);
+		} catch (error) {
+			this.errorReporter.error(error);
 		}
 	}
 

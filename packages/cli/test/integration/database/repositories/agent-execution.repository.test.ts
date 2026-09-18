@@ -224,7 +224,7 @@ describe('AgentExecutionRepository', () => {
 				mockLogger(),
 				new AgentsConfig(),
 			);
-			const bothLoaded = createDeferredPromise();
+			const bothLoaded = createDeferredPromise<boolean>();
 			let loaded = 0;
 			const onResumeClaimed = vi.fn();
 			const attempts = [storage, otherStorage].map(async (checkpointStorage) => {
@@ -233,8 +233,10 @@ describe('AgentExecutionRepository', () => {
 					...store,
 					load: async (key) => {
 						const state = await store.load(key);
-						if (++loaded === 2) bothLoaded.resolve();
-						await bothLoaded.promise;
+						if (++loaded === 2) bothLoaded.resolve(true);
+						if (!(await bothLoaded.promise)) {
+							throw new Error('A resume attempt failed before both checkpoints loaded');
+						}
 						return state;
 					},
 				});
@@ -255,6 +257,9 @@ describe('AgentExecutionRepository', () => {
 							}),
 						}),
 					);
+				} catch (error) {
+					bothLoaded.resolve(false);
+					throw error;
 				} finally {
 					await agent.close();
 				}

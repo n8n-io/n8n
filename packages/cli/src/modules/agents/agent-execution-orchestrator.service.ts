@@ -1062,6 +1062,7 @@ export class AgentExecutionOrchestratorService {
 			} catch (cause) {
 				throw new AgentExecutionRecordingError({ phase: 'create', cause, executionError: error });
 			}
+			abortSignal?.throwIfAborted();
 			if (agent) {
 				const selected =
 					params.usePublishedVersion && agent.activeVersion?.schema
