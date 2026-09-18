@@ -20,7 +20,7 @@ describe('TypeAvailabilityPoliciesModule', () => {
 
 	// The available-types controller injects the node registry, whose import chain takes
 	// several seconds to transform — more than the default per-test timeout.
-	it('registers the instance, project and available-types controllers on init', async () => {
+	it('registers the node-types and credential-types instance, project and available-types controllers on init', async () => {
 		const module = new TypeAvailabilityPoliciesModule();
 
 		await module.init();
@@ -31,6 +31,12 @@ describe('TypeAvailabilityPoliciesModule', () => {
 		const { TypeAvailabilityPolicyProjectController } = await import(
 			'../type-availability-policy-project.controller.js'
 		);
+		const { CredentialTypePolicyInstanceController } = await import(
+			'../credential-type-policy-instance.controller.js'
+		);
+		const { CredentialTypePolicyProjectController } = await import(
+			'../credential-type-policy-project.controller.js'
+		);
 		const { AvailableTypesController } = await import('../available-types.controller.js');
 		const registry = Container.get(ControllerRegistryMetadata);
 
@@ -39,6 +45,12 @@ describe('TypeAvailabilityPoliciesModule', () => {
 		).toBeGreaterThan(0);
 		expect(
 			registry.getControllerMetadata(TypeAvailabilityPolicyProjectController as never).routes.size,
+		).toBeGreaterThan(0);
+		expect(
+			registry.getControllerMetadata(CredentialTypePolicyInstanceController as never).routes.size,
+		).toBeGreaterThan(0);
+		expect(
+			registry.getControllerMetadata(CredentialTypePolicyProjectController as never).routes.size,
 		).toBeGreaterThan(0);
 		expect(
 			registry.getControllerMetadata(AvailableTypesController as never).routes.size,
