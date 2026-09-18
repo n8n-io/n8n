@@ -25,7 +25,7 @@ import type { AgentRunTelemetryType } from '@/interfaces';
 import { ExecutionLevelTracer } from '@/modules/otel/execution-level-tracer';
 import { Telemetry } from '@/telemetry';
 
-import { AgentExecutionService, type StartExecutionParams } from './agent-execution.service';
+import type { StartExecutionParams } from './agent-execution.service';
 import { AgentRunTracingService } from './agent-run-tracing.service';
 import { AgentRuntimeReconstructionService } from './agent-runtime-reconstruction.service';
 import {
@@ -36,8 +36,11 @@ import {
 	buildAgentConfigurationTelemetry,
 	buildAgentConfigurationTelemetryFromConfig,
 } from './agent-telemetry';
+import { AgentTurnExecutionService } from './agent-turn-execution.service';
 import type { Agent } from './entities/agent.entity';
-import { ExecutionRecorder, type MessageRecord } from './execution-recorder';
+import type { ExecutionRecorder, MessageRecord } from './execution-recorder';
+import { encodeIntegrationMessageContext } from './integrations/integration-message-context';
+import { IntegrationMessageContextService } from './integrations/integration-message-context.service';
 import { NodeToolAiGatewayService } from './json-config/node-tool-ai-gateway.service';
 import { modelStreamStallOptions } from './model-stream-stall-options';
 import { AgentRepository } from './repositories/agent.repository';
@@ -93,7 +96,7 @@ export class AgentWorkflowExecutionService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly agentRepository: AgentRepository,
-		private readonly agentExecutionService: AgentExecutionService,
+		private readonly turnExecutionService: AgentTurnExecutionService,
 		private readonly telemetry: Telemetry,
 		private readonly credentialsService: CredentialsService,
 		private readonly agentRuntimeReconstructionService: AgentRuntimeReconstructionService,
@@ -101,6 +104,7 @@ export class AgentWorkflowExecutionService {
 		private readonly executionLevelTracer: ExecutionLevelTracer,
 		private readonly nodeToolAiGatewayService: NodeToolAiGatewayService,
 		private readonly aiConfig: AiConfig,
+		private readonly integrationMessageContextService: IntegrationMessageContextService,
 	) {}
 
 	private normalizeWorkflowStreamError(error: unknown, outputSchema?: JSONSchema7): Error {
@@ -292,17 +296,11 @@ export class AgentWorkflowExecutionService {
 		const streamAdapter = new WorkflowAgentStreamAdapter(streamObserver);
 
 		let agentExecutionId: string | undefined;
-		const recorder = new ExecutionRecorder(undefined, (timeline) => {
-			if (agentExecutionId && recordingParams) {
-				this.agentExecutionService.recordTimelineSnapshot({
-					projectId: recordingParams.projectId,
-					agentId: recordingParams.agentId,
-					threadId: recordingParams.threadId,
-					executionId: agentExecutionId,
-					timeline,
-				});
-			}
-		});
+		const recorder = this.turnExecutionService.createRecorder(
+			undefined,
+			() => agentExecutionId,
+			recordingParams,
+		);
 		const startedAt = recorder.startedAt;
 
 		let structuredOutput: unknown = null;
@@ -336,6 +334,10 @@ export class AgentWorkflowExecutionService {
 					hasParentContext: parentCtx !== undefined,
 				});
 
+				// Only stored agents have integration tools.
+				const messageContext = recordingParams
+					? await this.integrationMessageContextService.getLatest(threadId)
+					: null;
 				const resultStream = await agentInstance.stream(message, {
 					// The memory store scopes message reads by `resourceId` (the
 					// "per-user scope"; chat integrations pass the chat user id there).
@@ -347,7 +349,10 @@ export class AgentWorkflowExecutionService {
 					persistence: {
 						resourceId: threadId,
 						threadId,
-						...(sandboxScope ? { hostMetadata: encodeAgentSandboxHostMetadata(sandboxScope) } : {}),
+						hostMetadata: {
+							...(sandboxScope ? encodeAgentSandboxHostMetadata(sandboxScope) : {}),
+							...encodeIntegrationMessageContext(messageContext),
+						},
 					},
 					executionCounter: createAgentExecutionCounter(this.telemetry, {
 						agentId: telemetryAgentId,
@@ -359,18 +364,11 @@ export class AgentWorkflowExecutionService {
 				});
 
 				if (recordingParams) {
-					try {
-						agentExecutionId = await this.agentExecutionService.startExecutionRecording(
-							recordingParams,
-							startedAt,
-						);
-					} catch (error) {
-						this.logger.warn('Failed to start agent execution recording from workflow', {
-							agentId: recordingParams.agentId,
-							threadId,
-							error: error instanceof Error ? error.message : String(error),
-						});
-					}
+					agentExecutionId = await this.turnExecutionService.tryStartExecution(
+						recordingParams,
+						startedAt,
+						'Failed to start agent execution recording from workflow',
+					);
 				}
 
 				for await (const value of streamAgentChunks(resultStream.stream)) {
@@ -407,18 +405,11 @@ export class AgentWorkflowExecutionService {
 		}
 
 		if (streamError && recordingParams && !agentExecutionId) {
-			try {
-				agentExecutionId = await this.agentExecutionService.startExecutionRecording(
-					recordingParams,
-					startedAt,
-				);
-			} catch (error) {
-				this.logger.warn('Failed to start agent execution recording from workflow', {
-					agentId: recordingParams.agentId,
-					threadId,
-					error: error instanceof Error ? error.message : String(error),
-				});
-			}
+			agentExecutionId = await this.turnExecutionService.tryStartExecution(
+				recordingParams,
+				startedAt,
+				'Failed to start agent execution recording from workflow',
+			);
 		}
 
 		const messageRecord = recorder.getMessageRecord();
@@ -603,30 +594,24 @@ export class AgentWorkflowExecutionService {
 				: {}),
 		});
 
-		if (run.agentExecutionId) {
-			try {
-				await this.agentExecutionService.finalizeExecution(run.agentExecutionId, {
-					threadId,
-					agentId,
-					agentName: agentInstance.name,
-					projectId,
-					userMessage: message,
-					record: run.messageRecord,
-					source: AGENT_WORKFLOW_TRIGGER_TYPE,
-					telemetry: {
-						userId: telemetryUserId,
-						runType,
-						configuration: telemetryConfiguration,
-					},
-				});
-			} catch (error) {
-				this.logger.warn('Failed to record agent execution from workflow', {
-					agentId,
-					threadId,
-					error: error instanceof Error ? error.message : String(error),
-				});
-			}
-		}
+		await this.turnExecutionService.persistRecordedExecution({
+			executionId: run.agentExecutionId,
+			failureMessage: 'Failed to record agent execution from workflow',
+			params: {
+				threadId,
+				agentId,
+				agentName: agentInstance.name,
+				projectId,
+				userMessage: message,
+				record: run.messageRecord,
+				source: AGENT_WORKFLOW_TRIGGER_TYPE,
+				telemetry: {
+					userId: telemetryUserId,
+					runType,
+					configuration: telemetryConfiguration,
+				},
+			},
+		});
 
 		return this.buildWorkflowResult({
 			run,

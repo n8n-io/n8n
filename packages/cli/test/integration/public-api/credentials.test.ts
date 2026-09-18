@@ -3,8 +3,15 @@ import { LicenseState } from '@n8n/backend-common';
 import type { CredentialPayload } from '@n8n/backend-test-utils';
 import { createTeamProject, linkUserToProject, randomName, testDb } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
-import { CredentialsRepository, SharedCredentialsRepository } from '@n8n/db';
+import {
+	CredentialDependencyRepository,
+	CredentialsRepository,
+	SharedCredentialsRepository,
+	ProjectRepository,
+	SecretsProviderConnectionRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
+import { QueryFailedError } from '@n8n/typeorm';
 import { Snowflake } from 'n8n-nodes-base/credentials/Snowflake.credentials';
 import {
 	CREDENTIAL_BLANKING_VALUE,
@@ -14,6 +21,8 @@ import {
 import { mock } from 'vitest-mock-extended';
 
 import { CredentialsService } from '@/credentials/credentials.service';
+import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
+import { RoleCacheService } from '@/services/role-cache.service';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { CredentialsTester } from '@/services/credentials-tester.service';
 
@@ -63,7 +72,12 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['SharedCredentials', 'CredentialsEntity']);
+	await testDb.truncate([
+		'CredentialDependency',
+		'SharedCredentials',
+		'CredentialsEntity',
+		'SecretsProviderConnection',
+	]);
 });
 
 /**
@@ -213,31 +227,37 @@ describe('POST /credentials', () => {
 		expect(response.statusCode).toBe(403);
 	});
 
-	test('should create credential with isResolvable set to true', async () => {
-		// End-user credentials are only available in team projects
-		const project = await createTeamProject();
-		const payload = {
-			name: 'test credential',
-			type: 'githubApi',
-			data: {
-				accessToken: 'abcdefghijklmnopqrstuvwxyz',
-				user: 'test',
-				server: 'testServer',
-			},
-			isResolvable: true,
-			projectId: project.id,
-		};
+	test.each([undefined, 'x'.repeat(16)])(
+		'creates a resolvable credential with ID %j',
+		async (id) => {
+			// End-user credentials are only available in team projects
+			const project = await createTeamProject();
+			const payload = {
+				id,
+				name: 'test credential',
+				type: 'githubApi',
+				data: {
+					accessToken: 'abcdefghijklmnopqrstuvwxyz',
+					user: 'test',
+					server: 'testServer',
+				},
+				isResolvable: true,
+				projectId: project.id,
+			};
 
-		const response = await authOwnerAgent.post('/credentials').send(payload);
+			const response = await authOwnerAgent.post('/credentials').send(payload);
 
-		expect(response.statusCode).toBe(200);
-		const { id, isResolvable } = response.body;
+			expect(response.statusCode).toBe(200);
+			const { id: createdId, isResolvable } = response.body;
 
-		expect(isResolvable).toBe(true);
+			expect(isResolvable).toBe(true);
 
-		const credential = await Container.get(CredentialsRepository).findOneByOrFail({ id });
-		expect(credential.isResolvable).toBe(true);
-	});
+			const credential = await Container.get(CredentialsRepository).findOneByOrFail({
+				id: createdId,
+			});
+			expect(credential.isResolvable).toBe(true);
+		},
+	);
 
 	test('should not allow creating an end-user credential in a personal project', async () => {
 		const payload = {
@@ -272,11 +292,13 @@ describe('POST /credentials', () => {
 		const response = await authOwnerAgent.post('/credentials').send(payload);
 
 		expect(response.statusCode).toBe(200);
-		const { id, isResolvable } = response.body;
+		const { id: createdId, isResolvable } = response.body;
 
 		expect(isResolvable).toBe(false);
 
-		const credential = await Container.get(CredentialsRepository).findOneByOrFail({ id });
+		const credential = await Container.get(CredentialsRepository).findOneByOrFail({
+			id: createdId,
+		});
 		expect(credential.isResolvable).toBe(false);
 	});
 
@@ -295,11 +317,13 @@ describe('POST /credentials', () => {
 		const response = await authOwnerAgent.post('/credentials').send(payload);
 
 		expect(response.statusCode).toBe(200);
-		const { id, isResolvable } = response.body;
+		const { id: createdId, isResolvable } = response.body;
 
 		expect(isResolvable).toBe(false);
 
-		const credential = await Container.get(CredentialsRepository).findOneByOrFail({ id });
+		const credential = await Container.get(CredentialsRepository).findOneByOrFail({
+			id: createdId,
+		});
 		expect(credential.isResolvable).toBe(false);
 	});
 
@@ -368,18 +392,213 @@ describe('POST /credentials', () => {
 		expect(response.statusCode).toBe(200);
 	});
 
-	test('should reject a read-only id field in the body', async () => {
-		const payload = {
-			id: 'someId',
-			name: 'test credential',
-			type: 'githubApi',
-			data: { accessToken: 'abcdefghijklmnopqrstuvwxyz', user: 'test', server: 'testServer' },
-		};
+	const sourcePayload = {
+		id: 'source-cred',
+		name: 'Source credential',
+		type: 'githubApi',
+		data: { accessToken: 'target-secret', user: 'test', server: 'testServer' },
+	};
 
-		const response = await authOwnerAgent.post('/credentials').send(payload);
+	test.each(['source-ID_123', '1234', 'x'.repeat(16)])(
+		'creates the exact ID %s with encrypted data and an owner',
+		async (id) => {
+			const response = await authMemberAgent.post('/credentials').send({ ...sourcePayload, id });
+			expect(response.statusCode).toBe(200);
+			expect(response.body.id).toBe(id);
+			expect(response.body).not.toHaveProperty('data');
+			expect(JSON.stringify(response.body)).not.toContain('target-secret');
+			const stored = await Container.get(CredentialsRepository).findOneByOrFail({ id });
+			expect(stored.data).not.toContain('target-secret');
+			expect(await getDecryptedCredentialData(id)).toEqual(sourcePayload.data);
+			const project = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+				member.id,
+			);
+			expect(
+				await Container.get(SharedCredentialsRepository).findBy({ credentialsId: id }),
+			).toEqual([expect.objectContaining({ projectId: project.id, role: 'credential:owner' })]);
+		},
+	);
 
+	test('creates in an allowed team project with an empty role cache', async () => {
+		const project = await createTeamProject('Target', member);
+		await Container.get(RoleCacheService).invalidateCache();
+		const response = await authMemberAgent
+			.post('/credentials')
+			.send({ ...sourcePayload, projectId: project.id });
+		expect(response.statusCode).toBe(200);
+		expect(
+			await Container.get(SharedCredentialsRepository).findBy({ credentialsId: sourcePayload.id }),
+		).toEqual([expect.objectContaining({ projectId: project.id, role: 'credential:owner' })]);
+	});
+
+	test.each([
+		'',
+		'x'.repeat(17),
+		'c9cc7ffd-2c38-44a1-a9a6-03eb9da46c70',
+		'team/github',
+		'team?github',
+		'team#github',
+		'team%2Fgithub',
+		'team\\github',
+		'.',
+		'..',
+		' source ',
+		'source\n',
+		null,
+		42,
+		[],
+		{},
+	])('rejects invalid ID %j', async (id) => {
+		const response = await authOwnerAgent.post('/credentials').send({ ...sourcePayload, id });
 		expect(response.statusCode).toBe(400);
-		expect(response.body.message).toContain('is read-only');
+		expect(await Container.get(CredentialsRepository).count()).toBe(0);
+	});
+
+	test.each(['same', 'different-type', 'other-project', 'instance'])(
+		'keeps an occupied ID unchanged: %s',
+		async (kind) => {
+			const repository = Container.get(CredentialsRepository);
+			const sharing = Container.get(SharedCredentialsRepository);
+			const dependencies = Container.get(CredentialDependencyRepository);
+			const first = await authOwnerAgent.post('/credentials').send(sourcePayload);
+			expect(first.statusCode).toBe(200);
+			if (kind === 'different-type')
+				await repository.update(sourcePayload.id, { type: 'httpHeaderAuth' });
+			if (kind === 'instance') {
+				await sharing.delete({ credentialsId: sourcePayload.id });
+				await repository.update(sourcePayload.id, { usageScope: 'instance' });
+			}
+			await dependencies.upsertDependenciesForCredential({
+				credentialId: sourcePayload.id,
+				dependencyType: 'externalSecretProvider',
+				dependencyIds: ['existing-provider'],
+			});
+			const before = {
+				credential: await repository.find(),
+				shared: await sharing.find(),
+				dependencies: await dependencies.find(),
+			};
+			const agent = kind === 'same' ? authOwnerAgent : authMemberAgent;
+			const response = await agent.post('/credentials').send(sourcePayload);
+			expect(response.statusCode).toBe(409);
+			expect(response.body.message).toBe('A credential with this ID already exists');
+			expect({
+				credential: await repository.find(),
+				shared: await sharing.find(),
+				dependencies: await dependencies.find(),
+			}).toEqual(before);
+			expect(await getDecryptedCredentialData(sourcePayload.id)).toEqual(sourcePayload.data);
+		},
+	);
+
+	test('checks target project access before reporting an occupied ID', async () => {
+		const project = await createTeamProject('Restricted', owner);
+		await authOwnerAgent.post('/credentials').send(sourcePayload).expect(200);
+		const response = await authMemberAgent
+			.post('/credentials')
+			.send({ ...sourcePayload, projectId: project.id });
+		expect(response.statusCode).toBe(403);
+		expect(await Container.get(SharedCredentialsRepository).count()).toBe(1);
+	});
+
+	test('returns 404 for a missing project with a supplied ID', async () => {
+		const response = await authMemberAgent
+			.post('/credentials')
+			.send({ ...sourcePayload, projectId: 'missing-project' });
+		expect(response.statusCode).toBe(404);
+		expect(await Container.get(CredentialsRepository).count()).toBe(0);
+	});
+
+	test('commits the resolved secret-provider dependency with the credential', async () => {
+		const provider = await Container.get(SecretsProviderConnectionRepository).save({
+			providerKey: 'sourceProvider',
+			type: 'vault',
+			encryptedSettings: '{}',
+			isEnabled: true,
+		});
+		const response = await authOwnerAgent.post('/credentials').send({
+			...sourcePayload,
+			data: { ...sourcePayload.data, accessToken: '={{ $secrets.sourceProvider.token }}' },
+		});
+		expect(response.statusCode, JSON.stringify(response.body)).toBe(200);
+		expect(
+			await Container.get(CredentialDependencyRepository).findBy({
+				credentialId: sourcePayload.id,
+			}),
+		).toEqual([
+			expect.objectContaining({
+				dependencyType: 'externalSecretProvider',
+				dependencyId: String(provider.id),
+			}),
+		]);
+	});
+
+	test('rejects an unavailable secret provider before inserting a supplied ID', async () => {
+		const config = Container.get(ExternalSecretsConfig);
+		const previous = config.externalSecretsForProjects;
+		config.externalSecretsForProjects = true;
+		try {
+			const response = await authOwnerAgent.post('/credentials').send({
+				...sourcePayload,
+				data: { ...sourcePayload.data, accessToken: '={{ $secrets.unavailableProvider.token }}' },
+			});
+			expect(response.statusCode).toBe(400);
+			expect(await Container.get(CredentialsRepository).count()).toBe(0);
+		} finally {
+			config.externalSecretsForProjects = previous;
+		}
+	});
+
+	test.each([
+		new Error('Dependency write failed'),
+		new QueryFailedError(
+			'INSERT',
+			[],
+			Object.assign(new Error('UNIQUE constraint failed: credential_dependency.id'), {
+				code: 'SQLITE_CONSTRAINT',
+			}),
+		),
+		new QueryFailedError(
+			'INSERT',
+			[],
+			Object.assign(new Error('duplicate key'), { code: '23505' }),
+		),
+	])('rolls back later write failures without reporting an ID conflict: %s', async (error) => {
+		const write = vi
+			.spyOn(Container.get(CredentialDependencyRepository), 'upsertDependenciesForCredential')
+			.mockRejectedValueOnce(error);
+		try {
+			const response = await authOwnerAgent.post('/credentials').send(sourcePayload);
+			expect(response.statusCode).toBe(500);
+			expect(await Container.get(CredentialsRepository).count()).toBe(0);
+			expect(await Container.get(SharedCredentialsRepository).count()).toBe(0);
+		} finally {
+			write.mockRestore();
+		}
+	});
+
+	test('uses the same insert for stubs and preserves an occupied credential', async () => {
+		const project = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+			owner.id,
+		);
+		const service = Container.get(CredentialsService);
+		const opts = {
+			id: sourcePayload.id,
+			name: 'Stub credential',
+			type: 'githubApi',
+			projectId: project.id,
+		};
+		const stub = await service.createStubCredential(opts, owner);
+		expect(stub.id).toBe(opts.id);
+		expect(await getDecryptedCredentialData(stub.id)).toEqual({});
+		await expect(service.createStubCredential(opts, owner)).rejects.toThrow(
+			'Cannot create credential stub',
+		);
+		expect(await Container.get(CredentialsRepository).count()).toBe(1);
+		expect(await Container.get(SharedCredentialsRepository).count()).toBe(1);
+		const generated = await service.createStubCredential({ ...opts, id: undefined }, owner);
+		expect(generated.id).toEqual(expect.any(String));
+		expect(generated.id).not.toBe(stub.id);
 	});
 
 	test('should reject for member without the credential:create scope', async () => {
@@ -387,6 +606,7 @@ describe('POST /credentials', () => {
 		const agent = testServer.publicApiAgentFor(memberWithoutCreateScope);
 
 		const response = await agent.post('/credentials').send({
+			id: 'source-id',
 			name: 'test credential',
 			type: 'githubApi',
 			data: { accessToken: 'abcdefghijklmnopqrstuvwxyz', user: 'test', server: 'testServer' },
@@ -640,6 +860,23 @@ describe('POST /credentials/:id/test', () => {
 		const response = await authOwnerAgent.post('/credentials/123/test');
 
 		expect(response.statusCode).toBe(404);
+	});
+
+	test('should return 403 when the API key lacks credential:read', async () => {
+		const savedCredential = await saveCredential(dbCredential(), { user: owner });
+		const agent = await makeGlobalRoleUserAgent(['credential:list']);
+
+		const response = await agent.post(`/credentials/${savedCredential.id}/test`);
+
+		expect(response.statusCode).toBe(403);
+	});
+
+	test('should not test a credential the member has no access to', async () => {
+		const savedCredential = await saveCredential(dbCredential(), { user: owner });
+
+		const response = await authMemberAgent.post(`/credentials/${savedCredential.id}/test`);
+
+		expect(response.statusCode).toBe(403);
 	});
 });
 

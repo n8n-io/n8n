@@ -1,6 +1,7 @@
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { ClaimedTask, DispatchReporter } from '@n8n/scheduler';
 import { createDispatchReporter } from '@n8n/scheduler';
+import { Tracing } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import type { EventService } from '@/events/event.service';
@@ -23,6 +24,7 @@ describe('SystemTaskHandler', () => {
 			shutdownController.signal,
 			mockLogger(),
 			eventService,
+			new Tracing(),
 			onRunError,
 		);
 		return {
@@ -89,6 +91,7 @@ describe('SystemTaskHandler', () => {
 			new AbortController().signal,
 			mockLogger(),
 			mock<EventService>(),
+			new Tracing(),
 			vi.fn(),
 		);
 

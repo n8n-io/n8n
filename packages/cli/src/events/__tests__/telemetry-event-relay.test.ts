@@ -712,6 +712,7 @@ describe('TelemetryEventRelay', () => {
 				{
 					user_id: 'user123',
 					source: 'user',
+					kind: 'node-types',
 					scope: 'instance',
 					default_action: 'deny',
 					previous_default_action: null,
@@ -733,6 +734,45 @@ describe('TelemetryEventRelay', () => {
 					version: 1,
 				},
 			);
+		});
+
+		it('should report a credential type policy save with its own kind', () => {
+			const event: RelayEventMap['node-type-policy-saved'] = {
+				updatedBy: 'user123',
+				kind: 'credential-types',
+				projectId: null,
+				scopeId: 'scope-1',
+				before: null,
+				after: { defaultAction: 'deny', version: 1 },
+				rulesBefore: null,
+				rulesAfter: [],
+				warningCount: 0,
+			};
+
+			eventService.emit('node-type-policy-saved', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.NODE_TYPE_POLICIES.USER_SAVED_NODE_TYPE_POLICY,
+				expect.objectContaining({ kind: 'credential-types' }),
+			);
+		});
+
+		it('should drop an unrecognized kind instead of reporting it', () => {
+			const event: RelayEventMap['node-type-policy-saved'] = {
+				updatedBy: 'user123',
+				kind: 'not-a-registered-kind',
+				projectId: null,
+				scopeId: 'scope-1',
+				before: null,
+				after: { defaultAction: 'deny', version: 1 },
+				rulesBefore: null,
+				rulesAfter: [],
+				warningCount: 0,
+			};
+
+			eventService.emit('node-type-policy-saved', event);
+
+			expect(telemetry.track).not.toHaveBeenCalled();
 		});
 
 		it('should track a project-scope save over an existing policy', () => {
@@ -801,6 +841,7 @@ describe('TelemetryEventRelay', () => {
 				{
 					user_id: 'user123',
 					source: 'user',
+					kind: 'node-types',
 					operation: 'created',
 					policy_id: 'policy-1',
 					rule_count: 1,
@@ -810,6 +851,37 @@ describe('TelemetryEventRelay', () => {
 					previous_rule_count: null,
 				},
 			);
+		});
+
+		it('should report a credential type policy document with its own kind', () => {
+			const event: RelayEventMap['node-type-policy-document-created'] = {
+				updatedBy: 'user123',
+				kind: 'credential-types',
+				policyId: 'policy-1',
+				origin: 'document-api',
+				after: { rules: [], version: 1 },
+			};
+
+			eventService.emit('node-type-policy-document-created', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.NODE_TYPE_POLICIES.USER_UPDATED_NODE_TYPE_POLICY_DOCUMENT,
+				expect.objectContaining({ kind: 'credential-types' }),
+			);
+		});
+
+		it('should drop a policy document with an unrecognized kind instead of reporting it', () => {
+			const event: RelayEventMap['node-type-policy-document-created'] = {
+				updatedBy: 'user123',
+				kind: 'not-a-registered-kind',
+				policyId: 'policy-1',
+				origin: 'document-api',
+				after: { rules: [], version: 1 },
+			};
+
+			eventService.emit('node-type-policy-document-created', event);
+
+			expect(telemetry.track).not.toHaveBeenCalled();
 		});
 
 		it('should track an updated policy document', () => {
@@ -1005,6 +1077,7 @@ describe('TelemetryEventRelay', () => {
 				{
 					user_id: 'user123',
 					source: 'user',
+					kind: 'node-types',
 					scope: 'project',
 					project_id: 'project-1',
 					scope_id: 'scope-2',
@@ -1013,6 +1086,39 @@ describe('TelemetryEventRelay', () => {
 					previous_attachment_count: 1,
 				},
 			);
+		});
+
+		it('should report credential type policy attachments with their own kind', () => {
+			const event: RelayEventMap['node-type-policy-attachments-updated'] = {
+				updatedBy: 'user123',
+				kind: 'credential-types',
+				projectId: null,
+				scopeId: 'scope-1',
+				before: { attachments: [], version: 1 },
+				after: { attachments: [], version: 2 },
+			};
+
+			eventService.emit('node-type-policy-attachments-updated', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.NODE_TYPE_POLICIES.USER_UPDATED_NODE_TYPE_POLICY_ATTACHMENTS,
+				expect.objectContaining({ kind: 'credential-types' }),
+			);
+		});
+
+		it('should drop attachments with an unrecognized kind instead of reporting them', () => {
+			const event: RelayEventMap['node-type-policy-attachments-updated'] = {
+				updatedBy: 'user123',
+				kind: 'not-a-registered-kind',
+				projectId: null,
+				scopeId: 'scope-1',
+				before: { attachments: [], version: 1 },
+				after: { attachments: [], version: 2 },
+			};
+
+			eventService.emit('node-type-policy-attachments-updated', event);
+
+			expect(telemetry.track).not.toHaveBeenCalled();
 		});
 	});
 
@@ -1196,6 +1302,7 @@ describe('TelemetryEventRelay', () => {
 				userId: 'user123',
 				roleSlug: 'project:my-role-abc123',
 				scopes: ['workflow:create', 'workflow:read', 'credential:read'],
+				source: 'ui',
 			};
 
 			eventService.emit('custom-role-created', event);
@@ -1204,6 +1311,7 @@ describe('TelemetryEventRelay', () => {
 				user_id: 'user123',
 				role_slug: 'project:my-role-abc123',
 				scopes: ['workflow:create', 'workflow:read', 'credential:read'],
+				source: 'ui',
 			});
 		});
 
