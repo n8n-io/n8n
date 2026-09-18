@@ -18,8 +18,8 @@ import type { Server } from 'node:http';
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsHelper } from '@/credentials-helper';
 import { NodeTypes } from '@/node-types';
-import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 
+import { EngineAdditionalDataBuilder } from './engine-additional-data';
 import { EngineControlPlaneClient } from './engine-control-plane-client';
 import { EngineCredentialsClient } from './engine-credentials-client';
 import { RemoteCredentialsHelper } from './remote-credentials-helper';
@@ -55,6 +55,7 @@ export class EngineV2Runtime {
 		private readonly credentialsClient: EngineCredentialsClient,
 		private readonly credentialsHelper: CredentialsHelper,
 		private readonly credentialTypes: CredentialTypes,
+		private readonly additionalDataBuilder: EngineAdditionalDataBuilder,
 	) {
 		this.logger = this.logger.scoped('engine-v2');
 	}
@@ -111,8 +112,7 @@ export class EngineV2Runtime {
 					await this.controlPlaneClient.sendLifecycleEvents(events, signal),
 				v1StepExecutor: new V1StepExecutor({
 					nodeTypes: this.nodeTypes,
-					additionalDataFactory: async (context) =>
-						await this.buildAdditionalData(context, stopping),
+					additionalDataFactory: async (context) => this.buildAdditionalData(context, stopping),
 					loadStepData: createEngineStepDataLoader(executionStore, stepStore),
 				}),
 			}),
@@ -122,27 +122,11 @@ export class EngineV2Runtime {
 		this.engine = engine;
 	}
 
-	/**
-	 * The v1 `additionalData` for one step. `getBase` builds it as it does for a
-	 * v1 execution, so `$vars`, `$secrets` and the policy context match the
-	 * workflow. The credentials helper is then swapped for one that asks the
-	 * control plane over HTTP, because the data plane has no credential store.
-	 */
-	private async buildAdditionalData(
+	private buildAdditionalData(
 		context: AdditionalDataContext,
 		stopping: AbortController,
-	): Promise<IWorkflowExecuteAdditionalData> {
-		const additionalData = await WorkflowExecuteAdditionalData.getBase({
-			userId: context.userId,
-			workflowId: context.workflowId,
-			projectId: context.projectId,
-		});
-
-		// The task runner keys its tasks by execution id, so it needs the engine's
-		// id to cancel them. `$execution.id` also reads it.
-		additionalData.executionId = context.executionId;
-
-		additionalData.credentialsHelper = new RemoteCredentialsHelper(
+	): IWorkflowExecuteAdditionalData {
+		const credentialsHelper = new RemoteCredentialsHelper(
 			this.credentialsClient,
 			this.credentialsHelper,
 			this.credentialTypes,
@@ -150,7 +134,7 @@ export class EngineV2Runtime {
 			stopping.signal,
 		);
 
-		return additionalData;
+		return this.additionalDataBuilder.build(context, credentialsHelper);
 	}
 
 	private async initServer(): Promise<void> {
