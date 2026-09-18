@@ -267,6 +267,10 @@ export type { FolderPublic } from './folders/folder-public.dto';
 
 export { ListInsightsWorkflowQueryDto } from './insights/list-workflow-query.dto';
 export { InsightsDateFilterDto } from './insights/date-filter.dto';
+export {
+	InsightsSummaryPublicDto,
+	InsightsSummaryQueryPublicDto,
+} from './insights/insights-summary-public.dto';
 
 export { GetDestinationQueryDto } from './log-streaming/get-destination-query.dto';
 export {
