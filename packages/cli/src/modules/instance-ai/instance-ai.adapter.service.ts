@@ -523,7 +523,16 @@ export class InstanceAiAdapterService {
 						builderDelegate: builderDelegateAdapter.createDelegate(
 							user,
 							projectId,
-							new AgentsCredentialProvider(this.credentialsService, projectId, user, agentId),
+							// The target agent id is only known per turn (a build-new-agent
+							// flow creates it after this context is built), so tag Gateway
+							// spend with the concrete id the delegate hands us each turn.
+							(targetAgentId) =>
+								new AgentsCredentialProvider(
+									this.credentialsService,
+									projectId,
+									user,
+									targetAgentId,
+								),
 							credentialService,
 							{ useEvalModelCatalog: credentialIdAllowlist !== undefined },
 						),
