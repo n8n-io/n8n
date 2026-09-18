@@ -44,9 +44,10 @@ lints and tests here without edits:
 
 Two things do not carry over on purpose:
 
-- There is no `@/` path alias. Vitest inlines this package from `src/` in
-  every consumer, and an alias would not resolve there. Use relative imports
-  inside the package.
+- There is no `@/` path alias. `cli` tests load this package from `dist/`
+  and other consumers inline it from `src/`. `tsc` does not rewrite an alias
+  in `dist/`, so it resolves in neither. Use relative imports inside the
+  package.
 - `cli` turns a set of rules down to `warn` for its whole tree. This package
   keeps the shared backend layer as is. Fix such findings when you move a file.
 
