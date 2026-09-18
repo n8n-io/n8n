@@ -62,9 +62,11 @@ test.describe(
 			// The first tab keeps write access.
 			await expect(n8n.agentBuilder.getCollaborationBanner()).toBeHidden();
 
-			// Closing the first tab sends `agentClosed`, which releases the lock and
-			// pushes `writeAccessReleased` to the second tab.
-			await n8n.page.close();
+			// Closing the first tab sends `agentClosed` from its `beforeunload`
+			// handler, which releases the lock and pushes `writeAccessReleased` to
+			// the second tab. Playwright skips `beforeunload` handlers on
+			// `page.close()` unless asked; a real tab close always runs them.
+			await n8n.page.close({ runBeforeUnload: true });
 			await expect(secondTab.agentBuilder.getCollaborationBanner()).toBeHidden({
 				timeout: 30_000,
 			});
