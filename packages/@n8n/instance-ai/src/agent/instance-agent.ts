@@ -15,7 +15,12 @@ import { attachRuntimeWorkspaceCapabilities } from './runtime-workspace';
 import { listConnectedMcpServices } from '../mcp/connected-mcp-services';
 import { getVersionedSystemPrompt, resolvePromptProfile } from '../prompts/prompt-profiles';
 import { hasRuntimeSkills } from '../skills/runtime-skills';
-import { createToolRegistry, mergeToolRegistries, toolRegistryValues } from '../tool-registry';
+import {
+	createToolRegistry,
+	mergeToolRegistries,
+	toolRegistryValues,
+	wrapToolRegistryWithCache,
+} from '../tool-registry';
 import {
 	createOrchestratorDomainTools,
 	createOrchestrationTools,
@@ -180,11 +185,13 @@ export async function createInstanceAgent(
 	domainContext.connectedMcpServices = listConnectedMcpServices(mcpServers, safeMcpTools);
 	const orchestratorDomainTools = createOrchestratorDomainTools(domainContext);
 
-	const allOrchestratorTools = mergeToolRegistries(
-		orchestratorDomainTools,
-		orchestrationTools,
-		safeLocalMcpTools,
-		safeMcpTools,
+	const allOrchestratorTools = wrapToolRegistryWithCache(
+		mergeToolRegistries(
+			orchestratorDomainTools,
+			orchestrationTools,
+			safeLocalMcpTools,
+			safeMcpTools,
+		),
 	);
 	for (const name of orchestrationContext?.disabledToolNames ?? [])
 		allOrchestratorTools.delete(name);

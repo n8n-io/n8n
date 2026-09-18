@@ -240,6 +240,37 @@ describe('credentials tool', () => {
 			expect(context.credentialService.list).toHaveBeenCalledWith({ type: 'slackApi' });
 		});
 
+		it('should filter by multiple types when types array is provided', async () => {
+			const slackCreds: CredentialSummary[] = [{ id: '1', name: 'Slack Token', type: 'slackApi' }];
+			const notionCreds: CredentialSummary[] = [
+				{ id: '2', name: 'Notion Token', type: 'notionApi' },
+			];
+			const context = createMockContext();
+			(context.credentialService.list as Mock).mockImplementation(async ({ type }) => {
+				if (type === 'slackApi') return slackCreds;
+				if (type === 'notionApi') return notionCreds;
+				return [];
+			});
+
+			const tool = createCredentialsTool(context);
+			const result = await executeTool(
+				tool,
+				{ action: 'list' as const, types: ['slackApi', 'notionApi'] },
+				noSuspendCtx(),
+			);
+
+			expect(context.credentialService.list).toHaveBeenCalledWith({ type: 'slackApi' });
+			expect(context.credentialService.list).toHaveBeenCalledWith({ type: 'notionApi' });
+			expect(result).toEqual({
+				credentials: [
+					{ id: '1', name: 'Slack Token', type: 'slackApi' },
+					{ id: '2', name: 'Notion Token', type: 'notionApi' },
+				],
+				total: 2,
+				hasMore: false,
+			});
+		});
+
 		it('should paginate with offset and limit', async () => {
 			const credentials: CredentialSummary[] = Array.from({ length: 10 }, (_, i) => ({
 				id: String(i),

@@ -229,6 +229,16 @@ async function enrichWithSetupPreference<T extends { name: string }>(
 	}
 }
 
+function cleanNodeInputs(inputs: unknown): unknown {
+	if (typeof inputs === 'string' && inputs.startsWith('={{')) {
+		if (inputs.includes("'ai_tool'") || inputs.includes('"ai_tool"')) {
+			return ['main', 'ai_tool'];
+		}
+		return ['main'];
+	}
+	return inputs;
+}
+
 // ── Handlers ────────────────────────────────────────────────────────────────
 
 async function handleList(
@@ -273,7 +283,12 @@ async function handleSearch(
 				context.nodeService.listDiscriminators?.(r.name) ?? Promise.resolve(null),
 			]);
 
-			return discriminators ? { ...node, discriminators } : node;
+			const cleanedNode =
+				typeof node.inputs === 'string' && node.inputs.startsWith('={{')
+					? { ...node, inputs: cleanNodeInputs(node.inputs) }
+					: node;
+
+			return discriminators ? { ...cleanedNode, discriminators } : cleanedNode;
 		}),
 	);
 
@@ -353,29 +368,61 @@ async function resolveNodeTypeDefinitions(
 
 	const definitions = await Promise.all(
 		nodeTypes.map(async (req) => {
-			const nodeType = typeof req === 'string' ? req : req.nodeType;
+			const requestedNodeType = typeof req === 'string' ? req : req.nodeType;
 			const options = typeof req === 'string' ? undefined : req;
 
-			const result = await context.nodeService.getNodeTypeDefinition!(nodeType, options);
+			let result = await context.nodeService.getNodeTypeDefinition!(requestedNodeType, options);
+
+			let resolvedNodeType = requestedNodeType;
+
+			// If not found or errored, try alternative standard package prefix candidates
+			if (!result || result.error) {
+				const candidateTypes: string[] = [];
+				if (requestedNodeType.startsWith('n8n-nodes-base.')) {
+					candidateTypes.push(
+						`@n8n/n8n-nodes-langchain.${requestedNodeType.slice('n8n-nodes-base.'.length)}`,
+					);
+				} else if (requestedNodeType.startsWith('@n8n/n8n-nodes-langchain.')) {
+					candidateTypes.push(
+						`n8n-nodes-base.${requestedNodeType.slice('@n8n/n8n-nodes-langchain.'.length)}`,
+					);
+				} else if (!requestedNodeType.includes('.')) {
+					candidateTypes.push(`n8n-nodes-base.${requestedNodeType}`);
+					candidateTypes.push(`@n8n/n8n-nodes-langchain.${requestedNodeType}`);
+				}
+
+				for (const candidate of candidateTypes) {
+					const candidateOptions = options ? { ...options, nodeType: candidate } : undefined;
+					const fallbackResult = await context.nodeService.getNodeTypeDefinition!(
+						candidate,
+						candidateOptions,
+					);
+					if (fallbackResult && !fallbackResult.error) {
+						result = fallbackResult;
+						resolvedNodeType = candidate;
+						break;
+					}
+				}
+			}
 
 			if (!result) {
 				return {
-					nodeType,
+					nodeType: requestedNodeType,
 					content: '',
-					error: `No type definition found for '${nodeType}'.`,
+					error: `No type definition found for '${requestedNodeType}'.`,
 				};
 			}
 
 			if (result.error) {
 				return {
-					nodeType,
+					nodeType: requestedNodeType,
 					content: '',
 					error: result.error,
 				};
 			}
 
 			return {
-				nodeType,
+				nodeType: resolvedNodeType,
 				version: result.version,
 				content: result.content,
 				...(result.builderHint ? { builderHint: result.builderHint } : {}),

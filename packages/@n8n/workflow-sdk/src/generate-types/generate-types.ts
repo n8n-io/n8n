@@ -23,6 +23,12 @@ import * as fs from 'fs';
 import { deepCopy } from 'n8n-workflow';
 import * as path from 'path';
 
+import {
+	describeProperty,
+	registerHoistCandidate,
+	sanitizeDocText,
+	withHoistedTypeLiterals,
+} from './compact-output';
 // eslint-disable-next-line import-x/no-cycle -- TODO: Refactor shared types/utils to break cycle
 import {
 	generateSingleVersionSchemaFile,
@@ -69,6 +75,14 @@ const CUSTOM_API_CALL_KEY = '__CUSTOM_API_CALL__';
  * See the type mappers for their dedicated schemas.
  */
 const DISPLAY_ONLY_PROPERTY_TYPES = new Set(['notice', 'curlImport', 'credentials', 'callout']);
+
+/**
+ * Wrap a file generator so repeated nested object literals collapse into
+ * named aliases. Every emitted `.ts` file goes through this.
+ */
+function compactFile(generate: () => string): string {
+	return withHoistedTypeLiterals(generate);
+}
 
 function buildNodeConfigType(
 	paramsTypeName: string,
@@ -486,11 +500,7 @@ function emitBuilderHint(
 	combo?: DiscriminatorCombination,
 ): void {
 	if (hint.propertyHint) {
-		const safePropertyHint = hint.propertyHint
-			.replace(/\*\//g, '*\\/')
-			.replace(/</g, '&lt;')
-			.replace(/>/g, '&gt;');
-		lines.push(`${indent} * @builderHint ${safePropertyHint}`);
+		lines.push(`${indent} * @builderHint ${sanitizeDocText(hint.propertyHint)}`);
 	}
 
 	if (!hint.extraTypeDefContent) return;
@@ -1174,21 +1184,16 @@ function generateNestedPropertyJSDoc(
 	const lines: string[] = [];
 
 	// Description
-	const description = prop.description ?? prop.displayName;
+	const description = describeProperty(prop);
 	if (description) {
-		const safeDescription = description
-			.replace(/\*\//g, '*\\/')
-			.replace(/</g, '&lt;')
-			.replace(/>/g, '&gt;');
-		lines.push(`${indent}/** ${safeDescription}`);
+		lines.push(`${indent}/** ${description}`);
 	} else {
 		lines.push(`${indent}/**`);
 	}
 
 	// Hint
 	if (prop.hint) {
-		const safeHint = prop.hint.replace(/\*\//g, '*\\/').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-		lines.push(`${indent} * @hint ${safeHint}`);
+		lines.push(`${indent} * @hint ${sanitizeDocText(prop.hint)}`);
 	}
 
 	// Builder hint - guidance for AI/workflow builders
@@ -1326,6 +1331,7 @@ function generateFixedCollectionType(
 
 		if (nestedProps.length > 0) {
 			const innerType = `{\n${nestedProps.join(';\n')};\n${INDENT.repeat(2)}}`;
+			registerHoistCandidate(innerType, `${group.name}${isMultipleValues ? 'Item' : 'Fields'}`);
 
 			const minRequired = prop.typeOptions?.minRequiredFields;
 			const maxAllowed = prop.typeOptions?.maxAllowedFields;
@@ -1353,12 +1359,9 @@ function generateFixedCollectionType(
 			// Generate JSDoc for the group if it has builderHint, description,
 			// or field-count constraints.
 			const groupJsDocLines: string[] = [];
-			if (group.displayName || group.description) {
-				const desc = (group.description ?? group.displayName ?? '')
-					.replace(/\*\//g, '*\\/')
-					.replace(/</g, '&lt;')
-					.replace(/>/g, '&gt;');
-				groupJsDocLines.push(`${INDENT.repeat(2)}/** ${desc}`);
+			const groupDescription = describeProperty(group);
+			if (groupDescription) {
+				groupJsDocLines.push(`${INDENT.repeat(2)}/** ${groupDescription}`);
 			}
 			if (group.builderHint) {
 				if (groupJsDocLines.length === 0) {
@@ -1687,7 +1690,9 @@ function generateCollectionType(
 		return 'Record<string, unknown>';
 	}
 
-	return `{\n${nestedProps.join(';\n')};\n${INDENT}}`;
+	const literal = `{\n${nestedProps.join(';\n')};\n${INDENT}}`;
+	registerHoistCandidate(literal, `${prop.name}Options`);
+	return literal;
 }
 
 /**
@@ -2209,18 +2214,14 @@ export function generatePropertyJSDoc(
 	const lines: string[] = ['/**'];
 
 	// Description
-	const description = prop.description ?? prop.displayName;
-	// Escape potential JSDoc breakers
-	const safeDescription = description
-		.replace(/\*\//g, '*\\/')
-		.replace(/</g, '&lt;')
-		.replace(/>/g, '&gt;');
-	lines.push(` * ${safeDescription}`);
+	const description = describeProperty(prop);
+	if (description) {
+		lines.push(` * ${description}`);
+	}
 
 	// Hint - additional guidance for users
 	if (prop.hint) {
-		const safeHint = prop.hint.replace(/\*\//g, '*\\/').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-		lines.push(` * @hint ${safeHint}`);
+		lines.push(` * @hint ${sanitizeDocText(prop.hint)}`);
 	}
 
 	// Builder hint - guidance for AI/workflow builders
@@ -2657,6 +2658,14 @@ export function buildDiscriminatorTree(
 export function generateSharedFile(
 	node: NodeTypeDescription,
 	version: number,
+	importDepth: number = 5,
+): string {
+	return compactFile(() => generateSharedFileBody(node, version, importDepth));
+}
+
+function generateSharedFileBody(
+	node: NodeTypeDescription,
+	version: number,
 	_importDepth: number = 5,
 ): string {
 	const prefix = getPackagePrefix(node.name);
@@ -2759,6 +2768,19 @@ export function generateSharedFile(
  * @param sharedImportPath Relative path to _shared.ts
  */
 export function generateDiscriminatorFile(
+	node: NodeTypeDescription,
+	version: number,
+	combo: DiscriminatorCombination,
+	props: NodeProperty[],
+	schema?: JsonSchema,
+	importDepth: number = 5,
+): string {
+	return compactFile(() =>
+		generateDiscriminatorFileBody(node, version, combo, props, schema, importDepth),
+	);
+}
+
+function generateDiscriminatorFileBody(
 	node: NodeTypeDescription,
 	version: number,
 	combo: DiscriminatorCombination,
@@ -3214,6 +3236,13 @@ export function versionToFileName(version: number): string {
  * @param specificVersion The specific version number to generate for
  */
 export function generateSingleVersionTypeFile(
+	node: NodeTypeDescription,
+	specificVersion: number,
+): string {
+	return compactFile(() => generateSingleVersionTypeFileBody(node, specificVersion));
+}
+
+function generateSingleVersionTypeFileBody(
 	node: NodeTypeDescription,
 	specificVersion: number,
 ): string {

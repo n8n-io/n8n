@@ -319,9 +319,13 @@ const listAction = z.object({
 	action: z
 		.literal('list')
 		.describe(
-			`List credentials accessible to the current user. Results are paginated (default ${DEFAULT_LIMIT}, max 200) and include \`total\` + \`hasMore\`; when looking up a user-named credential, pass \`name\` (substring) or \`type\` for targeted lookup instead of scanning the default page.`,
+			`List credentials accessible to the current user. Results are paginated (default ${DEFAULT_LIMIT}, max 200) and include \`total\` + \`hasMore\`; when looking up a user-named credential, pass \`name\` (substring), \`type\`, or \`types\` for targeted lookup instead of scanning the default page.`,
 		),
 	type: z.string().optional().describe('Filter by credential type (e.g. "notionApi")'),
+	types: z
+		.array(z.string())
+		.optional()
+		.describe('Filter by multiple credential types from credentials tool'),
 	name: z
 		.string()
 		.optional()
@@ -584,9 +588,19 @@ interface AiGatewayManagedListItem {
 }
 
 async function handleList(context: InstanceAiContext, input: Extract<Input, { action: 'list' }>) {
-	const storedCredentials = await context.credentialService.list({
-		type: input.type,
-	});
+	const requestedTypes = input.types ?? (input.type ? [input.type] : undefined);
+	let storedCredentials: StoredCredentialListItem[] = [];
+
+	if (requestedTypes && requestedTypes.length > 0) {
+		const perType = await Promise.all(
+			requestedTypes.map((t) => context.credentialService.list({ type: t })),
+		);
+		storedCredentials = perType.flat();
+	} else {
+		storedCredentials = await context.credentialService.list({
+			type: input.type,
+		});
+	}
 
 	// An empty LLM-provider lookup is the moment the builder locks in a default
 	// provider — surface the LLM credentials the user does have so it prefers
@@ -611,20 +625,22 @@ async function handleList(context: InstanceAiContext, input: Extract<Input, { ac
 	// available. Section D's setup service auto-applies the entry through a
 	// separate path (rule 3); this listing is informational.
 	const items: Array<StoredCredentialListItem | AiGatewayManagedListItem> = [];
-	if (input.type && context.credentialService.isAiGatewayCredentialType) {
-		try {
-			const supported = await context.credentialService.isAiGatewayCredentialType(input.type);
-			if (supported) {
-				items.push({
-					id: AI_GATEWAY_MANAGED_TAG,
-					name: N8N_CONNECT_DISPLAY_NAME,
-					type: input.type,
-					__aiGatewayManaged: true,
-				});
+	if (requestedTypes && context.credentialService.isAiGatewayCredentialType) {
+		for (const t of requestedTypes) {
+			try {
+				const supported = await context.credentialService.isAiGatewayCredentialType(t);
+				if (supported) {
+					items.push({
+						id: AI_GATEWAY_MANAGED_TAG,
+						name: N8N_CONNECT_DISPLAY_NAME,
+						type: t,
+						__aiGatewayManaged: true,
+					});
+				}
+			} catch {
+				// Gateway lookup failing is a soft signal — omit the managed entry
+				// and continue with stored credentials only.
 			}
-		} catch {
-			// Gateway lookup failing is a soft signal — omit the managed entry
-			// and continue with stored credentials only.
 		}
 	}
 	for (const c of storedCredentials) items.push({ id: c.id, name: c.name, type: c.type });

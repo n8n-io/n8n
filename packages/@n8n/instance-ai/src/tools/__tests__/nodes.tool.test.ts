@@ -630,6 +630,49 @@ describe('nodes tool', () => {
 				],
 			});
 		});
+
+		it('should fallback to candidate package prefixes when a nodeType has wrong or missing prefix', async () => {
+			const getNodeTypeDefMock = vi.fn().mockImplementation(async (nodeType: string) => {
+				if (nodeType === '@n8n/n8n-nodes-langchain.googleGemini') {
+					return {
+						nodeId: '@n8n/n8n-nodes-langchain.googleGemini',
+						version: '1.2',
+						content: 'export type GoogleGemini = unknown;',
+					};
+				}
+				return { error: `Node '${nodeType}' not found` };
+			});
+
+			const context = createMockContext({
+				nodeService: {
+					listAvailable: vi.fn(),
+					getDescription: vi.fn(),
+					listSearchable: vi.fn(),
+					exploreResources: vi.fn(),
+					getNodeTypeDefinition: getNodeTypeDefMock,
+				},
+			});
+
+			const tool = createNodesTool(context, 'full');
+			const result = await executeTool(
+				tool,
+				{
+					action: 'type-definition',
+					nodeTypes: ['n8n-nodes-base.googleGemini'],
+				} as never,
+				{} as never,
+			);
+
+			expect(result).toEqual({
+				definitions: [
+					{
+						nodeType: '@n8n/n8n-nodes-langchain.googleGemini',
+						version: '1.2',
+						content: 'export type GoogleGemini = unknown;',
+					},
+				],
+			});
+		});
 	});
 
 	describe('describe action', () => {
