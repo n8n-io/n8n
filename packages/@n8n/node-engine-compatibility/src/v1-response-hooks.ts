@@ -41,15 +41,15 @@ export function attachResponseHooks(
 	request: StepExecutionRequest,
 ): void {
 	const { context, respond } = request;
-	const hooks = new ExecutionLifecycleHooks(
+	additionalData.hooks ??= new ExecutionLifecycleHooks(
 		toV1ExecuteMode(context),
 		context.executionId,
 		stubWorkflow(context.workflowId),
 	);
 
-	hooks.addHandler('sendResponse', (response) => respond.send(toJsonPayload(response)));
-
-	additionalData.hooks = hooks;
+	additionalData.hooks.addHandler('sendResponse', (response) =>
+		respond.send(toJsonPayload(response)),
+	);
 }
 
 /**
