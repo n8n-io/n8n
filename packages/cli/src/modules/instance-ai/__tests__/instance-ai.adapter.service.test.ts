@@ -1516,6 +1516,7 @@ import type { InstanceAiBuilderDelegate } from '@n8n/instance-ai';
 
 import { InstanceAiAdapterService } from '../instance-ai.adapter.service';
 import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
+import { AgentsCredentialProvider } from '@/modules/agents/adapters/agents-credential-provider';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
 const mockedUserHasScopes = vi.mocked(userHasScopes);
@@ -6343,10 +6344,17 @@ describe('createContext — builder delegate wiring', () => {
 		expect(builderDelegateAdapter.createDelegate).toHaveBeenCalledWith(
 			mockUser,
 			'proj-1',
-			expect.anything(),
+			expect.any(Function),
 			expect.anything(),
 			{ useEvalModelCatalog: true },
 		);
+		// The third argument is a provider factory, not a pre-built provider: it
+		// is called per turn with the concrete target agent id so Gateway spend
+		// carries the right id even when the agent is created mid-build.
+		const providerFor = builderDelegateAdapter.createDelegate.mock.calls[0][2] as (
+			agentId: string,
+		) => AgentsCredentialProvider;
+		expect(providerFor('agent-42')).toBeInstanceOf(AgentsCredentialProvider);
 	});
 
 	it('exposes the delegate unwrapped, so creation telemetry stays in AgentsService', async () => {
