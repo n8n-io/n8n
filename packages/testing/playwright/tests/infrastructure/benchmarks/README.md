@@ -16,9 +16,16 @@ The architectural ceiling. No queue tax, no worker dispatch. What's the absolute
 |---------|------|----------|
 | kafka | `single-instance-ceiling.spec.ts` | How much can we process on a single instance? |
 | kafka | `single-instance-ceiling-lazy-cache.spec.ts` | How much can lazy expression isolates process? |
+| kafka | `single-instance-ceiling-engine-v2.spec.ts` | How much can engine v2 process with eager expression isolates? |
+| kafka | `single-instance-ceiling-engine-v2-lazy-cache.spec.ts` | How much can engine v2 process with lazy expression isolates? |
+| kafka | `single-instance-ceiling-engine-v2-split-db.spec.ts` | Does a separate engine database server change v2 throughput? |
 | kafka | `steady-rate-breaking-point.spec.ts` | At what input rate does the system fall behind? |
 | webhook | `webhook-single-instance.spec.ts` | What is the single-instance webhook ingestion ceiling? |
 | webhook | `webhook-single-instance-lazy-cache.spec.ts` | What is the lazy expression-isolate webhook ceiling? |
+| webhook | `webhook-single-instance-engine-v2.spec.ts` | What is the engine v2 webhook ceiling with eager isolates? |
+| webhook | `webhook-single-instance-engine-v2-lazy-cache.spec.ts` | What is the engine v2 webhook ceiling with lazy isolates? |
+| webhook | `webhook-single-instance-engine-v2-split-db.spec.ts` | Does a separate engine database server change v2 webhook throughput? |
+| webhook | `webhook-sync-latency-floor.spec.ts` | How does connection count affect synchronous webhook latency? |
 
 ### Actual — `1m + 1wp + 1w queue mode`
 

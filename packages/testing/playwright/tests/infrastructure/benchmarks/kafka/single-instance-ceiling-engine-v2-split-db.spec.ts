@@ -35,6 +35,7 @@ test.describe(
 				timeoutMs: 600_000,
 				resourceSummary: { plan: BENCHMARK_MAIN_RESOURCES },
 				dimensions: ENGINE_V2_SPLIT_DB_LAZY_CACHE_BENCHMARK_PROFILE.dimensions,
+				requireTailMeasurement: true,
 			});
 		});
 	},

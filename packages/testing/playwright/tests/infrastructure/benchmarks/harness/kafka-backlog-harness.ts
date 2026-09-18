@@ -32,6 +32,7 @@ interface KafkaLoadOptions {
 	variant?: string;
 	minTailRateEfficiency?: number;
 	requireKeptUpStage?: boolean;
+	requireTailMeasurement?: boolean;
 	dimensions?: BenchmarkDimensions;
 	counterReader?: CompletionCounterReader;
 }
@@ -56,6 +57,7 @@ export async function runKafkaLoadTest(options: KafkaLoadOptions): Promise<Execu
 		variant: options.variant,
 		minTailRateEfficiency: options.minTailRateEfficiency,
 		requireKeptUpStage: options.requireKeptUpStage,
+		requireTailMeasurement: options.requireTailMeasurement,
 		dimensions: options.dimensions,
 		counterReader: options.counterReader,
 		warmUp: async ({ counterReader }) => {

@@ -38,6 +38,7 @@ test.describe(
 				timeoutMs: 300_000,
 				resourceSummary: { plan: BENCHMARK_MAIN_RESOURCES },
 				dimensions: ENGINE_V2_BENCHMARK_PROFILE.dimensions,
+				requireTailMeasurement: true,
 			});
 		});
 	},

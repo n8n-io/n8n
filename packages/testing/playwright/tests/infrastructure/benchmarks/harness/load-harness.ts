@@ -71,6 +71,8 @@ export interface LoadTestOptions {
 	minTailRateEfficiency?: number;
 	/** Fail unless one stage keeps up with at least 95% of its requested rate. */
 	requireKeptUpStage?: boolean;
+	/** Fail unless the sampler produces a covered tail-rate measurement. */
+	requireTailMeasurement?: boolean;
 }
 
 /**
@@ -217,6 +219,9 @@ export async function runLoadTest(options: LoadTestOptions): Promise<ExecutionMe
 			);
 		});
 		expect(keptUp).toBe(true);
+	}
+	if (options.requireTailMeasurement) {
+		expect(exec.throughputResult.tailExecPerSec).toBeGreaterThan(0);
 	}
 
 	return metrics;
