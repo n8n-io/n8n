@@ -1,8 +1,8 @@
+packages/cli/src/modules/instance-ai/event-bus/__tests__/durable-event-log.test.ts
+  ai_agent 538-587
 packages/cli/src/modules/instance-ai/event-bus/durable-event-log.ts
   s_45e2f6fac3868c::t_8e6f770b7546e4 41,175,634
   ai_agent 164,172-174,176-210,633,635
-packages/cli/src/modules/instance-ai/event-bus/__tests__/durable-event-log.test.ts
-  ai_agent 538-587
 ---
 {
   "schema_version": "authorship/3.0.0",
