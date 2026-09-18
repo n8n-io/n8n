@@ -347,7 +347,7 @@ Testing rules:
 - Do not let tests read from or write to the developer's home directory,
   `~/.n8n`, or other user-owned locations.
 - Use a test-owned temporary directory for filesystem tests. Set
-  `N8N_USER_FOLDER` before you import modules that resolve it.
++  `N8N_USER_FOLDER` before you import modules that resolve it. n8n writes to `${N8N_USER_FOLDER}/.n8n`, so expect the `.n8n` subfolder there.
 - When a mock changes a state check such as `existsSync()`, inspect the branch
   that it activates. Mock every reachable filesystem mutation unless filesystem
   behavior is under test.
