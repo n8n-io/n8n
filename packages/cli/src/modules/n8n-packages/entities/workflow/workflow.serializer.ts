@@ -43,7 +43,7 @@ type WorkflowPackageKeyHandling = {
 
 export type WorkflowPackageContent = Pick<
 	WorkflowEntity,
-	'name' | 'nodes' | 'connections' | 'nodeGroups' | 'isArchived' | 'settings'
+	'name' | 'nodes' | 'connections' | 'nodeGroups' | 'isArchived' | 'settings' | 'versionId'
 >;
 
 const serializePayload = definePackageSerializationPayload<
@@ -98,9 +98,9 @@ export class WorkflowSerializer {
 	}
 
 	/**
-	 * Turns a workflow from a package back into something we can save on the
-	 * target instance. We drop anything the target owns — its id, versionId,
-	 * where it lives, timestamps — so the caller can set those fresh.
+	 * Turns a package workflow into something the target can save. `versionId` survives where
+	 * `id` does not: a diff hashes this whole file, so a target that mints its own reads as
+	 * modified against a package it matches.
 	 */
 	deserialize(wire: SerializedWorkflow): WorkflowPackageContent {
 		const parsed = serializedWorkflowSchema.parse(wire);
@@ -111,6 +111,7 @@ export class WorkflowSerializer {
 			connections: parsed.connections as IConnections,
 			nodeGroups: parsed.nodeGroups ?? [],
 			isArchived: parsed.isArchived,
+			versionId: parsed.versionId,
 			...(parsed.settings !== undefined ? { settings: parsed.settings } : {}),
 		};
 	}

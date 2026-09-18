@@ -367,6 +367,39 @@ it('logs file hashes without workflow content', async () => {
 	);
 }, 30_000);
 
+it('does not list a workflow as modified after apply restores the packaged version', async () => {
+	const owner = await createOwner();
+	const project = await createTeamProject('Apply', owner);
+	const workflow = await createWorkflow({ name: 'Orders', nodes: [], connections: {} }, project);
+	const packagedVersionId = workflow.versionId;
+	const connection = await createConnection();
+	await Container.get(PromotionConfigRepository).insertConfig({
+		connectionId: connection.id,
+		direction: 'apply',
+		name: 'Apply',
+		settings: { schemaVersion: 1, branchName: 'main' },
+	});
+	const service = Container.get(PromotionsService);
+	await service.clone(connection.id, 'apply');
+	await service.promote(connection.id, owner, {
+		commitMessage: 'Baseline',
+		canExportVariableValues: true,
+	});
+	await Container.get(WorkflowRepository).update(workflow.id, { versionId: 'drifted-version' });
+	const agent = server.authAgentFor(owner);
+	const endpoint = `/promotions/${project.id}/changes`;
+	expect((await agent.get(endpoint).expect(200)).body.data).toEqual([
+		expect.objectContaining({ id: workflow.id, status: 'modified' }),
+	]);
+
+	await service.apply(connection.id, owner);
+
+	expect((await agent.get(endpoint).expect(200)).body.data).toEqual([]);
+	expect(
+		(await Container.get(WorkflowRepository).findOneByOrFail({ id: workflow.id })).versionId,
+	).toBe(packagedVersionId);
+}, 30_000);
+
 it('detects variable and data table changes without reporting shadowed or unrelated dependencies', async () => {
 	const owner = await createOwner();
 	const project = await createTeamProject('Dependencies', owner);

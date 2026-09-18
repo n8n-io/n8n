@@ -15,3 +15,14 @@ const WORKFLOW_ID_POLICIES: Record<WorkflowIdPolicy, (sourceWorkflowId: string) 
 export function decideWorkflowId(policy: WorkflowIdPolicy, sourceWorkflowId: string): string {
 	return WORKFLOW_ID_POLICIES[policy](sourceWorkflowId);
 }
+
+/**
+ * Only a `source` import writes back to the workflow the package tracks, and only it keeps the
+ * packaged version, so that a later diff against that package finds no change.
+ */
+export function decideWorkflowVersionId(
+	policy: WorkflowIdPolicy,
+	packagedVersionId: string,
+): string | null {
+	return policy === 'source' ? packagedVersionId : null;
+}

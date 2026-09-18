@@ -1,4 +1,4 @@
-import { decideWorkflowId } from '../workflow-id-policy';
+import { decideWorkflowId, decideWorkflowVersionId } from '../workflow-id-policy';
 
 describe('decideWorkflowId', () => {
 	describe('source', () => {
@@ -19,5 +19,15 @@ describe('decideWorkflowId', () => {
 		it('mints a different id on each call', () => {
 			expect(decideWorkflowId('new', 'STILTON')).not.toBe(decideWorkflowId('new', 'STILTON'));
 		});
+	});
+});
+
+describe('decideWorkflowVersionId', () => {
+	it('keeps the packaged version for the packaged workflow', () => {
+		expect(decideWorkflowVersionId('source', 'version-1')).toBe('version-1');
+	});
+
+	it('leaves a copy to be versioned on its own', () => {
+		expect(decideWorkflowVersionId('new', 'version-1')).toBeNull();
 	});
 });

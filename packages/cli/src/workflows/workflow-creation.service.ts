@@ -152,6 +152,7 @@ export class WorkflowCreationService {
 			source?: WorkflowActionSource;
 			versionName?: string;
 			versionDescription?: string;
+			versionId?: string;
 			batchContext?: WorkflowCreateBatchContext;
 		} = {},
 	): Promise<WorkflowEntity> {
@@ -166,12 +167,13 @@ export class WorkflowCreationService {
 			source = 'ui',
 			versionName,
 			versionDescription,
+			versionId,
 			batchContext,
 		} = options;
 
 		// Ensure workflow is created as inactive
 		newWorkflow.active = false;
-		newWorkflow.versionId = uuid();
+		newWorkflow.versionId = versionId ?? uuid();
 		newWorkflow.parentFolder = null;
 
 		newWorkflow.sourceWorkflowId = sourceWorkflowId ?? null;
