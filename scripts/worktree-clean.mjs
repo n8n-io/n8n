@@ -36,6 +36,8 @@ Flags:
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const DEPS_DIRS = new Set(['node_modules', 'dist', '.turbo']);
+// A hung network call keeps the worktree (lookup failed); it must not hang the run.
+const GH_TIMEOUT_MS = 20_000;
 
 // ---------------------------------------------------------------------------
 // Pure helpers. Exported for tests.
@@ -233,7 +235,7 @@ function lookupPr(slug, branch) {
 			'--json',
 			'number,state',
 		],
-		{ encoding: 'utf8' },
+		{ encoding: 'utf8', timeout: GH_TIMEOUT_MS },
 	);
 	if (res.status !== 0) return undefined;
 	try {
