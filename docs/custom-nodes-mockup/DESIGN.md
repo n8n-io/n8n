@@ -180,6 +180,26 @@ to the node description so those features can group them.
 - **Tests**: generator property-based tests, service tests for versioning,
   Playwright coverage for the NDV → panel → run path.
 
+## Verification done on this branch
+
+- `pnpm build` (all 70 tasks), `pnpm typecheck` in `packages/cli` (only
+  pre-existing errors in `modules/agents` and `modules/instance-ai` remain)
+  and in `packages/frontend/editor-ui` (clean), eslint and biome on every
+  touched file, and the generator unit tests.
+- A throwaway instance (`N8N_USER_FOLDER` in a temp dir,
+  `N8N_CUSTOM_NODES_MOCKUP=true`) booted, ran the new migration, seeded the
+  two examples and served two `n8n-custom.*` types with the expected marker,
+  icon and credentials. Through REST: preview, create operation, new version
+  (both versions served, `defaultVersion` follows the active one), set active
+  version, icon route, and a manual run of a workflow containing a custom
+  Stripe operation against the mock webhook workflow. The mock received
+  `Authorization: Bearer <stripe key>` and the form-encoded body
+  `line_items[0][price]`, `line_items[0][quantity]`,
+  `line_items[0][adjustable_quantity][enabled]`.
+- Not exercised: the editor UI (wizard, settings page, nodes panel group,
+  NDV/header buttons). It typechecks and lints, but walk through `DEMO.md`
+  once before presenting.
+
 ## Deviations from the brief
 
 - Editor paths in the brief (`packages/editor-ui`, `src/views`,

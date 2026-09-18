@@ -68,7 +68,7 @@ codebase facts behind each decision and `DESIGN.md` for the write-up.
 - [x] `custom-nodes.controller.ts` — `@RestController('/custom-nodes')`:
       `GET /`, `GET /:id`, `POST /`, `PATCH /:id`, `POST /:id/active-version`,
       `DELETE /:id`, `POST /:id/icon`, `GET /:id/icon`
-- [ ] Build `workflow`, `api-types`, `db`, `cli`; typecheck; lint touched files
+- [x] Build `workflow`, `api-types`, `db`, `cli`; typecheck; lint touched files
 
 ## 4. Frontend: API client, store, settings page
 
@@ -110,9 +110,10 @@ codebase facts behind each decision and `DESIGN.md` for the write-up.
       `customOperation` marker and push `ActionTypeDescription`s with
       `codex.label = 'Custom operations'` into `actions[parentNodeType]`;
       the action `name` is the virtual node type so selection adds it
-- [ ] Verify Custom Nodes appear in "Action in an app" with their icon
-- [ ] Verify adding a custom operation from Stripe's action list adds a
-      working node with the Stripe credential selector
+- [ ] Verify in the UI that Custom Nodes appear in "Action in an app" with their icon (not exercised)
+- [ ] Verify in the UI that adding a custom operation from Stripe's action list
+      adds a working node with the Stripe credential selector (backend path
+      verified via API; UI not exercised)
 
 ## 7. Demo data, docs, verification
 
@@ -122,7 +123,11 @@ codebase facts behind each decision and `DESIGN.md` for the write-up.
 - [x] `docs/custom-nodes-mockup/DEMO.md` — click-by-click script
 - [x] `docs/custom-nodes-mockup/DESIGN.md` — problem, concepts,
       architecture (Mermaid), mocked vs production, deviations, open questions
-- [ ] `pnpm build` for touched packages, `pnpm typecheck`, lint touched files
-- [ ] Boot with `N8N_CUSTOM_NODES_MOCKUP=true pnpm start`, walk the demo
-      script once end to end
+- [x] `pnpm build` (full), `pnpm typecheck` for `cli` and `editor-ui`, eslint + biome on touched files
+- [x] Boot with `N8N_CUSTOM_NODES_MOCKUP=true pnpm start` on a throwaway user
+      folder; verified via REST: migration + seed, module settings, generated
+      types in `types/nodes.json`, icon route, preview, create/version/set-active,
+      and a workflow run of a custom Stripe operation against the mock webhook
+      (Bearer header + form-encoded nested body arrived). The UI click-through
+      was not exercised in this session (see DESIGN.md → Verification)
 - [ ] Push branch, write final summary
