@@ -7,6 +7,7 @@ import { computed, onMounted, ref, toRef, watch } from 'vue';
 import { useUIStore } from '@/app/stores/ui.store';
 import { getAgentTasks } from '../composables/useAgentApi';
 import { AGENT_TASK_MODAL_KEY } from '../constants';
+import { describeSchedule, getNextScheduleOccurrence } from '../utils/scheduleBuilder';
 import AgentChipButton from './AgentChipButton.vue';
 
 const props = withDefaults(
@@ -129,6 +130,19 @@ function openTaskModal(task: TaskRow | null) {
 	});
 }
 
+function taskScheduleTooltip(task: TaskRow): string {
+	const timezone = task.timezone ?? rootStore.timezone;
+	const description = getNextScheduleOccurrence(task.cronExpression, timezone)
+		? describeSchedule(task.cronExpression)
+		: null;
+
+	if (!description) {
+		return i18n.baseText('agents.builder.tasks.schedule.invalidDescription' as BaseTextKey);
+	}
+
+	return description;
+}
+
 onMounted(reloadTasks);
 
 watch(
@@ -150,17 +164,19 @@ watch(
 
 		<div :class="$style.chips">
 			<div v-for="(task, taskIndex) in taskRows" :key="task.id" :class="$style.chipGroup">
-				<AgentChipButton
-					icon="clipboard-list"
-					:invalid="task.invalid"
-					:invalid-reasons="task.invalidReasons"
-					:disabled="props.disabled"
-					:class="$style.scheduleChip"
-					data-testid="agent-capabilities-task-row"
-					@click="openTaskModal(task)"
-				>
-					{{ task.name }}
-				</AgentChipButton>
+				<N8nTooltip :content="taskScheduleTooltip(task)" placement="top" as-child>
+					<AgentChipButton
+						icon="clipboard-list"
+						:invalid="task.invalid"
+						:invalid-reasons="task.invalidReasons"
+						:disabled="props.disabled"
+						:class="$style.scheduleChip"
+						data-testid="agent-capabilities-task-row"
+						@click="openTaskModal(task)"
+					>
+						{{ task.name }}
+					</AgentChipButton>
+				</N8nTooltip>
 
 				<N8nTooltip
 					v-if="taskIndex === taskRows.length - 1"
