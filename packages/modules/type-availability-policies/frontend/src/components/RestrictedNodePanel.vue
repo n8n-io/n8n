@@ -26,11 +26,10 @@ const DESCRIPTION_KEY: Record<NodeTypeAvailabilityScope, BaseTextKey> = {
 const i18n = useI18n();
 const isContactAdminOpen = ref(false);
 
-const interpolate = computed(() => ({ nodeType: nodeTypeName }));
 const description = computed(() =>
 	i18n.baseText(
 		scope ? DESCRIPTION_KEY[scope] : 'typeAvailabilityPolicies.restrictedNode.description.generic',
-		{ interpolate: interpolate.value },
+		{ interpolate: { nodeType: nodeTypeName } },
 	),
 );
 </script>
@@ -63,19 +62,7 @@ const description = computed(() =>
 				{{ i18n.baseText('typeAvailabilityPolicies.restrictedNode.replaceNode') }}
 			</N8nButton>
 		</div>
-		<ContactInstanceAdminModal
-			v-model:open="isContactAdminOpen"
-			:description="
-				i18n.baseText('typeAvailabilityPolicies.restrictedNode.contactAdmin.description', {
-					interpolate,
-				})
-			"
-			:mail-subject="
-				i18n.baseText('typeAvailabilityPolicies.restrictedNode.contactAdmin.mailSubject', {
-					interpolate,
-				})
-			"
-		/>
+		<ContactInstanceAdminModal v-model:open="isContactAdminOpen" :node-type-name="nodeTypeName" />
 	</div>
 </template>
 

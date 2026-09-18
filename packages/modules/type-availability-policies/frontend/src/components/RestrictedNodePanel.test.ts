@@ -11,9 +11,9 @@ const renderComponent = createComponentRenderer(RestrictedNodePanel, {
 	global: {
 		stubs: {
 			ContactInstanceAdminModal: {
-				props: ['open', 'description'],
+				props: ['open', 'nodeTypeName'],
 				template:
-					'<div v-if="open" data-test-id="contact-instance-admin-modal">{{ description }}</div>',
+					'<div v-if="open" data-test-id="contact-instance-admin-modal">{{ nodeTypeName }}</div>',
 			},
 		},
 	},
@@ -40,13 +40,13 @@ describe('RestrictedNodePanel', () => {
 		);
 	});
 
-	it('opens the contact-admin dialog with copy for this node type', async () => {
+	it('opens the contact-admin dialog for this node type', async () => {
 		const { getByTestId, queryByTestId } = renderComponent();
 
 		expect(queryByTestId('contact-instance-admin-modal')).not.toBeInTheDocument();
 		await fireEvent.click(getByTestId('node-restricted-contact-admin'));
 
-		expect(getByTestId('contact-instance-admin-modal')).toHaveTextContent("access to 'Slack'");
+		expect(getByTestId('contact-instance-admin-modal')).toHaveTextContent('Slack');
 	});
 
 	it('emits replaceNode from the replace action', async () => {
