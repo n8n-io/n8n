@@ -28,9 +28,6 @@ const POSTHOG_GROUP_TYPE_INSTANCE = 'company';
 
 const FLAGS_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
-/** Empty results expire quickly but still prevent retries for each event. */
-const EMPTY_FLAGS_CACHE_TTL_MS = 30 * 1000; // 30 seconds
-
 /** Maximum number of flag evaluations kept in memory. */
 export const FLAGS_CACHE_MAX_ENTRIES = 5_000;
 
@@ -55,9 +52,6 @@ export class PostHogClient {
 	private postHog?: PostHog;
 
 	private readonly flagsCache = new Map<string, CachedFlags>();
-
-	/** Active evaluations. Callers with the same cache key share one request. */
-	private readonly inFlightEvaluations = new Map<string, Promise<FeatureFlagData>>();
 
 	constructor(
 		private readonly instanceSettings: InstanceSettings,
@@ -213,39 +207,12 @@ export class PostHogClient {
 			return cached;
 		}
 
-		// Share an active request so a later failure cannot replace a successful result.
-		const inFlight = this.inFlightEvaluations.get(cacheKey);
-		if (inFlight) return await inFlight;
+		const evaluatedFlags = await this.postHog.evaluateFlags(distinctId, options);
+		const data = this.resolveFeatureFlagData(evaluatedFlags);
 
-		const evaluation = this.evaluateAndRemember(
-			this.postHog,
-			cacheKey,
-			distinctId,
-			options,
-		).finally(() => this.inFlightEvaluations.delete(cacheKey));
-		this.inFlightEvaluations.set(cacheKey, evaluation);
-		return await evaluation;
-	}
-
-	private async evaluateAndRemember(
-		postHog: PostHog,
-		cacheKey: string,
-		distinctId: string,
-		options: AllFlagsOptions,
-	): Promise<FeatureFlagData> {
-		// Cache failures briefly so event bursts do not retry each event.
-		let data: FeatureFlagData;
-		try {
-			const evaluatedFlags = await postHog.evaluateFlags(distinctId, options);
-			data = this.resolveFeatureFlagData(evaluatedFlags);
-		} catch {
-			data = { featureFlags: {}, featureFlagPayloads: {} };
+		if (Object.keys(data.featureFlags).length > 0) {
+			this.rememberFlags(cacheKey, { ...data, expiresAt: Date.now() + FLAGS_CACHE_TTL_MS });
 		}
-
-		// Cache empty results briefly because they can indicate a temporary failure.
-		const ttl =
-			Object.keys(data.featureFlags).length > 0 ? FLAGS_CACHE_TTL_MS : EMPTY_FLAGS_CACHE_TTL_MS;
-		this.rememberFlags(cacheKey, { ...data, expiresAt: Date.now() + ttl });
 
 		return data;
 	}
