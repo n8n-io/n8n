@@ -1,0 +1,32 @@
+packages/@n8n/db/src/repositories/__tests__/credential-dependency.repository.test.ts
+  s_e3e530ae951f9a::t_a07a4fedcf2364 178,181-185
+packages/cli/test/integration/database/repositories/credentials.repository.test.ts
+  s_e3e530ae951f9a::t_3c1dc374ada9f0 2,116,128-132
+  s_e3e530ae951f9a::t_88e02580ae8f7d 99-115,117-127,133-141
+packages/cli/test/integration/credentials/credentials-list.service.test.ts
+  s_e3e530ae951f9a::t_b898e6c9ef4d41 333-343
+packages/cli/test/integration/credentials/credentials-list.benchmark.test.ts
+  s_e3e530ae951f9a::t_e23a5f9b4b313d 133-134,404
+  s_e3e530ae951f9a::t_97762291166f79 123-124,336-337,344-350,439,501,532
+packages/cli/src/credentials/__tests__/credentials.service.test.ts
+  s_e3e530ae951f9a::t_b898e6c9ef4d41 2502-2503,2513-2515
+  s_e3e530ae951f9a::t_d7677ec6c3a28b 2516-2517
+packages/@n8n/db/src/repositories/credentials.repository.ts
+  s_e3e530ae951f9a::t_4a59f0183c69d7 561,563-572
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "450f461afdb955dc7b50e70465f560e731197906",
+  "prompts": {},
+  "sessions": {
+    "s_e3e530ae951f9a": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f4cc81199ffestkkpGa8vTX4sK",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}
