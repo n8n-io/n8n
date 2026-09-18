@@ -535,14 +535,18 @@ workflow is configured correctly before suggesting the user run or publish it.
 ### `workflows(action="restore-version")` *(conditional — requires license)*
 
 Restore a workflow to a previous version (overwrites current draft). HITL
-approval required.
+approval required. This does not publish the restored draft. A production rollback
+must also use the publish action and its normal approval flow.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `workflowId` | string | yes | Workflow ID |
 | `versionId` | string | yes | Version to restore |
 
-**Returns**: `{ success: boolean }`
+**Returns on success**: `{ success: true, workflowId, publishState, publishStateNote }`.
+`publishState` contains `savedVersionId`, `activeVersionId`, and `live`
+(`unpublished`, `current`, or `stale`). The note states whether publication is still
+required. Denied and failed restores retain their existing error responses.
 
 ### `workflows(action="update-version")` *(conditional — requires `feat:namedVersions` license)*
 

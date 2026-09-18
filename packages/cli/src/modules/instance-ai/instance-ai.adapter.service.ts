@@ -1767,11 +1767,12 @@ export class InstanceAiAdapterService {
 					nodeGroups: version.nodeGroups,
 				} as Partial<WorkflowEntity>);
 
-				await workflowService.update(user, updateData, workflowId, {
+				const updated = await workflowService.update(user, updateData, workflowId, {
 					source: 'n8n-ai',
 				});
 
 				await notifyWorkflowUpdated(workflowId);
+				return await toWorkflowDetailWithChecksum(updated, { redactParameters });
 			},
 
 			...(this.license.isLicensed('feat:namedVersions')

@@ -559,8 +559,8 @@ export interface InstanceAiWorkflowService {
 	): Promise<WorkflowVersionSummary[]>;
 	/** Get full details of a specific version (including nodes and connections). */
 	getVersion?(workflowId: string, versionId: string): Promise<WorkflowVersionDetail>;
-	/** Restore a workflow to a previous version by overwriting the current draft. */
-	restoreVersion?(workflowId: string, versionId: string): Promise<void>;
+	/** Restore the current draft and return its saved revision and publication state. */
+	restoreVersion?(workflowId: string, versionId: string): Promise<WorkflowDetail>;
 	/** Update name/description of a workflow version (licensed: namedVersions). */
 	updateVersion?(
 		workflowId: string,
