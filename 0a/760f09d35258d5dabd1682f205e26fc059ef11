@@ -1,20 +1,23 @@
 packages/cli/src/modules/n8n-packages/io/__tests__/directory-package-writer.test.ts
-  s_66f0116e999381::t_3218f9f7f983c4 1-42,59-84
+  s_66f0116e999381::t_3218f9f7f983c4 1-42,1-50,54-84,59-84
+  ai_agent 51-53
 packages/cli/src/modules/n8n-packages/__tests__/export-project-to-directory.integration.test.ts
-  s_66f0116e999381::t_992f62357d987c 1-3,5-68,105
+  s_66f0116e999381::t_992f62357d987c 1-3,1-79,5-68,83-105,105
   s_4201f3747fb456::t_5c56cc38837f1b 72,76-77,83-84
   s_b3870ba058e6f8::t_beae8ed26d5899 90-91,98-99
   s_b3870ba058e6f8::t_705b7ad36bad41 104
+  ai_agent 80-82
 packages/cli/src/modules/n8n-packages/io/directory/directory-package-writer.ts
-  s_66f0116e999381::t_a2054d5401fe1c 1-2,4-17,22,24-25,30-39,41,44-45,47-65
+  s_66f0116e999381::t_a2054d5401fe1c 1-2,1-65,4-17,22,24-25,30-39,41,44-45,47-65
 packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
   s_66f0116e999381::t_d77164df1547ab 30-31
   s_66f0116e999381::t_90d640a831b7c2 41
-  s_66f0116e999381::t_803280a0b1c331 77,80-83,88-90,92,95,97-101
+  s_66f0116e999381::t_803280a0b1c331 77,77-102,80-83,88-90,92,95,97-101
+  s_66f0116e999381::t_f57d57ee8ff6da 326
 packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
   s_66f0116e999381::t_3f4bb4ab659dc2 344-350
 packages/cli/src/modules/n8n-packages/io/package-writer.ts
-  s_66f0116e999381::t_b95539ed95e7a7 1-2,7
+  s_66f0116e999381::t_b95539ed95e7a7 1-2,1-7,7
 ---
 {
   "schema_version": "authorship/3.0.0",

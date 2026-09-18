@@ -1,5 +1,5 @@
 packages/@n8n/cli/src/index.ts
-  s_6be64701202322::t_5ceffd1f4a90e2 32,100
+  s_6be64701202322::t_5ceffd1f4a90e2 25,32,32-33,100,100-102
 ---
 {
   "schema_version": "authorship/3.0.0",

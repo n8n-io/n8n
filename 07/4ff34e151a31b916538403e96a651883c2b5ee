@@ -1,5 +1,6 @@
 packages/@n8n/db/src/migrations/common/1786547629549-CreateGitConnectionTable.ts
   s_396d47bc47d872::t_7ad9caed05c0e5 3
+  s_d0ecbd8335692d::t_303d0facdf04e0 6
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -14,6 +15,14 @@ packages/@n8n/db/src/migrations/common/1786547629549-CreateGitConnectionTable.ts
         "model": "claude-opus-4-8"
       },
       "human_author": null
+    },
+    "s_d0ecbd8335692d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5f4b4595-f633-4926-ab16-1b2e11245ae5",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
     }
   }
 }

@@ -1,8 +1,8 @@
+packages/@n8n/instance-ai/docs/configuration.md
+  s_45e2f6fac3868c::t_8e54e43c08ae6e 199-202
 packages/cli/src/modules/instance-ai/instance-ai.module.ts
   s_45e2f6fac3868c::t_c3b92c701eac62 52-55,58-62
   ai_agent 56-57
-packages/@n8n/instance-ai/docs/configuration.md
-  s_45e2f6fac3868c::t_8e54e43c08ae6e 199-202
 ---
 {
   "schema_version": "authorship/3.0.0",
