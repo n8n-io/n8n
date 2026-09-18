@@ -12,7 +12,7 @@ import {
 	type SessionBinding,
 } from './integration-tools';
 
-interface UpdateLatestMessageContextOptions {
+interface CaptureMessageContextOptions {
 	messageId?: string;
 	interactingUserId?: string;
 	agentUserId?: string;
@@ -29,17 +29,12 @@ export class AgentChatMessageContextBridge {
 		private readonly logger: Logger,
 	) {}
 
-	async updateLatest(
-		threadId: string,
-		resourceId: string,
+	capture(
 		thread: Thread<unknown, unknown>,
-		options: UpdateLatestMessageContextOptions = {},
-	): Promise<IntegrationMessageContext | undefined> {
-		if (!this.messageContextStore) return undefined;
-
+		options: CaptureMessageContextOptions = {},
+	): IntegrationMessageContext {
 		const integrationConnectionId = buildIntegrationConnectionId(this.integration);
-		const previousContext = await this.getPreviousContext(threadId, integrationConnectionId);
-		const agentUserId = options.agentUserId ?? previousContext?.agentUserId;
+		const agentUserId = options.agentUserId;
 		const target: IntegrationMessageContext['target'] = {
 			type: 'thread',
 			threadId: thread.id,
@@ -54,7 +49,6 @@ export class AgentChatMessageContextBridge {
 			...(agentUserId ? { agentUserId } : {}),
 			...(options.platformMessage ? { platformMessage: options.platformMessage } : {}),
 			...(options.subject ? { subject: options.subject } : {}),
-			...(!options.subject && previousContext?.subject ? { subject: previousContext.subject } : {}),
 			...(options.replyExpectation
 				? {
 						replyExpectation: options.replyExpectation,
@@ -65,17 +59,7 @@ export class AgentChatMessageContextBridge {
 			updatedAt: new Date().toISOString(),
 		};
 
-		try {
-			await this.messageContextStore.setLatest(threadId, resourceId, context);
-			return context;
-		} catch (error) {
-			this.logger.warn('[AgentChatBridge] Failed to update latest message context', {
-				agentId: this.agentId,
-				threadId,
-				error: error instanceof Error ? error.message : String(error),
-			});
-			return undefined;
-		}
+		return context;
 	}
 
 	async resolveSubject(message: Message<unknown>): Promise<IntegrationMessageSubject | undefined> {
@@ -116,27 +100,6 @@ export class AgentChatMessageContextBridge {
 	async unbindSession(threadId: string): Promise<void> {
 		if (!this.messageContextStore) return;
 		await this.messageContextStore.unbindSession(threadId);
-	}
-
-	private async getPreviousContext(
-		threadId: string,
-		integrationConnectionId: string,
-	): Promise<IntegrationMessageContext | undefined> {
-		if (!this.messageContextStore) return undefined;
-		try {
-			const previousContext = await this.messageContextStore.getLatest(threadId);
-			if (previousContext?.integrationConnectionId !== integrationConnectionId) {
-				return undefined;
-			}
-			return previousContext;
-		} catch (error) {
-			this.logger.warn('[AgentChatBridge] Failed to read previous message context', {
-				agentId: this.agentId,
-				threadId,
-				error: error instanceof Error ? error.message : String(error),
-			});
-			return undefined;
-		}
 	}
 }
 

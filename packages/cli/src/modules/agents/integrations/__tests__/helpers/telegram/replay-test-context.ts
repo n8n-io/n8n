@@ -266,8 +266,8 @@ export async function createTelegramReplayContext(
 		apiCalls: stub.apiCalls,
 		sendTelegramWebhook,
 		sendWebhook: sendTelegramWebhook,
-		latestContext: () => setup.messageContextStore.latest(),
-		latestThreadId: () => setup.messageContextStore.latestThreadId(),
+		latestContext: setup.latestContext,
+		latestThreadId: setup.latestThreadId,
 		lastApiCall: (method: string) => stub.apiCalls.filter((call) => call.method === method).at(-1),
 		lastPost: () =>
 			stub.apiCalls
