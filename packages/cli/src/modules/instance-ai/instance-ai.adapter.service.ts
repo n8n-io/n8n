@@ -81,6 +81,8 @@ import type {
 	UpsertEvaluationConfigInput,
 	InstanceAiActivityService,
 	InstanceAiMcpService,
+	InstanceAiExecuteNodeService,
+	ExecuteNodeResult as InstanceAiExecuteNodeResult,
 	McpRegistryConnectServerSummary,
 	McpRegistryServerSummary,
 	ModelConfig,
@@ -102,6 +104,7 @@ import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { InstanceSettings } from 'n8n-core';
 import {
 	type ICredentialsDecrypted,
+	type IDataObject,
 	type INode,
 	type INodeParameters,
 	type INodeProperties,
@@ -162,6 +165,8 @@ import type { McpRegistrySearchResult } from '@/modules/mcp-registry/registry/mc
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import { WorkflowDependencyQueryService } from '@/modules/workflow-index/workflow-dependency-query.service';
 import { NodeCatalogService } from '@/node-catalog';
+import { ExecuteNodeService } from '@/node-execution';
+import type { ExecuteNodeResult } from '@/node-execution';
 import { NodeTypes } from '@/node-types';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
@@ -405,6 +410,7 @@ export class InstanceAiAdapterService {
 		private readonly folderRepository?: FolderRepository,
 		private readonly folderFinderService?: FolderFinderService,
 		private readonly instanceContext?: InstanceContextService,
+		private readonly executeNodeService?: ExecuteNodeService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.allowSendingParameterValues = globalConfig.ai.allowSendingParameterValues;
@@ -499,6 +505,9 @@ export class InstanceAiAdapterService {
 					}
 				: {}),
 			mcpService: mcpConnectionsEnabled ? this.createMcpAdapter(user) : undefined,
+			executeNodeService: this.executeNodeService
+				? this.createExecuteNodeAdapter(this.executeNodeService, user, projectId)
+				: undefined,
 			conversationHistoryService: conversationHistory,
 			// Presence is the gate, as with the services above: no reader, no `activity` tool.
 			...(this.instanceContext?.enabled
@@ -523,7 +532,16 @@ export class InstanceAiAdapterService {
 						builderDelegate: builderDelegateAdapter.createDelegate(
 							user,
 							projectId,
-							new AgentsCredentialProvider(this.credentialsService, projectId, user),
+							// The target agent id is only known per turn (a build-new-agent
+							// flow creates it after this context is built), so tag Gateway
+							// spend with the concrete id the delegate hands us each turn.
+							(targetAgentId) =>
+								new AgentsCredentialProvider(
+									this.credentialsService,
+									projectId,
+									user,
+									targetAgentId,
+								),
 							credentialService,
 							{ useEvalModelCatalog: credentialIdAllowlist !== undefined },
 						),
@@ -696,6 +714,32 @@ export class InstanceAiAdapterService {
 			},
 			listConnections: async (): Promise<Array<{ slug: string }>> =>
 				await this.listMcpRegistryConnections(user),
+		};
+	}
+
+	private createExecuteNodeAdapter(
+		executeNodeService: ExecuteNodeService,
+		user: User,
+		boundProjectId?: string,
+	): InstanceAiExecuteNodeService {
+		const { resolveProjectId } = this.createProjectScopeHelpers(user, boundProjectId);
+		return {
+			execute: async (request) => {
+				this.assertInstanceNotReadOnly('executions');
+				const projectId = await resolveProjectId(['workflow:execute']);
+				const result = await executeNodeService.run(user, {
+					type: request.type,
+					version: request.version,
+					config: {
+						parameters: request.config.parameters as INodeParameters,
+						credentials: request.config.credentials,
+					},
+					input: request.input as Array<{ json: IDataObject }> | undefined,
+					timeoutMs: request.timeoutMs,
+					projectId,
+				});
+				return redactExecuteNodeResult(result, this.allowSendingParameterValues);
+			},
 		};
 	}
 
@@ -1732,11 +1776,12 @@ export class InstanceAiAdapterService {
 					nodeGroups: version.nodeGroups,
 				} as Partial<WorkflowEntity>);
 
-				await workflowService.update(user, updateData, workflowId, {
+				const updated = await workflowService.update(user, updateData, workflowId, {
 					source: 'n8n-ai',
 				});
 
 				await notifyWorkflowUpdated(workflowId);
+				return await toWorkflowDetailWithChecksum(updated, { redactParameters });
 			},
 
 			...(this.license.isLicensed('feat:namedVersions')
@@ -3513,6 +3558,7 @@ export class InstanceAiAdapterService {
 								name: String(o.name),
 								value: o.value,
 							})),
+						...(p.displayOptions ? { displayOptions: p.displayOptions } : {}),
 					})),
 					credentials: desc.credentials?.map((c) => ({
 						name: c.name,
@@ -4408,19 +4454,8 @@ export function formatExecutionError(
 const MAX_NODE_OUTPUT_BYTES = 5_000;
 
 export function truncateNodeOutput(items: unknown[]): unknown[] | unknown {
-	const serialized = JSON.stringify(items);
-	if (serialized.length <= MAX_NODE_OUTPUT_BYTES) return items;
-
-	// Binary search for the number of items that fit within the limit
-	const truncated: unknown[] = [];
-	let size = 2; // account for "[]"
-	for (const item of items) {
-		const itemStr = JSON.stringify(item);
-		// +1 for comma separator, +1 margin
-		if (size + itemStr.length + 2 > MAX_NODE_OUTPUT_BYTES) break;
-		truncated.push(item);
-		size += itemStr.length + 1;
-	}
+	const truncated = capItemsBySerializedSize(items, MAX_NODE_OUTPUT_BYTES);
+	if (truncated === items) return items;
 
 	return {
 		items: truncated,
@@ -4428,6 +4463,87 @@ export function truncateNodeOutput(items: unknown[]): unknown[] | unknown {
 		totalItems: items.length,
 		shownItems: truncated.length,
 		message: `Output truncated: showing ${truncated.length} of ${items.length} items. Use get-node-output to retrieve full data for this node.`,
+	};
+}
+
+/** Returns the input array itself when it fits, so callers can detect truncation by identity. */
+function capItemsBySerializedSize<T>(items: T[], maxBytes: number): T[] {
+	if (JSON.stringify(items).length <= maxBytes) return items;
+
+	const kept: T[] = [];
+	let size = 2; // account for "[]"
+	for (const item of items) {
+		const itemStr = JSON.stringify(item);
+		// +1 for comma separator, +1 margin
+		if (size + itemStr.length + 2 > maxBytes) break;
+		kept.push(item);
+		size += itemStr.length + 1;
+	}
+	return kept;
+}
+
+const EXECUTE_NODE_DETAILS_SUPPRESSED =
+	'(upstream error details suppressed by the instance AI privacy setting; ask the user to share the node error from the UI)';
+
+/**
+ * The standalone execution row is deleted after the result is read, so unlike
+ * workflow runs there is no get-node-output fallback for truncated or
+ * suppressed output.
+ */
+export function redactExecuteNodeResult(
+	result: ExecuteNodeResult,
+	allowSendingParameterValues: boolean,
+): InstanceAiExecuteNodeResult {
+	if (result.status === 'error') {
+		const { message, description, nodeErrorType } = result.error;
+		const cappedDescription =
+			description && description.length > MAX_ERROR_CHARS
+				? `${description.slice(0, MAX_ERROR_CHARS)}…`
+				: description;
+		return {
+			status: 'error',
+			error: {
+				message,
+				description: allowSendingParameterValues
+					? cappedDescription
+					: description
+						? EXECUTE_NODE_DETAILS_SUPPRESSED
+						: undefined,
+				nodeErrorType,
+			},
+		};
+	}
+
+	if (!allowSendingParameterValues) {
+		return {
+			status: 'success',
+			output: '',
+			outputSuppressed:
+				'The node executed successfully, but its output items are suppressed by the instance AI privacy setting.',
+		};
+	}
+
+	let totalItems = 0;
+	let shownItems = 0;
+	const kept = result.output.map((branch) => {
+		totalItems += branch.length;
+		const keptBranch = capItemsBySerializedSize(branch, MAX_NODE_OUTPUT_BYTES);
+		shownItems += keptBranch.length;
+		return keptBranch;
+	});
+	// The items come from whatever service the node called, so they carry the same
+	// boundary tag the workflow-execution path puts on node output.
+	const output = wrapUntrustedData(JSON.stringify(kept, null, 2), 'execution-output');
+	if (shownItems === totalItems) return { status: 'success', output };
+
+	return {
+		status: 'success',
+		output,
+		truncated: {
+			totalItems,
+			shownItems,
+			message: `Output truncated: showing ${shownItems} of ${totalItems} items. Re-run with fewer input items or a narrower operation to see more.`,
+		},
 	};
 }
 

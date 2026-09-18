@@ -7,6 +7,12 @@
  */
 
 import {
+	LIST_N8N_GATEWAY_SERVICES_TOOL_NAME,
+	MCP_GET_USER_PREFERENCES_TOOL_NAME,
+	MCP_USER_PREFERENCES_TRIGGER_CLAUSE,
+} from '../../mcp.constants';
+import { GET_INSTANCE_CONTEXT_TOOL_NAME } from '../get-instance-context.tool';
+import {
 	MCP_CREATE_WORKFLOW_FROM_CODE_TOOL,
 	MCP_UPDATE_WORKFLOW_TOOL,
 	MCP_ARCHIVE_WORKFLOW_TOOL,
@@ -18,11 +24,6 @@ import {
 	CODE_BUILDER_VALIDATE_TOOL,
 	CODE_BUILDER_VALIDATE_NODE_TOOL,
 } from './constants';
-import {
-	LIST_N8N_GATEWAY_SERVICES_TOOL_NAME,
-	MCP_GET_USER_PREFERENCES_TOOL_NAME,
-	MCP_USER_PREFERENCES_TRIGGER_CLAUSE,
-} from '../../mcp.constants';
 
 export type McpInstructionsOptions = {
 	/**
@@ -44,6 +45,12 @@ export type McpInstructionsOptions = {
 	isAgentsEnabled?: boolean;
 
 	/**
+	 * Whether the instance-context surface is on. When it is, the instructions name the opening
+	 * read — the one thing here a client would otherwise never think to ask for.
+	 */
+	isInstanceContextEnabled?: boolean;
+
+	/**
 	 * Whether the `get_user_preferences` tool is registered for this caller. If true, one
 	 * sentence points the client at it: clients that load tool descriptions on demand never
 	 * read the tool's own description before building. Identical for every caller.
@@ -55,6 +62,7 @@ export function getMcpInstructions(options: McpInstructionsOptions): string {
 		isBuilderEnabled,
 		isN8nConnectAvailable = false,
 		isAgentsEnabled = false,
+		isInstanceContextEnabled = false,
 		isUserPreferencesEnabled = false,
 	} = options;
 	const INTRO = 'This is the official MCP server for n8n, a workflow automation platform.';
@@ -63,6 +71,18 @@ export function getMcpInstructions(options: McpInstructionsOptions): string {
 	// characters of the instructions, and a test pins the sentence inside that budget.
 	const USER_PREFERENCES_HINT = isUserPreferencesEnabled
 		? `Before ${MCP_USER_PREFERENCES_TRIGGER_CLAUSE} call ${MCP_GET_USER_PREFERENCES_TOOL_NAME} first and apply what it returns for the remainder of the task.`
+		: '';
+
+	// Its only job is to get the opening read called. Measured: with this sentence the read
+	// happens on every run; with the tools registered and nothing pointing at them, the client
+	// does not reach for them at all. What the read contains, and how to treat it, belong in the
+	// block and the tool description, which are not paid for at every handshake.
+	//
+	// Placement is load-bearing, and so is length. A client may keep only the opening of these
+	// instructions — Claude Code truncates at 2048 characters, and the full text is several times
+	// that — so anything below the cut never arrives. A test pins this inside the budget.
+	const INSTANCE_CONTEXT_HINT = isInstanceContextEnabled
+		? `Start with the instance, not a blank page. Read the n8n://instance/context resource, or call ${GET_INSTANCE_CONTEXT_TOOL_NAME} if you do not read resources, before your first substantive answer.`
 		: '';
 
 	const GROUPS_HINT = `
@@ -127,6 +147,7 @@ Agent conversations and runs are not workflow executions: get_workflow_execution
 	return [
 		INTRO,
 		USER_PREFERENCES_HINT,
+		INSTANCE_CONTEXT_HINT,
 		isBuilderEnabled && isAgentsEnabled ? ARTIFACT_ROUTING_INSTRUCTIONS : '',
 		isAgentsEnabled ? AGENT_INSTRUCTIONS : '',
 		isBuilderEnabled ? BUILDER_INSTRUCTIONS : '',

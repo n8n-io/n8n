@@ -39,7 +39,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [agents_resources](agents_resources.md) | 4 |  | table |
 | [agents_threads](agents_threads.md) | 6 |  | table |
 | [ai_builder_temporary_workflow](ai_builder_temporary_workflow.md) | 4 |  | table |
-| [ai_preference](ai_preference.md) | 7 |  | table |
+| [ai_preference](ai_preference.md) | 8 |  | table |
 | [annotation_tag_entity](annotation_tag_entity.md) | 4 |  | table |
 | [auth_identity](auth_identity.md) | 5 |  | table |
 | [auth_provider_sync_history](auth_provider_sync_history.md) | 11 |  | table |
@@ -51,7 +51,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [chat_hub_sessions](chat_hub_sessions.md) | 13 |  | table |
 | [chat_hub_tools](chat_hub_tools.md) | 9 |  | table |
 | [credential_dependency](credential_dependency.md) | 5 |  | table |
-| [credentials_entity](credentials_entity.md) | 12 |  | table |
+| [credentials_entity](credentials_entity.md) | 13 |  | table |
 | [data_table](data_table.md) | 5 |  | table |
 | [data_table_column](data_table_column.md) | 7 |  | table |
 | [deployment_key](deployment_key.md) | 7 |  | table |
@@ -731,6 +731,7 @@ erDiagram
   varchar createdById FK
   varchar id PK
   varchar_36_ projectId FK
+  varchar_16_ source
   datetime_3_ updatedAt
   varchar userId FK
 }
@@ -849,6 +850,7 @@ erDiagram
 "credentials_entity" {
   datetime_3_ createdAt
   TEXT data
+  TEXT description
   varchar_36_ id PK
   boolean isGlobal
   boolean isManaged
