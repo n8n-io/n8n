@@ -18,6 +18,12 @@ paths:
   /credentials/{credentialId}/transfer:
     put:
       $ref: ./handlers/credentials/spec/paths/transferCredential.generated.yml
+  /credentials/{credentialId}/test:
+    post:
+      $ref: ./handlers/credentials/spec/paths/testCredential.generated.yml
+  /credentials/schema/{credentialTypeName}:
+    get:
+      $ref: ./handlers/credentials/spec/paths/getCredentialType.generated.yml
   /executions:
     get:
       $ref: ./handlers/executions/spec/paths/getExecutions.generated.yml

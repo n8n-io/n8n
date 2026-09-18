@@ -136,6 +136,8 @@ export {
 	UpdateCredentialPublicDto,
 	DeleteCredentialPublicDto,
 	TransferCredentialPublicDto,
+	CredentialTestPublicDto,
+	CredentialSchemaPublicDto,
 	credentialPublicSchema,
 } from './credentials/credential-public.dto';
 export { ListCredentialsQueryDto } from './credentials/list-credentials-query.dto';
@@ -575,15 +577,21 @@ export {
 	UpsertPromotionApplyConfigDto,
 	UpsertPromotionPromoteConfigDto,
 	promotionApplyConfigPublicSchema,
+	promotionConfigCheckoutSchema,
 	promotionConfigSettingsSchema,
 	promotionConnectionConfigsPublicSchema,
+	promotionConnectionConfigsSummarySchema,
 	promotionDirectionSchema,
 	promotionGitApplySettingsSchema,
 	promotionGitPromoteSettingsSchema,
 	promotionGitSettingsSchemas,
+	promotionApplyConfigSummarySchema,
+	promotionPromoteConfigSummarySchema,
 	promotionPromoteConfigPublicSchema,
+	type PromotionConfigCheckout,
 	type PromotionConfigSettings,
 	type PromotionConnectionConfigsPublic,
+	type PromotionConnectionConfigsSummary,
 	type PromotionDirection,
 } from './promotions/promotion-config.dto';
 export {
@@ -602,11 +610,14 @@ export {
 	promotionConnectionProjectPublicSchema,
 	promotionConnectionPublicSchema,
 	promotionConnectionScopeSchema,
+	promotionConnectionSummarySchema,
 	promotionConnectionTargetSchema,
+	type PromotionConnectionSummary,
 	type PromotionConnectionScope,
 	type PromotionConnectionTarget,
 } from './promotions/promotion-connection.dto';
 export {
+	ApplyPackageDto,
 	ApplyPackageResultDto,
 	ContinueApplyPackageDto,
 	PromotePackageDto,

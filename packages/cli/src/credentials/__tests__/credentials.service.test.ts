@@ -12,8 +12,15 @@ import type {
 	SharedCredentials,
 	ListQueryDb,
 	DbLockService,
+	TransactionRunner,
 } from '@n8n/db';
-import { CredentialsEntity, DbLock, GLOBAL_OWNER_ROLE, GLOBAL_MEMBER_ROLE } from '@n8n/db';
+import {
+	CredentialIdConflictError,
+	CredentialsEntity,
+	DbLock,
+	GLOBAL_OWNER_ROLE,
+	GLOBAL_MEMBER_ROLE,
+} from '@n8n/db';
 import type { EntityManager } from '@n8n/typeorm';
 import { CREDENTIAL_ERRORS, CredentialDataError, Credentials, type ErrorReporter } from 'n8n-core';
 import { OAuth2Api } from 'n8n-nodes-base/credentials/OAuth2Api.credentials';
@@ -98,6 +105,7 @@ describe('CredentialsService', () => {
 	const instanceCredentialUseRegistry = mock<InstanceCredentialUseRegistry>();
 	const dbLockService = mock<DbLockService>();
 	const eventService = mock<EventService>();
+	const transactionRunner = mock<TransactionRunner>();
 
 	const service = new CredentialsService(
 		credentialsRepository,
@@ -122,6 +130,7 @@ describe('CredentialsService', () => {
 		instanceCredentialUseRegistry,
 		dbLockService,
 		eventService,
+		transactionRunner,
 	);
 
 	beforeEach(() => {
@@ -1915,14 +1924,6 @@ describe('CredentialsService', () => {
 			shared: [],
 		} as Partial<CredentialsEntity> as CredentialsEntity;
 
-		const globalCredential = {
-			id: 'cred-2',
-			name: 'Global Credential',
-			type: 'apiKey',
-			isGlobal: true,
-			shared: [],
-		} as Partial<CredentialsEntity> as CredentialsEntity;
-
 		beforeEach(() => {
 			// Mock ownershipService to return credentials as-is
 			ownershipService.addOwnedByAndSharedWith.mockImplementation((c: any) => c);
@@ -2495,200 +2496,54 @@ describe('CredentialsService', () => {
 			});
 		});
 
-		describe('with includeGlobal = true', () => {
-			it('should include global credentials for owner users', async () => {
-				// ARRANGE
-				credentialsRepository.findManyAndCount.mockResolvedValue([[regularCredential], 1]);
-				credentialsRepository.findAllGlobalCredentials.mockResolvedValue([globalCredential]);
-
-				// ACT
-				const result = await service.getMany(ownerUser, {
-					includeGlobal: true,
-				});
-
-				// ASSERT
-				expect(credentialsRepository.findManyAndCount).toHaveBeenCalled();
-				expect(credentialsRepository.findAllGlobalCredentials).toHaveBeenCalledWith({
-					includeData: false,
-					filters: { dependency: undefined },
-				});
-				expect(result).toHaveLength(2);
-				expect(result).toEqual(
-					expect.arrayContaining([
-						expect.objectContaining({ id: 'cred-1' }),
-						expect.objectContaining({ id: 'cred-2' }),
-					]),
-				);
-			});
-
-			it('should include global credentials for member users', async () => {
-				// ARRANGE
-				credentialsRepository.getManyAndCountWithSharingSubquery.mockResolvedValue({
-					credentials: [regularCredential],
-					count: 1,
-				});
-				credentialsRepository.findAllGlobalCredentials.mockResolvedValue([globalCredential]);
-
-				// ACT
-				const result = await service.getMany(memberUser, {
-					includeGlobal: true,
-				});
-
-				// ASSERT
-				expect(credentialsRepository.getManyAndCountWithSharingSubquery).toHaveBeenCalled();
-				expect(credentialsRepository.findAllGlobalCredentials).toHaveBeenCalledWith({
-					includeData: false,
-					filters: { dependency: undefined },
-				});
-				expect(result).toHaveLength(2);
-				expect(result).toEqual(
-					expect.arrayContaining([
-						expect.objectContaining({ id: 'cred-1' }),
-						expect.objectContaining({ id: 'cred-2' }),
-					]),
-				);
-			});
-
-			it('should deduplicate credentials when user has project access to global credential', async () => {
-				// ARRANGE - User already has access to global credential through project
-				const sharedGlobalCred = {
-					id: 'cred-2', // Same ID as globalCredential
-					name: 'Global Credential',
-					type: 'apiKey',
-					isGlobal: true,
-					shared: [],
-				} as Partial<CredentialsEntity> as CredentialsEntity;
-				credentialsRepository.getManyAndCountWithSharingSubquery.mockResolvedValue({
-					credentials: [regularCredential, sharedGlobalCred],
-					count: 2,
-				});
-				credentialsRepository.findAllGlobalCredentials.mockResolvedValue([globalCredential]);
-
-				// ACT
-				const result = await service.getMany(memberUser, {
-					includeGlobal: true,
-				});
-
-				// ASSERT
-				expect(result).toHaveLength(2);
-				// Should have exactly one instance of cred-2, not two
-				const credIds = result.map((c) => c.id);
-				expect(credIds.filter((id) => id === 'cred-2')).toHaveLength(1);
-			});
-
-			it('should include data for global credentials when includeData is true', async () => {
-				// ARRANGE
-				credentialsRepository.getManyAndCountWithSharingSubquery.mockResolvedValue({
-					credentials: [regularCredential],
-					count: 1,
-				});
-				credentialsRepository.findAllGlobalCredentials.mockResolvedValue([globalCredential]);
-				projectService.getProjectRelationsForUser.mockResolvedValue([]);
-				roleService.addScopes.mockImplementation(
-					(c) => ({ ...c, scopes: ['credential:read'] }) as any,
-				);
-
-				// ACT
-				await service.getMany(memberUser, {
-					includeGlobal: true,
-					includeData: true,
-				});
-
-				// ASSERT
-				expect(credentialsRepository.findAllGlobalCredentials).toHaveBeenCalledWith({
-					includeData: true,
-					filters: { dependency: undefined },
-				});
-			});
-
-			it('should forward the credential type filter to the global credentials lookup (owner user)', async () => {
-				// ARRANGE
+		describe('includeGlobal', () => {
+			// Globals are matched inside the repository query so they page, count and filter
+			// like every other row; the DB-backed suite covers the resulting behaviour.
+			it('forwards includeGlobal to the repository for owner and member users', async () => {
 				credentialsRepository.findManyAndCount.mockResolvedValue([[], 0]);
-				credentialsRepository.findAllGlobalCredentials.mockResolvedValue([]);
-
-				// ACT
-				await service.getMany(ownerUser, {
-					includeGlobal: true,
-					listQueryOptions: { filter: { type: 'slackOAuth2Api' } },
-				});
-
-				// ASSERT
-				expect(credentialsRepository.findAllGlobalCredentials).toHaveBeenCalledWith({
-					includeData: false,
-					type: 'slackOAuth2Api',
-					filters: { dependency: undefined },
-				});
-			});
-
-			it('should forward the credential type filter to the global credentials lookup (member user)', async () => {
-				// ARRANGE
 				credentialsRepository.getManyAndCountWithSharingSubquery.mockResolvedValue({
 					credentials: [],
 					count: 0,
 				});
-				credentialsRepository.findAllGlobalCredentials.mockResolvedValue([]);
 
-				// ACT
-				await service.getMany(memberUser, {
-					includeGlobal: true,
-					listQueryOptions: { filter: { type: 'slackOAuth2Api' } },
-				});
-
-				// ASSERT
-				expect(credentialsRepository.findAllGlobalCredentials).toHaveBeenCalledWith({
-					includeData: false,
-					type: 'slackOAuth2Api',
-					filters: { dependency: undefined },
-				});
-			});
-
-			it('should not pass a type filter when the listQueryOptions filter has no type', async () => {
-				// ARRANGE
-				credentialsRepository.findManyAndCount.mockResolvedValue([[], 0]);
-				credentialsRepository.findAllGlobalCredentials.mockResolvedValue([]);
-
-				// ACT
 				await service.getMany(ownerUser, { includeGlobal: true });
+				await service.getMany(memberUser, { includeGlobal: true });
+				// Owners with a sharing filter take the subquery path too
+				await service.getMany(ownerUser, { includeGlobal: true, onlySharedWithMe: true });
 
-				// ASSERT
-				const lastCall =
-					credentialsRepository.findAllGlobalCredentials.mock.calls.at(-1)?.[0] ?? {};
-				expect(lastCall).not.toHaveProperty('type');
-			});
-		});
-
-		describe('with includeGlobal = false', () => {
-			it('should exclude global credentials when includeGlobal is false', async () => {
-				// ARRANGE
-				credentialsRepository.findManyAndCount.mockResolvedValue([[regularCredential], 1]);
-
-				// ACT
-				const result = await service.getMany(ownerUser, {
-					includeGlobal: false,
-				});
-
-				// ASSERT
-				expect(credentialsRepository.findManyAndCount).toHaveBeenCalled();
-				expect(credentialsRepository.findAllGlobalCredentials).not.toHaveBeenCalled();
-				expect(result).toHaveLength(1);
-				expect(result[0].id).toBe('cred-1');
+				expect(credentialsRepository.findManyAndCount).toHaveBeenCalledWith(
+					expect.objectContaining({ includeGlobal: true }),
+				);
+				expect(credentialsRepository.getManyAndCountWithSharingSubquery).toHaveBeenCalledWith(
+					memberUser,
+					expect.anything(),
+					expect.objectContaining({ includeGlobal: true }),
+				);
+				expect(credentialsRepository.getManyAndCountWithSharingSubquery).toHaveBeenCalledWith(
+					ownerUser,
+					{ onlySharedWithMe: true },
+					expect.objectContaining({ includeGlobal: true }),
+				);
 			});
 
-			it('should exclude global credentials when includeGlobal is undefined', async () => {
-				// ARRANGE
+			it('does not forward includeGlobal when it is false or omitted', async () => {
+				credentialsRepository.findManyAndCount.mockResolvedValue([[], 0]);
 				credentialsRepository.getManyAndCountWithSharingSubquery.mockResolvedValue({
-					credentials: [regularCredential],
-					count: 1,
+					credentials: [],
+					count: 0,
 				});
 
-				// ACT
-				const result = await service.getMany(memberUser, {
-					includeGlobal: false,
-				});
+				await service.getMany(ownerUser, { includeGlobal: false });
+				await service.getMany(memberUser);
 
-				// ASSERT
-				expect(credentialsRepository.findAllGlobalCredentials).not.toHaveBeenCalled();
-				expect(result).toHaveLength(1);
+				expect(credentialsRepository.findManyAndCount).toHaveBeenCalledWith(
+					expect.not.objectContaining({ includeGlobal: true }),
+				);
+				expect(credentialsRepository.getManyAndCountWithSharingSubquery).toHaveBeenCalledWith(
+					memberUser,
+					expect.anything(),
+					expect.not.objectContaining({ includeGlobal: true }),
+				);
 			});
 		});
 
@@ -3399,120 +3254,69 @@ describe('CredentialsService', () => {
 
 	describe('createStubCredential', () => {
 		const stubOpts = {
+			id: 'source-id',
 			name: 'Missing GitHub',
 			type: 'githubApi',
 			projectId: 'project-1',
 		};
-
 		beforeEach(() => {
 			credentialsRepository.create.mockImplementation((data) => ({ ...data }) as CredentialsEntity);
-			sharedCredentialsRepository.create.mockImplementation((data) => data as SharedCredentials);
-			externalHooks.run.mockResolvedValue();
-			projectService.getProjectWithScope.mockResolvedValue({ id: 'project-1' } as never);
+			transactionRunner.run.mockImplementation(async (ctx, fn) => await fn(ctx));
+			projectService.getProjectWithScope.mockResolvedValue({ id: 'project-1' } as Project);
+			credentialDependencyService.resolveProviderIdsFromCredentialData.mockResolvedValue([]);
+			credentialsRepository.insertProjectCredentialWithOwner.mockImplementation(
+				async (data) => data as CredentialsEntity,
+			);
 		});
 
-		it('creates an empty stub credential without field validation', async () => {
-			credentialsHelper.getCredentialsProperties.mockReturnValue([
-				{
-					displayName: 'Access Token',
-					name: 'accessToken',
-					type: 'string',
-					required: true,
-					default: '',
-					displayOptions: {},
-				},
-			] as never);
-			const checkCredentialDataSpy = vi.spyOn(service, 'checkCredentialData');
-
-			let credentialEntityInput: unknown;
-			const savedEntities: unknown[] = [];
-			credentialsRepository.create.mockImplementation((data) => {
-				credentialEntityInput = data;
-				return data as CredentialsEntity;
-			});
-			mockTransactionManager({
-				credentialId: 'stub-cred-id',
-				onSave: (entity) => {
-					savedEntities.push(entity);
-				},
-			});
-
+		it('inserts an empty stub without field validation', async () => {
+			const validate = vi.spyOn(service, 'checkCredentialData');
 			const result = await service.createStubCredential(stubOpts, ownerUser);
-
-			expect(checkCredentialDataSpy).not.toHaveBeenCalled();
-			expect(credentialsHelper.getCredentialsProperties).not.toHaveBeenCalled();
-			expect(credentialEntityInput).toMatchObject({
-				name: 'Missing GitHub',
-				type: 'githubApi',
-				isManaged: false,
-				isResolvable: false,
-			});
-			expect(savedEntities[0]).toMatchObject({
-				isManaged: false,
-				isResolvable: false,
-			});
-			expect(projectService.getProjectWithScope).toHaveBeenCalledWith(
-				ownerUser,
-				'project-1',
-				['credential:create'],
-				expect.anything(),
-			);
+			expect(validate).not.toHaveBeenCalled();
 			expect(result).toMatchObject({
-				id: 'stub-cred-id',
-				name: 'Missing GitHub',
-				type: 'githubApi',
+				id: 'source-id',
+				name: stubOpts.name,
+				isManaged: false,
+				isResolvable: false,
 			});
-		});
-
-		it('mints a fresh id when none is supplied', async () => {
-			const createEncryptedDataSpy = vi.spyOn(service, 'createEncryptedData');
-			mockTransactionManager({ credentialId: 'stub-cred-id' });
-
-			await service.createStubCredential(stubOpts, ownerUser);
-
-			expect(createEncryptedDataSpy).toHaveBeenCalledWith(expect.objectContaining({ id: null }));
-		});
-
-		it('reuses a supplied id so id-based matching resolves the stub on a later import', async () => {
-			const createEncryptedDataSpy = vi.spyOn(service, 'createEncryptedData');
-			credentialsRepository.existsBy.mockResolvedValue(false);
-			mockTransactionManager({ credentialId: 'cred-source' });
-
-			await service.createStubCredential({ ...stubOpts, id: 'cred-source' }, ownerUser);
-
-			expect(createEncryptedDataSpy).toHaveBeenCalledWith(
-				expect.objectContaining({ id: 'cred-source' }),
+			expect(credentialsRepository.insertProjectCredentialWithOwner).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'source-id' }),
+				'project-1',
+				[],
+				{},
+			);
+			expect(projectService.getProjectWithScope).toHaveBeenCalledWith(ownerUser, 'project-1', [
+				'credential:create',
+			]);
+			expect(projectService.getProjectWithScope.mock.invocationCallOrder[0]).toBeLessThan(
+				transactionRunner.run.mock.invocationCallOrder[0],
 			);
 		});
 
-		it('rejects a supplied id that already belongs to another credential (no upsert)', async () => {
-			const createEncryptedDataSpy = vi.spyOn(service, 'createEncryptedData');
-			credentialsRepository.existsBy.mockResolvedValue(true);
-
-			await expect(
-				service.createStubCredential({ ...stubOpts, id: 'cred-existing' }, ownerUser),
-			).rejects.toThrow(BadRequestError);
-
-			expect(credentialsRepository.existsBy).toHaveBeenCalledWith({ id: 'cred-existing' });
-			expect(createEncryptedDataSpy).not.toHaveBeenCalled();
+		it('requests a generated ID when no ID is supplied', async () => {
+			const encrypt = vi.spyOn(service, 'createEncryptedData');
+			await service.createStubCredential({ ...stubOpts, id: undefined }, ownerUser);
+			expect(encrypt).toHaveBeenCalledWith(expect.objectContaining({ id: null }));
 		});
 
-		it('rejects when user lacks credential:create on the target project', async () => {
+		it('keeps the bad request response for an occupied ID', async () => {
+			credentialsRepository.insertProjectCredentialWithOwner.mockRejectedValue(
+				new CredentialIdConflictError(),
+			);
+			await expect(service.createStubCredential(stubOpts, ownerUser)).rejects.toThrow(
+				BadRequestError,
+			);
+			expect(credentialsRepository.existsBy).not.toHaveBeenCalled();
+		});
+
+		it('checks project access before opening the write transaction', async () => {
 			projectService.getProjectWithScope.mockResolvedValue(null);
-			// @ts-expect-error - Mocking manager for testing
-			credentialsRepository.manager = {
-				transaction: vi.fn().mockImplementation(async (callback) => {
-					const mockManager = {
-						existsBy: vi.fn().mockResolvedValue(true),
-						save: vi.fn(),
-					};
-					return await callback(mockManager);
-				}),
-			};
-
+			projectRepository.existsBy.mockResolvedValue(true);
 			await expect(service.createStubCredential(stubOpts, memberUser)).rejects.toThrow(
-				"You don't have the permissions to save the credential in this project.",
+				ForbiddenError,
 			);
+			expect(transactionRunner.run).not.toHaveBeenCalled();
+			expect(credentialsRepository.insertProjectCredentialWithOwner).not.toHaveBeenCalled();
 		});
 	});
 

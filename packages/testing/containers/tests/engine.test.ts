@@ -46,6 +46,14 @@ describe('applyEngineEnv', () => {
 		);
 	});
 
+	test('keeps an explicit data plane database URL', () => {
+		const env = { ...postgresEnv, N8N_ENGINE_DATABASE_URL: 'postgres://engine-postgres/db' };
+
+		applyEngineEnv(env, { engine: 'in-process', isQueueMode: false });
+
+		expect(env.N8N_ENGINE_DATABASE_URL).toBe('postgres://engine-postgres/db');
+	});
+
 	test('rejects a stack without Postgres', () => {
 		const env: Record<string, string> = { DB_TYPE: 'sqlite' };
 

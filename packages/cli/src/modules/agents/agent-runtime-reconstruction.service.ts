@@ -965,9 +965,7 @@ export class AgentRuntimeReconstructionService {
 				}
 
 				for (const descriptor of descriptors) {
-					agent.tool(
-						createIntegrationContextTool({ descriptor, messageContextStore, queryExecutor }),
-					);
+					agent.tool(createIntegrationContextTool({ descriptor, queryExecutor }));
 					agent.tool(
 						createIntegrationActionTool({ descriptor, messageContextStore, actionExecutor }),
 					);

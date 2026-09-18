@@ -415,6 +415,26 @@ export async function getPullRequestById(pullRequestId) {
 }
 
 /**
+ * Open PRs whose head is `headOwner:headBranch`, newest first.
+ *
+ * @param { string } headOwner Owner of the head repository (a fork owner or this org).
+ * @param { string } headBranch
+ * @returns { Promise<any[]> }
+ */
+export async function listOpenPullRequestsByHead(headOwner, headBranch) {
+	const { octokit, owner, repo } = initGithub();
+
+	const pullRequests = await octokit.rest.pulls.list({
+		owner,
+		repo,
+		state: 'open',
+		head: `${headOwner}:${headBranch}`,
+	});
+
+	return pullRequests.data;
+}
+
+/**
  * Returns the set of files changed in a PR, including previous filenames for renames.
  *
  * @param { number } pullRequestNumber

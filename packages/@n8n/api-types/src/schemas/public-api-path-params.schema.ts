@@ -37,6 +37,9 @@ export const promotionDirectionParamSchema = z.string().openapi({
 	param: { description: 'The direction of the promotion: apply or promote.' },
 });
 export const credentialIdParamSchema = stringIdParamSchema('The ID of the credential.');
+export const credentialTypeNameParamSchema = stringIdParamSchema(
+	'The credential type name that you want to get the schema for',
+);
 export const variableIdParamSchema = stringIdParamSchema('The ID of the variable.');
 export const nodeTypePolicyIdParamSchema = stringIdParamSchema(
 	'The ID of the node type policy document.',
