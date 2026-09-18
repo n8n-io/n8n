@@ -22,7 +22,7 @@ describe('EngineV2Module', () => {
 		vi.clearAllMocks();
 
 		executionsConfig = mockInstance(ExecutionsConfig, { mode: 'regular' });
-		engineConfig = mockInstance(EngineConfig, { authSecret: '' });
+		engineConfig = mockInstance(EngineConfig, { authSecret: '', mode: 'in-process' });
 		runtime = mockInstance(EngineV2Runtime);
 		client = mockInstance(EngineDataPlaneClient);
 		controlPlaneServer = mockInstance(EngineControlPlaneServer);
@@ -84,6 +84,67 @@ describe('EngineV2Module', () => {
 			await module.init();
 
 			expect(engineConfig.authSecret).toBe('a-configured-secret');
+		});
+	});
+
+	describe('remote mode', () => {
+		beforeEach(() => {
+			engineConfig.mode = 'remote';
+			engineConfig.authSecret = 'a'.repeat(32);
+			engineConfig.baseUrl = 'http://engine:3000';
+		});
+
+		it('starts the control plane server and not the data plane', async () => {
+			await module.init();
+
+			expect(controlPlaneServer.start).toHaveBeenCalled();
+			expect(runtime.init).not.toHaveBeenCalled();
+		});
+
+		it('registers the client as the data plane provider', async () => {
+			await module.init();
+
+			const proxy = Container.get(EngineDataPlaneProxyService);
+			await proxy.startExecution({
+				workflowId: 'wf-1',
+				graph: { nodes: [], edges: [] },
+				workflow: {},
+				executionId: '01a038ae-c4a8-7799-8a3e-e3c2ca055cfa',
+				callerContext: {},
+			});
+
+			expect(client.startExecution).toHaveBeenCalled();
+		});
+
+		it('refuses to start without a shared secret', async () => {
+			engineConfig.authSecret = '';
+
+			await expect(module.init()).rejects.toThrow('N8N_ENGINE_AUTH_SECRET');
+			expect(controlPlaneServer.start).not.toHaveBeenCalled();
+		});
+
+		it('does not generate a secret, since the data plane cannot learn it', async () => {
+			engineConfig.authSecret = '';
+
+			await module.init().catch(() => {});
+
+			expect(engineConfig.authSecret).toBe('');
+		});
+
+		it('refuses to start without the data plane address', async () => {
+			engineConfig.baseUrl = '';
+
+			await expect(module.init()).rejects.toThrow('N8N_ENGINE_BASE_URL');
+			expect(controlPlaneServer.start).not.toHaveBeenCalled();
+		});
+
+		it('stops only the control plane server on shutdown', async () => {
+			await module.init();
+
+			await module.shutdown();
+
+			expect(controlPlaneServer.stop).toHaveBeenCalled();
+			expect(runtime.shutdown).not.toHaveBeenCalled();
 		});
 	});
 
