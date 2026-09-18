@@ -344,3 +344,25 @@ describe('AgentsController agent resource', () => {
 		);
 	});
 });
+
+describe('AgentsController.getWriteLock', () => {
+	it('passes the agent id from the route param, not the response object', async () => {
+		const collaborationService = mock<CollaborationService>();
+		const lock = { clientId: 'tab-1', userId: 'user-1' };
+		collaborationService.getAgentWriteLock.mockResolvedValue(lock);
+		const { controller } = makeController({ collaborationService });
+
+		// The registry calls handlers as (req, res, ...decoratedArgs).
+		const result = await controller.getWriteLock(
+			{
+				params: { projectId: 'project-1', agentId: 'agent-1' },
+				user: { id: 'user-1' },
+			} as never,
+			mock<Response>(),
+			'agent-1',
+		);
+
+		expect(collaborationService.getAgentWriteLock).toHaveBeenCalledWith('project-1', 'agent-1');
+		expect(result).toEqual(lock);
+	});
+});

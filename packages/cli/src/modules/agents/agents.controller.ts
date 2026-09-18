@@ -131,6 +131,7 @@ export class AgentsController {
 	@ProjectScope('agent:read')
 	async getWriteLock(
 		req: AuthenticatedRequest<{ projectId: string; agentId: string }>,
+		_res: Response,
 		@Param('agentId') agentId: string,
 	) {
 		return await this.collaborationService.getAgentWriteLock(req.params.projectId, agentId);
