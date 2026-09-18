@@ -2,6 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { WorkflowEntity, WorkflowRepository } from '@n8n/db';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { sleep } from '@n8n/utils/sleep';
 import { InstanceSettings } from 'n8n-core';
 import { createRunExecutionData, NodeError, TimeoutExecutionCancelledError } from 'n8n-workflow';
@@ -208,16 +209,26 @@ export class ExecuteNodeService {
 		return await this.workflowRepository.createWorkflowWithOwner(newWorkflow, projectId);
 	}
 
-	/** Cascade also removes the execution row, so read the result first. */
+	/** delete temporary workflow and executions */
 	private async deleteTemporaryWorkflow(workflowId: string) {
+		try {
+			await this.executionPersistence.hardDeleteByWorkflowId(workflowId);
+		} catch (error) {
+			this.warnCleanupFailed(workflowId, error);
+		}
+
 		try {
 			await this.workflowRepository.delete(workflowId);
 		} catch (error) {
-			this.logger.warn('Failed to delete temporary execute-node workflow', {
-				workflowId,
-				error: error instanceof Error ? error.message : String(error),
-			});
+			this.warnCleanupFailed(workflowId, error);
 		}
+	}
+
+	private warnCleanupFailed(workflowId: string, error: unknown) {
+		this.logger.warn('Failed to clean up temporary execute-node workflow', {
+			workflowId,
+			error: getErrorMessage(error),
+		});
 	}
 
 	private async execute(

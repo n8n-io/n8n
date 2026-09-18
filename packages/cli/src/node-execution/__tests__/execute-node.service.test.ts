@@ -332,6 +332,24 @@ describe('ExecuteNodeService', () => {
 			expect(workflowRepository.delete).toHaveBeenCalledWith('temp-wf-1');
 		});
 
+		it('hard-deletes the executions before the workflow row, so their stored data goes too', async () => {
+			await service.run(user, baseRequest());
+
+			expect(executionPersistence.hardDeleteByWorkflowId).toHaveBeenCalledWith('temp-wf-1');
+			expect(executionPersistence.hardDeleteByWorkflowId.mock.invocationCallOrder[0]).toBeLessThan(
+				workflowRepository.delete.mock.invocationCallOrder[0],
+			);
+		});
+
+		it('still deletes the workflow row when hard-deleting the executions fails', async () => {
+			executionPersistence.hardDeleteByWorkflowId.mockRejectedValue(new Error('blob store down'));
+
+			const result = await service.run(user, baseRequest());
+
+			expect(result.status).toBe('success');
+			expect(workflowRepository.delete).toHaveBeenCalledWith('temp-wf-1');
+		});
+
 		it('deletes the temporary workflow when the launch fails and returns an error result', async () => {
 			workflowRunner.run.mockRejectedValue(new Error('launch failed'));
 
