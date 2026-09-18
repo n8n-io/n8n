@@ -71,7 +71,13 @@ const {
 }>();
 
 const emit = defineEmits<{
-	change: [AgentModelSelection];
+	/**
+	 * `source` distinguishes a picker default resolved for the user (e.g. after
+	 * a credential selection) from a model the user picked directly, so the
+	 * host can skip persisting a pending agent for the former — mirrors
+	 * `AgentInfoPanel`'s own auto-applied default.
+	 */
+	change: [selection: AgentModelSelection, source?: 'user' | 'auto'];
 	selectCredential: [provider: AgentModelProvider, credentialId: string | null];
 	configureCredential: [provider: AgentModelProvider];
 }>();
@@ -553,10 +559,14 @@ function handleDefaultModelResolution(result: ReturnType<typeof getPendingDefaul
 
 	pendingDefaultCredential.value = null;
 	if (result.status === 'resolved' && result.defaultModel) {
-		emit('change', {
-			provider: result.defaultModel.provider,
-			model: result.defaultModel.model,
-		});
+		emit(
+			'change',
+			{
+				provider: result.defaultModel.provider,
+				model: result.defaultModel.model,
+			},
+			'auto',
+		);
 	}
 }
 

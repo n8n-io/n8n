@@ -6,7 +6,18 @@ import { createPinia, setActivePinia } from 'pinia';
 import { useSettingsStore } from './settings.store';
 import { useUsersStore } from './users.store';
 
-const { loginCurrentUser, inviteUsers, login, logout, getUsers, oidcLogout } = vi.hoisted(() => {
+const {
+	loginCurrentUser,
+	inviteUsers,
+	login,
+	logout,
+	getUsers,
+	oidcLogout,
+	updateCurrentUser,
+	requestEmailChange,
+	resolveEmailChangeToken,
+	confirmEmailChange,
+} = vi.hoisted(() => {
 	return {
 		loginCurrentUser: vi.fn(),
 		identify: vi.fn(),
@@ -15,6 +26,10 @@ const { loginCurrentUser, inviteUsers, login, logout, getUsers, oidcLogout } = v
 		logout: vi.fn(),
 		getUsers: vi.fn(),
 		oidcLogout: vi.fn(),
+		updateCurrentUser: vi.fn(),
+		requestEmailChange: vi.fn(),
+		resolveEmailChangeToken: vi.fn(),
+		confirmEmailChange: vi.fn(),
 	};
 });
 
@@ -23,6 +38,10 @@ vi.mock('@n8n/rest-api-client/api/users', () => ({
 	login,
 	logout,
 	getUsers,
+	updateCurrentUser,
+	requestEmailChange,
+	resolveEmailChangeToken,
+	confirmEmailChange,
 }));
 
 vi.mock('@n8n/rest-api-client/api/sso', () => ({
@@ -36,6 +55,7 @@ vi.mock('./invitation.api', () => ({
 vi.mock('./useRootStore', () => ({
 	useRootStore: vi.fn(() => ({
 		instanceId: 'test-instance-id',
+		restApiContext: { baseUrl: 'http://localhost', pushRef: '' },
 	})),
 }));
 
@@ -430,6 +450,71 @@ describe('users.store', () => {
 			expect(errorAsyncHook).toHaveBeenCalled();
 			expect(successAsyncHook).toHaveBeenCalled();
 			expect(successHook).toHaveBeenCalled();
+		});
+	});
+
+	describe('updateUserName', () => {
+		it('sends only the name to PATCH /me', async () => {
+			const usersStore = useUsersStore();
+			loginCurrentUser.mockResolvedValueOnce(mockUser);
+			await usersStore.loginWithCookie();
+			updateCurrentUser.mockResolvedValueOnce({ ...mockUser, firstName: 'Jane' });
+
+			await usersStore.updateUserName({ firstName: 'Jane', lastName: 'Doe' });
+
+			expect(updateCurrentUser).toHaveBeenCalledWith(expect.anything(), {
+				firstName: 'Jane',
+				lastName: 'Doe',
+			});
+		});
+	});
+
+	describe('requestEmailChange', () => {
+		it('passes the params through and returns the response', async () => {
+			const usersStore = useUsersStore();
+			requestEmailChange.mockResolvedValueOnce({ status: 'confirmation-sent' });
+
+			const result = await usersStore.requestEmailChange({
+				email: 'new@email.com',
+				currentPassword: 'secret',
+			});
+
+			expect(requestEmailChange).toHaveBeenCalledWith(expect.anything(), {
+				email: 'new@email.com',
+				currentPassword: 'secret',
+			});
+			expect(result).toEqual({ status: 'confirmation-sent' });
+		});
+
+		it('adds the user to the store when the change applies immediately', async () => {
+			const usersStore = useUsersStore();
+			const changedUser = { id: '2', firstName: 'Jane', role: 'global:member', email: 'x@y.com' };
+			requestEmailChange.mockResolvedValueOnce({ status: 'changed', user: changedUser });
+
+			await usersStore.requestEmailChange({ email: 'x@y.com', currentPassword: 'secret' });
+
+			expect(usersStore.usersById['2']).toMatchObject({ id: '2', email: 'x@y.com' });
+		});
+	});
+
+	describe('resolveEmailChangeToken / confirmEmailChange', () => {
+		it('resolves the token via the API', async () => {
+			const usersStore = useUsersStore();
+			resolveEmailChangeToken.mockResolvedValueOnce({ email: 'new@email.com' });
+
+			const result = await usersStore.resolveEmailChangeToken({ token: 'abc' });
+
+			expect(resolveEmailChangeToken).toHaveBeenCalledWith(expect.anything(), { token: 'abc' });
+			expect(result).toEqual({ email: 'new@email.com' });
+		});
+
+		it('confirms the change via the API', async () => {
+			const usersStore = useUsersStore();
+			confirmEmailChange.mockResolvedValueOnce({ success: true });
+
+			await usersStore.confirmEmailChange({ token: 'abc' });
+
+			expect(confirmEmailChange).toHaveBeenCalledWith(expect.anything(), { token: 'abc' });
 		});
 	});
 

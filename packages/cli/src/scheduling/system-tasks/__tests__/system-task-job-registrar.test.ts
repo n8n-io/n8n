@@ -9,6 +9,7 @@ import { inc } from 'semver';
 import { mock } from 'vitest-mock-extended';
 
 import { N8N_VERSION } from '@/constants';
+import type { EventService } from '@/events/event.service';
 
 import type { DurableJobProvisioner } from '../../durable-job-provisioner';
 import { SystemTaskJobRegistrar, systemTaskProvisionRequest } from '../system-task-job-registrar';
@@ -141,6 +142,7 @@ describe('SystemTaskJobRegistrar', () => {
 		jobs.findPayloadsByOwnerType.mockResolvedValue([]);
 		const owner = new SystemTaskScheduledJobOwner(jobs);
 		const errorReporter = mock<ErrorReporter>();
+		const eventService = mock<EventService>();
 		const registrar = new SystemTaskJobRegistrar(
 			mock<Logger>({ scoped: vi.fn().mockReturnValue(logger) }),
 			jobs,
@@ -148,8 +150,9 @@ describe('SystemTaskJobRegistrar', () => {
 			owner,
 			mock<GlobalConfig>({ generic: { timezone: 'UTC' } }),
 			errorReporter,
+			eventService,
 		);
-		return { registrar, durableJobProvisioner, jobs, owner, errorReporter, logger };
+		return { registrar, durableJobProvisioner, jobs, owner, errorReporter, logger, eventService };
 	}
 
 	beforeEach(() => {
@@ -199,6 +202,21 @@ describe('SystemTaskJobRegistrar', () => {
 			expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('will not run'), {
 				name: 'prune-executions',
 				error,
+			});
+		});
+
+		it('emits a scheduling failure for a task it cannot provision, and nothing for one it can', async () => {
+			const { registrar, durableJobProvisioner, eventService } = setup();
+
+			await registrar.provision(task());
+			expect(eventService.emit).not.toHaveBeenCalled();
+
+			durableJobProvisioner.provision.mockRejectedValueOnce(new Error('connection lost'));
+			await registrar.provision(task());
+
+			expect(eventService.emit).toHaveBeenCalledExactlyOnceWith('system-task-scheduling-failed', {
+				name: 'prune-executions',
+				mode: 'durable',
 			});
 		});
 
@@ -252,6 +270,22 @@ describe('SystemTaskJobRegistrar', () => {
 				error,
 			});
 			expect(errorReporter.error).not.toHaveBeenCalled();
+		});
+
+		it('emits a failed provision check when the store cannot be read, and nothing when it can', async () => {
+			const { registrar, jobs, eventService } = setup();
+
+			jobs.existsRunnableByOwner.mockResolvedValueOnce(false);
+			await registrar.isProvisioned('prune-executions');
+			expect(eventService.emit).not.toHaveBeenCalled();
+
+			jobs.existsRunnableByOwner.mockRejectedValueOnce(new Error('connection lost'));
+			await registrar.isProvisioned('prune-executions');
+
+			expect(eventService.emit).toHaveBeenCalledExactlyOnceWith(
+				'system-task-provision-check-failed',
+				{ name: 'prune-executions' },
+			);
 		});
 	});
 

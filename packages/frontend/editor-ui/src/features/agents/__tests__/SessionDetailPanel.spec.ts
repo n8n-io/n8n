@@ -284,6 +284,38 @@ describe('SessionDetailPanel — HITL sequence', () => {
 });
 
 describe('SessionDetailPanel — other kinds', () => {
+	it('renders skill details with the skill name and tool data', () => {
+		const w = mountIt({
+			kind: 'skill',
+			executionId: 'e1',
+			timestamp: 0,
+			toolName: 'load_skill',
+			skillName: 'Triage',
+			toolInput: { name: 'Triage' },
+			toolOutput: { name: 'Triage' },
+		});
+
+		expect(w.text()).toContain('Triage');
+		expect(w.text()).toContain('Input');
+		expect(w.text()).toContain('Output');
+		expect(w.find('[data-test-id="tool-io-view"]').exists()).toBe(false);
+	});
+
+	it('renders a failed skill call as an error', () => {
+		const w = mountIt({
+			kind: 'skill',
+			executionId: 'e1',
+			timestamp: 0,
+			toolName: 'load_skill',
+			skillName: 'Triage',
+			toolOutcome: 'error',
+			toolOutput: { error: 'Skill failed' },
+		});
+
+		expect(w.find('[data-test-id="tool-error-callout"]').text()).toContain('Skill failed');
+		expect(w.find('[data-test-id="detail-tool-error-badge"]').exists()).toBe(true);
+	});
+
 	it('shows a fatal execution error in a danger callout', () => {
 		const w = mountIt({
 			kind: 'execution-error',

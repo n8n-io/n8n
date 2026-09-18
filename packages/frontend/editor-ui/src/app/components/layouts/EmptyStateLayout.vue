@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { useRoute } from 'vue-router';
 import { N8nCard, N8nHeading, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useBannersStore } from '@/features/shared/banners/banners.store';
@@ -12,9 +12,7 @@ import { useCredentialsAppSelectionStore } from '@/experiments/credentialsAppSel
 import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
 import AppSelectionPage from '@/experiments/credentialsAppSelection/components/AppSelectionPage.vue';
 import { useSettingsStore } from '@n8n/stores/settings.store';
-import { instanceAiCreateAgentRoute } from '@/features/ai/instanceAi/createAgentRoute';
-import { generateNanoId } from '@n8n/utils/generate-nano-id';
-import { useAgentTelemetry } from '@/features/agents/composables/useAgentTelemetry';
+import { useCreateAgent } from '@/features/agents/composables/useCreateAgent';
 import { useAgentPermissions } from '@/features/agents/composables/useAgentPermissions';
 import SurfaceMcpEmptyStateTile from '@/experiments/surfaceMcpToNewCloudUsers/components/SurfaceMcpEmptyStateTile.vue';
 
@@ -24,14 +22,13 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const route = useRoute();
-const router = useRouter();
 const bannersStore = useBannersStore();
 const projectsStore = useProjectsStore();
 const projectPages = useProjectPages();
 const credentialsAppSelectionStore = useCredentialsAppSelectionStore();
 const readyToRunStore = useReadyToRunStore();
 const settingsStore = useSettingsStore();
-const agentTelemetry = useAgentTelemetry();
+const { createAgent } = useCreateAgent();
 
 const { showAppSelection, emptyStateHeading, emptyStateDescription, canCreateWorkflow } =
 	useWorkflowsEmptyState();
@@ -74,14 +71,7 @@ const handleReadyToRunClick = async () => {
 };
 
 const handleBuildAgentClick = () => {
-	const agentId = generateNanoId();
-	agentTelemetry.trackClickedNewAgent('card', agentId);
-	void router.push(
-		instanceAiCreateAgentRoute(
-			builderProjectId.value ?? projectsStore.personalProject?.id ?? '',
-			agentId,
-		),
-	);
+	createAgent('card', builderProjectId.value ?? projectsStore.personalProject?.id ?? '');
 };
 
 const containerStyle = computed(() => ({

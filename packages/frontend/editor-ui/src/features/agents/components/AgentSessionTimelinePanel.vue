@@ -99,6 +99,8 @@ function labelForKey(key: string): string {
 			return i18n.baseText('agentSessions.timeline.user');
 		case 'agent':
 			return i18n.baseText('agentSessions.timeline.agent');
+		case 'skill':
+			return i18n.baseText('agentSessions.timeline.skill');
 		case 'tool':
 			return i18n.baseText('agentSessions.timeline.tool');
 		case 'workflow':
@@ -454,6 +456,10 @@ watch([() => props.projectId, () => props.agentId, () => props.threadId], loadTh
 	min-height: 0;
 	height: 100%;
 	overflow: hidden;
+	/* Keep the timeline's own stacking below the preview dock, which overlays
+	   this column as a sibling. Without it, a z-index inside the chart competes
+	   with the dock and paints over the chat. */
+	isolation: isolate;
 }
 .subHeader {
 	display: flex;
