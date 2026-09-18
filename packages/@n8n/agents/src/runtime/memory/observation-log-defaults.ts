@@ -99,7 +99,7 @@ BAD:
 * COMPLETION (14:31) The test passed and created one invoice.
 
 GOOD:
-* COMPLETION (14:31) Test execution exec-93 created exactly 1 entity, invoice-27, with warehouseId=west; retryEnabled=true remained enabled.
+* COMPLETION (14:31) Test execution exec-93 returned resultCount=1, entityId=invoice-27, and retryEnabled=true. get_invoice returned warehouseId=west for invoice-27.
 
 A temporary exception can replace a recurring occurrence
 
@@ -122,7 +122,7 @@ Skip small talk, routine acknowledgments, repeated log content, irrelevant tool 
 
 FINAL FORMAT CHECK
 
-Return only observation bullets whose lines start with \`* \` or \`  * \`. Otherwise, return exactly \`NO_OBSERVATIONS\`. Never return marker names without the \`*\` prefix.`;
+When durable facts exist, return only observation bullets whose lines start with \`* \` or \`  * \`. Return exactly \`NO_OBSERVATIONS\` only when nothing durable happened. Never return marker names without the \`*\` prefix.`;
 
 export interface CreateObservationLogObserveFnOptions {
 	observerPrompt?: string;

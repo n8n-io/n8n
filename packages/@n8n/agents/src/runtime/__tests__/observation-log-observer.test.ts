@@ -59,11 +59,11 @@ function message(
 	};
 }
 
-describe('observation-log observer defaults', () => {
-	beforeEach(() => {
-		mockGenerateText.mockReset();
-	});
+beforeEach(() => {
+	mockGenerateText.mockReset();
+});
 
+describe('observation-log observer defaults', () => {
 	it('keeps default threshold configuration in the SDK', () => {
 		expect(DEFAULT_OBSERVATION_LOG_OBSERVER_THRESHOLD_TOKENS).toBe(50_000);
 		expect(DEFAULT_OBSERVATION_LOG_TAIL_LIMIT).toBe(20);
