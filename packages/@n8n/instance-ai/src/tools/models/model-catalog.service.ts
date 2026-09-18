@@ -9,15 +9,6 @@ const MAX_STALE_AGE_MS = 24 * 60 * 60 * 1000;
 const FETCH_TIMEOUT_MS = 5000;
 const SOURCE = 'https://models.dev/api.json';
 
-const PROVIDER_ALIASES = new Map([
-	['gemini', 'google'],
-	['claude', 'anthropic'],
-	['bedrock', 'aws-bedrock'],
-	['amazon-bedrock', 'aws-bedrock'],
-	['azure', 'azure-openai'],
-	['azure-cognitive-services', 'azure-openai'],
-]);
-
 const GUIDANCE =
 	'Preliminary catalog candidates only. Credential access has not been checked. ' +
 	'When a provider credential or Gateway credits is available, use nodes(action="explore-resources") with that credential instead. ' +
@@ -79,8 +70,7 @@ export class ModelCatalogService {
 
 	async search(input: SearchModelsInput, abortSignal?: AbortSignal): Promise<SearchModelsResult> {
 		throwIfAborted(abortSignal);
-		const requestedProvider = input.provider.trim().toLowerCase();
-		const providerId = PROVIDER_ALIASES.get(requestedProvider) ?? requestedProvider;
+		const providerId = input.provider.trim().toLowerCase();
 		const query = input.query?.trim().toLowerCase();
 		const base = {
 			provider: providerId,

@@ -2,7 +2,14 @@ import { z } from 'zod';
 
 export const searchModelsInputSchema = z
 	.object({
-		provider: z.string().trim().min(1).max(100).describe('Provider ID, such as openai or google'),
+		provider: z
+			.string()
+			.trim()
+			.min(1)
+			.max(100)
+			.describe(
+				'Canonical catalog provider ID, such as openai, google, anthropic, openrouter, aws-bedrock, or azure-openai. Model-family names such as Gemini or Claude are not provider IDs.',
+			),
 		query: z
 			.string()
 			.trim()

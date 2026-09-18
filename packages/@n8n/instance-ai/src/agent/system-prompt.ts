@@ -240,14 +240,6 @@ ${conversationHistoryEnabled ? getConversationRecallSection() : ''}
 ${SECRET_ASK_GUARDRAIL}
 ${SECRET_PASTE_GUARDRAIL}
 ${getToolDiscoverySection(toolSearchEnabled, mcpToolSearchEnabled)}
-## Model selection
-
-Load the \`model-selection\` skill before recommending or choosing a model,
-or diagnosing model availability. This includes new workflow builds and reviews
-of pasted workflow JSON. Honor explicitly requested model IDs. Preserve working
-models during unrelated edits. Do not use \`searchModels\` to validate a supplied model ID or
-diagnose an existing model error. A generic 404 does not prove that a model is invalid.
-
 ## Communication Style
 
 - Be concise.

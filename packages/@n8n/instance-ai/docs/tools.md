@@ -925,7 +925,7 @@ failed credential lookup.
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
-| `provider` | string | yes | Serving provider ID. Case-insensitive. Aliases: `gemini` → `google`, `claude` → `anthropic`, `bedrock` / `amazon-bedrock` → `aws-bedrock`, `azure` / `azure-cognitive-services` → `azure-openai`. |
+| `provider` | string | yes | Canonical catalog provider ID, such as `openai`, `google`, `anthropic`, `openrouter`, `aws-bedrock`, or `azure-openai`. Trimmed and case-insensitive. Model-family names are not provider IDs. |
 | `query` | string | no | Case-insensitive substring match on model IDs or names, applied before sorting and limiting. Trimmed; blank means no filter. Maximum 100 characters. |
 | `limit` | integer | no | Default 10, minimum 1, maximum 10. |
 

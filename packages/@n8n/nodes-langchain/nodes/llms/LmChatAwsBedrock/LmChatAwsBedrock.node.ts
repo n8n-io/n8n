@@ -148,7 +148,7 @@ export class LmChatAwsBedrock implements INodeType {
 				default: '',
 				builderHint: {
 					propertyHint:
-						'For Claude Sonnet 5, switch Model Source to Inference Profiles and select an available profile. ' +
+						'If the chosen model requires an inference profile, use the Inference Profiles picker on a node version that supports it. ' +
 						MODEL_SELECTION_HINT,
 				},
 			},
@@ -181,7 +181,7 @@ export class LmChatAwsBedrock implements INodeType {
 				default: '',
 				builderHint: {
 					propertyHint:
-						'Prefer an available Claude Sonnet 5 inference profile. Use the exact ID returned by the list. ' +
+						'Use an available inference profile for the chosen model. Copy the exact ID returned by the list. ' +
 						MODEL_SELECTION_HINT,
 				},
 			},
@@ -213,7 +213,7 @@ export class LmChatAwsBedrock implements INodeType {
 				default: '',
 				builderHint: {
 					propertyHint:
-						'Prefer an available Claude Sonnet 5 inference profile. Profile IDs can have a global or regional prefix; copy the exact ID returned by the list. ' +
+						'Use the exact model or inference profile ID returned by the list. Profile IDs can have a global or regional prefix. ' +
 						MODEL_SELECTION_HINT,
 				},
 			},

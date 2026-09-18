@@ -140,7 +140,7 @@ describe('ModelCatalogService', () => {
 		expect(fetchCatalog).toHaveBeenCalledOnce();
 	});
 
-	it('normalizes provider aliases while preserving exact model IDs and unknown metadata', async () => {
+	it('normalizes provider case and whitespace while preserving exact model IDs and unknown metadata', async () => {
 		fetchCatalog.mockResolvedValue(
 			catalog(
 				[
@@ -156,7 +156,7 @@ describe('ModelCatalogService', () => {
 			),
 		);
 
-		const result = await service.search({ provider: ' Gemini ', limit: 10 });
+		const result = await service.search({ provider: ' Google ', limit: 10 });
 
 		expect(result).toMatchObject({
 			provider: 'google',

@@ -20,7 +20,7 @@ import {
 } from '@n8n/ai-utilities';
 import { shouldIncludeGoogleModel } from '@n8n/ai-utilities/model-discovery';
 
-import { GEMINI_CHAT_MODEL_HINT } from '@utils/model-builder-hints';
+import { MODEL_SELECTION_HINT } from '@utils/model-builder-hints';
 
 /** Drop non-chat models (embedding, image, TTS, Veo, etc.) from the dropdown. */
 async function filterChatModels(
@@ -99,7 +99,7 @@ const modelRLC: INodeProperties = {
 	},
 	default: 'models/gemini-2.5-flash',
 	builderHint: {
-		propertyHint: GEMINI_CHAT_MODEL_HINT,
+		propertyHint: MODEL_SELECTION_HINT,
 	},
 };
 

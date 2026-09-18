@@ -104,9 +104,7 @@ export class LmChatGroq implements INodeType {
 					'The model which will generate the completion. <a href="https://console.groq.com/docs/models">Learn more</a>.',
 				default: 'llama3-8b-8192',
 				builderHint: {
-					propertyHint:
-						'Consider openai/gpt-oss-120b when the connected credential offers it. Select a smaller listed model when cost or latency matters more. ' +
-						MODEL_SELECTION_HINT,
+					propertyHint: MODEL_SELECTION_HINT,
 				},
 			},
 			{

@@ -24,12 +24,11 @@ import { searchModels } from './methods/searchModels';
 
 const ANTHROPIC_MODEL_BUILDER_HINT = {
 	propertyHint:
-		'Consider claude-sonnet-5 for general tasks or claude-opus-5 when more capability is needed. When extended thinking is needed, use Adaptive mode and choose an Effort level. ' +
+		'When extended thinking is needed, use Adaptive mode and choose an Effort level. ' +
 		MODEL_SELECTION_HINT,
 };
 
-// Versions 1 to 1.2 expose a fixed enum that predates the current generation,
-// so the recommendation above names nothing those versions can actually select.
+// Versions 1 to 1.2 restrict model selection to a fixed list.
 const ANTHROPIC_LEGACY_MODEL_BUILDER_HINT = {
 	propertyHint:
 		'This node version only offers superseded Claude models. Pick claude-3-5-sonnet-20241022 if the node has to stay on this version; otherwise rebuild it on the latest node version, where the current Claude generation is selectable.',

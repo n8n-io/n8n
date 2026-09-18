@@ -15,7 +15,7 @@ import {
 
 import { wrapChatModelMessageInput } from '@utils/chatModelMessageWrapper';
 import { getCustomCredentialHeader, mergeCustomHeaders } from '@utils/helpers';
-import { OPENAI_CHAT_MODEL_HINT } from '@utils/model-builder-hints';
+import { MODEL_SELECTION_HINT } from '@utils/model-builder-hints';
 
 import { assertOpenAiCredentialAllowsUrl } from '../../vendors/OpenAi/helpers/credentials';
 import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-handling';
@@ -40,7 +40,7 @@ const INCLUDE_JSON_WARNING: INodeProperties = {
 };
 
 const OPENAI_MODEL_BUILDER_HINT = {
-	propertyHint: OPENAI_CHAT_MODEL_HINT,
+	propertyHint: MODEL_SELECTION_HINT,
 };
 
 const completionsResponseFormat: INodeProperties = {

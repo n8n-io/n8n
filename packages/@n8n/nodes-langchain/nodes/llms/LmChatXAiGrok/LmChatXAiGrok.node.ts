@@ -120,8 +120,7 @@ export class LmChatXAiGrok implements INodeType {
 				},
 				default: 'grok-2-vision-1212',
 				builderHint: {
-					propertyHint:
-						'Consider grok-4.6 when the connected credential offers it. ' + MODEL_SELECTION_HINT,
+					propertyHint: MODEL_SELECTION_HINT,
 				},
 			},
 			{

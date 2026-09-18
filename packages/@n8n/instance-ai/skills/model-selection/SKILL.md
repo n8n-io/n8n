@@ -1,9 +1,18 @@
 ---
 name: model-selection
 description: >-
-  Chooses models for AI nodes and answers model-choice questions. Load before
-  recommending a model, selecting one for a new workflow, or diagnosing model
-  availability. Also activated when inspecting a model-bearing node.
+  Guides AI model choices in new workflows, existing workflows, pasted workflow
+  JSON, and model-availability questions. Load before recommending, selecting,
+  replacing, or judging a model. Preserve working or explicitly requested IDs.
+  An unfamiliar name or generic 404 does not establish that a model is invalid.
+  Do not claim otherwise or suggest a replacement without provider evidence.
+  Prefer credential-specific resource lookup when available. Use searchModels
+  only to choose an unspecified model without a relevant credential or suitable
+  named recommendation, never to validate a supplied ID or diagnose an existing
+  failure. For a new choice, do not narrow discovery to a remembered model ID.
+  Do not choose GPT-4-family or Claude 3.x for an unspecified model unless verified
+  access constraints require them. Also activated when inspecting a model-bearing
+  node.
 dependencies:
   tools:
     - searchModels
@@ -18,12 +27,15 @@ recommended_tools:
 
 Your model memory tends to suggest GPT-4o, GPT-4.1, or Claude 3.x. These are
 outdated defaults for new workflows. Do not recommend them just because they
-seem familiar, stable, or inexpensive. Preserve an existing or requested model;
-use an older model for a new task only when verified access constraints require it.
+seem familiar, stable, or inexpensive. Preserve an existing or requested model.
+When choosing an unspecified model, use an older one only when verified access
+constraints require it.
 
 First check whether the user supplied a model or the workflow already has one.
 **Preserve that ID without calling `searchModels` to validate it.** A model in a
 revised design is still a user choice, even if its name is unfamiliar.
+Do not question its validity or suggest a replacement solely because you do not
+recognize it.
 
 Only when YOU must choose an unspecified model, obtain a credential model list,
 an explicit named recommendation in the node's `@builderHint`, or current catalog
@@ -51,6 +63,10 @@ call `searchModels` before writing the workflow.** Do not substitute a remembere
    is preliminary selection too. Reuse relevant results already retrieved for
    this task; do not repeat discovery for every node.
 
+For an unspecified model, leave `query` empty unless the user requested a model
+maker or family. Do not search for a remembered model ID and treat its presence
+as proof that it is current. Compare current candidates before choosing one.
+
 Keep the requested serving provider and model maker. For Claude through OpenRouter,
 call `searchModels({ provider: "openrouter", query: "claude" })`. For OpenAI through
 OpenRouter, use `query: "openai"`. The query filters model IDs and names before
@@ -65,8 +81,9 @@ Catalog presence does not prove credential access. Once a credential is connecte
 its resource lookup takes precedence. Never use catalog search to replace a
 failed credential lookup or merely to check an unfamiliar model.
 
-If evidence is unavailable, state what is unverified. Do not invent model IDs,
-versions, prices, or rankings. Do not force a paid credential to get a newer model.
+When making a new recommendation, state which access or capabilities remain
+unverified. Do not invent model IDs, versions, prices, or rankings. Do not force
+a paid credential to get a newer model.
 
 ## Diagnose availability
 
